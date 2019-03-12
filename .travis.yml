@@ -1,0 +1,13 @@
+language: go
+go:
+  - 1.12.x
+
+env:
+  global:
+    - GO111MODULE=on
+
+install:
+  - go mod vendor # for some reason this is needed, as travis fails to find cached modules
+  - go get github.com/onsi/ginkgo/ginkgo
+
+script: $GOPATH/bin/ginkgo -r --race --randomizeAllSpecs --randomizeSuites
