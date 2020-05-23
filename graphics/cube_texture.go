@@ -23,7 +23,6 @@ func (t *CubeTexture) Allocate(data CubeTextureData) error {
 	gl.TexParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
 	gl.TexParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
 	gl.TexParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
-	// TODO: Configure unpack alignment (it works now, since texture is at least 4 pixels wide and power of 2)
 	gl.TexImage2D(gl.TEXTURE_CUBE_MAP_POSITIVE_X, 0, gl.RGB, data.Dimension, data.Dimension, 0, gl.RGBA, gl.UNSIGNED_BYTE, gl.Ptr(data.RightSideData))
 	gl.TexImage2D(gl.TEXTURE_CUBE_MAP_NEGATIVE_X, 0, gl.RGB, data.Dimension, data.Dimension, 0, gl.RGBA, gl.UNSIGNED_BYTE, gl.Ptr(data.LeftSideData))
 	gl.TexImage2D(gl.TEXTURE_CUBE_MAP_POSITIVE_Z, 0, gl.RGB, data.Dimension, data.Dimension, 0, gl.RGBA, gl.UNSIGNED_BYTE, gl.Ptr(data.FrontSideData))
