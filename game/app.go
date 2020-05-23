@@ -9,6 +9,8 @@ import (
 
 	"github.com/go-gl/gl/v4.1-core/gl"
 	"github.com/go-gl/glfw/v3.3/glfw"
+	"github.com/mokiat/lacking/graphics"
+	"github.com/mokiat/lacking/input"
 )
 
 func NewApp(cfg AppConfig) *App {
@@ -56,11 +58,20 @@ func (a *App) Run(controller Controller) error {
 		return fmt.Errorf("failed to initialize opengl: %w", err)
 	}
 
+	keyboardRecorder := input.NewKeyboardRecorder(window)
+	gamepadRecorder := input.NewGamepadRecorder()
+	gfxWorker := graphics.NewWorker()
+	gfxRenderer := graphics.NewRenderer()
+
 	loop := &updateLoop{
-		controller: controller,
-		interval:   a.cfg.UpdateLoopInterval,
-		stop:       make(chan struct{}),
-		finished:   make(chan struct{}),
+		controller:       controller,
+		keyboardRecorder: keyboardRecorder,
+		gamepadRecorder:  gamepadRecorder,
+		gfxWorker:        gfxWorker,
+		gfxRenderer:      gfxRenderer,
+		interval:         a.cfg.UpdateLoopInterval,
+		stop:             make(chan struct{}),
+		finished:         make(chan struct{}),
 	}
 
 	window.SetFramebufferSizeCallback(func(w *glfw.Window, width int, height int) {
@@ -78,9 +89,11 @@ func (a *App) Run(controller Controller) error {
 	go loop.Run()
 
 	for !window.ShouldClose() && loop.IsRunning() {
-		// TODO: Remove; replace with renderer
-		gl.ClearColor(0.3, 0.6, 1.0, 1.0)
-		gl.Clear(gl.COLOR_BUFFER_BIT)
+		keyboardRecorder.Record()
+		gamepadRecorder.Record()
+
+		gfxWorker.Work()
+		gfxRenderer.Render()
 
 		window.SwapBuffers()
 		glfw.PollEvents()
@@ -88,17 +101,21 @@ func (a *App) Run(controller Controller) error {
 
 	loop.Stop()
 
-	// TODO: GL cleanup
+	gfxWorker.Flush()
 
 	return nil
 }
 
 type updateLoop struct {
-	controller Controller
-	interval   time.Duration
-	stop       chan struct{}
-	finished   chan struct{}
-	windowSize atomic.Value
+	controller       Controller
+	interval         time.Duration
+	keyboardRecorder *input.KeyboardRecorder
+	gamepadRecorder  *input.GamepadRecorder
+	gfxWorker        *graphics.Worker
+	gfxRenderer      *graphics.Renderer
+	stop             chan struct{}
+	finished         chan struct{}
+	windowSize       atomic.Value
 }
 
 func (l *updateLoop) SetWindowSize(size WindowSize) {
@@ -119,6 +136,7 @@ func (l *updateLoop) Run() {
 
 	initCtx := InitContext{
 		WindowSize: l.windowSize.Load().(WindowSize),
+		GFXWorker:  l.gfxWorker,
 	}
 	if err := l.controller.Init(initCtx); err != nil {
 		log.Printf("controller init error: %v", err)
@@ -133,11 +151,27 @@ func (l *updateLoop) Run() {
 	for running {
 		select {
 		case currentTick := <-ticker.C:
+			keyboard := l.keyboardRecorder.Fetch()
+			gamepad := l.gamepadRecorder.Fetch()
 			updateCtx := UpdateContext{
 				ElapsedTime: currentTick.Sub(lastTick),
 				WindowSize:  l.windowSize.Load().(WindowSize),
+				Keyboard:    keyboard,
+				Gamepad:     gamepad,
+				GFXWorker:   l.gfxWorker,
 			}
 			running = l.controller.Update(updateCtx)
+			l.keyboardRecorder.Release(keyboard)
+			l.gamepadRecorder.Release(gamepad)
+
+			pipeline := l.gfxRenderer.BeginPipeline()
+			renderCtx := RenderContext{
+				WindowSize:  l.windowSize.Load().(WindowSize),
+				GFXPipeline: pipeline,
+			}
+			l.controller.Render(renderCtx)
+			l.gfxRenderer.EndPipeline(pipeline)
+
 			lastTick = currentTick
 		case <-l.stop:
 			running = false

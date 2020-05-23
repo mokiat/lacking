@@ -30,7 +30,7 @@ func (t *Task) Error() error {
 
 func NewWorker() *Worker {
 	return &Worker{
-		queue: make(chan *Task, 16),
+		queue: make(chan *Task, 1024),
 	}
 }
 
@@ -38,13 +38,18 @@ type Worker struct {
 	queue chan *Task
 }
 
-func (w *Worker) Work() {
+func (w *Worker) Work() bool {
 	select {
 	case task := <-w.queue:
-		err := task.fn()
-		task.done <- err
-		close(task.done)
+		w.processTask(task)
+		return true
 	default:
+		return false
+	}
+}
+
+func (w *Worker) Flush() {
+	for w.Work() {
 	}
 }
 
@@ -61,4 +66,10 @@ func (w *Worker) Run(fn func() error) error {
 	task := w.Schedule(fn)
 	task.Wait()
 	return task.Error()
+}
+
+func (w *Worker) processTask(task *Task) {
+	err := task.fn()
+	task.done <- err
+	close(task.done)
 }
