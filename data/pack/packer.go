@@ -53,6 +53,14 @@ func (p *Packer) TwoDTextureAssetFile(name string) *TwoDTextureAssetBuilder {
 	}
 }
 
+func (p *Packer) CubeTextureAssetFile(name string) *CubeTextureAssetBuilder {
+	return &CubeTextureAssetBuilder{
+		Asset: Asset{
+			filename: filepath.Join(p.assetsDir, "textures", "cube", name),
+		},
+	}
+}
+
 func (p *Packer) ShaderResourceFile(name string) *ShaderResourceFile {
 	return &ShaderResourceFile{
 		Resource: Resource{
@@ -64,8 +72,7 @@ func (p *Packer) ShaderResourceFile(name string) *ShaderResourceFile {
 func (p *Packer) ImageResourceFile(name string) *ImageResourceFile {
 	return &ImageResourceFile{
 		Resource: Resource{
-			// TODO: Should be images/twod
-			filename: filepath.Join(p.resourcesDir, "textures", "twod", name),
+			filename: filepath.Join(p.resourcesDir, "images", name),
 		},
 	}
 }
