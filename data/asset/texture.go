@@ -1,10 +1,6 @@
 package asset
 
-import (
-	"encoding/gob"
-	"fmt"
-	"io"
-)
+import "io"
 
 type TwoDTexture struct {
 	Width  uint16
@@ -33,37 +29,17 @@ type CubeTextureSide struct {
 }
 
 func EncodeTwoDTexture(out io.Writer, texture *TwoDTexture) error {
-	return WriteCompressed(out, func(compOut io.Writer) error {
-		if err := gob.NewEncoder(compOut).Encode(texture); err != nil {
-			return fmt.Errorf("failed to encode gob stream: %w", err)
-		}
-		return nil
-	})
+	return Encode(out, texture)
 }
 
 func DecodeTwoDTexture(in io.Reader, texture *TwoDTexture) error {
-	return ReadCompressed(in, func(compIn io.Reader) error {
-		if err := gob.NewDecoder(compIn).Decode(texture); err != nil {
-			return fmt.Errorf("failed to decode gob stream: %w", err)
-		}
-		return nil
-	})
+	return Decode(in, texture)
 }
 
 func EncodeCubeTexture(out io.Writer, texture *CubeTexture) error {
-	return WriteCompressed(out, func(compOut io.Writer) error {
-		if err := gob.NewEncoder(compOut).Encode(texture); err != nil {
-			return fmt.Errorf("failed to encode gob stream: %w", err)
-		}
-		return nil
-	})
+	return Encode(out, texture)
 }
 
 func DecodeCubeTexture(in io.Reader, texture *CubeTexture) error {
-	return ReadCompressed(in, func(compIn io.Reader) error {
-		if err := gob.NewDecoder(compIn).Decode(texture); err != nil {
-			return fmt.Errorf("failed to decode gob stream: %w", err)
-		}
-		return nil
-	})
+	return Decode(in, texture)
 }
