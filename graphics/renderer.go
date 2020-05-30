@@ -175,6 +175,12 @@ func (r *Renderer) renderItem(sequence Sequence, item Item) {
 		gl.Uniform1i(item.Program.FBNormalTextureLocation, int32(textureIndex))
 		textureIndex++
 	}
+	if item.Program.FBDepthTextureLocation != -1 {
+		gl.ActiveTexture(gl.TEXTURE0 + textureIndex)
+		gl.BindTexture(gl.TEXTURE_2D, sequence.SourceFramebuffer.DepthTextureID)
+		gl.Uniform1i(item.Program.FBDepthTextureLocation, int32(textureIndex))
+		textureIndex++
+	}
 
 	if item.Program.DiffuseColorLocation != -1 {
 		gl.Uniform4f(item.Program.DiffuseColorLocation, item.DiffuseColor.X, item.DiffuseColor.Y, item.DiffuseColor.Z, item.DiffuseColor.W)
@@ -182,11 +188,14 @@ func (r *Renderer) renderItem(sequence Sequence, item Item) {
 	if item.Program.ProjectionMatrixLocation != -1 {
 		gl.UniformMatrix4fv(item.Program.ProjectionMatrixLocation, 1, false, r.matrixToArray(sequence.ProjectionMatrix))
 	}
+	if item.Program.ModelMatrixLocation != -1 {
+		gl.UniformMatrix4fv(item.Program.ModelMatrixLocation, 1, false, r.matrixToArray(item.ModelMatrix))
+	}
 	if item.Program.ViewMatrixLocation != -1 {
 		gl.UniformMatrix4fv(item.Program.ViewMatrixLocation, 1, false, r.matrixToArray(sequence.ViewMatrix))
 	}
-	if item.Program.ModelMatrixLocation != -1 {
-		gl.UniformMatrix4fv(item.Program.ModelMatrixLocation, 1, false, r.matrixToArray(item.ModelMatrix))
+	if item.Program.InverseViewMatrixLocation != -1 {
+		gl.UniformMatrix4fv(item.Program.InverseViewMatrixLocation, 1, false, r.matrixToArray(sequence.InverseViewMatrix))
 	}
 
 	gl.BindVertexArray(item.VertexArray.ID)

@@ -14,10 +14,12 @@ type Program struct {
 
 	FBAlbedoTextureLocation int32
 	FBNormalTextureLocation int32
+	FBDepthTextureLocation  int32
 
-	ProjectionMatrixLocation int32
-	ModelMatrixLocation      int32
-	ViewMatrixLocation       int32
+	ProjectionMatrixLocation  int32
+	ModelMatrixLocation       int32
+	ViewMatrixLocation        int32
+	InverseViewMatrixLocation int32
 
 	DiffuseColorLocation   int32
 	DiffuseTextureLocation int32
@@ -58,10 +60,12 @@ func (p *Program) Allocate(data ProgramData) error {
 
 	p.FBAlbedoTextureLocation = gl.GetUniformLocation(p.ID, gl.Str("fbAlbedoTextureIn"+"\x00"))
 	p.FBNormalTextureLocation = gl.GetUniformLocation(p.ID, gl.Str("fbNormalTextureIn"+"\x00"))
+	p.FBDepthTextureLocation = gl.GetUniformLocation(p.ID, gl.Str("fbDepthTextureIn"+"\x00"))
 
 	p.ProjectionMatrixLocation = gl.GetUniformLocation(p.ID, gl.Str("projectionMatrixIn"+"\x00"))
 	p.ModelMatrixLocation = gl.GetUniformLocation(p.ID, gl.Str("modelMatrixIn"+"\x00"))
 	p.ViewMatrixLocation = gl.GetUniformLocation(p.ID, gl.Str("viewMatrixIn"+"\x00"))
+	p.InverseViewMatrixLocation = gl.GetUniformLocation(p.ID, gl.Str("inverseViewMatrixIn"+"\x00"))
 
 	p.DiffuseColorLocation = gl.GetUniformLocation(p.ID, gl.Str("diffuseColorIn"+"\x00"))
 	p.DiffuseTextureLocation = gl.GetUniformLocation(p.ID, gl.Str("diffuseTextureIn"+"\x00"))
