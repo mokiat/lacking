@@ -36,6 +36,7 @@ func (a *App) Run(controller Controller) error {
 	glfw.WindowHint(glfw.ContextVersionMinor, 1)
 	glfw.WindowHint(glfw.OpenGLProfile, glfw.OpenGLCoreProfile)
 	glfw.WindowHint(glfw.OpenGLForwardCompatible, glfw.True)
+	glfw.WindowHint(glfw.SRGBCapable, glfw.True)
 
 	window, err := glfw.CreateWindow(a.cfg.WindowWidth, a.cfg.WindowHeight, a.cfg.WindowTitle, nil, nil)
 	if err != nil {

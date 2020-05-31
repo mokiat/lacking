@@ -82,8 +82,9 @@ func (r *Renderer) processAction(action func()) {
 }
 
 func (r *Renderer) renderSequence(sequence Sequence) {
-	gl.Enable(gl.CULL_FACE)
+	gl.Enable(gl.CULL_FACE) // TODO: Make this specific to material
 
+	gl.Enable(gl.FRAMEBUFFER_SRGB)
 	if framebuffer := sequence.SourceFramebuffer; framebuffer != nil {
 		gl.BindFramebuffer(gl.READ_FRAMEBUFFER, framebuffer.ID)
 	}
