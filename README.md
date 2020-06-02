@@ -1,6 +1,7 @@
 # Lacking Game Engine
 
-**WARNING:** This project is under active prototyping.
+**WARNING:** This project is under active prototyping and `master` branch will be flattened once a more stable
+state is reached.
 
 ![logo](logo.png)
 
