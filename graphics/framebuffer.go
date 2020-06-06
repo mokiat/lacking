@@ -44,12 +44,12 @@ func (b *Framebuffer) Allocate(data FramebufferData) error {
 
 	var drawBufferIDS []uint32
 	if data.HasAlbedoAttachment {
-		// R, G, B, METALLIC
+		// R, G, B, METALNESS
 		gl.GenTextures(1, &b.AlbedoTextureID)
 		gl.BindTexture(gl.TEXTURE_2D, b.AlbedoTextureID)
 		gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
 		gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
-		gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, data.Width, data.Height, 0, gl.RGBA, gl.UNSIGNED_BYTE, gl.Ptr(nil))
+		gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, data.Width, data.Height, 0, gl.RGBA, gl.UNSIGNED_BYTE, gl.Ptr(nil))
 		gl.FramebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, b.AlbedoTextureID, 0)
 		drawBufferIDS = append(drawBufferIDS, gl.COLOR_ATTACHMENT0)
 	}
