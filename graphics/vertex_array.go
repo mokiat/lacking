@@ -2,6 +2,14 @@ package graphics
 
 import "github.com/go-gl/gl/v4.1-core/gl"
 
+const (
+	CoordAttributeIndex    = 0
+	NormalAttributeIndex   = 1
+	TangentAttributeIndex  = 2
+	TexCoordAttributeIndex = 3
+	ColorAttributeIndex    = 4
+)
+
 type VertexArray struct {
 	ID             uint32
 	VertexBufferID uint32
@@ -9,13 +17,27 @@ type VertexArray struct {
 }
 
 type VertexArrayData struct {
-	VertexData     []byte
-	VertexStride   int32
+	VertexData []byte
+	IndexData  []byte
+	Layout     VertexArrayLayout
+}
+
+type VertexArrayLayout struct {
+	HasCoord       bool
 	CoordOffset    int
+	CoordStride    int32
+	HasNormal      bool
 	NormalOffset   int
+	NormalStride   int32
+	HasTangent     bool
+	TangentOffset  int
+	TangentStride  int32
+	HasTexCoord    bool
 	TexCoordOffset int
+	TexCoordStride int32
+	HasColor       bool
 	ColorOffset    int
-	IndexData      []byte
+	ColorStride    int32
 }
 
 func (a *VertexArray) Allocate(data VertexArrayData) error {
@@ -26,19 +48,25 @@ func (a *VertexArray) Allocate(data VertexArrayData) error {
 	gl.BindBuffer(gl.ARRAY_BUFFER, a.VertexBufferID)
 	gl.BufferData(gl.ARRAY_BUFFER, len(data.VertexData), gl.Ptr(data.VertexData), gl.DYNAMIC_DRAW)
 
-	gl.EnableVertexAttribArray(0)
-	gl.VertexAttribPointer(0, 3, gl.FLOAT, false, data.VertexStride, gl.PtrOffset(data.CoordOffset))
-	if data.NormalOffset != 0 {
-		gl.EnableVertexAttribArray(1)
-		gl.VertexAttribPointer(1, 3, gl.FLOAT, false, data.VertexStride, gl.PtrOffset(data.NormalOffset))
+	if data.Layout.HasCoord {
+		gl.EnableVertexAttribArray(CoordAttributeIndex)
+		gl.VertexAttribPointer(CoordAttributeIndex, 3, gl.FLOAT, false, data.Layout.CoordStride, gl.PtrOffset(data.Layout.CoordOffset))
 	}
-	if data.TexCoordOffset != 0 {
-		gl.EnableVertexAttribArray(2)
-		gl.VertexAttribPointer(2, 2, gl.FLOAT, false, data.VertexStride, gl.PtrOffset(data.TexCoordOffset))
+	if data.Layout.HasNormal {
+		gl.EnableVertexAttribArray(NormalAttributeIndex)
+		gl.VertexAttribPointer(NormalAttributeIndex, 3, gl.FLOAT, false, data.Layout.NormalStride, gl.PtrOffset(data.Layout.NormalOffset))
 	}
-	if data.ColorOffset != 0 {
-		gl.EnableVertexAttribArray(3)
-		gl.VertexAttribPointer(3, 4, gl.FLOAT, false, data.VertexStride, gl.PtrOffset(data.ColorOffset))
+	if data.Layout.HasTangent {
+		gl.EnableVertexAttribArray(TangentAttributeIndex)
+		gl.VertexAttribPointer(TangentAttributeIndex, 3, gl.FLOAT, false, data.Layout.TangentStride, gl.PtrOffset(data.Layout.TangentOffset))
+	}
+	if data.Layout.HasTexCoord {
+		gl.EnableVertexAttribArray(TexCoordAttributeIndex)
+		gl.VertexAttribPointer(TexCoordAttributeIndex, 2, gl.FLOAT, false, data.Layout.TexCoordStride, gl.PtrOffset(data.Layout.TexCoordOffset))
+	}
+	if data.Layout.HasColor {
+		gl.EnableVertexAttribArray(ColorAttributeIndex)
+		gl.VertexAttribPointer(ColorAttributeIndex, 4, gl.FLOAT, false, data.Layout.ColorStride, gl.PtrOffset(data.Layout.ColorOffset))
 	}
 
 	gl.GenBuffers(1, &a.IndexBufferID)
