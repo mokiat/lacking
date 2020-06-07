@@ -5,27 +5,38 @@ import "io"
 const UnspecifiedOffset = int16(-1)
 
 type Mesh struct {
-	VertexData     []byte
-	VertexStride   int16
+	Name         string
+	VertexData   []byte
+	VertexLayout VertexLayout
+	IndexData    []byte
+	SubMeshes    []SubMesh
+}
+
+type VertexLayout struct {
 	CoordOffset    int16
+	CoordStride    int16
 	NormalOffset   int16
+	NormalStride   int16
 	TangentOffset  int16
+	TangentStride  int16
 	TexCoordOffset int16
+	TexCoordStride int16
 	ColorOffset    int16
-	IndexData      []byte
-	SubMeshes      []SubMesh
+	ColorStride    int16
 }
 
 type SubMesh struct {
-	Name             string
 	Primitive        Primitive
 	IndexOffset      uint32
 	IndexCount       uint32
+	BackfaceCulling  bool
 	MaterialType     string
-	Color            [4]float32
-	ColorTexture     string
+	Metalness        float32
+	MetalnessTexture string
 	Roughness        float32
 	RoughnessTexture string
+	Color            [4]float32
+	ColorTexture     string
 	NormalScale      float32
 	NormalTexture    string
 }
