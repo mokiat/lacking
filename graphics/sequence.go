@@ -33,7 +33,7 @@ type Sequence struct {
 	DepthFunc             DepthFunc
 	ProjectionMatrix      sprec.Mat4
 	ViewMatrix            sprec.Mat4
-	InverseViewMatrix     sprec.Mat4
+	CameraMatrix          sprec.Mat4
 }
 
 func (s *Sequence) BeginItem() *Item {

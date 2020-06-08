@@ -12,18 +12,18 @@ type Program struct {
 	VertexShaderID   uint32
 	FragmentShaderID uint32
 
-	FBAlbedoTextureLocation int32
-	FBNormalTextureLocation int32
+	FBColor0TextureLocation int32
+	FBColor1TextureLocation int32
 	FBDepthTextureLocation  int32
 
-	ProjectionMatrixLocation  int32
-	ModelMatrixLocation       int32
-	ViewMatrixLocation        int32
-	InverseViewMatrixLocation int32
+	ProjectionMatrixLocation int32
+	ModelMatrixLocation      int32
+	ViewMatrixLocation       int32
+	CameraMatrixLocation     int32
 
-	DiffuseColorLocation   int32
-	DiffuseTextureLocation int32
-	SkyboxTextureLocation  int32
+	AlbedoColorLocation       int32
+	AlbedoTwoDTextureLocation int32
+	AlbedoCubeTextureLocation int32
 }
 
 type ProgramData struct {
@@ -58,18 +58,18 @@ func (p *Program) Allocate(data ProgramData) error {
 		return fmt.Errorf("failed to link program: %s", log)
 	}
 
-	p.FBAlbedoTextureLocation = gl.GetUniformLocation(p.ID, gl.Str("fbAlbedoTextureIn"+"\x00"))
-	p.FBNormalTextureLocation = gl.GetUniformLocation(p.ID, gl.Str("fbNormalTextureIn"+"\x00"))
-	p.FBDepthTextureLocation = gl.GetUniformLocation(p.ID, gl.Str("fbDepthTextureIn"+"\x00"))
+	p.FBColor0TextureLocation = getUniformLocation(p.ID, "fbColor0TextureIn")
+	p.FBColor1TextureLocation = getUniformLocation(p.ID, "fbColor1TextureIn")
+	p.FBDepthTextureLocation = getUniformLocation(p.ID, "fbDepthTextureIn")
 
-	p.ProjectionMatrixLocation = gl.GetUniformLocation(p.ID, gl.Str("projectionMatrixIn"+"\x00"))
-	p.ModelMatrixLocation = gl.GetUniformLocation(p.ID, gl.Str("modelMatrixIn"+"\x00"))
-	p.ViewMatrixLocation = gl.GetUniformLocation(p.ID, gl.Str("viewMatrixIn"+"\x00"))
-	p.InverseViewMatrixLocation = gl.GetUniformLocation(p.ID, gl.Str("inverseViewMatrixIn"+"\x00"))
+	p.ProjectionMatrixLocation = getUniformLocation(p.ID, "projectionMatrixIn")
+	p.ModelMatrixLocation = getUniformLocation(p.ID, "modelMatrixIn")
+	p.ViewMatrixLocation = getUniformLocation(p.ID, "viewMatrixIn")
+	p.CameraMatrixLocation = getUniformLocation(p.ID, "cameraMatrixIn")
 
-	p.DiffuseColorLocation = gl.GetUniformLocation(p.ID, gl.Str("diffuseColorIn"+"\x00"))
-	p.DiffuseTextureLocation = gl.GetUniformLocation(p.ID, gl.Str("diffuseTextureIn"+"\x00"))
-	p.SkyboxTextureLocation = gl.GetUniformLocation(p.ID, gl.Str("skyboxTextureIn"+"\x00"))
+	p.AlbedoColorLocation = getUniformLocation(p.ID, "albedoColorIn")
+	p.AlbedoTwoDTextureLocation = getUniformLocation(p.ID, "albedoTwoDTextureIn")
+	p.AlbedoCubeTextureLocation = getUniformLocation(p.ID, "albedoCubeTextureIn")
 	return nil
 }
 
@@ -81,6 +81,10 @@ func (p *Program) Release() error {
 	p.VertexShaderID = 0
 	p.FragmentShaderID = 0
 	return nil
+}
+
+func getUniformLocation(id uint32, name string) int32 {
+	return gl.GetUniformLocation(id, gl.Str(name+"\x00"))
 }
 
 func setShaderSourceCode(id uint32, sourceCode string) {

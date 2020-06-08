@@ -152,28 +152,28 @@ func (r *Renderer) renderItem(sequence Sequence, item Item) {
 	gl.UseProgram(item.Program.ID)
 
 	textureIndex := uint32(0)
-	if item.Program.DiffuseTextureLocation != -1 {
+	if item.Program.AlbedoTwoDTextureLocation != -1 {
 		gl.ActiveTexture(gl.TEXTURE0 + textureIndex)
-		gl.BindTexture(gl.TEXTURE_2D, item.DiffuseTexture.ID)
-		gl.Uniform1i(item.Program.DiffuseTextureLocation, int32(textureIndex))
+		gl.BindTexture(gl.TEXTURE_2D, item.AlbedoTwoDTexture.ID)
+		gl.Uniform1i(item.Program.AlbedoTwoDTextureLocation, int32(textureIndex))
 		textureIndex++
 	}
-	if item.Program.SkyboxTextureLocation != -1 {
+	if item.Program.AlbedoCubeTextureLocation != -1 {
 		gl.ActiveTexture(gl.TEXTURE0 + textureIndex)
-		gl.BindTexture(gl.TEXTURE_CUBE_MAP, item.SkyboxTexture.ID)
-		gl.Uniform1i(item.Program.SkyboxTextureLocation, int32(textureIndex))
+		gl.BindTexture(gl.TEXTURE_CUBE_MAP, item.AlbedoCubeTexture.ID)
+		gl.Uniform1i(item.Program.AlbedoCubeTextureLocation, int32(textureIndex))
 		textureIndex++
 	}
-	if item.Program.FBAlbedoTextureLocation != -1 {
+	if item.Program.FBColor0TextureLocation != -1 {
 		gl.ActiveTexture(gl.TEXTURE0 + textureIndex)
 		gl.BindTexture(gl.TEXTURE_2D, sequence.SourceFramebuffer.AlbedoTextureID)
-		gl.Uniform1i(item.Program.FBAlbedoTextureLocation, int32(textureIndex))
+		gl.Uniform1i(item.Program.FBColor0TextureLocation, int32(textureIndex))
 		textureIndex++
 	}
-	if item.Program.FBNormalTextureLocation != -1 {
+	if item.Program.FBColor1TextureLocation != -1 {
 		gl.ActiveTexture(gl.TEXTURE0 + textureIndex)
 		gl.BindTexture(gl.TEXTURE_2D, sequence.SourceFramebuffer.NormalTextureID)
-		gl.Uniform1i(item.Program.FBNormalTextureLocation, int32(textureIndex))
+		gl.Uniform1i(item.Program.FBColor1TextureLocation, int32(textureIndex))
 		textureIndex++
 	}
 	if item.Program.FBDepthTextureLocation != -1 {
@@ -183,8 +183,8 @@ func (r *Renderer) renderItem(sequence Sequence, item Item) {
 		textureIndex++
 	}
 
-	if item.Program.DiffuseColorLocation != -1 {
-		gl.Uniform4f(item.Program.DiffuseColorLocation, item.DiffuseColor.X, item.DiffuseColor.Y, item.DiffuseColor.Z, item.DiffuseColor.W)
+	if item.Program.AlbedoColorLocation != -1 {
+		gl.Uniform4f(item.Program.AlbedoColorLocation, item.AlbedoColor.X, item.AlbedoColor.Y, item.AlbedoColor.Z, item.AlbedoColor.W)
 	}
 	if item.Program.ProjectionMatrixLocation != -1 {
 		gl.UniformMatrix4fv(item.Program.ProjectionMatrixLocation, 1, false, r.matrixToArray(sequence.ProjectionMatrix))
@@ -195,8 +195,8 @@ func (r *Renderer) renderItem(sequence Sequence, item Item) {
 	if item.Program.ViewMatrixLocation != -1 {
 		gl.UniformMatrix4fv(item.Program.ViewMatrixLocation, 1, false, r.matrixToArray(sequence.ViewMatrix))
 	}
-	if item.Program.InverseViewMatrixLocation != -1 {
-		gl.UniformMatrix4fv(item.Program.InverseViewMatrixLocation, 1, false, r.matrixToArray(sequence.InverseViewMatrix))
+	if item.Program.CameraMatrixLocation != -1 {
+		gl.UniformMatrix4fv(item.Program.CameraMatrixLocation, 1, false, r.matrixToArray(sequence.CameraMatrix))
 	}
 
 	gl.BindVertexArray(item.VertexArray.ID)
