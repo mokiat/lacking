@@ -27,6 +27,7 @@ type Item struct {
 	AlbedoCubeTexture *CubeTexture
 
 	VertexArray *VertexArray
+	IndexOffset int
 	IndexCount  int32
 }
 
@@ -39,5 +40,6 @@ func (i *Item) reset() {
 	i.AlbedoTwoDTexture = nil
 	i.AlbedoCubeTexture = nil
 	i.VertexArray = nil
+	i.IndexOffset = 0
 	i.IndexCount = 0
 }
