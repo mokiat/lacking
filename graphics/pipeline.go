@@ -1,7 +1,7 @@
 package graphics
 
 func newPipeline() *Pipeline {
-	items := make([]Item, 1024)
+	items := make([]Item, 16384)
 	for i := range items {
 		items[i] = createItem()
 	}
