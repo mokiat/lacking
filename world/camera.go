@@ -1,4 +1,4 @@
-package scene
+package world
 
 import "github.com/mokiat/gomath/sprec"
 
