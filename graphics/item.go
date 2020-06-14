@@ -1,12 +1,22 @@
 package graphics
 
-import "github.com/mokiat/gomath/sprec"
+import (
+	"fmt"
+
+	"github.com/go-gl/gl/v4.1-core/gl"
+	"github.com/mokiat/gomath/sprec"
+)
 
 type RenderPrimitive int
 
 const (
-	RenderPrimitiveTriangles RenderPrimitive = iota
+	RenderPrimitivePoints RenderPrimitive = iota
 	RenderPrimitiveLines
+	RenderPrimitiveLineStrip
+	RenderPrimitiveLineLoop
+	RenderPrimitiveTriangles
+	RenderPrimitiveTriangleStrip
+	RenderPrimitiveTriangleFan
 )
 
 func createItem() Item {
@@ -42,4 +52,25 @@ func (i *Item) reset() {
 	i.VertexArray = nil
 	i.IndexOffset = 0
 	i.IndexCount = 0
+}
+
+func (i *Item) glPrimitive() uint32 {
+	switch i.Primitive {
+	case RenderPrimitivePoints:
+		return gl.POINTS
+	case RenderPrimitiveLines:
+		return gl.LINES
+	case RenderPrimitiveLineStrip:
+		return gl.LINE_STRIP
+	case RenderPrimitiveLineLoop:
+		return gl.LINE_LOOP
+	case RenderPrimitiveTriangles:
+		return gl.TRIANGLES
+	case RenderPrimitiveTriangleStrip:
+		return gl.TRIANGLE_STRIP
+	case RenderPrimitiveTriangleFan:
+		return gl.TRIANGLE_FAN
+	default:
+		panic(fmt.Errorf("unsupported primitive type: %d", i.Primitive))
+	}
 }

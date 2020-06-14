@@ -200,13 +200,8 @@ func (r *Renderer) renderItem(sequence Sequence, item Item) {
 	}
 
 	gl.BindVertexArray(item.VertexArray.ID)
-	switch item.Primitive {
-	case RenderPrimitiveTriangles:
-		gl.DrawElements(gl.TRIANGLES, item.IndexCount, gl.UNSIGNED_SHORT, gl.PtrOffset(item.IndexOffset))
-	case RenderPrimitiveLines:
-		gl.LineWidth(2)
-		gl.DrawElements(gl.LINES, item.IndexCount, gl.UNSIGNED_SHORT, gl.PtrOffset(item.IndexOffset))
-	}
+	gl.LineWidth(2)
+	gl.DrawElements(item.glPrimitive(), item.IndexCount, gl.UNSIGNED_SHORT, gl.PtrOffset(item.IndexOffset))
 }
 
 // NOTE: Use this method only as short-lived function argument
