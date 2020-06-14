@@ -3,6 +3,7 @@ package resource
 import (
 	"fmt"
 
+	"github.com/mokiat/gomath/sprec"
 	"github.com/mokiat/lacking/data/asset"
 	"github.com/mokiat/lacking/graphics"
 )
@@ -22,9 +23,19 @@ type Mesh struct {
 }
 
 type SubMesh struct {
-	IndexOffset   int
-	IndexCount    int32
-	AlbedoTexture *TwoDTexture
+	Primitive        graphics.RenderPrimitive
+	IndexOffset      int
+	IndexCount       int32
+	BackfaceCulling  bool
+	Program          *Program
+	Metalness        float32
+	MetalnessTexture *TwoDTexture
+	Roughness        float32
+	RoughnessTexture *TwoDTexture
+	AlbedoColor      sprec.Vec4
+	AlbedoTexture    *TwoDTexture
+	NormalScale      float32
+	NormalTexture    *TwoDTexture
 }
 
 func NewMeshOperator(locator Locator, gfxWorker *graphics.Worker) *MeshOperator {
@@ -93,18 +104,53 @@ func AllocateMesh(registry *Registry, name string, gfxWorker *graphics.Worker, m
 	}
 
 	mesh.SubMeshes = make([]SubMesh, len(meshAsset.SubMeshes))
-	for i := range mesh.SubMeshes {
-		subMeshAsset := meshAsset.SubMeshes[i]
+	for i, subMeshAsset := range meshAsset.SubMeshes {
 		subMesh := SubMesh{
-			IndexOffset: int(subMeshAsset.IndexOffset),
-			IndexCount:  int32(subMeshAsset.IndexCount),
+			Primitive:       assetToGraphicsPrimitive(subMeshAsset.Primitive),
+			IndexOffset:     int(subMeshAsset.IndexOffset),
+			IndexCount:      int32(subMeshAsset.IndexCount),
+			BackfaceCulling: subMeshAsset.BackfaceCulling,
+			Metalness:       subMeshAsset.Metalness,
+			Roughness:       subMeshAsset.Roughness,
+			AlbedoColor: sprec.NewVec4(
+				subMeshAsset.Color[0],
+				subMeshAsset.Color[1],
+				subMeshAsset.Color[2],
+				subMeshAsset.Color[3],
+			),
+			NormalScale: subMeshAsset.NormalScale,
+		}
+		if subMeshAsset.MetalnessTexture != "" {
+			result := registry.LoadTwoDTexture(subMeshAsset.MetalnessTexture).
+				OnSuccess(InjectTwoDTexture(&subMesh.MetalnessTexture)).
+				Wait()
+			if err := result.Err; err != nil {
+				return nil, fmt.Errorf("failed to load metalness texture: %w", err)
+			}
+		}
+		if subMeshAsset.RoughnessTexture != "" {
+			result := registry.LoadTwoDTexture(subMeshAsset.RoughnessTexture).
+				OnSuccess(InjectTwoDTexture(&subMesh.RoughnessTexture)).
+				Wait()
+			if err := result.Err; err != nil {
+				return nil, fmt.Errorf("failed to load roughness texture: %w", err)
+			}
 		}
 		if subMeshAsset.ColorTexture != "" {
-			var albedoTexture *TwoDTexture
-			if result := registry.LoadTwoDTexture(subMeshAsset.ColorTexture).OnSuccess(InjectTwoDTexture(&albedoTexture)).Wait(); result.Err != nil {
-				return nil, result.Err
+			result := registry.LoadTwoDTexture(subMeshAsset.ColorTexture).
+				OnSuccess(InjectTwoDTexture(&subMesh.AlbedoTexture)).
+				Wait()
+			if err := result.Err; err != nil {
+				return nil, fmt.Errorf("failed to load albedo texture: %w", err)
 			}
-			subMesh.AlbedoTexture = albedoTexture
+		}
+		if subMeshAsset.NormalTexture != "" {
+			result := registry.LoadTwoDTexture(subMeshAsset.NormalTexture).
+				OnSuccess(InjectTwoDTexture(&subMesh.NormalTexture)).
+				Wait()
+			if err := result.Err; err != nil {
+				return nil, fmt.Errorf("failed to load normal texture: %w", err)
+			}
 		}
 		mesh.SubMeshes[i] = subMesh
 	}
@@ -113,8 +159,23 @@ func AllocateMesh(registry *Registry, name string, gfxWorker *graphics.Worker, m
 
 func ReleaseMesh(registry *Registry, gfxWorker *graphics.Worker, mesh *Mesh) error {
 	for _, subMesh := range mesh.SubMeshes {
+		if subMesh.MetalnessTexture != nil {
+			if result := registry.UnloadTwoDTexture(subMesh.MetalnessTexture).Wait(); result.Err != nil {
+				return result.Err
+			}
+		}
+		if subMesh.RoughnessTexture != nil {
+			if result := registry.UnloadTwoDTexture(subMesh.RoughnessTexture).Wait(); result.Err != nil {
+				return result.Err
+			}
+		}
 		if subMesh.AlbedoTexture != nil {
 			if result := registry.UnloadTwoDTexture(subMesh.AlbedoTexture).Wait(); result.Err != nil {
+				return result.Err
+			}
+		}
+		if subMesh.NormalTexture != nil {
+			if result := registry.UnloadTwoDTexture(subMesh.NormalTexture).Wait(); result.Err != nil {
 				return result.Err
 			}
 		}
@@ -127,4 +188,25 @@ func ReleaseMesh(registry *Registry, gfxWorker *graphics.Worker, mesh *Mesh) err
 		return fmt.Errorf("failed to release gfx vertex array: %w", err)
 	}
 	return nil
+}
+
+func assetToGraphicsPrimitive(primitive asset.Primitive) graphics.RenderPrimitive {
+	switch primitive {
+	case asset.PrimitivePoints:
+		return graphics.RenderPrimitivePoints
+	case asset.PrimitiveLines:
+		return graphics.RenderPrimitiveLines
+	case asset.PrimitiveLineStrip:
+		return graphics.RenderPrimitiveLineStrip
+	case asset.PrimitiveLineLoop:
+		return graphics.RenderPrimitiveLineStrip
+	case asset.PrimitiveTriangles:
+		return graphics.RenderPrimitiveTriangles
+	case asset.PrimitiveTriangleStrip:
+		return graphics.RenderPrimitiveTriangleStrip
+	case asset.PrimitiveTriangleFan:
+		return graphics.RenderPrimitiveTriangleFan
+	default:
+		panic(fmt.Errorf("unsupported primitive: %d", primitive))
+	}
 }
