@@ -24,17 +24,22 @@ func createItem() Item {
 }
 
 type Item struct {
-	Program   *Program
-	Primitive RenderPrimitive
+	Program         *Program
+	Primitive       RenderPrimitive
+	BackfaceCulling bool
 
 	// TODO: Make uniforms generic through usage of
 	// uniform type specifiers and []byte buffers
-	ModelMatrix       sprec.Mat4
-	Metalness         float32
-	Roughness         float32
-	AlbedoColor       sprec.Vec4
-	AlbedoTwoDTexture *TwoDTexture
-	AlbedoCubeTexture *CubeTexture
+	ModelMatrix          sprec.Mat4
+	Metalness            float32
+	MetalnessTwoDTexture *TwoDTexture
+	Roughness            float32
+	RoughnessTwoDTexture *TwoDTexture
+	AlbedoColor          sprec.Vec4
+	AlbedoTwoDTexture    *TwoDTexture
+	AlbedoCubeTexture    *CubeTexture
+	NormalScale          float32
+	NormalTwoDTexture    *TwoDTexture
 
 	VertexArray *VertexArray
 	IndexOffset int
@@ -44,11 +49,16 @@ type Item struct {
 func (i *Item) reset() {
 	i.Program = nil
 	i.Primitive = RenderPrimitiveTriangles
+	i.BackfaceCulling = false
 	i.Metalness = 0.0
+	i.MetalnessTwoDTexture = nil
 	i.Roughness = 0.5
+	i.RoughnessTwoDTexture = nil
 	i.AlbedoColor = sprec.NewVec4(0.5, 0.0, 0.5, 1.0)
 	i.AlbedoTwoDTexture = nil
 	i.AlbedoCubeTexture = nil
+	i.NormalScale = 1.0
+	i.NormalTwoDTexture = nil
 	i.VertexArray = nil
 	i.IndexOffset = 0
 	i.IndexCount = 0

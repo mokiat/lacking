@@ -21,9 +21,15 @@ type Program struct {
 	ViewMatrixLocation       int32
 	CameraMatrixLocation     int32
 
-	AlbedoColorLocation       int32
-	AlbedoTwoDTextureLocation int32
-	AlbedoCubeTextureLocation int32
+	MetalnessLocation            int32
+	MetalnessTwoDTextureLocation int32
+	RoughnessLocation            int32
+	RoughnessTwoDTextureLocation int32
+	AlbedoColorLocation          int32
+	AlbedoTwoDTextureLocation    int32
+	AlbedoCubeTextureLocation    int32
+	NormalScaleLocation          int32
+	NormalTwoDTextureLocation    int32
 }
 
 type ProgramData struct {
@@ -67,9 +73,15 @@ func (p *Program) Allocate(data ProgramData) error {
 	p.ViewMatrixLocation = getUniformLocation(p.ID, "viewMatrixIn")
 	p.CameraMatrixLocation = getUniformLocation(p.ID, "cameraMatrixIn")
 
+	p.MetalnessLocation = getUniformLocation(p.ID, "metalnessIn")
+	p.MetalnessTwoDTextureLocation = getUniformLocation(p.ID, "metalnessTwoDTextureIn")
+	p.RoughnessLocation = getUniformLocation(p.ID, "roughnessIn")
+	p.RoughnessTwoDTextureLocation = getUniformLocation(p.ID, "roughnessTwoDTextureIn")
 	p.AlbedoColorLocation = getUniformLocation(p.ID, "albedoColorIn")
 	p.AlbedoTwoDTextureLocation = getUniformLocation(p.ID, "albedoTwoDTextureIn")
 	p.AlbedoCubeTextureLocation = getUniformLocation(p.ID, "albedoCubeTextureIn")
+	p.NormalScaleLocation = getUniformLocation(p.ID, "normalScaleIn")
+	p.NormalTwoDTextureLocation = getUniformLocation(p.ID, "normalTwoDTextureIn")
 	return nil
 }
 

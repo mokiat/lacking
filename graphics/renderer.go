@@ -82,8 +82,6 @@ func (r *Renderer) processAction(action func()) {
 }
 
 func (r *Renderer) renderSequence(sequence Sequence) {
-	gl.Enable(gl.CULL_FACE) // TODO: Make this specific to material
-
 	gl.Enable(gl.FRAMEBUFFER_SRGB)
 	if framebuffer := sequence.SourceFramebuffer; framebuffer != nil {
 		gl.BindFramebuffer(gl.READ_FRAMEBUFFER, framebuffer.ID)
@@ -94,6 +92,14 @@ func (r *Renderer) renderSequence(sequence Sequence) {
 	} else {
 		gl.BindFramebuffer(gl.DRAW_FRAMEBUFFER, 0)
 	}
+
+	if sequence.TestDepth {
+		gl.Enable(gl.DEPTH_TEST)
+	} else {
+		gl.Disable(gl.DEPTH_TEST)
+	}
+	gl.DepthMask(sequence.WriteDepth)
+
 	blitFlags := uint32(0)
 	if sequence.BlitFramebufferColor {
 		blitFlags |= gl.COLOR_BUFFER_BIT
@@ -127,13 +133,6 @@ func (r *Renderer) renderSequence(sequence Sequence) {
 		gl.Clear(clearFlags)
 	}
 
-	if sequence.TestDepth {
-		gl.Enable(gl.DEPTH_TEST)
-	} else {
-		gl.Disable(gl.DEPTH_TEST)
-	}
-	gl.DepthMask(sequence.WriteDepth)
-
 	switch sequence.DepthFunc {
 	case DepthFuncLess:
 		gl.DepthFunc(gl.LESS)
@@ -144,14 +143,30 @@ func (r *Renderer) renderSequence(sequence Sequence) {
 	for _, item := range sequence.itemsView() {
 		r.renderItem(sequence, item)
 	}
-
-	gl.DepthMask(true) // TODO: Remove, once old renderer is scrapped
 }
 
 func (r *Renderer) renderItem(sequence Sequence, item Item) {
+	if item.BackfaceCulling {
+		gl.Enable(gl.CULL_FACE)
+	} else {
+		gl.Disable(gl.CULL_FACE)
+	}
+
 	gl.UseProgram(item.Program.ID)
 
 	textureIndex := uint32(0)
+	if item.Program.MetalnessTwoDTextureLocation != -1 {
+		gl.ActiveTexture(gl.TEXTURE0 + textureIndex)
+		gl.BindTexture(gl.TEXTURE_2D, item.MetalnessTwoDTexture.ID)
+		gl.Uniform1i(item.Program.MetalnessTwoDTextureLocation, int32(textureIndex))
+		textureIndex++
+	}
+	if item.Program.RoughnessTwoDTextureLocation != -1 {
+		gl.ActiveTexture(gl.TEXTURE0 + textureIndex)
+		gl.BindTexture(gl.TEXTURE_2D, item.RoughnessTwoDTexture.ID)
+		gl.Uniform1i(item.Program.RoughnessTwoDTextureLocation, int32(textureIndex))
+		textureIndex++
+	}
 	if item.Program.AlbedoTwoDTextureLocation != -1 {
 		gl.ActiveTexture(gl.TEXTURE0 + textureIndex)
 		gl.BindTexture(gl.TEXTURE_2D, item.AlbedoTwoDTexture.ID)
@@ -162,6 +177,12 @@ func (r *Renderer) renderItem(sequence Sequence, item Item) {
 		gl.ActiveTexture(gl.TEXTURE0 + textureIndex)
 		gl.BindTexture(gl.TEXTURE_CUBE_MAP, item.AlbedoCubeTexture.ID)
 		gl.Uniform1i(item.Program.AlbedoCubeTextureLocation, int32(textureIndex))
+		textureIndex++
+	}
+	if item.Program.NormalTwoDTextureLocation != -1 {
+		gl.ActiveTexture(gl.TEXTURE0 + textureIndex)
+		gl.BindTexture(gl.TEXTURE_2D, item.NormalTwoDTexture.ID)
+		gl.Uniform1i(item.Program.NormalTwoDTextureLocation, int32(textureIndex))
 		textureIndex++
 	}
 	if item.Program.FBColor0TextureLocation != -1 {
@@ -183,9 +204,19 @@ func (r *Renderer) renderItem(sequence Sequence, item Item) {
 		textureIndex++
 	}
 
+	if item.Program.MetalnessLocation != -1 {
+		gl.Uniform1f(item.Program.MetalnessLocation, item.Metalness)
+	}
+	if item.Program.RoughnessLocation != -1 {
+		gl.Uniform1f(item.Program.RoughnessLocation, item.Roughness)
+	}
 	if item.Program.AlbedoColorLocation != -1 {
 		gl.Uniform4f(item.Program.AlbedoColorLocation, item.AlbedoColor.X, item.AlbedoColor.Y, item.AlbedoColor.Z, item.AlbedoColor.W)
 	}
+	if item.Program.NormalScaleLocation != -1 {
+		gl.Uniform1f(item.Program.NormalScaleLocation, item.NormalScale)
+	}
+
 	if item.Program.ProjectionMatrixLocation != -1 {
 		gl.UniformMatrix4fv(item.Program.ProjectionMatrixLocation, 1, false, r.matrixToArray(sequence.ProjectionMatrix))
 	}
