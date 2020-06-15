@@ -61,6 +61,14 @@ func (p *Packer) CubeTextureAssetFile(name string) *CubeTextureAssetBuilder {
 	}
 }
 
+func (p *Packer) ModelAssetFile(name string) *ModelAssetBuilder {
+	return &ModelAssetBuilder{
+		Asset: Asset{
+			filename: filepath.Join(p.assetsDir, "models", name),
+		},
+	}
+}
+
 func (p *Packer) ShaderResourceFile(name string) *ShaderResourceFile {
 	return &ShaderResourceFile{
 		Resource: Resource{
@@ -73,6 +81,14 @@ func (p *Packer) ImageResourceFile(name string) *ImageResourceFile {
 	return &ImageResourceFile{
 		Resource: Resource{
 			filename: filepath.Join(p.resourcesDir, "images", name),
+		},
+	}
+}
+
+func (p *Packer) GLTFResourceFile(name string) *GLTFResourceFile {
+	return &GLTFResourceFile{
+		Resource: Resource{
+			filename: filepath.Join(p.resourcesDir, "models", name),
 		},
 	}
 }
