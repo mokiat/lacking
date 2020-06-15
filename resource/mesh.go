@@ -23,11 +23,15 @@ type Mesh struct {
 }
 
 type SubMesh struct {
-	Primitive        graphics.RenderPrimitive
-	IndexOffset      int
-	IndexCount       int32
+	Primitive   graphics.RenderPrimitive
+	IndexOffset int
+	IndexCount  int32
+	Material    *Material
+}
+
+type Material struct {
+	Shader           *Shader
 	BackfaceCulling  bool
-	Program          *Program
 	Metalness        float32
 	MetalnessTexture *TwoDTexture
 	Roughness        float32
@@ -106,52 +110,68 @@ func AllocateMesh(registry *Registry, name string, gfxWorker *graphics.Worker, m
 	mesh.SubMeshes = make([]SubMesh, len(meshAsset.SubMeshes))
 	for i, subMeshAsset := range meshAsset.SubMeshes {
 		subMesh := SubMesh{
-			Primitive:       assetToGraphicsPrimitive(subMeshAsset.Primitive),
-			IndexOffset:     int(subMeshAsset.IndexOffset),
-			IndexCount:      int32(subMeshAsset.IndexCount),
-			BackfaceCulling: subMeshAsset.BackfaceCulling,
-			Metalness:       subMeshAsset.Metalness,
-			Roughness:       subMeshAsset.Roughness,
-			AlbedoColor: sprec.NewVec4(
-				subMeshAsset.Color[0],
-				subMeshAsset.Color[1],
-				subMeshAsset.Color[2],
-				subMeshAsset.Color[3],
-			),
-			NormalScale: subMeshAsset.NormalScale,
+			Primitive:   assetToGraphicsPrimitive(subMeshAsset.Primitive),
+			IndexOffset: int(subMeshAsset.IndexOffset),
+			IndexCount:  int32(subMeshAsset.IndexCount),
+			Material: &Material{
+				BackfaceCulling: subMeshAsset.Material.BackfaceCulling,
+				Metalness:       subMeshAsset.Material.Metalness,
+				Roughness:       subMeshAsset.Material.Roughness,
+				AlbedoColor: sprec.NewVec4(
+					subMeshAsset.Material.Color[0],
+					subMeshAsset.Material.Color[1],
+					subMeshAsset.Material.Color[2],
+					subMeshAsset.Material.Color[3],
+				),
+				NormalScale: subMeshAsset.Material.NormalScale,
+			},
 		}
-		if subMeshAsset.MetalnessTexture != "" {
-			result := registry.LoadTwoDTexture(subMeshAsset.MetalnessTexture).
-				OnSuccess(InjectTwoDTexture(&subMesh.MetalnessTexture)).
+		if subMeshAsset.Material.MetalnessTexture != "" {
+			result := registry.LoadTwoDTexture(subMeshAsset.Material.MetalnessTexture).
+				OnSuccess(InjectTwoDTexture(&subMesh.Material.MetalnessTexture)).
 				Wait()
 			if err := result.Err; err != nil {
 				return nil, fmt.Errorf("failed to load metalness texture: %w", err)
 			}
 		}
-		if subMeshAsset.RoughnessTexture != "" {
-			result := registry.LoadTwoDTexture(subMeshAsset.RoughnessTexture).
-				OnSuccess(InjectTwoDTexture(&subMesh.RoughnessTexture)).
+		if subMeshAsset.Material.RoughnessTexture != "" {
+			result := registry.LoadTwoDTexture(subMeshAsset.Material.RoughnessTexture).
+				OnSuccess(InjectTwoDTexture(&subMesh.Material.RoughnessTexture)).
 				Wait()
 			if err := result.Err; err != nil {
 				return nil, fmt.Errorf("failed to load roughness texture: %w", err)
 			}
 		}
-		if subMeshAsset.ColorTexture != "" {
-			result := registry.LoadTwoDTexture(subMeshAsset.ColorTexture).
-				OnSuccess(InjectTwoDTexture(&subMesh.AlbedoTexture)).
+		if subMeshAsset.Material.ColorTexture != "" {
+			result := registry.LoadTwoDTexture(subMeshAsset.Material.ColorTexture).
+				OnSuccess(InjectTwoDTexture(&subMesh.Material.AlbedoTexture)).
 				Wait()
 			if err := result.Err; err != nil {
 				return nil, fmt.Errorf("failed to load albedo texture: %w", err)
 			}
 		}
-		if subMeshAsset.NormalTexture != "" {
-			result := registry.LoadTwoDTexture(subMeshAsset.NormalTexture).
-				OnSuccess(InjectTwoDTexture(&subMesh.NormalTexture)).
+		if subMeshAsset.Material.NormalTexture != "" {
+			result := registry.LoadTwoDTexture(subMeshAsset.Material.NormalTexture).
+				OnSuccess(InjectTwoDTexture(&subMesh.Material.NormalTexture)).
 				Wait()
 			if err := result.Err; err != nil {
 				return nil, fmt.Errorf("failed to load normal texture: %w", err)
 			}
 		}
+
+		shaderInfo := ShaderInfo{
+			HasMetalnessTexture: subMeshAsset.Material.MetalnessTexture != "",
+			HasRoughnessTexture: subMeshAsset.Material.RoughnessTexture != "",
+			HasAlbedoTexture:    subMeshAsset.Material.ColorTexture != "",
+			HasNormalTexture:    subMeshAsset.Material.NormalTexture != "",
+		}
+		result := registry.CreateShader(TypeName(subMeshAsset.Material.Type), shaderInfo).
+			OnSuccess(InjectShader(&subMesh.Material.Shader)).
+			Wait()
+		if err := result.Err; err != nil {
+			return nil, fmt.Errorf("failed to create material shader: %w", err)
+		}
+
 		mesh.SubMeshes[i] = subMesh
 	}
 	return mesh, nil
@@ -159,25 +179,28 @@ func AllocateMesh(registry *Registry, name string, gfxWorker *graphics.Worker, m
 
 func ReleaseMesh(registry *Registry, gfxWorker *graphics.Worker, mesh *Mesh) error {
 	for _, subMesh := range mesh.SubMeshes {
-		if subMesh.MetalnessTexture != nil {
-			if result := registry.UnloadTwoDTexture(subMesh.MetalnessTexture).Wait(); result.Err != nil {
+		if subMesh.Material.MetalnessTexture != nil {
+			if result := registry.UnloadTwoDTexture(subMesh.Material.MetalnessTexture).Wait(); result.Err != nil {
 				return result.Err
 			}
 		}
-		if subMesh.RoughnessTexture != nil {
-			if result := registry.UnloadTwoDTexture(subMesh.RoughnessTexture).Wait(); result.Err != nil {
+		if subMesh.Material.RoughnessTexture != nil {
+			if result := registry.UnloadTwoDTexture(subMesh.Material.RoughnessTexture).Wait(); result.Err != nil {
 				return result.Err
 			}
 		}
-		if subMesh.AlbedoTexture != nil {
-			if result := registry.UnloadTwoDTexture(subMesh.AlbedoTexture).Wait(); result.Err != nil {
+		if subMesh.Material.AlbedoTexture != nil {
+			if result := registry.UnloadTwoDTexture(subMesh.Material.AlbedoTexture).Wait(); result.Err != nil {
 				return result.Err
 			}
 		}
-		if subMesh.NormalTexture != nil {
-			if result := registry.UnloadTwoDTexture(subMesh.NormalTexture).Wait(); result.Err != nil {
+		if subMesh.Material.NormalTexture != nil {
+			if result := registry.UnloadTwoDTexture(subMesh.Material.NormalTexture).Wait(); result.Err != nil {
 				return result.Err
 			}
+		}
+		if result := registry.ReleaseShader(subMesh.Material.Shader.Type, subMesh.Material.Shader).Wait(); result.Err != nil {
+			return result.Err
 		}
 	}
 

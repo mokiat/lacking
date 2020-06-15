@@ -26,11 +26,15 @@ type VertexLayout struct {
 }
 
 type SubMesh struct {
-	Primitive        Primitive
-	IndexOffset      uint32
-	IndexCount       uint32
+	Primitive   Primitive
+	IndexOffset uint32
+	IndexCount  uint32
+	Material    Material
+}
+
+type Material struct {
+	Type             string
 	BackfaceCulling  bool
-	MaterialType     string
 	Metalness        float32
 	MetalnessTexture string
 	Roughness        float32
