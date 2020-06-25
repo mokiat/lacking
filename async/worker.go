@@ -12,6 +12,10 @@ type Worker struct {
 	flushed chan struct{}
 }
 
+func (w *Worker) Wait(task Task) Result {
+	return w.Schedule(task).Wait()
+}
+
 func (w *Worker) Schedule(task Task) Outcome {
 	outcome := NewOutcome()
 	w.tasks <- workerTask{
@@ -21,7 +25,30 @@ func (w *Worker) Schedule(task Task) Outcome {
 	return outcome
 }
 
-func (w *Worker) Work() {
+func (w *Worker) ProcessTrySingle() bool {
+	select {
+	case task, ok := <-w.tasks:
+		if !ok {
+			return false
+		}
+		task.Run()
+		return true
+	default:
+		return false
+	}
+}
+
+func (w *Worker) ProcessTryMultiple(count int) bool {
+	for count > 0 {
+		if !w.ProcessTrySingle() {
+			return false
+		}
+		count--
+	}
+	return true
+}
+
+func (w *Worker) ProcessAll() {
 	for task := range w.tasks {
 		task.Run()
 	}
@@ -30,6 +57,7 @@ func (w *Worker) Work() {
 
 func (w *Worker) Shutdown() {
 	close(w.tasks)
+	w.ProcessAll()
 	<-w.flushed
 }
 

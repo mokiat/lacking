@@ -4,7 +4,6 @@ import (
 	"sync"
 
 	"github.com/mokiat/lacking/async"
-	"github.com/mokiat/lacking/graphics"
 )
 
 type TypeName string
@@ -19,7 +18,7 @@ type Operator interface {
 	Release(registry *Registry, resource interface{}) error
 }
 
-func NewRegistry(locator Locator, gfxWorker *graphics.Worker) *Registry {
+func NewRegistry(locator Locator, gfxWorker *async.Worker) *Registry {
 	registry := &Registry{
 		catalog:       make(map[TypeName]*Type),
 		shaderCatalog: make(map[TypeName]*ShaderType),

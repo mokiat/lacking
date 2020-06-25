@@ -3,6 +3,7 @@ package resource
 import (
 	"fmt"
 
+	"github.com/mokiat/lacking/async"
 	"github.com/mokiat/lacking/data/asset"
 	"github.com/mokiat/lacking/graphics"
 )
@@ -20,7 +21,7 @@ type CubeTexture struct {
 	GFXTexture *graphics.CubeTexture
 }
 
-func NewCubeTextureOperator(locator Locator, gfxWorker *graphics.Worker) *CubeTextureOperator {
+func NewCubeTextureOperator(locator Locator, gfxWorker *async.Worker) *CubeTextureOperator {
 	return &CubeTextureOperator{
 		locator:   locator,
 		gfxWorker: gfxWorker,
@@ -29,7 +30,7 @@ func NewCubeTextureOperator(locator Locator, gfxWorker *graphics.Worker) *CubeTe
 
 type CubeTextureOperator struct {
 	locator   Locator
-	gfxWorker *graphics.Worker
+	gfxWorker *async.Worker
 }
 
 func (o *CubeTextureOperator) Allocate(registry *Registry, name string) (interface{}, error) {
@@ -49,7 +50,7 @@ func (o *CubeTextureOperator) Allocate(registry *Registry, name string) (interfa
 		GFXTexture: &graphics.CubeTexture{},
 	}
 
-	gfxTask := o.gfxWorker.Schedule(func() error {
+	gfxTask := o.gfxWorker.Schedule(async.VoidTask(func() error {
 		return texture.GFXTexture.Allocate(graphics.CubeTextureData{
 			Dimension:      int32(texAsset.Dimension),
 			FrontSideData:  texAsset.Sides[asset.TextureSideFront].Data,
@@ -59,8 +60,8 @@ func (o *CubeTextureOperator) Allocate(registry *Registry, name string) (interfa
 			TopSideData:    texAsset.Sides[asset.TextureSideTop].Data,
 			BottomSideData: texAsset.Sides[asset.TextureSideBottom].Data,
 		})
-	})
-	if err := gfxTask.Wait(); err != nil {
+	}))
+	if err := gfxTask.Wait().Err; err != nil {
 		return nil, fmt.Errorf("failed to allocate gfx cube texture: %w", err)
 	}
 	return texture, nil
@@ -69,10 +70,10 @@ func (o *CubeTextureOperator) Allocate(registry *Registry, name string) (interfa
 func (o *CubeTextureOperator) Release(registry *Registry, resource interface{}) error {
 	texture := resource.(*CubeTexture)
 
-	gfxTask := o.gfxWorker.Schedule(func() error {
+	gfxTask := o.gfxWorker.Schedule(async.VoidTask(func() error {
 		return texture.GFXTexture.Release()
-	})
-	if err := gfxTask.Wait(); err != nil {
+	}))
+	if err := gfxTask.Wait().Err; err != nil {
 		return fmt.Errorf("failed to release gfx cube texture: %w", err)
 	}
 	return nil

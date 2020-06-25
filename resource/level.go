@@ -4,8 +4,8 @@ import (
 	"fmt"
 
 	"github.com/mokiat/gomath/sprec"
+	"github.com/mokiat/lacking/async"
 	"github.com/mokiat/lacking/data/asset"
-	"github.com/mokiat/lacking/graphics"
 	"github.com/mokiat/lacking/shape"
 )
 
@@ -30,7 +30,7 @@ type Entity struct {
 	Matrix sprec.Mat4
 }
 
-func NewLevelOperator(locator Locator, gfxWorker *graphics.Worker) *LevelOperator {
+func NewLevelOperator(locator Locator, gfxWorker *async.Worker) *LevelOperator {
 	return &LevelOperator{
 		locator:   locator,
 		gfxWorker: gfxWorker,
@@ -39,7 +39,7 @@ func NewLevelOperator(locator Locator, gfxWorker *graphics.Worker) *LevelOperato
 
 type LevelOperator struct {
 	locator   Locator
-	gfxWorker *graphics.Worker
+	gfxWorker *async.Worker
 }
 
 func (o *LevelOperator) Allocate(registry *Registry, name string) (interface{}, error) {

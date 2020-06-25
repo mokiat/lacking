@@ -3,6 +3,7 @@ package resource
 import (
 	"fmt"
 
+	"github.com/mokiat/lacking/async"
 	"github.com/mokiat/lacking/data/asset"
 	"github.com/mokiat/lacking/graphics"
 )
@@ -20,7 +21,7 @@ type Program struct {
 	GFXProgram *graphics.Program
 }
 
-func NewProgramOperator(locator Locator, gfxWorker *graphics.Worker) *ProgramOperator {
+func NewProgramOperator(locator Locator, gfxWorker *async.Worker) *ProgramOperator {
 	return &ProgramOperator{
 		locator:   locator,
 		gfxWorker: gfxWorker,
@@ -29,7 +30,7 @@ func NewProgramOperator(locator Locator, gfxWorker *graphics.Worker) *ProgramOpe
 
 type ProgramOperator struct {
 	locator   Locator
-	gfxWorker *graphics.Worker
+	gfxWorker *async.Worker
 }
 
 func (o *ProgramOperator) Allocate(registry *Registry, name string) (interface{}, error) {
@@ -49,13 +50,13 @@ func (o *ProgramOperator) Allocate(registry *Registry, name string) (interface{}
 		GFXProgram: &graphics.Program{},
 	}
 
-	gfxTask := o.gfxWorker.Schedule(func() error {
+	gfxTask := o.gfxWorker.Schedule(async.VoidTask(func() error {
 		return program.GFXProgram.Allocate(graphics.ProgramData{
 			VertexShaderSourceCode:   programAsset.VertexSourceCode,
 			FragmentShaderSourceCode: programAsset.FragmentSourceCode,
 		})
-	})
-	if err := gfxTask.Wait(); err != nil {
+	}))
+	if err := gfxTask.Wait().Err; err != nil {
 		return nil, fmt.Errorf("failed to allocate gfx program: %w", err)
 	}
 	return program, nil
@@ -64,10 +65,10 @@ func (o *ProgramOperator) Allocate(registry *Registry, name string) (interface{}
 func (o *ProgramOperator) Release(registry *Registry, resource interface{}) error {
 	program := resource.(*Program)
 
-	gfxTask := o.gfxWorker.Schedule(func() error {
+	gfxTask := o.gfxWorker.Schedule(async.VoidTask(func() error {
 		return program.GFXProgram.Release()
-	})
-	if err := gfxTask.Wait(); err != nil {
+	}))
+	if err := gfxTask.Wait().Err; err != nil {
 		return fmt.Errorf("failed to release gfx program: %w", err)
 	}
 	return nil

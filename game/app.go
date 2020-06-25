@@ -9,6 +9,7 @@ import (
 
 	"github.com/go-gl/gl/v4.1-core/gl"
 	"github.com/go-gl/glfw/v3.3/glfw"
+	"github.com/mokiat/lacking/async"
 	"github.com/mokiat/lacking/graphics"
 	"github.com/mokiat/lacking/input"
 )
@@ -61,7 +62,7 @@ func (a *App) Run(controller Controller) error {
 
 	keyboardRecorder := input.NewKeyboardRecorder(window)
 	gamepadRecorder := input.NewGamepadRecorder()
-	gfxWorker := graphics.NewWorker()
+	gfxWorker := async.NewWorker(1024)
 	gfxRenderer := graphics.NewRenderer()
 
 	loop := &updateLoop{
@@ -93,7 +94,7 @@ func (a *App) Run(controller Controller) error {
 		keyboardRecorder.Record()
 		gamepadRecorder.Record()
 
-		gfxWorker.Work()
+		gfxWorker.ProcessTrySingle()
 		gfxRenderer.Render()
 
 		window.SwapBuffers()
@@ -102,7 +103,7 @@ func (a *App) Run(controller Controller) error {
 
 	loop.Stop()
 
-	gfxWorker.Flush()
+	gfxWorker.Shutdown()
 
 	return nil
 }
@@ -112,7 +113,7 @@ type updateLoop struct {
 	interval         time.Duration
 	keyboardRecorder *input.KeyboardRecorder
 	gamepadRecorder  *input.GamepadRecorder
-	gfxWorker        *graphics.Worker
+	gfxWorker        *async.Worker
 	gfxRenderer      *graphics.Renderer
 	stop             chan struct{}
 	finished         chan struct{}

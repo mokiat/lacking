@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/mokiat/gomath/sprec"
+	"github.com/mokiat/lacking/async"
 	"github.com/mokiat/lacking/data/asset"
 	"github.com/mokiat/lacking/graphics"
 )
@@ -42,7 +43,7 @@ type Material struct {
 	NormalTexture    *TwoDTexture
 }
 
-func NewMeshOperator(locator Locator, gfxWorker *graphics.Worker) *MeshOperator {
+func NewMeshOperator(locator Locator, gfxWorker *async.Worker) *MeshOperator {
 	return &MeshOperator{
 		locator:   locator,
 		gfxWorker: gfxWorker,
@@ -51,7 +52,7 @@ func NewMeshOperator(locator Locator, gfxWorker *graphics.Worker) *MeshOperator 
 
 type MeshOperator struct {
 	locator   Locator
-	gfxWorker *graphics.Worker
+	gfxWorker *async.Worker
 }
 
 func (o *MeshOperator) Allocate(registry *Registry, name string) (interface{}, error) {
@@ -74,13 +75,13 @@ func (o *MeshOperator) Release(registry *Registry, resource interface{}) error {
 	return ReleaseMesh(registry, o.gfxWorker, mesh)
 }
 
-func AllocateMesh(registry *Registry, name string, gfxWorker *graphics.Worker, meshAsset *asset.Mesh) (*Mesh, error) {
+func AllocateMesh(registry *Registry, name string, gfxWorker *async.Worker, meshAsset *asset.Mesh) (*Mesh, error) {
 	mesh := &Mesh{
 		Name:           name,
 		GFXVertexArray: &graphics.VertexArray{},
 	}
 
-	gfxTask := gfxWorker.Schedule(func() error {
+	gfxTask := gfxWorker.Schedule(async.VoidTask(func() error {
 		return mesh.GFXVertexArray.Allocate(graphics.VertexArrayData{
 			VertexData: meshAsset.VertexData,
 			Layout: graphics.VertexArrayLayout{
@@ -102,8 +103,8 @@ func AllocateMesh(registry *Registry, name string, gfxWorker *graphics.Worker, m
 			},
 			IndexData: meshAsset.IndexData,
 		})
-	})
-	if err := gfxTask.Wait(); err != nil {
+	}))
+	if err := gfxTask.Wait().Err; err != nil {
 		return nil, fmt.Errorf("failed to allocate gfx vertex array: %w", err)
 	}
 
@@ -177,7 +178,7 @@ func AllocateMesh(registry *Registry, name string, gfxWorker *graphics.Worker, m
 	return mesh, nil
 }
 
-func ReleaseMesh(registry *Registry, gfxWorker *graphics.Worker, mesh *Mesh) error {
+func ReleaseMesh(registry *Registry, gfxWorker *async.Worker, mesh *Mesh) error {
 	for _, subMesh := range mesh.SubMeshes {
 		if subMesh.Material.MetalnessTexture != nil {
 			if result := registry.UnloadTwoDTexture(subMesh.Material.MetalnessTexture).Wait(); result.Err != nil {
@@ -204,10 +205,10 @@ func ReleaseMesh(registry *Registry, gfxWorker *graphics.Worker, mesh *Mesh) err
 		}
 	}
 
-	gfxTask := gfxWorker.Schedule(func() error {
+	gfxTask := gfxWorker.Schedule(async.VoidTask(func() error {
 		return mesh.GFXVertexArray.Release()
-	})
-	if err := gfxTask.Wait(); err != nil {
+	}))
+	if err := gfxTask.Wait().Err; err != nil {
 		return fmt.Errorf("failed to release gfx vertex array: %w", err)
 	}
 	return nil

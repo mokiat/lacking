@@ -3,6 +3,7 @@ package game
 import (
 	"time"
 
+	"github.com/mokiat/lacking/async"
 	"github.com/mokiat/lacking/graphics"
 	"github.com/mokiat/lacking/input"
 )
@@ -14,7 +15,7 @@ type WindowSize struct {
 
 type InitContext struct {
 	WindowSize WindowSize
-	GFXWorker  *graphics.Worker
+	GFXWorker  *async.Worker
 }
 
 type UpdateContext struct {
@@ -22,7 +23,7 @@ type UpdateContext struct {
 	WindowSize  WindowSize
 	Keyboard    *input.Keyboard
 	Gamepad     *input.Gamepad
-	GFXWorker   *graphics.Worker
+	GFXWorker   *async.Worker
 }
 
 type RenderContext struct {
@@ -31,7 +32,7 @@ type RenderContext struct {
 }
 
 type ReleaseContext struct {
-	GFXWorker *graphics.Worker
+	GFXWorker *async.Worker
 }
 
 type Controller interface {

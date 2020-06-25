@@ -3,6 +3,7 @@ package resource
 import (
 	"fmt"
 
+	"github.com/mokiat/lacking/async"
 	"github.com/mokiat/lacking/data/asset"
 	"github.com/mokiat/lacking/graphics"
 )
@@ -20,7 +21,7 @@ type TwoDTexture struct {
 	GFXTexture *graphics.TwoDTexture
 }
 
-func NewTwoDTextureOperator(locator Locator, gfxWorker *graphics.Worker) *TwoDTextureOperator {
+func NewTwoDTextureOperator(locator Locator, gfxWorker *async.Worker) *TwoDTextureOperator {
 	return &TwoDTextureOperator{
 		locator:   locator,
 		gfxWorker: gfxWorker,
@@ -29,7 +30,7 @@ func NewTwoDTextureOperator(locator Locator, gfxWorker *graphics.Worker) *TwoDTe
 
 type TwoDTextureOperator struct {
 	locator   Locator
-	gfxWorker *graphics.Worker
+	gfxWorker *async.Worker
 }
 
 func (o *TwoDTextureOperator) Allocate(registry *Registry, name string) (interface{}, error) {
@@ -49,14 +50,14 @@ func (o *TwoDTextureOperator) Allocate(registry *Registry, name string) (interfa
 		GFXTexture: &graphics.TwoDTexture{},
 	}
 
-	gfxTask := o.gfxWorker.Schedule(func() error {
+	gfxTask := o.gfxWorker.Schedule(async.VoidTask(func() error {
 		return texture.GFXTexture.Allocate(graphics.TwoDTextureData{
 			Width:  int32(texAsset.Width),
 			Height: int32(texAsset.Height),
 			Data:   texAsset.Data,
 		})
-	})
-	if err := gfxTask.Wait(); err != nil {
+	}))
+	if err := gfxTask.Wait().Err; err != nil {
 		return nil, fmt.Errorf("failed to allocate two dimensional gfx texture: %w", err)
 	}
 	return texture, nil
@@ -65,10 +66,10 @@ func (o *TwoDTextureOperator) Allocate(registry *Registry, name string) (interfa
 func (o *TwoDTextureOperator) Release(registry *Registry, resource interface{}) error {
 	texture := resource.(*TwoDTexture)
 
-	gfxTask := o.gfxWorker.Schedule(func() error {
+	gfxTask := o.gfxWorker.Schedule(async.VoidTask(func() error {
 		return texture.GFXTexture.Release()
-	})
-	if err := gfxTask.Wait(); err != nil {
+	}))
+	if err := gfxTask.Wait().Err; err != nil {
 		return fmt.Errorf("failed to release two dimensional gfx texture: %w", err)
 	}
 	return nil

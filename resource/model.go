@@ -4,8 +4,8 @@ import (
 	"fmt"
 
 	"github.com/mokiat/gomath/sprec"
+	"github.com/mokiat/lacking/async"
 	"github.com/mokiat/lacking/data/asset"
-	"github.com/mokiat/lacking/graphics"
 )
 
 const ModelTypeName = TypeName("model")
@@ -54,7 +54,7 @@ func (n Node) FindNode(name string) (*Node, bool) {
 	return nil, false
 }
 
-func NewModelOperator(locator Locator, gfxWorker *graphics.Worker) *ModelOperator {
+func NewModelOperator(locator Locator, gfxWorker *async.Worker) *ModelOperator {
 	return &ModelOperator{
 		locator:   locator,
 		gfxWorker: gfxWorker,
@@ -63,7 +63,7 @@ func NewModelOperator(locator Locator, gfxWorker *graphics.Worker) *ModelOperato
 
 type ModelOperator struct {
 	locator   Locator
-	gfxWorker *graphics.Worker
+	gfxWorker *async.Worker
 }
 
 func (o *ModelOperator) Allocate(registry *Registry, name string) (interface{}, error) {

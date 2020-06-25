@@ -4,19 +4,20 @@ import (
 	"bytes"
 	"fmt"
 
+	"github.com/mokiat/lacking/async"
 	"github.com/mokiat/lacking/graphics"
 )
 
 const PBRTypeName = TypeName("pbr")
 
-func NewPBRShaderOperator(gfxWorker *graphics.Worker) *PBRShaderOperator {
+func NewPBRShaderOperator(gfxWorker *async.Worker) *PBRShaderOperator {
 	return &PBRShaderOperator{
 		gfxWorker: gfxWorker,
 	}
 }
 
 type PBRShaderOperator struct {
-	gfxWorker *graphics.Worker
+	gfxWorker *async.Worker
 }
 
 func (o *PBRShaderOperator) Allocate(info ShaderInfo) (*Shader, error) {
@@ -26,7 +27,7 @@ func (o *PBRShaderOperator) Allocate(info ShaderInfo) (*Shader, error) {
 		GeometryProgram: &graphics.Program{},
 	}
 
-	gfxTask := o.gfxWorker.Schedule(func() error {
+	gfxTask := o.gfxWorker.Schedule(async.VoidTask(func() error {
 		spec := PBRGeometrySpec{
 			UsesAlbedoTexture: info.HasAlbedoTexture,
 			UsesTexCoord0:     info.HasAlbedoTexture,
@@ -35,8 +36,8 @@ func (o *PBRShaderOperator) Allocate(info ShaderInfo) (*Shader, error) {
 			VertexShaderSourceCode:   BuildGeometryVertexShader(spec),
 			FragmentShaderSourceCode: BuildGeometryFragmentShader(spec),
 		})
-	})
-	if err := gfxTask.Wait(); err != nil {
+	}))
+	if err := gfxTask.Wait().Err; err != nil {
 		return nil, fmt.Errorf("failed to allocate gfx program: %w", err)
 	}
 	return shader, nil
@@ -44,18 +45,18 @@ func (o *PBRShaderOperator) Allocate(info ShaderInfo) (*Shader, error) {
 
 func (o *PBRShaderOperator) Release(shader *Shader) error {
 	if shader.GeometryProgram != nil {
-		gfxTask := o.gfxWorker.Schedule(func() error {
+		gfxTask := o.gfxWorker.Schedule(async.VoidTask(func() error {
 			return shader.GeometryProgram.Release()
-		})
-		if err := gfxTask.Wait(); err != nil {
+		}))
+		if err := gfxTask.Wait().Err; err != nil {
 			return fmt.Errorf("failed to release gfx program: %w", err)
 		}
 	}
 	if shader.ForwardProgram != nil {
-		gfxTask := o.gfxWorker.Schedule(func() error {
+		gfxTask := o.gfxWorker.Schedule(async.VoidTask(func() error {
 			return shader.ForwardProgram.Release()
-		})
-		if err := gfxTask.Wait(); err != nil {
+		}))
+		if err := gfxTask.Wait().Err; err != nil {
 			return fmt.Errorf("failed to release gfx program: %w", err)
 		}
 	}
