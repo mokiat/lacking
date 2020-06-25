@@ -271,7 +271,7 @@ func (c *MeshConstructor) VertexData(mask VertexMask) []byte {
 		}
 		if mask.HasTexCoord0 {
 			buffer.SetFloat32(index*layout.Stride+layout.TexCoord0Offset+4*0, vertex.TexCoord0[0])
-			buffer.SetFloat32(index*layout.Stride+layout.TexCoord0Offset+4*1, vertex.TexCoord0[1])
+			buffer.SetFloat32(index*layout.Stride+layout.TexCoord0Offset+4*1, 1.0-vertex.TexCoord0[1])
 		}
 		if mask.HasColor0 {
 			buffer.SetFloat32(index*layout.Stride+layout.Color0Offset+4*0, vertex.Color0[0])
