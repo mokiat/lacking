@@ -33,6 +33,8 @@ func (r *GamepadRecorder) Record() {
 		gamepad.RightStickY = -state.Axes[glfw.AxisRightY]
 		gamepad.LeftTrigger = (state.Axes[glfw.AxisLeftTrigger] + 1.0) / 2.0
 		gamepad.RightTrigger = (state.Axes[glfw.AxisRightTrigger] + 1.0) / 2.0
+		gamepad.LeftBumper = state.Buttons[glfw.ButtonLeftBumper] == glfw.Press
+		gamepad.RightBumper = state.Buttons[glfw.ButtonRightBumper] == glfw.Press
 	}
 }
 
@@ -65,6 +67,8 @@ type Gamepad struct {
 	RightStickY  float32
 	LeftTrigger  float32
 	RightTrigger float32
+	LeftBumper   bool
+	RightBumper  bool
 }
 
 func (g *Gamepad) synchronize(other *Gamepad) {
