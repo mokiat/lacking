@@ -20,6 +20,8 @@ type Program struct {
 	ModelMatrixLocation      int32
 	ViewMatrixLocation       int32
 	CameraMatrixLocation     int32
+	LightDirectionWSLocation int32
+	ExposureLocation         int32
 
 	MetalnessLocation            int32
 	MetalnessTwoDTextureLocation int32
@@ -72,6 +74,8 @@ func (p *Program) Allocate(data ProgramData) error {
 	p.ModelMatrixLocation = getUniformLocation(p.ID, "modelMatrixIn")
 	p.ViewMatrixLocation = getUniformLocation(p.ID, "viewMatrixIn")
 	p.CameraMatrixLocation = getUniformLocation(p.ID, "cameraMatrixIn")
+	p.LightDirectionWSLocation = getUniformLocation(p.ID, "lightDirectionWSIn")
+	p.ExposureLocation = getUniformLocation(p.ID, "exposureIn")
 
 	p.MetalnessLocation = getUniformLocation(p.ID, "metalnessIn")
 	p.MetalnessTwoDTextureLocation = getUniformLocation(p.ID, "metalnessTwoDTextureIn")

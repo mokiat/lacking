@@ -31,6 +31,7 @@ type FramebufferData struct {
 	Width               int32
 	Height              int32
 	HasAlbedoAttachment bool
+	UsesHDRAlbedo       bool
 	HasNormalAttachment bool
 	HasDepthAttachment  bool
 }
@@ -49,7 +50,11 @@ func (b *Framebuffer) Allocate(data FramebufferData) error {
 		gl.BindTexture(gl.TEXTURE_2D, b.AlbedoTextureID)
 		gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
 		gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
-		gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, data.Width, data.Height, 0, gl.RGBA, gl.UNSIGNED_BYTE, gl.Ptr(nil))
+		if data.UsesHDRAlbedo {
+			gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA16F, data.Width, data.Height, 0, gl.RGBA, gl.FLOAT, gl.Ptr(nil))
+		} else {
+			gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, data.Width, data.Height, 0, gl.RGBA, gl.UNSIGNED_BYTE, gl.Ptr(nil))
+		}
 		gl.FramebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, b.AlbedoTextureID, 0)
 		drawBufferIDS = append(drawBufferIDS, gl.COLOR_ATTACHMENT0)
 	}

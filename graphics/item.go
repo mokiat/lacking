@@ -40,6 +40,8 @@ type Item struct {
 	AlbedoCubeTexture    *CubeTexture
 	NormalScale          float32
 	NormalTwoDTexture    *TwoDTexture
+	LightDirectionWS     sprec.Vec3
+	Exposure             float32
 
 	VertexArray *VertexArray
 	IndexOffset int
@@ -59,6 +61,8 @@ func (i *Item) reset() {
 	i.AlbedoCubeTexture = nil
 	i.NormalScale = 1.0
 	i.NormalTwoDTexture = nil
+	i.LightDirectionWS = sprec.NewVec3(0.0, 1.0, 0.0)
+	i.Exposure = 1.0
 	i.VertexArray = nil
 	i.IndexOffset = 0
 	i.IndexCount = 0

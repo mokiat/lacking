@@ -229,6 +229,12 @@ func (r *Renderer) renderItem(sequence Sequence, item Item) {
 	if item.Program.CameraMatrixLocation != -1 {
 		gl.UniformMatrix4fv(item.Program.CameraMatrixLocation, 1, false, r.matrixToArray(sequence.CameraMatrix))
 	}
+	if item.Program.LightDirectionWSLocation != -1 {
+		gl.Uniform3f(item.Program.LightDirectionWSLocation, item.LightDirectionWS.X, item.LightDirectionWS.Y, item.LightDirectionWS.Z)
+	}
+	if item.Program.ExposureLocation != -1 {
+		gl.Uniform1f(item.Program.ExposureLocation, item.Exposure)
+	}
 
 	gl.BindVertexArray(item.VertexArray.ID)
 	gl.LineWidth(2)
