@@ -1,6 +1,9 @@
 package graphics
 
-import "github.com/go-gl/gl/v4.1-core/gl"
+import (
+	"github.com/go-gl/gl/v4.1-core/gl"
+	"github.com/mokiat/lacking/data"
+)
 
 const (
 	CoordAttributeIndex    = 0
@@ -16,10 +19,84 @@ type VertexArray struct {
 	IndexBufferID  uint32
 }
 
+func NewVertexArrayData(vertices, indices int, layout VertexArrayLayout) VertexArrayData {
+	verticesDataSize := 0
+	if layout.HasCoord {
+		verticesDataSize += 3 * 4
+	}
+	if layout.HasNormal {
+		verticesDataSize += 3 * 4
+	}
+	if layout.HasTangent {
+		verticesDataSize += 3 * 4
+	}
+	if layout.HasTexCoord {
+		verticesDataSize += 2 * 4
+	}
+	if layout.HasColor {
+		verticesDataSize += 4 * 4
+	}
+	verticesDataSize *= vertices
+	indicesDataSize := indices * 2
+
+	return VertexArrayData{
+		VertexData: make([]byte, verticesDataSize),
+		IndexData:  make([]byte, indicesDataSize),
+		Layout:     layout,
+	}
+}
+
 type VertexArrayData struct {
 	VertexData []byte
 	IndexData  []byte
 	Layout     VertexArrayLayout
+}
+
+func NewVertexWriter(vad VertexArrayData) *VertexWriter {
+	return &VertexWriter{
+		vertexData: data.Buffer(vad.VertexData),
+		layout:     vad.Layout,
+	}
+}
+
+type VertexWriter struct {
+	vertexData data.Buffer
+	layout     VertexArrayLayout
+	offset     int
+}
+
+func (w *VertexWriter) SetCoord(x, y, z float32) *VertexWriter {
+	offset := w.layout.CoordOffset + w.offset*int(w.layout.CoordStride)
+	w.vertexData.SetFloat32(offset+0, x)
+	w.vertexData.SetFloat32(offset+4, y)
+	w.vertexData.SetFloat32(offset+8, z)
+	return w
+}
+
+func (w *VertexWriter) Next() *VertexWriter {
+	w.offset++
+	return w
+}
+
+func NewIndexWriter(vad VertexArrayData) *IndexWriter {
+	return &IndexWriter{
+		indexData: data.Buffer(vad.IndexData),
+	}
+}
+
+type IndexWriter struct {
+	indexData data.Buffer
+	offset    int
+}
+
+func (w *IndexWriter) SetIndex(index uint16) *IndexWriter {
+	w.indexData.SetUInt16(w.offset*2, index)
+	return w
+}
+
+func (w *IndexWriter) Next() *IndexWriter {
+	w.offset++
+	return w
 }
 
 type VertexArrayLayout struct {
