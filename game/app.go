@@ -34,7 +34,7 @@ func (a *App) Run(controller Controller) error {
 	defer glfw.Terminate()
 
 	glfw.WindowHint(glfw.ContextVersionMajor, 4)
-	glfw.WindowHint(glfw.ContextVersionMinor, 1)
+	glfw.WindowHint(glfw.ContextVersionMinor, 6)
 	glfw.WindowHint(glfw.OpenGLProfile, glfw.OpenGLCoreProfile)
 	glfw.WindowHint(glfw.OpenGLForwardCompatible, glfw.True)
 	glfw.WindowHint(glfw.SRGBCapable, glfw.True)
