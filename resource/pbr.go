@@ -127,6 +127,7 @@ uniform vec4 albedoColorIn = vec4(0.5, 0.0, 0.5, 1.0);
 
 uniform float metalnessIn = 0.0;
 uniform float roughnessIn = 0.8;
+uniform float alphaThresholdIn = 0.5;
 
 smooth in vec3 normalInOut;
 #if defined(USES_TEX_COORD0)
@@ -137,7 +138,7 @@ void main()
 {
 #if defined(USES_ALBEDO_TEXTURE) && defined(USES_TEX_COORD0)
 	vec4 color = texture(albedoTwoDTextureIn, texCoordInOut);
-	if (color.a < 0.9) {
+	if (color.a < alphaThresholdIn) {
 		discard;
 	}
 #else
