@@ -11,7 +11,7 @@ type Node struct {
 	ParentIndex int16
 	Name        string
 	Matrix      [16]float32
-	MeshIndex   uint16
+	MeshIndex   int16
 }
 
 func EncodeModel(out io.Writer, model *Model) error {

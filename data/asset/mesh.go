@@ -35,6 +35,8 @@ type SubMesh struct {
 type Material struct {
 	Type             string
 	BackfaceCulling  bool
+	AlphaTesting     bool
+	AlphaThreshold   float32
 	Metalness        float32
 	MetalnessTexture string
 	Roughness        float32

@@ -1,115 +1,44 @@
 package pack
 
 import (
-	"fmt"
-	"io"
 	"log"
-	"os"
-	"path/filepath"
+	"sync"
 )
-
-type Builder interface {
-	Build() error
-}
 
 func NewPacker() *Packer {
 	return &Packer{}
 }
 
 type Packer struct {
-	resourcesDir string
-	assetsDir    string
+	pipelines []*Pipeline
 }
 
-func (p *Packer) SetResourcesDir(resourcesDir string) {
-	p.resourcesDir = resourcesDir
+func (p *Packer) Pipeline(fn func(*Pipeline)) {
+	pipeline := newPipeline(len(p.pipelines), FileResourceLocator{}, FileAssetLocator{})
+	fn(pipeline)
+	p.pipelines = append(p.pipelines, pipeline)
 }
 
-func (p *Packer) SetAssetsDir(assetsDir string) {
-	p.assetsDir = assetsDir
-}
-
-func (p *Packer) Store(builders ...Builder) {
-	for _, builder := range builders {
-		if err := builder.Build(); err != nil {
-			log.Fatalf("failed to build asset: %v", err)
-		}
+func (p *Packer) RunSerial() {
+	for _, pipeline := range p.pipelines {
+		p.runPipeline(pipeline)
 	}
 }
 
-func (p *Packer) ProgramAssetFile(name string) *ProgramAssetBuilder {
-	return &ProgramAssetBuilder{
-		Asset: Asset{
-			filename: filepath.Join(p.assetsDir, "programs", name),
-		},
+func (p *Packer) RunParallel() {
+	wait := &sync.WaitGroup{}
+	wait.Add(len(p.pipelines))
+	for _, pipeline := range p.pipelines {
+		go func(pip *Pipeline) {
+			p.runPipeline(pip)
+			wait.Done()
+		}(pipeline)
 	}
+	wait.Wait()
 }
 
-func (p *Packer) TwoDTextureAssetFile(name string) *TwoDTextureAssetBuilder {
-	return &TwoDTextureAssetBuilder{
-		Asset: Asset{
-			filename: filepath.Join(p.assetsDir, "textures", "twod", name),
-		},
+func (p *Packer) runPipeline(pipeline *Pipeline) {
+	if err := pipeline.execute(); err != nil {
+		log.Fatalf("pipeline %d error: %v", pipeline.id, err)
 	}
-}
-
-func (p *Packer) CubeTextureAssetFile(name string) *CubeTextureAssetBuilder {
-	return &CubeTextureAssetBuilder{
-		Asset: Asset{
-			filename: filepath.Join(p.assetsDir, "textures", "cube", name),
-		},
-	}
-}
-
-func (p *Packer) ModelAssetFile(name string) *ModelAssetBuilder {
-	return &ModelAssetBuilder{
-		Asset: Asset{
-			filename: filepath.Join(p.assetsDir, "models", name),
-		},
-	}
-}
-
-func (p *Packer) ShaderResourceFile(name string) *ShaderResourceFile {
-	return &ShaderResourceFile{
-		Resource: Resource{
-			filename: filepath.Join(p.resourcesDir, "shaders", name),
-		},
-	}
-}
-
-func (p *Packer) ImageResourceFile(name string) *ImageResourceFile {
-	return &ImageResourceFile{
-		Resource: Resource{
-			filename: filepath.Join(p.resourcesDir, "images", name),
-		},
-	}
-}
-
-func (p *Packer) GLTFResourceFile(name string) *GLTFResourceFile {
-	return &GLTFResourceFile{
-		Resource: Resource{
-			filename: filepath.Join(p.resourcesDir, "models", name),
-		},
-	}
-}
-
-type Asset struct {
-	filename string
-}
-
-func (a Asset) CreateFile() (io.WriteCloser, error) {
-	dirname := filepath.Dir(a.filename)
-	if err := os.MkdirAll(dirname, 0755); err != nil {
-		return nil, fmt.Errorf("failed to create dir %q: %w", dirname, err)
-	}
-
-	file, err := os.Create(a.filename)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create file %q: %w", a.filename, err)
-	}
-	return file, nil
-}
-
-type Resource struct {
-	filename string
 }
