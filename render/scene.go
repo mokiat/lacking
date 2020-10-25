@@ -59,7 +59,7 @@ func (s *Scene) Layout() *Layout {
 	return s.layout
 }
 
-func (s *Scene) Init(registry *resource.Registry, gfxWorker *async.Worker) async.Outcome {
+func (s *Scene) Init(gfxWorker *async.Worker) async.Outcome {
 	gfxTask := func() error {
 		geometryFramebufferData := graphics.FramebufferData{
 			Width:               framebufferWidth,

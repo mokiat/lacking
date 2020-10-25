@@ -40,6 +40,7 @@ func (c GroundCollisionConstraint) ApplyImpulse(ctx Context) {
 	frictionCoef := float32(0.9)
 	lateralVelocity := sprec.Vec3Diff(contactVelocity, sprec.Vec3Prod(c.Normal, verticalVelocity))
 	if lateralVelocity.SqrLength() > sqrEpsilon {
+		// FIXME: Lateral impusle uses restitution part on top
 		lateralImpulseStrength := totalMass * lateralVelocity.Length()
 		if lateralImpulseStrength > sprec.Abs(impulseStrength)*frictionCoef {
 			lateralImpulseStrength = sprec.Abs(impulseStrength) * frictionCoef
