@@ -114,6 +114,25 @@ func (p *Pipeline) SaveModelAsset(uri string, model ModelProvider) *SaveModelAss
 	return action
 }
 
+func (p *Pipeline) OpenLevelResource(uri string) *OpenLevelResourceAction {
+	action := &OpenLevelResourceAction{
+		locator: p.resourceLocator,
+		uri:     uri,
+	}
+	p.scheduleAction(action)
+	return action
+}
+
+func (p *Pipeline) SaveLevelAsset(uri string, level LevelProvider) *SaveLevelAssetAction {
+	action := &SaveLevelAssetAction{
+		locator:       p.assetLocator,
+		uri:           uri,
+		levelProvider: level,
+	}
+	p.scheduleAction(action)
+	return action
+}
+
 func (p *Pipeline) scheduleAction(action Action) {
 	p.actions = append(p.actions, action)
 }
