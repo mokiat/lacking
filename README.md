@@ -1,5 +1,13 @@
-# lacking
+# Lacking Game Engine
 
-Whereas [go-whiskey](https://github.com/mokiat/go-whiskey) is a framework that intends to provide common packages for writing a game, this package intends to extend on that and include tooling for an end-to-end solution. Some of the packages will probably be migrated slowly into this project.
+**WARNING:** This project is under active prototyping and `master` branch will be flattened once a more stable
+state is reached.
 
-Note: This is just a hobby project and will likely be lacking (hence the name) features / capabilities, compared to what is already on the market.
+![logo](logo.png)
+
+A 3D game engine / game framework that lacks a lot of features (hence the name).
+
+This project aims to replace [go-whiskey](https://github.com/mokiat/go-whiskey), which has now been archived.
+
+It is meant to support hobby projects of mine, like [rally-mka](https://github.com/mokiat/rally-mka) with as quick 
+iterations as possible so forget about seeing proper clean code and testing.
