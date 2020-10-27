@@ -3,6 +3,8 @@ package pack
 import (
 	"fmt"
 	"math"
+
+	"github.com/mokiat/gomath/dprec"
 )
 
 type ImageProvider interface {
@@ -100,6 +102,13 @@ func (i *Image) RGBA8Data() []byte {
 		}
 	}
 	return data
+}
+
+type Color struct {
+	R float64
+	G float64
+	B float64
+	A float64
 }
 
 type CubeSide int
@@ -281,9 +290,86 @@ func (a *BuildCubeImageAction) Run() error {
 	return nil
 }
 
-type Color struct {
-	R float64
-	G float64
-	B float64
-	A float64
+type BuildCubeSideFromEquirectangularAction struct {
+	side          CubeSide
+	imageProvider ImageProvider
+	image         *Image
+}
+
+func (*BuildCubeSideFromEquirectangularAction) Describe() string {
+	return "build_cube_side_from_panoramic()"
+}
+
+func (a *BuildCubeSideFromEquirectangularAction) Image() *Image {
+	if a.image == nil {
+		panic("reading data from unprocessed action")
+	}
+	return a.image
+}
+
+func (a *BuildCubeSideFromEquirectangularAction) Run() error {
+	var normToUVW func(float64, float64) dprec.Vec3
+
+	switch a.side {
+	case CubeSideFront:
+		normToUVW = func(u, v float64) dprec.Vec3 {
+			return dprec.NewVec3(u, v, 1.0)
+		}
+	case CubeSideRear:
+		normToUVW = func(u, v float64) dprec.Vec3 {
+			return dprec.NewVec3(-u, v, -1.0)
+		}
+	case CubeSideLeft:
+		normToUVW = func(u, v float64) dprec.Vec3 {
+			return dprec.NewVec3(-1.0, v, u)
+		}
+	case CubeSideRight:
+		normToUVW = func(u, v float64) dprec.Vec3 {
+			return dprec.NewVec3(1.0, v, -u)
+		}
+	case CubeSideTop:
+		normToUVW = func(u, v float64) dprec.Vec3 {
+			return dprec.NewVec3(u, 1.0, -v)
+		}
+	case CubeSideBottom:
+		normToUVW = func(u, v float64) dprec.Vec3 {
+			return dprec.NewVec3(u, -1.0, v)
+		}
+	default:
+		return fmt.Errorf("unknown side: %d", a.side)
+	}
+
+	srcImage := a.imageProvider.Image()
+	dimension := srcImage.Height / 2
+
+	texels := make([][]Color, dimension)
+	for y := 0; y < dimension; y++ {
+		texels[y] = make([]Color, dimension)
+		normY := 1.0 - 2.0*float64(y)/float64(dimension-1)
+
+		for x := 0; x < dimension; x++ {
+			normX := 2.0*float64(x)/float64(dimension-1) - 1.0
+
+			srcNorm := uvwToEquirectangular(normToUVW(normX, normY))
+			srcTexelX := int(srcNorm.X * float64(srcImage.Width-1))
+			srcTexelY := int((1.0 - srcNorm.Y) * float64(srcImage.Height-1))
+			texels[y][x] = srcImage.Texel(srcTexelX, srcTexelY)
+		}
+	}
+
+	a.image = &Image{
+		Width:  dimension,
+		Height: dimension,
+		Texels: texels,
+	}
+	return nil
+}
+
+func uvwToEquirectangular(uvw dprec.Vec3) dprec.Vec2 {
+	uvw = dprec.UnitVec3(uvw)
+	result := dprec.NewVec2(math.Atan2(uvw.Z, uvw.X), math.Asin(uvw.Y))
+	result.X = 0.5 * result.X / dprec.Pi
+	result.Y = 1.0 * result.Y / dprec.Pi
+	result = dprec.Vec2Sum(result, dprec.NewVec2(0.5, 0.5))
+	return result
 }

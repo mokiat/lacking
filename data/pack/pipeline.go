@@ -86,6 +86,15 @@ func (p *Pipeline) SaveCubeTextureAsset(uri string, image CubeImageProvider) *Sa
 	return action
 }
 
+func (p *Pipeline) BuildCubeSideFromEquirectangular(side CubeSide, image ImageProvider) *BuildCubeSideFromEquirectangularAction {
+	action := &BuildCubeSideFromEquirectangularAction{
+		side:          side,
+		imageProvider: image,
+	}
+	p.scheduleAction(action)
+	return action
+}
+
 func (p *Pipeline) BuildCubeImage(opts ...BuildCubeImageOption) *BuildCubeImageAction {
 	action := &BuildCubeImageAction{}
 	for _, opt := range opts {
