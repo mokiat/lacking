@@ -207,7 +207,7 @@ func (s *Scene) renderLightingPass(pipeline *graphics.Pipeline) {
 	quadItem.VertexArray = s.quadMesh.GFXVertexArray
 	quadItem.IndexOffset = s.quadMesh.SubMeshes[0].IndexOffset
 	quadItem.IndexCount = s.quadMesh.SubMeshes[0].IndexCount
-	quadItem.LightDirectionWS = sprec.UnitVec3(sprec.NewVec3(1.0, 1.0, 1.0))
+	quadItem.LightDirectionWS = sprec.UnitVec3(sprec.NewVec3(-1.0, 0.7, -0.5))
 	lightingSequence.EndItem(quadItem)
 	pipeline.EndSequence(lightingSequence)
 }

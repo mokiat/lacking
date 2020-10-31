@@ -2,9 +2,17 @@ package asset
 
 import "io"
 
+type DataFormat uint32
+
+const (
+	DataFormatRGBA8 DataFormat = iota
+	DataFormatRGBA32F
+)
+
 type TwoDTexture struct {
 	Width  uint16
 	Height uint16
+	Format DataFormat
 	Data   []byte
 }
 
@@ -21,6 +29,7 @@ const (
 
 type CubeTexture struct {
 	Dimension uint16
+	Format    DataFormat
 	Sides     [6]CubeTextureSide
 }
 

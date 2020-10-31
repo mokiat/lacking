@@ -5,7 +5,15 @@ import (
 	"math"
 
 	"github.com/mokiat/gomath/dprec"
+	"github.com/mokiat/lacking/data"
 )
+
+type Color struct {
+	R float64
+	G float64
+	B float64
+	A float64
+}
 
 type ImageProvider interface {
 	Image() *Image
@@ -23,6 +31,13 @@ func (i *Image) IsSquare() bool {
 
 func (i *Image) Texel(x, y int) Color {
 	return i.Texels[y][x]
+}
+
+func (i *Image) TexelUV(uv dprec.Vec2) Color {
+	return i.Texel(
+		int(uv.X*float64(i.Width-1)),
+		int((1.0-uv.Y)*float64(i.Height-1)),
+	)
 }
 
 func (i *Image) BilinearTexel(x, y float64) Color {
@@ -104,13 +119,6 @@ func (i *Image) RGBA8Data() []byte {
 	return data
 }
 
-type Color struct {
-	R float64
-	G float64
-	B float64
-	A float64
-}
-
 type CubeSide int
 
 const (
@@ -122,26 +130,19 @@ const (
 	CubeSideBottom
 )
 
+type CubeImageProvider interface {
+	CubeImage() *CubeImage
+}
+
 type CubeImage struct {
 	Dimension int
 	Sides     [6]CubeImageSide
 }
 
-func (t *CubeImage) RGBA8Data(side CubeSide) []byte {
-	data := make([]byte, 4*t.Dimension*t.Dimension)
-	offset := 0
-	texSide := t.Sides[side]
-	for y := 0; y < t.Dimension; y++ {
-		for x := 0; x < t.Dimension; x++ {
-			texel := texSide.Texel(x, t.Dimension-y-1)
-			data[offset+0] = byte(255.0 * texel.R)
-			data[offset+1] = byte(255.0 * texel.G)
-			data[offset+2] = byte(255.0 * texel.B)
-			data[offset+3] = byte(255.0 * texel.A)
-			offset += 4
-		}
-	}
-	return data
+func (s CubeImage) TexelUVW(uvw dprec.Vec3) Color {
+	side, uv := UVWToCubeUV(uvw)
+	image := s.SideToImage(side)
+	return image.TexelUV(uv)
 }
 
 type CubeImageSide struct {
@@ -152,224 +153,119 @@ func (s CubeImageSide) Texel(x, y int) Color {
 	return s.Texels[y][x]
 }
 
-type CubeImageProvider interface {
-	CubeImage() *CubeImage
-}
-
-type BuildCubeImageOption func(a *BuildCubeImageAction)
-
-func WithFrontImage(image ImageProvider) BuildCubeImageOption {
-	return func(a *BuildCubeImageAction) {
-		a.frontImage = image
+func (i *CubeImage) SideToImage(side CubeSide) *Image {
+	return &Image{
+		Width:  i.Dimension,
+		Height: i.Dimension,
+		Texels: i.Sides[side].Texels,
 	}
 }
 
-func WithRearImage(image ImageProvider) BuildCubeImageOption {
-	return func(a *BuildCubeImageAction) {
-		a.rearImage = image
+func (t *CubeImage) Scale(newDimension int) *CubeImage {
+	result := &CubeImage{
+		Dimension: newDimension,
 	}
-}
-
-func WithLeftImage(image ImageProvider) BuildCubeImageOption {
-	return func(a *BuildCubeImageAction) {
-		a.leftImage = image
-	}
-}
-
-func WithRightImage(image ImageProvider) BuildCubeImageOption {
-	return func(a *BuildCubeImageAction) {
-		a.rightImage = image
-	}
-}
-
-func WithTopImage(image ImageProvider) BuildCubeImageOption {
-	return func(a *BuildCubeImageAction) {
-		a.topImage = image
-	}
-}
-
-func WithBottomImage(image ImageProvider) BuildCubeImageOption {
-	return func(a *BuildCubeImageAction) {
-		a.bottomImage = image
-	}
-}
-
-func WithDimension(dimension int) BuildCubeImageOption {
-	return func(a *BuildCubeImageAction) {
-		a.dimension = dimension
-	}
-}
-
-type BuildCubeImageAction struct {
-	frontImage  ImageProvider
-	rearImage   ImageProvider
-	leftImage   ImageProvider
-	rightImage  ImageProvider
-	topImage    ImageProvider
-	bottomImage ImageProvider
-	dimension   int
-	image       *CubeImage
-}
-
-func (*BuildCubeImageAction) Describe() string {
-	return "build_cube_image()"
-}
-
-func (a *BuildCubeImageAction) CubeImage() *CubeImage {
-	if a.image == nil {
-		panic("reading data from unprocessed action")
-	}
-	return a.image
-}
-
-func (a *BuildCubeImageAction) Run() error {
-	frontImage := a.frontImage.Image()
-	if !frontImage.IsSquare() {
-		return fmt.Errorf("front image is not a square (%d, %d)", frontImage.Width, frontImage.Height)
-	}
-	rearImage := a.rearImage.Image()
-	if !rearImage.IsSquare() {
-		return fmt.Errorf("rear image is not a square (%d, %d)", rearImage.Width, rearImage.Height)
-	}
-	leftImage := a.leftImage.Image()
-	if !leftImage.IsSquare() {
-		return fmt.Errorf("left image is not a square (%d, %d)", leftImage.Width, leftImage.Height)
-	}
-	rightImage := a.rightImage.Image()
-	if !rightImage.IsSquare() {
-		return fmt.Errorf("right image is not a square (%d, %d)", rightImage.Width, rightImage.Height)
-	}
-	topImage := a.topImage.Image()
-	if !topImage.IsSquare() {
-		return fmt.Errorf("top image is not a square (%d, %d)", topImage.Width, topImage.Height)
-	}
-	bottomImage := a.bottomImage.Image()
-	if !bottomImage.IsSquare() {
-		return fmt.Errorf("bottom image is not a square (%d, %d)", bottomImage.Width, bottomImage.Height)
-	}
-
-	if a.dimension > 0 {
-		frontImage = frontImage.Scale(a.dimension, a.dimension)
-		rearImage = rearImage.Scale(a.dimension, a.dimension)
-		leftImage = leftImage.Scale(a.dimension, a.dimension)
-		rightImage = rightImage.Scale(a.dimension, a.dimension)
-		topImage = topImage.Scale(a.dimension, a.dimension)
-		bottomImage = bottomImage.Scale(a.dimension, a.dimension)
-	} else {
-		areSameDimension := frontImage.Width == rearImage.Width &&
-			frontImage.Width == leftImage.Width &&
-			frontImage.Width == rightImage.Width &&
-			frontImage.Width == topImage.Width &&
-			frontImage.Width == bottomImage.Width
-		if !areSameDimension {
-			return fmt.Errorf("images are not of the same size")
+	for i := range t.Sides {
+		tmpImage := t.SideToImage(CubeSide(i))
+		scaledImage := tmpImage.Scale(newDimension, newDimension)
+		result.Sides[i] = CubeImageSide{
+			Texels: scaledImage.Texels,
 		}
 	}
-
-	a.image = &CubeImage{
-		Dimension: frontImage.Width,
-	}
-	a.image.Sides[CubeSideFront] = CubeImageSide{
-		Texels: frontImage.Texels,
-	}
-	a.image.Sides[CubeSideRear] = CubeImageSide{
-		Texels: rearImage.Texels,
-	}
-	a.image.Sides[CubeSideLeft] = CubeImageSide{
-		Texels: leftImage.Texels,
-	}
-	a.image.Sides[CubeSideRight] = CubeImageSide{
-		Texels: rightImage.Texels,
-	}
-	a.image.Sides[CubeSideTop] = CubeImageSide{
-		Texels: topImage.Texels,
-	}
-	a.image.Sides[CubeSideBottom] = CubeImageSide{
-		Texels: bottomImage.Texels,
-	}
-	return nil
-}
-
-type BuildCubeSideFromEquirectangularAction struct {
-	side          CubeSide
-	imageProvider ImageProvider
-	image         *Image
-}
-
-func (*BuildCubeSideFromEquirectangularAction) Describe() string {
-	return "build_cube_side_from_panoramic()"
-}
-
-func (a *BuildCubeSideFromEquirectangularAction) Image() *Image {
-	if a.image == nil {
-		panic("reading data from unprocessed action")
-	}
-	return a.image
-}
-
-func (a *BuildCubeSideFromEquirectangularAction) Run() error {
-	var normToUVW func(float64, float64) dprec.Vec3
-
-	switch a.side {
-	case CubeSideFront:
-		normToUVW = func(u, v float64) dprec.Vec3 {
-			return dprec.NewVec3(u, v, 1.0)
-		}
-	case CubeSideRear:
-		normToUVW = func(u, v float64) dprec.Vec3 {
-			return dprec.NewVec3(-u, v, -1.0)
-		}
-	case CubeSideLeft:
-		normToUVW = func(u, v float64) dprec.Vec3 {
-			return dprec.NewVec3(-1.0, v, u)
-		}
-	case CubeSideRight:
-		normToUVW = func(u, v float64) dprec.Vec3 {
-			return dprec.NewVec3(1.0, v, -u)
-		}
-	case CubeSideTop:
-		normToUVW = func(u, v float64) dprec.Vec3 {
-			return dprec.NewVec3(u, 1.0, -v)
-		}
-	case CubeSideBottom:
-		normToUVW = func(u, v float64) dprec.Vec3 {
-			return dprec.NewVec3(u, -1.0, v)
-		}
-	default:
-		return fmt.Errorf("unknown side: %d", a.side)
-	}
-
-	srcImage := a.imageProvider.Image()
-	dimension := srcImage.Height / 2
-
-	texels := make([][]Color, dimension)
-	for y := 0; y < dimension; y++ {
-		texels[y] = make([]Color, dimension)
-		normY := 1.0 - 2.0*float64(y)/float64(dimension-1)
-
-		for x := 0; x < dimension; x++ {
-			normX := 2.0*float64(x)/float64(dimension-1) - 1.0
-
-			srcNorm := uvwToEquirectangular(normToUVW(normX, normY))
-			srcTexelX := int(srcNorm.X * float64(srcImage.Width-1))
-			srcTexelY := int((1.0 - srcNorm.Y) * float64(srcImage.Height-1))
-			texels[y][x] = srcImage.Texel(srcTexelX, srcTexelY)
-		}
-	}
-
-	a.image = &Image{
-		Width:  dimension,
-		Height: dimension,
-		Texels: texels,
-	}
-	return nil
-}
-
-func uvwToEquirectangular(uvw dprec.Vec3) dprec.Vec2 {
-	uvw = dprec.UnitVec3(uvw)
-	result := dprec.NewVec2(math.Atan2(uvw.Z, uvw.X), math.Asin(uvw.Y))
-	result.X = 0.5 * result.X / dprec.Pi
-	result.Y = 1.0 * result.Y / dprec.Pi
-	result = dprec.Vec2Sum(result, dprec.NewVec2(0.5, 0.5))
 	return result
+}
+
+func (t *CubeImage) RGBA8Data(side CubeSide) []byte {
+	// TODO: Move to math
+	clampComponent := func(value float64) float64 {
+		if value > 1.0 {
+			return 1.0
+		}
+		if value < 0.0 {
+			return 0.0
+		}
+		return value
+	}
+	data := make([]byte, 4*t.Dimension*t.Dimension)
+	offset := 0
+	texSide := t.Sides[side]
+	for y := 0; y < t.Dimension; y++ {
+		for x := 0; x < t.Dimension; x++ {
+			texel := texSide.Texel(x, t.Dimension-y-1)
+			data[offset+0] = byte(255.0 * clampComponent(texel.R))
+			data[offset+1] = byte(255.0 * clampComponent(texel.G))
+			data[offset+2] = byte(255.0 * clampComponent(texel.B))
+			data[offset+3] = byte(255.0 * clampComponent(texel.A))
+			offset += 4
+		}
+	}
+	return data
+}
+
+func (t *CubeImage) RGBA32FData(side CubeSide) []byte {
+	data := data.Buffer(make([]byte, 4*4*t.Dimension*t.Dimension))
+	offset := 0
+	texSide := t.Sides[side]
+	for y := 0; y < t.Dimension; y++ {
+		for x := 0; x < t.Dimension; x++ {
+			texel := texSide.Texel(x, t.Dimension-y-1)
+			data.SetFloat32(offset+0, float32(texel.R))
+			data.SetFloat32(offset+4, float32(texel.G))
+			data.SetFloat32(offset+8, float32(texel.B))
+			data.SetFloat32(offset+12, float32(texel.A))
+			offset += 16
+		}
+	}
+	return data
+}
+
+func CubeUVToUVW(side CubeSide, uv dprec.Vec2) dprec.Vec3 {
+	switch side {
+	case CubeSideFront:
+		return dprec.UnitVec3(dprec.NewVec3(uv.X*2.0-1.0, uv.Y*2.0-1.0, 1.0))
+	case CubeSideRear:
+		return dprec.UnitVec3(dprec.NewVec3(1.0-uv.X*2.0, uv.Y*2.0-1.0, -1.0))
+	case CubeSideLeft:
+		return dprec.UnitVec3(dprec.NewVec3(-1.0, uv.Y*2.0-1.0, uv.X*2.0-1.0))
+	case CubeSideRight:
+		return dprec.UnitVec3(dprec.NewVec3(1.0, uv.Y*2.0-1.0, 1.0-uv.X*2.0))
+	case CubeSideTop:
+		return dprec.UnitVec3(dprec.NewVec3(uv.X*2.0-1.0, 1.0, 1.0-uv.Y*2.0))
+	case CubeSideBottom:
+		return dprec.UnitVec3(dprec.NewVec3(uv.X*2.0-1.0, -1.0, uv.Y*2.0-1.0))
+	default:
+		panic(fmt.Errorf("unknown cube side: %d", side))
+	}
+}
+
+func UVWToCubeUV(uvw dprec.Vec3) (CubeSide, dprec.Vec2) {
+	if dprec.Abs(uvw.X) >= dprec.Abs(uvw.Y) && dprec.Abs(uvw.X) >= dprec.Abs(uvw.Z) {
+		uv := dprec.Vec2Quot(dprec.NewVec2(-uvw.Z, uvw.Y), dprec.Abs(uvw.X))
+		if uvw.X > 0 {
+			return CubeSideRight, dprec.NewVec2(uv.X/2.0+0.5, uv.Y/2.0+0.5)
+		} else {
+			return CubeSideLeft, dprec.NewVec2(0.5-uv.X/2.0, uv.Y/2.0+0.5)
+		}
+	}
+	if dprec.Abs(uvw.Z) >= dprec.Abs(uvw.X) && dprec.Abs(uvw.Z) >= dprec.Abs(uvw.Y) {
+		uv := dprec.Vec2Quot(dprec.NewVec2(uvw.X, uvw.Y), dprec.Abs(uvw.Z))
+		if uvw.Z > 0 {
+			return CubeSideFront, dprec.NewVec2(uv.X/2.0+0.5, uv.Y/2.0+0.5)
+		} else {
+			return CubeSideRear, dprec.NewVec2(0.5-uv.X/2.0, uv.Y/2.0+0.5)
+		}
+	}
+	uv := dprec.Vec2Quot(dprec.NewVec2(uvw.X, uvw.Z), dprec.Abs(uvw.Y))
+	if uvw.Y > 0 {
+		return CubeSideTop, dprec.NewVec2(uv.X/2.0+0.5, 0.5-uv.Y/2.0)
+	} else {
+		return CubeSideBottom, dprec.NewVec2(uv.X/2.0+0.5, uv.Y/2.0+0.5)
+	}
+}
+
+func UVWToEquirectangularUV(uvw dprec.Vec3) dprec.Vec2 {
+	return dprec.NewVec2(
+		0.5+(0.5/dprec.Pi)*math.Atan2(uvw.Z, uvw.X),
+		0.5+(1.0/dprec.Pi)*math.Asin(uvw.Y),
+	)
 }

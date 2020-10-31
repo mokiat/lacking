@@ -41,6 +41,15 @@ type SaveCubeTextureAction struct {
 	locator       AssetLocator
 	uri           string
 	imageProvider CubeImageProvider
+	format        asset.DataFormat
+}
+
+type SaveCubeTextureOption func(a *SaveCubeTextureAction)
+
+func WithFormat(format asset.DataFormat) SaveCubeTextureOption {
+	return func(a *SaveCubeTextureAction) {
+		a.format = format
+	}
 }
 
 func (a *SaveCubeTextureAction) Describe() string {
@@ -50,26 +59,38 @@ func (a *SaveCubeTextureAction) Describe() string {
 func (a *SaveCubeTextureAction) Run() error {
 	texture := a.imageProvider.CubeImage()
 
+	textureData := func(side CubeSide) []byte {
+		switch a.format {
+		case asset.DataFormatRGBA8:
+			return texture.RGBA8Data(side)
+		case asset.DataFormatRGBA32F:
+			return texture.RGBA32FData(side)
+		default:
+			panic(fmt.Errorf("unknown format: %d", a.format))
+		}
+	}
+
 	textureAsset := &asset.CubeTexture{
 		Dimension: uint16(texture.Dimension),
+		Format:    a.format,
 	}
 	textureAsset.Sides[asset.TextureSideFront] = asset.CubeTextureSide{
-		Data: texture.RGBA8Data(CubeSideFront),
+		Data: textureData(CubeSideFront),
 	}
 	textureAsset.Sides[asset.TextureSideBack] = asset.CubeTextureSide{
-		Data: texture.RGBA8Data(CubeSideRear),
+		Data: textureData(CubeSideRear),
 	}
 	textureAsset.Sides[asset.TextureSideLeft] = asset.CubeTextureSide{
-		Data: texture.RGBA8Data(CubeSideLeft),
+		Data: textureData(CubeSideLeft),
 	}
 	textureAsset.Sides[asset.TextureSideRight] = asset.CubeTextureSide{
-		Data: texture.RGBA8Data(CubeSideRight),
+		Data: textureData(CubeSideRight),
 	}
 	textureAsset.Sides[asset.TextureSideTop] = asset.CubeTextureSide{
-		Data: texture.RGBA8Data(CubeSideTop),
+		Data: textureData(CubeSideTop),
 	}
 	textureAsset.Sides[asset.TextureSideBottom] = asset.CubeTextureSide{
-		Data: texture.RGBA8Data(CubeSideBottom),
+		Data: textureData(CubeSideBottom),
 	}
 
 	out, err := a.locator.Create(a.uri)

@@ -51,7 +51,7 @@ func (b *Framebuffer) Allocate(data FramebufferData) error {
 		gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
 		gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
 		if data.UsesHDRAlbedo {
-			gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA16F, data.Width, data.Height, 0, gl.RGBA, gl.FLOAT, gl.Ptr(nil))
+			gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA32F, data.Width, data.Height, 0, gl.RGBA, gl.FLOAT, gl.Ptr(nil))
 		} else {
 			gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, data.Width, data.Height, 0, gl.RGBA, gl.UNSIGNED_BYTE, gl.Ptr(nil))
 		}
@@ -64,7 +64,7 @@ func (b *Framebuffer) Allocate(data FramebufferData) error {
 		gl.BindTexture(gl.TEXTURE_2D, b.NormalTextureID)
 		gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
 		gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
-		gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA16F, data.Width, data.Height, 0, gl.RGB, gl.FLOAT, gl.Ptr(nil))
+		gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA32F, data.Width, data.Height, 0, gl.RGB, gl.FLOAT, gl.Ptr(nil))
 		gl.FramebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT1, gl.TEXTURE_2D, b.NormalTextureID, 0)
 		drawBufferIDS = append(drawBufferIDS, gl.COLOR_ATTACHMENT1)
 	}

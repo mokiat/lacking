@@ -5,6 +5,10 @@ import (
 	"image"
 	_ "image/jpeg"
 	_ "image/png"
+
+	"github.com/mdouchement/hdr"
+	_ "github.com/mdouchement/hdr/codec/rgbe"
+	_ "golang.org/x/image/tiff"
 )
 
 type OpenImageResourceAction struct {
@@ -44,12 +48,23 @@ func (a *OpenImageResourceAction) Run() error {
 	for y := 0; y < height; y++ {
 		texels[y] = make([]Color, width)
 		for x := 0; x < width; x++ {
-			r, g, b, a := img.At(imgStartX+x, imgStartY+y).RGBA()
-			texels[y][x] = Color{
-				R: float64(float64((r>>8)&0xFF) / 255.0),
-				G: float64(float64((g>>8)&0xFF) / 255.0),
-				B: float64(float64((b>>8)&0xFF) / 255.0),
-				A: float64(float64((a>>8)&0xFF) / 255.0),
+			switch img := img.(type) {
+			case hdr.Image:
+				r, g, b, a := img.HDRAt(imgStartX+x, imgStartY+y).HDRPixel()
+				texels[y][x] = Color{
+					R: r,
+					G: g,
+					B: b,
+					A: a,
+				}
+			default:
+				r, g, b, a := img.At(imgStartX+x, imgStartY+y).RGBA()
+				texels[y][x] = Color{
+					R: float64(float64((r>>8)&0xFF) / 255.0),
+					G: float64(float64((g>>8)&0xFF) / 255.0),
+					B: float64(float64((b>>8)&0xFF) / 255.0),
+					A: float64(float64((a>>8)&0xFF) / 255.0),
+				}
 			}
 		}
 	}
