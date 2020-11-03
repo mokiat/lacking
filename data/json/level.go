@@ -7,13 +7,15 @@ import (
 )
 
 type Level struct {
-	SkyboxTexture      string          `json:"skybox_texture"`
-	IrradianceTexture  string          `json:"irradiance_texture"`
-	StartCollisionMesh CollisionMesh   `json:"start_collision_mesh"`
-	Waypoints          []Position      `json:"waypoints"`
-	StaticMeshes       []Mesh          `json:"static_meshes"`
-	CollisionMeshes    []CollisionMesh `json:"collision_meshes"`
-	StaticEntities     []Entity        `json:"static_entities"`
+	SkyboxTexture            string          `json:"skybox_texture"`
+	AmbientReflectionTexture string          `json:"ambient_reflection_texture"`
+	AmbientRefractionTexture string          `json:"ambient_refraction_texture"`
+	IrradianceTexture        string          `json:"irradiance_texture"`
+	StartCollisionMesh       CollisionMesh   `json:"start_collision_mesh"`
+	Waypoints                []Position      `json:"waypoints"`
+	StaticMeshes             []Mesh          `json:"static_meshes"`
+	CollisionMeshes          []CollisionMesh `json:"collision_meshes"`
+	StaticEntities           []Entity        `json:"static_entities"`
 }
 
 type CollisionMesh struct {

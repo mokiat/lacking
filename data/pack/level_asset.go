@@ -20,11 +20,12 @@ func (a *SaveLevelAssetAction) Run() error {
 	level := a.levelProvider.Level()
 
 	levelAsset := &asset.Level{
-		SkyboxTexture:     level.SkyboxTexture,
-		IrradianceTexture: level.IrradianceTexture,
-		CollisionMeshes:   make([]asset.LevelCollisionMesh, len(level.CollisionMeshes)),
-		StaticMeshes:      make([]asset.Mesh, len(level.StaticMeshes)),
-		StaticEntities:    make([]asset.LevelEntity, len(level.StaticEntities)),
+		SkyboxTexture:            level.SkyboxTexture,
+		AmbientReflectionTexture: level.AmbientReflectionTexture,
+		AmbientRefractionTexture: level.AmbientRefractionTexture,
+		CollisionMeshes:          make([]asset.LevelCollisionMesh, len(level.CollisionMeshes)),
+		StaticMeshes:             make([]asset.Mesh, len(level.StaticMeshes)),
+		StaticEntities:           make([]asset.LevelEntity, len(level.StaticEntities)),
 	}
 
 	for i, collisionMesh := range level.CollisionMeshes {

@@ -179,6 +179,18 @@ func (r *Renderer) renderItem(sequence Sequence, item Item) {
 		gl.Uniform1i(item.Program.AlbedoCubeTextureLocation, int32(textureIndex))
 		textureIndex++
 	}
+	if item.Program.AmbientReflectionTextureLocation != -1 {
+		gl.ActiveTexture(gl.TEXTURE0 + textureIndex)
+		gl.BindTexture(gl.TEXTURE_CUBE_MAP, item.AmbientReflectionTexture.ID)
+		gl.Uniform1i(item.Program.AmbientReflectionTextureLocation, int32(textureIndex))
+		textureIndex++
+	}
+	if item.Program.AmbientRefractionTextureLocation != -1 {
+		gl.ActiveTexture(gl.TEXTURE0 + textureIndex)
+		gl.BindTexture(gl.TEXTURE_CUBE_MAP, item.AmbientRefractionTexture.ID)
+		gl.Uniform1i(item.Program.AmbientRefractionTextureLocation, int32(textureIndex))
+		textureIndex++
+	}
 	if item.Program.NormalTwoDTextureLocation != -1 {
 		gl.ActiveTexture(gl.TEXTURE0 + textureIndex)
 		gl.BindTexture(gl.TEXTURE_2D, item.NormalTwoDTexture.ID)
