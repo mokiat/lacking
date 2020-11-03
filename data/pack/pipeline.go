@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"log"
 	"time"
+
+	"github.com/mokiat/lacking/data/asset"
 )
 
 type Action interface {
@@ -76,10 +78,23 @@ func (p *Pipeline) SaveTwoDTextureAsset(uri string, image ImageProvider) *SaveTw
 	return action
 }
 
-func (p *Pipeline) SaveCubeTextureAsset(uri string, image CubeImageProvider) *SaveCubeTextureAction {
+func (p *Pipeline) SaveCubeTextureAsset(uri string, image CubeImageProvider, opts ...SaveCubeTextureOption) *SaveCubeTextureAction {
 	action := &SaveCubeTextureAction{
 		locator:       p.assetLocator,
 		uri:           uri,
+		imageProvider: image,
+		format:        asset.DataFormatRGBA8,
+	}
+	for _, opt := range opts {
+		opt(action)
+	}
+	p.scheduleAction(action)
+	return action
+}
+
+func (p *Pipeline) BuildCubeSideFromEquirectangular(side CubeSide, image ImageProvider) *BuildCubeSideFromEquirectangularAction {
+	action := &BuildCubeSideFromEquirectangularAction{
+		side:          side,
 		imageProvider: image,
 	}
 	p.scheduleAction(action)
@@ -88,6 +103,27 @@ func (p *Pipeline) SaveCubeTextureAsset(uri string, image CubeImageProvider) *Sa
 
 func (p *Pipeline) BuildCubeImage(opts ...BuildCubeImageOption) *BuildCubeImageAction {
 	action := &BuildCubeImageAction{}
+	for _, opt := range opts {
+		opt(action)
+	}
+	p.scheduleAction(action)
+	return action
+}
+
+func (p *Pipeline) ScaleCubeImage(image CubeImageProvider, dimension int) *ScaleCubeImageAction {
+	action := &ScaleCubeImageAction{
+		imageProvider: image,
+		dimension:     dimension,
+	}
+	p.scheduleAction(action)
+	return action
+}
+
+func (p *Pipeline) BuildIrradianceCubeImage(image CubeImageProvider, opts ...BuildIrradianceCubeImageOption) *BuildIrradianceCubeImageAction {
+	action := &BuildIrradianceCubeImageAction{
+		imageProvider: image,
+		sampleCount:   10,
+	}
 	for _, opt := range opts {
 		opt(action)
 	}

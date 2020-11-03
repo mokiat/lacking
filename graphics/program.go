@@ -23,15 +23,17 @@ type Program struct {
 	LightDirectionWSLocation int32
 	ExposureLocation         int32
 
-	MetalnessLocation            int32
-	MetalnessTwoDTextureLocation int32
-	RoughnessLocation            int32
-	RoughnessTwoDTextureLocation int32
-	AlbedoColorLocation          int32
-	AlbedoTwoDTextureLocation    int32
-	AlbedoCubeTextureLocation    int32
-	NormalScaleLocation          int32
-	NormalTwoDTextureLocation    int32
+	MetalnessLocation                int32
+	MetalnessTwoDTextureLocation     int32
+	RoughnessLocation                int32
+	RoughnessTwoDTextureLocation     int32
+	AlbedoColorLocation              int32
+	AlbedoTwoDTextureLocation        int32
+	AlbedoCubeTextureLocation        int32
+	AmbientReflectionTextureLocation int32
+	AmbientRefractionTextureLocation int32
+	NormalScaleLocation              int32
+	NormalTwoDTextureLocation        int32
 }
 
 type ProgramData struct {
@@ -84,6 +86,8 @@ func (p *Program) Allocate(data ProgramData) error {
 	p.AlbedoColorLocation = getUniformLocation(p.ID, "albedoColorIn")
 	p.AlbedoTwoDTextureLocation = getUniformLocation(p.ID, "albedoTwoDTextureIn")
 	p.AlbedoCubeTextureLocation = getUniformLocation(p.ID, "albedoCubeTextureIn")
+	p.AmbientReflectionTextureLocation = getUniformLocation(p.ID, "ambientReflectionTextureIn")
+	p.AmbientRefractionTextureLocation = getUniformLocation(p.ID, "ambientRefractionTextureIn")
 	p.NormalScaleLocation = getUniformLocation(p.ID, "normalScaleIn")
 	p.NormalTwoDTextureLocation = getUniformLocation(p.ID, "normalTwoDTextureIn")
 	return nil

@@ -51,8 +51,19 @@ func (o *CubeTextureOperator) Allocate(registry *Registry, name string) (interfa
 	}
 
 	gfxTask := o.gfxWorker.Schedule(async.VoidTask(func() error {
+		var dataFormat graphics.DataFormat
+		switch texAsset.Format {
+		case asset.DataFormatRGBA8:
+			dataFormat = graphics.DataFormatRGBA8
+		case asset.DataFormatRGBA32F:
+			dataFormat = graphics.DataFormatRGBA32F
+		default:
+			return fmt.Errorf("unknown format: %d", dataFormat)
+		}
+
 		return texture.GFXTexture.Allocate(graphics.CubeTextureData{
 			Dimension:      int32(texAsset.Dimension),
+			Format:         dataFormat,
 			FrontSideData:  texAsset.Sides[asset.TextureSideFront].Data,
 			BackSideData:   texAsset.Sides[asset.TextureSideBack].Data,
 			LeftSideData:   texAsset.Sides[asset.TextureSideLeft].Data,

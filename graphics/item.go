@@ -30,18 +30,20 @@ type Item struct {
 
 	// TODO: Make uniforms generic through usage of
 	// uniform type specifiers and []byte buffers
-	ModelMatrix          sprec.Mat4
-	Metalness            float32
-	MetalnessTwoDTexture *TwoDTexture
-	Roughness            float32
-	RoughnessTwoDTexture *TwoDTexture
-	AlbedoColor          sprec.Vec4
-	AlbedoTwoDTexture    *TwoDTexture
-	AlbedoCubeTexture    *CubeTexture
-	NormalScale          float32
-	NormalTwoDTexture    *TwoDTexture
-	LightDirectionWS     sprec.Vec3
-	Exposure             float32
+	ModelMatrix              sprec.Mat4
+	Metalness                float32
+	MetalnessTwoDTexture     *TwoDTexture
+	Roughness                float32
+	RoughnessTwoDTexture     *TwoDTexture
+	AlbedoColor              sprec.Vec4
+	AlbedoTwoDTexture        *TwoDTexture
+	AlbedoCubeTexture        *CubeTexture
+	AmbientReflectionTexture *CubeTexture
+	AmbientRefractionTexture *CubeTexture
+	NormalScale              float32
+	NormalTwoDTexture        *TwoDTexture
+	LightDirectionWS         sprec.Vec3
+	Exposure                 float32
 
 	VertexArray *VertexArray
 	IndexOffset int
@@ -59,6 +61,8 @@ func (i *Item) reset() {
 	i.AlbedoColor = sprec.NewVec4(0.5, 0.0, 0.5, 1.0)
 	i.AlbedoTwoDTexture = nil
 	i.AlbedoCubeTexture = nil
+	i.AmbientReflectionTexture = nil
+	i.AmbientRefractionTexture = nil
 	i.NormalScale = 1.0
 	i.NormalTwoDTexture = nil
 	i.LightDirectionWS = sprec.NewVec3(0.0, 1.0, 0.0)

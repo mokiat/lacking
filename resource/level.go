@@ -18,11 +18,13 @@ func InjectLevel(target **Level) func(value interface{}) {
 }
 
 type Level struct {
-	Name            string
-	SkyboxTexture   *CubeTexture
-	CollisionMeshes []shape.Placement
-	StaticMeshes    []*Mesh
-	StaticEntities  []*Entity
+	Name                     string
+	SkyboxTexture            *CubeTexture
+	AmbientReflectionTexture *CubeTexture
+	AmbientRefractionTexture *CubeTexture
+	CollisionMeshes          []shape.Placement
+	StaticMeshes             []*Mesh
+	StaticEntities           []*Entity
 }
 
 type Entity struct {
@@ -59,6 +61,12 @@ func (o *LevelOperator) Allocate(registry *Registry, name string) (interface{}, 
 	}
 
 	if result := registry.LoadCubeTexture(levelAsset.SkyboxTexture).OnSuccess(InjectCubeTexture(&level.SkyboxTexture)).Wait(); result.Err != nil {
+		return nil, result.Err
+	}
+	if result := registry.LoadCubeTexture(levelAsset.AmbientReflectionTexture).OnSuccess(InjectCubeTexture(&level.AmbientReflectionTexture)).Wait(); result.Err != nil {
+		return nil, result.Err
+	}
+	if result := registry.LoadCubeTexture(levelAsset.AmbientRefractionTexture).OnSuccess(InjectCubeTexture(&level.AmbientRefractionTexture)).Wait(); result.Err != nil {
 		return nil, result.Err
 	}
 

@@ -3,11 +3,12 @@ package asset
 import "io"
 
 type Level struct {
-	SkyboxTexture     string
-	IrradianceTexture string
-	StaticEntities    []LevelEntity
-	StaticMeshes      []Mesh
-	CollisionMeshes   []LevelCollisionMesh
+	SkyboxTexture            string
+	AmbientReflectionTexture string
+	AmbientRefractionTexture string
+	StaticEntities           []LevelEntity
+	StaticMeshes             []Mesh
+	CollisionMeshes          []LevelCollisionMesh
 }
 
 type LevelEntity struct {
