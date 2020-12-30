@@ -1,4 +1,4 @@
-package glfw
+package glfwapp
 
 import (
 	"fmt"
