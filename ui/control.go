@@ -1,7 +1,8 @@
 package ui
 
 type Control interface {
+	ID() string
 	SetBounds(bounds Bounds)
 	Bounds() Bounds
-	OnRender(canvas Canvas, dirtyBounds Bounds)
+	Render(ctx RenderContext)
 }

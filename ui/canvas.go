@@ -10,8 +10,8 @@ type Canvas interface {
 
 	Translate(delta sprec.Vec2)
 
-	SetFont(font Font)
-	Font() Font
+	SetTypeface(font Typeface)
+	Typeface() Typeface
 
 	SetStrokeActive(enabled bool)
 	IsStrokeActive() bool
