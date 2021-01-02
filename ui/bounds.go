@@ -1,8 +1,8 @@
 package ui
 
-import "github.com/mokiat/gomath/sprec"
-
 type Bounds struct {
-	Position sprec.Vec2
-	Size     sprec.Vec2
+	X      int
+	Y      int
+	Width  int
+	Height int
 }

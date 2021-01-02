@@ -1,21 +1,22 @@
 package behavior
 
 import (
-	"github.com/mokiat/gomath/sprec"
 	"github.com/mokiat/lacking/ui"
 )
 
 const (
-	defaultControlWidth  = 64.0
-	defaultControlHeight = 32.0
+	defaultControlWidth  = 64
+	defaultControlHeight = 32
 )
 
 func BuildControl(ctx ui.BuildContext) *Control {
 	return &Control{
 		id: ctx.Template.ID(),
 		bounds: ui.Bounds{
-			Position: sprec.ZeroVec2(),
-			Size:     sprec.NewVec2(defaultControlWidth, defaultControlHeight),
+			X:      0,
+			Y:      0,
+			Width:  defaultControlWidth,
+			Height: defaultControlHeight,
 		},
 		layoutData: ctx.LayoutData,
 	}

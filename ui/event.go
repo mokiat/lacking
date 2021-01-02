@@ -1,10 +1,6 @@
 package ui
 
-import (
-	"fmt"
-
-	"github.com/mokiat/gomath/sprec"
-)
+import "fmt"
 
 // MouseEventType represents the type of mouse event.
 type MouseEventType int
@@ -101,9 +97,11 @@ type MouseEvent struct {
 	// (e.g. with a game controller).
 	MouseIndex int
 
-	// Position specifies the location of the mouse relative
-	// to the receiver control.
-	Position sprec.Vec2
+	// X specifies the X position relative to the receiver control.
+	X int
+
+	// Y specifies the Y position relative to the receiver control.
+	Y int
 
 	// Type specifies the mouse event type.
 	Type MouseEventType
@@ -114,9 +112,10 @@ type MouseEvent struct {
 }
 
 func (e MouseEvent) String() string {
-	return fmt.Sprintf("(%d,%s,%s,%s)",
+	return fmt.Sprintf("(%d,(%d,%d),%s,%s)",
 		e.MouseIndex,
-		e.Position.GoString(),
+		e.X,
+		e.Y,
 		e.Type,
 		e.Button,
 	)

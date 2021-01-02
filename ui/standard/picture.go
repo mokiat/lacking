@@ -6,15 +6,15 @@ import (
 )
 
 func init() {
-	ui.Register("Picture", ui.BuilderFunc(func(ctx ui.BuildContext) ui.Control {
+	ui.Register("Picture", ui.BuilderFunc(func(ctx ui.BuildContext) (ui.Control, error) {
 		return BuildPicture(ctx)
 	}))
 }
 
-func BuildPicture(ctx ui.BuildContext) *Picture {
+func BuildPicture(ctx ui.BuildContext) (*Picture, error) {
 	return &Picture{
 		Control: behavior.BuildControl(ctx),
-	}
+	}, nil
 }
 
 type Picture struct {
