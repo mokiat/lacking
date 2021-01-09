@@ -1,10 +1,12 @@
 package ui
 
 // CreateElement creates a new Element.
-func CreateElement() *Element {
+func CreateElement(handler ElementHandler, control Control) *Element {
 	return &Element{
 		visible: true,
 		enabled: true,
+		handler: handler,
+		control: control,
 	}
 }
 
@@ -168,6 +170,16 @@ func (e *Element) SetMaterialized(materialized bool) {
 // considered as existing or not.
 func (e *Element) IsMaterialized() bool {
 	return e.materialized
+}
+
+func (e *Element) ContentBounds() Bounds {
+	return e.bounds.Translate(NewPosition(
+		e.padding.Left,
+		e.padding.Right,
+	)).Shrink(NewSize(
+		e.padding.Left+e.padding.Right,
+		e.padding.Top+e.padding.Bottom,
+	))
 }
 
 type ElementHandler interface{}

@@ -1,6 +1,7 @@
 package ui
 
 type Canvas interface {
+	Reset(bounds Bounds)
 	Push()
 	Pop()
 
