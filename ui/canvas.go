@@ -1,14 +1,11 @@
 package ui
 
-import "github.com/mokiat/gomath/sprec"
-
 type Canvas interface {
 	Push()
 	Pop()
 
+	Translate(delta Position)
 	Clip(bounds Bounds)
-
-	Translate(delta sprec.Vec2)
 
 	SetTypeface(font Typeface)
 	Typeface() Typeface
@@ -28,9 +25,9 @@ type Canvas interface {
 	SetFillColor(color Color)
 	FillColor() Color
 
-	DrawRectangle(position, size sprec.Vec2)
-	DrawCircle(position sprec.Vec2, radius float32)
-	DrawLine(start, end sprec.Vec2)
-	DrawText(text string, position sprec.Vec2)
-	DrawImage(image Image, position sprec.Vec2)
+	DrawRectangle(position Position, size Size)
+	DrawCircle(position Position, radius int)
+	DrawLine(start, end Position)
+	DrawText(text string, position Position)
+	DrawImage(image Image, position Position)
 }
