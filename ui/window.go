@@ -33,6 +33,10 @@ func (w *window) OnContentResize(d Driver, size Size) {
 	log.Printf("resize: %+v\n", size)
 }
 
+func (w *window) OnKeyboardEvent(d Driver, event KeyboardEvent) {
+	log.Printf("keyboard event: %+v", event)
+}
+
 func (w *window) OnRender(d Driver, canvas Canvas) {
 	log.Println("render")
 }

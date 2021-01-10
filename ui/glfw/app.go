@@ -64,15 +64,14 @@ type driver struct {
 }
 
 func (d *driver) Run() error {
-	d.window.SetFramebufferSizeCallback(func(w *glfw.Window, width int, height int) {
-		d.subscriber.OnContentResize(d, ui.NewSize(width, height))
-	})
-	fbSize := ui.NewSize(d.window.GetFramebufferSize())
-	d.subscriber.OnContentResize(d, fbSize)
+	d.window.SetRefreshCallback(d.onGLFWRefresh)
 
-	d.window.SetRefreshCallback(func(w *glfw.Window) {
-		d.renderContent()
-	})
+	d.window.SetFramebufferSizeCallback(d.onGLFWFramebufferSize)
+	fbSize := ui.NewSize(d.window.GetFramebufferSize())
+	d.onGLFWFramebufferSize(d.window, fbSize.Width, fbSize.Height)
+
+	d.window.SetKeyCallback(d.onGLFWKey)
+	d.window.SetCharCallback(d.onGLFWChar)
 
 	for !d.shouldStop {
 		glfw.WaitEvents()
@@ -109,6 +108,53 @@ func (d *driver) Redraw() {
 
 func (d *driver) Destroy() {
 	d.shouldStop = true
+}
+
+func (d *driver) onGLFWRefresh(w *glfw.Window) {
+	d.renderContent()
+}
+
+func (d *driver) onGLFWFramebufferSize(w *glfw.Window, width int, height int) {
+	d.subscriber.OnContentResize(d, ui.NewSize(width, height))
+}
+
+func (d *driver) onGLFWChar(w *glfw.Window, char rune) {
+	d.subscriber.OnKeyboardEvent(d, ui.KeyboardEvent{
+		Type: ui.KeyboardEventTypeType,
+		Rune: char,
+	})
+}
+
+func (d *driver) onGLFWKey(w *glfw.Window, key glfw.Key, scancode int, action glfw.Action, mods glfw.ModifierKey) {
+	eventType, ok := typeMapping[action]
+	if !ok {
+		return
+	}
+
+	keyCode, ok := keyMapping[key]
+	if !ok {
+		return
+	}
+
+	var modifiers ui.KeyModifierSet
+	if (mods & glfw.ModControl) == glfw.ModControl {
+		modifiers = modifiers | ui.KeyModifierSet(ui.KeyModifierControl)
+	}
+	if (mods & glfw.ModShift) == glfw.ModShift {
+		modifiers = modifiers | ui.KeyModifierSet(ui.KeyModifierShift)
+	}
+	if (mods & glfw.ModAlt) == glfw.ModAlt {
+		modifiers = modifiers | ui.KeyModifierSet(ui.KeyModifierAlt)
+	}
+	if (mods & glfw.ModCapsLock) == glfw.ModCapsLock {
+		modifiers = modifiers | ui.KeyModifierSet(ui.KeyModifierCapsLock)
+	}
+
+	d.subscriber.OnKeyboardEvent(d, ui.KeyboardEvent{
+		Type:      eventType,
+		Code:      keyCode,
+		Modifiers: modifiers,
+	})
 }
 
 func (d *driver) renderContent() {
