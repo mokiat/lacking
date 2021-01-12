@@ -2,6 +2,39 @@ package ui
 
 import "fmt"
 
+// MouseEvent represents an event related to a mouse action.
+type MouseEvent struct {
+	// Index indicates which mouse triggered the event. By default
+	// the index for a the primary mouse is 0.
+	// This is applicable for devices with multiple pointers
+	// (mobile) or in case a second mouse is emulated
+	// (e.g. with a game controller).
+	Index int
+
+	// X specifies the X position relative to the receiver control.
+	X int
+
+	// Y specifies the Y position relative to the receiver control.
+	Y int
+
+	// Type specifies the mouse event type.
+	Type MouseEventType
+
+	// Button specifies the button for which the event is
+	// applicable.
+	Button MouseButton
+}
+
+func (e MouseEvent) String() string {
+	return fmt.Sprintf("(%d,(%d,%d),%s,%s)",
+		e.Index,
+		e.X,
+		e.Y,
+		e.Type,
+		e.Button,
+	)
+}
+
 // MouseEventType represents the type of mouse event.
 type MouseEventType int
 
@@ -87,36 +120,4 @@ func (b MouseButton) String() string {
 	default:
 		return "unknown"
 	}
-}
-
-// MouseEvent represents an event related to a mouse action.
-type MouseEvent struct {
-	// MouseIndex indicates which mouse triggered the event.
-	// This is applicable for devices with multiple pointers
-	// (mobile) or in case a second mouse is emulated
-	// (e.g. with a game controller).
-	MouseIndex int
-
-	// X specifies the X position relative to the receiver control.
-	X int
-
-	// Y specifies the Y position relative to the receiver control.
-	Y int
-
-	// Type specifies the mouse event type.
-	Type MouseEventType
-
-	// Button specifies the button for which the event is
-	// applicable.
-	Button MouseButton
-}
-
-func (e MouseEvent) String() string {
-	return fmt.Sprintf("(%d,(%d,%d),%s,%s)",
-		e.MouseIndex,
-		e.X,
-		e.Y,
-		e.Type,
-		e.Button,
-	)
 }

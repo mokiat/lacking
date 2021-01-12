@@ -61,17 +61,24 @@ type driver struct {
 	subscriber ui.DriverSubscriber
 	shouldStop bool
 	shouldDraw bool
+
+	// On OSX we get mouse events even outside the window
+	// so we should keep track.
+	mouseInside bool
 }
 
 func (d *driver) Run() error {
 	d.window.SetRefreshCallback(d.onGLFWRefresh)
 
+	d.window.SetSizeCallback(d.onGLFWSize)
 	d.window.SetFramebufferSizeCallback(d.onGLFWFramebufferSize)
 	fbSize := ui.NewSize(d.window.GetFramebufferSize())
 	d.onGLFWFramebufferSize(d.window, fbSize.Width, fbSize.Height)
 
 	d.window.SetKeyCallback(d.onGLFWKey)
 	d.window.SetCharCallback(d.onGLFWChar)
+	d.window.SetCursorPosCallback(d.onGLFWCursorPos)
+	d.window.SetCursorEnterCallback(d.onGLFWCursorEnter)
 
 	for !d.shouldStop {
 		glfw.WaitEvents()
@@ -114,8 +121,16 @@ func (d *driver) onGLFWRefresh(w *glfw.Window) {
 	d.renderContent()
 }
 
+func (d *driver) onGLFWSize(w *glfw.Window, width int, height int) {
+	d.subscriber.OnResize(d, ui.NewSize(width, height))
+}
+
 func (d *driver) onGLFWFramebufferSize(w *glfw.Window, width int, height int) {
-	d.subscriber.OnContentResize(d, ui.NewSize(width, height))
+	// TODO: Resize the canvas. The framebuffer could be twice the size
+	// of the window but the ui window need not know, since this additional
+	// size is used for finer image quality and should be handled by the
+	// canvas. (It should set the Ortho to the Size while using a FramebufferSize
+	// framebuffer.)
 }
 
 func (d *driver) onGLFWChar(w *glfw.Window, char rune) {
@@ -154,6 +169,35 @@ func (d *driver) onGLFWKey(w *glfw.Window, key glfw.Key, scancode int, action gl
 		Type:      eventType,
 		Code:      keyCode,
 		Modifiers: modifiers,
+	})
+}
+
+func (d *driver) onGLFWCursorPos(w *glfw.Window, xpos float64, ypos float64) {
+	if !d.mouseInside {
+		return
+	}
+	d.subscriber.OnMouseEvent(d, ui.MouseEvent{
+		Index: 0,
+		X:     int(xpos),
+		Y:     int(ypos),
+		Type:  ui.MouseEventTypeMove,
+	})
+}
+
+func (d *driver) onGLFWCursorEnter(w *glfw.Window, entered bool) {
+	var eventType ui.MouseEventType
+	d.mouseInside = entered
+	if entered {
+		eventType = ui.MouseEventTypeEnter
+	} else {
+		eventType = ui.MouseEventTypeLeave
+	}
+	xpos, ypos := d.window.GetCursorPos()
+	d.subscriber.OnMouseEvent(d, ui.MouseEvent{
+		Index: 0,
+		X:     int(xpos),
+		Y:     int(ypos),
+		Type:  eventType,
 	})
 }
 

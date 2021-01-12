@@ -3,8 +3,9 @@ package ui
 type DriverSubscriber interface {
 	OnCreate(d Driver)
 	OnDestroy(d Driver)
-	OnContentResize(d Driver, size Size)
+	OnResize(d Driver, size Size)
 	OnKeyboardEvent(d Driver, event KeyboardEvent)
+	OnMouseEvent(d Driver, event MouseEvent)
 	OnRender(d Driver, canvas Canvas)
 	OnCloseRequested(d Driver)
 }

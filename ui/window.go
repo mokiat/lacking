@@ -29,12 +29,16 @@ func (w *window) OnDestroy(d Driver) {
 
 }
 
-func (w *window) OnContentResize(d Driver, size Size) {
+func (w *window) OnResize(d Driver, size Size) {
 	log.Printf("resize: %+v\n", size)
 }
 
 func (w *window) OnKeyboardEvent(d Driver, event KeyboardEvent) {
 	log.Printf("keyboard event: %+v", event)
+}
+
+func (w *window) OnMouseEvent(d Driver, event MouseEvent) {
+	log.Printf("mouse event: %+v", event)
 }
 
 func (w *window) OnRender(d Driver, canvas Canvas) {
