@@ -4,10 +4,20 @@ import (
 	"fmt"
 	"runtime"
 
+	"github.com/go-gl/gl/v4.1-core/gl"
 	"github.com/go-gl/glfw/v3.3/glfw"
 
 	"github.com/mokiat/lacking/ui"
+	"github.com/mokiat/lacking/ui/glfw/opengl"
 )
+
+type canvas interface {
+	ui.Canvas
+	Init() error
+	Resize(size ui.Size)
+	ResizeFramebuffer(size ui.Size)
+	Reset()
+}
 
 type Bootstrap interface {
 	Run(window ui.Window)
@@ -45,7 +55,27 @@ func RunApplication(cfg *AppConfig, bootstrap Bootstrap) error {
 
 	uiDriver := &driver{
 		window: window,
+		canvas: opengl.NewCanvas(),
 	}
+
+	switch cfg.graphicsEngine {
+	case GraphicsEngineOpenGL:
+		if err := gl.Init(); err != nil {
+			return fmt.Errorf("failed to initialize opengl: %w", err)
+		}
+
+		uiDriver.canvas = opengl.NewCanvas()
+		if err := uiDriver.canvas.Init(); err != nil {
+			return fmt.Errorf("failed to init canvas: %w", err)
+		}
+
+	case GraphicsEngineVulkan:
+		panic("vulkan is not yet supported.")
+
+	default:
+		panic(fmt.Errorf("unknown graphics engine: %v", cfg.graphicsEngine))
+	}
+
 	uiWindow, subscriber := ui.CreateWindow(uiDriver)
 	uiDriver.subscriber = subscriber
 
@@ -58,6 +88,7 @@ func RunApplication(cfg *AppConfig, bootstrap Bootstrap) error {
 
 type driver struct {
 	window     *glfw.Window
+	canvas     canvas
 	subscriber ui.DriverSubscriber
 	shouldStop bool
 	shouldDraw bool
@@ -71,6 +102,9 @@ func (d *driver) Run() error {
 	d.window.SetRefreshCallback(d.onGLFWRefresh)
 
 	d.window.SetSizeCallback(d.onGLFWSize)
+	size := ui.NewSize(d.window.GetSize())
+	d.onGLFWSize(d.window, size.Width, size.Height)
+
 	d.window.SetFramebufferSizeCallback(d.onGLFWFramebufferSize)
 	fbSize := ui.NewSize(d.window.GetFramebufferSize())
 	d.onGLFWFramebufferSize(d.window, fbSize.Width, fbSize.Height)
@@ -122,15 +156,12 @@ func (d *driver) onGLFWRefresh(w *glfw.Window) {
 }
 
 func (d *driver) onGLFWSize(w *glfw.Window, width int, height int) {
+	d.canvas.Resize(ui.NewSize(width, height))
 	d.subscriber.OnResize(d, ui.NewSize(width, height))
 }
 
 func (d *driver) onGLFWFramebufferSize(w *glfw.Window, width int, height int) {
-	// TODO: Resize the canvas. The framebuffer could be twice the size
-	// of the window but the ui window need not know, since this additional
-	// size is used for finer image quality and should be handled by the
-	// canvas. (It should set the Ortho to the Size while using a FramebufferSize
-	// framebuffer.)
+	d.canvas.ResizeFramebuffer(ui.NewSize(width, height))
 }
 
 func (d *driver) onGLFWChar(w *glfw.Window, char rune) {
@@ -202,6 +233,7 @@ func (d *driver) onGLFWCursorEnter(w *glfw.Window, entered bool) {
 }
 
 func (d *driver) renderContent() {
-	d.subscriber.OnRender(d, nil) // TODO: Pass a canvas
+	d.canvas.Reset()
+	d.subscriber.OnRender(d, d.canvas)
 	d.window.SwapBuffers()
 }

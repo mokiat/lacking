@@ -1,34 +1,33 @@
 package ui
 
 type Canvas interface {
-	Reset(bounds Bounds)
 	Push()
 	Pop()
 
 	Translate(delta Position)
 	Clip(bounds Bounds)
 
-	SetTypeface(font Typeface)
-	Typeface() Typeface
+	// SetTypeface(font Typeface)
+	// Typeface() Typeface
 
-	SetStrokeActive(enabled bool)
-	IsStrokeActive() bool
+	// SetStrokeActive(enabled bool)
+	// IsStrokeActive() bool
 
-	SetStrokeColor(color Color)
-	StrokeColor() Color
+	// SetStrokeColor(color Color)
+	// StrokeColor() Color
 
-	SetStrokeSize(size int)
-	StrokeSize() int
+	// SetStrokeSize(size int)
+	// StrokeSize() int
 
-	SetFillActive(active bool)
-	IsFillActive() bool
+	// SetFillActive(active bool)
+	// IsFillActive() bool
 
-	SetFillColor(color Color)
-	FillColor() Color
+	// SetFillColor(color Color)
+	// FillColor() Color
 
-	DrawRectangle(position Position, size Size)
-	DrawCircle(position Position, radius int)
-	DrawLine(start, end Position)
-	DrawText(text string, position Position)
-	DrawImage(image Image, position Position)
+	// DrawRectangle(position Position, size Size)
+	// DrawCircle(position Position, radius int)
+	// DrawLine(start, end Position)
+	// DrawText(text string, position Position)
+	// DrawImage(image Image, position Position)
 }

@@ -18,19 +18,20 @@ func CreateWindow(driver Driver) (Window, DriverSubscriber) {
 }
 
 type window struct {
-	driver Driver
+	driver     Driver
+	size       Size
+	activeView View
 }
 
 func (w *window) OnCreate(d Driver) {
-
 }
 
 func (w *window) OnDestroy(d Driver) {
-
 }
 
 func (w *window) OnResize(d Driver, size Size) {
 	log.Printf("resize: %+v\n", size)
+	w.size = size
 }
 
 func (w *window) OnKeyboardEvent(d Driver, event KeyboardEvent) {
@@ -43,6 +44,15 @@ func (w *window) OnMouseEvent(d Driver, event MouseEvent) {
 
 func (w *window) OnRender(d Driver, canvas Canvas) {
 	log.Println("render")
+	if w.activeView != nil {
+		renderElement(w.activeView.Element(), RenderContext{
+			Canvas: canvas,
+			DirtyRegion: Bounds{
+				Position: NewPosition(0, 0),
+				Size:     w.size,
+			},
+		})
+	}
 }
 
 func (w *window) OnCloseRequested(d Driver) {
