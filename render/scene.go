@@ -1,7 +1,7 @@
 package render
 
 import (
-	"github.com/go-gl/gl/v4.1-core/gl"
+	"github.com/go-gl/gl/v4.6-core/gl"
 	"github.com/mokiat/gomath/sprec"
 	"github.com/mokiat/lacking/async"
 	"github.com/mokiat/lacking/game"
@@ -119,7 +119,7 @@ func (s *Scene) Init(gfxWorker *async.Worker) async.Outcome {
 
 		quadData := preset.NewQuadVertexArrayData(-1.0, 1.0, 1.0, -1.0)
 		s.quadMesh = &resource.Mesh{
-			GFXVertexArray: &graphics.VertexArray{},
+			GFXVertexArray: graphics.NewVertexArray(),
 			SubMeshes: []resource.SubMesh{ // TODO: Get this from preset somehow
 				{
 					Primitive:   graphics.RenderPrimitiveTriangles,
@@ -134,7 +134,7 @@ func (s *Scene) Init(gfxWorker *async.Worker) async.Outcome {
 
 		cubeData := preset.NewCubeVertexArrayData(-1.0, 1.0, 1.0, -1.0, 1.0, -1.0)
 		s.cubeMesh = &resource.Mesh{
-			GFXVertexArray: &graphics.VertexArray{},
+			GFXVertexArray: graphics.NewVertexArray(),
 			SubMeshes: []resource.SubMesh{ // TODO: Get this from preset somehow
 				{
 					Primitive:   graphics.RenderPrimitiveTriangles,

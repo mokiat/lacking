@@ -2,15 +2,13 @@ package graphics
 
 import (
 	"fmt"
-	"strings"
 
-	"github.com/go-gl/gl/v4.1-core/gl"
+	"github.com/go-gl/gl/v4.6-core/gl"
+	"github.com/mokiat/lacking/opengl"
 )
 
 type Program struct {
-	ID               uint32
-	VertexShaderID   uint32
-	FragmentShaderID uint32
+	Program *opengl.Program
 
 	FBColor0TextureLocation int32
 	FBColor1TextureLocation int32
@@ -36,109 +34,76 @@ type Program struct {
 	NormalTwoDTextureLocation        int32
 }
 
+func (p *Program) ID() uint32 {
+	return p.Program.ID()
+}
+
 type ProgramData struct {
 	VertexShaderSourceCode   string
 	FragmentShaderSourceCode string
 }
 
 func (p *Program) Allocate(data ProgramData) error {
-	p.ID = gl.CreateProgram()
-
-	p.VertexShaderID = gl.CreateShader(gl.VERTEX_SHADER)
-	setShaderSourceCode(p.VertexShaderID, data.VertexShaderSourceCode)
-	gl.CompileShader(p.VertexShaderID)
-	if getShaderCompileStatus(p.VertexShaderID) == gl.FALSE {
-		log := getShaderLog(p.VertexShaderID)
-		return fmt.Errorf("failed to compile vertex shader: %s", log)
+	vertexShader := opengl.NewShader()
+	vertexShaderInfo := opengl.ShaderAllocateInfo{
+		ShaderType: gl.VERTEX_SHADER,
+		SourceCode: data.VertexShaderSourceCode,
 	}
-	gl.AttachShader(p.ID, p.VertexShaderID)
-
-	p.FragmentShaderID = gl.CreateShader(gl.FRAGMENT_SHADER)
-	setShaderSourceCode(p.FragmentShaderID, data.FragmentShaderSourceCode)
-	gl.CompileShader(p.FragmentShaderID)
-	if getShaderCompileStatus(p.FragmentShaderID) == gl.FALSE {
-		log := getShaderLog(p.FragmentShaderID)
-		return fmt.Errorf("failed to compile fragment shader: %s", log)
-	}
-	gl.AttachShader(p.ID, p.FragmentShaderID)
-
-	gl.LinkProgram(p.ID)
-	if getProgramLinkStatus(p.ID) == gl.FALSE {
-		log := getProgramLog(p.ID)
-		return fmt.Errorf("failed to link program: %s", log)
+	if err := vertexShader.Allocate(vertexShaderInfo); err != nil {
+		return fmt.Errorf("failed to allocate vertex shader: %w", err)
 	}
 
-	p.FBColor0TextureLocation = getUniformLocation(p.ID, "fbColor0TextureIn")
-	p.FBColor1TextureLocation = getUniformLocation(p.ID, "fbColor1TextureIn")
-	p.FBDepthTextureLocation = getUniformLocation(p.ID, "fbDepthTextureIn")
+	fragmentShader := opengl.NewShader()
+	fragmentShaderInfo := opengl.ShaderAllocateInfo{
+		ShaderType: gl.FRAGMENT_SHADER,
+		SourceCode: data.FragmentShaderSourceCode,
+	}
+	if err := fragmentShader.Allocate(fragmentShaderInfo); err != nil {
+		return fmt.Errorf("failed to allocate fragment shader: %w", err)
+	}
 
-	p.ProjectionMatrixLocation = getUniformLocation(p.ID, "projectionMatrixIn")
-	p.ModelMatrixLocation = getUniformLocation(p.ID, "modelMatrixIn")
-	p.ViewMatrixLocation = getUniformLocation(p.ID, "viewMatrixIn")
-	p.CameraMatrixLocation = getUniformLocation(p.ID, "cameraMatrixIn")
-	p.LightDirectionWSLocation = getUniformLocation(p.ID, "lightDirectionWSIn")
-	p.ExposureLocation = getUniformLocation(p.ID, "exposureIn")
+	programInfo := opengl.ProgramAllocateInfo{
+		VertexShader:   vertexShader,
+		FragmentShader: fragmentShader,
+	}
 
-	p.MetalnessLocation = getUniformLocation(p.ID, "metalnessIn")
-	p.MetalnessTwoDTextureLocation = getUniformLocation(p.ID, "metalnessTwoDTextureIn")
-	p.RoughnessLocation = getUniformLocation(p.ID, "roughnessIn")
-	p.RoughnessTwoDTextureLocation = getUniformLocation(p.ID, "roughnessTwoDTextureIn")
-	p.AlbedoColorLocation = getUniformLocation(p.ID, "albedoColorIn")
-	p.AlbedoTwoDTextureLocation = getUniformLocation(p.ID, "albedoTwoDTextureIn")
-	p.AlbedoCubeTextureLocation = getUniformLocation(p.ID, "albedoCubeTextureIn")
-	p.AmbientReflectionTextureLocation = getUniformLocation(p.ID, "ambientReflectionTextureIn")
-	p.AmbientRefractionTextureLocation = getUniformLocation(p.ID, "ambientRefractionTextureIn")
-	p.NormalScaleLocation = getUniformLocation(p.ID, "normalScaleIn")
-	p.NormalTwoDTextureLocation = getUniformLocation(p.ID, "normalTwoDTextureIn")
+	p.Program = opengl.NewProgram()
+	if err := p.Program.Allocate(programInfo); err != nil {
+		return fmt.Errorf("failed to allocate program: %w", err)
+	}
+
+	if err := fragmentShader.Release(); err != nil {
+		return fmt.Errorf("failed to release fragment shader: %w", err)
+	}
+	if err := vertexShader.Release(); err != nil {
+		return fmt.Errorf("failed to release vertex shader: %w", err)
+	}
+
+	p.FBColor0TextureLocation = p.Program.UniformLocation("fbColor0TextureIn")
+	p.FBColor1TextureLocation = p.Program.UniformLocation("fbColor1TextureIn")
+	p.FBDepthTextureLocation = p.Program.UniformLocation("fbDepthTextureIn")
+
+	p.ProjectionMatrixLocation = p.Program.UniformLocation("projectionMatrixIn")
+	p.ModelMatrixLocation = p.Program.UniformLocation("modelMatrixIn")
+	p.ViewMatrixLocation = p.Program.UniformLocation("viewMatrixIn")
+	p.CameraMatrixLocation = p.Program.UniformLocation("cameraMatrixIn")
+	p.LightDirectionWSLocation = p.Program.UniformLocation("lightDirectionWSIn")
+	p.ExposureLocation = p.Program.UniformLocation("exposureIn")
+
+	p.MetalnessLocation = p.Program.UniformLocation("metalnessIn")
+	p.MetalnessTwoDTextureLocation = p.Program.UniformLocation("metalnessTwoDTextureIn")
+	p.RoughnessLocation = p.Program.UniformLocation("roughnessIn")
+	p.RoughnessTwoDTextureLocation = p.Program.UniformLocation("roughnessTwoDTextureIn")
+	p.AlbedoColorLocation = p.Program.UniformLocation("albedoColorIn")
+	p.AlbedoTwoDTextureLocation = p.Program.UniformLocation("albedoTwoDTextureIn")
+	p.AlbedoCubeTextureLocation = p.Program.UniformLocation("albedoCubeTextureIn")
+	p.AmbientReflectionTextureLocation = p.Program.UniformLocation("ambientReflectionTextureIn")
+	p.AmbientRefractionTextureLocation = p.Program.UniformLocation("ambientRefractionTextureIn")
+	p.NormalScaleLocation = p.Program.UniformLocation("normalScaleIn")
+	p.NormalTwoDTextureLocation = p.Program.UniformLocation("normalTwoDTextureIn")
 	return nil
 }
 
 func (p *Program) Release() error {
-	gl.DeleteProgram(p.ID)
-	gl.DeleteShader(p.VertexShaderID)
-	gl.DeleteShader(p.FragmentShaderID)
-	p.ID = 0
-	p.VertexShaderID = 0
-	p.FragmentShaderID = 0
-	return nil
-}
-
-func getUniformLocation(id uint32, name string) int32 {
-	return gl.GetUniformLocation(id, gl.Str(name+"\x00"))
-}
-
-func setShaderSourceCode(id uint32, sourceCode string) {
-	sources, free := gl.Strs(sourceCode + "\x00")
-	defer free()
-	gl.ShaderSource(id, 1, sources, nil)
-}
-
-func getShaderCompileStatus(shader uint32) int32 {
-	var status int32
-	gl.GetShaderiv(shader, gl.COMPILE_STATUS, &status)
-	return status
-}
-
-func getShaderLog(shader uint32) string {
-	var logLength int32
-	gl.GetShaderiv(shader, gl.INFO_LOG_LENGTH, &logLength)
-
-	log := strings.Repeat("\x00", int(logLength+1))
-	gl.GetShaderInfoLog(shader, logLength, nil, gl.Str(log))
-	return log
-}
-
-func getProgramLinkStatus(program uint32) int32 {
-	var status int32
-	gl.GetProgramiv(program, gl.LINK_STATUS, &status)
-	return status
-}
-
-func getProgramLog(program uint32) string {
-	var logLength int32
-	gl.GetProgramiv(program, gl.INFO_LOG_LENGTH, &logLength)
-
-	log := strings.Repeat("\x00", int(logLength+1))
-	gl.GetProgramInfoLog(program, logLength, nil, gl.Str(log))
-	return log
+	return p.Program.Release()
 }

@@ -1,8 +1,11 @@
 package graphics
 
 import (
-	"github.com/go-gl/gl/v4.1-core/gl"
-	"github.com/mokiat/lacking/data"
+	"encoding/binary"
+
+	"github.com/go-gl/gl/v4.6-core/gl"
+	"github.com/mokiat/lacking/data/buffer"
+	"github.com/mokiat/lacking/opengl"
 )
 
 const (
@@ -12,12 +15,6 @@ const (
 	TexCoordAttributeIndex = 3
 	ColorAttributeIndex    = 4
 )
-
-type VertexArray struct {
-	ID             uint32
-	VertexBufferID uint32
-	IndexBufferID  uint32
-}
 
 func NewVertexArrayData(vertices, indices int, layout VertexArrayLayout) VertexArrayData {
 	verticesDataSize := 0
@@ -54,22 +51,22 @@ type VertexArrayData struct {
 
 func NewVertexWriter(vad VertexArrayData) *VertexWriter {
 	return &VertexWriter{
-		vertexData: data.Buffer(vad.VertexData),
-		layout:     vad.Layout,
+		plotter: buffer.NewPlotter(vad.VertexData, binary.LittleEndian),
+		layout:  vad.Layout,
 	}
 }
 
 type VertexWriter struct {
-	vertexData data.Buffer
-	layout     VertexArrayLayout
-	offset     int
+	plotter *buffer.Plotter
+	layout  VertexArrayLayout
+	offset  int
 }
 
 func (w *VertexWriter) SetCoord(x, y, z float32) *VertexWriter {
-	offset := w.layout.CoordOffset + w.offset*int(w.layout.CoordStride)
-	w.vertexData.SetFloat32(offset+0, x)
-	w.vertexData.SetFloat32(offset+4, y)
-	w.vertexData.SetFloat32(offset+8, z)
+	w.plotter.Seek(w.layout.CoordOffset + w.offset*int(w.layout.CoordStride))
+	w.plotter.PlotFloat32(x)
+	w.plotter.PlotFloat32(y)
+	w.plotter.PlotFloat32(z)
 	return w
 }
 
@@ -80,17 +77,18 @@ func (w *VertexWriter) Next() *VertexWriter {
 
 func NewIndexWriter(vad VertexArrayData) *IndexWriter {
 	return &IndexWriter{
-		indexData: data.Buffer(vad.IndexData),
+		plotter: buffer.NewPlotter(vad.IndexData, binary.LittleEndian),
 	}
 }
 
 type IndexWriter struct {
-	indexData data.Buffer
-	offset    int
+	plotter *buffer.Plotter
+	offset  int
 }
 
 func (w *IndexWriter) SetIndex(index uint16) *IndexWriter {
-	w.indexData.SetUInt16(w.offset*2, index)
+	w.plotter.Seek(w.offset * 2)
+	w.plotter.PlotUint16(index)
 	return w
 }
 
@@ -117,53 +115,68 @@ type VertexArrayLayout struct {
 	ColorStride    int32
 }
 
-func (a *VertexArray) Allocate(data VertexArrayData) error {
-	gl.GenVertexArrays(1, &a.ID)
-	gl.BindVertexArray(a.ID)
-
-	gl.GenBuffers(1, &a.VertexBufferID)
-	gl.BindBuffer(gl.ARRAY_BUFFER, a.VertexBufferID)
-	gl.BufferData(gl.ARRAY_BUFFER, len(data.VertexData), gl.Ptr(data.VertexData), gl.DYNAMIC_DRAW)
-
-	if data.Layout.HasCoord {
-		gl.EnableVertexAttribArray(CoordAttributeIndex)
-		gl.VertexAttribPointer(CoordAttributeIndex, 3, gl.FLOAT, false, data.Layout.CoordStride, gl.PtrOffset(data.Layout.CoordOffset))
+func NewVertexArray() *VertexArray {
+	return &VertexArray{
+		VertexBuffer: new(opengl.Buffer),
+		IndexBuffer:  new(opengl.Buffer),
 	}
-	if data.Layout.HasNormal {
-		gl.EnableVertexAttribArray(NormalAttributeIndex)
-		gl.VertexAttribPointer(NormalAttributeIndex, 3, gl.FLOAT, false, data.Layout.NormalStride, gl.PtrOffset(data.Layout.NormalOffset))
-	}
-	if data.Layout.HasTangent {
-		gl.EnableVertexAttribArray(TangentAttributeIndex)
-		gl.VertexAttribPointer(TangentAttributeIndex, 3, gl.FLOAT, false, data.Layout.TangentStride, gl.PtrOffset(data.Layout.TangentOffset))
-	}
-	if data.Layout.HasTexCoord {
-		gl.EnableVertexAttribArray(TexCoordAttributeIndex)
-		gl.VertexAttribPointer(TexCoordAttributeIndex, 2, gl.FLOAT, false, data.Layout.TexCoordStride, gl.PtrOffset(data.Layout.TexCoordOffset))
-	}
-	if data.Layout.HasColor {
-		gl.EnableVertexAttribArray(ColorAttributeIndex)
-		gl.VertexAttribPointer(ColorAttributeIndex, 4, gl.FLOAT, false, data.Layout.ColorStride, gl.PtrOffset(data.Layout.ColorOffset))
-	}
-
-	gl.GenBuffers(1, &a.IndexBufferID)
-	gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, a.IndexBufferID)
-	gl.BufferData(gl.ELEMENT_ARRAY_BUFFER, len(data.IndexData), gl.Ptr(data.IndexData), gl.STATIC_DRAW)
-	return nil
 }
 
-func (a *VertexArray) Update(data VertexArrayData) error {
-	gl.BindBuffer(gl.ARRAY_BUFFER, a.VertexBufferID)
-	gl.BufferSubData(gl.ARRAY_BUFFER, 0, len(data.VertexData), gl.Ptr(data.VertexData))
+type VertexArray struct {
+	ID           uint32
+	VertexBuffer *opengl.Buffer
+	IndexBuffer  *opengl.Buffer
+}
+
+func (a *VertexArray) Allocate(data VertexArrayData) error {
+	a.VertexBuffer.Allocate(opengl.BufferAllocateInfo{
+		Dynamic: false,
+		Data:    data.VertexData,
+	})
+	a.IndexBuffer.Allocate(opengl.BufferAllocateInfo{
+		Dynamic: false,
+		Data:    data.IndexData,
+	})
+
+	gl.CreateVertexArrays(1, &a.ID)
+	if data.Layout.HasCoord {
+		gl.EnableVertexArrayAttrib(a.ID, CoordAttributeIndex)
+		gl.VertexArrayVertexBuffer(a.ID, CoordAttributeIndex, a.VertexBuffer.ID(), 0, data.Layout.CoordStride)
+		gl.VertexArrayAttribFormat(a.ID, CoordAttributeIndex, 3, gl.FLOAT, false, uint32(data.Layout.CoordOffset))
+		gl.VertexArrayAttribBinding(a.ID, CoordAttributeIndex, CoordAttributeIndex)
+	}
+	if data.Layout.HasNormal {
+		gl.EnableVertexArrayAttrib(a.ID, NormalAttributeIndex)
+		gl.VertexArrayVertexBuffer(a.ID, NormalAttributeIndex, a.VertexBuffer.ID(), 0, data.Layout.NormalStride)
+		gl.VertexArrayAttribFormat(a.ID, NormalAttributeIndex, 3, gl.FLOAT, false, uint32(data.Layout.NormalOffset))
+		gl.VertexArrayAttribBinding(a.ID, NormalAttributeIndex, NormalAttributeIndex)
+	}
+	if data.Layout.HasTangent {
+		gl.EnableVertexArrayAttrib(a.ID, TangentAttributeIndex)
+		gl.VertexArrayVertexBuffer(a.ID, TangentAttributeIndex, a.VertexBuffer.ID(), 0, data.Layout.TangentStride)
+		gl.VertexArrayAttribFormat(a.ID, TangentAttributeIndex, 3, gl.FLOAT, false, uint32(data.Layout.TangentOffset))
+		gl.VertexArrayAttribBinding(a.ID, TangentAttributeIndex, TangentAttributeIndex)
+	}
+	if data.Layout.HasTexCoord {
+		gl.EnableVertexArrayAttrib(a.ID, TexCoordAttributeIndex)
+		gl.VertexArrayVertexBuffer(a.ID, TexCoordAttributeIndex, a.VertexBuffer.ID(), 0, data.Layout.TexCoordStride)
+		gl.VertexArrayAttribFormat(a.ID, TexCoordAttributeIndex, 2, gl.FLOAT, false, uint32(data.Layout.TexCoordOffset))
+		gl.VertexArrayAttribBinding(a.ID, TexCoordAttributeIndex, TexCoordAttributeIndex)
+	}
+	if data.Layout.HasColor {
+		gl.EnableVertexArrayAttrib(a.ID, ColorAttributeIndex)
+		gl.VertexArrayVertexBuffer(a.ID, ColorAttributeIndex, a.VertexBuffer.ID(), 0, data.Layout.ColorStride)
+		gl.VertexArrayAttribFormat(a.ID, ColorAttributeIndex, 4, gl.FLOAT, false, uint32(data.Layout.ColorOffset))
+		gl.VertexArrayAttribBinding(a.ID, ColorAttributeIndex, ColorAttributeIndex)
+	}
+	gl.VertexArrayElementBuffer(a.ID, a.IndexBuffer.ID())
 	return nil
 }
 
 func (a *VertexArray) Release() error {
-	gl.DeleteBuffers(1, &a.IndexBufferID)
-	gl.DeleteBuffers(1, &a.VertexBufferID)
+	a.IndexBuffer.Release()
+	a.VertexBuffer.Release()
 	gl.DeleteVertexArrays(1, &a.ID)
 	a.ID = 0
-	a.VertexBufferID = 0
-	a.IndexBufferID = 0
 	return nil
 }

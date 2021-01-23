@@ -1,7 +1,7 @@
 package graphics
 
 import (
-	"github.com/go-gl/gl/v4.1-core/gl"
+	"github.com/go-gl/gl/v4.6-core/gl"
 	"github.com/mokiat/gomath/sprec"
 )
 
@@ -152,7 +152,7 @@ func (r *Renderer) renderItem(sequence Sequence, item Item) {
 		gl.Disable(gl.CULL_FACE)
 	}
 
-	gl.UseProgram(item.Program.ID)
+	gl.UseProgram(item.Program.ID())
 
 	textureIndex := uint32(0)
 	if item.Program.MetalnessTwoDTextureLocation != -1 {

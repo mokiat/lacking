@@ -1,10 +1,13 @@
 package preset
 
-import "github.com/mokiat/lacking/graphics"
+import (
+	"github.com/mokiat/lacking/graphics"
+	"github.com/mokiat/lacking/opengl"
+)
 
 func NewExposureProbeShaderData() graphics.ProgramData {
-	vsBuilder := NewShaderBuilder(exposureProbeVertexShaderTemplate)
-	fsBuilder := NewShaderBuilder(exposureProbeFragmentShaderTemplate)
+	vsBuilder := opengl.NewShaderSourceBuilder(exposureProbeVertexShaderTemplate)
+	fsBuilder := opengl.NewShaderSourceBuilder(exposureProbeFragmentShaderTemplate)
 
 	return graphics.ProgramData{
 		VertexShaderSourceCode:   vsBuilder.Build(),
