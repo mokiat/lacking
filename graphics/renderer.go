@@ -157,43 +157,43 @@ func (r *Renderer) renderItem(sequence Sequence, item Item) {
 	textureIndex := uint32(0)
 	if item.Program.MetalnessTwoDTextureLocation != -1 {
 		gl.ActiveTexture(gl.TEXTURE0 + textureIndex)
-		gl.BindTexture(gl.TEXTURE_2D, item.MetalnessTwoDTexture.ID)
+		gl.BindTexture(gl.TEXTURE_2D, item.MetalnessTwoDTexture.ID())
 		gl.Uniform1i(item.Program.MetalnessTwoDTextureLocation, int32(textureIndex))
 		textureIndex++
 	}
 	if item.Program.RoughnessTwoDTextureLocation != -1 {
 		gl.ActiveTexture(gl.TEXTURE0 + textureIndex)
-		gl.BindTexture(gl.TEXTURE_2D, item.RoughnessTwoDTexture.ID)
+		gl.BindTexture(gl.TEXTURE_2D, item.RoughnessTwoDTexture.ID())
 		gl.Uniform1i(item.Program.RoughnessTwoDTextureLocation, int32(textureIndex))
 		textureIndex++
 	}
 	if item.Program.AlbedoTwoDTextureLocation != -1 {
 		gl.ActiveTexture(gl.TEXTURE0 + textureIndex)
-		gl.BindTexture(gl.TEXTURE_2D, item.AlbedoTwoDTexture.ID)
+		gl.BindTexture(gl.TEXTURE_2D, item.AlbedoTwoDTexture.ID())
 		gl.Uniform1i(item.Program.AlbedoTwoDTextureLocation, int32(textureIndex))
 		textureIndex++
 	}
 	if item.Program.AlbedoCubeTextureLocation != -1 {
 		gl.ActiveTexture(gl.TEXTURE0 + textureIndex)
-		gl.BindTexture(gl.TEXTURE_CUBE_MAP, item.AlbedoCubeTexture.ID)
+		gl.BindTexture(gl.TEXTURE_CUBE_MAP, item.AlbedoCubeTexture.ID())
 		gl.Uniform1i(item.Program.AlbedoCubeTextureLocation, int32(textureIndex))
 		textureIndex++
 	}
 	if item.Program.AmbientReflectionTextureLocation != -1 {
 		gl.ActiveTexture(gl.TEXTURE0 + textureIndex)
-		gl.BindTexture(gl.TEXTURE_CUBE_MAP, item.AmbientReflectionTexture.ID)
+		gl.BindTexture(gl.TEXTURE_CUBE_MAP, item.AmbientReflectionTexture.ID())
 		gl.Uniform1i(item.Program.AmbientReflectionTextureLocation, int32(textureIndex))
 		textureIndex++
 	}
 	if item.Program.AmbientRefractionTextureLocation != -1 {
 		gl.ActiveTexture(gl.TEXTURE0 + textureIndex)
-		gl.BindTexture(gl.TEXTURE_CUBE_MAP, item.AmbientRefractionTexture.ID)
+		gl.BindTexture(gl.TEXTURE_CUBE_MAP, item.AmbientRefractionTexture.ID())
 		gl.Uniform1i(item.Program.AmbientRefractionTextureLocation, int32(textureIndex))
 		textureIndex++
 	}
 	if item.Program.NormalTwoDTextureLocation != -1 {
 		gl.ActiveTexture(gl.TEXTURE0 + textureIndex)
-		gl.BindTexture(gl.TEXTURE_2D, item.NormalTwoDTexture.ID)
+		gl.BindTexture(gl.TEXTURE_2D, item.NormalTwoDTexture.ID())
 		gl.Uniform1i(item.Program.NormalTwoDTextureLocation, int32(textureIndex))
 		textureIndex++
 	}

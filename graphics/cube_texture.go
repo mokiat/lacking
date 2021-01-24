@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/go-gl/gl/v4.6-core/gl"
+	"github.com/mokiat/lacking/opengl"
 )
 
 type DataFormat int
@@ -12,10 +13,6 @@ const (
 	DataFormatRGBA8 DataFormat = iota
 	DataFormatRGBA32F
 )
-
-type CubeTexture struct {
-	ID uint32
-}
 
 type CubeTextureData struct {
 	Dimension      int32
@@ -28,43 +25,41 @@ type CubeTextureData struct {
 	BottomSideData []byte
 }
 
-func (t *CubeTexture) Allocate(data CubeTextureData) error {
-	gl.GenTextures(1, &t.ID)
-	gl.BindTexture(gl.TEXTURE_CUBE_MAP, t.ID)
-	gl.TexParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
-	gl.TexParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
-	gl.TexParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
-	gl.TexParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
+type CubeTexture struct {
+	Texture *opengl.CubeTexture
+}
 
-	var (
-		targetFormat  int32
-		format        uint32
-		componentType uint32
-	)
+func (t *CubeTexture) ID() uint32 {
+	return t.Texture.ID()
+}
+
+func (t *CubeTexture) Allocate(data CubeTextureData) error {
+	t.Texture = opengl.NewCubeTexture()
+	textureInfo := opengl.CubeTextureAllocateInfo{
+		Dimension:      data.Dimension,
+		FrontSideData:  data.FrontSideData,
+		BackSideData:   data.BackSideData,
+		LeftSideData:   data.LeftSideData,
+		RightSideData:  data.RightSideData,
+		TopSideData:    data.TopSideData,
+		BottomSideData: data.BottomSideData,
+	}
 	switch data.Format {
 	case DataFormatRGBA8:
-		targetFormat = gl.SRGB8
-		format = gl.RGBA
-		componentType = gl.UNSIGNED_BYTE
+		textureInfo.InternalFormat = gl.SRGB8
+		textureInfo.DataFormat = gl.RGBA
+		textureInfo.DataComponentType = gl.UNSIGNED_BYTE
 	case DataFormatRGBA32F:
-		targetFormat = gl.RGBA32F
-		format = gl.RGBA
-		componentType = gl.FLOAT
+		textureInfo.InternalFormat = gl.RGBA32F
+		textureInfo.DataFormat = gl.RGBA
+		textureInfo.DataComponentType = gl.FLOAT
 	default:
 		return fmt.Errorf("unknown format: %d", data.Format)
 	}
-	gl.TexImage2D(gl.TEXTURE_CUBE_MAP_POSITIVE_X, 0, targetFormat, data.Dimension, data.Dimension, 0, format, componentType, gl.Ptr(data.RightSideData))
-	gl.TexImage2D(gl.TEXTURE_CUBE_MAP_NEGATIVE_X, 0, targetFormat, data.Dimension, data.Dimension, 0, format, componentType, gl.Ptr(data.LeftSideData))
-	gl.TexImage2D(gl.TEXTURE_CUBE_MAP_POSITIVE_Z, 0, targetFormat, data.Dimension, data.Dimension, 0, format, componentType, gl.Ptr(data.FrontSideData))
-	gl.TexImage2D(gl.TEXTURE_CUBE_MAP_NEGATIVE_Z, 0, targetFormat, data.Dimension, data.Dimension, 0, format, componentType, gl.Ptr(data.BackSideData))
-	// Note: Top and Bottom are flipped due to OpenGL's renderman issue
-	gl.TexImage2D(gl.TEXTURE_CUBE_MAP_POSITIVE_Y, 0, targetFormat, data.Dimension, data.Dimension, 0, format, componentType, gl.Ptr(data.BottomSideData))
-	gl.TexImage2D(gl.TEXTURE_CUBE_MAP_NEGATIVE_Y, 0, targetFormat, data.Dimension, data.Dimension, 0, format, componentType, gl.Ptr(data.TopSideData))
-	return nil
+	return t.Texture.Allocate(textureInfo)
+
 }
 
 func (t *CubeTexture) Release() error {
-	gl.DeleteTextures(1, &t.ID)
-	t.ID = 0
-	return nil
+	return t.Texture.Release()
 }
