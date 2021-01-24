@@ -238,7 +238,7 @@ func (r *Renderer) renderItem(sequence Sequence, item Item) {
 		gl.Uniform1f(item.Program.ExposureLocation, item.Exposure)
 	}
 
-	gl.BindVertexArray(item.VertexArray.ID)
+	gl.BindVertexArray(item.VertexArray.ID())
 	gl.LineWidth(2)
 	gl.DrawElements(item.glPrimitive(), item.IndexCount, gl.UNSIGNED_SHORT, gl.PtrOffset(item.IndexOffset))
 }

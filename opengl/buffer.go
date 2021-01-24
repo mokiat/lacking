@@ -6,6 +6,10 @@ import (
 	"github.com/go-gl/gl/v4.6-core/gl"
 )
 
+func NewBuffer() *Buffer {
+	return &Buffer{}
+}
+
 type Buffer struct {
 	id      uint32
 	dynamic bool
