@@ -11,7 +11,7 @@ func NewCubeTexture() *CubeTexture {
 }
 
 type CubeTexture struct {
-	id uint32
+	Texture
 }
 
 func (t *CubeTexture) ID() uint32 {

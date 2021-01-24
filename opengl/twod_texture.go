@@ -11,7 +11,7 @@ func NewTwoDTexture() *TwoDTexture {
 }
 
 type TwoDTexture struct {
-	id uint32
+	Texture
 }
 
 func (t *TwoDTexture) ID() uint32 {
