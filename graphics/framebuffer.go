@@ -1,18 +1,34 @@
 package graphics
 
 import (
-	"fmt"
-
 	"github.com/go-gl/gl/v4.6-core/gl"
+	"github.com/mokiat/lacking/opengl"
 )
 
+type FramebufferData struct {
+	Width               int32
+	Height              int32
+	HasAlbedoAttachment bool
+	UsesHDRAlbedo       bool
+	HasNormalAttachment bool
+	HasDepthAttachment  bool
+}
+
 type Framebuffer struct {
-	ID              uint32
+	Framebuffer *opengl.Framebuffer
+
+	Width           int32
+	Height          int32
 	AlbedoTextureID uint32
 	NormalTextureID uint32
 	DepthTextureID  uint32
-	Width           int32
-	Height          int32
+}
+
+func (b *Framebuffer) ID() uint32 {
+	if b == nil || b.Framebuffer == nil {
+		return 0
+	}
+	return b.Framebuffer.ID()
 }
 
 func (b Framebuffer) HasAlbedoAttachment() bool {
@@ -27,23 +43,12 @@ func (b Framebuffer) HasDepthAttachment() bool {
 	return b.DepthTextureID != 0
 }
 
-type FramebufferData struct {
-	Width               int32
-	Height              int32
-	HasAlbedoAttachment bool
-	UsesHDRAlbedo       bool
-	HasNormalAttachment bool
-	HasDepthAttachment  bool
-}
-
 func (b *Framebuffer) Allocate(data FramebufferData) error {
 	b.Width = data.Width
 	b.Height = data.Height
 
-	gl.GenFramebuffers(1, &b.ID)
-	gl.BindFramebuffer(gl.FRAMEBUFFER, b.ID)
+	framebufferInfo := opengl.FramebufferAllocateInfo{}
 
-	var drawBufferIDS []uint32
 	if data.HasAlbedoAttachment {
 		// R, G, B, METALNESS
 		gl.GenTextures(1, &b.AlbedoTextureID)
@@ -55,8 +60,9 @@ func (b *Framebuffer) Allocate(data FramebufferData) error {
 		} else {
 			gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, data.Width, data.Height, 0, gl.RGBA, gl.UNSIGNED_BYTE, gl.Ptr(nil))
 		}
-		gl.FramebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, b.AlbedoTextureID, 0)
-		drawBufferIDS = append(drawBufferIDS, gl.COLOR_ATTACHMENT0)
+		framebufferInfo.ColorAttachments = append(framebufferInfo.ColorAttachments,
+			opengl.NewTexture(b.AlbedoTextureID),
+		)
 	}
 	if data.HasNormalAttachment {
 		// NORMAL X, NORMAL Y, NORMAL Z, ROUGHNESS
@@ -65,8 +71,9 @@ func (b *Framebuffer) Allocate(data FramebufferData) error {
 		gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
 		gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
 		gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA32F, data.Width, data.Height, 0, gl.RGB, gl.FLOAT, gl.Ptr(nil))
-		gl.FramebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT1, gl.TEXTURE_2D, b.NormalTextureID, 0)
-		drawBufferIDS = append(drawBufferIDS, gl.COLOR_ATTACHMENT1)
+		framebufferInfo.ColorAttachments = append(framebufferInfo.ColorAttachments,
+			opengl.NewTexture(b.NormalTextureID),
+		)
 	}
 	if data.HasDepthAttachment {
 		gl.GenTextures(1, &b.DepthTextureID)
@@ -74,14 +81,11 @@ func (b *Framebuffer) Allocate(data FramebufferData) error {
 		gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
 		gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
 		gl.TexImage2D(gl.TEXTURE_2D, 0, gl.DEPTH_COMPONENT, data.Width, data.Height, 0, gl.DEPTH_COMPONENT, gl.FLOAT, gl.Ptr(nil))
-		gl.FramebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.TEXTURE_2D, b.DepthTextureID, 0)
+		framebufferInfo.DepthAttachment = opengl.NewTexture(b.DepthTextureID)
 	}
-	gl.DrawBuffers(int32(len(drawBufferIDS)), &drawBufferIDS[0])
 
-	if status := gl.CheckFramebufferStatus(gl.FRAMEBUFFER); status != gl.FRAMEBUFFER_COMPLETE {
-		return fmt.Errorf("framebuffer has incomplete status: %d", status)
-	}
-	return nil
+	b.Framebuffer = opengl.NewFramebuffer()
+	return b.Framebuffer.Allocate(framebufferInfo)
 }
 
 func (b *Framebuffer) Release() error {
@@ -100,7 +104,5 @@ func (b *Framebuffer) Release() error {
 		gl.DeleteTextures(1, &b.DepthTextureID)
 		b.DepthTextureID = 0
 	}
-	gl.DeleteFramebuffers(1, &b.ID)
-	b.ID = 0
-	return nil
+	return b.Framebuffer.Release()
 }
