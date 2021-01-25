@@ -169,6 +169,25 @@ func (p *Pipeline) SaveLevelAsset(uri string, level LevelProvider) *SaveLevelAss
 	return action
 }
 
+func (p *Pipeline) OpenUITemplateResource(uri string) *OpenUITemplateResourceAction {
+	action := &OpenUITemplateResourceAction{
+		locator: p.resourceLocator,
+		uri:     uri,
+	}
+	p.scheduleAction(action)
+	return action
+}
+
+func (p *Pipeline) SaveUITemplateAsset(uri string, template UITemplateProvider) *SaveUITemplateAssetAction {
+	action := &SaveUITemplateAssetAction{
+		locator:          p.assetLocator,
+		uri:              uri,
+		templateProvider: template,
+	}
+	p.scheduleAction(action)
+	return action
+}
+
 func (p *Pipeline) scheduleAction(action Action) {
 	p.actions = append(p.actions, action)
 }

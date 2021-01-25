@@ -20,6 +20,10 @@ func (p *Packer) Pipeline(fn func(*Pipeline)) {
 	p.pipelines = append(p.pipelines, pipeline)
 }
 
+func (p *Packer) XPipeline(fn func(*Pipeline)) {
+	// does nothing
+}
+
 func (p *Packer) FPipeline(fn func(*Pipeline)) {
 	pipeline := newPipeline(len(p.pipelines), FileResourceLocator{}, FileAssetLocator{})
 	fn(pipeline)
