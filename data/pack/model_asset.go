@@ -2,14 +2,23 @@ package pack
 
 import (
 	"fmt"
+	"hash"
 
 	"github.com/mokiat/gomath/sprec"
 	"github.com/mokiat/lacking/data"
 	"github.com/mokiat/lacking/data/asset"
 )
 
+func SaveModelAsset(uri string, modelProvider ModelProvider) *SaveModelAssetAction {
+	return &SaveModelAssetAction{
+		uri:           uri,
+		modelProvider: modelProvider,
+	}
+}
+
+var _ Action = (*SaveModelAssetAction)(nil)
+
 type SaveModelAssetAction struct {
-	locator       AssetLocator
 	uri           string
 	modelProvider ModelProvider
 }
@@ -18,8 +27,21 @@ func (a *SaveModelAssetAction) Describe() string {
 	return fmt.Sprintf("save_model_asset(uri: %q)", a.uri)
 }
 
-func (a *SaveModelAssetAction) Run() error {
-	model := a.modelProvider.Model()
+func (a *SaveModelAssetAction) Digest(hasher hash.Hash) error {
+	return WriteCompositeDigest(hasher, "write_model_asset", HashableParams{
+		"uri":   a.uri,
+		"model": a.modelProvider,
+	})
+}
+
+func (a *SaveModelAssetAction) Run(ctx *Context) error {
+	logFinished := ctx.LogAction(a.Describe())
+	defer logFinished()
+
+	model, err := a.modelProvider.Model(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get model: %w", err)
+	}
 
 	nodeMapping := make(map[*Node]int)
 	meshMapping := make(map[*Mesh]int)
@@ -63,16 +85,18 @@ func (a *SaveModelAssetAction) Run() error {
 		visitNode(nil, node)
 	}
 
-	out, err := a.locator.Create(a.uri)
-	if err != nil {
-		return err
-	}
-	defer out.Close()
+	return ctx.IO(func(storage Storage) error {
+		out, err := storage.CreateAsset(a.uri)
+		if err != nil {
+			return err
+		}
+		defer out.Close()
 
-	if err := asset.EncodeModel(out, modelAsset); err != nil {
-		return fmt.Errorf("failed to encode asset: %w", err)
-	}
-	return nil
+		if err := asset.EncodeModel(out, modelAsset); err != nil {
+			return fmt.Errorf("failed to encode asset: %w", err)
+		}
+		return nil
+	})
 }
 
 func meshToAssetMesh(mesh *Mesh) asset.Mesh {

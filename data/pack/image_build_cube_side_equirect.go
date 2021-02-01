@@ -1,26 +1,72 @@
 package pack
 
-import "github.com/mokiat/gomath/dprec"
+import (
+	"fmt"
+	"hash"
+	"sync"
+
+	"github.com/mokiat/gomath/dprec"
+)
+
+func BuildCubeSideFromEquirectangular(side CubeSide, imageProvider ImageProvider) *BuildCubeSideFromEquirectangularAction {
+	return &BuildCubeSideFromEquirectangularAction{
+		side:          side,
+		imageProvider: imageProvider,
+	}
+}
+
+var _ ImageProvider = (*BuildCubeSideFromEquirectangularAction)(nil)
 
 type BuildCubeSideFromEquirectangularAction struct {
 	side          CubeSide
 	imageProvider ImageProvider
-	image         *Image
+
+	resultMutex  sync.Mutex
+	resultDigest []byte
+	result       *Image
 }
 
-func (*BuildCubeSideFromEquirectangularAction) Describe() string {
-	return "build_cube_side_from_equirectangular()"
+func (a *BuildCubeSideFromEquirectangularAction) Describe() string {
+	return fmt.Sprintf("build_cube_side_from_equirectangular(side: %d)", a.side)
 }
 
-func (a *BuildCubeSideFromEquirectangularAction) Image() *Image {
-	if a.image == nil {
-		panic("reading data from unprocessed action")
+func (a *BuildCubeSideFromEquirectangularAction) Digest(hasher hash.Hash) error {
+	return WriteCompositeDigest(hasher, "build_cube_side_from_equirectangular", HashableParams{
+		"side":  int(a.side),
+		"image": a.imageProvider,
+	})
+}
+
+func (a *BuildCubeSideFromEquirectangularAction) Image(ctx *Context) (*Image, error) {
+	logFinished := ctx.LogAction(a.Describe())
+	defer logFinished()
+
+	a.resultMutex.Lock()
+	defer a.resultMutex.Unlock()
+
+	digest, err := CalculateDigest(a)
+	if err != nil {
+		return nil, fmt.Errorf("failed to calculate digest: %w", err)
 	}
-	return a.image
+	if EqualDigests(digest, a.resultDigest) {
+		return a.result, nil
+	}
+
+	result, err := a.run(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	a.result = result
+	a.resultDigest = digest
+	return result, nil
 }
 
-func (a *BuildCubeSideFromEquirectangularAction) Run() error {
-	srcImage := a.imageProvider.Image()
+func (a *BuildCubeSideFromEquirectangularAction) run(ctx *Context) (*Image, error) {
+	srcImage, err := a.imageProvider.Image(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get equirectangular image: %w", err)
+	}
 
 	dimension := srcImage.Height / 2
 	texels := make([][]Color, dimension)
@@ -44,10 +90,9 @@ func (a *BuildCubeSideFromEquirectangularAction) Run() error {
 		uv.Y += deltaV
 	}
 
-	a.image = &Image{
+	return &Image{
 		Width:  dimension,
 		Height: dimension,
 		Texels: texels,
-	}
-	return nil
+	}, nil
 }

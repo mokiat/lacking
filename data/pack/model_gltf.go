@@ -2,42 +2,86 @@ package pack
 
 import (
 	"fmt"
+	"hash"
 	"io"
 	"path"
+	"sync"
 
 	"github.com/mokiat/gomath/sprec"
 	"github.com/mokiat/lacking/data"
 	"github.com/mokiat/lacking/data/gltf"
 )
 
+func OpenGLTFResource(uri string) *OpenGLTFResourceAction {
+	return &OpenGLTFResourceAction{
+		uri: uri,
+	}
+}
+
+var _ ModelProvider = (*OpenGLTFResourceAction)(nil)
+
 type OpenGLTFResourceAction struct {
-	locator ResourceLocator
-	uri     string
-	model   *Model
+	uri string
+
+	resultMutex  sync.Mutex
+	resultDigest []byte
+	result       *Model
 }
 
 func (a *OpenGLTFResourceAction) Describe() string {
 	return fmt.Sprintf("open_gltf_resource(uri: %q)", a.uri)
 }
 
-func (a *OpenGLTFResourceAction) Model() *Model {
-	if a.model == nil {
-		panic("reading data from unprocessed action")
-	}
-	return a.model
+func (a *OpenGLTFResourceAction) Digest(hasher hash.Hash) error {
+	return WriteCompositeDigest(hasher, "read_gltf_resource", HashableParams{
+		"uri": a.uri,
+	})
 }
 
-func (a *OpenGLTFResourceAction) Run() error {
-	rawGLTF, err := gltf.Parse(gltfLocator{
-		locator: a.locator,
-		uri:     a.uri,
-	})
+func (a *OpenGLTFResourceAction) Model(ctx *Context) (*Model, error) {
+	logFinished := ctx.LogAction(a.Describe())
+	defer logFinished()
+
+	a.resultMutex.Lock()
+	defer a.resultMutex.Unlock()
+
+	digest, err := CalculateDigest(a)
 	if err != nil {
-		return fmt.Errorf("failed to parse gltf model %q: %w", a.uri, err)
+		return nil, fmt.Errorf("failed to calculate digest: %w", err)
+	}
+	if EqualDigests(digest, a.resultDigest) {
+		return a.result, nil
+	}
+
+	result, err := a.run(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	a.result = result
+	a.resultDigest = digest
+	return result, nil
+}
+
+func (a *OpenGLTFResourceAction) run(ctx *Context) (*Model, error) {
+	var rawGLTF *gltf.Document
+	readGLTF := func(storage Storage) error {
+		readGLTF, err := gltf.Parse(gltfLocator{
+			storage: storage,
+			uri:     a.uri,
+		})
+		if err != nil {
+			return fmt.Errorf("failed to parse gltf model %q: %w", a.uri, err)
+		}
+		rawGLTF = readGLTF
+		return nil
+	}
+	if err := ctx.IO(readGLTF); err != nil {
+		return nil, err
 	}
 	gltfDoc := GLTFDocument{rawGLTF}
 
-	a.model = &Model{}
+	model := &Model{}
 
 	// build meshes
 	meshMapping := make(map[int]*Mesh)
@@ -162,7 +206,7 @@ func (a *OpenGLTFResourceAction) Run() error {
 		}
 
 		meshMapping[i] = mesh
-		a.model.Meshes = append(a.model.Meshes, mesh)
+		model.Meshes = append(model.Meshes, mesh)
 	}
 
 	// build nodes
@@ -183,23 +227,23 @@ func (a *OpenGLTFResourceAction) Run() error {
 		return node
 	}
 	for _, node := range gltfDoc.RootNodes() {
-		a.model.RootNodes = append(a.model.RootNodes, visitNode(node))
+		model.RootNodes = append(model.RootNodes, visitNode(node))
 	}
 
-	return nil
+	return model, nil
 }
 
 type gltfLocator struct {
-	locator ResourceLocator
+	storage Storage
 	uri     string
 }
 
 func (l gltfLocator) Open() (io.ReadCloser, error) {
-	return l.locator.Open(l.uri)
+	return l.storage.OpenResource(l.uri)
 }
 
 func (l gltfLocator) OpenRelative(uri string) (io.ReadCloser, error) {
-	return l.locator.Open(path.Join(path.Dir(l.uri), uri))
+	return l.storage.OpenResource(path.Join(path.Dir(l.uri), uri))
 }
 
 type GLTFDocument struct {

@@ -1,7 +1,7 @@
 package pack
 
 type UITemplateProvider interface {
-	Template() *UITemplate
+	Template(ctx *Context) (*UITemplate, error)
 }
 
 type UITemplate struct {

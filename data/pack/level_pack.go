@@ -3,7 +3,7 @@ package pack
 import "github.com/mokiat/gomath/sprec"
 
 type LevelProvider interface {
-	Level() *Level
+	Level(ctx *Context) (*Level, error)
 }
 
 type Level struct {

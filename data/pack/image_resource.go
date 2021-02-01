@@ -2,42 +2,86 @@ package pack
 
 import (
 	"fmt"
+	"hash"
 	"image"
 	_ "image/jpeg"
 	_ "image/png"
+	"sync"
 
 	"github.com/mdouchement/hdr"
 	_ "github.com/mdouchement/hdr/codec/rgbe"
 	_ "golang.org/x/image/tiff"
 )
 
+func OpenImageResource(uri string) *OpenImageResourceAction {
+	return &OpenImageResourceAction{
+		uri: uri,
+	}
+}
+
+var _ ImageProvider = (*OpenImageResourceAction)(nil)
+
 type OpenImageResourceAction struct {
-	locator ResourceLocator
-	uri     string
-	image   *Image
+	uri string
+
+	resultMutex  sync.Mutex
+	resultDigest []byte
+	result       *Image
 }
 
 func (a *OpenImageResourceAction) Describe() string {
 	return fmt.Sprintf("open_image_resource(uri: %q)", a.uri)
 }
 
-func (a *OpenImageResourceAction) Image() *Image {
-	if a.image == nil {
-		panic("reading data from unprocessed action")
-	}
-	return a.image
+func (a *OpenImageResourceAction) Digest(hasher hash.Hash) error {
+	return WriteCompositeDigest(hasher, "open_image_resource", HashableParams{
+		"uri": a.uri,
+	})
 }
 
-func (a *OpenImageResourceAction) Run() error {
-	in, err := a.locator.Open(a.uri)
-	if err != nil {
-		return fmt.Errorf("failed to open image resource: %w", err)
-	}
-	defer in.Close()
+func (a *OpenImageResourceAction) Image(ctx *Context) (*Image, error) {
+	logFinished := ctx.LogAction(a.Describe())
+	defer logFinished()
 
-	img, _, err := image.Decode(in)
+	a.resultMutex.Lock()
+	defer a.resultMutex.Unlock()
+
+	digest, err := CalculateDigest(a)
 	if err != nil {
-		return fmt.Errorf("failed to decode image: %w", err)
+		return nil, fmt.Errorf("failed to calculate digest: %w", err)
+	}
+	if EqualDigests(digest, a.resultDigest) {
+		return a.result, nil
+	}
+
+	result, err := a.run(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	a.result = result
+	a.resultDigest = digest
+	return result, nil
+}
+
+func (a *OpenImageResourceAction) run(ctx *Context) (*Image, error) {
+	var img image.Image
+	readImage := func(storage Storage) error {
+		in, err := storage.OpenResource(a.uri)
+		if err != nil {
+			return err
+		}
+		defer in.Close()
+
+		readImg, _, err := image.Decode(in)
+		if err != nil {
+			return fmt.Errorf("failed to decode image: %w", err)
+		}
+		img = readImg
+		return nil
+	}
+	if err := ctx.IO(readImage); err != nil {
+		return nil, err
 	}
 
 	imgStartX := img.Bounds().Min.X
@@ -68,10 +112,9 @@ func (a *OpenImageResourceAction) Run() error {
 			}
 		}
 	}
-	a.image = &Image{
+	return &Image{
 		Width:  width,
 		Height: height,
 		Texels: texels,
-	}
-	return nil
+	}, nil
 }

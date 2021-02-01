@@ -2,40 +2,79 @@ package pack
 
 import (
 	"fmt"
+	"hash"
+	"sync"
 
 	"github.com/mokiat/gomath/dprec"
 )
 
+func BuildIrradianceCubeImage(imageProvider CubeImageProvider) *BuildIrradianceCubeImageAction {
+	return &BuildIrradianceCubeImageAction{
+		imageProvider: imageProvider,
+		sampleCount:   10,
+	}
+}
+
+var _ CubeImageProvider = (*BuildIrradianceCubeImageAction)(nil)
+
 type BuildIrradianceCubeImageAction struct {
 	imageProvider CubeImageProvider
 	sampleCount   int
-	image         *CubeImage
+
+	resultMutex  sync.Mutex
+	resultDigest []byte
+	result       *CubeImage
 }
 
-type BuildIrradianceCubeImageOption func(a *BuildIrradianceCubeImageAction)
-
-func WithSampleCount(count int) BuildIrradianceCubeImageOption {
-	return func(a *BuildIrradianceCubeImageAction) {
-		a.sampleCount = count
-	}
+func (a *BuildIrradianceCubeImageAction) WithSampleCount(count int) *BuildIrradianceCubeImageAction {
+	a.sampleCount = count
+	return a
 }
 
 func (a *BuildIrradianceCubeImageAction) Describe() string {
 	return fmt.Sprintf("build_irradiance_cube_image(samples: %d)", a.sampleCount)
 }
 
-func (a *BuildIrradianceCubeImageAction) CubeImage() *CubeImage {
-	if a.image == nil {
-		panic("reading data from unprocessed action")
-	}
-	return a.image
+func (a *BuildIrradianceCubeImageAction) Digest(hasher hash.Hash) error {
+	return WriteCompositeDigest(hasher, "build_irradiance_cube_image", HashableParams{
+		"sample_count": a.sampleCount,
+		"image":        a.imageProvider,
+	})
 }
 
-func (a *BuildIrradianceCubeImageAction) Run() error {
-	srcImage := a.imageProvider.CubeImage()
+func (a *BuildIrradianceCubeImageAction) CubeImage(ctx *Context) (*CubeImage, error) {
+	logFinished := ctx.LogAction(a.Describe())
+	defer logFinished()
+
+	a.resultMutex.Lock()
+	defer a.resultMutex.Unlock()
+
+	digest, err := CalculateDigest(a)
+	if err != nil {
+		return nil, fmt.Errorf("failed to calculate digest: %w", err)
+	}
+	if EqualDigests(digest, a.resultDigest) {
+		return a.result, nil
+	}
+
+	result, err := a.run(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	a.result = result
+	a.resultDigest = digest
+	return result, nil
+}
+
+func (a *BuildIrradianceCubeImageAction) run(ctx *Context) (*CubeImage, error) {
+	srcImage, err := a.imageProvider.CubeImage(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get cube image: %w", err)
+	}
 	dimension := srcImage.Dimension
 
-	a.image = &CubeImage{
+	image := &CubeImage{
 		Dimension: dimension,
 	}
 	for i := range srcImage.Sides {
@@ -93,9 +132,9 @@ func (a *BuildIrradianceCubeImageAction) Run() error {
 			uv.Y += deltaV
 		}
 
-		a.image.Sides[i] = CubeImageSide{
+		image.Sides[i] = CubeImageSide{
 			Texels: texels,
 		}
 	}
-	return nil
+	return image, nil
 }

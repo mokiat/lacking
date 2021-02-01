@@ -2,12 +2,21 @@ package pack
 
 import (
 	"fmt"
+	"hash"
 
 	"github.com/mokiat/lacking/data/asset"
 )
 
+func SaveTwoDTextureAsset(uri string, imageProvider ImageProvider) *SaveTwoDTextureAssetAction {
+	return &SaveTwoDTextureAssetAction{
+		uri:           uri,
+		imageProvider: imageProvider,
+	}
+}
+
+var _ Action = (*SaveTwoDTextureAssetAction)(nil)
+
 type SaveTwoDTextureAssetAction struct {
-	locator       AssetLocator
 	uri           string
 	imageProvider ImageProvider
 }
@@ -16,48 +25,82 @@ func (a *SaveTwoDTextureAssetAction) Describe() string {
 	return fmt.Sprintf("save_twod_texture_asset(uri: %q)", a.uri)
 }
 
-func (a *SaveTwoDTextureAssetAction) Run() error {
-	image := a.imageProvider.Image()
+func (a *SaveTwoDTextureAssetAction) Digest(hasher hash.Hash) error {
+	return WriteCompositeDigest(hasher, "save_twod_texture_asset", HashableParams{
+		"uri":   a.uri,
+		"image": a.imageProvider,
+	})
+}
 
+func (a *SaveTwoDTextureAssetAction) Run(ctx *Context) error {
+	logFinished := ctx.LogAction(a.Describe())
+	defer logFinished()
+
+	image, err := a.imageProvider.Image(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get image: %w", err)
+	}
 	textureAsset := &asset.TwoDTexture{
 		Width:  uint16(image.Width),
 		Height: uint16(image.Height),
 		Data:   image.RGBA8Data(),
 	}
 
-	out, err := a.locator.Create(a.uri)
-	if err != nil {
-		return err
-	}
-	defer out.Close()
+	return ctx.IO(func(storage Storage) error {
+		out, err := storage.CreateAsset(a.uri)
+		if err != nil {
+			return err
+		}
+		defer out.Close()
 
-	if err := asset.EncodeTwoDTexture(out, textureAsset); err != nil {
-		return fmt.Errorf("failed to encode asset: %w", err)
-	}
-	return nil
+		if err := asset.EncodeTwoDTexture(out, textureAsset); err != nil {
+			return fmt.Errorf("failed to encode asset: %w", err)
+		}
+		return nil
+	})
 }
 
-type SaveCubeTextureAction struct {
-	locator       AssetLocator
+func SaveCubeTextureAsset(uri string, imageProvider CubeImageProvider) *SaveCubeTextureAssetAction {
+	return &SaveCubeTextureAssetAction{
+		uri:           uri,
+		imageProvider: imageProvider,
+		format:        asset.DataFormatRGBA8,
+	}
+}
+
+var _ Action = (*SaveCubeTextureAssetAction)(nil)
+
+type SaveCubeTextureAssetAction struct {
 	uri           string
 	imageProvider CubeImageProvider
 	format        asset.DataFormat
 }
 
-type SaveCubeTextureOption func(a *SaveCubeTextureAction)
+func (a *SaveCubeTextureAssetAction) WithFormat(format asset.DataFormat) *SaveCubeTextureAssetAction {
+	a.format = format
+	return a
+}
 
-func WithFormat(format asset.DataFormat) SaveCubeTextureOption {
-	return func(a *SaveCubeTextureAction) {
-		a.format = format
+func (a *SaveCubeTextureAssetAction) Describe() string {
+	return fmt.Sprintf("save_cube_texture_asset(uri: %q)", a.uri)
+}
+
+func (a *SaveCubeTextureAssetAction) Digest(hasher hash.Hash) error {
+	return WriteCompositeDigest(hasher, "save_cube_texture_asset", HashableParams{
+		"uri":    a.uri,
+		"image":  a.imageProvider,
+		"format": int(a.format),
+	})
+}
+
+func (a *SaveCubeTextureAssetAction) Run(ctx *Context) error {
+	logFinished := ctx.LogAction(a.Describe())
+	defer logFinished()
+
+	texture, err := a.imageProvider.CubeImage(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get cube image: %w", err)
 	}
-}
-
-func (a *SaveCubeTextureAction) Describe() string {
-	return fmt.Sprintf("save_cube_texture(uri: %q)", a.uri)
-}
-
-func (a *SaveCubeTextureAction) Run() error {
-	texture := a.imageProvider.CubeImage()
 
 	textureData := func(side CubeSide) []byte {
 		switch a.format {
@@ -93,14 +136,16 @@ func (a *SaveCubeTextureAction) Run() error {
 		Data: textureData(CubeSideBottom),
 	}
 
-	out, err := a.locator.Create(a.uri)
-	if err != nil {
-		return err
-	}
-	defer out.Close()
+	return ctx.IO(func(storage Storage) error {
+		out, err := storage.CreateAsset(a.uri)
+		if err != nil {
+			return err
+		}
+		defer out.Close()
 
-	if err := asset.EncodeCubeTexture(out, textureAsset); err != nil {
-		return fmt.Errorf("failed to encode asset: %w", err)
-	}
-	return nil
+		if err := asset.EncodeCubeTexture(out, textureAsset); err != nil {
+			return fmt.Errorf("failed to encode asset: %w", err)
+		}
+		return nil
+	})
 }

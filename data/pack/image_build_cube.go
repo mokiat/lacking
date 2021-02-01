@@ -1,97 +1,148 @@
 package pack
 
-import "fmt"
+import (
+	"fmt"
+	"hash"
+	"sync"
+)
+
+func BuildCubeImage() *BuildCubeImageAction {
+	return &BuildCubeImageAction{}
+}
+
+var _ CubeImageProvider = (*BuildCubeImageAction)(nil)
 
 type BuildCubeImageAction struct {
-	frontImage  ImageProvider
-	rearImage   ImageProvider
-	leftImage   ImageProvider
-	rightImage  ImageProvider
-	topImage    ImageProvider
-	bottomImage ImageProvider
-	dimension   int
-	image       *CubeImage
+	frontImageProvider  ImageProvider
+	rearImageProvider   ImageProvider
+	leftImageProvider   ImageProvider
+	rightImageProvider  ImageProvider
+	topImageProvider    ImageProvider
+	bottomImageProvider ImageProvider
+	dimension           int
+
+	resultMutex  sync.Mutex
+	resultDigest []byte
+	result       *CubeImage
 }
 
-type BuildCubeImageOption func(a *BuildCubeImageAction)
+func (a *BuildCubeImageAction) WithDimension(dimension int) *BuildCubeImageAction {
+	a.dimension = dimension
+	return a
+}
 
-func WithFrontImage(image ImageProvider) BuildCubeImageOption {
-	return func(a *BuildCubeImageAction) {
-		a.frontImage = image
+func (a *BuildCubeImageAction) WithFrontImage(imageProvider ImageProvider) *BuildCubeImageAction {
+	a.frontImageProvider = imageProvider
+	return a
+}
+
+func (a *BuildCubeImageAction) WithRearImage(imageProvider ImageProvider) *BuildCubeImageAction {
+	a.rearImageProvider = imageProvider
+	return a
+}
+
+func (a *BuildCubeImageAction) WithLeftImage(imageProvider ImageProvider) *BuildCubeImageAction {
+	a.leftImageProvider = imageProvider
+	return a
+}
+
+func (a *BuildCubeImageAction) WithRightImage(imageProvider ImageProvider) *BuildCubeImageAction {
+	a.rightImageProvider = imageProvider
+	return a
+}
+
+func (a *BuildCubeImageAction) WithTopImage(imageProvider ImageProvider) *BuildCubeImageAction {
+	a.topImageProvider = imageProvider
+	return a
+}
+
+func (a *BuildCubeImageAction) WithBottomImage(imageProvider ImageProvider) *BuildCubeImageAction {
+	a.bottomImageProvider = imageProvider
+	return a
+}
+
+func (a *BuildCubeImageAction) Describe() string {
+	return "build_cube_image"
+}
+
+func (a *BuildCubeImageAction) Digest(hasher hash.Hash) error {
+	return WriteCompositeDigest(hasher, "build_cube_image", HashableParams{
+		"front_image":  a.frontImageProvider,
+		"rear_image":   a.rearImageProvider,
+		"left_image":   a.leftImageProvider,
+		"right_image":  a.rightImageProvider,
+		"top_image":    a.topImageProvider,
+		"bottom_image": a.bottomImageProvider,
+	})
+}
+
+func (a *BuildCubeImageAction) CubeImage(ctx *Context) (*CubeImage, error) {
+	logFinished := ctx.LogAction(a.Describe())
+	defer logFinished()
+
+	a.resultMutex.Lock()
+	defer a.resultMutex.Unlock()
+
+	digest, err := CalculateDigest(a)
+	if err != nil {
+		return nil, fmt.Errorf("failed to calculate digest: %w", err)
 	}
-}
-
-func WithRearImage(image ImageProvider) BuildCubeImageOption {
-	return func(a *BuildCubeImageAction) {
-		a.rearImage = image
+	if EqualDigests(digest, a.resultDigest) {
+		return a.result, nil
 	}
-}
 
-func WithLeftImage(image ImageProvider) BuildCubeImageOption {
-	return func(a *BuildCubeImageAction) {
-		a.leftImage = image
+	result, err := a.run(ctx)
+	if err != nil {
+		return nil, err
 	}
+
+	a.result = result
+	a.resultDigest = digest
+	return result, nil
 }
 
-func WithRightImage(image ImageProvider) BuildCubeImageOption {
-	return func(a *BuildCubeImageAction) {
-		a.rightImage = image
+func (a *BuildCubeImageAction) run(ctx *Context) (*CubeImage, error) {
+	frontImage, err := a.frontImageProvider.Image(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get front image: %w", err)
 	}
-}
-
-func WithTopImage(image ImageProvider) BuildCubeImageOption {
-	return func(a *BuildCubeImageAction) {
-		a.topImage = image
-	}
-}
-
-func WithBottomImage(image ImageProvider) BuildCubeImageOption {
-	return func(a *BuildCubeImageAction) {
-		a.bottomImage = image
-	}
-}
-
-func WithDimension(dimension int) BuildCubeImageOption {
-	return func(a *BuildCubeImageAction) {
-		a.dimension = dimension
-	}
-}
-
-func (*BuildCubeImageAction) Describe() string {
-	return "build_cube_image()"
-}
-
-func (a *BuildCubeImageAction) CubeImage() *CubeImage {
-	if a.image == nil {
-		panic("reading data from unprocessed action")
-	}
-	return a.image
-}
-
-func (a *BuildCubeImageAction) Run() error {
-	frontImage := a.frontImage.Image()
 	if !frontImage.IsSquare() {
-		return fmt.Errorf("front image is not a square (%d, %d)", frontImage.Width, frontImage.Height)
+		return nil, fmt.Errorf("front image is not a square (%d, %d)", frontImage.Width, frontImage.Height)
 	}
-	rearImage := a.rearImage.Image()
+	rearImage, err := a.rearImageProvider.Image(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get rear image: %w", err)
+	}
 	if !rearImage.IsSquare() {
-		return fmt.Errorf("rear image is not a square (%d, %d)", rearImage.Width, rearImage.Height)
+		return nil, fmt.Errorf("rear image is not a square (%d, %d)", rearImage.Width, rearImage.Height)
 	}
-	leftImage := a.leftImage.Image()
+	leftImage, err := a.leftImageProvider.Image(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get left image: %w", err)
+	}
 	if !leftImage.IsSquare() {
-		return fmt.Errorf("left image is not a square (%d, %d)", leftImage.Width, leftImage.Height)
+		return nil, fmt.Errorf("left image is not a square (%d, %d)", leftImage.Width, leftImage.Height)
 	}
-	rightImage := a.rightImage.Image()
+	rightImage, err := a.rightImageProvider.Image(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get right image: %w", err)
+	}
 	if !rightImage.IsSquare() {
-		return fmt.Errorf("right image is not a square (%d, %d)", rightImage.Width, rightImage.Height)
+		return nil, fmt.Errorf("right image is not a square (%d, %d)", rightImage.Width, rightImage.Height)
 	}
-	topImage := a.topImage.Image()
+	topImage, err := a.topImageProvider.Image(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get top image: %w", err)
+	}
 	if !topImage.IsSquare() {
-		return fmt.Errorf("top image is not a square (%d, %d)", topImage.Width, topImage.Height)
+		return nil, fmt.Errorf("top image is not a square (%d, %d)", topImage.Width, topImage.Height)
 	}
-	bottomImage := a.bottomImage.Image()
+	bottomImage, err := a.bottomImageProvider.Image(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get bottom image: %w", err)
+	}
 	if !bottomImage.IsSquare() {
-		return fmt.Errorf("bottom image is not a square (%d, %d)", bottomImage.Width, bottomImage.Height)
+		return nil, fmt.Errorf("bottom image is not a square (%d, %d)", bottomImage.Width, bottomImage.Height)
 	}
 
 	if a.dimension > 0 {
@@ -108,30 +159,30 @@ func (a *BuildCubeImageAction) Run() error {
 			frontImage.Width == topImage.Width &&
 			frontImage.Width == bottomImage.Width
 		if !areSameDimension {
-			return fmt.Errorf("images are not of the same size")
+			return nil, fmt.Errorf("images are not of the same size")
 		}
 	}
 
-	a.image = &CubeImage{
+	image := &CubeImage{
 		Dimension: frontImage.Width,
 	}
-	a.image.Sides[CubeSideFront] = CubeImageSide{
+	image.Sides[CubeSideFront] = CubeImageSide{
 		Texels: frontImage.Texels,
 	}
-	a.image.Sides[CubeSideRear] = CubeImageSide{
+	image.Sides[CubeSideRear] = CubeImageSide{
 		Texels: rearImage.Texels,
 	}
-	a.image.Sides[CubeSideLeft] = CubeImageSide{
+	image.Sides[CubeSideLeft] = CubeImageSide{
 		Texels: leftImage.Texels,
 	}
-	a.image.Sides[CubeSideRight] = CubeImageSide{
+	image.Sides[CubeSideRight] = CubeImageSide{
 		Texels: rightImage.Texels,
 	}
-	a.image.Sides[CubeSideTop] = CubeImageSide{
+	image.Sides[CubeSideTop] = CubeImageSide{
 		Texels: topImage.Texels,
 	}
-	a.image.Sides[CubeSideBottom] = CubeImageSide{
+	image.Sides[CubeSideBottom] = CubeImageSide{
 		Texels: bottomImage.Texels,
 	}
-	return nil
+	return image, nil
 }

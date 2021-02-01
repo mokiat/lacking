@@ -2,6 +2,7 @@ package pack
 
 import (
 	"fmt"
+	"hash"
 	"math"
 
 	"github.com/mokiat/gomath/dprec"
@@ -16,7 +17,8 @@ type Color struct {
 }
 
 type ImageProvider interface {
-	Image() *Image
+	Image(ctx *Context) (*Image, error)
+	Digest(hasher hash.Hash) error
 }
 
 type Image struct {
@@ -131,18 +133,8 @@ const (
 )
 
 type CubeImageProvider interface {
-	CubeImage() *CubeImage
-}
-
-type CubeImage struct {
-	Dimension int
-	Sides     [6]CubeImageSide
-}
-
-func (s CubeImage) TexelUVW(uvw dprec.Vec3) Color {
-	side, uv := UVWToCubeUV(uvw)
-	image := s.SideToImage(side)
-	return image.TexelUV(uv)
+	CubeImage(ctx *Context) (*CubeImage, error)
+	Digest(hasher hash.Hash) error
 }
 
 type CubeImageSide struct {
@@ -153,6 +145,17 @@ func (s CubeImageSide) Texel(x, y int) Color {
 	return s.Texels[y][x]
 }
 
+type CubeImage struct {
+	Dimension int
+	Sides     [6]CubeImageSide
+}
+
+func (i *CubeImage) TexelUVW(uvw dprec.Vec3) Color {
+	side, uv := UVWToCubeUV(uvw)
+	image := i.SideToImage(side)
+	return image.TexelUV(uv)
+}
+
 func (i *CubeImage) SideToImage(side CubeSide) *Image {
 	return &Image{
 		Width:  i.Dimension,
@@ -161,21 +164,21 @@ func (i *CubeImage) SideToImage(side CubeSide) *Image {
 	}
 }
 
-func (t *CubeImage) Scale(newDimension int) *CubeImage {
+func (i *CubeImage) Scale(newDimension int) *CubeImage {
 	result := &CubeImage{
 		Dimension: newDimension,
 	}
-	for i := range t.Sides {
-		tmpImage := t.SideToImage(CubeSide(i))
+	for j := range i.Sides {
+		tmpImage := i.SideToImage(CubeSide(j))
 		scaledImage := tmpImage.Scale(newDimension, newDimension)
-		result.Sides[i] = CubeImageSide{
+		result.Sides[j] = CubeImageSide{
 			Texels: scaledImage.Texels,
 		}
 	}
 	return result
 }
 
-func (t *CubeImage) RGBA8Data(side CubeSide) []byte {
+func (i *CubeImage) RGBA8Data(side CubeSide) []byte {
 	// TODO: Move to math
 	clampComponent := func(value float64) float64 {
 		if value > 1.0 {
@@ -186,12 +189,12 @@ func (t *CubeImage) RGBA8Data(side CubeSide) []byte {
 		}
 		return value
 	}
-	data := make([]byte, 4*t.Dimension*t.Dimension)
+	data := make([]byte, 4*i.Dimension*i.Dimension)
 	offset := 0
-	texSide := t.Sides[side]
-	for y := 0; y < t.Dimension; y++ {
-		for x := 0; x < t.Dimension; x++ {
-			texel := texSide.Texel(x, t.Dimension-y-1)
+	texSide := i.Sides[side]
+	for y := 0; y < i.Dimension; y++ {
+		for x := 0; x < i.Dimension; x++ {
+			texel := texSide.Texel(x, i.Dimension-y-1)
 			data[offset+0] = byte(255.0 * clampComponent(texel.R))
 			data[offset+1] = byte(255.0 * clampComponent(texel.G))
 			data[offset+2] = byte(255.0 * clampComponent(texel.B))
@@ -202,13 +205,13 @@ func (t *CubeImage) RGBA8Data(side CubeSide) []byte {
 	return data
 }
 
-func (t *CubeImage) RGBA32FData(side CubeSide) []byte {
-	data := data.Buffer(make([]byte, 4*4*t.Dimension*t.Dimension))
+func (i *CubeImage) RGBA32FData(side CubeSide) []byte {
+	data := data.Buffer(make([]byte, 4*4*i.Dimension*i.Dimension))
 	offset := 0
-	texSide := t.Sides[side]
-	for y := 0; y < t.Dimension; y++ {
-		for x := 0; x < t.Dimension; x++ {
-			texel := texSide.Texel(x, t.Dimension-y-1)
+	texSide := i.Sides[side]
+	for y := 0; y < i.Dimension; y++ {
+		for x := 0; x < i.Dimension; x++ {
+			texel := texSide.Texel(x, i.Dimension-y-1)
 			data.SetFloat32(offset+0, float32(texel.R))
 			data.SetFloat32(offset+4, float32(texel.G))
 			data.SetFloat32(offset+8, float32(texel.B))

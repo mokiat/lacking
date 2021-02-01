@@ -8,4 +8,5 @@ require (
 	github.com/mdouchement/hdr v0.2.3
 	github.com/mokiat/gomath v0.0.0-20200423212154-8a093a9f6eff
 	golang.org/x/image v0.0.0-20201208152932-35266b937fa6
+	golang.org/x/sync v0.0.0-20180314180146-1d60e4601c6f
 )

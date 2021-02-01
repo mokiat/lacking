@@ -2,41 +2,85 @@ package pack
 
 import (
 	"fmt"
+	"hash"
+	"sync"
 
 	"github.com/mokiat/gomath/sprec"
 	"github.com/mokiat/lacking/data/json"
 )
 
+func OpenLevelResource(uri string) *OpenLevelResourceAction {
+	return &OpenLevelResourceAction{
+		uri: uri,
+	}
+}
+
+var _ LevelProvider = (*OpenLevelResourceAction)(nil)
+
 type OpenLevelResourceAction struct {
-	locator ResourceLocator
-	uri     string
-	level   *Level
+	uri string
+
+	resultMutex  sync.Mutex
+	resultDigest []byte
+	result       *Level
 }
 
 func (a *OpenLevelResourceAction) Describe() string {
 	return fmt.Sprintf("open_level_resource(uri: %q)", a.uri)
 }
 
-func (a *OpenLevelResourceAction) Level() *Level {
-	if a.level == nil {
-		panic("reading data from unprocessed action")
-	}
-	return a.level
+func (a *OpenLevelResourceAction) Digest(hasher hash.Hash) error {
+	return WriteCompositeDigest(hasher, "open_level_resource", HashableParams{
+		"uri": a.uri,
+	})
 }
 
-func (a *OpenLevelResourceAction) Run() error {
-	in, err := a.locator.Open(a.uri)
-	if err != nil {
-		return fmt.Errorf("failed to open level resource %q: %w", a.uri, err)
-	}
-	defer in.Close()
+func (a *OpenLevelResourceAction) Level(ctx *Context) (*Level, error) {
+	logFinished := ctx.LogAction(a.Describe())
+	defer logFinished()
 
-	jsonLevel, err := json.NewLevelDecoder().Decode(in)
+	a.resultMutex.Lock()
+	defer a.resultMutex.Unlock()
+
+	digest, err := CalculateDigest(a)
 	if err != nil {
-		return fmt.Errorf("failed to decode level %q: %w", a.uri, err)
+		return nil, fmt.Errorf("failed to calculate digest: %w", err)
+	}
+	if EqualDigests(digest, a.resultDigest) {
+		return a.result, nil
 	}
 
-	a.level = &Level{
+	result, err := a.run(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	a.result = result
+	a.resultDigest = digest
+	return result, nil
+}
+
+func (a *OpenLevelResourceAction) run(ctx *Context) (*Level, error) {
+	var jsonLevel *json.Level
+	readJSONLevel := func(storage Storage) error {
+		in, err := storage.OpenResource(a.uri)
+		if err != nil {
+			return err
+		}
+		defer in.Close()
+
+		readJSONLevel, err := json.NewLevelDecoder().Decode(in)
+		if err != nil {
+			return fmt.Errorf("failed to decode level %q: %w", a.uri, err)
+		}
+		jsonLevel = readJSONLevel
+		return nil
+	}
+	if err := ctx.IO(readJSONLevel); err != nil {
+		return nil, err
+	}
+
+	level := &Level{
 		SkyboxTexture:            jsonLevel.SkyboxTexture,
 		AmbientReflectionTexture: jsonLevel.AmbientReflectionTexture,
 		AmbientRefractionTexture: jsonLevel.AmbientRefractionTexture,
@@ -56,7 +100,7 @@ func (a *OpenLevelResourceAction) Run() error {
 				C: sprec.NewVec3(jsonTriangle[2][0], jsonTriangle[2][1], jsonTriangle[2][2]),
 			}
 		}
-		a.level.CollisionMeshes[i] = collisionMesh
+		level.CollisionMeshes[i] = collisionMesh
 	}
 
 	for i, jsonStaticMesh := range jsonLevel.StaticMeshes {
@@ -117,11 +161,11 @@ func (a *OpenLevelResourceAction) Run() error {
 			}
 		}
 
-		a.level.StaticMeshes[i] = staticMesh
+		level.StaticMeshes[i] = staticMesh
 	}
 
 	for i, jsonStaticEntity := range jsonLevel.StaticEntities {
-		a.level.StaticEntities[i] = LevelEntity{
+		level.StaticEntities[i] = LevelEntity{
 			Model: jsonStaticEntity.Model,
 			Matrix: sprec.NewMat4(
 				jsonStaticEntity.Matrix[0], jsonStaticEntity.Matrix[4], jsonStaticEntity.Matrix[8], jsonStaticEntity.Matrix[12],
@@ -132,5 +176,5 @@ func (a *OpenLevelResourceAction) Run() error {
 		}
 	}
 
-	return nil
+	return level, nil
 }

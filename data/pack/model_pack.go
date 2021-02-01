@@ -1,9 +1,14 @@
 package pack
 
-import "github.com/mokiat/gomath/sprec"
+import (
+	"hash"
+
+	"github.com/mokiat/gomath/sprec"
+)
 
 type ModelProvider interface {
-	Model() *Model
+	Model(ctx *Context) (*Model, error)
+	Digest(hasher hash.Hash) error
 }
 
 type Model struct {
