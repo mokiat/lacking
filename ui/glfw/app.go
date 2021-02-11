@@ -2,21 +2,27 @@ package glfw
 
 import (
 	"fmt"
+	"log"
 	"runtime"
+	"time"
 
-	"github.com/go-gl/gl/v4.1-core/gl"
+	"github.com/go-gl/gl/v4.6-core/gl"
 	"github.com/go-gl/glfw/v3.3/glfw"
 
+	"github.com/mokiat/lacking/data/asset"
+	openglui "github.com/mokiat/lacking/opengl/ui"
 	"github.com/mokiat/lacking/ui"
-	"github.com/mokiat/lacking/ui/glfw/opengl"
 )
 
 type canvas interface {
 	ui.Canvas
 	Init() error
+	Release() error
 	Resize(size ui.Size)
 	ResizeFramebuffer(size ui.Size)
 	Reset()
+	Flush()
+	CreateImage(data asset.TwoDTexture) (ui.Image, error)
 }
 
 type Bootstrap interface {
@@ -39,7 +45,7 @@ func RunApplication(cfg *AppConfig, bootstrap Bootstrap) error {
 	defer glfw.Terminate()
 
 	glfw.WindowHint(glfw.ContextVersionMajor, 4)
-	glfw.WindowHint(glfw.ContextVersionMinor, 1)
+	glfw.WindowHint(glfw.ContextVersionMinor, 6)
 	glfw.WindowHint(glfw.OpenGLProfile, glfw.OpenGLCoreProfile)
 	glfw.WindowHint(glfw.OpenGLForwardCompatible, glfw.True)
 	glfw.WindowHint(glfw.SRGBCapable, glfw.True)
@@ -55,7 +61,6 @@ func RunApplication(cfg *AppConfig, bootstrap Bootstrap) error {
 
 	uiDriver := &driver{
 		window: window,
-		canvas: opengl.NewCanvas(),
 	}
 
 	switch cfg.graphicsEngine {
@@ -64,10 +69,11 @@ func RunApplication(cfg *AppConfig, bootstrap Bootstrap) error {
 			return fmt.Errorf("failed to initialize opengl: %w", err)
 		}
 
-		uiDriver.canvas = opengl.NewCanvas()
+		uiDriver.canvas = openglui.NewCanvas()
 		if err := uiDriver.canvas.Init(); err != nil {
 			return fmt.Errorf("failed to init canvas: %w", err)
 		}
+		defer uiDriver.canvas.Release()
 
 	case GraphicsEngineVulkan:
 		panic("vulkan is not yet supported.")
@@ -149,6 +155,10 @@ func (d *driver) Redraw() {
 
 func (d *driver) Destroy() {
 	d.shouldStop = true
+}
+
+func (d *driver) CreateImage(data asset.TwoDTexture) (ui.Image, error) {
+	return d.canvas.CreateImage(data)
 }
 
 func (d *driver) onGLFWRefresh(w *glfw.Window) {
@@ -233,7 +243,10 @@ func (d *driver) onGLFWCursorEnter(w *glfw.Window, entered bool) {
 }
 
 func (d *driver) renderContent() {
+	startTime := time.Now()
 	d.canvas.Reset()
 	d.subscriber.OnRender(d, d.canvas)
+	d.canvas.Flush()
 	d.window.SwapBuffers()
+	log.Printf("render time: %s", time.Since(startTime))
 }

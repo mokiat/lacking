@@ -7,6 +7,8 @@ type Canvas interface {
 	Translate(delta Position)
 	Clip(bounds Bounds)
 
+	UseSolidColor(color Color)
+
 	// SetTypeface(font Typeface)
 	// Typeface() Typeface
 
@@ -25,9 +27,9 @@ type Canvas interface {
 	// SetFillColor(color Color)
 	// FillColor() Color
 
-	// DrawRectangle(position Position, size Size)
+	DrawRectangle(position Position, size Size)
 	// DrawCircle(position Position, radius int)
 	// DrawLine(start, end Position)
 	// DrawText(text string, position Position)
-	// DrawImage(image Image, position Position)
+	DrawImage(image Image, position Position, size Size)
 }

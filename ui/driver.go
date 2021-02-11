@@ -1,5 +1,7 @@
 package ui
 
+import "github.com/mokiat/lacking/data/asset"
+
 type DriverSubscriber interface {
 	OnCreate(d Driver)
 	OnDestroy(d Driver)
@@ -16,4 +18,6 @@ type Driver interface {
 	Size() Size
 	Redraw()
 	Destroy()
+
+	CreateImage(data asset.TwoDTexture) (Image, error)
 }

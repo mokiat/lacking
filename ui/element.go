@@ -1,13 +1,30 @@
 package ui
 
 // CreateElement creates a new Element.
-func CreateElement(handler ElementHandler, control Control) *Element {
+func CreateElement() *Element {
 	return &Element{
 		visible: true,
 		enabled: true,
-		handler: handler,
-		control: control,
 	}
+}
+
+// ElementHandler is a mechanism by which an interested
+// party (e.g. Control) can get notified of changes that
+// occur to an Element.
+type ElementHandler interface{}
+
+// ResizeHandler is a mechanism by which an interested
+// party (e.g. Control) can get notified of resize events that
+// occur to an Element.
+type ResizeHandler interface {
+	OnResize(element *Element, bounds Bounds)
+}
+
+// RenderHandler is a mechanism by which an interested
+// party (e.g. Control) can get notified of render events that
+// occur to an Element.
+type RenderHandler interface {
+	OnRender(element *Element, ctx RenderContext)
 }
 
 // Element represents an hierarchical entity on the screen.
@@ -32,10 +49,16 @@ type Element struct {
 	handler ElementHandler
 }
 
-// Parent returns the parent in the hierarchy. If this is
-// the top-most Element then the method returns nil.
-func (e *Element) Parent() *Element {
-	return e.parent
+// SetHandler changes the handler that will receive
+// events regarding this element.
+func (e *Element) SetHandler(handler ElementHandler) {
+	e.handler = handler
+}
+
+// SetControl sets the control that is represented
+// by this Element.
+func (e *Element) SetControl(control Control) {
+	e.control = control
 }
 
 // Control returns the Control that is represented by this
@@ -43,6 +66,12 @@ func (e *Element) Parent() *Element {
 // then this method returns nil.
 func (e *Element) Control() Control {
 	return e.control
+}
+
+// Parent returns the parent in the hierarchy. If this is
+// the top-most Element then the method returns nil.
+func (e *Element) Parent() *Element {
+	return e.parent
 }
 
 // Append adds an Element as a child to this Element.
@@ -53,9 +82,14 @@ func (e *Element) Append(element *Element) {
 		element.parent.Remove(element)
 	}
 	element.parent = e
+	if e.firstChild == nil {
+		e.firstChild = element
+	}
+	if e.lastChild != nil {
+		e.lastChild.rightSibling = element
+	}
 	element.leftSibling = e.lastChild
 	element.rightSibling = nil
-	e.lastChild.rightSibling = element
 	e.lastChild = element
 }
 
@@ -82,11 +116,38 @@ func (e *Element) Remove(element *Element) {
 	element.parent = nil
 }
 
+// FirstChild returns the first child Element of
+// this Element.
+func (e *Element) FirstChild() *Element {
+	return e.firstChild
+}
+
+// LastChild returns the last child Element of
+// this Element.
+func (e *Element) LastChild() *Element {
+	return e.lastChild
+}
+
+// LeftSibling returns the left sibling Element
+// of this Element.
+func (e *Element) LeftSibling() *Element {
+	return e.leftSibling
+}
+
+// RightSibling returns the right sibling Element
+// of this Element.
+func (e *Element) RightSibling() *Element {
+	return e.rightSibling
+}
+
 // SetBounds configures this Element's bounds relative
 // to its parent. If it is a top-most element, then
-// the bounds are relative to the screen.
+// the bounds are relative to the window content area.
 func (e *Element) SetBounds(bounds Bounds) {
 	e.bounds = bounds
+	if resizeHandler, ok := e.handler.(ResizeHandler); ok {
+		resizeHandler.OnResize(e, bounds)
+	}
 }
 
 // Bounds returns the bounds of this Element relative
@@ -94,6 +155,20 @@ func (e *Element) SetBounds(bounds Bounds) {
 // the bounds are relative to the screen.
 func (e *Element) Bounds() Bounds {
 	return e.bounds
+}
+
+// ContentBounds returns the bounds of the content area
+// of this Element relative to the Element's parent.
+// The content area is determined by the Element's bounds
+// and padding.
+func (e *Element) ContentBounds() Bounds {
+	return e.bounds.Translate(NewPosition(
+		e.padding.Left,
+		e.padding.Right,
+	)).Shrink(NewSize(
+		e.padding.Left+e.padding.Right,
+		e.padding.Top+e.padding.Bottom,
+	))
 }
 
 // SetMargin sets the amount of space that should be left
@@ -171,15 +246,3 @@ func (e *Element) SetMaterialized(materialized bool) {
 func (e *Element) IsMaterialized() bool {
 	return e.materialized
 }
-
-func (e *Element) ContentBounds() Bounds {
-	return e.bounds.Translate(NewPosition(
-		e.padding.Left,
-		e.padding.Right,
-	)).Shrink(NewSize(
-		e.padding.Left+e.padding.Right,
-		e.padding.Top+e.padding.Bottom,
-	))
-}
-
-type ElementHandler interface{}

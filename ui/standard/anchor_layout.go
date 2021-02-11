@@ -2,10 +2,10 @@ package standard
 
 import (
 	"fmt"
+	"math/rand"
 	"strings"
 
 	"github.com/mokiat/lacking/ui"
-	"github.com/mokiat/lacking/ui/behavior"
 )
 
 func init() {
@@ -14,119 +14,236 @@ func init() {
 	}))
 }
 
-func BuildAnchorLayout(ctx ui.BuildContext) (*AnchorLayout, error) {
-	children := make([]ui.Control, len(ctx.Template.Children()))
-	for i, childTemplate := range ctx.Template.Children() {
+// AnchorLayout represents a layout that positions
+// controls based on the following anchor references:
+//     left - the left side of the layout
+//     right - the right side of the layout
+//     top - the top side of the layout
+//     bottom - the bottom side of the layout
+//     center - the center of the layout
+type AnchorLayout interface {
+	ui.Control
+
+	// AddControl adds a control to this layout.
+	AddControl(control ui.Control)
+
+	// RemoveControl removes the specified control from this layout.
+	RemoveControl(control ui.Control)
+}
+
+func BuildAnchorLayout(ctx ui.BuildContext) (AnchorLayout, error) {
+	element := ui.CreateElement()
+	layout := &anchorLayout{
+		Control: ui.CreateControl(
+			ctx.Template.ID,
+			element,
+			ctx.Template.LayoutAttributes,
+		),
+	}
+	element.SetControl(layout)
+	element.SetHandler(layout)
+
+	for _, childTemplate := range ctx.Template.Children {
 		child, err := ui.Build(ui.BuildContext{
-			Template:   childTemplate,
-			LayoutData: BuildAnchorLayoutData(childTemplate),
+			Window:   ctx.Window,
+			Template: childTemplate,
 		})
 		if err != nil {
 			return nil, fmt.Errorf("failed to build child: %w", err)
 		}
-		children[i] = child
+		layout.AddControl(child)
 	}
 
-	return &AnchorLayout{
-		Control:  behavior.BuildControl(ctx),
-		children: children,
-	}, nil
+	return layout, nil
 }
 
-type AnchorLayout struct {
-	*behavior.Control
-	children []ui.Control
+type anchorLayout struct {
+	ui.Control
 }
 
-func (l *AnchorLayout) SetBounds(bounds ui.Bounds) {
-	l.Control.SetBounds(bounds)
-
-	// TODO: Relayout children
+func (l *anchorLayout) AddControl(control ui.Control) {
+	l.Element().Append(control.Element())
+	// TODO: Layout child
 }
 
-func BuildAnchorLayoutData(template ui.Template) AnchorLayoutData {
-	var result AnchorLayoutData
-	if left, ok := template.IntAttribute("layout-left"); ok {
+func (l *anchorLayout) RemoveControl(control ui.Control) {
+	l.Element().Remove(control.Element())
+}
+
+func (l *anchorLayout) OnResize(element *ui.Element, bounds ui.Bounds) {
+	for childElement := l.Element().FirstChild(); childElement != nil; childElement = childElement.RightSibling() {
+		childBounds := ui.Bounds{}
+		layoutData := buildAnchorLayoutData(childElement.Control().LayoutAttributes())
+
+		// horizontal
+		if layoutData.Width != nil {
+			childBounds.Width = *layoutData.Width
+			switch {
+			case layoutData.Left != nil:
+				childBounds.X = l.horizontalPosition(*layoutData.Left, layoutData.LeftRelative)
+			case layoutData.Right != nil:
+				childBounds.X = l.horizontalPosition(*layoutData.Right, layoutData.RightRelative) - childBounds.Width
+			case layoutData.HorizontalCenter != nil:
+				childBounds.X = l.horizontalPosition(*layoutData.HorizontalCenter, layoutData.HorizontalCenterRelative) - childBounds.Width/2
+			}
+		}
+
+		// vertical
+		if layoutData.Height != nil {
+			childBounds.Height = *layoutData.Height
+			switch {
+			case layoutData.Top != nil:
+				childBounds.Y = l.verticalPosition(*layoutData.Top, layoutData.TopRelative)
+			case layoutData.Bottom != nil:
+				childBounds.Y = l.verticalPosition(*layoutData.Bottom, layoutData.BottomRelative) - childBounds.Height
+			case layoutData.VerticalCenter != nil:
+				childBounds.Y = l.verticalPosition(*layoutData.VerticalCenter, layoutData.VerticalCenterRelative) - childBounds.Height/2
+			}
+		}
+
+		childElement.SetBounds(childBounds)
+	}
+}
+
+func (l *anchorLayout) OnRender(element *ui.Element, ctx ui.RenderContext) {
+	ctx.Canvas.UseSolidColor(ui.RGB(
+		byte(rand.Int()%256),
+		byte(rand.Int()%256),
+		byte(rand.Int()%256),
+	))
+	ctx.Canvas.DrawRectangle(
+		ui.NewPosition(0, 0),
+		l.Element().Bounds().Size,
+	)
+}
+
+func (l *anchorLayout) horizontalPosition(value int, relativeTo anchorRelative) int {
+	bounds := l.Element().Bounds()
+	switch relativeTo {
+	case anchorRelativeLeft:
+		return value
+	case anchorRelativeRight:
+		return value + bounds.Width
+	case anchorRelativeCenter:
+		return value + bounds.Width/2
+	default:
+		panic(fmt.Errorf("unexpected horizontal relative to: %d", relativeTo))
+	}
+}
+
+func (l *anchorLayout) verticalPosition(value int, relativeTo anchorRelative) int {
+	bounds := l.Element().Bounds()
+	switch relativeTo {
+	case anchorRelativeTop:
+		return value
+	case anchorRelativeBottom:
+		return value + bounds.Height
+	case anchorRelativeCenter:
+		return value + bounds.Height/2
+	default:
+		panic(fmt.Errorf("unexpected vertical relative to: %d", relativeTo))
+	}
+}
+
+func buildAnchorLayoutData(attributes ui.AttributeSet) anchorLayoutData {
+	var result anchorLayoutData
+	if left, ok := attributes.IntAttribute("left"); ok {
 		result.Left = &left
 	}
-	if leftRelative, ok := AnchorRelativeAttribute(template, "layout-left-relative"); ok {
+	if leftRelative, ok := AnchorRelativeAttribute(attributes, "left-relative"); ok {
 		result.LeftRelative = leftRelative
 	} else {
-		result.LeftRelative = AnchorRelativeLeft
+		result.LeftRelative = anchorRelativeLeft
 	}
-	if right, ok := template.IntAttribute("layout-right"); ok {
+	if right, ok := attributes.IntAttribute("right"); ok {
 		result.Right = &right
 	}
-	if rightRelative, ok := AnchorRelativeAttribute(template, "layout-right-relative"); ok {
+	if rightRelative, ok := AnchorRelativeAttribute(attributes, "right-relative"); ok {
 		result.RightRelative = rightRelative
 	} else {
-		result.RightRelative = AnchorRelativeLeft
+		result.RightRelative = anchorRelativeLeft
 	}
-	if top, ok := template.IntAttribute("layout-top"); ok {
+	if top, ok := attributes.IntAttribute("top"); ok {
 		result.Top = &top
 	}
-	if topRelative, ok := AnchorRelativeAttribute(template, "layout-top-relative"); ok {
+	if topRelative, ok := AnchorRelativeAttribute(attributes, "top-relative"); ok {
 		result.TopRelative = topRelative
 	} else {
-		result.TopRelative = AnchorRelativeTop
+		result.TopRelative = anchorRelativeTop
 	}
-	if bottom, ok := template.IntAttribute("layout-bottom"); ok {
+	if bottom, ok := attributes.IntAttribute("bottom"); ok {
 		result.Bottom = &bottom
 	}
-	if bottomRelative, ok := AnchorRelativeAttribute(template, "layout-bottom-relative"); ok {
+	if bottomRelative, ok := AnchorRelativeAttribute(attributes, "bottom-relative"); ok {
 		result.BottomRelative = bottomRelative
 	} else {
-		result.BottomRelative = AnchorRelativeTop
+		result.BottomRelative = anchorRelativeTop
 	}
-	if width, ok := template.IntAttribute("layout-width"); ok {
+	if horizontalCenter, ok := attributes.IntAttribute("horizontal-center"); ok {
+		result.HorizontalCenter = &horizontalCenter
+	}
+	if horizontalCenterRelative, ok := AnchorRelativeAttribute(attributes, "horizontal-center-relative"); ok {
+		result.HorizontalCenterRelative = horizontalCenterRelative
+	} else {
+		result.HorizontalCenterRelative = anchorRelativeCenter
+	}
+	if verticalCenter, ok := attributes.IntAttribute("vertical-center"); ok {
+		result.VerticalCenter = &verticalCenter
+	}
+	if verticalCenterRelative, ok := AnchorRelativeAttribute(attributes, "vertical-center-relative"); ok {
+		result.VerticalCenterRelative = verticalCenterRelative
+	} else {
+		result.VerticalCenterRelative = anchorRelativeCenter
+	}
+	if width, ok := attributes.IntAttribute("width"); ok {
 		result.Width = &width
 	}
-	if height, ok := template.IntAttribute("layout-height"); ok {
+	if height, ok := attributes.IntAttribute("height"); ok {
 		result.Height = &height
 	}
 	return result
 }
 
-type AnchorLayoutData struct {
+type anchorLayoutData struct {
 	Left                     *int
-	LeftRelative             AnchorRelative
+	LeftRelative             anchorRelative
 	Right                    *int
-	RightRelative            AnchorRelative
+	RightRelative            anchorRelative
 	Top                      *int
-	TopRelative              AnchorRelative
+	TopRelative              anchorRelative
 	Bottom                   *int
-	BottomRelative           AnchorRelative
+	BottomRelative           anchorRelative
 	HorizontalCenter         *int
-	HorizontalCenterRelative AnchorRelative
+	HorizontalCenterRelative anchorRelative
 	VerticalCenter           *int
-	VerticalCenterRelative   AnchorRelative
+	VerticalCenterRelative   anchorRelative
 	Width                    *int
 	Height                   *int
 }
 
-type AnchorRelative int
+type anchorRelative int
 
 const (
-	AnchorRelativeLeft AnchorRelative = 1 + iota
-	AnchorRelativeRight
-	AnchorRelativeTop
-	AnchorRelativeBottom
-	AnchorRelativeCenter
+	anchorRelativeLeft anchorRelative = 1 + iota
+	anchorRelativeRight
+	anchorRelativeTop
+	anchorRelativeBottom
+	anchorRelativeCenter
 )
 
-func AnchorRelativeAttribute(template ui.Template, name string) (AnchorRelative, bool) {
-	if value, ok := template.StringAttribute(name); ok {
+func AnchorRelativeAttribute(attributes ui.AttributeSet, name string) (anchorRelative, bool) {
+	if value, ok := attributes.StringAttribute(name); ok {
 		switch strings.ToLower(value) {
 		case "left":
-			return AnchorRelativeLeft, true
+			return anchorRelativeLeft, true
 		case "right":
-			return AnchorRelativeRight, true
+			return anchorRelativeRight, true
 		case "top":
-			return AnchorRelativeTop, true
+			return anchorRelativeTop, true
 		case "bottom":
-			return AnchorRelativeBottom, true
+			return anchorRelativeBottom, true
 		case "center", "centre":
-			return AnchorRelativeCenter, true
+			return anchorRelativeCenter, true
 		}
 	}
 	return 0, false

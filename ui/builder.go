@@ -12,11 +12,6 @@ func Register(name string, builder Builder) {
 	registry[name] = builder
 }
 
-type BuildContext struct {
-	Template   Template
-	LayoutData LayoutData
-}
-
 type Builder interface {
 	Build(ctx BuildContext) (Control, error)
 }
@@ -27,14 +22,19 @@ func (f BuilderFunc) Build(ctx BuildContext) (Control, error) {
 	return f(ctx)
 }
 
+type BuildContext struct {
+	Window   Window
+	Template *Template
+}
+
 func Build(ctx BuildContext) (Control, error) {
-	builder, ok := registry[ctx.Template.Name()]
+	builder, ok := registry[ctx.Template.Name]
 	if !ok {
-		return nil, fmt.Errorf("could not find builder for %q", ctx.Template.Name())
+		return nil, fmt.Errorf("could not find builder for %q", ctx.Template.Name)
 	}
 	control, err := builder.Build(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to build %q: %w", ctx.Template.Name(), err)
+		return nil, fmt.Errorf("failed to build %q: %w", ctx.Template.Name, err)
 	}
 	return control, nil
 }

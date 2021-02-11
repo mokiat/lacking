@@ -22,6 +22,10 @@ func (w *Plotter) Rewind() {
 	w.offset = 0
 }
 
+func (w *Plotter) Offset() int {
+	return w.offset
+}
+
 func (w *Plotter) Seek(offset int) {
 	w.offset = offset
 }
