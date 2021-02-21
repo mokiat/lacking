@@ -3,80 +3,22 @@ package resource
 import (
 	"bytes"
 	"fmt"
-
-	"github.com/mokiat/lacking/async"
-	"github.com/mokiat/lacking/graphics"
 )
-
-const PBRTypeName = TypeName("pbr")
-
-func NewPBRShaderOperator(gfxWorker *async.Worker) *PBRShaderOperator {
-	return &PBRShaderOperator{
-		gfxWorker: gfxWorker,
-	}
-}
-
-type PBRShaderOperator struct {
-	gfxWorker *async.Worker
-}
-
-func (o *PBRShaderOperator) Allocate(info ShaderInfo) (*Shader, error) {
-	shader := &Shader{
-		Type:            PBRTypeName,
-		Info:            info,
-		GeometryProgram: &graphics.Program{},
-	}
-
-	gfxTask := o.gfxWorker.Schedule(async.VoidTask(func() error {
-		spec := PBRGeometrySpec{
-			UsesAlbedoTexture: info.HasAlbedoTexture,
-			UsesTexCoord0:     info.HasAlbedoTexture,
-		}
-		return shader.GeometryProgram.Allocate(graphics.ProgramData{
-			VertexShaderSourceCode:   BuildGeometryVertexShader(spec),
-			FragmentShaderSourceCode: BuildGeometryFragmentShader(spec),
-		})
-	}))
-	if err := gfxTask.Wait().Err; err != nil {
-		return nil, fmt.Errorf("failed to allocate gfx program: %w", err)
-	}
-	return shader, nil
-}
-
-func (o *PBRShaderOperator) Release(shader *Shader) error {
-	if shader.GeometryProgram != nil {
-		gfxTask := o.gfxWorker.Schedule(async.VoidTask(func() error {
-			return shader.GeometryProgram.Release()
-		}))
-		if err := gfxTask.Wait().Err; err != nil {
-			return fmt.Errorf("failed to release gfx program: %w", err)
-		}
-	}
-	if shader.ForwardProgram != nil {
-		gfxTask := o.gfxWorker.Schedule(async.VoidTask(func() error {
-			return shader.ForwardProgram.Release()
-		}))
-		if err := gfxTask.Wait().Err; err != nil {
-			return fmt.Errorf("failed to release gfx program: %w", err)
-		}
-	}
-	return nil
-}
 
 type PBRGeometrySpec struct {
 	UsesAlbedoTexture bool
 	UsesTexCoord0     bool
 }
 
-func BuildGeometryVertexShader(spec PBRGeometrySpec) string {
-	return buildGeometryShader(spec, geometryVertexShaderTemplate)
+func BuildPBRGeometryVertexShader(spec PBRGeometrySpec) string {
+	return buildPBRGeometryShader(spec, pbrGeometryVertexShaderTemplate)
 }
 
-func BuildGeometryFragmentShader(spec PBRGeometrySpec) string {
-	return buildGeometryShader(spec, geometryFragmentShaderTemplate)
+func BuildPBRGeometryFragmentShader(spec PBRGeometrySpec) string {
+	return buildPBRGeometryShader(spec, pbrGeometryFragmentShaderTemplate)
 }
 
-func buildGeometryShader(spec PBRGeometrySpec, template string) string {
+func buildPBRGeometryShader(spec PBRGeometrySpec, template string) string {
 	buffer := &bytes.Buffer{}
 	fmt.Fprintln(buffer, "#version 410")
 	fmt.Fprintln(buffer)
@@ -90,7 +32,7 @@ func buildGeometryShader(spec PBRGeometrySpec, template string) string {
 	return buffer.String()
 }
 
-const geometryVertexShaderTemplate = `
+const pbrGeometryVertexShaderTemplate = `
 layout(location = 0) in vec4 coordIn;
 layout(location = 1) in vec3 normalIn;
 #if defined(USES_TEX_COORD0)
@@ -116,7 +58,7 @@ void main()
 }
 `
 
-const geometryFragmentShaderTemplate = `
+const pbrGeometryFragmentShaderTemplate = `
 layout(location = 0) out vec4 fbColor0Out;
 layout(location = 1) out vec4 fbColor1Out;
 

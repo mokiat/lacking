@@ -9,16 +9,7 @@ import (
 	"github.com/mokiat/lacking/graphics"
 )
 
-const MeshTypeName = TypeName("mesh")
-
-func InjectMesh(target **Mesh) func(value interface{}) {
-	return func(value interface{}) {
-		*target = value.(*Mesh)
-	}
-}
-
 type Mesh struct {
-	Name           string
 	GFXVertexArray *graphics.VertexArray
 	SubMeshes      []SubMesh
 }
@@ -43,41 +34,8 @@ type Material struct {
 	NormalTexture    *TwoDTexture
 }
 
-func NewMeshOperator(locator Locator, gfxWorker *async.Worker) *MeshOperator {
-	return &MeshOperator{
-		locator:   locator,
-		gfxWorker: gfxWorker,
-	}
-}
-
-type MeshOperator struct {
-	locator   Locator
-	gfxWorker *async.Worker
-}
-
-func (o *MeshOperator) Allocate(registry *Registry, name string) (interface{}, error) {
-	in, err := o.locator.Open("assets", "meshes", name)
-	if err != nil {
-		return nil, fmt.Errorf("failed to open mesh asset %q: %w", name, err)
-	}
-	defer in.Close()
-
-	meshAsset := new(asset.Mesh)
-	if err := asset.DecodeMesh(in, meshAsset); err != nil {
-		return nil, fmt.Errorf("failed to decode mesh asset %q: %w", name, err)
-	}
-
-	return AllocateMesh(registry, name, o.gfxWorker, meshAsset)
-}
-
-func (o *MeshOperator) Release(registry *Registry, resource interface{}) error {
-	mesh := resource.(*Mesh)
-	return ReleaseMesh(registry, o.gfxWorker, mesh)
-}
-
-func AllocateMesh(registry *Registry, name string, gfxWorker *async.Worker, meshAsset *asset.Mesh) (*Mesh, error) {
+func AllocateMesh(set *Set, gfxWorker *async.Worker, meshAsset *asset.Mesh) (*Mesh, error) {
 	mesh := &Mesh{
-		Name:           name,
 		GFXVertexArray: graphics.NewVertexArray(),
 	}
 
@@ -128,83 +86,45 @@ func AllocateMesh(registry *Registry, name string, gfxWorker *async.Worker, mesh
 			},
 		}
 		if subMeshAsset.Material.MetalnessTexture != "" {
-			result := registry.LoadTwoDTexture(subMeshAsset.Material.MetalnessTexture).
-				OnSuccess(InjectTwoDTexture(&subMesh.Material.MetalnessTexture)).
-				Wait()
-			if err := result.Err; err != nil {
+			uri := fmt.Sprintf("assets/textures/twod/%s.dat", subMeshAsset.Material.MetalnessTexture)
+			if err := set.OpenTwoDTexture(uri, &subMesh.Material.MetalnessTexture).Wait(); err != nil {
 				return nil, fmt.Errorf("failed to load metalness texture: %w", err)
 			}
 		}
 		if subMeshAsset.Material.RoughnessTexture != "" {
-			result := registry.LoadTwoDTexture(subMeshAsset.Material.RoughnessTexture).
-				OnSuccess(InjectTwoDTexture(&subMesh.Material.RoughnessTexture)).
-				Wait()
-			if err := result.Err; err != nil {
+			uri := fmt.Sprintf("assets/textures/twod/%s.dat", subMeshAsset.Material.RoughnessTexture)
+			if err := set.OpenTwoDTexture(uri, &subMesh.Material.RoughnessTexture).Wait(); err != nil {
 				return nil, fmt.Errorf("failed to load roughness texture: %w", err)
 			}
 		}
 		if subMeshAsset.Material.ColorTexture != "" {
-			result := registry.LoadTwoDTexture(subMeshAsset.Material.ColorTexture).
-				OnSuccess(InjectTwoDTexture(&subMesh.Material.AlbedoTexture)).
-				Wait()
-			if err := result.Err; err != nil {
+			uri := fmt.Sprintf("assets/textures/twod/%s.dat", subMeshAsset.Material.ColorTexture)
+			if err := set.OpenTwoDTexture(uri, &subMesh.Material.AlbedoTexture).Wait(); err != nil {
 				return nil, fmt.Errorf("failed to load albedo texture: %w", err)
 			}
 		}
 		if subMeshAsset.Material.NormalTexture != "" {
-			result := registry.LoadTwoDTexture(subMeshAsset.Material.NormalTexture).
-				OnSuccess(InjectTwoDTexture(&subMesh.Material.NormalTexture)).
-				Wait()
-			if err := result.Err; err != nil {
+			uri := fmt.Sprintf("assets/textures/twod/%s.dat", subMeshAsset.Material.NormalTexture)
+			if err := set.OpenTwoDTexture(uri, &subMesh.Material.NormalTexture).Wait(); err != nil {
 				return nil, fmt.Errorf("failed to load normal texture: %w", err)
 			}
 		}
-
 		shaderInfo := ShaderInfo{
+			Type:                subMeshAsset.Material.Type,
 			HasMetalnessTexture: subMeshAsset.Material.MetalnessTexture != "",
 			HasRoughnessTexture: subMeshAsset.Material.RoughnessTexture != "",
 			HasAlbedoTexture:    subMeshAsset.Material.ColorTexture != "",
 			HasNormalTexture:    subMeshAsset.Material.NormalTexture != "",
 		}
-		result := registry.CreateShader(TypeName(subMeshAsset.Material.Type), shaderInfo).
-			OnSuccess(InjectShader(&subMesh.Material.Shader)).
-			Wait()
-		if err := result.Err; err != nil {
+		if err := set.CreateShader(shaderInfo, &subMesh.Material.Shader).Wait(); err != nil {
 			return nil, fmt.Errorf("failed to create material shader: %w", err)
 		}
-
 		mesh.SubMeshes[i] = subMesh
 	}
 	return mesh, nil
 }
 
-func ReleaseMesh(registry *Registry, gfxWorker *async.Worker, mesh *Mesh) error {
-	for _, subMesh := range mesh.SubMeshes {
-		if subMesh.Material.MetalnessTexture != nil {
-			if result := registry.UnloadTwoDTexture(subMesh.Material.MetalnessTexture).Wait(); result.Err != nil {
-				return result.Err
-			}
-		}
-		if subMesh.Material.RoughnessTexture != nil {
-			if result := registry.UnloadTwoDTexture(subMesh.Material.RoughnessTexture).Wait(); result.Err != nil {
-				return result.Err
-			}
-		}
-		if subMesh.Material.AlbedoTexture != nil {
-			if result := registry.UnloadTwoDTexture(subMesh.Material.AlbedoTexture).Wait(); result.Err != nil {
-				return result.Err
-			}
-		}
-		if subMesh.Material.NormalTexture != nil {
-			if result := registry.UnloadTwoDTexture(subMesh.Material.NormalTexture).Wait(); result.Err != nil {
-				return result.Err
-			}
-		}
-		if result := registry.ReleaseShader(subMesh.Material.Shader.Type, subMesh.Material.Shader).Wait(); result.Err != nil {
-			return result.Err
-		}
-	}
-
+func ReleaseMesh(gfxWorker *async.Worker, mesh *Mesh) error {
 	gfxTask := gfxWorker.Schedule(async.VoidTask(func() error {
 		return mesh.GFXVertexArray.Release()
 	}))

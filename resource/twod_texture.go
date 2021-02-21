@@ -8,16 +8,7 @@ import (
 	"github.com/mokiat/lacking/graphics"
 )
 
-const TwoDTextureTypeName = TypeName("twod_texture")
-
-func InjectTwoDTexture(target **TwoDTexture) func(value interface{}) {
-	return func(value interface{}) {
-		*target = value.(*TwoDTexture)
-	}
-}
-
 type TwoDTexture struct {
-	Name       string
 	GFXTexture *graphics.TwoDTexture
 }
 
@@ -33,44 +24,47 @@ type TwoDTextureOperator struct {
 	gfxWorker *async.Worker
 }
 
-func (o *TwoDTextureOperator) Allocate(registry *Registry, name string) (interface{}, error) {
-	in, err := o.locator.Open("assets", "textures", "twod", name)
-	if err != nil {
-		return nil, fmt.Errorf("failed to open twod texture asset %q: %w", name, err)
-	}
-	defer in.Close()
+func (o *TwoDTextureOperator) Allocator(uri string) Allocator {
+	return AllocatorFunc(func(set *Set) (interface{}, error) {
+		in, err := o.locator.Open(uri)
+		if err != nil {
+			return nil, fmt.Errorf("failed to open twod texture asset %q: %w", uri, err)
+		}
+		defer in.Close()
 
-	texAsset := new(asset.TwoDTexture)
-	if err := asset.DecodeTwoDTexture(in, texAsset); err != nil {
-		return nil, fmt.Errorf("failed to decode twod texture asset %q: %w", name, err)
-	}
+		texAsset := new(asset.TwoDTexture)
+		if err := asset.DecodeTwoDTexture(in, texAsset); err != nil {
+			return nil, fmt.Errorf("failed to decode twod texture asset %q: %w", uri, err)
+		}
 
-	texture := &TwoDTexture{
-		Name:       name,
-		GFXTexture: &graphics.TwoDTexture{},
-	}
+		texture := &TwoDTexture{
+			GFXTexture: &graphics.TwoDTexture{},
+		}
 
-	gfxTask := o.gfxWorker.Schedule(async.VoidTask(func() error {
-		return texture.GFXTexture.Allocate(graphics.TwoDTextureData{
-			Width:  int32(texAsset.Width),
-			Height: int32(texAsset.Height),
-			Data:   texAsset.Data,
-		})
-	}))
-	if err := gfxTask.Wait().Err; err != nil {
-		return nil, fmt.Errorf("failed to allocate two dimensional gfx texture: %w", err)
-	}
-	return texture, nil
+		gfxTask := o.gfxWorker.Schedule(async.VoidTask(func() error {
+			return texture.GFXTexture.Allocate(graphics.TwoDTextureData{
+				Width:  int32(texAsset.Width),
+				Height: int32(texAsset.Height),
+				Data:   texAsset.Data,
+			})
+		}))
+		if err := gfxTask.Wait().Err; err != nil {
+			return nil, fmt.Errorf("failed to allocate two dimensional gfx texture: %w", err)
+		}
+		return texture, nil
+	})
 }
 
-func (o *TwoDTextureOperator) Release(registry *Registry, resource interface{}) error {
-	texture := resource.(*TwoDTexture)
+func (o *TwoDTextureOperator) Releaser() Releaser {
+	return ReleaserFunc(func(resource interface{}) error {
+		texture := resource.(*TwoDTexture)
 
-	gfxTask := o.gfxWorker.Schedule(async.VoidTask(func() error {
-		return texture.GFXTexture.Release()
-	}))
-	if err := gfxTask.Wait().Err; err != nil {
-		return fmt.Errorf("failed to release two dimensional gfx texture: %w", err)
-	}
-	return nil
+		gfxTask := o.gfxWorker.Schedule(async.VoidTask(func() error {
+			return texture.GFXTexture.Release()
+		}))
+		if err := gfxTask.Wait().Err; err != nil {
+			return fmt.Errorf("failed to release two dimensional gfx texture: %w", err)
+		}
+		return nil
+	})
 }
