@@ -44,7 +44,7 @@ func (p *Program) Allocate(info ProgramAllocateInfo) error {
 
 func (p *Program) UniformLocation(name string) int32 {
 	result := gl.GetUniformLocation(p.id, gl.Str(name+"\x00"))
-	runtime.KeepAlive(name)
+	runtime.KeepAlive(name) // TODO: This probably does nothing, since Str takes a concatenated string
 	return result
 }
 

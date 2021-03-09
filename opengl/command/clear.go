@@ -2,10 +2,15 @@ package command
 
 import "github.com/mokiat/gomath/sprec"
 
-type Clear struct {
-	ClearColors  [8]OptionalClearColor
-	ClearDepth   OptionalFloat32
-	ClearStencil OptionalUint32
+type ClearFramebuffer struct {
+	Colors  ClearColorRange
+	Depth   OptionalFloat32
+	Stencil OptionalUint32
+}
+
+type ClearColorRange struct {
+	Offset int
+	Count  int
 }
 
 type ClearColor struct {

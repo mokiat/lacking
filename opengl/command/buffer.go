@@ -9,75 +9,94 @@ import (
 // types that are of smaller size (i.e. uint16 instead of int)
 
 const (
-	maxCommands                  = 16384
-	maxBufferFloats              = 16384
-	maxClearCommands             = 64
-	maxDepthConfigCommands       = 64
+	maxCommands = 16384
+
 	maxChangeFramebufferCommands = 64
-	maxChangeProgramCommands     = 2048
-	maxBindUniformCommands       = 2048
-	maxBindTextureCommands       = 2048
+	maxClearFramebufferCommands  = 64
+	maxChangeDepthConfigCommands = 64
+	maxRenderItemCommands        = 2048
+
+	maxUniforms    = 2048
+	maxFloats      = 16384
+	maxTextures    = 1024
+	maxClearColors = 256
 )
 
 func NewBuffer() *Buffer {
 	return &Buffer{
-		commands:                  make([]ID, 0, maxCommands),
-		floatBuffer:               make([]float32, 0, maxBufferFloats),
-		clearCommands:             make([]Clear, 0, maxClearCommands),
-		depthConfigCommands:       make([]DepthConfig, 0, maxDepthConfigCommands),
+		commands: make([]ID, 0, maxCommands),
+
 		changeFramebufferCommands: make([]ChangeFramebuffer, 0, maxChangeFramebufferCommands),
-		changeProgramCommands:     make([]ChangeProgram, 0, maxChangeProgramCommands),
-		bindUniformCommands:       make([]BindUniform, 0, maxBindUniformCommands),
-		bindTextureCommands:       make([]BindTexture, 0, maxBindTextureCommands),
+		clearFramebufferCommands:  make([]ClearFramebuffer, 0, maxClearFramebufferCommands),
+		changeDepthConfigCommands: make([]ChangeDepthConfig, 0, maxChangeDepthConfigCommands),
+		renderItemCommands:        make([]RenderItem, 0, maxRenderItemCommands),
+
+		uniformBuffer: make([]Uniform, 0, maxUniforms),
+		floatBuffer:   make([]float32, 0, maxFloats),
+		textureBuffer: make([]*opengl.Texture, 0, maxTextures),
+		clearColors:   make([]ClearColor, 0, maxClearColors),
 	}
 }
 
 type Buffer struct {
-	commands                  []ID
-	floatBuffer               []float32
-	clearCommands             []Clear
-	depthConfigCommands       []DepthConfig
+	commands []ID
+
 	changeFramebufferCommands []ChangeFramebuffer
-	changeProgramCommands     []ChangeProgram
-	bindUniformCommands       []BindUniform
-	bindTextureCommands       []BindTexture
+	clearFramebufferCommands  []ClearFramebuffer
+	changeDepthConfigCommands []ChangeDepthConfig
+	renderItemCommands        []RenderItem
+
+	uniformBuffer []Uniform
+	floatBuffer   []float32
+	textureBuffer []*opengl.Texture
+	clearColors   []ClearColor
 }
 
 func (b *Buffer) Reset() {
 	b.commands = b.commands[:0]
-	b.floatBuffer = b.floatBuffer[:0]
-	b.clearCommands = b.clearCommands[:0]
-	b.depthConfigCommands = b.depthConfigCommands[:0]
+
 	b.changeFramebufferCommands = b.changeFramebufferCommands[:0]
-	b.changeProgramCommands = b.changeProgramCommands[:0]
-	b.bindUniformCommands = b.bindUniformCommands[:0]
-	b.bindTextureCommands = b.bindTextureCommands[:0]
+	b.clearFramebufferCommands = b.clearFramebufferCommands[:0]
+	b.changeDepthConfigCommands = b.changeDepthConfigCommands[:0]
+	b.renderItemCommands = b.renderItemCommands[:0]
+
+	b.uniformBuffer = b.uniformBuffer[:0]
+	b.floatBuffer = b.floatBuffer[:0]
+	b.textureBuffer = b.textureBuffer[:0]
+	b.clearColors = b.clearColors[:0]
 }
 
 func (b *Buffer) Overwrite(other *Buffer) {
 	other.commands = other.commands[:len(b.commands)]
 	copy(other.commands, b.commands)
 
-	other.floatBuffer = other.floatBuffer[:len(b.floatBuffer)]
-	copy(other.floatBuffer, b.floatBuffer)
-
-	other.clearCommands = other.clearCommands[:len(b.clearCommands)]
-	copy(other.clearCommands, b.clearCommands)
-
-	other.depthConfigCommands = other.depthConfigCommands[:len(b.depthConfigCommands)]
-	copy(other.depthConfigCommands, b.depthConfigCommands)
-
 	other.changeFramebufferCommands = other.changeFramebufferCommands[:len(b.changeFramebufferCommands)]
 	copy(other.changeFramebufferCommands, b.changeFramebufferCommands)
 
-	other.changeProgramCommands = other.changeProgramCommands[:len(b.changeProgramCommands)]
-	copy(other.changeProgramCommands, b.changeProgramCommands)
+	other.clearFramebufferCommands = other.clearFramebufferCommands[:len(b.clearFramebufferCommands)]
+	copy(other.clearFramebufferCommands, b.clearFramebufferCommands)
 
-	other.bindUniformCommands = other.bindUniformCommands[:len(b.bindUniformCommands)]
-	copy(other.bindUniformCommands, b.bindUniformCommands)
+	other.changeDepthConfigCommands = other.changeDepthConfigCommands[:len(b.changeDepthConfigCommands)]
+	copy(other.changeDepthConfigCommands, b.changeDepthConfigCommands)
 
-	other.bindTextureCommands = other.bindTextureCommands[:len(b.bindTextureCommands)]
-	copy(other.bindTextureCommands, b.bindTextureCommands)
+	other.renderItemCommands = other.renderItemCommands[:len(b.renderItemCommands)]
+	copy(other.renderItemCommands, b.renderItemCommands)
+
+	other.uniformBuffer = other.uniformBuffer[:len(b.uniformBuffer)]
+	copy(other.uniformBuffer, b.uniformBuffer)
+
+	other.floatBuffer = other.floatBuffer[:len(b.floatBuffer)]
+	copy(other.floatBuffer, b.floatBuffer)
+
+	other.textureBuffer = other.textureBuffer[:len(b.textureBuffer)]
+	copy(other.textureBuffer, b.textureBuffer)
+
+	other.clearColors = other.clearColors[:len(b.clearColors)]
+	copy(other.clearColors, b.clearColors)
+}
+
+func (b *Buffer) Append(cmd ID) {
+	b.commands = append(b.commands, cmd)
 }
 
 func (b *Buffer) Each(fn func(id ID)) {
@@ -86,169 +105,101 @@ func (b *Buffer) Each(fn func(id ID)) {
 	}
 }
 
-func (b *Buffer) AppendClearCommand(cmd Clear) ID {
-	id := ID{
-		Type:  TypeClear,
-		Index: len(b.clearCommands),
-	}
-	b.commands = append(b.commands, id)
-	b.clearCommands = append(b.clearCommands, cmd)
-	return id
-}
-
-func (b *Buffer) ClearCommand(index int) Clear {
-	return b.clearCommands[index]
-}
-
-func (b *Buffer) AppendDepthConfigCommand(cmd DepthConfig) ID {
-	id := ID{
-		Type:  TypeDepthConfig,
-		Index: len(b.depthConfigCommands),
-	}
-	b.commands = append(b.commands, id)
-	b.depthConfigCommands = append(b.depthConfigCommands, cmd)
-	return id
-}
-
-func (b *Buffer) DepthConfigCommand(index int) DepthConfig {
-	return b.depthConfigCommands[index]
-}
-
-func (b *Buffer) AppendChangeFramebufferCommand(cmd ChangeFramebuffer) ID {
-	id := ID{
-		Type:  TypeChangeFramebuffer,
-		Index: len(b.changeFramebufferCommands),
-	}
-	b.commands = append(b.commands, id)
-	b.changeFramebufferCommands = append(b.changeFramebufferCommands, cmd)
-	return id
-}
-
-func (b *Buffer) ChangeFramebufferCommand(index int) ChangeFramebuffer {
-	return b.changeFramebufferCommands[index]
-}
-
-func (b *Buffer) AppendChangeProgramCommand(cmd ChangeProgram) ID {
-	id := ID{
-		Type:  TypeChangeProgram,
-		Index: len(b.changeProgramCommands),
-	}
-	b.commands = append(b.commands, id)
-	b.changeProgramCommands = append(b.changeProgramCommands, cmd)
-	return id
-}
-
-func (b *Buffer) ChangeProgramCommand(index int) ChangeProgram {
-	return b.changeProgramCommands[index]
-}
-
-func (b *Buffer) AppendBindUniformCommand(cmd BindUniform) ID {
-	id := ID{
-		Type:  TypeBindUniform,
-		Index: len(b.bindUniformCommands),
-	}
-	b.commands = append(b.commands, id)
-	b.bindUniformCommands = append(b.bindUniformCommands, cmd)
-	return id
-}
-
-func (b *Buffer) BindUniformCommand(index int) BindUniform {
-	return b.bindUniformCommands[index]
-}
-
-func (b *Buffer) AppendBindTextureCommand(cmd BindTexture) ID {
-	id := ID{
-		Type:  TypeBindTexture,
-		Index: len(b.bindTextureCommands),
-	}
-	b.commands = append(b.commands, id)
-	b.bindTextureCommands = append(b.bindTextureCommands, cmd)
-	return id
-}
-
-func (b *Buffer) BindTextureCommand(index int) BindTexture {
-	return b.bindTextureCommands[index]
-}
-
-func (b *Buffer) ClearColor(attachment int, color sprec.Vec4) {
-	b.AppendClearCommand(Clear{
-		ClearColors: [8]OptionalClearColor{
-			SpecifiedClearColor(ClearColor{
-				Attachment: attachment,
-				Color:      color,
-			}),
-		},
-	})
-}
-
-func (b *Buffer) ClearDepth(value float32) {
-	b.AppendClearCommand(Clear{
-		ClearDepth: SpecifiedFloat32(value),
-	})
-}
-
-func (b *Buffer) ClearStencil(value uint32) {
-	b.AppendClearCommand(Clear{
-		ClearStencil: SpecifiedUint32(value),
-	})
-}
-
-func (b *Buffer) EnableDepthTest() {
-	b.AppendDepthConfigCommand(DepthConfig{
-		DepthTest: SpecifiedBool(true),
-	})
-}
-
-func (b *Buffer) DisableDepthTest() {
-	b.AppendDepthConfigCommand(DepthConfig{
-		DepthTest: SpecifiedBool(false),
-	})
-}
-
-func (b *Buffer) EnableDepthWrite() {
-	b.AppendDepthConfigCommand(DepthConfig{
-		DepthWrite: SpecifiedBool(true),
-	})
-}
-
-func (b *Buffer) DisableDepthWrite() {
-	b.AppendDepthConfigCommand(DepthConfig{
-		DepthWrite: SpecifiedBool(false),
-	})
-}
-
-func (b *Buffer) UseDepthFunc(value uint32) {
-	b.AppendDepthConfigCommand(DepthConfig{
-		DepthFunc: SpecifiedUint32(value),
-	})
-}
-
-func (b *Buffer) UseFramebuffer(framebuffer *opengl.Framebuffer) {
-	b.AppendChangeFramebufferCommand(ChangeFramebuffer{
+func (b *Buffer) ChangeFramebuffer(
+	framebuffer *opengl.Framebuffer,
+	viewport opengl.Area,
+	scissor opengl.Area,
+) ID {
+	b.changeFramebufferCommands = append(b.changeFramebufferCommands, ChangeFramebuffer{
 		Framebuffer: SpecifiedFramebuffer(framebuffer),
+		Viewport:    SpecifiedArea(viewport),
+		Scissor:     SpecifiedArea(scissor),
 	})
+	return ID{
+		Type:  TypeChangeFramebuffer,
+		Index: len(b.changeFramebufferCommands) - 1,
+	}
 }
 
-func (b *Buffer) UseViewport(area opengl.Area) {
-	b.AppendChangeFramebufferCommand(ChangeFramebuffer{
-		Viewport: SpecifiedArea(area),
+func (b *Buffer) ClearFramebuffer(
+	colors ClearColorRange,
+	depth OptionalFloat32,
+	stencil OptionalUint32,
+) ID {
+	b.clearFramebufferCommands = append(b.clearFramebufferCommands, ClearFramebuffer{
+		Colors:  colors,
+		Depth:   depth,
+		Stencil: stencil,
 	})
+	return ID{
+		Type:  TypeClearFramebuffer,
+		Index: len(b.clearFramebufferCommands) - 1,
+	}
 }
 
-func (b *Buffer) UseScissor(area opengl.Area) {
-	b.AppendChangeFramebufferCommand(ChangeFramebuffer{
-		Scissor: SpecifiedArea(area),
-	})
+func (b *Buffer) ClearColorRange(colors ...ClearColor) ClearColorRange {
+	b.clearColors = append(b.clearColors, colors...)
+	return ClearColorRange{
+		Offset: len(b.clearColors) - len(colors),
+		Count:  len(colors),
+	}
 }
 
-func (b *Buffer) UseProgram(program *opengl.Program) {
-	b.AppendChangeProgramCommand(ChangeProgram{
-		Program: program,
+func (b *Buffer) ChangeDepthConfig(
+	depthTest bool,
+	depthWrite bool,
+	depthFunc uint32,
+) ID {
+	b.changeDepthConfigCommands = append(b.changeDepthConfigCommands, ChangeDepthConfig{
+		DepthTest:  depthTest,
+		DepthWrite: depthWrite,
+		DepthFunc:  depthFunc,
 	})
+	return ID{
+		Type:  TypeChangeDepthConfig,
+		Index: len(b.changeDepthConfigCommands) - 1,
+	}
 }
 
-func (b *Buffer) UniformMatrix4f(value sprec.Mat4) Uniform {
-	offset := len(b.floatBuffer)
+func (b *Buffer) ReorderConfig(enabled bool) ID {
+	return ID{
+		Type:  TypeChangeReorderConfig,
+		Index: -1, // TODO
+	}
+}
+
+func (b *Buffer) RenderItem(
+	program *opengl.Program,
+	uniforms UniformRange,
+) ID {
+	b.renderItemCommands = append(b.renderItemCommands, RenderItem{
+		Program:  program,
+		Uniforms: uniforms,
+	})
+	return ID{
+		Type:  TypeRenderItem,
+		Index: len(b.renderItemCommands) - 1,
+	}
+}
+
+func (b *Buffer) UniformRange(uniforms ...Uniform) UniformRange {
+	b.uniformBuffer = append(b.uniformBuffer, uniforms...)
+	return UniformRange{
+		Offset: len(b.uniformBuffer) - len(uniforms),
+		Count:  len(uniforms),
+	}
+}
+
+func (b *Buffer) UniformTexture(name string, value *opengl.Texture) Uniform {
+	b.textureBuffer = append(b.textureBuffer, value)
+	return Uniform{
+		Name:   name,
+		Kind:   UniformKindTexture,
+		Offset: len(b.textureBuffer) - 16,
+	}
+}
+
+func (b *Buffer) UniformMatrix4f(name string, value sprec.Mat4) Uniform {
 	b.floatBuffer = append(b.floatBuffer,
 		value.M11, value.M21, value.M31, value.M41,
 		value.M12, value.M22, value.M32, value.M42,
@@ -256,30 +207,8 @@ func (b *Buffer) UniformMatrix4f(value sprec.Mat4) Uniform {
 		value.M14, value.M24, value.M34, value.M44,
 	)
 	return Uniform{
-		Kind:      UniformKindMatrix4f,
-		FloatData: b.floatBuffer[offset : offset+16],
+		Name:   name,
+		Kind:   UniformKindMatrix4f,
+		Offset: len(b.floatBuffer) - 16,
 	}
-}
-
-func (b *Buffer) Uniform1f(value float32) Uniform {
-	offset := len(b.floatBuffer)
-	b.floatBuffer = append(b.floatBuffer, value)
-	return Uniform{
-		Kind:      UniformKind1f,
-		FloatData: b.floatBuffer[offset : offset+1],
-	}
-}
-
-func (b *Buffer) BindUniform(name string, uniform Uniform) {
-	b.AppendBindUniformCommand(BindUniform{
-		Name:    name,
-		Uniform: uniform,
-	})
-}
-
-func (b *Buffer) BindTexture(name string, texture *opengl.Texture) {
-	b.AppendBindTextureCommand(BindTexture{
-		Name:    name,
-		Texture: texture,
-	})
 }

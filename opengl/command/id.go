@@ -8,10 +8,9 @@ type ID struct {
 type Type int
 
 const (
-	TypeClear Type = 1 + iota
-	TypeDepthConfig
-	TypeChangeFramebuffer
-	TypeChangeProgram
-	TypeBindUniform
-	TypeBindTexture
+	TypeChangeFramebuffer Type = 1 + iota
+	TypeClearFramebuffer
+	TypeChangeDepthConfig
+	TypeChangeReorderConfig
+	TypeRenderItem
 )

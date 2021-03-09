@@ -1,7 +1,7 @@
 package command
 
-type DepthConfig struct {
-	DepthTest  OptionalBool
-	DepthWrite OptionalBool
-	DepthFunc  OptionalUint32
+type ChangeDepthConfig struct {
+	DepthTest  bool
+	DepthWrite bool
+	DepthFunc  uint32
 }

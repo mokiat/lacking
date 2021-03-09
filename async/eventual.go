@@ -1,5 +1,13 @@
 package async
 
+func SuccessfulEventual() Eventual {
+	return ImmediateEventual(nil)
+}
+
+func FailedEventual(err error) Eventual {
+	return ImmediateEventual(err)
+}
+
 func ImmediateEventual(err error) Eventual {
 	ch := make(chan error, 1)
 	ch <- err

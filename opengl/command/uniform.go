@@ -1,18 +1,21 @@
 package command
 
-type Uniform struct {
-	Kind      UniformKind
-	FloatData []float32
-}
-
 type UniformKind int
 
 const (
-	UniformKind1f UniformKind = 1 + iota
+	UniformKindTexture UniformKind = 1 + iota
 	UniformKindMatrix4f
+	UniformKind4f
+	UniformKind1f
 )
 
-type BindUniform struct {
-	Name    string
-	Uniform Uniform
+type Uniform struct {
+	Name   string
+	Kind   UniformKind
+	Offset int
+}
+
+type UniformRange struct {
+	Offset int
+	Count  int
 }

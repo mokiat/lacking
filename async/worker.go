@@ -25,6 +25,21 @@ func (w *Worker) Schedule(task Task) Outcome {
 	return outcome
 }
 
+func (w *Worker) ScheduleFunc(fn func() error) Eventual {
+	outcome := NewOutcome()
+	w.tasks <- workerTask{
+		outcome: outcome,
+		task:    VoidTask(fn),
+	}
+
+	eventual, eventualDone := NewEventual()
+	go func() {
+		result := outcome.Wait()
+		eventualDone(result.Err)
+	}()
+	return eventual
+}
+
 func (w *Worker) ProcessTrySingle() bool {
 	select {
 	case task, ok := <-w.tasks:

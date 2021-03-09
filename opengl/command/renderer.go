@@ -7,6 +7,8 @@ import (
 	"github.com/mokiat/lacking/opengl"
 )
 
+// TODO: Optimize by not changing state if there is no difference
+
 func NewRenderer() *Renderer {
 	return &Renderer{
 		buffer: NewBuffer(),
@@ -24,9 +26,7 @@ func (r *Renderer) Schedule(buffer *Buffer) {
 	r.renderMU.Lock()
 	defer r.renderMU.Unlock()
 
-	// TODO: Pour commands into renderer buffer
-	// while properly sorting and collapsing
-
+	// TODO: Pour commands into renderer buffer while properly sorting
 	buffer.Overwrite(r.buffer)
 }
 
@@ -34,72 +34,29 @@ func (r *Renderer) Render() {
 	r.renderMU.Lock()
 	defer r.renderMU.Unlock()
 
+	r.RenderBuffer(r.buffer)
+}
+
+func (r *Renderer) RenderBuffer(buffer *Buffer) {
 	// TODO: Reset cache state
 
 	gl.Enable(gl.FRAMEBUFFER_SRGB)
-	r.buffer.Each(func(id ID) {
-		switch id.Type {
-		case TypeClear:
-			r.processClearCommand(r.buffer.ClearCommand(id.Index))
-		case TypeDepthConfig:
-			r.processDepthConfigCommand(r.buffer.DepthConfigCommand(id.Index))
+
+	for _, cmd := range buffer.commands {
+		switch cmd.Type {
 		case TypeChangeFramebuffer:
-			r.processChangeFramebufferCommand(r.buffer.ChangeFramebufferCommand(id.Index))
-		case TypeChangeProgram:
-			r.processChangeProgramCommand(r.buffer.ChangeProgramCommand(id.Index))
-		case TypeBindUniform:
-			r.processBindUniformCommand(r.buffer.BindUniformCommand(id.Index))
-		case TypeBindTexture:
-			r.processBindTextureCommand(r.buffer.BindTextureCommand(id.Index))
-		}
-	})
-}
-
-func (r *Renderer) processClearCommand(cmd Clear) {
-	// TODO: Optimize: both can be done in a single pass
-	// TODO: Be smarter and clear active (not default) framebuffer
-	if cmd.ClearDepth.IsSet() {
-		value := cmd.ClearDepth.Value()
-		gl.ClearNamedFramebufferfv(0, gl.DEPTH, 0, &value)
-	}
-	if cmd.ClearStencil.IsSet() {
-		value := cmd.ClearStencil.Value()
-		gl.ClearNamedFramebufferuiv(0, gl.STENCIL, 0, &value)
-	}
-	var rgba [4]float32
-	for _, clearColor := range cmd.ClearColors {
-		if clearColor.IsSet() {
-			value := clearColor.Value()
-			rgba[0] = value.Color.X
-			rgba[1] = value.Color.Y
-			rgba[2] = value.Color.Z
-			rgba[3] = value.Color.W
-			gl.ClearNamedFramebufferfv(0, gl.COLOR, int32(value.Attachment), &rgba[0])
+			r.changeFramebuffer(buffer, buffer.changeFramebufferCommands[cmd.Index])
+		case TypeClearFramebuffer:
+			r.clearFramebuffer(buffer, buffer.clearFramebufferCommands[cmd.Index])
+		case TypeChangeDepthConfig:
+			r.changeDepthConfig(buffer, buffer.changeDepthConfigCommands[cmd.Index])
+		case TypeRenderItem:
+			r.renderItem(buffer, buffer.renderItemCommands[cmd.Index])
 		}
 	}
 }
 
-func (r *Renderer) processDepthConfigCommand(cmd DepthConfig) {
-	if cmd.DepthTest.IsSet() {
-		if cmd.DepthTest.Value() {
-			gl.Enable(gl.DEPTH_TEST)
-		} else {
-			gl.Disable(gl.DEPTH_TEST)
-		}
-	}
-	if cmd.DepthWrite.IsSet() {
-		if cmd.DepthWrite.Value() {
-			gl.DepthMask(true)
-		} else {
-			gl.DepthMask(false)
-		}
-	}
-	if cmd.DepthFunc.IsSet() {
-		gl.DepthFunc(cmd.DepthFunc.Value())
-	}
-}
-
-func (r *Renderer) processChangeFramebufferCommand(cmd ChangeFramebuffer) {
+func (r *Renderer) changeFramebuffer(buffer *Buffer, cmd ChangeFramebuffer) {
 	if cmd.Framebuffer.IsSet() {
 		framebuffer := cmd.Framebuffer.Value()
 		// TODO: Use DSA glNamedFramebufferDrawBuffers
@@ -119,23 +76,63 @@ func (r *Renderer) processChangeFramebufferCommand(cmd ChangeFramebuffer) {
 	}
 }
 
-func (r *Renderer) processChangeProgramCommand(cmd ChangeProgram) {
-	gl.UseProgram(cmd.Program.ID())
-	r.activeProgram = cmd.Program
-}
-
-func (r *Renderer) processBindUniformCommand(cmd BindUniform) {
-	location := r.activeProgram.UniformLocation(cmd.Name)
-	switch cmd.Uniform.Kind {
-	case UniformKindMatrix4f:
-		gl.UniformMatrix4fv(location, 1, false, &cmd.Uniform.FloatData[0])
-	case UniformKind1f:
-		gl.Uniform1fv(location, 1, &cmd.Uniform.FloatData[0])
-	default:
-		panic("unknown uniform kind")
+func (r *Renderer) clearFramebuffer(buffer *Buffer, cmd ClearFramebuffer) {
+	// TODO: Optimize: both can be done in a single pass
+	// TODO: Be smarter and clear active (not default) framebuffer
+	if cmd.Depth.IsSet() {
+		value := cmd.Depth.Value()
+		gl.ClearNamedFramebufferfv(0, gl.DEPTH, 0, &value)
+	}
+	if cmd.Stencil.IsSet() {
+		value := cmd.Stencil.Value()
+		gl.ClearNamedFramebufferuiv(0, gl.STENCIL, 0, &value)
+	}
+	var rgba [4]float32
+	for extra := 0; extra < cmd.Colors.Count; extra++ {
+		value := buffer.clearColors[cmd.Colors.Offset+extra]
+		rgba[0] = value.Color.X
+		rgba[1] = value.Color.Y
+		rgba[2] = value.Color.Z
+		rgba[3] = value.Color.W
+		gl.ClearNamedFramebufferfv(0, gl.COLOR, int32(value.Attachment), &rgba[0])
 	}
 }
 
-func (r *Renderer) processBindTextureCommand(cmd BindTexture) {
-	// TODO:
+func (r *Renderer) changeDepthConfig(buffer *Buffer, cmd ChangeDepthConfig) {
+	if cmd.DepthTest {
+		gl.Enable(gl.DEPTH_TEST)
+	} else {
+		gl.Disable(gl.DEPTH_TEST)
+	}
+	gl.DepthMask(cmd.DepthWrite)
+	gl.DepthFunc(cmd.DepthFunc)
+}
+
+func (r *Renderer) renderItem(buffer *Buffer, cmd RenderItem) {
+	gl.UseProgram(cmd.Program.ID())
+
+	textureUnit := uint32(0)
+	for extra := 0; extra < cmd.Uniforms.Count; extra++ {
+		uniform := buffer.uniformBuffer[cmd.Uniforms.Offset+extra]
+		location := cmd.Program.UniformLocation(uniform.Name) // TODO: Cache
+		switch uniform.Kind {
+		case UniformKindTexture:
+			gl.BindTextureUnit(textureUnit, buffer.textureBuffer[uniform.Offset].ID())
+			gl.Uniform1i(location, int32(textureUnit))
+			textureUnit++
+		case UniformKindMatrix4f:
+			floatData := &buffer.floatBuffer[uniform.Offset]
+			gl.UniformMatrix4fv(location, 1, false, floatData)
+		case UniformKind4f:
+			// TODO Check if performance is better with Uniform4f
+			floatData := &buffer.floatBuffer[uniform.Offset]
+			gl.Uniform4fv(location, 1, floatData)
+		case UniformKind1f:
+			// TODO Check if performance is better with Uniform1f
+			floatData := &buffer.floatBuffer[uniform.Offset]
+			gl.Uniform1fv(location, 1, floatData)
+		default:
+			panic("unknown uniform kind")
+		}
+	}
 }

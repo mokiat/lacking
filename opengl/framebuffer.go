@@ -6,6 +6,10 @@ import (
 	"github.com/go-gl/gl/v4.6-core/gl"
 )
 
+func DefaultFramebuffer() *Framebuffer {
+	return nil
+}
+
 func NewFramebuffer() *Framebuffer {
 	return &Framebuffer{}
 }
