@@ -169,12 +169,22 @@ func (b *Buffer) ReorderConfig(enabled bool) ID {
 }
 
 func (b *Buffer) RenderItem(
+	backfaceCulling bool,
 	program *opengl.Program,
 	uniforms UniformRange,
+	vertexArray *opengl.VertexArray,
+	primitive uint32,
+	indexCount int32,
+	indexOffsetBytes int,
 ) ID {
 	b.renderItemCommands = append(b.renderItemCommands, RenderItem{
-		Program:  program,
-		Uniforms: uniforms,
+		BackfaceCulling:  backfaceCulling,
+		Program:          program,
+		Uniforms:         uniforms,
+		VertexArray:      vertexArray,
+		Primitive:        primitive,
+		IndexCount:       indexCount,
+		IndexOffsetBytes: indexOffsetBytes,
 	})
 	return ID{
 		Type:  TypeRenderItem,
@@ -195,7 +205,7 @@ func (b *Buffer) UniformTexture(name string, value *opengl.Texture) Uniform {
 	return Uniform{
 		Name:   name,
 		Kind:   UniformKindTexture,
-		Offset: len(b.textureBuffer) - 16,
+		Offset: len(b.textureBuffer) - 1,
 	}
 }
 

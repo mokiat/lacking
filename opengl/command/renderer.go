@@ -4,7 +4,6 @@ import (
 	"sync"
 
 	"github.com/go-gl/gl/v4.6-core/gl"
-	"github.com/mokiat/lacking/opengl"
 )
 
 // TODO: Optimize by not changing state if there is no difference
@@ -18,8 +17,6 @@ func NewRenderer() *Renderer {
 type Renderer struct {
 	renderMU sync.Mutex
 	buffer   *Buffer
-
-	activeProgram *opengl.Program
 }
 
 func (r *Renderer) Schedule(buffer *Buffer) {
@@ -109,6 +106,12 @@ func (r *Renderer) changeDepthConfig(buffer *Buffer, cmd ChangeDepthConfig) {
 }
 
 func (r *Renderer) renderItem(buffer *Buffer, cmd RenderItem) {
+	if cmd.BackfaceCulling {
+		gl.Enable(gl.CULL_FACE)
+	} else {
+		gl.Disable(gl.CULL_FACE)
+	}
+
 	gl.UseProgram(cmd.Program.ID())
 
 	textureUnit := uint32(0)
@@ -135,4 +138,8 @@ func (r *Renderer) renderItem(buffer *Buffer, cmd RenderItem) {
 			panic("unknown uniform kind")
 		}
 	}
+
+	gl.BindVertexArray(cmd.VertexArray.ID())
+	// gl.LineWidth(2) // TODO: Only in case of line
+	gl.DrawElements(cmd.Primitive, cmd.IndexCount, gl.UNSIGNED_SHORT, gl.PtrOffset(cmd.IndexOffsetBytes))
 }
