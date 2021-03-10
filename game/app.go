@@ -103,9 +103,14 @@ func (a *App) Run(controller Controller) error {
 	}
 
 	loop.Stop()
+	for loop.IsRunning() {
+		// drain GL tasks
+		gfxWorker.ProcessTryMultiple(10)
+		gfxRenderer.Render()
+	}
+	loop.Wait()
 
 	gfxWorker.Shutdown()
-
 	return nil
 }
 
@@ -190,5 +195,8 @@ func (l *updateLoop) Run() {
 
 func (l *updateLoop) Stop() {
 	close(l.stop)
+}
+
+func (l *updateLoop) Wait() {
 	<-l.finished
 }
