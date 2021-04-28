@@ -1,4 +1,4 @@
-# Lacking Game Engine
+# Lacking Game Engine [![Go Report Card](https://goreportcard.com/badge/github.com/mokiat/lacking)](https://goreportcard.com/report/github.com/mokiat/lacking) [![Go Reference](https://pkg.go.dev/badge/github.com/mokiat/lacking.svg)](https://pkg.go.dev/github.com/mokiat/lacking)
 
 ![logo](logo.png)
 
