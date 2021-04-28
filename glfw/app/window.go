@@ -44,6 +44,10 @@ func Run(cfg *Config, controller app.Controller) error {
 	}
 	defer window.Destroy()
 
+	if !cfg.cursorVisible {
+		window.SetInputMode(glfw.CursorMode, glfw.CursorHidden)
+	}
+
 	if cfg.icon != "" {
 		img, err := openIcon(cfg.icon)
 		if err != nil {

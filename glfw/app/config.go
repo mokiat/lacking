@@ -22,6 +22,7 @@ func NewConfig(title string, width, height int) *Config {
 		width:          width,
 		height:         height,
 		swapInterval:   1,
+		cursorVisible:  true,
 		graphicsEngine: GraphicsEngineOpenGL,
 	}
 }
@@ -33,6 +34,7 @@ type Config struct {
 	height         int
 	swapInterval   int
 	maximized      bool
+	cursorVisible  bool
 	icon           string
 	graphicsEngine GraphicsEngine
 }
@@ -72,6 +74,18 @@ func (c *Config) SetMaximized(maximized bool) {
 // maximized state.
 func (c *Config) Maximized() bool {
 	return c.maximized
+}
+
+// SetCursorVisible specifies whether the cursor should be
+// displayed when moved over the window.
+func (c *Config) SetCursorVisible(visible bool) {
+	c.cursorVisible = visible
+}
+
+// CursorVisible returns whether the cursor will be shown
+// when hovering over the window.
+func (c *Config) CursorVisible() bool {
+	return c.cursorVisible
 }
 
 // SetIcon specifies the filepath to an icon image that will
