@@ -1,6 +1,6 @@
 package graphics
 
-import "github.com/go-gl/gl/v4.1-core/gl"
+import "github.com/go-gl/gl/v4.6-core/gl"
 
 type TwoDTexture struct {
 	ID uint32

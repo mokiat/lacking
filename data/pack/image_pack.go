@@ -176,26 +176,16 @@ func (t *CubeImage) Scale(newDimension int) *CubeImage {
 }
 
 func (t *CubeImage) RGBA8Data(side CubeSide) []byte {
-	// TODO: Move to math
-	clampComponent := func(value float64) float64 {
-		if value > 1.0 {
-			return 1.0
-		}
-		if value < 0.0 {
-			return 0.0
-		}
-		return value
-	}
 	data := make([]byte, 4*t.Dimension*t.Dimension)
 	offset := 0
 	texSide := t.Sides[side]
 	for y := 0; y < t.Dimension; y++ {
 		for x := 0; x < t.Dimension; x++ {
 			texel := texSide.Texel(x, t.Dimension-y-1)
-			data[offset+0] = byte(255.0 * clampComponent(texel.R))
-			data[offset+1] = byte(255.0 * clampComponent(texel.G))
-			data[offset+2] = byte(255.0 * clampComponent(texel.B))
-			data[offset+3] = byte(255.0 * clampComponent(texel.A))
+			data[offset+0] = byte(255.0 * dprec.Clamp(texel.R, 0.0, 1.0))
+			data[offset+1] = byte(255.0 * dprec.Clamp(texel.G, 0.0, 1.0))
+			data[offset+2] = byte(255.0 * dprec.Clamp(texel.B, 0.0, 1.0))
+			data[offset+3] = byte(255.0 * dprec.Clamp(texel.A, 0.0, 1.0))
 			offset += 4
 		}
 	}
