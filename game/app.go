@@ -7,8 +7,9 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/go-gl/gl/v4.1-core/gl"
+	"github.com/go-gl/gl/v4.6-core/gl"
 	"github.com/go-gl/glfw/v3.3/glfw"
+
 	"github.com/mokiat/lacking/async"
 	"github.com/mokiat/lacking/graphics"
 	"github.com/mokiat/lacking/input"
