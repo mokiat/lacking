@@ -3,7 +3,6 @@ package pack
 import (
 	"fmt"
 
-	"github.com/mokiat/gomath/sprec"
 	"github.com/mokiat/lacking/data"
 	"github.com/mokiat/lacking/data/asset"
 )
@@ -40,7 +39,7 @@ func (a *SaveModelAssetAction) Run() error {
 
 		nodeAsset := asset.Node{
 			Name:   node.Name,
-			Matrix: matrixToArray(node.Matrix()),
+			Matrix: node.Matrix().ColumnMajorArray(),
 		}
 		if parentIndex, ok := nodeMapping[parent]; ok {
 			nodeAsset.ParentIndex = int16(parentIndex)
@@ -221,29 +220,4 @@ func meshToAssetMesh(mesh *Mesh) asset.Mesh {
 		meshAsset.SubMeshes[j] = subMeshAsset
 	}
 	return meshAsset
-}
-
-// TODO: Move to math lib
-func matrixToArray(matrix sprec.Mat4) [16]float32 {
-	var result [16]float32
-	result[0] = matrix.M11
-	result[1] = matrix.M21
-	result[2] = matrix.M31
-	result[3] = matrix.M41
-
-	result[4] = matrix.M12
-	result[5] = matrix.M22
-	result[6] = matrix.M32
-	result[7] = matrix.M42
-
-	result[8] = matrix.M13
-	result[9] = matrix.M23
-	result[10] = matrix.M33
-	result[11] = matrix.M43
-
-	result[12] = matrix.M14
-	result[13] = matrix.M24
-	result[14] = matrix.M34
-	result[15] = matrix.M44
-	return result
 }

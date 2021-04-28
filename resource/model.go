@@ -105,7 +105,7 @@ func (o *ModelOperator) Allocate(registry *Registry, name string) (interface{}, 
 			rootNodes = append(rootNodes, nodes[i])
 		}
 		nodes[i].Name = nodeAsset.Name
-		nodes[i].Matrix = floatArrayToMatrix(nodeAsset.Matrix)
+		nodes[i].Matrix = sprec.ColumnMajorArrayMat4(nodeAsset.Matrix)
 		nodes[i].Mesh = meshes[nodeAsset.MeshIndex]
 	}
 	model.Nodes = rootNodes
@@ -123,29 +123,4 @@ func (o *ModelOperator) Release(registry *Registry, resource interface{}) error 
 	}
 
 	return nil
-}
-
-// TODO: gomath library should provide similar method
-func floatArrayToMatrix(values [16]float32) sprec.Mat4 {
-	var result sprec.Mat4
-	result.M11 = values[0]
-	result.M21 = values[1]
-	result.M31 = values[2]
-	result.M41 = values[3]
-
-	result.M12 = values[4]
-	result.M22 = values[5]
-	result.M32 = values[6]
-	result.M42 = values[7]
-
-	result.M13 = values[8]
-	result.M23 = values[9]
-	result.M33 = values[10]
-	result.M43 = values[11]
-
-	result.M14 = values[12]
-	result.M24 = values[13]
-	result.M34 = values[14]
-	result.M44 = values[15]
-	return result
 }

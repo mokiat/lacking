@@ -49,9 +49,8 @@ func (a *SaveLevelAssetAction) Run() error {
 	for i, staticEntity := range level.StaticEntities {
 		staticEntityAsset := asset.LevelEntity{
 			Model:  staticEntity.Model,
-			Matrix: matrixToArray(staticEntity.Matrix),
+			Matrix: staticEntity.Matrix.ColumnMajorArray(),
 		}
-
 		levelAsset.StaticEntities[i] = staticEntityAsset
 	}
 

@@ -130,7 +130,7 @@ func (o *LevelOperator) Allocate(registry *Registry, name string) (interface{}, 
 		}
 		staticEntities[i] = &Entity{
 			Model:  model,
-			Matrix: floatArrayToMatrix(staticEntityAsset.Matrix),
+			Matrix: sprec.ColumnMajorArrayMat4(staticEntityAsset.Matrix),
 		}
 	}
 	level.StaticEntities = staticEntities
