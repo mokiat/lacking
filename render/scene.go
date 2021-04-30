@@ -5,7 +5,6 @@ import (
 
 	"github.com/mokiat/gomath/sprec"
 	"github.com/mokiat/lacking/async"
-	"github.com/mokiat/lacking/game"
 	"github.com/mokiat/lacking/graphics"
 	"github.com/mokiat/lacking/graphics/preset"
 	"github.com/mokiat/lacking/resource"
@@ -156,18 +155,18 @@ func (s *Scene) Release(registry *resource.Registry, gfxWorker *async.Worker) as
 	return async.NewValueOutcome(nil)
 }
 
-func (s *Scene) Render(ctx game.RenderContext) {
+func (s *Scene) Render(width, height int, pipeline *graphics.Pipeline) {
 	// Initialize new framebuffer instance, to avoid race conditions
 	s.screenFramebuffer = &graphics.Framebuffer{
-		Width:  int32(ctx.WindowSize.Width),
-		Height: int32(ctx.WindowSize.Height),
+		Width:  int32(width),
+		Height: int32(height),
 	}
 
-	s.renderGeometryPass(ctx.GFXPipeline)
-	s.renderLightingPass(ctx.GFXPipeline)
-	s.renderForwardPass(ctx.GFXPipeline)
-	s.renderExposureProbePass(ctx.GFXPipeline)
-	s.renderPostprocessingPass(ctx.GFXPipeline)
+	s.renderGeometryPass(pipeline)
+	s.renderLightingPass(pipeline)
+	s.renderForwardPass(pipeline)
+	s.renderExposureProbePass(pipeline)
+	s.renderPostprocessingPass(pipeline)
 }
 
 func (s *Scene) renderGeometryPass(pipeline *graphics.Pipeline) {
