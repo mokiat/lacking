@@ -8,12 +8,12 @@ import (
 type Body struct {
 	Name string
 
+	Mass            float32
+	MomentOfInertia sprec.Mat3
+
 	Position    sprec.Vec3
 	Orientation sprec.Quat
 	IsStatic    bool
-
-	Mass            float32
-	MomentOfInertia sprec.Mat3
 
 	Acceleration        sprec.Vec3
 	AngularAcceleration sprec.Vec3
@@ -36,6 +36,7 @@ func (b *Body) Translate(offset sprec.Vec3) {
 func (b *Body) Rotate(vector sprec.Vec3) {
 	if radians := vector.Length(); sprec.Abs(radians) > radialEpsilon {
 		b.Orientation = sprec.QuatProd(sprec.RotationQuat(sprec.Radians(radians), vector), b.Orientation)
+		b.Orientation = sprec.UnitQuat(b.Orientation)
 	}
 }
 
