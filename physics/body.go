@@ -8,12 +8,12 @@ import (
 type Body struct {
 	Name string
 
+	Mass            float32
+	MomentOfInertia sprec.Mat3
+
 	Position    sprec.Vec3
 	Orientation sprec.Quat
 	IsStatic    bool
-
-	Mass            float32
-	MomentOfInertia sprec.Mat3
 
 	Acceleration        sprec.Vec3
 	AngularAcceleration sprec.Vec3

@@ -17,8 +17,7 @@ const (
 
 func NewEngine(step time.Duration) *Engine {
 	return &Engine{
-		step:            step,
-		accumulatedTime: 0,
+		step: step,
 
 		gravity:      sprec.NewVec3(0.0, -gravity, 0.0),
 		windVelocity: sprec.NewVec3(0.0, 0.0, 0.0),
@@ -29,8 +28,7 @@ func NewEngine(step time.Duration) *Engine {
 }
 
 type Engine struct {
-	step            time.Duration
-	accumulatedTime time.Duration
+	step time.Duration
 
 	gravity      sprec.Vec3
 	windVelocity sprec.Vec3
@@ -48,15 +46,19 @@ func (e *Engine) Bodies() []*Body {
 }
 
 func (e *Engine) Update(elapsedTime time.Duration) {
-	e.accumulatedTime += elapsedTime
-	for e.accumulatedTime > e.step {
-		e.accumulatedTime -= e.step
+	for elapsedTime > e.step {
 		e.runSimulation(Context{
 			ElapsedSeconds:    float32(e.step.Seconds()),
 			ImpulseIterations: impulseIterations,
 			NudgeIterations:   nudgeIterations,
 		})
+		elapsedTime -= e.step
 	}
+	e.runSimulation(Context{
+		ElapsedSeconds:    float32(elapsedTime.Seconds()),
+		ImpulseIterations: impulseIterations,
+		NudgeIterations:   nudgeIterations,
+	})
 }
 
 func (e *Engine) Add(aspect interface{}) {
