@@ -84,14 +84,11 @@ func (r *Renderer) processAction(action func()) {
 
 func (r *Renderer) renderSequence(sequence Sequence) {
 	gl.Enable(gl.FRAMEBUFFER_SRGB)
-	if framebuffer := sequence.SourceFramebuffer; framebuffer != nil {
-		gl.BindFramebuffer(gl.READ_FRAMEBUFFER, framebuffer.ID)
-	}
 	if framebuffer := sequence.TargetFramebuffer; framebuffer != nil {
-		gl.BindFramebuffer(gl.DRAW_FRAMEBUFFER, framebuffer.ID)
+		gl.BindFramebuffer(gl.FRAMEBUFFER, framebuffer.ID())
 		gl.Viewport(0, 0, framebuffer.Width, framebuffer.Height)
 	} else {
-		gl.BindFramebuffer(gl.DRAW_FRAMEBUFFER, 0)
+		gl.BindFramebuffer(gl.FRAMEBUFFER, 0)
 	}
 
 	if sequence.TestDepth {
@@ -113,7 +110,7 @@ func (r *Renderer) renderSequence(sequence Sequence) {
 		if sequence.BlitFramebufferSmooth {
 			sampleMode = uint32(gl.LINEAR)
 		}
-		gl.BlitFramebuffer(
+		gl.BlitNamedFramebuffer(sequence.SourceFramebuffer.ID(), sequence.TargetFramebuffer.ID(),
 			0, 0, sequence.SourceFramebuffer.Width, sequence.SourceFramebuffer.Height,
 			0, 0, sequence.TargetFramebuffer.Width, sequence.TargetFramebuffer.Height,
 			blitFlags,
@@ -153,66 +150,66 @@ func (r *Renderer) renderItem(sequence Sequence, item Item) {
 		gl.Disable(gl.CULL_FACE)
 	}
 
-	gl.UseProgram(item.Program.ID)
+	gl.UseProgram(item.Program.ID())
 
 	textureIndex := uint32(0)
 	if item.Program.MetalnessTwoDTextureLocation != -1 {
 		gl.ActiveTexture(gl.TEXTURE0 + textureIndex)
-		gl.BindTexture(gl.TEXTURE_2D, item.MetalnessTwoDTexture.ID)
+		gl.BindTexture(gl.TEXTURE_2D, item.MetalnessTwoDTexture.Texture.ID())
 		gl.Uniform1i(item.Program.MetalnessTwoDTextureLocation, int32(textureIndex))
 		textureIndex++
 	}
 	if item.Program.RoughnessTwoDTextureLocation != -1 {
 		gl.ActiveTexture(gl.TEXTURE0 + textureIndex)
-		gl.BindTexture(gl.TEXTURE_2D, item.RoughnessTwoDTexture.ID)
+		gl.BindTexture(gl.TEXTURE_2D, item.RoughnessTwoDTexture.Texture.ID())
 		gl.Uniform1i(item.Program.RoughnessTwoDTextureLocation, int32(textureIndex))
 		textureIndex++
 	}
 	if item.Program.AlbedoTwoDTextureLocation != -1 {
 		gl.ActiveTexture(gl.TEXTURE0 + textureIndex)
-		gl.BindTexture(gl.TEXTURE_2D, item.AlbedoTwoDTexture.ID)
+		gl.BindTexture(gl.TEXTURE_2D, item.AlbedoTwoDTexture.Texture.ID())
 		gl.Uniform1i(item.Program.AlbedoTwoDTextureLocation, int32(textureIndex))
 		textureIndex++
 	}
 	if item.Program.AlbedoCubeTextureLocation != -1 {
 		gl.ActiveTexture(gl.TEXTURE0 + textureIndex)
-		gl.BindTexture(gl.TEXTURE_CUBE_MAP, item.AlbedoCubeTexture.ID)
+		gl.BindTexture(gl.TEXTURE_CUBE_MAP, item.AlbedoCubeTexture.Texture.ID())
 		gl.Uniform1i(item.Program.AlbedoCubeTextureLocation, int32(textureIndex))
 		textureIndex++
 	}
 	if item.Program.AmbientReflectionTextureLocation != -1 {
 		gl.ActiveTexture(gl.TEXTURE0 + textureIndex)
-		gl.BindTexture(gl.TEXTURE_CUBE_MAP, item.AmbientReflectionTexture.ID)
+		gl.BindTexture(gl.TEXTURE_CUBE_MAP, item.AmbientReflectionTexture.Texture.ID())
 		gl.Uniform1i(item.Program.AmbientReflectionTextureLocation, int32(textureIndex))
 		textureIndex++
 	}
 	if item.Program.AmbientRefractionTextureLocation != -1 {
 		gl.ActiveTexture(gl.TEXTURE0 + textureIndex)
-		gl.BindTexture(gl.TEXTURE_CUBE_MAP, item.AmbientRefractionTexture.ID)
+		gl.BindTexture(gl.TEXTURE_CUBE_MAP, item.AmbientRefractionTexture.Texture.ID())
 		gl.Uniform1i(item.Program.AmbientRefractionTextureLocation, int32(textureIndex))
 		textureIndex++
 	}
 	if item.Program.NormalTwoDTextureLocation != -1 {
 		gl.ActiveTexture(gl.TEXTURE0 + textureIndex)
-		gl.BindTexture(gl.TEXTURE_2D, item.NormalTwoDTexture.ID)
+		gl.BindTexture(gl.TEXTURE_2D, item.NormalTwoDTexture.Texture.ID())
 		gl.Uniform1i(item.Program.NormalTwoDTextureLocation, int32(textureIndex))
 		textureIndex++
 	}
 	if item.Program.FBColor0TextureLocation != -1 {
 		gl.ActiveTexture(gl.TEXTURE0 + textureIndex)
-		gl.BindTexture(gl.TEXTURE_2D, sequence.SourceFramebuffer.AlbedoTextureID)
+		gl.BindTexture(gl.TEXTURE_2D, sequence.SourceFramebuffer.AlbedoTexture.ID())
 		gl.Uniform1i(item.Program.FBColor0TextureLocation, int32(textureIndex))
 		textureIndex++
 	}
 	if item.Program.FBColor1TextureLocation != -1 {
 		gl.ActiveTexture(gl.TEXTURE0 + textureIndex)
-		gl.BindTexture(gl.TEXTURE_2D, sequence.SourceFramebuffer.NormalTextureID)
+		gl.BindTexture(gl.TEXTURE_2D, sequence.SourceFramebuffer.NormalTexture.ID())
 		gl.Uniform1i(item.Program.FBColor1TextureLocation, int32(textureIndex))
 		textureIndex++
 	}
 	if item.Program.FBDepthTextureLocation != -1 {
 		gl.ActiveTexture(gl.TEXTURE0 + textureIndex)
-		gl.BindTexture(gl.TEXTURE_2D, sequence.SourceFramebuffer.DepthTextureID)
+		gl.BindTexture(gl.TEXTURE_2D, sequence.SourceFramebuffer.DepthTexture.ID())
 		gl.Uniform1i(item.Program.FBDepthTextureLocation, int32(textureIndex))
 		textureIndex++
 	}
@@ -249,7 +246,7 @@ func (r *Renderer) renderItem(sequence Sequence, item Item) {
 		gl.Uniform1f(item.Program.ExposureLocation, item.Exposure)
 	}
 
-	gl.BindVertexArray(item.VertexArray.ID)
+	gl.BindVertexArray(item.VertexArray.ID())
 	gl.LineWidth(2)
 	gl.DrawElements(item.glPrimitive(), item.IndexCount, gl.UNSIGNED_SHORT, gl.PtrOffset(item.IndexOffset))
 }
