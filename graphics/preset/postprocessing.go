@@ -3,6 +3,7 @@ package preset
 import (
 	"fmt"
 
+	"github.com/mokiat/lacking/framework/opengl"
 	"github.com/mokiat/lacking/graphics"
 )
 
@@ -14,8 +15,8 @@ const (
 )
 
 func NewPostprocessingShaderData(toneMapping ToneMapping) graphics.ProgramData {
-	vsBuilder := NewShaderBuilder(postprocessingVertexShaderTemplate)
-	fsBuilder := NewShaderBuilder(postprocessingFragmentShaderTemplate)
+	vsBuilder := opengl.NewShaderSourceBuilder(postprocessingVertexShaderTemplate)
+	fsBuilder := opengl.NewShaderSourceBuilder(postprocessingFragmentShaderTemplate)
 	switch toneMapping {
 	case ReinhardToneMapping:
 		fsBuilder.AddFeature("MODE_REINHARD")

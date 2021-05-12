@@ -119,7 +119,7 @@ func (s *Scene) Init(gfxWorker *async.Worker) async.Outcome {
 
 		quadData := preset.NewQuadVertexArrayData(-1.0, 1.0, 1.0, -1.0)
 		s.quadMesh = &resource.Mesh{
-			GFXVertexArray: &graphics.VertexArray{},
+			GFXVertexArray: graphics.NewVertexArray(),
 			SubMeshes: []resource.SubMesh{ // TODO: Get this from preset somehow
 				{
 					Primitive:   graphics.RenderPrimitiveTriangles,
@@ -134,7 +134,7 @@ func (s *Scene) Init(gfxWorker *async.Worker) async.Outcome {
 
 		cubeData := preset.NewCubeVertexArrayData(-1.0, 1.0, 1.0, -1.0, 1.0, -1.0)
 		s.cubeMesh = &resource.Mesh{
-			GFXVertexArray: &graphics.VertexArray{},
+			GFXVertexArray: graphics.NewVertexArray(),
 			SubMeshes: []resource.SubMesh{ // TODO: Get this from preset somehow
 				{
 					Primitive:   graphics.RenderPrimitiveTriangles,
@@ -249,7 +249,7 @@ func (s *Scene) renderExposureProbePass(pipeline *graphics.Pipeline) {
 	pipeline.EndSequence(probeSequence)
 
 	pipeline.SchedulePostRender(func() {
-		gl.BindTexture(gl.TEXTURE_2D, s.exposureFramebuffer.AlbedoTextureID)
+		gl.BindTexture(gl.TEXTURE_2D, s.exposureFramebuffer.AlbedoTexture.ID())
 		data := make([]float32, 4)
 		gl.GetTexImage(gl.TEXTURE_2D, 0, gl.RGBA, gl.FLOAT, gl.Ptr(&data[0]))
 		brightness := 0.2126*data[0] + 0.7152*data[1] + 0.0722*data[2]

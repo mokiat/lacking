@@ -78,7 +78,7 @@ func (o *MeshOperator) Release(registry *Registry, resource interface{}) error {
 func AllocateMesh(registry *Registry, name string, gfxWorker *async.Worker, meshAsset *asset.Mesh) (*Mesh, error) {
 	mesh := &Mesh{
 		Name:           name,
-		GFXVertexArray: &graphics.VertexArray{},
+		GFXVertexArray: graphics.NewVertexArray(),
 	}
 
 	gfxTask := gfxWorker.Schedule(async.VoidTask(func() error {
