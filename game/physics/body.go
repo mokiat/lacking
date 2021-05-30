@@ -1,16 +1,6 @@
 package physics
 
-import (
-	"github.com/mokiat/gomath/sprec"
-)
-
-func newBody(scene *Scene) *Body {
-	result := &Body{
-		scene: scene,
-	}
-	scene.appendBody(result)
-	return result
-}
+import "github.com/mokiat/gomath/sprec"
 
 // Body represents a physical body that has physics
 // act upon it.

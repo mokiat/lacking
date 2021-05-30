@@ -2,6 +2,7 @@ package physics
 
 import (
 	"github.com/mokiat/gomath/sprec"
+	"github.com/mokiat/lacking/shape"
 )
 
 const (
@@ -19,6 +20,8 @@ func newScene(stepSeconds float32) *Scene {
 		maxAngularAcceleration: 100.0, // TODO: Measure something reasonable
 		maxVelocity:            300.0,
 		maxAngularVelocity:     300.0, // TODO: Measure something reasonable
+
+		intersectionSet: shape.NewIntersectionResultSet(128),
 
 		gravity:      sprec.NewVec3(0.0, -9.8, 0.0),
 		windVelocity: sprec.NewVec3(0.0, 0.0, 0.0),
@@ -40,11 +43,15 @@ type Scene struct {
 
 	firstBody *Body
 	lastBody  *Body
-	cacheBody *Body // TODO: Use as a stack of a reusable deleted instances
+	cacheBody *Body
 
 	firstConstraint *Constraint
 	lastConstraint  *Constraint
-	cacheConstraint *Constraint // TODO: Use as stack of reusable deleted instances
+	cacheConstraint *Constraint
+
+	collisionConstraints []*Constraint
+	collisionSolvers     []groundCollisionSolver
+	intersectionSet      *shape.IntersectionResultSet
 
 	gravity      sprec.Vec3
 	windVelocity sprec.Vec3
@@ -84,19 +91,60 @@ func (s *Scene) SetWindDensity(density float32) {
 // CreateBody creates a new physics body and places
 // it within this scene.
 func (s *Scene) CreateBody() *Body {
-	return newBody(s)
+	var body *Body
+	if s.cacheBody != nil {
+		body = s.cacheBody
+		s.cacheBody = s.cacheBody.next
+	} else {
+		body = &Body{}
+	}
+	body.scene = s
+	body.prev = nil
+	body.next = nil
+	s.appendBody(body)
+	return body
 }
 
 // CreateSingleBodyConstraint creates a new physics constraint that acts on
 // a single body and enables it for this scene.
 func (s *Scene) CreateSingleBodyConstraint(solver ConstraintSolver, body *Body) *Constraint {
-	return newConstraint(s, solver, body, nil)
+	var constraint *Constraint
+	if s.cacheConstraint != nil {
+		constraint = s.cacheConstraint
+		s.cacheConstraint = s.cacheConstraint.next
+	} else {
+		constraint = &Constraint{}
+	}
+	constraint.scene = s
+	constraint.solver = solver
+	constraint.prev = nil
+	constraint.next = nil
+	constraint.enabled = true
+	constraint.primary = body
+	constraint.secondary = nil
+	s.appendConstraint(constraint)
+	return constraint
 }
 
 // CreateDoubleBodyConstraint creates a new physics constraint that acts on
 // two bodies and enables it for this scene.
 func (s *Scene) CreateDoubleBodyConstraint(solver ConstraintSolver, primary, secondary *Body) *Constraint {
-	return newConstraint(s, solver, primary, secondary)
+	var constraint *Constraint
+	if s.cacheConstraint != nil {
+		constraint = s.cacheConstraint
+		s.cacheConstraint = s.cacheConstraint.next
+	} else {
+		constraint = &Constraint{}
+	}
+	constraint.scene = s
+	constraint.solver = solver
+	constraint.prev = nil
+	constraint.next = nil
+	constraint.enabled = true
+	constraint.primary = primary
+	constraint.secondary = secondary
+	s.appendConstraint(constraint)
+	return constraint
 }
 
 // Update runs a number of physics iterations
@@ -129,6 +177,7 @@ func (s *Scene) appendBody(body *Body) {
 		s.lastBody.next = body
 		body.prev = s.lastBody
 	}
+	body.next = nil
 	s.lastBody = body
 }
 
@@ -157,6 +206,7 @@ func (s *Scene) appendConstraint(constraint *Constraint) {
 		s.lastConstraint.next = constraint
 		constraint.prev = s.lastConstraint
 	}
+	constraint.next = nil
 	s.lastConstraint = constraint
 }
 
@@ -237,7 +287,7 @@ func (s *Scene) integrate(elapsedSeconds float32) {
 
 func (s *Scene) applyImpulses(elapsedSeconds float32) {
 	for constraint := s.firstConstraint; constraint != nil; constraint = constraint.next {
-		solution := constraint.solver.CalculateImpulses()
+		solution := constraint.solver.CalculateImpulses(constraint.primary, constraint.secondary, elapsedSeconds)
 		if body := constraint.primary; body != nil {
 			body.applyImpulse(solution.PrimaryImpulse)
 			body.applyAngularImpulse(solution.PrimaryAngularImpulse)
@@ -267,7 +317,7 @@ func (s *Scene) applyMotion(elapsedSeconds float32) {
 
 func (s *Scene) applyNudges(elapsedSeconds float32) {
 	for constraint := s.firstConstraint; constraint != nil; constraint = constraint.next {
-		solution := constraint.solver.CalculateNudges()
+		solution := constraint.solver.CalculateNudges(constraint.primary, constraint.secondary, elapsedSeconds)
 		if body := constraint.primary; body != nil {
 			body.applyNudge(solution.PrimaryNudge)
 			body.applyAngularNudge(solution.PrimaryAngularNudge)
@@ -280,67 +330,68 @@ func (s *Scene) applyNudges(elapsedSeconds float32) {
 }
 
 func (s *Scene) detectCollisions() {
-	// 	for _, body := range e.bodies {
-	// 		body.InCollision = false
-	// 	}
+	for _, constraint := range s.collisionConstraints {
+		constraint.Delete()
+	}
+	s.collisionConstraints = s.collisionConstraints[:0]
+	s.collisionSolvers = s.collisionSolvers[:0]
 
-	// 	e.collisionConstraints = e.collisionConstraints[:0]
-	// 	for i := 0; i < len(e.bodies); i++ {
-	// 		for j := i + 1; j < len(e.bodies); j++ {
-	// 			first := e.bodies[i]
-	// 			second := e.bodies[j]
-	// 			e.checkCollisionTwoBodies(first, second)
-	// 		}
-	// 	}
+	for primary := s.firstBody; primary != nil; primary = primary.next {
+		for secondary := primary.next; secondary != nil; secondary = secondary.next {
+			s.checkCollisionTwoBodies(primary, secondary)
+		}
+	}
 }
 
-// func (e *Engine) checkCollisionTwoBodies(first, second *Body) {
-// 	if first.IsStatic && second.IsStatic {
-// 		return
-// 	}
+func (s *Scene) allocateGroundCollisionSolver() *groundCollisionSolver {
+	if len(s.collisionSolvers) < cap(s.collisionSolvers) {
+		s.collisionSolvers = s.collisionSolvers[:len(s.collisionSolvers)+1]
+	} else {
+		s.collisionSolvers = append(s.collisionSolvers, groundCollisionSolver{})
+	}
+	return &s.collisionSolvers[len(s.collisionSolvers)-1]
+}
 
-// 	// FIXME: Temporary, to prevent non-static entities from colliding for now
-// 	// Currently, only static to non-static is supported
-// 	if !first.IsStatic && !second.IsStatic {
-// 		return
-// 	}
+func (s *Scene) checkCollisionTwoBodies(primary, secondary *Body) {
+	if primary.static && secondary.static {
+		return
+	}
 
-// 	for _, firstPlacement := range first.CollisionShapes {
-// 		firstPlacementWS := firstPlacement.Transformed(first.Position, first.Orientation)
+	// FIXME: Temporary, to prevent non-static entities from colliding for now
+	// Currently, only static to non-static is supported
+	if !primary.static && !secondary.static {
+		return
+	}
 
-// 		for _, secondPlacement := range second.CollisionShapes {
-// 			secondPlacementWS := secondPlacement.Transformed(second.Position, second.Orientation)
+	for _, primaryPlacement := range primary.collisionShapes {
+		primaryPlacementWS := (primaryPlacement.(shape.Placement)).Transformed(primary.position, primary.orientation)
 
-// 			e.intersectionSet.Reset()
-// 			shape.CheckIntersection(firstPlacementWS, secondPlacementWS, e.intersectionSet)
+		for _, secondaryPlacement := range secondary.collisionShapes {
+			secondaryPlacementWS := (secondaryPlacement.(shape.Placement)).Transformed(secondary.position, secondary.orientation)
 
-// 			if e.intersectionSet.Found() {
-// 				first.InCollision = true
-// 				second.InCollision = true
-// 			}
+			s.intersectionSet.Reset()
+			shape.CheckIntersection(primaryPlacementWS, secondaryPlacementWS, s.intersectionSet)
 
-// 			for _, intersection := range e.intersectionSet.Intersections() {
-// 				// TODO: Once both non-static are supported, a dual-body collision constraint
-// 				// should be used instead of individual uni-body constraints
+			for _, intersection := range s.intersectionSet.Intersections() {
+				// TODO: Once both non-static are supported, a dual-body collision constraint
+				// should be used instead of individual uni-body constraints
 
-// 				if !first.IsStatic {
-// 					e.collisionConstraints = append(e.collisionConstraints, GroundCollisionConstraint{
-// 						Body:         first,
-// 						Normal:       intersection.FirstDisplaceNormal,
-// 						ContactPoint: intersection.FirstContact,
-// 						Depth:        intersection.Depth,
-// 					})
-// 				}
+				if !primary.static {
+					solver := s.allocateGroundCollisionSolver()
+					solver.Normal = intersection.FirstDisplaceNormal
+					solver.ContactPoint = intersection.FirstContact
+					solver.Depth = intersection.Depth
+					s.collisionConstraints = append(s.collisionConstraints, s.CreateSingleBodyConstraint(solver, primary))
+				}
 
-// 				if !second.IsStatic {
-// 					e.collisionConstraints = append(e.collisionConstraints, GroundCollisionConstraint{
-// 						Body:         second,
-// 						Normal:       intersection.SecondDisplaceNormal,
-// 						ContactPoint: intersection.SecondContact,
-// 						Depth:        intersection.Depth,
-// 					})
-// 				}
-// 			}
-// 		}
-// 	}
-// }
+				if !secondary.static {
+					solver := s.allocateGroundCollisionSolver()
+					solver.Normal = intersection.SecondDisplaceNormal
+					solver.ContactPoint = intersection.SecondContact
+					solver.Depth = intersection.Depth
+					s.collisionConstraints = append(s.collisionConstraints, s.CreateSingleBodyConstraint(solver, secondary))
+				}
+			}
+		}
+	}
+}

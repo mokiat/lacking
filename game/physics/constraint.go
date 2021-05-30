@@ -2,18 +2,6 @@ package physics
 
 import "github.com/mokiat/gomath/sprec"
 
-func newConstraint(scene *Scene, solver ConstraintSolver, primary, secondary *Body) *Constraint {
-	result := &Constraint{
-		solver:    solver,
-		scene:     scene,
-		enabled:   true,
-		primary:   primary,
-		secondary: secondary,
-	}
-	scene.appendConstraint(result)
-	return result
-}
-
 // Constraint represents a restriction enforced on one body on its own
 // or on two bodies in conjunction.
 type Constraint struct {
@@ -85,11 +73,27 @@ type ConstraintSolver interface {
 
 	// CalculateImpulses returns a set of impulses to be applied
 	// to the primary and optionally the secondary body.
-	CalculateImpulses() ConstraintImpulseSolution
+	CalculateImpulses(primary, secondary *Body, elapsedSeconds float32) ConstraintImpulseSolution
 
 	// CalculateNudges returns a set of nudges to be applied
 	// to the primary and optionally the secondary body.
-	CalculateNudges() ConstraintNudgeSolution
+	CalculateNudges(primary, secondary *Body, elapsedSeconds float32) ConstraintNudgeSolution
+}
+
+var _ ConstraintSolver = (*NilConstraintSolver)(nil)
+
+// NilConstraintSolver is a ConstraintSolver that does nothing.
+type NilConstraintSolver struct{}
+
+func (s *NilConstraintSolver) Reset() {
+}
+
+func (s *NilConstraintSolver) CalculateImpulses(primary, secondary *Body, elapsedSeconds float32) ConstraintImpulseSolution {
+	return ConstraintImpulseSolution{}
+}
+
+func (s *NilConstraintSolver) CalculateNudges(primary, secondary *Body, elapsedSeconds float32) ConstraintNudgeSolution {
+	return ConstraintNudgeSolution{}
 }
 
 // ConstraintImpulseSolution is a solution to a constraint that
