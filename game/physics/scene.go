@@ -41,15 +41,19 @@ type Scene struct {
 	maxVelocity            float32
 	maxAngularVelocity     float32
 
-	firstBody *Body
-	lastBody  *Body
-	cacheBody *Body
+	firstBody  *Body
+	lastBody   *Body
+	cachedBody *Body
 
-	firstConstraint *Constraint
-	lastConstraint  *Constraint
-	cacheConstraint *Constraint
+	firstSBConstraint  *SBConstraint
+	lastSBConstraint   *SBConstraint
+	cachedSBConstraint *SBConstraint
 
-	collisionConstraints []*Constraint
+	firstDBConstraint  *DBConstraint
+	lastDBConstraint   *DBConstraint
+	cachedDBConstraint *DBConstraint
+
+	collisionConstraints []*SBConstraint
 	collisionSolvers     []groundCollisionSolver
 	intersectionSet      *shape.IntersectionResultSet
 
@@ -92,9 +96,9 @@ func (s *Scene) SetWindDensity(density float32) {
 // it within this scene.
 func (s *Scene) CreateBody() *Body {
 	var body *Body
-	if s.cacheBody != nil {
-		body = s.cacheBody
-		s.cacheBody = s.cacheBody.next
+	if s.cachedBody != nil {
+		body = s.cachedBody
+		s.cachedBody = s.cachedBody.next
 	} else {
 		body = &Body{}
 	}
@@ -107,43 +111,40 @@ func (s *Scene) CreateBody() *Body {
 
 // CreateSingleBodyConstraint creates a new physics constraint that acts on
 // a single body and enables it for this scene.
-func (s *Scene) CreateSingleBodyConstraint(solver ConstraintSolver, body *Body) *Constraint {
-	var constraint *Constraint
-	if s.cacheConstraint != nil {
-		constraint = s.cacheConstraint
-		s.cacheConstraint = s.cacheConstraint.next
+func (s *Scene) CreateSingleBodyConstraint(solver SBConstraintSolver, body *Body) *SBConstraint {
+	var constraint *SBConstraint
+	if s.cachedSBConstraint != nil {
+		constraint = s.cachedSBConstraint
+		s.cachedSBConstraint = s.cachedSBConstraint.next
 	} else {
-		constraint = &Constraint{}
+		constraint = &SBConstraint{}
 	}
 	constraint.scene = s
 	constraint.solver = solver
 	constraint.prev = nil
 	constraint.next = nil
-	constraint.enabled = true
-	constraint.primary = body
-	constraint.secondary = nil
-	s.appendConstraint(constraint)
+	constraint.body = body
+	s.appendSBConstraint(constraint)
 	return constraint
 }
 
 // CreateDoubleBodyConstraint creates a new physics constraint that acts on
 // two bodies and enables it for this scene.
-func (s *Scene) CreateDoubleBodyConstraint(solver ConstraintSolver, primary, secondary *Body) *Constraint {
-	var constraint *Constraint
-	if s.cacheConstraint != nil {
-		constraint = s.cacheConstraint
-		s.cacheConstraint = s.cacheConstraint.next
+func (s *Scene) CreateDoubleBodyConstraint(solver DBConstraintSolver, primary, secondary *Body) *DBConstraint {
+	var constraint *DBConstraint
+	if s.cachedDBConstraint != nil {
+		constraint = s.cachedDBConstraint
+		s.cachedDBConstraint = s.cachedDBConstraint.next
 	} else {
-		constraint = &Constraint{}
+		constraint = &DBConstraint{}
 	}
 	constraint.scene = s
 	constraint.solver = solver
 	constraint.prev = nil
 	constraint.next = nil
-	constraint.enabled = true
 	constraint.primary = primary
 	constraint.secondary = secondary
-	s.appendConstraint(constraint)
+	s.appendDBConstraint(constraint)
 	return constraint
 }
 
@@ -165,8 +166,11 @@ func (s *Scene) Delete() {
 	s.firstBody = nil
 	s.lastBody = nil
 
-	s.firstConstraint = nil
-	s.lastConstraint = nil
+	s.firstSBConstraint = nil
+	s.lastSBConstraint = nil
+
+	s.firstDBConstraint = nil
+	s.lastDBConstraint = nil
 }
 
 func (s *Scene) appendBody(body *Body) {
@@ -198,24 +202,29 @@ func (s *Scene) removeBody(body *Body) {
 	body.next = nil
 }
 
-func (s *Scene) appendConstraint(constraint *Constraint) {
-	if s.firstConstraint == nil {
-		s.firstConstraint = constraint
-	}
-	if s.lastConstraint != nil {
-		s.lastConstraint.next = constraint
-		constraint.prev = s.lastConstraint
-	}
-	constraint.next = nil
-	s.lastConstraint = constraint
+func (s *Scene) cacheBody(body *Body) {
+	body.next = s.cachedBody
+	s.cachedBody = body
 }
 
-func (s *Scene) removeConstraint(constraint *Constraint) {
-	if s.firstConstraint == constraint {
-		s.firstConstraint = constraint.next
+func (s *Scene) appendSBConstraint(constraint *SBConstraint) {
+	if s.firstSBConstraint == nil {
+		s.firstSBConstraint = constraint
 	}
-	if s.lastConstraint == constraint {
-		s.lastConstraint = constraint.prev
+	if s.lastSBConstraint != nil {
+		s.lastSBConstraint.next = constraint
+		constraint.prev = s.lastSBConstraint
+	}
+	constraint.next = nil
+	s.lastSBConstraint = constraint
+}
+
+func (s *Scene) removeSBConstraint(constraint *SBConstraint) {
+	if s.firstSBConstraint == constraint {
+		s.firstSBConstraint = constraint.next
+	}
+	if s.lastSBConstraint == constraint {
+		s.lastSBConstraint = constraint.prev
 	}
 	if constraint.next != nil {
 		constraint.next.prev = constraint.prev
@@ -225,6 +234,45 @@ func (s *Scene) removeConstraint(constraint *Constraint) {
 	}
 	constraint.prev = nil
 	constraint.next = nil
+}
+
+func (s *Scene) cacheSBConstraint(constraint *SBConstraint) {
+	constraint.next = s.cachedSBConstraint
+	s.cachedSBConstraint = constraint
+}
+
+func (s *Scene) appendDBConstraint(constraint *DBConstraint) {
+	if s.firstDBConstraint == nil {
+		s.firstDBConstraint = constraint
+	}
+	if s.lastDBConstraint != nil {
+		s.lastDBConstraint.next = constraint
+		constraint.prev = s.lastDBConstraint
+	}
+	constraint.next = nil
+	s.lastDBConstraint = constraint
+}
+
+func (s *Scene) removeDBConstraint(constraint *DBConstraint) {
+	if s.firstDBConstraint == constraint {
+		s.firstDBConstraint = constraint.next
+	}
+	if s.lastDBConstraint == constraint {
+		s.lastDBConstraint = constraint.prev
+	}
+	if constraint.next != nil {
+		constraint.next.prev = constraint.prev
+	}
+	if constraint.prev != nil {
+		constraint.prev.next = constraint.next
+	}
+	constraint.prev = nil
+	constraint.next = nil
+}
+
+func (s *Scene) cacheDBConstraint(constraint *DBConstraint) {
+	constraint.next = s.cachedDBConstraint
+	s.cachedDBConstraint = constraint
 }
 
 func (s *Scene) runSimulation(elapsedSeconds float32) {
@@ -242,7 +290,10 @@ func (s *Scene) runSimulation(elapsedSeconds float32) {
 }
 
 func (s *Scene) resetConstraints() {
-	for constraint := s.firstConstraint; constraint != nil; constraint = constraint.next {
+	for constraint := s.firstSBConstraint; constraint != nil; constraint = constraint.next {
+		constraint.solver.Reset()
+	}
+	for constraint := s.firstDBConstraint; constraint != nil; constraint = constraint.next {
 		constraint.solver.Reset()
 	}
 }
@@ -286,16 +337,20 @@ func (s *Scene) integrate(elapsedSeconds float32) {
 }
 
 func (s *Scene) applyImpulses(elapsedSeconds float32) {
-	for constraint := s.firstConstraint; constraint != nil; constraint = constraint.next {
-		solution := constraint.solver.CalculateImpulses(constraint.primary, constraint.secondary, elapsedSeconds)
-		if body := constraint.primary; body != nil {
-			body.applyImpulse(solution.PrimaryImpulse)
-			body.applyAngularImpulse(solution.PrimaryAngularImpulse)
-		}
-		if body := constraint.secondary; body != nil {
-			body.applyImpulse(solution.SecondaryImpulse)
-			body.applyAngularImpulse(solution.SecondaryAngularImpulse)
-		}
+	ctx := ConstraintContext{
+		ElapsedSeconds: elapsedSeconds,
+	}
+	for constraint := s.firstDBConstraint; constraint != nil; constraint = constraint.next {
+		solution := constraint.solver.CalculateImpulses(constraint.primary, constraint.secondary, ctx)
+		constraint.primary.applyImpulse(solution.Primary.Impulse)
+		constraint.primary.applyAngularImpulse(solution.Primary.AngularImpulse)
+		constraint.secondary.applyImpulse(solution.Secondary.Impulse)
+		constraint.secondary.applyAngularImpulse(solution.Secondary.AngularImpulse)
+	}
+	for constraint := s.firstSBConstraint; constraint != nil; constraint = constraint.next {
+		solution := constraint.solver.CalculateImpulses(constraint.body, ctx)
+		constraint.body.applyImpulse(solution.Impulse)
+		constraint.body.applyAngularImpulse(solution.AngularImpulse)
 	}
 }
 
@@ -316,16 +371,20 @@ func (s *Scene) applyMotion(elapsedSeconds float32) {
 }
 
 func (s *Scene) applyNudges(elapsedSeconds float32) {
-	for constraint := s.firstConstraint; constraint != nil; constraint = constraint.next {
-		solution := constraint.solver.CalculateNudges(constraint.primary, constraint.secondary, elapsedSeconds)
-		if body := constraint.primary; body != nil {
-			body.applyNudge(solution.PrimaryNudge)
-			body.applyAngularNudge(solution.PrimaryAngularNudge)
-		}
-		if body := constraint.secondary; body != nil {
-			body.applyNudge(solution.SecondaryNudge)
-			body.applyAngularNudge(solution.SecondaryAngularNudge)
-		}
+	ctx := ConstraintContext{
+		ElapsedSeconds: elapsedSeconds,
+	}
+	for constraint := s.firstDBConstraint; constraint != nil; constraint = constraint.next {
+		solution := constraint.solver.CalculateNudges(constraint.primary, constraint.secondary, ctx)
+		constraint.primary.applyNudge(solution.Primary.Nudge)
+		constraint.primary.applyAngularNudge(solution.Primary.AngularNudge)
+		constraint.secondary.applyNudge(solution.Secondary.Nudge)
+		constraint.secondary.applyAngularNudge(solution.Secondary.AngularNudge)
+	}
+	for constraint := s.firstSBConstraint; constraint != nil; constraint = constraint.next {
+		solution := constraint.solver.CalculateNudges(constraint.body, ctx)
+		constraint.body.applyNudge(solution.Nudge)
+		constraint.body.applyAngularNudge(solution.AngularNudge)
 	}
 }
 

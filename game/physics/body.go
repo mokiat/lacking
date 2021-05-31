@@ -193,6 +193,7 @@ func (b *Body) SetAerodynamicShapes(shapes []AerodynamicShape) {
 // method.
 func (b *Body) Delete() {
 	b.scene.removeBody(b)
+	b.scene.cacheBody(b)
 	b.scene = nil
 }
 

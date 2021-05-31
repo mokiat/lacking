@@ -5,29 +5,29 @@ import (
 	"github.com/mokiat/lacking/game/physics"
 )
 
-var _ physics.ConstraintSolver = (*MatchTranslation)(nil)
+var _ physics.DBConstraintSolver = (*MatchTranslation)(nil)
 
 type MatchTranslation struct {
-	physics.NilConstraintSolver
+	physics.NilDBConstraintSolver
 	PrimaryAnchor sprec.Vec3
 	IgnoreX       bool
 	IgnoreY       bool
 	IgnoreZ       bool
 }
 
-func (t *MatchTranslation) CalculateImpulses(primary, secondary *physics.Body, elapsedSeconds float32) physics.ConstraintImpulseSolution {
+func (t *MatchTranslation) CalculateImpulses(primary, secondary *physics.Body, ctx physics.ConstraintContext) physics.DBImpulseSolution {
 	jacobian, drift := t.calculate(primary, secondary)
 	if sprec.Abs(drift) < epsilon {
-		return physics.ConstraintImpulseSolution{}
+		return physics.DBImpulseSolution{}
 	}
 	lambda := jacobian.ImpulseLambda(primary, secondary)
 	return jacobian.ImpulseSolution(primary, secondary, lambda)
 }
 
-func (t *MatchTranslation) CalculateNudges(primary, secondary *physics.Body, elapsedSeconds float32) physics.ConstraintNudgeSolution {
+func (t *MatchTranslation) CalculateNudges(primary, secondary *physics.Body, ctx physics.ConstraintContext) physics.DBNudgeSolution {
 	jacobian, drift := t.calculate(primary, secondary)
 	if sprec.Abs(drift) < epsilon {
-		return physics.ConstraintNudgeSolution{}
+		return physics.DBNudgeSolution{}
 	}
 	lambda := jacobian.NudgeLambda(primary, secondary, drift)
 	return jacobian.NudgeSolution(primary, secondary, lambda)

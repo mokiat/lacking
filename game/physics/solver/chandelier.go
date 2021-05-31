@@ -5,32 +5,32 @@ import (
 	"github.com/mokiat/lacking/game/physics"
 )
 
-var _ physics.ConstraintSolver = (*Chandelier)(nil)
+var _ physics.SBConstraintSolver = (*Chandelier)(nil)
 
 type Chandelier struct {
-	physics.NilConstraintSolver
+	physics.NilSBConstraintSolver
 
 	Fixture    sprec.Vec3
 	BodyAnchor sprec.Vec3
 	Length     float32
 }
 
-func (c *Chandelier) CalculateImpulses(primary, secondary *physics.Body, elapsedSeconds float32) physics.ConstraintImpulseSolution {
-	jacobian, drift := c.calculate(primary)
+func (c *Chandelier) CalculateImpulses(body *physics.Body, ctx physics.ConstraintContext) physics.SBImpulseSolution {
+	jacobian, drift := c.calculate(body)
 	if sprec.Abs(drift) < epsilon {
-		return physics.ConstraintImpulseSolution{}
+		return physics.SBImpulseSolution{}
 	}
-	lambda := jacobian.ImpulseLambda(primary)
-	return jacobian.ImpulseSolution(primary, lambda)
+	lambda := jacobian.ImpulseLambda(body)
+	return jacobian.ImpulseSolution(body, lambda)
 }
 
-func (c *Chandelier) CalculateNudges(primary, secondary *physics.Body, elapsedSeconds float32) physics.ConstraintNudgeSolution {
-	jacobian, drift := c.calculate(primary)
+func (c *Chandelier) CalculateNudges(body *physics.Body, ctx physics.ConstraintContext) physics.SBNudgeSolution {
+	jacobian, drift := c.calculate(body)
 	if sprec.Abs(drift) < epsilon {
-		return physics.ConstraintNudgeSolution{}
+		return physics.SBNudgeSolution{}
 	}
-	lambda := jacobian.NudgeLambda(primary, drift)
-	return jacobian.NudgeSolution(primary, lambda)
+	lambda := jacobian.NudgeLambda(body, drift)
+	return jacobian.NudgeSolution(body, lambda)
 }
 
 func (c *Chandelier) calculate(body *physics.Body) (physics.Jacobian, float32) {

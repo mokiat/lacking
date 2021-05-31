@@ -5,18 +5,18 @@ import (
 	"github.com/mokiat/lacking/game/physics"
 )
 
-var _ physics.ConstraintSolver = (*LimitTranslation)(nil)
+var _ physics.DBConstraintSolver = (*LimitTranslation)(nil)
 
 type LimitTranslation struct {
-	physics.NilConstraintSolver
+	physics.NilDBConstraintSolver
 	MinY float32
 	MaxY float32
 }
 
-func (t *LimitTranslation) CalculateImpulses(primary, secondary *physics.Body, elapsedSeconds float32) physics.ConstraintImpulseSolution {
+func (t *LimitTranslation) CalculateImpulses(primary, secondary *physics.Body, ctx physics.ConstraintContext) physics.DBImpulseSolution {
 	deltaPosition := sprec.Vec3Diff(secondary.Position(), primary.Position())
 	if deltaPosition.SqrLength() < sqrEpsilon {
-		return physics.ConstraintImpulseSolution{}
+		return physics.DBImpulseSolution{}
 	}
 
 	deltaY := sprec.Vec3Dot(primary.Orientation().OrientationY(), deltaPosition)
@@ -30,10 +30,14 @@ func (t *LimitTranslation) CalculateImpulses(primary, secondary *physics.Body, e
 		secondInverseMass := (1.0 / secondary.Mass())
 		totalMass := 1.0 / (firstInverseMass + secondInverseMass)
 		impulseStrength := totalMass * contactVelocity
-		return physics.ConstraintImpulseSolution{
-			PrimaryImpulse:        sprec.Vec3Prod(normalY, impulseStrength),
-			PrimaryAngularImpulse: sprec.Vec3Cross(deltaPosition, sprec.Vec3Prod(normalY, impulseStrength)),
-			SecondaryImpulse:      sprec.Vec3Prod(normalY, -impulseStrength),
+		return physics.DBImpulseSolution{
+			Primary: physics.SBImpulseSolution{
+				Impulse:        sprec.Vec3Prod(normalY, impulseStrength),
+				AngularImpulse: sprec.Vec3Cross(deltaPosition, sprec.Vec3Prod(normalY, impulseStrength)),
+			},
+			Secondary: physics.SBImpulseSolution{
+				Impulse: sprec.Vec3Prod(normalY, -impulseStrength),
+			},
 		}
 	}
 
@@ -42,12 +46,16 @@ func (t *LimitTranslation) CalculateImpulses(primary, secondary *physics.Body, e
 		secondInverseMass := (1.0 / secondary.Mass())
 		totalMass := 1.0 / (firstInverseMass + secondInverseMass)
 		impulseStrength := totalMass * contactVelocity
-		return physics.ConstraintImpulseSolution{
-			PrimaryImpulse:        sprec.Vec3Prod(normalY, impulseStrength),
-			PrimaryAngularImpulse: sprec.Vec3Cross(deltaPosition, sprec.Vec3Prod(normalY, impulseStrength)),
-			SecondaryImpulse:      sprec.Vec3Prod(normalY, -impulseStrength),
+		return physics.DBImpulseSolution{
+			Primary: physics.SBImpulseSolution{
+				Impulse:        sprec.Vec3Prod(normalY, impulseStrength),
+				AngularImpulse: sprec.Vec3Cross(deltaPosition, sprec.Vec3Prod(normalY, impulseStrength)),
+			},
+			Secondary: physics.SBImpulseSolution{
+				Impulse: sprec.Vec3Prod(normalY, -impulseStrength),
+			},
 		}
 	}
 
-	return physics.ConstraintImpulseSolution{}
+	return physics.DBImpulseSolution{}
 }

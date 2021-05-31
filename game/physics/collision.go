@@ -9,16 +9,16 @@ const (
 
 type CollisionShape interface{}
 
-var _ ConstraintSolver = (*groundCollisionSolver)(nil)
+var _ SBConstraintSolver = (*groundCollisionSolver)(nil)
 
 type groundCollisionSolver struct {
-	NilConstraintSolver
+	NilSBConstraintSolver
 	Normal       sprec.Vec3
 	ContactPoint sprec.Vec3
 	Depth        float32
 }
 
-func (c groundCollisionSolver) CalculateImpulses(primary, _ *Body, elapsedSeconds float32) ConstraintImpulseSolution {
+func (c groundCollisionSolver) CalculateImpulses(primary *Body, ctx ConstraintContext) SBImpulseSolution {
 	contactRadiusWS := sprec.Vec3Diff(c.ContactPoint, primary.position)
 	contactVelocity := sprec.Vec3Sum(primary.velocity, sprec.Vec3Cross(primary.angularVelocity, contactRadiusWS))
 	verticalVelocity := sprec.Vec3Dot(c.Normal, contactVelocity)
@@ -27,7 +27,7 @@ func (c groundCollisionSolver) CalculateImpulses(primary, _ *Body, elapsedSecond
 	normalVelocity := sprec.Vec3Dot(c.Normal, contactVelocity)
 	if normalVelocity > 0.0 {
 		// moving away from ground
-		return ConstraintImpulseSolution{}
+		return SBImpulseSolution{}
 	}
 
 	restitutionClamp := float32(1.0)
@@ -59,5 +59,5 @@ func (c groundCollisionSolver) CalculateImpulses(primary, _ *Body, elapsedSecond
 		// FIXME: Don't apply, rather return as solution
 		primary.applyOffsetImpulse(contactRadiusWS, sprec.Vec3Prod(lateralDir, -lateralImpulseStrength))
 	}
-	return ConstraintImpulseSolution{} // FIXME
+	return SBImpulseSolution{} // FIXME
 }

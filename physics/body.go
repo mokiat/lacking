@@ -88,7 +88,7 @@ func (b *Body) ApplyOffsetForce(offset, force sprec.Vec3) {
 }
 
 func (b *Body) ApplyImpulse(impulse sprec.Vec3) {
-	b.Velocity = sprec.Vec3Sum(b.Velocity, sprec.Vec3Quot(impulse, b.Mass))
+	b.AddVelocity(sprec.Vec3Quot(impulse, b.Mass))
 }
 
 func (b *Body) ApplyAngularImpulse(impulse sprec.Vec3) {

@@ -10,27 +10,27 @@ const (
 	sqrEpsilon = epsilon * epsilon
 )
 
-var _ physics.ConstraintSolver = (*MatchAxis)(nil)
+var _ physics.DBConstraintSolver = (*MatchAxis)(nil)
 
 type MatchAxis struct {
-	physics.NilConstraintSolver
+	physics.NilDBConstraintSolver
 	PrimaryAxis   sprec.Vec3
 	SecondaryAxis sprec.Vec3
 }
 
-func (a *MatchAxis) CalculateImpulses(primary, secondary *physics.Body, elapsedSeconds float32) physics.ConstraintImpulseSolution {
+func (a *MatchAxis) CalculateImpulses(primary, secondary *physics.Body, ctx physics.ConstraintContext) physics.DBImpulseSolution {
 	jacobian, drift := a.calculate(primary, secondary)
 	if sprec.Abs(drift) < epsilon {
-		return physics.ConstraintImpulseSolution{}
+		return physics.DBImpulseSolution{}
 	}
 	lambda := jacobian.ImpulseLambda(primary, secondary)
 	return jacobian.ImpulseSolution(primary, secondary, lambda)
 }
 
-func (a *MatchAxis) CalculateNudges(primary, secondary *physics.Body, elapsedSeconds float32) physics.ConstraintNudgeSolution {
+func (a *MatchAxis) CalculateNudges(primary, secondary *physics.Body, ctx physics.ConstraintContext) physics.DBNudgeSolution {
 	jacobian, drift := a.calculate(primary, secondary)
 	if sprec.Abs(drift) < epsilon {
-		return physics.ConstraintNudgeSolution{}
+		return physics.DBNudgeSolution{}
 	}
 	lambda := jacobian.NudgeLambda(primary, secondary, drift)
 	return jacobian.NudgeSolution(primary, secondary, lambda)

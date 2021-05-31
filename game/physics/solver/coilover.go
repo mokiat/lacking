@@ -5,10 +5,10 @@ import (
 	"github.com/mokiat/lacking/game/physics"
 )
 
-var _ physics.ConstraintSolver = (*Coilover)(nil)
+var _ physics.DBConstraintSolver = (*Coilover)(nil)
 
 type Coilover struct {
-	physics.NilConstraintSolver
+	physics.NilDBConstraintSolver
 
 	PrimaryAnchor sprec.Vec3
 	FrequencyHz   float32
@@ -21,13 +21,13 @@ func (c *Coilover) Reset() {
 	c.appliedLambda = 0.0
 }
 
-func (c *Coilover) CalculateImpulses(primary, secondary *physics.Body, elapsedSeconds float32) physics.ConstraintImpulseSolution {
+func (c *Coilover) CalculateImpulses(primary, secondary *physics.Body, ctx physics.ConstraintContext) physics.DBImpulseSolution {
 	firstRadiusWS := sprec.QuatVec3Rotation(primary.Orientation(), c.PrimaryAnchor)
 	firstAnchorWS := sprec.Vec3Sum(primary.Position(), firstRadiusWS)
 	secondAnchorWS := secondary.Position()
 	deltaPosition := sprec.Vec3Diff(secondAnchorWS, firstAnchorWS)
 	if deltaPosition.Length() < epsilon {
-		return physics.ConstraintImpulseSolution{}
+		return physics.DBImpulseSolution{}
 	}
 	drift := deltaPosition.Length()
 	normal := sprec.BasisXVec3()
@@ -63,8 +63,8 @@ func (c *Coilover) CalculateImpulses(primary, secondary *physics.Body, elapsedSe
 	dc := 2.0 * c.DampingRatio * w / invertedEffectiveMass
 	k := w * w / invertedEffectiveMass
 
-	gamma := 1.0 / (elapsedSeconds * (dc + elapsedSeconds*k))
-	beta := elapsedSeconds * k * gamma
+	gamma := 1.0 / (ctx.ElapsedSeconds * (dc + ctx.ElapsedSeconds*k))
+	beta := ctx.ElapsedSeconds * k * gamma
 
 	velocityLambda := jacobian.EffectiveVelocity(primary, secondary)
 	lambda := -(velocityLambda + beta*drift + gamma*c.appliedLambda) / (invertedEffectiveMass + gamma)

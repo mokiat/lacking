@@ -79,13 +79,13 @@ func (e *Engine) AddConstraint(constraint Constraint) {
 }
 
 func (e *Engine) runSimulation(ctx Context) {
-	e.detectCollisions()
 	e.resetConstraints()
 	e.applyForces()
 	e.integrate(ctx)
 	e.applyImpulses(ctx)
 	e.applyMotion(ctx)
 	e.applyNudges(ctx)
+	e.detectCollisions()
 }
 
 func (e *Engine) resetConstraints() {
