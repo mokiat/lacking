@@ -9,6 +9,7 @@ var _ physics.DBConstraintSolver = (*LimitTranslation)(nil)
 
 type LimitTranslation struct {
 	physics.NilDBConstraintSolver
+
 	MinY float32
 	MaxY float32
 }

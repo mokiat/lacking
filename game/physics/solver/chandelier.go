@@ -63,9 +63,8 @@ func (c *Chandelier) SetLength(length float32) *Chandelier {
 }
 
 func (c *Chandelier) calculate(ctx physics.SBSolverContext) (physics.Jacobian, float32) {
-	body := ctx.Body
-	anchorWS := sprec.Vec3Sum(body.Position(), sprec.QuatVec3Rotation(body.Orientation(), c.bodyAnchor))
-	radiusWS := sprec.Vec3Diff(anchorWS, body.Position())
+	anchorWS := sprec.Vec3Sum(ctx.Body.Position(), sprec.QuatVec3Rotation(ctx.Body.Orientation(), c.bodyAnchor))
+	radiusWS := sprec.Vec3Diff(anchorWS, ctx.Body.Position())
 	deltaPosition := sprec.Vec3Diff(anchorWS, c.fixture)
 	normal := sprec.BasisXVec3()
 	if deltaPosition.SqrLength() > sqrEpsilon {

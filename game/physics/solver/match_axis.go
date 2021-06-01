@@ -5,45 +5,57 @@ import (
 	"github.com/mokiat/lacking/game/physics"
 )
 
-const (
-	epsilon    = float32(0.001)
-	sqrEpsilon = epsilon * epsilon
-)
-
 var _ physics.DBConstraintSolver = (*MatchAxis)(nil)
 
+// NewMatchAxis creates a new MatchAxis constraint solver.
+func NewMatchAxis() *MatchAxis {
+	result := &MatchAxis{
+		primaryAxis:   sprec.BasisXVec3(),
+		secondaryAxis: sprec.BasisXVec3(),
+	}
+	result.DBJacobianConstraintSolver = physics.NewDBJacobianConstraintSolver(result.calculate)
+	return result
+}
+
+// MatchAxis represents the solution for a constraint
+// that keeps the axis of two bodies pointing in the same
+// direction.
 type MatchAxis struct {
-	physics.NilDBConstraintSolver
-	PrimaryAxis   sprec.Vec3
-	SecondaryAxis sprec.Vec3
+	*physics.DBJacobianConstraintSolver
+
+	primaryAxis   sprec.Vec3
+	secondaryAxis sprec.Vec3
 }
 
-func (a *MatchAxis) CalculateImpulses(ctx physics.DBSolverContext) physics.DBImpulseSolution {
-	primary := ctx.Primary
-	secondary := ctx.Secondary
-	jacobian, drift := a.calculate(primary, secondary)
-	if sprec.Abs(drift) < epsilon {
-		return physics.DBImpulseSolution{}
-	}
-	lambda := jacobian.ImpulseLambda(primary, secondary)
-	return jacobian.ImpulseSolution(primary, secondary, lambda)
+// PrimaryAxis returns the axis of the primary body that will be
+// used in the alignment.
+func (a *MatchAxis) PrimaryAxis() sprec.Vec3 {
+	return a.primaryAxis
 }
 
-func (a *MatchAxis) CalculateNudges(ctx physics.DBSolverContext) physics.DBNudgeSolution {
-	primary := ctx.Primary
-	secondary := ctx.Secondary
-	jacobian, drift := a.calculate(primary, secondary)
-	if sprec.Abs(drift) < epsilon {
-		return physics.DBNudgeSolution{}
-	}
-	lambda := jacobian.NudgeLambda(primary, secondary, drift)
-	return jacobian.NudgeSolution(primary, secondary, lambda)
+// SetPrimaryAxis changes the axis of the primary body to be used
+// in alignments.
+func (a *MatchAxis) SetPrimaryAxis(axis sprec.Vec3) *MatchAxis {
+	a.primaryAxis = axis
+	return a
 }
 
-func (a *MatchAxis) calculate(primary, secondary *physics.Body) (physics.PairJacobian, float32) {
-	// FIXME: Does not handle when axis are pointing in opposite directions
-	firstAxisWS := sprec.QuatVec3Rotation(primary.Orientation(), a.PrimaryAxis)
-	secondAxisWS := sprec.QuatVec3Rotation(secondary.Orientation(), a.SecondaryAxis)
+// SecondaryAxis returns the axis of the secondary body that will be
+// used in the alignment.
+func (a *MatchAxis) SecondaryAxis() sprec.Vec3 {
+	return a.secondaryAxis
+}
+
+// SetSecondaryAxis changes the axis of the secondary body to be
+// used in alignments.
+func (a *MatchAxis) SetSecondaryAxis(axis sprec.Vec3) *MatchAxis {
+	a.secondaryAxis = axis
+	return a
+}
+
+func (a *MatchAxis) calculate(ctx physics.DBSolverContext) (physics.PairJacobian, float32) {
+	firstAxisWS := sprec.QuatVec3Rotation(ctx.Primary.Orientation(), a.primaryAxis)
+	secondAxisWS := sprec.QuatVec3Rotation(ctx.Secondary.Orientation(), a.secondaryAxis)
 	cross := sprec.Vec3Cross(firstAxisWS, secondAxisWS)
 	return physics.PairJacobian{
 			Primary: physics.Jacobian{
