@@ -13,7 +13,9 @@ type LimitTranslation struct {
 	MaxY float32
 }
 
-func (t *LimitTranslation) CalculateImpulses(primary, secondary *physics.Body, ctx physics.ConstraintContext) physics.DBImpulseSolution {
+func (t *LimitTranslation) CalculateImpulses(ctx physics.DBSolverContext) physics.DBImpulseSolution {
+	primary := ctx.Primary
+	secondary := ctx.Secondary
 	deltaPosition := sprec.Vec3Diff(secondary.Position(), primary.Position())
 	if deltaPosition.SqrLength() < sqrEpsilon {
 		return physics.DBImpulseSolution{}

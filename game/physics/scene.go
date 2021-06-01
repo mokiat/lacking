@@ -130,7 +130,7 @@ func (s *Scene) CreateSingleBodyConstraint(body *Body, solver SBConstraintSolver
 
 // CreateDoubleBodyConstraint creates a new physics constraint that acts on
 // two bodies and enables it for this scene.
-func (s *Scene) CreateDoubleBodyConstraint(solver DBConstraintSolver, primary, secondary *Body) *DBConstraint {
+func (s *Scene) CreateDoubleBodyConstraint(primary, secondary *Body, solver DBConstraintSolver) *DBConstraint {
 	var constraint *DBConstraint
 	if s.cachedDBConstraint != nil {
 		constraint = s.cachedDBConstraint
@@ -276,7 +276,7 @@ func (s *Scene) cacheDBConstraint(constraint *DBConstraint) {
 }
 
 func (s *Scene) runSimulation(elapsedSeconds float32) {
-	s.resetConstraints()
+	s.resetConstraints(elapsedSeconds)
 	s.applyForces()
 	s.integrate(elapsedSeconds)
 	for i := 0; i < s.impulseIterations; i++ {
@@ -289,12 +289,19 @@ func (s *Scene) runSimulation(elapsedSeconds float32) {
 	s.detectCollisions()
 }
 
-func (s *Scene) resetConstraints() {
+func (s *Scene) resetConstraints(elapsedSeconds float32) {
 	for constraint := s.firstSBConstraint; constraint != nil; constraint = constraint.next {
-		constraint.solver.Reset()
+		constraint.solver.Reset(SBSolverContext{
+			Body:           constraint.body,
+			ElapsedSeconds: elapsedSeconds,
+		})
 	}
 	for constraint := s.firstDBConstraint; constraint != nil; constraint = constraint.next {
-		constraint.solver.Reset()
+		constraint.solver.Reset(DBSolverContext{
+			Primary:        constraint.primary,
+			Secondary:      constraint.secondary,
+			ElapsedSeconds: elapsedSeconds,
+		})
 	}
 }
 
@@ -337,18 +344,22 @@ func (s *Scene) integrate(elapsedSeconds float32) {
 }
 
 func (s *Scene) applyImpulses(elapsedSeconds float32) {
-	ctx := ConstraintContext{
-		ElapsedSeconds: elapsedSeconds,
-	}
 	for constraint := s.firstDBConstraint; constraint != nil; constraint = constraint.next {
-		solution := constraint.solver.CalculateImpulses(constraint.primary, constraint.secondary, ctx)
+		solution := constraint.solver.CalculateImpulses(DBSolverContext{
+			Primary:        constraint.primary,
+			Secondary:      constraint.secondary,
+			ElapsedSeconds: elapsedSeconds,
+		})
 		constraint.primary.applyImpulse(solution.Primary.Impulse)
 		constraint.primary.applyAngularImpulse(solution.Primary.AngularImpulse)
 		constraint.secondary.applyImpulse(solution.Secondary.Impulse)
 		constraint.secondary.applyAngularImpulse(solution.Secondary.AngularImpulse)
 	}
 	for constraint := s.firstSBConstraint; constraint != nil; constraint = constraint.next {
-		solution := constraint.solver.CalculateImpulses(constraint.body, ctx)
+		solution := constraint.solver.CalculateImpulses(SBSolverContext{
+			Body:           constraint.body,
+			ElapsedSeconds: elapsedSeconds,
+		})
 		constraint.body.applyImpulse(solution.Impulse)
 		constraint.body.applyAngularImpulse(solution.AngularImpulse)
 	}
@@ -371,18 +382,22 @@ func (s *Scene) applyMotion(elapsedSeconds float32) {
 }
 
 func (s *Scene) applyNudges(elapsedSeconds float32) {
-	ctx := ConstraintContext{
-		ElapsedSeconds: elapsedSeconds,
-	}
 	for constraint := s.firstDBConstraint; constraint != nil; constraint = constraint.next {
-		solution := constraint.solver.CalculateNudges(constraint.primary, constraint.secondary, ctx)
+		solution := constraint.solver.CalculateNudges(DBSolverContext{
+			Primary:        constraint.primary,
+			Secondary:      constraint.secondary,
+			ElapsedSeconds: elapsedSeconds,
+		})
 		constraint.primary.applyNudge(solution.Primary.Nudge)
 		constraint.primary.applyAngularNudge(solution.Primary.AngularNudge)
 		constraint.secondary.applyNudge(solution.Secondary.Nudge)
 		constraint.secondary.applyAngularNudge(solution.Secondary.AngularNudge)
 	}
 	for constraint := s.firstSBConstraint; constraint != nil; constraint = constraint.next {
-		solution := constraint.solver.CalculateNudges(constraint.body, ctx)
+		solution := constraint.solver.CalculateNudges(SBSolverContext{
+			Body:           constraint.body,
+			ElapsedSeconds: elapsedSeconds,
+		})
 		constraint.body.applyNudge(solution.Nudge)
 		constraint.body.applyAngularNudge(solution.AngularNudge)
 	}

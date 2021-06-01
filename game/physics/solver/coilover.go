@@ -17,11 +17,13 @@ type Coilover struct {
 	appliedLambda float32
 }
 
-func (c *Coilover) Reset() {
+func (c *Coilover) Reset(physics.DBSolverContext) {
 	c.appliedLambda = 0.0
 }
 
-func (c *Coilover) CalculateImpulses(primary, secondary *physics.Body, ctx physics.ConstraintContext) physics.DBImpulseSolution {
+func (c *Coilover) CalculateImpulses(ctx physics.DBSolverContext) physics.DBImpulseSolution {
+	primary := ctx.Primary
+	secondary := ctx.Secondary
 	firstRadiusWS := sprec.QuatVec3Rotation(primary.Orientation(), c.PrimaryAnchor)
 	firstAnchorWS := sprec.Vec3Sum(primary.Position(), firstRadiusWS)
 	secondAnchorWS := secondary.Position()

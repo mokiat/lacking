@@ -62,7 +62,8 @@ func (c *Chandelier) SetLength(length float32) *Chandelier {
 	return c
 }
 
-func (c *Chandelier) calculate(body *physics.Body) (physics.Jacobian, float32) {
+func (c *Chandelier) calculate(ctx physics.SBSolverContext) (physics.Jacobian, float32) {
+	body := ctx.Body
 	anchorWS := sprec.Vec3Sum(body.Position(), sprec.QuatVec3Rotation(body.Orientation(), c.bodyAnchor))
 	radiusWS := sprec.Vec3Diff(anchorWS, body.Position())
 	deltaPosition := sprec.Vec3Diff(anchorWS, c.fixture)

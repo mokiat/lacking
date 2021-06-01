@@ -18,7 +18,9 @@ type MatchAxis struct {
 	SecondaryAxis sprec.Vec3
 }
 
-func (a *MatchAxis) CalculateImpulses(primary, secondary *physics.Body, ctx physics.ConstraintContext) physics.DBImpulseSolution {
+func (a *MatchAxis) CalculateImpulses(ctx physics.DBSolverContext) physics.DBImpulseSolution {
+	primary := ctx.Primary
+	secondary := ctx.Secondary
 	jacobian, drift := a.calculate(primary, secondary)
 	if sprec.Abs(drift) < epsilon {
 		return physics.DBImpulseSolution{}
@@ -27,7 +29,9 @@ func (a *MatchAxis) CalculateImpulses(primary, secondary *physics.Body, ctx phys
 	return jacobian.ImpulseSolution(primary, secondary, lambda)
 }
 
-func (a *MatchAxis) CalculateNudges(primary, secondary *physics.Body, ctx physics.ConstraintContext) physics.DBNudgeSolution {
+func (a *MatchAxis) CalculateNudges(ctx physics.DBSolverContext) physics.DBNudgeSolution {
+	primary := ctx.Primary
+	secondary := ctx.Secondary
 	jacobian, drift := a.calculate(primary, secondary)
 	if sprec.Abs(drift) < epsilon {
 		return physics.DBNudgeSolution{}

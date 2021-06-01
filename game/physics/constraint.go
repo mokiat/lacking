@@ -1,11 +1,5 @@
 package physics
 
-// ConstraintContext contains information related to the
-// constraint processing.
-type ConstraintContext struct {
-	ElapsedSeconds float32
-}
-
 // SBConstraint represents a restriction enforced on one body.
 type SBConstraint struct {
 	solver SBConstraintSolver

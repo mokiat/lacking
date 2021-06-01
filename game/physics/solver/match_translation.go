@@ -15,7 +15,9 @@ type MatchTranslation struct {
 	IgnoreZ       bool
 }
 
-func (t *MatchTranslation) CalculateImpulses(primary, secondary *physics.Body, ctx physics.ConstraintContext) physics.DBImpulseSolution {
+func (t *MatchTranslation) CalculateImpulses(ctx physics.DBSolverContext) physics.DBImpulseSolution {
+	primary := ctx.Primary
+	secondary := ctx.Secondary
 	jacobian, drift := t.calculate(primary, secondary)
 	if sprec.Abs(drift) < epsilon {
 		return physics.DBImpulseSolution{}
@@ -24,7 +26,9 @@ func (t *MatchTranslation) CalculateImpulses(primary, secondary *physics.Body, c
 	return jacobian.ImpulseSolution(primary, secondary, lambda)
 }
 
-func (t *MatchTranslation) CalculateNudges(primary, secondary *physics.Body, ctx physics.ConstraintContext) physics.DBNudgeSolution {
+func (t *MatchTranslation) CalculateNudges(ctx physics.DBSolverContext) physics.DBNudgeSolution {
+	primary := ctx.Primary
+	secondary := ctx.Secondary
 	jacobian, drift := t.calculate(primary, secondary)
 	if sprec.Abs(drift) < epsilon {
 		return physics.DBNudgeSolution{}

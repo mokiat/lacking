@@ -36,7 +36,8 @@ func (t *FixedTranslation) SetFixture(fixture sprec.Vec3) *FixedTranslation {
 	return t
 }
 
-func (t *FixedTranslation) calculate(body *physics.Body) (physics.Jacobian, float32) {
+func (t *FixedTranslation) calculate(ctx physics.SBSolverContext) (physics.Jacobian, float32) {
+	body := ctx.Body
 	deltaPosition := sprec.Vec3Diff(body.Position(), t.fixture)
 	normal := sprec.BasisXVec3()
 	if deltaPosition.SqrLength() > sqrEpsilon {

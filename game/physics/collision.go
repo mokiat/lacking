@@ -13,12 +13,14 @@ var _ SBConstraintSolver = (*groundCollisionSolver)(nil)
 
 type groundCollisionSolver struct {
 	NilSBConstraintSolver
+
 	Normal       sprec.Vec3
 	ContactPoint sprec.Vec3
 	Depth        float32
 }
 
-func (c groundCollisionSolver) CalculateImpulses(primary *Body, ctx ConstraintContext) SBImpulseSolution {
+func (c groundCollisionSolver) CalculateImpulses(ctx SBSolverContext) SBImpulseSolution {
+	primary := ctx.Body
 	contactRadiusWS := sprec.Vec3Diff(c.ContactPoint, primary.position)
 	contactVelocity := sprec.Vec3Sum(primary.velocity, sprec.Vec3Cross(primary.angularVelocity, contactRadiusWS))
 	verticalVelocity := sprec.Vec3Dot(c.Normal, contactVelocity)
