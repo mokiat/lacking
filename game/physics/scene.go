@@ -111,7 +111,7 @@ func (s *Scene) CreateBody() *Body {
 
 // CreateSingleBodyConstraint creates a new physics constraint that acts on
 // a single body and enables it for this scene.
-func (s *Scene) CreateSingleBodyConstraint(solver SBConstraintSolver, body *Body) *SBConstraint {
+func (s *Scene) CreateSingleBodyConstraint(body *Body, solver SBConstraintSolver) *SBConstraint {
 	var constraint *SBConstraint
 	if s.cachedSBConstraint != nil {
 		constraint = s.cachedSBConstraint
@@ -440,7 +440,7 @@ func (s *Scene) checkCollisionTwoBodies(primary, secondary *Body) {
 					solver.Normal = intersection.FirstDisplaceNormal
 					solver.ContactPoint = intersection.FirstContact
 					solver.Depth = intersection.Depth
-					s.collisionConstraints = append(s.collisionConstraints, s.CreateSingleBodyConstraint(solver, primary))
+					s.collisionConstraints = append(s.collisionConstraints, s.CreateSingleBodyConstraint(primary, solver))
 				}
 
 				if !secondary.static {
@@ -448,7 +448,7 @@ func (s *Scene) checkCollisionTwoBodies(primary, secondary *Body) {
 					solver.Normal = intersection.SecondDisplaceNormal
 					solver.ContactPoint = intersection.SecondContact
 					solver.Depth = intersection.Depth
-					s.collisionConstraints = append(s.collisionConstraints, s.CreateSingleBodyConstraint(solver, secondary))
+					s.collisionConstraints = append(s.collisionConstraints, s.CreateSingleBodyConstraint(secondary, solver))
 				}
 			}
 		}
