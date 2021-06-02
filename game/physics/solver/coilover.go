@@ -1,30 +1,35 @@
-package physics
+package solver
 
-import "github.com/mokiat/gomath/sprec"
+import (
+	"github.com/mokiat/gomath/sprec"
+	"github.com/mokiat/lacking/game/physics"
+)
 
-type CoiloverConstraint struct {
-	NilConstraint
+var _ physics.DBConstraintSolver = (*Coilover)(nil)
 
-	FirstBody       *Body
-	FirstBodyAnchor sprec.Vec3
-	SecondBody      *Body
-	FrequencyHz     float32
-	DampingRatio    float32
+type Coilover struct {
+	physics.NilDBConstraintSolver
+
+	PrimaryAnchor sprec.Vec3
+	FrequencyHz   float32
+	DampingRatio  float32
 
 	appliedLambda float32
 }
 
-func (c *CoiloverConstraint) Reset() {
+func (c *Coilover) Reset(physics.DBSolverContext) {
 	c.appliedLambda = 0.0
 }
 
-func (c *CoiloverConstraint) ApplyImpulse(ctx Context) {
-	firstRadiusWS := sprec.QuatVec3Rotation(c.FirstBody.Orientation, c.FirstBodyAnchor)
-	firstAnchorWS := sprec.Vec3Sum(c.FirstBody.Position, firstRadiusWS)
-	secondAnchorWS := c.SecondBody.Position
+func (c *Coilover) CalculateImpulses(ctx physics.DBSolverContext) physics.DBImpulseSolution {
+	primary := ctx.Primary
+	secondary := ctx.Secondary
+	firstRadiusWS := sprec.QuatVec3Rotation(primary.Orientation(), c.PrimaryAnchor)
+	firstAnchorWS := sprec.Vec3Sum(primary.Position(), firstRadiusWS)
+	secondAnchorWS := secondary.Position()
 	deltaPosition := sprec.Vec3Diff(secondAnchorWS, firstAnchorWS)
 	if deltaPosition.Length() < epsilon {
-		return
+		return physics.DBImpulseSolution{}
 	}
 	drift := deltaPosition.Length()
 	normal := sprec.BasisXVec3()
@@ -32,8 +37,8 @@ func (c *CoiloverConstraint) ApplyImpulse(ctx Context) {
 		normal = sprec.UnitVec3(deltaPosition)
 	}
 
-	jacobian := PairJacobian{
-		First: Jacobian{
+	jacobian := physics.PairJacobian{
+		Primary: physics.Jacobian{
 			SlopeVelocity: sprec.NewVec3(
 				-normal.X,
 				-normal.Y,
@@ -45,7 +50,7 @@ func (c *CoiloverConstraint) ApplyImpulse(ctx Context) {
 				-(normal.Y*firstRadiusWS.X - normal.X*firstRadiusWS.Y),
 			),
 		},
-		Second: Jacobian{
+		Secondary: physics.Jacobian{
 			SlopeVelocity: sprec.NewVec3(
 				normal.X,
 				normal.Y,
@@ -55,7 +60,7 @@ func (c *CoiloverConstraint) ApplyImpulse(ctx Context) {
 		},
 	}
 
-	invertedEffectiveMass := jacobian.InverseEffectiveMass(c.FirstBody, c.SecondBody)
+	invertedEffectiveMass := jacobian.InverseEffectiveMass(primary, secondary)
 	w := 2.0 * sprec.Pi * c.FrequencyHz
 	dc := 2.0 * c.DampingRatio * w / invertedEffectiveMass
 	k := w * w / invertedEffectiveMass
@@ -63,8 +68,8 @@ func (c *CoiloverConstraint) ApplyImpulse(ctx Context) {
 	gamma := 1.0 / (ctx.ElapsedSeconds * (dc + ctx.ElapsedSeconds*k))
 	beta := ctx.ElapsedSeconds * k * gamma
 
-	velocityLambda := jacobian.EffectiveVelocity(c.FirstBody, c.SecondBody)
+	velocityLambda := jacobian.EffectiveVelocity(primary, secondary)
 	lambda := -(velocityLambda + beta*drift + gamma*c.appliedLambda) / (invertedEffectiveMass + gamma)
 	c.appliedLambda += lambda
-	jacobian.ApplyImpulse(c.FirstBody, c.SecondBody, lambda)
+	return jacobian.ImpulseSolution(primary, secondary, lambda)
 }
