@@ -234,11 +234,6 @@ func (b *Body) applyTorque(torque sprec.Vec3) {
 	b.addAngularAcceleration(sprec.Mat3Vec3Prod(sprec.InverseMat3(b.momentOfInertia), torque))
 }
 
-func (b *Body) applyOffsetForce(offset, force sprec.Vec3) {
-	b.applyForce(force)
-	b.applyTorque(sprec.Vec3Cross(offset, force))
-}
-
 func (b *Body) clampVelocity(max float32) {
 	if b.velocity.SqrLength() > max*max {
 		b.velocity = sprec.ResizedVec3(b.velocity, max)
