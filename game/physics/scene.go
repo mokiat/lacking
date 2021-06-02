@@ -109,6 +109,13 @@ func (s *Scene) CreateBody() *Body {
 	return body
 }
 
+// CreateConstraintSet creates a new ConstraintSet.
+func (s *Scene) CreateConstraintSet() *ConstraintSet {
+	return &ConstraintSet{
+		scene: s,
+	}
+}
+
 // CreateSingleBodyConstraint creates a new physics constraint that acts on
 // a single body and enables it for this scene.
 func (s *Scene) CreateSingleBodyConstraint(body *Body, solver SBConstraintSolver) *SBConstraint {

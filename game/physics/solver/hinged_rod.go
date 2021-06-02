@@ -7,6 +7,7 @@ import (
 
 var _ physics.DBConstraintSolver = (*HingedRod)(nil)
 
+// NewHingedRod creates a new HingedRod constraint solution.
 func NewHingedRod() *HingedRod {
 	result := &HingedRod{
 		length: 1.0,
@@ -15,6 +16,9 @@ func NewHingedRod() *HingedRod {
 	return result
 }
 
+// HingedRod represents the solution for a constraint
+// that keeps two bodies tied together with a hard link
+// of specific length.
 type HingedRod struct {
 	*physics.DBJacobianConstraintSolver
 
@@ -23,28 +27,38 @@ type HingedRod struct {
 	length          float32
 }
 
+// PrimaryAnchor returns the attachment point of the link
+// on the primary body.
 func (r *HingedRod) PrimaryAnchor() sprec.Vec3 {
 	return r.primaryAnchor
 }
 
+// SetPrimaryAnchor changes the attachment point of the link
+// on the primary body.
 func (r *HingedRod) SetPrimaryAnchor(anchor sprec.Vec3) *HingedRod {
 	r.primaryAnchor = anchor
 	return r
 }
 
+// SecondaryAnchor returns the attachment point of the link
+// on the secondary body.
 func (r *HingedRod) SecondaryAnchor() sprec.Vec3 {
 	return r.secondaryAnchor
 }
 
+// SetSecondaryAnchor changes the attachment point of the link
+// on the secondary body.
 func (r *HingedRod) SetSecondaryAnchor(anchor sprec.Vec3) *HingedRod {
 	r.secondaryAnchor = anchor
 	return r
 }
 
+// Length returns the link length.
 func (r *HingedRod) Length() float32 {
 	return r.length
 }
 
+// SetLength changes the link length.
 func (r *HingedRod) SetLength(length float32) *HingedRod {
 	r.length = length
 	return r
