@@ -166,6 +166,8 @@ func (r *Renderer) Render(viewport graphics.Viewport, scene *Scene, camera *Came
 	cameraMatrix := r.evaluateCameraMatrix(camera)
 	viewMatrix := sprec.InverseMat4(cameraMatrix)
 
+	gl.Enable(gl.FRAMEBUFFER_SRGB)
+
 	ctx := renderCtx{
 		scene:            scene,
 		x:                viewport.X,

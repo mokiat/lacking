@@ -10,6 +10,10 @@ type Engine interface {
 	// within a given scene are isolated within that scene.
 	CreateScene() Scene
 
+	// CreateCubeTexture creates a new CubeTexture using the
+	// specified definition.
+	CreateCubeTexture(definition CubeTextureDefinition) CubeTexture
+
 	// Destroy releases resources allocated by this
 	// 3D engine.
 	Destroy()

@@ -4,6 +4,7 @@ import (
 	"sync"
 
 	"github.com/mokiat/lacking/async"
+	"github.com/mokiat/lacking/game/graphics"
 )
 
 type TypeName string
@@ -18,14 +19,13 @@ type Operator interface {
 	Release(registry *Registry, resource interface{}) error
 }
 
-func NewRegistry(locator Locator, gfxWorker *async.Worker) *Registry {
+func NewRegistry(locator Locator, gfxEngine graphics.Engine, gfxWorker *async.Worker) *Registry {
 	registry := &Registry{
 		catalog:       make(map[TypeName]*Type),
 		shaderCatalog: make(map[TypeName]*ShaderType),
 	}
-	registry.Register(ProgramTypeName, NewProgramOperator(locator, gfxWorker))
 	registry.Register(TwoDTextureTypeName, NewTwoDTextureOperator(locator, gfxWorker))
-	registry.Register(CubeTextureTypeName, NewCubeTextureOperator(locator, gfxWorker))
+	registry.Register(CubeTextureTypeName, NewCubeTextureOperator(locator, gfxEngine, gfxWorker))
 	registry.Register(MeshTypeName, NewMeshOperator(locator, gfxWorker))
 	registry.Register(ModelTypeName, NewModelOperator(locator, gfxWorker))
 	registry.Register(LevelTypeName, NewLevelOperator(locator, gfxWorker))
@@ -70,16 +70,8 @@ func (r *Registry) Load(typeName TypeName, name string) async.Outcome {
 }
 
 func (r *Registry) Unload(typeName TypeName, name string) async.Outcome {
-	resType := r.catalog[ProgramTypeName]
+	resType := r.catalog[typeName]
 	return resType.Unload(name)
-}
-
-func (r *Registry) LoadProgram(name string) async.Outcome {
-	return r.Load(ProgramTypeName, name)
-}
-
-func (r *Registry) UnloadProgram(program *Program) async.Outcome {
-	return r.Unload(ProgramTypeName, program.Name)
 }
 
 func (r *Registry) LoadTwoDTexture(name string) async.Outcome {

@@ -17,6 +17,10 @@ type TwoDTexture struct {
 	*opengl.TwoDTexture
 }
 
+func (t *TwoDTexture) Delete() {
+	t.Delete()
+}
+
 func newCubeTexture() *CubeTexture {
 	return &CubeTexture{
 		CubeTexture: opengl.NewCubeTexture(),
@@ -27,4 +31,8 @@ var _ graphics.CubeTexture = (*CubeTexture)(nil)
 
 type CubeTexture struct {
 	*opengl.CubeTexture
+}
+
+func (t *CubeTexture) Delete() {
+	t.Release()
 }
