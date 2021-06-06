@@ -52,6 +52,10 @@ func (p *Program) UniformLocation(name string) int32 {
 	return result
 }
 
+func (p *Program) Use() {
+	gl.UseProgram(p.id)
+}
+
 func (p *Program) Release() {
 	if p.id == 0 {
 		panic(fmt.Errorf("program already released"))

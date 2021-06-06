@@ -5,7 +5,16 @@ import (
 	"runtime"
 
 	"github.com/go-gl/gl/v4.6-core/gl"
+	"github.com/mokiat/gomath/sprec"
 )
+
+var defaultFramebuffer = &Framebuffer{
+	id: 0,
+}
+
+func DefaultFramebuffer() *Framebuffer {
+	return defaultFramebuffer
+}
 
 func NewFramebuffer() *Framebuffer {
 	return &Framebuffer{}
@@ -52,6 +61,28 @@ func (b *Framebuffer) Allocate(info FramebufferAllocateInfo) {
 	if gl.CheckNamedFramebufferStatus(b.id, gl.FRAMEBUFFER) != gl.FRAMEBUFFER_COMPLETE {
 		panic(fmt.Errorf("framebuffer is incomplete"))
 	}
+}
+
+func (b *Framebuffer) Use() {
+	gl.BindFramebuffer(gl.FRAMEBUFFER, b.id)
+}
+
+func (b *Framebuffer) ClearColor(drawbuffer int32, color sprec.Vec4) {
+	var rgba = [4]float32{
+		color.X,
+		color.Y,
+		color.Z,
+		color.W,
+	}
+	gl.ClearNamedFramebufferfv(b.id, gl.COLOR, drawbuffer, &rgba[0])
+}
+
+func (b *Framebuffer) ClearDepth(value float32) {
+	gl.ClearNamedFramebufferfv(b.id, gl.DEPTH, 0, &value)
+}
+
+func (b *Framebuffer) ClearStencil(value uint32) {
+	gl.ClearNamedFramebufferuiv(b.id, gl.STENCIL, 0, &value)
 }
 
 func (b *Framebuffer) Release() {
