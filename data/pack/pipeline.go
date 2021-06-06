@@ -31,34 +31,6 @@ type Pipeline struct {
 	actions         []Action
 }
 
-func (p *Pipeline) OpenShaderResource(uri string) *OpenShaderResourceAction {
-	action := &OpenShaderResourceAction{
-		locator: p.resourceLocator,
-		uri:     uri,
-	}
-	p.scheduleAction(action)
-	return action
-}
-
-func (p *Pipeline) BuildProgram(opts ...BuildProgramOption) *BuildProgramAction {
-	action := &BuildProgramAction{}
-	for _, opt := range opts {
-		opt(action)
-	}
-	p.scheduleAction(action)
-	return action
-}
-
-func (p *Pipeline) SaveProgramAsset(uri string, program ProgramProvider) *SaveProgramAssetAction {
-	action := &SaveProgramAssetAction{
-		locator:         p.assetLocator,
-		uri:             uri,
-		programProvider: program,
-	}
-	p.scheduleAction(action)
-	return action
-}
-
 func (p *Pipeline) OpenImageResource(uri string) *OpenImageResourceAction {
 	action := &OpenImageResourceAction{
 		locator: p.resourceLocator,
