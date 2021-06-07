@@ -13,6 +13,12 @@ import (
 const (
 	framebufferWidth  = int32(1920)
 	framebufferHeight = int32(1080)
+
+	coordAttributeIndex    = 0
+	normalAttributeIndex   = 1
+	tangentAttributeIndex  = 2
+	texCoordAttributeIndex = 3
+	colorAttributeIndex    = 4
 )
 
 func newRenderer() *Renderer {
@@ -26,6 +32,7 @@ func newRenderer() *Renderer {
 		geometryFramebuffer:   opengl.NewFramebuffer(),
 
 		lightingAlbedoTexture: opengl.NewTwoDTexture(),
+		lightingDepthTexture:  opengl.NewTwoDTexture(),
 		lightingFramebuffer:   opengl.NewFramebuffer(),
 
 		screenFramebuffer: opengl.DefaultFramebuffer(),
@@ -33,6 +40,8 @@ func newRenderer() *Renderer {
 		postprocessingMaterial: newPostprocessingMaterial(),
 
 		quadMesh: newQuadMesh(),
+
+		lightingMaterial: newLightingMaterial(),
 
 		skyboxMaterial: newSkyboxMaterial(),
 		skyboxMesh:     newSkyboxMesh(),
@@ -49,6 +58,7 @@ type Renderer struct {
 	geometryFramebuffer   *opengl.Framebuffer
 
 	lightingAlbedoTexture *opengl.TwoDTexture
+	lightingDepthTexture  *opengl.TwoDTexture
 	lightingFramebuffer   *opengl.Framebuffer
 
 	screenFramebuffer *opengl.Framebuffer
@@ -56,6 +66,8 @@ type Renderer struct {
 	postprocessingMaterial *PostprocessingMaterial
 
 	quadMesh *QuadMesh
+
+	lightingMaterial *LightingMaterial
 
 	skyboxMaterial *SkyboxMaterial
 	skyboxMesh     *SkyboxMesh
@@ -115,11 +127,22 @@ func (r *Renderer) Allocate() {
 	}
 	r.lightingAlbedoTexture.Allocate(lightingAlbedoTextureInfo)
 
+	lightingDepthTextureInfo := opengl.TwoDTextureAllocateInfo{
+		Width:             framebufferWidth,
+		Height:            framebufferHeight,
+		MinFilter:         gl.NEAREST,
+		MagFilter:         gl.NEAREST,
+		InternalFormat:    gl.DEPTH_COMPONENT32,
+		DataFormat:        gl.DEPTH_COMPONENT,
+		DataComponentType: gl.FLOAT,
+	}
+	r.lightingDepthTexture.Allocate(lightingDepthTextureInfo)
+
 	lightingFramebufferInfo := opengl.FramebufferAllocateInfo{
 		ColorAttachments: []*opengl.Texture{
 			&r.lightingAlbedoTexture.Texture,
 		},
-		DepthAttachment: &r.geometryDepthTexture.Texture,
+		DepthAttachment: &r.lightingDepthTexture.Texture,
 	}
 	r.lightingFramebuffer.Allocate(lightingFramebufferInfo)
 
@@ -127,8 +150,9 @@ func (r *Renderer) Allocate() {
 
 	r.quadMesh.Allocate()
 
-	r.skyboxMesh.Allocate()
+	r.lightingMaterial.Allocate()
 
+	r.skyboxMesh.Allocate()
 	r.skyboxMaterial.Allocate()
 }
 
@@ -136,12 +160,15 @@ func (r *Renderer) Release() {
 	r.skyboxMaterial.Release()
 	r.skyboxMesh.Release()
 
+	r.lightingMaterial.Release()
+
 	r.quadMesh.Release()
 
 	r.postprocessingMaterial.Release()
 
 	r.lightingFramebuffer.Release()
 	r.lightingAlbedoTexture.Release()
+	r.lightingDepthTexture.Release()
 
 	r.geometryFramebuffer.Release()
 	r.geometryDepthTexture.Release()
@@ -163,7 +190,7 @@ type renderCtx struct {
 
 func (r *Renderer) Render(viewport graphics.Viewport, scene *Scene, camera *Camera) {
 	projectionMatrix := r.evaluateProjectionMatrix(camera, viewport.Width, viewport.Height)
-	cameraMatrix := r.evaluateCameraMatrix(camera)
+	cameraMatrix := camera.modelMatrix()
 	viewMatrix := sprec.InverseMat4(cameraMatrix)
 
 	gl.Enable(gl.FRAMEBUFFER_SRGB)
@@ -180,6 +207,7 @@ func (r *Renderer) Render(viewport graphics.Viewport, scene *Scene, camera *Came
 		camera:           camera,
 	}
 	r.renderGeometryPass(ctx)
+	r.renderLightingPass(ctx)
 	r.renderForwardPass(ctx)
 	r.renderPostprocessingPass(ctx)
 }
@@ -221,32 +249,14 @@ func (r *Renderer) evaluateProjectionMatrix(camera *Camera, width, height int) s
 	}
 }
 
-func (r *Renderer) evaluateCameraMatrix(camera *Camera) sprec.Mat4 {
-	camPosition := camera.Position()
-	camRotation := camera.Rotation()
-	camScale := camera.Scale()
-
-	return sprec.Mat4MultiProd(
-		sprec.TranslationMat4(
-			camPosition.X,
-			camPosition.Y,
-			camPosition.Z,
-		),
-		sprec.OrientationMat4(
-			camRotation.OrientationX(),
-			camRotation.OrientationY(),
-			camRotation.OrientationZ(),
-		),
-		sprec.ScaleMat4(
-			camScale.X,
-			camScale.Y,
-			camScale.Z,
-		),
-	)
-}
-
 func (r *Renderer) renderGeometryPass(ctx renderCtx) {
 	r.geometryFramebuffer.Use()
+
+	gl.Viewport(0, 0, r.framebufferWidth, r.framebufferHeight)
+	gl.Enable(gl.DEPTH_TEST)
+	gl.DepthMask(true)
+	gl.DepthFunc(gl.LEQUAL)
+
 	r.geometryFramebuffer.ClearColor(0, sprec.NewVec4(
 		ctx.scene.sky.backgroundColor.X,
 		ctx.scene.sky.backgroundColor.Y,
@@ -254,24 +264,114 @@ func (r *Renderer) renderGeometryPass(ctx renderCtx) {
 		1.0,
 	))
 	r.geometryFramebuffer.ClearDepth(1.0)
-	gl.Viewport(0, 0, r.framebufferWidth, r.framebufferHeight)
-	gl.Enable(gl.DEPTH_TEST)
-	gl.DepthMask(true)
-	gl.DepthFunc(gl.LEQUAL)
 
 	// TODO: Traverse octree
+	for mesh := ctx.scene.firstMesh; mesh != nil; mesh = mesh.next {
+		r.renderMesh(ctx, mesh.modelMatrix().ColumnMajorArray(), mesh.template)
+	}
+}
+
+func (r *Renderer) renderMesh(ctx renderCtx, modelMatrix [16]float32, template *MeshTemplate) {
+	for _, subMesh := range template.subMeshes {
+		if subMesh.material.backfaceCulling {
+			gl.Enable(gl.CULL_FACE)
+		} else {
+			gl.Disable(gl.CULL_FACE)
+		}
+
+		material := subMesh.material
+		program := material.geometryProgram
+		program.Use()
+
+		location := program.UniformLocation("projectionMatrixIn")
+		gl.UniformMatrix4fv(location, 1, false, &ctx.projectionMatrix[0])
+
+		location = program.UniformLocation("cameraMatrixIn")
+		gl.UniformMatrix4fv(location, 1, false, &ctx.cameraMatrix[0])
+
+		location = program.UniformLocation("viewMatrixIn")
+		gl.UniformMatrix4fv(location, 1, false, &ctx.viewMatrix[0])
+
+		location = program.UniformLocation("modelMatrixIn")
+		gl.UniformMatrix4fv(location, 1, false, &modelMatrix[0])
+
+		location = program.UniformLocation("albedoColorIn")
+		gl.Uniform4f(location, material.vectors[0].X, material.vectors[0].Y, material.vectors[0].Z, material.vectors[0].Z)
+
+		location = program.UniformLocation("metalnessIn")
+		gl.Uniform1f(location, material.vectors[1].Y)
+
+		location = program.UniformLocation("roughnessIn")
+		gl.Uniform1f(location, material.vectors[1].Z)
+
+		textureUnit := uint32(0)
+		if material.twoDTextures[0] != nil {
+			gl.BindTextureUnit(textureUnit, material.twoDTextures[0].ID())
+			location = program.UniformLocation("albedoTwoDTextureIn")
+			gl.Uniform1i(location, int32(textureUnit))
+			textureUnit++
+		}
+
+		gl.BindVertexArray(template.vertexArray.ID())
+		gl.DrawElements(subMesh.primitive, subMesh.indexCount, gl.UNSIGNED_SHORT, gl.PtrOffset(subMesh.indexOffsetBytes))
+	}
+}
+
+func (r *Renderer) renderLightingPass(ctx renderCtx) {
+	gl.BlitNamedFramebuffer(r.geometryFramebuffer.ID(), r.lightingFramebuffer.ID(),
+		0, 0, r.framebufferWidth, r.framebufferHeight,
+		0, 0, r.framebufferWidth, r.framebufferHeight,
+		gl.DEPTH_BUFFER_BIT,
+		gl.NEAREST,
+	)
+
+	r.lightingFramebuffer.Use()
+
+	gl.Viewport(0, 0, r.framebufferWidth, r.framebufferHeight)
+	gl.Disable(gl.DEPTH_TEST)
+	gl.DepthMask(false)
+
+	r.lightingFramebuffer.ClearColor(0, sprec.NewVec4(0.5, 0.2, 0.3, 1.0))
+
+	gl.Enable(gl.CULL_FACE)
+	program := r.lightingMaterial.Program
+	program.Use()
+
+	location := program.UniformLocation("projectionMatrixIn")
+	gl.UniformMatrix4fv(location, 1, false, &ctx.projectionMatrix[0])
+
+	location = program.UniformLocation("cameraMatrixIn")
+	gl.UniformMatrix4fv(location, 1, false, &ctx.cameraMatrix[0])
+
+	location = program.UniformLocation("viewMatrixIn")
+	gl.UniformMatrix4fv(location, 1, false, &ctx.viewMatrix[0])
+
+	location = program.UniformLocation("lightDirectionWSIn")
+	gl.Uniform3f(location, -1.0, 0.7, -0.5)
+
+	textureUnit := uint32(0)
+
+	gl.BindTextureUnit(textureUnit, r.geometryAlbedoTexture.ID())
+	location = program.UniformLocation("fbColor0TextureIn")
+	gl.Uniform1i(location, int32(textureUnit))
+	textureUnit++
+
+	gl.BindTextureUnit(textureUnit, r.geometryNormalTexture.ID())
+	location = program.UniformLocation("fbColor1TextureIn")
+	gl.Uniform1i(location, int32(textureUnit))
+	textureUnit++
+
+	gl.BindTextureUnit(textureUnit, r.geometryDepthTexture.ID())
+	location = program.UniformLocation("fbDepthTextureIn")
+	gl.Uniform1i(location, int32(textureUnit))
+	textureUnit++
+
+	gl.BindVertexArray(r.quadMesh.VertexArray.ID())
+	gl.DrawElements(r.quadMesh.Primitive, r.quadMesh.IndexCount, gl.UNSIGNED_SHORT, gl.PtrOffset(r.quadMesh.IndexOffsetBytes))
 }
 
 func (r *Renderer) renderForwardPass(ctx renderCtx) {
 	r.lightingFramebuffer.Use()
-
-	// TODO: Remove once lighting pass is implemented
-	r.lightingFramebuffer.ClearColor(0, sprec.NewVec4(
-		ctx.scene.sky.backgroundColor.X,
-		ctx.scene.sky.backgroundColor.Y,
-		ctx.scene.sky.backgroundColor.Z,
-		1.0,
-	))
 
 	gl.Viewport(0, 0, r.framebufferWidth, r.framebufferHeight)
 	gl.Enable(gl.DEPTH_TEST)
@@ -304,7 +404,7 @@ func (r *Renderer) renderPostprocessingPass(ctx renderCtx) {
 
 	gl.Disable(gl.DEPTH_TEST)
 	gl.DepthMask(false)
-	gl.DepthFunc(gl.LEQUAL)
+	gl.DepthFunc(gl.ALWAYS)
 
 	gl.Enable(gl.CULL_FACE)
 	r.postprocessingMaterial.Program.Use()

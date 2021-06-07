@@ -17,6 +17,10 @@ type Scene interface {
 	// used within this scene.
 	CreateLight() Light
 
+	// CreateMesh creates a new mesh instance from the specified
+	// template and places it in the scene.
+	CreateMesh(template MeshTemplate) Mesh
+
 	// Render draws this scene to the specified viewport
 	// looking through the specified camera.
 	Render(viewport Viewport, camera Camera)

@@ -1,8 +1,6 @@
 package render
 
 import (
-	"github.com/go-gl/gl/v4.6-core/gl"
-
 	"github.com/mokiat/gomath/sprec"
 	"github.com/mokiat/lacking/async"
 	"github.com/mokiat/lacking/graphics"
@@ -117,35 +115,35 @@ func (s *Scene) Init(gfxWorker *async.Worker) async.Outcome {
 			return err
 		}
 
-		quadData := preset.NewQuadVertexArrayData(-1.0, 1.0, 1.0, -1.0)
-		s.quadMesh = &resource.Mesh{
-			GFXVertexArray: graphics.NewVertexArray(),
-			SubMeshes: []resource.SubMesh{ // TODO: Get this from preset somehow
-				{
-					Primitive:   graphics.RenderPrimitiveTriangles,
-					IndexOffset: 0,
-					IndexCount:  6,
-				},
-			},
-		}
-		if err := s.quadMesh.GFXVertexArray.Allocate(quadData); err != nil {
-			return err
-		}
+		// quadData := preset.NewQuadVertexArrayData(-1.0, 1.0, 1.0, -1.0)
+		// s.quadMesh = &resource.Mesh{
+		// 	GFXVertexArray: graphics.NewVertexArray(),
+		// 	SubMeshes: []resource.SubMesh{ // TODO: Get this from preset somehow
+		// 		{
+		// 			Primitive:   graphics.RenderPrimitiveTriangles,
+		// 			IndexOffset: 0,
+		// 			IndexCount:  6,
+		// 		},
+		// 	},
+		// }
+		// if err := s.quadMesh.GFXVertexArray.Allocate(quadData); err != nil {
+		// 	return err
+		// }
 
-		cubeData := preset.NewCubeVertexArrayData(-1.0, 1.0, 1.0, -1.0, 1.0, -1.0)
-		s.cubeMesh = &resource.Mesh{
-			GFXVertexArray: graphics.NewVertexArray(),
-			SubMeshes: []resource.SubMesh{ // TODO: Get this from preset somehow
-				{
-					Primitive:   graphics.RenderPrimitiveTriangles,
-					IndexOffset: 0,
-					IndexCount:  36,
-				},
-			},
-		}
-		if err := s.cubeMesh.GFXVertexArray.Allocate(cubeData); err != nil {
-			return err
-		}
+		// cubeData := preset.NewCubeVertexArrayData(-1.0, 1.0, 1.0, -1.0, 1.0, -1.0)
+		// s.cubeMesh = &resource.Mesh{
+		// 	GFXVertexArray: graphics.NewVertexArray(),
+		// 	SubMeshes: []resource.SubMesh{ // TODO: Get this from preset somehow
+		// 		{
+		// 			Primitive:   graphics.RenderPrimitiveTriangles,
+		// 			IndexOffset: 0,
+		// 			IndexCount:  36,
+		// 		},
+		// 	},
+		// }
+		// if err := s.cubeMesh.GFXVertexArray.Allocate(cubeData); err != nil {
+		// 	return err
+		// }
 		return nil
 	}
 	return gfxWorker.Schedule(async.VoidTask(gfxTask))
@@ -191,27 +189,27 @@ func (s *Scene) renderGeometryPass(pipeline *graphics.Pipeline) {
 }
 
 func (s *Scene) renderLightingPass(pipeline *graphics.Pipeline) {
-	lightingSequence := pipeline.BeginSequence()
-	lightingSequence.SourceFramebuffer = s.geometryFramebuffer
-	lightingSequence.TargetFramebuffer = s.lightingFramebuffer
-	lightingSequence.BlitFramebufferDepth = true
-	lightingSequence.BackgroundColor = sprec.NewVec4(1.0, 0.6, 0.0, 1.0)
-	lightingSequence.ClearColor = true
-	lightingSequence.TestDepth = false
-	lightingSequence.WriteDepth = false
-	lightingSequence.ProjectionMatrix = s.activeCamera.ProjectionMatrix()
-	lightingSequence.ViewMatrix = s.activeCamera.ViewMatrix()
-	lightingSequence.CameraMatrix = s.activeCamera.Matrix()
-	quadItem := lightingSequence.BeginItem()
-	quadItem.Program = s.pbrLightingProgram
-	quadItem.VertexArray = s.quadMesh.GFXVertexArray
-	quadItem.IndexOffset = s.quadMesh.SubMeshes[0].IndexOffset
-	quadItem.IndexCount = s.quadMesh.SubMeshes[0].IndexCount
-	quadItem.LightDirectionWS = sprec.UnitVec3(sprec.NewVec3(-1.0, 0.7, -0.5))
-	quadItem.AmbientReflectionTexture = s.layout.skybox.AmbientReflectionTexture
-	quadItem.AmbientRefractionTexture = s.layout.skybox.AmbientRefractionTexture
-	lightingSequence.EndItem(quadItem)
-	pipeline.EndSequence(lightingSequence)
+	// lightingSequence := pipeline.BeginSequence()
+	// lightingSequence.SourceFramebuffer = s.geometryFramebuffer
+	// lightingSequence.TargetFramebuffer = s.lightingFramebuffer
+	// lightingSequence.BlitFramebufferDepth = true
+	// lightingSequence.BackgroundColor = sprec.NewVec4(1.0, 0.6, 0.0, 1.0)
+	// lightingSequence.ClearColor = true
+	// lightingSequence.TestDepth = false
+	// lightingSequence.WriteDepth = false
+	// lightingSequence.ProjectionMatrix = s.activeCamera.ProjectionMatrix()
+	// lightingSequence.ViewMatrix = s.activeCamera.ViewMatrix()
+	// lightingSequence.CameraMatrix = s.activeCamera.Matrix()
+	// quadItem := lightingSequence.BeginItem()
+	// quadItem.Program = s.pbrLightingProgram
+	// quadItem.VertexArray = s.quadMesh.GFXVertexArray
+	// quadItem.IndexOffset = s.quadMesh.SubMeshes[0].IndexOffset
+	// quadItem.IndexCount = s.quadMesh.SubMeshes[0].IndexCount
+	// quadItem.LightDirectionWS = sprec.UnitVec3(sprec.NewVec3(-1.0, 0.7, -0.5))
+	// quadItem.AmbientReflectionTexture = s.layout.skybox.AmbientReflectionTexture
+	// quadItem.AmbientRefractionTexture = s.layout.skybox.AmbientRefractionTexture
+	// lightingSequence.EndItem(quadItem)
+	// pipeline.EndSequence(lightingSequence)
 }
 
 func (s *Scene) renderForwardPass(pipeline *graphics.Pipeline) {
@@ -231,64 +229,64 @@ func (s *Scene) renderForwardPass(pipeline *graphics.Pipeline) {
 }
 
 func (s *Scene) renderExposureProbePass(pipeline *graphics.Pipeline) {
-	probeSequence := pipeline.BeginSequence()
-	probeSequence.SourceFramebuffer = s.lightingFramebuffer
-	probeSequence.TargetFramebuffer = s.exposureFramebuffer
-	probeSequence.ClearColor = true
-	probeSequence.TestDepth = false
-	probeSequence.WriteDepth = false
-	probeSequence.ProjectionMatrix = s.activeCamera.ProjectionMatrix()
-	probeSequence.ViewMatrix = s.activeCamera.ViewMatrix()
-	probeSequence.CameraMatrix = s.activeCamera.Matrix()
-	quadItem := probeSequence.BeginItem()
-	quadItem.Program = s.exposureProbeProgram
-	quadItem.VertexArray = s.quadMesh.GFXVertexArray
-	quadItem.IndexOffset = s.quadMesh.SubMeshes[0].IndexOffset
-	quadItem.IndexCount = s.quadMesh.SubMeshes[0].IndexCount
-	probeSequence.EndItem(quadItem)
-	pipeline.EndSequence(probeSequence)
+	// probeSequence := pipeline.BeginSequence()
+	// probeSequence.SourceFramebuffer = s.lightingFramebuffer
+	// probeSequence.TargetFramebuffer = s.exposureFramebuffer
+	// probeSequence.ClearColor = true
+	// probeSequence.TestDepth = false
+	// probeSequence.WriteDepth = false
+	// probeSequence.ProjectionMatrix = s.activeCamera.ProjectionMatrix()
+	// probeSequence.ViewMatrix = s.activeCamera.ViewMatrix()
+	// probeSequence.CameraMatrix = s.activeCamera.Matrix()
+	// quadItem := probeSequence.BeginItem()
+	// quadItem.Program = s.exposureProbeProgram
+	// quadItem.VertexArray = s.quadMesh.GFXVertexArray
+	// quadItem.IndexOffset = s.quadMesh.SubMeshes[0].IndexOffset
+	// quadItem.IndexCount = s.quadMesh.SubMeshes[0].IndexCount
+	// probeSequence.EndItem(quadItem)
+	// pipeline.EndSequence(probeSequence)
 
-	pipeline.SchedulePostRender(func() {
-		gl.BindTexture(gl.TEXTURE_2D, s.exposureFramebuffer.AlbedoTexture.ID())
-		data := make([]float32, 4)
-		gl.GetTexImage(gl.TEXTURE_2D, 0, gl.RGBA, gl.FLOAT, gl.Ptr(&data[0]))
-		brightness := 0.2126*data[0] + 0.7152*data[1] + 0.0722*data[2]
-		mix := float32(0.995)
-		targetExposure := 1.0 / (9.8 * brightness)
-		s.lastExposure = mix*s.lastExposure + (1.0-mix)*targetExposure // FIXME: race condition
-	})
+	// pipeline.SchedulePostRender(func() {
+	// 	gl.BindTexture(gl.TEXTURE_2D, s.exposureFramebuffer.AlbedoTexture.ID())
+	// 	data := make([]float32, 4)
+	// 	gl.GetTexImage(gl.TEXTURE_2D, 0, gl.RGBA, gl.FLOAT, gl.Ptr(&data[0]))
+	// 	brightness := 0.2126*data[0] + 0.7152*data[1] + 0.0722*data[2]
+	// 	mix := float32(0.995)
+	// 	targetExposure := 1.0 / (9.8 * brightness)
+	// 	s.lastExposure = mix*s.lastExposure + (1.0-mix)*targetExposure // FIXME: race condition
+	// })
 }
 
 func (s *Scene) renderPostprocessingPass(pipeline *graphics.Pipeline) {
-	exposureSequence := pipeline.BeginSequence()
-	exposureSequence.SourceFramebuffer = s.lightingFramebuffer
-	exposureSequence.TargetFramebuffer = s.screenFramebuffer
-	exposureSequence.ClearColor = true
-	exposureSequence.TestDepth = false
-	exposureSequence.WriteDepth = false
-	exposureSequence.ProjectionMatrix = s.activeCamera.ProjectionMatrix()
-	exposureSequence.ViewMatrix = s.activeCamera.ViewMatrix()
-	exposureSequence.CameraMatrix = s.activeCamera.Matrix()
-	quadItem := exposureSequence.BeginItem()
-	quadItem.Program = s.postprocessingProgram
-	quadItem.Exposure = s.lastExposure
-	quadItem.VertexArray = s.quadMesh.GFXVertexArray
-	quadItem.IndexOffset = s.quadMesh.SubMeshes[0].IndexOffset
-	quadItem.IndexCount = s.quadMesh.SubMeshes[0].IndexCount
-	exposureSequence.EndItem(quadItem)
-	pipeline.EndSequence(exposureSequence)
+	// exposureSequence := pipeline.BeginSequence()
+	// exposureSequence.SourceFramebuffer = s.lightingFramebuffer
+	// exposureSequence.TargetFramebuffer = s.screenFramebuffer
+	// exposureSequence.ClearColor = true
+	// exposureSequence.TestDepth = false
+	// exposureSequence.WriteDepth = false
+	// exposureSequence.ProjectionMatrix = s.activeCamera.ProjectionMatrix()
+	// exposureSequence.ViewMatrix = s.activeCamera.ViewMatrix()
+	// exposureSequence.CameraMatrix = s.activeCamera.Matrix()
+	// quadItem := exposureSequence.BeginItem()
+	// quadItem.Program = s.postprocessingProgram
+	// quadItem.Exposure = s.lastExposure
+	// quadItem.VertexArray = s.quadMesh.GFXVertexArray
+	// quadItem.IndexOffset = s.quadMesh.SubMeshes[0].IndexOffset
+	// quadItem.IndexCount = s.quadMesh.SubMeshes[0].IndexCount
+	// exposureSequence.EndItem(quadItem)
+	// pipeline.EndSequence(exposureSequence)
 }
 
 func (s *Scene) renderSkybox(sequence *graphics.Sequence, skybox *Skybox) {
-	for _, subMesh := range s.cubeMesh.SubMeshes {
-		item := sequence.BeginItem()
-		item.Program = s.fwdSkyboxProgram
-		item.AlbedoCubeTexture = s.layout.skybox.SkyboxTexture
-		item.VertexArray = s.cubeMesh.GFXVertexArray
-		item.IndexOffset = subMesh.IndexOffset
-		item.IndexCount = subMesh.IndexCount
-		sequence.EndItem(item)
-	}
+	// for _, subMesh := range s.cubeMesh.SubMeshes {
+	// 	item := sequence.BeginItem()
+	// 	item.Program = s.fwdSkyboxProgram
+	// 	item.AlbedoCubeTexture = s.layout.skybox.SkyboxTexture
+	// 	item.VertexArray = s.cubeMesh.GFXVertexArray
+	// 	item.IndexOffset = subMesh.IndexOffset
+	// 	item.IndexCount = subMesh.IndexCount
+	// 	sequence.EndItem(item)
+	// }
 }
 
 func (s *Scene) renderModelNode(sequence *graphics.Sequence, parentMatrix sprec.Mat4, node *resource.Node) {
@@ -300,33 +298,33 @@ func (s *Scene) renderModelNode(sequence *graphics.Sequence, parentMatrix sprec.
 }
 
 func (s *Scene) renderMesh(sequence *graphics.Sequence, modelMatrix sprec.Mat4, mesh *resource.Mesh) {
-	for _, subMesh := range mesh.SubMeshes {
-		meshItem := sequence.BeginItem()
-		meshItem.Program = subMesh.Material.Shader.GeometryProgram
-		meshItem.Primitive = subMesh.Primitive
-		meshItem.ModelMatrix = modelMatrix
-		meshItem.BackfaceCulling = subMesh.Material.BackfaceCulling
-		meshItem.Metalness = subMesh.Material.Metalness
-		if subMesh.Material.MetalnessTexture != nil {
-			meshItem.MetalnessTwoDTexture = subMesh.Material.MetalnessTexture.GFXTexture
-		}
-		meshItem.Roughness = subMesh.Material.Roughness
-		if subMesh.Material.RoughnessTexture != nil {
-			meshItem.RoughnessTwoDTexture = subMesh.Material.RoughnessTexture.GFXTexture
-		}
-		meshItem.AlbedoColor = subMesh.Material.AlbedoColor
-		if subMesh.Material.AlbedoTexture != nil {
-			meshItem.AlbedoTwoDTexture = subMesh.Material.AlbedoTexture.GFXTexture
-		}
-		meshItem.NormalScale = subMesh.Material.NormalScale
-		if subMesh.Material.NormalTexture != nil {
-			meshItem.NormalTwoDTexture = subMesh.Material.NormalTexture.GFXTexture
-		}
-		meshItem.VertexArray = mesh.GFXVertexArray
-		meshItem.IndexOffset = subMesh.IndexOffset
-		meshItem.IndexCount = subMesh.IndexCount
-		sequence.EndItem(meshItem)
-	}
+	// for _, subMesh := range mesh.SubMeshes {
+	// 	meshItem := sequence.BeginItem()
+	// 	meshItem.Program = subMesh.Material.Shader.GeometryProgram
+	// 	meshItem.Primitive = subMesh.Primitive
+	// 	meshItem.ModelMatrix = modelMatrix
+	// 	meshItem.BackfaceCulling = subMesh.Material.BackfaceCulling
+	// 	meshItem.Metalness = subMesh.Material.Metalness
+	// 	if subMesh.Material.MetalnessTexture != nil {
+	// 		// meshItem.MetalnessTwoDTexture = subMesh.Material.MetalnessTexture.GFXTexture
+	// 	}
+	// 	meshItem.Roughness = subMesh.Material.Roughness
+	// 	if subMesh.Material.RoughnessTexture != nil {
+	// 		// meshItem.RoughnessTwoDTexture = subMesh.Material.RoughnessTexture.GFXTexture
+	// 	}
+	// 	meshItem.AlbedoColor = subMesh.Material.AlbedoColor
+	// 	if subMesh.Material.AlbedoTexture != nil {
+	// 		// meshItem.AlbedoTwoDTexture = subMesh.Material.AlbedoTexture.GFXTexture
+	// 	}
+	// 	meshItem.NormalScale = subMesh.Material.NormalScale
+	// 	if subMesh.Material.NormalTexture != nil {
+	// 		// meshItem.NormalTwoDTexture = subMesh.Material.NormalTexture.GFXTexture
+	// 	}
+	// 	meshItem.VertexArray = mesh.GFXVertexArray
+	// 	meshItem.IndexOffset = subMesh.IndexOffset
+	// 	meshItem.IndexCount = subMesh.IndexCount
+	// 	sequence.EndItem(meshItem)
+	// }
 }
 
 const lightingVertexSource = `#version 410

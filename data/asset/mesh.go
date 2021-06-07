@@ -1,7 +1,5 @@
 package asset
 
-import "io"
-
 const UnspecifiedOffset = int16(-1)
 
 type Mesh struct {
@@ -58,11 +56,3 @@ const (
 	PrimitiveTriangleStrip
 	PrimitiveTriangleFan
 )
-
-func EncodeMesh(out io.Writer, mesh *Mesh) error {
-	return Encode(out, mesh)
-}
-
-func DecodeMesh(in io.Reader, mesh *Mesh) error {
-	return Decode(in, mesh)
-}

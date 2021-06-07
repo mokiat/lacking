@@ -24,11 +24,10 @@ func NewRegistry(locator Locator, gfxEngine graphics.Engine, gfxWorker *async.Wo
 		catalog:       make(map[TypeName]*Type),
 		shaderCatalog: make(map[TypeName]*ShaderType),
 	}
-	registry.Register(TwoDTextureTypeName, NewTwoDTextureOperator(locator, gfxWorker))
+	registry.Register(TwoDTextureTypeName, NewTwoDTextureOperator(locator, gfxEngine, gfxWorker))
 	registry.Register(CubeTextureTypeName, NewCubeTextureOperator(locator, gfxEngine, gfxWorker))
-	registry.Register(MeshTypeName, NewMeshOperator(locator, gfxWorker))
-	registry.Register(ModelTypeName, NewModelOperator(locator, gfxWorker))
-	registry.Register(LevelTypeName, NewLevelOperator(locator, gfxWorker))
+	registry.Register(ModelTypeName, NewModelOperator(locator, gfxEngine, gfxWorker))
+	registry.Register(LevelTypeName, NewLevelOperator(locator, gfxEngine, gfxWorker))
 	registry.RegisterShader(PBRTypeName, NewPBRShaderOperator(gfxWorker))
 	return registry
 }
@@ -88,14 +87,6 @@ func (r *Registry) LoadCubeTexture(name string) async.Outcome {
 
 func (r *Registry) UnloadCubeTexture(texture *CubeTexture) async.Outcome {
 	return r.Unload(CubeTextureTypeName, texture.Name)
-}
-
-func (r *Registry) LoadMesh(name string) async.Outcome {
-	return r.Load(MeshTypeName, name)
-}
-
-func (r *Registry) UnloadMesh(texture *Mesh) async.Outcome {
-	return r.Unload(MeshTypeName, texture.Name)
 }
 
 func (r *Registry) LoadModel(name string) async.Outcome {

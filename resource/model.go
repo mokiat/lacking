@@ -6,6 +6,7 @@ import (
 	"github.com/mokiat/gomath/sprec"
 	"github.com/mokiat/lacking/async"
 	"github.com/mokiat/lacking/data/asset"
+	"github.com/mokiat/lacking/game/graphics"
 )
 
 const ModelTypeName = TypeName("model")
@@ -54,15 +55,17 @@ func (n Node) FindNode(name string) (*Node, bool) {
 	return nil, false
 }
 
-func NewModelOperator(locator Locator, gfxWorker *async.Worker) *ModelOperator {
+func NewModelOperator(locator Locator, gfxEngine graphics.Engine, gfxWorker *async.Worker) *ModelOperator {
 	return &ModelOperator{
 		locator:   locator,
+		gfxEngine: gfxEngine,
 		gfxWorker: gfxWorker,
 	}
 }
 
 type ModelOperator struct {
 	locator   Locator
+	gfxEngine graphics.Engine
 	gfxWorker *async.Worker
 }
 
@@ -84,7 +87,7 @@ func (o *ModelOperator) Allocate(registry *Registry, name string) (interface{}, 
 
 	meshes := make([]*Mesh, len(modelAsset.Meshes))
 	for i, meshAsset := range modelAsset.Meshes {
-		mesh, err := AllocateMesh(registry, meshAsset.Name, o.gfxWorker, &meshAsset)
+		mesh, err := AllocateMesh(registry, meshAsset.Name, o.gfxWorker, o.gfxEngine, &meshAsset)
 		if err != nil {
 			return nil, fmt.Errorf("failed to allocate mesh: %w", err)
 		}

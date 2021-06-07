@@ -5,7 +5,7 @@ import (
 
 	"github.com/mokiat/lacking/async"
 	"github.com/mokiat/lacking/data/asset"
-	"github.com/mokiat/lacking/graphics"
+	"github.com/mokiat/lacking/game/graphics"
 )
 
 const TwoDTextureTypeName = TypeName("twod_texture")
@@ -18,18 +18,20 @@ func InjectTwoDTexture(target **TwoDTexture) func(value interface{}) {
 
 type TwoDTexture struct {
 	Name       string
-	GFXTexture *graphics.TwoDTexture
+	GFXTexture graphics.TwoDTexture
 }
 
-func NewTwoDTextureOperator(locator Locator, gfxWorker *async.Worker) *TwoDTextureOperator {
+func NewTwoDTextureOperator(locator Locator, gfxEngine graphics.Engine, gfxWorker *async.Worker) *TwoDTextureOperator {
 	return &TwoDTextureOperator{
 		locator:   locator,
+		gfxEngine: gfxEngine,
 		gfxWorker: gfxWorker,
 	}
 }
 
 type TwoDTextureOperator struct {
 	locator   Locator
+	gfxEngine graphics.Engine
 	gfxWorker *async.Worker
 }
 
@@ -46,16 +48,25 @@ func (o *TwoDTextureOperator) Allocate(registry *Registry, name string) (interfa
 	}
 
 	texture := &TwoDTexture{
-		Name:       name,
-		GFXTexture: &graphics.TwoDTexture{},
+		Name: name,
 	}
 
 	gfxTask := o.gfxWorker.Schedule(async.VoidTask(func() error {
-		return texture.GFXTexture.Allocate(graphics.TwoDTextureData{
-			Width:  int32(texAsset.Width),
-			Height: int32(texAsset.Height),
-			Data:   texAsset.Data,
-		})
+		definition := graphics.TwoDTextureDefinition{
+			Width:           int(texAsset.Width),
+			Height:          int(texAsset.Height),
+			WrapS:           graphics.WrapRepeat,
+			WrapT:           graphics.WrapRepeat,
+			MinFilter:       graphics.FilterLinearMipmapLinear,
+			MagFilter:       graphics.FilterLinear,
+			UseAnisotropy:   true,
+			GenerateMipmaps: true,
+			DataFormat:      graphics.DataFormatRGBA8,
+			InternalFormat:  graphics.InternalFormatRGBA8,
+			Data:            texAsset.Data,
+		}
+		texture.GFXTexture = o.gfxEngine.CreateTwoDTexture(definition)
+		return nil
 	}))
 	if err := gfxTask.Wait().Err; err != nil {
 		return nil, fmt.Errorf("failed to allocate two dimensional gfx texture: %w", err)
@@ -67,7 +78,8 @@ func (o *TwoDTextureOperator) Release(registry *Registry, resource interface{}) 
 	texture := resource.(*TwoDTexture)
 
 	gfxTask := o.gfxWorker.Schedule(async.VoidTask(func() error {
-		return texture.GFXTexture.Release()
+		texture.GFXTexture.Delete()
+		return nil
 	}))
 	if err := gfxTask.Wait().Err; err != nil {
 		return fmt.Errorf("failed to release two dimensional gfx texture: %w", err)

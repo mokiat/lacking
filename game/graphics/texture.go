@@ -7,6 +7,27 @@ type TwoDTexture interface {
 	Delete()
 }
 
+// TwoDTextureDefinition contains all the information needed
+// to create a TwoDTexture.
+type TwoDTextureDefinition struct {
+	Width  int
+	Height int
+
+	WrapS Wrap
+	WrapT Wrap
+
+	MinFilter Filter
+	MagFilter Filter
+
+	UseAnisotropy   bool
+	GenerateMipmaps bool
+
+	InternalFormat InternalFormat
+	DataFormat     DataFormat
+
+	Data []byte
+}
+
 // CubeTexture represents a cube texture.
 type CubeTexture interface {
 

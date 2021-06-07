@@ -18,7 +18,7 @@ type TwoDTexture struct {
 }
 
 func (t *TwoDTexture) Delete() {
-	t.Delete()
+	t.Release()
 }
 
 func newCubeTexture() *CubeTexture {

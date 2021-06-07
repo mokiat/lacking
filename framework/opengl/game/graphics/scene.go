@@ -16,6 +16,10 @@ type Scene struct {
 	renderer *Renderer
 
 	sky *Sky
+
+	firstMesh  *Mesh
+	lastMesh   *Mesh
+	cachedMesh *Mesh
 }
 
 func (s *Scene) Sky() graphics.Sky {
@@ -30,10 +34,64 @@ func (s *Scene) CreateLight() graphics.Light {
 	return nil
 }
 
+func (s *Scene) CreateMesh(template graphics.MeshTemplate) graphics.Mesh {
+	var mesh *Mesh
+	if s.cachedMesh != nil {
+		mesh = s.cachedMesh
+		s.cachedMesh = s.cachedMesh.next
+	} else {
+		mesh = &Mesh{}
+	}
+	mesh.Node = newNode()
+	mesh.scene = s
+	mesh.template = template.(*MeshTemplate)
+	mesh.prev = nil
+	mesh.next = nil
+	s.attachMesh(mesh)
+	return mesh
+}
+
 func (s *Scene) Render(viewport graphics.Viewport, camera graphics.Camera) {
 	gfxCamera := camera.(*Camera)
 	s.renderer.Render(viewport, s, gfxCamera)
 }
 
 func (s *Scene) Delete() {
+	s.firstMesh = nil
+	s.lastMesh = nil
+	s.cachedMesh = nil
+}
+
+func (s *Scene) attachMesh(mesh *Mesh) {
+	if s.firstMesh == nil {
+		s.firstMesh = mesh
+	}
+	if s.lastMesh != nil {
+		s.lastMesh.next = mesh
+		mesh.prev = s.lastMesh
+	}
+	mesh.next = nil
+	s.lastMesh = mesh
+}
+
+func (s *Scene) detachMesh(mesh *Mesh) {
+	if s.firstMesh == mesh {
+		s.firstMesh = mesh.next
+	}
+	if s.lastMesh == mesh {
+		s.lastMesh = mesh.prev
+	}
+	if mesh.next != nil {
+		mesh.next.prev = mesh.prev
+	}
+	if mesh.prev != nil {
+		mesh.prev.next = mesh.next
+	}
+	mesh.prev = nil
+	mesh.next = nil
+}
+
+func (s *Scene) cacheMesh(mesh *Mesh) {
+	mesh.next = s.cachedMesh
+	s.cachedMesh = mesh
 }

@@ -43,3 +43,23 @@ func (n *Node) Scale() sprec.Vec3 {
 func (n *Node) SetScale(scale sprec.Vec3) {
 	n.scale = scale
 }
+
+func (n *Node) modelMatrix() sprec.Mat4 {
+	return sprec.Mat4MultiProd(
+		sprec.TranslationMat4(
+			n.position.X,
+			n.position.Y,
+			n.position.Z,
+		),
+		sprec.OrientationMat4(
+			n.rotation.OrientationX(),
+			n.rotation.OrientationY(),
+			n.rotation.OrientationZ(),
+		),
+		sprec.ScaleMat4(
+			n.scale.X,
+			n.scale.Y,
+			n.scale.Z,
+		),
+	)
+}
