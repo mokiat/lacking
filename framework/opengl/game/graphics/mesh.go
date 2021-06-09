@@ -2,6 +2,7 @@ package graphics
 
 import (
 	"github.com/mokiat/lacking/framework/opengl"
+	"github.com/mokiat/lacking/framework/opengl/game/graphics/internal"
 	"github.com/mokiat/lacking/game/graphics"
 )
 
@@ -31,7 +32,7 @@ func (t *MeshTemplate) Delete() {
 var _ graphics.Mesh = (*Mesh)(nil)
 
 type Mesh struct {
-	Node
+	internal.Node
 
 	scene *Scene
 	prev  *Mesh

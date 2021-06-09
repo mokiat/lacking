@@ -1,6 +1,10 @@
 package graphics
 
-import "github.com/mokiat/lacking/game/graphics"
+import (
+	"github.com/mokiat/gomath/sprec"
+	"github.com/mokiat/lacking/framework/opengl/game/graphics/internal"
+	"github.com/mokiat/lacking/game/graphics"
+)
 
 func newScene(renderer *Renderer) *Scene {
 	return &Scene{
@@ -20,6 +24,10 @@ type Scene struct {
 	firstMesh  *Mesh
 	lastMesh   *Mesh
 	cachedMesh *Mesh
+
+	firstLight  *Light
+	lastLight   *Light
+	cachedLight *Light
 }
 
 func (s *Scene) Sky() graphics.Sky {
@@ -30,8 +38,22 @@ func (s *Scene) CreateCamera() graphics.Camera {
 	return newCamera(s)
 }
 
-func (s *Scene) CreateLight() graphics.Light {
-	return nil
+func (s *Scene) CreateDirectionalLight() graphics.DirectionalLight {
+	var light *Light
+	if s.cachedLight != nil {
+		light = s.cachedLight
+		s.cachedLight = s.cachedLight.next
+	} else {
+		light = &Light{}
+	}
+	light.mode = LightModeDirectional
+	light.Node = internal.NewNode()
+	light.scene = s
+	light.prev = nil
+	light.next = nil
+	light.intensity = sprec.NewVec3(1.0, 1.0, 1.0)
+	s.attachLight(light)
+	return light
 }
 
 func (s *Scene) CreateMesh(template graphics.MeshTemplate) graphics.Mesh {
@@ -42,7 +64,7 @@ func (s *Scene) CreateMesh(template graphics.MeshTemplate) graphics.Mesh {
 	} else {
 		mesh = &Mesh{}
 	}
-	mesh.Node = newNode()
+	mesh.Node = internal.NewNode()
 	mesh.scene = s
 	mesh.template = template.(*MeshTemplate)
 	mesh.prev = nil
@@ -60,6 +82,10 @@ func (s *Scene) Delete() {
 	s.firstMesh = nil
 	s.lastMesh = nil
 	s.cachedMesh = nil
+
+	s.firstLight = nil
+	s.lastLight = nil
+	s.cachedLight = nil
 }
 
 func (s *Scene) attachMesh(mesh *Mesh) {
@@ -94,4 +120,38 @@ func (s *Scene) detachMesh(mesh *Mesh) {
 func (s *Scene) cacheMesh(mesh *Mesh) {
 	mesh.next = s.cachedMesh
 	s.cachedMesh = mesh
+}
+
+func (s *Scene) attachLight(light *Light) {
+	if s.firstLight == nil {
+		s.firstLight = light
+	}
+	if s.lastLight != nil {
+		s.lastLight.next = light
+		light.prev = s.lastLight
+	}
+	light.next = nil
+	s.lastLight = light
+}
+
+func (s *Scene) detachLight(light *Light) {
+	if s.firstLight == light {
+		s.firstLight = light.next
+	}
+	if s.lastLight == light {
+		s.lastLight = light.prev
+	}
+	if light.next != nil {
+		light.next.prev = light.prev
+	}
+	if light.prev != nil {
+		light.prev.next = light.next
+	}
+	light.prev = nil
+	light.next = nil
+}
+
+func (s *Scene) cacheLight(light *Light) {
+	light.next = s.cachedLight
+	s.cachedLight = light
 }

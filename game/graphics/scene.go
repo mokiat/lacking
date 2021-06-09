@@ -13,9 +13,9 @@ type Scene interface {
 	// used with this scene.
 	CreateCamera() Camera
 
-	// CreateLight creates a new light object to be
+	// CreateDirectionalLight creates a new directional light object to be
 	// used within this scene.
-	CreateLight() Light
+	CreateDirectionalLight() DirectionalLight
 
 	// CreateMesh creates a new mesh instance from the specified
 	// template and places it in the scene.

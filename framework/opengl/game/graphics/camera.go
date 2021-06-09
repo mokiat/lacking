@@ -2,12 +2,13 @@ package graphics
 
 import (
 	"github.com/mokiat/gomath/sprec"
+	"github.com/mokiat/lacking/framework/opengl/game/graphics/internal"
 	"github.com/mokiat/lacking/game/graphics"
 )
 
 func newCamera(scene *Scene) *Camera {
 	return &Camera{
-		Node:     newNode(),
+		Node:     internal.NewNode(),
 		scene:    scene,
 		fov:      sprec.Degrees(120),
 		fovMode:  graphics.FoVModeHorizontalPlus,
@@ -18,7 +19,7 @@ func newCamera(scene *Scene) *Camera {
 var _ graphics.Camera = (*Camera)(nil)
 
 type Camera struct {
-	Node
+	internal.Node
 
 	scene *Scene
 

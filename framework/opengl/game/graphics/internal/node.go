@@ -1,11 +1,11 @@
-package graphics
+package internal
 
 import (
 	"github.com/mokiat/gomath/sprec"
 	"github.com/mokiat/lacking/game/graphics"
 )
 
-func newNode() Node {
+func NewNode() Node {
 	return Node{
 		position: sprec.ZeroVec3(),
 		rotation: sprec.IdentityQuat(),
@@ -44,7 +44,7 @@ func (n *Node) SetScale(scale sprec.Vec3) {
 	n.scale = scale
 }
 
-func (n *Node) modelMatrix() sprec.Mat4 {
+func (n *Node) ModelMatrix() sprec.Mat4 {
 	return sprec.Mat4MultiProd(
 		sprec.TranslationMat4(
 			n.position.X,

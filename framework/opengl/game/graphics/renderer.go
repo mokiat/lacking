@@ -7,6 +7,7 @@ import (
 
 	"github.com/mokiat/gomath/sprec"
 	"github.com/mokiat/lacking/framework/opengl"
+	"github.com/mokiat/lacking/framework/opengl/game/graphics/internal"
 	"github.com/mokiat/lacking/game/graphics"
 )
 
@@ -41,8 +42,6 @@ func newRenderer() *Renderer {
 
 		quadMesh: newQuadMesh(),
 
-		lightingMaterial: newLightingMaterial(),
-
 		skyboxMaterial: newSkyboxMaterial(),
 		skyboxMesh:     newSkyboxMesh(),
 	}
@@ -65,9 +64,9 @@ type Renderer struct {
 
 	postprocessingMaterial *PostprocessingMaterial
 
-	quadMesh *QuadMesh
+	directionalLightPresentation *internal.LightingPresentation
 
-	lightingMaterial *LightingMaterial
+	quadMesh *QuadMesh
 
 	skyboxMaterial *SkyboxMaterial
 	skyboxMesh     *SkyboxMesh
@@ -148,9 +147,9 @@ func (r *Renderer) Allocate() {
 
 	r.postprocessingMaterial.Allocate(ReinhardToneMapping)
 
-	r.quadMesh.Allocate()
+	r.directionalLightPresentation = internal.NewDirectionalLightPresentation()
 
-	r.lightingMaterial.Allocate()
+	r.quadMesh.Allocate()
 
 	r.skyboxMesh.Allocate()
 	r.skyboxMaterial.Allocate()
@@ -160,7 +159,7 @@ func (r *Renderer) Release() {
 	r.skyboxMaterial.Release()
 	r.skyboxMesh.Release()
 
-	r.lightingMaterial.Release()
+	r.directionalLightPresentation.Delete()
 
 	r.quadMesh.Release()
 
@@ -190,7 +189,7 @@ type renderCtx struct {
 
 func (r *Renderer) Render(viewport graphics.Viewport, scene *Scene, camera *Camera) {
 	projectionMatrix := r.evaluateProjectionMatrix(camera, viewport.Width, viewport.Height)
-	cameraMatrix := camera.modelMatrix()
+	cameraMatrix := camera.ModelMatrix()
 	viewMatrix := sprec.InverseMat4(cameraMatrix)
 
 	gl.Enable(gl.FRAMEBUFFER_SRGB)
@@ -267,7 +266,7 @@ func (r *Renderer) renderGeometryPass(ctx renderCtx) {
 
 	// TODO: Traverse octree
 	for mesh := ctx.scene.firstMesh; mesh != nil; mesh = mesh.next {
-		r.renderMesh(ctx, mesh.modelMatrix().ColumnMajorArray(), mesh.template)
+		r.renderMesh(ctx, mesh.ModelMatrix().ColumnMajorArray(), mesh.template)
 	}
 }
 
@@ -330,40 +329,91 @@ func (r *Renderer) renderLightingPass(ctx renderCtx) {
 	gl.Viewport(0, 0, r.framebufferWidth, r.framebufferHeight)
 	gl.Disable(gl.DEPTH_TEST)
 	gl.DepthMask(false)
-
-	r.lightingFramebuffer.ClearColor(0, sprec.NewVec4(0.5, 0.2, 0.3, 1.0))
-
 	gl.Enable(gl.CULL_FACE)
-	program := r.lightingMaterial.Program
+
+	r.lightingFramebuffer.ClearColor(0, sprec.NewVec4(0.0, 0.0, 0.0, 1.0))
+
+	gl.Enablei(gl.BLEND, 0)
+	gl.BlendEquationSeparate(gl.FUNC_ADD, gl.FUNC_ADD)
+	gl.BlendFuncSeparate(gl.ONE, gl.ONE, gl.ONE, gl.ZERO)
+
+	// TODO: Traverse octree
+	for light := ctx.scene.firstLight; light != nil; light = light.next {
+		switch light.mode {
+		case LightModeDirectional:
+			r.renderDirectionalLight(ctx, light)
+		case LightModeAmbient:
+			r.renderAmbientLight(ctx, light)
+		}
+	}
+
+	gl.Disablei(gl.BLEND, 0)
+}
+
+func (r *Renderer) renderAmbientLight(ctx renderCtx, light *Light) {
+	// gl.Enable(gl.CULL_FACE)
+	// program := r.lightingMaterial.Program
+	// program.Use()
+
+	// location := program.UniformLocation("projectionMatrixIn")
+	// gl.UniformMatrix4fv(location, 1, false, &ctx.projectionMatrix[0])
+
+	// location = program.UniformLocation("cameraMatrixIn")
+	// gl.UniformMatrix4fv(location, 1, false, &ctx.cameraMatrix[0])
+
+	// location = program.UniformLocation("viewMatrixIn")
+	// gl.UniformMatrix4fv(location, 1, false, &ctx.viewMatrix[0])
+
+	// location = program.UniformLocation("lightDirectionWSIn")
+	// gl.Uniform3f(location, -1.0, 0.7, -0.5)
+
+	// textureUnit := uint32(0)
+
+	// gl.BindTextureUnit(textureUnit, r.geometryAlbedoTexture.ID())
+	// location = program.UniformLocation("fbColor0TextureIn")
+	// gl.Uniform1i(location, int32(textureUnit))
+	// textureUnit++
+
+	// gl.BindTextureUnit(textureUnit, r.geometryNormalTexture.ID())
+	// location = program.UniformLocation("fbColor1TextureIn")
+	// gl.Uniform1i(location, int32(textureUnit))
+	// textureUnit++
+
+	// gl.BindTextureUnit(textureUnit, r.geometryDepthTexture.ID())
+	// location = program.UniformLocation("fbDepthTextureIn")
+	// gl.Uniform1i(location, int32(textureUnit))
+	// textureUnit++
+
+	// gl.BindVertexArray(r.quadMesh.VertexArray.ID())
+	// gl.DrawElements(r.quadMesh.Primitive, r.quadMesh.IndexCount, gl.UNSIGNED_SHORT, gl.PtrOffset(r.quadMesh.IndexOffsetBytes))
+}
+
+func (r *Renderer) renderDirectionalLight(ctx renderCtx, light *Light) {
+	presentation := r.directionalLightPresentation
+	program := presentation.Program
 	program.Use()
 
-	location := program.UniformLocation("projectionMatrixIn")
-	gl.UniformMatrix4fv(location, 1, false, &ctx.projectionMatrix[0])
+	gl.UniformMatrix4fv(presentation.ProjectionMatrixLocation, 1, false, &ctx.projectionMatrix[0])
+	gl.UniformMatrix4fv(presentation.CameraMatrixLocation, 1, false, &ctx.cameraMatrix[0])
+	gl.UniformMatrix4fv(presentation.ViewMatrixLocation, 1, false, &ctx.viewMatrix[0])
 
-	location = program.UniformLocation("cameraMatrixIn")
-	gl.UniformMatrix4fv(location, 1, false, &ctx.cameraMatrix[0])
-
-	location = program.UniformLocation("viewMatrixIn")
-	gl.UniformMatrix4fv(location, 1, false, &ctx.viewMatrix[0])
-
-	location = program.UniformLocation("lightDirectionWSIn")
-	gl.Uniform3f(location, -1.0, 0.7, -0.5)
+	direction := light.Rotation().OrientationZ()
+	gl.Uniform3f(presentation.LightDirection, direction.X, direction.Y, direction.Z)
+	intensity := light.intensity
+	gl.Uniform3f(presentation.LightIntensity, intensity.X, intensity.Y, intensity.Z)
 
 	textureUnit := uint32(0)
 
 	gl.BindTextureUnit(textureUnit, r.geometryAlbedoTexture.ID())
-	location = program.UniformLocation("fbColor0TextureIn")
-	gl.Uniform1i(location, int32(textureUnit))
+	gl.Uniform1i(presentation.FramebufferDraw0, int32(textureUnit))
 	textureUnit++
 
 	gl.BindTextureUnit(textureUnit, r.geometryNormalTexture.ID())
-	location = program.UniformLocation("fbColor1TextureIn")
-	gl.Uniform1i(location, int32(textureUnit))
+	gl.Uniform1i(presentation.FramebufferDraw1, int32(textureUnit))
 	textureUnit++
 
 	gl.BindTextureUnit(textureUnit, r.geometryDepthTexture.ID())
-	location = program.UniformLocation("fbDepthTextureIn")
-	gl.Uniform1i(location, int32(textureUnit))
+	gl.Uniform1i(presentation.FramebufferDepth, int32(textureUnit))
 	textureUnit++
 
 	gl.BindVertexArray(r.quadMesh.VertexArray.ID())
