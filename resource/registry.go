@@ -9,11 +9,6 @@ import (
 
 type TypeName string
 
-type ShaderOperator interface {
-	Allocate(info ShaderInfo) (*Shader, error)
-	Release(shader *Shader) error
-}
-
 type Operator interface {
 	Allocate(registry *Registry, name string) (interface{}, error)
 	Release(registry *Registry, resource interface{}) error
@@ -21,20 +16,17 @@ type Operator interface {
 
 func NewRegistry(locator Locator, gfxEngine graphics.Engine, gfxWorker *async.Worker) *Registry {
 	registry := &Registry{
-		catalog:       make(map[TypeName]*Type),
-		shaderCatalog: make(map[TypeName]*ShaderType),
+		catalog: make(map[TypeName]*Type),
 	}
 	registry.Register(TwoDTextureTypeName, NewTwoDTextureOperator(locator, gfxEngine, gfxWorker))
 	registry.Register(CubeTextureTypeName, NewCubeTextureOperator(locator, gfxEngine, gfxWorker))
 	registry.Register(ModelTypeName, NewModelOperator(locator, gfxEngine, gfxWorker))
 	registry.Register(LevelTypeName, NewLevelOperator(locator, gfxEngine, gfxWorker))
-	registry.RegisterShader(PBRTypeName, NewPBRShaderOperator(gfxWorker))
 	return registry
 }
 
 type Registry struct {
-	catalog       map[TypeName]*Type
-	shaderCatalog map[TypeName]*ShaderType
+	catalog map[TypeName]*Type
 }
 
 func (r *Registry) Register(typeName TypeName, operator Operator) {
@@ -43,24 +35,6 @@ func (r *Registry) Register(typeName TypeName, operator Operator) {
 		operator:   operator,
 		references: make(map[string]*Reference),
 	}
-}
-
-func (r *Registry) RegisterShader(typeName TypeName, operator ShaderOperator) {
-	r.shaderCatalog[typeName] = &ShaderType{
-		registry:   r,
-		operator:   operator,
-		references: make(map[ShaderInfo]*Reference),
-	}
-}
-
-func (r *Registry) CreateShader(typeName TypeName, info ShaderInfo) async.Outcome {
-	shaderType := r.shaderCatalog[typeName]
-	return shaderType.Create(info)
-}
-
-func (r *Registry) ReleaseShader(typeName TypeName, shader *Shader) async.Outcome {
-	shaderType := r.shaderCatalog[typeName]
-	return shaderType.Release(shader.Info)
 }
 
 func (r *Registry) Load(typeName TypeName, name string) async.Outcome {
@@ -167,75 +141,6 @@ func (t *Type) unloadReference(name string, reference *Reference) async.Outcome 
 		reference.LoadOperation.Wait() // ensure we are not still in the middle of a load
 
 		err := t.operator.Release(t.registry, reference.Value)
-		output.Record(async.Result{
-			Err: err,
-		})
-	}()
-	return output
-}
-
-type ShaderType struct {
-	mu         sync.Mutex
-	registry   *Registry
-	operator   ShaderOperator
-	references map[ShaderInfo]*Reference
-}
-
-func (t *ShaderType) Create(info ShaderInfo) async.Outcome {
-	t.mu.Lock()
-	defer t.mu.Unlock()
-
-	if reference, ok := t.references[info]; ok {
-		reference.Count++
-		return reference.LoadOperation
-	}
-
-	reference := &Reference{
-		Count: 1,
-		Value: nil,
-	}
-	reference.LoadOperation = t.loadReference(info, reference)
-	t.references[info] = reference
-	return reference.LoadOperation
-}
-
-func (t *ShaderType) Release(info ShaderInfo) async.Outcome {
-	t.mu.Lock()
-	defer t.mu.Unlock()
-
-	reference, ok := t.references[info]
-	if !ok {
-		return async.NewValueOutcome(nil)
-	}
-
-	if reference.Count--; reference.Count > 0 {
-		return async.NewValueOutcome(nil)
-	}
-
-	delete(t.references, info)
-	reference.UnloadOperation = t.unloadReference(info, reference)
-	return reference.UnloadOperation
-}
-
-func (t *ShaderType) loadReference(info ShaderInfo, reference *Reference) async.Outcome {
-	output := async.NewOutcome()
-	go func() {
-		value, err := t.operator.Allocate(info)
-		reference.Value = value
-		output.Record(async.Result{
-			Value: value,
-			Err:   err,
-		})
-	}()
-	return output
-}
-
-func (t *ShaderType) unloadReference(info ShaderInfo, reference *Reference) async.Outcome {
-	output := async.NewOutcome()
-	go func() {
-		reference.LoadOperation.Wait() // ensure we are not still in the middle of a load
-
-		err := t.operator.Release(reference.Value.(*Shader))
 		output.Record(async.Result{
 			Err: err,
 		})
