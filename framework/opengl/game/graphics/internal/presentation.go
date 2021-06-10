@@ -25,6 +25,9 @@ type LightingPresentation struct {
 	CameraMatrixLocation     int32
 	ViewMatrixLocation       int32
 
+	ReflectionTextureLocation int32
+	RefractionTextureLocation int32
+
 	LightDirection int32
 	LightIntensity int32
 }
@@ -44,6 +47,9 @@ func NewLightingPresentation(vertexSrc, fragmentSrc string) *LightingPresentatio
 		ModelviewMatrixLocation:  program.UniformLocation("modelviewMatrixIn"),
 		CameraMatrixLocation:     program.UniformLocation("cameraMatrixIn"),
 		ViewMatrixLocation:       program.UniformLocation("viewMatrixIn"),
+
+		ReflectionTextureLocation: program.UniformLocation("reflectionTextureIn"),
+		RefractionTextureLocation: program.UniformLocation("refractionTextureIn"),
 
 		LightDirection: program.UniformLocation("lightDirectionIn"),
 		LightIntensity: program.UniformLocation("lightIntensityIn"),

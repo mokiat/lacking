@@ -65,6 +65,7 @@ type Renderer struct {
 	postprocessingMaterial *PostprocessingMaterial
 
 	directionalLightPresentation *internal.LightingPresentation
+	ambientLightPresentation     *internal.LightingPresentation
 
 	quadMesh *QuadMesh
 
@@ -148,6 +149,7 @@ func (r *Renderer) Allocate() {
 	r.postprocessingMaterial.Allocate(ReinhardToneMapping)
 
 	r.directionalLightPresentation = internal.NewDirectionalLightPresentation()
+	r.ambientLightPresentation = internal.NewAmbientLightPresentation()
 
 	r.quadMesh.Allocate()
 
@@ -159,6 +161,7 @@ func (r *Renderer) Release() {
 	r.skyboxMaterial.Release()
 	r.skyboxMesh.Release()
 
+	r.ambientLightPresentation.Delete()
 	r.directionalLightPresentation.Delete()
 
 	r.quadMesh.Release()
@@ -351,41 +354,38 @@ func (r *Renderer) renderLightingPass(ctx renderCtx) {
 }
 
 func (r *Renderer) renderAmbientLight(ctx renderCtx, light *Light) {
-	// gl.Enable(gl.CULL_FACE)
-	// program := r.lightingMaterial.Program
-	// program.Use()
+	presentation := r.ambientLightPresentation
+	program := presentation.Program
+	program.Use()
 
-	// location := program.UniformLocation("projectionMatrixIn")
-	// gl.UniformMatrix4fv(location, 1, false, &ctx.projectionMatrix[0])
+	gl.UniformMatrix4fv(presentation.ProjectionMatrixLocation, 1, false, &ctx.projectionMatrix[0])
+	gl.UniformMatrix4fv(presentation.CameraMatrixLocation, 1, false, &ctx.cameraMatrix[0])
+	gl.UniformMatrix4fv(presentation.ViewMatrixLocation, 1, false, &ctx.viewMatrix[0])
 
-	// location = program.UniformLocation("cameraMatrixIn")
-	// gl.UniformMatrix4fv(location, 1, false, &ctx.cameraMatrix[0])
+	textureUnit := uint32(0)
 
-	// location = program.UniformLocation("viewMatrixIn")
-	// gl.UniformMatrix4fv(location, 1, false, &ctx.viewMatrix[0])
+	gl.BindTextureUnit(textureUnit, r.geometryAlbedoTexture.ID())
+	gl.Uniform1i(presentation.FramebufferDraw0, int32(textureUnit))
+	textureUnit++
 
-	// location = program.UniformLocation("lightDirectionWSIn")
-	// gl.Uniform3f(location, -1.0, 0.7, -0.5)
+	gl.BindTextureUnit(textureUnit, r.geometryNormalTexture.ID())
+	gl.Uniform1i(presentation.FramebufferDraw1, int32(textureUnit))
+	textureUnit++
 
-	// textureUnit := uint32(0)
+	gl.BindTextureUnit(textureUnit, r.geometryDepthTexture.ID())
+	gl.Uniform1i(presentation.FramebufferDepth, int32(textureUnit))
+	textureUnit++
 
-	// gl.BindTextureUnit(textureUnit, r.geometryAlbedoTexture.ID())
-	// location = program.UniformLocation("fbColor0TextureIn")
-	// gl.Uniform1i(location, int32(textureUnit))
-	// textureUnit++
+	gl.BindTextureUnit(textureUnit, light.reflectionTexture.ID())
+	gl.Uniform1i(presentation.ReflectionTextureLocation, int32(textureUnit))
+	textureUnit++
 
-	// gl.BindTextureUnit(textureUnit, r.geometryNormalTexture.ID())
-	// location = program.UniformLocation("fbColor1TextureIn")
-	// gl.Uniform1i(location, int32(textureUnit))
-	// textureUnit++
+	gl.BindTextureUnit(textureUnit, light.refractionTexture.ID())
+	gl.Uniform1i(presentation.RefractionTextureLocation, int32(textureUnit))
+	textureUnit++
 
-	// gl.BindTextureUnit(textureUnit, r.geometryDepthTexture.ID())
-	// location = program.UniformLocation("fbDepthTextureIn")
-	// gl.Uniform1i(location, int32(textureUnit))
-	// textureUnit++
-
-	// gl.BindVertexArray(r.quadMesh.VertexArray.ID())
-	// gl.DrawElements(r.quadMesh.Primitive, r.quadMesh.IndexCount, gl.UNSIGNED_SHORT, gl.PtrOffset(r.quadMesh.IndexOffsetBytes))
+	gl.BindVertexArray(r.quadMesh.VertexArray.ID())
+	gl.DrawElements(r.quadMesh.Primitive, r.quadMesh.IndexCount, gl.UNSIGNED_SHORT, gl.PtrOffset(r.quadMesh.IndexOffsetBytes))
 }
 
 func (r *Renderer) renderDirectionalLight(ctx renderCtx, light *Light) {

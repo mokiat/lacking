@@ -56,6 +56,24 @@ func (s *Scene) CreateDirectionalLight() graphics.DirectionalLight {
 	return light
 }
 
+func (s *Scene) CreateAmbientLight() graphics.AmbientLight {
+	var light *Light
+	if s.cachedLight != nil {
+		light = s.cachedLight
+		s.cachedLight = s.cachedLight.next
+	} else {
+		light = &Light{}
+	}
+	light.mode = LightModeAmbient
+	light.Node = internal.NewNode()
+	light.scene = s
+	light.prev = nil
+	light.next = nil
+	light.intensity = sprec.NewVec3(1.0, 1.0, 1.0)
+	s.attachLight(light)
+	return light
+}
+
 func (s *Scene) CreateMesh(template graphics.MeshTemplate) graphics.Mesh {
 	var mesh *Mesh
 	if s.cachedMesh != nil {

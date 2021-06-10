@@ -17,6 +17,10 @@ type Scene interface {
 	// used within this scene.
 	CreateDirectionalLight() DirectionalLight
 
+	// CreateAmbientLight creates a new ambient light object to be used
+	// within this scene.
+	CreateAmbientLight() AmbientLight
+
 	// CreateMesh creates a new mesh instance from the specified
 	// template and places it in the scene.
 	CreateMesh(template MeshTemplate) Mesh
