@@ -36,6 +36,11 @@ func newRenderer() *Renderer {
 		lightingDepthTexture:  opengl.NewTwoDTexture(),
 		lightingFramebuffer:   opengl.NewFramebuffer(),
 
+		exposureAlbedoTexture: opengl.NewTwoDTexture(),
+		exposureFramebuffer:   opengl.NewFramebuffer(),
+		exposureBuffer:        opengl.NewBuffer(),
+		exposureTarget:        1.0,
+
 		screenFramebuffer: opengl.DefaultFramebuffer(),
 
 		postprocessingMaterial: newPostprocessingMaterial(),
@@ -59,6 +64,13 @@ type Renderer struct {
 	lightingAlbedoTexture *opengl.TwoDTexture
 	lightingDepthTexture  *opengl.TwoDTexture
 	lightingFramebuffer   *opengl.Framebuffer
+
+	exposureAlbedoTexture *opengl.TwoDTexture
+	exposureFramebuffer   *opengl.Framebuffer
+	exposurePresentation  *internal.LightingPresentation
+	exposureBuffer        *opengl.Buffer
+	exposureSync          uintptr
+	exposureTarget        float32
 
 	screenFramebuffer *opengl.Framebuffer
 
@@ -146,6 +158,28 @@ func (r *Renderer) Allocate() {
 	}
 	r.lightingFramebuffer.Allocate(lightingFramebufferInfo)
 
+	r.exposureAlbedoTexture.Allocate(opengl.TwoDTextureAllocateInfo{
+		Width:             1,
+		Height:            1,
+		MinFilter:         gl.NEAREST,
+		MagFilter:         gl.NEAREST,
+		InternalFormat:    gl.RGBA32F,
+		DataFormat:        gl.RGBA,
+		DataComponentType: gl.FLOAT,
+	})
+
+	r.exposureFramebuffer.Allocate(opengl.FramebufferAllocateInfo{
+		ColorAttachments: []*opengl.Texture{
+			&r.exposureAlbedoTexture.Texture,
+		},
+	})
+	r.exposurePresentation = internal.NewExposurePresentation()
+
+	r.exposureBuffer.Allocate(opengl.BufferAllocateInfo{
+		Dynamic: true,
+		Data:    make([]byte, 4*4),
+	})
+
 	r.postprocessingMaterial.Allocate(ReinhardToneMapping)
 
 	r.directionalLightPresentation = internal.NewDirectionalLightPresentation()
@@ -167,6 +201,11 @@ func (r *Renderer) Release() {
 	r.quadMesh.Release()
 
 	r.postprocessingMaterial.Release()
+
+	r.exposureBuffer.Release()
+	r.exposurePresentation.Delete()
+	r.exposureFramebuffer.Release()
+	r.exposureAlbedoTexture.Release()
 
 	r.lightingFramebuffer.Release()
 	r.lightingAlbedoTexture.Release()
@@ -209,8 +248,13 @@ func (r *Renderer) Render(viewport graphics.Viewport, scene *Scene, camera *Came
 		camera:           camera,
 	}
 	r.renderGeometryPass(ctx)
+	gl.TextureBarrier()
 	r.renderLightingPass(ctx)
 	r.renderForwardPass(ctx)
+	if camera.autoExposureEnabled {
+		gl.TextureBarrier()
+		r.renderExposureProbePass(ctx)
+	}
 	r.renderPostprocessingPass(ctx)
 }
 
@@ -447,6 +491,63 @@ func (r *Renderer) renderForwardPass(ctx renderCtx) {
 	}
 }
 
+func (r *Renderer) renderExposureProbePass(ctx renderCtx) {
+	if r.exposureSync != 0 {
+		status := gl.ClientWaitSync(r.exposureSync, gl.SYNC_FLUSH_COMMANDS_BIT, 0)
+		switch status {
+		case gl.ALREADY_SIGNALED, gl.CONDITION_SATISFIED:
+			data := make([]float32, 4)
+			gl.GetNamedBufferSubData(r.exposureBuffer.ID(), 0, 4*4, gl.Ptr(&data[0]))
+			brightness := 0.2126*data[0] + 0.7152*data[1] + 0.0722*data[2]
+			if brightness < 0.01 {
+				brightness = 0.01
+			}
+			r.exposureTarget = 1.0 / (9.8 * brightness)
+			r.exposureSync = 0
+		case gl.WAIT_FAILED:
+			panic("WAIT FAILED")
+		}
+	}
+
+	ctx.camera.exposure = mix(ctx.camera.exposure, r.exposureTarget, float32(0.01))
+
+	if r.exposureSync == 0 {
+		r.exposureFramebuffer.Use()
+
+		gl.Viewport(0, 0, r.framebufferWidth, r.framebufferHeight)
+		gl.Disable(gl.DEPTH_TEST)
+		gl.DepthMask(false)
+		gl.Enable(gl.CULL_FACE)
+
+		r.exposureFramebuffer.ClearColor(0, sprec.ZeroVec4())
+
+		presentation := r.exposurePresentation
+		program := presentation.Program
+		program.Use()
+
+		textureUnit := uint32(0)
+
+		gl.BindTextureUnit(textureUnit, r.lightingAlbedoTexture.ID())
+		gl.Uniform1i(presentation.FramebufferDraw0, int32(textureUnit))
+		textureUnit++
+
+		gl.BindVertexArray(r.quadMesh.VertexArray.ID())
+		gl.DrawElements(r.quadMesh.Primitive, r.quadMesh.IndexCount, gl.UNSIGNED_SHORT, gl.PtrOffset(r.quadMesh.IndexOffsetBytes))
+
+		gl.TextureBarrier()
+
+		gl.BindBuffer(gl.PIXEL_PACK_BUFFER, r.exposureBuffer.ID())
+		gl.GetTextureImage(r.exposureAlbedoTexture.ID(), 0, gl.RGBA, gl.FLOAT, 4*4, gl.PtrOffset(0))
+		r.exposureSync = gl.FenceSync(gl.SYNC_GPU_COMMANDS_COMPLETE, 0)
+		gl.BindBuffer(gl.PIXEL_PACK_BUFFER, 0)
+	}
+}
+
+// TODO: Move to gomath
+func mix(a, b, amount float32) float32 {
+	return a*(1.0-amount) + b*amount
+}
+
 func (r *Renderer) renderPostprocessingPass(ctx renderCtx) {
 	r.screenFramebuffer.Use()
 	gl.Viewport(int32(ctx.x), int32(ctx.y), int32(ctx.width), int32(ctx.height))
@@ -459,7 +560,7 @@ func (r *Renderer) renderPostprocessingPass(ctx renderCtx) {
 	gl.Enable(gl.CULL_FACE)
 	r.postprocessingMaterial.Program.Use()
 
-	gl.BindTextureUnit(0, r.lightingAlbedoTexture.Texture.ID())
+	gl.BindTextureUnit(0, r.lightingAlbedoTexture.ID())
 	location := r.postprocessingMaterial.Program.UniformLocation("fbColor0TextureIn")
 	gl.Uniform1i(location, 0)
 	location = r.postprocessingMaterial.Program.UniformLocation("exposureIn")
