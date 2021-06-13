@@ -6,6 +6,7 @@ import (
 	"github.com/mokiat/gomath/sprec"
 	"github.com/mokiat/lacking/async"
 	"github.com/mokiat/lacking/data/asset"
+	"github.com/mokiat/lacking/game/graphics"
 	"github.com/mokiat/lacking/shape"
 )
 
@@ -32,15 +33,17 @@ type Entity struct {
 	Matrix sprec.Mat4
 }
 
-func NewLevelOperator(locator Locator, gfxWorker *async.Worker) *LevelOperator {
+func NewLevelOperator(locator Locator, gfxEngine graphics.Engine, gfxWorker *async.Worker) *LevelOperator {
 	return &LevelOperator{
 		locator:   locator,
+		gfxEngine: gfxEngine,
 		gfxWorker: gfxWorker,
 	}
 }
 
 type LevelOperator struct {
 	locator   Locator
+	gfxEngine graphics.Engine
 	gfxWorker *async.Worker
 }
 
@@ -114,7 +117,7 @@ func (o *LevelOperator) Allocate(registry *Registry, name string) (interface{}, 
 
 	staticMeshes := make([]*Mesh, len(levelAsset.StaticMeshes))
 	for i, staticMeshAsset := range levelAsset.StaticMeshes {
-		staticMesh, err := AllocateMesh(registry, staticMeshAsset.Name, o.gfxWorker, &staticMeshAsset)
+		staticMesh, err := AllocateMesh(registry, staticMeshAsset.Name, o.gfxWorker, o.gfxEngine, &staticMeshAsset)
 		if err != nil {
 			return nil, fmt.Errorf("failed to allocate mesh: %w", err)
 		}
