@@ -43,12 +43,9 @@ func newRenderer() *Renderer {
 
 		screenFramebuffer: opengl.DefaultFramebuffer(),
 
-		postprocessingMaterial: newPostprocessingMaterial(),
-
 		quadMesh: newQuadMesh(),
 
-		skyboxMaterial: newSkyboxMaterial(),
-		skyboxMesh:     newSkyboxMesh(),
+		skyboxMesh: newSkyboxMesh(),
 	}
 }
 
@@ -74,15 +71,15 @@ type Renderer struct {
 
 	screenFramebuffer *opengl.Framebuffer
 
-	postprocessingMaterial *PostprocessingMaterial
+	postprocessingPresentation *internal.PostprocessingPresentation
 
 	directionalLightPresentation *internal.LightingPresentation
 	ambientLightPresentation     *internal.LightingPresentation
 
 	quadMesh *QuadMesh
 
-	skyboxMaterial *SkyboxMaterial
-	skyboxMesh     *SkyboxMesh
+	skyboxPresentation *internal.SkyboxPresentation
+	skyboxMesh         *SkyboxMesh
 }
 
 func (r *Renderer) Allocate() {
@@ -180,19 +177,19 @@ func (r *Renderer) Allocate() {
 		Data:    make([]byte, 4*4),
 	})
 
-	r.postprocessingMaterial.Allocate(ReinhardToneMapping)
+	r.postprocessingPresentation = internal.NewTonePostprocessingPresentation(internal.ReinhardToneMapping)
 
 	r.directionalLightPresentation = internal.NewDirectionalLightPresentation()
 	r.ambientLightPresentation = internal.NewAmbientLightPresentation()
 
 	r.quadMesh.Allocate()
 
+	r.skyboxPresentation = internal.NewCubeSkyboxPresentation()
 	r.skyboxMesh.Allocate()
-	r.skyboxMaterial.Allocate()
 }
 
 func (r *Renderer) Release() {
-	r.skyboxMaterial.Release()
+	r.skyboxPresentation.Delete()
 	r.skyboxMesh.Release()
 
 	r.ambientLightPresentation.Delete()
@@ -200,7 +197,7 @@ func (r *Renderer) Release() {
 
 	r.quadMesh.Release()
 
-	r.postprocessingMaterial.Release()
+	r.postprocessingPresentation.Delete()
 
 	r.exposureBuffer.Release()
 	r.exposurePresentation.Delete()
@@ -326,35 +323,21 @@ func (r *Renderer) renderMesh(ctx renderCtx, modelMatrix [16]float32, template *
 		}
 
 		material := subMesh.material
-		program := material.geometryProgram
-		program.Use()
+		presentation := material.geometryPresentation
+		presentation.Program.Use()
 
-		location := program.UniformLocation("projectionMatrixIn")
-		gl.UniformMatrix4fv(location, 1, false, &ctx.projectionMatrix[0])
+		gl.UniformMatrix4fv(presentation.ProjectionMatrixLocation, 1, false, &ctx.projectionMatrix[0])
+		gl.UniformMatrix4fv(presentation.ViewMatrixLocation, 1, false, &ctx.viewMatrix[0])
+		gl.UniformMatrix4fv(presentation.ModelMatrixLocation, 1, false, &modelMatrix[0])
 
-		location = program.UniformLocation("cameraMatrixIn")
-		gl.UniformMatrix4fv(location, 1, false, &ctx.cameraMatrix[0])
-
-		location = program.UniformLocation("viewMatrixIn")
-		gl.UniformMatrix4fv(location, 1, false, &ctx.viewMatrix[0])
-
-		location = program.UniformLocation("modelMatrixIn")
-		gl.UniformMatrix4fv(location, 1, false, &modelMatrix[0])
-
-		location = program.UniformLocation("albedoColorIn")
-		gl.Uniform4f(location, material.vectors[0].X, material.vectors[0].Y, material.vectors[0].Z, material.vectors[0].Z)
-
-		location = program.UniformLocation("metalnessIn")
-		gl.Uniform1f(location, material.vectors[1].Y)
-
-		location = program.UniformLocation("roughnessIn")
-		gl.Uniform1f(location, material.vectors[1].Z)
+		gl.Uniform1f(presentation.MetalnessLocation, material.vectors[1].Y)
+		gl.Uniform1f(presentation.RoughnessLocation, material.vectors[1].Z)
+		gl.Uniform4f(presentation.AlbedoColorLocation, material.vectors[0].X, material.vectors[0].Y, material.vectors[0].Z, material.vectors[0].Z)
 
 		textureUnit := uint32(0)
 		if material.twoDTextures[0] != nil {
 			gl.BindTextureUnit(textureUnit, material.twoDTextures[0].ID())
-			location = program.UniformLocation("albedoTwoDTextureIn")
-			gl.Uniform1i(location, int32(textureUnit))
+			gl.Uniform1i(presentation.AlbedoTextureLocation, int32(textureUnit))
 			textureUnit++
 		}
 
@@ -399,8 +382,7 @@ func (r *Renderer) renderLightingPass(ctx renderCtx) {
 
 func (r *Renderer) renderAmbientLight(ctx renderCtx, light *Light) {
 	presentation := r.ambientLightPresentation
-	program := presentation.Program
-	program.Use()
+	presentation.Program.Use()
 
 	gl.UniformMatrix4fv(presentation.ProjectionMatrixLocation, 1, false, &ctx.projectionMatrix[0])
 	gl.UniformMatrix4fv(presentation.CameraMatrixLocation, 1, false, &ctx.cameraMatrix[0])
@@ -409,15 +391,15 @@ func (r *Renderer) renderAmbientLight(ctx renderCtx, light *Light) {
 	textureUnit := uint32(0)
 
 	gl.BindTextureUnit(textureUnit, r.geometryAlbedoTexture.ID())
-	gl.Uniform1i(presentation.FramebufferDraw0, int32(textureUnit))
+	gl.Uniform1i(presentation.FramebufferDraw0Location, int32(textureUnit))
 	textureUnit++
 
 	gl.BindTextureUnit(textureUnit, r.geometryNormalTexture.ID())
-	gl.Uniform1i(presentation.FramebufferDraw1, int32(textureUnit))
+	gl.Uniform1i(presentation.FramebufferDraw1Location, int32(textureUnit))
 	textureUnit++
 
 	gl.BindTextureUnit(textureUnit, r.geometryDepthTexture.ID())
-	gl.Uniform1i(presentation.FramebufferDepth, int32(textureUnit))
+	gl.Uniform1i(presentation.FramebufferDepthLocation, int32(textureUnit))
 	textureUnit++
 
 	gl.BindTextureUnit(textureUnit, light.reflectionTexture.ID())
@@ -434,8 +416,7 @@ func (r *Renderer) renderAmbientLight(ctx renderCtx, light *Light) {
 
 func (r *Renderer) renderDirectionalLight(ctx renderCtx, light *Light) {
 	presentation := r.directionalLightPresentation
-	program := presentation.Program
-	program.Use()
+	presentation.Program.Use()
 
 	gl.UniformMatrix4fv(presentation.ProjectionMatrixLocation, 1, false, &ctx.projectionMatrix[0])
 	gl.UniformMatrix4fv(presentation.CameraMatrixLocation, 1, false, &ctx.cameraMatrix[0])
@@ -449,15 +430,15 @@ func (r *Renderer) renderDirectionalLight(ctx renderCtx, light *Light) {
 	textureUnit := uint32(0)
 
 	gl.BindTextureUnit(textureUnit, r.geometryAlbedoTexture.ID())
-	gl.Uniform1i(presentation.FramebufferDraw0, int32(textureUnit))
+	gl.Uniform1i(presentation.FramebufferDraw0Location, int32(textureUnit))
 	textureUnit++
 
 	gl.BindTextureUnit(textureUnit, r.geometryNormalTexture.ID())
-	gl.Uniform1i(presentation.FramebufferDraw1, int32(textureUnit))
+	gl.Uniform1i(presentation.FramebufferDraw1Location, int32(textureUnit))
 	textureUnit++
 
 	gl.BindTextureUnit(textureUnit, r.geometryDepthTexture.ID())
-	gl.Uniform1i(presentation.FramebufferDepth, int32(textureUnit))
+	gl.Uniform1i(presentation.FramebufferDepthLocation, int32(textureUnit))
 	textureUnit++
 
 	gl.BindVertexArray(r.quadMesh.VertexArray.ID())
@@ -474,17 +455,16 @@ func (r *Renderer) renderForwardPass(ctx renderCtx) {
 
 	if texture := ctx.scene.sky.skyboxTexture; texture != nil {
 		gl.Enable(gl.CULL_FACE)
-		r.skyboxMaterial.Program.Use()
 
-		location := r.skyboxMaterial.Program.UniformLocation("projectionMatrixIn")
-		gl.UniformMatrix4fv(location, 1, false, &ctx.projectionMatrix[0])
+		presentation := r.skyboxPresentation
+		program := presentation.Program
+		program.Use()
 
-		location = r.skyboxMaterial.Program.UniformLocation("viewMatrixIn")
-		gl.UniformMatrix4fv(location, 1, false, &ctx.viewMatrix[0])
+		gl.UniformMatrix4fv(presentation.ProjectionMatrixLocation, 1, false, &ctx.projectionMatrix[0])
+		gl.UniformMatrix4fv(presentation.ViewMatrixLocation, 1, false, &ctx.viewMatrix[0])
 
 		gl.BindTextureUnit(0, texture.ID())
-		location = r.skyboxMaterial.Program.UniformLocation("albedoCubeTextureIn")
-		gl.Uniform1i(location, 0)
+		gl.Uniform1i(presentation.AlbedoCubeTextureLocation, 0)
 
 		gl.BindVertexArray(r.skyboxMesh.VertexArray.ID())
 		gl.DrawElements(r.skyboxMesh.Primitive, r.skyboxMesh.IndexCount, gl.UNSIGNED_SHORT, gl.PtrOffset(r.skyboxMesh.IndexOffsetBytes))
@@ -503,9 +483,11 @@ func (r *Renderer) renderExposureProbePass(ctx renderCtx) {
 				brightness = 0.01
 			}
 			r.exposureTarget = 1.0 / (9.8 * brightness)
+
+			gl.DeleteSync(r.exposureSync)
 			r.exposureSync = 0
 		case gl.WAIT_FAILED:
-			panic("WAIT FAILED")
+			r.exposureSync = 0
 		}
 	}
 
@@ -528,7 +510,7 @@ func (r *Renderer) renderExposureProbePass(ctx renderCtx) {
 		textureUnit := uint32(0)
 
 		gl.BindTextureUnit(textureUnit, r.lightingAlbedoTexture.ID())
-		gl.Uniform1i(presentation.FramebufferDraw0, int32(textureUnit))
+		gl.Uniform1i(presentation.FramebufferDraw0Location, int32(textureUnit))
 		textureUnit++
 
 		gl.BindVertexArray(r.quadMesh.VertexArray.ID())
@@ -543,11 +525,6 @@ func (r *Renderer) renderExposureProbePass(ctx renderCtx) {
 	}
 }
 
-// TODO: Move to gomath
-func mix(a, b, amount float32) float32 {
-	return a*(1.0-amount) + b*amount
-}
-
 func (r *Renderer) renderPostprocessingPass(ctx renderCtx) {
 	r.screenFramebuffer.Use()
 	gl.Viewport(int32(ctx.x), int32(ctx.y), int32(ctx.width), int32(ctx.height))
@@ -558,14 +535,18 @@ func (r *Renderer) renderPostprocessingPass(ctx renderCtx) {
 	gl.DepthFunc(gl.ALWAYS)
 
 	gl.Enable(gl.CULL_FACE)
-	r.postprocessingMaterial.Program.Use()
+	presentation := r.postprocessingPresentation
+	presentation.Program.Use()
 
 	gl.BindTextureUnit(0, r.lightingAlbedoTexture.ID())
-	location := r.postprocessingMaterial.Program.UniformLocation("fbColor0TextureIn")
-	gl.Uniform1i(location, 0)
-	location = r.postprocessingMaterial.Program.UniformLocation("exposureIn")
-	gl.Uniform1f(location, ctx.camera.exposure)
+	gl.Uniform1i(presentation.FramebufferDraw0Location, 0)
+	gl.Uniform1f(presentation.ExposureLocation, ctx.camera.exposure)
 
 	gl.BindVertexArray(r.quadMesh.VertexArray.ID())
 	gl.DrawElements(r.quadMesh.Primitive, r.quadMesh.IndexCount, gl.UNSIGNED_SHORT, gl.PtrOffset(r.quadMesh.IndexOffsetBytes))
+}
+
+// TODO: Move to gomath
+func mix(a, b, amount float32) float32 {
+	return a*(1.0-amount) + b*amount
 }

@@ -7,6 +7,7 @@ import (
 
 	"github.com/mokiat/gomath/sprec"
 	"github.com/mokiat/lacking/framework/opengl"
+	"github.com/mokiat/lacking/framework/opengl/game/graphics/internal"
 	"github.com/mokiat/lacking/game/graphics"
 )
 
@@ -190,8 +191,8 @@ func (e *Engine) CreatePBRMaterial(definition graphics.PBRMaterialDefinition) gr
 			definition.AlbedoColor,
 			sprec.NewVec4(definition.NormalScale, definition.Metalness, definition.Roughness, 0.0),
 		},
-		geometryProgram: createPBRGeometryProgram(definition),
-		shadowProgram:   createPBRShadowProgram(definition),
+		geometryPresentation: internal.NewPBRGeometryPresentation(definition),
+		shadowPresentation:   nil, // TODO
 	}
 }
 

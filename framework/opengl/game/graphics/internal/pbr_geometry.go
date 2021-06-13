@@ -1,55 +1,23 @@
-package graphics
+package internal
 
 import (
-	"github.com/go-gl/gl/v4.6-core/gl"
 	"github.com/mokiat/lacking/framework/opengl"
 	"github.com/mokiat/lacking/game/graphics"
 )
 
-func createPBRGeometryProgram(definition graphics.PBRMaterialDefinition) *opengl.Program {
-	vsBuilder := opengl.NewShaderSourceBuilder(pbrGeometryVertexShaderTemplate)
-	fsBuilder := opengl.NewShaderSourceBuilder(pbrGeometryFragmentShaderTemplate)
+func NewPBRGeometryPresentation(definition graphics.PBRMaterialDefinition) *GeometryPresentation {
+	vsBuilder := opengl.NewShaderSourceBuilder(pbrGeometryVertexShader)
+	fsBuilder := opengl.NewShaderSourceBuilder(pbrGeometryFragmentShader)
 	if definition.AlbedoTexture != nil {
 		vsBuilder.AddFeature("USES_ALBEDO_TEXTURE")
 		fsBuilder.AddFeature("USES_ALBEDO_TEXTURE")
 		vsBuilder.AddFeature("USES_TEX_COORD0")
 		fsBuilder.AddFeature("USES_TEX_COORD0")
 	}
-	return buildProgram(vsBuilder.Build(), fsBuilder.Build())
+	return NewGeometryPresentation(vsBuilder.Build(), fsBuilder.Build())
 }
 
-func createPBRShadowProgram(definition graphics.PBRMaterialDefinition) *opengl.Program {
-	return nil
-}
-
-func buildProgram(vertSrc, fragSrc string) *opengl.Program {
-	vertexShader := opengl.NewShader()
-	vertexShader.Allocate(opengl.ShaderAllocateInfo{
-		ShaderType: gl.VERTEX_SHADER,
-		SourceCode: vertSrc,
-	})
-	defer func() {
-		vertexShader.Release()
-	}()
-
-	fragmentShader := opengl.NewShader()
-	fragmentShader.Allocate(opengl.ShaderAllocateInfo{
-		ShaderType: gl.FRAGMENT_SHADER,
-		SourceCode: fragSrc,
-	})
-	defer func() {
-		fragmentShader.Release()
-	}()
-
-	program := opengl.NewProgram()
-	program.Allocate(opengl.ProgramAllocateInfo{
-		VertexShader:   vertexShader,
-		FragmentShader: fragmentShader,
-	})
-	return program
-}
-
-const pbrGeometryVertexShaderTemplate = `
+const pbrGeometryVertexShader = `
 layout(location = 0) in vec4 coordIn;
 layout(location = 1) in vec3 normalIn;
 #if defined(USES_TEX_COORD0)
@@ -75,7 +43,7 @@ void main()
 }
 `
 
-const pbrGeometryFragmentShaderTemplate = `
+const pbrGeometryFragmentShader = `
 layout(location = 0) out vec4 fbColor0Out;
 layout(location = 1) out vec4 fbColor1Out;
 

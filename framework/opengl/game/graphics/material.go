@@ -3,6 +3,7 @@ package graphics
 import (
 	"github.com/mokiat/gomath/sprec"
 	"github.com/mokiat/lacking/framework/opengl"
+	"github.com/mokiat/lacking/framework/opengl/game/graphics/internal"
 )
 
 type Material struct {
@@ -11,8 +12,8 @@ type Material struct {
 	alphaBlending   bool
 	alphaThreshold  float32
 
-	geometryProgram *opengl.Program
-	shadowProgram   *opengl.Program // TODO: One that doesn't draw pixels
+	geometryPresentation *internal.GeometryPresentation
+	shadowPresentation   *internal.ShadowPresentation
 
 	twoDTextures []*opengl.TwoDTexture
 	cubeTextures []*opengl.CubeTexture
@@ -20,11 +21,11 @@ type Material struct {
 }
 
 func (m *Material) Delete() {
-	if m.geometryProgram != nil {
-		m.geometryProgram.Release()
+	if m.geometryPresentation != nil {
+		m.geometryPresentation.Delete()
 	}
-	if m.shadowProgram != nil {
-		m.shadowProgram.Release()
+	if m.shadowPresentation != nil {
+		m.shadowPresentation.Delete()
 	}
 	for _, texture := range m.twoDTextures {
 		texture.Release()
