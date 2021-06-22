@@ -14,6 +14,13 @@ const (
 	GraphicsEngineVulkan GraphicsEngine = "vulkan"
 )
 
+// CursorSettings represents the settings for a new cursor instance.
+type CursorSettings struct {
+	Path string
+	HotX int
+	HotY int
+}
+
 // NewConfig creates a new Config object that contains the minimum
 // required settings.
 func NewConfig(title string, width, height int) *Config {
@@ -35,6 +42,7 @@ type Config struct {
 	swapInterval   int
 	maximized      bool
 	cursorVisible  bool
+	cursor         *CursorSettings
 	icon           string
 	graphicsEngine GraphicsEngine
 }
@@ -86,6 +94,17 @@ func (c *Config) SetCursorVisible(visible bool) {
 // when hovering over the window.
 func (c *Config) CursorVisible() bool {
 	return c.cursorVisible
+}
+
+// SetCursor configures a custom cursor to be used.
+// Specifying nil disables the custom cursor.
+func (c *Config) SetCursor(cursor *CursorSettings) {
+	c.cursor = cursor
+}
+
+// Cursor returns the cursor configuration for this application.
+func (c *Config) Cursor() *CursorSettings {
+	return c.cursor
 }
 
 // SetIcon specifies the filepath to an icon image that will
