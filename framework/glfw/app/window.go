@@ -49,11 +49,21 @@ func Run(cfg *Config, controller app.Controller) error {
 	}
 
 	if cfg.icon != "" {
-		img, err := openIcon(cfg.icon)
+		img, err := openImage(cfg.icon)
 		if err != nil {
 			return fmt.Errorf("failed to open icon %q: %w", cfg.icon, err)
 		}
 		window.SetIcon([]image.Image{img})
+	}
+
+	if cfg.cursor != nil {
+		img, err := openImage(cfg.cursor.Path)
+		if err != nil {
+			return fmt.Errorf("failed to open cursor %q: %w", cfg.cursor, err)
+		}
+		cursor := glfw.CreateCursor(img, cfg.cursor.HotX, cfg.cursor.HotY)
+		defer cursor.Destroy()
+		window.SetCursor(cursor)
 	}
 
 	window.MakeContextCurrent()

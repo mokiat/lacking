@@ -11,7 +11,7 @@ import (
 	_ "golang.org/x/image/bmp"
 )
 
-func openIcon(path string) (image.Image, error) {
+func openImage(path string) (image.Image, error) {
 	in, err := os.Open(path)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open file: %w", err)
