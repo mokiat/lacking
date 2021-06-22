@@ -168,7 +168,7 @@ func (c *Canvas) SetFont(font ui.Font) {
 }
 
 func (c *Canvas) DrawRectangle(position ui.Position, size ui.Size) {
-
+	// TODO
 }
 
 func (c *Canvas) FillRectangle(position ui.Position, size ui.Size) {
@@ -230,31 +230,31 @@ func (c *Canvas) FillRectangle(position ui.Position, size ui.Size) {
 }
 
 func (c *Canvas) DrawRoundRectangle(position ui.Position, size ui.Size, radius int) {
-
+	// TODO
 }
 
 func (c *Canvas) FillRoundRectangle(position ui.Position, size ui.Size, radius int) {
-
+	// TODO
 }
 
 func (c *Canvas) DrawCircle(position ui.Position, radius int) {
-
+	// TODO
 }
 
 func (c *Canvas) FillCircle(position ui.Position, radius int) {
-
+	// TODO
 }
 
 func (c *Canvas) DrawTriangle(first, second, third ui.Position) {
-
+	// TODO
 }
 
 func (c *Canvas) FillTriangle(first, second, third ui.Position) {
-
+	// TODO
 }
 
 func (c *Canvas) DrawLine(start, end ui.Position) {
-
+	// TODO
 }
 
 func (c *Canvas) DrawImage(img ui.Image, position ui.Position, size ui.Size) {
@@ -317,5 +317,5 @@ func (c *Canvas) DrawImage(img ui.Image, position ui.Position, size ui.Size) {
 }
 
 func (c *Canvas) DrawText(text string, position ui.Position) {
-
+	// TODO
 }

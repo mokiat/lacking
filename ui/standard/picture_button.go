@@ -68,7 +68,7 @@ func (b *pictureButton) ApplyAttributes(attributes ui.AttributeSet) error {
 		}
 		b.upImage = img
 	}
-	if src, ok := attributes.StringAttribute("src-ovar"); ok {
+	if src, ok := attributes.StringAttribute("src-over"); ok {
 		img, err := b.Context().OpenImage(src)
 		if err != nil {
 			return fmt.Errorf("failed to open 'over' image: %w", err)

@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"fmt"
 	"image"
 
 	"golang.org/x/image/font/opentype"
@@ -58,11 +59,23 @@ func (g *Graphics) ReleaseImage(resource ui.Image) error {
 }
 
 func (g *Graphics) CreateFont(font *opentype.Font) (ui.Font, error) {
-	return &internal.Font{}, nil // TODO
+	familyName, err := font.Name(nil, 1)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get family name: %w", err)
+	}
+	subFamilyName, err := font.Name(nil, 2)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get sub-family name: %w", err)
+	}
+
+	result := internal.NewFont(familyName, subFamilyName)
+
+	return result, nil // TODO
 }
 
 func (g *Graphics) ReleaseFont(resource ui.Font) error {
-	panic("TODO")
+	// TODO
+	return nil
 }
 
 func (g *Graphics) Canvas() ui.Canvas {
