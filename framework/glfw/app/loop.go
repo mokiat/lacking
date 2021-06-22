@@ -147,6 +147,7 @@ func (l *loop) GamepadState(index int) (app.GamepadState, bool) {
 func (l *loop) Schedule(fn func() error) {
 	select {
 	case l.tasks <- fn:
+		glfw.PostEmptyEvent()
 	default:
 		panic(fmt.Errorf("failed to queue task; queue is full"))
 	}

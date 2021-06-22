@@ -3,7 +3,7 @@ package gltf
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 )
 
 func Parse(source Source) (*Document, error) {
@@ -34,7 +34,7 @@ func readBuffer(source Source, uri string) ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to open relative source %q: %w", uri, err)
 	}
-	data, err := ioutil.ReadAll(in)
+	data, err := io.ReadAll(in)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read buffer data: %w", err)
 	}
