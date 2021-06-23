@@ -49,6 +49,7 @@ func BuildVerticalLayout(ctx *ui.Context, template *ui.Template, layoutConfig ui
 	element.SetHandler(result)
 
 	result.Control = ctx.CreateControl(element)
+	element.SetControl(result)
 	if err := result.ApplyAttributes(template.Attributes()); err != nil {
 		return nil, err
 	}
@@ -78,7 +79,7 @@ type verticalLayout struct {
 }
 
 func (l *verticalLayout) ApplyAttributes(attributes ui.AttributeSet) error {
-	if err := l.Control.ApplyAttributes(attributes); err != nil {
+	if err := l.Element().ApplyAttributes(attributes); err != nil {
 		return err
 	}
 	if colorValue, ok := attributes.ColorAttribute("background-color"); ok {

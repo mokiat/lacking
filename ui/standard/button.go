@@ -42,6 +42,7 @@ func BuildButton(ctx *ui.Context, template *ui.Template, layoutConfig ui.LayoutC
 	element.SetIdealSize(ui.NewSize(120, 32)) // TODO: Calculate based off of font, label, etc.
 
 	result.Control = ctx.CreateControl(element)
+	element.SetControl(result)
 	if err := result.ApplyAttributes(template.Attributes()); err != nil {
 		return nil, err
 	}
@@ -63,7 +64,8 @@ type button struct {
 }
 
 func (b *button) ApplyAttributes(attributes ui.AttributeSet) error {
-	if err := b.Control.ApplyAttributes(attributes); err != nil {
+	context := b.Element().Context()
+	if err := b.Element().ApplyAttributes(attributes); err != nil {
 		return err
 	}
 	if stringValue, ok := attributes.StringAttribute("label"); ok {
@@ -71,7 +73,7 @@ func (b *button) ApplyAttributes(attributes ui.AttributeSet) error {
 	}
 	if familyStringValue, ok := attributes.StringAttribute("font-family"); ok {
 		if subFamilyStringValue, ok := attributes.StringAttribute("font-style"); ok {
-			font, found := b.Context().GetFont(familyStringValue, subFamilyStringValue)
+			font, found := context.GetFont(familyStringValue, subFamilyStringValue)
 			if !found {
 				return fmt.Errorf("could not find font %q / %q", familyStringValue, subFamilyStringValue)
 			}
@@ -92,25 +94,26 @@ func (b *button) Click() {
 }
 
 func (b *button) OnMouseEvent(element *ui.Element, event ui.MouseEvent) bool {
+	context := b.Element().Context()
 	switch event.Type {
 	case ui.MouseEventTypeEnter:
 		b.state = buttonStateOver
-		b.Context().Window().Invalidate()
+		context.Window().Invalidate()
 	case ui.MouseEventTypeLeave:
 		b.state = buttonStateUp
-		b.Context().Window().Invalidate()
+		context.Window().Invalidate()
 	case ui.MouseEventTypeUp:
 		if event.Button == ui.MouseButtonLeft {
 			if b.state == buttonStateDown {
 				b.Click()
 			}
 			b.state = buttonStateOver
-			b.Context().Window().Invalidate()
+			context.Window().Invalidate()
 		}
 	case ui.MouseEventTypeDown:
 		if event.Button == ui.MouseButtonLeft {
 			b.state = buttonStateDown
-			b.Context().Window().Invalidate()
+			context.Window().Invalidate()
 		}
 	}
 	return true

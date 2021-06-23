@@ -113,6 +113,7 @@ func BuildAnchorLayout(ctx *ui.Context, template *ui.Template, layoutConfig ui.L
 	element.SetHandler(layout)
 
 	layout.Control = ctx.CreateControl(element)
+	element.SetControl(layout)
 	if err := layout.ApplyAttributes(template.Attributes()); err != nil {
 		return nil, err
 	}
@@ -139,7 +140,7 @@ type anchorLayout struct {
 }
 
 func (l *anchorLayout) ApplyAttributes(attributes ui.AttributeSet) error {
-	if err := l.Control.ApplyAttributes(attributes); err != nil {
+	if err := l.Element().ApplyAttributes(attributes); err != nil {
 		return err
 	}
 	if color, ok := attributes.ColorAttribute("background-color"); ok {

@@ -22,20 +22,21 @@ type Loading interface {
 
 // BuildLoading constructs a new Loading control.
 func BuildLoading(ctx *ui.Context, template *ui.Template, layoutConfig ui.LayoutConfig) (Loading, error) {
-	pic := &loading{
+	result := &loading{
 		lastUpdate: time.Now(),
 	}
 
 	element := ctx.CreateElement()
 	element.SetLayoutConfig(layoutConfig)
-	element.SetHandler(pic)
+	element.SetHandler(result)
 
-	pic.Control = ctx.CreateControl(element)
-	if err := pic.ApplyAttributes(template.Attributes()); err != nil {
+	result.Control = ctx.CreateControl(element)
+	element.SetControl(result)
+	if err := result.ApplyAttributes(template.Attributes()); err != nil {
 		return nil, err
 	}
 
-	return pic, nil
+	return result, nil
 }
 
 var _ ui.ElementRenderHandler = (*loading)(nil)
@@ -49,11 +50,12 @@ type loading struct {
 }
 
 func (l *loading) ApplyAttributes(attributes ui.AttributeSet) error {
-	if err := l.Control.ApplyAttributes(attributes); err != nil {
+	if err := l.Element().ApplyAttributes(attributes); err != nil {
 		return err
 	}
 	if src, ok := attributes.StringAttribute("src"); ok {
-		img, err := l.Context().OpenImage(src)
+		context := l.Element().Context()
+		img, err := context.OpenImage(src)
 		if err != nil {
 			return fmt.Errorf("failed to open image: %w", err)
 		}
@@ -77,5 +79,6 @@ func (l *loading) OnRender(element *ui.Element, canvas ui.Canvas) {
 		),
 	)
 	// Force redraw
-	l.Context().Window().Invalidate()
+	context := l.Element().Context()
+	context.Window().Invalidate()
 }

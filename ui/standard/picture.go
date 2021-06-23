@@ -26,6 +26,7 @@ func BuildPicture(ctx *ui.Context, template *ui.Template, layoutConfig ui.Layout
 	element.SetHandler(result)
 
 	result.Control = ctx.CreateControl(element)
+	element.SetControl(result)
 	if err := result.ApplyAttributes(template.Attributes()); err != nil {
 		return nil, err
 	}
@@ -42,11 +43,12 @@ type picture struct {
 }
 
 func (p *picture) ApplyAttributes(attributes ui.AttributeSet) error {
-	if err := p.Control.ApplyAttributes(attributes); err != nil {
+	if err := p.Element().ApplyAttributes(attributes); err != nil {
 		return err
 	}
 	if src, ok := attributes.StringAttribute("src"); ok {
-		img, err := p.Context().OpenImage(src)
+		context := p.Element().Context()
+		img, err := context.OpenImage(src)
 		if err != nil {
 			return fmt.Errorf("failed to open image: %w", err)
 		}

@@ -1,5 +1,7 @@
 package ui
 
+import "fmt"
+
 const (
 	// ViewModeNone indicates no preferences.
 	ViewModeNone ViewMode = iota
@@ -139,6 +141,16 @@ func (v *View) FindControlByID(id string) (Control, bool) {
 		return nil, false
 	}
 	return element.control, true
+}
+
+// GetControlByID is similar to FindControlByID, except
+// that it panics if such a control is not found.
+func (v *View) GetControlByID(id string) Control {
+	control, found := v.FindControlByID(id)
+	if !found {
+		panic(fmt.Errorf("control with id %q not found", id))
+	}
+	return control
 }
 
 // Close closes this view and releases all resources

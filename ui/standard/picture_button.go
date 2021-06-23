@@ -35,6 +35,7 @@ func BuildPictureButton(ctx *ui.Context, template *ui.Template, layoutConfig ui.
 	element.SetHandler(result)
 
 	result.Control = ctx.CreateControl(element)
+	element.SetControl(result)
 	if err := result.ApplyAttributes(template.Attributes()); err != nil {
 		return nil, err
 	}
@@ -58,25 +59,26 @@ type pictureButton struct {
 }
 
 func (b *pictureButton) ApplyAttributes(attributes ui.AttributeSet) error {
-	if err := b.Control.ApplyAttributes(attributes); err != nil {
+	if err := b.Element().ApplyAttributes(attributes); err != nil {
 		return err
 	}
+	context := b.Element().Context()
 	if src, ok := attributes.StringAttribute("src-up"); ok {
-		img, err := b.Context().OpenImage(src)
+		img, err := context.OpenImage(src)
 		if err != nil {
 			return fmt.Errorf("failed to open 'up' image: %w", err)
 		}
 		b.upImage = img
 	}
 	if src, ok := attributes.StringAttribute("src-over"); ok {
-		img, err := b.Context().OpenImage(src)
+		img, err := context.OpenImage(src)
 		if err != nil {
 			return fmt.Errorf("failed to open 'over' image: %w", err)
 		}
 		b.overImage = img
 	}
 	if src, ok := attributes.StringAttribute("src-down"); ok {
-		img, err := b.Context().OpenImage(src)
+		img, err := context.OpenImage(src)
 		if err != nil {
 			return fmt.Errorf("failed to open 'down' image: %w", err)
 		}
@@ -90,25 +92,26 @@ func (b *pictureButton) SetClickListener(listener PictureButtonClickListener) {
 }
 
 func (b *pictureButton) OnMouseEvent(element *ui.Element, event ui.MouseEvent) bool {
+	context := b.Element().Context()
 	switch event.Type {
 	case ui.MouseEventTypeEnter:
 		b.state = buttonStateOver
-		b.Context().Window().Invalidate()
+		context.Window().Invalidate()
 	case ui.MouseEventTypeLeave:
 		b.state = buttonStateUp
-		b.Context().Window().Invalidate()
+		context.Window().Invalidate()
 	case ui.MouseEventTypeUp:
 		if event.Button == ui.MouseButtonLeft {
 			if b.state == buttonStateDown && b.clickListener != nil {
 				b.clickListener(b)
 			}
 			b.state = buttonStateOver
-			b.Context().Window().Invalidate()
+			context.Window().Invalidate()
 		}
 	case ui.MouseEventTypeDown:
 		if event.Button == ui.MouseButtonLeft {
 			b.state = buttonStateDown
-			b.Context().Window().Invalidate()
+			context.Window().Invalidate()
 		}
 	}
 	return true

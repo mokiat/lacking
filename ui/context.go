@@ -64,15 +64,9 @@ func (c *Context) CreateElement() *Element {
 	return newElement(c)
 }
 
-// CreateControl creates a base Control implementation and links to
-// the specified Element.
-//
-// Custom Controls should embed the Control interface and use this
-// function to create a base implementation instance.
+// CreateControl creates a base Control implementation.
 func (c *Context) CreateControl(element *Element) Control {
-	control := newControl(element)
-	element.SetControl(control)
-	return control
+	return newControl(element)
 }
 
 // OpenTemplate opens the Template at the specified URI location.

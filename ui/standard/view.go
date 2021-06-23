@@ -32,6 +32,7 @@ func BuildView(ctx *ui.Context, template *ui.Template, layoutConfig ui.LayoutCon
 	element.SetHandler(result)
 
 	result.Control = ctx.CreateControl(element)
+	element.SetControl(result)
 	if err := result.ApplyAttributes(template.Attributes()); err != nil {
 		return nil, err
 	}
@@ -57,14 +58,15 @@ type view struct {
 }
 
 func (v *view) ApplyAttributes(attributes ui.AttributeSet) error {
-	if err := v.Control.ApplyAttributes(attributes); err != nil {
+	if err := v.Element().ApplyAttributes(attributes); err != nil {
 		return err
 	}
+	context := v.Element().Context()
 	if colorValue, ok := attributes.ColorAttribute("background-color"); ok {
 		v.backgroundColor = &colorValue
 	}
 	if stringValue, ok := attributes.StringAttribute("font"); ok {
-		if _, err := v.Context().OpenFontCollection(stringValue); err != nil {
+		if _, err := context.OpenFontCollection(stringValue); err != nil {
 			return fmt.Errorf("failed to load font collection: %w", err)
 		}
 	}
