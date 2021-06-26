@@ -25,17 +25,14 @@ type View interface {
 
 // BuildView constructs a new View control.
 func BuildView(ctx *ui.Context, template *ui.Template, layoutConfig ui.LayoutConfig) (View, error) {
-	result := &view{}
-
-	element := ctx.CreateElement()
-	element.SetLayoutConfig(layoutConfig)
-	element.SetHandler(result)
-
-	result.Control = ctx.CreateControl(element)
+	result := &view{
+		element: ctx.CreateElement(),
+	}
+	result.element.SetLayoutConfig(layoutConfig)
+	result.element.SetEssence(result)
 	if err := result.ApplyAttributes(template.Attributes()); err != nil {
 		return nil, err
 	}
-
 	for _, childTemplate := range template.Children() {
 		child, err := ctx.InstantiateTemplate(childTemplate, nil)
 		if err != nil {
@@ -43,7 +40,6 @@ func BuildView(ctx *ui.Context, template *ui.Template, layoutConfig ui.LayoutCon
 		}
 		result.AddControl(child)
 	}
-
 	return result, nil
 }
 
@@ -51,20 +47,25 @@ var _ ui.ElementResizeHandler = (*view)(nil)
 var _ ui.ElementRenderHandler = (*view)(nil)
 
 type view struct {
-	ui.Control
+	element *ui.Element
 
 	backgroundColor *ui.Color
 }
 
+func (v *view) Element() *ui.Element {
+	return v.element
+}
+
 func (v *view) ApplyAttributes(attributes ui.AttributeSet) error {
-	if err := v.Control.ApplyAttributes(attributes); err != nil {
+	if err := v.element.ApplyAttributes(attributes); err != nil {
 		return err
 	}
+	context := v.element.Context()
 	if colorValue, ok := attributes.ColorAttribute("background-color"); ok {
 		v.backgroundColor = &colorValue
 	}
 	if stringValue, ok := attributes.StringAttribute("font"); ok {
-		if _, err := v.Context().OpenFontCollection(stringValue); err != nil {
+		if _, err := context.OpenFontCollection(stringValue); err != nil {
 			return fmt.Errorf("failed to load font collection: %w", err)
 		}
 	}
@@ -72,16 +73,16 @@ func (v *view) ApplyAttributes(attributes ui.AttributeSet) error {
 }
 
 func (v *view) AddControl(control ui.Control) {
-	v.Element().AppendChild(control.Element())
+	v.element.AppendChild(control.Element())
 }
 
 func (v *view) RemoveControl(control ui.Control) {
-	v.Element().RemoveChild(control.Element())
+	v.element.RemoveChild(control.Element())
 }
 
 func (v *view) OnResize(element *ui.Element, bounds ui.Bounds) {
-	contentBounds := v.Element().ContentBounds()
-	for childElement := v.Element().FirstChild(); childElement != nil; childElement = childElement.RightSibling() {
+	contentBounds := v.element.ContentBounds()
+	for childElement := v.element.FirstChild(); childElement != nil; childElement = childElement.RightSibling() {
 		childElement.SetBounds(contentBounds)
 	}
 }
@@ -91,7 +92,7 @@ func (v *view) OnRender(element *ui.Element, canvas ui.Canvas) {
 		canvas.SetSolidColor(*v.backgroundColor)
 		canvas.FillRectangle(
 			ui.NewPosition(0, 0),
-			v.Element().Bounds().Size,
+			v.element.Bounds().Size,
 		)
 	}
 }

@@ -10,9 +10,9 @@ import (
 // with the specified app.Window.
 func NewWindow(appWindow app.Window, locator ResourceLocator, graphics Graphics) (*Window, WindowHandler) {
 	window := &Window{
-		appWindow: appWindow,
-		graphics:  graphics,
-		locator:   locator,
+		Window:   appWindow,
+		graphics: graphics,
+		locator:  locator,
 	}
 	handler := &windowHandler{
 		Window: window,
@@ -53,34 +53,23 @@ type WindowHandler interface {
 
 // Window represents an application window.
 type Window struct {
-	appWindow app.Window
-	graphics  Graphics
-	locator   ResourceLocator
+	app.Window
+	graphics Graphics
+	locator  ResourceLocator
 
 	size            Size
 	activeViewLayer *viewLayer
 }
 
-// Title returns the title of this Window.
-func (w *Window) Title() string {
-	return w.appWindow.Title()
-}
-
-// SetTitle changes the title of the Window to the
-// specified value.
-func (w *Window) SetTitle(title string) {
-	w.appWindow.SetTitle(title)
-}
-
 // Size returns the content area of this Window.
 func (w *Window) Size() Size {
-	return NewSize(w.appWindow.Size())
+	return NewSize(w.Window.Size())
 }
 
 // SetSize changes the content area of this Window
 // to the specified size.
 func (w *Window) SetSize(size Size) {
-	w.appWindow.SetSize(size.Width, size.Height)
+	w.Window.SetSize(size.Width, size.Height)
 }
 
 // OpenView opens a new View which replaces the current
@@ -119,17 +108,6 @@ func (w *Window) OpenView(mode ViewMode, vType ViewType) error {
 
 	w.Invalidate()
 	return nil
-}
-
-// Invalidate causes this Window to be redrawn when possible.
-func (w *Window) Invalidate() {
-	w.appWindow.Invalidate()
-}
-
-// Destroy closes this Window and releases all resources
-// allocated to it.
-func (w *Window) Destroy() {
-	w.appWindow.Close()
 }
 
 type windowHandler struct {
@@ -172,7 +150,7 @@ func (w *windowHandler) OnRender() {
 }
 
 func (w *windowHandler) OnCloseRequested() {
-	w.Destroy()
+	w.Close()
 }
 
 func (w *windowHandler) renderLayer(layer *viewLayer) {

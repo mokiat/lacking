@@ -22,23 +22,21 @@ type PictureButton interface {
 	SetClickListener(clickListener PictureButtonClickListener)
 }
 
+// PictureButtonClickListener can be used to get notifications about
+// picture button click events.
 type PictureButtonClickListener func(button PictureButton)
 
 // BuildPictureButton constructs a new PictureButton control.
 func BuildPictureButton(ctx *ui.Context, template *ui.Template, layoutConfig ui.LayoutConfig) (PictureButton, error) {
 	result := &pictureButton{
-		state: buttonStateUp,
+		element: ctx.CreateElement(),
+		state:   buttonStateUp,
 	}
-
-	element := ctx.CreateElement()
-	element.SetLayoutConfig(layoutConfig)
-	element.SetHandler(result)
-
-	result.Control = ctx.CreateControl(element)
+	result.element.SetLayoutConfig(layoutConfig)
+	result.element.SetEssence(result)
 	if err := result.ApplyAttributes(template.Attributes()); err != nil {
 		return nil, err
 	}
-
 	return result, nil
 }
 
@@ -46,7 +44,7 @@ var _ ui.ElementMouseHandler = (*pictureButton)(nil)
 var _ ui.ElementRenderHandler = (*pictureButton)(nil)
 
 type pictureButton struct {
-	ui.Control
+	element *ui.Element
 
 	state buttonState
 
@@ -57,26 +55,31 @@ type pictureButton struct {
 	clickListener PictureButtonClickListener
 }
 
+func (b *pictureButton) Element() *ui.Element {
+	return b.element
+}
+
 func (b *pictureButton) ApplyAttributes(attributes ui.AttributeSet) error {
-	if err := b.Control.ApplyAttributes(attributes); err != nil {
+	if err := b.element.ApplyAttributes(attributes); err != nil {
 		return err
 	}
+	context := b.element.Context()
 	if src, ok := attributes.StringAttribute("src-up"); ok {
-		img, err := b.Context().OpenImage(src)
+		img, err := context.OpenImage(src)
 		if err != nil {
 			return fmt.Errorf("failed to open 'up' image: %w", err)
 		}
 		b.upImage = img
 	}
 	if src, ok := attributes.StringAttribute("src-over"); ok {
-		img, err := b.Context().OpenImage(src)
+		img, err := context.OpenImage(src)
 		if err != nil {
 			return fmt.Errorf("failed to open 'over' image: %w", err)
 		}
 		b.overImage = img
 	}
 	if src, ok := attributes.StringAttribute("src-down"); ok {
-		img, err := b.Context().OpenImage(src)
+		img, err := context.OpenImage(src)
 		if err != nil {
 			return fmt.Errorf("failed to open 'down' image: %w", err)
 		}
@@ -90,25 +93,26 @@ func (b *pictureButton) SetClickListener(listener PictureButtonClickListener) {
 }
 
 func (b *pictureButton) OnMouseEvent(element *ui.Element, event ui.MouseEvent) bool {
+	context := b.element.Context()
 	switch event.Type {
 	case ui.MouseEventTypeEnter:
 		b.state = buttonStateOver
-		b.Context().Window().Invalidate()
+		context.Window().Invalidate()
 	case ui.MouseEventTypeLeave:
 		b.state = buttonStateUp
-		b.Context().Window().Invalidate()
+		context.Window().Invalidate()
 	case ui.MouseEventTypeUp:
 		if event.Button == ui.MouseButtonLeft {
 			if b.state == buttonStateDown && b.clickListener != nil {
 				b.clickListener(b)
 			}
 			b.state = buttonStateOver
-			b.Context().Window().Invalidate()
+			context.Window().Invalidate()
 		}
 	case ui.MouseEventTypeDown:
 		if event.Button == ui.MouseButtonLeft {
 			b.state = buttonStateDown
-			b.Context().Window().Invalidate()
+			context.Window().Invalidate()
 		}
 	}
 	return true

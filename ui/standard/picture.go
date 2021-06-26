@@ -19,34 +19,36 @@ type Picture interface {
 
 // BuildPicture constructs a new Picture control.
 func BuildPicture(ctx *ui.Context, template *ui.Template, layoutConfig ui.LayoutConfig) (Picture, error) {
-	result := &picture{}
-
-	element := ctx.CreateElement()
-	element.SetLayoutConfig(layoutConfig)
-	element.SetHandler(result)
-
-	result.Control = ctx.CreateControl(element)
+	result := &picture{
+		element: ctx.CreateElement(),
+	}
+	result.element.SetLayoutConfig(layoutConfig)
+	result.element.SetEssence(result)
 	if err := result.ApplyAttributes(template.Attributes()); err != nil {
 		return nil, err
 	}
-
 	return result, nil
 }
 
 var _ ui.ElementRenderHandler = (*picture)(nil)
 
 type picture struct {
-	ui.Control
+	element *ui.Element
 
 	image ui.Image
 }
 
+func (p *picture) Element() *ui.Element {
+	return p.element
+}
+
 func (p *picture) ApplyAttributes(attributes ui.AttributeSet) error {
-	if err := p.Control.ApplyAttributes(attributes); err != nil {
+	if err := p.element.ApplyAttributes(attributes); err != nil {
 		return err
 	}
 	if src, ok := attributes.StringAttribute("src"); ok {
-		img, err := p.Context().OpenImage(src)
+		context := p.element.Context()
+		img, err := context.OpenImage(src)
 		if err != nil {
 			return fmt.Errorf("failed to open image: %w", err)
 		}

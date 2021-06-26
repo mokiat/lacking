@@ -43,7 +43,7 @@ func (c *Context) Window() *Window {
 // a given frame iteration. Once the buffer is full, new functions will be
 // dropped.
 func (c *Context) Schedule(fn func()) {
-	c.window.appWindow.Schedule(func() error {
+	c.window.Schedule(func() error {
 		fn()
 		return nil
 	})
@@ -62,17 +62,6 @@ func (c *Context) Schedule(fn func()) {
 // once closed.
 func (c *Context) CreateElement() *Element {
 	return newElement(c)
-}
-
-// CreateControl creates a base Control implementation and links to
-// the specified Element.
-//
-// Custom Controls should embed the Control interface and use this
-// function to create a base implementation instance.
-func (c *Context) CreateControl(element *Element) Control {
-	control := newControl(element)
-	element.SetControl(control)
-	return control
 }
 
 // OpenTemplate opens the Template at the specified URI location.

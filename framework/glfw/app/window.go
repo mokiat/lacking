@@ -44,26 +44,12 @@ func Run(cfg *Config, controller app.Controller) error {
 	}
 	defer window.Destroy()
 
-	if !cfg.cursorVisible {
-		window.SetInputMode(glfw.CursorMode, glfw.CursorHidden)
-	}
-
 	if cfg.icon != "" {
 		img, err := openImage(cfg.icon)
 		if err != nil {
 			return fmt.Errorf("failed to open icon %q: %w", cfg.icon, err)
 		}
 		window.SetIcon([]image.Image{img})
-	}
-
-	if cfg.cursor != nil {
-		img, err := openImage(cfg.cursor.Path)
-		if err != nil {
-			return fmt.Errorf("failed to open cursor %q: %w", cfg.cursor, err)
-		}
-		cursor := glfw.CreateCursor(img, cfg.cursor.HotX, cfg.cursor.HotY)
-		defer cursor.Destroy()
-		window.SetCursor(cursor)
 	}
 
 	window.MakeContextCurrent()
@@ -76,5 +62,18 @@ func Run(cfg *Config, controller app.Controller) error {
 		}
 	}
 
-	return newLoop(cfg.title, window, controller).Run()
+	l := newLoop(cfg.title, window, controller)
+
+	if cfg.cursor != nil {
+		cursor := l.CreateCursor(*cfg.cursor)
+		defer cursor.Delete()
+		l.UseCursor(cursor)
+		defer l.UseCursor(nil)
+	}
+
+	if !cfg.cursorVisible {
+		l.SetCursorVisible(false)
+	}
+
+	return l.Run()
 }
