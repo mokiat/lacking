@@ -33,20 +33,15 @@ type ButtonClickListener func(button Button)
 // BuildButton creates a new Button control.
 func BuildButton(ctx *ui.Context, template *ui.Template, layoutConfig ui.LayoutConfig) (Button, error) {
 	result := &button{
-		state: buttonStateUp,
+		state:   buttonStateUp,
+		element: ctx.CreateElement(),
 	}
-
-	element := ctx.CreateElement()
-	element.SetLayoutConfig(layoutConfig)
-	element.SetHandler(result)
-	element.SetIdealSize(ui.NewSize(120, 32)) // TODO: Calculate based off of font, label, etc.
-
-	result.Control = ctx.CreateControl(element)
-	element.SetControl(result)
+	result.element.SetEssence(result)
+	result.element.SetLayoutConfig(layoutConfig)
+	result.element.SetIdealSize(ui.NewSize(120, 32)) // TODO: Calculate based off of font, label, etc.
 	if err := result.ApplyAttributes(template.Attributes()); err != nil {
 		return nil, err
 	}
-
 	return result, nil
 }
 
@@ -54,7 +49,7 @@ var _ ui.ElementRenderHandler = (*button)(nil)
 var _ ui.ElementMouseHandler = (*button)(nil)
 
 type button struct {
-	ui.Control
+	element *ui.Element
 
 	font  ui.Font
 	label string
@@ -63,9 +58,13 @@ type button struct {
 	state         buttonState
 }
 
+func (b *button) Element() *ui.Element {
+	return b.element
+}
+
 func (b *button) ApplyAttributes(attributes ui.AttributeSet) error {
-	context := b.Element().Context()
-	if err := b.Element().ApplyAttributes(attributes); err != nil {
+	context := b.element.Context()
+	if err := b.element.ApplyAttributes(attributes); err != nil {
 		return err
 	}
 	if stringValue, ok := attributes.StringAttribute("label"); ok {

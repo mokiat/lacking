@@ -1,20 +1,11 @@
 package ui
 
-// Element represents a hierarchical entity on the screen.
-// It need not necessarily be a control and could just be
-// an intermediate element used to group Controls.
-type ElementI interface {
-	IdealSize() Size
+import "reflect"
 
-	SetIdealSize(size Size)
-
-	LayoutConfig() LayoutConfig
-}
-
-// ElementHandler is a mechanism by which an interested
-// party (e.g. Control) can get notified of changes that
-// occur to an Element.
-type ElementHandler interface{}
+// Essence represents the behavior that is attached to an Element.
+// For example, the actual value behind the interface could be a
+// specific UI control and/or a handler.
+type Essence interface{}
 
 // ElementResizeHandler is a type of ElementHandler that can be
 // used to receive events when an Element has been resized.
@@ -45,6 +36,9 @@ func newElement(context *Context) *Element {
 	}
 }
 
+// Element represents a hierarchical entity on the screen.
+// It need not necessarily be a control and could just be
+// an intermediate element used to group Controls.
 type Element struct {
 	id string
 
@@ -55,8 +49,7 @@ type Element struct {
 	leftSibling  *Element
 
 	context *Context
-	handler ElementHandler
-	control Control
+	essence Essence
 
 	enabled      bool
 	visible      bool
@@ -249,31 +242,40 @@ func (e *Element) Context() *Context {
 	return e.context
 }
 
-// Handler returns the ElementHandler that receives events for
-// changes that occur to this Element or nil if none has been
-// specified.
-func (e *Element) Handler() ElementHandler {
-	return e.handler
+// Essence returns the Essence that is responsible for the behavior
+// of this Element.
+func (e *Element) Essence() Essence {
+	return e.essence
 }
 
-// SetHandler changes the ElementHandler that is to receive
-// events regarding changes that occur to this Element.
-func (e *Element) SetHandler(handler ElementHandler) {
-	e.handler = handler
+// SetEssence changes the Essence that is to control the behavior
+// and represent the purpose of this Element.
+// Specifying nil indicates that this is a plain Element that will
+// not handle events in any special way.
+func (e *Element) SetEssence(essence Essence) {
+	e.essence = essence
 }
 
-// Control returns the Control that is represented by this
-// Element. If this Element does not represent a Control,
-// then this method returns nil.
-func (e *Element) Control() Control {
-	return e.control
-}
-
-// SetControl sets the Control that is represented by this
-// Element. If no Control should be associated with this
-// Element, then a value of nil should be specified.
-func (e *Element) SetControl(control Control) {
-	e.control = control
+// As assigns the Essence of this Element to the target.
+// If the target is not a pointer to the correct type, this
+// method panics.
+func (e *Element) As(target interface{}) {
+	if target == nil {
+		panic("target cannot be nil")
+	}
+	value := reflect.ValueOf(target)
+	valueType := value.Type()
+	if valueType.Kind() != reflect.Ptr {
+		panic("target must be a pointer")
+	}
+	if value.IsNil() {
+		panic("target pointer cannot be nil")
+	}
+	essenceType := reflect.TypeOf(e.essence)
+	if !essenceType.AssignableTo(valueType.Elem()) {
+		panic("cannot assign essence to specified type")
+	}
+	value.Elem().Set(reflect.ValueOf(e.essence))
 }
 
 // Margin returns the spacing that should be maintained
@@ -318,7 +320,7 @@ func (e *Element) Bounds() Bounds {
 // the bounds are relative to the Window's content area.
 func (e *Element) SetBounds(bounds Bounds) {
 	e.bounds = bounds
-	if resizeHandler, ok := e.handler.(ElementResizeHandler); ok {
+	if resizeHandler, ok := e.essence.(ElementResizeHandler); ok {
 		resizeHandler.OnResize(e, bounds)
 	}
 }
@@ -351,7 +353,7 @@ func (e *Element) IdealSize() Size {
 func (e *Element) SetIdealSize(size Size) {
 	e.idealSize = size
 	if e.parent != nil {
-		if resizeHandler, ok := e.parent.handler.(ElementResizeHandler); ok {
+		if resizeHandler, ok := e.parent.essence.(ElementResizeHandler); ok {
 			resizeHandler.OnResize(e.parent, e.parent.Bounds())
 		}
 	}
@@ -374,7 +376,7 @@ func (e *Element) LayoutConfig() LayoutConfig {
 func (e *Element) SetLayoutConfig(layoutConfig LayoutConfig) {
 	e.layoutConfig = layoutConfig
 	if e.parent != nil {
-		if resizeHandler, ok := e.parent.handler.(ElementResizeHandler); ok {
+		if resizeHandler, ok := e.parent.essence.(ElementResizeHandler); ok {
 			resizeHandler.OnResize(e.parent, e.parent.Bounds())
 		}
 	}
@@ -425,7 +427,7 @@ func (e *Element) Materialized() bool {
 func (e *Element) SetMaterialized(materialized bool) {
 	e.materialized = materialized
 	if e.parent != nil {
-		if resizeHandler, ok := e.parent.handler.(ElementResizeHandler); ok {
+		if resizeHandler, ok := e.parent.essence.(ElementResizeHandler); ok {
 			resizeHandler.OnResize(e.parent, e.parent.Bounds())
 		}
 	}
@@ -441,14 +443,14 @@ func (e *Element) Destroy() {
 }
 
 func (e *Element) onMouseEvent(event MouseEvent) bool {
-	if mouseHandler, ok := e.handler.(ElementMouseHandler); ok {
+	if mouseHandler, ok := e.essence.(ElementMouseHandler); ok {
 		return mouseHandler.OnMouseEvent(e, event)
 	}
 	return false
 }
 
 func (e *Element) onRender(canvas Canvas) {
-	if renderHandler, ok := e.handler.(ElementRenderHandler); ok {
+	if renderHandler, ok := e.essence.(ElementRenderHandler); ok {
 		renderHandler.OnRender(e, canvas)
 	}
 }

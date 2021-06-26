@@ -18,21 +18,6 @@ type Control interface {
 	// internal logic and control implementations.
 	// End users should not need to use this.
 	Element() *Element
-
-	// Parent returns the parent control that holds this
-	// control.
-	// Note that the returned control is not necessary the
-	// immediate parent element that references this Control.
-	// It is possible for a parent Control to manage intermediate
-	// Elements (e.g. rows, headers) that hold the control.
-	// If this is the top-most Control, nil is returned.
-	Parent() Control
-
-	// Destroy removes this Control. It can no longer, and
-	// should no longer, be used in any way.
-	// If the Control is already deleted, this method
-	// does nothing.
-	Destroy()
 }
 
 // RegisterControlBuilder adds the specified ControlBuilder for
@@ -72,33 +57,4 @@ type ControlBuilderFunc func(ctx *Context, template *Template, layoutConfig Layo
 // Build constructs a new Control instance.
 func (f ControlBuilderFunc) Build(ctx *Context, template *Template, layoutConfig LayoutConfig) (Control, error) {
 	return f(ctx, template, layoutConfig)
-}
-
-func newControl(element *Element) *baseControl {
-	return &baseControl{
-		element: element,
-	}
-}
-
-var _ Control = (*baseControl)(nil)
-
-type baseControl struct {
-	element *Element
-}
-
-func (c *baseControl) Element() *Element {
-	return c.element
-}
-
-func (c *baseControl) Parent() Control {
-	for pe := c.element.Parent(); pe != nil; pe = pe.Parent() {
-		if control := pe.Control(); control != nil {
-			return control
-		}
-	}
-	return nil
-}
-
-func (c *baseControl) Destroy() {
-	c.element.Destroy()
 }

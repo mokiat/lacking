@@ -106,18 +106,14 @@ type AnchorLayout interface {
 }
 
 func BuildAnchorLayout(ctx *ui.Context, template *ui.Template, layoutConfig ui.LayoutConfig) (AnchorLayout, error) {
-	layout := &anchorLayout{}
-
-	element := ctx.CreateElement()
-	element.SetLayoutConfig(layoutConfig)
-	element.SetHandler(layout)
-
-	layout.Control = ctx.CreateControl(element)
-	element.SetControl(layout)
-	if err := layout.ApplyAttributes(template.Attributes()); err != nil {
+	result := &anchorLayout{
+		element: ctx.CreateElement(),
+	}
+	result.element.SetLayoutConfig(layoutConfig)
+	result.element.SetEssence(result)
+	if err := result.ApplyAttributes(template.Attributes()); err != nil {
 		return nil, err
 	}
-
 	for _, childTemplate := range template.Children() {
 		childLayoutConfig := new(AnchorLayoutConfig)
 		childLayoutConfig.ApplyAttributes(childTemplate.LayoutAttributes())
@@ -125,22 +121,25 @@ func BuildAnchorLayout(ctx *ui.Context, template *ui.Template, layoutConfig ui.L
 		if err != nil {
 			return nil, fmt.Errorf("failed to instantiate child from template: %w", err)
 		}
-		layout.AddControl(child)
+		result.AddControl(child)
 	}
-
-	return layout, nil
+	return result, nil
 }
 
 var _ ui.ElementResizeHandler = (*anchorLayout)(nil)
 var _ ui.ElementRenderHandler = (*anchorLayout)(nil)
 
 type anchorLayout struct {
-	ui.Control
+	element         *ui.Element
 	backgroundColor *ui.Color
 }
 
+func (l *anchorLayout) Element() *ui.Element {
+	return l.element
+}
+
 func (l *anchorLayout) ApplyAttributes(attributes ui.AttributeSet) error {
-	if err := l.Element().ApplyAttributes(attributes); err != nil {
+	if err := l.element.ApplyAttributes(attributes); err != nil {
 		return err
 	}
 	if color, ok := attributes.ColorAttribute("background-color"); ok {
@@ -150,18 +149,18 @@ func (l *anchorLayout) ApplyAttributes(attributes ui.AttributeSet) error {
 }
 
 func (l *anchorLayout) AddControl(control ui.Control) {
-	l.Element().AppendChild(control.Element())
+	l.element.AppendChild(control.Element())
 }
 
 func (l *anchorLayout) RemoveControl(control ui.Control) {
-	l.Element().RemoveChild(control.Element())
+	l.element.RemoveChild(control.Element())
 }
 
 func (l *anchorLayout) OnResize(element *ui.Element, bounds ui.Bounds) {
 	// TODO: Consider content area
 	// TODO: Consider children's margin settings
 
-	for childElement := l.Element().FirstChild(); childElement != nil; childElement = childElement.RightSibling() {
+	for childElement := l.element.FirstChild(); childElement != nil; childElement = childElement.RightSibling() {
 		layoutConfig := childElement.LayoutConfig().(*AnchorLayoutConfig)
 		childBounds := ui.Bounds{}
 
@@ -216,13 +215,13 @@ func (l *anchorLayout) OnRender(element *ui.Element, canvas ui.Canvas) {
 		canvas.SetSolidColor(*l.backgroundColor)
 		canvas.FillRectangle(
 			ui.NewPosition(0, 0),
-			l.Element().Bounds().Size,
+			l.element.Bounds().Size,
 		)
 	}
 }
 
 func (l *anchorLayout) horizontalPosition(value int, relativeTo Relation) int {
-	bounds := l.Element().Bounds()
+	bounds := l.element.Bounds()
 	switch relativeTo {
 	case RelationLeft:
 		return value
@@ -236,7 +235,7 @@ func (l *anchorLayout) horizontalPosition(value int, relativeTo Relation) int {
 }
 
 func (l *anchorLayout) verticalPosition(value int, relativeTo Relation) int {
-	bounds := l.Element().Bounds()
+	bounds := l.element.Bounds()
 	switch relativeTo {
 	case RelationTop:
 		return value

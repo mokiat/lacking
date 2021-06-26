@@ -42,18 +42,14 @@ type VerticalLayout interface {
 
 // BuildVerticalLayout constructs a new VerticalLayout control.
 func BuildVerticalLayout(ctx *ui.Context, template *ui.Template, layoutConfig ui.LayoutConfig) (VerticalLayout, error) {
-	result := &verticalLayout{}
-
-	element := ctx.CreateElement()
-	element.SetLayoutConfig(layoutConfig)
-	element.SetHandler(result)
-
-	result.Control = ctx.CreateControl(element)
-	element.SetControl(result)
+	result := &verticalLayout{
+		element: ctx.CreateElement(),
+	}
+	result.element.SetLayoutConfig(layoutConfig)
+	result.element.SetEssence(result)
 	if err := result.ApplyAttributes(template.Attributes()); err != nil {
 		return nil, err
 	}
-
 	for _, childTemplate := range template.Children() {
 		childLayoutConfig := new(VerticalLayoutConfig)
 		childLayoutConfig.ApplyAttributes(childTemplate.LayoutAttributes())
@@ -63,7 +59,6 @@ func BuildVerticalLayout(ctx *ui.Context, template *ui.Template, layoutConfig ui
 		}
 		result.AddControl(child)
 	}
-
 	return result, nil
 }
 
@@ -71,15 +66,19 @@ var _ ui.ElementResizeHandler = (*verticalLayout)(nil)
 var _ ui.ElementRenderHandler = (*verticalLayout)(nil)
 
 type verticalLayout struct {
-	ui.Control
+	element *ui.Element
 
 	backgroundColor  *ui.Color
 	contentAlignment Alignment
 	contentSpacing   int
 }
 
+func (l *verticalLayout) Element() *ui.Element {
+	return l.element
+}
+
 func (l *verticalLayout) ApplyAttributes(attributes ui.AttributeSet) error {
-	if err := l.Element().ApplyAttributes(attributes); err != nil {
+	if err := l.element.ApplyAttributes(attributes); err != nil {
 		return err
 	}
 	if colorValue, ok := attributes.ColorAttribute("background-color"); ok {
@@ -97,18 +96,18 @@ func (l *verticalLayout) ApplyAttributes(attributes ui.AttributeSet) error {
 }
 
 func (l *verticalLayout) AddControl(control ui.Control) {
-	l.Element().AppendChild(control.Element())
+	l.element.AppendChild(control.Element())
 }
 
 func (l *verticalLayout) RemoveControl(control ui.Control) {
-	l.Element().RemoveChild(control.Element())
+	l.element.RemoveChild(control.Element())
 }
 
 func (l *verticalLayout) OnResize(element *ui.Element, bounds ui.Bounds) {
-	contentBounds := l.Element().ContentBounds()
+	contentBounds := l.element.ContentBounds()
 
 	topPlacement := contentBounds.Y
-	for childElement := l.Element().FirstChild(); childElement != nil; childElement = childElement.RightSibling() {
+	for childElement := l.element.FirstChild(); childElement != nil; childElement = childElement.RightSibling() {
 		layoutConfig := childElement.LayoutConfig().(*VerticalLayoutConfig)
 
 		childBounds := ui.Bounds{
@@ -144,7 +143,7 @@ func (l *verticalLayout) OnRender(element *ui.Element, canvas ui.Canvas) {
 		canvas.SetSolidColor(*l.backgroundColor)
 		canvas.FillRectangle(
 			ui.NewPosition(0, 0),
-			l.Element().Bounds().Size,
+			l.element.Bounds().Size,
 		)
 	}
 }

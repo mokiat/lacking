@@ -22,24 +22,21 @@ type PictureButton interface {
 	SetClickListener(clickListener PictureButtonClickListener)
 }
 
+// PictureButtonClickListener can be used to get notifications about
+// picture button click events.
 type PictureButtonClickListener func(button PictureButton)
 
 // BuildPictureButton constructs a new PictureButton control.
 func BuildPictureButton(ctx *ui.Context, template *ui.Template, layoutConfig ui.LayoutConfig) (PictureButton, error) {
 	result := &pictureButton{
-		state: buttonStateUp,
+		element: ctx.CreateElement(),
+		state:   buttonStateUp,
 	}
-
-	element := ctx.CreateElement()
-	element.SetLayoutConfig(layoutConfig)
-	element.SetHandler(result)
-
-	result.Control = ctx.CreateControl(element)
-	element.SetControl(result)
+	result.element.SetLayoutConfig(layoutConfig)
+	result.element.SetEssence(result)
 	if err := result.ApplyAttributes(template.Attributes()); err != nil {
 		return nil, err
 	}
-
 	return result, nil
 }
 
@@ -47,7 +44,7 @@ var _ ui.ElementMouseHandler = (*pictureButton)(nil)
 var _ ui.ElementRenderHandler = (*pictureButton)(nil)
 
 type pictureButton struct {
-	ui.Control
+	element *ui.Element
 
 	state buttonState
 
@@ -58,11 +55,15 @@ type pictureButton struct {
 	clickListener PictureButtonClickListener
 }
 
+func (b *pictureButton) Element() *ui.Element {
+	return b.element
+}
+
 func (b *pictureButton) ApplyAttributes(attributes ui.AttributeSet) error {
-	if err := b.Element().ApplyAttributes(attributes); err != nil {
+	if err := b.element.ApplyAttributes(attributes); err != nil {
 		return err
 	}
-	context := b.Element().Context()
+	context := b.element.Context()
 	if src, ok := attributes.StringAttribute("src-up"); ok {
 		img, err := context.OpenImage(src)
 		if err != nil {
@@ -92,7 +93,7 @@ func (b *pictureButton) SetClickListener(listener PictureButtonClickListener) {
 }
 
 func (b *pictureButton) OnMouseEvent(element *ui.Element, event ui.MouseEvent) bool {
-	context := b.Element().Context()
+	context := b.element.Context()
 	switch event.Type {
 	case ui.MouseEventTypeEnter:
 		b.state = buttonStateOver

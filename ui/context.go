@@ -64,11 +64,6 @@ func (c *Context) CreateElement() *Element {
 	return newElement(c)
 }
 
-// CreateControl creates a base Control implementation.
-func (c *Context) CreateControl(element *Element) Control {
-	return newControl(element)
-}
-
 // OpenTemplate opens the Template at the specified URI location.
 //
 // The URI is interpreted according to the used ResourceLocator.

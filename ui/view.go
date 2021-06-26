@@ -125,32 +125,14 @@ func (v *View) FindElementByID(id string) (*Element, bool) {
 	return v.dfsElementByID(rootElement, id)
 }
 
-// FindControlByID looks up the Control hierarchy tree for a Control
+// GetElementByID looks up the Element hierarchy tree for an Element
 // with the specified ID.
-func (v *View) FindControlByID(id string) (Control, bool) {
-	if v.root == nil {
-		return nil, false
-	}
-	rootElement := v.root.Element()
-
-	element, found := v.dfsElementByID(rootElement, id)
+func (v *View) GetElementByID(id string) *Element {
+	element, found := v.FindElementByID(id)
 	if !found {
-		return nil, false
+		panic(fmt.Errorf("element with id %q not found", id))
 	}
-	if element.control == nil {
-		return nil, false
-	}
-	return element.control, true
-}
-
-// GetControlByID is similar to FindControlByID, except
-// that it panics if such a control is not found.
-func (v *View) GetControlByID(id string) Control {
-	control, found := v.FindControlByID(id)
-	if !found {
-		panic(fmt.Errorf("control with id %q not found", id))
-	}
-	return control
+	return element
 }
 
 // Close closes this view and releases all resources
