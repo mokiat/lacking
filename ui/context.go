@@ -43,7 +43,7 @@ func (c *Context) Window() *Window {
 // a given frame iteration. Once the buffer is full, new functions will be
 // dropped.
 func (c *Context) Schedule(fn func()) {
-	c.window.appWindow.Schedule(func() error {
+	c.window.Schedule(func() error {
 		fn()
 		return nil
 	})

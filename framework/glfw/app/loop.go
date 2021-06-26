@@ -17,23 +17,27 @@ var _ (app.Window) = (*loop)(nil)
 
 func newLoop(title string, window *glfw.Window, controller app.Controller) *loop {
 	return &loop{
-		title:      title,
-		window:     window,
-		controller: controller,
-		tasks:      make(chan func() error, taskQueueSize),
-		shouldStop: false,
-		shouldDraw: true,
+		title:         title,
+		window:        window,
+		controller:    controller,
+		tasks:         make(chan func() error, taskQueueSize),
+		shouldStop:    false,
+		shouldDraw:    true,
+		cursorVisible: true,
+		cursorLocked:  false,
 	}
 }
 
 type loop struct {
-	title      string
-	window     *glfw.Window
-	controller app.Controller
-	tasks      chan func() error
-	shouldStop bool
-	shouldDraw bool
-	shouldWake bool
+	title         string
+	window        *glfw.Window
+	controller    app.Controller
+	tasks         chan func() error
+	shouldStop    bool
+	shouldDraw    bool
+	shouldWake    bool
+	cursorVisible bool
+	cursorLocked  bool
 }
 
 func (l *loop) Run() error {
@@ -163,10 +167,54 @@ func (l *loop) Invalidate() {
 	}
 }
 
+func (l *loop) CreateCursor(definition app.CursorDefinition) app.Cursor {
+	img, err := openImage(definition.Path)
+	if err != nil {
+		panic(fmt.Errorf("failed to open cursor %q: %w", definition.Path, err))
+	}
+	return &customCursor{
+		cursor: glfw.CreateCursor(img, definition.HotspotX, definition.HotspotY),
+	}
+}
+
+func (l *loop) UseCursor(cursor app.Cursor) {
+	switch cursor := cursor.(type) {
+	case *customCursor:
+		l.window.SetCursor(cursor.cursor)
+	default:
+		l.window.SetCursor(nil)
+	}
+}
+
+func (l *loop) CursorVisible() bool {
+	return l.cursorVisible && !l.cursorLocked
+}
+
+func (l *loop) SetCursorVisible(visible bool) {
+	l.cursorVisible = visible
+	l.updateCursorMode()
+}
+
+func (l *loop) SetCursorLocked(locked bool) {
+	l.cursorLocked = locked
+	l.updateCursorMode()
+}
+
 func (l *loop) Close() {
 	if !l.shouldStop {
 		l.shouldStop = true
 		glfw.PostEmptyEvent()
+	}
+}
+
+func (l *loop) updateCursorMode() {
+	switch {
+	case l.cursorLocked:
+		l.window.SetInputMode(glfw.CursorMode, glfw.CursorDisabled)
+	case l.cursorVisible:
+		l.window.SetInputMode(glfw.CursorMode, glfw.CursorNormal)
+	default:
+		l.window.SetInputMode(glfw.CursorMode, glfw.CursorHidden)
 	}
 }
 

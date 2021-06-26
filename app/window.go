@@ -30,6 +30,27 @@ type Window interface {
 	// Invalidate causes this window to be redrawn.
 	Invalidate()
 
+	// CreateCursor creates a new cursor object based on the specified
+	// definition.
+	CreateCursor(definition CursorDefinition) Cursor
+
+	// UseCursor changes the currently displayed cursor on the screen.
+	// Specifying nil returns the default cursor.
+	UseCursor(cursor Cursor)
+
+	// CursorVisible returns whether a cursor is to be displayed on the
+	// screen. This is determined based on the visibility and lock settings
+	// of the cursor
+	CursorVisible() bool
+
+	// SetCursorVisible changes whether a cursor is displayed on the
+	// screen.
+	SetCursorVisible(visible bool)
+
+	// SetCursorLocked traps the cursor within the boundaries of the window
+	// and reports relative motion events. This method also hides the cursor.
+	SetCursorLocked(locked bool)
+
 	// Close disposes of this window.
 	Close()
 }

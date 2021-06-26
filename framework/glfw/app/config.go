@@ -1,5 +1,7 @@
 package app
 
+import "github.com/mokiat/lacking/app"
+
 // GraphicsEngine indicates the type of graphics engine that should be
 // enabled by the window.
 type GraphicsEngine string
@@ -13,13 +15,6 @@ const (
 	// Vulkan syscall functions.
 	GraphicsEngineVulkan GraphicsEngine = "vulkan"
 )
-
-// CursorSettings represents the settings for a new cursor instance.
-type CursorSettings struct {
-	Path string
-	HotX int
-	HotY int
-}
 
 // NewConfig creates a new Config object that contains the minimum
 // required settings.
@@ -42,7 +37,7 @@ type Config struct {
 	swapInterval   int
 	maximized      bool
 	cursorVisible  bool
-	cursor         *CursorSettings
+	cursor         *app.CursorDefinition
 	icon           string
 	graphicsEngine GraphicsEngine
 }
@@ -98,12 +93,12 @@ func (c *Config) CursorVisible() bool {
 
 // SetCursor configures a custom cursor to be used.
 // Specifying nil disables the custom cursor.
-func (c *Config) SetCursor(cursor *CursorSettings) {
-	c.cursor = cursor
+func (c *Config) SetCursor(definition *app.CursorDefinition) {
+	c.cursor = definition
 }
 
 // Cursor returns the cursor configuration for this application.
-func (c *Config) Cursor() *CursorSettings {
+func (c *Config) Cursor() *app.CursorDefinition {
 	return c.cursor
 }
 
