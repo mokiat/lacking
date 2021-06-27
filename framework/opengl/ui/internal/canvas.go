@@ -167,6 +167,14 @@ func (c *Canvas) SetFont(font ui.Font) {
 	c.currentLayer.Font = font.(*Font)
 }
 
+func (c *Canvas) FontSize() int {
+	return c.currentLayer.FontSize
+}
+
+func (c *Canvas) SetFontSize(size int) {
+	c.currentLayer.FontSize = size
+}
+
 func (c *Canvas) DrawRectangle(position ui.Position, size ui.Size) {
 	// TODO
 }

@@ -51,8 +51,8 @@ var _ ui.ElementMouseHandler = (*button)(nil)
 type button struct {
 	element *ui.Element
 
-	font  ui.Font
-	label string
+	font ui.Font
+	text string
 
 	clickListener ButtonClickListener
 	state         buttonState
@@ -67,8 +67,8 @@ func (b *button) ApplyAttributes(attributes ui.AttributeSet) error {
 	if err := b.element.ApplyAttributes(attributes); err != nil {
 		return err
 	}
-	if stringValue, ok := attributes.StringAttribute("label"); ok {
-		b.label = stringValue
+	if stringValue, ok := attributes.StringAttribute("text"); ok {
+		b.text = stringValue
 	}
 	if familyStringValue, ok := attributes.StringAttribute("font-family"); ok {
 		if subFamilyStringValue, ok := attributes.StringAttribute("font-style"); ok {

@@ -67,14 +67,14 @@ func (g *Graphics) CreateFont(font *opentype.Font) (ui.Font, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to get sub-family name: %w", err)
 	}
-
 	result := internal.NewFont(familyName, subFamilyName)
-
-	return result, nil // TODO
+	result.Allocate(font)
+	return result, nil
 }
 
 func (g *Graphics) ReleaseFont(resource ui.Font) error {
-	// TODO
+	font := resource.(*internal.Font)
+	font.Release()
 	return nil
 }
 

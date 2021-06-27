@@ -51,6 +51,8 @@ type pictureButton struct {
 	upImage   ui.Image
 	overImage ui.Image
 	downImage ui.Image
+	font      ui.Font
+	text      string
 
 	clickListener PictureButtonClickListener
 }
@@ -84,6 +86,18 @@ func (b *pictureButton) ApplyAttributes(attributes ui.AttributeSet) error {
 			return fmt.Errorf("failed to open 'down' image: %w", err)
 		}
 		b.downImage = img
+	}
+	if familyStringValue, ok := attributes.StringAttribute("font-family"); ok {
+		if subFamilyStringValue, ok := attributes.StringAttribute("font-style"); ok {
+			font, found := context.GetFont(familyStringValue, subFamilyStringValue)
+			if !found {
+				return fmt.Errorf("could not find font %q / %q", familyStringValue, subFamilyStringValue)
+			}
+			b.font = font
+		}
+	}
+	if stringValue, ok := attributes.StringAttribute("text"); ok {
+		b.text = stringValue
 	}
 	return nil
 }
@@ -139,5 +153,9 @@ func (b *pictureButton) OnRender(element *ui.Element, canvas ui.Canvas) {
 			ui.NewPosition(0, 0),
 			element.Bounds().Size,
 		)
+	}
+	if b.font != nil && b.text != "" {
+		canvas.SetFont(b.font)
+		canvas.DrawText(b.text, ui.NewPosition(0, 0))
 	}
 }

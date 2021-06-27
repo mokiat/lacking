@@ -50,6 +50,12 @@ type Canvas interface {
 	// SetFont sets a new Font to be used for text draw operations.
 	SetFont(font Font)
 
+	// FontSize returns the size at which text will be drawn.
+	FontSize() int
+
+	// SetFontSize changes the size at which text will be drawn.
+	SetFontSize(size int)
+
 	// DrawRectangle draws the outlines of a rectangle.
 	DrawRectangle(position Position, size Size)
 
