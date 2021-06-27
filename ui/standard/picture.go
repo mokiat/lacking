@@ -162,7 +162,7 @@ const (
 	ImageModeCover
 )
 
-// AlignmentAttribute attempts to parse an Alignment from
+// ImageModeAttribute attempts to parse an ImageMode from
 // the attribute with the specified name.
 func ImageModeAttribute(set ui.AttributeSet, name string) (ImageMode, bool) {
 	if stringValue, ok := set.StringAttribute(name); ok {
