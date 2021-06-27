@@ -32,6 +32,7 @@ func (i *Image) Allocate(img image.Image) {
 		rgbaImg = image.NewNRGBA(bounds)
 		draw.Draw(rgbaImg, bounds, img, bounds.Min, draw.Src)
 	}
+	i.size = ui.NewSize(bounds.Dx(), bounds.Dy())
 	i.texture.Allocate(opengl.TwoDTextureAllocateInfo{
 		Width:             int32(bounds.Dx()),
 		Height:            int32(bounds.Dy()),
@@ -47,8 +48,8 @@ func (i *Image) Allocate(img image.Image) {
 }
 
 func (i *Image) Release() {
-	i.texture.Release()
 	i.size = ui.NewSize(0, 0)
+	i.texture.Release()
 }
 
 func (i *Image) Size() ui.Size {
