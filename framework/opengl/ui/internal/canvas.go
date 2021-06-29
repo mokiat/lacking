@@ -325,5 +325,83 @@ func (c *Canvas) DrawImage(img ui.Image, position ui.Position, size ui.Size) {
 }
 
 func (c *Canvas) DrawText(text string, position ui.Position) {
+	font := c.currentLayer.Font
+
+	translation := sprec.NewVec2(
+		float32(c.currentLayer.Translation.X),
+		float32(c.currentLayer.Translation.Y),
+	)
+
+	offset := c.mesh.Offset()
+	originX := float32(position.X)
+	originY := float32(position.Y)
+	for _, ch := range text {
+		lineHeight := font.lineHeight * float32(c.currentLayer.FontSize)
+		lineAscent := font.lineAscent
+		if ch == '\n' {
+			originX = float32(position.X)
+			originY += lineHeight
+			continue
+		}
+
+		glyph := font.glyphs[ch]
+		advance := glyph.advance * float32(c.currentLayer.FontSize)
+		leftBearing := glyph.leftBearing * float32(c.currentLayer.FontSize)
+		rightBearing := glyph.rightBearing * float32(c.currentLayer.FontSize)
+		ascent := glyph.ascent * float32(c.currentLayer.FontSize)
+		descent := glyph.descent * float32(c.currentLayer.FontSize)
+
+		vertTopLeft := Vertex{
+			position: sprec.Vec2Sum(sprec.NewVec2(
+				originX+leftBearing,
+				originY+lineAscent-ascent,
+			), translation),
+			texCoord: sprec.NewVec2(glyph.lowerLeftU, glyph.lowerLeftV),
+			color:    c.currentLayer.SolidColor,
+		}
+		vertTopRight := Vertex{
+			position: sprec.Vec2Sum(sprec.NewVec2(
+				originX+advance-rightBearing,
+				originY+lineAscent-ascent,
+			), translation),
+			texCoord: sprec.NewVec2(glyph.upperRightU, glyph.lowerLeftV),
+			color:    c.currentLayer.SolidColor,
+		}
+		vertBottomLeft := Vertex{
+			position: sprec.Vec2Sum(sprec.NewVec2(
+				originX+leftBearing,
+				originY+lineAscent+descent,
+			), translation),
+			texCoord: sprec.NewVec2(glyph.lowerLeftU, glyph.upperRightV),
+			color:    c.currentLayer.SolidColor,
+		}
+		vertBottomRight := Vertex{
+			position: sprec.Vec2Sum(sprec.NewVec2(
+				originX+advance-rightBearing,
+				originY+lineAscent+descent,
+			), translation),
+			texCoord: sprec.NewVec2(glyph.upperRightU, glyph.upperRightV),
+			color:    c.currentLayer.SolidColor,
+		}
+
+		c.mesh.Append(vertTopLeft)
+		c.mesh.Append(vertBottomLeft)
+		c.mesh.Append(vertBottomRight)
+		c.mesh.Append(vertTopLeft)
+		c.mesh.Append(vertBottomRight)
+		c.mesh.Append(vertTopRight)
+
+		originX += advance
+	}
+
+	count := c.mesh.Offset() - offset
+
+	c.subMeshes = append(c.subMeshes, SubMesh{
+		material:     c.opaqueMaterial,
+		texture:      font.texture,
+		vertexOffset: offset,
+		vertexCount:  count,
+		primitive:    gl.TRIANGLES,
+	})
 	// TODO
 }

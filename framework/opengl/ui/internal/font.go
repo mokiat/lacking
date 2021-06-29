@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"image"
 	"image/color"
-	"log"
 	"strings"
 
 	"github.com/go-gl/gl/v4.6-core/gl"
@@ -38,16 +37,14 @@ func init() {
 		'в', 'г', 'д', 'е', 'ж', 'з', 'и', 'й', 'к', 'л', 'м', 'н', 'о', 'п', 'р', 'с',
 		'т', 'у', 'ф', 'х', 'ц', 'ч', 'ш', 'щ', 'ъ', 'ь', 'ю', 'я', 'А', 'Б', 'В', 'Г',
 		'Д', 'Е', 'Ж', 'З', 'И', 'Й', 'К', 'Л', 'М', 'Н', 'О', 'П', 'Р', 'С', 'Т', 'У',
-		'Ф', 'Х', 'Ц', 'Ч', 'Ш', 'Щ', 'Ъ', 'ѝ', 'Ю', 'Я', '№', '<', '>',
+		'Ф', 'Х', 'Ц', 'Ч', 'Ш', 'Щ', 'Ъ', 'ѝ', 'Ю', 'Я', '№', '<', '>', ' ', '\t',
 	}
 }
 
-func NewFont(familyName, subFamilyName string) *Font {
+func NewFont() *Font {
 	return &Font{
-		texture:       opengl.NewTwoDTexture(),
-		familyName:    strings.ToLower(familyName),
-		subFamilyName: strings.ToLower(subFamilyName),
-		glyphs:        make(map[rune]*fontGlyph),
+		texture: opengl.NewTwoDTexture(),
+		glyphs:  make(map[rune]*fontGlyph),
 	}
 }
 
@@ -80,39 +77,30 @@ func (f *Font) SubFamily() string {
 var buf = &sfnt.Buffer{}
 
 func (f *Font) Allocate(font *opentype.Font) {
-	log.Printf("font: %s / %s", f.familyName, f.subFamilyName)
+	familyName, err := font.Name(buf, 1)
+	if err != nil {
+		panic(fmt.Errorf("failed to get family name: %w", err))
+	}
+	f.familyName = strings.ToLower(familyName)
+
+	subFamilyName, err := font.Name(buf, 2)
+	if err != nil {
+		panic(fmt.Errorf("failed to get sub-family name: %w", err))
+	}
+	f.subFamilyName = strings.ToLower(subFamilyName)
 
 	src := image.NewUniform(color.White)
 	dst := image.NewNRGBA(image.Rect(0, 0, fontImageSize, fontImageSize))
 
 	cellSize := (fontImageSize / 16)
 	fontSize := pickOptimalFontSize(font, cellSize)
-	log.Printf("selected font size: %s", fontSize)
 
-	metrics, err := font.Metrics(buf, fontSize, xfont.HintingNone)
-	if err != nil {
-		panic(err)
-	}
-	log.Printf("ascent: %s, descent: %s, lineheight: %s", metrics.Ascent, metrics.Descent, metrics.Height)
-
-	mIndex, err := font.GlyphIndex(buf, 'M')
-	if err != nil {
-		panic(fmt.Errorf("failed to get index: %w", err))
-	}
-
-	bounds, _, err := font.GlyphBounds(buf, mIndex, fontSize, xfont.HintingNone)
-	if err != nil {
-		panic(fmt.Errorf("failed to get bounds: %w", err))
-	}
-
-	log.Printf("char M ascent: %s, descent: %s, height: %s", bounds.Min.Y, bounds.Max.Y, bounds.Max.Y-bounds.Min.Y)
-
-	// font.Metrics(b *sfnt.Buffer, ppem fixed.Int26_6, h xfont.Hinting)
-
-	// font.GlyphBounds(b *sfnt.Buffer, x sfnt.GlyphIndex, ppem fixed.Int26_6, h xfont.Hinting)
+	f.lineHeight = 1.0
+	f.lineAscent = 0.7
+	f.lineDescent = 0.3
 
 	face, err := opentype.NewFace(font, &opentype.FaceOptions{
-		Size:    24.0 * 4,
+		Size:    float64(fontSize),
 		DPI:     72.0, // normal screen dpi
 		Hinting: xfont.HintingNone,
 	})
@@ -131,15 +119,25 @@ func (f *Font) Allocate(font *opentype.Font) {
 		cellY := i / 16
 		drawer.Dot = fixed.P(cellX*32*4+2*4, cellY*32*4+26*4)
 		drawer.DrawString(string(ch))
+
+		f.glyphs[ch] = &fontGlyph{
+			lowerLeftU:  float32(i%16) * (1 / 16.0),
+			lowerLeftV:  float32(i/16) * (1 / 16.0),
+			upperRightU: float32(i%16+1) * (1 / 16.0),
+			upperRightV: float32(i/16+1) * (1 / 16.0),
+			advance:     1,
+			ascent:      0.7,
+			descent:     0.2,
+		}
 	}
 
 	f.texture.Allocate(opengl.TwoDTextureAllocateInfo{
 		Width:             fontImageSize,
 		Height:            fontImageSize,
-		MinFilter:         gl.LINEAR,
+		MinFilter:         gl.LINEAR_MIPMAP_LINEAR,
 		MagFilter:         gl.LINEAR,
 		UseAnisotropy:     false,
-		GenerateMipmaps:   false,
+		GenerateMipmaps:   true,
 		InternalFormat:    gl.SRGB8_ALPHA8,
 		DataFormat:        gl.RGBA,
 		DataComponentType: gl.UNSIGNED_BYTE,
@@ -151,7 +149,7 @@ func (f *Font) Release() {
 	f.texture.Release()
 }
 
-func pickOptimalFontSize(font *opentype.Font, cellSize int) fixed.Int26_6 {
+func pickOptimalFontSize(font *opentype.Font, cellSize int) int {
 	minFontSize := 1
 	maxFontSize := cellSize
 	for minFontSize < maxFontSize-1 {
@@ -166,7 +164,7 @@ func pickOptimalFontSize(font *opentype.Font, cellSize int) fixed.Int26_6 {
 			minFontSize = avgFontSize
 		}
 	}
-	return fixed.I(minFontSize)
+	return minFontSize
 }
 
 type fontGlyph struct {

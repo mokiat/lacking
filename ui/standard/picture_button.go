@@ -29,8 +29,10 @@ type PictureButtonClickListener func(button PictureButton)
 // BuildPictureButton constructs a new PictureButton control.
 func BuildPictureButton(ctx *ui.Context, template *ui.Template, layoutConfig ui.LayoutConfig) (PictureButton, error) {
 	result := &pictureButton{
-		element: ctx.CreateElement(),
-		state:   buttonStateUp,
+		element:   ctx.CreateElement(),
+		state:     buttonStateUp,
+		textSize:  24,
+		textColor: ui.White(),
 	}
 	result.element.SetLayoutConfig(layoutConfig)
 	result.element.SetEssence(result)
@@ -53,6 +55,8 @@ type pictureButton struct {
 	downImage ui.Image
 	font      ui.Font
 	text      string
+	textSize  int
+	textColor ui.Color
 
 	clickListener PictureButtonClickListener
 }
@@ -98,6 +102,12 @@ func (b *pictureButton) ApplyAttributes(attributes ui.AttributeSet) error {
 	}
 	if stringValue, ok := attributes.StringAttribute("text"); ok {
 		b.text = stringValue
+	}
+	if intValue, ok := attributes.IntAttribute("text-size"); ok {
+		b.textSize = intValue
+	}
+	if colorValue, ok := attributes.ColorAttribute("text-color"); ok {
+		b.textColor = colorValue
 	}
 	return nil
 }
@@ -156,6 +166,8 @@ func (b *pictureButton) OnRender(element *ui.Element, canvas ui.Canvas) {
 	}
 	if b.font != nil && b.text != "" {
 		canvas.SetFont(b.font)
+		canvas.SetFontSize(b.textSize)
+		canvas.SetSolidColor(b.textColor)
 		canvas.DrawText(b.text, ui.NewPosition(0, 0))
 	}
 }
