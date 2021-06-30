@@ -88,4 +88,8 @@ type Canvas interface {
 
 	// DrawText draws a text string.
 	DrawText(text string, position Position)
+
+	// TextSize returns the size it would take to draw the
+	// specified text string.
+	TextSize(text string) Size
 }

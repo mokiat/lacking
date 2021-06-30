@@ -15,7 +15,7 @@ type Layer struct {
 	StrokeColor ui.Color
 	StrokeSize  int
 	Font        *Font
-	FontSize    int
+	FontSize    float32
 }
 
 func (l *Layer) InheritFrom(other *Layer) {

@@ -95,9 +95,15 @@ func (f *Font) Allocate(font *opentype.Font) {
 	cellSize := (fontImageSize / 16)
 	fontSize := pickOptimalFontSize(font, cellSize)
 
-	f.lineHeight = 1.0
-	f.lineAscent = 0.7
-	f.lineDescent = 0.3
+	metrics, err := font.Metrics(buf, fixed.I(fontSize), xfont.HintingNone)
+	if err != nil {
+		panic(fmt.Errorf("failed to get font metrics: %w", err))
+	}
+
+	scale := 1.0 / float32(metrics.Ascent.Round()+metrics.Descent.Round())
+	f.lineHeight = float32(metrics.Height.Round()) * scale
+	f.lineAscent = float32(metrics.Ascent.Round()) * scale
+	f.lineDescent = float32(metrics.Descent.Round()) * scale
 
 	face, err := opentype.NewFace(font, &opentype.FaceOptions{
 		Size:    float64(fontSize),
@@ -115,19 +121,43 @@ func (f *Font) Allocate(font *opentype.Font) {
 		Face: face,
 	}
 	for i, ch := range supportedCharacters {
+		chIndex, err := font.GlyphIndex(buf, ch)
+		if err != nil {
+			panic(fmt.Errorf("failed to find char index: %w", err))
+		}
 		cellX := i % 16
 		cellY := i / 16
 		drawer.Dot = fixed.P(cellX*32*4+2*4, cellY*32*4+26*4)
 		drawer.DrawString(string(ch))
 
+		bounds, advance, err := font.GlyphBounds(buf, chIndex, fixed.I(fontSize), xfont.HintingNone)
+		if err != nil {
+			panic(fmt.Errorf("failed to get glyph bounds: %w", err))
+		}
+
 		f.glyphs[ch] = &fontGlyph{
-			lowerLeftU:  float32(i%16) * (1 / 16.0),
-			lowerLeftV:  float32(i/16) * (1 / 16.0),
-			upperRightU: float32(i%16+1) * (1 / 16.0),
-			upperRightV: float32(i/16+1) * (1 / 16.0),
-			advance:     1,
-			ascent:      0.7,
-			descent:     0.2,
+			lowerLeftU:   float32(i%16) * (1 / 16.0),
+			lowerLeftV:   float32(i/16) * (1 / 16.0),
+			upperRightU:  float32(i%16+1) * (1 / 16.0),
+			upperRightV:  float32(i/16+1) * (1 / 16.0),
+			advance:      float32(advance.Round()) * scale,
+			ascent:       float32(-bounds.Min.Y.Round()) * scale,
+			descent:      float32(bounds.Max.Y.Round()) * scale,
+			leftBearing:  float32(bounds.Min.X.Round()) * scale,
+			rightBearing: float32((advance - bounds.Max.X).Round()) * scale,
+			kerns:        make(map[rune]float32),
+		}
+
+		for _, ch2 := range supportedCharacters {
+			ch2Index, err := font.GlyphIndex(buf, ch2)
+			if err != nil {
+				panic(fmt.Errorf("failed to find char index: %w", err))
+			}
+			kern, err := font.Kern(buf, chIndex, ch2Index, fixed.I(fontSize), xfont.HintingNone)
+			if err != nil {
+				panic(fmt.Errorf("failed to find kern: %w", err))
+			}
+			f.glyphs[ch].kerns[ch2] = float32(kern.Ceil())
 		}
 	}
 

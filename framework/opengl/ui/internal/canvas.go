@@ -168,11 +168,11 @@ func (c *Canvas) SetFont(font ui.Font) {
 }
 
 func (c *Canvas) FontSize() int {
-	return c.currentLayer.FontSize
+	return int(c.currentLayer.FontSize)
 }
 
 func (c *Canvas) SetFontSize(size int) {
-	c.currentLayer.FontSize = size
+	c.currentLayer.FontSize = float32(size)
 }
 
 func (c *Canvas) DrawRectangle(position ui.Position, size ui.Size) {
@@ -327,58 +327,66 @@ func (c *Canvas) DrawImage(img ui.Image, position ui.Position, size ui.Size) {
 func (c *Canvas) DrawText(text string, position ui.Position) {
 	font := c.currentLayer.Font
 
-	translation := sprec.NewVec2(
-		float32(c.currentLayer.Translation.X),
-		float32(c.currentLayer.Translation.Y),
+	translation := sprec.Vec2Sum(
+		sprec.NewVec2(
+			float32(c.currentLayer.Translation.X),
+			float32(c.currentLayer.Translation.Y),
+		),
+		sprec.NewVec2(
+			float32(position.X),
+			float32(position.Y),
+		),
 	)
 
 	offset := c.mesh.Offset()
-	originX := float32(position.X)
-	originY := float32(position.Y)
 	for _, ch := range text {
-		lineHeight := font.lineHeight * float32(c.currentLayer.FontSize)
-		lineAscent := font.lineAscent
+		lineHeight := font.lineHeight * c.currentLayer.FontSize
+		lineAscent := font.lineAscent * c.currentLayer.FontSize
+		if ch == '\r' {
+			translation.X = float32(c.currentLayer.Translation.X + position.X)
+			continue
+		}
 		if ch == '\n' {
-			originX = float32(position.X)
-			originY += lineHeight
+			translation.X = float32(c.currentLayer.Translation.X + position.X)
+			translation.Y += lineHeight
 			continue
 		}
 
 		glyph := font.glyphs[ch]
-		advance := glyph.advance * float32(c.currentLayer.FontSize)
-		leftBearing := glyph.leftBearing * float32(c.currentLayer.FontSize)
-		rightBearing := glyph.rightBearing * float32(c.currentLayer.FontSize)
-		ascent := glyph.ascent * float32(c.currentLayer.FontSize)
-		descent := glyph.descent * float32(c.currentLayer.FontSize)
+		advance := glyph.advance * c.currentLayer.FontSize
+		leftBearing := glyph.leftBearing * c.currentLayer.FontSize
+		rightBearing := glyph.rightBearing * c.currentLayer.FontSize
+		ascent := glyph.ascent * c.currentLayer.FontSize
+		descent := glyph.descent * c.currentLayer.FontSize
 
 		vertTopLeft := Vertex{
 			position: sprec.Vec2Sum(sprec.NewVec2(
-				originX+leftBearing,
-				originY+lineAscent-ascent,
+				leftBearing,
+				lineAscent-ascent,
 			), translation),
 			texCoord: sprec.NewVec2(glyph.lowerLeftU, glyph.lowerLeftV),
 			color:    c.currentLayer.SolidColor,
 		}
 		vertTopRight := Vertex{
 			position: sprec.Vec2Sum(sprec.NewVec2(
-				originX+advance-rightBearing,
-				originY+lineAscent-ascent,
+				advance-rightBearing,
+				lineAscent-ascent,
 			), translation),
 			texCoord: sprec.NewVec2(glyph.upperRightU, glyph.lowerLeftV),
 			color:    c.currentLayer.SolidColor,
 		}
 		vertBottomLeft := Vertex{
 			position: sprec.Vec2Sum(sprec.NewVec2(
-				originX+leftBearing,
-				originY+lineAscent+descent,
+				leftBearing,
+				lineAscent+descent,
 			), translation),
 			texCoord: sprec.NewVec2(glyph.lowerLeftU, glyph.upperRightV),
 			color:    c.currentLayer.SolidColor,
 		}
 		vertBottomRight := Vertex{
 			position: sprec.Vec2Sum(sprec.NewVec2(
-				originX+advance-rightBearing,
-				originY+lineAscent+descent,
+				advance-rightBearing,
+				lineAscent+descent,
 			), translation),
 			texCoord: sprec.NewVec2(glyph.upperRightU, glyph.upperRightV),
 			color:    c.currentLayer.SolidColor,
@@ -391,7 +399,7 @@ func (c *Canvas) DrawText(text string, position ui.Position) {
 		c.mesh.Append(vertBottomRight)
 		c.mesh.Append(vertTopRight)
 
-		originX += advance
+		translation.X += advance
 	}
 
 	count := c.mesh.Offset() - offset
@@ -404,4 +412,35 @@ func (c *Canvas) DrawText(text string, position ui.Position) {
 		primitive:    gl.TRIANGLES,
 	})
 	// TODO
+}
+
+func (c *Canvas) TextSize(text string) ui.Size {
+	font := c.currentLayer.Font
+	fontSize := c.currentLayer.FontSize
+
+	if len(text) == 0 {
+		return ui.NewSize(0, 0)
+	}
+
+	result := sprec.NewVec2(0, font.lineAscent+font.lineDescent)
+	currentWidth := float32(0.0)
+	for _, ch := range text {
+		if ch == '\r' {
+			result.X = sprec.Max(result.X, currentWidth)
+			currentWidth = 0.0
+			continue
+		}
+		if ch == '\n' {
+			result.X = sprec.Max(result.X, currentWidth)
+			result.Y += font.lineHeight - (font.lineAscent + font.lineDescent)
+			currentWidth = 0.0
+			continue
+		}
+		glyph := font.glyphs[ch]
+		currentWidth += glyph.advance
+	}
+	result.X = sprec.Max(result.X, currentWidth)
+	result = sprec.Vec2Prod(result, fontSize)
+
+	return ui.NewSize(int(result.X), int(result.Y))
 }
