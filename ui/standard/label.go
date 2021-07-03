@@ -79,10 +79,12 @@ func (b *label) OnRender(element *ui.Element, canvas ui.Canvas) {
 		canvas.SetFont(b.font)
 		canvas.SetFontSize(b.textSize)
 		canvas.SetSolidColor(b.textColor)
+
+		contentArea := element.ContentBounds()
 		textDrawSize := canvas.TextSize(b.text)
 		canvas.DrawText(b.text, ui.NewPosition(
-			(element.Bounds().Width-textDrawSize.Width)/2,
-			(element.Bounds().Height-textDrawSize.Height)/2,
+			contentArea.X+(contentArea.Width-textDrawSize.Width)/2,
+			contentArea.Y+(contentArea.Height-textDrawSize.Height)/2,
 		))
 	}
 }
