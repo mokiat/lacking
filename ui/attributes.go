@@ -47,7 +47,7 @@ type AttributeSet interface {
 func NewMapAttributeSet(entries map[string]string) *MapAttributeSet {
 	lowercaseEntries := make(map[string]string)
 	for k, v := range entries {
-		lowercaseEntries[strings.ToLower(k)] = strings.ToLower(v)
+		lowercaseEntries[strings.ToLower(k)] = v
 	}
 	return &MapAttributeSet{
 		entries: lowercaseEntries,

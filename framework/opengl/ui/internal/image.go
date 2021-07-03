@@ -36,6 +36,8 @@ func (i *Image) Allocate(img image.Image) {
 	i.texture.Allocate(opengl.TwoDTextureAllocateInfo{
 		Width:             int32(bounds.Dx()),
 		Height:            int32(bounds.Dy()),
+		WrapS:             gl.CLAMP_TO_EDGE,
+		WrapT:             gl.CLAMP_TO_EDGE,
 		MinFilter:         gl.LINEAR,
 		MagFilter:         gl.LINEAR,
 		UseAnisotropy:     false,
