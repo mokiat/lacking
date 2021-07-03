@@ -338,17 +338,20 @@ func (c *Canvas) DrawText(text string, position ui.Position) {
 		),
 	)
 
+	lastGlyph := (*fontGlyph)(nil)
 	offset := c.mesh.Offset()
 	for _, ch := range text {
 		lineHeight := font.lineHeight * c.currentLayer.FontSize
 		lineAscent := font.lineAscent * c.currentLayer.FontSize
 		if ch == '\r' {
 			translation.X = float32(c.currentLayer.Translation.X + position.X)
+			lastGlyph = nil
 			continue
 		}
 		if ch == '\n' {
 			translation.X = float32(c.currentLayer.Translation.X + position.X)
 			translation.Y += lineHeight
+			lastGlyph = nil
 			continue
 		}
 
@@ -364,7 +367,7 @@ func (c *Canvas) DrawText(text string, position ui.Position) {
 				leftBearing,
 				lineAscent-ascent,
 			), translation),
-			texCoord: sprec.NewVec2(glyph.lowerLeftU, glyph.lowerLeftV),
+			texCoord: sprec.NewVec2(glyph.leftU, glyph.topV),
 			color:    c.currentLayer.SolidColor,
 		}
 		vertTopRight := Vertex{
@@ -372,7 +375,7 @@ func (c *Canvas) DrawText(text string, position ui.Position) {
 				advance-rightBearing,
 				lineAscent-ascent,
 			), translation),
-			texCoord: sprec.NewVec2(glyph.upperRightU, glyph.lowerLeftV),
+			texCoord: sprec.NewVec2(glyph.rightU, glyph.topV),
 			color:    c.currentLayer.SolidColor,
 		}
 		vertBottomLeft := Vertex{
@@ -380,7 +383,7 @@ func (c *Canvas) DrawText(text string, position ui.Position) {
 				leftBearing,
 				lineAscent+descent,
 			), translation),
-			texCoord: sprec.NewVec2(glyph.lowerLeftU, glyph.upperRightV),
+			texCoord: sprec.NewVec2(glyph.leftU, glyph.bottomV),
 			color:    c.currentLayer.SolidColor,
 		}
 		vertBottomRight := Vertex{
@@ -388,7 +391,7 @@ func (c *Canvas) DrawText(text string, position ui.Position) {
 				advance-rightBearing,
 				lineAscent+descent,
 			), translation),
-			texCoord: sprec.NewVec2(glyph.upperRightU, glyph.upperRightV),
+			texCoord: sprec.NewVec2(glyph.rightU, glyph.bottomV),
 			color:    c.currentLayer.SolidColor,
 		}
 
@@ -400,8 +403,11 @@ func (c *Canvas) DrawText(text string, position ui.Position) {
 		c.mesh.Append(vertTopRight)
 
 		translation.X += advance
+		if lastGlyph != nil {
+			translation.X += lastGlyph.kerns[ch] * c.currentLayer.FontSize
+		}
+		lastGlyph = glyph
 	}
-
 	count := c.mesh.Offset() - offset
 
 	c.subMeshes = append(c.subMeshes, SubMesh{
@@ -411,7 +417,6 @@ func (c *Canvas) DrawText(text string, position ui.Position) {
 		vertexCount:  count,
 		primitive:    gl.TRIANGLES,
 	})
-	// TODO
 }
 
 func (c *Canvas) TextSize(text string) ui.Size {
@@ -424,20 +429,27 @@ func (c *Canvas) TextSize(text string) ui.Size {
 
 	result := sprec.NewVec2(0, font.lineAscent+font.lineDescent)
 	currentWidth := float32(0.0)
+	lastGlyph := (*fontGlyph)(nil)
 	for _, ch := range text {
 		if ch == '\r' {
 			result.X = sprec.Max(result.X, currentWidth)
 			currentWidth = 0.0
+			lastGlyph = nil
 			continue
 		}
 		if ch == '\n' {
 			result.X = sprec.Max(result.X, currentWidth)
 			result.Y += font.lineHeight - (font.lineAscent + font.lineDescent)
 			currentWidth = 0.0
+			lastGlyph = nil
 			continue
 		}
 		glyph := font.glyphs[ch]
 		currentWidth += glyph.advance
+		if lastGlyph != nil {
+			currentWidth += lastGlyph.kerns[ch]
+		}
+		lastGlyph = glyph
 	}
 	result.X = sprec.Max(result.X, currentWidth)
 	result = sprec.Vec2Prod(result, fontSize)

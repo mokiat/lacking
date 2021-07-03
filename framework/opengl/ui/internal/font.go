@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"image"
 	"image/color"
+	"image/draw"
 	"strings"
 
 	"github.com/go-gl/gl/v4.6-core/gl"
@@ -21,7 +22,8 @@ import (
 // https://www.freetype.org/freetype2/docs/glyphs/glyphs-3.html
 
 const (
-	fontImageSize = 2048
+	fontImageSize  = 2048
+	fontImageCells = 16
 )
 
 var supportedCharacters []rune
@@ -92,7 +94,7 @@ func (f *Font) Allocate(font *opentype.Font) {
 	src := image.NewUniform(color.White)
 	dst := image.NewNRGBA(image.Rect(0, 0, fontImageSize, fontImageSize))
 
-	cellSize := (fontImageSize / 16)
+	cellSize := (fontImageSize / fontImageCells)
 	fontSize := pickOptimalFontSize(font, cellSize)
 
 	metrics, err := font.Metrics(buf, fixed.I(fontSize), xfont.HintingNone)
@@ -115,20 +117,31 @@ func (f *Font) Allocate(font *opentype.Font) {
 	}
 	defer face.Close()
 
-	drawer := xfont.Drawer{
-		Src:  src,
-		Dst:  dst,
-		Face: face,
-	}
 	for i, ch := range supportedCharacters {
 		chIndex, err := font.GlyphIndex(buf, ch)
 		if err != nil {
 			panic(fmt.Errorf("failed to find char index: %w", err))
 		}
-		cellX := i % 16
-		cellY := i / 16
-		drawer.Dot = fixed.P(cellX*32*4+2*4, cellY*32*4+26*4)
-		drawer.DrawString(string(ch))
+
+		drawRect, mask, maskPos, _, ok := face.Glyph(fixed.P(0, 0), ch)
+		if !ok {
+			panic(fmt.Errorf("failed to find glyph for character %c", ch))
+		}
+
+		leftPx := (i % fontImageCells) * cellSize
+		rightPx := leftPx + drawRect.Dx()
+		topPx := (i / fontImageCells) * cellSize
+		bottomPx := topPx + drawRect.Dy()
+
+		draw.DrawMask(
+			dst,
+			image.Rect(leftPx, topPx, rightPx, bottomPx),
+			src,
+			image.Pt(0, 0),
+			mask,
+			maskPos,
+			draw.Src,
+		)
 
 		bounds, advance, err := font.GlyphBounds(buf, chIndex, fixed.I(fontSize), xfont.HintingNone)
 		if err != nil {
@@ -136,10 +149,10 @@ func (f *Font) Allocate(font *opentype.Font) {
 		}
 
 		f.glyphs[ch] = &fontGlyph{
-			lowerLeftU:   float32(i%16) * (1 / 16.0),
-			lowerLeftV:   float32(i/16) * (1 / 16.0),
-			upperRightU:  float32(i%16+1) * (1 / 16.0),
-			upperRightV:  float32(i/16+1) * (1 / 16.0),
+			leftU:        float32(leftPx) / float32(fontImageSize),
+			rightU:       float32(rightPx) / float32(fontImageSize),
+			topV:         float32(topPx) / float32(fontImageSize),
+			bottomV:      float32(bottomPx) / float32(fontImageSize),
 			advance:      float32(advance.Round()) * scale,
 			ascent:       float32(-bounds.Min.Y.Round()) * scale,
 			descent:      float32(bounds.Max.Y.Round()) * scale,
@@ -148,22 +161,27 @@ func (f *Font) Allocate(font *opentype.Font) {
 			kerns:        make(map[rune]float32),
 		}
 
-		for _, ch2 := range supportedCharacters {
-			ch2Index, err := font.GlyphIndex(buf, ch2)
+		for _, targetCh := range supportedCharacters {
+			targetChIndex, err := font.GlyphIndex(buf, targetCh)
 			if err != nil {
 				panic(fmt.Errorf("failed to find char index: %w", err))
 			}
-			kern, err := font.Kern(buf, chIndex, ch2Index, fixed.I(fontSize), xfont.HintingNone)
+			kern, err := font.Kern(buf, chIndex, targetChIndex, fixed.I(fontSize), xfont.HintingNone)
 			if err != nil {
 				panic(fmt.Errorf("failed to find kern: %w", err))
 			}
-			f.glyphs[ch].kerns[ch2] = float32(kern.Ceil())
+			if kern.Ceil() == 0 {
+				continue
+			}
+			f.glyphs[ch].kerns[targetCh] = float32(kern.Ceil()) * scale
 		}
 	}
 
 	f.texture.Allocate(opengl.TwoDTextureAllocateInfo{
 		Width:             fontImageSize,
 		Height:            fontImageSize,
+		WrapS:             gl.CLAMP_TO_EDGE,
+		WrapT:             gl.CLAMP_TO_EDGE,
 		MinFilter:         gl.LINEAR_MIPMAP_LINEAR,
 		MagFilter:         gl.LINEAR,
 		UseAnisotropy:     false,
@@ -198,18 +216,18 @@ func pickOptimalFontSize(font *opentype.Font, cellSize int) int {
 }
 
 type fontGlyph struct {
-	// lowerLeftU holds the U texture coordinate of the lower-left corner of the
+	// leftU holds the U texture coordinate of the left edge of the
 	// glyph bounds.
-	lowerLeftU float32
-	// lowerLeftV holds the V texture coordinate of the lower-left corner of the
+	leftU float32
+	// rightU holds the U texture coordinate of the right edge of the
 	// glyph bounds.
-	lowerLeftV float32
-	// upperRightU holds the U texture coordinate of the upper-right corner of the
+	rightU float32
+	// topV holds the V texture coordinate of the top edge of the
 	// glyph bounds.
-	upperRightU float32
-	// upperRightV holds the V texture coordinate of the upper-right corner of the
+	topV float32
+	// bottomV holds the V texture coordinate of the bottom edge of the
 	// glyph bounds.
-	upperRightV float32
+	bottomV float32
 	// advance holds the distance to move from this glyph onto the next one and
 	// includes the bearing values.
 	advance float32
