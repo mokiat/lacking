@@ -110,6 +110,21 @@ func (w *Window) OpenView(mode ViewMode, vType ViewType) error {
 	return nil
 }
 
+func (w *Window) closeView(v *View) {
+	if w.activeViewLayer == nil || w.activeViewLayer.view != v {
+		panic(fmt.Errorf("can only close top-most view"))
+	}
+
+	w.activeViewLayer.view.onHide()
+	w.activeViewLayer.view.onDestroy()
+	w.activeViewLayer = w.activeViewLayer.parent
+	if w.activeViewLayer != nil {
+		w.activeViewLayer.visible = true
+		w.activeViewLayer.view.onShow()
+		w.activeViewLayer.view.onResize(w.size)
+	}
+}
+
 type windowHandler struct {
 	*Window
 }

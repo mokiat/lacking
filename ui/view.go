@@ -138,7 +138,7 @@ func (v *View) GetElementByID(id string) *Element {
 // Close closes this view and releases all resources
 // allocated to it.
 func (v *View) Close() {
-	panic("TODO")
+	v.window.closeView(v)
 }
 
 func (v *View) onCreate() {
