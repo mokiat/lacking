@@ -44,6 +44,26 @@ func Run(cfg *Config, controller app.Controller) error {
 	}
 	defer window.Destroy()
 
+	if cfg.minWidth != nil || cfg.maxWidth != nil || cfg.minHeight != nil || cfg.maxHeight != nil {
+		minWidth := glfw.DontCare
+		if cfg.minWidth != nil {
+			minWidth = *cfg.minWidth
+		}
+		minHeight := glfw.DontCare
+		if cfg.minHeight != nil {
+			minHeight = *cfg.minHeight
+		}
+		maxWidth := glfw.DontCare
+		if cfg.maxWidth != nil {
+			maxWidth = *cfg.maxWidth
+		}
+		maxHeight := glfw.DontCare
+		if cfg.maxHeight != nil {
+			maxHeight = *cfg.maxHeight
+		}
+		window.SetSizeLimits(minWidth, minHeight, maxWidth, maxHeight)
+	}
+
 	if cfg.icon != "" {
 		img, err := openImage(cfg.icon)
 		if err != nil {

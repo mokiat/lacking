@@ -34,12 +34,58 @@ type Config struct {
 	title          string
 	width          int
 	height         int
+	minWidth       *int
+	maxWidth       *int
+	minHeight      *int
+	maxHeight      *int
 	swapInterval   int
 	maximized      bool
 	cursorVisible  bool
 	cursor         *app.CursorDefinition
 	icon           string
 	graphicsEngine GraphicsEngine
+}
+
+// SetMinSize sets a minimum size for the window.
+// Specifying a non-positive value for any dimension disables this setting.
+func (c *Config) SetMinSize(width, height int) {
+	if width > 0 && height > 0 {
+		c.minWidth = &width
+		c.minHeight = &height
+	} else {
+		c.minWidth = nil
+		c.minHeight = nil
+	}
+}
+
+// MinSize returns the minimum size for the window.
+// This method returns (0, 0) if a minimum size is not specified.
+func (c *Config) MinSize() (int, int) {
+	if c.minWidth == nil || c.maxWidth == nil {
+		return 0, 0
+	}
+	return *c.minWidth, *c.minHeight
+}
+
+// SetMaxSize sets a maximum size for the window.
+// Specifying a non-positive value for any dimension disables this setting.
+func (c *Config) SetMaxSize(width, height int) {
+	if width > 0 && height > 0 {
+		c.maxWidth = &width
+		c.maxHeight = &height
+	} else {
+		c.maxWidth = nil
+		c.maxHeight = nil
+	}
+}
+
+// MaxSize returns the maximum size for the window.
+// This method returns (0, 0) if a maximum size is not specified.
+func (c *Config) MaxSize() (int, int) {
+	if c.maxWidth == nil || c.maxHeight == nil {
+		return 0, 0
+	}
+	return *c.maxWidth, *c.maxHeight
 }
 
 // SetGraphicsEngine configures the desired graphics engine.
