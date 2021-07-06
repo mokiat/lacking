@@ -7,13 +7,111 @@ import (
 )
 
 func init() {
-	ui.RegisterControlBuilder("AnchorLayout", ui.ControlBuilderFunc(func(ctx *ui.Context, template *ui.Template, layoutConfig ui.LayoutConfig) (ui.Control, error) {
-		return BuildAnchorLayout(ctx, template, layoutConfig)
+	ui.RegisterLayoutBuilder("AnchorLayout", ui.LayoutBuilderFunc(func(attributes ui.AttributeSet) (ui.Layout, error) {
+		return NewAnchorLayout(attributes), nil
 	}))
 }
 
+// NewAnchorLayout creates a new anchor layout instance.
+func NewAnchorLayout(attributes ui.AttributeSet) *AnchorLayout {
+	return &AnchorLayout{}
+}
+
+var _ ui.Layout = (*AnchorLayout)(nil)
+
+type AnchorLayout struct{}
+
+// LayoutConfig creates a new layout config instance specific
+// to this layout.
+func (l *AnchorLayout) LayoutConfig() ui.LayoutConfig {
+	return &AnchorLayoutConfig{}
+}
+
+// Apply applies this layout to the specified Element.
+func (l *AnchorLayout) Apply(element *ui.Element) {
+	// TODO: Consider content area
+	// TODO: Consider children's margin settings
+
+	for childElement := element.FirstChild(); childElement != nil; childElement = childElement.RightSibling() {
+		layoutConfig := childElement.LayoutConfig().(*AnchorLayoutConfig)
+		childBounds := ui.Bounds{}
+
+		// horizontal
+		if layoutConfig.Width != nil {
+			childBounds.Width = *layoutConfig.Width
+			switch {
+			case layoutConfig.Left != nil:
+				childBounds.X = l.horizontalPosition(element, *layoutConfig.Left, layoutConfig.LeftRelation)
+			case layoutConfig.Right != nil:
+				childBounds.X = l.horizontalPosition(element, *layoutConfig.Right, layoutConfig.RightRelation) - childBounds.Width
+			case layoutConfig.HorizontalCenter != nil:
+				childBounds.X = l.horizontalPosition(element, *layoutConfig.HorizontalCenter, layoutConfig.HorizontalCenterRelation) - childBounds.Width/2
+			}
+		}
+
+		// vertical
+		if layoutConfig.Height != nil {
+			childBounds.Height = *layoutConfig.Height
+			switch {
+			case layoutConfig.Top != nil:
+				childBounds.Y = l.verticalPosition(element, *layoutConfig.Top, layoutConfig.TopRelation)
+			case layoutConfig.Bottom != nil:
+				childBounds.Y = l.verticalPosition(element, *layoutConfig.Bottom, layoutConfig.BottomRelation) - childBounds.Height
+			case layoutConfig.VerticalCenter != nil:
+				childBounds.Y = l.verticalPosition(element, *layoutConfig.VerticalCenter, layoutConfig.VerticalCenterRelation) - childBounds.Height/2
+			}
+		}
+
+		if layoutConfig.Left != nil {
+			childBounds.X = l.horizontalPosition(element, *layoutConfig.Left, layoutConfig.LeftRelation)
+			switch {
+			case layoutConfig.Right != nil:
+				childBounds.Width = l.horizontalPosition(element, *layoutConfig.Right, layoutConfig.RightRelation) - childBounds.X
+			}
+		}
+
+		if layoutConfig.Top != nil {
+			childBounds.Y = l.verticalPosition(element, *layoutConfig.Top, layoutConfig.TopRelation)
+			switch {
+			case layoutConfig.Bottom != nil:
+				childBounds.Height = l.verticalPosition(element, *layoutConfig.Bottom, layoutConfig.BottomRelation) - childBounds.Y
+			}
+		}
+
+		childElement.SetBounds(childBounds)
+	}
+}
+
+func (l *AnchorLayout) horizontalPosition(element *ui.Element, value int, relativeTo Relation) int {
+	bounds := element.Bounds()
+	switch relativeTo {
+	case RelationLeft:
+		return value
+	case RelationRight:
+		return value + bounds.Width
+	case RelationCenter:
+		return value + bounds.Width/2
+	default:
+		panic(fmt.Errorf("unexpected horizontal relative to: %d", relativeTo))
+	}
+}
+
+func (l *AnchorLayout) verticalPosition(element *ui.Element, value int, relativeTo Relation) int {
+	bounds := element.Bounds()
+	switch relativeTo {
+	case RelationTop:
+		return value
+	case RelationBottom:
+		return value + bounds.Height
+	case RelationCenter:
+		return value + bounds.Height/2
+	default:
+		panic(fmt.Errorf("unexpected vertical relative to: %d", relativeTo))
+	}
+}
+
 // AnchorLayoutConfig represents a layout configuration for a control
-// that is added to an AnchorLayout.
+// that is added to an Anchor.
 type AnchorLayoutConfig struct {
 	Left                     *int
 	LeftRelation             Relation
@@ -46,7 +144,7 @@ func (c *AnchorLayoutConfig) ApplyAttributes(attributes ui.AttributeSet) {
 	if rightRelation, ok := RelationAttribute(attributes, "right-relation"); ok {
 		c.RightRelation = rightRelation
 	} else {
-		c.RightRelation = RelationLeft
+		c.RightRelation = RelationRight
 	}
 	if top, ok := attributes.IntAttribute("top"); ok {
 		c.Top = &top
@@ -62,7 +160,7 @@ func (c *AnchorLayoutConfig) ApplyAttributes(attributes ui.AttributeSet) {
 	if bottomRelation, ok := RelationAttribute(attributes, "bottom-relation"); ok {
 		c.BottomRelation = bottomRelation
 	} else {
-		c.BottomRelation = RelationTop
+		c.BottomRelation = RelationBottom
 	}
 	if horizontalCenter, ok := attributes.IntAttribute("horizontal-center"); ok {
 		c.HorizontalCenter = &horizontalCenter
@@ -85,165 +183,5 @@ func (c *AnchorLayoutConfig) ApplyAttributes(attributes ui.AttributeSet) {
 	}
 	if height, ok := attributes.IntAttribute("height"); ok {
 		c.Height = &height
-	}
-}
-
-// AnchorLayout represents a layout that positions
-// controls based on the following anchor references:
-//     left - the left side of the layout
-//     right - the right side of the layout
-//     top - the top side of the layout
-//     bottom - the bottom side of the layout
-//     center - the center of the layout
-type AnchorLayout interface {
-	ui.Control
-
-	// AddControl adds a control to this layout.
-	AddControl(control ui.Control)
-
-	// RemoveControl removes the specified control from this layout.
-	RemoveControl(control ui.Control)
-}
-
-func BuildAnchorLayout(ctx *ui.Context, template *ui.Template, layoutConfig ui.LayoutConfig) (AnchorLayout, error) {
-	result := &anchorLayout{
-		element: ctx.CreateElement(),
-	}
-	result.element.SetLayoutConfig(layoutConfig)
-	result.element.SetEssence(result)
-	if err := result.ApplyAttributes(template.Attributes()); err != nil {
-		return nil, err
-	}
-	for _, childTemplate := range template.Children() {
-		childLayoutConfig := new(AnchorLayoutConfig)
-		childLayoutConfig.ApplyAttributes(childTemplate.LayoutAttributes())
-		child, err := ctx.InstantiateTemplate(childTemplate, childLayoutConfig)
-		if err != nil {
-			return nil, fmt.Errorf("failed to instantiate child from template: %w", err)
-		}
-		result.AddControl(child)
-	}
-	return result, nil
-}
-
-var _ ui.ElementResizeHandler = (*anchorLayout)(nil)
-var _ ui.ElementRenderHandler = (*anchorLayout)(nil)
-
-type anchorLayout struct {
-	element         *ui.Element
-	backgroundColor *ui.Color
-}
-
-func (l *anchorLayout) Element() *ui.Element {
-	return l.element
-}
-
-func (l *anchorLayout) ApplyAttributes(attributes ui.AttributeSet) error {
-	if err := l.element.ApplyAttributes(attributes); err != nil {
-		return err
-	}
-	if color, ok := attributes.ColorAttribute("background-color"); ok {
-		l.backgroundColor = &color
-	}
-	return nil
-}
-
-func (l *anchorLayout) AddControl(control ui.Control) {
-	l.element.AppendChild(control.Element())
-}
-
-func (l *anchorLayout) RemoveControl(control ui.Control) {
-	l.element.RemoveChild(control.Element())
-}
-
-func (l *anchorLayout) OnResize(element *ui.Element, bounds ui.Bounds) {
-	// TODO: Consider content area
-	// TODO: Consider children's margin settings
-
-	for childElement := l.element.FirstChild(); childElement != nil; childElement = childElement.RightSibling() {
-		layoutConfig := childElement.LayoutConfig().(*AnchorLayoutConfig)
-		childBounds := ui.Bounds{}
-
-		// horizontal
-		if layoutConfig.Width != nil {
-			childBounds.Width = *layoutConfig.Width
-			switch {
-			case layoutConfig.Left != nil:
-				childBounds.X = l.horizontalPosition(*layoutConfig.Left, layoutConfig.LeftRelation)
-			case layoutConfig.Right != nil:
-				childBounds.X = l.horizontalPosition(*layoutConfig.Right, layoutConfig.RightRelation) - childBounds.Width
-			case layoutConfig.HorizontalCenter != nil:
-				childBounds.X = l.horizontalPosition(*layoutConfig.HorizontalCenter, layoutConfig.HorizontalCenterRelation) - childBounds.Width/2
-			}
-		}
-
-		// vertical
-		if layoutConfig.Height != nil {
-			childBounds.Height = *layoutConfig.Height
-			switch {
-			case layoutConfig.Top != nil:
-				childBounds.Y = l.verticalPosition(*layoutConfig.Top, layoutConfig.TopRelation)
-			case layoutConfig.Bottom != nil:
-				childBounds.Y = l.verticalPosition(*layoutConfig.Bottom, layoutConfig.BottomRelation) - childBounds.Height
-			case layoutConfig.VerticalCenter != nil:
-				childBounds.Y = l.verticalPosition(*layoutConfig.VerticalCenter, layoutConfig.VerticalCenterRelation) - childBounds.Height/2
-			}
-		}
-
-		if layoutConfig.Left != nil {
-			childBounds.X = l.horizontalPosition(*layoutConfig.Left, layoutConfig.LeftRelation)
-			switch {
-			case layoutConfig.Right != nil:
-				childBounds.Width = l.horizontalPosition(*layoutConfig.Right, layoutConfig.RightRelation) - childBounds.X
-			}
-		}
-
-		if layoutConfig.Top != nil {
-			childBounds.Y = l.verticalPosition(*layoutConfig.Top, layoutConfig.TopRelation)
-			switch {
-			case layoutConfig.Bottom != nil:
-				childBounds.Height = l.verticalPosition(*layoutConfig.Bottom, layoutConfig.BottomRelation) - childBounds.Y
-			}
-		}
-
-		childElement.SetBounds(childBounds)
-	}
-}
-
-func (l *anchorLayout) OnRender(element *ui.Element, canvas ui.Canvas) {
-	if l.backgroundColor != nil {
-		canvas.SetSolidColor(*l.backgroundColor)
-		canvas.FillRectangle(
-			ui.NewPosition(0, 0),
-			l.element.Bounds().Size,
-		)
-	}
-}
-
-func (l *anchorLayout) horizontalPosition(value int, relativeTo Relation) int {
-	bounds := l.element.Bounds()
-	switch relativeTo {
-	case RelationLeft:
-		return value
-	case RelationRight:
-		return value + bounds.Width
-	case RelationCenter:
-		return value + bounds.Width/2
-	default:
-		panic(fmt.Errorf("unexpected horizontal relative to: %d", relativeTo))
-	}
-}
-
-func (l *anchorLayout) verticalPosition(value int, relativeTo Relation) int {
-	bounds := l.element.Bounds()
-	switch relativeTo {
-	case RelationTop:
-		return value
-	case RelationBottom:
-		return value + bounds.Height
-	case RelationCenter:
-		return value + bounds.Height/2
-	default:
-		panic(fmt.Errorf("unexpected vertical relative to: %d", relativeTo))
 	}
 }
