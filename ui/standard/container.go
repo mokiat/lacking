@@ -6,6 +6,12 @@ import (
 	"github.com/mokiat/lacking/ui"
 )
 
+type LegacyLayoutConfig interface {
+	// ApplyAttributes configures this layout config
+	// off of the specified attributes.
+	ApplyAttributes(attributes ui.AttributeSet)
+}
+
 func init() {
 	ui.RegisterControlBuilder("Container", ui.ControlBuilderFunc(func(ctx *ui.Context, template *ui.Template, layoutConfig ui.LayoutConfig) (ui.Control, error) {
 		return BuildContainer(ctx, template, layoutConfig)
@@ -34,7 +40,7 @@ func BuildContainer(ctx *ui.Context, template *ui.Template, layoutConfig ui.Layo
 	}
 	for _, childTemplate := range template.Children() {
 		childLayoutConfig := result.layout.LayoutConfig()
-		childLayoutConfig.ApplyAttributes(childTemplate.LayoutAttributes())
+		childLayoutConfig.(LegacyLayoutConfig).ApplyAttributes(childTemplate.LayoutAttributes())
 		child, err := ctx.InstantiateTemplate(childTemplate, childLayoutConfig)
 		if err != nil {
 			return nil, fmt.Errorf("failed to instantiate child from template: %w", err)

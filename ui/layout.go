@@ -42,10 +42,6 @@ func (f LayoutBuilderFunc) Build(attributes AttributeSet) (Layout, error) {
 // The actual implementation of this interface is determined by
 // the parent Element's layout model.
 type LayoutConfig interface {
-
-	// ApplyAttributes configures this layout config
-	// off of the specified attributes.
-	ApplyAttributes(attributes AttributeSet)
 }
 
 // RegisterLayout adds the specified Layout implementation for

@@ -77,7 +77,7 @@ func newView(window *Window, context *Context) *View {
 type View struct {
 	window         *Window
 	context        *Context
-	root           Control
+	root           *Element
 	handler        ViewHandler
 	pointedElement *Element
 }
@@ -94,13 +94,13 @@ func (v *View) Context() *Context {
 	return v.context
 }
 
-// Root returns the top-most Control of this View.
-func (v *View) Root() Control {
+// Root returns the top-most Element of this View.
+func (v *View) Root() *Element {
 	return v.root
 }
 
-// SetRoot changes the top-most Control of this View.
-func (v *View) SetRoot(root Control) {
+// SetRoot changes the top-most Element of this View.
+func (v *View) SetRoot(root *Element) {
 	v.root = root
 }
 
@@ -120,9 +120,7 @@ func (v *View) FindElementByID(id string) (*Element, bool) {
 	if v.root == nil {
 		return nil, false
 	}
-	rootElement := v.root.Element()
-
-	return v.dfsElementByID(rootElement, id)
+	return v.dfsElementByID(v.root, id)
 }
 
 // GetElementByID looks up the Element hierarchy tree for an Element
@@ -167,7 +165,7 @@ func (v *View) onDestroy() {
 
 func (v *View) onResize(size Size) {
 	if v.root != nil {
-		v.root.Element().SetBounds(Bounds{
+		v.root.SetBounds(Bounds{
 			Position: NewPosition(0, 0),
 			Size:     size,
 		})
@@ -180,16 +178,14 @@ func (v *View) onKeyboardEvent(event KeyboardEvent) bool {
 
 func (v *View) onMouseEvent(event MouseEvent) bool {
 	if v.root != nil {
-		rootElement := v.root.Element()
-		return v.processMouseEvent(rootElement, event)
+		return v.processMouseEvent(v.root, event)
 	}
 	return false
 }
 
 func (v *View) onRender(canvas Canvas, dirtyRegion Bounds) {
 	if v.root != nil {
-		rootElement := v.root.Element()
-		v.renderElement(rootElement, canvas, dirtyRegion)
+		v.renderElement(v.root, canvas, dirtyRegion)
 	}
 }
 

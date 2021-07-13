@@ -172,14 +172,34 @@ func (e *Element) RightSibling() *Element {
 	return e.rightSibling
 }
 
+// Detach removes this Element from the hierarchy but does not
+// release any resources.
+func (e *Element) Detach() {
+	if e.parent != nil {
+		e.parent.RemoveChild(e)
+	}
+}
+
+// AppendSibling attaches an Element to the right of the current one.
+func (e *Element) AppendSibling(sibling *Element) {
+	sibling.Detach()
+	sibling.rightSibling = e.rightSibling
+	if e.rightSibling != nil {
+		e.rightSibling.leftSibling = sibling
+	}
+	sibling.leftSibling = e
+	e.rightSibling = sibling
+	if e.parent != nil && sibling.rightSibling == nil {
+		e.parent.lastChild = sibling
+	}
+}
+
 // PrependChild adds the specified Element as the left-most child
 // of this Element.
 // If the preprended Element already has a parent, it is first
 // detached from that parent.
 func (e *Element) PrependChild(child *Element) {
-	if child.parent != nil {
-		child.parent.RemoveChild(child)
-	}
+	child.Detach()
 	child.parent = e
 	child.leftSibling = nil
 	child.rightSibling = e.firstChild
@@ -197,9 +217,7 @@ func (e *Element) PrependChild(child *Element) {
 // If the appended Element already has a parent, it is first
 // detached from that parent.
 func (e *Element) AppendChild(child *Element) {
-	if child.parent != nil {
-		child.parent.RemoveChild(child)
-	}
+	child.Detach()
 	child.parent = e
 	child.leftSibling = e.lastChild
 	child.rightSibling = nil
@@ -437,9 +455,7 @@ func (e *Element) SetMaterialized(materialized bool) {
 // Destroy removes this Element from the hierarchy, as well
 // as any child Elements and releases all allocated resources.
 func (e *Element) Destroy() {
-	if e.parent != nil {
-		e.parent.RemoveChild(e)
-	}
+	e.Detach()
 }
 
 func (e *Element) onMouseEvent(event MouseEvent) bool {

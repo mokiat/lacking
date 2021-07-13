@@ -87,10 +87,12 @@ func (m *Mesh) Release() {
 }
 
 func (m *Mesh) Update() {
-	m.vertexBuffer.Update(opengl.BufferUpdateInfo{
-		Data:        m.vertexData[:m.vertexPlotter.Offset()],
-		OffsetBytes: 0,
-	})
+	if length := m.vertexPlotter.Offset(); length > 0 {
+		m.vertexBuffer.Update(opengl.BufferUpdateInfo{
+			Data:        m.vertexData[:m.vertexPlotter.Offset()],
+			OffsetBytes: 0,
+		})
+	}
 }
 
 func (m *Mesh) Reset() {
