@@ -5,8 +5,6 @@ import (
 	"github.com/mokiat/lacking/ui/optional"
 )
 
-const namespace = "github.com/mokiat/lacking/ui/template"
-
 type ElementData struct {
 	Essence      ui.Essence
 	Enabled      optional.Bool
@@ -14,47 +12,34 @@ type ElementData struct {
 	Materialized optional.Bool
 }
 
-var Element = NewComponentType(namespace, "Element", newElement)
+var Element = Plain(func(props Properties) Instance {
+	var element *ui.Element
 
-func newElement(ctx *ui.Context) Component {
-	return &element{
-		ctx: ctx,
-	}
-}
+	Once(func() {
+		element = uiCtx.CreateElement()
+	})
 
-type element struct {
-	NopComponent
-	ctx     *ui.Context
-	element *ui.Element
-}
+	Defer(func() {
+		element.Destroy()
+	})
 
-func (e *element) OnCreated() {
-	e.element = e.ctx.CreateElement()
-}
+	var data ElementData
+	props.InjectData(&data)
 
-func (e *element) OnDestroyed() {
-	e.element.Destroy()
-}
-
-func (e *element) Render(ctx RenderContext) Instance {
-	data := ctx.Data().(ElementData)
-	if data.Essence != nil {
-		e.element.SetEssence(data.Essence)
-	}
+	element.SetEssence(data.Essence)
 	if data.Enabled.Specified {
-		e.element.SetEnabled(data.Enabled.Value)
+		element.SetEnabled(data.Enabled.Value)
 	}
 	if data.Visible.Specified {
-		e.element.SetVisible(data.Visible.Value)
+		element.SetVisible(data.Visible.Value)
 	}
 	if data.Materialized.Specified {
-		e.element.SetMaterialized(data.Materialized.Value)
+		element.SetMaterialized(data.Materialized.Value)
 	}
-
-	e.element.SetLayoutConfig(ctx.LayoutData())
+	element.SetLayoutConfig(props.LayoutData())
 
 	return Instance{
-		element:  e.element,
-		children: ctx.Children(),
+		element:  element,
+		children: props.Children(),
 	}
-}
+})

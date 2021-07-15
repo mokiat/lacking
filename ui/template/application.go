@@ -4,22 +4,15 @@ import (
 	"github.com/mokiat/lacking/ui"
 )
 
-type InitContext struct {
-	*Context
-}
-
-type InitFunc func(ctx InitContext) Instance
+var uiCtx *ui.Context
 
 // Initialize wires the template package to the specified view.
 // The specified init function is used to construct the root
 // component.
-func Initialize(view *ui.View, initFn InitFunc) {
-	hierarchy := &hierarchy{
-		uiCtx: view.Context(),
-	}
+func Initialize(view *ui.View, instance Instance) {
 	app := &application{
-		initFn:    initFn,
-		hierarchy: hierarchy,
+		instance:  instance,
+		hierarchy: &hierarchy{},
 	}
 	view.SetHandler(app)
 }
@@ -27,20 +20,19 @@ func Initialize(view *ui.View, initFn InitFunc) {
 var _ ui.ElementResizeHandler = (*application)(nil)
 
 type application struct {
-	initFn    InitFunc
+	instance  Instance
 	hierarchy *hierarchy
 	rootNode  *componentNode
 }
 
 func (a *application) OnCreate(view *ui.View) {
-	ctx := &Context{}
-	a.rootNode = a.hierarchy.CreateComponentNode(ctx.Instance(Element, "root", func() {
-		ctx.WithData(ElementData{
+	uiCtx = view.Context()
+
+	a.rootNode = a.hierarchy.CreateComponentNode(New(Element, func() {
+		WithData(ElementData{
 			Essence: a,
 		})
-		ctx.WithChild(a.initFn(InitContext{
-			Context: ctx,
-		}))
+		WithChild("root", a.instance)
 	}))
 	view.SetRoot(a.rootNode.Element())
 }
@@ -53,6 +45,8 @@ func (a *application) OnDestroy(view *ui.View) {
 	view.SetRoot(nil)
 	a.hierarchy.DestroyComponentNode(a.rootNode)
 	a.rootNode = nil
+
+	uiCtx = nil
 }
 
 func (a *application) OnResize(element *ui.Element, bounds ui.Bounds) {

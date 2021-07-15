@@ -10,19 +10,20 @@ type ContainerData struct {
 	Layout          Layout
 }
 
-var Container = t.NewComponentType(namespace, "Container", func(ctx *ui.Context) t.Component {
-	return t.FunctionalComponent(func(rc t.RenderContext) t.Instance {
-		return rc.Instance(Element, rc.Key(), func() {
-			rc.WithData(t.ElementData{
-				Essence: &containerEssence{
-					ContainerData: rc.Data().(ContainerData),
-				},
-			})
-			rc.WithLayoutData(rc.LayoutData())
-			rc.WithChildren(rc.Children())
+var Container = t.ShallowCached(t.Plain(func(props t.Properties) t.Instance {
+	var data ContainerData
+	props.InjectData(&data)
+
+	return t.New(Element, func() {
+		t.WithData(ElementData{
+			Essence: &containerEssence{
+				ContainerData: data,
+			},
 		})
+		t.WithLayoutData(props.LayoutData())
+		t.WithChildren(props.Children())
 	})
-})
+}))
 
 var _ ui.ElementResizeHandler = (*containerEssence)(nil)
 var _ ui.ElementRenderHandler = (*containerEssence)(nil)

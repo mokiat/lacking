@@ -4,34 +4,25 @@ import (
 	"github.com/mokiat/lacking/ui"
 )
 
-type hierarchy struct {
-	uiCtx *ui.Context
-}
-
-// TODO: Add component to list of dependents on the instance owner
-// this might require that dependends be made a linked list
+type hierarchy struct{}
 
 func (s *hierarchy) CreateComponentNode(instance Instance) *componentNode {
 	var result *componentNode
 
-	if instance.componentType != nil {
-		component := instance.componentType.NewComponent(s.uiCtx)
-		component.OnDataChanged(instance.data)
-		component.OnLayoutDataChanged(instance.layoutData)
-		component.OnCallbackDataChanged(instance.callbackData)
-		component.OnChildrenChanged(instance.children)
-		component.OnCreated()
-
+	if instance.element == nil {
 		result = &componentNode{
-			next:          nil,
-			component:     component,
 			key:           instance.key,
 			componentType: instance.componentType,
-			data:          instance.data,
-			layoutData:    instance.layoutData,
+			componentFunc: instance.componentFunc,
+			instance:      instance,
 		}
 
-		nextInstance := component.Render(s.RenderContext(result, instance))
+		renderCtx = renderContext{
+			node:        result,
+			firstRender: true,
+			lastRender:  false,
+		}
+		nextInstance := instance.componentFunc(instance.properties())
 		result.next = s.CreateComponentNode(nextInstance)
 	} else {
 		result = &componentNode{
@@ -40,7 +31,7 @@ func (s *hierarchy) CreateComponentNode(instance Instance) *componentNode {
 		}
 		for i, childInstance := range instance.children {
 			child := s.CreateComponentNode(childInstance)
-			result.element.AppendChild(child.Element())
+			instance.element.AppendChild(child.Element())
 			result.children[i] = child
 		}
 	}
@@ -56,20 +47,14 @@ func (s *hierarchy) DestroyComponentNode(node *componentNode) {
 		s.DestroyComponentNode(child)
 	}
 	node.children = nil
-	node.dependents = nil
 
-	if node.component != nil {
-		node.component.OnDestroyed()
-		node.component = nil
-	}
-}
-
-func (s *hierarchy) RenderContext(owner *componentNode, instance Instance) RenderContext {
-	return RenderContext{
-		Context: &Context{
-			owner: owner,
-		},
-		instance: instance,
+	if node.componentFunc != nil {
+		renderCtx = renderContext{
+			firstRender: false,
+			lastRender:  true,
+		}
+		node.componentFunc(node.instance.properties())
+		node.componentFunc = nil
 	}
 }
 
@@ -166,26 +151,18 @@ func (s *hierarchy) Reconcile(node *componentNode, instance Instance) {
 type componentNode struct {
 	next *componentNode
 
-	element *ui.Element
-
 	key           string
-	componentType ComponentType
-	component     Component
+	componentType string
+	componentFunc ComponentFunc
+	instance      Instance
 
-	data       interface{}
-	layoutData interface{}
-
-	// dirty indicates whether this component should be reconciled
-	dirty bool
-
-	// dependents contains the children that this component
-	// created and as part of its render function and that are
-	// potentially affected by data changes to this component.
-	dependents []*componentNode
+	states []State
 
 	// children contains the immediate (flattened) children of a component
 	// and is only applicable to the last component in a component chain
 	children []*componentNode
+
+	element *ui.Element
 }
 
 func (n *componentNode) Element() *ui.Element {
@@ -201,15 +178,7 @@ func (n *componentNode) HasMatchingKey(instance Instance) bool {
 }
 
 func (n *componentNode) HasMatchingType(instance Instance) bool {
-	return n.componentType.Name() == instance.componentType.Name()
-}
-
-func (n *componentNode) HasMatchingData(instance Instance) bool {
-	return isDataEqual(n.data, instance.data)
-}
-
-func (n *componentNode) HasMatchingLayoutData(instance Instance) bool {
-	return isLayoutDataEqual(n.layoutData, instance.layoutData)
+	return n.componentType == instance.componentType
 }
 
 func (n *componentNode) HasMatchingChildren(instance Instance) bool {
@@ -225,21 +194,6 @@ func (n *componentNode) HasMatchingChildren(instance Instance) bool {
 		}
 	}
 	return true
-}
-
-func (n *componentNode) MarkDirty() {
-	n.dirty = true
-	for _, depenent := range n.dependents {
-		depenent.MarkDirty()
-	}
-}
-
-func (n *componentNode) MarkClean() {
-	n.dirty = false
-}
-
-func (n *componentNode) IsDirty() bool {
-	return n.dirty
 }
 
 func (n *componentNode) FindChild(instance Instance) (*componentNode, int) {

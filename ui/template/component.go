@@ -2,91 +2,112 @@ package template
 
 import (
 	"fmt"
-
-	"github.com/mokiat/lacking/ui"
+	"reflect"
+	"runtime"
 )
 
-type ComponentConstructor func(ctx *ui.Context) Component
-
-type Component interface {
-	// OnCreated is called immediatelly after the component instance
-	// has been created but prior to it being mounted.
-	OnCreated()
-
-	// OnDestroyed is called after the component instance has bee
-	// unmounted and at the point in which the framework will give
-	// up on it.
-	OnDestroyed()
-
-	OnDataChanged(data interface{})
-
-	OnLayoutDataChanged(layoutData interface{})
-
-	OnCallbackDataChanged(callbackData interface{})
-
-	OnChildrenChanged(children []Instance)
-
-	Render(ctx RenderContext) Instance
+type Component struct {
+	componentType string
+	componentFunc ComponentFunc
 }
 
-type ComponentType interface {
-	Name() string
-	NewComponent(ctx *ui.Context) Component
-}
-
-func NewComponentType(namespace, name string, constructor ComponentConstructor) ComponentType {
-	return &internalComponentType{
-		name:        fmt.Sprintf("%s.%s", namespace, name),
-		constructor: constructor,
+func Plain(fn ComponentFunc) Component {
+	_, file, line, _ := runtime.Caller(1)
+	return Component{
+		componentType: fmt.Sprintf("%s#%d", file, line),
+		componentFunc: fn,
 	}
 }
 
-type internalComponentType struct {
-	name        string
-	constructor ComponentConstructor
-}
+type ComponentFunc func(props Properties) Instance
 
-func (t *internalComponentType) Name() string {
-	return t.name
-}
+func ShallowCached(delegate Component) Component {
+	var (
+		oldData        interface{}
+		oldLayoutData  interface{}
+		oldChildren    []Instance
+		cachedInstance Instance
+	)
 
-func (t *internalComponentType) NewComponent(ctx *ui.Context) Component {
-	return t.constructor(ctx)
-}
+	_, file, line, _ := runtime.Caller(1)
+	return Component{
+		componentType: fmt.Sprintf("%s#%d", file, line),
+		componentFunc: func(props Properties) Instance {
+			shouldCallDelegate :=
+				((oldData == nil) && (oldLayoutData == nil) && (oldChildren == nil)) ||
+					!isDataShallowEqual(oldData, props.data) ||
+					!isLayoutDataShallowEqual(oldLayoutData, props.layoutData) ||
+					!areChildrenEqual(oldChildren, props.children)
+			if !shouldCallDelegate {
+				return cachedInstance
+			}
 
-var _ Component = NopComponent{}
-
-type NopComponent struct{}
-
-func (c NopComponent) OnCreated() {}
-
-func (c NopComponent) OnDestroyed() {}
-
-func (c NopComponent) OnDataChanged(data interface{}) {}
-
-func (c NopComponent) OnLayoutDataChanged(layoutData interface{}) {}
-
-func (c NopComponent) OnCallbackDataChanged(callbackData interface{}) {}
-
-func (c NopComponent) OnChildrenChanged(children []Instance) {}
-
-func (c NopComponent) Render(ctx RenderContext) Instance {
-	panic("rendering not implemented for this component")
-}
-
-type FunctionalComponentFunc func(ctx RenderContext) Instance
-
-func FunctionalComponent(fn FunctionalComponentFunc) Component {
-	return &internalFunctionalComponent{
-		fn: fn,
+			oldData = props.data
+			oldLayoutData = props.layoutData
+			oldChildren = props.children
+			cachedInstance = delegate.componentFunc(props)
+			return cachedInstance
+		},
 	}
 }
 
-type internalFunctionalComponent struct {
-	NopComponent
-	fn FunctionalComponentFunc
+func DeepCached(delegate Component) Component {
+	var (
+		oldData        interface{}
+		oldLayoutData  interface{}
+		oldChildren    []Instance
+		cachedInstance Instance
+	)
+
+	_, file, line, _ := runtime.Caller(1)
+	return Component{
+		componentType: fmt.Sprintf("%s#%d", file, line),
+		componentFunc: func(props Properties) Instance {
+			shouldCallDelegate :=
+				((oldData == nil) && (oldLayoutData == nil) && (oldChildren == nil)) ||
+					!isDataDeepEqual(oldData, props.data) ||
+					!isLayoutDataDeepEqual(oldLayoutData, props.layoutData) ||
+					!areChildrenEqual(oldChildren, props.children)
+			if !shouldCallDelegate {
+				return cachedInstance
+			}
+
+			oldData = props.data
+			oldLayoutData = props.layoutData
+			oldChildren = props.children
+			cachedInstance = delegate.componentFunc(props)
+			return cachedInstance
+		},
+	}
 }
 
-func (c internalFunctionalComponent) Render(ctx RenderContext) Instance {
-	return c.fn(ctx)
+func isDataShallowEqual(oldData, newData interface{}) bool {
+	return newData == oldData
+}
+
+func isDataDeepEqual(oldData, newData interface{}) bool {
+	return reflect.DeepEqual(newData, oldData)
+}
+
+func isLayoutDataShallowEqual(oldLayoutData, newLayoutData interface{}) bool {
+	return newLayoutData == oldLayoutData
+}
+
+func isLayoutDataDeepEqual(oldLayoutData, newLayoutData interface{}) bool {
+	return reflect.DeepEqual(newLayoutData, oldLayoutData)
+}
+
+func areChildrenEqual(oldChildren, newChildren []Instance) bool {
+	if len(newChildren) != len(oldChildren) {
+		return false
+	}
+	for i := range newChildren {
+		if newChildren[i].key != oldChildren[i].key {
+			return false
+		}
+		if newChildren[i].componentType != oldChildren[i].componentType {
+			return false
+		}
+	}
+	return true
 }

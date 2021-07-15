@@ -42,19 +42,20 @@ const (
 	ImageModeCover
 )
 
-var Picture = t.NewComponentType(namespace, "Picture", func(ctx *ui.Context) t.Component {
-	return t.FunctionalComponent(func(rc t.RenderContext) t.Instance {
-		return rc.Instance(Element, rc.Key(), func() {
-			rc.WithData(t.ElementData{
-				Essence: &pictureEssence{
-					PictureData: rc.Data().(PictureData),
-				},
-			})
-			rc.WithLayoutData(rc.LayoutData())
-			rc.WithChildren(rc.Children())
+var Picture = t.ShallowCached(t.Plain(func(props t.Properties) t.Instance {
+	var data PictureData
+	props.InjectData(&data)
+
+	return t.New(Element, func() {
+		t.WithData(t.ElementData{
+			Essence: &pictureEssence{
+				PictureData: data,
+			},
 		})
+		t.WithLayoutData(props.LayoutData())
+		t.WithChildren(props.Children())
 	})
-})
+}))
 
 var _ ui.ElementRenderHandler = (*pictureEssence)(nil)
 
