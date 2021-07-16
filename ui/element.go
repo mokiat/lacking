@@ -62,54 +62,6 @@ type Element struct {
 	layoutConfig LayoutConfig
 }
 
-// ApplyAttributes applies the specified attributes
-// to this Element.
-func (e *Element) ApplyAttributes(attributes AttributeSet) error {
-	if stringValue, ok := attributes.StringAttribute("id"); ok {
-		e.SetID(stringValue)
-	}
-	if boolValue, ok := attributes.BoolAttribute("enabled"); ok {
-		e.SetEnabled(boolValue)
-	}
-	if boolValue, ok := attributes.BoolAttribute("visible"); ok {
-		e.SetVisible(boolValue)
-	}
-	if boolValue, ok := attributes.BoolAttribute("materialized"); ok {
-		e.SetMaterialized(boolValue)
-	}
-
-	margin := e.Margin()
-	if intValue, ok := attributes.IntAttribute("margin-top"); ok {
-		margin.Top = intValue
-	}
-	if intValue, ok := attributes.IntAttribute("margin-bottom"); ok {
-		margin.Bottom = intValue
-	}
-	if intValue, ok := attributes.IntAttribute("margin-left"); ok {
-		margin.Left = intValue
-	}
-	if intValue, ok := attributes.IntAttribute("margin-right"); ok {
-		margin.Right = intValue
-	}
-	e.SetMargin(margin)
-
-	padding := e.Padding()
-	if intValue, ok := attributes.IntAttribute("padding-top"); ok {
-		padding.Top = intValue
-	}
-	if intValue, ok := attributes.IntAttribute("padding-bottom"); ok {
-		padding.Bottom = intValue
-	}
-	if intValue, ok := attributes.IntAttribute("padding-left"); ok {
-		padding.Left = intValue
-	}
-	if intValue, ok := attributes.IntAttribute("padding-right"); ok {
-		padding.Right = intValue
-	}
-	e.SetPadding(padding)
-	return nil
-}
-
 // ID returns the ID of this Element.
 // If an ID was not specified, then an emptry string is returned.
 func (e *Element) ID() string {
