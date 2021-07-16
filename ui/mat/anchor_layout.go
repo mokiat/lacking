@@ -4,25 +4,26 @@ import (
 	"fmt"
 
 	"github.com/mokiat/lacking/ui"
+	"github.com/mokiat/lacking/ui/optional"
 )
 
 // AnchorLayoutData represents a layout configuration for a component
 // that is added to a Container with layout set to AnchorLayout.
 type AnchorLayoutData struct {
-	Left                     *int
+	Left                     optional.Int
 	LeftRelation             Relation
-	Right                    *int
+	Right                    optional.Int
 	RightRelation            Relation
-	Top                      *int
+	Top                      optional.Int
 	TopRelation              Relation
-	Bottom                   *int
+	Bottom                   optional.Int
 	BottomRelation           Relation
-	HorizontalCenter         *int
+	HorizontalCenter         optional.Int
 	HorizontalCenterRelation Relation
-	VerticalCenter           *int
+	VerticalCenter           optional.Int
 	VerticalCenterRelation   Relation
-	Width                    *int
-	Height                   *int
+	Width                    optional.Int
+	Height                   optional.Int
 }
 
 // AnchorLayoutSettings contains optional configurations for the
@@ -50,44 +51,44 @@ func (l *AnchorLayout) Apply(element *ui.Element) {
 		childBounds := ui.Bounds{}
 
 		// horizontal
-		if layoutConfig.Width != nil {
-			childBounds.Width = *layoutConfig.Width
+		if layoutConfig.Width.Specified {
+			childBounds.Width = layoutConfig.Width.Value
 			switch {
-			case layoutConfig.Left != nil:
-				childBounds.X = l.horizontalPosition(element, *layoutConfig.Left, layoutConfig.LeftRelation)
-			case layoutConfig.Right != nil:
-				childBounds.X = l.horizontalPosition(element, *layoutConfig.Right, layoutConfig.RightRelation) - childBounds.Width
-			case layoutConfig.HorizontalCenter != nil:
-				childBounds.X = l.horizontalPosition(element, *layoutConfig.HorizontalCenter, layoutConfig.HorizontalCenterRelation) - childBounds.Width/2
+			case layoutConfig.Left.Specified:
+				childBounds.X = l.horizontalPosition(element, layoutConfig.Left.Value, layoutConfig.LeftRelation)
+			case layoutConfig.Right.Specified:
+				childBounds.X = l.horizontalPosition(element, layoutConfig.Right.Value, layoutConfig.RightRelation) - childBounds.Width
+			case layoutConfig.HorizontalCenter.Specified:
+				childBounds.X = l.horizontalPosition(element, layoutConfig.HorizontalCenter.Value, layoutConfig.HorizontalCenterRelation) - childBounds.Width/2
 			}
 		}
 
 		// vertical
-		if layoutConfig.Height != nil {
-			childBounds.Height = *layoutConfig.Height
+		if layoutConfig.Height.Specified {
+			childBounds.Height = layoutConfig.Height.Value
 			switch {
-			case layoutConfig.Top != nil:
-				childBounds.Y = l.verticalPosition(element, *layoutConfig.Top, layoutConfig.TopRelation)
-			case layoutConfig.Bottom != nil:
-				childBounds.Y = l.verticalPosition(element, *layoutConfig.Bottom, layoutConfig.BottomRelation) - childBounds.Height
-			case layoutConfig.VerticalCenter != nil:
-				childBounds.Y = l.verticalPosition(element, *layoutConfig.VerticalCenter, layoutConfig.VerticalCenterRelation) - childBounds.Height/2
+			case layoutConfig.Top.Specified:
+				childBounds.Y = l.verticalPosition(element, layoutConfig.Top.Value, layoutConfig.TopRelation)
+			case layoutConfig.Bottom.Specified:
+				childBounds.Y = l.verticalPosition(element, layoutConfig.Bottom.Value, layoutConfig.BottomRelation) - childBounds.Height
+			case layoutConfig.VerticalCenter.Specified:
+				childBounds.Y = l.verticalPosition(element, layoutConfig.VerticalCenter.Value, layoutConfig.VerticalCenterRelation) - childBounds.Height/2
 			}
 		}
 
-		if layoutConfig.Left != nil {
-			childBounds.X = l.horizontalPosition(element, *layoutConfig.Left, layoutConfig.LeftRelation)
+		if layoutConfig.Left.Specified {
+			childBounds.X = l.horizontalPosition(element, layoutConfig.Left.Value, layoutConfig.LeftRelation)
 			switch {
-			case layoutConfig.Right != nil:
-				childBounds.Width = l.horizontalPosition(element, *layoutConfig.Right, layoutConfig.RightRelation) - childBounds.X
+			case layoutConfig.Right.Specified:
+				childBounds.Width = l.horizontalPosition(element, layoutConfig.Right.Value, layoutConfig.RightRelation) - childBounds.X
 			}
 		}
 
-		if layoutConfig.Top != nil {
-			childBounds.Y = l.verticalPosition(element, *layoutConfig.Top, layoutConfig.TopRelation)
+		if layoutConfig.Top.Specified {
+			childBounds.Y = l.verticalPosition(element, layoutConfig.Top.Value, layoutConfig.TopRelation)
 			switch {
-			case layoutConfig.Bottom != nil:
-				childBounds.Height = l.verticalPosition(element, *layoutConfig.Bottom, layoutConfig.BottomRelation) - childBounds.Y
+			case layoutConfig.Bottom.Specified:
+				childBounds.Height = l.verticalPosition(element, layoutConfig.Bottom.Value, layoutConfig.BottomRelation) - childBounds.Y
 			}
 		}
 

@@ -15,9 +15,9 @@ type ElementData struct {
 var Element = Plain(func(props Properties) Instance {
 	var element *ui.Element
 
-	Once(func() {
-		element = uiCtx.CreateElement()
-	})
+	UseState(func() interface{} {
+		return uiCtx.CreateElement()
+	}).Inject(&element)
 
 	Defer(func() {
 		element.Destroy()

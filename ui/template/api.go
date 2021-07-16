@@ -77,3 +77,17 @@ func OpenImage(uri string) ui.Image {
 	}
 	return img
 }
+
+func OpenFontCollection(uri string) {
+	if _, err := uiCtx.OpenFontCollection(uri); err != nil {
+		panic(fmt.Errorf("failed to open font collection %q: %w", uri, err))
+	}
+}
+
+func GetFont(family, style string) ui.Font {
+	font, found := uiCtx.GetFont(family, style)
+	if !found {
+		panic(fmt.Errorf("could not find font %q / %q", family, style))
+	}
+	return font
+}
