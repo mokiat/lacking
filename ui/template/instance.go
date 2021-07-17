@@ -13,8 +13,6 @@ type Instance struct {
 	callbackData interface{}
 	children     []Instance
 
-	shouldReconcile bool
-
 	element *ui.Element
 }
 
@@ -25,4 +23,13 @@ func (i Instance) properties() Properties {
 		callbackData: i.callbackData,
 		children:     i.children,
 	}
+}
+
+func (i Instance) hasMatchingChild(instance Instance) bool {
+	for _, child := range i.children {
+		if child.key == instance.key && child.componentType == instance.componentType {
+			return true
+		}
+	}
+	return false
 }

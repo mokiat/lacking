@@ -1,11 +1,8 @@
 package template
 
-var dslCtx = &dslContext{
-	shouldReconcile: false,
-}
+var dslCtx = &dslContext{}
 
 type dslContext struct {
-	parent          *dslContext
-	shouldReconcile bool
-	instance        Instance
+	parent   *dslContext
+	instance Instance
 }

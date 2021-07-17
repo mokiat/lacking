@@ -1,204 +1,141 @@
 package template
 
 import (
+	"log"
+
 	"github.com/mokiat/lacking/ui"
 )
 
-type hierarchy struct{}
+type componentNode struct {
+	instance Instance
+	children []*componentNode
+	element  *ui.Element
 
-func (s *hierarchy) CreateComponentNode(instance Instance) *componentNode {
-	var result *componentNode
+	states [][]State
+}
 
-	if instance.element == nil {
-		result = &componentNode{
-			key:           instance.key,
-			componentType: instance.componentType,
-			componentFunc: instance.componentFunc,
-			instance:      instance,
-		}
+func createComponentNode(instance Instance) *componentNode {
+	log.Printf("creating component (key: %s, type: %s)", instance.key, instance.componentType)
 
-		renderCtx = renderContext{
-			node:        result,
-			firstRender: true,
-			lastRender:  false,
-		}
-		nextInstance := instance.componentFunc(instance.properties())
-		result.next = s.CreateComponentNode(nextInstance)
-	} else {
-		result = &componentNode{
-			element:  instance.element,
-			children: make([]*componentNode, len(instance.children)),
-		}
-		for i, childInstance := range instance.children {
-			child := s.CreateComponentNode(childInstance)
-			instance.element.AppendChild(child.Element())
-			result.children[i] = child
-		}
+	result := &componentNode{
+		instance: instance,
+		states:   make([][]State, 1),
+	}
+
+	renderCtx = renderContext{
+		node:        result,
+		firstRender: true,
+		lastRender:  false,
+	}
+	for instance.element == nil {
+		instance = instance.componentFunc(instance.properties())
+		renderCtx.stateDepth++
+		renderCtx.stateIndex = 0
+		result.states = append(result.states, nil)
+	}
+
+	result.element = instance.element
+	result.children = make([]*componentNode, len(instance.children))
+	for i, childInstance := range instance.children {
+		child := createComponentNode(childInstance)
+		instance.element.AppendChild(child.element)
+		result.children[i] = child
 	}
 
 	return result
 }
 
-func (s *hierarchy) DestroyComponentNode(node *componentNode) {
-	if node.next != nil {
-		s.DestroyComponentNode(node.next)
-	}
+func (node *componentNode) destroy() {
+	log.Printf("destroying component (key: %s, type: %s)", node.instance.key, node.instance.componentType)
+
 	for _, child := range node.children {
-		s.DestroyComponentNode(child)
+		child.destroy()
 	}
 	node.children = nil
 
-	if node.componentFunc != nil {
-		renderCtx = renderContext{
-			firstRender: false,
-			lastRender:  true,
+	instance := node.instance
+	renderCtx = renderContext{
+		node:        node,
+		firstRender: false,
+		lastRender:  true,
+	}
+	for instance.element == nil {
+		instance = instance.componentFunc(instance.properties())
+		renderCtx.stateDepth++
+		renderCtx.stateIndex = 0
+	}
+}
+
+func (node *componentNode) reconcile(instance Instance) {
+	log.Printf("reconciling component (key: %s, type: %s) vs (key: %s, type: %s)", node.instance.key, node.instance.componentType, instance.key, instance.componentType)
+
+	node.instance = instance
+	renderCtx = renderContext{
+		node:        node,
+		firstRender: false,
+		lastRender:  false,
+	}
+	for instance.element == nil {
+		instance = instance.componentFunc(instance.properties())
+		renderCtx.stateDepth++
+		renderCtx.stateIndex = 0
+	}
+	if instance.element != node.element {
+		panic("component chain should not return a different element instance")
+	}
+
+	if node.hasMatchingChildren(instance) {
+		for i, child := range node.children {
+			child.reconcile(instance.children[i])
 		}
-		node.componentFunc(node.instance.properties())
-		node.componentFunc = nil
+	} else {
+		for _, child := range node.children {
+			if instance.hasMatchingChild(child.instance) {
+				child.element.Detach()
+			} else {
+				child.destroy()
+			}
+			newChildren := make([]*componentNode, len(instance.children))
+			for i, childInstance := range instance.children {
+				if existingChild, index := node.findChild(childInstance); index >= 0 {
+					existingChild.reconcile(childInstance)
+					newChildren[i] = existingChild
+				} else {
+					newChildren[i] = createComponentNode(childInstance)
+				}
+				node.element.AppendChild(newChildren[i].element)
+			}
+			node.children = newChildren
+		}
 	}
 }
 
-func (s *hierarchy) Reconcile(node *componentNode, instance Instance) {
-	// 	node.reconcilable = reconcilable
-	// 	switch {
-	// 	case reconcilable.isBranch():
-	// 		s.ReconcileBranch(node, reconcilable.branch)
-	// 	case reconcilable.isLeaf():
-	// 		s.ReconcileLeaf(node, reconcilable.leaf)
-	// 	}
+func (node *componentNode) hasMatchingKey(instance Instance) bool {
+	return node.instance.key == instance.key
 }
 
-// func (s *hierarchy) ReconcileBranch(node *componentNode, branch *reconcilableBranch) {
-// 	log.Println("reconcile branch")
-
-// 	if !node.IsDirty() {
-// 		return
-// 	}
-
-// 	if node.next == nil {
-// 		panic("NOT BRANCH: TODO: Should recreate this one fully")
-// 	}
-
-// 	var needsRender = false
-// 	if !node.HasMatchingData(branch.instance) {
-// 		needsRender = true
-// 		node.component.OnDataChanged(branch.instance.data)
-// 	}
-// 	if !node.HasMatchingLayoutData(branch.instance) {
-// 		needsRender = true
-// 		node.component.OnLayoutDataChanged(branch.instance.layoutData)
-// 	}
-// 	if !node.HasMatchingChildren(branch.instance) {
-// 		needsRender = true
-// 		node.component.OnChildrenChanged(branch.instance.children)
-// 	}
-// 	if needsRender {
-// 		nextReconcilable := node.component.Render(RenderContext{
-// 			Context:      s.ctx,
-// 			Key:          branch.instance.key,
-// 			Data:         branch.instance.data,
-// 			LayoutData:   branch.instance.layoutData,
-// 			CallbackData: branch.instance.callbackData,
-// 			Children:     branch.instance.children,
-// 		})
-// 		s.Reconcile(node.next, nextReconcilable)
-// 	} else {
-// 		for _, child := range node.children {
-// 			s.Reconcile(child, child.reconcilable)
-// 		}
-// 	}
-// }
-
-// func (s *hierarchy) ReconcileLeaf(node *componentNode, leaf *reconcilableLeaf) {
-// 	log.Println("reconcile leaf")
-
-// 	if !node.IsDirty() {
-// 		return
-// 	}
-
-// 	if node.next != nil {
-// 		panic("NOT LEAF: TODO: Should recreate this one fully")
-// 	}
-
-// 	// detach current children
-// 	for _, child := range node.children {
-// 		child.element.Detach()
-// 	}
-
-// 	newChildren := make([]*componentNode, len(leaf.children))
-// 	// reuse or create new children
-// 	for i, childInstance := range leaf.children {
-// 		if existingChildNode, index := node.FindChild(childInstance); index >= 0 {
-// 			node.Element().AppendChild(existingChildNode.Element())
-// 			s.Reconcile(existingChildNode, existingChildNode.reconcilable)
-// 			node.children[index] = nil // ensure we don't destroy the component
-// 			newChildren[i] = existingChildNode
-// 		} else {
-// 			childNode := s.CreateComponentNode(childInstance)
-// 			node.Element().AppendChild(childNode.Element())
-// 			newChildren[i] = childNode
-// 		}
-// 	}
-// 	// destroy unmatched old children
-// 	for _, child := range node.children {
-// 		if child != nil {
-// 			s.DestroyComponentNode(child)
-// 		}
-// 	}
-// 	node.children = newChildren
-// }
-
-type componentNode struct {
-	next *componentNode
-
-	key           string
-	componentType string
-	componentFunc ComponentFunc
-	instance      Instance
-
-	states []State
-
-	// children contains the immediate (flattened) children of a component
-	// and is only applicable to the last component in a component chain
-	children []*componentNode
-
-	element *ui.Element
+func (node *componentNode) hasMatchingType(instance Instance) bool {
+	return node.instance.componentType == instance.componentType
 }
 
-func (n *componentNode) Element() *ui.Element {
-	current := n
-	for current.element == nil {
-		current = current.next
-	}
-	return current.element
-}
-
-func (n *componentNode) HasMatchingKey(instance Instance) bool {
-	return n.key == instance.key
-}
-
-func (n *componentNode) HasMatchingType(instance Instance) bool {
-	return n.componentType == instance.componentType
-}
-
-func (n *componentNode) HasMatchingChildren(instance Instance) bool {
-	if len(n.children) != len(instance.children) {
+func (node *componentNode) hasMatchingChildren(instance Instance) bool {
+	if len(node.children) != len(instance.children) {
 		return false
 	}
-	for i := range n.children {
-		if !n.HasMatchingKey(instance.children[i]) {
+	for i, child := range node.children {
+		if !child.hasMatchingKey(instance.children[i]) {
 			return false
 		}
-		if !n.children[i].HasMatchingType(instance.children[i]) {
+		if !child.hasMatchingType(instance.children[i]) {
 			return false
 		}
 	}
 	return true
 }
 
-func (n *componentNode) FindChild(instance Instance) (*componentNode, int) {
-	for i, child := range n.children {
-		if child.HasMatchingKey(instance) && child.HasMatchingType(instance) {
+func (node *componentNode) findChild(instance Instance) (*componentNode, int) {
+	for i, child := range node.children {
+		if child.hasMatchingKey(instance) && child.hasMatchingType(instance) {
 			return child, i
 		}
 	}

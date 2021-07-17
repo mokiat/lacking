@@ -7,6 +7,7 @@ type renderContext struct {
 	firstRender bool
 	lastRender  bool
 	stateIndex  int
+	stateDepth  int
 }
 
 func (c renderContext) isFirstRender() bool {

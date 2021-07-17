@@ -11,8 +11,7 @@ var uiCtx *ui.Context
 // component.
 func Initialize(view *ui.View, instance Instance) {
 	app := &application{
-		instance:  instance,
-		hierarchy: &hierarchy{},
+		instance: instance,
 	}
 	view.SetHandler(app)
 }
@@ -20,21 +19,20 @@ func Initialize(view *ui.View, instance Instance) {
 var _ ui.ElementResizeHandler = (*application)(nil)
 
 type application struct {
-	instance  Instance
-	hierarchy *hierarchy
-	rootNode  *componentNode
+	instance Instance
+	rootNode *componentNode
 }
 
 func (a *application) OnCreate(view *ui.View) {
 	uiCtx = view.Context()
 
-	a.rootNode = a.hierarchy.CreateComponentNode(New(Element, func() {
+	a.rootNode = createComponentNode(New(Element, func() {
 		WithData(ElementData{
 			Essence: a,
 		})
 		WithChild("root", a.instance)
 	}))
-	view.SetRoot(a.rootNode.Element())
+	view.SetRoot(a.rootNode.element)
 }
 
 func (a *application) OnShow(view *ui.View) {}
@@ -43,7 +41,7 @@ func (a *application) OnHide(view *ui.View) {}
 
 func (a *application) OnDestroy(view *ui.View) {
 	view.SetRoot(nil)
-	a.hierarchy.DestroyComponentNode(a.rootNode)
+	a.rootNode.destroy()
 	a.rootNode = nil
 
 	uiCtx = nil

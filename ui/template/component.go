@@ -33,11 +33,11 @@ func ShallowCached(delegate Component) Component {
 	return Component{
 		componentType: fmt.Sprintf("%s#%d", file, line),
 		componentFunc: func(props Properties) Instance {
-			shouldCallDelegate :=
+			shouldCallDelegate := renderCtx.lastRender ||
 				((oldData == nil) && (oldLayoutData == nil) && (oldChildren == nil)) ||
-					!isDataShallowEqual(oldData, props.data) ||
-					!isLayoutDataShallowEqual(oldLayoutData, props.layoutData) ||
-					!areChildrenEqual(oldChildren, props.children)
+				!isDataShallowEqual(oldData, props.data) ||
+				!isLayoutDataShallowEqual(oldLayoutData, props.layoutData) ||
+				!areChildrenEqual(oldChildren, props.children)
 			if !shouldCallDelegate {
 				return cachedInstance
 			}
@@ -63,11 +63,11 @@ func DeepCached(delegate Component) Component {
 	return Component{
 		componentType: fmt.Sprintf("%s#%d", file, line),
 		componentFunc: func(props Properties) Instance {
-			shouldCallDelegate :=
+			shouldCallDelegate := renderCtx.lastRender ||
 				((oldData == nil) && (oldLayoutData == nil) && (oldChildren == nil)) ||
-					!isDataDeepEqual(oldData, props.data) ||
-					!isLayoutDataDeepEqual(oldLayoutData, props.layoutData) ||
-					!areChildrenEqual(oldChildren, props.children)
+				!isDataDeepEqual(oldData, props.data) ||
+				!isLayoutDataDeepEqual(oldLayoutData, props.layoutData) ||
+				!areChildrenEqual(oldChildren, props.children)
 			if !shouldCallDelegate {
 				return cachedInstance
 			}

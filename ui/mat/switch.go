@@ -1,6 +1,10 @@
 package mat
 
-import t "github.com/mokiat/lacking/ui/template"
+import (
+	"fmt"
+
+	t "github.com/mokiat/lacking/ui/template"
+)
 
 type SwitchData struct {
 	VisibleChildIndex int
@@ -16,7 +20,10 @@ var Switch = t.ShallowCached(t.Plain(func(props t.Properties) t.Instance {
 		})
 		t.WithLayoutData(props.LayoutData())
 		if (0 <= data.VisibleChildIndex) && (data.VisibleChildIndex < len(props.Children())) {
-			t.WithChild("visible-child", props.Children()[data.VisibleChildIndex])
+			t.WithChild(
+				fmt.Sprintf("visible-child-%d", data.VisibleChildIndex),
+				props.Children()[data.VisibleChildIndex],
+			)
 		}
 	})
 }))
