@@ -12,8 +12,8 @@ func NewWindow(appWindow app.Window, locator ResourceLocator, graphics Graphics)
 	window := &Window{
 		Window:   appWindow,
 		graphics: graphics,
-		locator:  locator,
 	}
+	window.context = newContext(window, locator, graphics)
 	handler := &windowHandler{
 		Window: window,
 	}
@@ -55,10 +55,11 @@ type WindowHandler interface {
 type Window struct {
 	app.Window
 	graphics Graphics
-	locator  ResourceLocator
+	context  *Context
 
-	size            Size
-	activeViewLayer *viewLayer
+	size           Size
+	root           *Element
+	pointedElement *Element
 }
 
 // Size returns the content area of this Window.
@@ -72,57 +73,58 @@ func (w *Window) SetSize(size Size) {
 	w.Window.SetSize(size.Width, size.Height)
 }
 
-// OpenView opens a new View which replaces the current
-// one according to the specified ViewMode.
+// Context returns the Context for this Window.
 //
-// The preparation of the View is performed by the specified
-// ViewType.
-func (w *Window) OpenView(mode ViewMode, vType ViewType) error {
-	context := newContext(w, w.locator, w.graphics)
-	view := newView(w, context)
-	if err := vType.SetupView(view); err != nil {
-		return fmt.Errorf("failed to setup view: %w", err)
-	}
-
-	if w.activeViewLayer != nil {
-		switch {
-		case mode.Is(ViewModeReplace):
-			w.activeViewLayer.view.onHide()
-			w.activeViewLayer.view.onDestroy()
-			w.activeViewLayer = w.activeViewLayer.parent
-		case mode.Is(ViewModeCover):
-			w.activeViewLayer.view.onHide()
-			w.activeViewLayer.visible = false
-		}
-	}
-
-	w.activeViewLayer = &viewLayer{
-		parent:  w.activeViewLayer,
-		mode:    mode,
-		view:    view,
-		visible: true,
-	}
-	w.activeViewLayer.view.onCreate()
-	w.activeViewLayer.view.onShow()
-	w.activeViewLayer.view.onResize(w.size)
-
-	w.Invalidate()
-	return nil
+// Note that anything allocated through this Context
+// will not be released until this Window is closed.
+func (w *Window) Context() *Context {
+	return w.context
 }
 
-func (w *Window) closeView(v *View) {
-	if w.activeViewLayer == nil || w.activeViewLayer.view != v {
-		panic(fmt.Errorf("can only close top-most view"))
-	}
+// Root returns the top-most Element of this View.
+func (w *Window) Root() *Element {
+	return w.root
+}
 
-	w.activeViewLayer.view.onHide()
-	w.activeViewLayer.view.onDestroy()
-	w.activeViewLayer = w.activeViewLayer.parent
-	if w.activeViewLayer != nil {
-		w.activeViewLayer.visible = true
-		w.activeViewLayer.view.onShow()
-		w.activeViewLayer.view.onResize(w.size)
+// SetRoot changes the top-most Element of this View.
+func (w *Window) SetRoot(root *Element) {
+	if root != w.root {
+		w.pointedElement = nil
 	}
+	w.root = root
+	w.Invalidate()
+}
+
+// FindElementByID looks through the Element hierarchy tree for an Element
+// with the specified ID.
+func (w *Window) FindElementByID(id string) (*Element, bool) {
+	return w.dfsElementByID(w.root, id)
+}
+
+// GetElementByID looks through the Element hierarchy tree for an Element
+// with the specified ID. Unlike FindElementByID, this method panics if
+// such an Element cannot be found.
+func (w *Window) GetElementByID(id string) *Element {
+	element, found := w.FindElementByID(id)
+	if !found {
+		panic(fmt.Errorf("element with id %q not found", id))
+	}
+	return element
+}
+
+func (w *Window) dfsElementByID(current *Element, id string) (*Element, bool) {
+	if current == nil {
+		return nil, false
+	}
+	if current.id == id {
+		return current, true
+	}
+	for child := current.firstChild; child != nil; child = child.rightSibling {
+		if result, found := w.dfsElementByID(child, id); found {
+			return result, true
+		}
+	}
+	return nil, false
 }
 
 type windowHandler struct {
@@ -133,8 +135,11 @@ func (w *windowHandler) OnResize(size Size) {
 	w.graphics.Resize(size)
 	w.size = size
 
-	for layer := w.activeViewLayer; layer != nil && layer.visible; layer = layer.parent {
-		layer.view.onResize(size)
+	if w.root != nil {
+		w.root.SetBounds(Bounds{
+			Position: NewPosition(0, 0),
+			Size:     size,
+		})
 	}
 }
 
@@ -143,24 +148,27 @@ func (w *windowHandler) OnFramebufferResize(size Size) {
 }
 
 func (w *windowHandler) OnKeyboardEvent(event KeyboardEvent) bool {
-	if w.activeViewLayer != nil {
-		return w.activeViewLayer.view.onKeyboardEvent(event)
-	}
+	// TODO
 	return false
 }
 
 func (w *windowHandler) OnMouseEvent(event MouseEvent) bool {
-	if w.activeViewLayer != nil {
-		return w.activeViewLayer.view.onMouseEvent(event)
+	if w.root != nil {
+		return w.processMouseEvent(w.root, event)
 	}
 	return false
 }
 
 func (w *windowHandler) OnRender() {
 	w.graphics.Begin()
-	if w.activeViewLayer != nil {
-		w.renderLayer(w.activeViewLayer)
+
+	if w.root != nil {
+		w.renderElement(w.root, w.graphics.Canvas(), Bounds{
+			Position: NewPosition(0, 0),
+			Size:     w.size,
+		})
 	}
+
 	w.graphics.End()
 }
 
@@ -168,20 +176,55 @@ func (w *windowHandler) OnCloseRequested() {
 	w.Close()
 }
 
-func (w *windowHandler) renderLayer(layer *viewLayer) {
-	if layer.parent != nil && layer.parent.visible {
-		w.renderLayer(layer.parent)
+func (w *windowHandler) processMouseEvent(element *Element, event MouseEvent) bool {
+	// Check if any of the children (from top to bottom) can process the event.
+	for childElement := element.lastChild; childElement != nil; childElement = childElement.leftSibling {
+		if childBounds := childElement.Bounds(); childBounds.Contains(event.Position) {
+			event.Position = event.Position.Translate(-childBounds.X, -childBounds.Y)
+			return w.processMouseEvent(childElement, event)
+		}
 	}
 
-	layer.view.onRender(w.graphics.Canvas(), Bounds{
-		Position: NewPosition(0, 0),
-		Size:     w.size,
-	})
+	// Check if we need to change mouse ownership.
+	if element != w.pointedElement {
+		if w.pointedElement != nil {
+			w.pointedElement.onMouseEvent(MouseEvent{
+				Index:    event.Index,
+				Position: event.Position,
+				Type:     MouseEventTypeLeave,
+				Button:   event.Button,
+			})
+		}
+
+		element.onMouseEvent(MouseEvent{
+			Index:    event.Index,
+			Position: event.Position,
+			Type:     MouseEventTypeEnter,
+			Button:   event.Button,
+		})
+
+		w.pointedElement = element
+	}
+
+	// Let the current element handle the event.
+	return element.onMouseEvent(event)
 }
 
-type viewLayer struct {
-	parent  *viewLayer
-	mode    ViewMode
-	view    *View
-	visible bool
+func (w *Window) renderElement(element *Element, canvas Canvas, dirtyRegion Bounds) {
+	dirtyRegion = dirtyRegion.Intersect(element.bounds)
+	if dirtyRegion.Empty() {
+		return
+	}
+
+	canvas.Push()
+	canvas.Clip(element.bounds)
+	canvas.Translate(element.bounds.Position)
+	element.onRender(canvas)
+	if contentBounds := element.ContentBounds(); !contentBounds.Empty() {
+		canvas.Clip(contentBounds)
+		for child := element.firstChild; child != nil; child = child.rightSibling {
+			w.renderElement(child, canvas, dirtyRegion.Translate(element.bounds.Position.Inverse()))
+		}
+	}
+	canvas.Pop()
 }

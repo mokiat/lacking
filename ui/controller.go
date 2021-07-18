@@ -1,25 +1,27 @@
 package ui
 
 import (
-	"fmt"
-
 	"github.com/mokiat/lacking/app"
 )
 
+// InitFunc can be used to initialize the Window with the
+// respective Element hierarchy.
+type InitFunc func(window *Window)
+
 // NewController creates a new app.Controller that integrates
 // with the ui package to render a user interface.
-func NewController(locator ResourceLocator, graphics Graphics, initView ViewType) app.Controller {
+func NewController(locator ResourceLocator, graphics Graphics, initFn InitFunc) app.Controller {
 	return &controller{
 		graphics: graphics,
 		locator:  locator,
-		initView: initView,
+		initFn:   initFn,
 	}
 }
 
 type controller struct {
 	graphics Graphics
 	locator  ResourceLocator
-	initView ViewType
+	initFn   InitFunc
 
 	appWindow       app.Window
 	uiWindow        *Window
@@ -31,9 +33,7 @@ func (c *controller) OnCreate(appWindow app.Window) {
 
 	c.appWindow = appWindow
 	c.uiWindow, c.uiWindowHandler = NewWindow(appWindow, c.locator, c.graphics)
-	if err := c.uiWindow.OpenView(ViewModeNone, c.initView); err != nil {
-		panic(fmt.Errorf("failed to open view: %w", err))
-	}
+	c.initFn(c.uiWindow)
 }
 
 func (c *controller) OnResize(window app.Window, width, height int) {

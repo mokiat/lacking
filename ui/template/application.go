@@ -6,48 +6,25 @@ import (
 
 var uiCtx *ui.Context
 
-// Initialize wires the template package to the specified view.
-// The specified init function is used to construct the root
-// component.
-func Initialize(view *ui.View, instance Instance) {
-	app := &application{
-		instance: instance,
-	}
-	view.SetHandler(app)
-}
+// Initialize wires the template package to the specified Window.
+// The specified instance will be the root component used.
+func Initialize(window *ui.Window, instance Instance) {
+	uiCtx = window.Context()
 
-var _ ui.ElementResizeHandler = (*application)(nil)
-
-type application struct {
-	instance Instance
-	rootNode *componentNode
-}
-
-func (a *application) OnCreate(view *ui.View) {
-	uiCtx = view.Context()
-
-	a.rootNode = createComponentNode(New(Element, func() {
+	rootNode := createComponentNode(New(Element, func() {
 		WithData(ElementData{
-			Essence: a,
+			Essence: &rootElementEssence{},
 		})
-		WithChild("root", a.instance)
+		WithChild("root", instance)
 	}))
-	view.SetRoot(a.rootNode.element)
+	window.SetRoot(rootNode.element)
 }
 
-func (a *application) OnShow(view *ui.View) {}
+var _ ui.ElementResizeHandler = (*rootElementEssence)(nil)
 
-func (a *application) OnHide(view *ui.View) {}
+type rootElementEssence struct{}
 
-func (a *application) OnDestroy(view *ui.View) {
-	view.SetRoot(nil)
-	a.rootNode.destroy()
-	a.rootNode = nil
-
-	uiCtx = nil
-}
-
-func (a *application) OnResize(element *ui.Element, bounds ui.Bounds) {
+func (*rootElementEssence) OnResize(element *ui.Element, bounds ui.Bounds) {
 	for child := element.FirstChild(); child != nil; child = child.RightSibling() {
 		child.SetBounds(bounds)
 	}
