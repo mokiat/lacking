@@ -27,7 +27,7 @@ func NewVerticalLayout(settings VerticalLayoutSettings) *VerticalLayout {
 	}
 }
 
-var _ Layout = (*VerticalLayout)(nil)
+var _ ui.Layout = (*VerticalLayout)(nil)
 
 // VerticalLayout is an implementation of Layout that positions and
 // resizes elements down a vertical direction.

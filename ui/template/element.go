@@ -10,6 +10,7 @@ type ElementData struct {
 	Enabled      optional.Bool
 	Visible      optional.Bool
 	Materialized optional.Bool
+	Layout       ui.Layout
 }
 
 var Element = Plain(func(props Properties) Instance {
@@ -36,6 +37,7 @@ var Element = Plain(func(props Properties) Instance {
 	if data.Materialized.Specified {
 		element.SetMaterialized(data.Materialized.Value)
 	}
+	element.SetLayout(data.Layout)
 	element.SetLayoutConfig(props.LayoutData())
 
 	return Instance{

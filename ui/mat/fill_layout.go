@@ -7,7 +7,7 @@ func NewFillLayout() *FillLayout {
 	return &FillLayout{}
 }
 
-var _ Layout = (*FillLayout)(nil)
+var _ ui.Layout = (*FillLayout)(nil)
 
 // FillLayout is an implementation of Layout that positions and
 // resizes elements so that they take up the whole content area.

@@ -13,19 +13,17 @@ func Initialize(window *ui.Window, instance Instance) {
 
 	rootNode := createComponentNode(New(Element, func() {
 		WithData(ElementData{
-			Essence: &rootElementEssence{},
+			Layout: &fillLayout{},
 		})
 		WithChild("root", instance)
 	}))
 	window.SetRoot(rootNode.element)
 }
 
-var _ ui.ElementResizeHandler = (*rootElementEssence)(nil)
+type fillLayout struct{}
 
-type rootElementEssence struct{}
-
-func (*rootElementEssence) OnResize(element *ui.Element, bounds ui.Bounds) {
+func (l *fillLayout) Apply(element *ui.Element) {
 	for child := element.FirstChild(); child != nil; child = child.RightSibling() {
-		child.SetBounds(bounds)
+		child.SetBounds(element.Bounds())
 	}
 }

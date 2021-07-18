@@ -8,7 +8,7 @@ import (
 
 type ContainerData struct {
 	BackgroundColor optional.Color
-	Layout          Layout
+	Layout          ui.Layout
 }
 
 var Container = t.ShallowCached(t.Plain(func(props t.Properties) t.Instance {
@@ -27,27 +27,21 @@ var Container = t.ShallowCached(t.Plain(func(props t.Properties) t.Instance {
 	} else {
 		essence.backgroundColor = ui.Transparent()
 	}
-	essence.layout = data.Layout
 
 	return t.New(Element, func() {
 		t.WithData(ElementData{
 			Essence: essence,
+			Layout:  data.Layout,
 		})
 		t.WithLayoutData(props.LayoutData())
 		t.WithChildren(props.Children())
 	})
 }))
 
-var _ ui.ElementResizeHandler = (*containerEssence)(nil)
 var _ ui.ElementRenderHandler = (*containerEssence)(nil)
 
 type containerEssence struct {
 	backgroundColor ui.Color
-	layout          Layout
-}
-
-func (l *containerEssence) OnResize(element *ui.Element, bounds ui.Bounds) {
-	l.layout.Apply(element)
 }
 
 func (l *containerEssence) OnRender(element *ui.Element, canvas ui.Canvas) {

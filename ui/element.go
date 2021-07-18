@@ -59,6 +59,7 @@ type Element struct {
 	padding      Spacing
 	bounds       Bounds
 	idealSize    Size
+	layout       Layout
 	layoutConfig LayoutConfig
 }
 
@@ -144,6 +145,9 @@ func (e *Element) AppendSibling(sibling *Element) {
 	if e.parent != nil && sibling.rightSibling == nil {
 		e.parent.lastChild = sibling
 	}
+	if e.parent != nil {
+		e.parent.onBoundsChanged(e.parent.bounds)
+	}
 }
 
 // PrependChild adds the specified Element as the left-most child
@@ -162,6 +166,7 @@ func (e *Element) PrependChild(child *Element) {
 	if e.lastChild == nil {
 		e.lastChild = child
 	}
+	e.onBoundsChanged(e.bounds)
 }
 
 // AppendChild adds the specified Element as the right-most child
@@ -180,6 +185,7 @@ func (e *Element) AppendChild(child *Element) {
 		e.lastChild.rightSibling = child
 	}
 	e.lastChild = child
+	e.onBoundsChanged(e.bounds)
 }
 
 // RemoveChild removes the specified Element from the list of
@@ -204,6 +210,7 @@ func (e *Element) RemoveChild(child *Element) {
 	child.parent = nil
 	child.leftSibling = nil
 	child.rightSibling = nil
+	e.onBoundsChanged(e.bounds)
 }
 
 // Context returns the Context that is related to this Element's
@@ -226,10 +233,10 @@ func (e *Element) SetEssence(essence Essence) {
 	e.essence = essence
 }
 
-// As assigns the Essence of this Element to the target.
+// InjectEssence assigns the Essence of this Element to the target.
 // If the target is not a pointer to the correct type, this
 // method panics.
-func (e *Element) As(target interface{}) {
+func (e *Element) InjectEssence(target interface{}) {
 	if target == nil {
 		panic("target cannot be nil")
 	}
@@ -259,8 +266,12 @@ func (e *Element) Margin() Spacing {
 // SetMargin sets the amount of space that should be left
 // around the Element when positioned by a layout container.
 func (e *Element) SetMargin(margin Spacing) {
-	e.margin = margin
-	// TODO: Trigger relayout
+	if margin != e.margin {
+		e.margin = margin
+		if e.parent != nil {
+			e.parent.onBoundsChanged(e.parent.bounds)
+		}
+	}
 }
 
 // Padding returns the spacing that should be maintained
@@ -274,8 +285,12 @@ func (e *Element) Padding() Spacing {
 
 // SetPadding configures this Element's content area spacing.
 func (e *Element) SetPadding(padding Spacing) {
-	e.padding = padding
-	// TODO: Trigger relayout
+	if padding != e.padding {
+		e.padding = padding
+		if e.parent != nil {
+			e.parent.onBoundsChanged(e.parent.bounds)
+		}
+	}
 }
 
 // Bounds returns the bounds of this Element relative
@@ -289,9 +304,9 @@ func (e *Element) Bounds() Bounds {
 // to its parent. If it is a top-most element, then
 // the bounds are relative to the Window's content area.
 func (e *Element) SetBounds(bounds Bounds) {
-	e.bounds = bounds
-	if resizeHandler, ok := e.essence.(ElementResizeHandler); ok {
-		resizeHandler.OnResize(e, bounds)
+	if bounds != e.bounds {
+		e.bounds = bounds
+		e.onBoundsChanged(bounds)
 	}
 }
 
@@ -321,11 +336,29 @@ func (e *Element) IdealSize() Size {
 
 // SetIdealSize changes this Element's ideal dimensions.
 func (e *Element) SetIdealSize(size Size) {
-	e.idealSize = size
-	if e.parent != nil {
-		if resizeHandler, ok := e.parent.essence.(ElementResizeHandler); ok {
-			resizeHandler.OnResize(e.parent, e.parent.Bounds())
+	if size != e.idealSize {
+		e.idealSize = size
+		if e.parent != nil {
+			e.parent.onBoundsChanged(e.parent.bounds)
 		}
+	}
+}
+
+// Layout returns the layout configured for this Element.
+func (e *Element) Layout() Layout {
+	return e.layout
+}
+
+// SetLayout changes this Element's layout. If specified,
+// this Element's children will be positioned according to the
+// specified Layout.
+// If nil is specified, then child Elements are not repositioned
+// in any way and will use their configured bounds as positioning
+// and size.
+func (e *Element) SetLayout(layout Layout) {
+	if layout != e.layout {
+		e.layout = layout
+		e.onBoundsChanged(e.bounds)
 	}
 }
 
@@ -344,10 +377,10 @@ func (e *Element) LayoutConfig() LayoutConfig {
 // taken into consideration.
 // If nil is specified, then default layouting should be used.
 func (e *Element) SetLayoutConfig(layoutConfig LayoutConfig) {
-	e.layoutConfig = layoutConfig
-	if e.parent != nil {
-		if resizeHandler, ok := e.parent.essence.(ElementResizeHandler); ok {
-			resizeHandler.OnResize(e.parent, e.parent.Bounds())
+	if layoutConfig != e.layoutConfig {
+		e.layoutConfig = layoutConfig
+		if e.parent != nil {
+			e.parent.onBoundsChanged(e.parent.bounds)
 		}
 	}
 }
@@ -361,8 +394,10 @@ func (e *Element) Enabled() bool {
 // SetEnabled specifies whether this Element should be
 // enabled for user interaction.
 func (e *Element) SetEnabled(enabled bool) {
-	e.enabled = enabled
-	// TODO: Trigger redraw
+	if enabled != e.enabled {
+		e.enabled = enabled
+		// TODO: Trigger redraw
+	}
 }
 
 // Visible returns whether this Element should be
@@ -377,8 +412,10 @@ func (e *Element) Visible() bool {
 // SetVisible controls whether this Element should be
 // rendered.
 func (e *Element) SetVisible(visible bool) {
-	e.visible = visible
-	// TODO: Trigger redraw
+	if visible != e.visible {
+		e.visible = visible
+		// TODO: Trigger redraw
+	}
 }
 
 // Materialized controls whether this Element is at all
@@ -395,19 +432,28 @@ func (e *Element) Materialized() bool {
 // be considered in any way for rendering, events and
 // layout calculations.
 func (e *Element) SetMaterialized(materialized bool) {
-	e.materialized = materialized
-	if e.parent != nil {
-		if resizeHandler, ok := e.parent.essence.(ElementResizeHandler); ok {
-			resizeHandler.OnResize(e.parent, e.parent.Bounds())
+	if materialized != e.materialized {
+		e.materialized = materialized
+		if e.parent != nil {
+			e.parent.onBoundsChanged(e.parent.bounds)
 		}
+		// TODO: Trigger redraw
 	}
-	// TODO: Trigger redraw
 }
 
 // Destroy removes this Element from the hierarchy, as well
 // as any child Elements and releases all allocated resources.
 func (e *Element) Destroy() {
 	e.Detach()
+}
+
+func (e *Element) onBoundsChanged(bounds Bounds) {
+	if e.layout != nil {
+		e.layout.Apply(e)
+	}
+	if resizeHandler, ok := e.essence.(ElementResizeHandler); ok {
+		resizeHandler.OnResize(e, e.Bounds())
+	}
 }
 
 func (e *Element) onMouseEvent(event MouseEvent) bool {

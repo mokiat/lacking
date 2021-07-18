@@ -35,7 +35,7 @@ func NewAnchorLayout(settings AnchorLayoutSettings) *AnchorLayout {
 	return &AnchorLayout{}
 }
 
-var _ Layout = (*AnchorLayout)(nil)
+var _ ui.Layout = (*AnchorLayout)(nil)
 
 // AnchorLayout is an implementation of Layout that positions and
 // resizes elements according to border-relative coordinates.
