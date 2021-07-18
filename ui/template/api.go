@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"runtime"
+	"time"
 
 	"github.com/mokiat/lacking/ui"
 )
@@ -158,4 +159,15 @@ func Connect(delegate Component, connectFn ConnectFunc) Component {
 			})
 		},
 	}
+}
+
+func After(duration time.Duration, fn func()) {
+	node := renderCtx.node
+	time.AfterFunc(duration, func() {
+		uiCtx.Schedule(func() {
+			if node.isValid() {
+				fn()
+			}
+		})
+	})
 }

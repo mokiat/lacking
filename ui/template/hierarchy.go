@@ -64,6 +64,7 @@ func (node *componentNode) destroy() {
 		renderCtx.stateDepth++
 		renderCtx.stateIndex = 0
 	}
+	node.element = nil
 }
 
 func (node *componentNode) reconcile(instance Instance) {
@@ -140,4 +141,8 @@ func (node *componentNode) findChild(instance Instance) (*componentNode, int) {
 		}
 	}
 	return nil, -1
+}
+
+func (node *componentNode) isValid() bool {
+	return node.element != nil
 }
