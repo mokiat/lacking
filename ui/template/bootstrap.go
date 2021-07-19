@@ -1,10 +1,6 @@
 package template
 
-import (
-	"github.com/mokiat/lacking/ui"
-)
-
-var uiCtx *ui.Context
+import "github.com/mokiat/lacking/ui"
 
 // Initialize wires the template package to the specified Window.
 // The specified instance will be the root component used.
