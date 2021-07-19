@@ -2,6 +2,13 @@ package template
 
 import "github.com/mokiat/lacking/ui"
 
+var instanceCtx = &instanceContext{}
+
+type instanceContext struct {
+	parent   *instanceContext
+	instance Instance
+}
+
 // Instance represents the instantiation of a given Component.
 type Instance struct {
 	key           string
@@ -41,19 +48,19 @@ func (i Instance) hasMatchingChild(instance Instance) bool {
 // component will be freshly instantiated. If this occurs during rendering
 // the framework will reuse former instances when possible.
 func New(component Component, setupFn func()) Instance {
-	dslCtx = &dslContext{
-		parent: dslCtx,
+	instanceCtx = &instanceContext{
+		parent: instanceCtx,
 	}
 	defer func() {
-		dslCtx = dslCtx.parent
+		instanceCtx = instanceCtx.parent
 	}()
 
-	dslCtx.instance = Instance{
+	instanceCtx.instance = Instance{
 		componentType: component.componentType,
 		componentFunc: component.componentFunc,
 	}
 	setupFn()
-	return dslCtx.instance
+	return instanceCtx.instance
 }
 
 // WithContext can be used during the instantiation of an Application
@@ -76,7 +83,7 @@ func WithContext(context interface{}) {
 // done by the framework. If you'd like to pass functions, in case of
 // callbacks, they can be passed through callback data.
 func WithData(data interface{}) {
-	dslCtx.instance.data = data
+	instanceCtx.instance.data = data
 }
 
 // WithLayoutData specifies the layout data to be passed to the
@@ -89,7 +96,7 @@ func WithData(data interface{}) {
 // Your layout data should be comparable in order to enable optimizations
 // done by the framework.
 func WithLayoutData(layoutData interface{}) {
-	dslCtx.instance.layoutData = layoutData
+	instanceCtx.instance.layoutData = layoutData
 }
 
 // WithCallbackData specifies the callback data to be passed to the
@@ -102,7 +109,7 @@ func WithLayoutData(layoutData interface{}) {
 // they are not comparable in Go and as such cannot follow the
 // lifecycle of data or layout data.
 func WithCallbackData(callbackData interface{}) {
-	dslCtx.instance.callbackData = callbackData
+	instanceCtx.instance.callbackData = callbackData
 }
 
 // WithChild adds a child to the given component. The child is appended
@@ -115,11 +122,11 @@ func WithCallbackData(callbackData interface{}) {
 // to them.
 func WithChild(key string, instance Instance) {
 	instance.key = key
-	dslCtx.instance.children = append(dslCtx.instance.children, instance)
+	instanceCtx.instance.children = append(instanceCtx.instance.children, instance)
 }
 
 // WithChildren sets the children for the given component. Keep in mind that
 // any former children assigned via WithChild are replaced.
 func WithChildren(children []Instance) {
-	dslCtx.instance.children = children
+	instanceCtx.instance.children = children
 }
