@@ -8,6 +8,11 @@ import (
 
 var uiCtx *ui.Context
 
+// Window returns the underlying ui Window object.
+func Window() *ui.Window {
+	return uiCtx.Window()
+}
+
 // OpenImage delegates to the UI window context to open
 // the specified image.
 func OpenImage(uri string) ui.Image {
