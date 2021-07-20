@@ -1,10 +1,6 @@
 package template
 
-import (
-	"log"
-
-	"github.com/mokiat/lacking/ui"
-)
+import "github.com/mokiat/lacking/ui"
 
 type componentNode struct {
 	instance Instance
@@ -15,8 +11,6 @@ type componentNode struct {
 }
 
 func createComponentNode(instance Instance) *componentNode {
-	log.Printf("creating component (key: %s, type: %s)", instance.key, instance.componentType)
-
 	result := &componentNode{
 		instance: instance,
 		states:   make([][]State, 1),
@@ -46,8 +40,6 @@ func createComponentNode(instance Instance) *componentNode {
 }
 
 func (node *componentNode) destroy() {
-	log.Printf("destroying component (key: %s, type: %s)", node.instance.key, node.instance.componentType)
-
 	for _, child := range node.children {
 		child.destroy()
 	}
@@ -68,8 +60,6 @@ func (node *componentNode) destroy() {
 }
 
 func (node *componentNode) reconcile(instance Instance) {
-	log.Printf("reconciling component (key: %s, type: %s) vs (key: %s, type: %s)", node.instance.key, node.instance.componentType, instance.key, instance.componentType)
-
 	node.instance = instance
 	renderCtx = renderContext{
 		node:        node,
