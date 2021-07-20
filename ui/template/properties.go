@@ -1,6 +1,9 @@
 package template
 
-import "reflect"
+import (
+	"fmt"
+	"reflect"
+)
 
 // Properties is a holder for all data necessary to render a
 // component.
@@ -20,19 +23,19 @@ func (p Properties) Data() interface{} {
 // specified target, which should be a pointer to the correct type.
 func (p Properties) InjectData(target interface{}) {
 	if target == nil {
-		panic("target cannot be nil")
+		panic(fmt.Errorf("target cannot be nil"))
 	}
 	value := reflect.ValueOf(target)
 	valueType := value.Type()
 	if valueType.Kind() != reflect.Ptr {
-		panic("target must be a pointer")
+		panic(fmt.Errorf("target %T must be a pointer", target))
 	}
 	if value.IsNil() {
-		panic("target pointer cannot be nil")
+		panic(fmt.Errorf("target pointer cannot be nil"))
 	}
 	dataType := reflect.TypeOf(p.data)
 	if !dataType.AssignableTo(valueType.Elem()) {
-		panic("cannot assign data to specified type")
+		panic(fmt.Errorf("cannot assign data %T to specified type %s", p.data, valueType.Elem()))
 	}
 	value.Elem().Set(reflect.ValueOf(p.data))
 }
@@ -46,19 +49,19 @@ func (p Properties) LayoutData() interface{} {
 // specified target, which should be a pointer to the correct type.
 func (p Properties) InjectLayoutData(target interface{}) {
 	if target == nil {
-		panic("target cannot be nil")
+		panic(fmt.Errorf("target cannot be nil"))
 	}
 	value := reflect.ValueOf(target)
 	valueType := value.Type()
 	if valueType.Kind() != reflect.Ptr {
-		panic("target must be a pointer")
+		panic(fmt.Errorf("target %T must be a pointer", target))
 	}
 	if value.IsNil() {
-		panic("target pointer cannot be nil")
+		panic(fmt.Errorf("target pointer cannot be nil"))
 	}
 	layoutDataType := reflect.TypeOf(p.layoutData)
 	if !layoutDataType.AssignableTo(valueType.Elem()) {
-		panic("cannot assign layout data to specified type")
+		panic(fmt.Errorf("cannot assign layout data %T to specified type %s", p.data, valueType.Elem()))
 	}
 	value.Elem().Set(reflect.ValueOf(p.layoutData))
 }
@@ -73,19 +76,19 @@ func (p Properties) CallbackData() interface{} {
 // the specified target, which should be a pointer to the correct type.
 func (p Properties) InjectCallbackData(target interface{}) {
 	if target == nil {
-		panic("target cannot be nil")
+		panic(fmt.Errorf("target cannot be nil"))
 	}
 	value := reflect.ValueOf(target)
 	valueType := value.Type()
 	if valueType.Kind() != reflect.Ptr {
-		panic("target must be a pointer")
+		panic(fmt.Errorf("target %T must be a pointer", target))
 	}
 	if value.IsNil() {
-		panic("target pointer cannot be nil")
+		panic(fmt.Errorf("target pointer cannot be nil"))
 	}
 	callbackDataType := reflect.TypeOf(p.callbackData)
 	if !callbackDataType.AssignableTo(valueType.Elem()) {
-		panic("cannot assign callback data to specified type")
+		panic(fmt.Errorf("cannot assign callback data %T to specified type %s", p.data, valueType.Elem()))
 	}
 	value.Elem().Set(reflect.ValueOf(p.callbackData))
 }
