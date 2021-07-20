@@ -14,7 +14,7 @@ type ButtonCallbackData struct {
 	ClickListener ClickListener
 }
 
-var Button = t.ShallowCached(t.Plain(func(props t.Properties) t.Instance {
+var Button = t.ShallowCached(t.Define(func(props t.Properties) t.Instance {
 	var (
 		data         ButtonData
 		callbackData ButtonCallbackData

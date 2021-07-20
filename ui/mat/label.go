@@ -13,7 +13,7 @@ type LabelData struct {
 	Text      string
 }
 
-var Label = t.ShallowCached(t.Plain(func(props t.Properties) t.Instance {
+var Label = t.ShallowCached(t.Define(func(props t.Properties) t.Instance {
 	var (
 		data    LabelData
 		essence *labelEssence

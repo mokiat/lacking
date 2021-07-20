@@ -42,7 +42,7 @@ const (
 	ImageModeCover
 )
 
-var Picture = t.ShallowCached(t.Plain(func(props t.Properties) t.Instance {
+var Picture = t.ShallowCached(t.Define(func(props t.Properties) t.Instance {
 	var data PictureData
 	props.InjectData(&data)
 

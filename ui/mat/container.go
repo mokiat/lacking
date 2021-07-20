@@ -11,7 +11,7 @@ type ContainerData struct {
 	Layout          ui.Layout
 }
 
-var Container = t.ShallowCached(t.Plain(func(props t.Properties) t.Instance {
+var Container = t.ShallowCached(t.Define(func(props t.Properties) t.Instance {
 	var (
 		data    ContainerData
 		essence *containerEssence

@@ -6,12 +6,16 @@ import (
 	"runtime"
 )
 
+// Component represents a definition for a component.
 type Component struct {
 	componentType string
 	componentFunc ComponentFunc
 }
 
-func Plain(fn ComponentFunc) Component {
+// Define can be used to describe a new component. The provided component
+// function (or render function) will be called by the framework to
+// initialize, reconcicle, or destroy a component instance.
+func Define(fn ComponentFunc) Component {
 	_, file, line, _ := runtime.Caller(1)
 	return Component{
 		componentType: fmt.Sprintf("%s#%d", file, line),
@@ -19,8 +23,13 @@ func Plain(fn ComponentFunc) Component {
 	}
 }
 
+// ComponentFunc holds the logic and layouting of the component.
 type ComponentFunc func(props Properties) Instance
 
+// ShallowCached can be used to wrap a component and optimize
+// reconciliation by avoiding the rerendering of the component
+// if the data and layout data are equal to their previous values
+// when shallowly (==) compared.
 func ShallowCached(delegate Component) Component {
 	var (
 		oldData        interface{}
@@ -51,6 +60,10 @@ func ShallowCached(delegate Component) Component {
 	}
 }
 
+// DeepCached can be used to wrap a component and optimize
+// reconciliation by avoiding the rerendering of the component
+// if the data and layout data are equal to their previous values
+// when deeply compared.
 func DeepCached(delegate Component) Component {
 	var (
 		oldData        interface{}

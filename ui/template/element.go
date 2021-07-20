@@ -5,6 +5,8 @@ import (
 	"github.com/mokiat/lacking/ui/optional"
 )
 
+// ElementData is the struct that should be used when configuring
+// an Element component's data.
 type ElementData struct {
 	Essence      ui.Essence
 	Enabled      optional.Bool
@@ -13,7 +15,10 @@ type ElementData struct {
 	Layout       ui.Layout
 }
 
-var Element = Plain(func(props Properties) Instance {
+// Element represents the most basic component, which is translated
+// to an ui Element. All higher-order components will eventually
+// boil down to an Element.
+var Element = Define(func(props Properties) Instance {
 	var element *ui.Element
 
 	UseState(func() interface{} {

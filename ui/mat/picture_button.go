@@ -20,7 +20,7 @@ type PictureButtonCallbackData struct {
 	ClickListener ClickListener
 }
 
-var PictureButton = t.ShallowCached(t.Plain(func(props t.Properties) t.Instance {
+var PictureButton = t.ShallowCached(t.Define(func(props t.Properties) t.Instance {
 	var (
 		data         PictureButtonData
 		callbackData PictureButtonCallbackData

@@ -10,7 +10,7 @@ type ViewData struct {
 	FontSrc         string
 }
 
-var View = t.ShallowCached(t.Plain(func(props t.Properties) t.Instance {
+var View = t.ShallowCached(t.Define(func(props t.Properties) t.Instance {
 	var data ViewData
 	props.InjectData(&data)
 
