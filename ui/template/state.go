@@ -3,19 +3,34 @@ package template
 import (
 	"fmt"
 	"reflect"
-	"runtime"
 )
 
-var (
-	rootState    *ReducedState
-	globalStates []*ReducedState
-)
-
+// State represents a persistent state of a component. Every render
+// operation for a component would return the same sequence of states.
 type State struct {
 	node  *componentNode
 	value interface{}
 }
 
+// Set changes the value stored in this State. Using this function
+// will force the component to be scheduled for reconciliation.
+func (s *State) Set(value interface{}) {
+	s.value = value
+	uiCtx.Schedule(func() {
+		if s.node.isValid() {
+			s.node.reconcile(s.node.instance)
+		}
+	})
+}
+
+// Ge returns the current value stored in this State.
+func (s *State) Get() interface{} {
+	return s.value
+}
+
+// Inject is a helper function that can be used to inject the value of
+// this state to a variable of the correct type. The specified target
+// needs to be a pointer to the type of the value that was stored.
 func (s *State) Inject(target interface{}) {
 	if target == nil {
 		panic("target cannot be nil")
@@ -35,39 +50,14 @@ func (s *State) Inject(target interface{}) {
 	value.Elem().Set(reflect.ValueOf(s.value))
 }
 
-func (s *State) Get() interface{} {
-	return s.value
-}
-
-func (s *State) Set(value interface{}) {
-	s.value = value
-	// TODO: Schedule componentNode for reconciliation
-}
-
-type ReducedState struct {
-	value   interface{}
-	reducer Reducer
-}
-
-func (s *ReducedState) Inject(target interface{}) {
-	if target == nil {
-		panic("target cannot be nil")
-	}
-	value := reflect.ValueOf(target)
-	valueType := value.Type()
-	if valueType.Kind() != reflect.Ptr {
-		panic("target must be a pointer")
-	}
-	if value.IsNil() {
-		panic("target pointer cannot be nil")
-	}
-	stateType := reflect.TypeOf(s.value)
-	if !stateType.AssignableTo(valueType.Elem()) {
-		panic("cannot assign reduced state to specified type")
-	}
-	value.Elem().Set(reflect.ValueOf(s.value))
-}
-
+// UseState registers a new State object to the given component.
+//
+// During component initialization, the closure function will be called
+// to retrieve an initial value to be assigned to the state.
+//
+// The order in which this function is called inside a component's render
+// function is important. As such, every component render should issue
+// exactly the same UseState calls and in the exacly the same order.
 func UseState(fn func() interface{}) *State {
 	if renderCtx.firstRender {
 		renderCtx.node.states[renderCtx.stateDepth] = append(renderCtx.node.states[renderCtx.stateDepth], State{
@@ -78,68 +68,4 @@ func UseState(fn func() interface{}) *State {
 	result := &renderCtx.node.states[renderCtx.stateDepth][renderCtx.stateIndex]
 	renderCtx.stateIndex++
 	return result
-}
-
-func InitGlobalState(state *ReducedState) {
-	rootState = state
-}
-
-func NewReducedState(reducer Reducer) *ReducedState {
-	result := &ReducedState{
-		reducer: reducer,
-		value:   reducer(nil, nil),
-	}
-	globalStates = append(globalStates, result)
-	return result
-}
-
-func Dispatch(action interface{}) {
-	invalidateGlobalNodes := false
-	for _, state := range globalStates {
-		newValue := state.reducer(state, action)
-		if newValue != state.value {
-			state.value = newValue
-			invalidateGlobalNodes = true
-		}
-	}
-	if invalidateGlobalNodes {
-		for _, node := range globalStateNodes {
-			node.reconcile(node.instance)
-		}
-	}
-}
-
-var globalStateNodes []*componentNode
-
-type Reducer func(state *ReducedState, action interface{}) interface{}
-
-type ConnectFunc func(props Properties, rootState *ReducedState) (data interface{}, callbackData interface{})
-
-func Connect(delegate Component, connectFn ConnectFunc) Component {
-	_, file, line, _ := runtime.Caller(1)
-	return Component{
-		componentType: fmt.Sprintf("%s#%d", file, line),
-		componentFunc: func(props Properties) Instance {
-			Once(func() {
-				globalStateNodes = append(globalStateNodes, renderCtx.node)
-			})
-
-			Defer(func() {
-				for i, node := range globalStateNodes {
-					if node == renderCtx.node {
-						globalStateNodes[i] = globalStateNodes[len(globalStateNodes)-1]
-						globalStateNodes = globalStateNodes[:len(globalStateNodes)-1]
-					}
-				}
-			})
-
-			data, callbackData := connectFn(props, rootState)
-			return delegate.componentFunc(Properties{
-				data:         data,
-				layoutData:   props.layoutData,
-				callbackData: callbackData,
-				children:     props.children,
-			})
-		},
-	}
 }

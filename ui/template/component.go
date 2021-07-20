@@ -16,9 +16,8 @@ type Component struct {
 // function (or render function) will be called by the framework to
 // initialize, reconcicle, or destroy a component instance.
 func Define(fn ComponentFunc) Component {
-	_, file, line, _ := runtime.Caller(1)
 	return Component{
-		componentType: fmt.Sprintf("%s#%d", file, line),
+		componentType: evaluateComponentType(),
 		componentFunc: fn,
 	}
 }
@@ -38,9 +37,8 @@ func ShallowCached(delegate Component) Component {
 		cachedInstance Instance
 	)
 
-	_, file, line, _ := runtime.Caller(1)
 	return Component{
-		componentType: fmt.Sprintf("%s#%d", file, line),
+		componentType: evaluateComponentType(),
 		componentFunc: func(props Properties) Instance {
 			shouldCallDelegate := renderCtx.lastRender ||
 				((oldData == nil) && (oldLayoutData == nil) && (oldChildren == nil)) ||
@@ -72,9 +70,8 @@ func DeepCached(delegate Component) Component {
 		cachedInstance Instance
 	)
 
-	_, file, line, _ := runtime.Caller(1)
 	return Component{
-		componentType: fmt.Sprintf("%s#%d", file, line),
+		componentType: evaluateComponentType(),
 		componentFunc: func(props Properties) Instance {
 			shouldCallDelegate := renderCtx.lastRender ||
 				((oldData == nil) && (oldLayoutData == nil) && (oldChildren == nil)) ||
@@ -92,6 +89,11 @@ func DeepCached(delegate Component) Component {
 			return cachedInstance
 		},
 	}
+}
+
+func evaluateComponentType() string {
+	_, file, line, _ := runtime.Caller(2)
+	return fmt.Sprintf("%s#%d", file, line)
 }
 
 func isDataShallowEqual(oldData, newData interface{}) bool {
