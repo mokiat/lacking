@@ -182,6 +182,11 @@ func White() Color {
 	return RGB(255, 255, 255)
 }
 
+// Transparent returns a fully transparent color.
+func Transparent() Color {
+	return RGBA(0, 0, 0, 0)
+}
+
 // Color represents a 32bit color (8 bits per channel).
 type Color struct {
 	R uint8
@@ -191,8 +196,18 @@ type Color struct {
 }
 
 // Transparent returns whether this color is transparent.
-// (i.e. has an alpha value smaller than the maximum)
+//
+// A transparent color is one that is not at all visible
+// (i.e. has an alpha value equal to zero).
 func (c Color) Transparent() bool {
+	return c.A == 0
+}
+
+// Translucent returns whether this color is translucent.
+//
+// A translucent color is one that is not fully visible
+// (i.e. has an alpha value smaller than the maximum).
+func (c Color) Translucent() bool {
 	return c.A < 255
 }
 

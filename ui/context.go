@@ -64,42 +64,6 @@ func (c *Context) CreateElement() *Element {
 	return newElement(c)
 }
 
-// OpenTemplate opens the Template at the specified URI location.
-//
-// The URI is interpreted according to the used ResourceLocator.
-//
-// The returned template might be cached within the this Context, so
-// make sure to destroy the owner of this Context, once done.
-func (c *Context) OpenTemplate(uri string) (*Template, error) {
-	in, err := c.locator.OpenResource(uri)
-	if err != nil {
-		return nil, fmt.Errorf("failed to open resource: %w", err)
-	}
-	defer in.Close()
-
-	template, err := parseTemplate(in)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse template: %w", err)
-	}
-	return template, err
-}
-
-// InstantiateTemplate creates the Control hierarchy that is represented
-// by the specified Template. The hierarchy is not attached to anything
-// and it is up to the caller to attach the root Element of the hierarchy
-// to some working Element.
-func (c *Context) InstantiateTemplate(template *Template, layoutConfig LayoutConfig) (Control, error) {
-	builder, ok := NamedControlBuilder(template.Name())
-	if !ok {
-		return nil, fmt.Errorf("could not find builder for %q", template.Name())
-	}
-	control, err := builder.Build(c, template, layoutConfig)
-	if err != nil {
-		return nil, fmt.Errorf("failed to build %q: %w", template.Name(), err)
-	}
-	return control, nil
-}
-
 // OpenImage opens the Image at the specified URI location.
 //
 // The URI is interpreted according to the used ResourceLocator.
