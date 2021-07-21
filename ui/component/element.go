@@ -1,4 +1,4 @@
-package template
+package component
 
 import (
 	"github.com/mokiat/lacking/ui"

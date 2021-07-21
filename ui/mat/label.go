@@ -2,8 +2,8 @@ package mat
 
 import (
 	"github.com/mokiat/lacking/ui"
+	co "github.com/mokiat/lacking/ui/component"
 	"github.com/mokiat/lacking/ui/optional"
-	t "github.com/mokiat/lacking/ui/template"
 )
 
 type LabelData struct {
@@ -13,14 +13,14 @@ type LabelData struct {
 	Text      string
 }
 
-var Label = t.ShallowCached(t.Define(func(props t.Properties) t.Instance {
+var Label = co.ShallowCached(co.Define(func(props co.Properties) co.Instance {
 	var (
 		data    LabelData
 		essence *labelEssence
 	)
 	props.InjectData(&data)
 
-	t.UseState(func() interface{} {
+	co.UseState(func() interface{} {
 		return &labelEssence{}
 	}).Inject(&essence)
 
@@ -37,12 +37,12 @@ var Label = t.ShallowCached(t.Define(func(props t.Properties) t.Instance {
 	}
 	essence.text = data.Text
 
-	return t.New(Element, func() {
-		t.WithData(ElementData{
+	return co.New(Element, func() {
+		co.WithData(ElementData{
 			Essence: essence,
 		})
-		t.WithLayoutData(props.LayoutData())
-		t.WithChildren(props.Children())
+		co.WithLayoutData(props.LayoutData())
+		co.WithChildren(props.Children())
 	})
 }))
 

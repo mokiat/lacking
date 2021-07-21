@@ -1,8 +1,8 @@
-package template
+package component
 
 import "github.com/mokiat/lacking/ui"
 
-// Initialize wires the template package to the specified Window.
+// Initialize wires the framewprl to the specified ui Window.
 // The specified instance will be the root component used.
 func Initialize(window *ui.Window, instance Instance) {
 	uiCtx = window.Context()

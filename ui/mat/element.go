@@ -1,7 +1,7 @@
 package mat
 
-import t "github.com/mokiat/lacking/ui/template"
+import co "github.com/mokiat/lacking/ui/component"
 
-type ElementData = t.ElementData
+type ElementData = co.ElementData
 
-var Element = t.ShallowCached(t.Element)
+var Element = co.ShallowCached(co.Element)

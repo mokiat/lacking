@@ -2,8 +2,8 @@ package mat
 
 import (
 	"github.com/mokiat/lacking/ui"
+	co "github.com/mokiat/lacking/ui/component"
 	"github.com/mokiat/lacking/ui/optional"
-	t "github.com/mokiat/lacking/ui/template"
 )
 
 type PictureButtonData struct {
@@ -20,7 +20,7 @@ type PictureButtonCallbackData struct {
 	ClickListener ClickListener
 }
 
-var PictureButton = t.ShallowCached(t.Define(func(props t.Properties) t.Instance {
+var PictureButton = co.ShallowCached(co.Define(func(props co.Properties) co.Instance {
 	var (
 		data         PictureButtonData
 		callbackData PictureButtonCallbackData
@@ -29,7 +29,7 @@ var PictureButton = t.ShallowCached(t.Define(func(props t.Properties) t.Instance
 	props.InjectData(&data)
 	props.InjectCallbackData(&callbackData)
 
-	t.UseState(func() interface{} {
+	co.UseState(func() interface{} {
 		return &pictureButtonEssence{
 			state:     buttonStateUp,
 			fontSize:  24,
@@ -50,12 +50,12 @@ var PictureButton = t.ShallowCached(t.Define(func(props t.Properties) t.Instance
 	essence.text = data.Text
 	essence.clickListener = callbackData.ClickListener
 
-	return t.New(Element, func() {
-		t.WithData(ElementData{
+	return co.New(Element, func() {
+		co.WithData(ElementData{
 			Essence: essence,
 		})
-		t.WithLayoutData(props.LayoutData())
-		t.WithChildren(props.Children())
+		co.WithLayoutData(props.LayoutData())
+		co.WithChildren(props.Children())
 	})
 }))
 

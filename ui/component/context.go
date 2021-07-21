@@ -1,4 +1,4 @@
-package template
+package component
 
 import (
 	"fmt"
@@ -19,8 +19,7 @@ func init() {
 //
 // The context is stored according to its type and there can
 // be only one call per struct type. Once a context is set
-// it is persisted for the whole lifecycle of the template
-// package.
+// it is persisted for the whole lifecycle of the framework.
 //
 // Contexts should be used only for global configurations
 // that will not change, like graphics handles or translation

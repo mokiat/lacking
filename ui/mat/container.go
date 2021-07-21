@@ -2,8 +2,8 @@ package mat
 
 import (
 	"github.com/mokiat/lacking/ui"
+	co "github.com/mokiat/lacking/ui/component"
 	"github.com/mokiat/lacking/ui/optional"
-	t "github.com/mokiat/lacking/ui/template"
 )
 
 type ContainerData struct {
@@ -11,14 +11,14 @@ type ContainerData struct {
 	Layout          ui.Layout
 }
 
-var Container = t.ShallowCached(t.Define(func(props t.Properties) t.Instance {
+var Container = co.ShallowCached(co.Define(func(props co.Properties) co.Instance {
 	var (
 		data    ContainerData
 		essence *containerEssence
 	)
 	props.InjectData(&data)
 
-	t.UseState(func() interface{} {
+	co.UseState(func() interface{} {
 		return &containerEssence{}
 	}).Inject(&essence)
 
@@ -28,13 +28,13 @@ var Container = t.ShallowCached(t.Define(func(props t.Properties) t.Instance {
 		essence.backgroundColor = ui.Transparent()
 	}
 
-	return t.New(Element, func() {
-		t.WithData(ElementData{
+	return co.New(Element, func() {
+		co.WithData(ElementData{
 			Essence: essence,
 			Layout:  data.Layout,
 		})
-		t.WithLayoutData(props.LayoutData())
-		t.WithChildren(props.Children())
+		co.WithLayoutData(props.LayoutData())
+		co.WithChildren(props.Children())
 	})
 }))
 

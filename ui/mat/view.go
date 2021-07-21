@@ -1,8 +1,8 @@
 package mat
 
 import (
+	co "github.com/mokiat/lacking/ui/component"
 	"github.com/mokiat/lacking/ui/optional"
-	t "github.com/mokiat/lacking/ui/template"
 )
 
 type ViewData struct {
@@ -10,20 +10,20 @@ type ViewData struct {
 	FontSrc         string
 }
 
-var View = t.ShallowCached(t.Define(func(props t.Properties) t.Instance {
+var View = co.ShallowCached(co.Define(func(props co.Properties) co.Instance {
 	var data ViewData
 	props.InjectData(&data)
 
 	if data.FontSrc != "" {
-		t.OpenFontCollection(data.FontSrc)
+		co.OpenFontCollection(data.FontSrc)
 	}
 
-	return t.New(Container, func() {
-		t.WithData(ContainerData{
+	return co.New(Container, func() {
+		co.WithData(ContainerData{
 			BackgroundColor: data.BackgroundColor,
 			Layout:          NewFillLayout(),
 		})
-		t.WithLayoutData(props.LayoutData())
-		t.WithChildren(props.Children())
+		co.WithLayoutData(props.LayoutData())
+		co.WithChildren(props.Children())
 	})
 }))

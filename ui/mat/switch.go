@@ -3,24 +3,24 @@ package mat
 import (
 	"fmt"
 
-	t "github.com/mokiat/lacking/ui/template"
+	co "github.com/mokiat/lacking/ui/component"
 )
 
 type SwitchData struct {
 	VisibleChildIndex int
 }
 
-var Switch = t.ShallowCached(t.Define(func(props t.Properties) t.Instance {
+var Switch = co.ShallowCached(co.Define(func(props co.Properties) co.Instance {
 	var data SwitchData
 	props.InjectData(&data)
 
-	return t.New(Container, func() {
-		t.WithData(ContainerData{
+	return co.New(Container, func() {
+		co.WithData(ContainerData{
 			Layout: NewFillLayout(),
 		})
-		t.WithLayoutData(props.LayoutData())
+		co.WithLayoutData(props.LayoutData())
 		if (0 <= data.VisibleChildIndex) && (data.VisibleChildIndex < len(props.Children())) {
-			t.WithChild(
+			co.WithChild(
 				fmt.Sprintf("visible-child-%d", data.VisibleChildIndex),
 				props.Children()[data.VisibleChildIndex],
 			)

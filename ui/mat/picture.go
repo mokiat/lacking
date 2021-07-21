@@ -2,7 +2,7 @@ package mat
 
 import (
 	"github.com/mokiat/lacking/ui"
-	t "github.com/mokiat/lacking/ui/template"
+	co "github.com/mokiat/lacking/ui/component"
 )
 
 // PictureData represents the available data properties for the
@@ -42,18 +42,18 @@ const (
 	ImageModeCover
 )
 
-var Picture = t.ShallowCached(t.Define(func(props t.Properties) t.Instance {
+var Picture = co.ShallowCached(co.Define(func(props co.Properties) co.Instance {
 	var data PictureData
 	props.InjectData(&data)
 
-	return t.New(Element, func() {
-		t.WithData(t.ElementData{
+	return co.New(Element, func() {
+		co.WithData(co.ElementData{
 			Essence: &pictureEssence{
 				PictureData: data,
 			},
 		})
-		t.WithLayoutData(props.LayoutData())
-		t.WithChildren(props.Children())
+		co.WithLayoutData(props.LayoutData())
+		co.WithChildren(props.Children())
 	})
 }))
 
