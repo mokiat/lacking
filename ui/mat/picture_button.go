@@ -13,6 +13,7 @@ type PictureButtonData struct {
 	UpImage   ui.Image
 	OverImage ui.Image
 	DownImage ui.Image
+	Padding   ui.Spacing
 	Text      string
 }
 
@@ -53,6 +54,7 @@ var PictureButton = co.ShallowCached(co.Define(func(props co.Properties) co.Inst
 	return co.New(Element, func() {
 		co.WithData(ElementData{
 			Essence: essence,
+			Padding: data.Padding,
 		})
 		co.WithLayoutData(props.LayoutData())
 		co.WithChildren(props.Children())
