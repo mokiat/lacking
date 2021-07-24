@@ -18,7 +18,7 @@ var Label = co.ShallowCached(co.Define(func(props co.Properties) co.Instance {
 		data    LabelData
 		essence *labelEssence
 	)
-	props.InjectData(&data)
+	props.InjectOptionalData(&data, LabelData{})
 
 	co.UseState(func() interface{} {
 		return &labelEssence{}

@@ -1,30 +1,6 @@
 package mat
 
-import (
-	"fmt"
-
-	"github.com/mokiat/lacking/ui"
-	"github.com/mokiat/lacking/ui/optional"
-)
-
-// AnchorLayoutData represents a layout configuration for a component
-// that is added to a Container with layout set to AnchorLayout.
-type AnchorLayoutData struct {
-	Left                     optional.Int
-	LeftRelation             Relation
-	Right                    optional.Int
-	RightRelation            Relation
-	Top                      optional.Int
-	TopRelation              Relation
-	Bottom                   optional.Int
-	BottomRelation           Relation
-	HorizontalCenter         optional.Int
-	HorizontalCenterRelation Relation
-	VerticalCenter           optional.Int
-	VerticalCenterRelation   Relation
-	Width                    optional.Int
-	Height                   optional.Int
-}
+import "github.com/mokiat/lacking/ui"
 
 // AnchorLayoutSettings contains optional configurations for the
 // AnchorLayout.
@@ -43,11 +19,10 @@ type AnchorLayout struct{}
 
 // Apply applies this layout to the specified Element.
 func (l *AnchorLayout) Apply(element *ui.Element) {
-	// TODO: Consider content area
 	// TODO: Consider children's margin settings
 
 	for childElement := element.FirstChild(); childElement != nil; childElement = childElement.RightSibling() {
-		layoutConfig := childElement.LayoutConfig().(AnchorLayoutData)
+		layoutConfig := childElement.LayoutConfig().(LayoutData)
 		childBounds := ui.Bounds{}
 
 		// horizontal
@@ -55,11 +30,11 @@ func (l *AnchorLayout) Apply(element *ui.Element) {
 			childBounds.Width = layoutConfig.Width.Value
 			switch {
 			case layoutConfig.Left.Specified:
-				childBounds.X = l.horizontalPosition(element, layoutConfig.Left.Value, layoutConfig.LeftRelation)
+				childBounds.X = l.leftPosition(element, layoutConfig.Left.Value)
 			case layoutConfig.Right.Specified:
-				childBounds.X = l.horizontalPosition(element, layoutConfig.Right.Value, layoutConfig.RightRelation) - childBounds.Width
+				childBounds.X = l.rightPosition(element, layoutConfig.Right.Value) - childBounds.Width
 			case layoutConfig.HorizontalCenter.Specified:
-				childBounds.X = l.horizontalPosition(element, layoutConfig.HorizontalCenter.Value, layoutConfig.HorizontalCenterRelation) - childBounds.Width/2
+				childBounds.X = l.horizontalCenterPosition(element, layoutConfig.HorizontalCenter.Value) - childBounds.Width/2
 			}
 		}
 
@@ -68,27 +43,27 @@ func (l *AnchorLayout) Apply(element *ui.Element) {
 			childBounds.Height = layoutConfig.Height.Value
 			switch {
 			case layoutConfig.Top.Specified:
-				childBounds.Y = l.verticalPosition(element, layoutConfig.Top.Value, layoutConfig.TopRelation)
+				childBounds.Y = l.topPosition(element, layoutConfig.Top.Value)
 			case layoutConfig.Bottom.Specified:
-				childBounds.Y = l.verticalPosition(element, layoutConfig.Bottom.Value, layoutConfig.BottomRelation) - childBounds.Height
+				childBounds.Y = l.bottomPosition(element, layoutConfig.Bottom.Value) - childBounds.Height
 			case layoutConfig.VerticalCenter.Specified:
-				childBounds.Y = l.verticalPosition(element, layoutConfig.VerticalCenter.Value, layoutConfig.VerticalCenterRelation) - childBounds.Height/2
+				childBounds.Y = l.verticalCenterPosition(element, layoutConfig.VerticalCenter.Value) - childBounds.Height/2
 			}
 		}
 
 		if layoutConfig.Left.Specified {
-			childBounds.X = l.horizontalPosition(element, layoutConfig.Left.Value, layoutConfig.LeftRelation)
+			childBounds.X = l.leftPosition(element, layoutConfig.Left.Value)
 			switch {
 			case layoutConfig.Right.Specified:
-				childBounds.Width = l.horizontalPosition(element, layoutConfig.Right.Value, layoutConfig.RightRelation) - childBounds.X
+				childBounds.Width = l.rightPosition(element, layoutConfig.Right.Value) - childBounds.X
 			}
 		}
 
 		if layoutConfig.Top.Specified {
-			childBounds.Y = l.verticalPosition(element, layoutConfig.Top.Value, layoutConfig.TopRelation)
+			childBounds.Y = l.topPosition(element, layoutConfig.Top.Value)
 			switch {
 			case layoutConfig.Bottom.Specified:
-				childBounds.Height = l.verticalPosition(element, layoutConfig.Bottom.Value, layoutConfig.BottomRelation) - childBounds.Y
+				childBounds.Height = l.bottomPosition(element, layoutConfig.Bottom.Value) - childBounds.Y
 			}
 		}
 
@@ -96,30 +71,32 @@ func (l *AnchorLayout) Apply(element *ui.Element) {
 	}
 }
 
-func (l *AnchorLayout) horizontalPosition(element *ui.Element, value int, relativeTo Relation) int {
-	bounds := element.Bounds()
-	switch relativeTo {
-	case RelationLeft:
-		return value
-	case RelationRight:
-		return value + bounds.Width
-	case RelationCenter:
-		return value + bounds.Width/2
-	default:
-		panic(fmt.Errorf("unexpected horizontal relative to: %d", relativeTo))
-	}
+func (l *AnchorLayout) leftPosition(element *ui.Element, value int) int {
+	bounds := element.ContentBounds()
+	return bounds.X + value
 }
 
-func (l *AnchorLayout) verticalPosition(element *ui.Element, value int, relativeTo Relation) int {
-	bounds := element.Bounds()
-	switch relativeTo {
-	case RelationTop:
-		return value
-	case RelationBottom:
-		return value + bounds.Height
-	case RelationCenter:
-		return value + bounds.Height/2
-	default:
-		panic(fmt.Errorf("unexpected vertical relative to: %d", relativeTo))
-	}
+func (l *AnchorLayout) rightPosition(element *ui.Element, value int) int {
+	bounds := element.ContentBounds()
+	return bounds.X + bounds.Width - value
+}
+
+func (l *AnchorLayout) topPosition(element *ui.Element, value int) int {
+	bounds := element.ContentBounds()
+	return bounds.Y + value
+}
+
+func (l *AnchorLayout) bottomPosition(element *ui.Element, value int) int {
+	bounds := element.ContentBounds()
+	return bounds.Y + bounds.Height - value
+}
+
+func (l *AnchorLayout) horizontalCenterPosition(element *ui.Element, value int) int {
+	bounds := element.ContentBounds()
+	return bounds.X + bounds.Width/2 + value
+}
+
+func (l *AnchorLayout) verticalCenterPosition(element *ui.Element, value int) int {
+	bounds := element.ContentBounds()
+	return bounds.Y + bounds.Height/2 + value
 }

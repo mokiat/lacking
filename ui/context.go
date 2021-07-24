@@ -13,6 +13,9 @@ func newContext(window *Window, locator ResourceLocator, graphics Graphics) *Con
 		window:   window,
 		graphics: graphics,
 		locator:  locator,
+
+		images:          make(map[string]Image),
+		fontCollections: make(map[string]*FontCollection),
 	}
 }
 
@@ -21,7 +24,10 @@ type Context struct {
 	window   *Window
 	graphics Graphics
 	locator  ResourceLocator
-	fonts    []Font
+
+	images          map[string]Image
+	fontCollections map[string]*FontCollection
+	fonts           []Font
 }
 
 // Window returns the Window that this Context is a part of.
@@ -73,6 +79,10 @@ func (c *Context) CreateElement() *Element {
 // will be released. Keep in mind that just dereferencing the owner is not
 // sufficient, as cleanup would not be performed in such cases.
 func (c *Context) OpenImage(uri string) (Image, error) {
+	if result, ok := c.images[uri]; ok {
+		return result, nil
+	}
+
 	in, err := c.locator.OpenResource(uri)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open resource: %w", err)
@@ -88,6 +98,8 @@ func (c *Context) OpenImage(uri string) (Image, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to create graphics image: %w", err)
 	}
+	c.images[uri] = result
+
 	return result, nil
 }
 
@@ -100,6 +112,10 @@ func (c *Context) OpenImage(uri string) (Image, error) {
 // will be released. Keep in mind that just dereferencing the owner is not
 // sufficient, as cleanup would not be performed in such cases.
 func (c *Context) OpenFontCollection(uri string) (*FontCollection, error) {
+	if result, ok := c.fontCollections[uri]; ok {
+		return result, nil
+	}
+
 	in, err := c.locator.OpenResource(uri)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open resource: %w", err)
@@ -129,7 +145,10 @@ func (c *Context) OpenFontCollection(uri string) (*FontCollection, error) {
 		fonts = append(fonts, font)
 	}
 	c.fonts = append(c.fonts, fonts...)
-	return newFontCollection(fonts), nil
+
+	result := newFontCollection(fonts)
+	c.fontCollections[uri] = result
+	return result, nil
 }
 
 // GetFont returns the Font with the specified family and sub-family name from

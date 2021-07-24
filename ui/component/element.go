@@ -12,6 +12,7 @@ type ElementData struct {
 	Enabled      optional.Bool
 	Visible      optional.Bool
 	Materialized optional.Bool
+	Padding      ui.Spacing
 	Layout       ui.Layout
 }
 
@@ -43,6 +44,7 @@ var Element = Define(func(props Properties) Instance {
 		element.SetMaterialized(data.Materialized.Value)
 	}
 	element.SetLayout(data.Layout)
+	element.SetPadding(data.Padding)
 	element.SetLayoutConfig(props.LayoutData())
 
 	return Instance{

@@ -3,6 +3,7 @@ package mat
 import (
 	"github.com/mokiat/lacking/ui"
 	co "github.com/mokiat/lacking/ui/component"
+	"github.com/mokiat/lacking/ui/optional"
 )
 
 // PictureData represents the available data properties for the
@@ -10,7 +11,7 @@ import (
 type PictureData struct {
 
 	// BackgroundColor specifies the color to be rendered behind the image.
-	BackgroundColor ui.Color
+	BackgroundColor optional.Color
 
 	// Image specifies the Image to be displayed.
 	Image ui.Image
@@ -43,14 +44,27 @@ const (
 )
 
 var Picture = co.ShallowCached(co.Define(func(props co.Properties) co.Instance {
-	var data PictureData
-	props.InjectData(&data)
+	var (
+		data    PictureData
+		essence *pictureEssence
+	)
+	props.InjectOptionalData(&data, PictureData{})
+
+	co.UseState(func() interface{} {
+		return &pictureEssence{}
+	}).Inject(&essence)
+
+	if data.BackgroundColor.Specified {
+		essence.backgroundColor = data.BackgroundColor.Value
+	} else {
+		essence.backgroundColor = ui.Transparent()
+	}
+	essence.image = data.Image
+	essence.mode = data.Mode
 
 	return co.New(Element, func() {
 		co.WithData(co.ElementData{
-			Essence: &pictureEssence{
-				PictureData: data,
-			},
+			Essence: essence,
 		})
 		co.WithLayoutData(props.LayoutData())
 		co.WithChildren(props.Children())
@@ -60,22 +74,24 @@ var Picture = co.ShallowCached(co.Define(func(props co.Properties) co.Instance {
 var _ ui.ElementRenderHandler = (*pictureEssence)(nil)
 
 type pictureEssence struct {
-	PictureData
+	backgroundColor ui.Color
+	image           ui.Image
+	mode            ImageMode
 }
 
 func (p *pictureEssence) OnRender(element *ui.Element, canvas ui.Canvas) {
-	if !p.BackgroundColor.Transparent() {
-		canvas.SetSolidColor(p.BackgroundColor)
+	if !p.backgroundColor.Transparent() {
+		canvas.SetSolidColor(p.backgroundColor)
 		canvas.FillRectangle(
 			ui.NewPosition(0, 0),
 			element.Bounds().Size,
 		)
 	}
 
-	if p.Image != nil {
+	if p.image != nil {
 		drawPosition, drawSize := p.evaluateImageDrawLocation(element)
 		canvas.DrawImage(
-			p.Image,
+			p.image,
 			drawPosition,
 			drawSize,
 		)
@@ -84,11 +100,11 @@ func (p *pictureEssence) OnRender(element *ui.Element, canvas ui.Canvas) {
 
 func (p *pictureEssence) evaluateImageDrawLocation(element *ui.Element) (ui.Position, ui.Size) {
 	elementSize := element.Bounds().Size
-	imageSize := p.Image.Size()
+	imageSize := p.image.Size()
 	determinant := imageSize.Width*elementSize.Height - imageSize.Height*elementSize.Width
 	imageHasHigherAspectRatio := determinant >= 0
 
-	switch p.Mode {
+	switch p.mode {
 	case ImageModeCover:
 		if imageHasHigherAspectRatio {
 			return ui.NewPosition(

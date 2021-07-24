@@ -52,8 +52,22 @@ func NewColor(value ui.Color) Color {
 	}
 }
 
-// Color represents an optional int value.
+// Color represents an optional ui Color value.
 type Color struct {
 	Specified bool
 	Value     ui.Color
+}
+
+// NewSpacing returns a specified Spacing value.
+func NewSpacing(value ui.Spacing) Spacing {
+	return Spacing{
+		Specified: true,
+		Value:     value,
+	}
+}
+
+// Spacing represents an optional ui Spacing value.
+type Spacing struct {
+	Specified bool
+	Value     ui.Spacing
 }

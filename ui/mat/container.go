@@ -11,12 +11,16 @@ type ContainerData struct {
 	Layout          ui.Layout
 }
 
+var defaultContainerData = ContainerData{
+	Layout: NewFillLayout(),
+}
+
 var Container = co.ShallowCached(co.Define(func(props co.Properties) co.Instance {
 	var (
 		data    ContainerData
 		essence *containerEssence
 	)
-	props.InjectData(&data)
+	props.InjectOptionalData(&data, defaultContainerData)
 
 	co.UseState(func() interface{} {
 		return &containerEssence{}

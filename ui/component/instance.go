@@ -59,7 +59,9 @@ func New(component Component, setupFn func()) Instance {
 		componentType: component.componentType,
 		componentFunc: component.componentFunc,
 	}
-	setupFn()
+	if setupFn != nil {
+		setupFn()
+	}
 	return instanceCtx.instance
 }
 

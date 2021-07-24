@@ -13,6 +13,7 @@ type PictureButtonData struct {
 	UpImage   ui.Image
 	OverImage ui.Image
 	DownImage ui.Image
+	Padding   ui.Spacing
 	Text      string
 }
 
@@ -26,8 +27,8 @@ var PictureButton = co.ShallowCached(co.Define(func(props co.Properties) co.Inst
 		callbackData PictureButtonCallbackData
 		essence      *pictureButtonEssence
 	)
-	props.InjectData(&data)
-	props.InjectCallbackData(&callbackData)
+	props.InjectOptionalData(&data, PictureButtonData{})
+	props.InjectOptionalCallbackData(&callbackData, PictureButtonCallbackData{})
 
 	co.UseState(func() interface{} {
 		return &pictureButtonEssence{
@@ -53,6 +54,7 @@ var PictureButton = co.ShallowCached(co.Define(func(props co.Properties) co.Inst
 	return co.New(Element, func() {
 		co.WithData(ElementData{
 			Essence: essence,
+			Padding: data.Padding,
 		})
 		co.WithLayoutData(props.LayoutData())
 		co.WithChildren(props.Children())

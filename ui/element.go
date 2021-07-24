@@ -396,7 +396,7 @@ func (e *Element) Enabled() bool {
 func (e *Element) SetEnabled(enabled bool) {
 	if enabled != e.enabled {
 		e.enabled = enabled
-		// TODO: Trigger redraw
+		e.invalidate()
 	}
 }
 
@@ -414,7 +414,7 @@ func (e *Element) Visible() bool {
 func (e *Element) SetVisible(visible bool) {
 	if visible != e.visible {
 		e.visible = visible
-		// TODO: Trigger redraw
+		e.invalidate()
 	}
 }
 
@@ -437,7 +437,7 @@ func (e *Element) SetMaterialized(materialized bool) {
 		if e.parent != nil {
 			e.parent.onBoundsChanged(e.parent.bounds)
 		}
-		// TODO: Trigger redraw
+		e.invalidate()
 	}
 }
 
@@ -447,6 +447,10 @@ func (e *Element) Destroy() {
 	e.Detach()
 }
 
+func (e *Element) invalidate() {
+	e.context.window.Invalidate()
+}
+
 func (e *Element) onBoundsChanged(bounds Bounds) {
 	if e.layout != nil {
 		e.layout.Apply(e)
@@ -454,6 +458,7 @@ func (e *Element) onBoundsChanged(bounds Bounds) {
 	if resizeHandler, ok := e.essence.(ElementResizeHandler); ok {
 		resizeHandler.OnResize(e, e.Bounds())
 	}
+	e.invalidate()
 }
 
 func (e *Element) onMouseEvent(event MouseEvent) bool {
