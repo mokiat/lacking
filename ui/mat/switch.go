@@ -12,7 +12,7 @@ type SwitchData struct {
 
 var Switch = co.ShallowCached(co.Define(func(props co.Properties) co.Instance {
 	var data SwitchData
-	props.InjectData(&data)
+	props.InjectOptionalData(&data, SwitchData{})
 
 	return co.New(Container, func() {
 		co.WithData(ContainerData{

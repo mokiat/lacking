@@ -20,8 +20,8 @@ var Button = co.ShallowCached(co.Define(func(props co.Properties) co.Instance {
 		callbackData ButtonCallbackData
 		essence      *buttonEssence
 	)
-	props.InjectData(&data)
-	props.InjectCallbackData(&callbackData)
+	props.InjectOptionalData(&data, ButtonData{})
+	props.InjectOptionalCallbackData(&callbackData, ButtonCallbackData{})
 
 	co.UseState(func() interface{} {
 		return &buttonEssence{

@@ -26,8 +26,8 @@ var PictureButton = co.ShallowCached(co.Define(func(props co.Properties) co.Inst
 		callbackData PictureButtonCallbackData
 		essence      *pictureButtonEssence
 	)
-	props.InjectData(&data)
-	props.InjectCallbackData(&callbackData)
+	props.InjectOptionalData(&data, PictureButtonData{})
+	props.InjectOptionalCallbackData(&callbackData, PictureButtonCallbackData{})
 
 	co.UseState(func() interface{} {
 		return &pictureButtonEssence{

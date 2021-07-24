@@ -44,7 +44,7 @@ const (
 
 var Picture = co.ShallowCached(co.Define(func(props co.Properties) co.Instance {
 	var data PictureData
-	props.InjectData(&data)
+	props.InjectOptionalData(&data, PictureData{})
 
 	return co.New(Element, func() {
 		co.WithData(co.ElementData{
