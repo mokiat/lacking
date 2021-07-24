@@ -1,16 +1,6 @@
 package mat
 
-import (
-	"github.com/mokiat/lacking/ui"
-	"github.com/mokiat/lacking/ui/optional"
-)
-
-// VerticalLayoutData represents a layout configuration for a component
-// that is added to a Container with layout set to VerticalLayout.
-type VerticalLayoutData struct {
-	Width  optional.Int
-	Height optional.Int
-}
+import "github.com/mokiat/lacking/ui"
 
 // VerticalLayoutSettings contains optional configurations for the
 // VerticalLayout.
@@ -42,7 +32,7 @@ func (l *VerticalLayout) Apply(element *ui.Element) {
 
 	topPlacement := contentBounds.Y
 	for childElement := element.FirstChild(); childElement != nil; childElement = childElement.RightSibling() {
-		layoutConfig := childElement.LayoutConfig().(VerticalLayoutData)
+		layoutConfig := childElement.LayoutConfig().(LayoutData)
 
 		childBounds := ui.Bounds{
 			Size: childElement.IdealSize(),

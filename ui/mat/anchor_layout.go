@@ -1,22 +1,6 @@
 package mat
 
-import (
-	"github.com/mokiat/lacking/ui"
-	"github.com/mokiat/lacking/ui/optional"
-)
-
-// AnchorLayoutData represents a layout configuration for a component
-// that is added to a Container with layout set to AnchorLayout.
-type AnchorLayoutData struct {
-	Left             optional.Int
-	Right            optional.Int
-	Top              optional.Int
-	Bottom           optional.Int
-	HorizontalCenter optional.Int
-	VerticalCenter   optional.Int
-	Width            optional.Int
-	Height           optional.Int
-}
+import "github.com/mokiat/lacking/ui"
 
 // AnchorLayoutSettings contains optional configurations for the
 // AnchorLayout.
@@ -38,7 +22,7 @@ func (l *AnchorLayout) Apply(element *ui.Element) {
 	// TODO: Consider children's margin settings
 
 	for childElement := element.FirstChild(); childElement != nil; childElement = childElement.RightSibling() {
-		layoutConfig := childElement.LayoutConfig().(AnchorLayoutData)
+		layoutConfig := childElement.LayoutConfig().(LayoutData)
 		childBounds := ui.Bounds{}
 
 		// horizontal
