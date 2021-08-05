@@ -5,7 +5,8 @@ package mat
 type Alignment int
 
 const (
-	AlignmentCenter Alignment = 1 + iota
+	AlignmentDefault Alignment = iota
+	AlignmentCenter
 	AlignmentLeft
 	AlignmentRight
 	AlignmentTop
