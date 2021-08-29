@@ -93,6 +93,11 @@ func (c *Canvas) End() {
 		0.0, 1.0,
 	).ColumnMajorArray()
 
+	gl.Enable(gl.CLIP_DISTANCE0)
+	gl.Enable(gl.CLIP_DISTANCE1)
+	gl.Enable(gl.CLIP_DISTANCE2)
+	gl.Enable(gl.CLIP_DISTANCE3)
+
 	gl.Viewport(0, 0, int32(c.windowSize.Width), int32(c.windowSize.Height))
 	gl.Enable(gl.FRAMEBUFFER_SRGB)
 	gl.Clear(gl.DEPTH_BUFFER_BIT | gl.STENCIL_BUFFER_BIT)
@@ -108,6 +113,7 @@ func (c *Canvas) End() {
 		material := subMesh.material
 		gl.UseProgram(material.program.ID())
 		gl.UniformMatrix4fv(material.projectionMatrixLocation, 1, false, &projectionMatrix[0])
+		gl.Uniform4f(material.clipDistancesLocation, subMesh.clipBounds.X, subMesh.clipBounds.Y, subMesh.clipBounds.Z, subMesh.clipBounds.W)
 		gl.BindTextureUnit(0, subMesh.texture.ID())
 		gl.Uniform1i(material.textureLocation, 0)
 		gl.BindVertexArray(c.mesh.vertexArray.ID())
@@ -117,6 +123,11 @@ func (c *Canvas) End() {
 	// TODO: Remove once the remaining part of the framework
 	// can handle resetting its settings.
 	gl.Disable(gl.BLEND)
+
+	gl.Disable(gl.CLIP_DISTANCE0)
+	gl.Disable(gl.CLIP_DISTANCE1)
+	gl.Disable(gl.CLIP_DISTANCE2)
+	gl.Disable(gl.CLIP_DISTANCE3)
 }
 
 func (c *Canvas) Push() {
@@ -229,6 +240,12 @@ func (c *Canvas) FillRectangle(position ui.Position, size ui.Size) {
 	count := c.mesh.Offset() - offset
 
 	c.subMeshes = append(c.subMeshes, SubMesh{
+		clipBounds: sprec.NewVec4(
+			float32(c.currentLayer.ClipBounds.X),
+			float32(c.currentLayer.ClipBounds.X+c.currentLayer.ClipBounds.Width),
+			float32(c.currentLayer.ClipBounds.Y),
+			float32(c.currentLayer.ClipBounds.Y+c.currentLayer.ClipBounds.Height),
+		),
 		material:     c.opaqueMaterial,
 		texture:      c.whiteMask,
 		vertexOffset: offset,
@@ -316,6 +333,12 @@ func (c *Canvas) DrawImage(img ui.Image, position ui.Position, size ui.Size) {
 	count := c.mesh.Offset() - offset
 
 	c.subMeshes = append(c.subMeshes, SubMesh{
+		clipBounds: sprec.NewVec4(
+			float32(c.currentLayer.ClipBounds.X),
+			float32(c.currentLayer.ClipBounds.X+c.currentLayer.ClipBounds.Width),
+			float32(c.currentLayer.ClipBounds.Y),
+			float32(c.currentLayer.ClipBounds.Y+c.currentLayer.ClipBounds.Height),
+		),
 		material:     c.opaqueMaterial,
 		texture:      image.texture,
 		vertexOffset: offset,
@@ -411,6 +434,12 @@ func (c *Canvas) DrawText(text string, position ui.Position) {
 	count := c.mesh.Offset() - offset
 
 	c.subMeshes = append(c.subMeshes, SubMesh{
+		clipBounds: sprec.NewVec4(
+			float32(c.currentLayer.ClipBounds.X),
+			float32(c.currentLayer.ClipBounds.X+c.currentLayer.ClipBounds.Width),
+			float32(c.currentLayer.ClipBounds.Y),
+			float32(c.currentLayer.ClipBounds.Y+c.currentLayer.ClipBounds.Height),
+		),
 		material:     c.opaqueMaterial,
 		texture:      font.texture,
 		vertexOffset: offset,

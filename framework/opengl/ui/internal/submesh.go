@@ -1,6 +1,9 @@
 package internal
 
-import "github.com/mokiat/lacking/framework/opengl"
+import (
+	"github.com/mokiat/gomath/sprec"
+	"github.com/mokiat/lacking/framework/opengl"
+)
 
 type SubMesh struct {
 	material     *Material
@@ -8,4 +11,5 @@ type SubMesh struct {
 	vertexOffset int
 	vertexCount  int
 	primitive    uint32
+	clipBounds   sprec.Vec4
 }

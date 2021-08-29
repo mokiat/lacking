@@ -21,6 +21,7 @@ type Material struct {
 
 	program                  *opengl.Program
 	projectionMatrixLocation int32
+	clipDistancesLocation    int32
 	textureLocation          int32
 }
 
@@ -49,6 +50,7 @@ func (m *Material) Allocate() {
 	})
 
 	m.projectionMatrixLocation = m.program.UniformLocation("projectionMatrixIn")
+	m.clipDistancesLocation = m.program.UniformLocation("clipDistancesIn")
 	m.textureLocation = m.program.UniformLocation("textureIn")
 }
 

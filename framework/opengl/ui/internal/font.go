@@ -117,6 +117,9 @@ func (f *Font) Allocate(font *opentype.Font) {
 	}
 	defer face.Close()
 
+	// TODO: Render the font yourself using OpenGL once you have
+	// narrowed down polygon rendering.
+
 	for i, ch := range supportedCharacters {
 		chIndex, err := font.GlyphIndex(buf, ch)
 		if err != nil {
