@@ -52,6 +52,8 @@ func NewFont() *Font {
 
 var _ ui.Font = (*Font)(nil)
 
+var buf = &sfnt.Buffer{}
+
 type Font struct {
 	familyName    string
 	subFamilyName string
@@ -75,8 +77,6 @@ func (f *Font) Family() string {
 func (f *Font) SubFamily() string {
 	return f.subFamilyName
 }
-
-var buf = &sfnt.Buffer{}
 
 func (f *Font) Allocate(font *opentype.Font) {
 	familyName, err := font.Name(buf, 1)
@@ -126,6 +126,11 @@ func (f *Font) Allocate(font *opentype.Font) {
 			panic(fmt.Errorf("failed to find char index: %w", err))
 		}
 
+		segments, err := font.LoadGlyph(buf, chIndex, fixed.I(fontSize), nil)
+		if err != nil {
+			panic(fmt.Errorf("failed to load glyph index: %w", err))
+		}
+
 		drawRect, mask, maskPos, _, ok := face.Glyph(fixed.P(0, 0), ch)
 		if !ok {
 			panic(fmt.Errorf("failed to find glyph for character %c", ch))
@@ -151,6 +156,9 @@ func (f *Font) Allocate(font *opentype.Font) {
 			panic(fmt.Errorf("failed to get glyph bounds: %w", err))
 		}
 
+		clonedSegments := make([]sfnt.Segment, len(segments))
+		copy(clonedSegments, segments)
+
 		f.glyphs[ch] = &fontGlyph{
 			leftU:        float32(leftPx) / float32(fontImageSize),
 			rightU:       float32(rightPx) / float32(fontImageSize),
@@ -162,6 +170,7 @@ func (f *Font) Allocate(font *opentype.Font) {
 			leftBearing:  float32(bounds.Min.X.Round()) * scale,
 			rightBearing: float32((advance - bounds.Max.X).Round()) * scale,
 			kerns:        make(map[rune]float32),
+			segments:     clonedSegments,
 		}
 
 		for _, targetCh := range supportedCharacters {
@@ -246,4 +255,6 @@ type fontGlyph struct {
 	// kerns holds positional adjustments between two glyphs. A positive
 	// value means to move them further apart.
 	kerns map[rune]float32
+
+	segments sfnt.Segments
 }

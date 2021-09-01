@@ -104,6 +104,7 @@ type Canvas interface {
 
 type Fill struct {
 	Rule            FillRule
+	Winding         Winding
 	BackgroundColor Color
 	BackgroundImage Image
 }
@@ -120,3 +121,10 @@ type Stroke struct {
 	Size  int
 	Color Color
 }
+
+type Winding int
+
+const (
+	WindingCCW Winding = iota
+	WindingCW
+)

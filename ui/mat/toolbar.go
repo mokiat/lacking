@@ -61,8 +61,14 @@ func (e *toolbarEssence) OnRender(element *ui.Element, canvas ui.Canvas) {
 		ui.NewPosition((left+right)/2, bottom),
 		stroke, stroke,
 	)
-	canvas.QuadTo(
-		ui.NewPosition(right, bottom),
+	// canvas.QuadTo(
+	// 	ui.NewPosition(right, bottom),
+	// 	ui.NewPosition(right, (top+bottom)/2),
+	// 	stroke, stroke,
+	// )
+	canvas.CubeTo(
+		ui.NewPosition(right-(right-left)*1/3, bottom),
+		ui.NewPosition(right, bottom-(bottom-top)*1/4),
 		ui.NewPosition(right, (top+bottom)/2),
 		stroke, stroke,
 	)
