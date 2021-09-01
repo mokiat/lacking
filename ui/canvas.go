@@ -92,4 +92,31 @@ type Canvas interface {
 	// TextSize returns the size it would take to draw the
 	// specified text string.
 	TextSize(text string) Size
+
+	BeginShape(fill Fill)
+	MoveTo(position Position)
+	LineTo(position Position, startStroke, endStroke Stroke)
+	QuadTo(control, position Position, startStroke, endStroke Stroke)
+	CubeTo(control1, control2, position Position, startStroke, endStroke Stroke)
+	CloseLoop(startStroke, endStroke Stroke)
+	EndShape()
+}
+
+type Fill struct {
+	Rule            FillRule
+	BackgroundColor Color
+	BackgroundImage Image
+}
+
+type FillRule int
+
+const (
+	FillRuleSimple FillRule = iota
+	FillRuleNonZero
+	FillRuleEvenOdd
+)
+
+type Stroke struct {
+	Size  int
+	Color Color
 }

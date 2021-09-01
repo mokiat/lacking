@@ -32,6 +32,14 @@ func (p *Program) Allocate(info ProgramAllocateInfo) {
 		gl.AttachShader(p.id, info.VertexShader.ID())
 		defer gl.DetachShader(p.id, info.VertexShader.ID())
 	}
+	if info.TessellationControlShader != nil {
+		gl.AttachShader(p.id, info.TessellationControlShader.ID())
+		defer gl.DetachShader(p.id, info.TessellationControlShader.ID())
+	}
+	if info.TessellationEvaluationShader != nil {
+		gl.AttachShader(p.id, info.TessellationEvaluationShader.ID())
+		defer gl.DetachShader(p.id, info.TessellationEvaluationShader.ID())
+	}
 	if info.FragmentShader != nil {
 		gl.AttachShader(p.id, info.FragmentShader.ID())
 		defer gl.DetachShader(p.id, info.FragmentShader.ID())
@@ -81,6 +89,8 @@ func (p *Program) getInfoLog() string {
 }
 
 type ProgramAllocateInfo struct {
-	VertexShader   *Shader
-	FragmentShader *Shader
+	VertexShader                 *Shader
+	TessellationControlShader    *Shader
+	TessellationEvaluationShader *Shader
+	FragmentShader               *Shader
 }

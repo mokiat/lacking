@@ -6,10 +6,11 @@ import (
 )
 
 type SubMesh struct {
-	material     *Material
-	texture      *opengl.TwoDTexture
-	vertexOffset int
-	vertexCount  int
-	primitive    uint32
-	clipBounds   sprec.Vec4
+	material      *Material
+	texture       *opengl.TwoDTexture
+	vertexOffset  int
+	vertexCount   int
+	patchVertices int
+	primitive     uint32
+	clipBounds    sprec.Vec4
 }
