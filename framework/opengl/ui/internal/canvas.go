@@ -13,11 +13,11 @@ import (
 
 const maxVertexCount = 2048
 
-type Point struct {
-	sprec.Vec2
-	InStroke  ui.Stroke
-	OutStroke ui.Stroke
-}
+// type Point struct {
+// 	sprec.Vec2
+// 	InStroke  ui.Stroke
+// 	OutStroke ui.Stroke
+// }
 
 type Shape struct {
 	ui.Fill
@@ -731,61 +731,6 @@ func (c *Canvas) CloseLoop(startStroke, endStroke ui.Stroke) {
 		InStroke: endStroke,
 	})
 }
-
-// func (c *Canvas) EndShape() {
-// 	translation := sprec.NewVec2(
-// 		float32(c.currentLayer.Translation.X),
-// 		float32(c.currentLayer.Translation.Y),
-// 	)
-
-// 	offset := c.mesh.Offset()
-// 	// TODO: Only if background color or texture is set
-// 	for _, segment := range c.activeShape.Segments {
-// 		c.mesh.Append(Vertex{
-// 			position: sprec.Vec2Sum(segment.A.position, translation),
-// 			texCoord: sprec.NewVec2(0.0, 0.0),
-// 			color:    c.activeShape.Fill.BackgroundColor,
-// 		})
-// 		c.mesh.Append(Vertex{
-// 			position: sprec.Vec2Sum(segment.B.position, translation),
-// 			texCoord: sprec.NewVec2(0.0, 0.0),
-// 			color:    c.activeShape.Fill.BackgroundColor,
-// 		})
-// 		c.mesh.Append(Vertex{
-// 			position: sprec.Vec2Sum(segment.C.position, translation),
-// 			texCoord: sprec.NewVec2(0.0, 0.0),
-// 			color:    c.activeShape.Fill.BackgroundColor,
-// 		})
-// 		c.mesh.Append(Vertex{
-// 			position: sprec.Vec2Sum(segment.CP1.position, translation),
-// 			texCoord: sprec.NewVec2(0.0, 0.0),
-// 			color:    c.activeShape.Fill.BackgroundColor,
-// 		})
-// 		c.mesh.Append(Vertex{
-// 			position: sprec.Vec2Sum(segment.CP2.position, translation),
-// 			texCoord: sprec.NewVec2(0.0, 0.0),
-// 			color:    c.activeShape.Fill.BackgroundColor,
-// 		})
-// 	}
-// 	count := c.mesh.Offset() - offset
-
-// 	c.subMeshes = append(c.subMeshes, SubMesh{
-// 		clipBounds: sprec.NewVec4(
-// 			float32(c.currentLayer.ClipBounds.X),
-// 			float32(c.currentLayer.ClipBounds.X+c.currentLayer.ClipBounds.Width),
-// 			float32(c.currentLayer.ClipBounds.Y),
-// 			float32(c.currentLayer.ClipBounds.Y+c.currentLayer.ClipBounds.Height),
-// 		),
-// 		material:      c.opaqueTessMaterial,
-// 		texture:       c.whiteMask,
-// 		vertexOffset:  offset,
-// 		vertexCount:   count,
-// 		patchVertices: 5,
-// 		primitive:     gl.PATCHES,
-// 	})
-
-// 	// TODO: Draw stroke
-// }
 
 func (c *Canvas) EndShape() {
 	translation := sprec.NewVec2(
