@@ -1,17 +1,12 @@
 package internal
 
 import (
-	"log"
-
 	"github.com/go-gl/gl/v4.6-core/gl"
-	"golang.org/x/image/font/sfnt"
 
 	"github.com/mokiat/gomath/sprec"
 	"github.com/mokiat/lacking/framework/opengl"
 	"github.com/mokiat/lacking/ui"
 )
-
-const maxVertexCount = 2048
 
 // type Point struct {
 // 	sprec.Vec2
@@ -19,10 +14,10 @@ const maxVertexCount = 2048
 // 	OutStroke ui.Stroke
 // }
 
-type Shape struct {
-	ui.Fill
-	Points []Point
-}
+// type Shape struct {
+// 	ui.Fill
+// 	Points []Point
+// }
 
 func NewCanvas() *Canvas {
 	return &Canvas{
@@ -36,13 +31,15 @@ func NewCanvas() *Canvas {
 		},
 		topLayer: &Layer{},
 
-		mesh:        NewMesh(maxVertexCount),
-		activeShape: &Shape{},
+		mesh: NewMesh(maxVertexCount),
+		// activeShape: &Shape{},
 
 		opaqueMaterial:     NewDrawMaterial(),
 		opaqueTessMaterial: NewPatchDrawMaterial(),
 
 		whiteMask: opengl.NewTwoDTexture(),
+
+		renderer: NewRenderer(),
 	}
 }
 
@@ -55,14 +52,16 @@ type Canvas struct {
 
 	windowSize ui.Size
 
-	mesh        *Mesh
-	subMeshes   []SubMesh
-	activeShape *Shape
+	mesh      *Mesh
+	subMeshes []SubMesh
+	// activeShape *Shape
 
 	opaqueMaterial     *Material
 	opaqueTessMaterial *Material
 
 	whiteMask *opengl.TwoDTexture
+
+	renderer *Renderer
 }
 
 func (c *Canvas) Create() {
@@ -79,6 +78,7 @@ func (c *Canvas) Create() {
 		DataComponentType: gl.UNSIGNED_BYTE,
 		Data:              []byte{0xFF, 0xFF, 0xFF, 0xFF},
 	})
+	c.renderer.Create()
 }
 
 func (c *Canvas) Destroy() {
@@ -86,6 +86,7 @@ func (c *Canvas) Destroy() {
 	c.opaqueTessMaterial.Release()
 	c.opaqueMaterial.Release()
 	c.mesh.Release()
+	defer c.renderer.Destroy()
 }
 
 func (c *Canvas) Resize(width, height int) {
@@ -113,10 +114,10 @@ func (c *Canvas) End() {
 		0.0, 1.0,
 	).ColumnMajorArray()
 
-	// gl.Enable(gl.CLIP_DISTANCE0)
-	// gl.Enable(gl.CLIP_DISTANCE1)
-	// gl.Enable(gl.CLIP_DISTANCE2)
-	// gl.Enable(gl.CLIP_DISTANCE3)
+	gl.Enable(gl.CLIP_DISTANCE0)
+	gl.Enable(gl.CLIP_DISTANCE1)
+	gl.Enable(gl.CLIP_DISTANCE2)
+	gl.Enable(gl.CLIP_DISTANCE3)
 
 	gl.Viewport(0, 0, int32(c.windowSize.Width), int32(c.windowSize.Height))
 	gl.Enable(gl.FRAMEBUFFER_SRGB)
@@ -175,10 +176,10 @@ func (c *Canvas) End() {
 	// can handle resetting its settings.
 	gl.Disable(gl.BLEND)
 
-	// gl.Disable(gl.CLIP_DISTANCE0)
-	// gl.Disable(gl.CLIP_DISTANCE1)
-	// gl.Disable(gl.CLIP_DISTANCE2)
-	// gl.Disable(gl.CLIP_DISTANCE3)
+	gl.Disable(gl.CLIP_DISTANCE0)
+	gl.Disable(gl.CLIP_DISTANCE1)
+	gl.Disable(gl.CLIP_DISTANCE2)
+	gl.Disable(gl.CLIP_DISTANCE3)
 }
 
 func (c *Canvas) Push() {
@@ -416,10 +417,8 @@ func (c *Canvas) DrawText(text string, position ui.Position) {
 	)
 
 	lastGlyph := (*fontGlyph)(nil)
-	// offset := c.mesh.Offset()
+	offset := c.mesh.Offset()
 	for _, ch := range text {
-		log.Printf("%c\n", ch)
-
 		lineHeight := font.lineHeight * c.currentLayer.FontSize
 		lineAscent := font.lineAscent * c.currentLayer.FontSize
 		if ch == '\r' {
@@ -434,177 +433,74 @@ func (c *Canvas) DrawText(text string, position ui.Position) {
 			continue
 		}
 
-		const scale = 1
-
 		glyph := font.glyphs[ch]
 		advance := glyph.advance * c.currentLayer.FontSize
 		leftBearing := glyph.leftBearing * c.currentLayer.FontSize
-		// rightBearing := glyph.rightBearing * c.currentLayer.FontSize
+		rightBearing := glyph.rightBearing * c.currentLayer.FontSize
 		ascent := glyph.ascent * c.currentLayer.FontSize
-		// descent := glyph.descent * c.currentLayer.FontSize
+		descent := glyph.descent * c.currentLayer.FontSize
 
-		stroke := ui.Stroke{
-			Size: 0,
+		vertTopLeft := Vertex{
+			position: sprec.Vec2Sum(sprec.NewVec2(
+				leftBearing,
+				lineAscent-ascent,
+			), translation),
+			texCoord: sprec.NewVec2(glyph.leftU, glyph.topV),
+			color:    c.currentLayer.SolidColor,
 		}
-		c.Push()
-		c.Translate(ui.NewPosition(
-			int(translation.X),
-			int(translation.Y),
-		))
-		c.Translate(ui.NewPosition(
-			int(leftBearing)*scale,
-			int(lineAscent-ascent)*scale,
-		))
-
-		log.Println("begin shape...")
-		c.BeginShape(ui.Fill{
-			Winding:         ui.WindingCW, // non-standard
-			BackgroundColor: ui.Red(),
-			Rule:            ui.FillRuleEvenOdd,
-		})
-		for _, segment := range glyph.segments {
-			switch segment.Op {
-			case sfnt.SegmentOpMoveTo:
-				log.Printf("move to (%d, %d)\n",
-					segment.Args[0].X.Floor()*scale,
-					segment.Args[0].Y.Floor()*scale+400,
-				)
-				c.MoveTo(
-					ui.NewPosition(
-						segment.Args[0].X.Floor()*scale,
-						segment.Args[0].Y.Floor()*scale,
-					),
-				)
-
-			case sfnt.SegmentOpLineTo:
-				log.Printf("line to (%d, %d)\n",
-					segment.Args[0].X.Floor()*scale,
-					segment.Args[0].Y.Floor()*scale+400,
-				)
-				c.LineTo(
-					ui.NewPosition(
-						segment.Args[0].X.Floor()*scale,
-						segment.Args[0].Y.Floor()*scale,
-					),
-					stroke, stroke,
-				)
-
-			case sfnt.SegmentOpQuadTo:
-				log.Printf("quad to (%d, %d) (%d, %d)\n",
-					segment.Args[0].X.Floor()*scale,
-					segment.Args[0].Y.Floor()*scale+400,
-					segment.Args[1].X.Floor()*scale,
-					segment.Args[1].Y.Floor()*scale+400,
-				)
-				c.QuadTo(
-					ui.NewPosition(
-						segment.Args[0].X.Floor()*scale,
-						segment.Args[0].Y.Floor()*scale,
-					),
-					ui.NewPosition(
-						segment.Args[1].X.Floor()*scale,
-						segment.Args[1].Y.Floor()*scale,
-					),
-					stroke, stroke,
-				)
-
-			case sfnt.SegmentOpCubeTo:
-				log.Printf("cube to (%d, %d) (%d, %d) (%d, %d)\n",
-					segment.Args[0].X.Floor()*scale,
-					segment.Args[0].Y.Floor()*scale+400,
-					segment.Args[1].X.Floor()*scale,
-					segment.Args[1].Y.Floor()*scale+400,
-					segment.Args[2].X.Floor()*scale,
-					segment.Args[2].Y.Floor()*scale+400,
-				)
-				c.CubeTo(
-					ui.NewPosition(
-						segment.Args[0].X.Floor()*scale,
-						segment.Args[0].Y.Floor()*scale,
-					),
-					ui.NewPosition(
-						segment.Args[1].X.Floor()*scale,
-						segment.Args[1].Y.Floor()*scale,
-					),
-					ui.NewPosition(
-						segment.Args[2].X.Floor()*scale,
-						segment.Args[2].Y.Floor()*scale,
-					),
-					stroke, stroke,
-				)
-			default:
-				log.Println("unknown")
-			}
+		vertTopRight := Vertex{
+			position: sprec.Vec2Sum(sprec.NewVec2(
+				advance-rightBearing,
+				lineAscent-ascent,
+			), translation),
+			texCoord: sprec.NewVec2(glyph.rightU, glyph.topV),
+			color:    c.currentLayer.SolidColor,
 		}
-		log.Println("end shape...")
-		c.EndShape()
-		c.Pop()
+		vertBottomLeft := Vertex{
+			position: sprec.Vec2Sum(sprec.NewVec2(
+				leftBearing,
+				lineAscent+descent,
+			), translation),
+			texCoord: sprec.NewVec2(glyph.leftU, glyph.bottomV),
+			color:    c.currentLayer.SolidColor,
+		}
+		vertBottomRight := Vertex{
+			position: sprec.Vec2Sum(sprec.NewVec2(
+				advance-rightBearing,
+				lineAscent+descent,
+			), translation),
+			texCoord: sprec.NewVec2(glyph.rightU, glyph.bottomV),
+			color:    c.currentLayer.SolidColor,
+		}
 
-		// vertTopLeft := Vertex{
-		// 	position: sprec.Vec2Sum(sprec.NewVec2(
-		// 		leftBearing,
-		// 		lineAscent-ascent,
-		// 	), translation),
-		// 	texCoord: sprec.NewVec2(glyph.leftU, glyph.topV),
-		// 	color:    c.currentLayer.SolidColor,
-		// }
-		// vertTopRight := Vertex{
-		// 	position: sprec.Vec2Sum(sprec.NewVec2(
-		// 		advance-rightBearing,
-		// 		lineAscent-ascent,
-		// 	), translation),
-		// 	texCoord: sprec.NewVec2(glyph.rightU, glyph.topV),
-		// 	color:    c.currentLayer.SolidColor,
-		// }
-		// vertBottomLeft := Vertex{
-		// 	position: sprec.Vec2Sum(sprec.NewVec2(
-		// 		leftBearing,
-		// 		lineAscent+descent,
-		// 	), translation),
-		// 	texCoord: sprec.NewVec2(glyph.leftU, glyph.bottomV),
-		// 	color:    c.currentLayer.SolidColor,
-		// }
-		// vertBottomRight := Vertex{
-		// 	position: sprec.Vec2Sum(sprec.NewVec2(
-		// 		advance-rightBearing,
-		// 		lineAscent+descent,
-		// 	), translation),
-		// 	texCoord: sprec.NewVec2(glyph.rightU, glyph.bottomV),
-		// 	color:    c.currentLayer.SolidColor,
-		// }
+		c.mesh.Append(vertTopLeft)
+		c.mesh.Append(vertBottomLeft)
+		c.mesh.Append(vertBottomRight)
+		c.mesh.Append(vertTopLeft)
+		c.mesh.Append(vertBottomRight)
+		c.mesh.Append(vertTopRight)
 
-		// c.mesh.Append(vertTopLeft)
-		// c.mesh.Append(vertBottomLeft)
-		// c.mesh.Append(vertBottomRight)
-		// c.mesh.Append(vertTopLeft)
-		// c.mesh.Append(vertBottomRight)
-		// c.mesh.Append(vertTopRight)
-
-		translation.X += advance * scale * 5
+		translation.X += advance
 		if lastGlyph != nil {
 			translation.X += lastGlyph.kerns[ch] * c.currentLayer.FontSize
 		}
 		lastGlyph = glyph
-
-		// if true {
-		// 	break
-		// }
 	}
-	// count := c.mesh.Offset() - offset
+	count := c.mesh.Offset() - offset
 
-	// c.subMeshes = append(c.subMeshes, SubMesh{
-	// 	clipBounds: sprec.NewVec4(
-	// 		float32(c.currentLayer.ClipBounds.X),
-	// 		float32(c.currentLayer.ClipBounds.X+c.currentLayer.ClipBounds.Width),
-	// 		float32(c.currentLayer.ClipBounds.Y),
-	// 		float32(c.currentLayer.ClipBounds.Y+c.currentLayer.ClipBounds.Height),
-	// 	),
-	// 	material:     c.opaqueMaterial,
-	// 	texture:      font.texture,
-	// 	vertexOffset: offset,
-	// 	vertexCount:  count,
-	// 	primitive:    gl.TRIANGLES,
-	// })
+	c.subMeshes = append(c.subMeshes, SubMesh{
+		clipBounds: sprec.NewVec4(
+			float32(c.currentLayer.ClipBounds.X),
+			float32(c.currentLayer.ClipBounds.X+c.currentLayer.ClipBounds.Width),
+			float32(c.currentLayer.ClipBounds.Y),
+			float32(c.currentLayer.ClipBounds.Y+c.currentLayer.ClipBounds.Height),
+		),
+		material:     c.opaqueMaterial,
+		texture:      font.texture,
+		vertexOffset: offset,
+		vertexCount:  count,
+		primitive:    gl.TRIANGLES,
+	})
 }
 
 func (c *Canvas) TextSize(text string) ui.Size {
@@ -645,254 +541,254 @@ func (c *Canvas) TextSize(text string) ui.Size {
 	return ui.NewSize(int(result.X), int(result.Y))
 }
 
-func (c *Canvas) BeginShape(fill ui.Fill) {
-	c.activeShape.Fill = fill
-	c.activeShape.Points = c.activeShape.Points[:0]
-}
+// func (c *Canvas) BeginShape(fill ui.Fill) {
+// 	c.activeShape.Fill = fill
+// 	c.activeShape.Points = c.activeShape.Points[:0]
+// }
 
-func (c *Canvas) MoveTo(position ui.Position) {
-	c.activeShape.Points = append(c.activeShape.Points, Point{
-		Vec2: sprec.NewVec2(float32(position.X), float32(position.Y)),
-	})
-}
+// func (c *Canvas) MoveTo(position ui.Position) {
+// 	c.activeShape.Points = append(c.activeShape.Points, Point{
+// 		Vec2: sprec.NewVec2(float32(position.X), float32(position.Y)),
+// 	})
+// }
 
-func (c *Canvas) LineTo(position ui.Position, startStroke, endStroke ui.Stroke) {
-	c.activeShape.Points[len(c.activeShape.Points)-1].OutStroke = startStroke
-	c.activeShape.Points = append(c.activeShape.Points, Point{
-		Vec2:     sprec.NewVec2(float32(position.X), float32(position.Y)),
-		InStroke: endStroke,
-	})
-}
+// func (c *Canvas) LineTo(position ui.Position, startStroke, endStroke ui.Stroke) {
+// 	c.activeShape.Points[len(c.activeShape.Points)-1].OutStroke = startStroke
+// 	c.activeShape.Points = append(c.activeShape.Points, Point{
+// 		Vec2:     sprec.NewVec2(float32(position.X), float32(position.Y)),
+// 		InStroke: endStroke,
+// 	})
+// }
 
-func (c *Canvas) QuadTo(control, position ui.Position, startStroke, endStroke ui.Stroke) {
-	startPoint := c.activeShape.Points[len(c.activeShape.Points)-1]
-	startPoint.OutStroke = startStroke
+// func (c *Canvas) QuadTo(control, position ui.Position, startStroke, endStroke ui.Stroke) {
+// 	startPoint := c.activeShape.Points[len(c.activeShape.Points)-1]
+// 	startPoint.OutStroke = startStroke
 
-	sX := startPoint.X
-	sY := startPoint.Y
-	cX := float32(control.X)
-	cY := float32(control.Y)
-	eX := float32(position.X)
-	eY := float32(position.Y)
+// 	sX := startPoint.X
+// 	sY := startPoint.Y
+// 	cX := float32(control.X)
+// 	cY := float32(control.Y)
+// 	eX := float32(position.X)
+// 	eY := float32(position.Y)
 
-	const precision = 30 // TODO: Evaluate based on points
-	for i := 1; i <= precision; i++ {
-		// TODO: Use derivatives for performance improvement
-		t := float32(i) / float32(precision)
-		alpha := (1 - t) * (1 - t)
-		beta := t * t
-		c.activeShape.Points = append(c.activeShape.Points, Point{
-			Vec2: sprec.NewVec2(
-				cX+alpha*(sX-cX)+beta*(eX-cX),
-				cY+alpha*(sY-cY)+beta*(eY-cY),
-			),
-			InStroke:  endStroke, // TODO: Interpolate
-			OutStroke: endStroke, // TODO: Interpolate and set only if non-last
-		})
-	}
-}
+// 	const precision = 30 // TODO: Evaluate based on points
+// 	for i := 1; i <= precision; i++ {
+// 		// TODO: Use derivatives for performance improvement
+// 		t := float32(i) / float32(precision)
+// 		alpha := (1 - t) * (1 - t)
+// 		beta := t * t
+// 		c.activeShape.Points = append(c.activeShape.Points, Point{
+// 			Vec2: sprec.NewVec2(
+// 				cX+alpha*(sX-cX)+beta*(eX-cX),
+// 				cY+alpha*(sY-cY)+beta*(eY-cY),
+// 			),
+// 			InStroke:  endStroke, // TODO: Interpolate
+// 			OutStroke: endStroke, // TODO: Interpolate and set only if non-last
+// 		})
+// 	}
+// }
 
-func (c *Canvas) CubeTo(control1, control2, position ui.Position, startStroke, endStroke ui.Stroke) {
-	startPoint := c.activeShape.Points[len(c.activeShape.Points)-1]
-	startPoint.OutStroke = startStroke
+// func (c *Canvas) CubeTo(control1, control2, position ui.Position, startStroke, endStroke ui.Stroke) {
+// 	startPoint := c.activeShape.Points[len(c.activeShape.Points)-1]
+// 	startPoint.OutStroke = startStroke
 
-	sX := startPoint.X
-	sY := startPoint.Y
-	c1X := float32(control1.X)
-	c1Y := float32(control1.Y)
-	c2X := float32(control2.X)
-	c2Y := float32(control2.Y)
-	eX := float32(position.X)
-	eY := float32(position.Y)
+// 	sX := startPoint.X
+// 	sY := startPoint.Y
+// 	c1X := float32(control1.X)
+// 	c1Y := float32(control1.Y)
+// 	c2X := float32(control2.X)
+// 	c2Y := float32(control2.Y)
+// 	eX := float32(position.X)
+// 	eY := float32(position.Y)
 
-	const precision = 30 // TODO: Evaluate based on points
-	for i := 1; i <= precision; i++ {
-		// TODO: Use derivatives for performance improvement
-		t := float32(i) / float32(precision)
-		alpha := (1 - t) * (1 - t) * (1 - t)
-		beta := 3 * (1 - t) * (1 - t) * t
-		gamma := 3 * (1 - t) * t * t
-		delta := t * t * t
-		c.activeShape.Points = append(c.activeShape.Points, Point{
-			Vec2: sprec.NewVec2(
-				alpha*sX+beta*c1X+gamma*c2X+delta*eX,
-				alpha*sY+beta*c1Y+gamma*c2Y+delta*eY,
-			),
-			InStroke:  endStroke, // TODO: Interpolate
-			OutStroke: endStroke, // TODO: Interpolate and set only if non-last
-		})
-	}
-}
+// 	const precision = 30 // TODO: Evaluate based on points
+// 	for i := 1; i <= precision; i++ {
+// 		// TODO: Use derivatives for performance improvement
+// 		t := float32(i) / float32(precision)
+// 		alpha := (1 - t) * (1 - t) * (1 - t)
+// 		beta := 3 * (1 - t) * (1 - t) * t
+// 		gamma := 3 * (1 - t) * t * t
+// 		delta := t * t * t
+// 		c.activeShape.Points = append(c.activeShape.Points, Point{
+// 			Vec2: sprec.NewVec2(
+// 				alpha*sX+beta*c1X+gamma*c2X+delta*eX,
+// 				alpha*sY+beta*c1Y+gamma*c2Y+delta*eY,
+// 			),
+// 			InStroke:  endStroke, // TODO: Interpolate
+// 			OutStroke: endStroke, // TODO: Interpolate and set only if non-last
+// 		})
+// 	}
+// }
 
-func (c *Canvas) CloseLoop(startStroke, endStroke ui.Stroke) {
-	c.activeShape.Points[len(c.activeShape.Points)-1].OutStroke = startStroke
-	c.activeShape.Points = append(c.activeShape.Points, Point{
-		Vec2:     c.activeShape.Points[0].Vec2,
-		InStroke: endStroke,
-	})
-}
+// func (c *Canvas) CloseLoop(startStroke, endStroke ui.Stroke) {
+// 	c.activeShape.Points[len(c.activeShape.Points)-1].OutStroke = startStroke
+// 	c.activeShape.Points = append(c.activeShape.Points, Point{
+// 		Vec2:     c.activeShape.Points[0].Vec2,
+// 		InStroke: endStroke,
+// 	})
+// }
 
-func (c *Canvas) EndShape() {
-	translation := sprec.NewVec2(
-		float32(c.currentLayer.Translation.X),
-		float32(c.currentLayer.Translation.Y),
-	)
+// func (c *Canvas) EndShape() {
+// 	translation := sprec.NewVec2(
+// 		float32(c.currentLayer.Translation.X),
+// 		float32(c.currentLayer.Translation.Y),
+// 	)
 
-	offset := c.mesh.Offset()
-	// TODO: Only if background color or texture is set
-	for _, point := range c.activeShape.Points {
-		c.mesh.Append(Vertex{
-			position: sprec.Vec2Sum(point.Vec2, translation),
-			texCoord: sprec.NewVec2(0.0, 0.0),
-			color:    c.activeShape.BackgroundColor,
-		})
-	}
-	count := c.mesh.Offset() - offset
+// 	offset := c.mesh.Offset()
+// 	// TODO: Only if background color or texture is set
+// 	for _, point := range c.activeShape.Points {
+// 		c.mesh.Append(Vertex{
+// 			position: sprec.Vec2Sum(point.Vec2, translation),
+// 			texCoord: sprec.NewVec2(0.0, 0.0),
+// 			color:    c.activeShape.BackgroundColor,
+// 		})
+// 	}
+// 	count := c.mesh.Offset() - offset
 
-	cullFace := gl.BACK
-	if c.activeShape.Winding == ui.WindingCW {
-		cullFace = gl.FRONT
-	}
+// 	cullFace := gl.BACK
+// 	if c.activeShape.Winding == ui.WindingCW {
+// 		cullFace = gl.FRONT
+// 	}
 
-	if c.activeShape.Rule == ui.FillRuleSimple {
-		c.subMeshes = append(c.subMeshes, SubMesh{
-			clipBounds: sprec.NewVec4(
-				float32(c.currentLayer.ClipBounds.X),
-				float32(c.currentLayer.ClipBounds.X+c.currentLayer.ClipBounds.Width),
-				float32(c.currentLayer.ClipBounds.Y),
-				float32(c.currentLayer.ClipBounds.Y+c.currentLayer.ClipBounds.Height),
-			),
-			material:     c.opaqueMaterial,
-			texture:      c.whiteMask,
-			vertexOffset: offset,
-			vertexCount:  count,
-			cullFace:     uint32(cullFace),
-			primitive:    gl.TRIANGLE_FAN,
-		})
-	}
+// 	if c.activeShape.Rule == ui.FillRuleSimple {
+// 		c.subMeshes = append(c.subMeshes, SubMesh{
+// 			clipBounds: sprec.NewVec4(
+// 				float32(c.currentLayer.ClipBounds.X),
+// 				float32(c.currentLayer.ClipBounds.X+c.currentLayer.ClipBounds.Width),
+// 				float32(c.currentLayer.ClipBounds.Y),
+// 				float32(c.currentLayer.ClipBounds.Y+c.currentLayer.ClipBounds.Height),
+// 			),
+// 			material:     c.opaqueMaterial,
+// 			texture:      c.whiteMask,
+// 			vertexOffset: offset,
+// 			vertexCount:  count,
+// 			cullFace:     uint32(cullFace),
+// 			primitive:    gl.TRIANGLE_FAN,
+// 		})
+// 	}
 
-	if c.activeShape.Rule != ui.FillRuleSimple {
-		// clear stencil
-		c.subMeshes = append(c.subMeshes, SubMesh{
-			clipBounds: sprec.NewVec4(
-				float32(c.currentLayer.ClipBounds.X),
-				float32(c.currentLayer.ClipBounds.X+c.currentLayer.ClipBounds.Width),
-				float32(c.currentLayer.ClipBounds.Y),
-				float32(c.currentLayer.ClipBounds.Y+c.currentLayer.ClipBounds.Height),
-			),
-			material:     c.opaqueMaterial,
-			texture:      c.whiteMask,
-			vertexOffset: offset,
-			vertexCount:  count,
-			culling:      false,
-			cullFace:     uint32(cullFace),
-			primitive:    gl.TRIANGLE_FAN,
-			skipColor:    true,
-			stencil:      true,
-			stencilCfg: stencilConfig{
-				stencilFuncFront: stencilFunc{
-					fn:   gl.ALWAYS,
-					ref:  0,
-					mask: 0xFF,
-				},
-				stencilFuncBack: stencilFunc{
-					fn:   gl.ALWAYS,
-					ref:  0,
-					mask: 0xFF,
-				},
-				stencilOpFront: stencilOp{
-					sfail:  gl.REPLACE,
-					dpfail: gl.REPLACE,
-					dppass: gl.REPLACE,
-				},
-				stencilOpBack: stencilOp{
-					sfail:  gl.REPLACE,
-					dpfail: gl.REPLACE,
-					dppass: gl.REPLACE,
-				},
-			},
-		})
+// 	if c.activeShape.Rule != ui.FillRuleSimple {
+// 		// clear stencil
+// 		c.subMeshes = append(c.subMeshes, SubMesh{
+// 			clipBounds: sprec.NewVec4(
+// 				float32(c.currentLayer.ClipBounds.X),
+// 				float32(c.currentLayer.ClipBounds.X+c.currentLayer.ClipBounds.Width),
+// 				float32(c.currentLayer.ClipBounds.Y),
+// 				float32(c.currentLayer.ClipBounds.Y+c.currentLayer.ClipBounds.Height),
+// 			),
+// 			material:     c.opaqueMaterial,
+// 			texture:      c.whiteMask,
+// 			vertexOffset: offset,
+// 			vertexCount:  count,
+// 			culling:      false,
+// 			cullFace:     uint32(cullFace),
+// 			primitive:    gl.TRIANGLE_FAN,
+// 			skipColor:    true,
+// 			stencil:      true,
+// 			stencilCfg: stencilConfig{
+// 				stencilFuncFront: stencilFunc{
+// 					fn:   gl.ALWAYS,
+// 					ref:  0,
+// 					mask: 0xFF,
+// 				},
+// 				stencilFuncBack: stencilFunc{
+// 					fn:   gl.ALWAYS,
+// 					ref:  0,
+// 					mask: 0xFF,
+// 				},
+// 				stencilOpFront: stencilOp{
+// 					sfail:  gl.REPLACE,
+// 					dpfail: gl.REPLACE,
+// 					dppass: gl.REPLACE,
+// 				},
+// 				stencilOpBack: stencilOp{
+// 					sfail:  gl.REPLACE,
+// 					dpfail: gl.REPLACE,
+// 					dppass: gl.REPLACE,
+// 				},
+// 			},
+// 		})
 
-		// render stencil mask
-		c.subMeshes = append(c.subMeshes, SubMesh{
-			clipBounds: sprec.NewVec4(
-				float32(c.currentLayer.ClipBounds.X),
-				float32(c.currentLayer.ClipBounds.X+c.currentLayer.ClipBounds.Width),
-				float32(c.currentLayer.ClipBounds.Y),
-				float32(c.currentLayer.ClipBounds.Y+c.currentLayer.ClipBounds.Height),
-			),
-			material:     c.opaqueMaterial,
-			texture:      c.whiteMask,
-			vertexOffset: offset,
-			vertexCount:  count,
-			cullFace:     uint32(cullFace),
-			primitive:    gl.TRIANGLE_FAN,
-			skipColor:    true, // we don't want to render anything
-			stencil:      true,
-			stencilCfg: stencilConfig{
-				stencilFuncFront: stencilFunc{
-					fn:   gl.ALWAYS,
-					ref:  0,
-					mask: 0xFF,
-				},
-				stencilFuncBack: stencilFunc{
-					fn:   gl.ALWAYS,
-					ref:  0,
-					mask: 0xFF,
-				},
-				stencilOpFront: stencilOp{
-					sfail:  gl.KEEP,
-					dpfail: gl.KEEP,
-					dppass: gl.INCR_WRAP, // increase correct winding
-				},
-				stencilOpBack: stencilOp{
-					sfail:  gl.KEEP,
-					dpfail: gl.KEEP,
-					dppass: gl.DECR_WRAP, // decrease incorrect winding
-				},
-			},
-		})
+// 		// render stencil mask
+// 		c.subMeshes = append(c.subMeshes, SubMesh{
+// 			clipBounds: sprec.NewVec4(
+// 				float32(c.currentLayer.ClipBounds.X),
+// 				float32(c.currentLayer.ClipBounds.X+c.currentLayer.ClipBounds.Width),
+// 				float32(c.currentLayer.ClipBounds.Y),
+// 				float32(c.currentLayer.ClipBounds.Y+c.currentLayer.ClipBounds.Height),
+// 			),
+// 			material:     c.opaqueMaterial,
+// 			texture:      c.whiteMask,
+// 			vertexOffset: offset,
+// 			vertexCount:  count,
+// 			cullFace:     uint32(cullFace),
+// 			primitive:    gl.TRIANGLE_FAN,
+// 			skipColor:    true, // we don't want to render anything
+// 			stencil:      true,
+// 			stencilCfg: stencilConfig{
+// 				stencilFuncFront: stencilFunc{
+// 					fn:   gl.ALWAYS,
+// 					ref:  0,
+// 					mask: 0xFF,
+// 				},
+// 				stencilFuncBack: stencilFunc{
+// 					fn:   gl.ALWAYS,
+// 					ref:  0,
+// 					mask: 0xFF,
+// 				},
+// 				stencilOpFront: stencilOp{
+// 					sfail:  gl.KEEP,
+// 					dpfail: gl.KEEP,
+// 					dppass: gl.INCR_WRAP, // increase correct winding
+// 				},
+// 				stencilOpBack: stencilOp{
+// 					sfail:  gl.KEEP,
+// 					dpfail: gl.KEEP,
+// 					dppass: gl.DECR_WRAP, // decrease incorrect winding
+// 				},
+// 			},
+// 		})
 
-		// render final polygon
-		c.subMeshes = append(c.subMeshes, SubMesh{
-			clipBounds: sprec.NewVec4(
-				float32(c.currentLayer.ClipBounds.X),
-				float32(c.currentLayer.ClipBounds.X+c.currentLayer.ClipBounds.Width),
-				float32(c.currentLayer.ClipBounds.Y),
-				float32(c.currentLayer.ClipBounds.Y+c.currentLayer.ClipBounds.Height),
-			),
-			material:     c.opaqueMaterial,
-			texture:      c.whiteMask,
-			vertexOffset: offset,
-			vertexCount:  count,
-			cullFace:     uint32(cullFace),
-			primitive:    gl.TRIANGLE_FAN,
-			skipColor:    false, // we want to render now
-			stencil:      true,
-			stencilCfg: stencilConfig{
-				stencilFuncFront: stencilFunc{
-					fn:   gl.LESS,
-					ref:  0,
-					mask: 0xFF,
-				},
-				stencilFuncBack: stencilFunc{
-					fn:   gl.LESS,
-					ref:  0,
-					mask: 0xFF,
-				},
-				stencilOpFront: stencilOp{
-					sfail:  gl.KEEP,
-					dpfail: gl.KEEP,
-					dppass: gl.KEEP,
-				},
-				stencilOpBack: stencilOp{
-					sfail:  gl.KEEP,
-					dpfail: gl.KEEP,
-					dppass: gl.KEEP,
-				},
-			},
-		})
-	}
+// 		// render final polygon
+// 		c.subMeshes = append(c.subMeshes, SubMesh{
+// 			clipBounds: sprec.NewVec4(
+// 				float32(c.currentLayer.ClipBounds.X),
+// 				float32(c.currentLayer.ClipBounds.X+c.currentLayer.ClipBounds.Width),
+// 				float32(c.currentLayer.ClipBounds.Y),
+// 				float32(c.currentLayer.ClipBounds.Y+c.currentLayer.ClipBounds.Height),
+// 			),
+// 			material:     c.opaqueMaterial,
+// 			texture:      c.whiteMask,
+// 			vertexOffset: offset,
+// 			vertexCount:  count,
+// 			cullFace:     uint32(cullFace),
+// 			primitive:    gl.TRIANGLE_FAN,
+// 			skipColor:    false, // we want to render now
+// 			stencil:      true,
+// 			stencilCfg: stencilConfig{
+// 				stencilFuncFront: stencilFunc{
+// 					fn:   gl.LESS,
+// 					ref:  0,
+// 					mask: 0xFF,
+// 				},
+// 				stencilFuncBack: stencilFunc{
+// 					fn:   gl.LESS,
+// 					ref:  0,
+// 					mask: 0xFF,
+// 				},
+// 				stencilOpFront: stencilOp{
+// 					sfail:  gl.KEEP,
+// 					dpfail: gl.KEEP,
+// 					dppass: gl.KEEP,
+// 				},
+// 				stencilOpBack: stencilOp{
+// 					sfail:  gl.KEEP,
+// 					dpfail: gl.KEEP,
+// 					dppass: gl.KEEP,
+// 				},
+// 			},
+// 		})
+// 	}
 
-	// TODO: Draw stroke
-}
+// 	// TODO: Draw stroke
+// }

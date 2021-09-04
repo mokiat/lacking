@@ -93,13 +93,13 @@ type Canvas interface {
 	// specified text string.
 	TextSize(text string) Size
 
-	BeginShape(fill Fill)
-	MoveTo(position Position)
-	LineTo(position Position, startStroke, endStroke Stroke)
-	QuadTo(control, position Position, startStroke, endStroke Stroke)
-	CubeTo(control1, control2, position Position, startStroke, endStroke Stroke)
-	CloseLoop(startStroke, endStroke Stroke)
-	EndShape()
+	// BeginShape(fill Fill)
+	// MoveTo(position Position)
+	// LineTo(position Position, startStroke, endStroke Stroke)
+	// QuadTo(control, position Position, startStroke, endStroke Stroke)
+	// CubeTo(control1, control2, position Position, startStroke, endStroke Stroke)
+	// CloseLoop(startStroke, endStroke Stroke)
+	// EndShape()
 }
 
 type Fill struct {

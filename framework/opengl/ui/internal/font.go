@@ -6,6 +6,7 @@ import (
 	"image/color"
 	"image/draw"
 	"strings"
+	"time"
 
 	"github.com/go-gl/gl/v4.6-core/gl"
 	xfont "golang.org/x/image/font"
@@ -79,6 +80,8 @@ func (f *Font) SubFamily() string {
 }
 
 func (f *Font) Allocate(font *opentype.Font) {
+	startTime := time.Now()
+
 	familyName, err := font.Name(buf, 1)
 	if err != nil {
 		panic(fmt.Errorf("failed to get family name: %w", err))
@@ -203,6 +206,9 @@ func (f *Font) Allocate(font *opentype.Font) {
 		DataComponentType: gl.UNSIGNED_BYTE,
 		Data:              dst.Pix,
 	})
+
+	elapsedTime := time.Since(startTime)
+	fmt.Printf("Font creation time: %s\n", elapsedTime)
 }
 
 func (f *Font) Release() {
