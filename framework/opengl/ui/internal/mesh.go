@@ -109,9 +109,9 @@ func (m *Mesh) Append(vertex Vertex) {
 	m.vertexPlotter.PlotFloat32(vertex.position.Y)
 	m.vertexPlotter.PlotFloat32(vertex.texCoord.X)
 	m.vertexPlotter.PlotFloat32(vertex.texCoord.Y)
-	m.vertexPlotter.PlotByte(vertex.color.R)
-	m.vertexPlotter.PlotByte(vertex.color.G)
-	m.vertexPlotter.PlotByte(vertex.color.B)
-	m.vertexPlotter.PlotByte(vertex.color.A)
+	m.vertexPlotter.PlotByte(byte(vertex.color.X * 255.0))
+	m.vertexPlotter.PlotByte(byte(vertex.color.Y * 255.0))
+	m.vertexPlotter.PlotByte(byte(vertex.color.Z * 255.0))
+	m.vertexPlotter.PlotByte(byte(vertex.color.W * 255.0))
 	m.vertexOffset++
 }

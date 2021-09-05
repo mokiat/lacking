@@ -6,18 +6,21 @@ import (
 )
 
 type SubMesh struct {
-	material      *Material
-	texture       *opengl.TwoDTexture
-	vertexOffset  int
-	vertexCount   int
-	patchVertices int
-	primitive     uint32
-	culling       bool
-	cullFace      uint32
-	clipBounds    sprec.Vec4
-	skipColor     bool
-	stencil       bool
-	stencilCfg    stencilConfig
+	material               *Material
+	transformMatrix        sprec.Mat4
+	textureTransformMatrix sprec.Mat4
+	texture                *opengl.TwoDTexture
+	color                  sprec.Vec4
+	vertexOffset           int
+	vertexCount            int
+	patchVertices          int
+	primitive              uint32
+	culling                bool
+	cullFace               uint32
+	clipBounds             sprec.Vec4
+	skipColor              bool
+	stencil                bool
+	stencilCfg             stencilConfig
 }
 
 type stencilConfig struct {

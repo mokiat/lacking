@@ -14,6 +14,7 @@ import (
 	"golang.org/x/image/font/sfnt"
 	"golang.org/x/image/math/fixed"
 
+	"github.com/mokiat/gomath/sprec"
 	"github.com/mokiat/lacking/framework/opengl"
 	"github.com/mokiat/lacking/ui"
 )
@@ -42,6 +43,258 @@ func init() {
 		'Д', 'Е', 'Ж', 'З', 'И', 'Й', 'К', 'Л', 'М', 'Н', 'О', 'П', 'Р', 'С', 'Т', 'У',
 		'Ф', 'Х', 'Ц', 'Ч', 'Ш', 'Щ', 'Ъ', 'ѝ', 'Ю', 'Я', '№', '<', '>', ' ', '\t',
 	}
+}
+
+func NewFontFactory(renderer *Renderer) *FontFactory {
+	return &FontFactory{
+		renderer:            renderer,
+		colorTexture:        opengl.NewTwoDTexture(),
+		depthStencilTexture: opengl.NewTwoDTexture(),
+		framebuffer:         opengl.NewFramebuffer(),
+	}
+}
+
+type FontFactory struct {
+	renderer            *Renderer
+	colorTexture        *opengl.TwoDTexture
+	depthStencilTexture *opengl.TwoDTexture
+	framebuffer         *opengl.Framebuffer
+}
+
+func (f *FontFactory) Init() {
+	f.colorTexture.Allocate(opengl.TwoDTextureAllocateInfo{
+		Width:          fontImageSize,
+		Height:         fontImageSize,
+		MinFilter:      gl.NEAREST,
+		MagFilter:      gl.NEAREST,
+		InternalFormat: gl.RGBA8,
+	})
+
+	f.depthStencilTexture.Allocate(opengl.TwoDTextureAllocateInfo{
+		Width:          fontImageSize,
+		Height:         fontImageSize,
+		MinFilter:      gl.NEAREST,
+		MagFilter:      gl.NEAREST,
+		InternalFormat: gl.DEPTH24_STENCIL8,
+	})
+
+	f.framebuffer.Allocate(opengl.FramebufferAllocateInfo{
+		ColorAttachments: []*opengl.Texture{
+			&f.colorTexture.Texture,
+		},
+		DepthStencilAttachment: &f.depthStencilTexture.Texture,
+	})
+}
+
+func (f *FontFactory) Free() {
+	defer f.colorTexture.Release()
+	defer f.depthStencilTexture.Release()
+	defer f.framebuffer.Release()
+}
+
+func (f *FontFactory) CreateFont(font *opentype.Font) *Font {
+	startTime := time.Now()
+
+	result := NewFont()
+
+	familyName, err := font.Name(buf, 1)
+	if err != nil {
+		panic(fmt.Errorf("failed to get family name: %w", err))
+	}
+	result.familyName = strings.ToLower(familyName)
+
+	subFamilyName, err := font.Name(buf, 2)
+	if err != nil {
+		panic(fmt.Errorf("failed to get sub-family name: %w", err))
+	}
+	result.subFamilyName = strings.ToLower(subFamilyName)
+
+	cellSize := (fontImageSize / fontImageCells)
+	fontSize := pickOptimalFontSize(font, cellSize)
+
+	metrics, err := font.Metrics(buf, fixed.I(fontSize), xfont.HintingNone)
+	if err != nil {
+		panic(fmt.Errorf("failed to get font metrics: %w", err))
+	}
+
+	scale := 1.0 / float32(metrics.Ascent.Round()+metrics.Descent.Round())
+	result.lineHeight = float32(metrics.Height.Round()) * scale
+	result.lineAscent = float32(metrics.Ascent.Round()) * scale
+	result.lineDescent = float32(metrics.Descent.Round()) * scale
+
+	f.renderer.Begin(Target{
+		Framebuffer: f.framebuffer,
+		Size:        sprec.NewVec2(float32(fontImageSize), float32(fontImageSize)),
+	})
+
+	f.framebuffer.ClearColor(0, sprec.NewVec4(0.0, 0.0, 0.0, 0.0))
+	f.framebuffer.ClearDepth(1.0)
+	f.framebuffer.ClearStencil(0)
+
+	for i, ch := range supportedCharacters {
+		chIndex, err := font.GlyphIndex(buf, ch)
+		if err != nil {
+			panic(fmt.Errorf("failed to find char index: %w", err))
+		}
+
+		segments, err := font.LoadGlyph(buf, chIndex, fixed.I(fontSize), nil)
+		if err != nil {
+			panic(fmt.Errorf("failed to load glyph index: %w", err))
+		}
+
+		bounds, advance, err := font.GlyphBounds(buf, chIndex, fixed.I(fontSize), xfont.HintingNone)
+		if err != nil {
+			panic(fmt.Errorf("failed to get glyph bounds: %w", err))
+		}
+
+		leftPx := (i % fontImageCells) * cellSize
+		rightPx := leftPx + bounds.Max.Sub(bounds.Min).X.Floor()
+		topPx := (i / fontImageCells) * cellSize
+		bottomPx := topPx + bounds.Max.Sub(bounds.Min).Y.Floor()
+
+		f.renderer.SetClipBounds(
+			0, float32(fontImageSize),
+			0, float32(fontImageSize),
+		)
+
+		f.renderer.SetTransform(
+			sprec.TranslationMat4(float32(leftPx), float32(rightPx), 0.0),
+		)
+
+		shape := f.renderer.BeginShape(Fill{
+			color: sprec.NewVec4(1.0, 0.0, 0.0, 1.0),
+		})
+
+		const scale = 1
+
+		for _, segment := range segments {
+			switch segment.Op {
+			case sfnt.SegmentOpMoveTo:
+				// log.Printf("move to (%d, %d)\n",
+				// 	segment.Args[0].X.Floor()*scale,
+				// 	segment.Args[0].Y.Floor()*scale+400,
+				// )
+				shape.MoveTo(
+					sprec.NewVec2(
+						float32(segment.Args[0].X.Floor()*scale),
+						float32(segment.Args[0].Y.Floor()*scale),
+					),
+				)
+
+			case sfnt.SegmentOpLineTo:
+				// log.Printf("line to (%d, %d)\n",
+				// 	segment.Args[0].X.Floor()*scale,
+				// 	segment.Args[0].Y.Floor()*scale+400,
+				// )
+				shape.LineTo(
+					sprec.NewVec2(
+						float32(segment.Args[0].X.Floor()*scale),
+						float32(segment.Args[0].Y.Floor()*scale),
+					),
+				)
+
+			case sfnt.SegmentOpQuadTo:
+				// log.Printf("quad to (%d, %d) (%d, %d)\n",
+				// 	segment.Args[0].X.Floor()*scale,
+				// 	segment.Args[0].Y.Floor()*scale+400,
+				// 	segment.Args[1].X.Floor()*scale,
+				// 	segment.Args[1].Y.Floor()*scale+400,
+				// )
+				shape.QuadTo(
+					sprec.NewVec2(
+						float32(segment.Args[0].X.Floor()*scale),
+						float32(segment.Args[0].Y.Floor()*scale),
+					),
+					sprec.NewVec2(
+						float32(segment.Args[1].X.Floor()*scale),
+						float32(segment.Args[1].Y.Floor()*scale),
+					),
+				)
+
+			case sfnt.SegmentOpCubeTo:
+				// log.Printf("cube to (%d, %d) (%d, %d) (%d, %d)\n",
+				// 	segment.Args[0].X.Floor()*scale,
+				// 	segment.Args[0].Y.Floor()*scale+400,
+				// 	segment.Args[1].X.Floor()*scale,
+				// 	segment.Args[1].Y.Floor()*scale+400,
+				// 	segment.Args[2].X.Floor()*scale,
+				// 	segment.Args[2].Y.Floor()*scale+400,
+				// )
+				shape.CubeTo(
+					sprec.NewVec2(
+						float32(segment.Args[0].X.Floor()*scale),
+						float32(segment.Args[0].Y.Floor()*scale),
+					),
+					sprec.NewVec2(
+						float32(segment.Args[1].X.Floor()*scale),
+						float32(segment.Args[1].Y.Floor()*scale),
+					),
+					sprec.NewVec2(
+						float32(segment.Args[2].X.Floor()*scale),
+						float32(segment.Args[2].Y.Floor()*scale),
+					),
+				)
+
+			default:
+				panic("unknown segment")
+			}
+		}
+
+		f.renderer.EndShape(shape)
+
+		result.glyphs[ch] = &fontGlyph{
+			leftU:        float32(leftPx) / float32(fontImageSize),
+			rightU:       float32(rightPx) / float32(fontImageSize),
+			topV:         float32(topPx) / float32(fontImageSize),
+			bottomV:      float32(bottomPx) / float32(fontImageSize),
+			advance:      float32(advance.Round()) * scale,
+			ascent:       float32(-bounds.Min.Y.Round()) * scale,
+			descent:      float32(bounds.Max.Y.Round()) * scale,
+			leftBearing:  float32(bounds.Min.X.Round()) * scale,
+			rightBearing: float32((advance - bounds.Max.X).Round()) * scale,
+			kerns:        make(map[rune]float32),
+		}
+
+		for _, targetCh := range supportedCharacters {
+			targetChIndex, err := font.GlyphIndex(buf, targetCh)
+			if err != nil {
+				panic(fmt.Errorf("failed to find char index: %w", err))
+			}
+			kern, err := font.Kern(buf, chIndex, targetChIndex, fixed.I(fontSize), xfont.HintingNone)
+			if err != nil {
+				panic(fmt.Errorf("failed to find kern: %w", err))
+			}
+			if kern.Ceil() == 0 {
+				continue
+			}
+			result.glyphs[ch].kerns[targetCh] = float32(kern.Ceil()) * scale
+		}
+
+		if true {
+			break
+		}
+	}
+
+	f.renderer.End()
+
+	result.texture.Allocate(opengl.TwoDTextureAllocateInfo{
+		Width:           fontImageSize,
+		Height:          fontImageSize,
+		WrapS:           gl.CLAMP_TO_EDGE,
+		WrapT:           gl.CLAMP_TO_EDGE,
+		MinFilter:       gl.LINEAR_MIPMAP_LINEAR,
+		MagFilter:       gl.LINEAR,
+		UseAnisotropy:   false,
+		GenerateMipmaps: true,
+		InternalFormat:  gl.SRGB8_ALPHA8,
+	})
+
+	gl.CopyTextureSubImage2D(result.texture.ID(), 0, 0, 0, 0, 0, fontImageSize, fontImageSize)
+
+	elapsedTime := time.Since(startTime)
+	fmt.Printf("Font creation time: %s\n", elapsedTime)
+
+	return result
 }
 
 func NewFont() *Font {
@@ -129,11 +382,6 @@ func (f *Font) Allocate(font *opentype.Font) {
 			panic(fmt.Errorf("failed to find char index: %w", err))
 		}
 
-		segments, err := font.LoadGlyph(buf, chIndex, fixed.I(fontSize), nil)
-		if err != nil {
-			panic(fmt.Errorf("failed to load glyph index: %w", err))
-		}
-
 		drawRect, mask, maskPos, _, ok := face.Glyph(fixed.P(0, 0), ch)
 		if !ok {
 			panic(fmt.Errorf("failed to find glyph for character %c", ch))
@@ -159,9 +407,6 @@ func (f *Font) Allocate(font *opentype.Font) {
 			panic(fmt.Errorf("failed to get glyph bounds: %w", err))
 		}
 
-		clonedSegments := make([]sfnt.Segment, len(segments))
-		copy(clonedSegments, segments)
-
 		f.glyphs[ch] = &fontGlyph{
 			leftU:        float32(leftPx) / float32(fontImageSize),
 			rightU:       float32(rightPx) / float32(fontImageSize),
@@ -173,7 +418,6 @@ func (f *Font) Allocate(font *opentype.Font) {
 			leftBearing:  float32(bounds.Min.X.Round()) * scale,
 			rightBearing: float32((advance - bounds.Max.X).Round()) * scale,
 			kerns:        make(map[rune]float32),
-			segments:     clonedSegments,
 		}
 
 		for _, targetCh := range supportedCharacters {
@@ -211,7 +455,7 @@ func (f *Font) Allocate(font *opentype.Font) {
 	fmt.Printf("Font creation time: %s\n", elapsedTime)
 }
 
-func (f *Font) Release() {
+func (f *Font) Destroy() {
 	f.texture.Release()
 }
 
@@ -261,6 +505,4 @@ type fontGlyph struct {
 	// kerns holds positional adjustments between two glyphs. A positive
 	// value means to move them further apart.
 	kerns map[rune]float32
-
-	segments sfnt.Segments
 }

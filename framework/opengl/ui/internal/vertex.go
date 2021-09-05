@@ -1,12 +1,9 @@
 package internal
 
-import (
-	"github.com/mokiat/gomath/sprec"
-	"github.com/mokiat/lacking/ui"
-)
+import "github.com/mokiat/gomath/sprec"
 
 type Vertex struct {
 	position sprec.Vec2
 	texCoord sprec.Vec2
-	color    ui.Color
+	color    sprec.Vec4
 }
