@@ -41,7 +41,7 @@ func (s *Shape) LineTo(position sprec.Vec2) {
 
 func (s *Shape) QuadTo(control, position sprec.Vec2) {
 	// TODO: Evaluate tessellation based on curvature and size
-	const tessellation = 30
+	const tessellation = 5
 
 	lastPoint := s.lastPoint()
 	vecCS := sprec.Vec2Diff(lastPoint.coords, control)
@@ -70,7 +70,7 @@ func (s *Shape) QuadTo(control, position sprec.Vec2) {
 
 func (s *Shape) CubeTo(control1, control2, position sprec.Vec2) {
 	// TODO: Evaluate tessellation based on curvature and size
-	const tessellation = 30
+	const tessellation = 5
 
 	lastPoint := s.lastPoint()
 
