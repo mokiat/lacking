@@ -109,124 +109,128 @@ func (r *Renderer) EndShape(shape *Shape) {
 			position: point.coords,
 		})
 	}
-	vertexCount := r.mesh.Offset() - vertexOffset
-
-	// TODO: HANDLE SubShapes!!!!
 
 	if shape.fill.mode != StencilModeNone {
-		// clear stencil
-		r.subMeshes = append(r.subMeshes, SubMesh{
-			clipBounds:      r.clipBounds,
-			material:        r.shapeBlankMaterial,
-			transformMatrix: r.transformMatrix,
-			vertexOffset:    vertexOffset, // FIXME: Take from subshape
-			vertexCount:     vertexCount,  // FIXME: Take from subshape
-			primitive:       gl.TRIANGLE_FAN,
-			skipColor:       true,
-			stencil:         true,
-			stencilCfg: stencilConfig{
-				stencilFuncFront: stencilFunc{
-					fn:   gl.ALWAYS,
-					ref:  0,
-					mask: 0xFF,
+		// clear stencil for all sub-shapes
+		for _, subShape := range shape.subShapes {
+			r.subMeshes = append(r.subMeshes, SubMesh{
+				clipBounds:      r.clipBounds,
+				material:        r.shapeBlankMaterial,
+				transformMatrix: r.transformMatrix,
+				vertexOffset:    vertexOffset + subShape.pointOffset,
+				vertexCount:     subShape.pointCount,
+				primitive:       gl.TRIANGLE_FAN,
+				skipColor:       true,
+				stencil:         true,
+				stencilCfg: stencilConfig{
+					stencilFuncFront: stencilFunc{
+						fn:   gl.ALWAYS,
+						ref:  0,
+						mask: 0xFF,
+					},
+					stencilFuncBack: stencilFunc{
+						fn:   gl.ALWAYS,
+						ref:  0,
+						mask: 0xFF,
+					},
+					stencilOpFront: stencilOp{
+						sfail:  gl.REPLACE,
+						dpfail: gl.REPLACE,
+						dppass: gl.REPLACE,
+					},
+					stencilOpBack: stencilOp{
+						sfail:  gl.REPLACE,
+						dpfail: gl.REPLACE,
+						dppass: gl.REPLACE,
+					},
 				},
-				stencilFuncBack: stencilFunc{
-					fn:   gl.ALWAYS,
-					ref:  0,
-					mask: 0xFF,
-				},
-				stencilOpFront: stencilOp{
-					sfail:  gl.REPLACE,
-					dpfail: gl.REPLACE,
-					dppass: gl.REPLACE,
-				},
-				stencilOpBack: stencilOp{
-					sfail:  gl.REPLACE,
-					dpfail: gl.REPLACE,
-					dppass: gl.REPLACE,
-				},
-			},
-		})
+			})
+		}
 
-		// render stencil mask
+		// draw stencil mask for all sub-shapes
+		for _, subShape := range shape.subShapes {
+			r.subMeshes = append(r.subMeshes, SubMesh{
+				clipBounds:      r.clipBounds,
+				material:        r.shapeBlankMaterial,
+				transformMatrix: r.transformMatrix,
+				vertexOffset:    vertexOffset + subShape.pointOffset,
+				vertexCount:     subShape.pointCount,
+				primitive:       gl.TRIANGLE_FAN,
+				skipColor:       true,
+				stencil:         true,
+				stencilCfg: stencilConfig{
+					stencilFuncFront: stencilFunc{
+						fn:   gl.ALWAYS,
+						ref:  0,
+						mask: 0xFF,
+					},
+					stencilFuncBack: stencilFunc{
+						fn:   gl.ALWAYS,
+						ref:  0,
+						mask: 0xFF,
+					},
+					stencilOpFront: stencilOp{
+						sfail:  gl.KEEP,
+						dpfail: gl.KEEP,
+						dppass: gl.INCR_WRAP,
+					},
+					stencilOpBack: stencilOp{
+						sfail:  gl.KEEP,
+						dpfail: gl.KEEP,
+						dppass: gl.DECR_WRAP,
+					},
+				},
+			})
+		}
+	}
+
+	// render color shader shape
+	for _, subShape := range shape.subShapes {
+		texture := r.whiteMask
+		if shape.fill.image != nil {
+			texture = shape.fill.image.texture
+		}
+
+		stencilMask := uint32(0xFF)
+		if shape.fill.mode == StencilModeOdd {
+			stencilMask = uint32(0x01)
+		}
+
 		r.subMeshes = append(r.subMeshes, SubMesh{
-			clipBounds:      r.clipBounds,
-			material:        r.shapeBlankMaterial,
-			transformMatrix: r.transformMatrix,
-			vertexOffset:    vertexOffset, // FIXME: Take from subshape
-			vertexCount:     vertexCount,  // FIXME: Take from subshape
-			primitive:       gl.TRIANGLE_FAN,
-			skipColor:       true,
-			stencil:         true,
+			clipBounds:             r.clipBounds,
+			material:               r.shapeMaterial,
+			transformMatrix:        r.transformMatrix,
+			textureTransformMatrix: r.textureTransformMatrix,
+			texture:                texture,
+			color:                  shape.fill.color,
+			vertexOffset:           vertexOffset + subShape.pointOffset,
+			vertexCount:            subShape.pointCount,
+			primitive:              gl.TRIANGLE_FAN,
+			stencil:                shape.fill.mode != StencilModeNone,
 			stencilCfg: stencilConfig{
 				stencilFuncFront: stencilFunc{
-					fn:   gl.ALWAYS,
+					fn:   gl.NOTEQUAL,
 					ref:  0,
-					mask: 0xFF,
+					mask: stencilMask,
 				},
 				stencilFuncBack: stencilFunc{
-					fn:   gl.ALWAYS,
+					fn:   gl.NOTEQUAL,
 					ref:  0,
-					mask: 0xFF,
+					mask: stencilMask,
 				},
 				stencilOpFront: stencilOp{
 					sfail:  gl.KEEP,
 					dpfail: gl.KEEP,
-					dppass: gl.INCR_WRAP,
+					dppass: gl.KEEP,
 				},
 				stencilOpBack: stencilOp{
 					sfail:  gl.KEEP,
 					dpfail: gl.KEEP,
-					dppass: gl.DECR_WRAP,
+					dppass: gl.KEEP,
 				},
 			},
 		})
 	}
-
-	texture := r.whiteMask
-	if shape.fill.image != nil {
-		texture = shape.fill.image.texture
-	}
-
-	stencilMask := uint32(0xFF)
-	if shape.fill.mode == StencilModeOdd {
-		stencilMask = uint32(0x01)
-	}
-
-	r.subMeshes = append(r.subMeshes, SubMesh{
-		clipBounds:             r.clipBounds,
-		material:               r.shapeMaterial,
-		transformMatrix:        r.transformMatrix,
-		textureTransformMatrix: r.textureTransformMatrix,
-		texture:                texture,
-		color:                  shape.fill.color,
-		vertexOffset:           vertexOffset, // FIXME: Take from subshape
-		vertexCount:            vertexCount,  // FIXME: Take from subshape
-		primitive:              gl.TRIANGLE_FAN,
-		stencil:                shape.fill.mode != StencilModeNone,
-		stencilCfg: stencilConfig{
-			stencilFuncFront: stencilFunc{
-				fn:   gl.NOTEQUAL,
-				ref:  0,
-				mask: stencilMask,
-			},
-			stencilFuncBack: stencilFunc{
-				fn:   gl.NOTEQUAL,
-				ref:  0,
-				mask: stencilMask,
-			},
-			stencilOpFront: stencilOp{
-				sfail:  gl.KEEP,
-				dpfail: gl.KEEP,
-				dppass: gl.KEEP,
-			},
-			stencilOpBack: stencilOp{
-				sfail:  gl.KEEP,
-				dpfail: gl.KEEP,
-				dppass: gl.KEEP,
-			},
-		},
-	})
 }
 
 func (r *Renderer) BeginContour() *Contour {
@@ -334,9 +338,6 @@ func (r *Renderer) End() {
 	gl.Disable(gl.STENCIL_TEST)
 	gl.Enable(gl.CULL_FACE)
 	gl.CullFace(gl.BACK)
-
-	// TODO: Remove once the remaining part of the framework
-	// can handle resetting its settings.
 	gl.Disable(gl.BLEND)
 
 	gl.Disable(gl.CLIP_DISTANCE0)
