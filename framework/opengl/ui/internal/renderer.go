@@ -16,6 +16,8 @@ func NewRenderer() *Renderer {
 		shapeBlankMaterial: newShapeBlankMaterial(),
 		contour:            newContour(),
 		contourMaterial:    nil, // TODO
+		text:               newText(),
+		textMaterial:       newTextMaterial(),
 		mesh:               NewMesh(maxVertexCount),
 		whiteMask:          opengl.NewTwoDTexture(),
 	}
@@ -33,6 +35,9 @@ type Renderer struct {
 	contour         *Contour
 	contourMaterial *Material
 
+	text         *Text
+	textMaterial *Material
+
 	mesh      *Mesh
 	subMeshes []SubMesh
 	whiteMask *opengl.TwoDTexture
@@ -43,6 +48,7 @@ type Renderer struct {
 func (r *Renderer) Init() {
 	r.shapeMaterial.Allocate()
 	r.shapeBlankMaterial.Allocate()
+	r.textMaterial.Allocate()
 	r.mesh.Allocate()
 	r.whiteMask.Allocate(opengl.TwoDTextureAllocateInfo{
 		Width:             1,
@@ -59,6 +65,7 @@ func (r *Renderer) Init() {
 func (r *Renderer) Free() {
 	defer r.shapeMaterial.Release()
 	defer r.shapeBlankMaterial.Release()
+	defer r.textMaterial.Release()
 	defer r.whiteMask.Release()
 	defer r.mesh.Release()
 }
@@ -249,6 +256,118 @@ func (r *Renderer) EndContour(contour *Contour) {
 	}
 	r.contour = contour
 	// TODO: Submit vertices and sub-meshes
+}
+
+func (r *Renderer) BeginText(font *Font, fontSize float32, color sprec.Vec4) *Text {
+	if r.text == nil {
+		panic("text already started")
+	}
+	result := r.text
+	result.Init(font, fontSize, color)
+	r.text = nil
+	return result
+}
+
+func (r *Renderer) EndText(text *Text) {
+	if r.text != nil {
+		panic("text already ended")
+	}
+	r.text = text
+
+	offset := sprec.NewVec2(0.0, 0.0)
+	lastGlyph := (*fontGlyph)(nil)
+	vertexOffset := r.mesh.Offset()
+
+	for _, ch := range text.characters {
+		lineHeight := text.font.lineHeight * text.fontSize
+		lineAscent := text.font.lineAscent * text.fontSize
+		if ch == '\r' {
+			offset.X = 0.0
+			lastGlyph = nil
+			continue
+		}
+		if ch == '\n' {
+			offset.X = 0.0
+			offset.Y += lineHeight
+			lastGlyph = nil
+			continue
+		}
+
+		if glyph, ok := text.font.glyphs[ch]; ok {
+			advance := glyph.advance * text.fontSize
+			leftBearing := glyph.leftBearing * text.fontSize
+			rightBearing := glyph.rightBearing * text.fontSize
+			ascent := glyph.ascent * text.fontSize
+			descent := glyph.descent * text.fontSize
+
+			vertTopLeft := Vertex{
+				position: sprec.Vec2Sum(
+					sprec.NewVec2(
+						leftBearing,
+						lineAscent-ascent,
+					),
+					offset,
+				),
+				texCoord: sprec.NewVec2(glyph.leftU, glyph.topV),
+			}
+			vertTopRight := Vertex{
+				position: sprec.Vec2Sum(
+					sprec.NewVec2(
+						advance-rightBearing,
+						lineAscent-ascent,
+					),
+					offset,
+				),
+				texCoord: sprec.NewVec2(glyph.rightU, glyph.topV),
+			}
+			vertBottomLeft := Vertex{
+				position: sprec.Vec2Sum(
+					sprec.NewVec2(
+						leftBearing,
+						lineAscent+descent,
+					),
+					offset,
+				),
+				texCoord: sprec.NewVec2(glyph.leftU, glyph.bottomV),
+			}
+			vertBottomRight := Vertex{
+				position: sprec.Vec2Sum(
+					sprec.NewVec2(
+						advance-rightBearing,
+						lineAscent+descent,
+					),
+					offset,
+				),
+				texCoord: sprec.NewVec2(glyph.rightU, glyph.bottomV),
+			}
+
+			r.mesh.Append(vertTopLeft)
+			r.mesh.Append(vertBottomLeft)
+			r.mesh.Append(vertBottomRight)
+
+			r.mesh.Append(vertTopLeft)
+			r.mesh.Append(vertBottomRight)
+			r.mesh.Append(vertTopRight)
+
+			offset.X += advance
+			if lastGlyph != nil {
+				offset.X += lastGlyph.kerns[ch] * text.fontSize
+			}
+			lastGlyph = glyph
+		}
+	}
+	vertexCount := r.mesh.Offset() - vertexOffset
+
+	r.subMeshes = append(r.subMeshes, SubMesh{
+		clipBounds:      r.clipBounds,
+		material:        r.textMaterial,
+		transformMatrix: r.transformMatrix,
+		texture:         text.font.texture,
+		color:           text.color,
+		vertexOffset:    vertexOffset,
+		vertexCount:     vertexCount,
+		primitive:       gl.TRIANGLES,
+	})
 }
 
 func (r *Renderer) Begin(target Target) {

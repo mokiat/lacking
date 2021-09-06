@@ -2,9 +2,6 @@ package internal
 
 import (
 	"fmt"
-	"image"
-	"image/color"
-	"image/draw"
 	"strings"
 	"time"
 
@@ -45,14 +42,13 @@ func init() {
 	}
 }
 
-var fontFramebuffer *opengl.Framebuffer
-
 func NewFontFactory(renderer *Renderer) *FontFactory {
 	return &FontFactory{
 		renderer:            renderer,
 		colorTexture:        opengl.NewTwoDTexture(),
 		depthStencilTexture: opengl.NewTwoDTexture(),
 		framebuffer:         opengl.NewFramebuffer(),
+		buf:                 &sfnt.Buffer{},
 	}
 }
 
@@ -61,6 +57,7 @@ type FontFactory struct {
 	colorTexture        *opengl.TwoDTexture
 	depthStencilTexture *opengl.TwoDTexture
 	framebuffer         *opengl.Framebuffer
+	buf                 *sfnt.Buffer
 }
 
 func (f *FontFactory) Init() {
@@ -69,7 +66,7 @@ func (f *FontFactory) Init() {
 		Height:         fontImageSize,
 		MinFilter:      gl.NEAREST,
 		MagFilter:      gl.NEAREST,
-		InternalFormat: gl.RGBA8,
+		InternalFormat: gl.SRGB8_ALPHA8,
 	})
 
 	f.depthStencilTexture.Allocate(opengl.TwoDTextureAllocateInfo{
@@ -86,8 +83,6 @@ func (f *FontFactory) Init() {
 		},
 		DepthStencilAttachment: &f.depthStencilTexture.Texture,
 	})
-
-	fontFramebuffer = f.framebuffer // TODO: Remove
 }
 
 func (f *FontFactory) Free() {
@@ -96,32 +91,27 @@ func (f *FontFactory) Free() {
 	defer f.framebuffer.Release()
 }
 
-func fixedToFloat(value fixed.Int26_6) float32 {
-	if value > 0 {
-		return float32(value>>6) + float32(value&0x3F)/float32(64)
-	} else {
-		return -float32(-value>>6) - float32(-value&0x3F)/float32(64)
-	}
-}
-
 func (f *FontFactory) CreateFont(font *opentype.Font) *Font {
 	startTime := time.Now()
 
 	result := &Font{
-		familyName:    fontFamilyName(font),
-		subFamilyName: fontSubFamilyName(font),
+		familyName:    f.fontFamilyName(font),
+		subFamilyName: f.fontSubFamilyName(font),
 		texture:       opengl.NewTwoDTexture(),
 		glyphs:        make(map[rune]*fontGlyph),
 	}
 
 	cellSize := (fontImageSize / fontImageCells)
+	// Use 4% padding to ensure that glyphs don't touch
+	padding := cellSize / 25
+	contentSize := cellSize - 2*padding
 	// One em is roughly the size of the area where a single glyph is drawn
 	// though with modern fonts glyphs can overflow that area.
 	// Still, we use that to determine roughly how many pixels we'd like for
 	// each glyph (ppem) so that we don't get many fixed point rounding errors.
-	ppem := fixed.I(cellSize)
+	ppem := fixed.I(contentSize)
 
-	metrics, err := font.Metrics(buf, ppem, xfont.HintingNone)
+	metrics, err := font.Metrics(f.buf, ppem, xfont.HintingNone)
 	if err != nil {
 		panic(fmt.Errorf("failed to get font metrics: %w", err))
 	}
@@ -142,25 +132,41 @@ func (f *FontFactory) CreateFont(font *opentype.Font) *Font {
 	})
 
 	for i, ch := range supportedCharacters {
-		chIndex, err := font.GlyphIndex(buf, ch)
+		chIndex, err := font.GlyphIndex(f.buf, ch)
 		if err != nil {
 			panic(fmt.Errorf("failed to find char (%c) index: %w", ch, err))
 		}
 
-		segments, err := font.LoadGlyph(buf, chIndex, ppem, nil)
+		segments, err := font.LoadGlyph(f.buf, chIndex, ppem, nil)
 		if err != nil {
 			panic(fmt.Errorf("failed to load glyph (%c): %w", ch, err))
 		}
 
-		bounds, advance, err := font.GlyphBounds(buf, chIndex, ppem, xfont.HintingNone)
+		bounds, advance, err := font.GlyphBounds(f.buf, chIndex, ppem, xfont.HintingNone)
 		if err != nil {
 			panic(fmt.Errorf("failed to get glyph (%c) bounds: %w", ch, err))
 		}
 
-		cellStartX := float32((i % fontImageCells) * cellSize)
-		cellEndX := cellStartX + float32(cellSize)
-		cellStartY := float32((i / fontImageCells) * cellSize)
-		cellEndY := cellStartY + float32(cellSize)
+		cellStartX := float32((i%fontImageCells)*cellSize) + float32(padding)
+		cellEndX := cellStartX + float32(contentSize)
+		cellStartY := float32((i/fontImageCells)*cellSize) + float32(padding)
+		cellEndY := cellStartY + float32(contentSize)
+
+		glyphWidth := fixedToFloat(bounds.Max.X - bounds.Min.X)
+		glyphHeight := fixedToFloat(bounds.Max.Y - bounds.Min.Y)
+		determinant := (glyphWidth - glyphHeight) * float32(contentSize)
+
+		// Make sure to preserve glyph proportions, otherwise mipmapping
+		// causes bad artifacts on elongated glyphs.
+		var boxPosition sprec.Vec2
+		var boxSize sprec.Vec2
+		if glyphWidth > glyphHeight {
+			boxPosition = sprec.NewVec2(cellStartX, cellStartY+determinant/(2.0*glyphWidth))
+			boxSize = sprec.NewVec2(float32(contentSize), (float32(contentSize)*glyphHeight)/glyphWidth)
+		} else {
+			boxPosition = sprec.NewVec2(cellStartX-determinant/(2.0*glyphHeight), cellStartY)
+			boxSize = sprec.NewVec2((float32(contentSize)*glyphWidth)/glyphHeight, float32(contentSize))
+		}
 
 		f.renderer.SetClipBounds(
 			cellStartX, cellEndX,
@@ -168,13 +174,13 @@ func (f *FontFactory) CreateFont(font *opentype.Font) *Font {
 		)
 		f.renderer.SetTransform(sprec.Mat4MultiProd(
 			sprec.TranslationMat4(
-				float32(cellStartX),
-				float32(cellStartY),
+				float32(boxPosition.X),
+				float32(boxPosition.Y),
 				0.0,
 			),
 			sprec.ScaleMat4(
-				float32(cellSize)/fixedToFloat(bounds.Max.X-bounds.Min.X),
-				float32(cellSize)/fixedToFloat(bounds.Max.Y-bounds.Min.Y),
+				float32(boxSize.X)/fixedToFloat(bounds.Max.X-bounds.Min.X),
+				float32(boxSize.Y)/fixedToFloat(bounds.Max.Y-bounds.Min.Y),
 				1.0,
 			),
 			sprec.TranslationMat4(
@@ -239,10 +245,10 @@ func (f *FontFactory) CreateFont(font *opentype.Font) *Font {
 		f.renderer.EndShape(shape)
 
 		result.glyphs[ch] = &fontGlyph{
-			leftU:   cellStartX / float32(fontImageSize),
-			rightU:  cellEndX / float32(fontImageSize),
-			topV:    cellStartY / float32(fontImageSize),
-			bottomV: cellEndY / float32(fontImageSize),
+			leftU:   boxPosition.X / float32(fontImageSize),
+			rightU:  (boxPosition.X + boxSize.X) / float32(fontImageSize),
+			topV:    1.0 - (boxPosition.Y)/float32(fontImageSize),
+			bottomV: 1.0 - (boxPosition.Y+boxSize.Y)/float32(fontImageSize),
 
 			advance:      fixedToFloat(advance) * scale,
 			ascent:       -fixedToFloat(bounds.Min.Y) * scale,
@@ -254,12 +260,12 @@ func (f *FontFactory) CreateFont(font *opentype.Font) *Font {
 		}
 
 		for _, targetCh := range supportedCharacters {
-			targetChIndex, err := font.GlyphIndex(buf, targetCh)
+			targetChIndex, err := font.GlyphIndex(f.buf, targetCh)
 			if err != nil {
 				panic(fmt.Errorf("failed to find char (%c) index: %w", ch, err))
 			}
 
-			kern, err := font.Kern(buf, chIndex, targetChIndex, ppem, xfont.HintingNone)
+			kern, err := font.Kern(f.buf, chIndex, targetChIndex, ppem, xfont.HintingNone)
 			if err != nil {
 				panic(fmt.Errorf("failed to find kern (%c - %c): %w", ch, targetCh, err))
 			}
@@ -273,17 +279,19 @@ func (f *FontFactory) CreateFont(font *opentype.Font) *Font {
 	f.renderer.End()
 
 	result.texture.Allocate(opengl.TwoDTextureAllocateInfo{
-		Width:           fontImageSize,
-		Height:          fontImageSize,
-		WrapS:           gl.CLAMP_TO_EDGE,
-		WrapT:           gl.CLAMP_TO_EDGE,
-		MinFilter:       gl.LINEAR_MIPMAP_LINEAR,
-		MagFilter:       gl.LINEAR,
-		UseAnisotropy:   false,
-		GenerateMipmaps: false,
-		InternalFormat:  gl.SRGB8_ALPHA8,
+		Width:              fontImageSize,
+		Height:             fontImageSize,
+		WrapS:              gl.CLAMP_TO_EDGE,
+		WrapT:              gl.CLAMP_TO_EDGE,
+		MinFilter:          gl.LINEAR_MIPMAP_LINEAR,
+		MagFilter:          gl.LINEAR,
+		UseAnisotropy:      false,
+		PlaceholderMipmaps: true,
+		GenerateMipmaps:    false,
+		InternalFormat:     gl.SRGB8_ALPHA8,
 	})
 
+	gl.TextureBarrier()
 	gl.CopyTextureSubImage2D(result.texture.ID(), 0, 0, 0, 0, 0, fontImageSize, fontImageSize)
 	gl.GenerateTextureMipmap(result.texture.ID())
 
@@ -293,16 +301,23 @@ func (f *FontFactory) CreateFont(font *opentype.Font) *Font {
 	return result
 }
 
-func NewFont() *Font {
-	return &Font{
-		texture: opengl.NewTwoDTexture(),
-		glyphs:  make(map[rune]*fontGlyph),
+func (f *FontFactory) fontFamilyName(font *opentype.Font) string {
+	familyName, err := font.Name(f.buf, 1)
+	if err != nil {
+		panic(fmt.Errorf("failed to get family name: %w", err))
 	}
+	return strings.ToLower(familyName)
+}
+
+func (f *FontFactory) fontSubFamilyName(font *opentype.Font) string {
+	subFamilyName, err := font.Name(f.buf, 2)
+	if err != nil {
+		panic(fmt.Errorf("failed to get sub-family name: %w", err))
+	}
+	return strings.ToLower(subFamilyName)
 }
 
 var _ ui.Font = (*Font)(nil)
-
-var buf = &sfnt.Buffer{}
 
 type Font struct {
 	familyName    string
@@ -328,146 +343,8 @@ func (f *Font) SubFamily() string {
 	return f.subFamilyName
 }
 
-func (f *Font) Allocate(font *opentype.Font) {
-	startTime := time.Now()
-
-	familyName, err := font.Name(buf, 1)
-	if err != nil {
-		panic(fmt.Errorf("failed to get family name: %w", err))
-	}
-	f.familyName = strings.ToLower(familyName)
-
-	subFamilyName, err := font.Name(buf, 2)
-	if err != nil {
-		panic(fmt.Errorf("failed to get sub-family name: %w", err))
-	}
-	f.subFamilyName = strings.ToLower(subFamilyName)
-
-	src := image.NewUniform(color.White)
-	dst := image.NewNRGBA(image.Rect(0, 0, fontImageSize, fontImageSize))
-
-	cellSize := (fontImageSize / fontImageCells)
-	fontSize := pickOptimalFontSize(font, cellSize)
-
-	metrics, err := font.Metrics(buf, fixed.I(fontSize), xfont.HintingNone)
-	if err != nil {
-		panic(fmt.Errorf("failed to get font metrics: %w", err))
-	}
-
-	scale := 1.0 / float32(metrics.Ascent.Round()+metrics.Descent.Round())
-	f.lineHeight = float32(metrics.Height.Round()) * scale
-	f.lineAscent = float32(metrics.Ascent.Round()) * scale
-	f.lineDescent = float32(metrics.Descent.Round()) * scale
-
-	face, err := opentype.NewFace(font, &opentype.FaceOptions{
-		Size:    float64(fontSize),
-		DPI:     72.0, // normal screen dpi
-		Hinting: xfont.HintingNone,
-	})
-	if err != nil {
-		panic(fmt.Errorf("failed to create face: %w", err))
-	}
-	defer face.Close()
-
-	for i, ch := range supportedCharacters {
-		chIndex, err := font.GlyphIndex(buf, ch)
-		if err != nil {
-			panic(fmt.Errorf("failed to find char index: %w", err))
-		}
-
-		drawRect, mask, maskPos, _, ok := face.Glyph(fixed.P(0, 0), ch)
-		if !ok {
-			panic(fmt.Errorf("failed to find glyph for character %c", ch))
-		}
-
-		leftPx := (i % fontImageCells) * cellSize
-		rightPx := leftPx + drawRect.Dx()
-		topPx := (i / fontImageCells) * cellSize
-		bottomPx := topPx + drawRect.Dy()
-
-		draw.DrawMask(
-			dst,
-			image.Rect(leftPx, topPx, rightPx, bottomPx),
-			src,
-			image.Pt(0, 0),
-			mask,
-			maskPos,
-			draw.Src,
-		)
-
-		bounds, advance, err := font.GlyphBounds(buf, chIndex, fixed.I(fontSize), xfont.HintingNone)
-		if err != nil {
-			panic(fmt.Errorf("failed to get glyph bounds: %w", err))
-		}
-
-		f.glyphs[ch] = &fontGlyph{
-			leftU:        float32(leftPx) / float32(fontImageSize),
-			rightU:       float32(rightPx) / float32(fontImageSize),
-			topV:         float32(topPx) / float32(fontImageSize),
-			bottomV:      float32(bottomPx) / float32(fontImageSize),
-			advance:      float32(advance.Round()) * scale,
-			ascent:       float32(-bounds.Min.Y.Round()) * scale,
-			descent:      float32(bounds.Max.Y.Round()) * scale,
-			leftBearing:  float32(bounds.Min.X.Round()) * scale,
-			rightBearing: float32((advance - bounds.Max.X).Round()) * scale,
-			kerns:        make(map[rune]float32),
-		}
-
-		for _, targetCh := range supportedCharacters {
-			targetChIndex, err := font.GlyphIndex(buf, targetCh)
-			if err != nil {
-				panic(fmt.Errorf("failed to find char index: %w", err))
-			}
-			kern, err := font.Kern(buf, chIndex, targetChIndex, fixed.I(fontSize), xfont.HintingNone)
-			if err != nil {
-				panic(fmt.Errorf("failed to find kern: %w", err))
-			}
-			if kern.Ceil() == 0 {
-				continue
-			}
-			f.glyphs[ch].kerns[targetCh] = float32(kern.Ceil()) * scale
-		}
-	}
-
-	f.texture.Allocate(opengl.TwoDTextureAllocateInfo{
-		Width:             fontImageSize,
-		Height:            fontImageSize,
-		WrapS:             gl.CLAMP_TO_EDGE,
-		WrapT:             gl.CLAMP_TO_EDGE,
-		MinFilter:         gl.LINEAR_MIPMAP_LINEAR,
-		MagFilter:         gl.LINEAR,
-		UseAnisotropy:     false,
-		GenerateMipmaps:   true,
-		InternalFormat:    gl.SRGB8_ALPHA8,
-		DataFormat:        gl.RGBA,
-		DataComponentType: gl.UNSIGNED_BYTE,
-		Data:              dst.Pix,
-	})
-
-	elapsedTime := time.Since(startTime)
-	fmt.Printf("Font creation time: %s\n", elapsedTime)
-}
-
 func (f *Font) Destroy() {
 	f.texture.Release()
-}
-
-func pickOptimalFontSize(font *opentype.Font, cellSize int) int {
-	minFontSize := 1
-	maxFontSize := cellSize
-	for minFontSize < maxFontSize-1 {
-		avgFontSize := (minFontSize + maxFontSize) / 2
-		metrics, err := font.Metrics(buf, fixed.I(avgFontSize), xfont.HintingNone)
-		if err != nil {
-			panic(fmt.Errorf("failed to get font metrics: %w", err))
-		}
-		if (metrics.Ascent + metrics.Descent).Ceil() > cellSize {
-			maxFontSize = avgFontSize - 1
-		} else {
-			minFontSize = avgFontSize
-		}
-	}
-	return minFontSize
 }
 
 type fontGlyph struct {
@@ -500,18 +377,10 @@ type fontGlyph struct {
 	kerns map[rune]float32
 }
 
-func fontFamilyName(font *opentype.Font) string {
-	familyName, err := font.Name(buf, 1)
-	if err != nil {
-		panic(fmt.Errorf("failed to get family name: %w", err))
+func fixedToFloat(value fixed.Int26_6) float32 {
+	if value > 0 {
+		return float32(value>>6) + float32(value&0x3F)/float32(64)
+	} else {
+		return -float32(-value>>6) - float32(-value&0x3F)/float32(64)
 	}
-	return strings.ToLower(familyName)
-}
-
-func fontSubFamilyName(font *opentype.Font) string {
-	subFamilyName, err := font.Name(buf, 2)
-	if err != nil {
-		panic(fmt.Errorf("failed to get sub-family name: %w", err))
-	}
-	return strings.ToLower(subFamilyName)
 }

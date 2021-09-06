@@ -51,18 +51,19 @@ func (t *TwoDTexture) Release() {
 }
 
 type TwoDTextureAllocateInfo struct {
-	Width             int32
-	Height            int32
-	WrapS             int32
-	WrapT             int32
-	MinFilter         int32
-	MagFilter         int32
-	UseAnisotropy     bool
-	GenerateMipmaps   bool
-	InternalFormat    uint32
-	DataFormat        uint32
-	DataComponentType uint32
-	Data              []byte
+	Width              int32
+	Height             int32
+	WrapS              int32
+	WrapT              int32
+	MinFilter          int32
+	MagFilter          int32
+	UseAnisotropy      bool
+	PlaceholderMipmaps bool
+	GenerateMipmaps    bool
+	InternalFormat     uint32
+	DataFormat         uint32
+	DataComponentType  uint32
+	Data               []byte
 }
 
 func (i TwoDTextureAllocateInfo) wrapS() int32 {
@@ -121,7 +122,7 @@ func (i TwoDTextureAllocateInfo) dataComponentType() uint32 {
 }
 
 func (i TwoDTextureAllocateInfo) levels() int32 {
-	if !i.GenerateMipmaps {
+	if !i.GenerateMipmaps && !i.PlaceholderMipmaps {
 		return 1
 	}
 	count := int32(1)
