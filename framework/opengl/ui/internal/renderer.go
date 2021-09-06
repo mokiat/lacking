@@ -11,12 +11,13 @@ const maxVertexCount = 2048 * 10
 
 func NewRenderer() *Renderer {
 	return &Renderer{
-		shape:           newShape(),
-		shapeMaterial:   NewShapeMaterial(),
-		contour:         newContour(),
-		contourMaterial: nil, // TODO
-		mesh:            NewMesh(maxVertexCount),
-		whiteMask:       opengl.NewTwoDTexture(),
+		shape:              newShape(),
+		shapeMaterial:      newShapeMaterial(),
+		shapeBlankMaterial: newShapeBlankMaterial(),
+		contour:            newContour(),
+		contourMaterial:    nil, // TODO
+		mesh:               NewMesh(maxVertexCount),
+		whiteMask:          opengl.NewTwoDTexture(),
 	}
 }
 
@@ -25,8 +26,9 @@ type Renderer struct {
 	textureTransformMatrix sprec.Mat4
 	clipBounds             sprec.Vec4
 
-	shape         *Shape
-	shapeMaterial *Material
+	shape              *Shape
+	shapeMaterial      *Material
+	shapeBlankMaterial *Material
 
 	contour         *Contour
 	contourMaterial *Material
@@ -40,6 +42,7 @@ type Renderer struct {
 
 func (r *Renderer) Init() {
 	r.shapeMaterial.Allocate()
+	r.shapeBlankMaterial.Allocate()
 	r.mesh.Allocate()
 	r.whiteMask.Allocate(opengl.TwoDTextureAllocateInfo{
 		Width:             1,
@@ -55,6 +58,7 @@ func (r *Renderer) Init() {
 
 func (r *Renderer) Free() {
 	defer r.shapeMaterial.Release()
+	defer r.shapeBlankMaterial.Release()
 	defer r.whiteMask.Release()
 	defer r.mesh.Release()
 }
@@ -110,91 +114,83 @@ func (r *Renderer) EndShape(shape *Shape) {
 	// TODO: HANDLE SubShapes!!!!
 
 	if shape.fill.mode != StencilModeNone {
-		// 	// clear stencil
-		// 	c.subMeshes = append(c.subMeshes, SubMesh{
-		// 		clipBounds: sprec.NewVec4(
-		// 			float32(c.currentLayer.ClipBounds.X),
-		// 			float32(c.currentLayer.ClipBounds.X+c.currentLayer.ClipBounds.Width),
-		// 			float32(c.currentLayer.ClipBounds.Y),
-		// 			float32(c.currentLayer.ClipBounds.Y+c.currentLayer.ClipBounds.Height),
-		// 		),
-		// 		material:     c.opaqueMaterial,
-		// 		texture:      c.whiteMask,
-		// 		vertexOffset: offset,
-		// 		vertexCount:  count,
-		// 		culling:      false,
-		// 		cullFace:     uint32(cullFace),
-		// 		primitive:    gl.TRIANGLE_FAN,
-		// 		skipColor:    true,
-		// 		stencil:      true,
-		// 		stencilCfg: stencilConfig{
-		// 			stencilFuncFront: stencilFunc{
-		// 				fn:   gl.ALWAYS,
-		// 				ref:  0,
-		// 				mask: 0xFF,
-		// 			},
-		// 			stencilFuncBack: stencilFunc{
-		// 				fn:   gl.ALWAYS,
-		// 				ref:  0,
-		// 				mask: 0xFF,
-		// 			},
-		// 			stencilOpFront: stencilOp{
-		// 				sfail:  gl.REPLACE,
-		// 				dpfail: gl.REPLACE,
-		// 				dppass: gl.REPLACE,
-		// 			},
-		// 			stencilOpBack: stencilOp{
-		// 				sfail:  gl.REPLACE,
-		// 				dpfail: gl.REPLACE,
-		// 				dppass: gl.REPLACE,
-		// 			},
-		// 		},
-		// 	})
+		// clear stencil
+		r.subMeshes = append(r.subMeshes, SubMesh{
+			clipBounds:      r.clipBounds,
+			material:        r.shapeBlankMaterial,
+			transformMatrix: r.transformMatrix,
+			vertexOffset:    vertexOffset, // FIXME: Take from subshape
+			vertexCount:     vertexCount,  // FIXME: Take from subshape
+			primitive:       gl.TRIANGLE_FAN,
+			skipColor:       true,
+			stencil:         true,
+			stencilCfg: stencilConfig{
+				stencilFuncFront: stencilFunc{
+					fn:   gl.ALWAYS,
+					ref:  0,
+					mask: 0xFF,
+				},
+				stencilFuncBack: stencilFunc{
+					fn:   gl.ALWAYS,
+					ref:  0,
+					mask: 0xFF,
+				},
+				stencilOpFront: stencilOp{
+					sfail:  gl.REPLACE,
+					dpfail: gl.REPLACE,
+					dppass: gl.REPLACE,
+				},
+				stencilOpBack: stencilOp{
+					sfail:  gl.REPLACE,
+					dpfail: gl.REPLACE,
+					dppass: gl.REPLACE,
+				},
+			},
+		})
 
-		// 	// render stencil mask
-		// 	c.subMeshes = append(c.subMeshes, SubMesh{
-		// 		clipBounds: sprec.NewVec4(
-		// 			float32(c.currentLayer.ClipBounds.X),
-		// 			float32(c.currentLayer.ClipBounds.X+c.currentLayer.ClipBounds.Width),
-		// 			float32(c.currentLayer.ClipBounds.Y),
-		// 			float32(c.currentLayer.ClipBounds.Y+c.currentLayer.ClipBounds.Height),
-		// 		),
-		// 		material:     c.opaqueMaterial,
-		// 		texture:      c.whiteMask,
-		// 		vertexOffset: offset,
-		// 		vertexCount:  count,
-		// 		cullFace:     uint32(cullFace),
-		// 		primitive:    gl.TRIANGLE_FAN,
-		// 		skipColor:    true, // we don't want to render anything
-		// 		stencil:      true,
-		// 		stencilCfg: stencilConfig{
-		// 			stencilFuncFront: stencilFunc{
-		// 				fn:   gl.ALWAYS,
-		// 				ref:  0,
-		// 				mask: 0xFF,
-		// 			},
-		// 			stencilFuncBack: stencilFunc{
-		// 				fn:   gl.ALWAYS,
-		// 				ref:  0,
-		// 				mask: 0xFF,
-		// 			},
-		// 			stencilOpFront: stencilOp{
-		// 				sfail:  gl.KEEP,
-		// 				dpfail: gl.KEEP,
-		// 				dppass: gl.INCR_WRAP, // increase correct winding
-		// 			},
-		// 			stencilOpBack: stencilOp{
-		// 				sfail:  gl.KEEP,
-		// 				dpfail: gl.KEEP,
-		// 				dppass: gl.DECR_WRAP, // decrease incorrect winding
-		// 			},
-		// 		},
-		// 	})
+		// render stencil mask
+		r.subMeshes = append(r.subMeshes, SubMesh{
+			clipBounds:      r.clipBounds,
+			material:        r.shapeBlankMaterial,
+			transformMatrix: r.transformMatrix,
+			vertexOffset:    vertexOffset, // FIXME: Take from subshape
+			vertexCount:     vertexCount,  // FIXME: Take from subshape
+			primitive:       gl.TRIANGLE_FAN,
+			skipColor:       true,
+			stencil:         true,
+			stencilCfg: stencilConfig{
+				stencilFuncFront: stencilFunc{
+					fn:   gl.ALWAYS,
+					ref:  0,
+					mask: 0xFF,
+				},
+				stencilFuncBack: stencilFunc{
+					fn:   gl.ALWAYS,
+					ref:  0,
+					mask: 0xFF,
+				},
+				stencilOpFront: stencilOp{
+					sfail:  gl.KEEP,
+					dpfail: gl.KEEP,
+					dppass: gl.INCR_WRAP,
+				},
+				stencilOpBack: stencilOp{
+					sfail:  gl.KEEP,
+					dpfail: gl.KEEP,
+					dppass: gl.DECR_WRAP,
+				},
+			},
+		})
 	}
 
 	texture := r.whiteMask
 	if shape.fill.image != nil {
 		texture = shape.fill.image.texture
+	}
+
+	stencilMask := uint32(0xFF)
+	if shape.fill.mode == StencilModeOdd {
+		stencilMask = uint32(0x01)
 	}
 
 	r.subMeshes = append(r.subMeshes, SubMesh{
@@ -208,28 +204,28 @@ func (r *Renderer) EndShape(shape *Shape) {
 		vertexCount:            vertexCount,  // FIXME: Take from subshape
 		primitive:              gl.TRIANGLE_FAN,
 		stencil:                shape.fill.mode != StencilModeNone,
-		// 		stencilCfg: stencilConfig{
-		// 			stencilFuncFront: stencilFunc{
-		// 				fn:   gl.LESS,
-		// 				ref:  0,
-		// 				mask: 0xFF,
-		// 			},
-		// 			stencilFuncBack: stencilFunc{
-		// 				fn:   gl.LESS,
-		// 				ref:  0,
-		// 				mask: 0xFF,
-		// 			},
-		// 			stencilOpFront: stencilOp{
-		// 				sfail:  gl.KEEP,
-		// 				dpfail: gl.KEEP,
-		// 				dppass: gl.KEEP,
-		// 			},
-		// 			stencilOpBack: stencilOp{
-		// 				sfail:  gl.KEEP,
-		// 				dpfail: gl.KEEP,
-		// 				dppass: gl.KEEP,
-		// 			},
-		// 		},
+		stencilCfg: stencilConfig{
+			stencilFuncFront: stencilFunc{
+				fn:   gl.NOTEQUAL,
+				ref:  0,
+				mask: stencilMask,
+			},
+			stencilFuncBack: stencilFunc{
+				fn:   gl.NOTEQUAL,
+				ref:  0,
+				mask: stencilMask,
+			},
+			stencilOpFront: stencilOp{
+				sfail:  gl.KEEP,
+				dpfail: gl.KEEP,
+				dppass: gl.KEEP,
+			},
+			stencilOpBack: stencilOp{
+				sfail:  gl.KEEP,
+				dpfail: gl.KEEP,
+				dppass: gl.KEEP,
+			},
+		},
 	})
 }
 
@@ -317,17 +313,20 @@ func (r *Renderer) End() {
 			gl.Disable(gl.CULL_FACE)
 		}
 		gl.UseProgram(material.program.ID())
-		gl.UniformMatrix4fv(material.transformMatrixLocation, 1, false, &transformMatrix[0])
-		gl.UniformMatrix4fv(material.textureTransformMatrixLocation, 1, false, &textureTransformMatrix[0])
-		gl.UniformMatrix4fv(material.projectionMatrixLocation, 1, false, &projectionMatrix[0])
 		gl.Uniform4f(material.clipDistancesLocation, subMesh.clipBounds.X, subMesh.clipBounds.Y, subMesh.clipBounds.Z, subMesh.clipBounds.W)
-		gl.Uniform4f(material.colorLocation, subMesh.color.X, subMesh.color.Y, subMesh.color.Z, subMesh.color.W)
-		gl.BindTextureUnit(0, subMesh.texture.ID())
-		gl.Uniform1i(material.textureLocation, 0)
-		gl.BindVertexArray(r.mesh.vertexArray.ID())
-		if subMesh.patchVertices > 0 {
-			gl.PatchParameteri(gl.PATCH_VERTICES, int32(subMesh.patchVertices))
+		gl.UniformMatrix4fv(material.transformMatrixLocation, 1, false, &transformMatrix[0])
+		if material.textureTransformMatrixLocation != -1 {
+			gl.UniformMatrix4fv(material.textureTransformMatrixLocation, 1, false, &textureTransformMatrix[0])
 		}
+		gl.UniformMatrix4fv(material.projectionMatrixLocation, 1, false, &projectionMatrix[0])
+		if material.colorLocation != -1 {
+			gl.Uniform4f(material.colorLocation, subMesh.color.X, subMesh.color.Y, subMesh.color.Z, subMesh.color.W)
+		}
+		if material.textureLocation != -1 {
+			gl.BindTextureUnit(0, subMesh.texture.ID())
+			gl.Uniform1i(material.textureLocation, 0)
+		}
+		gl.BindVertexArray(r.mesh.vertexArray.ID())
 		gl.DrawArrays(subMesh.primitive, int32(subMesh.vertexOffset), int32(subMesh.vertexCount))
 	}
 

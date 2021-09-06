@@ -5,6 +5,7 @@ import (
 	"image"
 	"image/color"
 	"image/draw"
+	"log"
 	"strings"
 	"time"
 
@@ -45,6 +46,8 @@ func init() {
 	}
 }
 
+var fontFramebuffer *opengl.Framebuffer
+
 func NewFontFactory(renderer *Renderer) *FontFactory {
 	return &FontFactory{
 		renderer:            renderer,
@@ -84,6 +87,8 @@ func (f *FontFactory) Init() {
 		},
 		DepthStencilAttachment: &f.depthStencilTexture.Texture,
 	})
+
+	fontFramebuffer = f.framebuffer // TODO: Remove
 }
 
 func (f *FontFactory) Free() {
@@ -132,6 +137,11 @@ func (f *FontFactory) CreateFont(font *opentype.Font) *Font {
 	f.framebuffer.ClearStencil(0)
 
 	for i, ch := range supportedCharacters {
+		if ch != 'h' {
+			continue
+		}
+		fmt.Println("DRAWING CHARACTER!")
+
 		chIndex, err := font.GlyphIndex(buf, ch)
 		if err != nil {
 			panic(fmt.Errorf("failed to find char index: %w", err))
@@ -158,11 +168,13 @@ func (f *FontFactory) CreateFont(font *opentype.Font) *Font {
 		)
 
 		f.renderer.SetTransform(
-			sprec.TranslationMat4(float32(leftPx), float32(rightPx), 0.0),
+			// sprec.TranslationMat4(float32(leftPx), float32(rightPx), 0.0),
+			sprec.TranslationMat4(float32(20.0), float32(100.0), 0.0),
 		)
 
 		shape := f.renderer.BeginShape(Fill{
 			color: sprec.NewVec4(1.0, 0.0, 0.0, 1.0),
+			mode:  StencilModeNonZero,
 		})
 
 		const scale = 1
@@ -170,10 +182,10 @@ func (f *FontFactory) CreateFont(font *opentype.Font) *Font {
 		for _, segment := range segments {
 			switch segment.Op {
 			case sfnt.SegmentOpMoveTo:
-				// log.Printf("move to (%d, %d)\n",
-				// 	segment.Args[0].X.Floor()*scale,
-				// 	segment.Args[0].Y.Floor()*scale+400,
-				// )
+				log.Printf("move to (%d, %d)\n",
+					segment.Args[0].X.Floor()*scale,
+					segment.Args[0].Y.Floor()*scale+400,
+				)
 				shape.MoveTo(
 					sprec.NewVec2(
 						float32(segment.Args[0].X.Floor()*scale),
@@ -268,10 +280,6 @@ func (f *FontFactory) CreateFont(font *opentype.Font) *Font {
 				continue
 			}
 			result.glyphs[ch].kerns[targetCh] = float32(kern.Ceil()) * scale
-		}
-
-		if true {
-			break
 		}
 	}
 
@@ -372,9 +380,6 @@ func (f *Font) Allocate(font *opentype.Font) {
 		panic(fmt.Errorf("failed to create face: %w", err))
 	}
 	defer face.Close()
-
-	// TODO: Render the font yourself using OpenGL once you have
-	// narrowed down polygon rendering.
 
 	for i, ch := range supportedCharacters {
 		chIndex, err := font.GlyphIndex(buf, ch)

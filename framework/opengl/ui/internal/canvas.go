@@ -1,6 +1,8 @@
 package internal
 
 import (
+	"github.com/go-gl/gl/v4.6-core/gl"
+
 	"github.com/mokiat/gomath/sprec"
 	"github.com/mokiat/lacking/framework/opengl"
 	"github.com/mokiat/lacking/ui"
@@ -57,6 +59,14 @@ func (c *Canvas) Begin() {
 
 func (c *Canvas) End() {
 	c.renderer.End()
+
+	gl.BlitNamedFramebuffer(
+		fontFramebuffer.ID(), 0,
+		0, fontImageSize-500, 500, fontImageSize,
+		0, 0, 500, 500,
+		gl.COLOR_BUFFER_BIT,
+		gl.NEAREST,
+	)
 }
 
 func (c *Canvas) Push() {

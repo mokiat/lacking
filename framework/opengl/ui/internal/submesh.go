@@ -13,7 +13,6 @@ type SubMesh struct {
 	color                  sprec.Vec4
 	vertexOffset           int
 	vertexCount            int
-	patchVertices          int
 	primitive              uint32
 	culling                bool
 	cullFace               uint32
