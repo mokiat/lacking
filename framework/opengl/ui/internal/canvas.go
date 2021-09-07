@@ -48,10 +48,8 @@ func (c *Canvas) Begin() {
 
 	c.renderer.Begin(Target{
 		Framebuffer: opengl.DefaultFramebuffer(),
-		Size: sprec.NewVec2(
-			float32(c.windowSize.Width),
-			float32(c.windowSize.Height),
-		),
+		Width:       c.windowSize.Width,
+		Height:      c.windowSize.Height,
 	})
 }
 

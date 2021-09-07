@@ -122,7 +122,8 @@ func (f *FontFactory) CreateFont(font *opentype.Font) *Font {
 	f.framebuffer.ClearStencil(0)
 	f.renderer.Begin(Target{
 		Framebuffer: f.framebuffer,
-		Size:        sprec.NewVec2(float32(fontImageSize), float32(fontImageSize)),
+		Width:       fontImageSize,
+		Height:      fontImageSize,
 	})
 
 	for i, ch := range supportedCharacters {

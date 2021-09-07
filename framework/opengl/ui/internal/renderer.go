@@ -375,8 +375,8 @@ func (r *Renderer) Begin(target Target) {
 	r.transformMatrix = sprec.IdentityMat4()
 	r.textureTransformMatrix = sprec.IdentityMat4()
 	r.clipBounds = sprec.NewVec4(
-		0.0, target.Size.X,
-		0.0, target.Size.Y,
+		0.0, float32(target.Width),
+		0.0, float32(target.Height),
 	)
 	r.mesh.Reset()
 	r.subMeshes = r.subMeshes[:0]
@@ -386,8 +386,8 @@ func (r *Renderer) End() {
 	r.mesh.Update()
 
 	projectionMatrix := sprec.OrthoMat4(
-		0.0, r.target.Size.X,
-		0.0, r.target.Size.Y,
+		0.0, float32(r.target.Width),
+		0.0, float32(r.target.Height),
 		0.0, 1.0,
 	).ColumnMajorArray()
 
@@ -397,7 +397,7 @@ func (r *Renderer) End() {
 	gl.Enable(gl.CLIP_DISTANCE3)
 
 	r.target.Framebuffer.Use()
-	gl.Viewport(0, 0, int32(r.target.Size.X), int32(r.target.Size.Y))
+	gl.Viewport(0, 0, int32(r.target.Width), int32(r.target.Height))
 	gl.Enable(gl.FRAMEBUFFER_SRGB)
 	gl.ClearStencil(0)
 	gl.Clear(gl.DEPTH_BUFFER_BIT | gl.STENCIL_BUFFER_BIT)
