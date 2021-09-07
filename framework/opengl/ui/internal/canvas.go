@@ -1,6 +1,8 @@
 package internal
 
 import (
+	"github.com/go-gl/gl/v4.6-core/gl"
+
 	"github.com/mokiat/gomath/sprec"
 	"github.com/mokiat/lacking/framework/opengl"
 	"github.com/mokiat/lacking/ui"
@@ -17,7 +19,8 @@ func NewCanvas(renderer *Renderer) *Canvas {
 			StrokeSize:  1,
 			Font:        nil,
 		},
-		topLayer: &Layer{},
+		topLayer:    &Layer{},
+		framebuffer: opengl.DefaultFramebuffer(),
 	}
 }
 
@@ -30,7 +33,8 @@ type Canvas struct {
 	topLayer     *Layer
 	currentLayer *Layer
 
-	windowSize ui.Size
+	framebuffer *opengl.Framebuffer
+	windowSize  ui.Size
 }
 
 func (c *Canvas) Resize(width, height int) {
@@ -46,8 +50,11 @@ func (c *Canvas) ResizeFramebuffer(width, height int) {
 func (c *Canvas) Begin() {
 	c.currentLayer = c.topLayer
 
+	gl.Enable(gl.FRAMEBUFFER_SRGB)
+	c.framebuffer.ClearDepth(1.0)
+
 	c.renderer.Begin(Target{
-		Framebuffer: opengl.DefaultFramebuffer(),
+		Framebuffer: c.framebuffer,
 		Width:       c.windowSize.Width,
 		Height:      c.windowSize.Height,
 	})

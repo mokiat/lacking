@@ -398,9 +398,8 @@ func (r *Renderer) End() {
 
 	r.target.Framebuffer.Use()
 	gl.Viewport(0, 0, int32(r.target.Width), int32(r.target.Height))
-	gl.Enable(gl.FRAMEBUFFER_SRGB)
 	gl.ClearStencil(0)
-	gl.Clear(gl.DEPTH_BUFFER_BIT | gl.STENCIL_BUFFER_BIT)
+	gl.Clear(gl.STENCIL_BUFFER_BIT)
 	gl.Disable(gl.DEPTH_TEST)
 	gl.DepthMask(false)
 	gl.Enable(gl.BLEND)

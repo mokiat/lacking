@@ -39,20 +39,20 @@ func init() {
 
 func NewFontFactory(renderer *Renderer) *FontFactory {
 	return &FontFactory{
-		renderer:            renderer,
-		colorTexture:        opengl.NewTwoDTexture(),
-		depthStencilTexture: opengl.NewTwoDTexture(),
-		framebuffer:         opengl.NewFramebuffer(),
-		buf:                 &sfnt.Buffer{},
+		renderer:       renderer,
+		colorTexture:   opengl.NewTwoDTexture(),
+		stencilTexture: opengl.NewTwoDTexture(),
+		framebuffer:    opengl.NewFramebuffer(),
+		buf:            &sfnt.Buffer{},
 	}
 }
 
 type FontFactory struct {
-	renderer            *Renderer
-	colorTexture        *opengl.TwoDTexture
-	depthStencilTexture *opengl.TwoDTexture
-	framebuffer         *opengl.Framebuffer
-	buf                 *sfnt.Buffer
+	renderer       *Renderer
+	colorTexture   *opengl.TwoDTexture
+	stencilTexture *opengl.TwoDTexture
+	framebuffer    *opengl.Framebuffer
+	buf            *sfnt.Buffer
 }
 
 func (f *FontFactory) Init() {
@@ -64,25 +64,25 @@ func (f *FontFactory) Init() {
 		InternalFormat: gl.R8,
 	})
 
-	f.depthStencilTexture.Allocate(opengl.TwoDTextureAllocateInfo{
+	f.stencilTexture.Allocate(opengl.TwoDTextureAllocateInfo{
 		Width:          fontImageSize,
 		Height:         fontImageSize,
 		MinFilter:      gl.NEAREST,
 		MagFilter:      gl.NEAREST,
-		InternalFormat: gl.DEPTH24_STENCIL8,
+		InternalFormat: gl.STENCIL_INDEX8,
 	})
 
 	f.framebuffer.Allocate(opengl.FramebufferAllocateInfo{
 		ColorAttachments: []*opengl.Texture{
 			&f.colorTexture.Texture,
 		},
-		DepthStencilAttachment: &f.depthStencilTexture.Texture,
+		StencilAttachment: &f.stencilTexture.Texture,
 	})
 }
 
 func (f *FontFactory) Free() {
 	defer f.colorTexture.Release()
-	defer f.depthStencilTexture.Release()
+	defer f.stencilTexture.Release()
 	defer f.framebuffer.Release()
 }
 
@@ -91,7 +91,6 @@ func (f *FontFactory) CreateFont(font *opentype.Font) *Font {
 
 	f.framebuffer.ClearColor(0, sprec.NewVec4(0.0, 0.0, 0.0, 0.0))
 	f.framebuffer.ClearDepth(1.0)
-	f.framebuffer.ClearStencil(0)
 	f.renderer.Begin(Target{
 		Framebuffer: f.framebuffer,
 		Width:       fontImageSize,
