@@ -15,22 +15,9 @@ func newMaterial(vertexSrc, fragmentSrc func() string) *Material {
 	}
 }
 
-func newTessMaterial(vertexSrc, tessControlSrc, tessEvalSrc, fragmentSrc func() string) *Material {
-	return &Material{
-		vertexSrc:      vertexSrc,
-		tessControlSrc: tessControlSrc,
-		tessEvalSrc:    tessEvalSrc,
-		fragmentSrc:    fragmentSrc,
-
-		program: opengl.NewProgram(),
-	}
-}
-
 type Material struct {
-	vertexSrc      func() string
-	tessControlSrc func() string
-	tessEvalSrc    func() string
-	fragmentSrc    func() string
+	vertexSrc   func() string
+	fragmentSrc func() string
 
 	program                        *opengl.Program
 	transformMatrixLocation        int32
@@ -51,30 +38,6 @@ func (m *Material) Allocate() {
 		vertexShader.Release()
 	}()
 
-	var tessControlShader *opengl.Shader
-	if m.tessControlSrc != nil {
-		tessControlShader = opengl.NewShader()
-		tessControlShader.Allocate(opengl.ShaderAllocateInfo{
-			ShaderType: gl.TESS_CONTROL_SHADER,
-			SourceCode: m.tessControlSrc(),
-		})
-		defer func() {
-			tessControlShader.Release()
-		}()
-	}
-
-	var tessEvalShader *opengl.Shader
-	if m.tessEvalSrc != nil {
-		tessEvalShader = opengl.NewShader()
-		tessEvalShader.Allocate(opengl.ShaderAllocateInfo{
-			ShaderType: gl.TESS_EVALUATION_SHADER,
-			SourceCode: m.tessEvalSrc(),
-		})
-		defer func() {
-			tessEvalShader.Release()
-		}()
-	}
-
 	fragmentShader := opengl.NewShader()
 	fragmentShader.Allocate(opengl.ShaderAllocateInfo{
 		ShaderType: gl.FRAGMENT_SHADER,
@@ -85,10 +48,8 @@ func (m *Material) Allocate() {
 	}()
 
 	m.program.Allocate(opengl.ProgramAllocateInfo{
-		VertexShader:                 vertexShader,
-		TessellationControlShader:    tessControlShader,
-		TessellationEvaluationShader: tessEvalShader,
-		FragmentShader:               fragmentShader,
+		VertexShader:   vertexShader,
+		FragmentShader: fragmentShader,
 	})
 
 	m.transformMatrixLocation = m.program.UniformLocation("transformMatrixIn")
