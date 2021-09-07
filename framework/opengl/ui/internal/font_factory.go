@@ -3,7 +3,6 @@ package internal
 import (
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/go-gl/gl/v4.6-core/gl"
 	xfont "golang.org/x/image/font"
@@ -87,8 +86,6 @@ func (f *FontFactory) Free() {
 }
 
 func (f *FontFactory) CreateFont(font *opentype.Font) *Font {
-	startTime := time.Now()
-
 	f.framebuffer.ClearColor(0, sprec.NewVec4(0.0, 0.0, 0.0, 0.0))
 	f.framebuffer.ClearDepth(1.0)
 	f.renderer.Begin(Target{
@@ -262,7 +259,7 @@ func (f *FontFactory) CreateFont(font *opentype.Font) *Font {
 	gl.CopyTextureSubImage2D(resultTexture.ID(), 0, 0, 0, 0, 0, fontImageSize, fontImageSize)
 	gl.GenerateTextureMipmap(resultTexture.ID())
 
-	result := &Font{
+	return &Font{
 		familyName:    reader.FontFamilyName(),
 		subFamilyName: reader.FontSubFamilyName(),
 
@@ -274,11 +271,6 @@ func (f *FontFactory) CreateFont(font *opentype.Font) *Font {
 
 		texture: resultTexture,
 	}
-
-	elapsedTime := time.Since(startTime)
-	fmt.Printf("Font creation time: %s\n", elapsedTime)
-
-	return result
 }
 
 type fontReader struct {
