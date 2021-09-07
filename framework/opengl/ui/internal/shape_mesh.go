@@ -11,6 +11,8 @@ import (
 )
 
 const (
+	shapePositionAttribIndex = 0
+
 	shapeMeshVertexSize = 2 * 4
 )
 
@@ -48,7 +50,7 @@ func (m *ShapeMesh) Allocate() {
 		},
 		Attributes: []opengl.VertexArrayAttribute{
 			{
-				Index:          positionAttribIndex,
+				Index:          shapePositionAttribIndex,
 				ComponentCount: 2,
 				ComponentType:  gl.FLOAT,
 				Normalized:     false,

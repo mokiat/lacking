@@ -18,8 +18,8 @@ func NewRenderer() *Renderer {
 		contour:            newContour(),
 		contourMaterial:    nil, // TODO
 		text:               newText(),
+		textMesh:           newTextMesh(maxVertexCount),
 		textMaterial:       newTextMaterial(),
-		mesh:               NewMesh(maxVertexCount),
 		whiteMask:          opengl.NewTwoDTexture(),
 	}
 }
@@ -38,11 +38,12 @@ type Renderer struct {
 	contourMaterial *Material
 
 	text         *Text
+	textMesh     *TextMesh
 	textMaterial *Material
 
-	mesh      *Mesh
-	subMeshes []SubMesh
 	whiteMask *opengl.TwoDTexture
+
+	subMeshes []SubMesh
 
 	target Target
 }
@@ -51,8 +52,8 @@ func (r *Renderer) Init() {
 	r.shapeMesh.Allocate()
 	r.shapeMaterial.Allocate()
 	r.shapeBlankMaterial.Allocate()
+	r.textMesh.Allocate()
 	r.textMaterial.Allocate()
-	r.mesh.Allocate()
 	r.whiteMask.Allocate(opengl.TwoDTextureAllocateInfo{
 		Width:             1,
 		Height:            1,
@@ -69,9 +70,9 @@ func (r *Renderer) Free() {
 	defer r.shapeMesh.Release()
 	defer r.shapeMaterial.Release()
 	defer r.shapeBlankMaterial.Release()
+	defer r.textMesh.Release()
 	defer r.textMaterial.Release()
 	defer r.whiteMask.Release()
-	defer r.mesh.Release()
 }
 
 func (r *Renderer) Transform() sprec.Mat4 {
@@ -246,7 +247,7 @@ func (r *Renderer) EndText(text *Text) {
 
 	offset := sprec.NewVec2(0.0, 0.0)
 	lastGlyph := (*fontGlyph)(nil)
-	vertexOffset := r.mesh.Offset()
+	vertexOffset := r.textMesh.Offset()
 
 	for _, ch := range text.characters {
 		lineHeight := text.font.lineHeight * text.fontSize
@@ -270,7 +271,7 @@ func (r *Renderer) EndText(text *Text) {
 			ascent := glyph.ascent * text.fontSize
 			descent := glyph.descent * text.fontSize
 
-			vertTopLeft := Vertex{
+			vertTopLeft := TextVertex{
 				position: sprec.Vec2Sum(
 					sprec.NewVec2(
 						leftBearing,
@@ -280,7 +281,7 @@ func (r *Renderer) EndText(text *Text) {
 				),
 				texCoord: sprec.NewVec2(glyph.leftU, glyph.topV),
 			}
-			vertTopRight := Vertex{
+			vertTopRight := TextVertex{
 				position: sprec.Vec2Sum(
 					sprec.NewVec2(
 						advance-rightBearing,
@@ -290,7 +291,7 @@ func (r *Renderer) EndText(text *Text) {
 				),
 				texCoord: sprec.NewVec2(glyph.rightU, glyph.topV),
 			}
-			vertBottomLeft := Vertex{
+			vertBottomLeft := TextVertex{
 				position: sprec.Vec2Sum(
 					sprec.NewVec2(
 						leftBearing,
@@ -300,7 +301,7 @@ func (r *Renderer) EndText(text *Text) {
 				),
 				texCoord: sprec.NewVec2(glyph.leftU, glyph.bottomV),
 			}
-			vertBottomRight := Vertex{
+			vertBottomRight := TextVertex{
 				position: sprec.Vec2Sum(
 					sprec.NewVec2(
 						advance-rightBearing,
@@ -311,13 +312,13 @@ func (r *Renderer) EndText(text *Text) {
 				texCoord: sprec.NewVec2(glyph.rightU, glyph.bottomV),
 			}
 
-			r.mesh.Append(vertTopLeft)
-			r.mesh.Append(vertBottomLeft)
-			r.mesh.Append(vertBottomRight)
+			r.textMesh.Append(vertTopLeft)
+			r.textMesh.Append(vertBottomLeft)
+			r.textMesh.Append(vertBottomRight)
 
-			r.mesh.Append(vertTopLeft)
-			r.mesh.Append(vertBottomRight)
-			r.mesh.Append(vertTopRight)
+			r.textMesh.Append(vertTopLeft)
+			r.textMesh.Append(vertBottomRight)
+			r.textMesh.Append(vertTopRight)
 
 			offset.X += advance
 			if lastGlyph != nil {
@@ -326,12 +327,12 @@ func (r *Renderer) EndText(text *Text) {
 			lastGlyph = glyph
 		}
 	}
-	vertexCount := r.mesh.Offset() - vertexOffset
+	vertexCount := r.textMesh.Offset() - vertexOffset
 
 	r.subMeshes = append(r.subMeshes, SubMesh{
 		clipBounds:      r.clipBounds,
 		material:        r.textMaterial,
-		vertexArray:     r.mesh.vertexArray,
+		vertexArray:     r.textMesh.vertexArray,
 		transformMatrix: r.transformMatrix,
 		texture:         text.font.texture,
 		color:           text.color,
@@ -350,13 +351,13 @@ func (r *Renderer) Begin(target Target) {
 		0.0, float32(target.Height),
 	)
 	r.shapeMesh.Reset()
-	r.mesh.Reset()
+	r.textMesh.Reset()
 	r.subMeshes = r.subMeshes[:0]
 }
 
 func (r *Renderer) End() {
 	r.shapeMesh.Update()
-	r.mesh.Update()
+	r.textMesh.Update()
 
 	r.target.Framebuffer.Use()
 	gl.Viewport(0, 0, int32(r.target.Width), int32(r.target.Height))
