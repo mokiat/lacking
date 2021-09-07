@@ -61,7 +61,7 @@ func (f *FontFactory) Init() {
 		Height:         fontImageSize,
 		MinFilter:      gl.NEAREST,
 		MagFilter:      gl.NEAREST,
-		InternalFormat: gl.SRGB8_ALPHA8,
+		InternalFormat: gl.R8,
 	})
 
 	f.depthStencilTexture.Allocate(opengl.TwoDTextureAllocateInfo{
@@ -257,7 +257,7 @@ func (f *FontFactory) CreateFont(font *opentype.Font) *Font {
 		UseAnisotropy:      false,
 		PlaceholderMipmaps: true,
 		GenerateMipmaps:    false,
-		InternalFormat:     gl.SRGB8_ALPHA8,
+		InternalFormat:     gl.R8,
 	})
 	gl.TextureBarrier()
 	gl.CopyTextureSubImage2D(resultTexture.ID(), 0, 0, 0, 0, 0, fontImageSize, fontImageSize)

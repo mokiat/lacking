@@ -52,6 +52,6 @@ noperspective in vec2 texCoordInOut;
 
 void main()
 {
-	fragmentColor = texture(textureIn, texCoordInOut) * colorIn;
+	fragmentColor = vec4(texture(textureIn, texCoordInOut).x) * colorIn;
 }
 `
