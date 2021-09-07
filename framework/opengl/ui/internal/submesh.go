@@ -7,6 +7,7 @@ import (
 
 type SubMesh struct {
 	material               *Material
+	vertexArray            *opengl.VertexArray
 	transformMatrix        sprec.Mat4
 	textureTransformMatrix sprec.Mat4
 	texture                *opengl.TwoDTexture

@@ -12,6 +12,7 @@ const maxVertexCount = 2048 * 10
 func NewRenderer() *Renderer {
 	return &Renderer{
 		shape:              newShape(),
+		shapeMesh:          newShapeMesh(maxVertexCount),
 		shapeMaterial:      newShapeMaterial(),
 		shapeBlankMaterial: newShapeBlankMaterial(),
 		contour:            newContour(),
@@ -29,6 +30,7 @@ type Renderer struct {
 	clipBounds             sprec.Vec4
 
 	shape              *Shape
+	shapeMesh          *ShapeMesh
 	shapeMaterial      *Material
 	shapeBlankMaterial *Material
 
@@ -46,6 +48,7 @@ type Renderer struct {
 }
 
 func (r *Renderer) Init() {
+	r.shapeMesh.Allocate()
 	r.shapeMaterial.Allocate()
 	r.shapeBlankMaterial.Allocate()
 	r.textMaterial.Allocate()
@@ -63,6 +66,7 @@ func (r *Renderer) Init() {
 }
 
 func (r *Renderer) Free() {
+	defer r.shapeMesh.Release()
 	defer r.shapeMaterial.Release()
 	defer r.shapeBlankMaterial.Release()
 	defer r.textMaterial.Release()
@@ -110,9 +114,9 @@ func (r *Renderer) EndShape(shape *Shape) {
 	}
 	r.shape = shape
 
-	vertexOffset := r.mesh.Offset()
+	vertexOffset := r.shapeMesh.Offset()
 	for _, point := range shape.points {
-		r.mesh.Append(Vertex{
+		r.shapeMesh.Append(ShapeVertex{
 			position: point.coords,
 		})
 	}
@@ -123,6 +127,7 @@ func (r *Renderer) EndShape(shape *Shape) {
 			r.subMeshes = append(r.subMeshes, SubMesh{
 				clipBounds:      r.clipBounds,
 				material:        r.shapeBlankMaterial,
+				vertexArray:     r.shapeMesh.vertexArray,
 				transformMatrix: r.transformMatrix,
 				vertexOffset:    vertexOffset + subShape.pointOffset,
 				vertexCount:     subShape.pointCount,
@@ -170,6 +175,7 @@ func (r *Renderer) EndShape(shape *Shape) {
 		r.subMeshes = append(r.subMeshes, SubMesh{
 			clipBounds:             r.clipBounds,
 			material:               r.shapeMaterial,
+			vertexArray:            r.shapeMesh.vertexArray,
 			transformMatrix:        r.transformMatrix,
 			textureTransformMatrix: r.textureTransformMatrix,
 			texture:                texture,
@@ -325,6 +331,7 @@ func (r *Renderer) EndText(text *Text) {
 	r.subMeshes = append(r.subMeshes, SubMesh{
 		clipBounds:      r.clipBounds,
 		material:        r.textMaterial,
+		vertexArray:     r.mesh.vertexArray,
 		transformMatrix: r.transformMatrix,
 		texture:         text.font.texture,
 		color:           text.color,
@@ -342,11 +349,13 @@ func (r *Renderer) Begin(target Target) {
 		0.0, float32(target.Width),
 		0.0, float32(target.Height),
 	)
+	r.shapeMesh.Reset()
 	r.mesh.Reset()
 	r.subMeshes = r.subMeshes[:0]
 }
 
 func (r *Renderer) End() {
+	r.shapeMesh.Update()
 	r.mesh.Update()
 
 	r.target.Framebuffer.Use()
@@ -412,7 +421,7 @@ func (r *Renderer) End() {
 			gl.BindTextureUnit(0, subMesh.texture.ID())
 			gl.Uniform1i(material.textureLocation, 0)
 		}
-		gl.BindVertexArray(r.mesh.vertexArray.ID())
+		gl.BindVertexArray(subMesh.vertexArray.ID())
 		gl.DrawArrays(subMesh.primitive, int32(subMesh.vertexOffset), int32(subMesh.vertexCount))
 	}
 
