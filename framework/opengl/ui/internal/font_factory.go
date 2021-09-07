@@ -89,34 +89,6 @@ func (f *FontFactory) Free() {
 func (f *FontFactory) CreateFont(font *opentype.Font) *Font {
 	startTime := time.Now()
 
-	cellSize := (fontImageSize / fontImageCells)
-	// Use 4% padding to ensure that glyphs don't touch
-	padding := float32(0.04 * float32(cellSize))
-	contentSize := float32(cellSize) - 2*padding
-
-	// One em is roughly the size of the area where a single glyph is drawn
-	// though with modern fonts glyphs can overflow that area.
-	// Still, we use that to determine roughly how many pixels we'd like for
-	// each glyph (ppem) so that we don't get many fixed point rounding errors.
-	reader := fontReader{
-		buf:  f.buf,
-		font: font,
-		ppem: fixed.I(int(contentSize)),
-	}
-
-	metrics := reader.Metrics()
-
-	result := &Font{
-		familyName:    reader.FontFamilyName(),
-		subFamilyName: reader.FontSubFamilyName(),
-		texture:       opengl.NewTwoDTexture(),
-		glyphs:        make(map[rune]*fontGlyph),
-	}
-
-	// We normalize the font based on the maximum ascent and maximum descent
-	// in order to have consistent font sizes, irrelevant of the font design.
-	scale := 1.0 / (fixedToFloat(metrics.Ascent) + fixedToFloat(metrics.Descent))
-
 	f.framebuffer.ClearColor(0, sprec.NewVec4(0.0, 0.0, 0.0, 0.0))
 	f.framebuffer.ClearDepth(1.0)
 	f.framebuffer.ClearStencil(0)
@@ -125,6 +97,28 @@ func (f *FontFactory) CreateFont(font *opentype.Font) *Font {
 		Width:       fontImageSize,
 		Height:      fontImageSize,
 	})
+
+	cellSize := float32(fontImageSize) / float32(fontImageCells)
+	// Use 4% padding to ensure that glyphs don't touch
+	padding := 0.04 * cellSize
+	contentSize := cellSize - 2.0*padding
+	reader := fontReader{
+		buf:  f.buf,
+		font: font,
+		// One em is roughly the size of the area where a single glyph is drawn
+		// though with modern fonts glyphs can overflow that area.
+		// Still, we use that to determine roughly how many pixels we'd like for
+		// each glyph (ppem) so that we don't get many fixed point rounding errors.
+		ppem: fixed.I(int(contentSize)),
+	}
+
+	metrics := reader.Metrics()
+
+	// We normalize the font based on the maximum ascent and maximum descent
+	// in order to have consistent font sizes, irrelevant of the font design.
+	scale := 1.0 / (fixedToFloat(metrics.Ascent) + fixedToFloat(metrics.Descent))
+
+	resultGlyphs := make(map[rune]*fontGlyph)
 
 	for i, ch := range supportedCharacters {
 		chIndex := reader.GlyphIndex(ch)
@@ -135,9 +129,9 @@ func (f *FontFactory) CreateFont(font *opentype.Font) *Font {
 		glyphHeight := fixedToFloat(bounds.Max.Y - bounds.Min.Y)
 		determinant := (glyphWidth - glyphHeight) * contentSize
 
-		cellStartX := float32((i%fontImageCells)*cellSize) + padding
+		cellStartX := float32(i%fontImageCells)*cellSize + padding
 		cellEndX := cellStartX + contentSize
-		cellStartY := float32((i/fontImageCells)*cellSize) + padding
+		cellStartY := float32(i/fontImageCells)*cellSize + padding
 		cellEndY := cellStartY + contentSize
 
 		// Make sure to preserve glyph proportions, otherwise mipmapping
@@ -226,7 +220,16 @@ func (f *FontFactory) CreateFont(font *opentype.Font) *Font {
 		}
 		f.renderer.EndShape(shape)
 
-		result.glyphs[ch] = &fontGlyph{
+		resultKerns := make(map[rune]float32)
+		for _, targetCh := range supportedCharacters {
+			targetChIndex := reader.GlyphIndex(targetCh)
+
+			if kern := reader.Kern(chIndex, targetChIndex); kern != 0 {
+				resultKerns[targetCh] = fixedToFloat(kern) * scale
+			}
+		}
+
+		resultGlyphs[ch] = &fontGlyph{
 			leftU:   boxPosition.X / float32(fontImageSize),
 			rightU:  (boxPosition.X + boxSize.X) / float32(fontImageSize),
 			topV:    1.0 - (boxPosition.Y)/float32(fontImageSize),
@@ -238,24 +241,13 @@ func (f *FontFactory) CreateFont(font *opentype.Font) *Font {
 			leftBearing:  fixedToFloat(bounds.Min.X) * scale,
 			rightBearing: fixedToFloat(advance-bounds.Max.X) * scale,
 
-			kerns: make(map[rune]float32),
-		}
-
-		for _, targetCh := range supportedCharacters {
-			targetChIndex := reader.GlyphIndex(targetCh)
-
-			if kern := reader.Kern(chIndex, targetChIndex); kern != 0 {
-				result.glyphs[ch].kerns[targetCh] = fixedToFloat(kern) * scale
-			}
+			kerns: resultKerns,
 		}
 	}
 	f.renderer.End()
 
-	result.lineHeight = fixedToFloat(metrics.Height) * scale
-	result.lineAscent = fixedToFloat(metrics.Ascent) * scale
-	result.lineDescent = fixedToFloat(metrics.Descent) * scale
-
-	result.texture.Allocate(opengl.TwoDTextureAllocateInfo{
+	resultTexture := opengl.NewTwoDTexture()
+	resultTexture.Allocate(opengl.TwoDTextureAllocateInfo{
 		Width:              fontImageSize,
 		Height:             fontImageSize,
 		WrapS:              gl.CLAMP_TO_EDGE,
@@ -267,10 +259,22 @@ func (f *FontFactory) CreateFont(font *opentype.Font) *Font {
 		GenerateMipmaps:    false,
 		InternalFormat:     gl.SRGB8_ALPHA8,
 	})
-
 	gl.TextureBarrier()
-	gl.CopyTextureSubImage2D(result.texture.ID(), 0, 0, 0, 0, 0, fontImageSize, fontImageSize)
-	gl.GenerateTextureMipmap(result.texture.ID())
+	gl.CopyTextureSubImage2D(resultTexture.ID(), 0, 0, 0, 0, 0, fontImageSize, fontImageSize)
+	gl.GenerateTextureMipmap(resultTexture.ID())
+
+	result := &Font{
+		familyName:    reader.FontFamilyName(),
+		subFamilyName: reader.FontSubFamilyName(),
+
+		lineHeight:  fixedToFloat(metrics.Height) * scale,
+		lineAscent:  fixedToFloat(metrics.Ascent) * scale,
+		lineDescent: fixedToFloat(metrics.Descent) * scale,
+
+		glyphs: resultGlyphs,
+
+		texture: resultTexture,
+	}
 
 	elapsedTime := time.Since(startTime)
 	fmt.Printf("Font creation time: %s\n", elapsedTime)
