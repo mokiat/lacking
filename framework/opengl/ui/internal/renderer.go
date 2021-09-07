@@ -117,44 +117,8 @@ func (r *Renderer) EndShape(shape *Shape) {
 		})
 	}
 
+	// draw stencil mask for all sub-shapes
 	if shape.fill.mode != StencilModeNone {
-		// clear stencil for all sub-shapes
-		for _, subShape := range shape.subShapes {
-			r.subMeshes = append(r.subMeshes, SubMesh{
-				clipBounds:      r.clipBounds,
-				material:        r.shapeBlankMaterial,
-				transformMatrix: r.transformMatrix,
-				vertexOffset:    vertexOffset + subShape.pointOffset,
-				vertexCount:     subShape.pointCount,
-				primitive:       gl.TRIANGLE_FAN,
-				skipColor:       true,
-				stencil:         true,
-				stencilCfg: stencilConfig{
-					stencilFuncFront: stencilFunc{
-						fn:   gl.ALWAYS,
-						ref:  0,
-						mask: 0xFF,
-					},
-					stencilFuncBack: stencilFunc{
-						fn:   gl.ALWAYS,
-						ref:  0,
-						mask: 0xFF,
-					},
-					stencilOpFront: stencilOp{
-						sfail:  gl.REPLACE,
-						dpfail: gl.REPLACE,
-						dppass: gl.REPLACE,
-					},
-					stencilOpBack: stencilOp{
-						sfail:  gl.REPLACE,
-						dpfail: gl.REPLACE,
-						dppass: gl.REPLACE,
-					},
-				},
-			})
-		}
-
-		// draw stencil mask for all sub-shapes
 		for _, subShape := range shape.subShapes {
 			r.subMeshes = append(r.subMeshes, SubMesh{
 				clipBounds:      r.clipBounds,
@@ -191,7 +155,7 @@ func (r *Renderer) EndShape(shape *Shape) {
 		}
 	}
 
-	// render color shader shape
+	// render color shader shape and clear stencil buffer
 	for _, subShape := range shape.subShapes {
 		texture := r.whiteMask
 		if shape.fill.image != nil {
@@ -228,12 +192,12 @@ func (r *Renderer) EndShape(shape *Shape) {
 				stencilOpFront: stencilOp{
 					sfail:  gl.KEEP,
 					dpfail: gl.KEEP,
-					dppass: gl.KEEP,
+					dppass: gl.REPLACE,
 				},
 				stencilOpBack: stencilOp{
 					sfail:  gl.KEEP,
 					dpfail: gl.KEEP,
-					dppass: gl.KEEP,
+					dppass: gl.REPLACE,
 				},
 			},
 		})
@@ -385,17 +349,6 @@ func (r *Renderer) Begin(target Target) {
 func (r *Renderer) End() {
 	r.mesh.Update()
 
-	projectionMatrix := sprec.OrthoMat4(
-		0.0, float32(r.target.Width),
-		0.0, float32(r.target.Height),
-		0.0, 1.0,
-	).ColumnMajorArray()
-
-	gl.Enable(gl.CLIP_DISTANCE0)
-	gl.Enable(gl.CLIP_DISTANCE1)
-	gl.Enable(gl.CLIP_DISTANCE2)
-	gl.Enable(gl.CLIP_DISTANCE3)
-
 	r.target.Framebuffer.Use()
 	gl.Viewport(0, 0, int32(r.target.Width), int32(r.target.Height))
 	gl.ClearStencil(0)
@@ -404,6 +357,17 @@ func (r *Renderer) End() {
 	gl.DepthMask(false)
 	gl.Enable(gl.BLEND)
 	gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
+
+	gl.Enable(gl.CLIP_DISTANCE0)
+	gl.Enable(gl.CLIP_DISTANCE1)
+	gl.Enable(gl.CLIP_DISTANCE2)
+	gl.Enable(gl.CLIP_DISTANCE3)
+
+	projectionMatrix := sprec.OrthoMat4(
+		0.0, float32(r.target.Width),
+		0.0, float32(r.target.Height),
+		0.0, 1.0,
+	).ColumnMajorArray()
 
 	// TODO: Maybe optimize by accumulating draw commands
 	// if they are similar.
@@ -452,16 +416,16 @@ func (r *Renderer) End() {
 		gl.DrawArrays(subMesh.primitive, int32(subMesh.vertexOffset), int32(subMesh.vertexCount))
 	}
 
+	gl.Disable(gl.CLIP_DISTANCE0)
+	gl.Disable(gl.CLIP_DISTANCE1)
+	gl.Disable(gl.CLIP_DISTANCE2)
+	gl.Disable(gl.CLIP_DISTANCE3)
+
 	gl.ColorMask(true, true, true, true)
 	gl.Disable(gl.STENCIL_TEST)
 	gl.Enable(gl.CULL_FACE)
 	gl.CullFace(gl.BACK)
 	gl.Disable(gl.BLEND)
-
-	gl.Disable(gl.CLIP_DISTANCE0)
-	gl.Disable(gl.CLIP_DISTANCE1)
-	gl.Disable(gl.CLIP_DISTANCE2)
-	gl.Disable(gl.CLIP_DISTANCE3)
 }
 
 type Fill struct {
