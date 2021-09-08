@@ -264,19 +264,19 @@ func (r *Renderer) EndContour(contour *Contour) {
 			}
 
 			prevLeft := ContourVertex{
-				position: sprec.Vec2Sum(prev.coords, sprec.Vec2Prod(prevNormal, prev.stroke.size)),
+				position: sprec.Vec2Sum(prev.coords, sprec.Vec2Prod(prevNormal, prev.stroke.size/2.0)),
 				color:    prev.stroke.color,
 			}
 			prevRight := ContourVertex{
-				position: sprec.Vec2Diff(prev.coords, sprec.Vec2Prod(prevNormal, prev.stroke.size)),
+				position: sprec.Vec2Diff(prev.coords, sprec.Vec2Prod(prevNormal, prev.stroke.size/2.0)),
 				color:    prev.stroke.color,
 			}
 			currentLeft := ContourVertex{
-				position: sprec.Vec2Sum(current.coords, sprec.Vec2Prod(currentNormal, current.stroke.size)),
+				position: sprec.Vec2Sum(current.coords, sprec.Vec2Prod(currentNormal, current.stroke.size/2.0)),
 				color:    prev.stroke.color,
 			}
 			currentRight := ContourVertex{
-				position: sprec.Vec2Diff(current.coords, sprec.Vec2Prod(currentNormal, current.stroke.size)),
+				position: sprec.Vec2Diff(current.coords, sprec.Vec2Prod(currentNormal, current.stroke.size/2.0)),
 				color:    prev.stroke.color,
 			}
 
@@ -553,10 +553,15 @@ type Typography struct {
 	Color sprec.Vec4
 }
 
-func midPointNormal(prev, point, next sprec.Vec2) sprec.Vec2 {
-	return sprec.NewVec2(1, 0)
+func midPointNormal(prev, middle, next sprec.Vec2) sprec.Vec2 {
+	normal1 := endPointNormal(prev, middle)
+	normal2 := endPointNormal(middle, next)
+	normalSum := sprec.Vec2Sum(normal1, normal2)
+	dot := sprec.Vec2Dot(normal1, normalSum)
+	return sprec.Vec2Quot(normalSum, dot)
 }
 
 func endPointNormal(prev, next sprec.Vec2) sprec.Vec2 {
-	return sprec.NewVec2(1, 0)
+	tangent := sprec.UnitVec2(sprec.Vec2Diff(next, prev))
+	return sprec.NewVec2(tangent.Y, -tangent.X)
 }
