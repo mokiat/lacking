@@ -81,20 +81,29 @@ type pictureEssence struct {
 
 func (p *pictureEssence) OnRender(element *ui.Element, canvas ui.Canvas) {
 	if !p.backgroundColor.Transparent() {
-		canvas.SetSolidColor(p.backgroundColor)
-		canvas.FillRectangle(
+		canvas.Shape().Begin(ui.Fill{
+			Color: p.backgroundColor,
+		})
+		canvas.Shape().Rectangle(
 			ui.NewPosition(0, 0),
 			element.Bounds().Size,
 		)
+		canvas.Shape().End()
 	}
 
 	if p.image != nil {
 		drawPosition, drawSize := p.evaluateImageDrawLocation(element)
-		canvas.DrawImage(
-			p.image,
+		canvas.Shape().Begin(ui.Fill{
+			Color:       ui.White(),
+			Image:       p.image,
+			ImageOffset: drawPosition,
+			ImageSize:   drawSize,
+		})
+		canvas.Shape().Rectangle(
 			drawPosition,
 			drawSize,
 		)
+		canvas.Shape().End()
 	}
 }
 

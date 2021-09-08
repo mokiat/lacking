@@ -57,15 +57,17 @@ type labelEssence struct {
 
 func (b *labelEssence) OnRender(element *ui.Element, canvas ui.Canvas) {
 	if b.font != nil && b.text != "" {
-		canvas.SetFont(b.font)
-		canvas.SetFontSize(b.fontSize)
-		canvas.SetSolidColor(b.fontColor)
-
+		canvas.Text().Begin(ui.Typography{
+			Font:  b.font,
+			Size:  b.fontSize,
+			Color: b.fontColor,
+		})
 		contentArea := element.ContentBounds()
-		textDrawSize := canvas.TextSize(b.text)
-		canvas.DrawText(b.text, ui.NewPosition(
+		textDrawSize := b.font.TextSize(b.text, b.fontSize)
+		canvas.Text().Line(b.text, ui.NewPosition(
 			contentArea.X+(contentArea.Width-textDrawSize.Width)/2,
 			contentArea.Y+(contentArea.Height-textDrawSize.Height)/2,
 		))
+		canvas.Text().End()
 	}
 }

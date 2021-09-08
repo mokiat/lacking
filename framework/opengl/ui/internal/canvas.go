@@ -9,19 +9,30 @@ import (
 )
 
 func NewCanvas(renderer *Renderer) *Canvas {
-	return &Canvas{
+	result := &Canvas{
 		renderer: renderer,
+
 		defaultLayer: &Layer{
 			Translation: ui.NewPosition(0, 0),
 			ClipBounds:  ui.NewBounds(0, 0, 1, 1),
-			SolidColor:  ui.White(),
-			StrokeColor: ui.Black(),
-			StrokeSize:  1,
-			Font:        nil,
 		},
-		topLayer:    &Layer{},
+		topLayer: &Layer{},
+
 		framebuffer: opengl.DefaultFramebuffer(),
 	}
+	result.shape = &canvasShape{
+		canvas:   result,
+		renderer: renderer,
+	}
+	result.contour = &canvasContour{
+		canvas:   result,
+		renderer: renderer,
+	}
+	result.text = &canvasText{
+		canvas:   result,
+		renderer: renderer,
+	}
+	return result
 }
 
 var _ ui.Canvas = (*Canvas)(nil)
@@ -35,6 +46,10 @@ type Canvas struct {
 
 	framebuffer *opengl.Framebuffer
 	windowSize  ui.Size
+
+	shape   *canvasShape
+	contour *canvasContour
+	text    *canvasText
 }
 
 func (c *Canvas) Resize(width, height int) {
@@ -80,233 +95,253 @@ func (c *Canvas) Clip(bounds ui.Bounds) {
 	c.currentLayer.ClipBounds = bounds.Translate(c.currentLayer.Translation)
 }
 
-func (c *Canvas) SolidColor() ui.Color {
-	return c.currentLayer.SolidColor
+func (c *Canvas) Shape() ui.Shape {
+	return c.shape
 }
 
-func (c *Canvas) SetSolidColor(color ui.Color) {
-	c.currentLayer.SolidColor = color
+func (c *Canvas) Contour() ui.Contour {
+	return c.contour
 }
 
-func (c *Canvas) StrokeColor() ui.Color {
-	return c.currentLayer.StrokeColor
+func (c *Canvas) Text() ui.Text {
+	return c.text
 }
 
-func (c *Canvas) SetStrokeColor(color ui.Color) {
-	c.currentLayer.StrokeColor = color
+var _ ui.Shape = (*canvasShape)(nil)
+
+type canvasShape struct {
+	renderer *Renderer
+	canvas   *Canvas
+	shape    *Shape
 }
 
-func (c *Canvas) StrokeSize() int {
-	return c.currentLayer.StrokeSize
-}
-
-func (c *Canvas) SetStrokeSize(size int) {
-	c.currentLayer.StrokeSize = size
-}
-
-func (c *Canvas) Font() ui.Font {
-	return c.currentLayer.Font
-}
-
-func (c *Canvas) SetFont(font ui.Font) {
-	c.currentLayer.Font = font.(*Font)
-}
-
-func (c *Canvas) FontSize() int {
-	return int(c.currentLayer.FontSize)
-}
-
-func (c *Canvas) SetFontSize(size int) {
-	c.currentLayer.FontSize = float32(size)
-}
-
-func (c *Canvas) DrawRectangle(position ui.Position, size ui.Size) {
-	// TODO
-}
-
-func (c *Canvas) FillRectangle(position ui.Position, size ui.Size) {
-	if c.currentLayer.SolidColor.Transparent() {
-		return
-	}
-
-	c.renderer.SetClipBounds(
-		float32(c.currentLayer.ClipBounds.X),
-		float32(c.currentLayer.ClipBounds.X+c.currentLayer.ClipBounds.Width),
-		float32(c.currentLayer.ClipBounds.Y),
-		float32(c.currentLayer.ClipBounds.Y+c.currentLayer.ClipBounds.Height),
+func (s *canvasShape) Begin(fill ui.Fill) {
+	currentLayer := s.canvas.currentLayer
+	s.renderer.SetClipBounds(
+		float32(currentLayer.ClipBounds.X),
+		float32(currentLayer.ClipBounds.X+currentLayer.ClipBounds.Width),
+		float32(currentLayer.ClipBounds.Y),
+		float32(currentLayer.ClipBounds.Y+currentLayer.ClipBounds.Height),
 	)
-	c.renderer.SetTransform(sprec.TranslationMat4(
-		float32(c.currentLayer.Translation.X),
-		float32(c.currentLayer.Translation.Y),
+	s.renderer.SetTransform(sprec.TranslationMat4(
+		float32(currentLayer.Translation.X),
+		float32(currentLayer.Translation.Y),
 		0.0,
 	))
-
-	shape := c.renderer.BeginShape(Fill{
-		color: sprec.NewVec4(
-			float32(c.currentLayer.SolidColor.R)/255.0,
-			float32(c.currentLayer.SolidColor.G)/255.0,
-			float32(c.currentLayer.SolidColor.B)/255.0,
-			float32(c.currentLayer.SolidColor.A)/255.0,
-		),
-	})
-	shape.MoveTo(sprec.NewVec2(
-		float32(position.X),
-		float32(position.Y),
-	))
-	shape.LineTo(sprec.NewVec2(
-		float32(position.X),
-		float32(position.Y+size.Height),
-	))
-	shape.LineTo(sprec.NewVec2(
-		float32(position.X+size.Width),
-		float32(position.Y+size.Height),
-	))
-	shape.LineTo(sprec.NewVec2(
-		float32(position.X+size.Width),
-		float32(position.Y),
-	))
-	c.renderer.EndShape(shape)
-}
-
-func (c *Canvas) DrawRoundRectangle(position ui.Position, size ui.Size, radius int) {
-	// TODO
-}
-
-func (c *Canvas) FillRoundRectangle(position ui.Position, size ui.Size, radius int) {
-	// TODO
-}
-
-func (c *Canvas) DrawCircle(position ui.Position, radius int) {
-	// TODO
-}
-
-func (c *Canvas) FillCircle(position ui.Position, radius int) {
-	// TODO
-}
-
-func (c *Canvas) DrawTriangle(first, second, third ui.Position) {
-	// TODO
-}
-
-func (c *Canvas) FillTriangle(first, second, third ui.Position) {
-	// TODO
-}
-
-func (c *Canvas) DrawLine(start, end ui.Position) {
-	// TODO
-}
-
-func (c *Canvas) DrawImage(img ui.Image, position ui.Position, size ui.Size) {
-	c.renderer.SetClipBounds(
-		float32(c.currentLayer.ClipBounds.X),
-		float32(c.currentLayer.ClipBounds.X+c.currentLayer.ClipBounds.Width),
-		float32(c.currentLayer.ClipBounds.Y),
-		float32(c.currentLayer.ClipBounds.Y+c.currentLayer.ClipBounds.Height),
-	)
-	c.renderer.SetTransform(sprec.TranslationMat4(
-		float32(c.currentLayer.Translation.X),
-		float32(c.currentLayer.Translation.Y),
-		0.0,
-	))
-	c.renderer.SetTextureTransform(sprec.Mat4MultiProd(
+	s.renderer.SetTextureTransform(sprec.Mat4MultiProd(
 		sprec.ScaleMat4(
-			1.0/float32(size.Width),
-			1.0/float32(size.Height),
+			1.0/float32(fill.ImageSize.Width),
+			1.0/float32(fill.ImageSize.Height),
 			1.0,
 		),
 		sprec.TranslationMat4(
-			-float32(position.X),
-			-float32(position.Y),
+			-float32(fill.ImageOffset.X),
+			-float32(fill.ImageOffset.Y),
 			0.0,
 		),
 	))
 
-	shape := c.renderer.BeginShape(Fill{
-		color: sprec.NewVec4(1.0, 1.0, 1.0, 1.0),
-		image: img.(*Image),
+	s.shape = s.renderer.BeginShape(Fill{
+		mode:  uiFillRuleToStencilMode(fill.Rule),
+		color: uiColorToVec(fill.Color),
+		image: uiImageToImage(fill.Image),
 	})
-	shape.MoveTo(sprec.NewVec2(
-		float32(position.X),
-		float32(position.Y),
-	))
-	shape.LineTo(sprec.NewVec2(
-		float32(position.X),
-		float32(position.Y+size.Height),
-	))
-	shape.LineTo(sprec.NewVec2(
-		float32(position.X+size.Width),
-		float32(position.Y+size.Height),
-	))
-	shape.LineTo(sprec.NewVec2(
-		float32(position.X+size.Width),
-		float32(position.Y),
-	))
-	c.renderer.EndShape(shape)
 }
 
-func (c *Canvas) DrawText(value string, position ui.Position) {
-	c.renderer.SetClipBounds(
-		float32(c.currentLayer.ClipBounds.X),
-		float32(c.currentLayer.ClipBounds.X+c.currentLayer.ClipBounds.Width),
-		float32(c.currentLayer.ClipBounds.Y),
-		float32(c.currentLayer.ClipBounds.Y+c.currentLayer.ClipBounds.Height),
+func (s *canvasShape) MoveTo(position ui.Position) {
+	s.shape.MoveTo(sprec.NewVec2(
+		float32(position.X),
+		float32(position.Y),
+	))
+}
+
+func (s *canvasShape) LineTo(position ui.Position) {
+	s.shape.LineTo(sprec.NewVec2(
+		float32(position.X),
+		float32(position.Y),
+	))
+}
+
+func (s *canvasShape) QuadTo(control, position ui.Position) {
+	s.shape.QuadTo(sprec.NewVec2(
+		float32(control.X),
+		float32(control.Y),
+	), sprec.NewVec2(
+		float32(position.X),
+		float32(position.Y),
+	))
+}
+
+func (s *canvasShape) CubeTo(control1, control2, position ui.Position) {
+	s.shape.CubeTo(sprec.NewVec2(
+		float32(control1.X),
+		float32(control1.Y),
+	), sprec.NewVec2(
+		float32(control2.X),
+		float32(control2.Y),
+	), sprec.NewVec2(
+		float32(position.X),
+		float32(position.Y),
+	))
+}
+
+func (s *canvasShape) Rectangle(position ui.Position, size ui.Size) {
+	s.MoveTo(position)
+	s.LineTo(ui.NewPosition(
+		position.X,
+		position.Y+size.Height,
+	))
+	s.LineTo(ui.NewPosition(
+		position.X+size.Width,
+		position.Y+size.Height,
+	))
+	s.LineTo(ui.NewPosition(
+		position.X+size.Width,
+		position.Y,
+	))
+}
+
+func (s *canvasShape) Triangle(a, b, c ui.Position) {
+	s.MoveTo(a)
+	s.LineTo(b)
+	s.LineTo(c)
+}
+
+func (s *canvasShape) Circle(position ui.Position, radius int) {
+	// TODO
+}
+
+func (s *canvasShape) RoundRectangle(position ui.Position, size ui.Size, roundness ui.RectRoundness) {
+	// TODO
+}
+
+func (s *canvasShape) End() {
+	s.renderer.EndShape(s.shape)
+}
+
+var _ ui.Contour = (*canvasContour)(nil)
+
+type canvasContour struct {
+	canvas   *Canvas
+	renderer *Renderer
+}
+
+func (c *canvasContour) Begin() {
+	// TODO
+}
+
+func (c *canvasContour) MoveTo(position ui.Position, stroke ui.Stroke) {
+	// TODO
+}
+
+func (c *canvasContour) LineTo(position ui.Position, stroke ui.Stroke) {
+	// TODO
+}
+
+func (c *canvasContour) QuadTo(control, position ui.Position, stroke ui.Stroke) {
+	// TODO
+}
+
+func (c *canvasContour) CubeTo(control1, control2, position ui.Position, stroke ui.Stroke) {
+	// TODO
+}
+
+func (c *canvasContour) CloseLoop() {
+	// TODO
+}
+
+func (c *canvasContour) Rectangle(position ui.Position, size ui.Size, stroke ui.Stroke) {
+	// TODO
+}
+
+func (c *canvasContour) Triangle(p1, p2, p3 ui.Position, stroke ui.Stroke) {
+	// TODO
+}
+
+func (c *canvasContour) Circle(position ui.Position, radius int, stroke ui.Stroke) {
+	// TODO
+}
+
+func (c *canvasContour) RoundRectangle(position ui.Position, size ui.Size, roundness ui.RectRoundness, stroke ui.Stroke) {
+	// TODO
+}
+
+func (c *canvasContour) End() {
+	// TODO
+}
+
+var _ ui.Text = (*canvasText)(nil)
+
+type canvasText struct {
+	canvas   *Canvas
+	renderer *Renderer
+	text     *Text
+}
+
+func (t *canvasText) Begin(typography ui.Typography) {
+	currentLayer := t.canvas.currentLayer
+	t.renderer.SetClipBounds(
+		float32(currentLayer.ClipBounds.X),
+		float32(currentLayer.ClipBounds.X+currentLayer.ClipBounds.Width),
+		float32(currentLayer.ClipBounds.Y),
+		float32(currentLayer.ClipBounds.Y+currentLayer.ClipBounds.Height),
 	)
-	c.renderer.SetTransform(sprec.TranslationMat4(
-		float32(c.currentLayer.Translation.X+position.X),
-		float32(c.currentLayer.Translation.Y+position.Y),
+	t.renderer.SetTransform(sprec.TranslationMat4(
+		float32(currentLayer.Translation.X),
+		float32(currentLayer.Translation.Y),
 		0.0,
 	))
 
-	font := c.currentLayer.Font
-	fontSize := c.currentLayer.FontSize
-	color := sprec.NewVec4(
-		float32(c.currentLayer.SolidColor.R)/255.0,
-		float32(c.currentLayer.SolidColor.G)/255.0,
-		float32(c.currentLayer.SolidColor.B)/255.0,
-		float32(c.currentLayer.SolidColor.A)/255.0,
-	)
-
-	text := c.renderer.BeginText(font, fontSize, color)
-	text.Write(value)
-	c.renderer.EndText(text)
+	t.text = t.renderer.BeginText(Typography{
+		Font:  uiFontToFont(typography.Font),
+		Size:  float32(typography.Size),
+		Color: uiColorToVec(typography.Color),
+	})
 }
 
-func (c *Canvas) TextSize(text string) ui.Size {
-	// TODO: Move inside font?
-	font := c.currentLayer.Font
-	fontSize := c.currentLayer.FontSize
+func (t *canvasText) Line(value string, position ui.Position) {
+	t.text.Write(value, sprec.NewVec2(
+		float32(position.X),
+		float32(position.Y),
+	))
+}
 
-	if len(text) == 0 {
-		return ui.NewSize(0, 0)
+func (t *canvasText) End() {
+	t.renderer.EndText(t.text)
+}
+
+func uiColorToVec(color ui.Color) sprec.Vec4 {
+	return sprec.NewVec4(
+		float32(color.R)/255.0,
+		float32(color.G)/255.0,
+		float32(color.B)/255.0,
+		float32(color.A)/255.0,
+	)
+}
+
+func uiImageToImage(image ui.Image) *Image {
+	if image == nil {
+		return nil
 	}
+	return image.(*Image)
+}
 
-	result := sprec.NewVec2(0, font.lineAscent+font.lineDescent)
-	currentWidth := float32(0.0)
-	lastGlyph := (*fontGlyph)(nil)
-	for _, ch := range text {
-		if ch == '\r' {
-			result.X = sprec.Max(result.X, currentWidth)
-			currentWidth = 0.0
-			lastGlyph = nil
-			continue
-		}
-		if ch == '\n' {
-			result.X = sprec.Max(result.X, currentWidth)
-			result.Y += font.lineHeight - (font.lineAscent + font.lineDescent)
-			currentWidth = 0.0
-			lastGlyph = nil
-			continue
-		}
-		if glyph, ok := font.glyphs[ch]; ok {
-			currentWidth += glyph.advance
-			if lastGlyph != nil {
-				currentWidth += lastGlyph.kerns[ch]
-			}
-			lastGlyph = glyph
-		}
+func uiFillRuleToStencilMode(rule ui.FillRule) StencilMode {
+	switch rule {
+	case ui.FillRuleSimple:
+		return StencilModeNone
+	case ui.FillRuleNonZero:
+		return StencilModeNonZero
+	case ui.FillRuleEvenOdd:
+		return StencilModeOdd
+	default:
+		return StencilModeNone
 	}
-	result.X = sprec.Max(result.X, currentWidth)
-	result = sprec.Vec2Prod(result, fontSize)
+}
 
-	return ui.NewSize(int(result.X), int(result.Y))
+func uiFontToFont(font ui.Font) *Font {
+	if font == nil {
+		return nil
+	}
+	return font.(*Font)
 }

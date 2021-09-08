@@ -23,108 +23,219 @@ type Canvas interface {
 	// Initially the clipping bounds are equal to the window size.
 	Clip(bounds Bounds)
 
-	// SolidColor returns the Color that is used for fill operations.
-	SolidColor() Color
+	// Shape returns the shape rendering module.
+	Shape() Shape
 
-	// SetSolidColor sets a new Color to be used for fill operations.
-	SetSolidColor(color Color)
+	// Contour returns the contour rendering module.
+	Contour() Contour
 
-	// StrokeColor returns the Color that is used for outline draw
-	// operations.
-	StrokeColor() Color
-
-	// SetStrokeColor sets a new Color to be used for outline draw
-	// operations.
-	SetStrokeColor(color Color)
-
-	// StrokeSize returns the size that will be used for outlines.
-	StrokeSize() int
-
-	// SetStrokeSize sets a new size to be used for drawing outlines.
-	SetStrokeSize(size int)
-
-	// Font returns the Font that is to be used for text draw
-	// operations.
-	Font() Font
-
-	// SetFont sets a new Font to be used for text draw operations.
-	SetFont(font Font)
-
-	// FontSize returns the size at which text will be drawn.
-	FontSize() int
-
-	// SetFontSize changes the size at which text will be drawn.
-	SetFontSize(size int)
-
-	// DrawRectangle draws the outlines of a rectangle.
-	DrawRectangle(position Position, size Size)
-
-	// FillRectangle draws the solid part of a rectangle.
-	FillRectangle(position Position, size Size)
-
-	// DrawRoundRectangle draws the outlines of a rounded rectangle.
-	DrawRoundRectangle(position Position, size Size, radius int)
-
-	// FillRoundRectangle draws the solid part of a rounded rectangle.
-	FillRoundRectangle(position Position, size Size, radius int)
-
-	// DrawCircle draws the outlines of a circle.
-	DrawCircle(position Position, radius int)
-
-	// FillCircle draws the solid part of a circle.
-	FillCircle(position Position, radius int)
-
-	// DrawTriangle draws the outlines of a triangle.
-	DrawTriangle(a, b, c Position)
-
-	// FillTriangle draws the solid part of a triangle.
-	FillTriangle(a, b, c Position)
-
-	// DrawLine draws a line segment.
-	DrawLine(start, end Position)
-
-	// DrawImage draws the specified Image.
-	DrawImage(image Image, position Position, size Size)
-
-	// DrawText draws a text string.
-	DrawText(text string, position Position)
-
-	// TextSize returns the size it would take to draw the
-	// specified text string.
-	TextSize(text string) Size
-
-	// BeginShape(fill Fill)
-	// MoveTo(position Position)
-	// LineTo(position Position, startStroke, endStroke Stroke)
-	// QuadTo(control, position Position, startStroke, endStroke Stroke)
-	// CubeTo(control1, control2, position Position, startStroke, endStroke Stroke)
-	// CloseLoop(startStroke, endStroke Stroke)
-	// EndShape()
+	// Text returns the text rendering module.
+	Text() Text
 }
 
+// Shape represents a module for drawing solid shapes.
+type Shape interface {
+
+	// Begin starts a new solid shape using the specified fill settings.
+	// Make sure to use End when finished with the shape.
+	Begin(fill Fill)
+
+	// MoveTo positions the cursor to the specified position.
+	MoveTo(position Position)
+
+	// LineTo creates a direct line from the last cursor position
+	// to the newly specified position.
+	LineTo(position Position)
+
+	// QuadTo creates a quadratic Bezier curve from the last cursor
+	// position to the newly specified position by going past the
+	// specified control point.
+	QuadTo(control, position Position)
+
+	// CubeTo creates a cubic Bezier curve from the last cursor position
+	// to the newly specified position by going past the two specified
+	// control points.
+	CubeTo(control1, control2, position Position)
+
+	// Rectangle is a helper function that draws a rectangle at the
+	// specified position and size using a sequence of MoveTo and LineTo
+	// instructions.
+	Rectangle(position Position, size Size)
+
+	// Triangle is a helper function that draws a triangle with the
+	// specified corners, using a sequence of MoveTo and LineTo
+	// instructions.
+	Triangle(a, b, c Position)
+
+	// Circle is a helper function that draws a circle at the
+	// specified position and with the specified radius using a
+	// sequence of Shape instructions (whether MoveTo, LineTo or
+	// Bezier curves are used is up to the implementation).
+	Circle(position Position, radius int)
+
+	// RoundRectangle is a helper function that draws a rounded
+	// rectangle at the specified position and with the specified size
+	// and corner radiuses.
+	RoundRectangle(position Position, size Size, roundness RectRoundness)
+
+	// End marks the end of the shape and pushes all collected data for
+	// drawing.
+	End()
+}
+
+// Contour represents a module for drawing curved lines.
+type Contour interface {
+
+	// Begin starts a new contour.
+	// Make sure to use End when finished with the contour.
+	Begin()
+
+	// MoveTo positions the cursor to the specified position and
+	// marks the specified stroke setting for that point.
+	MoveTo(position Position, stroke Stroke)
+
+	// LineTo creates a direct line from the last cursor position
+	// to the newly specified position and sets the specified
+	// stroke for the new position.
+	LineTo(position Position, stroke Stroke)
+
+	// QuadTo creates a quadratic Bezier curve from the last cursor
+	// position to the newly specified position by going past the
+	// specified control point. The target position is assigned
+	// the specified stroke setting.
+	QuadTo(control, position Position, stroke Stroke)
+
+	// CubeTo creates a cubic Bezier curve from the last cursor position
+	// to the newly specified position by going past the two specified
+	// control points. The target position is assigned
+	// the specified stroke setting.
+	CubeTo(control1, control2, position Position, stroke Stroke)
+
+	// CloseLoop makes an automatic line connection back to the starting
+	// point, as specified via MoveTo.
+	CloseLoop()
+
+	// Rectangle is a helper function that draws the outline of a rectangle
+	// at the specified position and size using a sequence of MoveTo and LineTo
+	// instructions.
+	Rectangle(position Position, size Size, stroke Stroke)
+
+	// Triangle is a helper function that draws the outline of a triangle
+	// with the specified corners, using a sequence of MoveTo and LineTo
+	// instructions.
+	Triangle(a, b, c Position, stroke Stroke)
+
+	// Circle is a helper function that draws a circle at the
+	// specified position and with the specified radius using a
+	// sequence of Shape instructions (whether MoveTo, LineTo or
+	// Bezier curves are used is up to the implementation).
+	Circle(position Position, radius int, stroke Stroke)
+
+	// RoundRectangle is a helper function that draws a rounded
+	// rectangle at the specified position and with the specified size
+	// and corner radiuses.
+	RoundRectangle(position Position, size Size, roundness RectRoundness, stroke Stroke)
+
+	// End marks the end of the contour and pushes all collected data for
+	// drawing.
+	End()
+}
+
+// Text represents a module for drawing text.
+type Text interface {
+
+	// Begin starts a new text sequence using the specified typography settings.
+	// Make sure to use End when finished with the text.
+	Begin(typography Typography)
+
+	// Line draws a text line at the specified position.
+	Line(value string, position Position)
+
+	// End marks the end of the text and pushes all collected data for
+	// drawing.
+	End()
+}
+
+// Fill configures how a solid shape is to be drawn.
 type Fill struct {
-	Rule            FillRule
-	Winding         Winding
-	BackgroundColor Color
-	BackgroundImage Image
+
+	// Rule specifies the mechanism through which it is determined
+	// which point is part of the shape in an overlapping or concave
+	// polygon.
+	Rule FillRule
+
+	// Color specifies the color to use to fill the shape.
+	Color Color
+
+	// Image specifies an optional image to be used for filling
+	// the shape.
+	Image Image
+
+	// ImageOffset determines the offset of the origin of the
+	// image relative to the current translation context.
+	ImageOffset Position
+
+	// ImageSize determines the size of the drawn image. In
+	// essence, this size performs scaling.
+	ImageSize Size
 }
 
+// FillRule represents the mechanism through which it is determined
+// which point is part of the shape in an overlapping or concave
+// polygon.
 type FillRule int
 
 const (
+	// FillRuleSimple is the fastest approach and should be used
+	// with non-overlapping concave shapes.
 	FillRuleSimple FillRule = iota
+
+	// FillRuleNonZero will fill areas that are covered by the
+	// shape, regardless if it overlaps.
 	FillRuleNonZero
+
+	// FillRuleEvenOdd will fill areas that are covered by the
+	// shape and it does not overlap or overlaps an odd number
+	// of times.
 	FillRuleEvenOdd
 )
 
+// Stroke configures how a contour is to be drawn.
 type Stroke struct {
-	Size  int
+
+	// Size determines the size of the contour.
+	Size int
+
+	// Color specifies the color of the contour.
 	Color Color
 }
 
-type Winding int
+// Typography configures how text is to be drawn.
+type Typography struct {
 
-const (
-	WindingCCW Winding = iota
-	WindingCW
-)
+	// Font specifies the font to be used.
+	Font Font
+
+	// Size specifies the font size.
+	Size int
+
+	// Color indicates the color of the text.
+	Color Color
+}
+
+// RectRoundness is used to configure the roundness of
+// a round rectangle through corner radiuses.
+type RectRoundness struct {
+
+	// TopLeftRadius specifies the radius of the top-left corner.
+	TopLeftRadius int
+
+	// TopRightRadius specifies the radius of the top-right corner.
+	TopRightRadius int
+
+	// BottomLeftRadius specifies the radius of the bottom-left corner.
+	BottomLeftRadius int
+
+	// BottomRightRadius specifies the radius of the bottom-right corner.
+	BottomRightRadius int
+}

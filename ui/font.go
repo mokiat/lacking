@@ -26,4 +26,8 @@ type Font interface {
 	// SubFamily returns the sub-family name of this Font.
 	// (e.g. Italic, Bold)
 	SubFamily() string
+
+	// TextSize returns the size it would take to draw the
+	// specified text string at the specified font size.
+	TextSize(text string, fontSize int) Size
 }

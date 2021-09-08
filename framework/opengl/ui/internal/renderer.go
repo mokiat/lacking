@@ -229,12 +229,12 @@ func (r *Renderer) EndContour(contour *Contour) {
 	// TODO: Submit vertices and sub-meshes
 }
 
-func (r *Renderer) BeginText(font *Font, fontSize float32, color sprec.Vec4) *Text {
+func (r *Renderer) BeginText(typography Typography) *Text {
 	if r.text == nil {
 		panic("text already started")
 	}
 	result := r.text
-	result.Init(font, fontSize, color)
+	result.Init(typography)
 	r.text = nil
 	return result
 }
@@ -245,86 +245,89 @@ func (r *Renderer) EndText(text *Text) {
 	}
 	r.text = text
 
-	offset := sprec.NewVec2(0.0, 0.0)
-	lastGlyph := (*fontGlyph)(nil)
 	vertexOffset := r.textMesh.Offset()
+	for _, paragraph := range text.paragraphs {
+		offset := paragraph.position
+		lastGlyph := (*fontGlyph)(nil)
 
-	for _, ch := range text.characters {
-		lineHeight := text.font.lineHeight * text.fontSize
-		lineAscent := text.font.lineAscent * text.fontSize
-		if ch == '\r' {
-			offset.X = 0.0
-			lastGlyph = nil
-			continue
-		}
-		if ch == '\n' {
-			offset.X = 0.0
-			offset.Y += lineHeight
-			lastGlyph = nil
-			continue
-		}
+		paragraphChars := text.characters[paragraph.charOffset : paragraph.charOffset+paragraph.charCount]
+		for _, ch := range paragraphChars {
+			lineHeight := text.font.lineHeight * text.fontSize
+			lineAscent := text.font.lineAscent * text.fontSize
+			if ch == '\r' {
+				offset.X = paragraph.position.X
+				lastGlyph = nil
+				continue
+			}
+			if ch == '\n' {
+				offset.X = paragraph.position.X
+				offset.Y += lineHeight
+				lastGlyph = nil
+				continue
+			}
 
-		if glyph, ok := text.font.glyphs[ch]; ok {
-			advance := glyph.advance * text.fontSize
-			leftBearing := glyph.leftBearing * text.fontSize
-			rightBearing := glyph.rightBearing * text.fontSize
-			ascent := glyph.ascent * text.fontSize
-			descent := glyph.descent * text.fontSize
+			if glyph, ok := text.font.glyphs[ch]; ok {
+				advance := glyph.advance * text.fontSize
+				leftBearing := glyph.leftBearing * text.fontSize
+				rightBearing := glyph.rightBearing * text.fontSize
+				ascent := glyph.ascent * text.fontSize
+				descent := glyph.descent * text.fontSize
 
-			vertTopLeft := TextVertex{
-				position: sprec.Vec2Sum(
-					sprec.NewVec2(
-						leftBearing,
-						lineAscent-ascent,
+				vertTopLeft := TextVertex{
+					position: sprec.Vec2Sum(
+						sprec.NewVec2(
+							leftBearing,
+							lineAscent-ascent,
+						),
+						offset,
 					),
-					offset,
-				),
-				texCoord: sprec.NewVec2(glyph.leftU, glyph.topV),
-			}
-			vertTopRight := TextVertex{
-				position: sprec.Vec2Sum(
-					sprec.NewVec2(
-						advance-rightBearing,
-						lineAscent-ascent,
+					texCoord: sprec.NewVec2(glyph.leftU, glyph.topV),
+				}
+				vertTopRight := TextVertex{
+					position: sprec.Vec2Sum(
+						sprec.NewVec2(
+							advance-rightBearing,
+							lineAscent-ascent,
+						),
+						offset,
 					),
-					offset,
-				),
-				texCoord: sprec.NewVec2(glyph.rightU, glyph.topV),
-			}
-			vertBottomLeft := TextVertex{
-				position: sprec.Vec2Sum(
-					sprec.NewVec2(
-						leftBearing,
-						lineAscent+descent,
+					texCoord: sprec.NewVec2(glyph.rightU, glyph.topV),
+				}
+				vertBottomLeft := TextVertex{
+					position: sprec.Vec2Sum(
+						sprec.NewVec2(
+							leftBearing,
+							lineAscent+descent,
+						),
+						offset,
 					),
-					offset,
-				),
-				texCoord: sprec.NewVec2(glyph.leftU, glyph.bottomV),
-			}
-			vertBottomRight := TextVertex{
-				position: sprec.Vec2Sum(
-					sprec.NewVec2(
-						advance-rightBearing,
-						lineAscent+descent,
+					texCoord: sprec.NewVec2(glyph.leftU, glyph.bottomV),
+				}
+				vertBottomRight := TextVertex{
+					position: sprec.Vec2Sum(
+						sprec.NewVec2(
+							advance-rightBearing,
+							lineAscent+descent,
+						),
+						offset,
 					),
-					offset,
-				),
-				texCoord: sprec.NewVec2(glyph.rightU, glyph.bottomV),
+					texCoord: sprec.NewVec2(glyph.rightU, glyph.bottomV),
+				}
+
+				r.textMesh.Append(vertTopLeft)
+				r.textMesh.Append(vertBottomLeft)
+				r.textMesh.Append(vertBottomRight)
+
+				r.textMesh.Append(vertTopLeft)
+				r.textMesh.Append(vertBottomRight)
+				r.textMesh.Append(vertTopRight)
+
+				offset.X += advance
+				if lastGlyph != nil {
+					offset.X += lastGlyph.kerns[ch] * text.fontSize
+				}
+				lastGlyph = glyph
 			}
-
-			r.textMesh.Append(vertTopLeft)
-			r.textMesh.Append(vertBottomLeft)
-			r.textMesh.Append(vertBottomRight)
-
-			r.textMesh.Append(vertTopLeft)
-			r.textMesh.Append(vertBottomRight)
-			r.textMesh.Append(vertTopRight)
-
-			offset.X += advance
-			if lastGlyph != nil {
-				offset.X += lastGlyph.kerns[ch] * text.fontSize
-			}
-			lastGlyph = glyph
 		}
 	}
 	vertexCount := r.textMesh.Offset() - vertexOffset
@@ -439,9 +442,9 @@ func (r *Renderer) End() {
 }
 
 type Fill struct {
+	mode  StencilMode
 	color sprec.Vec4
 	image *Image
-	mode  StencilMode
 }
 
 type StencilMode int
@@ -465,4 +468,10 @@ func MixStrokes(a, b Stroke, alpha float32) Stroke {
 			sprec.Vec4Prod(b.color, alpha),
 		),
 	}
+}
+
+type Typography struct {
+	Font  *Font
+	Size  float32
+	Color sprec.Vec4
 }

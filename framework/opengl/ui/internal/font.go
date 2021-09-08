@@ -1,6 +1,7 @@
 package internal
 
 import (
+	"github.com/mokiat/gomath/sprec"
 	"github.com/mokiat/lacking/framework/opengl"
 	"github.com/mokiat/lacking/ui"
 )
@@ -37,6 +38,42 @@ func (f *Font) Family() string {
 
 func (f *Font) SubFamily() string {
 	return f.subFamilyName
+}
+
+func (f *Font) TextSize(text string, fontSize int) ui.Size {
+	if len(text) == 0 {
+		return ui.NewSize(0, 0)
+	}
+
+	result := sprec.NewVec2(0, f.lineAscent+f.lineDescent)
+	currentWidth := float32(0.0)
+	lastGlyph := (*fontGlyph)(nil)
+	for _, ch := range text {
+		if ch == '\r' {
+			result.X = sprec.Max(result.X, currentWidth)
+			currentWidth = 0.0
+			lastGlyph = nil
+			continue
+		}
+		if ch == '\n' {
+			result.X = sprec.Max(result.X, currentWidth)
+			result.Y += f.lineHeight - (f.lineAscent + f.lineDescent)
+			currentWidth = 0.0
+			lastGlyph = nil
+			continue
+		}
+		if glyph, ok := f.glyphs[ch]; ok {
+			currentWidth += glyph.advance
+			if lastGlyph != nil {
+				currentWidth += lastGlyph.kerns[ch]
+			}
+			lastGlyph = glyph
+		}
+	}
+	result.X = sprec.Max(result.X, currentWidth)
+	result = sprec.Vec2Prod(result, float32(fontSize))
+
+	return ui.NewSize(int(result.X), int(result.Y))
 }
 
 func (f *Font) Destroy() {
