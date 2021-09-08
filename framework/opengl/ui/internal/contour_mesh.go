@@ -62,7 +62,7 @@ func (m *ContourMesh) Allocate() {
 				Index:          contourColorAttribIndex,
 				ComponentCount: 4,
 				ComponentType:  gl.UNSIGNED_BYTE,
-				Normalized:     false,
+				Normalized:     true,
 				OffsetBytes:    2 * 4,
 				BufferBinding:  0,
 			},
