@@ -104,6 +104,11 @@ func (c *Contour) CubeTo(control1, control2, position sprec.Vec2, stroke Stroke)
 	})
 }
 
+func (c *Contour) CloseLoop() {
+	lastSubContour := c.subContours[len(c.subContours)-1]
+	c.addPoint(c.points[lastSubContour.pointOffset])
+}
+
 func (c *Contour) startSubContour() {
 	c.subContours = append(c.subContours, SubContour{
 		pointOffset: len(c.points),

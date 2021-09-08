@@ -16,7 +16,8 @@ func NewRenderer() *Renderer {
 		shapeMaterial:      newShapeMaterial(),
 		shapeBlankMaterial: newShapeBlankMaterial(),
 		contour:            newContour(),
-		contourMaterial:    nil, // TODO
+		contourMesh:        newContourMesh(maxVertexCount),
+		contourMaterial:    newContourMaterial(),
 		text:               newText(),
 		textMesh:           newTextMesh(maxVertexCount),
 		textMaterial:       newTextMaterial(),
@@ -35,6 +36,7 @@ type Renderer struct {
 	shapeBlankMaterial *Material
 
 	contour         *Contour
+	contourMesh     *ContourMesh
 	contourMaterial *Material
 
 	text         *Text
@@ -52,6 +54,8 @@ func (r *Renderer) Init() {
 	r.shapeMesh.Allocate()
 	r.shapeMaterial.Allocate()
 	r.shapeBlankMaterial.Allocate()
+	r.contourMesh.Allocate()
+	r.contourMaterial.Allocate()
 	r.textMesh.Allocate()
 	r.textMaterial.Allocate()
 	r.whiteMask.Allocate(opengl.TwoDTextureAllocateInfo{
@@ -70,6 +74,8 @@ func (r *Renderer) Free() {
 	defer r.shapeMesh.Release()
 	defer r.shapeMaterial.Release()
 	defer r.shapeBlankMaterial.Release()
+	defer r.contourMesh.Release()
+	defer r.contourMaterial.Release()
 	defer r.textMesh.Release()
 	defer r.textMaterial.Release()
 	defer r.whiteMask.Release()
@@ -226,7 +232,76 @@ func (r *Renderer) EndContour(contour *Contour) {
 		panic("contour already ended")
 	}
 	r.contour = contour
-	// TODO: Submit vertices and sub-meshes
+
+	for _, subContour := range contour.subContours {
+		pointIndex := subContour.pointOffset
+		current := contour.points[pointIndex]
+		next := contour.points[pointIndex+1]
+		currentNormal := endPointNormal(
+			current.coords,
+			next.coords,
+		)
+		pointIndex++
+
+		vertexOffset := r.contourMesh.Offset()
+		for pointIndex < subContour.pointOffset+subContour.pointCount {
+			prev := current
+			prevNormal := currentNormal
+
+			current = contour.points[pointIndex]
+			if pointIndex != subContour.pointOffset+subContour.pointCount-1 {
+				next := contour.points[pointIndex+1]
+				currentNormal = midPointNormal(
+					prev.coords,
+					current.coords,
+					next.coords,
+				)
+			} else {
+				currentNormal = endPointNormal(
+					prev.coords,
+					current.coords,
+				)
+			}
+
+			prevLeft := ContourVertex{
+				position: sprec.Vec2Sum(prev.coords, sprec.Vec2Prod(prevNormal, prev.stroke.size)),
+				color:    prev.stroke.color,
+			}
+			prevRight := ContourVertex{
+				position: sprec.Vec2Diff(prev.coords, sprec.Vec2Prod(prevNormal, prev.stroke.size)),
+				color:    prev.stroke.color,
+			}
+			currentLeft := ContourVertex{
+				position: sprec.Vec2Sum(current.coords, sprec.Vec2Prod(currentNormal, current.stroke.size)),
+				color:    prev.stroke.color,
+			}
+			currentRight := ContourVertex{
+				position: sprec.Vec2Diff(current.coords, sprec.Vec2Prod(currentNormal, current.stroke.size)),
+				color:    prev.stroke.color,
+			}
+
+			r.contourMesh.Append(prevLeft)
+			r.contourMesh.Append(prevRight)
+			r.contourMesh.Append(currentLeft)
+
+			r.contourMesh.Append(prevRight)
+			r.contourMesh.Append(currentRight)
+			r.contourMesh.Append(currentLeft)
+
+			pointIndex++
+		}
+		vertexCount := r.contourMesh.Offset() - vertexOffset
+
+		r.subMeshes = append(r.subMeshes, SubMesh{
+			clipBounds:      r.clipBounds,
+			material:        r.contourMaterial,
+			vertexArray:     r.contourMesh.vertexArray,
+			transformMatrix: r.transformMatrix,
+			vertexOffset:    vertexOffset,
+			vertexCount:     vertexCount,
+			primitive:       gl.TRIANGLES,
+		})
+	}
 }
 
 func (r *Renderer) BeginText(typography Typography) *Text {
@@ -354,12 +429,14 @@ func (r *Renderer) Begin(target Target) {
 		0.0, float32(target.Height),
 	)
 	r.shapeMesh.Reset()
+	r.contourMesh.Reset()
 	r.textMesh.Reset()
 	r.subMeshes = r.subMeshes[:0]
 }
 
 func (r *Renderer) End() {
 	r.shapeMesh.Update()
+	r.contourMesh.Update()
 	r.textMesh.Update()
 
 	r.target.Framebuffer.Use()
@@ -474,4 +551,12 @@ type Typography struct {
 	Font  *Font
 	Size  float32
 	Color sprec.Vec4
+}
+
+func midPointNormal(prev, point, next sprec.Vec2) sprec.Vec2 {
+	return sprec.NewVec2(1, 0)
+}
+
+func endPointNormal(prev, next sprec.Vec2) sprec.Vec2 {
+	return sprec.NewVec2(1, 0)
 }

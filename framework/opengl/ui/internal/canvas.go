@@ -140,7 +140,6 @@ func (s *canvasShape) Begin(fill ui.Fill) {
 			0.0,
 		),
 	))
-
 	s.shape = s.renderer.BeginShape(Fill{
 		mode:  uiFillRuleToStencilMode(fill.Rule),
 		color: uiColorToVec(fill.Color),
@@ -224,38 +223,82 @@ var _ ui.Contour = (*canvasContour)(nil)
 type canvasContour struct {
 	canvas   *Canvas
 	renderer *Renderer
+	contour  *Contour
 }
 
 func (c *canvasContour) Begin() {
-	// TODO
+	currentLayer := c.canvas.currentLayer
+	c.renderer.SetClipBounds(
+		float32(currentLayer.ClipBounds.X),
+		float32(currentLayer.ClipBounds.X+currentLayer.ClipBounds.Width),
+		float32(currentLayer.ClipBounds.Y),
+		float32(currentLayer.ClipBounds.Y+currentLayer.ClipBounds.Height),
+	)
+	c.renderer.SetTransform(sprec.TranslationMat4(
+		float32(currentLayer.Translation.X),
+		float32(currentLayer.Translation.Y),
+		0.0,
+	))
+	c.contour = c.renderer.BeginContour()
 }
 
 func (c *canvasContour) MoveTo(position ui.Position, stroke ui.Stroke) {
-	// TODO
+	c.contour.MoveTo(
+		uiPositionToVec(position),
+		uiStrokeToStroke(stroke),
+	)
 }
 
 func (c *canvasContour) LineTo(position ui.Position, stroke ui.Stroke) {
-	// TODO
+	c.contour.LineTo(
+		uiPositionToVec(position),
+		uiStrokeToStroke(stroke),
+	)
 }
 
 func (c *canvasContour) QuadTo(control, position ui.Position, stroke ui.Stroke) {
-	// TODO
+	c.contour.QuadTo(
+		uiPositionToVec(control),
+		uiPositionToVec(position),
+		uiStrokeToStroke(stroke),
+	)
 }
 
 func (c *canvasContour) CubeTo(control1, control2, position ui.Position, stroke ui.Stroke) {
-	// TODO
+	c.contour.CubeTo(
+		uiPositionToVec(control1),
+		uiPositionToVec(control2),
+		uiPositionToVec(position),
+		uiStrokeToStroke(stroke),
+	)
 }
 
 func (c *canvasContour) CloseLoop() {
-	// TODO
+	c.contour.CloseLoop()
 }
 
 func (c *canvasContour) Rectangle(position ui.Position, size ui.Size, stroke ui.Stroke) {
-	// TODO
+	c.MoveTo(position, stroke)
+	c.LineTo(ui.NewPosition(
+		position.X,
+		position.Y+size.Height,
+	), stroke)
+	c.LineTo(ui.NewPosition(
+		position.X+size.Width,
+		position.Y+size.Height,
+	), stroke)
+	c.LineTo(ui.NewPosition(
+		position.X+size.Width,
+		position.Y,
+	), stroke)
+	c.CloseLoop()
 }
 
 func (c *canvasContour) Triangle(p1, p2, p3 ui.Position, stroke ui.Stroke) {
-	// TODO
+	c.MoveTo(p1, stroke)
+	c.LineTo(p2, stroke)
+	c.LineTo(p3, stroke)
+	c.CloseLoop()
 }
 
 func (c *canvasContour) Circle(position ui.Position, radius int, stroke ui.Stroke) {
@@ -267,7 +310,7 @@ func (c *canvasContour) RoundRectangle(position ui.Position, size ui.Size, round
 }
 
 func (c *canvasContour) End() {
-	// TODO
+	c.renderer.EndContour(c.contour)
 }
 
 var _ ui.Text = (*canvasText)(nil)
@@ -291,7 +334,6 @@ func (t *canvasText) Begin(typography ui.Typography) {
 		float32(currentLayer.Translation.Y),
 		0.0,
 	))
-
 	t.text = t.renderer.BeginText(Typography{
 		Font:  uiFontToFont(typography.Font),
 		Size:  float32(typography.Size),
@@ -308,6 +350,13 @@ func (t *canvasText) Line(value string, position ui.Position) {
 
 func (t *canvasText) End() {
 	t.renderer.EndText(t.text)
+}
+
+func uiPositionToVec(position ui.Position) sprec.Vec2 {
+	return sprec.NewVec2(
+		float32(position.X),
+		float32(position.Y),
+	)
 }
 
 func uiColorToVec(color ui.Color) sprec.Vec4 {
@@ -336,6 +385,13 @@ func uiFillRuleToStencilMode(rule ui.FillRule) StencilMode {
 		return StencilModeOdd
 	default:
 		return StencilModeNone
+	}
+}
+
+func uiStrokeToStroke(stroke ui.Stroke) Stroke {
+	return Stroke{
+		size:  float32(stroke.Size),
+		color: uiColorToVec(stroke.Color),
 	}
 }
 
