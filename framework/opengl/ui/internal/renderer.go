@@ -7,7 +7,7 @@ import (
 	"github.com/mokiat/lacking/framework/opengl"
 )
 
-const maxVertexCount = 2048 * 10
+const maxVertexCount = 524288
 
 func NewRenderer() *Renderer {
 	return &Renderer{
