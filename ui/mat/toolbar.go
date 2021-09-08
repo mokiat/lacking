@@ -17,7 +17,7 @@ var Toolbar = co.ShallowCached(co.Define(func(props co.Properties) co.Instance {
 	}).Inject(&essence)
 
 	props.InjectOptionalLayoutData(&layoutData, LayoutData{})
-	layoutData.Height = optional.NewInt(50)
+	layoutData.Height = optional.NewInt(ToolbarHeight)
 
 	return co.New(Element, func() {
 		co.WithData(ElementData{
@@ -36,41 +36,23 @@ type toolbarEssence struct {
 }
 
 func (e *toolbarEssence) OnRender(element *ui.Element, canvas ui.Canvas) {
-	// left := 0
-	// right := element.ContentBounds().Width - 1
-	// top := 0
-	// bottom := element.ContentBounds().Height - 1
+	size := element.Bounds().Size
 
-	// stroke := ui.Stroke{
-	// 	Color: ui.Red(),
-	// 	Size:  4,
-	// }
-	// canvas.BeginShape(ui.Fill{
-	// 	Rule:            ui.FillRuleSimple,
-	// 	BackgroundColor: ui.Teal(),
-	// })
-	// canvas.MoveTo(
-	// 	ui.NewPosition(left, top),
-	// )
-	// canvas.LineTo(
-	// 	ui.NewPosition(left, (top+bottom)/2),
-	// 	stroke, stroke,
-	// )
-	// canvas.QuadTo(
-	// 	ui.NewPosition(left, bottom),
-	// 	ui.NewPosition((left+right)/2, bottom),
-	// 	stroke, stroke,
-	// )
-	// canvas.CubeTo(
-	// 	ui.NewPosition(right-(right-left)*1/3, bottom),
-	// 	ui.NewPosition(right, bottom-(bottom-top)*1/4),
-	// 	ui.NewPosition(right, (top+bottom)/2),
-	// 	stroke, stroke,
-	// )
-	// canvas.LineTo(
-	// 	ui.NewPosition(right, top),
-	// 	stroke, stroke,
-	// )
-	// canvas.CloseLoop(stroke, stroke)
-	// canvas.EndShape()
+	canvas.Shape().Begin(ui.Fill{
+		Color: ToolbarColor,
+	})
+	canvas.Shape().Rectangle(
+		ui.NewPosition(0, 0),
+		size,
+	)
+	canvas.Shape().End()
+
+	stroke := ui.Stroke{
+		Color: ToolbarBorderColor,
+		Size:  2,
+	}
+	canvas.Contour().Begin()
+	canvas.Contour().MoveTo(ui.NewPosition(0, size.Height), stroke)
+	canvas.Contour().LineTo(ui.NewPosition(size.Width, size.Height), stroke)
+	canvas.Contour().End()
 }
