@@ -15,8 +15,13 @@ var (
 	OnSurfaceColor     ui.Color = ui.RGB(0x00, 0x00, 0x00)
 	OnErrorColor       ui.Color = ui.RGB(0xFF, 0xFF, 0xFF)
 
+	LightGray ui.Color = ui.RGB(0xEE, 0xEE, 0xEE)
+	Gray      ui.Color = ui.RGB(0xDD, 0xDD, 0xDD)
+	DarkGray  ui.Color = ui.RGB(0xCC, 0xCC, 0xCC)
+
 	ToolbarHeight      = 64
 	ToolbarColor       = SurfaceColor
-	ToolbarBorderColor = ui.RGB(0xAA, 0xAA, 0xAA)
+	ToolbarBorderColor = DarkGray
 	ToolbarBorderSize  = 1
+	ToolbarItemSpacing = 4
 )

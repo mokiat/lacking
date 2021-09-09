@@ -22,6 +22,10 @@ var Toolbar = co.ShallowCached(co.Define(func(props co.Properties) co.Instance {
 	return co.New(Element, func() {
 		co.WithData(ElementData{
 			Essence: essence,
+			Layout: NewHorizontalLayout(HorizontalLayoutSettings{
+				ContentAlignment: AlignmentCenter,
+				ContentSpacing:   ToolbarItemSpacing,
+			}),
 		})
 		co.WithLayoutData(layoutData)
 		co.WithChildren(props.Children())
