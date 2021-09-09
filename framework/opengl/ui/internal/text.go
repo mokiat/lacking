@@ -49,3 +49,9 @@ type Paragraph struct {
 	charOffset int
 	charCount  int
 }
+
+type Typography struct {
+	Font  *Font
+	Size  float32
+	Color sprec.Vec4
+}

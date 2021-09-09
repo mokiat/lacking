@@ -49,7 +49,7 @@ func (e *toolbarEssence) OnRender(element *ui.Element, canvas ui.Canvas) {
 
 	stroke := ui.Stroke{
 		Color: ToolbarBorderColor,
-		Size:  2,
+		Size:  ToolbarBorderSize,
 	}
 	canvas.Contour().Begin()
 	canvas.Contour().MoveTo(ui.NewPosition(0, size.Height), stroke)

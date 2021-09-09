@@ -60,7 +60,7 @@ func (c *Contour) QuadTo(control, position sprec.Vec2, stroke Stroke) {
 					sprec.Vec2Prod(vecCE, beta),
 				),
 			),
-			stroke: MixStrokes(lastPoint.stroke, stroke, t),
+			stroke: mixStrokes(lastPoint.stroke, stroke, t),
 		})
 	}
 
@@ -94,7 +94,7 @@ func (c *Contour) CubeTo(control1, control2, position sprec.Vec2, stroke Stroke)
 					sprec.Vec2Prod(position, delta),
 				),
 			),
-			stroke: MixStrokes(lastPoint.stroke, stroke, t),
+			stroke: mixStrokes(lastPoint.stroke, stroke, t),
 		})
 	}
 
@@ -133,4 +133,21 @@ type ContourPoint struct {
 type SubContour struct {
 	pointOffset int
 	pointCount  int
+}
+
+type Stroke struct {
+	innerSize float32
+	outerSize float32
+	color     sprec.Vec4
+}
+
+func mixStrokes(a, b Stroke, alpha float32) Stroke {
+	return Stroke{
+		innerSize: (1-alpha)*a.innerSize + alpha*b.innerSize,
+		outerSize: (1-alpha)*a.outerSize + alpha*b.outerSize,
+		color: sprec.Vec4Sum(
+			sprec.Vec4Prod(a.color, (1-alpha)),
+			sprec.Vec4Prod(b.color, alpha),
+		),
+	}
 }

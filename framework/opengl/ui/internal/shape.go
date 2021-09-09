@@ -124,3 +124,17 @@ type SubShape struct {
 	pointOffset int
 	pointCount  int
 }
+
+type Fill struct {
+	mode  StencilMode
+	color sprec.Vec4
+	image *Image
+}
+
+type StencilMode int
+
+const (
+	StencilModeNone StencilMode = iota
+	StencilModeNonZero
+	StencilModeOdd
+)

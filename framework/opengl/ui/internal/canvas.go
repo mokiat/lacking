@@ -390,8 +390,8 @@ func uiFillRuleToStencilMode(rule ui.FillRule) StencilMode {
 
 func uiStrokeToStroke(stroke ui.Stroke) Stroke {
 	return Stroke{
-		size:  float32(stroke.Size),
-		color: uiColorToVec(stroke.Color),
+		innerSize: float32(stroke.Size),
+		color:     uiColorToVec(stroke.Color),
 	}
 }
 

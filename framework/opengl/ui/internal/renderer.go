@@ -264,19 +264,19 @@ func (r *Renderer) EndContour(contour *Contour) {
 			}
 
 			prevLeft := ContourVertex{
-				position: sprec.Vec2Sum(prev.coords, sprec.Vec2Prod(prevNormal, prev.stroke.size/2.0)),
+				position: sprec.Vec2Sum(prev.coords, sprec.Vec2Prod(prevNormal, prev.stroke.innerSize)),
 				color:    prev.stroke.color,
 			}
 			prevRight := ContourVertex{
-				position: sprec.Vec2Diff(prev.coords, sprec.Vec2Prod(prevNormal, prev.stroke.size/2.0)),
+				position: sprec.Vec2Diff(prev.coords, sprec.Vec2Prod(prevNormal, prev.stroke.outerSize)),
 				color:    prev.stroke.color,
 			}
 			currentLeft := ContourVertex{
-				position: sprec.Vec2Sum(current.coords, sprec.Vec2Prod(currentNormal, current.stroke.size/2.0)),
+				position: sprec.Vec2Sum(current.coords, sprec.Vec2Prod(currentNormal, current.stroke.innerSize)),
 				color:    prev.stroke.color,
 			}
 			currentRight := ContourVertex{
-				position: sprec.Vec2Diff(current.coords, sprec.Vec2Prod(currentNormal, current.stroke.size/2.0)),
+				position: sprec.Vec2Diff(current.coords, sprec.Vec2Prod(currentNormal, current.stroke.outerSize)),
 				color:    prev.stroke.color,
 			}
 
@@ -516,41 +516,6 @@ func (r *Renderer) End() {
 	gl.Enable(gl.CULL_FACE)
 	gl.CullFace(gl.BACK)
 	gl.Disable(gl.BLEND)
-}
-
-type Fill struct {
-	mode  StencilMode
-	color sprec.Vec4
-	image *Image
-}
-
-type StencilMode int
-
-const (
-	StencilModeNone StencilMode = iota
-	StencilModeNonZero
-	StencilModeOdd
-)
-
-type Stroke struct {
-	size  float32
-	color sprec.Vec4
-}
-
-func MixStrokes(a, b Stroke, alpha float32) Stroke {
-	return Stroke{
-		size: (1-alpha)*a.size + alpha*b.size,
-		color: sprec.Vec4Sum(
-			sprec.Vec4Prod(a.color, (1-alpha)),
-			sprec.Vec4Prod(b.color, alpha),
-		),
-	}
-}
-
-type Typography struct {
-	Font  *Font
-	Size  float32
-	Color sprec.Vec4
 }
 
 func midPointNormal(prev, middle, next sprec.Vec2) sprec.Vec2 {
