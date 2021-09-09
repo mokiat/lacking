@@ -32,12 +32,8 @@ type HorizontalLayout struct {
 func (l *HorizontalLayout) Apply(element *ui.Element) {
 	contentBounds := element.ContentBounds()
 
-	// fmt.Println()
-	// fmt.Println("HORIZONTAL LAYOUT----")
 	leftPlacement := contentBounds.X
-	// fmt.Println("LEFT: ", leftPlacement)
 	for childElement := element.FirstChild(); childElement != nil; childElement = childElement.RightSibling() {
-		// fmt.Println("CHILD!")
 		layoutConfig := childElement.LayoutConfig().(LayoutData)
 
 		childBounds := ui.Bounds{
@@ -62,10 +58,8 @@ func (l *HorizontalLayout) Apply(element *ui.Element) {
 		}
 
 		childBounds.X = leftPlacement + childElement.Margin().Left
-		// fmt.Println("Bounds: ", childBounds)
 		childElement.SetBounds(childBounds)
 
 		leftPlacement += childElement.Margin().Horizontal() + childBounds.Width + l.contentSpacing
-		// fmt.Println("LEFT: ", leftPlacement)
 	}
 }
