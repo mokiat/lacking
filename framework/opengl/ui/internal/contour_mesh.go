@@ -5,24 +5,21 @@ import (
 
 	"github.com/go-gl/gl/v4.6-core/gl"
 
+	"github.com/mokiat/gomath/sprec"
 	"github.com/mokiat/lacking/data/buffer"
 	"github.com/mokiat/lacking/framework/opengl"
 )
 
 const (
-	positionAttribIndex = 0
-	texCoordAttribIndex = 1
-	colorAttribIndex    = 2
+	contourPositionAttribIndex = 0
+	contourColorAttribIndex    = 2
 
-	positionSize = 2 * 4
-	texCoordSize = 2 * 4
-	colorSize    = 4 * 1
-	stride       = positionSize + texCoordSize + colorSize
+	contourMeshVertexSize = 2*4 + 1*4
 )
 
-func NewMesh(vertexCount int) *Mesh {
-	data := make([]byte, vertexCount*24)
-	return &Mesh{
+func newContourMesh(vertexCount int) *ContourMesh {
+	data := make([]byte, vertexCount*contourMeshVertexSize)
+	return &ContourMesh{
 		vertexData:    data,
 		vertexPlotter: buffer.NewPlotter(data, binary.LittleEndian),
 		vertexBuffer:  opengl.NewBuffer(),
@@ -30,7 +27,7 @@ func NewMesh(vertexCount int) *Mesh {
 	}
 }
 
-type Mesh struct {
+type ContourMesh struct {
 	vertexData    []byte
 	vertexPlotter *buffer.Plotter
 	vertexOffset  int
@@ -38,7 +35,7 @@ type Mesh struct {
 	vertexArray   *opengl.VertexArray
 }
 
-func (m *Mesh) Allocate() {
+func (m *ContourMesh) Allocate() {
 	m.vertexBuffer.Allocate(opengl.BufferAllocateInfo{
 		Dynamic: true,
 		Data:    m.vertexData,
@@ -49,12 +46,12 @@ func (m *Mesh) Allocate() {
 			{
 				VertexBuffer: m.vertexBuffer,
 				OffsetBytes:  0,
-				StrideBytes:  int32(stride),
+				StrideBytes:  int32(contourMeshVertexSize),
 			},
 		},
 		Attributes: []opengl.VertexArrayAttribute{
 			{
-				Index:          positionAttribIndex,
+				Index:          contourPositionAttribIndex,
 				ComponentCount: 2,
 				ComponentType:  gl.FLOAT,
 				Normalized:     false,
@@ -62,31 +59,23 @@ func (m *Mesh) Allocate() {
 				BufferBinding:  0,
 			},
 			{
-				Index:          texCoordAttribIndex,
-				ComponentCount: 2,
-				ComponentType:  gl.FLOAT,
-				Normalized:     false,
-				OffsetBytes:    uint32(positionSize),
-				BufferBinding:  0,
-			},
-			{
-				Index:          colorAttribIndex,
+				Index:          contourColorAttribIndex,
 				ComponentCount: 4,
 				ComponentType:  gl.UNSIGNED_BYTE,
 				Normalized:     true,
-				OffsetBytes:    uint32(positionSize + texCoordSize),
+				OffsetBytes:    2 * 4,
 				BufferBinding:  0,
 			},
 		},
 	})
 }
 
-func (m *Mesh) Release() {
+func (m *ContourMesh) Release() {
 	m.vertexArray.Release()
 	m.vertexBuffer.Release()
 }
 
-func (m *Mesh) Update() {
+func (m *ContourMesh) Update() {
 	if length := m.vertexPlotter.Offset(); length > 0 {
 		m.vertexBuffer.Update(opengl.BufferUpdateInfo{
 			Data:        m.vertexData[:m.vertexPlotter.Offset()],
@@ -95,23 +84,26 @@ func (m *Mesh) Update() {
 	}
 }
 
-func (m *Mesh) Reset() {
+func (m *ContourMesh) Reset() {
 	m.vertexOffset = 0
 	m.vertexPlotter.Rewind()
 }
 
-func (m *Mesh) Offset() int {
+func (m *ContourMesh) Offset() int {
 	return m.vertexOffset
 }
 
-func (m *Mesh) Append(vertex Vertex) {
+func (m *ContourMesh) Append(vertex ContourVertex) {
 	m.vertexPlotter.PlotFloat32(vertex.position.X)
 	m.vertexPlotter.PlotFloat32(vertex.position.Y)
-	m.vertexPlotter.PlotFloat32(vertex.texCoord.X)
-	m.vertexPlotter.PlotFloat32(vertex.texCoord.Y)
-	m.vertexPlotter.PlotByte(vertex.color.R)
-	m.vertexPlotter.PlotByte(vertex.color.G)
-	m.vertexPlotter.PlotByte(vertex.color.B)
-	m.vertexPlotter.PlotByte(vertex.color.A)
+	m.vertexPlotter.PlotByte(byte(vertex.color.X * 255))
+	m.vertexPlotter.PlotByte(byte(vertex.color.Y * 255))
+	m.vertexPlotter.PlotByte(byte(vertex.color.Z * 255))
+	m.vertexPlotter.PlotByte(byte(vertex.color.W * 255))
 	m.vertexOffset++
+}
+
+type ContourVertex struct {
+	position sprec.Vec2
+	color    sprec.Vec4
 }

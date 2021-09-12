@@ -5,11 +5,12 @@ import "time"
 var renderCtx renderContext
 
 type renderContext struct {
-	node        *componentNode
-	firstRender bool
-	lastRender  bool
-	stateIndex  int
-	stateDepth  int
+	node         *componentNode
+	firstRender  bool
+	lastRender   bool
+	forcedRender bool
+	stateIndex   int
+	stateDepth   int
 }
 
 func (c renderContext) isFirstRender() bool {

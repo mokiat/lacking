@@ -12,6 +12,7 @@ type ElementData struct {
 	Enabled      optional.Bool
 	Visible      optional.Bool
 	Materialized optional.Bool
+	IdealSize    optional.Size
 	Padding      ui.Spacing
 	Layout       ui.Layout
 }
@@ -42,6 +43,9 @@ var Element = Define(func(props Properties) Instance {
 	}
 	if data.Materialized.Specified {
 		element.SetMaterialized(data.Materialized.Value)
+	}
+	if data.IdealSize.Specified {
+		element.SetIdealSize(data.IdealSize.Value)
 	}
 	element.SetLayout(data.Layout)
 	element.SetPadding(data.Padding)

@@ -103,28 +103,34 @@ func (e *buttonEssence) OnMouseEvent(element *ui.Element, event ui.MouseEvent) b
 func (e *buttonEssence) OnRender(element *ui.Element, canvas ui.Canvas) {
 	switch e.state {
 	case buttonStateOver:
-		canvas.SetSolidColor(ui.RGB(15, 15, 15))
-		canvas.FillRectangle(
+		canvas.Shape().Begin(ui.Fill{
+			Color: ui.RGB(15, 15, 15),
+		})
+		canvas.Shape().Rectangle(
 			ui.NewPosition(0, 0),
 			element.Bounds().Size,
 		)
+		canvas.Shape().End()
 	case buttonStateDown:
-		canvas.SetSolidColor(ui.RGB(30, 30, 30))
-		canvas.FillRectangle(
+		canvas.Shape().Begin(ui.Fill{
+			Color: ui.RGB(30, 30, 30),
+		})
+		canvas.Shape().Rectangle(
 			ui.NewPosition(0, 0),
 			element.Bounds().Size,
 		)
+		canvas.Shape().End()
 	}
 
 	if e.font != nil && e.text != "" {
-		canvas.SetFont(e.font)
-		canvas.SetFontSize(e.fontSize)
-		canvas.SetSolidColor(e.fontColor)
-
-		contentArea := element.ContentBounds()
-		textDrawSize := canvas.TextSize(e.text)
-
+		canvas.Text().Begin(ui.Typography{
+			Font:  e.font,
+			Size:  e.fontSize,
+			Color: e.fontColor,
+		})
 		var textPosition ui.Position
+		contentArea := element.ContentBounds()
+		textDrawSize := e.font.TextSize(e.text, e.fontSize)
 		switch e.fontAlignment {
 		case AlignmentLeft:
 			textPosition = ui.NewPosition(
@@ -137,8 +143,8 @@ func (e *buttonEssence) OnRender(element *ui.Element, canvas ui.Canvas) {
 				contentArea.Y+(contentArea.Height-textDrawSize.Height)/2,
 			)
 		}
-
-		canvas.DrawText(e.text, textPosition)
+		canvas.Text().Line(e.text, textPosition)
+		canvas.Text().End()
 	}
 }
 

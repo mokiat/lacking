@@ -11,20 +11,11 @@ type Layer struct {
 
 	Translation ui.Position
 	ClipBounds  ui.Bounds
-	SolidColor  ui.Color
-	StrokeColor ui.Color
-	StrokeSize  int
-	Font        *Font
-	FontSize    float32
 }
 
 func (l *Layer) InheritFrom(other *Layer) {
 	l.Translation = other.Translation
 	l.ClipBounds = other.ClipBounds
-	l.SolidColor = other.SolidColor
-	l.StrokeColor = other.StrokeColor
-	l.StrokeSize = other.StrokeSize
-	l.Font = other.Font
 }
 
 func (l *Layer) Previous() *Layer {

@@ -52,7 +52,7 @@ func (l *VerticalLayout) Apply(element *ui.Element) {
 		case AlignmentCenter:
 			fallthrough
 		default:
-			childBounds.X = contentBounds.X + (contentBounds.Width-childBounds.Width)/2 - +childElement.Margin().Left
+			childBounds.X = contentBounds.X + (contentBounds.Width-childBounds.Width)/2 - childElement.Margin().Left
 		}
 
 		childBounds.Y = topPlacement + childElement.Margin().Top

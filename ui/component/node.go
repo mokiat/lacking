@@ -62,9 +62,10 @@ func (node *componentNode) destroy() {
 func (node *componentNode) reconcile(instance Instance) {
 	node.instance = instance
 	renderCtx = renderContext{
-		node:        node,
-		firstRender: false,
-		lastRender:  false,
+		node:         node,
+		firstRender:  false,
+		lastRender:   false,
+		forcedRender: node.consumeDirty(),
 	}
 	for instance.element == nil {
 		instance = instance.componentFunc(instance.properties())
@@ -99,6 +100,19 @@ func (node *componentNode) reconcile(instance Instance) {
 			node.children = newChildren
 		}
 	}
+}
+
+func (node *componentNode) consumeDirty() bool {
+	var dirty = false
+	for _, depth := range node.states {
+		for _, state := range depth {
+			if state.dirty {
+				dirty = true
+				state.dirty = false
+			}
+		}
+	}
+	return dirty
 }
 
 func (node *componentNode) hasMatchingKey(instance Instance) bool {

@@ -8,64 +8,48 @@ import (
 	"github.com/mokiat/lacking/ui"
 )
 
-const maxVertexCount = 2048
+func NewCanvas(renderer *Renderer) *Canvas {
+	result := &Canvas{
+		renderer: renderer,
 
-func NewCanvas() *Canvas {
-	return &Canvas{
 		defaultLayer: &Layer{
 			Translation: ui.NewPosition(0, 0),
 			ClipBounds:  ui.NewBounds(0, 0, 1, 1),
-			SolidColor:  ui.White(),
-			StrokeColor: ui.Black(),
-			StrokeSize:  1,
-			Font:        nil,
 		},
 		topLayer: &Layer{},
 
-		mesh: NewMesh(maxVertexCount),
-
-		opaqueMaterial: NewDrawMaterial(),
-
-		whiteMask: opengl.NewTwoDTexture(),
+		framebuffer: opengl.DefaultFramebuffer(),
 	}
+	result.shape = &canvasShape{
+		canvas:   result,
+		renderer: renderer,
+	}
+	result.contour = &canvasContour{
+		canvas:   result,
+		renderer: renderer,
+	}
+	result.text = &canvasText{
+		canvas:   result,
+		renderer: renderer,
+	}
+	return result
 }
 
 var _ ui.Canvas = (*Canvas)(nil)
 
 type Canvas struct {
+	renderer *Renderer
+
 	defaultLayer *Layer
 	topLayer     *Layer
 	currentLayer *Layer
 
-	windowSize ui.Size
+	framebuffer *opengl.Framebuffer
+	windowSize  ui.Size
 
-	mesh      *Mesh
-	subMeshes []SubMesh
-
-	opaqueMaterial *Material
-
-	whiteMask *opengl.TwoDTexture
-}
-
-func (c *Canvas) Create() {
-	c.mesh.Allocate()
-	c.opaqueMaterial.Allocate()
-	c.whiteMask.Allocate(opengl.TwoDTextureAllocateInfo{
-		Width:             1,
-		Height:            1,
-		MinFilter:         gl.NEAREST,
-		MagFilter:         gl.NEAREST,
-		InternalFormat:    gl.RGBA8,
-		DataFormat:        gl.RGBA,
-		DataComponentType: gl.UNSIGNED_BYTE,
-		Data:              []byte{0xFF, 0xFF, 0xFF, 0xFF},
-	})
-}
-
-func (c *Canvas) Destroy() {
-	c.whiteMask.Release()
-	c.opaqueMaterial.Release()
-	c.mesh.Release()
+	shape   *canvasShape
+	contour *canvasContour
+	text    *canvasText
 }
 
 func (c *Canvas) Resize(width, height int) {
@@ -80,43 +64,19 @@ func (c *Canvas) ResizeFramebuffer(width, height int) {
 
 func (c *Canvas) Begin() {
 	c.currentLayer = c.topLayer
-	c.mesh.Reset()
-	c.subMeshes = c.subMeshes[:0]
+
+	gl.Enable(gl.FRAMEBUFFER_SRGB)
+	c.framebuffer.ClearDepth(1.0)
+
+	c.renderer.Begin(Target{
+		Framebuffer: c.framebuffer,
+		Width:       c.windowSize.Width,
+		Height:      c.windowSize.Height,
+	})
 }
 
 func (c *Canvas) End() {
-	c.mesh.Update()
-
-	projectionMatrix := sprec.OrthoMat4(
-		0.0, float32(c.windowSize.Width),
-		0.0, float32(c.windowSize.Height),
-		0.0, 1.0,
-	).ColumnMajorArray()
-
-	gl.Viewport(0, 0, int32(c.windowSize.Width), int32(c.windowSize.Height))
-	gl.Enable(gl.FRAMEBUFFER_SRGB)
-	gl.Clear(gl.DEPTH_BUFFER_BIT | gl.STENCIL_BUFFER_BIT)
-	gl.Disable(gl.DEPTH_TEST)
-	gl.DepthMask(false)
-	gl.Enable(gl.CULL_FACE)
-	gl.Enable(gl.BLEND)
-	gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
-
-	// TODO: Maybe optimize by accumulating draw commands
-	// if they are similar.
-	for _, subMesh := range c.subMeshes {
-		material := subMesh.material
-		gl.UseProgram(material.program.ID())
-		gl.UniformMatrix4fv(material.projectionMatrixLocation, 1, false, &projectionMatrix[0])
-		gl.BindTextureUnit(0, subMesh.texture.ID())
-		gl.Uniform1i(material.textureLocation, 0)
-		gl.BindVertexArray(c.mesh.vertexArray.ID())
-		gl.DrawArrays(subMesh.primitive, int32(subMesh.vertexOffset), int32(subMesh.vertexCount))
-	}
-
-	// TODO: Remove once the remaining part of the framework
-	// can handle resetting its settings.
-	gl.Disable(gl.BLEND)
+	c.renderer.End()
 }
 
 func (c *Canvas) Push() {
@@ -135,324 +95,309 @@ func (c *Canvas) Clip(bounds ui.Bounds) {
 	c.currentLayer.ClipBounds = bounds.Translate(c.currentLayer.Translation)
 }
 
-func (c *Canvas) SolidColor() ui.Color {
-	return c.currentLayer.SolidColor
+func (c *Canvas) Shape() ui.Shape {
+	return c.shape
 }
 
-func (c *Canvas) SetSolidColor(color ui.Color) {
-	c.currentLayer.SolidColor = color
+func (c *Canvas) Contour() ui.Contour {
+	return c.contour
 }
 
-func (c *Canvas) StrokeColor() ui.Color {
-	return c.currentLayer.StrokeColor
+func (c *Canvas) Text() ui.Text {
+	return c.text
 }
 
-func (c *Canvas) SetStrokeColor(color ui.Color) {
-	c.currentLayer.StrokeColor = color
+var _ ui.Shape = (*canvasShape)(nil)
+
+type canvasShape struct {
+	renderer *Renderer
+	canvas   *Canvas
+	shape    *Shape
 }
 
-func (c *Canvas) StrokeSize() int {
-	return c.currentLayer.StrokeSize
-}
-
-func (c *Canvas) SetStrokeSize(size int) {
-	c.currentLayer.StrokeSize = size
-}
-
-func (c *Canvas) Font() ui.Font {
-	return c.currentLayer.Font
-}
-
-func (c *Canvas) SetFont(font ui.Font) {
-	c.currentLayer.Font = font.(*Font)
-}
-
-func (c *Canvas) FontSize() int {
-	return int(c.currentLayer.FontSize)
-}
-
-func (c *Canvas) SetFontSize(size int) {
-	c.currentLayer.FontSize = float32(size)
-}
-
-func (c *Canvas) DrawRectangle(position ui.Position, size ui.Size) {
-	// TODO
-}
-
-func (c *Canvas) FillRectangle(position ui.Position, size ui.Size) {
-	color := c.currentLayer.SolidColor
-	translation := sprec.NewVec2(
-		float32(c.currentLayer.Translation.X),
-		float32(c.currentLayer.Translation.Y),
+func (s *canvasShape) Begin(fill ui.Fill) {
+	currentLayer := s.canvas.currentLayer
+	s.renderer.SetClipBounds(
+		float32(currentLayer.ClipBounds.X),
+		float32(currentLayer.ClipBounds.X+currentLayer.ClipBounds.Width),
+		float32(currentLayer.ClipBounds.Y),
+		float32(currentLayer.ClipBounds.Y+currentLayer.ClipBounds.Height),
 	)
-
-	vertTopLeft := Vertex{
-		position: sprec.Vec2Sum(sprec.NewVec2(
-			float32(position.X),
-			float32(position.Y),
-		), translation),
-		texCoord: sprec.NewVec2(0.0, 0.0),
-		color:    color,
-	}
-	vertTopRight := Vertex{
-		position: sprec.Vec2Sum(sprec.NewVec2(
-			float32(position.X+size.Width),
-			float32(position.Y),
-		), translation),
-		texCoord: sprec.NewVec2(1.0, 0.0),
-		color:    color,
-	}
-	vertBottomLeft := Vertex{
-		position: sprec.Vec2Sum(sprec.NewVec2(
-			float32(position.X),
-			float32(position.Y+size.Height),
-		), translation),
-		texCoord: sprec.NewVec2(0.0, 1.0),
-		color:    color,
-	}
-	vertBottomRight := Vertex{
-		position: sprec.Vec2Sum(sprec.NewVec2(
-			float32(position.X+size.Width),
-			float32(position.Y+size.Height),
-		), translation),
-		texCoord: sprec.NewVec2(1.0, 1.0),
-		color:    color,
-	}
-
-	offset := c.mesh.Offset()
-	c.mesh.Append(vertTopLeft)
-	c.mesh.Append(vertBottomLeft)
-	c.mesh.Append(vertBottomRight)
-	c.mesh.Append(vertTopLeft)
-	c.mesh.Append(vertBottomRight)
-	c.mesh.Append(vertTopRight)
-	count := c.mesh.Offset() - offset
-
-	c.subMeshes = append(c.subMeshes, SubMesh{
-		material:     c.opaqueMaterial,
-		texture:      c.whiteMask,
-		vertexOffset: offset,
-		vertexCount:  count,
-		primitive:    gl.TRIANGLES,
-	})
-}
-
-func (c *Canvas) DrawRoundRectangle(position ui.Position, size ui.Size, radius int) {
-	// TODO
-}
-
-func (c *Canvas) FillRoundRectangle(position ui.Position, size ui.Size, radius int) {
-	// TODO
-}
-
-func (c *Canvas) DrawCircle(position ui.Position, radius int) {
-	// TODO
-}
-
-func (c *Canvas) FillCircle(position ui.Position, radius int) {
-	// TODO
-}
-
-func (c *Canvas) DrawTriangle(first, second, third ui.Position) {
-	// TODO
-}
-
-func (c *Canvas) FillTriangle(first, second, third ui.Position) {
-	// TODO
-}
-
-func (c *Canvas) DrawLine(start, end ui.Position) {
-	// TODO
-}
-
-func (c *Canvas) DrawImage(img ui.Image, position ui.Position, size ui.Size) {
-	image := img.(*Image)
-
-	translation := sprec.NewVec2(
-		float32(c.currentLayer.Translation.X),
-		float32(c.currentLayer.Translation.Y),
-	)
-
-	vertTopLeft := Vertex{
-		position: sprec.Vec2Sum(sprec.NewVec2(
-			float32(position.X),
-			float32(position.Y),
-		), translation),
-		texCoord: sprec.NewVec2(0.0, 0.0),
-		color:    ui.White(),
-	}
-	vertTopRight := Vertex{
-		position: sprec.Vec2Sum(sprec.NewVec2(
-			float32(position.X+size.Width),
-			float32(position.Y),
-		), translation),
-		texCoord: sprec.NewVec2(1.0, 0.0),
-		color:    ui.White(),
-	}
-	vertBottomLeft := Vertex{
-		position: sprec.Vec2Sum(sprec.NewVec2(
-			float32(position.X),
-			float32(position.Y+size.Height),
-		), translation),
-		texCoord: sprec.NewVec2(0.0, 1.0),
-		color:    ui.White(),
-	}
-	vertBottomRight := Vertex{
-		position: sprec.Vec2Sum(sprec.NewVec2(
-			float32(position.X+size.Width),
-			float32(position.Y+size.Height),
-		), translation),
-		texCoord: sprec.NewVec2(1.0, 1.0),
-		color:    ui.White(),
-	}
-
-	offset := c.mesh.Offset()
-	c.mesh.Append(vertTopLeft)
-	c.mesh.Append(vertBottomLeft)
-	c.mesh.Append(vertBottomRight)
-	c.mesh.Append(vertTopLeft)
-	c.mesh.Append(vertBottomRight)
-	c.mesh.Append(vertTopRight)
-	count := c.mesh.Offset() - offset
-
-	c.subMeshes = append(c.subMeshes, SubMesh{
-		material:     c.opaqueMaterial,
-		texture:      image.texture,
-		vertexOffset: offset,
-		vertexCount:  count,
-		primitive:    gl.TRIANGLES,
-	})
-}
-
-func (c *Canvas) DrawText(text string, position ui.Position) {
-	font := c.currentLayer.Font
-
-	translation := sprec.Vec2Sum(
-		sprec.NewVec2(
-			float32(c.currentLayer.Translation.X),
-			float32(c.currentLayer.Translation.Y),
+	s.renderer.SetTransform(sprec.TranslationMat4(
+		float32(currentLayer.Translation.X),
+		float32(currentLayer.Translation.Y),
+		0.0,
+	))
+	s.renderer.SetTextureTransform(sprec.Mat4MultiProd(
+		sprec.ScaleMat4(
+			1.0/float32(fill.ImageSize.Width),
+			1.0/float32(fill.ImageSize.Height),
+			1.0,
 		),
-		sprec.NewVec2(
-			float32(position.X),
-			float32(position.Y),
+		sprec.TranslationMat4(
+			-float32(fill.ImageOffset.X),
+			-float32(fill.ImageOffset.Y),
+			0.0,
 		),
-	)
-
-	lastGlyph := (*fontGlyph)(nil)
-	offset := c.mesh.Offset()
-	for _, ch := range text {
-		lineHeight := font.lineHeight * c.currentLayer.FontSize
-		lineAscent := font.lineAscent * c.currentLayer.FontSize
-		if ch == '\r' {
-			translation.X = float32(c.currentLayer.Translation.X + position.X)
-			lastGlyph = nil
-			continue
-		}
-		if ch == '\n' {
-			translation.X = float32(c.currentLayer.Translation.X + position.X)
-			translation.Y += lineHeight
-			lastGlyph = nil
-			continue
-		}
-
-		glyph := font.glyphs[ch]
-		advance := glyph.advance * c.currentLayer.FontSize
-		leftBearing := glyph.leftBearing * c.currentLayer.FontSize
-		rightBearing := glyph.rightBearing * c.currentLayer.FontSize
-		ascent := glyph.ascent * c.currentLayer.FontSize
-		descent := glyph.descent * c.currentLayer.FontSize
-
-		vertTopLeft := Vertex{
-			position: sprec.Vec2Sum(sprec.NewVec2(
-				leftBearing,
-				lineAscent-ascent,
-			), translation),
-			texCoord: sprec.NewVec2(glyph.leftU, glyph.topV),
-			color:    c.currentLayer.SolidColor,
-		}
-		vertTopRight := Vertex{
-			position: sprec.Vec2Sum(sprec.NewVec2(
-				advance-rightBearing,
-				lineAscent-ascent,
-			), translation),
-			texCoord: sprec.NewVec2(glyph.rightU, glyph.topV),
-			color:    c.currentLayer.SolidColor,
-		}
-		vertBottomLeft := Vertex{
-			position: sprec.Vec2Sum(sprec.NewVec2(
-				leftBearing,
-				lineAscent+descent,
-			), translation),
-			texCoord: sprec.NewVec2(glyph.leftU, glyph.bottomV),
-			color:    c.currentLayer.SolidColor,
-		}
-		vertBottomRight := Vertex{
-			position: sprec.Vec2Sum(sprec.NewVec2(
-				advance-rightBearing,
-				lineAscent+descent,
-			), translation),
-			texCoord: sprec.NewVec2(glyph.rightU, glyph.bottomV),
-			color:    c.currentLayer.SolidColor,
-		}
-
-		c.mesh.Append(vertTopLeft)
-		c.mesh.Append(vertBottomLeft)
-		c.mesh.Append(vertBottomRight)
-		c.mesh.Append(vertTopLeft)
-		c.mesh.Append(vertBottomRight)
-		c.mesh.Append(vertTopRight)
-
-		translation.X += advance
-		if lastGlyph != nil {
-			translation.X += lastGlyph.kerns[ch] * c.currentLayer.FontSize
-		}
-		lastGlyph = glyph
-	}
-	count := c.mesh.Offset() - offset
-
-	c.subMeshes = append(c.subMeshes, SubMesh{
-		material:     c.opaqueMaterial,
-		texture:      font.texture,
-		vertexOffset: offset,
-		vertexCount:  count,
-		primitive:    gl.TRIANGLES,
+	))
+	s.shape = s.renderer.BeginShape(Fill{
+		mode:  uiFillRuleToStencilMode(fill.Rule),
+		color: uiColorToVec(fill.Color),
+		image: uiImageToImage(fill.Image),
 	})
 }
 
-func (c *Canvas) TextSize(text string) ui.Size {
-	font := c.currentLayer.Font
-	fontSize := c.currentLayer.FontSize
+func (s *canvasShape) MoveTo(position ui.Position) {
+	s.shape.MoveTo(sprec.NewVec2(
+		float32(position.X),
+		float32(position.Y),
+	))
+}
 
-	if len(text) == 0 {
-		return ui.NewSize(0, 0)
+func (s *canvasShape) LineTo(position ui.Position) {
+	s.shape.LineTo(sprec.NewVec2(
+		float32(position.X),
+		float32(position.Y),
+	))
+}
+
+func (s *canvasShape) QuadTo(control, position ui.Position) {
+	s.shape.QuadTo(sprec.NewVec2(
+		float32(control.X),
+		float32(control.Y),
+	), sprec.NewVec2(
+		float32(position.X),
+		float32(position.Y),
+	))
+}
+
+func (s *canvasShape) CubeTo(control1, control2, position ui.Position) {
+	s.shape.CubeTo(sprec.NewVec2(
+		float32(control1.X),
+		float32(control1.Y),
+	), sprec.NewVec2(
+		float32(control2.X),
+		float32(control2.Y),
+	), sprec.NewVec2(
+		float32(position.X),
+		float32(position.Y),
+	))
+}
+
+func (s *canvasShape) Rectangle(position ui.Position, size ui.Size) {
+	s.MoveTo(position)
+	s.LineTo(ui.NewPosition(
+		position.X,
+		position.Y+size.Height,
+	))
+	s.LineTo(ui.NewPosition(
+		position.X+size.Width,
+		position.Y+size.Height,
+	))
+	s.LineTo(ui.NewPosition(
+		position.X+size.Width,
+		position.Y,
+	))
+}
+
+func (s *canvasShape) Triangle(a, b, c ui.Position) {
+	s.MoveTo(a)
+	s.LineTo(b)
+	s.LineTo(c)
+}
+
+func (s *canvasShape) Circle(position ui.Position, radius int) {
+	// TODO
+}
+
+func (s *canvasShape) RoundRectangle(position ui.Position, size ui.Size, roundness ui.RectRoundness) {
+	// TODO
+}
+
+func (s *canvasShape) End() {
+	s.renderer.EndShape(s.shape)
+}
+
+var _ ui.Contour = (*canvasContour)(nil)
+
+type canvasContour struct {
+	canvas   *Canvas
+	renderer *Renderer
+	contour  *Contour
+}
+
+func (c *canvasContour) Begin() {
+	currentLayer := c.canvas.currentLayer
+	c.renderer.SetClipBounds(
+		float32(currentLayer.ClipBounds.X),
+		float32(currentLayer.ClipBounds.X+currentLayer.ClipBounds.Width),
+		float32(currentLayer.ClipBounds.Y),
+		float32(currentLayer.ClipBounds.Y+currentLayer.ClipBounds.Height),
+	)
+	c.renderer.SetTransform(sprec.TranslationMat4(
+		float32(currentLayer.Translation.X),
+		float32(currentLayer.Translation.Y),
+		0.0,
+	))
+	c.contour = c.renderer.BeginContour()
+}
+
+func (c *canvasContour) MoveTo(position ui.Position, stroke ui.Stroke) {
+	c.contour.MoveTo(
+		uiPositionToVec(position),
+		uiStrokeToStroke(stroke),
+	)
+}
+
+func (c *canvasContour) LineTo(position ui.Position, stroke ui.Stroke) {
+	c.contour.LineTo(
+		uiPositionToVec(position),
+		uiStrokeToStroke(stroke),
+	)
+}
+
+func (c *canvasContour) QuadTo(control, position ui.Position, stroke ui.Stroke) {
+	c.contour.QuadTo(
+		uiPositionToVec(control),
+		uiPositionToVec(position),
+		uiStrokeToStroke(stroke),
+	)
+}
+
+func (c *canvasContour) CubeTo(control1, control2, position ui.Position, stroke ui.Stroke) {
+	c.contour.CubeTo(
+		uiPositionToVec(control1),
+		uiPositionToVec(control2),
+		uiPositionToVec(position),
+		uiStrokeToStroke(stroke),
+	)
+}
+
+func (c *canvasContour) CloseLoop() {
+	c.contour.CloseLoop()
+}
+
+func (c *canvasContour) Rectangle(position ui.Position, size ui.Size, stroke ui.Stroke) {
+	c.MoveTo(position, stroke)
+	c.LineTo(ui.NewPosition(
+		position.X,
+		position.Y+size.Height,
+	), stroke)
+	c.LineTo(ui.NewPosition(
+		position.X+size.Width,
+		position.Y+size.Height,
+	), stroke)
+	c.LineTo(ui.NewPosition(
+		position.X+size.Width,
+		position.Y,
+	), stroke)
+	c.CloseLoop()
+}
+
+func (c *canvasContour) Triangle(p1, p2, p3 ui.Position, stroke ui.Stroke) {
+	c.MoveTo(p1, stroke)
+	c.LineTo(p2, stroke)
+	c.LineTo(p3, stroke)
+	c.CloseLoop()
+}
+
+func (c *canvasContour) Circle(position ui.Position, radius int, stroke ui.Stroke) {
+	// TODO
+}
+
+func (c *canvasContour) RoundRectangle(position ui.Position, size ui.Size, roundness ui.RectRoundness, stroke ui.Stroke) {
+	// TODO
+}
+
+func (c *canvasContour) End() {
+	c.renderer.EndContour(c.contour)
+}
+
+var _ ui.Text = (*canvasText)(nil)
+
+type canvasText struct {
+	canvas   *Canvas
+	renderer *Renderer
+	text     *Text
+}
+
+func (t *canvasText) Begin(typography ui.Typography) {
+	currentLayer := t.canvas.currentLayer
+	t.renderer.SetClipBounds(
+		float32(currentLayer.ClipBounds.X),
+		float32(currentLayer.ClipBounds.X+currentLayer.ClipBounds.Width),
+		float32(currentLayer.ClipBounds.Y),
+		float32(currentLayer.ClipBounds.Y+currentLayer.ClipBounds.Height),
+	)
+	t.renderer.SetTransform(sprec.TranslationMat4(
+		float32(currentLayer.Translation.X),
+		float32(currentLayer.Translation.Y),
+		0.0,
+	))
+	t.text = t.renderer.BeginText(Typography{
+		Font:  uiFontToFont(typography.Font),
+		Size:  float32(typography.Size),
+		Color: uiColorToVec(typography.Color),
+	})
+}
+
+func (t *canvasText) Line(value string, position ui.Position) {
+	t.text.Write(value, sprec.NewVec2(
+		float32(position.X),
+		float32(position.Y),
+	))
+}
+
+func (t *canvasText) End() {
+	t.renderer.EndText(t.text)
+}
+
+func uiPositionToVec(position ui.Position) sprec.Vec2 {
+	return sprec.NewVec2(
+		float32(position.X),
+		float32(position.Y),
+	)
+}
+
+func uiColorToVec(color ui.Color) sprec.Vec4 {
+	return sprec.NewVec4(
+		float32(color.R)/255.0,
+		float32(color.G)/255.0,
+		float32(color.B)/255.0,
+		float32(color.A)/255.0,
+	)
+}
+
+func uiImageToImage(image ui.Image) *Image {
+	if image == nil {
+		return nil
 	}
+	return image.(*Image)
+}
 
-	result := sprec.NewVec2(0, font.lineAscent+font.lineDescent)
-	currentWidth := float32(0.0)
-	lastGlyph := (*fontGlyph)(nil)
-	for _, ch := range text {
-		if ch == '\r' {
-			result.X = sprec.Max(result.X, currentWidth)
-			currentWidth = 0.0
-			lastGlyph = nil
-			continue
-		}
-		if ch == '\n' {
-			result.X = sprec.Max(result.X, currentWidth)
-			result.Y += font.lineHeight - (font.lineAscent + font.lineDescent)
-			currentWidth = 0.0
-			lastGlyph = nil
-			continue
-		}
-		glyph := font.glyphs[ch]
-		currentWidth += glyph.advance
-		if lastGlyph != nil {
-			currentWidth += lastGlyph.kerns[ch]
-		}
-		lastGlyph = glyph
+func uiFillRuleToStencilMode(rule ui.FillRule) StencilMode {
+	switch rule {
+	case ui.FillRuleSimple:
+		return StencilModeNone
+	case ui.FillRuleNonZero:
+		return StencilModeNonZero
+	case ui.FillRuleEvenOdd:
+		return StencilModeOdd
+	default:
+		return StencilModeNone
 	}
-	result.X = sprec.Max(result.X, currentWidth)
-	result = sprec.Vec2Prod(result, fontSize)
+}
 
-	return ui.NewSize(int(result.X), int(result.Y))
+func uiStrokeToStroke(stroke ui.Stroke) Stroke {
+	return Stroke{
+		innerSize: float32(stroke.Size),
+		color:     uiColorToVec(stroke.Color),
+	}
+}
+
+func uiFontToFont(font ui.Font) *Font {
+	if font == nil {
+		return nil
+	}
+	return font.(*Font)
 }

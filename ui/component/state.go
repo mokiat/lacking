@@ -10,12 +10,14 @@ import (
 type State struct {
 	node  *componentNode
 	value interface{}
+	dirty bool
 }
 
 // Set changes the value stored in this State. Using this function
 // will force the component to be scheduled for reconciliation.
 func (s *State) Set(value interface{}) {
 	s.value = value
+	s.dirty = true
 	uiCtx.Schedule(func() {
 		if s.node.isValid() {
 			s.node.reconcile(s.node.instance)
@@ -31,7 +33,7 @@ func (s *State) Get() interface{} {
 // Inject is a helper function that can be used to inject the value of
 // this state to a variable of the correct type. The specified target
 // needs to be a pointer to the type of the value that was stored.
-func (s *State) Inject(target interface{}) {
+func (s *State) Inject(target interface{}) *State {
 	if target == nil {
 		panic("target cannot be nil")
 	}
@@ -48,6 +50,7 @@ func (s *State) Inject(target interface{}) {
 		panic(fmt.Errorf("cannot assign state %T to specified type %T", s.value, target))
 	}
 	value.Elem().Set(reflect.ValueOf(s.value))
+	return s
 }
 
 // UseState registers a new State object to the given component.

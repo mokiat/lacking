@@ -16,6 +16,9 @@ type PictureData struct {
 	// Image specifies the Image to be displayed.
 	Image ui.Image
 
+	// ImageColor specifies an optional multiplier color.
+	ImageColor optional.Color
+
 	// Mode specifies how the image will be scaled and visualized within the
 	// Picture component.
 	Mode ImageMode
@@ -59,12 +62,18 @@ var Picture = co.ShallowCached(co.Define(func(props co.Properties) co.Instance {
 	} else {
 		essence.backgroundColor = ui.Transparent()
 	}
+	if data.ImageColor.Specified {
+		essence.imageColor = data.ImageColor.Value
+	} else {
+		essence.imageColor = ui.White()
+	}
 	essence.image = data.Image
 	essence.mode = data.Mode
 
 	return co.New(Element, func() {
 		co.WithData(co.ElementData{
-			Essence: essence,
+			Essence:   essence,
+			IdealSize: optional.NewSize(data.Image.Size()),
 		})
 		co.WithLayoutData(props.LayoutData())
 		co.WithChildren(props.Children())
@@ -76,25 +85,35 @@ var _ ui.ElementRenderHandler = (*pictureEssence)(nil)
 type pictureEssence struct {
 	backgroundColor ui.Color
 	image           ui.Image
+	imageColor      ui.Color
 	mode            ImageMode
 }
 
 func (p *pictureEssence) OnRender(element *ui.Element, canvas ui.Canvas) {
 	if !p.backgroundColor.Transparent() {
-		canvas.SetSolidColor(p.backgroundColor)
-		canvas.FillRectangle(
+		canvas.Shape().Begin(ui.Fill{
+			Color: p.backgroundColor,
+		})
+		canvas.Shape().Rectangle(
 			ui.NewPosition(0, 0),
 			element.Bounds().Size,
 		)
+		canvas.Shape().End()
 	}
 
 	if p.image != nil {
 		drawPosition, drawSize := p.evaluateImageDrawLocation(element)
-		canvas.DrawImage(
-			p.image,
+		canvas.Shape().Begin(ui.Fill{
+			Color:       p.imageColor,
+			Image:       p.image,
+			ImageOffset: drawPosition,
+			ImageSize:   drawSize,
+		})
+		canvas.Shape().Rectangle(
 			drawPosition,
 			drawSize,
 		)
+		canvas.Shape().End()
 	}
 }
 

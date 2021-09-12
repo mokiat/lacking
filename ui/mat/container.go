@@ -50,10 +50,13 @@ type containerEssence struct {
 
 func (l *containerEssence) OnRender(element *ui.Element, canvas ui.Canvas) {
 	if !l.backgroundColor.Transparent() {
-		canvas.SetSolidColor(l.backgroundColor)
-		canvas.FillRectangle(
+		canvas.Shape().Begin(ui.Fill{
+			Color: l.backgroundColor,
+		})
+		canvas.Shape().Rectangle(
 			ui.NewPosition(0, 0),
 			element.Bounds().Size,
 		)
+		canvas.Shape().End()
 	}
 }

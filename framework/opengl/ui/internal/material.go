@@ -19,9 +19,13 @@ type Material struct {
 	vertexSrc   func() string
 	fragmentSrc func() string
 
-	program                  *opengl.Program
-	projectionMatrixLocation int32
-	textureLocation          int32
+	program                        *opengl.Program
+	transformMatrixLocation        int32
+	textureTransformMatrixLocation int32
+	projectionMatrixLocation       int32
+	clipDistancesLocation          int32
+	textureLocation                int32
+	colorLocation                  int32
 }
 
 func (m *Material) Allocate() {
@@ -48,8 +52,12 @@ func (m *Material) Allocate() {
 		FragmentShader: fragmentShader,
 	})
 
+	m.transformMatrixLocation = m.program.UniformLocation("transformMatrixIn")
+	m.textureTransformMatrixLocation = m.program.UniformLocation("textureTransformMatrixIn")
 	m.projectionMatrixLocation = m.program.UniformLocation("projectionMatrixIn")
+	m.clipDistancesLocation = m.program.UniformLocation("clipDistancesIn")
 	m.textureLocation = m.program.UniformLocation("textureIn")
+	m.colorLocation = m.program.UniformLocation("colorIn")
 }
 
 func (m *Material) Release() {

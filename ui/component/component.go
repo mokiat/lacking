@@ -25,35 +25,47 @@ func Define(fn ComponentFunc) Component {
 // ComponentFunc holds the logic and layouting of the component.
 type ComponentFunc func(props Properties) Instance
 
+type cachedState struct {
+	oldData        interface{}
+	oldLayoutData  interface{}
+	oldChildren    []Instance
+	cachedInstance Instance
+}
+
 // ShallowCached can be used to wrap a component and optimize
 // reconciliation by avoiding the rerendering of the component
 // if the data and layout data are equal to their previous values
 // when shallowly (==) compared.
 func ShallowCached(delegate Component) Component {
-	var (
-		oldData        interface{}
-		oldLayoutData  interface{}
-		oldChildren    []Instance
-		cachedInstance Instance
-	)
+	cache := make(map[*componentNode]*cachedState)
 
 	return Component{
 		componentType: evaluateComponentType(),
 		componentFunc: func(props Properties) Instance {
-			shouldCallDelegate := renderCtx.lastRender ||
-				((oldData == nil) && (oldLayoutData == nil) && (oldChildren == nil)) ||
-				!isDataShallowEqual(oldData, props.data) ||
-				!isLayoutDataShallowEqual(oldLayoutData, props.layoutData) ||
-				!areChildrenEqual(oldChildren, props.children)
-			if !shouldCallDelegate {
-				return cachedInstance
+			if state, ok := cache[renderCtx.node]; ok {
+				oldData := state.oldData
+				oldLayoutData := state.oldLayoutData
+				oldChildren := state.oldChildren
+
+				shouldCallDelegate := renderCtx.lastRender ||
+					renderCtx.forcedRender ||
+					((oldData == nil) && (oldLayoutData == nil) && (oldChildren == nil)) ||
+					!isDataShallowEqual(oldData, props.data) ||
+					!isLayoutDataShallowEqual(oldLayoutData, props.layoutData) ||
+					!areChildrenEqual(oldChildren, props.children)
+				if !shouldCallDelegate {
+					return state.cachedInstance
+				}
 			}
 
-			oldData = props.data
-			oldLayoutData = props.layoutData
-			oldChildren = props.children
-			cachedInstance = delegate.componentFunc(props)
-			return cachedInstance
+			instance := delegate.componentFunc(props)
+			cache[renderCtx.node] = &cachedState{
+				oldData:        props.data,
+				oldLayoutData:  props.layoutData,
+				oldChildren:    props.children,
+				cachedInstance: instance,
+			}
+			return instance
 		},
 	}
 }
@@ -63,30 +75,35 @@ func ShallowCached(delegate Component) Component {
 // if the data and layout data are equal to their previous values
 // when deeply compared.
 func DeepCached(delegate Component) Component {
-	var (
-		oldData        interface{}
-		oldLayoutData  interface{}
-		oldChildren    []Instance
-		cachedInstance Instance
-	)
+	cache := make(map[*componentNode]*cachedState)
 
 	return Component{
 		componentType: evaluateComponentType(),
 		componentFunc: func(props Properties) Instance {
-			shouldCallDelegate := renderCtx.lastRender ||
-				((oldData == nil) && (oldLayoutData == nil) && (oldChildren == nil)) ||
-				!isDataDeepEqual(oldData, props.data) ||
-				!isLayoutDataDeepEqual(oldLayoutData, props.layoutData) ||
-				!areChildrenEqual(oldChildren, props.children)
-			if !shouldCallDelegate {
-				return cachedInstance
+			if state, ok := cache[renderCtx.node]; ok {
+				oldData := state.oldData
+				oldLayoutData := state.oldLayoutData
+				oldChildren := state.oldChildren
+
+				shouldCallDelegate := renderCtx.lastRender ||
+					renderCtx.forcedRender ||
+					((oldData == nil) && (oldLayoutData == nil) && (oldChildren == nil)) ||
+					!isDataDeepEqual(oldData, props.data) ||
+					!isLayoutDataDeepEqual(oldLayoutData, props.layoutData) ||
+					!areChildrenEqual(oldChildren, props.children)
+				if !shouldCallDelegate {
+					return state.cachedInstance
+				}
 			}
 
-			oldData = props.data
-			oldLayoutData = props.layoutData
-			oldChildren = props.children
-			cachedInstance = delegate.componentFunc(props)
-			return cachedInstance
+			instance := delegate.componentFunc(props)
+			cache[renderCtx.node] = &cachedState{
+				oldData:        props.data,
+				oldLayoutData:  props.layoutData,
+				oldChildren:    props.children,
+				cachedInstance: instance,
+			}
+			return instance
 		},
 	}
 }

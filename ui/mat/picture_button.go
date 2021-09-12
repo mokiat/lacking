@@ -115,28 +115,40 @@ func (e *pictureButtonEssence) OnRender(element *ui.Element, canvas ui.Canvas) {
 		visibleImage = e.downImage
 	}
 	if visibleImage != nil {
-		canvas.DrawImage(visibleImage,
+		canvas.Shape().Begin(ui.Fill{
+			Color:       ui.White(),
+			Image:       visibleImage,
+			ImageOffset: ui.NewPosition(0, 0),
+			ImageSize:   element.Bounds().Size,
+		})
+		canvas.Shape().Rectangle(
 			ui.NewPosition(0, 0),
 			element.Bounds().Size,
 		)
+		canvas.Shape().End()
 	} else {
-		canvas.SetSolidColor(ui.Black())
-		canvas.FillRectangle(
+		canvas.Shape().Begin(ui.Fill{
+			Color: ui.Black(),
+		})
+		canvas.Shape().Rectangle(
 			ui.NewPosition(0, 0),
 			element.Bounds().Size,
 		)
+		canvas.Shape().End()
 	}
 	if e.font != nil && e.text != "" {
-		canvas.SetFont(e.font)
-		canvas.SetFontSize(e.fontSize)
-		canvas.SetSolidColor(e.fontColor)
-
+		canvas.Text().Begin(ui.Typography{
+			Font:  e.font,
+			Size:  e.fontSize,
+			Color: e.fontColor,
+		})
 		contentArea := element.ContentBounds()
-		textDrawSize := canvas.TextSize(e.text)
-		canvas.DrawText(e.text, ui.NewPosition(
+		textDrawSize := e.font.TextSize(e.text, e.fontSize)
+		canvas.Text().Line(e.text, ui.NewPosition(
 			contentArea.X+(contentArea.Width-textDrawSize.Width)/2,
 			contentArea.Y+(contentArea.Height-textDrawSize.Height)/2,
 		))
+		canvas.Text().End()
 	}
 }
 

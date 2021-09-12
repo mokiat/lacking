@@ -10,23 +10,30 @@ import (
 )
 
 func NewGraphics() *Graphics {
+	renderer := internal.NewRenderer()
 	return &Graphics{
-		canvas: internal.NewCanvas(),
+		renderer:    renderer,
+		fontFactory: internal.NewFontFactory(renderer),
+		canvas:      internal.NewCanvas(renderer),
 	}
 }
 
 var _ ui.Graphics = (*Graphics)(nil)
 
 type Graphics struct {
-	canvas *internal.Canvas
+	renderer    *internal.Renderer
+	fontFactory *internal.FontFactory
+	canvas      *internal.Canvas
 }
 
 func (g *Graphics) Create() {
-	g.canvas.Create()
+	g.renderer.Init()
+	g.fontFactory.Init()
 }
 
 func (g *Graphics) Destroy() {
-	g.canvas.Destroy()
+	defer g.renderer.Free()
+	defer g.fontFactory.Free()
 }
 
 func (g *Graphics) Begin() {
@@ -58,14 +65,13 @@ func (g *Graphics) ReleaseImage(resource ui.Image) error {
 }
 
 func (g *Graphics) CreateFont(font *opentype.Font) (ui.Font, error) {
-	result := internal.NewFont()
-	result.Allocate(font)
+	result := g.fontFactory.CreateFont(font)
 	return result, nil
 }
 
 func (g *Graphics) ReleaseFont(resource ui.Font) error {
 	font := resource.(*internal.Font)
-	font.Release()
+	font.Destroy()
 	return nil
 }
 
