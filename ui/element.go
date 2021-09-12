@@ -29,10 +29,9 @@ type ElementRenderHandler interface {
 
 func newElement(context *Context) *Element {
 	return &Element{
-		context:      context,
-		enabled:      true,
-		visible:      true,
-		materialized: true,
+		context: context,
+		enabled: true,
+		visible: true,
 	}
 }
 
@@ -51,9 +50,8 @@ type Element struct {
 	context *Context
 	essence Essence
 
-	enabled      bool
-	visible      bool
-	materialized bool
+	enabled bool
+	visible bool
 
 	margin       Spacing
 	padding      Spacing
@@ -414,29 +412,6 @@ func (e *Element) Visible() bool {
 func (e *Element) SetVisible(visible bool) {
 	if visible != e.visible {
 		e.visible = visible
-		e.invalidate()
-	}
-}
-
-// Materialized controls whether this Element is at all
-// present. If an Element is not materialized, then it is
-// not rendered, does not receive events, and is not
-// considered during layout evaluations. In essence, it is
-// almost as though it has been removed, except that it
-// is still part of the hierarchy.
-func (e *Element) Materialized() bool {
-	return e.materialized
-}
-
-// SetMaterialized specifies whether this Element should
-// be considered in any way for rendering, events and
-// layout calculations.
-func (e *Element) SetMaterialized(materialized bool) {
-	if materialized != e.materialized {
-		e.materialized = materialized
-		if e.parent != nil {
-			e.parent.onBoundsChanged(e.parent.bounds)
-		}
 		e.invalidate()
 	}
 }

@@ -8,13 +8,12 @@ import (
 // ElementData is the struct that should be used when configuring
 // an Element component's data.
 type ElementData struct {
-	Essence      ui.Essence
-	Enabled      optional.Bool
-	Visible      optional.Bool
-	Materialized optional.Bool
-	IdealSize    optional.Size
-	Padding      ui.Spacing
-	Layout       ui.Layout
+	Essence   ui.Essence
+	Enabled   optional.Bool
+	Visible   optional.Bool
+	IdealSize optional.Size
+	Padding   ui.Spacing
+	Layout    ui.Layout
 }
 
 // Element represents the most basic component, which is translated
@@ -40,9 +39,6 @@ var Element = Define(func(props Properties) Instance {
 	}
 	if data.Visible.Specified {
 		element.SetVisible(data.Visible.Value)
-	}
-	if data.Materialized.Specified {
-		element.SetMaterialized(data.Materialized.Value)
 	}
 	if data.IdealSize.Specified {
 		element.SetIdealSize(data.IdealSize.Value)
