@@ -71,3 +71,17 @@ type Spacing struct {
 	Specified bool
 	Value     ui.Spacing
 }
+
+// NewSize returns a specified Size value.
+func NewSize(value ui.Size) Size {
+	return Size{
+		Specified: true,
+		Value:     value,
+	}
+}
+
+// Size represents an optional ui Size value.
+type Size struct {
+	Specified bool
+	Value     ui.Size
+}

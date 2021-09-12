@@ -39,7 +39,8 @@ var Label = co.ShallowCached(co.Define(func(props co.Properties) co.Instance {
 
 	return co.New(Element, func() {
 		co.WithData(ElementData{
-			Essence: essence,
+			Essence:   essence,
+			IdealSize: optional.NewSize(essence.font.TextSize(essence.text, essence.fontSize)),
 		})
 		co.WithLayoutData(props.LayoutData())
 		co.WithChildren(props.Children())

@@ -30,11 +30,13 @@ type HorizontalLayout struct {
 
 // Apply applies this layout to the specified Element.
 func (l *HorizontalLayout) Apply(element *ui.Element) {
+	element.SetIdealSize(l.calculateIdealSize(element))
+
 	contentBounds := element.ContentBounds()
 
 	leftPlacement := contentBounds.X
 	for childElement := element.FirstChild(); childElement != nil; childElement = childElement.RightSibling() {
-		layoutConfig := childElement.LayoutConfig().(LayoutData)
+		layoutConfig := ElementLayoutData(childElement)
 
 		childBounds := ui.Bounds{
 			Size: childElement.IdealSize(),
@@ -62,4 +64,30 @@ func (l *HorizontalLayout) Apply(element *ui.Element) {
 
 		leftPlacement += childElement.Margin().Horizontal() + childBounds.Width + l.contentSpacing
 	}
+}
+
+func (l *HorizontalLayout) calculateIdealSize(element *ui.Element) ui.Size {
+	result := ui.NewSize(0, 0)
+	for childElement := element.FirstChild(); childElement != nil; childElement = childElement.RightSibling() {
+		layoutConfig := ElementLayoutData(childElement)
+
+		childSize := childElement.IdealSize()
+		if layoutConfig.Width.Specified {
+			childSize.Width = layoutConfig.Width.Value
+		}
+		if layoutConfig.Height.Specified {
+			childSize.Height = layoutConfig.Height.Value
+		}
+
+		if childSize.Height > result.Height {
+			result.Height = childSize.Height
+		}
+		if result.Width > 0 {
+			result.Width += l.contentSpacing
+		}
+		result.Width += childSize.Width
+	}
+	result.Width += element.Padding().Horizontal()
+	result.Height += element.Padding().Vertical()
+	return result
 }
