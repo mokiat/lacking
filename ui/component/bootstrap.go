@@ -9,17 +9,9 @@ func Initialize(window *ui.Window, instance Instance) {
 
 	rootNode := createComponentNode(New(Element, func() {
 		WithData(ElementData{
-			Layout: &fillLayout{},
+			Layout: ui.NewFillLayout(),
 		})
 		WithChild("root", instance)
 	}))
-	window.SetRoot(rootNode.element)
-}
-
-type fillLayout struct{}
-
-func (l *fillLayout) Apply(element *ui.Element) {
-	for child := element.FirstChild(); child != nil; child = child.RightSibling() {
-		child.SetBounds(element.Bounds())
-	}
+	window.Root().AppendChild(rootNode.element)
 }

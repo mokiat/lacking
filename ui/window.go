@@ -14,6 +14,8 @@ func NewWindow(appWindow app.Window, locator ResourceLocator, graphics Graphics)
 		graphics: graphics,
 	}
 	window.context = newContext(window, locator, graphics)
+	window.root = newElement(window.context)
+	window.root.SetLayout(NewFillLayout())
 	handler := &windowHandler{
 		Window: window,
 	}
@@ -81,18 +83,9 @@ func (w *Window) Context() *Context {
 	return w.context
 }
 
-// Root returns the top-most Element of this View.
+// Root returns the Element that represents this Window.
 func (w *Window) Root() *Element {
 	return w.root
-}
-
-// SetRoot changes the top-most Element of this View.
-func (w *Window) SetRoot(root *Element) {
-	if root != w.root {
-		w.pointedElement = nil
-	}
-	w.root = root
-	w.Invalidate()
 }
 
 // FindElementByID looks through the Element hierarchy tree for an Element
