@@ -177,11 +177,18 @@ func (w *windowHandler) OnCloseRequested() {
 }
 
 func (w *windowHandler) processMouseEvent(element *Element, event MouseEvent) bool {
+	if !element.enabled || !element.visible {
+		return false
+	}
+
 	// Check if any of the children (from top to bottom) can process the event.
 	for childElement := element.lastChild; childElement != nil; childElement = childElement.leftSibling {
 		if childBounds := childElement.Bounds(); childBounds.Contains(event.Position) {
-			event.Position = event.Position.Translate(-childBounds.X, -childBounds.Y)
-			return w.processMouseEvent(childElement, event)
+			translatedEvent := event
+			translatedEvent.Position = event.Position.Translate(-childBounds.X, -childBounds.Y)
+			if w.processMouseEvent(childElement, translatedEvent) {
+				return true
+			}
 		}
 	}
 
