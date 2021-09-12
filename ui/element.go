@@ -44,8 +44,8 @@ type Element struct {
 	parent       *Element
 	firstChild   *Element
 	lastChild    *Element
-	rightSibling *Element
 	leftSibling  *Element
+	rightSibling *Element
 
 	context *Context
 	essence Essence
@@ -53,7 +53,6 @@ type Element struct {
 	enabled bool
 	visible bool
 
-	margin       Spacing
 	padding      Spacing
 	bounds       Bounds
 	idealSize    Size
@@ -251,25 +250,6 @@ func (e *Element) InjectEssence(target interface{}) {
 		panic("cannot assign essence to specified type")
 	}
 	value.Elem().Set(reflect.ValueOf(e.essence))
-}
-
-// Margin returns the spacing that should be maintained
-// around this Element. The margin does not reflect the
-// Element's active area and is only a setting that is
-// used by layouts to further adjust the Element's position.
-func (e *Element) Margin() Spacing {
-	return e.margin
-}
-
-// SetMargin sets the amount of space that should be left
-// around the Element when positioned by a layout container.
-func (e *Element) SetMargin(margin Spacing) {
-	if margin != e.margin {
-		e.margin = margin
-		if e.parent != nil {
-			e.parent.onBoundsChanged(e.parent.bounds)
-		}
-	}
 }
 
 // Padding returns the spacing that should be maintained

@@ -46,18 +46,18 @@ func (l *VerticalLayout) Apply(element *ui.Element) {
 
 		switch l.contentAlignment {
 		case AlignmentLeft:
-			childBounds.X = contentBounds.X + childElement.Margin().Left
+			childBounds.X = contentBounds.X
 		case AlignmentRight:
-			childBounds.X = contentBounds.X + contentBounds.Width - childElement.Margin().Right - childBounds.Width
+			childBounds.X = contentBounds.X + contentBounds.Width - childBounds.Width
 		case AlignmentCenter:
 			fallthrough
 		default:
-			childBounds.X = contentBounds.X + (contentBounds.Width-childBounds.Width)/2 - childElement.Margin().Left
+			childBounds.X = contentBounds.X + (contentBounds.Width-childBounds.Width)/2
 		}
 
-		childBounds.Y = topPlacement + childElement.Margin().Top
+		childBounds.Y = topPlacement
 		childElement.SetBounds(childBounds)
 
-		topPlacement += childElement.Margin().Vertical() + childBounds.Height + l.contentSpacing
+		topPlacement += childBounds.Height + l.contentSpacing
 	}
 }

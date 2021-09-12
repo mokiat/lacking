@@ -17,10 +17,6 @@ type FillLayout struct{}
 func (l *FillLayout) Apply(element *ui.Element) {
 	contentBounds := element.ContentBounds()
 	for childElement := element.FirstChild(); childElement != nil; childElement = childElement.RightSibling() {
-		childMargin := childElement.Margin()
-		childElement.SetBounds(contentBounds.
-			Translate(ui.NewPosition(childMargin.Left, childMargin.Top)).
-			Shrink(ui.NewSize(childMargin.Horizontal(), childMargin.Vertical())),
-		)
+		childElement.SetBounds(contentBounds)
 	}
 }
