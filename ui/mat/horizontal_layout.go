@@ -50,19 +50,19 @@ func (l *HorizontalLayout) Apply(element *ui.Element) {
 
 		switch l.contentAlignment {
 		case AlignmentTop:
-			childBounds.Y = contentBounds.Y + childElement.Margin().Top
+			childBounds.Y = contentBounds.Y
 		case AlignmentBottom:
-			childBounds.Y = contentBounds.Y + contentBounds.Height - childElement.Margin().Bottom - childBounds.Height
+			childBounds.Y = contentBounds.Y + contentBounds.Height - childBounds.Height
 		case AlignmentCenter:
 			fallthrough
 		default:
-			childBounds.Y = contentBounds.Y + (contentBounds.Height-childBounds.Height)/2 - childElement.Margin().Top
+			childBounds.Y = contentBounds.Y + (contentBounds.Height-childBounds.Height)/2
 		}
 
-		childBounds.X = leftPlacement + childElement.Margin().Left
+		childBounds.X = leftPlacement
 		childElement.SetBounds(childBounds)
 
-		leftPlacement += childElement.Margin().Horizontal() + childBounds.Width + l.contentSpacing
+		leftPlacement += childBounds.Width + l.contentSpacing
 	}
 }
 

@@ -3,6 +3,8 @@ package component
 import (
 	"fmt"
 	"reflect"
+
+	"github.com/mokiat/lacking/ui"
 )
 
 var (
@@ -259,7 +261,7 @@ var StoreProvider = Define(func(props Properties) Instance {
 
 	return New(Element, func() {
 		WithData(ElementData{
-			Layout: &fillLayout{},
+			Layout: ui.NewFillLayout(),
 		})
 		WithChildren(props.children)
 	})

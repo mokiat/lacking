@@ -29,10 +29,9 @@ type ElementRenderHandler interface {
 
 func newElement(context *Context) *Element {
 	return &Element{
-		context:      context,
-		enabled:      true,
-		visible:      true,
-		materialized: true,
+		context: context,
+		enabled: true,
+		visible: true,
 	}
 }
 
@@ -45,17 +44,15 @@ type Element struct {
 	parent       *Element
 	firstChild   *Element
 	lastChild    *Element
-	rightSibling *Element
 	leftSibling  *Element
+	rightSibling *Element
 
 	context *Context
 	essence Essence
 
-	enabled      bool
-	visible      bool
-	materialized bool
+	enabled bool
+	visible bool
 
-	margin       Spacing
 	padding      Spacing
 	bounds       Bounds
 	idealSize    Size
@@ -255,25 +252,6 @@ func (e *Element) InjectEssence(target interface{}) {
 	value.Elem().Set(reflect.ValueOf(e.essence))
 }
 
-// Margin returns the spacing that should be maintained
-// around this Element. The margin does not reflect the
-// Element's active area and is only a setting that is
-// used by layouts to further adjust the Element's position.
-func (e *Element) Margin() Spacing {
-	return e.margin
-}
-
-// SetMargin sets the amount of space that should be left
-// around the Element when positioned by a layout container.
-func (e *Element) SetMargin(margin Spacing) {
-	if margin != e.margin {
-		e.margin = margin
-		if e.parent != nil {
-			e.parent.onBoundsChanged(e.parent.bounds)
-		}
-	}
-}
-
 // Padding returns the spacing that should be maintained
 // inside an Element between its outer bounds and its content
 // area.
@@ -414,29 +392,6 @@ func (e *Element) Visible() bool {
 func (e *Element) SetVisible(visible bool) {
 	if visible != e.visible {
 		e.visible = visible
-		e.invalidate()
-	}
-}
-
-// Materialized controls whether this Element is at all
-// present. If an Element is not materialized, then it is
-// not rendered, does not receive events, and is not
-// considered during layout evaluations. In essence, it is
-// almost as though it has been removed, except that it
-// is still part of the hierarchy.
-func (e *Element) Materialized() bool {
-	return e.materialized
-}
-
-// SetMaterialized specifies whether this Element should
-// be considered in any way for rendering, events and
-// layout calculations.
-func (e *Element) SetMaterialized(materialized bool) {
-	if materialized != e.materialized {
-		e.materialized = materialized
-		if e.parent != nil {
-			e.parent.onBoundsChanged(e.parent.bounds)
-		}
 		e.invalidate()
 	}
 }
