@@ -16,6 +16,7 @@ type LayoutData struct {
 	VerticalCenter   optional.Int
 	Width            optional.Int
 	Height           optional.Int
+	Alignment        Alignment
 }
 
 // ElementLayoutData returns the LayoutData associated with
