@@ -59,9 +59,10 @@ type Window struct {
 	graphics Graphics
 	context  *Context
 
-	size           Size
-	root           *Element
-	pointedElement *Element
+	size Size
+	root *Element
+
+	oldMousePosition Position
 }
 
 // Size returns the content area of this Window.
@@ -127,13 +128,10 @@ type windowHandler struct {
 func (w *windowHandler) OnResize(size Size) {
 	w.graphics.Resize(size)
 	w.size = size
-
-	if w.root != nil {
-		w.root.SetBounds(Bounds{
-			Position: NewPosition(0, 0),
-			Size:     size,
-		})
-	}
+	w.root.SetBounds(Bounds{
+		Position: NewPosition(0, 0),
+		Size:     size,
+	})
 }
 
 func (w *windowHandler) OnFramebufferResize(size Size) {
@@ -146,27 +144,76 @@ func (w *windowHandler) OnKeyboardEvent(event KeyboardEvent) bool {
 }
 
 func (w *windowHandler) OnMouseEvent(event MouseEvent) bool {
-	if w.root != nil {
-		return w.processMouseEvent(w.root, event)
-	}
-	return false
+	// TODO: Use a better algorithm. This one does not handle resize.
+	w.processMouseLeave(w.root, event.Position, w.oldMousePosition)
+	w.processMouseEnter(w.root, event.Position, w.oldMousePosition)
+	w.oldMousePosition = event.Position
+	return w.processMouseEvent(w.root, event)
 }
 
 func (w *windowHandler) OnRender() {
 	w.graphics.Begin()
-
-	if w.root != nil {
-		w.renderElement(w.root, w.graphics.Canvas(), Bounds{
-			Position: NewPosition(0, 0),
-			Size:     w.size,
-		})
-	}
-
+	w.renderElement(w.root, w.graphics.Canvas(), Bounds{
+		Position: NewPosition(0, 0),
+		Size:     w.size,
+	})
 	w.graphics.End()
 }
 
 func (w *windowHandler) OnCloseRequested() {
 	w.Close()
+}
+
+func (w *windowHandler) processMouseLeave(element *Element, newPosition, oldPosition Position) {
+	if !element.enabled || !element.visible {
+		return
+	}
+
+	bounds := element.Bounds()
+	if !bounds.Contains(oldPosition) {
+		// Element was not hovered before so no need to send leave event or
+		// process any children
+		return
+	}
+
+	relativeNewPosition := newPosition.Translate(-bounds.X, -bounds.Y)
+	relativeOldPosition := oldPosition.Translate(-bounds.X, -bounds.Y)
+	if !bounds.Contains(newPosition) {
+		element.onMouseEvent(MouseEvent{
+			Position: relativeNewPosition,
+			Type:     MouseEventTypeLeave,
+		})
+	}
+
+	for childElement := element.lastChild; childElement != nil; childElement = childElement.leftSibling {
+		w.processMouseLeave(childElement, relativeNewPosition, relativeOldPosition)
+	}
+}
+
+func (w *windowHandler) processMouseEnter(element *Element, newPosition, oldPosition Position) {
+	if !element.enabled || !element.visible {
+		return
+	}
+
+	bounds := element.Bounds()
+	if !bounds.Contains(newPosition) {
+		// Element does not contain new point so no need to send enter event
+		// or process any children
+		return
+	}
+
+	relativeNewPosition := newPosition.Translate(-bounds.X, -bounds.Y)
+	relativeOldPosition := oldPosition.Translate(-bounds.X, -bounds.Y)
+	if !bounds.Contains(oldPosition) {
+		element.onMouseEvent(MouseEvent{
+			Position: relativeNewPosition,
+			Type:     MouseEventTypeEnter,
+		})
+	}
+
+	for childElement := element.lastChild; childElement != nil; childElement = childElement.leftSibling {
+		w.processMouseEnter(childElement, relativeNewPosition, relativeOldPosition)
+	}
 }
 
 func (w *windowHandler) processMouseEvent(element *Element, event MouseEvent) bool {
@@ -183,27 +230,6 @@ func (w *windowHandler) processMouseEvent(element *Element, event MouseEvent) bo
 				return true
 			}
 		}
-	}
-
-	// Check if we need to change mouse ownership.
-	if element != w.pointedElement {
-		if w.pointedElement != nil {
-			w.pointedElement.onMouseEvent(MouseEvent{
-				Index:    event.Index,
-				Position: event.Position,
-				Type:     MouseEventTypeLeave,
-				Button:   event.Button,
-			})
-		}
-
-		element.onMouseEvent(MouseEvent{
-			Index:    event.Index,
-			Position: event.Position,
-			Type:     MouseEventTypeEnter,
-			Button:   event.Button,
-		})
-
-		w.pointedElement = element
 	}
 
 	// Let the current element handle the event.
