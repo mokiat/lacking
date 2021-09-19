@@ -55,6 +55,9 @@ func (l *VerticalLayout) applyTopToBottom(element *ui.Element) {
 		if layoutConfig.Height.Specified {
 			childBounds.Height = layoutConfig.Height.Value
 		}
+		if layoutConfig.GrowHorizontally {
+			childBounds.Width = contentBounds.Width
+		}
 
 		switch l.contentAlignment {
 		case AlignmentLeft:
@@ -89,6 +92,9 @@ func (l *VerticalLayout) applyBottomToTop(element *ui.Element) {
 		}
 		if layoutConfig.Height.Specified {
 			childBounds.Height = layoutConfig.Height.Value
+		}
+		if layoutConfig.GrowHorizontally {
+			childBounds.Width = contentBounds.Width
 		}
 
 		switch l.contentAlignment {

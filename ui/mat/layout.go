@@ -16,6 +16,8 @@ type LayoutData struct {
 	VerticalCenter   optional.Int
 	Width            optional.Int
 	Height           optional.Int
+	GrowHorizontally bool
+	GrowVertically   bool
 	Alignment        Alignment
 }
 

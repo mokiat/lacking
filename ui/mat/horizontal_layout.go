@@ -57,6 +57,9 @@ func (l *HorizontalLayout) applyLeftToRight(element *ui.Element) {
 		if layoutConfig.Height.Specified {
 			childBounds.Height = layoutConfig.Height.Value
 		}
+		if layoutConfig.GrowVertically {
+			childBounds.Height = contentBounds.Height
+		}
 
 		switch l.contentAlignment {
 		case AlignmentTop:
@@ -91,6 +94,9 @@ func (l *HorizontalLayout) applyRightToLeft(element *ui.Element) {
 		}
 		if layoutConfig.Height.Specified {
 			childBounds.Height = layoutConfig.Height.Value
+		}
+		if layoutConfig.GrowVertically {
+			childBounds.Height = contentBounds.Height
 		}
 
 		switch l.contentAlignment {
