@@ -7,6 +7,7 @@ import "github.com/mokiat/lacking/ui"
 type VerticalLayoutSettings struct {
 	ContentAlignment Alignment
 	ContentSpacing   int
+	Flipped          bool
 }
 
 // NewVerticalLayout creates a new VerticalLayout instance.
@@ -14,6 +15,7 @@ func NewVerticalLayout(settings VerticalLayoutSettings) *VerticalLayout {
 	return &VerticalLayout{
 		contentAlignment: settings.ContentAlignment,
 		contentSpacing:   settings.ContentSpacing,
+		flipped:          settings.Flipped,
 	}
 }
 
@@ -24,15 +26,25 @@ var _ ui.Layout = (*VerticalLayout)(nil)
 type VerticalLayout struct {
 	contentAlignment Alignment
 	contentSpacing   int
+	flipped          bool
 }
 
 // Apply applies this layout to the specified Element.
 func (l *VerticalLayout) Apply(element *ui.Element) {
+	if l.flipped {
+		l.applyBottomToTop(element)
+	} else {
+		l.applyTopToBottom(element)
+	}
+	element.SetIdealSize(l.calculateIdealSize(element))
+}
+
+func (l *VerticalLayout) applyTopToBottom(element *ui.Element) {
 	contentBounds := element.ContentBounds()
 
 	topPlacement := contentBounds.Y
 	for childElement := element.FirstChild(); childElement != nil; childElement = childElement.RightSibling() {
-		layoutConfig := childElement.LayoutConfig().(LayoutData)
+		layoutConfig := ElementLayoutData(childElement)
 
 		childBounds := ui.Bounds{
 			Size: childElement.IdealSize(),
@@ -60,4 +72,63 @@ func (l *VerticalLayout) Apply(element *ui.Element) {
 
 		topPlacement += childBounds.Height + l.contentSpacing
 	}
+}
+
+func (l *VerticalLayout) applyBottomToTop(element *ui.Element) {
+	contentBounds := element.ContentBounds()
+
+	bottomPlacement := contentBounds.Height
+	for childElement := element.FirstChild(); childElement != nil; childElement = childElement.RightSibling() {
+		layoutConfig := ElementLayoutData(childElement)
+
+		childBounds := ui.Bounds{
+			Size: childElement.IdealSize(),
+		}
+		if layoutConfig.Width.Specified {
+			childBounds.Width = layoutConfig.Width.Value
+		}
+		if layoutConfig.Height.Specified {
+			childBounds.Height = layoutConfig.Height.Value
+		}
+
+		switch l.contentAlignment {
+		case AlignmentLeft:
+			childBounds.X = contentBounds.X
+		case AlignmentRight:
+			childBounds.X = contentBounds.X + contentBounds.Width - childBounds.Width
+		case AlignmentCenter:
+			fallthrough
+		default:
+			childBounds.X = contentBounds.X + (contentBounds.Width-childBounds.Width)/2
+		}
+
+		childBounds.Y = bottomPlacement - childBounds.Height
+		childElement.SetBounds(childBounds)
+
+		bottomPlacement -= childBounds.Height + l.contentSpacing
+	}
+}
+
+func (l *VerticalLayout) calculateIdealSize(element *ui.Element) ui.Size {
+	result := ui.NewSize(0, 0)
+	for childElement := element.FirstChild(); childElement != nil; childElement = childElement.RightSibling() {
+		layoutConfig := ElementLayoutData(childElement)
+
+		childSize := childElement.IdealSize()
+		if layoutConfig.Width.Specified {
+			childSize.Width = layoutConfig.Width.Value
+		}
+		if layoutConfig.Height.Specified {
+			childSize.Height = layoutConfig.Height.Value
+		}
+
+		result.Width = maxInt(result.Width, childSize.Width)
+		if result.Height > 0 {
+			result.Height += l.contentSpacing
+		}
+		result.Height += childSize.Height
+	}
+	result.Width += element.Padding().Horizontal()
+	result.Height += element.Padding().Vertical()
+	return result
 }

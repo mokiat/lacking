@@ -32,6 +32,49 @@ type cachedState struct {
 	cachedInstance Instance
 }
 
+func Controlled(delegate Component) Component {
+	type controlledState struct {
+		controller   Controller
+		subscription ControllerSubscription
+	}
+
+	controllers := make(map[*componentNode]controlledState)
+
+	return Component{
+		componentType: evaluateComponentType(),
+		componentFunc: func(props Properties) Instance {
+			controller := props.Data().(Controller)
+			node := renderCtx.node
+
+			if state, ok := controllers[renderCtx.node]; ok {
+				if controller != state.controller {
+					state.subscription.Unsubscribe()
+					state.controller = controller
+					state.subscription = controller.Subscribe(func(controller Controller) {
+						uiCtx.Schedule(func() {
+							if node.isValid() {
+								node.reconcile(node.instance)
+							}
+						})
+					})
+				}
+			} else {
+				controllers[node] = controlledState{
+					controller: controller,
+					subscription: controller.Subscribe(func(controller Controller) {
+						uiCtx.Schedule(func() {
+							if node.isValid() {
+								node.reconcile(node.instance)
+							}
+						})
+					}),
+				}
+			}
+			return delegate.componentFunc(props)
+		},
+	}
+}
+
 // ShallowCached can be used to wrap a component and optimize
 // reconciliation by avoiding the rerendering of the component
 // if the data and layout data are equal to their previous values

@@ -229,6 +229,7 @@ func (w *windowHandler) processMouseEvent(element *Element, event MouseEvent) bo
 			if w.processMouseEvent(childElement, translatedEvent) {
 				return true
 			}
+			break // don't allow siblings that are underneath to process event
 		}
 	}
 
