@@ -107,6 +107,22 @@ func (c *Canvas) Text() ui.Text {
 	return c.text
 }
 
+func (c *Canvas) DrawSurface(surface ui.Surface) {
+	currentLayer := c.currentLayer
+	c.renderer.SetClipBounds(
+		float32(currentLayer.ClipBounds.X),
+		float32(currentLayer.ClipBounds.X+currentLayer.ClipBounds.Width),
+		float32(currentLayer.ClipBounds.Y),
+		float32(currentLayer.ClipBounds.Y+currentLayer.ClipBounds.Height),
+	)
+	c.renderer.SetTransform(sprec.TranslationMat4(
+		float32(currentLayer.Translation.X),
+		float32(currentLayer.Translation.Y),
+		0.0,
+	))
+	c.renderer.DrawSurface(surface)
+}
+
 var _ ui.Shape = (*canvasShape)(nil)
 
 type canvasShape struct {

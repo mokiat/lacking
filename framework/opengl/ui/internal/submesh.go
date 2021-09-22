@@ -6,6 +6,7 @@ import (
 )
 
 type SubMesh struct {
+	surface                Surface
 	material               *Material
 	vertexArray            *opengl.VertexArray
 	transformMatrix        sprec.Mat4
