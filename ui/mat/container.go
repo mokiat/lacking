@@ -8,6 +8,7 @@ import (
 
 type ContainerData struct {
 	BackgroundColor optional.Color
+	Padding         ui.Spacing
 	Layout          ui.Layout
 }
 
@@ -35,6 +36,7 @@ var Container = co.ShallowCached(co.Define(func(props co.Properties) co.Instance
 	return co.New(Element, func() {
 		co.WithData(ElementData{
 			Essence: essence,
+			Padding: data.Padding,
 			Layout:  data.Layout,
 		})
 		co.WithLayoutData(props.LayoutData())

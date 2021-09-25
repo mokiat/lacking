@@ -53,6 +53,10 @@ var Button = co.ShallowCached(co.Define(func(props co.Properties) co.Instance {
 		co.WithData(ElementData{
 			Essence: essence,
 			Padding: data.Padding,
+			IdealSize: optional.NewSize(
+				essence.font.TextSize(essence.text, essence.fontSize).
+					Grow(data.Padding.Horizontal(), data.Padding.Vertical()),
+			),
 		})
 		co.WithLayoutData(props.LayoutData())
 		co.WithChildren(props.Children())

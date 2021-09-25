@@ -31,6 +31,10 @@ type Canvas interface {
 
 	// Text returns the text rendering module.
 	Text() Text
+
+	// DrawSurface renders the specified surface. The surface's Render
+	// method will be called when needed with the UI framebuffer bound.
+	DrawSurface(surface Surface)
 }
 
 // Shape represents a module for drawing solid shapes.
@@ -238,4 +242,8 @@ type RectRoundness struct {
 
 	// BottomRightRadius specifies the radius of the bottom-right corner.
 	BottomRightRadius int
+}
+
+type Surface interface {
+	Render(x, y, width, height int)
 }

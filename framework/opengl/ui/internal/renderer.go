@@ -420,6 +420,13 @@ func (r *Renderer) EndText(text *Text) {
 	})
 }
 
+func (r *Renderer) DrawSurface(surface Surface) {
+	r.subMeshes = append(r.subMeshes, SubMesh{
+		surface:    surface,
+		clipBounds: r.clipBounds,
+	})
+}
+
 func (r *Renderer) Begin(target Target) {
 	r.target = target
 	r.transformMatrix = sprec.IdentityMat4()
@@ -439,19 +446,7 @@ func (r *Renderer) End() {
 	r.contourMesh.Update()
 	r.textMesh.Update()
 
-	r.target.Framebuffer.Use()
-	gl.Viewport(0, 0, int32(r.target.Width), int32(r.target.Height))
-	gl.ClearStencil(0)
-	gl.Clear(gl.STENCIL_BUFFER_BIT)
-	gl.Disable(gl.DEPTH_TEST)
-	gl.DepthMask(false)
-	gl.Enable(gl.BLEND)
-	gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
-
-	gl.Enable(gl.CLIP_DISTANCE0)
-	gl.Enable(gl.CLIP_DISTANCE1)
-	gl.Enable(gl.CLIP_DISTANCE2)
-	gl.Enable(gl.CLIP_DISTANCE3)
+	r.enableOptions()
 
 	projectionMatrix := sprec.OrthoMat4(
 		0.0, float32(r.target.Width),
@@ -462,6 +457,24 @@ func (r *Renderer) End() {
 	// TODO: Maybe optimize by accumulating draw commands
 	// if they are similar.
 	for _, subMesh := range r.subMeshes {
+		if subMesh.surface != nil {
+			r.disableOptions()
+
+			x := int(subMesh.clipBounds.X)
+			y := int(subMesh.clipBounds.Z)
+			width := int(subMesh.clipBounds.Y - subMesh.clipBounds.X)
+			height := int(subMesh.clipBounds.W - subMesh.clipBounds.Z)
+			subMesh.surface.Render(
+				x,
+				r.target.Height-height-y,
+				width,
+				height,
+			)
+
+			r.enableOptions()
+			continue
+		}
+
 		material := subMesh.material
 		transformMatrix := subMesh.transformMatrix.ColumnMajorArray()
 		textureTransformMatrix := subMesh.textureTransformMatrix.ColumnMajorArray()
@@ -506,6 +519,27 @@ func (r *Renderer) End() {
 		gl.DrawArrays(subMesh.primitive, int32(subMesh.vertexOffset), int32(subMesh.vertexCount))
 	}
 
+	r.disableOptions()
+}
+
+func (r *Renderer) enableOptions() {
+	r.target.Framebuffer.Use()
+
+	gl.Viewport(0, 0, int32(r.target.Width), int32(r.target.Height))
+	gl.ClearStencil(0)
+	gl.Clear(gl.STENCIL_BUFFER_BIT)
+	gl.Disable(gl.DEPTH_TEST)
+	gl.DepthMask(false)
+	gl.Enable(gl.BLEND)
+	gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
+
+	gl.Enable(gl.CLIP_DISTANCE0)
+	gl.Enable(gl.CLIP_DISTANCE1)
+	gl.Enable(gl.CLIP_DISTANCE2)
+	gl.Enable(gl.CLIP_DISTANCE3)
+}
+
+func (r *Renderer) disableOptions() {
 	gl.Disable(gl.CLIP_DISTANCE0)
 	gl.Disable(gl.CLIP_DISTANCE1)
 	gl.Disable(gl.CLIP_DISTANCE2)
@@ -529,4 +563,8 @@ func midPointNormal(prev, middle, next sprec.Vec2) sprec.Vec2 {
 func endPointNormal(prev, next sprec.Vec2) sprec.Vec2 {
 	tangent := sprec.UnitVec2(sprec.Vec2Diff(next, prev))
 	return sprec.NewVec2(tangent.Y, -tangent.X)
+}
+
+type Surface interface {
+	Render(x, y, width, height int)
 }

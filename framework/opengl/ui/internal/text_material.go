@@ -52,6 +52,13 @@ noperspective in vec2 texCoordInOut;
 
 void main()
 {
-	fragmentColor = vec4(texture(textureIn, texCoordInOut).x) * colorIn;
+	float amount = pow(clamp(texture(textureIn, texCoordInOut).x, 0.0, 1.0), 0.5);
+	if (amount > 0.8) {
+		amount = 1.0;
+	}
+	if (amount < 0.2) {
+		amount = 0.0;
+	}
+	fragmentColor = vec4(amount) * colorIn;
 }
 `
