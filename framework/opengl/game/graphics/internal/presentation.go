@@ -39,6 +39,7 @@ type SkyboxPresentation struct {
 	ViewMatrixLocation       int32
 
 	AlbedoCubeTextureLocation int32
+	AlbedoColorLocation       int32
 }
 
 func NewSkyboxPresentation(vertexSrc, fragmentSrc string) *SkyboxPresentation {
@@ -50,6 +51,7 @@ func NewSkyboxPresentation(vertexSrc, fragmentSrc string) *SkyboxPresentation {
 		ProjectionMatrixLocation:  program.UniformLocation("projectionMatrixIn"),
 		ViewMatrixLocation:        program.UniformLocation("viewMatrixIn"),
 		AlbedoCubeTextureLocation: program.UniformLocation("albedoCubeTextureIn"),
+		AlbedoColorLocation:       program.UniformLocation("albedoColorIn"),
 	}
 }
 

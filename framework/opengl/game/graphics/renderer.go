@@ -78,8 +78,9 @@ type Renderer struct {
 
 	quadMesh *QuadMesh
 
-	skyboxPresentation *internal.SkyboxPresentation
-	skyboxMesh         *SkyboxMesh
+	skyboxPresentation   *internal.SkyboxPresentation
+	skycolorPresentation *internal.SkyboxPresentation
+	skyboxMesh           *SkyboxMesh
 }
 
 func (r *Renderer) Allocate() {
@@ -185,6 +186,7 @@ func (r *Renderer) Allocate() {
 	r.quadMesh.Allocate()
 
 	r.skyboxPresentation = internal.NewCubeSkyboxPresentation()
+	r.skycolorPresentation = internal.NewColorSkyboxPresentation()
 	r.skyboxMesh.Allocate()
 }
 
@@ -453,7 +455,8 @@ func (r *Renderer) renderForwardPass(ctx renderCtx) {
 	gl.DepthMask(false)
 	gl.DepthFunc(gl.LEQUAL)
 
-	if texture := ctx.scene.sky.skyboxTexture; texture != nil {
+	sky := ctx.scene.sky
+	if texture := sky.skyboxTexture; texture != nil {
 		gl.Enable(gl.CULL_FACE)
 
 		presentation := r.skyboxPresentation
@@ -465,6 +468,25 @@ func (r *Renderer) renderForwardPass(ctx renderCtx) {
 
 		gl.BindTextureUnit(0, texture.ID())
 		gl.Uniform1i(presentation.AlbedoCubeTextureLocation, 0)
+
+		gl.BindVertexArray(r.skyboxMesh.VertexArray.ID())
+		gl.DrawElements(r.skyboxMesh.Primitive, r.skyboxMesh.IndexCount, gl.UNSIGNED_SHORT, gl.PtrOffset(r.skyboxMesh.IndexOffsetBytes))
+	} else {
+		gl.Enable(gl.CULL_FACE)
+
+		presentation := r.skycolorPresentation
+		program := presentation.Program
+		program.Use()
+
+		gl.UniformMatrix4fv(presentation.ProjectionMatrixLocation, 1, false, &ctx.projectionMatrix[0])
+		gl.UniformMatrix4fv(presentation.ViewMatrixLocation, 1, false, &ctx.viewMatrix[0])
+
+		gl.Uniform4f(presentation.AlbedoColorLocation,
+			sky.backgroundColor.X,
+			sky.backgroundColor.Y,
+			sky.backgroundColor.Z,
+			1.0,
+		)
 
 		gl.BindVertexArray(r.skyboxMesh.VertexArray.ID())
 		gl.DrawElements(r.skyboxMesh.Primitive, r.skyboxMesh.IndexCount, gl.UNSIGNED_SHORT, gl.PtrOffset(r.skyboxMesh.IndexOffsetBytes))
