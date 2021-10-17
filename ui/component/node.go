@@ -1,6 +1,8 @@
 package component
 
-import "github.com/mokiat/lacking/ui"
+import (
+	"github.com/mokiat/lacking/ui"
+)
 
 type componentNode struct {
 	instance Instance
@@ -87,18 +89,18 @@ func (node *componentNode) reconcile(instance Instance) {
 			} else {
 				child.destroy()
 			}
-			newChildren := make([]*componentNode, len(instance.children))
-			for i, childInstance := range instance.children {
-				if existingChild, index := node.findChild(childInstance); index >= 0 {
-					existingChild.reconcile(childInstance)
-					newChildren[i] = existingChild
-				} else {
-					newChildren[i] = createComponentNode(childInstance)
-				}
-				node.element.AppendChild(newChildren[i].element)
-			}
-			node.children = newChildren
 		}
+		newChildren := make([]*componentNode, len(instance.children))
+		for i, childInstance := range instance.children {
+			if existingChild, index := node.findChild(childInstance); index >= 0 {
+				existingChild.reconcile(childInstance)
+				newChildren[i] = existingChild
+			} else {
+				newChildren[i] = createComponentNode(childInstance)
+			}
+			node.element.AppendChild(newChildren[i].element)
+		}
+		node.children = newChildren
 	}
 }
 
