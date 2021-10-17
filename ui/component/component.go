@@ -2,7 +2,6 @@ package component
 
 import (
 	"fmt"
-	"reflect"
 	"runtime"
 )
 
@@ -80,6 +79,7 @@ func Controlled(delegate Component) Component {
 // if the data and layout data are equal to their previous values
 // when shallowly (==) compared.
 func ShallowCached(delegate Component) Component {
+	// FIXME: Cache grows indefinitely
 	cache := make(map[*componentNode]*cachedState)
 
 	return Component{
@@ -92,47 +92,8 @@ func ShallowCached(delegate Component) Component {
 
 				shouldCallDelegate := renderCtx.lastRender ||
 					renderCtx.forcedRender ||
-					((oldData == nil) && (oldLayoutData == nil) && (oldChildren == nil)) ||
-					!isDataShallowEqual(oldData, props.data) ||
+					!IsEqualData(oldData, props.data) ||
 					!isLayoutDataShallowEqual(oldLayoutData, props.layoutData) ||
-					!areChildrenEqual(oldChildren, props.children)
-				if !shouldCallDelegate {
-					return state.cachedInstance
-				}
-			}
-
-			instance := delegate.componentFunc(props)
-			cache[renderCtx.node] = &cachedState{
-				oldData:        props.data,
-				oldLayoutData:  props.layoutData,
-				oldChildren:    props.children,
-				cachedInstance: instance,
-			}
-			return instance
-		},
-	}
-}
-
-// DeepCached can be used to wrap a component and optimize
-// reconciliation by avoiding the rerendering of the component
-// if the data and layout data are equal to their previous values
-// when deeply compared.
-func DeepCached(delegate Component) Component {
-	cache := make(map[*componentNode]*cachedState)
-
-	return Component{
-		componentType: evaluateComponentType(),
-		componentFunc: func(props Properties) Instance {
-			if state, ok := cache[renderCtx.node]; ok {
-				oldData := state.oldData
-				oldLayoutData := state.oldLayoutData
-				oldChildren := state.oldChildren
-
-				shouldCallDelegate := renderCtx.lastRender ||
-					renderCtx.forcedRender ||
-					((oldData == nil) && (oldLayoutData == nil) && (oldChildren == nil)) ||
-					!isDataDeepEqual(oldData, props.data) ||
-					!isLayoutDataDeepEqual(oldLayoutData, props.layoutData) ||
 					!areChildrenEqual(oldChildren, props.children)
 				if !shouldCallDelegate {
 					return state.cachedInstance
@@ -156,31 +117,23 @@ func evaluateComponentType() string {
 	return fmt.Sprintf("%s#%d", file, line)
 }
 
-func isDataShallowEqual(oldData, newData interface{}) bool {
-	return newData == oldData
-}
-
-func isDataDeepEqual(oldData, newData interface{}) bool {
-	return reflect.DeepEqual(newData, oldData)
-}
-
 func isLayoutDataShallowEqual(oldLayoutData, newLayoutData interface{}) bool {
 	return newLayoutData == oldLayoutData
-}
-
-func isLayoutDataDeepEqual(oldLayoutData, newLayoutData interface{}) bool {
-	return reflect.DeepEqual(newLayoutData, oldLayoutData)
 }
 
 func areChildrenEqual(oldChildren, newChildren []Instance) bool {
 	if len(newChildren) != len(oldChildren) {
 		return false
 	}
-	for i := range newChildren {
-		if newChildren[i].key != oldChildren[i].key {
+	for i, newChild := range newChildren {
+		oldChild := oldChildren[i]
+		if newChild.key != oldChild.key {
 			return false
 		}
-		if newChildren[i].componentType != oldChildren[i].componentType {
+		if newChild.componentType != oldChild.componentType {
+			return false
+		}
+		if !IsEqualData(oldChild.data, newChild.data) {
 			return false
 		}
 	}
