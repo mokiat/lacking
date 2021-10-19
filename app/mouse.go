@@ -24,6 +24,10 @@ type MouseEvent struct {
 	// Button specifies the button for which the event is
 	// applicable.
 	Button MouseButton
+
+	// Payload contains the data that was dropped in case of
+	// a MouseEventTypeDrop event.
+	Payload interface{}
 }
 
 // String returns a string representation of this event.
@@ -56,6 +60,10 @@ const (
 	// The even could be received for a motion outside the
 	// bounds of the control.
 	MouseEventTypeDrag
+
+	// MouseEventTypeDrop indicates that some content was dropped
+	// within the receiver.
+	MouseEventTypeDrop
 
 	// MouseEventTypeDragCancel indicates that a drag operation
 	// was cancelled by the parent control (other control might
@@ -124,4 +132,11 @@ func (b MouseButton) String() string {
 	default:
 		return "unknown"
 	}
+}
+
+// FilepathPayload is a type of Payload that occurs when files
+// have been dragged and dropped into the window.
+type FilepathPayload struct {
+	// Paths contains file paths to the dropped resources.
+	Paths []string
 }

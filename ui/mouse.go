@@ -25,6 +25,9 @@ type MouseEvent struct {
 	// Button specifies the button for which the event is
 	// applicable.
 	Button MouseButton
+
+	// Payload contains the data that was dropped.
+	Payload interface{}
 }
 
 // String returns a string representation for this mouse event.
@@ -46,6 +49,7 @@ const (
 	MouseEventTypeMove       = app.MouseEventTypeMove
 	MouseEventTypeDrag       = app.MouseEventTypeDrag
 	MouseEventTypeDragCancel = app.MouseEventTypeDragCancel
+	MouseEventTypeDrop       = app.MouseEventTypeDrop
 	MouseEventTypeEnter      = app.MouseEventTypeEnter
 	MouseEventTypeLeave      = app.MouseEventTypeLeave
 )
@@ -58,3 +62,7 @@ const (
 	MouseButtonMiddle = app.MouseButtonMiddle
 	MouseButtonRight  = app.MouseButtonRight
 )
+
+// FilepathPayload is a type of Payload that occurs when files
+// have been dragged and dropped into the window.
+type FilepathPayload = app.FilepathPayload
