@@ -3,6 +3,8 @@ package ui
 import (
 	"io"
 	"io/fs"
+	"os"
+	"path/filepath"
 )
 
 // ResourceLocator represents a logic by which resources
@@ -35,5 +37,8 @@ type FileResourceLocator struct {
 // OpenResource opens the resource at the specified
 // relative address path.
 func (l *FileResourceLocator) OpenResource(uri string) (io.ReadCloser, error) {
+	if filepath.IsAbs(uri) {
+		return os.Open(uri)
+	}
 	return l.dir.Open(uri)
 }
