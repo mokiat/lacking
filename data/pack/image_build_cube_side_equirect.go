@@ -51,3 +51,33 @@ func (a *BuildCubeSideFromEquirectangularAction) Run() error {
 	}
 	return nil
 }
+
+func BuildCubeSideFromEquirectangular(srcImage *Image, side CubeSide) *Image {
+	dimension := srcImage.Height / 2
+	texels := make([][]Color, dimension)
+	for y := range texels {
+		texels[y] = make([]Color, dimension)
+	}
+
+	uv := dprec.ZeroVec2()
+	startU := 0.0
+	deltaU := 1.0 / float64(dimension-1)
+	startV := 1.0
+	deltaV := -1.0 / float64(dimension-1)
+
+	uv.Y = startV
+	for y := 0; y < dimension; y++ {
+		uv.X = startU
+		for x := 0; x < dimension; x++ {
+			texels[y][x] = srcImage.TexelUV(UVWToEquirectangularUV(CubeUVToUVW(side, uv)))
+			uv.X += deltaU
+		}
+		uv.Y += deltaV
+	}
+
+	return &Image{
+		Width:  dimension,
+		Height: dimension,
+		Texels: texels,
+	}
+}

@@ -135,3 +135,65 @@ func (a *BuildCubeImageAction) Run() error {
 	}
 	return nil
 }
+
+func BuildCube(frontImg, rearImg, leftImg, rightImg, topImg, bottomImg *Image, dimension int) (*CubeImage, error) {
+	if !frontImg.IsSquare() {
+		return nil, fmt.Errorf("front image is not a square (%d, %d)", frontImg.Width, frontImg.Height)
+	}
+	if !rearImg.IsSquare() {
+		return nil, fmt.Errorf("rear image is not a square (%d, %d)", rearImg.Width, rearImg.Height)
+	}
+	if !leftImg.IsSquare() {
+		return nil, fmt.Errorf("left image is not a square (%d, %d)", leftImg.Width, leftImg.Height)
+	}
+	if !rightImg.IsSquare() {
+		return nil, fmt.Errorf("right image is not a square (%d, %d)", rightImg.Width, rightImg.Height)
+	}
+	if !topImg.IsSquare() {
+		return nil, fmt.Errorf("top image is not a square (%d, %d)", topImg.Width, topImg.Height)
+	}
+	if !bottomImg.IsSquare() {
+		return nil, fmt.Errorf("bottom image is not a square (%d, %d)", bottomImg.Width, bottomImg.Height)
+	}
+
+	if dimension > 0 {
+		frontImg = frontImg.Scale(dimension, dimension)
+		rearImg = rearImg.Scale(dimension, dimension)
+		leftImg = leftImg.Scale(dimension, dimension)
+		rightImg = rightImg.Scale(dimension, dimension)
+		topImg = topImg.Scale(dimension, dimension)
+		bottomImg = bottomImg.Scale(dimension, dimension)
+	} else {
+		areSameDimension := frontImg.Width == rearImg.Width &&
+			frontImg.Width == leftImg.Width &&
+			frontImg.Width == rightImg.Width &&
+			frontImg.Width == topImg.Width &&
+			frontImg.Width == bottomImg.Width
+		if !areSameDimension {
+			return nil, fmt.Errorf("images are not of the same size")
+		}
+	}
+
+	result := &CubeImage{
+		Dimension: frontImg.Width,
+	}
+	result.Sides[CubeSideFront] = CubeImageSide{
+		Texels: frontImg.Texels,
+	}
+	result.Sides[CubeSideRear] = CubeImageSide{
+		Texels: rearImg.Texels,
+	}
+	result.Sides[CubeSideLeft] = CubeImageSide{
+		Texels: leftImg.Texels,
+	}
+	result.Sides[CubeSideRight] = CubeImageSide{
+		Texels: rightImg.Texels,
+	}
+	result.Sides[CubeSideTop] = CubeImageSide{
+		Texels: topImg.Texels,
+	}
+	result.Sides[CubeSideBottom] = CubeImageSide{
+		Texels: bottomImg.Texels,
+	}
+	return result, nil
+}
