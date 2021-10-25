@@ -40,6 +40,11 @@ func (a *OpenImageResourceAction) Run() error {
 		return fmt.Errorf("failed to decode image: %w", err)
 	}
 
+	a.image = BuildImageResource(img)
+	return nil
+}
+
+func BuildImageResource(img image.Image) *Image {
 	imgStartX := img.Bounds().Min.X
 	imgStartY := img.Bounds().Min.Y
 	width := img.Bounds().Dx()
@@ -68,10 +73,9 @@ func (a *OpenImageResourceAction) Run() error {
 			}
 		}
 	}
-	a.image = &Image{
+	return &Image{
 		Width:  width,
 		Height: height,
 		Texels: texels,
 	}
-	return nil
 }
