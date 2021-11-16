@@ -33,9 +33,9 @@ func (c *BaseController) Subscribe(callback ControllerCallback) ControllerSubscr
 }
 
 func (c *BaseController) Alter(fn func()) {
-	c.notifyDisabled = false
+	c.notifyDisabled = true
 	defer func() {
-		c.notifyDisabled = true
+		c.notifyDisabled = false
 	}()
 	fn()
 }
