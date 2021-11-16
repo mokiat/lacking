@@ -2,7 +2,6 @@ package ui
 
 import (
 	"io"
-	"io/fs"
 	"os"
 	"path/filepath"
 )
@@ -22,7 +21,7 @@ type ResourceLocator interface {
 
 // NewFileResourceLocator returns a new FileResourceLocator that is
 // configured to search for resources relative to dir.
-func NewFileResourceLocator(dir fs.FS) *FileResourceLocator {
+func NewFileResourceLocator(dir string) *FileResourceLocator {
 	return &FileResourceLocator{
 		dir: dir,
 	}
@@ -31,14 +30,14 @@ func NewFileResourceLocator(dir fs.FS) *FileResourceLocator {
 // FileResourceLocator is an implementation of ResourceLocator that
 // uses the local filesystem to open resources.
 type FileResourceLocator struct {
-	dir fs.FS
+	dir string
 }
 
 // OpenResource opens the resource at the specified
 // relative address path.
 func (l *FileResourceLocator) OpenResource(uri string) (io.ReadCloser, error) {
-	if filepath.IsAbs(uri) {
-		return os.Open(uri)
+	if !filepath.IsAbs(uri) {
+		uri = filepath.Join(l.dir, uri)
 	}
-	return l.dir.Open(uri)
+	return os.Open(uri)
 }
