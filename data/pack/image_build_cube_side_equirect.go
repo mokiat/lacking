@@ -53,7 +53,10 @@ func (a *BuildCubeSideFromEquirectangularAction) Run() error {
 }
 
 func BuildCubeSideFromEquirectangular(srcImage *Image, side CubeSide) *Image {
-	dimension := srcImage.Height / 2
+	return BuildCubeSideFromEquirectangularScaled(srcImage, side, srcImage.Height/2)
+}
+
+func BuildCubeSideFromEquirectangularScaled(srcImage *Image, side CubeSide, dimension int) *Image {
 	texels := make([][]Color, dimension)
 	for y := range texels {
 		texels[y] = make([]Color, dimension)
