@@ -40,9 +40,6 @@ type CubeTexture interface {
 type CubeTextureDefinition struct {
 	Dimension int
 
-	WrapS Wrap
-	WrapT Wrap
-
 	MinFilter Filter
 	MagFilter Filter
 

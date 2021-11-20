@@ -76,30 +76,26 @@ func (a *SaveCubeTextureAction) Run() error {
 
 	textureAsset := &asset.CubeTexture{
 		Dimension: uint16(texture.Dimension),
-		WrapModeS: asset.WrapModeClampToEdge,
-		WrapModeT: asset.WrapModeClampToEdge,
-		WrapModeR: asset.WrapModeClampToEdge,
 		MagFilter: asset.FilterModeNearest,
 		MinFilter: asset.FilterModeNearest,
-		Mipmaps:   false,
 		Format:    a.format,
 	}
-	textureAsset.Sides[asset.TextureSideFront] = asset.CubeTextureSide{
+	textureAsset.FrontSide = asset.CubeTextureSide{
 		Data: textureData(CubeSideFront),
 	}
-	textureAsset.Sides[asset.TextureSideBack] = asset.CubeTextureSide{
+	textureAsset.BackSide = asset.CubeTextureSide{
 		Data: textureData(CubeSideRear),
 	}
-	textureAsset.Sides[asset.TextureSideLeft] = asset.CubeTextureSide{
+	textureAsset.LeftSide = asset.CubeTextureSide{
 		Data: textureData(CubeSideLeft),
 	}
-	textureAsset.Sides[asset.TextureSideRight] = asset.CubeTextureSide{
+	textureAsset.RightSide = asset.CubeTextureSide{
 		Data: textureData(CubeSideRight),
 	}
-	textureAsset.Sides[asset.TextureSideTop] = asset.CubeTextureSide{
+	textureAsset.TopSide = asset.CubeTextureSide{
 		Data: textureData(CubeSideTop),
 	}
-	textureAsset.Sides[asset.TextureSideBottom] = asset.CubeTextureSide{
+	textureAsset.BottomSide = asset.CubeTextureSide{
 		Data: textureData(CubeSideBottom),
 	}
 

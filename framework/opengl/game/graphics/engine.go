@@ -54,8 +54,8 @@ func (e *Engine) CreateTwoDTexture(definition graphics.TwoDTextureDefinition) gr
 func (e *Engine) CreateCubeTexture(definition graphics.CubeTextureDefinition) graphics.CubeTexture {
 	allocateInfo := opengl.CubeTextureAllocateInfo{
 		Dimension:         int32(definition.Dimension),
-		WrapS:             e.convertWrap(definition.WrapS),
-		WrapT:             e.convertWrap(definition.WrapT),
+		WrapS:             gl.CLAMP_TO_EDGE, // pointless
+		WrapT:             gl.CLAMP_TO_EDGE, // pointless
 		MinFilter:         e.convertMinFilter(definition.MinFilter),
 		MagFilter:         e.convertMagFilter(definition.MagFilter),
 		DataFormat:        e.convertDataFormat(definition.DataFormat),

@@ -86,3 +86,20 @@ func (o *TwoDTextureOperator) Release(registry *Registry, resource interface{}) 
 	}
 	return nil
 }
+
+// func convertWrapMode(wrap asset.WrapMode) graphics.Wrap {
+// 	switch wrap {
+// 	case asset.WrapModeDefault:
+// 		return graphics.WrapClampToEdge
+// 	case asset.WrapModeRepeat:
+// 		return graphics.WrapRepeat
+// 	case asset.WrapModeMirroredRepeat:
+// 		return graphics.WrapRepeat // FIXME
+// 	case asset.WrapModeClampToEdge:
+// 		return graphics.WrapClampToEdge
+// 	case asset.WrapModeMirroredClampToEdge:
+// 		return graphics.WrapClampToEdge // FIXME
+// 	default:
+// 		panic(fmt.Errorf("unknown wrap mode: %v", wrap))
+// 	}
+// }

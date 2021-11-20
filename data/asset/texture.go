@@ -41,17 +41,6 @@ const (
 
 type TexelFormat uint8
 
-const (
-	TextureSideFront TextureSide = iota
-	TextureSideBack
-	TextureSideLeft
-	TextureSideRight
-	TextureSideTop
-	TextureSideBottom
-)
-
-type TextureSide int
-
 type TwoDTexture struct {
 	Width     uint16
 	Height    uint16
@@ -59,7 +48,6 @@ type TwoDTexture struct {
 	WrapModeT WrapMode
 	MagFilter FilterMode
 	MinFilter FilterMode
-	Mipmaps   bool
 	Format    TexelFormat
 	Data      []byte
 }
@@ -69,13 +57,14 @@ type CubeTextureSide struct {
 }
 
 type CubeTexture struct {
-	Dimension uint16
-	WrapModeS WrapMode
-	WrapModeT WrapMode
-	WrapModeR WrapMode
-	MagFilter FilterMode
-	MinFilter FilterMode
-	Mipmaps   bool
-	Format    TexelFormat
-	Sides     [6]CubeTextureSide
+	Dimension  uint16
+	MagFilter  FilterMode
+	MinFilter  FilterMode
+	Format     TexelFormat
+	FrontSide  CubeTextureSide
+	BackSide   CubeTextureSide
+	LeftSide   CubeTextureSide
+	RightSide  CubeTextureSide
+	TopSide    CubeTextureSide
+	BottomSide CubeTextureSide
 }

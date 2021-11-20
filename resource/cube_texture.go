@@ -47,30 +47,19 @@ func (o *CubeTextureOperator) Allocate(registry *Registry, id string) (interface
 	}
 
 	gfxTask := o.gfxWorker.Schedule(async.VoidTask(func() error {
-		definition := graphics.CubeTextureDefinition{
+		texture.GFXTexture = o.gfxEngine.CreateCubeTexture(graphics.CubeTextureDefinition{
 			Dimension:      int(texAsset.Dimension),
-			WrapS:          graphics.WrapClampToEdge,
-			WrapT:          graphics.WrapClampToEdge,
-			MinFilter:      graphics.FilterLinear,
-			MagFilter:      graphics.FilterLinear,
-			FrontSideData:  texAsset.Sides[asset.TextureSideFront].Data,
-			BackSideData:   texAsset.Sides[asset.TextureSideBack].Data,
-			LeftSideData:   texAsset.Sides[asset.TextureSideLeft].Data,
-			RightSideData:  texAsset.Sides[asset.TextureSideRight].Data,
-			TopSideData:    texAsset.Sides[asset.TextureSideTop].Data,
-			BottomSideData: texAsset.Sides[asset.TextureSideBottom].Data,
-		}
-		switch texAsset.Format {
-		case asset.TexelFormatRGBA8:
-			definition.DataFormat = graphics.DataFormatRGBA8
-			definition.InternalFormat = graphics.InternalFormatRGBA8
-		case asset.TexelFormatRGBA32F:
-			definition.DataFormat = graphics.DataFormatRGBA32F
-			definition.InternalFormat = graphics.InternalFormatRGBA32F
-		default:
-			return fmt.Errorf("unknown format: %d", texAsset.Format)
-		}
-		texture.GFXTexture = o.gfxEngine.CreateCubeTexture(definition)
+			MagFilter:      resolveFilter(texAsset.MagFilter),
+			MinFilter:      resolveFilter(texAsset.MinFilter),
+			DataFormat:     resolveDataFormat(texAsset.Format),
+			InternalFormat: resolveInternalFormat(texAsset.Format),
+			FrontSideData:  texAsset.FrontSide.Data,
+			BackSideData:   texAsset.BackSide.Data,
+			LeftSideData:   texAsset.LeftSide.Data,
+			RightSideData:  texAsset.RightSide.Data,
+			TopSideData:    texAsset.TopSide.Data,
+			BottomSideData: texAsset.BottomSide.Data,
+		})
 		return nil
 	}))
 	if err := gfxTask.Wait().Err; err != nil {
@@ -91,4 +80,49 @@ func (o *CubeTextureOperator) Release(registry *Registry, resource interface{}) 
 		return fmt.Errorf("failed to release gfx cube texture: %w", err)
 	}
 	return nil
+}
+
+func resolveFilter(filter asset.FilterMode) graphics.Filter {
+	switch filter {
+	case asset.FilterModeDefault:
+		return graphics.FilterLinear
+	case asset.FilterModeNearest:
+		return graphics.FilterNearest
+	case asset.FilterModeLinear:
+		return graphics.FilterLinear
+	case asset.FilterModeNearestMipmapNearest:
+		return graphics.FilterNearestMipmapNearest
+	case asset.FilterModeNearestMipmapLinear:
+		return graphics.FilterNearestMipmapLinear
+	case asset.FilterModeLinearMipmapNearest:
+		return graphics.FilterLinearMipmapNearest
+	case asset.FilterModeLinearMipmapLinear:
+		return graphics.FilterLinearMipmapLinear
+	default:
+		panic(fmt.Errorf("unknown filter mode: %v", filter))
+	}
+}
+
+func resolveDataFormat(format asset.TexelFormat) graphics.DataFormat {
+	// FIXME: Support other formats as well
+	switch format {
+	case asset.TexelFormatRGBA8:
+		return graphics.DataFormatRGBA8
+	case asset.TexelFormatRGBA32F:
+		return graphics.DataFormatRGBA32F
+	default:
+		panic(fmt.Errorf("unknown format: %v", format))
+	}
+}
+
+func resolveInternalFormat(format asset.TexelFormat) graphics.InternalFormat {
+	// FIXME: Support other formats as well
+	switch format {
+	case asset.TexelFormatRGBA8:
+		return graphics.InternalFormatRGBA8
+	case asset.TexelFormatRGBA32F:
+		return graphics.InternalFormatRGBA32F
+	default:
+		panic(fmt.Errorf("unknown format: %v", format))
+	}
 }
