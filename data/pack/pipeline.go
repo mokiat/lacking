@@ -55,7 +55,7 @@ func (p *Pipeline) SaveCubeTextureAsset(uri string, image CubeImageProvider, opt
 		locator:       p.assetLocator,
 		uri:           uri,
 		imageProvider: image,
-		format:        asset.DataFormatRGBA8,
+		format:        asset.TexelFormatRGBA8,
 	}
 	for _, opt := range opts {
 		opt(action)

@@ -1,22 +1,45 @@
 package asset
 
-import "io"
-
-type DataFormat uint32
-
 const (
-	DataFormatRGBA8 DataFormat = iota
-	DataFormatRGBA32F
+	WrapModeDefault WrapMode = iota
+	WrapModeRepeat
+	WrapModeMirroredRepeat
+	WrapModeClampToEdge
+	WrapModeMirroredClampToEdge
 )
 
-type TwoDTexture struct {
-	Width  uint16
-	Height uint16
-	Format DataFormat
-	Data   []byte
-}
+type WrapMode uint8
 
-type TextureSide int
+const (
+	FilterModeDefault FilterMode = iota
+	FilterModeNearest
+	FilterModeLinear
+	FilterModeNearestMipmapNearest
+	FilterModeNearestMipmapLinear
+	FilterModeLinearMipmapNearest
+	FilterModeLinearMipmapLinear
+)
+
+type FilterMode uint8
+
+const (
+	TexelFormatUnspecified TexelFormat = iota
+	TexelFormatR8
+	TexelFormatR16
+	TexelFormatR32F
+	TexelFormatRG8
+	TexelFormatRG16
+	TexelFormatRG32F
+	TexelFormatRGB8
+	TexelFormatRGB16
+	TexelFormatRGB32F
+	TexelFormatRGBA8
+	TexelFormatRGBA16
+	TexelFormatRGBA32F
+	TexelFormatDepth32F
+)
+
+type TexelFormat uint8
 
 const (
 	TextureSideFront TextureSide = iota
@@ -27,28 +50,32 @@ const (
 	TextureSideBottom
 )
 
-type CubeTexture struct {
-	Dimension uint16
-	Format    DataFormat
-	Sides     [6]CubeTextureSide
+type TextureSide int
+
+type TwoDTexture struct {
+	Width     uint16
+	Height    uint16
+	WrapModeS WrapMode
+	WrapModeT WrapMode
+	MagFilter FilterMode
+	MinFilter FilterMode
+	Mipmaps   bool
+	Format    TexelFormat
+	Data      []byte
 }
 
 type CubeTextureSide struct {
 	Data []byte
 }
 
-func EncodeTwoDTexture(out io.Writer, texture *TwoDTexture) error {
-	return Encode(out, texture)
-}
-
-func DecodeTwoDTexture(in io.Reader, texture *TwoDTexture) error {
-	return Decode(in, texture)
-}
-
-func EncodeCubeTexture(out io.Writer, texture *CubeTexture) error {
-	return Encode(out, texture)
-}
-
-func DecodeCubeTexture(in io.Reader, texture *CubeTexture) error {
-	return Decode(in, texture)
+type CubeTexture struct {
+	Dimension uint16
+	WrapModeS WrapMode
+	WrapModeT WrapMode
+	WrapModeR WrapMode
+	MagFilter FilterMode
+	MinFilter FilterMode
+	Mipmaps   bool
+	Format    TexelFormat
+	Sides     [6]CubeTextureSide
 }

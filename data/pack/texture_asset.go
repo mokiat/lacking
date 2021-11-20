@@ -20,9 +20,13 @@ func (a *SaveTwoDTextureAssetAction) Run() error {
 	image := a.imageProvider.Image()
 
 	textureAsset := &asset.TwoDTexture{
-		Width:  uint16(image.Width),
-		Height: uint16(image.Height),
-		Data:   image.RGBA8Data(),
+		Width:     uint16(image.Width),
+		Height:    uint16(image.Height),
+		WrapModeS: asset.WrapModeRepeat,
+		WrapModeT: asset.WrapModeRepeat,
+		MagFilter: asset.FilterModeLinear,
+		MinFilter: asset.FilterModeLinearMipmapLinear,
+		Data:      image.RGBA8Data(),
 	}
 
 	out, err := a.locator.Create(a.uri)
@@ -31,7 +35,7 @@ func (a *SaveTwoDTextureAssetAction) Run() error {
 	}
 	defer out.Close()
 
-	if err := asset.EncodeTwoDTexture(out, textureAsset); err != nil {
+	if err := asset.Encode(out, textureAsset); err != nil {
 		return fmt.Errorf("failed to encode asset: %w", err)
 	}
 	return nil
@@ -41,12 +45,12 @@ type SaveCubeTextureAction struct {
 	locator       AssetLocator
 	uri           string
 	imageProvider CubeImageProvider
-	format        asset.DataFormat
+	format        asset.TexelFormat
 }
 
 type SaveCubeTextureOption func(a *SaveCubeTextureAction)
 
-func WithFormat(format asset.DataFormat) SaveCubeTextureOption {
+func WithFormat(format asset.TexelFormat) SaveCubeTextureOption {
 	return func(a *SaveCubeTextureAction) {
 		a.format = format
 	}
@@ -61,17 +65,23 @@ func (a *SaveCubeTextureAction) Run() error {
 
 	textureData := func(side CubeSide) []byte {
 		switch a.format {
-		case asset.DataFormatRGBA8:
+		case asset.TexelFormatRGBA8:
 			return texture.RGBA8Data(side)
-		case asset.DataFormatRGBA32F:
+		case asset.TexelFormatRGBA32F:
 			return texture.RGBA32FData(side)
 		default:
-			panic(fmt.Errorf("unknown format: %d", a.format))
+			panic(fmt.Errorf("unsupported format: %d", a.format))
 		}
 	}
 
 	textureAsset := &asset.CubeTexture{
 		Dimension: uint16(texture.Dimension),
+		WrapModeS: asset.WrapModeClampToEdge,
+		WrapModeT: asset.WrapModeClampToEdge,
+		WrapModeR: asset.WrapModeClampToEdge,
+		MagFilter: asset.FilterModeNearest,
+		MinFilter: asset.FilterModeNearest,
+		Mipmaps:   false,
 		Format:    a.format,
 	}
 	textureAsset.Sides[asset.TextureSideFront] = asset.CubeTextureSide{
@@ -99,7 +109,7 @@ func (a *SaveCubeTextureAction) Run() error {
 	}
 	defer out.Close()
 
-	if err := asset.EncodeCubeTexture(out, textureAsset); err != nil {
+	if err := asset.Encode(out, textureAsset); err != nil {
 		return fmt.Errorf("failed to encode asset: %w", err)
 	}
 	return nil

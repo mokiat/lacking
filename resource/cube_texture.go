@@ -43,7 +43,7 @@ func (o *CubeTextureOperator) Allocate(registry *Registry, name string) (interfa
 	defer in.Close()
 
 	texAsset := new(asset.CubeTexture)
-	if err := asset.DecodeCubeTexture(in, texAsset); err != nil {
+	if err := asset.Decode(in, texAsset); err != nil {
 		return nil, fmt.Errorf("failed to decode cube texture asset %q: %w", name, err)
 	}
 
@@ -66,10 +66,10 @@ func (o *CubeTextureOperator) Allocate(registry *Registry, name string) (interfa
 			BottomSideData: texAsset.Sides[asset.TextureSideBottom].Data,
 		}
 		switch texAsset.Format {
-		case asset.DataFormatRGBA8:
+		case asset.TexelFormatRGBA8:
 			definition.DataFormat = graphics.DataFormatRGBA8
 			definition.InternalFormat = graphics.InternalFormatRGBA8
-		case asset.DataFormatRGBA32F:
+		case asset.TexelFormatRGBA32F:
 			definition.DataFormat = graphics.DataFormatRGBA32F
 			definition.InternalFormat = graphics.InternalFormatRGBA32F
 		default:

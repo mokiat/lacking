@@ -43,7 +43,7 @@ func (o *TwoDTextureOperator) Allocate(registry *Registry, name string) (interfa
 	defer in.Close()
 
 	texAsset := new(asset.TwoDTexture)
-	if err := asset.DecodeTwoDTexture(in, texAsset); err != nil {
+	if err := asset.Decode(in, texAsset); err != nil {
 		return nil, fmt.Errorf("failed to decode twod texture asset %q: %w", name, err)
 	}
 
