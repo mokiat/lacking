@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/mokiat/lacking/data/asset"
+	gameasset "github.com/mokiat/lacking/game/asset"
 )
 
 type Action interface {
@@ -16,18 +17,18 @@ type Described interface {
 	Describe() string
 }
 
-func newPipeline(id int, resourceLocator ResourceLocator, assetLocator AssetLocator) *Pipeline {
+func newPipeline(id int, registry gameasset.Registry, resourceLocator ResourceLocator) *Pipeline {
 	return &Pipeline{
 		id:              id,
+		registry:        registry,
 		resourceLocator: resourceLocator,
-		assetLocator:    assetLocator,
 	}
 }
 
 type Pipeline struct {
 	id              int
+	registry        gameasset.Registry
 	resourceLocator ResourceLocator
-	assetLocator    AssetLocator
 	actions         []Action
 }
 
@@ -40,20 +41,20 @@ func (p *Pipeline) OpenImageResource(uri string) *OpenImageResourceAction {
 	return action
 }
 
-func (p *Pipeline) SaveTwoDTextureAsset(uri string, image ImageProvider) *SaveTwoDTextureAssetAction {
+func (p *Pipeline) SaveTwoDTextureAsset(id string, image ImageProvider) *SaveTwoDTextureAssetAction {
 	action := &SaveTwoDTextureAssetAction{
-		locator:       p.assetLocator,
-		uri:           uri,
+		registry:      p.registry,
+		id:            id,
 		imageProvider: image,
 	}
 	p.scheduleAction(action)
 	return action
 }
 
-func (p *Pipeline) SaveCubeTextureAsset(uri string, image CubeImageProvider, opts ...SaveCubeTextureOption) *SaveCubeTextureAction {
+func (p *Pipeline) SaveCubeTextureAsset(id string, image CubeImageProvider, opts ...SaveCubeTextureOption) *SaveCubeTextureAction {
 	action := &SaveCubeTextureAction{
-		locator:       p.assetLocator,
-		uri:           uri,
+		registry:      p.registry,
+		id:            id,
 		imageProvider: image,
 		format:        asset.TexelFormatRGBA8,
 	}
@@ -112,10 +113,10 @@ func (p *Pipeline) OpenGLTFResource(uri string) *OpenGLTFResourceAction {
 	return action
 }
 
-func (p *Pipeline) SaveModelAsset(uri string, model ModelProvider) *SaveModelAssetAction {
+func (p *Pipeline) SaveModelAsset(id string, model ModelProvider) *SaveModelAssetAction {
 	action := &SaveModelAssetAction{
-		locator:       p.assetLocator,
-		uri:           uri,
+		registry:      p.registry,
+		id:            id,
 		modelProvider: model,
 	}
 	p.scheduleAction(action)
@@ -131,10 +132,10 @@ func (p *Pipeline) OpenLevelResource(uri string) *OpenLevelResourceAction {
 	return action
 }
 
-func (p *Pipeline) SaveLevelAsset(uri string, level LevelProvider) *SaveLevelAssetAction {
+func (p *Pipeline) SaveLevelAsset(id string, level LevelProvider) *SaveLevelAssetAction {
 	action := &SaveLevelAssetAction{
-		locator:       p.assetLocator,
-		uri:           uri,
+		registry:      p.registry,
+		id:            id,
 		levelProvider: level,
 	}
 	p.scheduleAction(action)

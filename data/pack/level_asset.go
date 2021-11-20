@@ -4,16 +4,17 @@ import (
 	"fmt"
 
 	"github.com/mokiat/lacking/data/asset"
+	gameasset "github.com/mokiat/lacking/game/asset"
 )
 
 type SaveLevelAssetAction struct {
-	locator       AssetLocator
-	uri           string
+	registry      gameasset.Registry
+	id            string
 	levelProvider LevelProvider
 }
 
 func (a *SaveLevelAssetAction) Describe() string {
-	return fmt.Sprintf("save_level_asset(uri: %q)", a.uri)
+	return fmt.Sprintf("save_level_asset(id: %q)", a.id)
 }
 
 func (a *SaveLevelAssetAction) Run() error {
@@ -54,14 +55,8 @@ func (a *SaveLevelAssetAction) Run() error {
 		levelAsset.StaticEntities[i] = staticEntityAsset
 	}
 
-	out, err := a.locator.Create(a.uri)
-	if err != nil {
-		return err
-	}
-	defer out.Close()
-
-	if err := asset.EncodeLevel(out, levelAsset); err != nil {
-		return fmt.Errorf("failed to encode asset: %w", err)
+	if err := a.registry.WriteContent(a.id, levelAsset); err != nil {
+		return fmt.Errorf("failed to write asset: %w", err)
 	}
 	return nil
 }

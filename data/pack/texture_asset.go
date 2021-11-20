@@ -4,16 +4,17 @@ import (
 	"fmt"
 
 	"github.com/mokiat/lacking/data/asset"
+	gameasset "github.com/mokiat/lacking/game/asset"
 )
 
 type SaveTwoDTextureAssetAction struct {
-	locator       AssetLocator
-	uri           string
+	registry      gameasset.Registry
+	id            string
 	imageProvider ImageProvider
 }
 
 func (a *SaveTwoDTextureAssetAction) Describe() string {
-	return fmt.Sprintf("save_twod_texture_asset(uri: %q)", a.uri)
+	return fmt.Sprintf("save_twod_texture_asset(id: %q)", a.id)
 }
 
 func (a *SaveTwoDTextureAssetAction) Run() error {
@@ -28,22 +29,15 @@ func (a *SaveTwoDTextureAssetAction) Run() error {
 		MinFilter: asset.FilterModeLinearMipmapLinear,
 		Data:      image.RGBA8Data(),
 	}
-
-	out, err := a.locator.Create(a.uri)
-	if err != nil {
-		return err
-	}
-	defer out.Close()
-
-	if err := asset.Encode(out, textureAsset); err != nil {
-		return fmt.Errorf("failed to encode asset: %w", err)
+	if err := a.registry.WriteContent(a.id, textureAsset); err != nil {
+		return fmt.Errorf("failed to write asset: %w", err)
 	}
 	return nil
 }
 
 type SaveCubeTextureAction struct {
-	locator       AssetLocator
-	uri           string
+	registry      gameasset.Registry
+	id            string
 	imageProvider CubeImageProvider
 	format        asset.TexelFormat
 }
@@ -57,7 +51,7 @@ func WithFormat(format asset.TexelFormat) SaveCubeTextureOption {
 }
 
 func (a *SaveCubeTextureAction) Describe() string {
-	return fmt.Sprintf("save_cube_texture(uri: %q)", a.uri)
+	return fmt.Sprintf("save_cube_texture(id: %q)", a.id)
 }
 
 func (a *SaveCubeTextureAction) Run() error {
@@ -99,14 +93,8 @@ func (a *SaveCubeTextureAction) Run() error {
 		Data: textureData(CubeSideBottom),
 	}
 
-	out, err := a.locator.Create(a.uri)
-	if err != nil {
-		return err
-	}
-	defer out.Close()
-
-	if err := asset.Encode(out, textureAsset); err != nil {
-		return fmt.Errorf("failed to encode asset: %w", err)
+	if err := a.registry.WriteContent(a.id, textureAsset); err != nil {
+		return fmt.Errorf("failed to write asset: %w", err)
 	}
 	return nil
 }

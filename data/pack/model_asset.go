@@ -5,16 +5,17 @@ import (
 
 	"github.com/mokiat/lacking/data"
 	"github.com/mokiat/lacking/data/asset"
+	gameasset "github.com/mokiat/lacking/game/asset"
 )
 
 type SaveModelAssetAction struct {
-	locator       AssetLocator
-	uri           string
+	registry      gameasset.Registry
+	id            string
 	modelProvider ModelProvider
 }
 
 func (a *SaveModelAssetAction) Describe() string {
-	return fmt.Sprintf("save_model_asset(uri: %q)", a.uri)
+	return fmt.Sprintf("save_model_asset(id: %q)", a.id)
 }
 
 func (a *SaveModelAssetAction) Run() error {
@@ -62,14 +63,8 @@ func (a *SaveModelAssetAction) Run() error {
 		visitNode(nil, node)
 	}
 
-	out, err := a.locator.Create(a.uri)
-	if err != nil {
-		return err
-	}
-	defer out.Close()
-
-	if err := asset.EncodeModel(out, modelAsset); err != nil {
-		return fmt.Errorf("failed to encode asset: %w", err)
+	if err := a.registry.WriteContent(a.id, modelAsset); err != nil {
+		return fmt.Errorf("failed to write asset: %w", err)
 	}
 	return nil
 }

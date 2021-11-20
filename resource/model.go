@@ -6,6 +6,7 @@ import (
 	"github.com/mokiat/gomath/sprec"
 	"github.com/mokiat/lacking/async"
 	"github.com/mokiat/lacking/data/asset"
+	gameasset "github.com/mokiat/lacking/game/asset"
 	"github.com/mokiat/lacking/game/graphics"
 )
 
@@ -55,34 +56,28 @@ func (n Node) FindNode(name string) (*Node, bool) {
 	return nil, false
 }
 
-func NewModelOperator(locator Locator, gfxEngine graphics.Engine, gfxWorker *async.Worker) *ModelOperator {
+func NewModelOperator(delegate gameasset.Registry, gfxEngine graphics.Engine, gfxWorker *async.Worker) *ModelOperator {
 	return &ModelOperator{
-		locator:   locator,
+		delegate:  delegate,
 		gfxEngine: gfxEngine,
 		gfxWorker: gfxWorker,
 	}
 }
 
 type ModelOperator struct {
-	locator   Locator
+	delegate  gameasset.Registry
 	gfxEngine graphics.Engine
 	gfxWorker *async.Worker
 }
 
-func (o *ModelOperator) Allocate(registry *Registry, name string) (interface{}, error) {
-	in, err := o.locator.Open("assets", "models", name)
-	if err != nil {
-		return nil, fmt.Errorf("failed to open model asset %q: %w", name, err)
-	}
-	defer in.Close()
-
+func (o *ModelOperator) Allocate(registry *Registry, id string) (interface{}, error) {
 	modelAsset := new(asset.Model)
-	if err := asset.DecodeModel(in, modelAsset); err != nil {
-		return nil, fmt.Errorf("failed to decode model asset %q: %w", name, err)
+	if err := o.delegate.ReadContent(id, modelAsset); err != nil {
+		return nil, fmt.Errorf("failed to open model asset %q: %w", id, err)
 	}
 
 	model := &Model{
-		Name: name,
+		Name: id,
 	}
 
 	meshes := make([]*Mesh, len(modelAsset.Meshes))

@@ -5,6 +5,7 @@ import (
 
 	"github.com/mokiat/lacking/async"
 	"github.com/mokiat/lacking/data/asset"
+	gameasset "github.com/mokiat/lacking/game/asset"
 	"github.com/mokiat/lacking/game/graphics"
 )
 
@@ -21,34 +22,28 @@ type TwoDTexture struct {
 	GFXTexture graphics.TwoDTexture
 }
 
-func NewTwoDTextureOperator(locator Locator, gfxEngine graphics.Engine, gfxWorker *async.Worker) *TwoDTextureOperator {
+func NewTwoDTextureOperator(delegate gameasset.Registry, gfxEngine graphics.Engine, gfxWorker *async.Worker) *TwoDTextureOperator {
 	return &TwoDTextureOperator{
-		locator:   locator,
+		delegate:  delegate,
 		gfxEngine: gfxEngine,
 		gfxWorker: gfxWorker,
 	}
 }
 
 type TwoDTextureOperator struct {
-	locator   Locator
+	delegate  gameasset.Registry
 	gfxEngine graphics.Engine
 	gfxWorker *async.Worker
 }
 
-func (o *TwoDTextureOperator) Allocate(registry *Registry, name string) (interface{}, error) {
-	in, err := o.locator.Open("assets", "textures", "twod", name)
-	if err != nil {
-		return nil, fmt.Errorf("failed to open twod texture asset %q: %w", name, err)
-	}
-	defer in.Close()
-
+func (o *TwoDTextureOperator) Allocate(registry *Registry, id string) (interface{}, error) {
 	texAsset := new(asset.TwoDTexture)
-	if err := asset.Decode(in, texAsset); err != nil {
-		return nil, fmt.Errorf("failed to decode twod texture asset %q: %w", name, err)
+	if err := o.delegate.ReadContent(id, texAsset); err != nil {
+		return nil, fmt.Errorf("failed to open twod texture asset %q: %w", id, err)
 	}
 
 	texture := &TwoDTexture{
-		Name: name,
+		Name: id,
 	}
 
 	gfxTask := o.gfxWorker.Schedule(async.VoidTask(func() error {
