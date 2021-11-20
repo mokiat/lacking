@@ -4,6 +4,7 @@ import (
 	"sync"
 
 	"github.com/mokiat/lacking/async"
+	"github.com/mokiat/lacking/game/asset"
 	"github.com/mokiat/lacking/game/graphics"
 )
 
@@ -14,12 +15,12 @@ type Operator interface {
 	Release(registry *Registry, resource interface{}) error
 }
 
-func NewRegistry(locator Locator, gfxEngine graphics.Engine, gfxWorker *async.Worker) *Registry {
+func NewRegistry(delegate asset.Registry, locator Locator, gfxEngine graphics.Engine, gfxWorker *async.Worker) *Registry {
 	registry := &Registry{
 		catalog: make(map[TypeName]*Type),
 	}
 	registry.Register(TwoDTextureTypeName, NewTwoDTextureOperator(locator, gfxEngine, gfxWorker))
-	registry.Register(CubeTextureTypeName, NewCubeTextureOperator(locator, gfxEngine, gfxWorker))
+	registry.Register(CubeTextureTypeName, NewCubeTextureOperator(delegate, gfxEngine, gfxWorker))
 	registry.Register(ModelTypeName, NewModelOperator(locator, gfxEngine, gfxWorker))
 	registry.Register(LevelTypeName, NewLevelOperator(locator, gfxEngine, gfxWorker))
 	return registry

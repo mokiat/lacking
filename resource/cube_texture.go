@@ -5,6 +5,7 @@ import (
 
 	"github.com/mokiat/lacking/async"
 	"github.com/mokiat/lacking/data/asset"
+	gameasset "github.com/mokiat/lacking/game/asset"
 	"github.com/mokiat/lacking/game/graphics"
 )
 
@@ -21,34 +22,28 @@ type CubeTexture struct {
 	GFXTexture graphics.CubeTexture
 }
 
-func NewCubeTextureOperator(locator Locator, gfxEngine graphics.Engine, gfxWorker *async.Worker) *CubeTextureOperator {
+func NewCubeTextureOperator(delegate gameasset.Registry, gfxEngine graphics.Engine, gfxWorker *async.Worker) *CubeTextureOperator {
 	return &CubeTextureOperator{
-		locator:   locator,
+		delegate:  delegate,
 		gfxEngine: gfxEngine,
 		gfxWorker: gfxWorker,
 	}
 }
 
 type CubeTextureOperator struct {
-	locator   Locator
+	delegate  gameasset.Registry
 	gfxEngine graphics.Engine
 	gfxWorker *async.Worker
 }
 
-func (o *CubeTextureOperator) Allocate(registry *Registry, name string) (interface{}, error) {
-	in, err := o.locator.Open("assets", "textures", "cube", name)
-	if err != nil {
-		return nil, fmt.Errorf("failed to open cube texture asset %q: %w", name, err)
-	}
-	defer in.Close()
-
+func (o *CubeTextureOperator) Allocate(registry *Registry, id string) (interface{}, error) {
 	texAsset := new(asset.CubeTexture)
-	if err := asset.Decode(in, texAsset); err != nil {
-		return nil, fmt.Errorf("failed to decode cube texture asset %q: %w", name, err)
+	if err := o.delegate.ReadContent(id, texAsset); err != nil {
+		return nil, fmt.Errorf("failed to open cube texture asset %q: %w", id, err)
 	}
 
 	texture := &CubeTexture{
-		Name: name,
+		Name: id,
 	}
 
 	gfxTask := o.gfxWorker.Schedule(async.VoidTask(func() error {
