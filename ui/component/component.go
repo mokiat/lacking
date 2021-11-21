@@ -24,13 +24,6 @@ func Define(fn ComponentFunc) Component {
 // ComponentFunc holds the logic and layouting of the component.
 type ComponentFunc func(props Properties) Instance
 
-type cachedState struct {
-	oldData        interface{}
-	oldLayoutData  interface{}
-	oldChildren    []Instance
-	cachedInstance Instance
-}
-
 func Controlled(delegate Component) Component {
 	type controlledState struct {
 		controller   Controller
@@ -79,63 +72,17 @@ func Controlled(delegate Component) Component {
 // if the data and layout data are equal to their previous values
 // when shallowly (==) compared.
 func ShallowCached(delegate Component) Component {
-	// FIXME: Cache grows indefinitely
-	cache := make(map[*componentNode]*cachedState)
-
+	// NOTE: ShallowCached does not work correctly when there is an
+	// intermediate container that does not take data. The only way
+	// caching can be done is if all node instances caused by a node
+	// are recorded as dependencies.
 	return Component{
 		componentType: evaluateComponentType(),
-		componentFunc: func(props Properties) Instance {
-			if state, ok := cache[renderCtx.node]; ok {
-				oldData := state.oldData
-				oldLayoutData := state.oldLayoutData
-				oldChildren := state.oldChildren
-
-				shouldCallDelegate := renderCtx.lastRender ||
-					renderCtx.forcedRender ||
-					!IsEqualData(oldData, props.data) ||
-					!isLayoutDataShallowEqual(oldLayoutData, props.layoutData) ||
-					!areChildrenEqual(oldChildren, props.children)
-				if !shouldCallDelegate {
-					return state.cachedInstance
-				}
-			}
-
-			instance := delegate.componentFunc(props)
-			cache[renderCtx.node] = &cachedState{
-				oldData:        props.data,
-				oldLayoutData:  props.layoutData,
-				oldChildren:    props.children,
-				cachedInstance: instance,
-			}
-			return instance
-		},
+		componentFunc: delegate.componentFunc,
 	}
 }
 
 func evaluateComponentType() string {
 	_, file, line, _ := runtime.Caller(2)
 	return fmt.Sprintf("%s#%d", file, line)
-}
-
-func isLayoutDataShallowEqual(oldLayoutData, newLayoutData interface{}) bool {
-	return newLayoutData == oldLayoutData
-}
-
-func areChildrenEqual(oldChildren, newChildren []Instance) bool {
-	if len(newChildren) != len(oldChildren) {
-		return false
-	}
-	for i, newChild := range newChildren {
-		oldChild := oldChildren[i]
-		if newChild.key != oldChild.key {
-			return false
-		}
-		if newChild.componentType != oldChild.componentType {
-			return false
-		}
-		if !IsEqualData(oldChild.data, newChild.data) {
-			return false
-		}
-	}
-	return true
 }
