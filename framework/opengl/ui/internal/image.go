@@ -57,3 +57,7 @@ func (i *Image) Release() {
 func (i *Image) Size() ui.Size {
 	return i.size
 }
+
+func (i *Image) Destroy() {
+	i.Release()
+}
