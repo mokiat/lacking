@@ -140,6 +140,9 @@ func (r *DirRegistry) WriteDependencies(dependencies []Dependency) error {
 func (r *DirRegistry) ReadPreview(guid string) (image.Image, error) {
 	file, err := os.Open(r.previewFile(guid))
 	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, ErrNotFound
+		}
 		return nil, fmt.Errorf("failed to open preview file: %w", err)
 	}
 	defer file.Close()
@@ -167,6 +170,9 @@ func (r *DirRegistry) WritePreview(guid string, img image.Image) error {
 func (r *DirRegistry) ReadContent(guid string, target interface{}) error {
 	file, err := os.Open(r.contentFile(guid))
 	if err != nil {
+		if os.IsNotExist(err) {
+			return ErrNotFound
+		}
 		return fmt.Errorf("failed to open content file: %w", err)
 	}
 	defer file.Close()

@@ -1,8 +1,11 @@
 package asset
 
 import (
+	"fmt"
 	"image"
 )
+
+var ErrNotFound = fmt.Errorf("not found")
 
 type Registry interface {
 	ReadResources() ([]Resource, error)
