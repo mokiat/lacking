@@ -11,6 +11,7 @@ type renderContext struct {
 	forcedRender bool
 	stateIndex   int
 	stateDepth   int
+	properties   Properties
 }
 
 func (c renderContext) isFirstRender() bool {

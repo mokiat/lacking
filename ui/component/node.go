@@ -22,11 +22,13 @@ func createComponentNode(instance Instance) *componentNode {
 		node:        result,
 		firstRender: true,
 		lastRender:  false,
+		properties:  instance.properties(),
 	}
 	for instance.element == nil {
 		instance = instance.componentFunc(instance.properties())
 		renderCtx.stateDepth++
 		renderCtx.stateIndex = 0
+		renderCtx.properties = instance.properties()
 		result.states = append(result.states, nil)
 	}
 
