@@ -70,11 +70,13 @@ func (node *componentNode) reconcile(instance Instance) {
 		firstRender:  false,
 		lastRender:   false,
 		forcedRender: node.consumeDirty(),
+		properties:   instance.properties(),
 	}
 	for instance.element == nil {
 		instance = instance.componentFunc(instance.properties())
 		renderCtx.stateDepth++
 		renderCtx.stateIndex = 0
+		renderCtx.properties = instance.properties()
 	}
 	if instance.element != node.element {
 		panic("component chain should not return a different element instance")
