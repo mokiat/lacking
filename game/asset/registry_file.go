@@ -38,10 +38,16 @@ func NewDirRegistry(dir string) (*DirRegistry, error) {
 		return nil, fmt.Errorf("failed to create content dir: %w", err)
 	}
 
+	editorDir := filepath.Join(assetsDir, "editor")
+	if err := os.MkdirAll(editorDir, 0775); err != nil {
+		return nil, fmt.Errorf("failed to create editor dir: %w", err)
+	}
+
 	return &DirRegistry{
 		dir:        assetsDir,
 		previewDir: previewDir,
 		contentDir: contentDir,
+		editorDir:  editorDir,
 	}, nil
 }
 
@@ -51,6 +57,7 @@ type DirRegistry struct {
 	dir        string
 	previewDir string
 	contentDir string
+	editorDir  string
 }
 
 func (r *DirRegistry) ReadResources() ([]Resource, error) {
@@ -196,6 +203,35 @@ func (r *DirRegistry) WriteContent(guid string, target interface{}) error {
 	return nil
 }
 
+func (r *DirRegistry) ReadEditorContent(guid string, target interface{}) error {
+	file, err := os.Open(r.editorFile(guid))
+	if err != nil {
+		if os.IsNotExist(err) {
+			return ErrNotFound
+		}
+		return fmt.Errorf("failed to open editor file: %w", err)
+	}
+	defer file.Close()
+
+	if err := asset.Decode(file, target); err != nil {
+		return fmt.Errorf("failed to decode editor file: %w", err)
+	}
+	return nil
+}
+
+func (r *DirRegistry) WriteEditorContent(guid string, target interface{}) error {
+	file, err := os.Create(r.editorFile(guid))
+	if err != nil {
+		return fmt.Errorf("failed to create editor file: %w", err)
+	}
+	defer file.Close()
+
+	if err := asset.Encode(file, target); err != nil {
+		return fmt.Errorf("failed to encode editor: %w", err)
+	}
+	return nil
+}
+
 func (r *DirRegistry) resourcesFile() string {
 	return filepath.Join(r.dir, "resources.yml")
 }
@@ -210,6 +246,10 @@ func (r *DirRegistry) previewFile(guid string) string {
 
 func (r *DirRegistry) contentFile(guid string) string {
 	return filepath.Join(r.contentDir, fmt.Sprintf("%s.dat", guid))
+}
+
+func (r *DirRegistry) editorFile(guid string) string {
+	return filepath.Join(r.editorDir, fmt.Sprintf("%s.dat", guid))
 }
 
 type resourcesDTO struct {

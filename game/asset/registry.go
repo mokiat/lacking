@@ -19,6 +19,9 @@ type Registry interface {
 
 	ReadContent(guid string, target interface{}) error
 	WriteContent(guid string, target interface{}) error
+
+	ReadEditorContent(guid string, target interface{}) error
+	WriteEditorContent(guid string, target interface{}) error
 }
 
 type Resource struct {
