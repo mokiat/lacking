@@ -497,7 +497,7 @@ func (r *Renderer) renderExposureProbePass(ctx renderCtx) {
 			if brightness < 0.001 {
 				brightness = 0.001
 			}
-			r.exposureTarget = 1.0 / (2.0 * brightness)
+			r.exposureTarget = 1.0 / (3.14 * brightness)
 			if r.exposureTarget > ctx.camera.maxExposure {
 				r.exposureTarget = ctx.camera.maxExposure
 			}
