@@ -16,11 +16,9 @@ type TwoDTextureDefinition struct {
 	WrapS Wrap
 	WrapT Wrap
 
-	MinFilter Filter
-	MagFilter Filter
-
-	UseAnisotropy   bool
-	GenerateMipmaps bool
+	MinFilter     Filter
+	MagFilter     Filter
+	UseAnisotropy bool
 
 	InternalFormat InternalFormat
 	DataFormat     DataFormat

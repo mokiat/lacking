@@ -70,8 +70,8 @@ func (a *SaveCubeTextureAction) Run() error {
 
 	textureAsset := &asset.CubeTexture{
 		Dimension: uint16(texture.Dimension),
-		MagFilter: asset.FilterModeNearest,
-		MinFilter: asset.FilterModeNearest,
+		MagFilter: asset.FilterModeLinear,
+		MinFilter: asset.FilterModeLinear,
 		Format:    a.format,
 	}
 	textureAsset.FrontSide = asset.CubeTextureSide{

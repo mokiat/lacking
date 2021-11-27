@@ -48,17 +48,16 @@ func (o *TwoDTextureOperator) Allocate(registry *Registry, id string) (interface
 
 	gfxTask := o.gfxWorker.Schedule(async.VoidTask(func() error {
 		definition := graphics.TwoDTextureDefinition{
-			Width:           int(texAsset.Width),
-			Height:          int(texAsset.Height),
-			WrapS:           graphics.WrapRepeat,
-			WrapT:           graphics.WrapRepeat,
-			MinFilter:       graphics.FilterLinearMipmapLinear,
-			MagFilter:       graphics.FilterLinear,
-			UseAnisotropy:   true,
-			GenerateMipmaps: true,
-			DataFormat:      graphics.DataFormatRGBA8,
-			InternalFormat:  graphics.InternalFormatRGBA8,
-			Data:            texAsset.Data,
+			Width:          int(texAsset.Width),
+			Height:         int(texAsset.Height),
+			WrapS:          graphics.WrapRepeat,
+			WrapT:          graphics.WrapRepeat,
+			MinFilter:      graphics.FilterLinearMipmapLinear,
+			MagFilter:      graphics.FilterLinear,
+			UseAnisotropy:  true,
+			DataFormat:     graphics.DataFormatRGBA8,
+			InternalFormat: graphics.InternalFormatRGBA8,
+			Data:           texAsset.Data,
 		}
 		texture.GFXTexture = o.gfxEngine.CreateTwoDTexture(definition)
 		return nil

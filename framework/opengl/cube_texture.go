@@ -43,6 +43,9 @@ func (t *CubeTexture) Allocate(info CubeTextureAllocateInfo) {
 	runtime.KeepAlive(info.FrontSideData)
 	gl.TextureSubImage3D(t.id, 0, 0, 0, 5, info.Dimension, info.Dimension, 1, info.dataFormat(), info.dataComponentType(), gl.Ptr(info.BackSideData))
 	runtime.KeepAlive(info.BackSideData)
+	if info.GenerateMipmaps {
+		gl.GenerateTextureMipmap(t.id)
+	}
 }
 
 func (t *CubeTexture) Release() {
@@ -59,6 +62,7 @@ type CubeTextureAllocateInfo struct {
 	WrapT             int32
 	MinFilter         int32
 	MagFilter         int32
+	GenerateMipmaps   bool
 	InternalFormat    uint32
 	DataFormat        uint32
 	DataComponentType uint32

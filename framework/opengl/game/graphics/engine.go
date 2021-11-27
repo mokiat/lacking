@@ -40,7 +40,7 @@ func (e *Engine) CreateTwoDTexture(definition graphics.TwoDTextureDefinition) gr
 		MinFilter:         e.convertMinFilter(definition.MinFilter),
 		MagFilter:         e.convertMagFilter(definition.MagFilter),
 		UseAnisotropy:     definition.UseAnisotropy,
-		GenerateMipmaps:   definition.GenerateMipmaps,
+		GenerateMipmaps:   e.needsMipmaps(definition.MinFilter),
 		DataFormat:        e.convertDataFormat(definition.DataFormat),
 		DataComponentType: e.convertDataComponentType(definition.DataFormat),
 		InternalFormat:    e.convertInternalFormat(definition.InternalFormat),
@@ -58,6 +58,7 @@ func (e *Engine) CreateCubeTexture(definition graphics.CubeTextureDefinition) gr
 		WrapT:             gl.CLAMP_TO_EDGE, // pointless
 		MinFilter:         e.convertMinFilter(definition.MinFilter),
 		MagFilter:         e.convertMagFilter(definition.MagFilter),
+		GenerateMipmaps:   e.needsMipmaps(definition.MinFilter),
 		DataFormat:        e.convertDataFormat(definition.DataFormat),
 		DataComponentType: e.convertDataComponentType(definition.DataFormat),
 		InternalFormat:    e.convertInternalFormat(definition.InternalFormat),
@@ -208,6 +209,21 @@ func (e *Engine) convertWrap(wrap graphics.Wrap) int32 {
 		return gl.REPEAT
 	default:
 		panic(fmt.Errorf("unknown wrap mode: %d", wrap))
+	}
+}
+
+func (e *Engine) needsMipmaps(filter graphics.Filter) bool {
+	switch filter {
+	case graphics.FilterNearestMipmapNearest:
+		fallthrough
+	case graphics.FilterNearestMipmapLinear:
+		fallthrough
+	case graphics.FilterLinearMipmapNearest:
+		fallthrough
+	case graphics.FilterLinearMipmapLinear:
+		return true
+	default:
+		return false
 	}
 }
 
