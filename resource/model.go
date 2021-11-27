@@ -104,7 +104,11 @@ func (o *ModelOperator) Allocate(registry *Registry, id string) (interface{}, er
 		}
 		nodes[i].Name = nodeAsset.Name
 		nodes[i].Matrix = sprec.ColumnMajorArrayMat4(nodeAsset.Matrix)
-		nodes[i].Mesh = meshes[nodeAsset.MeshIndex]
+		if nodeAsset.MeshIndex >= 0 {
+			nodes[i].Mesh = meshes[nodeAsset.MeshIndex]
+		} else {
+			nodes[i].Mesh = nil
+		}
 	}
 	model.Nodes = rootNodes
 
