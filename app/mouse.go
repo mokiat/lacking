@@ -25,6 +25,12 @@ type MouseEvent struct {
 	// applicable.
 	Button MouseButton
 
+	// ScrollX determines the amount of horizontal scroll.
+	ScrollX float64
+
+	// ScrollY determines the amount of vertical scroll.
+	ScrollY float64
+
 	// Payload contains the data that was dropped in case of
 	// a MouseEventTypeDrop event.
 	Payload interface{}
@@ -79,6 +85,11 @@ const (
 	// If the mouse was being dragged, the control may
 	// receive further events.
 	MouseEventTypeLeave
+
+	// MouseEventTypeScroll indicates that the mouse wheel
+	// was scrolled. The X and Y values of the event indicate the
+	// offset.
+	MouseEventTypeScroll
 )
 
 // MouseEventType represents the type of mouse event.

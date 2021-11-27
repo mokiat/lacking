@@ -60,6 +60,8 @@ func (c *controller) OnMouseEvent(window app.Window, event app.MouseEvent) bool 
 		Type:     event.Type,
 		Button:   event.Button,
 		Payload:  event.Payload,
+		ScrollX:  event.ScrollX,
+		ScrollY:  event.ScrollY,
 	})
 }
 

@@ -26,6 +26,12 @@ type MouseEvent struct {
 	// applicable.
 	Button MouseButton
 
+	// ScrollX determines the amount of horizontal scroll.
+	ScrollX float64
+
+	// ScrollY determines the amount of vertical scroll.
+	ScrollY float64
+
 	// Payload contains the data that was dropped.
 	Payload interface{}
 }
@@ -52,6 +58,7 @@ const (
 	MouseEventTypeDrop       = app.MouseEventTypeDrop
 	MouseEventTypeEnter      = app.MouseEventTypeEnter
 	MouseEventTypeLeave      = app.MouseEventTypeLeave
+	MouseEventTypeScroll     = app.MouseEventTypeScroll
 )
 
 // MouseButton represents the mouse button.

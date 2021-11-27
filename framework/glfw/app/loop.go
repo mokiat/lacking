@@ -59,6 +59,7 @@ func (l *loop) Run() error {
 	l.window.SetCursorPosCallback(l.onGLFWCursorPos)
 	l.window.SetCursorEnterCallback(l.onGLFWCursorEnter)
 	l.window.SetMouseButtonCallback(l.onGLFWMouseButton)
+	l.window.SetScrollCallback(l.onGLFWScroll)
 	l.window.SetDropCallback(l.onGLFWMouseDrop)
 
 	for !l.shouldStop {
@@ -336,6 +337,18 @@ func (l *loop) onGLFWMouseButton(w *glfw.Window, button glfw.MouseButton, action
 		Y:      int(ypos),
 		Type:   eventType,
 		Button: eventButton,
+	})
+}
+
+func (l *loop) onGLFWScroll(w *glfw.Window, xoff float64, yoff float64) {
+	xpos, ypos := l.window.GetCursorPos()
+	l.controller.OnMouseEvent(l, app.MouseEvent{
+		Index:   0,
+		X:       int(xpos),
+		Y:       int(ypos),
+		Type:    app.MouseEventTypeScroll,
+		ScrollX: xoff,
+		ScrollY: yoff,
 	})
 }
 
