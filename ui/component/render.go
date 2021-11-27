@@ -58,11 +58,8 @@ func Defer(fn func()) {
 // The framework ensures that the closure will not be called if the
 // component had been destroyed in the meantime.
 func Schedule(fn func()) {
-	node := renderCtx.node
 	uiCtx.Schedule(func() {
-		if node.isValid() {
-			fn()
-		}
+		fn()
 	})
 }
 
