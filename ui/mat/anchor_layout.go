@@ -23,7 +23,9 @@ func (l *AnchorLayout) Apply(element *ui.Element) {
 
 	for childElement := element.FirstChild(); childElement != nil; childElement = childElement.RightSibling() {
 		layoutConfig := childElement.LayoutConfig().(LayoutData)
-		childBounds := ui.Bounds{}
+		childBounds := ui.Bounds{
+			Size: element.IdealSize(),
+		}
 
 		// horizontal
 		if layoutConfig.Width.Specified {
@@ -58,6 +60,9 @@ func (l *AnchorLayout) Apply(element *ui.Element) {
 				childBounds.Width = l.rightPosition(element, layoutConfig.Right.Value) - childBounds.X
 			}
 		}
+		if layoutConfig.HorizontalCenter.Specified {
+			childBounds.X = l.horizontalCenterPosition(element, layoutConfig.HorizontalCenter.Value) - childBounds.Width/2
+		}
 
 		if layoutConfig.Top.Specified {
 			childBounds.Y = l.topPosition(element, layoutConfig.Top.Value)
@@ -66,9 +71,46 @@ func (l *AnchorLayout) Apply(element *ui.Element) {
 				childBounds.Height = l.bottomPosition(element, layoutConfig.Bottom.Value) - childBounds.Y
 			}
 		}
+		if layoutConfig.VerticalCenter.Specified {
+			childBounds.Y = l.verticalCenterPosition(element, layoutConfig.VerticalCenter.Value) - childBounds.Height/2
+		}
 
 		childElement.SetBounds(childBounds)
 	}
+
+	element.SetIdealSize(l.calculateIdealSize(element))
+}
+
+func (l *AnchorLayout) calculateIdealSize(element *ui.Element) ui.Size {
+	result := ui.NewSize(0, 0)
+	for childElement := element.FirstChild(); childElement != nil; childElement = childElement.RightSibling() {
+		layoutConfig := ElementLayoutData(childElement)
+
+		childSize := childElement.IdealSize()
+		if layoutConfig.Width.Specified {
+			childSize.Width = layoutConfig.Width.Value
+		}
+		if layoutConfig.Height.Specified {
+			childSize.Height = layoutConfig.Height.Value
+		}
+		if layoutConfig.Left.Specified {
+			childSize.Width += layoutConfig.Left.Value
+		}
+		if layoutConfig.Right.Specified {
+			childSize.Width += layoutConfig.Right.Value
+		}
+		if layoutConfig.Top.Specified {
+			childSize.Height += layoutConfig.Top.Value
+		}
+		if layoutConfig.Bottom.Specified {
+			childSize.Height += layoutConfig.Bottom.Value
+		}
+		result.Width = maxInt(result.Width, childSize.Width)
+		result.Height = maxInt(result.Height, childSize.Height)
+	}
+	result.Width += element.Padding().Horizontal()
+	result.Height += element.Padding().Vertical()
+	return result
 }
 
 func (l *AnchorLayout) leftPosition(element *ui.Element, value int) int {
