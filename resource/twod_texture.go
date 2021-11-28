@@ -50,8 +50,8 @@ func (o *TwoDTextureOperator) Allocate(registry *Registry, id string) (interface
 		definition := graphics.TwoDTextureDefinition{
 			Width:          int(texAsset.Width),
 			Height:         int(texAsset.Height),
-			WrapS:          graphics.WrapRepeat,
-			WrapT:          graphics.WrapRepeat,
+			WrapS:          convertWrapMode(texAsset.WrapModeS),
+			WrapT:          convertWrapMode(texAsset.WrapModeT),
 			MinFilter:      graphics.FilterLinearMipmapLinear,
 			MagFilter:      graphics.FilterLinear,
 			UseAnisotropy:  true,
@@ -81,19 +81,19 @@ func (o *TwoDTextureOperator) Release(registry *Registry, resource interface{}) 
 	return nil
 }
 
-// func convertWrapMode(wrap asset.WrapMode) graphics.Wrap {
-// 	switch wrap {
-// 	case asset.WrapModeDefault:
-// 		return graphics.WrapClampToEdge
-// 	case asset.WrapModeRepeat:
-// 		return graphics.WrapRepeat
-// 	case asset.WrapModeMirroredRepeat:
-// 		return graphics.WrapRepeat // FIXME
-// 	case asset.WrapModeClampToEdge:
-// 		return graphics.WrapClampToEdge
-// 	case asset.WrapModeMirroredClampToEdge:
-// 		return graphics.WrapClampToEdge // FIXME
-// 	default:
-// 		panic(fmt.Errorf("unknown wrap mode: %v", wrap))
-// 	}
-// }
+func convertWrapMode(wrap asset.WrapMode) graphics.Wrap {
+	switch wrap {
+	case asset.WrapModeDefault:
+		return graphics.WrapClampToEdge
+	case asset.WrapModeRepeat:
+		return graphics.WrapRepeat
+	case asset.WrapModeMirroredRepeat:
+		return graphics.WrapMirroredRepat
+	case asset.WrapModeClampToEdge:
+		return graphics.WrapClampToEdge
+	case asset.WrapModeMirroredClampToEdge:
+		return graphics.WrapMirroredClampToEdge
+	default:
+		panic(fmt.Errorf("unknown wrap mode: %v", wrap))
+	}
+}
