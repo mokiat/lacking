@@ -54,7 +54,9 @@ type CubeTextureDefinition struct {
 
 const (
 	WrapClampToEdge Wrap = 1 + iota
+	WrapMirroredClampToEdge
 	WrapRepeat
+	WrapMirroredRepat
 )
 
 type Wrap int

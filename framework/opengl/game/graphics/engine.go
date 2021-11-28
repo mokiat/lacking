@@ -205,8 +205,12 @@ func (e *Engine) convertWrap(wrap graphics.Wrap) int32 {
 	switch wrap {
 	case graphics.WrapClampToEdge:
 		return gl.CLAMP_TO_EDGE
+	case graphics.WrapMirroredClampToEdge:
+		return gl.MIRROR_CLAMP_TO_EDGE
 	case graphics.WrapRepeat:
 		return gl.REPEAT
+	case graphics.WrapMirroredRepat:
+		return gl.MIRRORED_REPEAT
 	default:
 		panic(fmt.Errorf("unknown wrap mode: %d", wrap))
 	}
