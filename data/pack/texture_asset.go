@@ -27,6 +27,7 @@ func (a *SaveTwoDTextureAssetAction) Run() error {
 		WrapModeT: asset.WrapModeRepeat,
 		MagFilter: asset.FilterModeLinear,
 		MinFilter: asset.FilterModeLinearMipmapLinear,
+		Format:    asset.TexelFormatRGBA8,
 		Data:      image.RGBA8Data(),
 	}
 	if err := a.registry.WriteContent(a.id, textureAsset); err != nil {
