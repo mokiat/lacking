@@ -27,10 +27,4 @@ func (m *Material) Delete() {
 	if m.shadowPresentation != nil {
 		m.shadowPresentation.Delete()
 	}
-	for _, texture := range m.twoDTextures {
-		texture.Release()
-	}
-	for _, texture := range m.cubeTextures {
-		texture.Release()
-	}
 }
