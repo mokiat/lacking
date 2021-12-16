@@ -92,7 +92,13 @@ func (c *Canvas) Translate(delta ui.Position) {
 }
 
 func (c *Canvas) Clip(bounds ui.Bounds) {
-	c.currentLayer.ClipBounds = bounds.Translate(c.currentLayer.Translation)
+	if previousLayer := c.currentLayer.previous; previousLayer != nil {
+		previousClipBounds := previousLayer.ClipBounds
+		newClipBounds := bounds.Translate(c.currentLayer.Translation)
+		c.currentLayer.ClipBounds = previousClipBounds.Intersect(newClipBounds)
+	} else {
+		c.currentLayer.ClipBounds = bounds.Translate(c.currentLayer.Translation)
+	}
 }
 
 func (c *Canvas) Shape() ui.Shape {

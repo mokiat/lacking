@@ -153,6 +153,10 @@ func (w *windowHandler) OnMouseEvent(event MouseEvent) bool {
 
 func (w *windowHandler) OnRender() {
 	w.graphics.Begin()
+	w.graphics.Canvas().Clip(Bounds{
+		Position: NewPosition(0, 0),
+		Size:     w.size,
+	})
 	w.renderElement(w.root, w.graphics.Canvas(), Bounds{
 		Position: NewPosition(0, 0),
 		Size:     w.size,
