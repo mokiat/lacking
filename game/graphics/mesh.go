@@ -61,6 +61,7 @@ type VertexFormat struct {
 
 const (
 	IndexFormatU16 IndexFormat = 1 + iota
+	IndexFormatU32
 )
 
 type IndexFormat int

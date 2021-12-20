@@ -337,7 +337,7 @@ func (r *Renderer) renderMesh(ctx renderCtx, modelMatrix [16]float32, template *
 		}
 
 		gl.BindVertexArray(template.vertexArray.ID())
-		gl.DrawElements(subMesh.primitive, subMesh.indexCount, gl.UNSIGNED_SHORT, gl.PtrOffset(subMesh.indexOffsetBytes))
+		gl.DrawElements(subMesh.primitive, subMesh.indexCount, subMesh.indexType, gl.PtrOffset(subMesh.indexOffsetBytes))
 	}
 }
 

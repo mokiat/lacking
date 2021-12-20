@@ -164,6 +164,7 @@ func (e *Engine) CreateMeshTemplate(definition graphics.MeshTemplateDefinition) 
 			primitive:        e.convertPrimitive(subMesh.Primitive),
 			indexCount:       int32(subMesh.IndexCount),
 			indexOffsetBytes: subMesh.IndexOffset,
+			indexType:        e.convertIndexType(definition.IndexFormat),
 		}
 	}
 	return result
@@ -312,5 +313,16 @@ func (e *Engine) convertPrimitive(primitive graphics.Primitive) uint32 {
 		return gl.TRIANGLE_FAN
 	default:
 		panic(fmt.Errorf("unknown primitive: %d", primitive))
+	}
+}
+
+func (e *Engine) convertIndexType(indexFormat graphics.IndexFormat) uint32 {
+	switch indexFormat {
+	case graphics.IndexFormatU16:
+		return gl.UNSIGNED_SHORT
+	case graphics.IndexFormatU32:
+		return gl.UNSIGNED_INT
+	default:
+		panic(fmt.Errorf("unknown index format: %d", indexFormat))
 	}
 }

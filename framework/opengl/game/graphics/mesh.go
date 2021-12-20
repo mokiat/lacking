@@ -13,6 +13,7 @@ type SubMeshTemplate struct {
 	primitive        uint32
 	indexCount       int32
 	indexOffsetBytes int
+	indexType        uint32
 }
 
 type MeshTemplate struct {

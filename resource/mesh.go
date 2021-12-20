@@ -130,7 +130,7 @@ func AllocateMesh(registry *Registry, name string, gfxWorker *async.Worker, gfxE
 				ColorStrideBytes:    int(meshAsset.VertexLayout.ColorStride),
 			},
 			IndexData:   meshAsset.IndexData,
-			IndexFormat: graphics.IndexFormatU16,
+			IndexFormat: graphics.IndexFormatU32,
 			SubMeshes:   subMeshDefinitions,
 		}
 		mesh.GFXMeshTemplate = gfxEngine.CreateMeshTemplate(definition)

@@ -147,9 +147,9 @@ func meshToAssetMesh(mesh *Mesh) asset.Mesh {
 		}
 	}
 
-	indexData := data.Buffer(make([]byte, mesh.IndexCount*2))
+	indexData := data.Buffer(make([]byte, mesh.IndexCount*4))
 	for j, index := range mesh.Indices {
-		indexData.SetUInt16(j*2, uint16(index))
+		indexData.SetUInt32(j*4, uint32(index))
 	}
 
 	meshAsset := asset.Mesh{
@@ -173,7 +173,7 @@ func meshToAssetMesh(mesh *Mesh) asset.Mesh {
 	for j, subMesh := range mesh.SubMeshes {
 		subMeshAsset := asset.SubMesh{
 			IndexCount:  uint32(subMesh.IndexCount),
-			IndexOffset: uint32(subMesh.IndexOffset * 2),
+			IndexOffset: uint32(subMesh.IndexOffset * 4),
 			Material: asset.Material{
 				Type:             subMesh.Material.Type,
 				BackfaceCulling:  subMesh.Material.BackfaceCulling,

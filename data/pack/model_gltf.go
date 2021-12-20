@@ -284,6 +284,8 @@ func (p GLTFPrimitive) FindIndex(index int) int {
 	switch accessor.ComponentType {
 	case gltf.ComponentTypeUnsignedShort:
 		return int(buffer.UInt16(2 * index))
+	case gltf.ComponentTypeUnsignedInt:
+		return int(buffer.UInt32(4 * index))
 	default:
 		panic(fmt.Errorf("unsupported index component type %d", accessor.ComponentType))
 	}
