@@ -170,10 +170,39 @@ func (a *OpenGLTFResourceAction) Run() error {
 	visitNode = func(gltfNode gltf.Node) *Node {
 		node := &Node{
 			Name:        gltfNode.Name,
-			Translation: sprec.ZeroVec3(),             // TODO
-			Rotation:    sprec.IdentityQuat(),         // TODO
-			Scale:       sprec.NewVec3(1.0, 1.0, 1.0), // TODO
+			Translation: sprec.ZeroVec3(),
+			Rotation:    sprec.IdentityQuat(),
+			Scale:       sprec.NewVec3(1.0, 1.0, 1.0),
 		}
+		if gltfNode.Translation != nil {
+			node.Translation = sprec.NewVec3(
+				gltfNode.Translation[0],
+				gltfNode.Translation[1],
+				gltfNode.Translation[2],
+			)
+		}
+		if gltfNode.Rotation != nil {
+			node.Rotation = sprec.NewQuat(
+				gltfNode.Rotation[3],
+				gltfNode.Rotation[0],
+				gltfNode.Rotation[1],
+				gltfNode.Rotation[2],
+			)
+		}
+		if gltfNode.Scale != nil {
+			node.Scale = sprec.NewVec3(
+				gltfNode.Scale[0],
+				gltfNode.Scale[1],
+				gltfNode.Scale[2],
+			)
+		}
+		if gltfNode.Matrix != nil {
+			matrix := sprec.ColumnMajorArrayMat4(*gltfNode.Matrix)
+			node.Translation = matrix.Translation()
+			node.Scale = matrixToScale(matrix)
+			node.Rotation = matrixToQuat(matrix)
+		}
+
 		if gltfNode.Mesh != nil {
 			node.Mesh = meshMapping[*gltfNode.Mesh]
 		}
@@ -187,6 +216,55 @@ func (a *OpenGLTFResourceAction) Run() error {
 	}
 
 	return nil
+}
+
+// TODO: Move to math
+func matrixToScale(mat sprec.Mat4) sprec.Vec3 {
+	return sprec.NewVec3(
+		mat.OrientationX().Length(),
+		mat.OrientationY().Length(),
+		mat.OrientationZ().Length(),
+	)
+}
+
+// TODO: Move to gomath library.
+// This is calculated by inversing the formulas for
+// quat.OrientationX, quat.OrientationY and quat.OrientationZ.
+func matrixToQuat(matrix sprec.Mat4) sprec.Quat {
+	sqrX := (1.0 + matrix.M11 - matrix.M22 - matrix.M33) / 4.0
+	sqrY := (1.0 - matrix.M11 + matrix.M22 - matrix.M33) / 4.0
+	sqrZ := (1.0 - matrix.M11 - matrix.M22 + matrix.M33) / 4.0
+
+	var x, y, z, w float32
+	if sqrZ > sqrX && sqrZ > sqrY {
+		// Z is largest
+		if sprec.Abs(sqrZ) < 0.0000001 {
+			return sprec.IdentityQuat()
+		}
+		z = sprec.Sqrt(sqrZ)
+		x = (matrix.M31 + matrix.M13) / (4 * z)
+		y = (matrix.M32 + matrix.M23) / (4 * z)
+		w = (matrix.M21 - matrix.M12) / (4 * z)
+	} else if sqrY > sqrX {
+		// Y is largest
+		if sprec.Abs(sqrY) < 0.0000001 {
+			return sprec.IdentityQuat()
+		}
+		y = sprec.Sqrt(sqrY)
+		x = (matrix.M21 + matrix.M12) / (4 * y)
+		z = (matrix.M32 + matrix.M23) / (4 * y)
+		w = (matrix.M13 - matrix.M31) / (4 * y)
+	} else {
+		// X is largest
+		if sprec.Abs(sqrX) < 0.0000001 {
+			return sprec.IdentityQuat()
+		}
+		x = sprec.Sqrt(sqrX)
+		y = (matrix.M21 + matrix.M12) / (4 * x)
+		z = (matrix.M31 + matrix.M13) / (4 * x)
+		w = (matrix.M32 - matrix.M23) / (4 * x)
+	}
+	return sprec.UnitQuat(sprec.NewQuat(w, x, y, z))
 }
 
 type gltfLocator struct {
