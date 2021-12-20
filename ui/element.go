@@ -13,6 +13,13 @@ type ElementResizeHandler interface {
 	OnResize(element *Element, bounds Bounds)
 }
 
+// ElementKeyboardHandler is a type of EventHandler that can be
+// used to receive events when an element is focused and keyboard
+// actions are performed.
+type ElementKeyboardHandler interface {
+	OnKeyboardEvent(element *Element, event KeyboardEvent) bool
+}
+
 // ElementMouseHandler is a type of ElementHandler that can be
 // used to receive events when the mouse has interacted with
 // a given Element.
@@ -29,9 +36,10 @@ type ElementRenderHandler interface {
 
 func newElement(context *Context) *Element {
 	return &Element{
-		context: context,
-		enabled: true,
-		visible: true,
+		context:   context,
+		enabled:   true,
+		visible:   true,
+		focusable: false,
 	}
 }
 
@@ -50,8 +58,9 @@ type Element struct {
 	context *Context
 	essence Essence
 
-	enabled bool
-	visible bool
+	enabled   bool
+	visible   bool
+	focusable bool
 
 	padding      Spacing
 	bounds       Bounds
@@ -396,6 +405,20 @@ func (e *Element) SetVisible(visible bool) {
 	}
 }
 
+// Focusable returns whether this Element can receive keyboard
+// events. When an element if focusable and a mouse down event
+// is received, it becomes the focused element and will begin
+// to receive keyboard events.
+func (e *Element) Focusable() bool {
+	return e.focusable
+}
+
+// SetFocusable controls whether this Element should receive
+// keyboard events.
+func (e *Element) SetFocusable(focusable bool) {
+	e.focusable = focusable
+}
+
 // Destroy removes this Element from the hierarchy, as well
 // as any child Elements and releases all allocated resources.
 func (e *Element) Destroy() {
@@ -414,6 +437,13 @@ func (e *Element) onBoundsChanged(bounds Bounds) {
 		resizeHandler.OnResize(e, e.Bounds())
 	}
 	e.invalidate()
+}
+
+func (e *Element) onKeyboardEvent(event KeyboardEvent) bool {
+	if keyboardHandler, ok := e.essence.(ElementKeyboardHandler); ok {
+		return keyboardHandler.OnKeyboardEvent(e, event)
+	}
+	return false
 }
 
 func (e *Element) onMouseEvent(event MouseEvent) bool {
