@@ -16,12 +16,11 @@ type Registry interface {
 
 	ReadPreview(guid string) (image.Image, error)
 	WritePreview(guid string, img image.Image) error
+	DeletePreview(guid string) error
 
 	ReadContent(guid string, target interface{}) error
 	WriteContent(guid string, target interface{}) error
-
-	ReadEditorContent(guid string, target interface{}) error
-	WriteEditorContent(guid string, target interface{}) error
+	DeleteContent(guid string) error
 }
 
 type Resource struct {
