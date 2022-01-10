@@ -20,14 +20,14 @@ func (a *SaveTwoDTextureAssetAction) Describe() string {
 func (a *SaveTwoDTextureAssetAction) Run() error {
 	image := a.imageProvider.Image()
 
-	textureAsset := &asset.TwoDTexture{
+	textureAsset := &gameasset.TwoDTexture{
 		Width:     uint16(image.Width),
 		Height:    uint16(image.Height),
-		WrapModeS: asset.WrapModeRepeat,
-		WrapModeT: asset.WrapModeRepeat,
-		MagFilter: asset.FilterModeLinear,
-		MinFilter: asset.FilterModeLinearMipmapLinear,
-		Format:    asset.TexelFormatRGBA8,
+		WrapModeS: gameasset.WrapModeRepeat,
+		WrapModeT: gameasset.WrapModeRepeat,
+		MagFilter: gameasset.FilterModeLinear,
+		MinFilter: gameasset.FilterModeLinearMipmapLinear,
+		Format:    gameasset.TexelFormatRGBA8,
 		Data:      image.RGBA8Data(),
 	}
 	if err := a.registry.WriteContent(a.id, textureAsset); err != nil {
@@ -69,28 +69,28 @@ func (a *SaveCubeTextureAction) Run() error {
 		}
 	}
 
-	textureAsset := &asset.CubeTexture{
+	textureAsset := &gameasset.CubeTexture{
 		Dimension: uint16(texture.Dimension),
-		MagFilter: asset.FilterModeLinear,
-		MinFilter: asset.FilterModeLinear,
-		Format:    a.format,
+		MagFilter: gameasset.FilterModeLinear,
+		MinFilter: gameasset.FilterModeLinear,
+		Format:    gameasset.TexelFormat(a.format),
 	}
-	textureAsset.FrontSide = asset.CubeTextureSide{
+	textureAsset.FrontSide = gameasset.CubeTextureSide{
 		Data: textureData(CubeSideFront),
 	}
-	textureAsset.BackSide = asset.CubeTextureSide{
+	textureAsset.BackSide = gameasset.CubeTextureSide{
 		Data: textureData(CubeSideRear),
 	}
-	textureAsset.LeftSide = asset.CubeTextureSide{
+	textureAsset.LeftSide = gameasset.CubeTextureSide{
 		Data: textureData(CubeSideLeft),
 	}
-	textureAsset.RightSide = asset.CubeTextureSide{
+	textureAsset.RightSide = gameasset.CubeTextureSide{
 		Data: textureData(CubeSideRight),
 	}
-	textureAsset.TopSide = asset.CubeTextureSide{
+	textureAsset.TopSide = gameasset.CubeTextureSide{
 		Data: textureData(CubeSideTop),
 	}
-	textureAsset.BottomSide = asset.CubeTextureSide{
+	textureAsset.BottomSide = gameasset.CubeTextureSide{
 		Data: textureData(CubeSideBottom),
 	}
 
@@ -98,4 +98,18 @@ func (a *SaveCubeTextureAction) Run() error {
 		return fmt.Errorf("failed to write asset: %w", err)
 	}
 	return nil
+}
+
+func BuildTwoDTextureAsset(image *Image) *asset.TwoDTexture {
+	textureAsset := &asset.TwoDTexture{
+		Width:     uint16(image.Width),
+		Height:    uint16(image.Height),
+		WrapModeS: asset.WrapModeRepeat,
+		WrapModeT: asset.WrapModeRepeat,
+		MagFilter: asset.FilterModeLinear,
+		MinFilter: asset.FilterModeLinearMipmapLinear,
+		Format:    asset.TexelFormatRGBA8,
+		Data:      image.RGBA8Data(),
+	}
+	return textureAsset
 }

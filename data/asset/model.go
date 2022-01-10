@@ -7,6 +7,14 @@ type Model struct {
 	Nodes  []Node
 }
 
+func (m *Model) EncodeTo(out io.Writer) error {
+	return Encode(out, m)
+}
+
+func (m *Model) DecodeFrom(in io.Reader) error {
+	return Decode(in, m)
+}
+
 type Node struct {
 	ParentIndex int16
 	Name        string

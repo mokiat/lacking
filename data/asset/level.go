@@ -11,6 +11,14 @@ type Level struct {
 	CollisionMeshes          []LevelCollisionMesh
 }
 
+func (l *Level) EncodeTo(out io.Writer) error {
+	return Encode(out, l)
+}
+
+func (l *Level) DecodeFrom(in io.Reader) error {
+	return Decode(in, l)
+}
+
 type LevelEntity struct {
 	Model  string
 	Matrix [16]float32

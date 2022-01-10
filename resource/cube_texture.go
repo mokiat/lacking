@@ -4,8 +4,7 @@ import (
 	"fmt"
 
 	"github.com/mokiat/lacking/async"
-	"github.com/mokiat/lacking/data/asset"
-	gameasset "github.com/mokiat/lacking/game/asset"
+	"github.com/mokiat/lacking/game/asset"
 	"github.com/mokiat/lacking/game/graphics"
 )
 
@@ -22,7 +21,7 @@ type CubeTexture struct {
 	GFXTexture graphics.CubeTexture
 }
 
-func NewCubeTextureOperator(delegate gameasset.Registry, gfxEngine graphics.Engine, gfxWorker *async.Worker) *CubeTextureOperator {
+func NewCubeTextureOperator(delegate asset.Registry, gfxEngine graphics.Engine, gfxWorker *async.Worker) *CubeTextureOperator {
 	return &CubeTextureOperator{
 		delegate:  delegate,
 		gfxEngine: gfxEngine,
@@ -31,7 +30,7 @@ func NewCubeTextureOperator(delegate gameasset.Registry, gfxEngine graphics.Engi
 }
 
 type CubeTextureOperator struct {
-	delegate  gameasset.Registry
+	delegate  asset.Registry
 	gfxEngine graphics.Engine
 	gfxWorker *async.Worker
 }
@@ -84,7 +83,7 @@ func (o *CubeTextureOperator) Release(registry *Registry, resource interface{}) 
 
 func resolveFilter(filter asset.FilterMode) graphics.Filter {
 	switch filter {
-	case asset.FilterModeDefault:
+	case asset.FilterModeUnspecified:
 		return graphics.FilterLinear
 	case asset.FilterModeNearest:
 		return graphics.FilterNearest

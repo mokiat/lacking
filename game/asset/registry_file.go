@@ -10,10 +10,12 @@ import (
 	"path/filepath"
 
 	"gopkg.in/yaml.v2"
-
-	"github.com/mokiat/lacking/data/asset"
 )
 
+// NewDirRegistry creates a Registry implementation that stores content
+// on the filesystem. The provided dir parameter needs to point to the
+// project root. A special assets directory will be created inside if one
+// is not available already.
 func NewDirRegistry(dir string) (*DirRegistry, error) {
 	dirFile, err := os.Stat(dir)
 	if err != nil {
@@ -47,6 +49,8 @@ func NewDirRegistry(dir string) (*DirRegistry, error) {
 
 var _ Registry = (*DirRegistry)(nil)
 
+// DirRegistry is an implementation of Registry that stores content
+// on the local filesystem.
 type DirRegistry struct {
 	dir        string
 	previewDir string
@@ -174,7 +178,7 @@ func (r *DirRegistry) DeletePreview(guid string) error {
 	return nil
 }
 
-func (r *DirRegistry) ReadContent(guid string, target interface{}) error {
+func (r *DirRegistry) ReadContent(guid string, target Decodable) error {
 	file, err := os.Open(r.contentFile(guid))
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -184,20 +188,20 @@ func (r *DirRegistry) ReadContent(guid string, target interface{}) error {
 	}
 	defer file.Close()
 
-	if err := asset.Decode(file, target); err != nil {
+	if err := target.DecodeFrom(file); err != nil {
 		return fmt.Errorf("failed to decode content file: %w", err)
 	}
 	return nil
 }
 
-func (r *DirRegistry) WriteContent(guid string, target interface{}) error {
+func (r *DirRegistry) WriteContent(guid string, target Encodable) error {
 	file, err := os.Create(r.contentFile(guid))
 	if err != nil {
 		return fmt.Errorf("failed to create content file: %w", err)
 	}
 	defer file.Close()
 
-	if err := asset.Encode(file, target); err != nil {
+	if err := target.EncodeTo(file); err != nil {
 		return fmt.Errorf("failed to encode content: %w", err)
 	}
 	return nil

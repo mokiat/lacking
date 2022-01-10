@@ -119,6 +119,22 @@ func (i *Image) RGBA8Data() []byte {
 	return data
 }
 
+func (i *Image) RGBA32FData() []byte {
+	data := data.Buffer(make([]byte, 4*4*i.Width*i.Height))
+	offset := 0
+	for y := 0; y < i.Height; y++ {
+		for x := 0; x < i.Width; x++ {
+			texel := i.Texel(x, i.Height-y-1)
+			data.SetFloat32(offset+0, float32(texel.R))
+			data.SetFloat32(offset+4, float32(texel.G))
+			data.SetFloat32(offset+8, float32(texel.B))
+			data.SetFloat32(offset+12, float32(texel.A))
+			offset += 16
+		}
+	}
+	return data
+}
+
 type CubeSide int
 
 const (

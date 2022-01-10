@@ -4,8 +4,7 @@ import (
 	"fmt"
 
 	"github.com/mokiat/lacking/async"
-	"github.com/mokiat/lacking/data/asset"
-	gameasset "github.com/mokiat/lacking/game/asset"
+	"github.com/mokiat/lacking/game/asset"
 	"github.com/mokiat/lacking/game/graphics"
 )
 
@@ -22,7 +21,7 @@ type TwoDTexture struct {
 	GFXTexture graphics.TwoDTexture
 }
 
-func NewTwoDTextureOperator(delegate gameasset.Registry, gfxEngine graphics.Engine, gfxWorker *async.Worker) *TwoDTextureOperator {
+func NewTwoDTextureOperator(delegate asset.Registry, gfxEngine graphics.Engine, gfxWorker *async.Worker) *TwoDTextureOperator {
 	return &TwoDTextureOperator{
 		delegate:  delegate,
 		gfxEngine: gfxEngine,
@@ -31,7 +30,7 @@ func NewTwoDTextureOperator(delegate gameasset.Registry, gfxEngine graphics.Engi
 }
 
 type TwoDTextureOperator struct {
-	delegate  gameasset.Registry
+	delegate  asset.Registry
 	gfxEngine graphics.Engine
 	gfxWorker *async.Worker
 }
@@ -83,7 +82,7 @@ func (o *TwoDTextureOperator) Release(registry *Registry, resource interface{}) 
 
 func convertWrapMode(wrap asset.WrapMode) graphics.Wrap {
 	switch wrap {
-	case asset.WrapModeDefault:
+	case asset.WrapModeUnspecified:
 		return graphics.WrapClampToEdge
 	case asset.WrapModeRepeat:
 		return graphics.WrapRepeat
