@@ -19,12 +19,10 @@ type AnchorLayout struct{}
 
 // Apply applies this layout to the specified Element.
 func (l *AnchorLayout) Apply(element *ui.Element) {
-	// TODO: Consider children's margin settings
-
 	for childElement := element.FirstChild(); childElement != nil; childElement = childElement.RightSibling() {
 		layoutConfig := childElement.LayoutConfig().(LayoutData)
 		childBounds := ui.Bounds{
-			Size: element.IdealSize(),
+			Size: childElement.IdealSize(),
 		}
 
 		// horizontal
