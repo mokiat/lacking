@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/mokiat/gomath/sprec"
-	"github.com/mokiat/lacking/async"
 	"github.com/mokiat/lacking/data/asset"
 	"github.com/mokiat/lacking/game/graphics"
 )
@@ -18,7 +17,7 @@ type Mesh struct {
 	textures  []*TwoDTexture
 }
 
-func AllocateMesh(registry *Registry, name string, gfxWorker *async.Worker, gfxEngine graphics.Engine, meshAsset *asset.Mesh) (*Mesh, error) {
+func AllocateMesh(registry *Registry, name string, gfxEngine graphics.Engine, meshAsset *asset.Mesh) (*Mesh, error) {
 	mesh := &Mesh{
 		Name: name,
 	}
@@ -78,7 +77,7 @@ func AllocateMesh(registry *Registry, name string, gfxWorker *async.Worker, gfxE
 		}
 
 		var material graphics.Material
-		gfxWorker.Schedule(async.VoidTask(func() error {
+		registry.ScheduleVoid(func() {
 			definition := graphics.PBRMaterialDefinition{
 				BackfaceCulling:  subMeshAsset.Material.BackfaceCulling,
 				Metalness:        subMeshAsset.Material.Metalness,
@@ -96,8 +95,7 @@ func AllocateMesh(registry *Registry, name string, gfxWorker *async.Worker, gfxE
 				NormalTexture: normalTexture,
 			}
 			material = gfxEngine.CreatePBRMaterial(definition)
-			return nil
-		})).Wait()
+		}).Wait()
 		mesh.materials = append(mesh.materials, material)
 
 		subMeshDefinition := graphics.SubMeshTemplateDefinition{
@@ -109,7 +107,7 @@ func AllocateMesh(registry *Registry, name string, gfxWorker *async.Worker, gfxE
 		subMeshDefinitions[i] = subMeshDefinition
 	}
 
-	gfxWorker.Schedule(async.VoidTask(func() error {
+	registry.ScheduleVoid(func() {
 		definition := graphics.MeshTemplateDefinition{
 			VertexData: meshAsset.VertexData,
 			VertexFormat: graphics.VertexFormat{
@@ -130,27 +128,24 @@ func AllocateMesh(registry *Registry, name string, gfxWorker *async.Worker, gfxE
 				ColorStrideBytes:    int(meshAsset.VertexLayout.ColorStride),
 			},
 			IndexData:   meshAsset.IndexData,
-			IndexFormat: graphics.IndexFormatU32,
+			IndexFormat: graphics.IndexFormatU16,
 			SubMeshes:   subMeshDefinitions,
 		}
 		mesh.GFXMeshTemplate = gfxEngine.CreateMeshTemplate(definition)
-		return nil
-	})).Wait()
+	}).Wait()
 
 	return mesh, nil
 }
 
-func ReleaseMesh(registry *Registry, gfxWorker *async.Worker, mesh *Mesh) error {
-	gfxWorker.Schedule(async.VoidTask(func() error {
+func ReleaseMesh(registry *Registry, mesh *Mesh) error {
+	registry.ScheduleVoid(func() {
 		mesh.GFXMeshTemplate.Delete()
-		return nil
-	})).Wait()
+	}).Wait()
 
 	for _, material := range mesh.materials {
-		gfxWorker.Schedule(async.VoidTask(func() error {
+		registry.ScheduleVoid(func() {
 			material.Delete()
-			return nil
-		})).Wait()
+		}).Wait()
 	}
 
 	for _, texture := range mesh.textures {

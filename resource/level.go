@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/mokiat/gomath/sprec"
-	"github.com/mokiat/lacking/async"
 	"github.com/mokiat/lacking/data/asset"
 	gameasset "github.com/mokiat/lacking/game/asset"
 	"github.com/mokiat/lacking/game/graphics"
@@ -34,18 +33,16 @@ type Entity struct {
 	Matrix sprec.Mat4
 }
 
-func NewLevelOperator(delegate gameasset.Registry, gfxEngine graphics.Engine, gfxWorker *async.Worker) *LevelOperator {
+func NewLevelOperator(delegate gameasset.Registry, gfxEngine graphics.Engine) *LevelOperator {
 	return &LevelOperator{
 		delegate:  delegate,
 		gfxEngine: gfxEngine,
-		gfxWorker: gfxWorker,
 	}
 }
 
 type LevelOperator struct {
 	delegate  gameasset.Registry
 	gfxEngine graphics.Engine
-	gfxWorker *async.Worker
 }
 
 func (o *LevelOperator) Allocate(registry *Registry, id string) (interface{}, error) {
@@ -112,7 +109,7 @@ func (o *LevelOperator) Allocate(registry *Registry, id string) (interface{}, er
 
 	staticMeshes := make([]*Mesh, len(levelAsset.StaticMeshes))
 	for i, staticMeshAsset := range levelAsset.StaticMeshes {
-		staticMesh, err := AllocateMesh(registry, staticMeshAsset.Name, o.gfxWorker, o.gfxEngine, &staticMeshAsset)
+		staticMesh, err := AllocateMesh(registry, staticMeshAsset.Name, o.gfxEngine, &staticMeshAsset)
 		if err != nil {
 			return nil, fmt.Errorf("failed to allocate mesh: %w", err)
 		}
@@ -145,7 +142,7 @@ func (o *LevelOperator) Release(registry *Registry, res interface{}) error {
 		}
 	}
 	for _, staticMesh := range level.StaticMeshes {
-		if err := ReleaseMesh(registry, o.gfxWorker, staticMesh); err != nil {
+		if err := ReleaseMesh(registry, staticMesh); err != nil {
 			return fmt.Errorf("failed to release mesh: %w", err)
 		}
 	}

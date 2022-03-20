@@ -3,7 +3,6 @@ package resource
 import (
 	"fmt"
 
-	"github.com/mokiat/lacking/async"
 	"github.com/mokiat/lacking/game/asset"
 	"github.com/mokiat/lacking/game/graphics"
 )
@@ -21,18 +20,16 @@ type CubeTexture struct {
 	GFXTexture graphics.CubeTexture
 }
 
-func NewCubeTextureOperator(delegate asset.Registry, gfxEngine graphics.Engine, gfxWorker *async.Worker) *CubeTextureOperator {
+func NewCubeTextureOperator(delegate asset.Registry, gfxEngine graphics.Engine) *CubeTextureOperator {
 	return &CubeTextureOperator{
 		delegate:  delegate,
 		gfxEngine: gfxEngine,
-		gfxWorker: gfxWorker,
 	}
 }
 
 type CubeTextureOperator struct {
 	delegate  asset.Registry
 	gfxEngine graphics.Engine
-	gfxWorker *async.Worker
 }
 
 func (o *CubeTextureOperator) Allocate(registry *Registry, id string) (interface{}, error) {
@@ -45,7 +42,7 @@ func (o *CubeTextureOperator) Allocate(registry *Registry, id string) (interface
 		Name: id,
 	}
 
-	gfxTask := o.gfxWorker.Schedule(async.VoidTask(func() error {
+	registry.ScheduleVoid(func() {
 		texture.GFXTexture = o.gfxEngine.CreateCubeTexture(graphics.CubeTextureDefinition{
 			Dimension:      int(texAsset.Dimension),
 			MagFilter:      resolveFilter(texAsset.MagFilter),
@@ -59,25 +56,18 @@ func (o *CubeTextureOperator) Allocate(registry *Registry, id string) (interface
 			TopSideData:    texAsset.TopSide.Data,
 			BottomSideData: texAsset.BottomSide.Data,
 		})
-		return nil
-	}))
-	if err := gfxTask.Wait().Err; err != nil {
-		return nil, fmt.Errorf("failed to allocate gfx cube texture: %w", err)
-	}
+	}).Wait()
+
 	return texture, nil
 }
 
 func (o *CubeTextureOperator) Release(registry *Registry, resource interface{}) error {
 	texture := resource.(*CubeTexture)
 
-	gfxTask := o.gfxWorker.Schedule(async.VoidTask(func() error {
+	registry.ScheduleVoid(func() {
 		texture.GFXTexture.Delete()
-		return nil
-	}))
+	}).Wait()
 
-	if err := gfxTask.Wait().Err; err != nil {
-		return fmt.Errorf("failed to release gfx cube texture: %w", err)
-	}
 	return nil
 }
 
