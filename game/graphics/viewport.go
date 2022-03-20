@@ -16,6 +16,6 @@ func NewViewport(x, y, width, height int) Viewport {
 type Viewport struct {
 	X      int
 	Y      int
-	Height int
 	Width  int
+	Height int
 }
