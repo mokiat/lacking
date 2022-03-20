@@ -40,7 +40,7 @@ func (e *Engine) CreateTwoDTexture(definition graphics.TwoDTextureDefinition) gr
 		MinFilter:         e.convertMinFilter(definition.MinFilter),
 		MagFilter:         e.convertMagFilter(definition.MagFilter),
 		UseAnisotropy:     definition.UseAnisotropy,
-		GenerateMipmaps:   definition.GenerateMipmaps,
+		GenerateMipmaps:   e.needsMipmaps(definition.MinFilter),
 		DataFormat:        e.convertDataFormat(definition.DataFormat),
 		DataComponentType: e.convertDataComponentType(definition.DataFormat),
 		InternalFormat:    e.convertInternalFormat(definition.InternalFormat),
@@ -54,10 +54,11 @@ func (e *Engine) CreateTwoDTexture(definition graphics.TwoDTextureDefinition) gr
 func (e *Engine) CreateCubeTexture(definition graphics.CubeTextureDefinition) graphics.CubeTexture {
 	allocateInfo := opengl.CubeTextureAllocateInfo{
 		Dimension:         int32(definition.Dimension),
-		WrapS:             e.convertWrap(definition.WrapS),
-		WrapT:             e.convertWrap(definition.WrapT),
+		WrapS:             gl.CLAMP_TO_EDGE, // pointless
+		WrapT:             gl.CLAMP_TO_EDGE, // pointless
 		MinFilter:         e.convertMinFilter(definition.MinFilter),
 		MagFilter:         e.convertMagFilter(definition.MagFilter),
+		GenerateMipmaps:   e.needsMipmaps(definition.MinFilter),
 		DataFormat:        e.convertDataFormat(definition.DataFormat),
 		DataComponentType: e.convertDataComponentType(definition.DataFormat),
 		InternalFormat:    e.convertInternalFormat(definition.InternalFormat),
@@ -163,6 +164,7 @@ func (e *Engine) CreateMeshTemplate(definition graphics.MeshTemplateDefinition) 
 			primitive:        e.convertPrimitive(subMesh.Primitive),
 			indexCount:       int32(subMesh.IndexCount),
 			indexOffsetBytes: subMesh.IndexOffset,
+			indexType:        e.convertIndexType(definition.IndexFormat),
 		}
 	}
 	return result
@@ -204,10 +206,29 @@ func (e *Engine) convertWrap(wrap graphics.Wrap) int32 {
 	switch wrap {
 	case graphics.WrapClampToEdge:
 		return gl.CLAMP_TO_EDGE
+	case graphics.WrapMirroredClampToEdge:
+		return gl.MIRROR_CLAMP_TO_EDGE
 	case graphics.WrapRepeat:
 		return gl.REPEAT
+	case graphics.WrapMirroredRepat:
+		return gl.MIRRORED_REPEAT
 	default:
 		panic(fmt.Errorf("unknown wrap mode: %d", wrap))
+	}
+}
+
+func (e *Engine) needsMipmaps(filter graphics.Filter) bool {
+	switch filter {
+	case graphics.FilterNearestMipmapNearest:
+		fallthrough
+	case graphics.FilterNearestMipmapLinear:
+		fallthrough
+	case graphics.FilterLinearMipmapNearest:
+		fallthrough
+	case graphics.FilterLinearMipmapLinear:
+		return true
+	default:
+		return false
 	}
 }
 
@@ -292,5 +313,16 @@ func (e *Engine) convertPrimitive(primitive graphics.Primitive) uint32 {
 		return gl.TRIANGLE_FAN
 	default:
 		panic(fmt.Errorf("unknown primitive: %d", primitive))
+	}
+}
+
+func (e *Engine) convertIndexType(indexFormat graphics.IndexFormat) uint32 {
+	switch indexFormat {
+	case graphics.IndexFormatU16:
+		return gl.UNSIGNED_SHORT
+	case graphics.IndexFormatU32:
+		return gl.UNSIGNED_INT
+	default:
+		panic(fmt.Errorf("unknown index format: %d", indexFormat))
 	}
 }

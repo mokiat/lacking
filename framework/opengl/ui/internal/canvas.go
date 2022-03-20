@@ -92,7 +92,13 @@ func (c *Canvas) Translate(delta ui.Position) {
 }
 
 func (c *Canvas) Clip(bounds ui.Bounds) {
-	c.currentLayer.ClipBounds = bounds.Translate(c.currentLayer.Translation)
+	if previousLayer := c.currentLayer.previous; previousLayer != nil {
+		previousClipBounds := previousLayer.ClipBounds
+		newClipBounds := bounds.Translate(c.currentLayer.Translation)
+		c.currentLayer.ClipBounds = previousClipBounds.Intersect(newClipBounds)
+	} else {
+		c.currentLayer.ClipBounds = bounds.Translate(c.currentLayer.Translation)
+	}
 }
 
 func (c *Canvas) Shape() ui.Shape {
@@ -227,7 +233,14 @@ func (s *canvasShape) Circle(position ui.Position, radius int) {
 }
 
 func (s *canvasShape) RoundRectangle(position ui.Position, size ui.Size, roundness ui.RectRoundness) {
-	// TODO
+	s.MoveTo(ui.NewPosition(0, size.Height-roundness.BottomLeftRadius))
+	s.QuadTo(ui.NewPosition(0, size.Height), ui.NewPosition(roundness.BottomLeftRadius, size.Height))
+	s.LineTo(ui.NewPosition(size.Width-roundness.BottomRightRadius, size.Height))
+	s.QuadTo(ui.NewPosition(size.Width, size.Height), ui.NewPosition(size.Width, size.Height-roundness.BottomRightRadius))
+	s.LineTo(ui.NewPosition(size.Width, roundness.TopRightRadius))
+	s.QuadTo(ui.NewPosition(size.Width, 0), ui.NewPosition(size.Width-roundness.TopRightRadius, 0))
+	s.LineTo(ui.NewPosition(roundness.TopLeftRadius, 0))
+	s.QuadTo(ui.NewPosition(0, 0), ui.NewPosition(0, roundness.TopLeftRadius))
 }
 
 func (s *canvasShape) End() {
@@ -322,7 +335,15 @@ func (c *canvasContour) Circle(position ui.Position, radius int, stroke ui.Strok
 }
 
 func (c *canvasContour) RoundRectangle(position ui.Position, size ui.Size, roundness ui.RectRoundness, stroke ui.Stroke) {
-	// TODO
+	c.MoveTo(ui.NewPosition(0, size.Height-roundness.BottomLeftRadius), stroke)
+	c.QuadTo(ui.NewPosition(0, size.Height), ui.NewPosition(roundness.BottomLeftRadius, size.Height), stroke)
+	c.LineTo(ui.NewPosition(size.Width-roundness.BottomRightRadius, size.Height), stroke)
+	c.QuadTo(ui.NewPosition(size.Width, size.Height), ui.NewPosition(size.Width, size.Height-roundness.BottomRightRadius), stroke)
+	c.LineTo(ui.NewPosition(size.Width, roundness.TopRightRadius), stroke)
+	c.QuadTo(ui.NewPosition(size.Width, 0), ui.NewPosition(size.Width-roundness.TopRightRadius, 0), stroke)
+	c.LineTo(ui.NewPosition(roundness.TopLeftRadius, 0), stroke)
+	c.QuadTo(ui.NewPosition(0, 0), ui.NewPosition(0, roundness.TopLeftRadius), stroke)
+	c.CloseLoop()
 }
 
 func (c *canvasContour) End() {

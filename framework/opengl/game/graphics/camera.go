@@ -8,11 +8,13 @@ import (
 
 func newCamera(scene *Scene) *Camera {
 	return &Camera{
-		Node:     internal.NewNode(),
-		scene:    scene,
-		fov:      sprec.Degrees(120),
-		fovMode:  graphics.FoVModeHorizontalPlus,
-		exposure: 1.0,
+		Node:        internal.NewNode(),
+		scene:       scene,
+		fov:         sprec.Degrees(120),
+		fovMode:     graphics.FoVModeHorizontalPlus,
+		maxExposure: 10000.0,
+		minExposure: 0.00001,
+		exposure:    1.0,
 	}
 }
 
@@ -30,6 +32,8 @@ type Camera struct {
 	nearFocus           float32
 	farFocus            float32
 	autoExposureEnabled bool
+	maxExposure         float32
+	minExposure         float32
 	exposure            float32
 }
 
@@ -80,6 +84,22 @@ func (c *Camera) AutoExposure() bool {
 
 func (c *Camera) SetAutoExposure(enabled bool) {
 	c.autoExposureEnabled = enabled
+}
+
+func (c *Camera) MaximumExposure() float32 {
+	return c.maxExposure
+}
+
+func (c *Camera) SetMaximumExposure(maxExposure float32) {
+	c.maxExposure = maxExposure
+}
+
+func (c *Camera) MinimumExposure() float32 {
+	return c.minExposure
+}
+
+func (c *Camera) SetMinimumExposure(minExposure float32) {
+	c.minExposure = minExposure
 }
 
 func (c *Camera) Exposure() float32 {

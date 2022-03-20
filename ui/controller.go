@@ -59,6 +59,9 @@ func (c *controller) OnMouseEvent(window app.Window, event app.MouseEvent) bool 
 		Position: NewPosition(event.X, event.Y),
 		Type:     event.Type,
 		Button:   event.Button,
+		Payload:  event.Payload,
+		ScrollX:  event.ScrollX,
+		ScrollY:  event.ScrollY,
 	})
 }
 

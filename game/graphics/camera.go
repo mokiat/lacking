@@ -75,6 +75,20 @@ type Camera interface {
 	// do automatic exposure adjustment.
 	SetAutoExposure(enabled bool)
 
+	// MaximumExposure returns the maximum exposure that the camera may use
+	// during AutoExposure.
+	MaximumExposure() float32
+
+	// SetMaximumExposure changes the maximum exposure for this camera.
+	SetMaximumExposure(maxExposure float32)
+
+	// MinimumExposure returns the maximum exposure that the camera may use
+	// during AutoExposure.
+	MinimumExposure() float32
+
+	// SetMinimumExposure changes the maximum exposure for this camera.
+	SetMinimumExposure(minExposure float32)
+
 	// Exposure returns the exposure setting of this camera.
 	Exposure() float32
 

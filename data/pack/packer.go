@@ -1,55 +1,67 @@
 package pack
 
 import (
-	"log"
-	"sync"
+	"fmt"
+
+	"golang.org/x/sync/errgroup"
+
+	gameasset "github.com/mokiat/lacking/game/asset"
 )
 
-func NewPacker() *Packer {
-	return &Packer{}
+func NewPacker(registry gameasset.Registry) *Packer {
+	return &Packer{
+		registry: registry,
+	}
 }
 
 type Packer struct {
+	registry         gameasset.Registry
 	pipelines        []*Pipeline
 	focusedPipelines []*Pipeline
 }
 
 func (p *Packer) Pipeline(fn func(*Pipeline)) {
-	pipeline := newPipeline(len(p.pipelines), FileResourceLocator{}, FileAssetLocator{})
+	pipeline := newPipeline(len(p.pipelines), p.registry, FileResourceLocator{})
 	fn(pipeline)
 	p.pipelines = append(p.pipelines, pipeline)
 }
 
 func (p *Packer) FPipeline(fn func(*Pipeline)) {
-	pipeline := newPipeline(len(p.pipelines), FileResourceLocator{}, FileAssetLocator{})
+	pipeline := newPipeline(len(p.pipelines), p.registry, FileResourceLocator{})
 	fn(pipeline)
 	p.focusedPipelines = append(p.focusedPipelines, pipeline)
 }
 
-func (p *Packer) RunSerial() {
+func (p *Packer) RunSerial() error {
 	pipelines, focused := p.activePipelines()
 	for _, pipeline := range pipelines {
-		p.runPipeline(pipeline)
+		if err := p.runPipeline(pipeline); err != nil {
+			return err
+		}
 	}
 	if focused {
-		log.Fatalln("failing due to focused pipelines")
+		return fmt.Errorf("focused pipelines")
 	}
+	return nil
 }
 
-func (p *Packer) RunParallel() {
+func (p *Packer) RunParallel() error {
 	pipelines, focused := p.activePipelines()
-	wait := &sync.WaitGroup{}
-	wait.Add(len(pipelines))
+
+	var group errgroup.Group
 	for _, pipeline := range pipelines {
-		go func(pip *Pipeline) {
-			p.runPipeline(pip)
-			wait.Done()
-		}(pipeline)
+		pip := pipeline
+		group.Go(func() error {
+			return p.runPipeline(pip)
+		})
 	}
-	wait.Wait()
+	if err := group.Wait(); err != nil {
+		return err
+	}
 	if focused {
-		log.Fatalln("failing due to focused pipelines")
+		return fmt.Errorf("focused pipelines")
 	}
+	return nil
 }
 
 func (p *Packer) activePipelines() ([]*Pipeline, bool) {
@@ -59,8 +71,9 @@ func (p *Packer) activePipelines() ([]*Pipeline, bool) {
 	return p.pipelines, false
 }
 
-func (p *Packer) runPipeline(pipeline *Pipeline) {
+func (p *Packer) runPipeline(pipeline *Pipeline) error {
 	if err := pipeline.execute(); err != nil {
-		log.Fatalf("pipeline %d error: %v", pipeline.id, err)
+		return fmt.Errorf("pipeline %d error: %w", pipeline.id, err)
 	}
+	return nil
 }

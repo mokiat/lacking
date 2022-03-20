@@ -1,6 +1,8 @@
 package component
 
-import "github.com/mokiat/lacking/ui"
+import (
+	"github.com/mokiat/lacking/ui"
+)
 
 type componentNode struct {
 	instance Instance
@@ -20,11 +22,13 @@ func createComponentNode(instance Instance) *componentNode {
 		node:        result,
 		firstRender: true,
 		lastRender:  false,
+		properties:  instance.properties(),
 	}
 	for instance.element == nil {
 		instance = instance.componentFunc(instance.properties())
 		renderCtx.stateDepth++
 		renderCtx.stateIndex = 0
+		renderCtx.properties = instance.properties()
 		result.states = append(result.states, nil)
 	}
 
@@ -66,11 +70,13 @@ func (node *componentNode) reconcile(instance Instance) {
 		firstRender:  false,
 		lastRender:   false,
 		forcedRender: node.consumeDirty(),
+		properties:   instance.properties(),
 	}
 	for instance.element == nil {
 		instance = instance.componentFunc(instance.properties())
 		renderCtx.stateDepth++
 		renderCtx.stateIndex = 0
+		renderCtx.properties = instance.properties()
 	}
 	if instance.element != node.element {
 		panic("component chain should not return a different element instance")
@@ -87,18 +93,18 @@ func (node *componentNode) reconcile(instance Instance) {
 			} else {
 				child.destroy()
 			}
-			newChildren := make([]*componentNode, len(instance.children))
-			for i, childInstance := range instance.children {
-				if existingChild, index := node.findChild(childInstance); index >= 0 {
-					existingChild.reconcile(childInstance)
-					newChildren[i] = existingChild
-				} else {
-					newChildren[i] = createComponentNode(childInstance)
-				}
-				node.element.AppendChild(newChildren[i].element)
-			}
-			node.children = newChildren
 		}
+		newChildren := make([]*componentNode, len(instance.children))
+		for i, childInstance := range instance.children {
+			if existingChild, index := node.findChild(childInstance); index >= 0 {
+				existingChild.reconcile(childInstance)
+				newChildren[i] = existingChild
+			} else {
+				newChildren[i] = createComponentNode(childInstance)
+			}
+			node.element.AppendChild(newChildren[i].element)
+		}
+		node.children = newChildren
 	}
 }
 

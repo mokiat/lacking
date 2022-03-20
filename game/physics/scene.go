@@ -16,10 +16,10 @@ func newScene(stepSeconds float32) *Scene {
 		impulseIterations: defaultImpulseIterations,
 		nudgeIterations:   defaultNudgeIterations,
 
-		maxAcceleration:        100.0, // TODO: Measure something reasonable
-		maxAngularAcceleration: 100.0, // TODO: Measure something reasonable
-		maxVelocity:            300.0,
-		maxAngularVelocity:     300.0, // TODO: Measure something reasonable
+		maxAcceleration:        200.0, // TODO: Measure something reasonable
+		maxAngularAcceleration: 200.0, // TODO: Measure something reasonable
+		maxVelocity:            500.0,
+		maxAngularVelocity:     500.0, // TODO: Measure something reasonable
 
 		intersectionSet: shape.NewIntersectionResultSet(128),
 

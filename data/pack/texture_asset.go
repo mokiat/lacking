@@ -4,56 +4,55 @@ import (
 	"fmt"
 
 	"github.com/mokiat/lacking/data/asset"
+	gameasset "github.com/mokiat/lacking/game/asset"
 )
 
 type SaveTwoDTextureAssetAction struct {
-	locator       AssetLocator
-	uri           string
+	registry      gameasset.Registry
+	id            string
 	imageProvider ImageProvider
 }
 
 func (a *SaveTwoDTextureAssetAction) Describe() string {
-	return fmt.Sprintf("save_twod_texture_asset(uri: %q)", a.uri)
+	return fmt.Sprintf("save_twod_texture_asset(id: %q)", a.id)
 }
 
 func (a *SaveTwoDTextureAssetAction) Run() error {
 	image := a.imageProvider.Image()
 
-	textureAsset := &asset.TwoDTexture{
-		Width:  uint16(image.Width),
-		Height: uint16(image.Height),
-		Data:   image.RGBA8Data(),
+	textureAsset := &gameasset.TwoDTexture{
+		Width:     uint16(image.Width),
+		Height:    uint16(image.Height),
+		WrapModeS: gameasset.WrapModeRepeat,
+		WrapModeT: gameasset.WrapModeRepeat,
+		MagFilter: gameasset.FilterModeLinear,
+		MinFilter: gameasset.FilterModeLinearMipmapLinear,
+		Format:    gameasset.TexelFormatRGBA8,
+		Data:      image.RGBA8Data(),
 	}
-
-	out, err := a.locator.Create(a.uri)
-	if err != nil {
-		return err
-	}
-	defer out.Close()
-
-	if err := asset.EncodeTwoDTexture(out, textureAsset); err != nil {
-		return fmt.Errorf("failed to encode asset: %w", err)
+	if err := a.registry.WriteContent(a.id, textureAsset); err != nil {
+		return fmt.Errorf("failed to write asset: %w", err)
 	}
 	return nil
 }
 
 type SaveCubeTextureAction struct {
-	locator       AssetLocator
-	uri           string
+	registry      gameasset.Registry
+	id            string
 	imageProvider CubeImageProvider
-	format        asset.DataFormat
+	format        asset.TexelFormat
 }
 
 type SaveCubeTextureOption func(a *SaveCubeTextureAction)
 
-func WithFormat(format asset.DataFormat) SaveCubeTextureOption {
+func WithFormat(format asset.TexelFormat) SaveCubeTextureOption {
 	return func(a *SaveCubeTextureAction) {
 		a.format = format
 	}
 }
 
 func (a *SaveCubeTextureAction) Describe() string {
-	return fmt.Sprintf("save_cube_texture(uri: %q)", a.uri)
+	return fmt.Sprintf("save_cube_texture(id: %q)", a.id)
 }
 
 func (a *SaveCubeTextureAction) Run() error {
@@ -61,46 +60,56 @@ func (a *SaveCubeTextureAction) Run() error {
 
 	textureData := func(side CubeSide) []byte {
 		switch a.format {
-		case asset.DataFormatRGBA8:
+		case asset.TexelFormatRGBA8:
 			return texture.RGBA8Data(side)
-		case asset.DataFormatRGBA32F:
+		case asset.TexelFormatRGBA32F:
 			return texture.RGBA32FData(side)
 		default:
-			panic(fmt.Errorf("unknown format: %d", a.format))
+			panic(fmt.Errorf("unsupported format: %d", a.format))
 		}
 	}
 
-	textureAsset := &asset.CubeTexture{
+	textureAsset := &gameasset.CubeTexture{
 		Dimension: uint16(texture.Dimension),
-		Format:    a.format,
+		MagFilter: gameasset.FilterModeLinear,
+		MinFilter: gameasset.FilterModeLinear,
+		Format:    gameasset.TexelFormat(a.format),
 	}
-	textureAsset.Sides[asset.TextureSideFront] = asset.CubeTextureSide{
+	textureAsset.FrontSide = gameasset.CubeTextureSide{
 		Data: textureData(CubeSideFront),
 	}
-	textureAsset.Sides[asset.TextureSideBack] = asset.CubeTextureSide{
+	textureAsset.BackSide = gameasset.CubeTextureSide{
 		Data: textureData(CubeSideRear),
 	}
-	textureAsset.Sides[asset.TextureSideLeft] = asset.CubeTextureSide{
+	textureAsset.LeftSide = gameasset.CubeTextureSide{
 		Data: textureData(CubeSideLeft),
 	}
-	textureAsset.Sides[asset.TextureSideRight] = asset.CubeTextureSide{
+	textureAsset.RightSide = gameasset.CubeTextureSide{
 		Data: textureData(CubeSideRight),
 	}
-	textureAsset.Sides[asset.TextureSideTop] = asset.CubeTextureSide{
+	textureAsset.TopSide = gameasset.CubeTextureSide{
 		Data: textureData(CubeSideTop),
 	}
-	textureAsset.Sides[asset.TextureSideBottom] = asset.CubeTextureSide{
+	textureAsset.BottomSide = gameasset.CubeTextureSide{
 		Data: textureData(CubeSideBottom),
 	}
 
-	out, err := a.locator.Create(a.uri)
-	if err != nil {
-		return err
-	}
-	defer out.Close()
-
-	if err := asset.EncodeCubeTexture(out, textureAsset); err != nil {
-		return fmt.Errorf("failed to encode asset: %w", err)
+	if err := a.registry.WriteContent(a.id, textureAsset); err != nil {
+		return fmt.Errorf("failed to write asset: %w", err)
 	}
 	return nil
+}
+
+func BuildTwoDTextureAsset(image *Image) *asset.TwoDTexture {
+	textureAsset := &asset.TwoDTexture{
+		Width:     uint16(image.Width),
+		Height:    uint16(image.Height),
+		WrapModeS: asset.WrapModeRepeat,
+		WrapModeT: asset.WrapModeRepeat,
+		MagFilter: asset.FilterModeLinear,
+		MinFilter: asset.FilterModeLinearMipmapLinear,
+		Format:    asset.TexelFormatRGBA8,
+		Data:      image.RGBA8Data(),
+	}
+	return textureAsset
 }

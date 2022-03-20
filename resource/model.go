@@ -4,8 +4,8 @@ import (
 	"fmt"
 
 	"github.com/mokiat/gomath/sprec"
-	"github.com/mokiat/lacking/async"
 	"github.com/mokiat/lacking/data/asset"
+	gameasset "github.com/mokiat/lacking/game/asset"
 	"github.com/mokiat/lacking/game/graphics"
 )
 
@@ -55,39 +55,31 @@ func (n Node) FindNode(name string) (*Node, bool) {
 	return nil, false
 }
 
-func NewModelOperator(locator Locator, gfxEngine graphics.Engine, gfxWorker *async.Worker) *ModelOperator {
+func NewModelOperator(delegate gameasset.Registry, gfxEngine graphics.Engine) *ModelOperator {
 	return &ModelOperator{
-		locator:   locator,
+		delegate:  delegate,
 		gfxEngine: gfxEngine,
-		gfxWorker: gfxWorker,
 	}
 }
 
 type ModelOperator struct {
-	locator   Locator
+	delegate  gameasset.Registry
 	gfxEngine graphics.Engine
-	gfxWorker *async.Worker
 }
 
-func (o *ModelOperator) Allocate(registry *Registry, name string) (interface{}, error) {
-	in, err := o.locator.Open("assets", "models", name)
-	if err != nil {
-		return nil, fmt.Errorf("failed to open model asset %q: %w", name, err)
-	}
-	defer in.Close()
-
+func (o *ModelOperator) Allocate(registry *Registry, id string) (interface{}, error) {
 	modelAsset := new(asset.Model)
-	if err := asset.DecodeModel(in, modelAsset); err != nil {
-		return nil, fmt.Errorf("failed to decode model asset %q: %w", name, err)
+	if err := o.delegate.ReadContent(id, modelAsset); err != nil {
+		return nil, fmt.Errorf("failed to open model asset %q: %w", id, err)
 	}
 
 	model := &Model{
-		Name: name,
+		Name: id,
 	}
 
 	meshes := make([]*Mesh, len(modelAsset.Meshes))
 	for i, meshAsset := range modelAsset.Meshes {
-		mesh, err := AllocateMesh(registry, meshAsset.Name, o.gfxWorker, o.gfxEngine, &meshAsset)
+		mesh, err := AllocateMesh(registry, meshAsset.Name, o.gfxEngine, &meshAsset)
 		if err != nil {
 			return nil, fmt.Errorf("failed to allocate mesh: %w", err)
 		}
@@ -109,7 +101,11 @@ func (o *ModelOperator) Allocate(registry *Registry, name string) (interface{}, 
 		}
 		nodes[i].Name = nodeAsset.Name
 		nodes[i].Matrix = sprec.ColumnMajorArrayMat4(nodeAsset.Matrix)
-		nodes[i].Mesh = meshes[nodeAsset.MeshIndex]
+		if nodeAsset.MeshIndex >= 0 {
+			nodes[i].Mesh = meshes[nodeAsset.MeshIndex]
+		} else {
+			nodes[i].Mesh = nil
+		}
 	}
 	model.Nodes = rootNodes
 
@@ -120,7 +116,7 @@ func (o *ModelOperator) Release(registry *Registry, resource interface{}) error 
 	model := resource.(*Model)
 
 	for _, mesh := range model.meshes {
-		if err := ReleaseMesh(registry, o.gfxWorker, mesh); err != nil {
+		if err := ReleaseMesh(registry, mesh); err != nil {
 			return fmt.Errorf("failed to release mesh: %w", err)
 		}
 	}

@@ -28,3 +28,14 @@ func (b Buffer) SetUInt16(offset int, value uint16) {
 func (b Buffer) UInt16(offset int) uint16 {
 	return uint16(b[offset+0])<<0 | uint16(b[offset+1])<<8
 }
+
+func (b Buffer) SetUInt32(offset int, value uint32) {
+	b[offset+0] = byte(value >> 0)
+	b[offset+1] = byte(value >> 8)
+	b[offset+2] = byte(value >> 16)
+	b[offset+3] = byte(value >> 24)
+}
+
+func (b Buffer) UInt32(offset int) uint32 {
+	return uint32(b[offset+0])<<0 | uint32(b[offset+1])<<8 | uint32(b[offset+2])<<16 | uint32(b[offset+3])<<24
+}

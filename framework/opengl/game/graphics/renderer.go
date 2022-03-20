@@ -78,12 +78,13 @@ type Renderer struct {
 
 	quadMesh *QuadMesh
 
-	skyboxPresentation *internal.SkyboxPresentation
-	skyboxMesh         *SkyboxMesh
+	skyboxPresentation   *internal.SkyboxPresentation
+	skycolorPresentation *internal.SkyboxPresentation
+	skyboxMesh           *SkyboxMesh
 }
 
 func (r *Renderer) Allocate() {
-	geometryAlbedoTextureInfo := opengl.TwoDTextureAllocateInfo{
+	r.geometryAlbedoTexture.Allocate(opengl.TwoDTextureAllocateInfo{
 		Width:             framebufferWidth,
 		Height:            framebufferHeight,
 		MinFilter:         gl.NEAREST,
@@ -91,10 +92,9 @@ func (r *Renderer) Allocate() {
 		InternalFormat:    gl.RGBA8,
 		DataFormat:        gl.RGBA,
 		DataComponentType: gl.UNSIGNED_BYTE,
-	}
-	r.geometryAlbedoTexture.Allocate(geometryAlbedoTextureInfo)
+	})
 
-	geometryNormalTextureInfo := opengl.TwoDTextureAllocateInfo{
+	r.geometryNormalTexture.Allocate(opengl.TwoDTextureAllocateInfo{
 		Width:             framebufferWidth,
 		Height:            framebufferHeight,
 		MinFilter:         gl.NEAREST,
@@ -102,10 +102,9 @@ func (r *Renderer) Allocate() {
 		InternalFormat:    gl.RGBA32F,
 		DataFormat:        gl.RGBA,
 		DataComponentType: gl.FLOAT,
-	}
-	r.geometryNormalTexture.Allocate(geometryNormalTextureInfo)
+	})
 
-	geometryDepthTextureInfo := opengl.TwoDTextureAllocateInfo{
+	r.geometryDepthTexture.Allocate(opengl.TwoDTextureAllocateInfo{
 		Width:             framebufferWidth,
 		Height:            framebufferHeight,
 		MinFilter:         gl.NEAREST,
@@ -113,19 +112,17 @@ func (r *Renderer) Allocate() {
 		InternalFormat:    gl.DEPTH_COMPONENT32,
 		DataFormat:        gl.DEPTH_COMPONENT,
 		DataComponentType: gl.FLOAT,
-	}
-	r.geometryDepthTexture.Allocate(geometryDepthTextureInfo)
+	})
 
-	geometryFramebufferInfo := opengl.FramebufferAllocateInfo{
+	r.geometryFramebuffer.Allocate(opengl.FramebufferAllocateInfo{
 		ColorAttachments: []*opengl.Texture{
 			&r.geometryAlbedoTexture.Texture,
 			&r.geometryNormalTexture.Texture,
 		},
 		DepthAttachment: &r.geometryDepthTexture.Texture,
-	}
-	r.geometryFramebuffer.Allocate(geometryFramebufferInfo)
+	})
 
-	lightingAlbedoTextureInfo := opengl.TwoDTextureAllocateInfo{
+	r.lightingAlbedoTexture.Allocate(opengl.TwoDTextureAllocateInfo{
 		Width:             framebufferWidth,
 		Height:            framebufferHeight,
 		MinFilter:         gl.NEAREST,
@@ -133,10 +130,9 @@ func (r *Renderer) Allocate() {
 		InternalFormat:    gl.RGBA32F,
 		DataFormat:        gl.RGBA,
 		DataComponentType: gl.FLOAT,
-	}
-	r.lightingAlbedoTexture.Allocate(lightingAlbedoTextureInfo)
+	})
 
-	lightingDepthTextureInfo := opengl.TwoDTextureAllocateInfo{
+	r.lightingDepthTexture.Allocate(opengl.TwoDTextureAllocateInfo{
 		Width:             framebufferWidth,
 		Height:            framebufferHeight,
 		MinFilter:         gl.NEAREST,
@@ -144,16 +140,14 @@ func (r *Renderer) Allocate() {
 		InternalFormat:    gl.DEPTH_COMPONENT32,
 		DataFormat:        gl.DEPTH_COMPONENT,
 		DataComponentType: gl.FLOAT,
-	}
-	r.lightingDepthTexture.Allocate(lightingDepthTextureInfo)
+	})
 
-	lightingFramebufferInfo := opengl.FramebufferAllocateInfo{
+	r.lightingFramebuffer.Allocate(opengl.FramebufferAllocateInfo{
 		ColorAttachments: []*opengl.Texture{
 			&r.lightingAlbedoTexture.Texture,
 		},
 		DepthAttachment: &r.lightingDepthTexture.Texture,
-	}
-	r.lightingFramebuffer.Allocate(lightingFramebufferInfo)
+	})
 
 	r.exposureAlbedoTexture.Allocate(opengl.TwoDTextureAllocateInfo{
 		Width:             1,
@@ -177,7 +171,7 @@ func (r *Renderer) Allocate() {
 		Data:    make([]byte, 4*4),
 	})
 
-	r.postprocessingPresentation = internal.NewTonePostprocessingPresentation(internal.ReinhardToneMapping)
+	r.postprocessingPresentation = internal.NewTonePostprocessingPresentation(internal.ExponentialToneMapping)
 
 	r.directionalLightPresentation = internal.NewDirectionalLightPresentation()
 	r.ambientLightPresentation = internal.NewAmbientLightPresentation()
@@ -185,6 +179,7 @@ func (r *Renderer) Allocate() {
 	r.quadMesh.Allocate()
 
 	r.skyboxPresentation = internal.NewCubeSkyboxPresentation()
+	r.skycolorPresentation = internal.NewColorSkyboxPresentation()
 	r.skyboxMesh.Allocate()
 }
 
@@ -342,7 +337,7 @@ func (r *Renderer) renderMesh(ctx renderCtx, modelMatrix [16]float32, template *
 		}
 
 		gl.BindVertexArray(template.vertexArray.ID())
-		gl.DrawElements(subMesh.primitive, subMesh.indexCount, gl.UNSIGNED_SHORT, gl.PtrOffset(subMesh.indexOffsetBytes))
+		gl.DrawElements(subMesh.primitive, subMesh.indexCount, subMesh.indexType, gl.PtrOffset(subMesh.indexOffsetBytes))
 	}
 }
 
@@ -453,7 +448,8 @@ func (r *Renderer) renderForwardPass(ctx renderCtx) {
 	gl.DepthMask(false)
 	gl.DepthFunc(gl.LEQUAL)
 
-	if texture := ctx.scene.sky.skyboxTexture; texture != nil {
+	sky := ctx.scene.sky
+	if texture := sky.skyboxTexture; texture != nil {
 		gl.Enable(gl.CULL_FACE)
 
 		presentation := r.skyboxPresentation
@@ -468,6 +464,25 @@ func (r *Renderer) renderForwardPass(ctx renderCtx) {
 
 		gl.BindVertexArray(r.skyboxMesh.VertexArray.ID())
 		gl.DrawElements(r.skyboxMesh.Primitive, r.skyboxMesh.IndexCount, gl.UNSIGNED_SHORT, gl.PtrOffset(r.skyboxMesh.IndexOffsetBytes))
+	} else {
+		gl.Enable(gl.CULL_FACE)
+
+		presentation := r.skycolorPresentation
+		program := presentation.Program
+		program.Use()
+
+		gl.UniformMatrix4fv(presentation.ProjectionMatrixLocation, 1, false, &ctx.projectionMatrix[0])
+		gl.UniformMatrix4fv(presentation.ViewMatrixLocation, 1, false, &ctx.viewMatrix[0])
+
+		gl.Uniform4f(presentation.AlbedoColorLocation,
+			sky.backgroundColor.X,
+			sky.backgroundColor.Y,
+			sky.backgroundColor.Z,
+			1.0,
+		)
+
+		gl.BindVertexArray(r.skyboxMesh.VertexArray.ID())
+		gl.DrawElements(r.skyboxMesh.Primitive, r.skyboxMesh.IndexCount, gl.UNSIGNED_SHORT, gl.PtrOffset(r.skyboxMesh.IndexOffsetBytes))
 	}
 }
 
@@ -479,11 +494,16 @@ func (r *Renderer) renderExposureProbePass(ctx renderCtx) {
 			data := make([]float32, 4)
 			gl.GetNamedBufferSubData(r.exposureBuffer.ID(), 0, 4*4, gl.Ptr(&data[0]))
 			brightness := 0.2126*data[0] + 0.7152*data[1] + 0.0722*data[2]
-			if brightness < 0.01 {
-				brightness = 0.01
+			if brightness < 0.001 {
+				brightness = 0.001
 			}
-			r.exposureTarget = 1.0 / (9.8 * brightness)
-
+			r.exposureTarget = 1.0 / (3.14 * brightness)
+			if r.exposureTarget > ctx.camera.maxExposure {
+				r.exposureTarget = ctx.camera.maxExposure
+			}
+			if r.exposureTarget < ctx.camera.minExposure {
+				r.exposureTarget = ctx.camera.minExposure
+			}
 			gl.DeleteSync(r.exposureSync)
 			r.exposureSync = 0
 		case gl.WAIT_FAILED:

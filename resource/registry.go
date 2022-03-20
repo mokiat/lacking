@@ -4,6 +4,7 @@ import (
 	"sync"
 
 	"github.com/mokiat/lacking/async"
+	"github.com/mokiat/lacking/game/asset"
 	"github.com/mokiat/lacking/game/graphics"
 )
 
@@ -14,19 +15,34 @@ type Operator interface {
 	Release(registry *Registry, resource interface{}) error
 }
 
-func NewRegistry(locator Locator, gfxEngine graphics.Engine, gfxWorker *async.Worker) *Registry {
+func NewRegistry(delegate asset.Registry, gfxEngine graphics.Engine, gfxWorker Worker) *Registry {
 	registry := &Registry{
-		catalog: make(map[TypeName]*Type),
+		gfxWorker: gfxWorker,
+		catalog:   make(map[TypeName]*Type),
 	}
-	registry.Register(TwoDTextureTypeName, NewTwoDTextureOperator(locator, gfxEngine, gfxWorker))
-	registry.Register(CubeTextureTypeName, NewCubeTextureOperator(locator, gfxEngine, gfxWorker))
-	registry.Register(ModelTypeName, NewModelOperator(locator, gfxEngine, gfxWorker))
-	registry.Register(LevelTypeName, NewLevelOperator(locator, gfxEngine, gfxWorker))
+	registry.Register(TwoDTextureTypeName, NewTwoDTextureOperator(delegate, gfxEngine))
+	registry.Register(CubeTextureTypeName, NewCubeTextureOperator(delegate, gfxEngine))
+	registry.Register(ModelTypeName, NewModelOperator(delegate, gfxEngine))
+	registry.Register(LevelTypeName, NewLevelOperator(delegate, gfxEngine))
 	return registry
 }
 
 type Registry struct {
-	catalog map[TypeName]*Type
+	gfxWorker Worker
+	catalog   map[TypeName]*Type
+}
+
+func (r *Registry) Schedule(fn func() error) Task {
+	task := newTask(fn)
+	r.gfxWorker.Schedule(task.Run)
+	return task
+}
+
+func (r *Registry) ScheduleVoid(fn func()) Task {
+	return r.Schedule(func() error {
+		fn()
+		return nil
+	})
 }
 
 func (r *Registry) Register(typeName TypeName, operator Operator) {

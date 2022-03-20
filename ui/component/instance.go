@@ -23,6 +23,12 @@ type Instance struct {
 	element *ui.Element
 }
 
+// Key returns the child key that is registered for this Instance
+// in case the Instance was created as part of a WithChild directive.
+func (i Instance) Key() string {
+	return i.key
+}
+
 func (i Instance) properties() Properties {
 	return Properties{
 		data:         i.data,

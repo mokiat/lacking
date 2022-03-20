@@ -16,11 +16,9 @@ type TwoDTextureDefinition struct {
 	WrapS Wrap
 	WrapT Wrap
 
-	MinFilter Filter
-	MagFilter Filter
-
-	UseAnisotropy   bool
-	GenerateMipmaps bool
+	MinFilter     Filter
+	MagFilter     Filter
+	UseAnisotropy bool
 
 	InternalFormat InternalFormat
 	DataFormat     DataFormat
@@ -40,9 +38,6 @@ type CubeTexture interface {
 type CubeTextureDefinition struct {
 	Dimension int
 
-	WrapS Wrap
-	WrapT Wrap
-
 	MinFilter Filter
 	MagFilter Filter
 
@@ -59,7 +54,9 @@ type CubeTextureDefinition struct {
 
 const (
 	WrapClampToEdge Wrap = 1 + iota
+	WrapMirroredClampToEdge
 	WrapRepeat
+	WrapMirroredRepat
 )
 
 type Wrap int

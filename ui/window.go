@@ -59,8 +59,9 @@ type Window struct {
 	graphics Graphics
 	context  *Context
 
-	size Size
-	root *Element
+	size           Size
+	root           *Element
+	focusedElement *Element
 
 	oldMousePosition Position
 }
@@ -121,6 +122,18 @@ func (w *Window) dfsElementByID(current *Element, id string) (*Element, bool) {
 	return nil, false
 }
 
+// IsElementFocused returns whether the specified element is the currently
+// focused Element.
+func (w *Window) IsElementFocused(element *Element) bool {
+	return w.focusedElement == element
+}
+
+// DiscardFocus removes the focus from any Element.
+func (w *Window) DiscardFocus() {
+	w.focusedElement = nil
+	w.Invalidate()
+}
+
 type windowHandler struct {
 	*Window
 }
@@ -139,7 +152,13 @@ func (w *windowHandler) OnFramebufferResize(size Size) {
 }
 
 func (w *windowHandler) OnKeyboardEvent(event KeyboardEvent) bool {
-	// TODO
+	current := w.focusedElement
+	for current != nil {
+		if current.focusable && current.onKeyboardEvent(event) {
+			return true
+		}
+		current = current.parent
+	}
 	return false
 }
 
@@ -148,11 +167,22 @@ func (w *windowHandler) OnMouseEvent(event MouseEvent) bool {
 	w.processMouseLeave(w.root, event.Position, w.oldMousePosition)
 	w.processMouseEnter(w.root, event.Position, w.oldMousePosition)
 	w.oldMousePosition = event.Position
+	if event.Type == MouseEventTypeDown {
+		oldFocusedElement := w.focusedElement
+		w.processFocusChange(w.root, event.Position)
+		if w.focusedElement != oldFocusedElement {
+			w.Invalidate()
+		}
+	}
 	return w.processMouseEvent(w.root, event)
 }
 
 func (w *windowHandler) OnRender() {
 	w.graphics.Begin()
+	w.graphics.Canvas().Clip(Bounds{
+		Position: NewPosition(0, 0),
+		Size:     w.size,
+	})
 	w.renderElement(w.root, w.graphics.Canvas(), Bounds{
 		Position: NewPosition(0, 0),
 		Size:     w.size,
@@ -162,6 +192,26 @@ func (w *windowHandler) OnRender() {
 
 func (w *windowHandler) OnCloseRequested() {
 	w.Close()
+}
+
+func (w *windowHandler) processFocusChange(element *Element, position Position) {
+	if !element.enabled || !element.visible {
+		return
+	}
+
+	bounds := element.Bounds()
+	if !bounds.Contains(position) {
+		return
+	}
+
+	if element.focusable {
+		w.focusedElement = element
+	}
+
+	relativePosition := position.Translate(-bounds.X, -bounds.Y)
+	for childElement := element.lastChild; childElement != nil; childElement = childElement.leftSibling {
+		w.processFocusChange(childElement, relativePosition)
+	}
 }
 
 func (w *windowHandler) processMouseLeave(element *Element, newPosition, oldPosition Position) {

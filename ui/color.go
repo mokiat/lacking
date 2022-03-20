@@ -18,6 +18,17 @@ func RGB(r, g, b uint8) Color {
 	return RGBA(r, g, b, 255)
 }
 
+// ColorWithAlpha returns a new color that based on the
+// specified color but with adjusted alpha channel.
+func ColorWithAlpha(color Color, a uint8) Color {
+	return Color{
+		R: color.R,
+		G: color.G,
+		B: color.B,
+		A: a,
+	}
+}
+
 // Black returns an opaque Black color.
 func Black() Color {
 	return RGB(0, 0, 0)

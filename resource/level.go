@@ -4,8 +4,8 @@ import (
 	"fmt"
 
 	"github.com/mokiat/gomath/sprec"
-	"github.com/mokiat/lacking/async"
 	"github.com/mokiat/lacking/data/asset"
+	gameasset "github.com/mokiat/lacking/game/asset"
 	"github.com/mokiat/lacking/game/graphics"
 	"github.com/mokiat/lacking/shape"
 )
@@ -33,34 +33,26 @@ type Entity struct {
 	Matrix sprec.Mat4
 }
 
-func NewLevelOperator(locator Locator, gfxEngine graphics.Engine, gfxWorker *async.Worker) *LevelOperator {
+func NewLevelOperator(delegate gameasset.Registry, gfxEngine graphics.Engine) *LevelOperator {
 	return &LevelOperator{
-		locator:   locator,
+		delegate:  delegate,
 		gfxEngine: gfxEngine,
-		gfxWorker: gfxWorker,
 	}
 }
 
 type LevelOperator struct {
-	locator   Locator
+	delegate  gameasset.Registry
 	gfxEngine graphics.Engine
-	gfxWorker *async.Worker
 }
 
-func (o *LevelOperator) Allocate(registry *Registry, name string) (interface{}, error) {
-	in, err := o.locator.Open("assets", "levels", name)
-	if err != nil {
-		return nil, fmt.Errorf("failed to open level asset %q: %w", name, err)
-	}
-	defer in.Close()
-
+func (o *LevelOperator) Allocate(registry *Registry, id string) (interface{}, error) {
 	levelAsset := new(asset.Level)
-	if err := asset.DecodeLevel(in, levelAsset); err != nil {
-		return nil, fmt.Errorf("failed to decode level asset %q: %w", name, err)
+	if err := o.delegate.ReadContent(id, levelAsset); err != nil {
+		return nil, fmt.Errorf("failed to open level asset %q: %w", id, err)
 	}
 
 	level := &Level{
-		Name: name,
+		Name: id,
 	}
 
 	if result := registry.LoadCubeTexture(levelAsset.SkyboxTexture).OnSuccess(InjectCubeTexture(&level.SkyboxTexture)).Wait(); result.Err != nil {
@@ -117,7 +109,7 @@ func (o *LevelOperator) Allocate(registry *Registry, name string) (interface{}, 
 
 	staticMeshes := make([]*Mesh, len(levelAsset.StaticMeshes))
 	for i, staticMeshAsset := range levelAsset.StaticMeshes {
-		staticMesh, err := AllocateMesh(registry, staticMeshAsset.Name, o.gfxWorker, o.gfxEngine, &staticMeshAsset)
+		staticMesh, err := AllocateMesh(registry, staticMeshAsset.Name, o.gfxEngine, &staticMeshAsset)
 		if err != nil {
 			return nil, fmt.Errorf("failed to allocate mesh: %w", err)
 		}
@@ -150,7 +142,7 @@ func (o *LevelOperator) Release(registry *Registry, res interface{}) error {
 		}
 	}
 	for _, staticMesh := range level.StaticMeshes {
-		if err := ReleaseMesh(registry, o.gfxWorker, staticMesh); err != nil {
+		if err := ReleaseMesh(registry, staticMesh); err != nil {
 			return fmt.Errorf("failed to release mesh: %w", err)
 		}
 	}

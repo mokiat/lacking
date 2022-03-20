@@ -11,6 +11,7 @@ type ElementData struct {
 	Essence   ui.Essence
 	Enabled   optional.Bool
 	Visible   optional.Bool
+	Focusable optional.Bool
 	IdealSize optional.Size
 	Padding   ui.Spacing
 	Layout    ui.Layout
@@ -39,6 +40,9 @@ var Element = Define(func(props Properties) Instance {
 	}
 	if data.Visible.Specified {
 		element.SetVisible(data.Visible.Value)
+	}
+	if data.Focusable.Specified {
+		element.SetFocusable(data.Focusable.Value)
 	}
 	if data.IdealSize.Specified {
 		element.SetIdealSize(data.IdealSize.Value)

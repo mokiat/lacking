@@ -70,10 +70,15 @@ var Picture = co.ShallowCached(co.Define(func(props co.Properties) co.Instance {
 	essence.image = data.Image
 	essence.mode = data.Mode
 
+	var idealSize optional.Size
+	if data.Image != nil {
+		idealSize = optional.NewSize(data.Image.Size())
+	}
+
 	return co.New(Element, func() {
 		co.WithData(co.ElementData{
 			Essence:   essence,
-			IdealSize: optional.NewSize(data.Image.Size()),
+			IdealSize: idealSize,
 		})
 		co.WithLayoutData(props.LayoutData())
 		co.WithChildren(props.Children())

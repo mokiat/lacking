@@ -25,15 +25,26 @@ type MouseEvent struct {
 	// Button specifies the button for which the event is
 	// applicable.
 	Button MouseButton
+
+	// ScrollX determines the amount of horizontal scroll.
+	ScrollX float64
+
+	// ScrollY determines the amount of vertical scroll.
+	ScrollY float64
+
+	// Payload contains the data that was dropped.
+	Payload interface{}
 }
 
 // String returns a string representation for this mouse event.
 func (e MouseEvent) String() string {
-	return fmt.Sprintf("(%d,%s,%s,%s)",
+	return fmt.Sprintf("(%d,%s,%s,%s,%.2f,%.2f)",
 		e.Index,
 		e.Position,
 		e.Type,
 		e.Button,
+		e.ScrollX,
+		e.ScrollY,
 	)
 }
 
@@ -46,8 +57,10 @@ const (
 	MouseEventTypeMove       = app.MouseEventTypeMove
 	MouseEventTypeDrag       = app.MouseEventTypeDrag
 	MouseEventTypeDragCancel = app.MouseEventTypeDragCancel
+	MouseEventTypeDrop       = app.MouseEventTypeDrop
 	MouseEventTypeEnter      = app.MouseEventTypeEnter
 	MouseEventTypeLeave      = app.MouseEventTypeLeave
+	MouseEventTypeScroll     = app.MouseEventTypeScroll
 )
 
 // MouseButton represents the mouse button.
@@ -58,3 +71,7 @@ const (
 	MouseButtonMiddle = app.MouseButtonMiddle
 	MouseButtonRight  = app.MouseButtonRight
 )
+
+// FilepathPayload is a type of Payload that occurs when files
+// have been dragged and dropped into the window.
+type FilepathPayload = app.FilepathPayload

@@ -2,6 +2,7 @@ package component
 
 type Controller interface {
 	Subscribe(callback ControllerCallback) ControllerSubscription
+	Alter(func() error) error
 	NotifyChanged()
 }
 
@@ -18,7 +19,8 @@ func NewBaseController() Controller {
 var _ Controller = (*BaseController)(nil)
 
 type BaseController struct {
-	subscriptions []*baseSubscription
+	subscriptions  []*baseSubscription
+	ongoingChanges int
 }
 
 func (c *BaseController) Subscribe(callback ControllerCallback) ControllerSubscription {
@@ -30,7 +32,23 @@ func (c *BaseController) Subscribe(callback ControllerCallback) ControllerSubscr
 	return subscription
 }
 
+func (c *BaseController) Alter(fn func() error) error {
+	defer func() {
+		if c.ongoingChanges == 0 {
+			c.NotifyChanged()
+		}
+	}()
+	c.ongoingChanges++
+	defer func() {
+		c.ongoingChanges--
+	}()
+	return fn()
+}
+
 func (c *BaseController) NotifyChanged() {
+	if c.ongoingChanges > 0 {
+		return
+	}
 	for _, subscription := range c.subscriptions {
 		subscription.callback(c)
 	}

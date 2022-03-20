@@ -103,6 +103,20 @@ func (c *Context) OpenImage(uri string) (Image, error) {
 	return result, nil
 }
 
+// CreateImage creates a new image resource.
+//
+// As the Image resource consumes resources, its lifecycle becomes linked
+// to this Context. Once the owner of this Context is destroyed, the image
+// will be released. Keep in mind that just dereferencing the owner is not
+// sufficient, as cleanup would not be performed in such cases.
+func (c *Context) CreateImage(img image.Image) (Image, error) {
+	result, err := c.graphics.CreateImage(img)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create graphics image: %w", err)
+	}
+	return result, nil
+}
+
 // OpenFontCollection opens the FontCollection at the specified URI location.
 //
 // The URI is interpreted according to the used ResourceLocator.

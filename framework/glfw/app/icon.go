@@ -8,6 +8,7 @@ import (
 	_ "image/jpeg"
 	_ "image/png"
 
+	_ "github.com/mdouchement/hdr/codec/rgbe"
 	_ "golang.org/x/image/bmp"
 )
 

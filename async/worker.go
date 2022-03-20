@@ -1,5 +1,15 @@
 package async
 
+type Func func() error
+
+type Processor interface {
+	Queue(fn Func) Eventual
+}
+
+type Queue interface {
+	Schedule(fn Func)
+}
+
 func NewWorker(capacity int) *Worker {
 	return &Worker{
 		tasks:   make(chan workerTask, capacity),
@@ -23,6 +33,25 @@ func (w *Worker) Schedule(task Task) Outcome {
 		task:    task,
 	}
 	return outcome
+}
+
+func (w *Worker) Queue(fn Func) Eventual {
+	return w.ScheduleFunc(fn)
+}
+
+func (w *Worker) ScheduleFunc(fn func() error) Eventual {
+	outcome := NewOutcome()
+	w.tasks <- workerTask{
+		outcome: outcome,
+		task:    VoidTask(fn),
+	}
+
+	eventual, eventualDone := NewEventual()
+	go func() {
+		result := outcome.Wait()
+		eventualDone(result.Err)
+	}()
+	return eventual
 }
 
 func (w *Worker) ProcessTrySingle() bool {

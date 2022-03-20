@@ -2,6 +2,7 @@ package component
 
 import (
 	"fmt"
+	"image"
 
 	"github.com/mokiat/lacking/ui"
 )
@@ -21,6 +22,16 @@ func OpenImage(uri string) ui.Image {
 		panic(fmt.Errorf("failed to open image %q: %w", uri, err))
 	}
 	return img
+}
+
+// CreateImage delegates to the UI window context to create
+// the specified image.
+func CreateImage(img image.Image) ui.Image {
+	result, err := uiCtx.CreateImage(img)
+	if err != nil {
+		panic(fmt.Errorf("failed to create image: %w", err))
+	}
+	return result
 }
 
 // OpenFontCollection delegates to the UI window context to open
