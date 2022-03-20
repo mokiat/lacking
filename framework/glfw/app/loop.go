@@ -13,8 +13,6 @@ const (
 	taskProcessingTimeout = 30 * time.Millisecond
 )
 
-var _ (app.Window) = (*loop)(nil)
-
 func newLoop(title string, window *glfw.Window, controller app.Controller) *loop {
 	return &loop{
 		title:         title,
@@ -27,6 +25,8 @@ func newLoop(title string, window *glfw.Window, controller app.Controller) *loop
 		cursorLocked:  false,
 	}
 }
+
+var _ app.Window = (*loop)(nil)
 
 type loop struct {
 	title         string
