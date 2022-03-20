@@ -2,6 +2,7 @@ package ui
 
 import (
 	"io"
+	"io/fs"
 	"os"
 	"path/filepath"
 )
@@ -33,11 +34,30 @@ type FileResourceLocator struct {
 	dir string
 }
 
-// OpenResource opens the resource at the specified
-// relative address path.
+// OpenResource opens the resource at the specified relative URI path.
 func (l *FileResourceLocator) OpenResource(uri string) (io.ReadCloser, error) {
 	if !filepath.IsAbs(uri) {
 		uri = filepath.Join(l.dir, uri)
 	}
 	return os.Open(uri)
+}
+
+// NewFSResourceLocator returns a new instance of FSResourceLocator that
+// uses the specified fs.FS to load resources.
+func NewFSResourceLocator(filesys fs.FS) *FSResourceLocator {
+	return &FSResourceLocator{
+		filesys: filesys,
+	}
+}
+
+// FileResourceLocator is an implementation of ResourceLocator that
+// uses the fs.FS abstraction to load resources. This allows the
+// API to be used with embedded files, for example.
+type FSResourceLocator struct {
+	filesys fs.FS
+}
+
+// OpenResource opens the resource at the specified URI location.
+func (l *FSResourceLocator) OpenResource(uri string) (io.ReadCloser, error) {
+	return l.filesys.Open(uri)
 }
