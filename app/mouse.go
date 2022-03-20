@@ -38,12 +38,14 @@ type MouseEvent struct {
 
 // String returns a string representation of this event.
 func (e MouseEvent) String() string {
-	return fmt.Sprintf("(%d,(%d,%d),%s,%s)",
+	return fmt.Sprintf("(%d,(%d,%d),%s,%s,%.2f,%.2f)",
 		e.Index,
 		e.X,
 		e.Y,
 		e.Type,
 		e.Button,
+		e.ScrollX,
+		e.ScrollY,
 	)
 }
 
