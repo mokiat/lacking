@@ -18,8 +18,11 @@ type API interface {
 	CreateIndexBuffer(info BufferInfo) Buffer
 	CreateVertexArray(info VertexArrayInfo) VertexArray
 	CreatePipeline(info PipelineInfo) Pipeline
+	CreateCommandQueue() CommandQueue
 
 	BeginRenderPass(info RenderPassInfo)
+	EndRenderPass()
+
 	BindPipeline(pipeline Pipeline)
 	Uniform4f(location UniformLocation, values [4]float32)
 	Uniform1i(location UniformLocation, value int)
@@ -27,5 +30,5 @@ type API interface {
 	TextureUnit(index int, texture Texture)
 	Draw(vertexOffset, vertexCount, instanceCount int)
 	DrawIndexed(indexOffset, indexCount, instanceCount int)
-	EndRenderPass()
+	SubmitQueue(queue CommandQueue)
 }

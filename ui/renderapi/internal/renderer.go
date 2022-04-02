@@ -27,6 +27,8 @@ func NewRenderer(api render.API, shaders plugin.ShaderCollection) *Renderer {
 type Renderer struct {
 	api render.API
 
+	commandQueue render.CommandQueue
+
 	projectionMatrix       sprec.Mat4
 	transformMatrix        sprec.Mat4
 	textureTransformMatrix sprec.Mat4
@@ -58,6 +60,8 @@ type Renderer struct {
 }
 
 func (r *Renderer) Init() {
+	r.commandQueue = r.api.CreateCommandQueue()
+
 	r.shapeMesh.Allocate(r.api)
 	r.shapeMaterial.Allocate(r.api)
 	r.shapeBlankMaterial.Allocate(r.api)
@@ -199,6 +203,7 @@ func (r *Renderer) Init() {
 }
 
 func (r *Renderer) Free() {
+	defer r.commandQueue.Release()
 	defer r.shapeMesh.Release()
 	defer r.shapeMaterial.Release()
 	defer r.shapeBlankMaterial.Release()
@@ -255,7 +260,6 @@ func (r *Renderer) EndShape(shape *Shape) {
 			position: point.coords,
 		})
 	}
-	r.shapeMesh.Update() // TODO: OPTIMIZE AS WAS BEFORE!!!
 
 	// // draw stencil mask for all sub-shapes
 	// if shape.fill.mode != StencilModeNone {
@@ -274,13 +278,13 @@ func (r *Renderer) EndShape(shape *Shape) {
 	// render color shader shape and clear stencil buffer
 	switch shape.fill.mode {
 	case StencilModeNone:
-		r.api.BindPipeline(r.shapeShadeModeNonePipeline)
+		r.commandQueue.BindPipeline(r.shapeShadeModeNonePipeline)
 	case StencilModeNonZero:
-		r.api.BindPipeline(r.shapeShadeModeNonZeroPipeline)
+		r.commandQueue.BindPipeline(r.shapeShadeModeNonZeroPipeline)
 	case StencilModeOdd:
-		r.api.BindPipeline(r.shapeShadeModeOddPipeline)
+		r.commandQueue.BindPipeline(r.shapeShadeModeOddPipeline)
 	default:
-		r.api.BindPipeline(r.shapeShadeModeNonePipeline)
+		r.commandQueue.BindPipeline(r.shapeShadeModeNonePipeline)
 	}
 
 	texture := r.whiteMask
@@ -289,18 +293,18 @@ func (r *Renderer) EndShape(shape *Shape) {
 	}
 
 	for _, subShape := range shape.subShapes {
-		r.api.Uniform4f(r.shapeMaterial.clipDistancesLocation, [4]float32{
+		r.commandQueue.Uniform4f(r.shapeMaterial.clipDistancesLocation, [4]float32{
 			r.clipBounds.X, r.clipBounds.Y, r.clipBounds.Z, r.clipBounds.W, // TODO: Add Array method to Vec4
 		})
-		r.api.Uniform4f(r.shapeMaterial.colorLocation, [4]float32{
+		r.commandQueue.Uniform4f(r.shapeMaterial.colorLocation, [4]float32{
 			shape.fill.color.X, shape.fill.color.Y, shape.fill.color.Z, shape.fill.color.W, // TODO: Add Array method to Vec4
 		})
-		r.api.UniformMatrix4f(r.shapeMaterial.projectionMatrixLocation, r.projectionMatrix.ColumnMajorArray())
-		r.api.UniformMatrix4f(r.shapeMaterial.transformMatrixLocation, r.transformMatrix.ColumnMajorArray())
-		r.api.UniformMatrix4f(r.shapeMaterial.textureTransformMatrixLocation, r.textureTransformMatrix.ColumnMajorArray())
-		r.api.TextureUnit(0, texture)
-		r.api.Uniform1i(r.shapeMaterial.textureLocation, 0)
-		r.api.Draw(vertexOffset+subShape.pointOffset, subShape.pointCount, 1)
+		r.commandQueue.UniformMatrix4f(r.shapeMaterial.projectionMatrixLocation, r.projectionMatrix.ColumnMajorArray())
+		r.commandQueue.UniformMatrix4f(r.shapeMaterial.transformMatrixLocation, r.transformMatrix.ColumnMajorArray())
+		r.commandQueue.UniformMatrix4f(r.shapeMaterial.textureTransformMatrixLocation, r.textureTransformMatrix.ColumnMajorArray())
+		r.commandQueue.TextureUnit(0, texture)
+		r.commandQueue.Uniform1i(r.shapeMaterial.textureLocation, 0)
+		r.commandQueue.Draw(vertexOffset+subShape.pointOffset, subShape.pointCount, 1)
 	}
 }
 
@@ -549,10 +553,11 @@ func (r *Renderer) Begin(target Target) {
 }
 
 func (r *Renderer) End() {
-	// r.shapeMesh.Update()
+	r.shapeMesh.Update()
 	r.contourMesh.Update()
 	r.textMesh.Update()
 
+	r.api.SubmitQueue(r.commandQueue)
 	r.api.EndRenderPass()
 
 	// r.enableOptions()
