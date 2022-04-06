@@ -30,5 +30,6 @@ type API interface {
 	TextureUnit(index int, texture Texture)
 	Draw(vertexOffset, vertexCount, instanceCount int)
 	DrawIndexed(indexOffset, indexCount, instanceCount int)
+	CopyContentToTexture(info CopyContentToTextureInfo)
 	SubmitQueue(queue CommandQueue)
 }

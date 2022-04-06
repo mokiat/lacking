@@ -51,6 +51,7 @@ type Renderer struct {
 	text         *Text
 	textMesh     *TextMesh
 	textMaterial *Material
+	textPipeline render.Pipeline
 
 	whiteMask render.Texture
 
@@ -71,14 +72,16 @@ func (r *Renderer) Init() {
 	r.textMaterial.Allocate(r.api)
 
 	r.shapeMaskPipeline = r.api.CreatePipeline(render.PipelineInfo{
-		Program:     r.shapeBlankMaterial.program,
-		VertexArray: r.shapeMesh.vertexArray,
-		Topology:    render.TopologyTriangleFan,
-		Culling:     render.CullModeNone,
-		FrontFace:   render.FaceOrientationCCW,
-		DepthTest:   false,
-		DepthWrite:  false,
-		StencilTest: true,
+		Program:         r.shapeBlankMaterial.program,
+		VertexArray:     r.shapeMesh.vertexArray,
+		Topology:        render.TopologyTriangleFan,
+		Culling:         render.CullModeNone,
+		FrontFace:       render.FaceOrientationCCW,
+		LineWidth:       1.0,
+		DepthTest:       false,
+		DepthWrite:      false,
+		DepthComparison: render.ComparisonAlways,
+		StencilTest:     true,
 		StencilFront: render.StencilOperationState{
 			StencilFailOp:  render.StencilOperationKeep,
 			DepthFailOp:    render.StencilOperationKeep,
@@ -97,7 +100,15 @@ func (r *Renderer) Init() {
 			Reference:      0x00,
 			WriteMask:      0xFF,
 		},
-		ColorWrite: [4]bool{false, false, false, false},
+		ColorWrite:                  [4]bool{false, false, false, false},
+		BlendEnabled:                false,
+		BlendColor:                  sprec.ZeroVec4(),
+		BlendSourceColorFactor:      render.BlendFactorSourceAlpha,
+		BlendSourceAlphaFactor:      render.BlendFactorSourceAlpha,
+		BlendDestinationColorFactor: render.BlendFactorOneMinusSourceAlpha,
+		BlendDestinationAlphaFactor: render.BlendFactorOneMinusSourceAlpha,
+		BlendOpColor:                render.BlendOperationAdd,
+		BlendOpAlpha:                render.BlendOperationAdd,
 	})
 	r.shapeShadeModeNonePipeline = r.api.CreatePipeline(render.PipelineInfo{
 		Program:                     r.shapeMaterial.program,
@@ -118,14 +129,16 @@ func (r *Renderer) Init() {
 		BlendOpAlpha:                render.BlendOperationAdd,
 	})
 	r.shapeShadeModeNonZeroPipeline = r.api.CreatePipeline(render.PipelineInfo{
-		Program:     r.shapeMaterial.program,
-		VertexArray: r.shapeMesh.vertexArray,
-		Topology:    render.TopologyTriangleFan,
-		Culling:     render.CullModeNone,
-		FrontFace:   render.FaceOrientationCCW,
-		DepthTest:   false,
-		DepthWrite:  false,
-		StencilTest: true,
+		Program:         r.shapeMaterial.program,
+		VertexArray:     r.shapeMesh.vertexArray,
+		Topology:        render.TopologyTriangleFan,
+		Culling:         render.CullModeNone,
+		FrontFace:       render.FaceOrientationCCW,
+		LineWidth:       1.0,
+		DepthTest:       false,
+		DepthWrite:      false,
+		DepthComparison: render.ComparisonAlways,
+		StencilTest:     true,
 		StencilFront: render.StencilOperationState{
 			StencilFailOp:  render.StencilOperationKeep,
 			DepthFailOp:    render.StencilOperationKeep,
@@ -190,6 +203,25 @@ func (r *Renderer) Init() {
 		BlendOpAlpha:                render.BlendOperationAdd,
 	})
 
+	r.textPipeline = r.api.CreatePipeline(render.PipelineInfo{
+		Program:                     r.textMaterial.program,
+		VertexArray:                 r.textMesh.vertexArray,
+		Topology:                    render.TopologyTriangles,
+		Culling:                     render.CullModeNone,
+		FrontFace:                   render.FaceOrientationCCW,
+		DepthTest:                   false,
+		DepthWrite:                  false,
+		StencilTest:                 false,
+		ColorWrite:                  [4]bool{true, true, true, true},
+		BlendEnabled:                true,
+		BlendSourceColorFactor:      render.BlendFactorSourceAlpha,
+		BlendSourceAlphaFactor:      render.BlendFactorSourceAlpha,
+		BlendDestinationColorFactor: render.BlendFactorOneMinusSourceAlpha,
+		BlendDestinationAlphaFactor: render.BlendFactorOneMinusSourceAlpha,
+		BlendOpColor:                render.BlendOperationAdd,
+		BlendOpAlpha:                render.BlendOperationAdd,
+	})
+
 	r.whiteMask = r.api.CreateColorTexture2D(render.ColorTexture2DInfo{
 		Width:           1,
 		Height:          1,
@@ -211,6 +243,7 @@ func (r *Renderer) Free() {
 	defer r.contourMaterial.Release()
 	defer r.textMesh.Release()
 	defer r.textMaterial.Release()
+	defer r.textPipeline.Release()
 	defer r.whiteMask.Release()
 }
 
@@ -261,19 +294,19 @@ func (r *Renderer) EndShape(shape *Shape) {
 		})
 	}
 
-	// // draw stencil mask for all sub-shapes
-	// if shape.fill.mode != StencilModeNone {
-	// 	r.api.BindPipeline(r.shapeMaskPipeline)
+	// draw stencil mask for all sub-shapes
+	if shape.fill.mode != StencilModeNone {
+		r.commandQueue.BindPipeline(r.shapeMaskPipeline)
+		r.commandQueue.Uniform4f(r.shapeBlankMaterial.clipDistancesLocation, [4]float32{
+			r.clipBounds.X, r.clipBounds.Y, r.clipBounds.Z, r.clipBounds.W, // TODO: Add Array method to Vec4
+		})
+		r.commandQueue.UniformMatrix4f(r.shapeBlankMaterial.projectionMatrixLocation, r.projectionMatrix.ColumnMajorArray())
+		r.commandQueue.UniformMatrix4f(r.shapeBlankMaterial.transformMatrixLocation, r.transformMatrix.ColumnMajorArray())
 
-	// 	for _, subShape := range shape.subShapes {
-	// 		r.api.Uniform4f(r.shapeMaterial.clipDistancesLocation, [4]float32{
-	// 			r.clipBounds.X, r.clipBounds.Y, r.clipBounds.Z, r.clipBounds.W, // TODO: Add Array method to Vec4
-	// 		})
-	// 		r.api.UniformMatrix4f(r.shapeMaterial.projectionMatrixLocation, r.projectionMatrix.ColumnMajorArray())
-	// 		r.api.UniformMatrix4f(r.shapeMaterial.transformMatrixLocation, r.transformMatrix.ColumnMajorArray())
-	// 		r.api.Draw(vertexOffset+subShape.pointOffset, subShape.pointCount, 1)
-	// 	}
-	// }
+		for _, subShape := range shape.subShapes {
+			r.commandQueue.Draw(vertexOffset+subShape.pointOffset, subShape.pointCount, 1)
+		}
+	}
 
 	// render color shader shape and clear stencil buffer
 	switch shape.fill.mode {
@@ -292,18 +325,19 @@ func (r *Renderer) EndShape(shape *Shape) {
 		texture = shape.fill.image.texture
 	}
 
+	r.commandQueue.Uniform4f(r.shapeMaterial.clipDistancesLocation, [4]float32{
+		r.clipBounds.X, r.clipBounds.Y, r.clipBounds.Z, r.clipBounds.W, // TODO: Add Array method to Vec4
+	})
+	r.commandQueue.Uniform4f(r.shapeMaterial.colorLocation, [4]float32{
+		shape.fill.color.X, shape.fill.color.Y, shape.fill.color.Z, shape.fill.color.W, // TODO: Add Array method to Vec4
+	})
+	r.commandQueue.UniformMatrix4f(r.shapeMaterial.projectionMatrixLocation, r.projectionMatrix.ColumnMajorArray())
+	r.commandQueue.UniformMatrix4f(r.shapeMaterial.transformMatrixLocation, r.transformMatrix.ColumnMajorArray())
+	r.commandQueue.UniformMatrix4f(r.shapeMaterial.textureTransformMatrixLocation, r.textureTransformMatrix.ColumnMajorArray())
+	r.commandQueue.TextureUnit(0, texture)
+	r.commandQueue.Uniform1i(r.shapeMaterial.textureLocation, 0)
+
 	for _, subShape := range shape.subShapes {
-		r.commandQueue.Uniform4f(r.shapeMaterial.clipDistancesLocation, [4]float32{
-			r.clipBounds.X, r.clipBounds.Y, r.clipBounds.Z, r.clipBounds.W, // TODO: Add Array method to Vec4
-		})
-		r.commandQueue.Uniform4f(r.shapeMaterial.colorLocation, [4]float32{
-			shape.fill.color.X, shape.fill.color.Y, shape.fill.color.Z, shape.fill.color.W, // TODO: Add Array method to Vec4
-		})
-		r.commandQueue.UniformMatrix4f(r.shapeMaterial.projectionMatrixLocation, r.projectionMatrix.ColumnMajorArray())
-		r.commandQueue.UniformMatrix4f(r.shapeMaterial.transformMatrixLocation, r.transformMatrix.ColumnMajorArray())
-		r.commandQueue.UniformMatrix4f(r.shapeMaterial.textureTransformMatrixLocation, r.textureTransformMatrix.ColumnMajorArray())
-		r.commandQueue.TextureUnit(0, texture)
-		r.commandQueue.Uniform1i(r.shapeMaterial.textureLocation, 0)
 		r.commandQueue.Draw(vertexOffset+subShape.pointOffset, subShape.pointCount, 1)
 	}
 }
@@ -498,17 +532,18 @@ func (r *Renderer) EndText(text *Text) {
 	}
 	vertexCount := r.textMesh.Offset() - vertexOffset
 
-	r.subMeshes = append(r.subMeshes, SubMesh{
-		clipBounds:      r.clipBounds,
-		material:        r.textMaterial,
-		vertexArray:     r.textMesh.vertexArray,
-		transformMatrix: r.transformMatrix,
-		texture:         text.font.texture,
-		color:           text.color,
-		vertexOffset:    vertexOffset,
-		vertexCount:     vertexCount,
-		// primitive:       gl.TRIANGLES,
+	r.commandQueue.BindPipeline(r.textPipeline)
+	r.commandQueue.Uniform4f(r.textMaterial.clipDistancesLocation, [4]float32{
+		r.clipBounds.X, r.clipBounds.Y, r.clipBounds.Z, r.clipBounds.W, // TODO: Add Array method to Vec4
 	})
+	r.commandQueue.Uniform4f(r.textMaterial.colorLocation, [4]float32{
+		text.color.X, text.color.Y, text.color.Z, text.color.W, // TODO: Add Array method to Vec4
+	})
+	r.commandQueue.UniformMatrix4f(r.textMaterial.projectionMatrixLocation, r.projectionMatrix.ColumnMajorArray())
+	r.commandQueue.UniformMatrix4f(r.textMaterial.transformMatrixLocation, r.transformMatrix.ColumnMajorArray())
+	r.commandQueue.TextureUnit(0, text.font.texture)
+	r.commandQueue.Uniform1i(r.textMaterial.textureLocation, 0)
+	r.commandQueue.Draw(vertexOffset, vertexCount, 1)
 }
 
 func (r *Renderer) DrawSurface(surface Surface) {
@@ -548,7 +583,7 @@ func (r *Renderer) Begin(target Target) {
 		DepthStoreOp:      render.StoreOperationDontCare,
 		StencilLoadOp:     render.LoadOperationClear,
 		StencilStoreOp:    render.StoreOperationDontCare,
-		StencilClearValue: 0,
+		StencilClearValue: 0x00,
 	})
 }
 
@@ -640,19 +675,9 @@ func (r *Renderer) End() {
 // 	// gl.DepthMask(false)
 // 	// gl.Enable(gl.BLEND)
 // 	// gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
-
-// 	gl.Enable(gl.CLIP_DISTANCE0)
-// 	gl.Enable(gl.CLIP_DISTANCE1)
-// 	gl.Enable(gl.CLIP_DISTANCE2)
-// 	gl.Enable(gl.CLIP_DISTANCE3)
 // }
 
 // func (r *Renderer) disableOptions() {
-// 	gl.Disable(gl.CLIP_DISTANCE0)
-// 	gl.Disable(gl.CLIP_DISTANCE1)
-// 	gl.Disable(gl.CLIP_DISTANCE2)
-// 	gl.Disable(gl.CLIP_DISTANCE3)
-
 // 	gl.ColorMask(true, true, true, true)
 // 	gl.Disable(gl.STENCIL_TEST)
 // 	gl.Enable(gl.CULL_FACE)

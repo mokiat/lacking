@@ -96,21 +96,6 @@ func (f *FontFactory) CreateFont(font *opentype.Font) *Font {
 	// f.framebuffer.ClearColor(0, sprec.NewVec4(0.0, 0.0, 0.0, 0.0))
 	// f.framebuffer.ClearDepth(1.0)
 
-	f.api.BeginRenderPass(render.RenderPassInfo{
-		Framebuffer: f.framebuffer,
-		Viewport: render.Area{
-			X:      0,
-			Y:      0,
-			Width:  f.fontImageSize,
-			Height: f.fontImageSize,
-		},
-		DepthLoadOp:       render.LoadOperationDontCare,
-		DepthStoreOp:      render.StoreOperationDontCare,
-		StencilLoadOp:     render.LoadOperationClear,
-		StencilStoreOp:    render.StoreOperationDontCare,
-		StencilClearValue: 0,
-	})
-
 	f.renderer.Begin(Target{
 		Framebuffer: f.framebuffer,
 		Width:       f.fontImageSize,
@@ -239,8 +224,6 @@ func (f *FontFactory) CreateFont(font *opentype.Font) *Font {
 		}
 		f.renderer.EndShape(shape)
 
-		f.api.EndRenderPass()
-
 		resultKerns := make(map[rune]float32)
 		for _, targetCh := range supportedCharacters {
 			targetChIndex := reader.GlyphIndex(targetCh)
@@ -276,8 +259,17 @@ func (f *FontFactory) CreateFont(font *opentype.Font) *Font {
 		GammaCorrection: false,
 		Format:          render.DataFormatRGBA8,
 	})
-	// gl.CopyTextureSubImage2D(resultTexture.ID(), 0, 0, 0, 0, 0, fontImageSize, fontImageSize)
-	// gl.GenerateTextureMipmap(resultTexture.ID())
+	f.api.CopyContentToTexture(render.CopyContentToTextureInfo{
+		Texture:         resultTexture,
+		TextureLevel:    0,
+		TextureX:        0,
+		TextureY:        0,
+		FramebufferX:    0,
+		FramebufferY:    0,
+		Width:           f.fontImageSize,
+		Height:          f.fontImageSize,
+		GenerateMipmaps: true,
+	})
 
 	return &Font{
 		familyName:    reader.FontFamilyName(),
