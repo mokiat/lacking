@@ -47,6 +47,7 @@ type Renderer struct {
 	contour         *Contour
 	contourMesh     *ContourMesh
 	contourMaterial *Material
+	contourPipeline render.Pipeline
 
 	text         *Text
 	textMesh     *TextMesh
@@ -54,8 +55,6 @@ type Renderer struct {
 	textPipeline render.Pipeline
 
 	whiteMask render.Texture
-
-	subMeshes []SubMesh
 
 	target Target
 }
@@ -102,7 +101,6 @@ func (r *Renderer) Init() {
 		},
 		ColorWrite:                  [4]bool{false, false, false, false},
 		BlendEnabled:                false,
-		BlendColor:                  sprec.ZeroVec4(),
 		BlendSourceColorFactor:      render.BlendFactorSourceAlpha,
 		BlendSourceAlphaFactor:      render.BlendFactorSourceAlpha,
 		BlendDestinationColorFactor: render.BlendFactorOneMinusSourceAlpha,
@@ -203,6 +201,25 @@ func (r *Renderer) Init() {
 		BlendOpAlpha:                render.BlendOperationAdd,
 	})
 
+	r.contourPipeline = r.api.CreatePipeline(render.PipelineInfo{
+		Program:                     r.contourMaterial.program,
+		VertexArray:                 r.contourMesh.vertexArray,
+		Topology:                    render.TopologyTriangles,
+		Culling:                     render.CullModeNone,
+		FrontFace:                   render.FaceOrientationCCW,
+		DepthTest:                   false,
+		DepthWrite:                  false,
+		StencilTest:                 false,
+		ColorWrite:                  [4]bool{true, true, true, true},
+		BlendEnabled:                true,
+		BlendSourceColorFactor:      render.BlendFactorSourceAlpha,
+		BlendSourceAlphaFactor:      render.BlendFactorSourceAlpha,
+		BlendDestinationColorFactor: render.BlendFactorOneMinusSourceAlpha,
+		BlendDestinationAlphaFactor: render.BlendFactorOneMinusSourceAlpha,
+		BlendOpColor:                render.BlendOperationAdd,
+		BlendOpAlpha:                render.BlendOperationAdd,
+	})
+
 	r.textPipeline = r.api.CreatePipeline(render.PipelineInfo{
 		Program:                     r.textMaterial.program,
 		VertexArray:                 r.textMesh.vertexArray,
@@ -239,8 +256,13 @@ func (r *Renderer) Free() {
 	defer r.shapeMesh.Release()
 	defer r.shapeMaterial.Release()
 	defer r.shapeBlankMaterial.Release()
+	defer r.shapeMaskPipeline.Release()
+	defer r.shapeShadeModeNonePipeline.Release()
+	defer r.shapeShadeModeNonZeroPipeline.Release()
+	defer r.shapeShadeModeOddPipeline.Release()
 	defer r.contourMesh.Release()
 	defer r.contourMaterial.Release()
+	defer r.contourPipeline.Release()
 	defer r.textMesh.Release()
 	defer r.textMaterial.Release()
 	defer r.textPipeline.Release()
@@ -358,6 +380,14 @@ func (r *Renderer) EndContour(contour *Contour) {
 	}
 	r.contour = contour
 
+	r.commandQueue.BindPipeline(r.contourPipeline)
+	r.commandQueue.Uniform4f(r.contourMaterial.clipDistancesLocation, [4]float32{
+		r.clipBounds.X, r.clipBounds.Y, r.clipBounds.Z, r.clipBounds.W, // TODO: Add Array method to Vec4
+	})
+	r.commandQueue.UniformMatrix4f(r.contourMaterial.projectionMatrixLocation, r.projectionMatrix.ColumnMajorArray())
+	r.commandQueue.UniformMatrix4f(r.contourMaterial.transformMatrixLocation, r.transformMatrix.ColumnMajorArray())
+	r.commandQueue.Uniform1i(r.contourMaterial.textureLocation, 0)
+
 	for _, subContour := range contour.subContours {
 		pointIndex := subContour.pointOffset
 		current := contour.points[pointIndex]
@@ -417,15 +447,7 @@ func (r *Renderer) EndContour(contour *Contour) {
 		}
 		vertexCount := r.contourMesh.Offset() - vertexOffset
 
-		r.subMeshes = append(r.subMeshes, SubMesh{
-			clipBounds:      r.clipBounds,
-			material:        r.contourMaterial,
-			vertexArray:     r.contourMesh.vertexArray,
-			transformMatrix: r.transformMatrix,
-			vertexOffset:    vertexOffset,
-			vertexCount:     vertexCount,
-			// primitive:       gl.TRIANGLES,
-		})
+		r.commandQueue.Draw(vertexOffset, vertexCount, 1)
 	}
 }
 
@@ -547,10 +569,10 @@ func (r *Renderer) EndText(text *Text) {
 }
 
 func (r *Renderer) DrawSurface(surface Surface) {
-	r.subMeshes = append(r.subMeshes, SubMesh{
-		surface:    surface,
-		clipBounds: r.clipBounds,
-	})
+	// r.subMeshes = append(r.subMeshes, SubMesh{
+	// 	surface:    surface,
+	// 	clipBounds: r.clipBounds,
+	// })
 }
 
 func (r *Renderer) Begin(target Target) {
@@ -569,22 +591,6 @@ func (r *Renderer) Begin(target Target) {
 	r.shapeMesh.Reset()
 	r.contourMesh.Reset()
 	r.textMesh.Reset()
-	r.subMeshes = r.subMeshes[:0]
-
-	r.api.BeginRenderPass(render.RenderPassInfo{
-		Framebuffer: target.Framebuffer,
-		Viewport: render.Area{
-			X:      0,
-			Y:      0,
-			Width:  target.Width,
-			Height: target.Height,
-		},
-		DepthLoadOp:       render.LoadOperationDontCare,
-		DepthStoreOp:      render.StoreOperationDontCare,
-		StencilLoadOp:     render.LoadOperationClear,
-		StencilStoreOp:    render.StoreOperationDontCare,
-		StencilClearValue: 0x00,
-	})
 }
 
 func (r *Renderer) End() {
@@ -593,7 +599,6 @@ func (r *Renderer) End() {
 	r.textMesh.Update()
 
 	r.api.SubmitQueue(r.commandQueue)
-	r.api.EndRenderPass()
 
 	// r.enableOptions()
 

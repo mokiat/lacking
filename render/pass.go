@@ -25,6 +25,14 @@ type RenderPassInfo struct {
 	StencilLoadOp     LoadOperation
 	StencilStoreOp    StoreOperation
 	StencilClearValue int
+
+	Colors [4]ColorAttachmentInfo
+}
+
+type ColorAttachmentInfo struct {
+	LoadOp     LoadOperation
+	StoreOp    StoreOperation
+	ClearValue [4]float32
 }
 
 type Area struct {

@@ -1,7 +1,7 @@
 package render
 
 type FramebufferInfo struct {
-	ColorAttachments       []Texture
+	ColorAttachments       [4]Texture
 	DepthAttachment        Texture
 	StencilAttachment      Texture
 	DepthStencilAttachment Texture

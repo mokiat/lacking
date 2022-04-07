@@ -65,8 +65,26 @@ func (c *Canvas) ResizeFramebuffer(width, height int) {
 func (c *Canvas) Begin() {
 	c.currentLayer = c.topLayer
 
-	// gl.Enable(gl.FRAMEBUFFER_SRGB)
-	// c.framebuffer.ClearDepth(1.0)
+	c.api.BeginRenderPass(render.RenderPassInfo{
+		Framebuffer: c.framebuffer,
+		Viewport: render.Area{
+			X:      0,
+			Y:      0,
+			Width:  c.windowSize.Width,
+			Height: c.windowSize.Height,
+		},
+		Colors: [4]render.ColorAttachmentInfo{
+			{
+				LoadOp:  render.LoadOperationDontCare,
+				StoreOp: render.StoreOperationStore,
+			},
+		},
+		DepthLoadOp:       render.LoadOperationDontCare,
+		DepthStoreOp:      render.StoreOperationDontCare,
+		StencilLoadOp:     render.LoadOperationClear,
+		StencilStoreOp:    render.StoreOperationDontCare,
+		StencilClearValue: 0x00,
+	})
 
 	c.renderer.Begin(Target{
 		Framebuffer: c.framebuffer,
@@ -77,6 +95,8 @@ func (c *Canvas) Begin() {
 
 func (c *Canvas) End() {
 	c.renderer.End()
+
+	c.api.EndRenderPass()
 }
 
 func (c *Canvas) Push() {

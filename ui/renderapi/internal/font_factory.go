@@ -79,7 +79,7 @@ func (f *FontFactory) Init() {
 	})
 
 	f.framebuffer = f.api.CreateFramebuffer(render.FramebufferInfo{
-		ColorAttachments: []render.Texture{
+		ColorAttachments: [4]render.Texture{
 			f.colorTexture,
 		},
 		StencilAttachment: f.stencilTexture,
@@ -93,8 +93,27 @@ func (f *FontFactory) Free() {
 }
 
 func (f *FontFactory) CreateFont(font *opentype.Font) *Font {
-	// f.framebuffer.ClearColor(0, sprec.NewVec4(0.0, 0.0, 0.0, 0.0))
-	// f.framebuffer.ClearDepth(1.0)
+	f.api.BeginRenderPass(render.RenderPassInfo{
+		Framebuffer: f.framebuffer,
+		Viewport: render.Area{
+			X:      0,
+			Y:      0,
+			Width:  f.fontImageSize,
+			Height: f.fontImageSize,
+		},
+		Colors: [4]render.ColorAttachmentInfo{
+			{
+				LoadOp:     render.LoadOperationClear,
+				StoreOp:    render.StoreOperationDontCare,
+				ClearValue: [4]float32{0.0, 0.0, 0.0, 0.0},
+			},
+		},
+		DepthLoadOp:       render.LoadOperationDontCare,
+		DepthStoreOp:      render.StoreOperationDontCare,
+		StencilLoadOp:     render.LoadOperationClear,
+		StencilStoreOp:    render.StoreOperationDontCare,
+		StencilClearValue: 0x00,
+	})
 
 	f.renderer.Begin(Target{
 		Framebuffer: f.framebuffer,
@@ -270,6 +289,8 @@ func (f *FontFactory) CreateFont(font *opentype.Font) *Font {
 		Height:          f.fontImageSize,
 		GenerateMipmaps: true,
 	})
+
+	f.api.EndRenderPass()
 
 	return &Font{
 		familyName:    reader.FontFamilyName(),

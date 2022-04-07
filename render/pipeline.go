@@ -1,7 +1,5 @@
 package render
 
-import "github.com/mokiat/gomath/sprec"
-
 type PipelineInfo struct {
 	Program                     Program
 	VertexArray                 VertexArray
@@ -17,7 +15,7 @@ type PipelineInfo struct {
 	StencilBack                 StencilOperationState
 	ColorWrite                  [4]bool
 	BlendEnabled                bool
-	BlendColor                  sprec.Vec4
+	BlendColor                  [4]float32
 	BlendSourceColorFactor      BlendFactor
 	BlendDestinationColorFactor BlendFactor
 	BlendSourceAlphaFactor      BlendFactor
