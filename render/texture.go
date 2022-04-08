@@ -39,8 +39,17 @@ type ColorTexture2DInfo struct {
 }
 
 type ColorTextureCubeInfo struct {
-	Dimension int
-	// TODO
+	Dimension       int
+	Filtering       FilterMode
+	Mipmapping      bool
+	GammaCorrection bool
+	Format          DataFormat
+	FrontSideData   []byte
+	BackSideData    []byte
+	LeftSideData    []byte
+	RightSideData   []byte
+	TopSideData     []byte
+	BottomSideData  []byte
 }
 
 type DepthTexture2DInfo struct {

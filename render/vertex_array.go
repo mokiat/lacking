@@ -78,7 +78,6 @@ type IndexFormat uint8
 const (
 	IndexFormatUnsignedByte IndexFormat = iota
 	IndexFormatUnsignedShort
-	IndexFormatUnsignedInt
 )
 
 type VertexArray interface {
