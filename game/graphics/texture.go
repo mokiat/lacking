@@ -53,8 +53,8 @@ type CubeTextureDefinition struct {
 }
 
 const (
-	WrapClampToEdge Wrap = 1 + iota
-	WrapMirroredClampToEdge
+	WrapClampToEdge         Wrap = 1 + iota
+	WrapMirroredClampToEdge      // TODO: Remove
 	WrapRepeat
 	WrapMirroredRepat
 )
