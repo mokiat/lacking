@@ -80,6 +80,11 @@ const (
 	IndexFormatUnsignedShort
 )
 
+type VertexArrayObject interface {
+	_isVertexArrayObject() bool // ensures interface uniqueness
+}
+
 type VertexArray interface {
+	VertexArrayObject
 	Release()
 }

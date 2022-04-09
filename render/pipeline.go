@@ -88,6 +88,11 @@ const (
 	StencilOperationInvert
 )
 
+var (
+	ColorMaskFalse = [4]bool{false, false, false, false}
+	ColorMaskTrue  = [4]bool{true, true, true, true}
+)
+
 type BlendFactor uint8
 
 const (
@@ -118,6 +123,11 @@ const (
 	BlendOperationMax
 )
 
+type PipelineObject interface {
+	_isPipelineObject() bool // ensures interface uniqueness
+}
+
 type Pipeline interface {
+	PipelineObject
 	Release()
 }

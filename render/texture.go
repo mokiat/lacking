@@ -23,7 +23,12 @@ const (
 	DataFormatRGBA32F
 )
 
+type TextureObject interface {
+	_isTextureObject() bool // ensures interface uniqueness
+}
+
 type Texture interface {
+	TextureObject
 	Release()
 }
 

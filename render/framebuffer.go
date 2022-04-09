@@ -19,6 +19,11 @@ type CopyContentToTextureInfo struct {
 	GenerateMipmaps bool
 }
 
+type FramebufferObject interface {
+	_isFramebufferObject() bool // ensures interface uniqueness
+}
+
 type Framebuffer interface {
+	FramebufferObject
 	Release()
 }

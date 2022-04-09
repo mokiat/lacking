@@ -16,6 +16,7 @@ type API interface {
 	CreateProgram(info ProgramInfo) Program
 	CreateVertexBuffer(info BufferInfo) Buffer
 	CreateIndexBuffer(info BufferInfo) Buffer
+	CreatePixelTransferBuffer(info BufferInfo) Buffer
 	CreateVertexArray(info VertexArrayInfo) VertexArray
 	CreatePipeline(info PipelineInfo) Pipeline
 	CreateCommandQueue() CommandQueue
@@ -24,8 +25,10 @@ type API interface {
 	EndRenderPass()
 
 	BindPipeline(pipeline Pipeline)
-	Uniform4f(location UniformLocation, values [4]float32)
+	Uniform1f(location UniformLocation, value float32)
 	Uniform1i(location UniformLocation, value int)
+	Uniform3f(location UniformLocation, values [3]float32)
+	Uniform4f(location UniformLocation, values [4]float32)
 	UniformMatrix4f(location UniformLocation, values [16]float32)
 	TextureUnit(index int, texture Texture)
 	Draw(vertexOffset, vertexCount, instanceCount int)

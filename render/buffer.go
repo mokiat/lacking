@@ -11,7 +11,12 @@ type BufferUpdateInfo struct {
 	Offset int
 }
 
+type BufferObject interface {
+	_isBufferObject() bool // ensures interface uniqueness
+}
+
 type Buffer interface {
+	BufferObject
 	Update(info BufferUpdateInfo)
 	Release()
 }
