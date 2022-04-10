@@ -199,8 +199,8 @@ func (a *OpenGLTFResourceAction) Run() error {
 		if gltfNode.Matrix != nil {
 			matrix := sprec.ColumnMajorArrayMat4(*gltfNode.Matrix)
 			node.Translation = matrix.Translation()
-			node.Scale = matrixToScale(matrix)
-			node.Rotation = matrixToQuat(matrix)
+			node.Scale = matrix.Scale()
+			node.Rotation = matrix.RotationQuat()
 		}
 
 		if gltfNode.Mesh != nil {
@@ -216,55 +216,6 @@ func (a *OpenGLTFResourceAction) Run() error {
 	}
 
 	return nil
-}
-
-// TODO: Move to math
-func matrixToScale(mat sprec.Mat4) sprec.Vec3 {
-	return sprec.NewVec3(
-		mat.OrientationX().Length(),
-		mat.OrientationY().Length(),
-		mat.OrientationZ().Length(),
-	)
-}
-
-// TODO: Move to gomath library.
-// This is calculated by inversing the formulas for
-// quat.OrientationX, quat.OrientationY and quat.OrientationZ.
-func matrixToQuat(matrix sprec.Mat4) sprec.Quat {
-	sqrX := (1.0 + matrix.M11 - matrix.M22 - matrix.M33) / 4.0
-	sqrY := (1.0 - matrix.M11 + matrix.M22 - matrix.M33) / 4.0
-	sqrZ := (1.0 - matrix.M11 - matrix.M22 + matrix.M33) / 4.0
-
-	var x, y, z, w float32
-	if sqrZ > sqrX && sqrZ > sqrY {
-		// Z is largest
-		if sprec.Abs(sqrZ) < 0.0000001 {
-			return sprec.IdentityQuat()
-		}
-		z = sprec.Sqrt(sqrZ)
-		x = (matrix.M31 + matrix.M13) / (4 * z)
-		y = (matrix.M32 + matrix.M23) / (4 * z)
-		w = (matrix.M21 - matrix.M12) / (4 * z)
-	} else if sqrY > sqrX {
-		// Y is largest
-		if sprec.Abs(sqrY) < 0.0000001 {
-			return sprec.IdentityQuat()
-		}
-		y = sprec.Sqrt(sqrY)
-		x = (matrix.M21 + matrix.M12) / (4 * y)
-		z = (matrix.M32 + matrix.M23) / (4 * y)
-		w = (matrix.M13 - matrix.M31) / (4 * y)
-	} else {
-		// X is largest
-		if sprec.Abs(sqrX) < 0.0000001 {
-			return sprec.IdentityQuat()
-		}
-		x = sprec.Sqrt(sqrX)
-		y = (matrix.M21 + matrix.M12) / (4 * x)
-		z = (matrix.M31 + matrix.M13) / (4 * x)
-		w = (matrix.M32 - matrix.M23) / (4 * x)
-	}
-	return sprec.UnitQuat(sprec.NewQuat(w, x, y, z))
 }
 
 type gltfLocator struct {

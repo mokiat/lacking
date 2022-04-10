@@ -3,8 +3,6 @@ package graphics
 import (
 	"fmt"
 
-	"github.com/go-gl/gl/v4.6-core/gl"
-
 	"github.com/mokiat/gomath/sprec"
 	"github.com/mokiat/lacking/game/graphics"
 	"github.com/mokiat/lacking/game/graphics/renderapi/internal"
@@ -387,7 +385,7 @@ func (r *Renderer) Render(viewport graphics.Viewport, scene *Scene, camera *Came
 	cameraMatrix := camera.ModelMatrix()
 	viewMatrix := sprec.InverseMat4(cameraMatrix)
 
-	gl.Enable(gl.FRAMEBUFFER_SRGB)
+	// gl.Enable(gl.FRAMEBUFFER_SRGB)
 
 	ctx := renderCtx{
 		scene:            scene,
@@ -401,11 +399,11 @@ func (r *Renderer) Render(viewport graphics.Viewport, scene *Scene, camera *Came
 		camera:           camera,
 	}
 	r.renderGeometryPass(ctx)
-	gl.TextureBarrier()
+	// gl.TextureBarrier()
 	r.renderLightingPass(ctx)
 	r.renderForwardPass(ctx)
 	if camera.autoExposureEnabled {
-		gl.TextureBarrier()
+		// gl.TextureBarrier()
 		r.renderExposureProbePass(ctx)
 	}
 	r.renderPostprocessingPass(ctx)
@@ -614,13 +612,9 @@ func (r *Renderer) renderDirectionalLight(ctx renderCtx, light *Light) {
 	r.commands.UniformMatrix4f(r.directionalLightPresentation.CameraMatrixLocation, ctx.cameraMatrix)
 	r.commands.UniformMatrix4f(r.directionalLightPresentation.ViewMatrixLocation, ctx.viewMatrix)
 	direction := light.Rotation().OrientationZ()
-	r.commands.Uniform3f(r.directionalLightPresentation.LightDirection, [3]float32{
-		direction.X, direction.Y, direction.Z, // TODO: TO FLOAT ARRAY
-	})
+	r.commands.Uniform3f(r.directionalLightPresentation.LightDirection, direction.Array())
 	intensity := light.intensity
-	r.commands.Uniform3f(r.directionalLightPresentation.LightIntensity, [3]float32{
-		intensity.X, intensity.Y, intensity.Z, // TODO: TO FLOAT ARRAY
-	})
+	r.commands.Uniform3f(r.directionalLightPresentation.LightIntensity, intensity.Array())
 	r.commands.TextureUnit(0, r.geometryAlbedoTexture)
 	r.commands.Uniform1i(r.directionalLightPresentation.FramebufferDraw0Location, 0)
 	r.commands.TextureUnit(1, r.geometryNormalTexture)
@@ -701,7 +695,7 @@ func (r *Renderer) renderExposureProbePass(ctx renderCtx) {
 	// 	}
 	// }
 
-	// ctx.camera.exposure = mix(ctx.camera.exposure, r.exposureTarget, float32(0.01))
+	// ctx.camera.exposure = sprec.Mix(ctx.camera.exposure, r.exposureTarget, float32(0.01))
 
 	// if r.exposureSync == 0 {
 	// 	r.exposureFramebuffer.Use()
@@ -763,9 +757,4 @@ func (r *Renderer) renderPostprocessingPass(ctx renderCtx) {
 	r.commands.DrawIndexed(r.quadMesh.IndexOffsetBytes, r.quadMesh.IndexCount, 1)
 	r.api.SubmitQueue(r.commands)
 	r.api.EndRenderPass()
-}
-
-// TODO: Move to gomath
-func mix(a, b, amount float32) float32 {
-	return a*(1.0-amount) + b*amount
 }

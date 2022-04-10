@@ -319,9 +319,7 @@ func (r *Renderer) EndShape(shape *Shape) {
 	// draw stencil mask for all sub-shapes
 	if shape.fill.mode != StencilModeNone {
 		r.commandQueue.BindPipeline(r.shapeMaskPipeline)
-		r.commandQueue.Uniform4f(r.shapeBlankMaterial.clipDistancesLocation, [4]float32{
-			r.clipBounds.X, r.clipBounds.Y, r.clipBounds.Z, r.clipBounds.W, // TODO: Add Array method to Vec4
-		})
+		r.commandQueue.Uniform4f(r.shapeBlankMaterial.clipDistancesLocation, r.clipBounds.Array())
 		r.commandQueue.UniformMatrix4f(r.shapeBlankMaterial.projectionMatrixLocation, r.projectionMatrix.ColumnMajorArray())
 		r.commandQueue.UniformMatrix4f(r.shapeBlankMaterial.transformMatrixLocation, r.transformMatrix.ColumnMajorArray())
 
@@ -347,12 +345,8 @@ func (r *Renderer) EndShape(shape *Shape) {
 		texture = shape.fill.image.texture
 	}
 
-	r.commandQueue.Uniform4f(r.shapeMaterial.clipDistancesLocation, [4]float32{
-		r.clipBounds.X, r.clipBounds.Y, r.clipBounds.Z, r.clipBounds.W, // TODO: Add Array method to Vec4
-	})
-	r.commandQueue.Uniform4f(r.shapeMaterial.colorLocation, [4]float32{
-		shape.fill.color.X, shape.fill.color.Y, shape.fill.color.Z, shape.fill.color.W, // TODO: Add Array method to Vec4
-	})
+	r.commandQueue.Uniform4f(r.shapeMaterial.clipDistancesLocation, r.clipBounds.Array())
+	r.commandQueue.Uniform4f(r.shapeMaterial.colorLocation, shape.fill.color.Array())
 	r.commandQueue.UniformMatrix4f(r.shapeMaterial.projectionMatrixLocation, r.projectionMatrix.ColumnMajorArray())
 	r.commandQueue.UniformMatrix4f(r.shapeMaterial.transformMatrixLocation, r.transformMatrix.ColumnMajorArray())
 	r.commandQueue.UniformMatrix4f(r.shapeMaterial.textureTransformMatrixLocation, r.textureTransformMatrix.ColumnMajorArray())
@@ -381,9 +375,7 @@ func (r *Renderer) EndContour(contour *Contour) {
 	r.contour = contour
 
 	r.commandQueue.BindPipeline(r.contourPipeline)
-	r.commandQueue.Uniform4f(r.contourMaterial.clipDistancesLocation, [4]float32{
-		r.clipBounds.X, r.clipBounds.Y, r.clipBounds.Z, r.clipBounds.W, // TODO: Add Array method to Vec4
-	})
+	r.commandQueue.Uniform4f(r.contourMaterial.clipDistancesLocation, r.clipBounds.Array())
 	r.commandQueue.UniformMatrix4f(r.contourMaterial.projectionMatrixLocation, r.projectionMatrix.ColumnMajorArray())
 	r.commandQueue.UniformMatrix4f(r.contourMaterial.transformMatrixLocation, r.transformMatrix.ColumnMajorArray())
 	r.commandQueue.Uniform1i(r.contourMaterial.textureLocation, 0)
@@ -555,12 +547,8 @@ func (r *Renderer) EndText(text *Text) {
 	vertexCount := r.textMesh.Offset() - vertexOffset
 
 	r.commandQueue.BindPipeline(r.textPipeline)
-	r.commandQueue.Uniform4f(r.textMaterial.clipDistancesLocation, [4]float32{
-		r.clipBounds.X, r.clipBounds.Y, r.clipBounds.Z, r.clipBounds.W, // TODO: Add Array method to Vec4
-	})
-	r.commandQueue.Uniform4f(r.textMaterial.colorLocation, [4]float32{
-		text.color.X, text.color.Y, text.color.Z, text.color.W, // TODO: Add Array method to Vec4
-	})
+	r.commandQueue.Uniform4f(r.textMaterial.clipDistancesLocation, r.clipBounds.Array())
+	r.commandQueue.Uniform4f(r.textMaterial.colorLocation, text.color.Array())
 	r.commandQueue.UniformMatrix4f(r.textMaterial.projectionMatrixLocation, r.projectionMatrix.ColumnMajorArray())
 	r.commandQueue.UniformMatrix4f(r.textMaterial.transformMatrixLocation, r.transformMatrix.ColumnMajorArray())
 	r.commandQueue.TextureUnit(0, text.font.texture)

@@ -511,7 +511,7 @@ func (r *Renderer) renderExposureProbePass(ctx renderCtx) {
 		}
 	}
 
-	ctx.camera.exposure = mix(ctx.camera.exposure, r.exposureTarget, float32(0.01))
+	ctx.camera.exposure = sprec.Mix(ctx.camera.exposure, r.exposureTarget, float32(0.01))
 
 	if r.exposureSync == 0 {
 		r.exposureFramebuffer.Use()
@@ -564,9 +564,4 @@ func (r *Renderer) renderPostprocessingPass(ctx renderCtx) {
 
 	gl.BindVertexArray(r.quadMesh.VertexArray.ID())
 	gl.DrawElements(r.quadMesh.Primitive, r.quadMesh.IndexCount, gl.UNSIGNED_SHORT, gl.PtrOffset(r.quadMesh.IndexOffsetBytes))
-}
-
-// TODO: Move to gomath
-func mix(a, b, amount float32) float32 {
-	return a*(1.0-amount) + b*amount
 }
