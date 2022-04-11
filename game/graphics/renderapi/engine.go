@@ -13,6 +13,7 @@ import (
 func NewEngine(api render.API, shaders plugin.ShaderCollection) *Engine {
 	return &Engine{
 		api:      api,
+		shaders:  shaders,
 		renderer: newRenderer(api, shaders),
 	}
 }
@@ -21,6 +22,7 @@ var _ graphics.Engine = (*Engine)(nil)
 
 type Engine struct {
 	api      render.API
+	shaders  plugin.ShaderCollection
 	renderer *Renderer
 }
 
@@ -165,7 +167,7 @@ func (e *Engine) CreatePBRMaterial(definition graphics.PBRMaterialDefinition) gr
 			definition.AlbedoColor,
 			sprec.NewVec4(definition.NormalScale, definition.Metalness, definition.Roughness, 0.0),
 		},
-		geometryPresentation: internal.NewPBRGeometryPresentation(e.api, definition),
+		geometryPresentation: internal.NewPBRGeometryPresentation(e.api, e.shaders.PBRShaderSet(definition)),
 		shadowPresentation:   nil, // TODO
 	}
 }

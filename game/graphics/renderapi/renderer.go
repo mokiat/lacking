@@ -20,7 +20,8 @@ const (
 
 func newRenderer(api render.API, shaders plugin.ShaderCollection) *Renderer {
 	return &Renderer{
-		api: api,
+		api:     api,
+		shaders: shaders,
 
 		framebufferWidth:  1920,
 		framebufferHeight: 1080,
@@ -36,7 +37,9 @@ func newRenderer(api render.API, shaders plugin.ShaderCollection) *Renderer {
 }
 
 type Renderer struct {
-	api      render.API
+	api     render.API
+	shaders plugin.ShaderCollection
+
 	commands render.CommandQueue
 
 	framebufferWidth  int
@@ -142,7 +145,7 @@ func (r *Renderer) Allocate() {
 		},
 	})
 
-	r.exposurePresentation = internal.NewExposurePresentation(r.api)
+	r.exposurePresentation = internal.NewExposurePresentation(r.api, r.shaders.ExposureSet())
 
 	r.exposureBuffer = r.api.CreatePixelTransferBuffer(render.BufferInfo{
 		Dynamic: true,
@@ -150,7 +153,8 @@ func (r *Renderer) Allocate() {
 		// Size:    4 * 4, // TODO
 	})
 
-	r.postprocessingPresentation = internal.NewTonePostprocessingPresentation(r.api, internal.ExponentialToneMapping)
+	r.postprocessingPresentation = internal.NewTonePostprocessingPresentation(r.api, r.shaders.PostprocessingSet(plugin.ExponentialToneMapping))
+
 	r.postprocessingPipeline = r.api.CreatePipeline(render.PipelineInfo{
 		Program:         r.postprocessingPresentation.Program,
 		VertexArray:     r.quadMesh.VertexArray,
@@ -184,7 +188,7 @@ func (r *Renderer) Allocate() {
 		BlendEnabled: false,
 	})
 
-	r.directionalLightPresentation = internal.NewDirectionalLightPresentation(r.api)
+	r.directionalLightPresentation = internal.NewDirectionalLightPresentation(r.api, r.shaders.DirectionalLightSet())
 	r.directionalLightPipeline = r.api.CreatePipeline(render.PipelineInfo{
 		Program:         r.directionalLightPresentation.Program,
 		VertexArray:     r.quadMesh.VertexArray,
@@ -224,7 +228,7 @@ func (r *Renderer) Allocate() {
 		BlendOpColor:                render.BlendOperationAdd,
 		BlendOpAlpha:                render.BlendOperationAdd,
 	})
-	r.ambientLightPresentation = internal.NewAmbientLightPresentation(r.api)
+	r.ambientLightPresentation = internal.NewAmbientLightPresentation(r.api, r.shaders.AmbientLightSet())
 	r.ambientLightPipeline = r.api.CreatePipeline(render.PipelineInfo{
 		Program:         r.ambientLightPresentation.Program,
 		VertexArray:     r.quadMesh.VertexArray,
@@ -266,7 +270,7 @@ func (r *Renderer) Allocate() {
 	})
 
 	r.skyboxMesh.Allocate(r.api)
-	r.skyboxPresentation = internal.NewCubeSkyboxPresentation(r.api)
+	r.skyboxPresentation = internal.NewCubeSkyboxPresentation(r.api, r.shaders.SkyboxSet())
 	r.skyboxPipeline = r.api.CreatePipeline(render.PipelineInfo{
 		Program:         r.skyboxPresentation.Program,
 		VertexArray:     r.skyboxMesh.VertexArray,
@@ -299,7 +303,7 @@ func (r *Renderer) Allocate() {
 		ColorWrite:   [4]bool{true, true, true, true},
 		BlendEnabled: false,
 	})
-	r.skycolorPresentation = internal.NewColorSkyboxPresentation(r.api)
+	r.skycolorPresentation = internal.NewColorSkyboxPresentation(r.api, r.shaders.SkycolorSet())
 	r.skycolorPipeline = r.api.CreatePipeline(render.PipelineInfo{
 		Program:         r.skycolorPresentation.Program,
 		VertexArray:     r.skyboxMesh.VertexArray,
