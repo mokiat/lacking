@@ -55,6 +55,8 @@ type Renderer struct {
 	lightingAlbedoTexture render.Texture
 	lightingFramebuffer   render.Framebuffer
 
+	forwardFramebuffer render.Framebuffer
+
 	exposureAlbedoTexture render.Texture
 	exposureFramebuffer   render.Framebuffer
 	exposurePresentation  *internal.LightingPresentation
@@ -127,6 +129,12 @@ func (r *Renderer) Allocate() {
 		ColorAttachments: [4]render.Texture{
 			r.lightingAlbedoTexture,
 		},
+	})
+
+	r.forwardFramebuffer = r.api.CreateFramebuffer(render.FramebufferInfo{
+		ColorAttachments: [4]render.Texture{
+			r.lightingAlbedoTexture,
+		},
 		DepthAttachment: r.geometryDepthTexture,
 	})
 
@@ -154,7 +162,6 @@ func (r *Renderer) Allocate() {
 	})
 
 	r.postprocessingPresentation = internal.NewTonePostprocessingPresentation(r.api, r.shaders.PostprocessingSet(plugin.ExponentialToneMapping))
-
 	r.postprocessingPipeline = r.api.CreatePipeline(render.PipelineInfo{
 		Program:         r.postprocessingPresentation.Program,
 		VertexArray:     r.quadMesh.VertexArray,
@@ -351,6 +358,8 @@ func (r *Renderer) Release() {
 	defer r.lightingAlbedoTexture.Release()
 	defer r.lightingFramebuffer.Release()
 
+	defer r.forwardFramebuffer.Release()
+
 	defer r.postprocessingPresentation.Delete()
 	defer r.postprocessingPipeline.Release()
 
@@ -388,9 +397,6 @@ func (r *Renderer) Render(viewport graphics.Viewport, scene *Scene, camera *Came
 	projectionMatrix := r.evaluateProjectionMatrix(camera, viewport.Width, viewport.Height)
 	cameraMatrix := camera.ModelMatrix()
 	viewMatrix := sprec.InverseMat4(cameraMatrix)
-
-	// gl.Enable(gl.FRAMEBUFFER_SRGB)
-
 	ctx := renderCtx{
 		scene:            scene,
 		x:                viewport.X,
@@ -403,11 +409,9 @@ func (r *Renderer) Render(viewport graphics.Viewport, scene *Scene, camera *Came
 		camera:           camera,
 	}
 	r.renderGeometryPass(ctx)
-	// gl.TextureBarrier()
 	r.renderLightingPass(ctx)
 	r.renderForwardPass(ctx)
 	if camera.autoExposureEnabled {
-		// gl.TextureBarrier()
 		r.renderExposureProbePass(ctx)
 	}
 	r.renderPostprocessingPass(ctx)
@@ -630,7 +634,7 @@ func (r *Renderer) renderDirectionalLight(ctx renderCtx, light *Light) {
 
 func (r *Renderer) renderForwardPass(ctx renderCtx) {
 	r.api.BeginRenderPass(render.RenderPassInfo{
-		Framebuffer: r.lightingFramebuffer,
+		Framebuffer: r.forwardFramebuffer,
 		Viewport: render.Area{
 			X:      0,
 			Y:      0,
