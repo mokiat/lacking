@@ -76,8 +76,10 @@ const (
 type IndexFormat uint8
 
 const (
-	IndexFormatUnsignedByte IndexFormat = iota
-	IndexFormatUnsignedShort
+	// NOTE: Do not add IndexFormatUnsignedByte as it may be slow on some GPUs.
+
+	IndexFormatUnsignedShort IndexFormat = iota
+	IndexFormatUnsignedInt
 )
 
 type VertexArrayObject interface {

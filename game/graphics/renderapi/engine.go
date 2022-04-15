@@ -260,10 +260,10 @@ func (e *Engine) convertPrimitive(primitive graphics.Primitive) render.Topology 
 
 func (e *Engine) convertIndexType(indexFormat graphics.IndexFormat) render.IndexFormat {
 	switch indexFormat {
-	case graphics.IndexFormatU8:
-		return render.IndexFormatUnsignedByte
 	case graphics.IndexFormatU16:
 		return render.IndexFormatUnsignedShort
+	case graphics.IndexFormatU32:
+		return render.IndexFormatUnsignedInt
 	default:
 		panic(fmt.Errorf("unknown index format: %d", indexFormat))
 	}
