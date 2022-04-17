@@ -30,6 +30,20 @@ type Int struct {
 	Value     int
 }
 
+// NewFloat32 returns a specified Float32 value.
+func NewFloat32(value float32) Float32 {
+	return Float32{
+		Specified: true,
+		Value:     value,
+	}
+}
+
+// Float32 represents an optional float32 value.
+type Float32 struct {
+	Specified bool
+	Value     float32
+}
+
 // NewString returns a specified String value.
 func NewString(value string) String {
 	return String{

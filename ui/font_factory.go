@@ -1,4 +1,4 @@
-package internal
+package ui
 
 import (
 	"fmt"
@@ -34,8 +34,8 @@ func init() {
 	}
 }
 
-func NewFontFactory(api render.API, renderer *Renderer) *FontFactory {
-	return &FontFactory{
+func newFontFactory(api render.API, renderer *canvasRenderer) *fontFactory {
+	return &fontFactory{
 		api:           api,
 		renderer:      renderer,
 		fontImageSize: 2048,
@@ -43,9 +43,9 @@ func NewFontFactory(api render.API, renderer *Renderer) *FontFactory {
 	}
 }
 
-type FontFactory struct {
+type fontFactory struct {
 	api            render.API
-	renderer       *Renderer
+	renderer       *canvasRenderer
 	fontImageSize  int
 	colorTexture   render.Texture
 	stencilTexture render.Texture
@@ -53,7 +53,7 @@ type FontFactory struct {
 	buf            *sfnt.Buffer
 }
 
-func (f *FontFactory) Init() {
+func (f *fontFactory) Init() {
 	switch f.api.Capabilities().Quality {
 	case render.QualityHigh:
 		f.fontImageSize = 2048
@@ -86,13 +86,13 @@ func (f *FontFactory) Init() {
 	})
 }
 
-func (f *FontFactory) Free() {
+func (f *fontFactory) Free() {
 	defer f.colorTexture.Release()
 	defer f.stencilTexture.Release()
 	defer f.framebuffer.Release()
 }
 
-func (f *FontFactory) CreateFont(font *opentype.Font) *Font {
+func (f *fontFactory) CreateFont(font *opentype.Font) (*Font, error) {
 	f.api.BeginRenderPass(render.RenderPassInfo{
 		Framebuffer: f.framebuffer,
 		Viewport: render.Area{
@@ -114,12 +114,7 @@ func (f *FontFactory) CreateFont(font *opentype.Font) *Font {
 		StencilStoreOp:    render.StoreOperationDontCare,
 		StencilClearValue: 0x00,
 	})
-
-	f.renderer.Begin(Target{
-		Framebuffer: f.framebuffer,
-		Width:       f.fontImageSize,
-		Height:      f.fontImageSize,
-	})
+	f.renderer.onBegin(NewSize(f.fontImageSize, f.fontImageSize))
 
 	cellSize := float32(f.fontImageSize) / float32(fontImageCells)
 	// Use 4% padding to ensure that glyphs don't touch
@@ -181,6 +176,7 @@ func (f *FontFactory) CreateFont(font *opentype.Font) *Font {
 			)
 		}
 
+		f.renderer.Push()
 		f.renderer.SetClipBounds(
 			cellStartX, cellEndX,
 			cellStartY, cellEndY,
@@ -191,9 +187,10 @@ func (f *FontFactory) CreateFont(font *opentype.Font) *Font {
 			sprec.TranslationMat4(-fixedToFloat(bounds.Min.X), -fixedToFloat(bounds.Min.Y), 0.0),
 		))
 
-		shape := f.renderer.BeginShape(Fill{
-			color: sprec.NewVec4(1.0, 1.0, 1.0, 1.0),
-			mode:  StencilModeNonZero,
+		shape := f.renderer.Shape()
+		shape.Begin(Fill{
+			Color: White(),
+			Rule:  FillRuleNonZero,
 		})
 		for _, segment := range segments {
 			switch segment.Op {
@@ -241,7 +238,8 @@ func (f *FontFactory) CreateFont(font *opentype.Font) *Font {
 				panic(fmt.Errorf("unknown segment operation %d", segment.Op))
 			}
 		}
-		f.renderer.EndShape(shape)
+		shape.End()
+		f.renderer.Pop()
 
 		resultKerns := make(map[rune]float32)
 		for _, targetCh := range supportedCharacters {
@@ -267,7 +265,7 @@ func (f *FontFactory) CreateFont(font *opentype.Font) *Font {
 			kerns: resultKerns,
 		}
 	}
-	f.renderer.End()
+	f.renderer.onEnd()
 
 	resultTexture := f.api.CreateColorTexture2D(render.ColorTexture2DInfo{
 		Width:           f.fontImageSize,
@@ -303,7 +301,7 @@ func (f *FontFactory) CreateFont(font *opentype.Font) *Font {
 		glyphs: resultGlyphs,
 
 		texture: resultTexture,
-	}
+	}, nil
 }
 
 type fontReader struct {

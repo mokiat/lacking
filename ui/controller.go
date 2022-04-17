@@ -10,29 +10,36 @@ type InitFunc func(window *Window)
 
 // NewController creates a new app.Controller that integrates
 // with the ui package to render a user interface.
-func NewController(locator ResourceLocator, graphics Graphics, initFn InitFunc) app.Controller {
+func NewController(cfg *Config, initFn InitFunc) app.Controller {
+	renderer := newCanvasRenderer(
+		cfg.renderAPI,
+		cfg.shaders,
+	)
+	imgFact := newImageFactory(cfg.renderAPI)
+	fntFact := newFontFactory(cfg.renderAPI, renderer)
 	return &controller{
-		graphics: graphics,
-		locator:  locator,
-		initFn:   initFn,
+		canvas:  newCanvas(renderer),
+		fntFact: fntFact,
+		resMan:  newResourceManager(cfg.locator, imgFact, fntFact),
+		initFn:  initFn,
 	}
 }
 
 type controller struct {
-	graphics Graphics
-	locator  ResourceLocator
-	initFn   InitFunc
+	canvas  *Canvas
+	fntFact *fontFactory
+	resMan  *resourceManager
+	initFn  InitFunc
 
-	appWindow       app.Window
 	uiWindow        *Window
 	uiWindowHandler WindowHandler
 }
 
 func (c *controller) OnCreate(appWindow app.Window) {
-	c.graphics.Create()
+	c.canvas.onCreate()
+	c.fntFact.Init()
 
-	c.appWindow = appWindow
-	c.uiWindow, c.uiWindowHandler = NewWindow(appWindow, c.locator, c.graphics)
+	c.uiWindow, c.uiWindowHandler = newWindow(appWindow, c.canvas, c.resMan)
 	c.initFn(c.uiWindow)
 }
 
@@ -74,5 +81,6 @@ func (c *controller) OnCloseRequested(window app.Window) {
 }
 
 func (c *controller) OnDestroy(window app.Window) {
-	c.graphics.Destroy()
+	c.fntFact.Free()
+	c.canvas.onDestroy()
 }

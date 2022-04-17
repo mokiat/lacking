@@ -1,6 +1,7 @@
 package mat
 
 import (
+	"github.com/mokiat/gomath/sprec"
 	"github.com/mokiat/lacking/ui"
 	co "github.com/mokiat/lacking/ui/component"
 	"github.com/mokiat/lacking/ui/optional"
@@ -50,14 +51,17 @@ type containerEssence struct {
 	backgroundColor ui.Color
 }
 
-func (l *containerEssence) OnRender(element *ui.Element, canvas ui.Canvas) {
+func (l *containerEssence) OnRender(element *ui.Element, canvas *ui.Canvas) {
 	if !l.backgroundColor.Transparent() {
 		canvas.Shape().Begin(ui.Fill{
 			Color: l.backgroundColor,
 		})
 		canvas.Shape().Rectangle(
-			ui.NewPosition(0, 0),
-			element.Bounds().Size,
+			sprec.NewVec2(0, 0),
+			sprec.NewVec2(
+				float32(element.Bounds().Size.Width),
+				float32(element.Bounds().Size.Height),
+			),
 		)
 		canvas.Shape().End()
 	}

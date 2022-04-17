@@ -1,11 +1,10 @@
-package internal
+package ui
 
 import (
 	"github.com/mokiat/lacking/render"
-	"github.com/mokiat/lacking/ui/renderapi/plugin"
 )
 
-func newMaterial(shaders plugin.ShaderSet) *Material {
+func newMaterial(shaders ShaderSet) *Material {
 	return &Material{
 		vertexSrc:   shaders.VertexShader,
 		fragmentSrc: shaders.FragmentShader,
