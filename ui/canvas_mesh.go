@@ -40,9 +40,7 @@ type ShapeMesh struct {
 func (m *ShapeMesh) Allocate(api render.API) {
 	m.vertexBuffer = api.CreateVertexBuffer(render.BufferInfo{
 		Dynamic: true,
-		Data:    m.vertexData,
-		// TODO: use Size instead of passing Data
-		// Size:    len(m.vertexData),
+		Size:    len(m.vertexData),
 	})
 
 	m.vertexArray = api.CreateVertexArray(render.VertexArrayInfo{
@@ -115,9 +113,7 @@ type ContourMesh struct {
 func (m *ContourMesh) Allocate(api render.API) {
 	m.vertexBuffer = api.CreateVertexBuffer(render.BufferInfo{
 		Dynamic: true,
-		Data:    m.vertexData,
-		// TODO: use Size instead of passing Data
-		// Size:    len(m.vertexData),
+		Size:    len(m.vertexData),
 	})
 
 	m.vertexArray = api.CreateVertexArray(render.VertexArrayInfo{
@@ -201,9 +197,7 @@ type TextMesh struct {
 func (m *TextMesh) Allocate(api render.API) {
 	m.vertexBuffer = api.CreateVertexBuffer(render.BufferInfo{
 		Dynamic: true,
-		Data:    m.vertexData,
-		// TODO: use Size instead of passing Data
-		// Size:    len(m.vertexData),
+		Size:    len(m.vertexData),
 	})
 
 	m.vertexArray = api.CreateVertexArray(render.VertexArrayInfo{
