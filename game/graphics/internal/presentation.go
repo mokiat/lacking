@@ -1,8 +1,6 @@
 package internal
 
-import (
-	"github.com/mokiat/lacking/render"
-)
+import "github.com/mokiat/lacking/render"
 
 type Presentation struct {
 	Program render.Program

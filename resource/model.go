@@ -55,7 +55,7 @@ func (n Node) FindNode(name string) (*Node, bool) {
 	return nil, false
 }
 
-func NewModelOperator(delegate gameasset.Registry, gfxEngine graphics.Engine) *ModelOperator {
+func NewModelOperator(delegate gameasset.Registry, gfxEngine *graphics.Engine) *ModelOperator {
 	return &ModelOperator{
 		delegate:  delegate,
 		gfxEngine: gfxEngine,
@@ -64,7 +64,7 @@ func NewModelOperator(delegate gameasset.Registry, gfxEngine graphics.Engine) *M
 
 type ModelOperator struct {
 	delegate  gameasset.Registry
-	gfxEngine graphics.Engine
+	gfxEngine *graphics.Engine
 }
 
 func (o *ModelOperator) Allocate(registry *Registry, id string) (interface{}, error) {

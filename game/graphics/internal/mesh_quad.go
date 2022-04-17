@@ -1,4 +1,4 @@
-package graphics
+package internal
 
 import (
 	"encoding/binary"
@@ -17,7 +17,7 @@ func (v quadMeshVertex) Serialize(plotter *buffer.Plotter) {
 	plotter.PlotFloat32(v.Position.Y)
 }
 
-func newQuadMesh() *QuadMesh {
+func NewQuadMesh() *QuadMesh {
 	return &QuadMesh{
 		Topology:         render.TopologyTriangles,
 		IndexCount:       6,
@@ -88,7 +88,7 @@ func (m *QuadMesh) Allocate(api render.API) {
 		Attributes: []render.VertexArrayAttributeInfo{
 			{
 				Binding:  0,
-				Location: coordAttributeIndex,
+				Location: CoordAttributeIndex,
 				Format:   render.VertexAttributeFormatRG32F,
 				Offset:   0,
 			},

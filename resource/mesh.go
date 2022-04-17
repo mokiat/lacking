@@ -11,20 +11,20 @@ import (
 type Mesh struct {
 	Name string
 
-	GFXMeshTemplate graphics.MeshTemplate
+	GFXMeshTemplate *graphics.MeshTemplate
 
-	materials []graphics.Material
+	materials []*graphics.Material
 	textures  []*TwoDTexture
 }
 
-func AllocateMesh(registry *Registry, name string, gfxEngine graphics.Engine, meshAsset *asset.Mesh) (*Mesh, error) {
+func AllocateMesh(registry *Registry, name string, gfxEngine *graphics.Engine, meshAsset *asset.Mesh) (*Mesh, error) {
 	mesh := &Mesh{
 		Name: name,
 	}
 
 	subMeshDefinitions := make([]graphics.SubMeshTemplateDefinition, len(meshAsset.SubMeshes))
 	for i, subMeshAsset := range meshAsset.SubMeshes {
-		var metalnessTexture graphics.TwoDTexture
+		var metalnessTexture *graphics.TwoDTexture
 		if subMeshAsset.Material.MetalnessTexture != "" {
 			var texture *TwoDTexture
 			result := registry.LoadTwoDTexture(subMeshAsset.Material.MetalnessTexture).
@@ -37,7 +37,7 @@ func AllocateMesh(registry *Registry, name string, gfxEngine graphics.Engine, me
 			mesh.textures = append(mesh.textures, texture)
 		}
 
-		var roughnessTexture graphics.TwoDTexture
+		var roughnessTexture *graphics.TwoDTexture
 		if subMeshAsset.Material.RoughnessTexture != "" {
 			var texture *TwoDTexture
 			result := registry.LoadTwoDTexture(subMeshAsset.Material.RoughnessTexture).
@@ -50,7 +50,7 @@ func AllocateMesh(registry *Registry, name string, gfxEngine graphics.Engine, me
 			mesh.textures = append(mesh.textures, texture)
 		}
 
-		var albedoTexture graphics.TwoDTexture
+		var albedoTexture *graphics.TwoDTexture
 		if subMeshAsset.Material.ColorTexture != "" {
 			var texture *TwoDTexture
 			result := registry.LoadTwoDTexture(subMeshAsset.Material.ColorTexture).
@@ -63,7 +63,7 @@ func AllocateMesh(registry *Registry, name string, gfxEngine graphics.Engine, me
 			mesh.textures = append(mesh.textures, texture)
 		}
 
-		var normalTexture graphics.TwoDTexture
+		var normalTexture *graphics.TwoDTexture
 		if subMeshAsset.Material.NormalTexture != "" {
 			var texture *TwoDTexture
 			result := registry.LoadTwoDTexture(subMeshAsset.Material.NormalTexture).
@@ -76,7 +76,7 @@ func AllocateMesh(registry *Registry, name string, gfxEngine graphics.Engine, me
 			mesh.textures = append(mesh.textures, texture)
 		}
 
-		var material graphics.Material
+		var material *graphics.Material
 		registry.ScheduleVoid(func() {
 			definition := graphics.PBRMaterialDefinition{
 				BackfaceCulling:  subMeshAsset.Material.BackfaceCulling,

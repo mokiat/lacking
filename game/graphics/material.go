@@ -1,12 +1,34 @@
 package graphics
 
-import "github.com/mokiat/gomath/sprec"
+import (
+	"github.com/mokiat/gomath/sprec"
+	"github.com/mokiat/lacking/game/graphics/internal"
+	"github.com/mokiat/lacking/render"
+)
 
 // Material determines the appearance of a mesh on the screen.
-type Material interface {
+type Material struct {
+	backfaceCulling bool
+	alphaTesting    bool
+	alphaBlending   bool
+	alphaThreshold  float32
 
-	// Delete releases resources allocated for this material.
-	Delete()
+	geometryPresentation *internal.GeometryPresentation
+	shadowPresentation   *internal.ShadowPresentation
+
+	twoDTextures []render.Texture
+	cubeTextures []render.Texture
+	vectors      []sprec.Vec4
+}
+
+// Delete releases resources allocated for this material.
+func (m *Material) Delete() {
+	if m.geometryPresentation != nil {
+		m.geometryPresentation.Delete()
+	}
+	if m.shadowPresentation != nil {
+		m.shadowPresentation.Delete()
+	}
 }
 
 // PBRMaterialDefinition contains the information needed to create
@@ -17,11 +39,11 @@ type PBRMaterialDefinition struct {
 	AlphaTesting     bool
 	AlphaThreshold   float32
 	Metalness        float32
-	MetalnessTexture TwoDTexture
+	MetalnessTexture *TwoDTexture
 	Roughness        float32
-	RoughnessTexture TwoDTexture
+	RoughnessTexture *TwoDTexture
 	AlbedoColor      sprec.Vec4
-	AlbedoTexture    TwoDTexture
+	AlbedoTexture    *TwoDTexture
 	NormalScale      float32
-	NormalTexture    TwoDTexture
+	NormalTexture    *TwoDTexture
 }

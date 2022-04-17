@@ -1,13 +1,31 @@
 package graphics
 
+import "github.com/mokiat/lacking/render"
+
 // MeshTemplate represents the definition of a mesh.
 // Multiple mesh instances can be created off of one template
 // reusing resources.
-type MeshTemplate interface {
+type MeshTemplate struct {
+	vertexBuffer render.Buffer
+	indexBuffer  render.Buffer
+	vertexArray  render.VertexArray
+	subMeshes    []subMeshTemplate
+}
 
-	// Delete releases any resources allocated by this
-	// template.
-	Delete()
+// Delete releases any resources allocated by this
+// template.
+func (t *MeshTemplate) Delete() {
+	t.vertexArray.Release()
+	t.indexBuffer.Release()
+	t.vertexBuffer.Release()
+	t.subMeshes = nil
+}
+
+type subMeshTemplate struct {
+	material         *Material
+	topology         render.Topology
+	indexCount       int
+	indexOffsetBytes int
 }
 
 // MeshTemplateDefinition contains everything needed to create
@@ -26,7 +44,7 @@ type SubMeshTemplateDefinition struct {
 	Primitive   Primitive
 	IndexOffset int
 	IndexCount  int
-	Material    Material
+	Material    *Material
 }
 
 const (
@@ -67,9 +85,19 @@ const (
 type IndexFormat int
 
 // Mesh represents an instance of a 3D mesh.
-type Mesh interface {
+type Mesh struct {
 	Node
 
-	// Delete removes this mesh from the scene.
-	Delete()
+	scene *Scene
+	prev  *Mesh
+	next  *Mesh
+
+	template *MeshTemplate
+}
+
+// Delete removes this mesh from the scene.
+func (m *Mesh) Delete() {
+	m.scene.detachMesh(m)
+	m.scene.cacheMesh(m)
+	m.scene = nil
 }

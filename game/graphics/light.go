@@ -3,41 +3,68 @@ package graphics
 import "github.com/mokiat/gomath/sprec"
 
 // Light represents a light emitting object in the scene.
-type Light interface {
+type Light struct {
 	Node
 
-	// Intensity returns the light intensity.
-	Intensity() sprec.Vec3
+	scene *Scene
+	prev  *Light
+	next  *Light
 
-	// SetIntensity changes the light intensity.
-	SetIntensity(intensity sprec.Vec3)
-
-	// Delete removes this light source.
-	Delete()
+	mode              LightMode
+	intensity         sprec.Vec3
+	reflectionTexture *CubeTexture
+	refractionTexture *CubeTexture
 }
 
-// AmbientLight is a light source that emits light from the
-// scene surroundings.
-type AmbientLight interface {
-	Light
-
-	// ReflectionTexture returns the texture that is used to calculate
-	// the lighting on an object as a result of reflected light rays.
-	ReflectionTexture() CubeTexture
-
-	// SetReflectionTexture changes the reflection texture.
-	SetReflectionTexture(texture CubeTexture)
-
-	// RefractionTexture returns the texture that is used to calculate
-	// the lighting on an object as a result of refracted light rays.
-	RefractionTexture() CubeTexture
-
-	// SetRefractionTexture changes the refraction texture.
-	SetRefractionTexture(texture CubeTexture)
+func (l *Light) Mode() LightMode {
+	return l.mode
 }
 
-// DirectionalLight is a light object that emits parallel light
-// rays into a single direction (going into the Z direction).
-type DirectionalLight interface {
-	Light
+func (l *Light) SetMode(mode LightMode) {
+	l.mode = mode
 }
+
+// Intensity returns the light intensity.
+func (l *Light) Intensity() sprec.Vec3 {
+	return l.intensity
+}
+
+// SetIntensity changes the light intensity.
+func (l *Light) SetIntensity(intensity sprec.Vec3) {
+	l.intensity = intensity
+}
+
+// ReflectionTexture returns the texture that is used to calculate
+// the lighting on an object as a result of reflected light rays.
+func (l *Light) ReflectionTexture() *CubeTexture {
+	return l.reflectionTexture
+}
+
+// SetReflectionTexture changes the reflection texture.
+func (l *Light) SetReflectionTexture(texture *CubeTexture) {
+	l.reflectionTexture = texture
+}
+
+// RefractionTexture returns the texture that is used to calculate
+// the lighting on an object as a result of refracted light rays.
+func (l *Light) RefractionTexture() *CubeTexture {
+	return l.refractionTexture
+}
+
+// SetRefractionTexture changes the refraction texture.
+func (l *Light) SetRefractionTexture(texture *CubeTexture) {
+	l.refractionTexture = texture
+}
+
+func (l *Light) Delete() {
+	l.scene.detachLight(l)
+	l.scene.cacheLight(l)
+	l.scene = nil
+}
+
+const (
+	LightModeDirectional LightMode = 1 + iota
+	LightModeAmbient
+)
+
+type LightMode int

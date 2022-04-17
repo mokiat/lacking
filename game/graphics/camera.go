@@ -26,78 +26,139 @@ const (
 	FoVModePixelBased FoVMode = "pixel-based"
 )
 
-type Camera interface {
+func newCamera(scene *Scene) *Camera {
+	return &Camera{
+		Node:        *newNode(),
+		fov:         sprec.Degrees(120),
+		fovMode:     FoVModeHorizontalPlus,
+		maxExposure: 10000.0,
+		minExposure: 0.00001,
+		exposure:    1.0,
+	}
+}
+
+// Camera represents a 3D camera.
+type Camera struct {
 	Node
 
-	// FoV returns the field-of-view angle for this camera.
-	FoV() sprec.Angle
+	fov                 sprec.Angle
+	fovMode             FoVMode
+	aspectRatio         float32
+	autoFocusEnabled    bool
+	nearFocus           float32
+	farFocus            float32
+	autoExposureEnabled bool
+	maxExposure         float32
+	minExposure         float32
+	exposure            float32
+}
 
-	// SetFoV changes the field-of-view angle setting of this camera.
-	SetFoV(angle sprec.Angle)
+// FoV returns the field-of-view angle for this camera.
+func (c *Camera) FoV() sprec.Angle {
+	return c.fov
+}
 
-	// FoVMode returns the mode of field-of-view. This determines how the
-	// FoV setting is used to calculate the final image in the vertical
-	// and horizontal directions.
-	FoVMode() FoVMode
+// SetFoV changes the field-of-view angle setting of this camera.
+func (c *Camera) SetFoV(angle sprec.Angle) {
+	c.fov = angle
+}
 
-	// SetFoVMode changes the field-of-view mode of this camera.
-	SetFoVMode(mode FoVMode)
+// FoVMode returns the mode of field-of-view. This determines how the
+// FoV setting is used to calculate the final image in the vertical
+// and horizontal directions.
+func (c *Camera) FoVMode() FoVMode {
+	return c.fovMode
+}
 
-	// AspectRatio returns the aspect ratio to be maintained when rendering
-	// with this camera. This setting works in combination with FoVMode and
-	// FoV settings.
-	AspectRatio() float32
+// SetFoVMode changes the field-of-view mode of this camera.
+func (c *Camera) SetFoVMode(mode FoVMode) {
+	c.fovMode = mode
+}
 
-	// SetAspectRatio changes the aspect ratio of this camera.
-	SetAspectRatio(ratio float32)
+// AspectRatio returns the aspect ratio to be maintained when rendering
+// with this camera. This setting works in combination with FoVMode and
+// FoV settings.
+func (c *Camera) AspectRatio() float32 {
+	return c.aspectRatio
+}
 
-	// AutoFocus returns whether this camera will try and automatically
-	// focus on objects.
-	AutoFocus() bool
+// SetAspectRatio changes the aspect ratio of this camera.
+func (c *Camera) SetAspectRatio(ratio float32) {
+	c.aspectRatio = ratio
+}
 
-	// SetAutoFocus changes whether this camera should attempt to automatically
-	// focus on object in the scene.
-	SetAutoFocus(enabled bool)
+// AutoFocus returns whether this camera will try and automatically
+// focus on objects.
+func (c *Camera) AutoFocus() bool {
+	return c.autoFocusEnabled
+}
 
-	// FocusRange changes the range from near to far in which the image
-	// will be in focus.
-	FocusRange() (float32, float32)
+// SetAutoFocus changes whether this camera should attempt to automatically
+// focus on object in the scene.
+func (c *Camera) SetAutoFocus(enabled bool) {
+	c.autoFocusEnabled = enabled
+}
 
-	// SetFocusRange changes the focus range for this camera.
-	SetFocusRange(near, far float32)
+// FocusRange changes the range from near to far in which the image
+// will be in focus.
+func (c *Camera) FocusRange() (float32, float32) {
+	return c.nearFocus, c.farFocus
+}
 
-	// AutoExposure returns whether this camera will try and automatically
-	// adjust the exposure setting to maintain a proper brightness of
-	// the final image.
-	AutoExposure() bool
+// SetFocusRange changes the focus range for this camera.
+func (c *Camera) SetFocusRange(near, far float32) {
+	c.nearFocus = near
+	c.farFocus = far
+}
 
-	// SetAutoExposure changes whether this cammera should attempt to
-	// do automatic exposure adjustment.
-	SetAutoExposure(enabled bool)
+// AutoExposure returns whether this camera will try and automatically
+// adjust the exposure setting to maintain a proper brightness of
+// the final image.
+func (c *Camera) AutoExposure() bool {
+	return c.autoExposureEnabled
+}
 
-	// MaximumExposure returns the maximum exposure that the camera may use
-	// during AutoExposure.
-	MaximumExposure() float32
+// SetAutoExposure changes whether this cammera should attempt to
+// do automatic exposure adjustment.
+func (c *Camera) SetAutoExposure(enabled bool) {
+	c.autoExposureEnabled = enabled
+}
 
-	// SetMaximumExposure changes the maximum exposure for this camera.
-	SetMaximumExposure(maxExposure float32)
+// MaximumExposure returns the maximum exposure that the camera may use
+// during AutoExposure.
+func (c *Camera) MaximumExposure() float32 {
+	return c.maxExposure
+}
 
-	// MinimumExposure returns the maximum exposure that the camera may use
-	// during AutoExposure.
-	MinimumExposure() float32
+// SetMaximumExposure changes the maximum exposure for this camera.
+func (c *Camera) SetMaximumExposure(maxExposure float32) {
+	c.maxExposure = maxExposure
+}
 
-	// SetMinimumExposure changes the maximum exposure for this camera.
-	SetMinimumExposure(minExposure float32)
+// MinimumExposure returns the maximum exposure that the camera may use
+// during AutoExposure.
+func (c *Camera) MinimumExposure() float32 {
+	return c.minExposure
+}
 
-	// Exposure returns the exposure setting of this camera.
-	Exposure() float32
+// SetMinimumExposure changes the maximum exposure for this camera.
+func (c *Camera) SetMinimumExposure(minExposure float32) {
+	c.minExposure = minExposure
+}
 
-	// SetExposure changes the exposure setting of this camera.
-	// Smaller values mean that the final image will be darker and
-	// higher values mean that the final image will be brighter with
-	// 1.0 being the starting point.
-	SetExposure(exposure float32)
+// Exposure returns the exposure setting of this camera.
+func (c *Camera) Exposure() float32 {
+	return c.exposure
+}
 
-	// Delete removes this camera from the scene.
-	Delete()
+// SetExposure changes the exposure setting of this camera.
+// Smaller values mean that the final image will be darker and
+// higher values mean that the final image will be brighter with
+// 1.0 being the starting point.
+func (c *Camera) SetExposure(exposure float32) {
+	c.exposure = exposure
+}
+
+// Delete removes this camera from the scene.
+func (c *Camera) Delete() {
 }

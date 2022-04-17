@@ -1,4 +1,4 @@
-package graphics
+package internal
 
 import (
 	"encoding/binary"
@@ -18,7 +18,7 @@ func (v skyboxMeshVertex) Serialize(plotter *buffer.Plotter) {
 	plotter.PlotFloat32(v.Position.Z)
 }
 
-func newSkyboxMesh() *SkyboxMesh {
+func NewSkyboxMesh() *SkyboxMesh {
 	return &SkyboxMesh{
 		Topology:         render.TopologyTriangles,
 		IndexCount:       36,
@@ -143,7 +143,7 @@ func (m *SkyboxMesh) Allocate(api render.API) {
 		Attributes: []render.VertexArrayAttributeInfo{
 			{
 				Binding:  0,
-				Location: coordAttributeIndex,
+				Location: CoordAttributeIndex,
 				Format:   render.VertexAttributeFormatRGB32F,
 				Offset:   0,
 			},

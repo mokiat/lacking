@@ -1,10 +1,21 @@
 package graphics
 
-// TwoDTexture represents a two-dimensional texture.
-type TwoDTexture interface {
+import "github.com/mokiat/lacking/render"
 
-	// Delete releases any resources allocated for this texture.
-	Delete()
+func newTwoDTexture(texture render.Texture) *TwoDTexture {
+	return &TwoDTexture{
+		texture: texture,
+	}
+}
+
+// TwoDTexture represents a two-dimensional texture.
+type TwoDTexture struct {
+	texture render.Texture
+}
+
+// Delete releases any resources allocated for this texture.
+func (t *TwoDTexture) Delete() {
+	t.texture.Release()
 }
 
 // TwoDTextureDefinition contains all the information needed
@@ -26,11 +37,20 @@ type TwoDTextureDefinition struct {
 	Data []byte
 }
 
-// CubeTexture represents a cube texture.
-type CubeTexture interface {
+func newCubeTexture(texture render.Texture) *CubeTexture {
+	return &CubeTexture{
+		texture: texture,
+	}
+}
 
-	// Delete releases any resources allocated for this texture.
-	Delete()
+// CubeTexture represents a cube texture.
+type CubeTexture struct {
+	texture render.Texture
+}
+
+// Delete releases any resources allocated for this texture.
+func (t *CubeTexture) Delete() {
+	t.texture.Release()
 }
 
 // CubeTextureDefinition contains all the information needed
@@ -53,8 +73,7 @@ type CubeTextureDefinition struct {
 }
 
 const (
-	WrapClampToEdge         Wrap = 1 + iota
-	WrapMirroredClampToEdge      // TODO: Remove
+	WrapClampToEdge Wrap = 1 + iota
 	WrapRepeat
 	WrapMirroredRepat
 )

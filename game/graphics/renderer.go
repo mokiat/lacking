@@ -4,22 +4,12 @@ import (
 	"fmt"
 
 	"github.com/mokiat/gomath/sprec"
-	"github.com/mokiat/lacking/game/graphics"
-	"github.com/mokiat/lacking/game/graphics/renderapi/internal"
-	"github.com/mokiat/lacking/game/graphics/renderapi/plugin"
+	"github.com/mokiat/lacking/game/graphics/internal"
 	"github.com/mokiat/lacking/render"
 )
 
-const (
-	coordAttributeIndex    = 0
-	normalAttributeIndex   = 1
-	tangentAttributeIndex  = 2
-	texCoordAttributeIndex = 3
-	colorAttributeIndex    = 4
-)
-
-func newRenderer(api render.API, shaders plugin.ShaderCollection) *Renderer {
-	return &Renderer{
+func newRenderer(api render.API, shaders ShaderCollection) *sceneRenderer {
+	return &sceneRenderer{
 		api:     api,
 		shaders: shaders,
 
@@ -30,22 +20,22 @@ func newRenderer(api render.API, shaders plugin.ShaderCollection) *Renderer {
 
 		screenFramebuffer: api.DefaultFramebuffer(),
 
-		quadMesh: newQuadMesh(),
+		quadMesh: internal.NewQuadMesh(),
 
-		skyboxMesh: newSkyboxMesh(),
+		skyboxMesh: internal.NewSkyboxMesh(),
 	}
 }
 
-type Renderer struct {
+type sceneRenderer struct {
 	api     render.API
-	shaders plugin.ShaderCollection
+	shaders ShaderCollection
 
 	commands render.CommandQueue
 
 	framebufferWidth  int
 	framebufferHeight int
 
-	quadMesh *QuadMesh
+	quadMesh *internal.QuadMesh
 
 	geometryAlbedoTexture render.Texture
 	geometryNormalTexture render.Texture
@@ -74,14 +64,14 @@ type Renderer struct {
 	ambientLightPresentation     *internal.LightingPresentation
 	ambientLightPipeline         render.Pipeline
 
-	skyboxMesh           *SkyboxMesh
+	skyboxMesh           *internal.SkyboxMesh
 	skyboxPresentation   *internal.SkyboxPresentation
 	skyboxPipeline       render.Pipeline
 	skycolorPresentation *internal.SkyboxPresentation
 	skycolorPipeline     render.Pipeline
 }
 
-func (r *Renderer) Allocate() {
+func (r *sceneRenderer) Allocate() {
 	r.commands = r.api.CreateCommandQueue()
 
 	r.quadMesh.Allocate(r.api)
@@ -153,7 +143,10 @@ func (r *Renderer) Allocate() {
 		},
 	})
 
-	r.exposurePresentation = internal.NewExposurePresentation(r.api, r.shaders.ExposureSet())
+	r.exposurePresentation = internal.NewLightingPresentation(r.api,
+		r.shaders.ExposureSet().VertexShader(),
+		r.shaders.ExposureSet().FragmentShader(),
+	)
 
 	r.exposureBuffer = r.api.CreatePixelTransferBuffer(render.BufferInfo{
 		Dynamic: true,
@@ -161,7 +154,10 @@ func (r *Renderer) Allocate() {
 		// Size:    4 * 4, // TODO
 	})
 
-	r.postprocessingPresentation = internal.NewTonePostprocessingPresentation(r.api, r.shaders.PostprocessingSet(plugin.ExponentialToneMapping))
+	r.postprocessingPresentation = internal.NewPostprocessingPresentation(r.api,
+		r.shaders.PostprocessingSet(ExponentialToneMapping).VertexShader(),
+		r.shaders.PostprocessingSet(ExponentialToneMapping).FragmentShader(),
+	)
 	r.postprocessingPipeline = r.api.CreatePipeline(render.PipelineInfo{
 		Program:         r.postprocessingPresentation.Program,
 		VertexArray:     r.quadMesh.VertexArray,
@@ -195,7 +191,10 @@ func (r *Renderer) Allocate() {
 		BlendEnabled: false,
 	})
 
-	r.directionalLightPresentation = internal.NewDirectionalLightPresentation(r.api, r.shaders.DirectionalLightSet())
+	r.directionalLightPresentation = internal.NewLightingPresentation(r.api,
+		r.shaders.DirectionalLightSet().VertexShader(),
+		r.shaders.DirectionalLightSet().FragmentShader(),
+	)
 	r.directionalLightPipeline = r.api.CreatePipeline(render.PipelineInfo{
 		Program:         r.directionalLightPresentation.Program,
 		VertexArray:     r.quadMesh.VertexArray,
@@ -235,7 +234,10 @@ func (r *Renderer) Allocate() {
 		BlendOpColor:                render.BlendOperationAdd,
 		BlendOpAlpha:                render.BlendOperationAdd,
 	})
-	r.ambientLightPresentation = internal.NewAmbientLightPresentation(r.api, r.shaders.AmbientLightSet())
+	r.ambientLightPresentation = internal.NewLightingPresentation(r.api,
+		r.shaders.AmbientLightSet().VertexShader(),
+		r.shaders.AmbientLightSet().FragmentShader(),
+	)
 	r.ambientLightPipeline = r.api.CreatePipeline(render.PipelineInfo{
 		Program:         r.ambientLightPresentation.Program,
 		VertexArray:     r.quadMesh.VertexArray,
@@ -277,7 +279,10 @@ func (r *Renderer) Allocate() {
 	})
 
 	r.skyboxMesh.Allocate(r.api)
-	r.skyboxPresentation = internal.NewCubeSkyboxPresentation(r.api, r.shaders.SkyboxSet())
+	r.skyboxPresentation = internal.NewSkyboxPresentation(r.api,
+		r.shaders.SkyboxSet().VertexShader(),
+		r.shaders.SkyboxSet().FragmentShader(),
+	)
 	r.skyboxPipeline = r.api.CreatePipeline(render.PipelineInfo{
 		Program:         r.skyboxPresentation.Program,
 		VertexArray:     r.skyboxMesh.VertexArray,
@@ -310,7 +315,10 @@ func (r *Renderer) Allocate() {
 		ColorWrite:   [4]bool{true, true, true, true},
 		BlendEnabled: false,
 	})
-	r.skycolorPresentation = internal.NewColorSkyboxPresentation(r.api, r.shaders.SkycolorSet())
+	r.skycolorPresentation = internal.NewSkyboxPresentation(r.api,
+		r.shaders.SkycolorSet().VertexShader(),
+		r.shaders.SkycolorSet().FragmentShader(),
+	)
 	r.skycolorPipeline = r.api.CreatePipeline(render.PipelineInfo{
 		Program:         r.skycolorPresentation.Program,
 		VertexArray:     r.skyboxMesh.VertexArray,
@@ -345,7 +353,7 @@ func (r *Renderer) Allocate() {
 	})
 }
 
-func (r *Renderer) Release() {
+func (r *sceneRenderer) Release() {
 	defer r.commands.Release()
 
 	defer r.quadMesh.Release()
@@ -378,7 +386,6 @@ func (r *Renderer) Release() {
 	r.exposurePresentation.Delete()
 	r.exposureFramebuffer.Release()
 	r.exposureAlbedoTexture.Release()
-
 }
 
 type renderCtx struct {
@@ -393,9 +400,9 @@ type renderCtx struct {
 	camera           *Camera
 }
 
-func (r *Renderer) Render(viewport graphics.Viewport, scene *Scene, camera *Camera) {
+func (r *sceneRenderer) Render(viewport Viewport, scene *Scene, camera *Camera) {
 	projectionMatrix := r.evaluateProjectionMatrix(camera, viewport.Width, viewport.Height)
-	cameraMatrix := camera.ModelMatrix()
+	cameraMatrix := camera.Matrix()
 	viewMatrix := sprec.InverseMat4(cameraMatrix)
 	ctx := renderCtx{
 		scene:            scene,
@@ -417,7 +424,7 @@ func (r *Renderer) Render(viewport graphics.Viewport, scene *Scene, camera *Came
 	r.renderPostprocessingPass(ctx)
 }
 
-func (r *Renderer) evaluateProjectionMatrix(camera *Camera, width, height int) sprec.Mat4 {
+func (r *sceneRenderer) evaluateProjectionMatrix(camera *Camera, width, height int) sprec.Mat4 {
 	const (
 		near = float32(0.5)
 		far  = float32(900.0)
@@ -428,21 +435,21 @@ func (r *Renderer) evaluateProjectionMatrix(camera *Camera, width, height int) s
 	)
 
 	switch camera.fovMode {
-	case graphics.FoVModeHorizontalPlus:
+	case FoVModeHorizontalPlus:
 		halfHeight := near * sprec.Tan(camera.fov/2.0)
 		halfWidth := halfHeight * (fWidth / fHeight)
 		return sprec.PerspectiveMat4(
 			-halfWidth, halfWidth, -halfHeight, halfHeight, near, far,
 		)
 
-	case graphics.FoVModeVertialMinus:
+	case FoVModeVertialMinus:
 		halfWidth := near * sprec.Tan(camera.fov/2.0)
 		halfHeight := halfWidth * (fHeight / fWidth)
 		return sprec.PerspectiveMat4(
 			-halfWidth, halfWidth, -halfHeight, halfHeight, near, far,
 		)
 
-	case graphics.FoVModePixelBased:
+	case FoVModePixelBased:
 		halfWidth := fWidth / 2.0
 		halfHeight := fHeight / 2.0
 		return sprec.OrthoMat4(
@@ -454,7 +461,7 @@ func (r *Renderer) evaluateProjectionMatrix(camera *Camera, width, height int) s
 	}
 }
 
-func (r *Renderer) renderGeometryPass(ctx renderCtx) {
+func (r *sceneRenderer) renderGeometryPass(ctx renderCtx) {
 	r.api.BeginRenderPass(render.RenderPassInfo{
 		Framebuffer: r.geometryFramebuffer,
 		Viewport: render.Area{
@@ -488,13 +495,13 @@ func (r *Renderer) renderGeometryPass(ctx renderCtx) {
 	})
 	// TODO: Traverse octree
 	for mesh := ctx.scene.firstMesh; mesh != nil; mesh = mesh.next {
-		r.renderMesh(ctx, mesh.ModelMatrix().ColumnMajorArray(), mesh.template)
+		r.renderMesh(ctx, mesh.Matrix().ColumnMajorArray(), mesh.template)
 	}
 	r.api.SubmitQueue(r.commands)
 	r.api.EndRenderPass()
 }
 
-func (r *Renderer) renderMesh(ctx renderCtx, modelMatrix [16]float32, template *MeshTemplate) {
+func (r *sceneRenderer) renderMesh(ctx renderCtx, modelMatrix [16]float32, template *MeshTemplate) {
 	for _, subMesh := range template.subMeshes {
 		material := subMesh.material
 		presentation := material.geometryPresentation
@@ -559,10 +566,9 @@ func (r *Renderer) renderMesh(ctx renderCtx, modelMatrix [16]float32, template *
 
 		pipeline.Release() // FIXME: This is not even correct
 	}
-
 }
 
-func (r *Renderer) renderLightingPass(ctx renderCtx) {
+func (r *sceneRenderer) renderLightingPass(ctx renderCtx) {
 	r.api.BeginRenderPass(render.RenderPassInfo{
 		Framebuffer: r.lightingFramebuffer,
 		Viewport: render.Area{
@@ -596,7 +602,7 @@ func (r *Renderer) renderLightingPass(ctx renderCtx) {
 	r.api.EndRenderPass()
 }
 
-func (r *Renderer) renderAmbientLight(ctx renderCtx, light *Light) {
+func (r *sceneRenderer) renderAmbientLight(ctx renderCtx, light *Light) {
 	r.commands.BindPipeline(r.ambientLightPipeline)
 	r.commands.UniformMatrix4f(r.ambientLightPresentation.ProjectionMatrixLocation, ctx.projectionMatrix)
 	r.commands.UniformMatrix4f(r.ambientLightPresentation.CameraMatrixLocation, ctx.cameraMatrix)
@@ -607,14 +613,14 @@ func (r *Renderer) renderAmbientLight(ctx renderCtx, light *Light) {
 	r.commands.Uniform1i(r.ambientLightPresentation.FramebufferDraw1Location, 1)
 	r.commands.TextureUnit(2, r.geometryDepthTexture)
 	r.commands.Uniform1i(r.ambientLightPresentation.FramebufferDepthLocation, 2)
-	r.commands.TextureUnit(3, light.reflectionTexture.Texture)
+	r.commands.TextureUnit(3, light.reflectionTexture.texture)
 	r.commands.Uniform1i(r.ambientLightPresentation.ReflectionTextureLocation, 3)
-	r.commands.TextureUnit(4, light.refractionTexture.Texture)
+	r.commands.TextureUnit(4, light.refractionTexture.texture)
 	r.commands.Uniform1i(r.ambientLightPresentation.RefractionTextureLocation, 4)
 	r.commands.DrawIndexed(r.quadMesh.IndexOffsetBytes, r.quadMesh.IndexCount, 1)
 }
 
-func (r *Renderer) renderDirectionalLight(ctx renderCtx, light *Light) {
+func (r *sceneRenderer) renderDirectionalLight(ctx renderCtx, light *Light) {
 	r.commands.BindPipeline(r.directionalLightPipeline)
 	r.commands.UniformMatrix4f(r.directionalLightPresentation.ProjectionMatrixLocation, ctx.projectionMatrix)
 	r.commands.UniformMatrix4f(r.directionalLightPresentation.CameraMatrixLocation, ctx.cameraMatrix)
@@ -632,7 +638,7 @@ func (r *Renderer) renderDirectionalLight(ctx renderCtx, light *Light) {
 	r.commands.DrawIndexed(r.quadMesh.IndexOffsetBytes, r.quadMesh.IndexCount, 1)
 }
 
-func (r *Renderer) renderForwardPass(ctx renderCtx) {
+func (r *sceneRenderer) renderForwardPass(ctx renderCtx) {
 	r.api.BeginRenderPass(render.RenderPassInfo{
 		Framebuffer: r.forwardFramebuffer,
 		Viewport: render.Area{
@@ -658,7 +664,7 @@ func (r *Renderer) renderForwardPass(ctx renderCtx) {
 		r.commands.BindPipeline(r.skyboxPipeline)
 		r.commands.UniformMatrix4f(r.skyboxPresentation.ProjectionMatrixLocation, ctx.projectionMatrix)
 		r.commands.UniformMatrix4f(r.skyboxPresentation.ViewMatrixLocation, ctx.viewMatrix)
-		r.commands.TextureUnit(0, texture.Texture)
+		r.commands.TextureUnit(0, texture.texture)
 		r.commands.Uniform1i(r.skyboxPresentation.AlbedoCubeTextureLocation, 0)
 		r.commands.DrawIndexed(r.skyboxMesh.IndexOffsetBytes, r.skyboxMesh.IndexCount, 1)
 	} else {
@@ -678,7 +684,7 @@ func (r *Renderer) renderForwardPass(ctx renderCtx) {
 	r.api.EndRenderPass()
 }
 
-func (r *Renderer) renderExposureProbePass(ctx renderCtx) {
+func (r *sceneRenderer) renderExposureProbePass(ctx renderCtx) {
 	// if r.exposureSync != 0 {
 	// 	status := gl.ClientWaitSync(r.exposureSync, gl.SYNC_FLUSH_COMMANDS_BIT, 0)
 	// 	switch status {
@@ -737,7 +743,7 @@ func (r *Renderer) renderExposureProbePass(ctx renderCtx) {
 	// }
 }
 
-func (r *Renderer) renderPostprocessingPass(ctx renderCtx) {
+func (r *sceneRenderer) renderPostprocessingPass(ctx renderCtx) {
 	r.api.BeginRenderPass(render.RenderPassInfo{
 		Framebuffer: r.screenFramebuffer,
 		Viewport: render.Area{
