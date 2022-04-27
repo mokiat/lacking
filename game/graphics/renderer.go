@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/mokiat/gomath/sprec"
+	"github.com/mokiat/lacking/data"
 	"github.com/mokiat/lacking/game/graphics/internal"
 	"github.com/mokiat/lacking/render"
 )
@@ -17,8 +18,6 @@ func newRenderer(api render.API, shaders ShaderCollection) *sceneRenderer {
 		framebufferHeight: 1080,
 
 		exposureTarget: 1.0,
-
-		screenFramebuffer: api.DefaultFramebuffer(),
 
 		quadMesh: internal.NewQuadMesh(),
 
@@ -50,11 +49,10 @@ type sceneRenderer struct {
 	exposureAlbedoTexture render.Texture
 	exposureFramebuffer   render.Framebuffer
 	exposurePresentation  *internal.LightingPresentation
+	exposurePipeline      render.Pipeline
 	exposureBuffer        render.Buffer
-	exposureSync          uintptr
+	exposureSync          render.Fence
 	exposureTarget        float32
-
-	screenFramebuffer render.Framebuffer
 
 	postprocessingPresentation *internal.PostprocessingPresentation
 	postprocessingPipeline     render.Pipeline
@@ -142,16 +140,26 @@ func (r *sceneRenderer) Allocate() {
 			r.exposureAlbedoTexture,
 		},
 	})
-
 	r.exposurePresentation = internal.NewLightingPresentation(r.api,
 		r.shaders.ExposureSet().VertexShader(),
 		r.shaders.ExposureSet().FragmentShader(),
 	)
-
+	r.exposurePipeline = r.api.CreatePipeline(render.PipelineInfo{
+		Program:      r.exposurePresentation.Program,
+		VertexArray:  r.quadMesh.VertexArray,
+		Topology:     r.quadMesh.Topology,
+		Culling:      render.CullModeBack,
+		FrontFace:    render.FaceOrientationCCW,
+		LineWidth:    1.0,
+		DepthTest:    false,
+		DepthWrite:   false,
+		StencilTest:  false,
+		ColorWrite:   render.ColorMaskTrue,
+		BlendEnabled: false,
+	})
 	r.exposureBuffer = r.api.CreatePixelTransferBuffer(render.BufferInfo{
 		Dynamic: true,
-		Data:    make([]byte, 4*4),
-		// Size:    4 * 4, // TODO
+		Size:    4 * 4,
 	})
 
 	r.postprocessingPresentation = internal.NewPostprocessingPresentation(r.api,
@@ -368,6 +376,11 @@ func (r *sceneRenderer) Release() {
 
 	defer r.forwardFramebuffer.Release()
 
+	defer r.exposureBuffer.Release()
+	defer r.exposurePresentation.Delete()
+	defer r.exposureFramebuffer.Release()
+	defer r.exposureAlbedoTexture.Release()
+
 	defer r.postprocessingPresentation.Delete()
 	defer r.postprocessingPipeline.Release()
 
@@ -381,14 +394,10 @@ func (r *sceneRenderer) Release() {
 	defer r.skyboxPipeline.Release()
 	defer r.skycolorPresentation.Delete()
 	defer r.skycolorPipeline.Release()
-
-	r.exposureBuffer.Release()
-	r.exposurePresentation.Delete()
-	r.exposureFramebuffer.Release()
-	r.exposureAlbedoTexture.Release()
 }
 
 type renderCtx struct {
+	framebuffer      render.Framebuffer
 	scene            *Scene
 	x                int
 	y                int
@@ -400,11 +409,12 @@ type renderCtx struct {
 	camera           *Camera
 }
 
-func (r *sceneRenderer) Render(viewport Viewport, scene *Scene, camera *Camera) {
+func (r *sceneRenderer) Render(framebuffer render.Framebuffer, viewport Viewport, scene *Scene, camera *Camera) {
 	projectionMatrix := r.evaluateProjectionMatrix(camera, viewport.Width, viewport.Height)
 	cameraMatrix := camera.Matrix()
 	viewMatrix := sprec.InverseMat4(cameraMatrix)
 	ctx := renderCtx{
+		framebuffer:      framebuffer,
 		scene:            scene,
 		x:                viewport.X,
 		y:                viewport.Y,
@@ -685,67 +695,83 @@ func (r *sceneRenderer) renderForwardPass(ctx renderCtx) {
 }
 
 func (r *sceneRenderer) renderExposureProbePass(ctx renderCtx) {
-	// if r.exposureSync != 0 {
-	// 	status := gl.ClientWaitSync(r.exposureSync, gl.SYNC_FLUSH_COMMANDS_BIT, 0)
-	// 	switch status {
-	// 	case gl.ALREADY_SIGNALED, gl.CONDITION_SATISFIED:
-	// 		data := make([]float32, 4)
-	// 		gl.GetNamedBufferSubData(r.exposureBuffer.ID(), 0, 4*4, gl.Ptr(&data[0]))
-	// 		brightness := 0.2126*data[0] + 0.7152*data[1] + 0.0722*data[2]
-	// 		if brightness < 0.001 {
-	// 			brightness = 0.001
-	// 		}
-	// 		r.exposureTarget = 1.0 / (3.14 * brightness)
-	// 		if r.exposureTarget > ctx.camera.maxExposure {
-	// 			r.exposureTarget = ctx.camera.maxExposure
-	// 		}
-	// 		if r.exposureTarget < ctx.camera.minExposure {
-	// 			r.exposureTarget = ctx.camera.minExposure
-	// 		}
-	// 		gl.DeleteSync(r.exposureSync)
-	// 		r.exposureSync = 0
-	// 	case gl.WAIT_FAILED:
-	// 		r.exposureSync = 0
-	// 	}
-	// }
+	if r.exposureSync != nil {
+		switch r.exposureSync.Status() {
+		case render.FenceStatusSuccess:
+			colorData := data.Buffer(make([]byte, 4*4)) // TODO: Prevent allocation
+			r.exposureBuffer.Fetch(render.BufferFetchInfo{
+				Offset: 0,
+				Target: colorData,
+			})
+			colorR := colorData.Float32(0 * 4)
+			colorG := colorData.Float32(1 * 4)
+			colorB := colorData.Float32(2 * 4)
+			brightness := 0.2126*colorR + 0.7152*colorG + 0.0722*colorB
+			if brightness < 0.001 {
+				brightness = 0.001
+			}
+			r.exposureTarget = 1.0 / (3.14 * brightness)
+			if r.exposureTarget > ctx.camera.maxExposure {
+				r.exposureTarget = ctx.camera.maxExposure
+			}
+			if r.exposureTarget < ctx.camera.minExposure {
+				r.exposureTarget = ctx.camera.minExposure
+			}
+			fallthrough
 
-	// ctx.camera.exposure = sprec.Mix(ctx.camera.exposure, r.exposureTarget, float32(0.01))
+		case render.FenceStatusDeviceLost:
+			r.exposureSync.Delete()
+			r.exposureSync = nil
 
-	// if r.exposureSync == 0 {
-	// 	r.exposureFramebuffer.Use()
+		case render.FenceStatusNotReady:
+			// wait until next frame
+		}
+	}
 
-	// 	gl.Viewport(0, 0, r.framebufferWidth, r.framebufferHeight)
-	// 	gl.Disable(gl.DEPTH_TEST)
-	// 	gl.DepthMask(false)
-	// 	gl.Enable(gl.CULL_FACE)
+	ctx.camera.exposure = sprec.Mix(ctx.camera.exposure, r.exposureTarget, float32(0.01))
 
-	// 	r.exposureFramebuffer.ClearColor(0, sprec.ZeroVec4())
-
-	// 	presentation := r.exposurePresentation
-	// 	program := presentation.Program
-	// 	program.Use()
-
-	// 	textureUnit := uint32(0)
-
-	// 	gl.BindTextureUnit(textureUnit, r.lightingAlbedoTexture.ID())
-	// 	gl.Uniform1i(presentation.FramebufferDraw0Location, int32(textureUnit))
-	// 	textureUnit++
-
-	// 	gl.BindVertexArray(r.quadMesh.VertexArray.ID())
-	// 	gl.DrawElements(r.quadMesh.Primitive, r.quadMesh.IndexCount, gl.UNSIGNED_SHORT, gl.PtrOffset(r.quadMesh.IndexOffsetBytes))
-
-	// 	gl.TextureBarrier()
-
-	// 	gl.BindBuffer(gl.PIXEL_PACK_BUFFER, r.exposureBuffer.ID())
-	// 	gl.GetTextureImage(r.exposureAlbedoTexture.ID(), 0, gl.RGBA, gl.FLOAT, 4*4, gl.PtrOffset(0))
-	// 	r.exposureSync = gl.FenceSync(gl.SYNC_GPU_COMMANDS_COMPLETE, 0)
-	// 	gl.BindBuffer(gl.PIXEL_PACK_BUFFER, 0)
-	// }
+	if r.exposureSync == nil {
+		r.api.BeginRenderPass(render.RenderPassInfo{
+			Framebuffer: r.exposureFramebuffer,
+			Viewport: render.Area{
+				X:      0,
+				Y:      0,
+				Width:  r.framebufferWidth,
+				Height: r.framebufferHeight,
+			},
+			DepthLoadOp:    render.LoadOperationDontCare,
+			DepthStoreOp:   render.StoreOperationDontCare,
+			StencilLoadOp:  render.LoadOperationDontCare,
+			StencilStoreOp: render.StoreOperationDontCare,
+			Colors: [4]render.ColorAttachmentInfo{
+				{
+					LoadOp:     render.LoadOperationClear,
+					StoreOp:    render.StoreOperationDontCare,
+					ClearValue: [4]float32{0.0, 0.0, 0.0, 0.0},
+				},
+			},
+		})
+		r.commands.BindPipeline(r.exposurePipeline)
+		r.commands.TextureUnit(0, r.lightingAlbedoTexture)
+		r.commands.Uniform1i(r.exposurePresentation.FramebufferDraw0Location, 0)
+		r.commands.DrawIndexed(r.quadMesh.IndexOffsetBytes, r.quadMesh.IndexCount, 1)
+		r.commands.CopyContentToBuffer(render.CopyContentToBufferInfo{
+			Buffer: r.exposureBuffer,
+			X:      0,
+			Y:      0,
+			Width:  1,
+			Height: 1,
+			Format: render.DataFormatRGBA32F,
+		})
+		r.api.SubmitQueue(r.commands)
+		r.exposureSync = r.api.CreateFence()
+		r.api.EndRenderPass()
+	}
 }
 
 func (r *sceneRenderer) renderPostprocessingPass(ctx renderCtx) {
 	r.api.BeginRenderPass(render.RenderPassInfo{
-		Framebuffer: r.screenFramebuffer,
+		Framebuffer: ctx.framebuffer,
 		Viewport: render.Area{
 			X:      ctx.x,
 			Y:      ctx.y,

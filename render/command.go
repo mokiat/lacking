@@ -10,5 +10,6 @@ type CommandQueue interface {
 	TextureUnit(index int, texture Texture)
 	Draw(vertexOffset, vertexCount, instanceCount int)
 	DrawIndexed(indexOffset, indexCount, instanceCount int)
+	CopyContentToBuffer(info CopyContentToBufferInfo)
 	Release()
 }

@@ -1,6 +1,9 @@
 package graphics
 
-import "github.com/mokiat/gomath/sprec"
+import (
+	"github.com/mokiat/gomath/sprec"
+	"github.com/mokiat/lacking/render"
+)
 
 func newScene(renderer *sceneRenderer) *Scene {
 	return &Scene{
@@ -102,7 +105,14 @@ func (s *Scene) CreateMesh(template *MeshTemplate) *Mesh {
 // looking through the specified camera.
 func (s *Scene) Render(viewport Viewport, camera *Camera) {
 	gfxCamera := camera
-	s.renderer.Render(viewport, s, gfxCamera)
+	s.renderer.Render(s.renderer.api.DefaultFramebuffer(), viewport, s, gfxCamera)
+}
+
+// Render draws this scene to the specified viewport
+// looking through the specified camera.
+func (s *Scene) RenderFramebuffer(framebuffer render.Framebuffer, viewport Viewport, camera *Camera) {
+	gfxCamera := camera
+	s.renderer.Render(framebuffer, viewport, s, gfxCamera)
 }
 
 // Delete removes this scene and releases all

@@ -11,6 +11,11 @@ type BufferUpdateInfo struct {
 	Offset int
 }
 
+type BufferFetchInfo struct {
+	Offset int
+	Target []byte
+}
+
 type BufferObject interface {
 	_isBufferObject() bool // ensures interface uniqueness
 }
@@ -18,5 +23,6 @@ type BufferObject interface {
 type Buffer interface {
 	BufferObject
 	Update(info BufferUpdateInfo)
+	Fetch(info BufferFetchInfo)
 	Release()
 }

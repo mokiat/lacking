@@ -19,6 +19,16 @@ type CopyContentToTextureInfo struct {
 	GenerateMipmaps bool
 }
 
+type CopyContentToBufferInfo struct {
+	Buffer Buffer
+	X      int
+	Y      int
+	Width  int
+	Height int
+	Format DataFormat
+	Offset int
+}
+
 type FramebufferObject interface {
 	_isFramebufferObject() bool // ensures interface uniqueness
 }

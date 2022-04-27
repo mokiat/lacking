@@ -35,4 +35,5 @@ type API interface {
 	DrawIndexed(indexOffset, indexCount, instanceCount int)
 	CopyContentToTexture(info CopyContentToTextureInfo)
 	SubmitQueue(queue CommandQueue)
+	CreateFence() Fence
 }
