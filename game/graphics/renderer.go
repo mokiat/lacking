@@ -736,8 +736,8 @@ func (r *sceneRenderer) renderExposureProbePass(ctx renderCtx) {
 			Viewport: render.Area{
 				X:      0,
 				Y:      0,
-				Width:  r.framebufferWidth,
-				Height: r.framebufferHeight,
+				Width:  1,
+				Height: 1,
 			},
 			DepthLoadOp:    render.LoadOperationDontCare,
 			DepthStoreOp:   render.StoreOperationDontCare,
