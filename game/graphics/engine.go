@@ -232,8 +232,14 @@ func (e *Engine) convertFilter(filter Filter, anisotropic bool) render.FilterMod
 	case FilterNearestMipmapLinear:
 		return render.FilterModeNearest
 	case FilterLinearMipmapNearest:
+		if anisotropic {
+			return render.FilterModeAnisotropic
+		}
 		return render.FilterModeLinear
 	case FilterLinearMipmapLinear:
+		if anisotropic {
+			return render.FilterModeAnisotropic
+		}
 		return render.FilterModeLinear
 	default:
 		panic(fmt.Errorf("unknown min filter mode: %d", filter))
