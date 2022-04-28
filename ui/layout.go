@@ -20,13 +20,13 @@ func NewFillLayout() *FillLayout {
 
 var _ Layout = (*FillLayout)(nil)
 
-// FillLayout resizes the children to fill the content space
-// of the parent element.
+// FillLayout resizes the children to fill the content space of the Element.
 type FillLayout struct{}
 
 // Apply applies this layout to the specified Element.
 func (l *FillLayout) Apply(element *Element) {
+	contentBounds := element.ContentBounds()
 	for child := element.FirstChild(); child != nil; child = child.RightSibling() {
-		child.SetBounds(element.Bounds())
+		child.SetBounds(contentBounds)
 	}
 }

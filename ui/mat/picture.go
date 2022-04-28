@@ -4,7 +4,7 @@ import (
 	"github.com/mokiat/gomath/sprec"
 	"github.com/mokiat/lacking/ui"
 	co "github.com/mokiat/lacking/ui/component"
-	"github.com/mokiat/lacking/ui/optional"
+	"github.com/mokiat/lacking/util/optional"
 )
 
 // PictureData represents the available data properties for the
@@ -12,13 +12,13 @@ import (
 type PictureData struct {
 
 	// BackgroundColor specifies the color to be rendered behind the image.
-	BackgroundColor optional.Color
+	BackgroundColor optional.V[ui.Color]
 
 	// Image specifies the Image to be displayed.
 	Image *ui.Image
 
 	// ImageColor specifies an optional multiplier color.
-	ImageColor optional.Color
+	ImageColor optional.V[ui.Color]
 
 	// Mode specifies how the image will be scaled and visualized within the
 	// Picture component.
@@ -49,14 +49,13 @@ const (
 
 var Picture = co.ShallowCached(co.Define(func(props co.Properties) co.Instance {
 	var (
-		data    PictureData
-		essence *pictureEssence
+		data PictureData
 	)
 	props.InjectOptionalData(&data, PictureData{})
 
-	co.UseState(func() interface{} {
+	essence := co.UseState(func() *pictureEssence {
 		return &pictureEssence{}
-	}).Inject(&essence)
+	}).Get()
 
 	if data.BackgroundColor.Specified {
 		essence.backgroundColor = data.BackgroundColor.Value
@@ -71,9 +70,9 @@ var Picture = co.ShallowCached(co.Define(func(props co.Properties) co.Instance {
 	essence.image = data.Image
 	essence.mode = data.Mode
 
-	var idealSize optional.Size
+	var idealSize optional.V[ui.Size]
 	if data.Image != nil {
-		idealSize = optional.NewSize(data.Image.Size())
+		idealSize = optional.Value(data.Image.Size())
 	}
 
 	return co.New(Element, func() {

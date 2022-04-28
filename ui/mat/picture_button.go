@@ -4,13 +4,13 @@ import (
 	"github.com/mokiat/gomath/sprec"
 	"github.com/mokiat/lacking/ui"
 	co "github.com/mokiat/lacking/ui/component"
-	"github.com/mokiat/lacking/ui/optional"
+	"github.com/mokiat/lacking/util/optional"
 )
 
 type PictureButtonData struct {
 	Font      *ui.Font
-	FontSize  optional.Float32
-	FontColor optional.Color
+	FontSize  optional.V[float32]
+	FontColor optional.V[ui.Color]
 	UpImage   *ui.Image
 	OverImage *ui.Image
 	DownImage *ui.Image
@@ -26,18 +26,17 @@ var PictureButton = co.ShallowCached(co.Define(func(props co.Properties) co.Inst
 	var (
 		data         PictureButtonData
 		callbackData PictureButtonCallbackData
-		essence      *pictureButtonEssence
 	)
 	props.InjectOptionalData(&data, PictureButtonData{})
 	props.InjectOptionalCallbackData(&callbackData, PictureButtonCallbackData{})
 
-	co.UseState(func() interface{} {
+	essence := co.UseState(func() *pictureButtonEssence {
 		return &pictureButtonEssence{
-			state:     buttonStateUp,
+			state:     ButtonStateUp,
 			fontSize:  24,
 			fontColor: ui.Black(),
 		}
-	}).Inject(&essence)
+	}).Get()
 
 	essence.font = data.Font
 	if data.FontSize.Specified {
@@ -76,29 +75,29 @@ type pictureButtonEssence struct {
 
 	clickListener ClickListener
 
-	state buttonState
+	state ButtonState
 }
 
 func (e *pictureButtonEssence) OnMouseEvent(element *ui.Element, event ui.MouseEvent) bool {
 	context := element.Context()
 	switch event.Type {
 	case ui.MouseEventTypeEnter:
-		e.state = buttonStateOver
+		e.state = ButtonStateOver
 		context.Window().Invalidate()
 	case ui.MouseEventTypeLeave:
-		e.state = buttonStateUp
+		e.state = ButtonStateUp
 		context.Window().Invalidate()
 	case ui.MouseEventTypeUp:
 		if event.Button == ui.MouseButtonLeft {
-			if e.state == buttonStateDown {
+			if e.state == ButtonStateDown {
 				e.onClick()
 			}
-			e.state = buttonStateOver
+			e.state = ButtonStateOver
 			context.Window().Invalidate()
 		}
 	case ui.MouseEventTypeDown:
 		if event.Button == ui.MouseButtonLeft {
-			e.state = buttonStateDown
+			e.state = ButtonStateDown
 			context.Window().Invalidate()
 		}
 	}
@@ -108,11 +107,11 @@ func (e *pictureButtonEssence) OnMouseEvent(element *ui.Element, event ui.MouseE
 func (e *pictureButtonEssence) OnRender(element *ui.Element, canvas *ui.Canvas) {
 	var visibleImage *ui.Image
 	switch e.state {
-	case buttonStateUp:
+	case ButtonStateUp:
 		visibleImage = e.upImage
-	case buttonStateOver:
+	case ButtonStateOver:
 		visibleImage = e.overImage
-	case buttonStateDown:
+	case ButtonStateDown:
 		visibleImage = e.downImage
 	}
 	if visibleImage != nil {

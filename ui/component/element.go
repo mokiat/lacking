@@ -2,37 +2,34 @@ package component
 
 import (
 	"github.com/mokiat/lacking/ui"
-	"github.com/mokiat/lacking/ui/optional"
+	"github.com/mokiat/lacking/util/optional"
 )
 
 // ElementData is the struct that should be used when configuring
 // an Element component's data.
 type ElementData struct {
 	Essence   ui.Essence
-	Enabled   optional.Bool
-	Visible   optional.Bool
-	Focusable optional.Bool
-	IdealSize optional.Size
+	Enabled   optional.V[bool]
+	Visible   optional.V[bool]
+	Focusable optional.V[bool]
+	IdealSize optional.V[ui.Size]
 	Padding   ui.Spacing
 	Layout    ui.Layout
 }
 
 // Element represents the most basic component, which is translated
-// to an ui Element. All higher-order components will eventually
-// boil down to an Element.
+// to a UI Element. All higher-order components eventually boil down to an
+// Element.
 var Element = Define(func(props Properties) Instance {
-	var element *ui.Element
-
-	UseState(func() interface{} {
+	element := UseState(func() *ui.Element {
 		return uiCtx.CreateElement()
-	}).Inject(&element)
+	}).Get()
 
 	Defer(func() {
 		element.Destroy()
 	})
 
-	var data ElementData
-	props.InjectData(&data)
+	data := GetData[ElementData](props)
 
 	element.SetEssence(data.Essence)
 	if data.Enabled.Specified {

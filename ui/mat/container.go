@@ -4,11 +4,11 @@ import (
 	"github.com/mokiat/gomath/sprec"
 	"github.com/mokiat/lacking/ui"
 	co "github.com/mokiat/lacking/ui/component"
-	"github.com/mokiat/lacking/ui/optional"
+	"github.com/mokiat/lacking/util/optional"
 )
 
 type ContainerData struct {
-	BackgroundColor optional.Color
+	BackgroundColor optional.V[ui.Color]
 	Padding         ui.Spacing
 	Layout          ui.Layout
 }
@@ -19,14 +19,13 @@ var defaultContainerData = ContainerData{
 
 var Container = co.ShallowCached(co.Define(func(props co.Properties) co.Instance {
 	var (
-		data    ContainerData
-		essence *containerEssence
+		data ContainerData
 	)
 	props.InjectOptionalData(&data, defaultContainerData)
 
-	co.UseState(func() interface{} {
+	essence := co.UseState(func() *containerEssence {
 		return &containerEssence{}
-	}).Inject(&essence)
+	}).Get()
 
 	if data.BackgroundColor.Specified {
 		essence.backgroundColor = data.BackgroundColor.Value

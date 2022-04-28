@@ -4,14 +4,14 @@ import (
 	"github.com/mokiat/gomath/sprec"
 	"github.com/mokiat/lacking/ui"
 	co "github.com/mokiat/lacking/ui/component"
-	"github.com/mokiat/lacking/ui/optional"
+	"github.com/mokiat/lacking/util/optional"
 )
 
 type ButtonData struct {
 	Padding       ui.Spacing
 	Font          *ui.Font
-	FontSize      optional.Float32
-	FontColor     optional.Color
+	FontSize      optional.V[float32]
+	FontColor     optional.V[ui.Color]
 	FontAlignment Alignment
 	Text          string
 }
@@ -24,16 +24,15 @@ var Button = co.ShallowCached(co.Define(func(props co.Properties) co.Instance {
 	var (
 		data         ButtonData
 		callbackData ButtonCallbackData
-		essence      *buttonEssence
 	)
 	props.InjectOptionalData(&data, ButtonData{})
 	props.InjectOptionalCallbackData(&callbackData, ButtonCallbackData{})
 
-	co.UseState(func() interface{} {
+	essence := co.UseState(func() *buttonEssence {
 		return &buttonEssence{
-			state: buttonStateUp,
+			state: ButtonStateUp,
 		}
-	}).Inject(&essence)
+	}).Get()
 
 	essence.font = data.Font
 	if data.FontSize.Specified {
@@ -56,7 +55,7 @@ var Button = co.ShallowCached(co.Define(func(props co.Properties) co.Instance {
 		co.WithData(ElementData{
 			Essence: essence,
 			Padding: data.Padding,
-			IdealSize: optional.NewSize(
+			IdealSize: optional.Value(
 				ui.NewSize(int(txtSize.X), int(txtSize.Y)).Grow(data.Padding.Horizontal(), data.Padding.Vertical()),
 			),
 		})
@@ -77,29 +76,29 @@ type buttonEssence struct {
 
 	clickListener ClickListener
 
-	state buttonState
+	state ButtonState
 }
 
 func (e *buttonEssence) OnMouseEvent(element *ui.Element, event ui.MouseEvent) bool {
 	context := element.Context()
 	switch event.Type {
 	case ui.MouseEventTypeEnter:
-		e.state = buttonStateOver
+		e.state = ButtonStateOver
 		context.Window().Invalidate()
 	case ui.MouseEventTypeLeave:
-		e.state = buttonStateUp
+		e.state = ButtonStateUp
 		context.Window().Invalidate()
 	case ui.MouseEventTypeUp:
 		if event.Button == ui.MouseButtonLeft {
-			if e.state == buttonStateDown {
+			if e.state == ButtonStateDown {
 				e.onClick()
 			}
-			e.state = buttonStateOver
+			e.state = ButtonStateOver
 			context.Window().Invalidate()
 		}
 	case ui.MouseEventTypeDown:
 		if event.Button == ui.MouseButtonLeft {
-			e.state = buttonStateDown
+			e.state = ButtonStateDown
 			context.Window().Invalidate()
 		}
 	}
@@ -108,7 +107,7 @@ func (e *buttonEssence) OnMouseEvent(element *ui.Element, event ui.MouseEvent) b
 
 func (e *buttonEssence) OnRender(element *ui.Element, canvas *ui.Canvas) {
 	switch e.state {
-	case buttonStateOver:
+	case ButtonStateOver:
 		canvas.Shape().Begin(ui.Fill{
 			Color: ui.RGB(15, 15, 15),
 		})
@@ -120,7 +119,7 @@ func (e *buttonEssence) OnRender(element *ui.Element, canvas *ui.Canvas) {
 			),
 		)
 		canvas.Shape().End()
-	case buttonStateDown:
+	case ButtonStateDown:
 		canvas.Shape().Begin(ui.Fill{
 			Color: ui.RGB(30, 30, 30),
 		})

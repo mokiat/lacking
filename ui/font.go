@@ -25,6 +25,7 @@ func (c *FontCollection) Fonts() []*Font {
 	return c.fonts
 }
 
+// Destroy releases all resources held by this FontCollection.
 func (c *FontCollection) Destroy() {
 	for _, font := range c.fonts {
 		font.Destroy()
@@ -101,7 +102,7 @@ func (f *Font) TextSize(text string, fontSize float32) sprec.Vec2 {
 	return result
 }
 
-// Destroy releases all resources related to this font.
+// Destroy releases all resources related to this Font.
 func (f *Font) Destroy() {
 	f.texture.Release()
 }
