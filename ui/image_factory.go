@@ -24,7 +24,7 @@ func (f *imageFactory) CreateImage(img image.Image) *Image {
 		Height:          size.Height,
 		Wrapping:        render.WrapModeClamp,
 		Filtering:       render.FilterModeLinear,
-		Mipmapping:      false,
+		Mipmapping:      true,
 		GammaCorrection: true,
 		Format:          render.DataFormatRGBA8,
 		Data:            imgToRGBA8(img),

@@ -20,8 +20,7 @@ func NewFillLayout() *FillLayout {
 
 var _ Layout = (*FillLayout)(nil)
 
-// FillLayout resizes the children to fill the content space
-// of the parent element.
+// FillLayout resizes the children to fill the content space of the Element.
 type FillLayout struct{}
 
 // Apply applies this layout to the specified Element.
