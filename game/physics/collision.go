@@ -49,7 +49,7 @@ func (c groundCollisionSolver) CalculateImpulses(ctx SBSolverContext) SBImpulseS
 	// FIXME: Don't apply, rather return as solution
 	primary.applyOffsetImpulse(contactRadiusWS, sprec.InverseVec3(sprec.Vec3Prod(normal, impulseStrength)))
 
-	frictionCoef := float32(0.9)
+	frictionCoef := float32(0.9) // around 0.7 to 0.9 is realistic for dry asphalt
 	lateralVelocity := sprec.Vec3Diff(contactVelocity, sprec.Vec3Prod(c.Normal, verticalVelocity))
 	if lateralVelocity.SqrLength() > sqrEpsilon {
 		// FIXME: Lateral impulse uses restitution part on top
