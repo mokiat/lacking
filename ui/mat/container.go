@@ -4,11 +4,11 @@ import (
 	"github.com/mokiat/gomath/sprec"
 	"github.com/mokiat/lacking/ui"
 	co "github.com/mokiat/lacking/ui/component"
-	"github.com/mokiat/lacking/ui/optional"
+	"github.com/mokiat/lacking/util/optional"
 )
 
 type ContainerData struct {
-	BackgroundColor optional.Color
+	BackgroundColor optional.V[ui.Color]
 	Padding         ui.Spacing
 	Layout          ui.Layout
 }

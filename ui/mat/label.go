@@ -4,13 +4,13 @@ import (
 	"github.com/mokiat/gomath/sprec"
 	"github.com/mokiat/lacking/ui"
 	co "github.com/mokiat/lacking/ui/component"
-	"github.com/mokiat/lacking/ui/optional"
+	"github.com/mokiat/lacking/util/optional"
 )
 
 type LabelData struct {
 	Font      *ui.Font
-	FontSize  optional.Float32
-	FontColor optional.Color
+	FontSize  optional.V[float32]
+	FontColor optional.V[ui.Color]
 	Text      string
 }
 
@@ -43,7 +43,7 @@ var Label = co.ShallowCached(co.Define(func(props co.Properties) co.Instance {
 	return co.New(Element, func() {
 		co.WithData(ElementData{
 			Essence:   essence,
-			IdealSize: optional.NewSize(ui.NewSize(int(txtSize.X), int(txtSize.Y))),
+			IdealSize: optional.Value(ui.NewSize(int(txtSize.X), int(txtSize.Y))),
 		})
 		co.WithLayoutData(props.LayoutData())
 		co.WithChildren(props.Children())

@@ -2,20 +2,20 @@ package mat
 
 import (
 	"github.com/mokiat/lacking/ui"
-	"github.com/mokiat/lacking/ui/optional"
+	"github.com/mokiat/lacking/util/optional"
 )
 
 // LayoutData represents a layout configuration for a component
 // that is added to a Container.
 type LayoutData struct {
-	Left             optional.Int
-	Right            optional.Int
-	Top              optional.Int
-	Bottom           optional.Int
-	HorizontalCenter optional.Int
-	VerticalCenter   optional.Int
-	Width            optional.Int
-	Height           optional.Int
+	Left             optional.V[int]
+	Right            optional.V[int]
+	Top              optional.V[int]
+	Bottom           optional.V[int]
+	HorizontalCenter optional.V[int]
+	VerticalCenter   optional.V[int]
+	Width            optional.V[int]
+	Height           optional.V[int]
 	GrowHorizontally bool
 	GrowVertically   bool
 	Alignment        Alignment

@@ -25,7 +25,8 @@ type FillLayout struct{}
 
 // Apply applies this layout to the specified Element.
 func (l *FillLayout) Apply(element *Element) {
+	contentBounds := element.ContentBounds()
 	for child := element.FirstChild(); child != nil; child = child.RightSibling() {
-		child.SetBounds(element.ContentBounds())
+		child.SetBounds(contentBounds)
 	}
 }
