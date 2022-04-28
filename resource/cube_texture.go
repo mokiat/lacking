@@ -17,10 +17,10 @@ func InjectCubeTexture(target **CubeTexture) func(value interface{}) {
 
 type CubeTexture struct {
 	Name       string
-	GFXTexture graphics.CubeTexture
+	GFXTexture *graphics.CubeTexture
 }
 
-func NewCubeTextureOperator(delegate asset.Registry, gfxEngine graphics.Engine) *CubeTextureOperator {
+func NewCubeTextureOperator(delegate asset.Registry, gfxEngine *graphics.Engine) *CubeTextureOperator {
 	return &CubeTextureOperator{
 		delegate:  delegate,
 		gfxEngine: gfxEngine,
@@ -29,7 +29,7 @@ func NewCubeTextureOperator(delegate asset.Registry, gfxEngine graphics.Engine) 
 
 type CubeTextureOperator struct {
 	delegate  asset.Registry
-	gfxEngine graphics.Engine
+	gfxEngine *graphics.Engine
 }
 
 func (o *CubeTextureOperator) Allocate(registry *Registry, id string) (interface{}, error) {

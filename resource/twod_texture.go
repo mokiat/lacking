@@ -17,10 +17,10 @@ func InjectTwoDTexture(target **TwoDTexture) func(value interface{}) {
 
 type TwoDTexture struct {
 	Name       string
-	GFXTexture graphics.TwoDTexture
+	GFXTexture *graphics.TwoDTexture
 }
 
-func NewTwoDTextureOperator(delegate asset.Registry, gfxEngine graphics.Engine) *TwoDTextureOperator {
+func NewTwoDTextureOperator(delegate asset.Registry, gfxEngine *graphics.Engine) *TwoDTextureOperator {
 	return &TwoDTextureOperator{
 		delegate:  delegate,
 		gfxEngine: gfxEngine,
@@ -29,7 +29,7 @@ func NewTwoDTextureOperator(delegate asset.Registry, gfxEngine graphics.Engine) 
 
 type TwoDTextureOperator struct {
 	delegate  asset.Registry
-	gfxEngine graphics.Engine
+	gfxEngine *graphics.Engine
 }
 
 func (o *TwoDTextureOperator) Allocate(registry *Registry, id string) (interface{}, error) {
@@ -81,8 +81,6 @@ func convertWrapMode(wrap asset.WrapMode) graphics.Wrap {
 		return graphics.WrapMirroredRepat
 	case asset.WrapModeClampToEdge:
 		return graphics.WrapClampToEdge
-	case asset.WrapModeMirroredClampToEdge:
-		return graphics.WrapMirroredClampToEdge
 	default:
 		panic(fmt.Errorf("unknown wrap mode: %v", wrap))
 	}

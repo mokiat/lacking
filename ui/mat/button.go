@@ -1,6 +1,7 @@
 package mat
 
 import (
+	"github.com/mokiat/gomath/sprec"
 	"github.com/mokiat/lacking/ui"
 	co "github.com/mokiat/lacking/ui/component"
 	"github.com/mokiat/lacking/ui/optional"
@@ -8,8 +9,8 @@ import (
 
 type ButtonData struct {
 	Padding       ui.Spacing
-	Font          ui.Font
-	FontSize      optional.Int
+	Font          *ui.Font
+	FontSize      optional.Float32
 	FontColor     optional.Color
 	FontAlignment Alignment
 	Text          string
@@ -49,13 +50,14 @@ var Button = co.ShallowCached(co.Define(func(props co.Properties) co.Instance {
 	essence.text = data.Text
 	essence.clickListener = callbackData.ClickListener
 
+	txtSize := essence.font.TextSize(essence.text, essence.fontSize)
+
 	return co.New(Element, func() {
 		co.WithData(ElementData{
 			Essence: essence,
 			Padding: data.Padding,
 			IdealSize: optional.NewSize(
-				essence.font.TextSize(essence.text, essence.fontSize).
-					Grow(data.Padding.Horizontal(), data.Padding.Vertical()),
+				ui.NewSize(int(txtSize.X), int(txtSize.Y)).Grow(data.Padding.Horizontal(), data.Padding.Vertical()),
 			),
 		})
 		co.WithLayoutData(props.LayoutData())
@@ -67,8 +69,8 @@ var _ ui.ElementMouseHandler = (*buttonEssence)(nil)
 var _ ui.ElementRenderHandler = (*buttonEssence)(nil)
 
 type buttonEssence struct {
-	font          ui.Font
-	fontSize      int
+	font          *ui.Font
+	fontSize      float32
 	fontColor     ui.Color
 	fontAlignment Alignment
 	text          string
@@ -104,15 +106,18 @@ func (e *buttonEssence) OnMouseEvent(element *ui.Element, event ui.MouseEvent) b
 	return true
 }
 
-func (e *buttonEssence) OnRender(element *ui.Element, canvas ui.Canvas) {
+func (e *buttonEssence) OnRender(element *ui.Element, canvas *ui.Canvas) {
 	switch e.state {
 	case buttonStateOver:
 		canvas.Shape().Begin(ui.Fill{
 			Color: ui.RGB(15, 15, 15),
 		})
 		canvas.Shape().Rectangle(
-			ui.NewPosition(0, 0),
-			element.Bounds().Size,
+			sprec.NewVec2(0, 0),
+			sprec.NewVec2(
+				float32(element.Bounds().Size.Width),
+				float32(element.Bounds().Size.Height),
+			),
 		)
 		canvas.Shape().End()
 	case buttonStateDown:
@@ -120,8 +125,11 @@ func (e *buttonEssence) OnRender(element *ui.Element, canvas ui.Canvas) {
 			Color: ui.RGB(30, 30, 30),
 		})
 		canvas.Shape().Rectangle(
-			ui.NewPosition(0, 0),
-			element.Bounds().Size,
+			sprec.NewVec2(0, 0),
+			sprec.NewVec2(
+				float32(element.Bounds().Size.Width),
+				float32(element.Bounds().Size.Height),
+			),
 		)
 		canvas.Shape().End()
 	}
@@ -132,19 +140,19 @@ func (e *buttonEssence) OnRender(element *ui.Element, canvas ui.Canvas) {
 			Size:  e.fontSize,
 			Color: e.fontColor,
 		})
-		var textPosition ui.Position
+		var textPosition sprec.Vec2
 		contentArea := element.ContentBounds()
 		textDrawSize := e.font.TextSize(e.text, e.fontSize)
 		switch e.fontAlignment {
 		case AlignmentLeft:
-			textPosition = ui.NewPosition(
-				contentArea.X,
-				contentArea.Y,
+			textPosition = sprec.NewVec2(
+				float32(contentArea.X),
+				float32(contentArea.Y),
 			)
 		default:
-			textPosition = ui.NewPosition(
-				contentArea.X+(contentArea.Width-textDrawSize.Width)/2,
-				contentArea.Y+(contentArea.Height-textDrawSize.Height)/2,
+			textPosition = sprec.NewVec2(
+				float32(contentArea.X)+(float32(contentArea.Width)-textDrawSize.X)/2,
+				float32(contentArea.Y)+(float32(contentArea.Height)-textDrawSize.Y)/2,
 			)
 		}
 		canvas.Text().Line(e.text, textPosition)

@@ -15,7 +15,7 @@ type Operator interface {
 	Release(registry *Registry, resource interface{}) error
 }
 
-func NewRegistry(delegate asset.Registry, gfxEngine graphics.Engine, gfxWorker Worker) *Registry {
+func NewRegistry(delegate asset.Registry, gfxEngine *graphics.Engine, gfxWorker Worker) *Registry {
 	registry := &Registry{
 		gfxWorker: gfxWorker,
 		catalog:   make(map[TypeName]*Type),

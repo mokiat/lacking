@@ -1,6 +1,7 @@
 package mat
 
 import (
+	"github.com/mokiat/gomath/sprec"
 	"github.com/mokiat/lacking/ui"
 	co "github.com/mokiat/lacking/ui/component"
 )
@@ -98,13 +99,16 @@ func (e *scrollPaneEssence) OnMouseEvent(element *ui.Element, event ui.MouseEven
 	}
 }
 
-func (e *scrollPaneEssence) OnRender(element *ui.Element, canvas ui.Canvas) {
+func (e *scrollPaneEssence) OnRender(element *ui.Element, canvas *ui.Canvas) {
 	canvas.Shape().Begin(ui.Fill{
 		Color: ui.RGB(30, 255, 128),
 	})
 	canvas.Shape().Rectangle(
-		ui.NewPosition(0, 0),
-		element.Bounds().Size,
+		sprec.NewVec2(0, 0),
+		sprec.NewVec2(
+			float32(element.Bounds().Size.Width),
+			float32(element.Bounds().Size.Height),
+		),
 	)
 	canvas.Shape().End()
 }

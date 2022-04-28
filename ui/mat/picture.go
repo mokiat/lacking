@@ -1,6 +1,7 @@
 package mat
 
 import (
+	"github.com/mokiat/gomath/sprec"
 	"github.com/mokiat/lacking/ui"
 	co "github.com/mokiat/lacking/ui/component"
 	"github.com/mokiat/lacking/ui/optional"
@@ -14,7 +15,7 @@ type PictureData struct {
 	BackgroundColor optional.Color
 
 	// Image specifies the Image to be displayed.
-	Image ui.Image
+	Image *ui.Image
 
 	// ImageColor specifies an optional multiplier color.
 	ImageColor optional.Color
@@ -89,19 +90,22 @@ var _ ui.ElementRenderHandler = (*pictureEssence)(nil)
 
 type pictureEssence struct {
 	backgroundColor ui.Color
-	image           ui.Image
+	image           *ui.Image
 	imageColor      ui.Color
 	mode            ImageMode
 }
 
-func (p *pictureEssence) OnRender(element *ui.Element, canvas ui.Canvas) {
+func (p *pictureEssence) OnRender(element *ui.Element, canvas *ui.Canvas) {
 	if !p.backgroundColor.Transparent() {
 		canvas.Shape().Begin(ui.Fill{
 			Color: p.backgroundColor,
 		})
 		canvas.Shape().Rectangle(
-			ui.NewPosition(0, 0),
-			element.Bounds().Size,
+			sprec.NewVec2(0, 0),
+			sprec.NewVec2(
+				float32(element.Bounds().Size.Width),
+				float32(element.Bounds().Size.Height),
+			),
 		)
 		canvas.Shape().End()
 	}
@@ -122,7 +126,7 @@ func (p *pictureEssence) OnRender(element *ui.Element, canvas ui.Canvas) {
 	}
 }
 
-func (p *pictureEssence) evaluateImageDrawLocation(element *ui.Element) (ui.Position, ui.Size) {
+func (p *pictureEssence) evaluateImageDrawLocation(element *ui.Element) (sprec.Vec2, sprec.Vec2) {
 	elementSize := element.Bounds().Size
 	imageSize := p.image.Size()
 	determinant := imageSize.Width*elementSize.Height - imageSize.Height*elementSize.Width
@@ -131,47 +135,47 @@ func (p *pictureEssence) evaluateImageDrawLocation(element *ui.Element) (ui.Posi
 	switch p.mode {
 	case ImageModeCover:
 		if imageHasHigherAspectRatio {
-			return ui.NewPosition(
-					-determinant/(2*imageSize.Height),
+			return sprec.NewVec2(
+					-float32(determinant/(2*imageSize.Height)),
 					0,
 				),
-				ui.NewSize(
-					(elementSize.Height*imageSize.Width)/imageSize.Height,
-					elementSize.Height,
+				sprec.NewVec2(
+					float32((elementSize.Height*imageSize.Width)/imageSize.Height),
+					float32(elementSize.Height),
 				)
 		} else {
-			return ui.NewPosition(
+			return sprec.NewVec2(
 					0,
-					determinant/(2*imageSize.Width),
+					float32(determinant/(2*imageSize.Width)),
 				),
-				ui.NewSize(
-					elementSize.Width,
-					(elementSize.Width*imageSize.Height)/imageSize.Width,
+				sprec.NewVec2(
+					float32(elementSize.Width),
+					float32((elementSize.Width*imageSize.Height)/imageSize.Width),
 				)
 		}
 
 	case ImageModeFit:
 		if imageHasHigherAspectRatio {
-			return ui.NewPosition(
+			return sprec.NewVec2(
 					0,
-					determinant/(2*imageSize.Width),
+					float32(determinant/(2*imageSize.Width)),
 				),
-				ui.NewSize(
-					elementSize.Width,
-					(elementSize.Width*imageSize.Height)/imageSize.Width,
+				sprec.NewVec2(
+					float32(elementSize.Width),
+					float32((elementSize.Width*imageSize.Height)/imageSize.Width),
 				)
 		} else {
-			return ui.NewPosition(
-					-determinant/(2*imageSize.Height),
+			return sprec.NewVec2(
+					-float32(determinant/(2*imageSize.Height)),
 					0,
 				),
-				ui.NewSize(
-					(elementSize.Height*imageSize.Width)/imageSize.Height,
-					elementSize.Height,
+				sprec.NewVec2(
+					float32((elementSize.Height*imageSize.Width)/imageSize.Height),
+					float32(elementSize.Height),
 				)
 		}
 
 	default:
-		return ui.NewPosition(0, 0), elementSize
+		return sprec.ZeroVec2(), sprec.NewVec2(float32(elementSize.Width), float32(elementSize.Height))
 	}
 }

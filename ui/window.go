@@ -3,17 +3,18 @@ package ui
 import (
 	"fmt"
 
+	"github.com/mokiat/gomath/sprec"
 	"github.com/mokiat/lacking/app"
 )
 
-// NewWindow creates a new Window instance that integrates
+// newWindow creates a new Window instance that integrates
 // with the specified app.Window.
-func NewWindow(appWindow app.Window, locator ResourceLocator, graphics Graphics) (*Window, WindowHandler) {
+func newWindow(appWindow app.Window, canvas *Canvas, resMan *resourceManager) (*Window, WindowHandler) {
 	window := &Window{
-		Window:   appWindow,
-		graphics: graphics,
+		Window: appWindow,
+		canvas: canvas,
 	}
-	window.context = newContext(window, locator, graphics)
+	window.context = newContext(nil, window, resMan)
 	window.root = newElement(window.context)
 	window.root.SetLayout(NewFillLayout())
 	handler := &windowHandler{
@@ -26,6 +27,8 @@ func NewWindow(appWindow app.Window, locator ResourceLocator, graphics Graphics)
 // the framework to communicate with Window implementations
 // critical events.
 type WindowHandler interface {
+
+	// TOOD: Remove this interface and make it all internal
 
 	// OnResize is called whenever the native window has
 	// been resized.
@@ -56,8 +59,8 @@ type WindowHandler interface {
 // Window represents an application window.
 type Window struct {
 	app.Window
-	graphics Graphics
-	context  *Context
+	context *Context
+	canvas  *Canvas
 
 	size           Size
 	root           *Element
@@ -139,7 +142,7 @@ type windowHandler struct {
 }
 
 func (w *windowHandler) OnResize(size Size) {
-	w.graphics.Resize(size)
+	w.canvas.onResize(size)
 	w.size = size
 	w.root.SetBounds(Bounds{
 		Position: NewPosition(0, 0),
@@ -148,7 +151,7 @@ func (w *windowHandler) OnResize(size Size) {
 }
 
 func (w *windowHandler) OnFramebufferResize(size Size) {
-	w.graphics.ResizeFramebuffer(size)
+	w.canvas.onResizeFramebuffer(size)
 }
 
 func (w *windowHandler) OnKeyboardEvent(event KeyboardEvent) bool {
@@ -178,16 +181,16 @@ func (w *windowHandler) OnMouseEvent(event MouseEvent) bool {
 }
 
 func (w *windowHandler) OnRender() {
-	w.graphics.Begin()
-	w.graphics.Canvas().Clip(Bounds{
+	w.canvas.onBegin()
+	w.canvas.Clip(Bounds{
 		Position: NewPosition(0, 0),
 		Size:     w.size,
 	})
-	w.renderElement(w.root, w.graphics.Canvas(), Bounds{
+	w.renderElement(w.root, w.canvas, Bounds{
 		Position: NewPosition(0, 0),
 		Size:     w.size,
 	})
-	w.graphics.End()
+	w.canvas.onEnd()
 }
 
 func (w *windowHandler) OnCloseRequested() {
@@ -287,7 +290,7 @@ func (w *windowHandler) processMouseEvent(element *Element, event MouseEvent) bo
 	return element.onMouseEvent(event)
 }
 
-func (w *Window) renderElement(element *Element, canvas Canvas, dirtyRegion Bounds) {
+func (w *Window) renderElement(element *Element, canvas *Canvas, dirtyRegion Bounds) {
 	dirtyRegion = dirtyRegion.Intersect(element.bounds)
 	if dirtyRegion.Empty() {
 		return
@@ -295,7 +298,10 @@ func (w *Window) renderElement(element *Element, canvas Canvas, dirtyRegion Boun
 
 	canvas.Push()
 	canvas.Clip(element.bounds)
-	canvas.Translate(element.bounds.Position)
+	canvas.Translate(sprec.NewVec2(
+		float32(element.bounds.Position.X),
+		float32(element.bounds.Position.Y),
+	))
 	element.onRender(canvas)
 	if contentBounds := element.ContentBounds(); !contentBounds.Empty() {
 		canvas.Clip(contentBounds)

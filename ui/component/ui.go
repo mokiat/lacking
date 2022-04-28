@@ -16,7 +16,7 @@ func Window() *ui.Window {
 
 // OpenImage delegates to the UI window context to open
 // the specified image.
-func OpenImage(uri string) ui.Image {
+func OpenImage(uri string) *ui.Image {
 	img, err := uiCtx.OpenImage(uri)
 	if err != nil {
 		panic(fmt.Errorf("failed to open image %q: %w", uri, err))
@@ -26,7 +26,7 @@ func OpenImage(uri string) ui.Image {
 
 // CreateImage delegates to the UI window context to create
 // the specified image.
-func CreateImage(img image.Image) ui.Image {
+func CreateImage(img image.Image) *ui.Image {
 	result, err := uiCtx.CreateImage(img)
 	if err != nil {
 		panic(fmt.Errorf("failed to create image: %w", err))
@@ -47,7 +47,7 @@ func OpenFontCollection(uri string) {
 // Keep in mind that the necessary fonts should have been loaded via
 // OpenFontCollection beforehand, otherwise this method will panic if
 // it is unable to find the requested font.
-func GetFont(family, style string) ui.Font {
+func GetFont(family, style string) *ui.Font {
 	font, found := uiCtx.GetFont(family, style)
 	if !found {
 		panic(fmt.Errorf("could not find font %q / %q", family, style))

@@ -1,18 +1,19 @@
 package mat
 
 import (
+	"github.com/mokiat/gomath/sprec"
 	"github.com/mokiat/lacking/ui"
 	co "github.com/mokiat/lacking/ui/component"
 	"github.com/mokiat/lacking/ui/optional"
 )
 
 type PictureButtonData struct {
-	Font      ui.Font
-	FontSize  optional.Int
+	Font      *ui.Font
+	FontSize  optional.Float32
 	FontColor optional.Color
-	UpImage   ui.Image
-	OverImage ui.Image
-	DownImage ui.Image
+	UpImage   *ui.Image
+	OverImage *ui.Image
+	DownImage *ui.Image
 	Padding   ui.Spacing
 	Text      string
 }
@@ -65,13 +66,13 @@ var _ ui.ElementMouseHandler = (*pictureButtonEssence)(nil)
 var _ ui.ElementRenderHandler = (*pictureButtonEssence)(nil)
 
 type pictureButtonEssence struct {
-	font      ui.Font
-	fontSize  int
+	font      *ui.Font
+	fontSize  float32
 	fontColor ui.Color
 	text      string
-	upImage   ui.Image
-	overImage ui.Image
-	downImage ui.Image
+	upImage   *ui.Image
+	overImage *ui.Image
+	downImage *ui.Image
 
 	clickListener ClickListener
 
@@ -104,8 +105,8 @@ func (e *pictureButtonEssence) OnMouseEvent(element *ui.Element, event ui.MouseE
 	return true
 }
 
-func (e *pictureButtonEssence) OnRender(element *ui.Element, canvas ui.Canvas) {
-	var visibleImage ui.Image
+func (e *pictureButtonEssence) OnRender(element *ui.Element, canvas *ui.Canvas) {
+	var visibleImage *ui.Image
 	switch e.state {
 	case buttonStateUp:
 		visibleImage = e.upImage
@@ -118,12 +119,18 @@ func (e *pictureButtonEssence) OnRender(element *ui.Element, canvas ui.Canvas) {
 		canvas.Shape().Begin(ui.Fill{
 			Color:       ui.White(),
 			Image:       visibleImage,
-			ImageOffset: ui.NewPosition(0, 0),
-			ImageSize:   element.Bounds().Size,
+			ImageOffset: sprec.ZeroVec2(),
+			ImageSize: sprec.NewVec2(
+				float32(element.Bounds().Size.Width),
+				float32(element.Bounds().Size.Height),
+			),
 		})
 		canvas.Shape().Rectangle(
-			ui.NewPosition(0, 0),
-			element.Bounds().Size,
+			sprec.ZeroVec2(),
+			sprec.NewVec2(
+				float32(element.Bounds().Size.Width),
+				float32(element.Bounds().Size.Height),
+			),
 		)
 		canvas.Shape().End()
 	} else {
@@ -131,8 +138,11 @@ func (e *pictureButtonEssence) OnRender(element *ui.Element, canvas ui.Canvas) {
 			Color: ui.Black(),
 		})
 		canvas.Shape().Rectangle(
-			ui.NewPosition(0, 0),
-			element.Bounds().Size,
+			sprec.ZeroVec2(),
+			sprec.NewVec2(
+				float32(element.Bounds().Size.Width),
+				float32(element.Bounds().Size.Height),
+			),
 		)
 		canvas.Shape().End()
 	}
@@ -144,9 +154,9 @@ func (e *pictureButtonEssence) OnRender(element *ui.Element, canvas ui.Canvas) {
 		})
 		contentArea := element.ContentBounds()
 		textDrawSize := e.font.TextSize(e.text, e.fontSize)
-		canvas.Text().Line(e.text, ui.NewPosition(
-			contentArea.X+(contentArea.Width-textDrawSize.Width)/2,
-			contentArea.Y+(contentArea.Height-textDrawSize.Height)/2,
+		canvas.Text().Line(e.text, sprec.NewVec2(
+			float32(contentArea.X)+(float32(contentArea.Width)-textDrawSize.X)/2,
+			float32(contentArea.Y)+(float32(contentArea.Height)-textDrawSize.Y)/2,
 		))
 		canvas.Text().End()
 	}

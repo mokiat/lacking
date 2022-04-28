@@ -33,7 +33,7 @@ type Entity struct {
 	Matrix sprec.Mat4
 }
 
-func NewLevelOperator(delegate gameasset.Registry, gfxEngine graphics.Engine) *LevelOperator {
+func NewLevelOperator(delegate gameasset.Registry, gfxEngine *graphics.Engine) *LevelOperator {
 	return &LevelOperator{
 		delegate:  delegate,
 		gfxEngine: gfxEngine,
@@ -42,7 +42,7 @@ func NewLevelOperator(delegate gameasset.Registry, gfxEngine graphics.Engine) *L
 
 type LevelOperator struct {
 	delegate  gameasset.Registry
-	gfxEngine graphics.Engine
+	gfxEngine *graphics.Engine
 }
 
 func (o *LevelOperator) Allocate(registry *Registry, id string) (interface{}, error) {

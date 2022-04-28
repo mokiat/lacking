@@ -31,7 +31,7 @@ type ElementMouseHandler interface {
 // used to receive events when a given Element is being
 // rendered and to perform a custom rendering for the Element.
 type ElementRenderHandler interface {
-	OnRender(element *Element, canvas Canvas)
+	OnRender(element *Element, canvas *Canvas)
 }
 
 func newElement(context *Context) *Element {
@@ -453,7 +453,7 @@ func (e *Element) onMouseEvent(event MouseEvent) bool {
 	return false
 }
 
-func (e *Element) onRender(canvas Canvas) {
+func (e *Element) onRender(canvas *Canvas) {
 	if renderHandler, ok := e.essence.(ElementRenderHandler); ok {
 		renderHandler.OnRender(e, canvas)
 	}
