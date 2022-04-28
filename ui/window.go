@@ -3,6 +3,7 @@ package ui
 import (
 	"fmt"
 
+	"github.com/mokiat/gomath/sprec"
 	"github.com/mokiat/lacking/app"
 )
 
@@ -297,7 +298,10 @@ func (w *Window) renderElement(element *Element, canvas *Canvas, dirtyRegion Bou
 
 	canvas.Push()
 	canvas.Clip(element.bounds)
-	canvas.Translate(element.bounds.Position)
+	canvas.Translate(sprec.NewVec2(
+		float32(element.bounds.Position.X),
+		float32(element.bounds.Position.Y),
+	))
 	element.onRender(canvas)
 	if contentBounds := element.ContentBounds(); !contentBounds.Empty() {
 		canvas.Clip(contentBounds)

@@ -30,6 +30,10 @@ func (c *Canvas) onResizeFramebuffer(size Size) {
 }
 
 func (c *Canvas) onBegin() {
+	c.canvasRenderer.onBegin(c.windowSize)
+}
+
+func (c *Canvas) onEnd() {
 	c.api.BeginRenderPass(render.RenderPassInfo{
 		Framebuffer: c.framebuffer,
 		Viewport: render.Area{
@@ -50,10 +54,6 @@ func (c *Canvas) onBegin() {
 		StencilStoreOp:    render.StoreOperationDontCare,
 		StencilClearValue: 0x00,
 	})
-	c.canvasRenderer.onBegin(c.windowSize)
-}
-
-func (c *Canvas) onEnd() {
 	c.canvasRenderer.onEnd()
 	c.api.EndRenderPass()
 }

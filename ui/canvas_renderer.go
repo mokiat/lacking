@@ -70,17 +70,50 @@ func (c *canvasRenderer) onEnd() {
 	c.api.SubmitQueue(c.commandQueue)
 }
 
-// Push records the current state and creates a new
-// state layer. Changes done in the new layer will
-// not affect the former layer.
+// Push records the current state and creates a new state layer. Changes done
+// in the new layer will not affect the parent layer.
+//
+// You may create up to 256 layers including the starting one after which the
+// method panics.
 func (c *canvasRenderer) Push() {
 	c.state.currentLayer = c.state.currentLayer.Next()
 }
 
-// Pop restores the former state layer and configures
-// the drawing state accordingly.
+// Pop restores the drawing state based on the parent layer. If this is the
+// first layer, then this method panics.
 func (c *canvasRenderer) Pop() {
 	c.state.currentLayer = c.state.currentLayer.Previous()
+}
+
+// ResetTransform restores the transform to the value it had
+// after the last Push. If this is the first layer, then it is
+// set to the identity matrix.
+func (c *canvasRenderer) ResetTransform() {
+	if c.state.currentLayer == c.state.topLayer {
+		c.state.currentLayer.Transform = sprec.IdentityMat4()
+	} else {
+		c.state.currentLayer.Transform = c.state.currentLayer.previous.Transform
+	}
+}
+
+// SetTransform changes the transform relative to the former layer transform.
+func (c *canvasRenderer) SetTransform(transform sprec.Mat4) {
+	if c.state.currentLayer == c.state.topLayer {
+		c.state.currentLayer.Transform = transform
+	} else {
+		c.state.currentLayer.Transform = sprec.Mat4Prod(
+			c.state.currentLayer.previous.Transform,
+			transform,
+		)
+	}
+}
+
+// Translate moves the drawing position by the specified delta amount.
+func (c *canvasRenderer) Translate(delta sprec.Vec2) {
+	c.state.currentLayer.Transform = sprec.Mat4Prod(
+		c.state.currentLayer.Transform,
+		sprec.TranslationMat4(delta.X, delta.Y, 0.0),
+	)
 }
 
 func (c *canvasRenderer) SetClipBounds(left, right, top, bottom float32) {
@@ -92,39 +125,18 @@ func (c *canvasRenderer) SetClipBounds(left, right, top, bottom float32) {
 	)
 }
 
-func (c *canvasRenderer) SetTransform(transform sprec.Mat4) {
-	c.state.currentLayer.Transform = transform
-}
-
-// Translate moves the drawing position by the specified
-// delta amount.
-func (c *canvasRenderer) Translate(delta Position) {
-	// FIXME
-	c.state.currentLayer.Transform = sprec.Mat4MultiProd(
-		sprec.TranslationMat4(float32(delta.X), float32(delta.Y), 0.0),
-		c.state.currentLayer.Transform,
-	)
-	// c.state.currentLayer.Translation = c.state.currentLayer.Translation.Translate(delta.X, delta.Y)
-}
-
 // Clip sets new clipping bounds. Pixels from draw operations
 // that are outside the clipping bounds will not be drawn.
 //
 // Initially the clipping bounds are equal to the window size.
 func (c *canvasRenderer) Clip(bounds Bounds) {
-	// FIXME
-	// if previousLayer := c.state.currentLayer.previous; previousLayer != nil {
-	// 		previousClipBounds := previousLayer.ClipBounds
-	// 		newClipBounds := bounds.Translate(c.state.currentLayer.Translation)
-	// 		c.state.currentLayer.ClipBounds = previousClipBounds.Intersect(newClipBounds)
-	// } else {
+	// FIXME: This no longer works correctly
 	c.state.currentLayer.ClipBounds = bounds.Translate(
 		NewPosition(
 			int(c.state.currentLayer.Transform.Translation().X),
 			int(c.state.currentLayer.Transform.Translation().Y),
 		),
 	)
-	// }
 }
 
 // Shape returns the shape rendering module.
@@ -144,21 +156,23 @@ func (c *canvasRenderer) Text() *Text {
 
 // DrawSurface renders the specified surface. The surface's Render
 // method will be called when needed with the UI framebuffer bound.
-func (c *canvasRenderer) DrawSurface(surface Surface) {
-	// TODO
-	// currentLayer := c.currentLayer
-	// c.renderer.SetClipBounds(
-	// 	float32(currentLayer.ClipBounds.X),
-	// 	float32(currentLayer.ClipBounds.X+currentLayer.ClipBounds.Width),
-	// 	float32(currentLayer.ClipBounds.Y),
-	// 	float32(currentLayer.ClipBounds.Y+currentLayer.ClipBounds.Height),
-	// )
-	// c.renderer.SetTransform(sprec.TranslationMat4(
-	// 	float32(currentLayer.Translation.X),
-	// 	float32(currentLayer.Translation.Y),
-	// 	0.0,
-	// ))
-	// c.renderer.DrawSurface(surface)
+func (c *canvasRenderer) DrawSurface(surface Surface, position Position, size Size) {
+	texture := surface.Render(size.Width, size.Height)
+	c.shape.Begin(Fill{
+		Rule: FillRuleSimple,
+		Image: &Image{ // TODO: Don't allocate
+			texture: texture,
+			size:    size,
+		},
+		Color:       White(),
+		ImageOffset: sprec.NewVec2(0.0, float32(size.Height)),
+		ImageSize:   sprec.NewVec2(float32(size.Width), -float32(size.Height)),
+	})
+	c.shape.Rectangle(
+		sprec.NewVec2(float32(position.X), float32(position.Y)),
+		sprec.NewVec2(float32(size.Width), float32(size.Height)),
+	)
+	c.shape.End()
 }
 
 // RectRoundness is used to configure the roundness of
@@ -179,5 +193,5 @@ type RectRoundness struct {
 }
 
 type Surface interface {
-	Render(x, y, width, height int)
+	Render(width, height int) render.Texture
 }

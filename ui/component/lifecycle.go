@@ -53,5 +53,4 @@ func (l *BaseLifecycle) OnCreate(props Properties) {}
 
 func (l *BaseLifecycle) OnUpdate(props Properties) {}
 
-func (l *BaseLifecycle) OnDestroy() {
-}
+func (l *BaseLifecycle) OnDestroy() {}
