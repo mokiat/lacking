@@ -29,8 +29,7 @@ var Element = Define(func(props Properties) Instance {
 		element.Destroy()
 	})
 
-	var data ElementData
-	props.InjectData(&data)
+	data := GetData[ElementData](props)
 
 	element.SetEssence(data.Essence)
 	if data.Enabled.Specified {

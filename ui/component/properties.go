@@ -36,6 +36,20 @@ func (p Properties) InjectOptionalData(target, defaultValue interface{}) {
 	}
 }
 
+// GetData returns the data stored in Properties as the specified type.
+func GetData[T any](props Properties) T {
+	return props.data.(T)
+}
+
+// GetOptionalData returns the data stored in Properties as the specified type,
+// unless there is no data, in which case the defaultValue is returned.
+func GetOptionalData[T any](props Properties, defaultValue T) T {
+	if props.data == nil {
+		return defaultValue
+	}
+	return props.data.(T)
+}
+
 // LayoutData returns the layout data needed to layout the component.
 func (p Properties) LayoutData() interface{} {
 	return p.layoutData
@@ -56,6 +70,22 @@ func (p Properties) InjectOptionalLayoutData(target, defaultValue interface{}) {
 	} else {
 		inject(target, defaultValue)
 	}
+}
+
+// GetLayoutData returns the layout data stored in Properties as the
+// specified type.
+func GetLayoutData[T any](props Properties) T {
+	return props.layoutData.(T)
+}
+
+// GetOptionalLayoutData returns the layout data stored in Properties as
+// the specified type, unless there is no layout data, in which case the
+// defaultValue is returned.
+func GetOptionalLayoutData[T any](props Properties, defaultValue T) T {
+	if props.layoutData == nil {
+		return defaultValue
+	}
+	return props.layoutData.(T)
 }
 
 // CallbackData returns the callback data that can be used by the component
@@ -79,6 +109,22 @@ func (p Properties) InjectOptionalCallbackData(target, defaultValue interface{})
 	} else {
 		inject(target, defaultValue)
 	}
+}
+
+// GetCallbackData returns the callback data stored in Properties as the
+// specified type.
+func GetCallbackData[T any](props Properties) T {
+	return props.callbackData.(T)
+}
+
+// GetOptionalCallbackData returns the callback data stored in Properties as
+// the specified type, unless there is no callback data, in which case the
+// defaultValue is returned.
+func GetOptionalCallbackData[T any](props Properties, defaultValue T) T {
+	if props.callbackData == nil {
+		return defaultValue
+	}
+	return props.callbackData.(T)
 }
 
 // Children returns all the child instances that this component should
