@@ -24,16 +24,15 @@ var Button = co.ShallowCached(co.Define(func(props co.Properties) co.Instance {
 	var (
 		data         ButtonData
 		callbackData ButtonCallbackData
-		essence      *buttonEssence
 	)
 	props.InjectOptionalData(&data, ButtonData{})
 	props.InjectOptionalCallbackData(&callbackData, ButtonCallbackData{})
 
-	co.UseState(func() interface{} {
+	essence := co.UseState(func() *buttonEssence {
 		return &buttonEssence{
 			state: ButtonStateUp,
 		}
-	}).Inject(&essence)
+	}).Get()
 
 	essence.font = data.Font
 	if data.FontSize.Specified {

@@ -240,18 +240,17 @@ func NewStoreProviderEntry(reducer Reducer, initialValue interface{}) StoreProvi
 // components try to access Stores that are managed by this StoreProvider.
 var StoreProvider = Define(func(props Properties) Instance {
 	var (
-		data   StoreProviderData
-		stores []*Store
+		data StoreProviderData
 	)
 	props.InjectData(&data)
 
-	UseState(func() interface{} {
+	stores := UseState(func() []*Store {
 		result := make([]*Store, len(data.Entries))
 		for i, entry := range data.Entries {
 			result[i] = CreateStore(entry.Reducer, entry.InitialValue)
 		}
 		return result
-	}).Inject(&stores)
+	}).Get()
 
 	Defer(func() {
 		for _, store := range stores {

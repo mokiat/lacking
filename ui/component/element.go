@@ -21,11 +21,9 @@ type ElementData struct {
 // to a UI Element. All higher-order components eventually boil down to an
 // Element.
 var Element = Define(func(props Properties) Instance {
-	var element *ui.Element
-
-	UseState(func() interface{} {
+	element := UseState(func() *ui.Element {
 		return uiCtx.CreateElement()
-	}).Inject(&element)
+	}).Get()
 
 	Defer(func() {
 		element.Destroy()

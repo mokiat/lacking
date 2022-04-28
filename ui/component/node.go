@@ -4,18 +4,23 @@ import (
 	"github.com/mokiat/lacking/ui"
 )
 
+type dirtiable interface {
+	isDirty() bool
+	setDirty(bool)
+}
+
 type componentNode struct {
 	instance Instance
 	children []*componentNode
 	element  *ui.Element
 
-	states [][]State
+	states [][]dirtiable
 }
 
 func createComponentNode(instance Instance) *componentNode {
 	result := &componentNode{
 		instance: instance,
-		states:   make([][]State, 1),
+		states:   make([][]dirtiable, 1),
 	}
 
 	renderCtx = renderContext{
@@ -112,9 +117,9 @@ func (node *componentNode) consumeDirty() bool {
 	var dirty = false
 	for _, depth := range node.states {
 		for _, state := range depth {
-			if state.dirty {
+			if state.isDirty() {
 				dirty = true
-				state.dirty = false
+				state.setDirty(false)
 			}
 		}
 	}

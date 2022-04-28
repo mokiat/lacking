@@ -16,14 +16,13 @@ type LabelData struct {
 
 var Label = co.ShallowCached(co.Define(func(props co.Properties) co.Instance {
 	var (
-		data    LabelData
-		essence *labelEssence
+		data LabelData
 	)
 	props.InjectOptionalData(&data, LabelData{})
 
-	co.UseState(func() interface{} {
+	essence := co.UseState(func() *labelEssence {
 		return &labelEssence{}
-	}).Inject(&essence)
+	}).Get()
 
 	essence.font = data.Font
 	if data.FontSize.Specified {

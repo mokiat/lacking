@@ -3,16 +3,15 @@ package component
 // UseLifecycle attaches a Lifecycle to the given Component instance in which
 // this hook is used.
 func UseLifecycle[T Lifecycle](constructor func(handle LifecycleHandle) T) T {
-	changeState := UseState(func() interface{} {
+	changeState := UseState(func() int {
 		return int(0)
 	})
 
-	var instance T
-	UseState(func() interface{} {
+	instance := UseState(func() T {
 		return constructor(LifecycleHandle{
 			changeState: changeState,
 		})
-	}).Inject(&instance)
+	}).Get()
 
 	switch {
 	case renderCtx.firstRender:
@@ -28,12 +27,12 @@ func UseLifecycle[T Lifecycle](constructor func(handle LifecycleHandle) T) T {
 // LifecycleHandle is a hook through which a Lifecycle can invalidate a
 // Component, as though the Component's data were changed.
 type LifecycleHandle struct {
-	changeState *State
+	changeState *State[int]
 }
 
 // NotifyChanged invalidates the Component instance.
 func (h LifecycleHandle) NotifyChanged() {
-	h.changeState.Set(h.changeState.Get().(int) + 1)
+	h.changeState.Set(h.changeState.Get() + 1)
 }
 
 // Lifecycle is a mechanism through which a Component may get more detailed

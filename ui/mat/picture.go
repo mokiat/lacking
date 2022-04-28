@@ -49,14 +49,13 @@ const (
 
 var Picture = co.ShallowCached(co.Define(func(props co.Properties) co.Instance {
 	var (
-		data    PictureData
-		essence *pictureEssence
+		data PictureData
 	)
 	props.InjectOptionalData(&data, PictureData{})
 
-	co.UseState(func() interface{} {
+	essence := co.UseState(func() *pictureEssence {
 		return &pictureEssence{}
-	}).Inject(&essence)
+	}).Get()
 
 	if data.BackgroundColor.Specified {
 		essence.backgroundColor = data.BackgroundColor.Value

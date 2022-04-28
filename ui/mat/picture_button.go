@@ -26,18 +26,17 @@ var PictureButton = co.ShallowCached(co.Define(func(props co.Properties) co.Inst
 	var (
 		data         PictureButtonData
 		callbackData PictureButtonCallbackData
-		essence      *pictureButtonEssence
 	)
 	props.InjectOptionalData(&data, PictureButtonData{})
 	props.InjectOptionalCallbackData(&callbackData, PictureButtonCallbackData{})
 
-	co.UseState(func() interface{} {
+	essence := co.UseState(func() *pictureButtonEssence {
 		return &pictureButtonEssence{
 			state:     ButtonStateUp,
 			fontSize:  24,
 			fontColor: ui.Black(),
 		}
-	}).Inject(&essence)
+	}).Get()
 
 	essence.font = data.Font
 	if data.FontSize.Specified {

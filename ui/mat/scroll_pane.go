@@ -24,14 +24,13 @@ var defaultScrollPaneData = ScrollPaneData{
 
 var ScrollPane = co.Define(func(props co.Properties) co.Instance {
 	var (
-		data    ScrollPaneData
-		essence *scrollPaneEssence
+		data ScrollPaneData
 	)
 	props.InjectOptionalData(&data, defaultScrollPaneData)
 
-	co.UseState(func() interface{} {
+	essence := co.UseState(func() *scrollPaneEssence {
 		return &scrollPaneEssence{}
-	}).Inject(&essence)
+	}).Get()
 
 	essence.scrollHorizontally = !data.DisableHorizontal
 	essence.scrollVertically = !data.DisableVertical
