@@ -14,15 +14,17 @@ const (
 func newCanvasRenderer(api render.API, shaders ShaderCollection) *canvasRenderer {
 	state := newCanvasState()
 	return &canvasRenderer{
-		api:     api,
-		state:   state,
-		shape:   newShape(state, shaders),
-		contour: newContour(state, shaders),
-		text:    newText(state, shaders),
+		canvasPath: newCanvasPath(),
+		api:        api,
+		state:      state,
+		shape:      newShape(state, shaders),
+		contour:    newContour(state, shaders),
+		text:       newText(state, shaders),
 	}
 }
 
 type canvasRenderer struct {
+	*canvasPath
 	api          render.API
 	state        *canvasState
 	commandQueue render.CommandQueue
@@ -173,6 +175,60 @@ func (c *canvasRenderer) DrawSurface(surface Surface, position Position, size Si
 		sprec.NewVec2(float32(size.Width), float32(size.Height)),
 	)
 	c.shape.End()
+}
+
+func (c *canvasRenderer) Fill(fill Fill) {
+	c.fillPath(c.canvasPath, fill)
+}
+
+func (c *canvasRenderer) Stroke() {
+	c.strokePath(c.canvasPath)
+}
+
+func (c *canvasRenderer) fillPath(path *canvasPath, fill Fill) {
+	// TODO: Implement directly and remove old API
+	c.Shape().Begin(fill)
+	for i := 0; i < len(path.subPathOffsets); i++ {
+		offset := path.subPathOffsets[i]
+		nextOffset := len(path.points)
+		if i+1 < len(path.subPathOffsets) {
+			nextOffset = path.subPathOffsets[i+1]
+		}
+		for j, point := range path.points[offset:nextOffset] {
+			if j == 0 {
+				c.Shape().MoveTo(point.coords)
+			} else {
+				c.Shape().LineTo(point.coords)
+			}
+		}
+	}
+	c.Shape().End()
+}
+
+func (c *canvasRenderer) strokePath(path *canvasPath) {
+	// TODO: Implement directly and remove old API
+	c.Contour().Begin()
+	for i := 0; i < len(path.subPathOffsets); i++ {
+		offset := path.subPathOffsets[i]
+		nextOffset := len(path.points)
+		if i+1 < len(path.subPathOffsets) {
+			nextOffset = path.subPathOffsets[i+1]
+		}
+		for j, point := range path.points[offset:nextOffset] {
+			if j == 0 {
+				c.Contour().MoveTo(point.coords, Stroke{
+					Size:  point.innerSize + point.outerSize,
+					Color: point.color,
+				})
+			} else {
+				c.Contour().LineTo(point.coords, Stroke{
+					Size:  point.innerSize + point.outerSize,
+					Color: point.color,
+				})
+			}
+		}
+	}
+	c.Contour().End()
 }
 
 // RectRoundness is used to configure the roundness of
