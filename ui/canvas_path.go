@@ -100,8 +100,11 @@ func (p *canvasPath) QuadTo(control, position sprec.Vec2) {
 	// TODO: Evaluate tessellation based on curvature and size
 	const tessellation = 5
 
+	firstPoint := p.lastPoint()
 	lastPoint := p.pointTemplate
-	vecCS := sprec.Vec2Diff(lastPoint.coords, control)
+	lastPoint.coords = position
+
+	vecCS := sprec.Vec2Diff(firstPoint.coords, control)
 	vecCE := sprec.Vec2Diff(position, control)
 
 	// start and end are excluded from this loop on purpose
@@ -117,10 +120,13 @@ func (p *canvasPath) QuadTo(control, position sprec.Vec2) {
 				sprec.Vec2Prod(vecCE, beta),
 			),
 		)
+		p.pointTemplate.innerSize = sprec.Mix(firstPoint.innerSize, lastPoint.innerSize, t)
+		p.pointTemplate.outerSize = sprec.Mix(firstPoint.outerSize, lastPoint.outerSize, t)
+		p.pointTemplate.color = MixColors(firstPoint.color, lastPoint.color, t)
 		p.addPoint()
 	}
 
-	p.pointTemplate.coords = position
+	p.pointTemplate = lastPoint
 	p.addPoint()
 }
 
@@ -131,7 +137,9 @@ func (p *canvasPath) CubeTo(control1, control2, position sprec.Vec2) {
 	// TODO: Evaluate tessellation based on curvature and size
 	const tessellation = 5
 
+	firstPoint := p.lastPoint()
 	lastPoint := p.pointTemplate
+	lastPoint.coords = position
 
 	// start and end are excluded from this loop on purpose
 	for i := 1; i < tessellation; i++ {
@@ -143,7 +151,7 @@ func (p *canvasPath) CubeTo(control1, control2, position sprec.Vec2) {
 
 		p.pointTemplate.coords = sprec.Vec2Sum(
 			sprec.Vec2Sum(
-				sprec.Vec2Prod(lastPoint.coords, alpha),
+				sprec.Vec2Prod(firstPoint.coords, alpha),
 				sprec.Vec2Prod(control1, beta),
 			),
 			sprec.Vec2Sum(
@@ -151,10 +159,13 @@ func (p *canvasPath) CubeTo(control1, control2, position sprec.Vec2) {
 				sprec.Vec2Prod(position, delta),
 			),
 		)
+		p.pointTemplate.innerSize = sprec.Mix(firstPoint.innerSize, lastPoint.innerSize, t)
+		p.pointTemplate.outerSize = sprec.Mix(firstPoint.outerSize, lastPoint.outerSize, t)
+		p.pointTemplate.color = MixColors(firstPoint.color, lastPoint.color, t)
 		p.addPoint()
 	}
 
-	p.pointTemplate.coords = position
+	p.pointTemplate = lastPoint
 	p.addPoint()
 }
 
@@ -298,4 +309,8 @@ func (p *canvasPath) startSubPath() {
 
 func (p *canvasPath) addPoint() {
 	p.points = append(p.points, p.pointTemplate)
+}
+
+func (p *canvasPath) lastPoint() canvasPoint {
+	return p.points[len(p.points)-1]
 }

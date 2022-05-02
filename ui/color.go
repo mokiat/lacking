@@ -18,6 +18,17 @@ func RGB(r, g, b uint8) Color {
 	return RGBA(r, g, b, 255)
 }
 
+// MixColors returns a mixture of the two colors where alpha
+// determines the amount of the second color.
+func MixColors(first, second Color, alpha float32) Color {
+	return Color{
+		R: byte(float32(first.R)*(1-alpha) + float32(second.R)*alpha),
+		G: byte(float32(first.G)*(1-alpha) + float32(second.G)*alpha),
+		B: byte(float32(first.B)*(1-alpha) + float32(second.B)*alpha),
+		A: byte(float32(first.A)*(1-alpha) + float32(second.A)*alpha),
+	}
+}
+
 // ColorWithAlpha returns a new color that based on the
 // specified color but with adjusted alpha channel.
 func ColorWithAlpha(color Color, a uint8) Color {

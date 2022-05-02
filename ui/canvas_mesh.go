@@ -167,16 +167,16 @@ func (m *ContourMesh) Offset() int {
 func (m *ContourMesh) Append(vertex ContourVertex) {
 	m.vertexPlotter.PlotFloat32(vertex.position.X)
 	m.vertexPlotter.PlotFloat32(vertex.position.Y)
-	m.vertexPlotter.PlotByte(byte(vertex.color.X * 255))
-	m.vertexPlotter.PlotByte(byte(vertex.color.Y * 255))
-	m.vertexPlotter.PlotByte(byte(vertex.color.Z * 255))
-	m.vertexPlotter.PlotByte(byte(vertex.color.W * 255))
+	m.vertexPlotter.PlotByte(vertex.color.R)
+	m.vertexPlotter.PlotByte(vertex.color.G)
+	m.vertexPlotter.PlotByte(vertex.color.B)
+	m.vertexPlotter.PlotByte(vertex.color.A)
 	m.vertexOffset++
 }
 
 type ContourVertex struct {
 	position sprec.Vec2
-	color    sprec.Vec4
+	color    Color
 }
 
 func newTextMesh(vertexCount int) *TextMesh {

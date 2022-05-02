@@ -22,8 +22,10 @@ func newCanvasRenderer(api render.API, shaders ShaderCollection) *canvasRenderer
 		shapeShadeMaterial: newMaterial(shaders.ShapeMaterial),
 		shapeBlankMaterial: newMaterial(shaders.ShapeBlankMaterial),
 
-		contour: newContour(state, shaders),
-		text:    newText(state, shaders),
+		contourMesh:     newContourMesh(maxVertexCount),
+		contourMaterial: newMaterial(shaders.ContourMaterial),
+
+		text: newText(state, shaders),
 	}
 }
 
@@ -41,8 +43,11 @@ type canvasRenderer struct {
 	shapeNonZeroPipeline render.Pipeline
 	shapeOddPipeline     render.Pipeline
 
-	contour *Contour
-	text    *Text
+	contourMesh     *ContourMesh
+	contourMaterial *Material
+	contourPipeline render.Pipeline
+
+	text *Text
 }
 
 func (c *canvasRenderer) onCreate() {
@@ -175,7 +180,27 @@ func (c *canvasRenderer) onCreate() {
 		BlendOpAlpha:                render.BlendOperationAdd,
 	})
 
-	c.contour.onCreate(c.api, c.commandQueue)
+	c.contourMesh.Allocate(c.api)
+	c.contourMaterial.Allocate(c.api)
+	c.contourPipeline = c.api.CreatePipeline(render.PipelineInfo{
+		Program:                     c.contourMaterial.program,
+		VertexArray:                 c.contourMesh.vertexArray,
+		Topology:                    render.TopologyTriangles,
+		Culling:                     render.CullModeNone,
+		FrontFace:                   render.FaceOrientationCCW,
+		DepthTest:                   false,
+		DepthWrite:                  false,
+		StencilTest:                 false,
+		ColorWrite:                  render.ColorMaskTrue,
+		BlendEnabled:                true,
+		BlendSourceColorFactor:      render.BlendFactorSourceAlpha,
+		BlendSourceAlphaFactor:      render.BlendFactorSourceAlpha,
+		BlendDestinationColorFactor: render.BlendFactorOneMinusSourceAlpha,
+		BlendDestinationAlphaFactor: render.BlendFactorOneMinusSourceAlpha,
+		BlendOpColor:                render.BlendOperationAdd,
+		BlendOpAlpha:                render.BlendOperationAdd,
+	})
+
 	c.text.onCreate(c.api, c.commandQueue)
 }
 
@@ -191,7 +216,10 @@ func (c *canvasRenderer) onDestroy() {
 	defer c.shapeNonZeroPipeline.Release()
 	defer c.shapeOddPipeline.Release()
 
-	defer c.contour.onDestroy()
+	defer c.contourMesh.Release()
+	defer c.contourMaterial.Release()
+	defer c.contourPipeline.Release()
+
 	defer c.text.onDestroy()
 }
 
@@ -207,15 +235,15 @@ func (c *canvasRenderer) onBegin(size Size) {
 	)
 
 	c.shapeMesh.Reset()
+	c.contourMesh.Reset()
 
-	c.contour.onBegin()
 	c.text.onBegin()
 }
 
 func (c *canvasRenderer) onEnd() {
 	c.shapeMesh.Update()
+	c.contourMesh.Update()
 
-	c.contour.onEnd()
 	c.text.onEnd()
 	c.api.SubmitQueue(c.commandQueue)
 }
@@ -289,11 +317,6 @@ func (c *canvasRenderer) ClipBounds(bounds Bounds) {
 			int(c.state.currentLayer.Transform.Translation().Y),
 		),
 	)
-}
-
-// Contour returns the contour rendering module.
-func (c *canvasRenderer) Contour() *Contour {
-	return c.contour
 }
 
 // Text returns the text rendering module.
@@ -420,31 +443,87 @@ func (c *canvasRenderer) fillPath(path *canvasPath, fill Fill) {
 }
 
 func (c *canvasRenderer) strokePath(path *canvasPath) {
-	// TODO: Implement directly and remove old API
-	c.Contour().begin()
-	for i := 0; i < len(path.subPathOffsets); i++ {
-		offset := path.subPathOffsets[i]
-		nextOffset := len(path.points)
+	currentLayer := c.state.currentLayer
+	clipBounds := sprec.NewVec4(
+		float32(currentLayer.ClipBounds.X),
+		float32(currentLayer.ClipBounds.X+currentLayer.ClipBounds.Width),
+		float32(currentLayer.ClipBounds.Y),
+		float32(currentLayer.ClipBounds.Y+currentLayer.ClipBounds.Height),
+	)
+	transformMatrix := currentLayer.Transform
+
+	c.commandQueue.BindPipeline(c.contourPipeline)
+	c.commandQueue.Uniform4f(c.contourMaterial.clipDistancesLocation, clipBounds.Array())
+	c.commandQueue.UniformMatrix4f(c.contourMaterial.projectionMatrixLocation, c.state.projectionMatrix.ColumnMajorArray())
+	c.commandQueue.UniformMatrix4f(c.contourMaterial.transformMatrixLocation, transformMatrix.ColumnMajorArray())
+	c.commandQueue.Uniform1i(c.contourMaterial.textureLocation, 0)
+
+	for i, pointOffset := range path.subPathOffsets {
+		pointCount := len(path.points) - pointOffset
 		if i+1 < len(path.subPathOffsets) {
-			nextOffset = path.subPathOffsets[i+1]
+			pointCount = path.subPathOffsets[i+1] - pointOffset
 		}
-		for j, point := range path.points[offset:nextOffset] {
-			if j == 0 {
-				c.Contour().moveTo(point.coords, Stroke{
-					InnerSize: point.innerSize,
-					OuterSize: point.outerSize,
-					Color:     point.color,
-				})
+
+		pointIndex := pointOffset
+		current := c.points[pointIndex]
+		next := c.points[pointIndex+1]
+		currentNormal := endPointNormal(
+			current.coords,
+			next.coords,
+		)
+		pointIndex++
+
+		vertexOffset := c.contourMesh.Offset()
+		for pointIndex < pointOffset+pointCount {
+			prev := current
+			prevNormal := currentNormal
+
+			current = c.points[pointIndex]
+			if pointIndex != pointOffset+pointCount-1 {
+				next := c.points[pointIndex+1]
+				currentNormal = midPointNormal(
+					prev.coords,
+					current.coords,
+					next.coords,
+				)
 			} else {
-				c.Contour().lineTo(point.coords, Stroke{
-					InnerSize: point.innerSize,
-					OuterSize: point.outerSize,
-					Color:     point.color,
-				})
+				currentNormal = endPointNormal(
+					prev.coords,
+					current.coords,
+				)
 			}
+
+			prevLeft := ContourVertex{
+				position: sprec.Vec2Sum(prev.coords, sprec.Vec2Prod(prevNormal, prev.innerSize)),
+				color:    prev.color,
+			}
+			prevRight := ContourVertex{
+				position: sprec.Vec2Diff(prev.coords, sprec.Vec2Prod(prevNormal, prev.outerSize)),
+				color:    prev.color,
+			}
+			currentLeft := ContourVertex{
+				position: sprec.Vec2Sum(current.coords, sprec.Vec2Prod(currentNormal, current.innerSize)),
+				color:    current.color,
+			}
+			currentRight := ContourVertex{
+				position: sprec.Vec2Diff(current.coords, sprec.Vec2Prod(currentNormal, current.outerSize)),
+				color:    current.color,
+			}
+
+			c.contourMesh.Append(prevLeft)
+			c.contourMesh.Append(prevRight)
+			c.contourMesh.Append(currentLeft)
+
+			c.contourMesh.Append(prevRight)
+			c.contourMesh.Append(currentRight)
+			c.contourMesh.Append(currentLeft)
+
+			pointIndex++
 		}
+		vertexCount := c.contourMesh.Offset() - vertexOffset
+
+		c.commandQueue.Draw(vertexOffset, vertexCount, 1)
 	}
-	c.Contour().end()
 }
 
 func (c *canvasRenderer) clipPath(path *canvasPath) {
@@ -506,4 +585,17 @@ type Fill struct {
 // Surface represents an auxiliary drawer.
 type Surface interface {
 	Render(width, height int) render.Texture
+}
+
+func midPointNormal(prev, middle, next sprec.Vec2) sprec.Vec2 {
+	normal1 := endPointNormal(prev, middle)
+	normal2 := endPointNormal(middle, next)
+	normalSum := sprec.Vec2Sum(normal1, normal2)
+	dot := sprec.Vec2Dot(normal1, normalSum)
+	return sprec.Vec2Quot(normalSum, dot)
+}
+
+func endPointNormal(prev, next sprec.Vec2) sprec.Vec2 {
+	tangent := sprec.UnitVec2(sprec.Vec2Diff(next, prev))
+	return sprec.NewVec2(tangent.Y, -tangent.X)
 }
