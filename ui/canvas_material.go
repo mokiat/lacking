@@ -4,14 +4,14 @@ import (
 	"github.com/mokiat/lacking/render"
 )
 
-func newMaterial(shaders ShaderSet) *Material {
-	return &Material{
+func newMaterial(shaders ShaderSet) *material {
+	return &material{
 		vertexSrc:   shaders.VertexShader,
 		fragmentSrc: shaders.FragmentShader,
 	}
 }
 
-type Material struct {
+type material struct {
 	vertexSrc   func() string
 	fragmentSrc func() string
 
@@ -24,7 +24,7 @@ type Material struct {
 	colorLocation                  render.UniformLocation
 }
 
-func (m *Material) Allocate(api render.API) {
+func (m *material) Allocate(api render.API) {
 	vertexShader := api.CreateVertexShader(render.ShaderInfo{
 		SourceCode: m.vertexSrc(),
 	})
@@ -52,6 +52,6 @@ func (m *Material) Allocate(api render.API) {
 	m.colorLocation = m.program.UniformLocation("colorIn")
 }
 
-func (m *Material) Release() {
+func (m *material) Release() {
 	m.program.Release()
 }

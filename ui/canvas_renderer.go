@@ -40,20 +40,20 @@ type canvasRenderer struct {
 
 	whiteMask render.Texture
 
-	shapeMesh            *ShapeMesh
-	shapeShadeMaterial   *Material
-	shapeBlankMaterial   *Material
+	shapeMesh            *shapeMesh
+	shapeShadeMaterial   *material
+	shapeBlankMaterial   *material
 	shapeMaskPipeline    render.Pipeline
 	shapeSimplePipeline  render.Pipeline
 	shapeNonZeroPipeline render.Pipeline
 	shapeOddPipeline     render.Pipeline
 
-	contourMesh     *ContourMesh
-	contourMaterial *Material
+	contourMesh     *contourMesh
+	contourMaterial *material
 	contourPipeline render.Pipeline
 
-	textMesh     *TextMesh
-	textMaterial *Material
+	textMesh     *textMesh
+	textMaterial *material
 	textPipeline render.Pipeline
 
 	topLayer         *canvasLayer
@@ -424,7 +424,7 @@ func (c *canvasRenderer) FillText(text string, position sprec.Vec2, typography T
 			ascent := glyph.ascent * fontSize
 			descent := glyph.descent * fontSize
 
-			vertTopLeft := TextVertex{
+			vertTopLeft := textVertex{
 				position: sprec.Vec2Sum(
 					sprec.NewVec2(
 						leftBearing,
@@ -434,7 +434,7 @@ func (c *canvasRenderer) FillText(text string, position sprec.Vec2, typography T
 				),
 				texCoord: sprec.NewVec2(glyph.leftU, glyph.topV),
 			}
-			vertTopRight := TextVertex{
+			vertTopRight := textVertex{
 				position: sprec.Vec2Sum(
 					sprec.NewVec2(
 						advance-rightBearing,
@@ -444,7 +444,7 @@ func (c *canvasRenderer) FillText(text string, position sprec.Vec2, typography T
 				),
 				texCoord: sprec.NewVec2(glyph.rightU, glyph.topV),
 			}
-			vertBottomLeft := TextVertex{
+			vertBottomLeft := textVertex{
 				position: sprec.Vec2Sum(
 					sprec.NewVec2(
 						leftBearing,
@@ -454,7 +454,7 @@ func (c *canvasRenderer) FillText(text string, position sprec.Vec2, typography T
 				),
 				texCoord: sprec.NewVec2(glyph.leftU, glyph.bottomV),
 			}
-			vertBottomRight := TextVertex{
+			vertBottomRight := textVertex{
 				position: sprec.Vec2Sum(
 					sprec.NewVec2(
 						advance-rightBearing,
@@ -532,7 +532,7 @@ func (c *canvasRenderer) fillPath(path *canvasPath, fill Fill) {
 
 	vertexOffset := c.shapeMesh.Offset()
 	for _, point := range path.points {
-		c.shapeMesh.Append(ShapeVertex{
+		c.shapeMesh.Append(shapeVertex{
 			position: point.coords,
 		})
 	}
@@ -639,19 +639,19 @@ func (c *canvasRenderer) strokePath(path *canvasPath) {
 				)
 			}
 
-			prevLeft := ContourVertex{
+			prevLeft := contourVertex{
 				position: sprec.Vec2Sum(prev.coords, sprec.Vec2Prod(prevNormal, prev.innerSize)),
 				color:    prev.color,
 			}
-			prevRight := ContourVertex{
+			prevRight := contourVertex{
 				position: sprec.Vec2Diff(prev.coords, sprec.Vec2Prod(prevNormal, prev.outerSize)),
 				color:    prev.color,
 			}
-			currentLeft := ContourVertex{
+			currentLeft := contourVertex{
 				position: sprec.Vec2Sum(current.coords, sprec.Vec2Prod(currentNormal, current.innerSize)),
 				color:    current.color,
 			}
-			currentRight := ContourVertex{
+			currentRight := contourVertex{
 				position: sprec.Vec2Diff(current.coords, sprec.Vec2Prod(currentNormal, current.outerSize)),
 				color:    current.color,
 			}

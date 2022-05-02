@@ -21,15 +21,15 @@ const (
 	textMeshVertexSize      = 2*4 + 2*4
 )
 
-func newShapeMesh(vertexCount int) *ShapeMesh {
+func newShapeMesh(vertexCount int) *shapeMesh {
 	data := make([]byte, vertexCount*shapeMeshVertexSize)
-	return &ShapeMesh{
+	return &shapeMesh{
 		vertexData:    data,
 		vertexPlotter: buffer.NewPlotter(data, binary.LittleEndian),
 	}
 }
 
-type ShapeMesh struct {
+type shapeMesh struct {
 	vertexData    []byte
 	vertexPlotter *buffer.Plotter
 	vertexOffset  int
@@ -37,7 +37,7 @@ type ShapeMesh struct {
 	vertexArray   render.VertexArray
 }
 
-func (m *ShapeMesh) Allocate(api render.API) {
+func (m *shapeMesh) Allocate(api render.API) {
 	m.vertexBuffer = api.CreateVertexBuffer(render.BufferInfo{
 		Dynamic: true,
 		Size:    len(m.vertexData),
@@ -61,12 +61,12 @@ func (m *ShapeMesh) Allocate(api render.API) {
 	})
 }
 
-func (m *ShapeMesh) Release() {
+func (m *shapeMesh) Release() {
 	m.vertexArray.Release()
 	m.vertexBuffer.Release()
 }
 
-func (m *ShapeMesh) Update() {
+func (m *shapeMesh) Update() {
 	if length := m.vertexPlotter.Offset(); length > 0 {
 		m.vertexBuffer.Update(render.BufferUpdateInfo{
 			Data:   m.vertexData[:length],
@@ -75,35 +75,34 @@ func (m *ShapeMesh) Update() {
 	}
 }
 
-func (m *ShapeMesh) Reset() {
+func (m *shapeMesh) Reset() {
 	m.vertexOffset = 0
 	m.vertexPlotter.Rewind()
 }
 
-func (m *ShapeMesh) Offset() int {
+func (m *shapeMesh) Offset() int {
 	return m.vertexOffset
 }
 
-func (m *ShapeMesh) Append(vertex ShapeVertex) {
+func (m *shapeMesh) Append(vertex shapeVertex) {
 	m.vertexPlotter.PlotFloat32(vertex.position.X)
 	m.vertexPlotter.PlotFloat32(vertex.position.Y)
 	m.vertexOffset++
 }
 
-// TODO: Make private
-type ShapeVertex struct {
+type shapeVertex struct {
 	position sprec.Vec2
 }
 
-func newContourMesh(vertexCount int) *ContourMesh {
+func newContourMesh(vertexCount int) *contourMesh {
 	data := make([]byte, vertexCount*contourMeshVertexSize)
-	return &ContourMesh{
+	return &contourMesh{
 		vertexData:    data,
 		vertexPlotter: buffer.NewPlotter(data, binary.LittleEndian),
 	}
 }
 
-type ContourMesh struct {
+type contourMesh struct {
 	vertexData    []byte
 	vertexPlotter *buffer.Plotter
 	vertexOffset  int
@@ -111,7 +110,7 @@ type ContourMesh struct {
 	vertexArray   render.VertexArray
 }
 
-func (m *ContourMesh) Allocate(api render.API) {
+func (m *contourMesh) Allocate(api render.API) {
 	m.vertexBuffer = api.CreateVertexBuffer(render.BufferInfo{
 		Dynamic: true,
 		Size:    len(m.vertexData),
@@ -141,12 +140,12 @@ func (m *ContourMesh) Allocate(api render.API) {
 	})
 }
 
-func (m *ContourMesh) Release() {
+func (m *contourMesh) Release() {
 	m.vertexArray.Release()
 	m.vertexBuffer.Release()
 }
 
-func (m *ContourMesh) Update() {
+func (m *contourMesh) Update() {
 	if length := m.vertexPlotter.Offset(); length > 0 {
 		m.vertexBuffer.Update(render.BufferUpdateInfo{
 			Data:   m.vertexData[:length],
@@ -155,16 +154,16 @@ func (m *ContourMesh) Update() {
 	}
 }
 
-func (m *ContourMesh) Reset() {
+func (m *contourMesh) Reset() {
 	m.vertexOffset = 0
 	m.vertexPlotter.Rewind()
 }
 
-func (m *ContourMesh) Offset() int {
+func (m *contourMesh) Offset() int {
 	return m.vertexOffset
 }
 
-func (m *ContourMesh) Append(vertex ContourVertex) {
+func (m *contourMesh) Append(vertex contourVertex) {
 	m.vertexPlotter.PlotFloat32(vertex.position.X)
 	m.vertexPlotter.PlotFloat32(vertex.position.Y)
 	m.vertexPlotter.PlotByte(vertex.color.R)
@@ -174,20 +173,20 @@ func (m *ContourMesh) Append(vertex ContourVertex) {
 	m.vertexOffset++
 }
 
-type ContourVertex struct {
+type contourVertex struct {
 	position sprec.Vec2
 	color    Color
 }
 
-func newTextMesh(vertexCount int) *TextMesh {
+func newTextMesh(vertexCount int) *textMesh {
 	data := make([]byte, vertexCount*textMeshVertexSize)
-	return &TextMesh{
+	return &textMesh{
 		vertexData:    data,
 		vertexPlotter: buffer.NewPlotter(data, binary.LittleEndian),
 	}
 }
 
-type TextMesh struct {
+type textMesh struct {
 	vertexData    []byte
 	vertexPlotter *buffer.Plotter
 	vertexOffset  int
@@ -195,7 +194,7 @@ type TextMesh struct {
 	vertexArray   render.VertexArray
 }
 
-func (m *TextMesh) Allocate(api render.API) {
+func (m *textMesh) Allocate(api render.API) {
 	m.vertexBuffer = api.CreateVertexBuffer(render.BufferInfo{
 		Dynamic: true,
 		Size:    len(m.vertexData),
@@ -225,12 +224,12 @@ func (m *TextMesh) Allocate(api render.API) {
 	})
 }
 
-func (m *TextMesh) Release() {
+func (m *textMesh) Release() {
 	m.vertexArray.Release()
 	m.vertexBuffer.Release()
 }
 
-func (m *TextMesh) Update() {
+func (m *textMesh) Update() {
 	if length := m.vertexPlotter.Offset(); length > 0 {
 		m.vertexBuffer.Update(render.BufferUpdateInfo{
 			Data:   m.vertexData[:length],
@@ -239,16 +238,16 @@ func (m *TextMesh) Update() {
 	}
 }
 
-func (m *TextMesh) Reset() {
+func (m *textMesh) Reset() {
 	m.vertexOffset = 0
 	m.vertexPlotter.Rewind()
 }
 
-func (m *TextMesh) Offset() int {
+func (m *textMesh) Offset() int {
 	return m.vertexOffset
 }
 
-func (m *TextMesh) Append(vertex TextVertex) {
+func (m *textMesh) Append(vertex textVertex) {
 	m.vertexPlotter.PlotFloat32(vertex.position.X)
 	m.vertexPlotter.PlotFloat32(vertex.position.Y)
 	m.vertexPlotter.PlotFloat32(vertex.texCoord.X)
@@ -256,7 +255,7 @@ func (m *TextMesh) Append(vertex TextVertex) {
 	m.vertexOffset++
 }
 
-type TextVertex struct {
+type textVertex struct {
 	position sprec.Vec2
 	texCoord sprec.Vec2
 }
