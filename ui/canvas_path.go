@@ -12,9 +12,9 @@ type canvasPoint struct {
 func newCanvasPath() *canvasPath {
 	return &canvasPath{
 		pointTemplate: canvasPoint{
-			innerSize: 0.5,
-			outerSize: 0.5,
-			color:     White(),
+			innerSize: 1.0,
+			outerSize: 0.0,
+			color:     Black(),
 		},
 	}
 }
@@ -25,10 +25,51 @@ type canvasPath struct {
 	pointTemplate  canvasPoint
 }
 
+// StrokeColor returns the configured stroke color.
+func (p *canvasPath) StrokeColor() Color {
+	return p.pointTemplate.color
+}
+
+// SetStrokeColor changes the stroke color of future-placed points.
+func (p *canvasPath) SetStrokeColor(color Color) {
+	p.pointTemplate.color = color
+}
+
+// StrokeSize returns the sum of the currently configured inner and outer
+// stroke sizes.
+func (p *canvasPath) StrokeSize() float32 {
+	return p.pointTemplate.innerSize + p.pointTemplate.outerSize
+}
+
+// SetStrokeSize configures the inner stoke size to the specified size
+// value and sets the outer stroke size to zero, which will be used in
+// subsequent Path points.
+//
+// For more control consider using SetStrokeSizeSeparate instead.
+func (p *canvasPath) SetStrokeSize(size float32) {
+	p.pointTemplate.innerSize = size
+	p.pointTemplate.outerSize = 0.0
+}
+
+// StrokeSizeSeparate returns the inner and outer stroke sizes.
+func (p *canvasPath) StrokeSizeSeparate() (float32, float32) {
+	return p.pointTemplate.innerSize, p.pointTemplate.outerSize
+}
+
+// SetStrokeSizeSeparate configures the inner and outer stroke sizes
+// to be used for subsequent Path points.
+func (p *canvasPath) SetStrokeSizeSeparate(inner, outer float32) {
+	p.pointTemplate.innerSize = inner
+	p.pointTemplate.outerSize = outer
+}
+
 // Reset erases all path points and starts from the beginning.
 func (p *canvasPath) Reset() {
 	p.points = p.points[:0]
 	p.subPathOffsets = p.subPathOffsets[:0]
+	p.pointTemplate.innerSize = 1.0
+	p.pointTemplate.outerSize = 0.0
+	p.pointTemplate.color = Black()
 }
 
 // MoveTo starts a new sub-path from the specified position.
