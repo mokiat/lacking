@@ -268,9 +268,8 @@ func (c *canvasRenderer) onDestroy() {
 
 func (c *canvasRenderer) onBegin(size Size) {
 	c.currentLayer = c.topLayer
-	c.currentLayer.ClipBounds.Position = NewPosition(0, 0)
-	c.currentLayer.ClipBounds.Size = size
-	c.currentLayer.Transform = sprec.IdentityMat4()
+	c.SetTransform(sprec.IdentityMat4())
+	c.SetClipRect(0, float32(size.Width), 0, float32(size.Height))
 	c.projectionMatrix = sprec.OrthoMat4(
 		0.0, float32(size.Width),
 		0.0, float32(size.Height),
@@ -335,33 +334,45 @@ func (c *canvasRenderer) Translate(delta sprec.Vec2) {
 	)
 }
 
-func (c *canvasRenderer) SetClipBounds(left, right, top, bottom float32) {
-	// TODO: Implement according to new Clip Matrix idea.
-	c.currentLayer.ClipBounds = NewBounds(
-		int(left),
-		int(top),
-		int(right-left),
-		int(bottom-top),
+// Rotate rotates the drawing coordinate system by the specified angle.
+func (c *canvasRenderer) Rotate(angle sprec.Angle) {
+	c.currentLayer.Transform = sprec.Mat4Prod(
+		c.currentLayer.Transform,
+		sprec.RotationMat4(angle, 0.0, 0.0, 1.0),
 	)
 }
 
-// Clip sets new clipping bounds. Pixels from draw operations
-// that are outside the clipping bounds will not be drawn.
+// Scale scales the drawing coordinate system by the specified amount in
+// both directions.
+func (c *canvasRenderer) Scale(amount sprec.Vec2) {
+	c.currentLayer.Transform = sprec.Mat4Prod(
+		c.currentLayer.Transform,
+		sprec.ScaleMat4(amount.X, amount.Y, 1.0),
+	)
+}
+
+// SetClipRect creates a clipping rectangle region. This clipping mechanism
+// is slighly faster than using Clip with a Path and is used by the UI framework
+// for clipping Element contents.
 //
-// Initially the clipping bounds are equal to the window size.
-// TODO: Remove this method in favour of SetClipBounds
-func (c *canvasRenderer) ClipBounds(bounds Bounds) {
-	// FIXME: This no longer works correctly
-	c.currentLayer.ClipBounds = bounds.Translate(
-		NewPosition(
-			int(c.currentLayer.Transform.Translation().X),
-			int(c.currentLayer.Transform.Translation().Y),
+// Note: This clipping model does not nest, hence you can escape the boundaries
+// of your Element depending on the provided values. In most cases, the Clip
+// method should be used instead.
+func (c *canvasRenderer) SetClipRect(left, right, top, bottom float32) {
+	c.currentLayer.ClipTransform = sprec.Mat4Prod(
+		sprec.NewMat4(
+			1.0, 0.0, 0.0, -left,
+			-1.0, 0.0, 0.0, right,
+			0.0, 1.0, 0.0, -top,
+			0.0, -1.0, 0.0, bottom,
 		),
+		sprec.InverseMat4(c.currentLayer.Transform),
 	)
 }
 
 // DrawSurface renders the specified surface. The surface's Render
-// method will be called when needed with the UI framebuffer bound.
+// method will be called when needed and is expected to return a texture
+// representing the rendered frame.
 func (c *canvasRenderer) DrawSurface(surface Surface, position Position, size Size) {
 	texture := surface.Render(size.Width, size.Height)
 
@@ -386,13 +397,8 @@ func (c *canvasRenderer) DrawSurface(surface Surface, position Position, size Si
 // typography settings.
 func (c *canvasRenderer) FillText(text string, position sprec.Vec2, typography Typography) {
 	currentLayer := c.currentLayer
-	clipBounds := sprec.NewVec4(
-		float32(currentLayer.ClipBounds.X),
-		float32(currentLayer.ClipBounds.X+currentLayer.ClipBounds.Width),
-		float32(currentLayer.ClipBounds.Y),
-		float32(currentLayer.ClipBounds.Y+currentLayer.ClipBounds.Height),
-	)
 	transformMatrix := currentLayer.Transform
+	clipMatrix := currentLayer.ClipTransform
 
 	font := typography.Font
 	fontSize := typography.Size
@@ -483,10 +489,10 @@ func (c *canvasRenderer) FillText(text string, position sprec.Vec2, typography T
 	vertexCount := c.textMesh.Offset() - vertexOffset
 
 	c.commandQueue.BindPipeline(c.textPipeline)
-	c.commandQueue.Uniform4f(c.textMaterial.clipDistancesLocation, clipBounds.Array())
 	c.commandQueue.Uniform4f(c.textMaterial.colorLocation, color.Array())
 	c.commandQueue.UniformMatrix4f(c.textMaterial.projectionMatrixLocation, c.projectionMatrix.ColumnMajorArray())
 	c.commandQueue.UniformMatrix4f(c.textMaterial.transformMatrixLocation, transformMatrix.ColumnMajorArray())
+	c.commandQueue.UniformMatrix4f(c.textMaterial.clipMatrixLocation, clipMatrix.ColumnMajorArray())
 	c.commandQueue.TextureUnit(0, font.texture)
 	c.commandQueue.Uniform1i(c.textMaterial.textureLocation, 0)
 	c.commandQueue.Draw(vertexOffset, vertexCount, 1)
@@ -510,13 +516,8 @@ func (c *canvasRenderer) Clip() {
 
 func (c *canvasRenderer) fillPath(path *canvasPath, fill Fill) {
 	currentLayer := c.currentLayer
-	clipBounds := sprec.NewVec4(
-		float32(currentLayer.ClipBounds.X),
-		float32(currentLayer.ClipBounds.X+currentLayer.ClipBounds.Width),
-		float32(currentLayer.ClipBounds.Y),
-		float32(currentLayer.ClipBounds.Y+currentLayer.ClipBounds.Height),
-	)
 	transformMatrix := currentLayer.Transform
+	clipMatrix := currentLayer.ClipTransform
 	textureTransformMatrix := sprec.Mat4MultiProd(
 		sprec.ScaleMat4(
 			1.0/fill.ImageSize.X,
@@ -540,9 +541,9 @@ func (c *canvasRenderer) fillPath(path *canvasPath, fill Fill) {
 	// draw stencil mask for all sub-shapes
 	if fill.Rule != FillRuleSimple {
 		c.commandQueue.BindPipeline(c.shapeMaskPipeline)
-		c.commandQueue.Uniform4f(c.shapeBlankMaterial.clipDistancesLocation, clipBounds.Array())
 		c.commandQueue.UniformMatrix4f(c.shapeBlankMaterial.projectionMatrixLocation, c.projectionMatrix.ColumnMajorArray())
 		c.commandQueue.UniformMatrix4f(c.shapeBlankMaterial.transformMatrixLocation, transformMatrix.ColumnMajorArray())
+		c.commandQueue.UniformMatrix4f(c.shapeBlankMaterial.clipMatrixLocation, clipMatrix.ColumnMajorArray())
 
 		for i, pointOffset := range path.subPathOffsets {
 			pointCount := len(path.points) - pointOffset
@@ -571,10 +572,10 @@ func (c *canvasRenderer) fillPath(path *canvasPath, fill Fill) {
 	}
 	color := uiColorToVec(fill.Color)
 
-	c.commandQueue.Uniform4f(c.shapeShadeMaterial.clipDistancesLocation, clipBounds.Array())
 	c.commandQueue.Uniform4f(c.shapeShadeMaterial.colorLocation, color.Array())
 	c.commandQueue.UniformMatrix4f(c.shapeShadeMaterial.projectionMatrixLocation, c.projectionMatrix.ColumnMajorArray())
 	c.commandQueue.UniformMatrix4f(c.shapeShadeMaterial.transformMatrixLocation, transformMatrix.ColumnMajorArray())
+	c.commandQueue.UniformMatrix4f(c.shapeShadeMaterial.clipMatrixLocation, clipMatrix.ColumnMajorArray())
 	c.commandQueue.UniformMatrix4f(c.shapeShadeMaterial.textureTransformMatrixLocation, textureTransformMatrix.ColumnMajorArray())
 	c.commandQueue.TextureUnit(0, texture)
 	c.commandQueue.Uniform1i(c.shapeShadeMaterial.textureLocation, 0)
@@ -590,18 +591,13 @@ func (c *canvasRenderer) fillPath(path *canvasPath, fill Fill) {
 
 func (c *canvasRenderer) strokePath(path *canvasPath) {
 	currentLayer := c.currentLayer
-	clipBounds := sprec.NewVec4(
-		float32(currentLayer.ClipBounds.X),
-		float32(currentLayer.ClipBounds.X+currentLayer.ClipBounds.Width),
-		float32(currentLayer.ClipBounds.Y),
-		float32(currentLayer.ClipBounds.Y+currentLayer.ClipBounds.Height),
-	)
 	transformMatrix := currentLayer.Transform
+	clipMatrix := currentLayer.ClipTransform
 
 	c.commandQueue.BindPipeline(c.contourPipeline)
-	c.commandQueue.Uniform4f(c.contourMaterial.clipDistancesLocation, clipBounds.Array())
 	c.commandQueue.UniformMatrix4f(c.contourMaterial.projectionMatrixLocation, c.projectionMatrix.ColumnMajorArray())
 	c.commandQueue.UniformMatrix4f(c.contourMaterial.transformMatrixLocation, transformMatrix.ColumnMajorArray())
+	c.commandQueue.UniformMatrix4f(c.contourMaterial.clipMatrixLocation, clipMatrix.ColumnMajorArray())
 	c.commandQueue.Uniform1i(c.contourMaterial.textureLocation, 0)
 
 	for i, pointOffset := range path.subPathOffsets {

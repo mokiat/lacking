@@ -7,13 +7,13 @@ type canvasLayer struct {
 	previous *canvasLayer
 	next     *canvasLayer
 
-	Transform  sprec.Mat4
-	ClipBounds Bounds
+	Transform     sprec.Mat4
+	ClipTransform sprec.Mat4
 }
 
 func (l *canvasLayer) InheritFrom(other *canvasLayer) {
 	l.Transform = other.Transform
-	l.ClipBounds = other.ClipBounds
+	l.ClipTransform = other.ClipTransform
 }
 
 func (l *canvasLayer) Previous() *canvasLayer {

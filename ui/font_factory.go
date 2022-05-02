@@ -177,7 +177,7 @@ func (f *fontFactory) CreateFont(font *opentype.Font) (*Font, error) {
 		}
 
 		f.renderer.Push()
-		f.renderer.SetClipBounds(
+		f.renderer.SetClipRect(
 			cellStartX, cellEndX,
 			cellStartY, cellEndY,
 		)

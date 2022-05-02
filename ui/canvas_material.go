@@ -16,10 +16,10 @@ type material struct {
 	fragmentSrc func() string
 
 	program                        render.Program
-	transformMatrixLocation        render.UniformLocation
-	textureTransformMatrixLocation render.UniformLocation
 	projectionMatrixLocation       render.UniformLocation
-	clipDistancesLocation          render.UniformLocation
+	transformMatrixLocation        render.UniformLocation
+	clipMatrixLocation             render.UniformLocation
+	textureTransformMatrixLocation render.UniformLocation
 	textureLocation                render.UniformLocation
 	colorLocation                  render.UniformLocation
 }
@@ -44,10 +44,10 @@ func (m *material) Allocate(api render.API) {
 		FragmentShader: fragmentShader,
 	})
 
-	m.transformMatrixLocation = m.program.UniformLocation("transformMatrixIn")
-	m.textureTransformMatrixLocation = m.program.UniformLocation("textureTransformMatrixIn")
 	m.projectionMatrixLocation = m.program.UniformLocation("projectionMatrixIn")
-	m.clipDistancesLocation = m.program.UniformLocation("clipDistancesIn")
+	m.transformMatrixLocation = m.program.UniformLocation("transformMatrixIn")
+	m.clipMatrixLocation = m.program.UniformLocation("clipMatrixIn")
+	m.textureTransformMatrixLocation = m.program.UniformLocation("textureTransformMatrixIn")
 	m.textureLocation = m.program.UniformLocation("textureIn")
 	m.colorLocation = m.program.UniformLocation("colorIn")
 }
