@@ -276,59 +276,6 @@ func (c *Contour) CloseLoop() {
 	c.addPoint(c.points[lastSubContour.pointOffset])
 }
 
-// Rectangle is a helper function that draws the outline of a rectangle
-// at the specified position and size using a sequence of MoveTo and LineTo
-// instructions.
-func (c *Contour) Rectangle(position, size sprec.Vec2, stroke Stroke) {
-	c.MoveTo(position, stroke)
-	c.LineTo(sprec.NewVec2(
-		position.X,
-		position.Y+size.Y,
-	), stroke)
-	c.LineTo(sprec.NewVec2(
-		position.X+size.X,
-		position.Y+size.Y,
-	), stroke)
-	c.LineTo(sprec.NewVec2(
-		position.X+size.X,
-		position.Y,
-	), stroke)
-	c.CloseLoop()
-}
-
-// Triangle is a helper function that draws the outline of a triangle
-// with the specified corners, using a sequence of MoveTo and LineTo
-// instructions.
-func (c *Contour) Triangle(p1, p2, p3 sprec.Vec2, stroke Stroke) {
-	c.MoveTo(p1, stroke)
-	c.LineTo(p2, stroke)
-	c.LineTo(p3, stroke)
-	c.CloseLoop()
-}
-
-// Circle is a helper function that draws a circle at the
-// specified position and with the specified radius using a
-// sequence of Shape instructions (whether MoveTo, LineTo or
-// Bezier curves are used is up to the implementation).
-func (c *Contour) Circle(position sprec.Vec2, radius float32, stroke Stroke) {
-	// TODO
-}
-
-// RoundRectangle is a helper function that draws a rounded
-// rectangle at the specified position and with the specified size
-// and corner radiuses.
-func (c *Contour) RoundRectangle(position, size sprec.Vec2, roundness RectRoundness, stroke Stroke) {
-	c.MoveTo(sprec.NewVec2(0, size.Y-roundness.BottomLeftRadius), stroke)
-	c.QuadTo(sprec.NewVec2(0, size.Y), sprec.NewVec2(roundness.BottomLeftRadius, size.Y), stroke)
-	c.LineTo(sprec.NewVec2(size.X-roundness.BottomRightRadius, size.Y), stroke)
-	c.QuadTo(sprec.NewVec2(size.X, size.Y), sprec.NewVec2(size.X, size.Y-roundness.BottomRightRadius), stroke)
-	c.LineTo(sprec.NewVec2(size.X, roundness.TopRightRadius), stroke)
-	c.QuadTo(sprec.NewVec2(size.X, 0), sprec.NewVec2(size.X-roundness.TopRightRadius, 0), stroke)
-	c.LineTo(sprec.NewVec2(roundness.TopLeftRadius, 0), stroke)
-	c.QuadTo(sprec.NewVec2(0, 0), sprec.NewVec2(0, roundness.TopLeftRadius), stroke)
-	c.CloseLoop()
-}
-
 func (c *Contour) startSubContour() {
 	c.subContours = append(c.subContours, subContour{
 		pointOffset: len(c.points),

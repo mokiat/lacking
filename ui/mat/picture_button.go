@@ -115,7 +115,15 @@ func (e *pictureButtonEssence) OnRender(element *ui.Element, canvas *ui.Canvas) 
 		visibleImage = e.downImage
 	}
 	if visibleImage != nil {
-		canvas.Shape().Begin(ui.Fill{
+		canvas.Reset()
+		canvas.Rectangle(
+			sprec.ZeroVec2(),
+			sprec.NewVec2(
+				float32(element.Bounds().Size.Width),
+				float32(element.Bounds().Size.Height),
+			),
+		)
+		canvas.Fill(ui.Fill{
 			Color:       ui.White(),
 			Image:       visibleImage,
 			ImageOffset: sprec.ZeroVec2(),
@@ -124,26 +132,18 @@ func (e *pictureButtonEssence) OnRender(element *ui.Element, canvas *ui.Canvas) 
 				float32(element.Bounds().Size.Height),
 			),
 		})
-		canvas.Shape().Rectangle(
+	} else {
+		canvas.Reset()
+		canvas.Rectangle(
 			sprec.ZeroVec2(),
 			sprec.NewVec2(
 				float32(element.Bounds().Size.Width),
 				float32(element.Bounds().Size.Height),
 			),
 		)
-		canvas.Shape().End()
-	} else {
-		canvas.Shape().Begin(ui.Fill{
+		canvas.Fill(ui.Fill{
 			Color: ui.Black(),
 		})
-		canvas.Shape().Rectangle(
-			sprec.ZeroVec2(),
-			sprec.NewVec2(
-				float32(element.Bounds().Size.Width),
-				float32(element.Bounds().Size.Height),
-			),
-		)
-		canvas.Shape().End()
 	}
 	if e.font != nil && e.text != "" {
 		canvas.Text().Begin(ui.Typography{

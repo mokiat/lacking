@@ -381,56 +381,6 @@ func (s *Shape) CubeTo(control1, control2, position sprec.Vec2) {
 	})
 }
 
-// Rectangle is a helper function that draws a rectangle at the
-// specified position and size using a sequence of MoveTo and LineTo
-// instructions.
-func (s *Shape) Rectangle(position, size sprec.Vec2) {
-	s.MoveTo(position)
-	s.LineTo(sprec.NewVec2(
-		position.X,
-		position.Y+size.Y,
-	))
-	s.LineTo(sprec.NewVec2(
-		position.X+size.X,
-		position.Y+size.Y,
-	))
-	s.LineTo(sprec.NewVec2(
-		position.X+size.X,
-		position.Y,
-	))
-}
-
-// Triangle is a helper function that draws a triangle with the
-// specified corners, using a sequence of MoveTo and LineTo
-// instructions.
-func (s *Shape) Triangle(a, b, c sprec.Vec2) {
-	s.MoveTo(a)
-	s.LineTo(b)
-	s.LineTo(c)
-}
-
-// Circle is a helper function that draws a circle at the
-// specified position and with the specified radius using a
-// sequence of Shape instructions (whether MoveTo, LineTo or
-// Bezier curves are used is up to the implementation).
-func (s *Shape) Circle(position sprec.Vec2, radius float32) {
-	// TODO
-}
-
-// RoundRectangle is a helper function that draws a rounded
-// rectangle at the specified position and with the specified size
-// and corner radiuses.
-func (s *Shape) RoundRectangle(position, size sprec.Vec2, roundness RectRoundness) {
-	s.MoveTo(sprec.NewVec2(0, size.Y-roundness.BottomLeftRadius))
-	s.QuadTo(sprec.NewVec2(0, size.Y), sprec.NewVec2(roundness.BottomLeftRadius, size.Y))
-	s.LineTo(sprec.NewVec2(size.X-roundness.BottomRightRadius, size.Y))
-	s.QuadTo(sprec.NewVec2(size.X, size.Y), sprec.NewVec2(size.X, size.Y-roundness.BottomRightRadius))
-	s.LineTo(sprec.NewVec2(size.X, roundness.TopRightRadius))
-	s.QuadTo(sprec.NewVec2(size.X, 0), sprec.NewVec2(size.X-roundness.TopRightRadius, 0))
-	s.LineTo(sprec.NewVec2(roundness.TopLeftRadius, 0))
-	s.QuadTo(sprec.NewVec2(0, 0), sprec.NewVec2(0, roundness.TopLeftRadius))
-}
-
 func (s *Shape) startSubShape() {
 	s.subShapes = append(s.subShapes, subShape{
 		pointOffset: len(s.points),

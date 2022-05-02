@@ -160,7 +160,13 @@ func (c *canvasRenderer) Text() *Text {
 // method will be called when needed with the UI framebuffer bound.
 func (c *canvasRenderer) DrawSurface(surface Surface, position Position, size Size) {
 	texture := surface.Render(size.Width, size.Height)
-	c.shape.Begin(Fill{
+
+	c.Reset()
+	c.Rectangle(
+		sprec.NewVec2(float32(position.X), float32(position.Y)),
+		sprec.NewVec2(float32(size.Width), float32(size.Height)),
+	)
+	c.Fill(Fill{
 		Rule: FillRuleSimple,
 		Image: &Image{ // TODO: Don't allocate
 			texture: texture,
@@ -170,11 +176,6 @@ func (c *canvasRenderer) DrawSurface(surface Surface, position Position, size Si
 		ImageOffset: sprec.NewVec2(0.0, float32(size.Height)),
 		ImageSize:   sprec.NewVec2(float32(size.Width), -float32(size.Height)),
 	})
-	c.shape.Rectangle(
-		sprec.NewVec2(float32(position.X), float32(position.Y)),
-		sprec.NewVec2(float32(size.Width), float32(size.Height)),
-	)
-	c.shape.End()
 }
 
 func (c *canvasRenderer) Fill(fill Fill) {
@@ -229,23 +230,6 @@ func (c *canvasRenderer) strokePath(path *canvasPath) {
 		}
 	}
 	c.Contour().End()
-}
-
-// RectRoundness is used to configure the roundness of
-// a round rectangle through corner radiuses.
-type RectRoundness struct {
-
-	// TopLeftRadius specifies the radius of the top-left corner.
-	TopLeftRadius float32
-
-	// TopRightRadius specifies the radius of the top-right corner.
-	TopRightRadius float32
-
-	// BottomLeftRadius specifies the radius of the bottom-left corner.
-	BottomLeftRadius float32
-
-	// BottomRightRadius specifies the radius of the bottom-right corner.
-	BottomRightRadius float32
 }
 
 type Surface interface {
