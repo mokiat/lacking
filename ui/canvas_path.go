@@ -176,32 +176,68 @@ func (p *canvasPath) RoundRectangle(position, size sprec.Vec2, roundness sprec.V
 	bottomRight := roundness.W
 
 	p.MoveTo(
-		sprec.NewVec2(0.0, size.Y-bottomLeft),
+		sprec.NewVec2(
+			position.X,
+			position.Y+size.Y-bottomLeft,
+		),
 	)
 	p.QuadTo(
-		sprec.NewVec2(0.0, size.Y),
-		sprec.NewVec2(bottomLeft, size.Y),
+		sprec.NewVec2(
+			position.X,
+			position.Y+size.Y,
+		),
+		sprec.NewVec2(
+			position.X+bottomLeft,
+			position.Y+size.Y,
+		),
 	)
 	p.LineTo(
-		sprec.NewVec2(size.X-bottomRight, size.Y),
+		sprec.NewVec2(
+			position.X+size.X-bottomRight,
+			position.Y+size.Y,
+		),
 	)
 	p.QuadTo(
-		sprec.NewVec2(size.X, size.Y),
-		sprec.NewVec2(size.X, size.Y-bottomRight),
+		sprec.NewVec2(
+			position.X+size.X,
+			position.Y+size.Y,
+		),
+		sprec.NewVec2(
+			position.X+size.X,
+			position.Y+size.Y-bottomRight,
+		),
 	)
 	p.LineTo(
-		sprec.NewVec2(size.X, topRight),
+		sprec.NewVec2(
+			position.X+size.X,
+			position.Y+topRight,
+		),
 	)
 	p.QuadTo(
-		sprec.NewVec2(size.X, 0),
-		sprec.NewVec2(size.X-topRight, 0),
+		sprec.NewVec2(
+			position.X+size.X,
+			position.Y,
+		),
+		sprec.NewVec2(
+			position.X+size.X-topRight,
+			position.Y,
+		),
 	)
 	p.LineTo(
-		sprec.NewVec2(topLeft, 0),
+		sprec.NewVec2(
+			position.X+topLeft,
+			position.Y,
+		),
 	)
 	p.QuadTo(
-		sprec.NewVec2(0, 0),
-		sprec.NewVec2(0, topLeft),
+		sprec.NewVec2(
+			position.X,
+			position.Y,
+		),
+		sprec.NewVec2(
+			position.X,
+			position.Y+topLeft,
+		),
 	)
 	p.CloseLoop()
 }
