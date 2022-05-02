@@ -182,7 +182,7 @@ func (w *windowHandler) OnMouseEvent(event MouseEvent) bool {
 
 func (w *windowHandler) OnRender() {
 	w.canvas.onBegin()
-	w.canvas.Clip(Bounds{
+	w.canvas.ClipBounds(Bounds{
 		Position: NewPosition(0, 0),
 		Size:     w.size,
 	})
@@ -297,14 +297,14 @@ func (w *Window) renderElement(element *Element, canvas *Canvas, dirtyRegion Bou
 	}
 
 	canvas.Push()
-	canvas.Clip(element.bounds)
+	canvas.ClipBounds(element.bounds)
 	canvas.Translate(sprec.NewVec2(
 		float32(element.bounds.Position.X),
 		float32(element.bounds.Position.Y),
 	))
 	element.onRender(canvas)
 	if contentBounds := element.ContentBounds(); !contentBounds.Empty() {
-		canvas.Clip(contentBounds)
+		canvas.ClipBounds(contentBounds)
 		for child := element.firstChild; child != nil; child = child.rightSibling {
 			w.renderElement(child, canvas, dirtyRegion.Translate(element.bounds.Position.Inverse()))
 		}

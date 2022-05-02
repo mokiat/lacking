@@ -267,6 +267,7 @@ func (c *canvasRenderer) Translate(delta sprec.Vec2) {
 }
 
 func (c *canvasRenderer) SetClipBounds(left, right, top, bottom float32) {
+	// TODO: Implement according to new Clip Matrix idea.
 	c.state.currentLayer.ClipBounds = NewBounds(
 		int(left),
 		int(top),
@@ -279,7 +280,8 @@ func (c *canvasRenderer) SetClipBounds(left, right, top, bottom float32) {
 // that are outside the clipping bounds will not be drawn.
 //
 // Initially the clipping bounds are equal to the window size.
-func (c *canvasRenderer) Clip(bounds Bounds) {
+// TODO: Remove this method in favour of SetClipBounds
+func (c *canvasRenderer) ClipBounds(bounds Bounds) {
 	// FIXME: This no longer works correctly
 	c.state.currentLayer.ClipBounds = bounds.Translate(
 		NewPosition(
@@ -321,12 +323,20 @@ func (c *canvasRenderer) DrawSurface(surface Surface, position Position, size Si
 	})
 }
 
+// Fill fills the currently constructed Path according to the fill settings.
 func (c *canvasRenderer) Fill(fill Fill) {
 	c.fillPath(c.canvasPath, fill)
 }
 
+// Stroke outlines the currently constructed Path.
 func (c *canvasRenderer) Stroke() {
 	c.strokePath(c.canvasPath)
+}
+
+// Clip creates a new clipping area according to the currently constructed Path
+// and the clip area of parent layers.
+func (c *canvasRenderer) Clip() {
+	c.clipPath(c.canvasPath)
 }
 
 func (c *canvasRenderer) fillPath(path *canvasPath, fill Fill) {
@@ -352,7 +362,7 @@ func (c *canvasRenderer) fillPath(path *canvasPath, fill Fill) {
 	)
 
 	vertexOffset := c.shapeMesh.Offset()
-	for _, point := range c.points {
+	for _, point := range path.points {
 		c.shapeMesh.Append(ShapeVertex{
 			position: point.coords,
 		})
@@ -365,10 +375,10 @@ func (c *canvasRenderer) fillPath(path *canvasPath, fill Fill) {
 		c.commandQueue.UniformMatrix4f(c.shapeBlankMaterial.projectionMatrixLocation, c.state.projectionMatrix.ColumnMajorArray())
 		c.commandQueue.UniformMatrix4f(c.shapeBlankMaterial.transformMatrixLocation, transformMatrix.ColumnMajorArray())
 
-		for i, pointOffset := range c.subPathOffsets {
-			pointCount := len(c.points) - pointOffset
-			if i+1 < len(c.subPathOffsets) {
-				pointCount = c.subPathOffsets[i+1] - pointOffset
+		for i, pointOffset := range path.subPathOffsets {
+			pointCount := len(path.points) - pointOffset
+			if i+1 < len(path.subPathOffsets) {
+				pointCount = path.subPathOffsets[i+1] - pointOffset
 			}
 			c.commandQueue.Draw(vertexOffset+pointOffset, pointCount, 1)
 		}
@@ -400,10 +410,10 @@ func (c *canvasRenderer) fillPath(path *canvasPath, fill Fill) {
 	c.commandQueue.TextureUnit(0, texture)
 	c.commandQueue.Uniform1i(c.shapeShadeMaterial.textureLocation, 0)
 
-	for i, pointOffset := range c.subPathOffsets {
-		pointCount := len(c.points) - pointOffset
-		if i+1 < len(c.subPathOffsets) {
-			pointCount = c.subPathOffsets[i+1] - pointOffset
+	for i, pointOffset := range path.subPathOffsets {
+		pointCount := len(path.points) - pointOffset
+		if i+1 < len(path.subPathOffsets) {
+			pointCount = path.subPathOffsets[i+1] - pointOffset
 		}
 		c.commandQueue.Draw(vertexOffset+pointOffset, pointCount, 1)
 	}
@@ -435,6 +445,18 @@ func (c *canvasRenderer) strokePath(path *canvasPath) {
 		}
 	}
 	c.Contour().end()
+}
+
+func (c *canvasRenderer) clipPath(path *canvasPath) {
+	// TODO:
+	// This can be achieved if depth attachment is used.
+	// One pass is drawn with the path where the a stencil mask is written.
+	// Then, another pass uses the stencil mask to write a new depth level
+	// and erase the stencil mask.
+	// All rendering operations will need to be adjusted to perform depth tests
+	// with mode EQUAL and the given layer's (or iteration's) depth value.
+	// NOTE: How does Pop work with this approach? Do we redraw the clip (meaning
+	// we need to keep track of it)?
 }
 
 const (
