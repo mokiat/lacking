@@ -25,7 +25,8 @@ func newCanvasRenderer(api render.API, shaders ShaderCollection) *canvasRenderer
 		contourMesh:     newContourMesh(maxVertexCount),
 		contourMaterial: newMaterial(shaders.ContourMaterial),
 
-		text: newText(state, shaders),
+		textMesh:     newTextMesh(maxVertexCount),
+		textMaterial: newMaterial(shaders.TextMaterial),
 	}
 }
 
@@ -47,7 +48,9 @@ type canvasRenderer struct {
 	contourMaterial *Material
 	contourPipeline render.Pipeline
 
-	text *Text
+	textMesh     *TextMesh
+	textMaterial *Material
+	textPipeline render.Pipeline
 }
 
 func (c *canvasRenderer) onCreate() {
@@ -201,7 +204,26 @@ func (c *canvasRenderer) onCreate() {
 		BlendOpAlpha:                render.BlendOperationAdd,
 	})
 
-	c.text.onCreate(c.api, c.commandQueue)
+	c.textMesh.Allocate(c.api)
+	c.textMaterial.Allocate(c.api)
+	c.textPipeline = c.api.CreatePipeline(render.PipelineInfo{
+		Program:                     c.textMaterial.program,
+		VertexArray:                 c.textMesh.vertexArray,
+		Topology:                    render.TopologyTriangles,
+		Culling:                     render.CullModeNone,
+		FrontFace:                   render.FaceOrientationCCW,
+		DepthTest:                   false,
+		DepthWrite:                  false,
+		StencilTest:                 false,
+		ColorWrite:                  render.ColorMaskTrue,
+		BlendEnabled:                true,
+		BlendSourceColorFactor:      render.BlendFactorSourceAlpha,
+		BlendSourceAlphaFactor:      render.BlendFactorSourceAlpha,
+		BlendDestinationColorFactor: render.BlendFactorOneMinusSourceAlpha,
+		BlendDestinationAlphaFactor: render.BlendFactorOneMinusSourceAlpha,
+		BlendOpColor:                render.BlendOperationAdd,
+		BlendOpAlpha:                render.BlendOperationAdd,
+	})
 }
 
 func (c *canvasRenderer) onDestroy() {
@@ -220,7 +242,9 @@ func (c *canvasRenderer) onDestroy() {
 	defer c.contourMaterial.Release()
 	defer c.contourPipeline.Release()
 
-	defer c.text.onDestroy()
+	defer c.textMesh.Release()
+	defer c.textMaterial.Release()
+	defer c.textPipeline.Release()
 }
 
 func (c *canvasRenderer) onBegin(size Size) {
@@ -236,15 +260,13 @@ func (c *canvasRenderer) onBegin(size Size) {
 
 	c.shapeMesh.Reset()
 	c.contourMesh.Reset()
-
-	c.text.onBegin()
+	c.textMesh.Reset()
 }
 
 func (c *canvasRenderer) onEnd() {
 	c.shapeMesh.Update()
 	c.contourMesh.Update()
-
-	c.text.onEnd()
+	c.textMesh.Update()
 	c.api.SubmitQueue(c.commandQueue)
 }
 
@@ -319,11 +341,6 @@ func (c *canvasRenderer) ClipBounds(bounds Bounds) {
 	)
 }
 
-// Text returns the text rendering module.
-func (c *canvasRenderer) Text() *Text {
-	return c.text
-}
-
 // DrawSurface renders the specified surface. The surface's Render
 // method will be called when needed with the UI framebuffer bound.
 func (c *canvasRenderer) DrawSurface(surface Surface, position Position, size Size) {
@@ -344,6 +361,116 @@ func (c *canvasRenderer) DrawSurface(surface Surface, position Position, size Si
 		ImageOffset: sprec.NewVec2(0.0, float32(size.Height)),
 		ImageSize:   sprec.NewVec2(float32(size.Width), -float32(size.Height)),
 	})
+}
+
+// FillText draws a solid text at the specified position using the provided
+// typography settings.
+func (c *canvasRenderer) FillText(text string, position sprec.Vec2, typography Typography) {
+	currentLayer := c.state.currentLayer
+	clipBounds := sprec.NewVec4(
+		float32(currentLayer.ClipBounds.X),
+		float32(currentLayer.ClipBounds.X+currentLayer.ClipBounds.Width),
+		float32(currentLayer.ClipBounds.Y),
+		float32(currentLayer.ClipBounds.Y+currentLayer.ClipBounds.Height),
+	)
+	transformMatrix := currentLayer.Transform
+
+	font := typography.Font
+	fontSize := typography.Size
+	color := uiColorToVec(typography.Color)
+
+	vertexOffset := c.textMesh.Offset()
+	offset := position
+	lastGlyph := (*fontGlyph)(nil)
+
+	for _, ch := range text {
+		lineHeight := font.lineHeight * fontSize
+		lineAscent := font.lineAscent * fontSize
+		if ch == '\r' {
+			offset.X = position.X
+			lastGlyph = nil
+			continue
+		}
+		if ch == '\n' {
+			offset.X = position.X
+			offset.Y += lineHeight
+			lastGlyph = nil
+			continue
+		}
+
+		if glyph, ok := font.glyphs[ch]; ok {
+			advance := glyph.advance * fontSize
+			leftBearing := glyph.leftBearing * fontSize
+			rightBearing := glyph.rightBearing * fontSize
+			ascent := glyph.ascent * fontSize
+			descent := glyph.descent * fontSize
+
+			vertTopLeft := TextVertex{
+				position: sprec.Vec2Sum(
+					sprec.NewVec2(
+						leftBearing,
+						lineAscent-ascent,
+					),
+					offset,
+				),
+				texCoord: sprec.NewVec2(glyph.leftU, glyph.topV),
+			}
+			vertTopRight := TextVertex{
+				position: sprec.Vec2Sum(
+					sprec.NewVec2(
+						advance-rightBearing,
+						lineAscent-ascent,
+					),
+					offset,
+				),
+				texCoord: sprec.NewVec2(glyph.rightU, glyph.topV),
+			}
+			vertBottomLeft := TextVertex{
+				position: sprec.Vec2Sum(
+					sprec.NewVec2(
+						leftBearing,
+						lineAscent+descent,
+					),
+					offset,
+				),
+				texCoord: sprec.NewVec2(glyph.leftU, glyph.bottomV),
+			}
+			vertBottomRight := TextVertex{
+				position: sprec.Vec2Sum(
+					sprec.NewVec2(
+						advance-rightBearing,
+						lineAscent+descent,
+					),
+					offset,
+				),
+				texCoord: sprec.NewVec2(glyph.rightU, glyph.bottomV),
+			}
+
+			c.textMesh.Append(vertTopLeft)
+			c.textMesh.Append(vertBottomLeft)
+			c.textMesh.Append(vertBottomRight)
+
+			c.textMesh.Append(vertTopLeft)
+			c.textMesh.Append(vertBottomRight)
+			c.textMesh.Append(vertTopRight)
+
+			offset.X += advance
+			if lastGlyph != nil {
+				offset.X += lastGlyph.kerns[ch] * fontSize
+			}
+			lastGlyph = glyph
+		}
+	}
+	vertexCount := c.textMesh.Offset() - vertexOffset
+
+	c.commandQueue.BindPipeline(c.textPipeline)
+	c.commandQueue.Uniform4f(c.textMaterial.clipDistancesLocation, clipBounds.Array())
+	c.commandQueue.Uniform4f(c.textMaterial.colorLocation, color.Array())
+	c.commandQueue.UniformMatrix4f(c.textMaterial.projectionMatrixLocation, c.state.projectionMatrix.ColumnMajorArray())
+	c.commandQueue.UniformMatrix4f(c.textMaterial.transformMatrixLocation, transformMatrix.ColumnMajorArray())
+	c.commandQueue.TextureUnit(0, font.texture)
+	c.commandQueue.Uniform1i(c.textMaterial.textureLocation, 0)
+	c.commandQueue.Draw(vertexOffset, vertexCount, 1)
 }
 
 // Fill fills the currently constructed Path according to the fill settings.
@@ -527,8 +654,7 @@ func (c *canvasRenderer) strokePath(path *canvasPath) {
 }
 
 func (c *canvasRenderer) clipPath(path *canvasPath) {
-	// TODO:
-	// This can be achieved if depth attachment is used.
+	// TODO: This can be achieved if depth attachment is used.
 	// One pass is drawn with the path where the a stencil mask is written.
 	// Then, another pass uses the stencil mask to write a new depth level
 	// and erase the stencil mask.
@@ -536,6 +662,19 @@ func (c *canvasRenderer) clipPath(path *canvasPath) {
 	// with mode EQUAL and the given layer's (or iteration's) depth value.
 	// NOTE: How does Pop work with this approach? Do we redraw the clip (meaning
 	// we need to keep track of it)?
+}
+
+// Typography configures how text is to be drawn.
+type Typography struct {
+
+	// Font specifies the font to be used.
+	Font *Font
+
+	// Size specifies the font size.
+	Size float32
+
+	// Color indicates the color of the text.
+	Color Color
 }
 
 const (

@@ -134,11 +134,6 @@ func (e *buttonEssence) OnRender(element *ui.Element, canvas *ui.Canvas) {
 	}
 
 	if e.font != nil && e.text != "" {
-		canvas.Text().Begin(ui.Typography{
-			Font:  e.font,
-			Size:  e.fontSize,
-			Color: e.fontColor,
-		})
 		var textPosition sprec.Vec2
 		contentArea := element.ContentBounds()
 		textDrawSize := e.font.TextSize(e.text, e.fontSize)
@@ -154,8 +149,12 @@ func (e *buttonEssence) OnRender(element *ui.Element, canvas *ui.Canvas) {
 				float32(contentArea.Y)+(float32(contentArea.Height)-textDrawSize.Y)/2,
 			)
 		}
-		canvas.Text().Line(e.text, textPosition)
-		canvas.Text().End()
+		canvas.Reset()
+		canvas.FillText(e.text, textPosition, ui.Typography{
+			Font:  e.font,
+			Size:  e.fontSize,
+			Color: e.fontColor,
+		})
 	}
 }
 

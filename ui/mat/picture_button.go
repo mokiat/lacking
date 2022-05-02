@@ -146,18 +146,17 @@ func (e *pictureButtonEssence) OnRender(element *ui.Element, canvas *ui.Canvas) 
 		})
 	}
 	if e.font != nil && e.text != "" {
-		canvas.Text().Begin(ui.Typography{
+		contentArea := element.ContentBounds()
+		textDrawSize := e.font.TextSize(e.text, e.fontSize)
+		canvas.Reset()
+		canvas.FillText(e.text, sprec.NewVec2(
+			float32(contentArea.X)+(float32(contentArea.Width)-textDrawSize.X)/2,
+			float32(contentArea.Y)+(float32(contentArea.Height)-textDrawSize.Y)/2,
+		), ui.Typography{
 			Font:  e.font,
 			Size:  e.fontSize,
 			Color: e.fontColor,
 		})
-		contentArea := element.ContentBounds()
-		textDrawSize := e.font.TextSize(e.text, e.fontSize)
-		canvas.Text().Line(e.text, sprec.NewVec2(
-			float32(contentArea.X)+(float32(contentArea.Width)-textDrawSize.X)/2,
-			float32(contentArea.Y)+(float32(contentArea.Height)-textDrawSize.Y)/2,
-		))
-		canvas.Text().End()
 	}
 }
 

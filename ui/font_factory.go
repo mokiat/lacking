@@ -238,6 +238,8 @@ func (f *fontFactory) CreateFont(font *opentype.Font) (*Font, error) {
 			Color: White(),
 			Rule:  FillRuleNonZero,
 		})
+		// TODO: It is possible to use the green channel to store the stroke of the
+		// font using f.renderer.Stroke with proper size and color settings.
 		f.renderer.Pop()
 
 		resultKerns := make(map[rune]float32)
