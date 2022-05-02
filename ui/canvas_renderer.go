@@ -12,11 +12,10 @@ const (
 )
 
 func newCanvasRenderer(api render.API, shaders ShaderCollection) *canvasRenderer {
-	state := newCanvasState()
 	return &canvasRenderer{
 		canvasPath: newCanvasPath(),
-		api:        api,
-		state:      state,
+
+		api: api,
 
 		shapeMesh:          newShapeMesh(maxVertexCount),
 		shapeShadeMaterial: newMaterial(shaders.ShapeMaterial),
@@ -27,14 +26,19 @@ func newCanvasRenderer(api render.API, shaders ShaderCollection) *canvasRenderer
 
 		textMesh:     newTextMesh(maxVertexCount),
 		textMaterial: newMaterial(shaders.TextMaterial),
+
+		topLayer:         &canvasLayer{},
+		projectionMatrix: sprec.IdentityMat4(),
 	}
 }
 
 type canvasRenderer struct {
 	*canvasPath
+
 	api          render.API
-	state        *canvasState
 	commandQueue render.CommandQueue
+
+	whiteMask render.Texture
 
 	shapeMesh            *ShapeMesh
 	shapeShadeMaterial   *Material
@@ -51,11 +55,25 @@ type canvasRenderer struct {
 	textMesh     *TextMesh
 	textMaterial *Material
 	textPipeline render.Pipeline
+
+	topLayer         *canvasLayer
+	currentLayer     *canvasLayer
+	projectionMatrix sprec.Mat4
 }
 
 func (c *canvasRenderer) onCreate() {
 	c.commandQueue = c.api.CreateCommandQueue()
-	c.state.onCreate(c.api)
+
+	c.whiteMask = c.api.CreateColorTexture2D(render.ColorTexture2DInfo{
+		Width:           1,
+		Height:          1,
+		Filtering:       render.FilterModeNearest,
+		Wrapping:        render.WrapModeClamp,
+		Mipmapping:      false,
+		GammaCorrection: false,
+		Format:          render.DataFormatRGBA8,
+		Data:            []byte{0xFF, 0xFF, 0xFF, 0xFF},
+	})
 
 	c.shapeMesh.Allocate(c.api)
 	c.shapeShadeMaterial.Allocate(c.api)
@@ -228,7 +246,8 @@ func (c *canvasRenderer) onCreate() {
 
 func (c *canvasRenderer) onDestroy() {
 	defer c.commandQueue.Release()
-	defer c.state.onDestroy()
+
+	defer c.whiteMask.Release()
 
 	defer c.shapeMesh.Release()
 	defer c.shapeShadeMaterial.Release()
@@ -248,11 +267,11 @@ func (c *canvasRenderer) onDestroy() {
 }
 
 func (c *canvasRenderer) onBegin(size Size) {
-	c.state.currentLayer = c.state.topLayer
-	c.state.currentLayer.ClipBounds.Position = NewPosition(0, 0)
-	c.state.currentLayer.ClipBounds.Size = size
-	c.state.currentLayer.Transform = sprec.IdentityMat4()
-	c.state.projectionMatrix = sprec.OrthoMat4(
+	c.currentLayer = c.topLayer
+	c.currentLayer.ClipBounds.Position = NewPosition(0, 0)
+	c.currentLayer.ClipBounds.Size = size
+	c.currentLayer.Transform = sprec.IdentityMat4()
+	c.projectionMatrix = sprec.OrthoMat4(
 		0.0, float32(size.Width),
 		0.0, float32(size.Height),
 		0.0, 1.0,
@@ -276,33 +295,33 @@ func (c *canvasRenderer) onEnd() {
 // You may create up to 256 layers including the starting one after which the
 // method panics.
 func (c *canvasRenderer) Push() {
-	c.state.currentLayer = c.state.currentLayer.Next()
+	c.currentLayer = c.currentLayer.Next()
 }
 
 // Pop restores the drawing state based on the parent layer. If this is the
 // first layer, then this method panics.
 func (c *canvasRenderer) Pop() {
-	c.state.currentLayer = c.state.currentLayer.Previous()
+	c.currentLayer = c.currentLayer.Previous()
 }
 
 // ResetTransform restores the transform to the value it had
 // after the last Push. If this is the first layer, then it is
 // set to the identity matrix.
 func (c *canvasRenderer) ResetTransform() {
-	if c.state.currentLayer == c.state.topLayer {
-		c.state.currentLayer.Transform = sprec.IdentityMat4()
+	if c.currentLayer == c.topLayer {
+		c.currentLayer.Transform = sprec.IdentityMat4()
 	} else {
-		c.state.currentLayer.Transform = c.state.currentLayer.previous.Transform
+		c.currentLayer.Transform = c.currentLayer.previous.Transform
 	}
 }
 
 // SetTransform changes the transform relative to the former layer transform.
 func (c *canvasRenderer) SetTransform(transform sprec.Mat4) {
-	if c.state.currentLayer == c.state.topLayer {
-		c.state.currentLayer.Transform = transform
+	if c.currentLayer == c.topLayer {
+		c.currentLayer.Transform = transform
 	} else {
-		c.state.currentLayer.Transform = sprec.Mat4Prod(
-			c.state.currentLayer.previous.Transform,
+		c.currentLayer.Transform = sprec.Mat4Prod(
+			c.currentLayer.previous.Transform,
 			transform,
 		)
 	}
@@ -310,15 +329,15 @@ func (c *canvasRenderer) SetTransform(transform sprec.Mat4) {
 
 // Translate moves the drawing position by the specified delta amount.
 func (c *canvasRenderer) Translate(delta sprec.Vec2) {
-	c.state.currentLayer.Transform = sprec.Mat4Prod(
-		c.state.currentLayer.Transform,
+	c.currentLayer.Transform = sprec.Mat4Prod(
+		c.currentLayer.Transform,
 		sprec.TranslationMat4(delta.X, delta.Y, 0.0),
 	)
 }
 
 func (c *canvasRenderer) SetClipBounds(left, right, top, bottom float32) {
 	// TODO: Implement according to new Clip Matrix idea.
-	c.state.currentLayer.ClipBounds = NewBounds(
+	c.currentLayer.ClipBounds = NewBounds(
 		int(left),
 		int(top),
 		int(right-left),
@@ -333,10 +352,10 @@ func (c *canvasRenderer) SetClipBounds(left, right, top, bottom float32) {
 // TODO: Remove this method in favour of SetClipBounds
 func (c *canvasRenderer) ClipBounds(bounds Bounds) {
 	// FIXME: This no longer works correctly
-	c.state.currentLayer.ClipBounds = bounds.Translate(
+	c.currentLayer.ClipBounds = bounds.Translate(
 		NewPosition(
-			int(c.state.currentLayer.Transform.Translation().X),
-			int(c.state.currentLayer.Transform.Translation().Y),
+			int(c.currentLayer.Transform.Translation().X),
+			int(c.currentLayer.Transform.Translation().Y),
 		),
 	)
 }
@@ -366,7 +385,7 @@ func (c *canvasRenderer) DrawSurface(surface Surface, position Position, size Si
 // FillText draws a solid text at the specified position using the provided
 // typography settings.
 func (c *canvasRenderer) FillText(text string, position sprec.Vec2, typography Typography) {
-	currentLayer := c.state.currentLayer
+	currentLayer := c.currentLayer
 	clipBounds := sprec.NewVec4(
 		float32(currentLayer.ClipBounds.X),
 		float32(currentLayer.ClipBounds.X+currentLayer.ClipBounds.Width),
@@ -466,7 +485,7 @@ func (c *canvasRenderer) FillText(text string, position sprec.Vec2, typography T
 	c.commandQueue.BindPipeline(c.textPipeline)
 	c.commandQueue.Uniform4f(c.textMaterial.clipDistancesLocation, clipBounds.Array())
 	c.commandQueue.Uniform4f(c.textMaterial.colorLocation, color.Array())
-	c.commandQueue.UniformMatrix4f(c.textMaterial.projectionMatrixLocation, c.state.projectionMatrix.ColumnMajorArray())
+	c.commandQueue.UniformMatrix4f(c.textMaterial.projectionMatrixLocation, c.projectionMatrix.ColumnMajorArray())
 	c.commandQueue.UniformMatrix4f(c.textMaterial.transformMatrixLocation, transformMatrix.ColumnMajorArray())
 	c.commandQueue.TextureUnit(0, font.texture)
 	c.commandQueue.Uniform1i(c.textMaterial.textureLocation, 0)
@@ -490,7 +509,7 @@ func (c *canvasRenderer) Clip() {
 }
 
 func (c *canvasRenderer) fillPath(path *canvasPath, fill Fill) {
-	currentLayer := c.state.currentLayer
+	currentLayer := c.currentLayer
 	clipBounds := sprec.NewVec4(
 		float32(currentLayer.ClipBounds.X),
 		float32(currentLayer.ClipBounds.X+currentLayer.ClipBounds.Width),
@@ -522,7 +541,7 @@ func (c *canvasRenderer) fillPath(path *canvasPath, fill Fill) {
 	if fill.Rule != FillRuleSimple {
 		c.commandQueue.BindPipeline(c.shapeMaskPipeline)
 		c.commandQueue.Uniform4f(c.shapeBlankMaterial.clipDistancesLocation, clipBounds.Array())
-		c.commandQueue.UniformMatrix4f(c.shapeBlankMaterial.projectionMatrixLocation, c.state.projectionMatrix.ColumnMajorArray())
+		c.commandQueue.UniformMatrix4f(c.shapeBlankMaterial.projectionMatrixLocation, c.projectionMatrix.ColumnMajorArray())
 		c.commandQueue.UniformMatrix4f(c.shapeBlankMaterial.transformMatrixLocation, transformMatrix.ColumnMajorArray())
 
 		for i, pointOffset := range path.subPathOffsets {
@@ -546,7 +565,7 @@ func (c *canvasRenderer) fillPath(path *canvasPath, fill Fill) {
 		c.commandQueue.BindPipeline(c.shapeSimplePipeline)
 	}
 
-	texture := c.state.whiteMask
+	texture := c.whiteMask
 	if fill.Image != nil {
 		texture = fill.Image.texture
 	}
@@ -554,7 +573,7 @@ func (c *canvasRenderer) fillPath(path *canvasPath, fill Fill) {
 
 	c.commandQueue.Uniform4f(c.shapeShadeMaterial.clipDistancesLocation, clipBounds.Array())
 	c.commandQueue.Uniform4f(c.shapeShadeMaterial.colorLocation, color.Array())
-	c.commandQueue.UniformMatrix4f(c.shapeShadeMaterial.projectionMatrixLocation, c.state.projectionMatrix.ColumnMajorArray())
+	c.commandQueue.UniformMatrix4f(c.shapeShadeMaterial.projectionMatrixLocation, c.projectionMatrix.ColumnMajorArray())
 	c.commandQueue.UniformMatrix4f(c.shapeShadeMaterial.transformMatrixLocation, transformMatrix.ColumnMajorArray())
 	c.commandQueue.UniformMatrix4f(c.shapeShadeMaterial.textureTransformMatrixLocation, textureTransformMatrix.ColumnMajorArray())
 	c.commandQueue.TextureUnit(0, texture)
@@ -570,7 +589,7 @@ func (c *canvasRenderer) fillPath(path *canvasPath, fill Fill) {
 }
 
 func (c *canvasRenderer) strokePath(path *canvasPath) {
-	currentLayer := c.state.currentLayer
+	currentLayer := c.currentLayer
 	clipBounds := sprec.NewVec4(
 		float32(currentLayer.ClipBounds.X),
 		float32(currentLayer.ClipBounds.X+currentLayer.ClipBounds.Width),
@@ -581,7 +600,7 @@ func (c *canvasRenderer) strokePath(path *canvasPath) {
 
 	c.commandQueue.BindPipeline(c.contourPipeline)
 	c.commandQueue.Uniform4f(c.contourMaterial.clipDistancesLocation, clipBounds.Array())
-	c.commandQueue.UniformMatrix4f(c.contourMaterial.projectionMatrixLocation, c.state.projectionMatrix.ColumnMajorArray())
+	c.commandQueue.UniformMatrix4f(c.contourMaterial.projectionMatrixLocation, c.projectionMatrix.ColumnMajorArray())
 	c.commandQueue.UniformMatrix4f(c.contourMaterial.transformMatrixLocation, transformMatrix.ColumnMajorArray())
 	c.commandQueue.Uniform1i(c.contourMaterial.textureLocation, 0)
 
@@ -724,6 +743,15 @@ type Fill struct {
 // Surface represents an auxiliary drawer.
 type Surface interface {
 	Render(width, height int) render.Texture
+}
+
+func uiColorToVec(color Color) sprec.Vec4 {
+	return sprec.NewVec4(
+		float32(color.R)/255.0,
+		float32(color.G)/255.0,
+		float32(color.B)/255.0,
+		float32(color.A)/255.0,
+	)
 }
 
 func midPointNormal(prev, middle, next sprec.Vec2) sprec.Vec2 {
