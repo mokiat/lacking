@@ -177,7 +177,7 @@ func (f *fontFactory) CreateFont(font *opentype.Font) (*Font, error) {
 		}
 
 		f.renderer.Push()
-		f.renderer.SetClipBounds(
+		f.renderer.SetClipRect(
 			cellStartX, cellEndX,
 			cellStartY, cellEndY,
 		)
@@ -187,29 +187,25 @@ func (f *fontFactory) CreateFont(font *opentype.Font) (*Font, error) {
 			sprec.TranslationMat4(-fixedToFloat(bounds.Min.X), -fixedToFloat(bounds.Min.Y), 0.0),
 		))
 
-		shape := f.renderer.Shape()
-		shape.Begin(Fill{
-			Color: White(),
-			Rule:  FillRuleNonZero,
-		})
+		f.renderer.Reset()
 		for _, segment := range segments {
 			switch segment.Op {
 			case sfnt.SegmentOpMoveTo:
-				shape.MoveTo(
+				f.renderer.MoveTo(
 					sprec.NewVec2(
 						fixedToFloat(segment.Args[0].X),
 						fixedToFloat(segment.Args[0].Y),
 					),
 				)
 			case sfnt.SegmentOpLineTo:
-				shape.LineTo(
+				f.renderer.LineTo(
 					sprec.NewVec2(
 						fixedToFloat(segment.Args[0].X),
 						fixedToFloat(segment.Args[0].Y),
 					),
 				)
 			case sfnt.SegmentOpQuadTo:
-				shape.QuadTo(
+				f.renderer.QuadTo(
 					sprec.NewVec2(
 						fixedToFloat(segment.Args[0].X),
 						fixedToFloat(segment.Args[0].Y),
@@ -220,7 +216,7 @@ func (f *fontFactory) CreateFont(font *opentype.Font) (*Font, error) {
 					),
 				)
 			case sfnt.SegmentOpCubeTo:
-				shape.CubeTo(
+				f.renderer.CubeTo(
 					sprec.NewVec2(
 						fixedToFloat(segment.Args[0].X),
 						fixedToFloat(segment.Args[0].Y),
@@ -238,7 +234,12 @@ func (f *fontFactory) CreateFont(font *opentype.Font) (*Font, error) {
 				panic(fmt.Errorf("unknown segment operation %d", segment.Op))
 			}
 		}
-		shape.End()
+		f.renderer.Fill(Fill{
+			Color: White(),
+			Rule:  FillRuleNonZero,
+		})
+		// TODO: It is possible to use the green channel to store the stroke of the
+		// font using f.renderer.Stroke with proper size and color settings.
 		f.renderer.Pop()
 
 		resultKerns := make(map[rune]float32)

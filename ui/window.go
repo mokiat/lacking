@@ -181,15 +181,20 @@ func (w *windowHandler) OnMouseEvent(event MouseEvent) bool {
 }
 
 func (w *windowHandler) OnRender() {
+	clipBounds := Bounds{
+		Position: NewPosition(0, 0),
+		Size:     w.size,
+	}
+	dirtyRegion := clipBounds // TODO: Handle dirty sub-regions
+
 	w.canvas.onBegin()
-	w.canvas.Clip(Bounds{
-		Position: NewPosition(0, 0),
-		Size:     w.size,
-	})
-	w.renderElement(w.root, w.canvas, Bounds{
-		Position: NewPosition(0, 0),
-		Size:     w.size,
-	})
+	w.canvas.SetClipRect(
+		0.0,
+		float32(w.size.Width),
+		0.0,
+		float32(w.size.Height),
+	)
+	w.renderElement(w.root, w.canvas, clipBounds, dirtyRegion)
 	w.canvas.onEnd()
 }
 
@@ -290,23 +295,44 @@ func (w *windowHandler) processMouseEvent(element *Element, event MouseEvent) bo
 	return element.onMouseEvent(event)
 }
 
-func (w *Window) renderElement(element *Element, canvas *Canvas, dirtyRegion Bounds) {
+func (w *Window) renderElement(element *Element, canvas *Canvas, clipBounds, dirtyRegion Bounds) {
 	dirtyRegion = dirtyRegion.Intersect(element.bounds)
 	if dirtyRegion.Empty() {
 		return
 	}
+	dirtyRegion = dirtyRegion.Translate(element.bounds.Position.Inverse())
+
+	elementClipBounds := clipBounds.
+		Intersect(element.bounds).
+		Translate(element.bounds.Position.Inverse())
 
 	canvas.Push()
-	canvas.Clip(element.bounds)
 	canvas.Translate(sprec.NewVec2(
-		float32(element.bounds.Position.X),
-		float32(element.bounds.Position.Y),
+		float32(element.bounds.X),
+		float32(element.bounds.Y),
 	))
+	canvas.SetClipRect(
+		float32(elementClipBounds.X),
+		float32(elementClipBounds.X+elementClipBounds.Width),
+		float32(elementClipBounds.Y),
+		float32(elementClipBounds.Y+elementClipBounds.Height),
+	)
 	element.onRender(canvas)
 	if contentBounds := element.ContentBounds(); !contentBounds.Empty() {
-		canvas.Clip(contentBounds)
+		contentClipBounds := contentBounds.Intersect(elementClipBounds)
+		canvas.SetClipRect(
+			float32(contentClipBounds.X),
+			float32(contentClipBounds.X+contentClipBounds.Width),
+			float32(contentClipBounds.Y),
+			float32(contentClipBounds.Y+contentClipBounds.Height),
+		)
 		for child := element.firstChild; child != nil; child = child.rightSibling {
-			w.renderElement(child, canvas, dirtyRegion.Translate(element.bounds.Position.Inverse()))
+			w.renderElement(
+				child,
+				canvas,
+				contentClipBounds,
+				dirtyRegion,
+			)
 		}
 	}
 	canvas.Pop()

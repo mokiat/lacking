@@ -52,16 +52,16 @@ type containerEssence struct {
 
 func (l *containerEssence) OnRender(element *ui.Element, canvas *ui.Canvas) {
 	if !l.backgroundColor.Transparent() {
-		canvas.Shape().Begin(ui.Fill{
-			Color: l.backgroundColor,
-		})
-		canvas.Shape().Rectangle(
+		canvas.Reset()
+		canvas.Rectangle(
 			sprec.NewVec2(0, 0),
 			sprec.NewVec2(
 				float32(element.Bounds().Size.Width),
 				float32(element.Bounds().Size.Height),
 			),
 		)
-		canvas.Shape().End()
+		canvas.Fill(ui.Fill{
+			Color: l.backgroundColor,
+		})
 	}
 }

@@ -99,17 +99,17 @@ func (e *scrollPaneEssence) OnMouseEvent(element *ui.Element, event ui.MouseEven
 }
 
 func (e *scrollPaneEssence) OnRender(element *ui.Element, canvas *ui.Canvas) {
-	canvas.Shape().Begin(ui.Fill{
-		Color: ui.RGB(30, 255, 128),
-	})
-	canvas.Shape().Rectangle(
+	canvas.Reset()
+	canvas.Rectangle(
 		sprec.NewVec2(0, 0),
 		sprec.NewVec2(
 			float32(element.Bounds().Size.Width),
 			float32(element.Bounds().Size.Height),
 		),
 	)
-	canvas.Shape().End()
+	canvas.Fill(ui.Fill{
+		Color: ui.RGB(30, 255, 128),
+	})
 }
 
 func (l *scrollPaneEssence) calculateIdealSize(element *ui.Element) ui.Size {

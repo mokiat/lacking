@@ -108,37 +108,32 @@ func (e *buttonEssence) OnMouseEvent(element *ui.Element, event ui.MouseEvent) b
 func (e *buttonEssence) OnRender(element *ui.Element, canvas *ui.Canvas) {
 	switch e.state {
 	case ButtonStateOver:
-		canvas.Shape().Begin(ui.Fill{
+		canvas.Reset()
+		canvas.Rectangle(
+			sprec.NewVec2(0, 0),
+			sprec.NewVec2(
+				float32(element.Bounds().Size.Width),
+				float32(element.Bounds().Size.Height),
+			),
+		)
+		canvas.Fill(ui.Fill{
 			Color: ui.RGB(15, 15, 15),
 		})
-		canvas.Shape().Rectangle(
+	case ButtonStateDown:
+		canvas.Reset()
+		canvas.Rectangle(
 			sprec.NewVec2(0, 0),
 			sprec.NewVec2(
 				float32(element.Bounds().Size.Width),
 				float32(element.Bounds().Size.Height),
 			),
 		)
-		canvas.Shape().End()
-	case ButtonStateDown:
-		canvas.Shape().Begin(ui.Fill{
+		canvas.Fill(ui.Fill{
 			Color: ui.RGB(30, 30, 30),
 		})
-		canvas.Shape().Rectangle(
-			sprec.NewVec2(0, 0),
-			sprec.NewVec2(
-				float32(element.Bounds().Size.Width),
-				float32(element.Bounds().Size.Height),
-			),
-		)
-		canvas.Shape().End()
 	}
 
 	if e.font != nil && e.text != "" {
-		canvas.Text().Begin(ui.Typography{
-			Font:  e.font,
-			Size:  e.fontSize,
-			Color: e.fontColor,
-		})
 		var textPosition sprec.Vec2
 		contentArea := element.ContentBounds()
 		textDrawSize := e.font.TextSize(e.text, e.fontSize)
@@ -154,8 +149,12 @@ func (e *buttonEssence) OnRender(element *ui.Element, canvas *ui.Canvas) {
 				float32(contentArea.Y)+(float32(contentArea.Height)-textDrawSize.Y)/2,
 			)
 		}
-		canvas.Text().Line(e.text, textPosition)
-		canvas.Text().End()
+		canvas.Reset()
+		canvas.FillText(e.text, textPosition, ui.Typography{
+			Font:  e.font,
+			Size:  e.fontSize,
+			Color: e.fontColor,
+		})
 	}
 }
 
