@@ -17,9 +17,13 @@ func newCanvasRenderer(api render.API, shaders ShaderCollection) *canvasRenderer
 		canvasPath: newCanvasPath(),
 		api:        api,
 		state:      state,
-		shape:      newShape(state, shaders),
-		contour:    newContour(state, shaders),
-		text:       newText(state, shaders),
+
+		shapeMesh:          newShapeMesh(maxVertexCount),
+		shapeShadeMaterial: newMaterial(shaders.ShapeMaterial),
+		shapeBlankMaterial: newMaterial(shaders.ShapeBlankMaterial),
+
+		contour: newContour(state, shaders),
+		text:    newText(state, shaders),
 	}
 }
 
@@ -29,7 +33,14 @@ type canvasRenderer struct {
 	state        *canvasState
 	commandQueue render.CommandQueue
 
-	shape   *Shape
+	shapeMesh            *ShapeMesh
+	shapeShadeMaterial   *Material
+	shapeBlankMaterial   *Material
+	shapeMaskPipeline    render.Pipeline
+	shapeSimplePipeline  render.Pipeline
+	shapeNonZeroPipeline render.Pipeline
+	shapeOddPipeline     render.Pipeline
+
 	contour *Contour
 	text    *Text
 }
@@ -37,7 +48,141 @@ type canvasRenderer struct {
 func (c *canvasRenderer) onCreate() {
 	c.commandQueue = c.api.CreateCommandQueue()
 	c.state.onCreate(c.api)
-	c.shape.onCreate(c.api, c.commandQueue)
+
+	c.shapeMesh.Allocate(c.api)
+	c.shapeShadeMaterial.Allocate(c.api)
+	c.shapeBlankMaterial.Allocate(c.api)
+	c.shapeMaskPipeline = c.api.CreatePipeline(render.PipelineInfo{
+		Program:         c.shapeBlankMaterial.program,
+		VertexArray:     c.shapeMesh.vertexArray,
+		Topology:        render.TopologyTriangleFan,
+		Culling:         render.CullModeNone,
+		FrontFace:       render.FaceOrientationCCW,
+		LineWidth:       1.0,
+		DepthTest:       false,
+		DepthWrite:      false,
+		DepthComparison: render.ComparisonAlways,
+		StencilTest:     true,
+		StencilFront: render.StencilOperationState{
+			StencilFailOp:  render.StencilOperationKeep,
+			DepthFailOp:    render.StencilOperationKeep,
+			PassOp:         render.StencilOperationIncreaseWrap,
+			Comparison:     render.ComparisonAlways,
+			ComparisonMask: 0xFF,
+			Reference:      0x00,
+			WriteMask:      0xFF,
+		},
+		StencilBack: render.StencilOperationState{
+			StencilFailOp:  render.StencilOperationKeep,
+			DepthFailOp:    render.StencilOperationKeep,
+			PassOp:         render.StencilOperationDecreaseWrap,
+			Comparison:     render.ComparisonAlways,
+			ComparisonMask: 0xFF,
+			Reference:      0x00,
+			WriteMask:      0xFF,
+		},
+		ColorWrite:                  render.ColorMaskFalse,
+		BlendEnabled:                false,
+		BlendSourceColorFactor:      render.BlendFactorSourceAlpha,
+		BlendSourceAlphaFactor:      render.BlendFactorSourceAlpha,
+		BlendDestinationColorFactor: render.BlendFactorOneMinusSourceAlpha,
+		BlendDestinationAlphaFactor: render.BlendFactorOneMinusSourceAlpha,
+		BlendOpColor:                render.BlendOperationAdd,
+		BlendOpAlpha:                render.BlendOperationAdd,
+	})
+	c.shapeSimplePipeline = c.api.CreatePipeline(render.PipelineInfo{
+		Program:                     c.shapeShadeMaterial.program,
+		VertexArray:                 c.shapeMesh.vertexArray,
+		Topology:                    render.TopologyTriangleFan,
+		Culling:                     render.CullModeNone,
+		FrontFace:                   render.FaceOrientationCCW,
+		DepthTest:                   false,
+		DepthWrite:                  false,
+		StencilTest:                 false,
+		ColorWrite:                  render.ColorMaskTrue,
+		BlendEnabled:                true,
+		BlendSourceColorFactor:      render.BlendFactorSourceAlpha,
+		BlendSourceAlphaFactor:      render.BlendFactorSourceAlpha,
+		BlendDestinationColorFactor: render.BlendFactorOneMinusSourceAlpha,
+		BlendDestinationAlphaFactor: render.BlendFactorOneMinusSourceAlpha,
+		BlendOpColor:                render.BlendOperationAdd,
+		BlendOpAlpha:                render.BlendOperationAdd,
+	})
+	c.shapeNonZeroPipeline = c.api.CreatePipeline(render.PipelineInfo{
+		Program:         c.shapeShadeMaterial.program,
+		VertexArray:     c.shapeMesh.vertexArray,
+		Topology:        render.TopologyTriangleFan,
+		Culling:         render.CullModeNone,
+		FrontFace:       render.FaceOrientationCCW,
+		LineWidth:       1.0,
+		DepthTest:       false,
+		DepthWrite:      false,
+		DepthComparison: render.ComparisonAlways,
+		StencilTest:     true,
+		StencilFront: render.StencilOperationState{
+			StencilFailOp:  render.StencilOperationKeep,
+			DepthFailOp:    render.StencilOperationKeep,
+			PassOp:         render.StencilOperationReplace,
+			Comparison:     render.ComparisonNotEqual,
+			ComparisonMask: 0xFF,
+			Reference:      0x00,
+			WriteMask:      0xFF,
+		},
+		StencilBack: render.StencilOperationState{
+			StencilFailOp:  render.StencilOperationKeep,
+			DepthFailOp:    render.StencilOperationKeep,
+			PassOp:         render.StencilOperationReplace,
+			Comparison:     render.ComparisonNotEqual,
+			ComparisonMask: 0xFF,
+			Reference:      0x00,
+			WriteMask:      0xFF,
+		},
+		ColorWrite:                  render.ColorMaskTrue,
+		BlendEnabled:                true,
+		BlendSourceColorFactor:      render.BlendFactorSourceAlpha,
+		BlendSourceAlphaFactor:      render.BlendFactorSourceAlpha,
+		BlendDestinationColorFactor: render.BlendFactorOneMinusSourceAlpha,
+		BlendDestinationAlphaFactor: render.BlendFactorOneMinusSourceAlpha,
+		BlendOpColor:                render.BlendOperationAdd,
+		BlendOpAlpha:                render.BlendOperationAdd,
+	})
+	c.shapeOddPipeline = c.api.CreatePipeline(render.PipelineInfo{
+		Program:     c.shapeShadeMaterial.program,
+		VertexArray: c.shapeMesh.vertexArray,
+		Topology:    render.TopologyTriangleFan,
+		Culling:     render.CullModeNone,
+		FrontFace:   render.FaceOrientationCCW,
+		DepthTest:   false,
+		DepthWrite:  false,
+		StencilTest: true,
+		StencilFront: render.StencilOperationState{
+			StencilFailOp:  render.StencilOperationKeep,
+			DepthFailOp:    render.StencilOperationKeep,
+			PassOp:         render.StencilOperationReplace,
+			Comparison:     render.ComparisonNotEqual,
+			ComparisonMask: 0x01,
+			Reference:      0x00,
+			WriteMask:      0xFF,
+		},
+		StencilBack: render.StencilOperationState{
+			StencilFailOp:  render.StencilOperationKeep,
+			DepthFailOp:    render.StencilOperationKeep,
+			PassOp:         render.StencilOperationReplace,
+			Comparison:     render.ComparisonNotEqual,
+			ComparisonMask: 0x01,
+			Reference:      0x00,
+			WriteMask:      0xFF,
+		},
+		ColorWrite:                  render.ColorMaskTrue,
+		BlendEnabled:                true,
+		BlendSourceColorFactor:      render.BlendFactorSourceAlpha,
+		BlendSourceAlphaFactor:      render.BlendFactorSourceAlpha,
+		BlendDestinationColorFactor: render.BlendFactorOneMinusSourceAlpha,
+		BlendDestinationAlphaFactor: render.BlendFactorOneMinusSourceAlpha,
+		BlendOpColor:                render.BlendOperationAdd,
+		BlendOpAlpha:                render.BlendOperationAdd,
+	})
+
 	c.contour.onCreate(c.api, c.commandQueue)
 	c.text.onCreate(c.api, c.commandQueue)
 }
@@ -45,7 +190,15 @@ func (c *canvasRenderer) onCreate() {
 func (c *canvasRenderer) onDestroy() {
 	defer c.commandQueue.Release()
 	defer c.state.onDestroy()
-	defer c.shape.onDestroy()
+
+	defer c.shapeMesh.Release()
+	defer c.shapeShadeMaterial.Release()
+	defer c.shapeBlankMaterial.Release()
+	defer c.shapeMaskPipeline.Release()
+	defer c.shapeSimplePipeline.Release()
+	defer c.shapeNonZeroPipeline.Release()
+	defer c.shapeOddPipeline.Release()
+
 	defer c.contour.onDestroy()
 	defer c.text.onDestroy()
 }
@@ -60,13 +213,16 @@ func (c *canvasRenderer) onBegin(size Size) {
 		0.0, float32(size.Height),
 		0.0, 1.0,
 	)
-	c.shape.onBegin()
+
+	c.shapeMesh.Reset()
+
 	c.contour.onBegin()
 	c.text.onBegin()
 }
 
 func (c *canvasRenderer) onEnd() {
-	c.shape.onEnd()
+	c.shapeMesh.Update()
+
 	c.contour.onEnd()
 	c.text.onEnd()
 	c.api.SubmitQueue(c.commandQueue)
@@ -141,11 +297,6 @@ func (c *canvasRenderer) Clip(bounds Bounds) {
 	)
 }
 
-// Shape returns the shape rendering module.
-func (c *canvasRenderer) Shape() *Shape {
-	return c.shape
-}
-
 // Contour returns the contour rendering module.
 func (c *canvasRenderer) Contour() *Contour {
 	return c.contour
@@ -187,23 +338,83 @@ func (c *canvasRenderer) Stroke() {
 }
 
 func (c *canvasRenderer) fillPath(path *canvasPath, fill Fill) {
-	// TODO: Implement directly and remove old API
-	c.Shape().begin(fill)
-	for i := 0; i < len(path.subPathOffsets); i++ {
-		offset := path.subPathOffsets[i]
-		nextOffset := len(path.points)
-		if i+1 < len(path.subPathOffsets) {
-			nextOffset = path.subPathOffsets[i+1]
-		}
-		for j, point := range path.points[offset:nextOffset] {
-			if j == 0 {
-				c.Shape().moveTo(point.coords)
-			} else {
-				c.Shape().lineTo(point.coords)
+	currentLayer := c.state.currentLayer
+	clipBounds := sprec.NewVec4(
+		float32(currentLayer.ClipBounds.X),
+		float32(currentLayer.ClipBounds.X+currentLayer.ClipBounds.Width),
+		float32(currentLayer.ClipBounds.Y),
+		float32(currentLayer.ClipBounds.Y+currentLayer.ClipBounds.Height),
+	)
+	transformMatrix := currentLayer.Transform
+	textureTransformMatrix := sprec.Mat4MultiProd(
+		sprec.ScaleMat4(
+			1.0/fill.ImageSize.X,
+			1.0/fill.ImageSize.Y,
+			1.0,
+		),
+		sprec.TranslationMat4(
+			-fill.ImageOffset.X,
+			-fill.ImageOffset.Y,
+			0.0,
+		),
+	)
+
+	vertexOffset := c.shapeMesh.Offset()
+	for _, point := range c.points {
+		c.shapeMesh.Append(ShapeVertex{
+			position: point.coords,
+		})
+	}
+
+	// draw stencil mask for all sub-shapes
+	if fill.Rule != FillRuleSimple {
+		c.commandQueue.BindPipeline(c.shapeMaskPipeline)
+		c.commandQueue.Uniform4f(c.shapeBlankMaterial.clipDistancesLocation, clipBounds.Array())
+		c.commandQueue.UniformMatrix4f(c.shapeBlankMaterial.projectionMatrixLocation, c.state.projectionMatrix.ColumnMajorArray())
+		c.commandQueue.UniformMatrix4f(c.shapeBlankMaterial.transformMatrixLocation, transformMatrix.ColumnMajorArray())
+
+		for i, pointOffset := range c.subPathOffsets {
+			pointCount := len(c.points) - pointOffset
+			if i+1 < len(c.subPathOffsets) {
+				pointCount = c.subPathOffsets[i+1] - pointOffset
 			}
+			c.commandQueue.Draw(vertexOffset+pointOffset, pointCount, 1)
 		}
 	}
-	c.Shape().end()
+
+	// render color shader shape and clear stencil buffer
+	switch fill.Rule {
+	case FillRuleSimple:
+		c.commandQueue.BindPipeline(c.shapeSimplePipeline)
+	case FillRuleNonZero:
+		c.commandQueue.BindPipeline(c.shapeNonZeroPipeline)
+	case FillRuleEvenOdd:
+		c.commandQueue.BindPipeline(c.shapeOddPipeline)
+	default:
+		c.commandQueue.BindPipeline(c.shapeSimplePipeline)
+	}
+
+	texture := c.state.whiteMask
+	if fill.Image != nil {
+		texture = fill.Image.texture
+	}
+	color := uiColorToVec(fill.Color)
+
+	c.commandQueue.Uniform4f(c.shapeShadeMaterial.clipDistancesLocation, clipBounds.Array())
+	c.commandQueue.Uniform4f(c.shapeShadeMaterial.colorLocation, color.Array())
+	c.commandQueue.UniformMatrix4f(c.shapeShadeMaterial.projectionMatrixLocation, c.state.projectionMatrix.ColumnMajorArray())
+	c.commandQueue.UniformMatrix4f(c.shapeShadeMaterial.transformMatrixLocation, transformMatrix.ColumnMajorArray())
+	c.commandQueue.UniformMatrix4f(c.shapeShadeMaterial.textureTransformMatrixLocation, textureTransformMatrix.ColumnMajorArray())
+	c.commandQueue.TextureUnit(0, texture)
+	c.commandQueue.Uniform1i(c.shapeShadeMaterial.textureLocation, 0)
+
+	for i, pointOffset := range c.subPathOffsets {
+		pointCount := len(c.points) - pointOffset
+		if i+1 < len(c.subPathOffsets) {
+			pointCount = c.subPathOffsets[i+1] - pointOffset
+		}
+		c.commandQueue.Draw(vertexOffset+pointOffset, pointCount, 1)
+	}
 }
 
 func (c *canvasRenderer) strokePath(path *canvasPath) {
@@ -234,6 +445,51 @@ func (c *canvasRenderer) strokePath(path *canvasPath) {
 	c.Contour().end()
 }
 
+const (
+	// FillRuleSimple is the fastest approach and should be used
+	// with non-overlapping concave shapes.
+	FillRuleSimple FillRule = iota
+
+	// FillRuleNonZero will fill areas that are covered by the
+	// shape, regardless if it overlaps.
+	FillRuleNonZero
+
+	// FillRuleEvenOdd will fill areas that are covered by the
+	// shape and it does not overlap or overlaps an odd number
+	// of times.
+	FillRuleEvenOdd
+)
+
+// FillRule represents the mechanism through which it is determined
+// which point is part of the shape in an overlapping or concave
+// polygon.
+type FillRule int
+
+// Fill configures how a solid shape is to be drawn.
+type Fill struct {
+
+	// Rule specifies the mechanism through which it is determined
+	// which point is part of the shape in an overlapping or concave
+	// polygon.
+	Rule FillRule
+
+	// Color specifies the color to use to fill the shape.
+	Color Color
+
+	// Image specifies an optional image to be used for filling
+	// the shape.
+	Image *Image
+
+	// ImageOffset determines the offset of the origin of the
+	// image relative to the current translation context.
+	ImageOffset sprec.Vec2
+
+	// ImageSize determines the size of the drawn image. In
+	// essence, this size performs scaling.
+	ImageSize sprec.Vec2
+}
+
+// Surface represents an auxiliary drawer.
 type Surface interface {
 	Render(width, height int) render.Texture
 }

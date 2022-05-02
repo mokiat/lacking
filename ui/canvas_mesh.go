@@ -90,6 +90,7 @@ func (m *ShapeMesh) Append(vertex ShapeVertex) {
 	m.vertexOffset++
 }
 
+// TODO: Make private
 type ShapeVertex struct {
 	position sprec.Vec2
 }

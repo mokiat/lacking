@@ -2,6 +2,11 @@ package ui
 
 import "github.com/mokiat/gomath/sprec"
 
+const (
+	initialPointCapacity   = 1024
+	initialSubPathCapacity = 16
+)
+
 type canvasPoint struct {
 	coords    sprec.Vec2
 	innerSize float32
@@ -11,6 +16,9 @@ type canvasPoint struct {
 
 func newCanvasPath() *canvasPath {
 	return &canvasPath{
+		points:         make([]canvasPoint, 0, initialPointCapacity),
+		subPathOffsets: make([]int, 0, initialSubPathCapacity),
+
 		pointTemplate: canvasPoint{
 			innerSize: 1.0,
 			outerSize: 0.0,
@@ -22,7 +30,8 @@ func newCanvasPath() *canvasPath {
 type canvasPath struct {
 	points         []canvasPoint
 	subPathOffsets []int
-	pointTemplate  canvasPoint
+
+	pointTemplate canvasPoint
 }
 
 // StrokeColor returns the configured stroke color.
