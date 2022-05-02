@@ -151,7 +151,19 @@ func (p *canvasPath) Triangle(a, b, c sprec.Vec2) {
 // specified position and with the specified radius using a
 // sequence of Shape instructions.
 func (p *canvasPath) Circle(position sprec.Vec2, radius float32) {
-	// TODO
+	p.MoveTo(sprec.NewVec2(
+		position.X+radius,
+		position.Y,
+	))
+	const step = float32(10) // gives good results
+	for degrees := step; degrees < 360.0; degrees += step {
+		angle := sprec.Degrees(degrees)
+		p.LineTo(sprec.NewVec2(
+			position.X+sprec.Cos(angle)*radius,
+			position.Y+sprec.Sin(angle)*radius,
+		))
+	}
+	p.CloseLoop()
 }
 
 // RoundRectangle is a helper function that draws a rounded
