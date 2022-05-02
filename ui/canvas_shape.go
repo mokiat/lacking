@@ -207,7 +207,7 @@ func (s *Shape) onEnd() {
 
 // Begin starts a new solid shape using the specified fill settings.
 // Make sure to use End when finished with the shape.
-func (s *Shape) Begin(fill Fill) {
+func (s *Shape) begin(fill Fill) {
 	if s.engaged {
 		panic("shape already started")
 	}
@@ -244,7 +244,7 @@ func (s *Shape) Begin(fill Fill) {
 
 // End marks the end of the shape and pushes all collected data for
 // drawing.
-func (s *Shape) End() {
+func (s *Shape) end() {
 	if !s.engaged {
 		panic("shape already ended")
 	}
@@ -300,7 +300,7 @@ func (s *Shape) End() {
 }
 
 // MoveTo positions the cursor to the specified position.
-func (s *Shape) MoveTo(position sprec.Vec2) {
+func (s *Shape) moveTo(position sprec.Vec2) {
 	s.startSubShape()
 	s.addPoint(shapePoint{
 		coords: position,
@@ -309,7 +309,7 @@ func (s *Shape) MoveTo(position sprec.Vec2) {
 
 // LineTo creates a direct line from the last cursor position
 // to the newly specified position.
-func (s *Shape) LineTo(position sprec.Vec2) {
+func (s *Shape) lineTo(position sprec.Vec2) {
 	s.addPoint(shapePoint{
 		coords: position,
 	})
@@ -318,7 +318,7 @@ func (s *Shape) LineTo(position sprec.Vec2) {
 // QuadTo creates a quadratic Bezier curve from the last cursor
 // position to the newly specified position by going past the
 // specified control point.
-func (s *Shape) QuadTo(control, position sprec.Vec2) {
+func (s *Shape) quadTo(control, position sprec.Vec2) {
 	// TODO: Evaluate tessellation based on curvature and size
 	const tessellation = 5
 
@@ -350,7 +350,7 @@ func (s *Shape) QuadTo(control, position sprec.Vec2) {
 // CubeTo creates a cubic Bezier curve from the last cursor position
 // to the newly specified position by going past the two specified
 // control points.
-func (s *Shape) CubeTo(control1, control2, position sprec.Vec2) {
+func (s *Shape) cubeTo(control1, control2, position sprec.Vec2) {
 	// TODO: Evaluate tessellation based on curvature and size
 	const tessellation = 5
 

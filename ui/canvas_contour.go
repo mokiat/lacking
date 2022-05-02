@@ -80,7 +80,7 @@ func (c *Contour) onEnd() {
 
 // Begin starts a new contour.
 // Make sure to use End when finished with the contour.
-func (c *Contour) Begin() {
+func (c *Contour) begin() {
 	if c.engaged {
 		panic("contour already started")
 	}
@@ -101,7 +101,7 @@ func (c *Contour) Begin() {
 
 // End marks the end of the contour and pushes all collected data for
 // drawing.
-func (c *Contour) End() {
+func (c *Contour) end() {
 	if !c.engaged {
 		panic("contour already ended")
 	}
@@ -178,7 +178,7 @@ func (c *Contour) End() {
 
 // MoveTo positions the cursor to the specified position and
 // marks the specified stroke setting for that point.
-func (c *Contour) MoveTo(position sprec.Vec2, stroke Stroke) {
+func (c *Contour) moveTo(position sprec.Vec2, stroke Stroke) {
 	c.startSubContour()
 	c.addPoint(contourPoint{
 		coords: position,
@@ -189,7 +189,7 @@ func (c *Contour) MoveTo(position sprec.Vec2, stroke Stroke) {
 // LineTo creates a direct line from the last cursor position
 // to the newly specified position and sets the specified
 // stroke for the new position.
-func (c *Contour) LineTo(position sprec.Vec2, stroke Stroke) {
+func (c *Contour) lineTo(position sprec.Vec2, stroke Stroke) {
 	c.addPoint(contourPoint{
 		coords: position,
 		stroke: uiStrokeToStroke(stroke),
@@ -200,7 +200,7 @@ func (c *Contour) LineTo(position sprec.Vec2, stroke Stroke) {
 // position to the newly specified position by going past the
 // specified control point. The target position is assigned
 // the specified stroke setting.
-func (c *Contour) QuadTo(control, position sprec.Vec2, stroke Stroke) {
+func (c *Contour) quadTo(control, position sprec.Vec2, stroke Stroke) {
 	// TODO: Evaluate tessellation based on curvature and size
 	const tessellation = 30
 
@@ -235,7 +235,7 @@ func (c *Contour) QuadTo(control, position sprec.Vec2, stroke Stroke) {
 // to the newly specified position by going past the two specified
 // control points. The target position is assigned
 // the specified stroke setting.
-func (c *Contour) CubeTo(control1, control2, position sprec.Vec2, stroke Stroke) {
+func (c *Contour) cubeTo(control1, control2, position sprec.Vec2, stroke Stroke) {
 	// TODO: Evaluate tessellation based on curvature and size
 	const tessellation = 30
 
@@ -271,7 +271,7 @@ func (c *Contour) CubeTo(control1, control2, position sprec.Vec2, stroke Stroke)
 
 // CloseLoop makes an automatic line connection back to the starting
 // point, as specified via MoveTo.
-func (c *Contour) CloseLoop() {
+func (c *Contour) closeLoop() {
 	lastSubContour := c.subContours[len(c.subContours)-1]
 	c.addPoint(c.points[lastSubContour.pointOffset])
 }
@@ -296,7 +296,9 @@ func (c *Contour) lastPoint() contourPoint {
 type Stroke struct {
 
 	// Size determines the size of the contour.
-	Size float32
+	InnerSize float32
+
+	OuterSize float32
 
 	// Color specifies the color of the contour.
 	Color Color
@@ -320,8 +322,8 @@ type contourStroke struct {
 
 func uiStrokeToStroke(stroke Stroke) contourStroke {
 	return contourStroke{
-		innerSize: stroke.Size / 2.0,
-		outerSize: stroke.Size / 2.0,
+		innerSize: stroke.InnerSize,
+		outerSize: stroke.OuterSize,
 		color:     uiColorToVec(stroke.Color),
 	}
 }

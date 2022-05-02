@@ -188,7 +188,7 @@ func (c *canvasRenderer) Stroke() {
 
 func (c *canvasRenderer) fillPath(path *canvasPath, fill Fill) {
 	// TODO: Implement directly and remove old API
-	c.Shape().Begin(fill)
+	c.Shape().begin(fill)
 	for i := 0; i < len(path.subPathOffsets); i++ {
 		offset := path.subPathOffsets[i]
 		nextOffset := len(path.points)
@@ -197,18 +197,18 @@ func (c *canvasRenderer) fillPath(path *canvasPath, fill Fill) {
 		}
 		for j, point := range path.points[offset:nextOffset] {
 			if j == 0 {
-				c.Shape().MoveTo(point.coords)
+				c.Shape().moveTo(point.coords)
 			} else {
-				c.Shape().LineTo(point.coords)
+				c.Shape().lineTo(point.coords)
 			}
 		}
 	}
-	c.Shape().End()
+	c.Shape().end()
 }
 
 func (c *canvasRenderer) strokePath(path *canvasPath) {
 	// TODO: Implement directly and remove old API
-	c.Contour().Begin()
+	c.Contour().begin()
 	for i := 0; i < len(path.subPathOffsets); i++ {
 		offset := path.subPathOffsets[i]
 		nextOffset := len(path.points)
@@ -217,19 +217,21 @@ func (c *canvasRenderer) strokePath(path *canvasPath) {
 		}
 		for j, point := range path.points[offset:nextOffset] {
 			if j == 0 {
-				c.Contour().MoveTo(point.coords, Stroke{
-					Size:  point.innerSize + point.outerSize,
-					Color: point.color,
+				c.Contour().moveTo(point.coords, Stroke{
+					InnerSize: point.innerSize,
+					OuterSize: point.outerSize,
+					Color:     point.color,
 				})
 			} else {
-				c.Contour().LineTo(point.coords, Stroke{
-					Size:  point.innerSize + point.outerSize,
-					Color: point.color,
+				c.Contour().lineTo(point.coords, Stroke{
+					InnerSize: point.innerSize,
+					OuterSize: point.outerSize,
+					Color:     point.color,
 				})
 			}
 		}
 	}
-	c.Contour().End()
+	c.Contour().end()
 }
 
 type Surface interface {
