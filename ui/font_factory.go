@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
@@ -360,6 +361,9 @@ func (r *fontReader) LoadGlyph(chIndex sfnt.GlyphIndex) (sfnt.Segments, fixed.In
 func (r *fontReader) Kern(ch1Index, ch2Index sfnt.GlyphIndex) fixed.Int26_6 {
 	kern, err := r.font.Kern(r.buf, ch1Index, ch2Index, r.ppem, xfont.HintingNone)
 	if err != nil {
+		if errors.Is(err, sfnt.ErrNotFound) {
+			return 0
+		}
 		panic(fmt.Errorf("failed to find kern (%d - %d): %w", ch1Index, ch2Index, err))
 	}
 	return kern
