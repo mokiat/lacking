@@ -114,9 +114,9 @@ func (e *toolbarButtonBackgroundEssence) OnRender(element *ui.Element, canvas *u
 	var backgroundColor ui.Color
 	switch e.State() {
 	case ButtonStateOver:
-		backgroundColor = OnSurfaceHoverColor
+		backgroundColor = HoverOverlayColor
 	case ButtonStateDown:
-		backgroundColor = OnSurfacePressColor
+		backgroundColor = PressOverlayColor
 	default:
 		backgroundColor = ui.Transparent()
 	}
