@@ -146,6 +146,16 @@ type ButtonBaseEssence struct {
 	onClick ClickListener
 }
 
+// SetOnClick changes the ClickListener.
+func (e *ButtonBaseEssence) SetOnClick(onClick ClickListener) {
+	e.onClick = onClick
+}
+
+// State returns the current state of the button.
+func (e *ButtonBaseEssence) State() ButtonState {
+	return e.state
+}
+
 func (e *ButtonBaseEssence) OnMouseEvent(element *ui.Element, event ui.MouseEvent) bool {
 	context := element.Context()
 	switch event.Type {
@@ -174,9 +184,4 @@ func (e *ButtonBaseEssence) OnMouseEvent(element *ui.Element, event ui.MouseEven
 		}
 	}
 	return false
-}
-
-// State returns the current state of the button.
-func (e *ButtonBaseEssence) State() ButtonState {
-	return e.state
 }
