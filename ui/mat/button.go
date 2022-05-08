@@ -86,7 +86,7 @@ func (e *buttonEssence) OnRender(element *ui.Element, canvas *ui.Canvas) {
 			),
 		)
 		canvas.Fill(ui.Fill{
-			Color: ui.RGB(15, 15, 15),
+			Color: ui.RGB(40, 40, 40),
 		})
 	case ButtonStateDown:
 		canvas.Reset()
@@ -98,7 +98,7 @@ func (e *buttonEssence) OnRender(element *ui.Element, canvas *ui.Canvas) {
 			),
 		)
 		canvas.Fill(ui.Fill{
-			Color: ui.RGB(30, 30, 30),
+			Color: ui.RGB(80, 80, 80),
 		})
 	}
 
