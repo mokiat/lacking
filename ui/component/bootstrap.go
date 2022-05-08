@@ -36,8 +36,8 @@ var application = Controlled(Define(func(props Properties) Instance {
 	})
 }))
 
-func OpenOverlay(instance Instance) Overlay {
-	return Overlay{
+func OpenOverlay(instance Instance) *Overlay {
+	return &Overlay{
 		id: bootstrapCtrl.AddOverlay(instance),
 	}
 }
