@@ -152,9 +152,11 @@ func (e *ButtonBaseEssence) OnMouseEvent(element *ui.Element, event ui.MouseEven
 	case ui.MouseEventTypeEnter:
 		e.state = ButtonStateOver
 		context.Window().Invalidate()
+		return true
 	case ui.MouseEventTypeLeave:
 		e.state = ButtonStateUp
 		context.Window().Invalidate()
+		return true
 	case ui.MouseEventTypeUp:
 		if event.Button == ui.MouseButtonLeft {
 			if e.state == ButtonStateDown {
@@ -162,14 +164,16 @@ func (e *ButtonBaseEssence) OnMouseEvent(element *ui.Element, event ui.MouseEven
 			}
 			e.state = ButtonStateOver
 			context.Window().Invalidate()
+			return true
 		}
 	case ui.MouseEventTypeDown:
 		if event.Button == ui.MouseButtonLeft {
 			e.state = ButtonStateDown
 			context.Window().Invalidate()
+			return true
 		}
 	}
-	return true
+	return false
 }
 
 // State returns the current state of the button.
