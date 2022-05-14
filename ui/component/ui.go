@@ -34,6 +34,16 @@ func CreateImage(img image.Image) *ui.Image {
 	return result
 }
 
+// OpenFont delegates to the UI window context to open
+// the specified font.
+func OpenFont(uri string) *ui.Font {
+	font, err := uiCtx.OpenFont(uri)
+	if err != nil {
+		panic(fmt.Errorf("failed to open font %q: %w", uri, err))
+	}
+	return font
+}
+
 // OpenFontCollection delegates to the UI window context to open
 // the specified font collection.
 func OpenFontCollection(uri string) {

@@ -30,7 +30,7 @@ var Button = co.ShallowCached(co.Define(func(props co.Properties) co.Instance {
 
 	essence := co.UseState(func() *buttonEssence {
 		return &buttonEssence{
-			state: ButtonStateUp,
+			ButtonBaseEssence: NewButtonBaseEssence(callbackData.ClickListener),
 		}
 	}).Get()
 
@@ -47,7 +47,6 @@ var Button = co.ShallowCached(co.Define(func(props co.Properties) co.Instance {
 	}
 	essence.fontAlignment = data.FontAlignment
 	essence.text = data.Text
-	essence.clickListener = callbackData.ClickListener
 
 	txtSize := essence.font.TextSize(essence.text, essence.fontSize)
 
@@ -64,49 +63,19 @@ var Button = co.ShallowCached(co.Define(func(props co.Properties) co.Instance {
 	})
 }))
 
-var _ ui.ElementMouseHandler = (*buttonEssence)(nil)
 var _ ui.ElementRenderHandler = (*buttonEssence)(nil)
 
 type buttonEssence struct {
+	*ButtonBaseEssence
 	font          *ui.Font
 	fontSize      float32
 	fontColor     ui.Color
 	fontAlignment Alignment
 	text          string
-
-	clickListener ClickListener
-
-	state ButtonState
-}
-
-func (e *buttonEssence) OnMouseEvent(element *ui.Element, event ui.MouseEvent) bool {
-	context := element.Context()
-	switch event.Type {
-	case ui.MouseEventTypeEnter:
-		e.state = ButtonStateOver
-		context.Window().Invalidate()
-	case ui.MouseEventTypeLeave:
-		e.state = ButtonStateUp
-		context.Window().Invalidate()
-	case ui.MouseEventTypeUp:
-		if event.Button == ui.MouseButtonLeft {
-			if e.state == ButtonStateDown {
-				e.onClick()
-			}
-			e.state = ButtonStateOver
-			context.Window().Invalidate()
-		}
-	case ui.MouseEventTypeDown:
-		if event.Button == ui.MouseButtonLeft {
-			e.state = ButtonStateDown
-			context.Window().Invalidate()
-		}
-	}
-	return true
 }
 
 func (e *buttonEssence) OnRender(element *ui.Element, canvas *ui.Canvas) {
-	switch e.state {
+	switch e.State() {
 	case ButtonStateOver:
 		canvas.Reset()
 		canvas.Rectangle(
@@ -117,7 +86,7 @@ func (e *buttonEssence) OnRender(element *ui.Element, canvas *ui.Canvas) {
 			),
 		)
 		canvas.Fill(ui.Fill{
-			Color: ui.RGB(15, 15, 15),
+			Color: ui.RGB(40, 40, 40),
 		})
 	case ButtonStateDown:
 		canvas.Reset()
@@ -129,7 +98,7 @@ func (e *buttonEssence) OnRender(element *ui.Element, canvas *ui.Canvas) {
 			),
 		)
 		canvas.Fill(ui.Fill{
-			Color: ui.RGB(30, 30, 30),
+			Color: ui.RGB(80, 80, 80),
 		})
 	}
 
@@ -158,8 +127,61 @@ func (e *buttonEssence) OnRender(element *ui.Element, canvas *ui.Canvas) {
 	}
 }
 
-func (e *buttonEssence) onClick() {
-	if e.clickListener != nil {
-		e.clickListener()
+// NewButtonBaseEssence creates a new ButtonBaseEssence instance.
+func NewButtonBaseEssence(onClick ClickListener) *ButtonBaseEssence {
+	return &ButtonBaseEssence{
+		state:   ButtonStateUp,
+		onClick: onClick,
 	}
+}
+
+var _ ui.ElementMouseHandler = (*ButtonBaseEssence)(nil)
+
+// ButtonBaseEssence provides a basic mouse event handling for
+// a button control.
+// You are expected to compose this structure into an essence that
+// can do the actual rendering.
+type ButtonBaseEssence struct {
+	state   ButtonState
+	onClick ClickListener
+}
+
+// SetOnClick changes the ClickListener.
+func (e *ButtonBaseEssence) SetOnClick(onClick ClickListener) {
+	e.onClick = onClick
+}
+
+// State returns the current state of the button.
+func (e *ButtonBaseEssence) State() ButtonState {
+	return e.state
+}
+
+func (e *ButtonBaseEssence) OnMouseEvent(element *ui.Element, event ui.MouseEvent) bool {
+	context := element.Context()
+	switch event.Type {
+	case ui.MouseEventTypeEnter:
+		e.state = ButtonStateOver
+		context.Window().Invalidate()
+		return true
+	case ui.MouseEventTypeLeave:
+		e.state = ButtonStateUp
+		context.Window().Invalidate()
+		return true
+	case ui.MouseEventTypeUp:
+		if event.Button == ui.MouseButtonLeft {
+			if e.state == ButtonStateDown {
+				e.onClick()
+			}
+			e.state = ButtonStateOver
+			context.Window().Invalidate()
+			return true
+		}
+	case ui.MouseEventTypeDown:
+		if event.Button == ui.MouseButtonLeft {
+			e.state = ButtonStateDown
+			context.Window().Invalidate()
+			return true
+		}
+	}
+	return false
 }
