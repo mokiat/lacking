@@ -373,23 +373,23 @@ func (c *canvasRenderer) SetClipRect(left, right, top, bottom float32) {
 // DrawSurface renders the specified surface. The surface's Render
 // method will be called when needed and is expected to return a texture
 // representing the rendered frame.
-func (c *canvasRenderer) DrawSurface(surface Surface, position Position, size Size) {
-	texture := surface.Render(size.Width, size.Height)
+func (c *canvasRenderer) DrawSurface(surface Surface, position, size sprec.Vec2) {
+	texture, texSize := surface.Render()
 
 	c.Reset()
 	c.Rectangle(
-		sprec.NewVec2(float32(position.X), float32(position.Y)),
-		sprec.NewVec2(float32(size.Width), float32(size.Height)),
+		position,
+		size,
 	)
 	c.Fill(Fill{
 		Rule: FillRuleSimple,
 		Image: &Image{ // TODO: Don't allocate
 			texture: texture,
-			size:    size,
+			size:    texSize,
 		},
 		Color:       White(),
-		ImageOffset: sprec.NewVec2(0.0, float32(size.Height)),
-		ImageSize:   sprec.NewVec2(float32(size.Width), -float32(size.Height)),
+		ImageOffset: sprec.NewVec2(0.0, size.Y),
+		ImageSize:   sprec.NewVec2(size.X, -size.Y),
 	})
 }
 
@@ -738,7 +738,7 @@ type Fill struct {
 
 // Surface represents an auxiliary drawer.
 type Surface interface {
-	Render(width, height int) render.Texture
+	Render() (render.Texture, Size)
 }
 
 func uiColorToVec(color Color) sprec.Vec4 {
