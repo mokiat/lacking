@@ -3,7 +3,6 @@ package pack
 import (
 	"fmt"
 
-	"github.com/mokiat/lacking/data/asset"
 	gameasset "github.com/mokiat/lacking/game/asset"
 )
 
@@ -40,12 +39,12 @@ type SaveCubeTextureAction struct {
 	registry      gameasset.Registry
 	id            string
 	imageProvider CubeImageProvider
-	format        asset.TexelFormat
+	format        gameasset.TexelFormat
 }
 
 type SaveCubeTextureOption func(a *SaveCubeTextureAction)
 
-func WithFormat(format asset.TexelFormat) SaveCubeTextureOption {
+func WithFormat(format gameasset.TexelFormat) SaveCubeTextureOption {
 	return func(a *SaveCubeTextureAction) {
 		a.format = format
 	}
@@ -60,9 +59,11 @@ func (a *SaveCubeTextureAction) Run() error {
 
 	textureData := func(side CubeSide) []byte {
 		switch a.format {
-		case asset.TexelFormatRGBA8:
+		case gameasset.TexelFormatRGBA8:
 			return texture.RGBA8Data(side)
-		case asset.TexelFormatRGBA32F:
+		case gameasset.TexelFormatRGBA16F:
+			return texture.RGBA16FData(side)
+		case gameasset.TexelFormatRGBA32F:
 			return texture.RGBA32FData(side)
 		default:
 			panic(fmt.Errorf("unsupported format: %d", a.format))
@@ -100,15 +101,15 @@ func (a *SaveCubeTextureAction) Run() error {
 	return nil
 }
 
-func BuildTwoDTextureAsset(image *Image) *asset.TwoDTexture {
-	textureAsset := &asset.TwoDTexture{
+func BuildTwoDTextureAsset(image *Image) *gameasset.TwoDTexture {
+	textureAsset := &gameasset.TwoDTexture{
 		Width:     uint16(image.Width),
 		Height:    uint16(image.Height),
-		WrapModeS: asset.WrapModeRepeat,
-		WrapModeT: asset.WrapModeRepeat,
-		MagFilter: asset.FilterModeLinear,
-		MinFilter: asset.FilterModeLinearMipmapLinear,
-		Format:    asset.TexelFormatRGBA8,
+		WrapModeS: gameasset.WrapModeRepeat,
+		WrapModeT: gameasset.WrapModeRepeat,
+		MagFilter: gameasset.FilterModeLinear,
+		MinFilter: gameasset.FilterModeLinearMipmapLinear,
+		Format:    gameasset.TexelFormatRGBA8,
 		Data:      image.RGBA8Data(),
 	}
 	return textureAsset

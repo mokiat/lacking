@@ -40,6 +40,7 @@ const (
 	TexelFormatRGB32F
 	TexelFormatRGBA8
 	TexelFormatRGBA16
+	TexelFormatRGBA16F
 	TexelFormatRGBA32F
 	TexelFormatDepth32F
 )
