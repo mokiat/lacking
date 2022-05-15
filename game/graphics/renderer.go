@@ -245,7 +245,7 @@ func (r *sceneRenderer) Allocate() {
 			Reference:      0x00,
 			WriteMask:      0xFF,
 		},
-		ColorWrite:                  [4]bool{true, true, true, true},
+		ColorWrite:                  render.ColorMaskTrue,
 		BlendEnabled:                true,
 		BlendColor:                  [4]float32{0.0, 0.0, 0.0, 0.0},
 		BlendSourceColorFactor:      render.BlendFactorOne,
@@ -331,7 +331,7 @@ func (r *sceneRenderer) Allocate() {
 			Reference:      0x00,
 			WriteMask:      0xFF,
 		},
-		ColorWrite:   [4]bool{true, true, true, true},
+		ColorWrite:   render.ColorMaskTrue,
 		BlendEnabled: false,
 	})
 	r.skycolorPresentation = internal.NewSkyboxPresentation(r.api,
@@ -366,7 +366,7 @@ func (r *sceneRenderer) Allocate() {
 			Reference:      0x00,
 			WriteMask:      0xFF,
 		},
-		ColorWrite:   [4]bool{true, true, true, true},
+		ColorWrite:   render.ColorMaskTrue,
 		BlendEnabled: false,
 	})
 }
@@ -378,10 +378,11 @@ func (r *sceneRenderer) Release() {
 
 	defer r.releaseFramebuffers()
 
-	defer r.exposureBuffer.Release()
-	defer r.exposurePresentation.Delete()
-	defer r.exposureFramebuffer.Release()
 	defer r.exposureAlbedoTexture.Release()
+	defer r.exposureFramebuffer.Release()
+	defer r.exposurePresentation.Delete()
+	defer r.exposurePipeline.Release()
+	defer r.exposureBuffer.Release()
 
 	defer r.postprocessingPresentation.Delete()
 	defer r.postprocessingPipeline.Release()
