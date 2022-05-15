@@ -86,7 +86,7 @@ func (r *sceneRenderer) createFramebuffers(width, height int) {
 		Filtering:       render.FilterModeNearest,
 		Mipmapping:      false,
 		GammaCorrection: false,
-		Format:          render.DataFormatRGBA32F,
+		Format:          render.DataFormatRGBA16F,
 	})
 	r.geometryDepthTexture = r.api.CreateDepthTexture2D(render.DepthTexture2DInfo{
 		Width:  r.framebufferWidth,
@@ -107,7 +107,7 @@ func (r *sceneRenderer) createFramebuffers(width, height int) {
 		Filtering:       render.FilterModeNearest,
 		Mipmapping:      false,
 		GammaCorrection: false,
-		Format:          render.DataFormatRGBA32F,
+		Format:          render.DataFormatRGBA16F,
 	})
 	r.lightingFramebuffer = r.api.CreateFramebuffer(render.FramebufferInfo{
 		ColorAttachments: [4]render.Texture{
@@ -149,7 +149,7 @@ func (r *sceneRenderer) Allocate() {
 		Filtering:       render.FilterModeNearest,
 		Mipmapping:      false,
 		GammaCorrection: false,
-		Format:          render.DataFormatRGBA32F,
+		Format:          render.DataFormatRGBA16F,
 	})
 	r.exposureFramebuffer = r.api.CreateFramebuffer(render.FramebufferInfo{
 		ColorAttachments: [4]render.Texture{
