@@ -6,7 +6,6 @@ type PipelineInfo struct {
 	Topology                    Topology
 	Culling                     CullMode
 	FrontFace                   FaceOrientation
-	LineWidth                   float32
 	DepthTest                   bool
 	DepthWrite                  bool
 	DepthComparison             Comparison
