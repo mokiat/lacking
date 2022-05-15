@@ -14,9 +14,6 @@ func newRenderer(api render.API, shaders ShaderCollection) *sceneRenderer {
 		api:     api,
 		shaders: shaders,
 
-		framebufferWidth:  1920,
-		framebufferHeight: 1080,
-
 		exposureTarget: 1.0,
 
 		quadMesh: internal.NewQuadMesh(),
@@ -69,10 +66,9 @@ type sceneRenderer struct {
 	skycolorPipeline     render.Pipeline
 }
 
-func (r *sceneRenderer) Allocate() {
-	r.commands = r.api.CreateCommandQueue()
-
-	r.quadMesh.Allocate(r.api)
+func (r *sceneRenderer) createFramebuffers(width, height int) {
+	r.framebufferWidth = width
+	r.framebufferHeight = height
 
 	r.geometryAlbedoTexture = r.api.CreateColorTexture2D(render.ColorTexture2DInfo{
 		Width:           r.framebufferWidth,
@@ -125,6 +121,26 @@ func (r *sceneRenderer) Allocate() {
 		},
 		DepthAttachment: r.geometryDepthTexture,
 	})
+}
+
+func (r *sceneRenderer) releaseFramebuffers() {
+	defer r.geometryAlbedoTexture.Release()
+	defer r.geometryNormalTexture.Release()
+	defer r.geometryDepthTexture.Release()
+	defer r.geometryFramebuffer.Release()
+
+	defer r.lightingAlbedoTexture.Release()
+	defer r.lightingFramebuffer.Release()
+
+	defer r.forwardFramebuffer.Release()
+}
+
+func (r *sceneRenderer) Allocate() {
+	r.commands = r.api.CreateCommandQueue()
+
+	r.quadMesh.Allocate(r.api)
+
+	r.createFramebuffers(800, 600)
 
 	r.exposureAlbedoTexture = r.api.CreateColorTexture2D(render.ColorTexture2DInfo{
 		Width:           1,
@@ -360,15 +376,7 @@ func (r *sceneRenderer) Release() {
 
 	defer r.quadMesh.Release()
 
-	defer r.geometryAlbedoTexture.Release()
-	defer r.geometryNormalTexture.Release()
-	defer r.geometryDepthTexture.Release()
-	defer r.geometryFramebuffer.Release()
-
-	defer r.lightingAlbedoTexture.Release()
-	defer r.lightingFramebuffer.Release()
-
-	defer r.forwardFramebuffer.Release()
+	defer r.releaseFramebuffers()
 
 	defer r.exposureBuffer.Release()
 	defer r.exposurePresentation.Delete()
@@ -404,6 +412,11 @@ type renderCtx struct {
 }
 
 func (r *sceneRenderer) Render(framebuffer render.Framebuffer, viewport Viewport, scene *Scene, camera *Camera) {
+	if viewport.Width != r.framebufferWidth || viewport.Height != r.framebufferHeight {
+		r.releaseFramebuffers()
+		r.createFramebuffers(viewport.Width, viewport.Height)
+	}
+
 	projectionMatrix := r.evaluateProjectionMatrix(camera, viewport.Width, viewport.Height)
 	cameraMatrix := camera.Matrix()
 	viewMatrix := sprec.InverseMat4(cameraMatrix)
