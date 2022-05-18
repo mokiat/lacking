@@ -250,6 +250,8 @@ func (e *Engine) convertFormat(internalFormat InternalFormat, dataFormat DataFor
 	switch dataFormat {
 	case DataFormatRGBA8:
 		return render.DataFormatRGBA8
+	case DataFormatRGBA16F:
+		return render.DataFormatRGBA16F
 	case DataFormatRGBA32F:
 		return render.DataFormatRGBA32F
 	default:

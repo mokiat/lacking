@@ -3,11 +3,6 @@ package log
 
 import "log"
 
-// Debug logs a debug message.
-func Debug(format string, args ...interface{}) {
-	log.Printf("[debug] "+format, args...)
-}
-
 // Info logs an info message.
 func Info(format string, args ...interface{}) {
 	log.Printf("[info] "+format, args...)

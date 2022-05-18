@@ -7,6 +7,7 @@ import (
 	"github.com/mokiat/lacking/data"
 	"github.com/mokiat/lacking/game/graphics/internal"
 	"github.com/mokiat/lacking/render"
+	"github.com/x448/float16"
 )
 
 func newRenderer(api render.API, shaders ShaderCollection) *sceneRenderer {
@@ -14,10 +15,8 @@ func newRenderer(api render.API, shaders ShaderCollection) *sceneRenderer {
 		api:     api,
 		shaders: shaders,
 
-		framebufferWidth:  1920,
-		framebufferHeight: 1080,
-
-		exposureTarget: 1.0,
+		exposureBufferData: make([]byte, 4*2), // RGBA16F
+		exposureTarget:     1.0,
 
 		quadMesh: internal.NewQuadMesh(),
 
@@ -50,6 +49,7 @@ type sceneRenderer struct {
 	exposureFramebuffer   render.Framebuffer
 	exposurePresentation  *internal.LightingPresentation
 	exposurePipeline      render.Pipeline
+	exposureBufferData    data.Buffer
 	exposureBuffer        render.Buffer
 	exposureSync          render.Fence
 	exposureTarget        float32
@@ -69,10 +69,9 @@ type sceneRenderer struct {
 	skycolorPipeline     render.Pipeline
 }
 
-func (r *sceneRenderer) Allocate() {
-	r.commands = r.api.CreateCommandQueue()
-
-	r.quadMesh.Allocate(r.api)
+func (r *sceneRenderer) createFramebuffers(width, height int) {
+	r.framebufferWidth = width
+	r.framebufferHeight = height
 
 	r.geometryAlbedoTexture = r.api.CreateColorTexture2D(render.ColorTexture2DInfo{
 		Width:           r.framebufferWidth,
@@ -90,7 +89,7 @@ func (r *sceneRenderer) Allocate() {
 		Filtering:       render.FilterModeNearest,
 		Mipmapping:      false,
 		GammaCorrection: false,
-		Format:          render.DataFormatRGBA32F,
+		Format:          render.DataFormatRGBA16F,
 	})
 	r.geometryDepthTexture = r.api.CreateDepthTexture2D(render.DepthTexture2DInfo{
 		Width:  r.framebufferWidth,
@@ -111,7 +110,7 @@ func (r *sceneRenderer) Allocate() {
 		Filtering:       render.FilterModeNearest,
 		Mipmapping:      false,
 		GammaCorrection: false,
-		Format:          render.DataFormatRGBA32F,
+		Format:          render.DataFormatRGBA16F,
 	})
 	r.lightingFramebuffer = r.api.CreateFramebuffer(render.FramebufferInfo{
 		ColorAttachments: [4]render.Texture{
@@ -125,6 +124,26 @@ func (r *sceneRenderer) Allocate() {
 		},
 		DepthAttachment: r.geometryDepthTexture,
 	})
+}
+
+func (r *sceneRenderer) releaseFramebuffers() {
+	defer r.geometryAlbedoTexture.Release()
+	defer r.geometryNormalTexture.Release()
+	defer r.geometryDepthTexture.Release()
+	defer r.geometryFramebuffer.Release()
+
+	defer r.lightingAlbedoTexture.Release()
+	defer r.lightingFramebuffer.Release()
+
+	defer r.forwardFramebuffer.Release()
+}
+
+func (r *sceneRenderer) Allocate() {
+	r.commands = r.api.CreateCommandQueue()
+
+	r.quadMesh.Allocate(r.api)
+
+	r.createFramebuffers(800, 600)
 
 	r.exposureAlbedoTexture = r.api.CreateColorTexture2D(render.ColorTexture2DInfo{
 		Width:           1,
@@ -133,7 +152,7 @@ func (r *sceneRenderer) Allocate() {
 		Filtering:       render.FilterModeNearest,
 		Mipmapping:      false,
 		GammaCorrection: false,
-		Format:          render.DataFormatRGBA32F,
+		Format:          render.DataFormatRGBA16F,
 	})
 	r.exposureFramebuffer = r.api.CreateFramebuffer(render.FramebufferInfo{
 		ColorAttachments: [4]render.Texture{
@@ -150,7 +169,6 @@ func (r *sceneRenderer) Allocate() {
 		Topology:     r.quadMesh.Topology,
 		Culling:      render.CullModeBack,
 		FrontFace:    render.FaceOrientationCCW,
-		LineWidth:    1.0,
 		DepthTest:    false,
 		DepthWrite:   false,
 		StencilTest:  false,
@@ -172,7 +190,6 @@ func (r *sceneRenderer) Allocate() {
 		Topology:        r.quadMesh.Topology,
 		Culling:         render.CullModeBack,
 		FrontFace:       render.FaceOrientationCCW,
-		LineWidth:       1.0,
 		DepthTest:       false,
 		DepthWrite:      false,
 		DepthComparison: render.ComparisonAlways,
@@ -209,7 +226,6 @@ func (r *sceneRenderer) Allocate() {
 		Topology:        r.quadMesh.Topology,
 		Culling:         render.CullModeBack,
 		FrontFace:       render.FaceOrientationCCW,
-		LineWidth:       1.0,
 		DepthTest:       false,
 		DepthWrite:      false,
 		DepthComparison: render.ComparisonAlways,
@@ -232,7 +248,7 @@ func (r *sceneRenderer) Allocate() {
 			Reference:      0x00,
 			WriteMask:      0xFF,
 		},
-		ColorWrite:                  [4]bool{true, true, true, true},
+		ColorWrite:                  render.ColorMaskTrue,
 		BlendEnabled:                true,
 		BlendColor:                  [4]float32{0.0, 0.0, 0.0, 0.0},
 		BlendSourceColorFactor:      render.BlendFactorOne,
@@ -252,7 +268,6 @@ func (r *sceneRenderer) Allocate() {
 		Topology:        r.quadMesh.Topology,
 		Culling:         render.CullModeBack,
 		FrontFace:       render.FaceOrientationCCW,
-		LineWidth:       1.0,
 		DepthTest:       false,
 		DepthWrite:      false,
 		DepthComparison: render.ComparisonAlways,
@@ -297,7 +312,6 @@ func (r *sceneRenderer) Allocate() {
 		Topology:        r.skyboxMesh.Topology,
 		Culling:         render.CullModeBack,
 		FrontFace:       render.FaceOrientationCCW,
-		LineWidth:       1.0,
 		DepthTest:       true,
 		DepthWrite:      false,
 		DepthComparison: render.ComparisonLessOrEqual,
@@ -320,7 +334,7 @@ func (r *sceneRenderer) Allocate() {
 			Reference:      0x00,
 			WriteMask:      0xFF,
 		},
-		ColorWrite:   [4]bool{true, true, true, true},
+		ColorWrite:   render.ColorMaskTrue,
 		BlendEnabled: false,
 	})
 	r.skycolorPresentation = internal.NewSkyboxPresentation(r.api,
@@ -333,7 +347,6 @@ func (r *sceneRenderer) Allocate() {
 		Topology:        r.skyboxMesh.Topology,
 		Culling:         render.CullModeBack,
 		FrontFace:       render.FaceOrientationCCW,
-		LineWidth:       1.0,
 		DepthTest:       true,
 		DepthWrite:      false,
 		DepthComparison: render.ComparisonLessOrEqual,
@@ -356,7 +369,7 @@ func (r *sceneRenderer) Allocate() {
 			Reference:      0x00,
 			WriteMask:      0xFF,
 		},
-		ColorWrite:   [4]bool{true, true, true, true},
+		ColorWrite:   render.ColorMaskTrue,
 		BlendEnabled: false,
 	})
 }
@@ -366,20 +379,13 @@ func (r *sceneRenderer) Release() {
 
 	defer r.quadMesh.Release()
 
-	defer r.geometryAlbedoTexture.Release()
-	defer r.geometryNormalTexture.Release()
-	defer r.geometryDepthTexture.Release()
-	defer r.geometryFramebuffer.Release()
+	defer r.releaseFramebuffers()
 
-	defer r.lightingAlbedoTexture.Release()
-	defer r.lightingFramebuffer.Release()
-
-	defer r.forwardFramebuffer.Release()
-
-	defer r.exposureBuffer.Release()
-	defer r.exposurePresentation.Delete()
-	defer r.exposureFramebuffer.Release()
 	defer r.exposureAlbedoTexture.Release()
+	defer r.exposureFramebuffer.Release()
+	defer r.exposurePresentation.Delete()
+	defer r.exposurePipeline.Release()
+	defer r.exposureBuffer.Release()
 
 	defer r.postprocessingPresentation.Delete()
 	defer r.postprocessingPipeline.Release()
@@ -410,6 +416,11 @@ type renderCtx struct {
 }
 
 func (r *sceneRenderer) Render(framebuffer render.Framebuffer, viewport Viewport, scene *Scene, camera *Camera) {
+	if viewport.Width != r.framebufferWidth || viewport.Height != r.framebufferHeight {
+		r.releaseFramebuffers()
+		r.createFramebuffers(viewport.Width, viewport.Height)
+	}
+
 	projectionMatrix := r.evaluateProjectionMatrix(camera, viewport.Width, viewport.Height)
 	cameraMatrix := camera.Matrix()
 	viewMatrix := sprec.InverseMat4(cameraMatrix)
@@ -528,7 +539,6 @@ func (r *sceneRenderer) renderMesh(ctx renderCtx, modelMatrix [16]float32, templ
 			Topology:        subMesh.topology,
 			Culling:         cullMode,
 			FrontFace:       render.FaceOrientationCCW,
-			LineWidth:       1.0,
 			DepthTest:       true,
 			DepthWrite:      true,
 			DepthComparison: render.ComparisonLessOrEqual,
@@ -698,14 +708,13 @@ func (r *sceneRenderer) renderExposureProbePass(ctx renderCtx) {
 	if r.exposureSync != nil {
 		switch r.exposureSync.Status() {
 		case render.FenceStatusSuccess:
-			colorData := data.Buffer(make([]byte, 4*4)) // TODO: Prevent allocation
 			r.exposureBuffer.Fetch(render.BufferFetchInfo{
 				Offset: 0,
-				Target: colorData,
+				Target: r.exposureBufferData,
 			})
-			colorR := colorData.Float32(0 * 4)
-			colorG := colorData.Float32(1 * 4)
-			colorB := colorData.Float32(2 * 4)
+			colorR := float16.Frombits(r.exposureBufferData.UInt16(0 * 2)).Float32()
+			colorG := float16.Frombits(r.exposureBufferData.UInt16(1 * 2)).Float32()
+			colorB := float16.Frombits(r.exposureBufferData.UInt16(2 * 2)).Float32()
 			brightness := 0.2126*colorR + 0.7152*colorG + 0.0722*colorB
 			if brightness < 0.001 {
 				brightness = 0.001
@@ -761,7 +770,7 @@ func (r *sceneRenderer) renderExposureProbePass(ctx renderCtx) {
 			Y:      0,
 			Width:  1,
 			Height: 1,
-			Format: render.DataFormatRGBA32F,
+			Format: render.DataFormatRGBA16F,
 		})
 		r.api.SubmitQueue(r.commands)
 		r.exposureSync = r.api.CreateFence()

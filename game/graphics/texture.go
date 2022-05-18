@@ -93,6 +93,7 @@ type Filter int
 
 const (
 	DataFormatRGBA8 DataFormat = 1 + iota
+	DataFormatRGBA16F
 	DataFormatRGBA32F
 )
 
@@ -100,6 +101,7 @@ type DataFormat int
 
 const (
 	InternalFormatRGBA8 InternalFormat = 1 + iota
+	InternalFormatRGBA16F
 	InternalFormatRGBA32F
 )
 

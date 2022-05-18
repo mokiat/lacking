@@ -97,6 +97,8 @@ func resolveDataFormat(format asset.TexelFormat) graphics.DataFormat {
 	switch format {
 	case asset.TexelFormatRGBA8:
 		return graphics.DataFormatRGBA8
+	case asset.TexelFormatRGBA16F:
+		return graphics.DataFormatRGBA16F
 	case asset.TexelFormatRGBA32F:
 		return graphics.DataFormatRGBA32F
 	default:
@@ -109,6 +111,8 @@ func resolveInternalFormat(format asset.TexelFormat) graphics.InternalFormat {
 	switch format {
 	case asset.TexelFormatRGBA8:
 		return graphics.InternalFormatRGBA8
+	case asset.TexelFormatRGBA16F:
+		return graphics.InternalFormatRGBA16F
 	case asset.TexelFormatRGBA32F:
 		return graphics.InternalFormatRGBA32F
 	default:

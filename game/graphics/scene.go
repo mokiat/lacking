@@ -104,15 +104,13 @@ func (s *Scene) CreateMesh(template *MeshTemplate) *Mesh {
 // Render draws this scene to the specified viewport
 // looking through the specified camera.
 func (s *Scene) Render(viewport Viewport, camera *Camera) {
-	gfxCamera := camera
-	s.renderer.Render(s.renderer.api.DefaultFramebuffer(), viewport, s, gfxCamera)
+	s.renderer.Render(s.renderer.api.DefaultFramebuffer(), viewport, s, camera)
 }
 
 // Render draws this scene to the specified viewport
 // looking through the specified camera.
 func (s *Scene) RenderFramebuffer(framebuffer render.Framebuffer, viewport Viewport, camera *Camera) {
-	gfxCamera := camera
-	s.renderer.Render(framebuffer, viewport, s, gfxCamera)
+	s.renderer.Render(framebuffer, viewport, s, camera)
 }
 
 // Delete removes this scene and releases all

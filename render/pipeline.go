@@ -6,7 +6,6 @@ type PipelineInfo struct {
 	Topology                    Topology
 	Culling                     CullMode
 	FrontFace                   FaceOrientation
-	LineWidth                   float32
 	DepthTest                   bool
 	DepthWrite                  bool
 	DepthComparison             Comparison
@@ -71,7 +70,7 @@ type StencilOperationState struct {
 	PassOp         StencilOperation
 	Comparison     Comparison
 	ComparisonMask uint32
-	Reference      uint32
+	Reference      int32
 	WriteMask      uint32
 }
 

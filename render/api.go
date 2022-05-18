@@ -24,6 +24,14 @@ type API interface {
 	BeginRenderPass(info RenderPassInfo)
 	EndRenderPass()
 
+	// Invalidate indicates that the graphics state might have changed
+	// from outside this API and any cached state by the API should
+	// be discarded.
+	//
+	// Using this command will force a subsequent draw command to initialize
+	// all graphics state (e.g. blend state, depth state, stencil state, etc.)
+	Invalidate()
+
 	BindPipeline(pipeline Pipeline)
 	Uniform1f(location UniformLocation, value float32)
 	Uniform1i(location UniformLocation, value int)

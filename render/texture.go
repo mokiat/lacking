@@ -20,6 +20,7 @@ type DataFormat int
 
 const (
 	DataFormatRGBA8 DataFormat = iota
+	DataFormatRGBA16F
 	DataFormatRGBA32F
 )
 
