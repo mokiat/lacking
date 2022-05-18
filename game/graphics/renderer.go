@@ -7,6 +7,7 @@ import (
 	"github.com/mokiat/lacking/data"
 	"github.com/mokiat/lacking/game/graphics/internal"
 	"github.com/mokiat/lacking/render"
+	"github.com/x448/float16"
 )
 
 func newRenderer(api render.API, shaders ShaderCollection) *sceneRenderer {
@@ -14,7 +15,8 @@ func newRenderer(api render.API, shaders ShaderCollection) *sceneRenderer {
 		api:     api,
 		shaders: shaders,
 
-		exposureTarget: 1.0,
+		exposureBufferData: make([]byte, 4*2), // RGBA16F
+		exposureTarget:     1.0,
 
 		quadMesh: internal.NewQuadMesh(),
 
@@ -47,6 +49,7 @@ type sceneRenderer struct {
 	exposureFramebuffer   render.Framebuffer
 	exposurePresentation  *internal.LightingPresentation
 	exposurePipeline      render.Pipeline
+	exposureBufferData    data.Buffer
 	exposureBuffer        render.Buffer
 	exposureSync          render.Fence
 	exposureTarget        float32
@@ -705,14 +708,13 @@ func (r *sceneRenderer) renderExposureProbePass(ctx renderCtx) {
 	if r.exposureSync != nil {
 		switch r.exposureSync.Status() {
 		case render.FenceStatusSuccess:
-			colorData := data.Buffer(make([]byte, 4*4)) // TODO: Prevent allocation
 			r.exposureBuffer.Fetch(render.BufferFetchInfo{
 				Offset: 0,
-				Target: colorData,
+				Target: r.exposureBufferData,
 			})
-			colorR := colorData.Float32(0 * 4)
-			colorG := colorData.Float32(1 * 4)
-			colorB := colorData.Float32(2 * 4)
+			colorR := float16.Frombits(r.exposureBufferData.UInt16(0 * 2)).Float32()
+			colorG := float16.Frombits(r.exposureBufferData.UInt16(1 * 2)).Float32()
+			colorB := float16.Frombits(r.exposureBufferData.UInt16(2 * 2)).Float32()
 			brightness := 0.2126*colorR + 0.7152*colorG + 0.0722*colorB
 			if brightness < 0.001 {
 				brightness = 0.001
@@ -768,7 +770,7 @@ func (r *sceneRenderer) renderExposureProbePass(ctx renderCtx) {
 			Y:      0,
 			Width:  1,
 			Height: 1,
-			Format: render.DataFormatRGBA32F,
+			Format: render.DataFormatRGBA16F,
 		})
 		r.api.SubmitQueue(r.commands)
 		r.exposureSync = r.api.CreateFence()
