@@ -44,16 +44,15 @@ func (o *TwoDTextureOperator) Allocate(registry *Registry, id string) (interface
 
 	registry.ScheduleVoid(func() {
 		definition := graphics.TwoDTextureDefinition{
-			Width:          int(texAsset.Width),
-			Height:         int(texAsset.Height),
-			WrapS:          convertWrapMode(texAsset.WrapModeS),
-			WrapT:          convertWrapMode(texAsset.WrapModeT),
-			MinFilter:      graphics.FilterLinearMipmapLinear,
-			MagFilter:      graphics.FilterLinear,
-			UseAnisotropy:  true,
-			DataFormat:     graphics.DataFormatRGBA8,
-			InternalFormat: graphics.InternalFormatRGBA8,
-			Data:           texAsset.Data,
+			Width:           int(texAsset.Width),
+			Height:          int(texAsset.Height),
+			Wrapping:        resolveWrapMode(texAsset.Wrapping),
+			Filtering:       resolveFilter(texAsset.Filtering),
+			GenerateMipmaps: texAsset.Flags.Has(asset.TextureFlagMipmapping),
+			GammaCorrection: !texAsset.Flags.Has(asset.TextureFlagLinear),
+			DataFormat:      graphics.DataFormatRGBA8,
+			InternalFormat:  graphics.InternalFormatRGBA8,
+			Data:            texAsset.Data,
 		}
 		texture.GFXTexture = o.gfxEngine.CreateTwoDTexture(definition)
 	}).Wait()
@@ -71,10 +70,8 @@ func (o *TwoDTextureOperator) Release(registry *Registry, resource interface{}) 
 	return nil
 }
 
-func convertWrapMode(wrap asset.WrapMode) graphics.Wrap {
+func resolveWrapMode(wrap asset.WrapMode) graphics.Wrap {
 	switch wrap {
-	case asset.WrapModeUnspecified:
-		return graphics.WrapClampToEdge
 	case asset.WrapModeRepeat:
 		return graphics.WrapRepeat
 	case asset.WrapModeMirroredRepeat:

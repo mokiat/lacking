@@ -18,17 +18,7 @@ func (a *SaveTwoDTextureAssetAction) Describe() string {
 
 func (a *SaveTwoDTextureAssetAction) Run() error {
 	image := a.imageProvider.Image()
-
-	textureAsset := &gameasset.TwoDTexture{
-		Width:     uint16(image.Width),
-		Height:    uint16(image.Height),
-		WrapModeS: gameasset.WrapModeRepeat,
-		WrapModeT: gameasset.WrapModeRepeat,
-		MagFilter: gameasset.FilterModeLinear,
-		MinFilter: gameasset.FilterModeLinearMipmapLinear,
-		Format:    gameasset.TexelFormatRGBA8,
-		Data:      image.RGBA8Data(),
-	}
+	textureAsset := BuildTwoDTextureAsset(image)
 	if err := a.registry.WriteContent(a.id, textureAsset); err != nil {
 		return fmt.Errorf("failed to write asset: %w", err)
 	}
@@ -72,8 +62,8 @@ func (a *SaveCubeTextureAction) Run() error {
 
 	textureAsset := &gameasset.CubeTexture{
 		Dimension: uint16(texture.Dimension),
-		MagFilter: gameasset.FilterModeLinear,
-		MinFilter: gameasset.FilterModeLinear,
+		Filtering: gameasset.FilterModeLinear,
+		Flags:     gameasset.TextureFlagNone,
 		Format:    gameasset.TexelFormat(a.format),
 	}
 	textureAsset.FrontSide = gameasset.CubeTextureSide{
@@ -105,10 +95,9 @@ func BuildTwoDTextureAsset(image *Image) *gameasset.TwoDTexture {
 	textureAsset := &gameasset.TwoDTexture{
 		Width:     uint16(image.Width),
 		Height:    uint16(image.Height),
-		WrapModeS: gameasset.WrapModeRepeat,
-		WrapModeT: gameasset.WrapModeRepeat,
-		MagFilter: gameasset.FilterModeLinear,
-		MinFilter: gameasset.FilterModeLinearMipmapLinear,
+		Wrapping:  gameasset.WrapModeRepeat,
+		Filtering: gameasset.FilterModeLinear,
+		Flags:     gameasset.TextureFlagMipmapping,
 		Format:    gameasset.TexelFormatRGBA8,
 		Data:      image.RGBA8Data(),
 	}

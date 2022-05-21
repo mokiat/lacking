@@ -14,19 +14,16 @@ func (t *TwoDTexture) encodeV1(out io.Writer) error {
 	if err := writer.WriteUInt16(t.Height); err != nil {
 		return err
 	}
-	if err := writer.WriteUInt8(uint8(t.WrapModeS)); err != nil {
+	if err := writer.WriteUInt8(uint8(t.Wrapping)); err != nil {
 		return err
 	}
-	if err := writer.WriteUInt8(uint8(t.WrapModeT)); err != nil {
+	if err := writer.WriteUInt8(uint8(t.Filtering)); err != nil {
 		return err
 	}
-	if err := writer.WriteUInt8(uint8(t.MagFilter)); err != nil {
+	if err := writer.WriteUInt8(uint8(t.Format)); err != nil {
 		return err
 	}
-	if err := writer.WriteUInt8(uint8(t.MinFilter)); err != nil {
-		return err
-	}
-	if err := writer.WriteUInt32(uint32(t.Format)); err != nil {
+	if err := writer.WriteUInt8(uint8(t.Flags)); err != nil {
 		return err
 	}
 	if err := writer.WriteByteBlock(t.Data); err != nil {
@@ -47,30 +44,25 @@ func (t *TwoDTexture) decodeV1(in io.Reader) error {
 	} else {
 		t.Height = height
 	}
-	if wrapModeS, err := reader.ReadUInt8(); err != nil {
+	if wrapping, err := reader.ReadUInt8(); err != nil {
 		return err
 	} else {
-		t.WrapModeS = WrapMode(wrapModeS)
+		t.Wrapping = WrapMode(wrapping)
 	}
-	if wrapModeT, err := reader.ReadUInt8(); err != nil {
+	if filtering, err := reader.ReadUInt8(); err != nil {
 		return err
 	} else {
-		t.WrapModeT = WrapMode(wrapModeT)
+		t.Filtering = FilterMode(filtering)
 	}
-	if magFilter, err := reader.ReadUInt8(); err != nil {
-		return err
-	} else {
-		t.MagFilter = FilterMode(magFilter)
-	}
-	if minFilter, err := reader.ReadUInt8(); err != nil {
-		return err
-	} else {
-		t.MinFilter = FilterMode(minFilter)
-	}
-	if format, err := reader.ReadUInt32(); err != nil {
+	if format, err := reader.ReadUInt8(); err != nil {
 		return err
 	} else {
 		t.Format = TexelFormat(format)
+	}
+	if flags, err := reader.ReadUInt8(); err != nil {
+		return err
+	} else {
+		t.Flags = TextureFlag(flags)
 	}
 	if data, err := reader.ReadBytesBlock(); err != nil {
 		return err
@@ -85,13 +77,13 @@ func (t *CubeTexture) encodeV1(out io.Writer) error {
 	if err := writer.WriteUInt16(t.Dimension); err != nil {
 		return err
 	}
-	if err := writer.WriteUInt8(uint8(t.MagFilter)); err != nil {
+	if err := writer.WriteUInt8(uint8(t.Filtering)); err != nil {
 		return err
 	}
-	if err := writer.WriteUInt8(uint8(t.MinFilter)); err != nil {
+	if err := writer.WriteUInt8(uint8(t.Format)); err != nil {
 		return err
 	}
-	if err := writer.WriteUInt32(uint32(t.Format)); err != nil {
+	if err := writer.WriteUInt8(uint8(t.Flags)); err != nil {
 		return err
 	}
 	if err := writer.WriteByteBlock(t.FrontSide.Data); err != nil {
@@ -122,20 +114,20 @@ func (t *CubeTexture) decodeV1(in io.Reader) error {
 	} else {
 		t.Dimension = dimension
 	}
-	if magFilter, err := reader.ReadUInt8(); err != nil {
+	if filtering, err := reader.ReadUInt8(); err != nil {
 		return err
 	} else {
-		t.MagFilter = FilterMode(magFilter)
+		t.Filtering = FilterMode(filtering)
 	}
-	if minFilter, err := reader.ReadUInt8(); err != nil {
-		return err
-	} else {
-		t.MinFilter = FilterMode(minFilter)
-	}
-	if format, err := reader.ReadUInt32(); err != nil {
+	if format, err := reader.ReadUInt8(); err != nil {
 		return err
 	} else {
 		t.Format = TexelFormat(format)
+	}
+	if flags, err := reader.ReadUInt8(); err != nil {
+		return err
+	} else {
+		t.Flags = TextureFlag(flags)
 	}
 	if frontData, err := reader.ReadBytesBlock(); err != nil {
 		return err

@@ -24,17 +24,14 @@ type TwoDTextureDefinition struct {
 	Width  int
 	Height int
 
-	WrapS Wrap
-	WrapT Wrap
-
-	MinFilter     Filter
-	MagFilter     Filter
-	UseAnisotropy bool
+	Wrapping        Wrap
+	Filtering       Filter
+	GenerateMipmaps bool
+	GammaCorrection bool
 
 	InternalFormat InternalFormat
 	DataFormat     DataFormat
-
-	Data []byte
+	Data           []byte
 }
 
 func newCubeTexture(texture render.Texture) *CubeTexture {
@@ -58,12 +55,12 @@ func (t *CubeTexture) Delete() {
 type CubeTextureDefinition struct {
 	Dimension int
 
-	MinFilter Filter
-	MagFilter Filter
+	Filtering       Filter
+	GenerateMipmaps bool
+	GammaCorrection bool
 
 	InternalFormat InternalFormat
 	DataFormat     DataFormat
-
 	FrontSideData  []byte
 	BackSideData   []byte
 	LeftSideData   []byte
@@ -73,7 +70,7 @@ type CubeTextureDefinition struct {
 }
 
 const (
-	WrapClampToEdge Wrap = 1 + iota
+	WrapClampToEdge Wrap = iota
 	WrapRepeat
 	WrapMirroredRepat
 )
@@ -81,12 +78,9 @@ const (
 type Wrap int
 
 const (
-	FilterNearest Filter = 1 + iota
+	FilterNearest Filter = iota
 	FilterLinear
-	FilterNearestMipmapNearest
-	FilterNearestMipmapLinear
-	FilterLinearMipmapNearest
-	FilterLinearMipmapLinear
+	FilterAnisotropic
 )
 
 type Filter int

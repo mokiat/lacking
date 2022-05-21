@@ -6,55 +6,64 @@ import (
 )
 
 const (
-	WrapModeUnspecified WrapMode = iota
-	WrapModeRepeat
+	WrapModeRepeat WrapMode = iota
 	WrapModeMirroredRepeat
 	WrapModeClampToEdge
-	WrapModeMirroredClampToEdge
 )
 
 type WrapMode uint8
 
 const (
-	FilterModeUnspecified FilterMode = iota
-	FilterModeNearest
+	FilterModeNearest FilterMode = iota
 	FilterModeLinear
-	FilterModeNearestMipmapNearest
-	FilterModeNearestMipmapLinear
-	FilterModeLinearMipmapNearest
-	FilterModeLinearMipmapLinear
+	FilterModeAnisotropic
 )
 
 type FilterMode uint8
 
 const (
-	TexelFormatUnspecified TexelFormat = iota
-	TexelFormatR8
+	TexelFormatR8 TexelFormat = iota
 	TexelFormatR16
+	TexelFormatR16F
 	TexelFormatR32F
 	TexelFormatRG8
 	TexelFormatRG16
+	TexelFormatRG16F
 	TexelFormatRG32F
 	TexelFormatRGB8
 	TexelFormatRGB16
+	TexelFormatRGB16F
 	TexelFormatRGB32F
 	TexelFormatRGBA8
 	TexelFormatRGBA16
 	TexelFormatRGBA16F
 	TexelFormatRGBA32F
+	TexelFormatDepth16F
 	TexelFormatDepth32F
 )
 
-type TexelFormat uint32
+type TexelFormat uint8
+
+const (
+	TextureFlagMipmapping TextureFlag = 1 << iota
+	TextureFlagLinear
+
+	TextureFlagNone TextureFlag = 0
+)
+
+type TextureFlag uint8
+
+func (f TextureFlag) Has(flag TextureFlag) bool {
+	return f&flag == flag
+}
 
 type TwoDTexture struct {
 	Width     uint16
 	Height    uint16
-	WrapModeS WrapMode
-	WrapModeT WrapMode
-	MagFilter FilterMode
-	MinFilter FilterMode
+	Wrapping  WrapMode
+	Filtering FilterMode
 	Format    TexelFormat
+	Flags     TextureFlag
 	Data      []byte
 }
 
@@ -93,9 +102,9 @@ type CubeTextureSide struct {
 
 type CubeTexture struct {
 	Dimension  uint16
-	MagFilter  FilterMode
-	MinFilter  FilterMode
+	Filtering  FilterMode
 	Format     TexelFormat
+	Flags      TextureFlag
 	FrontSide  CubeTextureSide
 	BackSide   CubeTextureSide
 	LeftSide   CubeTextureSide

@@ -45,8 +45,7 @@ func (o *CubeTextureOperator) Allocate(registry *Registry, id string) (interface
 	registry.ScheduleVoid(func() {
 		texture.GFXTexture = o.gfxEngine.CreateCubeTexture(graphics.CubeTextureDefinition{
 			Dimension:      int(texAsset.Dimension),
-			MagFilter:      resolveFilter(texAsset.MagFilter),
-			MinFilter:      resolveFilter(texAsset.MinFilter),
+			Filtering:      resolveFilter(texAsset.Filtering),
 			DataFormat:     resolveDataFormat(texAsset.Format),
 			InternalFormat: resolveInternalFormat(texAsset.Format),
 			FrontSideData:  texAsset.FrontSide.Data,
@@ -73,20 +72,12 @@ func (o *CubeTextureOperator) Release(registry *Registry, resource interface{}) 
 
 func resolveFilter(filter asset.FilterMode) graphics.Filter {
 	switch filter {
-	case asset.FilterModeUnspecified:
-		return graphics.FilterLinear
 	case asset.FilterModeNearest:
 		return graphics.FilterNearest
 	case asset.FilterModeLinear:
 		return graphics.FilterLinear
-	case asset.FilterModeNearestMipmapNearest:
-		return graphics.FilterNearestMipmapNearest
-	case asset.FilterModeNearestMipmapLinear:
-		return graphics.FilterNearestMipmapLinear
-	case asset.FilterModeLinearMipmapNearest:
-		return graphics.FilterLinearMipmapNearest
-	case asset.FilterModeLinearMipmapLinear:
-		return graphics.FilterLinearMipmapLinear
+	case asset.FilterModeAnisotropic:
+		return graphics.FilterAnisotropic
 	default:
 		panic(fmt.Errorf("unknown filter mode: %v", filter))
 	}
