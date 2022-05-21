@@ -47,7 +47,7 @@ const (
 	ImageModeCover
 )
 
-var Picture = co.ShallowCached(co.Define(func(props co.Properties) co.Instance {
+var Picture = co.Define(func(props co.Properties) co.Instance {
 	var (
 		data PictureData
 	)
@@ -83,7 +83,7 @@ var Picture = co.ShallowCached(co.Define(func(props co.Properties) co.Instance {
 		co.WithLayoutData(props.LayoutData())
 		co.WithChildren(props.Children())
 	})
-}))
+})
 
 var _ ui.ElementRenderHandler = (*pictureEssence)(nil)
 

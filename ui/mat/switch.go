@@ -10,7 +10,7 @@ type SwitchData struct {
 	VisibleChildIndex int
 }
 
-var Switch = co.ShallowCached(co.Define(func(props co.Properties) co.Instance {
+var Switch = co.Define(func(props co.Properties) co.Instance {
 	var data SwitchData
 	props.InjectOptionalData(&data, SwitchData{})
 
@@ -26,4 +26,4 @@ var Switch = co.ShallowCached(co.Define(func(props co.Properties) co.Instance {
 			)
 		}
 	})
-}))
+})

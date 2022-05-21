@@ -22,7 +22,7 @@ type PictureButtonCallbackData struct {
 	ClickListener ClickListener
 }
 
-var PictureButton = co.ShallowCached(co.Define(func(props co.Properties) co.Instance {
+var PictureButton = co.Define(func(props co.Properties) co.Instance {
 	var (
 		data         PictureButtonData
 		callbackData PictureButtonCallbackData
@@ -59,7 +59,7 @@ var PictureButton = co.ShallowCached(co.Define(func(props co.Properties) co.Inst
 		co.WithLayoutData(props.LayoutData())
 		co.WithChildren(props.Children())
 	})
-}))
+})
 
 var _ ui.ElementMouseHandler = (*pictureButtonEssence)(nil)
 var _ ui.ElementRenderHandler = (*pictureButtonEssence)(nil)

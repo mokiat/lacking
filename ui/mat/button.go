@@ -20,7 +20,7 @@ type ButtonCallbackData struct {
 	ClickListener ClickListener
 }
 
-var Button = co.ShallowCached(co.Define(func(props co.Properties) co.Instance {
+var Button = co.Define(func(props co.Properties) co.Instance {
 	var (
 		data         ButtonData
 		callbackData ButtonCallbackData
@@ -61,7 +61,7 @@ var Button = co.ShallowCached(co.Define(func(props co.Properties) co.Instance {
 		co.WithLayoutData(props.LayoutData())
 		co.WithChildren(props.Children())
 	})
-}))
+})
 
 var _ ui.ElementRenderHandler = (*buttonEssence)(nil)
 

@@ -67,21 +67,6 @@ func Controlled(delegate Component) Component {
 	}
 }
 
-// ShallowCached can be used to wrap a component and optimize
-// reconciliation by avoiding the rerendering of the component
-// if the data and layout data are equal to their previous values
-// when shallowly (==) compared.
-func ShallowCached(delegate Component) Component {
-	// NOTE: ShallowCached does not work correctly when there is an
-	// intermediate container that does not take data. The only way
-	// caching can be done is if all node instances caused by a node
-	// are recorded as dependencies.
-	return Component{
-		componentType: evaluateComponentType(),
-		componentFunc: delegate.componentFunc,
-	}
-}
-
 func evaluateComponentType() string {
 	_, file, line, _ := runtime.Caller(2)
 	return fmt.Sprintf("%s#%d", file, line)

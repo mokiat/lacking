@@ -103,8 +103,8 @@ func (e *scrollPaneEssence) OnRender(element *ui.Element, canvas *ui.Canvas) {
 	canvas.Rectangle(
 		sprec.NewVec2(0, 0),
 		sprec.NewVec2(
-			float32(element.Bounds().Size.Width),
-			float32(element.Bounds().Size.Height),
+			float32(element.Bounds().Width),
+			float32(element.Bounds().Height),
 		),
 	)
 	canvas.Fill(ui.Fill{

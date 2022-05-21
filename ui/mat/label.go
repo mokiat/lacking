@@ -14,7 +14,7 @@ type LabelData struct {
 	Text      string
 }
 
-var Label = co.ShallowCached(co.Define(func(props co.Properties) co.Instance {
+var Label = co.Define(func(props co.Properties) co.Instance {
 	var (
 		data LabelData
 	)
@@ -47,7 +47,7 @@ var Label = co.ShallowCached(co.Define(func(props co.Properties) co.Instance {
 		co.WithLayoutData(props.LayoutData())
 		co.WithChildren(props.Children())
 	})
-}))
+})
 
 var _ ui.ElementRenderHandler = (*labelEssence)(nil)
 
