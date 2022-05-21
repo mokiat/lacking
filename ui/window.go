@@ -166,9 +166,7 @@ func (w *windowHandler) OnKeyboardEvent(event KeyboardEvent) bool {
 }
 
 func (w *windowHandler) OnMouseEvent(event MouseEvent) bool {
-	// TODO: Use a better algorithm. This one does not handle resize.
-	w.processMouseLeave(w.root, event.Position, w.oldMousePosition)
-	w.processMouseEnter(w.root, event.Position, w.oldMousePosition)
+	w.checkMouseLeaveEnter(event.Position)
 	w.oldMousePosition = event.Position
 	if event.Type == MouseEventTypeDown {
 		oldFocusedElement := w.focusedElement
@@ -180,7 +178,17 @@ func (w *windowHandler) OnMouseEvent(event MouseEvent) bool {
 	return w.processMouseEvent(w.root, event)
 }
 
+func (w *windowHandler) checkMouseLeaveEnter(position Position) {
+	// TODO: Use a better algorithm. This one does not handle resize.
+	w.processMouseLeave(w.root, position, w.oldMousePosition)
+	w.processMouseEnter(w.root, position, w.oldMousePosition)
+}
+
 func (w *windowHandler) OnRender() {
+	// Check that mouse is still in the same Element. This can change
+	// when an Element gets disabled.
+	w.checkMouseLeaveEnter(w.oldMousePosition)
+
 	clipBounds := Bounds{
 		Position: NewPosition(0, 0),
 		Size:     w.size,
@@ -223,7 +231,7 @@ func (w *windowHandler) processFocusChange(element *Element, position Position) 
 }
 
 func (w *windowHandler) processMouseLeave(element *Element, newPosition, oldPosition Position) {
-	if !element.enabled || !element.visible {
+	if !element.visible {
 		return
 	}
 
@@ -236,7 +244,7 @@ func (w *windowHandler) processMouseLeave(element *Element, newPosition, oldPosi
 
 	relativeNewPosition := newPosition.Translate(-bounds.X, -bounds.Y)
 	relativeOldPosition := oldPosition.Translate(-bounds.X, -bounds.Y)
-	if !bounds.Contains(newPosition) {
+	if !bounds.Contains(newPosition) || !element.enabled {
 		element.onMouseEvent(MouseEvent{
 			Position: relativeNewPosition,
 			Type:     MouseEventTypeLeave,
