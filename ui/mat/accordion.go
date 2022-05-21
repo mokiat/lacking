@@ -120,9 +120,9 @@ func (e *accordionHeaderEssence) OnRender(element *ui.Element, canvas *ui.Canvas
 	var backgroundColor ui.Color
 	switch e.State() {
 	case ButtonStateOver:
-		backgroundColor = HoverOverlayColor
+		backgroundColor = PrimaryLightColor.Overlay(HoverOverlayColor)
 	case ButtonStateDown:
-		backgroundColor = PressOverlayColor
+		backgroundColor = PrimaryLightColor.Overlay(PressOverlayColor)
 	default:
 		backgroundColor = PrimaryLightColor
 	}

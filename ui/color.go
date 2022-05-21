@@ -133,6 +133,16 @@ type Color struct {
 	A uint8
 }
 
+// Overlay returns a new Color that is the result of overlaying the
+// specified color over the current color.
+// The specified color should have an alpha that is lower than 100%
+// for there to be any useful result.
+func (c Color) Overlay(color Color) Color {
+	result := MixColors(c, color, float32(color.A)/255.0)
+	result.A = 255
+	return result
+}
+
 // Transparent returns whether this color is transparent.
 //
 // A transparent color is one that is not at all visible
