@@ -1,7 +1,7 @@
 package mat
 
 import (
-	"github.com/mokiat/gomath/sprec"
+	"github.com/mokiat/gomath/dprec"
 	"github.com/mokiat/lacking/ui"
 	co "github.com/mokiat/lacking/ui/component"
 )
@@ -47,17 +47,20 @@ var ScrollPane = co.Define(func(props co.Properties) co.Instance {
 
 var _ ui.Layout = (*scrollPaneEssence)(nil)
 var _ ui.ElementMouseHandler = (*scrollPaneEssence)(nil)
-var _ ui.ElementRenderHandler = (*scrollPaneEssence)(nil)
 
 type scrollPaneEssence struct {
 	scrollHorizontally bool
 	scrollVertically   bool
 
-	offsetX float64
-	offsetY float64
+	offsetX    float64
+	offsetY    float64
+	maxOffsetX float64
+	maxOffsetY float64
 }
 
 func (l *scrollPaneEssence) Apply(element *ui.Element) {
+	var maxChildSize ui.Size
+
 	contentBounds := element.ContentBounds()
 	for childElement := element.FirstChild(); childElement != nil; childElement = childElement.RightSibling() {
 		layoutConfig := ElementLayoutData(childElement)
@@ -76,59 +79,41 @@ func (l *scrollPaneEssence) Apply(element *ui.Element) {
 			childSize.Height = maxInt(childSize.Height, contentBounds.Height)
 		}
 
+		maxChildSize = ui.Size{
+			Width:  maxInt(maxChildSize.Width, childSize.Width),
+			Height: maxInt(maxChildSize.Height, childSize.Height),
+		}
+
 		childElement.SetBounds(ui.Bounds{
-			Position: ui.NewPosition(int(l.offsetX), int(l.offsetY)),
+			Position: ui.NewPosition(-int(l.offsetX), -int(l.offsetY)),
 			Size:     childSize,
 		})
 	}
 
-	element.SetIdealSize(l.calculateIdealSize(element))
-}
-
-func (e *scrollPaneEssence) OnMouseEvent(element *ui.Element, event ui.MouseEvent) bool {
-	switch event.Type {
-	case ui.MouseEventTypeScroll:
-		e.offsetX += event.ScrollX * 10
-		e.offsetY += event.ScrollY * 10
-		e.Apply(element)
-		element.Context().Window().Invalidate()
-		return true
-	default:
-		return false
-	}
-}
-
-func (e *scrollPaneEssence) OnRender(element *ui.Element, canvas *ui.Canvas) {
-	canvas.Reset()
-	canvas.Rectangle(
-		sprec.NewVec2(0, 0),
-		sprec.NewVec2(
-			float32(element.Bounds().Width),
-			float32(element.Bounds().Height),
-		),
-	)
-	canvas.Fill(ui.Fill{
-		Color: ui.RGB(30, 255, 128),
+	l.maxOffsetX = float64(maxInt(0, maxChildSize.Width-contentBounds.Width))
+	l.maxOffsetY = float64(maxInt(0, maxChildSize.Height-contentBounds.Height))
+	element.SetIdealSize(ui.Size{
+		Width:  maxChildSize.Width + element.Padding().Horizontal(),
+		Height: maxChildSize.Height + element.Padding().Vertical(),
 	})
 }
 
-func (l *scrollPaneEssence) calculateIdealSize(element *ui.Element) ui.Size {
-	result := ui.NewSize(0, 0)
-	for childElement := element.FirstChild(); childElement != nil; childElement = childElement.RightSibling() {
-		layoutConfig := ElementLayoutData(childElement)
+func (e *scrollPaneEssence) OnMouseEvent(element *ui.Element, event ui.MouseEvent) bool {
+	// TODO: Support mouse dragging as a means to scroll
 
-		childSize := childElement.IdealSize()
-		if layoutConfig.Width.Specified {
-			childSize.Width = layoutConfig.Width.Value
-		}
-		if layoutConfig.Height.Specified {
-			childSize.Height = layoutConfig.Height.Value
-		}
-
-		result.Width = maxInt(result.Width, childSize.Width)
-		result.Height = maxInt(result.Height, childSize.Height)
+	if event.Type != ui.MouseEventTypeScroll {
+		return false
 	}
-	result.Width += element.Padding().Horizontal()
-	result.Height += element.Padding().Vertical()
-	return result
+
+	e.offsetX -= event.ScrollX * 10
+	e.offsetY -= event.ScrollY * 10
+	if e.scrollHorizontally && !e.scrollVertically {
+		e.offsetX -= event.ScrollY * 10
+	}
+	e.offsetX = dprec.Clamp(e.offsetX, 0.0, e.maxOffsetX)
+	e.offsetY = dprec.Clamp(e.offsetY, 0.0, e.maxOffsetY)
+
+	e.Apply(element)
+	element.Context().Window().Invalidate()
+	return true
 }
