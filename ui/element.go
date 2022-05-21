@@ -297,6 +297,15 @@ func (e *Element) SetBounds(bounds Bounds) {
 	}
 }
 
+// AbsoluteBounds returns the absolute bounds of the Element.
+func (e *Element) AbsoluteBounds() Bounds {
+	result := e.bounds
+	for el := e.parent; el != nil; el = el.parent {
+		result = result.Translate(el.bounds.Position)
+	}
+	return result
+}
+
 // ContentBounds returns the bounds of the content area
 // of this Element relative to the Element itself.
 // The content bounds are calculated based on the
