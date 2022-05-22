@@ -173,6 +173,9 @@ func (r *DirRegistry) WritePreview(guid string, img image.Image) error {
 
 func (r *DirRegistry) DeletePreview(guid string) error {
 	if err := os.Remove(r.previewFile(guid)); err != nil {
+		if os.IsNotExist(err) {
+			return ErrNotFound
+		}
 		return fmt.Errorf("failed to delete preview file: %w", err)
 	}
 	return nil
@@ -209,6 +212,9 @@ func (r *DirRegistry) WriteContent(guid string, target Encodable) error {
 
 func (r *DirRegistry) DeleteContent(guid string) error {
 	if err := os.Remove(r.contentFile(guid)); err != nil {
+		if os.IsNotExist(err) {
+			return ErrNotFound
+		}
 		return fmt.Errorf("failed to delete content file: %w", err)
 	}
 	return nil
