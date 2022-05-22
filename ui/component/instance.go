@@ -133,6 +133,11 @@ func WithChild(key string, instance Instance) {
 	instanceCtx.instance.children = append(instanceCtx.instance.children, instance)
 }
 
+// XWithChild is a helper function that resembles WithChild but does nothing.
+// This allows one to experiment during development without having to comment
+// out large sections of code and dealing with compilation issues.
+func XWithChild(key string, instance Instance) {}
+
 // WithChildren sets the children for the given component. Keep in mind that
 // any former children assigned via WithChild are replaced.
 func WithChildren(children []Instance) {
