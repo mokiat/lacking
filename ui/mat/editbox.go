@@ -9,7 +9,7 @@ import (
 
 var (
 	EditboxMinWidth = 100
-	EditboxHeight   = 24
+	EditboxHeight   = 28
 	EditboxFontFile = "mat:///roboto-regular.ttf"
 	EditboxFontSize = float32(18)
 )
@@ -50,8 +50,8 @@ var Editbox = co.Define(func(props co.Properties) co.Instance {
 	if data.Text != essence.text {
 		essence.text = data.Text
 		essence.volatileText = data.Text
-		essence.textSize = essence.font.TextSize(data.Text, EditboxFontSize)
 	}
+	essence.textSize = essence.font.TextSize(data.Text, EditboxFontSize)
 
 	// force specific height
 	layoutData.Height = optional.Value(EditboxHeight)
@@ -125,17 +125,18 @@ func (e *editboxEssence) OnRender(element *ui.Element, canvas *ui.Canvas) {
 	canvas.RoundRectangle(
 		sprec.ZeroVec2(),
 		sprec.NewVec2(width, height),
-		sprec.NewVec4(5, 5, 5, 5),
+		sprec.NewVec4(8, 8, 8, 8),
 	)
 	canvas.Fill(ui.Fill{
 		Color: SurfaceColor,
 	})
 	canvas.Stroke()
 
+	textPosition := sprec.NewVec2(5, (height-e.textSize.Y)/2)
 	canvas.Push()
 	canvas.SetClipRect(5, width-5, 2, height-2)
 	canvas.Reset()
-	canvas.FillText(text, sprec.NewVec2(5, (height-e.textSize.Y)/2), ui.Typography{
+	canvas.FillText(text, textPosition, ui.Typography{
 		Font:  e.font,
 		Size:  EditboxFontSize,
 		Color: OnSurfaceColor,
