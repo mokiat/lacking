@@ -69,10 +69,10 @@ func (f *Font) SubFamily() string {
 // TextSize returns the size it would take to draw the
 // specified text string at the specified font size.
 func (f *Font) TextSize(text string, fontSize float32) sprec.Vec2 {
-	if len(text) == 0 {
-		return sprec.ZeroVec2()
-	}
 	result := sprec.NewVec2(0, f.lineAscent+f.lineDescent)
+	if len(text) == 0 {
+		return sprec.Vec2Prod(result, float32(fontSize))
+	}
 	currentWidth := float32(0.0)
 	lastGlyph := (*fontGlyph)(nil)
 	for _, ch := range text {
