@@ -105,28 +105,43 @@ func (l *FrameLayout) Apply(element *ui.Element) {
 		switch layoutConfig.Alignment {
 		case AlignmentCenter:
 			childElement.SetBounds(ui.Bounds{
-				Position: ui.NewPosition(leftSize.Width, topSize.Height),
-				Size:     centerSize,
+				Position: ui.NewPosition(
+					contentBounds.X+leftSize.Width,
+					contentBounds.Y+topSize.Height,
+				),
+				Size: centerSize,
 			})
 		case AlignmentLeft:
 			childElement.SetBounds(ui.Bounds{
-				Position: ui.NewPosition(0, topSize.Height),
-				Size:     leftSize,
+				Position: ui.NewPosition(
+					contentBounds.X,
+					contentBounds.Y+topSize.Height,
+				),
+				Size: leftSize,
 			})
 		case AlignmentRight:
 			childElement.SetBounds(ui.Bounds{
-				Position: ui.NewPosition(leftSize.Width+centerSize.Width, topSize.Height),
-				Size:     rightSize,
+				Position: ui.NewPosition(
+					contentBounds.X+leftSize.Width+centerSize.Width,
+					contentBounds.Y+topSize.Height,
+				),
+				Size: rightSize,
 			})
 		case AlignmentTop:
 			childElement.SetBounds(ui.Bounds{
-				Position: ui.NewPosition(0, 0),
-				Size:     topSize,
+				Position: ui.NewPosition(
+					contentBounds.X,
+					contentBounds.Y,
+				),
+				Size: topSize,
 			})
 		case AlignmentBottom:
 			childElement.SetBounds(ui.Bounds{
-				Position: ui.NewPosition(0, topSize.Height+centerSize.Height),
-				Size:     bottomSize,
+				Position: ui.NewPosition(
+					contentBounds.X,
+					contentBounds.Y+topSize.Height+centerSize.Height,
+				),
+				Size: bottomSize,
 			})
 		}
 	}
