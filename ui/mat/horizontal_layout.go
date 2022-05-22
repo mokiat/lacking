@@ -9,7 +9,6 @@ import (
 type HorizontalLayoutSettings struct {
 	ContentAlignment Alignment
 	ContentSpacing   int
-	Flipped          bool
 }
 
 // NewHorizontalLayout creates a new HorizontalLayout instance.
@@ -17,7 +16,6 @@ func NewHorizontalLayout(settings HorizontalLayoutSettings) *HorizontalLayout {
 	return &HorizontalLayout{
 		contentAlignment: settings.ContentAlignment,
 		contentSpacing:   settings.ContentSpacing,
-		flipped:          settings.Flipped,
 	}
 }
 
@@ -28,16 +26,12 @@ var _ ui.Layout = (*HorizontalLayout)(nil)
 type HorizontalLayout struct {
 	contentAlignment Alignment
 	contentSpacing   int
-	flipped          bool
 }
 
 // Apply applies this layout to the specified Element.
 func (l *HorizontalLayout) Apply(element *ui.Element) {
-	if l.flipped {
-		l.applyRightToLeft(element)
-	} else {
-		l.applyLeftToRight(element)
-	}
+	l.applyLeftToRight(element)
+	l.applyRightToLeft(element)
 	element.SetIdealSize(l.calculateIdealSize(element))
 }
 
@@ -47,6 +41,9 @@ func (l *HorizontalLayout) applyLeftToRight(element *ui.Element) {
 	leftPlacement := contentBounds.X
 	for childElement := element.FirstChild(); childElement != nil; childElement = childElement.RightSibling() {
 		layoutConfig := ElementLayoutData(childElement)
+		if layoutConfig.Alignment == AlignmentRight {
+			continue
+		}
 
 		childBounds := ui.Bounds{
 			Size: childElement.IdealSize(),
@@ -85,6 +82,9 @@ func (l *HorizontalLayout) applyRightToLeft(element *ui.Element) {
 	rightPlacement := contentBounds.Width
 	for childElement := element.FirstChild(); childElement != nil; childElement = childElement.RightSibling() {
 		layoutConfig := ElementLayoutData(childElement)
+		if layoutConfig.Alignment != AlignmentRight {
+			continue
+		}
 
 		childBounds := ui.Bounds{
 			Size: childElement.IdealSize(),

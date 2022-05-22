@@ -70,7 +70,6 @@ var Toolbar = co.Define(func(props co.Properties) co.Instance {
 			Layout: NewHorizontalLayout(HorizontalLayoutSettings{
 				ContentAlignment: AlignmentCenter,
 				ContentSpacing:   ToolbarItemSpacing,
-				Flipped:          data.Orientation == ToolbarOrientationRightToLeft,
 			}),
 		})
 		co.WithLayoutData(layoutData)

@@ -7,7 +7,6 @@ import "github.com/mokiat/lacking/ui"
 type VerticalLayoutSettings struct {
 	ContentAlignment Alignment
 	ContentSpacing   int
-	Flipped          bool
 }
 
 // NewVerticalLayout creates a new VerticalLayout instance.
@@ -15,7 +14,6 @@ func NewVerticalLayout(settings VerticalLayoutSettings) *VerticalLayout {
 	return &VerticalLayout{
 		contentAlignment: settings.ContentAlignment,
 		contentSpacing:   settings.ContentSpacing,
-		flipped:          settings.Flipped,
 	}
 }
 
@@ -26,16 +24,12 @@ var _ ui.Layout = (*VerticalLayout)(nil)
 type VerticalLayout struct {
 	contentAlignment Alignment
 	contentSpacing   int
-	flipped          bool
 }
 
 // Apply applies this layout to the specified Element.
 func (l *VerticalLayout) Apply(element *ui.Element) {
-	if l.flipped {
-		l.applyBottomToTop(element)
-	} else {
-		l.applyTopToBottom(element)
-	}
+	l.applyTopToBottom(element)
+	l.applyBottomToTop(element)
 	element.SetIdealSize(l.calculateIdealSize(element))
 }
 
@@ -45,6 +39,9 @@ func (l *VerticalLayout) applyTopToBottom(element *ui.Element) {
 	topPlacement := contentBounds.Y
 	for childElement := element.FirstChild(); childElement != nil; childElement = childElement.RightSibling() {
 		layoutConfig := ElementLayoutData(childElement)
+		if layoutConfig.Alignment == AlignmentBottom {
+			continue
+		}
 
 		childBounds := ui.Bounds{
 			Size: childElement.IdealSize(),
@@ -83,6 +80,9 @@ func (l *VerticalLayout) applyBottomToTop(element *ui.Element) {
 	bottomPlacement := contentBounds.Height
 	for childElement := element.FirstChild(); childElement != nil; childElement = childElement.RightSibling() {
 		layoutConfig := ElementLayoutData(childElement)
+		if layoutConfig.Alignment != AlignmentBottom {
+			continue
+		}
 
 		childBounds := ui.Bounds{
 			Size: childElement.IdealSize(),

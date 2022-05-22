@@ -20,7 +20,7 @@ var (
 type ToolbarButtonData struct {
 	Icon     *ui.Image
 	Text     string
-	Disabled bool
+	Enabled  optional.V[bool]
 	Selected bool
 }
 
@@ -56,7 +56,7 @@ var ToolbarButton = co.Define(func(props co.Properties) co.Instance {
 	layoutData.Height = optional.Value(ToolbarItemHeight)
 
 	foregroundColor := OnSurfaceColor
-	if data.Disabled {
+	if data.Enabled.Specified && !data.Enabled.Value {
 		foregroundColor = OutlineColor
 	}
 
@@ -71,7 +71,7 @@ var ToolbarButton = co.Define(func(props co.Properties) co.Instance {
 				Left:  ToolbarButtonSidePadding,
 				Right: ToolbarButtonSidePadding,
 			},
-			Enabled: optional.Value(!data.Disabled),
+			Enabled: data.Enabled,
 		})
 		co.WithLayoutData(layoutData)
 
