@@ -7,26 +7,40 @@ import (
 	"github.com/mokiat/lacking/util/optional"
 )
 
+var (
+	ButtonSidePadding    = 6
+	ButtonContentSpacing = 5
+	ButtonIconSize       = 24
+	ButtonHeight         = 28
+	ButtonFontFile       = "mat:///roboto-regular.ttf"
+	ButtonFontSize       = float32(18)
+)
+
+// ButtonData holds the data for the Button component.
 type ButtonData struct {
-	Padding       ui.Spacing
-	Font          *ui.Font
-	FontSize      optional.V[float32]
-	FontColor     optional.V[ui.Color]
-	FontAlignment Alignment
-	Text          string
+	Text    string
+	Icon    *ui.Image
+	Enabled optional.V[bool]
 }
 
+var defaultButtonData = ButtonData{}
+
+// ButtonCallbackData holds the callback data for the Button component.
 type ButtonCallbackData struct {
 	ClickListener ClickListener
 }
 
+var defaultButtonCallbackData = ButtonCallbackData{
+	ClickListener: func() {},
+}
+
+// Button is a component that allows a user click on it to activate a process.
 var Button = co.Define(func(props co.Properties) co.Instance {
 	var (
-		data         ButtonData
-		callbackData ButtonCallbackData
+		data         = co.GetOptionalData(props, defaultButtonData)
+		layoutData   = co.GetOptionalLayoutData(props, LayoutData{})
+		callbackData = co.GetOptionalCallbackData(props, defaultButtonCallbackData)
 	)
-	props.InjectOptionalData(&data, ButtonData{})
-	props.InjectOptionalCallbackData(&callbackData, ButtonCallbackData{})
 
 	essence := co.UseState(func() *buttonEssence {
 		return &buttonEssence{
@@ -34,32 +48,54 @@ var Button = co.Define(func(props co.Properties) co.Instance {
 		}
 	}).Get()
 
-	essence.font = data.Font
-	if data.FontSize.Specified {
-		essence.fontSize = data.FontSize.Value
-	} else {
-		essence.fontSize = 24
-	}
-	if data.FontColor.Specified {
-		essence.fontColor = data.FontColor.Value
-	} else {
-		essence.fontColor = ui.Black()
-	}
-	essence.fontAlignment = data.FontAlignment
-	essence.text = data.Text
+	// force specific height
+	layoutData.Height = optional.Value(ButtonHeight)
 
-	txtSize := essence.font.TextSize(essence.text, essence.fontSize)
+	foregroundColor := OnSurfaceColor
+	if data.Enabled.Specified && !data.Enabled.Value {
+		foregroundColor = OutlineColor
+	}
 
 	return co.New(Element, func() {
 		co.WithData(ElementData{
 			Essence: essence,
-			Padding: data.Padding,
-			IdealSize: optional.Value(
-				ui.NewSize(int(txtSize.X), int(txtSize.Y)).Grow(data.Padding.Horizontal(), data.Padding.Vertical()),
-			),
+			Layout: NewHorizontalLayout(HorizontalLayoutSettings{
+				ContentAlignment: AlignmentCenter,
+				ContentSpacing:   ButtonContentSpacing,
+			}),
+			Padding: ui.Spacing{
+				Left:  ButtonSidePadding,
+				Right: ButtonSidePadding,
+			},
+			Enabled: data.Enabled,
 		})
-		co.WithLayoutData(props.LayoutData())
-		co.WithChildren(props.Children())
+		co.WithLayoutData(layoutData)
+
+		if data.Icon != nil {
+			co.WithChild("icon", co.New(Picture, func() {
+				co.WithData(PictureData{
+					Image:      data.Icon,
+					ImageColor: optional.Value(foregroundColor),
+					Mode:       ImageModeFit,
+				})
+				co.WithLayoutData(LayoutData{
+					Width:  optional.Value(ButtonIconSize),
+					Height: optional.Value(ButtonIconSize),
+				})
+			}))
+		}
+
+		if data.Text != "" {
+			co.WithChild("text", co.New(Label, func() {
+				co.WithData(LabelData{
+					Font:      co.OpenFont(ButtonFontFile),
+					FontSize:  optional.Value(float32(ButtonFontSize)),
+					FontColor: optional.Value(foregroundColor),
+					Text:      data.Text,
+				})
+				co.WithLayoutData(LayoutData{})
+			}))
+		}
 	})
 })
 
@@ -67,64 +103,38 @@ var _ ui.ElementRenderHandler = (*buttonEssence)(nil)
 
 type buttonEssence struct {
 	*ButtonBaseEssence
-	font          *ui.Font
-	fontSize      float32
-	fontColor     ui.Color
-	fontAlignment Alignment
-	text          string
 }
 
 func (e *buttonEssence) OnRender(element *ui.Element, canvas *ui.Canvas) {
-	switch e.State() {
-	case ButtonStateOver:
-		canvas.Reset()
-		canvas.Rectangle(
-			sprec.NewVec2(0, 0),
-			sprec.NewVec2(
-				float32(element.Bounds().Size.Width),
-				float32(element.Bounds().Size.Height),
-			),
-		)
-		canvas.Fill(ui.Fill{
-			Color: ui.RGB(40, 40, 40),
-		})
-	case ButtonStateDown:
-		canvas.Reset()
-		canvas.Rectangle(
-			sprec.NewVec2(0, 0),
-			sprec.NewVec2(
-				float32(element.Bounds().Size.Width),
-				float32(element.Bounds().Size.Height),
-			),
-		)
-		canvas.Fill(ui.Fill{
-			Color: ui.RGB(80, 80, 80),
-		})
+	backgroundColor := SurfaceColor
+	strokeColor := PrimaryLightColor
+	if element.Enabled() {
+		switch e.State() {
+		case ButtonStateOver:
+			backgroundColor = backgroundColor.Overlay(HoverOverlayColor)
+		case ButtonStateDown:
+			backgroundColor = backgroundColor.Overlay(PressOverlayColor)
+		}
+	} else {
+		strokeColor = OutlineColor
 	}
 
-	if e.font != nil && e.text != "" {
-		var textPosition sprec.Vec2
-		contentArea := element.ContentBounds()
-		textDrawSize := e.font.TextSize(e.text, e.fontSize)
-		switch e.fontAlignment {
-		case AlignmentLeft:
-			textPosition = sprec.NewVec2(
-				float32(contentArea.X),
-				float32(contentArea.Y),
-			)
-		default:
-			textPosition = sprec.NewVec2(
-				float32(contentArea.X)+(float32(contentArea.Width)-textDrawSize.X)/2,
-				float32(contentArea.Y)+(float32(contentArea.Height)-textDrawSize.Y)/2,
-			)
-		}
-		canvas.Reset()
-		canvas.FillText(e.text, textPosition, ui.Typography{
-			Font:  e.font,
-			Size:  e.fontSize,
-			Color: e.fontColor,
-		})
-	}
+	size := element.Bounds().Size
+	width := float32(size.Width)
+	height := float32(size.Height)
+
+	canvas.Reset()
+	canvas.SetStrokeSize(2.0)
+	canvas.SetStrokeColor(strokeColor)
+	canvas.RoundRectangle(
+		sprec.ZeroVec2(),
+		sprec.NewVec2(width, height),
+		sprec.NewVec4(8, 8, 8, 8),
+	)
+	canvas.Fill(ui.Fill{
+		Color: backgroundColor,
+	})
+	canvas.Stroke()
 }
 
 // NewButtonBaseEssence creates a new ButtonBaseEssence instance.
