@@ -175,6 +175,7 @@ func (w *windowHandler) OnKeyboardEvent(event KeyboardEvent) bool {
 func (w *windowHandler) OnMouseEvent(event MouseEvent) bool {
 	w.checkMouseLeaveEnter(event.Position)
 	w.oldMousePosition = event.Position
+
 	if event.Type == MouseEventTypeDown {
 		oldFocusedElement := w.focusedElement
 		w.processFocusChange(w.root, event.Position)
@@ -182,6 +183,7 @@ func (w *windowHandler) OnMouseEvent(event MouseEvent) bool {
 			w.Invalidate()
 		}
 	}
+
 	return w.processMouseEvent(w.root, event)
 }
 
@@ -226,7 +228,7 @@ func (w *windowHandler) processFocusChange(element *Element, position Position) 
 	}
 
 	relativePosition := position.Translate(-bounds.X, -bounds.Y)
-	for childElement := element.lastChild; childElement != nil; childElement = childElement.leftSibling {
+	for childElement := element.firstChild; childElement != nil; childElement = childElement.rightSibling {
 		w.processFocusChange(childElement, relativePosition)
 	}
 }
