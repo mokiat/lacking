@@ -1,9 +1,12 @@
 package ui
 
-import "github.com/mokiat/lacking/render"
+import (
+	"github.com/mokiat/lacking/render"
+	"github.com/mokiat/lacking/util/resource"
+)
 
 // NewConfig creates a new Config instance.
-func NewConfig(locator ResourceLocator, renderAPI render.API, shaders ShaderCollection) *Config {
+func NewConfig(locator resource.ReadLocator, renderAPI render.API, shaders ShaderCollection) *Config {
 	return &Config{
 		locator:   locator,
 		renderAPI: renderAPI,
@@ -13,7 +16,7 @@ func NewConfig(locator ResourceLocator, renderAPI render.API, shaders ShaderColl
 
 // Config holds the configuration options for creating a UI controller.
 type Config struct {
-	locator   ResourceLocator
+	locator   resource.ReadLocator
 	renderAPI render.API
 	shaders   ShaderCollection
 }
