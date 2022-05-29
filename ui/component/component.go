@@ -8,13 +8,23 @@ import (
 // Component represents a definition for a component.
 type Component struct {
 	componentType string
-	componentFunc ComponentFunc
+	componentFunc ComponentFuncV2
 }
 
 // Define can be used to describe a new component. The provided component
 // function (or render function) will be called by the framework to
 // initialize, reconcicle, or destroy a component instance.
 func Define(fn ComponentFunc) Component {
+	return Component{
+		componentType: evaluateComponentType(),
+		componentFunc: func(props Properties, scope Scope) Instance {
+			return fn(props)
+		},
+	}
+}
+
+// TODO
+func DefineV2(fn ComponentFuncV2) Component {
 	return Component{
 		componentType: evaluateComponentType(),
 		componentFunc: fn,
@@ -24,6 +34,10 @@ func Define(fn ComponentFunc) Component {
 // ComponentFunc holds the logic and layouting of the component.
 type ComponentFunc func(props Properties) Instance
 
+// TODO
+type ComponentFuncV2 func(props Properties, scope Scope) Instance
+
+// TODO: Remove. This can be achieved with mvc or lifecycles.
 func Controlled(delegate Component) Component {
 	type controlledState struct {
 		controller   Controller
@@ -34,7 +48,7 @@ func Controlled(delegate Component) Component {
 
 	return Component{
 		componentType: evaluateComponentType(),
-		componentFunc: func(props Properties) Instance {
+		componentFunc: func(props Properties, scope Scope) Instance {
 			controller := props.Data().(Controller)
 			node := renderCtx.node
 
@@ -45,7 +59,7 @@ func Controlled(delegate Component) Component {
 					state.subscription = controller.Subscribe(func(controller Controller) {
 						uiCtx.Schedule(func() {
 							if node.isValid() {
-								node.reconcile(node.instance)
+								node.reconcile(node.instance, node.scope)
 							}
 						})
 					})
@@ -56,13 +70,13 @@ func Controlled(delegate Component) Component {
 					subscription: controller.Subscribe(func(controller Controller) {
 						uiCtx.Schedule(func() {
 							if node.isValid() {
-								node.reconcile(node.instance)
+								node.reconcile(node.instance, node.scope)
 							}
 						})
 					}),
 				}
 			}
-			return delegate.componentFunc(props)
+			return delegate.componentFunc(props, scope)
 		},
 	}
 }

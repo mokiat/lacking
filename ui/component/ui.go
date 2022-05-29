@@ -24,6 +24,16 @@ func OpenImage(uri string) *ui.Image {
 	return img
 }
 
+// OpenImage delegates to the UI window context to open
+// the specified image.
+func OpenImageV2(scope Scope, uri string) *ui.Image {
+	img, err := scope.Context().OpenImage(uri)
+	if err != nil {
+		panic(fmt.Errorf("failed to open image %q: %w", uri, err))
+	}
+	return img
+}
+
 // CreateImage delegates to the UI window context to create
 // the specified image.
 func CreateImage(img image.Image) *ui.Image {

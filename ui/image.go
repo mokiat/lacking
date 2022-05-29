@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"fmt"
 	"image"
 	"image/draw"
 
@@ -28,6 +29,7 @@ func (i *Image) Size() Size {
 // Destroy releases all resources allocated for this
 // image.
 func (i *Image) Destroy() {
+	fmt.Println("DESTROYING IMAGE")
 	i.texture.Release()
 }
 

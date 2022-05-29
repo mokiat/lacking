@@ -35,7 +35,7 @@ var defaultAccordionCallbackData = AccordionCallbackData{
 }
 
 // Accordion is a container that hides a big chunk of UI until it is expanded.
-var Accordion = co.Define(func(props co.Properties) co.Instance {
+var Accordion = co.DefineV2(func(props co.Properties, scope co.Scope) co.Instance {
 	var (
 		data         = co.GetOptionalData(props, defaultAccordionData)
 		callbackData = co.GetOptionalCallbackData(props, defaultAccordionCallbackData)
@@ -49,9 +49,9 @@ var Accordion = co.Define(func(props co.Properties) co.Instance {
 
 	var icon *ui.Image
 	if data.Expanded {
-		icon = co.OpenImage(AccordionExpandedIconFile)
+		icon = co.OpenImageV2(scope, AccordionExpandedIconFile)
 	} else {
-		icon = co.OpenImage(AccordionCollapsedIconFile)
+		icon = co.OpenImageV2(scope, AccordionCollapsedIconFile)
 	}
 
 	return co.New(Container, func() {

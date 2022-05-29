@@ -13,15 +13,19 @@ type componentNode struct {
 	instance Instance
 	children []*componentNode
 	element  *ui.Element
+	scope    Scope
 
 	states [][]dirtiable
 }
 
-func createComponentNode(instance Instance) *componentNode {
+func createComponentNode(instance Instance, scope Scope) *componentNode {
+	// fmt.Println("NODE", instance.componentType)
 	result := &componentNode{
 		instance: instance,
+		scope:    scope,
 		states:   make([][]dirtiable, 1),
 	}
+	// fmt.Printf("\tSCOPE: %p\n", scope)
 
 	renderCtx = renderContext{
 		node:        result,
@@ -30,7 +34,11 @@ func createComponentNode(instance Instance) *componentNode {
 		properties:  instance.properties(),
 	}
 	for instance.element == nil {
-		instance = instance.componentFunc(instance.properties())
+		if instance.scope != nil {
+			result.scope = instance.scope
+		}
+		// fmt.Printf("\tSCOPE: %p\n", result.scope)
+		instance = instance.componentFunc(instance.properties(), result.scope)
 		renderCtx.stateDepth++
 		renderCtx.stateIndex = 0
 		renderCtx.properties = instance.properties()
@@ -40,7 +48,7 @@ func createComponentNode(instance Instance) *componentNode {
 	result.element = instance.element
 	result.children = make([]*componentNode, len(instance.children))
 	for i, childInstance := range instance.children {
-		child := createComponentNode(childInstance)
+		child := createComponentNode(childInstance, result.scope)
 		instance.element.AppendChild(child.element)
 		result.children[i] = child
 	}
@@ -61,15 +69,16 @@ func (node *componentNode) destroy() {
 		lastRender:  true,
 	}
 	for instance.element == nil {
-		instance = instance.componentFunc(instance.properties())
+		instance = instance.componentFunc(instance.properties(), node.scope)
 		renderCtx.stateDepth++
 		renderCtx.stateIndex = 0
 	}
 	node.element = nil
 }
 
-func (node *componentNode) reconcile(instance Instance) {
+func (node *componentNode) reconcile(instance Instance, scope Scope) {
 	node.instance = instance
+	node.scope = scope
 	renderCtx = renderContext{
 		node:         node,
 		firstRender:  false,
@@ -78,7 +87,10 @@ func (node *componentNode) reconcile(instance Instance) {
 		properties:   instance.properties(),
 	}
 	for instance.element == nil {
-		instance = instance.componentFunc(instance.properties())
+		if instance.scope != nil {
+			node.scope = instance.scope
+		}
+		instance = instance.componentFunc(instance.properties(), node.scope)
 		renderCtx.stateDepth++
 		renderCtx.stateIndex = 0
 		renderCtx.properties = instance.properties()
@@ -89,7 +101,7 @@ func (node *componentNode) reconcile(instance Instance) {
 
 	if node.hasMatchingChildren(instance) {
 		for i, child := range node.children {
-			child.reconcile(instance.children[i])
+			child.reconcile(instance.children[i], node.scope)
 		}
 	} else {
 		for _, child := range node.children {
@@ -102,10 +114,10 @@ func (node *componentNode) reconcile(instance Instance) {
 		newChildren := make([]*componentNode, len(instance.children))
 		for i, childInstance := range instance.children {
 			if existingChild, index := node.findChild(childInstance); index >= 0 {
-				existingChild.reconcile(childInstance)
+				existingChild.reconcile(childInstance, node.scope)
 				newChildren[i] = existingChild
 			} else {
-				newChildren[i] = createComponentNode(childInstance)
+				newChildren[i] = createComponentNode(childInstance, node.scope)
 			}
 			node.element.AppendChild(newChildren[i].element)
 		}

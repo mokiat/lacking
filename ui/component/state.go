@@ -16,7 +16,7 @@ func (s *State[T]) Set(value T) {
 	// TODO: Optimize by grouping all such calls within co framework.
 	uiCtx.Schedule(func() {
 		if s.node.isValid() {
-			s.node.reconcile(s.node.instance)
+			s.node.reconcile(s.node.instance, s.node.scope)
 		}
 	})
 }

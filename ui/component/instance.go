@@ -13,11 +13,12 @@ type instanceContext struct {
 type Instance struct {
 	key           string
 	componentType string
-	componentFunc ComponentFunc
+	componentFunc ComponentFuncV2
 
 	data         interface{}
 	layoutData   interface{}
 	callbackData interface{}
+	scope        Scope
 	children     []Instance
 
 	element *ui.Element
@@ -118,6 +119,12 @@ func WithLayoutData(layoutData interface{}) {
 // lifecycle of data or layout data.
 func WithCallbackData(callbackData interface{}) {
 	instanceCtx.instance.callbackData = callbackData
+}
+
+// WithScope attaches a custom Scope to this component. Any child components
+// will inherit the Scope unless overriden with another call to WithScope.
+func WithScope(scope Scope) {
+	instanceCtx.instance.scope = scope
 }
 
 // WithChild adds a child to the given component. The child is appended

@@ -19,7 +19,8 @@ func Initialize(window *ui.Window, instance Instance) {
 	}
 	rootNode := createComponentNode(New(application, func() {
 		WithData(bootstrapCtrl)
-	}))
+		WithScope(ContextScope(nil, uiCtx))
+	}), nil)
 	window.Root().AppendChild(rootNode.element)
 }
 

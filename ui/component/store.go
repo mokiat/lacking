@@ -132,7 +132,7 @@ func Dispatch(action interface{}) {
 		if invalidateConnectedNodes {
 			for _, node := range connectedNodes {
 				if node.isValid() {
-					node.reconcile(node.instance)
+					node.reconcile(node.instance, node.scope)
 				}
 			}
 		}
@@ -169,7 +169,7 @@ type ConnectMapping struct {
 func Connect(delegate Component, mapping ConnectMapping) Component {
 	return Component{
 		componentType: evaluateComponentType(),
-		componentFunc: func(props Properties) Instance {
+		componentFunc: func(props Properties, scope Scope) Instance {
 			Once(func() {
 				addConnectedNode(renderCtx.node)
 			})
@@ -192,7 +192,7 @@ func Connect(delegate Component, mapping ConnectMapping) Component {
 				layoutData:   props.layoutData,
 				callbackData: callbackData,
 				children:     props.children,
-			})
+			}, scope)
 		},
 	}
 }

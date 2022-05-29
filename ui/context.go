@@ -1,12 +1,14 @@
 package ui
 
 import (
+	"fmt"
 	"image"
 
 	"golang.org/x/image/font/opentype"
 )
 
 func newContext(parent *Context, window *Window, resMan *resourceManager) *Context {
+	fmt.Println("CONTEXT CREATED")
 	return &Context{
 		parent: parent,
 		window: window,
@@ -238,6 +240,7 @@ func (c *Context) Destroy() {
 	for _, collection := range c.namedFontCollections {
 		collection.Destroy()
 	}
+	fmt.Println("CONTEXT DESTROYED")
 }
 
 func (c *Context) findImage(uri string) (*Image, bool) {
