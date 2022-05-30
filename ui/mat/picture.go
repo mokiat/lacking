@@ -47,7 +47,7 @@ const (
 	ImageModeCover
 )
 
-var Picture = co.Define(func(props co.Properties) co.Instance {
+var Picture = co.Define(func(props co.Properties, scope co.Scope) co.Instance {
 	var (
 		data PictureData
 	)

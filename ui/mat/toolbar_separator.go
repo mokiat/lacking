@@ -15,7 +15,7 @@ var (
 
 // ToolbarSeparator separates controls within a Toolbar container.
 // It is visualized as a vertical line.
-var ToolbarSeparator = co.Define(func(props co.Properties) co.Instance {
+var ToolbarSeparator = co.Define(func(props co.Properties, scope co.Scope) co.Instance {
 	essence := co.UseState(func() *toolbarSeparatorEssence {
 		return &toolbarSeparatorEssence{}
 	}).Get()

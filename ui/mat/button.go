@@ -35,7 +35,7 @@ var defaultButtonCallbackData = ButtonCallbackData{
 }
 
 // Button is a component that allows a user click on it to activate a process.
-var Button = co.Define(func(props co.Properties) co.Instance {
+var Button = co.Define(func(props co.Properties, scope co.Scope) co.Instance {
 	var (
 		data         = co.GetOptionalData(props, defaultButtonData)
 		layoutData   = co.GetOptionalLayoutData(props, LayoutData{})
@@ -88,7 +88,7 @@ var Button = co.Define(func(props co.Properties) co.Instance {
 		if data.Text != "" {
 			co.WithChild("text", co.New(Label, func() {
 				co.WithData(LabelData{
-					Font:      co.OpenFont(ButtonFontFile),
+					Font:      co.OpenFont(scope, ButtonFontFile),
 					FontSize:  optional.Value(float32(ButtonFontSize)),
 					FontColor: optional.Value(foregroundColor),
 					Text:      data.Text,

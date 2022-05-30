@@ -35,7 +35,7 @@ var defaultEditboxCallbackData = EditboxCallbackData{
 }
 
 // Editbox is a component that allows a user to input a string.
-var Editbox = co.Define(func(props co.Properties) co.Instance {
+var Editbox = co.Define(func(props co.Properties, scope co.Scope) co.Instance {
 	var (
 		data         = co.GetOptionalData(props, defaultEditboxData)
 		layoutData   = co.GetOptionalLayoutData(props, LayoutData{})
@@ -45,7 +45,7 @@ var Editbox = co.Define(func(props co.Properties) co.Instance {
 	essence := co.UseState(func() *editboxEssence {
 		return &editboxEssence{}
 	}).Get()
-	essence.font = co.OpenFont(EditboxFontFile)
+	essence.font = co.OpenFont(scope, EditboxFontFile)
 	essence.onChanged = callbackData.OnChanged
 	if data.Text != essence.text {
 		essence.text = data.Text
@@ -87,19 +87,19 @@ func (e *editboxEssence) OnKeyboardEvent(element *ui.Element, event ui.KeyboardE
 		case ui.KeyCodeBackspace:
 			if len(e.volatileText) > 0 {
 				e.volatileText = e.volatileText[:len(e.volatileText)-1]
-				co.Window().Invalidate()
+				element.Invalidate()
 			}
 		case ui.KeyCodeEscape:
 			e.volatileText = e.text
-			co.Window().DiscardFocus()
+			element.Window().DiscardFocus()
 		case ui.KeyCodeEnter:
 			e.text = e.volatileText
 			e.onChanged(e.text)
-			co.Window().DiscardFocus()
+			element.Window().DiscardFocus()
 		}
 	case ui.KeyboardEventTypeType:
 		e.volatileText += string(event.Rune)
-		co.Window().Invalidate()
+		element.Invalidate()
 	}
 	return true
 }
@@ -107,7 +107,7 @@ func (e *editboxEssence) OnKeyboardEvent(element *ui.Element, event ui.KeyboardE
 func (e *editboxEssence) OnRender(element *ui.Element, canvas *ui.Canvas) {
 	var strokeColor ui.Color
 	var text string
-	if co.Window().IsElementFocused(element) {
+	if element.Window().IsElementFocused(element) {
 		strokeColor = SecondaryColor
 		text = e.volatileText + "|"
 	} else {

@@ -22,7 +22,7 @@ var defaultScrollPaneData = ScrollPaneData{
 	DisableVertical:   false,
 }
 
-var ScrollPane = co.Define(func(props co.Properties) co.Instance {
+var ScrollPane = co.Define(func(props co.Properties, scope co.Scope) co.Instance {
 	var (
 		data ScrollPaneData
 	)

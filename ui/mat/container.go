@@ -17,7 +17,7 @@ var defaultContainerData = ContainerData{
 	Layout: NewFillLayout(),
 }
 
-var Container = co.Define(func(props co.Properties) co.Instance {
+var Container = co.Define(func(props co.Properties, scope co.Scope) co.Instance {
 	var (
 		data ContainerData
 	)

@@ -5,37 +5,31 @@ import (
 	"runtime"
 )
 
-// Component represents a definition for a component.
+// Component represents the definition of a component.
 type Component struct {
 	componentType string
-	componentFunc ComponentFuncV2
+	componentFunc ComponentFunc
 }
 
-// Define can be used to describe a new component. The provided component
-// function (or render function) will be called by the framework to
-// initialize, reconcicle, or destroy a component instance.
+// ComponentFunc is the mechanism through which components can construct their
+// hierarchies based on input properties and scope.
+type ComponentFunc func(props Properties, scope Scope) Instance
+
+// Define is the mechanism through which new components can be defined.
+//
+// The provided component function (i.e. render function) will be called by the
+// framework to initialize, reconcicle,or destroy a component instance.
 func Define(fn ComponentFunc) Component {
-	return Component{
-		componentType: evaluateComponentType(),
-		componentFunc: func(props Properties, scope Scope) Instance {
-			return fn(props)
-		},
-	}
-}
-
-// TODO
-func DefineV2(fn ComponentFuncV2) Component {
 	return Component{
 		componentType: evaluateComponentType(),
 		componentFunc: fn,
 	}
 }
 
-// ComponentFunc holds the logic and layouting of the component.
-type ComponentFunc func(props Properties) Instance
-
-// TODO
-type ComponentFuncV2 func(props Properties, scope Scope) Instance
+func evaluateComponentType() string {
+	_, file, line, _ := runtime.Caller(2)
+	return fmt.Sprintf("%s#%d", file, line)
+}
 
 // TODO: Remove. This can be achieved with mvc or lifecycles.
 func Controlled(delegate Component) Component {
@@ -79,9 +73,4 @@ func Controlled(delegate Component) Component {
 			return delegate.componentFunc(props, scope)
 		},
 	}
-}
-
-func evaluateComponentType() string {
-	_, file, line, _ := runtime.Caller(2)
-	return fmt.Sprintf("%s#%d", file, line)
 }

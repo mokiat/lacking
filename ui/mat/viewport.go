@@ -47,7 +47,7 @@ type ViewportMouseEvent struct {
 
 // Viewport represents a component that uses low-level API calls to render
 // an external scene, unlike other components that rely on the Canvas API.
-var Viewport = co.Define(func(props co.Properties) co.Instance {
+var Viewport = co.Define(func(props co.Properties, scope co.Scope) co.Instance {
 	essence := co.UseLifecycle(func(handle co.LifecycleHandle) *viewportEssence {
 		return &viewportEssence{}
 	})
@@ -83,12 +83,12 @@ type viewportEssence struct {
 	onRender        func(framebuffer render.Framebuffer, size ui.Size)
 }
 
-func (e *viewportEssence) OnCreate(props co.Properties) {
-	e.OnUpdate(props)
+func (e *viewportEssence) OnCreate(props co.Properties, scope co.Scope) {
+	e.OnUpdate(props, scope)
 	e.createFramebuffer(ViewportInitialFBWidth, ViewportInitialFBHeight)
 }
 
-func (e *viewportEssence) OnUpdate(props co.Properties) {
+func (e *viewportEssence) OnUpdate(props co.Properties, scope co.Scope) {
 	var (
 		data         = co.GetData[ViewportData](props)
 		callbackData = co.GetOptionalCallbackData(props, defaultViewportCallbackData)
@@ -105,7 +105,7 @@ func (e *viewportEssence) OnUpdate(props co.Properties) {
 	e.onRender = callbackData.OnRender
 }
 
-func (e *viewportEssence) OnDestroy() {
+func (e *viewportEssence) OnDestroy(scope co.Scope) {
 	e.releaseFramebuffer()
 }
 

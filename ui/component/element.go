@@ -20,9 +20,9 @@ type ElementData struct {
 // Element represents the most basic component, which is translated
 // to a UI Element. All higher-order components eventually boil down to an
 // Element.
-var Element = Define(func(props Properties) Instance {
+var Element = Define(func(props Properties, scope Scope) Instance {
 	element := UseState(func() *ui.Element {
-		return uiCtx.CreateElement()
+		return scope.Context().CreateElement()
 	}).Get()
 
 	Defer(func() {

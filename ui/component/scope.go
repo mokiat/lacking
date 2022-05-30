@@ -1,8 +1,23 @@
 package component
 
 import (
+	"image"
+
+	"github.com/mokiat/lacking/log"
 	"github.com/mokiat/lacking/ui"
+	"golang.org/x/image/font/opentype"
 )
+
+var (
+	uiCtx     *ui.Context
+	rootScope Scope
+)
+
+// RootScope returns the main scope for the UI hierarchy. Resources loaded from
+// the ui.Context of this scope will not be released until the UI has completed.
+func RootScope() Scope {
+	return rootScope
+}
 
 // Scope represents a component sub-hierarchy region.
 type Scope interface {
@@ -80,23 +95,113 @@ func (s *contextScope) Value(key interface{}) interface{} {
 // dedicated ui.Context with a lifecycle equal to the lifecycle of the
 // component instance.
 func ContextScoped(delegate Component) Component {
-	ctxs := make(map[*componentNode]*ui.Context)
+	ctxSet := make(map[*componentNode]*ui.Context)
 
 	return Component{
 		componentType: evaluateComponentType(),
 		componentFunc: func(props Properties, scope Scope) Instance {
-			ctx := ctxs[renderCtx.node]
+			ctx := ctxSet[renderCtx.node]
 			if renderCtx.isFirstRender() {
 				ctx = scope.Context().CreateContext()
-				ctxs[renderCtx.node] = ctx
+				ctxSet[renderCtx.node] = ctx
 			}
 			if renderCtx.isLastRender() {
 				defer func() {
 					ctx.Destroy()
-					delete(ctxs, renderCtx.node)
+					delete(ctxSet, renderCtx.node)
 				}()
 			}
 			return delegate.componentFunc(props, ContextScope(scope, ctx))
 		},
 	}
+}
+
+// Window uses the specified scope to retrieve the Window that owns that
+// particular scope.
+func Window(scope Scope) *ui.Window {
+	return scope.Context().Window()
+}
+
+// OpenImage uses the ui.Context from the specified scope to load image at
+// the specified uri location.
+//
+// If loading of the image fails for some reason, this function logs an error
+// and returns nil.
+func OpenImage(scope Scope, uri string) *ui.Image {
+	img, err := scope.Context().OpenImage(uri)
+	if err != nil {
+		log.Error("[component] Error opening image (%q): %v", uri, err)
+		return nil
+	}
+	return img
+}
+
+// CreateImage uses the ui.Context from the specified scope to create a new
+// image.
+//
+// If the image could not be created for some reason, this function logs an
+// error and returns nil.
+func CreateImage(scope Scope, img image.Image) *ui.Image {
+	result, err := scope.Context().CreateImage(img)
+	if err != nil {
+		log.Error("[component] Error creating image: %v", err)
+		return nil
+	}
+	return result
+}
+
+// OpenFont uses the ui.Context from the specified scope to load the font at
+// the specified uri location.
+//
+// If the font cannot be loaded for some reason, this function logs an error
+// and returns nil.
+func OpenFont(scope Scope, uri string) *ui.Font {
+	font, err := scope.Context().OpenFont(uri)
+	if err != nil {
+		log.Error("[component] Error opening font (%q): %v", uri, err)
+		return nil
+	}
+	return font
+}
+
+// CreateFont uses the ui.Context from the specified scope to create a new
+// ui.Font based on the passed opentype Font.
+//
+// If creation of the font fails, this function logs an error and returns nil.
+func CreateFont(scope Scope, otFont *opentype.Font) *ui.Font {
+	font, err := scope.Context().CreateFont(otFont)
+	if err != nil {
+		log.Error("[component] Error creating font: %v", err)
+		return nil
+	}
+	return font
+}
+
+// OpenFontCollection uses the ui.Context from the specified scope to load the
+// font collection at the specified uri location.
+//
+// If the collection cannot be loaded for some reason, this function logs an
+// error and returns nil.
+func OpenFontCollection(scope Scope, uri string) *ui.FontCollection {
+	collection, err := scope.Context().OpenFontCollection(uri)
+	if err != nil {
+		log.Error("[component] Error opening font collection (%q): %v", uri, err)
+		return nil
+	}
+	return collection
+}
+
+// GetFont uses the ui.Context from the specified scope to retrieve the font
+// with the specified family and style.
+//
+// This function returns nil and logs a warning if it is unable to find the
+// requested font (fonts need to have been loaded beforehand through one
+// of the other Font functions).
+func GetFont(scope Scope, family, style string) *ui.Font {
+	font, found := scope.Context().GetFont(family, style)
+	if !found {
+		log.Warn("[component] Unable to find font (%q / %q)", family, style)
+		return nil
+	}
+	return font
 }

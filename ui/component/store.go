@@ -238,7 +238,7 @@ func NewStoreProviderEntry(reducer Reducer, initialValue interface{}) StoreProvi
 //
 // Should you go down this route, however, make sure that only nested
 // components try to access Stores that are managed by this StoreProvider.
-var StoreProvider = Define(func(props Properties) Instance {
+var StoreProvider = Define(func(props Properties, scope Scope) Instance {
 	data := GetData[StoreProviderData](props)
 
 	stores := UseState(func() []*Store {

@@ -19,7 +19,7 @@ type dropdownListCallbackData struct {
 	OnClose    func() bool
 }
 
-var dropdownList = co.Define(func(props co.Properties) co.Instance {
+var dropdownList = co.Define(func(props co.Properties, scope co.Scope) co.Instance {
 	var (
 		data         = co.GetData[DropdownData](props)
 		callbackData = co.GetCallbackData[dropdownListCallbackData](props)
@@ -64,7 +64,7 @@ var dropdownList = co.Define(func(props co.Properties) co.Instance {
 						})
 						co.WithChild("label", co.New(Label, func() {
 							co.WithData(LabelData{
-								Font:      co.OpenFont(DropdownListFontFile),
+								Font:      co.OpenFont(scope, DropdownListFontFile),
 								FontSize:  optional.Value(DropdownListFontSize),
 								FontColor: optional.Value(OnSurfaceColor),
 								Text:      item.Label,

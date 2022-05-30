@@ -22,7 +22,7 @@ var defaultPaperData = PaperData{
 }
 
 // Paper represents an outlined container.
-var Paper = co.Define(func(props co.Properties) co.Instance {
+var Paper = co.Define(func(props co.Properties, scope co.Scope) co.Instance {
 	data := co.GetOptionalData(props, defaultPaperData)
 
 	essenceState := co.UseState(func() *paperEssence {

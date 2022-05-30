@@ -15,11 +15,11 @@ func UseLifecycle[T Lifecycle](constructor func(handle LifecycleHandle) T) T {
 
 	switch {
 	case renderCtx.firstRender:
-		instance.OnCreate(renderCtx.properties)
+		instance.OnCreate(renderCtx.properties, renderCtx.node.scope)
 	case renderCtx.lastRender:
-		instance.OnDestroy()
+		instance.OnDestroy(renderCtx.node.scope)
 	default:
-		instance.OnUpdate(renderCtx.properties)
+		instance.OnUpdate(renderCtx.properties, renderCtx.node.scope)
 	}
 	return instance
 }
@@ -40,14 +40,14 @@ func (h LifecycleHandle) NotifyChanged() {
 type Lifecycle interface {
 
 	// OnCreate is called when the Component instance is first created.
-	OnCreate(props Properties)
+	OnCreate(props Properties, scope Scope)
 
 	// OnUpdate is called when an existing Component instance has its properties
 	// changed.
-	OnUpdate(props Properties)
+	OnUpdate(props Properties, scope Scope)
 
 	// OnDestroy is called when the Component is about to be detached and removed.
-	OnDestroy()
+	OnDestroy(scope Scope)
 }
 
 // NewBaseLifecycle returns a new BaseLifecycle.
@@ -60,8 +60,8 @@ var _ Lifecycle = (*BaseLifecycle)(nil)
 // BaseLifecycle is an implementation of Lifecycle that does nothing.
 type BaseLifecycle struct{}
 
-func (l *BaseLifecycle) OnCreate(props Properties) {}
+func (l *BaseLifecycle) OnCreate(props Properties, scope Scope) {}
 
-func (l *BaseLifecycle) OnUpdate(props Properties) {}
+func (l *BaseLifecycle) OnUpdate(props Properties, scope Scope) {}
 
-func (l *BaseLifecycle) OnDestroy() {}
+func (l *BaseLifecycle) OnDestroy(scope Scope) {}

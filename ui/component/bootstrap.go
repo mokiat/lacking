@@ -11,7 +11,9 @@ var bootstrapCtrl *bootstrapController
 // Initialize wires the framework to the specified ui Window.
 // The specified instance will be the root component used.
 func Initialize(window *ui.Window, instance Instance) {
+	// TODO: Destroy uiCtx at the end.
 	uiCtx = window.Context()
+	rootScope = ContextScope(nil, uiCtx)
 
 	bootstrapCtrl = &bootstrapController{
 		Controller: NewBaseController(),
@@ -19,12 +21,12 @@ func Initialize(window *ui.Window, instance Instance) {
 	}
 	rootNode := createComponentNode(New(application, func() {
 		WithData(bootstrapCtrl)
-		WithScope(ContextScope(nil, uiCtx))
+		WithScope(rootScope)
 	}), nil)
 	window.Root().AppendChild(rootNode.element)
 }
 
-var application = Controlled(Define(func(props Properties) Instance {
+var application = Controlled(Define(func(props Properties, scope Scope) Instance {
 	controller := props.Data().(*bootstrapController)
 	return New(Element, func() {
 		WithData(ElementData{

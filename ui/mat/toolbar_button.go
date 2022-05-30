@@ -38,7 +38,7 @@ var defaultToolbarButtonCallbackData = ToolbarButtonCallbackData{
 
 // ToolbarButton is a button component intended to be placed inside a
 // Toolbar container.
-var ToolbarButton = co.Define(func(props co.Properties) co.Instance {
+var ToolbarButton = co.Define(func(props co.Properties, scope co.Scope) co.Instance {
 	var (
 		data         = co.GetOptionalData(props, defaultToolbarButtonData)
 		layoutData   = co.GetOptionalLayoutData(props, LayoutData{})
@@ -92,7 +92,7 @@ var ToolbarButton = co.Define(func(props co.Properties) co.Instance {
 		if data.Text != "" {
 			co.WithChild("text", co.New(Label, func() {
 				co.WithData(LabelData{
-					Font:      co.OpenFont(ToolbarButtonFontFile),
+					Font:      co.OpenFont(scope, ToolbarButtonFontFile),
 					FontSize:  optional.Value(float32(ToolbarButtonFontSize)),
 					FontColor: optional.Value(foregroundColor),
 					Text:      data.Text,

@@ -44,7 +44,7 @@ var defaultToolbarData = ToolbarData{}
 
 // Toolbar represents a container that holds key controls (mostly buttons)
 // in a horizontal fashion.
-var Toolbar = co.Define(func(props co.Properties) co.Instance {
+var Toolbar = co.Define(func(props co.Properties, scope co.Scope) co.Instance {
 	var (
 		data       = co.GetOptionalData(props, defaultToolbarData)
 		layoutData = co.GetOptionalLayoutData(props, LayoutData{})

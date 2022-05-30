@@ -22,7 +22,7 @@ type PictureButtonCallbackData struct {
 	ClickListener ClickListener
 }
 
-var PictureButton = co.Define(func(props co.Properties) co.Instance {
+var PictureButton = co.Define(func(props co.Properties, scope co.Scope) co.Instance {
 	var (
 		data         PictureButtonData
 		callbackData PictureButtonCallbackData

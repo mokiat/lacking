@@ -7,7 +7,7 @@ import (
 
 // Modal is a helper container that can be used as an overlay. It creates
 // a dimmed background and central container.
-var Modal = co.Define(func(props co.Properties) co.Instance {
+var Modal = co.Define(func(props co.Properties, scope co.Scope) co.Instance {
 	return co.New(Container, func() {
 		co.WithData(ContainerData{
 			BackgroundColor: optional.Value(ModalOverlayColor),

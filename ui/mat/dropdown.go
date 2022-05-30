@@ -38,7 +38,7 @@ var defaultDropdownCallbackData = DropdownCallbackData{
 }
 
 // Dropdown is a container that hides a number of UI options in a compact way.
-var Dropdown = co.Define(func(props co.Properties) co.Instance {
+var Dropdown = co.Define(func(props co.Properties, scope co.Scope) co.Instance {
 	var (
 		data         = co.GetOptionalData(props, defaultDropdownData)
 		callbackData = co.GetOptionalCallbackData(props, defaultDropdownCallbackData)
@@ -94,7 +94,7 @@ var Dropdown = co.Define(func(props co.Properties) co.Instance {
 
 		co.WithChild("label", co.New(Label, func() {
 			co.WithData(LabelData{
-				Font:      co.OpenFont(DropdownFontFile),
+				Font:      co.OpenFont(scope, DropdownFontFile),
 				FontSize:  optional.Value(DropdownFontSize),
 				FontColor: optional.Value(OnSurfaceColor),
 				Text:      label,
@@ -108,7 +108,7 @@ var Dropdown = co.Define(func(props co.Properties) co.Instance {
 
 		co.WithChild("button", co.New(Picture, func() {
 			co.WithData(PictureData{
-				Image:      co.OpenImage(DropdownIconFile),
+				Image:      co.OpenImage(scope, DropdownIconFile),
 				ImageColor: optional.Value(OnSurfaceColor),
 				Mode:       ImageModeFit,
 			})

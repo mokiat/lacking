@@ -27,7 +27,7 @@ var defaultListItemCallbackData = ListItemCallbackData{
 }
 
 // ListItem represents a component to be displayed in a List.
-var ListItem = co.Define(func(props co.Properties) co.Instance {
+var ListItem = co.Define(func(props co.Properties, scope co.Scope) co.Instance {
 	var (
 		data         = co.GetOptionalData(props, defaultListItemData)
 		callbackData = co.GetOptionalCallbackData(props, defaultListItemCallbackData)

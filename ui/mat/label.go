@@ -14,7 +14,7 @@ type LabelData struct {
 	Text      string
 }
 
-var Label = co.Define(func(props co.Properties) co.Instance {
+var Label = co.Define(func(props co.Properties, scope co.Scope) co.Instance {
 	var (
 		data LabelData
 	)

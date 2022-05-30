@@ -13,7 +13,7 @@ type instanceContext struct {
 type Instance struct {
 	key           string
 	componentType string
-	componentFunc ComponentFuncV2
+	componentFunc ComponentFunc
 
 	data         interface{}
 	layoutData   interface{}
