@@ -219,6 +219,11 @@ func (e *Element) RemoveChild(child *Element) {
 	e.onBoundsChanged(e.bounds)
 }
 
+// Window returns the ui Window that owns this Element.
+func (e *Element) Window() *Window {
+	return e.context.Window()
+}
+
 // Context returns the Context that is related to this Element's
 // lifecycle.
 func (e *Element) Context() *Context {
