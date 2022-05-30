@@ -392,7 +392,7 @@ func (e *Element) Enabled() bool {
 func (e *Element) SetEnabled(enabled bool) {
 	if enabled != e.enabled {
 		e.enabled = enabled
-		e.invalidate()
+		e.Invalidate()
 	}
 }
 
@@ -410,7 +410,7 @@ func (e *Element) Visible() bool {
 func (e *Element) SetVisible(visible bool) {
 	if visible != e.visible {
 		e.visible = visible
-		e.invalidate()
+		e.Invalidate()
 	}
 }
 
@@ -434,7 +434,8 @@ func (e *Element) Destroy() {
 	e.Detach()
 }
 
-func (e *Element) invalidate() {
+// Invalidate marks this element as dirty and needing to be redrawn.
+func (e *Element) Invalidate() {
 	e.context.window.Invalidate()
 }
 
@@ -445,7 +446,7 @@ func (e *Element) onBoundsChanged(bounds Bounds) {
 	if resizeHandler, ok := e.essence.(ElementResizeHandler); ok {
 		resizeHandler.OnResize(e, e.Bounds())
 	}
-	e.invalidate()
+	e.Invalidate()
 }
 
 func (e *Element) onKeyboardEvent(event KeyboardEvent) bool {
