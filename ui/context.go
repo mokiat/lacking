@@ -1,14 +1,14 @@
 package ui
 
 import (
-	"fmt"
 	"image"
 
+	"github.com/mokiat/lacking/log"
 	"golang.org/x/image/font/opentype"
 )
 
 func newContext(parent *Context, window *Window, resMan *resourceManager) *Context {
-	fmt.Println("CONTEXT CREATED")
+	log.Debug("[ui] Creating context")
 	return &Context{
 		parent: parent,
 		window: window,
@@ -97,6 +97,7 @@ func (c *Context) CreateElement() *Element {
 //
 // The Image will be destroyed once this Context is destroyed.
 func (c *Context) CreateImage(img image.Image) (*Image, error) {
+	log.Debug("[ui] Creating image")
 	result := c.resMan.CreateImage(img)
 	c.adhocImages = append(c.adhocImages, result)
 	return result, nil
@@ -111,6 +112,7 @@ func (c *Context) OpenImage(uri string) (*Image, error) {
 	if result, ok := c.findImage(uri); ok {
 		return result, nil
 	}
+	log.Debug("[ui] Opening image (%s)", uri)
 	result, err := c.resMan.OpenImage(uri)
 	if err != nil {
 		return nil, err
@@ -123,6 +125,7 @@ func (c *Context) OpenImage(uri string) (*Image, error) {
 //
 // The Font will be destroyed once this Context is destroyed.
 func (c *Context) CreateFont(font *opentype.Font) (*Font, error) {
+	log.Debug("[ui] Creating font")
 	result, err := c.resMan.CreateFont(font)
 	if err != nil {
 		return nil, err
@@ -140,6 +143,7 @@ func (c *Context) OpenFont(uri string) (*Font, error) {
 	if result, ok := c.findFont(uri); ok {
 		return result, nil
 	}
+	log.Debug("[ui] Opening font (%s)", uri)
 	result, err := c.resMan.OpenFont(uri)
 	if err != nil {
 		return nil, err
@@ -152,6 +156,7 @@ func (c *Context) OpenFont(uri string) (*Font, error) {
 //
 // The FontCollection will be destroyed once this Context is destroyed.
 func (c *Context) CreateFontCollection(collection *opentype.Collection) (*FontCollection, error) {
+	log.Debug("[ui] Creating font collection")
 	result, err := c.resMan.CreateFontCollection(collection)
 	if err != nil {
 		return nil, err
@@ -169,6 +174,7 @@ func (c *Context) OpenFontCollection(uri string) (*FontCollection, error) {
 	if result, ok := c.findFontCollection(uri); ok {
 		return result, nil
 	}
+	log.Debug("[ui] Opening font collection (%s)", uri)
 	result, err := c.resMan.OpenFontCollection(uri)
 	if err != nil {
 		return nil, err
@@ -212,35 +218,42 @@ func (c *Context) GetFont(family, subFamily string) (*Font, bool) {
 
 // Destroy releases all resources held by this Context.
 func (c *Context) Destroy() {
+	log.Debug("[ui] Destroying context")
+
 	for _, image := range c.adhocImages {
+		log.Debug("[ui] Destroying image (<none>)")
 		image.Destroy()
 	}
 	c.adhocImages = nil
 
-	for _, image := range c.namedImages {
+	for uri, image := range c.namedImages {
+		log.Debug("[ui] Destroying image (%s)", uri)
 		image.Destroy()
 	}
 	c.namedImages = make(map[string]*Image)
 
 	for _, font := range c.adhocFonts {
+		log.Debug("[ui] Destroying font (<none>)")
 		font.Destroy()
 	}
 	c.adhocFonts = nil
 
-	for _, font := range c.namedFonts {
+	for uri, font := range c.namedFonts {
+		log.Debug("[ui] Destroying font (%s)", uri)
 		font.Destroy()
 	}
 	c.namedFonts = make(map[string]*Font)
 
 	for _, collection := range c.adhocFontCollections {
+		log.Debug("[ui] Destroying font collection (<none>)")
 		collection.Destroy()
 	}
 	c.adhocFontCollections = nil
 
-	for _, collection := range c.namedFontCollections {
+	for uri, collection := range c.namedFontCollections {
+		log.Debug("[ui] Destroying font collection (%s)", uri)
 		collection.Destroy()
 	}
-	fmt.Println("CONTEXT DESTROYED")
 }
 
 func (c *Context) findImage(uri string) (*Image, bool) {

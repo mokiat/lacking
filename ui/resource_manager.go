@@ -31,7 +31,6 @@ func (m *resourceManager) CreateImage(img image.Image) *Image {
 }
 
 func (m *resourceManager) OpenImage(uri string) (*Image, error) {
-	fmt.Println("OPENING IMAGE:", uri)
 	in, err := m.locator.ReadResource(uri)
 	if err != nil {
 		return nil, fmt.Errorf("error opening resource: %w", err)
