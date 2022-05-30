@@ -111,7 +111,9 @@ func ContextScoped(delegate Component) Component {
 					delete(ctxSet, renderCtx.node)
 				}()
 			}
-			return delegate.componentFunc(props, ContextScope(scope, ctx))
+			scope = ContextScope(scope, ctx)
+			renderCtx.node.scope = scope
+			return delegate.componentFunc(props, scope)
 		},
 	}
 }
