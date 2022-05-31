@@ -31,6 +31,20 @@ type Scope interface {
 	Value(key interface{}) interface{}
 }
 
+// GetScopeValue is a helper function that retrieves the value as the specified
+// generic param type from the specified scope using the provided key.
+//
+// If there is no value with the specified key in the Scope or if the value
+// is not of the correct type then nil is returned.
+func GetScopeValue[T any](scope Scope, key interface{}) T {
+	value, ok := scope.Value(key).(T)
+	if !ok {
+		var defaultValue T
+		return defaultValue
+	}
+	return value
+}
+
 // ValueScope creates a new Scope that extends the specified parent scope
 // by adding the specified key-value pair.
 func ValueScope(parent Scope, key, value interface{}) Scope {
