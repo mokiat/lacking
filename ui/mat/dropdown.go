@@ -44,7 +44,7 @@ var Dropdown = co.Define(func(props co.Properties, scope co.Scope) co.Instance {
 		callbackData = co.GetOptionalCallbackData(props, defaultDropdownCallbackData)
 	)
 
-	listOverlay := co.UseState(func() *co.Overlay {
+	listOverlay := co.UseState(func() co.Overlay {
 		return nil
 	})
 
