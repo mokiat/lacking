@@ -117,6 +117,6 @@ func (e *scrollPaneEssence) OnMouseEvent(element *ui.Element, event ui.MouseEven
 	e.offsetY = dprec.Clamp(e.offsetY, 0.0, e.maxOffsetY)
 
 	e.Apply(element)
-	element.Context().Window().Invalidate()
+	element.Invalidate()
 	return true
 }

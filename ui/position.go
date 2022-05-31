@@ -30,10 +30,10 @@ func (p Position) Inverse() Position {
 
 // Translate returns a new Position that is translated
 // by the specified amount.
-func (p Position) Translate(dX, dY int) Position {
+func (p Position) Translate(delta Position) Position {
 	return Position{
-		X: p.X + dX,
-		Y: p.Y + dY,
+		X: p.X + delta.X,
+		Y: p.Y + delta.Y,
 	}
 }
 

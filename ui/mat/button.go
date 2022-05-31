@@ -167,15 +167,14 @@ func (e *ButtonBaseEssence) State() ButtonState {
 }
 
 func (e *ButtonBaseEssence) OnMouseEvent(element *ui.Element, event ui.MouseEvent) bool {
-	context := element.Context()
 	switch event.Type {
 	case ui.MouseEventTypeEnter:
 		e.state = ButtonStateOver
-		context.Window().Invalidate()
+		element.Invalidate()
 		return true
 	case ui.MouseEventTypeLeave:
 		e.state = ButtonStateUp
-		context.Window().Invalidate()
+		element.Invalidate()
 		return true
 	case ui.MouseEventTypeUp:
 		if event.Button == ui.MouseButtonLeft {
@@ -183,13 +182,13 @@ func (e *ButtonBaseEssence) OnMouseEvent(element *ui.Element, event ui.MouseEven
 				e.onClick()
 			}
 			e.state = ButtonStateOver
-			context.Window().Invalidate()
+			element.Invalidate()
 			return true
 		}
 	case ui.MouseEventTypeDown:
 		if event.Button == ui.MouseButtonLeft {
 			e.state = ButtonStateDown
-			context.Window().Invalidate()
+			element.Invalidate()
 			return true
 		}
 	}

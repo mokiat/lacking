@@ -22,7 +22,7 @@ type ElementData struct {
 // Element.
 var Element = Define(func(props Properties, scope Scope) Instance {
 	element := UseState(func() *ui.Element {
-		return scope.Context().CreateElement()
+		return Window(scope).CreateElement()
 	}).Get()
 
 	Defer(func() {

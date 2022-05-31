@@ -16,19 +16,27 @@ type Size struct {
 	Height int
 }
 
-// Grow returns a new Size that is larger than this Size
-// by the given amount.
-func (s Size) Grow(dWidth, dHeight int) Size {
+// Inverse returns the inverse Size of the current one.
+func (s Size) Inverse() Size {
 	return Size{
-		Width:  s.Width + dWidth,
-		Height: s.Height + dHeight,
+		Width:  -s.Width,
+		Height: -s.Height,
+	}
+}
+
+// Grow returns a new Size that is larger than this Size
+// by the given delta amount.
+func (s Size) Grow(delta Size) Size {
+	return Size{
+		Width:  s.Width + delta.Width,
+		Height: s.Height + delta.Height,
 	}
 }
 
 // Shrink returns a new Size that is smaller than this Size
-// by the given amount.
-func (s Size) Shrink(dWidth, dHeight int) Size {
-	return s.Grow(-dWidth, -dHeight)
+// by the given delta amount.
+func (s Size) Shrink(delta Size) Size {
+	return s.Grow(delta.Inverse())
 }
 
 // Empty returns whether this Size is zero or negative

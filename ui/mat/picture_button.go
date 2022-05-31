@@ -32,11 +32,12 @@ var PictureButton = co.Define(func(props co.Properties, scope co.Scope) co.Insta
 
 	essence := co.UseState(func() *pictureButtonEssence {
 		return &pictureButtonEssence{
-			state:     ButtonStateUp,
-			fontSize:  24,
-			fontColor: ui.Black(),
+			ButtonBaseEssence: NewButtonBaseEssence(callbackData.ClickListener),
+			fontSize:          24,
+			fontColor:         ui.Black(),
 		}
 	}).Get()
+	essence.SetOnClick(callbackData.ClickListener)
 
 	essence.font = data.Font
 	if data.FontSize.Specified {
@@ -49,7 +50,6 @@ var PictureButton = co.Define(func(props co.Properties, scope co.Scope) co.Insta
 	essence.overImage = data.OverImage
 	essence.downImage = data.DownImage
 	essence.text = data.Text
-	essence.clickListener = callbackData.ClickListener
 
 	return co.New(Element, func() {
 		co.WithData(ElementData{
@@ -65,6 +65,7 @@ var _ ui.ElementMouseHandler = (*pictureButtonEssence)(nil)
 var _ ui.ElementRenderHandler = (*pictureButtonEssence)(nil)
 
 type pictureButtonEssence struct {
+	*ButtonBaseEssence
 	font      *ui.Font
 	fontSize  float32
 	fontColor ui.Color
@@ -72,41 +73,11 @@ type pictureButtonEssence struct {
 	upImage   *ui.Image
 	overImage *ui.Image
 	downImage *ui.Image
-
-	clickListener ClickListener
-
-	state ButtonState
-}
-
-func (e *pictureButtonEssence) OnMouseEvent(element *ui.Element, event ui.MouseEvent) bool {
-	context := element.Context()
-	switch event.Type {
-	case ui.MouseEventTypeEnter:
-		e.state = ButtonStateOver
-		context.Window().Invalidate()
-	case ui.MouseEventTypeLeave:
-		e.state = ButtonStateUp
-		context.Window().Invalidate()
-	case ui.MouseEventTypeUp:
-		if event.Button == ui.MouseButtonLeft {
-			if e.state == ButtonStateDown {
-				e.onClick()
-			}
-			e.state = ButtonStateOver
-			context.Window().Invalidate()
-		}
-	case ui.MouseEventTypeDown:
-		if event.Button == ui.MouseButtonLeft {
-			e.state = ButtonStateDown
-			context.Window().Invalidate()
-		}
-	}
-	return true
 }
 
 func (e *pictureButtonEssence) OnRender(element *ui.Element, canvas *ui.Canvas) {
 	var visibleImage *ui.Image
-	switch e.state {
+	switch e.State() {
 	case ButtonStateUp:
 		visibleImage = e.upImage
 	case ButtonStateOver:
@@ -157,11 +128,5 @@ func (e *pictureButtonEssence) OnRender(element *ui.Element, canvas *ui.Canvas) 
 			Size:  e.fontSize,
 			Color: e.fontColor,
 		})
-	}
-}
-
-func (e *pictureButtonEssence) onClick() {
-	if e.clickListener != nil {
-		e.clickListener()
 	}
 }

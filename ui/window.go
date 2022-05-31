@@ -19,7 +19,7 @@ func newWindow(appWindow app.Window, canvas *Canvas, resMan *resourceManager) (*
 		enteredElements:    make(map[*Element]struct{}),
 	}
 	window.context = newContext(nil, window, resMan)
-	window.root = newElement(window.context)
+	window.root = newElement(window)
 	window.root.SetLayout(NewFillLayout())
 	handler := &windowHandler{
 		Window: window,
@@ -98,6 +98,15 @@ func (w *Window) Context() *Context {
 // Root returns the Element that represents this Window.
 func (w *Window) Root() *Element {
 	return w.root
+}
+
+// CreateElement creates a new Element instance.
+//
+// The returned Element is not attached to anything and will not be
+// drawn or processed in any way until it is attached to the Element
+// hierarchy.
+func (w *Window) CreateElement() *Element {
+	return newElement(w)
 }
 
 // FindElementByID looks through the Element hierarchy tree for an Element
@@ -227,7 +236,7 @@ func (w *windowHandler) processFocusChange(element *Element, position Position) 
 		w.focusedElement = element
 	}
 
-	relativePosition := position.Translate(-bounds.X, -bounds.Y)
+	relativePosition := position.Translate(bounds.Position.Inverse())
 	for childElement := element.firstChild; childElement != nil; childElement = childElement.rightSibling {
 		w.processFocusChange(childElement, relativePosition)
 	}
@@ -255,7 +264,7 @@ func (w *windowHandler) processMouseLeave(element *Element, mousePosition Positi
 	}
 
 	bounds := element.Bounds()
-	relativeMousePosition := mousePosition.Translate(-bounds.X, -bounds.Y)
+	relativeMousePosition := mousePosition.Translate(bounds.Position.Inverse())
 	if !bounds.Contains(mousePosition) || !element.enabled {
 		element.onMouseEvent(MouseEvent{
 			Position: relativeMousePosition,
@@ -272,7 +281,7 @@ func (w *windowHandler) processMouseLeaveInvisible(mousePosition Position) {
 	for element := range w.oldEnteredElements {
 		if !element.visible {
 			bounds := element.AbsoluteBounds()
-			relativeMousePosition := mousePosition.Translate(-bounds.X, -bounds.Y)
+			relativeMousePosition := mousePosition.Translate(bounds.Position.Inverse())
 			element.onMouseEvent(MouseEvent{
 				Position: relativeMousePosition,
 				Type:     MouseEventTypeLeave,
@@ -293,7 +302,7 @@ func (w *windowHandler) processMouseEnter(element *Element, mousePosition Positi
 		return
 	}
 
-	relativeMousePosition := mousePosition.Translate(-bounds.X, -bounds.Y)
+	relativeMousePosition := mousePosition.Translate(bounds.Position.Inverse())
 	if _, ok := w.oldEnteredElements[element]; !ok {
 		element.onMouseEvent(MouseEvent{
 			Position: relativeMousePosition,
@@ -316,7 +325,7 @@ func (w *windowHandler) processMouseEvent(element *Element, event MouseEvent) bo
 	for childElement := element.lastChild; childElement != nil; childElement = childElement.leftSibling {
 		if childBounds := childElement.Bounds(); childBounds.Contains(event.Position) {
 			translatedEvent := event
-			translatedEvent.Position = event.Position.Translate(-childBounds.X, -childBounds.Y)
+			translatedEvent.Position = event.Position.Translate(childBounds.Position.Inverse())
 			if w.processMouseEvent(childElement, translatedEvent) {
 				return true
 			}
