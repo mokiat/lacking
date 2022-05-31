@@ -54,8 +54,8 @@ var Accordion = co.Define(func(props co.Properties, scope co.Scope) co.Instance 
 		icon = co.OpenImage(scope, AccordionCollapsedIconFile)
 	}
 
-	return co.New(Container, func() {
-		co.WithData(ContainerData{
+	return co.New(Element, func() {
+		co.WithData(ElementData{
 			Layout: NewVerticalLayout(VerticalLayoutSettings{
 				ContentAlignment: AlignmentLeft,
 			}),

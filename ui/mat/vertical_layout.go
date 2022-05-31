@@ -134,7 +134,5 @@ func (l *VerticalLayout) calculateIdealSize(element *ui.Element) ui.Size {
 		}
 		result.Height += childSize.Height
 	}
-	result.Width += element.Padding().Horizontal()
-	result.Height += element.Padding().Vertical()
-	return result
+	return result.Grow(element.Padding().Size())
 }

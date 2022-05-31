@@ -36,6 +36,7 @@ var dropdownList = co.Define(func(props co.Properties, scope co.Scope) co.Instan
 			Essence: essence,
 			Layout:  NewAnchorLayout(AnchorLayoutSettings{}),
 		})
+		co.WithLayoutData(props.LayoutData())
 
 		co.WithChild("content", co.New(Paper, func() {
 			co.WithData(PaperData{

@@ -106,9 +106,7 @@ func (l *AnchorLayout) calculateIdealSize(element *ui.Element) ui.Size {
 		result.Width = maxInt(result.Width, childSize.Width)
 		result.Height = maxInt(result.Height, childSize.Height)
 	}
-	result.Width += element.Padding().Horizontal()
-	result.Height += element.Padding().Vertical()
-	return result
+	return result.Grow(element.Padding().Size())
 }
 
 func (l *AnchorLayout) leftPosition(element *ui.Element, value int) int {
