@@ -8,14 +8,17 @@ import (
 	"golang.org/x/exp/slices"
 )
 
-var rootLifecycle *windowLifecycle
+var (
+	rootLifecycle *windowLifecycle
+	rootUIContext *ui.Context
+	rootScope     Scope
+)
 
-// Initialize wires the framework to the specified ui Window.
-// The specified instance will be the root component used.
+// Initialize wires the framework to the specified ui.Window.
+// The specified Instance will be the root component used.
 func Initialize(window *ui.Window, instance Instance) {
-	// TODO: Destroy uiCtx at the end.
-	uiCtx = window.Context()
-	rootScope = ContextScope(nil, uiCtx)
+	rootUIContext = window.Context()
+	rootScope = ContextScope(nil, rootUIContext)
 
 	rootNode := createComponentNode(New(application, func() {
 		WithScope(rootScope)

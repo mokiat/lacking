@@ -120,7 +120,7 @@ func InjectStore(target interface{}) {
 // reducer change it's Store's value then all connected components are
 // reconciled.
 func Dispatch(action interface{}) {
-	uiCtx.Schedule(func() {
+	rootUIContext.Schedule(func() {
 		invalidateConnectedNodes := false
 		for _, store := range stores {
 			newValue := store.reducer(store, action)

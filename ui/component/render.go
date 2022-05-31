@@ -59,7 +59,7 @@ func Defer(fn func()) {
 // component had been destroyed in the meantime.
 func Schedule(fn func()) {
 	node := renderCtx.node
-	uiCtx.Schedule(func() {
+	rootUIContext.Schedule(func() {
 		if node.isValid() {
 			fn()
 		}
@@ -79,7 +79,7 @@ func Schedule(fn func()) {
 func After(duration time.Duration, fn func()) {
 	node := renderCtx.node
 	time.AfterFunc(duration, func() {
-		uiCtx.Schedule(func() {
+		rootUIContext.Schedule(func() {
 			if node.isValid() {
 				fn()
 			}

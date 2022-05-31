@@ -8,11 +8,6 @@ import (
 	"golang.org/x/image/font/opentype"
 )
 
-var (
-	uiCtx     *ui.Context
-	rootScope Scope
-)
-
 // RootScope returns the main scope for the UI hierarchy. Resources loaded from
 // the ui.Context of this scope will not be released until the UI has completed.
 func RootScope() Scope {

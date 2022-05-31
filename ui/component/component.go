@@ -51,7 +51,7 @@ func Controlled(delegate Component) Component {
 					state.subscription.Unsubscribe()
 					state.controller = controller
 					state.subscription = controller.Subscribe(func(controller Controller) {
-						uiCtx.Schedule(func() {
+						rootUIContext.Schedule(func() {
 							if node.isValid() {
 								node.reconcile(node.instance, node.scope)
 							}
@@ -62,7 +62,7 @@ func Controlled(delegate Component) Component {
 				controllers[node] = controlledState{
 					controller: controller,
 					subscription: controller.Subscribe(func(controller Controller) {
-						uiCtx.Schedule(func() {
+						rootUIContext.Schedule(func() {
 							if node.isValid() {
 								node.reconcile(node.instance, node.scope)
 							}
