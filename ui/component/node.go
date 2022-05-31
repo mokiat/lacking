@@ -19,13 +19,11 @@ type componentNode struct {
 }
 
 func createComponentNode(instance Instance, scope Scope) *componentNode {
-	// fmt.Println("NODE", instance.componentType)
 	result := &componentNode{
 		instance: instance,
 		scope:    scope,
 		states:   make([][]dirtiable, 1),
 	}
-	// fmt.Printf("\tSCOPE: %p\n", scope)
 
 	renderCtx = renderContext{
 		node:        result,
@@ -37,7 +35,6 @@ func createComponentNode(instance Instance, scope Scope) *componentNode {
 		if instance.scope != nil {
 			result.scope = instance.scope
 		}
-		// fmt.Printf("\tSCOPE: %p\n", result.scope)
 		instance = instance.componentFunc(instance.properties(), result.scope)
 		renderCtx.stateDepth++
 		renderCtx.stateIndex = 0

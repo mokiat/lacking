@@ -48,11 +48,11 @@ func (i Instance) hasMatchingChild(instance Instance) bool {
 	return false
 }
 
-// New instantiates the specified component. The setup function is used
-// to apply configurations to the component in a user-friendly manner.
+// New instantiates the specified component. The setupFn function is used
+// to apply configurations to the component in a DSL manner.
 //
-// Note: creating an instance with New does not necessarily mean that a
-// component will be freshly instantiated. If this occurs during rendering
+// NOTE: Creating an instance with New does not necessarily mean that a
+// component will be freshly instantiated. If this occurs during re-rendering
 // the framework will reuse former instances when possible.
 func New(component Component, setupFn func()) Instance {
 	instanceCtx = &instanceContext{
@@ -72,28 +72,20 @@ func New(component Component, setupFn func()) Instance {
 	return instanceCtx.instance
 }
 
-// WithContext can be used during the instantiation of an Application
-// in order to configure a context object.
-//
-// This is a helper function in place of RegisterContext. While currently not
-// enforced, you should use this function during the instantiation of your
-// root component.
-// Using it at a later point during the lifecycle of your application could
-// indicate an improper usage of contexts. You may consider using reducers
-// and global state instead.
-func WithContext(context interface{}) {
-	RegisterContext(context)
-}
-
 // WithData specifies the data to be passed to the component
 // during instantiation.
 //
 // Your data should be comparable in order to enable optimizations
 // done by the framework. If you'd like to pass functions, in case of
-// callbacks, they can be passed through callback data.
+// callbacks, they can be passed through the callback data.
 func WithData(data interface{}) {
 	instanceCtx.instance.data = data
 }
+
+// XWithData is a helper function that resembles WithData but does nothing.
+// This allows one to experiment during development without having to comment
+// out large sections of code and deal with compilation issues.
+func XWithData(data interface{}) {}
 
 // WithLayoutData specifies the layout data to be passed to the
 // component during instantiation.
@@ -108,6 +100,12 @@ func WithLayoutData(layoutData interface{}) {
 	instanceCtx.instance.layoutData = layoutData
 }
 
+// XWithLayoutData is a helper function that resembles WithLayoutData
+// but does nothing.
+// This allows one to experiment during development without having to comment
+// out large sections of code and deal with compilation issues.
+func XWithLayoutData(layoutData interface{}) {}
+
 // WithCallbackData specifies the callback data to be passed to the
 // component during instantiation.
 //
@@ -121,11 +119,22 @@ func WithCallbackData(callbackData interface{}) {
 	instanceCtx.instance.callbackData = callbackData
 }
 
+// XWithCallbackData is a helper function that resembles WithCallbackData
+// but does nothing.
+// This allows one to experiment during development without having to comment
+// out large sections of code and deal with compilation issues.
+func XWithCallbackData(callbackData interface{}) {}
+
 // WithScope attaches a custom Scope to this component. Any child components
-// will inherit the Scope unless overriden with another call to WithScope.
+// will inherit the Scope unless overridden by another call to WithScope.
 func WithScope(scope Scope) {
 	instanceCtx.instance.scope = scope
 }
+
+// XWithScope is a helper function that resembles WithScope but does nothing.
+// This allows one to experiment during development without having to comment
+// out large sections of code and deal with compilation issues.
+func XWithScope(scope Scope) {}
 
 // WithChild adds a child to the given component. The child is appended
 // to all previously registered children via the same method.
@@ -142,7 +151,7 @@ func WithChild(key string, instance Instance) {
 
 // XWithChild is a helper function that resembles WithChild but does nothing.
 // This allows one to experiment during development without having to comment
-// out large sections of code and dealing with compilation issues.
+// out large sections of code and deal with compilation issues.
 func XWithChild(key string, instance Instance) {}
 
 // WithChildren sets the children for the given component. Keep in mind that
@@ -150,3 +159,9 @@ func XWithChild(key string, instance Instance) {}
 func WithChildren(children []Instance) {
 	instanceCtx.instance.children = children
 }
+
+// XWithChildren is a helper function that resembles WithChildren but does
+// nothing.
+// This allows one to experiment during development without having to comment
+// out large sections of code and deal with compilation issues.
+func XWithChildren(children []Instance) {}
