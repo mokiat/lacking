@@ -45,11 +45,16 @@ func (l *bindingLifecycle) ChangeObservable(obs Observable) {
 }
 
 func (l *bindingLifecycle) subscribe() {
-	l.subscription = l.obs.Subscribe(func(change Change) {
-		l.handle.NotifyChanged()
-	}, l.fltr)
+	if l.obs != nil {
+		l.subscription = l.obs.Subscribe(func(change Change) {
+			l.handle.NotifyChanged()
+		}, l.fltr)
+	}
 }
 
 func (l *bindingLifecycle) unsubscribe() {
-	l.subscription.Delete()
+	if l.subscription != nil {
+		l.subscription.Delete()
+		l.subscription = nil
+	}
 }
