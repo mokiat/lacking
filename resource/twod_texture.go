@@ -34,7 +34,11 @@ type TwoDTextureOperator struct {
 
 func (o *TwoDTextureOperator) Allocate(registry *Registry, id string) (interface{}, error) {
 	texAsset := new(asset.TwoDTexture)
-	if err := o.delegate.ReadContent(id, texAsset); err != nil {
+	resource := o.delegate.ResourceByID(id)
+	if resource == nil {
+		return nil, fmt.Errorf("cannot find asset %q", id)
+	}
+	if err := resource.ReadContent(texAsset); err != nil {
 		return nil, fmt.Errorf("failed to open twod texture asset %q: %w", id, err)
 	}
 

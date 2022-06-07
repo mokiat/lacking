@@ -19,8 +19,15 @@ func (a *SaveTwoDTextureAssetAction) Describe() string {
 func (a *SaveTwoDTextureAssetAction) Run() error {
 	image := a.imageProvider.Image()
 	textureAsset := BuildTwoDTextureAsset(image)
-	if err := a.registry.WriteContent(a.id, textureAsset); err != nil {
+	resource := a.registry.ResourceByID(a.id)
+	if resource == nil {
+		resource = a.registry.CreateResource("twod_texture", a.id)
+	}
+	if err := resource.WriteContent(textureAsset); err != nil {
 		return fmt.Errorf("failed to write asset: %w", err)
+	}
+	if err := a.registry.Save(); err != nil {
+		return fmt.Errorf("error saving resources: %w", err)
 	}
 	return nil
 }
@@ -85,8 +92,15 @@ func (a *SaveCubeTextureAction) Run() error {
 		Data: textureData(CubeSideBottom),
 	}
 
-	if err := a.registry.WriteContent(a.id, textureAsset); err != nil {
+	resource := a.registry.ResourceByID(a.id)
+	if resource == nil {
+		resource = a.registry.CreateResource("cube_texture", a.id)
+	}
+	if err := resource.WriteContent(textureAsset); err != nil {
 		return fmt.Errorf("failed to write asset: %w", err)
+	}
+	if err := a.registry.Save(); err != nil {
+		return fmt.Errorf("error saving resources: %w", err)
 	}
 	return nil
 }

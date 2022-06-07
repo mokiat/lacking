@@ -34,7 +34,11 @@ type CubeTextureOperator struct {
 
 func (o *CubeTextureOperator) Allocate(registry *Registry, id string) (interface{}, error) {
 	texAsset := new(asset.CubeTexture)
-	if err := o.delegate.ReadContent(id, texAsset); err != nil {
+	resource := o.delegate.ResourceByID(id)
+	if resource == nil {
+		return nil, fmt.Errorf("cannot find asset %q", id)
+	}
+	if err := resource.ReadContent(texAsset); err != nil {
 		return nil, fmt.Errorf("failed to open cube texture asset %q: %w", id, err)
 	}
 

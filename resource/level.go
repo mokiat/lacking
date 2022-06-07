@@ -47,7 +47,11 @@ type LevelOperator struct {
 
 func (o *LevelOperator) Allocate(registry *Registry, id string) (interface{}, error) {
 	levelAsset := new(asset.Level)
-	if err := o.delegate.ReadContent(id, levelAsset); err != nil {
+	resource := o.delegate.ResourceByID(id)
+	if resource == nil {
+		return nil, fmt.Errorf("cannot find asset %q", id)
+	}
+	if err := resource.ReadContent(levelAsset); err != nil {
 		return nil, fmt.Errorf("failed to open level asset %q: %w", id, err)
 	}
 

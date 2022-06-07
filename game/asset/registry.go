@@ -21,31 +21,29 @@ type Decodable interface {
 
 // Registry represents a managment interface for assets.
 type Registry interface {
-	ReadResources() ([]Resource, error)
-	WriteResources(resources []Resource) error
-
-	ReadDependencies() ([]Dependency, error)
-	WriteDependencies(dependencies []Dependency) error
-
-	ReadPreview(guid string) (image.Image, error)
-	WritePreview(guid string, img image.Image) error
-	DeletePreview(guid string) error
-
-	ReadContent(guid string, target Decodable) error
-	WriteContent(guid string, target Encodable) error
-	DeleteContent(guid string) error
+	Resources() []Resource
+	ResourceByID(id string) Resource
+	ResourceByName(name string) Resource
+	ResourcesByName(name string) []Resource
+	CreateResource(kind, name string) Resource
+	Save() error
 }
 
 // Resource represents the generic aspects of an asset.
-type Resource struct {
-	GUID string
-	Kind string
-	Name string
-}
-
-// Dependency describes the dependency of a source asset to
-// a target asset.
-type Dependency struct {
-	SourceGUID string
-	TargetGUID string
+type Resource interface {
+	ID() string
+	Kind() string
+	Name() string
+	SetName(name string)
+	Dependants() []Resource
+	Dependencies() []Resource
+	AddDependency(resource Resource)
+	RemoveDependency(resource Resource)
+	ReadPreview() (image.Image, error)
+	WritePreview(image.Image) error
+	DeletePreview() error
+	ReadContent(target Decodable) error
+	WriteContent(source Encodable) error
+	DeleteContent() error
+	Delete()
 }

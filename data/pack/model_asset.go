@@ -63,8 +63,15 @@ func (a *SaveModelAssetAction) Run() error {
 		visitNode(nil, node)
 	}
 
-	if err := a.registry.WriteContent(a.id, modelAsset); err != nil {
+	resource := a.registry.ResourceByID(a.id)
+	if resource == nil {
+		resource = a.registry.CreateResource("model", a.id)
+	}
+	if err := resource.WriteContent(modelAsset); err != nil {
 		return fmt.Errorf("failed to write asset: %w", err)
+	}
+	if err := a.registry.Save(); err != nil {
+		return fmt.Errorf("error saving resources: %w", err)
 	}
 	return nil
 }
