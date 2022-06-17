@@ -8,6 +8,7 @@ import (
 
 	"github.com/mdouchement/hdr"
 	_ "github.com/mdouchement/hdr/codec/rgbe"
+	"github.com/mokiat/goexr/exr"
 	_ "golang.org/x/image/tiff"
 )
 
@@ -61,6 +62,14 @@ func BuildImageResource(img image.Image) *Image {
 					G: g,
 					B: b,
 					A: a,
+				}
+			case *exr.RGBAImage:
+				clr := img.At(x, y).(exr.RGBAColor)
+				texels[y][x] = Color{
+					R: float64(clr.R),
+					G: float64(clr.G),
+					B: float64(clr.B),
+					A: float64(clr.A),
 				}
 			default:
 				r, g, b, a := img.At(imgStartX+x, imgStartY+y).RGBA()

@@ -33,43 +33,7 @@ func (t *TwoDTexture) encodeV1(out io.Writer) error {
 }
 
 func (t *TwoDTexture) decodeV1(in io.Reader) error {
-	reader := storage.NewTypedReader(in)
-	if width, err := reader.ReadUInt16(); err != nil {
-		return err
-	} else {
-		t.Width = width
-	}
-	if height, err := reader.ReadUInt16(); err != nil {
-		return err
-	} else {
-		t.Height = height
-	}
-	if wrapping, err := reader.ReadUInt8(); err != nil {
-		return err
-	} else {
-		t.Wrapping = WrapMode(wrapping)
-	}
-	if filtering, err := reader.ReadUInt8(); err != nil {
-		return err
-	} else {
-		t.Filtering = FilterMode(filtering)
-	}
-	if format, err := reader.ReadUInt8(); err != nil {
-		return err
-	} else {
-		t.Format = TexelFormat(format)
-	}
-	if flags, err := reader.ReadUInt8(); err != nil {
-		return err
-	} else {
-		t.Flags = TextureFlag(flags)
-	}
-	if data, err := reader.ReadBytesBlock(); err != nil {
-		return err
-	} else {
-		t.Data = data
-	}
-	return nil
+	return NewReflectDecoder(in).Decode(t)
 }
 
 func (t *CubeTexture) encodeV1(out io.Writer) error {
@@ -108,56 +72,5 @@ func (t *CubeTexture) encodeV1(out io.Writer) error {
 }
 
 func (t *CubeTexture) decodeV1(in io.Reader) error {
-	reader := storage.NewTypedReader(in)
-	if dimension, err := reader.ReadUInt16(); err != nil {
-		return err
-	} else {
-		t.Dimension = dimension
-	}
-	if filtering, err := reader.ReadUInt8(); err != nil {
-		return err
-	} else {
-		t.Filtering = FilterMode(filtering)
-	}
-	if format, err := reader.ReadUInt8(); err != nil {
-		return err
-	} else {
-		t.Format = TexelFormat(format)
-	}
-	if flags, err := reader.ReadUInt8(); err != nil {
-		return err
-	} else {
-		t.Flags = TextureFlag(flags)
-	}
-	if frontData, err := reader.ReadBytesBlock(); err != nil {
-		return err
-	} else {
-		t.FrontSide.Data = frontData
-	}
-	if backData, err := reader.ReadBytesBlock(); err != nil {
-		return err
-	} else {
-		t.BackSide.Data = backData
-	}
-	if leftData, err := reader.ReadBytesBlock(); err != nil {
-		return err
-	} else {
-		t.LeftSide.Data = leftData
-	}
-	if rightData, err := reader.ReadBytesBlock(); err != nil {
-		return err
-	} else {
-		t.RightSide.Data = rightData
-	}
-	if topData, err := reader.ReadBytesBlock(); err != nil {
-		return err
-	} else {
-		t.TopSide.Data = topData
-	}
-	if bottomData, err := reader.ReadBytesBlock(); err != nil {
-		return err
-	} else {
-		t.BottomSide.Data = bottomData
-	}
-	return nil
+	return NewReflectDecoder(in).Decode(t)
 }
