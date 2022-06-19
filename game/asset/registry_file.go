@@ -133,10 +133,12 @@ func (r *dirRegistry) ResourcesByName(name string) []Resource {
 
 func (r *dirRegistry) CreateResource(kind, name string) Resource {
 	result := &dirResource{
-		registry: r,
-		id:       uuid.NewString(),
-		kind:     kind,
-		name:     name,
+		registry:     r,
+		id:           uuid.NewString(),
+		kind:         kind,
+		name:         name,
+		dependants:   make(map[string]struct{}),
+		dependencies: make(map[string]struct{}),
 	}
 	r.resources = append(r.resources, result)
 	r.resourcesFromID[result.id] = result
@@ -146,10 +148,12 @@ func (r *dirRegistry) CreateResource(kind, name string) Resource {
 
 func (r *dirRegistry) CreateIDResource(id, kind, name string) Resource {
 	result := &dirResource{
-		registry: r,
-		id:       id,
-		kind:     kind,
-		name:     name,
+		registry:     r,
+		id:           id,
+		kind:         kind,
+		name:         name,
+		dependants:   make(map[string]struct{}),
+		dependencies: make(map[string]struct{}),
 	}
 	r.resources = append(r.resources, result)
 	r.resourcesFromID[result.id] = result
