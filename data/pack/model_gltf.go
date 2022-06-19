@@ -2,8 +2,6 @@ package pack
 
 import (
 	"fmt"
-	"io"
-	"path"
 
 	"github.com/mokiat/gomath/sprec"
 	"github.com/mokiat/lacking/data"
@@ -11,11 +9,11 @@ import (
 )
 
 const (
-	AttributePosition  = "POSITION"
-	AttributeNormal    = "NORMAL"
-	AttributeTangent   = "TANGENT"
-	AttributeTexCoord0 = "TEXCOORD_0"
-	AttributeColor0    = "COLOR_0"
+	attributePosition  = "POSITION"
+	attributeNormal    = "NORMAL"
+	attributeTangent   = "TANGENT"
+	attributeTexCoord0 = "TEXCOORD_0"
+	attributeColor0    = "COLOR_0"
 )
 
 var (
@@ -79,19 +77,19 @@ func (a *OpenGLTFResourceAction) Run() error {
 			subMesh.IndexOffset = len(mesh.Indices)
 			subMesh.IndexCount = int(gltfPrimitive.FindIndexCount())
 
-			if gltfPrimitive.HasAttribute(AttributePosition) {
+			if gltfPrimitive.HasAttribute(attributePosition) {
 				mesh.VertexLayout.HasCoords = true
 			}
-			if gltfPrimitive.HasAttribute(AttributeNormal) {
+			if gltfPrimitive.HasAttribute(attributeNormal) {
 				mesh.VertexLayout.HasNormals = true
 			}
-			if gltfPrimitive.HasAttribute(AttributeTangent) {
+			if gltfPrimitive.HasAttribute(attributeTangent) {
 				mesh.VertexLayout.HasTangents = true
 			}
-			if gltfPrimitive.HasAttribute(AttributeTexCoord0) {
+			if gltfPrimitive.HasAttribute(attributeTexCoord0) {
 				mesh.VertexLayout.HasTexCoords = true
 			}
-			if gltfPrimitive.HasAttribute(AttributeColor0) {
+			if gltfPrimitive.HasAttribute(attributeColor0) {
 				mesh.VertexLayout.HasColors = true
 			}
 
@@ -115,7 +113,7 @@ func (a *OpenGLTFResourceAction) Run() error {
 				}
 			}
 
-			switch gltfPrimitive.FindMode() {
+			switch gltfPrimitive.Mode {
 			case gltf.PrimitivePoints:
 				subMesh.Primitive = PrimitivePoints
 			case gltf.PrimitiveLines:
@@ -211,19 +209,6 @@ func (a *OpenGLTFResourceAction) Run() error {
 	return nil
 }
 
-type gltfLocator struct {
-	locator ResourceLocator
-	uri     string
-}
-
-func (l gltfLocator) Open() (io.ReadCloser, error) {
-	return l.locator.Open(l.uri)
-}
-
-func (l gltfLocator) OpenRelative(uri string) (io.ReadCloser, error) {
-	return l.locator.Open(path.Join(path.Dir(l.uri), uri))
-}
-
 type GLTFDocument struct {
 	*gltf.Document
 }
@@ -254,12 +239,6 @@ func (d GLTFDocument) GetMeshes() []GLTFMesh {
 	}
 	return result
 }
-func (d GLTFDocument) GetMesh(index int) GLTFMesh {
-	return GLTFMesh{
-		doc:  d,
-		Mesh: d.Meshes[index],
-	}
-}
 
 type GLTFMesh struct {
 	doc GLTFDocument
@@ -277,13 +256,6 @@ func (m GLTFMesh) GetPrimitives() []GLTFPrimitive {
 	return result
 }
 
-func (m GLTFMesh) GetPrimitive(index int) GLTFPrimitive {
-	return GLTFPrimitive{
-		doc:       m.doc,
-		Primitive: m.Primitives[index],
-	}
-}
-
 type GLTFPrimitive struct {
 	doc GLTFDocument
 	*gltf.Primitive
@@ -292,10 +264,6 @@ type GLTFPrimitive struct {
 func (p GLTFPrimitive) HasAttribute(name string) bool {
 	_, ok := p.Attributes[name]
 	return ok
-}
-
-func (p GLTFPrimitive) FindMode() gltf.PrimitiveMode {
-	return p.Mode
 }
 
 func (p GLTFPrimitive) FindMaterial() GLTFMaterial {
@@ -337,10 +305,10 @@ func (p GLTFPrimitive) FindIndex(index int) int {
 }
 
 func (p GLTFPrimitive) FindCoord(index int) sprec.Vec3 {
-	if !p.HasAttribute(AttributePosition) {
+	if !p.HasAttribute(attributePosition) {
 		return sprec.ZeroVec3()
 	}
-	accessor := p.doc.Accessors[p.Attributes[AttributePosition]]
+	accessor := p.doc.Accessors[p.Attributes[attributePosition]]
 	if accessor.BufferView == nil {
 		return sprec.ZeroVec3()
 	}
@@ -362,10 +330,10 @@ func (p GLTFPrimitive) FindCoord(index int) sprec.Vec3 {
 }
 
 func (p GLTFPrimitive) FindNormal(index int) sprec.Vec3 {
-	if !p.HasAttribute(AttributeNormal) {
+	if !p.HasAttribute(attributeNormal) {
 		return sprec.ZeroVec3()
 	}
-	accessor := p.doc.Accessors[p.Attributes[AttributeNormal]]
+	accessor := p.doc.Accessors[p.Attributes[attributeNormal]]
 	if accessor.BufferView == nil {
 		return sprec.ZeroVec3()
 	}
@@ -387,10 +355,10 @@ func (p GLTFPrimitive) FindNormal(index int) sprec.Vec3 {
 }
 
 func (p GLTFPrimitive) FindTangent(index int) sprec.Vec3 {
-	if !p.HasAttribute(AttributeTangent) {
+	if !p.HasAttribute(attributeTangent) {
 		return sprec.ZeroVec3()
 	}
-	accessor := p.doc.Accessors[p.Attributes[AttributeTangent]]
+	accessor := p.doc.Accessors[p.Attributes[attributeTangent]]
 	if accessor.BufferView == nil {
 		return sprec.ZeroVec3()
 	}
@@ -412,10 +380,10 @@ func (p GLTFPrimitive) FindTangent(index int) sprec.Vec3 {
 }
 
 func (p GLTFPrimitive) FindTexCoord0(index int) sprec.Vec2 {
-	if !p.HasAttribute(AttributeTexCoord0) {
+	if !p.HasAttribute(attributeTexCoord0) {
 		return sprec.ZeroVec2()
 	}
-	accessor := p.doc.Accessors[p.Attributes[AttributeTexCoord0]]
+	accessor := p.doc.Accessors[p.Attributes[attributeTexCoord0]]
 	if accessor.BufferView == nil {
 		return sprec.ZeroVec2()
 	}
@@ -436,10 +404,10 @@ func (p GLTFPrimitive) FindTexCoord0(index int) sprec.Vec2 {
 }
 
 func (p GLTFPrimitive) FindColor0(index int) sprec.Vec4 {
-	if !p.HasAttribute(AttributeColor0) {
+	if !p.HasAttribute(attributeColor0) {
 		return sprec.ZeroVec4()
 	}
-	accessor := p.doc.Accessors[p.Attributes[AttributeColor0]]
+	accessor := p.doc.Accessors[p.Attributes[attributeColor0]]
 	if accessor.BufferView == nil {
 		return sprec.ZeroVec4()
 	}
