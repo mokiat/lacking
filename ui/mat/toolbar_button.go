@@ -20,7 +20,7 @@ var (
 type ToolbarButtonData struct {
 	Icon     *ui.Image
 	Text     string
-	Disabled bool
+	Enabled  optional.V[bool]
 	Selected bool
 }
 
@@ -38,7 +38,7 @@ var defaultToolbarButtonCallbackData = ToolbarButtonCallbackData{
 
 // ToolbarButton is a button component intended to be placed inside a
 // Toolbar container.
-var ToolbarButton = co.Define(func(props co.Properties) co.Instance {
+var ToolbarButton = co.Define(func(props co.Properties, scope co.Scope) co.Instance {
 	var (
 		data         = co.GetOptionalData(props, defaultToolbarButtonData)
 		layoutData   = co.GetOptionalLayoutData(props, LayoutData{})
@@ -56,7 +56,7 @@ var ToolbarButton = co.Define(func(props co.Properties) co.Instance {
 	layoutData.Height = optional.Value(ToolbarItemHeight)
 
 	foregroundColor := OnSurfaceColor
-	if data.Disabled {
+	if data.Enabled.Specified && !data.Enabled.Value {
 		foregroundColor = OutlineColor
 	}
 
@@ -71,7 +71,7 @@ var ToolbarButton = co.Define(func(props co.Properties) co.Instance {
 				Left:  ToolbarButtonSidePadding,
 				Right: ToolbarButtonSidePadding,
 			},
-			Enabled: optional.Value(!data.Disabled),
+			Enabled: data.Enabled,
 		})
 		co.WithLayoutData(layoutData)
 
@@ -92,7 +92,7 @@ var ToolbarButton = co.Define(func(props co.Properties) co.Instance {
 		if data.Text != "" {
 			co.WithChild("text", co.New(Label, func() {
 				co.WithData(LabelData{
-					Font:      co.OpenFont(ToolbarButtonFontFile),
+					Font:      co.OpenFont(scope, ToolbarButtonFontFile),
 					FontSize:  optional.Value(float32(ToolbarButtonFontSize)),
 					FontColor: optional.Value(foregroundColor),
 					Text:      data.Text,

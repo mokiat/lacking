@@ -34,16 +34,27 @@ func (n *Node) Matrix() sprec.Mat4 {
 }
 
 type Mesh struct {
-	Name        string
-	VertexCount int
-	Coords      []sprec.Vec3
-	Normals     []sprec.Vec3
-	Tangents    []sprec.Vec3
-	TexCoords   []sprec.Vec2
-	Colors      []sprec.Vec4
-	IndexCount  int
-	Indices     []int
-	SubMeshes   []SubMesh
+	Name         string
+	VertexLayout VertexLayout
+	Vertices     []Vertex
+	Indices      []int
+	SubMeshes    []SubMesh
+}
+
+type VertexLayout struct {
+	HasCoords    bool
+	HasNormals   bool
+	HasTangents  bool
+	HasTexCoords bool
+	HasColors    bool
+}
+
+type Vertex struct {
+	Coord    sprec.Vec3
+	Normal   sprec.Vec3
+	Tangent  sprec.Vec3
+	TexCoord sprec.Vec2
+	Color    sprec.Vec4
 }
 
 type SubMesh struct {

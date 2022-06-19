@@ -1,17 +1,14 @@
 package asset
 
 type resourcesDTO struct {
-	Resources []resourceDTO `yaml:"resources"`
+	Resources    []resourceDTO   `yaml:"resources"`
+	Dependencies []dependencyDTO `yaml:"dependencies"`
 }
 
 type resourceDTO struct {
 	GUID string `yaml:"guid"`
 	Kind string `yaml:"kind"`
 	Name string `yaml:"name"`
-}
-
-type dependenciesDTO struct {
-	Dependencies []dependencyDTO `yaml:"dependencies"`
 }
 
 type dependencyDTO struct {

@@ -3,6 +3,8 @@ package ui
 import (
 	"fmt"
 
+	"golang.org/x/exp/maps"
+
 	"github.com/mokiat/gomath/sprec"
 	"github.com/mokiat/lacking/app"
 )
@@ -11,11 +13,13 @@ import (
 // with the specified app.Window.
 func newWindow(appWindow app.Window, canvas *Canvas, resMan *resourceManager) (*Window, WindowHandler) {
 	window := &Window{
-		Window: appWindow,
-		canvas: canvas,
+		Window:             appWindow,
+		canvas:             canvas,
+		oldEnteredElements: make(map[*Element]struct{}),
+		enteredElements:    make(map[*Element]struct{}),
 	}
 	window.context = newContext(nil, window, resMan)
-	window.root = newElement(window.context)
+	window.root = newElement(window)
 	window.root.SetLayout(NewFillLayout())
 	handler := &windowHandler{
 		Window: window,
@@ -66,6 +70,9 @@ type Window struct {
 	root           *Element
 	focusedElement *Element
 
+	oldEnteredElements map[*Element]struct{}
+	enteredElements    map[*Element]struct{}
+
 	oldMousePosition Position
 }
 
@@ -91,6 +98,15 @@ func (w *Window) Context() *Context {
 // Root returns the Element that represents this Window.
 func (w *Window) Root() *Element {
 	return w.root
+}
+
+// CreateElement creates a new Element instance.
+//
+// The returned Element is not attached to anything and will not be
+// drawn or processed in any way until it is attached to the Element
+// hierarchy.
+func (w *Window) CreateElement() *Element {
+	return newElement(w)
 }
 
 // FindElementByID looks through the Element hierarchy tree for an Element
@@ -166,10 +182,9 @@ func (w *windowHandler) OnKeyboardEvent(event KeyboardEvent) bool {
 }
 
 func (w *windowHandler) OnMouseEvent(event MouseEvent) bool {
-	// TODO: Use a better algorithm. This one does not handle resize.
-	w.processMouseLeave(w.root, event.Position, w.oldMousePosition)
-	w.processMouseEnter(w.root, event.Position, w.oldMousePosition)
+	w.checkMouseLeaveEnter(event.Position)
 	w.oldMousePosition = event.Position
+
 	if event.Type == MouseEventTypeDown {
 		oldFocusedElement := w.focusedElement
 		w.processFocusChange(w.root, event.Position)
@@ -177,10 +192,15 @@ func (w *windowHandler) OnMouseEvent(event MouseEvent) bool {
 			w.Invalidate()
 		}
 	}
+
 	return w.processMouseEvent(w.root, event)
 }
 
 func (w *windowHandler) OnRender() {
+	// Check that mouse is still in the same Element. This can change
+	// when an Element gets disabled.
+	w.checkMouseLeaveEnter(w.oldMousePosition)
+
 	clipBounds := Bounds{
 		Position: NewPosition(0, 0),
 		Size:     w.size,
@@ -216,61 +236,83 @@ func (w *windowHandler) processFocusChange(element *Element, position Position) 
 		w.focusedElement = element
 	}
 
-	relativePosition := position.Translate(-bounds.X, -bounds.Y)
-	for childElement := element.lastChild; childElement != nil; childElement = childElement.leftSibling {
+	relativePosition := position.Translate(bounds.Position.Inverse())
+	for childElement := element.firstChild; childElement != nil; childElement = childElement.rightSibling {
 		w.processFocusChange(childElement, relativePosition)
 	}
 }
 
-func (w *windowHandler) processMouseLeave(element *Element, newPosition, oldPosition Position) {
-	if !element.enabled || !element.visible {
+func (w *windowHandler) checkMouseLeaveEnter(mousePosition Position) {
+	w.oldEnteredElements, w.enteredElements = w.enteredElements, w.oldEnteredElements
+	maps.Clear(w.enteredElements)
+
+	w.processMouseLeave(w.root, mousePosition)
+	w.processMouseLeaveInvisible(mousePosition)
+	w.processMouseEnter(w.root, mousePosition)
+}
+
+func (w *windowHandler) processMouseLeave(element *Element, mousePosition Position) {
+	if !element.visible {
+		// We handle invisible elements separately.
 		return
 	}
 
-	bounds := element.Bounds()
-	if !bounds.Contains(oldPosition) {
+	if _, ok := w.oldEnteredElements[element]; !ok {
 		// Element was not hovered before so no need to send leave event or
 		// process any children
 		return
 	}
 
-	relativeNewPosition := newPosition.Translate(-bounds.X, -bounds.Y)
-	relativeOldPosition := oldPosition.Translate(-bounds.X, -bounds.Y)
-	if !bounds.Contains(newPosition) {
+	bounds := element.Bounds()
+	relativeMousePosition := mousePosition.Translate(bounds.Position.Inverse())
+	if !bounds.Contains(mousePosition) || !element.enabled {
 		element.onMouseEvent(MouseEvent{
-			Position: relativeNewPosition,
+			Position: relativeMousePosition,
 			Type:     MouseEventTypeLeave,
 		})
 	}
 
 	for childElement := element.lastChild; childElement != nil; childElement = childElement.leftSibling {
-		w.processMouseLeave(childElement, relativeNewPosition, relativeOldPosition)
+		w.processMouseLeave(childElement, relativeMousePosition)
 	}
 }
 
-func (w *windowHandler) processMouseEnter(element *Element, newPosition, oldPosition Position) {
+func (w *windowHandler) processMouseLeaveInvisible(mousePosition Position) {
+	for element := range w.oldEnteredElements {
+		if !element.visible {
+			bounds := element.AbsoluteBounds()
+			relativeMousePosition := mousePosition.Translate(bounds.Position.Inverse())
+			element.onMouseEvent(MouseEvent{
+				Position: relativeMousePosition,
+				Type:     MouseEventTypeLeave,
+			})
+		}
+	}
+}
+
+func (w *windowHandler) processMouseEnter(element *Element, mousePosition Position) {
 	if !element.enabled || !element.visible {
 		return
 	}
 
 	bounds := element.Bounds()
-	if !bounds.Contains(newPosition) {
+	if !bounds.Contains(mousePosition) {
 		// Element does not contain new point so no need to send enter event
 		// or process any children
 		return
 	}
 
-	relativeNewPosition := newPosition.Translate(-bounds.X, -bounds.Y)
-	relativeOldPosition := oldPosition.Translate(-bounds.X, -bounds.Y)
-	if !bounds.Contains(oldPosition) {
+	relativeMousePosition := mousePosition.Translate(bounds.Position.Inverse())
+	if _, ok := w.oldEnteredElements[element]; !ok {
 		element.onMouseEvent(MouseEvent{
-			Position: relativeNewPosition,
+			Position: relativeMousePosition,
 			Type:     MouseEventTypeEnter,
 		})
 	}
+	w.enteredElements[element] = struct{}{}
 
 	for childElement := element.lastChild; childElement != nil; childElement = childElement.leftSibling {
-		w.processMouseEnter(childElement, relativeNewPosition, relativeOldPosition)
+		w.processMouseEnter(childElement, relativeMousePosition)
 	}
 }
 
@@ -283,7 +325,7 @@ func (w *windowHandler) processMouseEvent(element *Element, event MouseEvent) bo
 	for childElement := element.lastChild; childElement != nil; childElement = childElement.leftSibling {
 		if childBounds := childElement.Bounds(); childBounds.Contains(event.Position) {
 			translatedEvent := event
-			translatedEvent.Position = event.Position.Translate(-childBounds.X, -childBounds.Y)
+			translatedEvent.Position = event.Position.Translate(childBounds.Position.Inverse())
 			if w.processMouseEvent(childElement, translatedEvent) {
 				return true
 			}

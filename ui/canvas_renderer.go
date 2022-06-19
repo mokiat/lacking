@@ -486,6 +486,10 @@ func (c *canvasRenderer) FillText(text string, position sprec.Vec2, typography T
 	}
 	vertexCount := c.textMesh.Offset() - vertexOffset
 
+	if vertexCount == 0 {
+		return
+	}
+
 	c.commandQueue.BindPipeline(c.textPipeline)
 	c.commandQueue.Uniform4f(c.textMaterial.colorLocation, color.Array())
 	c.commandQueue.UniformMatrix4f(c.textMaterial.projectionMatrixLocation, c.projectionMatrix.ColumnMajorArray())

@@ -40,7 +40,7 @@ var defaultTabbarTabCallbackData = TabbarTabCallbackData{
 }
 
 // TabbarTab is a tab component to be placed inside a Tabbar.
-var TabbarTab = co.Define(func(props co.Properties) co.Instance {
+var TabbarTab = co.Define(func(props co.Properties, scope co.Scope) co.Instance {
 	var (
 		data         = co.GetOptionalData(props, defaultTabbarTabData)
 		callbackData = co.GetOptionalCallbackData(props, defaultTabbarTabCallbackData)
@@ -95,7 +95,7 @@ var TabbarTab = co.Define(func(props co.Properties) co.Instance {
 		if data.Text != "" {
 			co.WithChild("text", co.New(Label, func() {
 				co.WithData(LabelData{
-					Font:      co.OpenFont(TabbarTabFontFile),
+					Font:      co.OpenFont(scope, TabbarTabFontFile),
 					FontSize:  optional.Value(TabbarTabFontSize),
 					FontColor: optional.Value(OnSurfaceColor),
 					Text:      data.Text,
@@ -117,7 +117,7 @@ var TabbarTab = co.Define(func(props co.Properties) co.Instance {
 
 				co.WithChild("icon", co.New(Picture, func() {
 					co.WithData(PictureData{
-						Image:      co.OpenImage(TabbarTabCloseIconFile),
+						Image:      co.OpenImage(scope, TabbarTabCloseIconFile),
 						ImageColor: optional.Value(OnSurfaceColor),
 						Mode:       ImageModeFit,
 					})

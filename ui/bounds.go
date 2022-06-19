@@ -30,7 +30,7 @@ func (b Bounds) Contains(position Position) bool {
 // position by the given amount.
 func (b Bounds) Translate(delta Position) Bounds {
 	return Bounds{
-		Position: b.Position.Translate(delta.X, delta.Y),
+		Position: b.Position.Translate(delta),
 		Size:     b.Size,
 	}
 }
@@ -40,7 +40,7 @@ func (b Bounds) Translate(delta Position) Bounds {
 func (b Bounds) Grow(size Size) Bounds {
 	return Bounds{
 		Position: b.Position,
-		Size:     b.Size.Grow(size.Width, size.Height),
+		Size:     b.Size.Grow(size),
 	}
 }
 
@@ -49,7 +49,7 @@ func (b Bounds) Grow(size Size) Bounds {
 func (b Bounds) Shrink(size Size) Bounds {
 	return Bounds{
 		Position: b.Position,
-		Size:     b.Size.Shrink(size.Width, size.Height),
+		Size:     b.Size.Shrink(size),
 	}
 }
 

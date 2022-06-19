@@ -17,7 +17,7 @@ var defaultContainerData = ContainerData{
 	Layout: NewFillLayout(),
 }
 
-var Container = co.ShallowCached(co.Define(func(props co.Properties) co.Instance {
+var Container = co.Define(func(props co.Properties, scope co.Scope) co.Instance {
 	var (
 		data ContainerData
 	)
@@ -42,7 +42,7 @@ var Container = co.ShallowCached(co.Define(func(props co.Properties) co.Instance
 		co.WithLayoutData(props.LayoutData())
 		co.WithChildren(props.Children())
 	})
-}))
+})
 
 var _ ui.ElementRenderHandler = (*containerEssence)(nil)
 

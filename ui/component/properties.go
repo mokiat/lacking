@@ -5,7 +5,7 @@ import (
 	"reflect"
 )
 
-// Properties is a holder for all data necessary to render a
+// Properties is a holder for all user-specified data necessary to render a
 // component.
 type Properties struct {
 	data         interface{}
@@ -26,7 +26,7 @@ func (p Properties) InjectData(target interface{}) {
 }
 
 // InjectOptionalData is a helper function that injects the Data into the
-// specified target, which should be a pointer to the correct type of if there
+// specified target, which should be a pointer to the correct type, or if there
 // is no data, it injects the default one.
 func (p Properties) InjectOptionalData(target, defaultValue interface{}) {
 	if p.data != nil {
@@ -61,9 +61,9 @@ func (p Properties) InjectLayoutData(target interface{}) {
 	inject(target, p.layoutData)
 }
 
-// InjectOptionalLayoutData is a helper function that injects the LayoutData into the
-// specified target, which should be a pointer to the correct type or if there
-// is no layout data, it injects the default one.
+// InjectOptionalLayoutData is a helper function that injects the LayoutData
+// into the specified target, which should be a pointer to the correct type, or
+// if there is no layout data, it injects the defaultValue one.
 func (p Properties) InjectOptionalLayoutData(target, defaultValue interface{}) {
 	if p.layoutData != nil {
 		inject(target, p.layoutData)
@@ -100,9 +100,9 @@ func (p Properties) InjectCallbackData(target interface{}) {
 	inject(target, p.callbackData)
 }
 
-// InjectOptionalCallbackData is a helper function that injects the CallbackData into
-// the specified target, which should be a pointer to the correct type or if there
-// is no callback data, it injects the default one.
+// InjectOptionalCallbackData is a helper function that injects the CallbackData
+// into the specified target, which should be a pointer to the correct type, or
+// if there is no callback data, it injects the defaultValue one.
 func (p Properties) InjectOptionalCallbackData(target, defaultValue interface{}) {
 	if p.callbackData != nil {
 		inject(target, p.callbackData)
@@ -127,8 +127,7 @@ func GetOptionalCallbackData[T any](props Properties, defaultValue T) T {
 	return props.callbackData.(T)
 }
 
-// Children returns all the child instances that this component should
-// host.
+// Children returns all the child instances that this component should host.
 func (p Properties) Children() []Instance {
 	return p.children
 }

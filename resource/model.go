@@ -69,7 +69,11 @@ type ModelOperator struct {
 
 func (o *ModelOperator) Allocate(registry *Registry, id string) (interface{}, error) {
 	modelAsset := new(asset.Model)
-	if err := o.delegate.ReadContent(id, modelAsset); err != nil {
+	resource := o.delegate.ResourceByID(id)
+	if resource == nil {
+		return nil, fmt.Errorf("cannot find asset %q", id)
+	}
+	if err := resource.ReadContent(modelAsset); err != nil {
 		return nil, fmt.Errorf("failed to open model asset %q: %w", id, err)
 	}
 

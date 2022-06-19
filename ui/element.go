@@ -1,7 +1,5 @@
 package ui
 
-import "reflect"
-
 // Essence represents the behavior that is attached to an Element.
 // For example, the actual value behind the interface could be a
 // specific UI control and/or a handler.
@@ -34,9 +32,9 @@ type ElementRenderHandler interface {
 	OnRender(element *Element, canvas *Canvas)
 }
 
-func newElement(context *Context) *Element {
+func newElement(window *Window) *Element {
 	return &Element{
-		context:   context,
+		window:    window,
 		enabled:   true,
 		visible:   true,
 		focusable: false,
@@ -55,7 +53,7 @@ type Element struct {
 	leftSibling  *Element
 	rightSibling *Element
 
-	context *Context
+	window  *Window
 	essence Essence
 
 	enabled   bool
@@ -75,9 +73,7 @@ func (e *Element) ID() string {
 	return e.id
 }
 
-// SetID changes the ID of this Element. If this Element
-// represents a Control, then this ID would affect the ID
-// of that owner Control.
+// SetID changes the ID of this Element.
 func (e *Element) SetID(id string) {
 	e.id = id
 }
@@ -136,6 +132,23 @@ func (e *Element) RightSibling() *Element {
 func (e *Element) Detach() {
 	if e.parent != nil {
 		e.parent.RemoveChild(e)
+	}
+}
+
+// PrependSibling attaches an Element to the left of the current one.
+func (e *Element) PrependSibling(sibling *Element) {
+	sibling.Detach()
+	sibling.leftSibling = e.leftSibling
+	if e.leftSibling != nil {
+		e.leftSibling.rightSibling = sibling
+	}
+	sibling.rightSibling = e
+	e.leftSibling = sibling
+	if e.parent != nil && sibling.leftSibling == nil {
+		e.parent.firstChild = sibling
+	}
+	if e.parent != nil {
+		e.parent.onBoundsChanged(e.parent.bounds)
 	}
 }
 
@@ -219,10 +232,9 @@ func (e *Element) RemoveChild(child *Element) {
 	e.onBoundsChanged(e.bounds)
 }
 
-// Context returns the Context that is related to this Element's
-// lifecycle.
-func (e *Element) Context() *Context {
-	return e.context
+// Window returns the ui Window that owns this Element.
+func (e *Element) Window() *Window {
+	return e.window
 }
 
 // Essence returns the Essence that is responsible for the behavior
@@ -239,28 +251,6 @@ func (e *Element) SetEssence(essence Essence) {
 	e.essence = essence
 }
 
-// InjectEssence assigns the Essence of this Element to the target.
-// If the target is not a pointer to the correct type, this
-// method panics.
-func (e *Element) InjectEssence(target interface{}) {
-	if target == nil {
-		panic("target cannot be nil")
-	}
-	value := reflect.ValueOf(target)
-	valueType := value.Type()
-	if valueType.Kind() != reflect.Ptr {
-		panic("target must be a pointer")
-	}
-	if value.IsNil() {
-		panic("target pointer cannot be nil")
-	}
-	essenceType := reflect.TypeOf(e.essence)
-	if !essenceType.AssignableTo(valueType.Elem()) {
-		panic("cannot assign essence to specified type")
-	}
-	value.Elem().Set(reflect.ValueOf(e.essence))
-}
-
 // Padding returns the spacing that should be maintained
 // inside an Element between its outer bounds and its content
 // area.
@@ -274,9 +264,7 @@ func (e *Element) Padding() Spacing {
 func (e *Element) SetPadding(padding Spacing) {
 	if padding != e.padding {
 		e.padding = padding
-		if e.parent != nil {
-			e.parent.onBoundsChanged(e.parent.bounds)
-		}
+		e.onBoundsChanged(e.bounds)
 	}
 }
 
@@ -297,6 +285,15 @@ func (e *Element) SetBounds(bounds Bounds) {
 	}
 }
 
+// AbsoluteBounds returns the absolute bounds of the Element.
+func (e *Element) AbsoluteBounds() Bounds {
+	result := e.bounds
+	for el := e.parent; el != nil; el = el.parent {
+		result = result.Translate(el.bounds.Position)
+	}
+	return result
+}
+
 // ContentBounds returns the bounds of the content area
 // of this Element relative to the Element itself.
 // The content bounds are calculated based on the
@@ -307,10 +304,7 @@ func (e *Element) ContentBounds() Bounds {
 			e.padding.Left,
 			e.padding.Top,
 		),
-		Size: NewSize(
-			e.bounds.Width-e.padding.Horizontal(),
-			e.bounds.Height-e.padding.Vertical(),
-		),
+		Size: e.bounds.Size.Shrink(e.padding.Size()),
 	}
 }
 
@@ -383,8 +377,20 @@ func (e *Element) Enabled() bool {
 func (e *Element) SetEnabled(enabled bool) {
 	if enabled != e.enabled {
 		e.enabled = enabled
-		e.invalidate()
+		e.Invalidate()
 	}
+}
+
+// HierarchyEnabled checks whether this Element and all parent Elements
+// are enabled.
+func (e *Element) HierarchyEnabled() bool {
+	if !e.enabled {
+		return false
+	}
+	if e.parent == nil {
+		return true
+	}
+	return e.parent.HierarchyEnabled()
 }
 
 // Visible returns whether this Element should be
@@ -401,8 +407,20 @@ func (e *Element) Visible() bool {
 func (e *Element) SetVisible(visible bool) {
 	if visible != e.visible {
 		e.visible = visible
-		e.invalidate()
+		e.Invalidate()
 	}
+}
+
+// HierarchyVisible checks whether this Element and all parent Elements
+// are visible.
+func (e *Element) HierarchyVisible() bool {
+	if !e.visible {
+		return false
+	}
+	if e.parent == nil {
+		return true
+	}
+	return e.parent.HierarchyVisible()
 }
 
 // Focusable returns whether this Element can receive keyboard
@@ -425,8 +443,10 @@ func (e *Element) Destroy() {
 	e.Detach()
 }
 
-func (e *Element) invalidate() {
-	e.context.window.Invalidate()
+// Invalidate marks this element as dirty and needing to be redrawn.
+func (e *Element) Invalidate() {
+	// TODO: Invalidate only the element's region
+	e.window.Invalidate()
 }
 
 func (e *Element) onBoundsChanged(bounds Bounds) {
@@ -436,7 +456,7 @@ func (e *Element) onBoundsChanged(bounds Bounds) {
 	if resizeHandler, ok := e.essence.(ElementResizeHandler); ok {
 		resizeHandler.OnResize(e, e.Bounds())
 	}
-	e.invalidate()
+	e.Invalidate()
 }
 
 func (e *Element) onKeyboardEvent(event KeyboardEvent) bool {

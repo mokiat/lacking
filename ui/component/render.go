@@ -58,8 +58,11 @@ func Defer(fn func()) {
 // The framework ensures that the closure will not be called if the
 // component had been destroyed in the meantime.
 func Schedule(fn func()) {
-	uiCtx.Schedule(func() {
-		fn()
+	node := renderCtx.node
+	rootUIContext.Schedule(func() {
+		if node.isValid() {
+			fn()
+		}
 	})
 }
 
@@ -71,14 +74,12 @@ func Schedule(fn func()) {
 // Normally, you would use this function within a Once block or as a result
 // of a callback.
 // Not doing so would cause the closure function to be scheduled on every
-// rendering of the component.
-// As the framework is free to render a component at any time it deems
-// necessary, it is unlikely that a user would like to have a
-// function scheduled in an undeterministic way.
+// rendering of the component, since the framework is free to render a component
+// at any time it deems necessary.
 func After(duration time.Duration, fn func()) {
 	node := renderCtx.node
 	time.AfterFunc(duration, func() {
-		uiCtx.Schedule(func() {
+		rootUIContext.Schedule(func() {
 			if node.isValid() {
 				fn()
 			}

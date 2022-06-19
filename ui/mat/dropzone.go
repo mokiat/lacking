@@ -20,7 +20,7 @@ var defaultDropZoneCallbackData = DropZoneCallbackData{
 // DropZone is a component that handles file drop events.
 // It is intended to be used as a container for a different component that
 // provides a visual aid (e.g. an upload icon or some type of viewport).
-var DropZone = co.ShallowCached(co.Define(func(props co.Properties) co.Instance {
+var DropZone = co.Define(func(props co.Properties, scope co.Scope) co.Instance {
 	var (
 		callbackData = co.GetOptionalCallbackData(props, defaultDropZoneCallbackData)
 	)
@@ -38,7 +38,7 @@ var DropZone = co.ShallowCached(co.Define(func(props co.Properties) co.Instance 
 		co.WithLayoutData(props.LayoutData())
 		co.WithChildren(props.Children())
 	})
-}))
+})
 
 var _ ui.ElementMouseHandler = (*dropZoneEssence)(nil)
 

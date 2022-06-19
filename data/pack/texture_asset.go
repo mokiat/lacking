@@ -18,19 +18,16 @@ func (a *SaveTwoDTextureAssetAction) Describe() string {
 
 func (a *SaveTwoDTextureAssetAction) Run() error {
 	image := a.imageProvider.Image()
-
-	textureAsset := &gameasset.TwoDTexture{
-		Width:     uint16(image.Width),
-		Height:    uint16(image.Height),
-		WrapModeS: gameasset.WrapModeRepeat,
-		WrapModeT: gameasset.WrapModeRepeat,
-		MagFilter: gameasset.FilterModeLinear,
-		MinFilter: gameasset.FilterModeLinearMipmapLinear,
-		Format:    gameasset.TexelFormatRGBA8,
-		Data:      image.RGBA8Data(),
+	textureAsset := BuildTwoDTextureAsset(image)
+	resource := a.registry.ResourceByID(a.id)
+	if resource == nil {
+		resource = a.registry.CreateIDResource(a.id, "twod_texture", a.id)
 	}
-	if err := a.registry.WriteContent(a.id, textureAsset); err != nil {
+	if err := resource.WriteContent(textureAsset); err != nil {
 		return fmt.Errorf("failed to write asset: %w", err)
+	}
+	if err := a.registry.Save(); err != nil {
+		return fmt.Errorf("error saving resources: %w", err)
 	}
 	return nil
 }
@@ -72,8 +69,8 @@ func (a *SaveCubeTextureAction) Run() error {
 
 	textureAsset := &gameasset.CubeTexture{
 		Dimension: uint16(texture.Dimension),
-		MagFilter: gameasset.FilterModeLinear,
-		MinFilter: gameasset.FilterModeLinear,
+		Filtering: gameasset.FilterModeLinear,
+		Flags:     gameasset.TextureFlagNone,
 		Format:    gameasset.TexelFormat(a.format),
 	}
 	textureAsset.FrontSide = gameasset.CubeTextureSide{
@@ -95,8 +92,15 @@ func (a *SaveCubeTextureAction) Run() error {
 		Data: textureData(CubeSideBottom),
 	}
 
-	if err := a.registry.WriteContent(a.id, textureAsset); err != nil {
+	resource := a.registry.ResourceByID(a.id)
+	if resource == nil {
+		resource = a.registry.CreateIDResource(a.id, "cube_texture", a.id)
+	}
+	if err := resource.WriteContent(textureAsset); err != nil {
 		return fmt.Errorf("failed to write asset: %w", err)
+	}
+	if err := a.registry.Save(); err != nil {
+		return fmt.Errorf("error saving resources: %w", err)
 	}
 	return nil
 }
@@ -105,10 +109,9 @@ func BuildTwoDTextureAsset(image *Image) *gameasset.TwoDTexture {
 	textureAsset := &gameasset.TwoDTexture{
 		Width:     uint16(image.Width),
 		Height:    uint16(image.Height),
-		WrapModeS: gameasset.WrapModeRepeat,
-		WrapModeT: gameasset.WrapModeRepeat,
-		MagFilter: gameasset.FilterModeLinear,
-		MinFilter: gameasset.FilterModeLinearMipmapLinear,
+		Wrapping:  gameasset.WrapModeRepeat,
+		Filtering: gameasset.FilterModeLinear,
+		Flags:     gameasset.TextureFlagMipmapping,
 		Format:    gameasset.TexelFormatRGBA8,
 		Data:      image.RGBA8Data(),
 	}

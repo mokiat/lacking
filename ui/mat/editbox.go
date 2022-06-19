@@ -9,7 +9,7 @@ import (
 
 var (
 	EditboxMinWidth = 100
-	EditboxHeight   = 24
+	EditboxHeight   = 28
 	EditboxFontFile = "mat:///roboto-regular.ttf"
 	EditboxFontSize = float32(18)
 )
@@ -35,7 +35,7 @@ var defaultEditboxCallbackData = EditboxCallbackData{
 }
 
 // Editbox is a component that allows a user to input a string.
-var Editbox = co.Define(func(props co.Properties) co.Instance {
+var Editbox = co.Define(func(props co.Properties, scope co.Scope) co.Instance {
 	var (
 		data         = co.GetOptionalData(props, defaultEditboxData)
 		layoutData   = co.GetOptionalLayoutData(props, LayoutData{})
@@ -45,13 +45,13 @@ var Editbox = co.Define(func(props co.Properties) co.Instance {
 	essence := co.UseState(func() *editboxEssence {
 		return &editboxEssence{}
 	}).Get()
-	essence.font = co.OpenFont(EditboxFontFile)
+	essence.font = co.OpenFont(scope, EditboxFontFile)
 	essence.onChanged = callbackData.OnChanged
 	if data.Text != essence.text {
 		essence.text = data.Text
 		essence.volatileText = data.Text
-		essence.textSize = essence.font.TextSize(data.Text, EditboxFontSize)
 	}
+	essence.textSize = essence.font.TextSize(data.Text, EditboxFontSize)
 
 	// force specific height
 	layoutData.Height = optional.Value(EditboxHeight)
@@ -87,19 +87,19 @@ func (e *editboxEssence) OnKeyboardEvent(element *ui.Element, event ui.KeyboardE
 		case ui.KeyCodeBackspace:
 			if len(e.volatileText) > 0 {
 				e.volatileText = e.volatileText[:len(e.volatileText)-1]
-				co.Window().Invalidate()
+				element.Invalidate()
 			}
 		case ui.KeyCodeEscape:
 			e.volatileText = e.text
-			co.Window().DiscardFocus()
+			element.Window().DiscardFocus()
 		case ui.KeyCodeEnter:
 			e.text = e.volatileText
 			e.onChanged(e.text)
-			co.Window().DiscardFocus()
+			element.Window().DiscardFocus()
 		}
 	case ui.KeyboardEventTypeType:
 		e.volatileText += string(event.Rune)
-		co.Window().Invalidate()
+		element.Invalidate()
 	}
 	return true
 }
@@ -107,7 +107,7 @@ func (e *editboxEssence) OnKeyboardEvent(element *ui.Element, event ui.KeyboardE
 func (e *editboxEssence) OnRender(element *ui.Element, canvas *ui.Canvas) {
 	var strokeColor ui.Color
 	var text string
-	if co.Window().IsElementFocused(element) {
+	if element.Window().IsElementFocused(element) {
 		strokeColor = SecondaryColor
 		text = e.volatileText + "|"
 	} else {
@@ -125,17 +125,18 @@ func (e *editboxEssence) OnRender(element *ui.Element, canvas *ui.Canvas) {
 	canvas.RoundRectangle(
 		sprec.ZeroVec2(),
 		sprec.NewVec2(width, height),
-		sprec.NewVec4(5, 5, 5, 5),
+		sprec.NewVec4(8, 8, 8, 8),
 	)
 	canvas.Fill(ui.Fill{
 		Color: SurfaceColor,
 	})
 	canvas.Stroke()
 
+	textPosition := sprec.NewVec2(5, (height-e.textSize.Y)/2)
 	canvas.Push()
 	canvas.SetClipRect(5, width-5, 2, height-2)
 	canvas.Reset()
-	canvas.FillText(text, sprec.NewVec2(5, (height-e.textSize.Y)/2), ui.Typography{
+	canvas.FillText(text, textPosition, ui.Typography{
 		Font:  e.font,
 		Size:  EditboxFontSize,
 		Color: OnSurfaceColor,

@@ -13,7 +13,7 @@ var (
 )
 
 // Tabbar is a container intended to hold Tab components.
-var Tabbar = co.ShallowCached(co.Define(func(props co.Properties) co.Instance {
+var Tabbar = co.Define(func(props co.Properties, scope co.Scope) co.Instance {
 	var (
 		layoutData = co.GetOptionalLayoutData(props, LayoutData{})
 	)
@@ -37,4 +37,4 @@ var Tabbar = co.ShallowCached(co.Define(func(props co.Properties) co.Instance {
 		co.WithLayoutData(layoutData)
 		co.WithChildren(props.Children())
 	})
-}))
+})

@@ -35,7 +35,7 @@ var defaultAccordionCallbackData = AccordionCallbackData{
 }
 
 // Accordion is a container that hides a big chunk of UI until it is expanded.
-var Accordion = co.Define(func(props co.Properties) co.Instance {
+var Accordion = co.Define(func(props co.Properties, scope co.Scope) co.Instance {
 	var (
 		data         = co.GetOptionalData(props, defaultAccordionData)
 		callbackData = co.GetOptionalCallbackData(props, defaultAccordionCallbackData)
@@ -49,13 +49,13 @@ var Accordion = co.Define(func(props co.Properties) co.Instance {
 
 	var icon *ui.Image
 	if data.Expanded {
-		icon = co.OpenImage(AccordionExpandedIconFile)
+		icon = co.OpenImage(scope, AccordionExpandedIconFile)
 	} else {
-		icon = co.OpenImage(AccordionCollapsedIconFile)
+		icon = co.OpenImage(scope, AccordionCollapsedIconFile)
 	}
 
-	return co.New(Container, func() {
-		co.WithData(ContainerData{
+	return co.New(Element, func() {
+		co.WithData(ElementData{
 			Layout: NewVerticalLayout(VerticalLayoutSettings{
 				ContentAlignment: AlignmentLeft,
 			}),
@@ -94,7 +94,7 @@ var Accordion = co.Define(func(props co.Properties) co.Instance {
 
 			co.WithChild("title", co.New(Label, func() {
 				co.WithData(LabelData{
-					Font:      co.OpenFont(AccordionHeaderFontFile),
+					Font:      co.OpenFont(scope, AccordionHeaderFontFile),
 					FontSize:  optional.Value(AccordionHeaderFontSize),
 					FontColor: optional.Value(OnPrimaryLightColor),
 					Text:      data.Title,
@@ -120,9 +120,9 @@ func (e *accordionHeaderEssence) OnRender(element *ui.Element, canvas *ui.Canvas
 	var backgroundColor ui.Color
 	switch e.State() {
 	case ButtonStateOver:
-		backgroundColor = HoverOverlayColor
+		backgroundColor = PrimaryLightColor.Overlay(HoverOverlayColor)
 	case ButtonStateDown:
-		backgroundColor = PressOverlayColor
+		backgroundColor = PrimaryLightColor.Overlay(PressOverlayColor)
 	default:
 		backgroundColor = PrimaryLightColor
 	}

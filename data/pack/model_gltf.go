@@ -2,12 +2,23 @@ package pack
 
 import (
 	"fmt"
-	"io"
-	"path"
 
 	"github.com/mokiat/gomath/sprec"
 	"github.com/mokiat/lacking/data"
-	"github.com/mokiat/lacking/data/gltf"
+	"github.com/qmuntal/gltf"
+)
+
+const (
+	attributePosition  = "POSITION"
+	attributeNormal    = "NORMAL"
+	attributeTangent   = "TANGENT"
+	attributeTexCoord0 = "TEXCOORD_0"
+	attributeColor0    = "COLOR_0"
+)
+
+var (
+	emptyMatrix    = [16]float32{}
+	identityMatrix = [16]float32{1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1}
 )
 
 type OpenGLTFResourceAction struct {
@@ -28,10 +39,7 @@ func (a *OpenGLTFResourceAction) Model() *Model {
 }
 
 func (a *OpenGLTFResourceAction) Run() error {
-	rawGLTF, err := gltf.Parse(gltfLocator{
-		locator: a.locator,
-		uri:     a.uri,
-	})
+	rawGLTF, err := gltf.Open(a.uri)
 	if err != nil {
 		return fmt.Errorf("failed to parse gltf model %q: %w", a.uri, err)
 	}
@@ -39,96 +47,86 @@ func (a *OpenGLTFResourceAction) Run() error {
 
 	a.model = &Model{}
 
+	// NOTE: glTF allows a sub-mesh to use totally different
+	// mesh vertices and indices. It may even reuse part of the
+	// attributes but use dedicated buffers for the remaining ones.
+	//
+	// Since we don't support that and our mesh model has a shared
+	// vertex data with sub-meshes only having index offsets and counts,
+	// we need to reindex the data.
+	//
+	// This acts also as a form of optimization where if the glTF has
+	// additional attributes that we don't care about but that result in
+	// mesh partitioning, we would be getting rid of the unnecessary
+	// partitioning.
+
 	// build meshes
-	meshMapping := make(map[int]*Mesh)
+	meshFromIndex := make(map[uint32]*Mesh)
 
-	for i := range gltfDoc.Meshes {
-		gltfMesh := gltfDoc.FindMesh(i)
+	for i, gltfMesh := range gltfDoc.GetMeshes() {
 		mesh := &Mesh{
-			Name:        gltfMesh.Name,
-			SubMeshes:   make([]SubMesh, len(gltfMesh.Primitives)),
-			VertexCount: 0,
-			IndexCount:  0,
+			Name:      gltfMesh.Name,
+			SubMeshes: make([]SubMesh, len(gltfMesh.Primitives)),
 		}
+		meshFromIndex[uint32(i)] = mesh
+		a.model.Meshes = append(a.model.Meshes, mesh)
+		indexFromVertex := make(map[Vertex]int)
 
-		for j := range gltfMesh.Primitives {
-			gltfPrimitive := gltfMesh.FindPrimitive(j)
-
+		for j, gltfPrimitive := range gltfMesh.GetPrimitives() {
 			subMesh := SubMesh{}
 			subMesh.IndexOffset = len(mesh.Indices)
-			subMesh.IndexCount = gltfPrimitive.FindIndexCount()
+			subMesh.IndexCount = int(gltfPrimitive.FindIndexCount())
+
+			if gltfPrimitive.HasAttribute(attributePosition) {
+				mesh.VertexLayout.HasCoords = true
+			}
+			if gltfPrimitive.HasAttribute(attributeNormal) {
+				mesh.VertexLayout.HasNormals = true
+			}
+			if gltfPrimitive.HasAttribute(attributeTangent) {
+				mesh.VertexLayout.HasTangents = true
+			}
+			if gltfPrimitive.HasAttribute(attributeTexCoord0) {
+				mesh.VertexLayout.HasTexCoords = true
+			}
+			if gltfPrimitive.HasAttribute(attributeColor0) {
+				mesh.VertexLayout.HasColors = true
+			}
 
 			for k := 0; k < subMesh.IndexCount; k++ {
 				gltfIndex := gltfPrimitive.FindIndex(k)
-				coord := gltfPrimitive.FindCoord(gltfIndex)
-				normal := gltfPrimitive.FindNormal(gltfIndex)
-				tangent := gltfPrimitive.FindTangent(gltfIndex)
-				texCoord := gltfPrimitive.FindTexCoord0(gltfIndex)
-				color := gltfPrimitive.FindColor0(gltfIndex)
-
-				// find same vertex
-				matchingIndex := -1
-				for l := 0; l < len(mesh.Coords); l++ { // FIXME: Coords might be nil
-					isMatching := true
-					if gltfPrimitive.HasAttribute(gltf.AttributePosition) {
-						isMatching = isMatching && (mesh.Coords[l] == coord)
-					}
-					if gltfPrimitive.HasAttribute(gltf.AttributeNormal) {
-						isMatching = isMatching && (mesh.Normals[l] == normal)
-					}
-					if gltfPrimitive.HasAttribute(gltf.AttributeTangent) {
-						isMatching = isMatching && (mesh.Tangents[l] == tangent)
-					}
-					if gltfPrimitive.HasAttribute(gltf.AttributeTexCoord0) {
-						isMatching = isMatching && (mesh.TexCoords[l] == texCoord)
-					}
-					if gltfPrimitive.HasAttribute(gltf.AttributeColor0) {
-						isMatching = isMatching && (mesh.Colors[l] == color)
-					}
-					if isMatching {
-						matchingIndex = l
-						break
-					}
+				vertex := Vertex{
+					Coord:    gltfPrimitive.FindCoord(gltfIndex),
+					Normal:   gltfPrimitive.FindNormal(gltfIndex),
+					Tangent:  gltfPrimitive.FindTangent(gltfIndex),
+					TexCoord: gltfPrimitive.FindTexCoord0(gltfIndex),
+					Color:    gltfPrimitive.FindColor0(gltfIndex),
 				}
 
-				if matchingIndex != -1 {
-					mesh.Indices = append(mesh.Indices, matchingIndex)
+				if index, ok := indexFromVertex[vertex]; ok {
+					mesh.Indices = append(mesh.Indices, index)
 				} else {
-					mesh.VertexCount++
-					if gltfPrimitive.HasAttribute(gltf.AttributePosition) {
-						mesh.Coords = append(mesh.Coords, coord)
-					}
-					if gltfPrimitive.HasAttribute(gltf.AttributeNormal) {
-						mesh.Normals = append(mesh.Normals, normal)
-					}
-					if gltfPrimitive.HasAttribute(gltf.AttributeTangent) {
-						mesh.Tangents = append(mesh.Tangents, tangent)
-					}
-					if gltfPrimitive.HasAttribute(gltf.AttributeTexCoord0) {
-						mesh.TexCoords = append(mesh.TexCoords, texCoord)
-					}
-					if gltfPrimitive.HasAttribute(gltf.AttributeColor0) {
-						mesh.Colors = append(mesh.Colors, color)
-					}
-					mesh.Indices = append(mesh.Indices, mesh.VertexCount-1)
+					index = len(mesh.Vertices)
+					mesh.Vertices = append(mesh.Vertices, vertex)
+					mesh.Indices = append(mesh.Indices, index)
+					indexFromVertex[vertex] = index
 				}
-				mesh.IndexCount++
 			}
 
-			switch gltfPrimitive.FindMode() {
-			case gltf.ModePoints:
+			switch gltfPrimitive.Mode {
+			case gltf.PrimitivePoints:
 				subMesh.Primitive = PrimitivePoints
-			case gltf.ModeLines:
+			case gltf.PrimitiveLines:
 				subMesh.Primitive = PrimitiveLines
-			case gltf.ModeLineLoop:
+			case gltf.PrimitiveLineLoop:
 				subMesh.Primitive = PrimitiveLineLoop
-			case gltf.ModeLineStrip:
+			case gltf.PrimitiveLineStrip:
 				subMesh.Primitive = PrimitiveLineStrip
-			case gltf.ModeTriangles:
+			case gltf.PrimitiveTriangles:
 				subMesh.Primitive = PrimitiveTriangles
-			case gltf.ModeTriangleStrip:
+			case gltf.PrimitiveTriangleStrip:
 				subMesh.Primitive = PrimitiveTriangleStrip
-			case gltf.ModeTriangleFan:
+			case gltf.PrimitiveTriangleFan:
 				subMesh.Primitive = PrimitiveTriangleFan
 			default:
 				subMesh.Primitive = PrimitiveTriangles
@@ -160,51 +158,44 @@ func (a *OpenGLTFResourceAction) Run() error {
 
 			mesh.SubMeshes[j] = subMesh
 		}
-
-		meshMapping[i] = mesh
-		a.model.Meshes = append(a.model.Meshes, mesh)
 	}
 
 	// build nodes
-	var visitNode func(gltfNode gltf.Node) *Node
-	visitNode = func(gltfNode gltf.Node) *Node {
+	var visitNode func(gltfNode *gltf.Node) *Node
+	visitNode = func(gltfNode *gltf.Node) *Node {
 		node := &Node{
 			Name:        gltfNode.Name,
 			Translation: sprec.ZeroVec3(),
 			Rotation:    sprec.IdentityQuat(),
 			Scale:       sprec.NewVec3(1.0, 1.0, 1.0),
 		}
-		if gltfNode.Translation != nil {
+
+		if gltfNode.Matrix != emptyMatrix && gltfNode.Matrix != identityMatrix {
+			matrix := sprec.ColumnMajorArrayMat4(gltfNode.Matrix)
+			node.Translation = matrix.Translation()
+			node.Scale = matrix.Scale()
+			node.Rotation = matrix.RotationQuat()
+		} else {
 			node.Translation = sprec.NewVec3(
 				gltfNode.Translation[0],
 				gltfNode.Translation[1],
 				gltfNode.Translation[2],
 			)
-		}
-		if gltfNode.Rotation != nil {
 			node.Rotation = sprec.NewQuat(
 				gltfNode.Rotation[3],
 				gltfNode.Rotation[0],
 				gltfNode.Rotation[1],
 				gltfNode.Rotation[2],
 			)
-		}
-		if gltfNode.Scale != nil {
 			node.Scale = sprec.NewVec3(
 				gltfNode.Scale[0],
 				gltfNode.Scale[1],
 				gltfNode.Scale[2],
 			)
 		}
-		if gltfNode.Matrix != nil {
-			matrix := sprec.ColumnMajorArrayMat4(*gltfNode.Matrix)
-			node.Translation = matrix.Translation()
-			node.Scale = matrix.Scale()
-			node.Rotation = matrix.RotationQuat()
-		}
 
 		if gltfNode.Mesh != nil {
-			node.Mesh = meshMapping[*gltfNode.Mesh]
+			node.Mesh = meshFromIndex[*gltfNode.Mesh]
 		}
 		for _, childID := range gltfNode.Children {
 			node.Children = append(node.Children, visitNode(gltfDoc.Nodes[childID]))
@@ -218,68 +209,61 @@ func (a *OpenGLTFResourceAction) Run() error {
 	return nil
 }
 
-type gltfLocator struct {
-	locator ResourceLocator
-	uri     string
-}
-
-func (l gltfLocator) Open() (io.ReadCloser, error) {
-	return l.locator.Open(l.uri)
-}
-
-func (l gltfLocator) OpenRelative(uri string) (io.ReadCloser, error) {
-	return l.locator.Open(path.Join(path.Dir(l.uri), uri))
-}
-
 type GLTFDocument struct {
 	*gltf.Document
 }
 
-func (d GLTFDocument) RootNodes() []gltf.Node {
-	childrenIDs := make(map[int]struct{})
+func (d GLTFDocument) RootNodes() []*gltf.Node {
+	childrenIDs := make(map[uint32]struct{})
 	for _, node := range d.Nodes {
 		for _, childID := range node.Children {
 			childrenIDs[childID] = struct{}{}
 		}
 	}
-	var result []gltf.Node
+	var result []*gltf.Node
 	for id, node := range d.Nodes {
-		if _, ok := childrenIDs[id]; !ok {
+		if _, ok := childrenIDs[uint32(id)]; !ok {
 			result = append(result, node)
 		}
 	}
 	return result
 }
 
-func (d GLTFDocument) FindMesh(index int) GLTFMesh {
-	return GLTFMesh{
-		doc:  d,
-		Mesh: d.Meshes[index],
+func (d GLTFDocument) GetMeshes() []GLTFMesh {
+	result := make([]GLTFMesh, len(d.Meshes))
+	for i, mesh := range d.Meshes {
+		result[i] = GLTFMesh{
+			doc:  d,
+			Mesh: mesh,
+		}
 	}
+	return result
 }
 
 type GLTFMesh struct {
 	doc GLTFDocument
-	gltf.Mesh
+	*gltf.Mesh
 }
 
-func (m GLTFMesh) FindPrimitive(index int) GLTFPrimitive {
-	return GLTFPrimitive{
-		doc:       m.doc,
-		Primitive: m.Primitives[index],
+func (m GLTFMesh) GetPrimitives() []GLTFPrimitive {
+	result := make([]GLTFPrimitive, len(m.Primitives))
+	for i, primitive := range m.Primitives {
+		result[i] = GLTFPrimitive{
+			doc:       m.doc,
+			Primitive: primitive,
+		}
 	}
+	return result
 }
 
 type GLTFPrimitive struct {
 	doc GLTFDocument
-	gltf.Primitive
+	*gltf.Primitive
 }
 
-func (p GLTFPrimitive) FindMode() int {
-	if p.Mode == nil {
-		return gltf.ModeTriangles
-	}
-	return *p.Mode
+func (p GLTFPrimitive) HasAttribute(name string) bool {
+	_, ok := p.Attributes[name]
+	return ok
 }
 
 func (p GLTFPrimitive) FindMaterial() GLTFMaterial {
@@ -292,7 +276,7 @@ func (p GLTFPrimitive) FindMaterial() GLTFMaterial {
 	}
 }
 
-func (p GLTFPrimitive) FindIndexCount() int {
+func (p GLTFPrimitive) FindIndexCount() uint32 {
 	if p.Indices == nil {
 		panic("missing indices: unsupported")
 	}
@@ -311,9 +295,9 @@ func (p GLTFPrimitive) FindIndex(index int) int {
 	bufferView := p.doc.BufferViews[*accessor.BufferView]
 	buffer := data.Buffer(p.doc.Buffers[bufferView.Buffer].Data[bufferView.ByteOffset:])
 	switch accessor.ComponentType {
-	case gltf.ComponentTypeUnsignedShort:
+	case gltf.ComponentUshort:
 		return int(buffer.UInt16(2 * index))
-	case gltf.ComponentTypeUnsignedInt:
+	case gltf.ComponentUint:
 		return int(buffer.UInt32(4 * index))
 	default:
 		panic(fmt.Errorf("unsupported index component type %d", accessor.ComponentType))
@@ -321,20 +305,20 @@ func (p GLTFPrimitive) FindIndex(index int) int {
 }
 
 func (p GLTFPrimitive) FindCoord(index int) sprec.Vec3 {
-	if !p.HasAttribute(gltf.AttributePosition) {
+	if !p.HasAttribute(attributePosition) {
 		return sprec.ZeroVec3()
 	}
-	accessor := p.doc.Accessors[p.Attributes[gltf.AttributePosition]]
+	accessor := p.doc.Accessors[p.Attributes[attributePosition]]
 	if accessor.BufferView == nil {
 		return sprec.ZeroVec3()
 	}
 	bufferView := p.doc.BufferViews[*accessor.BufferView]
 	buffer := data.Buffer(p.doc.Buffers[bufferView.Buffer].Data[bufferView.ByteOffset:])
-	if accessor.Type != gltf.TypeVec3 {
+	if accessor.Type != gltf.AccessorVec3 {
 		panic(fmt.Errorf("unsupported coord type %s", accessor.Type))
 	}
 	switch accessor.ComponentType {
-	case gltf.ComponentTypeFloat:
+	case gltf.ComponentFloat:
 		return sprec.NewVec3(
 			buffer.Float32(3*4*index+4*0),
 			buffer.Float32(3*4*index+4*1),
@@ -346,20 +330,20 @@ func (p GLTFPrimitive) FindCoord(index int) sprec.Vec3 {
 }
 
 func (p GLTFPrimitive) FindNormal(index int) sprec.Vec3 {
-	if !p.HasAttribute(gltf.AttributeNormal) {
+	if !p.HasAttribute(attributeNormal) {
 		return sprec.ZeroVec3()
 	}
-	accessor := p.doc.Accessors[p.Attributes[gltf.AttributeNormal]]
+	accessor := p.doc.Accessors[p.Attributes[attributeNormal]]
 	if accessor.BufferView == nil {
 		return sprec.ZeroVec3()
 	}
 	bufferView := p.doc.BufferViews[*accessor.BufferView]
 	buffer := data.Buffer(p.doc.Buffers[bufferView.Buffer].Data[bufferView.ByteOffset:])
-	if accessor.Type != gltf.TypeVec3 {
+	if accessor.Type != gltf.AccessorVec3 {
 		panic(fmt.Errorf("unsupported normal type %s", accessor.Type))
 	}
 	switch accessor.ComponentType {
-	case gltf.ComponentTypeFloat:
+	case gltf.ComponentFloat:
 		return sprec.NewVec3(
 			buffer.Float32(3*4*index+4*0),
 			buffer.Float32(3*4*index+4*1),
@@ -371,20 +355,20 @@ func (p GLTFPrimitive) FindNormal(index int) sprec.Vec3 {
 }
 
 func (p GLTFPrimitive) FindTangent(index int) sprec.Vec3 {
-	if !p.HasAttribute(gltf.AttributeTangent) {
+	if !p.HasAttribute(attributeTangent) {
 		return sprec.ZeroVec3()
 	}
-	accessor := p.doc.Accessors[p.Attributes[gltf.AttributeTangent]]
+	accessor := p.doc.Accessors[p.Attributes[attributeTangent]]
 	if accessor.BufferView == nil {
 		return sprec.ZeroVec3()
 	}
 	bufferView := p.doc.BufferViews[*accessor.BufferView]
 	buffer := data.Buffer(p.doc.Buffers[bufferView.Buffer].Data[bufferView.ByteOffset:])
-	if accessor.Type != gltf.TypeVec3 {
+	if accessor.Type != gltf.AccessorVec3 {
 		panic(fmt.Errorf("unsupported tangent type %s", accessor.Type))
 	}
 	switch accessor.ComponentType {
-	case gltf.ComponentTypeFloat:
+	case gltf.ComponentFloat:
 		return sprec.NewVec3(
 			buffer.Float32(3*4*index+4*0),
 			buffer.Float32(3*4*index+4*1),
@@ -396,20 +380,20 @@ func (p GLTFPrimitive) FindTangent(index int) sprec.Vec3 {
 }
 
 func (p GLTFPrimitive) FindTexCoord0(index int) sprec.Vec2 {
-	if !p.HasAttribute(gltf.AttributeTexCoord0) {
+	if !p.HasAttribute(attributeTexCoord0) {
 		return sprec.ZeroVec2()
 	}
-	accessor := p.doc.Accessors[p.Attributes[gltf.AttributeTexCoord0]]
+	accessor := p.doc.Accessors[p.Attributes[attributeTexCoord0]]
 	if accessor.BufferView == nil {
 		return sprec.ZeroVec2()
 	}
 	bufferView := p.doc.BufferViews[*accessor.BufferView]
 	buffer := data.Buffer(p.doc.Buffers[bufferView.Buffer].Data[bufferView.ByteOffset:])
-	if accessor.Type != gltf.TypeVec2 {
+	if accessor.Type != gltf.AccessorVec2 {
 		panic(fmt.Errorf("unsupported tex coord type %s", accessor.Type))
 	}
 	switch accessor.ComponentType {
-	case gltf.ComponentTypeFloat:
+	case gltf.ComponentFloat:
 		return sprec.NewVec2(
 			buffer.Float32(2*4*index+4*0),
 			1.0-buffer.Float32(2*4*index+4*1), // fix tex coord orientation
@@ -420,20 +404,20 @@ func (p GLTFPrimitive) FindTexCoord0(index int) sprec.Vec2 {
 }
 
 func (p GLTFPrimitive) FindColor0(index int) sprec.Vec4 {
-	if !p.HasAttribute(gltf.AttributeColor0) {
+	if !p.HasAttribute(attributeColor0) {
 		return sprec.ZeroVec4()
 	}
-	accessor := p.doc.Accessors[p.Attributes[gltf.AttributeColor0]]
+	accessor := p.doc.Accessors[p.Attributes[attributeColor0]]
 	if accessor.BufferView == nil {
 		return sprec.ZeroVec4()
 	}
 	bufferView := p.doc.BufferViews[*accessor.BufferView]
 	buffer := data.Buffer(p.doc.Buffers[bufferView.Buffer].Data[bufferView.ByteOffset:])
-	if accessor.Type != gltf.TypeVec4 {
+	if accessor.Type != gltf.AccessorVec4 {
 		panic(fmt.Errorf("unsupported color type %s", accessor.Type))
 	}
 	switch accessor.ComponentType {
-	case gltf.ComponentTypeFloat:
+	case gltf.ComponentFloat:
 		return sprec.NewVec4(
 			buffer.Float32(4*4*index+4*0),
 			buffer.Float32(4*4*index+4*1),
@@ -447,7 +431,7 @@ func (p GLTFPrimitive) FindColor0(index int) sprec.Vec4 {
 
 type GLTFMaterial struct {
 	doc GLTFDocument
-	gltf.Material
+	*gltf.Material
 }
 
 func (m GLTFMaterial) FindMetallic() float32 {
@@ -470,7 +454,7 @@ func (m GLTFMaterial) FindRoughness() float32 {
 	return *m.PBRMetallicRoughness.RoughnessFactor
 }
 
-func (m GLTFMaterial) FindBaseColor() (gltf.Color, bool) {
+func (m GLTFMaterial) FindBaseColor() ([4]float32, bool) {
 	if m.PBRMetallicRoughness == nil {
 		return [4]float32{}, false
 	}
@@ -523,7 +507,10 @@ func (m GLTFMaterial) FindNormalTexture() (string, float32, bool) {
 	if m.NormalTexture.TexCoord > 0 {
 		panic("mesh material uses multiple uv coords")
 	}
-	texture := m.doc.Textures[m.NormalTexture.Index]
+	if m.NormalTexture.Index == nil {
+		panic("missign texture index")
+	}
+	texture := m.doc.Textures[*m.NormalTexture.Index]
 	if texture.Source == nil {
 		panic("texture lacks a source")
 	}

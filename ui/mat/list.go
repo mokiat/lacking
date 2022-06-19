@@ -11,7 +11,7 @@ var (
 
 // List represents a container that holds a sequence of ListItem
 // components in a vertical orientation.
-var List = co.Define(func(props co.Properties) co.Instance {
+var List = co.Define(func(props co.Properties, scope co.Scope) co.Instance {
 	return co.New(Container, func() {
 		co.WithData(ContainerData{
 			BackgroundColor: optional.Value(SurfaceColor),

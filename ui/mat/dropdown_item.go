@@ -19,7 +19,7 @@ type dropdownItemCallbackData struct {
 	OnSelected func()
 }
 
-var dropdownItem = co.Define(func(props co.Properties) co.Instance {
+var dropdownItem = co.Define(func(props co.Properties, scope co.Scope) co.Instance {
 	var (
 		data         = co.GetData[dropdownItemData](props)
 		callbackData = co.GetCallbackData[dropdownItemCallbackData](props)

@@ -12,6 +12,7 @@ type ElementData struct {
 	Enabled   optional.V[bool]
 	Visible   optional.V[bool]
 	Focusable optional.V[bool]
+	Bounds    optional.V[ui.Bounds]
 	IdealSize optional.V[ui.Size]
 	Padding   ui.Spacing
 	Layout    ui.Layout
@@ -20,9 +21,9 @@ type ElementData struct {
 // Element represents the most basic component, which is translated
 // to a UI Element. All higher-order components eventually boil down to an
 // Element.
-var Element = Define(func(props Properties) Instance {
+var Element = Define(func(props Properties, scope Scope) Instance {
 	element := UseState(func() *ui.Element {
-		return uiCtx.CreateElement()
+		return Window(scope).CreateElement()
 	}).Get()
 
 	Defer(func() {
@@ -40,6 +41,9 @@ var Element = Define(func(props Properties) Instance {
 	}
 	if data.Focusable.Specified {
 		element.SetFocusable(data.Focusable.Value)
+	}
+	if data.Bounds.Specified {
+		element.SetBounds(data.Bounds.Value)
 	}
 	if data.IdealSize.Specified {
 		element.SetIdealSize(data.IdealSize.Value)

@@ -46,9 +46,9 @@ func (e *Engine) CreateTwoDTexture(definition TwoDTextureDefinition) *TwoDTextur
 	return newTwoDTexture(e.api.CreateColorTexture2D(render.ColorTexture2DInfo{
 		Width:           definition.Width,
 		Height:          definition.Height,
-		Wrapping:        e.convertWrap(definition.WrapS),                                 // TODO: Remove WrapS / WrapT capability from definition
-		Filtering:       e.convertFilter(definition.MinFilter, definition.UseAnisotropy), // TODO: Remove Min / Mag capability from definition
-		Mipmapping:      e.needsMipmaps(definition.MinFilter),
+		Wrapping:        e.convertWrap(definition.Wrapping),
+		Filtering:       e.convertFilter(definition.Filtering),
+		Mipmapping:      definition.GenerateMipmaps,
 		GammaCorrection: true,
 		Format:          e.convertFormat(definition.InternalFormat, definition.DataFormat),
 		Data:            definition.Data,
@@ -60,8 +60,8 @@ func (e *Engine) CreateTwoDTexture(definition TwoDTextureDefinition) *TwoDTextur
 func (e *Engine) CreateCubeTexture(definition CubeTextureDefinition) *CubeTexture {
 	return newCubeTexture(e.api.CreateColorTextureCube(render.ColorTextureCubeInfo{
 		Dimension:       definition.Dimension,
-		Filtering:       e.convertFilter(definition.MinFilter, false), // TODO: Remove Min / Mag capability from definition
-		Mipmapping:      e.needsMipmaps(definition.MinFilter),
+		Filtering:       e.convertFilter(definition.Filtering),
+		Mipmapping:      definition.GenerateMipmaps,
 		GammaCorrection: true,
 		Format:          e.convertFormat(definition.InternalFormat, definition.DataFormat),
 		FrontSideData:   definition.FrontSideData,
@@ -203,44 +203,14 @@ func (e *Engine) convertWrap(wrap Wrap) render.WrapMode {
 	}
 }
 
-func (e *Engine) needsMipmaps(filter Filter) bool {
-	switch filter {
-	case FilterNearestMipmapNearest:
-		fallthrough
-	case FilterNearestMipmapLinear:
-		fallthrough
-	case FilterLinearMipmapNearest:
-		fallthrough
-	case FilterLinearMipmapLinear:
-		return true
-	default:
-		return false
-	}
-}
-
-func (e *Engine) convertFilter(filter Filter, anisotropic bool) render.FilterMode {
+func (e *Engine) convertFilter(filter Filter) render.FilterMode {
 	switch filter {
 	case FilterNearest:
 		return render.FilterModeNearest
 	case FilterLinear:
-		if anisotropic {
-			return render.FilterModeAnisotropic
-		}
 		return render.FilterModeLinear
-	case FilterNearestMipmapNearest:
-		return render.FilterModeNearest
-	case FilterNearestMipmapLinear:
-		return render.FilterModeNearest
-	case FilterLinearMipmapNearest:
-		if anisotropic {
-			return render.FilterModeAnisotropic
-		}
-		return render.FilterModeLinear
-	case FilterLinearMipmapLinear:
-		if anisotropic {
-			return render.FilterModeAnisotropic
-		}
-		return render.FilterModeLinear
+	case FilterAnisotropic:
+		return render.FilterModeAnisotropic
 	default:
 		panic(fmt.Errorf("unknown min filter mode: %d", filter))
 	}

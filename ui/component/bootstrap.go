@@ -3,90 +3,84 @@ package component
 import (
 	"fmt"
 
+	"github.com/mokiat/lacking/log"
 	"github.com/mokiat/lacking/ui"
+	"golang.org/x/exp/slices"
 )
 
-var bootstrapCtrl *bootstrapController
+var (
+	rootLifecycle *windowLifecycle
+	rootUIContext *ui.Context
+	rootScope     Scope
+)
 
-// Initialize wires the framework to the specified ui Window.
-// The specified instance will be the root component used.
+// Initialize wires the framework to the specified ui.Window.
+// The specified Instance will be the root component used.
 func Initialize(window *ui.Window, instance Instance) {
-	uiCtx = window.Context()
+	rootUIContext = window.Context()
+	rootScope = ContextScope(nil, rootUIContext)
 
-	bootstrapCtrl = &bootstrapController{
-		Controller: NewBaseController(),
-		root:       instance,
-	}
 	rootNode := createComponentNode(New(application, func() {
-		WithData(bootstrapCtrl)
-	}))
+		WithScope(rootScope)
+		WithChild("root", instance)
+	}), nil)
 	window.Root().AppendChild(rootNode.element)
 }
 
-var application = Controlled(Define(func(props Properties) Instance {
-	controller := props.Data().(*bootstrapController)
+var application = Define(func(props Properties, scope Scope) Instance {
+	lifecycle := UseLifecycle(func(handle LifecycleHandle) *windowLifecycle {
+		return &windowLifecycle{
+			BaseLifecycle: NewBaseLifecycle(),
+			handle:        handle,
+		}
+	})
 	return New(Element, func() {
 		WithData(ElementData{
-			Layout: ui.NewFillLayout(),
+			Essence: lifecycle,
+			Layout:  ui.NewFillLayout(),
 		})
-		WithChild("root", controller.root)
-		for _, overlay := range controller.overlays {
-			WithChild(fmt.Sprintf("overlay-%d", overlay.id), overlay.instance)
+		for _, child := range props.Children() {
+			WithChild(child.Key(), child)
+		}
+		for _, overlay := range lifecycle.overlays {
+			WithChild(overlay.key, overlay.instance)
 		}
 	})
-}))
+})
 
-func OpenOverlay(instance Instance) *Overlay {
-	return &Overlay{
-		id: bootstrapCtrl.AddOverlay(instance),
+type windowLifecycle struct {
+	*BaseLifecycle
+	handle        LifecycleHandle
+	overlays      []*overlayHandle
+	freeOverlayID int
+}
+
+func (l *windowLifecycle) OnCreate(props Properties, scope Scope) {
+	rootLifecycle = l
+}
+
+func (l *windowLifecycle) OnDestroy(scope Scope) {
+	rootLifecycle = nil
+}
+
+func (l *windowLifecycle) OpenOverlay(instance Instance) *overlayHandle {
+	l.freeOverlayID++
+	result := &overlayHandle{
+		lifecycle: l,
+		instance:  instance,
+		key:       fmt.Sprintf("overlay-%d", l.freeOverlayID),
 	}
+	l.overlays = append(l.overlays, result)
+	l.handle.NotifyChanged()
+	return result
 }
 
-type Overlay struct {
-	id int
-}
-
-func (o *Overlay) Close() {
-	bootstrapCtrl.RemoveOverlay(o.id)
-	o.id = -1
-}
-
-type bootstrapController struct {
-	Controller
-	root          Instance
-	overlays      []appOverlay
-	overlayFreeID int
-}
-
-func (c *bootstrapController) AddOverlay(instance Instance) int {
-	c.overlayFreeID++
-	c.overlays = append(c.overlays, appOverlay{
-		id:       c.overlayFreeID,
-		instance: instance,
-	})
-	c.NotifyChanged()
-	return c.overlayFreeID
-}
-
-func (c *bootstrapController) RemoveOverlay(id int) {
-	index := c.findOverlay(id)
+func (l *windowLifecycle) CloseOverlay(overlay *overlayHandle) {
+	index := slices.Index(l.overlays, overlay)
 	if index < 0 {
-		panic("overlay already removed!")
+		log.Warn("[component] Overlay already closed")
+		return
 	}
-	c.overlays = append(c.overlays[:index], c.overlays[index+1:]...)
-	c.NotifyChanged()
-}
-
-func (c *bootstrapController) findOverlay(id int) int {
-	for i, overlay := range c.overlays {
-		if overlay.id == id {
-			return i
-		}
-	}
-	return -1
-}
-
-type appOverlay struct {
-	id       int
-	instance Instance
+	l.overlays = slices.Delete(l.overlays, index, index+1)
+	l.handle.NotifyChanged()
 }

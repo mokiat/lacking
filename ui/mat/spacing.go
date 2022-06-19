@@ -16,7 +16,7 @@ var defaultSpacingData = SpacingData{}
 
 // Spacing represents a non-visual component that just takes up
 // space and is intended to be used as a separator in layouts.
-var Spacing = co.Define(func(props co.Properties) co.Instance {
+var Spacing = co.Define(func(props co.Properties, scope co.Scope) co.Instance {
 	data := co.GetOptionalData(props, defaultSpacingData)
 	return co.New(Element, func() {
 		co.WithLayoutData(props.LayoutData())

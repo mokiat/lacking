@@ -1,29 +1,35 @@
 package mat
 
 import (
-	"fmt"
-
 	co "github.com/mokiat/lacking/ui/component"
 )
 
+// SwitchData holds the data for a Switch component.
 type SwitchData struct {
-	VisibleChildIndex int
+	// ChildKey holds the key of the child component to be rendered.
+	// If this does not match any child then nothing is rendered.
+	ChildKey string
 }
 
-var Switch = co.ShallowCached(co.Define(func(props co.Properties) co.Instance {
-	var data SwitchData
-	props.InjectOptionalData(&data, SwitchData{})
+var defaultSwitchData = SwitchData{}
 
-	return co.New(Container, func() {
-		co.WithData(ContainerData{
+// Switch is a container that can switch between different views depending
+// on the specified SwitchData.
+var Switch = co.Define(func(props co.Properties, scope co.Scope) co.Instance {
+	var (
+		data = co.GetOptionalData(props, defaultSwitchData)
+	)
+
+	return co.New(Element, func() {
+		co.WithData(ElementData{
 			Layout: NewFillLayout(),
 		})
 		co.WithLayoutData(props.LayoutData())
-		if (0 <= data.VisibleChildIndex) && (data.VisibleChildIndex < len(props.Children())) {
-			co.WithChild(
-				fmt.Sprintf("visible-child-%d", data.VisibleChildIndex),
-				props.Children()[data.VisibleChildIndex],
-			)
+
+		for _, child := range props.Children() {
+			if child.Key() == data.ChildKey {
+				co.WithChild(child.Key(), child)
+			}
 		}
 	})
-}))
+})

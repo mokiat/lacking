@@ -8,10 +8,11 @@ import (
 	_ "image/jpeg"
 	_ "image/png"
 
+	"github.com/mokiat/lacking/util/resource"
 	"golang.org/x/image/font/opentype"
 )
 
-func newResourceManager(locator ResourceLocator, imgFact *imageFactory, fntFact *fontFactory) *resourceManager {
+func newResourceManager(locator resource.ReadLocator, imgFact *imageFactory, fntFact *fontFactory) *resourceManager {
 	return &resourceManager{
 		locator: locator,
 		imgFact: imgFact,
@@ -20,7 +21,7 @@ func newResourceManager(locator ResourceLocator, imgFact *imageFactory, fntFact 
 }
 
 type resourceManager struct {
-	locator ResourceLocator
+	locator resource.ReadLocator
 	imgFact *imageFactory
 	fntFact *fontFactory
 }
@@ -30,7 +31,7 @@ func (m *resourceManager) CreateImage(img image.Image) *Image {
 }
 
 func (m *resourceManager) OpenImage(uri string) (*Image, error) {
-	in, err := m.locator.OpenResource(uri)
+	in, err := m.locator.ReadResource(uri)
 	if err != nil {
 		return nil, fmt.Errorf("error opening resource: %w", err)
 	}
@@ -48,7 +49,7 @@ func (m *resourceManager) CreateFont(otFont *opentype.Font) (*Font, error) {
 }
 
 func (m *resourceManager) OpenFont(uri string) (*Font, error) {
-	in, err := m.locator.OpenResource(uri)
+	in, err := m.locator.ReadResource(uri)
 	if err != nil {
 		return nil, fmt.Errorf("error opening resource: %w", err)
 	}
@@ -83,7 +84,7 @@ func (m *resourceManager) CreateFontCollection(collection *opentype.Collection) 
 }
 
 func (m *resourceManager) OpenFontCollection(uri string) (*FontCollection, error) {
-	in, err := m.locator.OpenResource(uri)
+	in, err := m.locator.ReadResource(uri)
 	if err != nil {
 		return nil, fmt.Errorf("error opening resource: %w", err)
 	}

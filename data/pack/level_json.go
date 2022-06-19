@@ -61,33 +61,32 @@ func (a *OpenLevelResourceAction) Run() error {
 
 	for i, jsonStaticMesh := range jsonLevel.StaticMeshes {
 		staticMesh := Mesh{
-			Name:        "unnamed",
-			Coords:      make([]sprec.Vec3, len(jsonStaticMesh.Coords)/3),
-			Normals:     make([]sprec.Vec3, len(jsonStaticMesh.Normals)/3),
-			Tangents:    nil, // TODO
-			TexCoords:   make([]sprec.Vec2, len(jsonStaticMesh.TexCoords)/2),
-			Colors:      nil, // TODO
-			VertexCount: len(jsonStaticMesh.Coords) / 3,
-			IndexCount:  len(jsonStaticMesh.Indices),
-			Indices:     make([]int, len(jsonStaticMesh.Indices)),
-			SubMeshes:   make([]SubMesh, len(jsonStaticMesh.SubMeshes)),
+			Name: "unnamed",
+			VertexLayout: VertexLayout{
+				HasCoords:    true,
+				HasNormals:   true,
+				HasTexCoords: true,
+			},
+			Vertices:  make([]Vertex, len(jsonStaticMesh.Coords)/3),
+			Indices:   make([]int, len(jsonStaticMesh.Indices)),
+			SubMeshes: make([]SubMesh, len(jsonStaticMesh.SubMeshes)),
 		}
-		for j := range staticMesh.Coords {
-			staticMesh.Coords[j] = sprec.NewVec3(
+		for j := range staticMesh.Vertices {
+			staticMesh.Vertices[j].Coord = sprec.NewVec3(
 				jsonStaticMesh.Coords[j*3+0],
 				jsonStaticMesh.Coords[j*3+1],
 				jsonStaticMesh.Coords[j*3+2],
 			)
 		}
-		for j := range staticMesh.Normals {
-			staticMesh.Normals[j] = sprec.NewVec3(
+		for j := range staticMesh.Vertices {
+			staticMesh.Vertices[j].Normal = sprec.NewVec3(
 				jsonStaticMesh.Normals[j*3+0],
 				jsonStaticMesh.Normals[j*3+1],
 				jsonStaticMesh.Normals[j*3+2],
 			)
 		}
-		for j := range staticMesh.TexCoords {
-			staticMesh.TexCoords[j] = sprec.NewVec2(
+		for j := range staticMesh.Vertices {
+			staticMesh.Vertices[j].TexCoord = sprec.NewVec2(
 				jsonStaticMesh.TexCoords[j*2+0],
 				jsonStaticMesh.TexCoords[j*2+1],
 			)

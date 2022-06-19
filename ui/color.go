@@ -29,7 +29,7 @@ func MixColors(first, second Color, alpha float32) Color {
 	}
 }
 
-// ColorWithAlpha returns a new color that based on the
+// ColorWithAlpha returns a new color that is based on the
 // specified color but with adjusted alpha channel.
 func ColorWithAlpha(color Color, a uint8) Color {
 	return Color{
@@ -133,6 +133,16 @@ type Color struct {
 	A uint8
 }
 
+// Overlay returns a new Color that is the result of overlaying the
+// specified color over the current color.
+// The specified color should have an alpha that is lower than 100%
+// for there to be any useful result.
+func (c Color) Overlay(color Color) Color {
+	result := MixColors(c, color, float32(color.A)/255.0)
+	result.A = 255
+	return result
+}
+
 // Transparent returns whether this color is transparent.
 //
 // A transparent color is one that is not at all visible
@@ -143,7 +153,7 @@ func (c Color) Transparent() bool {
 
 // Translucent returns whether this color is translucent.
 //
-// A translucent color is one that is not fully visible
+// A translucent color is one that is partially visible
 // (i.e. has an alpha value smaller than the maximum).
 func (c Color) Translucent() bool {
 	return c.A < 255

@@ -55,8 +55,15 @@ func (a *SaveLevelAssetAction) Run() error {
 		levelAsset.StaticEntities[i] = staticEntityAsset
 	}
 
-	if err := a.registry.WriteContent(a.id, levelAsset); err != nil {
+	resource := a.registry.ResourceByID(a.id)
+	if resource == nil {
+		resource = a.registry.CreateIDResource(a.id, "level", a.id)
+	}
+	if err := resource.WriteContent(levelAsset); err != nil {
 		return fmt.Errorf("failed to write asset: %w", err)
+	}
+	if err := a.registry.Save(); err != nil {
+		return fmt.Errorf("error saving resources: %w", err)
 	}
 	return nil
 }

@@ -63,8 +63,15 @@ func (a *SaveModelAssetAction) Run() error {
 		visitNode(nil, node)
 	}
 
-	if err := a.registry.WriteContent(a.id, modelAsset); err != nil {
+	resource := a.registry.ResourceByID(a.id)
+	if resource == nil {
+		resource = a.registry.CreateIDResource(a.id, "model", a.id)
+	}
+	if err := resource.WriteContent(modelAsset); err != nil {
 		return fmt.Errorf("failed to write asset: %w", err)
+	}
+	if err := a.registry.Save(); err != nil {
+		return fmt.Errorf("error saving resources: %w", err)
 	}
 	return nil
 }
@@ -79,75 +86,81 @@ func meshToAssetMesh(mesh *Mesh) asset.Mesh {
 		stride         int16
 	)
 
+	layout := mesh.VertexLayout
 	stride = 0
-	if mesh.Coords != nil {
+	if layout.HasCoords {
 		coordOffset = stride
 		stride += 3 * 4
 	} else {
 		coordOffset = asset.UnspecifiedOffset
 	}
-	if mesh.Normals != nil {
+	if layout.HasNormals {
 		normalOffset = stride
 		stride += 3 * 4
 	} else {
 		normalOffset = asset.UnspecifiedOffset
 	}
-	if mesh.Tangents != nil {
+	if layout.HasTangents {
 		tangentOffset = stride
 		stride += 3 * 4
 	} else {
 		tangentOffset = asset.UnspecifiedOffset
 	}
-	if mesh.TexCoords != nil {
+	if layout.HasTexCoords {
 		texCoordOffset = stride
 		stride += 2 * 4
 	} else {
 		texCoordOffset = asset.UnspecifiedOffset
 	}
-	if mesh.Colors != nil {
+	if layout.HasColors {
 		colorOffset = stride
 		stride += 4 * 4
 	} else {
 		colorOffset = asset.UnspecifiedOffset
 	}
 
-	vertexData := data.Buffer(make([]byte, mesh.VertexCount*int(stride)))
-	if mesh.Coords != nil {
-		for j, coord := range mesh.Coords {
+	vertexData := data.Buffer(make([]byte, len(mesh.Vertices)*int(stride)))
+	if layout.HasCoords {
+		for j, vertex := range mesh.Vertices {
+			coord := vertex.Coord
 			vertexData.SetFloat32(int(coordOffset)+j*int(stride)+0, coord.X)
 			vertexData.SetFloat32(int(coordOffset)+j*int(stride)+4, coord.Y)
 			vertexData.SetFloat32(int(coordOffset)+j*int(stride)+8, coord.Z)
 		}
 	}
-	if mesh.Normals != nil {
-		for j, normal := range mesh.Normals {
+	if layout.HasNormals {
+		for j, vertex := range mesh.Vertices {
+			normal := vertex.Normal
 			vertexData.SetFloat32(int(normalOffset)+j*int(stride)+0, normal.X)
 			vertexData.SetFloat32(int(normalOffset)+j*int(stride)+4, normal.Y)
 			vertexData.SetFloat32(int(normalOffset)+j*int(stride)+8, normal.Z)
 		}
 	}
-	if mesh.Tangents != nil {
-		for j, tangent := range mesh.Tangents {
+	if layout.HasTangents {
+		for j, vertex := range mesh.Vertices {
+			tangent := vertex.Tangent
 			vertexData.SetFloat32(int(tangentOffset)+j*int(stride)+0, tangent.X)
 			vertexData.SetFloat32(int(tangentOffset)+j*int(stride)+4, tangent.Y)
 			vertexData.SetFloat32(int(tangentOffset)+j*int(stride)+8, tangent.Z)
 		}
 	}
-	if mesh.TexCoords != nil {
-		for j, texCoord := range mesh.TexCoords {
+	if layout.HasTexCoords {
+		for j, vertex := range mesh.Vertices {
+			texCoord := vertex.TexCoord
 			vertexData.SetFloat32(int(texCoordOffset)+j*int(stride)+0, texCoord.X)
 			vertexData.SetFloat32(int(texCoordOffset)+j*int(stride)+4, texCoord.Y)
 		}
 	}
-	if mesh.Colors != nil {
-		for j, color := range mesh.Colors {
+	if layout.HasColors {
+		for j, vertex := range mesh.Vertices {
+			color := vertex.Color
 			vertexData.SetFloat32(int(colorOffset)+j*int(stride)+0, color.X)
 			vertexData.SetFloat32(int(colorOffset)+j*int(stride)+4, color.Y)
 			vertexData.SetFloat32(int(colorOffset)+j*int(stride)+8, color.Z)
 		}
 	}
 
-	indexData := data.Buffer(make([]byte, mesh.IndexCount*2))
+	indexData := data.Buffer(make([]byte, len(mesh.Indices)*2))
 	for j, index := range mesh.Indices {
 		indexData.SetUInt16(j*2, uint16(index))
 	}

@@ -27,7 +27,7 @@ func init() {
 func RegisterContext(value any) {
 	valueType := reflect.TypeOf(value)
 	if _, ok := contexts[valueType]; ok {
-		panic(fmt.Errorf("a context of the specified type %T has already been registered", value))
+		panic(fmt.Errorf("a context of the specified type (%T) has already been registered", value))
 	}
 	contexts[valueType] = value
 }
