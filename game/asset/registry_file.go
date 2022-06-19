@@ -144,6 +144,19 @@ func (r *dirRegistry) CreateResource(kind, name string) Resource {
 	return result
 }
 
+func (r *dirRegistry) CreateIDResource(id, kind, name string) Resource {
+	result := &dirResource{
+		registry: r,
+		id:       id,
+		kind:     kind,
+		name:     name,
+	}
+	r.resources = append(r.resources, result)
+	r.resourcesFromID[result.id] = result
+	r.resourcesFromName[result.name] = result
+	return result
+}
+
 func (r *dirRegistry) Save() error {
 	return r.writeResources()
 }

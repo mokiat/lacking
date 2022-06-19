@@ -99,6 +99,10 @@ func (r *webRegistry) CreateResource(kind, name string) Resource {
 	panic("not supported")
 }
 
+func (r *webRegistry) CreateIDResource(id, kind, name string) Resource {
+	panic("not supported")
+}
+
 func (r *webRegistry) Save() error {
 	panic("not supported")
 }

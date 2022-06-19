@@ -21,7 +21,7 @@ func (a *SaveTwoDTextureAssetAction) Run() error {
 	textureAsset := BuildTwoDTextureAsset(image)
 	resource := a.registry.ResourceByID(a.id)
 	if resource == nil {
-		resource = a.registry.CreateResource("twod_texture", a.id)
+		resource = a.registry.CreateIDResource(a.id, "twod_texture", a.id)
 	}
 	if err := resource.WriteContent(textureAsset); err != nil {
 		return fmt.Errorf("failed to write asset: %w", err)
@@ -94,7 +94,7 @@ func (a *SaveCubeTextureAction) Run() error {
 
 	resource := a.registry.ResourceByID(a.id)
 	if resource == nil {
-		resource = a.registry.CreateResource("cube_texture", a.id)
+		resource = a.registry.CreateIDResource(a.id, "cube_texture", a.id)
 	}
 	if err := resource.WriteContent(textureAsset); err != nil {
 		return fmt.Errorf("failed to write asset: %w", err)

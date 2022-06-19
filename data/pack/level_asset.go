@@ -57,7 +57,7 @@ func (a *SaveLevelAssetAction) Run() error {
 
 	resource := a.registry.ResourceByID(a.id)
 	if resource == nil {
-		resource = a.registry.CreateResource("level", a.id)
+		resource = a.registry.CreateIDResource(a.id, "level", a.id)
 	}
 	if err := resource.WriteContent(levelAsset); err != nil {
 		return fmt.Errorf("failed to write asset: %w", err)

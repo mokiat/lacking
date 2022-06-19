@@ -26,6 +26,9 @@ type Registry interface {
 	ResourceByName(name string) Resource
 	ResourcesByName(name string) []Resource
 	CreateResource(kind, name string) Resource
+	// CreateIDResource is deprecated and available only due to the old
+	// pack mechanism.
+	CreateIDResource(id, kind, name string) Resource
 	Save() error
 }
 
