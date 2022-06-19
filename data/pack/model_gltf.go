@@ -51,80 +51,70 @@ func (a *OpenGLTFResourceAction) Run() error {
 
 	a.model = &Model{}
 
+	// NOTE: glTF allows a sub-mesh to use totally different
+	// mesh vertices and indices. It may even reuse part of the
+	// attributes but use dedicated buffers for the remaining ones.
+	//
+	// Since we don't support that and our mesh model has a shared
+	// vertex data with sub-meshes only having index offsets and counts,
+	// we need to reindex the data.
+	//
+	// This acts also as a form of optimization where if the glTF has
+	// additional attributes that we don't care about but that result in
+	// mesh partitioning, we would be getting rid of the unnecessary
+	// partitioning.
+
 	// build meshes
-	meshMapping := make(map[uint32]*Mesh)
+	meshFromIndex := make(map[uint32]*Mesh)
 
-	for i := range gltfDoc.Meshes {
-		gltfMesh := gltfDoc.FindMesh(i)
+	for i, gltfMesh := range gltfDoc.GetMeshes() {
 		mesh := &Mesh{
-			Name:        gltfMesh.Name,
-			SubMeshes:   make([]SubMesh, len(gltfMesh.Primitives)),
-			VertexCount: 0,
-			IndexCount:  0,
+			Name:      gltfMesh.Name,
+			SubMeshes: make([]SubMesh, len(gltfMesh.Primitives)),
 		}
+		meshFromIndex[uint32(i)] = mesh
+		a.model.Meshes = append(a.model.Meshes, mesh)
+		indexFromVertex := make(map[Vertex]int)
 
-		for j := range gltfMesh.Primitives {
-			gltfPrimitive := gltfMesh.FindPrimitive(j)
-
+		for j, gltfPrimitive := range gltfMesh.GetPrimitives() {
 			subMesh := SubMesh{}
 			subMesh.IndexOffset = len(mesh.Indices)
 			subMesh.IndexCount = int(gltfPrimitive.FindIndexCount())
 
+			if gltfPrimitive.HasAttribute(AttributePosition) {
+				mesh.VertexLayout.HasCoords = true
+			}
+			if gltfPrimitive.HasAttribute(AttributeNormal) {
+				mesh.VertexLayout.HasNormals = true
+			}
+			if gltfPrimitive.HasAttribute(AttributeTangent) {
+				mesh.VertexLayout.HasTangents = true
+			}
+			if gltfPrimitive.HasAttribute(AttributeTexCoord0) {
+				mesh.VertexLayout.HasTexCoords = true
+			}
+			if gltfPrimitive.HasAttribute(AttributeColor0) {
+				mesh.VertexLayout.HasColors = true
+			}
+
 			for k := 0; k < subMesh.IndexCount; k++ {
 				gltfIndex := gltfPrimitive.FindIndex(k)
-				coord := gltfPrimitive.FindCoord(gltfIndex)
-				normal := gltfPrimitive.FindNormal(gltfIndex)
-				tangent := gltfPrimitive.FindTangent(gltfIndex)
-				texCoord := gltfPrimitive.FindTexCoord0(gltfIndex)
-				color := gltfPrimitive.FindColor0(gltfIndex)
-
-				// find same vertex
-				matchingIndex := -1
-				for l := 0; l < len(mesh.Coords); l++ { // FIXME: Coords might be nil
-					isMatching := true
-					if gltfPrimitive.HasAttribute(AttributePosition) {
-						isMatching = isMatching && (mesh.Coords[l] == coord)
-					}
-					if gltfPrimitive.HasAttribute(AttributeNormal) {
-						isMatching = isMatching && (mesh.Normals[l] == normal)
-					}
-					if gltfPrimitive.HasAttribute(AttributeTangent) {
-						isMatching = isMatching && (mesh.Tangents[l] == tangent)
-					}
-					if gltfPrimitive.HasAttribute(AttributeTexCoord0) {
-						isMatching = isMatching && (mesh.TexCoords[l] == texCoord)
-					}
-					if gltfPrimitive.HasAttribute(AttributeColor0) {
-						isMatching = isMatching && (mesh.Colors[l] == color)
-					}
-					if isMatching {
-						matchingIndex = l
-						break
-					}
+				vertex := Vertex{
+					Coord:    gltfPrimitive.FindCoord(gltfIndex),
+					Normal:   gltfPrimitive.FindNormal(gltfIndex),
+					Tangent:  gltfPrimitive.FindTangent(gltfIndex),
+					TexCoord: gltfPrimitive.FindTexCoord0(gltfIndex),
+					Color:    gltfPrimitive.FindColor0(gltfIndex),
 				}
 
-				if matchingIndex != -1 {
-					mesh.Indices = append(mesh.Indices, matchingIndex)
+				if index, ok := indexFromVertex[vertex]; ok {
+					mesh.Indices = append(mesh.Indices, index)
 				} else {
-					mesh.VertexCount++
-					if gltfPrimitive.HasAttribute(AttributePosition) {
-						mesh.Coords = append(mesh.Coords, coord)
-					}
-					if gltfPrimitive.HasAttribute(AttributeNormal) {
-						mesh.Normals = append(mesh.Normals, normal)
-					}
-					if gltfPrimitive.HasAttribute(AttributeTangent) {
-						mesh.Tangents = append(mesh.Tangents, tangent)
-					}
-					if gltfPrimitive.HasAttribute(AttributeTexCoord0) {
-						mesh.TexCoords = append(mesh.TexCoords, texCoord)
-					}
-					if gltfPrimitive.HasAttribute(AttributeColor0) {
-						mesh.Colors = append(mesh.Colors, color)
-					}
-					mesh.Indices = append(mesh.Indices, mesh.VertexCount-1)
+					index = len(mesh.Vertices)
+					mesh.Vertices = append(mesh.Vertices, vertex)
+					mesh.Indices = append(mesh.Indices, index)
+					indexFromVertex[vertex] = index
 				}
-				mesh.IndexCount++
 			}
 
 			switch gltfPrimitive.FindMode() {
@@ -172,9 +162,6 @@ func (a *OpenGLTFResourceAction) Run() error {
 
 			mesh.SubMeshes[j] = subMesh
 		}
-
-		meshMapping[uint32(i)] = mesh
-		a.model.Meshes = append(a.model.Meshes, mesh)
 	}
 
 	// build nodes
@@ -193,8 +180,6 @@ func (a *OpenGLTFResourceAction) Run() error {
 			node.Scale = matrix.Scale()
 			node.Rotation = matrix.RotationQuat()
 		} else {
-			// TODO: Fix these; they should not be empty if matrix is empty
-			// and in theory the desired scale may be zero,zero,zero.
 			if gltfNode.Translation != emptyTranslation {
 				node.Translation = sprec.NewVec3(
 					gltfNode.Translation[0],
@@ -226,7 +211,7 @@ func (a *OpenGLTFResourceAction) Run() error {
 		}
 
 		if gltfNode.Mesh != nil {
-			node.Mesh = meshMapping[*gltfNode.Mesh]
+			node.Mesh = meshFromIndex[*gltfNode.Mesh]
 		}
 		for _, childID := range gltfNode.Children {
 			node.Children = append(node.Children, visitNode(gltfDoc.Nodes[childID]))
@@ -273,7 +258,17 @@ func (d GLTFDocument) RootNodes() []*gltf.Node {
 	return result
 }
 
-func (d GLTFDocument) FindMesh(index int) GLTFMesh {
+func (d GLTFDocument) GetMeshes() []GLTFMesh {
+	result := make([]GLTFMesh, len(d.Meshes))
+	for i, mesh := range d.Meshes {
+		result[i] = GLTFMesh{
+			doc:  d,
+			Mesh: mesh,
+		}
+	}
+	return result
+}
+func (d GLTFDocument) GetMesh(index int) GLTFMesh {
 	return GLTFMesh{
 		doc:  d,
 		Mesh: d.Meshes[index],
@@ -285,7 +280,18 @@ type GLTFMesh struct {
 	*gltf.Mesh
 }
 
-func (m GLTFMesh) FindPrimitive(index int) GLTFPrimitive {
+func (m GLTFMesh) GetPrimitives() []GLTFPrimitive {
+	result := make([]GLTFPrimitive, len(m.Primitives))
+	for i, primitive := range m.Primitives {
+		result[i] = GLTFPrimitive{
+			doc:       m.doc,
+			Primitive: primitive,
+		}
+	}
+	return result
+}
+
+func (m GLTFMesh) GetPrimitive(index int) GLTFPrimitive {
 	return GLTFPrimitive{
 		doc:       m.doc,
 		Primitive: m.Primitives[index],
