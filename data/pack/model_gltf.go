@@ -19,10 +19,8 @@ const (
 )
 
 var (
-	emptyMatrix      = [16]float32{}
-	emptyTranslation = [3]float32{}
-	emptyRotation    = [4]float32{}
-	emptyScale       = [3]float32{}
+	emptyMatrix    = [16]float32{}
+	identityMatrix = [16]float32{1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1}
 )
 
 type OpenGLTFResourceAction struct {
@@ -174,40 +172,28 @@ func (a *OpenGLTFResourceAction) Run() error {
 			Scale:       sprec.NewVec3(1.0, 1.0, 1.0),
 		}
 
-		if gltfNode.Matrix != emptyMatrix {
+		if gltfNode.Matrix != emptyMatrix && gltfNode.Matrix != identityMatrix {
 			matrix := sprec.ColumnMajorArrayMat4(gltfNode.Matrix)
 			node.Translation = matrix.Translation()
 			node.Scale = matrix.Scale()
 			node.Rotation = matrix.RotationQuat()
 		} else {
-			if gltfNode.Translation != emptyTranslation {
-				node.Translation = sprec.NewVec3(
-					gltfNode.Translation[0],
-					gltfNode.Translation[1],
-					gltfNode.Translation[2],
-				)
-			} else {
-				node.Translation = sprec.ZeroVec3()
-			}
-			if gltfNode.Rotation != emptyRotation {
-				node.Rotation = sprec.NewQuat(
-					gltfNode.Rotation[3],
-					gltfNode.Rotation[0],
-					gltfNode.Rotation[1],
-					gltfNode.Rotation[2],
-				)
-			} else {
-				node.Rotation = sprec.IdentityQuat()
-			}
-			if gltfNode.Scale != emptyScale {
-				node.Scale = sprec.NewVec3(
-					gltfNode.Scale[0],
-					gltfNode.Scale[1],
-					gltfNode.Scale[2],
-				)
-			} else {
-				node.Scale = sprec.NewVec3(1.0, 1.0, 1.0)
-			}
+			node.Translation = sprec.NewVec3(
+				gltfNode.Translation[0],
+				gltfNode.Translation[1],
+				gltfNode.Translation[2],
+			)
+			node.Rotation = sprec.NewQuat(
+				gltfNode.Rotation[3],
+				gltfNode.Rotation[0],
+				gltfNode.Rotation[1],
+				gltfNode.Rotation[2],
+			)
+			node.Scale = sprec.NewVec3(
+				gltfNode.Scale[0],
+				gltfNode.Scale[1],
+				gltfNode.Scale[2],
+			)
 		}
 
 		if gltfNode.Mesh != nil {
