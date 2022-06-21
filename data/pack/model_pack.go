@@ -77,16 +77,16 @@ const (
 )
 
 type Material struct {
-	Type             string
-	BackfaceCulling  bool
-	AlphaTesting     bool
-	AlphaThreshold   float32
-	Metalness        float32
-	MetalnessTexture string
-	Roughness        float32
-	RoughnessTexture string
-	Color            sprec.Vec4
-	ColorTexture     string
-	NormalScale      float32
-	NormalTexture    string
+	Type                     string
+	BackfaceCulling          bool
+	AlphaTesting             bool
+	AlphaThreshold           float32
+	Blending                 bool
+	Color                    sprec.Vec4
+	ColorTexture             string
+	Metallic                 float32
+	Roughness                float32
+	MetallicRoughnessTexture string
+	NormalScale              float32
+	NormalTexture            string
 }

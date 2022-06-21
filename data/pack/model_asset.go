@@ -192,10 +192,9 @@ func meshToAssetMesh(mesh *Mesh) asset.Mesh {
 				BackfaceCulling:  subMesh.Material.BackfaceCulling,
 				AlphaTesting:     subMesh.Material.AlphaTesting,
 				AlphaThreshold:   subMesh.Material.AlphaThreshold,
-				Metalness:        subMesh.Material.Metalness,
-				MetalnessTexture: subMesh.Material.MetalnessTexture,
+				Metalness:        subMesh.Material.Metallic,
 				Roughness:        subMesh.Material.Roughness,
-				RoughnessTexture: subMesh.Material.RoughnessTexture,
+				MetalnessTexture: subMesh.Material.MetallicRoughnessTexture,
 				Color: [4]float32{
 					subMesh.Material.Color.X,
 					subMesh.Material.Color.Y,
