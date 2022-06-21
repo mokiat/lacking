@@ -1,5 +1,7 @@
 package render
 
+import "fmt"
+
 type WrapMode int
 
 const (
@@ -19,10 +21,26 @@ const (
 type DataFormat int
 
 const (
-	DataFormatRGBA8 DataFormat = iota
+	DataFormatUnsupported DataFormat = iota
+	DataFormatRGBA8
 	DataFormatRGBA16F
 	DataFormatRGBA32F
 )
+
+func (f DataFormat) String() string {
+	switch f {
+	case DataFormatUnsupported:
+		return "UNSUPPORTED"
+	case DataFormatRGBA8:
+		return "RGBA8"
+	case DataFormatRGBA16F:
+		return "RGBA16F"
+	case DataFormatRGBA32F:
+		return "RGBA32F"
+	default:
+		return fmt.Sprintf("UNKNOWN(%d)", f)
+	}
+}
 
 type TextureObject interface {
 	_isTextureObject() bool // ensures interface uniqueness

@@ -6,6 +6,7 @@ import (
 	"github.com/mokiat/gomath/sprec"
 	"github.com/mokiat/lacking/data"
 	"github.com/mokiat/lacking/game/graphics/internal"
+	"github.com/mokiat/lacking/log"
 	"github.com/mokiat/lacking/render"
 	"github.com/x448/float16"
 )
@@ -15,7 +16,7 @@ func newRenderer(api render.API, shaders ShaderCollection) *sceneRenderer {
 		api:     api,
 		shaders: shaders,
 
-		exposureBufferData: make([]byte, 4*2), // RGBA16F
+		exposureBufferData: make([]byte, 4*4), // Worst case RGBA32F
 		exposureTarget:     1.0,
 
 		quadMesh: internal.NewQuadMesh(),
@@ -51,6 +52,7 @@ type sceneRenderer struct {
 	exposurePipeline      render.Pipeline
 	exposureBufferData    data.Buffer
 	exposureBuffer        render.Buffer
+	exposureFormat        render.DataFormat
 	exposureSync          render.Fence
 	exposureTarget        float32
 
@@ -177,8 +179,9 @@ func (r *sceneRenderer) Allocate() {
 	})
 	r.exposureBuffer = r.api.CreatePixelTransferBuffer(render.BufferInfo{
 		Dynamic: true,
-		Size:    4 * 4,
+		Size:    len(r.exposureBufferData),
 	})
+	r.exposureFormat = r.api.DetermineContentFormat(r.exposureFramebuffer)
 
 	r.postprocessingPresentation = internal.NewPostprocessingPresentation(r.api,
 		r.shaders.PostprocessingSet(ExponentialToneMapping).VertexShader(),
@@ -705,6 +708,11 @@ func (r *sceneRenderer) renderForwardPass(ctx renderCtx) {
 }
 
 func (r *sceneRenderer) renderExposureProbePass(ctx renderCtx) {
+	if r.exposureFormat != render.DataFormatRGBA16F && r.exposureFormat != render.DataFormatRGBA32F {
+		log.Error("Skipping exposure due to unsupported framebuffer format %q", r.exposureFormat)
+		return
+	}
+
 	if r.exposureSync != nil {
 		switch r.exposureSync.Status() {
 		case render.FenceStatusSuccess:
@@ -712,9 +720,17 @@ func (r *sceneRenderer) renderExposureProbePass(ctx renderCtx) {
 				Offset: 0,
 				Target: r.exposureBufferData,
 			})
-			colorR := float16.Frombits(r.exposureBufferData.UInt16(0 * 2)).Float32()
-			colorG := float16.Frombits(r.exposureBufferData.UInt16(1 * 2)).Float32()
-			colorB := float16.Frombits(r.exposureBufferData.UInt16(2 * 2)).Float32()
+			var colorR, colorG, colorB float32
+			switch r.exposureFormat {
+			case render.DataFormatRGBA16F:
+				colorR = float16.Frombits(r.exposureBufferData.UInt16(0 * 2)).Float32()
+				colorG = float16.Frombits(r.exposureBufferData.UInt16(1 * 2)).Float32()
+				colorB = float16.Frombits(r.exposureBufferData.UInt16(2 * 2)).Float32()
+			case render.DataFormatRGBA32F:
+				colorR = data.Buffer(r.exposureBufferData).Float32(0 * 4)
+				colorG = data.Buffer(r.exposureBufferData).Float32(1 * 4)
+				colorB = data.Buffer(r.exposureBufferData).Float32(2 * 4)
+			}
 			brightness := 0.2126*colorR + 0.7152*colorG + 0.0722*colorB
 			if brightness < 0.001 {
 				brightness = 0.001
@@ -770,7 +786,7 @@ func (r *sceneRenderer) renderExposureProbePass(ctx renderCtx) {
 			Y:      0,
 			Width:  1,
 			Height: 1,
-			Format: render.DataFormatRGBA16F,
+			Format: r.exposureFormat,
 		})
 		r.api.SubmitQueue(r.commands)
 		r.exposureSync = r.api.CreateFence()

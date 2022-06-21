@@ -21,6 +21,11 @@ type API interface {
 	CreatePipeline(info PipelineInfo) Pipeline
 	CreateCommandQueue() CommandQueue
 
+	// DetermineContentFormat returns the format that should be used
+	// with CopyContentToTexture and similar methods when dealing with
+	// the specified Framebuffer.
+	DetermineContentFormat(framebuffer Framebuffer) DataFormat
+
 	BeginRenderPass(info RenderPassInfo)
 	EndRenderPass()
 
