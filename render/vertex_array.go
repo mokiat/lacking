@@ -71,6 +71,11 @@ const (
 	VertexAttributeFormatRG8UN
 	VertexAttributeFormatRGB8UN
 	VertexAttributeFormatRGBA8UN
+
+	VertexAttributeFormatR8IU
+	VertexAttributeFormatRG8IU
+	VertexAttributeFormatRGB8IU
+	VertexAttributeFormatRGBA8IU
 )
 
 type IndexFormat uint8
