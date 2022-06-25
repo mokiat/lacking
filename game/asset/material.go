@@ -7,7 +7,7 @@ type Material struct {
 	Type            MaterialType
 	BackfaceCulling bool
 	AlphaTesting    bool
-	AlphaThreshold  bool
+	AlphaThreshold  float32
 	Blending        bool
 	Scalars         [16]*float32
 	Textures        [16]string

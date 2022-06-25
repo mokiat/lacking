@@ -118,7 +118,7 @@ func (a *OpenGLTFResourceAction) Run() error {
 			}
 
 			material := Material{
-				Type:                     "pbr",
+				Name:                     "",
 				BackfaceCulling:          true,
 				AlphaTesting:             false,
 				AlphaThreshold:           0.5,
@@ -132,6 +132,7 @@ func (a *OpenGLTFResourceAction) Run() error {
 				NormalTexture:            "",
 			}
 			if gltfMaterial := gltfutil.PrimitiveMaterial(gltfDoc, gltfPrimitive); gltfMaterial != nil {
+				material.Name = gltfMaterial.Name
 				material.BackfaceCulling = !gltfMaterial.DoubleSided
 				material.AlphaTesting = gltfMaterial.AlphaMode == gltf.AlphaMask
 				material.AlphaThreshold = gltfMaterial.AlphaCutoffOrDefault()
@@ -145,7 +146,7 @@ func (a *OpenGLTFResourceAction) Run() error {
 				}
 				material.NormalTexture, material.NormalScale = gltfutil.NormalTexture(gltfDoc, gltfMaterial)
 			}
-			subMesh.Material = material
+			subMesh.Material = &material
 
 			mesh.SubMeshes[j] = subMesh
 		}

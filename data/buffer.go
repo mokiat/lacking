@@ -4,6 +4,10 @@ import "math"
 
 type Buffer []byte
 
+func (b Buffer) SetUint8(offset int, value uint8) {
+	b[offset] = value
+}
+
 func (b Buffer) SetFloat32(offset int, value float32) {
 	bits := math.Float32bits(value)
 	b[offset+0] = byte(bits >> 0)

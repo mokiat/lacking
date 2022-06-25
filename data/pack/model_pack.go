@@ -7,8 +7,10 @@ type ModelProvider interface {
 }
 
 type Model struct {
-	RootNodes []*Node
-	Meshes    []*Mesh
+	RootNodes       []*Node
+	Materials       []*Material
+	MeshDefinitions []*MeshDefinition
+	MeshInstances   []*MeshInstance
 }
 
 type Node struct {
@@ -16,29 +18,35 @@ type Node struct {
 	Translation sprec.Vec3
 	Scale       sprec.Vec3
 	Rotation    sprec.Quat
-	Mesh        *Mesh
 	Children    []*Node
 }
 
-func (n *Node) Matrix() sprec.Mat4 {
-	return sprec.Mat4MultiProd(
-		sprec.TranslationMat4(n.Translation.X, n.Translation.Y, n.Translation.Z),
-		sprec.TransformationMat4(
-			n.Rotation.OrientationX(),
-			n.Rotation.OrientationY(),
-			n.Rotation.OrientationZ(),
-			sprec.ZeroVec3(),
-		),
-		sprec.ScaleMat4(n.Scale.X, n.Scale.Y, n.Scale.Z),
-	)
-}
+// TODO: Remove after used as reference
+// func (n *Node) Matrix() sprec.Mat4 {
+// 	return sprec.Mat4MultiProd(
+// 		sprec.TranslationMat4(n.Translation.X, n.Translation.Y, n.Translation.Z),
+// 		sprec.TransformationMat4(
+// 			n.Rotation.OrientationX(),
+// 			n.Rotation.OrientationY(),
+// 			n.Rotation.OrientationZ(),
+// 			sprec.ZeroVec3(),
+// 		),
+// 		sprec.ScaleMat4(n.Scale.X, n.Scale.Y, n.Scale.Z),
+// 	)
+// }
 
-type Mesh struct {
+type MeshDefinition struct {
 	Name         string
 	VertexLayout VertexLayout
 	Vertices     []Vertex
 	Indices      []int
-	SubMeshes    []SubMesh
+	Fragments    []MeshFragment
+}
+
+type MeshInstance struct {
+	Name       string
+	Node       *Node
+	Definition *MeshDefinition
 }
 
 type VertexLayout struct {
@@ -47,6 +55,8 @@ type VertexLayout struct {
 	HasTangents  bool
 	HasTexCoords bool
 	HasColors    bool
+	HasWeights   bool
+	HasJoints    bool
 }
 
 type Vertex struct {
@@ -55,13 +65,15 @@ type Vertex struct {
 	Tangent  sprec.Vec3
 	TexCoord sprec.Vec2
 	Color    sprec.Vec4
+	Weights  sprec.Vec4
+	Joints   [4]uint8
 }
 
-type SubMesh struct {
+type MeshFragment struct {
 	Primitive   Primitive
 	IndexOffset int
 	IndexCount  int
-	Material    Material
+	Material    *Material
 }
 
 type Primitive int
@@ -77,7 +89,7 @@ const (
 )
 
 type Material struct {
-	Type                     string
+	Name                     string
 	BackfaceCulling          bool
 	AlphaTesting             bool
 	AlphaThreshold           float32

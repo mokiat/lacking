@@ -100,7 +100,7 @@ func (a *OpenLevelResourceAction) Run() error {
 				IndexOffset: jsonSubMesh.IndexOffset,
 				IndexCount:  jsonSubMesh.IndexCount,
 				Material: Material{
-					Type:                     "pbr",
+					Name:                     "",
 					BackfaceCulling:          true,
 					AlphaTesting:             false,
 					AlphaThreshold:           0.5,

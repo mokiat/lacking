@@ -4,8 +4,8 @@ import (
 	"fmt"
 
 	"github.com/mokiat/lacking/data"
-	"github.com/mokiat/lacking/data/asset"
 	gameasset "github.com/mokiat/lacking/game/asset"
+	"github.com/x448/float16"
 )
 
 type SaveModelAssetAction struct {
@@ -19,50 +19,8 @@ func (a *SaveModelAssetAction) Describe() string {
 }
 
 func (a *SaveModelAssetAction) Run() error {
-	model := a.modelProvider.Model()
-
-	nodeMapping := make(map[*Node]int)
-	meshMapping := make(map[*Mesh]int)
-
-	modelAsset := &asset.Model{}
-
-	// build meshes
-	modelAsset.Meshes = make([]asset.Mesh, len(model.Meshes))
-	for i, mesh := range model.Meshes {
-		meshMapping[mesh] = i
-		modelAsset.Meshes[i] = meshToAssetMesh(mesh)
-	}
-
-	// build nodes
-	var visitNode func(parent, node *Node)
-	visitNode = func(parent, node *Node) {
-		nodeMapping[node] = len(nodeMapping)
-
-		nodeAsset := asset.Node{
-			Name:   node.Name,
-			Matrix: node.Matrix().ColumnMajorArray(),
-		}
-		if parentIndex, ok := nodeMapping[parent]; ok {
-			nodeAsset.ParentIndex = int16(parentIndex)
-		} else {
-			nodeAsset.ParentIndex = int16(-1)
-		}
-		if meshIndex, ok := meshMapping[node.Mesh]; ok {
-			nodeAsset.MeshIndex = int16(meshIndex)
-		} else {
-			nodeAsset.MeshIndex = int16(-1)
-		}
-
-		modelAsset.Nodes = append(modelAsset.Nodes, nodeAsset)
-
-		for _, child := range node.Children {
-			visitNode(node, child)
-		}
-	}
-	for _, node := range model.RootNodes {
-		visitNode(nil, node)
-	}
-
+	conv := newConverter()
+	modelAsset := conv.BuildModel(a.modelProvider.Model())
 	resource := a.registry.ResourceByID(a.id)
 	if resource == nil {
 		resource = a.registry.CreateIDResource(a.id, "model", a.id)
@@ -76,99 +34,268 @@ func (a *SaveModelAssetAction) Run() error {
 	return nil
 }
 
-func meshToAssetMesh(mesh *Mesh) asset.Mesh {
+func newConverter() *converter {
+	return &converter{
+		assetNodes:                            make([]gameasset.Node, 0),
+		assetNodeIndexFromNode:                make(map[*Node]int),
+		assetMaterialIndexFromMaterial:        make(map[*Material]int),
+		assetMeshDefinitionFromMeshDefinition: make(map[*MeshDefinition]int),
+	}
+}
+
+type converter struct {
+	assetNodes                            []gameasset.Node
+	assetNodeIndexFromNode                map[*Node]int
+	assetMaterialIndexFromMaterial        map[*Material]int
+	assetMeshDefinitionFromMeshDefinition map[*MeshDefinition]int
+}
+
+func (c *converter) BuildModel(model *Model) *gameasset.Model {
+	for _, node := range model.RootNodes {
+		c.BuildNode(-1, node)
+	}
+
 	var (
-		coordOffset    int16
-		normalOffset   int16
-		tangentOffset  int16
-		texCoordOffset int16
-		colorOffset    int16
-		stride         int16
+		assetMaterials = make([]gameasset.Material, len(model.Materials))
+	)
+	for i, material := range model.Materials {
+		assetMaterials[i] = c.BuildMaterial(material)
+		c.assetMaterialIndexFromMaterial[material] = i
+	}
+
+	var (
+		assetMeshDefinitions = make([]gameasset.MeshDefinition, len(model.MeshDefinitions))
+	)
+	for i, meshDefinition := range model.MeshDefinitions {
+		assetMeshDefinitions[i] = c.BuildMeshDefinition(meshDefinition)
+		c.assetMeshDefinitionFromMeshDefinition[meshDefinition] = i
+	}
+
+	var (
+		assetMeshInstances = make([]gameasset.MeshInstance, len(model.MeshInstances))
+	)
+	for i, meshInstance := range model.MeshInstances {
+		assetMeshInstances[i] = c.BuildMeshInstance(meshInstance)
+	}
+
+	return &gameasset.Model{
+		Nodes:           c.assetNodes,
+		Materials:       assetMaterials,
+		MeshDefinitions: assetMeshDefinitions,
+	}
+}
+
+func (c *converter) BuildNode(parentIndex int, node *Node) {
+	result := gameasset.Node{
+		Name:        node.Name,
+		ParentIndex: int32(parentIndex),
+		Translation: node.Translation.Array(),
+		Rotation: [4]float32{
+			node.Rotation.X,
+			node.Rotation.Y,
+			node.Rotation.Z,
+			node.Rotation.W,
+		},
+		Scale: node.Scale.Array(),
+	}
+	index := len(c.assetNodes)
+	c.assetNodes = append(c.assetNodes, result)
+	for _, child := range node.Children {
+		c.BuildNode(index, child)
+	}
+}
+
+func (c *converter) BuildMaterial(material *Material) gameasset.Material {
+	return gameasset.Material{
+		Name:            material.Name,
+		Type:            gameasset.MaterialTypePBR,
+		BackfaceCulling: material.BackfaceCulling,
+		AlphaTesting:    material.AlphaTesting,
+		AlphaThreshold:  material.AlphaThreshold,
+		Blending:        material.Blending,
+		Scalars: [16]*float32{
+			// Color
+			ptrOf(material.Color.X),
+			ptrOf(material.Color.Y),
+			ptrOf(material.Color.Z),
+			ptrOf(material.Color.W),
+			// Metallic and Roughness
+			ptrOf(material.Metallic),
+			ptrOf(material.Roughness),
+			// Normal Scale
+			ptrOf(material.NormalScale),
+		},
+		Textures: [16]string{
+			material.ColorTexture,
+			material.MetallicRoughnessTexture,
+			material.NormalTexture,
+		},
+	}
+}
+
+func (c *converter) BuildMeshDefinition(meshDefinition *MeshDefinition) gameasset.MeshDefinition {
+	const (
+		sizeUnsignedByte  = 1
+		sizeUnsignedShort = 2
+		sizeUnsignedInt   = 4
+		sizeHalfFloat     = 2
+		sizeFloat         = 4
 	)
 
-	layout := mesh.VertexLayout
-	stride = 0
+	var (
+		stride         int32
+		coordOffset    int32
+		normalOffset   int32
+		tangentOffset  int32
+		texCoordOffset int32
+		colorOffset    int32
+		weightsOffset  int32
+		jointsOffset   int32
+	)
+
+	layout := meshDefinition.VertexLayout
 	if layout.HasCoords {
 		coordOffset = stride
-		stride += 3 * 4
+		stride += 3 * sizeFloat
 	} else {
-		coordOffset = asset.UnspecifiedOffset
+		coordOffset = gameasset.UnspecifiedOffset
 	}
 	if layout.HasNormals {
 		normalOffset = stride
-		stride += 3 * 4
+		stride += 3 * sizeHalfFloat
+		stride += sizeHalfFloat // due to alignment requirements
 	} else {
-		normalOffset = asset.UnspecifiedOffset
+		normalOffset = gameasset.UnspecifiedOffset
 	}
 	if layout.HasTangents {
 		tangentOffset = stride
-		stride += 3 * 4
+		stride += 3 * sizeHalfFloat
+		stride += sizeHalfFloat // due to alignment requirements
 	} else {
-		tangentOffset = asset.UnspecifiedOffset
+		tangentOffset = gameasset.UnspecifiedOffset
 	}
 	if layout.HasTexCoords {
 		texCoordOffset = stride
-		stride += 2 * 4
+		stride += 2 * sizeHalfFloat
 	} else {
-		texCoordOffset = asset.UnspecifiedOffset
+		texCoordOffset = gameasset.UnspecifiedOffset
 	}
 	if layout.HasColors {
 		colorOffset = stride
-		stride += 4 * 4
+		stride += 4 * sizeUnsignedByte
 	} else {
-		colorOffset = asset.UnspecifiedOffset
+		colorOffset = gameasset.UnspecifiedOffset
+	}
+	if layout.HasWeights {
+		weightsOffset = stride
+		stride += 4 * sizeUnsignedByte
+	} else {
+		weightsOffset = gameasset.UnspecifiedOffset
+	}
+	if layout.HasJoints {
+		jointsOffset = stride
+		stride += 4 * sizeUnsignedByte
+	} else {
+		jointsOffset = gameasset.UnspecifiedOffset
 	}
 
-	vertexData := data.Buffer(make([]byte, len(mesh.Vertices)*int(stride)))
+	var (
+		vertexData = data.Buffer(make([]byte, len(meshDefinition.Vertices)*int(stride)))
+	)
 	if layout.HasCoords {
-		for j, vertex := range mesh.Vertices {
-			coord := vertex.Coord
-			vertexData.SetFloat32(int(coordOffset)+j*int(stride)+0, coord.X)
-			vertexData.SetFloat32(int(coordOffset)+j*int(stride)+4, coord.Y)
-			vertexData.SetFloat32(int(coordOffset)+j*int(stride)+8, coord.Z)
+		offset := int(coordOffset)
+		for _, vertex := range meshDefinition.Vertices {
+			vertexData.SetFloat32(offset+0*sizeFloat, vertex.Coord.X)
+			vertexData.SetFloat32(offset+1*sizeFloat, vertex.Coord.Y)
+			vertexData.SetFloat32(offset+2*sizeFloat, vertex.Coord.Z)
+			offset += int(stride)
 		}
 	}
 	if layout.HasNormals {
-		for j, vertex := range mesh.Vertices {
-			normal := vertex.Normal
-			vertexData.SetFloat32(int(normalOffset)+j*int(stride)+0, normal.X)
-			vertexData.SetFloat32(int(normalOffset)+j*int(stride)+4, normal.Y)
-			vertexData.SetFloat32(int(normalOffset)+j*int(stride)+8, normal.Z)
+		offset := int(normalOffset)
+		for _, vertex := range meshDefinition.Vertices {
+			vertexData.SetUInt16(offset+0*sizeHalfFloat, float16.Fromfloat32(vertex.Normal.X).Bits())
+			vertexData.SetUInt16(offset+1*sizeHalfFloat, float16.Fromfloat32(vertex.Normal.Y).Bits())
+			vertexData.SetUInt16(offset+2*sizeHalfFloat, float16.Fromfloat32(vertex.Normal.Z).Bits())
+			offset += int(stride)
 		}
 	}
 	if layout.HasTangents {
-		for j, vertex := range mesh.Vertices {
-			tangent := vertex.Tangent
-			vertexData.SetFloat32(int(tangentOffset)+j*int(stride)+0, tangent.X)
-			vertexData.SetFloat32(int(tangentOffset)+j*int(stride)+4, tangent.Y)
-			vertexData.SetFloat32(int(tangentOffset)+j*int(stride)+8, tangent.Z)
+		offset := int(tangentOffset)
+		for _, vertex := range meshDefinition.Vertices {
+			vertexData.SetUInt16(offset+0*sizeHalfFloat, float16.Fromfloat32(vertex.Tangent.X).Bits())
+			vertexData.SetUInt16(offset+1*sizeHalfFloat, float16.Fromfloat32(vertex.Tangent.Y).Bits())
+			vertexData.SetUInt16(offset+2*sizeHalfFloat, float16.Fromfloat32(vertex.Tangent.Z).Bits())
+			offset += int(stride)
 		}
 	}
 	if layout.HasTexCoords {
-		for j, vertex := range mesh.Vertices {
-			texCoord := vertex.TexCoord
-			vertexData.SetFloat32(int(texCoordOffset)+j*int(stride)+0, texCoord.X)
-			vertexData.SetFloat32(int(texCoordOffset)+j*int(stride)+4, texCoord.Y)
+		offset := int(texCoordOffset)
+		for _, vertex := range meshDefinition.Vertices {
+			vertexData.SetUInt16(offset+0*sizeHalfFloat, float16.Fromfloat32(vertex.TexCoord.X).Bits())
+			vertexData.SetUInt16(offset+1*sizeHalfFloat, float16.Fromfloat32(vertex.TexCoord.Y).Bits())
+			offset += int(stride)
 		}
 	}
 	if layout.HasColors {
-		for j, vertex := range mesh.Vertices {
-			color := vertex.Color
-			vertexData.SetFloat32(int(colorOffset)+j*int(stride)+0, color.X)
-			vertexData.SetFloat32(int(colorOffset)+j*int(stride)+4, color.Y)
-			vertexData.SetFloat32(int(colorOffset)+j*int(stride)+8, color.Z)
+		offset := int(colorOffset)
+		for _, vertex := range meshDefinition.Vertices {
+			vertexData.SetUint8(offset+0*sizeUnsignedByte, uint8(vertex.Color.X*255.0))
+			vertexData.SetUint8(offset+1*sizeUnsignedByte, uint8(vertex.Color.Y*255.0))
+			vertexData.SetUint8(offset+2*sizeUnsignedByte, uint8(vertex.Color.Z*255.0))
+			vertexData.SetUint8(offset+3*sizeUnsignedByte, uint8(vertex.Color.W*255.0))
+			offset += int(stride)
+		}
+	}
+	if layout.HasWeights {
+		offset := int(weightsOffset)
+		for _, vertex := range meshDefinition.Vertices {
+			vertexData.SetUint8(offset+0*sizeUnsignedByte, uint8(vertex.Weights.X*255.0))
+			vertexData.SetUint8(offset+1*sizeUnsignedByte, uint8(vertex.Weights.Y*255.0))
+			vertexData.SetUint8(offset+2*sizeUnsignedByte, uint8(vertex.Weights.Z*255.0))
+			vertexData.SetUint8(offset+3*sizeUnsignedByte, uint8(vertex.Weights.W*255.0))
+			offset += int(stride)
+		}
+	}
+	if layout.HasJoints {
+		offset := int(jointsOffset)
+		for _, vertex := range meshDefinition.Vertices {
+			vertexData.SetUint8(offset+0*sizeUnsignedByte, uint8(vertex.Joints[0]))
+			vertexData.SetUint8(offset+1*sizeUnsignedByte, uint8(vertex.Joints[1]))
+			vertexData.SetUint8(offset+2*sizeUnsignedByte, uint8(vertex.Joints[2]))
+			vertexData.SetUint8(offset+3*sizeUnsignedByte, uint8(vertex.Joints[3]))
+			offset += int(stride)
 		}
 	}
 
-	indexData := data.Buffer(make([]byte, len(mesh.Indices)*2))
-	for j, index := range mesh.Indices {
-		indexData.SetUInt16(j*2, uint16(index))
+	var (
+		indexLayout gameasset.IndexLayout
+		indexData   data.Buffer
+	)
+	if len(meshDefinition.Indices) > 0xFFFF {
+		indexLayout = gameasset.IndexLayoutUint32
+		indexData = data.Buffer(make([]byte, len(meshDefinition.Indices)*sizeUnsignedInt))
+		for i, index := range meshDefinition.Indices {
+			indexData.SetUInt32(i*sizeUnsignedInt, uint32(index))
+		}
+	} else {
+		indexLayout = gameasset.IndexLayoutUint16
+		indexData = data.Buffer(make([]byte, len(meshDefinition.Indices)*sizeUnsignedShort))
+		for i, index := range meshDefinition.Indices {
+			indexData.SetUInt16(i*sizeUnsignedShort, uint16(index))
+		}
 	}
 
-	meshAsset := asset.Mesh{
-		Name:       mesh.Name,
-		VertexData: vertexData,
-		VertexLayout: asset.VertexLayout{
+	var (
+		fragments = make([]gameasset.MeshFragment, len(meshDefinition.Fragments))
+	)
+	for i, fragment := range meshDefinition.Fragments {
+		fragments[i] = c.BuildFragment(fragment)
+	}
+
+	return gameasset.MeshDefinition{
+		Name: meshDefinition.Name,
+		VertexLayout: gameasset.VertexLayout{
 			CoordOffset:    coordOffset,
 			CoordStride:    stride,
 			NormalOffset:   normalOffset,
@@ -179,52 +306,75 @@ func meshToAssetMesh(mesh *Mesh) asset.Mesh {
 			TexCoordStride: stride,
 			ColorOffset:    colorOffset,
 			ColorStride:    stride,
+			WeightsOffset:  weightsOffset,
+			WeightsStride:  stride,
+			JointsOffset:   jointsOffset,
+			JointsStride:   stride,
 		},
-		IndexData: indexData,
-		SubMeshes: make([]asset.SubMesh, len(mesh.SubMeshes)),
+		VertexData:  vertexData,
+		IndexLayout: indexLayout,
+		IndexData:   indexData,
+		Fragments:   fragments,
 	}
-	for j, subMesh := range mesh.SubMeshes {
-		subMeshAsset := asset.SubMesh{
-			IndexCount:  uint32(subMesh.IndexCount),
-			IndexOffset: uint32(subMesh.IndexOffset * 2),
-			Material: asset.Material{
-				Type:             subMesh.Material.Type,
-				BackfaceCulling:  subMesh.Material.BackfaceCulling,
-				AlphaTesting:     subMesh.Material.AlphaTesting,
-				AlphaThreshold:   subMesh.Material.AlphaThreshold,
-				Metalness:        subMesh.Material.Metallic,
-				Roughness:        subMesh.Material.Roughness,
-				MetalnessTexture: subMesh.Material.MetallicRoughnessTexture,
-				Color: [4]float32{
-					subMesh.Material.Color.X,
-					subMesh.Material.Color.Y,
-					subMesh.Material.Color.Z,
-					subMesh.Material.Color.W,
-				},
-				ColorTexture:  subMesh.Material.ColorTexture,
-				NormalScale:   subMesh.Material.NormalScale,
-				NormalTexture: subMesh.Material.NormalTexture,
-			},
-		}
-		switch subMesh.Primitive {
-		case PrimitivePoints:
-			subMeshAsset.Primitive = asset.PrimitivePoints
-		case PrimitiveLines:
-			subMeshAsset.Primitive = asset.PrimitiveLines
-		case PrimitiveLineStrip:
-			subMeshAsset.Primitive = asset.PrimitiveLineStrip
-		case PrimitiveLineLoop:
-			subMeshAsset.Primitive = asset.PrimitiveLineLoop
-		case PrimitiveTriangles:
-			subMeshAsset.Primitive = asset.PrimitiveTriangles
-		case PrimitiveTriangleStrip:
-			subMeshAsset.Primitive = asset.PrimitiveTriangleStrip
-		case PrimitiveTriangleFan:
-			subMeshAsset.Primitive = asset.PrimitiveTriangleFan
-		default:
-			panic(fmt.Errorf("unsupported primitive type: %d", subMesh.Primitive))
-		}
-		meshAsset.SubMeshes[j] = subMeshAsset
+}
+
+func (c *converter) BuildFragment(fragment MeshFragment) gameasset.MeshFragment {
+	var topology gameasset.MeshTopology
+	switch fragment.Primitive {
+	case PrimitivePoints:
+		topology = gameasset.MeshTopologyPoints
+	case PrimitiveLines:
+		topology = gameasset.MeshTopologyLines
+	case PrimitiveLineStrip:
+		topology = gameasset.MeshTopologyLineStrip
+	case PrimitiveLineLoop:
+		topology = gameasset.MeshTopologyLineLoop
+	case PrimitiveTriangles:
+		topology = gameasset.MeshTopologyTriangles
+	case PrimitiveTriangleStrip:
+		topology = gameasset.MeshTopologyTriangleStrip
+	case PrimitiveTriangleFan:
+		topology = gameasset.MeshTopologyTriangleFan
+	default:
+		panic(fmt.Errorf("unsupported primitive type: %d", fragment.Primitive))
 	}
-	return meshAsset
+
+	var materialIndex int32
+	if index, ok := c.assetMaterialIndexFromMaterial[fragment.Material]; ok {
+		materialIndex = int32(index)
+	} else {
+		panic(fmt.Errorf("material %s not found", fragment.Material.Name))
+	}
+
+	return gameasset.MeshFragment{
+		Topology:      topology,
+		IndexOffset:   uint32(fragment.IndexOffset),
+		IndexCount:    uint32(fragment.IndexCount),
+		MaterialIndex: materialIndex,
+	}
+}
+
+func (c *converter) BuildMeshInstance(meshInstance *MeshInstance) gameasset.MeshInstance {
+	var nodeIndex int32
+	if index, ok := c.assetNodeIndexFromNode[meshInstance.Node]; ok {
+		nodeIndex = int32(index)
+	} else {
+		panic(fmt.Errorf("node %s not found", meshInstance.Node.Name))
+	}
+	var definitionIndex int32
+	if index, ok := c.assetMeshDefinitionFromMeshDefinition[meshInstance.Definition]; ok {
+		definitionIndex = int32(index)
+	} else {
+		panic(fmt.Errorf("mesh definition %s not found", meshInstance.Definition.Name))
+	}
+
+	return gameasset.MeshInstance{
+		Name:            meshInstance.Name,
+		NodeIndex:       nodeIndex,
+		DefinitionIndex: definitionIndex,
+	}
+}
+
+func ptrOf[T any](v T) *T {
+	return &v
 }

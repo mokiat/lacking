@@ -98,7 +98,7 @@ func (e *Engine) CreateMeshTemplate(definition MeshTemplateDefinition) *MeshTemp
 		attributes = append(attributes, render.VertexArrayAttributeInfo{
 			Binding:  0,
 			Location: internal.NormalAttributeIndex,
-			Format:   render.VertexAttributeFormatRGB32F,
+			Format:   render.VertexAttributeFormatRGB16F,
 			Offset:   definition.VertexFormat.NormalOffsetBytes,
 		})
 	}
