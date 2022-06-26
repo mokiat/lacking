@@ -111,9 +111,18 @@ func (o *LevelOperator) Allocate(registry *Registry, id string) (interface{}, er
 	}
 	level.CollisionMeshes = collisionMeshes
 
+	staticMaterials := make([]*Material, len(levelAsset.Materials))
+	for i, staticMaterial := range levelAsset.Materials {
+		material, err := AllocateMaterial(registry, o.gfxEngine, &staticMaterial)
+		if err != nil {
+			return nil, fmt.Errorf("failed to allocate material: %w", err)
+		}
+		staticMaterials[i] = material
+	}
+
 	staticMeshes := make([]*Mesh, len(levelAsset.StaticMeshes))
 	for i, staticMeshAsset := range levelAsset.StaticMeshes {
-		staticMesh, err := AllocateMesh(registry, staticMeshAsset.Name, o.gfxEngine, &staticMeshAsset)
+		staticMesh, err := AllocateMesh(registry, o.gfxEngine, staticMaterials, &staticMeshAsset)
 		if err != nil {
 			return nil, fmt.Errorf("failed to allocate mesh: %w", err)
 		}

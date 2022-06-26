@@ -34,16 +34,15 @@ func (m *Material) Delete() {
 // PBRMaterialDefinition contains the information needed to create
 // a PBR Material.
 type PBRMaterialDefinition struct {
-	BackfaceCulling  bool
-	AlphaBlending    bool
-	AlphaTesting     bool
-	AlphaThreshold   float32
-	Metalness        float32
-	MetalnessTexture *TwoDTexture
-	Roughness        float32
-	RoughnessTexture *TwoDTexture
-	AlbedoColor      sprec.Vec4
-	AlbedoTexture    *TwoDTexture
-	NormalScale      float32
-	NormalTexture    *TwoDTexture
+	BackfaceCulling          bool
+	AlphaBlending            bool
+	AlphaTesting             bool
+	AlphaThreshold           float32
+	Metallic                 float32
+	Roughness                float32
+	MetallicRoughnessTexture *TwoDTexture
+	AlbedoColor              sprec.Vec4
+	AlbedoTexture            *TwoDTexture
+	NormalScale              float32
+	NormalTexture            *TwoDTexture
 }

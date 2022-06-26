@@ -82,6 +82,7 @@ func (c *converter) BuildModel(model *Model) *gameasset.Model {
 		Nodes:           c.assetNodes,
 		Materials:       assetMaterials,
 		MeshDefinitions: assetMeshDefinitions,
+		MeshInstances:   assetMeshInstances,
 	}
 }
 
@@ -100,6 +101,7 @@ func (c *converter) BuildNode(parentIndex int, node *Node) {
 	}
 	index := len(c.assetNodes)
 	c.assetNodes = append(c.assetNodes, result)
+	c.assetNodeIndexFromNode[node] = index
 	for _, child := range node.Children {
 		c.BuildNode(index, child)
 	}
@@ -113,17 +115,18 @@ func (c *converter) BuildMaterial(material *Material) gameasset.Material {
 		AlphaTesting:    material.AlphaTesting,
 		AlphaThreshold:  material.AlphaThreshold,
 		Blending:        material.Blending,
-		Scalars: [16]*float32{
+		ScalarMask:      0xFFFFFFFF, // TODO
+		Scalars: [16]float32{
 			// Color
-			ptrOf(material.Color.X),
-			ptrOf(material.Color.Y),
-			ptrOf(material.Color.Z),
-			ptrOf(material.Color.W),
+			material.Color.X,
+			material.Color.Y,
+			material.Color.Z,
+			material.Color.W,
 			// Metallic and Roughness
-			ptrOf(material.Metallic),
-			ptrOf(material.Roughness),
+			material.Metallic,
+			material.Roughness,
 			// Normal Scale
-			ptrOf(material.NormalScale),
+			material.NormalScale,
 		},
 		Textures: [16]string{
 			material.ColorTexture,
@@ -373,8 +376,4 @@ func (c *converter) BuildMeshInstance(meshInstance *MeshInstance) gameasset.Mesh
 		NodeIndex:       nodeIndex,
 		DefinitionIndex: definitionIndex,
 	}
-}
-
-func ptrOf[T any](v T) *T {
-	return &v
 }

@@ -20,12 +20,15 @@ func (a *SaveLevelAssetAction) Describe() string {
 func (a *SaveLevelAssetAction) Run() error {
 	level := a.levelProvider.Level()
 
+	conv := newConverter()
+
 	levelAsset := &asset.Level{
 		SkyboxTexture:            level.SkyboxTexture,
 		AmbientReflectionTexture: level.AmbientReflectionTexture,
 		AmbientRefractionTexture: level.AmbientRefractionTexture,
+		Materials:                make([]gameasset.Material, len(level.Materials)),
 		CollisionMeshes:          make([]asset.LevelCollisionMesh, len(level.CollisionMeshes)),
-		StaticMeshes:             make([]asset.Mesh, len(level.StaticMeshes)),
+		StaticMeshes:             make([]gameasset.MeshDefinition, len(level.StaticMeshes)),
 		StaticEntities:           make([]asset.LevelEntity, len(level.StaticEntities)),
 	}
 
@@ -43,8 +46,13 @@ func (a *SaveLevelAssetAction) Run() error {
 		levelAsset.CollisionMeshes[i] = collisionMeshAsset
 	}
 
+	for i, staticMaterial := range level.Materials {
+		levelAsset.Materials[i] = conv.BuildMaterial(staticMaterial)
+		conv.assetMaterialIndexFromMaterial[staticMaterial] = i
+	}
+
 	for i, staticMesh := range level.StaticMeshes {
-		levelAsset.StaticMeshes[i] = meshToAssetMesh(&staticMesh)
+		levelAsset.StaticMeshes[i] = conv.BuildMeshDefinition(staticMesh)
 	}
 
 	for i, staticEntity := range level.StaticEntities {

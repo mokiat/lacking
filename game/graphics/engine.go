@@ -106,7 +106,7 @@ func (e *Engine) CreateMeshTemplate(definition MeshTemplateDefinition) *MeshTemp
 		attributes = append(attributes, render.VertexArrayAttributeInfo{
 			Binding:  0,
 			Location: internal.TangentAttributeIndex,
-			Format:   render.VertexAttributeFormatRGB32F,
+			Format:   render.VertexAttributeFormatRGB16F,
 			Offset:   definition.VertexFormat.TangentOffsetBytes,
 		})
 	}
@@ -114,7 +114,7 @@ func (e *Engine) CreateMeshTemplate(definition MeshTemplateDefinition) *MeshTemp
 		attributes = append(attributes, render.VertexArrayAttributeInfo{
 			Binding:  0,
 			Location: internal.TexCoordAttributeIndex,
-			Format:   render.VertexAttributeFormatRG32F,
+			Format:   render.VertexAttributeFormatRG16F,
 			Offset:   definition.VertexFormat.TexCoordOffsetBytes,
 		})
 	}
@@ -122,7 +122,7 @@ func (e *Engine) CreateMeshTemplate(definition MeshTemplateDefinition) *MeshTemp
 		attributes = append(attributes, render.VertexArrayAttributeInfo{
 			Binding:  0,
 			Location: internal.ColorAttributeIndex,
-			Format:   render.VertexAttributeFormatRGBA32F,
+			Format:   render.VertexAttributeFormatRGBA8UN,
 			Offset:   definition.VertexFormat.ColorOffsetBytes,
 		})
 	}
@@ -174,13 +174,12 @@ func (e *Engine) CreatePBRMaterial(definition PBRMaterialDefinition) *Material {
 		twoDTextures: []render.Texture{
 			extractTwoDTexture(definition.AlbedoTexture),
 			extractTwoDTexture(definition.NormalTexture),
-			extractTwoDTexture(definition.MetalnessTexture),
-			extractTwoDTexture(definition.RoughnessTexture),
+			extractTwoDTexture(definition.MetallicRoughnessTexture),
 		},
 		cubeTextures: []render.Texture{},
 		vectors: []sprec.Vec4{
 			definition.AlbedoColor,
-			sprec.NewVec4(definition.NormalScale, definition.Metalness, definition.Roughness, 0.0),
+			sprec.NewVec4(definition.NormalScale, definition.Metallic, definition.Roughness, 0.0),
 		},
 		geometryPresentation: internal.NewGeometryPresentation(e.api,
 			shaderSet.VertexShader(),

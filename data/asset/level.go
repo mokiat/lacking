@@ -1,13 +1,18 @@
 package asset
 
-import "io"
+import (
+	"io"
+
+	"github.com/mokiat/lacking/game/asset"
+)
 
 type Level struct {
 	SkyboxTexture            string
 	AmbientReflectionTexture string
 	AmbientRefractionTexture string
+	Materials                []asset.Material
 	StaticEntities           []LevelEntity
-	StaticMeshes             []Mesh
+	StaticMeshes             []asset.MeshDefinition
 	CollisionMeshes          []LevelCollisionMesh
 }
 

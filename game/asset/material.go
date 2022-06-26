@@ -9,7 +9,8 @@ type Material struct {
 	AlphaTesting    bool
 	AlphaThreshold  float32
 	Blending        bool
-	Scalars         [16]*float32
+	ScalarMask      uint32
+	Scalars         [16]float32
 	Textures        [16]string
 }
 
@@ -33,9 +34,9 @@ type PBRMaterialView struct {
 // pbr material view getter for the base color
 func (v *PBRMaterialView) BaseColor() sprec.Vec4 {
 	return sprec.NewVec4(
-		*v.delegate.Scalars[0],
-		*v.delegate.Scalars[1],
-		*v.delegate.Scalars[2],
-		*v.delegate.Scalars[3],
+		v.delegate.Scalars[0],
+		v.delegate.Scalars[1],
+		v.delegate.Scalars[2],
+		v.delegate.Scalars[3],
 	)
 }

@@ -46,16 +46,45 @@ func (a *OpenGLTFResourceAction) Run() error {
 
 	a.model = &Model{}
 
-	// build meshes
-	meshFromIndex := make(map[uint32]*Mesh)
-
-	for i, gltfMesh := range gltfDoc.Meshes {
-		mesh := &Mesh{
-			Name:      gltfMesh.Name,
-			SubMeshes: make([]SubMesh, len(gltfMesh.Primitives)),
+	// build materials
+	materialFromIndex := make(map[uint32]*Material)
+	for i, gltfMaterial := range gltfDoc.Materials {
+		material := &Material{
+			Name:                     gltfMaterial.Name,
+			BackfaceCulling:          !gltfMaterial.DoubleSided,
+			AlphaTesting:             gltfMaterial.AlphaMode == gltf.AlphaMask,
+			AlphaThreshold:           gltfMaterial.AlphaCutoffOrDefault(),
+			Blending:                 gltfMaterial.AlphaMode == gltf.AlphaBlend,
+			Color:                    sprec.NewVec4(1.0, 1.0, 1.0, 1.0),
+			ColorTexture:             "",
+			Metallic:                 1.0,
+			Roughness:                1.0,
+			MetallicRoughnessTexture: "",
+			NormalScale:              1.0,
+			NormalTexture:            "",
 		}
-		meshFromIndex[uint32(i)] = mesh
-		a.model.Meshes = append(a.model.Meshes, mesh)
+		if gltfPBR := gltfMaterial.PBRMetallicRoughness; gltfPBR != nil {
+			material.Color = gltfutil.BaseColor(gltfPBR)
+			material.Metallic = gltfPBR.MetallicFactorOrDefault()
+			material.Roughness = gltfPBR.RoughnessFactorOrDefault()
+			material.ColorTexture = gltfutil.ColorTexture(gltfDoc, gltfPBR)
+			material.MetallicRoughnessTexture = gltfutil.MetallicRoughnessTexture(gltfDoc, gltfPBR)
+		}
+		material.NormalTexture, material.NormalScale = gltfutil.NormalTexture(gltfDoc, gltfMaterial)
+
+		a.model.Materials = append(a.model.Materials, material)
+		materialFromIndex[uint32(i)] = material
+	}
+
+	// build mesh definitions
+	meshDefinitionFromIndex := make(map[uint32]*MeshDefinition)
+	for i, gltfMesh := range gltfDoc.Meshes {
+		mesh := &MeshDefinition{
+			Name:      gltfMesh.Name,
+			Fragments: make([]MeshFragment, len(gltfMesh.Primitives)),
+		}
+		meshDefinitionFromIndex[uint32(i)] = mesh
+		a.model.MeshDefinitions = append(a.model.MeshDefinitions, mesh)
 		indexFromVertex := make(map[Vertex]int)
 
 		for j, gltfPrimitive := range gltfMesh.Primitives {
@@ -74,12 +103,14 @@ func (a *OpenGLTFResourceAction) Run() error {
 			if gltfutil.HasAttribute(gltfPrimitive, gltf.COLOR_0) {
 				mesh.VertexLayout.HasColors = true
 			}
+			// TODO: Weights
+			// TODO: Joints
 
-			subMesh := SubMesh{}
-			subMesh.IndexOffset = len(mesh.Indices)
-			subMesh.IndexCount = gltfutil.IndexCount(gltfDoc, gltfPrimitive)
+			fragment := MeshFragment{}
+			fragment.IndexOffset = len(mesh.Indices)
+			fragment.IndexCount = gltfutil.IndexCount(gltfDoc, gltfPrimitive)
 
-			for k := 0; k < subMesh.IndexCount; k++ {
+			for k := 0; k < fragment.IndexCount; k++ {
 				gltfIndex := gltfutil.Index(gltfDoc, gltfPrimitive, k)
 				vertex := Vertex{
 					Coord:    gltfutil.Coord(gltfDoc, gltfPrimitive, gltfIndex),
@@ -87,6 +118,8 @@ func (a *OpenGLTFResourceAction) Run() error {
 					Tangent:  gltfutil.Tangent(gltfDoc, gltfPrimitive, gltfIndex),
 					TexCoord: gltfutil.TexCoord0(gltfDoc, gltfPrimitive, gltfIndex),
 					Color:    gltfutil.Color0(gltfDoc, gltfPrimitive, gltfIndex),
+					// TODO: Weights
+					// TODO: Joints
 				}
 				if index, ok := indexFromVertex[vertex]; ok {
 					mesh.Indices = append(mesh.Indices, index)
@@ -100,55 +133,28 @@ func (a *OpenGLTFResourceAction) Run() error {
 
 			switch gltfPrimitive.Mode {
 			case gltf.PrimitivePoints:
-				subMesh.Primitive = PrimitivePoints
+				fragment.Primitive = PrimitivePoints
 			case gltf.PrimitiveLines:
-				subMesh.Primitive = PrimitiveLines
+				fragment.Primitive = PrimitiveLines
 			case gltf.PrimitiveLineLoop:
-				subMesh.Primitive = PrimitiveLineLoop
+				fragment.Primitive = PrimitiveLineLoop
 			case gltf.PrimitiveLineStrip:
-				subMesh.Primitive = PrimitiveLineStrip
+				fragment.Primitive = PrimitiveLineStrip
 			case gltf.PrimitiveTriangles:
-				subMesh.Primitive = PrimitiveTriangles
+				fragment.Primitive = PrimitiveTriangles
 			case gltf.PrimitiveTriangleStrip:
-				subMesh.Primitive = PrimitiveTriangleStrip
+				fragment.Primitive = PrimitiveTriangleStrip
 			case gltf.PrimitiveTriangleFan:
-				subMesh.Primitive = PrimitiveTriangleFan
+				fragment.Primitive = PrimitiveTriangleFan
 			default:
-				subMesh.Primitive = PrimitiveTriangles
+				fragment.Primitive = PrimitiveTriangles
 			}
 
-			material := Material{
-				Name:                     "",
-				BackfaceCulling:          true,
-				AlphaTesting:             false,
-				AlphaThreshold:           0.5,
-				Blending:                 false,
-				Color:                    sprec.NewVec4(1.0, 1.0, 1.0, 1.0),
-				ColorTexture:             "",
-				Metallic:                 1.0,
-				Roughness:                1.0,
-				MetallicRoughnessTexture: "",
-				NormalScale:              1.0,
-				NormalTexture:            "",
+			if gltfPrimitive.Material != nil {
+				fragment.Material = materialFromIndex[*gltfPrimitive.Material]
 			}
-			if gltfMaterial := gltfutil.PrimitiveMaterial(gltfDoc, gltfPrimitive); gltfMaterial != nil {
-				material.Name = gltfMaterial.Name
-				material.BackfaceCulling = !gltfMaterial.DoubleSided
-				material.AlphaTesting = gltfMaterial.AlphaMode == gltf.AlphaMask
-				material.AlphaThreshold = gltfMaterial.AlphaCutoffOrDefault()
-				material.Blending = gltfMaterial.AlphaMode == gltf.AlphaBlend
-				if gltfPBR := gltfMaterial.PBRMetallicRoughness; gltfPBR != nil {
-					material.Color = gltfutil.BaseColor(gltfPBR)
-					material.Metallic = gltfPBR.MetallicFactorOrDefault()
-					material.Roughness = gltfPBR.RoughnessFactorOrDefault()
-					material.ColorTexture = gltfutil.ColorTexture(gltfDoc, gltfPBR)
-					material.MetallicRoughnessTexture = gltfutil.MetallicRoughnessTexture(gltfDoc, gltfPBR)
-				}
-				material.NormalTexture, material.NormalScale = gltfutil.NormalTexture(gltfDoc, gltfMaterial)
-			}
-			subMesh.Material = &material
 
-			mesh.SubMeshes[j] = subMesh
+			mesh.Fragments[j] = fragment
 		}
 	}
 
@@ -187,7 +193,12 @@ func (a *OpenGLTFResourceAction) Run() error {
 		}
 
 		if gltfNode.Mesh != nil {
-			node.Mesh = meshFromIndex[*gltfNode.Mesh]
+			meshInstance := &MeshInstance{
+				Name:       gltfNode.Name,
+				Node:       node,
+				Definition: meshDefinitionFromIndex[*gltfNode.Mesh],
+			}
+			a.model.MeshInstances = append(a.model.MeshInstances, meshInstance)
 		}
 		for _, childID := range gltfNode.Children {
 			node.Children = append(node.Children, visitNode(gltfDoc.Nodes[childID]))

@@ -4,8 +4,7 @@ import (
 	"fmt"
 
 	"github.com/mokiat/gomath/sprec"
-	"github.com/mokiat/lacking/data/asset"
-	gameasset "github.com/mokiat/lacking/game/asset"
+	"github.com/mokiat/lacking/game/asset"
 	"github.com/mokiat/lacking/game/graphics"
 )
 
@@ -18,9 +17,10 @@ func InjectModel(target **Model) func(value interface{}) {
 }
 
 type Model struct {
-	Name   string
-	Nodes  []*Node
-	meshes []*Mesh
+	Name          string
+	Nodes         []*Node
+	MeshInstances []*MeshInstance
+	meshes        []*Mesh
 }
 
 func (m Model) FindNode(name string) (*Node, bool) {
@@ -35,12 +35,27 @@ func (m Model) FindNode(name string) (*Node, bool) {
 	return nil, false
 }
 
+func (m Model) FindMeshInstance(name string) (*MeshInstance, bool) {
+	for _, instance := range m.MeshInstances {
+		if instance.Name == name {
+			return instance, true
+		}
+	}
+	return nil, false
+}
+
 type Node struct {
 	Name     string
 	Matrix   sprec.Mat4
-	Mesh     *Mesh
 	Parent   *Node
 	Children []*Node
+}
+
+func (n Node) AbsoluteMatrix() sprec.Mat4 {
+	if n.Parent == nil {
+		return n.Matrix
+	}
+	return sprec.Mat4Prod(n.Parent.AbsoluteMatrix(), n.Matrix)
 }
 
 func (n Node) FindNode(name string) (*Node, bool) {
@@ -55,7 +70,13 @@ func (n Node) FindNode(name string) (*Node, bool) {
 	return nil, false
 }
 
-func NewModelOperator(delegate gameasset.Registry, gfxEngine *graphics.Engine) *ModelOperator {
+type MeshInstance struct {
+	Name           string
+	Node           *Node
+	MeshDefinition *Mesh
+}
+
+func NewModelOperator(delegate asset.Registry, gfxEngine *graphics.Engine) *ModelOperator {
 	return &ModelOperator{
 		delegate:  delegate,
 		gfxEngine: gfxEngine,
@@ -63,7 +84,7 @@ func NewModelOperator(delegate gameasset.Registry, gfxEngine *graphics.Engine) *
 }
 
 type ModelOperator struct {
-	delegate  gameasset.Registry
+	delegate  asset.Registry
 	gfxEngine *graphics.Engine
 }
 
@@ -81,9 +102,18 @@ func (o *ModelOperator) Allocate(registry *Registry, id string) (interface{}, er
 		Name: id,
 	}
 
-	meshes := make([]*Mesh, len(modelAsset.Meshes))
-	for i, meshAsset := range modelAsset.Meshes {
-		mesh, err := AllocateMesh(registry, meshAsset.Name, o.gfxEngine, &meshAsset)
+	materials := make([]*Material, len(modelAsset.Materials))
+	for i, assetMaterial := range modelAsset.Materials {
+		material, err := AllocateMaterial(registry, o.gfxEngine, &assetMaterial)
+		if err != nil {
+			return nil, fmt.Errorf("failed to allocate material: %w", err)
+		}
+		materials[i] = material
+	}
+
+	meshes := make([]*Mesh, len(modelAsset.MeshDefinitions))
+	for i, meshAsset := range modelAsset.MeshDefinitions {
+		mesh, err := AllocateMesh(registry, o.gfxEngine, materials, &meshAsset)
 		if err != nil {
 			return nil, fmt.Errorf("failed to allocate mesh: %w", err)
 		}
@@ -103,15 +133,42 @@ func (o *ModelOperator) Allocate(registry *Registry, id string) (interface{}, er
 		} else {
 			rootNodes = append(rootNodes, nodes[i])
 		}
+		rotation := sprec.NewQuat(
+			nodeAsset.Rotation[0],
+			nodeAsset.Rotation[1],
+			nodeAsset.Rotation[2],
+			nodeAsset.Rotation[3],
+		)
 		nodes[i].Name = nodeAsset.Name
-		nodes[i].Matrix = sprec.ColumnMajorArrayMat4(nodeAsset.Matrix)
-		if nodeAsset.MeshIndex >= 0 {
-			nodes[i].Mesh = meshes[nodeAsset.MeshIndex]
-		} else {
-			nodes[i].Mesh = nil
-		}
+		nodes[i].Matrix = sprec.Mat4MultiProd(
+			sprec.TranslationMat4(
+				nodeAsset.Translation[0],
+				nodeAsset.Translation[1],
+				nodeAsset.Translation[2],
+			),
+			sprec.TransformationMat4(
+				rotation.OrientationX(),
+				rotation.OrientationY(),
+				rotation.OrientationZ(),
+				sprec.ZeroVec3(),
+			),
+			sprec.ScaleMat4(
+				nodeAsset.Scale[0],
+				nodeAsset.Scale[1],
+				nodeAsset.Scale[2],
+			),
+		)
 	}
 	model.Nodes = rootNodes
+
+	model.MeshInstances = make([]*MeshInstance, len(modelAsset.MeshInstances))
+	for i, instance := range modelAsset.MeshInstances {
+		model.MeshInstances[i] = &MeshInstance{
+			Name:           instance.Name,
+			Node:           nodes[instance.NodeIndex],
+			MeshDefinition: model.meshes[instance.DefinitionIndex],
+		}
+	}
 
 	return model, nil
 }

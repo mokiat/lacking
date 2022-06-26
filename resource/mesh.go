@@ -3,108 +3,37 @@ package resource
 import (
 	"fmt"
 
-	"github.com/mokiat/gomath/sprec"
-	"github.com/mokiat/lacking/data/asset"
+	"github.com/mokiat/lacking/game/asset"
 	"github.com/mokiat/lacking/game/graphics"
+	"github.com/mokiat/lacking/log"
 )
 
 type Mesh struct {
 	Name string
 
 	GFXMeshTemplate *graphics.MeshTemplate
-
-	materials []*graphics.Material
-	textures  []*TwoDTexture
 }
 
-func AllocateMesh(registry *Registry, name string, gfxEngine *graphics.Engine, meshAsset *asset.Mesh) (*Mesh, error) {
+func AllocateMesh(registry *Registry, gfxEngine *graphics.Engine, materials []*Material, meshAsset *asset.MeshDefinition) (*Mesh, error) {
 	mesh := &Mesh{
-		Name: name,
+		Name: meshAsset.Name,
 	}
 
-	subMeshDefinitions := make([]graphics.SubMeshTemplateDefinition, len(meshAsset.SubMeshes))
-	for i, subMeshAsset := range meshAsset.SubMeshes {
-		var metalnessTexture *graphics.TwoDTexture
-		if subMeshAsset.Material.MetalnessTexture != "" {
-			var texture *TwoDTexture
-			result := registry.LoadTwoDTexture(subMeshAsset.Material.MetalnessTexture).
-				OnSuccess(InjectTwoDTexture(&texture)).
-				Wait()
-			if err := result.Err; err != nil {
-				return nil, fmt.Errorf("failed to load metalness texture: %w", err)
+	subMeshDefinitions := make([]graphics.SubMeshTemplateDefinition, 0)
+	for _, assetFragment := range meshAsset.Fragments {
+		if matIndex := assetFragment.MaterialIndex; matIndex != asset.UnspecifiedMaterialIndex {
+			if int(matIndex) >= len(materials) {
+				fmt.Printf("WILL PANIC with index %d out of %d materials for mesh %q", matIndex, len(materials), meshAsset.Name)
 			}
-			metalnessTexture = texture.GFXTexture
-			mesh.textures = append(mesh.textures, texture)
+			subMeshDefinitions = append(subMeshDefinitions, graphics.SubMeshTemplateDefinition{
+				Primitive:   assetToGraphicsPrimitive(assetFragment.Topology),
+				IndexOffset: int(assetFragment.IndexOffset),
+				IndexCount:  int(assetFragment.IndexCount),
+				Material:    materials[matIndex].GFXMaterial,
+			})
+		} else {
+			log.Warn("[resource] mesh fragment does not reference material")
 		}
-
-		var roughnessTexture *graphics.TwoDTexture
-		if subMeshAsset.Material.RoughnessTexture != "" {
-			var texture *TwoDTexture
-			result := registry.LoadTwoDTexture(subMeshAsset.Material.RoughnessTexture).
-				OnSuccess(InjectTwoDTexture(&texture)).
-				Wait()
-			if err := result.Err; err != nil {
-				return nil, fmt.Errorf("failed to load roughness texture: %w", err)
-			}
-			roughnessTexture = texture.GFXTexture
-			mesh.textures = append(mesh.textures, texture)
-		}
-
-		var albedoTexture *graphics.TwoDTexture
-		if subMeshAsset.Material.ColorTexture != "" {
-			var texture *TwoDTexture
-			result := registry.LoadTwoDTexture(subMeshAsset.Material.ColorTexture).
-				OnSuccess(InjectTwoDTexture(&texture)).
-				Wait()
-			if err := result.Err; err != nil {
-				return nil, fmt.Errorf("failed to load albedo texture: %w", err)
-			}
-			albedoTexture = texture.GFXTexture
-			mesh.textures = append(mesh.textures, texture)
-		}
-
-		var normalTexture *graphics.TwoDTexture
-		if subMeshAsset.Material.NormalTexture != "" {
-			var texture *TwoDTexture
-			result := registry.LoadTwoDTexture(subMeshAsset.Material.NormalTexture).
-				OnSuccess(InjectTwoDTexture(&texture)).
-				Wait()
-			if err := result.Err; err != nil {
-				return nil, fmt.Errorf("failed to load normal texture: %w", err)
-			}
-			normalTexture = texture.GFXTexture
-			mesh.textures = append(mesh.textures, texture)
-		}
-
-		var material *graphics.Material
-		registry.ScheduleVoid(func() {
-			definition := graphics.PBRMaterialDefinition{
-				BackfaceCulling:  subMeshAsset.Material.BackfaceCulling,
-				Metalness:        subMeshAsset.Material.Metalness,
-				MetalnessTexture: metalnessTexture,
-				Roughness:        subMeshAsset.Material.Roughness,
-				RoughnessTexture: roughnessTexture,
-				AlbedoColor: sprec.NewVec4(
-					subMeshAsset.Material.Color[0],
-					subMeshAsset.Material.Color[1],
-					subMeshAsset.Material.Color[2],
-					subMeshAsset.Material.Color[3],
-				),
-				AlbedoTexture: albedoTexture,
-				NormalScale:   subMeshAsset.Material.NormalScale,
-				NormalTexture: normalTexture,
-			}
-			material = gfxEngine.CreatePBRMaterial(definition)
-		}).Wait()
-		mesh.materials = append(mesh.materials, material)
-
-		subMeshDefinition := graphics.SubMeshTemplateDefinition{
-			Primitive:   assetToGraphicsPrimitive(subMeshAsset.Primitive),
-			IndexOffset: int(subMeshAsset.IndexOffset),
-			IndexCount:  int(subMeshAsset.IndexCount),
-			Material:    material,
-		}
-		subMeshDefinitions[i] = subMeshDefinition
 	}
 
 	registry.ScheduleVoid(func() {
@@ -126,9 +55,11 @@ func AllocateMesh(registry *Registry, name string, gfxEngine *graphics.Engine, m
 				HasColor:            meshAsset.VertexLayout.ColorOffset != asset.UnspecifiedOffset,
 				ColorOffsetBytes:    int(meshAsset.VertexLayout.ColorOffset),
 				ColorStrideBytes:    int(meshAsset.VertexLayout.ColorStride),
+				// TODO: Weights
+				// TODO: Joints
 			},
 			IndexData:   meshAsset.IndexData,
-			IndexFormat: graphics.IndexFormatU16,
+			IndexFormat: assetToGraphicsIndexFormat(meshAsset.IndexLayout),
 			SubMeshes:   subMeshDefinitions,
 		}
 		mesh.GFXMeshTemplate = gfxEngine.CreateMeshTemplate(definition)
@@ -142,39 +73,36 @@ func ReleaseMesh(registry *Registry, mesh *Mesh) error {
 		mesh.GFXMeshTemplate.Delete()
 	}).Wait()
 
-	for _, material := range mesh.materials {
-		registry.ScheduleVoid(func() {
-			material.Delete()
-		}).Wait()
-	}
-
-	for _, texture := range mesh.textures {
-		if result := registry.UnloadTwoDTexture(texture).Wait(); result.Err != nil {
-			return result.Err
-		}
-	}
-
 	mesh.GFXMeshTemplate = nil
-	mesh.materials = nil
-	mesh.textures = nil
 	return nil
 }
 
-func assetToGraphicsPrimitive(primitive asset.Primitive) graphics.Primitive {
+func assetToGraphicsIndexFormat(layout asset.IndexLayout) graphics.IndexFormat {
+	switch layout {
+	case asset.IndexLayoutUint16:
+		return graphics.IndexFormatU16
+	case asset.IndexLayoutUint32:
+		return graphics.IndexFormatU32
+	default:
+		panic(fmt.Errorf("unsupported index layout: %d", layout))
+	}
+}
+
+func assetToGraphicsPrimitive(primitive asset.MeshTopology) graphics.Primitive {
 	switch primitive {
-	case asset.PrimitivePoints:
+	case asset.MeshTopologyPoints:
 		return graphics.PrimitivePoints
-	case asset.PrimitiveLines:
+	case asset.MeshTopologyLines:
 		return graphics.PrimitiveLines
-	case asset.PrimitiveLineStrip:
+	case asset.MeshTopologyLineStrip:
 		return graphics.PrimitiveLineStrip
-	case asset.PrimitiveLineLoop:
+	case asset.MeshTopologyLineLoop:
 		return graphics.PrimitiveLineStrip
-	case asset.PrimitiveTriangles:
+	case asset.MeshTopologyTriangles:
 		return graphics.PrimitiveTriangles
-	case asset.PrimitiveTriangleStrip:
+	case asset.MeshTopologyTriangleStrip:
 		return graphics.PrimitiveTriangleStrip
-	case asset.PrimitiveTriangleFan:
+	case asset.MeshTopologyTriangleFan:
 		return graphics.PrimitiveTriangleFan
 	default:
 		panic(fmt.Errorf("unsupported primitive: %d", primitive))
