@@ -3,7 +3,6 @@ package resource
 import (
 	"fmt"
 
-	"github.com/mokiat/gomath/sprec"
 	"github.com/mokiat/lacking/game/asset"
 	"github.com/mokiat/lacking/game/graphics"
 )
@@ -16,14 +15,16 @@ type Material struct {
 }
 
 func AllocateMaterial(registry *Registry, gfxEngine *graphics.Engine, materialAsset *asset.Material) (*Material, error) {
+	assetPBR := asset.NewPBRMaterialView(materialAsset)
+
 	material := &Material{
 		Name: materialAsset.Name,
 	}
 
 	var albedoTexture *graphics.TwoDTexture
-	if materialAsset.Textures[0] != "" {
+	if assetPBR.BaseColorTexture() != "" {
 		var texture *TwoDTexture
-		result := registry.LoadTwoDTexture(materialAsset.Textures[0]).
+		result := registry.LoadTwoDTexture(assetPBR.BaseColorTexture()).
 			OnSuccess(InjectTwoDTexture(&texture)).
 			Wait()
 		if err := result.Err; err != nil {
@@ -34,9 +35,9 @@ func AllocateMaterial(registry *Registry, gfxEngine *graphics.Engine, materialAs
 	}
 
 	var metallicRoughnessTexture *graphics.TwoDTexture
-	if materialAsset.Textures[1] != "" {
+	if assetPBR.MetallicRoughnessTexture() != "" {
 		var texture *TwoDTexture
-		result := registry.LoadTwoDTexture(materialAsset.Textures[1]).
+		result := registry.LoadTwoDTexture(assetPBR.MetallicRoughnessTexture()).
 			OnSuccess(InjectTwoDTexture(&texture)).
 			Wait()
 		if err := result.Err; err != nil {
@@ -47,9 +48,9 @@ func AllocateMaterial(registry *Registry, gfxEngine *graphics.Engine, materialAs
 	}
 
 	var normalTexture *graphics.TwoDTexture
-	if materialAsset.Textures[2] != "" {
+	if assetPBR.NormalTexture() != "" {
 		var texture *TwoDTexture
-		result := registry.LoadTwoDTexture(materialAsset.Textures[2]).
+		result := registry.LoadTwoDTexture(assetPBR.NormalTexture()).
 			OnSuccess(InjectTwoDTexture(&texture)).
 			Wait()
 		if err := result.Err; err != nil {
@@ -65,18 +66,13 @@ func AllocateMaterial(registry *Registry, gfxEngine *graphics.Engine, materialAs
 			AlphaBlending:            materialAsset.Blending,
 			AlphaTesting:             materialAsset.AlphaTesting,
 			AlphaThreshold:           materialAsset.AlphaThreshold,
-			Metallic:                 materialAsset.Scalars[4], // FIXME: potential nil pointer deref
-			Roughness:                materialAsset.Scalars[5], // FIXME: potential nil pointer deref
+			Metallic:                 assetPBR.Metallic(),
+			Roughness:                assetPBR.Roughness(),
 			MetallicRoughnessTexture: metallicRoughnessTexture,
-			AlbedoColor: sprec.NewVec4(
-				materialAsset.Scalars[0], // FIXME: potential nil pointer deref
-				materialAsset.Scalars[1], // FIXME: potential nil pointer deref
-				materialAsset.Scalars[2], // FIXME: potential nil pointer deref
-				materialAsset.Scalars[3], // FIXME: potential nil pointer deref
-			),
-			AlbedoTexture: albedoTexture,
-			NormalScale:   materialAsset.Scalars[6], // FIXME: potential nil pointer deref
-			NormalTexture: normalTexture,
+			AlbedoColor:              assetPBR.BaseColor(),
+			AlbedoTexture:            albedoTexture,
+			NormalScale:              assetPBR.NormalScale(),
+			NormalTexture:            normalTexture,
 		}
 		material.GFXMaterial = gfxEngine.CreatePBRMaterial(definition)
 	}).Wait()

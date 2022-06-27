@@ -108,32 +108,24 @@ func (c *converter) BuildNode(parentIndex int, node *Node) {
 }
 
 func (c *converter) BuildMaterial(material *Material) gameasset.Material {
-	return gameasset.Material{
+	assetMaterial := gameasset.Material{
 		Name:            material.Name,
 		Type:            gameasset.MaterialTypePBR,
 		BackfaceCulling: material.BackfaceCulling,
 		AlphaTesting:    material.AlphaTesting,
 		AlphaThreshold:  material.AlphaThreshold,
 		Blending:        material.Blending,
-		ScalarMask:      0xFFFFFFFF, // TODO
-		Scalars: [16]float32{
-			// Color
-			material.Color.X,
-			material.Color.Y,
-			material.Color.Z,
-			material.Color.W,
-			// Metallic and Roughness
-			material.Metallic,
-			material.Roughness,
-			// Normal Scale
-			material.NormalScale,
-		},
-		Textures: [16]string{
-			material.ColorTexture,
-			material.MetallicRoughnessTexture,
-			material.NormalTexture,
-		},
+		ScalarMask:      0xFFFFFFFF, // TODO: In PBRView
 	}
+	pbr := gameasset.NewPBRMaterialView(&assetMaterial)
+	pbr.SetBaseColor(material.Color)
+	pbr.SetBaseColorTexture(material.ColorTexture)
+	pbr.SetMetallic(material.Metallic)
+	pbr.SetRoughness(material.Roughness)
+	pbr.SetMetallicRoughnessTexture(material.MetallicRoughnessTexture)
+	pbr.SetNormalScale(material.NormalScale)
+	pbr.SetNormalTexture(material.NormalTexture)
+	return assetMaterial
 }
 
 func (c *converter) BuildMeshDefinition(meshDefinition *MeshDefinition) gameasset.MeshDefinition {
@@ -274,14 +266,17 @@ func (c *converter) BuildMeshDefinition(meshDefinition *MeshDefinition) gameasse
 	var (
 		indexLayout gameasset.IndexLayout
 		indexData   data.Buffer
+		indexSize   int
 	)
-	if len(meshDefinition.Indices) > 0xFFFF {
+	if len(meshDefinition.Vertices) >= 0xFFFF {
+		indexSize = sizeUnsignedInt
 		indexLayout = gameasset.IndexLayoutUint32
 		indexData = data.Buffer(make([]byte, len(meshDefinition.Indices)*sizeUnsignedInt))
 		for i, index := range meshDefinition.Indices {
 			indexData.SetUInt32(i*sizeUnsignedInt, uint32(index))
 		}
 	} else {
+		indexSize = sizeUnsignedShort
 		indexLayout = gameasset.IndexLayoutUint16
 		indexData = data.Buffer(make([]byte, len(meshDefinition.Indices)*sizeUnsignedShort))
 		for i, index := range meshDefinition.Indices {
@@ -293,7 +288,7 @@ func (c *converter) BuildMeshDefinition(meshDefinition *MeshDefinition) gameasse
 		fragments = make([]gameasset.MeshFragment, len(meshDefinition.Fragments))
 	)
 	for i, fragment := range meshDefinition.Fragments {
-		fragments[i] = c.BuildFragment(fragment)
+		fragments[i] = c.BuildFragment(fragment, indexSize)
 	}
 
 	return gameasset.MeshDefinition{
@@ -321,7 +316,7 @@ func (c *converter) BuildMeshDefinition(meshDefinition *MeshDefinition) gameasse
 	}
 }
 
-func (c *converter) BuildFragment(fragment MeshFragment) gameasset.MeshFragment {
+func (c *converter) BuildFragment(fragment MeshFragment, indexSize int) gameasset.MeshFragment {
 	var topology gameasset.MeshTopology
 	switch fragment.Primitive {
 	case PrimitivePoints:
@@ -351,7 +346,7 @@ func (c *converter) BuildFragment(fragment MeshFragment) gameasset.MeshFragment 
 
 	return gameasset.MeshFragment{
 		Topology:      topology,
-		IndexOffset:   uint32(fragment.IndexOffset),
+		IndexOffset:   uint32(fragment.IndexOffset * indexSize),
 		IndexCount:    uint32(fragment.IndexCount),
 		MaterialIndex: materialIndex,
 	}

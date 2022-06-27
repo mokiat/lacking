@@ -21,20 +21,6 @@ type Node struct {
 	Children    []*Node
 }
 
-// TODO: Remove after used as reference
-// func (n *Node) Matrix() sprec.Mat4 {
-// 	return sprec.Mat4MultiProd(
-// 		sprec.TranslationMat4(n.Translation.X, n.Translation.Y, n.Translation.Z),
-// 		sprec.TransformationMat4(
-// 			n.Rotation.OrientationX(),
-// 			n.Rotation.OrientationY(),
-// 			n.Rotation.OrientationZ(),
-// 			sprec.ZeroVec3(),
-// 		),
-// 		sprec.ScaleMat4(n.Scale.X, n.Scale.Y, n.Scale.Z),
-// 	)
-// }
-
 type MeshDefinition struct {
 	Name         string
 	VertexLayout VertexLayout

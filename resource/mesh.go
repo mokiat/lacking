@@ -22,9 +22,6 @@ func AllocateMesh(registry *Registry, gfxEngine *graphics.Engine, materials []*M
 	subMeshDefinitions := make([]graphics.SubMeshTemplateDefinition, 0)
 	for _, assetFragment := range meshAsset.Fragments {
 		if matIndex := assetFragment.MaterialIndex; matIndex != asset.UnspecifiedMaterialIndex {
-			if int(matIndex) >= len(materials) {
-				fmt.Printf("WILL PANIC with index %d out of %d materials for mesh %q", matIndex, len(materials), meshAsset.Name)
-			}
 			subMeshDefinitions = append(subMeshDefinitions, graphics.SubMeshTemplateDefinition{
 				Primitive:   assetToGraphicsPrimitive(assetFragment.Topology),
 				IndexOffset: int(assetFragment.IndexOffset),
@@ -97,7 +94,7 @@ func assetToGraphicsPrimitive(primitive asset.MeshTopology) graphics.Primitive {
 	case asset.MeshTopologyLineStrip:
 		return graphics.PrimitiveLineStrip
 	case asset.MeshTopologyLineLoop:
-		return graphics.PrimitiveLineStrip
+		return graphics.PrimitiveLineLoop
 	case asset.MeshTopologyTriangles:
 		return graphics.PrimitiveTriangles
 	case asset.MeshTopologyTriangleStrip:
