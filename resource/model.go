@@ -134,10 +134,10 @@ func (o *ModelOperator) Allocate(registry *Registry, id string) (interface{}, er
 			rootNodes = append(rootNodes, nodes[i])
 		}
 		rotation := sprec.NewQuat(
+			nodeAsset.Rotation[3],
 			nodeAsset.Rotation[0],
 			nodeAsset.Rotation[1],
 			nodeAsset.Rotation[2],
-			nodeAsset.Rotation[3],
 		)
 		nodes[i].Name = nodeAsset.Name
 		nodes[i].Matrix = sprec.Mat4MultiProd(
