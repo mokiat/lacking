@@ -217,10 +217,10 @@ func (t *CubeImage) RGBA16FData(side CubeSide) []byte {
 	for y := 0; y < t.Dimension; y++ {
 		for x := 0; x < t.Dimension; x++ {
 			texel := texSide.Texel(x, t.Dimension-y-1)
-			data.SetUInt16(offset+0, uint16(float16.Fromfloat32(float32(texel.R))))
-			data.SetUInt16(offset+2, uint16(float16.Fromfloat32(float32(texel.G))))
-			data.SetUInt16(offset+4, uint16(float16.Fromfloat32(float32(texel.B))))
-			data.SetUInt16(offset+6, uint16(float16.Fromfloat32(float32(texel.A))))
+			data.SetUint16(offset+0, uint16(float16.Fromfloat32(float32(texel.R))))
+			data.SetUint16(offset+2, uint16(float16.Fromfloat32(float32(texel.G))))
+			data.SetUint16(offset+4, uint16(float16.Fromfloat32(float32(texel.B))))
+			data.SetUint16(offset+6, uint16(float16.Fromfloat32(float32(texel.A))))
 			offset += 8
 		}
 	}

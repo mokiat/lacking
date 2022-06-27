@@ -49,9 +49,9 @@ func Index(doc *gltf.Document, primitive *gltf.Primitive, at int) int {
 	case gltf.ComponentUbyte:
 		return int(buffer[at])
 	case gltf.ComponentUshort:
-		return int(buffer.UInt16(2 * at))
+		return int(buffer.Uint16(2 * at))
 	case gltf.ComponentUint:
-		return int(buffer.UInt32(4 * at))
+		return int(buffer.Uint32(4 * at))
 	default:
 		log.Error("Unsupported index accessor component type %d", accessor.ComponentType)
 		return 0
@@ -195,6 +195,71 @@ func Color0(doc *gltf.Document, primitive *gltf.Primitive, at int) sprec.Vec4 {
 	default:
 		log.Error("Unsupported color accessor component type %d", accessor.ComponentType)
 		return sprec.ZeroVec4()
+	}
+}
+
+func Weights0(doc *gltf.Document, primitive *gltf.Primitive, at int) sprec.Vec4 {
+	if !HasAttribute(primitive, gltf.WEIGHTS_0) {
+		return sprec.ZeroVec4()
+	}
+	accessor := doc.Accessors[primitive.Attributes[gltf.WEIGHTS_0]]
+	if accessor.BufferView == nil {
+		log.Warn("Accessor lacks a buffer view")
+		return sprec.ZeroVec4()
+	}
+	bufferView := doc.BufferViews[*accessor.BufferView]
+	buffer := data.Buffer(doc.Buffers[bufferView.Buffer].Data[bufferView.ByteOffset:])
+	if accessor.Type != gltf.AccessorVec4 {
+		log.Error("Unsupported weights accessor type %d", accessor.Type)
+		return sprec.ZeroVec4()
+	}
+	switch accessor.ComponentType {
+	case gltf.ComponentFloat:
+		return sprec.NewVec4(
+			buffer.Float32(4*4*at+4*0),
+			buffer.Float32(4*4*at+4*1),
+			buffer.Float32(4*4*at+4*2),
+			buffer.Float32(4*4*at+4*3),
+		)
+	default:
+		log.Error("Unsupported weights accessor component type %d", accessor.ComponentType)
+		return sprec.ZeroVec4()
+	}
+}
+
+func Joints0(doc *gltf.Document, primitive *gltf.Primitive, at int) [4]uint8 {
+	if !HasAttribute(primitive, gltf.JOINTS_0) {
+		return [4]uint8{}
+	}
+	accessor := doc.Accessors[primitive.Attributes[gltf.JOINTS_0]]
+	if accessor.BufferView == nil {
+		log.Warn("Accessor lacks a buffer view")
+		return [4]uint8{}
+	}
+	bufferView := doc.BufferViews[*accessor.BufferView]
+	buffer := data.Buffer(doc.Buffers[bufferView.Buffer].Data[bufferView.ByteOffset:])
+	if accessor.Type != gltf.AccessorVec4 {
+		log.Error("Unsupported joints accessor type %d", accessor.Type)
+		return [4]uint8{}
+	}
+	switch accessor.ComponentType {
+	case gltf.ComponentUbyte:
+		return [4]uint8{
+			buffer.Uint8(4*at + 0),
+			buffer.Uint8(4*at + 1),
+			buffer.Uint8(4*at + 2),
+			buffer.Uint8(4*at + 3),
+		}
+	case gltf.ComponentUshort:
+		return [4]uint8{
+			uint8(buffer.Uint16(4*2*at + 0*2)),
+			uint8(buffer.Uint16(4*2*at + 1*2)),
+			uint8(buffer.Uint16(4*2*at + 2*2)),
+			uint8(buffer.Uint16(4*2*at + 3*2)),
+		}
+	default:
+		log.Error("Unsupported joints accessor component type %d", accessor.ComponentType)
+		return [4]uint8{}
 	}
 }
 

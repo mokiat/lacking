@@ -723,9 +723,9 @@ func (r *sceneRenderer) renderExposureProbePass(ctx renderCtx) {
 			var colorR, colorG, colorB float32
 			switch r.exposureFormat {
 			case render.DataFormatRGBA16F:
-				colorR = float16.Frombits(r.exposureBufferData.UInt16(0 * 2)).Float32()
-				colorG = float16.Frombits(r.exposureBufferData.UInt16(1 * 2)).Float32()
-				colorB = float16.Frombits(r.exposureBufferData.UInt16(2 * 2)).Float32()
+				colorR = float16.Frombits(r.exposureBufferData.Uint16(0 * 2)).Float32()
+				colorG = float16.Frombits(r.exposureBufferData.Uint16(1 * 2)).Float32()
+				colorB = float16.Frombits(r.exposureBufferData.Uint16(2 * 2)).Float32()
 			case render.DataFormatRGBA32F:
 				colorR = data.Buffer(r.exposureBufferData).Float32(0 * 4)
 				colorG = data.Buffer(r.exposureBufferData).Float32(1 * 4)

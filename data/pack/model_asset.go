@@ -209,26 +209,26 @@ func (c *converter) BuildMeshDefinition(meshDefinition *MeshDefinition) gameasse
 	if layout.HasNormals {
 		offset := int(normalOffset)
 		for _, vertex := range meshDefinition.Vertices {
-			vertexData.SetUInt16(offset+0*sizeHalfFloat, float16.Fromfloat32(vertex.Normal.X).Bits())
-			vertexData.SetUInt16(offset+1*sizeHalfFloat, float16.Fromfloat32(vertex.Normal.Y).Bits())
-			vertexData.SetUInt16(offset+2*sizeHalfFloat, float16.Fromfloat32(vertex.Normal.Z).Bits())
+			vertexData.SetUint16(offset+0*sizeHalfFloat, float16.Fromfloat32(vertex.Normal.X).Bits())
+			vertexData.SetUint16(offset+1*sizeHalfFloat, float16.Fromfloat32(vertex.Normal.Y).Bits())
+			vertexData.SetUint16(offset+2*sizeHalfFloat, float16.Fromfloat32(vertex.Normal.Z).Bits())
 			offset += int(stride)
 		}
 	}
 	if layout.HasTangents {
 		offset := int(tangentOffset)
 		for _, vertex := range meshDefinition.Vertices {
-			vertexData.SetUInt16(offset+0*sizeHalfFloat, float16.Fromfloat32(vertex.Tangent.X).Bits())
-			vertexData.SetUInt16(offset+1*sizeHalfFloat, float16.Fromfloat32(vertex.Tangent.Y).Bits())
-			vertexData.SetUInt16(offset+2*sizeHalfFloat, float16.Fromfloat32(vertex.Tangent.Z).Bits())
+			vertexData.SetUint16(offset+0*sizeHalfFloat, float16.Fromfloat32(vertex.Tangent.X).Bits())
+			vertexData.SetUint16(offset+1*sizeHalfFloat, float16.Fromfloat32(vertex.Tangent.Y).Bits())
+			vertexData.SetUint16(offset+2*sizeHalfFloat, float16.Fromfloat32(vertex.Tangent.Z).Bits())
 			offset += int(stride)
 		}
 	}
 	if layout.HasTexCoords {
 		offset := int(texCoordOffset)
 		for _, vertex := range meshDefinition.Vertices {
-			vertexData.SetUInt16(offset+0*sizeHalfFloat, float16.Fromfloat32(vertex.TexCoord.X).Bits())
-			vertexData.SetUInt16(offset+1*sizeHalfFloat, float16.Fromfloat32(vertex.TexCoord.Y).Bits())
+			vertexData.SetUint16(offset+0*sizeHalfFloat, float16.Fromfloat32(vertex.TexCoord.X).Bits())
+			vertexData.SetUint16(offset+1*sizeHalfFloat, float16.Fromfloat32(vertex.TexCoord.Y).Bits())
 			offset += int(stride)
 		}
 	}
@@ -273,14 +273,14 @@ func (c *converter) BuildMeshDefinition(meshDefinition *MeshDefinition) gameasse
 		indexLayout = gameasset.IndexLayoutUint32
 		indexData = data.Buffer(make([]byte, len(meshDefinition.Indices)*sizeUnsignedInt))
 		for i, index := range meshDefinition.Indices {
-			indexData.SetUInt32(i*sizeUnsignedInt, uint32(index))
+			indexData.SetUint32(i*sizeUnsignedInt, uint32(index))
 		}
 	} else {
 		indexSize = sizeUnsignedShort
 		indexLayout = gameasset.IndexLayoutUint16
 		indexData = data.Buffer(make([]byte, len(meshDefinition.Indices)*sizeUnsignedShort))
 		for i, index := range meshDefinition.Indices {
-			indexData.SetUInt16(i*sizeUnsignedShort, uint16(index))
+			indexData.SetUint16(i*sizeUnsignedShort, uint16(index))
 		}
 	}
 

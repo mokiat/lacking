@@ -103,8 +103,12 @@ func (a *OpenGLTFResourceAction) Run() error {
 			if gltfutil.HasAttribute(gltfPrimitive, gltf.COLOR_0) {
 				mesh.VertexLayout.HasColors = true
 			}
-			// TODO: Weights
-			// TODO: Joints
+			if gltfutil.HasAttribute(gltfPrimitive, gltf.WEIGHTS_0) {
+				mesh.VertexLayout.HasWeights = true
+			}
+			if gltfutil.HasAttribute(gltfPrimitive, gltf.JOINTS_0) {
+				mesh.VertexLayout.HasJoints = true
+			}
 
 			fragment := MeshFragment{}
 			fragment.IndexOffset = len(mesh.Indices)
@@ -118,8 +122,8 @@ func (a *OpenGLTFResourceAction) Run() error {
 					Tangent:  gltfutil.Tangent(gltfDoc, gltfPrimitive, gltfIndex),
 					TexCoord: gltfutil.TexCoord0(gltfDoc, gltfPrimitive, gltfIndex),
 					Color:    gltfutil.Color0(gltfDoc, gltfPrimitive, gltfIndex),
-					// TODO: Weights
-					// TODO: Joints
+					Weights:  gltfutil.Weights0(gltfDoc, gltfPrimitive, gltfIndex),
+					Joints:   gltfutil.Joints0(gltfDoc, gltfPrimitive, gltfIndex),
 				}
 				if index, ok := indexFromVertex[vertex]; ok {
 					mesh.Indices = append(mesh.Indices, index)
