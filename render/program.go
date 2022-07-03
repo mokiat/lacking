@@ -4,6 +4,7 @@ type ProgramInfo struct {
 	VertexShader    Shader
 	FragmentShader  Shader
 	TextureBindings []TextureBinding
+	UniformBindings []UniformBinding
 }
 
 func NewTextureBinding(name string, index int) TextureBinding {
@@ -14,6 +15,18 @@ func NewTextureBinding(name string, index int) TextureBinding {
 }
 
 type TextureBinding struct {
+	Name  string
+	Index int
+}
+
+func NewUniformBinding(name string, index int) UniformBinding {
+	return UniformBinding{
+		Name:  name,
+		Index: index,
+	}
+}
+
+type UniformBinding struct {
 	Name  string
 	Index int
 }

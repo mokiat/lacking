@@ -17,6 +17,7 @@ type API interface {
 	CreateVertexBuffer(info BufferInfo) Buffer
 	CreateIndexBuffer(info BufferInfo) Buffer
 	CreatePixelTransferBuffer(info BufferInfo) Buffer
+	CreateUniformBuffer(info BufferInfo) Buffer
 	CreateVertexArray(info VertexArrayInfo) VertexArray
 	CreatePipeline(info PipelineInfo) Pipeline
 	CreateCommandQueue() CommandQueue
@@ -43,6 +44,8 @@ type API interface {
 	Uniform3f(location UniformLocation, values [3]float32)
 	Uniform4f(location UniformLocation, values [4]float32)
 	UniformMatrix4f(location UniformLocation, values [16]float32)
+	UniformBufferUnit(index int, buffer Buffer)
+	UniformBufferUnitRange(index int, buffer Buffer, offset, size int)
 	TextureUnit(index int, texture Texture)
 	Draw(vertexOffset, vertexCount, instanceCount int)
 	DrawIndexed(indexOffset, indexCount, instanceCount int)
