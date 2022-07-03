@@ -1,10 +1,12 @@
 package graphics
 
 import (
+	"encoding/binary"
 	"fmt"
 
 	"github.com/mokiat/gomath/sprec"
 	"github.com/mokiat/lacking/data"
+	"github.com/mokiat/lacking/data/buffer"
 	"github.com/mokiat/lacking/game/graphics/internal"
 	"github.com/mokiat/lacking/log"
 	"github.com/mokiat/lacking/render"
@@ -69,6 +71,9 @@ type sceneRenderer struct {
 	skyboxPipeline       render.Pipeline
 	skycolorPresentation *internal.SkyboxPresentation
 	skycolorPipeline     render.Pipeline
+
+	cameraUniformBufferData data.Buffer
+	cameraUniformBuffer     render.Buffer
 }
 
 func (r *sceneRenderer) createFramebuffers(width, height int) {
@@ -375,6 +380,12 @@ func (r *sceneRenderer) Allocate() {
 		ColorWrite:   render.ColorMaskTrue,
 		BlendEnabled: false,
 	})
+
+	r.cameraUniformBufferData = make([]byte, 3*64) // 3 x mat4
+	r.cameraUniformBuffer = r.api.CreateUniformBuffer(render.BufferInfo{
+		Dynamic: true,
+		Size:    len(r.cameraUniformBufferData),
+	})
 }
 
 func (r *sceneRenderer) Release() {
@@ -403,19 +414,18 @@ func (r *sceneRenderer) Release() {
 	defer r.skyboxPipeline.Release()
 	defer r.skycolorPresentation.Delete()
 	defer r.skycolorPipeline.Release()
+
+	defer r.cameraUniformBuffer.Release()
 }
 
 type renderCtx struct {
-	framebuffer      render.Framebuffer
-	scene            *Scene
-	x                int
-	y                int
-	width            int
-	height           int
-	projectionMatrix [16]float32
-	cameraMatrix     [16]float32
-	viewMatrix       [16]float32
-	camera           *Camera
+	framebuffer render.Framebuffer
+	scene       *Scene
+	x           int
+	y           int
+	width       int
+	height      int
+	camera      *Camera
 }
 
 func (r *sceneRenderer) Render(framebuffer render.Framebuffer, viewport Viewport, scene *Scene, camera *Camera) {
@@ -428,17 +438,25 @@ func (r *sceneRenderer) Render(framebuffer render.Framebuffer, viewport Viewport
 	cameraMatrix := camera.Matrix()
 	viewMatrix := sprec.InverseMat4(cameraMatrix)
 	ctx := renderCtx{
-		framebuffer:      framebuffer,
-		scene:            scene,
-		x:                viewport.X,
-		y:                viewport.Y,
-		width:            viewport.Width,
-		height:           viewport.Height,
-		projectionMatrix: projectionMatrix.ColumnMajorArray(),
-		cameraMatrix:     cameraMatrix.ColumnMajorArray(),
-		viewMatrix:       viewMatrix.ColumnMajorArray(),
-		camera:           camera,
+		framebuffer: framebuffer,
+		scene:       scene,
+		x:           viewport.X,
+		y:           viewport.Y,
+		width:       viewport.Width,
+		height:      viewport.Height,
+		camera:      camera,
 	}
+
+	cameraPlotter := buffer.NewPlotter(r.cameraUniformBufferData, binary.LittleEndian)
+	cameraPlotter.PlotMat4(projectionMatrix)
+	cameraPlotter.PlotMat4(viewMatrix)
+	cameraPlotter.PlotMat4(cameraMatrix)
+
+	r.cameraUniformBuffer.Update(render.BufferUpdateInfo{
+		Data: r.cameraUniformBufferData,
+	})
+	r.api.UniformBufferUnit(internal.UniformBufferBindingCamera, r.cameraUniformBuffer)
+
 	r.renderGeometryPass(ctx)
 	r.renderLightingPass(ctx)
 	r.renderForwardPass(ctx)
@@ -569,8 +587,6 @@ func (r *sceneRenderer) renderMesh(ctx renderCtx, modelMatrix [16]float32, templ
 		})
 
 		r.commands.BindPipeline(pipeline)
-		r.commands.UniformMatrix4f(presentation.ProjectionMatrixLocation, ctx.projectionMatrix)
-		r.commands.UniformMatrix4f(presentation.ViewMatrixLocation, ctx.viewMatrix)
 		r.commands.UniformMatrix4f(presentation.ModelMatrixLocation, modelMatrix)
 		r.commands.Uniform1f(presentation.MetalnessLocation, material.vectors[1].Y)
 		r.commands.Uniform1f(presentation.RoughnessLocation, material.vectors[1].Z)
@@ -625,9 +641,6 @@ func (r *sceneRenderer) renderLightingPass(ctx renderCtx) {
 
 func (r *sceneRenderer) renderAmbientLight(ctx renderCtx, light *Light) {
 	r.commands.BindPipeline(r.ambientLightPipeline)
-	r.commands.UniformMatrix4f(r.ambientLightPresentation.ProjectionMatrixLocation, ctx.projectionMatrix)
-	r.commands.UniformMatrix4f(r.ambientLightPresentation.CameraMatrixLocation, ctx.cameraMatrix)
-	r.commands.UniformMatrix4f(r.ambientLightPresentation.ViewMatrixLocation, ctx.viewMatrix)
 	r.commands.TextureUnit(internal.TextureBindingLightingFramebufferColor0, r.geometryAlbedoTexture)
 	r.commands.TextureUnit(internal.TextureBindingLightingFramebufferColor1, r.geometryNormalTexture)
 	r.commands.TextureUnit(internal.TextureBindingLightingFramebufferDepth, r.geometryDepthTexture)
@@ -638,9 +651,6 @@ func (r *sceneRenderer) renderAmbientLight(ctx renderCtx, light *Light) {
 
 func (r *sceneRenderer) renderDirectionalLight(ctx renderCtx, light *Light) {
 	r.commands.BindPipeline(r.directionalLightPipeline)
-	r.commands.UniformMatrix4f(r.directionalLightPresentation.ProjectionMatrixLocation, ctx.projectionMatrix)
-	r.commands.UniformMatrix4f(r.directionalLightPresentation.CameraMatrixLocation, ctx.cameraMatrix)
-	r.commands.UniformMatrix4f(r.directionalLightPresentation.ViewMatrixLocation, ctx.viewMatrix)
 	direction := light.Rotation().OrientationZ()
 	r.commands.Uniform3f(r.directionalLightPresentation.LightDirection, direction.Array())
 	intensity := light.intensity
@@ -675,14 +685,10 @@ func (r *sceneRenderer) renderForwardPass(ctx renderCtx) {
 	sky := ctx.scene.sky
 	if texture := sky.skyboxTexture; texture != nil {
 		r.commands.BindPipeline(r.skyboxPipeline)
-		r.commands.UniformMatrix4f(r.skyboxPresentation.ProjectionMatrixLocation, ctx.projectionMatrix)
-		r.commands.UniformMatrix4f(r.skyboxPresentation.ViewMatrixLocation, ctx.viewMatrix)
 		r.commands.TextureUnit(internal.TextureBindingSkyboxAlbedoTexture, texture.texture)
 		r.commands.DrawIndexed(r.skyboxMesh.IndexOffsetBytes, r.skyboxMesh.IndexCount, 1)
 	} else {
 		r.commands.BindPipeline(r.skycolorPipeline)
-		r.commands.UniformMatrix4f(r.skycolorPresentation.ProjectionMatrixLocation, ctx.projectionMatrix)
-		r.commands.UniformMatrix4f(r.skycolorPresentation.ViewMatrixLocation, ctx.viewMatrix)
 		r.commands.Uniform4f(r.skycolorPresentation.AlbedoColorLocation, [4]float32{
 			sky.backgroundColor.X,
 			sky.backgroundColor.Y,

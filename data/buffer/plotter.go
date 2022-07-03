@@ -3,6 +3,8 @@ package buffer
 import (
 	"encoding/binary"
 	"math"
+
+	"github.com/mokiat/gomath/sprec"
 )
 
 // NewPlotter creates a new Plotter instance over the specified
@@ -69,4 +71,28 @@ func (p *Plotter) PlotUint32(value uint32) {
 func (p *Plotter) PlotFloat32(value float32) {
 	p.order.PutUint32(p.data[p.offset:], math.Float32bits(value))
 	p.offset += 4
+}
+
+// PlotMat4 sets a sprec.Mat4 value at the current offset and
+// advances the offset with 64 bytes.
+func (p *Plotter) PlotMat4(value sprec.Mat4) {
+	p.PlotFloat32(value.M11)
+	p.PlotFloat32(value.M21)
+	p.PlotFloat32(value.M31)
+	p.PlotFloat32(value.M41)
+
+	p.PlotFloat32(value.M12)
+	p.PlotFloat32(value.M22)
+	p.PlotFloat32(value.M32)
+	p.PlotFloat32(value.M42)
+
+	p.PlotFloat32(value.M13)
+	p.PlotFloat32(value.M23)
+	p.PlotFloat32(value.M33)
+	p.PlotFloat32(value.M43)
+
+	p.PlotFloat32(value.M14)
+	p.PlotFloat32(value.M24)
+	p.PlotFloat32(value.M34)
+	p.PlotFloat32(value.M44)
 }
