@@ -173,7 +173,7 @@ func (a *OpenGLTFResourceAction) Run() error {
 		}
 
 		if gltfNode.Matrix != gltf.DefaultMatrix {
-			matrix := sprec.ColumnMajorArrayMat4(gltfNode.Matrix)
+			matrix := sprec.ColumnMajorArrayToMat4(gltfNode.Matrix)
 			node.Translation = matrix.Translation()
 			node.Scale = matrix.Scale()
 			node.Rotation = matrix.RotationQuat()

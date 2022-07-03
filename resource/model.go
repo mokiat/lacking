@@ -140,23 +140,10 @@ func (o *ModelOperator) Allocate(registry *Registry, id string) (interface{}, er
 			nodeAsset.Rotation[2],
 		)
 		nodes[i].Name = nodeAsset.Name
-		nodes[i].Matrix = sprec.Mat4MultiProd(
-			sprec.TranslationMat4(
-				nodeAsset.Translation[0],
-				nodeAsset.Translation[1],
-				nodeAsset.Translation[2],
-			),
-			sprec.TransformationMat4(
-				rotation.OrientationX(),
-				rotation.OrientationY(),
-				rotation.OrientationZ(),
-				sprec.ZeroVec3(),
-			),
-			sprec.ScaleMat4(
-				nodeAsset.Scale[0],
-				nodeAsset.Scale[1],
-				nodeAsset.Scale[2],
-			),
+		nodes[i].Matrix = sprec.TRSMat4(
+			sprec.ArrayToVec3(nodeAsset.Translation),
+			rotation,
+			sprec.ArrayToVec3(nodeAsset.Scale),
 		)
 	}
 	model.Nodes = rootNodes
