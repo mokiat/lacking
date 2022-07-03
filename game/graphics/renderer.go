@@ -581,9 +581,7 @@ func (r *sceneRenderer) renderMesh(ctx renderCtx, modelMatrix [16]float32, templ
 			material.vectors[0].W,
 		})
 		if material.twoDTextures[0] != nil {
-			r.commands.TextureUnit(0, material.twoDTextures[0])
-			r.commands.Uniform1i(presentation.AlbedoTextureLocation, 0)
-
+			r.commands.TextureUnit(internal.TextureBindingGeometryAlbedoTexture, material.twoDTextures[0])
 		}
 		r.commands.DrawIndexed(subMesh.indexOffsetBytes, subMesh.indexCount, 1)
 
@@ -630,16 +628,11 @@ func (r *sceneRenderer) renderAmbientLight(ctx renderCtx, light *Light) {
 	r.commands.UniformMatrix4f(r.ambientLightPresentation.ProjectionMatrixLocation, ctx.projectionMatrix)
 	r.commands.UniformMatrix4f(r.ambientLightPresentation.CameraMatrixLocation, ctx.cameraMatrix)
 	r.commands.UniformMatrix4f(r.ambientLightPresentation.ViewMatrixLocation, ctx.viewMatrix)
-	r.commands.TextureUnit(0, r.geometryAlbedoTexture)
-	r.commands.Uniform1i(r.ambientLightPresentation.FramebufferDraw0Location, 0)
-	r.commands.TextureUnit(1, r.geometryNormalTexture)
-	r.commands.Uniform1i(r.ambientLightPresentation.FramebufferDraw1Location, 1)
-	r.commands.TextureUnit(2, r.geometryDepthTexture)
-	r.commands.Uniform1i(r.ambientLightPresentation.FramebufferDepthLocation, 2)
-	r.commands.TextureUnit(3, light.reflectionTexture.texture)
-	r.commands.Uniform1i(r.ambientLightPresentation.ReflectionTextureLocation, 3)
-	r.commands.TextureUnit(4, light.refractionTexture.texture)
-	r.commands.Uniform1i(r.ambientLightPresentation.RefractionTextureLocation, 4)
+	r.commands.TextureUnit(internal.TextureBindingLightingFramebufferColor0, r.geometryAlbedoTexture)
+	r.commands.TextureUnit(internal.TextureBindingLightingFramebufferColor1, r.geometryNormalTexture)
+	r.commands.TextureUnit(internal.TextureBindingLightingFramebufferDepth, r.geometryDepthTexture)
+	r.commands.TextureUnit(internal.TextureBindingLightingReflectionTexture, light.reflectionTexture.texture)
+	r.commands.TextureUnit(internal.TextureBindingLightingRefractionTexture, light.refractionTexture.texture)
 	r.commands.DrawIndexed(r.quadMesh.IndexOffsetBytes, r.quadMesh.IndexCount, 1)
 }
 
@@ -652,12 +645,9 @@ func (r *sceneRenderer) renderDirectionalLight(ctx renderCtx, light *Light) {
 	r.commands.Uniform3f(r.directionalLightPresentation.LightDirection, direction.Array())
 	intensity := light.intensity
 	r.commands.Uniform3f(r.directionalLightPresentation.LightIntensity, intensity.Array())
-	r.commands.TextureUnit(0, r.geometryAlbedoTexture)
-	r.commands.Uniform1i(r.directionalLightPresentation.FramebufferDraw0Location, 0)
-	r.commands.TextureUnit(1, r.geometryNormalTexture)
-	r.commands.Uniform1i(r.directionalLightPresentation.FramebufferDraw1Location, 1)
-	r.commands.TextureUnit(2, r.geometryDepthTexture)
-	r.commands.Uniform1i(r.directionalLightPresentation.FramebufferDepthLocation, 2)
+	r.commands.TextureUnit(internal.TextureBindingLightingFramebufferColor0, r.geometryAlbedoTexture)
+	r.commands.TextureUnit(internal.TextureBindingLightingFramebufferColor1, r.geometryNormalTexture)
+	r.commands.TextureUnit(internal.TextureBindingLightingFramebufferDepth, r.geometryDepthTexture)
 	r.commands.DrawIndexed(r.quadMesh.IndexOffsetBytes, r.quadMesh.IndexCount, 1)
 }
 
@@ -687,8 +677,7 @@ func (r *sceneRenderer) renderForwardPass(ctx renderCtx) {
 		r.commands.BindPipeline(r.skyboxPipeline)
 		r.commands.UniformMatrix4f(r.skyboxPresentation.ProjectionMatrixLocation, ctx.projectionMatrix)
 		r.commands.UniformMatrix4f(r.skyboxPresentation.ViewMatrixLocation, ctx.viewMatrix)
-		r.commands.TextureUnit(0, texture.texture)
-		r.commands.Uniform1i(r.skyboxPresentation.AlbedoCubeTextureLocation, 0)
+		r.commands.TextureUnit(internal.TextureBindingSkyboxAlbedoTexture, texture.texture)
 		r.commands.DrawIndexed(r.skyboxMesh.IndexOffsetBytes, r.skyboxMesh.IndexCount, 1)
 	} else {
 		r.commands.BindPipeline(r.skycolorPipeline)
@@ -777,8 +766,7 @@ func (r *sceneRenderer) renderExposureProbePass(ctx renderCtx) {
 			},
 		})
 		r.commands.BindPipeline(r.exposurePipeline)
-		r.commands.TextureUnit(0, r.lightingAlbedoTexture)
-		r.commands.Uniform1i(r.exposurePresentation.FramebufferDraw0Location, 0)
+		r.commands.TextureUnit(internal.TextureBindingLightingFramebufferColor0, r.lightingAlbedoTexture)
 		r.commands.DrawIndexed(r.quadMesh.IndexOffsetBytes, r.quadMesh.IndexCount, 1)
 		r.commands.CopyContentToBuffer(render.CopyContentToBufferInfo{
 			Buffer: r.exposureBuffer,
@@ -816,8 +804,7 @@ func (r *sceneRenderer) renderPostprocessingPass(ctx renderCtx) {
 	})
 
 	r.commands.BindPipeline(r.postprocessingPipeline)
-	r.commands.TextureUnit(0, r.lightingAlbedoTexture)
-	r.commands.Uniform1i(r.postprocessingPresentation.FramebufferDraw0Location, 0)
+	r.commands.TextureUnit(internal.TextureBindingPostprocessFramebufferColor0, r.lightingAlbedoTexture)
 	r.commands.Uniform1f(r.postprocessingPresentation.ExposureLocation, ctx.camera.exposure)
 	r.commands.DrawIndexed(r.quadMesh.IndexOffsetBytes, r.quadMesh.IndexCount, 1)
 	r.api.SubmitQueue(r.commands)
