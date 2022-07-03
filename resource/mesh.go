@@ -52,8 +52,12 @@ func AllocateMesh(registry *Registry, gfxEngine *graphics.Engine, materials []*M
 				HasColor:            meshAsset.VertexLayout.ColorOffset != asset.UnspecifiedOffset,
 				ColorOffsetBytes:    int(meshAsset.VertexLayout.ColorOffset),
 				ColorStrideBytes:    int(meshAsset.VertexLayout.ColorStride),
-				// TODO: Weights
-				// TODO: Joints
+				HasWeights:          meshAsset.VertexLayout.WeightsOffset != asset.UnspecifiedOffset,
+				WeightsOffsetBytes:  int(meshAsset.VertexLayout.WeightsOffset),
+				WeightsStrideBytes:  int(meshAsset.VertexLayout.WeightsStride),
+				HasJoints:           meshAsset.VertexLayout.JointsOffset != asset.UnspecifiedOffset,
+				JointsOffsetBytes:   int(meshAsset.VertexLayout.JointsOffset),
+				JointsStrideBytes:   int(meshAsset.VertexLayout.JointsStride),
 			},
 			IndexData:   meshAsset.IndexData,
 			IndexFormat: assetToGraphicsIndexFormat(meshAsset.IndexLayout),

@@ -75,6 +75,12 @@ type VertexFormat struct {
 	HasColor            bool
 	ColorOffsetBytes    int
 	ColorStrideBytes    int
+	HasWeights          bool
+	WeightsOffsetBytes  int
+	WeightsStrideBytes  int
+	HasJoints           bool
+	JointsOffsetBytes   int
+	JointsStrideBytes   int
 }
 
 const (

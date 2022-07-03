@@ -126,6 +126,22 @@ func (e *Engine) CreateMeshTemplate(definition MeshTemplateDefinition) *MeshTemp
 			Offset:   definition.VertexFormat.ColorOffsetBytes,
 		})
 	}
+	if definition.VertexFormat.HasWeights {
+		attributes = append(attributes, render.VertexArrayAttributeInfo{
+			Binding:  0,
+			Location: internal.WeightsAttributeIndex,
+			Format:   render.VertexAttributeFormatRGBA8UN,
+			Offset:   definition.VertexFormat.WeightsOffsetBytes,
+		})
+	}
+	if definition.VertexFormat.HasJoints {
+		attributes = append(attributes, render.VertexArrayAttributeInfo{
+			Binding:  0,
+			Location: internal.JointsAttributeIndex,
+			Format:   render.VertexAttributeFormatRGBA8IU,
+			Offset:   definition.VertexFormat.JointsOffsetBytes,
+		})
+	}
 
 	vertexArray := e.api.CreateVertexArray(render.VertexArrayInfo{
 		Bindings: []render.VertexArrayBindingInfo{
