@@ -39,6 +39,7 @@ func newConverter() *converter {
 		assetNodes:                            make([]gameasset.Node, 0),
 		assetNodeIndexFromNode:                make(map[*Node]int),
 		assetMaterialIndexFromMaterial:        make(map[*Material]int),
+		assetArmatureIndexFromArmature:        make(map[*Armature]int),
 		assetMeshDefinitionFromMeshDefinition: make(map[*MeshDefinition]int),
 	}
 }
@@ -47,6 +48,7 @@ type converter struct {
 	assetNodes                            []gameasset.Node
 	assetNodeIndexFromNode                map[*Node]int
 	assetMaterialIndexFromMaterial        map[*Material]int
+	assetArmatureIndexFromArmature        map[*Armature]int
 	assetMeshDefinitionFromMeshDefinition map[*MeshDefinition]int
 }
 
@@ -61,6 +63,14 @@ func (c *converter) BuildModel(model *Model) *gameasset.Model {
 	for i, material := range model.Materials {
 		assetMaterials[i] = c.BuildMaterial(material)
 		c.assetMaterialIndexFromMaterial[material] = i
+	}
+
+	var (
+		assetArmatures = make([]gameasset.Armature, len(model.Armatures))
+	)
+	for i, armature := range model.Armatures {
+		assetArmatures[i] = c.BuildArmature(armature)
+		c.assetArmatureIndexFromArmature[armature] = i
 	}
 
 	var (
@@ -126,6 +136,19 @@ func (c *converter) BuildMaterial(material *Material) gameasset.Material {
 	pbr.SetNormalScale(material.NormalScale)
 	pbr.SetNormalTexture(material.NormalTexture)
 	return assetMaterial
+}
+
+func (c *converter) BuildArmature(armature *Armature) gameasset.Armature {
+	assetArmature := gameasset.Armature{
+		Joints: make([]gameasset.Joint, len(armature.Joints)),
+	}
+	for i, joint := range armature.Joints {
+		assetArmature.Joints[i] = gameasset.Joint{
+			NodeIndex:         int32(c.assetNodeIndexFromNode[joint.Node]),
+			InverseBindMatrix: joint.InverseBindMatrix.ColumnMajorArray(),
+		}
+	}
+	return assetArmature
 }
 
 func (c *converter) BuildMeshDefinition(meshDefinition *MeshDefinition) gameasset.MeshDefinition {
@@ -365,10 +388,18 @@ func (c *converter) BuildMeshInstance(meshInstance *MeshInstance) gameasset.Mesh
 	} else {
 		panic(fmt.Errorf("mesh definition %s not found", meshInstance.Definition.Name))
 	}
-
+	var armatureIndex int32 = gameasset.UnspecifiedArmatureIndex
+	if meshInstance.Armature != nil {
+		if index, ok := c.assetArmatureIndexFromArmature[meshInstance.Armature]; ok {
+			armatureIndex = int32(index)
+		} else {
+			panic(fmt.Errorf("armature not found"))
+		}
+	}
 	return gameasset.MeshInstance{
 		Name:            meshInstance.Name,
 		NodeIndex:       nodeIndex,
+		ArmatureIndex:   armatureIndex,
 		DefinitionIndex: definitionIndex,
 	}
 }

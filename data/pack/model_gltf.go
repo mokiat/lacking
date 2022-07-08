@@ -162,15 +162,28 @@ func (a *OpenGLTFResourceAction) Run() error {
 		}
 	}
 
+	// prepare armatures
+	armatureDefinitionFromIndex := make(map[uint32]*Armature)
+	for i, gltfSkin := range gltfDoc.Skins {
+		armature := &Armature{
+			Joints: make([]Joint, len(gltfSkin.Joints)),
+		}
+		armatureDefinitionFromIndex[uint32(i)] = armature
+		a.model.Armatures = append(a.model.Armatures, armature)
+	}
+
 	// build nodes
-	var visitNode func(gltfNode *gltf.Node) *Node
-	visitNode = func(gltfNode *gltf.Node) *Node {
+	nodeFromIndex := make(map[uint32]*Node)
+	var visitNode func(nodeIndex uint32) *Node
+	visitNode = func(nodeIndex uint32) *Node {
+		gltfNode := gltfDoc.Nodes[nodeIndex]
 		node := &Node{
 			Name:        gltfNode.Name,
 			Translation: sprec.ZeroVec3(),
 			Rotation:    sprec.IdentityQuat(),
 			Scale:       sprec.NewVec3(1.0, 1.0, 1.0),
 		}
+		nodeFromIndex[nodeIndex] = node
 
 		if gltfNode.Matrix != gltf.DefaultMatrix {
 			matrix := sprec.ColumnMajorArrayToMat4(gltfNode.Matrix)
@@ -202,16 +215,30 @@ func (a *OpenGLTFResourceAction) Run() error {
 				Node:       node,
 				Definition: meshDefinitionFromIndex[*gltfNode.Mesh],
 			}
+			if gltfNode.Skin != nil {
+				meshInstance.Armature = armatureDefinitionFromIndex[*gltfNode.Skin]
+			}
 			a.model.MeshInstances = append(a.model.MeshInstances, meshInstance)
 		}
 		for _, childID := range gltfNode.Children {
-			node.Children = append(node.Children, visitNode(gltfDoc.Nodes[childID]))
+			node.Children = append(node.Children, visitNode(childID))
 		}
 		return node
 	}
-	for _, node := range gltfutil.RootNodes(gltfDoc) {
-		a.model.RootNodes = append(a.model.RootNodes, visitNode(node))
+	for _, nodeIndex := range gltfutil.RootNodeIndices(gltfDoc) {
+		a.model.RootNodes = append(a.model.RootNodes, visitNode(nodeIndex))
 	}
+
+	// finalize armatures (now that all nodes are available)
+	for i, gltfSkin := range gltfDoc.Skins {
+		armature := a.model.Armatures[i]
+		for i, joint := range gltfSkin.Joints {
+			armature.Joints[i].Node = nodeFromIndex[joint]
+			armature.Joints[i].InverseBindMatrix = gltfutil.InverseBindMatrix(gltfDoc, gltfSkin, i)
+		}
+	}
+
+	// TODO: Trim unused nodes
 
 	return nil
 }

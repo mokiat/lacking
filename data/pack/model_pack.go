@@ -8,6 +8,7 @@ type ModelProvider interface {
 
 type Model struct {
 	RootNodes       []*Node
+	Armatures       []*Armature
 	Materials       []*Material
 	MeshDefinitions []*MeshDefinition
 	MeshInstances   []*MeshInstance
@@ -29,9 +30,19 @@ type MeshDefinition struct {
 	Fragments    []MeshFragment
 }
 
+type Armature struct {
+	Joints []Joint
+}
+
+type Joint struct {
+	Node              *Node
+	InverseBindMatrix sprec.Mat4
+}
+
 type MeshInstance struct {
 	Name       string
 	Node       *Node
+	Armature   *Armature
 	Definition *MeshDefinition
 }
 

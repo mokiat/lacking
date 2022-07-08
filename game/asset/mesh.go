@@ -3,6 +3,7 @@ package asset
 const (
 	UnspecifiedOffset        = int32(-1)
 	UnspecifiedMaterialIndex = int32(-1)
+	UnspecifiedArmatureIndex = int32(-1)
 )
 
 type MeshDefinition struct {
@@ -17,14 +18,17 @@ type MeshDefinition struct {
 type MeshInstance struct {
 	Name            string
 	NodeIndex       int32
+	ArmatureIndex   int32
 	DefinitionIndex int32
 }
 
-// TODO
 type Armature struct {
-	Joints []struct {
-		Name string
-	}
+	Joints []Joint
+}
+
+type Joint struct {
+	NodeIndex         int32
+	InverseBindMatrix [16]float32
 }
 
 // VertexLayout describes how vertex data is positioned within the VertexData

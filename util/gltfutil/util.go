@@ -7,17 +7,17 @@ import (
 	"github.com/qmuntal/gltf"
 )
 
-func RootNodes(doc *gltf.Document) []*gltf.Node {
+func RootNodeIndices(doc *gltf.Document) []uint32 {
 	childrenIDs := make(map[uint32]struct{})
 	for _, node := range doc.Nodes {
 		for _, childID := range node.Children {
 			childrenIDs[childID] = struct{}{}
 		}
 	}
-	var result []*gltf.Node
-	for id, node := range doc.Nodes {
+	var result []uint32
+	for id := range doc.Nodes {
 		if _, ok := childrenIDs[uint32(id)]; !ok {
-			result = append(result, node)
+			result = append(result, uint32(id))
 		}
 	}
 	return result
@@ -328,4 +328,49 @@ func NormalTexture(doc *gltf.Document, material *gltf.Material) (string, float32
 	}
 	image := doc.Images[*texture.Source]
 	return image.Name, normalTexture.ScaleOrDefault()
+}
+
+func InverseBindMatrix(doc *gltf.Document, skin *gltf.Skin, index int) sprec.Mat4 {
+	if skin.InverseBindMatrices == nil {
+		log.Warn("Skin lacks inverse bind matrices")
+		return sprec.IdentityMat4()
+	}
+
+	accessor := doc.Accessors[*skin.InverseBindMatrices]
+	if accessor.BufferView == nil {
+		log.Warn("Accessor lacks a buffer view")
+		return sprec.IdentityMat4()
+	}
+
+	bufferView := doc.BufferViews[*accessor.BufferView]
+	buffer := data.Buffer(doc.Buffers[bufferView.Buffer].Data[bufferView.ByteOffset:])
+	if accessor.Type != gltf.AccessorMat4 {
+		log.Error("Unsupported joints accessor type %d", accessor.Type)
+		return sprec.IdentityMat4()
+	}
+	switch accessor.ComponentType {
+	case gltf.ComponentFloat:
+		array := [16]float32{
+			buffer.Float32(index*64 + 0*4),
+			buffer.Float32(index*64 + 1*4),
+			buffer.Float32(index*64 + 2*4),
+			buffer.Float32(index*64 + 3*4),
+			buffer.Float32(index*64 + 4*4),
+			buffer.Float32(index*64 + 5*4),
+			buffer.Float32(index*64 + 6*4),
+			buffer.Float32(index*64 + 7*4),
+			buffer.Float32(index*64 + 8*4),
+			buffer.Float32(index*64 + 9*4),
+			buffer.Float32(index*64 + 10*4),
+			buffer.Float32(index*64 + 11*4),
+			buffer.Float32(index*64 + 12*4),
+			buffer.Float32(index*64 + 13*4),
+			buffer.Float32(index*64 + 14*4),
+			buffer.Float32(index*64 + 15*4),
+		}
+		return sprec.ColumnMajorArrayToMat4(array)
+	default:
+		log.Error("Unsupported joints accessor component type %d", accessor.ComponentType)
+		return sprec.IdentityMat4()
+	}
 }
