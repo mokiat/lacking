@@ -2,6 +2,7 @@ package pack
 
 import (
 	"fmt"
+	"runtime/debug"
 
 	"golang.org/x/sync/errgroup"
 
@@ -71,7 +72,13 @@ func (p *Packer) activePipelines() ([]*Pipeline, bool) {
 	return p.pipelines, false
 }
 
-func (p *Packer) runPipeline(pipeline *Pipeline) error {
+func (p *Packer) runPipeline(pipeline *Pipeline) (err error) {
+	defer func() {
+		if problem := recover(); problem != nil {
+			err = fmt.Errorf("pipeline %d paniced: %v", pipeline.id, string(debug.Stack()))
+			return
+		}
+	}()
 	if err := pipeline.execute(); err != nil {
 		return fmt.Errorf("pipeline %d error: %w", pipeline.id, err)
 	}
