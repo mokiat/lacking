@@ -435,7 +435,7 @@ func (r *sceneRenderer) Render(framebuffer render.Framebuffer, viewport Viewport
 	}
 
 	projectionMatrix := r.evaluateProjectionMatrix(camera, viewport.Width, viewport.Height)
-	cameraMatrix := camera.Matrix()
+	cameraMatrix := camera.innerMat()
 	viewMatrix := sprec.InverseMat4(cameraMatrix)
 	ctx := renderCtx{
 		framebuffer: framebuffer,
@@ -537,7 +537,7 @@ func (r *sceneRenderer) renderGeometryPass(ctx renderCtx) {
 	})
 	// TODO: Traverse octree
 	for mesh := ctx.scene.firstMesh; mesh != nil; mesh = mesh.next {
-		r.renderMesh(ctx, mesh.Matrix().ColumnMajorArray(), mesh.template)
+		r.renderMesh(ctx, mesh.matrixArray(), mesh.template)
 	}
 	r.api.SubmitQueue(r.commands)
 	r.api.EndRenderPass()
@@ -587,6 +587,9 @@ func (r *sceneRenderer) renderMesh(ctx renderCtx, modelMatrix [16]float32, templ
 		})
 
 		r.commands.BindPipeline(pipeline)
+		if material.twoDTextures[0] != nil {
+			r.commands.TextureUnit(internal.TextureBindingGeometryAlbedoTexture, material.twoDTextures[0])
+		}
 		r.commands.UniformMatrix4f(presentation.ModelMatrixLocation, modelMatrix)
 		r.commands.Uniform1f(presentation.MetalnessLocation, material.vectors[1].Y)
 		r.commands.Uniform1f(presentation.RoughnessLocation, material.vectors[1].Z)
@@ -596,9 +599,6 @@ func (r *sceneRenderer) renderMesh(ctx renderCtx, modelMatrix [16]float32, templ
 			material.vectors[0].Z,
 			material.vectors[0].W,
 		})
-		if material.twoDTextures[0] != nil {
-			r.commands.TextureUnit(internal.TextureBindingGeometryAlbedoTexture, material.twoDTextures[0])
-		}
 		r.commands.DrawIndexed(subMesh.indexOffsetBytes, subMesh.indexCount, 1)
 
 		pipeline.Release() // FIXME: This is not even correct
@@ -651,7 +651,7 @@ func (r *sceneRenderer) renderAmbientLight(ctx renderCtx, light *Light) {
 
 func (r *sceneRenderer) renderDirectionalLight(ctx renderCtx, light *Light) {
 	r.commands.BindPipeline(r.directionalLightPipeline)
-	direction := light.Rotation().OrientationZ()
+	direction := light.innerMat().OrientationZ()
 	r.commands.Uniform3f(r.directionalLightPresentation.LightDirection, direction.Array())
 	intensity := light.intensity
 	r.commands.Uniform3f(r.directionalLightPresentation.LightIntensity, intensity.Array())

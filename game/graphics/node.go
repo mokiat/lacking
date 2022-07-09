@@ -2,70 +2,45 @@ package graphics
 
 import "github.com/mokiat/gomath/sprec"
 
+// TODO: This node should be uniform-oritented
+// meaning that it should store its transformation as a matrix
+// directly in byte sequence ready to be uploaded to GPU.
+// That way also the byte slice can be passed as reference to an update
+// command without having to allocate temp memory.
+// (This also means that the node should not be updated while rendering
+// is going on)
+
 func newNode() *Node {
 	return &Node{
-		position: sprec.ZeroVec3(),
-		rotation: sprec.IdentityQuat(),
-		scale:    sprec.NewVec3(1.0, 1.0, 1.0),
+		matrix: sprec.IdentityMat4(),
 	}
 }
 
 // Node represents a positioning of some entity in
 // the 3D scene.
 type Node struct {
-	position sprec.Vec3
-	rotation sprec.Quat
-	scale    sprec.Vec3
+	matrix sprec.Mat4
 }
 
-// Position returns this entity's position.
-func (n *Node) Position() sprec.Vec3 {
-	return n.position
+// SetMatrix changes the model matrix of this node.
+// Keep in mind that this is a somewhat slower operation and should only
+// be performed only once per frame. This is also the reason why there is
+// no getter for this method.
+// Clients are expected to track matrices outside this type if needed.
+func (n *Node) SetMatrix(matrix sprec.Mat4) {
+	// TODO: Write matrix to byte buffer to be used by a uniform buffer
+	n.matrix = matrix
 }
 
-// SetPosition changes this entity's position.
-func (n *Node) SetPosition(position sprec.Vec3) {
-	n.position = position
+func (n *Node) innerMat() sprec.Mat4 {
+	return n.matrix
 }
 
-// Rotation returns this entity's rotation.
-func (n *Node) Rotation() sprec.Quat {
-	return n.rotation
+// TODO: Byte slice to be used for upload instead.
+func (n *Node) matrixArray() [16]float32 {
+	return n.matrix.ColumnMajorArray()
 }
 
-// SetRotation changes this entity's rotation.
-func (n *Node) SetRotation(rotation sprec.Quat) {
-	n.rotation = sprec.UnitQuat(rotation)
-}
-
-// Scale returns this entity's scale.
-func (n *Node) Scale() sprec.Vec3 {
-	return n.scale
-}
-
-// SetScale changes this entity's scale.
-func (n *Node) SetScale(scale sprec.Vec3) {
-	n.scale = scale
-}
-
-// Matrix returns the matrix transformation
-// of this node.
-func (n *Node) Matrix() sprec.Mat4 {
-	return sprec.Mat4MultiProd(
-		sprec.TranslationMat4(
-			n.position.X,
-			n.position.Y,
-			n.position.Z,
-		),
-		sprec.OrientationMat4(
-			n.rotation.OrientationX(),
-			n.rotation.OrientationY(),
-			n.rotation.OrientationZ(),
-		),
-		sprec.ScaleMat4(
-			n.scale.X,
-			n.scale.Y,
-			n.scale.Z,
-		),
-	)
+func (n *Node) inverseMatrixArray() [16]float32 {
+	return sprec.InverseMat4(n.matrix).ColumnMajorArray()
 }
