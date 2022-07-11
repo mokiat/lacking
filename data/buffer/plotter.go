@@ -5,6 +5,7 @@ import (
 	"math"
 
 	"github.com/mokiat/gomath/sprec"
+	"github.com/x448/float16"
 )
 
 // NewPlotter creates a new Plotter instance over the specified
@@ -64,6 +65,13 @@ func (p *Plotter) PlotUint16(value uint16) {
 func (p *Plotter) PlotUint32(value uint32) {
 	p.order.PutUint32(p.data[p.offset:], value)
 	p.offset += 4
+}
+
+// PlotFloat16 sets a single float16 value at the current offset and
+// advances the offset with two bytes.
+func (p *Plotter) PlotFloat16(value float16.Float16) {
+	p.order.PutUint16(p.data[p.offset:], value.Bits())
+	p.offset += 2
 }
 
 // PlotFloat32 sets a single float32 value at the current offset and
