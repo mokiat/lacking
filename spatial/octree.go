@@ -5,16 +5,17 @@ import (
 	"github.com/mokiat/lacking/log"
 )
 
+var sizeToDoubleRadius = sprec.Sqrt(3)
+
 // NewOctree creates a new Octree instance using the specified size and depth.
 func NewOctree[T any](size float32, depth int) *Octree[T] {
 	return &Octree[T]{
-		size:  size,
 		depth: depth,
 		root: &octreeNode[T]{
 			size: size,
-			OctreeItem: &OctreeItem[T]{
+			head: &OctreeItem[T]{
 				position: sprec.ZeroVec3(),
-				radius:   sprec.Sqrt(3) * size,
+				radius:   size * sizeToDoubleRadius,
 			},
 		},
 	}
@@ -26,7 +27,6 @@ func NewOctree[T any](size float32, depth int) *Octree[T] {
 //
 // This particular implementation uses the loose octree approach.
 type Octree[T any] struct {
-	size  float32
 	depth int
 	root  *octreeNode[T]
 }
@@ -61,10 +61,10 @@ func (t *Octree[T]) visitNodeInHexahedronRegion(node *octreeNode[T], region *Hex
 	if node == nil {
 		return
 	}
-	if !node.isInsideHexahedronRegion(region) {
+	if !node.head.isInsideHexahedronRegion(region) {
 		return
 	}
-	for item := node.next; item != nil; item = item.next {
+	for item := node.head.next; item != nil; item = item.next {
 		if item.isInsideHexahedronRegion(region) {
 			cb(item.value)
 		}
@@ -81,12 +81,12 @@ func (t *Octree[T]) add(item *OctreeItem[T]) {
 		bestNode = node
 		depth++
 	}
-	item.next = bestNode.next
-	item.prev = bestNode.OctreeItem
-	if bestNode.next != nil {
-		bestNode.next.prev = item
+	item.next = bestNode.head.next
+	item.prev = bestNode.head
+	if bestNode.head.next != nil {
+		bestNode.head.next.prev = item
 	}
-	bestNode.next = item
+	bestNode.head.next = item
 }
 
 func (t *Octree[T]) remove(item *OctreeItem[T]) {
@@ -112,10 +112,10 @@ func (t *Octree[T]) pickChildNode(parent *octreeNode[T], item *OctreeItem[T], de
 	}
 
 	// it has to be one of the eight children
-	distanceManhattan := sprec.Vec3Diff(item.position, parent.position)
+	distanceManhattan := sprec.Vec3Diff(item.position, parent.head.position)
 	var (
 		childIndex    = 0
-		childPosition = parent.position
+		childPosition = parent.head.position
 	)
 	if distanceManhattan.X < 0.0 {
 		childPosition.X -= childHalfSize
@@ -142,9 +142,9 @@ func (t *Octree[T]) pickChildNode(parent *octreeNode[T], item *OctreeItem[T], de
 
 	childNode := &octreeNode[T]{
 		size: childSize,
-		OctreeItem: &OctreeItem[T]{
+		head: &OctreeItem[T]{
 			position: childPosition,
-			radius:   childSize * sprec.Sqrt(3),
+			radius:   childSize * sizeToDoubleRadius,
 		},
 	}
 	parent.children[childIndex] = childNode
@@ -225,14 +225,14 @@ func (i *OctreeItem[T]) isInsideHexahedronRegion(region *HexahedronRegion) bool 
 }
 
 type octreeNode[T any] struct {
-	size float32
-	*OctreeItem[T]
+	size     float32
 	children [8]*octreeNode[T]
+	head     *OctreeItem[T]
 }
 
 func (n *octreeNode[T]) itemCount() int {
 	result := 0
-	for item := n.next; item != nil; item = item.next {
+	for item := n.head.next; item != nil; item = item.next {
 		result++
 	}
 	return result
