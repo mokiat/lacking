@@ -2,10 +2,14 @@ package shape
 
 import "github.com/mokiat/gomath/sprec"
 
+type Shape interface {
+	BoundingSphereRadius() float32
+}
+
 type Placement struct {
 	Position    sprec.Vec3
 	Orientation sprec.Quat
-	Shape       interface{}
+	Shape       Shape
 }
 
 func (p Placement) Transformed(translation sprec.Vec3, rotation sprec.Quat) Placement {

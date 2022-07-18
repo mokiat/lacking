@@ -10,6 +10,10 @@ type StaticSphere struct {
 	radius float32
 }
 
+func (s StaticSphere) BoundingSphereRadius() float32 {
+	return s.radius
+}
+
 func (s StaticSphere) Radius() float32 {
 	return s.radius
 }
