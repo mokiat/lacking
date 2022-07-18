@@ -1,6 +1,10 @@
 package physics
 
-import "github.com/mokiat/gomath/sprec"
+import (
+	"github.com/mokiat/gomath/sprec"
+	"github.com/mokiat/lacking/shape"
+	"github.com/mokiat/lacking/spatial"
+)
 
 // Body represents a physical body that has physics
 // act upon it.
@@ -8,6 +12,7 @@ type Body struct {
 	scene *Scene
 	prev  *Body
 	next  *Body
+	item  *spatial.OctreeItem[*Body]
 
 	name string
 
@@ -49,6 +54,11 @@ func (b *Body) Static() bool {
 // SetStatic changes whether this body is static.
 func (b *Body) SetStatic(static bool) {
 	b.static = static
+	if static {
+		delete(b.scene.dynamicBodies, b)
+	} else {
+		b.scene.dynamicBodies[b] = struct{}{}
+	}
 }
 
 // Mass returns the mass of this body in kg.
@@ -127,6 +137,7 @@ func (b *Body) Position() sprec.Vec3 {
 // SetPosition changes the position of this body.
 func (b *Body) SetPosition(position sprec.Vec3) {
 	b.position = position
+	b.item.SetPosition(position)
 }
 
 // Orientation returns the quaternion rotation
@@ -172,7 +183,13 @@ func (b *Body) CollisionShapes() []CollisionShape {
 // SetCollisionShapes sets the collision shapes
 // for this body to be used in collision detection.
 func (b *Body) SetCollisionShapes(shapes []CollisionShape) {
+	maxRadius := float32(0.0)
 	b.collisionShapes = shapes
+	for _, s := range shapes {
+		placement := s.(shape.Placement)
+		maxRadius = sprec.Max(maxRadius, placement.Shape.BoundingSphereRadius()+placement.Position.Length())
+	}
+	b.item.SetRadius(maxRadius)
 }
 
 // AerodynamicShapes returns a slice of shapes that
@@ -192,6 +209,8 @@ func (b *Body) SetAerodynamicShapes(shapes []AerodynamicShape) {
 // should no longer be used after calling this
 // method.
 func (b *Body) Delete() {
+	b.SetStatic(true)
+	b.item.Delete()
 	b.scene.removeBody(b)
 	b.scene.cacheBody(b)
 	b.scene = nil

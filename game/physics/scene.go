@@ -3,6 +3,7 @@ package physics
 import (
 	"github.com/mokiat/gomath/sprec"
 	"github.com/mokiat/lacking/shape"
+	"github.com/mokiat/lacking/spatial"
 )
 
 const (
@@ -12,6 +13,10 @@ const (
 
 func newScene(stepSeconds float32) *Scene {
 	return &Scene{
+		bodyOctree: spatial.NewOctree[*Body](16000.0, 8),
+
+		dynamicBodies: make(map[*Body]struct{}),
+
 		stepSeconds:       stepSeconds,
 		impulseIterations: defaultImpulseIterations,
 		nudgeIterations:   defaultNudgeIterations,
@@ -33,6 +38,8 @@ func newScene(stepSeconds float32) *Scene {
 // a number of bodies that are independent on any
 // bodies managed by other scene objects.
 type Scene struct {
+	bodyOctree *spatial.Octree[*Body]
+
 	stepSeconds            float32
 	impulseIterations      int
 	nudgeIterations        int
@@ -41,9 +48,10 @@ type Scene struct {
 	maxVelocity            float32
 	maxAngularVelocity     float32
 
-	firstBody  *Body
-	lastBody   *Body
-	cachedBody *Body
+	dynamicBodies map[*Body]struct{}
+	firstBody     *Body
+	lastBody      *Body
+	cachedBody    *Body
 
 	firstSBConstraint  *SBConstraint
 	lastSBConstraint   *SBConstraint
@@ -102,9 +110,12 @@ func (s *Scene) CreateBody() *Body {
 	} else {
 		body = &Body{}
 	}
+	// TODO: Init Body with sane defaults
 	body.scene = s
+	body.item = s.bodyOctree.CreateItem(body)
 	body.prev = nil
 	body.next = nil
+	body.SetStatic(false)
 	s.appendBody(body)
 	return body
 }
@@ -313,11 +324,7 @@ func (s *Scene) resetConstraints(elapsedSeconds float32) {
 }
 
 func (s *Scene) applyForces() {
-	for body := s.firstBody; body != nil; body = body.next {
-		if body.static {
-			continue
-		}
-
+	for body := range s.dynamicBodies {
 		body.resetAcceleration()
 		body.resetAngularAcceleration()
 
@@ -335,11 +342,7 @@ func (s *Scene) applyForces() {
 }
 
 func (s *Scene) integrate(elapsedSeconds float32) {
-	for body := s.firstBody; body != nil; body = body.next {
-		if body.static {
-			continue
-		}
-
+	for body := range s.dynamicBodies {
 		body.clampAcceleration(s.maxAcceleration)
 		body.clampAngularAcceleration(s.maxAngularAcceleration)
 
@@ -373,11 +376,7 @@ func (s *Scene) applyImpulses(elapsedSeconds float32) {
 }
 
 func (s *Scene) applyMotion(elapsedSeconds float32) {
-	for body := s.firstBody; body != nil; body = body.next {
-		if body.static {
-			continue
-		}
-
+	for body := range s.dynamicBodies {
 		body.clampVelocity(s.maxVelocity)
 		body.clampAngularVelocity(s.maxAngularVelocity)
 
@@ -417,10 +416,17 @@ func (s *Scene) detectCollisions() {
 	s.collisionConstraints = s.collisionConstraints[:0]
 	s.collisionSolvers = s.collisionSolvers[:0]
 
-	for primary := s.firstBody; primary != nil; primary = primary.next {
-		for secondary := primary.next; secondary != nil; secondary = secondary.next {
-			s.checkCollisionTwoBodies(primary, secondary)
-		}
+	for primary := range s.dynamicBodies {
+		// FIXME: 50 is hardcoded range. Also, consider using a SphericalRegion
+		// instead, once BoundingSphereRadius is exposed from CollisionShape.
+		region := spatial.CuboidRegion(primary.position, sprec.NewVec3(50, 50, 50))
+
+		s.bodyOctree.VisitHexahedronRegion(&region, func(secondary *Body) {
+			if secondary == primary {
+				return
+			}
+			s.checkCollisionTwoBodies(secondary, primary) // FIXME: Reverse order does not work!
+		})
 	}
 }
 
