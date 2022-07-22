@@ -3,6 +3,7 @@ package spatial
 import (
 	"github.com/mokiat/gomath/sprec"
 	"github.com/mokiat/lacking/log"
+	"github.com/mokiat/lacking/util/datastruct"
 )
 
 var sizeToDoubleRadius = sprec.Sqrt(3)
@@ -10,6 +11,7 @@ var sizeToDoubleRadius = sprec.Sqrt(3)
 // NewOctree creates a new Octree instance using the specified size and depth.
 func NewOctree[T any](size float32, depth int) *Octree[T] {
 	return &Octree[T]{
+		pool:  datastruct.NewDynamicPool[OctreeItem[T]](),
 		depth: depth,
 		root: &octreeNode[T]{
 			size: size,
@@ -27,6 +29,7 @@ func NewOctree[T any](size float32, depth int) *Octree[T] {
 //
 // This particular implementation uses the loose octree approach.
 type Octree[T any] struct {
+	pool  datastruct.Pool[OctreeItem[T]]
 	depth int
 	root  *octreeNode[T]
 }
@@ -43,7 +46,8 @@ func (t *Octree[T]) PrintDebug() {
 
 // CreateItem creates and positions a new item in this Octree.
 func (t *Octree[T]) CreateItem(value T) *OctreeItem[T] {
-	item := &OctreeItem[T]{
+	item := t.pool.Fetch()
+	*item = OctreeItem[T]{
 		tree:     t,
 		position: sprec.ZeroVec3(),
 		radius:   1.0,
@@ -177,8 +181,8 @@ type OctreeItem[T any] struct {
 
 // Delete removes this item from its Octree.
 func (i *OctreeItem[T]) Delete() {
-	// TODO: Cache items in a pool
 	i.tree.remove(i)
+	i.tree.pool.Restore(i)
 	i.tree = nil
 }
 
@@ -210,7 +214,7 @@ func (i *OctreeItem[T]) SetRadius(radius float32) {
 }
 
 func (i *OctreeItem[T]) invalidate() {
-	// TODO: Mark as dirty instead and relocate only once a Visit is performed.
+	// IDEA: Mark as dirty instead and relocate only once a Visit is performed.
 	i.tree.remove(i)
 	i.tree.add(i)
 }
