@@ -8,6 +8,64 @@ import (
 
 var sizeToDoubleRadius = sprec.Sqrt(3)
 
+// Visitor represents a callback mechanism to pass items back to the client.
+type Visitor[T any] interface {
+	// Reset indicates that a new batch of items will be provided.
+	Reset()
+	// Visit is called for each observed item.
+	Visit(item T)
+}
+
+// VisitorFunc is an implementation of Visitor that passes each observed
+// item to the wrapped function.
+type VisitorFunc[T any] func(item T)
+
+// Reset does nothing and is just so Visitor interface is implemented.
+func (f VisitorFunc[T]) Reset() {}
+
+// Visit calls the wrapped function.
+func (f VisitorFunc[T]) Visit(item T) {
+	f(item)
+}
+
+// NewVisitorBucket creates a new NewVisitorBucket instance with the specified
+// initial capacity, which is only used to preallocate memory. It is allowed
+// to exceed the initial capacity.
+func NewVisitorBucket[T any](initCapacity int) *VisitorBucket[T] {
+	return &VisitorBucket[T]{
+		items: make([]T, 0, initCapacity),
+	}
+}
+
+// VisitorBucket is an implementation of Visitor that stores observed items
+// into a buffer for faster and more cache-friendly iteration afterwards.
+type VisitorBucket[T any] struct {
+	items []T
+}
+
+// Reset rewinds the item buffer.
+func (r *VisitorBucket[T]) Reset() {
+	r.items = r.items[:0]
+}
+
+// Visit records the passed item into the buffer.
+func (r *VisitorBucket[T]) Visit(item T) {
+	r.items = append(r.items, item)
+}
+
+// Each calls the provided closure function for each item in the buffer.
+func (r *VisitorBucket[T]) Each(cb func(item T)) {
+	for _, item := range r.items {
+		cb(item)
+	}
+}
+
+// Items returns the items stored in the buffer. The returned slice is valid
+// only until the Reset function is called.
+func (r *VisitorBucket[T]) Items() []T {
+	return r.items
+}
+
 // NewOctree creates a new Octree instance using the specified size and depth.
 func NewOctree[T any](size float32, depth int) *Octree[T] {
 	return &Octree[T]{
@@ -57,11 +115,12 @@ func (t *Octree[T]) CreateItem(value T) *OctreeItem[T] {
 	return item
 }
 
-func (t *Octree[T]) VisitHexahedronRegion(region *HexahedronRegion, cb func(item T)) {
-	t.visitNodeInHexahedronRegion(t.root, region, cb)
+func (t *Octree[T]) VisitHexahedronRegion(region *HexahedronRegion, visitor Visitor[T]) {
+	visitor.Reset()
+	t.visitNodeInHexahedronRegion(t.root, region, visitor)
 }
 
-func (t *Octree[T]) visitNodeInHexahedronRegion(node *octreeNode[T], region *HexahedronRegion, cb func(item T)) {
+func (t *Octree[T]) visitNodeInHexahedronRegion(node *octreeNode[T], region *HexahedronRegion, visitor Visitor[T]) {
 	if node == nil {
 		return
 	}
@@ -70,11 +129,11 @@ func (t *Octree[T]) visitNodeInHexahedronRegion(node *octreeNode[T], region *Hex
 	}
 	for item := node.head.next; item != nil; item = item.next {
 		if item.isInsideHexahedronRegion(region) {
-			cb(item.value)
+			visitor.Visit(item.value)
 		}
 	}
 	for i := 0; i < 8; i++ {
-		t.visitNodeInHexahedronRegion(node.children[i], region, cb)
+		t.visitNodeInHexahedronRegion(node.children[i], region, visitor)
 	}
 }
 
