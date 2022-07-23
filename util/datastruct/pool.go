@@ -63,9 +63,6 @@ type StaticPool[T any] struct {
 }
 
 func (p *StaticPool[T]) Fetch() *T {
-	if p.freeIndices.IsEmpty() {
-		panic("capacity exceeded")
-	}
 	freeIndex := p.freeIndices.Pop()
 	result := &p.items[freeIndex]
 	p.refToIndex[result] = freeIndex

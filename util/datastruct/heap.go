@@ -1,25 +1,31 @@
 package datastruct
 
+// NewHeap creates a new Heap instance that is configured to use the
+// specified less function to order items.
 func NewHeap[T any](less LessFunc[T]) *Heap[T] {
 	return &Heap[T]{
 		less: less,
 	}
 }
 
+// Heap is a datastructure that orders items when inserted.
 type Heap[T any] struct {
 	less  LessFunc[T]
 	items []T
 }
 
-func (h *Heap[T]) Empty() bool {
+// IsEmpty returns true if there are no items in this Heap.
+func (h *Heap[T]) IsEmpty() bool {
 	return len(h.items) == 0
 }
 
+// Push adds a new item to this Heap.
 func (h *Heap[T]) Push(value T) {
 	h.items = append(h.items, value)
 	h.siftUp(value, len(h.items)-1)
 }
 
+// Pop removes the smallest item from this Heap and returns it.
 func (h *Heap[T]) Pop() T {
 	result := h.items[0]
 	if len(h.items) > 1 {
@@ -32,6 +38,8 @@ func (h *Heap[T]) Pop() T {
 	return result
 }
 
+// Peek returns the samllest item from this Heap without actually
+// removing it.
 func (h *Heap[T]) Peek() T {
 	return h.items[0]
 }
