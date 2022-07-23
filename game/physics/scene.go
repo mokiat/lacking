@@ -3,7 +3,7 @@ package physics
 import (
 	"github.com/mokiat/gomath/sprec"
 	"github.com/mokiat/lacking/shape"
-	"github.com/mokiat/lacking/spatial"
+	"github.com/mokiat/lacking/util/spatial"
 )
 
 const (
@@ -421,12 +421,12 @@ func (s *Scene) detectCollisions() {
 		// instead, once BoundingSphereRadius is exposed from CollisionShape.
 		region := spatial.CuboidRegion(primary.position, sprec.NewVec3(50, 50, 50))
 
-		s.bodyOctree.VisitHexahedronRegion(&region, func(secondary *Body) {
+		s.bodyOctree.VisitHexahedronRegion(&region, spatial.VisitorFunc[*Body](func(secondary *Body) {
 			if secondary == primary {
 				return
 			}
 			s.checkCollisionTwoBodies(secondary, primary) // FIXME: Reverse order does not work!
-		})
+		}))
 	}
 }
 

@@ -3,7 +3,7 @@ package physics
 import (
 	"github.com/mokiat/gomath/sprec"
 	"github.com/mokiat/lacking/shape"
-	"github.com/mokiat/lacking/spatial"
+	"github.com/mokiat/lacking/util/spatial"
 )
 
 // Body represents a physical body that has physics
