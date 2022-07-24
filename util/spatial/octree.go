@@ -159,7 +159,7 @@ func (t *Octree[T]) visitNodeInHexahedronRegion(node *octreeNode[T], region *Hex
 func (t *Octree[T]) add(item *OctreeItem[T]) {
 	bestNode := t.root
 	depth := 0
-	parentSize := t.size
+	parentSize := t.size * 2
 	for node := bestNode; node != nil; node = t.pickChildNode(node, parentSize, item, depth) {
 		bestNode = node
 		parentSize /= 2
