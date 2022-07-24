@@ -19,6 +19,11 @@ func (h *Heap[T]) IsEmpty() bool {
 	return len(h.items) == 0
 }
 
+// Clear removes all items from this Heap.
+func (h *Heap[T]) Clear() {
+	h.items = h.items[:0]
+}
+
 // Push adds a new item to this Heap.
 func (h *Heap[T]) Push(value T) {
 	h.items = append(h.items, value)

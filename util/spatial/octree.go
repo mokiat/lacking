@@ -67,17 +67,31 @@ func (r *VisitorBucket[T]) Items() []T {
 }
 
 // NewOctree creates a new Octree instance using the specified size and depth.
-func NewOctree[T any](size float32, depth int) *Octree[T] {
-	return &Octree[T]{
-		pool:  datastruct.NewDynamicPool[OctreeItem[T]](),
-		depth: depth,
-		root: &octreeNode[T]{
-			size: size,
-			head: &OctreeItem[T]{
-				position: sprec.ZeroVec3(),
-				radius:   size * sizeToDoubleRadius,
-			},
+func NewOctree[T any](size float32, depth, capacity int) *Octree[T] {
+	var (
+		nodePool datastruct.Pool[octreeNode[T]]
+		itemPool datastruct.Pool[OctreeItem[T]]
+	)
+	if capacity > 0 {
+		nodePool = datastruct.NewStaticPool[octreeNode[T]](capacity)
+		itemPool = datastruct.NewStaticPool[OctreeItem[T]](capacity)
+	} else {
+		nodePool = datastruct.NewDynamicPool[octreeNode[T]]()
+		itemPool = datastruct.NewDynamicPool[OctreeItem[T]]()
+	}
+	root := nodePool.Fetch()
+	*root = octreeNode[T]{
+		head: &OctreeItem[T]{
+			position: sprec.ZeroVec3(),
+			radius:   size * sizeToDoubleRadius,
 		},
+	}
+	return &Octree[T]{
+		size:     size,
+		depth:    depth,
+		nodePool: nodePool,
+		itemPool: itemPool,
+		root:     root,
 	}
 }
 
@@ -87,9 +101,11 @@ func NewOctree[T any](size float32, depth int) *Octree[T] {
 //
 // This particular implementation uses the loose octree approach.
 type Octree[T any] struct {
-	pool  datastruct.Pool[OctreeItem[T]]
-	depth int
-	root  *octreeNode[T]
+	size     float32
+	depth    int
+	nodePool datastruct.Pool[octreeNode[T]]
+	itemPool datastruct.Pool[OctreeItem[T]]
+	root     *octreeNode[T]
 }
 
 // PrintDebug prints basic information that can be used for troubleshooting and
@@ -104,7 +120,7 @@ func (t *Octree[T]) PrintDebug() {
 
 // CreateItem creates and positions a new item in this Octree.
 func (t *Octree[T]) CreateItem(value T) *OctreeItem[T] {
-	item := t.pool.Fetch()
+	item := t.itemPool.Fetch()
 	*item = OctreeItem[T]{
 		tree:     t,
 		position: sprec.ZeroVec3(),
@@ -115,6 +131,9 @@ func (t *Octree[T]) CreateItem(value T) *OctreeItem[T] {
 	return item
 }
 
+// VisitHexahedronRegion finds all items that are inside or intersect the
+// specified hexahedron region. It calls the specified visitor for each found
+// item.
 func (t *Octree[T]) VisitHexahedronRegion(region *HexahedronRegion, visitor Visitor[T]) {
 	visitor.Reset()
 	t.visitNodeInHexahedronRegion(t.root, region, visitor)
@@ -140,8 +159,10 @@ func (t *Octree[T]) visitNodeInHexahedronRegion(node *octreeNode[T], region *Hex
 func (t *Octree[T]) add(item *OctreeItem[T]) {
 	bestNode := t.root
 	depth := 0
-	for node := bestNode; node != nil; node = t.pickChildNode(node, item, depth) {
+	parentSize := t.size
+	for node := bestNode; node != nil; node = t.pickChildNode(node, parentSize, item, depth) {
 		bestNode = node
+		parentSize /= 2
 		depth++
 	}
 	item.next = bestNode.head.next
@@ -163,12 +184,12 @@ func (t *Octree[T]) remove(item *OctreeItem[T]) {
 	item.next = nil
 }
 
-func (t *Octree[T]) pickChildNode(parent *octreeNode[T], item *OctreeItem[T], depth int) *octreeNode[T] {
+func (t *Octree[T]) pickChildNode(parent *octreeNode[T], parentSize float32, item *OctreeItem[T], depth int) *octreeNode[T] {
 	if depth >= t.depth {
 		return nil // there are no children nodes
 	}
 
-	childSize := parent.size / 2.0
+	childSize := parentSize / 2.0
 	childHalfSize := childSize / 2.0
 	if item.radius > childHalfSize {
 		return nil // no child will be able to fit this
@@ -203,8 +224,8 @@ func (t *Octree[T]) pickChildNode(parent *octreeNode[T], item *OctreeItem[T], de
 		return parent.children[childIndex]
 	}
 
-	childNode := &octreeNode[T]{
-		size: childSize,
+	childNode := t.nodePool.Fetch()
+	*childNode = octreeNode[T]{
 		head: &OctreeItem[T]{
 			position: childPosition,
 			radius:   childSize * sizeToDoubleRadius,
@@ -241,7 +262,7 @@ type OctreeItem[T any] struct {
 // Delete removes this item from its Octree.
 func (i *OctreeItem[T]) Delete() {
 	i.tree.remove(i)
-	i.tree.pool.Restore(i)
+	i.tree.itemPool.Restore(i)
 	i.tree = nil
 }
 
@@ -279,16 +300,16 @@ func (i *OctreeItem[T]) invalidate() {
 }
 
 func (i *OctreeItem[T]) isInsideHexahedronRegion(region *HexahedronRegion) bool {
-	return region[0].ContainsSphere(i.position, i.radius) &&
-		region[1].ContainsSphere(i.position, i.radius) &&
-		region[2].ContainsSphere(i.position, i.radius) &&
-		region[3].ContainsSphere(i.position, i.radius) &&
-		region[4].ContainsSphere(i.position, i.radius) &&
-		region[5].ContainsSphere(i.position, i.radius)
+	position, radius := i.position, i.radius
+	return region[0].ContainsSphere(position, radius) &&
+		region[1].ContainsSphere(position, radius) &&
+		region[2].ContainsSphere(position, radius) &&
+		region[3].ContainsSphere(position, radius) &&
+		region[4].ContainsSphere(position, radius) &&
+		region[5].ContainsSphere(position, radius)
 }
 
 type octreeNode[T any] struct {
-	size     float32
 	children [8]*octreeNode[T]
 	head     *OctreeItem[T]
 }

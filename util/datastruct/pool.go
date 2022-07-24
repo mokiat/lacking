@@ -42,12 +42,11 @@ func (p *DynamicPool[T]) Restore(v *T) {
 // capacity.
 func NewStaticPool[T any](capacity int) *StaticPool[T] {
 	result := &StaticPool[T]{
-		items:       make([]T, capacity),
-		freeIndices: NewStack[int](capacity),
-		refToIndex:  make(map[*T]int),
+		items: make([]*T, capacity),
 	}
-	for i := capacity - 1; i >= 0; i-- {
-		result.freeIndices.Push(i)
+	flat := make([]T, capacity)
+	for i := 0; i < len(flat); i++ {
+		result.items[i] = &flat[i]
 	}
 	return result
 }
@@ -57,19 +56,16 @@ var _ Pool[any] = (*StaticPool[any])(nil)
 // StaticPool is an implementation of Pool that tries to allocate items
 // next to each other for improved cache locality.
 type StaticPool[T any] struct {
-	items       []T
-	freeIndices *Stack[int]
-	refToIndex  map[*T]int
+	items []*T
 }
 
 func (p *StaticPool[T]) Fetch() *T {
-	freeIndex := p.freeIndices.Pop()
-	result := &p.items[freeIndex]
-	p.refToIndex[result] = freeIndex
+	count := len(p.items)
+	result := p.items[count-1]
+	p.items = p.items[:count-1]
 	return result
 }
 
 func (p *StaticPool[T]) Restore(v *T) {
-	index := p.refToIndex[v]
-	p.freeIndices.Push(index)
+	p.items = append(p.items, v)
 }
