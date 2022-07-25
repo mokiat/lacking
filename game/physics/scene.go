@@ -13,7 +13,7 @@ const (
 
 func newScene(stepSeconds float32) *Scene {
 	return &Scene{
-		bodyOctree: spatial.NewOctree[*Body](16000.0, 8, 2_000_000),
+		bodyOctree: spatial.NewOctree[*Body](32000.0, 9, 2_000_000),
 
 		dynamicBodies: make(map[*Body]struct{}),
 
