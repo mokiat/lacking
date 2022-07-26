@@ -1,6 +1,6 @@
 package spatial
 
-import "github.com/mokiat/gomath/sprec"
+import "github.com/mokiat/gomath/dprec"
 
 // Plane represents a plane that can be used to split a 3D space
 // into two sub-spaces. It is represented through the mathematical formula
@@ -11,13 +11,13 @@ import "github.com/mokiat/gomath/sprec"
 // considered to lay on the plane. A positive value indicates that the point
 // is inside the sub-region defined by the plane. A negative value indicates
 // that the point is outside the sub-region.
-type Plane sprec.Vec4
+type Plane dprec.Vec4
 
 // ContainsPoint checks whether a point with the specified position
 // is inside the sub-region of this Plane or at least partailly inside.
 //
 // The Plane need not be normalized.
-func (p Plane) ContainsPoint(position sprec.Vec3) bool {
+func (p Plane) ContainsPoint(position dprec.Vec3) bool {
 	return p.X*position.X+p.Y*position.Y+p.Z*position.Z+p.W >= 0.0
 }
 
@@ -25,7 +25,7 @@ func (p Plane) ContainsPoint(position sprec.Vec3) bool {
 // is inside the sub-region of this Plane or at least partailly inside.
 //
 // For this method to work, the Plane must be normalized.
-func (p Plane) ContainsSphere(position sprec.Vec3, radius float32) bool {
+func (p Plane) ContainsSphere(position dprec.Vec3, radius float64) bool {
 	return p.X*position.X+p.Y*position.Y+p.Z*position.Z+p.W >= -radius
 }
 
@@ -35,10 +35,10 @@ func (p Plane) ContainsSphere(position sprec.Vec3, radius float32) bool {
 // Normalized clipping planes produce correct distances to the plane when
 // multiplied (dot product) by a 4D positional vector.
 func (p Plane) Normalized() Plane {
-	normal := sprec.NewVec3(p.X, p.Y, p.Z)
+	normal := dprec.NewVec3(p.X, p.Y, p.Z)
 	distance := p.W
 	correction := 1.0 / normal.Length()
-	return Plane(sprec.NewVec4(
+	return Plane(dprec.NewVec4(
 		normal.X*correction,
 		normal.Y*correction,
 		normal.Z*correction,
