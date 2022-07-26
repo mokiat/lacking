@@ -1,19 +1,24 @@
 package shape
 
-func NewStaticSphere(radius float32) StaticSphere {
+// NewStaticSphere returns a new StaticSphere.
+func NewStaticSphere(radius float64) StaticSphere {
 	return StaticSphere{
 		radius: radius,
 	}
 }
 
+// StaticSphere represents a 3D sphere that cannot be resized.
 type StaticSphere struct {
-	radius float32
+	radius float64
 }
 
-func (s StaticSphere) BoundingSphereRadius() float32 {
+// BoundingSphereRadius returns the radius of a sphere that can encompass
+// this shape.
+func (s StaticSphere) BoundingSphereRadius() float64 {
 	return s.radius
 }
 
-func (s StaticSphere) Radius() float32 {
+// Radius returns the radius of the sphere.
+func (s StaticSphere) Radius() float64 {
 	return s.radius
 }

@@ -1,33 +1,39 @@
 package shape
 
-import "github.com/mokiat/gomath/sprec"
+import "github.com/mokiat/gomath/dprec"
 
-func NewStaticBox(width, height, length float32) StaticBox {
+// NewStaticBox creates a new StaticBox shape.
+func NewStaticBox(width, height, length float64) StaticBox {
+	size := dprec.NewVec3(width, height, length)
 	return StaticBox{
-		width:  width,
-		height: height,
-		length: length,
+		size:     size,
+		bsRadius: size.Length() / 2.0,
 	}
 }
 
+// StaticBox represents a box shape that cannot be resized.
 type StaticBox struct {
-	width  float32
-	height float32
-	length float32
+	size     dprec.Vec3
+	bsRadius float64
 }
 
-func (b StaticBox) BoundingSphereRadius() float32 {
-	return sprec.Sqrt(b.Width()*b.Width()+b.Height()*b.Height()+b.Length()*b.Length()) / 2.0
+// BoundingSphereRadius returns the radius of a sphere that can encompass
+// this shape.
+func (b StaticBox) BoundingSphereRadius() float64 {
+	return b.bsRadius
 }
 
-func (b StaticBox) Width() float32 {
-	return b.width
+// Width returns the width of this box.
+func (b StaticBox) Width() float64 {
+	return b.size.X
 }
 
-func (b StaticBox) Height() float32 {
-	return b.height
+// Height returns the height of this box.
+func (b StaticBox) Height() float64 {
+	return b.size.Y
 }
 
-func (b StaticBox) Length() float32 {
-	return b.length
+// Length returns the length of this box.
+func (b StaticBox) Length() float64 {
+	return b.size.Z
 }

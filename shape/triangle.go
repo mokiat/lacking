@@ -1,8 +1,9 @@
 package shape
 
-import "github.com/mokiat/gomath/sprec"
+import "github.com/mokiat/gomath/dprec"
 
-func NewStaticTriangle(a, b, c sprec.Vec3) StaticTriangle {
+// NewStaticTriangle creates a new StaticTriangle.
+func NewStaticTriangle(a, b, c dprec.Vec3) StaticTriangle {
 	return StaticTriangle{
 		a: a,
 		b: b,
@@ -10,49 +11,63 @@ func NewStaticTriangle(a, b, c sprec.Vec3) StaticTriangle {
 	}
 }
 
+// StaticTriangle represents a tringle in 3D space.
 type StaticTriangle struct {
-	a sprec.Vec3
-	b sprec.Vec3
-	c sprec.Vec3
+	a dprec.Vec3
+	b dprec.Vec3
+	c dprec.Vec3
 }
 
-func (t StaticTriangle) Transformed(translation sprec.Vec3, rotation sprec.Quat) StaticTriangle {
+// Transformed returns a new StaticTriangle that is the result of applying
+// the specified rotation and translation to the current triangle.
+func (t StaticTriangle) Transformed(translation dprec.Vec3, rotation dprec.Quat) StaticTriangle {
 	return StaticTriangle{
-		a: sprec.Vec3Sum(translation, sprec.QuatVec3Rotation(rotation, t.a)),
-		b: sprec.Vec3Sum(translation, sprec.QuatVec3Rotation(rotation, t.b)),
-		c: sprec.Vec3Sum(translation, sprec.QuatVec3Rotation(rotation, t.c)),
+		a: dprec.Vec3Sum(translation, dprec.QuatVec3Rotation(rotation, t.a)),
+		b: dprec.Vec3Sum(translation, dprec.QuatVec3Rotation(rotation, t.b)),
+		c: dprec.Vec3Sum(translation, dprec.QuatVec3Rotation(rotation, t.c)),
 	}
 }
 
-func (t StaticTriangle) A() sprec.Vec3 {
+// A returns the first corner of the triangle.
+func (t StaticTriangle) A() dprec.Vec3 {
 	return t.a
 }
 
-func (t StaticTriangle) B() sprec.Vec3 {
+// B returns the second corner of the triangle.
+func (t StaticTriangle) B() dprec.Vec3 {
 	return t.b
 }
 
-func (t StaticTriangle) C() sprec.Vec3 {
+// C returns the third corner of the triangle.
+func (t StaticTriangle) C() dprec.Vec3 {
 	return t.c
 }
 
-func (t StaticTriangle) Normal() sprec.Vec3 {
-	vecAB := sprec.Vec3Diff(t.b, t.a)
-	vecAC := sprec.Vec3Diff(t.c, t.a)
-	return sprec.UnitVec3(sprec.Vec3Cross(vecAB, vecAC))
+// Normal returns the orientation of the triangle's surface.
+func (t StaticTriangle) Normal() dprec.Vec3 {
+	vecAB := dprec.Vec3Diff(t.b, t.a)
+	vecAC := dprec.Vec3Diff(t.c, t.a)
+	return dprec.UnitVec3(dprec.Vec3Cross(vecAB, vecAC))
 }
 
-func (t StaticTriangle) Area() float32 {
-	vecAB := sprec.Vec3Diff(t.b, t.a)
-	vecAC := sprec.Vec3Diff(t.c, t.a)
-	return sprec.Vec3Cross(vecAB, vecAC).Length() / 2.0
+// Area returns the triangle's surface area.
+func (t StaticTriangle) Area() float64 {
+	vecAB := dprec.Vec3Diff(t.b, t.a)
+	vecAC := dprec.Vec3Diff(t.c, t.a)
+	return dprec.Vec3Cross(vecAB, vecAC).Length() / 2.0
 }
 
-func (t StaticTriangle) IsLookingTowards(direction sprec.Vec3) bool {
-	return sprec.Vec3Dot(t.Normal(), direction) > 0.0
+// IsLookingTowards checks whether the orientation of the triangle looks towards
+// the same hemisphere as the provided direction.
+func (t StaticTriangle) IsLookingTowards(direction dprec.Vec3) bool {
+	return dprec.Vec3Dot(t.Normal(), direction) > 0.0
 }
 
-func (t StaticTriangle) ContainsPoint(point sprec.Vec3) bool {
+// ContainsPoint checks whether the specified point is is inside the triangle.
+//
+// Beware, currently this method assumes that the point lies somewhere on the
+// surface plane of the triangle.
+func (t StaticTriangle) ContainsPoint(point dprec.Vec3) bool {
 	normal := t.Normal()
 	if triangleABP := NewStaticTriangle(t.a, t.b, point); !triangleABP.IsLookingTowards(normal) {
 		return false
