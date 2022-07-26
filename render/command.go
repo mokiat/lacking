@@ -13,5 +13,6 @@ type CommandQueue interface {
 	Draw(vertexOffset, vertexCount, instanceCount int)
 	DrawIndexed(indexOffset, indexCount, instanceCount int)
 	CopyContentToBuffer(info CopyContentToBufferInfo)
+	UpdateBufferData(buffer Buffer, info BufferUpdateInfo)
 	Release()
 }
