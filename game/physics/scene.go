@@ -1,8 +1,8 @@
 package physics
 
 import (
-	"github.com/mokiat/gomath/sprec"
-	"github.com/mokiat/lacking/shape"
+	"github.com/mokiat/gomath/dprec"
+	"github.com/mokiat/lacking/util/shape"
 	"github.com/mokiat/lacking/util/spatial"
 )
 
@@ -11,7 +11,7 @@ const (
 	defaultNudgeIterations   = 100
 )
 
-func newScene(stepSeconds float32) *Scene {
+func newScene(stepSeconds float64) *Scene {
 	return &Scene{
 		bodyOctree: spatial.NewOctree[*Body](32000.0, 9, 2_000_000),
 
@@ -23,13 +23,13 @@ func newScene(stepSeconds float32) *Scene {
 
 		maxAcceleration:        200.0, // TODO: Measure something reasonable
 		maxAngularAcceleration: 200.0, // TODO: Measure something reasonable
-		maxVelocity:            500.0,
-		maxAngularVelocity:     500.0, // TODO: Measure something reasonable
+		maxVelocity:            2000.0,
+		maxAngularVelocity:     2000.0, // TODO: Measure something reasonable
 
 		intersectionSet: shape.NewIntersectionResultSet(128),
 
-		gravity:      sprec.NewVec3(0.0, -9.8, 0.0),
-		windVelocity: sprec.NewVec3(0.0, 0.0, 0.0),
+		gravity:      dprec.NewVec3(0.0, -9.8, 0.0),
+		windVelocity: dprec.NewVec3(0.0, 0.0, 0.0),
 		windDensity:  1.2,
 	}
 }
@@ -40,13 +40,13 @@ func newScene(stepSeconds float32) *Scene {
 type Scene struct {
 	bodyOctree *spatial.Octree[*Body]
 
-	stepSeconds            float32
+	stepSeconds            float64
 	impulseIterations      int
 	nudgeIterations        int
-	maxAcceleration        float32
-	maxAngularAcceleration float32
-	maxVelocity            float32
-	maxAngularVelocity     float32
+	maxAcceleration        float64
+	maxAngularAcceleration float64
+	maxVelocity            float64
+	maxAngularVelocity     float64
 
 	dynamicBodies map[*Body]struct{}
 	firstBody     *Body
@@ -65,38 +65,38 @@ type Scene struct {
 	collisionSolvers     []groundCollisionSolver
 	intersectionSet      *shape.IntersectionResultSet
 
-	gravity      sprec.Vec3
-	windVelocity sprec.Vec3
-	windDensity  float32
+	gravity      dprec.Vec3
+	windVelocity dprec.Vec3
+	windDensity  float64
 }
 
 // Gravity returns the gravity acceleration.
-func (s *Scene) Gravity() sprec.Vec3 {
+func (s *Scene) Gravity() dprec.Vec3 {
 	return s.gravity
 }
 
 // SetGravity changes the gravity acceleration.
-func (s *Scene) SetGravity(gravity sprec.Vec3) {
+func (s *Scene) SetGravity(gravity dprec.Vec3) {
 	s.gravity = gravity
 }
 
 // WindVelocity returns the wind speed.
-func (s *Scene) WindVelocity() sprec.Vec3 {
+func (s *Scene) WindVelocity() dprec.Vec3 {
 	return s.windVelocity
 }
 
 // SetWindVelocity sets the wind speed.
-func (s *Scene) SetWindVelocity(velocity sprec.Vec3) {
+func (s *Scene) SetWindVelocity(velocity dprec.Vec3) {
 	s.windVelocity = velocity
 }
 
 // WindDensity returns the wind density.
-func (s *Scene) WindDensity() float32 {
+func (s *Scene) WindDensity() float64 {
 	return s.windDensity
 }
 
 // SetWindDensity changes the wind density.
-func (s *Scene) SetWindDensity(density float32) {
+func (s *Scene) SetWindDensity(density float64) {
 	s.windDensity = density
 }
 
@@ -169,7 +169,7 @@ func (s *Scene) CreateDoubleBodyConstraint(primary, secondary *Body, solver DBCo
 // Update runs a number of physics iterations
 // until the specified number of seconds worth
 // of simulation have passed.
-func (s *Scene) Update(elapsedSeconds float32) {
+func (s *Scene) Update(elapsedSeconds float64) {
 	for elapsedSeconds > s.stepSeconds {
 		s.runSimulation(s.stepSeconds)
 		elapsedSeconds -= s.stepSeconds
@@ -293,7 +293,7 @@ func (s *Scene) cacheDBConstraint(constraint *DBConstraint) {
 	s.cachedDBConstraint = constraint
 }
 
-func (s *Scene) runSimulation(elapsedSeconds float32) {
+func (s *Scene) runSimulation(elapsedSeconds float64) {
 	s.resetConstraints(elapsedSeconds)
 	s.applyForces()
 	s.integrate(elapsedSeconds)
@@ -307,7 +307,7 @@ func (s *Scene) runSimulation(elapsedSeconds float32) {
 	s.detectCollisions()
 }
 
-func (s *Scene) resetConstraints(elapsedSeconds float32) {
+func (s *Scene) resetConstraints(elapsedSeconds float64) {
 	for constraint := s.firstSBConstraint; constraint != nil; constraint = constraint.next {
 		constraint.solver.Reset(SBSolverContext{
 			Body:           constraint.body,
@@ -330,30 +330,30 @@ func (s *Scene) applyForces() {
 
 		body.addAcceleration(s.gravity)
 
-		deltaWindVelocity := sprec.Vec3Diff(s.windVelocity, body.velocity)
-		dragForce := sprec.Vec3Prod(deltaWindVelocity, deltaWindVelocity.Length()*s.windDensity*body.dragFactor)
+		deltaWindVelocity := dprec.Vec3Diff(s.windVelocity, body.velocity)
+		dragForce := dprec.Vec3Prod(deltaWindVelocity, deltaWindVelocity.Length()*s.windDensity*body.dragFactor)
 		body.applyForce(dragForce)
 
-		angularDragForce := sprec.Vec3Prod(body.angularVelocity, -body.angularVelocity.Length()*s.windDensity*body.angularDragFactor)
+		angularDragForce := dprec.Vec3Prod(body.angularVelocity, -body.angularVelocity.Length()*s.windDensity*body.angularDragFactor)
 		body.applyTorque(angularDragForce)
 	}
 
 	// TODO: Apply custom force fields
 }
 
-func (s *Scene) integrate(elapsedSeconds float32) {
+func (s *Scene) integrate(elapsedSeconds float64) {
 	for body := range s.dynamicBodies {
 		body.clampAcceleration(s.maxAcceleration)
 		body.clampAngularAcceleration(s.maxAngularAcceleration)
 
-		deltaVelocity := sprec.Vec3Prod(body.acceleration, elapsedSeconds)
+		deltaVelocity := dprec.Vec3Prod(body.acceleration, elapsedSeconds)
 		body.addVelocity(deltaVelocity)
-		deltaAngularVelocity := sprec.Vec3Prod(body.angularAcceleration, elapsedSeconds)
+		deltaAngularVelocity := dprec.Vec3Prod(body.angularAcceleration, elapsedSeconds)
 		body.addAngularVelocity(deltaAngularVelocity)
 	}
 }
 
-func (s *Scene) applyImpulses(elapsedSeconds float32) {
+func (s *Scene) applyImpulses(elapsedSeconds float64) {
 	for constraint := s.firstDBConstraint; constraint != nil; constraint = constraint.next {
 		solution := constraint.solver.CalculateImpulses(DBSolverContext{
 			Primary:        constraint.primary,
@@ -375,19 +375,19 @@ func (s *Scene) applyImpulses(elapsedSeconds float32) {
 	}
 }
 
-func (s *Scene) applyMotion(elapsedSeconds float32) {
+func (s *Scene) applyMotion(elapsedSeconds float64) {
 	for body := range s.dynamicBodies {
 		body.clampVelocity(s.maxVelocity)
 		body.clampAngularVelocity(s.maxAngularVelocity)
 
-		deltaPosition := sprec.Vec3Prod(body.velocity, elapsedSeconds)
+		deltaPosition := dprec.Vec3Prod(body.velocity, elapsedSeconds)
 		body.translate(deltaPosition)
-		deltaRotation := sprec.Vec3Prod(body.angularVelocity, elapsedSeconds)
+		deltaRotation := dprec.Vec3Prod(body.angularVelocity, elapsedSeconds)
 		body.vectorRotate(deltaRotation)
 	}
 }
 
-func (s *Scene) applyNudges(elapsedSeconds float32) {
+func (s *Scene) applyNudges(elapsedSeconds float64) {
 	for constraint := s.firstDBConstraint; constraint != nil; constraint = constraint.next {
 		solution := constraint.solver.CalculateNudges(DBSolverContext{
 			Primary:        constraint.primary,
@@ -419,7 +419,10 @@ func (s *Scene) detectCollisions() {
 	for primary := range s.dynamicBodies {
 		// FIXME: 50 is hardcoded range. Also, consider using a SphericalRegion
 		// instead, once BoundingSphereRadius is exposed from CollisionShape.
-		region := spatial.CuboidRegion(primary.position, sprec.NewVec3(50, 50, 50))
+		region := spatial.CuboidRegion(
+			primary.position,
+			dprec.NewVec3(50, 50, 50),
+		)
 
 		s.bodyOctree.VisitHexahedronRegion(&region, spatial.VisitorFunc[*Body](func(secondary *Body) {
 			if secondary == primary {

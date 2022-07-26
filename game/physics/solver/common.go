@@ -1,6 +1,6 @@
 package solver
 
 const (
-	epsilon    = float32(0.001)
+	epsilon    = float64(0.00001)
 	sqrEpsilon = epsilon * epsilon
 )

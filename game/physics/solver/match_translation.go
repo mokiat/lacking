@@ -1,7 +1,7 @@
 package solver
 
 import (
-	"github.com/mokiat/gomath/sprec"
+	"github.com/mokiat/gomath/dprec"
 	"github.com/mokiat/lacking/game/physics"
 )
 
@@ -21,7 +21,7 @@ func NewMatchTranslation() *MatchTranslation {
 type MatchTranslation struct {
 	*physics.DBJacobianConstraintSolver
 
-	primaryAnchor sprec.Vec3
+	primaryAnchor dprec.Vec3
 	ignoreX       bool
 	ignoreY       bool
 	ignoreZ       bool
@@ -29,13 +29,13 @@ type MatchTranslation struct {
 
 // PrimaryAnchor returns the attachment point on the primary
 // body to which the secondary will match.
-func (t *MatchTranslation) PrimaryAnchor() sprec.Vec3 {
+func (t *MatchTranslation) PrimaryAnchor() dprec.Vec3 {
 	return t.primaryAnchor
 }
 
 // SetPrimaryAnchor changes the attachment point on the primary
 // body.
-func (t *MatchTranslation) SetPrimaryAnchor(anchor sprec.Vec3) *MatchTranslation {
+func (t *MatchTranslation) SetPrimaryAnchor(anchor dprec.Vec3) *MatchTranslation {
 	t.primaryAnchor = anchor
 	return t
 }
@@ -79,43 +79,43 @@ func (t *MatchTranslation) SetIgnoreZ(ignore bool) *MatchTranslation {
 	return t
 }
 
-func (t *MatchTranslation) calculate(ctx physics.DBSolverContext) (physics.PairJacobian, float32) {
-	firstRadiusWS := sprec.QuatVec3Rotation(ctx.Primary.Orientation(), t.primaryAnchor)
-	firstAnchorWS := sprec.Vec3Sum(ctx.Primary.Position(), firstRadiusWS)
-	deltaPosition := sprec.Vec3Diff(ctx.Secondary.Position(), firstAnchorWS)
+func (t *MatchTranslation) calculate(ctx physics.DBSolverContext) (physics.PairJacobian, float64) {
+	firstRadiusWS := dprec.QuatVec3Rotation(ctx.Primary.Orientation(), t.primaryAnchor)
+	firstAnchorWS := dprec.Vec3Sum(ctx.Primary.Position(), firstRadiusWS)
+	deltaPosition := dprec.Vec3Diff(ctx.Secondary.Position(), firstAnchorWS)
 	if t.ignoreX {
-		deltaPosition = sprec.Vec3Diff(deltaPosition, sprec.Vec3Prod(ctx.Primary.Orientation().OrientationX(), sprec.Vec3Dot(deltaPosition, ctx.Primary.Orientation().OrientationX())))
+		deltaPosition = dprec.Vec3Diff(deltaPosition, dprec.Vec3Prod(ctx.Primary.Orientation().OrientationX(), dprec.Vec3Dot(deltaPosition, ctx.Primary.Orientation().OrientationX())))
 	}
 	if t.ignoreY {
-		deltaPosition = sprec.Vec3Diff(deltaPosition, sprec.Vec3Prod(ctx.Primary.Orientation().OrientationY(), sprec.Vec3Dot(deltaPosition, ctx.Primary.Orientation().OrientationY())))
+		deltaPosition = dprec.Vec3Diff(deltaPosition, dprec.Vec3Prod(ctx.Primary.Orientation().OrientationY(), dprec.Vec3Dot(deltaPosition, ctx.Primary.Orientation().OrientationY())))
 	}
 	if t.ignoreZ {
-		deltaPosition = sprec.Vec3Diff(deltaPosition, sprec.Vec3Prod(ctx.Primary.Orientation().OrientationZ(), sprec.Vec3Dot(deltaPosition, ctx.Primary.Orientation().OrientationZ())))
+		deltaPosition = dprec.Vec3Diff(deltaPosition, dprec.Vec3Prod(ctx.Primary.Orientation().OrientationZ(), dprec.Vec3Dot(deltaPosition, ctx.Primary.Orientation().OrientationZ())))
 	}
-	normal := sprec.BasisXVec3()
+	normal := dprec.BasisXVec3()
 	if deltaPosition.SqrLength() > sqrEpsilon {
-		normal = sprec.UnitVec3(deltaPosition)
+		normal = dprec.UnitVec3(deltaPosition)
 	}
 	return physics.PairJacobian{
 			Primary: physics.Jacobian{
-				SlopeVelocity: sprec.NewVec3(
+				SlopeVelocity: dprec.NewVec3(
 					-normal.X,
 					-normal.Y,
 					-normal.Z,
 				),
-				SlopeAngularVelocity: sprec.NewVec3(
+				SlopeAngularVelocity: dprec.NewVec3(
 					-(normal.Z*firstRadiusWS.Y - normal.Y*firstRadiusWS.Z),
 					-(normal.X*firstRadiusWS.Z - normal.Z*firstRadiusWS.X),
 					-(normal.Y*firstRadiusWS.X - normal.X*firstRadiusWS.Y),
 				),
 			},
 			Secondary: physics.Jacobian{
-				SlopeVelocity: sprec.NewVec3(
+				SlopeVelocity: dprec.NewVec3(
 					normal.X,
 					normal.Y,
 					normal.Z,
 				),
-				SlopeAngularVelocity: sprec.ZeroVec3(),
+				SlopeAngularVelocity: dprec.ZeroVec3(),
 			},
 		},
 		deltaPosition.Length()

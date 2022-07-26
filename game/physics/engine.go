@@ -12,6 +12,6 @@ type Engine struct{}
 // CreateScene creates a new Scene and configures
 // the simulation for it to run at maximum stepSeconds
 // intervals.
-func (e *Engine) CreateScene(stepSeconds float32) *Scene {
+func (e *Engine) CreateScene(stepSeconds float64) *Scene {
 	return newScene(stepSeconds)
 }

@@ -1,8 +1,7 @@
 package physics
 
 import (
-	"github.com/mokiat/gomath/sprec"
-	"github.com/mokiat/lacking/shape"
+	"github.com/mokiat/gomath/dprec"
 	"github.com/mokiat/lacking/util/spatial"
 )
 
@@ -17,20 +16,20 @@ type Body struct {
 	name string
 
 	static                 bool
-	mass                   float32
-	momentOfInertia        sprec.Mat3
-	restitutionCoefficient float32
-	dragFactor             float32
-	angularDragFactor      float32
+	mass                   float64
+	momentOfInertia        dprec.Mat3
+	restitutionCoefficient float64
+	dragFactor             float64
+	angularDragFactor      float64
 
-	position    sprec.Vec3
-	orientation sprec.Quat
+	position    dprec.Vec3
+	orientation dprec.Quat
 
-	acceleration        sprec.Vec3
-	angularAcceleration sprec.Vec3
+	acceleration        dprec.Vec3
+	angularAcceleration dprec.Vec3
 
-	velocity        sprec.Vec3
-	angularVelocity sprec.Vec3
+	velocity        dprec.Vec3
+	angularVelocity dprec.Vec3
 
 	collisionShapes   []CollisionShape
 	aerodynamicShapes []AerodynamicShape
@@ -62,24 +61,24 @@ func (b *Body) SetStatic(static bool) {
 }
 
 // Mass returns the mass of this body in kg.
-func (b *Body) Mass() float32 {
+func (b *Body) Mass() float64 {
 	return b.mass
 }
 
 // SetMass changes the mass of this body.
-func (b *Body) SetMass(mass float32) {
+func (b *Body) SetMass(mass float64) {
 	b.mass = mass
 }
 
 // MomentOfInertia returns the moment of inertia, or
 // rotational inertia of this body.
-func (b *Body) MomentOfInertia() sprec.Mat3 {
+func (b *Body) MomentOfInertia() dprec.Mat3 {
 	return b.momentOfInertia
 }
 
 // SetMomentOfInertia changes the moment of inertia
 // of this body.
-func (b *Body) SetMomentOfInertia(inertia sprec.Mat3) {
+func (b *Body) SetMomentOfInertia(inertia dprec.Mat3) {
 	b.momentOfInertia = inertia
 }
 
@@ -92,31 +91,31 @@ func (b *Body) SetMomentOfInertia(inertia sprec.Mat3) {
 // coefficients of both bodies colliding. Furthermore,
 // due to computational errors, the bounce will eventually
 // stop.
-func (b *Body) RestitutionCoefficient() float32 {
+func (b *Body) RestitutionCoefficient() float64 {
 	return b.restitutionCoefficient
 }
 
 // SetRestitutionCoefficient changes the restitution
 // coefficient for this body.
-func (b *Body) SetRestitutionCoefficient(coefficient float32) {
+func (b *Body) SetRestitutionCoefficient(coefficient float64) {
 	b.restitutionCoefficient = coefficient
 }
 
 // DragCoefficient returns the drag factor of this body.
-func (b *Body) DragFactor() float32 {
+func (b *Body) DragFactor() float64 {
 	return b.dragFactor
 }
 
 // SetDragFactor sets the drag factor for this body.
 // The drag factor is the drag coefficient multiplied
 // by the area and divided in half.
-func (b *Body) SetDragFactor(factor float32) {
+func (b *Body) SetDragFactor(factor float64) {
 	b.dragFactor = factor
 }
 
 // AngularDragFactor returns the angular drag factor
 // for this body.
-func (b *Body) AngularDragFactor() float32 {
+func (b *Body) AngularDragFactor() float64 {
 	return b.angularDragFactor
 }
 
@@ -124,53 +123,53 @@ func (b *Body) AngularDragFactor() float32 {
 // The angular factor is similar to the drag factor, except
 // that it deals with the drag induced by the rotation of
 // the body.
-func (b *Body) SetAngularDragFactor(factor float32) {
+func (b *Body) SetAngularDragFactor(factor float64) {
 	b.angularDragFactor = factor
 }
 
 // Position returns the body's position in world
 // space.
-func (b *Body) Position() sprec.Vec3 {
+func (b *Body) Position() dprec.Vec3 {
 	return b.position
 }
 
 // SetPosition changes the position of this body.
-func (b *Body) SetPosition(position sprec.Vec3) {
+func (b *Body) SetPosition(position dprec.Vec3) {
 	b.position = position
 	b.item.SetPosition(position)
 }
 
 // Orientation returns the quaternion rotation
 // of this body.
-func (b *Body) Orientation() sprec.Quat {
+func (b *Body) Orientation() dprec.Quat {
 	return b.orientation
 }
 
 // SetOrientation changes the quaterntion rotation
 // of this body.
-func (b *Body) SetOrientation(orientation sprec.Quat) {
+func (b *Body) SetOrientation(orientation dprec.Quat) {
 	b.orientation = orientation
 }
 
 // Velocity returns the velocity of this body.
-func (b *Body) Velocity() sprec.Vec3 {
+func (b *Body) Velocity() dprec.Vec3 {
 	return b.velocity
 }
 
 // SetVelocity changes the velocity of this body.
-func (b *Body) SetVelocity(velocity sprec.Vec3) {
+func (b *Body) SetVelocity(velocity dprec.Vec3) {
 	b.velocity = velocity
 }
 
 // AngularVelocity returns the angular velocity
 // of this body.
-func (b *Body) AngularVelocity() sprec.Vec3 {
+func (b *Body) AngularVelocity() dprec.Vec3 {
 	return b.angularVelocity
 }
 
 // SetAngularVelocity changes the angular velocity
 // of this body.
-func (b *Body) SetAngularVelocity(angularVelocity sprec.Vec3) {
+func (b *Body) SetAngularVelocity(angularVelocity dprec.Vec3) {
 	b.angularVelocity = angularVelocity
 }
 
@@ -183,11 +182,10 @@ func (b *Body) CollisionShapes() []CollisionShape {
 // SetCollisionShapes sets the collision shapes
 // for this body to be used in collision detection.
 func (b *Body) SetCollisionShapes(shapes []CollisionShape) {
-	maxRadius := float32(0.0)
+	maxRadius := float64(0.0)
 	b.collisionShapes = shapes
 	for _, s := range shapes {
-		placement := s.(shape.Placement)
-		maxRadius = sprec.Max(maxRadius, placement.Shape.BoundingSphereRadius()+placement.Position.Length())
+		maxRadius = dprec.Max(maxRadius, s.BoundingSphereRadius())
 	}
 	b.item.SetRadius(maxRadius)
 }
@@ -217,96 +215,96 @@ func (b *Body) Delete() {
 }
 
 func (b *Body) resetAcceleration() {
-	b.acceleration = sprec.ZeroVec3()
+	b.acceleration = dprec.ZeroVec3()
 }
 
-func (b *Body) clampAcceleration(max float32) {
+func (b *Body) clampAcceleration(max float64) {
 	if b.acceleration.SqrLength() > max*max {
-		b.acceleration = sprec.ResizedVec3(b.acceleration, max)
+		b.acceleration = dprec.ResizedVec3(b.acceleration, max)
 	}
 }
 
 func (b *Body) resetAngularAcceleration() {
-	b.angularAcceleration = sprec.ZeroVec3()
+	b.angularAcceleration = dprec.ZeroVec3()
 }
 
-func (b *Body) clampAngularAcceleration(max float32) {
+func (b *Body) clampAngularAcceleration(max float64) {
 	if b.angularAcceleration.SqrLength() > max*max {
-		b.angularAcceleration = sprec.ResizedVec3(b.angularAcceleration, max)
+		b.angularAcceleration = dprec.ResizedVec3(b.angularAcceleration, max)
 	}
 }
 
-func (b *Body) addAcceleration(amount sprec.Vec3) {
-	b.acceleration = sprec.Vec3Sum(b.acceleration, amount)
+func (b *Body) addAcceleration(amount dprec.Vec3) {
+	b.acceleration = dprec.Vec3Sum(b.acceleration, amount)
 }
 
-func (b *Body) addAngularAcceleration(amount sprec.Vec3) {
-	b.angularAcceleration = sprec.Vec3Sum(b.angularAcceleration, amount)
+func (b *Body) addAngularAcceleration(amount dprec.Vec3) {
+	b.angularAcceleration = dprec.Vec3Sum(b.angularAcceleration, amount)
 }
 
-func (b *Body) applyForce(force sprec.Vec3) {
-	b.addAcceleration(sprec.Vec3Quot(force, b.mass))
+func (b *Body) applyForce(force dprec.Vec3) {
+	b.addAcceleration(dprec.Vec3Quot(force, b.mass))
 }
 
-func (b *Body) applyTorque(torque sprec.Vec3) {
+func (b *Body) applyTorque(torque dprec.Vec3) {
 	// FIXME: the moment of intertia is in local space, whereas the torque is in world space
-	b.addAngularAcceleration(sprec.Mat3Vec3Prod(sprec.InverseMat3(b.momentOfInertia), torque))
+	b.addAngularAcceleration(dprec.Mat3Vec3Prod(dprec.InverseMat3(b.momentOfInertia), torque))
 }
 
-func (b *Body) clampVelocity(max float32) {
+func (b *Body) clampVelocity(max float64) {
 	if b.velocity.SqrLength() > max*max {
-		b.velocity = sprec.ResizedVec3(b.velocity, max)
+		b.velocity = dprec.ResizedVec3(b.velocity, max)
 	}
 }
 
-func (b *Body) clampAngularVelocity(max float32) {
+func (b *Body) clampAngularVelocity(max float64) {
 	if b.angularVelocity.SqrLength() > max*max {
-		b.angularVelocity = sprec.ResizedVec3(b.angularVelocity, max)
+		b.angularVelocity = dprec.ResizedVec3(b.angularVelocity, max)
 	}
 }
 
-func (b *Body) addVelocity(amount sprec.Vec3) {
-	b.velocity = sprec.Vec3Sum(b.velocity, amount)
+func (b *Body) addVelocity(amount dprec.Vec3) {
+	b.velocity = dprec.Vec3Sum(b.velocity, amount)
 }
 
-func (b *Body) addAngularVelocity(amount sprec.Vec3) {
-	b.angularVelocity = sprec.Vec3Sum(b.angularVelocity, amount)
+func (b *Body) addAngularVelocity(amount dprec.Vec3) {
+	b.angularVelocity = dprec.Vec3Sum(b.angularVelocity, amount)
 }
 
-func (b *Body) applyImpulse(impulse sprec.Vec3) {
-	b.addVelocity(sprec.Vec3Quot(impulse, b.mass))
+func (b *Body) applyImpulse(impulse dprec.Vec3) {
+	b.addVelocity(dprec.Vec3Quot(impulse, b.mass))
 }
 
-func (b *Body) applyAngularImpulse(impulse sprec.Vec3) {
+func (b *Body) applyAngularImpulse(impulse dprec.Vec3) {
 	// FIXME: the moment of intertia is in local space, whereas the impulse is in world space
-	b.addAngularVelocity(sprec.Mat3Vec3Prod(sprec.InverseMat3(b.momentOfInertia), impulse))
+	b.addAngularVelocity(dprec.Mat3Vec3Prod(dprec.InverseMat3(b.momentOfInertia), impulse))
 }
 
-func (b *Body) applyOffsetImpulse(offset, impulse sprec.Vec3) {
+func (b *Body) applyOffsetImpulse(offset, impulse dprec.Vec3) {
 	b.applyImpulse(impulse)
-	b.applyAngularImpulse(sprec.Vec3Cross(offset, impulse))
+	b.applyAngularImpulse(dprec.Vec3Cross(offset, impulse))
 }
 
-func (b *Body) translate(offset sprec.Vec3) {
-	b.position = sprec.Vec3Sum(b.position, offset)
+func (b *Body) translate(offset dprec.Vec3) {
+	b.position = dprec.Vec3Sum(b.position, offset)
 }
 
-func (b *Body) rotate(quat sprec.Quat) {
-	b.orientation = sprec.UnitQuat(sprec.QuatProd(quat, b.orientation))
+func (b *Body) rotate(quat dprec.Quat) {
+	b.orientation = dprec.UnitQuat(dprec.QuatProd(quat, b.orientation))
 }
 
-func (b *Body) vectorRotate(vector sprec.Vec3) {
-	const angularEpsilon = float32(0.00001)
-	if radians := vector.Length(); sprec.Abs(radians) > angularEpsilon {
-		b.rotate(sprec.RotationQuat(sprec.Radians(radians), vector))
+func (b *Body) vectorRotate(vector dprec.Vec3) {
+	const angularEpsilon = float64(0.00001)
+	if radians := vector.Length(); dprec.Abs(radians) > angularEpsilon {
+		b.rotate(dprec.RotationQuat(dprec.Radians(radians), vector))
 	}
 }
 
-func (b *Body) applyNudge(nudge sprec.Vec3) {
-	b.translate(sprec.Vec3Quot(nudge, b.mass))
+func (b *Body) applyNudge(nudge dprec.Vec3) {
+	b.translate(dprec.Vec3Quot(nudge, b.mass))
 }
 
-func (b *Body) applyAngularNudge(nudge sprec.Vec3) {
+func (b *Body) applyAngularNudge(nudge dprec.Vec3) {
 	// FIXME: the moment of intertia is in local space, whereas the torque is in world space
-	b.vectorRotate(sprec.Mat3Vec3Prod(sprec.InverseMat3(b.momentOfInertia), nudge))
+	b.vectorRotate(dprec.Mat3Vec3Prod(dprec.InverseMat3(b.momentOfInertia), nudge))
 }
