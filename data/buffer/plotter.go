@@ -46,6 +46,11 @@ func (p *Plotter) Seek(offset int) {
 	p.offset = offset
 }
 
+// Skip moves the offset by the specified amount.
+func (p *Plotter) Skip(offset int) {
+	p.offset += offset
+}
+
 // PlotByte sets a single byte at the current offset
 // and advances the offset with one byte.
 func (p *Plotter) PlotByte(value byte) {
