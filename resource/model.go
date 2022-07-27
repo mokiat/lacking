@@ -19,6 +19,7 @@ func InjectModel(target **Model) func(value interface{}) {
 type Model struct {
 	Name          string
 	Nodes         []*Node
+	Armatures     []*Armature
 	MeshInstances []*MeshInstance
 	meshes        []*Mesh
 }
@@ -68,6 +69,15 @@ func (n Node) FindNode(name string) (*Node, bool) {
 		}
 	}
 	return nil, false
+}
+
+type Armature struct {
+	Joints []Joint
+}
+
+type Joint struct {
+	Node              *Node
+	InverseBindMatrix sprec.Mat4
 }
 
 type MeshInstance struct {
@@ -147,6 +157,20 @@ func (o *ModelOperator) Allocate(registry *Registry, id string) (interface{}, er
 		)
 	}
 	model.Nodes = rootNodes
+
+	model.Armatures = make([]*Armature, len(modelAsset.Armatures))
+	for i, assetArmature := range modelAsset.Armatures {
+		joints := make([]Joint, len(assetArmature.Joints))
+		for j, assetJoint := range assetArmature.Joints {
+			joints[j] = Joint{
+				Node:              nodes[assetJoint.NodeIndex],
+				InverseBindMatrix: sprec.ColumnMajorArrayToMat4(assetJoint.InverseBindMatrix),
+			}
+		}
+		model.Armatures[i] = &Armature{
+			Joints: joints,
+		}
+	}
 
 	model.MeshInstances = make([]*MeshInstance, len(modelAsset.MeshInstances))
 	for i, instance := range modelAsset.MeshInstances {

@@ -3,11 +3,12 @@ package resource
 import (
 	"fmt"
 
+	"github.com/mokiat/gomath/dprec"
 	"github.com/mokiat/gomath/sprec"
 	"github.com/mokiat/lacking/data/asset"
 	gameasset "github.com/mokiat/lacking/game/asset"
 	"github.com/mokiat/lacking/game/graphics"
-	"github.com/mokiat/lacking/shape"
+	"github.com/mokiat/lacking/util/shape"
 )
 
 const LevelTypeName = TypeName("level")
@@ -26,6 +27,15 @@ type Level struct {
 	CollisionMeshes          []shape.Placement
 	StaticMeshes             []*Mesh
 	StaticEntities           []*Entity
+}
+
+func (l *Level) FindStaticEntity(id string) *Entity {
+	for _, entity := range l.StaticEntities {
+		if entity.Model.Name == id {
+			return entity
+		}
+	}
+	return nil
 }
 
 type Entity struct {
@@ -69,40 +79,40 @@ func (o *LevelOperator) Allocate(registry *Registry, id string) (interface{}, er
 		return nil, result.Err
 	}
 
-	trianglesCenter := func(triangles []shape.StaticTriangle) sprec.Vec3 {
-		var center sprec.Vec3
+	trianglesCenter := func(triangles []shape.StaticTriangle) dprec.Vec3 {
+		var center dprec.Vec3
 		count := 0
 		for _, triangle := range triangles {
-			center = sprec.Vec3Sum(center, triangle.A())
-			center = sprec.Vec3Sum(center, triangle.B())
-			center = sprec.Vec3Sum(center, triangle.C())
+			center = dprec.Vec3Sum(center, triangle.A())
+			center = dprec.Vec3Sum(center, triangle.B())
+			center = dprec.Vec3Sum(center, triangle.C())
 			count += 3
 		}
-		return sprec.Vec3Quot(center, float32(count))
+		return dprec.Vec3Quot(center, float64(count))
 	}
 
 	convertCollisionMesh := func(collisionMeshAsset asset.LevelCollisionMesh) shape.Placement {
 		var triangles []shape.StaticTriangle
 		for _, triangleAsset := range collisionMeshAsset.Triangles {
 			triangles = append(triangles, shape.NewStaticTriangle(
-				sprec.NewVec3(triangleAsset[0][0], triangleAsset[0][1], triangleAsset[0][2]),
-				sprec.NewVec3(triangleAsset[1][0], triangleAsset[1][1], triangleAsset[1][2]),
-				sprec.NewVec3(triangleAsset[2][0], triangleAsset[2][1], triangleAsset[2][2]),
+				dprec.NewVec3(float64(triangleAsset[0][0]), float64(triangleAsset[0][1]), float64(triangleAsset[0][2])),
+				dprec.NewVec3(float64(triangleAsset[1][0]), float64(triangleAsset[1][1]), float64(triangleAsset[1][2])),
+				dprec.NewVec3(float64(triangleAsset[2][0]), float64(triangleAsset[2][1]), float64(triangleAsset[2][2])),
 			))
 		}
 		center := trianglesCenter(triangles)
 		for i := range triangles {
 			triangles[i] = shape.NewStaticTriangle(
-				sprec.Vec3Diff(triangles[i].A(), center),
-				sprec.Vec3Diff(triangles[i].B(), center),
-				sprec.Vec3Diff(triangles[i].C(), center),
+				dprec.Vec3Diff(triangles[i].A(), center),
+				dprec.Vec3Diff(triangles[i].B(), center),
+				dprec.Vec3Diff(triangles[i].C(), center),
 			)
 		}
-		return shape.Placement{
-			Position:    center,
-			Orientation: sprec.IdentityQuat(),
-			Shape:       shape.NewStaticMesh(triangles),
-		}
+		return shape.NewPlacement(
+			shape.NewStaticMesh(triangles),
+			center,
+			dprec.IdentityQuat(),
+		)
 	}
 
 	collisionMeshes := make([]shape.Placement, len(levelAsset.CollisionMeshes))
