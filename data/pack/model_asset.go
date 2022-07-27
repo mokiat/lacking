@@ -90,6 +90,7 @@ func (c *converter) BuildModel(model *Model) *gameasset.Model {
 
 	return &gameasset.Model{
 		Nodes:           c.assetNodes,
+		Armatures:       assetArmatures,
 		Materials:       assetMaterials,
 		MeshDefinitions: assetMeshDefinitions,
 		MeshInstances:   assetMeshInstances,
