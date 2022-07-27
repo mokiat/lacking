@@ -1,6 +1,10 @@
 package graphics
 
-import "github.com/mokiat/lacking/render"
+import (
+	"github.com/mokiat/gomath/dprec"
+	"github.com/mokiat/lacking/render"
+	"github.com/mokiat/lacking/util/spatial"
+)
 
 // MeshTemplate represents the definition of a mesh.
 // Multiple mesh instances can be created off of one template
@@ -22,10 +26,12 @@ func (t *MeshTemplate) Delete() {
 }
 
 type subMeshTemplate struct {
+	id               int
 	material         *Material
 	topology         render.Topology
 	indexCount       int
 	indexOffsetBytes int
+	pipeline         render.Pipeline
 }
 
 // MeshTemplateDefinition contains everything needed to create
@@ -90,19 +96,40 @@ const (
 
 type IndexFormat int
 
+type MeshDefinition struct {
+	Template *MeshTemplate
+	Armature *Armature
+}
+
 // Mesh represents an instance of a 3D mesh.
 type Mesh struct {
 	Node
 
+	item  *spatial.OctreeItem[*Mesh]
 	scene *Scene
 	prev  *Mesh
 	next  *Mesh
 
 	template *MeshTemplate
+	armature *Armature
+}
+
+func (m *Mesh) SetMatrix(matrix dprec.Mat4) {
+	m.Node.SetMatrix(matrix)
+	m.item.SetPosition(matrix.Translation())
+}
+
+func (m *Mesh) SetArmature(armature *Armature) {
+	m.armature = armature
+}
+
+func (m *Mesh) SetBoundingSphereRadius(radius float64) {
+	m.item.SetRadius(radius)
 }
 
 // Delete removes this mesh from the scene.
 func (m *Mesh) Delete() {
+	m.item.Delete()
 	m.scene.detachMesh(m)
 	m.scene.cacheMesh(m)
 	m.scene = nil

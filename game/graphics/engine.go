@@ -21,6 +21,8 @@ type Engine struct {
 	api      render.API
 	shaders  ShaderCollection
 	renderer *sceneRenderer
+
+	freeSubmeshID int
 }
 
 // Create initializes this 3D engine.
@@ -163,11 +165,13 @@ func (e *Engine) CreateMeshTemplate(definition MeshTemplateDefinition) *MeshTemp
 	}
 	for i, subMesh := range definition.SubMeshes {
 		result.subMeshes[i] = subMeshTemplate{
+			id:               e.freeSubmeshID,
 			material:         subMesh.Material,
 			topology:         e.convertPrimitive(subMesh.Primitive),
 			indexCount:       subMesh.IndexCount,
 			indexOffsetBytes: subMesh.IndexOffset,
 		}
+		e.freeSubmeshID++
 	}
 	return result
 }

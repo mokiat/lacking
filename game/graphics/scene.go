@@ -2,7 +2,9 @@ package graphics
 
 import (
 	"github.com/mokiat/gomath/sprec"
+	"github.com/mokiat/lacking/data"
 	"github.com/mokiat/lacking/render"
+	"github.com/mokiat/lacking/util/spatial"
 )
 
 func newScene(renderer *sceneRenderer) *Scene {
@@ -10,6 +12,8 @@ func newScene(renderer *sceneRenderer) *Scene {
 		renderer: renderer,
 
 		sky: newSky(),
+
+		meshOctree: spatial.NewOctree[*Mesh](32000.0, 9, 2_000_000),
 	}
 }
 
@@ -20,6 +24,7 @@ type Scene struct {
 
 	sky *Sky
 
+	meshOctree *spatial.Octree[*Mesh]
 	firstMesh  *Mesh
 	lastMesh   *Mesh
 	cachedMesh *Mesh
@@ -93,12 +98,20 @@ func (s *Scene) CreateMesh(template *MeshTemplate) *Mesh {
 		mesh = &Mesh{}
 	}
 	mesh.Node = *newNode()
+	mesh.item = s.meshOctree.CreateItem(mesh)
 	mesh.scene = s
 	mesh.template = template
 	mesh.prev = nil
 	mesh.next = nil
 	s.attachMesh(mesh)
 	return mesh
+}
+
+func (s *Scene) CreateArmature(template *ArmatureTemplate) *Armature {
+	return &Armature{
+		template:          template,
+		uniformBufferData: make(data.Buffer, template.boneCount()*64),
+	}
 }
 
 // Render draws this scene to the specified viewport

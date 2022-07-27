@@ -3,7 +3,9 @@ package internal
 import "github.com/mokiat/lacking/render"
 
 const (
-	UniformBufferBindingCamera = 0
+	UniformBufferBindingCamera   = 0
+	UniformBufferBindingModel    = 1
+	UniformBufferBindingMaterial = 2
 )
 
 const (
@@ -57,7 +59,7 @@ func NewSkyboxPresentation(api render.API, vertexSrc, fragmentSrc string) *Skybo
 	program := buildProgram(api, vertexSrc, fragmentSrc, []render.TextureBinding{
 		render.NewTextureBinding("albedoCubeTextureIn", TextureBindingSkyboxAlbedoTexture),
 	}, []render.UniformBinding{
-		render.NewUniformBinding("Camera", 0),
+		render.NewUniformBinding("Camera", UniformBufferBindingCamera),
 	})
 	return &SkyboxPresentation{
 		Presentation: Presentation{
@@ -82,27 +84,20 @@ func NewShadowPresentation(api render.API, vertexSrc, fragmentSrc string) *Shado
 
 type GeometryPresentation struct {
 	Presentation
-
-	ModelMatrixLocation render.UniformLocation
-	MetalnessLocation   render.UniformLocation
-	RoughnessLocation   render.UniformLocation
-	AlbedoColorLocation render.UniformLocation
 }
 
 func NewGeometryPresentation(api render.API, vertexSrc, fragmentSrc string) *GeometryPresentation {
 	program := buildProgram(api, vertexSrc, fragmentSrc, []render.TextureBinding{
 		render.NewTextureBinding("albedoTwoDTextureIn", TextureBindingGeometryAlbedoTexture),
 	}, []render.UniformBinding{
-		render.NewUniformBinding("Camera", 0),
+		render.NewUniformBinding("Camera", UniformBufferBindingCamera),
+		render.NewUniformBinding("Model", UniformBufferBindingModel),
+		render.NewUniformBinding("Material", UniformBufferBindingMaterial),
 	})
 	return &GeometryPresentation{
 		Presentation: Presentation{
 			Program: program,
 		},
-		ModelMatrixLocation: program.UniformLocation("modelMatrixIn"),
-		MetalnessLocation:   program.UniformLocation("metalnessIn"),
-		RoughnessLocation:   program.UniformLocation("roughnessIn"),
-		AlbedoColorLocation: program.UniformLocation("albedoColorIn"),
 	}
 }
 
@@ -121,7 +116,7 @@ func NewLightingPresentation(api render.API, vertexSrc, fragmentSrc string) *Lig
 		render.NewTextureBinding("reflectionTextureIn", TextureBindingLightingReflectionTexture),
 		render.NewTextureBinding("refractionTextureIn", TextureBindingLightingRefractionTexture),
 	}, []render.UniformBinding{
-		render.NewUniformBinding("Camera", 0),
+		render.NewUniformBinding("Camera", UniformBufferBindingCamera),
 	})
 	return &LightingPresentation{
 		Presentation: Presentation{
