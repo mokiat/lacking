@@ -60,19 +60,14 @@ func (e *Engine) ECS() *ecs.Engine {
 	return e.ecsEngine
 }
 
+func (e *Engine) CreateResourceSet() *ResourceSet {
+	return newResourceSet(nil, e)
+}
+
 func (e *Engine) CreateScene() *Scene {
 	physicsScene := e.physicsEngine.CreateScene(0.015)
 	gfxScene := e.gfxEngine.CreateScene()
 	ecsScene := e.ecsEngine.CreateScene()
-	return newScene(physicsScene, gfxScene, ecsScene)
+	resourceSet := e.CreateResourceSet()
+	return newScene(resourceSet, physicsScene, gfxScene, ecsScene)
 }
-
-// func (e *Engine) OpenTwoDTexture(resourceSet *ResourceSet, id string) async.Promise[*graphics.TwoDTexture] {
-// 	return nil // TODO
-// }
-
-// func (e *Engine) OpenCubeTexture(resourceSet *ResourceSet, id string) async.Promise[*graphics.CubeTexture] {
-// 	return nil // TODO
-// }
-
-// func (e *Engine) OpenModel(resourceSet *ResourceSet, id string) async.Promise[*]

@@ -18,6 +18,9 @@ type ArmatureDefinition struct {
 	GraphicsTemplate *graphics.ArmatureTemplate
 }
 
+type MaterialDefinition struct {
+}
+
 type MeshInstanceDefinition struct {
 	Name             string
 	GraphicsTemplate *graphics.MeshTemplate
@@ -28,10 +31,12 @@ type MeshInstanceDefinition struct {
 type ModelDefinition struct {
 	Nodes         []*NodeDefinition
 	Armatures     []*ArmatureDefinition
+	Materials     []*MaterialDefinition
 	MeshInstances []*MeshInstanceDefinition
 }
 
 type Model struct {
 	nodes     []*Node
 	armatures []*graphics.Armature
+	materials []*graphics.Material
 }

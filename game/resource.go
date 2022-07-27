@@ -1,7 +1,6 @@
 package game
 
 import (
-	"github.com/mokiat/lacking/game/graphics"
 	"golang.org/x/exp/maps"
 )
 
@@ -13,14 +12,39 @@ type Resource interface {
 // in the ui framework for the Context. If something needs to be loaded for
 // a short duration, a dedicated nested ResourceSet should be created.
 
-func NewResourceSet(parent *ResourceSet) *ResourceSet {
-	return &ResourceSet{}
+func newResourceSet(parent *ResourceSet, engine *Engine) *ResourceSet {
+	return &ResourceSet{
+		engine: engine,
+	}
 }
 
 type ResourceSet struct {
+	engine *Engine
+
 	namedResources map[string]Resource
 	adhocResources []Resource
 }
+
+func (s *ResourceSet) CreateResourceSet() *ResourceSet {
+	return newResourceSet(s, s.engine)
+}
+
+// // WARNING: DO NOT WAIT ON THE PROMISE FROM THE MAIN GOROUTINE!!!
+// func (s *ResourceSet) OpenTwoDTexture(resourceSet *ResourceSet, id string) *TwoDTexture {
+// 	result := &TwoDTexture{}
+// 	// TODO: ioWorker.Schedule(func() {...})
+// 	go func() {
+
+// 	}()
+// 	// panic("TODO")
+// 	return result // TODO: Result should be usable until it loads it
+// }
+
+// func (e *Engine) OpenCubeTexture(resourceSet *ResourceSet, id string) async.Promise[*graphics.CubeTexture] {
+// 	return nil // TODO
+// }
+
+// func (e *Engine) OpenModel(resourceSet *ResourceSet, id string) async.Promise[*]
 
 func (s *ResourceSet) Delete() {
 	for _, resource := range s.namedResources {
@@ -34,21 +58,9 @@ func (s *ResourceSet) Delete() {
 }
 
 func (r *ResourceSet) Ready() bool {
-	return false
+	return false // TODO: Check that all resources are loaded
 }
 
-func (r *ResourceSet) Wait() error {
-	return nil
-}
-
-type TwoDTexture struct {
-	gfxTexture *graphics.TwoDTexture
-}
-
-// func (t *TwoDTexture) GraphicsTexture() *graphics.TwoDTexture {
-
-// }
-
-// func (t *TwoDTexture) Delete() {
-
+// func (r *ResourceSet) Wait() error {
+// 	return nil
 // }

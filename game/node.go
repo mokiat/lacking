@@ -1,7 +1,7 @@
 package game
 
 import (
-	"github.com/mokiat/gomath/sprec"
+	"github.com/mokiat/gomath/dprec"
 	"github.com/mokiat/lacking/game/graphics"
 	"github.com/mokiat/lacking/game/physics"
 )
@@ -10,9 +10,9 @@ import (
 func NewNode() *Node {
 	return &Node{
 		isStale:  true,
-		position: sprec.ZeroVec3(),
-		rotation: sprec.IdentityQuat(),
-		scale:    sprec.NewVec3(1.0, 1.0, 1.0),
+		position: dprec.ZeroVec3(),
+		rotation: dprec.IdentityQuat(),
+		scale:    dprec.NewVec3(1.0, 1.0, 1.0),
 	}
 }
 
@@ -25,10 +25,10 @@ type Node struct {
 	rightSibling *Node
 
 	isStale   bool
-	position  sprec.Vec3
-	rotation  sprec.Quat
-	scale     sprec.Vec3
-	absMatrix sprec.Mat4
+	position  dprec.Vec3
+	rotation  dprec.Quat
+	scale     dprec.Vec3
+	absMatrix dprec.Mat4
 
 	body   *physics.Body
 	mesh   *graphics.Mesh
@@ -171,12 +171,12 @@ func (n *Node) RemoveChild(child *Node) {
 }
 
 // Position returns this Node's relative position to the parent.
-func (n *Node) Position() sprec.Vec3 {
+func (n *Node) Position() dprec.Vec3 {
 	return n.position
 }
 
 // SetPosition changes this Node's relative position to the parent.
-func (n *Node) SetPosition(position sprec.Vec3) {
+func (n *Node) SetPosition(position dprec.Vec3) {
 	if position != n.position {
 		n.position = position
 		n.isStale = true
@@ -184,25 +184,25 @@ func (n *Node) SetPosition(position sprec.Vec3) {
 }
 
 // Rotation returns this Node's rotation relative to the parent.
-func (n *Node) Rotation() sprec.Quat {
+func (n *Node) Rotation() dprec.Quat {
 	return n.rotation
 }
 
 // SetRotation changes this Node's rotation relative to the parent.
-func (n *Node) SetRotation(rotation sprec.Quat) {
+func (n *Node) SetRotation(rotation dprec.Quat) {
 	if rotation != n.rotation {
-		n.rotation = sprec.UnitQuat(rotation)
+		n.rotation = dprec.UnitQuat(rotation)
 		n.isStale = true
 	}
 }
 
 // Scale returns this Node's scale relative to the parent.
-func (n *Node) Scale() sprec.Vec3 {
+func (n *Node) Scale() dprec.Vec3 {
 	return n.scale
 }
 
 // SetScale changes this Node's scale relative to the parent.
-func (n *Node) SetScale(scale sprec.Vec3) {
+func (n *Node) SetScale(scale dprec.Vec3) {
 	if scale != n.scale {
 		n.scale = scale
 		n.isStale = true
@@ -211,20 +211,20 @@ func (n *Node) SetScale(scale sprec.Vec3) {
 
 // Matrix returns the matrix transformation of this Node relative to the
 // parent.
-func (n *Node) Matrix() sprec.Mat4 {
-	return sprec.TRSMat4(n.position, n.rotation, n.scale)
+func (n *Node) Matrix() dprec.Mat4 {
+	return dprec.TRSMat4(n.position, n.rotation, n.scale)
 }
 
 // AbsoluteMatrix returns the matrix transformation of this Node relative
 // to the root coordinate system.
-func (n *Node) AbsoluteMatrix() sprec.Mat4 {
+func (n *Node) AbsoluteMatrix() dprec.Mat4 {
 	if n.parent == nil {
 		if n.isStale {
 			n.absMatrix = n.Matrix()
 		}
 	} else {
 		if n.isStaleHierarchy() {
-			n.absMatrix = sprec.Mat4Prod(n.parent.AbsoluteMatrix(), n.Matrix())
+			n.absMatrix = dprec.Mat4Prod(n.parent.AbsoluteMatrix(), n.Matrix())
 		}
 	}
 	n.isStale = false

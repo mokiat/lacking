@@ -6,7 +6,7 @@ import (
 	"github.com/mokiat/lacking/game/physics"
 )
 
-func newScene(physicsScene *physics.Scene, gfxScene *graphics.Scene, ecsScene *ecs.Scene) *Scene {
+func newScene(resourceSet *ResourceSet, physicsScene *physics.Scene, gfxScene *graphics.Scene, ecsScene *ecs.Scene) *Scene {
 	return &Scene{
 		physicsScene: physicsScene,
 		gfxScene:     gfxScene,
@@ -44,7 +44,7 @@ func (s *Scene) Root() *Node {
 	return s.root
 }
 
-func (s *Scene) Update(elapsedSeconds float32) {
+func (s *Scene) Update(elapsedSeconds float64) {
 	// TODO: Add OnUpdate hook here so that user code can modify stuff based off
 	// of stable state.
 	s.physicsScene.Update(elapsedSeconds)
@@ -95,11 +95,13 @@ func (s *Scene) CreateModel(def *ModelDefinition) *Model {
 	defToArmature := make(map[*ArmatureDefinition]*graphics.Armature)
 	for i, armatureDef := range def.Armatures {
 		// TODO: ECS Component that maps between armature and nodes and that
-		// updates the respective armature
+		// updates the respective armature?
 		armature := s.gfxScene.CreateArmature(armatureDef.GraphicsTemplate)
 		armatures[i] = armature
 		defToArmature[armatureDef] = armature
 	}
+
+	materials := make([]*graphics.Material, len(def.Materials))
 
 	meshInstances := make([]*graphics.Mesh, len(def.MeshInstances))
 	for i, meshInstanceDef := range def.MeshInstances {
@@ -120,5 +122,6 @@ func (s *Scene) CreateModel(def *ModelDefinition) *Model {
 	return &Model{
 		nodes:     nodes,
 		armatures: armatures,
+		materials: materials,
 	}
 }
