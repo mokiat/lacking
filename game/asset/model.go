@@ -7,6 +7,7 @@ import (
 
 type Model struct {
 	Nodes           []Node
+	Animations      []Animation
 	Armatures       []Armature
 	Materials       []Material
 	MeshDefinitions []MeshDefinition
@@ -18,7 +19,6 @@ type Model struct {
 	// TODO: Lights
 	// TODO: Cameras
 	// TODO: Constraints
-	// TODO: Animations
 }
 
 func (m *Model) EncodeTo(out io.Writer) error {

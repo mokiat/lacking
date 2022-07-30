@@ -58,6 +58,13 @@ func (c *converter) BuildModel(model *Model) *gameasset.Model {
 	}
 
 	var (
+		assetAnimations = make([]gameasset.Animation, len(model.Animations))
+	)
+	for i, animation := range model.Animations {
+		assetAnimations[i] = c.BuildAnimation(animation)
+	}
+
+	var (
 		assetMaterials = make([]gameasset.Material, len(model.Materials))
 	)
 	for i, material := range model.Materials {
@@ -90,6 +97,7 @@ func (c *converter) BuildModel(model *Model) *gameasset.Model {
 
 	return &gameasset.Model{
 		Nodes:           c.assetNodes,
+		Animations:      assetAnimations,
 		Armatures:       assetArmatures,
 		Materials:       assetMaterials,
 		MeshDefinitions: assetMeshDefinitions,
@@ -116,6 +124,45 @@ func (c *converter) BuildNode(parentIndex int, node *Node) {
 	for _, child := range node.Children {
 		c.BuildNode(index, child)
 	}
+}
+
+func (c *converter) BuildAnimation(animation *Animation) gameasset.Animation {
+	assetAnimation := gameasset.Animation{
+		Name:      animation.Name,
+		StartTime: animation.StartTime,
+		EndTime:   animation.EndTime,
+		Bindings:  make([]gameasset.AnimationBinding, len(animation.Bindings)),
+	}
+	for i, binding := range animation.Bindings {
+		translationKeyframes := make([]gameasset.TranslationKeyframe, len(binding.TranslationKeyframes))
+		for j, keyframe := range binding.TranslationKeyframes {
+			translationKeyframes[j] = gameasset.TranslationKeyframe{
+				Timestamp:   keyframe.Timestamp,
+				Translation: keyframe.Translation,
+			}
+		}
+		rotationKeyframes := make([]gameasset.RotationKeyframe, len(binding.RotationKeyframes))
+		for j, keyframe := range binding.RotationKeyframes {
+			rotationKeyframes[j] = gameasset.RotationKeyframe{
+				Timestamp: keyframe.Timestamp,
+				Rotation:  keyframe.Rotation,
+			}
+		}
+		scaleKeyframes := make([]gameasset.ScaleKeyframe, len(binding.ScaleKeyframes))
+		for j, keyframe := range binding.ScaleKeyframes {
+			scaleKeyframes[j] = gameasset.ScaleKeyframe{
+				Timestamp: keyframe.Timestamp,
+				Scale:     keyframe.Scale,
+			}
+		}
+		assetAnimation.Bindings[i] = gameasset.AnimationBinding{
+			NodeIndex:            int32(c.assetNodeIndexFromNode[binding.Node]),
+			TranslationKeyframes: translationKeyframes,
+			RotationKeyframes:    rotationKeyframes,
+			ScaleKeyframes:       scaleKeyframes,
+		}
+	}
+	return assetAnimation
 }
 
 func (c *converter) BuildMaterial(material *Material) gameasset.Material {

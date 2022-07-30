@@ -374,3 +374,132 @@ func InverseBindMatrix(doc *gltf.Document, skin *gltf.Skin, index int) sprec.Mat
 		return sprec.IdentityMat4()
 	}
 }
+
+func AnimationKeyframes(doc *gltf.Document, sampler *gltf.AnimationSampler) []float32 {
+	if sampler.Input == nil {
+		log.Error("Animation sampler input is unspecified")
+		return nil
+	}
+	accessor := doc.Accessors[*sampler.Input]
+	if accessor.BufferView == nil {
+		log.Warn("Accessor lacks a buffer view")
+		return nil
+	}
+	bufferView := doc.BufferViews[*accessor.BufferView]
+	buffer := data.Buffer(doc.Buffers[bufferView.Buffer].Data[bufferView.ByteOffset:])
+	if accessor.Type != gltf.AccessorScalar {
+		log.Error("Unsupported sampler input accessor type %d", accessor.Type)
+		return nil
+	}
+	switch accessor.ComponentType {
+	case gltf.ComponentFloat:
+		result := make([]float32, accessor.Count)
+		for i := 0; i < int(accessor.Count); i++ {
+			result[i] = buffer.Float32(i * 4)
+		}
+		return result
+	default:
+		log.Error("Unsupported sampler input accessor component type %d", accessor.ComponentType)
+		return nil
+	}
+}
+
+func AnimationTranslations(doc *gltf.Document, sampler *gltf.AnimationSampler) []sprec.Vec3 {
+	if sampler.Output == nil {
+		log.Error("Animation sampler output is unspecified")
+		return nil
+	}
+	accessor := doc.Accessors[*sampler.Output]
+	if accessor.BufferView == nil {
+		log.Warn("Accessor lacks a buffer view")
+		return nil
+	}
+	bufferView := doc.BufferViews[*accessor.BufferView]
+	buffer := data.Buffer(doc.Buffers[bufferView.Buffer].Data[bufferView.ByteOffset:])
+	if accessor.Type != gltf.AccessorVec3 {
+		log.Error("Unsupported sampler output accessor type %d", accessor.Type)
+		return nil
+	}
+	switch accessor.ComponentType {
+	case gltf.ComponentFloat:
+		result := make([]sprec.Vec3, accessor.Count)
+		for i := 0; i < int(accessor.Count); i++ {
+			result[i] = sprec.NewVec3(
+				buffer.Float32(i*12+0*4),
+				buffer.Float32(i*12+1*4),
+				buffer.Float32(i*12+2*4),
+			)
+		}
+		return result
+	default:
+		log.Error("Unsupported sampler output accessor component type %d", accessor.ComponentType)
+		return nil
+	}
+}
+
+func AnimationRotations(doc *gltf.Document, sampler *gltf.AnimationSampler) []sprec.Quat {
+	if sampler.Output == nil {
+		log.Error("Animation sampler output is unspecified")
+		return nil
+	}
+	accessor := doc.Accessors[*sampler.Output]
+	if accessor.BufferView == nil {
+		log.Warn("Accessor lacks a buffer view")
+		return nil
+	}
+	bufferView := doc.BufferViews[*accessor.BufferView]
+	buffer := data.Buffer(doc.Buffers[bufferView.Buffer].Data[bufferView.ByteOffset:])
+	if accessor.Type != gltf.AccessorVec4 {
+		log.Error("Unsupported sampler output accessor type %d", accessor.Type)
+		return nil
+	}
+	switch accessor.ComponentType {
+	case gltf.ComponentFloat:
+		result := make([]sprec.Quat, accessor.Count)
+		for i := 0; i < int(accessor.Count); i++ {
+			result[i] = sprec.NewQuat(
+				buffer.Float32(i*16+3*4),
+				buffer.Float32(i*16+0*4),
+				buffer.Float32(i*16+1*4),
+				buffer.Float32(i*16+2*4),
+			)
+		}
+		return result
+	default:
+		log.Error("Unsupported sampler output accessor component type %d", accessor.ComponentType)
+		return nil
+	}
+}
+
+func AnimationScales(doc *gltf.Document, sampler *gltf.AnimationSampler) []sprec.Vec3 {
+	if sampler.Output == nil {
+		log.Error("Animation sampler output is unspecified")
+		return nil
+	}
+	accessor := doc.Accessors[*sampler.Output]
+	if accessor.BufferView == nil {
+		log.Warn("Accessor lacks a buffer view")
+		return nil
+	}
+	bufferView := doc.BufferViews[*accessor.BufferView]
+	buffer := data.Buffer(doc.Buffers[bufferView.Buffer].Data[bufferView.ByteOffset:])
+	if accessor.Type != gltf.AccessorVec3 {
+		log.Error("Unsupported sampler output accessor type %d", accessor.Type)
+		return nil
+	}
+	switch accessor.ComponentType {
+	case gltf.ComponentFloat:
+		result := make([]sprec.Vec3, accessor.Count)
+		for i := 0; i < int(accessor.Count); i++ {
+			result[i] = sprec.NewVec3(
+				buffer.Float32(i*12+0*4),
+				buffer.Float32(i*12+1*4),
+				buffer.Float32(i*12+2*4),
+			)
+		}
+		return result
+	default:
+		log.Error("Unsupported sampler output accessor component type %d", accessor.ComponentType)
+		return nil
+	}
+}

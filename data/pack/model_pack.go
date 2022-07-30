@@ -8,6 +8,7 @@ type ModelProvider interface {
 
 type Model struct {
 	RootNodes       []*Node
+	Animations      []*Animation
 	Armatures       []*Armature
 	Materials       []*Material
 	MeshDefinitions []*MeshDefinition
@@ -98,4 +99,33 @@ type Material struct {
 	MetallicRoughnessTexture string
 	NormalScale              float32
 	NormalTexture            string
+}
+
+type Animation struct {
+	Name      string
+	StartTime float32
+	EndTime   float32
+	Bindings  []*AnimationBinding
+}
+
+type AnimationBinding struct {
+	Node                 *Node
+	TranslationKeyframes []TranslationKeyframe
+	RotationKeyframes    []RotationKeyframe
+	ScaleKeyframes       []ScaleKeyframe
+}
+
+type TranslationKeyframe struct {
+	Timestamp   float32
+	Translation sprec.Vec3
+}
+
+type RotationKeyframe struct {
+	Timestamp float32
+	Rotation  sprec.Quat
+}
+
+type ScaleKeyframe struct {
+	Timestamp float32
+	Scale     sprec.Vec3
 }

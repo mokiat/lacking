@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/mokiat/gomath/sprec"
+	"github.com/mokiat/lacking/log"
 	"github.com/mokiat/lacking/util/gltfutil"
 	"github.com/qmuntal/gltf"
 )
@@ -232,10 +233,91 @@ func (a *OpenGLTFResourceAction) Run() error {
 	// finalize armatures (now that all nodes are available)
 	for i, gltfSkin := range gltfDoc.Skins {
 		armature := a.model.Armatures[i]
-		for i, joint := range gltfSkin.Joints {
-			armature.Joints[i].Node = nodeFromIndex[joint]
-			armature.Joints[i].InverseBindMatrix = gltfutil.InverseBindMatrix(gltfDoc, gltfSkin, i)
+		for j, joint := range gltfSkin.Joints {
+			armature.Joints[j].Node = nodeFromIndex[joint]
+			armature.Joints[j].InverseBindMatrix = gltfutil.InverseBindMatrix(gltfDoc, gltfSkin, j)
 		}
+	}
+
+	// prepare animations
+	for _, gltfAnimation := range gltfDoc.Animations {
+		bindingFromNodeIndex := make(map[uint32]*AnimationBinding)
+		animation := &Animation{
+			Name: gltfAnimation.Name,
+		}
+		for _, gltfChannel := range gltfAnimation.Channels {
+			nodeRef := gltfChannel.Target.Node
+			if nodeRef == nil {
+				log.Warn("Channel does not reference a node")
+				continue
+			}
+			samplerRef := gltfChannel.Sampler
+			if samplerRef == nil {
+				log.Warn("Channel does not reference a sampler")
+				continue
+			}
+			binding := bindingFromNodeIndex[*nodeRef]
+			if binding == nil {
+				binding = &AnimationBinding{}
+				animation.Bindings = append(animation.Bindings, binding)
+				bindingFromNodeIndex[*nodeRef] = binding
+			}
+
+			gltfSampler := gltfAnimation.Samplers[*samplerRef]
+			if gltfSampler.Interpolation != gltf.InterpolationLinear {
+				log.Warn("Unsupported animation interpolation - results may be wrong")
+			}
+
+			timestamps := gltfutil.AnimationKeyframes(gltfDoc, gltfSampler)
+
+			switch gltfChannel.Target.Path {
+			case gltf.TRSTranslation:
+				translations := gltfutil.AnimationTranslations(gltfDoc, gltfSampler)
+				if len(translations) != len(timestamps) {
+					log.Error("Translations do not match number of keyframes")
+					continue
+				}
+				binding.TranslationKeyframes = make([]TranslationKeyframe, len(timestamps))
+				for i := 0; i < len(timestamps); i++ {
+					binding.TranslationKeyframes[i] = TranslationKeyframe{
+						Timestamp:   timestamps[i],
+						Translation: translations[i],
+					}
+				}
+
+			case gltf.TRSRotation:
+				rotations := gltfutil.AnimationRotations(gltfDoc, gltfSampler)
+				if len(rotations) != len(timestamps) {
+					log.Error("Rotations do not match number of keyframes")
+					continue
+				}
+				binding.RotationKeyframes = make([]RotationKeyframe, len(timestamps))
+				for i := 0; i < len(timestamps); i++ {
+					binding.RotationKeyframes[i] = RotationKeyframe{
+						Timestamp: timestamps[i],
+						Rotation:  rotations[i],
+					}
+				}
+
+			case gltf.TRSScale:
+				scales := gltfutil.AnimationScales(gltfDoc, gltfSampler)
+				if len(scales) != len(timestamps) {
+					log.Error("Scales do not match number of keyframes")
+					continue
+				}
+				binding.ScaleKeyframes = make([]ScaleKeyframe, len(timestamps))
+				for i := 0; i < len(timestamps); i++ {
+					binding.ScaleKeyframes[i] = ScaleKeyframe{
+						Timestamp: timestamps[i],
+						Scale:     scales[i],
+					}
+				}
+
+			default:
+				log.Warn("Channel has unsupported path")
+			}
+		}
+		a.model.Animations = append(a.model.Animations, animation)
 	}
 
 	// TODO: Trim unused nodes
