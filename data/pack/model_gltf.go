@@ -258,7 +258,9 @@ func (a *OpenGLTFResourceAction) Run() error {
 			}
 			binding := bindingFromNodeIndex[*nodeRef]
 			if binding == nil {
-				binding = &AnimationBinding{}
+				binding = &AnimationBinding{
+					Node: nodeFromIndex[*nodeRef],
+				}
 				animation.Bindings = append(animation.Bindings, binding)
 				bindingFromNodeIndex[*nodeRef] = binding
 			}

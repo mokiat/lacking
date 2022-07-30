@@ -457,12 +457,12 @@ func AnimationRotations(doc *gltf.Document, sampler *gltf.AnimationSampler) []sp
 	case gltf.ComponentFloat:
 		result := make([]sprec.Quat, accessor.Count)
 		for i := 0; i < int(accessor.Count); i++ {
-			result[i] = sprec.NewQuat(
+			result[i] = sprec.UnitQuat(sprec.NewQuat(
 				buffer.Float32(i*16+3*4),
 				buffer.Float32(i*16+0*4),
 				buffer.Float32(i*16+1*4),
 				buffer.Float32(i*16+2*4),
-			)
+			))
 		}
 		return result
 	default:
