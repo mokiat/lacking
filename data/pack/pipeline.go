@@ -112,11 +112,14 @@ func (p *Pipeline) OpenGLTFResource(uri string) *OpenGLTFResourceAction {
 	return action
 }
 
-func (p *Pipeline) SaveModelAsset(id string, model ModelProvider) *SaveModelAssetAction {
+func (p *Pipeline) SaveModelAsset(id string, model ModelProvider, opts ...SaveModelAssetOption) *SaveModelAssetAction {
 	action := &SaveModelAssetAction{
 		registry:      p.registry,
 		id:            id,
 		modelProvider: model,
+	}
+	for _, opt := range opts {
+		opt(action)
 	}
 	p.scheduleAction(action)
 	return action

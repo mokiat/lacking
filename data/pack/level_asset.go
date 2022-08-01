@@ -20,7 +20,7 @@ func (a *SaveLevelAssetAction) Describe() string {
 func (a *SaveLevelAssetAction) Run() error {
 	level := a.levelProvider.Level()
 
-	conv := newConverter()
+	conv := newConverter(false)
 
 	levelAsset := &asset.Level{
 		SkyboxTexture:            level.SkyboxTexture,

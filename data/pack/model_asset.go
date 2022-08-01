@@ -5,13 +5,23 @@ import (
 
 	"github.com/mokiat/lacking/data"
 	gameasset "github.com/mokiat/lacking/game/asset"
+	"github.com/mokiat/lacking/log"
 	"github.com/x448/float16"
 )
+
+type SaveModelAssetOption func(a *SaveModelAssetAction)
+
+func WithCollisionMesh(collisionMesh bool) SaveModelAssetOption {
+	return func(a *SaveModelAssetAction) {
+		a.collisionMesh = collisionMesh
+	}
+}
 
 type SaveModelAssetAction struct {
 	registry      gameasset.Registry
 	id            string
 	modelProvider ModelProvider
+	collisionMesh bool
 }
 
 func (a *SaveModelAssetAction) Describe() string {
@@ -19,7 +29,7 @@ func (a *SaveModelAssetAction) Describe() string {
 }
 
 func (a *SaveModelAssetAction) Run() error {
-	conv := newConverter()
+	conv := newConverter(a.collisionMesh)
 	modelAsset := conv.BuildModel(a.modelProvider.Model())
 	resource := a.registry.ResourceByID(a.id)
 	if resource == nil {
@@ -34,8 +44,9 @@ func (a *SaveModelAssetAction) Run() error {
 	return nil
 }
 
-func newConverter() *converter {
+func newConverter(collisionMeshes bool) *converter {
 	return &converter{
+		collisionMeshes:                       collisionMeshes,
 		assetNodes:                            make([]gameasset.Node, 0),
 		assetNodeIndexFromNode:                make(map[*Node]int),
 		assetMaterialIndexFromMaterial:        make(map[*Material]int),
@@ -45,6 +56,7 @@ func newConverter() *converter {
 }
 
 type converter struct {
+	collisionMeshes                       bool
 	assetNodes                            []gameasset.Node
 	assetNodeIndexFromNode                map[*Node]int
 	assetMaterialIndexFromMaterial        map[*Material]int
@@ -95,6 +107,22 @@ func (c *converter) BuildModel(model *Model) *gameasset.Model {
 		assetMeshInstances[i] = c.BuildMeshInstance(meshInstance)
 	}
 
+	var (
+		assetBodyDefinitions []gameasset.BodyDefinition
+		assetBodyInstances   []gameasset.BodyInstance
+	)
+	if c.collisionMeshes {
+		assetBodyDefinitions = make([]gameasset.BodyDefinition, len(model.MeshDefinitions))
+		for i, meshDefinition := range model.MeshDefinitions {
+			assetBodyDefinitions[i] = c.BuildBodyDefinition(meshDefinition)
+		}
+
+		assetBodyInstances = make([]gameasset.BodyInstance, len(model.MeshInstances))
+		for i, meshInstance := range model.MeshInstances {
+			assetBodyInstances[i] = c.BuildBodyInstance(meshInstance)
+		}
+	}
+
 	return &gameasset.Model{
 		Nodes:           c.assetNodes,
 		Animations:      assetAnimations,
@@ -102,6 +130,8 @@ func (c *converter) BuildModel(model *Model) *gameasset.Model {
 		Materials:       assetMaterials,
 		MeshDefinitions: assetMeshDefinitions,
 		MeshInstances:   assetMeshInstances,
+		BodyDefinitions: assetBodyDefinitions,
+		BodyInstances:   assetBodyInstances,
 	}
 }
 
@@ -449,5 +479,62 @@ func (c *converter) BuildMeshInstance(meshInstance *MeshInstance) gameasset.Mesh
 		NodeIndex:       nodeIndex,
 		ArmatureIndex:   armatureIndex,
 		DefinitionIndex: definitionIndex,
+	}
+}
+
+func (c *converter) BuildBodyDefinition(meshDefinition *MeshDefinition) gameasset.BodyDefinition {
+	var triangles []gameasset.CollisionTriangle
+
+	for _, fragment := range meshDefinition.Fragments {
+		if fragment.Primitive != PrimitiveTriangles {
+			log.Warn("Skipping collision mesh due to primitive no being triangles")
+			continue
+		}
+		for i := fragment.IndexOffset; i < fragment.IndexOffset+fragment.IndexCount; i += 3 {
+			indexA := meshDefinition.Indices[i+0]
+			indexB := meshDefinition.Indices[i+1]
+			indexC := meshDefinition.Indices[i+2]
+
+			coordA := meshDefinition.Vertices[indexA].Coord
+			coordB := meshDefinition.Vertices[indexB].Coord
+			coordC := meshDefinition.Vertices[indexC].Coord
+
+			triangles = append(triangles, gameasset.CollisionTriangle{
+				A: [3]float32{coordA.X, coordA.Y, coordA.Z},
+				B: [3]float32{coordB.X, coordB.Y, coordB.Z},
+				C: [3]float32{coordC.X, coordC.Y, coordC.Z},
+			})
+		}
+	}
+
+	return gameasset.BodyDefinition{
+		Name: meshDefinition.Name,
+		CollisionMeshes: []gameasset.CollisionMesh{
+			{
+				Translation: [3]float32{0.0, 0.0, 0.0},
+				Rotation:    [4]float32{1.0, 0.0, 0.0, 0.0},
+				Triangles:   triangles,
+			},
+		},
+	}
+}
+
+func (c *converter) BuildBodyInstance(meshInstance *MeshInstance) gameasset.BodyInstance {
+	var nodeIndex int32
+	if index, ok := c.assetNodeIndexFromNode[meshInstance.Node]; ok {
+		nodeIndex = int32(index)
+	} else {
+		panic(fmt.Errorf("node %s not found", meshInstance.Node.Name))
+	}
+	var definitionIndex int32
+	if index, ok := c.assetMeshDefinitionFromMeshDefinition[meshInstance.Definition]; ok {
+		definitionIndex = int32(index)
+	} else {
+		panic(fmt.Errorf("mesh definition %s not found", meshInstance.Definition.Name))
+	}
+	return gameasset.BodyInstance{
+		Name:      meshInstance.Name,
+		NodeIndex: nodeIndex,
+		BodyIndex: definitionIndex,
 	}
 }
