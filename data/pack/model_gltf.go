@@ -271,6 +271,14 @@ func (a *OpenGLTFResourceAction) Run() error {
 			}
 
 			timestamps := gltfutil.AnimationKeyframes(gltfDoc, gltfSampler)
+			if len(timestamps) > 0 {
+				if timestamps[0] < animation.StartTime {
+					animation.StartTime = timestamps[0]
+				}
+				if timestamps[len(timestamps)-1] > animation.EndTime {
+					animation.EndTime = timestamps[len(timestamps)-1]
+				}
+			}
 
 			switch gltfChannel.Target.Path {
 			case gltf.TRSTranslation:
