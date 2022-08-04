@@ -77,8 +77,9 @@ type ColorTextureCubeInfo struct {
 }
 
 type DepthTexture2DInfo struct {
-	Width  int
-	Height int
+	Width        int
+	Height       int
+	ClippedValue *float32
 }
 
 type StencilTexture2DInfo struct {
@@ -87,6 +88,7 @@ type StencilTexture2DInfo struct {
 }
 
 type DepthStencilTexture2DInfo struct {
-	Width  int
-	Height int
+	Width             int
+	Height            int
+	DepthClippedValue *float32
 }
