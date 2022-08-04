@@ -107,10 +107,11 @@ func (s *Scene) CreateMesh(template *MeshTemplate) *Mesh {
 	return mesh
 }
 
-func (s *Scene) CreateArmature(template *ArmatureTemplate) *Armature {
+func (s *Scene) CreateArmature(template ArmatureTemplate) *Armature {
+	boneCount := len(template.InverseMatrices)
 	return &Armature{
 		template:          template,
-		uniformBufferData: make(data.Buffer, template.boneCount()*64),
+		uniformBufferData: make(data.Buffer, boneCount*64),
 	}
 }
 
