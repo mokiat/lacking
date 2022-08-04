@@ -1,7 +1,9 @@
 package gltfutil
 
 import (
+	"github.com/mokiat/gomath/dprec"
 	"github.com/mokiat/gomath/sprec"
+	"github.com/mokiat/gomath/stod"
 	"github.com/mokiat/lacking/data"
 	"github.com/mokiat/lacking/log"
 	"github.com/qmuntal/gltf"
@@ -375,7 +377,7 @@ func InverseBindMatrix(doc *gltf.Document, skin *gltf.Skin, index int) sprec.Mat
 	}
 }
 
-func AnimationKeyframes(doc *gltf.Document, sampler *gltf.AnimationSampler) []float32 {
+func AnimationKeyframes(doc *gltf.Document, sampler *gltf.AnimationSampler) []float64 {
 	if sampler.Input == nil {
 		log.Error("Animation sampler input is unspecified")
 		return nil
@@ -393,9 +395,9 @@ func AnimationKeyframes(doc *gltf.Document, sampler *gltf.AnimationSampler) []fl
 	}
 	switch accessor.ComponentType {
 	case gltf.ComponentFloat:
-		result := make([]float32, accessor.Count)
+		result := make([]float64, accessor.Count)
 		for i := 0; i < int(accessor.Count); i++ {
-			result[i] = buffer.Float32(i * 4)
+			result[i] = float64(buffer.Float32(i * 4))
 		}
 		return result
 	default:
@@ -404,7 +406,7 @@ func AnimationKeyframes(doc *gltf.Document, sampler *gltf.AnimationSampler) []fl
 	}
 }
 
-func AnimationTranslations(doc *gltf.Document, sampler *gltf.AnimationSampler) []sprec.Vec3 {
+func AnimationTranslations(doc *gltf.Document, sampler *gltf.AnimationSampler) []dprec.Vec3 {
 	if sampler.Output == nil {
 		log.Error("Animation sampler output is unspecified")
 		return nil
@@ -422,13 +424,13 @@ func AnimationTranslations(doc *gltf.Document, sampler *gltf.AnimationSampler) [
 	}
 	switch accessor.ComponentType {
 	case gltf.ComponentFloat:
-		result := make([]sprec.Vec3, accessor.Count)
+		result := make([]dprec.Vec3, accessor.Count)
 		for i := 0; i < int(accessor.Count); i++ {
-			result[i] = sprec.NewVec3(
+			result[i] = stod.Vec3(sprec.NewVec3(
 				buffer.Float32(i*12+0*4),
 				buffer.Float32(i*12+1*4),
 				buffer.Float32(i*12+2*4),
-			)
+			))
 		}
 		return result
 	default:
@@ -437,7 +439,7 @@ func AnimationTranslations(doc *gltf.Document, sampler *gltf.AnimationSampler) [
 	}
 }
 
-func AnimationRotations(doc *gltf.Document, sampler *gltf.AnimationSampler) []sprec.Quat {
+func AnimationRotations(doc *gltf.Document, sampler *gltf.AnimationSampler) []dprec.Quat {
 	if sampler.Output == nil {
 		log.Error("Animation sampler output is unspecified")
 		return nil
@@ -455,14 +457,14 @@ func AnimationRotations(doc *gltf.Document, sampler *gltf.AnimationSampler) []sp
 	}
 	switch accessor.ComponentType {
 	case gltf.ComponentFloat:
-		result := make([]sprec.Quat, accessor.Count)
+		result := make([]dprec.Quat, accessor.Count)
 		for i := 0; i < int(accessor.Count); i++ {
-			result[i] = sprec.UnitQuat(sprec.NewQuat(
+			result[i] = stod.Quat(sprec.UnitQuat(sprec.NewQuat(
 				buffer.Float32(i*16+3*4),
 				buffer.Float32(i*16+0*4),
 				buffer.Float32(i*16+1*4),
 				buffer.Float32(i*16+2*4),
-			))
+			)))
 		}
 		return result
 	default:
@@ -471,7 +473,7 @@ func AnimationRotations(doc *gltf.Document, sampler *gltf.AnimationSampler) []sp
 	}
 }
 
-func AnimationScales(doc *gltf.Document, sampler *gltf.AnimationSampler) []sprec.Vec3 {
+func AnimationScales(doc *gltf.Document, sampler *gltf.AnimationSampler) []dprec.Vec3 {
 	if sampler.Output == nil {
 		log.Error("Animation sampler output is unspecified")
 		return nil
@@ -489,13 +491,13 @@ func AnimationScales(doc *gltf.Document, sampler *gltf.AnimationSampler) []sprec
 	}
 	switch accessor.ComponentType {
 	case gltf.ComponentFloat:
-		result := make([]sprec.Vec3, accessor.Count)
+		result := make([]dprec.Vec3, accessor.Count)
 		for i := 0; i < int(accessor.Count); i++ {
-			result[i] = sprec.NewVec3(
+			result[i] = stod.Vec3(sprec.NewVec3(
 				buffer.Float32(i*12+0*4),
 				buffer.Float32(i*12+1*4),
 				buffer.Float32(i*12+2*4),
-			)
+			))
 		}
 		return result
 	default:

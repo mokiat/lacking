@@ -1,15 +1,14 @@
 package game
 
 import (
-	"github.com/mokiat/gomath/sprec"
-	"github.com/mokiat/gomath/stod"
+	"github.com/mokiat/gomath/dprec"
 	"github.com/mokiat/lacking/log"
 )
 
 type Animation struct {
 	Name      string
-	StartTime float32
-	EndTime   float32
+	StartTime float64
+	EndTime   float64
 	Bindings  []AnimationBinding
 }
 
@@ -30,16 +29,16 @@ func (a *Animation) Apply(timestamp float64) {
 			continue
 		}
 		if len(binding.TranslationKeyframes) > 0 {
-			translation := binding.Translation(float32(timestamp))
-			binding.Node.SetPosition(stod.Vec3(translation))
+			translation := binding.Translation(timestamp)
+			binding.Node.SetPosition(translation)
 		}
 		if len(binding.RotationKeyframes) > 0 {
-			rotation := binding.Rotation(float32(timestamp))
-			binding.Node.SetRotation(stod.Quat(rotation))
+			rotation := binding.Rotation(timestamp)
+			binding.Node.SetRotation(rotation)
 		}
 		if len(binding.ScaleKeyframes) > 0 {
-			scale := binding.Scale(float32(timestamp))
-			binding.Node.SetScale(stod.Vec3(scale))
+			scale := binding.Scale(timestamp)
+			binding.Node.SetScale(scale)
 		}
 	}
 }
@@ -47,29 +46,29 @@ func (a *Animation) Apply(timestamp float64) {
 type AnimationBinding struct {
 	NodeName             string
 	Node                 *Node
-	TranslationKeyframes KeyframeList[sprec.Vec3]
-	RotationKeyframes    KeyframeList[sprec.Quat]
-	ScaleKeyframes       KeyframeList[sprec.Vec3]
+	TranslationKeyframes KeyframeList[dprec.Vec3]
+	RotationKeyframes    KeyframeList[dprec.Quat]
+	ScaleKeyframes       KeyframeList[dprec.Vec3]
 }
 
-func (b AnimationBinding) Translation(timestamp float32) sprec.Vec3 {
+func (b AnimationBinding) Translation(timestamp float64) dprec.Vec3 {
 	left, right, t := b.TranslationKeyframes.Keyframe(timestamp)
-	return sprec.Vec3Lerp(left.Value, right.Value, t)
+	return dprec.Vec3Lerp(left.Value, right.Value, t)
 }
 
-func (b AnimationBinding) Rotation(timestamp float32) sprec.Quat {
+func (b AnimationBinding) Rotation(timestamp float64) dprec.Quat {
 	left, right, t := b.RotationKeyframes.Keyframe(timestamp)
-	return sprec.QuatSlerp(left.Value, right.Value, t)
+	return dprec.QuatSlerp(left.Value, right.Value, t)
 }
 
-func (b AnimationBinding) Scale(timestamp float32) sprec.Vec3 {
+func (b AnimationBinding) Scale(timestamp float64) dprec.Vec3 {
 	left, right, t := b.ScaleKeyframes.Keyframe(timestamp)
-	return sprec.Vec3Lerp(left.Value, right.Value, t)
+	return dprec.Vec3Lerp(left.Value, right.Value, t)
 }
 
 type KeyframeList[T any] []Keyframe[T]
 
-func (l KeyframeList[T]) Keyframe(timestamp float32) (Keyframe[T], Keyframe[T], float32) {
+func (l KeyframeList[T]) Keyframe(timestamp float64) (Keyframe[T], Keyframe[T], float64) {
 	leftIndex := 0
 	rightIndex := len(l) - 1
 	for leftIndex < rightIndex-1 {
@@ -84,11 +83,11 @@ func (l KeyframeList[T]) Keyframe(timestamp float32) (Keyframe[T], Keyframe[T], 
 	}
 	left := l[leftIndex]
 	right := l[rightIndex]
-	t := sprec.Clamp((timestamp-left.Timestamp)/(right.Timestamp-left.Timestamp), 0.0, 1.0)
+	t := dprec.Clamp((timestamp-left.Timestamp)/(right.Timestamp-left.Timestamp), 0.0, 1.0)
 	return left, right, t
 }
 
 type Keyframe[T any] struct {
-	Timestamp float32
+	Timestamp float64
 	Value     T
 }

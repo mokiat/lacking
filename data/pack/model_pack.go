@@ -1,6 +1,9 @@
 package pack
 
-import "github.com/mokiat/gomath/sprec"
+import (
+	"github.com/mokiat/gomath/dprec"
+	"github.com/mokiat/gomath/sprec"
+)
 
 type ModelProvider interface {
 	Model() *Model
@@ -103,8 +106,8 @@ type Material struct {
 
 type Animation struct {
 	Name      string
-	StartTime float32
-	EndTime   float32
+	StartTime float64
+	EndTime   float64
 	Bindings  []*AnimationBinding
 }
 
@@ -116,16 +119,16 @@ type AnimationBinding struct {
 }
 
 type TranslationKeyframe struct {
-	Timestamp   float32
-	Translation sprec.Vec3
+	Timestamp   float64
+	Translation dprec.Vec3
 }
 
 type RotationKeyframe struct {
-	Timestamp float32
-	Rotation  sprec.Quat
+	Timestamp float64
+	Rotation  dprec.Quat
 }
 
 type ScaleKeyframe struct {
-	Timestamp float32
-	Scale     sprec.Vec3
+	Timestamp float64
+	Scale     dprec.Vec3
 }
