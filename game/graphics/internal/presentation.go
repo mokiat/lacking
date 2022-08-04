@@ -6,6 +6,7 @@ const (
 	UniformBufferBindingCamera   = 0
 	UniformBufferBindingModel    = 1
 	UniformBufferBindingMaterial = 2
+	UniformBufferBindingLight    = 3
 )
 
 const (
@@ -15,6 +16,7 @@ const (
 	TextureBindingLightingFramebufferColor1 = 1
 	TextureBindingLightingFramebufferColor2 = 2
 	TextureBindingLightingFramebufferDepth  = 3
+	TextureBindingShadowFramebufferDepth    = 4
 	TextureBindingLightingReflectionTexture = 4
 	TextureBindingLightingRefractionTexture = 5
 
@@ -74,7 +76,10 @@ type ShadowPresentation struct {
 }
 
 func NewShadowPresentation(api render.API, vertexSrc, fragmentSrc string) *ShadowPresentation {
-	program := buildProgram(api, vertexSrc, fragmentSrc, nil, nil)
+	program := buildProgram(api, vertexSrc, fragmentSrc, nil, []render.UniformBinding{
+		render.NewUniformBinding("Light", UniformBufferBindingLight),
+		render.NewUniformBinding("Model", UniformBufferBindingModel),
+	})
 	return &ShadowPresentation{
 		Presentation: Presentation{
 			Program: program,
@@ -113,9 +118,11 @@ func NewLightingPresentation(api render.API, vertexSrc, fragmentSrc string) *Lig
 		render.NewTextureBinding("fbColor0TextureIn", TextureBindingLightingFramebufferColor0),
 		render.NewTextureBinding("fbColor1TextureIn", TextureBindingLightingFramebufferColor1),
 		render.NewTextureBinding("fbDepthTextureIn", TextureBindingLightingFramebufferDepth),
+		render.NewTextureBinding("fbShadowTextureIn", TextureBindingShadowFramebufferDepth),
 		render.NewTextureBinding("reflectionTextureIn", TextureBindingLightingReflectionTexture),
 		render.NewTextureBinding("refractionTextureIn", TextureBindingLightingRefractionTexture),
 	}, []render.UniformBinding{
+		render.NewUniformBinding("Light", UniformBufferBindingLight),
 		render.NewUniformBinding("Camera", UniformBufferBindingCamera),
 	})
 	return &LightingPresentation{
