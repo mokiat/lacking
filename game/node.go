@@ -57,8 +57,8 @@ type Node struct {
 	scale    dprec.Vec3
 
 	// revision is a mechanism through which it is determined if the absolute
-	// matrix cached for this Node is up to date. It borrows ideas from vector
-	// clocks used in distributed systems. The matrix is considered up to date
+	// matrix cached for this Node is up to date. It borrows ideas from Lamport
+	// timestamps used in distributed systems. The matrix is considered up to date
 	// if the revision is larger than the parent's revision.
 	revision  int32
 	transform TransformFunc
