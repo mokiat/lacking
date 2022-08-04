@@ -308,3 +308,8 @@ func (b *Body) applyAngularNudge(nudge dprec.Vec3) {
 	// FIXME: the moment of intertia is in local space, whereas the torque is in world space
 	b.vectorRotate(dprec.Mat3Vec3Prod(dprec.InverseMat3(b.momentOfInertia), nudge))
 }
+
+func (b *Body) applyOffsetNudge(offset, nudge dprec.Vec3) {
+	b.applyNudge(nudge)
+	b.applyAngularNudge(dprec.Vec3Cross(offset, nudge))
+}
