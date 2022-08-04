@@ -8,31 +8,23 @@ import (
 	"github.com/mokiat/lacking/data/buffer"
 )
 
-type ArmatureTemplateDefinition struct {
-	BoneInverseMatrices []sprec.Mat4
-}
-
 type ArmatureTemplate struct {
-	inverseMatrices []sprec.Mat4
-}
-
-func (t *ArmatureTemplate) boneCount() int {
-	return len(t.inverseMatrices)
+	InverseMatrices []sprec.Mat4
 }
 
 type Armature struct {
-	template          *ArmatureTemplate
+	template          ArmatureTemplate
 	uniformBufferData data.Buffer
 }
 
 func (a *Armature) BoneCount() int {
-	return a.template.boneCount()
+	return len(a.template.InverseMatrices)
 }
 
 func (a *Armature) SetBone(index int, matrix sprec.Mat4) {
-	finalMatrix := sprec.Mat4Prod(
+	finalMatrix := sprec.Mat4MultiProd(
 		matrix,
-		a.template.inverseMatrices[index],
+		a.template.InverseMatrices[index],
 	)
 	plotter := buffer.NewPlotter(a.uniformBufferData, binary.LittleEndian)
 	plotter.Seek(index * 64)
