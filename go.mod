@@ -6,7 +6,7 @@ require (
 	github.com/google/uuid v1.3.0
 	github.com/mdouchement/hdr v0.2.3
 	github.com/mokiat/goexr v0.1.0
-	github.com/mokiat/gomath v0.3.0
+	github.com/mokiat/gomath v0.4.0
 	github.com/onsi/ginkgo/v2 v2.1.4
 	github.com/onsi/gomega v1.20.0
 	github.com/qmuntal/gltf v0.22.1
@@ -20,11 +20,11 @@ require (
 require (
 	github.com/go-task/slim-sprig v0.0.0-20210107165309-348f09dbbbc0 // indirect
 	github.com/google/go-cmp v0.5.8 // indirect
-	github.com/google/pprof v0.0.0-20220608213341-c488b8fa1db3 // indirect
+	github.com/google/pprof v0.0.0-20220729232143-a41b82acbcb1 // indirect
 	github.com/lucasb-eyer/go-colorful v1.2.0 // indirect
-	golang.org/x/net v0.0.0-20220725212005-46097bf591d3 // indirect
-	golang.org/x/sys v0.0.0-20220722155257-8c9f86f7a55f // indirect
+	golang.org/x/net v0.0.0-20220802222814-0bcc04d9c69b // indirect
+	golang.org/x/sys v0.0.0-20220803195053-6e608f9ce704 // indirect
 	golang.org/x/text v0.3.7 // indirect
-	golang.org/x/tools v0.1.11 // indirect
+	golang.org/x/tools v0.1.12 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
