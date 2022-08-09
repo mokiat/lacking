@@ -188,9 +188,10 @@ func (a *OpenGLTFResourceAction) Run() error {
 
 		if gltfNode.Matrix != gltf.DefaultMatrix {
 			matrix := sprec.ColumnMajorArrayToMat4(gltfNode.Matrix)
-			node.Translation = matrix.Translation()
-			node.Scale = matrix.Scale()
-			node.Rotation = matrix.RotationQuat()
+			translation, rotation, scale := matrix.TRS()
+			node.Translation = translation
+			node.Rotation = rotation
+			node.Scale = scale
 		} else {
 			node.Translation = sprec.NewVec3(
 				gltfNode.Translation[0],

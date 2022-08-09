@@ -120,9 +120,10 @@ func (n *Node) Detach() {
 	if n.parent != nil {
 		absMatrix := n.AbsoluteMatrix()
 		n.parent.RemoveChild(n)
-		n.SetPosition(absMatrix.Translation())
-		n.SetRotation(absMatrix.RotationQuat())
-		n.SetScale(absMatrix.Scale())
+		translation, rotation, scale := absMatrix.TRS()
+		n.SetPosition(translation)
+		n.SetRotation(rotation)
+		n.SetScale(scale)
 	}
 }
 
