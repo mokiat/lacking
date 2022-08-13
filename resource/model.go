@@ -3,7 +3,10 @@ package resource
 import (
 	"fmt"
 
+	"github.com/mokiat/gomath/dprec"
 	"github.com/mokiat/gomath/sprec"
+	"github.com/mokiat/gomath/stod"
+	"github.com/mokiat/lacking/game"
 	"github.com/mokiat/lacking/game/asset"
 	"github.com/mokiat/lacking/game/graphics"
 )
@@ -17,18 +20,29 @@ func InjectModel(target **Model) func(value interface{}) {
 }
 
 type Model struct {
-	Name          string
-	Nodes         []*Node
-	Armatures     []*Armature
-	MeshInstances []*MeshInstance
-	meshes        []*Mesh
+	Name            string
+	AllNodes        []*Node
+	Nodes           []*Node
+	Animations      []*game.Animation
+	Armatures       []*Armature
+	MeshInstances   []*MeshInstance
+	meshes          []*Mesh
+	BodyDefinitions []asset.BodyDefinition
+	BodyInstances   []asset.BodyInstance
+}
+
+func (m Model) RootNodes() []*Node {
+	var result []*Node
+	for _, node := range m.Nodes {
+		if node.Parent == nil {
+			result = append(result, node)
+		}
+	}
+	return result
 }
 
 func (m Model) FindNode(name string) (*Node, bool) {
 	for _, node := range m.Nodes {
-		if node.Name == name {
-			return node, true
-		}
 		if child, found := node.FindNode(name); found {
 			return child, true
 		}
@@ -47,23 +61,18 @@ func (m Model) FindMeshInstance(name string) (*MeshInstance, bool) {
 
 type Node struct {
 	Name     string
-	Matrix   sprec.Mat4
+	Position dprec.Vec3
+	Rotation dprec.Quat
+	Scale    dprec.Vec3
 	Parent   *Node
 	Children []*Node
 }
 
-func (n Node) AbsoluteMatrix() sprec.Mat4 {
-	if n.Parent == nil {
-		return n.Matrix
+func (n *Node) FindNode(name string) (*Node, bool) {
+	if n.Name == name {
+		return n, true
 	}
-	return sprec.Mat4Prod(n.Parent.AbsoluteMatrix(), n.Matrix)
-}
-
-func (n Node) FindNode(name string) (*Node, bool) {
 	for _, node := range n.Children {
-		if node.Name == name {
-			return node, true
-		}
 		if child, found := node.FindNode(name); found {
 			return child, true
 		}
@@ -84,6 +93,7 @@ type MeshInstance struct {
 	Name           string
 	Node           *Node
 	MeshDefinition *Mesh
+	Armature       *Armature
 }
 
 func NewModelOperator(delegate asset.Registry, gfxEngine *graphics.Engine) *ModelOperator {
@@ -150,13 +160,12 @@ func (o *ModelOperator) Allocate(registry *Registry, id string) (interface{}, er
 			nodeAsset.Rotation[2],
 		)
 		nodes[i].Name = nodeAsset.Name
-		nodes[i].Matrix = sprec.TRSMat4(
-			sprec.ArrayToVec3(nodeAsset.Translation),
-			rotation,
-			sprec.ArrayToVec3(nodeAsset.Scale),
-		)
+		nodes[i].Position = stod.Vec3(sprec.ArrayToVec3(nodeAsset.Translation))
+		nodes[i].Rotation = stod.Quat(rotation)
+		nodes[i].Scale = stod.Vec3(sprec.ArrayToVec3(nodeAsset.Scale))
 	}
 	model.Nodes = rootNodes
+	model.AllNodes = nodes
 
 	model.Armatures = make([]*Armature, len(modelAsset.Armatures))
 	for i, assetArmature := range modelAsset.Armatures {
@@ -172,6 +181,51 @@ func (o *ModelOperator) Allocate(registry *Registry, id string) (interface{}, er
 		}
 	}
 
+	model.Animations = make([]*game.Animation, len(modelAsset.Animations))
+	for i, assetAnimation := range modelAsset.Animations {
+		bindings := make([]game.AnimationBinding, len(assetAnimation.Bindings))
+		for j, assetBinding := range assetAnimation.Bindings {
+			translationKeyframes := make([]game.Keyframe[dprec.Vec3], len(assetBinding.TranslationKeyframes))
+			for k, keyframe := range assetBinding.TranslationKeyframes {
+				translationKeyframes[k] = game.Keyframe[dprec.Vec3]{
+					Timestamp: keyframe.Timestamp,
+					Value:     keyframe.Translation,
+				}
+			}
+			rotationKeyframes := make([]game.Keyframe[dprec.Quat], len(assetBinding.RotationKeyframes))
+			for k, keyframe := range assetBinding.RotationKeyframes {
+				rotationKeyframes[k] = game.Keyframe[dprec.Quat]{
+					Timestamp: keyframe.Timestamp,
+					Value:     keyframe.Rotation,
+				}
+			}
+			scaleKeyframes := make([]game.Keyframe[dprec.Vec3], len(assetBinding.ScaleKeyframes))
+			for k, keyframe := range assetBinding.ScaleKeyframes {
+				scaleKeyframes[k] = game.Keyframe[dprec.Vec3]{
+					Timestamp: keyframe.Timestamp,
+					Value:     keyframe.Scale,
+				}
+			}
+			var nodeName = assetBinding.NodeName
+			if assetBinding.NodeIndex != asset.UnspecifiedNodeIndex {
+				nodeName = nodes[assetBinding.NodeIndex].Name
+			}
+			bindings[j] = game.AnimationBinding{
+				NodeName:             nodeName,
+				TranslationKeyframes: translationKeyframes,
+				RotationKeyframes:    rotationKeyframes,
+				ScaleKeyframes:       scaleKeyframes,
+			}
+		}
+
+		model.Animations[i] = &game.Animation{
+			Name:      assetAnimation.Name,
+			StartTime: assetAnimation.StartTime,
+			EndTime:   assetAnimation.EndTime,
+			Bindings:  bindings,
+		}
+	}
+
 	model.MeshInstances = make([]*MeshInstance, len(modelAsset.MeshInstances))
 	for i, instance := range modelAsset.MeshInstances {
 		model.MeshInstances[i] = &MeshInstance{
@@ -179,7 +233,13 @@ func (o *ModelOperator) Allocate(registry *Registry, id string) (interface{}, er
 			Node:           nodes[instance.NodeIndex],
 			MeshDefinition: model.meshes[instance.DefinitionIndex],
 		}
+		if instance.ArmatureIndex != asset.UnspecifiedArmatureIndex {
+			model.MeshInstances[i].Armature = model.Armatures[instance.ArmatureIndex]
+		}
 	}
+
+	model.BodyDefinitions = modelAsset.BodyDefinitions
+	model.BodyInstances = modelAsset.BodyInstances
 
 	return model, nil
 }

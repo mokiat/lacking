@@ -23,7 +23,7 @@ type MaterialDefinition struct {
 
 type MeshInstanceDefinition struct {
 	Name             string
-	GraphicsTemplate *graphics.MeshTemplate
+	GraphicsTemplate *graphics.MeshDefinition
 	Node             *NodeDefinition
 	Armature         *ArmatureDefinition
 }

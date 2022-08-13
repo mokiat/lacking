@@ -6,65 +6,22 @@ import (
 	"github.com/mokiat/lacking/util/spatial"
 )
 
-// MeshTemplate represents the definition of a mesh.
-// Multiple mesh instances can be created off of one template
-// reusing resources.
-type MeshTemplate struct {
-	vertexBuffer render.Buffer
-	indexBuffer  render.Buffer
-	vertexArray  render.VertexArray
-	subMeshes    []subMeshTemplate
-}
-
-// Delete releases any resources allocated by this
-// template.
-func (t *MeshTemplate) Delete() {
-	t.vertexArray.Release()
-	t.indexBuffer.Release()
-	t.vertexBuffer.Release()
-	t.subMeshes = nil
-}
-
-type subMeshTemplate struct {
-	id               int
-	material         *Material
-	topology         render.Topology
-	indexCount       int
-	indexOffsetBytes int
-	pipeline         render.Pipeline
-}
-
-// MeshTemplateDefinition contains everything needed to create
-// a new MeshTemplate.
-type MeshTemplateDefinition struct {
+// MeshDefinitionInfo contains everything needed to create a new MeshDefinition.
+type MeshDefinitionInfo struct {
 	VertexData   []byte
 	VertexFormat VertexFormat
 	IndexData    []byte
 	IndexFormat  IndexFormat
-	SubMeshes    []SubMeshTemplateDefinition
+	Fragments    []MeshFragmentDefinitionInfo
 }
 
-// SubMeshTemplateDefinition represents a portion of a mesh that
-// is drawn with a specific material.
-type SubMeshTemplateDefinition struct {
-	Primitive   Primitive
-	IndexOffset int
-	IndexCount  int
-	Material    *Material
+// HasArmature returns whether the mesh described by this info object will
+// require an Armature to be visualized.
+func (i *MeshDefinitionInfo) HasArmature() bool {
+	return i.VertexFormat.HasWeights && i.VertexFormat.HasJoints
 }
 
-const (
-	PrimitivePoints Primitive = 1 + iota
-	PrimitiveLines
-	PrimitiveLineStrip
-	PrimitiveLineLoop
-	PrimitiveTriangles
-	PrimitiveTriangleStrip
-	PrimitiveTriangleFan
-)
-
-type Primitive int
-
+// VertexFormat describes the data that is contained in a single vertex.
 type VertexFormat struct {
 	HasCoord            bool
 	CoordOffsetBytes    int
@@ -94,10 +51,101 @@ const (
 	IndexFormatU32
 )
 
+// IndexFormat specifies the data type that is used to represent individual
+// indices.
 type IndexFormat int
 
+// MeshFragmentDefinitionInfo represents the definition of a portion of a mesh
+// that is drawn with a specific material and primitives.
+type MeshFragmentDefinitionInfo struct {
+	Primitive   Primitive
+	IndexOffset int
+	IndexCount  int
+	Material    *MaterialDefinition
+}
+
+const (
+	PrimitivePoints Primitive = 1 + iota
+	PrimitiveLines
+	PrimitiveLineStrip
+	PrimitiveLineLoop
+	PrimitiveTriangles
+	PrimitiveTriangleStrip
+	PrimitiveTriangleFan
+)
+
+// Primitive represents the basic shape unit that is described by indices
+// (for example: triangles).
+type Primitive int
+
+// MeshDefinition represents the definition of a mesh.
+// Multiple mesh instances can be created off of one template
+// reusing resources.
 type MeshDefinition struct {
-	Template *MeshTemplate
+	vertexBuffer render.Buffer
+	indexBuffer  render.Buffer
+	vertexArray  render.VertexArray
+	fragments    []MeshFragmentDefinition
+	hasArmature  bool
+}
+
+// Delete releases any resources owned by this MeshDefinition.
+func (t *MeshDefinition) Delete() {
+	t.vertexArray.Release()
+	t.indexBuffer.Release()
+	t.vertexBuffer.Release()
+	for _, fragment := range t.fragments {
+		fragment.deletePipelines()
+	}
+	t.fragments = nil
+}
+
+type MeshFragmentDefinition struct {
+	id               int
+	mesh             *MeshDefinition
+	topology         render.Topology
+	indexCount       int
+	indexOffsetBytes int
+	material         *Material
+}
+
+func (d *MeshFragmentDefinition) rebuildPipelines() {
+	d.deletePipelines()
+	d.createPipelines()
+}
+
+func (d *MeshFragmentDefinition) deletePipelines() {
+	if d.material.shadowPipeline != nil {
+		d.material.shadowPipeline.Release()
+		d.material.shadowPipeline = nil
+	}
+	if d.material.geometryPipeline != nil {
+		d.material.geometryPipeline.Release()
+		d.material.geometryPipeline = nil
+	}
+	if d.material.emissivePipeline != nil {
+		d.material.emissivePipeline.Release()
+		d.material.emissivePipeline = nil
+	}
+	if d.material.forwardPipeline != nil {
+		d.material.forwardPipeline.Release()
+		d.material.forwardPipeline = nil
+	}
+}
+
+func (d *MeshFragmentDefinition) createPipelines() {
+	// TODO: Consider moving to Material object instead
+	material := d.material
+	materialDef := material.definition
+	material.definitionRevision = materialDef.revision
+	material.shadowPipeline = materialDef.shading.ShadowPipeline(d.mesh, d)
+	material.geometryPipeline = materialDef.shading.GeometryPipeline(d.mesh, d)
+	material.emissivePipeline = materialDef.shading.EmissivePipeline(d.mesh, d)
+	material.forwardPipeline = materialDef.shading.ForwardPipeline(d.mesh, d)
+}
+
+type MeshInfo struct {
+	Template *MeshDefinition
 	Armature *Armature
 }
 
@@ -110,8 +158,8 @@ type Mesh struct {
 	prev  *Mesh
 	next  *Mesh
 
-	template *MeshTemplate
-	armature *Armature
+	definition *MeshDefinition
+	armature   *Armature
 }
 
 func (m *Mesh) SetMatrix(matrix dprec.Mat4) {

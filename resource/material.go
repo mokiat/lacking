@@ -10,7 +10,7 @@ import (
 type Material struct {
 	Name string
 
-	GFXMaterial *graphics.Material
+	GFXMaterial *graphics.MaterialDefinition
 	textures    []*TwoDTexture
 }
 
@@ -61,7 +61,7 @@ func AllocateMaterial(registry *Registry, gfxEngine *graphics.Engine, materialAs
 	}
 
 	registry.ScheduleVoid(func() {
-		definition := graphics.PBRMaterialDefinition{
+		material.GFXMaterial = gfxEngine.CreatePBRMaterialDefinition(graphics.PBRMaterialInfo{
 			BackfaceCulling:          materialAsset.BackfaceCulling,
 			AlphaBlending:            materialAsset.Blending,
 			AlphaTesting:             materialAsset.AlphaTesting,
@@ -73,18 +73,13 @@ func AllocateMaterial(registry *Registry, gfxEngine *graphics.Engine, materialAs
 			AlbedoTexture:            albedoTexture,
 			NormalScale:              assetPBR.NormalScale(),
 			NormalTexture:            normalTexture,
-		}
-		material.GFXMaterial = gfxEngine.CreatePBRMaterial(definition)
+		})
 	}).Wait()
 
 	return material, nil
 }
 
 func ReleaseMaterial(registry *Registry, material *Material) error {
-	registry.ScheduleVoid(func() {
-		material.GFXMaterial.Delete()
-	}).Wait()
-
 	for _, texture := range material.textures {
 		if result := registry.UnloadTwoDTexture(texture).Wait(); result.Err != nil {
 			return result.Err

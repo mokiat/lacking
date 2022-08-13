@@ -11,7 +11,7 @@ import (
 type Mesh struct {
 	Name string
 
-	GFXMeshTemplate *graphics.MeshTemplate
+	GFXMeshTemplate *graphics.MeshDefinition
 }
 
 func AllocateMesh(registry *Registry, gfxEngine *graphics.Engine, materials []*Material, meshAsset *asset.MeshDefinition) (*Mesh, error) {
@@ -19,10 +19,10 @@ func AllocateMesh(registry *Registry, gfxEngine *graphics.Engine, materials []*M
 		Name: meshAsset.Name,
 	}
 
-	subMeshDefinitions := make([]graphics.SubMeshTemplateDefinition, 0)
+	subMeshDefinitions := make([]graphics.MeshFragmentDefinitionInfo, 0)
 	for _, assetFragment := range meshAsset.Fragments {
 		if matIndex := assetFragment.MaterialIndex; matIndex != asset.UnspecifiedMaterialIndex {
-			subMeshDefinitions = append(subMeshDefinitions, graphics.SubMeshTemplateDefinition{
+			subMeshDefinitions = append(subMeshDefinitions, graphics.MeshFragmentDefinitionInfo{
 				Primitive:   assetToGraphicsPrimitive(assetFragment.Topology),
 				IndexOffset: int(assetFragment.IndexOffset),
 				IndexCount:  int(assetFragment.IndexCount),
@@ -34,7 +34,7 @@ func AllocateMesh(registry *Registry, gfxEngine *graphics.Engine, materials []*M
 	}
 
 	registry.ScheduleVoid(func() {
-		definition := graphics.MeshTemplateDefinition{
+		definition := graphics.MeshDefinitionInfo{
 			VertexData: meshAsset.VertexData,
 			VertexFormat: graphics.VertexFormat{
 				HasCoord:            meshAsset.VertexLayout.CoordOffset != asset.UnspecifiedOffset,
@@ -61,9 +61,9 @@ func AllocateMesh(registry *Registry, gfxEngine *graphics.Engine, materials []*M
 			},
 			IndexData:   meshAsset.IndexData,
 			IndexFormat: assetToGraphicsIndexFormat(meshAsset.IndexLayout),
-			SubMeshes:   subMeshDefinitions,
+			Fragments:   subMeshDefinitions,
 		}
-		mesh.GFXMeshTemplate = gfxEngine.CreateMeshTemplate(definition)
+		mesh.GFXMeshTemplate = gfxEngine.CreateMeshDefinition(definition)
 	}).Wait()
 
 	return mesh, nil

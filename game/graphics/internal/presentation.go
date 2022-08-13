@@ -25,6 +25,23 @@ const (
 	TextureBindingSkyboxAlbedoTexture = 0
 )
 
+func NewShadowProgram(api render.API, vertexSrc, fragmentSrc string) render.Program {
+	return buildProgram(api, vertexSrc, fragmentSrc, nil, []render.UniformBinding{
+		render.NewUniformBinding("Light", UniformBufferBindingLight),
+		render.NewUniformBinding("Model", UniformBufferBindingModel),
+	})
+}
+
+func NewGeometryProgram(api render.API, vertexSrc, fragmentSrc string) render.Program {
+	return buildProgram(api, vertexSrc, fragmentSrc, []render.TextureBinding{
+		render.NewTextureBinding("albedoTwoDTextureIn", TextureBindingGeometryAlbedoTexture),
+	}, []render.UniformBinding{
+		render.NewUniformBinding("Camera", UniformBufferBindingCamera),
+		render.NewUniformBinding("Model", UniformBufferBindingModel),
+		render.NewUniformBinding("Material", UniformBufferBindingMaterial),
+	})
+}
+
 type Presentation struct {
 	Program render.Program
 }
@@ -68,41 +85,6 @@ func NewSkyboxPresentation(api render.API, vertexSrc, fragmentSrc string) *Skybo
 			Program: program,
 		},
 		AlbedoColorLocation: program.UniformLocation("albedoColorIn"),
-	}
-}
-
-type ShadowPresentation struct {
-	Presentation
-}
-
-func NewShadowPresentation(api render.API, vertexSrc, fragmentSrc string) *ShadowPresentation {
-	program := buildProgram(api, vertexSrc, fragmentSrc, nil, []render.UniformBinding{
-		render.NewUniformBinding("Light", UniformBufferBindingLight),
-		render.NewUniformBinding("Model", UniformBufferBindingModel),
-	})
-	return &ShadowPresentation{
-		Presentation: Presentation{
-			Program: program,
-		},
-	}
-}
-
-type GeometryPresentation struct {
-	Presentation
-}
-
-func NewGeometryPresentation(api render.API, vertexSrc, fragmentSrc string) *GeometryPresentation {
-	program := buildProgram(api, vertexSrc, fragmentSrc, []render.TextureBinding{
-		render.NewTextureBinding("albedoTwoDTextureIn", TextureBindingGeometryAlbedoTexture),
-	}, []render.UniformBinding{
-		render.NewUniformBinding("Camera", UniformBufferBindingCamera),
-		render.NewUniformBinding("Model", UniformBufferBindingModel),
-		render.NewUniformBinding("Material", UniformBufferBindingMaterial),
-	})
-	return &GeometryPresentation{
-		Presentation: Presentation{
-			Program: program,
-		},
 	}
 }
 

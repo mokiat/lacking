@@ -263,3 +263,35 @@ func checkIntersectionBoxMeshPlacements(boxPlacement, meshPlacement Placement, r
 
 func checkIntersectionMeshMeshPlacements(first, second Placement, resultSet *IntersectionResultSet) {
 }
+
+func CheckLineIntersection(line StaticLine, mesh StaticMesh, resultSet *IntersectionResultSet) {
+	for _, triangle := range mesh.Triangles() {
+		heightA := dprec.Vec3Dot(triangle.Normal(), dprec.Vec3Diff(line.A(), triangle.A()))
+		heightB := dprec.Vec3Dot(triangle.Normal(), dprec.Vec3Diff(line.B(), triangle.A()))
+		if heightA > 0.0 && heightB > 0.0 {
+			return
+		}
+		if heightA < 0.0 && heightB < 0.0 {
+			return
+		}
+		if heightA < 0.0 {
+			line = NewStaticLine(line.B(), line.A())
+			heightA, heightB = heightB, heightA
+		}
+
+		projectedPoint := dprec.Vec3Sum(
+			dprec.Vec3Prod(line.A(), -heightB/(heightA-heightB)),
+			dprec.Vec3Prod(line.B(), heightA/(heightA-heightB)),
+		)
+
+		if triangle.ContainsPoint(projectedPoint) {
+			resultSet.Add(Intersection{
+				Depth:                -heightB,
+				FirstContact:         projectedPoint,
+				FirstDisplaceNormal:  triangle.Normal(),
+				SecondContact:        projectedPoint,
+				SecondDisplaceNormal: dprec.InverseVec3(triangle.Normal()),
+			})
+		}
+	}
+}

@@ -4,6 +4,7 @@ import (
 	"github.com/mokiat/gomath/sprec"
 	"github.com/mokiat/lacking/data"
 	"github.com/mokiat/lacking/render"
+	"github.com/mokiat/lacking/util/shape"
 	"github.com/mokiat/lacking/util/spatial"
 )
 
@@ -89,7 +90,7 @@ func (s *Scene) CreateAmbientLight() *Light {
 
 // CreateMesh creates a new mesh instance from the specified
 // template and places it in the scene.
-func (s *Scene) CreateMesh(template *MeshTemplate) *Mesh {
+func (s *Scene) CreateMesh(definition *MeshDefinition) *Mesh {
 	var mesh *Mesh
 	if s.cachedMesh != nil {
 		mesh = s.cachedMesh
@@ -100,9 +101,9 @@ func (s *Scene) CreateMesh(template *MeshTemplate) *Mesh {
 	mesh.Node = *newNode()
 	mesh.item = s.meshOctree.CreateItem(mesh)
 	mesh.scene = s
-	mesh.template = template
 	mesh.prev = nil
 	mesh.next = nil
+	mesh.definition = definition
 	s.attachMesh(mesh)
 	return mesh
 }
@@ -119,6 +120,10 @@ func (s *Scene) CreateArmature(template ArmatureTemplate) *Armature {
 // looking through the specified camera.
 func (s *Scene) Render(viewport Viewport, camera *Camera) {
 	s.renderer.Render(s.renderer.api.DefaultFramebuffer(), viewport, s, camera)
+}
+
+func (s *Scene) Ray(viewport Viewport, camera *Camera, x, y int) shape.StaticLine {
+	return s.renderer.Ray(viewport, camera, x, y)
 }
 
 // Render draws this scene to the specified viewport
