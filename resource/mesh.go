@@ -59,9 +59,10 @@ func AllocateMesh(registry *Registry, gfxEngine *graphics.Engine, materials []*M
 				JointsOffsetBytes:   int(meshAsset.VertexLayout.JointsOffset),
 				JointsStrideBytes:   int(meshAsset.VertexLayout.JointsStride),
 			},
-			IndexData:   meshAsset.IndexData,
-			IndexFormat: assetToGraphicsIndexFormat(meshAsset.IndexLayout),
-			Fragments:   subMeshDefinitions,
+			IndexData:            meshAsset.IndexData,
+			IndexFormat:          assetToGraphicsIndexFormat(meshAsset.IndexLayout),
+			Fragments:            subMeshDefinitions,
+			BoundingSphereRadius: meshAsset.BoundingSphereRadius,
 		}
 		mesh.GFXMeshTemplate = gfxEngine.CreateMeshDefinition(definition)
 	}).Wait()

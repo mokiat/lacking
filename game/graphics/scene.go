@@ -100,6 +100,7 @@ func (s *Scene) CreateMesh(definition *MeshDefinition) *Mesh {
 	}
 	mesh.Node = *newNode()
 	mesh.item = s.meshOctree.CreateItem(mesh)
+	mesh.item.SetRadius(definition.boundingSphereRadius)
 	mesh.scene = s
 	mesh.prev = nil
 	mesh.next = nil

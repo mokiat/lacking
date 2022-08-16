@@ -8,11 +8,12 @@ import (
 
 // MeshDefinitionInfo contains everything needed to create a new MeshDefinition.
 type MeshDefinitionInfo struct {
-	VertexData   []byte
-	VertexFormat VertexFormat
-	IndexData    []byte
-	IndexFormat  IndexFormat
-	Fragments    []MeshFragmentDefinitionInfo
+	VertexData           []byte
+	VertexFormat         VertexFormat
+	IndexData            []byte
+	IndexFormat          IndexFormat
+	Fragments            []MeshFragmentDefinitionInfo
+	BoundingSphereRadius float64
 }
 
 // HasArmature returns whether the mesh described by this info object will
@@ -82,11 +83,12 @@ type Primitive int
 // Multiple mesh instances can be created off of one template
 // reusing resources.
 type MeshDefinition struct {
-	vertexBuffer render.Buffer
-	indexBuffer  render.Buffer
-	vertexArray  render.VertexArray
-	fragments    []MeshFragmentDefinition
-	hasArmature  bool
+	vertexBuffer         render.Buffer
+	indexBuffer          render.Buffer
+	vertexArray          render.VertexArray
+	fragments            []MeshFragmentDefinition
+	boundingSphereRadius float64
+	hasArmature          bool
 }
 
 // Delete releases any resources owned by this MeshDefinition.
@@ -169,10 +171,6 @@ func (m *Mesh) SetMatrix(matrix dprec.Mat4) {
 
 func (m *Mesh) SetArmature(armature *Armature) {
 	m.armature = armature
-}
-
-func (m *Mesh) SetBoundingSphereRadius(radius float64) {
-	m.item.SetRadius(radius)
 }
 
 // Delete removes this mesh from the scene.

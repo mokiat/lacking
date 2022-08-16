@@ -3,6 +3,7 @@ package pack
 import (
 	"fmt"
 
+	"github.com/mokiat/gomath/dprec"
 	"github.com/mokiat/lacking/data"
 	gameasset "github.com/mokiat/lacking/game/asset"
 	"github.com/mokiat/lacking/log"
@@ -392,6 +393,14 @@ func (c *converter) BuildMeshDefinition(meshDefinition *MeshDefinition) gameasse
 		fragments[i] = c.BuildFragment(fragment, indexSize)
 	}
 
+	var boundingSphereRadius float64
+	for _, vertex := range meshDefinition.Vertices {
+		boundingSphereRadius = dprec.Max(
+			boundingSphereRadius,
+			float64(vertex.Coord.Length()),
+		)
+	}
+
 	return gameasset.MeshDefinition{
 		Name: meshDefinition.Name,
 		VertexLayout: gameasset.VertexLayout{
@@ -410,10 +419,11 @@ func (c *converter) BuildMeshDefinition(meshDefinition *MeshDefinition) gameasse
 			JointsOffset:   jointsOffset,
 			JointsStride:   stride,
 		},
-		VertexData:  vertexData,
-		IndexLayout: indexLayout,
-		IndexData:   indexData,
-		Fragments:   fragments,
+		VertexData:           vertexData,
+		IndexLayout:          indexLayout,
+		IndexData:            indexData,
+		Fragments:            fragments,
+		BoundingSphereRadius: boundingSphereRadius,
 	}
 }
 

@@ -7,12 +7,13 @@ const (
 )
 
 type MeshDefinition struct {
-	Name         string
-	VertexLayout VertexLayout
-	VertexData   []byte
-	IndexLayout  IndexLayout
-	IndexData    []byte
-	Fragments    []MeshFragment
+	Name                 string
+	VertexLayout         VertexLayout
+	VertexData           []byte
+	IndexLayout          IndexLayout
+	IndexData            []byte
+	Fragments            []MeshFragment
+	BoundingSphereRadius float64
 }
 
 type MeshInstance struct {

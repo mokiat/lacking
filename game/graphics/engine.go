@@ -188,11 +188,12 @@ func (e *Engine) CreateMeshDefinition(info MeshDefinitionInfo) *MeshDefinition {
 	})
 
 	result := &MeshDefinition{
-		vertexBuffer: vertexBuffer,
-		indexBuffer:  indexBuffer,
-		vertexArray:  vertexArray,
-		fragments:    make([]MeshFragmentDefinition, len(info.Fragments)),
-		hasArmature:  info.HasArmature(),
+		vertexBuffer:         vertexBuffer,
+		indexBuffer:          indexBuffer,
+		vertexArray:          vertexArray,
+		fragments:            make([]MeshFragmentDefinition, len(info.Fragments)),
+		boundingSphereRadius: info.BoundingSphereRadius,
+		hasArmature:          info.HasArmature(),
 	}
 	for i, fragmentInfo := range info.Fragments {
 		materialDef := fragmentInfo.Material
