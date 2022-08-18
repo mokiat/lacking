@@ -12,6 +12,7 @@ import (
 	"github.com/mokiat/lacking/game/graphics/internal"
 	"github.com/mokiat/lacking/log"
 	"github.com/mokiat/lacking/render"
+	"github.com/mokiat/lacking/util/metrics"
 	"github.com/mokiat/lacking/util/shape"
 	"github.com/mokiat/lacking/util/spatial"
 	"github.com/x448/float16"
@@ -607,6 +608,8 @@ func lightOrtho() sprec.Mat4 {
 }
 
 func (r *sceneRenderer) renderShadowPass(ctx renderCtx) {
+	defer metrics.BeginSpan("shadow pass").End()
+
 	// TODO: Support array of shadow-casting lights, not just one
 	var directionalLight *Light
 	for light := ctx.scene.firstLight; light != nil; light = light.next {
@@ -740,6 +743,8 @@ func (r *sceneRenderer) renderShadowMeshesList(ctx renderCtx) {
 }
 
 func (r *sceneRenderer) renderGeometryPass(ctx renderCtx) {
+	defer metrics.BeginSpan("geometry pass").End()
+
 	r.api.BeginRenderPass(render.RenderPassInfo{
 		Framebuffer: r.geometryFramebuffer,
 		Viewport: render.Area{
@@ -869,6 +874,8 @@ func (r *sceneRenderer) renderMeshesList(ctx renderCtx) {
 }
 
 func (r *sceneRenderer) renderLightingPass(ctx renderCtx) {
+	defer metrics.BeginSpan("lighting pass").End()
+
 	r.api.BeginRenderPass(render.RenderPassInfo{
 		Framebuffer: r.lightingFramebuffer,
 		Viewport: render.Area{
@@ -928,6 +935,8 @@ func (r *sceneRenderer) renderDirectionalLight(ctx renderCtx, light *Light) {
 }
 
 func (r *sceneRenderer) renderForwardPass(ctx renderCtx) {
+	defer metrics.BeginSpan("forward pass").End()
+
 	r.api.BeginRenderPass(render.RenderPassInfo{
 		Framebuffer: r.forwardFramebuffer,
 		Viewport: render.Area{
@@ -969,6 +978,8 @@ func (r *sceneRenderer) renderForwardPass(ctx renderCtx) {
 }
 
 func (r *sceneRenderer) renderExposureProbePass(ctx renderCtx) {
+	defer metrics.BeginSpan("exposure pass").End()
+
 	if r.exposureFormat != render.DataFormatRGBA16F && r.exposureFormat != render.DataFormatRGBA32F {
 		log.Error("Skipping exposure due to unsupported framebuffer format %q", r.exposureFormat)
 		return
@@ -1057,6 +1068,8 @@ func (r *sceneRenderer) renderExposureProbePass(ctx renderCtx) {
 }
 
 func (r *sceneRenderer) renderPostprocessingPass(ctx renderCtx) {
+	defer metrics.BeginSpan("postprocessing pass").End()
+
 	r.api.BeginRenderPass(render.RenderPassInfo{
 		Framebuffer: ctx.framebuffer,
 		Viewport: render.Area{
