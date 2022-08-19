@@ -86,6 +86,21 @@ func (p *Plotter) PlotFloat32(value float32) {
 	p.offset += 4
 }
 
+// PlotVec2 sets a sprec.Vec2 value at the current offset and
+// advances the offset with 8 bytes.
+func (p *Plotter) PlotVec2(value sprec.Vec2) {
+	p.PlotFloat32(value.X)
+	p.PlotFloat32(value.Y)
+}
+
+// PlotVec3 sets a sprec.Vec3 value at the current offset and
+// advances the offset with 12 bytes.
+func (p *Plotter) PlotVec3(value sprec.Vec3) {
+	p.PlotFloat32(value.X)
+	p.PlotFloat32(value.Y)
+	p.PlotFloat32(value.Z)
+}
+
 // PlotVec4 sets a sprec.Vec4 value at the current offset and
 // advances the offset with 16 bytes.
 func (p *Plotter) PlotVec4(value sprec.Vec4) {

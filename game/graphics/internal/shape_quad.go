@@ -14,30 +14,20 @@ func CreateQuadShape(api render.API) *Shape {
 		vertexCount = 4
 
 		indexSize  = 1 * render.SizeU16
-		indexCount = 6
+		indexCount = 4
 	)
 
 	vertexData := make([]byte, vertexCount*vertexSize)
 	vertexPlotter := buffer.NewPlotter(vertexData, binary.LittleEndian)
-	quadVertex{
-		Position: sprec.NewVec2(-1.0, 1.0),
-	}.Serialize(vertexPlotter)
-	quadVertex{
-		Position: sprec.NewVec2(-1.0, -1.0),
-	}.Serialize(vertexPlotter)
-	quadVertex{
-		Position: sprec.NewVec2(1.0, -1.0),
-	}.Serialize(vertexPlotter)
-	quadVertex{
-		Position: sprec.NewVec2(1.0, 1.0),
-	}.Serialize(vertexPlotter)
+	vertexPlotter.PlotVec2(sprec.NewVec2(-1.0, 1.0))
+	vertexPlotter.PlotVec2(sprec.NewVec2(-1.0, -1.0))
+	vertexPlotter.PlotVec2(sprec.NewVec2(1.0, -1.0))
+	vertexPlotter.PlotVec2(sprec.NewVec2(1.0, 1.0))
 
 	indexData := make([]byte, indexCount*indexSize)
 	indexPlotter := buffer.NewPlotter(indexData, binary.LittleEndian)
 	indexPlotter.PlotUint16(0)
 	indexPlotter.PlotUint16(1)
-	indexPlotter.PlotUint16(2)
-	indexPlotter.PlotUint16(0)
 	indexPlotter.PlotUint16(2)
 	indexPlotter.PlotUint16(3)
 
@@ -76,16 +66,7 @@ func CreateQuadShape(api render.API) *Shape {
 
 		vertexArray: vertexArray,
 
-		topology:   render.TopologyTriangles,
+		topology:   render.TopologyTriangleFan,
 		indexCount: indexCount,
 	}
-}
-
-type quadVertex struct {
-	Position sprec.Vec2
-}
-
-func (v quadVertex) Serialize(plotter *buffer.Plotter) {
-	plotter.PlotFloat32(v.Position.X)
-	plotter.PlotFloat32(v.Position.Y)
 }

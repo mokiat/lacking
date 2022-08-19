@@ -19,31 +19,15 @@ func CreateCubeShape(api render.API) *Shape {
 
 	vertexData := make([]byte, vertexCount*vertexSize)
 	vertexPlotter := buffer.NewPlotter(vertexData, binary.LittleEndian)
-	cubeVertex{
-		Position: sprec.NewVec3(-1.0, 1.0, 1.0),
-	}.Serialize(vertexPlotter)
-	cubeVertex{
-		Position: sprec.NewVec3(-1.0, -1.0, 1.0),
-	}.Serialize(vertexPlotter)
-	cubeVertex{
-		Position: sprec.NewVec3(1.0, -1.0, 1.0),
-	}.Serialize(vertexPlotter)
-	cubeVertex{
-		Position: sprec.NewVec3(1.0, 1.0, 1.0),
-	}.Serialize(vertexPlotter)
+	vertexPlotter.PlotVec3(sprec.NewVec3(-1.0, 1.0, 1.0))
+	vertexPlotter.PlotVec3(sprec.NewVec3(-1.0, -1.0, 1.0))
+	vertexPlotter.PlotVec3(sprec.NewVec3(1.0, -1.0, 1.0))
+	vertexPlotter.PlotVec3(sprec.NewVec3(1.0, 1.0, 1.0))
 
-	cubeVertex{
-		Position: sprec.NewVec3(-1.0, 1.0, -1.0),
-	}.Serialize(vertexPlotter)
-	cubeVertex{
-		Position: sprec.NewVec3(-1.0, -1.0, -1.0),
-	}.Serialize(vertexPlotter)
-	cubeVertex{
-		Position: sprec.NewVec3(1.0, -1.0, -1.0),
-	}.Serialize(vertexPlotter)
-	cubeVertex{
-		Position: sprec.NewVec3(1.0, 1.0, -1.0),
-	}.Serialize(vertexPlotter)
+	vertexPlotter.PlotVec3(sprec.NewVec3(-1.0, 1.0, -1.0))
+	vertexPlotter.PlotVec3(sprec.NewVec3(-1.0, -1.0, -1.0))
+	vertexPlotter.PlotVec3(sprec.NewVec3(1.0, -1.0, -1.0))
+	vertexPlotter.PlotVec3(sprec.NewVec3(1.0, 1.0, -1.0))
 
 	indexData := make([]byte, indexCount*indexSize)
 	indexPlotter := buffer.NewPlotter(indexData, binary.LittleEndian)
@@ -133,14 +117,4 @@ func CreateCubeShape(api render.API) *Shape {
 		topology:   render.TopologyTriangles,
 		indexCount: indexCount,
 	}
-}
-
-type cubeVertex struct {
-	Position sprec.Vec3
-}
-
-func (v cubeVertex) Serialize(plotter *buffer.Plotter) {
-	plotter.PlotFloat32(v.Position.X)
-	plotter.PlotFloat32(v.Position.Y)
-	plotter.PlotFloat32(v.Position.Z)
 }
