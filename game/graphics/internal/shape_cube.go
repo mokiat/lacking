@@ -48,52 +48,52 @@ func CreateCubeShape(api render.API) *Shape {
 	indexData := make([]byte, indexCount*indexSize)
 	indexPlotter := buffer.NewPlotter(indexData, binary.LittleEndian)
 	indexPlotter.PlotUint16(3)
-	indexPlotter.PlotUint16(2)
 	indexPlotter.PlotUint16(1)
+	indexPlotter.PlotUint16(2)
 
 	indexPlotter.PlotUint16(3)
-	indexPlotter.PlotUint16(1)
-	indexPlotter.PlotUint16(0)
-
 	indexPlotter.PlotUint16(0)
 	indexPlotter.PlotUint16(1)
-	indexPlotter.PlotUint16(5)
 
 	indexPlotter.PlotUint16(0)
-	indexPlotter.PlotUint16(5)
-	indexPlotter.PlotUint16(4)
-
-	indexPlotter.PlotUint16(7)
-	indexPlotter.PlotUint16(6)
-	indexPlotter.PlotUint16(2)
-
-	indexPlotter.PlotUint16(7)
-	indexPlotter.PlotUint16(2)
-	indexPlotter.PlotUint16(3)
-
-	indexPlotter.PlotUint16(4)
-	indexPlotter.PlotUint16(5)
-	indexPlotter.PlotUint16(6)
-
-	indexPlotter.PlotUint16(4)
-	indexPlotter.PlotUint16(6)
-	indexPlotter.PlotUint16(7)
-
 	indexPlotter.PlotUint16(5)
 	indexPlotter.PlotUint16(1)
-	indexPlotter.PlotUint16(2)
-
-	indexPlotter.PlotUint16(5)
-	indexPlotter.PlotUint16(2)
-	indexPlotter.PlotUint16(6)
 
 	indexPlotter.PlotUint16(0)
 	indexPlotter.PlotUint16(4)
-	indexPlotter.PlotUint16(7)
+	indexPlotter.PlotUint16(5)
 
-	indexPlotter.PlotUint16(0)
+	indexPlotter.PlotUint16(7)
+	indexPlotter.PlotUint16(2)
+	indexPlotter.PlotUint16(6)
+
 	indexPlotter.PlotUint16(7)
 	indexPlotter.PlotUint16(3)
+	indexPlotter.PlotUint16(2)
+
+	indexPlotter.PlotUint16(4)
+	indexPlotter.PlotUint16(6)
+	indexPlotter.PlotUint16(5)
+
+	indexPlotter.PlotUint16(4)
+	indexPlotter.PlotUint16(7)
+	indexPlotter.PlotUint16(6)
+
+	indexPlotter.PlotUint16(5)
+	indexPlotter.PlotUint16(2)
+	indexPlotter.PlotUint16(1)
+
+	indexPlotter.PlotUint16(5)
+	indexPlotter.PlotUint16(6)
+	indexPlotter.PlotUint16(2)
+
+	indexPlotter.PlotUint16(0)
+	indexPlotter.PlotUint16(7)
+	indexPlotter.PlotUint16(4)
+
+	indexPlotter.PlotUint16(0)
+	indexPlotter.PlotUint16(3)
+	indexPlotter.PlotUint16(7)
 
 	vertexBuffer := api.CreateVertexBuffer(render.BufferInfo{
 		Dynamic: false,
