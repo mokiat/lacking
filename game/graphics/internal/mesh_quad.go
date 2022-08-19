@@ -94,7 +94,7 @@ func (m *QuadMesh) Allocate(api render.API) {
 			},
 		},
 		IndexBuffer: m.IndexBuffer,
-		IndexFormat: render.IndexFormatUnsignedShort, // TODO: Try unsigned byte
+		IndexFormat: render.IndexFormatUnsignedShort,
 	})
 }
 

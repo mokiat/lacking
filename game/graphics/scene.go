@@ -88,6 +88,26 @@ func (s *Scene) CreateAmbientLight() *Light {
 	return light
 }
 
+// CreatePointLight creates a new ambient light object to be used
+// within this scene.
+func (s *Scene) CreatePointLight() *Light {
+	var light *Light
+	if s.cachedLight != nil {
+		light = s.cachedLight
+		s.cachedLight = s.cachedLight.next
+	} else {
+		light = &Light{}
+	}
+	light.mode = LightModePoint
+	light.Node = *newNode()
+	light.scene = s
+	light.prev = nil
+	light.next = nil
+	light.intensity = sprec.NewVec3(1.0, 1.0, 1.0)
+	s.attachLight(light)
+	return light
+}
+
 // CreateMesh creates a new mesh instance from the specified
 // template and places it in the scene.
 func (s *Scene) CreateMesh(definition *MeshDefinition) *Mesh {

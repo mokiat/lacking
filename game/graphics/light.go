@@ -65,6 +65,7 @@ func (l *Light) Delete() {
 const (
 	LightModeDirectional LightMode = 1 + iota
 	LightModeAmbient
+	LightModePoint
 )
 
 type LightMode int

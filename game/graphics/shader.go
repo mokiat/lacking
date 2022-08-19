@@ -10,6 +10,7 @@ type ShaderCollection struct {
 	PBRGeometrySet      func(cfg PBRGeometryShaderConfig) ShaderSet
 	DirectionalLightSet func() ShaderSet
 	AmbientLightSet     func() ShaderSet
+	PointLightSet       func() ShaderSet
 	SkyboxSet           func() ShaderSet
 	SkycolorSet         func() ShaderSet
 	ExposureSet         func() ShaderSet

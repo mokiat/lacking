@@ -83,6 +83,8 @@ type sceneRenderer struct {
 	directionalLightPipeline     render.Pipeline
 	ambientLightPresentation     *internal.LightingPresentation
 	ambientLightPipeline         render.Pipeline
+	pointLightPresentation       *internal.LightingPresentation
+	pointLightPipeline           render.Pipeline
 
 	skyboxMesh           *internal.SkyboxMesh
 	skyboxPresentation   *internal.SkyboxPresentation
@@ -344,6 +346,31 @@ func (r *sceneRenderer) Allocate() {
 			Reference:      0x00,
 			WriteMask:      0xFF,
 		},
+		ColorWrite:                  render.ColorMaskTrue,
+		BlendEnabled:                true,
+		BlendColor:                  [4]float32{0.0, 0.0, 0.0, 0.0},
+		BlendSourceColorFactor:      render.BlendFactorOne,
+		BlendSourceAlphaFactor:      render.BlendFactorOne,
+		BlendDestinationColorFactor: render.BlendFactorOne,
+		BlendDestinationAlphaFactor: render.BlendFactorZero,
+		BlendOpColor:                render.BlendOperationAdd,
+		BlendOpAlpha:                render.BlendOperationAdd,
+	})
+	pointLightShaders := r.shaders.PointLightSet()
+	r.pointLightPresentation = internal.NewLightingPresentation(r.api,
+		pointLightShaders.VertexShader,
+		pointLightShaders.FragmentShader,
+	)
+	r.pointLightPipeline = r.api.CreatePipeline(render.PipelineInfo{
+		Program:                     r.pointLightPresentation.Program,
+		VertexArray:                 r.quadMesh.VertexArray, // TODO: Sphere (r=1) mesh!
+		Topology:                    r.quadMesh.Topology,    // TODO: Sphere (r=1) mesh!
+		Culling:                     render.CullModeBack,
+		FrontFace:                   render.FaceOrientationCCW,
+		DepthTest:                   false, // TODO: True, once sphere shape is used!
+		DepthWrite:                  false,
+		DepthComparison:             render.ComparisonAlways, // TODO: LEQUAL, once sphere shape is used!
+		StencilTest:                 false,
 		ColorWrite:                  render.ColorMaskTrue,
 		BlendEnabled:                true,
 		BlendColor:                  [4]float32{0.0, 0.0, 0.0, 0.0},
@@ -903,6 +930,8 @@ func (r *sceneRenderer) renderLightingPass(ctx renderCtx) {
 			r.renderDirectionalLight(ctx, light)
 		case LightModeAmbient:
 			r.renderAmbientLight(ctx, light)
+		case LightModePoint:
+			r.renderPointLight(ctx, light)
 		}
 	}
 	r.api.SubmitQueue(r.commands)
@@ -931,6 +960,28 @@ func (r *sceneRenderer) renderDirectionalLight(ctx renderCtx, light *Light) {
 	r.commands.TextureUnit(internal.TextureBindingLightingFramebufferColor1, r.geometryNormalTexture)
 	r.commands.TextureUnit(internal.TextureBindingLightingFramebufferDepth, r.geometryDepthTexture)
 	r.commands.TextureUnit(internal.TextureBindingShadowFramebufferDepth, r.shadowDepthTexture)
+	r.commands.DrawIndexed(r.quadMesh.IndexOffsetBytes, r.quadMesh.IndexCount, 1)
+}
+
+func (r *sceneRenderer) renderPointLight(ctx renderCtx, light *Light) {
+	projectionMatrix := sprec.IdentityMat4()
+	lightMatrix := light.gfxMatrix()
+	viewMatrix := sprec.InverseMat4(lightMatrix)
+
+	lightPlotter := buffer.NewPlotter(r.lightUniformBufferData, binary.LittleEndian)
+	lightPlotter.PlotMat4(projectionMatrix)
+	lightPlotter.PlotMat4(viewMatrix)
+	lightPlotter.PlotMat4(lightMatrix)
+
+	r.commands.BindPipeline(r.pointLightPipeline)
+	r.commands.UpdateBufferData(r.lightUniformBuffer, render.BufferUpdateInfo{
+		Data: r.lightUniformBufferData,
+	})
+	r.commands.Uniform3f(r.pointLightPresentation.LightIntensity, light.intensity.Array())
+	r.commands.TextureUnit(internal.TextureBindingLightingFramebufferColor0, r.geometryAlbedoTexture)
+	r.commands.TextureUnit(internal.TextureBindingLightingFramebufferColor1, r.geometryNormalTexture)
+	r.commands.TextureUnit(internal.TextureBindingLightingFramebufferDepth, r.geometryDepthTexture)
+	// TODO: Use a sphere mesh positioned where the light is!
 	r.commands.DrawIndexed(r.quadMesh.IndexOffsetBytes, r.quadMesh.IndexCount, 1)
 }
 
