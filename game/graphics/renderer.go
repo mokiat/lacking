@@ -31,27 +31,23 @@ func newRenderer(api render.API, shaders ShaderCollection) *sceneRenderer {
 		api:     api,
 		shaders: shaders,
 
-		exposureBufferData: make([]byte, 4*4), // Worst case RGBA32F
+		exposureBufferData: make([]byte, 4*render.SizeF32), // Worst case RGBA32F
 		exposureTarget:     1.0,
-
-		quadMesh: internal.NewQuadMesh(),
-
-		skyboxMesh: internal.NewSkyboxMesh(),
 
 		visibleMeshes: spatial.NewVisitorBucket[*Mesh](2_000_000),
 	}
 }
 
 type sceneRenderer struct {
-	api     render.API
-	shaders ShaderCollection
-
+	api      render.API
+	shaders  ShaderCollection
 	commands render.CommandQueue
 
 	framebufferWidth  int
 	framebufferHeight int
 
-	quadMesh *internal.QuadMesh
+	quadShape *internal.Shape
+	cubeShape *internal.Shape
 
 	geometryAlbedoTexture render.Texture
 	geometryNormalTexture render.Texture
@@ -86,7 +82,6 @@ type sceneRenderer struct {
 	pointLightPresentation       *internal.LightingPresentation
 	pointLightPipeline           render.Pipeline
 
-	skyboxMesh           *internal.SkyboxMesh
 	skyboxPresentation   *internal.SkyboxPresentation
 	skyboxPipeline       render.Pipeline
 	skycolorPresentation *internal.SkyboxPresentation
@@ -180,9 +175,10 @@ func (r *sceneRenderer) releaseFramebuffers() {
 func (r *sceneRenderer) Allocate() {
 	r.commands = r.api.CreateCommandQueue()
 
-	r.quadMesh.Allocate(r.api)
-
 	r.createFramebuffers(800, 600)
+
+	r.quadShape = internal.CreateQuadShape(r.api)
+	r.cubeShape = internal.CreateCubeShape(r.api)
 
 	defaultShadowDepth := float32(1.0)
 	r.shadowDepthTexture = r.api.CreateDepthTexture2D(render.DepthTexture2DInfo{
@@ -215,8 +211,8 @@ func (r *sceneRenderer) Allocate() {
 	)
 	r.exposurePipeline = r.api.CreatePipeline(render.PipelineInfo{
 		Program:      r.exposurePresentation.Program,
-		VertexArray:  r.quadMesh.VertexArray,
-		Topology:     r.quadMesh.Topology,
+		VertexArray:  r.quadShape.VertexArray(),
+		Topology:     r.quadShape.Topology(),
 		Culling:      render.CullModeBack,
 		FrontFace:    render.FaceOrientationCCW,
 		DepthTest:    false,
@@ -240,8 +236,8 @@ func (r *sceneRenderer) Allocate() {
 	)
 	r.postprocessingPipeline = r.api.CreatePipeline(render.PipelineInfo{
 		Program:         r.postprocessingPresentation.Program,
-		VertexArray:     r.quadMesh.VertexArray,
-		Topology:        r.quadMesh.Topology,
+		VertexArray:     r.quadShape.VertexArray(),
+		Topology:        r.quadShape.Topology(),
 		Culling:         render.CullModeBack,
 		FrontFace:       render.FaceOrientationCCW,
 		DepthTest:       false,
@@ -277,8 +273,8 @@ func (r *sceneRenderer) Allocate() {
 	)
 	r.directionalLightPipeline = r.api.CreatePipeline(render.PipelineInfo{
 		Program:         r.directionalLightPresentation.Program,
-		VertexArray:     r.quadMesh.VertexArray,
-		Topology:        r.quadMesh.Topology,
+		VertexArray:     r.quadShape.VertexArray(),
+		Topology:        r.quadShape.Topology(),
 		Culling:         render.CullModeBack,
 		FrontFace:       render.FaceOrientationCCW,
 		DepthTest:       false,
@@ -320,8 +316,8 @@ func (r *sceneRenderer) Allocate() {
 	)
 	r.ambientLightPipeline = r.api.CreatePipeline(render.PipelineInfo{
 		Program:         r.ambientLightPresentation.Program,
-		VertexArray:     r.quadMesh.VertexArray,
-		Topology:        r.quadMesh.Topology,
+		VertexArray:     r.quadShape.VertexArray(),
+		Topology:        r.quadShape.Topology(),
 		Culling:         render.CullModeBack,
 		FrontFace:       render.FaceOrientationCCW,
 		DepthTest:       false,
@@ -363,8 +359,8 @@ func (r *sceneRenderer) Allocate() {
 	)
 	r.pointLightPipeline = r.api.CreatePipeline(render.PipelineInfo{
 		Program:                     r.pointLightPresentation.Program,
-		VertexArray:                 r.quadMesh.VertexArray, // TODO: Sphere (r=1) mesh!
-		Topology:                    r.quadMesh.Topology,    // TODO: Sphere (r=1) mesh!
+		VertexArray:                 r.quadShape.VertexArray(), // TODO: Sphere (r=1) mesh!
+		Topology:                    r.quadShape.Topology(),    // TODO: Sphere (r=1) mesh!
 		Culling:                     render.CullModeBack,
 		FrontFace:                   render.FaceOrientationCCW,
 		DepthTest:                   false, // TODO: True, once sphere shape is used!
@@ -382,7 +378,6 @@ func (r *sceneRenderer) Allocate() {
 		BlendOpAlpha:                render.BlendOperationAdd,
 	})
 
-	r.skyboxMesh.Allocate(r.api)
 	skyboxShaders := r.shaders.SkyboxSet()
 	r.skyboxPresentation = internal.NewSkyboxPresentation(r.api,
 		skyboxShaders.VertexShader,
@@ -390,8 +385,8 @@ func (r *sceneRenderer) Allocate() {
 	)
 	r.skyboxPipeline = r.api.CreatePipeline(render.PipelineInfo{
 		Program:         r.skyboxPresentation.Program,
-		VertexArray:     r.skyboxMesh.VertexArray,
-		Topology:        r.skyboxMesh.Topology,
+		VertexArray:     r.cubeShape.VertexArray(),
+		Topology:        r.cubeShape.Topology(),
 		Culling:         render.CullModeBack,
 		FrontFace:       render.FaceOrientationCCW,
 		DepthTest:       true,
@@ -426,8 +421,8 @@ func (r *sceneRenderer) Allocate() {
 	)
 	r.skycolorPipeline = r.api.CreatePipeline(render.PipelineInfo{
 		Program:         r.skycolorPresentation.Program,
-		VertexArray:     r.skyboxMesh.VertexArray,
-		Topology:        r.skyboxMesh.Topology,
+		VertexArray:     r.cubeShape.VertexArray(),
+		Topology:        r.cubeShape.Topology(),
 		Culling:         render.CullModeBack,
 		FrontFace:       render.FaceOrientationCCW,
 		DepthTest:       true,
@@ -481,9 +476,10 @@ func (r *sceneRenderer) Allocate() {
 func (r *sceneRenderer) Release() {
 	defer r.commands.Release()
 
-	defer r.quadMesh.Release()
-
 	defer r.releaseFramebuffers()
+
+	defer r.quadShape.Release()
+	defer r.cubeShape.Release()
 
 	defer r.shadowDepthTexture.Release()
 	defer r.shadowFramebuffer.Release()
@@ -502,7 +498,6 @@ func (r *sceneRenderer) Release() {
 	defer r.ambientLightPresentation.Delete()
 	defer r.ambientLightPipeline.Release()
 
-	defer r.skyboxMesh.Release()
 	defer r.skyboxPresentation.Delete()
 	defer r.skyboxPipeline.Release()
 	defer r.skycolorPresentation.Delete()
@@ -945,7 +940,7 @@ func (r *sceneRenderer) renderAmbientLight(ctx renderCtx, light *Light) {
 	r.commands.TextureUnit(internal.TextureBindingLightingFramebufferDepth, r.geometryDepthTexture)
 	r.commands.TextureUnit(internal.TextureBindingLightingReflectionTexture, light.reflectionTexture.texture)
 	r.commands.TextureUnit(internal.TextureBindingLightingRefractionTexture, light.refractionTexture.texture)
-	r.commands.DrawIndexed(r.quadMesh.IndexOffsetBytes, r.quadMesh.IndexCount, 1)
+	r.commands.DrawIndexed(0, r.quadShape.IndexCount(), 1)
 }
 
 func (r *sceneRenderer) renderDirectionalLight(ctx renderCtx, light *Light) {
@@ -960,7 +955,7 @@ func (r *sceneRenderer) renderDirectionalLight(ctx renderCtx, light *Light) {
 	r.commands.TextureUnit(internal.TextureBindingLightingFramebufferColor1, r.geometryNormalTexture)
 	r.commands.TextureUnit(internal.TextureBindingLightingFramebufferDepth, r.geometryDepthTexture)
 	r.commands.TextureUnit(internal.TextureBindingShadowFramebufferDepth, r.shadowDepthTexture)
-	r.commands.DrawIndexed(r.quadMesh.IndexOffsetBytes, r.quadMesh.IndexCount, 1)
+	r.commands.DrawIndexed(0, r.quadShape.IndexCount(), 1)
 }
 
 func (r *sceneRenderer) renderPointLight(ctx renderCtx, light *Light) {
@@ -982,7 +977,7 @@ func (r *sceneRenderer) renderPointLight(ctx renderCtx, light *Light) {
 	r.commands.TextureUnit(internal.TextureBindingLightingFramebufferColor1, r.geometryNormalTexture)
 	r.commands.TextureUnit(internal.TextureBindingLightingFramebufferDepth, r.geometryDepthTexture)
 	// TODO: Use a sphere mesh positioned where the light is!
-	r.commands.DrawIndexed(r.quadMesh.IndexOffsetBytes, r.quadMesh.IndexCount, 1)
+	r.commands.DrawIndexed(0, r.quadShape.IndexCount(), 1)
 }
 
 func (r *sceneRenderer) renderForwardPass(ctx renderCtx) {
@@ -1012,7 +1007,7 @@ func (r *sceneRenderer) renderForwardPass(ctx renderCtx) {
 	if texture := sky.skyboxTexture; texture != nil {
 		r.commands.BindPipeline(r.skyboxPipeline)
 		r.commands.TextureUnit(internal.TextureBindingSkyboxAlbedoTexture, texture.texture)
-		r.commands.DrawIndexed(r.skyboxMesh.IndexOffsetBytes, r.skyboxMesh.IndexCount, 1)
+		r.commands.DrawIndexed(0, r.cubeShape.IndexCount(), 1)
 	} else {
 		r.commands.BindPipeline(r.skycolorPipeline)
 		r.commands.Uniform4f(r.skycolorPresentation.AlbedoColorLocation, [4]float32{
@@ -1021,7 +1016,7 @@ func (r *sceneRenderer) renderForwardPass(ctx renderCtx) {
 			sky.backgroundColor.Z,
 			1.0,
 		})
-		r.commands.DrawIndexed(r.skyboxMesh.IndexOffsetBytes, r.skyboxMesh.IndexCount, 1)
+		r.commands.DrawIndexed(0, r.cubeShape.IndexCount(), 1)
 	}
 
 	r.api.SubmitQueue(r.commands)
@@ -1103,7 +1098,7 @@ func (r *sceneRenderer) renderExposureProbePass(ctx renderCtx) {
 		})
 		r.commands.BindPipeline(r.exposurePipeline)
 		r.commands.TextureUnit(internal.TextureBindingLightingFramebufferColor0, r.lightingAlbedoTexture)
-		r.commands.DrawIndexed(r.quadMesh.IndexOffsetBytes, r.quadMesh.IndexCount, 1)
+		r.commands.DrawIndexed(0, r.quadShape.IndexCount(), 1)
 		r.commands.CopyContentToBuffer(render.CopyContentToBufferInfo{
 			Buffer: r.exposureBuffer,
 			X:      0,
@@ -1144,7 +1139,7 @@ func (r *sceneRenderer) renderPostprocessingPass(ctx renderCtx) {
 	r.commands.BindPipeline(r.postprocessingPipeline)
 	r.commands.TextureUnit(internal.TextureBindingPostprocessFramebufferColor0, r.lightingAlbedoTexture)
 	r.commands.Uniform1f(r.postprocessingPresentation.ExposureLocation, ctx.camera.exposure)
-	r.commands.DrawIndexed(r.quadMesh.IndexOffsetBytes, r.quadMesh.IndexCount, 1)
+	r.commands.DrawIndexed(0, r.quadShape.IndexCount(), 1)
 	r.api.SubmitQueue(r.commands)
 	r.api.EndRenderPass()
 }

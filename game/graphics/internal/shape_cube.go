@@ -8,73 +8,45 @@ import (
 	"github.com/mokiat/lacking/render"
 )
 
-type skyboxMeshVertex struct {
-	Position sprec.Vec3
-}
+func CreateCubeShape(api render.API) *Shape {
+	const (
+		vertexSize  = 3 * render.SizeF32
+		vertexCount = 8
 
-func (v skyboxMeshVertex) Serialize(plotter *buffer.Plotter) {
-	plotter.PlotFloat32(v.Position.X)
-	plotter.PlotFloat32(v.Position.Y)
-	plotter.PlotFloat32(v.Position.Z)
-}
-
-func NewSkyboxMesh() *SkyboxMesh {
-	return &SkyboxMesh{
-		Topology:         render.TopologyTriangles,
-		IndexCount:       36,
-		IndexOffsetBytes: 0,
-	}
-}
-
-type SkyboxMesh struct {
-	Topology         render.Topology
-	IndexCount       int
-	IndexOffsetBytes int
-
-	VertexBuffer render.Buffer
-	IndexBuffer  render.Buffer
-	VertexArray  render.VertexArray
-}
-
-func (m *SkyboxMesh) Allocate(api render.API) {
-	const vertexSize = 3 * 4
-	vertexPlotter := buffer.NewPlotter(
-		make([]byte, vertexSize*8),
-		binary.LittleEndian,
+		indexSize  = 1 * render.SizeU16
+		indexCount = 36
 	)
 
-	skyboxMeshVertex{
+	vertexData := make([]byte, vertexCount*vertexSize)
+	vertexPlotter := buffer.NewPlotter(vertexData, binary.LittleEndian)
+	cubeVertex{
 		Position: sprec.NewVec3(-1.0, 1.0, 1.0),
 	}.Serialize(vertexPlotter)
-	skyboxMeshVertex{
+	cubeVertex{
 		Position: sprec.NewVec3(-1.0, -1.0, 1.0),
 	}.Serialize(vertexPlotter)
-	skyboxMeshVertex{
+	cubeVertex{
 		Position: sprec.NewVec3(1.0, -1.0, 1.0),
 	}.Serialize(vertexPlotter)
-	skyboxMeshVertex{
+	cubeVertex{
 		Position: sprec.NewVec3(1.0, 1.0, 1.0),
 	}.Serialize(vertexPlotter)
 
-	skyboxMeshVertex{
+	cubeVertex{
 		Position: sprec.NewVec3(-1.0, 1.0, -1.0),
 	}.Serialize(vertexPlotter)
-	skyboxMeshVertex{
+	cubeVertex{
 		Position: sprec.NewVec3(-1.0, -1.0, -1.0),
 	}.Serialize(vertexPlotter)
-	skyboxMeshVertex{
+	cubeVertex{
 		Position: sprec.NewVec3(1.0, -1.0, -1.0),
 	}.Serialize(vertexPlotter)
-	skyboxMeshVertex{
+	cubeVertex{
 		Position: sprec.NewVec3(1.0, 1.0, -1.0),
 	}.Serialize(vertexPlotter)
 
-	const indexSize = 1 * 2
-	indexPlotter := buffer.NewPlotter(
-		make([]byte, indexSize*36),
-		binary.LittleEndian,
-	)
-
+	indexData := make([]byte, indexCount*indexSize)
+	indexPlotter := buffer.NewPlotter(indexData, binary.LittleEndian)
 	indexPlotter.PlotUint16(3)
 	indexPlotter.PlotUint16(2)
 	indexPlotter.PlotUint16(1)
@@ -123,20 +95,20 @@ func (m *SkyboxMesh) Allocate(api render.API) {
 	indexPlotter.PlotUint16(7)
 	indexPlotter.PlotUint16(3)
 
-	m.VertexBuffer = api.CreateVertexBuffer(render.BufferInfo{
+	vertexBuffer := api.CreateVertexBuffer(render.BufferInfo{
 		Dynamic: false,
-		Data:    vertexPlotter.Data(),
+		Data:    vertexData,
 	})
 
-	m.IndexBuffer = api.CreateIndexBuffer(render.BufferInfo{
+	indexBuffer := api.CreateIndexBuffer(render.BufferInfo{
 		Dynamic: false,
-		Data:    indexPlotter.Data(),
+		Data:    indexData,
 	})
 
-	m.VertexArray = api.CreateVertexArray(render.VertexArrayInfo{
+	vertexArray := api.CreateVertexArray(render.VertexArrayInfo{
 		Bindings: []render.VertexArrayBindingInfo{
 			{
-				VertexBuffer: m.VertexBuffer,
+				VertexBuffer: vertexBuffer,
 				Stride:       vertexSize,
 			},
 		},
@@ -148,13 +120,27 @@ func (m *SkyboxMesh) Allocate(api render.API) {
 				Offset:   0,
 			},
 		},
-		IndexBuffer: m.IndexBuffer,
+		IndexBuffer: indexBuffer,
 		IndexFormat: render.IndexFormatUnsignedShort,
 	})
+
+	return &Shape{
+		vertexBuffer: vertexBuffer,
+		indexBuffer:  indexBuffer,
+
+		vertexArray: vertexArray,
+
+		topology:   render.TopologyTriangles,
+		indexCount: indexCount,
+	}
 }
 
-func (m *SkyboxMesh) Release() {
-	m.VertexArray.Release()
-	m.IndexBuffer.Release()
-	m.VertexBuffer.Release()
+type cubeVertex struct {
+	Position sprec.Vec3
+}
+
+func (v cubeVertex) Serialize(plotter *buffer.Plotter) {
+	plotter.PlotFloat32(v.Position.X)
+	plotter.PlotFloat32(v.Position.Y)
+	plotter.PlotFloat32(v.Position.Z)
 }
