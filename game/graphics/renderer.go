@@ -3,6 +3,7 @@ package graphics
 import (
 	"encoding/binary"
 	"fmt"
+	"time"
 
 	"github.com/mokiat/gomath/dprec"
 	"github.com/mokiat/gomath/sprec"
@@ -62,15 +63,16 @@ type sceneRenderer struct {
 	shadowFramebuffer  render.Framebuffer
 	shadowDepthTexture render.Texture
 
-	exposureAlbedoTexture render.Texture
-	exposureFramebuffer   render.Framebuffer
-	exposurePresentation  *internal.LightingPresentation
-	exposurePipeline      render.Pipeline
-	exposureBufferData    data.Buffer
-	exposureBuffer        render.Buffer
-	exposureFormat        render.DataFormat
-	exposureSync          render.Fence
-	exposureTarget        float32
+	exposureAlbedoTexture   render.Texture
+	exposureFramebuffer     render.Framebuffer
+	exposurePresentation    *internal.LightingPresentation
+	exposurePipeline        render.Pipeline
+	exposureBufferData      data.Buffer
+	exposureBuffer          render.Buffer
+	exposureFormat          render.DataFormat
+	exposureSync            render.Fence
+	exposureTarget          float32
+	exposureUpdateTimestamp time.Time
 
 	postprocessingPresentation *internal.PostprocessingPresentation
 	postprocessingPipeline     render.Pipeline
@@ -960,7 +962,7 @@ func (r *sceneRenderer) renderExposureProbePass(ctx renderCtx) {
 			}
 			brightness = sprec.Clamp(brightness, 0.001, 1000.0)
 
-			r.exposureTarget = 1.0 / (3.14 * brightness)
+			r.exposureTarget = 1.0 / (2 * 3.14 * brightness)
 			if r.exposureTarget > ctx.camera.maxExposure {
 				r.exposureTarget = ctx.camera.maxExposure
 			}
@@ -978,9 +980,15 @@ func (r *sceneRenderer) renderExposureProbePass(ctx renderCtx) {
 		}
 	}
 
-	// TODO: This needs to take elapsed time into consideration, otherwise
-	// without vsync it jumps from dark to bright in an instant.
-	ctx.camera.exposure = sprec.Mix(ctx.camera.exposure, r.exposureTarget, float32(0.01))
+	if !r.exposureUpdateTimestamp.IsZero() {
+		elapsedSeconds := float32(time.Since(r.exposureUpdateTimestamp).Seconds())
+		ctx.camera.exposure = sprec.Mix(
+			ctx.camera.exposure,
+			r.exposureTarget,
+			sprec.Clamp(ctx.camera.autoExposureSpeed*elapsedSeconds, 0.0, 1.0),
+		)
+	}
+	r.exposureUpdateTimestamp = time.Now()
 
 	if r.exposureSync == nil {
 		r.api.BeginRenderPass(render.RenderPassInfo{

@@ -28,12 +28,13 @@ const (
 
 func newCamera(scene *Scene) *Camera {
 	return &Camera{
-		Node:        *newNode(),
-		fov:         sprec.Degrees(120),
-		fovMode:     FoVModeHorizontalPlus,
-		maxExposure: 10000.0,
-		minExposure: 0.00001,
-		exposure:    1.0,
+		Node:              *newNode(),
+		fov:               sprec.Degrees(120),
+		fovMode:           FoVModeHorizontalPlus,
+		maxExposure:       10000.0,
+		minExposure:       0.00001,
+		autoExposureSpeed: 2.0,
+		exposure:          1.0,
 	}
 }
 
@@ -48,6 +49,7 @@ type Camera struct {
 	nearFocus           float32
 	farFocus            float32
 	autoExposureEnabled bool
+	autoExposureSpeed   float32
 	maxExposure         float32
 	minExposure         float32
 	exposure            float32
@@ -122,6 +124,17 @@ func (c *Camera) AutoExposure() bool {
 // do automatic exposure adjustment.
 func (c *Camera) SetAutoExposure(enabled bool) {
 	c.autoExposureEnabled = enabled
+}
+
+// AutoExposureSpeed returns how fast the camera will adjust its exposure.
+func (c *Camera) AutoExposureSpeed() float32 {
+	return c.autoExposureSpeed
+}
+
+// SetAutoExposureSpeed changes the speed at which the camera will automatically
+// adjust its exposure.
+func (c *Camera) SetAutoExposureSpeed(speed float32) {
+	c.autoExposureSpeed = speed
 }
 
 // MaximumExposure returns the maximum exposure that the camera may use
