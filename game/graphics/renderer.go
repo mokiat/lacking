@@ -951,23 +951,15 @@ func (r *sceneRenderer) renderExposureProbePass(ctx renderCtx) {
 				Offset: 0,
 				Target: r.exposureBufferData,
 			})
-			var colorR, colorG, colorB float32
+			var brightness float32
 			switch r.exposureFormat {
 			case render.DataFormatRGBA16F:
-				colorR = float16.Frombits(r.exposureBufferData.Uint16(0 * 2)).Float32()
-				colorG = float16.Frombits(r.exposureBufferData.Uint16(1 * 2)).Float32()
-				colorB = float16.Frombits(r.exposureBufferData.Uint16(2 * 2)).Float32()
+				brightness = float16.Frombits(r.exposureBufferData.Uint16(0 * 2)).Float32()
 			case render.DataFormatRGBA32F:
-				colorR = data.Buffer(r.exposureBufferData).Float32(0 * 4)
-				colorG = data.Buffer(r.exposureBufferData).Float32(1 * 4)
-				colorB = data.Buffer(r.exposureBufferData).Float32(2 * 4)
+				brightness = data.Buffer(r.exposureBufferData).Float32(0 * 4)
 			}
-			brightness := 0.2126*colorR + 0.7152*colorG + 0.0722*colorB
-			if brightness < 0.001 {
-				brightness = 0.001
-			}
-			// TODO: This needs to take elapsed time into consideration, otherwise
-			// without vsync it jumps from dark to bright in an instant.
+			brightness = sprec.Clamp(brightness, 0.001, 1000.0)
+
 			r.exposureTarget = 1.0 / (3.14 * brightness)
 			if r.exposureTarget > ctx.camera.maxExposure {
 				r.exposureTarget = ctx.camera.maxExposure
@@ -986,6 +978,8 @@ func (r *sceneRenderer) renderExposureProbePass(ctx renderCtx) {
 		}
 	}
 
+	// TODO: This needs to take elapsed time into consideration, otherwise
+	// without vsync it jumps from dark to bright in an instant.
 	ctx.camera.exposure = sprec.Mix(ctx.camera.exposure, r.exposureTarget, float32(0.01))
 
 	if r.exposureSync == nil {
