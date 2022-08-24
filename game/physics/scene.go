@@ -2,6 +2,7 @@ package physics
 
 import (
 	"github.com/mokiat/gomath/dprec"
+	"github.com/mokiat/lacking/util/metrics"
 	"github.com/mokiat/lacking/util/shape"
 	"github.com/mokiat/lacking/util/spatial"
 )
@@ -100,6 +101,10 @@ func (s *Scene) SetWindDensity(density float64) {
 	s.windDensity = density
 }
 
+func (s *Scene) CreateBody2(info BodyInfo) *Body {
+	panic("TODO")
+}
+
 // CreateBody creates a new physics body and places
 // it within this scene.
 func (s *Scene) CreateBody() *Body {
@@ -170,6 +175,8 @@ func (s *Scene) CreateDoubleBodyConstraint(primary, secondary *Body, solver DBCo
 // until the specified number of seconds worth
 // of simulation have passed.
 func (s *Scene) Update(elapsedSeconds float64) {
+	defer metrics.BeginSpan("physics").End()
+
 	for elapsedSeconds > s.stepSeconds {
 		s.runSimulation(s.stepSeconds)
 		elapsedSeconds -= s.stepSeconds

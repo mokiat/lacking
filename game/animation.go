@@ -5,6 +5,14 @@ import (
 	"github.com/mokiat/lacking/log"
 )
 
+type AnimationDefinition struct {
+}
+
+// TODO: Split animations into a definition
+// and a an instance (that is bound to a hierarchy)
+// The definition would contain the keyframes
+// and the instance will contain the actual node bindings.
+
 type Animation struct {
 	Name      string
 	StartTime float64
@@ -12,6 +20,7 @@ type Animation struct {
 	Bindings  []AnimationBinding
 }
 
+// TODO: Have this method be the constructor for an animation instance.
 func (a *Animation) AttachToHierarchy(node *Node) {
 	for i := 0; i < len(a.Bindings); i++ {
 		binding := &a.Bindings[i]

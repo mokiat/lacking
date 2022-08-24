@@ -5,6 +5,21 @@ import (
 	"github.com/mokiat/lacking/util/spatial"
 )
 
+type BodyDefinitionInfo struct {
+	Name string
+}
+
+type BodyDefinition struct {
+}
+
+type BodyInfo struct {
+	Name       string
+	Definition *BodyDefinition
+	Position   dprec.Vec3
+	Rotation   dprec.Quat
+	IsDynamic  bool
+}
+
 // Body represents a physical body that has physics
 // act upon it.
 type Body struct {
@@ -12,6 +27,8 @@ type Body struct {
 	prev  *Body
 	next  *Body
 	item  *spatial.OctreeItem[*Body]
+
+	definition *BodyDefinition
 
 	name string
 
