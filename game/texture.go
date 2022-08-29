@@ -17,14 +17,19 @@ type TwoDTexture struct {
 	gfxTexture *graphics.TwoDTexture
 }
 
+type CubeTexture struct {
+	gfxTexture *graphics.CubeTexture
+}
+
 func (r *ResourceSet) allocateTwoDTexture(resource asset.Resource) (*TwoDTexture, error) {
 	texAsset := new(asset.TwoDTexture)
 	if err := resource.ReadContent(texAsset); err != nil {
-		return nil, fmt.Errorf("failed to open asset: %w", err)
+		return nil, fmt.Errorf("failed to read asset: %w", err)
 	}
 	result := &TwoDTexture{}
 	r.gfxWorker.Schedule(func() {
-		gfxTexture := r.engine.Graphics().CreateTwoDTexture(graphics.TwoDTextureDefinition{
+		gfxEngine := r.engine.Graphics()
+		gfxTexture := gfxEngine.CreateTwoDTexture(graphics.TwoDTextureDefinition{
 			Width:           int(texAsset.Width),
 			Height:          int(texAsset.Height),
 			Wrapping:        resolveWrapMode(texAsset.Wrapping),
@@ -41,6 +46,35 @@ func (r *ResourceSet) allocateTwoDTexture(resource asset.Resource) (*TwoDTexture
 }
 
 func (r *ResourceSet) releaseTwoDTexture(texture *TwoDTexture) {
+	texture.gfxTexture.Delete()
+}
+
+func (r *ResourceSet) allocateCubeTexture(resource asset.Resource) (*CubeTexture, error) {
+	texAsset := new(asset.CubeTexture)
+	if err := resource.ReadContent(texAsset); err != nil {
+		return nil, fmt.Errorf("failed to read asset: %w", err)
+	}
+	result := &CubeTexture{}
+	r.gfxWorker.Schedule(func() {
+		gfxEngine := r.engine.Graphics()
+		gfxTexture := gfxEngine.CreateCubeTexture(graphics.CubeTextureDefinition{
+			Dimension:      int(texAsset.Dimension),
+			Filtering:      resolveFilter(texAsset.Filtering),
+			DataFormat:     resolveDataFormat(texAsset.Format),
+			InternalFormat: resolveInternalFormat(texAsset.Format),
+			FrontSideData:  texAsset.FrontSide.Data,
+			BackSideData:   texAsset.BackSide.Data,
+			LeftSideData:   texAsset.LeftSide.Data,
+			RightSideData:  texAsset.RightSide.Data,
+			TopSideData:    texAsset.TopSide.Data,
+			BottomSideData: texAsset.BottomSide.Data,
+		})
+		result.gfxTexture = gfxTexture
+	})
+	return result, nil
+}
+
+func (r *ResourceSet) releaseCubeTexture(texture *CubeTexture) {
 	texture.gfxTexture.Delete()
 }
 

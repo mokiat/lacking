@@ -12,10 +12,6 @@ var (
 	ErrStillLoading = errors.New("resource still loading")
 )
 
-type managedResource interface {
-	delete()
-}
-
 func newResourceSet(parent *ResourceSet, engine *Engine) *ResourceSet {
 	return &ResourceSet{
 		parent:    parent,
@@ -25,6 +21,7 @@ func newResourceSet(parent *ResourceSet, engine *Engine) *ResourceSet {
 		gfxWorker: engine.gfxWorker,
 
 		namedTwoDTextures: make(map[string]Placeholder[*TwoDTexture]),
+		namedCubeTextures: make(map[string]Placeholder[*CubeTexture]),
 	}
 }
 
@@ -36,6 +33,7 @@ type ResourceSet struct {
 	gfxWorker Worker
 
 	namedTwoDTextures map[string]Placeholder[*TwoDTexture]
+	namedCubeTextures map[string]Placeholder[*CubeTexture]
 }
 
 func (s *ResourceSet) CreateResourceSet() *ResourceSet {
@@ -65,6 +63,29 @@ func (s *ResourceSet) OpenTwoDTexture(id string) Placeholder[*TwoDTexture] {
 	return result
 }
 
+func (s *ResourceSet) OpenCubeTexture(id string) Placeholder[*CubeTexture] {
+	if result, ok := s.findCubeTexture(id); ok {
+		return result
+	}
+
+	resource := s.registry.ResourceByID(id)
+	if resource == nil {
+		return failedPlaceholder[*CubeTexture](fmt.Errorf("%w: %q", ErrNotFound, id))
+	}
+
+	result := pendingPlaceholder[*CubeTexture]()
+	s.ioWorker.Schedule(func() {
+		texture, err := s.allocateCubeTexture(resource)
+		if err != nil {
+			result.promise.Fail(fmt.Errorf("error loading cube texture %q: %w", id, err))
+		} else {
+			result.promise.Deliver(texture)
+		}
+	})
+	s.namedCubeTextures[id] = result
+	return result
+}
+
 // Delete schedules all resources managed by this ResourceSet for deletion.
 // After this method returns, the resources are not guaranteed to have been
 // released.
@@ -79,18 +100,14 @@ func (s *ResourceSet) Delete() {
 			}
 		}
 		s.namedTwoDTextures = nil
+		for _, placeholder := range s.namedCubeTextures {
+			if texture, err := placeholder.promise.Wait(); err == nil {
+				s.releaseCubeTexture(texture)
+			}
+		}
+		s.namedCubeTextures = nil
 	}()
 }
-
-// func (e *Engine) OpenCubeTexture(resourceSet *ResourceSet, id string) async.Promise[*graphics.CubeTexture] {
-// 	return nil // TODO
-// }
-
-// func (e *Engine) OpenModel(resourceSet *ResourceSet, id string) async.Promise[*]
-
-// func (r *ResourceSet) Wait() error {
-// 	return nil
-// }
 
 func (s *ResourceSet) findTwoDTexture(id string) (Placeholder[*TwoDTexture], bool) {
 	if result, ok := s.namedTwoDTextures[id]; ok {
@@ -102,12 +119,12 @@ func (s *ResourceSet) findTwoDTexture(id string) (Placeholder[*TwoDTexture], boo
 	return Placeholder[*TwoDTexture]{}, false
 }
 
-type Worker interface {
-	Schedule(fn func())
-}
-
-type WorkerFunc func(fn func())
-
-func (f WorkerFunc) Schedule(fn func()) {
-	f(fn)
+func (s *ResourceSet) findCubeTexture(id string) (Placeholder[*CubeTexture], bool) {
+	if result, ok := s.namedCubeTextures[id]; ok {
+		return result, true
+	}
+	if s.parent != nil {
+		return s.parent.findCubeTexture(id)
+	}
+	return Placeholder[*CubeTexture]{}, false
 }
