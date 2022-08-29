@@ -510,9 +510,9 @@ func (c *converter) BuildBodyDefinition(meshDefinition *MeshDefinition) gameasse
 			coordC := meshDefinition.Vertices[indexC].Coord
 
 			triangles = append(triangles, gameasset.CollisionTriangle{
-				A: [3]float32{coordA.X, coordA.Y, coordA.Z},
-				B: [3]float32{coordB.X, coordB.Y, coordB.Z},
-				C: [3]float32{coordC.X, coordC.Y, coordC.Z},
+				A: [3]float64{float64(coordA.X), float64(coordA.Y), float64(coordA.Z)},
+				B: [3]float64{float64(coordB.X), float64(coordB.Y), float64(coordB.Z)},
+				C: [3]float64{float64(coordC.X), float64(coordC.Y), float64(coordC.Z)},
 			})
 		}
 	}
@@ -521,8 +521,8 @@ func (c *converter) BuildBodyDefinition(meshDefinition *MeshDefinition) gameasse
 		Name: meshDefinition.Name,
 		CollisionMeshes: []gameasset.CollisionMesh{
 			{
-				Translation: [3]float32{0.0, 0.0, 0.0},
-				Rotation:    [4]float32{1.0, 0.0, 0.0, 0.0},
+				Translation: [3]float64{0.0, 0.0, 0.0},
+				Rotation:    [4]float64{1.0, 0.0, 0.0, 0.0},
 				Triangles:   triangles,
 			},
 		},
