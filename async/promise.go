@@ -22,6 +22,16 @@ type Promise[T any] struct {
 	ch chan promiseOutcome[T]
 }
 
+func (p Promise[T]) Ready() bool {
+	select {
+	case entry := <-p.ch:
+		p.ch <- entry
+		return true
+	default:
+		return false
+	}
+}
+
 func (p Promise[T]) Wait() (T, error) {
 	entry := <-p.ch
 	p.ch <- entry

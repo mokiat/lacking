@@ -106,6 +106,18 @@ func (s *Scene) CreateModel(info ModelInfo) *Model {
 		bodyNode.SetBody(body)
 	}
 
+	for _, instance := range definition.meshInstances {
+		var meshNode *Node
+		if instance.NodeIndex >= 0 {
+			meshNode = nodes[instance.NodeIndex]
+		} else {
+			meshNode = modelNode
+		}
+		meshDefinition := definition.meshDefinitions[instance.DefinitionIndex]
+		mesh := s.gfxScene.CreateMesh(meshDefinition)
+		meshNode.SetMesh(mesh)
+	}
+
 	// armatures := make([]*graphics.Armature, len(def.Armatures))
 	// defToArmature := make(map[*ArmatureDefinition]*graphics.Armature)
 	// for i, armatureDef := range def.Armatures {
@@ -119,22 +131,6 @@ func (s *Scene) CreateModel(info ModelInfo) *Model {
 	// }
 
 	// materials := make([]*graphics.Material, len(def.Materials))
-
-	// meshInstances := make([]*graphics.Mesh, len(def.MeshInstances))
-	// for i, meshInstanceDef := range def.MeshInstances {
-	// 	meshInstance := s.gfxScene.CreateMesh(meshInstanceDef.GraphicsTemplate)
-	// 	if meshInstanceDef.Node != nil {
-	// 		node := defToNode[meshInstanceDef.Node]
-	// 		meshInstance.SetMatrix(node.AbsoluteMatrix()) // TODO: Do only if entity is static
-	// 	}
-	// 	if meshInstanceDef.Armature != nil {
-	// 		armature := defToArmature[meshInstanceDef.Armature]
-	// 		meshInstance.SetArmature(armature)
-	// 	}
-	// 	meshInstances[i] = meshInstance
-	// }
-
-	// // TODO:
 
 	return &Model{
 		// nodes:     nodes,

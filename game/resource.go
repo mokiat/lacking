@@ -1,44 +1,86 @@
 package game
 
 import (
-	"golang.org/x/exp/maps"
+	"errors"
+	"fmt"
+
+	"github.com/mokiat/lacking/game/asset"
 )
 
-type Resource interface {
-	Delete()
-}
+var (
+	ErrNotFound     = errors.New("resource not found")
+	ErrStillLoading = errors.New("resource still loading")
+)
 
-// TODO: Use the same nested concept for this ResourceSet as is done
-// in the ui framework for the Context. If something needs to be loaded for
-// a short duration, a dedicated nested ResourceSet should be created.
+type managedResource interface {
+	delete()
+}
 
 func newResourceSet(parent *ResourceSet, engine *Engine) *ResourceSet {
 	return &ResourceSet{
-		engine: engine,
+		parent:    parent,
+		engine:    engine,
+		registry:  engine.registry,
+		ioWorker:  engine.ioWorker,
+		gfxWorker: engine.gfxWorker,
+
+		namedTwoDTextures: make(map[string]Placeholder[*TwoDTexture]),
 	}
 }
 
 type ResourceSet struct {
-	engine *Engine
+	parent    *ResourceSet
+	engine    *Engine
+	registry  asset.Registry
+	ioWorker  Worker
+	gfxWorker Worker
 
-	namedResources map[string]Resource
-	adhocResources []Resource
+	namedTwoDTextures map[string]Placeholder[*TwoDTexture]
 }
 
 func (s *ResourceSet) CreateResourceSet() *ResourceSet {
 	return newResourceSet(s, s.engine)
 }
 
-// // WARNING: DO NOT WAIT ON THE PROMISE FROM THE MAIN GOROUTINE!!!
-// func (s *ResourceSet) OpenTwoDTexture(resourceSet *ResourceSet, id string) *TwoDTexture {
-// 	result := &TwoDTexture{}
-// 	// TODO: ioWorker.Schedule(func() {...})
-// 	go func() {
+func (s *ResourceSet) OpenTwoDTexture(id string) Placeholder[*TwoDTexture] {
+	if result, ok := s.findTwoDTexture(id); ok {
+		return result
+	}
 
-// 	}()
-// 	// panic("TODO")
-// 	return result // TODO: Result should be usable until it loads it
-// }
+	resource := s.registry.ResourceByID(id)
+	if resource == nil {
+		return failedPlaceholder[*TwoDTexture](fmt.Errorf("%w: %q", ErrNotFound, id))
+	}
+
+	result := pendingPlaceholder[*TwoDTexture]()
+	s.ioWorker.Schedule(func() {
+		texture, err := s.allocateTwoDTexture(resource)
+		if err != nil {
+			result.promise.Fail(fmt.Errorf("error loading twod texture %q: %w", id, err))
+		} else {
+			result.promise.Deliver(texture)
+		}
+	})
+	s.namedTwoDTextures[id] = result
+	return result
+}
+
+// Delete schedules all resources managed by this ResourceSet for deletion.
+// After this method returns, the resources are not guaranteed to have been
+// released.
+//
+// Calling this method twice is not allowed. Allocating new resources after this
+// method has been called is also not allowed.
+func (s *ResourceSet) Delete() {
+	go func() {
+		for _, placeholder := range s.namedTwoDTextures {
+			if texture, err := placeholder.promise.Wait(); err == nil {
+				s.releaseTwoDTexture(texture)
+			}
+		}
+		s.namedTwoDTextures = nil
+	}()
+}
 
 // func (e *Engine) OpenCubeTexture(resourceSet *ResourceSet, id string) async.Promise[*graphics.CubeTexture] {
 // 	return nil // TODO
@@ -46,21 +88,26 @@ func (s *ResourceSet) CreateResourceSet() *ResourceSet {
 
 // func (e *Engine) OpenModel(resourceSet *ResourceSet, id string) async.Promise[*]
 
-func (s *ResourceSet) Delete() {
-	for _, resource := range s.namedResources {
-		resource.Delete()
-	}
-	maps.Clear(s.namedResources)
-	for _, resource := range s.adhocResources {
-		resource.Delete()
-	}
-	s.adhocResources = nil
-}
-
-func (r *ResourceSet) Ready() bool {
-	return false // TODO: Check that all resources are loaded
-}
-
 // func (r *ResourceSet) Wait() error {
 // 	return nil
 // }
+
+func (s *ResourceSet) findTwoDTexture(id string) (Placeholder[*TwoDTexture], bool) {
+	if result, ok := s.namedTwoDTextures[id]; ok {
+		return result, true
+	}
+	if s.parent != nil {
+		return s.parent.findTwoDTexture(id)
+	}
+	return Placeholder[*TwoDTexture]{}, false
+}
+
+type Worker interface {
+	Schedule(fn func())
+}
+
+type WorkerFunc func(fn func())
+
+func (f WorkerFunc) Schedule(fn func()) {
+	f(fn)
+}

@@ -10,6 +10,13 @@ type BodyDefinitionInfo struct {
 }
 
 type BodyDefinition struct {
+	mass                   float64
+	momentOfInertia        dprec.Mat3
+	restitutionCoefficient float64
+	dragFactor             float64
+	angularDragFactor      float64
+	collisionShapes        []CollisionShape
+	aerodynamicShapes      []AerodynamicShape
 }
 
 type BodyInfo struct {

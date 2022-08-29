@@ -102,7 +102,23 @@ func (s *Scene) SetWindDensity(density float64) {
 }
 
 func (s *Scene) CreateBody2(info BodyInfo) *Body {
-	panic("TODO")
+	result := s.CreateBody()
+
+	result.SetName(info.Name)
+	result.SetPosition(info.Position)
+	result.SetOrientation(info.Rotation)
+	result.SetStatic(!info.IsDynamic)
+
+	def := info.Definition
+	result.SetMass(def.mass)
+	result.SetMomentOfInertia(def.momentOfInertia)
+	result.SetRestitutionCoefficient(def.restitutionCoefficient)
+	result.SetDragFactor(def.dragFactor)
+	result.SetAngularDragFactor(def.angularDragFactor)
+	result.SetCollisionShapes(def.collisionShapes)
+	result.SetAerodynamicShapes(def.aerodynamicShapes)
+
+	return result
 }
 
 // CreateBody creates a new physics body and places

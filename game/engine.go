@@ -9,9 +9,21 @@ import (
 
 type EngineOption func(e *Engine)
 
-func WithRegistry(registry *asset.Registry) EngineOption {
+func WithRegistry(registry asset.Registry) EngineOption {
 	return func(e *Engine) {
 		e.registry = registry
+	}
+}
+
+func WithIOWorker(worker Worker) EngineOption {
+	return func(e *Engine) {
+		e.ioWorker = worker
+	}
+}
+
+func WithGFXWorker(worker Worker) EngineOption {
+	return func(e *Engine) {
+		e.gfxWorker = worker
 	}
 }
 
@@ -42,10 +54,24 @@ func NewEngine(opts ...EngineOption) *Engine {
 }
 
 type Engine struct {
-	registry      *asset.Registry
+	registry      asset.Registry
+	ioWorker      Worker
+	gfxWorker     Worker
 	physicsEngine *physics.Engine
 	gfxEngine     *graphics.Engine
 	ecsEngine     *ecs.Engine
+}
+
+func (e *Engine) Registry() asset.Registry {
+	return e.registry
+}
+
+func (e *Engine) IOWorker() Worker {
+	return e.ioWorker
+}
+
+func (e *Engine) GFXWorker() Worker {
+	return e.gfxWorker
 }
 
 func (e *Engine) Physics() *physics.Engine {

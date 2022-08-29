@@ -21,22 +21,24 @@ type ArmatureDefinition struct {
 type MaterialDefinition struct {
 }
 
-type MeshInstanceDefinition struct {
-	Name             string
-	GraphicsTemplate *graphics.MeshDefinition
-	Node             *NodeDefinition
-	Armature         *ArmatureDefinition
-}
-
 type ModelDefinition struct {
-	nodes         []NodeDefinition
-	Animations    []*AnimationDefinition
-	Armatures     []*ArmatureDefinition
-	Materials     []*MaterialDefinition
-	MeshInstances []*MeshInstanceDefinition
+	nodes      []NodeDefinition
+	Animations []*AnimationDefinition
+	Armatures  []*ArmatureDefinition
+	Materials  []*MaterialDefinition
+
+	meshDefinitions []*graphics.MeshDefinition
+	meshInstances   []MeshInstance
 
 	bodyDefinitions []*physics.BodyDefinition
 	bodyInstances   []BodyInstance
+}
+
+type MeshInstance struct {
+	Name            string
+	NodeIndex       int
+	DefinitionIndex int
+	// Armature        *ArmatureDefinition
 }
 
 type BodyInstance struct {
