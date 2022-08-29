@@ -12,8 +12,9 @@ const (
 	defaultNudgeIterations   = 100
 )
 
-func newScene(stepSeconds float64) *Scene {
+func newScene(engine *Engine, stepSeconds float64) *Scene {
 	return &Scene{
+		engine:     engine,
 		bodyOctree: spatial.NewOctree[*Body](32000.0, 9, 2_000_000),
 
 		dynamicBodies: make(map[*Body]struct{}),
@@ -39,6 +40,7 @@ func newScene(stepSeconds float64) *Scene {
 // a number of bodies that are independent on any
 // bodies managed by other scene objects.
 type Scene struct {
+	engine     *Engine
 	bodyOctree *spatial.Octree[*Body]
 
 	stepSeconds            float64
@@ -71,6 +73,11 @@ type Scene struct {
 	windDensity  float64
 }
 
+// Engine returns the physics Engine that owns this Scene.
+func (s *Scene) Engine() *Engine {
+	return s.engine
+}
+
 // Gravity returns the gravity acceleration.
 func (s *Scene) Gravity() dprec.Vec3 {
 	return s.gravity
@@ -101,29 +108,9 @@ func (s *Scene) SetWindDensity(density float64) {
 	s.windDensity = density
 }
 
-func (s *Scene) CreateBody2(info BodyInfo) *Body {
-	result := s.CreateBody()
-
-	result.SetName(info.Name)
-	result.SetPosition(info.Position)
-	result.SetOrientation(info.Rotation)
-	result.SetStatic(!info.IsDynamic)
-
-	def := info.Definition
-	result.SetMass(def.mass)
-	result.SetMomentOfInertia(def.momentOfInertia)
-	result.SetRestitutionCoefficient(def.restitutionCoefficient)
-	result.SetDragFactor(def.dragFactor)
-	result.SetAngularDragFactor(def.angularDragFactor)
-	result.SetCollisionShapes(def.collisionShapes)
-	result.SetAerodynamicShapes(def.aerodynamicShapes)
-
-	return result
-}
-
 // CreateBody creates a new physics body and places
 // it within this scene.
-func (s *Scene) CreateBody() *Body {
+func (s *Scene) CreateBody(info BodyInfo) *Body {
 	var body *Body
 	if s.cachedBody != nil {
 		body = s.cachedBody
@@ -131,12 +118,25 @@ func (s *Scene) CreateBody() *Body {
 	} else {
 		body = &Body{}
 	}
-	// TODO: Init Body with sane defaults
 	body.scene = s
 	body.item = s.bodyOctree.CreateItem(body)
 	body.prev = nil
 	body.next = nil
-	body.SetStatic(false)
+
+	body.SetName(info.Name)
+	body.SetPosition(info.Position)
+	body.SetOrientation(info.Rotation)
+	body.SetStatic(!info.IsDynamic)
+
+	def := info.Definition
+	body.SetMass(def.mass)
+	body.SetMomentOfInertia(def.momentOfInertia)
+	body.SetRestitutionCoefficient(def.restitutionCoefficient)
+	body.SetDragFactor(def.dragFactor)
+	body.SetAngularDragFactor(def.angularDragFactor)
+	body.SetCollisionShapes(def.collisionShapes)
+	body.SetAerodynamicShapes(def.aerodynamicShapes)
+
 	s.appendBody(body)
 	return body
 }

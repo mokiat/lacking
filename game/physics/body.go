@@ -6,7 +6,13 @@ import (
 )
 
 type BodyDefinitionInfo struct {
-	Name string
+	Mass                   float64
+	MomentOfInertia        dprec.Mat3
+	RestitutionCoefficient float64
+	DragFactor             float64
+	AngularDragFactor      float64
+	CollisionShapes        []CollisionShape
+	AerodynamicShapes      []AerodynamicShape
 }
 
 type BodyDefinition struct {
