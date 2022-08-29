@@ -141,7 +141,7 @@ func (c *converter) BuildNode(parentIndex int, node *Node) {
 		Name:        node.Name,
 		ParentIndex: int32(parentIndex),
 		Translation: node.Translation.Array(),
-		Rotation: [4]float32{
+		Rotation: [4]float64{
 			node.Rotation.X,
 			node.Rotation.Y,
 			node.Rotation.Z,

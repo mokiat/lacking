@@ -3,7 +3,9 @@ package pack
 import (
 	"fmt"
 
+	"github.com/mokiat/gomath/dprec"
 	"github.com/mokiat/gomath/sprec"
+	"github.com/mokiat/gomath/stod"
 	"github.com/mokiat/lacking/log"
 	"github.com/mokiat/lacking/util/gltfutil"
 	"github.com/qmuntal/gltf"
@@ -180,34 +182,34 @@ func (a *OpenGLTFResourceAction) Run() error {
 		gltfNode := gltfDoc.Nodes[nodeIndex]
 		node := &Node{
 			Name:        gltfNode.Name,
-			Translation: sprec.ZeroVec3(),
-			Rotation:    sprec.IdentityQuat(),
-			Scale:       sprec.NewVec3(1.0, 1.0, 1.0),
+			Translation: dprec.ZeroVec3(),
+			Rotation:    dprec.IdentityQuat(),
+			Scale:       dprec.NewVec3(1.0, 1.0, 1.0),
 		}
 		nodeFromIndex[nodeIndex] = node
 
 		if gltfNode.Matrix != gltf.DefaultMatrix {
-			matrix := sprec.ColumnMajorArrayToMat4(gltfNode.Matrix)
+			matrix := stod.Mat4(sprec.ColumnMajorArrayToMat4(gltfNode.Matrix))
 			translation, rotation, scale := matrix.TRS()
 			node.Translation = translation
 			node.Rotation = rotation
 			node.Scale = scale
 		} else {
-			node.Translation = sprec.NewVec3(
-				gltfNode.Translation[0],
-				gltfNode.Translation[1],
-				gltfNode.Translation[2],
+			node.Translation = dprec.NewVec3(
+				float64(gltfNode.Translation[0]),
+				float64(gltfNode.Translation[1]),
+				float64(gltfNode.Translation[2]),
 			)
-			node.Rotation = sprec.NewQuat(
-				gltfNode.Rotation[3],
-				gltfNode.Rotation[0],
-				gltfNode.Rotation[1],
-				gltfNode.Rotation[2],
+			node.Rotation = dprec.NewQuat(
+				float64(gltfNode.Rotation[3]),
+				float64(gltfNode.Rotation[0]),
+				float64(gltfNode.Rotation[1]),
+				float64(gltfNode.Rotation[2]),
 			)
-			node.Scale = sprec.NewVec3(
-				gltfNode.Scale[0],
-				gltfNode.Scale[1],
-				gltfNode.Scale[2],
+			node.Scale = dprec.NewVec3(
+				float64(gltfNode.Scale[0]),
+				float64(gltfNode.Scale[1]),
+				float64(gltfNode.Scale[2]),
 			)
 		}
 

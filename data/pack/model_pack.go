@@ -20,9 +20,9 @@ type Model struct {
 
 type Node struct {
 	Name        string
-	Translation sprec.Vec3
-	Scale       sprec.Vec3
-	Rotation    sprec.Quat
+	Translation dprec.Vec3
+	Scale       dprec.Vec3
+	Rotation    dprec.Quat
 	Children    []*Node
 }
 

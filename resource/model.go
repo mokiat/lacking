@@ -5,7 +5,6 @@ import (
 
 	"github.com/mokiat/gomath/dprec"
 	"github.com/mokiat/gomath/sprec"
-	"github.com/mokiat/gomath/stod"
 	"github.com/mokiat/lacking/game"
 	"github.com/mokiat/lacking/game/asset"
 	"github.com/mokiat/lacking/game/graphics"
@@ -153,16 +152,15 @@ func (o *ModelOperator) Allocate(registry *Registry, id string) (interface{}, er
 		} else {
 			rootNodes = append(rootNodes, nodes[i])
 		}
-		rotation := sprec.NewQuat(
+		nodes[i].Name = nodeAsset.Name
+		nodes[i].Position = dprec.ArrayToVec3(nodeAsset.Translation)
+		nodes[i].Rotation = dprec.NewQuat(
 			nodeAsset.Rotation[3],
 			nodeAsset.Rotation[0],
 			nodeAsset.Rotation[1],
 			nodeAsset.Rotation[2],
 		)
-		nodes[i].Name = nodeAsset.Name
-		nodes[i].Position = stod.Vec3(sprec.ArrayToVec3(nodeAsset.Translation))
-		nodes[i].Rotation = stod.Quat(rotation)
-		nodes[i].Scale = stod.Vec3(sprec.ArrayToVec3(nodeAsset.Scale))
+		nodes[i].Scale = dprec.ArrayToVec3(nodeAsset.Scale)
 	}
 	model.Nodes = rootNodes
 	model.AllNodes = nodes
