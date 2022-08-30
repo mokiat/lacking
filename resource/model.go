@@ -153,14 +153,9 @@ func (o *ModelOperator) Allocate(registry *Registry, id string) (interface{}, er
 			rootNodes = append(rootNodes, nodes[i])
 		}
 		nodes[i].Name = nodeAsset.Name
-		nodes[i].Position = dprec.ArrayToVec3(nodeAsset.Translation)
-		nodes[i].Rotation = dprec.NewQuat(
-			nodeAsset.Rotation[3],
-			nodeAsset.Rotation[0],
-			nodeAsset.Rotation[1],
-			nodeAsset.Rotation[2],
-		)
-		nodes[i].Scale = dprec.ArrayToVec3(nodeAsset.Scale)
+		nodes[i].Position = nodeAsset.Translation
+		nodes[i].Rotation = nodeAsset.Rotation
+		nodes[i].Scale = nodeAsset.Scale
 	}
 	model.Nodes = rootNodes
 	model.AllNodes = nodes

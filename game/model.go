@@ -98,14 +98,9 @@ func (r *ResourceSet) allocateModel(resource asset.Resource) (*ModelDefinition, 
 		nodes[i] = NodeDefinition{
 			ParentIndex: int(nodeAsset.ParentIndex),
 			Name:        nodeAsset.Name,
-			Position:    dprec.ArrayToVec3(nodeAsset.Translation),
-			Rotation: dprec.NewQuat(
-				nodeAsset.Rotation[3],
-				nodeAsset.Rotation[0],
-				nodeAsset.Rotation[1],
-				nodeAsset.Rotation[2],
-			),
-			Scale: dprec.ArrayToVec3(nodeAsset.Scale),
+			Position:    nodeAsset.Translation,
+			Rotation:    nodeAsset.Rotation,
+			Scale:       nodeAsset.Scale,
 		}
 	}
 	result.nodes = nodes

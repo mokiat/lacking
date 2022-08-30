@@ -141,14 +141,9 @@ func (c *converter) BuildNode(parentIndex int, node *Node) {
 	result := gameasset.Node{
 		Name:        node.Name,
 		ParentIndex: int32(parentIndex),
-		Translation: node.Translation.Array(),
-		Rotation: [4]float64{
-			node.Rotation.X,
-			node.Rotation.Y,
-			node.Rotation.Z,
-			node.Rotation.W,
-		},
-		Scale: node.Scale.Array(),
+		Translation: node.Translation,
+		Rotation:    node.Rotation,
+		Scale:       node.Scale,
 	}
 	index := len(c.assetNodes)
 	c.assetNodes = append(c.assetNodes, result)
