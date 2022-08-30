@@ -28,7 +28,7 @@ type MaterialDefinition struct {
 type ModelDefinition struct {
 	nodes           []NodeDefinition
 	meshDefinitions []*graphics.MeshDefinition
-	meshInstances   []MeshInstance
+	meshInstances   []meshInstance
 	bodyDefinitions []*physics.BodyDefinition
 	bodyInstances   []bodyInstance
 
@@ -38,7 +38,7 @@ type ModelDefinition struct {
 	Materials  []*MaterialDefinition
 }
 
-type MeshInstance struct {
+type meshInstance struct {
 	Name            string
 	NodeIndex       int
 	DefinitionIndex int
@@ -113,15 +113,17 @@ func (r *ResourceSet) allocateModel(resource asset.Resource) (*ModelDefinition, 
 	bodyDefinitions := make([]*physics.BodyDefinition, len(modelAsset.BodyDefinitions))
 	for i, definitionAsset := range modelAsset.BodyDefinitions {
 		physicsEngine := r.engine.Physics()
-		bodyDefinitions[i] = physicsEngine.CreateBodyDefinition(physics.BodyDefinitionInfo{
-			Mass:                   definitionAsset.Mass,
-			MomentOfInertia:        definitionAsset.MomentOfInertia,
-			RestitutionCoefficient: definitionAsset.RestitutionCoefficient,
-			DragFactor:             definitionAsset.DragFactor,
-			AngularDragFactor:      definitionAsset.AngularDragFactor,
-			CollisionShapes:        r.constructCollisionShapes(definitionAsset),
-			AerodynamicShapes:      nil, // TODO
-		})
+		r.gfxWorker.Schedule(func() {
+			bodyDefinitions[i] = physicsEngine.CreateBodyDefinition(physics.BodyDefinitionInfo{
+				Mass:                   definitionAsset.Mass,
+				MomentOfInertia:        definitionAsset.MomentOfInertia,
+				RestitutionCoefficient: definitionAsset.RestitutionCoefficient,
+				DragFactor:             definitionAsset.DragFactor,
+				AngularDragFactor:      definitionAsset.AngularDragFactor,
+				CollisionShapes:        r.constructCollisionShapes(definitionAsset),
+				AerodynamicShapes:      nil, // TODO
+			})
+		}).Wait()
 	}
 	result.bodyDefinitions = bodyDefinitions
 
@@ -134,6 +136,93 @@ func (r *ResourceSet) allocateModel(resource asset.Resource) (*ModelDefinition, 
 		}
 	}
 	result.bodyInstances = bodyInstances
+
+	materialDefinitions := make([]*graphics.MaterialDefinition, len(modelAsset.Materials))
+	for i, materialAsset := range modelAsset.Materials {
+		pbrAsset := asset.NewPBRMaterialView(&materialAsset)
+
+		// TODO
+		// var albedoTexture *graphics.TwoDTexture
+		// if texID := pbrAsset.BaseColorTexture(); texID != "" {
+		// 	var placeholder Placeholder[*TwoDTexture]
+		// 	r.gfxWorker.Schedule(func() {
+		// 		placeholder = r.OpenTwoDTexture(texID)
+		// 	})
+		// 	texture, err := placeholder.Wait()
+		// 	if err != nil {
+		// 		return nil, fmt.Errorf("error loading albedo texture: %w", err)
+		// 	}
+		// 	albedoTexture = texture.gfxTexture
+		// }
+
+		// var metallicRoughnessTexture *graphics.TwoDTexture
+		// if texID := assetPBR.MetallicRoughnessTexture(); texID != "" {
+		// 	var placeholder Placeholder[*TwoDTexture]
+
+		// 	texture, err := placeholder.Wait()
+		// 	if err != nil {
+		// 		return nil, fmt.Errorf("error loading albedo texture: %w", err)
+		// 	}
+
+		// 	metallicRoughnessTexture = texture
+		// }
+
+		gfxEngine := r.engine.Graphics()
+		r.gfxWorker.Schedule(func() {
+			materialDefinitions[i] = gfxEngine.CreatePBRMaterialDefinition(graphics.PBRMaterialInfo{
+				BackfaceCulling:          materialAsset.BackfaceCulling,
+				AlphaBlending:            materialAsset.Blending,
+				AlphaTesting:             materialAsset.AlphaTesting,
+				AlphaThreshold:           materialAsset.AlphaThreshold,
+				Metallic:                 pbrAsset.Metallic(),
+				Roughness:                pbrAsset.Roughness(),
+				MetallicRoughnessTexture: nil, // FIXME
+				AlbedoColor:              pbrAsset.BaseColor(),
+				AlbedoTexture:            nil, // FIXME
+				NormalScale:              pbrAsset.NormalScale(),
+				NormalTexture:            nil, // FIXME
+			})
+		}).Wait()
+	}
+
+	meshDefinitions := make([]*graphics.MeshDefinition, len(modelAsset.BodyDefinitions))
+	for i, definitionAsset := range modelAsset.MeshDefinitions {
+		meshFragments := make([]graphics.MeshFragmentDefinitionInfo, len(definitionAsset.Fragments))
+		for j, fragmentAsset := range definitionAsset.Fragments {
+			material := materialDefinitions[fragmentAsset.MaterialIndex]
+			meshFragments[j] = graphics.MeshFragmentDefinitionInfo{
+				Primitive:   resolvePrimitive(fragmentAsset.Topology),
+				IndexOffset: int(fragmentAsset.IndexOffset),
+				IndexCount:  int(fragmentAsset.IndexCount),
+				Material:    material,
+			}
+		}
+
+		gfxEngine := r.engine.Graphics()
+		r.gfxWorker.Schedule(func() {
+			meshDefinitions[i] = gfxEngine.CreateMeshDefinition(graphics.MeshDefinitionInfo{
+				VertexData:           definitionAsset.VertexData,
+				VertexFormat:         resolveVertexFormat(definitionAsset.VertexLayout),
+				IndexData:            definitionAsset.IndexData,
+				IndexFormat:          resolveIndexFormat(definitionAsset.IndexLayout),
+				Fragments:            meshFragments,
+				BoundingSphereRadius: definitionAsset.BoundingSphereRadius,
+			})
+		}).Wait()
+	}
+
+	result.meshDefinitions = meshDefinitions
+
+	meshInstances := make([]meshInstance, len(modelAsset.MeshInstances))
+	for i, instanceAsset := range modelAsset.MeshInstances {
+		meshInstances[i] = meshInstance{
+			Name:            instanceAsset.Name,
+			NodeIndex:       int(instanceAsset.NodeIndex),
+			DefinitionIndex: int(instanceAsset.DefinitionIndex),
+			// TODO: Armature
+		}
+	}
+	result.meshInstances = meshInstances
 
 	return result, nil
 }
@@ -180,4 +269,62 @@ func (r *ResourceSet) constructCollisionShapes(bodyDef asset.BodyDefinition) []p
 		))
 	}
 	return result
+}
+
+func resolveVertexFormat(layout asset.VertexLayout) graphics.VertexFormat {
+	return graphics.VertexFormat{
+		HasCoord:            layout.CoordOffset != asset.UnspecifiedOffset,
+		CoordOffsetBytes:    int(layout.CoordOffset),
+		CoordStrideBytes:    int(layout.CoordStride),
+		HasNormal:           layout.NormalOffset != asset.UnspecifiedOffset,
+		NormalOffsetBytes:   int(layout.NormalOffset),
+		NormalStrideBytes:   int(layout.NormalStride),
+		HasTangent:          layout.TangentOffset != asset.UnspecifiedOffset,
+		TangentOffsetBytes:  int(layout.TangentOffset),
+		TangentStrideBytes:  int(layout.TangentStride),
+		HasTexCoord:         layout.TexCoordOffset != asset.UnspecifiedOffset,
+		TexCoordOffsetBytes: int(layout.TexCoordOffset),
+		TexCoordStrideBytes: int(layout.TexCoordStride),
+		HasColor:            layout.ColorOffset != asset.UnspecifiedOffset,
+		ColorOffsetBytes:    int(layout.ColorOffset),
+		ColorStrideBytes:    int(layout.ColorStride),
+		HasWeights:          layout.WeightsOffset != asset.UnspecifiedOffset,
+		WeightsOffsetBytes:  int(layout.WeightsOffset),
+		WeightsStrideBytes:  int(layout.WeightsStride),
+		HasJoints:           layout.JointsOffset != asset.UnspecifiedOffset,
+		JointsOffsetBytes:   int(layout.JointsOffset),
+		JointsStrideBytes:   int(layout.JointsStride),
+	}
+}
+
+func resolveIndexFormat(layout asset.IndexLayout) graphics.IndexFormat {
+	switch layout {
+	case asset.IndexLayoutUint16:
+		return graphics.IndexFormatU16
+	case asset.IndexLayoutUint32:
+		return graphics.IndexFormatU32
+	default:
+		panic(fmt.Errorf("unsupported index layout: %d", layout))
+	}
+}
+
+func resolvePrimitive(primitive asset.MeshTopology) graphics.Primitive {
+	switch primitive {
+	case asset.MeshTopologyPoints:
+		return graphics.PrimitivePoints
+	case asset.MeshTopologyLines:
+		return graphics.PrimitiveLines
+	case asset.MeshTopologyLineStrip:
+		return graphics.PrimitiveLineStrip
+	case asset.MeshTopologyLineLoop:
+		return graphics.PrimitiveLineLoop
+	case asset.MeshTopologyTriangles:
+		return graphics.PrimitiveTriangles
+	case asset.MeshTopologyTriangleStrip:
+		return graphics.PrimitiveTriangleStrip
+	case asset.MeshTopologyTriangleFan:
+		return graphics.PrimitiveTriangleFan
+	default:
+		panic(fmt.Errorf("unsupported primitive: %d", primitive))
+	}
 }

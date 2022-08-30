@@ -41,7 +41,7 @@ func (r *ResourceSet) allocateTwoDTexture(resource asset.Resource) (*TwoDTexture
 			Data:            texAsset.Data,
 		})
 		result.gfxTexture = gfxTexture
-	})
+	}).Wait()
 	return result, nil
 }
 
@@ -70,7 +70,7 @@ func (r *ResourceSet) allocateCubeTexture(resource asset.Resource) (*CubeTexture
 			BottomSideData: texAsset.BottomSide.Data,
 		})
 		result.gfxTexture = gfxTexture
-	})
+	}).Wait()
 	return result, nil
 }
 
