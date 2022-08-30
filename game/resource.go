@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/mokiat/lacking/async"
 	"github.com/mokiat/lacking/game/asset"
 )
 
@@ -20,9 +21,9 @@ func newResourceSet(parent *ResourceSet, engine *Engine) *ResourceSet {
 		ioWorker:  engine.ioWorker,
 		gfxWorker: engine.gfxWorker,
 
-		namedTwoDTextures: make(map[string]Placeholder[*TwoDTexture]),
-		namedCubeTextures: make(map[string]Placeholder[*CubeTexture]),
-		namedModels:       make(map[string]Placeholder[*ModelDefinition]),
+		namedTwoDTextures: make(map[string]async.Promise[*TwoDTexture]),
+		namedCubeTextures: make(map[string]async.Promise[*CubeTexture]),
+		namedModels:       make(map[string]async.Promise[*ModelDefinition]),
 	}
 }
 
@@ -33,78 +34,78 @@ type ResourceSet struct {
 	ioWorker  Worker
 	gfxWorker Worker
 
-	namedTwoDTextures map[string]Placeholder[*TwoDTexture]
-	namedCubeTextures map[string]Placeholder[*CubeTexture]
-	namedModels       map[string]Placeholder[*ModelDefinition]
+	namedTwoDTextures map[string]async.Promise[*TwoDTexture]
+	namedCubeTextures map[string]async.Promise[*CubeTexture]
+	namedModels       map[string]async.Promise[*ModelDefinition]
 }
 
 func (s *ResourceSet) CreateResourceSet() *ResourceSet {
 	return newResourceSet(s, s.engine)
 }
 
-func (s *ResourceSet) OpenTwoDTexture(id string) Placeholder[*TwoDTexture] {
+func (s *ResourceSet) OpenTwoDTexture(id string) async.Promise[*TwoDTexture] {
 	if result, ok := s.findTwoDTexture(id); ok {
 		return result
 	}
 
 	resource := s.registry.ResourceByID(id)
 	if resource == nil {
-		return failedPlaceholder[*TwoDTexture](fmt.Errorf("%w: %q", ErrNotFound, id))
+		return async.NewFailedPromise[*TwoDTexture](fmt.Errorf("%w: %q", ErrNotFound, id))
 	}
 
-	result := pendingPlaceholder[*TwoDTexture]()
+	result := async.NewPromise[*TwoDTexture]()
 	s.ioWorker.Schedule(func() {
 		texture, err := s.allocateTwoDTexture(resource)
 		if err != nil {
-			result.promise.Fail(fmt.Errorf("error loading twod texture %q: %w", id, err))
+			result.Fail(fmt.Errorf("error loading twod texture %q: %w", id, err))
 		} else {
-			result.promise.Deliver(texture)
+			result.Deliver(texture)
 		}
 	})
 	s.namedTwoDTextures[id] = result
 	return result
 }
 
-func (s *ResourceSet) OpenCubeTexture(id string) Placeholder[*CubeTexture] {
+func (s *ResourceSet) OpenCubeTexture(id string) async.Promise[*CubeTexture] {
 	if result, ok := s.findCubeTexture(id); ok {
 		return result
 	}
 
 	resource := s.registry.ResourceByID(id)
 	if resource == nil {
-		return failedPlaceholder[*CubeTexture](fmt.Errorf("%w: %q", ErrNotFound, id))
+		return async.NewFailedPromise[*CubeTexture](fmt.Errorf("%w: %q", ErrNotFound, id))
 	}
 
-	result := pendingPlaceholder[*CubeTexture]()
+	result := async.NewPromise[*CubeTexture]()
 	s.ioWorker.Schedule(func() {
 		texture, err := s.allocateCubeTexture(resource)
 		if err != nil {
-			result.promise.Fail(fmt.Errorf("error loading cube texture %q: %w", id, err))
+			result.Fail(fmt.Errorf("error loading cube texture %q: %w", id, err))
 		} else {
-			result.promise.Deliver(texture)
+			result.Deliver(texture)
 		}
 	})
 	s.namedCubeTextures[id] = result
 	return result
 }
 
-func (s *ResourceSet) OpenModel(id string) Placeholder[*ModelDefinition] {
+func (s *ResourceSet) OpenModel(id string) async.Promise[*ModelDefinition] {
 	if result, ok := s.findModel(id); ok {
 		return result
 	}
 
 	resource := s.registry.ResourceByID(id)
 	if resource == nil {
-		return failedPlaceholder[*ModelDefinition](fmt.Errorf("%w: %q", ErrNotFound, id))
+		return async.NewFailedPromise[*ModelDefinition](fmt.Errorf("%w: %q", ErrNotFound, id))
 	}
 
-	result := pendingPlaceholder[*ModelDefinition]()
+	result := async.NewPromise[*ModelDefinition]()
 	s.ioWorker.Schedule(func() {
 		model, err := s.allocateModel(resource)
 		if err != nil {
-			result.promise.Fail(fmt.Errorf("error loading model %q: %w", id, err))
+			result.Fail(fmt.Errorf("error loading model %q: %w", id, err))
 		} else {
-			result.promise.Deliver(model)
+			result.Deliver(model)
 		}
 	})
 	s.namedModels[id] = result
@@ -119,20 +120,20 @@ func (s *ResourceSet) OpenModel(id string) Placeholder[*ModelDefinition] {
 // method has been called is also not allowed.
 func (s *ResourceSet) Delete() {
 	go func() {
-		for _, placeholder := range s.namedTwoDTextures {
-			if texture, err := placeholder.promise.Wait(); err == nil {
+		for _, promise := range s.namedTwoDTextures {
+			if texture, err := promise.Wait(); err == nil {
 				s.releaseTwoDTexture(texture)
 			}
 		}
 		s.namedTwoDTextures = nil
-		for _, placeholder := range s.namedCubeTextures {
-			if texture, err := placeholder.promise.Wait(); err == nil {
+		for _, promise := range s.namedCubeTextures {
+			if texture, err := promise.Wait(); err == nil {
 				s.releaseCubeTexture(texture)
 			}
 		}
 		s.namedCubeTextures = nil
-		for _, placeholder := range s.namedModels {
-			if model, err := placeholder.promise.Wait(); err == nil {
+		for _, promise := range s.namedModels {
+			if model, err := promise.Wait(); err == nil {
 				s.releaseModel(model)
 			}
 		}
@@ -140,32 +141,32 @@ func (s *ResourceSet) Delete() {
 	}()
 }
 
-func (s *ResourceSet) findTwoDTexture(id string) (Placeholder[*TwoDTexture], bool) {
+func (s *ResourceSet) findTwoDTexture(id string) (async.Promise[*TwoDTexture], bool) {
 	if result, ok := s.namedTwoDTextures[id]; ok {
 		return result, true
 	}
 	if s.parent != nil {
 		return s.parent.findTwoDTexture(id)
 	}
-	return Placeholder[*TwoDTexture]{}, false
+	return async.Promise[*TwoDTexture]{}, false
 }
 
-func (s *ResourceSet) findCubeTexture(id string) (Placeholder[*CubeTexture], bool) {
+func (s *ResourceSet) findCubeTexture(id string) (async.Promise[*CubeTexture], bool) {
 	if result, ok := s.namedCubeTextures[id]; ok {
 		return result, true
 	}
 	if s.parent != nil {
 		return s.parent.findCubeTexture(id)
 	}
-	return Placeholder[*CubeTexture]{}, false
+	return async.Promise[*CubeTexture]{}, false
 }
 
-func (s *ResourceSet) findModel(id string) (Placeholder[*ModelDefinition], bool) {
+func (s *ResourceSet) findModel(id string) (async.Promise[*ModelDefinition], bool) {
 	if result, ok := s.namedModels[id]; ok {
 		return result, true
 	}
 	if s.parent != nil {
 		return s.parent.findModel(id)
 	}
-	return Placeholder[*ModelDefinition]{}, false
+	return async.Promise[*ModelDefinition]{}, false
 }
