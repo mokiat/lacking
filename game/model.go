@@ -27,16 +27,16 @@ type MaterialDefinition struct {
 }
 
 type ModelDefinition struct {
-	nodes           []NodeDefinition
-	meshDefinitions []*graphics.MeshDefinition
-	meshInstances   []meshInstance
-	bodyDefinitions []*physics.BodyDefinition
-	bodyInstances   []bodyInstance
+	nodes               []NodeDefinition
+	materialDefinitions []*graphics.MaterialDefinition
+	meshDefinitions     []*graphics.MeshDefinition
+	meshInstances       []meshInstance
+	bodyDefinitions     []*physics.BodyDefinition
+	bodyInstances       []bodyInstance
 
 	// TODO: Fix these as well
 	Animations []*AnimationDefinition
 	Armatures  []*ArmatureDefinition
-	Materials  []*MaterialDefinition
 }
 
 type meshInstance struct {
@@ -231,11 +231,12 @@ func (r *ResourceSet) allocateModel(resource asset.Resource) (*ModelDefinition, 
 	}
 
 	return &ModelDefinition{
-		nodes:           nodes,
-		meshDefinitions: meshDefinitions,
-		meshInstances:   meshInstances,
-		bodyDefinitions: bodyDefinitions,
-		bodyInstances:   bodyInstances,
+		nodes:               nodes,
+		materialDefinitions: materialDefinitions,
+		meshDefinitions:     meshDefinitions,
+		meshInstances:       meshInstances,
+		bodyDefinitions:     bodyDefinitions,
+		bodyInstances:       bodyInstances,
 	}, nil
 }
 
