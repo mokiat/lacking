@@ -54,14 +54,14 @@ func (s *ResourceSet) OpenTwoDTexture(id string) async.Promise[*TwoDTexture] {
 	}
 
 	result := async.NewPromise[*TwoDTexture]()
-	s.ioWorker.Schedule(func() {
+	go func() {
 		texture, err := s.allocateTwoDTexture(resource)
 		if err != nil {
 			result.Fail(fmt.Errorf("error loading twod texture %q: %w", id, err))
 		} else {
 			result.Deliver(texture)
 		}
-	})
+	}()
 	s.namedTwoDTextures[id] = result
 	return result
 }
@@ -77,14 +77,14 @@ func (s *ResourceSet) OpenCubeTexture(id string) async.Promise[*CubeTexture] {
 	}
 
 	result := async.NewPromise[*CubeTexture]()
-	s.ioWorker.Schedule(func() {
+	go func() {
 		texture, err := s.allocateCubeTexture(resource)
 		if err != nil {
 			result.Fail(fmt.Errorf("error loading cube texture %q: %w", id, err))
 		} else {
 			result.Deliver(texture)
 		}
-	})
+	}()
 	s.namedCubeTextures[id] = result
 	return result
 }
@@ -100,14 +100,14 @@ func (s *ResourceSet) OpenModel(id string) async.Promise[*ModelDefinition] {
 	}
 
 	result := async.NewPromise[*ModelDefinition]()
-	s.ioWorker.Schedule(func() {
+	go func() {
 		model, err := s.allocateModel(resource)
 		if err != nil {
 			result.Fail(fmt.Errorf("error loading model %q: %w", id, err))
 		} else {
 			result.Deliver(model)
 		}
-	})
+	}()
 	s.namedModels[id] = result
 	return result
 }

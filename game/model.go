@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/mokiat/gomath/dprec"
+	"github.com/mokiat/lacking/async"
 	"github.com/mokiat/lacking/game/asset"
 	"github.com/mokiat/lacking/game/graphics"
 	"github.com/mokiat/lacking/game/physics"
@@ -88,10 +89,13 @@ type Model struct {
 
 func (r *ResourceSet) allocateModel(resource asset.Resource) (*ModelDefinition, error) {
 	modelAsset := new(asset.Model)
-	if err := resource.ReadContent(modelAsset); err != nil {
+
+	ioTask := func() error {
+		return resource.ReadContent(modelAsset)
+	}
+	if err := r.ioWorker.Schedule(ioTask).Wait(); err != nil {
 		return nil, fmt.Errorf("failed to read asset: %w", err)
 	}
-	result := &ModelDefinition{}
 
 	nodes := make([]NodeDefinition, len(modelAsset.Nodes))
 	for i, nodeAsset := range modelAsset.Nodes {
@@ -103,12 +107,11 @@ func (r *ResourceSet) allocateModel(resource asset.Resource) (*ModelDefinition, 
 			Scale:       nodeAsset.Scale,
 		}
 	}
-	result.nodes = nodes
 
 	bodyDefinitions := make([]*physics.BodyDefinition, len(modelAsset.BodyDefinitions))
 	for i, definitionAsset := range modelAsset.BodyDefinitions {
 		physicsEngine := r.engine.Physics()
-		r.gfxWorker.Schedule(func() {
+		r.gfxWorker.ScheduleVoid(func() {
 			bodyDefinitions[i] = physicsEngine.CreateBodyDefinition(physics.BodyDefinitionInfo{
 				Mass:                   definitionAsset.Mass,
 				MomentOfInertia:        definitionAsset.MomentOfInertia,
@@ -120,7 +123,6 @@ func (r *ResourceSet) allocateModel(resource asset.Resource) (*ModelDefinition, 
 			})
 		}).Wait()
 	}
-	result.bodyDefinitions = bodyDefinitions
 
 	bodyInstances := make([]bodyInstance, len(modelAsset.BodyInstances))
 	for i, instanceAsset := range modelAsset.BodyInstances {
@@ -130,40 +132,52 @@ func (r *ResourceSet) allocateModel(resource asset.Resource) (*ModelDefinition, 
 			DefinitionIndex: int(instanceAsset.BodyIndex),
 		}
 	}
-	result.bodyInstances = bodyInstances
 
 	materialDefinitions := make([]*graphics.MaterialDefinition, len(modelAsset.Materials))
 	for i, materialAsset := range modelAsset.Materials {
 		pbrAsset := asset.NewPBRMaterialView(&materialAsset)
 
-		// TODO
-		// var albedoTexture *graphics.TwoDTexture
-		// if texID := pbrAsset.BaseColorTexture(); texID != "" {
-		// 	var placeholder Placeholder[*TwoDTexture]
-		// 	r.gfxWorker.Schedule(func() {
-		// 		placeholder = r.OpenTwoDTexture(texID)
-		// 	})
-		// 	texture, err := placeholder.Wait()
-		// 	if err != nil {
-		// 		return nil, fmt.Errorf("error loading albedo texture: %w", err)
-		// 	}
-		// 	albedoTexture = texture.gfxTexture
-		// }
+		var albedoTexture *graphics.TwoDTexture
+		if texID := pbrAsset.BaseColorTexture(); texID != "" {
+			var promise async.Promise[*TwoDTexture]
+			r.gfxWorker.ScheduleVoid(func() {
+				promise = r.OpenTwoDTexture(texID)
+			}).Wait()
+			texture, err := promise.Wait()
+			if err != nil {
+				return nil, fmt.Errorf("error loading albedo texture: %w", err)
+			}
+			albedoTexture = texture.gfxTexture
+		}
 
-		// var metallicRoughnessTexture *graphics.TwoDTexture
-		// if texID := assetPBR.MetallicRoughnessTexture(); texID != "" {
-		// 	var placeholder Placeholder[*TwoDTexture]
+		var metallicRoughnessTexture *graphics.TwoDTexture
+		if texID := pbrAsset.MetallicRoughnessTexture(); texID != "" {
+			var promise async.Promise[*TwoDTexture]
+			r.gfxWorker.ScheduleVoid(func() {
+				promise = r.OpenTwoDTexture(texID)
+			}).Wait()
+			texture, err := promise.Wait()
+			if err != nil {
+				return nil, fmt.Errorf("error loading albedo texture: %w", err)
+			}
+			metallicRoughnessTexture = texture.gfxTexture
+		}
 
-		// 	texture, err := placeholder.Wait()
-		// 	if err != nil {
-		// 		return nil, fmt.Errorf("error loading albedo texture: %w", err)
-		// 	}
-
-		// 	metallicRoughnessTexture = texture
-		// }
+		var normalTexture *graphics.TwoDTexture
+		if texID := pbrAsset.NormalTexture(); texID != "" {
+			var promise async.Promise[*TwoDTexture]
+			r.gfxWorker.ScheduleVoid(func() {
+				promise = r.OpenTwoDTexture(texID)
+			}).Wait()
+			texture, err := promise.Wait()
+			if err != nil {
+				return nil, fmt.Errorf("error loading albedo texture: %w", err)
+			}
+			normalTexture = texture.gfxTexture
+		}
 
 		gfxEngine := r.engine.Graphics()
-		r.gfxWorker.Schedule(func() {
+		r.gfxWorker.ScheduleVoid(func() {
 			materialDefinitions[i] = gfxEngine.CreatePBRMaterialDefinition(graphics.PBRMaterialInfo{
 				BackfaceCulling:          materialAsset.BackfaceCulling,
 				AlphaBlending:            materialAsset.Blending,
@@ -171,11 +185,11 @@ func (r *ResourceSet) allocateModel(resource asset.Resource) (*ModelDefinition, 
 				AlphaThreshold:           materialAsset.AlphaThreshold,
 				Metallic:                 pbrAsset.Metallic(),
 				Roughness:                pbrAsset.Roughness(),
-				MetallicRoughnessTexture: nil, // FIXME
+				MetallicRoughnessTexture: metallicRoughnessTexture,
 				AlbedoColor:              pbrAsset.BaseColor(),
-				AlbedoTexture:            nil, // FIXME
+				AlbedoTexture:            albedoTexture,
 				NormalScale:              pbrAsset.NormalScale(),
-				NormalTexture:            nil, // FIXME
+				NormalTexture:            normalTexture,
 			})
 		}).Wait()
 	}
@@ -194,7 +208,7 @@ func (r *ResourceSet) allocateModel(resource asset.Resource) (*ModelDefinition, 
 		}
 
 		gfxEngine := r.engine.Graphics()
-		r.gfxWorker.Schedule(func() {
+		r.gfxWorker.ScheduleVoid(func() {
 			meshDefinitions[i] = gfxEngine.CreateMeshDefinition(graphics.MeshDefinitionInfo{
 				VertexData:           definitionAsset.VertexData,
 				VertexFormat:         resolveVertexFormat(definitionAsset.VertexLayout),
@@ -206,8 +220,6 @@ func (r *ResourceSet) allocateModel(resource asset.Resource) (*ModelDefinition, 
 		}).Wait()
 	}
 
-	result.meshDefinitions = meshDefinitions
-
 	meshInstances := make([]meshInstance, len(modelAsset.MeshInstances))
 	for i, instanceAsset := range modelAsset.MeshInstances {
 		meshInstances[i] = meshInstance{
@@ -217,9 +229,14 @@ func (r *ResourceSet) allocateModel(resource asset.Resource) (*ModelDefinition, 
 			// TODO: Armature
 		}
 	}
-	result.meshInstances = meshInstances
 
-	return result, nil
+	return &ModelDefinition{
+		nodes:           nodes,
+		meshDefinitions: meshDefinitions,
+		meshInstances:   meshInstances,
+		bodyDefinitions: bodyDefinitions,
+		bodyInstances:   bodyInstances,
+	}, nil
 }
 
 func (r *ResourceSet) releaseModel(model *ModelDefinition) {

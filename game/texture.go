@@ -23,13 +23,18 @@ type CubeTexture struct {
 
 func (r *ResourceSet) allocateTwoDTexture(resource asset.Resource) (*TwoDTexture, error) {
 	texAsset := new(asset.TwoDTexture)
-	if err := resource.ReadContent(texAsset); err != nil {
+
+	ioTask := func() error {
+		return resource.ReadContent(texAsset)
+	}
+	if err := r.ioWorker.Schedule(ioTask).Wait(); err != nil {
 		return nil, fmt.Errorf("failed to read asset: %w", err)
 	}
-	result := &TwoDTexture{}
-	r.gfxWorker.Schedule(func() {
+
+	var gfxTexture *graphics.TwoDTexture
+	r.gfxWorker.ScheduleVoid(func() {
 		gfxEngine := r.engine.Graphics()
-		gfxTexture := gfxEngine.CreateTwoDTexture(graphics.TwoDTextureDefinition{
+		gfxTexture = gfxEngine.CreateTwoDTexture(graphics.TwoDTextureDefinition{
 			Width:           int(texAsset.Width),
 			Height:          int(texAsset.Height),
 			Wrapping:        resolveWrapMode(texAsset.Wrapping),
@@ -40,9 +45,11 @@ func (r *ResourceSet) allocateTwoDTexture(resource asset.Resource) (*TwoDTexture
 			InternalFormat:  resolveInternalFormat(texAsset.Format),
 			Data:            texAsset.Data,
 		})
-		result.gfxTexture = gfxTexture
 	}).Wait()
-	return result, nil
+
+	return &TwoDTexture{
+		gfxTexture: gfxTexture,
+	}, nil
 }
 
 func (r *ResourceSet) releaseTwoDTexture(texture *TwoDTexture) {
@@ -51,13 +58,18 @@ func (r *ResourceSet) releaseTwoDTexture(texture *TwoDTexture) {
 
 func (r *ResourceSet) allocateCubeTexture(resource asset.Resource) (*CubeTexture, error) {
 	texAsset := new(asset.CubeTexture)
-	if err := resource.ReadContent(texAsset); err != nil {
+
+	ioTask := func() error {
+		return resource.ReadContent(texAsset)
+	}
+	if err := r.ioWorker.Schedule(ioTask).Wait(); err != nil {
 		return nil, fmt.Errorf("failed to read asset: %w", err)
 	}
-	result := &CubeTexture{}
-	r.gfxWorker.Schedule(func() {
+
+	var gfxTexture *graphics.CubeTexture
+	r.gfxWorker.ScheduleVoid(func() {
 		gfxEngine := r.engine.Graphics()
-		gfxTexture := gfxEngine.CreateCubeTexture(graphics.CubeTextureDefinition{
+		gfxTexture = gfxEngine.CreateCubeTexture(graphics.CubeTextureDefinition{
 			Dimension:      int(texAsset.Dimension),
 			Filtering:      resolveFilter(texAsset.Filtering),
 			DataFormat:     resolveDataFormat(texAsset.Format),
@@ -69,9 +81,10 @@ func (r *ResourceSet) allocateCubeTexture(resource asset.Resource) (*CubeTexture
 			TopSideData:    texAsset.TopSide.Data,
 			BottomSideData: texAsset.BottomSide.Data,
 		})
-		result.gfxTexture = gfxTexture
 	}).Wait()
-	return result, nil
+	return &CubeTexture{
+		gfxTexture: gfxTexture,
+	}, nil
 }
 
 func (r *ResourceSet) releaseCubeTexture(texture *CubeTexture) {
