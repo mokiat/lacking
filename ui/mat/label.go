@@ -8,10 +8,11 @@ import (
 )
 
 type LabelData struct {
-	Font      *ui.Font
-	FontSize  optional.V[float32]
-	FontColor optional.V[ui.Color]
-	Text      string
+	Font          *ui.Font
+	FontSize      optional.V[float32]
+	FontColor     optional.V[ui.Color]
+	TextAlignment Alignment
+	Text          string
 }
 
 var Label = co.Define(func(props co.Properties, scope co.Scope) co.Instance {
@@ -35,6 +36,7 @@ var Label = co.Define(func(props co.Properties, scope co.Scope) co.Instance {
 	} else {
 		essence.fontColor = ui.Black()
 	}
+	essence.textAlignment = data.TextAlignment
 	essence.text = data.Text
 
 	txtSize := essence.font.TextSize(essence.text, essence.fontSize)
@@ -52,24 +54,30 @@ var Label = co.Define(func(props co.Properties, scope co.Scope) co.Instance {
 var _ ui.ElementRenderHandler = (*labelEssence)(nil)
 
 type labelEssence struct {
-	font      *ui.Font
-	fontSize  float32
-	fontColor ui.Color
-	text      string
+	font          *ui.Font
+	fontSize      float32
+	fontColor     ui.Color
+	textAlignment Alignment
+	text          string
 }
 
 func (b *labelEssence) OnRender(element *ui.Element, canvas *ui.Canvas) {
 	if b.font != nil && b.text != "" {
 		contentArea := element.ContentBounds()
 		textDrawSize := b.font.TextSize(b.text, b.fontSize)
+
 		canvas.Reset()
-		canvas.FillText(b.text, sprec.NewVec2(
-			float32(contentArea.X)+(float32(contentArea.Width)-textDrawSize.X)/2,
-			float32(contentArea.Y)+(float32(contentArea.Height)-textDrawSize.Y)/2,
-		), ui.Typography{
-			Font:  b.font,
-			Size:  b.fontSize,
-			Color: b.fontColor,
-		})
+		switch b.textAlignment {
+		// TODO
+		default:
+			canvas.FillText(b.text, sprec.NewVec2(
+				float32(contentArea.X)+(float32(contentArea.Width)-textDrawSize.X)/2,
+				float32(contentArea.Y)+(float32(contentArea.Height)-textDrawSize.Y)/2,
+			), ui.Typography{
+				Font:  b.font,
+				Size:  b.fontSize,
+				Color: b.fontColor,
+			})
+		}
 	}
 }
