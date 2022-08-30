@@ -1,6 +1,7 @@
 package game
 
 import (
+	"github.com/mokiat/gomath/dprec"
 	"github.com/mokiat/gomath/dtos"
 	"github.com/mokiat/lacking/game/ecs"
 	"github.com/mokiat/lacking/game/graphics"
@@ -84,9 +85,9 @@ func (s *Scene) CreateModel(info ModelInfo) *Model {
 		}
 		parent.AppendChild(nodes[i])
 	}
-	if info.IsDynamic {
-		s.Root().AppendChild(modelNode)
-	}
+	// if info.IsDynamic {
+	s.Root().AppendChild(modelNode)
+	// }
 
 	for _, instance := range definition.bodyInstances {
 		var bodyNode *Node
@@ -96,12 +97,12 @@ func (s *Scene) CreateModel(info ModelInfo) *Model {
 			bodyNode = modelNode
 		}
 		bodyDefinition := definition.bodyDefinitions[instance.DefinitionIndex]
-		body := s.physicsScene.CreateBody2(physics.BodyInfo{
+		body := s.physicsScene.CreateBody(physics.BodyInfo{
 			Name:       instance.Name,
 			Definition: bodyDefinition,
-			Position:   instance.Position,
-			Rotation:   instance.Rotation,
-			IsDynamic:  instance.IsDynamic,
+			Position:   dprec.ZeroVec3(),
+			Rotation:   dprec.IdentityQuat(),
+			IsDynamic:  info.IsDynamic,
 		})
 		bodyNode.SetBody(body)
 	}

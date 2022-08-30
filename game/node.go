@@ -1,11 +1,13 @@
 package game
 
 import (
+	"strings"
 	"sync/atomic"
 
 	"github.com/mokiat/gomath/dprec"
 	"github.com/mokiat/lacking/game/graphics"
 	"github.com/mokiat/lacking/game/physics"
+	"github.com/mokiat/lacking/log"
 )
 
 const (
@@ -70,6 +72,15 @@ type Node struct {
 	armatureBone int
 	camera       *graphics.Camera
 	light        *graphics.Light
+}
+
+// PrintHierarchy prints debug information regarding the hierarchy that starts
+// from this node.
+func (n *Node) PrintHierarchy(depth int) {
+	log.Info("%sNODE:%s", strings.Repeat(" ", depth), n.name)
+	for child := n.FirstChild(); child != nil; child = child.RightSibling() {
+		child.PrintHierarchy(depth + 2)
+	}
 }
 
 // Name returns this Node's name.

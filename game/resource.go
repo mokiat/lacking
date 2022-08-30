@@ -22,6 +22,7 @@ func newResourceSet(parent *ResourceSet, engine *Engine) *ResourceSet {
 
 		namedTwoDTextures: make(map[string]Placeholder[*TwoDTexture]),
 		namedCubeTextures: make(map[string]Placeholder[*CubeTexture]),
+		namedModels:       make(map[string]Placeholder[*ModelDefinition]),
 	}
 }
 
@@ -34,6 +35,7 @@ type ResourceSet struct {
 
 	namedTwoDTextures map[string]Placeholder[*TwoDTexture]
 	namedCubeTextures map[string]Placeholder[*CubeTexture]
+	namedModels       map[string]Placeholder[*ModelDefinition]
 }
 
 func (s *ResourceSet) CreateResourceSet() *ResourceSet {
@@ -86,6 +88,29 @@ func (s *ResourceSet) OpenCubeTexture(id string) Placeholder[*CubeTexture] {
 	return result
 }
 
+func (s *ResourceSet) OpenModel(id string) Placeholder[*ModelDefinition] {
+	if result, ok := s.findModel(id); ok {
+		return result
+	}
+
+	resource := s.registry.ResourceByID(id)
+	if resource == nil {
+		return failedPlaceholder[*ModelDefinition](fmt.Errorf("%w: %q", ErrNotFound, id))
+	}
+
+	result := pendingPlaceholder[*ModelDefinition]()
+	s.ioWorker.Schedule(func() {
+		model, err := s.allocateModel(resource)
+		if err != nil {
+			result.promise.Fail(fmt.Errorf("error loading model %q: %w", id, err))
+		} else {
+			result.promise.Deliver(model)
+		}
+	})
+	s.namedModels[id] = result
+	return result
+}
+
 // Delete schedules all resources managed by this ResourceSet for deletion.
 // After this method returns, the resources are not guaranteed to have been
 // released.
@@ -106,6 +131,12 @@ func (s *ResourceSet) Delete() {
 			}
 		}
 		s.namedCubeTextures = nil
+		for _, placeholder := range s.namedModels {
+			if model, err := placeholder.promise.Wait(); err == nil {
+				s.releaseModel(model)
+			}
+		}
+		s.namedModels = nil
 	}()
 }
 
@@ -127,4 +158,14 @@ func (s *ResourceSet) findCubeTexture(id string) (Placeholder[*CubeTexture], boo
 		return s.parent.findCubeTexture(id)
 	}
 	return Placeholder[*CubeTexture]{}, false
+}
+
+func (s *ResourceSet) findModel(id string) (Placeholder[*ModelDefinition], bool) {
+	if result, ok := s.namedModels[id]; ok {
+		return result, true
+	}
+	if s.parent != nil {
+		return s.parent.findModel(id)
+	}
+	return Placeholder[*ModelDefinition]{}, false
 }

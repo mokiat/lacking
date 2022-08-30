@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/mokiat/gomath/dprec"
+	"github.com/mokiat/gomath/stod"
 	"github.com/mokiat/lacking/data"
 	gameasset "github.com/mokiat/lacking/game/asset"
 	"github.com/mokiat/lacking/log"
@@ -510,9 +511,9 @@ func (c *converter) BuildBodyDefinition(meshDefinition *MeshDefinition) gameasse
 			coordC := meshDefinition.Vertices[indexC].Coord
 
 			triangles = append(triangles, gameasset.CollisionTriangle{
-				A: [3]float64{float64(coordA.X), float64(coordA.Y), float64(coordA.Z)},
-				B: [3]float64{float64(coordB.X), float64(coordB.Y), float64(coordB.Z)},
-				C: [3]float64{float64(coordC.X), float64(coordC.Y), float64(coordC.Z)},
+				A: stod.Vec3(coordA),
+				B: stod.Vec3(coordB),
+				C: stod.Vec3(coordC),
 			})
 		}
 	}
@@ -521,8 +522,8 @@ func (c *converter) BuildBodyDefinition(meshDefinition *MeshDefinition) gameasse
 		Name: meshDefinition.Name,
 		CollisionMeshes: []gameasset.CollisionMesh{
 			{
-				Translation: [3]float64{0.0, 0.0, 0.0},
-				Rotation:    [4]float64{1.0, 0.0, 0.0, 0.0},
+				Translation: dprec.ZeroVec3(),
+				Rotation:    dprec.IdentityQuat(),
 				Triangles:   triangles,
 			},
 		},
