@@ -191,13 +191,13 @@ func (e *Engine) CreateMeshDefinition(info MeshDefinitionInfo) *MeshDefinition {
 		vertexBuffer:         vertexBuffer,
 		indexBuffer:          indexBuffer,
 		vertexArray:          vertexArray,
-		fragments:            make([]MeshFragmentDefinition, len(info.Fragments)),
+		fragments:            make([]meshFragmentDefinition, len(info.Fragments)),
 		boundingSphereRadius: info.BoundingSphereRadius,
-		hasArmature:          info.HasArmature(),
+		needsArmature:        info.NeedsArmature(),
 	}
 	for i, fragmentInfo := range info.Fragments {
 		materialDef := fragmentInfo.Material
-		fragmentDef := MeshFragmentDefinition{
+		fragmentDef := meshFragmentDefinition{
 			id:               e.freeFragmentID,
 			mesh:             result,
 			topology:         e.convertPrimitive(fragmentInfo.Primitive),

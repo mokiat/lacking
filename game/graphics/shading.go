@@ -10,19 +10,19 @@ type Shading interface {
 
 	// ShadowPipeline constructs a render Pipeline for the specified mesh and
 	// material definitions to be used in the shadow pass.
-	ShadowPipeline(meshDef *MeshDefinition, fragmentDef *MeshFragmentDefinition) render.Pipeline
+	ShadowPipeline(meshDef *MeshDefinition, fragmentDef *meshFragmentDefinition) render.Pipeline
 
 	// GeometryPipeline constructs a render Pipeline for the specified mesh and
 	// material definitions to be used in the geometry pass.
-	GeometryPipeline(meshDef *MeshDefinition, fragmentDef *MeshFragmentDefinition) render.Pipeline
+	GeometryPipeline(meshDef *MeshDefinition, fragmentDef *meshFragmentDefinition) render.Pipeline
 
 	// EmissivePipeline constructs a render Pipeline for the specified mesh and
 	// material definitions to be used in the emissive pass.
-	EmissivePipeline(meshDef *MeshDefinition, fragmentDef *MeshFragmentDefinition) render.Pipeline
+	EmissivePipeline(meshDef *MeshDefinition, fragmentDef *meshFragmentDefinition) render.Pipeline
 
 	// ForwardPipeline constructs a render Pipeline for the specified mesh and
 	// material definitions to be used in the forward pass.
-	ForwardPipeline(meshDef *MeshDefinition, fragmentDef *MeshFragmentDefinition) render.Pipeline
+	ForwardPipeline(meshDef *MeshDefinition, fragmentDef *meshFragmentDefinition) render.Pipeline
 }
 
 type pbrShading struct {
@@ -30,12 +30,12 @@ type pbrShading struct {
 	shaders ShaderCollection
 }
 
-func (s *pbrShading) GeometryPipeline(meshDef *MeshDefinition, fragmentDef *MeshFragmentDefinition) render.Pipeline {
+func (s *pbrShading) GeometryPipeline(meshDef *MeshDefinition, fragmentDef *meshFragmentDefinition) render.Pipeline {
 	material := fragmentDef.material
 	materialDef := material.definition
 	// TODO: Cache programs
 	shaderSet := s.shaders.PBRGeometrySet(PBRGeometryShaderConfig{
-		HasArmature:      meshDef.hasArmature,
+		HasArmature:      meshDef.needsArmature,
 		HasAlphaTesting:  materialDef.alphaTesting,
 		HasAlbedoTexture: len(materialDef.twoDTextures) > 0 && materialDef.twoDTextures[0] != nil,
 	})
@@ -59,16 +59,16 @@ func (s *pbrShading) GeometryPipeline(meshDef *MeshDefinition, fragmentDef *Mesh
 	})
 }
 
-func (s *pbrShading) EmissivePipeline(meshDef *MeshDefinition, fragmentDef *MeshFragmentDefinition) render.Pipeline {
+func (s *pbrShading) EmissivePipeline(meshDef *MeshDefinition, fragmentDef *meshFragmentDefinition) render.Pipeline {
 	return nil // TODO
 }
 
-func (s *pbrShading) ShadowPipeline(meshDef *MeshDefinition, fragmentDef *MeshFragmentDefinition) render.Pipeline {
+func (s *pbrShading) ShadowPipeline(meshDef *MeshDefinition, fragmentDef *meshFragmentDefinition) render.Pipeline {
 	material := fragmentDef.material
 	materialDef := material.definition
 	// TODO: Cache programs
 	shaderSet := s.shaders.ShadowMappingSet(ShadowMappingShaderConfig{
-		HasArmature: meshDef.hasArmature,
+		HasArmature: meshDef.needsArmature,
 	})
 	program := internal.NewShadowProgram(s.api, shaderSet.VertexShader, shaderSet.FragmentShader)
 	cullMode := render.CullModeNone
@@ -90,6 +90,6 @@ func (s *pbrShading) ShadowPipeline(meshDef *MeshDefinition, fragmentDef *MeshFr
 	})
 }
 
-func (s *pbrShading) ForwardPipeline(meshDef *MeshDefinition, fragmentDef *MeshFragmentDefinition) render.Pipeline {
+func (s *pbrShading) ForwardPipeline(meshDef *MeshDefinition, fragmentDef *meshFragmentDefinition) render.Pipeline {
 	return nil // TODO
 }

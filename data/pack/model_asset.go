@@ -220,7 +220,7 @@ func (c *converter) BuildArmature(armature *Armature) gameasset.Armature {
 	for i, joint := range armature.Joints {
 		assetArmature.Joints[i] = gameasset.Joint{
 			NodeIndex:         int32(c.assetNodeIndexFromNode[joint.Node]),
-			InverseBindMatrix: joint.InverseBindMatrix.ColumnMajorArray(),
+			InverseBindMatrix: joint.InverseBindMatrix,
 		}
 	}
 	return assetArmature

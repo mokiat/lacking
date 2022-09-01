@@ -1,5 +1,7 @@
 package asset
 
+import "github.com/mokiat/gomath/sprec"
+
 const (
 	UnspecifiedOffset        = int32(-1)
 	UnspecifiedMaterialIndex = int32(-1)
@@ -29,7 +31,7 @@ type Armature struct {
 
 type Joint struct {
 	NodeIndex         int32
-	InverseBindMatrix [16]float32
+	InverseBindMatrix sprec.Mat4
 }
 
 // VertexLayout describes how vertex data is positioned within the VertexData

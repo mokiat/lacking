@@ -166,7 +166,7 @@ func (o *ModelOperator) Allocate(registry *Registry, id string) (interface{}, er
 		for j, assetJoint := range assetArmature.Joints {
 			joints[j] = Joint{
 				Node:              nodes[assetJoint.NodeIndex],
-				InverseBindMatrix: sprec.ColumnMajorArrayToMat4(assetJoint.InverseBindMatrix),
+				InverseBindMatrix: assetJoint.InverseBindMatrix,
 			}
 		}
 		model.Armatures[i] = &Armature{

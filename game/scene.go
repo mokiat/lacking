@@ -89,6 +89,7 @@ func (s *Scene) CreateModel(info ModelInfo) *Model {
 	s.Root().AppendChild(modelNode)
 	// }
 
+	var bodyInstances []*physics.Body
 	for _, instance := range definition.bodyInstances {
 		var bodyNode *Node
 		if instance.NodeIndex >= 0 {
@@ -105,6 +106,26 @@ func (s *Scene) CreateModel(info ModelInfo) *Model {
 			IsDynamic:  info.IsDynamic,
 		})
 		bodyNode.SetBody(body)
+		bodyInstances = append(bodyInstances, body)
+	}
+
+	armatures := make([]*graphics.Armature, len(definition.armatures))
+	for i, instance := range definition.armatures {
+		armature := s.gfxScene.CreateArmature(graphics.ArmatureInfo{
+			InverseMatrices: instance.InverseBindMatrices(),
+		})
+		for j, joint := range instance.Joints {
+			var jointNode *Node
+			if joint.NodeIndex >= 0 {
+				jointNode = nodes[joint.NodeIndex]
+			} else {
+				jointNode = modelNode
+			}
+			// TODO: Use single method SetArmatureBinding(armature, joint)
+			jointNode.SetArmature(armature)
+			jointNode.SetArmatureBone(j)
+		}
+		armatures[i] = armature
 	}
 
 	for _, instance := range definition.meshInstances {
@@ -114,84 +135,26 @@ func (s *Scene) CreateModel(info ModelInfo) *Model {
 		} else {
 			meshNode = modelNode
 		}
+		var armature *graphics.Armature
+		if instance.ArmatureIndex >= 0 {
+			armature = armatures[instance.ArmatureIndex]
+		}
 		meshDefinition := definition.meshDefinitions[instance.DefinitionIndex]
-		mesh := s.gfxScene.CreateMesh(meshDefinition)
+		mesh := s.gfxScene.CreateMesh(graphics.MeshInfo{
+			Definition: meshDefinition,
+			Armature:   armature,
+		})
 		meshNode.SetMesh(mesh)
 	}
 
-	// armatures := make([]*graphics.Armature, len(def.Armatures))
-	// defToArmature := make(map[*ArmatureDefinition]*graphics.Armature)
-	// for i, armatureDef := range def.Armatures {
-	// 	// TODO: ECS Component that maps between armature and nodes and that
-	// 	// updates the respective armature?
-	// 	armature := s.gfxScene.CreateArmature(graphics.ArmatureTemplate{
-	// 		// FIXME
-	// 	})
-	// 	armatures[i] = armature
-	// 	defToArmature[armatureDef] = armature
-	// }
-
-	// materials := make([]*graphics.Material, len(def.Materials))
-
 	return &Model{
+		root:          modelNode,
+		bodyInstances: bodyInstances,
 		// nodes:     nodes,
 		// armatures: armatures,
 		// materials: materials,
 	}
 }
-
-// func (s *Scene) CreateModel(def *ModelDefinition) *Model {
-// 	nodes := make([]*Node, len(def.Nodes))
-// 	defToNode := make(map[*NodeDefinition]*Node)
-// 	for i, nodeDef := range def.Nodes {
-// 		node := NewNode()
-// 		nodes[i] = node
-// 		defToNode[nodeDef] = node
-// 	}
-// 	for _, nodeDef := range def.Nodes {
-// 		node := defToNode[nodeDef]
-// 		if nodeDef.Parent != nil {
-// 			parentNode := defToNode[nodeDef.Parent]
-// 			parentNode.AppendChild(node)
-// 		}
-// 	}
-
-// 	armatures := make([]*graphics.Armature, len(def.Armatures))
-// 	defToArmature := make(map[*ArmatureDefinition]*graphics.Armature)
-// 	for i, armatureDef := range def.Armatures {
-// 		// TODO: ECS Component that maps between armature and nodes and that
-// 		// updates the respective armature?
-// 		armature := s.gfxScene.CreateArmature(graphics.ArmatureTemplate{
-// 			// FIXME
-// 		})
-// 		armatures[i] = armature
-// 		defToArmature[armatureDef] = armature
-// 	}
-
-// 	materials := make([]*graphics.Material, len(def.Materials))
-
-// 	meshInstances := make([]*graphics.Mesh, len(def.MeshInstances))
-// 	for i, meshInstanceDef := range def.MeshInstances {
-// 		meshInstance := s.gfxScene.CreateMesh(meshInstanceDef.GraphicsTemplate)
-// 		if meshInstanceDef.Node != nil {
-// 			node := defToNode[meshInstanceDef.Node]
-// 			meshInstance.SetMatrix(node.AbsoluteMatrix()) // TODO: Do only if entity is static
-// 		}
-// 		if meshInstanceDef.Armature != nil {
-// 			armature := defToArmature[meshInstanceDef.Armature]
-// 			meshInstance.SetArmature(armature)
-// 		}
-// 		meshInstances[i] = meshInstance
-// 	}
-
-// 	// TODO:
-
-// 	return &Model{
-// 		nodes:     nodes,
-// 		armatures: armatures,
-// 		materials: materials,
-// 	}
-// }
 
 func (s *Scene) applyPhysicsToNode(node *Node) {
 	if body := node.body; body != nil {

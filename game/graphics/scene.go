@@ -110,7 +110,7 @@ func (s *Scene) CreatePointLight() *Light {
 
 // CreateMesh creates a new mesh instance from the specified
 // template and places it in the scene.
-func (s *Scene) CreateMesh(definition *MeshDefinition) *Mesh {
+func (s *Scene) CreateMesh(info MeshInfo) *Mesh {
 	var mesh *Mesh
 	if s.cachedMesh != nil {
 		mesh = s.cachedMesh
@@ -118,6 +118,8 @@ func (s *Scene) CreateMesh(definition *MeshDefinition) *Mesh {
 	} else {
 		mesh = &Mesh{}
 	}
+
+	definition := info.Definition
 	mesh.Node = *newNode()
 	mesh.item = s.meshOctree.CreateItem(mesh)
 	mesh.item.SetRadius(definition.boundingSphereRadius)
@@ -125,14 +127,15 @@ func (s *Scene) CreateMesh(definition *MeshDefinition) *Mesh {
 	mesh.prev = nil
 	mesh.next = nil
 	mesh.definition = definition
+	mesh.armature = info.Armature
 	s.attachMesh(mesh)
 	return mesh
 }
 
-func (s *Scene) CreateArmature(template ArmatureTemplate) *Armature {
-	boneCount := len(template.InverseMatrices)
+func (s *Scene) CreateArmature(info ArmatureInfo) *Armature {
+	boneCount := len(info.InverseMatrices)
 	return &Armature{
-		template:          template,
+		inverseMatrices:   info.InverseMatrices,
 		uniformBufferData: make(data.Buffer, boneCount*64),
 	}
 }

@@ -16,9 +16,9 @@ type MeshDefinitionInfo struct {
 	BoundingSphereRadius float64
 }
 
-// HasArmature returns whether the mesh described by this info object will
+// NeedsArmature returns whether the mesh described by this info object will
 // require an Armature to be visualized.
-func (i *MeshDefinitionInfo) HasArmature() bool {
+func (i *MeshDefinitionInfo) NeedsArmature() bool {
 	return i.VertexFormat.HasWeights && i.VertexFormat.HasJoints
 }
 
@@ -86,9 +86,9 @@ type MeshDefinition struct {
 	vertexBuffer         render.Buffer
 	indexBuffer          render.Buffer
 	vertexArray          render.VertexArray
-	fragments            []MeshFragmentDefinition
+	fragments            []meshFragmentDefinition
 	boundingSphereRadius float64
-	hasArmature          bool
+	needsArmature        bool
 }
 
 // Delete releases any resources owned by this MeshDefinition.
@@ -102,7 +102,7 @@ func (t *MeshDefinition) Delete() {
 	t.fragments = nil
 }
 
-type MeshFragmentDefinition struct {
+type meshFragmentDefinition struct {
 	id               int
 	mesh             *MeshDefinition
 	topology         render.Topology
@@ -111,12 +111,12 @@ type MeshFragmentDefinition struct {
 	material         *Material
 }
 
-func (d *MeshFragmentDefinition) rebuildPipelines() {
+func (d *meshFragmentDefinition) rebuildPipelines() {
 	d.deletePipelines()
 	d.createPipelines()
 }
 
-func (d *MeshFragmentDefinition) deletePipelines() {
+func (d *meshFragmentDefinition) deletePipelines() {
 	if d.material.shadowPipeline != nil {
 		d.material.shadowPipeline.Release()
 		d.material.shadowPipeline = nil
@@ -135,7 +135,7 @@ func (d *MeshFragmentDefinition) deletePipelines() {
 	}
 }
 
-func (d *MeshFragmentDefinition) createPipelines() {
+func (d *meshFragmentDefinition) createPipelines() {
 	// TODO: Consider moving to Material object instead
 	material := d.material
 	materialDef := material.definition
@@ -147,8 +147,8 @@ func (d *MeshFragmentDefinition) createPipelines() {
 }
 
 type MeshInfo struct {
-	Template *MeshDefinition
-	Armature *Armature
+	Definition *MeshDefinition
+	Armature   *Armature
 }
 
 // Mesh represents an instance of a 3D mesh.
@@ -167,10 +167,6 @@ type Mesh struct {
 func (m *Mesh) SetMatrix(matrix dprec.Mat4) {
 	m.Node.SetMatrix(matrix)
 	m.item.SetPosition(matrix.Translation())
-}
-
-func (m *Mesh) SetArmature(armature *Armature) {
-	m.armature = armature
 }
 
 // Delete removes this mesh from the scene.

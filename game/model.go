@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/mokiat/gomath/dprec"
+	"github.com/mokiat/gomath/sprec"
 	"github.com/mokiat/lacking/async"
 	"github.com/mokiat/lacking/game/asset"
 	"github.com/mokiat/lacking/game/graphics"
@@ -11,23 +12,9 @@ import (
 	"github.com/mokiat/lacking/util/shape"
 )
 
-type NodeDefinition struct {
-	ParentIndex int
-	Name        string
-	Position    dprec.Vec3
-	Rotation    dprec.Quat
-	Scale       dprec.Vec3
-}
-
-type ArmatureDefinition struct {
-	GraphicsTemplate *graphics.ArmatureTemplate
-}
-
-type MaterialDefinition struct {
-}
-
 type ModelDefinition struct {
-	nodes               []NodeDefinition
+	nodes               []nodeDefinition
+	armatures           []armatureDefinition
 	materialDefinitions []*graphics.MaterialDefinition
 	meshDefinitions     []*graphics.MeshDefinition
 	meshInstances       []meshInstance
@@ -36,20 +23,44 @@ type ModelDefinition struct {
 
 	// TODO: Fix these as well
 	Animations []*AnimationDefinition
-	Armatures  []*ArmatureDefinition
+}
+
+type nodeDefinition struct {
+	ParentIndex int
+	Name        string
+	Position    dprec.Vec3
+	Rotation    dprec.Quat
+	Scale       dprec.Vec3
 }
 
 type meshInstance struct {
 	Name            string
 	NodeIndex       int
+	ArmatureIndex   int
 	DefinitionIndex int
-	// Armature        *ArmatureDefinition
 }
 
 type bodyInstance struct {
 	Name            string
 	NodeIndex       int
 	DefinitionIndex int
+}
+
+type armatureDefinition struct {
+	Joints []armatureJoint
+}
+
+func (d armatureDefinition) InverseBindMatrices() []sprec.Mat4 {
+	result := make([]sprec.Mat4, len(d.Joints))
+	for i, joint := range d.Joints {
+		result[i] = joint.InverseBindMatrix
+	}
+	return result
+}
+
+type armatureJoint struct {
+	NodeIndex         int
+	InverseBindMatrix sprec.Mat4
 }
 
 // ModelInfo contains the information necessary to place a Model
@@ -82,9 +93,18 @@ type Model struct {
 	definition *ModelDefinition
 	root       *Node
 
-	nodes     []*Node
-	armatures []*graphics.Armature
-	materials []*graphics.Material
+	nodes         []*Node
+	armatures     []*graphics.Armature
+	materials     []*graphics.Material
+	bodyInstances []*physics.Body
+}
+
+func (m *Model) Root() *Node {
+	return m.root
+}
+
+func (m *Model) BodyInstances() []*physics.Body {
+	return m.bodyInstances
 }
 
 func (r *ResourceSet) allocateModel(resource asset.Resource) (*ModelDefinition, error) {
@@ -97,14 +117,28 @@ func (r *ResourceSet) allocateModel(resource asset.Resource) (*ModelDefinition, 
 		return nil, fmt.Errorf("failed to read asset: %w", err)
 	}
 
-	nodes := make([]NodeDefinition, len(modelAsset.Nodes))
+	nodes := make([]nodeDefinition, len(modelAsset.Nodes))
 	for i, nodeAsset := range modelAsset.Nodes {
-		nodes[i] = NodeDefinition{
+		nodes[i] = nodeDefinition{
 			ParentIndex: int(nodeAsset.ParentIndex),
 			Name:        nodeAsset.Name,
 			Position:    nodeAsset.Translation,
 			Rotation:    nodeAsset.Rotation,
 			Scale:       nodeAsset.Scale,
+		}
+	}
+
+	armatures := make([]armatureDefinition, len(modelAsset.Armatures))
+	for i, armatureAsset := range modelAsset.Armatures {
+		joints := make([]armatureJoint, len(armatureAsset.Joints))
+		for j, jointAsset := range armatureAsset.Joints {
+			joints[j] = armatureJoint{
+				NodeIndex:         int(jointAsset.NodeIndex),
+				InverseBindMatrix: jointAsset.InverseBindMatrix,
+			}
+		}
+		armatures[i] = armatureDefinition{
+			Joints: joints,
 		}
 	}
 
@@ -194,7 +228,7 @@ func (r *ResourceSet) allocateModel(resource asset.Resource) (*ModelDefinition, 
 		}).Wait()
 	}
 
-	meshDefinitions := make([]*graphics.MeshDefinition, len(modelAsset.BodyDefinitions))
+	meshDefinitions := make([]*graphics.MeshDefinition, len(modelAsset.MeshDefinitions))
 	for i, definitionAsset := range modelAsset.MeshDefinitions {
 		meshFragments := make([]graphics.MeshFragmentDefinitionInfo, len(definitionAsset.Fragments))
 		for j, fragmentAsset := range definitionAsset.Fragments {
@@ -225,13 +259,14 @@ func (r *ResourceSet) allocateModel(resource asset.Resource) (*ModelDefinition, 
 		meshInstances[i] = meshInstance{
 			Name:            instanceAsset.Name,
 			NodeIndex:       int(instanceAsset.NodeIndex),
+			ArmatureIndex:   int(instanceAsset.ArmatureIndex),
 			DefinitionIndex: int(instanceAsset.DefinitionIndex),
-			// TODO: Armature
 		}
 	}
 
 	return &ModelDefinition{
 		nodes:               nodes,
+		armatures:           armatures,
 		materialDefinitions: materialDefinitions,
 		meshDefinitions:     meshDefinitions,
 		meshInstances:       meshInstances,
