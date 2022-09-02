@@ -20,9 +20,7 @@ func NewRegistry(delegate asset.Registry, gfxEngine *graphics.Engine, gfxWorker 
 		gfxWorker: gfxWorker,
 		catalog:   make(map[TypeName]*Type),
 	}
-	registry.Register(TwoDTextureTypeName, NewTwoDTextureOperator(delegate, gfxEngine))
 	registry.Register(CubeTextureTypeName, NewCubeTextureOperator(delegate, gfxEngine))
-	registry.Register(ModelTypeName, NewModelOperator(delegate, gfxEngine))
 	registry.Register(LevelTypeName, NewLevelOperator(delegate, gfxEngine))
 	return registry
 }
@@ -63,28 +61,12 @@ func (r *Registry) Unload(typeName TypeName, name string) async.Outcome {
 	return resType.Unload(name)
 }
 
-func (r *Registry) LoadTwoDTexture(name string) async.Outcome {
-	return r.Load(TwoDTextureTypeName, name)
-}
-
-func (r *Registry) UnloadTwoDTexture(texture *TwoDTexture) async.Outcome {
-	return r.Unload(TwoDTextureTypeName, texture.Name)
-}
-
 func (r *Registry) LoadCubeTexture(name string) async.Outcome {
 	return r.Load(CubeTextureTypeName, name)
 }
 
 func (r *Registry) UnloadCubeTexture(texture *CubeTexture) async.Outcome {
 	return r.Unload(CubeTextureTypeName, texture.Name)
-}
-
-func (r *Registry) LoadModel(name string) async.Outcome {
-	return r.Load(ModelTypeName, name)
-}
-
-func (r *Registry) UnloadModel(texture *Model) async.Outcome {
-	return r.Unload(ModelTypeName, texture.Name)
 }
 
 func (r *Registry) LoadLevel(name string) async.Outcome {
