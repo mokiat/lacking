@@ -6,6 +6,7 @@ import (
 	"github.com/mokiat/lacking/game/ecs"
 	"github.com/mokiat/lacking/game/graphics"
 	"github.com/mokiat/lacking/game/physics"
+	"github.com/mokiat/lacking/log"
 	"github.com/mokiat/lacking/util/metrics"
 )
 
@@ -57,6 +58,33 @@ func (s *Scene) Update(elapsedSeconds float64) {
 	s.applyNodeToPhysics(s.root)
 	s.applyNodeToGraphics(s.root)
 	transform.End()
+}
+
+func (s *Scene) CreateAnimation(info AnimationInfo) *Animation {
+	def := info.Definition
+	bindings := make([]animationBinding, len(def.bindings))
+	for i, bindingDef := range def.bindings {
+		var target *Node
+		if bindingDef.NodeIndex >= 0 {
+			target = info.Model.nodes[bindingDef.NodeIndex]
+		} else {
+			target = info.Model.root.FindNode(bindingDef.NodeName)
+		}
+		if target == nil {
+			log.Warn("Animation cannot find target node %q", bindingDef.NodeName)
+		}
+		bindings[i] = animationBinding{
+			node:                 target,
+			translationKeyframes: bindingDef.TranslationKeyframes,
+			rotationKeyframes:    bindingDef.RotationKeyframes,
+			scaleKeyframes:       bindingDef.ScaleKeyframes,
+		}
+	}
+	return &Animation{
+		name:       def.name,
+		definition: def,
+		bindings:   bindings,
+	}
 }
 
 func (s *Scene) CreateModel(info ModelInfo) *Model {
@@ -148,11 +176,11 @@ func (s *Scene) CreateModel(info ModelInfo) *Model {
 	}
 
 	return &Model{
+		definition:    definition,
 		root:          modelNode,
 		bodyInstances: bodyInstances,
-		// nodes:     nodes,
-		// armatures: armatures,
-		// materials: materials,
+		nodes:         nodes,
+		armatures:     armatures,
 	}
 }
 

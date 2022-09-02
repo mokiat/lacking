@@ -97,3 +97,12 @@ func (e *Engine) CreateScene() *Scene {
 	resourceSet := e.CreateResourceSet()
 	return newScene(resourceSet, physicsScene, gfxScene, ecsScene)
 }
+
+func (e *Engine) CreateAnimationDefinition(info AnimationDefinitionInfo) *AnimationDefinition {
+	return &AnimationDefinition{
+		name:      info.Name,
+		startTime: info.StartTime,
+		endTime:   info.EndTime,
+		bindings:  info.Bindings,
+	}
+}

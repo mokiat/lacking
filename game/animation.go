@@ -2,76 +2,89 @@ package game
 
 import (
 	"github.com/mokiat/gomath/dprec"
-	"github.com/mokiat/lacking/log"
 )
 
-type AnimationDefinition struct {
-}
-
-// TODO: Split animations into a definition
-// and a an instance (that is bound to a hierarchy)
-// The definition would contain the keyframes
-// and the instance will contain the actual node bindings.
-
-type Animation struct {
+type AnimationDefinitionInfo struct {
 	Name      string
 	StartTime float64
 	EndTime   float64
-	Bindings  []AnimationBinding
+	Bindings  []AnimationBindingDefinitionInfo
 }
 
-// TODO: Have this method be the constructor for an animation instance.
-func (a *Animation) AttachToHierarchy(node *Node) {
-	for i := 0; i < len(a.Bindings); i++ {
-		binding := &a.Bindings[i]
-		if target := node.FindNode(binding.NodeName); target != nil {
-			binding.Node = target
-		}
-	}
-}
-
-func (a *Animation) Apply(timestamp float64) {
-	// FIXME: This does not work for animation blending
-	for _, binding := range a.Bindings {
-		if binding.Node == nil {
-			log.Warn("Binding is dangling")
-			continue
-		}
-		if len(binding.TranslationKeyframes) > 0 {
-			translation := binding.Translation(timestamp)
-			binding.Node.SetPosition(translation)
-		}
-		if len(binding.RotationKeyframes) > 0 {
-			rotation := binding.Rotation(timestamp)
-			binding.Node.SetRotation(rotation)
-		}
-		if len(binding.ScaleKeyframes) > 0 {
-			scale := binding.Scale(timestamp)
-			binding.Node.SetScale(scale)
-		}
-	}
-}
-
-type AnimationBinding struct {
-	NodeName             string
-	Node                 *Node
+type AnimationBindingDefinitionInfo struct {
+	NodeIndex            int
+	NodeName             string //alternative in case of isolated animation
 	TranslationKeyframes KeyframeList[dprec.Vec3]
 	RotationKeyframes    KeyframeList[dprec.Quat]
 	ScaleKeyframes       KeyframeList[dprec.Vec3]
 }
 
-func (b AnimationBinding) Translation(timestamp float64) dprec.Vec3 {
-	left, right, t := b.TranslationKeyframes.Keyframe(timestamp)
+type AnimationDefinition struct {
+	name      string
+	startTime float64
+	endTime   float64
+	bindings  []AnimationBindingDefinitionInfo
+}
+
+type AnimationInfo struct {
+	Model      *Model
+	Definition *AnimationDefinition
+}
+
+type Animation struct {
+	name       string
+	definition *AnimationDefinition
+	bindings   []animationBinding
+}
+
+func (a *Animation) StartTime() float64 {
+	return a.definition.startTime
+}
+
+func (a *Animation) EndTime() float64 {
+	return a.definition.endTime
+}
+
+func (a *Animation) Apply(timestamp float64) {
+	// FIXME: This does not work for animation blending
+	for _, binding := range a.bindings {
+		if binding.node == nil {
+			continue
+		}
+		if len(binding.translationKeyframes) > 0 {
+			translation := binding.Translation(timestamp)
+			binding.node.SetPosition(translation)
+		}
+		if len(binding.rotationKeyframes) > 0 {
+			rotation := binding.Rotation(timestamp)
+			binding.node.SetRotation(rotation)
+		}
+		if len(binding.scaleKeyframes) > 0 {
+			scale := binding.Scale(timestamp)
+			binding.node.SetScale(scale)
+		}
+	}
+}
+
+type animationBinding struct {
+	node                 *Node
+	translationKeyframes KeyframeList[dprec.Vec3]
+	rotationKeyframes    KeyframeList[dprec.Quat]
+	scaleKeyframes       KeyframeList[dprec.Vec3]
+}
+
+func (b animationBinding) Translation(timestamp float64) dprec.Vec3 {
+	left, right, t := b.translationKeyframes.Keyframe(timestamp)
 	return dprec.Vec3Lerp(left.Value, right.Value, t)
 }
 
-func (b AnimationBinding) Rotation(timestamp float64) dprec.Quat {
-	left, right, t := b.RotationKeyframes.Keyframe(timestamp)
+func (b animationBinding) Rotation(timestamp float64) dprec.Quat {
+	left, right, t := b.rotationKeyframes.Keyframe(timestamp)
 	return dprec.QuatSlerp(left.Value, right.Value, t)
 }
 
-func (b AnimationBinding) Scale(timestamp float64) dprec.Vec3 {
-	left, right, t := b.ScaleKeyframes.Keyframe(timestamp)
+func (b animationBinding) Scale(timestamp float64) dprec.Vec3 {
+	left, right, t := b.scaleKeyframes.Keyframe(timestamp)
 	return dprec.Vec3Lerp(left.Value, right.Value, t)
 }
 

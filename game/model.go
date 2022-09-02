@@ -15,14 +15,12 @@ import (
 type ModelDefinition struct {
 	nodes               []nodeDefinition
 	armatures           []armatureDefinition
+	animations          []*AnimationDefinition
 	materialDefinitions []*graphics.MaterialDefinition
 	meshDefinitions     []*graphics.MeshDefinition
 	meshInstances       []meshInstance
 	bodyDefinitions     []*physics.BodyDefinition
 	bodyInstances       []bodyInstance
-
-	// TODO: Fix these as well
-	Animations []*AnimationDefinition
 }
 
 type nodeDefinition struct {
@@ -63,50 +61,6 @@ type armatureJoint struct {
 	InverseBindMatrix sprec.Mat4
 }
 
-// ModelInfo contains the information necessary to place a Model
-// instance into a Scene.
-type ModelInfo struct {
-	// Name specifies the name of this instance. This should not be
-	// confused with the name of the definition.
-	Name string
-
-	// Definition specifies the template from which this instance will
-	// be created.
-	Definition *ModelDefinition
-
-	// Position is used to specify a location for the model instance.
-	Position dprec.Vec3
-
-	// Rotation is used to specify a rotation for the model instance.
-	Rotation dprec.Quat
-
-	// Scale is used to specify a scale for the model instance.
-	Scale dprec.Vec3
-
-	// IsDynamic determines whether the model can be repositioned once
-	// placed in the Scene.
-	// (i.e. whether it should be added to the scene hierarchy)
-	IsDynamic bool
-}
-
-type Model struct {
-	definition *ModelDefinition
-	root       *Node
-
-	nodes         []*Node
-	armatures     []*graphics.Armature
-	materials     []*graphics.Material
-	bodyInstances []*physics.Body
-}
-
-func (m *Model) Root() *Node {
-	return m.root
-}
-
-func (m *Model) BodyInstances() []*physics.Body {
-	return m.bodyInstances
-}
-
 func (r *ResourceSet) allocateModel(resource asset.Resource) (*ModelDefinition, error) {
 	modelAsset := new(asset.Model)
 
@@ -140,6 +94,49 @@ func (r *ResourceSet) allocateModel(resource asset.Resource) (*ModelDefinition, 
 		armatures[i] = armatureDefinition{
 			Joints: joints,
 		}
+	}
+
+	animations := make([]*AnimationDefinition, len(modelAsset.Animations))
+	for i, animationAsset := range modelAsset.Animations {
+		bindings := make([]AnimationBindingDefinitionInfo, len(animationAsset.Bindings))
+		for j, assetBinding := range animationAsset.Bindings {
+			translationKeyframes := make([]Keyframe[dprec.Vec3], len(assetBinding.TranslationKeyframes))
+			for k, keyframe := range assetBinding.TranslationKeyframes {
+				translationKeyframes[k] = Keyframe[dprec.Vec3]{
+					Timestamp: keyframe.Timestamp,
+					Value:     keyframe.Translation,
+				}
+			}
+			rotationKeyframes := make([]Keyframe[dprec.Quat], len(assetBinding.RotationKeyframes))
+			for k, keyframe := range assetBinding.RotationKeyframes {
+				rotationKeyframes[k] = Keyframe[dprec.Quat]{
+					Timestamp: keyframe.Timestamp,
+					Value:     keyframe.Rotation,
+				}
+			}
+			scaleKeyframes := make([]Keyframe[dprec.Vec3], len(assetBinding.ScaleKeyframes))
+			for k, keyframe := range assetBinding.ScaleKeyframes {
+				scaleKeyframes[k] = Keyframe[dprec.Vec3]{
+					Timestamp: keyframe.Timestamp,
+					Value:     keyframe.Scale,
+				}
+			}
+			bindings[j] = AnimationBindingDefinitionInfo{
+				NodeIndex:            int(assetBinding.NodeIndex),
+				NodeName:             assetBinding.NodeName,
+				TranslationKeyframes: translationKeyframes,
+				RotationKeyframes:    rotationKeyframes,
+				ScaleKeyframes:       scaleKeyframes,
+			}
+		}
+		r.gfxWorker.ScheduleVoid(func() {
+			animations[i] = r.engine.CreateAnimationDefinition(AnimationDefinitionInfo{
+				Name:      animationAsset.Name,
+				StartTime: animationAsset.StartTime,
+				EndTime:   animationAsset.EndTime,
+				Bindings:  bindings,
+			})
+		}).Wait()
 	}
 
 	bodyDefinitions := make([]*physics.BodyDefinition, len(modelAsset.BodyDefinitions))
@@ -267,6 +264,7 @@ func (r *ResourceSet) allocateModel(resource asset.Resource) (*ModelDefinition, 
 	return &ModelDefinition{
 		nodes:               nodes,
 		armatures:           armatures,
+		animations:          animations,
 		materialDefinitions: materialDefinitions,
 		meshDefinitions:     meshDefinitions,
 		meshInstances:       meshInstances,
@@ -375,4 +373,56 @@ func resolvePrimitive(primitive asset.MeshTopology) graphics.Primitive {
 	default:
 		panic(fmt.Errorf("unsupported primitive: %d", primitive))
 	}
+}
+
+// ModelInfo contains the information necessary to place a Model
+// instance into a Scene.
+type ModelInfo struct {
+	// Name specifies the name of this instance. This should not be
+	// confused with the name of the definition.
+	Name string
+
+	// Definition specifies the template from which this instance will
+	// be created.
+	Definition *ModelDefinition
+
+	// Position is used to specify a location for the model instance.
+	Position dprec.Vec3
+
+	// Rotation is used to specify a rotation for the model instance.
+	Rotation dprec.Quat
+
+	// Scale is used to specify a scale for the model instance.
+	Scale dprec.Vec3
+
+	// IsDynamic determines whether the model can be repositioned once
+	// placed in the Scene.
+	// (i.e. whether it should be added to the scene hierarchy)
+	IsDynamic bool
+}
+
+type Model struct {
+	definition *ModelDefinition
+	root       *Node
+
+	nodes         []*Node
+	armatures     []*graphics.Armature
+	bodyInstances []*physics.Body
+}
+
+func (m *Model) Root() *Node {
+	return m.root
+}
+
+func (m *Model) BodyInstances() []*physics.Body {
+	return m.bodyInstances
+}
+
+func (m *Model) FindAnimationDefinition(name string) *AnimationDefinition {
+	for _, def := range m.definition.animations {
+		if def.name == name {
+			return def
+		}
+	}
+	return nil
 }
