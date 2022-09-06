@@ -3,7 +3,17 @@ package asset
 import (
 	"fmt"
 	"io"
+
+	"github.com/mokiat/gomath/dprec"
 )
+
+type ModelInstance struct {
+	ModelIndex  int32
+	ModelSrc    string
+	Translation dprec.Vec3
+	Rotation    dprec.Quat
+	Scale       dprec.Vec3
+}
 
 type Model struct {
 	Nodes           []Node

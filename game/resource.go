@@ -24,6 +24,7 @@ func newResourceSet(parent *ResourceSet, engine *Engine) *ResourceSet {
 		namedTwoDTextures: make(map[string]async.Promise[*TwoDTexture]),
 		namedCubeTextures: make(map[string]async.Promise[*CubeTexture]),
 		namedModels:       make(map[string]async.Promise[*ModelDefinition]),
+		namedScenes:       make(map[string]async.Promise[*SceneDefinition]),
 	}
 }
 
@@ -37,6 +38,7 @@ type ResourceSet struct {
 	namedTwoDTextures map[string]async.Promise[*TwoDTexture]
 	namedCubeTextures map[string]async.Promise[*CubeTexture]
 	namedModels       map[string]async.Promise[*ModelDefinition]
+	namedScenes       map[string]async.Promise[*SceneDefinition]
 }
 
 func (s *ResourceSet) CreateResourceSet() *ResourceSet {
@@ -112,6 +114,29 @@ func (s *ResourceSet) OpenModel(id string) async.Promise[*ModelDefinition] {
 	return result
 }
 
+func (s *ResourceSet) OpenScene(id string) async.Promise[*SceneDefinition] {
+	if result, ok := s.findScene(id); ok {
+		return result
+	}
+
+	resource := s.registry.ResourceByID(id)
+	if resource == nil {
+		return async.NewFailedPromise[*SceneDefinition](fmt.Errorf("%w: %q", ErrNotFound, id))
+	}
+
+	result := async.NewPromise[*SceneDefinition]()
+	go func() {
+		model, err := s.allocateScene(resource)
+		if err != nil {
+			result.Fail(fmt.Errorf("error loading level %q: %w", id, err))
+		} else {
+			result.Deliver(model)
+		}
+	}()
+	s.namedScenes[id] = result
+	return result
+}
+
 // Delete schedules all resources managed by this ResourceSet for deletion.
 // After this method returns, the resources are not guaranteed to have been
 // released.
@@ -169,4 +194,14 @@ func (s *ResourceSet) findModel(id string) (async.Promise[*ModelDefinition], boo
 		return s.parent.findModel(id)
 	}
 	return async.Promise[*ModelDefinition]{}, false
+}
+
+func (s *ResourceSet) findScene(id string) (async.Promise[*SceneDefinition], bool) {
+	if result, ok := s.namedScenes[id]; ok {
+		return result, true
+	}
+	if s.parent != nil {
+		return s.parent.findScene(id)
+	}
+	return async.Promise[*SceneDefinition]{}, false
 }

@@ -48,6 +48,18 @@ func (s *Scene) Root() *Node {
 	return s.root
 }
 
+func (s *Scene) Initialize(definition *SceneDefinition) {
+	if definition.skyboxTexture != nil {
+		s.Graphics().Sky().SetSkybox(definition.skyboxTexture.gfxTexture)
+	}
+
+	if definition.reflectionTexture != nil && definition.refractionTexture != nil {
+		ambientLight := s.Graphics().CreateAmbientLight()
+		ambientLight.SetReflectionTexture(definition.reflectionTexture.gfxTexture)
+		ambientLight.SetRefractionTexture(definition.refractionTexture.gfxTexture)
+	}
+}
+
 func (s *Scene) Update(elapsedSeconds float64) {
 	// TODO: Add OnUpdate hook here so that user code can modify stuff based off
 	// of stable state.
