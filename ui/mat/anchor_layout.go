@@ -58,6 +58,10 @@ func (l *AnchorLayout) Apply(element *ui.Element) {
 				childBounds.Width = l.rightPosition(element, layoutConfig.Right.Value) - childBounds.X
 			}
 		}
+		if layoutConfig.Right.Specified {
+			childBounds.X = l.rightPosition(element, layoutConfig.Right.Value) - childBounds.Width
+		}
+
 		if layoutConfig.HorizontalCenter.Specified {
 			childBounds.X = l.horizontalCenterPosition(element, layoutConfig.HorizontalCenter.Value) - childBounds.Width/2
 		}
@@ -68,6 +72,9 @@ func (l *AnchorLayout) Apply(element *ui.Element) {
 			case layoutConfig.Bottom.Specified:
 				childBounds.Height = l.bottomPosition(element, layoutConfig.Bottom.Value) - childBounds.Y
 			}
+		}
+		if layoutConfig.Bottom.Specified {
+			childBounds.Y = l.bottomPosition(element, layoutConfig.Bottom.Value) - childBounds.Height
 		}
 		if layoutConfig.VerticalCenter.Specified {
 			childBounds.Y = l.verticalCenterPosition(element, layoutConfig.VerticalCenter.Value) - childBounds.Height/2
