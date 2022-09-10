@@ -1,10 +1,13 @@
 package game
 
 import (
+	"time"
+
 	"github.com/mokiat/lacking/game/asset"
 	"github.com/mokiat/lacking/game/ecs"
 	"github.com/mokiat/lacking/game/graphics"
 	"github.com/mokiat/lacking/game/physics"
+	"github.com/mokiat/lacking/util/metrics"
 )
 
 type EngineOption func(e *Engine)
@@ -46,7 +49,9 @@ func WithECS(ecsEngine *ecs.Engine) EngineOption {
 }
 
 func NewEngine(opts ...EngineOption) *Engine {
-	result := &Engine{}
+	result := &Engine{
+		lastTick: time.Now(),
+	}
 	for _, opt := range opts {
 		opt(result)
 	}
@@ -60,6 +65,19 @@ type Engine struct {
 	physicsEngine *physics.Engine
 	gfxEngine     *graphics.Engine
 	ecsEngine     *ecs.Engine
+
+	activeScene *Scene
+	lastTick    time.Time
+}
+
+func (e *Engine) Create() {
+	e.gfxEngine.Create()
+	e.ResetDeltaTime()
+}
+
+func (e *Engine) Destroy() {
+	e.gfxEngine.Destroy()
+	// TODO: Release all scenes and all resource sets
 }
 
 func (e *Engine) Registry() asset.Registry {
@@ -86,6 +104,14 @@ func (e *Engine) ECS() *ecs.Engine {
 	return e.ecsEngine
 }
 
+func (e *Engine) ActiveScene() *Scene {
+	return e.activeScene
+}
+
+func (e *Engine) SetActiveScene(scene *Scene) {
+	e.activeScene = scene
+}
+
 func (e *Engine) CreateResourceSet() *ResourceSet {
 	return newResourceSet(nil, e)
 }
@@ -95,7 +121,11 @@ func (e *Engine) CreateScene() *Scene {
 	gfxScene := e.gfxEngine.CreateScene()
 	ecsScene := e.ecsEngine.CreateScene()
 	resourceSet := e.CreateResourceSet()
-	return newScene(resourceSet, physicsScene, gfxScene, ecsScene)
+	result := newScene(resourceSet, physicsScene, gfxScene, ecsScene)
+	if e.activeScene == nil {
+		e.activeScene = result
+	}
+	return result
 }
 
 func (e *Engine) CreateAnimationDefinition(info AnimationDefinitionInfo) *AnimationDefinition {
@@ -104,5 +134,29 @@ func (e *Engine) CreateAnimationDefinition(info AnimationDefinitionInfo) *Animat
 		startTime: info.StartTime,
 		endTime:   info.EndTime,
 		bindings:  info.Bindings,
+	}
+}
+
+func (e *Engine) ResetDeltaTime() {
+	e.lastTick = time.Now()
+}
+
+func (e *Engine) Update() {
+	defer metrics.BeginSpan("update").End()
+
+	currentTime := time.Now()
+	deltaTime := currentTime.Sub(e.lastTick)
+	e.lastTick = currentTime
+
+	if e.activeScene != nil {
+		e.activeScene.Update(deltaTime.Seconds())
+	}
+}
+
+func (e *Engine) Render(viewport graphics.Viewport) {
+	defer metrics.BeginSpan("render").End()
+
+	if e.activeScene != nil {
+		e.activeScene.Graphics().Render(viewport)
 	}
 }
