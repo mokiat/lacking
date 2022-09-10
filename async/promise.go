@@ -38,6 +38,15 @@ func (p Promise[T]) Wait() (T, error) {
 	return entry.value, entry.err
 }
 
+func (p Promise[T]) Inject(target *T) error {
+	result, err := p.Wait()
+	if err != nil {
+		return err
+	}
+	*target = result
+	return nil
+}
+
 func (p Promise[T]) Deliver(value T) {
 	p.ch <- promiseOutcome[T]{
 		value: value,

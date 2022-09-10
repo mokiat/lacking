@@ -86,7 +86,9 @@ func (w *Worker) ProcessAll() {
 
 func (w *Worker) Shutdown() {
 	close(w.tasks)
-	w.ProcessAll()
+	for task := range w.tasks {
+		task.Run()
+	}
 	<-w.flushed
 }
 
