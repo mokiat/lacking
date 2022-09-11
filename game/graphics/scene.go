@@ -33,6 +33,16 @@ type Scene struct {
 	firstLight  *Light
 	lastLight   *Light
 	cachedLight *Light
+
+	activeCamera *Camera
+}
+
+func (s *Scene) ActiveCamera() *Camera {
+	return s.activeCamera
+}
+
+func (s *Scene) SetActiveCamera(camera *Camera) {
+	s.activeCamera = camera
 }
 
 // Sky returns this scene's sky object.
@@ -45,7 +55,11 @@ func (s *Scene) Sky() *Sky {
 // CreateCamera creates a new camera object to be
 // used with this scene.
 func (s *Scene) CreateCamera() *Camera {
-	return newCamera(s)
+	result := newCamera(s)
+	if s.activeCamera == nil {
+		s.activeCamera = result
+	}
+	return result
 }
 
 // CreateDirectionalLight creates a new directional light object to be
@@ -142,8 +156,10 @@ func (s *Scene) CreateArmature(info ArmatureInfo) *Armature {
 
 // Render draws this scene to the specified viewport
 // looking through the specified camera.
-func (s *Scene) Render(viewport Viewport, camera *Camera) {
-	s.renderer.Render(s.renderer.api.DefaultFramebuffer(), viewport, s, camera)
+func (s *Scene) Render(viewport Viewport) {
+	if s.activeCamera != nil {
+		s.renderer.Render(s.renderer.api.DefaultFramebuffer(), viewport, s, s.activeCamera)
+	}
 }
 
 func (s *Scene) Ray(viewport Viewport, camera *Camera, x, y int) shape.StaticLine {
@@ -152,8 +168,10 @@ func (s *Scene) Ray(viewport Viewport, camera *Camera, x, y int) shape.StaticLin
 
 // Render draws this scene to the specified viewport
 // looking through the specified camera.
-func (s *Scene) RenderFramebuffer(framebuffer render.Framebuffer, viewport Viewport, camera *Camera) {
-	s.renderer.Render(framebuffer, viewport, s, camera)
+func (s *Scene) RenderFramebuffer(framebuffer render.Framebuffer, viewport Viewport) {
+	if s.activeCamera != nil {
+		s.renderer.Render(framebuffer, viewport, s, s.activeCamera)
+	}
 }
 
 // Delete removes this scene and releases all

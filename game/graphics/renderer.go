@@ -21,8 +21,8 @@ import (
 )
 
 const (
-	shadowMapWidth  = 2048
-	shadowMapHeight = 2048
+	shadowMapWidth  = 4096
+	shadowMapHeight = 4096
 )
 
 var ShowLightView bool
@@ -449,6 +449,8 @@ func (r *sceneRenderer) Ray(viewport Viewport, camera *Camera, x, y int) shape.S
 }
 
 func (r *sceneRenderer) Render(framebuffer render.Framebuffer, viewport Viewport, scene *Scene, camera *Camera) {
+	r.api.Invalidate()
+
 	if viewport.Width != r.framebufferWidth || viewport.Height != r.framebufferHeight {
 		r.releaseFramebuffers()
 		r.createFramebuffers(viewport.Width, viewport.Height)
@@ -541,7 +543,7 @@ func (r *sceneRenderer) evaluateProjectionMatrix(camera *Camera, width, height i
 }
 
 func lightOrtho() sprec.Mat4 {
-	return sprec.OrthoMat4(-16, 16, 16, -16, 0, 200)
+	return sprec.OrthoMat4(-64, 64, 64, -64, 0, 200)
 }
 
 func (r *sceneRenderer) renderShadowPass(ctx renderCtx) {
@@ -620,7 +622,7 @@ func (r *sceneRenderer) queueShadowMesh(ctx renderCtx, mesh *Mesh) {
 }
 
 func (r *sceneRenderer) renderShadowMeshesList(ctx renderCtx) {
-	var lastFragment *MeshFragmentDefinition
+	var lastFragment *meshFragmentDefinition
 	count := 0
 	for _, item := range r.renderItems {
 		fragment := item.fragment
@@ -742,7 +744,7 @@ func (r *sceneRenderer) queueMesh(ctx renderCtx, mesh *Mesh) {
 }
 
 func (r *sceneRenderer) renderMeshesList(ctx renderCtx) {
-	var lastFragment *MeshFragmentDefinition
+	var lastFragment *meshFragmentDefinition
 	count := 0
 	for _, item := range r.renderItems {
 		fragment := item.fragment
@@ -1071,7 +1073,7 @@ type renderCtx struct {
 }
 
 type renderItem struct {
-	fragment    *MeshFragmentDefinition
+	fragment    *meshFragmentDefinition
 	armature    *Armature
 	modelMatrix []byte
 }

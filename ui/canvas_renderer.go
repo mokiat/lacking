@@ -76,7 +76,6 @@ func (c *canvasRenderer) onCreate() {
 	})
 
 	c.shapeMesh.Allocate(c.api)
-	c.shapeShadeMaterial.Allocate(c.api)
 	c.shapeBlankMaterial.Allocate(c.api)
 	c.shapeMaskPipeline = c.api.CreatePipeline(render.PipelineInfo{
 		Program:     c.shapeBlankMaterial.program,
@@ -108,6 +107,7 @@ func (c *canvasRenderer) onCreate() {
 		ColorWrite:   render.ColorMaskFalse,
 		BlendEnabled: false,
 	})
+	c.shapeShadeMaterial.Allocate(c.api)
 	c.shapeSimplePipeline = c.api.CreatePipeline(render.PipelineInfo{
 		Program:                     c.shapeShadeMaterial.program,
 		VertexArray:                 c.shapeMesh.vertexArray,
@@ -280,6 +280,7 @@ func (c *canvasRenderer) onBegin(size Size) {
 }
 
 func (c *canvasRenderer) onEnd() {
+	c.api.Invalidate()
 	c.shapeMesh.Update()
 	c.contourMesh.Update()
 	c.textMesh.Update()
@@ -600,7 +601,6 @@ func (c *canvasRenderer) strokePath(path *canvasPath) {
 	c.commandQueue.UniformMatrix4f(c.contourMaterial.projectionMatrixLocation, c.projectionMatrix.ColumnMajorArray())
 	c.commandQueue.UniformMatrix4f(c.contourMaterial.transformMatrixLocation, transformMatrix.ColumnMajorArray())
 	c.commandQueue.UniformMatrix4f(c.contourMaterial.clipMatrixLocation, clipMatrix.ColumnMajorArray())
-	c.commandQueue.Uniform1i(c.contourMaterial.textureLocation, 0)
 
 	for i, pointOffset := range path.subPathOffsets {
 		pointCount := len(path.points) - pointOffset
