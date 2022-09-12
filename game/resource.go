@@ -114,6 +114,14 @@ func (s *ResourceSet) OpenModel(id string) async.Promise[*ModelDefinition] {
 	return result
 }
 
+func (s *ResourceSet) OpenModelByName(name string) async.Promise[*ModelDefinition] {
+	resource := s.registry.ResourceByName(name)
+	if resource == nil {
+		return async.NewFailedPromise[*ModelDefinition](fmt.Errorf("%w: %q", ErrNotFound, name))
+	}
+	return s.OpenModel(resource.ID())
+}
+
 func (s *ResourceSet) OpenScene(id string) async.Promise[*SceneDefinition] {
 	if result, ok := s.findScene(id); ok {
 		return result
@@ -135,6 +143,14 @@ func (s *ResourceSet) OpenScene(id string) async.Promise[*SceneDefinition] {
 	}()
 	s.namedScenes[id] = result
 	return result
+}
+
+func (s *ResourceSet) OpenSceneByName(name string) async.Promise[*SceneDefinition] {
+	resource := s.registry.ResourceByName(name)
+	if resource == nil {
+		return async.NewFailedPromise[*SceneDefinition](fmt.Errorf("%w: %q", ErrNotFound, name))
+	}
+	return s.OpenScene(resource.ID())
 }
 
 // Delete schedules all resources managed by this ResourceSet for deletion.
