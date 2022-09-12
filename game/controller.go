@@ -10,7 +10,7 @@ import (
 	"github.com/mokiat/lacking/render"
 )
 
-func NewController(registry asset.Registry, api render.API, shaders graphics.ShaderCollection) app.Controller {
+func NewController(registry asset.Registry, api render.API, shaders graphics.ShaderCollection) *Controller {
 	return &Controller{
 		registry:      registry,
 		gfxEngine:     graphics.NewEngine(api, shaders),
@@ -18,6 +18,8 @@ func NewController(registry asset.Registry, api render.API, shaders graphics.Sha
 		physicsEngine: physics.NewEngine(),
 	}
 }
+
+var _ app.Controller = (*Controller)(nil)
 
 type Controller struct {
 	app.NopController
