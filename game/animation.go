@@ -37,6 +37,10 @@ type Animation struct {
 	bindings   []animationBinding
 }
 
+func (a *Animation) Name() string {
+	return a.name
+}
+
 func (a *Animation) StartTime() float64 {
 	return a.definition.startTime
 }

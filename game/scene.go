@@ -187,13 +187,24 @@ func (s *Scene) CreateModel(info ModelInfo) *Model {
 		meshNode.SetMesh(mesh)
 	}
 
-	return &Model{
+	result := &Model{
 		definition:    definition,
 		root:          modelNode,
 		bodyInstances: bodyInstances,
 		nodes:         nodes,
 		armatures:     armatures,
 	}
+	if info.PrepareAnimations {
+		animations := make([]*Animation, len(definition.animations))
+		for i, animationDef := range definition.animations {
+			animations[i] = s.CreateAnimation(AnimationInfo{
+				Model:      result,
+				Definition: animationDef,
+			})
+		}
+		result.animations = animations
+	}
+	return result
 }
 
 func (s *Scene) applyPhysicsToNode(node *Node) {

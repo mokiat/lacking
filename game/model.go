@@ -23,6 +23,15 @@ type ModelDefinition struct {
 	bodyInstances       []bodyInstance
 }
 
+func (d *ModelDefinition) FindAnimation(name string) *AnimationDefinition {
+	for _, def := range d.animations {
+		if def.name == name {
+			return def
+		}
+	}
+	return nil
+}
+
 type nodeDefinition struct {
 	ParentIndex int
 	Name        string
@@ -399,6 +408,10 @@ type ModelInfo struct {
 	// placed in the Scene.
 	// (i.e. whether it should be added to the scene hierarchy)
 	IsDynamic bool
+
+	// PrepareAnimations indicates whether animation definitions should be
+	// instantiated for this model.
+	PrepareAnimations bool
 }
 
 type Model struct {
@@ -407,6 +420,7 @@ type Model struct {
 
 	nodes         []*Node
 	armatures     []*graphics.Armature
+	animations    []*Animation
 	bodyInstances []*physics.Body
 }
 
@@ -418,10 +432,14 @@ func (m *Model) BodyInstances() []*physics.Body {
 	return m.bodyInstances
 }
 
-func (m *Model) FindAnimationDefinition(name string) *AnimationDefinition {
-	for _, def := range m.definition.animations {
-		if def.name == name {
-			return def
+func (m *Model) Animations() []*Animation {
+	return m.animations
+}
+
+func (m *Model) FindAnimation(name string) *Animation {
+	for _, animation := range m.animations {
+		if animation.name == name {
+			return animation
 		}
 	}
 	return nil
