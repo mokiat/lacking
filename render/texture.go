@@ -80,6 +80,7 @@ type DepthTexture2DInfo struct {
 	Width        int
 	Height       int
 	ClippedValue *float32
+	Comparable   bool
 }
 
 type StencilTexture2DInfo struct {

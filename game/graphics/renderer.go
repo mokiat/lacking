@@ -187,6 +187,7 @@ func (r *sceneRenderer) Allocate() {
 		Width:        shadowMapWidth,
 		Height:       shadowMapHeight,
 		ClippedValue: &defaultShadowDepth,
+		Comparable:   true,
 	})
 	r.shadowFramebuffer = r.api.CreateFramebuffer(render.FramebufferInfo{
 		DepthAttachment: r.shadowDepthTexture,
