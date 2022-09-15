@@ -109,6 +109,9 @@ func (l KeyframeList[T]) Keyframe(timestamp float64) (Keyframe[T], Keyframe[T], 
 	}
 	left := l[leftIndex]
 	right := l[rightIndex]
+	if leftIndex == rightIndex {
+		return left, right, 0
+	}
 	t := dprec.Clamp((timestamp-left.Timestamp)/(right.Timestamp-left.Timestamp), 0.0, 1.0)
 	return left, right, t
 }
