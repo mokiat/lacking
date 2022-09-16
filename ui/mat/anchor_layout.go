@@ -20,7 +20,7 @@ type AnchorLayout struct{}
 // Apply applies this layout to the specified Element.
 func (l *AnchorLayout) Apply(element *ui.Element) {
 	for childElement := element.FirstChild(); childElement != nil; childElement = childElement.RightSibling() {
-		layoutConfig := childElement.LayoutConfig().(LayoutData)
+		layoutConfig := ElementLayoutData(childElement)
 		childBounds := ui.Bounds{
 			Size: childElement.IdealSize(),
 		}
