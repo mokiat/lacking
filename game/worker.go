@@ -20,7 +20,7 @@ func (f WorkerFunc) ScheduleVoid(fn func()) Operation {
 
 func NewOperation() Operation {
 	return Operation{
-		done: make(chan error),
+		done: make(chan error, 1),
 	}
 }
 
