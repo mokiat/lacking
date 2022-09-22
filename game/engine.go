@@ -7,6 +7,7 @@ import (
 	"github.com/mokiat/lacking/game/ecs"
 	"github.com/mokiat/lacking/game/graphics"
 	"github.com/mokiat/lacking/game/physics"
+	"github.com/mokiat/lacking/util/datastruct"
 	"github.com/mokiat/lacking/util/metrics"
 )
 
@@ -50,6 +51,9 @@ func WithECS(ecsEngine *ecs.Engine) EngineOption {
 
 func NewEngine(opts ...EngineOption) *Engine {
 	result := &Engine{
+		preUpdateSubscriptions:  datastruct.NewList[*UpdateSubscription](),
+		postUpdateSubscriptions: datastruct.NewList[*UpdateSubscription](),
+
 		lastTick: time.Now(),
 	}
 	for _, opt := range opts {
@@ -66,6 +70,9 @@ type Engine struct {
 	gfxEngine     *graphics.Engine
 	ecsEngine     *ecs.Engine
 
+	preUpdateSubscriptions  *datastruct.List[*UpdateSubscription]
+	postUpdateSubscriptions *datastruct.List[*UpdateSubscription]
+
 	activeScene *Scene
 	lastTick    time.Time
 }
@@ -76,6 +83,8 @@ func (e *Engine) Create() {
 }
 
 func (e *Engine) Destroy() {
+	e.preUpdateSubscriptions.Clear()
+	e.postUpdateSubscriptions.Clear()
 	e.gfxEngine.Destroy()
 	// TODO: Release all scenes and all resource sets
 }
@@ -102,6 +111,24 @@ func (e *Engine) Graphics() *graphics.Engine {
 
 func (e *Engine) ECS() *ecs.Engine {
 	return e.ecsEngine
+}
+
+func (e *Engine) SubscribePreUpdate(callback UpdateCallback) *UpdateSubscription {
+	result := &UpdateSubscription{
+		list:     e.preUpdateSubscriptions,
+		callback: callback,
+	}
+	e.preUpdateSubscriptions.Add(result)
+	return result
+}
+
+func (e *Engine) SubscribePostUpdate(callback UpdateCallback) *UpdateSubscription {
+	result := &UpdateSubscription{
+		list:     e.postUpdateSubscriptions,
+		callback: callback,
+	}
+	e.postUpdateSubscriptions.Add(result)
+	return result
 }
 
 func (e *Engine) ActiveScene() *Scene {
@@ -149,7 +176,13 @@ func (e *Engine) Update() {
 	e.lastTick = currentTime
 
 	if e.activeScene != nil {
+		e.preUpdateSubscriptions.Each(func(sub *UpdateSubscription) {
+			sub.callback(e, e.activeScene)
+		})
 		e.activeScene.Update(deltaTime.Seconds())
+		e.postUpdateSubscriptions.Each(func(sub *UpdateSubscription) {
+			sub.callback(e, e.activeScene)
+		})
 	}
 }
 
