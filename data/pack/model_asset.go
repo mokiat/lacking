@@ -72,6 +72,13 @@ func (c *converter) BuildModel(model *Model) *gameasset.Model {
 	}
 
 	var (
+		assetTextures = make([]gameasset.TwoDTexture, len(model.Textures))
+	)
+	for i, texture := range model.Textures {
+		assetTextures[i] = *BuildTwoDTextureAsset(texture)
+	}
+
+	var (
 		assetAnimations = make([]gameasset.Animation, len(model.Animations))
 	)
 	for i, animation := range model.Animations {
@@ -119,9 +126,11 @@ func (c *converter) BuildModel(model *Model) *gameasset.Model {
 			assetBodyDefinitions[i] = c.BuildBodyDefinition(meshDefinition)
 		}
 
-		assetBodyInstances = make([]gameasset.BodyInstance, len(model.MeshInstances))
-		for i, meshInstance := range model.MeshInstances {
-			assetBodyInstances[i] = c.BuildBodyInstance(meshInstance)
+		assetBodyInstances = make([]gameasset.BodyInstance, 0, len(model.MeshInstances))
+		for _, meshInstance := range model.MeshInstances {
+			if meshInstance.HasCollision {
+				assetBodyInstances = append(assetBodyInstances, c.BuildBodyInstance(meshInstance))
+			}
 		}
 	}
 
@@ -129,6 +138,7 @@ func (c *converter) BuildModel(model *Model) *gameasset.Model {
 		Nodes:           c.assetNodes,
 		Animations:      assetAnimations,
 		Armatures:       assetArmatures,
+		Textures:        assetTextures,
 		Materials:       assetMaterials,
 		MeshDefinitions: assetMeshDefinitions,
 		MeshInstances:   assetMeshInstances,
@@ -202,14 +212,34 @@ func (c *converter) BuildMaterial(material *Material) gameasset.Material {
 		Blending:        material.Blending,
 		ScalarMask:      0xFFFFFFFF, // TODO: In PBRView
 	}
+	for i := range assetMaterial.Textures {
+		assetMaterial.Textures[i] = gameasset.TextureRef{
+			TextureIndex: gameasset.UnspecifiedIndex,
+		}
+	}
 	pbr := gameasset.NewPBRMaterialView(&assetMaterial)
 	pbr.SetBaseColor(material.Color)
-	pbr.SetBaseColorTexture(material.ColorTexture)
+	if ref := material.ColorTexture; ref != nil {
+		pbr.SetBaseColorTexture(gameasset.TextureRef{
+			TextureIndex: int32(ref.TextureIndex),
+			TextureID:    ref.TextureID,
+		})
+	}
 	pbr.SetMetallic(material.Metallic)
 	pbr.SetRoughness(material.Roughness)
-	pbr.SetMetallicRoughnessTexture(material.MetallicRoughnessTexture)
+	if ref := material.MetallicRoughnessTexture; ref != nil {
+		pbr.SetMetallicRoughnessTexture(gameasset.TextureRef{
+			TextureIndex: int32(ref.TextureIndex),
+			TextureID:    ref.TextureID,
+		})
+	}
 	pbr.SetNormalScale(material.NormalScale)
-	pbr.SetNormalTexture(material.NormalTexture)
+	if ref := material.NormalTexture; ref != nil {
+		pbr.SetNormalTexture(gameasset.TextureRef{
+			TextureIndex: int32(ref.TextureIndex),
+			TextureID:    ref.TextureID,
+		})
+	}
 	return assetMaterial
 }
 

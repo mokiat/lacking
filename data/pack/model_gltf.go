@@ -1,6 +1,7 @@
 package pack
 
 import (
+	"bytes"
 	"fmt"
 
 	"github.com/mokiat/gomath/dprec"
@@ -59,21 +60,35 @@ func (a *OpenGLTFResourceAction) Run() error {
 			AlphaThreshold:           gltfMaterial.AlphaCutoffOrDefault(),
 			Blending:                 gltfMaterial.AlphaMode == gltf.AlphaBlend,
 			Color:                    sprec.NewVec4(1.0, 1.0, 1.0, 1.0),
-			ColorTexture:             "",
+			ColorTexture:             nil,
 			Metallic:                 1.0,
 			Roughness:                1.0,
-			MetallicRoughnessTexture: "",
+			MetallicRoughnessTexture: nil,
 			NormalScale:              1.0,
-			NormalTexture:            "",
+			NormalTexture:            nil,
 		}
 		if gltfPBR := gltfMaterial.PBRMetallicRoughness; gltfPBR != nil {
 			material.Color = gltfutil.BaseColor(gltfPBR)
 			material.Metallic = gltfPBR.MetallicFactorOrDefault()
 			material.Roughness = gltfPBR.RoughnessFactorOrDefault()
-			material.ColorTexture = gltfutil.ColorTexture(gltfDoc, gltfPBR)
-			material.MetallicRoughnessTexture = gltfutil.MetallicRoughnessTexture(gltfDoc, gltfPBR)
+
+			// TODO: Reuse textures
+			colorTextureData := gltfutil.ColorTexture(gltfDoc, gltfPBR, a.uri)
+			if colorTextureData != nil {
+				img, err := ParseImageResource(bytes.NewReader(colorTextureData))
+				if err != nil {
+					return fmt.Errorf("error parsing color image: %w", err)
+				}
+				material.ColorTexture = &TextureRef{
+					TextureIndex: len(a.model.Textures),
+				}
+				a.model.Textures = append(a.model.Textures, img)
+			}
+			material.MetallicRoughnessTexture = nil
+			// gltfutil.MetallicRoughnessTexture(gltfDoc, gltfPBR)
 		}
-		material.NormalTexture, material.NormalScale = gltfutil.NormalTexture(gltfDoc, gltfMaterial)
+		material.NormalTexture, material.NormalScale = nil, 1.0
+		// gltfutil.NormalTexture(gltfDoc, gltfMaterial)
 
 		a.model.Materials = append(a.model.Materials, material)
 		materialFromIndex[uint32(i)] = material
@@ -215,12 +230,16 @@ func (a *OpenGLTFResourceAction) Run() error {
 
 		if gltfNode.Mesh != nil {
 			meshInstance := &MeshInstance{
-				Name:       gltfNode.Name,
-				Node:       node,
-				Definition: meshDefinitionFromIndex[*gltfNode.Mesh],
+				Name:         gltfNode.Name,
+				Node:         node,
+				Definition:   meshDefinitionFromIndex[*gltfNode.Mesh],
+				HasCollision: true,
 			}
 			if gltfNode.Skin != nil {
 				meshInstance.Armature = armatureDefinitionFromIndex[*gltfNode.Skin]
+			}
+			if gltfutil.IsCollisionDisabled(gltfNode) {
+				meshInstance.HasCollision = false
 			}
 			a.model.MeshInstances = append(a.model.MeshInstances, meshInstance)
 		}

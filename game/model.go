@@ -16,6 +16,7 @@ type ModelDefinition struct {
 	nodes               []nodeDefinition
 	armatures           []armatureDefinition
 	animations          []*AnimationDefinition
+	textures            []*TwoDTexture
 	materialDefinitions []*graphics.MaterialDefinition
 	meshDefinitions     []*graphics.MeshDefinition
 	meshInstances       []meshInstance
@@ -70,16 +71,18 @@ type armatureJoint struct {
 	InverseBindMatrix sprec.Mat4
 }
 
-func (r *ResourceSet) allocateModel(resource asset.Resource) (*ModelDefinition, error) {
+func (r *ResourceSet) loadModel(resource asset.Resource) (*ModelDefinition, error) {
 	modelAsset := new(asset.Model)
-
 	ioTask := func() error {
 		return resource.ReadContent(modelAsset)
 	}
 	if err := r.ioWorker.Schedule(ioTask).Wait(); err != nil {
 		return nil, fmt.Errorf("failed to read asset: %w", err)
 	}
+	return r.allocateModel(modelAsset)
+}
 
+func (r *ResourceSet) allocateModel(modelAsset *asset.Model) (*ModelDefinition, error) {
 	nodes := make([]nodeDefinition, len(modelAsset.Nodes))
 	for i, nodeAsset := range modelAsset.Nodes {
 		nodes[i] = nodeDefinition{
@@ -173,48 +176,57 @@ func (r *ResourceSet) allocateModel(resource asset.Resource) (*ModelDefinition, 
 		}
 	}
 
+	textures := make([]*TwoDTexture, len(modelAsset.Textures))
+	for i, textureAsset := range modelAsset.Textures {
+		textures[i] = r.allocateTwoDTexture(&textureAsset)
+	}
+
 	materialDefinitions := make([]*graphics.MaterialDefinition, len(modelAsset.Materials))
 	for i, materialAsset := range modelAsset.Materials {
 		pbrAsset := asset.NewPBRMaterialView(&materialAsset)
 
 		var albedoTexture *graphics.TwoDTexture
-		if texID := pbrAsset.BaseColorTexture(); texID != "" {
-			var promise async.Promise[*TwoDTexture]
-			r.gfxWorker.ScheduleVoid(func() {
-				promise = r.OpenTwoDTexture(texID)
-			}).Wait()
-			texture, err := promise.Wait()
-			if err != nil {
-				return nil, fmt.Errorf("error loading albedo texture: %w", err)
+		if ref := pbrAsset.BaseColorTexture(); ref.Valid() {
+			if ref.TextureIndex >= 0 {
+				albedoTexture = textures[ref.TextureIndex].gfxTexture
+			} else {
+				var promise async.Promise[*TwoDTexture]
+				r.gfxWorker.ScheduleVoid(func() {
+					promise = r.OpenTwoDTexture(ref.TextureID)
+				}).Wait()
+				texture, err := promise.Wait()
+				if err != nil {
+					return nil, fmt.Errorf("error loading albedo texture: %w", err)
+				}
+				albedoTexture = texture.gfxTexture
 			}
-			albedoTexture = texture.gfxTexture
 		}
 
 		var metallicRoughnessTexture *graphics.TwoDTexture
-		if texID := pbrAsset.MetallicRoughnessTexture(); texID != "" {
-			var promise async.Promise[*TwoDTexture]
-			r.gfxWorker.ScheduleVoid(func() {
-				promise = r.OpenTwoDTexture(texID)
-			}).Wait()
-			texture, err := promise.Wait()
-			if err != nil {
-				return nil, fmt.Errorf("error loading albedo texture: %w", err)
-			}
-			metallicRoughnessTexture = texture.gfxTexture
-		}
+		// if texID := pbrAsset.MetallicRoughnessTexture(); texID != "" {
+		// 	var promise async.Promise[*TwoDTexture]
+		// 	r.gfxWorker.ScheduleVoid(func() {
+		// 		promise = r.OpenTwoDTexture(texID)
+		// 	}).Wait()
+		// 	texture, err := promise.Wait()
+		// 	if err != nil {
+		// 		return nil, fmt.Errorf("error loading albedo texture: %w", err)
+		// 	}
+		// 	metallicRoughnessTexture = texture.gfxTexture
+		// }
 
 		var normalTexture *graphics.TwoDTexture
-		if texID := pbrAsset.NormalTexture(); texID != "" {
-			var promise async.Promise[*TwoDTexture]
-			r.gfxWorker.ScheduleVoid(func() {
-				promise = r.OpenTwoDTexture(texID)
-			}).Wait()
-			texture, err := promise.Wait()
-			if err != nil {
-				return nil, fmt.Errorf("error loading albedo texture: %w", err)
-			}
-			normalTexture = texture.gfxTexture
-		}
+		// if texID := pbrAsset.NormalTexture(); texID != "" {
+		// 	var promise async.Promise[*TwoDTexture]
+		// 	r.gfxWorker.ScheduleVoid(func() {
+		// 		promise = r.OpenTwoDTexture(texID)
+		// 	}).Wait()
+		// 	texture, err := promise.Wait()
+		// 	if err != nil {
+		// 		return nil, fmt.Errorf("error loading albedo texture: %w", err)
+		// 	}
+		// 	normalTexture = texture.gfxTexture
+		// }
 
 		gfxEngine := r.engine.Graphics()
 		r.gfxWorker.ScheduleVoid(func() {
@@ -274,6 +286,7 @@ func (r *ResourceSet) allocateModel(resource asset.Resource) (*ModelDefinition, 
 		nodes:               nodes,
 		armatures:           armatures,
 		animations:          animations,
+		textures:            textures,
 		materialDefinitions: materialDefinitions,
 		meshDefinitions:     meshDefinitions,
 		meshInstances:       meshInstances,
@@ -283,7 +296,10 @@ func (r *ResourceSet) allocateModel(resource asset.Resource) (*ModelDefinition, 
 }
 
 func (r *ResourceSet) releaseModel(model *ModelDefinition) {
-	// TODO
+	for _, texture := range model.textures {
+		r.releaseTwoDTexture(texture)
+	}
+	model.textures = nil
 }
 
 func (r *ResourceSet) constructCollisionShapes(bodyDef asset.BodyDefinition) []physics.CollisionShape {

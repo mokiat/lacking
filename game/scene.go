@@ -58,6 +58,20 @@ func (s *Scene) Initialize(definition *SceneDefinition) {
 		ambientLight.SetReflectionTexture(definition.reflectionTexture.gfxTexture)
 		ambientLight.SetRefractionTexture(definition.refractionTexture.gfxTexture)
 	}
+
+	s.CreateModel(ModelInfo{
+		Name:              "scene",
+		Definition:        definition.model,
+		Position:          dprec.ZeroVec3(),
+		Rotation:          dprec.IdentityQuat(),
+		Scale:             dprec.NewVec3(1.0, 1.0, 1.0),
+		IsDynamic:         false,
+		PrepareAnimations: false,
+	})
+
+	for _, instance := range definition.modelInstances {
+		s.CreateModel(instance)
+	}
 }
 
 func (s *Scene) Update(elapsedSeconds float64) {

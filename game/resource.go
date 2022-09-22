@@ -57,7 +57,7 @@ func (s *ResourceSet) OpenTwoDTexture(id string) async.Promise[*TwoDTexture] {
 
 	result := async.NewPromise[*TwoDTexture]()
 	go func() {
-		texture, err := s.allocateTwoDTexture(resource)
+		texture, err := s.loadTwoDTexture(resource)
 		if err != nil {
 			result.Fail(fmt.Errorf("error loading twod texture %q: %w", id, err))
 		} else {
@@ -103,7 +103,7 @@ func (s *ResourceSet) OpenModel(id string) async.Promise[*ModelDefinition] {
 
 	result := async.NewPromise[*ModelDefinition]()
 	go func() {
-		model, err := s.allocateModel(resource)
+		model, err := s.loadModel(resource)
 		if err != nil {
 			result.Fail(fmt.Errorf("error loading model %q: %w", id, err))
 		} else {

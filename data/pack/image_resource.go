@@ -5,6 +5,7 @@ import (
 	"image"
 	_ "image/jpeg"
 	_ "image/png"
+	"io"
 
 	"github.com/mdouchement/hdr"
 	_ "github.com/mdouchement/hdr/codec/rgbe"
@@ -43,6 +44,14 @@ func (a *OpenImageResourceAction) Run() error {
 
 	a.image = BuildImageResource(img)
 	return nil
+}
+
+func ParseImageResource(in io.Reader) (*Image, error) {
+	img, _, err := image.Decode(in)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode image: %w", err)
+	}
+	return BuildImageResource(img), nil
 }
 
 func BuildImageResource(img image.Image) *Image {

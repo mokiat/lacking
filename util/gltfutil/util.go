@@ -1,6 +1,9 @@
 package gltfutil
 
 import (
+	"os"
+	"path/filepath"
+
 	"github.com/mokiat/gomath/dprec"
 	"github.com/mokiat/gomath/sprec"
 	"github.com/mokiat/gomath/stod"
@@ -277,10 +280,10 @@ func BaseColor(pbr *gltf.PBRMetallicRoughness) sprec.Vec4 {
 	return sprec.NewVec4(factor[0], factor[1], factor[2], factor[3])
 }
 
-func ColorTexture(doc *gltf.Document, pbr *gltf.PBRMetallicRoughness) string {
+func ColorTexture(doc *gltf.Document, pbr *gltf.PBRMetallicRoughness, modelURI string) []byte {
 	colorTexture := pbr.BaseColorTexture
 	if colorTexture == nil {
-		return ""
+		return nil
 	}
 	if colorTexture.TexCoord != 0 {
 		log.Warn("Unsupported color texture: tex coord layer unsupported")
@@ -288,10 +291,21 @@ func ColorTexture(doc *gltf.Document, pbr *gltf.PBRMetallicRoughness) string {
 	texture := doc.Textures[colorTexture.Index]
 	if texture.Source == nil {
 		log.Warn("Unsupported color texture: no source")
-		return ""
+		return nil
 	}
 	image := doc.Images[*texture.Source]
-	return image.Name
+	log.Info("IMAGE [%q]: %q / %v", image.Name, image.URI, image.BufferView)
+	if image.BufferView != nil {
+		bufferView := doc.BufferViews[*image.BufferView]
+		return data.Buffer(doc.Buffers[bufferView.Buffer].Data[bufferView.ByteOffset : bufferView.ByteOffset+bufferView.ByteLength])
+	} else {
+		content, err := os.ReadFile(filepath.Join(filepath.Dir(modelURI), image.URI))
+		if err != nil {
+			log.Error("Error reading texture %q: %v", image.URI, err)
+			return nil
+		}
+		return content
+	}
 }
 
 func MetallicRoughnessTexture(doc *gltf.Document, pbr *gltf.PBRMetallicRoughness) string {
@@ -504,4 +518,12 @@ func AnimationScales(doc *gltf.Document, sampler *gltf.AnimationSampler) []dprec
 		log.Error("Unsupported sampler output accessor component type %d", accessor.ComponentType)
 		return nil
 	}
+}
+
+func IsCollisionDisabled(node *gltf.Node) bool {
+	props, ok := node.Extras.(map[string]any)
+	if !ok {
+		return false
+	}
+	return props["collision"] == "none"
 }

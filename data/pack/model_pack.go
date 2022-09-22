@@ -16,6 +16,7 @@ type Model struct {
 	Materials       []*Material
 	MeshDefinitions []*MeshDefinition
 	MeshInstances   []*MeshInstance
+	Textures        []*Image
 }
 
 type Node struct {
@@ -44,10 +45,11 @@ type Joint struct {
 }
 
 type MeshInstance struct {
-	Name       string
-	Node       *Node
-	Armature   *Armature
-	Definition *MeshDefinition
+	Name         string
+	Node         *Node
+	Armature     *Armature
+	Definition   *MeshDefinition
+	HasCollision bool
 }
 
 type VertexLayout struct {
@@ -96,12 +98,17 @@ type Material struct {
 	AlphaThreshold           float32
 	Blending                 bool
 	Color                    sprec.Vec4
-	ColorTexture             string
+	ColorTexture             *TextureRef
 	Metallic                 float32
 	Roughness                float32
-	MetallicRoughnessTexture string
+	MetallicRoughnessTexture *TextureRef
 	NormalScale              float32
-	NormalTexture            string
+	NormalTexture            *TextureRef
+}
+
+type TextureRef struct {
+	TextureID    string
+	TextureIndex int
 }
 
 type Animation struct {

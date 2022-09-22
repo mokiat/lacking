@@ -104,11 +104,14 @@ func (a *OpenLevelResourceAction) Run() error {
 				AlphaThreshold:           0.5,
 				Metallic:                 0.0,
 				Roughness:                0.8,
-				MetallicRoughnessTexture: "",
+				MetallicRoughnessTexture: nil,
 				Color:                    sprec.ZeroVec4(),
-				ColorTexture:             jsonSubMesh.DiffuseTexture,
-				NormalScale:              1.0,
-				NormalTexture:            "",
+				ColorTexture: &TextureRef{
+					TextureID:    jsonSubMesh.DiffuseTexture,
+					TextureIndex: -1,
+				},
+				NormalScale:   1.0,
+				NormalTexture: nil,
 			}
 			a.level.Materials = append(a.level.Materials, material)
 

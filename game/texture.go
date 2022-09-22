@@ -21,7 +21,7 @@ type CubeTexture struct {
 	gfxTexture *graphics.CubeTexture
 }
 
-func (r *ResourceSet) allocateTwoDTexture(resource asset.Resource) (*TwoDTexture, error) {
+func (r *ResourceSet) loadTwoDTexture(resource asset.Resource) (*TwoDTexture, error) {
 	texAsset := new(asset.TwoDTexture)
 
 	ioTask := func() error {
@@ -31,6 +31,10 @@ func (r *ResourceSet) allocateTwoDTexture(resource asset.Resource) (*TwoDTexture
 		return nil, fmt.Errorf("failed to read asset: %w", err)
 	}
 
+	return r.allocateTwoDTexture(texAsset), nil
+}
+
+func (r *ResourceSet) allocateTwoDTexture(texAsset *asset.TwoDTexture) *TwoDTexture {
 	var gfxTexture *graphics.TwoDTexture
 	r.gfxWorker.ScheduleVoid(func() {
 		gfxEngine := r.engine.Graphics()
@@ -46,10 +50,9 @@ func (r *ResourceSet) allocateTwoDTexture(resource asset.Resource) (*TwoDTexture
 			Data:            texAsset.Data,
 		})
 	}).Wait()
-
 	return &TwoDTexture{
 		gfxTexture: gfxTexture,
-	}, nil
+	}
 }
 
 func (r *ResourceSet) releaseTwoDTexture(texture *TwoDTexture) {

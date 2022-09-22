@@ -3,8 +3,10 @@ package pack
 import (
 	"fmt"
 
+	"github.com/mokiat/gomath/dprec"
 	"github.com/mokiat/gomath/stod"
 	"github.com/mokiat/lacking/game/asset"
+	"github.com/mokiat/lacking/game/physics"
 )
 
 type SaveLevelAssetAction struct {
@@ -22,19 +24,15 @@ func (a *SaveLevelAssetAction) Run() error {
 
 	conv := newConverter(false)
 
-	levelAsset := &asset.Scene{
-		SkyboxTexture:            level.SkyboxTexture,
-		AmbientReflectionTexture: level.AmbientReflectionTexture,
-		AmbientRefractionTexture: level.AmbientRefractionTexture,
-	}
-
 	modelAsset := asset.Model{}
 
 	bodyDefinitions := make([]asset.BodyDefinition, len(level.CollisionMeshes))
 	bodyInstances := make([]asset.BodyInstance, len(level.CollisionMeshes))
 	for i, collisionMesh := range level.CollisionMeshes {
 		collisionMeshAsset := asset.CollisionMesh{
-			Triangles: make([]asset.CollisionTriangle, len(collisionMesh.Triangles)),
+			Triangles:   make([]asset.CollisionTriangle, len(collisionMesh.Triangles)),
+			Translation: dprec.ZeroVec3(),
+			Rotation:    dprec.IdentityQuat(),
 		}
 		for j, triangle := range collisionMesh.Triangles {
 			collisionMeshAsset.Triangles[j] = asset.CollisionTriangle{
@@ -44,7 +42,12 @@ func (a *SaveLevelAssetAction) Run() error {
 			}
 		}
 		bodyDefinitions[i] = asset.BodyDefinition{
-			IsStatic: true,
+			Name:                   fmt.Sprintf("static-%d", i),
+			Mass:                   1.0,
+			MomentOfInertia:        physics.SymmetricMomentOfInertia(1.0),
+			RestitutionCoefficient: 1.0,
+			DragFactor:             0.0,
+			AngularDragFactor:      0.0,
 			CollisionMeshes: []asset.CollisionMesh{
 				collisionMeshAsset,
 			},
@@ -62,7 +65,7 @@ func (a *SaveLevelAssetAction) Run() error {
 		materials[i] = conv.BuildMaterial(staticMaterial)
 		conv.assetMaterialIndexFromMaterial[staticMaterial] = i
 	}
-	levelAsset.Materials = materials
+	modelAsset.Materials = materials
 
 	meshDefinitions := make([]asset.MeshDefinition, len(level.StaticMeshes))
 	meshInstances := make([]asset.MeshInstance, len(level.StaticMeshes))
@@ -83,16 +86,20 @@ func (a *SaveLevelAssetAction) Run() error {
 		t, r, s := stod.Mat4(staticEntity.Matrix).TRS()
 		modelInstances[i] = asset.ModelInstance{
 			ModelIndex:  -1,
-			ModelSrc:    staticEntity.Model,
+			ModelID:     staticEntity.Model,
 			Translation: t,
 			Rotation:    r,
 			Scale:       s,
 		}
 	}
-	levelAsset.ModelInstances = modelInstances
 
-	levelAsset.Model = modelAsset
-
+	levelAsset := &asset.Scene{
+		SkyboxTexture:            level.SkyboxTexture,
+		AmbientReflectionTexture: level.AmbientReflectionTexture,
+		AmbientRefractionTexture: level.AmbientRefractionTexture,
+		ModelInstances:           modelInstances,
+		Model:                    modelAsset,
+	}
 	resource := a.registry.ResourceByID(a.id)
 	if resource == nil {
 		resource = a.registry.CreateIDResource(a.id, "level", a.id)

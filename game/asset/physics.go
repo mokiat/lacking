@@ -4,7 +4,6 @@ import "github.com/mokiat/gomath/dprec"
 
 type BodyDefinition struct {
 	Name                   string
-	IsStatic               bool
 	Mass                   float64
 	MomentOfInertia        dprec.Mat3
 	RestitutionCoefficient float64

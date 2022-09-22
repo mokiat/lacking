@@ -11,7 +11,7 @@ type Material struct {
 	Blending        bool
 	ScalarMask      uint32
 	Scalars         [16]float32
-	Textures        [16]string
+	Textures        [16]TextureRef
 }
 
 const (
@@ -71,26 +71,26 @@ func (v *PBRMaterialView) SetNormalScale(scale float32) {
 	v.delegate.Scalars[6] = scale
 }
 
-func (v *PBRMaterialView) BaseColorTexture() string {
+func (v *PBRMaterialView) BaseColorTexture() TextureRef {
 	return v.delegate.Textures[0]
 }
 
-func (v *PBRMaterialView) SetBaseColorTexture(texture string) {
+func (v *PBRMaterialView) SetBaseColorTexture(texture TextureRef) {
 	v.delegate.Textures[0] = texture
 }
 
-func (v *PBRMaterialView) MetallicRoughnessTexture() string {
+func (v *PBRMaterialView) MetallicRoughnessTexture() TextureRef {
 	return v.delegate.Textures[1]
 }
 
-func (v *PBRMaterialView) SetMetallicRoughnessTexture(texture string) {
+func (v *PBRMaterialView) SetMetallicRoughnessTexture(texture TextureRef) {
 	v.delegate.Textures[1] = texture
 }
 
-func (v *PBRMaterialView) NormalTexture() string {
+func (v *PBRMaterialView) NormalTexture() TextureRef {
 	return v.delegate.Textures[2]
 }
 
-func (v *PBRMaterialView) SetNormalTexture(texture string) {
+func (v *PBRMaterialView) SetNormalTexture(texture TextureRef) {
 	v.delegate.Textures[2] = texture
 }
