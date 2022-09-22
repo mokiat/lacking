@@ -172,16 +172,16 @@ func (e *Engine) Update() {
 	defer metrics.BeginSpan("update").End()
 
 	currentTime := time.Now()
-	deltaTime := currentTime.Sub(e.lastTick)
+	elapsedSeconds := currentTime.Sub(e.lastTick).Seconds()
 	e.lastTick = currentTime
 
 	if e.activeScene != nil {
 		e.preUpdateSubscriptions.Each(func(sub *UpdateSubscription) {
-			sub.callback(e, e.activeScene)
+			sub.callback(e, e.activeScene, elapsedSeconds)
 		})
-		e.activeScene.Update(deltaTime.Seconds())
+		e.activeScene.Update(elapsedSeconds)
 		e.postUpdateSubscriptions.Each(func(sub *UpdateSubscription) {
-			sub.callback(e, e.activeScene)
+			sub.callback(e, e.activeScene, elapsedSeconds)
 		})
 	}
 }

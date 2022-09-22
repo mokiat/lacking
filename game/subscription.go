@@ -2,7 +2,7 @@ package game
 
 import "github.com/mokiat/lacking/util/datastruct"
 
-type UpdateCallback func(engine *Engine, scene *Scene)
+type UpdateCallback func(engine *Engine, scene *Scene, elapsedSeconds float64)
 
 type UpdateSubscription struct {
 	list     *datastruct.List[*UpdateSubscription]
