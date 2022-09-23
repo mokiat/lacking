@@ -49,6 +49,10 @@ func (a *Animation) EndTime() float64 {
 	return a.definition.endTime
 }
 
+func (a *Animation) Length() float64 {
+	return a.EndTime() - a.StartTime()
+}
+
 func (a *Animation) Apply(timestamp float64) {
 	// FIXME: This does not work for animation blending
 	for _, binding := range a.bindings {
