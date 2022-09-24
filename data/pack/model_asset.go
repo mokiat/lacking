@@ -6,7 +6,7 @@ import (
 	"github.com/mokiat/gomath/dprec"
 	"github.com/mokiat/gomath/stod"
 	"github.com/mokiat/lacking/data"
-	gameasset "github.com/mokiat/lacking/game/asset"
+	"github.com/mokiat/lacking/game/asset"
 	"github.com/mokiat/lacking/log"
 	"github.com/x448/float16"
 )
@@ -20,28 +20,20 @@ func WithCollisionMesh(collisionMesh bool) SaveModelAssetOption {
 }
 
 type SaveModelAssetAction struct {
-	registry      gameasset.Registry
-	id            string
+	resource      asset.Resource
 	modelProvider ModelProvider
 	collisionMesh bool
 }
 
 func (a *SaveModelAssetAction) Describe() string {
-	return fmt.Sprintf("save_model_asset(id: %q)", a.id)
+	return fmt.Sprintf("save_model_asset(%q)", a.resource.Name())
 }
 
 func (a *SaveModelAssetAction) Run() error {
 	conv := newConverter(a.collisionMesh)
 	modelAsset := conv.BuildModel(a.modelProvider.Model())
-	resource := a.registry.ResourceByID(a.id)
-	if resource == nil {
-		resource = a.registry.CreateIDResource(a.id, "model", a.id)
-	}
-	if err := resource.WriteContent(modelAsset); err != nil {
+	if err := a.resource.WriteContent(modelAsset); err != nil {
 		return fmt.Errorf("failed to write asset: %w", err)
-	}
-	if err := a.registry.Save(); err != nil {
-		return fmt.Errorf("error saving resources: %w", err)
 	}
 	return nil
 }
@@ -49,7 +41,7 @@ func (a *SaveModelAssetAction) Run() error {
 func newConverter(collisionMeshes bool) *converter {
 	return &converter{
 		collisionMeshes:                       collisionMeshes,
-		assetNodes:                            make([]gameasset.Node, 0),
+		assetNodes:                            make([]asset.Node, 0),
 		assetNodeIndexFromNode:                make(map[*Node]int),
 		assetMaterialIndexFromMaterial:        make(map[*Material]int),
 		assetArmatureIndexFromArmature:        make(map[*Armature]int),
@@ -59,34 +51,34 @@ func newConverter(collisionMeshes bool) *converter {
 
 type converter struct {
 	collisionMeshes                       bool
-	assetNodes                            []gameasset.Node
+	assetNodes                            []asset.Node
 	assetNodeIndexFromNode                map[*Node]int
 	assetMaterialIndexFromMaterial        map[*Material]int
 	assetArmatureIndexFromArmature        map[*Armature]int
 	assetMeshDefinitionFromMeshDefinition map[*MeshDefinition]int
 }
 
-func (c *converter) BuildModel(model *Model) *gameasset.Model {
+func (c *converter) BuildModel(model *Model) *asset.Model {
 	for _, node := range model.RootNodes {
 		c.BuildNode(-1, node)
 	}
 
 	var (
-		assetTextures = make([]gameasset.TwoDTexture, len(model.Textures))
+		assetTextures = make([]asset.TwoDTexture, len(model.Textures))
 	)
 	for i, texture := range model.Textures {
 		assetTextures[i] = *BuildTwoDTextureAsset(texture)
 	}
 
 	var (
-		assetAnimations = make([]gameasset.Animation, len(model.Animations))
+		assetAnimations = make([]asset.Animation, len(model.Animations))
 	)
 	for i, animation := range model.Animations {
 		assetAnimations[i] = c.BuildAnimation(animation)
 	}
 
 	var (
-		assetMaterials = make([]gameasset.Material, len(model.Materials))
+		assetMaterials = make([]asset.Material, len(model.Materials))
 	)
 	for i, material := range model.Materials {
 		assetMaterials[i] = c.BuildMaterial(material)
@@ -94,7 +86,7 @@ func (c *converter) BuildModel(model *Model) *gameasset.Model {
 	}
 
 	var (
-		assetArmatures = make([]gameasset.Armature, len(model.Armatures))
+		assetArmatures = make([]asset.Armature, len(model.Armatures))
 	)
 	for i, armature := range model.Armatures {
 		assetArmatures[i] = c.BuildArmature(armature)
@@ -102,7 +94,7 @@ func (c *converter) BuildModel(model *Model) *gameasset.Model {
 	}
 
 	var (
-		assetMeshDefinitions = make([]gameasset.MeshDefinition, len(model.MeshDefinitions))
+		assetMeshDefinitions = make([]asset.MeshDefinition, len(model.MeshDefinitions))
 	)
 	for i, meshDefinition := range model.MeshDefinitions {
 		assetMeshDefinitions[i] = c.BuildMeshDefinition(meshDefinition)
@@ -110,23 +102,23 @@ func (c *converter) BuildModel(model *Model) *gameasset.Model {
 	}
 
 	var (
-		assetMeshInstances = make([]gameasset.MeshInstance, len(model.MeshInstances))
+		assetMeshInstances = make([]asset.MeshInstance, len(model.MeshInstances))
 	)
 	for i, meshInstance := range model.MeshInstances {
 		assetMeshInstances[i] = c.BuildMeshInstance(meshInstance)
 	}
 
 	var (
-		assetBodyDefinitions []gameasset.BodyDefinition
-		assetBodyInstances   []gameasset.BodyInstance
+		assetBodyDefinitions []asset.BodyDefinition
+		assetBodyInstances   []asset.BodyInstance
 	)
 	if c.collisionMeshes {
-		assetBodyDefinitions = make([]gameasset.BodyDefinition, len(model.MeshDefinitions))
+		assetBodyDefinitions = make([]asset.BodyDefinition, len(model.MeshDefinitions))
 		for i, meshDefinition := range model.MeshDefinitions {
 			assetBodyDefinitions[i] = c.BuildBodyDefinition(meshDefinition)
 		}
 
-		assetBodyInstances = make([]gameasset.BodyInstance, 0, len(model.MeshInstances))
+		assetBodyInstances = make([]asset.BodyInstance, 0, len(model.MeshInstances))
 		for _, meshInstance := range model.MeshInstances {
 			if meshInstance.HasCollision {
 				assetBodyInstances = append(assetBodyInstances, c.BuildBodyInstance(meshInstance))
@@ -134,7 +126,7 @@ func (c *converter) BuildModel(model *Model) *gameasset.Model {
 		}
 	}
 
-	return &gameasset.Model{
+	return &asset.Model{
 		Nodes:           c.assetNodes,
 		Animations:      assetAnimations,
 		Armatures:       assetArmatures,
@@ -148,7 +140,7 @@ func (c *converter) BuildModel(model *Model) *gameasset.Model {
 }
 
 func (c *converter) BuildNode(parentIndex int, node *Node) {
-	result := gameasset.Node{
+	result := asset.Node{
 		Name:        node.Name,
 		ParentIndex: int32(parentIndex),
 		Translation: node.Translation,
@@ -163,36 +155,36 @@ func (c *converter) BuildNode(parentIndex int, node *Node) {
 	}
 }
 
-func (c *converter) BuildAnimation(animation *Animation) gameasset.Animation {
-	assetAnimation := gameasset.Animation{
+func (c *converter) BuildAnimation(animation *Animation) asset.Animation {
+	assetAnimation := asset.Animation{
 		Name:      animation.Name,
 		StartTime: animation.StartTime,
 		EndTime:   animation.EndTime,
-		Bindings:  make([]gameasset.AnimationBinding, len(animation.Bindings)),
+		Bindings:  make([]asset.AnimationBinding, len(animation.Bindings)),
 	}
 	for i, binding := range animation.Bindings {
-		translationKeyframes := make([]gameasset.TranslationKeyframe, len(binding.TranslationKeyframes))
+		translationKeyframes := make([]asset.TranslationKeyframe, len(binding.TranslationKeyframes))
 		for j, keyframe := range binding.TranslationKeyframes {
-			translationKeyframes[j] = gameasset.TranslationKeyframe{
+			translationKeyframes[j] = asset.TranslationKeyframe{
 				Timestamp:   keyframe.Timestamp,
 				Translation: keyframe.Translation,
 			}
 		}
-		rotationKeyframes := make([]gameasset.RotationKeyframe, len(binding.RotationKeyframes))
+		rotationKeyframes := make([]asset.RotationKeyframe, len(binding.RotationKeyframes))
 		for j, keyframe := range binding.RotationKeyframes {
-			rotationKeyframes[j] = gameasset.RotationKeyframe{
+			rotationKeyframes[j] = asset.RotationKeyframe{
 				Timestamp: keyframe.Timestamp,
 				Rotation:  keyframe.Rotation,
 			}
 		}
-		scaleKeyframes := make([]gameasset.ScaleKeyframe, len(binding.ScaleKeyframes))
+		scaleKeyframes := make([]asset.ScaleKeyframe, len(binding.ScaleKeyframes))
 		for j, keyframe := range binding.ScaleKeyframes {
-			scaleKeyframes[j] = gameasset.ScaleKeyframe{
+			scaleKeyframes[j] = asset.ScaleKeyframe{
 				Timestamp: keyframe.Timestamp,
 				Scale:     keyframe.Scale,
 			}
 		}
-		assetAnimation.Bindings[i] = gameasset.AnimationBinding{
+		assetAnimation.Bindings[i] = asset.AnimationBinding{
 			NodeIndex:            int32(c.assetNodeIndexFromNode[binding.Node]),
 			TranslationKeyframes: translationKeyframes,
 			RotationKeyframes:    rotationKeyframes,
@@ -202,10 +194,10 @@ func (c *converter) BuildAnimation(animation *Animation) gameasset.Animation {
 	return assetAnimation
 }
 
-func (c *converter) BuildMaterial(material *Material) gameasset.Material {
-	assetMaterial := gameasset.Material{
+func (c *converter) BuildMaterial(material *Material) asset.Material {
+	assetMaterial := asset.Material{
 		Name:            material.Name,
-		Type:            gameasset.MaterialTypePBR,
+		Type:            asset.MaterialTypePBR,
 		BackfaceCulling: material.BackfaceCulling,
 		AlphaTesting:    material.AlphaTesting,
 		AlphaThreshold:  material.AlphaThreshold,
@@ -213,14 +205,14 @@ func (c *converter) BuildMaterial(material *Material) gameasset.Material {
 		ScalarMask:      0xFFFFFFFF, // TODO: In PBRView
 	}
 	for i := range assetMaterial.Textures {
-		assetMaterial.Textures[i] = gameasset.TextureRef{
-			TextureIndex: gameasset.UnspecifiedIndex,
+		assetMaterial.Textures[i] = asset.TextureRef{
+			TextureIndex: asset.UnspecifiedIndex,
 		}
 	}
-	pbr := gameasset.NewPBRMaterialView(&assetMaterial)
+	pbr := asset.NewPBRMaterialView(&assetMaterial)
 	pbr.SetBaseColor(material.Color)
 	if ref := material.ColorTexture; ref != nil {
-		pbr.SetBaseColorTexture(gameasset.TextureRef{
+		pbr.SetBaseColorTexture(asset.TextureRef{
 			TextureIndex: int32(ref.TextureIndex),
 			TextureID:    ref.TextureID,
 		})
@@ -228,14 +220,14 @@ func (c *converter) BuildMaterial(material *Material) gameasset.Material {
 	pbr.SetMetallic(material.Metallic)
 	pbr.SetRoughness(material.Roughness)
 	if ref := material.MetallicRoughnessTexture; ref != nil {
-		pbr.SetMetallicRoughnessTexture(gameasset.TextureRef{
+		pbr.SetMetallicRoughnessTexture(asset.TextureRef{
 			TextureIndex: int32(ref.TextureIndex),
 			TextureID:    ref.TextureID,
 		})
 	}
 	pbr.SetNormalScale(material.NormalScale)
 	if ref := material.NormalTexture; ref != nil {
-		pbr.SetNormalTexture(gameasset.TextureRef{
+		pbr.SetNormalTexture(asset.TextureRef{
 			TextureIndex: int32(ref.TextureIndex),
 			TextureID:    ref.TextureID,
 		})
@@ -243,12 +235,12 @@ func (c *converter) BuildMaterial(material *Material) gameasset.Material {
 	return assetMaterial
 }
 
-func (c *converter) BuildArmature(armature *Armature) gameasset.Armature {
-	assetArmature := gameasset.Armature{
-		Joints: make([]gameasset.Joint, len(armature.Joints)),
+func (c *converter) BuildArmature(armature *Armature) asset.Armature {
+	assetArmature := asset.Armature{
+		Joints: make([]asset.Joint, len(armature.Joints)),
 	}
 	for i, joint := range armature.Joints {
-		assetArmature.Joints[i] = gameasset.Joint{
+		assetArmature.Joints[i] = asset.Joint{
 			NodeIndex:         int32(c.assetNodeIndexFromNode[joint.Node]),
 			InverseBindMatrix: joint.InverseBindMatrix,
 		}
@@ -256,7 +248,7 @@ func (c *converter) BuildArmature(armature *Armature) gameasset.Armature {
 	return assetArmature
 }
 
-func (c *converter) BuildMeshDefinition(meshDefinition *MeshDefinition) gameasset.MeshDefinition {
+func (c *converter) BuildMeshDefinition(meshDefinition *MeshDefinition) asset.MeshDefinition {
 	const (
 		sizeUnsignedByte  = 1
 		sizeUnsignedShort = 2
@@ -281,45 +273,45 @@ func (c *converter) BuildMeshDefinition(meshDefinition *MeshDefinition) gameasse
 		coordOffset = stride
 		stride += 3 * sizeFloat
 	} else {
-		coordOffset = gameasset.UnspecifiedOffset
+		coordOffset = asset.UnspecifiedOffset
 	}
 	if layout.HasNormals {
 		normalOffset = stride
 		stride += 3 * sizeHalfFloat
 		stride += sizeHalfFloat // due to alignment requirements
 	} else {
-		normalOffset = gameasset.UnspecifiedOffset
+		normalOffset = asset.UnspecifiedOffset
 	}
 	if layout.HasTangents {
 		tangentOffset = stride
 		stride += 3 * sizeHalfFloat
 		stride += sizeHalfFloat // due to alignment requirements
 	} else {
-		tangentOffset = gameasset.UnspecifiedOffset
+		tangentOffset = asset.UnspecifiedOffset
 	}
 	if layout.HasTexCoords {
 		texCoordOffset = stride
 		stride += 2 * sizeHalfFloat
 	} else {
-		texCoordOffset = gameasset.UnspecifiedOffset
+		texCoordOffset = asset.UnspecifiedOffset
 	}
 	if layout.HasColors {
 		colorOffset = stride
 		stride += 4 * sizeUnsignedByte
 	} else {
-		colorOffset = gameasset.UnspecifiedOffset
+		colorOffset = asset.UnspecifiedOffset
 	}
 	if layout.HasWeights {
 		weightsOffset = stride
 		stride += 4 * sizeUnsignedByte
 	} else {
-		weightsOffset = gameasset.UnspecifiedOffset
+		weightsOffset = asset.UnspecifiedOffset
 	}
 	if layout.HasJoints {
 		jointsOffset = stride
 		stride += 4 * sizeUnsignedByte
 	} else {
-		jointsOffset = gameasset.UnspecifiedOffset
+		jointsOffset = asset.UnspecifiedOffset
 	}
 
 	var (
@@ -392,20 +384,20 @@ func (c *converter) BuildMeshDefinition(meshDefinition *MeshDefinition) gameasse
 	}
 
 	var (
-		indexLayout gameasset.IndexLayout
+		indexLayout asset.IndexLayout
 		indexData   data.Buffer
 		indexSize   int
 	)
 	if len(meshDefinition.Vertices) >= 0xFFFF {
 		indexSize = sizeUnsignedInt
-		indexLayout = gameasset.IndexLayoutUint32
+		indexLayout = asset.IndexLayoutUint32
 		indexData = data.Buffer(make([]byte, len(meshDefinition.Indices)*sizeUnsignedInt))
 		for i, index := range meshDefinition.Indices {
 			indexData.SetUint32(i*sizeUnsignedInt, uint32(index))
 		}
 	} else {
 		indexSize = sizeUnsignedShort
-		indexLayout = gameasset.IndexLayoutUint16
+		indexLayout = asset.IndexLayoutUint16
 		indexData = data.Buffer(make([]byte, len(meshDefinition.Indices)*sizeUnsignedShort))
 		for i, index := range meshDefinition.Indices {
 			indexData.SetUint16(i*sizeUnsignedShort, uint16(index))
@@ -413,7 +405,7 @@ func (c *converter) BuildMeshDefinition(meshDefinition *MeshDefinition) gameasse
 	}
 
 	var (
-		fragments = make([]gameasset.MeshFragment, len(meshDefinition.Fragments))
+		fragments = make([]asset.MeshFragment, len(meshDefinition.Fragments))
 	)
 	for i, fragment := range meshDefinition.Fragments {
 		fragments[i] = c.BuildFragment(fragment, indexSize)
@@ -427,9 +419,9 @@ func (c *converter) BuildMeshDefinition(meshDefinition *MeshDefinition) gameasse
 		)
 	}
 
-	return gameasset.MeshDefinition{
+	return asset.MeshDefinition{
 		Name: meshDefinition.Name,
-		VertexLayout: gameasset.VertexLayout{
+		VertexLayout: asset.VertexLayout{
 			CoordOffset:    coordOffset,
 			CoordStride:    stride,
 			NormalOffset:   normalOffset,
@@ -453,23 +445,23 @@ func (c *converter) BuildMeshDefinition(meshDefinition *MeshDefinition) gameasse
 	}
 }
 
-func (c *converter) BuildFragment(fragment MeshFragment, indexSize int) gameasset.MeshFragment {
-	var topology gameasset.MeshTopology
+func (c *converter) BuildFragment(fragment MeshFragment, indexSize int) asset.MeshFragment {
+	var topology asset.MeshTopology
 	switch fragment.Primitive {
 	case PrimitivePoints:
-		topology = gameasset.MeshTopologyPoints
+		topology = asset.MeshTopologyPoints
 	case PrimitiveLines:
-		topology = gameasset.MeshTopologyLines
+		topology = asset.MeshTopologyLines
 	case PrimitiveLineStrip:
-		topology = gameasset.MeshTopologyLineStrip
+		topology = asset.MeshTopologyLineStrip
 	case PrimitiveLineLoop:
-		topology = gameasset.MeshTopologyLineLoop
+		topology = asset.MeshTopologyLineLoop
 	case PrimitiveTriangles:
-		topology = gameasset.MeshTopologyTriangles
+		topology = asset.MeshTopologyTriangles
 	case PrimitiveTriangleStrip:
-		topology = gameasset.MeshTopologyTriangleStrip
+		topology = asset.MeshTopologyTriangleStrip
 	case PrimitiveTriangleFan:
-		topology = gameasset.MeshTopologyTriangleFan
+		topology = asset.MeshTopologyTriangleFan
 	default:
 		panic(fmt.Errorf("unsupported primitive type: %d", fragment.Primitive))
 	}
@@ -481,7 +473,7 @@ func (c *converter) BuildFragment(fragment MeshFragment, indexSize int) gameasse
 		panic(fmt.Errorf("material %s not found", fragment.Material.Name))
 	}
 
-	return gameasset.MeshFragment{
+	return asset.MeshFragment{
 		Topology:      topology,
 		IndexOffset:   uint32(fragment.IndexOffset * indexSize),
 		IndexCount:    uint32(fragment.IndexCount),
@@ -489,7 +481,7 @@ func (c *converter) BuildFragment(fragment MeshFragment, indexSize int) gameasse
 	}
 }
 
-func (c *converter) BuildMeshInstance(meshInstance *MeshInstance) gameasset.MeshInstance {
+func (c *converter) BuildMeshInstance(meshInstance *MeshInstance) asset.MeshInstance {
 	var nodeIndex int32
 	if index, ok := c.assetNodeIndexFromNode[meshInstance.Node]; ok {
 		nodeIndex = int32(index)
@@ -502,7 +494,7 @@ func (c *converter) BuildMeshInstance(meshInstance *MeshInstance) gameasset.Mesh
 	} else {
 		panic(fmt.Errorf("mesh definition %s not found", meshInstance.Definition.Name))
 	}
-	var armatureIndex int32 = gameasset.UnspecifiedArmatureIndex
+	var armatureIndex int32 = asset.UnspecifiedArmatureIndex
 	if meshInstance.Armature != nil {
 		if index, ok := c.assetArmatureIndexFromArmature[meshInstance.Armature]; ok {
 			armatureIndex = int32(index)
@@ -510,7 +502,7 @@ func (c *converter) BuildMeshInstance(meshInstance *MeshInstance) gameasset.Mesh
 			panic(fmt.Errorf("armature not found"))
 		}
 	}
-	return gameasset.MeshInstance{
+	return asset.MeshInstance{
 		Name:            meshInstance.Name,
 		NodeIndex:       nodeIndex,
 		ArmatureIndex:   armatureIndex,
@@ -518,8 +510,8 @@ func (c *converter) BuildMeshInstance(meshInstance *MeshInstance) gameasset.Mesh
 	}
 }
 
-func (c *converter) BuildBodyDefinition(meshDefinition *MeshDefinition) gameasset.BodyDefinition {
-	var triangles []gameasset.CollisionTriangle
+func (c *converter) BuildBodyDefinition(meshDefinition *MeshDefinition) asset.BodyDefinition {
+	var triangles []asset.CollisionTriangle
 
 	for _, fragment := range meshDefinition.Fragments {
 		if fragment.Primitive != PrimitiveTriangles {
@@ -535,7 +527,7 @@ func (c *converter) BuildBodyDefinition(meshDefinition *MeshDefinition) gameasse
 			coordB := meshDefinition.Vertices[indexB].Coord
 			coordC := meshDefinition.Vertices[indexC].Coord
 
-			triangles = append(triangles, gameasset.CollisionTriangle{
+			triangles = append(triangles, asset.CollisionTriangle{
 				A: stod.Vec3(coordA),
 				B: stod.Vec3(coordB),
 				C: stod.Vec3(coordC),
@@ -543,9 +535,9 @@ func (c *converter) BuildBodyDefinition(meshDefinition *MeshDefinition) gameasse
 		}
 	}
 
-	return gameasset.BodyDefinition{
+	return asset.BodyDefinition{
 		Name: meshDefinition.Name,
-		CollisionMeshes: []gameasset.CollisionMesh{
+		CollisionMeshes: []asset.CollisionMesh{
 			{
 				Translation: dprec.ZeroVec3(),
 				Rotation:    dprec.IdentityQuat(),
@@ -555,7 +547,7 @@ func (c *converter) BuildBodyDefinition(meshDefinition *MeshDefinition) gameasse
 	}
 }
 
-func (c *converter) BuildBodyInstance(meshInstance *MeshInstance) gameasset.BodyInstance {
+func (c *converter) BuildBodyInstance(meshInstance *MeshInstance) asset.BodyInstance {
 	var nodeIndex int32
 	if index, ok := c.assetNodeIndexFromNode[meshInstance.Node]; ok {
 		nodeIndex = int32(index)
@@ -568,7 +560,7 @@ func (c *converter) BuildBodyInstance(meshInstance *MeshInstance) gameasset.Body
 	} else {
 		panic(fmt.Errorf("mesh definition %s not found", meshInstance.Definition.Name))
 	}
-	return gameasset.BodyInstance{
+	return asset.BodyInstance{
 		Name:      meshInstance.Name,
 		NodeIndex: nodeIndex,
 		BodyIndex: definitionIndex,

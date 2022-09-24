@@ -5,7 +5,7 @@ import (
 	"log"
 	"time"
 
-	gameasset "github.com/mokiat/lacking/game/asset"
+	"github.com/mokiat/lacking/game/asset"
 )
 
 type Action interface {
@@ -16,7 +16,7 @@ type Described interface {
 	Describe() string
 }
 
-func newPipeline(id int, registry gameasset.Registry, resourceLocator ResourceLocator) *Pipeline {
+func newPipeline(id int, registry asset.Registry, resourceLocator ResourceLocator) *Pipeline {
 	return &Pipeline{
 		id:              id,
 		registry:        registry,
@@ -26,7 +26,7 @@ func newPipeline(id int, registry gameasset.Registry, resourceLocator ResourceLo
 
 type Pipeline struct {
 	id              int
-	registry        gameasset.Registry
+	registry        asset.Registry
 	resourceLocator ResourceLocator
 	actions         []Action
 }
@@ -40,22 +40,20 @@ func (p *Pipeline) OpenImageResource(uri string) *OpenImageResourceAction {
 	return action
 }
 
-func (p *Pipeline) SaveTwoDTextureAsset(id string, image ImageProvider) *SaveTwoDTextureAssetAction {
+func (p *Pipeline) SaveTwoDTextureAsset(resource asset.Resource, image ImageProvider) *SaveTwoDTextureAssetAction {
 	action := &SaveTwoDTextureAssetAction{
-		registry:      p.registry,
-		id:            id,
+		resource:      resource,
 		imageProvider: image,
 	}
 	p.scheduleAction(action)
 	return action
 }
 
-func (p *Pipeline) SaveCubeTextureAsset(id string, image CubeImageProvider, opts ...SaveCubeTextureOption) *SaveCubeTextureAction {
+func (p *Pipeline) SaveCubeTextureAsset(resource asset.Resource, image CubeImageProvider, opts ...SaveCubeTextureOption) *SaveCubeTextureAction {
 	action := &SaveCubeTextureAction{
-		registry:      p.registry,
-		id:            id,
+		resource:      resource,
 		imageProvider: image,
-		format:        gameasset.TexelFormatRGBA8,
+		format:        asset.TexelFormatRGBA8,
 	}
 	for _, opt := range opts {
 		opt(action)
@@ -112,10 +110,9 @@ func (p *Pipeline) OpenGLTFResource(uri string) *OpenGLTFResourceAction {
 	return action
 }
 
-func (p *Pipeline) SaveModelAsset(id string, model ModelProvider, opts ...SaveModelAssetOption) *SaveModelAssetAction {
+func (p *Pipeline) SaveModelAsset(resource asset.Resource, model ModelProvider, opts ...SaveModelAssetOption) *SaveModelAssetAction {
 	action := &SaveModelAssetAction{
-		registry:      p.registry,
-		id:            id,
+		resource:      resource,
 		modelProvider: model,
 	}
 	for _, opt := range opts {
@@ -134,10 +131,9 @@ func (p *Pipeline) OpenLevelResource(uri string) *OpenLevelResourceAction {
 	return action
 }
 
-func (p *Pipeline) SaveLevelAsset(id string, level LevelProvider) *SaveLevelAssetAction {
+func (p *Pipeline) SaveLevelAsset(resource asset.Resource, level LevelProvider) *SaveLevelAssetAction {
 	action := &SaveLevelAssetAction{
-		registry:      p.registry,
-		id:            id,
+		resource:      resource,
 		levelProvider: level,
 	}
 	p.scheduleAction(action)

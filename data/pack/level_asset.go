@@ -10,13 +10,12 @@ import (
 )
 
 type SaveLevelAssetAction struct {
-	registry      asset.Registry
-	id            string
+	resource      asset.Resource
 	levelProvider LevelProvider
 }
 
 func (a *SaveLevelAssetAction) Describe() string {
-	return fmt.Sprintf("save_level_asset(id: %q)", a.id)
+	return fmt.Sprintf("save_level_asset(%q)", a.resource.Name())
 }
 
 func (a *SaveLevelAssetAction) Run() error {
@@ -100,15 +99,8 @@ func (a *SaveLevelAssetAction) Run() error {
 		ModelInstances:           modelInstances,
 		Model:                    modelAsset,
 	}
-	resource := a.registry.ResourceByID(a.id)
-	if resource == nil {
-		resource = a.registry.CreateIDResource(a.id, "level", a.id)
-	}
-	if err := resource.WriteContent(levelAsset); err != nil {
+	if err := a.resource.WriteContent(levelAsset); err != nil {
 		return fmt.Errorf("failed to write asset: %w", err)
-	}
-	if err := a.registry.Save(); err != nil {
-		return fmt.Errorf("error saving resources: %w", err)
 	}
 	return nil
 }
