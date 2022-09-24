@@ -21,7 +21,7 @@ type OpenImageResourceAction struct {
 }
 
 func (a *OpenImageResourceAction) Describe() string {
-	return fmt.Sprintf("open_image_resource(uri: %q)", a.uri)
+	return fmt.Sprintf("open_image_resource(%q)", a.uri)
 }
 
 func (a *OpenImageResourceAction) Image() *Image {

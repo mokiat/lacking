@@ -15,7 +15,7 @@ type OpenLevelResourceAction struct {
 }
 
 func (a *OpenLevelResourceAction) Describe() string {
-	return fmt.Sprintf("open_level_resource(uri: %q)", a.uri)
+	return fmt.Sprintf("open_level_resource(%q)", a.uri)
 }
 
 func (a *OpenLevelResourceAction) Level() *Level {

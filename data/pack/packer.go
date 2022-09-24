@@ -9,6 +9,8 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
+var ErrFocused = fmt.Errorf("focused pipelines")
+
 func NewPacker(registry asset.Registry) *Packer {
 	return &Packer{
 		registry: registry,
@@ -41,7 +43,7 @@ func (p *Packer) RunSerial() error {
 		}
 	}
 	if focused {
-		return fmt.Errorf("focused pipelines")
+		return ErrFocused
 	}
 	return nil
 }
@@ -60,7 +62,7 @@ func (p *Packer) RunParallel() error {
 		return err
 	}
 	if focused {
-		return fmt.Errorf("focused pipelines")
+		return ErrFocused
 	}
 	return nil
 }

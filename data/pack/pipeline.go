@@ -2,10 +2,10 @@ package pack
 
 import (
 	"fmt"
-	"log"
 	"time"
 
 	"github.com/mokiat/lacking/game/asset"
+	"github.com/mokiat/lacking/log"
 	"github.com/mokiat/lacking/util/resource"
 )
 
@@ -159,7 +159,7 @@ func (p *Pipeline) execute() error {
 		elapsedTime := time.Since(startTime)
 
 		if isDescribed {
-			log.Printf("pipeline %d, action %s, complete in %s", p.id, described.Describe(), elapsedTime)
+			log.Info("[pipeline %d] %s - %s", p.id, described.Describe(), elapsedTime)
 		}
 	}
 	return nil

@@ -33,7 +33,7 @@ type OpenGLTFResourceAction struct {
 }
 
 func (a *OpenGLTFResourceAction) Describe() string {
-	return fmt.Sprintf("open_gltf_resource(uri: %q)", a.uri)
+	return fmt.Sprintf("open_gltf_resource(%q)", a.uri)
 }
 
 func (a *OpenGLTFResourceAction) Model() *Model {
