@@ -4,31 +4,31 @@ import (
 	"fmt"
 	"runtime/debug"
 
+	"github.com/mokiat/lacking/game/asset"
+	"github.com/mokiat/lacking/util/resource"
 	"golang.org/x/sync/errgroup"
-
-	gameasset "github.com/mokiat/lacking/game/asset"
 )
 
-func NewPacker(registry gameasset.Registry) *Packer {
+func NewPacker(registry asset.Registry) *Packer {
 	return &Packer{
 		registry: registry,
 	}
 }
 
 type Packer struct {
-	registry         gameasset.Registry
+	registry         asset.Registry
 	pipelines        []*Pipeline
 	focusedPipelines []*Pipeline
 }
 
 func (p *Packer) Pipeline(fn func(*Pipeline)) {
-	pipeline := newPipeline(len(p.pipelines), p.registry, FileResourceLocator{})
+	pipeline := newPipeline(len(p.pipelines), p.registry, resource.NewFileLocator("./"))
 	fn(pipeline)
 	p.pipelines = append(p.pipelines, pipeline)
 }
 
 func (p *Packer) FPipeline(fn func(*Pipeline)) {
-	pipeline := newPipeline(len(p.pipelines), p.registry, FileResourceLocator{})
+	pipeline := newPipeline(len(p.pipelines), p.registry, resource.NewFileLocator("./"))
 	fn(pipeline)
 	p.focusedPipelines = append(p.focusedPipelines, pipeline)
 }

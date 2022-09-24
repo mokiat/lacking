@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/mokiat/lacking/game/asset"
+	"github.com/mokiat/lacking/util/resource"
 )
 
 type Action interface {
@@ -16,7 +17,7 @@ type Described interface {
 	Describe() string
 }
 
-func newPipeline(id int, registry asset.Registry, resourceLocator ResourceLocator) *Pipeline {
+func newPipeline(id int, registry asset.Registry, resourceLocator resource.ReadLocator) *Pipeline {
 	return &Pipeline{
 		id:              id,
 		registry:        registry,
@@ -27,7 +28,7 @@ func newPipeline(id int, registry asset.Registry, resourceLocator ResourceLocato
 type Pipeline struct {
 	id              int
 	registry        asset.Registry
-	resourceLocator ResourceLocator
+	resourceLocator resource.ReadLocator
 	actions         []Action
 }
 

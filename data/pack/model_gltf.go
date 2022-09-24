@@ -9,6 +9,7 @@ import (
 	"github.com/mokiat/gomath/stod"
 	"github.com/mokiat/lacking/log"
 	"github.com/mokiat/lacking/util/gltfutil"
+	"github.com/mokiat/lacking/util/resource"
 	"github.com/qmuntal/gltf"
 )
 
@@ -26,7 +27,7 @@ import (
 // partitioning.
 
 type OpenGLTFResourceAction struct {
-	locator ResourceLocator
+	locator resource.ReadLocator
 	uri     string
 	model   *Model
 }
@@ -43,8 +44,14 @@ func (a *OpenGLTFResourceAction) Model() *Model {
 }
 
 func (a *OpenGLTFResourceAction) Run() error {
-	gltfDoc, err := gltf.Open(a.uri)
+	in, err := a.locator.ReadResource(a.uri)
 	if err != nil {
+		return fmt.Errorf("failed to open model resource %q: %w", a.uri, err)
+	}
+	defer in.Close()
+
+	gltfDoc := new(gltf.Document)
+	if err := gltf.NewDecoder(in).Decode(gltfDoc); err != nil {
 		return fmt.Errorf("failed to parse gltf model %q: %w", a.uri, err)
 	}
 

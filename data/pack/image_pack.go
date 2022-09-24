@@ -4,10 +4,9 @@ import (
 	"fmt"
 	"math"
 
-	"github.com/x448/float16"
-
 	"github.com/mokiat/gomath/dprec"
 	"github.com/mokiat/lacking/data"
+	"github.com/x448/float16"
 )
 
 type Color struct {

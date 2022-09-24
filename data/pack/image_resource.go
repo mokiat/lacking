@@ -10,11 +10,12 @@ import (
 	"github.com/mdouchement/hdr"
 	_ "github.com/mdouchement/hdr/codec/rgbe"
 	"github.com/mokiat/goexr/exr"
+	"github.com/mokiat/lacking/util/resource"
 	_ "golang.org/x/image/tiff"
 )
 
 type OpenImageResourceAction struct {
-	locator ResourceLocator
+	locator resource.ReadLocator
 	uri     string
 	image   *Image
 }
@@ -31,7 +32,7 @@ func (a *OpenImageResourceAction) Image() *Image {
 }
 
 func (a *OpenImageResourceAction) Run() error {
-	in, err := a.locator.Open(a.uri)
+	in, err := a.locator.ReadResource(a.uri)
 	if err != nil {
 		return fmt.Errorf("failed to open image resource: %w", err)
 	}

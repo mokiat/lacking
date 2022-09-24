@@ -5,10 +5,11 @@ import (
 
 	"github.com/mokiat/gomath/sprec"
 	"github.com/mokiat/lacking/data/json"
+	"github.com/mokiat/lacking/util/resource"
 )
 
 type OpenLevelResourceAction struct {
-	locator ResourceLocator
+	locator resource.ReadLocator
 	uri     string
 	level   *Level
 }
@@ -25,7 +26,7 @@ func (a *OpenLevelResourceAction) Level() *Level {
 }
 
 func (a *OpenLevelResourceAction) Run() error {
-	in, err := a.locator.Open(a.uri)
+	in, err := a.locator.ReadResource(a.uri)
 	if err != nil {
 		return fmt.Errorf("failed to open level resource %q: %w", a.uri, err)
 	}
