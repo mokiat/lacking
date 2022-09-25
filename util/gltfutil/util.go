@@ -7,8 +7,8 @@ import (
 	"github.com/mokiat/gomath/dprec"
 	"github.com/mokiat/gomath/sprec"
 	"github.com/mokiat/gomath/stod"
-	"github.com/mokiat/lacking/data"
 	"github.com/mokiat/lacking/log"
+	"github.com/mokiat/lacking/util/blob"
 	"github.com/qmuntal/gltf"
 )
 
@@ -298,12 +298,12 @@ func ColorTexture(doc *gltf.Document, pbr *gltf.PBRMetallicRoughness, modelURI s
 	}
 }
 
-func BufferViewData(doc *gltf.Document, index uint32) data.Buffer {
+func BufferViewData(doc *gltf.Document, index uint32) blob.Buffer {
 	bufferView := doc.BufferViews[index]
 	offset := bufferView.ByteOffset
 	count := bufferView.ByteLength
 	buffer := doc.Buffers[bufferView.Buffer]
-	return data.Buffer(buffer.Data[offset : offset+count])
+	return blob.Buffer(buffer.Data[offset : offset+count])
 }
 
 func MetallicRoughnessTexture(doc *gltf.Document, pbr *gltf.PBRMetallicRoughness) string {

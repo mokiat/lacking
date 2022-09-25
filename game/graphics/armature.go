@@ -4,8 +4,8 @@ import (
 	"encoding/binary"
 
 	"github.com/mokiat/gomath/sprec"
-	"github.com/mokiat/lacking/data"
 	"github.com/mokiat/lacking/data/buffer"
+	"github.com/mokiat/lacking/util/blob"
 )
 
 type ArmatureInfo struct {
@@ -14,7 +14,7 @@ type ArmatureInfo struct {
 
 type Armature struct {
 	inverseMatrices   []sprec.Mat4
-	uniformBufferData data.Buffer
+	uniformBufferData blob.Buffer
 }
 
 func (a *Armature) BoneCount() int {

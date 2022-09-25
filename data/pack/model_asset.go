@@ -5,9 +5,9 @@ import (
 
 	"github.com/mokiat/gomath/dprec"
 	"github.com/mokiat/gomath/stod"
-	"github.com/mokiat/lacking/data"
 	"github.com/mokiat/lacking/game/asset"
 	"github.com/mokiat/lacking/log"
+	"github.com/mokiat/lacking/util/blob"
 	"github.com/x448/float16"
 )
 
@@ -315,7 +315,7 @@ func (c *converter) BuildMeshDefinition(meshDefinition *MeshDefinition) asset.Me
 	}
 
 	var (
-		vertexData = data.Buffer(make([]byte, len(meshDefinition.Vertices)*int(stride)))
+		vertexData = blob.Buffer(make([]byte, len(meshDefinition.Vertices)*int(stride)))
 	)
 	if layout.HasCoords {
 		offset := int(coordOffset)
@@ -385,20 +385,20 @@ func (c *converter) BuildMeshDefinition(meshDefinition *MeshDefinition) asset.Me
 
 	var (
 		indexLayout asset.IndexLayout
-		indexData   data.Buffer
+		indexData   blob.Buffer
 		indexSize   int
 	)
 	if len(meshDefinition.Vertices) >= 0xFFFF {
 		indexSize = sizeUnsignedInt
 		indexLayout = asset.IndexLayoutUint32
-		indexData = data.Buffer(make([]byte, len(meshDefinition.Indices)*sizeUnsignedInt))
+		indexData = blob.Buffer(make([]byte, len(meshDefinition.Indices)*sizeUnsignedInt))
 		for i, index := range meshDefinition.Indices {
 			indexData.SetUint32(i*sizeUnsignedInt, uint32(index))
 		}
 	} else {
 		indexSize = sizeUnsignedShort
 		indexLayout = asset.IndexLayoutUint16
-		indexData = data.Buffer(make([]byte, len(meshDefinition.Indices)*sizeUnsignedShort))
+		indexData = blob.Buffer(make([]byte, len(meshDefinition.Indices)*sizeUnsignedShort))
 		for i, index := range meshDefinition.Indices {
 			indexData.SetUint16(i*sizeUnsignedShort, uint16(index))
 		}

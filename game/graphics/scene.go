@@ -2,8 +2,8 @@ package graphics
 
 import (
 	"github.com/mokiat/gomath/sprec"
-	"github.com/mokiat/lacking/data"
 	"github.com/mokiat/lacking/render"
+	"github.com/mokiat/lacking/util/blob"
 	"github.com/mokiat/lacking/util/shape"
 	"github.com/mokiat/lacking/util/spatial"
 )
@@ -150,7 +150,7 @@ func (s *Scene) CreateArmature(info ArmatureInfo) *Armature {
 	boneCount := len(info.InverseMatrices)
 	return &Armature{
 		inverseMatrices:   info.InverseMatrices,
-		uniformBufferData: make(data.Buffer, boneCount*64),
+		uniformBufferData: make(blob.Buffer, boneCount*64),
 	}
 }
 

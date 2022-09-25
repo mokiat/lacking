@@ -5,7 +5,7 @@ import (
 	"math"
 
 	"github.com/mokiat/gomath/dprec"
-	"github.com/mokiat/lacking/data"
+	"github.com/mokiat/lacking/util/blob"
 	"github.com/x448/float16"
 )
 
@@ -121,7 +121,7 @@ func (i *Image) RGBA8Data() []byte {
 }
 
 func (i *Image) RGBA32FData() []byte {
-	data := data.Buffer(make([]byte, 4*4*i.Width*i.Height))
+	data := blob.Buffer(make([]byte, 4*4*i.Width*i.Height))
 	offset := 0
 	for y := 0; y < i.Height; y++ {
 		for x := 0; x < i.Width; x++ {
@@ -210,7 +210,7 @@ func (t *CubeImage) RGBA8Data(side CubeSide) []byte {
 }
 
 func (t *CubeImage) RGBA16FData(side CubeSide) []byte {
-	data := data.Buffer(make([]byte, 2*4*t.Dimension*t.Dimension))
+	data := blob.Buffer(make([]byte, 2*4*t.Dimension*t.Dimension))
 	offset := 0
 	texSide := t.Sides[side]
 	for y := 0; y < t.Dimension; y++ {
@@ -227,7 +227,7 @@ func (t *CubeImage) RGBA16FData(side CubeSide) []byte {
 }
 
 func (t *CubeImage) RGBA32FData(side CubeSide) []byte {
-	data := data.Buffer(make([]byte, 4*4*t.Dimension*t.Dimension))
+	data := blob.Buffer(make([]byte, 4*4*t.Dimension*t.Dimension))
 	offset := 0
 	texSide := t.Sides[side]
 	for y := 0; y < t.Dimension; y++ {

@@ -8,11 +8,11 @@ import (
 	"github.com/mokiat/gomath/dprec"
 	"github.com/mokiat/gomath/sprec"
 	"github.com/mokiat/gomath/stod"
-	"github.com/mokiat/lacking/data"
 	"github.com/mokiat/lacking/data/buffer"
 	"github.com/mokiat/lacking/game/graphics/internal"
 	"github.com/mokiat/lacking/log"
 	"github.com/mokiat/lacking/render"
+	"github.com/mokiat/lacking/util/blob"
 	"github.com/mokiat/lacking/util/metrics"
 	"github.com/mokiat/lacking/util/shape"
 	"github.com/mokiat/lacking/util/spatial"
@@ -67,7 +67,7 @@ type sceneRenderer struct {
 	exposureFramebuffer     render.Framebuffer
 	exposurePresentation    *internal.LightingPresentation
 	exposurePipeline        render.Pipeline
-	exposureBufferData      data.Buffer
+	exposureBufferData      blob.Buffer
 	exposureBuffer          render.Buffer
 	exposureFormat          render.DataFormat
 	exposureSync            render.Fence
@@ -89,16 +89,16 @@ type sceneRenderer struct {
 	skycolorPresentation *internal.SkyboxPresentation
 	skycolorPipeline     render.Pipeline
 
-	cameraUniformBufferData data.Buffer
+	cameraUniformBufferData blob.Buffer
 	cameraUniformBuffer     render.Buffer
 
-	modelUniformBufferData data.Buffer
+	modelUniformBufferData blob.Buffer
 	modelUniformBuffer     render.Buffer
 
-	materialUniformBufferData data.Buffer
+	materialUniformBufferData blob.Buffer
 	materialUniformBuffer     render.Buffer
 
-	lightUniformBufferData data.Buffer
+	lightUniformBufferData blob.Buffer
 	lightUniformBuffer     render.Buffer
 
 	visibleMeshes *spatial.VisitorBucket[*Mesh]
@@ -961,7 +961,7 @@ func (r *sceneRenderer) renderExposureProbePass(ctx renderCtx) {
 			case render.DataFormatRGBA16F:
 				brightness = float16.Frombits(r.exposureBufferData.Uint16(0 * 2)).Float32()
 			case render.DataFormatRGBA32F:
-				brightness = data.Buffer(r.exposureBufferData).Float32(0 * 4)
+				brightness = blob.Buffer(r.exposureBufferData).Float32(0 * 4)
 			}
 			brightness = sprec.Clamp(brightness, 0.001, 1000.0)
 
