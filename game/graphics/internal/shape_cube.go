@@ -1,11 +1,9 @@
 package internal
 
 import (
-	"encoding/binary"
-
 	"github.com/mokiat/gomath/sprec"
-	"github.com/mokiat/lacking/data/buffer"
 	"github.com/mokiat/lacking/render"
+	"github.com/mokiat/lacking/util/blob"
 )
 
 func CreateCubeShape(api render.API) *Shape {
@@ -18,19 +16,19 @@ func CreateCubeShape(api render.API) *Shape {
 	)
 
 	vertexData := make([]byte, vertexCount*vertexSize)
-	vertexPlotter := buffer.NewPlotter(vertexData, binary.LittleEndian)
-	vertexPlotter.PlotVec3(sprec.NewVec3(-1.0, 1.0, 1.0))
-	vertexPlotter.PlotVec3(sprec.NewVec3(-1.0, -1.0, 1.0))
-	vertexPlotter.PlotVec3(sprec.NewVec3(1.0, -1.0, 1.0))
-	vertexPlotter.PlotVec3(sprec.NewVec3(1.0, 1.0, 1.0))
+	vertexPlotter := blob.NewPlotter(vertexData)
+	vertexPlotter.PlotSPVec3(sprec.NewVec3(-1.0, 1.0, 1.0))
+	vertexPlotter.PlotSPVec3(sprec.NewVec3(-1.0, -1.0, 1.0))
+	vertexPlotter.PlotSPVec3(sprec.NewVec3(1.0, -1.0, 1.0))
+	vertexPlotter.PlotSPVec3(sprec.NewVec3(1.0, 1.0, 1.0))
 
-	vertexPlotter.PlotVec3(sprec.NewVec3(-1.0, 1.0, -1.0))
-	vertexPlotter.PlotVec3(sprec.NewVec3(-1.0, -1.0, -1.0))
-	vertexPlotter.PlotVec3(sprec.NewVec3(1.0, -1.0, -1.0))
-	vertexPlotter.PlotVec3(sprec.NewVec3(1.0, 1.0, -1.0))
+	vertexPlotter.PlotSPVec3(sprec.NewVec3(-1.0, 1.0, -1.0))
+	vertexPlotter.PlotSPVec3(sprec.NewVec3(-1.0, -1.0, -1.0))
+	vertexPlotter.PlotSPVec3(sprec.NewVec3(1.0, -1.0, -1.0))
+	vertexPlotter.PlotSPVec3(sprec.NewVec3(1.0, 1.0, -1.0))
 
 	indexData := make([]byte, indexCount*indexSize)
-	indexPlotter := buffer.NewPlotter(indexData, binary.LittleEndian)
+	indexPlotter := blob.NewPlotter(indexData)
 	indexPlotter.PlotUint16(3)
 	indexPlotter.PlotUint16(1)
 	indexPlotter.PlotUint16(2)

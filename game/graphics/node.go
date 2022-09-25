@@ -6,12 +6,13 @@ import (
 	"github.com/mokiat/gomath/dprec"
 	"github.com/mokiat/gomath/sprec"
 	"github.com/mokiat/lacking/data/buffer"
+	"github.com/mokiat/lacking/util/blob"
 )
 
 func newNode() *Node {
 	matrixData := make([]byte, 64)
-	plotter := buffer.NewPlotter(matrixData, binary.LittleEndian)
-	plotter.PlotMat4(sprec.IdentityMat4())
+	plotter := blob.NewPlotter(matrixData)
+	plotter.PlotSPMat4(sprec.IdentityMat4())
 	return &Node{
 		matrixData: matrixData,
 	}
@@ -29,7 +30,7 @@ type Node struct {
 // no getter for this method. Clients are expected to track matrices outside
 // this type if needed.
 func (n *Node) SetMatrix(matrix dprec.Mat4) {
-	plotter := buffer.NewPlotter(n.matrixData, binary.LittleEndian)
+	plotter := blob.NewPlotter(n.matrixData)
 	// plotter.PlotMat4(dtos.Mat4(matrix))
 	plotter.PlotFloat32(float32(matrix.M11))
 	plotter.PlotFloat32(float32(matrix.M21))

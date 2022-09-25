@@ -1,12 +1,11 @@
 package graphics
 
 import (
-	"encoding/binary"
 	"fmt"
 
-	"github.com/mokiat/lacking/data/buffer"
 	"github.com/mokiat/lacking/game/graphics/internal"
 	"github.com/mokiat/lacking/render"
+	"github.com/mokiat/lacking/util/blob"
 )
 
 func NewEngine(api render.API, shaders ShaderCollection) *Engine {
@@ -88,9 +87,9 @@ func (e *Engine) CreateCubeTexture(definition CubeTextureDefinition) *CubeTextur
 // info object.
 func (e *Engine) CreateMaterialDefinition(info MaterialDefinitionInfo) *MaterialDefinition {
 	data := make([]byte, 4*4*len(info.Vectors))
-	plotter := buffer.NewPlotter(data, binary.LittleEndian)
+	plotter := blob.NewPlotter(data)
 	for _, vec := range info.Vectors {
-		plotter.PlotVec4(vec)
+		plotter.PlotSPVec4(vec)
 	}
 	return &MaterialDefinition{
 		revision:        1,
@@ -227,8 +226,8 @@ func (e *Engine) CreatePBRMaterialDefinition(info PBRMaterialInfo) *MaterialDefi
 	}
 
 	uniformData := make([]byte, 2*4*4)
-	plotter := buffer.NewPlotter(uniformData, binary.LittleEndian)
-	plotter.PlotVec4(info.AlbedoColor)
+	plotter := blob.NewPlotter(uniformData)
+	plotter.PlotSPVec4(info.AlbedoColor)
 	plotter.PlotFloat32(info.AlphaThreshold)
 	plotter.PlotFloat32(info.NormalScale)
 	plotter.PlotFloat32(info.Metallic)

@@ -1,27 +1,21 @@
-package buffer
+package blob
 
 import (
-	"encoding/binary"
-	"math"
-
 	"github.com/mokiat/gomath/sprec"
 	"github.com/x448/float16"
 )
 
-// NewPlotter creates a new Plotter instance over the specified
-// byte slice that will do writing using the specified byte order.
-func NewPlotter(data []byte, order binary.ByteOrder) *Plotter {
+// NewPlotter creates a new Plotter instance over the specified byte slice.
+func NewPlotter(data []byte) *Plotter {
 	return &Plotter{
-		data:  data,
-		order: order,
+		data: data,
 	}
 }
 
-// Plotter is a wrapper over a byte slice that enables
-// writing of various types of primitives.
+// Plotter is a wrapper over a byte slice that enables writing of various types
+// of primitives in little-endian order.
 type Plotter struct {
-	data   []byte
-	order  binary.ByteOrder
+	data   Buffer
 	offset int
 }
 
@@ -51,68 +45,82 @@ func (p *Plotter) Skip(offset int) {
 	p.offset += offset
 }
 
-// PlotByte sets a single byte at the current offset
-// and advances the offset with one byte.
-func (p *Plotter) PlotByte(value byte) {
-	p.data[p.offset] = value
+// PlotUint8 sets a single byte at the current offset
+// and advances the offset with 1 byte.
+func (p *Plotter) PlotUint8(value byte) {
+	p.data.SetUint8(p.offset, value)
 	p.offset++
 }
 
 // PlotUint16 sets a single uint16 value at the current offset and
-// advances the offset with two bytes.
+// advances the offset with 2 bytes.
 func (p *Plotter) PlotUint16(value uint16) {
-	p.order.PutUint16(p.data[p.offset:], value)
+	p.data.SetUint16(p.offset, value)
 	p.offset += 2
 }
 
 // PlotUint32 sets a single uint32 value at the current offset and
-// advances the offset with four bytes.
+// advances the offset with 4 bytes.
 func (p *Plotter) PlotUint32(value uint32) {
-	p.order.PutUint32(p.data[p.offset:], value)
+	p.data.SetUint32(p.offset, value)
 	p.offset += 4
 }
 
+// PlotUint64 sets a single uint64 value at the current offset and
+// advances the offset with 8 bytes.
+func (p *Plotter) PlotUint64(value uint64) {
+	p.data.SetUint64(p.offset, value)
+	p.offset += 8
+}
+
 // PlotFloat16 sets a single float16 value at the current offset and
-// advances the offset with two bytes.
+// advances the offset with 2 bytes.
 func (p *Plotter) PlotFloat16(value float16.Float16) {
-	p.order.PutUint16(p.data[p.offset:], value.Bits())
+	p.data.SetFloat16(p.offset, value)
 	p.offset += 2
 }
 
 // PlotFloat32 sets a single float32 value at the current offset and
-// advances the offset with four bytes.
+// advances the offset with 4 bytes.
 func (p *Plotter) PlotFloat32(value float32) {
-	p.order.PutUint32(p.data[p.offset:], math.Float32bits(value))
+	p.data.SetFloat32(p.offset, value)
 	p.offset += 4
 }
 
-// PlotVec2 sets a sprec.Vec2 value at the current offset and
+// PlotFloat64 sets a single float64 value at the current offset and
 // advances the offset with 8 bytes.
-func (p *Plotter) PlotVec2(value sprec.Vec2) {
+func (p *Plotter) PlotFloat64(value float64) {
+	p.data.SetFloat64(p.offset, value)
+	p.offset += 8
+}
+
+// PlotSPVec2 sets a sprec.Vec2 value at the current offset and
+// advances the offset with 8 bytes.
+func (p *Plotter) PlotSPVec2(value sprec.Vec2) {
 	p.PlotFloat32(value.X)
 	p.PlotFloat32(value.Y)
 }
 
-// PlotVec3 sets a sprec.Vec3 value at the current offset and
+// PlotSPVec3 sets a sprec.Vec3 value at the current offset and
 // advances the offset with 12 bytes.
-func (p *Plotter) PlotVec3(value sprec.Vec3) {
+func (p *Plotter) PlotSPVec3(value sprec.Vec3) {
 	p.PlotFloat32(value.X)
 	p.PlotFloat32(value.Y)
 	p.PlotFloat32(value.Z)
 }
 
-// PlotVec4 sets a sprec.Vec4 value at the current offset and
+// PlotSPVec4 sets a sprec.Vec4 value at the current offset and
 // advances the offset with 16 bytes.
-func (p *Plotter) PlotVec4(value sprec.Vec4) {
+func (p *Plotter) PlotSPVec4(value sprec.Vec4) {
 	p.PlotFloat32(value.X)
 	p.PlotFloat32(value.Y)
 	p.PlotFloat32(value.Z)
 	p.PlotFloat32(value.W)
 }
 
-// PlotMat4 sets a sprec.Mat4 value at the current offset and
+// PlotSPMat4 sets a sprec.Mat4 value at the current offset and
 // advances the offset with 64 bytes.
-func (p *Plotter) PlotMat4(value sprec.Mat4) {
+func (p *Plotter) PlotSPMat4(value sprec.Mat4) {
 	p.PlotFloat32(value.M11)
 	p.PlotFloat32(value.M21)
 	p.PlotFloat32(value.M31)

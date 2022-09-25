@@ -1,10 +1,7 @@
 package graphics
 
 import (
-	"encoding/binary"
-
 	"github.com/mokiat/gomath/sprec"
-	"github.com/mokiat/lacking/data/buffer"
 	"github.com/mokiat/lacking/util/blob"
 )
 
@@ -26,7 +23,7 @@ func (a *Armature) SetBone(index int, matrix sprec.Mat4) {
 		matrix,
 		a.inverseMatrices[index],
 	)
-	plotter := buffer.NewPlotter(a.uniformBufferData, binary.LittleEndian)
+	plotter := blob.NewPlotter(a.uniformBufferData)
 	plotter.Seek(index * 64)
-	plotter.PlotMat4(finalMatrix)
+	plotter.PlotSPMat4(finalMatrix)
 }

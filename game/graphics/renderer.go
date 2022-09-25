@@ -1,14 +1,12 @@
 package graphics
 
 import (
-	"encoding/binary"
 	"fmt"
 	"time"
 
 	"github.com/mokiat/gomath/dprec"
 	"github.com/mokiat/gomath/sprec"
 	"github.com/mokiat/gomath/stod"
-	"github.com/mokiat/lacking/data/buffer"
 	"github.com/mokiat/lacking/game/graphics/internal"
 	"github.com/mokiat/lacking/log"
 	"github.com/mokiat/lacking/render"
@@ -483,10 +481,10 @@ func (r *sceneRenderer) Render(framebuffer render.Framebuffer, viewport Viewport
 		frustum:     frustum,
 	}
 
-	cameraPlotter := buffer.NewPlotter(r.cameraUniformBufferData, binary.LittleEndian)
-	cameraPlotter.PlotMat4(projectionMatrix)
-	cameraPlotter.PlotMat4(viewMatrix)
-	cameraPlotter.PlotMat4(cameraMatrix)
+	cameraPlotter := blob.NewPlotter(r.cameraUniformBufferData)
+	cameraPlotter.PlotSPMat4(projectionMatrix)
+	cameraPlotter.PlotSPMat4(viewMatrix)
+	cameraPlotter.PlotSPMat4(cameraMatrix)
 	r.cameraUniformBuffer.Update(render.BufferUpdateInfo{
 		Data: r.cameraUniformBufferData,
 	})
@@ -594,10 +592,10 @@ func (r *sceneRenderer) renderShadowPass(ctx renderCtx) {
 		StencilStoreOp:  render.StoreOperationDontCare,
 	})
 
-	lightPlotter := buffer.NewPlotter(r.lightUniformBufferData, binary.LittleEndian)
-	lightPlotter.PlotMat4(projectionMatrix)
-	lightPlotter.PlotMat4(viewMatrix)
-	lightPlotter.PlotMat4(lightMatrix)
+	lightPlotter := blob.NewPlotter(r.lightUniformBufferData)
+	lightPlotter.PlotSPMat4(projectionMatrix)
+	lightPlotter.PlotSPMat4(viewMatrix)
+	lightPlotter.PlotSPMat4(lightMatrix)
 	r.lightUniformBuffer.Update(render.BufferUpdateInfo{
 		Data: r.lightUniformBufferData,
 	})
@@ -881,10 +879,10 @@ func (r *sceneRenderer) renderPointLight(ctx renderCtx, light *Light) {
 	lightMatrix := light.gfxMatrix()
 	viewMatrix := sprec.InverseMat4(lightMatrix)
 
-	lightPlotter := buffer.NewPlotter(r.lightUniformBufferData, binary.LittleEndian)
-	lightPlotter.PlotMat4(projectionMatrix)
-	lightPlotter.PlotMat4(viewMatrix)
-	lightPlotter.PlotMat4(lightMatrix)
+	lightPlotter := blob.NewPlotter(r.lightUniformBufferData)
+	lightPlotter.PlotSPMat4(projectionMatrix)
+	lightPlotter.PlotSPMat4(viewMatrix)
+	lightPlotter.PlotSPMat4(lightMatrix)
 
 	r.commands.BindPipeline(r.pointLightPipeline)
 	r.commands.UpdateBufferData(r.lightUniformBuffer, render.BufferUpdateInfo{
