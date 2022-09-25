@@ -68,6 +68,26 @@ func (r *VisitorBucket[T]) Items() []T {
 	return r.items
 }
 
+// OctreeStats contains statistics about the last operation of an Octree.
+type OctreeStats struct {
+	NodesVisited  int
+	NodesAccepted int
+	NodesRejected int
+
+	ItemsVisited  int
+	ItemsAccepted int
+	ItemsRejected int
+}
+
+func (s *OctreeStats) reset() {
+	s.NodesVisited = 0
+	s.NodesAccepted = 0
+	s.NodesRejected = 0
+	s.ItemsVisited = 0
+	s.ItemsAccepted = 0
+	s.ItemsRejected = 0
+}
+
 // NewOctree creates a new Octree instance using the specified size and depth.
 func NewOctree[T any](size float64, depth, capacity int) *Octree[T] {
 	var (
@@ -96,6 +116,7 @@ func NewOctree[T any](size float64, depth, capacity int) *Octree[T] {
 		nodePool: nodePool,
 		itemPool: itemPool,
 		root:     root,
+		stats:    &OctreeStats{},
 	}
 }
 
@@ -110,6 +131,13 @@ type Octree[T any] struct {
 	nodePool datastruct.Pool[octreeNode[T]]
 	itemPool datastruct.Pool[OctreeItem[T]]
 	root     *octreeNode[T]
+	stats    *OctreeStats
+}
+
+// Stats returns statistics information on the last executed search in
+// this Octree.
+func (t *Octree[T]) Stats() OctreeStats {
+	return *t.stats
 }
 
 // PrintDebug prints basic information that can be used for troubleshooting and
@@ -142,6 +170,7 @@ func (t *Octree[T]) CreateItem(value T) *OctreeItem[T] {
 // item.
 func (t *Octree[T]) VisitHexahedronRegion(region *HexahedronRegion, visitor Visitor[T]) {
 	visitor.Reset()
+	t.stats.reset()
 	t.visitNodeInHexahedronRegion(t.root, region, visitor)
 }
 
@@ -149,12 +178,19 @@ func (t *Octree[T]) visitNodeInHexahedronRegion(node *octreeNode[T], region *Hex
 	if node == nil {
 		return
 	}
+	t.stats.NodesVisited++
 	if !node.head.isInsideHexahedronRegion(region) {
+		t.stats.NodesRejected++
 		return
 	}
+	t.stats.NodesAccepted++
 	for item := node.head.next; item != nil; item = item.next {
+		t.stats.ItemsVisited++
 		if item.isInsideHexahedronRegion(region) {
 			visitor.Visit(item.value)
+			t.stats.ItemsAccepted++
+		} else {
+			t.stats.ItemsRejected++
 		}
 	}
 	for i := 0; i < 8; i++ {
