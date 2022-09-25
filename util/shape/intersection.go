@@ -145,6 +145,26 @@ func checkIntersectionMeshUnknownPlacements(first, second Placement, resultSet *
 }
 
 func checkIntersectionSphereSpherePlacements(first, second Placement, resultSet *IntersectionResultSet) {
+	sphereA := first.shape.(StaticSphere)
+	sphereB := second.shape.(StaticSphere)
+	deltaPosition := dprec.Vec3Diff(second.position, first.position)
+	distance := deltaPosition.Length()
+	overlap := sphereA.Radius() + sphereB.Radius() - distance
+	if overlap < 0 {
+		return
+	}
+	normal := dprec.UnitVec3(deltaPosition)
+	contact := dprec.Vec3Sum(
+		first.position,
+		dprec.Vec3Prod(normal, sphereA.Radius()+overlap/2),
+	)
+	resultSet.Add(Intersection{
+		Depth:                overlap,
+		FirstContact:         contact,
+		FirstDisplaceNormal:  normal,
+		SecondContact:        contact,
+		SecondDisplaceNormal: dprec.InverseVec3(normal),
+	})
 }
 
 func checkIntersectionSphereBoxPlacements(first, second Placement, resultSet *IntersectionResultSet) {
@@ -181,7 +201,94 @@ func checkIntersectionSphereMeshPlacements(spherePlacement, meshPlacement Placem
 	}
 }
 
+var (
+	boxTriangles = make([]StaticTriangle, 2*6)
+)
+
 func checkIntersectionBoxBoxPlacements(first, second Placement, resultSet *IntersectionResultSet) {
+	box := second.shape.(StaticBox)
+	halfWidth := box.Width() / 2.0
+	halfHeight := box.Height() / 2.0
+	halfLength := box.Length() / 2.0
+
+	// TOP
+	boxTriangles[0] = StaticTriangle{
+		a: dprec.NewVec3(-halfWidth, halfHeight, -halfLength),
+		b: dprec.NewVec3(-halfWidth, halfHeight, halfLength),
+		c: dprec.NewVec3(halfWidth, halfHeight, halfLength),
+	}
+	boxTriangles[1] = StaticTriangle{
+		a: dprec.NewVec3(-halfWidth, halfHeight, -halfLength),
+		b: dprec.NewVec3(halfWidth, halfHeight, halfLength),
+		c: dprec.NewVec3(halfWidth, halfHeight, -halfLength),
+	}
+
+	// BOTTOM
+	boxTriangles[2] = StaticTriangle{
+		a: dprec.NewVec3(-halfWidth, -halfHeight, -halfLength),
+		b: dprec.NewVec3(halfWidth, -halfHeight, halfLength),
+		c: dprec.NewVec3(-halfWidth, -halfHeight, halfLength),
+	}
+	boxTriangles[3] = StaticTriangle{
+		a: dprec.NewVec3(-halfWidth, -halfHeight, -halfLength),
+		b: dprec.NewVec3(halfWidth, -halfHeight, -halfLength),
+		c: dprec.NewVec3(halfWidth, -halfHeight, halfLength),
+	}
+
+	// FRONT
+	boxTriangles[4] = StaticTriangle{
+		a: dprec.NewVec3(-halfWidth, halfHeight, halfLength),
+		b: dprec.NewVec3(-halfWidth, -halfHeight, halfLength),
+		c: dprec.NewVec3(halfWidth, -halfHeight, halfLength),
+	}
+	boxTriangles[5] = StaticTriangle{
+		a: dprec.NewVec3(-halfWidth, halfHeight, halfLength),
+		b: dprec.NewVec3(halfWidth, -halfHeight, halfLength),
+		c: dprec.NewVec3(halfWidth, halfHeight, halfLength),
+	}
+
+	// REAR
+	boxTriangles[6] = StaticTriangle{
+		a: dprec.NewVec3(-halfWidth, halfHeight, -halfLength),
+		b: dprec.NewVec3(halfWidth, -halfHeight, -halfLength),
+		c: dprec.NewVec3(-halfWidth, -halfHeight, -halfLength),
+	}
+	boxTriangles[7] = StaticTriangle{
+		a: dprec.NewVec3(-halfWidth, halfHeight, -halfLength),
+		b: dprec.NewVec3(halfWidth, halfHeight, -halfLength),
+		c: dprec.NewVec3(halfWidth, -halfHeight, -halfLength),
+	}
+
+	// LEFT
+	boxTriangles[8] = StaticTriangle{
+		a: dprec.NewVec3(-halfWidth, halfHeight, -halfLength),
+		b: dprec.NewVec3(-halfWidth, -halfHeight, -halfLength),
+		c: dprec.NewVec3(-halfWidth, -halfHeight, halfLength),
+	}
+	boxTriangles[9] = StaticTriangle{
+		a: dprec.NewVec3(-halfWidth, halfHeight, -halfLength),
+		b: dprec.NewVec3(-halfWidth, -halfHeight, halfLength),
+		c: dprec.NewVec3(-halfWidth, halfHeight, halfLength),
+	}
+
+	// RIGHT
+	boxTriangles[10] = StaticTriangle{
+		a: dprec.NewVec3(halfWidth, halfHeight, -halfLength),
+		b: dprec.NewVec3(halfWidth, -halfHeight, halfLength),
+		c: dprec.NewVec3(halfWidth, -halfHeight, -halfLength),
+	}
+	boxTriangles[11] = StaticTriangle{
+		a: dprec.NewVec3(halfWidth, halfHeight, -halfLength),
+		b: dprec.NewVec3(halfWidth, halfHeight, halfLength),
+		c: dprec.NewVec3(halfWidth, -halfHeight, halfLength),
+	}
+
+	second = Placement{
+		shape:    NewStaticMesh(boxTriangles),
+		position: second.position,
+		rotation: second.rotation,
+	}
+	checkIntersectionBoxMeshPlacements(first, second, resultSet)
 }
 
 func checkIntersectionBoxMeshPlacements(boxPlacement, meshPlacement Placement, resultSet *IntersectionResultSet) {
@@ -236,7 +343,7 @@ func checkIntersectionBoxMeshPlacements(boxPlacement, meshPlacement Placement, r
 				FirstContact:         projectedPoint,
 				FirstDisplaceNormal:  triangle.Normal(),
 				SecondContact:        projectedPoint,
-				SecondDisplaceNormal: dprec.InverseVec3(triangle.Normal()),
+				SecondDisplaceNormal: triangle.Normal(),
 			})
 		}
 	}
