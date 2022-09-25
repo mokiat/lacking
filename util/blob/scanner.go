@@ -51,6 +51,22 @@ func (s *Scanner) ScanUint8() byte {
 	return result
 }
 
+// ScanUint16 reads a single byte from the specified offset and then
+// advances the offset with 2 bytes.
+func (s *Scanner) ScanUint16() uint16 {
+	result := s.data.Uint16(s.offset)
+	s.offset += 2
+	return result
+}
+
+// ScanUint32 reads a single byte from the specified offset and then
+// advances the offset with 4 bytes.
+func (s *Scanner) ScanUint32() uint32 {
+	result := s.data.Uint32(s.offset)
+	s.offset += 4
+	return result
+}
+
 // ScanFloat32 reads a single float32 value from the current offset and
 // advances the offset with four bytes.
 func (s *Scanner) ScanFloat32() float32 {
@@ -59,10 +75,40 @@ func (s *Scanner) ScanFloat32() float32 {
 	return result
 }
 
+// ScanSPVec2 reads a sprec.Vec2 value from the current offset and
+// advances the offset with 8 bytes.
+func (s *Scanner) ScanSPVec2() sprec.Vec2 {
+	return sprec.Vec2{
+		X: s.ScanFloat32(),
+		Y: s.ScanFloat32(),
+	}
+}
+
+// ScanSPVec3 reads a sprec.Vec3 value from the current offset and
+// advances the offset with 12 bytes.
+func (s *Scanner) ScanSPVec3() sprec.Vec3 {
+	return sprec.Vec3{
+		X: s.ScanFloat32(),
+		Y: s.ScanFloat32(),
+		Z: s.ScanFloat32(),
+	}
+}
+
+// ScanSPVec4 reads a sprec.Vec4 value from the current offset and
+// advances the offset with 12 bytes.
+func (s *Scanner) ScanSPVec4() sprec.Vec4 {
+	return sprec.Vec4{
+		X: s.ScanFloat32(),
+		Y: s.ScanFloat32(),
+		Z: s.ScanFloat32(),
+		W: s.ScanFloat32(),
+	}
+}
+
 // ScanSPMat4 reads a sprec.Mat4 value from the current offset and
 // advances the offset with 64 bytes.
 func (s *Scanner) ScanSPMat4() sprec.Mat4 {
-	result := sprec.Mat4{
+	return sprec.Mat4{
 		M11: s.ScanFloat32(),
 		M21: s.ScanFloat32(),
 		M31: s.ScanFloat32(),
@@ -83,6 +129,4 @@ func (s *Scanner) ScanSPMat4() sprec.Mat4 {
 		M34: s.ScanFloat32(),
 		M44: s.ScanFloat32(),
 	}
-	s.offset += 64
-	return result
 }

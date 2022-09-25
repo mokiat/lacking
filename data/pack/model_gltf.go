@@ -113,43 +113,86 @@ func (a *OpenGLTFResourceAction) Run() error {
 		indexFromVertex := make(map[Vertex]int)
 
 		for j, gltfPrimitive := range gltfMesh.Primitives {
-			if gltfutil.HasAttribute(gltfPrimitive, gltf.POSITION) {
+			indexOffset := len(mesh.Indices) // this needs to happen first
+			gltfIndices, err := gltfutil.Indices(gltfDoc, gltfPrimitive)
+			if err != nil {
+				return fmt.Errorf("error reading indices: %w", err)
+			}
+			gltfCoords, err := gltfutil.Coords(gltfDoc, gltfPrimitive)
+			if err != nil {
+				return fmt.Errorf("error reading coords: %w", err)
+			}
+			gltfNormals, err := gltfutil.Normals(gltfDoc, gltfPrimitive)
+			if err != nil {
+				return fmt.Errorf("error reading normals: %w", err)
+			}
+			gltfTangents, err := gltfutil.Tangents(gltfDoc, gltfPrimitive)
+			if err != nil {
+				return fmt.Errorf("error reading tangents: %w", err)
+			}
+			gltfTexCoords, err := gltfutil.TexCoord0s(gltfDoc, gltfPrimitive)
+			if err != nil {
+				return fmt.Errorf("error reading tex coords: %w", err)
+			}
+			gltfColors, err := gltfutil.Color0s(gltfDoc, gltfPrimitive)
+			if err != nil {
+				return fmt.Errorf("error reading colors: %w", err)
+			}
+			gltfWeights, err := gltfutil.Weight0s(gltfDoc, gltfPrimitive)
+			if err != nil {
+				return fmt.Errorf("error reading weights: %w", err)
+			}
+			gltfJoints, err := gltfutil.Joint0s(gltfDoc, gltfPrimitive)
+			if err != nil {
+				return fmt.Errorf("error reading joints: %w", err)
+			}
+
+			if gltfCoords != nil {
 				mesh.VertexLayout.HasCoords = true
 			}
-			if gltfutil.HasAttribute(gltfPrimitive, gltf.NORMAL) {
+			if gltfNormals != nil {
 				mesh.VertexLayout.HasNormals = true
 			}
-			if gltfutil.HasAttribute(gltfPrimitive, gltf.TANGENT) {
+			if gltfTangents != nil {
 				mesh.VertexLayout.HasTangents = true
 			}
-			if gltfutil.HasAttribute(gltfPrimitive, gltf.TEXCOORD_0) {
+			if gltfTexCoords != nil {
 				mesh.VertexLayout.HasTexCoords = true
 			}
-			if gltfutil.HasAttribute(gltfPrimitive, gltf.COLOR_0) {
+			if gltfColors != nil {
 				mesh.VertexLayout.HasColors = true
 			}
-			if gltfutil.HasAttribute(gltfPrimitive, gltf.WEIGHTS_0) {
+			if gltfWeights != nil {
 				mesh.VertexLayout.HasWeights = true
 			}
-			if gltfutil.HasAttribute(gltfPrimitive, gltf.JOINTS_0) {
+			if gltfJoints != nil {
 				mesh.VertexLayout.HasJoints = true
 			}
 
-			fragment := MeshFragment{}
-			fragment.IndexOffset = len(mesh.Indices)
-			fragment.IndexCount = gltfutil.IndexCount(gltfDoc, gltfPrimitive)
-
-			for k := 0; k < fragment.IndexCount; k++ {
-				gltfIndex := gltfutil.Index(gltfDoc, gltfPrimitive, k)
-				vertex := Vertex{
-					Coord:    gltfutil.Coord(gltfDoc, gltfPrimitive, gltfIndex),
-					Normal:   gltfutil.Normal(gltfDoc, gltfPrimitive, gltfIndex),
-					Tangent:  gltfutil.Tangent(gltfDoc, gltfPrimitive, gltfIndex),
-					TexCoord: gltfutil.TexCoord0(gltfDoc, gltfPrimitive, gltfIndex),
-					Color:    gltfutil.Color0(gltfDoc, gltfPrimitive, gltfIndex),
-					Weights:  gltfutil.Weights0(gltfDoc, gltfPrimitive, gltfIndex),
-					Joints:   gltfutil.Joints0(gltfDoc, gltfPrimitive, gltfIndex),
+			for _, gltfIndex := range gltfIndices {
+				var vertex Vertex
+				if gltfCoords != nil {
+					vertex.Coord = gltfCoords[gltfIndex]
 				}
+				if gltfNormals != nil {
+					vertex.Normal = gltfNormals[gltfIndex]
+				}
+				if gltfTangents != nil {
+					vertex.Tangent = gltfTangents[gltfIndex]
+				}
+				if gltfTexCoords != nil {
+					vertex.TexCoord = gltfTexCoords[gltfIndex]
+				}
+				if gltfColors != nil {
+					vertex.Color = gltfColors[gltfIndex]
+				}
+				if gltfWeights != nil {
+					vertex.Weights = gltfWeights[gltfIndex]
+				}
+				if gltfJoints != nil {
+					vertex.Joints = gltfJoints[gltfIndex]
+				}
+
 				if index, ok := indexFromVertex[vertex]; ok {
 					mesh.Indices = append(mesh.Indices, index)
 				} else {
@@ -160,6 +203,9 @@ func (a *OpenGLTFResourceAction) Run() error {
 				}
 			}
 
+			var fragment MeshFragment
+			fragment.IndexOffset = indexOffset
+			fragment.IndexCount = len(gltfIndices)
 			switch gltfPrimitive.Mode {
 			case gltf.PrimitivePoints:
 				fragment.Primitive = PrimitivePoints
@@ -178,11 +224,9 @@ func (a *OpenGLTFResourceAction) Run() error {
 			default:
 				fragment.Primitive = PrimitiveTriangles
 			}
-
 			if gltfPrimitive.Material != nil {
 				fragment.Material = materialFromIndex[*gltfPrimitive.Material]
 			}
-
 			mesh.Fragments[j] = fragment
 		}
 	}

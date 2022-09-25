@@ -1,6 +1,7 @@
 package gltfutil
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 
@@ -19,7 +20,7 @@ func RootNodeIndices(doc *gltf.Document) []uint32 {
 			childrenIDs[childID] = struct{}{}
 		}
 	}
-	var result []uint32
+	result := make([]uint32, 0, len(doc.Nodes)-len(childrenIDs))
 	for id := range doc.Nodes {
 		if _, ok := childrenIDs[uint32(id)]; !ok {
 			result = append(result, uint32(id))
@@ -28,236 +29,237 @@ func RootNodeIndices(doc *gltf.Document) []uint32 {
 	return result
 }
 
-func IndexCount(doc *gltf.Document, primitive *gltf.Primitive) int {
-	if primitive.Indices == nil {
-		log.Warn("Primitive uses no indices")
-		return 0
-	}
-	accessor := doc.Accessors[*primitive.Indices]
-	return int(accessor.Count)
-}
-
 func HasAttribute(primitive *gltf.Primitive, name string) bool {
 	_, ok := primitive.Attributes[name]
 	return ok
 }
 
-func Index(doc *gltf.Document, primitive *gltf.Primitive, at int) int {
+func Indices(doc *gltf.Document, primitive *gltf.Primitive) ([]int, error) {
+	if primitive.Indices == nil {
+		return nil, nil
+	}
 	accessor := doc.Accessors[*primitive.Indices]
 	if accessor.BufferView == nil {
-		log.Error("Accessor lacks a buffer view")
-		return 0
+		return nil, fmt.Errorf("accessor lacks a buffer view")
 	}
 	buffer := BufferViewData(doc, *accessor.BufferView)
+	scanner := blob.NewScanner(buffer)
+
+	result := make([]int, accessor.Count)
 	switch accessor.ComponentType {
 	case gltf.ComponentUbyte:
-		return int(buffer[at])
+		for i := range result {
+			result[i] = int(scanner.ScanUint8())
+		}
 	case gltf.ComponentUshort:
-		return int(buffer.Uint16(2 * at))
+		for i := range result {
+			result[i] = int(scanner.ScanUint16())
+		}
 	case gltf.ComponentUint:
-		return int(buffer.Uint32(4 * at))
+		for i := range result {
+			result[i] = int(scanner.ScanUint32())
+		}
 	default:
-		log.Error("Unsupported index accessor component type %d", accessor.ComponentType)
-		return 0
+		return nil, fmt.Errorf("unsupported accessor component type %d", accessor.ComponentType)
 	}
+	return result, nil
 }
 
-func Coord(doc *gltf.Document, primitive *gltf.Primitive, at int) sprec.Vec3 {
+func Coords(doc *gltf.Document, primitive *gltf.Primitive) ([]sprec.Vec3, error) {
 	if !HasAttribute(primitive, gltf.POSITION) {
-		return sprec.ZeroVec3()
+		return nil, nil
 	}
 	accessor := doc.Accessors[primitive.Attributes[gltf.POSITION]]
 	if accessor.BufferView == nil {
-		log.Warn("Accessor lacks a buffer view")
-		return sprec.ZeroVec3()
+		return nil, fmt.Errorf("accessor lacks a buffer view")
+	}
+	if accessor.Type != gltf.AccessorVec3 {
+		return nil, fmt.Errorf("unsupported accessor type %d", accessor.Type)
 	}
 	buffer := BufferViewData(doc, *accessor.BufferView)
-	if accessor.Type != gltf.AccessorVec3 {
-		log.Error("Unsupported coord accessor type %d", accessor.Type)
-		return sprec.ZeroVec3()
-	}
+	scanner := blob.NewScanner(buffer)
+
+	result := make([]sprec.Vec3, accessor.Count)
 	switch accessor.ComponentType {
 	case gltf.ComponentFloat:
-		return sprec.NewVec3(
-			buffer.Float32(3*4*at+4*0),
-			buffer.Float32(3*4*at+4*1),
-			buffer.Float32(3*4*at+4*2),
-		)
+		for i := range result {
+			result[i] = scanner.ScanSPVec3()
+		}
 	default:
-		log.Error("Unsupported coord accessor component type %d", accessor.ComponentType)
-		return sprec.ZeroVec3()
+		return nil, fmt.Errorf("unsupported accessor component type %d", accessor.ComponentType)
 	}
+	return result, nil
 }
 
-func Normal(doc *gltf.Document, primitive *gltf.Primitive, at int) sprec.Vec3 {
+func Normals(doc *gltf.Document, primitive *gltf.Primitive) ([]sprec.Vec3, error) {
 	if !HasAttribute(primitive, gltf.NORMAL) {
-		return sprec.ZeroVec3()
+		return nil, nil
 	}
 	accessor := doc.Accessors[primitive.Attributes[gltf.NORMAL]]
 	if accessor.BufferView == nil {
-		log.Warn("Accessor lacks a buffer view")
-		return sprec.ZeroVec3()
+		return nil, fmt.Errorf("accessor lacks a buffer view")
+	}
+	if accessor.Type != gltf.AccessorVec3 {
+		return nil, fmt.Errorf("unsupported accessor type %d", accessor.Type)
 	}
 	buffer := BufferViewData(doc, *accessor.BufferView)
-	if accessor.Type != gltf.AccessorVec3 {
-		log.Error("Unsupported normal accessor type %d", accessor.Type)
-		return sprec.ZeroVec3()
-	}
+	scanner := blob.NewScanner(buffer)
+
+	result := make([]sprec.Vec3, accessor.Count)
 	switch accessor.ComponentType {
 	case gltf.ComponentFloat:
-		return sprec.NewVec3(
-			buffer.Float32(3*4*at+4*0),
-			buffer.Float32(3*4*at+4*1),
-			buffer.Float32(3*4*at+4*2),
-		)
+		for i := range result {
+			result[i] = scanner.ScanSPVec3()
+		}
 	default:
-		log.Error("Unsupported normal accessor component type %d", accessor.ComponentType)
-		return sprec.ZeroVec3()
+		return nil, fmt.Errorf("unsupported accessor component type %d", accessor.ComponentType)
 	}
+	return result, nil
 }
 
-func Tangent(doc *gltf.Document, primitive *gltf.Primitive, at int) sprec.Vec3 {
+func Tangents(doc *gltf.Document, primitive *gltf.Primitive) ([]sprec.Vec3, error) {
 	if !HasAttribute(primitive, gltf.TANGENT) {
-		return sprec.ZeroVec3()
+		return nil, nil
 	}
 	accessor := doc.Accessors[primitive.Attributes[gltf.TANGENT]]
 	if accessor.BufferView == nil {
-		log.Warn("Accessor lacks a buffer view")
-		return sprec.ZeroVec3()
+		return nil, fmt.Errorf("accessor lacks a buffer view")
+	}
+	if accessor.Type != gltf.AccessorVec3 {
+		return nil, fmt.Errorf("unsupported accessor type %d", accessor.Type)
 	}
 	buffer := BufferViewData(doc, *accessor.BufferView)
-	if accessor.Type != gltf.AccessorVec3 {
-		log.Error("Unsupported tangent accessor type %d", accessor.Type)
-		return sprec.ZeroVec3()
-	}
+	scanner := blob.NewScanner(buffer)
+
+	result := make([]sprec.Vec3, accessor.Count)
 	switch accessor.ComponentType {
 	case gltf.ComponentFloat:
-		return sprec.NewVec3(
-			buffer.Float32(3*4*at+4*0),
-			buffer.Float32(3*4*at+4*1),
-			buffer.Float32(3*4*at+4*2),
-		)
+		for i := range result {
+			result[i] = scanner.ScanSPVec3()
+		}
 	default:
-		log.Error("Unsupported tangent accessor component type %d", accessor.ComponentType)
-		return sprec.ZeroVec3()
+		return nil, fmt.Errorf("unsupported accessor component type %d", accessor.ComponentType)
 	}
+	return result, nil
 }
 
-func TexCoord0(doc *gltf.Document, primitive *gltf.Primitive, at int) sprec.Vec2 {
+func TexCoord0s(doc *gltf.Document, primitive *gltf.Primitive) ([]sprec.Vec2, error) {
 	if !HasAttribute(primitive, gltf.TEXCOORD_0) {
-		return sprec.ZeroVec2()
+		return nil, nil
 	}
 	accessor := doc.Accessors[primitive.Attributes[gltf.TEXCOORD_0]]
 	if accessor.BufferView == nil {
-		log.Warn("Accessor lacks a buffer view")
-		return sprec.ZeroVec2()
+		return nil, fmt.Errorf("accessor lacks a buffer view")
+	}
+	if accessor.Type != gltf.AccessorVec2 {
+		return nil, fmt.Errorf("unsupported accessor type %d", accessor.Type)
 	}
 	buffer := BufferViewData(doc, *accessor.BufferView)
-	if accessor.Type != gltf.AccessorVec2 {
-		log.Error("Unsupported tex coord accessor type %d", accessor.Type)
-		return sprec.ZeroVec2()
-	}
+	scanner := blob.NewScanner(buffer)
+
+	result := make([]sprec.Vec2, accessor.Count)
 	switch accessor.ComponentType {
 	case gltf.ComponentFloat:
-		return sprec.NewVec2(
-			buffer.Float32(2*4*at+4*0),
-			1.0-buffer.Float32(2*4*at+4*1), // fix tex coord orientation
-		)
+		for i := range result {
+			result[i] = scanner.ScanSPVec2()
+			result[i].Y = 1.0 - result[i].Y // fix tex coord orientation
+		}
 	default:
-		log.Error("Unsupported tex coord accessor component type %d", accessor.ComponentType)
-		return sprec.ZeroVec2()
+		return nil, fmt.Errorf("unsupported accessor component type %d", accessor.ComponentType)
 	}
+	return result, nil
 }
 
-func Color0(doc *gltf.Document, primitive *gltf.Primitive, at int) sprec.Vec4 {
+func Color0s(doc *gltf.Document, primitive *gltf.Primitive) ([]sprec.Vec4, error) {
 	if !HasAttribute(primitive, gltf.COLOR_0) {
-		return sprec.ZeroVec4()
+		return nil, nil
 	}
 	accessor := doc.Accessors[primitive.Attributes[gltf.COLOR_0]]
 	if accessor.BufferView == nil {
-		log.Warn("Accessor lacks a buffer view")
-		return sprec.ZeroVec4()
+		return nil, fmt.Errorf("accessor lacks a buffer view")
+	}
+	if accessor.Type != gltf.AccessorVec4 {
+		return nil, fmt.Errorf("unsupported accessor type %d", accessor.Type)
 	}
 	buffer := BufferViewData(doc, *accessor.BufferView)
-	if accessor.Type != gltf.AccessorVec4 {
-		log.Error("Unsupported color accessor type %d", accessor.Type)
-		return sprec.ZeroVec4()
-	}
+	scanner := blob.NewScanner(buffer)
+
+	result := make([]sprec.Vec4, accessor.Count)
 	switch accessor.ComponentType {
 	case gltf.ComponentFloat:
-		return sprec.NewVec4(
-			buffer.Float32(4*4*at+4*0),
-			buffer.Float32(4*4*at+4*1),
-			buffer.Float32(4*4*at+4*2),
-			buffer.Float32(4*4*at+4*3),
-		)
+		for i := range result {
+			result[i] = scanner.ScanSPVec4()
+		}
 	default:
-		log.Error("Unsupported color accessor component type %d", accessor.ComponentType)
-		return sprec.ZeroVec4()
+		return nil, fmt.Errorf("unsupported accessor component type %d", accessor.ComponentType)
 	}
+	return result, nil
 }
 
-func Weights0(doc *gltf.Document, primitive *gltf.Primitive, at int) sprec.Vec4 {
+func Weight0s(doc *gltf.Document, primitive *gltf.Primitive) ([]sprec.Vec4, error) {
 	if !HasAttribute(primitive, gltf.WEIGHTS_0) {
-		return sprec.ZeroVec4()
+		return nil, nil
 	}
 	accessor := doc.Accessors[primitive.Attributes[gltf.WEIGHTS_0]]
 	if accessor.BufferView == nil {
-		log.Warn("Accessor lacks a buffer view")
-		return sprec.ZeroVec4()
+		return nil, fmt.Errorf("accessor lacks a buffer view")
+	}
+	if accessor.Type != gltf.AccessorVec4 {
+		return nil, fmt.Errorf("unsupported accessor type %d", accessor.Type)
 	}
 	buffer := BufferViewData(doc, *accessor.BufferView)
-	if accessor.Type != gltf.AccessorVec4 {
-		log.Error("Unsupported weights accessor type %d", accessor.Type)
-		return sprec.ZeroVec4()
-	}
+	scanner := blob.NewScanner(buffer)
+
+	result := make([]sprec.Vec4, accessor.Count)
 	switch accessor.ComponentType {
 	case gltf.ComponentFloat:
-		return sprec.NewVec4(
-			buffer.Float32(4*4*at+4*0),
-			buffer.Float32(4*4*at+4*1),
-			buffer.Float32(4*4*at+4*2),
-			buffer.Float32(4*4*at+4*3),
-		)
+		for i := range result {
+			result[i] = scanner.ScanSPVec4()
+		}
 	default:
-		log.Error("Unsupported weights accessor component type %d", accessor.ComponentType)
-		return sprec.ZeroVec4()
+		return nil, fmt.Errorf("unsupported accessor component type %d", accessor.ComponentType)
 	}
+	return result, nil
 }
 
-func Joints0(doc *gltf.Document, primitive *gltf.Primitive, at int) [4]uint8 {
+func Joint0s(doc *gltf.Document, primitive *gltf.Primitive) ([][4]uint8, error) {
 	if !HasAttribute(primitive, gltf.JOINTS_0) {
-		return [4]uint8{}
+		return nil, nil
 	}
 	accessor := doc.Accessors[primitive.Attributes[gltf.JOINTS_0]]
 	if accessor.BufferView == nil {
-		log.Warn("Accessor lacks a buffer view")
-		return [4]uint8{}
+		return nil, fmt.Errorf("accessor lacks a buffer view")
+	}
+	if accessor.Type != gltf.AccessorVec4 {
+		return nil, fmt.Errorf("unsupported accessor type %d", accessor.Type)
 	}
 	buffer := BufferViewData(doc, *accessor.BufferView)
-	if accessor.Type != gltf.AccessorVec4 {
-		log.Error("Unsupported joints accessor type %d", accessor.Type)
-		return [4]uint8{}
-	}
+	scanner := blob.NewScanner(buffer)
+
+	result := make([][4]uint8, accessor.Count)
 	switch accessor.ComponentType {
 	case gltf.ComponentUbyte:
-		return [4]uint8{
-			buffer.Uint8(4*at + 0),
-			buffer.Uint8(4*at + 1),
-			buffer.Uint8(4*at + 2),
-			buffer.Uint8(4*at + 3),
+		for i := range result {
+			result[i] = [4]uint8{
+				scanner.ScanUint8(),
+				scanner.ScanUint8(),
+				scanner.ScanUint8(),
+				scanner.ScanUint8(),
+			}
 		}
 	case gltf.ComponentUshort:
-		return [4]uint8{
-			uint8(buffer.Uint16(4*2*at + 0*2)),
-			uint8(buffer.Uint16(4*2*at + 1*2)),
-			uint8(buffer.Uint16(4*2*at + 2*2)),
-			uint8(buffer.Uint16(4*2*at + 3*2)),
+		for i := range result {
+			result[i] = [4]uint8{
+				uint8(scanner.ScanUint16()),
+				uint8(scanner.ScanUint16()),
+				uint8(scanner.ScanUint16()),
+				uint8(scanner.ScanUint16()),
+			}
 		}
 	default:
-		log.Error("Unsupported joints accessor component type %d", accessor.ComponentType)
-		return [4]uint8{}
+		return nil, fmt.Errorf("unsupported accessor component type %d", accessor.ComponentType)
 	}
+	return result, nil
 }
 
 func PrimitiveMaterial(doc *gltf.Document, primitive *gltf.Primitive) *gltf.Material {
@@ -296,14 +298,6 @@ func ColorTexture(doc *gltf.Document, pbr *gltf.PBRMetallicRoughness, modelURI s
 		}
 		return content
 	}
-}
-
-func BufferViewData(doc *gltf.Document, index uint32) blob.Buffer {
-	bufferView := doc.BufferViews[index]
-	offset := bufferView.ByteOffset
-	count := bufferView.ByteLength
-	buffer := doc.Buffers[bufferView.Buffer]
-	return blob.Buffer(buffer.Data[offset : offset+count])
 }
 
 func MetallicRoughnessTexture(doc *gltf.Document, pbr *gltf.PBRMetallicRoughness) string {
@@ -511,6 +505,14 @@ func AnimationScales(doc *gltf.Document, sampler *gltf.AnimationSampler) []dprec
 		log.Error("Unsupported sampler output accessor component type %d", accessor.ComponentType)
 		return nil
 	}
+}
+
+func BufferViewData(doc *gltf.Document, index uint32) blob.Buffer {
+	bufferView := doc.BufferViews[index]
+	offset := bufferView.ByteOffset
+	count := bufferView.ByteLength
+	buffer := doc.Buffers[bufferView.Buffer]
+	return blob.Buffer(buffer.Data[offset : offset+count])
 }
 
 func IsCollisionDisabled(node *gltf.Node) bool {
