@@ -48,8 +48,7 @@ func Index(doc *gltf.Document, primitive *gltf.Primitive, at int) int {
 		log.Error("Accessor lacks a buffer view")
 		return 0
 	}
-	bufferView := doc.BufferViews[*accessor.BufferView]
-	buffer := data.Buffer(doc.Buffers[bufferView.Buffer].Data[bufferView.ByteOffset:])
+	buffer := BufferViewData(doc, *accessor.BufferView)
 	switch accessor.ComponentType {
 	case gltf.ComponentUbyte:
 		return int(buffer[at])
@@ -72,8 +71,7 @@ func Coord(doc *gltf.Document, primitive *gltf.Primitive, at int) sprec.Vec3 {
 		log.Warn("Accessor lacks a buffer view")
 		return sprec.ZeroVec3()
 	}
-	bufferView := doc.BufferViews[*accessor.BufferView]
-	buffer := data.Buffer(doc.Buffers[bufferView.Buffer].Data[bufferView.ByteOffset:])
+	buffer := BufferViewData(doc, *accessor.BufferView)
 	if accessor.Type != gltf.AccessorVec3 {
 		log.Error("Unsupported coord accessor type %d", accessor.Type)
 		return sprec.ZeroVec3()
@@ -100,8 +98,7 @@ func Normal(doc *gltf.Document, primitive *gltf.Primitive, at int) sprec.Vec3 {
 		log.Warn("Accessor lacks a buffer view")
 		return sprec.ZeroVec3()
 	}
-	bufferView := doc.BufferViews[*accessor.BufferView]
-	buffer := data.Buffer(doc.Buffers[bufferView.Buffer].Data[bufferView.ByteOffset:])
+	buffer := BufferViewData(doc, *accessor.BufferView)
 	if accessor.Type != gltf.AccessorVec3 {
 		log.Error("Unsupported normal accessor type %d", accessor.Type)
 		return sprec.ZeroVec3()
@@ -128,8 +125,7 @@ func Tangent(doc *gltf.Document, primitive *gltf.Primitive, at int) sprec.Vec3 {
 		log.Warn("Accessor lacks a buffer view")
 		return sprec.ZeroVec3()
 	}
-	bufferView := doc.BufferViews[*accessor.BufferView]
-	buffer := data.Buffer(doc.Buffers[bufferView.Buffer].Data[bufferView.ByteOffset:])
+	buffer := BufferViewData(doc, *accessor.BufferView)
 	if accessor.Type != gltf.AccessorVec3 {
 		log.Error("Unsupported tangent accessor type %d", accessor.Type)
 		return sprec.ZeroVec3()
@@ -156,8 +152,7 @@ func TexCoord0(doc *gltf.Document, primitive *gltf.Primitive, at int) sprec.Vec2
 		log.Warn("Accessor lacks a buffer view")
 		return sprec.ZeroVec2()
 	}
-	bufferView := doc.BufferViews[*accessor.BufferView]
-	buffer := data.Buffer(doc.Buffers[bufferView.Buffer].Data[bufferView.ByteOffset:])
+	buffer := BufferViewData(doc, *accessor.BufferView)
 	if accessor.Type != gltf.AccessorVec2 {
 		log.Error("Unsupported tex coord accessor type %d", accessor.Type)
 		return sprec.ZeroVec2()
@@ -183,8 +178,7 @@ func Color0(doc *gltf.Document, primitive *gltf.Primitive, at int) sprec.Vec4 {
 		log.Warn("Accessor lacks a buffer view")
 		return sprec.ZeroVec4()
 	}
-	bufferView := doc.BufferViews[*accessor.BufferView]
-	buffer := data.Buffer(doc.Buffers[bufferView.Buffer].Data[bufferView.ByteOffset:])
+	buffer := BufferViewData(doc, *accessor.BufferView)
 	if accessor.Type != gltf.AccessorVec4 {
 		log.Error("Unsupported color accessor type %d", accessor.Type)
 		return sprec.ZeroVec4()
@@ -212,8 +206,7 @@ func Weights0(doc *gltf.Document, primitive *gltf.Primitive, at int) sprec.Vec4 
 		log.Warn("Accessor lacks a buffer view")
 		return sprec.ZeroVec4()
 	}
-	bufferView := doc.BufferViews[*accessor.BufferView]
-	buffer := data.Buffer(doc.Buffers[bufferView.Buffer].Data[bufferView.ByteOffset:])
+	buffer := BufferViewData(doc, *accessor.BufferView)
 	if accessor.Type != gltf.AccessorVec4 {
 		log.Error("Unsupported weights accessor type %d", accessor.Type)
 		return sprec.ZeroVec4()
@@ -241,8 +234,7 @@ func Joints0(doc *gltf.Document, primitive *gltf.Primitive, at int) [4]uint8 {
 		log.Warn("Accessor lacks a buffer view")
 		return [4]uint8{}
 	}
-	bufferView := doc.BufferViews[*accessor.BufferView]
-	buffer := data.Buffer(doc.Buffers[bufferView.Buffer].Data[bufferView.ByteOffset:])
+	buffer := BufferViewData(doc, *accessor.BufferView)
 	if accessor.Type != gltf.AccessorVec4 {
 		log.Error("Unsupported joints accessor type %d", accessor.Type)
 		return [4]uint8{}
@@ -294,10 +286,8 @@ func ColorTexture(doc *gltf.Document, pbr *gltf.PBRMetallicRoughness, modelURI s
 		return nil
 	}
 	image := doc.Images[*texture.Source]
-	log.Info("IMAGE [%q]: %q / %v", image.Name, image.URI, image.BufferView)
 	if image.BufferView != nil {
-		bufferView := doc.BufferViews[*image.BufferView]
-		return data.Buffer(doc.Buffers[bufferView.Buffer].Data[bufferView.ByteOffset : bufferView.ByteOffset+bufferView.ByteLength])
+		return BufferViewData(doc, *image.BufferView)
 	} else {
 		content, err := os.ReadFile(filepath.Join(filepath.Dir(modelURI), image.URI))
 		if err != nil {
@@ -306,6 +296,14 @@ func ColorTexture(doc *gltf.Document, pbr *gltf.PBRMetallicRoughness, modelURI s
 		}
 		return content
 	}
+}
+
+func BufferViewData(doc *gltf.Document, index uint32) data.Buffer {
+	bufferView := doc.BufferViews[index]
+	offset := bufferView.ByteOffset
+	count := bufferView.ByteLength
+	buffer := doc.Buffers[bufferView.Buffer]
+	return data.Buffer(buffer.Data[offset : offset+count])
 }
 
 func MetallicRoughnessTexture(doc *gltf.Document, pbr *gltf.PBRMetallicRoughness) string {
@@ -358,8 +356,7 @@ func InverseBindMatrix(doc *gltf.Document, skin *gltf.Skin, index int) sprec.Mat
 		return sprec.IdentityMat4()
 	}
 
-	bufferView := doc.BufferViews[*accessor.BufferView]
-	buffer := data.Buffer(doc.Buffers[bufferView.Buffer].Data[bufferView.ByteOffset:])
+	buffer := BufferViewData(doc, *accessor.BufferView)
 	if accessor.Type != gltf.AccessorMat4 {
 		log.Error("Unsupported joints accessor type %d", accessor.Type)
 		return sprec.IdentityMat4()
@@ -401,8 +398,7 @@ func AnimationKeyframes(doc *gltf.Document, sampler *gltf.AnimationSampler) []fl
 		log.Warn("Accessor lacks a buffer view")
 		return nil
 	}
-	bufferView := doc.BufferViews[*accessor.BufferView]
-	buffer := data.Buffer(doc.Buffers[bufferView.Buffer].Data[bufferView.ByteOffset:])
+	buffer := BufferViewData(doc, *accessor.BufferView)
 	if accessor.Type != gltf.AccessorScalar {
 		log.Error("Unsupported sampler input accessor type %d", accessor.Type)
 		return nil
@@ -430,8 +426,7 @@ func AnimationTranslations(doc *gltf.Document, sampler *gltf.AnimationSampler) [
 		log.Warn("Accessor lacks a buffer view")
 		return nil
 	}
-	bufferView := doc.BufferViews[*accessor.BufferView]
-	buffer := data.Buffer(doc.Buffers[bufferView.Buffer].Data[bufferView.ByteOffset:])
+	buffer := BufferViewData(doc, *accessor.BufferView)
 	if accessor.Type != gltf.AccessorVec3 {
 		log.Error("Unsupported sampler output accessor type %d", accessor.Type)
 		return nil
@@ -463,8 +458,7 @@ func AnimationRotations(doc *gltf.Document, sampler *gltf.AnimationSampler) []dp
 		log.Warn("Accessor lacks a buffer view")
 		return nil
 	}
-	bufferView := doc.BufferViews[*accessor.BufferView]
-	buffer := data.Buffer(doc.Buffers[bufferView.Buffer].Data[bufferView.ByteOffset:])
+	buffer := BufferViewData(doc, *accessor.BufferView)
 	if accessor.Type != gltf.AccessorVec4 {
 		log.Error("Unsupported sampler output accessor type %d", accessor.Type)
 		return nil
@@ -497,8 +491,7 @@ func AnimationScales(doc *gltf.Document, sampler *gltf.AnimationSampler) []dprec
 		log.Warn("Accessor lacks a buffer view")
 		return nil
 	}
-	bufferView := doc.BufferViews[*accessor.BufferView]
-	buffer := data.Buffer(doc.Buffers[bufferView.Buffer].Data[bufferView.ByteOffset:])
+	buffer := BufferViewData(doc, *accessor.BufferView)
 	if accessor.Type != gltf.AccessorVec3 {
 		log.Error("Unsupported sampler output accessor type %d", accessor.Type)
 		return nil
