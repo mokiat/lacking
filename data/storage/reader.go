@@ -10,13 +10,13 @@ type TypedReader interface {
 	ReadBytesBlock() ([]byte, error)
 	ReadByte() (byte, error)
 	ReadBool() (bool, error)
-	ReadUInt8() (uint8, error)
+	ReadUint8() (uint8, error)
 	ReadInt8() (int8, error)
-	ReadUInt16() (uint16, error)
+	ReadUint16() (uint16, error)
 	ReadInt16() (int16, error)
-	ReadUInt32() (uint32, error)
+	ReadUint32() (uint32, error)
 	ReadInt32() (int32, error)
-	ReadUInt64() (uint64, error)
+	ReadUint64() (uint64, error)
 	ReadInt64() (int64, error)
 	ReadFloat32() (float32, error)
 	ReadFloat64() (float64, error)
@@ -43,7 +43,7 @@ func (r typedReader) ReadBytes(data []byte) error {
 }
 
 func (r typedReader) ReadBytesBlock() ([]byte, error) {
-	count, err := r.ReadUInt64()
+	count, err := r.ReadUint64()
 	if err != nil {
 		return nil, err
 	}
@@ -69,7 +69,7 @@ func (r typedReader) ReadBool() (bool, error) {
 	return r.buffer[0] != 0, nil
 }
 
-func (r typedReader) ReadUInt8() (uint8, error) {
+func (r typedReader) ReadUint8() (uint8, error) {
 	return r.ReadByte()
 }
 
@@ -78,7 +78,7 @@ func (r typedReader) ReadInt8() (int8, error) {
 	return int8(value), err
 }
 
-func (r typedReader) ReadUInt16() (uint16, error) {
+func (r typedReader) ReadUint16() (uint16, error) {
 	if err := r.readBuffer(2); err != nil {
 		return 0, err
 	}
@@ -88,11 +88,11 @@ func (r typedReader) ReadUInt16() (uint16, error) {
 }
 
 func (r typedReader) ReadInt16() (int16, error) {
-	value, err := r.ReadUInt16()
+	value, err := r.ReadUint16()
 	return int16(value), err
 }
 
-func (r typedReader) ReadUInt32() (uint32, error) {
+func (r typedReader) ReadUint32() (uint32, error) {
 	if err := r.readBuffer(4); err != nil {
 		return 0, err
 	}
@@ -104,11 +104,11 @@ func (r typedReader) ReadUInt32() (uint32, error) {
 }
 
 func (r typedReader) ReadInt32() (int32, error) {
-	value, err := r.ReadUInt32()
+	value, err := r.ReadUint32()
 	return int32(value), err
 }
 
-func (r typedReader) ReadUInt64() (uint64, error) {
+func (r typedReader) ReadUint64() (uint64, error) {
 	if err := r.readBuffer(8); err != nil {
 		return 0, err
 	}
@@ -124,12 +124,12 @@ func (r typedReader) ReadUInt64() (uint64, error) {
 }
 
 func (r typedReader) ReadInt64() (int64, error) {
-	value, err := r.ReadUInt64()
+	value, err := r.ReadUint64()
 	return int64(value), err
 }
 
 func (r typedReader) ReadFloat32() (float32, error) {
-	bits, err := r.ReadUInt32()
+	bits, err := r.ReadUint32()
 	if err != nil {
 		return 0.0, err
 	}
@@ -137,7 +137,7 @@ func (r typedReader) ReadFloat32() (float32, error) {
 }
 
 func (r typedReader) ReadFloat64() (float64, error) {
-	bits, err := r.ReadUInt64()
+	bits, err := r.ReadUint64()
 	if err != nil {
 		return 0.0, err
 	}
@@ -145,7 +145,7 @@ func (r typedReader) ReadFloat64() (float64, error) {
 }
 
 func (r typedReader) ReadString8() (string, error) {
-	length, err := r.ReadUInt8()
+	length, err := r.ReadUint8()
 	if err != nil {
 		return "", err
 	}
@@ -157,7 +157,7 @@ func (r typedReader) ReadString8() (string, error) {
 }
 
 func (r typedReader) ReadString16() (string, error) {
-	length, err := r.ReadUInt16()
+	length, err := r.ReadUint16()
 	if err != nil {
 		return "", err
 	}
@@ -169,7 +169,7 @@ func (r typedReader) ReadString16() (string, error) {
 }
 
 func (r typedReader) ReadString32() (string, error) {
-	length, err := r.ReadUInt32()
+	length, err := r.ReadUint32()
 	if err != nil {
 		return "", err
 	}

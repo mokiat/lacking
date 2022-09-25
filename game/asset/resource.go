@@ -25,10 +25,10 @@ func (h header) HasFlag(flag headerFlag) bool {
 
 func (h *header) EncodeTo(out io.Writer) error {
 	writer := storage.NewTypedWriter(out)
-	if err := writer.WriteUInt16(h.Version); err != nil {
+	if err := writer.WriteUint16(h.Version); err != nil {
 		return err
 	}
-	if err := writer.WriteUInt16(uint16(h.Flags)); err != nil {
+	if err := writer.WriteUint16(uint16(h.Flags)); err != nil {
 		return err
 	}
 	return nil
@@ -36,12 +36,12 @@ func (h *header) EncodeTo(out io.Writer) error {
 
 func (h *header) DecodeFrom(in io.Reader) error {
 	reader := storage.NewTypedReader(in)
-	if version, err := reader.ReadUInt16(); err != nil {
+	if version, err := reader.ReadUint16(); err != nil {
 		return err
 	} else {
 		h.Version = version
 	}
-	if flags, err := reader.ReadUInt16(); err != nil {
+	if flags, err := reader.ReadUint16(); err != nil {
 		return err
 	} else {
 		h.Flags = headerFlag(flags)

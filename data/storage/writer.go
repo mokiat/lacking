@@ -11,12 +11,12 @@ type TypedWriter interface {
 	WriteByte(byte) error
 	WriteBool(bool) error
 	WriteInt8(int8) error
-	WriteUInt8(uint8) error
+	WriteUint8(uint8) error
 	WriteInt16(int16) error
-	WriteUInt16(uint16) error
+	WriteUint16(uint16) error
 	WriteInt32(int32) error
-	WriteUInt32(uint32) error
-	WriteUInt64(uint64) error
+	WriteUint32(uint32) error
+	WriteUint64(uint64) error
 	WriteInt64(int64) error
 	WriteFloat32(float32) error
 	WriteFloat64(float64) error
@@ -45,7 +45,7 @@ func (w typedWriter) WriteBytes(data []byte) error {
 }
 
 func (w typedWriter) WriteByteBlock(data []byte) error {
-	if err := w.WriteUInt64(uint64(len(data))); err != nil {
+	if err := w.WriteUint64(uint64(len(data))); err != nil {
 		return err
 	}
 	if _, err := w.delegate.Write(data); err != nil {
@@ -72,21 +72,21 @@ func (w typedWriter) WriteInt8(value int8) error {
 	return w.WriteByte(byte(value))
 }
 
-func (w typedWriter) WriteUInt8(value uint8) error {
+func (w typedWriter) WriteUint8(value uint8) error {
 	return w.WriteByte(byte(value))
 }
 
-func (w typedWriter) WriteUInt16(value uint16) error {
+func (w typedWriter) WriteUint16(value uint16) error {
 	w.buffer[0] = byte(value)
 	w.buffer[1] = byte(value >> 8)
 	return w.writeBuffer(2)
 }
 
 func (w typedWriter) WriteInt16(value int16) error {
-	return w.WriteUInt16(uint16(value))
+	return w.WriteUint16(uint16(value))
 }
 
-func (w typedWriter) WriteUInt32(value uint32) error {
+func (w typedWriter) WriteUint32(value uint32) error {
 	w.buffer[0] = byte(value)
 	w.buffer[1] = byte(value >> 8)
 	w.buffer[2] = byte(value >> 16)
@@ -95,10 +95,10 @@ func (w typedWriter) WriteUInt32(value uint32) error {
 }
 
 func (w typedWriter) WriteInt32(value int32) error {
-	return w.WriteUInt32(uint32(value))
+	return w.WriteUint32(uint32(value))
 }
 
-func (w typedWriter) WriteUInt64(value uint64) error {
+func (w typedWriter) WriteUint64(value uint64) error {
 	w.buffer[0] = byte(value)
 	w.buffer[1] = byte(value >> 8)
 	w.buffer[2] = byte(value >> 16)
@@ -111,17 +111,17 @@ func (w typedWriter) WriteUInt64(value uint64) error {
 }
 
 func (w typedWriter) WriteInt64(value int64) error {
-	return w.WriteUInt64(uint64(value))
+	return w.WriteUint64(uint64(value))
 }
 
 func (w typedWriter) WriteFloat32(value float32) error {
 	bits := math.Float32bits(value)
-	return w.WriteUInt32(bits)
+	return w.WriteUint32(bits)
 }
 
 func (w typedWriter) WriteFloat64(value float64) error {
 	bits := math.Float64bits(value)
-	return w.WriteUInt64(bits)
+	return w.WriteUint64(bits)
 }
 
 func (w typedWriter) WriteString8(value string) error {
@@ -129,7 +129,7 @@ func (w typedWriter) WriteString8(value string) error {
 	if length >= 256 {
 		panic("Cannot fit string length in 8 bits")
 	}
-	if err := w.WriteUInt8(uint8(length)); err != nil {
+	if err := w.WriteUint8(uint8(length)); err != nil {
 		return err
 	}
 	if err := w.WriteBytes([]byte(value)); err != nil {
@@ -143,7 +143,7 @@ func (w typedWriter) WriteString16(value string) error {
 	if length >= 256*256 {
 		panic("Cannot fit string length in 16 bits")
 	}
-	if err := w.WriteUInt16(uint16(length)); err != nil {
+	if err := w.WriteUint16(uint16(length)); err != nil {
 		return err
 	}
 	if err := w.WriteBytes([]byte(value)); err != nil {
@@ -154,7 +154,7 @@ func (w typedWriter) WriteString16(value string) error {
 
 func (w typedWriter) WriteString32(value string) error {
 	length := len(value)
-	if err := w.WriteUInt32(uint32(length)); err != nil {
+	if err := w.WriteUint32(uint32(length)); err != nil {
 		return err
 	}
 	if err := w.WriteBytes([]byte(value)); err != nil {

@@ -65,7 +65,7 @@ func (d *ReflectDecoder) decodeField(reflField reflect.Value) error {
 		return nil
 
 	case reflect.Uint16:
-		v, err := d.in.ReadUInt16()
+		v, err := d.in.ReadUint16()
 		if err != nil {
 			return err
 		}
