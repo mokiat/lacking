@@ -2,7 +2,6 @@ package blob
 
 import (
 	"io"
-	"math"
 )
 
 type TypedReader interface {
@@ -34,7 +33,7 @@ func NewTypedReader(delegate io.Reader) TypedReader {
 
 type typedReader struct {
 	delegate io.Reader
-	buffer   []byte
+	buffer   Buffer
 }
 
 func (r typedReader) ReadBytes(data []byte) error {
@@ -59,14 +58,15 @@ func (r typedReader) ReadByte() (byte, error) {
 	if err := r.readBuffer(1); err != nil {
 		return 0, err
 	}
-	return r.buffer[0], nil
+	return r.buffer.Uint8(0), nil
 }
 
 func (r typedReader) ReadBool() (bool, error) {
-	if err := r.readBuffer(1); err != nil {
+	b, err := r.ReadByte()
+	if err != nil {
 		return false, err
 	}
-	return r.buffer[0] != 0, nil
+	return b != 0, nil
 }
 
 func (r typedReader) ReadUint8() (uint8, error) {
@@ -82,9 +82,7 @@ func (r typedReader) ReadUint16() (uint16, error) {
 	if err := r.readBuffer(2); err != nil {
 		return 0, err
 	}
-	value := uint16(r.buffer[0])
-	value |= uint16(r.buffer[1]) << 8
-	return value, nil
+	return r.buffer.Uint16(0), nil
 }
 
 func (r typedReader) ReadInt16() (int16, error) {
@@ -96,11 +94,7 @@ func (r typedReader) ReadUint32() (uint32, error) {
 	if err := r.readBuffer(4); err != nil {
 		return 0, err
 	}
-	value := uint32(r.buffer[0])
-	value |= uint32(r.buffer[1]) << 8
-	value |= uint32(r.buffer[2]) << 16
-	value |= uint32(r.buffer[3]) << 24
-	return value, nil
+	return r.buffer.Uint32(0), nil
 }
 
 func (r typedReader) ReadInt32() (int32, error) {
@@ -112,15 +106,7 @@ func (r typedReader) ReadUint64() (uint64, error) {
 	if err := r.readBuffer(8); err != nil {
 		return 0, err
 	}
-	value := uint64(r.buffer[0])
-	value |= uint64(r.buffer[1]) << 8
-	value |= uint64(r.buffer[2]) << 16
-	value |= uint64(r.buffer[3]) << 24
-	value |= uint64(r.buffer[4]) << 32
-	value |= uint64(r.buffer[5]) << 40
-	value |= uint64(r.buffer[6]) << 48
-	value |= uint64(r.buffer[7]) << 56
-	return value, nil
+	return r.buffer.Uint64(0), nil
 }
 
 func (r typedReader) ReadInt64() (int64, error) {
@@ -129,19 +115,17 @@ func (r typedReader) ReadInt64() (int64, error) {
 }
 
 func (r typedReader) ReadFloat32() (float32, error) {
-	bits, err := r.ReadUint32()
-	if err != nil {
+	if err := r.readBuffer(4); err != nil {
 		return 0.0, err
 	}
-	return math.Float32frombits(bits), nil
+	return r.buffer.Float32(0), nil
 }
 
 func (r typedReader) ReadFloat64() (float64, error) {
-	bits, err := r.ReadUint64()
-	if err != nil {
+	if err := r.readBuffer(8); err != nil {
 		return 0.0, err
 	}
-	return math.Float64frombits(bits), nil
+	return r.buffer.Float64(0), nil
 }
 
 func (r typedReader) ReadString8() (string, error) {

@@ -1,8 +1,8 @@
 package blob
 
 import (
+	"fmt"
 	"io"
-	"math"
 )
 
 type TypedWriter interface {
@@ -34,7 +34,7 @@ func NewTypedWriter(delegate io.Writer) TypedWriter {
 
 type typedWriter struct {
 	delegate io.Writer
-	buffer   []byte
+	buffer   Buffer
 }
 
 func (w typedWriter) WriteBytes(data []byte) error {
@@ -61,9 +61,9 @@ func (w typedWriter) WriteByte(value byte) error {
 
 func (w typedWriter) WriteBool(value bool) error {
 	if value {
-		w.buffer[0] = 1
+		w.buffer.SetUint8(0, 1)
 	} else {
-		w.buffer[0] = 0
+		w.buffer.SetUint8(0, 0)
 	}
 	return w.writeBuffer(1)
 }
@@ -77,8 +77,7 @@ func (w typedWriter) WriteUint8(value uint8) error {
 }
 
 func (w typedWriter) WriteUint16(value uint16) error {
-	w.buffer[0] = byte(value)
-	w.buffer[1] = byte(value >> 8)
+	w.buffer.SetUint16(0, value)
 	return w.writeBuffer(2)
 }
 
@@ -87,10 +86,7 @@ func (w typedWriter) WriteInt16(value int16) error {
 }
 
 func (w typedWriter) WriteUint32(value uint32) error {
-	w.buffer[0] = byte(value)
-	w.buffer[1] = byte(value >> 8)
-	w.buffer[2] = byte(value >> 16)
-	w.buffer[3] = byte(value >> 24)
+	w.buffer.SetUint32(0, value)
 	return w.writeBuffer(4)
 }
 
@@ -99,14 +95,7 @@ func (w typedWriter) WriteInt32(value int32) error {
 }
 
 func (w typedWriter) WriteUint64(value uint64) error {
-	w.buffer[0] = byte(value)
-	w.buffer[1] = byte(value >> 8)
-	w.buffer[2] = byte(value >> 16)
-	w.buffer[3] = byte(value >> 24)
-	w.buffer[4] = byte(value >> 32)
-	w.buffer[5] = byte(value >> 40)
-	w.buffer[6] = byte(value >> 48)
-	w.buffer[7] = byte(value >> 56)
+	w.buffer.SetUint64(0, value)
 	return w.writeBuffer(8)
 }
 
@@ -115,19 +104,19 @@ func (w typedWriter) WriteInt64(value int64) error {
 }
 
 func (w typedWriter) WriteFloat32(value float32) error {
-	bits := math.Float32bits(value)
-	return w.WriteUint32(bits)
+	w.buffer.SetFloat32(0, value)
+	return w.writeBuffer(4)
 }
 
 func (w typedWriter) WriteFloat64(value float64) error {
-	bits := math.Float64bits(value)
-	return w.WriteUint64(bits)
+	w.buffer.SetFloat64(0, value)
+	return w.writeBuffer(8)
 }
 
 func (w typedWriter) WriteString8(value string) error {
 	length := len(value)
-	if length >= 256 {
-		panic("Cannot fit string length in 8 bits")
+	if length >= 0xFF {
+		return fmt.Errorf("cannot fit string of length %d in 8 bits", length)
 	}
 	if err := w.WriteUint8(uint8(length)); err != nil {
 		return err
@@ -140,8 +129,8 @@ func (w typedWriter) WriteString8(value string) error {
 
 func (w typedWriter) WriteString16(value string) error {
 	length := len(value)
-	if length >= 256*256 {
-		panic("Cannot fit string length in 16 bits")
+	if length >= 0xFFFF {
+		return fmt.Errorf("cannot fit string of length %d in 16 bits", length)
 	}
 	if err := w.WriteUint16(uint16(length)); err != nil {
 		return err
@@ -154,6 +143,9 @@ func (w typedWriter) WriteString16(value string) error {
 
 func (w typedWriter) WriteString32(value string) error {
 	length := len(value)
+	if length >= 0xFFFFFFFF {
+		return fmt.Errorf("cannot fit string of length %d in 32 bits", length)
+	}
 	if err := w.WriteUint32(uint32(length)); err != nil {
 		return err
 	}
