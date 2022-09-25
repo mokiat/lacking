@@ -2,12 +2,12 @@ package game
 
 import (
 	"github.com/mokiat/lacking/app"
-	"github.com/mokiat/lacking/async"
 	"github.com/mokiat/lacking/game/asset"
 	"github.com/mokiat/lacking/game/ecs"
 	"github.com/mokiat/lacking/game/graphics"
 	"github.com/mokiat/lacking/game/physics"
 	"github.com/mokiat/lacking/render"
+	"github.com/mokiat/lacking/util/async"
 )
 
 func NewController(registry asset.Registry, api render.API, shaders graphics.ShaderCollection) *Controller {

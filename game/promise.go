@@ -1,7 +1,7 @@
 package game
 
 import (
-	"github.com/mokiat/lacking/async"
+	"github.com/mokiat/lacking/util/async"
 )
 
 func NewPromise[T any](engine *Engine) Promise[T] {

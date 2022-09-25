@@ -4,8 +4,8 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/mokiat/lacking/async"
 	"github.com/mokiat/lacking/game/asset"
+	"github.com/mokiat/lacking/util/async"
 )
 
 var (
