@@ -43,7 +43,7 @@ func (c *Controller) Engine() *Engine {
 func (c *Controller) OnCreate(window app.Window) {
 	c.window = window
 
-	c.ioWorker = async.NewWorker(1)
+	c.ioWorker = async.NewWorker(16)
 	go c.ioWorker.ProcessAll()
 
 	c.engine = NewEngine(
@@ -94,7 +94,7 @@ func (c *Controller) gfxWorkerAdapter() Worker {
 func (c *Controller) ioWorkerAdapter() Worker {
 	return WorkerFunc(func(fn func() error) Operation {
 		operation := NewOperation()
-		c.ioWorker.ScheduleFunc(func() error {
+		c.ioWorker.Schedule(func() error {
 			err := fn()
 			operation.Complete(err)
 			return err
