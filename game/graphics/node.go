@@ -1,11 +1,8 @@
 package graphics
 
 import (
-	"encoding/binary"
-
 	"github.com/mokiat/gomath/dprec"
 	"github.com/mokiat/gomath/sprec"
-	"github.com/mokiat/lacking/data/buffer"
 	"github.com/mokiat/lacking/util/blob"
 )
 
@@ -51,6 +48,6 @@ func (n *Node) SetMatrix(matrix dprec.Mat4) {
 }
 
 func (n *Node) gfxMatrix() sprec.Mat4 {
-	scanner := buffer.NewScanner(n.matrixData, binary.LittleEndian)
-	return scanner.ScanMat4()
+	scanner := blob.NewScanner(n.matrixData)
+	return scanner.ScanSPMat4()
 }

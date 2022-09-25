@@ -1,26 +1,20 @@
-package buffer
+package blob
 
 import (
-	"encoding/binary"
-	"math"
-
 	"github.com/mokiat/gomath/sprec"
 )
 
-// NewScanner creates a new Scanner instance over the specified
-// byte slice that will do reading using the specified byte order.
-func NewScanner(data []byte, order binary.ByteOrder) *Scanner {
+// NewScanner creates a new Scanner instance over the specified byte slice.
+func NewScanner(data []byte) *Scanner {
 	return &Scanner{
-		data:  data,
-		order: order,
+		data: data,
 	}
 }
 
 // Scanner is a wrapper over a byte slice that enables
 // writing of various types of primitives.
 type Scanner struct {
-	data   []byte
-	order  binary.ByteOrder
+	data   Buffer
 	offset int
 }
 
@@ -29,8 +23,7 @@ func (s *Scanner) Data() []byte {
 	return s.data
 }
 
-// Rewind moves the write head back to the start of
-// the slice.
+// Rewind moves the write head back to the start of the slice.
 func (s *Scanner) Rewind() {
 	s.offset = 0
 }
@@ -50,10 +43,10 @@ func (s *Scanner) Skip(offset int) {
 	s.offset += offset
 }
 
-// ScanByte reads a single byte from the specified offset and then
-// advances the offset.
-func (s *Scanner) ScanByte() byte {
-	result := s.data[s.offset]
+// ScanUint8 reads a single byte from the specified offset and then
+// advances the offset with 1 byte.
+func (s *Scanner) ScanUint8() byte {
+	result := s.data.Uint8(s.offset)
 	s.offset++
 	return result
 }
@@ -61,14 +54,14 @@ func (s *Scanner) ScanByte() byte {
 // ScanFloat32 reads a single float32 value from the current offset and
 // advances the offset with four bytes.
 func (s *Scanner) ScanFloat32() float32 {
-	result := math.Float32frombits(s.order.Uint32(s.data[s.offset:]))
+	result := s.data.Float32(s.offset)
 	s.offset += 4
 	return result
 }
 
-// ScanMat4 reads a sprec.Mat4 value from the current offset and
+// ScanSPMat4 reads a sprec.Mat4 value from the current offset and
 // advances the offset with 64 bytes.
-func (s *Scanner) ScanMat4() sprec.Mat4 {
+func (s *Scanner) ScanSPMat4() sprec.Mat4 {
 	result := sprec.Mat4{
 		M11: s.ScanFloat32(),
 		M21: s.ScanFloat32(),
