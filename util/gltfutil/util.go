@@ -2,8 +2,6 @@ package gltfutil
 
 import (
 	"fmt"
-	"os"
-	"path/filepath"
 
 	"github.com/mokiat/gomath/dprec"
 	"github.com/mokiat/gomath/sprec"
@@ -274,68 +272,54 @@ func BaseColor(pbr *gltf.PBRMetallicRoughness) sprec.Vec4 {
 	return sprec.NewVec4(factor[0], factor[1], factor[2], factor[3])
 }
 
-func ColorTexture(doc *gltf.Document, pbr *gltf.PBRMetallicRoughness, modelURI string) []byte {
+func ColorTextureIndex(doc *gltf.Document, pbr *gltf.PBRMetallicRoughness) *uint32 {
 	colorTexture := pbr.BaseColorTexture
 	if colorTexture == nil {
 		return nil
 	}
 	if colorTexture.TexCoord != 0 {
 		log.Warn("Unsupported color texture: tex coord layer unsupported")
+		return nil
 	}
 	texture := doc.Textures[colorTexture.Index]
 	if texture.Source == nil {
 		log.Warn("Unsupported color texture: no source")
 		return nil
 	}
-	image := doc.Images[*texture.Source]
-	if image.BufferView != nil {
-		return BufferViewData(doc, *image.BufferView)
-	} else {
-		content, err := os.ReadFile(filepath.Join(filepath.Dir(modelURI), image.URI))
-		if err != nil {
-			log.Error("Error reading texture %q: %v", image.URI, err)
-			return nil
-		}
-		return content
-	}
+	return texture.Source
 }
 
-func MetallicRoughnessTexture(doc *gltf.Document, pbr *gltf.PBRMetallicRoughness) string {
+func MetallicRoughnessTextureIndex(doc *gltf.Document, pbr *gltf.PBRMetallicRoughness) *uint32 {
 	mrTexture := pbr.MetallicRoughnessTexture
 	if mrTexture == nil {
-		return ""
+		return nil
 	}
 	if mrTexture.TexCoord != 0 {
 		log.Warn("Unsupported metallic-roughness texture: tex coord layer unsupported")
+		return nil
 	}
 	texture := doc.Textures[mrTexture.Index]
 	if texture.Source == nil {
 		log.Warn("Unsupported metallic-roughness texture: no source")
-		return ""
+		return nil
 	}
-	image := doc.Images[*texture.Source]
-	return image.Name
+	return texture.Source
 }
 
-func NormalTexture(doc *gltf.Document, material *gltf.Material) (string, float32) {
+func NormalTextureIndexScale(doc *gltf.Document, material *gltf.Material) (*uint32, float32) {
 	normalTexture := material.NormalTexture
 	if normalTexture == nil {
-		return "", 1.0
+		return nil, 1.0
 	}
 	if normalTexture.TexCoord > 0 {
 		log.Warn("Unsupported normal texture: tex coord layer unsupported")
+		return nil, 1.0
 	}
 	if normalTexture.Index == nil {
-		log.Error("Normal texture lacks an index")
-		return "", normalTexture.ScaleOrDefault()
+		log.Error("Unsupported normal texture: lacks an index")
+		return nil, normalTexture.ScaleOrDefault()
 	}
-	texture := doc.Textures[*normalTexture.Index]
-	if texture.Source == nil {
-		log.Warn("Unsupported normal texture: no source")
-		return "", normalTexture.ScaleOrDefault()
-	}
-	image := doc.Images[*texture.Source]
-	return image.Name, normalTexture.ScaleOrDefault()
+	return normalTexture.Index, normalTexture.ScaleOrDefault()
 }
 
 func InverseBindMatrix(doc *gltf.Document, skin *gltf.Skin, index int) sprec.Mat4 {

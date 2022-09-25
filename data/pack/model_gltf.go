@@ -3,6 +3,8 @@ package pack
 import (
 	"bytes"
 	"fmt"
+	"io"
+	"path"
 
 	"github.com/mokiat/gomath/dprec"
 	"github.com/mokiat/gomath/sprec"
@@ -57,6 +59,16 @@ func (a *OpenGLTFResourceAction) Run() error {
 
 	a.model = &Model{}
 
+	imagesFromIndex := make(map[uint32]*Image)
+	for i, gltfImage := range gltfDoc.Images {
+		img, err := a.openImage(gltfDoc, gltfImage, a.locator)
+		if err != nil {
+			return fmt.Errorf("error loading image: %w", err)
+		}
+		a.model.Textures = append(a.model.Textures, img)
+		imagesFromIndex[uint32(i)] = img
+	}
+
 	// build materials
 	materialFromIndex := make(map[uint32]*Material)
 	for i, gltfMaterial := range gltfDoc.Materials {
@@ -78,25 +90,23 @@ func (a *OpenGLTFResourceAction) Run() error {
 			material.Color = gltfutil.BaseColor(gltfPBR)
 			material.Metallic = gltfPBR.MetallicFactorOrDefault()
 			material.Roughness = gltfPBR.RoughnessFactorOrDefault()
-
-			// TODO: Reuse textures
-			colorTextureData := gltfutil.ColorTexture(gltfDoc, gltfPBR, a.uri)
-			if colorTextureData != nil {
-				img, err := ParseImageResource(bytes.NewReader(colorTextureData))
-				if err != nil {
-					return fmt.Errorf("error parsing color image: %w", err)
-				}
+			if texIndex := gltfutil.ColorTextureIndex(gltfDoc, gltfPBR); texIndex != nil {
 				material.ColorTexture = &TextureRef{
-					TextureIndex: len(a.model.Textures),
+					TextureIndex: int(*texIndex),
 				}
-				a.model.Textures = append(a.model.Textures, img)
 			}
-			material.MetallicRoughnessTexture = nil
-			// gltfutil.MetallicRoughnessTexture(gltfDoc, gltfPBR)
+			if texIndex := gltfutil.MetallicRoughnessTextureIndex(gltfDoc, gltfPBR); texIndex != nil {
+				material.MetallicRoughnessTexture = &TextureRef{
+					TextureIndex: int(*texIndex),
+				}
+			}
 		}
-		material.NormalTexture, material.NormalScale = nil, 1.0
-		// gltfutil.NormalTexture(gltfDoc, gltfMaterial)
-
+		if texIndex, texScale := gltfutil.NormalTextureIndexScale(gltfDoc, gltfMaterial); texIndex != nil {
+			material.NormalTexture = &TextureRef{
+				TextureIndex: int(*texIndex),
+			}
+			material.NormalScale = texScale
+		}
 		a.model.Materials = append(a.model.Materials, material)
 		materialFromIndex[uint32(i)] = material
 	}
@@ -402,8 +412,22 @@ func (a *OpenGLTFResourceAction) Run() error {
 		}
 		a.model.Animations = append(a.model.Animations, animation)
 	}
-
-	// TODO: Trim unused nodes
-
 	return nil
+}
+
+func (a *OpenGLTFResourceAction) openImage(doc *gltf.Document, img *gltf.Image, locator resource.ReadLocator) (*Image, error) {
+	var content []byte
+	if img.BufferView != nil {
+		content = gltfutil.BufferViewData(doc, *img.BufferView)
+	} else {
+		in, err := locator.ReadResource(path.Join(path.Dir(a.uri), img.URI))
+		if err != nil {
+			return nil, fmt.Errorf("error opening resource: %w", err)
+		}
+		content, err = io.ReadAll(in)
+		if err != nil {
+			return nil, fmt.Errorf("error reading resource: %w", err)
+		}
+	}
+	return ParseImageResource(bytes.NewReader(content))
 }
