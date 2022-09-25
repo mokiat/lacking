@@ -33,6 +33,8 @@ func newScene(engine *Engine, stepSeconds float64) *Scene {
 		gravity:      dprec.NewVec3(0.0, -9.8, 0.0),
 		windVelocity: dprec.NewVec3(0.0, 0.0, 0.0),
 		windDensity:  1.2,
+
+		revision: 1,
 	}
 }
 
@@ -64,13 +66,17 @@ type Scene struct {
 	lastDBConstraint   *DBConstraint
 	cachedDBConstraint *DBConstraint
 
-	collisionConstraints []*SBConstraint
-	collisionSolvers     []groundCollisionSolver
-	intersectionSet      *shape.IntersectionResultSet
+	collisionConstraints     []*SBConstraint
+	collisionSolvers         []groundCollisionSolver
+	dualCollisionConstraints []*DBConstraint
+	dualCollisionSolvers     []dualCollisionSolver
+	intersectionSet          *shape.IntersectionResultSet
 
 	gravity      dprec.Vec3
 	windVelocity dprec.Vec3
 	windDensity  float64
+
+	revision int
 }
 
 // Engine returns the physics Engine that owns this Scene.
@@ -433,13 +439,22 @@ func (s *Scene) applyNudges(elapsedSeconds float64) {
 }
 
 func (s *Scene) detectCollisions() {
+	s.revision++
+
 	for _, constraint := range s.collisionConstraints {
 		constraint.Delete()
 	}
 	s.collisionConstraints = s.collisionConstraints[:0]
 	s.collisionSolvers = s.collisionSolvers[:0]
 
+	for _, constraint := range s.dualCollisionConstraints {
+		constraint.Delete()
+	}
+	s.dualCollisionConstraints = s.dualCollisionConstraints[:0]
+	s.dualCollisionSolvers = s.dualCollisionSolvers[:0]
+
 	for primary := range s.dynamicBodies {
+		primary.revision = s.revision
 		// FIXME: 50 is hardcoded range. Also, consider using a SphericalRegion
 		// instead, once BoundingSphereRadius is exposed from CollisionShape.
 		region := spatial.CuboidRegion(
@@ -450,6 +465,9 @@ func (s *Scene) detectCollisions() {
 		s.bodyOctree.VisitHexahedronRegion(&region, spatial.VisitorFunc[*Body](func(secondary *Body) {
 			if secondary == primary {
 				return
+			}
+			if secondary.revision == s.revision {
+				return // secondary already processed
 			}
 			s.checkCollisionTwoBodies(secondary, primary) // FIXME: Reverse order does not work!
 		}))
@@ -465,14 +483,17 @@ func (s *Scene) allocateGroundCollisionSolver() *groundCollisionSolver {
 	return &s.collisionSolvers[len(s.collisionSolvers)-1]
 }
 
+func (s *Scene) allocateDualCollisionSolver() *dualCollisionSolver {
+	if len(s.dualCollisionSolvers) < cap(s.dualCollisionSolvers) {
+		s.dualCollisionSolvers = s.dualCollisionSolvers[:len(s.dualCollisionSolvers)+1]
+	} else {
+		s.dualCollisionSolvers = append(s.dualCollisionSolvers, dualCollisionSolver{})
+	}
+	return &s.dualCollisionSolvers[len(s.dualCollisionSolvers)-1]
+}
+
 func (s *Scene) checkCollisionTwoBodies(primary, secondary *Body) {
 	if primary.static && secondary.static {
-		return
-	}
-
-	// FIXME: Temporary, to prevent non-static entities from colliding for now
-	// Currently, only static to non-static is supported
-	if !primary.static && !secondary.static {
 		return
 	}
 
@@ -488,6 +509,15 @@ func (s *Scene) checkCollisionTwoBodies(primary, secondary *Body) {
 			for _, intersection := range s.intersectionSet.Intersections() {
 				// TODO: Once both non-static are supported, a dual-body collision constraint
 				// should be used instead of individual uni-body constraints
+
+				if !primary.static && !secondary.static {
+					solver := s.allocateDualCollisionSolver()
+					solver.Normal = intersection.FirstDisplaceNormal
+					solver.ContactPoint = intersection.FirstContact
+					solver.Depth = intersection.Depth
+					s.dualCollisionConstraints = append(s.dualCollisionConstraints, s.CreateDoubleBodyConstraint(primary, secondary, solver))
+					continue
+				}
 
 				if !primary.static {
 					solver := s.allocateGroundCollisionSolver()

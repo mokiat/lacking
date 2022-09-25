@@ -41,6 +41,7 @@ type Body struct {
 	next  *Body
 	item  *spatial.OctreeItem[*Body]
 
+	revision   int
 	definition *BodyDefinition
 
 	name string
@@ -316,7 +317,7 @@ func (b *Body) applyOffsetImpulse(offset, impulse dprec.Vec3) {
 }
 
 func (b *Body) translate(offset dprec.Vec3) {
-	b.position = dprec.Vec3Sum(b.position, offset)
+	b.SetPosition(dprec.Vec3Sum(b.position, offset))
 }
 
 func (b *Body) rotate(quat dprec.Quat) {
