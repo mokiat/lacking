@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/mokiat/lacking/data/storage"
+	"github.com/mokiat/lacking/util/blob"
 )
 
 type headerFlag uint16
@@ -24,7 +24,7 @@ func (h header) HasFlag(flag headerFlag) bool {
 }
 
 func (h *header) EncodeTo(out io.Writer) error {
-	writer := storage.NewTypedWriter(out)
+	writer := blob.NewTypedWriter(out)
 	if err := writer.WriteUint16(h.Version); err != nil {
 		return err
 	}
@@ -35,7 +35,7 @@ func (h *header) EncodeTo(out io.Writer) error {
 }
 
 func (h *header) DecodeFrom(in io.Reader) error {
-	reader := storage.NewTypedReader(in)
+	reader := blob.NewTypedReader(in)
 	if version, err := reader.ReadUint16(); err != nil {
 		return err
 	} else {

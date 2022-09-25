@@ -5,17 +5,17 @@ import (
 	"io"
 	"reflect"
 
-	"github.com/mokiat/lacking/data/storage"
+	"github.com/mokiat/lacking/util/blob"
 )
 
 func NewReflectEncoder(out io.Writer) *ReflectEncoder {
 	return &ReflectEncoder{
-		out: storage.NewTypedWriter(out),
+		out: blob.NewTypedWriter(out),
 	}
 }
 
 type ReflectEncoder struct {
-	out storage.TypedWriter
+	out blob.TypedWriter
 }
 
 func Encode(value interface{}) error {
@@ -24,12 +24,12 @@ func Encode(value interface{}) error {
 
 func NewReflectDecoder(in io.Reader) *ReflectDecoder {
 	return &ReflectDecoder{
-		in: storage.NewTypedReader(in),
+		in: blob.NewTypedReader(in),
 	}
 }
 
 type ReflectDecoder struct {
-	in storage.TypedReader
+	in blob.TypedReader
 }
 
 func (d *ReflectDecoder) Decode(target interface{}) error {

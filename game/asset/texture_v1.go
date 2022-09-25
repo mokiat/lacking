@@ -3,11 +3,11 @@ package asset
 import (
 	"io"
 
-	"github.com/mokiat/lacking/data/storage"
+	"github.com/mokiat/lacking/util/blob"
 )
 
 func (t *TwoDTexture) encodeV1(out io.Writer) error {
-	writer := storage.NewTypedWriter(out)
+	writer := blob.NewTypedWriter(out)
 	if err := writer.WriteUint16(t.Width); err != nil {
 		return err
 	}
@@ -37,7 +37,7 @@ func (t *TwoDTexture) decodeV1(in io.Reader) error {
 }
 
 func (t *CubeTexture) encodeV1(out io.Writer) error {
-	writer := storage.NewTypedWriter(out)
+	writer := blob.NewTypedWriter(out)
 	if err := writer.WriteUint16(t.Dimension); err != nil {
 		return err
 	}
