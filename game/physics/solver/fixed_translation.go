@@ -1,7 +1,7 @@
 package solver
 
 import (
-	"github.com/mokiat/gomath/sprec"
+	"github.com/mokiat/gomath/dprec"
 	"github.com/mokiat/lacking/game/physics"
 )
 
@@ -20,36 +20,36 @@ func NewFixedTranslation() *FixedTranslation {
 type FixedTranslation struct {
 	*physics.SBJacobianConstraintSolver
 
-	fixture sprec.Vec3
+	fixture dprec.Vec3
 }
 
 // Fixture returns the location that the body will be
 // tied to.
-func (t *FixedTranslation) Fixture() sprec.Vec3 {
+func (t *FixedTranslation) Fixture() dprec.Vec3 {
 	return t.fixture
 }
 
 // SetFixture changes the location to which the body
 // will be constrained.
-func (t *FixedTranslation) SetFixture(fixture sprec.Vec3) *FixedTranslation {
+func (t *FixedTranslation) SetFixture(fixture dprec.Vec3) *FixedTranslation {
 	t.fixture = fixture
 	return t
 }
 
-func (t *FixedTranslation) calculate(ctx physics.SBSolverContext) (physics.Jacobian, float32) {
-	deltaPosition := sprec.Vec3Diff(ctx.Body.Position(), t.fixture)
-	normal := sprec.BasisXVec3()
+func (t *FixedTranslation) calculate(ctx physics.SBSolverContext) (physics.Jacobian, float64) {
+	deltaPosition := dprec.Vec3Diff(ctx.Body.Position(), t.fixture)
+	normal := dprec.BasisXVec3()
 	if deltaPosition.SqrLength() > sqrEpsilon {
-		normal = sprec.UnitVec3(deltaPosition)
+		normal = dprec.UnitVec3(deltaPosition)
 	}
 
 	return physics.Jacobian{
-			SlopeVelocity: sprec.NewVec3(
+			SlopeVelocity: dprec.NewVec3(
 				normal.X,
 				normal.Y,
 				normal.Z,
 			),
-			SlopeAngularVelocity: sprec.ZeroVec3(),
+			SlopeAngularVelocity: dprec.ZeroVec3(),
 		},
 		deltaPosition.Length()
 }

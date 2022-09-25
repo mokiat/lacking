@@ -5,16 +5,17 @@ import (
 
 	"github.com/mokiat/gomath/sprec"
 	"github.com/mokiat/lacking/data/json"
+	"github.com/mokiat/lacking/util/resource"
 )
 
 type OpenLevelResourceAction struct {
-	locator ResourceLocator
+	locator resource.ReadLocator
 	uri     string
 	level   *Level
 }
 
 func (a *OpenLevelResourceAction) Describe() string {
-	return fmt.Sprintf("open_level_resource(uri: %q)", a.uri)
+	return fmt.Sprintf("open_level_resource(%q)", a.uri)
 }
 
 func (a *OpenLevelResourceAction) Level() *Level {
@@ -25,7 +26,7 @@ func (a *OpenLevelResourceAction) Level() *Level {
 }
 
 func (a *OpenLevelResourceAction) Run() error {
-	in, err := a.locator.Open(a.uri)
+	in, err := a.locator.ReadResource(a.uri)
 	if err != nil {
 		return fmt.Errorf("failed to open level resource %q: %w", a.uri, err)
 	}
@@ -40,13 +41,14 @@ func (a *OpenLevelResourceAction) Run() error {
 		SkyboxTexture:            jsonLevel.SkyboxTexture,
 		AmbientReflectionTexture: jsonLevel.AmbientReflectionTexture,
 		AmbientRefractionTexture: jsonLevel.AmbientRefractionTexture,
-		CollisionMeshes:          make([]LevelCollisionMesh, len(jsonLevel.CollisionMeshes)),
-		StaticMeshes:             make([]Mesh, len(jsonLevel.StaticMeshes)),
-		StaticEntities:           make([]LevelEntity, len(jsonLevel.StaticEntities)),
+		Materials:                make([]*Material, 0),
+		CollisionMeshes:          make([]*LevelCollisionMesh, len(jsonLevel.CollisionMeshes)),
+		StaticMeshes:             make([]*MeshDefinition, len(jsonLevel.StaticMeshes)),
+		StaticEntities:           make([]*LevelEntity, len(jsonLevel.StaticEntities)),
 	}
 
 	for i, jsonCollisionMesh := range jsonLevel.CollisionMeshes {
-		collisionMesh := LevelCollisionMesh{
+		collisionMesh := &LevelCollisionMesh{
 			Triangles: make([]Triangle, len(jsonCollisionMesh.Triangles)),
 		}
 		for j, jsonTriangle := range jsonCollisionMesh.Triangles {
@@ -60,7 +62,7 @@ func (a *OpenLevelResourceAction) Run() error {
 	}
 
 	for i, jsonStaticMesh := range jsonLevel.StaticMeshes {
-		staticMesh := Mesh{
+		staticMesh := &MeshDefinition{
 			Name: "unnamed",
 			VertexLayout: VertexLayout{
 				HasCoords:    true,
@@ -69,7 +71,7 @@ func (a *OpenLevelResourceAction) Run() error {
 			},
 			Vertices:  make([]Vertex, len(jsonStaticMesh.Coords)/3),
 			Indices:   make([]int, len(jsonStaticMesh.Indices)),
-			SubMeshes: make([]SubMesh, len(jsonStaticMesh.SubMeshes)),
+			Fragments: make([]MeshFragment, len(jsonStaticMesh.SubMeshes)),
 		}
 		for j := range staticMesh.Vertices {
 			staticMesh.Vertices[j].Coord = sprec.NewVec3(
@@ -95,24 +97,30 @@ func (a *OpenLevelResourceAction) Run() error {
 			staticMesh.Indices[j] = jsonStaticMesh.Indices[j]
 		}
 		for j, jsonSubMesh := range jsonStaticMesh.SubMeshes {
-			staticMesh.SubMeshes[j] = SubMesh{
+			// FIXME: Very suboptimal
+			material := &Material{
+				Name:                     fmt.Sprintf("Static Mesh %d", i),
+				BackfaceCulling:          true,
+				AlphaTesting:             false,
+				AlphaThreshold:           0.5,
+				Metallic:                 0.0,
+				Roughness:                0.8,
+				MetallicRoughnessTexture: nil,
+				Color:                    sprec.ZeroVec4(),
+				ColorTexture: &TextureRef{
+					TextureID:    jsonSubMesh.DiffuseTexture,
+					TextureIndex: -1,
+				},
+				NormalScale:   1.0,
+				NormalTexture: nil,
+			}
+			a.level.Materials = append(a.level.Materials, material)
+
+			staticMesh.Fragments[j] = MeshFragment{
 				Primitive:   PrimitiveTriangles,
 				IndexOffset: jsonSubMesh.IndexOffset,
 				IndexCount:  jsonSubMesh.IndexCount,
-				Material: Material{
-					Type:             "pbr",
-					BackfaceCulling:  true,
-					AlphaTesting:     false,
-					AlphaThreshold:   0.5,
-					Metalness:        0.0,
-					MetalnessTexture: "",
-					Roughness:        0.5,
-					RoughnessTexture: "",
-					Color:            sprec.ZeroVec4(),
-					ColorTexture:     jsonSubMesh.DiffuseTexture,
-					NormalScale:      1.0,
-					NormalTexture:    "",
-				},
+				Material:    material,
 			}
 		}
 
@@ -120,7 +128,7 @@ func (a *OpenLevelResourceAction) Run() error {
 	}
 
 	for i, jsonStaticEntity := range jsonLevel.StaticEntities {
-		a.level.StaticEntities[i] = LevelEntity{
+		a.level.StaticEntities[i] = &LevelEntity{
 			Model: jsonStaticEntity.Model,
 			Matrix: sprec.NewMat4(
 				jsonStaticEntity.Matrix[0], jsonStaticEntity.Matrix[4], jsonStaticEntity.Matrix[8], jsonStaticEntity.Matrix[12],

@@ -1,11 +1,9 @@
 package ui
 
 import (
-	"encoding/binary"
-
 	"github.com/mokiat/gomath/sprec"
-	"github.com/mokiat/lacking/data/buffer"
 	"github.com/mokiat/lacking/render"
+	"github.com/mokiat/lacking/util/blob"
 )
 
 const (
@@ -25,13 +23,13 @@ func newShapeMesh(vertexCount int) *shapeMesh {
 	data := make([]byte, vertexCount*shapeMeshVertexSize)
 	return &shapeMesh{
 		vertexData:    data,
-		vertexPlotter: buffer.NewPlotter(data, binary.LittleEndian),
+		vertexPlotter: blob.NewPlotter(data),
 	}
 }
 
 type shapeMesh struct {
 	vertexData    []byte
-	vertexPlotter *buffer.Plotter
+	vertexPlotter *blob.Plotter
 	vertexOffset  int
 	vertexBuffer  render.Buffer
 	vertexArray   render.VertexArray
@@ -98,13 +96,13 @@ func newContourMesh(vertexCount int) *contourMesh {
 	data := make([]byte, vertexCount*contourMeshVertexSize)
 	return &contourMesh{
 		vertexData:    data,
-		vertexPlotter: buffer.NewPlotter(data, binary.LittleEndian),
+		vertexPlotter: blob.NewPlotter(data),
 	}
 }
 
 type contourMesh struct {
 	vertexData    []byte
-	vertexPlotter *buffer.Plotter
+	vertexPlotter *blob.Plotter
 	vertexOffset  int
 	vertexBuffer  render.Buffer
 	vertexArray   render.VertexArray
@@ -166,10 +164,10 @@ func (m *contourMesh) Offset() int {
 func (m *contourMesh) Append(vertex contourVertex) {
 	m.vertexPlotter.PlotFloat32(vertex.position.X)
 	m.vertexPlotter.PlotFloat32(vertex.position.Y)
-	m.vertexPlotter.PlotByte(vertex.color.R)
-	m.vertexPlotter.PlotByte(vertex.color.G)
-	m.vertexPlotter.PlotByte(vertex.color.B)
-	m.vertexPlotter.PlotByte(vertex.color.A)
+	m.vertexPlotter.PlotUint8(vertex.color.R)
+	m.vertexPlotter.PlotUint8(vertex.color.G)
+	m.vertexPlotter.PlotUint8(vertex.color.B)
+	m.vertexPlotter.PlotUint8(vertex.color.A)
 	m.vertexOffset++
 }
 
@@ -182,13 +180,13 @@ func newTextMesh(vertexCount int) *textMesh {
 	data := make([]byte, vertexCount*textMeshVertexSize)
 	return &textMesh{
 		vertexData:    data,
-		vertexPlotter: buffer.NewPlotter(data, binary.LittleEndian),
+		vertexPlotter: blob.NewPlotter(data),
 	}
 }
 
 type textMesh struct {
 	vertexData    []byte
-	vertexPlotter *buffer.Plotter
+	vertexPlotter *blob.Plotter
 	vertexOffset  int
 	vertexBuffer  render.Buffer
 	vertexArray   render.VertexArray

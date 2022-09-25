@@ -2,32 +2,35 @@ package pack
 
 import (
 	"fmt"
+	"runtime/debug"
 
+	"github.com/mokiat/lacking/game/asset"
+	"github.com/mokiat/lacking/util/resource"
 	"golang.org/x/sync/errgroup"
-
-	gameasset "github.com/mokiat/lacking/game/asset"
 )
 
-func NewPacker(registry gameasset.Registry) *Packer {
+var ErrFocused = fmt.Errorf("focused pipelines")
+
+func NewPacker(registry asset.Registry) *Packer {
 	return &Packer{
 		registry: registry,
 	}
 }
 
 type Packer struct {
-	registry         gameasset.Registry
+	registry         asset.Registry
 	pipelines        []*Pipeline
 	focusedPipelines []*Pipeline
 }
 
 func (p *Packer) Pipeline(fn func(*Pipeline)) {
-	pipeline := newPipeline(len(p.pipelines), p.registry, FileResourceLocator{})
+	pipeline := newPipeline(len(p.pipelines), p.registry, resource.NewFileLocator("./"))
 	fn(pipeline)
 	p.pipelines = append(p.pipelines, pipeline)
 }
 
 func (p *Packer) FPipeline(fn func(*Pipeline)) {
-	pipeline := newPipeline(len(p.pipelines), p.registry, FileResourceLocator{})
+	pipeline := newPipeline(len(p.pipelines), p.registry, resource.NewFileLocator("./"))
 	fn(pipeline)
 	p.focusedPipelines = append(p.focusedPipelines, pipeline)
 }
@@ -40,7 +43,7 @@ func (p *Packer) RunSerial() error {
 		}
 	}
 	if focused {
-		return fmt.Errorf("focused pipelines")
+		return ErrFocused
 	}
 	return nil
 }
@@ -59,7 +62,7 @@ func (p *Packer) RunParallel() error {
 		return err
 	}
 	if focused {
-		return fmt.Errorf("focused pipelines")
+		return ErrFocused
 	}
 	return nil
 }
@@ -71,7 +74,13 @@ func (p *Packer) activePipelines() ([]*Pipeline, bool) {
 	return p.pipelines, false
 }
 
-func (p *Packer) runPipeline(pipeline *Pipeline) error {
+func (p *Packer) runPipeline(pipeline *Pipeline) (err error) {
+	defer func() {
+		if problem := recover(); problem != nil {
+			err = fmt.Errorf("pipeline %d paniced: %v", pipeline.id, string(debug.Stack()))
+			return
+		}
+	}()
 	if err := pipeline.execute(); err != nil {
 		return fmt.Errorf("pipeline %d error: %w", pipeline.id, err)
 	}

@@ -1,13 +1,14 @@
 package asset
 
+import "github.com/mokiat/gomath/dprec"
+
 type BodyDefinition struct {
 	Name                   string
-	IsStatic               bool
-	Mass                   float32
-	MomentOfInertia        [3][3]float32
-	RestitutionCoefficient float32
-	DragFactor             float32
-	AngularDragFactor      float32
+	Mass                   float64
+	MomentOfInertia        dprec.Mat3
+	RestitutionCoefficient float64
+	DragFactor             float64
+	AngularDragFactor      float64
 	CollisionBoxes         []CollisionBox
 	CollisionSpheres       []CollisionSphere
 	CollisionMeshes        []CollisionMesh
@@ -20,27 +21,27 @@ type BodyInstance struct {
 }
 
 type CollisionBox struct {
-	Translation [3]float32
-	Rotation    [4]float32
-	Width       float32
-	Height      float32
-	Lenght      float32
+	Translation dprec.Vec3
+	Rotation    dprec.Quat
+	Width       float64
+	Height      float64
+	Lenght      float64
 }
 
 type CollisionSphere struct {
-	Translation [3]float32
-	Rotation    [4]float32
-	Radius      float32
+	Translation dprec.Vec3
+	Rotation    dprec.Quat
+	Radius      float64
 }
 
 type CollisionMesh struct {
-	Translation [3]float32
-	Rotation    [4]float32
+	Translation dprec.Vec3
+	Rotation    dprec.Quat
 	Triangles   []CollisionTriangle
 }
 
 type CollisionTriangle struct {
-	A [3]float32
-	B [3]float32
-	C [3]float32
+	A dprec.Vec3
+	B dprec.Vec3
+	C dprec.Vec3
 }

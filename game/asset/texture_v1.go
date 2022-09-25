@@ -3,27 +3,27 @@ package asset
 import (
 	"io"
 
-	"github.com/mokiat/lacking/data/storage"
+	"github.com/mokiat/lacking/util/blob"
 )
 
 func (t *TwoDTexture) encodeV1(out io.Writer) error {
-	writer := storage.NewTypedWriter(out)
-	if err := writer.WriteUInt16(t.Width); err != nil {
+	writer := blob.NewTypedWriter(out)
+	if err := writer.WriteUint16(t.Width); err != nil {
 		return err
 	}
-	if err := writer.WriteUInt16(t.Height); err != nil {
+	if err := writer.WriteUint16(t.Height); err != nil {
 		return err
 	}
-	if err := writer.WriteUInt8(uint8(t.Wrapping)); err != nil {
+	if err := writer.WriteUint8(uint8(t.Wrapping)); err != nil {
 		return err
 	}
-	if err := writer.WriteUInt8(uint8(t.Filtering)); err != nil {
+	if err := writer.WriteUint8(uint8(t.Filtering)); err != nil {
 		return err
 	}
-	if err := writer.WriteUInt8(uint8(t.Format)); err != nil {
+	if err := writer.WriteUint8(uint8(t.Format)); err != nil {
 		return err
 	}
-	if err := writer.WriteUInt8(uint8(t.Flags)); err != nil {
+	if err := writer.WriteUint8(uint8(t.Flags)); err != nil {
 		return err
 	}
 	if err := writer.WriteByteBlock(t.Data); err != nil {
@@ -37,17 +37,17 @@ func (t *TwoDTexture) decodeV1(in io.Reader) error {
 }
 
 func (t *CubeTexture) encodeV1(out io.Writer) error {
-	writer := storage.NewTypedWriter(out)
-	if err := writer.WriteUInt16(t.Dimension); err != nil {
+	writer := blob.NewTypedWriter(out)
+	if err := writer.WriteUint16(t.Dimension); err != nil {
 		return err
 	}
-	if err := writer.WriteUInt8(uint8(t.Filtering)); err != nil {
+	if err := writer.WriteUint8(uint8(t.Filtering)); err != nil {
 		return err
 	}
-	if err := writer.WriteUInt8(uint8(t.Format)); err != nil {
+	if err := writer.WriteUint8(uint8(t.Format)); err != nil {
 		return err
 	}
-	if err := writer.WriteUInt8(uint8(t.Flags)); err != nil {
+	if err := writer.WriteUint8(uint8(t.Flags)); err != nil {
 		return err
 	}
 	if err := writer.WriteByteBlock(t.FrontSide.Data); err != nil {

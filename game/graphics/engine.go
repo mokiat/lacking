@@ -3,9 +3,9 @@ package graphics
 import (
 	"fmt"
 
-	"github.com/mokiat/gomath/sprec"
 	"github.com/mokiat/lacking/game/graphics/internal"
 	"github.com/mokiat/lacking/render"
+	"github.com/mokiat/lacking/util/blob"
 )
 
 func NewEngine(api render.API, shaders ShaderCollection) *Engine {
@@ -21,6 +21,8 @@ type Engine struct {
 	api      render.API
 	shaders  ShaderCollection
 	renderer *sceneRenderer
+
+	freeFragmentID int
 }
 
 // Create initializes this 3D engine.
@@ -32,6 +34,14 @@ func (e *Engine) Create() {
 // 3D engine.
 func (e *Engine) Destroy() {
 	e.renderer.Release()
+}
+
+// PBRShading returns the Shading implementaton for phisically-based rendering.
+func (e *Engine) PBRShading() Shading {
+	return &pbrShading{
+		api:     e.api,
+		shaders: e.shaders,
+	}
 }
 
 // CreateScene creates a new 3D Scene. Entities managed
@@ -73,57 +83,94 @@ func (e *Engine) CreateCubeTexture(definition CubeTextureDefinition) *CubeTextur
 	}))
 }
 
-// CreateMeshTemplate creates a new MeshTemplate using the specified
-// definition.
-func (e *Engine) CreateMeshTemplate(definition MeshTemplateDefinition) *MeshTemplate {
+// CreateMaterialDefinition creates a new MaterialDefinition from the specified
+// info object.
+func (e *Engine) CreateMaterialDefinition(info MaterialDefinitionInfo) *MaterialDefinition {
+	data := make([]byte, 4*4*len(info.Vectors))
+	plotter := blob.NewPlotter(data)
+	for _, vec := range info.Vectors {
+		plotter.PlotSPVec4(vec)
+	}
+	return &MaterialDefinition{
+		revision:        1,
+		backfaceCulling: info.BackfaceCulling,
+		alphaTesting:    info.AlphaTesting,
+		alphaBlending:   info.AlphaBlending,
+		alphaThreshold:  info.AlphaThreshold,
+		uniformData:     data,
+		twoDTextures:    info.TwoDTextures,
+		cubeTextures:    info.CubeTextures,
+		shading:         info.Shading,
+	}
+}
+
+// CreateMeshDefinition creates a new MeshDefinition using the specified
+// info object.
+func (e *Engine) CreateMeshDefinition(info MeshDefinitionInfo) *MeshDefinition {
 	vertexBuffer := e.api.CreateVertexBuffer(render.BufferInfo{
 		Dynamic: false,
-		Data:    definition.VertexData,
+		Data:    info.VertexData,
 	})
 	indexBuffer := e.api.CreateIndexBuffer(render.BufferInfo{
 		Dynamic: false,
-		Data:    definition.IndexData,
+		Data:    info.IndexData,
 	})
 
 	var attributes []render.VertexArrayAttributeInfo
-	if definition.VertexFormat.HasCoord {
+	if info.VertexFormat.HasCoord {
 		attributes = append(attributes, render.VertexArrayAttributeInfo{
 			Binding:  0,
 			Location: internal.CoordAttributeIndex,
 			Format:   render.VertexAttributeFormatRGB32F,
-			Offset:   definition.VertexFormat.CoordOffsetBytes,
+			Offset:   info.VertexFormat.CoordOffsetBytes,
 		})
 	}
-	if definition.VertexFormat.HasNormal {
+	if info.VertexFormat.HasNormal {
 		attributes = append(attributes, render.VertexArrayAttributeInfo{
 			Binding:  0,
 			Location: internal.NormalAttributeIndex,
-			Format:   render.VertexAttributeFormatRGB32F,
-			Offset:   definition.VertexFormat.NormalOffsetBytes,
+			Format:   render.VertexAttributeFormatRGB16F,
+			Offset:   info.VertexFormat.NormalOffsetBytes,
 		})
 	}
-	if definition.VertexFormat.HasTangent {
+	if info.VertexFormat.HasTangent {
 		attributes = append(attributes, render.VertexArrayAttributeInfo{
 			Binding:  0,
 			Location: internal.TangentAttributeIndex,
-			Format:   render.VertexAttributeFormatRGB32F,
-			Offset:   definition.VertexFormat.TangentOffsetBytes,
+			Format:   render.VertexAttributeFormatRGB16F,
+			Offset:   info.VertexFormat.TangentOffsetBytes,
 		})
 	}
-	if definition.VertexFormat.HasTexCoord {
+	if info.VertexFormat.HasTexCoord {
 		attributes = append(attributes, render.VertexArrayAttributeInfo{
 			Binding:  0,
 			Location: internal.TexCoordAttributeIndex,
-			Format:   render.VertexAttributeFormatRG32F,
-			Offset:   definition.VertexFormat.TexCoordOffsetBytes,
+			Format:   render.VertexAttributeFormatRG16F,
+			Offset:   info.VertexFormat.TexCoordOffsetBytes,
 		})
 	}
-	if definition.VertexFormat.HasColor {
+	if info.VertexFormat.HasColor {
 		attributes = append(attributes, render.VertexArrayAttributeInfo{
 			Binding:  0,
 			Location: internal.ColorAttributeIndex,
-			Format:   render.VertexAttributeFormatRGBA32F,
-			Offset:   definition.VertexFormat.ColorOffsetBytes,
+			Format:   render.VertexAttributeFormatRGBA8UN,
+			Offset:   info.VertexFormat.ColorOffsetBytes,
+		})
+	}
+	if info.VertexFormat.HasWeights {
+		attributes = append(attributes, render.VertexArrayAttributeInfo{
+			Binding:  0,
+			Location: internal.WeightsAttributeIndex,
+			Format:   render.VertexAttributeFormatRGBA8UN,
+			Offset:   info.VertexFormat.WeightsOffsetBytes,
+		})
+	}
+	if info.VertexFormat.HasJoints {
+		attributes = append(attributes, render.VertexArrayAttributeInfo{
+			Binding:  0,
+			Location: internal.JointsAttributeIndex,
+			Format:   render.VertexAttributeFormatRGBA8IU,
+			Offset:   info.VertexFormat.JointsOffsetBytes,
 		})
 	}
 
@@ -131,62 +178,75 @@ func (e *Engine) CreateMeshTemplate(definition MeshTemplateDefinition) *MeshTemp
 		Bindings: []render.VertexArrayBindingInfo{
 			{
 				VertexBuffer: vertexBuffer,
-				Stride:       definition.VertexFormat.CoordStrideBytes, // FIXME: Not accurate
+				Stride:       info.VertexFormat.CoordStrideBytes, // FIXME: Not accurate
 			},
 		},
 		Attributes:  attributes,
 		IndexBuffer: indexBuffer,
-		IndexFormat: e.convertIndexType(definition.IndexFormat),
+		IndexFormat: e.convertIndexType(info.IndexFormat),
 	})
 
-	result := &MeshTemplate{
-		vertexBuffer: vertexBuffer,
-		indexBuffer:  indexBuffer,
-		vertexArray:  vertexArray,
-		subMeshes:    make([]subMeshTemplate, len(definition.SubMeshes)),
+	result := &MeshDefinition{
+		vertexBuffer:         vertexBuffer,
+		indexBuffer:          indexBuffer,
+		vertexArray:          vertexArray,
+		fragments:            make([]meshFragmentDefinition, len(info.Fragments)),
+		boundingSphereRadius: info.BoundingSphereRadius,
+		needsArmature:        info.NeedsArmature(),
 	}
-	for i, subMesh := range definition.SubMeshes {
-		result.subMeshes[i] = subMeshTemplate{
-			material:         subMesh.Material,
-			topology:         e.convertPrimitive(subMesh.Primitive),
-			indexCount:       subMesh.IndexCount,
-			indexOffsetBytes: subMesh.IndexOffset,
+	for i, fragmentInfo := range info.Fragments {
+		materialDef := fragmentInfo.Material
+		fragmentDef := meshFragmentDefinition{
+			id:               e.freeFragmentID,
+			mesh:             result,
+			topology:         e.convertPrimitive(fragmentInfo.Primitive),
+			indexCount:       fragmentInfo.IndexCount,
+			indexOffsetBytes: fragmentInfo.IndexOffset,
+			material: &Material{
+				definitionRevision: materialDef.revision,
+				definition:         materialDef,
+			},
 		}
+		fragmentDef.rebuildPipelines()
+		result.fragments[i] = fragmentDef
+		e.freeFragmentID++
 	}
 	return result
 }
 
-// CreatePBRMaterial creates a new Material that is based on PBR
+// CreatePBRMaterialDefinition creates a new Material that is based on PBR
 // definition.
-func (e *Engine) CreatePBRMaterial(definition PBRMaterialDefinition) *Material {
+// TODO: Remove this and create a PBR builder over MaterialDefinitionInfo.
+func (e *Engine) CreatePBRMaterialDefinition(info PBRMaterialInfo) *MaterialDefinition {
 	extractTwoDTexture := func(src *TwoDTexture) render.Texture {
 		if src == nil {
 			return nil
 		}
 		return src.texture
 	}
-	shaderSet := e.shaders.PBRShaderSet(definition)
-	return &Material{
-		backfaceCulling: definition.BackfaceCulling,
-		alphaBlending:   definition.AlphaBlending,
-		alphaTesting:    definition.AlphaTesting,
-		alphaThreshold:  definition.AlphaThreshold,
+
+	uniformData := make([]byte, 2*4*4)
+	plotter := blob.NewPlotter(uniformData)
+	plotter.PlotSPVec4(info.AlbedoColor)
+	plotter.PlotFloat32(info.AlphaThreshold)
+	plotter.PlotFloat32(info.NormalScale)
+	plotter.PlotFloat32(info.Metallic)
+	plotter.PlotFloat32(info.Roughness)
+
+	return &MaterialDefinition{
+		revision:        1,
+		backfaceCulling: info.BackfaceCulling,
+		alphaBlending:   info.AlphaBlending,
+		alphaTesting:    info.AlphaTesting,
+		alphaThreshold:  info.AlphaThreshold,
+		uniformData:     uniformData,
 		twoDTextures: []render.Texture{
-			extractTwoDTexture(definition.AlbedoTexture),
-			extractTwoDTexture(definition.NormalTexture),
-			extractTwoDTexture(definition.MetalnessTexture),
-			extractTwoDTexture(definition.RoughnessTexture),
+			extractTwoDTexture(info.AlbedoTexture),
+			extractTwoDTexture(info.NormalTexture),
+			extractTwoDTexture(info.MetallicRoughnessTexture),
 		},
 		cubeTextures: []render.Texture{},
-		vectors: []sprec.Vec4{
-			definition.AlbedoColor,
-			sprec.NewVec4(definition.NormalScale, definition.Metalness, definition.Roughness, 0.0),
-		},
-		geometryPresentation: internal.NewGeometryPresentation(e.api,
-			shaderSet.VertexShader(),
-			shaderSet.FragmentShader(),
-		),
-		shadowPresentation: nil, // TODO
+		shading:      e.PBRShading(),
 	}
 }
 
@@ -260,25 +320,3 @@ func (e *Engine) convertIndexType(indexFormat IndexFormat) render.IndexFormat {
 		panic(fmt.Errorf("unknown index format: %d", indexFormat))
 	}
 }
-
-type ShaderCollection struct {
-	ExposureSet         func() ShaderSet
-	PostprocessingSet   func(mapping ToneMapping) ShaderSet
-	DirectionalLightSet func() ShaderSet
-	AmbientLightSet     func() ShaderSet
-	SkyboxSet           func() ShaderSet
-	SkycolorSet         func() ShaderSet
-	PBRShaderSet        func(definition PBRMaterialDefinition) ShaderSet
-}
-
-type ShaderSet struct {
-	VertexShader   func() string
-	FragmentShader func() string
-}
-
-type ToneMapping string
-
-const (
-	ReinhardToneMapping    ToneMapping = "reinhard"
-	ExponentialToneMapping ToneMapping = "exponential"
-)

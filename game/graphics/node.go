@@ -1,71 +1,53 @@
 package graphics
 
-import "github.com/mokiat/gomath/sprec"
+import (
+	"github.com/mokiat/gomath/dprec"
+	"github.com/mokiat/gomath/sprec"
+	"github.com/mokiat/lacking/util/blob"
+)
 
 func newNode() *Node {
+	matrixData := make([]byte, 64)
+	plotter := blob.NewPlotter(matrixData)
+	plotter.PlotSPMat4(sprec.IdentityMat4())
 	return &Node{
-		position: sprec.ZeroVec3(),
-		rotation: sprec.IdentityQuat(),
-		scale:    sprec.NewVec3(1.0, 1.0, 1.0),
+		matrixData: matrixData,
 	}
 }
 
 // Node represents a positioning of some entity in
 // the 3D scene.
 type Node struct {
-	position sprec.Vec3
-	rotation sprec.Quat
-	scale    sprec.Vec3
+	matrixData []byte
 }
 
-// Position returns this entity's position.
-func (n *Node) Position() sprec.Vec3 {
-	return n.position
+// SetMatrix changes the model matrix of this node.
+// Keep in mind that this is a somewhat slow operation and should only
+// be performed only once per frame. This is also the reason why there is
+// no getter for this method. Clients are expected to track matrices outside
+// this type if needed.
+func (n *Node) SetMatrix(matrix dprec.Mat4) {
+	plotter := blob.NewPlotter(n.matrixData)
+	// plotter.PlotMat4(dtos.Mat4(matrix))
+	plotter.PlotFloat32(float32(matrix.M11))
+	plotter.PlotFloat32(float32(matrix.M21))
+	plotter.PlotFloat32(float32(matrix.M31))
+	plotter.Skip(4) // skip matrix.M41 (assume unchanged)
+	plotter.PlotFloat32(float32(matrix.M12))
+	plotter.PlotFloat32(float32(matrix.M22))
+	plotter.PlotFloat32(float32(matrix.M32))
+	plotter.Skip(4) // skip matrix.M42 (assume unchanged)
+	plotter.PlotFloat32(float32(matrix.M13))
+	plotter.PlotFloat32(float32(matrix.M23))
+	plotter.PlotFloat32(float32(matrix.M33))
+	plotter.Skip(4) // skip matrix.M43 (assume unchanged)
+	plotter.PlotFloat32(float32(matrix.M14))
+	plotter.PlotFloat32(float32(matrix.M24))
+	plotter.PlotFloat32(float32(matrix.M34))
+	plotter.Skip(4) // skip matrix.M44 (assume unchanged)
 }
 
-// SetPosition changes this entity's position.
-func (n *Node) SetPosition(position sprec.Vec3) {
-	n.position = position
-}
-
-// Rotation returns this entity's rotation.
-func (n *Node) Rotation() sprec.Quat {
-	return n.rotation
-}
-
-// SetRotation changes this entity's rotation.
-func (n *Node) SetRotation(rotation sprec.Quat) {
-	n.rotation = sprec.UnitQuat(rotation)
-}
-
-// Scale returns this entity's scale.
-func (n *Node) Scale() sprec.Vec3 {
-	return n.scale
-}
-
-// SetScale changes this entity's scale.
-func (n *Node) SetScale(scale sprec.Vec3) {
-	n.scale = scale
-}
-
-// Matrix returns the matrix transformation
-// of this node.
-func (n *Node) Matrix() sprec.Mat4 {
-	return sprec.Mat4MultiProd(
-		sprec.TranslationMat4(
-			n.position.X,
-			n.position.Y,
-			n.position.Z,
-		),
-		sprec.OrientationMat4(
-			n.rotation.OrientationX(),
-			n.rotation.OrientationY(),
-			n.rotation.OrientationZ(),
-		),
-		sprec.ScaleMat4(
-			n.scale.X,
-			n.scale.Y,
-			n.scale.Z,
-		),
-	)
+func (n *Node) gfxMatrix() sprec.Mat4 {
+	scanner := blob.NewScanner(n.matrixData)
+	return scanner.ScanSPMat4()
 }

@@ -5,27 +5,27 @@ type GamepadState struct {
 
 	// LeftStickX indicates the amount that the left stick has been
 	// moved along the X axis.
-	LeftStickX float32
+	LeftStickX float64
 
 	// LeftStickY indicates the amount that the left stick has been
 	// moved along the Y axis.
-	LeftStickY float32
+	LeftStickY float64
 
 	// RightStickX indicates the amount that the right stick has been
 	// moved along the X axis.
-	RightStickX float32
+	RightStickX float64
 
 	// RightStickY indicates the amount that the right stick has been
 	// moved along the Y axis.
-	RightStickY float32
+	RightStickY float64
 
 	// LeftTrigger indicates the amount that the left trigger has been
 	// pressed.
-	LeftTrigger float32
+	LeftTrigger float64
 
 	// RightTrigger indicates the amount that the right trigger has been
 	// pressed.
-	RightTrigger float32
+	RightTrigger float64
 
 	// LeftBumper indicates whether the left bumper has been pressed.
 	LeftBumper bool
@@ -44,4 +44,16 @@ type GamepadState struct {
 
 	// CircleButton indicates whether the circle button has been pressed.
 	CircleButton bool
+
+	// DpadUpButton indicates whether the d-pad up button has been pressed.
+	DpadUpButton bool
+
+	// DpadDownButton indicates whether the d-pad down button has been pressed.
+	DpadDownButton bool
+
+	// DpadLeftButton indicates whether the d-pad left button has been pressed.
+	DpadLeftButton bool
+
+	// DpadRightButton indicates whether the d-pad right button has been pressed.
+	DpadRightButton bool
 }

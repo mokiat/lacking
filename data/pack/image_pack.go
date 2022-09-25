@@ -4,10 +4,9 @@ import (
 	"fmt"
 	"math"
 
-	"github.com/x448/float16"
-
 	"github.com/mokiat/gomath/dprec"
-	"github.com/mokiat/lacking/data"
+	"github.com/mokiat/lacking/util/blob"
+	"github.com/x448/float16"
 )
 
 type Color struct {
@@ -122,7 +121,7 @@ func (i *Image) RGBA8Data() []byte {
 }
 
 func (i *Image) RGBA32FData() []byte {
-	data := data.Buffer(make([]byte, 4*4*i.Width*i.Height))
+	data := blob.Buffer(make([]byte, 4*4*i.Width*i.Height))
 	offset := 0
 	for y := 0; y < i.Height; y++ {
 		for x := 0; x < i.Width; x++ {
@@ -211,16 +210,16 @@ func (t *CubeImage) RGBA8Data(side CubeSide) []byte {
 }
 
 func (t *CubeImage) RGBA16FData(side CubeSide) []byte {
-	data := data.Buffer(make([]byte, 2*4*t.Dimension*t.Dimension))
+	data := blob.Buffer(make([]byte, 2*4*t.Dimension*t.Dimension))
 	offset := 0
 	texSide := t.Sides[side]
 	for y := 0; y < t.Dimension; y++ {
 		for x := 0; x < t.Dimension; x++ {
 			texel := texSide.Texel(x, t.Dimension-y-1)
-			data.SetUInt16(offset+0, uint16(float16.Fromfloat32(float32(texel.R))))
-			data.SetUInt16(offset+2, uint16(float16.Fromfloat32(float32(texel.G))))
-			data.SetUInt16(offset+4, uint16(float16.Fromfloat32(float32(texel.B))))
-			data.SetUInt16(offset+6, uint16(float16.Fromfloat32(float32(texel.A))))
+			data.SetUint16(offset+0, uint16(float16.Fromfloat32(float32(texel.R))))
+			data.SetUint16(offset+2, uint16(float16.Fromfloat32(float32(texel.G))))
+			data.SetUint16(offset+4, uint16(float16.Fromfloat32(float32(texel.B))))
+			data.SetUint16(offset+6, uint16(float16.Fromfloat32(float32(texel.A))))
 			offset += 8
 		}
 	}
@@ -228,7 +227,7 @@ func (t *CubeImage) RGBA16FData(side CubeSide) []byte {
 }
 
 func (t *CubeImage) RGBA32FData(side CubeSide) []byte {
-	data := data.Buffer(make([]byte, 4*4*t.Dimension*t.Dimension))
+	data := blob.Buffer(make([]byte, 4*4*t.Dimension*t.Dimension))
 	offset := 0
 	texSide := t.Sides[side]
 	for y := 0; y < t.Dimension; y++ {

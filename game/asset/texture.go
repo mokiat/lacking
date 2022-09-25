@@ -5,6 +5,8 @@ import (
 	"io"
 )
 
+const UnspecifiedIndex = int32(-1)
+
 const (
 	WrapModeRepeat WrapMode = iota
 	WrapModeMirroredRepeat
@@ -140,4 +142,13 @@ func (t *CubeTexture) decodeVersionFrom(in io.Reader, version uint16) error {
 	default:
 		panic(fmt.Errorf("unknown version %d", version))
 	}
+}
+
+type TextureRef struct {
+	TextureIndex int32
+	TextureID    string
+}
+
+func (r TextureRef) Valid() bool {
+	return r.TextureID != "" || r.TextureIndex >= 0
 }

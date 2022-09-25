@@ -81,9 +81,6 @@ func (e *Element) SetID(id string) {
 // Parent returns the parent Element in the hierarchy. If this is
 // the top-most Element then nil is returned.
 func (e *Element) Parent() *Element {
-	if e.parent == nil {
-		return nil
-	}
 	return e.parent
 }
 
@@ -91,9 +88,6 @@ func (e *Element) Parent() *Element {
 // this Element. If this Element does not have any children
 // then this method returns nil.
 func (e *Element) FirstChild() *Element {
-	if e.firstChild == nil {
-		return nil
-	}
 	return e.firstChild
 }
 
@@ -101,9 +95,6 @@ func (e *Element) FirstChild() *Element {
 // this Element. If this Element does not have any children
 // then this method returns nil.
 func (e *Element) LastChild() *Element {
-	if e.lastChild == nil {
-		return nil
-	}
 	return e.lastChild
 }
 
@@ -111,9 +102,6 @@ func (e *Element) LastChild() *Element {
 // If this Element is the left-most child of its parent or does
 // not have a parent then this method returns nil.
 func (e *Element) LeftSibling() *Element {
-	if e.leftSibling == nil {
-		return nil
-	}
 	return e.leftSibling
 }
 
@@ -121,9 +109,6 @@ func (e *Element) LeftSibling() *Element {
 // If this Element is the right-most child of its parent or does
 // not have a parent then this method returns nil.
 func (e *Element) RightSibling() *Element {
-	if e.rightSibling == nil {
-		return nil
-	}
 	return e.rightSibling
 }
 

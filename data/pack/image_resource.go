@@ -5,21 +5,23 @@ import (
 	"image"
 	_ "image/jpeg"
 	_ "image/png"
+	"io"
 
 	"github.com/mdouchement/hdr"
 	_ "github.com/mdouchement/hdr/codec/rgbe"
 	"github.com/mokiat/goexr/exr"
+	"github.com/mokiat/lacking/util/resource"
 	_ "golang.org/x/image/tiff"
 )
 
 type OpenImageResourceAction struct {
-	locator ResourceLocator
+	locator resource.ReadLocator
 	uri     string
 	image   *Image
 }
 
 func (a *OpenImageResourceAction) Describe() string {
-	return fmt.Sprintf("open_image_resource(uri: %q)", a.uri)
+	return fmt.Sprintf("open_image_resource(%q)", a.uri)
 }
 
 func (a *OpenImageResourceAction) Image() *Image {
@@ -30,7 +32,7 @@ func (a *OpenImageResourceAction) Image() *Image {
 }
 
 func (a *OpenImageResourceAction) Run() error {
-	in, err := a.locator.Open(a.uri)
+	in, err := a.locator.ReadResource(a.uri)
 	if err != nil {
 		return fmt.Errorf("failed to open image resource: %w", err)
 	}
@@ -43,6 +45,14 @@ func (a *OpenImageResourceAction) Run() error {
 
 	a.image = BuildImageResource(img)
 	return nil
+}
+
+func ParseImageResource(in io.Reader) (*Image, error) {
+	img, _, err := image.Decode(in)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode image: %w", err)
+	}
+	return BuildImageResource(img), nil
 }
 
 func BuildImageResource(img image.Image) *Image {

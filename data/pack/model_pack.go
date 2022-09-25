@@ -1,44 +1,55 @@
 package pack
 
-import "github.com/mokiat/gomath/sprec"
+import (
+	"github.com/mokiat/gomath/dprec"
+	"github.com/mokiat/gomath/sprec"
+)
 
 type ModelProvider interface {
 	Model() *Model
 }
 
 type Model struct {
-	RootNodes []*Node
-	Meshes    []*Mesh
+	RootNodes       []*Node
+	Animations      []*Animation
+	Armatures       []*Armature
+	Materials       []*Material
+	MeshDefinitions []*MeshDefinition
+	MeshInstances   []*MeshInstance
+	Textures        []*Image
 }
 
 type Node struct {
 	Name        string
-	Translation sprec.Vec3
-	Scale       sprec.Vec3
-	Rotation    sprec.Quat
-	Mesh        *Mesh
+	Translation dprec.Vec3
+	Scale       dprec.Vec3
+	Rotation    dprec.Quat
 	Children    []*Node
 }
 
-func (n *Node) Matrix() sprec.Mat4 {
-	return sprec.Mat4MultiProd(
-		sprec.TranslationMat4(n.Translation.X, n.Translation.Y, n.Translation.Z),
-		sprec.TransformationMat4(
-			n.Rotation.OrientationX(),
-			n.Rotation.OrientationY(),
-			n.Rotation.OrientationZ(),
-			sprec.ZeroVec3(),
-		),
-		sprec.ScaleMat4(n.Scale.X, n.Scale.Y, n.Scale.Z),
-	)
-}
-
-type Mesh struct {
+type MeshDefinition struct {
 	Name         string
 	VertexLayout VertexLayout
 	Vertices     []Vertex
 	Indices      []int
-	SubMeshes    []SubMesh
+	Fragments    []MeshFragment
+}
+
+type Armature struct {
+	Joints []Joint
+}
+
+type Joint struct {
+	Node              *Node
+	InverseBindMatrix sprec.Mat4
+}
+
+type MeshInstance struct {
+	Name         string
+	Node         *Node
+	Armature     *Armature
+	Definition   *MeshDefinition
+	HasCollision bool
 }
 
 type VertexLayout struct {
@@ -47,6 +58,8 @@ type VertexLayout struct {
 	HasTangents  bool
 	HasTexCoords bool
 	HasColors    bool
+	HasWeights   bool
+	HasJoints    bool
 }
 
 type Vertex struct {
@@ -55,13 +68,15 @@ type Vertex struct {
 	Tangent  sprec.Vec3
 	TexCoord sprec.Vec2
 	Color    sprec.Vec4
+	Weights  sprec.Vec4
+	Joints   [4]uint8
 }
 
-type SubMesh struct {
+type MeshFragment struct {
 	Primitive   Primitive
 	IndexOffset int
 	IndexCount  int
-	Material    Material
+	Material    *Material
 }
 
 type Primitive int
@@ -77,16 +92,50 @@ const (
 )
 
 type Material struct {
-	Type             string
-	BackfaceCulling  bool
-	AlphaTesting     bool
-	AlphaThreshold   float32
-	Metalness        float32
-	MetalnessTexture string
-	Roughness        float32
-	RoughnessTexture string
-	Color            sprec.Vec4
-	ColorTexture     string
-	NormalScale      float32
-	NormalTexture    string
+	Name                     string
+	BackfaceCulling          bool
+	AlphaTesting             bool
+	AlphaThreshold           float32
+	Blending                 bool
+	Color                    sprec.Vec4
+	ColorTexture             *TextureRef
+	Metallic                 float32
+	Roughness                float32
+	MetallicRoughnessTexture *TextureRef
+	NormalScale              float32
+	NormalTexture            *TextureRef
+}
+
+type TextureRef struct {
+	TextureID    string
+	TextureIndex int
+}
+
+type Animation struct {
+	Name      string
+	StartTime float64
+	EndTime   float64
+	Bindings  []*AnimationBinding
+}
+
+type AnimationBinding struct {
+	Node                 *Node
+	TranslationKeyframes []TranslationKeyframe
+	RotationKeyframes    []RotationKeyframe
+	ScaleKeyframes       []ScaleKeyframe
+}
+
+type TranslationKeyframe struct {
+	Timestamp   float64
+	Translation dprec.Vec3
+}
+
+type RotationKeyframe struct {
+	Timestamp float64
+	Rotation  dprec.Quat
+}
+
+type ScaleKeyframe struct {
+	Timestamp float64
+	Scale     dprec.Vec3
 }

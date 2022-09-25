@@ -3,6 +3,9 @@ package graphics
 import (
 	"github.com/mokiat/gomath/sprec"
 	"github.com/mokiat/lacking/render"
+	"github.com/mokiat/lacking/util/blob"
+	"github.com/mokiat/lacking/util/shape"
+	"github.com/mokiat/lacking/util/spatial"
 )
 
 func newScene(renderer *sceneRenderer) *Scene {
@@ -10,6 +13,8 @@ func newScene(renderer *sceneRenderer) *Scene {
 		renderer: renderer,
 
 		sky: newSky(),
+
+		meshOctree: spatial.NewOctree[*Mesh](32000.0, 9, 2_000_000),
 	}
 }
 
@@ -20,6 +25,7 @@ type Scene struct {
 
 	sky *Sky
 
+	meshOctree *spatial.Octree[*Mesh]
 	firstMesh  *Mesh
 	lastMesh   *Mesh
 	cachedMesh *Mesh
@@ -27,6 +33,16 @@ type Scene struct {
 	firstLight  *Light
 	lastLight   *Light
 	cachedLight *Light
+
+	activeCamera *Camera
+}
+
+func (s *Scene) ActiveCamera() *Camera {
+	return s.activeCamera
+}
+
+func (s *Scene) SetActiveCamera(camera *Camera) {
+	s.activeCamera = camera
 }
 
 // Sky returns this scene's sky object.
@@ -39,7 +55,11 @@ func (s *Scene) Sky() *Sky {
 // CreateCamera creates a new camera object to be
 // used with this scene.
 func (s *Scene) CreateCamera() *Camera {
-	return newCamera(s)
+	result := newCamera(s)
+	if s.activeCamera == nil {
+		s.activeCamera = result
+	}
+	return result
 }
 
 // CreateDirectionalLight creates a new directional light object to be
@@ -82,9 +102,29 @@ func (s *Scene) CreateAmbientLight() *Light {
 	return light
 }
 
+// CreatePointLight creates a new ambient light object to be used
+// within this scene.
+func (s *Scene) CreatePointLight() *Light {
+	var light *Light
+	if s.cachedLight != nil {
+		light = s.cachedLight
+		s.cachedLight = s.cachedLight.next
+	} else {
+		light = &Light{}
+	}
+	light.mode = LightModePoint
+	light.Node = *newNode()
+	light.scene = s
+	light.prev = nil
+	light.next = nil
+	light.intensity = sprec.NewVec3(1.0, 1.0, 1.0)
+	s.attachLight(light)
+	return light
+}
+
 // CreateMesh creates a new mesh instance from the specified
 // template and places it in the scene.
-func (s *Scene) CreateMesh(template *MeshTemplate) *Mesh {
+func (s *Scene) CreateMesh(info MeshInfo) *Mesh {
 	var mesh *Mesh
 	if s.cachedMesh != nil {
 		mesh = s.cachedMesh
@@ -92,25 +132,46 @@ func (s *Scene) CreateMesh(template *MeshTemplate) *Mesh {
 	} else {
 		mesh = &Mesh{}
 	}
+
+	definition := info.Definition
 	mesh.Node = *newNode()
+	mesh.item = s.meshOctree.CreateItem(mesh)
+	mesh.item.SetRadius(definition.boundingSphereRadius)
 	mesh.scene = s
-	mesh.template = template
 	mesh.prev = nil
 	mesh.next = nil
+	mesh.definition = definition
+	mesh.armature = info.Armature
 	s.attachMesh(mesh)
 	return mesh
 }
 
-// Render draws this scene to the specified viewport
-// looking through the specified camera.
-func (s *Scene) Render(viewport Viewport, camera *Camera) {
-	s.renderer.Render(s.renderer.api.DefaultFramebuffer(), viewport, s, camera)
+func (s *Scene) CreateArmature(info ArmatureInfo) *Armature {
+	boneCount := len(info.InverseMatrices)
+	return &Armature{
+		inverseMatrices:   info.InverseMatrices,
+		uniformBufferData: make(blob.Buffer, boneCount*64),
+	}
 }
 
 // Render draws this scene to the specified viewport
 // looking through the specified camera.
-func (s *Scene) RenderFramebuffer(framebuffer render.Framebuffer, viewport Viewport, camera *Camera) {
-	s.renderer.Render(framebuffer, viewport, s, camera)
+func (s *Scene) Render(viewport Viewport) {
+	if s.activeCamera != nil {
+		s.renderer.Render(s.renderer.api.DefaultFramebuffer(), viewport, s, s.activeCamera)
+	}
+}
+
+func (s *Scene) Ray(viewport Viewport, camera *Camera, x, y int) shape.StaticLine {
+	return s.renderer.Ray(viewport, camera, x, y)
+}
+
+// Render draws this scene to the specified viewport
+// looking through the specified camera.
+func (s *Scene) RenderFramebuffer(framebuffer render.Framebuffer, viewport Viewport) {
+	if s.activeCamera != nil {
+		s.renderer.Render(framebuffer, viewport, s, s.activeCamera)
+	}
 }
 
 // Delete removes this scene and releases all

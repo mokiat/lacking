@@ -1,7 +1,7 @@
 package solver
 
 import (
-	"github.com/mokiat/gomath/sprec"
+	"github.com/mokiat/gomath/dprec"
 	"github.com/mokiat/lacking/game/physics"
 )
 
@@ -11,11 +11,11 @@ var _ physics.DBConstraintSolver = (*MatchRotation)(nil)
 func NewMatchRotation() *MatchRotation {
 	return &MatchRotation{
 		xAxis: NewMatchAxis().
-			SetPrimaryAxis(sprec.BasisXVec3()).
-			SetSecondaryAxis(sprec.BasisXVec3()),
+			SetPrimaryAxis(dprec.BasisXVec3()).
+			SetSecondaryAxis(dprec.BasisXVec3()),
 		yAxis: NewMatchAxis().
-			SetPrimaryAxis(sprec.BasisYVec3()).
-			SetSecondaryAxis(sprec.BasisYVec3()),
+			SetPrimaryAxis(dprec.BasisYVec3()).
+			SetSecondaryAxis(dprec.BasisYVec3()),
 	}
 }
 
@@ -37,12 +37,12 @@ func (r *MatchRotation) CalculateImpulses(ctx physics.DBSolverContext) physics.D
 	ySolution := r.yAxis.CalculateImpulses(ctx)
 	return physics.DBImpulseSolution{
 		Primary: physics.SBImpulseSolution{
-			Impulse:        sprec.Vec3Sum(xSolution.Primary.Impulse, ySolution.Primary.Impulse),
-			AngularImpulse: sprec.Vec3Sum(xSolution.Primary.AngularImpulse, ySolution.Primary.AngularImpulse),
+			Impulse:        dprec.Vec3Sum(xSolution.Primary.Impulse, ySolution.Primary.Impulse),
+			AngularImpulse: dprec.Vec3Sum(xSolution.Primary.AngularImpulse, ySolution.Primary.AngularImpulse),
 		},
 		Secondary: physics.SBImpulseSolution{
-			Impulse:        sprec.Vec3Sum(xSolution.Secondary.Impulse, ySolution.Secondary.Impulse),
-			AngularImpulse: sprec.Vec3Sum(xSolution.Secondary.AngularImpulse, ySolution.Secondary.AngularImpulse),
+			Impulse:        dprec.Vec3Sum(xSolution.Secondary.Impulse, ySolution.Secondary.Impulse),
+			AngularImpulse: dprec.Vec3Sum(xSolution.Secondary.AngularImpulse, ySolution.Secondary.AngularImpulse),
 		},
 	}
 }
@@ -52,12 +52,12 @@ func (r *MatchRotation) CalculateNudges(ctx physics.DBSolverContext) physics.DBN
 	ySolution := r.yAxis.CalculateNudges(ctx)
 	return physics.DBNudgeSolution{
 		Primary: physics.SBNudgeSolution{
-			Nudge:        sprec.Vec3Sum(xSolution.Primary.Nudge, ySolution.Primary.Nudge),
-			AngularNudge: sprec.Vec3Sum(xSolution.Primary.AngularNudge, ySolution.Primary.AngularNudge),
+			Nudge:        dprec.Vec3Sum(xSolution.Primary.Nudge, ySolution.Primary.Nudge),
+			AngularNudge: dprec.Vec3Sum(xSolution.Primary.AngularNudge, ySolution.Primary.AngularNudge),
 		},
 		Secondary: physics.SBNudgeSolution{
-			Nudge:        sprec.Vec3Sum(xSolution.Secondary.Nudge, ySolution.Secondary.Nudge),
-			AngularNudge: sprec.Vec3Sum(xSolution.Secondary.AngularNudge, ySolution.Secondary.AngularNudge),
+			Nudge:        dprec.Vec3Sum(xSolution.Secondary.Nudge, ySolution.Secondary.Nudge),
+			AngularNudge: dprec.Vec3Sum(xSolution.Secondary.AngularNudge, ySolution.Secondary.AngularNudge),
 		},
 	}
 }

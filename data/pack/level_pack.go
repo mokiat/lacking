@@ -10,9 +10,10 @@ type Level struct {
 	SkyboxTexture            string
 	AmbientReflectionTexture string
 	AmbientRefractionTexture string
-	StaticEntities           []LevelEntity
-	StaticMeshes             []Mesh
-	CollisionMeshes          []LevelCollisionMesh
+	Materials                []*Material
+	StaticEntities           []*LevelEntity
+	StaticMeshes             []*MeshDefinition
+	CollisionMeshes          []*LevelCollisionMesh
 }
 
 type LevelEntity struct {

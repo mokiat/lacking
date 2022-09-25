@@ -3,171 +3,424 @@ package pack
 import (
 	"fmt"
 
-	"github.com/mokiat/lacking/data"
-	"github.com/mokiat/lacking/data/asset"
-	gameasset "github.com/mokiat/lacking/game/asset"
+	"github.com/mokiat/gomath/dprec"
+	"github.com/mokiat/gomath/stod"
+	"github.com/mokiat/lacking/game/asset"
+	"github.com/mokiat/lacking/log"
+	"github.com/mokiat/lacking/util/blob"
+	"github.com/x448/float16"
 )
 
+type SaveModelAssetOption func(a *SaveModelAssetAction)
+
+func WithCollisionMesh(collisionMesh bool) SaveModelAssetOption {
+	return func(a *SaveModelAssetAction) {
+		a.collisionMesh = collisionMesh
+	}
+}
+
 type SaveModelAssetAction struct {
-	registry      gameasset.Registry
-	id            string
+	resource      asset.Resource
 	modelProvider ModelProvider
+	collisionMesh bool
 }
 
 func (a *SaveModelAssetAction) Describe() string {
-	return fmt.Sprintf("save_model_asset(id: %q)", a.id)
+	return fmt.Sprintf("save_model_asset(%q)", a.resource.Name())
 }
 
 func (a *SaveModelAssetAction) Run() error {
-	model := a.modelProvider.Model()
-
-	nodeMapping := make(map[*Node]int)
-	meshMapping := make(map[*Mesh]int)
-
-	modelAsset := &asset.Model{}
-
-	// build meshes
-	modelAsset.Meshes = make([]asset.Mesh, len(model.Meshes))
-	for i, mesh := range model.Meshes {
-		meshMapping[mesh] = i
-		modelAsset.Meshes[i] = meshToAssetMesh(mesh)
-	}
-
-	// build nodes
-	var visitNode func(parent, node *Node)
-	visitNode = func(parent, node *Node) {
-		nodeMapping[node] = len(nodeMapping)
-
-		nodeAsset := asset.Node{
-			Name:   node.Name,
-			Matrix: node.Matrix().ColumnMajorArray(),
-		}
-		if parentIndex, ok := nodeMapping[parent]; ok {
-			nodeAsset.ParentIndex = int16(parentIndex)
-		} else {
-			nodeAsset.ParentIndex = int16(-1)
-		}
-		if meshIndex, ok := meshMapping[node.Mesh]; ok {
-			nodeAsset.MeshIndex = int16(meshIndex)
-		} else {
-			nodeAsset.MeshIndex = int16(-1)
-		}
-
-		modelAsset.Nodes = append(modelAsset.Nodes, nodeAsset)
-
-		for _, child := range node.Children {
-			visitNode(node, child)
-		}
-	}
-	for _, node := range model.RootNodes {
-		visitNode(nil, node)
-	}
-
-	resource := a.registry.ResourceByID(a.id)
-	if resource == nil {
-		resource = a.registry.CreateIDResource(a.id, "model", a.id)
-	}
-	if err := resource.WriteContent(modelAsset); err != nil {
+	conv := newConverter(a.collisionMesh)
+	modelAsset := conv.BuildModel(a.modelProvider.Model())
+	if err := a.resource.WriteContent(modelAsset); err != nil {
 		return fmt.Errorf("failed to write asset: %w", err)
-	}
-	if err := a.registry.Save(); err != nil {
-		return fmt.Errorf("error saving resources: %w", err)
 	}
 	return nil
 }
 
-func meshToAssetMesh(mesh *Mesh) asset.Mesh {
+func newConverter(collisionMeshes bool) *converter {
+	return &converter{
+		collisionMeshes:                       collisionMeshes,
+		assetNodes:                            make([]asset.Node, 0),
+		assetNodeIndexFromNode:                make(map[*Node]int),
+		assetMaterialIndexFromMaterial:        make(map[*Material]int),
+		assetArmatureIndexFromArmature:        make(map[*Armature]int),
+		assetMeshDefinitionFromMeshDefinition: make(map[*MeshDefinition]int),
+	}
+}
+
+type converter struct {
+	collisionMeshes                       bool
+	assetNodes                            []asset.Node
+	assetNodeIndexFromNode                map[*Node]int
+	assetMaterialIndexFromMaterial        map[*Material]int
+	assetArmatureIndexFromArmature        map[*Armature]int
+	assetMeshDefinitionFromMeshDefinition map[*MeshDefinition]int
+}
+
+func (c *converter) BuildModel(model *Model) *asset.Model {
+	for _, node := range model.RootNodes {
+		c.BuildNode(-1, node)
+	}
+
 	var (
-		coordOffset    int16
-		normalOffset   int16
-		tangentOffset  int16
-		texCoordOffset int16
-		colorOffset    int16
-		stride         int16
+		assetTextures = make([]asset.TwoDTexture, len(model.Textures))
+	)
+	for i, texture := range model.Textures {
+		assetTextures[i] = *BuildTwoDTextureAsset(texture)
+	}
+
+	var (
+		assetAnimations = make([]asset.Animation, len(model.Animations))
+	)
+	for i, animation := range model.Animations {
+		assetAnimations[i] = c.BuildAnimation(animation)
+	}
+
+	var (
+		assetMaterials = make([]asset.Material, len(model.Materials))
+	)
+	for i, material := range model.Materials {
+		assetMaterials[i] = c.BuildMaterial(material)
+		c.assetMaterialIndexFromMaterial[material] = i
+	}
+
+	var (
+		assetArmatures = make([]asset.Armature, len(model.Armatures))
+	)
+	for i, armature := range model.Armatures {
+		assetArmatures[i] = c.BuildArmature(armature)
+		c.assetArmatureIndexFromArmature[armature] = i
+	}
+
+	var (
+		assetMeshDefinitions = make([]asset.MeshDefinition, len(model.MeshDefinitions))
+	)
+	for i, meshDefinition := range model.MeshDefinitions {
+		assetMeshDefinitions[i] = c.BuildMeshDefinition(meshDefinition)
+		c.assetMeshDefinitionFromMeshDefinition[meshDefinition] = i
+	}
+
+	var (
+		assetMeshInstances = make([]asset.MeshInstance, len(model.MeshInstances))
+	)
+	for i, meshInstance := range model.MeshInstances {
+		assetMeshInstances[i] = c.BuildMeshInstance(meshInstance)
+	}
+
+	var (
+		assetBodyDefinitions []asset.BodyDefinition
+		assetBodyInstances   []asset.BodyInstance
+	)
+	if c.collisionMeshes {
+		assetBodyDefinitions = make([]asset.BodyDefinition, len(model.MeshDefinitions))
+		for i, meshDefinition := range model.MeshDefinitions {
+			assetBodyDefinitions[i] = c.BuildBodyDefinition(meshDefinition)
+		}
+
+		assetBodyInstances = make([]asset.BodyInstance, 0, len(model.MeshInstances))
+		for _, meshInstance := range model.MeshInstances {
+			if meshInstance.HasCollision {
+				assetBodyInstances = append(assetBodyInstances, c.BuildBodyInstance(meshInstance))
+			}
+		}
+	}
+
+	return &asset.Model{
+		Nodes:           c.assetNodes,
+		Animations:      assetAnimations,
+		Armatures:       assetArmatures,
+		Textures:        assetTextures,
+		Materials:       assetMaterials,
+		MeshDefinitions: assetMeshDefinitions,
+		MeshInstances:   assetMeshInstances,
+		BodyDefinitions: assetBodyDefinitions,
+		BodyInstances:   assetBodyInstances,
+	}
+}
+
+func (c *converter) BuildNode(parentIndex int, node *Node) {
+	result := asset.Node{
+		Name:        node.Name,
+		ParentIndex: int32(parentIndex),
+		Translation: node.Translation,
+		Rotation:    node.Rotation,
+		Scale:       node.Scale,
+	}
+	index := len(c.assetNodes)
+	c.assetNodes = append(c.assetNodes, result)
+	c.assetNodeIndexFromNode[node] = index
+	for _, child := range node.Children {
+		c.BuildNode(index, child)
+	}
+}
+
+func (c *converter) BuildAnimation(animation *Animation) asset.Animation {
+	assetAnimation := asset.Animation{
+		Name:      animation.Name,
+		StartTime: animation.StartTime,
+		EndTime:   animation.EndTime,
+		Bindings:  make([]asset.AnimationBinding, len(animation.Bindings)),
+	}
+	for i, binding := range animation.Bindings {
+		translationKeyframes := make([]asset.TranslationKeyframe, len(binding.TranslationKeyframes))
+		for j, keyframe := range binding.TranslationKeyframes {
+			translationKeyframes[j] = asset.TranslationKeyframe{
+				Timestamp:   keyframe.Timestamp,
+				Translation: keyframe.Translation,
+			}
+		}
+		rotationKeyframes := make([]asset.RotationKeyframe, len(binding.RotationKeyframes))
+		for j, keyframe := range binding.RotationKeyframes {
+			rotationKeyframes[j] = asset.RotationKeyframe{
+				Timestamp: keyframe.Timestamp,
+				Rotation:  keyframe.Rotation,
+			}
+		}
+		scaleKeyframes := make([]asset.ScaleKeyframe, len(binding.ScaleKeyframes))
+		for j, keyframe := range binding.ScaleKeyframes {
+			scaleKeyframes[j] = asset.ScaleKeyframe{
+				Timestamp: keyframe.Timestamp,
+				Scale:     keyframe.Scale,
+			}
+		}
+		assetAnimation.Bindings[i] = asset.AnimationBinding{
+			NodeIndex:            int32(c.assetNodeIndexFromNode[binding.Node]),
+			TranslationKeyframes: translationKeyframes,
+			RotationKeyframes:    rotationKeyframes,
+			ScaleKeyframes:       scaleKeyframes,
+		}
+	}
+	return assetAnimation
+}
+
+func (c *converter) BuildMaterial(material *Material) asset.Material {
+	assetMaterial := asset.Material{
+		Name:            material.Name,
+		Type:            asset.MaterialTypePBR,
+		BackfaceCulling: material.BackfaceCulling,
+		AlphaTesting:    material.AlphaTesting,
+		AlphaThreshold:  material.AlphaThreshold,
+		Blending:        material.Blending,
+		ScalarMask:      0xFFFFFFFF, // TODO: In PBRView
+	}
+	for i := range assetMaterial.Textures {
+		assetMaterial.Textures[i] = asset.TextureRef{
+			TextureIndex: asset.UnspecifiedIndex,
+		}
+	}
+	pbr := asset.NewPBRMaterialView(&assetMaterial)
+	pbr.SetBaseColor(material.Color)
+	if ref := material.ColorTexture; ref != nil {
+		pbr.SetBaseColorTexture(asset.TextureRef{
+			TextureIndex: int32(ref.TextureIndex),
+			TextureID:    ref.TextureID,
+		})
+	}
+	pbr.SetMetallic(material.Metallic)
+	pbr.SetRoughness(material.Roughness)
+	if ref := material.MetallicRoughnessTexture; ref != nil {
+		pbr.SetMetallicRoughnessTexture(asset.TextureRef{
+			TextureIndex: int32(ref.TextureIndex),
+			TextureID:    ref.TextureID,
+		})
+	}
+	pbr.SetNormalScale(material.NormalScale)
+	if ref := material.NormalTexture; ref != nil {
+		pbr.SetNormalTexture(asset.TextureRef{
+			TextureIndex: int32(ref.TextureIndex),
+			TextureID:    ref.TextureID,
+		})
+	}
+	return assetMaterial
+}
+
+func (c *converter) BuildArmature(armature *Armature) asset.Armature {
+	assetArmature := asset.Armature{
+		Joints: make([]asset.Joint, len(armature.Joints)),
+	}
+	for i, joint := range armature.Joints {
+		assetArmature.Joints[i] = asset.Joint{
+			NodeIndex:         int32(c.assetNodeIndexFromNode[joint.Node]),
+			InverseBindMatrix: joint.InverseBindMatrix,
+		}
+	}
+	return assetArmature
+}
+
+func (c *converter) BuildMeshDefinition(meshDefinition *MeshDefinition) asset.MeshDefinition {
+	const (
+		sizeUnsignedByte  = 1
+		sizeUnsignedShort = 2
+		sizeUnsignedInt   = 4
+		sizeHalfFloat     = 2
+		sizeFloat         = 4
 	)
 
-	layout := mesh.VertexLayout
-	stride = 0
+	var (
+		stride         int32
+		coordOffset    int32
+		normalOffset   int32
+		tangentOffset  int32
+		texCoordOffset int32
+		colorOffset    int32
+		weightsOffset  int32
+		jointsOffset   int32
+	)
+
+	layout := meshDefinition.VertexLayout
 	if layout.HasCoords {
 		coordOffset = stride
-		stride += 3 * 4
+		stride += 3 * sizeFloat
 	} else {
 		coordOffset = asset.UnspecifiedOffset
 	}
 	if layout.HasNormals {
 		normalOffset = stride
-		stride += 3 * 4
+		stride += 3 * sizeHalfFloat
+		stride += sizeHalfFloat // due to alignment requirements
 	} else {
 		normalOffset = asset.UnspecifiedOffset
 	}
 	if layout.HasTangents {
 		tangentOffset = stride
-		stride += 3 * 4
+		stride += 3 * sizeHalfFloat
+		stride += sizeHalfFloat // due to alignment requirements
 	} else {
 		tangentOffset = asset.UnspecifiedOffset
 	}
 	if layout.HasTexCoords {
 		texCoordOffset = stride
-		stride += 2 * 4
+		stride += 2 * sizeHalfFloat
 	} else {
 		texCoordOffset = asset.UnspecifiedOffset
 	}
 	if layout.HasColors {
 		colorOffset = stride
-		stride += 4 * 4
+		stride += 4 * sizeUnsignedByte
 	} else {
 		colorOffset = asset.UnspecifiedOffset
 	}
+	if layout.HasWeights {
+		weightsOffset = stride
+		stride += 4 * sizeUnsignedByte
+	} else {
+		weightsOffset = asset.UnspecifiedOffset
+	}
+	if layout.HasJoints {
+		jointsOffset = stride
+		stride += 4 * sizeUnsignedByte
+	} else {
+		jointsOffset = asset.UnspecifiedOffset
+	}
 
-	vertexData := data.Buffer(make([]byte, len(mesh.Vertices)*int(stride)))
+	var (
+		vertexData = blob.Buffer(make([]byte, len(meshDefinition.Vertices)*int(stride)))
+	)
 	if layout.HasCoords {
-		for j, vertex := range mesh.Vertices {
-			coord := vertex.Coord
-			vertexData.SetFloat32(int(coordOffset)+j*int(stride)+0, coord.X)
-			vertexData.SetFloat32(int(coordOffset)+j*int(stride)+4, coord.Y)
-			vertexData.SetFloat32(int(coordOffset)+j*int(stride)+8, coord.Z)
+		offset := int(coordOffset)
+		for _, vertex := range meshDefinition.Vertices {
+			vertexData.SetFloat32(offset+0*sizeFloat, vertex.Coord.X)
+			vertexData.SetFloat32(offset+1*sizeFloat, vertex.Coord.Y)
+			vertexData.SetFloat32(offset+2*sizeFloat, vertex.Coord.Z)
+			offset += int(stride)
 		}
 	}
 	if layout.HasNormals {
-		for j, vertex := range mesh.Vertices {
-			normal := vertex.Normal
-			vertexData.SetFloat32(int(normalOffset)+j*int(stride)+0, normal.X)
-			vertexData.SetFloat32(int(normalOffset)+j*int(stride)+4, normal.Y)
-			vertexData.SetFloat32(int(normalOffset)+j*int(stride)+8, normal.Z)
+		offset := int(normalOffset)
+		for _, vertex := range meshDefinition.Vertices {
+			vertexData.SetUint16(offset+0*sizeHalfFloat, float16.Fromfloat32(vertex.Normal.X).Bits())
+			vertexData.SetUint16(offset+1*sizeHalfFloat, float16.Fromfloat32(vertex.Normal.Y).Bits())
+			vertexData.SetUint16(offset+2*sizeHalfFloat, float16.Fromfloat32(vertex.Normal.Z).Bits())
+			offset += int(stride)
 		}
 	}
 	if layout.HasTangents {
-		for j, vertex := range mesh.Vertices {
-			tangent := vertex.Tangent
-			vertexData.SetFloat32(int(tangentOffset)+j*int(stride)+0, tangent.X)
-			vertexData.SetFloat32(int(tangentOffset)+j*int(stride)+4, tangent.Y)
-			vertexData.SetFloat32(int(tangentOffset)+j*int(stride)+8, tangent.Z)
+		offset := int(tangentOffset)
+		for _, vertex := range meshDefinition.Vertices {
+			vertexData.SetUint16(offset+0*sizeHalfFloat, float16.Fromfloat32(vertex.Tangent.X).Bits())
+			vertexData.SetUint16(offset+1*sizeHalfFloat, float16.Fromfloat32(vertex.Tangent.Y).Bits())
+			vertexData.SetUint16(offset+2*sizeHalfFloat, float16.Fromfloat32(vertex.Tangent.Z).Bits())
+			offset += int(stride)
 		}
 	}
 	if layout.HasTexCoords {
-		for j, vertex := range mesh.Vertices {
-			texCoord := vertex.TexCoord
-			vertexData.SetFloat32(int(texCoordOffset)+j*int(stride)+0, texCoord.X)
-			vertexData.SetFloat32(int(texCoordOffset)+j*int(stride)+4, texCoord.Y)
+		offset := int(texCoordOffset)
+		for _, vertex := range meshDefinition.Vertices {
+			vertexData.SetUint16(offset+0*sizeHalfFloat, float16.Fromfloat32(vertex.TexCoord.X).Bits())
+			vertexData.SetUint16(offset+1*sizeHalfFloat, float16.Fromfloat32(vertex.TexCoord.Y).Bits())
+			offset += int(stride)
 		}
 	}
 	if layout.HasColors {
-		for j, vertex := range mesh.Vertices {
-			color := vertex.Color
-			vertexData.SetFloat32(int(colorOffset)+j*int(stride)+0, color.X)
-			vertexData.SetFloat32(int(colorOffset)+j*int(stride)+4, color.Y)
-			vertexData.SetFloat32(int(colorOffset)+j*int(stride)+8, color.Z)
+		offset := int(colorOffset)
+		for _, vertex := range meshDefinition.Vertices {
+			vertexData.SetUint8(offset+0*sizeUnsignedByte, uint8(vertex.Color.X*255.0))
+			vertexData.SetUint8(offset+1*sizeUnsignedByte, uint8(vertex.Color.Y*255.0))
+			vertexData.SetUint8(offset+2*sizeUnsignedByte, uint8(vertex.Color.Z*255.0))
+			vertexData.SetUint8(offset+3*sizeUnsignedByte, uint8(vertex.Color.W*255.0))
+			offset += int(stride)
+		}
+	}
+	if layout.HasWeights {
+		offset := int(weightsOffset)
+		for _, vertex := range meshDefinition.Vertices {
+			vertexData.SetUint8(offset+0*sizeUnsignedByte, uint8(vertex.Weights.X*255.0))
+			vertexData.SetUint8(offset+1*sizeUnsignedByte, uint8(vertex.Weights.Y*255.0))
+			vertexData.SetUint8(offset+2*sizeUnsignedByte, uint8(vertex.Weights.Z*255.0))
+			vertexData.SetUint8(offset+3*sizeUnsignedByte, uint8(vertex.Weights.W*255.0))
+			offset += int(stride)
+		}
+	}
+	if layout.HasJoints {
+		offset := int(jointsOffset)
+		for _, vertex := range meshDefinition.Vertices {
+			vertexData.SetUint8(offset+0*sizeUnsignedByte, uint8(vertex.Joints[0]))
+			vertexData.SetUint8(offset+1*sizeUnsignedByte, uint8(vertex.Joints[1]))
+			vertexData.SetUint8(offset+2*sizeUnsignedByte, uint8(vertex.Joints[2]))
+			vertexData.SetUint8(offset+3*sizeUnsignedByte, uint8(vertex.Joints[3]))
+			offset += int(stride)
 		}
 	}
 
-	indexData := data.Buffer(make([]byte, len(mesh.Indices)*2))
-	for j, index := range mesh.Indices {
-		indexData.SetUInt16(j*2, uint16(index))
+	var (
+		indexLayout asset.IndexLayout
+		indexData   blob.Buffer
+		indexSize   int
+	)
+	if len(meshDefinition.Vertices) >= 0xFFFF {
+		indexSize = sizeUnsignedInt
+		indexLayout = asset.IndexLayoutUint32
+		indexData = blob.Buffer(make([]byte, len(meshDefinition.Indices)*sizeUnsignedInt))
+		for i, index := range meshDefinition.Indices {
+			indexData.SetUint32(i*sizeUnsignedInt, uint32(index))
+		}
+	} else {
+		indexSize = sizeUnsignedShort
+		indexLayout = asset.IndexLayoutUint16
+		indexData = blob.Buffer(make([]byte, len(meshDefinition.Indices)*sizeUnsignedShort))
+		for i, index := range meshDefinition.Indices {
+			indexData.SetUint16(i*sizeUnsignedShort, uint16(index))
+		}
 	}
 
-	meshAsset := asset.Mesh{
-		Name:       mesh.Name,
-		VertexData: vertexData,
+	var (
+		fragments = make([]asset.MeshFragment, len(meshDefinition.Fragments))
+	)
+	for i, fragment := range meshDefinition.Fragments {
+		fragments[i] = c.BuildFragment(fragment, indexSize)
+	}
+
+	var boundingSphereRadius float64
+	for _, vertex := range meshDefinition.Vertices {
+		boundingSphereRadius = dprec.Max(
+			boundingSphereRadius,
+			float64(vertex.Coord.Length()),
+		)
+	}
+
+	return asset.MeshDefinition{
+		Name: meshDefinition.Name,
 		VertexLayout: asset.VertexLayout{
 			CoordOffset:    coordOffset,
 			CoordStride:    stride,
@@ -179,53 +432,137 @@ func meshToAssetMesh(mesh *Mesh) asset.Mesh {
 			TexCoordStride: stride,
 			ColorOffset:    colorOffset,
 			ColorStride:    stride,
+			WeightsOffset:  weightsOffset,
+			WeightsStride:  stride,
+			JointsOffset:   jointsOffset,
+			JointsStride:   stride,
 		},
-		IndexData: indexData,
-		SubMeshes: make([]asset.SubMesh, len(mesh.SubMeshes)),
+		VertexData:           vertexData,
+		IndexLayout:          indexLayout,
+		IndexData:            indexData,
+		Fragments:            fragments,
+		BoundingSphereRadius: boundingSphereRadius,
 	}
-	for j, subMesh := range mesh.SubMeshes {
-		subMeshAsset := asset.SubMesh{
-			IndexCount:  uint32(subMesh.IndexCount),
-			IndexOffset: uint32(subMesh.IndexOffset * 2),
-			Material: asset.Material{
-				Type:             subMesh.Material.Type,
-				BackfaceCulling:  subMesh.Material.BackfaceCulling,
-				AlphaTesting:     subMesh.Material.AlphaTesting,
-				AlphaThreshold:   subMesh.Material.AlphaThreshold,
-				Metalness:        subMesh.Material.Metalness,
-				MetalnessTexture: subMesh.Material.MetalnessTexture,
-				Roughness:        subMesh.Material.Roughness,
-				RoughnessTexture: subMesh.Material.RoughnessTexture,
-				Color: [4]float32{
-					subMesh.Material.Color.X,
-					subMesh.Material.Color.Y,
-					subMesh.Material.Color.Z,
-					subMesh.Material.Color.W,
-				},
-				ColorTexture:  subMesh.Material.ColorTexture,
-				NormalScale:   subMesh.Material.NormalScale,
-				NormalTexture: subMesh.Material.NormalTexture,
+}
+
+func (c *converter) BuildFragment(fragment MeshFragment, indexSize int) asset.MeshFragment {
+	var topology asset.MeshTopology
+	switch fragment.Primitive {
+	case PrimitivePoints:
+		topology = asset.MeshTopologyPoints
+	case PrimitiveLines:
+		topology = asset.MeshTopologyLines
+	case PrimitiveLineStrip:
+		topology = asset.MeshTopologyLineStrip
+	case PrimitiveLineLoop:
+		topology = asset.MeshTopologyLineLoop
+	case PrimitiveTriangles:
+		topology = asset.MeshTopologyTriangles
+	case PrimitiveTriangleStrip:
+		topology = asset.MeshTopologyTriangleStrip
+	case PrimitiveTriangleFan:
+		topology = asset.MeshTopologyTriangleFan
+	default:
+		panic(fmt.Errorf("unsupported primitive type: %d", fragment.Primitive))
+	}
+
+	var materialIndex int32
+	if index, ok := c.assetMaterialIndexFromMaterial[fragment.Material]; ok {
+		materialIndex = int32(index)
+	} else {
+		panic(fmt.Errorf("material %s not found", fragment.Material.Name))
+	}
+
+	return asset.MeshFragment{
+		Topology:      topology,
+		IndexOffset:   uint32(fragment.IndexOffset * indexSize),
+		IndexCount:    uint32(fragment.IndexCount),
+		MaterialIndex: materialIndex,
+	}
+}
+
+func (c *converter) BuildMeshInstance(meshInstance *MeshInstance) asset.MeshInstance {
+	var nodeIndex int32
+	if index, ok := c.assetNodeIndexFromNode[meshInstance.Node]; ok {
+		nodeIndex = int32(index)
+	} else {
+		panic(fmt.Errorf("node %s not found", meshInstance.Node.Name))
+	}
+	var definitionIndex int32
+	if index, ok := c.assetMeshDefinitionFromMeshDefinition[meshInstance.Definition]; ok {
+		definitionIndex = int32(index)
+	} else {
+		panic(fmt.Errorf("mesh definition %s not found", meshInstance.Definition.Name))
+	}
+	var armatureIndex int32 = asset.UnspecifiedArmatureIndex
+	if meshInstance.Armature != nil {
+		if index, ok := c.assetArmatureIndexFromArmature[meshInstance.Armature]; ok {
+			armatureIndex = int32(index)
+		} else {
+			panic(fmt.Errorf("armature not found"))
+		}
+	}
+	return asset.MeshInstance{
+		Name:            meshInstance.Name,
+		NodeIndex:       nodeIndex,
+		ArmatureIndex:   armatureIndex,
+		DefinitionIndex: definitionIndex,
+	}
+}
+
+func (c *converter) BuildBodyDefinition(meshDefinition *MeshDefinition) asset.BodyDefinition {
+	var triangles []asset.CollisionTriangle
+
+	for _, fragment := range meshDefinition.Fragments {
+		if fragment.Primitive != PrimitiveTriangles {
+			log.Warn("Skipping collision mesh due to primitive no being triangles")
+			continue
+		}
+		for i := fragment.IndexOffset; i < fragment.IndexOffset+fragment.IndexCount; i += 3 {
+			indexA := meshDefinition.Indices[i+0]
+			indexB := meshDefinition.Indices[i+1]
+			indexC := meshDefinition.Indices[i+2]
+
+			coordA := meshDefinition.Vertices[indexA].Coord
+			coordB := meshDefinition.Vertices[indexB].Coord
+			coordC := meshDefinition.Vertices[indexC].Coord
+
+			triangles = append(triangles, asset.CollisionTriangle{
+				A: stod.Vec3(coordA),
+				B: stod.Vec3(coordB),
+				C: stod.Vec3(coordC),
+			})
+		}
+	}
+
+	return asset.BodyDefinition{
+		Name: meshDefinition.Name,
+		CollisionMeshes: []asset.CollisionMesh{
+			{
+				Translation: dprec.ZeroVec3(),
+				Rotation:    dprec.IdentityQuat(),
+				Triangles:   triangles,
 			},
-		}
-		switch subMesh.Primitive {
-		case PrimitivePoints:
-			subMeshAsset.Primitive = asset.PrimitivePoints
-		case PrimitiveLines:
-			subMeshAsset.Primitive = asset.PrimitiveLines
-		case PrimitiveLineStrip:
-			subMeshAsset.Primitive = asset.PrimitiveLineStrip
-		case PrimitiveLineLoop:
-			subMeshAsset.Primitive = asset.PrimitiveLineLoop
-		case PrimitiveTriangles:
-			subMeshAsset.Primitive = asset.PrimitiveTriangles
-		case PrimitiveTriangleStrip:
-			subMeshAsset.Primitive = asset.PrimitiveTriangleStrip
-		case PrimitiveTriangleFan:
-			subMeshAsset.Primitive = asset.PrimitiveTriangleFan
-		default:
-			panic(fmt.Errorf("unsupported primitive type: %d", subMesh.Primitive))
-		}
-		meshAsset.SubMeshes[j] = subMeshAsset
+		},
 	}
-	return meshAsset
+}
+
+func (c *converter) BuildBodyInstance(meshInstance *MeshInstance) asset.BodyInstance {
+	var nodeIndex int32
+	if index, ok := c.assetNodeIndexFromNode[meshInstance.Node]; ok {
+		nodeIndex = int32(index)
+	} else {
+		panic(fmt.Errorf("node %s not found", meshInstance.Node.Name))
+	}
+	var definitionIndex int32
+	if index, ok := c.assetMeshDefinitionFromMeshDefinition[meshInstance.Definition]; ok {
+		definitionIndex = int32(index)
+	} else {
+		panic(fmt.Errorf("mesh definition %s not found", meshInstance.Definition.Name))
+	}
+	return asset.BodyInstance{
+		Name:      meshInstance.Name,
+		NodeIndex: nodeIndex,
+		BodyIndex: definitionIndex,
+	}
 }

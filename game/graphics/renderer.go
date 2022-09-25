@@ -2,38 +2,51 @@ package graphics
 
 import (
 	"fmt"
+	"time"
 
+	"github.com/mokiat/gomath/dprec"
 	"github.com/mokiat/gomath/sprec"
-	"github.com/mokiat/lacking/data"
+	"github.com/mokiat/gomath/stod"
 	"github.com/mokiat/lacking/game/graphics/internal"
+	"github.com/mokiat/lacking/log"
 	"github.com/mokiat/lacking/render"
+	"github.com/mokiat/lacking/util/blob"
+	"github.com/mokiat/lacking/util/metrics"
+	"github.com/mokiat/lacking/util/shape"
+	"github.com/mokiat/lacking/util/spatial"
 	"github.com/x448/float16"
+	"golang.org/x/exp/slices"
 )
+
+const (
+	shadowMapWidth  = 4096
+	shadowMapHeight = 4096
+)
+
+var ShowLightView bool
 
 func newRenderer(api render.API, shaders ShaderCollection) *sceneRenderer {
 	return &sceneRenderer{
 		api:     api,
 		shaders: shaders,
 
-		exposureBufferData: make([]byte, 4*2), // RGBA16F
+		exposureBufferData: make([]byte, 4*render.SizeF32), // Worst case RGBA32F
 		exposureTarget:     1.0,
 
-		quadMesh: internal.NewQuadMesh(),
-
-		skyboxMesh: internal.NewSkyboxMesh(),
+		visibleMeshes: spatial.NewVisitorBucket[*Mesh](2_000_000),
 	}
 }
 
 type sceneRenderer struct {
-	api     render.API
-	shaders ShaderCollection
-
+	api      render.API
+	shaders  ShaderCollection
 	commands render.CommandQueue
 
 	framebufferWidth  int
 	framebufferHeight int
 
-	quadMesh *internal.QuadMesh
+	quadShape *internal.Shape
+	cubeShape *internal.Shape
 
 	geometryAlbedoTexture render.Texture
 	geometryNormalTexture render.Texture
@@ -45,14 +58,19 @@ type sceneRenderer struct {
 
 	forwardFramebuffer render.Framebuffer
 
-	exposureAlbedoTexture render.Texture
-	exposureFramebuffer   render.Framebuffer
-	exposurePresentation  *internal.LightingPresentation
-	exposurePipeline      render.Pipeline
-	exposureBufferData    data.Buffer
-	exposureBuffer        render.Buffer
-	exposureSync          render.Fence
-	exposureTarget        float32
+	shadowFramebuffer  render.Framebuffer
+	shadowDepthTexture render.Texture
+
+	exposureAlbedoTexture   render.Texture
+	exposureFramebuffer     render.Framebuffer
+	exposurePresentation    *internal.LightingPresentation
+	exposurePipeline        render.Pipeline
+	exposureBufferData      blob.Buffer
+	exposureBuffer          render.Buffer
+	exposureFormat          render.DataFormat
+	exposureSync            render.Fence
+	exposureTarget          float32
+	exposureUpdateTimestamp time.Time
 
 	postprocessingPresentation *internal.PostprocessingPresentation
 	postprocessingPipeline     render.Pipeline
@@ -61,12 +79,28 @@ type sceneRenderer struct {
 	directionalLightPipeline     render.Pipeline
 	ambientLightPresentation     *internal.LightingPresentation
 	ambientLightPipeline         render.Pipeline
+	pointLightPresentation       *internal.LightingPresentation
+	pointLightPipeline           render.Pipeline
 
-	skyboxMesh           *internal.SkyboxMesh
 	skyboxPresentation   *internal.SkyboxPresentation
 	skyboxPipeline       render.Pipeline
 	skycolorPresentation *internal.SkyboxPresentation
 	skycolorPipeline     render.Pipeline
+
+	cameraUniformBufferData blob.Buffer
+	cameraUniformBuffer     render.Buffer
+
+	modelUniformBufferData blob.Buffer
+	modelUniformBuffer     render.Buffer
+
+	materialUniformBufferData blob.Buffer
+	materialUniformBuffer     render.Buffer
+
+	lightUniformBufferData blob.Buffer
+	lightUniformBuffer     render.Buffer
+
+	visibleMeshes *spatial.VisitorBucket[*Mesh]
+	renderItems   []renderItem
 }
 
 func (r *sceneRenderer) createFramebuffers(width, height int) {
@@ -141,9 +175,21 @@ func (r *sceneRenderer) releaseFramebuffers() {
 func (r *sceneRenderer) Allocate() {
 	r.commands = r.api.CreateCommandQueue()
 
-	r.quadMesh.Allocate(r.api)
-
 	r.createFramebuffers(800, 600)
+
+	r.quadShape = internal.CreateQuadShape(r.api)
+	r.cubeShape = internal.CreateCubeShape(r.api)
+
+	defaultShadowDepth := float32(1.0)
+	r.shadowDepthTexture = r.api.CreateDepthTexture2D(render.DepthTexture2DInfo{
+		Width:        shadowMapWidth,
+		Height:       shadowMapHeight,
+		ClippedValue: &defaultShadowDepth,
+		Comparable:   true,
+	})
+	r.shadowFramebuffer = r.api.CreateFramebuffer(render.FramebufferInfo{
+		DepthAttachment: r.shadowDepthTexture,
+	})
 
 	r.exposureAlbedoTexture = r.api.CreateColorTexture2D(render.ColorTexture2DInfo{
 		Width:           1,
@@ -159,14 +205,15 @@ func (r *sceneRenderer) Allocate() {
 			r.exposureAlbedoTexture,
 		},
 	})
+	exposureShaders := r.shaders.ExposureSet()
 	r.exposurePresentation = internal.NewLightingPresentation(r.api,
-		r.shaders.ExposureSet().VertexShader(),
-		r.shaders.ExposureSet().FragmentShader(),
+		exposureShaders.VertexShader,
+		exposureShaders.FragmentShader,
 	)
 	r.exposurePipeline = r.api.CreatePipeline(render.PipelineInfo{
 		Program:      r.exposurePresentation.Program,
-		VertexArray:  r.quadMesh.VertexArray,
-		Topology:     r.quadMesh.Topology,
+		VertexArray:  r.quadShape.VertexArray(),
+		Topology:     r.quadShape.Topology(),
 		Culling:      render.CullModeBack,
 		FrontFace:    render.FaceOrientationCCW,
 		DepthTest:    false,
@@ -177,77 +224,46 @@ func (r *sceneRenderer) Allocate() {
 	})
 	r.exposureBuffer = r.api.CreatePixelTransferBuffer(render.BufferInfo{
 		Dynamic: true,
-		Size:    4 * 4,
+		Size:    len(r.exposureBufferData),
 	})
+	r.exposureFormat = r.api.DetermineContentFormat(r.exposureFramebuffer)
 
+	postprocessingShaders := r.shaders.PostprocessingSet(PostprocessingShaderConfig{
+		ToneMapping: ExponentialToneMapping,
+	})
 	r.postprocessingPresentation = internal.NewPostprocessingPresentation(r.api,
-		r.shaders.PostprocessingSet(ExponentialToneMapping).VertexShader(),
-		r.shaders.PostprocessingSet(ExponentialToneMapping).FragmentShader(),
+		postprocessingShaders.VertexShader,
+		postprocessingShaders.FragmentShader,
 	)
 	r.postprocessingPipeline = r.api.CreatePipeline(render.PipelineInfo{
 		Program:         r.postprocessingPresentation.Program,
-		VertexArray:     r.quadMesh.VertexArray,
-		Topology:        r.quadMesh.Topology,
+		VertexArray:     r.quadShape.VertexArray(),
+		Topology:        r.quadShape.Topology(),
 		Culling:         render.CullModeBack,
 		FrontFace:       render.FaceOrientationCCW,
 		DepthTest:       false,
 		DepthWrite:      false,
 		DepthComparison: render.ComparisonAlways,
 		StencilTest:     false,
-		StencilFront: render.StencilOperationState{
-			StencilFailOp:  render.StencilOperationKeep,
-			DepthFailOp:    render.StencilOperationKeep,
-			PassOp:         render.StencilOperationKeep,
-			Comparison:     render.ComparisonAlways,
-			ComparisonMask: 0xFF,
-			Reference:      0x00,
-			WriteMask:      0xFF,
-		},
-		StencilBack: render.StencilOperationState{
-			StencilFailOp:  render.StencilOperationKeep,
-			DepthFailOp:    render.StencilOperationKeep,
-			PassOp:         render.StencilOperationKeep,
-			Comparison:     render.ComparisonAlways,
-			ComparisonMask: 0xFF,
-			Reference:      0x00,
-			WriteMask:      0xFF,
-		},
-		ColorWrite:   [4]bool{true, true, true, true},
-		BlendEnabled: false,
+		ColorWrite:      [4]bool{true, true, true, true},
+		BlendEnabled:    false,
 	})
 
+	directionalLightShaders := r.shaders.DirectionalLightSet()
 	r.directionalLightPresentation = internal.NewLightingPresentation(r.api,
-		r.shaders.DirectionalLightSet().VertexShader(),
-		r.shaders.DirectionalLightSet().FragmentShader(),
+		directionalLightShaders.VertexShader,
+		directionalLightShaders.FragmentShader,
 	)
 	r.directionalLightPipeline = r.api.CreatePipeline(render.PipelineInfo{
-		Program:         r.directionalLightPresentation.Program,
-		VertexArray:     r.quadMesh.VertexArray,
-		Topology:        r.quadMesh.Topology,
-		Culling:         render.CullModeBack,
-		FrontFace:       render.FaceOrientationCCW,
-		DepthTest:       false,
-		DepthWrite:      false,
-		DepthComparison: render.ComparisonAlways,
-		StencilTest:     false,
-		StencilFront: render.StencilOperationState{
-			StencilFailOp:  render.StencilOperationKeep,
-			DepthFailOp:    render.StencilOperationKeep,
-			PassOp:         render.StencilOperationKeep,
-			Comparison:     render.ComparisonAlways,
-			ComparisonMask: 0xFF,
-			Reference:      0x00,
-			WriteMask:      0xFF,
-		},
-		StencilBack: render.StencilOperationState{
-			StencilFailOp:  render.StencilOperationKeep,
-			DepthFailOp:    render.StencilOperationKeep,
-			PassOp:         render.StencilOperationKeep,
-			Comparison:     render.ComparisonAlways,
-			ComparisonMask: 0xFF,
-			Reference:      0x00,
-			WriteMask:      0xFF,
-		},
+		Program:                     r.directionalLightPresentation.Program,
+		VertexArray:                 r.quadShape.VertexArray(),
+		Topology:                    r.quadShape.Topology(),
+		Culling:                     render.CullModeBack,
+		FrontFace:                   render.FaceOrientationCCW,
+		DepthTest:                   false,
+		DepthWrite:                  false,
+		DepthComparison:             render.ComparisonAlways,
+		StencilTest:                 false,
 		ColorWrite:                  render.ColorMaskTrue,
 		BlendEnabled:                true,
 		BlendColor:                  [4]float32{0.0, 0.0, 0.0, 0.0},
@@ -258,38 +274,46 @@ func (r *sceneRenderer) Allocate() {
 		BlendOpColor:                render.BlendOperationAdd,
 		BlendOpAlpha:                render.BlendOperationAdd,
 	})
+	ambientLightShaders := r.shaders.AmbientLightSet()
 	r.ambientLightPresentation = internal.NewLightingPresentation(r.api,
-		r.shaders.AmbientLightSet().VertexShader(),
-		r.shaders.AmbientLightSet().FragmentShader(),
+		ambientLightShaders.VertexShader,
+		ambientLightShaders.FragmentShader,
 	)
 	r.ambientLightPipeline = r.api.CreatePipeline(render.PipelineInfo{
-		Program:         r.ambientLightPresentation.Program,
-		VertexArray:     r.quadMesh.VertexArray,
-		Topology:        r.quadMesh.Topology,
-		Culling:         render.CullModeBack,
-		FrontFace:       render.FaceOrientationCCW,
-		DepthTest:       false,
-		DepthWrite:      false,
-		DepthComparison: render.ComparisonAlways,
-		StencilTest:     false,
-		StencilFront: render.StencilOperationState{
-			StencilFailOp:  render.StencilOperationKeep,
-			DepthFailOp:    render.StencilOperationKeep,
-			PassOp:         render.StencilOperationKeep,
-			Comparison:     render.ComparisonAlways,
-			ComparisonMask: 0xFF,
-			Reference:      0x00,
-			WriteMask:      0xFF,
-		},
-		StencilBack: render.StencilOperationState{
-			StencilFailOp:  render.StencilOperationKeep,
-			DepthFailOp:    render.StencilOperationKeep,
-			PassOp:         render.StencilOperationKeep,
-			Comparison:     render.ComparisonAlways,
-			ComparisonMask: 0xFF,
-			Reference:      0x00,
-			WriteMask:      0xFF,
-		},
+		Program:                     r.ambientLightPresentation.Program,
+		VertexArray:                 r.quadShape.VertexArray(),
+		Topology:                    r.quadShape.Topology(),
+		Culling:                     render.CullModeBack,
+		FrontFace:                   render.FaceOrientationCCW,
+		DepthTest:                   false,
+		DepthWrite:                  false,
+		DepthComparison:             render.ComparisonAlways,
+		StencilTest:                 false,
+		ColorWrite:                  render.ColorMaskTrue,
+		BlendEnabled:                true,
+		BlendColor:                  [4]float32{0.0, 0.0, 0.0, 0.0},
+		BlendSourceColorFactor:      render.BlendFactorOne,
+		BlendSourceAlphaFactor:      render.BlendFactorOne,
+		BlendDestinationColorFactor: render.BlendFactorOne,
+		BlendDestinationAlphaFactor: render.BlendFactorZero,
+		BlendOpColor:                render.BlendOperationAdd,
+		BlendOpAlpha:                render.BlendOperationAdd,
+	})
+	pointLightShaders := r.shaders.PointLightSet()
+	r.pointLightPresentation = internal.NewLightingPresentation(r.api,
+		pointLightShaders.VertexShader,
+		pointLightShaders.FragmentShader,
+	)
+	r.pointLightPipeline = r.api.CreatePipeline(render.PipelineInfo{
+		Program:                     r.pointLightPresentation.Program,
+		VertexArray:                 r.quadShape.VertexArray(), // TODO: Sphere (r=1) mesh!
+		Topology:                    r.quadShape.Topology(),    // TODO: Sphere (r=1) mesh!
+		Culling:                     render.CullModeBack,
+		FrontFace:                   render.FaceOrientationCCW,
+		DepthTest:                   false, // TODO: True, once sphere shape is used!
+		DepthWrite:                  false,
+		DepthComparison:             render.ComparisonAlways, // TODO: LEQUAL, once sphere shape is used!
+		StencilTest:                 false,
 		ColorWrite:                  render.ColorMaskTrue,
 		BlendEnabled:                true,
 		BlendColor:                  [4]float32{0.0, 0.0, 0.0, 0.0},
@@ -301,85 +325,78 @@ func (r *sceneRenderer) Allocate() {
 		BlendOpAlpha:                render.BlendOperationAdd,
 	})
 
-	r.skyboxMesh.Allocate(r.api)
+	skyboxShaders := r.shaders.SkyboxSet()
 	r.skyboxPresentation = internal.NewSkyboxPresentation(r.api,
-		r.shaders.SkyboxSet().VertexShader(),
-		r.shaders.SkyboxSet().FragmentShader(),
+		skyboxShaders.VertexShader,
+		skyboxShaders.FragmentShader,
 	)
 	r.skyboxPipeline = r.api.CreatePipeline(render.PipelineInfo{
-		Program:         r.skyboxPresentation.Program,
-		VertexArray:     r.skyboxMesh.VertexArray,
-		Topology:        r.skyboxMesh.Topology,
-		Culling:         render.CullModeBack,
-		FrontFace:       render.FaceOrientationCCW,
+		Program:     r.skyboxPresentation.Program,
+		VertexArray: r.cubeShape.VertexArray(),
+		Topology:    r.cubeShape.Topology(),
+		Culling:     render.CullModeBack,
+		// We are looking from within the cube shape so we need to flip the winding.
+		FrontFace:       render.FaceOrientationCW,
 		DepthTest:       true,
 		DepthWrite:      false,
 		DepthComparison: render.ComparisonLessOrEqual,
 		StencilTest:     false,
-		StencilFront: render.StencilOperationState{
-			StencilFailOp:  render.StencilOperationKeep,
-			DepthFailOp:    render.StencilOperationKeep,
-			PassOp:         render.StencilOperationKeep,
-			Comparison:     render.ComparisonAlways,
-			ComparisonMask: 0xFF,
-			Reference:      0x00,
-			WriteMask:      0xFF,
-		},
-		StencilBack: render.StencilOperationState{
-			StencilFailOp:  render.StencilOperationKeep,
-			DepthFailOp:    render.StencilOperationKeep,
-			PassOp:         render.StencilOperationKeep,
-			Comparison:     render.ComparisonAlways,
-			ComparisonMask: 0xFF,
-			Reference:      0x00,
-			WriteMask:      0xFF,
-		},
-		ColorWrite:   render.ColorMaskTrue,
-		BlendEnabled: false,
+		ColorWrite:      render.ColorMaskTrue,
+		BlendEnabled:    false,
 	})
+
+	skycolorShaders := r.shaders.SkycolorSet()
 	r.skycolorPresentation = internal.NewSkyboxPresentation(r.api,
-		r.shaders.SkycolorSet().VertexShader(),
-		r.shaders.SkycolorSet().FragmentShader(),
+		skycolorShaders.VertexShader,
+		skycolorShaders.FragmentShader,
 	)
 	r.skycolorPipeline = r.api.CreatePipeline(render.PipelineInfo{
-		Program:         r.skycolorPresentation.Program,
-		VertexArray:     r.skyboxMesh.VertexArray,
-		Topology:        r.skyboxMesh.Topology,
-		Culling:         render.CullModeBack,
-		FrontFace:       render.FaceOrientationCCW,
+		Program:     r.skycolorPresentation.Program,
+		VertexArray: r.cubeShape.VertexArray(),
+		Topology:    r.cubeShape.Topology(),
+		Culling:     render.CullModeBack,
+		// We are looking from within the cube shape so we need to flip the winding.
+		FrontFace:       render.FaceOrientationCW,
 		DepthTest:       true,
 		DepthWrite:      false,
 		DepthComparison: render.ComparisonLessOrEqual,
 		StencilTest:     false,
-		StencilFront: render.StencilOperationState{
-			StencilFailOp:  render.StencilOperationKeep,
-			DepthFailOp:    render.StencilOperationKeep,
-			PassOp:         render.StencilOperationKeep,
-			Comparison:     render.ComparisonAlways,
-			ComparisonMask: 0xFF,
-			Reference:      0x00,
-			WriteMask:      0xFF,
-		},
-		StencilBack: render.StencilOperationState{
-			StencilFailOp:  render.StencilOperationKeep,
-			DepthFailOp:    render.StencilOperationKeep,
-			PassOp:         render.StencilOperationKeep,
-			Comparison:     render.ComparisonAlways,
-			ComparisonMask: 0xFF,
-			Reference:      0x00,
-			WriteMask:      0xFF,
-		},
-		ColorWrite:   render.ColorMaskTrue,
-		BlendEnabled: false,
+		ColorWrite:      render.ColorMaskTrue,
+		BlendEnabled:    false,
+	})
+
+	r.cameraUniformBufferData = make([]byte, 3*64) // 3 x mat4
+	r.cameraUniformBuffer = r.api.CreateUniformBuffer(render.BufferInfo{
+		Dynamic: true,
+		Size:    len(r.cameraUniformBufferData),
+	})
+	r.modelUniformBufferData = make([]byte, 64*256) // 256 x mat4
+	r.modelUniformBuffer = r.api.CreateUniformBuffer(render.BufferInfo{
+		Dynamic: true,
+		Size:    len(r.modelUniformBufferData),
+	})
+	r.materialUniformBufferData = make([]byte, 2*4*4) // 2 x vec4
+	r.materialUniformBuffer = r.api.CreateUniformBuffer(render.BufferInfo{
+		Dynamic: true,
+		Size:    len(r.materialUniformBufferData),
+	})
+	r.lightUniformBufferData = make([]byte, 3*64) // 2 x mat4
+	r.lightUniformBuffer = r.api.CreateUniformBuffer(render.BufferInfo{
+		Dynamic: true,
+		Size:    len(r.lightUniformBufferData),
 	})
 }
 
 func (r *sceneRenderer) Release() {
 	defer r.commands.Release()
 
-	defer r.quadMesh.Release()
-
 	defer r.releaseFramebuffers()
+
+	defer r.quadShape.Release()
+	defer r.cubeShape.Release()
+
+	defer r.shadowDepthTexture.Release()
+	defer r.shadowFramebuffer.Release()
 
 	defer r.exposureAlbedoTexture.Release()
 	defer r.exposureFramebuffer.Release()
@@ -395,47 +412,89 @@ func (r *sceneRenderer) Release() {
 	defer r.ambientLightPresentation.Delete()
 	defer r.ambientLightPipeline.Release()
 
-	defer r.skyboxMesh.Release()
 	defer r.skyboxPresentation.Delete()
 	defer r.skyboxPipeline.Release()
 	defer r.skycolorPresentation.Delete()
 	defer r.skycolorPipeline.Release()
+
+	defer r.cameraUniformBuffer.Release()
+	defer r.modelUniformBuffer.Release()
+	defer r.materialUniformBuffer.Release()
+	defer r.lightUniformBuffer.Release()
 }
 
-type renderCtx struct {
-	framebuffer      render.Framebuffer
-	scene            *Scene
-	x                int
-	y                int
-	width            int
-	height           int
-	projectionMatrix [16]float32
-	cameraMatrix     [16]float32
-	viewMatrix       [16]float32
-	camera           *Camera
+func (r *sceneRenderer) Ray(viewport Viewport, camera *Camera, x, y int) shape.StaticLine {
+	projectionMatrix := stod.Mat4(r.evaluateProjectionMatrix(camera, viewport.Width, viewport.Height))
+	inverseProjection := dprec.InverseMat4(projectionMatrix)
+
+	cameraMatrix := stod.Mat4(camera.gfxMatrix())
+
+	pX := (float64(x-viewport.X)/float64(viewport.Width))*2.0 - 1.0
+	pY := (float64(viewport.Y-y)/float64(viewport.Height))*2.0 + 1.0
+
+	a := dprec.Mat4Vec4Prod(inverseProjection, dprec.NewVec4(
+		pX, pY, -1.0, 1.0,
+	))
+	b := dprec.Mat4Vec4Prod(inverseProjection, dprec.NewVec4(
+		pX, pY, 1.0, 1.0,
+	))
+	a = dprec.Vec4Quot(a, a.W)
+	b = dprec.Vec4Quot(b, b.W)
+
+	a = dprec.Mat4Vec4Prod(cameraMatrix, a)
+	b = dprec.Mat4Vec4Prod(cameraMatrix, b)
+
+	return shape.NewStaticLine(a.VecXYZ(), b.VecXYZ())
 }
 
 func (r *sceneRenderer) Render(framebuffer render.Framebuffer, viewport Viewport, scene *Scene, camera *Camera) {
+	r.api.Invalidate()
+
 	if viewport.Width != r.framebufferWidth || viewport.Height != r.framebufferHeight {
 		r.releaseFramebuffers()
 		r.createFramebuffers(viewport.Width, viewport.Height)
 	}
 
 	projectionMatrix := r.evaluateProjectionMatrix(camera, viewport.Width, viewport.Height)
-	cameraMatrix := camera.Matrix()
+	cameraMatrix := camera.gfxMatrix()
 	viewMatrix := sprec.InverseMat4(cameraMatrix)
-	ctx := renderCtx{
-		framebuffer:      framebuffer,
-		scene:            scene,
-		x:                viewport.X,
-		y:                viewport.Y,
-		width:            viewport.Width,
-		height:           viewport.Height,
-		projectionMatrix: projectionMatrix.ColumnMajorArray(),
-		cameraMatrix:     cameraMatrix.ColumnMajorArray(),
-		viewMatrix:       viewMatrix.ColumnMajorArray(),
-		camera:           camera,
+	projectionViewMatrix := sprec.Mat4Prod(projectionMatrix, viewMatrix)
+	frustum := spatial.ProjectionRegion(stod.Mat4(projectionViewMatrix))
+
+	if scene.firstLight != nil && ShowLightView {
+		dirLight := scene.firstLight.next
+		projectionMatrix = lightOrtho()
+		cameraMatrix = dirLight.gfxMatrix()
+		viewMatrix = sprec.InverseMat4(cameraMatrix)
+		projectionViewMatrix = sprec.Mat4Prod(projectionMatrix, viewMatrix)
+		frustum = spatial.ProjectionRegion(stod.Mat4(projectionViewMatrix))
 	}
+
+	ctx := renderCtx{
+		framebuffer: framebuffer,
+		scene:       scene,
+		x:           viewport.X,
+		y:           viewport.Y,
+		width:       viewport.Width,
+		height:      viewport.Height,
+		camera:      camera,
+		frustum:     frustum,
+	}
+
+	cameraPlotter := blob.NewPlotter(r.cameraUniformBufferData)
+	cameraPlotter.PlotSPMat4(projectionMatrix)
+	cameraPlotter.PlotSPMat4(viewMatrix)
+	cameraPlotter.PlotSPMat4(cameraMatrix)
+	r.cameraUniformBuffer.Update(render.BufferUpdateInfo{
+		Data: r.cameraUniformBufferData,
+	})
+
+	r.api.UniformBufferUnit(internal.UniformBufferBindingCamera, r.cameraUniformBuffer)
+	r.api.UniformBufferUnit(internal.UniformBufferBindingModel, r.modelUniformBuffer)
+	r.api.UniformBufferUnit(internal.UniformBufferBindingMaterial, r.materialUniformBuffer)
+	r.api.UniformBufferUnit(internal.UniformBufferBindingLight, r.lightUniformBuffer)
+
+	r.renderShadowPass(ctx)
 	r.renderGeometryPass(ctx)
 	r.renderLightingPass(ctx)
 	r.renderForwardPass(ctx)
@@ -448,7 +507,7 @@ func (r *sceneRenderer) Render(framebuffer render.Framebuffer, viewport Viewport
 func (r *sceneRenderer) evaluateProjectionMatrix(camera *Camera, width, height int) sprec.Mat4 {
 	const (
 		near = float32(0.5)
-		far  = float32(900.0)
+		far  = float32(1600.0) // At 400 on a flat plane with forests, you don't really notice the far clipping plane.
 	)
 	var (
 		fWidth  = sprec.Max(1.0, float32(width))
@@ -482,7 +541,148 @@ func (r *sceneRenderer) evaluateProjectionMatrix(camera *Camera, width, height i
 	}
 }
 
+func lightOrtho() sprec.Mat4 {
+	return sprec.OrthoMat4(-64, 64, 64, -64, 0, 200)
+}
+
+func (r *sceneRenderer) renderShadowPass(ctx renderCtx) {
+	defer metrics.BeginSpan("shadow pass").End()
+
+	// TODO: Support array of shadow-casting lights, not just one
+	var directionalLight *Light
+	for light := ctx.scene.firstLight; light != nil; light = light.next {
+		if light.mode == LightModeDirectional {
+			directionalLight = light
+			break
+		}
+	}
+	if directionalLight == nil {
+		return
+	}
+
+	projectionMatrix := lightOrtho()
+	lightMatrix := directionalLight.gfxMatrix()
+	viewMatrix := sprec.InverseMat4(lightMatrix)
+	projectionViewMatrix := sprec.Mat4Prod(projectionMatrix, viewMatrix)
+	frustum := spatial.ProjectionRegion(stod.Mat4(projectionViewMatrix))
+
+	r.renderItems = r.renderItems[:0]
+	ctx.scene.meshOctree.VisitHexahedronRegion(&frustum, r.visibleMeshes)
+	for _, mesh := range r.visibleMeshes.Items() {
+		r.queueShadowMesh(ctx, mesh)
+	}
+	slices.SortFunc(r.renderItems, func(a, b renderItem) bool {
+		// TODO: If fragment IDs are stored inside the items thelsevles, there
+		// would be fewer pointer jumps and cache misses.
+		return a.fragment.id < b.fragment.id
+	})
+
+	r.api.BeginRenderPass(render.RenderPassInfo{
+		Framebuffer: r.shadowFramebuffer,
+		Viewport: render.Area{
+			X:      0,
+			Y:      0,
+			Width:  shadowMapWidth,
+			Height: shadowMapHeight,
+		},
+		DepthLoadOp:     render.LoadOperationClear,
+		DepthStoreOp:    render.StoreOperationStore,
+		DepthClearValue: 1.0,
+		StencilLoadOp:   render.LoadOperationDontCare,
+		StencilStoreOp:  render.StoreOperationDontCare,
+	})
+
+	lightPlotter := blob.NewPlotter(r.lightUniformBufferData)
+	lightPlotter.PlotSPMat4(projectionMatrix)
+	lightPlotter.PlotSPMat4(viewMatrix)
+	lightPlotter.PlotSPMat4(lightMatrix)
+	r.lightUniformBuffer.Update(render.BufferUpdateInfo{
+		Data: r.lightUniformBufferData,
+	})
+	r.renderShadowMeshesList(ctx)
+
+	r.api.SubmitQueue(r.commands)
+	r.api.EndRenderPass()
+}
+
+func (r *sceneRenderer) queueShadowMesh(ctx renderCtx, mesh *Mesh) {
+	modelMatrix := mesh.matrixData
+	definition := mesh.definition
+	for i := range definition.fragments {
+		// TODO: Fragment is a somewhat shallow structure. Consider copying the
+		// relevant information instead of dealing with pointers.
+		fragment := &definition.fragments[i]
+		r.renderItems = append(r.renderItems, renderItem{
+			fragment:    fragment,
+			modelMatrix: modelMatrix,
+			armature:    mesh.armature,
+		})
+	}
+}
+
+func (r *sceneRenderer) renderShadowMeshesList(ctx renderCtx) {
+	var lastFragment *meshFragmentDefinition
+	count := 0
+	for _, item := range r.renderItems {
+		fragment := item.fragment
+		material := fragment.material
+
+		// just append the modelmatrix
+		if fragment == lastFragment && item.armature == nil {
+			copy(r.modelUniformBufferData[count*64:], item.modelMatrix)
+			count++
+
+			// flush batch
+			if count >= 256 {
+				r.commands.UpdateBufferData(r.modelUniformBuffer, render.BufferUpdateInfo{
+					Data:   r.modelUniformBufferData,
+					Offset: 0,
+				})
+				r.commands.DrawIndexed(lastFragment.indexOffsetBytes, lastFragment.indexCount, count)
+				count = 0
+			}
+		} else {
+			// flush batch
+			if lastFragment != nil && count > 0 {
+				r.commands.UpdateBufferData(r.modelUniformBuffer, render.BufferUpdateInfo{
+					Data:   r.modelUniformBufferData,
+					Offset: 0,
+				})
+				r.commands.DrawIndexed(lastFragment.indexOffsetBytes, lastFragment.indexCount, count)
+			}
+
+			count = 0
+			lastFragment = fragment
+			r.commands.BindPipeline(material.shadowPipeline)
+			if item.armature == nil {
+				copy(r.modelUniformBufferData[count*64:], item.modelMatrix)
+				count++
+			} else {
+				// No batching for submeshes with armature. Zero index is the model
+				// matrix
+				copy(r.modelUniformBufferData, item.armature.uniformBufferData)
+				r.commands.UpdateBufferData(r.modelUniformBuffer, render.BufferUpdateInfo{
+					Data:   r.modelUniformBufferData,
+					Offset: 0,
+				})
+				r.commands.DrawIndexed(lastFragment.indexOffsetBytes, lastFragment.indexCount, 1)
+			}
+		}
+	}
+
+	// flush remainder
+	if lastFragment != nil && count > 0 {
+		r.commands.UpdateBufferData(r.modelUniformBuffer, render.BufferUpdateInfo{
+			Data:   r.modelUniformBufferData,
+			Offset: 0,
+		})
+		r.commands.DrawIndexed(lastFragment.indexOffsetBytes, lastFragment.indexCount, count)
+	}
+}
+
 func (r *sceneRenderer) renderGeometryPass(ctx renderCtx) {
+	defer metrics.BeginSpan("geometry pass").End()
+
 	r.api.BeginRenderPass(render.RenderPassInfo{
 		Framebuffer: r.geometryFramebuffer,
 		Viewport: render.Area{
@@ -514,81 +714,106 @@ func (r *sceneRenderer) renderGeometryPass(ctx renderCtx) {
 			},
 		},
 	})
-	// TODO: Traverse octree
-	for mesh := ctx.scene.firstMesh; mesh != nil; mesh = mesh.next {
-		r.renderMesh(ctx, mesh.Matrix().ColumnMajorArray(), mesh.template)
+
+	r.renderItems = r.renderItems[:0]
+	ctx.scene.meshOctree.VisitHexahedronRegion(&ctx.frustum, r.visibleMeshes)
+	for _, mesh := range r.visibleMeshes.Items() {
+		r.queueMesh(ctx, mesh)
 	}
+	slices.SortFunc(r.renderItems, func(a, b renderItem) bool {
+		return a.fragment.id < b.fragment.id
+	})
+	r.renderMeshesList(ctx)
+
 	r.api.SubmitQueue(r.commands)
 	r.api.EndRenderPass()
 }
 
-func (r *sceneRenderer) renderMesh(ctx renderCtx, modelMatrix [16]float32, template *MeshTemplate) {
-	for _, subMesh := range template.subMeshes {
-		material := subMesh.material
-		presentation := material.geometryPresentation
-
-		cullMode := render.CullModeNone
-		if subMesh.material.backfaceCulling {
-			cullMode = render.CullModeBack
-		}
-
-		// FIXME: Don't use dynamic pipelines
-		pipeline := r.api.CreatePipeline(render.PipelineInfo{
-			Program:         presentation.Program,
-			VertexArray:     template.vertexArray,
-			Topology:        subMesh.topology,
-			Culling:         cullMode,
-			FrontFace:       render.FaceOrientationCCW,
-			DepthTest:       true,
-			DepthWrite:      true,
-			DepthComparison: render.ComparisonLessOrEqual,
-			StencilTest:     false,
-			StencilFront: render.StencilOperationState{
-				StencilFailOp:  render.StencilOperationKeep,
-				DepthFailOp:    render.StencilOperationKeep,
-				PassOp:         render.StencilOperationKeep,
-				Comparison:     render.ComparisonAlways,
-				ComparisonMask: 0xFF,
-				Reference:      0x00,
-				WriteMask:      0xFF,
-			},
-			StencilBack: render.StencilOperationState{
-				StencilFailOp:  render.StencilOperationKeep,
-				DepthFailOp:    render.StencilOperationKeep,
-				PassOp:         render.StencilOperationKeep,
-				Comparison:     render.ComparisonAlways,
-				ComparisonMask: 0xFF,
-				Reference:      0x00,
-				WriteMask:      0xFF,
-			},
-			ColorWrite:   render.ColorMaskTrue,
-			BlendEnabled: false,
+func (r *sceneRenderer) queueMesh(ctx renderCtx, mesh *Mesh) {
+	modelMatrix := mesh.matrixData
+	definition := mesh.definition
+	for i := range definition.fragments {
+		fragment := &definition.fragments[i]
+		r.renderItems = append(r.renderItems, renderItem{
+			fragment:    fragment,
+			modelMatrix: modelMatrix,
+			armature:    mesh.armature,
 		})
+	}
+}
 
-		r.commands.BindPipeline(pipeline)
-		r.commands.UniformMatrix4f(presentation.ProjectionMatrixLocation, ctx.projectionMatrix)
-		r.commands.UniformMatrix4f(presentation.ViewMatrixLocation, ctx.viewMatrix)
-		r.commands.UniformMatrix4f(presentation.ModelMatrixLocation, modelMatrix)
-		r.commands.Uniform1f(presentation.MetalnessLocation, material.vectors[1].Y)
-		r.commands.Uniform1f(presentation.RoughnessLocation, material.vectors[1].Z)
-		r.commands.Uniform4f(presentation.AlbedoColorLocation, [4]float32{
-			material.vectors[0].X,
-			material.vectors[0].Y,
-			material.vectors[0].Z,
-			material.vectors[0].W,
-		})
-		if material.twoDTextures[0] != nil {
-			r.commands.TextureUnit(0, material.twoDTextures[0])
-			r.commands.Uniform1i(presentation.AlbedoTextureLocation, 0)
+func (r *sceneRenderer) renderMeshesList(ctx renderCtx) {
+	var lastFragment *meshFragmentDefinition
+	count := 0
+	for _, item := range r.renderItems {
+		fragment := item.fragment
 
+		// just append the modelmatrix
+		if fragment == lastFragment && item.armature == nil {
+			copy(r.modelUniformBufferData[count*64:], item.modelMatrix)
+			count++
+
+			// flush batch
+			if count >= 256 {
+				r.commands.UpdateBufferData(r.modelUniformBuffer, render.BufferUpdateInfo{
+					Data:   r.modelUniformBufferData,
+					Offset: 0,
+				})
+				r.commands.DrawIndexed(lastFragment.indexOffsetBytes, lastFragment.indexCount, count)
+				count = 0
+			}
+		} else {
+			// flush batch
+			if lastFragment != nil && count > 0 {
+				r.commands.UpdateBufferData(r.modelUniformBuffer, render.BufferUpdateInfo{
+					Data:   r.modelUniformBufferData,
+					Offset: 0,
+				})
+				r.commands.DrawIndexed(lastFragment.indexOffsetBytes, lastFragment.indexCount, count)
+			}
+
+			count = 0
+			lastFragment = fragment
+			material := fragment.material
+			materialValues := material.definition
+			copy(r.materialUniformBufferData, materialValues.uniformData)
+			r.commands.BindPipeline(material.geometryPipeline)
+			if materialValues.twoDTextures[0] != nil {
+				r.commands.TextureUnit(internal.TextureBindingGeometryAlbedoTexture, materialValues.twoDTextures[0])
+			}
+			r.commands.UpdateBufferData(r.materialUniformBuffer, render.BufferUpdateInfo{
+				Data:   r.materialUniformBufferData,
+				Offset: 0,
+			})
+			if item.armature == nil {
+				copy(r.modelUniformBufferData[count*64:], item.modelMatrix)
+				count++
+			} else {
+				// No batching for submeshes with armature. Zero index is the model
+				// matrix
+				copy(r.modelUniformBufferData, item.armature.uniformBufferData)
+				r.commands.UpdateBufferData(r.modelUniformBuffer, render.BufferUpdateInfo{
+					Data:   r.modelUniformBufferData,
+					Offset: 0,
+				})
+				r.commands.DrawIndexed(lastFragment.indexOffsetBytes, lastFragment.indexCount, 1)
+			}
 		}
-		r.commands.DrawIndexed(subMesh.indexOffsetBytes, subMesh.indexCount, 1)
+	}
 
-		pipeline.Release() // FIXME: This is not even correct
+	// flush remainder
+	if lastFragment != nil && count > 0 {
+		r.commands.UpdateBufferData(r.modelUniformBuffer, render.BufferUpdateInfo{
+			Data:   r.modelUniformBufferData,
+			Offset: 0,
+		})
+		r.commands.DrawIndexed(lastFragment.indexOffsetBytes, lastFragment.indexCount, count)
 	}
 }
 
 func (r *sceneRenderer) renderLightingPass(ctx renderCtx) {
+	defer metrics.BeginSpan("lighting pass").End()
+
 	r.api.BeginRenderPass(render.RenderPassInfo{
 		Framebuffer: r.lightingFramebuffer,
 		Viewport: render.Area{
@@ -616,6 +841,8 @@ func (r *sceneRenderer) renderLightingPass(ctx renderCtx) {
 			r.renderDirectionalLight(ctx, light)
 		case LightModeAmbient:
 			r.renderAmbientLight(ctx, light)
+		case LightModePoint:
+			r.renderPointLight(ctx, light)
 		}
 	}
 	r.api.SubmitQueue(r.commands)
@@ -624,41 +851,54 @@ func (r *sceneRenderer) renderLightingPass(ctx renderCtx) {
 
 func (r *sceneRenderer) renderAmbientLight(ctx renderCtx, light *Light) {
 	r.commands.BindPipeline(r.ambientLightPipeline)
-	r.commands.UniformMatrix4f(r.ambientLightPresentation.ProjectionMatrixLocation, ctx.projectionMatrix)
-	r.commands.UniformMatrix4f(r.ambientLightPresentation.CameraMatrixLocation, ctx.cameraMatrix)
-	r.commands.UniformMatrix4f(r.ambientLightPresentation.ViewMatrixLocation, ctx.viewMatrix)
-	r.commands.TextureUnit(0, r.geometryAlbedoTexture)
-	r.commands.Uniform1i(r.ambientLightPresentation.FramebufferDraw0Location, 0)
-	r.commands.TextureUnit(1, r.geometryNormalTexture)
-	r.commands.Uniform1i(r.ambientLightPresentation.FramebufferDraw1Location, 1)
-	r.commands.TextureUnit(2, r.geometryDepthTexture)
-	r.commands.Uniform1i(r.ambientLightPresentation.FramebufferDepthLocation, 2)
-	r.commands.TextureUnit(3, light.reflectionTexture.texture)
-	r.commands.Uniform1i(r.ambientLightPresentation.ReflectionTextureLocation, 3)
-	r.commands.TextureUnit(4, light.refractionTexture.texture)
-	r.commands.Uniform1i(r.ambientLightPresentation.RefractionTextureLocation, 4)
-	r.commands.DrawIndexed(r.quadMesh.IndexOffsetBytes, r.quadMesh.IndexCount, 1)
+	r.commands.TextureUnit(internal.TextureBindingLightingFramebufferColor0, r.geometryAlbedoTexture)
+	r.commands.TextureUnit(internal.TextureBindingLightingFramebufferColor1, r.geometryNormalTexture)
+	r.commands.TextureUnit(internal.TextureBindingLightingFramebufferDepth, r.geometryDepthTexture)
+	r.commands.TextureUnit(internal.TextureBindingLightingReflectionTexture, light.reflectionTexture.texture)
+	r.commands.TextureUnit(internal.TextureBindingLightingRefractionTexture, light.refractionTexture.texture)
+	r.commands.DrawIndexed(0, r.quadShape.IndexCount(), 1)
 }
 
 func (r *sceneRenderer) renderDirectionalLight(ctx renderCtx, light *Light) {
+	// TODO: Update Light uniform
+
 	r.commands.BindPipeline(r.directionalLightPipeline)
-	r.commands.UniformMatrix4f(r.directionalLightPresentation.ProjectionMatrixLocation, ctx.projectionMatrix)
-	r.commands.UniformMatrix4f(r.directionalLightPresentation.CameraMatrixLocation, ctx.cameraMatrix)
-	r.commands.UniformMatrix4f(r.directionalLightPresentation.ViewMatrixLocation, ctx.viewMatrix)
-	direction := light.Rotation().OrientationZ()
+	direction := light.gfxMatrix().OrientationZ()
 	r.commands.Uniform3f(r.directionalLightPresentation.LightDirection, direction.Array())
 	intensity := light.intensity
 	r.commands.Uniform3f(r.directionalLightPresentation.LightIntensity, intensity.Array())
-	r.commands.TextureUnit(0, r.geometryAlbedoTexture)
-	r.commands.Uniform1i(r.directionalLightPresentation.FramebufferDraw0Location, 0)
-	r.commands.TextureUnit(1, r.geometryNormalTexture)
-	r.commands.Uniform1i(r.directionalLightPresentation.FramebufferDraw1Location, 1)
-	r.commands.TextureUnit(2, r.geometryDepthTexture)
-	r.commands.Uniform1i(r.directionalLightPresentation.FramebufferDepthLocation, 2)
-	r.commands.DrawIndexed(r.quadMesh.IndexOffsetBytes, r.quadMesh.IndexCount, 1)
+	r.commands.TextureUnit(internal.TextureBindingLightingFramebufferColor0, r.geometryAlbedoTexture)
+	r.commands.TextureUnit(internal.TextureBindingLightingFramebufferColor1, r.geometryNormalTexture)
+	r.commands.TextureUnit(internal.TextureBindingLightingFramebufferDepth, r.geometryDepthTexture)
+	r.commands.TextureUnit(internal.TextureBindingShadowFramebufferDepth, r.shadowDepthTexture)
+	r.commands.DrawIndexed(0, r.quadShape.IndexCount(), 1)
+}
+
+func (r *sceneRenderer) renderPointLight(ctx renderCtx, light *Light) {
+	projectionMatrix := sprec.IdentityMat4()
+	lightMatrix := light.gfxMatrix()
+	viewMatrix := sprec.InverseMat4(lightMatrix)
+
+	lightPlotter := blob.NewPlotter(r.lightUniformBufferData)
+	lightPlotter.PlotSPMat4(projectionMatrix)
+	lightPlotter.PlotSPMat4(viewMatrix)
+	lightPlotter.PlotSPMat4(lightMatrix)
+
+	r.commands.BindPipeline(r.pointLightPipeline)
+	r.commands.UpdateBufferData(r.lightUniformBuffer, render.BufferUpdateInfo{
+		Data: r.lightUniformBufferData,
+	})
+	r.commands.Uniform3f(r.pointLightPresentation.LightIntensity, light.intensity.Array())
+	r.commands.TextureUnit(internal.TextureBindingLightingFramebufferColor0, r.geometryAlbedoTexture)
+	r.commands.TextureUnit(internal.TextureBindingLightingFramebufferColor1, r.geometryNormalTexture)
+	r.commands.TextureUnit(internal.TextureBindingLightingFramebufferDepth, r.geometryDepthTexture)
+	// TODO: Use a sphere mesh positioned where the light is!
+	r.commands.DrawIndexed(0, r.quadShape.IndexCount(), 1)
 }
 
 func (r *sceneRenderer) renderForwardPass(ctx renderCtx) {
+	defer metrics.BeginSpan("forward pass").End()
+
 	r.api.BeginRenderPass(render.RenderPassInfo{
 		Framebuffer: r.forwardFramebuffer,
 		Viewport: render.Area{
@@ -682,22 +922,17 @@ func (r *sceneRenderer) renderForwardPass(ctx renderCtx) {
 	sky := ctx.scene.sky
 	if texture := sky.skyboxTexture; texture != nil {
 		r.commands.BindPipeline(r.skyboxPipeline)
-		r.commands.UniformMatrix4f(r.skyboxPresentation.ProjectionMatrixLocation, ctx.projectionMatrix)
-		r.commands.UniformMatrix4f(r.skyboxPresentation.ViewMatrixLocation, ctx.viewMatrix)
-		r.commands.TextureUnit(0, texture.texture)
-		r.commands.Uniform1i(r.skyboxPresentation.AlbedoCubeTextureLocation, 0)
-		r.commands.DrawIndexed(r.skyboxMesh.IndexOffsetBytes, r.skyboxMesh.IndexCount, 1)
+		r.commands.TextureUnit(internal.TextureBindingSkyboxAlbedoTexture, texture.texture)
+		r.commands.DrawIndexed(0, r.cubeShape.IndexCount(), 1)
 	} else {
 		r.commands.BindPipeline(r.skycolorPipeline)
-		r.commands.UniformMatrix4f(r.skycolorPresentation.ProjectionMatrixLocation, ctx.projectionMatrix)
-		r.commands.UniformMatrix4f(r.skycolorPresentation.ViewMatrixLocation, ctx.viewMatrix)
 		r.commands.Uniform4f(r.skycolorPresentation.AlbedoColorLocation, [4]float32{
 			sky.backgroundColor.X,
 			sky.backgroundColor.Y,
 			sky.backgroundColor.Z,
 			1.0,
 		})
-		r.commands.DrawIndexed(r.skyboxMesh.IndexOffsetBytes, r.skyboxMesh.IndexCount, 1)
+		r.commands.DrawIndexed(0, r.cubeShape.IndexCount(), 1)
 	}
 
 	r.api.SubmitQueue(r.commands)
@@ -705,6 +940,13 @@ func (r *sceneRenderer) renderForwardPass(ctx renderCtx) {
 }
 
 func (r *sceneRenderer) renderExposureProbePass(ctx renderCtx) {
+	defer metrics.BeginSpan("exposure pass").End()
+
+	if r.exposureFormat != render.DataFormatRGBA16F && r.exposureFormat != render.DataFormatRGBA32F {
+		log.Error("Skipping exposure due to unsupported framebuffer format %q", r.exposureFormat)
+		return
+	}
+
 	if r.exposureSync != nil {
 		switch r.exposureSync.Status() {
 		case render.FenceStatusSuccess:
@@ -712,14 +954,16 @@ func (r *sceneRenderer) renderExposureProbePass(ctx renderCtx) {
 				Offset: 0,
 				Target: r.exposureBufferData,
 			})
-			colorR := float16.Frombits(r.exposureBufferData.UInt16(0 * 2)).Float32()
-			colorG := float16.Frombits(r.exposureBufferData.UInt16(1 * 2)).Float32()
-			colorB := float16.Frombits(r.exposureBufferData.UInt16(2 * 2)).Float32()
-			brightness := 0.2126*colorR + 0.7152*colorG + 0.0722*colorB
-			if brightness < 0.001 {
-				brightness = 0.001
+			var brightness float32
+			switch r.exposureFormat {
+			case render.DataFormatRGBA16F:
+				brightness = float16.Frombits(r.exposureBufferData.Uint16(0 * 2)).Float32()
+			case render.DataFormatRGBA32F:
+				brightness = blob.Buffer(r.exposureBufferData).Float32(0 * 4)
 			}
-			r.exposureTarget = 1.0 / (3.14 * brightness)
+			brightness = sprec.Clamp(brightness, 0.001, 1000.0)
+
+			r.exposureTarget = 1.0 / (2 * 3.14 * brightness)
 			if r.exposureTarget > ctx.camera.maxExposure {
 				r.exposureTarget = ctx.camera.maxExposure
 			}
@@ -737,7 +981,15 @@ func (r *sceneRenderer) renderExposureProbePass(ctx renderCtx) {
 		}
 	}
 
-	ctx.camera.exposure = sprec.Mix(ctx.camera.exposure, r.exposureTarget, float32(0.01))
+	if !r.exposureUpdateTimestamp.IsZero() {
+		elapsedSeconds := float32(time.Since(r.exposureUpdateTimestamp).Seconds())
+		ctx.camera.exposure = sprec.Mix(
+			ctx.camera.exposure,
+			r.exposureTarget,
+			sprec.Clamp(ctx.camera.autoExposureSpeed*elapsedSeconds, 0.0, 1.0),
+		)
+	}
+	r.exposureUpdateTimestamp = time.Now()
 
 	if r.exposureSync == nil {
 		r.api.BeginRenderPass(render.RenderPassInfo{
@@ -761,16 +1013,15 @@ func (r *sceneRenderer) renderExposureProbePass(ctx renderCtx) {
 			},
 		})
 		r.commands.BindPipeline(r.exposurePipeline)
-		r.commands.TextureUnit(0, r.lightingAlbedoTexture)
-		r.commands.Uniform1i(r.exposurePresentation.FramebufferDraw0Location, 0)
-		r.commands.DrawIndexed(r.quadMesh.IndexOffsetBytes, r.quadMesh.IndexCount, 1)
+		r.commands.TextureUnit(internal.TextureBindingLightingFramebufferColor0, r.lightingAlbedoTexture)
+		r.commands.DrawIndexed(0, r.quadShape.IndexCount(), 1)
 		r.commands.CopyContentToBuffer(render.CopyContentToBufferInfo{
 			Buffer: r.exposureBuffer,
 			X:      0,
 			Y:      0,
 			Width:  1,
 			Height: 1,
-			Format: render.DataFormatRGBA16F,
+			Format: r.exposureFormat,
 		})
 		r.api.SubmitQueue(r.commands)
 		r.exposureSync = r.api.CreateFence()
@@ -779,6 +1030,8 @@ func (r *sceneRenderer) renderExposureProbePass(ctx renderCtx) {
 }
 
 func (r *sceneRenderer) renderPostprocessingPass(ctx renderCtx) {
+	defer metrics.BeginSpan("postprocessing pass").End()
+
 	r.api.BeginRenderPass(render.RenderPassInfo{
 		Framebuffer: ctx.framebuffer,
 		Viewport: render.Area{
@@ -800,10 +1053,26 @@ func (r *sceneRenderer) renderPostprocessingPass(ctx renderCtx) {
 	})
 
 	r.commands.BindPipeline(r.postprocessingPipeline)
-	r.commands.TextureUnit(0, r.lightingAlbedoTexture)
-	r.commands.Uniform1i(r.postprocessingPresentation.FramebufferDraw0Location, 0)
+	r.commands.TextureUnit(internal.TextureBindingPostprocessFramebufferColor0, r.lightingAlbedoTexture)
 	r.commands.Uniform1f(r.postprocessingPresentation.ExposureLocation, ctx.camera.exposure)
-	r.commands.DrawIndexed(r.quadMesh.IndexOffsetBytes, r.quadMesh.IndexCount, 1)
+	r.commands.DrawIndexed(0, r.quadShape.IndexCount(), 1)
 	r.api.SubmitQueue(r.commands)
 	r.api.EndRenderPass()
+}
+
+type renderCtx struct {
+	framebuffer render.Framebuffer
+	scene       *Scene
+	x           int
+	y           int
+	width       int
+	height      int
+	camera      *Camera
+	frustum     spatial.HexahedronRegion
+}
+
+type renderItem struct {
+	fragment    *meshFragmentDefinition
+	armature    *Armature
+	modelMatrix []byte
 }

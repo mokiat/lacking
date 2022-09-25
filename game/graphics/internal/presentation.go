@@ -2,6 +2,46 @@ package internal
 
 import "github.com/mokiat/lacking/render"
 
+const (
+	UniformBufferBindingCamera   = 0
+	UniformBufferBindingModel    = 1
+	UniformBufferBindingMaterial = 2
+	UniformBufferBindingLight    = 3
+)
+
+const (
+	TextureBindingGeometryAlbedoTexture = 0
+
+	TextureBindingLightingFramebufferColor0 = 0
+	TextureBindingLightingFramebufferColor1 = 1
+	TextureBindingLightingFramebufferColor2 = 2
+	TextureBindingLightingFramebufferDepth  = 3
+	TextureBindingShadowFramebufferDepth    = 4
+	TextureBindingLightingReflectionTexture = 4
+	TextureBindingLightingRefractionTexture = 5
+
+	TextureBindingPostprocessFramebufferColor0 = 0
+
+	TextureBindingSkyboxAlbedoTexture = 0
+)
+
+func NewShadowProgram(api render.API, vertexSrc, fragmentSrc string) render.Program {
+	return buildProgram(api, vertexSrc, fragmentSrc, nil, []render.UniformBinding{
+		render.NewUniformBinding("Light", UniformBufferBindingLight),
+		render.NewUniformBinding("Model", UniformBufferBindingModel),
+	})
+}
+
+func NewGeometryProgram(api render.API, vertexSrc, fragmentSrc string) render.Program {
+	return buildProgram(api, vertexSrc, fragmentSrc, []render.TextureBinding{
+		render.NewTextureBinding("albedoTwoDTextureIn", TextureBindingGeometryAlbedoTexture),
+	}, []render.UniformBinding{
+		render.NewUniformBinding("Camera", UniformBufferBindingCamera),
+		render.NewUniformBinding("Model", UniformBufferBindingModel),
+		render.NewUniformBinding("Material", UniformBufferBindingMaterial),
+	})
+}
+
 type Presentation struct {
 	Program render.Program
 }
@@ -13,123 +53,71 @@ func (p *Presentation) Delete() {
 type PostprocessingPresentation struct {
 	Presentation
 
-	FramebufferDraw0Location render.UniformLocation
-	ExposureLocation         render.UniformLocation
+	ExposureLocation render.UniformLocation
 }
 
 func NewPostprocessingPresentation(api render.API, vertexSrc, fragmentSrc string) *PostprocessingPresentation {
-	program := buildProgram(api, vertexSrc, fragmentSrc)
+	program := buildProgram(api, vertexSrc, fragmentSrc, []render.TextureBinding{
+		render.NewTextureBinding("fbColor0TextureIn", TextureBindingPostprocessFramebufferColor0),
+	}, nil)
 	return &PostprocessingPresentation{
 		Presentation: Presentation{
 			Program: program,
 		},
-		FramebufferDraw0Location: program.UniformLocation("fbColor0TextureIn"),
-		ExposureLocation:         program.UniformLocation("exposureIn"),
+		ExposureLocation: program.UniformLocation("exposureIn"),
 	}
 }
 
 type SkyboxPresentation struct {
 	Presentation
 
-	ProjectionMatrixLocation  render.UniformLocation
-	ViewMatrixLocation        render.UniformLocation
-	AlbedoCubeTextureLocation render.UniformLocation
-	AlbedoColorLocation       render.UniformLocation
+	AlbedoColorLocation render.UniformLocation
 }
 
 func NewSkyboxPresentation(api render.API, vertexSrc, fragmentSrc string) *SkyboxPresentation {
-	program := buildProgram(api, vertexSrc, fragmentSrc)
+	program := buildProgram(api, vertexSrc, fragmentSrc, []render.TextureBinding{
+		render.NewTextureBinding("albedoCubeTextureIn", TextureBindingSkyboxAlbedoTexture),
+	}, []render.UniformBinding{
+		render.NewUniformBinding("Camera", UniformBufferBindingCamera),
+	})
 	return &SkyboxPresentation{
 		Presentation: Presentation{
 			Program: program,
 		},
-		ProjectionMatrixLocation:  program.UniformLocation("projectionMatrixIn"),
-		ViewMatrixLocation:        program.UniformLocation("viewMatrixIn"),
-		AlbedoCubeTextureLocation: program.UniformLocation("albedoCubeTextureIn"),
-		AlbedoColorLocation:       program.UniformLocation("albedoColorIn"),
-	}
-}
-
-type ShadowPresentation struct {
-	Presentation
-}
-
-func NewShadowPresentation(api render.API, vertexSrc, fragmentSrc string) *ShadowPresentation {
-	program := buildProgram(api, vertexSrc, fragmentSrc)
-	return &ShadowPresentation{
-		Presentation: Presentation{
-			Program: program,
-		},
-	}
-}
-
-type GeometryPresentation struct {
-	Presentation
-
-	ProjectionMatrixLocation render.UniformLocation
-	ModelMatrixLocation      render.UniformLocation
-	ViewMatrixLocation       render.UniformLocation
-	MetalnessLocation        render.UniformLocation
-	RoughnessLocation        render.UniformLocation
-	AlbedoColorLocation      render.UniformLocation
-	AlbedoTextureLocation    render.UniformLocation
-}
-
-func NewGeometryPresentation(api render.API, vertexSrc, fragmentSrc string) *GeometryPresentation {
-	program := buildProgram(api, vertexSrc, fragmentSrc)
-	return &GeometryPresentation{
-		Presentation: Presentation{
-			Program: program,
-		},
-		ProjectionMatrixLocation: program.UniformLocation("projectionMatrixIn"),
-		ModelMatrixLocation:      program.UniformLocation("modelMatrixIn"),
-		ViewMatrixLocation:       program.UniformLocation("viewMatrixIn"),
-		MetalnessLocation:        program.UniformLocation("metalnessIn"),
-		RoughnessLocation:        program.UniformLocation("roughnessIn"),
-		AlbedoColorLocation:      program.UniformLocation("albedoColorIn"),
-		AlbedoTextureLocation:    program.UniformLocation("albedoTwoDTextureIn"),
+		AlbedoColorLocation: program.UniformLocation("albedoColorIn"),
 	}
 }
 
 type LightingPresentation struct {
 	Presentation
 
-	FramebufferDraw0Location  render.UniformLocation
-	FramebufferDraw1Location  render.UniformLocation
-	FramebufferDepthLocation  render.UniformLocation
-	ProjectionMatrixLocation  render.UniformLocation
-	CameraMatrixLocation      render.UniformLocation
-	ViewMatrixLocation        render.UniformLocation
-	ReflectionTextureLocation render.UniformLocation
-	RefractionTextureLocation render.UniformLocation
-	LightDirection            render.UniformLocation
-	LightIntensity            render.UniformLocation
+	LightDirection render.UniformLocation
+	LightIntensity render.UniformLocation
 }
 
 func NewLightingPresentation(api render.API, vertexSrc, fragmentSrc string) *LightingPresentation {
-	program := buildProgram(api, vertexSrc, fragmentSrc)
+	program := buildProgram(api, vertexSrc, fragmentSrc, []render.TextureBinding{
+		render.NewTextureBinding("fbColor0TextureIn", TextureBindingLightingFramebufferColor0),
+		render.NewTextureBinding("fbColor1TextureIn", TextureBindingLightingFramebufferColor1),
+		render.NewTextureBinding("fbDepthTextureIn", TextureBindingLightingFramebufferDepth),
+		render.NewTextureBinding("fbShadowTextureIn", TextureBindingShadowFramebufferDepth),
+		render.NewTextureBinding("reflectionTextureIn", TextureBindingLightingReflectionTexture),
+		render.NewTextureBinding("refractionTextureIn", TextureBindingLightingRefractionTexture),
+	}, []render.UniformBinding{
+		render.NewUniformBinding("Light", UniformBufferBindingLight),
+		render.NewUniformBinding("Camera", UniformBufferBindingCamera),
+	})
 	return &LightingPresentation{
 		Presentation: Presentation{
 			Program: program,
 		},
-
-		FramebufferDraw0Location: program.UniformLocation("fbColor0TextureIn"),
-		FramebufferDraw1Location: program.UniformLocation("fbColor1TextureIn"),
-		FramebufferDepthLocation: program.UniformLocation("fbDepthTextureIn"),
-
-		ProjectionMatrixLocation: program.UniformLocation("projectionMatrixIn"),
-		CameraMatrixLocation:     program.UniformLocation("cameraMatrixIn"),
-		ViewMatrixLocation:       program.UniformLocation("viewMatrixIn"),
-
-		ReflectionTextureLocation: program.UniformLocation("reflectionTextureIn"),
-		RefractionTextureLocation: program.UniformLocation("refractionTextureIn"),
 
 		LightDirection: program.UniformLocation("lightDirectionIn"),
 		LightIntensity: program.UniformLocation("lightIntensityIn"),
 	}
 }
 
-func buildProgram(api render.API, vertSrc, fragSrc string) render.Program {
+func buildProgram(api render.API, vertSrc, fragSrc string, textureBindings []render.TextureBinding, uniformBindings []render.UniformBinding) render.Program {
 	vertexShader := api.CreateVertexShader(render.ShaderInfo{
 		SourceCode: vertSrc,
 	})
@@ -141,7 +129,9 @@ func buildProgram(api render.API, vertSrc, fragSrc string) render.Program {
 	defer fragmentShader.Release()
 
 	return api.CreateProgram(render.ProgramInfo{
-		VertexShader:   vertexShader,
-		FragmentShader: fragmentShader,
+		VertexShader:    vertexShader,
+		FragmentShader:  fragmentShader,
+		TextureBindings: textureBindings,
+		UniformBindings: uniformBindings,
 	})
 }

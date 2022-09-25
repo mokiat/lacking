@@ -3,117 +3,101 @@ package pack
 import (
 	"fmt"
 
-	gameasset "github.com/mokiat/lacking/game/asset"
+	"github.com/mokiat/lacking/game/asset"
 )
 
+func BuildTwoDTextureAsset(image *Image) *asset.TwoDTexture {
+	return &asset.TwoDTexture{
+		Width:     uint16(image.Width),
+		Height:    uint16(image.Height),
+		Wrapping:  asset.WrapModeRepeat,
+		Filtering: asset.FilterModeLinear,
+		Flags:     asset.TextureFlagMipmapping,
+		Format:    asset.TexelFormatRGBA8,
+		Data:      image.RGBA8Data(),
+	}
+}
+
 type SaveTwoDTextureAssetAction struct {
-	registry      gameasset.Registry
-	id            string
+	resource      asset.Resource
 	imageProvider ImageProvider
 }
 
 func (a *SaveTwoDTextureAssetAction) Describe() string {
-	return fmt.Sprintf("save_twod_texture_asset(id: %q)", a.id)
+	return fmt.Sprintf("save_twod_texture_asset(%q)", a.resource.Name())
 }
 
 func (a *SaveTwoDTextureAssetAction) Run() error {
 	image := a.imageProvider.Image()
 	textureAsset := BuildTwoDTextureAsset(image)
-	resource := a.registry.ResourceByID(a.id)
-	if resource == nil {
-		resource = a.registry.CreateIDResource(a.id, "twod_texture", a.id)
-	}
-	if err := resource.WriteContent(textureAsset); err != nil {
+	if err := a.resource.WriteContent(textureAsset); err != nil {
 		return fmt.Errorf("failed to write asset: %w", err)
-	}
-	if err := a.registry.Save(); err != nil {
-		return fmt.Errorf("error saving resources: %w", err)
 	}
 	return nil
 }
 
+func BuildCubeTextureAsset(image *CubeImage, format asset.TexelFormat) *asset.CubeTexture {
+	textureData := func(side CubeSide) []byte {
+		switch format {
+		case asset.TexelFormatRGBA8:
+			return image.RGBA8Data(side)
+		case asset.TexelFormatRGBA16F:
+			return image.RGBA16FData(side)
+		case asset.TexelFormatRGBA32F:
+			return image.RGBA32FData(side)
+		default:
+			panic(fmt.Errorf("unsupported format: %d", format))
+		}
+	}
+	return &asset.CubeTexture{
+		Dimension: uint16(image.Dimension),
+		Filtering: asset.FilterModeLinear,
+		Flags:     asset.TextureFlagNone,
+		Format:    format,
+		FrontSide: asset.CubeTextureSide{
+			Data: textureData(CubeSideFront),
+		},
+		BackSide: asset.CubeTextureSide{
+			Data: textureData(CubeSideRear),
+		},
+		LeftSide: asset.CubeTextureSide{
+			Data: textureData(CubeSideLeft),
+		},
+		RightSide: asset.CubeTextureSide{
+			Data: textureData(CubeSideRight),
+		},
+		TopSide: asset.CubeTextureSide{
+			Data: textureData(CubeSideTop),
+		},
+		BottomSide: asset.CubeTextureSide{
+			Data: textureData(CubeSideBottom),
+		},
+	}
+}
+
 type SaveCubeTextureAction struct {
-	registry      gameasset.Registry
-	id            string
+	resource      asset.Resource
 	imageProvider CubeImageProvider
-	format        gameasset.TexelFormat
+	format        asset.TexelFormat
 }
 
 type SaveCubeTextureOption func(a *SaveCubeTextureAction)
 
-func WithFormat(format gameasset.TexelFormat) SaveCubeTextureOption {
+func WithFormat(format asset.TexelFormat) SaveCubeTextureOption {
 	return func(a *SaveCubeTextureAction) {
 		a.format = format
 	}
 }
 
 func (a *SaveCubeTextureAction) Describe() string {
-	return fmt.Sprintf("save_cube_texture(id: %q)", a.id)
+	return fmt.Sprintf("save_cube_texture(%q)", a.resource.Name())
 }
 
 func (a *SaveCubeTextureAction) Run() error {
-	texture := a.imageProvider.CubeImage()
-
-	textureData := func(side CubeSide) []byte {
-		switch a.format {
-		case gameasset.TexelFormatRGBA8:
-			return texture.RGBA8Data(side)
-		case gameasset.TexelFormatRGBA16F:
-			return texture.RGBA16FData(side)
-		case gameasset.TexelFormatRGBA32F:
-			return texture.RGBA32FData(side)
-		default:
-			panic(fmt.Errorf("unsupported format: %d", a.format))
-		}
-	}
-
-	textureAsset := &gameasset.CubeTexture{
-		Dimension: uint16(texture.Dimension),
-		Filtering: gameasset.FilterModeLinear,
-		Flags:     gameasset.TextureFlagNone,
-		Format:    gameasset.TexelFormat(a.format),
-	}
-	textureAsset.FrontSide = gameasset.CubeTextureSide{
-		Data: textureData(CubeSideFront),
-	}
-	textureAsset.BackSide = gameasset.CubeTextureSide{
-		Data: textureData(CubeSideRear),
-	}
-	textureAsset.LeftSide = gameasset.CubeTextureSide{
-		Data: textureData(CubeSideLeft),
-	}
-	textureAsset.RightSide = gameasset.CubeTextureSide{
-		Data: textureData(CubeSideRight),
-	}
-	textureAsset.TopSide = gameasset.CubeTextureSide{
-		Data: textureData(CubeSideTop),
-	}
-	textureAsset.BottomSide = gameasset.CubeTextureSide{
-		Data: textureData(CubeSideBottom),
-	}
-
-	resource := a.registry.ResourceByID(a.id)
-	if resource == nil {
-		resource = a.registry.CreateIDResource(a.id, "cube_texture", a.id)
-	}
-	if err := resource.WriteContent(textureAsset); err != nil {
+	image := a.imageProvider.CubeImage()
+	textureAsset := BuildCubeTextureAsset(image, a.format)
+	if err := a.resource.WriteContent(textureAsset); err != nil {
 		return fmt.Errorf("failed to write asset: %w", err)
 	}
-	if err := a.registry.Save(); err != nil {
-		return fmt.Errorf("error saving resources: %w", err)
-	}
 	return nil
-}
-
-func BuildTwoDTextureAsset(image *Image) *gameasset.TwoDTexture {
-	textureAsset := &gameasset.TwoDTexture{
-		Width:     uint16(image.Width),
-		Height:    uint16(image.Height),
-		Wrapping:  gameasset.WrapModeRepeat,
-		Filtering: gameasset.FilterModeLinear,
-		Flags:     gameasset.TextureFlagMipmapping,
-		Format:    gameasset.TexelFormatRGBA8,
-		Data:      image.RGBA8Data(),
-	}
-	return textureAsset
 }

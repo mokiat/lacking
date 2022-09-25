@@ -1,12 +1,12 @@
 package physics
 
-import "github.com/mokiat/gomath/sprec"
+import "github.com/mokiat/gomath/dprec"
 
 // SBSolverContext contains information related to the
 // single-body constraint processing.
 type SBSolverContext struct {
 	Body           *Body
-	ElapsedSeconds float32
+	ElapsedSeconds float64
 }
 
 // SBConstraintSolver represents the algorithm necessary
@@ -29,15 +29,15 @@ type SBConstraintSolver interface {
 // SBImpulseSolution is a solution to a single-body constraint that
 // contains the impulses that need to be applied to the body.
 type SBImpulseSolution struct {
-	Impulse        sprec.Vec3
-	AngularImpulse sprec.Vec3
+	Impulse        dprec.Vec3
+	AngularImpulse dprec.Vec3
 }
 
 // SBNudgeSolution is a solution to a single-body constraint that
 // contains the nudges that need to be applied to the body.
 type SBNudgeSolution struct {
-	Nudge        sprec.Vec3
-	AngularNudge sprec.Vec3
+	Nudge        dprec.Vec3
+	AngularNudge dprec.Vec3
 }
 
 var _ SBConstraintSolver = (*NilSBConstraintSolver)(nil)
@@ -57,7 +57,7 @@ func (s *NilSBConstraintSolver) CalculateNudges(SBSolverContext) SBNudgeSolution
 
 // SBCalculateFunc is a function that calculates a jacobian for a
 // single body constraint.
-type SBCalculateFunc func(SBSolverContext) (Jacobian, float32)
+type SBCalculateFunc func(SBSolverContext) (Jacobian, float64)
 
 // NewSBJacobianConstraintSolver returns a new SBJacobianConstraintSolver
 // based on the specified calculate function.
@@ -79,7 +79,7 @@ func (s *SBJacobianConstraintSolver) Reset(SBSolverContext) {}
 
 func (s *SBJacobianConstraintSolver) CalculateImpulses(ctx SBSolverContext) SBImpulseSolution {
 	jacobian, drift := s.calculate(ctx)
-	if sprec.Abs(drift) < epsilon {
+	if dprec.Abs(drift) < epsilon {
 		return SBImpulseSolution{}
 	}
 	lambda := jacobian.ImpulseLambda(ctx.Body)
@@ -88,7 +88,7 @@ func (s *SBJacobianConstraintSolver) CalculateImpulses(ctx SBSolverContext) SBIm
 
 func (s *SBJacobianConstraintSolver) CalculateNudges(ctx SBSolverContext) SBNudgeSolution {
 	jacobian, drift := s.calculate(ctx)
-	if sprec.Abs(drift) < epsilon {
+	if dprec.Abs(drift) < epsilon {
 		return SBNudgeSolution{}
 	}
 	lambda := jacobian.NudgeLambda(ctx.Body, drift)
@@ -100,7 +100,7 @@ func (s *SBJacobianConstraintSolver) CalculateNudges(ctx SBSolverContext) SBNudg
 type DBSolverContext struct {
 	Primary        *Body
 	Secondary      *Body
-	ElapsedSeconds float32
+	ElapsedSeconds float64
 }
 
 // DBConstraintSolver represents the algorithm necessary to enforce
@@ -153,7 +153,7 @@ func (s *NilDBConstraintSolver) CalculateNudges(DBSolverContext) DBNudgeSolution
 
 // DBCalculateFunc is a function that calculates a jacobian for a
 // double body constraint.
-type DBCalculateFunc func(DBSolverContext) (PairJacobian, float32)
+type DBCalculateFunc func(DBSolverContext) (PairJacobian, float64)
 
 // NewDBJacobianConstraintSolver returns a new DBJacobianConstraintSolver
 // based on the specified calculate function.
@@ -175,7 +175,7 @@ func (s *DBJacobianConstraintSolver) Reset(DBSolverContext) {}
 
 func (s *DBJacobianConstraintSolver) CalculateImpulses(ctx DBSolverContext) DBImpulseSolution {
 	jacobian, drift := s.calculate(ctx)
-	if sprec.Abs(drift) < epsilon {
+	if dprec.Abs(drift) < epsilon {
 		return DBImpulseSolution{}
 	}
 	lambda := jacobian.ImpulseLambda(ctx.Primary, ctx.Secondary)
@@ -184,7 +184,7 @@ func (s *DBJacobianConstraintSolver) CalculateImpulses(ctx DBSolverContext) DBIm
 
 func (s *DBJacobianConstraintSolver) CalculateNudges(ctx DBSolverContext) DBNudgeSolution {
 	jacobian, drift := s.calculate(ctx)
-	if sprec.Abs(drift) < epsilon {
+	if dprec.Abs(drift) < epsilon {
 		return DBNudgeSolution{}
 	}
 	lambda := jacobian.NudgeLambda(ctx.Primary, ctx.Secondary, drift)
