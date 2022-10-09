@@ -2,7 +2,7 @@ name: Master
 
 on:
   push:
-    # branches: [master]
+    # branches: [master] # TODO
 
 jobs:
   mkdocs:
