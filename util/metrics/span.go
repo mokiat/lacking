@@ -9,18 +9,17 @@ var (
 )
 
 func BeginSpan(name string) *Span {
-	if span, ok := spans[name]; ok {
-		span.startTime = time.Now()
-		return span
+	span, ok := spans[name]
+	if !ok {
+		span = &Span{
+			name: name,
+		}
+		spans[name] = span
 	}
-	result := &Span{
-		name:      name,
-		layer:     spanLayer,
-		startTime: time.Now(),
-	}
+	span.startTime = time.Now()
+	span.layer = spanLayer
 	spanLayer++
-	spans[name] = result
-	return result
+	return span
 }
 
 func Spans() []*Span {
