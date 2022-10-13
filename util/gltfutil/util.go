@@ -367,11 +367,7 @@ func InverseBindMatrix(doc *gltf.Document, skin *gltf.Skin, index int) sprec.Mat
 }
 
 func AnimationKeyframes(doc *gltf.Document, sampler *gltf.AnimationSampler) []float64 {
-	if sampler.Input == nil {
-		log.Error("Animation sampler input is unspecified")
-		return nil
-	}
-	accessor := doc.Accessors[*sampler.Input]
+	accessor := doc.Accessors[sampler.Input]
 	if accessor.BufferView == nil {
 		log.Warn("Accessor lacks a buffer view")
 		return nil
@@ -395,11 +391,7 @@ func AnimationKeyframes(doc *gltf.Document, sampler *gltf.AnimationSampler) []fl
 }
 
 func AnimationTranslations(doc *gltf.Document, sampler *gltf.AnimationSampler) []dprec.Vec3 {
-	if sampler.Output == nil {
-		log.Error("Animation sampler output is unspecified")
-		return nil
-	}
-	accessor := doc.Accessors[*sampler.Output]
+	accessor := doc.Accessors[sampler.Output]
 	if accessor.BufferView == nil {
 		log.Warn("Accessor lacks a buffer view")
 		return nil
@@ -427,11 +419,7 @@ func AnimationTranslations(doc *gltf.Document, sampler *gltf.AnimationSampler) [
 }
 
 func AnimationRotations(doc *gltf.Document, sampler *gltf.AnimationSampler) []dprec.Quat {
-	if sampler.Output == nil {
-		log.Error("Animation sampler output is unspecified")
-		return nil
-	}
-	accessor := doc.Accessors[*sampler.Output]
+	accessor := doc.Accessors[sampler.Output]
 	if accessor.BufferView == nil {
 		log.Warn("Accessor lacks a buffer view")
 		return nil
@@ -460,11 +448,7 @@ func AnimationRotations(doc *gltf.Document, sampler *gltf.AnimationSampler) []dp
 }
 
 func AnimationScales(doc *gltf.Document, sampler *gltf.AnimationSampler) []dprec.Vec3 {
-	if sampler.Output == nil {
-		log.Error("Animation sampler output is unspecified")
-		return nil
-	}
-	accessor := doc.Accessors[*sampler.Output]
+	accessor := doc.Accessors[sampler.Output]
 	if accessor.BufferView == nil {
 		log.Warn("Accessor lacks a buffer view")
 		return nil
@@ -497,6 +481,14 @@ func BufferViewData(doc *gltf.Document, index uint32) blob.Buffer {
 	count := bufferView.ByteLength
 	buffer := doc.Buffers[bufferView.Buffer]
 	return blob.Buffer(buffer.Data[offset : offset+count])
+}
+
+func IsMeshCollisionDisabled(mesh *gltf.Mesh) bool {
+	props, ok := mesh.Extras.(map[string]any)
+	if !ok {
+		return false
+	}
+	return props["collision"] == "none"
 }
 
 func IsCollisionDisabled(node *gltf.Node) bool {
