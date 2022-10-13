@@ -33,6 +33,7 @@ type MeshDefinition struct {
 	Vertices     []Vertex
 	Indices      []int
 	Fragments    []MeshFragment
+	HasCollision bool
 }
 
 type Armature struct {

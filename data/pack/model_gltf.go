@@ -115,8 +115,9 @@ func (a *OpenGLTFResourceAction) Run() error {
 	meshDefinitionFromIndex := make(map[uint32]*MeshDefinition)
 	for i, gltfMesh := range gltfDoc.Meshes {
 		mesh := &MeshDefinition{
-			Name:      gltfMesh.Name,
-			Fragments: make([]MeshFragment, len(gltfMesh.Primitives)),
+			Name:         gltfMesh.Name,
+			Fragments:    make([]MeshFragment, len(gltfMesh.Primitives)),
+			HasCollision: !gltfutil.IsMeshCollisionDisabled(gltfMesh),
 		}
 		meshDefinitionFromIndex[uint32(i)] = mesh
 		a.model.MeshDefinitions = append(a.model.MeshDefinitions, mesh)
@@ -290,11 +291,12 @@ func (a *OpenGLTFResourceAction) Run() error {
 		}
 
 		if gltfNode.Mesh != nil {
+			meshDefinition := meshDefinitionFromIndex[*gltfNode.Mesh]
 			meshInstance := &MeshInstance{
 				Name:         gltfNode.Name,
 				Node:         node,
-				Definition:   meshDefinitionFromIndex[*gltfNode.Mesh],
-				HasCollision: true,
+				Definition:   meshDefinition,
+				HasCollision: !gltfutil.IsCollisionDisabled(gltfNode) && meshDefinition.HasCollision,
 			}
 			if gltfNode.Skin != nil {
 				meshInstance.Armature = armatureDefinitionFromIndex[*gltfNode.Skin]
