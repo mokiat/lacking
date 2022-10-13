@@ -12,6 +12,7 @@ type ElementData struct {
 	Enabled   optional.V[bool]
 	Visible   optional.V[bool]
 	Focusable optional.V[bool]
+	Focused   optional.V[bool]
 	Bounds    optional.V[ui.Bounds]
 	IdealSize optional.V[ui.Size]
 	Padding   ui.Spacing
@@ -22,15 +23,21 @@ type ElementData struct {
 // to a UI Element. All higher-order components eventually boil down to an
 // Element.
 var Element = Define(func(props Properties, scope Scope) Instance {
+	data := GetData[ElementData](props)
+
 	element := UseState(func() *ui.Element {
 		return Window(scope).CreateElement()
 	}).Get()
 
+	Once(func() {
+		if data.Focused.Specified && data.Focused.Value {
+			Window(scope).GrantFocus(element)
+		}
+	})
+
 	Defer(func() {
 		element.Destroy()
 	})
-
-	data := GetData[ElementData](props)
 
 	element.SetEssence(data.Essence)
 	if data.Enabled.Specified {
