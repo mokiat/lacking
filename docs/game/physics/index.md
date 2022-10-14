@@ -26,11 +26,11 @@ $$
 
 More broadly, it performs the following sequence of steps:
 
-1. Apply all forces on all objects
-1. Derive the new velocity of objects based on the accumulated acceleration
-1. Apply correction impulses to all objects with constraints
-1. Derive the new position of objects based on the evaluated velocity
-1. Apply correction nudges to all objects with constraints
-1. Detect collisions and create collision constraints
+1. Apply forces to all dynamic objects
+1. Derive the new velocities of all dynamic objects based on the accumulated accelerations
+1. Apply correction impulses to all dynamic objects that have constraints on them
+1. Derive the new positions of all dynamic objects based on the evaluated velocities
+1. Apply correction nudges to all dynamic objects that have constraints on them
+1. Detect collisions and create temporary collision constraints
 
-The correction impulses the correction nudges are applied a number of times, as each iteration incrases the accuracy of the correction.
+The correction impulses and the correction nudges are applied a number of times. This is due to the usage of local solvers instead of global ones, where the latter is much more expensive to achieve. This will be covered in the constraint section.
