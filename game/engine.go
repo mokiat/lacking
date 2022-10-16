@@ -171,6 +171,8 @@ func (e *Engine) ResetDeltaTime() {
 func (e *Engine) Update() {
 	defer metrics.BeginSpan("update").End()
 
+	e.gfxEngine.Debug().Reset()
+
 	currentTime := time.Now()
 	elapsedSeconds := currentTime.Sub(e.lastTick).Seconds()
 	e.lastTick = currentTime

@@ -26,14 +26,14 @@ const (
 )
 
 func NewShadowProgram(api render.API, vertexSrc, fragmentSrc string) render.Program {
-	return buildProgram(api, vertexSrc, fragmentSrc, nil, []render.UniformBinding{
+	return BuildProgram(api, vertexSrc, fragmentSrc, nil, []render.UniformBinding{
 		render.NewUniformBinding("Light", UniformBufferBindingLight),
 		render.NewUniformBinding("Model", UniformBufferBindingModel),
 	})
 }
 
 func NewGeometryProgram(api render.API, vertexSrc, fragmentSrc string) render.Program {
-	return buildProgram(api, vertexSrc, fragmentSrc, []render.TextureBinding{
+	return BuildProgram(api, vertexSrc, fragmentSrc, []render.TextureBinding{
 		render.NewTextureBinding("albedoTwoDTextureIn", TextureBindingGeometryAlbedoTexture),
 	}, []render.UniformBinding{
 		render.NewUniformBinding("Camera", UniformBufferBindingCamera),
@@ -57,7 +57,7 @@ type PostprocessingPresentation struct {
 }
 
 func NewPostprocessingPresentation(api render.API, vertexSrc, fragmentSrc string) *PostprocessingPresentation {
-	program := buildProgram(api, vertexSrc, fragmentSrc, []render.TextureBinding{
+	program := BuildProgram(api, vertexSrc, fragmentSrc, []render.TextureBinding{
 		render.NewTextureBinding("fbColor0TextureIn", TextureBindingPostprocessFramebufferColor0),
 	}, nil)
 	return &PostprocessingPresentation{
@@ -75,7 +75,7 @@ type SkyboxPresentation struct {
 }
 
 func NewSkyboxPresentation(api render.API, vertexSrc, fragmentSrc string) *SkyboxPresentation {
-	program := buildProgram(api, vertexSrc, fragmentSrc, []render.TextureBinding{
+	program := BuildProgram(api, vertexSrc, fragmentSrc, []render.TextureBinding{
 		render.NewTextureBinding("albedoCubeTextureIn", TextureBindingSkyboxAlbedoTexture),
 	}, []render.UniformBinding{
 		render.NewUniformBinding("Camera", UniformBufferBindingCamera),
@@ -96,7 +96,7 @@ type LightingPresentation struct {
 }
 
 func NewLightingPresentation(api render.API, vertexSrc, fragmentSrc string) *LightingPresentation {
-	program := buildProgram(api, vertexSrc, fragmentSrc, []render.TextureBinding{
+	program := BuildProgram(api, vertexSrc, fragmentSrc, []render.TextureBinding{
 		render.NewTextureBinding("fbColor0TextureIn", TextureBindingLightingFramebufferColor0),
 		render.NewTextureBinding("fbColor1TextureIn", TextureBindingLightingFramebufferColor1),
 		render.NewTextureBinding("fbDepthTextureIn", TextureBindingLightingFramebufferDepth),
@@ -117,7 +117,7 @@ func NewLightingPresentation(api render.API, vertexSrc, fragmentSrc string) *Lig
 	}
 }
 
-func buildProgram(api render.API, vertSrc, fragSrc string, textureBindings []render.TextureBinding, uniformBindings []render.UniformBinding) render.Program {
+func BuildProgram(api render.API, vertSrc, fragSrc string, textureBindings []render.TextureBinding, uniformBindings []render.UniformBinding) render.Program {
 	vertexShader := api.CreateVertexShader(render.ShaderInfo{
 		SourceCode: vertSrc,
 	})

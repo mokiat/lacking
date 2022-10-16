@@ -87,6 +87,12 @@ type sceneRenderer struct {
 	skycolorPresentation *internal.SkyboxPresentation
 	skycolorPipeline     render.Pipeline
 
+	debugLines        []debugLine
+	debugVertexData   []byte
+	debugVertexBuffer render.Buffer
+	debugVertexArray  render.VertexArray
+	debugPipeline     render.Pipeline
+
 	cameraUniformBufferData blob.Buffer
 	cameraUniformBuffer     render.Buffer
 
@@ -365,6 +371,55 @@ func (r *sceneRenderer) Allocate() {
 		BlendEnabled:    false,
 	})
 
+	r.debugLines = make([]debugLine, 131072)
+	r.debugVertexData = make([]byte, len(r.debugLines)*4*4*2)
+	r.debugVertexBuffer = r.api.CreateVertexBuffer(render.BufferInfo{
+		Dynamic: true,
+		Data:    r.debugVertexData,
+	})
+	r.debugVertexArray = r.api.CreateVertexArray(render.VertexArrayInfo{
+		Bindings: []render.VertexArrayBindingInfo{
+			{
+				VertexBuffer: r.debugVertexBuffer,
+				Stride:       4 * 4,
+			},
+		},
+		Attributes: []render.VertexArrayAttributeInfo{
+			{
+				Binding:  0,
+				Location: internal.CoordAttributeIndex,
+				Format:   render.VertexAttributeFormatRGB32F,
+				Offset:   0,
+			},
+			{
+				Binding:  0,
+				Location: internal.ColorAttributeIndex,
+				Format:   render.VertexAttributeFormatRGB8UN,
+				Offset:   3 * 4,
+			},
+		},
+	})
+	debugShaders := r.shaders.DebugSet()
+	debugProgram := internal.BuildProgram(r.api, debugShaders.VertexShader, debugShaders.FragmentShader, nil, []render.UniformBinding{
+		{
+			Name:  "Camera",
+			Index: internal.UniformBufferBindingCamera,
+		},
+	})
+	r.debugPipeline = r.api.CreatePipeline(render.PipelineInfo{
+		Program:         debugProgram,
+		VertexArray:     r.debugVertexArray,
+		Topology:        render.TopologyLines,
+		Culling:         render.CullModeNone,
+		FrontFace:       render.FaceOrientationCCW,
+		DepthTest:       true,
+		DepthWrite:      false,
+		DepthComparison: render.ComparisonLessOrEqual,
+		StencilTest:     false,
+		ColorWrite:      render.ColorMaskTrue,
+		BlendEnabled:    false,
+	})
+
 	r.cameraUniformBufferData = make([]byte, 3*64) // 3 x mat4
 	r.cameraUniformBuffer = r.api.CreateUniformBuffer(render.BufferInfo{
 		Dynamic: true,
@@ -421,6 +476,18 @@ func (r *sceneRenderer) Release() {
 	defer r.modelUniformBuffer.Release()
 	defer r.materialUniformBuffer.Release()
 	defer r.lightUniformBuffer.Release()
+}
+
+func (r *sceneRenderer) ResetDebugLines() {
+	r.debugLines = r.debugLines[:0]
+}
+
+func (r *sceneRenderer) QueueDebugLine(line debugLine) {
+	if len(r.debugLines) == cap(r.debugLines) {
+		log.Warn("No more debug lines allowed")
+		return
+	}
+	r.debugLines = append(r.debugLines, line)
 }
 
 func (r *sceneRenderer) Ray(viewport Viewport, camera *Camera, x, y int) shape.StaticLine {
@@ -933,6 +1000,29 @@ func (r *sceneRenderer) renderForwardPass(ctx renderCtx) {
 			1.0,
 		})
 		r.commands.DrawIndexed(0, r.cubeShape.IndexCount(), 1)
+	}
+
+	if len(r.debugLines) > 0 {
+		plotter := blob.NewPlotter(r.debugVertexData)
+		for _, line := range r.debugLines {
+			plotter.PlotSPVec3(line.Start)
+			plotter.PlotUint8(uint8(line.Color.X * 255))
+			plotter.PlotUint8(uint8(line.Color.Y * 255))
+			plotter.PlotUint8(uint8(line.Color.Z * 255))
+			plotter.PlotUint8(uint8(255))
+
+			plotter.PlotSPVec3(line.End)
+			plotter.PlotUint8(uint8(line.Color.X * 255))
+			plotter.PlotUint8(uint8(line.Color.Y * 255))
+			plotter.PlotUint8(uint8(line.Color.Z * 255))
+			plotter.PlotUint8(uint8(255))
+		}
+		r.commands.UpdateBufferData(r.debugVertexBuffer, render.BufferUpdateInfo{
+			Data:   r.debugVertexData[:plotter.Offset()],
+			Offset: 0,
+		})
+		r.commands.BindPipeline(r.debugPipeline)
+		r.commands.Draw(0, len(r.debugLines)*2, 1)
 	}
 
 	r.api.SubmitQueue(r.commands)

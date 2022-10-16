@@ -13,6 +13,7 @@ type ShaderCollection struct {
 	PointLightSet       func() ShaderSet
 	SkyboxSet           func() ShaderSet
 	SkycolorSet         func() ShaderSet
+	DebugSet            func() ShaderSet
 	ExposureSet         func() ShaderSet
 	PostprocessingSet   func(cfg PostprocessingShaderConfig) ShaderSet
 }
