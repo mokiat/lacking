@@ -30,6 +30,12 @@ func (s *Stack[T]) Pop() T {
 	return result
 }
 
+// Peek shows the item that is at the top of the Stack. Make sure that
+// the Stack is not empty, otherwise this method will panic.
+func (s *Stack[T]) Peek() T {
+	return s.items[len(s.items)-1]
+}
+
 // IsEmpty returns true if there are no more items in this Stack.
 func (s *Stack[T]) IsEmpty() bool {
 	return len(s.items) == 0
