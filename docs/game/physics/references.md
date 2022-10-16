@@ -2,6 +2,11 @@
 
 The following articles and videos are a good place to start.
 
+## Inertia Tensor
+
+- [What is a tensor](https://www.physlink.com/education/askexperts/ae168.cfm)
+- [Inertia Tensor](http://www.kwon3d.com/theory/moi/iten.html)
+
 ## Jacobian
 
 - [Jacobian prerequisite knowledge](https://www.youtube.com/watch?v=VmfTXVG9S0U)
