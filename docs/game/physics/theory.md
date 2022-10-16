@@ -35,6 +35,7 @@ This page recaps and expands upon some fundamental physics theory. Knowledge in 
 | $a_t = \alpha r$ | The tangential acceleration of a point at $r$ distance from the center of mass depends on the angular acceleration and the radius. This is derived from the tangential velocity equation. |
 | $F = \mu F_n$ | The maximum friction force depends on the normal force that is pressing the two objects together. |
 | $F_d = \frac{1}{2} \rho v^2 C_d A$ | The drag force that an object experiences when moving through a fluid depends on the velocity, drag coefficient and surface area of the object, as well as on the density of the fluid. |
+| $F_s = k x$ | The force that a spring exerts on an object is proportional to the displacement $x$ of the spring. The constant factor $k$ is specific to the spring and determines how stiff it is. This is according to [Hooke's law](https://en.wikipedia.org/wiki/Hooke%27s_law), though not all springs follow that law. |
 
 ## Representation in 3D
 
