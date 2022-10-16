@@ -15,6 +15,12 @@ The following articles and videos are a good place to start.
 - [Computing a Jacobian matrix](https://www.youtube.com/watch?v=CGbBbH1e7Yw)
 - [The Jacobian Determinant](https://www.youtube.com/watch?v=p46QWyHQE6M)
 
+## Integration
+
+- [Integration Basics](https://gafferongames.com/post/integration_basics/)
+- [Fix Your Timestep!](https://gafferongames.com/post/fix_your_timestep/)
+- [Physics for Game Programmers: Understanding Constraints](https://www.youtube.com/watch?v=SHinxAhv1ZE)
+
 ## Constraint Optimization
 
 - [Constrained optimization introduction](https://www.youtube.com/watch?v=vwUV2IDLP8Q)
