@@ -51,7 +51,8 @@ func (s *IntersectionResultSet) Reset() {
 // AddFlipped controls whether newly added Intersections should be flipped
 // beforehand.
 func (s *IntersectionResultSet) AddFlipped(flipped bool) {
-	s.flipped = true
+	// TODO: This method is used only internally and should be removed.
+	s.flipped = flipped
 }
 
 // Add adds a new Intersection to this set.
@@ -145,25 +146,30 @@ func checkIntersectionMeshUnknownPlacements(first, second Placement, resultSet *
 }
 
 func checkIntersectionSphereSpherePlacements(first, second Placement, resultSet *IntersectionResultSet) {
-	sphereA := first.shape.(StaticSphere)
-	sphereB := second.shape.(StaticSphere)
+	firstSphere := first.shape.(StaticSphere)
+	secondSphere := second.shape.(StaticSphere)
+
 	deltaPosition := dprec.Vec3Diff(second.position, first.position)
-	distance := deltaPosition.Length()
-	overlap := sphereA.Radius() + sphereB.Radius() - distance
-	if overlap < 0 {
+	overlap := firstSphere.Radius() + secondSphere.Radius() - deltaPosition.Length()
+	if overlap <= 0 {
 		return
 	}
-	normal := dprec.UnitVec3(deltaPosition)
-	contact := dprec.Vec3Sum(
-		first.position,
-		dprec.Vec3Prod(normal, sphereA.Radius()+overlap/2),
-	)
+
+	secondDisplaceNormal := dprec.UnitVec3(deltaPosition)
+	firstDisplaceNormal := dprec.InverseVec3(secondDisplaceNormal)
+
 	resultSet.Add(Intersection{
-		Depth:                overlap,
-		FirstContact:         contact,
-		FirstDisplaceNormal:  normal,
-		SecondContact:        contact,
-		SecondDisplaceNormal: dprec.InverseVec3(normal),
+		Depth: overlap,
+		FirstContact: dprec.Vec3Sum(
+			first.position,
+			dprec.Vec3Prod(secondDisplaceNormal, firstSphere.radius),
+		),
+		FirstDisplaceNormal: firstDisplaceNormal,
+		SecondContact: dprec.Vec3Sum(
+			second.position,
+			dprec.Vec3Prod(firstDisplaceNormal, secondSphere.radius),
+		),
+		SecondDisplaceNormal: secondDisplaceNormal,
 	})
 }
 
