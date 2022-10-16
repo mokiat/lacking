@@ -37,6 +37,18 @@ type Result struct {
 	offset   int
 }
 
+// FetchNext is a helper method that combines HasNext and Next into one single
+// method. It returns whether there is a next Entity and if there is one
+// it will be injected into the specified pointer target.
+func (r *Result) FetchNext(target **Entity) bool {
+	if !r.HasNext() {
+		return false
+	}
+	entity := r.Next()
+	*target = entity
+	return true
+}
+
 // HasNext returns whether there are any more
 // entities in this result set.
 func (r *Result) HasNext() bool {

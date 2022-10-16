@@ -9,3 +9,24 @@ type ComponentTypeID uint8
 func (i ComponentTypeID) mask() uint64 {
 	return 1 << i
 }
+
+// Component represents an ECS component that can be attached to an Entity.
+type Component interface {
+	TypeID() ComponentTypeID
+}
+
+// FetchComponent is a helper generic function that allows one to check whether
+// a given Entity has a particular component and if it does, the component will
+// be injected into the specified pointer target.
+func FetchComponent[T Component](entity *Entity, target *T) bool {
+	if target == nil {
+		return false
+	}
+	typeID := (*target).TypeID()
+	comp := entity.Component(typeID)
+	if comp == nil {
+		return false
+	}
+	*target = comp.(T)
+	return true
+}

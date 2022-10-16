@@ -12,6 +12,12 @@ type Entity struct {
 	componentMask uint64
 }
 
+// HasComponent returns whether this Entity has a component of the
+// specified type attached.
+func (e *Entity) HasComponent(typeID ComponentTypeID) bool {
+	return e.components[typeID] != nil
+}
+
 // Component returns the component with the specified type
 // that is attached to this entity or nil if there is none.
 func (e *Entity) Component(typeID ComponentTypeID) interface{} {
