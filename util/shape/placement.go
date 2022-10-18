@@ -17,6 +17,8 @@ func NewIdentityPlacement(shape Shape) Placement {
 	return NewPlacement(shape, dprec.ZeroVec3(), dprec.IdentityQuat())
 }
 
+// TODO: Use generics for Placement
+
 // Placement represents a mechanism through which a shape can have dynamic
 // position and orientation assigned.
 type Placement struct {

@@ -190,19 +190,21 @@ func checkIntersectionSphereMeshPlacements(spherePlacement, meshPlacement Placem
 	for _, triangle := range mesh.Triangles() {
 		triangleWS := triangle.Transformed(meshPlacement.position, meshPlacement.rotation)
 		height := dprec.Vec3Dot(triangleWS.Normal(), dprec.Vec3Diff(spherePlacement.position, triangleWS.A()))
-		if height > sphere.Radius() || height < -sphere.Radius() {
+		if dprec.Abs(height) > sphere.Radius() {
 			continue
 		}
 
 		projectedPoint := dprec.Vec3Diff(spherePlacement.position, dprec.Vec3Prod(triangle.Normal(), height))
 		if triangleWS.ContainsPoint(projectedPoint) {
+			depth := sphere.Radius() - dprec.Abs(height)
 			resultSet.Add(Intersection{
-				Depth:                sphere.Radius() - height,
-				FirstContact:         projectedPoint, // TODO: Extrude to equal radius length
+				Depth:                depth,
+				FirstContact:         dprec.Vec3Sum(projectedPoint, dprec.Vec3Prod(triangle.Normal(), -depth)),
 				FirstDisplaceNormal:  triangle.Normal(),
 				SecondContact:        projectedPoint,
 				SecondDisplaceNormal: dprec.InverseVec3(triangle.Normal()),
 			})
+			// TODO: Handle cases where the point is not contained but the sphere touches the edge of the triangle
 		}
 	}
 }
