@@ -305,39 +305,44 @@ func (r *ResourceSet) releaseModel(model *ModelDefinition) {
 func (r *ResourceSet) constructCollisionShapes(bodyDef asset.BodyDefinition) []physics.CollisionShape {
 	var result []physics.CollisionShape
 	for _, collisionBoxAsset := range bodyDef.CollisionBoxes {
-		result = append(result, shape.NewPlacement(
+		result = append(result,
 			shape.NewStaticBox(
 				collisionBoxAsset.Width,
 				collisionBoxAsset.Height,
 				collisionBoxAsset.Lenght,
-			),
-			collisionBoxAsset.Translation,
-			collisionBoxAsset.Rotation,
-		))
+			).WithTransform(shape.NewTransform(
+				collisionBoxAsset.Translation,
+				collisionBoxAsset.Rotation,
+			)),
+		)
 	}
 	for _, collisionSphereAsset := range bodyDef.CollisionSpheres {
-		result = append(result, shape.NewPlacement(
+		result = append(result,
 			shape.NewStaticSphere(
 				collisionSphereAsset.Radius,
-			),
-			collisionSphereAsset.Translation,
-			collisionSphereAsset.Rotation,
-		))
+			).WithTransform(shape.NewTransform(
+				collisionSphereAsset.Translation,
+				collisionSphereAsset.Rotation,
+			)),
+		)
 	}
 	for _, collisionMeshAsset := range bodyDef.CollisionMeshes {
 		triangles := make([]shape.StaticTriangle, len(collisionMeshAsset.Triangles))
 		for j, triangleAsset := range collisionMeshAsset.Triangles {
 			triangles[j] = shape.NewStaticTriangle(
-				triangleAsset.A,
-				triangleAsset.B,
-				triangleAsset.C,
+				shape.Point(triangleAsset.A),
+				shape.Point(triangleAsset.B),
+				shape.Point(triangleAsset.C),
 			)
 		}
-		result = append(result, shape.NewPlacement(
-			shape.NewStaticMesh(triangles),
-			collisionMeshAsset.Translation,
-			collisionMeshAsset.Rotation,
-		))
+		result = append(result,
+			shape.NewStaticMesh(
+				triangles,
+			).WithTransform(shape.NewTransform(
+				collisionMeshAsset.Translation,
+				collisionMeshAsset.Rotation,
+			)),
+		)
 	}
 	return result
 }

@@ -77,80 +77,86 @@ func (s *IntersectionResultSet) Intersections() []Intersection {
 
 // CheckIntersection checks whether the two shapes intersect.
 func CheckIntersection(first, second Shape, resultSet *IntersectionResultSet) {
-	var firstPlacement Placement
-	if placement, ok := first.(Placement); ok {
-		firstPlacement = placement
-	} else {
-		firstPlacement = NewIdentityPlacement(first)
-	}
-	var secondPlacement Placement
-	if placement, ok := second.(Placement); ok {
-		secondPlacement = placement
-	} else {
-		secondPlacement = NewIdentityPlacement(second)
-	}
-	checkIntersectionPlacements(firstPlacement, secondPlacement, resultSet)
+	CheckPlacementIntersection(
+		NewPlacement(IdentityTransform(), first),
+		NewPlacement(IdentityTransform(), second),
+		resultSet,
+	)
 }
 
-func checkIntersectionPlacements(first, second Placement, resultSet *IntersectionResultSet) {
-	switch first.shape.(type) {
+// CheckPlacementIntersection checks whether the two shapes contained in
+// Placement objects intersect.
+//
+// This is an alternative to CheckIntersection that can be used when the
+// shapes have a dynamic outside transform being applied to them.
+func CheckPlacementIntersection(first, second Placement, resultSet *IntersectionResultSet) {
+	switch firstShape := first.shape.(type) {
 	case StaticSphere:
-		checkIntersectionSphereUnknownPlacements(first, second, resultSet)
+		firstShape = firstShape.Transformed(first.transform)
+		checkIntersectionSphereWithUnknown(firstShape, second, resultSet)
 	case StaticBox:
-		checkIntersectionBoxUnknownPlacements(first, second, resultSet)
+		firstShape = firstShape.Transformed(first.transform)
+		checkIntersectionBoxWithUnknown(firstShape, second, resultSet)
 	case StaticMesh:
-		checkIntersectionMeshUnknownPlacements(first, second, resultSet)
+		firstShape = firstShape.Transformed(first.transform)
+		checkIntersectionMeshWithUnknown(firstShape, second, resultSet)
 	}
 }
 
-func checkIntersectionSphereUnknownPlacements(first, second Placement, resultSet *IntersectionResultSet) {
-	switch second.shape.(type) {
+func checkIntersectionSphereWithUnknown(first StaticSphere, second Placement, resultSet *IntersectionResultSet) {
+	switch secondShape := second.shape.(type) {
 	case StaticSphere:
 		resultSet.AddFlipped(false)
-		checkIntersectionSphereSpherePlacements(first, second, resultSet)
-	case StaticBox:
-		resultSet.AddFlipped(false)
-		checkIntersectionSphereBoxPlacements(first, second, resultSet)
-	case StaticMesh:
-		resultSet.AddFlipped(false)
-		checkIntersectionSphereMeshPlacements(first, second, resultSet)
-	}
-}
-
-func checkIntersectionBoxUnknownPlacements(first, second Placement, resultSet *IntersectionResultSet) {
-	switch second.shape.(type) {
-	case StaticSphere:
-		resultSet.AddFlipped(true)
-		checkIntersectionSphereBoxPlacements(second, first, resultSet)
+		secondShape = secondShape.Transformed(second.transform)
+		checkIntersectionSphereWithSphere(first, secondShape, resultSet)
 	case StaticBox:
 		resultSet.AddFlipped(false)
-		checkIntersectionBoxBoxPlacements(first, second, resultSet)
+		secondShape = secondShape.Transformed(second.transform)
+		checkIntersectionSphereWithBox(first, secondShape, resultSet)
 	case StaticMesh:
 		resultSet.AddFlipped(false)
-		checkIntersectionBoxMeshPlacements(first, second, resultSet)
+		secondShape = secondShape.Transformed(second.transform)
+		checkIntersectionSphereWithMesh(first, secondShape, resultSet)
 	}
 }
 
-func checkIntersectionMeshUnknownPlacements(first, second Placement, resultSet *IntersectionResultSet) {
-	switch second.shape.(type) {
+func checkIntersectionBoxWithUnknown(first StaticBox, second Placement, resultSet *IntersectionResultSet) {
+	switch secondShape := second.shape.(type) {
 	case StaticSphere:
 		resultSet.AddFlipped(true)
-		checkIntersectionSphereMeshPlacements(second, first, resultSet)
+		secondShape = secondShape.Transformed(second.transform)
+		checkIntersectionSphereWithBox(secondShape, first, resultSet)
 	case StaticBox:
-		resultSet.AddFlipped(true)
-		checkIntersectionBoxMeshPlacements(second, first, resultSet)
+		resultSet.AddFlipped(false)
+		secondShape = secondShape.Transformed(second.transform)
+		checkIntersectionBoxWithBox(first, secondShape, resultSet)
 	case StaticMesh:
 		resultSet.AddFlipped(false)
-		checkIntersectionMeshMeshPlacements(first, second, resultSet)
+		secondShape = secondShape.Transformed(second.transform)
+		checkIntersectionBoxWithMesh(first, secondShape, resultSet)
 	}
 }
 
-func checkIntersectionSphereSpherePlacements(first, second Placement, resultSet *IntersectionResultSet) {
-	firstSphere := first.shape.(StaticSphere)
-	secondSphere := second.shape.(StaticSphere)
+func checkIntersectionMeshWithUnknown(first StaticMesh, second Placement, resultSet *IntersectionResultSet) {
+	switch secondShape := second.shape.(type) {
+	case StaticSphere:
+		resultSet.AddFlipped(true)
+		secondShape = secondShape.Transformed(second.transform)
+		checkIntersectionSphereWithMesh(secondShape, first, resultSet)
+	case StaticBox:
+		resultSet.AddFlipped(true)
+		secondShape = secondShape.Transformed(second.transform)
+		checkIntersectionBoxWithMesh(secondShape, first, resultSet)
+	case StaticMesh:
+		resultSet.AddFlipped(false)
+		secondShape = secondShape.Transformed(second.transform)
+		checkIntersectionMeshWithMesh(first, secondShape, resultSet)
+	}
+}
 
-	deltaPosition := dprec.Vec3Diff(second.position, first.position)
-	overlap := firstSphere.Radius() + secondSphere.Radius() - deltaPosition.Length()
+func checkIntersectionSphereWithSphere(first, second StaticSphere, resultSet *IntersectionResultSet) {
+	deltaPosition := dprec.Vec3Diff(second.Position(), first.Position())
+	overlap := first.Radius() + second.Radius() - deltaPosition.Length()
 	if overlap <= 0 {
 		return
 	}
@@ -161,41 +167,39 @@ func checkIntersectionSphereSpherePlacements(first, second Placement, resultSet 
 	resultSet.Add(Intersection{
 		Depth: overlap,
 		FirstContact: dprec.Vec3Sum(
-			first.position,
-			dprec.Vec3Prod(secondDisplaceNormal, firstSphere.radius),
+			first.Position(),
+			dprec.Vec3Prod(secondDisplaceNormal, first.Radius()),
 		),
 		FirstDisplaceNormal: firstDisplaceNormal,
 		SecondContact: dprec.Vec3Sum(
-			second.position,
-			dprec.Vec3Prod(firstDisplaceNormal, secondSphere.radius),
+			second.Position(),
+			dprec.Vec3Prod(firstDisplaceNormal, second.Radius()),
 		),
 		SecondDisplaceNormal: secondDisplaceNormal,
 	})
 }
 
-func checkIntersectionSphereBoxPlacements(first, second Placement, resultSet *IntersectionResultSet) {
+func checkIntersectionSphereWithBox(first StaticSphere, second StaticBox, resultSet *IntersectionResultSet) {
 }
 
-func checkIntersectionSphereMeshPlacements(spherePlacement, meshPlacement Placement, resultSet *IntersectionResultSet) {
-	sphere := spherePlacement.shape.(StaticSphere)
-	mesh := meshPlacement.shape.(StaticMesh)
-
+func checkIntersectionSphereWithMesh(sphere StaticSphere, mesh StaticMesh, resultSet *IntersectionResultSet) {
 	// broad phase
-	deltaPosition := dprec.Vec3Diff(meshPlacement.position, spherePlacement.position)
+	deltaPosition := dprec.Vec3Diff(mesh.Position(), sphere.Position())
 	if deltaPosition.Length() > sphere.Radius()+mesh.BoundingSphereRadius() {
 		return
 	}
 
 	// narrow phase
 	for _, triangle := range mesh.Triangles() {
-		triangleWS := triangle.Transformed(meshPlacement.position, meshPlacement.rotation)
-		height := dprec.Vec3Dot(triangleWS.Normal(), dprec.Vec3Diff(spherePlacement.position, triangleWS.A()))
+		triangle = triangle.Transformed(mesh.Transform)
+
+		height := dprec.Vec3Dot(triangle.Normal(), dprec.Vec3Diff(sphere.Position(), dprec.Vec3(triangle.A())))
 		if dprec.Abs(height) > sphere.Radius() {
 			continue
 		}
 
-		projectedPoint := dprec.Vec3Diff(spherePlacement.position, dprec.Vec3Prod(triangle.Normal(), height))
-		if triangleWS.ContainsPoint(projectedPoint) {
+		projectedPoint := dprec.Vec3Diff(sphere.Position(), dprec.Vec3Prod(triangle.Normal(), height))
+		if triangle.ContainsPoint(Point(projectedPoint)) {
 			depth := sphere.Radius() - dprec.Abs(height)
 			resultSet.Add(Intersection{
 				Depth:                depth,
@@ -213,122 +217,114 @@ var (
 	boxTriangles = make([]StaticTriangle, 2*6)
 )
 
-func checkIntersectionBoxBoxPlacements(first, second Placement, resultSet *IntersectionResultSet) {
-	box := second.shape.(StaticBox)
-	halfWidth := box.Width() / 2.0
-	halfHeight := box.Height() / 2.0
-	halfLength := box.Length() / 2.0
+func checkIntersectionBoxWithBox(first, second StaticBox, resultSet *IntersectionResultSet) {
+	halfWidth := second.HalfWidth()
+	halfHeight := second.HalfHeight()
+	halfLength := second.HalfLength()
 
 	// TOP
 	boxTriangles[0] = StaticTriangle{
-		a: dprec.NewVec3(-halfWidth, halfHeight, -halfLength),
-		b: dprec.NewVec3(-halfWidth, halfHeight, halfLength),
-		c: dprec.NewVec3(halfWidth, halfHeight, halfLength),
+		a: Point(dprec.NewVec3(-halfWidth, halfHeight, -halfLength)),
+		b: Point(dprec.NewVec3(-halfWidth, halfHeight, halfLength)),
+		c: Point(dprec.NewVec3(halfWidth, halfHeight, halfLength)),
 	}
 	boxTriangles[1] = StaticTriangle{
-		a: dprec.NewVec3(-halfWidth, halfHeight, -halfLength),
-		b: dprec.NewVec3(halfWidth, halfHeight, halfLength),
-		c: dprec.NewVec3(halfWidth, halfHeight, -halfLength),
+		a: Point(dprec.NewVec3(-halfWidth, halfHeight, -halfLength)),
+		b: Point(dprec.NewVec3(halfWidth, halfHeight, halfLength)),
+		c: Point(dprec.NewVec3(halfWidth, halfHeight, -halfLength)),
 	}
 
 	// BOTTOM
 	boxTriangles[2] = StaticTriangle{
-		a: dprec.NewVec3(-halfWidth, -halfHeight, -halfLength),
-		b: dprec.NewVec3(halfWidth, -halfHeight, halfLength),
-		c: dprec.NewVec3(-halfWidth, -halfHeight, halfLength),
+		a: Point(dprec.NewVec3(-halfWidth, -halfHeight, -halfLength)),
+		b: Point(dprec.NewVec3(halfWidth, -halfHeight, halfLength)),
+		c: Point(dprec.NewVec3(-halfWidth, -halfHeight, halfLength)),
 	}
 	boxTriangles[3] = StaticTriangle{
-		a: dprec.NewVec3(-halfWidth, -halfHeight, -halfLength),
-		b: dprec.NewVec3(halfWidth, -halfHeight, -halfLength),
-		c: dprec.NewVec3(halfWidth, -halfHeight, halfLength),
+		a: Point(dprec.NewVec3(-halfWidth, -halfHeight, -halfLength)),
+		b: Point(dprec.NewVec3(halfWidth, -halfHeight, -halfLength)),
+		c: Point(dprec.NewVec3(halfWidth, -halfHeight, halfLength)),
 	}
 
 	// FRONT
 	boxTriangles[4] = StaticTriangle{
-		a: dprec.NewVec3(-halfWidth, halfHeight, halfLength),
-		b: dprec.NewVec3(-halfWidth, -halfHeight, halfLength),
-		c: dprec.NewVec3(halfWidth, -halfHeight, halfLength),
+		a: Point(dprec.NewVec3(-halfWidth, halfHeight, halfLength)),
+		b: Point(dprec.NewVec3(-halfWidth, -halfHeight, halfLength)),
+		c: Point(dprec.NewVec3(halfWidth, -halfHeight, halfLength)),
 	}
 	boxTriangles[5] = StaticTriangle{
-		a: dprec.NewVec3(-halfWidth, halfHeight, halfLength),
-		b: dprec.NewVec3(halfWidth, -halfHeight, halfLength),
-		c: dprec.NewVec3(halfWidth, halfHeight, halfLength),
+		a: Point(dprec.NewVec3(-halfWidth, halfHeight, halfLength)),
+		b: Point(dprec.NewVec3(halfWidth, -halfHeight, halfLength)),
+		c: Point(dprec.NewVec3(halfWidth, halfHeight, halfLength)),
 	}
 
 	// REAR
 	boxTriangles[6] = StaticTriangle{
-		a: dprec.NewVec3(-halfWidth, halfHeight, -halfLength),
-		b: dprec.NewVec3(halfWidth, -halfHeight, -halfLength),
-		c: dprec.NewVec3(-halfWidth, -halfHeight, -halfLength),
+		a: Point(dprec.NewVec3(-halfWidth, halfHeight, -halfLength)),
+		b: Point(dprec.NewVec3(halfWidth, -halfHeight, -halfLength)),
+		c: Point(dprec.NewVec3(-halfWidth, -halfHeight, -halfLength)),
 	}
 	boxTriangles[7] = StaticTriangle{
-		a: dprec.NewVec3(-halfWidth, halfHeight, -halfLength),
-		b: dprec.NewVec3(halfWidth, halfHeight, -halfLength),
-		c: dprec.NewVec3(halfWidth, -halfHeight, -halfLength),
+		a: Point(dprec.NewVec3(-halfWidth, halfHeight, -halfLength)),
+		b: Point(dprec.NewVec3(halfWidth, halfHeight, -halfLength)),
+		c: Point(dprec.NewVec3(halfWidth, -halfHeight, -halfLength)),
 	}
 
 	// LEFT
 	boxTriangles[8] = StaticTriangle{
-		a: dprec.NewVec3(-halfWidth, halfHeight, -halfLength),
-		b: dprec.NewVec3(-halfWidth, -halfHeight, -halfLength),
-		c: dprec.NewVec3(-halfWidth, -halfHeight, halfLength),
+		a: Point(dprec.NewVec3(-halfWidth, halfHeight, -halfLength)),
+		b: Point(dprec.NewVec3(-halfWidth, -halfHeight, -halfLength)),
+		c: Point(dprec.NewVec3(-halfWidth, -halfHeight, halfLength)),
 	}
 	boxTriangles[9] = StaticTriangle{
-		a: dprec.NewVec3(-halfWidth, halfHeight, -halfLength),
-		b: dprec.NewVec3(-halfWidth, -halfHeight, halfLength),
-		c: dprec.NewVec3(-halfWidth, halfHeight, halfLength),
+		a: Point(dprec.NewVec3(-halfWidth, halfHeight, -halfLength)),
+		b: Point(dprec.NewVec3(-halfWidth, -halfHeight, halfLength)),
+		c: Point(dprec.NewVec3(-halfWidth, halfHeight, halfLength)),
 	}
 
 	// RIGHT
 	boxTriangles[10] = StaticTriangle{
-		a: dprec.NewVec3(halfWidth, halfHeight, -halfLength),
-		b: dprec.NewVec3(halfWidth, -halfHeight, halfLength),
-		c: dprec.NewVec3(halfWidth, -halfHeight, -halfLength),
+		a: Point(dprec.NewVec3(halfWidth, halfHeight, -halfLength)),
+		b: Point(dprec.NewVec3(halfWidth, -halfHeight, halfLength)),
+		c: Point(dprec.NewVec3(halfWidth, -halfHeight, -halfLength)),
 	}
 	boxTriangles[11] = StaticTriangle{
-		a: dprec.NewVec3(halfWidth, halfHeight, -halfLength),
-		b: dprec.NewVec3(halfWidth, halfHeight, halfLength),
-		c: dprec.NewVec3(halfWidth, -halfHeight, halfLength),
+		a: Point(dprec.NewVec3(halfWidth, halfHeight, -halfLength)),
+		b: Point(dprec.NewVec3(halfWidth, halfHeight, halfLength)),
+		c: Point(dprec.NewVec3(halfWidth, -halfHeight, halfLength)),
 	}
 
-	second = Placement{
-		shape:    NewStaticMesh(boxTriangles),
-		position: second.position,
-		rotation: second.rotation,
-	}
-	checkIntersectionBoxMeshPlacements(first, second, resultSet)
+	secondAsMesh := NewStaticMesh(boxTriangles).WithTransform(second.Transform)
+	checkIntersectionBoxWithMesh(first, secondAsMesh, resultSet)
 }
 
-func checkIntersectionBoxMeshPlacements(boxPlacement, meshPlacement Placement, resultSet *IntersectionResultSet) {
-	box := boxPlacement.shape.(StaticBox)
-	mesh := meshPlacement.shape.(StaticMesh)
-
+func checkIntersectionBoxWithMesh(box StaticBox, mesh StaticMesh, resultSet *IntersectionResultSet) {
 	// broad phase
-	deltaPosition := dprec.Vec3Diff(meshPlacement.position, boxPlacement.position)
-	boxBoundingSphereRadius := dprec.Sqrt(box.Width()*box.Width()+box.Height()*box.Height()+box.Length()*box.Length()) / 2.0
-	if deltaPosition.Length() > boxBoundingSphereRadius+mesh.BoundingSphereRadius() {
+	deltaPosition := dprec.Vec3Diff(mesh.Position(), box.Position())
+	if deltaPosition.Length() > box.BoundingSphereRadius()+mesh.BoundingSphereRadius() {
 		return
 	}
 
-	minX := dprec.Vec3Prod(boxPlacement.rotation.OrientationX(), -box.Width()/2.0)
-	maxX := dprec.Vec3Prod(boxPlacement.rotation.OrientationX(), box.Width()/2.0)
-	minY := dprec.Vec3Prod(boxPlacement.rotation.OrientationY(), -box.Height()/2.0)
-	maxY := dprec.Vec3Prod(boxPlacement.rotation.OrientationY(), box.Height()/2.0)
-	minZ := dprec.Vec3Prod(boxPlacement.rotation.OrientationZ(), -box.Length()/2.0)
-	maxZ := dprec.Vec3Prod(boxPlacement.rotation.OrientationZ(), box.Length()/2.0)
+	// narrow phase
+	minX := dprec.Vec3Prod(box.Rotation().OrientationX(), -box.Width()/2.0)
+	maxX := dprec.Vec3Prod(box.Rotation().OrientationX(), box.Width()/2.0)
+	minY := dprec.Vec3Prod(box.Rotation().OrientationY(), -box.Height()/2.0)
+	maxY := dprec.Vec3Prod(box.Rotation().OrientationY(), box.Height()/2.0)
+	minZ := dprec.Vec3Prod(box.Rotation().OrientationZ(), -box.Length()/2.0)
+	maxZ := dprec.Vec3Prod(box.Rotation().OrientationZ(), box.Length()/2.0)
 
-	p1 := dprec.Vec3Sum(dprec.Vec3Sum(dprec.Vec3Sum(boxPlacement.position, minX), minZ), maxY)
-	p2 := dprec.Vec3Sum(dprec.Vec3Sum(dprec.Vec3Sum(boxPlacement.position, minX), maxZ), maxY)
-	p3 := dprec.Vec3Sum(dprec.Vec3Sum(dprec.Vec3Sum(boxPlacement.position, maxX), maxZ), maxY)
-	p4 := dprec.Vec3Sum(dprec.Vec3Sum(dprec.Vec3Sum(boxPlacement.position, maxX), minZ), maxY)
-	p5 := dprec.Vec3Sum(dprec.Vec3Sum(dprec.Vec3Sum(boxPlacement.position, minX), minZ), minY)
-	p6 := dprec.Vec3Sum(dprec.Vec3Sum(dprec.Vec3Sum(boxPlacement.position, minX), maxZ), minY)
-	p7 := dprec.Vec3Sum(dprec.Vec3Sum(dprec.Vec3Sum(boxPlacement.position, maxX), maxZ), minY)
-	p8 := dprec.Vec3Sum(dprec.Vec3Sum(dprec.Vec3Sum(boxPlacement.position, maxX), minZ), minY)
+	p1 := dprec.Vec3Sum(dprec.Vec3Sum(dprec.Vec3Sum(box.Position(), minX), minZ), maxY)
+	p2 := dprec.Vec3Sum(dprec.Vec3Sum(dprec.Vec3Sum(box.Position(), minX), maxZ), maxY)
+	p3 := dprec.Vec3Sum(dprec.Vec3Sum(dprec.Vec3Sum(box.Position(), maxX), maxZ), maxY)
+	p4 := dprec.Vec3Sum(dprec.Vec3Sum(dprec.Vec3Sum(box.Position(), maxX), minZ), maxY)
+	p5 := dprec.Vec3Sum(dprec.Vec3Sum(dprec.Vec3Sum(box.Position(), minX), minZ), minY)
+	p6 := dprec.Vec3Sum(dprec.Vec3Sum(dprec.Vec3Sum(box.Position(), minX), maxZ), minY)
+	p7 := dprec.Vec3Sum(dprec.Vec3Sum(dprec.Vec3Sum(box.Position(), maxX), maxZ), minY)
+	p8 := dprec.Vec3Sum(dprec.Vec3Sum(dprec.Vec3Sum(box.Position(), maxX), minZ), minY)
 
 	checkLineIntersection := func(line StaticLine, triangle StaticTriangle) {
-		heightA := dprec.Vec3Dot(triangle.Normal(), dprec.Vec3Diff(line.A(), triangle.A()))
-		heightB := dprec.Vec3Dot(triangle.Normal(), dprec.Vec3Diff(line.B(), triangle.A()))
+		heightA := dprec.Vec3Dot(triangle.Normal(), dprec.Vec3Diff(dprec.Vec3(line.A()), dprec.Vec3(triangle.A())))
+		heightB := dprec.Vec3Dot(triangle.Normal(), dprec.Vec3Diff(dprec.Vec3(line.B()), dprec.Vec3(triangle.A())))
 		if heightA > 0.0 && heightB > 0.0 {
 			return
 		}
@@ -341,11 +337,11 @@ func checkIntersectionBoxMeshPlacements(boxPlacement, meshPlacement Placement, r
 		}
 
 		projectedPoint := dprec.Vec3Sum(
-			dprec.Vec3Prod(line.A(), -heightB/(heightA-heightB)),
-			dprec.Vec3Prod(line.B(), heightA/(heightA-heightB)),
+			dprec.Vec3Prod(dprec.Vec3(line.A()), -heightB/(heightA-heightB)),
+			dprec.Vec3Prod(dprec.Vec3(line.B()), heightA/(heightA-heightB)),
 		)
 
-		if triangle.ContainsPoint(projectedPoint) {
+		if triangle.ContainsPoint(Point(projectedPoint)) {
 			resultSet.Add(Intersection{
 				Depth:                -heightB,
 				FirstContact:         projectedPoint,
@@ -356,33 +352,32 @@ func checkIntersectionBoxMeshPlacements(boxPlacement, meshPlacement Placement, r
 		}
 	}
 
-	// narrow phase
 	for _, triangle := range mesh.Triangles() {
-		triangleWS := triangle.Transformed(meshPlacement.position, meshPlacement.rotation)
-		checkLineIntersection(NewStaticLine(p1, p2), triangleWS)
-		checkLineIntersection(NewStaticLine(p2, p3), triangleWS)
-		checkLineIntersection(NewStaticLine(p3, p4), triangleWS)
-		checkLineIntersection(NewStaticLine(p4, p1), triangleWS)
+		triangle := triangle.Transformed(mesh.Transform)
+		checkLineIntersection(NewStaticLine(Point(p1), Point(p2)), triangle)
+		checkLineIntersection(NewStaticLine(Point(p2), Point(p3)), triangle)
+		checkLineIntersection(NewStaticLine(Point(p3), Point(p4)), triangle)
+		checkLineIntersection(NewStaticLine(Point(p4), Point(p1)), triangle)
 
-		checkLineIntersection(NewStaticLine(p5, p6), triangleWS)
-		checkLineIntersection(NewStaticLine(p6, p7), triangleWS)
-		checkLineIntersection(NewStaticLine(p7, p8), triangleWS)
-		checkLineIntersection(NewStaticLine(p8, p5), triangleWS)
+		checkLineIntersection(NewStaticLine(Point(p5), Point(p6)), triangle)
+		checkLineIntersection(NewStaticLine(Point(p6), Point(p7)), triangle)
+		checkLineIntersection(NewStaticLine(Point(p7), Point(p8)), triangle)
+		checkLineIntersection(NewStaticLine(Point(p8), Point(p5)), triangle)
 
-		checkLineIntersection(NewStaticLine(p1, p5), triangleWS)
-		checkLineIntersection(NewStaticLine(p2, p6), triangleWS)
-		checkLineIntersection(NewStaticLine(p3, p7), triangleWS)
-		checkLineIntersection(NewStaticLine(p4, p8), triangleWS)
+		checkLineIntersection(NewStaticLine(Point(p1), Point(p5)), triangle)
+		checkLineIntersection(NewStaticLine(Point(p2), Point(p6)), triangle)
+		checkLineIntersection(NewStaticLine(Point(p3), Point(p7)), triangle)
+		checkLineIntersection(NewStaticLine(Point(p4), Point(p8)), triangle)
 	}
 }
 
-func checkIntersectionMeshMeshPlacements(first, second Placement, resultSet *IntersectionResultSet) {
+func checkIntersectionMeshWithMesh(first, second StaticMesh, resultSet *IntersectionResultSet) {
 }
 
 func CheckLineIntersection(line StaticLine, mesh StaticMesh, resultSet *IntersectionResultSet) {
 	for _, triangle := range mesh.Triangles() {
-		heightA := dprec.Vec3Dot(triangle.Normal(), dprec.Vec3Diff(line.A(), triangle.A()))
-		heightB := dprec.Vec3Dot(triangle.Normal(), dprec.Vec3Diff(line.B(), triangle.A()))
+		heightA := dprec.Vec3Dot(triangle.Normal(), dprec.Vec3Diff(dprec.Vec3(line.A()), dprec.Vec3(triangle.A())))
+		heightB := dprec.Vec3Dot(triangle.Normal(), dprec.Vec3Diff(dprec.Vec3(line.B()), dprec.Vec3(triangle.A())))
 		if heightA > 0.0 && heightB > 0.0 {
 			return
 		}
@@ -395,11 +390,11 @@ func CheckLineIntersection(line StaticLine, mesh StaticMesh, resultSet *Intersec
 		}
 
 		projectedPoint := dprec.Vec3Sum(
-			dprec.Vec3Prod(line.A(), -heightB/(heightA-heightB)),
-			dprec.Vec3Prod(line.B(), heightA/(heightA-heightB)),
+			dprec.Vec3Prod(dprec.Vec3(line.A()), -heightB/(heightA-heightB)),
+			dprec.Vec3Prod(dprec.Vec3(line.B()), heightA/(heightA-heightB)),
 		)
 
-		if triangle.ContainsPoint(projectedPoint) {
+		if triangle.ContainsPoint(Point(projectedPoint)) {
 			resultSet.Add(Intersection{
 				Depth:                -heightB,
 				FirstContact:         projectedPoint,

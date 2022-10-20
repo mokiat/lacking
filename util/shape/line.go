@@ -2,32 +2,31 @@ package shape
 
 import "github.com/mokiat/gomath/dprec"
 
-// NewStaticLine creates a new StaticLine.
-func NewStaticLine(a, b dprec.Vec3) StaticLine {
+// NewStaticLine creates a new StaticLine shape.
+func NewStaticLine(a, b Point) StaticLine {
 	return StaticLine{
 		a: a,
 		b: b,
 	}
 }
 
-// StaticLine represents a line segment between two 3D points that cannot
-// be resized.
+// StaticLine represents an immutable line segment between two 3D points.
 type StaticLine struct {
-	a dprec.Vec3
-	b dprec.Vec3
+	a Point
+	b Point
 }
 
-// A returns the starting point of the line.
-func (l StaticLine) A() dprec.Vec3 {
+// A returns the starting point of this StaticLine.
+func (l StaticLine) A() Point {
 	return l.a
 }
 
-// B returns the ending point of the line.
-func (l StaticLine) B() dprec.Vec3 {
+// B returns the ending point of this StaticLine.
+func (l StaticLine) B() Point {
 	return l.b
 }
 
-// Length returns the length of the line.
+// Length returns the length of this StaticLine.
 func (l StaticLine) Length() float64 {
-	return dprec.Vec3Diff(l.b, l.a).Length()
+	return dprec.Vec3Diff(dprec.Vec3(l.b), dprec.Vec3(l.a)).Length()
 }

@@ -2,8 +2,8 @@ package shape
 
 import "github.com/mokiat/gomath/dprec"
 
-// NewStaticTriangle creates a new StaticTriangle.
-func NewStaticTriangle(a, b, c dprec.Vec3) StaticTriangle {
+// NewStaticTriangle creates a new StaticTriangle shape.
+func NewStaticTriangle(a, b, c Point) StaticTriangle {
 	return StaticTriangle{
 		a: a,
 		b: b,
@@ -13,48 +13,61 @@ func NewStaticTriangle(a, b, c dprec.Vec3) StaticTriangle {
 
 // StaticTriangle represents a tringle in 3D space.
 type StaticTriangle struct {
-	a dprec.Vec3
-	b dprec.Vec3
-	c dprec.Vec3
+	a Point
+	b Point
+	c Point
 }
 
-// Transformed returns a new StaticTriangle that is the result of applying
-// the specified rotation and translation to the current triangle.
-func (t StaticTriangle) Transformed(translation dprec.Vec3, rotation dprec.Quat) StaticTriangle {
-	return StaticTriangle{
-		a: dprec.Vec3Sum(translation, dprec.QuatVec3Rotation(rotation, t.a)),
-		b: dprec.Vec3Sum(translation, dprec.QuatVec3Rotation(rotation, t.b)),
-		c: dprec.Vec3Sum(translation, dprec.QuatVec3Rotation(rotation, t.c)),
-	}
-}
+// TODO: Bounding sphere radius
 
 // A returns the first corner of the triangle.
-func (t StaticTriangle) A() dprec.Vec3 {
+func (t StaticTriangle) A() Point {
 	return t.a
 }
 
+// WithA returns a new StaticTriangle based on this one but has the specified
+// A point.
+func (t StaticTriangle) WithA(a Point) StaticTriangle {
+	t.a = a
+	return t
+}
+
 // B returns the second corner of the triangle.
-func (t StaticTriangle) B() dprec.Vec3 {
+func (t StaticTriangle) B() Point {
 	return t.b
 }
 
+// WithB returns a new StaticTriangle based on this one but has the specified
+// B point.
+func (t StaticTriangle) WithB(b Point) StaticTriangle {
+	t.b = b
+	return t
+}
+
 // C returns the third corner of the triangle.
-func (t StaticTriangle) C() dprec.Vec3 {
+func (t StaticTriangle) C() Point {
 	return t.c
 }
 
-// Normal returns the orientation of the triangle's surface.
-func (t StaticTriangle) Normal() dprec.Vec3 {
-	vecAB := dprec.Vec3Diff(t.b, t.a)
-	vecAC := dprec.Vec3Diff(t.c, t.a)
-	return dprec.UnitVec3(dprec.Vec3Cross(vecAB, vecAC))
+// WithC returns a new StaticTriangle based on this one but has the specified
+// C point.
+func (t StaticTriangle) WithC(c Point) StaticTriangle {
+	t.c = c
+	return t
 }
 
 // Area returns the triangle's surface area.
 func (t StaticTriangle) Area() float64 {
-	vecAB := dprec.Vec3Diff(t.b, t.a)
-	vecAC := dprec.Vec3Diff(t.c, t.a)
+	vecAB := dprec.Vec3Diff(dprec.Vec3(t.b), dprec.Vec3(t.a))
+	vecAC := dprec.Vec3Diff(dprec.Vec3(t.c), dprec.Vec3(t.a))
 	return dprec.Vec3Cross(vecAB, vecAC).Length() / 2.0
+}
+
+// Normal returns the orientation of the triangle's surface.
+func (t StaticTriangle) Normal() dprec.Vec3 {
+	vecAB := dprec.Vec3Diff(dprec.Vec3(t.b), dprec.Vec3(t.a))
+	vecAC := dprec.Vec3Diff(dprec.Vec3(t.c), dprec.Vec3(t.a))
+	return dprec.UnitVec3(dprec.Vec3Cross(vecAB, vecAC))
 }
 
 // IsLookingTowards checks whether the orientation of the triangle looks towards
@@ -63,11 +76,11 @@ func (t StaticTriangle) IsLookingTowards(direction dprec.Vec3) bool {
 	return dprec.Vec3Dot(t.Normal(), direction) > 0.0
 }
 
-// ContainsPoint checks whether the specified point is is inside the triangle.
+// ContainsPoint checks whether the specified Point is inside the triangle.
 //
 // Beware, currently this method assumes that the point lies somewhere on the
-// surface plane of the triangle.
-func (t StaticTriangle) ContainsPoint(point dprec.Vec3) bool {
+// surface plane of the StaticTriangle.
+func (t StaticTriangle) ContainsPoint(point Point) bool {
 	normal := t.Normal()
 	if triangleABP := NewStaticTriangle(t.a, t.b, point); !triangleABP.IsLookingTowards(normal) {
 		return false
@@ -79,4 +92,14 @@ func (t StaticTriangle) ContainsPoint(point dprec.Vec3) bool {
 		return false
 	}
 	return true
+}
+
+// Transformed returns a new StaticTriangle that is the result of applying
+// the specified rotation and translation to the current triangle.
+func (t StaticTriangle) Transformed(parent Transform) StaticTriangle {
+	return StaticTriangle{
+		a: t.a.Transformed(parent),
+		b: t.b.Transformed(parent),
+		c: t.c.Transformed(parent),
+	}
 }

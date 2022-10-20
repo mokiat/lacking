@@ -497,19 +497,19 @@ func (s *Scene) checkCollisionTwoBodies(primary, secondary *Body) {
 		return
 	}
 
-	for _, primaryPlacement := range primary.collisionShapes {
-		primaryPlacementWS := (primaryPlacement.(shape.Placement)).Transformed(primary.position, primary.orientation)
+	primaryTransform := shape.NewTransform(primary.position, primary.orientation)
+	secondaryTransform := shape.NewTransform(secondary.position, secondary.orientation)
 
-		for _, secondaryPlacement := range secondary.collisionShapes {
-			secondaryPlacementWS := (secondaryPlacement.(shape.Placement)).Transformed(secondary.position, secondary.orientation)
+	for _, primaryShape := range primary.collisionShapes {
+		primaryPlacement := shape.NewPlacement(primaryTransform, primaryShape)
+
+		for _, secondaryShape := range secondary.collisionShapes {
+			secondaryPlacement := shape.NewPlacement(secondaryTransform, secondaryShape)
 
 			s.intersectionSet.Reset()
-			shape.CheckIntersection(primaryPlacementWS, secondaryPlacementWS, s.intersectionSet)
+			shape.CheckPlacementIntersection(primaryPlacement, secondaryPlacement, s.intersectionSet)
 
 			for _, intersection := range s.intersectionSet.Intersections() {
-				// TODO: Once both non-static are supported, a dual-body collision constraint
-				// should be used instead of individual uni-body constraints
-
 				if !primary.static && !secondary.static {
 					solver := s.allocateDualCollisionSolver()
 					solver.Normal = intersection.FirstDisplaceNormal

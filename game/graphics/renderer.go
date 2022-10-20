@@ -511,7 +511,7 @@ func (r *sceneRenderer) Ray(viewport Viewport, camera *Camera, x, y int) shape.S
 	a = dprec.Mat4Vec4Prod(cameraMatrix, a)
 	b = dprec.Mat4Vec4Prod(cameraMatrix, b)
 
-	return shape.NewStaticLine(a.VecXYZ(), b.VecXYZ())
+	return shape.NewStaticLine(shape.Point(a.VecXYZ()), shape.Point(b.VecXYZ()))
 }
 
 func (r *sceneRenderer) Render(framebuffer render.Framebuffer, viewport Viewport, scene *Scene, camera *Camera) {
