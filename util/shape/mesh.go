@@ -6,7 +6,6 @@ import "github.com/mokiat/gomath/dprec"
 // triangles.
 func NewStaticMesh(triangles []StaticTriangle) StaticMesh {
 	return StaticMesh{
-		Transform: IdentityTransform(),
 		triangles: triangles,
 		bsRadius:  triangleListBoundingSphereRadius(triangles),
 	}
@@ -14,7 +13,6 @@ func NewStaticMesh(triangles []StaticTriangle) StaticMesh {
 
 // StaticMesh represents an immutable collection of triangles.
 type StaticMesh struct {
-	Transform
 	triangles []StaticTriangle
 	bsRadius  float64
 }
@@ -29,20 +27,6 @@ func (m StaticMesh) BoundingSphereRadius() float64 {
 // of the returned slice must never be modified.
 func (m StaticMesh) Triangles() []StaticTriangle {
 	return m.triangles
-}
-
-// WithTransform returns a new StaticMesh that is based on this one but has
-// the specified transform.
-func (b StaticMesh) WithTransform(transform Transform) StaticMesh {
-	b.Transform = transform
-	return b
-}
-
-// Transformed returns a new StaticMesh that is based on this one but has
-// the specified transform applied to it.
-func (b StaticMesh) Transformed(parent Transform) StaticMesh {
-	b.Transform = b.Transform.Transformed(parent)
-	return b
 }
 
 func triangleListBoundingSphereRadius(triangles []StaticTriangle) float64 {

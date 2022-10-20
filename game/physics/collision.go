@@ -10,7 +10,7 @@ const (
 	sqrEpsilon = epsilon * epsilon
 )
 
-type CollisionShape shape.Shape
+type CollisionShape = shape.Placement[shape.Shape]
 
 var _ SBConstraintSolver = (*groundCollisionSolver)(nil)
 

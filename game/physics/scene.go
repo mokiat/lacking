@@ -501,13 +501,13 @@ func (s *Scene) checkCollisionTwoBodies(primary, secondary *Body) {
 	secondaryTransform := shape.NewTransform(secondary.position, secondary.orientation)
 
 	for _, primaryShape := range primary.collisionShapes {
-		primaryPlacement := shape.NewPlacement(primaryTransform, primaryShape)
+		primaryShape = primaryShape.Transformed(primaryTransform)
 
 		for _, secondaryShape := range secondary.collisionShapes {
-			secondaryPlacement := shape.NewPlacement(secondaryTransform, secondaryShape)
+			secondaryShape = secondaryShape.Transformed(secondaryTransform)
 
 			s.intersectionSet.Reset()
-			shape.CheckPlacementIntersection(primaryPlacement, secondaryPlacement, s.intersectionSet)
+			shape.CheckIntersection(primaryShape, secondaryShape, s.intersectionSet)
 
 			for _, intersection := range s.intersectionSet.Intersections() {
 				if !primary.static && !secondary.static {

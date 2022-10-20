@@ -1,10 +1,6 @@
 package shape
 
-import (
-	"fmt"
-
-	"github.com/mokiat/gomath/dprec"
-)
+import "github.com/mokiat/gomath/dprec"
 
 // IdentityTransform returns a new Transform that represents the origin.
 func IdentityTransform() Transform {
@@ -49,32 +45,14 @@ func (t Transform) Transformed(transform Transform) Transform {
 	if transform.IsIdentity() {
 		return t
 	}
+	if t.IsIdentity() {
+		return transform
+	}
 	return Transform{
 		position: dprec.Vec3Sum(
 			transform.position,
 			dprec.QuatVec3Rotation(transform.rotation, t.position),
 		),
 		rotation: dprec.QuatProd(transform.rotation, t.rotation),
-	}
-}
-
-// TransformedShape is a helper method that transforms the specified Shape
-// using the specified Transform.
-//
-// This is a helper method necessary due to Go's generics limitations at
-// the moment.
-func TransformedShape(sh Shape, transform Transform) Shape {
-	if transform.IsIdentity() {
-		return sh
-	}
-	switch sh := sh.(type) {
-	case StaticSphere:
-		return sh.Transformed(transform)
-	case StaticBox:
-		return sh.Transformed(transform)
-	case StaticMesh:
-		return sh.Transformed(transform)
-	default:
-		panic(fmt.Errorf("unknown shape type %T", sh))
 	}
 }

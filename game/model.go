@@ -305,26 +305,32 @@ func (r *ResourceSet) releaseModel(model *ModelDefinition) {
 func (r *ResourceSet) constructCollisionShapes(bodyDef asset.BodyDefinition) []physics.CollisionShape {
 	var result []physics.CollisionShape
 	for _, collisionBoxAsset := range bodyDef.CollisionBoxes {
-		result = append(result,
-			shape.NewStaticBox(
-				collisionBoxAsset.Width,
-				collisionBoxAsset.Height,
-				collisionBoxAsset.Lenght,
-			).WithTransform(shape.NewTransform(
-				collisionBoxAsset.Translation,
-				collisionBoxAsset.Rotation,
-			)),
-		)
+		result = append(result, physics.CollisionShape(
+			shape.NewPlacement[shape.Shape](
+				shape.NewTransform(
+					collisionBoxAsset.Translation,
+					collisionBoxAsset.Rotation,
+				),
+				shape.NewStaticBox(
+					collisionBoxAsset.Width,
+					collisionBoxAsset.Height,
+					collisionBoxAsset.Lenght,
+				),
+			),
+		))
 	}
 	for _, collisionSphereAsset := range bodyDef.CollisionSpheres {
-		result = append(result,
-			shape.NewStaticSphere(
-				collisionSphereAsset.Radius,
-			).WithTransform(shape.NewTransform(
-				collisionSphereAsset.Translation,
-				collisionSphereAsset.Rotation,
-			)),
-		)
+		result = append(result, physics.CollisionShape(
+			shape.NewPlacement[shape.Shape](
+				shape.NewTransform(
+					collisionSphereAsset.Translation,
+					collisionSphereAsset.Rotation,
+				),
+				shape.NewStaticSphere(
+					collisionSphereAsset.Radius,
+				),
+			),
+		))
 	}
 	for _, collisionMeshAsset := range bodyDef.CollisionMeshes {
 		triangles := make([]shape.StaticTriangle, len(collisionMeshAsset.Triangles))
@@ -335,14 +341,17 @@ func (r *ResourceSet) constructCollisionShapes(bodyDef asset.BodyDefinition) []p
 				shape.Point(triangleAsset.C),
 			)
 		}
-		result = append(result,
-			shape.NewStaticMesh(
-				triangles,
-			).WithTransform(shape.NewTransform(
-				collisionMeshAsset.Translation,
-				collisionMeshAsset.Rotation,
-			)),
-		)
+		result = append(result, physics.CollisionShape(
+			shape.NewPlacement[shape.Shape](
+				shape.NewTransform(
+					collisionMeshAsset.Translation,
+					collisionMeshAsset.Rotation,
+				),
+				shape.NewStaticMesh(
+					triangles,
+				),
+			),
+		))
 	}
 	return result
 }

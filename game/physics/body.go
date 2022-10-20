@@ -216,7 +216,7 @@ func (b *Body) SetCollisionShapes(shapes []CollisionShape) {
 	maxRadius := float64(0.0)
 	b.collisionShapes = shapes
 	for _, s := range shapes {
-		maxRadius = dprec.Max(maxRadius, s.BoundingSphereRadius())
+		maxRadius = dprec.Max(maxRadius, s.Shape().BoundingSphereRadius())
 	}
 	b.item.SetRadius(maxRadius)
 }

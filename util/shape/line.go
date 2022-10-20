@@ -30,3 +30,12 @@ func (l StaticLine) B() Point {
 func (l StaticLine) Length() float64 {
 	return dprec.Vec3Diff(dprec.Vec3(l.b), dprec.Vec3(l.a)).Length()
 }
+
+// Transformed returns a new Point that is based on this one but with the
+// specified Transform applied to it.
+func (l StaticLine) Transformed(parent Transform) StaticLine {
+	return StaticLine{
+		a: l.a.Transformed(parent),
+		b: l.b.Transformed(parent),
+	}
+}

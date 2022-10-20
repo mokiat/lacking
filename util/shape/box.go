@@ -6,15 +6,13 @@ import "github.com/mokiat/gomath/dprec"
 func NewStaticBox(width, height, length float64) StaticBox {
 	size := dprec.NewVec3(width, height, length)
 	return StaticBox{
-		Transform: IdentityTransform(),
-		size:      size,
-		bsRadius:  size.Length() / 2.0,
+		size:     size,
+		bsRadius: size.Length() / 2.0,
 	}
 }
 
 // StaticBox represents an immutable box shape.
 type StaticBox struct {
-	Transform
 	size     dprec.Vec3
 	bsRadius float64
 }
@@ -76,19 +74,5 @@ func (b StaticBox) HalfLength() float64 {
 func (b StaticBox) WithLength(length float64) StaticBox {
 	b.size.Z = length
 	b.bsRadius = b.size.Length() / 2.0
-	return b
-}
-
-// WithTransform returns a new StaticBox that is based on this one but has
-// the specified transform.
-func (b StaticBox) WithTransform(transform Transform) StaticBox {
-	b.Transform = transform
-	return b
-}
-
-// Transformed returns a new StaticBox that is based on this one but has
-// the specified transform applied to it.
-func (b StaticBox) Transformed(parent Transform) StaticBox {
-	b.Transform = b.Transform.Transformed(parent)
 	return b
 }
