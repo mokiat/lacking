@@ -313,7 +313,126 @@ func checkIntersectionMeshWithMesh(first, second Placement[StaticMesh], resultSe
 }
 
 func checkIntersectionSphereWithBox(first Placement[StaticSphere], second Placement[StaticBox], flipped bool, resultSet *IntersectionResultSet) {
-	// TODO
+	boxAxisX := second.Rotation().OrientationX()
+	boxAxisY := second.Rotation().OrientationY()
+	boxAxisZ := second.Rotation().OrientationZ()
+
+	deltaPosition := dprec.Vec3Diff(first.Position(), second.Position())
+	distanceFront := dprec.Vec3Dot(boxAxisZ, deltaPosition) - second.Shape().HalfLength()
+	distanceBack := -(second.Shape().Length() + distanceFront)
+	distanceTop := dprec.Vec3Dot(boxAxisY, deltaPosition) - second.Shape().HalfHeight()
+	distanceBottom := -(second.Shape().Height() + distanceTop)
+	distanceRight := dprec.Vec3Dot(boxAxisX, deltaPosition) - second.Shape().HalfWidth()
+	distanceLeft := -(second.Shape().Width() + distanceRight)
+
+	isFront := distanceFront > 0
+	isBack := distanceBack > 0
+	isTop := distanceTop > 0
+	isBottom := distanceBottom > 0
+	isRight := distanceRight > 0
+	isLeft := distanceLeft > 0
+
+	// right check
+	if isRight && !isFront && !isBack && !isTop && !isBottom {
+		if depth := first.Shape().Radius() - distanceRight; depth > 0 {
+			addIntersection(resultSet, flipped, Intersection{
+				Depth:                depth,
+				FirstContact:         dprec.Vec3Diff(first.Position(), dprec.Vec3Prod(boxAxisX, first.Shape().Radius())),
+				FirstDisplaceNormal:  boxAxisX,
+				SecondContact:        dprec.Vec3Diff(first.Position(), dprec.Vec3Prod(boxAxisX, distanceRight)),
+				SecondDisplaceNormal: dprec.InverseVec3(boxAxisX),
+			})
+		}
+		return
+	}
+
+	// left check
+	if isLeft && !isFront && !isBack && !isTop && !isBottom {
+		if depth := first.Shape().Radius() - distanceLeft; depth > 0 {
+			addIntersection(resultSet, flipped, Intersection{
+				Depth:                depth,
+				FirstContact:         dprec.Vec3Sum(first.Position(), dprec.Vec3Prod(boxAxisX, first.Shape().Radius())),
+				FirstDisplaceNormal:  dprec.InverseVec3(boxAxisX),
+				SecondContact:        dprec.Vec3Sum(first.Position(), dprec.Vec3Prod(boxAxisX, distanceLeft)),
+				SecondDisplaceNormal: boxAxisX,
+			})
+		}
+		return
+	}
+
+	// top check
+	if isTop && !isFront && !isBack && !isLeft && !isRight {
+		if depth := first.Shape().Radius() - distanceTop; depth > 0 {
+			addIntersection(resultSet, flipped, Intersection{
+				Depth:                depth,
+				FirstContact:         dprec.Vec3Diff(first.Position(), dprec.Vec3Prod(boxAxisY, first.Shape().Radius())),
+				FirstDisplaceNormal:  boxAxisY,
+				SecondContact:        dprec.Vec3Diff(first.Position(), dprec.Vec3Prod(boxAxisY, distanceTop)),
+				SecondDisplaceNormal: dprec.InverseVec3(boxAxisY),
+			})
+		}
+		return
+	}
+
+	// bottom check
+	if isBottom && !isFront && !isBack && !isLeft && !isRight {
+		if depth := first.Shape().Radius() - distanceBottom; depth > 0 {
+			addIntersection(resultSet, flipped, Intersection{
+				Depth:                depth,
+				FirstContact:         dprec.Vec3Sum(first.Position(), dprec.Vec3Prod(boxAxisY, first.Shape().Radius())),
+				FirstDisplaceNormal:  dprec.InverseVec3(boxAxisY),
+				SecondContact:        dprec.Vec3Sum(first.Position(), dprec.Vec3Prod(boxAxisY, distanceBottom)),
+				SecondDisplaceNormal: boxAxisY,
+			})
+		}
+		return
+	}
+
+	// front check
+	if isFront && !isTop && !isBottom && !isLeft && !isRight {
+		if depth := first.Shape().Radius() - distanceFront; depth > 0 {
+			addIntersection(resultSet, flipped, Intersection{
+				Depth:                depth,
+				FirstContact:         dprec.Vec3Diff(first.Position(), dprec.Vec3Prod(boxAxisZ, first.Shape().Radius())),
+				FirstDisplaceNormal:  boxAxisZ,
+				SecondContact:        dprec.Vec3Diff(first.Position(), dprec.Vec3Prod(boxAxisZ, distanceFront)),
+				SecondDisplaceNormal: dprec.InverseVec3(boxAxisZ),
+			})
+		}
+		return
+	}
+
+	// back check
+	if isBack && !isTop && !isBottom && !isLeft && !isRight {
+		if depth := first.Shape().Radius() - distanceBack; depth > 0 {
+			addIntersection(resultSet, flipped, Intersection{
+				Depth:                depth,
+				FirstContact:         dprec.Vec3Sum(first.Position(), dprec.Vec3Prod(boxAxisZ, first.Shape().Radius())),
+				FirstDisplaceNormal:  dprec.InverseVec3(boxAxisZ),
+				SecondContact:        dprec.Vec3Sum(first.Position(), dprec.Vec3Prod(boxAxisZ, distanceBack)),
+				SecondDisplaceNormal: boxAxisZ,
+			})
+		}
+		return
+	}
+
+	// TODO: Top-Right Edge
+	// TODO: Top-Left Edge
+	// TODO: Top-Front Edge
+	// TODO: Top-Back Edge
+	// TODO: Bottom-Right Edge
+	// TODO: Bottom-Left Edge
+	// TODO: Bottom-Front Edge
+	// TODO: Bottom-Back Edge
+
+	// TODO: Top-Left-Front Vertex
+	// TODO: Top-Left-Back Vertex
+	// TODO: Top-Right-Front Vertex
+	// TODO: Top-Right-Back Vertex
+	// TODO: Bottom-Left-Front Vertex
+	// TODO: Bottom-Left-Back Vertex
+	// TODO: Bottom-Right-Front Vertex
+	// TODO: Bottom-Right-Back Vertex
 }
 
 func checkIntersectionSphereWithMesh(sphere Placement[StaticSphere], mesh Placement[StaticMesh], flipped bool, resultSet *IntersectionResultSet) {

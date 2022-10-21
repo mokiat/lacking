@@ -229,8 +229,8 @@ func (b *Body) CollisionShapes() []CollisionShape {
 // SetCollisionShapes sets the collision shapes
 // for this body to be used in collision detection.
 func (b *Body) SetCollisionShapes(shapes []CollisionShape) {
-	maxRadius := float64(0.0)
 	b.collisionShapes = shapes
+	maxRadius := float64(0.0)
 	for _, s := range shapes {
 		maxRadius = dprec.Max(maxRadius, s.Shape().BoundingSphereRadius())
 	}
