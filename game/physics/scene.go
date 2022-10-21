@@ -30,6 +30,7 @@ func newScene(engine *Engine, stepSeconds float64) *Scene {
 
 		intersectionSet: shape.NewIntersectionResultSet(128),
 
+		timeSpeed:    1.0,
 		gravity:      dprec.NewVec3(0.0, -9.8, 0.0),
 		windVelocity: dprec.NewVec3(0.0, 0.0, 0.0),
 		windDensity:  1.2,
@@ -72,6 +73,7 @@ type Scene struct {
 	dualCollisionSolvers     []dualCollisionSolver
 	intersectionSet          *shape.IntersectionResultSet
 
+	timeSpeed    float64
 	gravity      dprec.Vec3
 	windVelocity dprec.Vec3
 	windDensity  float64
@@ -82,6 +84,17 @@ type Scene struct {
 // Engine returns the physics Engine that owns this Scene.
 func (s *Scene) Engine() *Engine {
 	return s.engine
+}
+
+// TimeSpeed returns the speed at which time runs, where 1.0 is the default
+// and 0.0 is stopped.
+func (s *Scene) TimeSpeed() float64 {
+	return s.timeSpeed
+}
+
+// SetTimeSpeed changes the rate at which time runs.
+func (s *Scene) SetTimeSpeed(timeSpeed float64) {
+	s.timeSpeed = timeSpeed
 }
 
 // Gravity returns the gravity acceleration.
@@ -200,6 +213,7 @@ func (s *Scene) CreateDoubleBodyConstraint(primary, secondary *Body, solver DBCo
 func (s *Scene) Update(elapsedSeconds float64) {
 	defer metrics.BeginSpan("physics").End()
 
+	elapsedSeconds = elapsedSeconds * s.timeSpeed
 	for elapsedSeconds > s.stepSeconds {
 		s.runSimulation(s.stepSeconds)
 		elapsedSeconds -= s.stepSeconds
