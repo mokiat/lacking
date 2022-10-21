@@ -140,6 +140,7 @@ func (s *Scene) CreateBody(info BodyInfo) *Body {
 	body.SetRestitutionCoefficient(def.restitutionCoefficient)
 	body.SetDragFactor(def.dragFactor)
 	body.SetAngularDragFactor(def.angularDragFactor)
+	body.SetCollisionGroup(def.collisionGroup)
 	body.SetCollisionShapes(def.collisionShapes)
 	body.SetAerodynamicShapes(def.aerodynamicShapes)
 
@@ -494,6 +495,9 @@ func (s *Scene) allocateDualCollisionSolver() *dualCollisionSolver {
 
 func (s *Scene) checkCollisionTwoBodies(primary, secondary *Body) {
 	if primary.static && secondary.static {
+		return
+	}
+	if (primary.collisionGroup == secondary.collisionGroup) && (primary.collisionGroup != 0) {
 		return
 	}
 

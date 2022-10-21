@@ -10,6 +10,16 @@ const (
 	sqrEpsilon = epsilon * epsilon
 )
 
+var (
+	nextCollisionGroup = 1
+)
+
+func NewCollisionGroup() int {
+	result := nextCollisionGroup
+	nextCollisionGroup++
+	return result
+}
+
 type CollisionShape = shape.Placement[shape.Shape]
 
 var _ SBConstraintSolver = (*groundCollisionSolver)(nil)

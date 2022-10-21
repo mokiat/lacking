@@ -18,6 +18,7 @@ func (e *Engine) CreateBodyDefinition(info BodyDefinitionInfo) *BodyDefinition {
 		restitutionCoefficient: info.RestitutionCoefficient,
 		dragFactor:             info.DragFactor,
 		angularDragFactor:      info.AngularDragFactor,
+		collisionGroup:         info.CollisionGroup,
 		collisionShapes:        info.CollisionShapes,
 		aerodynamicShapes:      info.AerodynamicShapes,
 	}

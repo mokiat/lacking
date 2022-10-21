@@ -11,6 +11,7 @@ type BodyDefinitionInfo struct {
 	RestitutionCoefficient float64
 	DragFactor             float64
 	AngularDragFactor      float64
+	CollisionGroup         int
 	CollisionShapes        []CollisionShape
 	AerodynamicShapes      []AerodynamicShape
 }
@@ -21,6 +22,7 @@ type BodyDefinition struct {
 	restitutionCoefficient float64
 	dragFactor             float64
 	angularDragFactor      float64
+	collisionGroup         int
 	collisionShapes        []CollisionShape
 	aerodynamicShapes      []AerodynamicShape
 }
@@ -62,6 +64,7 @@ type Body struct {
 	velocity        dprec.Vec3
 	angularVelocity dprec.Vec3
 
+	collisionGroup    int
 	collisionShapes   []CollisionShape
 	aerodynamicShapes []AerodynamicShape
 }
@@ -202,6 +205,19 @@ func (b *Body) AngularVelocity() dprec.Vec3 {
 // of this body.
 func (b *Body) SetAngularVelocity(angularVelocity dprec.Vec3) {
 	b.angularVelocity = angularVelocity
+}
+
+// CollisionGroup returns the collision group for this body. Two bodies
+// with the same collision group are not checked for collisions.
+func (b *Body) CollisionGroup() int {
+	return b.collisionGroup
+}
+
+// SetCollisionGroup changes the collision group for this body.
+//
+// A value of 0 disables the collision group.
+func (b *Body) SetCollisionGroup(group int) {
+	b.collisionGroup = group
 }
 
 // CollisionShapes returns a slice of shapes that
