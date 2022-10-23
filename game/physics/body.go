@@ -64,6 +64,7 @@ type Body struct {
 	velocity        dprec.Vec3
 	angularVelocity dprec.Vec3
 
+	bsRadius          float64
 	collisionGroup    int
 	collisionShapes   []CollisionShape
 	aerodynamicShapes []AerodynamicShape
@@ -234,6 +235,7 @@ func (b *Body) SetCollisionShapes(shapes []CollisionShape) {
 	for _, s := range shapes {
 		maxRadius = dprec.Max(maxRadius, s.Shape().BoundingSphereRadius())
 	}
+	b.bsRadius = maxRadius
 	b.item.SetRadius(maxRadius)
 }
 

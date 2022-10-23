@@ -470,13 +470,11 @@ func (s *Scene) detectCollisions() {
 
 	for primary := range s.dynamicBodies {
 		primary.revision = s.revision
-		// FIXME: 50 is hardcoded range. Also, consider using a SphericalRegion
-		// instead, once BoundingSphereRadius is exposed from CollisionShape.
+
 		region := spatial.CuboidRegion(
 			primary.position,
-			dprec.NewVec3(50, 50, 50),
+			dprec.NewVec3(primary.bsRadius, primary.bsRadius, primary.bsRadius),
 		)
-
 		s.bodyOctree.VisitHexahedronRegion(&region, spatial.VisitorFunc[*Body](func(secondary *Body) {
 			if secondary == primary {
 				return
