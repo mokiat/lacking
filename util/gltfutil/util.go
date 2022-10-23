@@ -188,6 +188,19 @@ func Color0s(doc *gltf.Document, primitive *gltf.Primitive) ([]sprec.Vec4, error
 		for i := range result {
 			result[i] = scanner.ScanSPVec4()
 		}
+	case gltf.ComponentUshort:
+		for i := range result {
+			r := scanner.ScanUint16()
+			g := scanner.ScanUint16()
+			b := scanner.ScanUint16()
+			a := scanner.ScanUint16()
+			result[i] = sprec.NewVec4(
+				float32(r)/float32(0xFFFF),
+				float32(g)/float32(0xFFFF),
+				float32(b)/float32(0xFFFF),
+				float32(a)/float32(0xFFFF),
+			)
+		}
 	default:
 		return nil, fmt.Errorf("unsupported accessor component type %d", accessor.ComponentType)
 	}
