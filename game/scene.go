@@ -139,9 +139,6 @@ func (s *Scene) CreateModel(info ModelInfo) *Model {
 		}
 		parent.AppendChild(nodes[i])
 	}
-	// if info.IsDynamic {
-	s.Root().AppendChild(modelNode)
-	// }
 
 	var bodyInstances []*physics.Body
 	for _, instance := range definition.bodyInstances {
@@ -200,6 +197,13 @@ func (s *Scene) CreateModel(info ModelInfo) *Model {
 		})
 		meshNode.SetMesh(mesh)
 	}
+
+	if info.IsDynamic {
+		s.Root().AppendChild(modelNode)
+	}
+	s.applyPhysicsToNode(modelNode)
+	s.applyNodeToPhysics(modelNode)
+	s.applyNodeToGraphics(modelNode)
 
 	result := &Model{
 		definition:    definition,
