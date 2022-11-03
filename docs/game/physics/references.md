@@ -14,6 +14,12 @@ The following articles and videos are a good place to start.
 - [The Jacobian matrix](https://www.youtube.com/watch?v=bohL918kXQk)
 - [Computing a Jacobian matrix](https://www.youtube.com/watch?v=CGbBbH1e7Yw)
 - [The Jacobian Determinant](https://www.youtube.com/watch?v=p46QWyHQE6M)
+- [Gradient](https://www.youtube.com/watch?v=tIpKfDc295M)
+- [Gradient and graphs](https://www.youtube.com/watch?v=_-02ze7tf08)
+- [Directional derivative](https://www.youtube.com/watch?v=N_ZRcLheNv0)
+- [Directional derivatives and slope](https://www.youtube.com/watch?v=4tdyIGIEtNU)
+- [Why the gradient is the direction of steepest ascent](https://www.youtube.com/watch?v=TEB2z7ZlRAw)
+- [Gradient descent, how neural networks learn | Chapter 2](https://www.youtube.com/watch?v=IHZwWFHWa-w)
 
 ## Integration
 
