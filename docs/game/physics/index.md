@@ -1,3 +1,7 @@
+---
+title: Overview
+---
+
 # Physics
 
 The Lacking framework features an impulse-based physics engine. Impulse-based physics engines use velocity corrections to adjust the state of objects and to correct their trajectories according to some physical constraints. In addition, the Lacking physics engine features a nudge system that operates directly on positions.
