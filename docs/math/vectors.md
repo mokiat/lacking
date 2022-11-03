@@ -11,7 +11,7 @@ $$
 ## Dot Product
 
 $$
-\vec{a}.\vec{b} = |a||b|\cos{\alpha}
+\vec{a} \cdot \vec{b} = |a||b|\cos{\alpha}
 $$
 
 The dot product is very useful in determining if two vectors are perpendicular or whether they point in the same direction. A value of $0$ indicates that they are perpendicular. A positive value indicates that they point in the same half-space direction. A negataive value indicates that they point in opposite half-space directions.
@@ -27,6 +27,30 @@ $$
 The cross product returns a new vector that is perpendicular to both of the initial vectors and has a length equal to the surface area that is bounded by the initial vectors. If the initial vectors are collinear, the resulting vector is the zero vector.
 
 This is very useful in physics equations where the resulting concept is perpendicular to the two initial vectors (e.g. the torque vector is perpendicular to the force and the radius).
+
+The order of the two vectors matters and flipping the order results in the inverse output vector.
+
+$$
+\vec{a} \times \vec{b} = - \vec{b} \times \vec{a}
+$$
+
+The cross product is distributable over addition.
+
+$$
+\vec{a} \times (\vec{b} + \vec{c}) = \vec{a} \times \vec{b} + \vec{a} \times \vec{c}
+$$
+
+## Triple Product
+
+$$
+\vec{a} \cdot (\vec{b} \times \vec{c})
+=
+\vec{b} \cdot (\vec{c} \times \vec{a})
+=
+\vec{c} \cdot (\vec{a} \times \vec{b})
+$$
+
+This gives the signed volume of the parallelepiped formed by the three vectors.
 
 ## Matrix - Vector multiplication
 
@@ -73,9 +97,9 @@ a_3 \\
 \vec{a}
 =
 \begin{bmatrix}
-\vec{vec_1}.\vec{a} \\
-\vec{vec_2}.\vec{a} \\
-\vec{vec_3}.\vec{a} \\
+\vec{row_1} \cdot \vec{a} \\
+\vec{row_2} \cdot \vec{a} \\
+\vec{row_3} \cdot \vec{a} \\
 \end{bmatrix}
 $$
 

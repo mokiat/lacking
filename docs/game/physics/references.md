@@ -35,3 +35,9 @@ The following articles and videos are a good place to start.
 ## Constraint Solver
 
 - [Physics for Game Programmers: Understanding Constraints](https://www.youtube.com/watch?v=SHinxAhv1ZE)
+
+## Collision Detection
+
+- [SAT (Separating Axis Theorem)](https://dyn4j.org/2010/01/sat/)
+- [Collision Detection Using the Separating Axis Theorem](https://gamedevelopment.tutsplus.com/tutorials/collision-detection-using-the-separating-axis-theorem--gamedev-169)
+- [A Strange But Elegant Approach to a Surprisingly Hard Problem (GJK Algorithm)](https://www.youtube.com/watch?v=ajv46BSqcK4)
