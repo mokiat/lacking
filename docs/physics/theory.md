@@ -156,152 +156,19 @@ We use the cross product to get the tangential component of the force, have it m
 
 ### Apparent mass
 
-I was unable to find a correct term for this. The articles sometimes refer to it as _Effective Mass_, though it means a different thing in reality. The term _Reduced Mass_ is also a good candidate and it does cover part of the equation we will present here but in general covers a different scenario. So I will be using _Apparent Mass_ here.
+I was unable to find a correct term for this. The articles sometimes refer to it as _Effective Mass_, though it means a different thing in reality. The term _Reduced Mass_ is also a good candidate and it does cover part of the equation we will present here but in general relates to a different scenario. So I will be using _Apparent Mass_ here.
 
-Let us consider an object that is experiencing both an acceleration and an angular acceleration (e.g. a spaceship that has only one of its engines working). Now, suppose that the object is attached at some offset point to an anchor that cannot be moved. We would like to know what force would the anchor experience.
-
-The equation is as follows (in non-vector form):
+The apparent mass is represented with the following equation.
 
 $$
-F_{anchor} = (a + \alpha r)\frac{1}{\frac{1}{m} + \frac{r^2}{I}}
+m_{apparent} = \frac{1}{\frac{1}{m} + \frac{r^2}{I}}
 $$
 
-We can check what happens with the equation if the anchor was exactly at the center of mass ($r = 0$).
+It represents the mass that an object appears to have when analyzed at some distant point. Another way of thinking about this is to ask what would the mass of the object "feel" to an observer if some distant (at $r$ distance) point of the object were to press against the observer.
 
-$$
-F_{anchor} = (a + \alpha 0)\frac{1}{\frac{1}{m} + \frac{0^2}{I}}
-= a\frac{1}{\frac{1}{m}} = am
-$$
+While mostly a thought experiment and not really grounded in reality, this representation is really important when we start dealing with two objects that both exert an offset force on each other and we would like to find out what proportion of the net force needs to go to which object. We cannot use their full masses and we have to take the moment of inertia into consideration as well.
 
-The force that the anchor would experience is equal to the force that is causing the object to accelerate. That is, the anchor would need to handle the full force, which makes sense.
-
-So where does the term _Effective mass_ come into play. Well, if we were to take the above equation but were to ignore the fact that we have a whole object but rather wanted to simplify it to a point mass that was accelerating around some axis at distance $r$ but was also accelerating linearly, we would get the following.
-
-$$
-(a + \alpha r) m_{point} = (a + \alpha r)\frac{1}{\frac{1}{m} + \frac{r^2}{I}}
-$$
-
-$$
-\Downarrow
-$$
-
-$$
-m_{point} = m_{apparent} = \frac{1}{\frac{1}{m} + \frac{r^2}{I}}
-$$
-
-While mostly a thought experiment and not really grounded in reality, this representation is really important when we start dealing with two objects that both exert an offset force on each other and we would like to find out what proportion of the net force needs to go to which object. We cannot use their full mass and we have to take the moment of inertia into consideration as well. This is where the apparent mass comes into play. We can just sum the two apparent masses and continue from there.
-
-So how did we get to this equation. We should consider the point $p$ on the object that is attached to the anchor. Since the anchor does not budge, we expect that point $p$ has to be stationary as well. Let's look at what accelerations point $p$ experiences.
-
-The first acceleration it experiences is the one from the object's acceleration and angular acceleration.
-
-$$
-a_{object} = a + \alpha r
-$$
-
-The equation above is the one we already looked at in the [tangental acceleration](#tangental-acceleration) section.
-
-The second acceleration it experiences is the one from the anchor, which is trying to resist the point's motion.
-
-$$
-a_{anchor} = -\frac{F_{anchor}}{m} - \frac{F_{anchor}r^2}{I}
-$$
-
-NOTE: The sign is negative, as the anchor acceleration acts in the opposite direction.
-
-This one is a bit more complicated. Let's look at how we arived at the two terms. The first one represents the acceleration that the whole object would experience because of $F_{anchor}$ and the second one is the tangential acceleration.
-
-Recall from [offset force](#offset-force) that a force applied to an object induces a force on the center of mass and a torque.
-
-Linear acceleration:
-
-$$
-F_{cm} = -F_{anchor}
-$$
-
-$$
-\Downarrow
-$$
-
-$$
-a_{cm} = -\frac{F_{cm}}{m} = -\frac{F_{anchor}}{m}
-$$
-
-Angular acceleration:
-
-$$
-\tau_{cm} = -F_{anchor} r
-$$
-
-$$
-\Downarrow
-$$
-
-$$
-\frac{\tau_{cm}}{I} = -\frac{F_{anchor} r}{I}
-$$
-
-$$
-\Downarrow
-$$
-
-$$
-\alpha = -\frac{F_{anchor} r}{I}
-$$
-
-$$
-\Downarrow
-$$
-
-$$
-\alpha r = -\frac{F_{anchor} r r}{I} = -\frac{F_{anchor} r^2}{I}
-$$
-
-$$
-\Downarrow
-$$
-
-$$
-a_{tangent} = -\frac{F_{anchor} r r}{I} = -\frac{F_{anchor} r^2}{I}
-$$
-
-Hence:
-
-$$
-a_{anchor} = a_{cm} + a_{tangent} = - \frac{F_{anchor}}{m} - \frac{F_{anchor}r^2}{I}
-$$
-
-Now, we want to get back to the two original equations. If the point $p$ is to be stationary, we want the acceleration induced by the object to be negated by the acceleration induced by the anchor force.
-
-$$
-a_{object} = - a_{anchor}
-$$
-
-$$
-\Downarrow
-$$
-
-$$
-a + \alpha r = \frac{F_{anchor}}{m} + \frac{F_{anchor}r^2}{I}
-$$
-
-$$
-\Downarrow
-$$
-
-$$
-F_{anchor} (\frac{1}{m} + \frac{r^2}{I}) = (a + \alpha r)
-$$
-
-$$
-\Downarrow
-$$
-
-$$
-F_{anchor} = (a + \alpha r) \frac{1}{\frac{1}{m} + \frac{r^2}{I}}
-$$
-
-And so we have arrived at our initial equation.
+A detailed derivation of the above equation can be found on the [Apparent Mass Derivation](../explanations/apparent-mass-derivation.md) page.
 
 ### The Intertia Tensor
 
@@ -353,3 +220,5 @@ Having the Inertia Tensor, one can calculate the angular acceleration vector as 
 $$
 \vec{\alpha} = I^{-1} \vec{\tau} = I^{-1} (\vec{r} \times \vec{F})
 $$
+
+Check the [References](./references.md) page for links to resources with more detailed information.
