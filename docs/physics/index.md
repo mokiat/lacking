@@ -41,6 +41,26 @@ More broadly, it performs the following sequence of steps.
 
 For more information on integration, make sure to check the [References](./references.md) page.
 
+## Impulses
+
+Outside the standard integration, when adjustments are needed to an object's velocity, the engine uses impulses.
+
+Impulses are like forces, except that they deal with the velocity instead of the acceleration.
+
+$$
+P = \Delta{t}F = vm
+$$
+
+And just as forces applied at an offset to an object induce both a change in linear and angular accelerations, impulses induce both a change in linear and angular velocities.
+
+$$
+\Delta{\vec{v}} = M^{-1} \vec{P}
+$$
+
+$$
+\Delta{\vec{w}} = I^{-1}(\vec{r} \times \vec{P})
+$$
+
 ## Constraints
 
 Constraints are a mechanism to enforce a physics rule or restriction on an object. Examples include having an object always point towards a point in space, preventing an object from falling through the ground, restricting the motion of an object to a single axis, etc.
@@ -72,6 +92,58 @@ $$
 $$
 
 **Note:** In some literature the constraint gradient is also called the Jacobian. Since the $C_v$ function maps from $R^n$ to $R^1$, the Jacobian and gradient are the same thing, except that the former is represented by a single-row matrix and the latter is represented by a vactor. This also means that using a Jacobian, one has to use matrix multiplication and using a gradient one has to use the vector dot product respectively. Since it is easier to write, we will use $J$ to represent the above gradient. Furthermore, unless otherwise specified, $J$ indicates $J(p)$ (the Jacobian at point $p$).
+
+Once we have the Jacobian, we can use the direction it implies to apply an impulse on the object.
+
+$$
+\vec{P} = - J^T \lambda
+$$
+
+Note: we transpose the jacobian to convert it from a $1 \times 3$ (when working in 3D) matrix, to a 3D vector.
+
+While the Jacobian $J$ (or rather the inverse) determines the direction, the $\lambda$ scalar determines the strength of the impulse. Where $\lambda$ is calculated as follows.
+
+$$
+\lambda = \frac{J\vec{v_0}}{JM^{-1}J^T}
+$$
+
+(where $\vec{v_0}$ is the current velocity of the object and $M^{-1}$ is the inverse mass matrix, though $\frac{1}{m}$ works just as well in the general case)
+
+This brings the equation down to:
+
+$$
+\vec{P} = - J^T \frac{J\vec{v_0}}{JM^{-1}J^T}
+$$
+
+In practice, we often have an offset impulse, in which case we need to take the moment of inertia and the current angular velocity into account. The equation is pretty much the same, except that the velocity vector now includes the angular components as well and the mass matrix includes the moment of inertia.
+
+$$
+\vec{v_0} =
+\begin{bmatrix}
+v_x \\
+v_y \\
+v_z \\
+w_x \\
+w_y \\
+w_z \\
+\end{bmatrix}
+$$
+
+$$
+M =
+\begin{bmatrix}
+m & 0 & 0 & 0 & 0 & 0 \\
+0 & m & 0 & 0 & 0 & 0 \\
+0 & 0 & m & 0 & 0 & 0 \\
+0 & 0 & 0 & I_{xx} & I_{xy} & I_{xz} \\
+0 & 0 & 0 & I_{yx} & I_{yy} & I_{yz} \\
+0 & 0 & 0 & I_{zx} & I_{zy} & I_{zz} \\
+\end{bmatrix}
+$$
+
+Note: Don't forget that the inverse of the above $M$ matrix is used in the equation above.
+
+More information on how the above equation was derived can be found on the [Impulse Derivation](../explanations/impulse-derivation.md) page.
 
 ## Solver
 
