@@ -1,35 +1,33 @@
 package metrics
 
-import "time"
+import (
+	"time"
+
+	"github.com/mokiat/lacking/util/datastruct"
+	"golang.org/x/exp/slices"
+)
 
 var (
-	spans     = make(map[string]*Span)
+	spanCache = datastruct.NewDynamicPool[Span]()
+	spans     []*Span
 	spanLayer = 0
 	spanList  []*Span
 )
 
 func BeginSpan(name string) *Span {
-	span, ok := spans[name]
-	if !ok {
-		span = &Span{
-			name: name,
-		}
-		spans[name] = span
-	}
+	span := spanCache.Fetch()
+	span.name = name
 	span.startTime = time.Now()
 	span.layer = spanLayer
+	spans = append(spans, span)
 	spanLayer++
 	return span
 }
 
 func Spans() []*Span {
-	if len(spans) == len(spanList) {
-		return spanList
-	}
-	spanList = make([]*Span, 0, len(spans))
-	for _, span := range spans {
-		spanList = append(spanList, span)
-	}
+	spanList = slices.Grow(spanList, len(spans))
+	spanList = spanList[:len(spans)]
+	copy(spanList, spans)
 	return spanList
 }
 
@@ -59,4 +57,10 @@ func (s *Span) Depth() int {
 func (s *Span) End() {
 	s.endTime = time.Now()
 	spanLayer--
+	if spanLayer == 0 {
+		for _, span := range spans {
+			spanCache.Restore(span)
+		}
+		spans = spans[:0]
+	}
 }
