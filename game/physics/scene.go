@@ -497,6 +497,10 @@ func (s *Scene) detectCollisions() {
 	for primary := range s.dynamicBodies {
 		primary.revision = s.revision
 
+		if len(primary.collisionShapes) == 0 {
+			continue
+		}
+
 		region := spatial.CuboidRegion(
 			primary.position,
 			dprec.NewVec3(primary.bsRadius, primary.bsRadius, primary.bsRadius),
@@ -507,6 +511,9 @@ func (s *Scene) detectCollisions() {
 			}
 			if secondary.revision == s.revision {
 				return // secondary already processed
+			}
+			if len(secondary.collisionShapes) == 0 {
+				return
 			}
 			s.checkCollisionTwoBodies(secondary, primary) // FIXME: Reverse order does not work!
 		}))
