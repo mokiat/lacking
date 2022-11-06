@@ -221,6 +221,24 @@ func (s *Scene) Update(elapsedSeconds float64) {
 	s.runSimulation(elapsedSeconds)
 }
 
+func (s *Scene) Each(cb func(b *Body)) {
+	for body := s.firstBody; body != nil; body = body.next {
+		cb(body)
+	}
+}
+
+func (s *Scene) Nearby(body *Body, distance float64, cb func(b *Body)) {
+	region := spatial.CuboidRegion(
+		body.position,
+		dprec.NewVec3(distance, distance, distance),
+	)
+	s.bodyOctree.VisitHexahedronRegion(&region, spatial.VisitorFunc[*Body](func(candidate *Body) {
+		if candidate != body {
+			cb(candidate)
+		}
+	}))
+}
+
 // Delete releases resources allocated by this
 // scene. Users should not call any further methods
 // on this object.
