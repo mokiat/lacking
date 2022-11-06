@@ -1,10 +1,10 @@
 package mat
 
 import (
+	"github.com/mokiat/gog/opt"
 	"github.com/mokiat/gomath/sprec"
 	"github.com/mokiat/lacking/ui"
 	co "github.com/mokiat/lacking/ui/component"
-	"github.com/mokiat/lacking/util/optional"
 )
 
 var (
@@ -83,20 +83,20 @@ var Accordion = co.Define(func(props co.Properties, scope co.Scope) co.Instance 
 			co.WithChild("icon", co.New(Picture, func() {
 				co.WithData(PictureData{
 					Image:      icon,
-					ImageColor: optional.Value(OnPrimaryLightColor),
+					ImageColor: opt.V(OnPrimaryLightColor),
 					Mode:       ImageModeFit,
 				})
 				co.WithLayoutData(LayoutData{
-					Width:  optional.Value(AccordionHeaderIconSize),
-					Height: optional.Value(AccordionHeaderIconSize),
+					Width:  opt.V(AccordionHeaderIconSize),
+					Height: opt.V(AccordionHeaderIconSize),
 				})
 			}))
 
 			co.WithChild("title", co.New(Label, func() {
 				co.WithData(LabelData{
 					Font:      co.OpenFont(scope, AccordionHeaderFontFile),
-					FontSize:  optional.Value(AccordionHeaderFontSize),
-					FontColor: optional.Value(OnPrimaryLightColor),
+					FontSize:  opt.V(AccordionHeaderFontSize),
+					FontColor: opt.V(OnPrimaryLightColor),
 					Text:      data.Title,
 				})
 			}))

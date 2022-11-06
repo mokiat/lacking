@@ -1,20 +1,20 @@
 package component
 
 import (
+	"github.com/mokiat/gog/opt"
 	"github.com/mokiat/lacking/ui"
-	"github.com/mokiat/lacking/util/optional"
 )
 
 // ElementData is the struct that should be used when configuring
 // an Element component's data.
 type ElementData struct {
 	Essence   ui.Essence
-	Enabled   optional.V[bool]
-	Visible   optional.V[bool]
-	Focusable optional.V[bool]
-	Focused   optional.V[bool]
-	Bounds    optional.V[ui.Bounds]
-	IdealSize optional.V[ui.Size]
+	Enabled   opt.T[bool]
+	Visible   opt.T[bool]
+	Focusable opt.T[bool]
+	Focused   opt.T[bool]
+	Bounds    opt.T[ui.Bounds]
+	IdealSize opt.T[ui.Size]
 	Padding   ui.Spacing
 	Layout    ui.Layout
 }

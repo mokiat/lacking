@@ -1,8 +1,8 @@
 package mat
 
 import (
+	"github.com/mokiat/gog/opt"
 	co "github.com/mokiat/lacking/ui/component"
-	"github.com/mokiat/lacking/util/optional"
 )
 
 var (
@@ -14,7 +14,7 @@ var (
 var List = co.Define(func(props co.Properties, scope co.Scope) co.Instance {
 	return co.New(Container, func() {
 		co.WithData(ContainerData{
-			BackgroundColor: optional.Value(SurfaceColor),
+			BackgroundColor: opt.V(SurfaceColor),
 			Layout: NewVerticalLayout(VerticalLayoutSettings{
 				ContentAlignment: AlignmentLeft,
 				ContentSpacing:   ListItemSpacing,

@@ -1,6 +1,7 @@
 package physics
 
 import (
+	"github.com/mokiat/gog"
 	"github.com/mokiat/gomath/dprec"
 	"github.com/mokiat/lacking/util/spatial"
 )
@@ -231,12 +232,10 @@ func (b *Body) CollisionShapes() []CollisionShape {
 // for this body to be used in collision detection.
 func (b *Body) SetCollisionShapes(shapes []CollisionShape) {
 	b.collisionShapes = shapes
-	maxRadius := float64(0.0)
-	for _, s := range shapes {
-		maxRadius = dprec.Max(maxRadius, s.Shape().BoundingSphereRadius())
-	}
-	b.bsRadius = maxRadius
-	b.item.SetRadius(maxRadius)
+	b.bsRadius = gog.Reduce(shapes, 0.0, func(accum float64, s CollisionShape) float64 {
+		return dprec.Max(accum, s.Shape().BoundingSphereRadius()+s.Position().Length())
+	})
+	b.item.SetRadius(b.bsRadius)
 }
 
 // AerodynamicShapes returns a slice of shapes that

@@ -3,11 +3,11 @@ package mat
 import (
 	"time"
 
+	"github.com/mokiat/gog/opt"
 	"github.com/mokiat/gomath/sprec"
 	"github.com/mokiat/lacking/render"
 	"github.com/mokiat/lacking/ui"
 	co "github.com/mokiat/lacking/ui/component"
-	"github.com/mokiat/lacking/util/optional"
 )
 
 var (
@@ -54,7 +54,7 @@ var Viewport = co.Define(func(props co.Properties, scope co.Scope) co.Instance {
 	return co.New(Element, func() {
 		co.WithData(ElementData{
 			Essence:   essence,
-			Focusable: optional.Value(true),
+			Focusable: opt.V(true),
 		})
 		co.WithLayoutData(props.LayoutData())
 	})

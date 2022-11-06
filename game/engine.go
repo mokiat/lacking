@@ -3,11 +3,11 @@ package game
 import (
 	"time"
 
+	"github.com/mokiat/gog/ds"
 	"github.com/mokiat/lacking/game/asset"
 	"github.com/mokiat/lacking/game/ecs"
 	"github.com/mokiat/lacking/game/graphics"
 	"github.com/mokiat/lacking/game/physics"
-	"github.com/mokiat/lacking/util/datastruct"
 	"github.com/mokiat/lacking/util/metrics"
 )
 
@@ -51,8 +51,8 @@ func WithECS(ecsEngine *ecs.Engine) EngineOption {
 
 func NewEngine(opts ...EngineOption) *Engine {
 	result := &Engine{
-		preUpdateSubscriptions:  datastruct.NewList[*UpdateSubscription](),
-		postUpdateSubscriptions: datastruct.NewList[*UpdateSubscription](),
+		preUpdateSubscriptions:  ds.NewList[*UpdateSubscription](0),
+		postUpdateSubscriptions: ds.NewList[*UpdateSubscription](0),
 
 		lastTick: time.Now(),
 	}
@@ -70,8 +70,8 @@ type Engine struct {
 	gfxEngine     *graphics.Engine
 	ecsEngine     *ecs.Engine
 
-	preUpdateSubscriptions  *datastruct.List[*UpdateSubscription]
-	postUpdateSubscriptions *datastruct.List[*UpdateSubscription]
+	preUpdateSubscriptions  *ds.List[*UpdateSubscription]
+	postUpdateSubscriptions *ds.List[*UpdateSubscription]
 
 	activeScene *Scene
 	lastTick    time.Time

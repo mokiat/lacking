@@ -1,9 +1,9 @@
 package mat
 
 import (
+	"github.com/mokiat/gog/opt"
 	"github.com/mokiat/lacking/ui"
 	co "github.com/mokiat/lacking/ui/component"
-	"github.com/mokiat/lacking/util/optional"
 )
 
 var (
@@ -19,11 +19,11 @@ var Tabbar = co.Define(func(props co.Properties, scope co.Scope) co.Instance {
 	)
 
 	// force specific height
-	layoutData.Height = optional.Value(TabbarHeight)
+	layoutData.Height = opt.V(TabbarHeight)
 
 	return co.New(Container, func() {
 		co.WithData(ContainerData{
-			BackgroundColor: optional.Value(PrimaryLightColor),
+			BackgroundColor: opt.V(PrimaryLightColor),
 			Padding: ui.Spacing{
 				Left:  TabbarSidePadding,
 				Right: TabbarSidePadding,

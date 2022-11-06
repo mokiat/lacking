@@ -3,10 +3,10 @@ package mat
 import (
 	"fmt"
 
+	"github.com/mokiat/gog/opt"
 	"github.com/mokiat/gomath/sprec"
 	"github.com/mokiat/lacking/ui"
 	co "github.com/mokiat/lacking/ui/component"
-	"github.com/mokiat/lacking/util/optional"
 )
 
 var (
@@ -45,8 +45,8 @@ var dropdownList = co.Define(func(props co.Properties, scope co.Scope) co.Instan
 				}),
 			})
 			co.WithLayoutData(LayoutData{
-				HorizontalCenter: optional.Value(0),
-				VerticalCenter:   optional.Value(0),
+				HorizontalCenter: opt.V(0),
+				VerticalCenter:   opt.V(0),
 			})
 
 			for i, item := range data.Items {
@@ -66,8 +66,8 @@ var dropdownList = co.Define(func(props co.Properties, scope co.Scope) co.Instan
 						co.WithChild("label", co.New(Label, func() {
 							co.WithData(LabelData{
 								Font:      co.OpenFont(scope, DropdownListFontFile),
-								FontSize:  optional.Value(DropdownListFontSize),
-								FontColor: optional.Value(OnSurfaceColor),
+								FontSize:  opt.V(DropdownListFontSize),
+								FontColor: opt.V(OnSurfaceColor),
 								Text:      item.Label,
 							})
 						}))

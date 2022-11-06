@@ -1,6 +1,6 @@
 package mvc
 
-import "github.com/mokiat/lacking/util/filter"
+import "github.com/mokiat/gog/filter"
 
 // Observable represents something that can be observed for changes.
 type Observable interface {
@@ -46,16 +46,10 @@ type observable struct {
 }
 
 func (o *observable) Subscribe(cb Callback, fltrs ...ChangeFilter) Subscription {
-	var fltr ChangeFilter
-	if len(fltrs) == 0 {
-		fltr = filter.Always[Change]()
-	} else {
-		fltr = filter.All[Change](fltrs...)
-	}
 	subscription := &subscription{
 		obs:  o,
 		next: o.firstSubscription,
-		fltr: fltr,
+		fltr: filter.And(fltrs...),
 		cb:   cb,
 	}
 	o.firstSubscription = subscription

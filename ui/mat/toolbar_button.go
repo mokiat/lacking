@@ -1,10 +1,10 @@
 package mat
 
 import (
+	"github.com/mokiat/gog/opt"
 	"github.com/mokiat/gomath/sprec"
 	"github.com/mokiat/lacking/ui"
 	co "github.com/mokiat/lacking/ui/component"
-	"github.com/mokiat/lacking/util/optional"
 )
 
 var (
@@ -20,7 +20,7 @@ var (
 type ToolbarButtonData struct {
 	Icon     *ui.Image
 	Text     string
-	Enabled  optional.V[bool]
+	Enabled  opt.T[bool]
 	Selected bool
 }
 
@@ -53,7 +53,7 @@ var ToolbarButton = co.Define(func(props co.Properties, scope co.Scope) co.Insta
 	essence.selected = data.Selected
 
 	// force specific height
-	layoutData.Height = optional.Value(ToolbarItemHeight)
+	layoutData.Height = opt.V(ToolbarItemHeight)
 
 	foregroundColor := OnSurfaceColor
 	if data.Enabled.Specified && !data.Enabled.Value {
@@ -79,12 +79,12 @@ var ToolbarButton = co.Define(func(props co.Properties, scope co.Scope) co.Insta
 			co.WithChild("icon", co.New(Picture, func() {
 				co.WithData(PictureData{
 					Image:      data.Icon,
-					ImageColor: optional.Value(foregroundColor),
+					ImageColor: opt.V(foregroundColor),
 					Mode:       ImageModeFit,
 				})
 				co.WithLayoutData(LayoutData{
-					Width:  optional.Value(ToolbarButtonIconSize),
-					Height: optional.Value(ToolbarButtonIconSize),
+					Width:  opt.V(ToolbarButtonIconSize),
+					Height: opt.V(ToolbarButtonIconSize),
 				})
 			}))
 		}
@@ -93,8 +93,8 @@ var ToolbarButton = co.Define(func(props co.Properties, scope co.Scope) co.Insta
 			co.WithChild("text", co.New(Label, func() {
 				co.WithData(LabelData{
 					Font:      co.OpenFont(scope, ToolbarButtonFontFile),
-					FontSize:  optional.Value(float32(ToolbarButtonFontSize)),
-					FontColor: optional.Value(foregroundColor),
+					FontSize:  opt.V(float32(ToolbarButtonFontSize)),
+					FontColor: opt.V(foregroundColor),
 					Text:      data.Text,
 				})
 				co.WithLayoutData(LayoutData{})

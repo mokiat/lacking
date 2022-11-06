@@ -1,10 +1,10 @@
 package mat
 
 import (
+	"github.com/mokiat/gog/opt"
 	"github.com/mokiat/gomath/sprec"
 	"github.com/mokiat/lacking/ui"
 	co "github.com/mokiat/lacking/ui/component"
-	"github.com/mokiat/lacking/util/optional"
 )
 
 var (
@@ -23,7 +23,7 @@ var ToolbarSeparator = co.Define(func(props co.Properties, scope co.Scope) co.In
 	return co.New(Element, func() {
 		co.WithData(ElementData{
 			Essence: essence,
-			IdealSize: optional.Value(ui.NewSize(
+			IdealSize: opt.V(ui.NewSize(
 				ToolbarSeparatorWidth,
 				ToolbarItemHeight,
 			)),

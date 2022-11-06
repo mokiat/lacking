@@ -1,10 +1,10 @@
 package mat
 
 import (
+	"github.com/mokiat/gog/opt"
 	"github.com/mokiat/gomath/sprec"
 	"github.com/mokiat/lacking/ui"
 	co "github.com/mokiat/lacking/ui/component"
-	"github.com/mokiat/lacking/util/optional"
 )
 
 var (
@@ -56,7 +56,7 @@ var Toolbar = co.Define(func(props co.Properties, scope co.Scope) co.Instance {
 	essence.positioning = data.Positioning
 
 	// force specific height
-	layoutData.Height = optional.Value(ToolbarHeight)
+	layoutData.Height = opt.V(ToolbarHeight)
 
 	return co.New(Element, func() {
 		co.WithData(ElementData{
