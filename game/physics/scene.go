@@ -370,6 +370,8 @@ func (s *Scene) runSimulation(elapsedSeconds float64) {
 }
 
 func (s *Scene) resetConstraints(elapsedSeconds float64) {
+	defer metrics.BeginSpan("reset").End()
+
 	for constraint := s.firstSBConstraint; constraint != nil; constraint = constraint.next {
 		constraint.solver.Reset(SBSolverContext{
 			Body:           constraint.body,
@@ -386,6 +388,7 @@ func (s *Scene) resetConstraints(elapsedSeconds float64) {
 }
 
 func (s *Scene) applyForces() {
+	defer metrics.BeginSpan("forces").End()
 	for body := range s.dynamicBodies {
 		body.resetAcceleration()
 		body.resetAngularAcceleration()
@@ -404,6 +407,7 @@ func (s *Scene) applyForces() {
 }
 
 func (s *Scene) integrate(elapsedSeconds float64) {
+	defer metrics.BeginSpan("integrate").End()
 	for body := range s.dynamicBodies {
 		body.clampAcceleration(s.maxAcceleration)
 		body.clampAngularAcceleration(s.maxAngularAcceleration)
@@ -416,6 +420,7 @@ func (s *Scene) integrate(elapsedSeconds float64) {
 }
 
 func (s *Scene) applyImpulses(elapsedSeconds float64) {
+	defer metrics.BeginSpan("impulses").End()
 	for constraint := s.firstDBConstraint; constraint != nil; constraint = constraint.next {
 		solution := constraint.solver.CalculateImpulses(DBSolverContext{
 			Primary:        constraint.primary,
@@ -438,6 +443,7 @@ func (s *Scene) applyImpulses(elapsedSeconds float64) {
 }
 
 func (s *Scene) applyMotion(elapsedSeconds float64) {
+	defer metrics.BeginSpan("motion").End()
 	for body := range s.dynamicBodies {
 		body.clampVelocity(s.maxVelocity)
 		body.clampAngularVelocity(s.maxAngularVelocity)
@@ -450,6 +456,7 @@ func (s *Scene) applyMotion(elapsedSeconds float64) {
 }
 
 func (s *Scene) applyNudges(elapsedSeconds float64) {
+	defer metrics.BeginSpan("nudges").End()
 	for constraint := s.firstDBConstraint; constraint != nil; constraint = constraint.next {
 		solution := constraint.solver.CalculateNudges(DBSolverContext{
 			Primary:        constraint.primary,
@@ -472,6 +479,7 @@ func (s *Scene) applyNudges(elapsedSeconds float64) {
 }
 
 func (s *Scene) detectCollisions() {
+	defer metrics.BeginSpan("collision").End()
 	s.revision++
 
 	for _, constraint := range s.collisionConstraints {
