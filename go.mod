@@ -6,7 +6,7 @@ require (
 	github.com/google/uuid v1.3.0
 	github.com/mdouchement/hdr v0.2.3
 	github.com/mokiat/goexr v0.1.0
-	github.com/mokiat/gog v0.2.0
+	github.com/mokiat/gog v0.3.0
 	github.com/mokiat/gomath v0.6.0
 	github.com/onsi/ginkgo/v2 v2.4.0
 	github.com/qmuntal/gltf v0.23.1

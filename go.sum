@@ -24,8 +24,8 @@ github.com/mdouchement/hdr v0.2.3 h1:IxzxLgEarv9VPsk17DGIWnhA60MA5ASbekCU8YSFmaY
 github.com/mdouchement/hdr v0.2.3/go.mod h1:2Yb3JAST9c66wTLZ1vQrejU5sDeOC+ukXVs1pFAUtPo=
 github.com/mokiat/goexr v0.1.0 h1:zoDvzvIjs/GpkxJDVcCP6GafLp1nOuNDef9JL8KSd2A=
 github.com/mokiat/goexr v0.1.0/go.mod h1:KhERYaXCcY2ZEaTg1/LyzJ7pxdj/q3V1TxgViG86ck4=
-github.com/mokiat/gog v0.2.0 h1:l2MyCd7zYbOZYVUquGqcexS5AdkXh7p5J3wFfu8MfFw=
-github.com/mokiat/gog v0.2.0/go.mod h1:Smg+wgMmQYQEkR5nuxlaKuAhn3mansESj/4II+RWcq8=
+github.com/mokiat/gog v0.3.0 h1:r1W95PXOEVn/3dcTSBjL1iqmSjBLxyNk+plZ5V+1liM=
+github.com/mokiat/gog v0.3.0/go.mod h1:Smg+wgMmQYQEkR5nuxlaKuAhn3mansESj/4II+RWcq8=
 github.com/mokiat/gomath v0.6.0 h1:QKhqofMd3YcfXBUEn9Un3Cg+A8hrq9CTYmDMAUlHALo=
 github.com/mokiat/gomath v0.6.0/go.mod h1:tgV4PXXzknVAVWQUbxsXB2eaImAyZOm5UEnM5gdGKoI=
 github.com/onsi/ginkgo/v2 v2.4.0 h1:+Ig9nvqgS5OBSACXNk15PLdp0U9XPYROt9CFzVdFGIs=
