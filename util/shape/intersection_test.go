@@ -57,12 +57,37 @@ func BenchmarkSphereToSphereNegative(b *testing.B) {
 	}
 }
 
-func BenchmarkSphereToBoxPositive(b *testing.B) {
+func BenchmarkSphereToBoxPositiveCorner(b *testing.B) {
 	resultSet := shape.NewIntersectionResultSet(b.N)
 
 	sphere := shape.NewPlacement(
 		shape.NewTransform(
 			dprec.NewVec3(2.2, 4.4, 1.1),
+			dprec.IdentityQuat(),
+		),
+		shape.NewStaticSphere(1.0),
+	)
+
+	box := shape.NewPlacement(
+		shape.NewTransform(
+			dprec.NewVec3(0.0, 3.0, 0.0),
+			dprec.IdentityQuat(),
+		),
+		shape.NewStaticBox(4.0, 2.4, 1.8),
+	)
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		shape.CheckIntersectionSphereWithBox(sphere, box, resultSet)
+	}
+}
+
+func BenchmarkSphereToBoxPositiveSide(b *testing.B) {
+	resultSet := shape.NewIntersectionResultSet(b.N)
+
+	sphere := shape.NewPlacement(
+		shape.NewTransform(
+			dprec.NewVec3(0.0, 4.7, 0.0),
 			dprec.IdentityQuat(),
 		),
 		shape.NewStaticSphere(1.0),
