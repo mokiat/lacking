@@ -186,8 +186,10 @@ func CheckIntersection(first, second Placement[Shape], resultSet *IntersectionRe
 // isIntersectionPossible performs a quick check whether two shapes can at all
 // intersect, based on distances and bounding spheres.
 func isIntersectionPossible[A, B Shape](first Placement[A], second Placement[B]) bool {
-	distance := dprec.Vec3Diff(second.Position(), first.Position()).Length()
-	return distance <= first.Shape().BoundingSphereRadius()+second.Shape().BoundingSphereRadius()
+	r1 := first.Shape().BoundingSphereRadius()
+	r2 := second.Shape().BoundingSphereRadius()
+	sqrDistance := dprec.Vec3Diff(second.Position(), first.Position()).SqrLength()
+	return sqrDistance <= (r1+r2)*(r1+r2)
 }
 
 // addIntersection is a helper function that adds an intersection to a result
@@ -201,22 +203,29 @@ func addIntersection(resultSet *IntersectionResultSet, flipped bool, intersectio
 }
 
 func checkIntersectionSphereWithSphere(first, second Placement[StaticSphere], resultSet *IntersectionResultSet) {
-	deltaPosition := dprec.Vec3Diff(second.Position(), first.Position())
-	overlap := first.Shape().Radius() + second.Shape().Radius() - deltaPosition.Length()
+	firstPosition := first.Position()
+	firstRadius := first.Shape().Radius()
 
-	secondDisplaceNormal := dprec.UnitVec3(deltaPosition)
+	secondPosition := second.Position()
+	secondRadius := second.Shape().Radius()
+
+	deltaPosition := dprec.Vec3Diff(secondPosition, firstPosition)
+	distance := deltaPosition.Length()
+	overlap := (firstRadius + secondRadius) - distance
+
+	secondDisplaceNormal := dprec.Vec3Quot(deltaPosition, distance) // unit vec
 	firstDisplaceNormal := dprec.InverseVec3(secondDisplaceNormal)
 
 	addIntersection(resultSet, false, Intersection{
 		Depth: overlap,
 		FirstContact: dprec.Vec3Sum(
-			first.Position(),
-			dprec.Vec3Prod(secondDisplaceNormal, first.Shape().Radius()),
+			firstPosition,
+			dprec.Vec3Prod(secondDisplaceNormal, firstRadius),
 		),
 		FirstDisplaceNormal: firstDisplaceNormal,
 		SecondContact: dprec.Vec3Sum(
-			second.Position(),
-			dprec.Vec3Prod(firstDisplaceNormal, second.Shape().Radius()),
+			secondPosition,
+			dprec.Vec3Prod(firstDisplaceNormal, secondRadius),
 		),
 		SecondDisplaceNormal: secondDisplaceNormal,
 	})
