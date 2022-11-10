@@ -4,10 +4,20 @@ import "github.com/mokiat/gomath/dprec"
 
 // NewStaticTriangle creates a new StaticTriangle shape.
 func NewStaticTriangle(a, b, c Point) StaticTriangle {
+	center := dprec.Vec3Quot(dprec.Vec3Sum(dprec.Vec3Sum(dprec.Vec3(a), dprec.Vec3(b)), dprec.Vec3(c)), 3.0)
+	radius := dprec.Max(
+		dprec.Max(
+			dprec.Vec3Diff(dprec.Vec3(a), center).Length(),
+			dprec.Vec3Diff(dprec.Vec3(b), center).Length(),
+		),
+		dprec.Vec3Diff(dprec.Vec3(c), center).Length(),
+	)
 	return StaticTriangle{
-		a: a,
-		b: b,
-		c: c,
+		a:        a,
+		b:        b,
+		c:        c,
+		center:   Point(center),
+		bsRadius: radius,
 	}
 }
 
@@ -16,9 +26,18 @@ type StaticTriangle struct {
 	a Point
 	b Point
 	c Point
+
+	center   Point
+	bsRadius float64
 }
 
-// TODO: Bounding sphere radius
+func (t StaticTriangle) Center() Point {
+	return t.center
+}
+
+func (t StaticTriangle) BoundingSphereRadius() float64 {
+	return t.bsRadius
+}
 
 // A returns the first corner of the triangle.
 func (t StaticTriangle) A() Point {
@@ -98,8 +117,10 @@ func (t StaticTriangle) ContainsPoint(point Point) bool {
 // the specified rotation and translation to the current triangle.
 func (t StaticTriangle) Transformed(parent Transform) StaticTriangle {
 	return StaticTriangle{
-		a: t.a.Transformed(parent),
-		b: t.b.Transformed(parent),
-		c: t.c.Transformed(parent),
+		a:        t.a.Transformed(parent),
+		b:        t.b.Transformed(parent),
+		c:        t.c.Transformed(parent),
+		center:   t.center.Transformed(parent),
+		bsRadius: t.bsRadius,
 	}
 }
