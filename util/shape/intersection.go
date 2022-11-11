@@ -632,18 +632,18 @@ func checkIntersectionSphereWithBox(first Placement[StaticSphere], second Placem
 		if dprec.Abs(displaceX) < dprec.Abs(displaceY) {
 			if dprec.Abs(displaceX) < dprec.Abs(displaceZ) {
 				depth = dprec.Abs(displaceX) + sphereRadius
-				boxDisplaceNormal = dprec.NewVec3(-dprec.Sign(displaceX), 0.0, 0.0)
+				boxDisplaceNormal = dprec.Vec3Prod(boxAxisX, -dprec.Sign(displaceX))
 			} else {
 				depth = dprec.Abs(displaceZ) + sphereRadius
-				boxDisplaceNormal = dprec.NewVec3(0.0, 0.0, -dprec.Sign(displaceZ))
+				boxDisplaceNormal = dprec.Vec3Prod(boxAxisZ, -dprec.Sign(displaceZ))
 			}
 		} else {
 			if dprec.Abs(displaceY) < dprec.Abs(displaceZ) {
 				depth = dprec.Abs(displaceY) + sphereRadius
-				boxDisplaceNormal = dprec.NewVec3(0.0, -dprec.Sign(displaceY), 0.0)
+				boxDisplaceNormal = dprec.Vec3Prod(boxAxisY, -dprec.Sign(displaceY))
 			} else {
 				depth = dprec.Abs(displaceZ) + sphereRadius
-				boxDisplaceNormal = dprec.NewVec3(0.0, 0.0, -dprec.Sign(displaceZ))
+				boxDisplaceNormal = dprec.Vec3Prod(boxAxisZ, -dprec.Sign(displaceZ))
 			}
 		}
 		boxContact = dprec.Vec3Sum(spherePosition, dprec.Vec3Prod(boxDisplaceNormal, sphereRadius-depth))
