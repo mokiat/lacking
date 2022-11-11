@@ -329,7 +329,9 @@ func (i *OctreeItem[T]) SetPosition(position dprec.Vec3) {
 // Radius returns the bounding sphere radius of this item. This is used to
 // determine visibility of the item.
 func (i *OctreeItem[T]) Radius() float64 {
-	return float64(i.radius)
+	// Note: Adding +3 due to the rounding of the position (error up to 1.8) and
+	// the radius (error up to 1.0)
+	return float64(i.radius + 3)
 }
 
 // SetRadius changes the bounding sphere radius of this item.
