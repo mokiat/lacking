@@ -431,7 +431,10 @@ func checkIntersectionSphereWithBox(first Placement[StaticSphere], second Placem
 		if isIntersection = sqrDistance < sphereRadius*sphereRadius; isIntersection {
 			distance := dprec.Sqrt(sqrDistance)
 			depth = sphereRadius - distance
-			boxDisplaceNormal = dprec.Vec3Quot(dprec.NewVec3(distanceLeft, distanceBottom, 0.0), distance)
+			boxDisplaceNormal = dprec.UnitVec3(dprec.Vec3Sum(
+				dprec.Vec3Prod(boxAxisX, distanceLeft),
+				dprec.Vec3Prod(boxAxisY, distanceBottom),
+			))
 			boxContact = dprec.Vec3Sum(spherePosition, dprec.Vec3Prod(boxDisplaceNormal, distance))
 		}
 
@@ -440,7 +443,10 @@ func checkIntersectionSphereWithBox(first Placement[StaticSphere], second Placem
 		if isIntersection = sqrDistance < sphereRadius*sphereRadius; isIntersection {
 			distance := dprec.Sqrt(sqrDistance)
 			depth = sphereRadius - distance
-			boxDisplaceNormal = dprec.Vec3Quot(dprec.NewVec3(distanceLeft, -distanceTop, 0.0), distance)
+			boxDisplaceNormal = dprec.UnitVec3(dprec.Vec3Sum(
+				dprec.Vec3Prod(boxAxisX, distanceLeft),
+				dprec.Vec3Prod(boxAxisY, -distanceTop),
+			))
 			boxContact = dprec.Vec3Sum(spherePosition, dprec.Vec3Prod(boxDisplaceNormal, distance))
 		}
 
@@ -449,7 +455,10 @@ func checkIntersectionSphereWithBox(first Placement[StaticSphere], second Placem
 		if isIntersection = sqrDistance < sphereRadius*sphereRadius; isIntersection {
 			distance := dprec.Sqrt(sqrDistance)
 			depth = sphereRadius - distance
-			boxDisplaceNormal = dprec.Vec3Quot(dprec.NewVec3(-distanceRight, distanceBottom, 0.0), distance)
+			boxDisplaceNormal = dprec.UnitVec3(dprec.Vec3Sum(
+				dprec.Vec3Prod(boxAxisX, -distanceRight),
+				dprec.Vec3Prod(boxAxisY, distanceBottom),
+			))
 			boxContact = dprec.Vec3Sum(spherePosition, dprec.Vec3Prod(boxDisplaceNormal, distance))
 		}
 
@@ -458,7 +467,10 @@ func checkIntersectionSphereWithBox(first Placement[StaticSphere], second Placem
 		if isIntersection = sqrDistance < sphereRadius*sphereRadius; isIntersection {
 			distance := dprec.Sqrt(sqrDistance)
 			depth = sphereRadius - distance
-			boxDisplaceNormal = dprec.Vec3Quot(dprec.NewVec3(-distanceRight, -distanceTop, 0.0), distance)
+			boxDisplaceNormal = dprec.UnitVec3(dprec.Vec3Sum(
+				dprec.Vec3Prod(boxAxisX, -distanceRight),
+				dprec.Vec3Prod(boxAxisY, -distanceTop),
+			))
 			boxContact = dprec.Vec3Sum(spherePosition, dprec.Vec3Prod(boxDisplaceNormal, distance))
 		}
 
@@ -467,7 +479,10 @@ func checkIntersectionSphereWithBox(first Placement[StaticSphere], second Placem
 		if isIntersection = sqrDistance < sphereRadius*sphereRadius; isIntersection {
 			distance := dprec.Sqrt(sqrDistance)
 			depth = sphereRadius - distance
-			boxDisplaceNormal = dprec.Vec3Quot(dprec.NewVec3(0.0, distanceBottom, distanceBack), distance)
+			boxDisplaceNormal = dprec.UnitVec3(dprec.Vec3Sum(
+				dprec.Vec3Prod(boxAxisY, distanceBottom),
+				dprec.Vec3Prod(boxAxisZ, distanceBack),
+			))
 			boxContact = dprec.Vec3Sum(spherePosition, dprec.Vec3Prod(boxDisplaceNormal, distance))
 		}
 
@@ -476,7 +491,10 @@ func checkIntersectionSphereWithBox(first Placement[StaticSphere], second Placem
 		if isIntersection = sqrDistance < sphereRadius*sphereRadius; isIntersection {
 			distance := dprec.Sqrt(sqrDistance)
 			depth = sphereRadius - distance
-			boxDisplaceNormal = dprec.Vec3Quot(dprec.NewVec3(0.0, -distanceTop, distanceBack), distance)
+			boxDisplaceNormal = dprec.UnitVec3(dprec.Vec3Sum(
+				dprec.Vec3Prod(boxAxisY, -distanceTop),
+				dprec.Vec3Prod(boxAxisZ, distanceBack),
+			))
 			boxContact = dprec.Vec3Sum(spherePosition, dprec.Vec3Prod(boxDisplaceNormal, distance))
 		}
 
@@ -485,7 +503,10 @@ func checkIntersectionSphereWithBox(first Placement[StaticSphere], second Placem
 		if isIntersection = sqrDistance < sphereRadius*sphereRadius; isIntersection {
 			distance := dprec.Sqrt(sqrDistance)
 			depth = sphereRadius - distance
-			boxDisplaceNormal = dprec.Vec3Quot(dprec.NewVec3(0.0, distanceBottom, -distanceFront), distance)
+			boxDisplaceNormal = dprec.UnitVec3(dprec.Vec3Sum(
+				dprec.Vec3Prod(boxAxisY, distanceBottom),
+				dprec.Vec3Prod(boxAxisZ, -distanceFront),
+			))
 			boxContact = dprec.Vec3Sum(spherePosition, dprec.Vec3Prod(boxDisplaceNormal, distance))
 		}
 
@@ -494,7 +515,10 @@ func checkIntersectionSphereWithBox(first Placement[StaticSphere], second Placem
 		if isIntersection = sqrDistance < sphereRadius*sphereRadius; isIntersection {
 			distance := dprec.Sqrt(sqrDistance)
 			depth = sphereRadius - distance
-			boxDisplaceNormal = dprec.Vec3Quot(dprec.NewVec3(0.0, -distanceTop, -distanceFront), distance)
+			boxDisplaceNormal = dprec.UnitVec3(dprec.Vec3Sum(
+				dprec.Vec3Prod(boxAxisY, -distanceTop),
+				dprec.Vec3Prod(boxAxisZ, -distanceFront),
+			))
 			boxContact = dprec.Vec3Sum(spherePosition, dprec.Vec3Prod(boxDisplaceNormal, distance))
 		}
 
@@ -503,7 +527,10 @@ func checkIntersectionSphereWithBox(first Placement[StaticSphere], second Placem
 		if isIntersection = sqrDistance < sphereRadius*sphereRadius; isIntersection {
 			distance := dprec.Sqrt(sqrDistance)
 			depth = sphereRadius - distance
-			boxDisplaceNormal = dprec.Vec3Quot(dprec.NewVec3(distanceLeft, 0.0, distanceBack), distance)
+			boxDisplaceNormal = dprec.UnitVec3(dprec.Vec3Sum(
+				dprec.Vec3Prod(boxAxisX, distanceLeft),
+				dprec.Vec3Prod(boxAxisZ, distanceBack),
+			))
 			boxContact = dprec.Vec3Sum(spherePosition, dprec.Vec3Prod(boxDisplaceNormal, distance))
 		}
 
@@ -512,7 +539,10 @@ func checkIntersectionSphereWithBox(first Placement[StaticSphere], second Placem
 		if isIntersection = sqrDistance < sphereRadius*sphereRadius; isIntersection {
 			distance := dprec.Sqrt(sqrDistance)
 			depth = sphereRadius - distance
-			boxDisplaceNormal = dprec.Vec3Quot(dprec.NewVec3(-distanceRight, 0.0, distanceBack), distance)
+			boxDisplaceNormal = dprec.UnitVec3(dprec.Vec3Sum(
+				dprec.Vec3Prod(boxAxisX, -distanceRight),
+				dprec.Vec3Prod(boxAxisZ, distanceBack),
+			))
 			boxContact = dprec.Vec3Sum(spherePosition, dprec.Vec3Prod(boxDisplaceNormal, distance))
 		}
 
@@ -521,7 +551,10 @@ func checkIntersectionSphereWithBox(first Placement[StaticSphere], second Placem
 		if isIntersection = sqrDistance < sphereRadius*sphereRadius; isIntersection {
 			distance := dprec.Sqrt(sqrDistance)
 			depth = sphereRadius - distance
-			boxDisplaceNormal = dprec.Vec3Quot(dprec.NewVec3(distanceLeft, 0.0, -distanceFront), distance)
+			boxDisplaceNormal = dprec.UnitVec3(dprec.Vec3Sum(
+				dprec.Vec3Prod(boxAxisX, distanceLeft),
+				dprec.Vec3Prod(boxAxisZ, -distanceFront),
+			))
 			boxContact = dprec.Vec3Sum(spherePosition, dprec.Vec3Prod(boxDisplaceNormal, distance))
 		}
 
@@ -530,7 +563,10 @@ func checkIntersectionSphereWithBox(first Placement[StaticSphere], second Placem
 		if isIntersection = sqrDistance < sphereRadius*sphereRadius; isIntersection {
 			distance := dprec.Sqrt(sqrDistance)
 			depth = sphereRadius - distance
-			boxDisplaceNormal = dprec.Vec3Quot(dprec.NewVec3(-distanceRight, 0.0, -distanceFront), distance)
+			boxDisplaceNormal = dprec.UnitVec3(dprec.Vec3Sum(
+				dprec.Vec3Prod(boxAxisX, -distanceRight),
+				dprec.Vec3Prod(boxAxisZ, -distanceFront),
+			))
 			boxContact = dprec.Vec3Sum(spherePosition, dprec.Vec3Prod(boxDisplaceNormal, distance))
 		}
 
