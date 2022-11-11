@@ -8,14 +8,14 @@ import (
 )
 
 var (
-	spanCache = datastruct.NewDynamicPool[Span]()
-	spans     []*Span
-	spanLayer = 0
-	spanList  []*Span
+	spanPool     = datastruct.NewDynamicPool[Span]()
+	spans        []*Span
+	spanLayer    = 0
+	spanSnapshot []Span
 )
 
 func BeginSpan(name string) *Span {
-	span := spanCache.Fetch()
+	span := spanPool.Fetch()
 	span.name = name
 	span.startTime = time.Now()
 	span.layer = spanLayer
@@ -24,11 +24,8 @@ func BeginSpan(name string) *Span {
 	return span
 }
 
-func Spans() []*Span {
-	spanList = slices.Grow(spanList, len(spans))
-	spanList = spanList[:len(spans)]
-	copy(spanList, spans)
-	return spanList
+func Spans() []Span {
+	return spanSnapshot
 }
 
 type Span struct {
@@ -58,8 +55,11 @@ func (s *Span) End() {
 	s.endTime = time.Now()
 	spanLayer--
 	if spanLayer == 0 {
-		for _, span := range spans {
-			spanCache.Restore(span)
+		spanSnapshot = slices.Grow(spanSnapshot, len(spans))
+		spanSnapshot = spanSnapshot[:len(spans)]
+		for i, span := range spans {
+			spanSnapshot[i] = *span
+			spanPool.Restore(span)
 		}
 		spans = spans[:0]
 	}
