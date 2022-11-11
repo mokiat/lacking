@@ -1,9 +1,6 @@
 package shape
 
-import (
-	"github.com/mokiat/gomath/dprec"
-	"github.com/mokiat/lacking/log"
-)
+import "github.com/mokiat/gomath/dprec"
 
 // Intersection represents the collision between two shapes.
 type Intersection struct {
@@ -352,58 +349,6 @@ func checkIntersectionSphereWithBox(first Placement[StaticSphere], second Placem
 	distanceFront := distanceZ - boxHalfLength
 	distanceBack := -(2.0*boxHalfLength + distanceFront)
 
-	checkCollisionLeftBottom := func() {
-		log.Info("LEFT-BOTTOM")
-	}
-
-	checkCollisionLeftTop := func() {
-		log.Info("LEFT-TOP")
-	}
-
-	checkCollisionRightBottom := func() {
-		log.Info("RIGHT-BOTTOM")
-	}
-
-	checkCollisionRightTop := func() {
-		log.Info("RIGHT-TOP")
-	}
-
-	checkCollisionBackBottom := func() {
-		log.Info("BACK-BOTTOM")
-	}
-
-	checkCollisionBackTop := func() {
-		log.Info("BACK-TOP")
-	}
-
-	checkCollisionFrontBottom := func() {
-		log.Info("FRONT-BOTTOM")
-	}
-
-	checkCollisionFrontTop := func() {
-		log.Info("FRONT-TOP")
-	}
-
-	checkCollisionBackLeft := func() {
-		log.Info("BACK-LEFT")
-	}
-
-	checkCollisionBackRight := func() {
-		log.Info("BACK-RIGHT")
-	}
-
-	checkCollisionFrontLeft := func() {
-		log.Info("FRONT-LEFT")
-	}
-
-	checkCollisionFrontRight := func() {
-		log.Info("FRONT-RIGHT")
-	}
-
-	checkCollisionInside := func() {
-		log.Info("INSIDE")
-	}
-
 	var (
 		isIntersection    bool
 		depth             float64
@@ -482,40 +427,112 @@ func checkIntersectionSphereWithBox(first Placement[StaticSphere], second Placem
 		}
 
 	case maskLeft | maskBottom:
-		checkCollisionLeftBottom()
+		sqrDistance := distanceLeft*distanceLeft + distanceBottom*distanceBottom
+		if isIntersection = sqrDistance < sphereRadius*sphereRadius; isIntersection {
+			distance := dprec.Sqrt(sqrDistance)
+			depth = sphereRadius - distance
+			boxDisplaceNormal = dprec.Vec3Quot(dprec.NewVec3(distanceLeft, distanceBottom, 0.0), distance)
+			boxContact = dprec.Vec3Sum(spherePosition, dprec.Vec3Prod(boxDisplaceNormal, distance))
+		}
 
 	case maskLeft | maskTop:
-		checkCollisionLeftTop()
+		sqrDistance := distanceLeft*distanceLeft + distanceTop*distanceTop
+		if isIntersection = sqrDistance < sphereRadius*sphereRadius; isIntersection {
+			distance := dprec.Sqrt(sqrDistance)
+			depth = sphereRadius - distance
+			boxDisplaceNormal = dprec.Vec3Quot(dprec.NewVec3(distanceLeft, -distanceTop, 0.0), distance)
+			boxContact = dprec.Vec3Sum(spherePosition, dprec.Vec3Prod(boxDisplaceNormal, distance))
+		}
 
 	case maskRight | maskBottom:
-		checkCollisionRightBottom()
+		sqrDistance := distanceRight*distanceRight + distanceBottom*distanceBottom
+		if isIntersection = sqrDistance < sphereRadius*sphereRadius; isIntersection {
+			distance := dprec.Sqrt(sqrDistance)
+			depth = sphereRadius - distance
+			boxDisplaceNormal = dprec.Vec3Quot(dprec.NewVec3(-distanceRight, distanceBottom, 0.0), distance)
+			boxContact = dprec.Vec3Sum(spherePosition, dprec.Vec3Prod(boxDisplaceNormal, distance))
+		}
 
 	case maskRight | maskTop:
-		checkCollisionRightTop()
+		sqrDistance := distanceRight*distanceRight + distanceTop*distanceTop
+		if isIntersection = sqrDistance < sphereRadius*sphereRadius; isIntersection {
+			distance := dprec.Sqrt(sqrDistance)
+			depth = sphereRadius - distance
+			boxDisplaceNormal = dprec.Vec3Quot(dprec.NewVec3(-distanceRight, -distanceTop, 0.0), distance)
+			boxContact = dprec.Vec3Sum(spherePosition, dprec.Vec3Prod(boxDisplaceNormal, distance))
+		}
 
 	case maskBack | maskBottom:
-		checkCollisionBackBottom()
+		sqrDistance := distanceBack*distanceBack + distanceBottom*distanceBottom
+		if isIntersection = sqrDistance < sphereRadius*sphereRadius; isIntersection {
+			distance := dprec.Sqrt(sqrDistance)
+			depth = sphereRadius - distance
+			boxDisplaceNormal = dprec.Vec3Quot(dprec.NewVec3(0.0, distanceBottom, distanceBack), distance)
+			boxContact = dprec.Vec3Sum(spherePosition, dprec.Vec3Prod(boxDisplaceNormal, distance))
+		}
 
 	case maskBack | maskTop:
-		checkCollisionBackTop()
+		sqrDistance := distanceBack*distanceBack + distanceTop*distanceTop
+		if isIntersection = sqrDistance < sphereRadius*sphereRadius; isIntersection {
+			distance := dprec.Sqrt(sqrDistance)
+			depth = sphereRadius - distance
+			boxDisplaceNormal = dprec.Vec3Quot(dprec.NewVec3(0.0, -distanceTop, distanceBack), distance)
+			boxContact = dprec.Vec3Sum(spherePosition, dprec.Vec3Prod(boxDisplaceNormal, distance))
+		}
 
 	case maskFront | maskBottom:
-		checkCollisionFrontBottom()
+		sqrDistance := distanceFront*distanceFront + distanceBottom*distanceBottom
+		if isIntersection = sqrDistance < sphereRadius*sphereRadius; isIntersection {
+			distance := dprec.Sqrt(sqrDistance)
+			depth = sphereRadius - distance
+			boxDisplaceNormal = dprec.Vec3Quot(dprec.NewVec3(0.0, distanceBottom, -distanceFront), distance)
+			boxContact = dprec.Vec3Sum(spherePosition, dprec.Vec3Prod(boxDisplaceNormal, distance))
+		}
 
 	case maskFront | maskTop:
-		checkCollisionFrontTop()
+		sqrDistance := distanceFront*distanceFront + distanceTop*distanceTop
+		if isIntersection = sqrDistance < sphereRadius*sphereRadius; isIntersection {
+			distance := dprec.Sqrt(sqrDistance)
+			depth = sphereRadius - distance
+			boxDisplaceNormal = dprec.Vec3Quot(dprec.NewVec3(0.0, -distanceTop, -distanceFront), distance)
+			boxContact = dprec.Vec3Sum(spherePosition, dprec.Vec3Prod(boxDisplaceNormal, distance))
+		}
 
 	case maskBack | maskLeft:
-		checkCollisionBackLeft()
+		sqrDistance := distanceBack*distanceBack + distanceLeft*distanceLeft
+		if isIntersection = sqrDistance < sphereRadius*sphereRadius; isIntersection {
+			distance := dprec.Sqrt(sqrDistance)
+			depth = sphereRadius - distance
+			boxDisplaceNormal = dprec.Vec3Quot(dprec.NewVec3(distanceLeft, 0.0, distanceBack), distance)
+			boxContact = dprec.Vec3Sum(spherePosition, dprec.Vec3Prod(boxDisplaceNormal, distance))
+		}
 
 	case maskBack | maskRight:
-		checkCollisionBackRight()
+		sqrDistance := distanceBack*distanceBack + distanceRight*distanceRight
+		if isIntersection = sqrDistance < sphereRadius*sphereRadius; isIntersection {
+			distance := dprec.Sqrt(sqrDistance)
+			depth = sphereRadius - distance
+			boxDisplaceNormal = dprec.Vec3Quot(dprec.NewVec3(-distanceRight, 0.0, distanceBack), distance)
+			boxContact = dprec.Vec3Sum(spherePosition, dprec.Vec3Prod(boxDisplaceNormal, distance))
+		}
 
 	case maskFront | maskLeft:
-		checkCollisionFrontLeft()
+		sqrDistance := distanceFront*distanceFront + distanceLeft*distanceLeft
+		if isIntersection = sqrDistance < sphereRadius*sphereRadius; isIntersection {
+			distance := dprec.Sqrt(sqrDistance)
+			depth = sphereRadius - distance
+			boxDisplaceNormal = dprec.Vec3Quot(dprec.NewVec3(distanceLeft, 0.0, -distanceFront), distance)
+			boxContact = dprec.Vec3Sum(spherePosition, dprec.Vec3Prod(boxDisplaceNormal, distance))
+		}
 
 	case maskFront | maskRight:
-		checkCollisionFrontRight()
+		sqrDistance := distanceFront*distanceFront + distanceRight*distanceRight
+		if isIntersection = sqrDistance < sphereRadius*sphereRadius; isIntersection {
+			distance := dprec.Sqrt(sqrDistance)
+			depth = sphereRadius - distance
+			boxDisplaceNormal = dprec.Vec3Quot(dprec.NewVec3(-distanceRight, 0.0, -distanceFront), distance)
+			boxContact = dprec.Vec3Sum(spherePosition, dprec.Vec3Prod(boxDisplaceNormal, distance))
+		}
 
 	case maskLeft | maskBottom | maskBack:
 		sqrDistance := distanceLeft*distanceLeft + distanceBottom*distanceBottom + distanceBack*distanceBack
@@ -590,7 +607,46 @@ func checkIntersectionSphereWithBox(first Placement[StaticSphere], second Placem
 		}
 
 	default:
-		checkCollisionInside()
+		// Note: This branch is unlikely to occur so no need to be extremely optimal.
+		isIntersection = true
+		var (
+			displaceX float64
+			displaceY float64
+			displaceZ float64
+		)
+		if distanceLeft > distanceRight {
+			displaceX = distanceLeft
+		} else {
+			displaceX = -distanceRight
+		}
+		if distanceBottom > distanceTop {
+			displaceY = distanceBottom
+		} else {
+			displaceY = -distanceTop
+		}
+		if distanceBack > distanceFront {
+			displaceZ = distanceBack
+		} else {
+			displaceZ = -distanceFront
+		}
+		if dprec.Abs(displaceX) < dprec.Abs(displaceY) {
+			if dprec.Abs(displaceX) < dprec.Abs(displaceZ) {
+				depth = dprec.Abs(displaceX) + sphereRadius
+				boxDisplaceNormal = dprec.NewVec3(-dprec.Sign(displaceX), 0.0, 0.0)
+			} else {
+				depth = dprec.Abs(displaceZ) + sphereRadius
+				boxDisplaceNormal = dprec.NewVec3(0.0, 0.0, -dprec.Sign(displaceZ))
+			}
+		} else {
+			if dprec.Abs(displaceY) < dprec.Abs(displaceZ) {
+				depth = dprec.Abs(displaceY) + sphereRadius
+				boxDisplaceNormal = dprec.NewVec3(0.0, -dprec.Sign(displaceY), 0.0)
+			} else {
+				depth = dprec.Abs(displaceZ) + sphereRadius
+				boxDisplaceNormal = dprec.NewVec3(0.0, 0.0, -dprec.Sign(displaceZ))
+			}
+		}
+		boxContact = dprec.Vec3Sum(spherePosition, dprec.Vec3Prod(boxDisplaceNormal, sphereRadius-depth))
 	}
 
 	if isIntersection {
