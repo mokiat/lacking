@@ -505,7 +505,7 @@ func (s *Scene) detectCollisions() {
 
 		region := spatial.CuboidRegion(
 			primary.position,
-			dprec.NewVec3(primary.bsRadius, primary.bsRadius, primary.bsRadius),
+			dprec.NewVec3(primary.bsRadius*2.0, primary.bsRadius*2.0, primary.bsRadius*2.0),
 		)
 		s.bodyOctree.VisitHexahedronRegion(&region, spatial.VisitorFunc[*Body](func(secondary *Body) {
 			if secondary == primary {
