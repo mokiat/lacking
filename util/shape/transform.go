@@ -25,10 +25,6 @@ type Transform struct {
 	rotation dprec.Quat
 }
 
-func (t Transform) IsIdentity() bool {
-	return t.position.IsZero() && t.rotation.IsIdentity()
-}
-
 // Position returns the translation of this Transform.
 func (t Transform) Position() dprec.Vec3 {
 	return t.position
@@ -42,12 +38,8 @@ func (t Transform) Rotation() dprec.Quat {
 // Transformed returns a new Transform that is based on this one but has the
 // specified Transform applied to it.
 func (t Transform) Transformed(transform Transform) Transform {
-	if transform.IsIdentity() {
-		return t
-	}
-	if t.IsIdentity() {
-		return transform
-	}
+	// Note: Doing an identity check on the current or parent transform,
+	// as a form of quick return, actually worsens the performance.
 	return Transform{
 		position: dprec.Vec3Sum(
 			transform.position,
