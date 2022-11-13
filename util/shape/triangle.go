@@ -4,35 +4,32 @@ import "github.com/mokiat/gomath/dprec"
 
 // NewStaticTriangle creates a new StaticTriangle shape.
 func NewStaticTriangle(a, b, c Point) StaticTriangle {
-	center := dprec.Vec3Quot(dprec.Vec3Sum(dprec.Vec3Sum(dprec.Vec3(a), dprec.Vec3(b)), dprec.Vec3(c)), 3.0)
-	radius := dprec.Max(
-		dprec.Max(
-			dprec.Vec3Diff(dprec.Vec3(a), center).Length(),
-			dprec.Vec3Diff(dprec.Vec3(b), center).Length(),
-		),
-		dprec.Vec3Diff(dprec.Vec3(c), center).Length(),
-	)
-	return StaticTriangle{
-		a:        a,
-		b:        b,
-		c:        c,
-		center:   Point(center),
-		bsRadius: radius,
+	result := StaticTriangle{
+		a: a,
+		b: b,
+		c: c,
 	}
+	center := result.Center()
+	result.bsRadius = dprec.Max(
+		dprec.Max(
+			dprec.Vec3Diff(dprec.Vec3(a), dprec.Vec3(center)).Length(),
+			dprec.Vec3Diff(dprec.Vec3(b), dprec.Vec3(center)).Length(),
+		),
+		dprec.Vec3Diff(dprec.Vec3(c), dprec.Vec3(center)).Length(),
+	)
+	return result
 }
 
 // StaticTriangle represents a tringle in 3D space.
 type StaticTriangle struct {
-	a Point
-	b Point
-	c Point
-
-	center   Point
+	a        Point
+	b        Point
+	c        Point
 	bsRadius float64
 }
 
 func (t StaticTriangle) Center() Point {
-	return t.center
+	return Point(dprec.Vec3Quot(dprec.Vec3Sum(dprec.Vec3Sum(dprec.Vec3(t.a), dprec.Vec3(t.b)), dprec.Vec3(t.c)), 3.0))
 }
 
 func (t StaticTriangle) BoundingSphereRadius() float64 {
@@ -120,7 +117,6 @@ func (t StaticTriangle) Transformed(parent Transform) StaticTriangle {
 		a:        t.a.Transformed(parent),
 		b:        t.b.Transformed(parent),
 		c:        t.c.Transformed(parent),
-		center:   t.center.Transformed(parent),
 		bsRadius: t.bsRadius,
 	}
 }

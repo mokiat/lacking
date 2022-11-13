@@ -698,30 +698,166 @@ func checkIntersectionSphereWithBox(first Placement[StaticSphere], second Placem
 
 func checkIntersectionSphereWithMesh(sphere Placement[StaticSphere], mesh Placement[StaticMesh], flipped bool, resultSet *IntersectionResultSet) {
 	for _, triangle := range mesh.Shape().Triangles() {
-		triangle = triangle.Transformed(mesh.Transform)
+		checkIntersectionSphereWithTriangle(sphere, triangle.Transformed(mesh.Transform), flipped, resultSet)
+	}
+}
 
-		distance := dprec.Vec3Diff(dprec.Vec3(triangle.Center()), sphere.Position()).Length()
-		if distance > sphere.Shape().Radius()+triangle.BoundingSphereRadius() {
-			continue
+func checkIntersectionSphereWithTriangle(sphere Placement[StaticSphere], triangle StaticTriangle, flipped bool, resultSet *IntersectionResultSet) {
+	spherePosition := sphere.Position()
+	sphereRadius := sphere.Shape().Radius()
+	triangleA := dprec.Vec3(triangle.A())
+	triangleB := dprec.Vec3(triangle.B())
+	triangleC := dprec.Vec3(triangle.C())
+	triangleCenter := dprec.Vec3(triangle.Center())
+	triangleRadius := triangle.BoundingSphereRadius()
+	triangleNormal := triangle.Normal()
+
+	sphereOffset := dprec.Vec3Diff(spherePosition, triangleCenter)
+	if sphereOffset.SqrLength() > (sphereRadius+triangleRadius)*(sphereRadius+triangleRadius) {
+		return
+	}
+
+	height := dprec.Vec3Dot(triangleNormal, sphereOffset)
+	if dprec.Abs(height) > sphereRadius {
+		return
+	}
+
+	vecAB := dprec.Vec3Diff(triangleB, triangleA)
+	vecBC := dprec.Vec3Diff(triangleC, triangleB)
+	vecCA := dprec.Vec3Diff(triangleA, triangleC)
+	tangentAB := dprec.UnitVec3(vecAB)
+	tangentBC := dprec.UnitVec3(vecBC)
+	tangentCA := dprec.UnitVec3(vecCA)
+	normAB := dprec.Vec3Cross(tangentAB, triangleNormal)
+	normBC := dprec.Vec3Cross(tangentBC, triangleNormal)
+	normCA := dprec.Vec3Cross(tangentCA, triangleNormal)
+
+	projectedPoint := dprec.Vec3Diff(spherePosition, dprec.Vec3Prod(triangleNormal, height))
+	vecAP := dprec.Vec3Diff(projectedPoint, triangleA)
+	vecBP := dprec.Vec3Diff(projectedPoint, triangleB)
+	vecCP := dprec.Vec3Diff(projectedPoint, triangleC)
+
+	distAB := dprec.Vec3Dot(normAB, vecAP)
+	distBC := dprec.Vec3Dot(normBC, vecBP)
+	distCA := dprec.Vec3Dot(normCA, vecCP)
+
+	var (
+		inside    bool
+		outsideAB bool
+		outsideBC bool
+		outsideCA bool
+		outsideA  bool
+		outsideB  bool
+		outsideC  bool
+	)
+	switch {
+	case distAB >= 0:
+		if dprec.Vec3Dot(tangentAB, vecAP) >= 0 {
+			if dprec.Vec3Dot(tangentAB, vecBP) <= 0 {
+				outsideAB = true
+			} else {
+				outsideB = true
+			}
+		} else {
+			outsideA = true
+		}
+	case distBC >= 0:
+		if dprec.Vec3Dot(tangentBC, vecBP) >= 0 {
+			if dprec.Vec3Dot(tangentBC, vecCP) <= 0 {
+				outsideBC = true
+			} else {
+				outsideC = true
+			}
+		} else {
+			outsideB = true
+		}
+	case distCA >= 0:
+		if dprec.Vec3Dot(tangentCA, vecCP) >= 0 {
+			if dprec.Vec3Dot(tangentCA, vecAP) <= 0 {
+				outsideCA = true
+			} else {
+				outsideA = true
+			}
+		} else {
+			outsideC = true
+		}
+	default:
+		inside = true
+	}
+
+	var (
+		isIntersection       bool
+		depth                float64
+		sphereDisplaceNormal dprec.Vec3
+	)
+	switch {
+	case outsideA:
+		cornerOffset := dprec.Vec3Diff(spherePosition, triangleA)
+		cornerDistance := cornerOffset.Length()
+		if isIntersection = (cornerDistance <= sphereRadius); isIntersection {
+			depth = sphereRadius - cornerDistance
+			sphereDisplaceNormal = dprec.Vec3Quot(cornerOffset, cornerDistance)
 		}
 
-		height := dprec.Vec3Dot(triangle.Normal(), dprec.Vec3Diff(sphere.Position(), dprec.Vec3(triangle.A())))
-		if dprec.Abs(height) > sphere.Shape().Radius() {
-			continue
+	case outsideB:
+		cornerOffset := dprec.Vec3Diff(spherePosition, triangleB)
+		cornerDistance := cornerOffset.Length()
+		if isIntersection = (cornerDistance <= sphereRadius); isIntersection {
+			depth = sphereRadius - cornerDistance
+			sphereDisplaceNormal = dprec.Vec3Quot(cornerOffset, cornerDistance)
 		}
 
-		projectedPoint := dprec.Vec3Diff(sphere.Position(), dprec.Vec3Prod(triangle.Normal(), height))
-		if triangle.ContainsPoint(Point(projectedPoint)) {
-			depth := sphere.Shape().Radius() - dprec.Abs(height)
-			addIntersection(resultSet, flipped, Intersection{
-				Depth:                depth,
-				FirstContact:         dprec.Vec3Sum(projectedPoint, dprec.Vec3Prod(triangle.Normal(), -depth)),
-				FirstDisplaceNormal:  triangle.Normal(),
-				SecondContact:        projectedPoint,
-				SecondDisplaceNormal: dprec.InverseVec3(triangle.Normal()),
-			})
-			// TODO: Handle cases where the point is not contained but the sphere touches the edge of the triangle
+	case outsideC:
+		cornerOffset := dprec.Vec3Diff(spherePosition, triangleC)
+		cornerDistance := cornerOffset.Length()
+		if isIntersection = (cornerDistance <= sphereRadius); isIntersection {
+			depth = sphereRadius - cornerDistance
+			sphereDisplaceNormal = dprec.Vec3Quot(cornerOffset, cornerDistance)
 		}
+
+	case outsideAB:
+		edgeOffset := dprec.Vec3Sum(dprec.Vec3Prod(normAB, distAB), dprec.Vec3Prod(triangleNormal, height))
+		edgeDistance := edgeOffset.Length()
+		if isIntersection = (edgeDistance <= sphereRadius); isIntersection {
+			depth = sphereRadius - edgeDistance
+			sphereDisplaceNormal = dprec.Vec3Quot(edgeOffset, edgeDistance)
+		}
+
+	case outsideBC:
+		edgeOffset := dprec.Vec3Sum(dprec.Vec3Prod(normBC, distBC), dprec.Vec3Prod(triangleNormal, height))
+		edgeDistance := edgeOffset.Length()
+		if isIntersection = (edgeDistance <= sphereRadius); isIntersection {
+			depth = sphereRadius - edgeDistance
+			sphereDisplaceNormal = dprec.Vec3Quot(edgeOffset, edgeDistance)
+		}
+
+	case outsideCA:
+		edgeOffset := dprec.Vec3Sum(dprec.Vec3Prod(normCA, distCA), dprec.Vec3Prod(triangleNormal, height))
+		edgeDistance := edgeOffset.Length()
+		if isIntersection = (edgeDistance <= sphereRadius); isIntersection {
+			depth = sphereRadius - edgeDistance
+			sphereDisplaceNormal = dprec.Vec3Quot(edgeOffset, edgeDistance)
+		}
+
+	case inside:
+		isIntersection = true
+		if height >= 0 {
+			depth = sphereRadius - height
+			sphereDisplaceNormal = triangleNormal
+		} else {
+			depth = sphereRadius + height
+			sphereDisplaceNormal = dprec.InverseVec3(triangleNormal)
+		}
+	}
+
+	if isIntersection {
+		addIntersection(resultSet, flipped, Intersection{
+			Depth:                depth,
+			FirstContact:         dprec.Vec3Diff(spherePosition, dprec.Vec3Prod(sphereDisplaceNormal, sphereRadius)),
+			FirstDisplaceNormal:  sphereDisplaceNormal,
+			SecondContact:        dprec.Vec3Diff(spherePosition, dprec.Vec3Prod(sphereDisplaceNormal, sphereRadius-depth)),
+			SecondDisplaceNormal: dprec.InverseVec3(sphereDisplaceNormal),
+		})
 	}
 }
 

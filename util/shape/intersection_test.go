@@ -131,3 +131,65 @@ func BenchmarkSphereToBoxNegative(b *testing.B) {
 		shape.CheckIntersectionSphereWithBox(sphere, box, resultSet)
 	}
 }
+
+func BenchmarkSphereToMeshNegative(b *testing.B) {
+	resultSet := shape.NewIntersectionResultSet(0)
+
+	sphere := shape.NewPlacement(
+		shape.NewTransform(
+			dprec.NewVec3(0.1, 5.0, 0.1),
+			dprec.IdentityQuat(),
+		),
+		shape.NewStaticSphere(1.0),
+	)
+
+	mesh := shape.NewPlacement(
+		shape.NewTransform(
+			dprec.NewVec3(0.0, 3.0, 0.0),
+			dprec.IdentityQuat(),
+		),
+		shape.NewStaticMesh([]shape.StaticTriangle{
+			shape.NewStaticTriangle(
+				shape.Point(dprec.NewVec3(0.0, 0.0, -2.0)),
+				shape.Point(dprec.NewVec3(-2.0, 0.0, 1.4)),
+				shape.Point(dprec.NewVec3(2.0, 0.0, 1.4)),
+			),
+		}),
+	)
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		shape.CheckIntersectionSphereWithMesh(sphere, mesh, resultSet)
+	}
+}
+
+func BenchmarkSphereToMeshNegativeBroad(b *testing.B) {
+	resultSet := shape.NewIntersectionResultSet(0)
+
+	sphere := shape.NewPlacement(
+		shape.NewTransform(
+			dprec.NewVec3(4.0, 8.0, 0.0),
+			dprec.IdentityQuat(),
+		),
+		shape.NewStaticSphere(1.0),
+	)
+
+	mesh := shape.NewPlacement(
+		shape.NewTransform(
+			dprec.NewVec3(0.0, 3.0, 0.0),
+			dprec.IdentityQuat(),
+		),
+		shape.NewStaticMesh([]shape.StaticTriangle{
+			shape.NewStaticTriangle(
+				shape.Point(dprec.NewVec3(0.0, 5.0, -2.0)),
+				shape.Point(dprec.NewVec3(-2.0, 5.0, 1.4)),
+				shape.Point(dprec.NewVec3(2.0, 5.0, 1.4)),
+			),
+		}),
+	)
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		shape.CheckIntersectionSphereWithMesh(sphere, mesh, resultSet)
+	}
+}
