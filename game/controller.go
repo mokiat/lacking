@@ -8,6 +8,7 @@ import (
 	"github.com/mokiat/lacking/game/physics"
 	"github.com/mokiat/lacking/render"
 	"github.com/mokiat/lacking/util/async"
+	"github.com/mokiat/lacking/util/metrics"
 )
 
 func NewController(registry asset.Registry, api render.API, shaders graphics.ShaderCollection) *Controller {
@@ -70,8 +71,12 @@ func (c *Controller) OnResize(window app.Window, width, height int) {
 }
 
 func (c *Controller) OnRender(window app.Window) {
+	frameSpan := metrics.BeginSpan("frame")
+	defer frameSpan.End()
+
 	c.engine.Update()
 	c.engine.Render(c.viewport)
+
 	window.Invalidate() // force redraw
 }
 
