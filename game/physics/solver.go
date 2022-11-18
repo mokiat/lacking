@@ -2,11 +2,68 @@ package physics
 
 import "github.com/mokiat/gomath/dprec"
 
-// SBSolverContext contains information related to the
-// single-body constraint processing.
+// TODO: Nudges are slower because each nudge iteration moves the body
+// a bit, causing it to be relocated in the octree. Either optimize
+// octree relocations or better yet accumulate positional changes
+// and apply them only at the end.
+// This would mean that there needs to be a temporary replacement structure
+// for a body that is used only during constraint evaluation.
+// This might not be such a bad idea, since it could temporarily contain the
+// inverse mass and moment of intertia, avoiding inverse matrix calculations.
+
+// SBSolverContext contains information related to single-body constraint
+// processing.
 type SBSolverContext struct {
 	Body           *Body
 	ElapsedSeconds float64
+}
+
+// ApplyImpulse is e helper function that applies an impulse to the body
+// based on the specified jacobian.
+func (c SBSolverContext) ApplyImpulse(jacobian Jacobian) {
+	lambda := jacobian.ImpulseLambda(c.Body)
+	solution := jacobian.ImpulseSolution(c.Body, lambda)
+	c.Body.applyImpulse(solution.Impulse)
+	c.Body.applyAngularImpulse(solution.AngularImpulse)
+}
+
+// ApplyNudge is e helper function that applies a nudge to the body
+// based on the specified jacobian and positional drift.
+func (c SBSolverContext) ApplyNudge(jacobian Jacobian, drift float64) {
+	lambda := jacobian.NudgeLambda(c.Body, drift)
+	solution := jacobian.NudgeSolution(c.Body, lambda)
+	c.Body.applyNudge(solution.Nudge)
+	c.Body.applyAngularNudge(solution.AngularNudge)
+}
+
+// DBSolverContext contains information related to double-body constraint
+// processing.
+type DBSolverContext struct {
+	Primary        *Body
+	Secondary      *Body
+	ElapsedSeconds float64
+}
+
+// ApplyImpulse is e helper function that applies an impulse to the two bodies
+// based on the specified jacobian.
+func (c DBSolverContext) ApplyImpulse(jacobian PairJacobian) {
+	lambda := jacobian.ImpulseLambda(c.Primary, c.Secondary)
+	solution := jacobian.ImpulseSolution(c.Primary, c.Secondary, lambda)
+	c.Primary.applyImpulse(solution.Primary.Impulse)
+	c.Primary.applyAngularImpulse(solution.Primary.AngularImpulse)
+	c.Secondary.applyImpulse(solution.Secondary.Impulse)
+	c.Secondary.applyAngularImpulse(solution.Secondary.AngularImpulse)
+}
+
+// ApplyNudge is e helper function that applies a nudge to the two bodies
+// based on the specified jacobian and positional drift.
+func (c DBSolverContext) ApplyNudge(jacobian PairJacobian, drift float64) {
+	lambda := jacobian.NudgeLambda(c.Primary, c.Secondary, drift)
+	solution := jacobian.NudgeSolution(c.Primary, c.Secondary, lambda)
+	c.Primary.applyNudge(solution.Primary.Nudge)
+	c.Primary.applyAngularNudge(solution.Primary.AngularNudge)
+	c.Secondary.applyNudge(solution.Secondary.Nudge)
+	c.Secondary.applyAngularNudge(solution.Secondary.AngularNudge)
 }
 
 // SBConstraintSolver represents the algorithm necessary
@@ -24,6 +81,44 @@ type SBConstraintSolver interface {
 	// CalculateNudges returns a set of nudges to be applied
 	// to the body.
 	CalculateNudges(ctx SBSolverContext) SBNudgeSolution
+}
+
+// TODO: Rename
+type ExplicitSBConstraintSolver interface {
+	SBConstraintSolver // TODO: Remove
+
+	// Reset clears the internal cache state for this constraint solver.
+	// This is called at the start of every iteration.
+	Reset(ctx SBSolverContext)
+
+	// ApplyImpulses is called by the physics engine to instruct the solver
+	// to apply the necessary impulses to its body.
+	// This is called multiple times per iteration.
+	ApplyImpulses(ctx SBSolverContext)
+
+	// ApplyNudges is called by the physics engine to instruct the solver to
+	// apply the necessary nudges to its body.
+	// This is called multiple times per iteration.
+	ApplyNudges(ctx SBSolverContext)
+}
+
+// TODO: Rename
+type ExplicitDBConstraintSolver interface {
+	DBConstraintSolver // TODO: Remove
+
+	// Reset clears the internal cache state for this constraint solver.
+	// This is called at the start of every iteration.
+	Reset(ctx DBSolverContext)
+
+	// ApplyImpulses is called by the physics engine to instruct the solver
+	// to apply the necessary impulses to its bodies.
+	// This is called multiple times per iteration.
+	ApplyImpulses(ctx DBSolverContext)
+
+	// ApplyNudges is called by the physics engine to instruct the solver to
+	// apply the necessary nudges to its bodies.
+	// This is called multiple times per iteration.
+	ApplyNudges(ctx DBSolverContext)
 }
 
 // SBImpulseSolution is a solution to a single-body constraint that
@@ -79,6 +174,7 @@ func (s *SBJacobianConstraintSolver) Reset(SBSolverContext) {}
 
 func (s *SBJacobianConstraintSolver) CalculateImpulses(ctx SBSolverContext) SBImpulseSolution {
 	jacobian, drift := s.calculate(ctx)
+	// FIXME: Ignore drift!
 	if dprec.Abs(drift) < epsilon {
 		return SBImpulseSolution{}
 	}
@@ -88,19 +184,12 @@ func (s *SBJacobianConstraintSolver) CalculateImpulses(ctx SBSolverContext) SBIm
 
 func (s *SBJacobianConstraintSolver) CalculateNudges(ctx SBSolverContext) SBNudgeSolution {
 	jacobian, drift := s.calculate(ctx)
+	// FIXME: Try without this?
 	if dprec.Abs(drift) < epsilon {
 		return SBNudgeSolution{}
 	}
 	lambda := jacobian.NudgeLambda(ctx.Body, drift)
 	return jacobian.NudgeSolution(ctx.Body, lambda)
-}
-
-// DBSolverContext contains information related to the
-// double-body constraint processing.
-type DBSolverContext struct {
-	Primary        *Body
-	Secondary      *Body
-	ElapsedSeconds float64
 }
 
 // DBConstraintSolver represents the algorithm necessary to enforce
@@ -175,6 +264,7 @@ func (s *DBJacobianConstraintSolver) Reset(DBSolverContext) {}
 
 func (s *DBJacobianConstraintSolver) CalculateImpulses(ctx DBSolverContext) DBImpulseSolution {
 	jacobian, drift := s.calculate(ctx)
+	// FIXME: Ignore drift!
 	if dprec.Abs(drift) < epsilon {
 		return DBImpulseSolution{}
 	}
@@ -184,6 +274,7 @@ func (s *DBJacobianConstraintSolver) CalculateImpulses(ctx DBSolverContext) DBIm
 
 func (s *DBJacobianConstraintSolver) CalculateNudges(ctx DBSolverContext) DBNudgeSolution {
 	jacobian, drift := s.calculate(ctx)
+	// FIXME: Try without this?
 	if dprec.Abs(drift) < epsilon {
 		return DBNudgeSolution{}
 	}

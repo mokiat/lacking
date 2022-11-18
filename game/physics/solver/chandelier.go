@@ -5,26 +5,29 @@ import (
 	"github.com/mokiat/lacking/game/physics"
 )
 
-var _ physics.SBConstraintSolver = (*Chandelier)(nil)
-
 // NewChandelier creates a new Chandelier constraint solver.
 func NewChandelier() *Chandelier {
-	result := &Chandelier{
-		length: 1.0,
+	return &Chandelier{
+		fixture:    dprec.ZeroVec3(),
+		bodyAnchor: dprec.ZeroVec3(),
+		length:     1.0,
 	}
-	result.SBJacobianConstraintSolver = physics.NewSBJacobianConstraintSolver(result.calculate)
-	return result
 }
+
+var _ physics.ExplicitSBConstraintSolver = (*Chandelier)(nil)
 
 // Chandelier represents the solution for a constraint
 // that keeps a body hanging off of a fixture location similar
 // to a chandelier.
 type Chandelier struct {
-	*physics.SBJacobianConstraintSolver
+	physics.NilSBConstraintSolver // TODO: Remove
 
 	fixture    dprec.Vec3
 	bodyAnchor dprec.Vec3
 	length     float64
+
+	jacobian physics.Jacobian
+	drift    float64
 }
 
 // Fixture returns the fixture location for the chandelier hook.
@@ -62,25 +65,27 @@ func (c *Chandelier) SetLength(length float64) *Chandelier {
 	return c
 }
 
-func (c *Chandelier) calculate(ctx physics.SBSolverContext) (physics.Jacobian, float64) {
-	anchorWS := dprec.Vec3Sum(ctx.Body.Position(), dprec.QuatVec3Rotation(ctx.Body.Orientation(), c.bodyAnchor))
-	radiusWS := dprec.Vec3Diff(anchorWS, ctx.Body.Position())
-	deltaPosition := dprec.Vec3Diff(anchorWS, c.fixture)
-	normal := dprec.BasisXVec3()
-	if deltaPosition.SqrLength() > sqrEpsilon {
-		normal = dprec.UnitVec3(deltaPosition)
+func (c *Chandelier) Reset(ctx physics.SBSolverContext) {
+	c.updateJacobian(ctx)
+}
+
+func (c *Chandelier) ApplyImpulses(ctx physics.SBSolverContext) {
+	ctx.ApplyImpulse(c.jacobian)
+}
+
+func (c *Chandelier) ApplyNudges(ctx physics.SBSolverContext) {
+	c.updateJacobian(ctx)
+	ctx.ApplyNudge(c.jacobian, c.drift)
+}
+
+func (c *Chandelier) updateJacobian(ctx physics.SBSolverContext) {
+	radiusWS := dprec.QuatVec3Rotation(ctx.Body.Orientation(), c.bodyAnchor)
+	anchorWS := dprec.Vec3Sum(ctx.Body.Position(), radiusWS)
+	deltaPositionWS := dprec.Vec3Diff(anchorWS, c.fixture)
+	normalWS := SafeNormal(deltaPositionWS, dprec.BasisXVec3())
+	c.jacobian = physics.Jacobian{
+		SlopeVelocity:        normalWS,
+		SlopeAngularVelocity: dprec.Vec3Cross(radiusWS, normalWS),
 	}
-	return physics.Jacobian{
-			SlopeVelocity: dprec.NewVec3(
-				normal.X,
-				normal.Y,
-				normal.Z,
-			),
-			SlopeAngularVelocity: dprec.NewVec3(
-				normal.Z*radiusWS.Y-normal.Y*radiusWS.Z,
-				normal.X*radiusWS.Z-normal.Z*radiusWS.X,
-				normal.Y*radiusWS.X-normal.X*radiusWS.Y,
-			),
-		},
-		deltaPosition.Length() - c.length
+	c.drift = deltaPositionWS.Length() - c.length
 }
