@@ -54,7 +54,7 @@ $$
 And just as forces applied at an offset to an object induce both a change in linear and angular accelerations, impulses induce both a change in linear and angular velocities.
 
 $$
-\Delta{\vec{v}} = M^{-1} \vec{P}
+\Delta{\vec{v}} = m^{-1} \vec{P}
 $$
 
 $$
@@ -104,7 +104,7 @@ Note: we transpose the jacobian to convert it from a $1 \times 3$ (when working 
 While the Jacobian $J$ (or rather the inverse) determines the direction, the $\lambda$ scalar determines the strength of the impulse. Where $\lambda$ is calculated as follows.
 
 $$
-\lambda = \frac{J\vec{v_0}}{JM^{-1}J^T}
+\lambda = \frac{J\vec{v_0}}{Jm_{eff}^{-1}J^T}
 $$
 
 (where $\vec{v_0}$ is the current velocity of the object and $M^{-1}$ is the inverse mass matrix, though $\frac{1}{m}$ works just as well in the general case)

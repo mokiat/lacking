@@ -154,21 +154,31 @@ We use the cross product to get the tangential component of the force, have it m
 
 **NOTE:** Wrapping my head around the idea that a force applied at an offset affects the center of mass of the object in the same way as if it were applied at the center of mass was hard. If that were true, it felt that in the case where the force were applied at the center of mass there was a loss of energy since there was no rotational energy gain. I guess that one has to consider the motion of the object. An offset force will cause the object to spin faster and faster, leading to the motion being circular-like in shape and the object not gaining much potential energy. This is my personal way of thinking about this. Take this with a block of salt.
 
-### Apparent mass
+### Effective mass
 
-I was unable to find a correct term for this. The articles sometimes refer to it as _Effective Mass_, though it means a different thing in reality. The term _Reduced Mass_ is also a good candidate and it does cover part of the equation we will present here but in general relates to a different scenario. So I will be using _Apparent Mass_ here.
+I was unable to find a correct term for this. The articles refer to it as _Effective Mass_, though it means a different thing in practice. Regardless, I will stick with the term _Effective Mass_ to keep this consistent with other tutorials out there.
 
-The apparent mass is represented with the following equation.
+The effective mass is represented with the following equation.
 
 $$
-m_{apparent} = \frac{1}{\frac{1}{m} + \frac{r^2}{I}}
+m_{eff} = \frac{1}{m^{-1} + I^{-1}(\vec{r} \times \hat{n})^2}
 $$
 
-It represents the mass that an object appears to have when analyzed at some distant point. Another way of thinking about this is to ask what would the mass of the object "feel" to an observer if some distant (at $r$ distance) point of the object were to press against the observer.
+It represents the inertial mass of an object when interacted with at an offset (e.g. an airplane wing-mounted engine pushing on the airplane).
 
-While mostly a thought experiment and not really grounded in reality, this representation is really important when we start dealing with two objects that both exert an offset force on each other and we would like to find out what proportion of the net force needs to go to which object. We cannot use their full masses and we have to take the moment of inertia into consideration as well.
+In practice we will be using the inverse effective mass which has the following equation.
 
-A detailed derivation of the above equation can be found on the [Apparent Mass Derivation](../explanations/apparent-mass-derivation.md) page.
+$$
+m_{eff}^{-1} = m^{-1} + I^{-1}(\vec{r} \times \hat{n})^2
+$$
+
+Lastly, if dealing with two objects, the inverse of the reduced effective mass of the system can be calculated as follows.
+
+$$
+m_{eff}^{-1} = m_1^{-1} + I_1^{-1}(\vec{r_1} \times \hat{n})^2 + m_2^{-1} + I_2^{-1}(\vec{r_2} \times \hat{n})^2
+$$
+
+A detailed derivation of the above equation can be found on the [Effective Mass Derivation](../explanations/effective-mass-derivation.md) page.
 
 ### The Intertia Tensor
 
