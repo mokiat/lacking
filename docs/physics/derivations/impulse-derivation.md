@@ -151,3 +151,37 @@ P = - J^T \left[ C_v(V) m_{eff} \right]
 $$
 
 In reality, however, the above equation is more useful, since we only need to calculate the inverse mass and the jacobian once and we have all that is needed to resolve the constraint.
+
+## Double-body Constraint
+
+Solving double-body constraints is fairly similar, except that the Jacobian is now 12-dimensional, since it contains the linear and angular components of both objects.
+
+## Inequality Constraints
+
+Some constraints are applicable only half-way, for example a collision between an object and a surface. We want to apply the constraint only if it is unsatisfied at one end (either positive or negative - up to the reader).
+
+$$
+C_p(P) >= 0
+$$
+
+$$
+\Downarrow
+$$
+
+$$
+C_v(V) >= 0
+$$
+
+From an implementation point of view, it is possible to just check it and not apply any impulses if positive. However, there is also the aspect of bounciness. So far, we have been adjusting the velocities in such a way as to remove the excess velocity in a certain direction. With inequality constraints the desired outcome could be that the object bounce back with the same or similar velocity.
+
+We can do this by applying up to twice the correction impulse and can control this using the [coefficient of restitution](https://en.wikipedia.org/wiki/Coefficient_of_restitution).
+
+$$
+\lambda = - (1 + e) \frac{J V}{J M^{-1} J^T}
+$$
+
+Here $e$ usually ranges from $0$ to $1$ in value. A value of $0$ indicates an inelastic collision whereas a value of $1$ indicates a fully elastic collision.
+
+Specifying a negative value is meaningless and specifying a value bigger than $1$ would introduce energy into the system, which might be desired in some special circumstances (e.g. a jump platform).
+
+*Side note:* It is possible to reuse the same equation for equality constraints as well, one just needs to treat them as inelastic and always specify $e = 0$.
