@@ -91,12 +91,12 @@ $$
 \nabla{C_v}(v) = \frac{\vec{p} - \vec{p_0}}{|\vec{p} - \vec{p_0}|}
 $$
 
-**Note:** In some literature the constraint gradient is also called the Jacobian. Since the $C_v$ function maps from $R^n$ to $R^1$, the Jacobian and gradient are the same thing, except that the former is represented by a single-row matrix and the latter is represented by a vactor. This also means that using a Jacobian, one has to use matrix multiplication and using a gradient one has to use the vector dot product respectively. Since it is easier to write, we will use $J$ to represent the above gradient. Furthermore, unless otherwise specified, $J$ indicates $J(p)$ (the Jacobian at point $p$).
+**Note:** In some literature the constraint gradient is also called the Jacobian. Since the $C_v$ function maps from $R^n$ to $R^1$, the Jacobian and gradient are the same thing, except that the former is represented by a single-row matrix and the latter is represented by a vactor. This also means that using a Jacobian, one has to use matrix multiplication and using a gradient one has to use the vector dot product respectively. Since it is easier to write, we will use $J$ to represent the above gradient. Furthermore, unless otherwise specified, $J$ indicates $J(v)$ (the Jacobian at velocity $v$).
 
 Once we have the Jacobian, we can use the direction it implies to apply an impulse on the object.
 
 $$
-\vec{P} = - J^T \lambda
+\vec{P} = J^T \lambda
 $$
 
 Note: we transpose the jacobian to convert it from a $1 \times 3$ (when working in 3D) matrix, to a 3D vector.
@@ -104,10 +104,10 @@ Note: we transpose the jacobian to convert it from a $1 \times 3$ (when working 
 While the Jacobian $J$ (or rather the inverse) determines the direction, the $\lambda$ scalar determines the strength of the impulse. Where $\lambda$ is calculated as follows.
 
 $$
-\lambda = \frac{J\vec{v_0}}{Jm_{eff}^{-1}J^T}
+\lambda = - \frac{J\vec{v_0}}{JM^{-1}J^T}
 $$
 
-(where $\vec{v_0}$ is the current velocity of the object and $M^{-1}$ is the inverse mass matrix, though $\frac{1}{m}$ works just as well in the general case)
+Here $\vec{v_0}$ is the current velocity of the object and $M^{-1}$ is the inverse mass matrix, though $\frac{1}{m}$ works just as well in the general case. It is also the case that $JM^{-1}J^T$ produces the [inverse effective mass](./theory.md#effective-mass).
 
 This brings the equation down to:
 
@@ -141,7 +141,7 @@ m & 0 & 0 & 0 & 0 & 0 \\
 \end{bmatrix}
 $$
 
-Note: Don't forget that the inverse of the above $M$ matrix is used in the equation above.
+**Note:** Don't forget that the **inverse** of the matrix $M$ is used in the equations above.
 
 More information on how the above equation was derived can be found on the [Impulse Derivation](../explanations/impulse-derivation.md) page.
 
