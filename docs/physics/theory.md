@@ -178,7 +178,7 @@ $$
 m_{eff}^{-1} = m_1^{-1} + I_1^{-1}(\vec{r_1} \times \hat{n})^2 + m_2^{-1} + I_2^{-1}(\vec{r_2} \times \hat{n})^2
 $$
 
-A detailed derivation of the above equation can be found on the [Effective Mass Derivation](../explanations/effective-mass-derivation.md) page.
+A detailed derivation of the above equation can be found on the [Effective Mass Derivation](./derivations/effective-mass-derivation.md) page.
 
 ### The Intertia Tensor
 

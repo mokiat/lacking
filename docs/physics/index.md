@@ -143,7 +143,7 @@ $$
 
 **Note:** Don't forget that the **inverse** of the matrix $M$ is used in the equations above.
 
-More information on how the above equation was derived can be found on the [Impulse Derivation](../explanations/impulse-derivation.md) page.
+More information on how the above equation was derived can be found on the [Impulse Derivation](./derivations/impulse-derivation.md) page.
 
 ## Solver
 
