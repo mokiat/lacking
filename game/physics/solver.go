@@ -18,10 +18,22 @@ type SBSolverContext struct {
 	ElapsedSeconds float64
 }
 
+// RestitutionCoefficient returns the restitution coefficient to be used for
+// elastic collisions.
+func (c SBSolverContext) RestitutionCoefficient() float64 {
+	return c.Body.restitutionCoefficient
+}
+
 // ApplyImpulse is e helper function that applies an impulse to the body
 // based on the specified jacobian.
 func (c SBSolverContext) ApplyImpulse(jacobian Jacobian) {
-	lambda := jacobian.ImpulseLambda(c.Body)
+	c.ApplyElasticImpulse(jacobian, 0.0)
+}
+
+// ApplyElasticImpulse is e helper function that applies an impulse to the body
+// based on the specified jacobian and coefficient of restitution.
+func (c SBSolverContext) ApplyElasticImpulse(jacobian Jacobian, restitution float64) {
+	lambda := (1 + restitution) * jacobian.ImpulseLambda(c.Body)
 	solution := jacobian.ImpulseSolution(c.Body, lambda)
 	c.Body.applyImpulse(solution.Impulse)
 	c.Body.applyAngularImpulse(solution.AngularImpulse)
@@ -44,10 +56,22 @@ type DBSolverContext struct {
 	ElapsedSeconds float64
 }
 
+// RestitutionCoefficient returns the restitution coefficient to be used for
+// elastic collisions.
+func (c DBSolverContext) RestitutionCoefficient() float64 {
+	return c.Primary.restitutionCoefficient * c.Secondary.restitutionCoefficient
+}
+
 // ApplyImpulse is e helper function that applies an impulse to the two bodies
 // based on the specified jacobian.
 func (c DBSolverContext) ApplyImpulse(jacobian PairJacobian) {
-	lambda := jacobian.ImpulseLambda(c.Primary, c.Secondary)
+	c.ApplyElasticImpulse(jacobian, 0.0)
+}
+
+// ApplyElasticImpulse is e helper function that applies an impulse to the two
+// bodies based on the specified jacobian and coefficient of restitution.
+func (c DBSolverContext) ApplyElasticImpulse(jacobian PairJacobian, restitution float64) {
+	lambda := (1 + restitution) * jacobian.ImpulseLambda(c.Primary, c.Secondary)
 	solution := jacobian.ImpulseSolution(c.Primary, c.Secondary, lambda)
 	c.Primary.applyImpulse(solution.Primary.Impulse)
 	c.Primary.applyAngularImpulse(solution.Primary.AngularImpulse)

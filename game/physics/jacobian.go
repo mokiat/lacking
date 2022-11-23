@@ -2,7 +2,9 @@ package physics
 
 import "github.com/mokiat/gomath/dprec"
 
-const driftCorrectionAmount = float64(0.01) // TODO: Configurable?
+// TODO: Come up with some better value here. Try to get it to work correctly
+// for values around 0.5 to 0.75.
+const driftCorrectionAmount = float64(0.01)
 
 type Jacobian struct {
 	SlopeVelocity        dprec.Vec3
@@ -20,6 +22,9 @@ func (j Jacobian) InverseEffectiveMass(body *Body) float64 {
 }
 
 func (j Jacobian) ImpulseLambda(body *Body) float64 {
+	// TODO: If effective velocity is zero, then don't calculate the inverse
+	// effective mass since this collision is already solved (also
+	// the inverse effective mass would likely be zero for some constraints).
 	return -j.EffectiveVelocity(body) / j.InverseEffectiveMass(body)
 }
 
@@ -31,6 +36,9 @@ func (j Jacobian) ImpulseSolution(body *Body, lambda float64) SBImpulseSolution 
 }
 
 func (j Jacobian) NudgeLambda(body *Body, drift float64) float64 {
+	// TODO: It drift is close to zero, then don't calculate the inverse
+	// effective mass, since this constraint is solved (also
+	// the inverse effective mass would likely be zero for some constraints).
 	return -driftCorrectionAmount * drift / j.InverseEffectiveMass(body)
 }
 
@@ -47,6 +55,9 @@ type PairJacobian struct {
 }
 
 func (j PairJacobian) ImpulseLambda(primary, secondary *Body) float64 {
+	// TODO: If effective velocity is zero, then don't calculate the inverse
+	// effective mass since this collision is already solved (also
+	// the inverse effective mass would likely be zero for some constraints).
 	return -j.EffectiveVelocity(primary, secondary) / j.InverseEffectiveMass(primary, secondary)
 }
 
@@ -64,6 +75,9 @@ func (j PairJacobian) ImpulseSolution(primary, secondary *Body, lambda float64) 
 }
 
 func (j PairJacobian) NudgeLambda(primary, secondary *Body, drift float64) float64 {
+	// TODO: It drift is close to zero, then don't calculate the inverse
+	// effective mass, since this constraint is solved (also
+	// the inverse effective mass would likely be zero for some constraints).
 	return -driftCorrectionAmount * drift / j.InverseEffectiveMass(primary, secondary)
 }
 
