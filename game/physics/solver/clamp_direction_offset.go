@@ -5,9 +5,9 @@ import (
 	"github.com/mokiat/lacking/game/physics"
 )
 
-// NewClampDirection creates a new ClampDirection constraint solver.
-func NewClampDirection() *ClampDirection {
-	return &ClampDirection{
+// NewClampDirectionOffset creates a new ClampDirectionOffset constraint solver.
+func NewClampDirectionOffset() *ClampDirectionOffset {
+	return &ClampDirectionOffset{
 		direction:   dprec.BasisYVec3(),
 		min:         -1.0,
 		max:         1.0,
@@ -15,12 +15,12 @@ func NewClampDirection() *ClampDirection {
 	}
 }
 
-var _ physics.ExplicitDBConstraintSolver = (*ClampDirection)(nil)
+var _ physics.ExplicitDBConstraintSolver = (*ClampDirectionOffset)(nil)
 
-// ClampDirection represents the solution for a constraint which ensures that
+// ClampDirectionOffset represents the solution for a constraint which ensures that
 // the second body is within certain min and max bounds relative to the first
 // body along a certain direction of the first body.
-type ClampDirection struct {
+type ClampDirectionOffset struct {
 	physics.NilDBConstraintSolver // TODO: Remove
 
 	direction   dprec.Vec3
@@ -34,70 +34,70 @@ type ClampDirection struct {
 
 // Direction returns the constraint direction, which is in local space of
 // the first body.
-func (s *ClampDirection) Direction() dprec.Vec3 {
+func (s *ClampDirectionOffset) Direction() dprec.Vec3 {
 	return s.direction
 }
 
 // SetDirection changes the constraint direction, which must be in local space
 // of the first body.
-func (s *ClampDirection) SetDirection(direction dprec.Vec3) *ClampDirection {
+func (s *ClampDirectionOffset) SetDirection(direction dprec.Vec3) *ClampDirectionOffset {
 	s.direction = dprec.UnitVec3(direction)
 	return s
 }
 
 // Min returns the lower bounds limit.
-func (s *ClampDirection) Min() float64 {
+func (s *ClampDirectionOffset) Min() float64 {
 	return s.min
 }
 
 // SetMin changes the lower bounds limit.
-func (s *ClampDirection) SetMin(min float64) *ClampDirection {
+func (s *ClampDirectionOffset) SetMin(min float64) *ClampDirectionOffset {
 	s.min = min
 	return s
 }
 
 // Max returns the upper bounds limit.
-func (s *ClampDirection) Max() float64 {
+func (s *ClampDirectionOffset) Max() float64 {
 	return s.max
 }
 
 // SetMax changes the upper bounds limit.
-func (s *ClampDirection) SetMax(max float64) *ClampDirection {
+func (s *ClampDirectionOffset) SetMax(max float64) *ClampDirectionOffset {
 	s.max = max
 	return s
 }
 
 // Restitution returns the restitution to be used when adjusting the
 // two bodies when the constraint is not met.
-func (s *ClampDirection) Restitution() float64 {
+func (s *ClampDirectionOffset) Restitution() float64 {
 	return s.restitution
 }
 
 // SetRestitution changes the restitution to be used when adjusting the
 // two bodies when the constraint is not met.
-func (s *ClampDirection) SetRestitution(restitution float64) *ClampDirection {
+func (s *ClampDirectionOffset) SetRestitution(restitution float64) *ClampDirectionOffset {
 	s.restitution = restitution
 	return s
 }
 
-func (s *ClampDirection) Reset(ctx physics.DBSolverContext) {
+func (s *ClampDirectionOffset) Reset(ctx physics.DBSolverContext) {
 	s.updateJacobian(ctx)
 }
 
-func (s *ClampDirection) ApplyImpulses(ctx physics.DBSolverContext) {
+func (s *ClampDirectionOffset) ApplyImpulses(ctx physics.DBSolverContext) {
 	if s.drift > 0.0 {
 		ctx.ApplyElasticImpulse(s.jacobian, s.restitution)
 	}
 }
 
-func (s *ClampDirection) ApplyNudges(ctx physics.DBSolverContext) {
+func (s *ClampDirectionOffset) ApplyNudges(ctx physics.DBSolverContext) {
 	s.updateJacobian(ctx)
 	if s.drift > 0.0 {
 		ctx.ApplyNudge(s.jacobian, s.drift)
 	}
 }
 
-func (s *ClampDirection) updateJacobian(ctx physics.DBSolverContext) {
+func (s *ClampDirectionOffset) updateJacobian(ctx physics.DBSolverContext) {
 	dirWS := dprec.QuatVec3Rotation(ctx.Primary.Orientation(), s.direction)
 	deltaPosition := dprec.Vec3Diff(ctx.Secondary.Position(), ctx.Primary.Position())
 	dirDistance := dprec.Vec3Dot(deltaPosition, dirWS)
