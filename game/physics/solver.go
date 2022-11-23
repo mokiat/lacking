@@ -11,6 +11,24 @@ import "github.com/mokiat/gomath/dprec"
 // This might not be such a bad idea, since it could temporarily contain the
 // inverse mass and moment of intertia, avoiding inverse matrix calculations.
 
+// RestitutionClamp specifies the amount by which the restitution coefficient
+// should be multiplied depending on the effective velocity.
+//
+// This clamp softens bounces when velocity is small.
+func RestitutionClamp(effectiveVelocity float64) float64 {
+	absEffectiveVelocity := dprec.Abs(effectiveVelocity)
+	switch {
+	case absEffectiveVelocity < 2.0:
+		return 0.1
+	case absEffectiveVelocity < 1.0:
+		return 0.05
+	case absEffectiveVelocity < 0.5:
+		return 0.0
+	default:
+		return 1.0
+	}
+}
+
 // SBSolverContext contains information related to single-body constraint
 // processing.
 type SBSolverContext struct {
@@ -34,7 +52,12 @@ func (c SBSolverContext) ApplyImpulse(jacobian Jacobian) {
 // based on the specified jacobian and coefficient of restitution.
 func (c SBSolverContext) ApplyElasticImpulse(jacobian Jacobian, restitution float64) {
 	lambda := (1 + restitution) * jacobian.ImpulseLambda(c.Body)
-	solution := jacobian.ImpulseSolution(c.Body, lambda)
+	c.ApplyImpulseSolution(jacobian.ImpulseSolution(lambda))
+}
+
+// ApplyImpulseSolution applies the specified impulse solution to the relevant
+// body.
+func (c SBSolverContext) ApplyImpulseSolution(solution SBImpulseSolution) {
 	c.Body.applyImpulse(solution.Impulse)
 	c.Body.applyAngularImpulse(solution.AngularImpulse)
 }
@@ -43,7 +66,12 @@ func (c SBSolverContext) ApplyElasticImpulse(jacobian Jacobian, restitution floa
 // based on the specified jacobian and positional drift.
 func (c SBSolverContext) ApplyNudge(jacobian Jacobian, drift float64) {
 	lambda := jacobian.NudgeLambda(c.Body, drift)
-	solution := jacobian.NudgeSolution(c.Body, lambda)
+	c.ApplyNudgeSolution(jacobian.NudgeSolution(lambda))
+}
+
+// ApplyNudgeSolution applies the specified nudge solution to the relevant
+// body.
+func (c SBSolverContext) ApplyNudgeSolution(solution SBNudgeSolution) {
 	c.Body.applyNudge(solution.Nudge)
 	c.Body.applyAngularNudge(solution.AngularNudge)
 }
@@ -72,7 +100,10 @@ func (c DBSolverContext) ApplyImpulse(jacobian PairJacobian) {
 // bodies based on the specified jacobian and coefficient of restitution.
 func (c DBSolverContext) ApplyElasticImpulse(jacobian PairJacobian, restitution float64) {
 	lambda := (1 + restitution) * jacobian.ImpulseLambda(c.Primary, c.Secondary)
-	solution := jacobian.ImpulseSolution(c.Primary, c.Secondary, lambda)
+	c.ApplyImpulseSolution(jacobian.ImpulseSolution(lambda))
+}
+
+func (c DBSolverContext) ApplyImpulseSolution(solution DBImpulseSolution) {
 	c.Primary.applyImpulse(solution.Primary.Impulse)
 	c.Primary.applyAngularImpulse(solution.Primary.AngularImpulse)
 	c.Secondary.applyImpulse(solution.Secondary.Impulse)
@@ -83,7 +114,10 @@ func (c DBSolverContext) ApplyElasticImpulse(jacobian PairJacobian, restitution 
 // based on the specified jacobian and positional drift.
 func (c DBSolverContext) ApplyNudge(jacobian PairJacobian, drift float64) {
 	lambda := jacobian.NudgeLambda(c.Primary, c.Secondary, drift)
-	solution := jacobian.NudgeSolution(c.Primary, c.Secondary, lambda)
+	c.ApplyNudgeSolution(jacobian.NudgeSolution(lambda))
+}
+
+func (c DBSolverContext) ApplyNudgeSolution(solution DBNudgeSolution) {
 	c.Primary.applyNudge(solution.Primary.Nudge)
 	c.Primary.applyAngularNudge(solution.Primary.AngularNudge)
 	c.Secondary.applyNudge(solution.Secondary.Nudge)
@@ -202,8 +236,7 @@ func (s *SBJacobianConstraintSolver) CalculateImpulses(ctx SBSolverContext) SBIm
 	if dprec.Abs(drift) < epsilon {
 		return SBImpulseSolution{}
 	}
-	lambda := jacobian.ImpulseLambda(ctx.Body)
-	return jacobian.ImpulseSolution(ctx.Body, lambda)
+	return jacobian.ImpulseSolution(jacobian.ImpulseLambda(ctx.Body))
 }
 
 func (s *SBJacobianConstraintSolver) CalculateNudges(ctx SBSolverContext) SBNudgeSolution {
@@ -213,7 +246,7 @@ func (s *SBJacobianConstraintSolver) CalculateNudges(ctx SBSolverContext) SBNudg
 		return SBNudgeSolution{}
 	}
 	lambda := jacobian.NudgeLambda(ctx.Body, drift)
-	return jacobian.NudgeSolution(ctx.Body, lambda)
+	return jacobian.NudgeSolution(lambda)
 }
 
 // DBConstraintSolver represents the algorithm necessary to enforce
@@ -293,7 +326,7 @@ func (s *DBJacobianConstraintSolver) CalculateImpulses(ctx DBSolverContext) DBIm
 		return DBImpulseSolution{}
 	}
 	lambda := jacobian.ImpulseLambda(ctx.Primary, ctx.Secondary)
-	return jacobian.ImpulseSolution(ctx.Primary, ctx.Secondary, lambda)
+	return jacobian.ImpulseSolution(lambda)
 }
 
 func (s *DBJacobianConstraintSolver) CalculateNudges(ctx DBSolverContext) DBNudgeSolution {
@@ -303,5 +336,5 @@ func (s *DBJacobianConstraintSolver) CalculateNudges(ctx DBSolverContext) DBNudg
 		return DBNudgeSolution{}
 	}
 	lambda := jacobian.NudgeLambda(ctx.Primary, ctx.Secondary, drift)
-	return jacobian.NudgeSolution(ctx.Primary, ctx.Secondary, lambda)
+	return jacobian.NudgeSolution(lambda)
 }

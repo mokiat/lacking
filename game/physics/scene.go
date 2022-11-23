@@ -68,7 +68,7 @@ type Scene struct {
 	cachedDBConstraint *DBConstraint
 
 	collisionConstraints     []*SBConstraint
-	collisionSolvers         []groundCollisionSolver
+	collisionSolvers         []soloCollisionSolver
 	dualCollisionConstraints []*DBConstraint
 	dualCollisionSolvers     []dualCollisionSolver
 	intersectionSet          *shape.IntersectionResultSet
@@ -552,11 +552,11 @@ func (s *Scene) detectCollisions() {
 	}
 }
 
-func (s *Scene) allocateGroundCollisionSolver() *groundCollisionSolver {
+func (s *Scene) allocateGroundCollisionSolver() *soloCollisionSolver {
 	if len(s.collisionSolvers) < cap(s.collisionSolvers) {
 		s.collisionSolvers = s.collisionSolvers[:len(s.collisionSolvers)+1]
 	} else {
-		s.collisionSolvers = append(s.collisionSolvers, groundCollisionSolver{})
+		s.collisionSolvers = append(s.collisionSolvers, soloCollisionSolver{})
 	}
 	return &s.collisionSolvers[len(s.collisionSolvers)-1]
 }
@@ -602,17 +602,17 @@ func (s *Scene) checkCollisionTwoBodies(primary, secondary *Body) {
 
 				if !primary.static {
 					solver := s.allocateGroundCollisionSolver()
-					solver.Normal = intersection.FirstDisplaceNormal
-					solver.ContactPoint = intersection.FirstContact
-					solver.Depth = intersection.Depth
+					solver.collisionNormal = intersection.FirstDisplaceNormal
+					solver.collisionPoint = intersection.FirstContact
+					solver.collisionDepth = intersection.Depth
 					s.collisionConstraints = append(s.collisionConstraints, s.CreateSingleBodyConstraint(primary, solver))
 				}
 
 				if !secondary.static {
 					solver := s.allocateGroundCollisionSolver()
-					solver.Normal = intersection.SecondDisplaceNormal
-					solver.ContactPoint = intersection.SecondContact
-					solver.Depth = intersection.Depth
+					solver.collisionNormal = intersection.SecondDisplaceNormal
+					solver.collisionPoint = intersection.SecondContact
+					solver.collisionDepth = intersection.Depth
 					s.collisionConstraints = append(s.collisionConstraints, s.CreateSingleBodyConstraint(secondary, solver))
 				}
 			}

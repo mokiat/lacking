@@ -86,7 +86,10 @@ func (s *ClampDirectionOffset) Reset(ctx physics.DBSolverContext) {
 
 func (s *ClampDirectionOffset) ApplyImpulses(ctx physics.DBSolverContext) {
 	if s.drift > 0.0 {
-		ctx.ApplyElasticImpulse(s.jacobian, s.restitution)
+		lambda := (1 + s.restitution) * s.jacobian.ImpulseLambda(ctx.Primary, ctx.Secondary)
+		if lambda < 0 {
+			ctx.ApplyImpulseSolution(s.jacobian.ImpulseSolution(lambda))
+		}
 	}
 }
 

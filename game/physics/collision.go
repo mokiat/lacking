@@ -22,59 +22,82 @@ func NewCollisionGroup() int {
 
 type CollisionShape = shape.Placement[shape.Shape]
 
-var _ SBConstraintSolver = (*groundCollisionSolver)(nil)
+var _ ExplicitSBConstraintSolver = (*soloCollisionSolver)(nil)
 
-type groundCollisionSolver struct {
-	NilSBConstraintSolver
+type soloCollisionSolver struct {
+	NilSBConstraintSolver // TODO: Remove
 
-	Normal       dprec.Vec3
-	ContactPoint dprec.Vec3
-	Depth        float64
+	collisionNormal dprec.Vec3
+	collisionPoint  dprec.Vec3
+	collisionDepth  float64
+
+	radius          dprec.Vec3
+	initialDistance float64
+	jacobian        Jacobian
+	drift           float64
 }
 
-func (c groundCollisionSolver) CalculateImpulses(ctx SBSolverContext) SBImpulseSolution {
-	primary := ctx.Body
-	contactRadiusWS := dprec.Vec3Diff(c.ContactPoint, primary.position)
-	contactVelocity := dprec.Vec3Sum(primary.velocity, dprec.Vec3Cross(primary.angularVelocity, contactRadiusWS))
-	verticalVelocity := dprec.Vec3Dot(c.Normal, contactVelocity)
+func (s *soloCollisionSolver) Reset(ctx SBSolverContext) {
+	radiusWS := dprec.Vec3Diff(s.collisionPoint, ctx.Body.Position())
+	s.radius = dprec.QuatVec3Rotation(dprec.ConjugateQuat(ctx.Body.Orientation()), radiusWS)
+	s.initialDistance = dprec.Vec3Dot(s.collisionPoint, s.collisionNormal)
+	s.updateJacobian(ctx)
+}
 
-	normal := dprec.InverseVec3(c.Normal)
-	normalVelocity := dprec.Vec3Dot(c.Normal, contactVelocity)
-	if normalVelocity > 0.0 {
-		// moving away from ground
-		return SBImpulseSolution{}
+func (s *soloCollisionSolver) ApplyImpulses(ctx SBSolverContext) {
+	// Bounce solution
+	verticalVelocityAmount := -s.jacobian.EffectiveVelocity(ctx.Body)
+	if verticalVelocityAmount > 0 {
+		return // moving away
 	}
+	lambda := verticalVelocityAmount / s.jacobian.InverseEffectiveMass(ctx.Body)
+	restitution := ctx.RestitutionCoefficient() * RestitutionClamp(verticalVelocityAmount)
+	bounceSolution := s.jacobian.ImpulseSolution((1 + restitution) * lambda)
 
-	restitutionClamp := float64(1.0)
-	if dprec.Abs(normalVelocity) < 2.0 {
-		restitutionClamp = 0.1
-	}
-	if dprec.Abs(normalVelocity) < 1.0 {
-		restitutionClamp = 0.05
-	}
-	if dprec.Abs(normalVelocity) < 0.5 {
-		restitutionClamp = 0.0
-	}
-
-	totalMass := (1 + primary.restitutionCoefficient*restitutionClamp) / ((1.0 / primary.mass) + dprec.Vec3Dot(dprec.Mat3Vec3Prod(dprec.InverseMat3(primary.momentOfInertia), dprec.Vec3Cross(contactRadiusWS, normal)), dprec.Vec3Cross(contactRadiusWS, normal)))
-	pureImpulseStrength := totalMass * dprec.Vec3Dot(normal, contactVelocity)
-	impulseStrength := pureImpulseStrength + totalMass*c.Depth // FIXME
-	// FIXME: Don't apply, rather return as solution
-	primary.applyOffsetImpulse(contactRadiusWS, dprec.InverseVec3(dprec.Vec3Prod(normal, impulseStrength)))
-
-	frictionCoef := float64(0.9) // around 0.7 to 0.9 is realistic for dry asphalt
-	lateralVelocity := dprec.Vec3Diff(contactVelocity, dprec.Vec3Prod(c.Normal, verticalVelocity))
-	if lateralVelocity.SqrLength() > sqrEpsilon {
-		// FIXME: Lateral impulse uses restitution part on top
-		lateralImpulseStrength := totalMass * lateralVelocity.Length()
-		if lateralImpulseStrength > dprec.Abs(impulseStrength)*frictionCoef {
-			lateralImpulseStrength = dprec.Abs(impulseStrength) * frictionCoef
+	// Friction solution
+	radiusWS := dprec.QuatVec3Rotation(ctx.Body.Orientation(), s.radius)
+	pointVelocity := dprec.Vec3Sum(ctx.Body.Velocity(), dprec.Vec3Cross(ctx.Body.AngularVelocity(), radiusWS))
+	verticalVelocity := dprec.Vec3Prod(s.collisionNormal, verticalVelocityAmount)
+	lateralVelocity := dprec.Vec3Diff(pointVelocity, verticalVelocity)
+	frictionSolution := SBImpulseSolution{}
+	if lng := lateralVelocity.Length(); lng > sqrEpsilon {
+		lateralDirection := dprec.UnitVec3(lateralVelocity)
+		frictionJacobian := Jacobian{
+			SlopeVelocity:        lateralDirection,
+			SlopeAngularVelocity: dprec.Vec3Cross(radiusWS, lateralDirection),
 		}
-		lateralDir := dprec.UnitVec3(lateralVelocity)
-		// FIXME: Don't apply, rather return as solution
-		primary.applyOffsetImpulse(contactRadiusWS, dprec.Vec3Prod(lateralDir, -lateralImpulseStrength))
+		frictionLambda := frictionJacobian.ImpulseLambda(ctx.Body)
+		// TODO: Have friction coefficient configurable
+		const frictionCoefficient = 0.9 // around 0.7 to 0.9 is realistic for dry asphalt
+		maxFrictionLambda := lambda * frictionCoefficient
+		if frictionLambda < maxFrictionLambda {
+			frictionLambda = maxFrictionLambda
+		}
+		frictionSolution = frictionJacobian.ImpulseSolution(frictionLambda)
 	}
-	return SBImpulseSolution{} // FIXME
+
+	// Note: Make sure to apply these as late as possible, otherwise you are
+	// introducing noise that is picked up by subsequent calculations.
+	ctx.ApplyImpulseSolution(bounceSolution)
+	ctx.ApplyImpulseSolution(frictionSolution)
+}
+
+func (s *soloCollisionSolver) ApplyNudges(ctx SBSolverContext) {
+	s.updateJacobian(ctx)
+	if s.drift > 0 {
+		ctx.ApplyNudge(s.jacobian, s.drift)
+	}
+}
+
+func (s *soloCollisionSolver) updateJacobian(ctx SBSolverContext) {
+	radiusWS := dprec.QuatVec3Rotation(ctx.Body.Orientation(), s.radius)
+	s.jacobian = Jacobian{
+		SlopeVelocity:        dprec.InverseVec3(s.collisionNormal),
+		SlopeAngularVelocity: dprec.Vec3Cross(s.collisionNormal, radiusWS),
+	}
+	collisionPoint := dprec.Vec3Sum(ctx.Body.Position(), radiusWS)
+	distance := dprec.Vec3Dot(collisionPoint, s.collisionNormal)
+	s.drift = s.collisionDepth - (distance - s.initialDistance)
 }
 
 var _ DBConstraintSolver = (*dualCollisionSolver)(nil)

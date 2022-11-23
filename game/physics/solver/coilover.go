@@ -71,5 +71,5 @@ func (c *Coilover) CalculateImpulses(ctx physics.DBSolverContext) physics.DBImpu
 	velocityLambda := jacobian.EffectiveVelocity(primary, secondary)
 	lambda := -(velocityLambda + beta*drift + gamma*c.appliedLambda) / (invertedEffectiveMass + gamma)
 	c.appliedLambda += lambda
-	return jacobian.ImpulseSolution(primary, secondary, lambda)
+	return jacobian.ImpulseSolution(lambda)
 }

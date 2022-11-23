@@ -28,7 +28,7 @@ func (j Jacobian) ImpulseLambda(body *Body) float64 {
 	return -j.EffectiveVelocity(body) / j.InverseEffectiveMass(body)
 }
 
-func (j Jacobian) ImpulseSolution(body *Body, lambda float64) SBImpulseSolution {
+func (j Jacobian) ImpulseSolution(lambda float64) SBImpulseSolution {
 	return SBImpulseSolution{
 		Impulse:        dprec.Vec3Prod(j.SlopeVelocity, lambda),
 		AngularImpulse: dprec.Vec3Prod(j.SlopeAngularVelocity, lambda),
@@ -42,7 +42,7 @@ func (j Jacobian) NudgeLambda(body *Body, drift float64) float64 {
 	return -driftCorrectionAmount * drift / j.InverseEffectiveMass(body)
 }
 
-func (j Jacobian) NudgeSolution(body *Body, lambda float64) SBNudgeSolution {
+func (j Jacobian) NudgeSolution(lambda float64) SBNudgeSolution {
 	return SBNudgeSolution{
 		Nudge:        dprec.Vec3Prod(j.SlopeVelocity, lambda),
 		AngularNudge: dprec.Vec3Prod(j.SlopeAngularVelocity, lambda),
@@ -61,7 +61,7 @@ func (j PairJacobian) ImpulseLambda(primary, secondary *Body) float64 {
 	return -j.EffectiveVelocity(primary, secondary) / j.InverseEffectiveMass(primary, secondary)
 }
 
-func (j PairJacobian) ImpulseSolution(primary, secondary *Body, lambda float64) DBImpulseSolution {
+func (j PairJacobian) ImpulseSolution(lambda float64) DBImpulseSolution {
 	return DBImpulseSolution{
 		Primary: SBImpulseSolution{
 			Impulse:        dprec.Vec3Prod(j.Primary.SlopeVelocity, lambda),
@@ -81,7 +81,7 @@ func (j PairJacobian) NudgeLambda(primary, secondary *Body, drift float64) float
 	return -driftCorrectionAmount * drift / j.InverseEffectiveMass(primary, secondary)
 }
 
-func (j PairJacobian) NudgeSolution(primary, secondary *Body, lambda float64) DBNudgeSolution {
+func (j PairJacobian) NudgeSolution(lambda float64) DBNudgeSolution {
 	return DBNudgeSolution{
 		Primary: SBNudgeSolution{
 			Nudge:        dprec.Vec3Prod(j.Primary.SlopeVelocity, lambda),
