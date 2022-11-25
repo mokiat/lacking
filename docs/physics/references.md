@@ -41,9 +41,15 @@ The following articles and videos are a good place to start.
 ## Constraint Solver
 
 - [Physics for Game Programmers: Understanding Constraints](https://www.youtube.com/watch?v=SHinxAhv1ZE)
+- [Game Physics: Resolution - Constraints & Sequential Impulse](http://allenchou.net/2013/12/game-physics-constraints-sequential-impulse/)
+- [Equality Constraints](http://myselph.de/gamePhysics/equalityConstraints.html)
+- [Position Correction](https://pybullet.org/Bullet/phpBB3/viewtopic.php?t=1644)
+- [Soft constraint derivation](https://pybullet.org/Bullet/phpBB3/viewtopic.php?t=8888)
 
 ## Collision Detection
 
 - [SAT (Separating Axis Theorem)](https://dyn4j.org/2010/01/sat/)
 - [Collision Detection Using the Separating Axis Theorem](https://gamedevelopment.tutsplus.com/tutorials/collision-detection-using-the-separating-axis-theorem--gamedev-169)
+- [Gilbert–Johnson–Keerthi distance algorithm](https://en.wikipedia.org/wiki/Gilbert%E2%80%93Johnson%E2%80%93Keerthi_distance_algorithm)
 - [A Strange But Elegant Approach to a Surprisingly Hard Problem (GJK Algorithm)](https://www.youtube.com/watch?v=ajv46BSqcK4)
+- [How does a collision engine work?](https://gamedev.stackexchange.com/questions/26501/how-does-a-collision-engine-work)
