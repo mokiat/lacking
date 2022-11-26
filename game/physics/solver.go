@@ -29,6 +29,36 @@ func RestitutionClamp(effectiveVelocity float64) float64 {
 	}
 }
 
+// SBImpulseSolution is a solution to a single-body constraint that
+// contains the impulses that need to be applied to the body.
+type SBImpulseSolution struct {
+	Impulse        dprec.Vec3
+	AngularImpulse dprec.Vec3
+}
+
+// SBNudgeSolution is a solution to a single-body constraint that
+// contains the nudges that need to be applied to the body.
+type SBNudgeSolution struct {
+	Nudge        dprec.Vec3
+	AngularNudge dprec.Vec3
+}
+
+// DBImpulseSolution is a solution to a constraint that
+// indicates the impulses that need to be applied to the primary body
+// and optionally (if the body is not nil) secondary body.
+type DBImpulseSolution struct {
+	Primary   SBImpulseSolution
+	Secondary SBImpulseSolution
+}
+
+// DBNudgeSolution is a solution to a constraint that
+// indicates the nudges that need to be applied to the primary body
+// and optionally (if the body is not nil) secondary body.
+type DBNudgeSolution struct {
+	Primary   SBNudgeSolution
+	Secondary SBNudgeSolution
+}
+
 // SBSolverContext contains information related to single-body constraint
 // processing.
 type SBSolverContext struct {
@@ -103,6 +133,8 @@ func (c DBSolverContext) ApplyElasticImpulse(jacobian PairJacobian, restitution 
 	c.ApplyImpulseSolution(jacobian.ImpulseSolution(lambda))
 }
 
+// ApplyImpulseSolution applies the specified impulse solution to the relevant
+// bodies.
 func (c DBSolverContext) ApplyImpulseSolution(solution DBImpulseSolution) {
 	c.Primary.applyImpulse(solution.Primary.Impulse)
 	c.Primary.applyAngularImpulse(solution.Primary.AngularImpulse)
@@ -117,6 +149,8 @@ func (c DBSolverContext) ApplyNudge(jacobian PairJacobian, drift float64) {
 	c.ApplyNudgeSolution(jacobian.NudgeSolution(lambda))
 }
 
+// ApplyNudgeSolution applies the specified nudge solution to the relevant
+// bodies.
 func (c DBSolverContext) ApplyNudgeSolution(solution DBNudgeSolution) {
 	c.Primary.applyNudge(solution.Primary.Nudge)
 	c.Primary.applyAngularNudge(solution.Primary.AngularNudge)
@@ -127,24 +161,6 @@ func (c DBSolverContext) ApplyNudgeSolution(solution DBNudgeSolution) {
 // SBConstraintSolver represents the algorithm necessary
 // to enforce a single-body constraint.
 type SBConstraintSolver interface {
-
-	// Reset clears the internal cache state for this constraint solver.
-	// This is called at the start of every iteration.
-	Reset(ctx SBSolverContext)
-
-	// CalculateImpulses returns a set of impulses to be applied
-	// to the body.
-	CalculateImpulses(ctx SBSolverContext) SBImpulseSolution
-
-	// CalculateNudges returns a set of nudges to be applied
-	// to the body.
-	CalculateNudges(ctx SBSolverContext) SBNudgeSolution
-}
-
-// TODO: Rename
-type ExplicitSBConstraintSolver interface {
-	SBConstraintSolver // TODO: Remove
-
 	// Reset clears the internal cache state for this constraint solver.
 	// This is called at the start of every iteration.
 	Reset(ctx SBSolverContext)
@@ -160,10 +176,9 @@ type ExplicitSBConstraintSolver interface {
 	ApplyNudges(ctx SBSolverContext)
 }
 
-// TODO: Rename
-type ExplicitDBConstraintSolver interface {
-	DBConstraintSolver // TODO: Remove
-
+// DBConstraintSolver represents the algorithm necessary to enforce
+// a double-body constraint.
+type DBConstraintSolver interface {
 	// Reset clears the internal cache state for this constraint solver.
 	// This is called at the start of every iteration.
 	Reset(ctx DBSolverContext)
@@ -177,164 +192,4 @@ type ExplicitDBConstraintSolver interface {
 	// apply the necessary nudges to its bodies.
 	// This is called multiple times per iteration.
 	ApplyNudges(ctx DBSolverContext)
-}
-
-// SBImpulseSolution is a solution to a single-body constraint that
-// contains the impulses that need to be applied to the body.
-type SBImpulseSolution struct {
-	Impulse        dprec.Vec3
-	AngularImpulse dprec.Vec3
-}
-
-// SBNudgeSolution is a solution to a single-body constraint that
-// contains the nudges that need to be applied to the body.
-type SBNudgeSolution struct {
-	Nudge        dprec.Vec3
-	AngularNudge dprec.Vec3
-}
-
-var _ SBConstraintSolver = (*NilSBConstraintSolver)(nil)
-
-// NilConstraintSolver is an SBConstraintSolver that does nothing.
-type NilSBConstraintSolver struct{}
-
-func (s *NilSBConstraintSolver) Reset(SBSolverContext) {}
-
-func (s *NilSBConstraintSolver) CalculateImpulses(SBSolverContext) SBImpulseSolution {
-	return SBImpulseSolution{}
-}
-
-func (s *NilSBConstraintSolver) CalculateNudges(SBSolverContext) SBNudgeSolution {
-	return SBNudgeSolution{}
-}
-
-// SBCalculateFunc is a function that calculates a jacobian for a
-// single body constraint.
-type SBCalculateFunc func(SBSolverContext) (Jacobian, float64)
-
-// NewSBJacobianConstraintSolver returns a new SBJacobianConstraintSolver
-// based on the specified calculate function.
-func NewSBJacobianConstraintSolver(calculate SBCalculateFunc) *SBJacobianConstraintSolver {
-	return &SBJacobianConstraintSolver{
-		calculate: calculate,
-	}
-}
-
-var _ SBConstraintSolver = (*SBJacobianConstraintSolver)(nil)
-
-// SBJacobianConstraintSolver is a helper implementation of
-// SBConstraintSolver that is based on a Jacobian.
-type SBJacobianConstraintSolver struct {
-	calculate SBCalculateFunc
-}
-
-func (s *SBJacobianConstraintSolver) Reset(SBSolverContext) {}
-
-func (s *SBJacobianConstraintSolver) CalculateImpulses(ctx SBSolverContext) SBImpulseSolution {
-	jacobian, drift := s.calculate(ctx)
-	// FIXME: Ignore drift!
-	if dprec.Abs(drift) < epsilon {
-		return SBImpulseSolution{}
-	}
-	return jacobian.ImpulseSolution(jacobian.ImpulseLambda(ctx.Body))
-}
-
-func (s *SBJacobianConstraintSolver) CalculateNudges(ctx SBSolverContext) SBNudgeSolution {
-	jacobian, drift := s.calculate(ctx)
-	// FIXME: Try without this?
-	if dprec.Abs(drift) < epsilon {
-		return SBNudgeSolution{}
-	}
-	lambda := jacobian.NudgeLambda(ctx.Body, drift)
-	return jacobian.NudgeSolution(lambda)
-}
-
-// DBConstraintSolver represents the algorithm necessary to enforce
-// a double-body constraint.
-type DBConstraintSolver interface {
-
-	// Reset clears the internal cache state for this constraint solver.
-	// This is called at the start of every iteration.
-	Reset(ctx DBSolverContext)
-
-	// CalculateImpulses returns a set of impulses to be applied
-	// to the two bodies.
-	CalculateImpulses(ctx DBSolverContext) DBImpulseSolution
-
-	// CalculateNudges returns a set of nudges to be applied
-	// to the two bodies.
-	CalculateNudges(ctx DBSolverContext) DBNudgeSolution
-}
-
-// DBImpulseSolution is a solution to a constraint that
-// indicates the impulses that need to be applied to the primary body
-// and optionally (if the body is not nil) secondary body.
-type DBImpulseSolution struct {
-	Primary   SBImpulseSolution
-	Secondary SBImpulseSolution
-}
-
-// DBNudgeSolution is a solution to a constraint that
-// indicates the nudges that need to be applied to the primary body
-// and optionally (if the body is not nil) secondary body.
-type DBNudgeSolution struct {
-	Primary   SBNudgeSolution
-	Secondary SBNudgeSolution
-}
-
-var _ DBConstraintSolver = (*NilDBConstraintSolver)(nil)
-
-// NilConstraintSolver is a DBConstraintSolver that does nothing.
-type NilDBConstraintSolver struct{}
-
-func (s *NilDBConstraintSolver) Reset(DBSolverContext) {}
-
-func (s *NilDBConstraintSolver) CalculateImpulses(DBSolverContext) DBImpulseSolution {
-	return DBImpulseSolution{}
-}
-
-func (s *NilDBConstraintSolver) CalculateNudges(DBSolverContext) DBNudgeSolution {
-	return DBNudgeSolution{}
-}
-
-// DBCalculateFunc is a function that calculates a jacobian for a
-// double body constraint.
-type DBCalculateFunc func(DBSolverContext) (PairJacobian, float64)
-
-// NewDBJacobianConstraintSolver returns a new DBJacobianConstraintSolver
-// based on the specified calculate function.
-func NewDBJacobianConstraintSolver(calculate DBCalculateFunc) *DBJacobianConstraintSolver {
-	return &DBJacobianConstraintSolver{
-		calculate: calculate,
-	}
-}
-
-var _ DBConstraintSolver = (*DBJacobianConstraintSolver)(nil)
-
-// DBJacobianConstraintSolver is a helper implementation of
-// DBConstraintSolver that is based on a Jacobian.
-type DBJacobianConstraintSolver struct {
-	calculate DBCalculateFunc
-}
-
-func (s *DBJacobianConstraintSolver) Reset(DBSolverContext) {}
-
-func (s *DBJacobianConstraintSolver) CalculateImpulses(ctx DBSolverContext) DBImpulseSolution {
-	jacobian, drift := s.calculate(ctx)
-	// FIXME: Ignore drift!
-	if dprec.Abs(drift) < epsilon {
-		return DBImpulseSolution{}
-	}
-	lambda := jacobian.ImpulseLambda(ctx.Primary, ctx.Secondary)
-	return jacobian.ImpulseSolution(lambda)
-}
-
-func (s *DBJacobianConstraintSolver) CalculateNudges(ctx DBSolverContext) DBNudgeSolution {
-	jacobian, drift := s.calculate(ctx)
-	// FIXME: Try without this?
-	if dprec.Abs(drift) < epsilon {
-		return DBNudgeSolution{}
-	}
-	lambda := jacobian.NudgeLambda(ctx.Primary, ctx.Secondary, drift)
-	return jacobian.NudgeSolution(lambda)
 }

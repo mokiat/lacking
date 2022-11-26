@@ -14,14 +14,12 @@ func NewChandelier() *Chandelier {
 	}
 }
 
-var _ physics.ExplicitSBConstraintSolver = (*Chandelier)(nil)
+var _ physics.SBConstraintSolver = (*Chandelier)(nil)
 
 // Chandelier represents the solution for a constraint
 // that keeps a body hanging off of a fixture location similar
 // to a chandelier.
 type Chandelier struct {
-	physics.NilSBConstraintSolver // TODO: Remove
-
 	fixture    dprec.Vec3
 	bodyAnchor dprec.Vec3
 	length     float64

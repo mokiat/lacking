@@ -9,13 +9,13 @@ func NewCopyRotation() *CopyRotation {
 	return &CopyRotation{}
 }
 
-var _ physics.ExplicitDBConstraintSolver = (*CopyRotation)(nil)
+var _ physics.DBConstraintSolver = (*CopyRotation)(nil)
 
 // CopyRotation ensures that the second body has exactly the same orientation
 // as the first one.
-type CopyRotation struct {
-	physics.NilDBConstraintSolver // TODO: Remove
-}
+type CopyRotation struct{}
+
+func (s *CopyRotation) Reset(ctx physics.DBSolverContext) {}
 
 func (s *CopyRotation) ApplyImpulses(ctx physics.DBSolverContext) {
 	ctx.Secondary.SetAngularVelocity(ctx.Primary.AngularVelocity())

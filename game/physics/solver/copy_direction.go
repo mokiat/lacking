@@ -15,15 +15,14 @@ func NewCopyDirection() *CopyDirection {
 	}
 }
 
-var _ physics.ExplicitDBConstraintSolver = (*CopyDirection)(nil)
+var _ physics.DBConstraintSolver = (*CopyDirection)(nil)
 
 // CopyDirection ensures that the second body has the same direction as
 // the first one.
 // This solver is immediate - it does not use impulses or nudges.
 type CopyDirection struct {
-	physics.NilDBConstraintSolver // TODO: Remove
-	primaryDirection              dprec.Vec3
-	secondaryDirection            dprec.Vec3
+	primaryDirection   dprec.Vec3
+	secondaryDirection dprec.Vec3
 }
 
 // PrimaryDirection returns the direction of the primary body.
@@ -47,6 +46,8 @@ func (s *CopyDirection) SetSecondaryDirection(direction dprec.Vec3) *CopyDirecti
 	s.secondaryDirection = dprec.UnitVec3(direction)
 	return s
 }
+
+func (s *CopyDirection) Reset(ctx physics.DBSolverContext) {}
 
 func (s *CopyDirection) ApplyImpulses(ctx physics.DBSolverContext) {
 	// The secondary body will have its direction aligned with the primary body's

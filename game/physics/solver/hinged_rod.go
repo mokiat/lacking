@@ -14,13 +14,11 @@ func NewHingedRod() *HingedRod {
 	}
 }
 
-var _ physics.ExplicitDBConstraintSolver = (*HingedRod)(nil)
+var _ physics.DBConstraintSolver = (*HingedRod)(nil)
 
 // HingedRod represents the solution for a constraint that keeps two bodies
 // tied together with a hard link of specific length.
 type HingedRod struct {
-	physics.NilDBConstraintSolver // TODO: Remove
-
 	primaryAnchor   dprec.Vec3
 	secondaryAnchor dprec.Vec3
 	length          float64

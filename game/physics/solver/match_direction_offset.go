@@ -15,14 +15,12 @@ func NewMatchDirectionOffset() *MatchDirectionOffset {
 	}
 }
 
-var _ physics.ExplicitDBConstraintSolver = (*MatchDirectionOffset)(nil)
+var _ physics.DBConstraintSolver = (*MatchDirectionOffset)(nil)
 
 // MatchDirectionOffset represents the solution for a constraint which ensures that
 // the second body is at an exact distance away from the first body along
 // some direction of the first body.
 type MatchDirectionOffset struct {
-	physics.NilDBConstraintSolver // TODO: Remove
-
 	primaryAnchor   dprec.Vec3
 	secondaryAnchor dprec.Vec3
 	direction       dprec.Vec3

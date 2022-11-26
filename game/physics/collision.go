@@ -22,11 +22,9 @@ func NewCollisionGroup() int {
 
 type CollisionShape = shape.Placement[shape.Shape]
 
-var _ ExplicitSBConstraintSolver = (*soloCollisionSolver)(nil)
+var _ SBConstraintSolver = (*soloCollisionSolver)(nil)
 
 type soloCollisionSolver struct {
-	NilSBConstraintSolver // TODO: Remove
-
 	collisionNormal dprec.Vec3
 	collisionPoint  dprec.Vec3
 	collisionDepth  float64
@@ -100,11 +98,9 @@ func (s *soloCollisionSolver) updateJacobian(ctx SBSolverContext) {
 	s.drift = s.collisionDepth - (distance - s.initialDistance)
 }
 
-var _ ExplicitDBConstraintSolver = (*dualCollisionSolver)(nil)
+var _ DBConstraintSolver = (*dualCollisionSolver)(nil)
 
 type dualCollisionSolver struct {
-	NilDBConstraintSolver // TODO: Remove
-
 	primaryCollisionNormal   dprec.Vec3
 	primaryCollisionPoint    dprec.Vec3
 	secondaryCollisionNormal dprec.Vec3

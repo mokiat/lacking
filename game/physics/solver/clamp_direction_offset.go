@@ -15,14 +15,12 @@ func NewClampDirectionOffset() *ClampDirectionOffset {
 	}
 }
 
-var _ physics.ExplicitDBConstraintSolver = (*ClampDirectionOffset)(nil)
+var _ physics.DBConstraintSolver = (*ClampDirectionOffset)(nil)
 
 // ClampDirectionOffset represents the solution for a constraint which ensures that
 // the second body is within certain min and max bounds relative to the first
 // body along a certain direction of the first body.
 type ClampDirectionOffset struct {
-	physics.NilDBConstraintSolver // TODO: Remove
-
 	direction   dprec.Vec3
 	min         float64
 	max         float64

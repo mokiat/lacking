@@ -15,13 +15,11 @@ func NewCoilover() *Coilover {
 	}
 }
 
-var _ physics.ExplicitDBConstraintSolver = (*Coilover)(nil)
+var _ physics.DBConstraintSolver = (*Coilover)(nil)
 
 // Coilover represents the solution for a constraint that immitates
 // a car coilover through a damped harmonic oscillator.
 type Coilover struct {
-	physics.NilDBConstraintSolver // TODO: Remove
-
 	primaryRadius   dprec.Vec3
 	secondaryRadius dprec.Vec3
 	frequency       float64

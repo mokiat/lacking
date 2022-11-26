@@ -7,7 +7,7 @@ import (
 
 // NewMatchRotation creates a new constraint solver that keeps
 // two bodies oriented in the same direction on all axis.
-func NewMatchRotation() physics.ExplicitDBConstraintSolver {
+func NewMatchRotation() physics.DBConstraintSolver {
 	return NewDBCombined(
 		NewMatchDirections().
 			SetPrimaryDirection(dprec.BasisXVec3()).

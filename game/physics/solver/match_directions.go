@@ -15,14 +15,12 @@ func NewMatchDirections() *MatchDirections {
 	}
 }
 
-var _ physics.ExplicitDBConstraintSolver = (*MatchDirections)(nil)
+var _ physics.DBConstraintSolver = (*MatchDirections)(nil)
 
 // MatchDirections represents the solution for a constraint
 // that keeps the direction of two bodies pointing in the same
 // direction.
 type MatchDirections struct {
-	physics.NilDBConstraintSolver // TODO: Remove
-
 	primaryDirection   dprec.Vec3
 	secondaryDirection dprec.Vec3
 

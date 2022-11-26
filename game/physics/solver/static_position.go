@@ -12,15 +12,13 @@ func NewStaticPosition() *StaticPosition {
 	}
 }
 
-var _ physics.ExplicitSBConstraintSolver = (*StaticPosition)(nil)
+var _ physics.SBConstraintSolver = (*StaticPosition)(nil)
 
 // StaticPosition represents the solution for a constraint
 // that keeps a body positioned at the specified fixture location.
 //
 // This solver is immediate - it does not use impulses or nudges.
 type StaticPosition struct {
-	physics.NilSBConstraintSolver // TODO: Remove
-
 	position dprec.Vec3
 }
 
@@ -34,6 +32,8 @@ func (t *StaticPosition) SetPosition(position dprec.Vec3) *StaticPosition {
 	t.position = position
 	return t
 }
+
+func (s *StaticPosition) Reset(ctx physics.SBSolverContext) {}
 
 func (s *StaticPosition) ApplyImpulses(ctx physics.SBSolverContext) {
 	ctx.Body.SetVelocity(dprec.ZeroVec3())

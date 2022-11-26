@@ -4,20 +4,18 @@ import "github.com/mokiat/lacking/game/physics"
 
 // NewSBCombined creates a new SBCombined solver based on the specified
 // sub-solvers.
-func NewSBCombined(delegates ...physics.ExplicitSBConstraintSolver) *SBCombined {
+func NewSBCombined(delegates ...physics.SBConstraintSolver) *SBCombined {
 	return &SBCombined{
 		delegates: delegates,
 	}
 }
 
-var _ physics.ExplicitSBConstraintSolver = (*SBCombined)(nil)
+var _ physics.SBConstraintSolver = (*SBCombined)(nil)
 
 // SBCombined is a single-body solver that delegates its logic to a
 // number of sub-solvers.
 type SBCombined struct {
-	physics.NilSBConstraintSolver // TODO: Remove
-
-	delegates []physics.ExplicitSBConstraintSolver
+	delegates []physics.SBConstraintSolver
 }
 
 func (s *SBCombined) Reset(ctx physics.SBSolverContext) {
@@ -40,20 +38,18 @@ func (s *SBCombined) ApplyNudges(ctx physics.SBSolverContext) {
 
 // NewDBCombined creates a new DBCombined solver based on the specified
 // sub-solvers.
-func NewDBCombined(delegates ...physics.ExplicitDBConstraintSolver) *DBCombined {
+func NewDBCombined(delegates ...physics.DBConstraintSolver) *DBCombined {
 	return &DBCombined{
 		delegates: delegates,
 	}
 }
 
-var _ physics.ExplicitDBConstraintSolver = (*DBCombined)(nil)
+var _ physics.DBConstraintSolver = (*DBCombined)(nil)
 
 // DBCombined is a double-body solver that delegates its logic to a
 // number of sub-solvers.
 type DBCombined struct {
-	physics.NilDBConstraintSolver // TODO: Remove
-
-	delegates []physics.ExplicitDBConstraintSolver
+	delegates []physics.DBConstraintSolver
 }
 
 func (s *DBCombined) Reset(ctx physics.DBSolverContext) {
