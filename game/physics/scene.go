@@ -593,9 +593,11 @@ func (s *Scene) checkCollisionTwoBodies(primary, secondary *Body) {
 			for _, intersection := range s.intersectionSet.Intersections() {
 				if !primary.static && !secondary.static {
 					solver := s.allocateDualCollisionSolver()
-					solver.Normal = intersection.FirstDisplaceNormal
-					solver.ContactPoint = intersection.FirstContact
-					solver.Depth = intersection.Depth
+					solver.primaryCollisionNormal = intersection.FirstDisplaceNormal
+					solver.primaryCollisionPoint = intersection.FirstContact
+					solver.secondaryCollisionNormal = intersection.SecondDisplaceNormal
+					solver.secondaryCollisionPoint = intersection.SecondContact
+					solver.collisionDepth = intersection.Depth
 					s.dualCollisionConstraints = append(s.dualCollisionConstraints, s.CreateDoubleBodyConstraint(primary, secondary, solver))
 					continue
 				}

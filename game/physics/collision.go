@@ -100,62 +100,95 @@ func (s *soloCollisionSolver) updateJacobian(ctx SBSolverContext) {
 	s.drift = s.collisionDepth - (distance - s.initialDistance)
 }
 
-var _ DBConstraintSolver = (*dualCollisionSolver)(nil)
+var _ ExplicitDBConstraintSolver = (*dualCollisionSolver)(nil)
 
 type dualCollisionSolver struct {
-	NilDBConstraintSolver
+	NilDBConstraintSolver // TODO: Remove
 
-	Normal       dprec.Vec3
-	ContactPoint dprec.Vec3
-	Depth        float64
+	primaryCollisionNormal   dprec.Vec3
+	primaryCollisionPoint    dprec.Vec3
+	secondaryCollisionNormal dprec.Vec3
+	secondaryCollisionPoint  dprec.Vec3
+	collisionDepth           float64
+
+	primaryRadius   dprec.Vec3
+	secondaryRadius dprec.Vec3
+	jacobian        PairJacobian
 }
 
-func (c dualCollisionSolver) CalculateImpulses(ctx DBSolverContext) DBImpulseSolution {
-	primary := ctx.Primary
-	secondary := ctx.Secondary
+func (s *dualCollisionSolver) Reset(ctx DBSolverContext) {
+	primaryRadiusWS := dprec.Vec3Diff(s.primaryCollisionPoint, ctx.Primary.Position())
+	s.primaryRadius = dprec.QuatVec3Rotation(dprec.ConjugateQuat(ctx.Primary.Orientation()), primaryRadiusWS)
+	secondaryRadiusWS := dprec.Vec3Diff(s.secondaryCollisionPoint, ctx.Secondary.Position())
+	s.secondaryRadius = dprec.QuatVec3Rotation(dprec.ConjugateQuat(ctx.Secondary.Orientation()), secondaryRadiusWS)
+	s.updateJacobian(ctx)
+}
 
-	primaryContactRadiusWS := dprec.Vec3Diff(c.ContactPoint, primary.position)
-	primaryContactVelocity := dprec.Vec3Sum(primary.velocity, dprec.Vec3Cross(primary.angularVelocity, primaryContactRadiusWS))
+func (s *dualCollisionSolver) ApplyImpulses(ctx DBSolverContext) {
+	// Bounce solution
+	verticalVelocityAmount := -s.jacobian.EffectiveVelocity(ctx.Primary, ctx.Secondary)
+	if verticalVelocityAmount > 0 {
+		return // moving away
+	}
+	lambda := verticalVelocityAmount / s.jacobian.InverseEffectiveMass(ctx.Primary, ctx.Secondary)
+	restitution := ctx.RestitutionCoefficient() * RestitutionClamp(verticalVelocityAmount)
+	bounceSolution := s.jacobian.ImpulseSolution((1 + restitution) * lambda)
 
-	secondaryContactRadiusWS := dprec.Vec3Diff(c.ContactPoint, secondary.position)
-	secondaryContactVelocity := dprec.Vec3Sum(secondary.velocity, dprec.Vec3Cross(secondary.angularVelocity, secondaryContactRadiusWS))
+	// Friction solution
+	primaryRadiusWS := dprec.QuatVec3Rotation(ctx.Primary.Orientation(), s.primaryRadius)
+	primaryPointVelocity := dprec.Vec3Sum(ctx.Primary.Velocity(), dprec.Vec3Cross(ctx.Primary.AngularVelocity(), primaryRadiusWS))
 
-	normal := dprec.InverseVec3(c.Normal)
-	normalVelocity := dprec.Vec3Dot(c.Normal, primaryContactVelocity) - dprec.Vec3Dot(c.Normal, secondaryContactVelocity)
-	if normalVelocity > 0.0 {
-		// moving away from ground
-		return DBImpulseSolution{}
+	secondaryRadiusWS := dprec.QuatVec3Rotation(ctx.Secondary.Orientation(), s.secondaryRadius)
+	secondaryPointVelocity := dprec.Vec3Sum(ctx.Secondary.Velocity(), dprec.Vec3Cross(ctx.Secondary.AngularVelocity(), secondaryRadiusWS))
+
+	deltaPointVelocity := dprec.Vec3Diff(primaryPointVelocity, secondaryPointVelocity)
+
+	verticalVelocity := dprec.Vec3Prod(s.secondaryCollisionNormal, verticalVelocityAmount)
+	lateralVelocity := dprec.Vec3Diff(deltaPointVelocity, verticalVelocity)
+	frictionSolution := DBImpulseSolution{}
+	if lng := lateralVelocity.Length(); lng > sqrEpsilon {
+		lateralDirection := dprec.UnitVec3(lateralVelocity)
+		frictionJacobian := PairJacobian{
+			Primary: Jacobian{
+				SlopeVelocity:        lateralDirection,
+				SlopeAngularVelocity: dprec.Vec3Cross(primaryRadiusWS, lateralDirection),
+			},
+			Secondary: Jacobian{
+				SlopeVelocity:        dprec.InverseVec3(lateralDirection),
+				SlopeAngularVelocity: dprec.Vec3Cross(lateralDirection, secondaryRadiusWS),
+			},
+		}
+		frictionLambda := frictionJacobian.ImpulseLambda(ctx.Primary, ctx.Secondary)
+		// TODO: Have friction coefficient configurable
+		const frictionCoefficient = 0.9 // around 0.7 to 0.9 is realistic for dry asphalt
+		maxFrictionLambda := lambda * frictionCoefficient
+		if frictionLambda < maxFrictionLambda {
+			frictionLambda = maxFrictionLambda
+		}
+		frictionSolution = frictionJacobian.ImpulseSolution(frictionLambda)
 	}
 
-	restitutionClamp := float64(1.0)
-	if dprec.Abs(normalVelocity) < 2.0 {
-		restitutionClamp = 0.1
-	}
-	if dprec.Abs(normalVelocity) < 1.0 {
-		restitutionClamp = 0.05
-	}
-	if dprec.Abs(normalVelocity) < 0.5 {
-		restitutionClamp = 0.0
-	}
+	// Note: Make sure to apply these as late as possible, otherwise you are
+	// introducing noise that is picked up by subsequent calculations.
+	ctx.ApplyImpulseSolution(bounceSolution)
+	ctx.ApplyImpulseSolution(frictionSolution)
+}
 
-	totalMass := (1 + primary.restitutionCoefficient*secondary.restitutionCoefficient*restitutionClamp) / ((1.0 / primary.mass) + dprec.Vec3Dot(dprec.Mat3Vec3Prod(dprec.InverseMat3(primary.momentOfInertia), dprec.Vec3Cross(primaryContactRadiusWS, normal)), dprec.Vec3Cross(primaryContactRadiusWS, normal)) + (1.0 / secondary.mass) + dprec.Vec3Dot(dprec.Mat3Vec3Prod(dprec.InverseMat3(secondary.momentOfInertia), dprec.Vec3Cross(secondaryContactRadiusWS, normal)), dprec.Vec3Cross(secondaryContactRadiusWS, normal)))
-	pureImpulseStrength := totalMass * dprec.Vec3Dot(normal, primaryContactVelocity)
-	impulseStrength := pureImpulseStrength + totalMass*c.Depth // FIXME
-	// FIXME: Don't apply, rather return as solution
-	primary.applyOffsetImpulse(primaryContactRadiusWS, dprec.InverseVec3(dprec.Vec3Prod(normal, impulseStrength)))
-	secondary.applyOffsetImpulse(secondaryContactRadiusWS, dprec.Vec3Prod(normal, impulseStrength))
+func (s *dualCollisionSolver) ApplyNudges(ctx DBSolverContext) {
+	// TODO
+}
 
-	// frictionCoef := float64(0.9) // around 0.7 to 0.9 is realistic for dry asphalt
-	// lateralVelocity := dprec.Vec3Diff(primaryContactVelocity, dprec.Vec3Prod(c.Normal, verticalVelocity))
-	// if lateralVelocity.SqrLength() > sqrEpsilon {
-	// 	// FIXME: Lateral impulse uses restitution part on top
-	// 	lateralImpulseStrength := totalMass * lateralVelocity.Length()
-	// 	if lateralImpulseStrength > dprec.Abs(impulseStrength)*frictionCoef {
-	// 		lateralImpulseStrength = dprec.Abs(impulseStrength) * frictionCoef
-	// 	}
-	// 	lateralDir := dprec.UnitVec3(lateralVelocity)
-	// 	// FIXME: Don't apply, rather return as solution
-	// 	primary.applyOffsetImpulse(primaryContactRadiusWS, dprec.Vec3Prod(lateralDir, -lateralImpulseStrength))
-	// }
-	return DBImpulseSolution{} // FIXME
+func (s *dualCollisionSolver) updateJacobian(ctx DBSolverContext) {
+	primaryRadiusWS := dprec.QuatVec3Rotation(ctx.Primary.Orientation(), s.primaryRadius)
+	secondaryRadiusWS := dprec.QuatVec3Rotation(ctx.Secondary.Orientation(), s.secondaryRadius)
+	s.jacobian = PairJacobian{
+		Primary: Jacobian{
+			SlopeVelocity:        dprec.InverseVec3(s.primaryCollisionNormal),
+			SlopeAngularVelocity: dprec.Vec3Cross(s.primaryCollisionNormal, primaryRadiusWS),
+		},
+		Secondary: Jacobian{
+			SlopeVelocity:        dprec.InverseVec3(s.secondaryCollisionNormal),
+			SlopeAngularVelocity: dprec.Vec3Cross(s.secondaryCollisionNormal, secondaryRadiusWS),
+		},
+	}
 }
