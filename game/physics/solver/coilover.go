@@ -135,6 +135,4 @@ func (s *Coilover) ApplyImpulses(ctx physics.DBSolverContext) {
 	s.appliedLambda += lambda
 }
 
-func (s *Coilover) ApplyNudges(ctx physics.DBSolverContext) {
-	// no nudge corrections for coilover
-}
+func (s *Coilover) ApplyNudges(ctx physics.DBSolverContext) {}

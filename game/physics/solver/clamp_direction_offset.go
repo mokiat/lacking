@@ -79,26 +79,6 @@ func (s *ClampDirectionOffset) SetRestitution(restitution float64) *ClampDirecti
 }
 
 func (s *ClampDirectionOffset) Reset(ctx physics.DBSolverContext) {
-	s.updateJacobian(ctx)
-}
-
-func (s *ClampDirectionOffset) ApplyImpulses(ctx physics.DBSolverContext) {
-	if s.drift > 0.0 {
-		lambda := (1 + s.restitution) * s.jacobian.ImpulseLambda(ctx.Primary, ctx.Secondary)
-		if lambda < 0 {
-			ctx.ApplyImpulseSolution(s.jacobian.ImpulseSolution(lambda))
-		}
-	}
-}
-
-func (s *ClampDirectionOffset) ApplyNudges(ctx physics.DBSolverContext) {
-	s.updateJacobian(ctx)
-	if s.drift > 0.0 {
-		ctx.ApplyNudge(s.jacobian, s.drift)
-	}
-}
-
-func (s *ClampDirectionOffset) updateJacobian(ctx physics.DBSolverContext) {
 	dirWS := dprec.QuatVec3Rotation(ctx.Primary.Orientation(), s.direction)
 	deltaPosition := dprec.Vec3Diff(ctx.Secondary.Position(), ctx.Primary.Position())
 	dirDistance := dprec.Vec3Dot(deltaPosition, dirWS)
@@ -120,6 +100,9 @@ func (s *ClampDirectionOffset) updateJacobian(ctx physics.DBSolverContext) {
 			},
 		}
 		s.drift = dirDistance - s.max
+		if s.jacobian.EffectiveVelocity(ctx.Primary, ctx.Secondary) < 0 {
+			s.drift = 0
+		}
 
 	case dirDistance < s.min:
 		radius := dprec.Vec3Sum(
@@ -137,9 +120,21 @@ func (s *ClampDirectionOffset) updateJacobian(ctx physics.DBSolverContext) {
 			},
 		}
 		s.drift = s.min - dirDistance
+		if s.jacobian.EffectiveVelocity(ctx.Primary, ctx.Secondary) < 0 {
+			s.drift = 0
+		}
 
 	default:
 		s.jacobian = physics.PairJacobian{}
 		s.drift = 0
 	}
 }
+
+func (s *ClampDirectionOffset) ApplyImpulses(ctx physics.DBSolverContext) {
+	if s.drift > 0.0 {
+		solution := ctx.JacobianImpulseSolution(s.jacobian, s.drift, s.restitution)
+		ctx.ApplyImpulseSolution(solution)
+	}
+}
+
+func (s *ClampDirectionOffset) ApplyNudges(ctx physics.DBSolverContext) {}

@@ -1,8 +1,6 @@
 package solver
 
 import (
-	"math"
-
 	"github.com/mokiat/gomath/dprec"
 	"github.com/mokiat/lacking/game/physics"
 )
@@ -24,8 +22,10 @@ type MatchDirections struct {
 	primaryDirection   dprec.Vec3
 	secondaryDirection dprec.Vec3
 
-	jacobian physics.PairJacobian
-	drift    float64
+	jacobian1 physics.PairJacobian
+	jacobian2 physics.PairJacobian
+	drift1    float64
+	drift2    float64
 }
 
 // PrimaryDirection returns the direction of the primary body that will be
@@ -55,40 +55,45 @@ func (s *MatchDirections) SetSecondaryDirection(direction dprec.Vec3) *MatchDire
 }
 
 func (s *MatchDirections) Reset(ctx physics.DBSolverContext) {
-	s.updateJacobian(ctx)
-}
-
-func (s *MatchDirections) ApplyImpulses(ctx physics.DBSolverContext) {
-	if dprec.Abs(s.drift) > epsilon {
-		ctx.ApplyImpulse(s.jacobian)
-	}
-}
-
-func (s *MatchDirections) ApplyNudges(ctx physics.DBSolverContext) {
-	s.updateJacobian(ctx)
-	if dprec.Abs(s.drift) > epsilon {
-		ctx.ApplyNudge(s.jacobian, s.drift)
-	}
-}
-
-func (s *MatchDirections) updateJacobian(ctx physics.DBSolverContext) {
 	primaryDirWS := dprec.QuatVec3Rotation(ctx.Primary.Orientation(), s.primaryDirection)
 	secondaryDirWS := dprec.QuatVec3Rotation(ctx.Secondary.Orientation(), s.secondaryDirection)
-	cross := dprec.Vec3Cross(secondaryDirWS, primaryDirWS)
-	slope := SafeNormal(cross, dprec.BasisYVec3())
+	secondaryTan1, secondaryTan2 := secondaryDirWS.Normal()
 
-	s.jacobian = physics.PairJacobian{
+	s.jacobian1 = physics.PairJacobian{
 		Primary: physics.Jacobian{
 			SlopeVelocity:        dprec.ZeroVec3(),
-			SlopeAngularVelocity: slope,
+			SlopeAngularVelocity: dprec.Vec3Cross(primaryDirWS, secondaryTan1),
 		},
 		Secondary: physics.Jacobian{
 			SlopeVelocity:        dprec.ZeroVec3(),
-			SlopeAngularVelocity: dprec.InverseVec3(slope),
+			SlopeAngularVelocity: dprec.Vec3Cross(secondaryTan1, primaryDirWS),
+		},
+	}
+	s.jacobian2 = physics.PairJacobian{
+		Primary: physics.Jacobian{
+			SlopeVelocity:        dprec.ZeroVec3(),
+			SlopeAngularVelocity: dprec.Vec3Cross(primaryDirWS, secondaryTan2),
+		},
+		Secondary: physics.Jacobian{
+			SlopeVelocity:        dprec.ZeroVec3(),
+			SlopeAngularVelocity: dprec.Vec3Cross(secondaryTan2, primaryDirWS),
 		},
 	}
 
-	cos := dprec.Vec3Dot(secondaryDirWS, primaryDirWS)
-	sin := cross.Length()
-	s.drift = math.Atan2(sin, cos)
+	s.drift1 = dprec.Vec3Dot(primaryDirWS, secondaryTan1)
+	s.drift2 = dprec.Vec3Dot(primaryDirWS, secondaryTan2)
 }
+
+func (s *MatchDirections) ApplyImpulses(ctx physics.DBSolverContext) {
+	const beta = 0.2
+	if dprec.Abs(s.drift1) > 0 {
+		solution := ctx.JacobianImpulseSolution(s.jacobian1, s.drift1, 0.0)
+		ctx.ApplyImpulseSolution(solution)
+	}
+	if dprec.Abs(s.drift2) > 0 {
+		solution := ctx.JacobianImpulseSolution(s.jacobian2, s.drift2, 0.0)
+		ctx.ApplyImpulseSolution(solution)
+	}
+}
+
+func (s *MatchDirections) ApplyNudges(ctx physics.DBSolverContext) {}

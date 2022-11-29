@@ -1,27 +1,29 @@
 package physics
 
 import (
+	"time"
+
 	"github.com/mokiat/gomath/dprec"
 	"github.com/mokiat/lacking/util/metrics"
 	"github.com/mokiat/lacking/util/shape"
 	"github.com/mokiat/lacking/util/spatial"
 )
 
-const (
-	defaultImpulseIterations = 100
-	defaultNudgeIterations   = 100
-)
+// TODO: Nudges are slower because each nudge iteration moves the body
+// a bit, causing it to be relocated in the octree. Either optimize
+// octree relocations or better yet accumulate positional changes
+// and apply them only at the end.
+// This would mean that there needs to be a temporary replacement structure
+// for a body that is used only during constraint evaluation.
+// This might not be such a bad idea, since it could temporarily contain the
+// inverse mass and moment of intertia, avoiding inverse matrix calculations.
 
-func newScene(engine *Engine, stepSeconds float64) *Scene {
+func newScene(engine *Engine, timestep time.Duration) *Scene {
 	return &Scene{
 		engine:     engine,
 		bodyOctree: spatial.NewOctree[*Body](32000.0, 9, 2_000_000),
 
 		dynamicBodies: make(map[*Body]struct{}),
-
-		stepSeconds:       stepSeconds,
-		impulseIterations: defaultImpulseIterations,
-		nudgeIterations:   defaultNudgeIterations,
 
 		maxAcceleration:        200.0, // TODO: Measure something reasonable
 		maxAngularAcceleration: 200.0, // TODO: Measure something reasonable
@@ -30,6 +32,7 @@ func newScene(engine *Engine, stepSeconds float64) *Scene {
 
 		intersectionSet: shape.NewIntersectionResultSet(128),
 
+		timestep:     timestep,
 		timeSpeed:    1.0,
 		gravity:      dprec.NewVec3(0.0, -9.8, 0.0),
 		windVelocity: dprec.NewVec3(0.0, 0.0, 0.0),
@@ -46,9 +49,7 @@ type Scene struct {
 	engine     *Engine
 	bodyOctree *spatial.Octree[*Body]
 
-	stepSeconds            float64
-	impulseIterations      int
-	nudgeIterations        int
+	timestep               time.Duration
 	maxAcceleration        float64
 	maxAngularAcceleration float64
 	maxVelocity            float64
@@ -207,16 +208,15 @@ func (s *Scene) CreateDoubleBodyConstraint(primary, secondary *Body, solver DBCo
 	return constraint
 }
 
-// Update runs a number of physics iterations
-// until the specified number of seconds worth
-// of simulation have passed.
+// Update runs a number of physics iterations until the specified number of
+// seconds worth of simulation have passed.
 func (s *Scene) Update(elapsedSeconds float64) {
-	defer metrics.BeginSpan("physics").End()
+	stepSeconds := s.timestep.Seconds()
 
 	elapsedSeconds = elapsedSeconds * s.timeSpeed
-	for elapsedSeconds > s.stepSeconds {
-		s.runSimulation(s.stepSeconds)
-		elapsedSeconds -= s.stepSeconds
+	for elapsedSeconds > stepSeconds {
+		s.runSimulation(stepSeconds)
+		elapsedSeconds -= stepSeconds
 	}
 	s.runSimulation(elapsedSeconds)
 }
@@ -356,6 +356,9 @@ func (s *Scene) cacheDBConstraint(constraint *DBConstraint) {
 }
 
 func (s *Scene) runSimulation(elapsedSeconds float64) {
+	if elapsedSeconds < epsilon {
+		return
+	}
 	s.resetConstraints(elapsedSeconds)
 	s.applyForces()
 	s.integrate(elapsedSeconds)
@@ -418,7 +421,7 @@ func (s *Scene) integrate(elapsedSeconds float64) {
 func (s *Scene) applyImpulses(elapsedSeconds float64) {
 	defer metrics.BeginSpan("impulses").End()
 
-	for i := 0; i < s.impulseIterations; i++ {
+	for i := 0; i < ImpulseIterationCount; i++ {
 		for constraint := s.firstDBConstraint; constraint != nil; constraint = constraint.next {
 			constraint.solver.ApplyImpulses(DBSolverContext{
 				Primary:        constraint.primary,
@@ -451,19 +454,23 @@ func (s *Scene) applyMotion(elapsedSeconds float64) {
 func (s *Scene) applyNudges(elapsedSeconds float64) {
 	defer metrics.BeginSpan("nudges").End()
 
-	for i := 0; i < s.nudgeIterations; i++ {
+	for i := 0; i < NudgeIterationCount; i++ {
 		for constraint := s.firstDBConstraint; constraint != nil; constraint = constraint.next {
-			constraint.solver.ApplyNudges(DBSolverContext{
+			ctx := DBSolverContext{
 				Primary:        constraint.primary,
 				Secondary:      constraint.secondary,
 				ElapsedSeconds: elapsedSeconds,
-			})
+			}
+			constraint.solver.Reset(ctx)
+			constraint.solver.ApplyNudges(ctx)
 		}
 		for constraint := s.firstSBConstraint; constraint != nil; constraint = constraint.next {
-			constraint.solver.ApplyNudges(SBSolverContext{
+			ctx := SBSolverContext{
 				Body:           constraint.body,
 				ElapsedSeconds: elapsedSeconds,
-			})
+			}
+			constraint.solver.Reset(ctx)
+			constraint.solver.ApplyNudges(ctx)
 		}
 	}
 }

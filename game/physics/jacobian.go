@@ -2,32 +2,31 @@ package physics
 
 import "github.com/mokiat/gomath/dprec"
 
-// TODO: Come up with some better value here. Try to get it to work correctly
-// for values around 0.5 to 0.75.
-const driftCorrectionAmount = float64(0.01)
-
+// Jacobian represents the 1x6 Jacobian matrix of a single-body velocity
+// constraint.
 type Jacobian struct {
 	SlopeVelocity        dprec.Vec3
 	SlopeAngularVelocity dprec.Vec3
 }
 
+// EffectiveVelocity returns the amount of velocity of the body that is
+// going in the wrong direction.
 func (j Jacobian) EffectiveVelocity(body *Body) float64 {
-	return dprec.Vec3Dot(j.SlopeVelocity, body.velocity) +
-		dprec.Vec3Dot(j.SlopeAngularVelocity, body.angularVelocity)
+	linear := dprec.Vec3Dot(j.SlopeVelocity, body.velocity)
+	angular := dprec.Vec3Dot(j.SlopeAngularVelocity, body.angularVelocity)
+	return linear + angular
 }
 
+// InverseEffectiveMass returns the inverse of the effective mass with which
+// the body affects the constraint.
 func (j Jacobian) InverseEffectiveMass(body *Body) float64 {
-	return dprec.Vec3Dot(j.SlopeVelocity, j.SlopeVelocity)/body.mass +
-		dprec.Vec3Dot(dprec.Mat3Vec3Prod(dprec.InverseMat3(body.momentOfInertia), j.SlopeAngularVelocity), j.SlopeAngularVelocity)
+	linear := dprec.Vec3Dot(j.SlopeVelocity, j.SlopeVelocity) / body.mass
+	angular := dprec.Vec3Dot(dprec.Mat3Vec3Prod(dprec.InverseMat3(body.momentOfInertia), j.SlopeAngularVelocity), j.SlopeAngularVelocity)
+	return linear + angular
 }
 
-func (j Jacobian) ImpulseLambda(body *Body) float64 {
-	// TODO: If effective velocity is zero, then don't calculate the inverse
-	// effective mass since this collision is already solved (also
-	// the inverse effective mass would likely be zero for some constraints).
-	return -j.EffectiveVelocity(body) / j.InverseEffectiveMass(body)
-}
-
+// ImpulseSolution returns an impulse solution based on the lambda impulse
+// amount applied according to this Jacobian.
 func (j Jacobian) ImpulseSolution(lambda float64) SBImpulseSolution {
 	return SBImpulseSolution{
 		Impulse:        dprec.Vec3Prod(j.SlopeVelocity, lambda),
@@ -35,13 +34,8 @@ func (j Jacobian) ImpulseSolution(lambda float64) SBImpulseSolution {
 	}
 }
 
-func (j Jacobian) NudgeLambda(body *Body, drift float64) float64 {
-	// TODO: It drift is close to zero, then don't calculate the inverse
-	// effective mass, since this constraint is solved (also
-	// the inverse effective mass would likely be zero for some constraints).
-	return -driftCorrectionAmount * drift / j.InverseEffectiveMass(body)
-}
-
+// NudgeSolution returns a nudge solution based on the lambda nudge amount
+// applied according to this Jacobian.
 func (j Jacobian) NudgeSolution(lambda float64) SBNudgeSolution {
 	return SBNudgeSolution{
 		Nudge:        dprec.Vec3Prod(j.SlopeVelocity, lambda),
@@ -49,18 +43,27 @@ func (j Jacobian) NudgeSolution(lambda float64) SBNudgeSolution {
 	}
 }
 
+// PairJacobian represents the 1x12 Jacobian matrix of a double-body velocity
+// constraint.
 type PairJacobian struct {
 	Primary   Jacobian
 	Secondary Jacobian
 }
 
-func (j PairJacobian) ImpulseLambda(primary, secondary *Body) float64 {
-	// TODO: If effective velocity is zero, then don't calculate the inverse
-	// effective mass since this collision is already solved (also
-	// the inverse effective mass would likely be zero for some constraints).
-	return -j.EffectiveVelocity(primary, secondary) / j.InverseEffectiveMass(primary, secondary)
+// EffectiveVelocity returns the amount of the combined velocities of the two
+// bodies that is going in the wrong direction.
+func (j PairJacobian) EffectiveVelocity(primary, secondary *Body) float64 {
+	return j.Primary.EffectiveVelocity(primary) + j.Secondary.EffectiveVelocity(secondary)
 }
 
+// InverseEffectiveMass returns the inverse of the effective mass with which
+// the two bodies affect the constraint.
+func (j PairJacobian) InverseEffectiveMass(primary, secondary *Body) float64 {
+	return j.Primary.InverseEffectiveMass(primary) + j.Secondary.InverseEffectiveMass(secondary)
+}
+
+// ImpulseSolution returns an impulse solution based on the lambda impulse
+// amount applied according to this Jacobian.
 func (j PairJacobian) ImpulseSolution(lambda float64) DBImpulseSolution {
 	return DBImpulseSolution{
 		Primary: SBImpulseSolution{
@@ -74,13 +77,8 @@ func (j PairJacobian) ImpulseSolution(lambda float64) DBImpulseSolution {
 	}
 }
 
-func (j PairJacobian) NudgeLambda(primary, secondary *Body, drift float64) float64 {
-	// TODO: It drift is close to zero, then don't calculate the inverse
-	// effective mass, since this constraint is solved (also
-	// the inverse effective mass would likely be zero for some constraints).
-	return -driftCorrectionAmount * drift / j.InverseEffectiveMass(primary, secondary)
-}
-
+// NudgeSolution returns a nudge solution based on the lambda nudge amount
+// applied according to this Jacobian.
 func (j PairJacobian) NudgeSolution(lambda float64) DBNudgeSolution {
 	return DBNudgeSolution{
 		Primary: SBNudgeSolution{
@@ -92,12 +90,4 @@ func (j PairJacobian) NudgeSolution(lambda float64) DBNudgeSolution {
 			AngularNudge: dprec.Vec3Prod(j.Secondary.SlopeAngularVelocity, lambda),
 		},
 	}
-}
-
-func (j PairJacobian) EffectiveVelocity(primary, secondary *Body) float64 {
-	return j.Primary.EffectiveVelocity(primary) + j.Secondary.EffectiveVelocity(secondary)
-}
-
-func (j PairJacobian) InverseEffectiveMass(primary, secondary *Body) float64 {
-	return j.Primary.InverseEffectiveMass(primary) + j.Secondary.InverseEffectiveMass(secondary)
 }

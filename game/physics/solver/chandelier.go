@@ -8,9 +8,9 @@ import (
 // NewChandelier creates a new Chandelier constraint solver.
 func NewChandelier() *Chandelier {
 	return &Chandelier{
-		fixture:    dprec.ZeroVec3(),
-		bodyAnchor: dprec.ZeroVec3(),
-		length:     1.0,
+		fixture: dprec.ZeroVec3(),
+		radius:  dprec.ZeroVec3(),
+		length:  1.0,
 	}
 }
 
@@ -20,70 +20,75 @@ var _ physics.SBConstraintSolver = (*Chandelier)(nil)
 // that keeps a body hanging off of a fixture location similar
 // to a chandelier.
 type Chandelier struct {
-	fixture    dprec.Vec3
-	bodyAnchor dprec.Vec3
-	length     float64
+	fixture dprec.Vec3
+	radius  dprec.Vec3
+	length  float64
 
 	jacobian physics.Jacobian
 	drift    float64
 }
 
 // Fixture returns the fixture location for the chandelier hook.
-func (c *Chandelier) Fixture() dprec.Vec3 {
-	return c.fixture
+func (s *Chandelier) Fixture() dprec.Vec3 {
+	return s.fixture
 }
 
 // SetFixture changes the fixture location for the chandelier hook.
-func (c *Chandelier) SetFixture(fixture dprec.Vec3) *Chandelier {
-	c.fixture = fixture
-	return c
+func (s *Chandelier) SetFixture(fixture dprec.Vec3) *Chandelier {
+	s.fixture = fixture
+	return s
 }
 
-// BodyAnchor returns the offset from the center of mass of the
-// body that it is wired to the chandelier.
-func (c *Chandelier) BodyAnchor() dprec.Vec3 {
-	return c.bodyAnchor
+// Radius returns the radius vector of the contact point on the object.
+//
+// The vector is in the object's local space.
+func (s *Chandelier) Radius() dprec.Vec3 {
+	return s.radius
 }
 
-// SetBodyAnchor changes the offset at which the body is attached
-// to the chandelier wiring.
-func (c *Chandelier) SetBodyAnchor(anchor dprec.Vec3) *Chandelier {
-	c.bodyAnchor = anchor
-	return c
+// SetRadius changes the radius vector of the contact point on the object.
+//
+// The vector is in the object's local space.
+func (s *Chandelier) SetRadius(radius dprec.Vec3) *Chandelier {
+	s.radius = radius
+	return s
 }
 
 // Length returns the chandelier length.
-func (c *Chandelier) Length() float64 {
-	return c.length
+func (s *Chandelier) Length() float64 {
+	return s.length
 }
 
 // SetLength changes the chandelier length.
-func (c *Chandelier) SetLength(length float64) *Chandelier {
-	c.length = length
-	return c
+func (s *Chandelier) SetLength(length float64) *Chandelier {
+	s.length = length
+	return s
 }
 
-func (c *Chandelier) Reset(ctx physics.SBSolverContext) {
-	c.updateJacobian(ctx)
-}
-
-func (c *Chandelier) ApplyImpulses(ctx physics.SBSolverContext) {
-	ctx.ApplyImpulse(c.jacobian)
-}
-
-func (c *Chandelier) ApplyNudges(ctx physics.SBSolverContext) {
-	c.updateJacobian(ctx)
-	ctx.ApplyNudge(c.jacobian, c.drift)
-}
-
-func (c *Chandelier) updateJacobian(ctx physics.SBSolverContext) {
-	radiusWS := dprec.QuatVec3Rotation(ctx.Body.Orientation(), c.bodyAnchor)
-	anchorWS := dprec.Vec3Sum(ctx.Body.Position(), radiusWS)
-	deltaPositionWS := dprec.Vec3Diff(anchorWS, c.fixture)
-	normalWS := SafeNormal(deltaPositionWS, dprec.BasisXVec3())
-	c.jacobian = physics.Jacobian{
+// Reset re-evaluates the constraint.
+func (s *Chandelier) Reset(ctx physics.SBSolverContext) {
+	radiusWS := dprec.QuatVec3Rotation(ctx.Body.Orientation(), s.radius)
+	pointWS := dprec.Vec3Sum(ctx.Body.Position(), radiusWS)
+	deltaPositionWS := dprec.Vec3Diff(pointWS, s.fixture)
+	normalWS := SafeNormal(deltaPositionWS, dprec.BasisYVec3())
+	s.jacobian = physics.Jacobian{
 		SlopeVelocity:        normalWS,
 		SlopeAngularVelocity: dprec.Vec3Cross(radiusWS, normalWS),
 	}
-	c.drift = deltaPositionWS.Length() - c.length
+	distance := deltaPositionWS.Length()
+	s.drift = distance - s.length
+}
+
+// ApplyImpulses applies impulses in order to keep the velocity part of
+// the constraint satisfied.
+func (s *Chandelier) ApplyImpulses(ctx physics.SBSolverContext) {
+	solution := ctx.JacobianImpulseSolution(s.jacobian, s.drift, 0.0)
+	ctx.ApplyImpulseSolution(solution)
+}
+
+// ApplyNudges applies nudges in order to keep the positional part of the
+// constraint satisfied.
+func (s *Chandelier) ApplyNudges(ctx physics.SBSolverContext) {
+	solution := ctx.JacobianNudgeSolution(s.jacobian, s.drift)
+	ctx.ApplyNudgeSolution(solution)
 }

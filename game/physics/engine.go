@@ -1,13 +1,19 @@
 package physics
 
+import "time"
+
 // NewEngine creates a new physics engine.
-func NewEngine() *Engine {
-	return &Engine{}
+func NewEngine(timestep time.Duration) *Engine {
+	return &Engine{
+		timestep: timestep,
+	}
 }
 
 // Engine is the entrypoint to working with a
 // physics simulation.
-type Engine struct{}
+type Engine struct {
+	timestep time.Duration
+}
 
 // CreateBodyDefinition creates a new BodyDefinition that can be used
 // to create Body instances.
@@ -27,6 +33,6 @@ func (e *Engine) CreateBodyDefinition(info BodyDefinitionInfo) *BodyDefinition {
 // CreateScene creates a new Scene and configures
 // the simulation for it to run at maximum stepSeconds
 // intervals.
-func (e *Engine) CreateScene(stepSeconds float64) *Scene {
-	return newScene(e, stepSeconds)
+func (e *Engine) CreateScene() *Scene {
+	return newScene(e, e.timestep)
 }

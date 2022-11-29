@@ -2,14 +2,30 @@ package physics
 
 import "github.com/mokiat/gomath/dprec"
 
-// TODO: Nudges are slower because each nudge iteration moves the body
-// a bit, causing it to be relocated in the octree. Either optimize
-// octree relocations or better yet accumulate positional changes
-// and apply them only at the end.
-// This would mean that there needs to be a temporary replacement structure
-// for a body that is used only during constraint evaluation.
-// This might not be such a bad idea, since it could temporarily contain the
-// inverse mass and moment of intertia, avoiding inverse matrix calculations.
+var (
+	// ImpulseIterationCount controls the number of iterations for impulse
+	// solutions by the solvers.
+	ImpulseIterationCount = 8
+	// NudgeIterationCount controls the number of iterations for nudge
+	// solutions by the solvers.
+	NudgeIterationCount = 8
+
+	// ImpulseDriftAdjustmentRatio controls the amount by which impulses should
+	// try to correct positional drift.
+	//
+	// This is the `beta` coefficient in the Baumgarte stabilization approach.
+	ImpulseDriftAdjustmentRatio = 0.2
+	// NudgeDriftAdjustmentRatio controls the amount by which nudges should
+	// try to correct positional drift.
+	//
+	// The value here is accumulated over all iterations. In fact, the total
+	// remaining error is proportional to (1.0 - ratio) ^ iterations.
+	//
+	// Some error should be left in order to avoid jitters due to imprecise
+	// integration of the correction and to leave some drift for the
+	// impulse solution.
+	NudgeDriftAdjustmentRatio = 0.2
+)
 
 // RestitutionClamp specifies the amount by which the restitution coefficient
 // should be multiplied depending on the effective velocity.
@@ -43,17 +59,15 @@ type SBNudgeSolution struct {
 	AngularNudge dprec.Vec3
 }
 
-// DBImpulseSolution is a solution to a constraint that
-// indicates the impulses that need to be applied to the primary body
-// and optionally (if the body is not nil) secondary body.
+// DBImpulseSolution is a solution to a constraint that indicates the impulses
+// that need to be applied to the primary and secondary bodies.
 type DBImpulseSolution struct {
 	Primary   SBImpulseSolution
 	Secondary SBImpulseSolution
 }
 
-// DBNudgeSolution is a solution to a constraint that
-// indicates the nudges that need to be applied to the primary body
-// and optionally (if the body is not nil) secondary body.
+// DBNudgeSolution is a solution to a constraint that indicates the nudges that
+// need to be applied to the primary and secondary bodies.
 type DBNudgeSolution struct {
 	Primary   SBNudgeSolution
 	Secondary SBNudgeSolution
@@ -66,44 +80,58 @@ type SBSolverContext struct {
 	ElapsedSeconds float64
 }
 
-// RestitutionCoefficient returns the restitution coefficient to be used for
-// elastic collisions.
+// RestitutionCoefficient returns the restitution coefficient of the system.
 func (c SBSolverContext) RestitutionCoefficient() float64 {
 	return c.Body.restitutionCoefficient
 }
 
-// ApplyImpulse is e helper function that applies an impulse to the body
-// based on the specified jacobian.
-func (c SBSolverContext) ApplyImpulse(jacobian Jacobian) {
-	c.ApplyElasticImpulse(jacobian, 0.0)
-}
-
-// ApplyElasticImpulse is e helper function that applies an impulse to the body
-// based on the specified jacobian and coefficient of restitution.
-func (c SBSolverContext) ApplyElasticImpulse(jacobian Jacobian, restitution float64) {
-	lambda := (1 + restitution) * jacobian.ImpulseLambda(c.Body)
-	c.ApplyImpulseSolution(jacobian.ImpulseSolution(lambda))
-}
-
-// ApplyImpulseSolution applies the specified impulse solution to the relevant
-// body.
+// ApplyImpulseSolution applies the specified impulse solution to the body.
 func (c SBSolverContext) ApplyImpulseSolution(solution SBImpulseSolution) {
 	c.Body.applyImpulse(solution.Impulse)
 	c.Body.applyAngularImpulse(solution.AngularImpulse)
 }
 
-// ApplyNudge is e helper function that applies a nudge to the body
-// based on the specified jacobian and positional drift.
-func (c SBSolverContext) ApplyNudge(jacobian Jacobian, drift float64) {
-	lambda := jacobian.NudgeLambda(c.Body, drift)
-	c.ApplyNudgeSolution(jacobian.NudgeSolution(lambda))
-}
-
-// ApplyNudgeSolution applies the specified nudge solution to the relevant
-// body.
+// ApplyNudgeSolution applies the specified nudge solution to the body.
 func (c SBSolverContext) ApplyNudgeSolution(solution SBNudgeSolution) {
 	c.Body.applyNudge(solution.Nudge)
 	c.Body.applyAngularNudge(solution.AngularNudge)
+}
+
+// JacobianImpulseLambda returns the impulse lambda for the specified
+// constraint Jacobian, positional drift and restitution.
+func (c SBSolverContext) JacobianImpulseLambda(jacobian Jacobian, drift, restitution float64) float64 {
+	effMass := jacobian.InverseEffectiveMass(c.Body)
+	if effMass < epsilon {
+		return 0.0
+	}
+	effVelocity := jacobian.EffectiveVelocity(c.Body)
+	resitutionClamp := RestitutionClamp(effVelocity)
+	baumgarte := ImpulseDriftAdjustmentRatio * drift / c.ElapsedSeconds
+	return -((1+restitution*resitutionClamp)*effVelocity + baumgarte) / effMass
+}
+
+// JacobianNudgeLambda returns the nudge lambda for the specified
+// constraint Jacobian and positional drift.
+func (c SBSolverContext) JacobianNudgeLambda(jacobian Jacobian, drift float64) float64 {
+	effMass := jacobian.InverseEffectiveMass(c.Body)
+	if effMass < epsilon {
+		return 0.0
+	}
+	return -NudgeDriftAdjustmentRatio * drift / effMass
+}
+
+// JacobianImpulseSolution returns an impulse solution based on the specified
+// constraint Jacobian, positional drift and restitution.
+func (c SBSolverContext) JacobianImpulseSolution(jacobian Jacobian, drift, restitution float64) SBImpulseSolution {
+	lambda := c.JacobianImpulseLambda(jacobian, drift, restitution)
+	return jacobian.ImpulseSolution(lambda)
+}
+
+// JacobianNudgeSolution returns a nudge solution based on the specified
+// constraint Jacobian and positional drift.
+func (c SBSolverContext) JacobianNudgeSolution(jacobian Jacobian, drift float64) SBNudgeSolution {
+	lambda := c.JacobianNudgeLambda(jacobian, drift)
+	return jacobian.NudgeSolution(lambda)
 }
 
 // DBSolverContext contains information related to double-body constraint
@@ -114,27 +142,12 @@ type DBSolverContext struct {
 	ElapsedSeconds float64
 }
 
-// RestitutionCoefficient returns the restitution coefficient to be used for
-// elastic collisions.
+// RestitutionCoefficient returns the restitution coefficient of the system.
 func (c DBSolverContext) RestitutionCoefficient() float64 {
 	return c.Primary.restitutionCoefficient * c.Secondary.restitutionCoefficient
 }
 
-// ApplyImpulse is e helper function that applies an impulse to the two bodies
-// based on the specified jacobian.
-func (c DBSolverContext) ApplyImpulse(jacobian PairJacobian) {
-	c.ApplyElasticImpulse(jacobian, 0.0)
-}
-
-// ApplyElasticImpulse is e helper function that applies an impulse to the two
-// bodies based on the specified jacobian and coefficient of restitution.
-func (c DBSolverContext) ApplyElasticImpulse(jacobian PairJacobian, restitution float64) {
-	lambda := (1 + restitution) * jacobian.ImpulseLambda(c.Primary, c.Secondary)
-	c.ApplyImpulseSolution(jacobian.ImpulseSolution(lambda))
-}
-
-// ApplyImpulseSolution applies the specified impulse solution to the relevant
-// bodies.
+// ApplyImpulseSolution applies the specified impulse solution to the bodies.
 func (c DBSolverContext) ApplyImpulseSolution(solution DBImpulseSolution) {
 	c.Primary.applyImpulse(solution.Primary.Impulse)
 	c.Primary.applyAngularImpulse(solution.Primary.AngularImpulse)
@@ -142,20 +155,49 @@ func (c DBSolverContext) ApplyImpulseSolution(solution DBImpulseSolution) {
 	c.Secondary.applyAngularImpulse(solution.Secondary.AngularImpulse)
 }
 
-// ApplyNudge is e helper function that applies a nudge to the two bodies
-// based on the specified jacobian and positional drift.
-func (c DBSolverContext) ApplyNudge(jacobian PairJacobian, drift float64) {
-	lambda := jacobian.NudgeLambda(c.Primary, c.Secondary, drift)
-	c.ApplyNudgeSolution(jacobian.NudgeSolution(lambda))
-}
-
-// ApplyNudgeSolution applies the specified nudge solution to the relevant
-// bodies.
+// ApplyNudgeSolution applies the specified nudge solution to the bodies.
 func (c DBSolverContext) ApplyNudgeSolution(solution DBNudgeSolution) {
 	c.Primary.applyNudge(solution.Primary.Nudge)
 	c.Primary.applyAngularNudge(solution.Primary.AngularNudge)
 	c.Secondary.applyNudge(solution.Secondary.Nudge)
 	c.Secondary.applyAngularNudge(solution.Secondary.AngularNudge)
+}
+
+// JacobianImpulseLambda returns the impulse lambda for the specified
+// constraint Jacobian, positional drift and restitution.
+func (c DBSolverContext) JacobianImpulseLambda(jacobian PairJacobian, drift, restitution float64) float64 {
+	effMass := jacobian.InverseEffectiveMass(c.Primary, c.Secondary)
+	if effMass < epsilon {
+		return 0.0
+	}
+	effVelocity := jacobian.EffectiveVelocity(c.Primary, c.Secondary)
+	resitutionClamp := RestitutionClamp(effVelocity)
+	baumgarte := ImpulseDriftAdjustmentRatio * drift / c.ElapsedSeconds
+	return -((1+restitution*resitutionClamp)*effVelocity + baumgarte) / effMass
+}
+
+// JacobianImpulseSolution returns an impulse solution based on the specified
+// constraint Jacobian, positional drift and restitution.
+func (c DBSolverContext) JacobianImpulseSolution(jacobian PairJacobian, drift, restitution float64) DBImpulseSolution {
+	lambda := c.JacobianImpulseLambda(jacobian, drift, restitution)
+	return jacobian.ImpulseSolution(lambda)
+}
+
+// JacobianNudgeLambda returns the nudge lambda for the specified
+// constraint Jacobian and positional drift.
+func (c DBSolverContext) JacobianNudgeLambda(jacobian PairJacobian, drift float64) float64 {
+	effMass := jacobian.InverseEffectiveMass(c.Primary, c.Secondary)
+	if effMass < epsilon {
+		return 0.0
+	}
+	return -NudgeDriftAdjustmentRatio * drift / effMass
+}
+
+// JacobianNudgeSolution returns a nudge solution based on the specified
+// constraint Jacobian and positional drift.
+func (c DBSolverContext) JacobianNudgeSolution(jacobian PairJacobian, drift float64) DBNudgeSolution {
+	lambda := c.JacobianNudgeLambda(jacobian, drift)
+	return jacobian.NudgeSolution(lambda)
 }
 
 // SBConstraintSolver represents the algorithm necessary

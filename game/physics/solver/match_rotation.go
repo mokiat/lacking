@@ -8,6 +8,7 @@ import (
 // NewMatchRotation creates a new constraint solver that keeps
 // two bodies oriented in the same direction on all axis.
 func NewMatchRotation() physics.DBConstraintSolver {
+	// TODO: Do a three-jacobian solution here
 	return NewDBCombined(
 		NewMatchDirections().
 			SetPrimaryDirection(dprec.BasisXVec3()).

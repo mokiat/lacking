@@ -83,15 +83,10 @@ func (s *MatchDirectionOffset) Reset(ctx physics.DBSolverContext) {
 }
 
 func (s *MatchDirectionOffset) ApplyImpulses(ctx physics.DBSolverContext) {
-	ctx.ApplyImpulse(s.jacobian)
+	ctx.ApplyImpulseSolution(ctx.JacobianImpulseSolution(s.jacobian, s.drift, 0.0))
 }
 
-func (s *MatchDirectionOffset) ApplyNudges(ctx physics.DBSolverContext) {
-	s.updateJacobian(ctx)
-	if dprec.Abs(s.drift) > 0.0 {
-		ctx.ApplyNudge(s.jacobian, s.drift)
-	}
-}
+func (s *MatchDirectionOffset) ApplyNudges(ctx physics.DBSolverContext) {}
 
 func (s *MatchDirectionOffset) updateJacobian(ctx physics.DBSolverContext) {
 	dirWS := dprec.QuatVec3Rotation(ctx.Primary.Orientation(), s.direction)
