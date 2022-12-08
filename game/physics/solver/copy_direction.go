@@ -68,9 +68,9 @@ func (s *CopyDirection) ApplyNudges(ctx physics.DBSolverContext) {
 	cos := dprec.Vec3Dot(secondaryDirWS, primaryDirWS)
 	sin := rotationAxis.Length()
 
-	angle := dprec.Radians(math.Atan2(sin, cos))
-	if dprec.Abs(angle) > 0.00001 {
-		rotation := dprec.RotationQuat(dprec.Abs(angle), dprec.UnitVec3(rotationAxis))
+	angle := dprec.Abs(dprec.Radians(math.Atan2(sin, cos)))
+	if angle > dprec.Angle(epsilon) {
+		rotation := dprec.RotationQuat(angle, dprec.UnitVec3(rotationAxis))
 		ctx.Secondary.SetOrientation(dprec.UnitQuat(dprec.QuatProd(
 			rotation,
 			ctx.Secondary.Orientation(),

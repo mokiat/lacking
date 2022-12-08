@@ -8,8 +8,8 @@ import (
 // NewMatchDirectionOffset creates a new MatchDirectionOffset constraint solver.
 func NewMatchDirectionOffset() *MatchDirectionOffset {
 	return &MatchDirectionOffset{
-		primaryAnchor:   dprec.ZeroVec3(),
-		secondaryAnchor: dprec.ZeroVec3(),
+		primaryRadius:   dprec.ZeroVec3(),
+		secondaryRadius: dprec.ZeroVec3(),
 		direction:       dprec.BasisYVec3(),
 		offset:          0.0,
 	}
@@ -21,8 +21,8 @@ var _ physics.DBConstraintSolver = (*MatchDirectionOffset)(nil)
 // the second body is at an exact distance away from the first body along
 // some direction of the first body.
 type MatchDirectionOffset struct {
-	primaryAnchor   dprec.Vec3
-	secondaryAnchor dprec.Vec3
+	primaryRadius   dprec.Vec3
+	secondaryRadius dprec.Vec3
 	direction       dprec.Vec3
 	offset          float64
 
@@ -30,27 +30,35 @@ type MatchDirectionOffset struct {
 	drift    float64
 }
 
-// PrimaryAnchor returns the attachment point on the primary body to which the
-// secondary will match.
-func (s *MatchDirectionOffset) PrimaryAnchor() dprec.Vec3 {
-	return s.primaryAnchor
+// PrimaryRadius returns the radius vector of the contact point
+// on the primary object.
+//
+// The vector is in the object's local space.
+func (s *MatchDirectionOffset) PrimaryRadius() dprec.Vec3 {
+	return s.primaryRadius
 }
 
-// SetPrimaryAnchor changes the attachment point on the primary body.
-func (s *MatchDirectionOffset) SetPrimaryAnchor(anchor dprec.Vec3) *MatchDirectionOffset {
-	s.primaryAnchor = anchor
+// SetPrimaryRadius changes the attachment point of the link
+// on the primary body.
+func (s *MatchDirectionOffset) SetPrimaryRadius(radius dprec.Vec3) *MatchDirectionOffset {
+	s.primaryRadius = radius
 	return s
 }
 
-// SecondaryAnchor returns the attachment point on the primary body to which the
-// primary will match.
-func (s *MatchDirectionOffset) SecondaryAnchor() dprec.Vec3 {
-	return s.secondaryAnchor
+// SecondaryRadius returns the radius vector of the contact point
+// on the secondary object.
+//
+// The vector is in the object's local space.
+func (s *MatchDirectionOffset) SecondaryRadius() dprec.Vec3 {
+	return s.secondaryRadius
 }
 
-// SetSecondaryAnchor changes the attachment point on the secondary body.
-func (s *MatchDirectionOffset) SetSecondaryAnchor(anchor dprec.Vec3) *MatchDirectionOffset {
-	s.secondaryAnchor = anchor
+// SetSecondaryRadius changes the radius vector of the contact point
+// on the secondary object.
+//
+// The vector is in the object's local space.
+func (s *MatchDirectionOffset) SetSecondaryRadius(radius dprec.Vec3) *MatchDirectionOffset {
+	s.secondaryRadius = radius
 	return s
 }
 
@@ -79,19 +87,9 @@ func (s *MatchDirectionOffset) SetOffset(offset float64) *MatchDirectionOffset {
 }
 
 func (s *MatchDirectionOffset) Reset(ctx physics.DBSolverContext) {
-	s.updateJacobian(ctx)
-}
-
-func (s *MatchDirectionOffset) ApplyImpulses(ctx physics.DBSolverContext) {
-	ctx.ApplyImpulseSolution(ctx.JacobianImpulseSolution(s.jacobian, s.drift, 0.0))
-}
-
-func (s *MatchDirectionOffset) ApplyNudges(ctx physics.DBSolverContext) {}
-
-func (s *MatchDirectionOffset) updateJacobian(ctx physics.DBSolverContext) {
 	dirWS := dprec.QuatVec3Rotation(ctx.Primary.Orientation(), s.direction)
-	primaryRadiusWS := dprec.QuatVec3Rotation(ctx.Primary.Orientation(), s.primaryAnchor)
-	secondaryRadiusWS := dprec.QuatVec3Rotation(ctx.Secondary.Orientation(), s.secondaryAnchor)
+	primaryRadiusWS := dprec.QuatVec3Rotation(ctx.Primary.Orientation(), s.primaryRadius)
+	secondaryRadiusWS := dprec.QuatVec3Rotation(ctx.Secondary.Orientation(), s.secondaryRadius)
 	s.jacobian = physics.PairJacobian{
 		Primary: physics.Jacobian{
 			SlopeVelocity:        dprec.InverseVec3(dirWS),
@@ -107,4 +105,14 @@ func (s *MatchDirectionOffset) updateJacobian(ctx physics.DBSolverContext) {
 		dprec.Vec3Sum(ctx.Primary.Position(), primaryRadiusWS),
 	)
 	s.drift = dprec.Vec3Dot(dirWS, deltaPosition)
+}
+
+func (s *MatchDirectionOffset) ApplyImpulses(ctx physics.DBSolverContext) {
+	solution := ctx.JacobianImpulseSolution(s.jacobian, s.drift, 0.0)
+	ctx.ApplyImpulseSolution(solution)
+}
+
+func (s *MatchDirectionOffset) ApplyNudges(ctx physics.DBSolverContext) {
+	solution := ctx.JacobianNudgeSolution(s.jacobian, s.drift)
+	ctx.ApplyNudgeSolution(solution)
 }

@@ -56,8 +56,14 @@ type Body struct {
 	dragFactor             float64
 	angularDragFactor      float64
 
+	oldPosition    dprec.Vec3
+	oldOrientation dprec.Quat
+
 	position    dprec.Vec3
 	orientation dprec.Quat
+
+	lerpPosition     dprec.Vec3
+	slerpOrientation dprec.Quat
 
 	acceleration        dprec.Vec3
 	angularAcceleration dprec.Vec3
@@ -172,7 +178,17 @@ func (b *Body) Position() dprec.Vec3 {
 // SetPosition changes the position of this body.
 func (b *Body) SetPosition(position dprec.Vec3) {
 	b.position = position
+	b.lerpPosition = position
 	b.item.SetPosition(position)
+}
+
+// VisualPosition returns the position of the Body as would
+// be seen by the current frame.
+//
+// NOTE: The physics engine can advance past the current frame,
+// which is the reason for this method.
+func (b *Body) VisualPosition() dprec.Vec3 {
+	return b.lerpPosition
 }
 
 // Orientation returns the quaternion rotation
@@ -185,6 +201,16 @@ func (b *Body) Orientation() dprec.Quat {
 // of this body.
 func (b *Body) SetOrientation(orientation dprec.Quat) {
 	b.orientation = orientation
+	b.slerpOrientation = orientation
+}
+
+// VisualOrientation returns the orientation of the Body as would
+// be seen by the current frame.
+//
+// NOTE: The physics engine can advance past the current frame,
+// which is the reason for this method.
+func (b *Body) VisualOrientation() dprec.Quat {
+	return b.slerpOrientation
 }
 
 // Velocity returns the velocity of this body.

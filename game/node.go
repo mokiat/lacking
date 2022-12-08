@@ -282,6 +282,28 @@ func (n *Node) SetScale(scale dprec.Vec3) {
 	}
 }
 
+// SetAbsoluteMatrix changes the absolute position, rotation and scale
+// of this node.
+func (n *Node) SetAbsoluteMatrix(matrix dprec.Mat4) {
+	if n.parent == nil {
+		t, r, s := matrix.TRS()
+		n.position = t
+		n.rotation = r
+		n.scale = s
+	} else {
+		parentMatrix := n.parent.AbsoluteMatrix()
+		relativeMatrix := dprec.Mat4Prod(
+			dprec.InverseMat4(parentMatrix),
+			matrix,
+		)
+		t, r, s := relativeMatrix.TRS()
+		n.position = t
+		n.rotation = r
+		n.scale = s
+	}
+	n.revision = initialRevision
+}
+
 // Matrix returns the matrix transformation of this Node relative to the
 // parent.
 func (n *Node) Matrix() dprec.Mat4 {

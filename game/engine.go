@@ -144,7 +144,7 @@ func (e *Engine) CreateResourceSet() *ResourceSet {
 }
 
 func (e *Engine) CreateScene() *Scene {
-	physicsScene := e.physicsEngine.CreateScene(0.015)
+	physicsScene := e.physicsEngine.CreateScene()
 	gfxScene := e.gfxEngine.CreateScene()
 	ecsScene := e.ecsEngine.CreateScene()
 	resourceSet := e.CreateResourceSet()
@@ -192,6 +192,6 @@ func (e *Engine) Render(viewport graphics.Viewport) {
 	defer metrics.BeginSpan("render").End()
 
 	if e.activeScene != nil {
-		e.activeScene.Graphics().Render(viewport)
+		e.activeScene.Render(viewport)
 	}
 }

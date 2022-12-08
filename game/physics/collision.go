@@ -29,17 +29,19 @@ type soloCollisionSolver struct {
 	collisionPoint  dprec.Vec3
 	collisionDepth  float64
 
-	radius          dprec.Vec3
-	initialDistance float64
-	jacobian        Jacobian
-	drift           float64
+	radius   dprec.Vec3
+	jacobian Jacobian
+	drift    float64
 }
 
 func (s *soloCollisionSolver) Reset(ctx SBSolverContext) {
 	radiusWS := dprec.Vec3Diff(s.collisionPoint, ctx.Body.Position())
 	s.radius = dprec.QuatVec3Rotation(dprec.ConjugateQuat(ctx.Body.Orientation()), radiusWS)
-	s.initialDistance = dprec.Vec3Dot(s.collisionPoint, s.collisionNormal)
-	s.updateJacobian(ctx)
+	s.jacobian = Jacobian{
+		SlopeVelocity:        dprec.InverseVec3(s.collisionNormal),
+		SlopeAngularVelocity: dprec.Vec3Cross(s.collisionNormal, radiusWS),
+	}
+	s.drift = s.collisionDepth
 }
 
 func (s *soloCollisionSolver) ApplyImpulses(ctx SBSolverContext) {
@@ -78,17 +80,8 @@ func (s *soloCollisionSolver) ApplyImpulses(ctx SBSolverContext) {
 	ctx.ApplyImpulseSolution(frictionSolution)
 }
 
-func (s *soloCollisionSolver) ApplyNudges(ctx SBSolverContext) {}
-
-func (s *soloCollisionSolver) updateJacobian(ctx SBSolverContext) {
-	radiusWS := dprec.QuatVec3Rotation(ctx.Body.Orientation(), s.radius)
-	s.jacobian = Jacobian{
-		SlopeVelocity:        dprec.InverseVec3(s.collisionNormal),
-		SlopeAngularVelocity: dprec.Vec3Cross(s.collisionNormal, radiusWS),
-	}
-	collisionPoint := dprec.Vec3Sum(ctx.Body.Position(), radiusWS)
-	distance := dprec.Vec3Dot(collisionPoint, s.collisionNormal)
-	s.drift = s.collisionDepth - (distance - s.initialDistance)
+func (s *soloCollisionSolver) ApplyNudges(ctx SBSolverContext) {
+	// TODO: Add nudge solution
 }
 
 var _ DBConstraintSolver = (*dualCollisionSolver)(nil)
@@ -110,7 +103,16 @@ func (s *dualCollisionSolver) Reset(ctx DBSolverContext) {
 	s.primaryRadius = dprec.QuatVec3Rotation(dprec.ConjugateQuat(ctx.Primary.Orientation()), primaryRadiusWS)
 	secondaryRadiusWS := dprec.Vec3Diff(s.secondaryCollisionPoint, ctx.Secondary.Position())
 	s.secondaryRadius = dprec.QuatVec3Rotation(dprec.ConjugateQuat(ctx.Secondary.Orientation()), secondaryRadiusWS)
-	s.updateJacobian(ctx)
+	s.jacobian = PairJacobian{
+		Primary: Jacobian{
+			SlopeVelocity:        dprec.InverseVec3(s.primaryCollisionNormal),
+			SlopeAngularVelocity: dprec.Vec3Cross(s.primaryCollisionNormal, primaryRadiusWS),
+		},
+		Secondary: Jacobian{
+			SlopeVelocity:        dprec.InverseVec3(s.secondaryCollisionNormal),
+			SlopeAngularVelocity: dprec.Vec3Cross(s.secondaryCollisionNormal, secondaryRadiusWS),
+		},
+	}
 }
 
 func (s *dualCollisionSolver) ApplyImpulses(ctx DBSolverContext) {
@@ -158,19 +160,6 @@ func (s *dualCollisionSolver) ApplyImpulses(ctx DBSolverContext) {
 	ctx.ApplyImpulseSolution(frictionSolution)
 }
 
-func (s *dualCollisionSolver) ApplyNudges(ctx DBSolverContext) {}
-
-func (s *dualCollisionSolver) updateJacobian(ctx DBSolverContext) {
-	primaryRadiusWS := dprec.QuatVec3Rotation(ctx.Primary.Orientation(), s.primaryRadius)
-	secondaryRadiusWS := dprec.QuatVec3Rotation(ctx.Secondary.Orientation(), s.secondaryRadius)
-	s.jacobian = PairJacobian{
-		Primary: Jacobian{
-			SlopeVelocity:        dprec.InverseVec3(s.primaryCollisionNormal),
-			SlopeAngularVelocity: dprec.Vec3Cross(s.primaryCollisionNormal, primaryRadiusWS),
-		},
-		Secondary: Jacobian{
-			SlopeVelocity:        dprec.InverseVec3(s.secondaryCollisionNormal),
-			SlopeAngularVelocity: dprec.Vec3Cross(s.secondaryCollisionNormal, secondaryRadiusWS),
-		},
-	}
+func (s *dualCollisionSolver) ApplyNudges(ctx DBSolverContext) {
+	// TODO: Add nudge solution
 }

@@ -7,7 +7,6 @@ import (
 	"github.com/mokiat/lacking/game/graphics"
 	"github.com/mokiat/lacking/game/physics"
 	"github.com/mokiat/lacking/log"
-	"github.com/mokiat/lacking/util/metrics"
 )
 
 func newScene(resourceSet *ResourceSet, physicsScene *physics.Scene, gfxScene *graphics.Scene, ecsScene *ecs.Scene) *Scene {
@@ -75,15 +74,14 @@ func (s *Scene) Initialize(definition *SceneDefinition) {
 }
 
 func (s *Scene) Update(elapsedSeconds float64) {
-	// TODO: Add OnUpdate hook here so that user code can modify stuff based off
-	// of stable state.
-	s.physicsScene.Update(elapsedSeconds)
-
-	transform := metrics.BeginSpan("transform")
-	s.applyPhysicsToNode(s.root)
 	s.applyNodeToPhysics(s.root)
+	s.physicsScene.Update(elapsedSeconds)
+	s.applyPhysicsToNode(s.root)
+}
+
+func (s *Scene) Render(viewport graphics.Viewport) {
 	s.applyNodeToGraphics(s.root)
-	transform.End()
+	s.gfxScene.Render(viewport)
 }
 
 func (s *Scene) CreateAnimation(info AnimationInfo) *Animation {
@@ -228,9 +226,12 @@ func (s *Scene) CreateModel(info ModelInfo) *Model {
 func (s *Scene) applyPhysicsToNode(node *Node) {
 	if body := node.body; body != nil {
 		if !body.Static() {
-			// FIXME: This should be SetAbsolutePosition and SetAbsoluteRotation
-			node.SetPosition(body.Position())
-			node.SetRotation(body.Orientation())
+			absMatrix := dprec.TRSMat4(
+				body.VisualPosition(),
+				body.VisualOrientation(),
+				dprec.NewVec3(1.0, 1.0, 1.0),
+			)
+			node.SetAbsoluteMatrix(absMatrix)
 		}
 	}
 	for child := node.firstChild; child != nil; child = child.rightSibling {
@@ -253,17 +254,20 @@ func (s *Scene) applyNodeToPhysics(node *Node) {
 }
 
 func (s *Scene) applyNodeToGraphics(node *Node) {
+	// NOTE: call AbsoluteMatrix regardless if there is anything attached or not,
+	// since this Node could be used as an armature.
+	absMatrix := node.AbsoluteMatrix()
 	if mesh := node.Mesh(); mesh != nil {
-		mesh.SetMatrix(node.AbsoluteMatrix())
+		mesh.SetMatrix(absMatrix)
 	}
 	if camera := node.Camera(); camera != nil {
-		camera.SetMatrix(node.AbsoluteMatrix())
+		camera.SetMatrix(absMatrix)
 	}
 	if light := node.light; light != nil {
-		light.SetMatrix(node.AbsoluteMatrix())
+		light.SetMatrix(absMatrix)
 	}
 	if armature := node.armature; armature != nil {
-		armature.SetBone(node.armatureBone, dtos.Mat4(node.AbsoluteMatrix()))
+		armature.SetBone(node.armatureBone, dtos.Mat4(absMatrix))
 	}
 	for child := node.firstChild; child != nil; child = child.rightSibling {
 		s.applyNodeToGraphics(child)

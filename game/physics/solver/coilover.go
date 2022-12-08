@@ -94,10 +94,6 @@ func (s *Coilover) Reset(physics.DBSolverContext) {
 }
 
 func (s *Coilover) ApplyImpulses(ctx physics.DBSolverContext) {
-	if dprec.Abs(ctx.ElapsedSeconds) < epsilon {
-		return
-	}
-
 	primaryRadiusWS := dprec.QuatVec3Rotation(ctx.Primary.Orientation(), s.primaryRadius)
 	primaryPointWS := dprec.Vec3Sum(ctx.Primary.Position(), primaryRadiusWS)
 	secondaryRadiusWS := dprec.QuatVec3Rotation(ctx.Secondary.Orientation(), s.secondaryRadius)

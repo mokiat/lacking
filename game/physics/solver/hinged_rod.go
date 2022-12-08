@@ -77,18 +77,23 @@ func (s *HingedRod) Reset(ctx physics.DBSolverContext) {
 	secondaryRadiusWS := dprec.QuatVec3Rotation(ctx.Secondary.Orientation(), s.secondaryRadius)
 	secondaryAnchorWS := dprec.Vec3Sum(ctx.Secondary.Position(), secondaryRadiusWS)
 	deltaPosition := dprec.Vec3Diff(secondaryAnchorWS, primaryAnchorWS)
-	normal := SafeNormal(deltaPosition, dprec.BasisYVec3())
-	s.jacobian = physics.PairJacobian{
-		Primary: physics.Jacobian{
-			SlopeVelocity:        dprec.InverseVec3(normal),
-			SlopeAngularVelocity: dprec.Vec3Cross(normal, primaryRadiusWS),
-		},
-		Secondary: physics.Jacobian{
-			SlopeVelocity:        normal,
-			SlopeAngularVelocity: dprec.Vec3Cross(secondaryRadiusWS, normal),
-		},
+	if lng := deltaPosition.Length(); lng > epsilon {
+		normal := dprec.Vec3Quot(deltaPosition, lng)
+		s.jacobian = physics.PairJacobian{
+			Primary: physics.Jacobian{
+				SlopeVelocity:        dprec.InverseVec3(normal),
+				SlopeAngularVelocity: dprec.Vec3Cross(normal, primaryRadiusWS),
+			},
+			Secondary: physics.Jacobian{
+				SlopeVelocity:        normal,
+				SlopeAngularVelocity: dprec.Vec3Cross(secondaryRadiusWS, normal),
+			},
+		}
+		s.drift = lng - s.length
+	} else {
+		s.jacobian = physics.PairJacobian{}
+		s.drift = 0.0
 	}
-	s.drift = deltaPosition.Length() - s.length
 }
 
 // ApplyImpulses applies impulses in order to keep the velocity part of

@@ -1,6 +1,8 @@
 package game
 
 import (
+	"time"
+
 	"github.com/mokiat/lacking/app"
 	"github.com/mokiat/lacking/game/asset"
 	"github.com/mokiat/lacking/game/ecs"
@@ -16,7 +18,7 @@ func NewController(registry asset.Registry, api render.API, shaders graphics.Sha
 		registry:      registry,
 		gfxEngine:     graphics.NewEngine(api, shaders),
 		ecsEngine:     ecs.NewEngine(),
-		physicsEngine: physics.NewEngine(),
+		physicsEngine: physics.NewEngine(16 * time.Millisecond),
 	}
 }
 

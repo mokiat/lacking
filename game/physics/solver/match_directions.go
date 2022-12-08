@@ -57,43 +57,47 @@ func (s *MatchDirections) SetSecondaryDirection(direction dprec.Vec3) *MatchDire
 func (s *MatchDirections) Reset(ctx physics.DBSolverContext) {
 	primaryDirWS := dprec.QuatVec3Rotation(ctx.Primary.Orientation(), s.primaryDirection)
 	secondaryDirWS := dprec.QuatVec3Rotation(ctx.Secondary.Orientation(), s.secondaryDirection)
-	secondaryTan1, secondaryTan2 := secondaryDirWS.Normal()
+	secondaryNorm1 := dprec.NormalVec3(secondaryDirWS)
+	secondaryNorm2 := dprec.Vec3Cross(secondaryDirWS, secondaryNorm1)
 
+	// FIXME: This jacobian converges better than the original one-tier
+	// but produces a wrong result if the second object flips all the way
+	// around.
 	s.jacobian1 = physics.PairJacobian{
 		Primary: physics.Jacobian{
 			SlopeVelocity:        dprec.ZeroVec3(),
-			SlopeAngularVelocity: dprec.Vec3Cross(primaryDirWS, secondaryTan1),
+			SlopeAngularVelocity: dprec.Vec3Cross(primaryDirWS, secondaryNorm1),
 		},
 		Secondary: physics.Jacobian{
 			SlopeVelocity:        dprec.ZeroVec3(),
-			SlopeAngularVelocity: dprec.Vec3Cross(secondaryTan1, primaryDirWS),
+			SlopeAngularVelocity: dprec.Vec3Cross(secondaryNorm1, primaryDirWS),
 		},
 	}
 	s.jacobian2 = physics.PairJacobian{
 		Primary: physics.Jacobian{
 			SlopeVelocity:        dprec.ZeroVec3(),
-			SlopeAngularVelocity: dprec.Vec3Cross(primaryDirWS, secondaryTan2),
+			SlopeAngularVelocity: dprec.Vec3Cross(primaryDirWS, secondaryNorm2),
 		},
 		Secondary: physics.Jacobian{
 			SlopeVelocity:        dprec.ZeroVec3(),
-			SlopeAngularVelocity: dprec.Vec3Cross(secondaryTan2, primaryDirWS),
+			SlopeAngularVelocity: dprec.Vec3Cross(secondaryNorm2, primaryDirWS),
 		},
 	}
 
-	s.drift1 = dprec.Vec3Dot(primaryDirWS, secondaryTan1)
-	s.drift2 = dprec.Vec3Dot(primaryDirWS, secondaryTan2)
+	s.drift1 = dprec.Vec3Dot(primaryDirWS, secondaryNorm1)
+	s.drift2 = dprec.Vec3Dot(primaryDirWS, secondaryNorm2)
 }
 
 func (s *MatchDirections) ApplyImpulses(ctx physics.DBSolverContext) {
-	const beta = 0.2
-	if dprec.Abs(s.drift1) > 0 {
-		solution := ctx.JacobianImpulseSolution(s.jacobian1, s.drift1, 0.0)
-		ctx.ApplyImpulseSolution(solution)
-	}
-	if dprec.Abs(s.drift2) > 0 {
-		solution := ctx.JacobianImpulseSolution(s.jacobian2, s.drift2, 0.0)
-		ctx.ApplyImpulseSolution(solution)
-	}
+	solution := ctx.JacobianImpulseSolution(s.jacobian1, s.drift1, 0.0)
+	ctx.ApplyImpulseSolution(solution)
+	solution = ctx.JacobianImpulseSolution(s.jacobian2, s.drift2, 0.0)
+	ctx.ApplyImpulseSolution(solution)
 }
 
-func (s *MatchDirections) ApplyNudges(ctx physics.DBSolverContext) {}
+func (s *MatchDirections) ApplyNudges(ctx physics.DBSolverContext) {
+	solution := ctx.JacobianNudgeSolution(s.jacobian1, s.drift1)
+	ctx.ApplyNudgeSolution(solution)
+	solution = ctx.JacobianNudgeSolution(s.jacobian2, s.drift2)
+	ctx.ApplyNudgeSolution(solution)
+}

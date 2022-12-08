@@ -74,10 +74,11 @@ type Scene struct {
 	dualCollisionSolvers     []dualCollisionSolver
 	intersectionSet          *shape.IntersectionResultSet
 
-	timeSpeed    float64
-	gravity      dprec.Vec3
-	windVelocity dprec.Vec3
-	windDensity  float64
+	accumulatedSeconds float64
+	timeSpeed          float64
+	gravity            dprec.Vec3
+	windVelocity       dprec.Vec3
+	windDensity        float64
 
 	revision int
 }
@@ -213,12 +214,16 @@ func (s *Scene) CreateDoubleBodyConstraint(primary, secondary *Body, solver DBCo
 func (s *Scene) Update(elapsedSeconds float64) {
 	stepSeconds := s.timestep.Seconds()
 
-	elapsedSeconds = elapsedSeconds * s.timeSpeed
-	for elapsedSeconds > stepSeconds {
-		s.runSimulation(stepSeconds)
-		elapsedSeconds -= stepSeconds
+	s.accumulatedSeconds += elapsedSeconds
+	for s.accumulatedSeconds > 0 {
+		s.runSimulation(stepSeconds * s.timeSpeed)
+		s.accumulatedSeconds -= stepSeconds
 	}
-	s.runSimulation(elapsedSeconds)
+	for body := range s.dynamicBodies {
+		alpha := (stepSeconds + s.accumulatedSeconds) / stepSeconds
+		body.lerpPosition = dprec.Vec3Lerp(body.oldPosition, body.position, alpha)
+		body.slerpOrientation = dprec.QuatSlerp(body.oldOrientation, body.orientation, alpha)
+	}
 }
 
 func (s *Scene) Each(cb func(b *Body)) {
@@ -356,16 +361,19 @@ func (s *Scene) cacheDBConstraint(constraint *DBConstraint) {
 }
 
 func (s *Scene) runSimulation(elapsedSeconds float64) {
-	if elapsedSeconds < epsilon {
-		return
+	for body := range s.dynamicBodies {
+		body.oldPosition = body.position
+		body.oldOrientation = body.orientation
 	}
-	s.resetConstraints(elapsedSeconds)
-	s.applyForces()
-	s.integrate(elapsedSeconds)
-	s.applyImpulses(elapsedSeconds)
-	s.applyMotion(elapsedSeconds)
-	s.applyNudges(elapsedSeconds)
-	s.detectCollisions()
+	if elapsedSeconds > epsilon {
+		s.resetConstraints(elapsedSeconds)
+		s.applyForces()
+		s.applyAcceleration(elapsedSeconds)
+		s.applyImpulses(elapsedSeconds)
+		s.applyMotion(elapsedSeconds)
+		s.applyNudges(elapsedSeconds)
+		s.detectCollisions()
+	}
 }
 
 func (s *Scene) resetConstraints(elapsedSeconds float64) {
@@ -405,8 +413,8 @@ func (s *Scene) applyForces() {
 	// TODO: Apply custom force fields
 }
 
-func (s *Scene) integrate(elapsedSeconds float64) {
-	defer metrics.BeginSpan("integrate").End()
+func (s *Scene) applyAcceleration(elapsedSeconds float64) {
+	defer metrics.BeginSpan("acceleration").End()
 	for body := range s.dynamicBodies {
 		body.clampAcceleration(s.maxAcceleration)
 		body.clampAngularAcceleration(s.maxAngularAcceleration)
