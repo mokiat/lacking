@@ -718,7 +718,7 @@ func checkIntersectionSphereWithTriangle(sphere Placement[StaticSphere], triangl
 	}
 
 	height := dprec.Vec3Dot(triangleNormal, sphereOffset)
-	if dprec.Abs(height) > sphereRadius {
+	if height > sphereRadius || height < 0 {
 		return
 	}
 
@@ -841,13 +841,8 @@ func checkIntersectionSphereWithTriangle(sphere Placement[StaticSphere], triangl
 
 	case inside:
 		isIntersection = true
-		if height >= 0 {
-			depth = sphereRadius - height
-			sphereDisplaceNormal = triangleNormal
-		} else {
-			depth = sphereRadius + height
-			sphereDisplaceNormal = dprec.InverseVec3(triangleNormal)
-		}
+		depth = sphereRadius - height
+		sphereDisplaceNormal = triangleNormal
 	}
 
 	if isIntersection {
