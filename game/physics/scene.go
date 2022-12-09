@@ -608,7 +608,7 @@ func (s *Scene) detectCollisions() {
 			if len(secondary.collisionShapes) == 0 {
 				return
 			}
-			s.checkCollisionTwoBodies(secondary, primary) // FIXME: Reverse order does not work!
+			s.checkCollisionTwoBodies(primary, secondary)
 		}))
 	}
 }
