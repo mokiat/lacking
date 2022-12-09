@@ -1,8 +1,8 @@
-package solver
+package constraint
 
 import (
 	"github.com/mokiat/gomath/dprec"
-	"github.com/mokiat/lacking/game/physics"
+	"github.com/mokiat/lacking/game/physics/solver"
 )
 
 // NewStaticPosition creates a new StaticPosition constraint solver.
@@ -12,12 +12,12 @@ func NewStaticPosition() *StaticPosition {
 	}
 }
 
-var _ physics.SBConstraintSolver = (*StaticPosition)(nil)
+var _ solver.Constraint = (*StaticPosition)(nil)
 
 // StaticPosition represents the solution for a constraint
 // that keeps a body positioned at the specified fixture location.
 //
-// This solver is immediate - it does not use impulses or nudges.
+// This solver is immediate - it converges in a single step.
 type StaticPosition struct {
 	position dprec.Vec3
 }
@@ -33,12 +33,12 @@ func (t *StaticPosition) SetPosition(position dprec.Vec3) *StaticPosition {
 	return t
 }
 
-func (s *StaticPosition) Reset(ctx physics.SBSolverContext) {}
+func (s *StaticPosition) Reset(ctx solver.Context) {}
 
-func (s *StaticPosition) ApplyImpulses(ctx physics.SBSolverContext) {
-	ctx.Body.SetVelocity(dprec.ZeroVec3())
+func (s *StaticPosition) ApplyImpulses(ctx solver.Context) {
+	ctx.Target.SetLinearVelocity(dprec.ZeroVec3())
 }
 
-func (s *StaticPosition) ApplyNudges(ctx physics.SBSolverContext) {
-	ctx.Body.SetPosition(s.position)
+func (s *StaticPosition) ApplyNudges(ctx solver.Context) {
+	ctx.Target.SetPosition(s.position)
 }

@@ -1,8 +1,8 @@
-package solver
+package constraint
 
 import (
 	"github.com/mokiat/gomath/dprec"
-	"github.com/mokiat/lacking/game/physics"
+	"github.com/mokiat/lacking/game/physics/solver"
 )
 
 // NewMatchDirectionOffset creates a new MatchDirectionOffset constraint solver.
@@ -15,7 +15,7 @@ func NewMatchDirectionOffset() *MatchDirectionOffset {
 	}
 }
 
-var _ physics.DBConstraintSolver = (*MatchDirectionOffset)(nil)
+var _ solver.PairConstraint = (*MatchDirectionOffset)(nil)
 
 // MatchDirectionOffset represents the solution for a constraint which ensures that
 // the second body is at an exact distance away from the first body along
@@ -26,7 +26,7 @@ type MatchDirectionOffset struct {
 	direction       dprec.Vec3
 	offset          float64
 
-	jacobian physics.PairJacobian
+	jacobian solver.PairJacobian
 	drift    float64
 }
 
@@ -86,33 +86,35 @@ func (s *MatchDirectionOffset) SetOffset(offset float64) *MatchDirectionOffset {
 	return s
 }
 
-func (s *MatchDirectionOffset) Reset(ctx physics.DBSolverContext) {
-	dirWS := dprec.QuatVec3Rotation(ctx.Primary.Orientation(), s.direction)
-	primaryRadiusWS := dprec.QuatVec3Rotation(ctx.Primary.Orientation(), s.primaryRadius)
-	secondaryRadiusWS := dprec.QuatVec3Rotation(ctx.Secondary.Orientation(), s.secondaryRadius)
-	s.jacobian = physics.PairJacobian{
-		Primary: physics.Jacobian{
-			SlopeVelocity:        dprec.InverseVec3(dirWS),
-			SlopeAngularVelocity: dprec.Vec3Cross(dirWS, primaryRadiusWS),
+func (s *MatchDirectionOffset) Reset(ctx solver.PairContext) {
+	dirWS := dprec.QuatVec3Rotation(ctx.Target.Rotation(), s.direction)
+	primaryRadiusWS := dprec.QuatVec3Rotation(ctx.Target.Rotation(), s.primaryRadius)
+	secondaryRadiusWS := dprec.QuatVec3Rotation(ctx.Source.Rotation(), s.secondaryRadius)
+	s.jacobian = solver.PairJacobian{
+		Target: solver.Jacobian{
+			LinearSlope:  dprec.InverseVec3(dirWS),
+			AngularSlope: dprec.Vec3Cross(dirWS, primaryRadiusWS),
 		},
-		Secondary: physics.Jacobian{
-			SlopeVelocity:        dirWS,
-			SlopeAngularVelocity: dprec.Vec3Cross(secondaryRadiusWS, dirWS),
+		Source: solver.Jacobian{
+			LinearSlope:  dirWS,
+			AngularSlope: dprec.Vec3Cross(secondaryRadiusWS, dirWS),
 		},
 	}
 	deltaPosition := dprec.Vec3Diff(
-		dprec.Vec3Sum(ctx.Secondary.Position(), secondaryRadiusWS),
-		dprec.Vec3Sum(ctx.Primary.Position(), primaryRadiusWS),
+		dprec.Vec3Sum(ctx.Source.Position(), secondaryRadiusWS),
+		dprec.Vec3Sum(ctx.Target.Position(), primaryRadiusWS),
 	)
 	s.drift = dprec.Vec3Dot(dirWS, deltaPosition)
 }
 
-func (s *MatchDirectionOffset) ApplyImpulses(ctx physics.DBSolverContext) {
+func (s *MatchDirectionOffset) ApplyImpulses(ctx solver.PairContext) {
 	solution := ctx.JacobianImpulseSolution(s.jacobian, s.drift, 0.0)
-	ctx.ApplyImpulseSolution(solution)
+	ctx.Target.ApplyImpulse(solution.Target)
+	ctx.Source.ApplyImpulse(solution.Source)
 }
 
-func (s *MatchDirectionOffset) ApplyNudges(ctx physics.DBSolverContext) {
+func (s *MatchDirectionOffset) ApplyNudges(ctx solver.PairContext) {
 	solution := ctx.JacobianNudgeSolution(s.jacobian, s.drift)
-	ctx.ApplyNudgeSolution(solution)
+	ctx.Target.ApplyNudge(solution.Target)
+	ctx.Source.ApplyNudge(solution.Source)
 }

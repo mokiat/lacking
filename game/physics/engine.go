@@ -15,6 +15,15 @@ type Engine struct {
 	timestep time.Duration
 }
 
+// CreateMaterial creates a new Material that can be used to describe an
+// object's behavior.
+func (e *Engine) CreateMaterial(info MaterialInfo) *Material {
+	return &Material{
+		frictionCoefficient:    info.FrictionCoefficient,
+		restitutionCoefficient: info.RestitutionCoefficient,
+	}
+}
+
 // CreateBodyDefinition creates a new BodyDefinition that can be used
 // to create Body instances.
 func (e *Engine) CreateBodyDefinition(info BodyDefinitionInfo) *BodyDefinition {

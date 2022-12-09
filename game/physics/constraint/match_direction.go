@@ -1,8 +1,8 @@
-package solver
+package constraint
 
 import (
 	"github.com/mokiat/gomath/dprec"
-	"github.com/mokiat/lacking/game/physics"
+	"github.com/mokiat/lacking/game/physics/solver"
 )
 
 // NewMatchDirections creates a new MatchDirections constraint solver.
@@ -13,7 +13,7 @@ func NewMatchDirections() *MatchDirections {
 	}
 }
 
-var _ physics.DBConstraintSolver = (*MatchDirections)(nil)
+var _ solver.PairConstraint = (*MatchDirections)(nil)
 
 // MatchDirections represents the solution for a constraint
 // that keeps the direction of two bodies pointing in the same
@@ -22,8 +22,8 @@ type MatchDirections struct {
 	primaryDirection   dprec.Vec3
 	secondaryDirection dprec.Vec3
 
-	jacobian1 physics.PairJacobian
-	jacobian2 physics.PairJacobian
+	jacobian1 solver.PairJacobian
+	jacobian2 solver.PairJacobian
 	drift1    float64
 	drift2    float64
 }
@@ -54,33 +54,33 @@ func (s *MatchDirections) SetSecondaryDirection(direction dprec.Vec3) *MatchDire
 	return s
 }
 
-func (s *MatchDirections) Reset(ctx physics.DBSolverContext) {
-	primaryDirWS := dprec.QuatVec3Rotation(ctx.Primary.Orientation(), s.primaryDirection)
-	secondaryDirWS := dprec.QuatVec3Rotation(ctx.Secondary.Orientation(), s.secondaryDirection)
+func (s *MatchDirections) Reset(ctx solver.PairContext) {
+	primaryDirWS := dprec.QuatVec3Rotation(ctx.Target.Rotation(), s.primaryDirection)
+	secondaryDirWS := dprec.QuatVec3Rotation(ctx.Source.Rotation(), s.secondaryDirection)
 	secondaryNorm1 := dprec.NormalVec3(secondaryDirWS)
 	secondaryNorm2 := dprec.Vec3Cross(secondaryDirWS, secondaryNorm1)
 
 	// FIXME: This jacobian converges better than the original one-tier
 	// but produces a wrong result if the second object flips all the way
 	// around.
-	s.jacobian1 = physics.PairJacobian{
-		Primary: physics.Jacobian{
-			SlopeVelocity:        dprec.ZeroVec3(),
-			SlopeAngularVelocity: dprec.Vec3Cross(primaryDirWS, secondaryNorm1),
+	s.jacobian1 = solver.PairJacobian{
+		Target: solver.Jacobian{
+			LinearSlope:  dprec.ZeroVec3(),
+			AngularSlope: dprec.Vec3Cross(primaryDirWS, secondaryNorm1),
 		},
-		Secondary: physics.Jacobian{
-			SlopeVelocity:        dprec.ZeroVec3(),
-			SlopeAngularVelocity: dprec.Vec3Cross(secondaryNorm1, primaryDirWS),
+		Source: solver.Jacobian{
+			LinearSlope:  dprec.ZeroVec3(),
+			AngularSlope: dprec.Vec3Cross(secondaryNorm1, primaryDirWS),
 		},
 	}
-	s.jacobian2 = physics.PairJacobian{
-		Primary: physics.Jacobian{
-			SlopeVelocity:        dprec.ZeroVec3(),
-			SlopeAngularVelocity: dprec.Vec3Cross(primaryDirWS, secondaryNorm2),
+	s.jacobian2 = solver.PairJacobian{
+		Target: solver.Jacobian{
+			LinearSlope:  dprec.ZeroVec3(),
+			AngularSlope: dprec.Vec3Cross(primaryDirWS, secondaryNorm2),
 		},
-		Secondary: physics.Jacobian{
-			SlopeVelocity:        dprec.ZeroVec3(),
-			SlopeAngularVelocity: dprec.Vec3Cross(secondaryNorm2, primaryDirWS),
+		Source: solver.Jacobian{
+			LinearSlope:  dprec.ZeroVec3(),
+			AngularSlope: dprec.Vec3Cross(secondaryNorm2, primaryDirWS),
 		},
 	}
 
@@ -88,16 +88,20 @@ func (s *MatchDirections) Reset(ctx physics.DBSolverContext) {
 	s.drift2 = dprec.Vec3Dot(primaryDirWS, secondaryNorm2)
 }
 
-func (s *MatchDirections) ApplyImpulses(ctx physics.DBSolverContext) {
+func (s *MatchDirections) ApplyImpulses(ctx solver.PairContext) {
 	solution := ctx.JacobianImpulseSolution(s.jacobian1, s.drift1, 0.0)
-	ctx.ApplyImpulseSolution(solution)
+	ctx.Target.ApplyImpulse(solution.Target)
+	ctx.Source.ApplyImpulse(solution.Source)
 	solution = ctx.JacobianImpulseSolution(s.jacobian2, s.drift2, 0.0)
-	ctx.ApplyImpulseSolution(solution)
+	ctx.Target.ApplyImpulse(solution.Target)
+	ctx.Source.ApplyImpulse(solution.Source)
 }
 
-func (s *MatchDirections) ApplyNudges(ctx physics.DBSolverContext) {
+func (s *MatchDirections) ApplyNudges(ctx solver.PairContext) {
 	solution := ctx.JacobianNudgeSolution(s.jacobian1, s.drift1)
-	ctx.ApplyNudgeSolution(solution)
+	ctx.Target.ApplyNudge(solution.Target)
+	ctx.Source.ApplyNudge(solution.Source)
 	solution = ctx.JacobianNudgeSolution(s.jacobian2, s.drift2)
-	ctx.ApplyNudgeSolution(solution)
+	ctx.Target.ApplyNudge(solution.Target)
+	ctx.Source.ApplyNudge(solution.Source)
 }

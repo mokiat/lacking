@@ -4,19 +4,13 @@ import (
 	"time"
 
 	"github.com/mokiat/gomath/dprec"
+	"github.com/mokiat/lacking/game/physics/constraint"
+	"github.com/mokiat/lacking/game/physics/solver"
 	"github.com/mokiat/lacking/util/metrics"
 	"github.com/mokiat/lacking/util/shape"
 	"github.com/mokiat/lacking/util/spatial"
+	"golang.org/x/exp/maps"
 )
-
-// TODO: Nudges are slower because each nudge iteration moves the body
-// a bit, causing it to be relocated in the octree. Either optimize
-// octree relocations or better yet accumulate positional changes
-// and apply them only at the end.
-// This would mean that there needs to be a temporary replacement structure
-// for a body that is used only during constraint evaluation.
-// This might not be such a bad idea, since it could temporarily contain the
-// inverse mass and moment of intertia, avoiding inverse matrix calculations.
 
 func newScene(engine *Engine, timestep time.Duration) *Scene {
 	return &Scene{
@@ -69,9 +63,9 @@ type Scene struct {
 	cachedDBConstraint *DBConstraint
 
 	collisionConstraints     []*SBConstraint
-	collisionSolvers         []soloCollisionSolver
+	collisionSolvers         []constraint.Collision
 	dualCollisionConstraints []*DBConstraint
-	dualCollisionSolvers     []dualCollisionSolver
+	dualCollisionSolvers     []constraint.PairCollision
 	intersectionSet          *shape.IntersectionResultSet
 
 	accumulatedSeconds float64
@@ -170,9 +164,9 @@ func (s *Scene) CreateConstraintSet() *ConstraintSet {
 	}
 }
 
-// CreateSingleBodyConstraint creates a new physics constraint that acts on
+// CreateSingleBodyConstraint2 creates a new physics constraint that acts on
 // a single body and enables it for this scene.
-func (s *Scene) CreateSingleBodyConstraint(body *Body, solver SBConstraintSolver) *SBConstraint {
+func (s *Scene) CreateSingleBodyConstraint(body *Body, solver solver.Constraint) *SBConstraint {
 	var constraint *SBConstraint
 	if s.cachedSBConstraint != nil {
 		constraint = s.cachedSBConstraint
@@ -181,7 +175,7 @@ func (s *Scene) CreateSingleBodyConstraint(body *Body, solver SBConstraintSolver
 		constraint = &SBConstraint{}
 	}
 	constraint.scene = s
-	constraint.solver = solver
+	constraint.solution = solver
 	constraint.prev = nil
 	constraint.next = nil
 	constraint.body = body
@@ -189,9 +183,9 @@ func (s *Scene) CreateSingleBodyConstraint(body *Body, solver SBConstraintSolver
 	return constraint
 }
 
-// CreateDoubleBodyConstraint creates a new physics constraint that acts on
+// CreateDoubleBodyConstraint2 creates a new physics constraint that acts on
 // two bodies and enables it for this scene.
-func (s *Scene) CreateDoubleBodyConstraint(primary, secondary *Body, solver DBConstraintSolver) *DBConstraint {
+func (s *Scene) CreateDoubleBodyConstraint(primary, secondary *Body, solver solver.PairConstraint) *DBConstraint {
 	var constraint *DBConstraint
 	if s.cachedDBConstraint != nil {
 		constraint = s.cachedDBConstraint
@@ -200,7 +194,7 @@ func (s *Scene) CreateDoubleBodyConstraint(primary, secondary *Body, solver DBCo
 		constraint = &DBConstraint{}
 	}
 	constraint.scene = s
-	constraint.solver = solver
+	constraint.solution = solver
 	constraint.prev = nil
 	constraint.next = nil
 	constraint.primary = primary
@@ -365,32 +359,13 @@ func (s *Scene) runSimulation(elapsedSeconds float64) {
 		body.oldPosition = body.position
 		body.oldOrientation = body.orientation
 	}
-	if elapsedSeconds > epsilon {
-		s.resetConstraints(elapsedSeconds)
+	if elapsedSeconds > 0.0001 {
 		s.applyForces()
 		s.applyAcceleration(elapsedSeconds)
 		s.applyImpulses(elapsedSeconds)
 		s.applyMotion(elapsedSeconds)
 		s.applyNudges(elapsedSeconds)
 		s.detectCollisions()
-	}
-}
-
-func (s *Scene) resetConstraints(elapsedSeconds float64) {
-	defer metrics.BeginSpan("reset").End()
-
-	for constraint := s.firstSBConstraint; constraint != nil; constraint = constraint.next {
-		constraint.solver.Reset(SBSolverContext{
-			Body:           constraint.body,
-			ElapsedSeconds: elapsedSeconds,
-		})
-	}
-	for constraint := s.firstDBConstraint; constraint != nil; constraint = constraint.next {
-		constraint.solver.Reset(DBSolverContext{
-			Primary:        constraint.primary,
-			Secondary:      constraint.secondary,
-			ElapsedSeconds: elapsedSeconds,
-		})
 	}
 }
 
@@ -426,23 +401,116 @@ func (s *Scene) applyAcceleration(elapsedSeconds float64) {
 	}
 }
 
+var (
+	bodies = make([]*Body, 0, 1024)
+
+	placeholders = make([]solver.Placeholder, 0, 1024)
+
+	// TODO: Maybe assign and unassign to/from a Body
+	bodyToPlaceholder = make(map[*Body]*solver.Placeholder)
+)
+
+func initPlaceholder(placeholder *solver.Placeholder, body *Body) {
+	placeholder.Init(solver.PlaceholderState{
+		Mass:            body.mass,
+		MomentOfInertia: body.momentOfInertia,
+		LinearVelocity:  body.velocity,
+		AngularVelocity: body.angularVelocity,
+		Position:        body.position,
+		Rotation:        body.orientation,
+	})
+}
+
+func deinitPlaceholder(placeholder *solver.Placeholder, body *Body) {
+	body.SetVelocity(placeholder.LinearVelocity())
+	body.SetAngularVelocity(placeholder.AngularVelocity())
+	body.SetPosition(placeholder.Position())
+	body.SetOrientation(placeholder.Rotation())
+}
+
 func (s *Scene) applyImpulses(elapsedSeconds float64) {
 	defer metrics.BeginSpan("impulses").End()
 
+	bodies = bodies[:0]
+	placeholders = placeholders[:0]
+	maps.Clear(bodyToPlaceholder)
+
+	for constraint := s.firstDBConstraint; constraint != nil; constraint = constraint.next {
+		if constraint.solution == nil {
+			continue // TODO: REMOVE
+		}
+		target := constraint.primary
+		if _, ok := bodyToPlaceholder[target]; !ok {
+			placeholders = append(placeholders, solver.Placeholder{})
+			placeholder := &placeholders[len(placeholders)-1]
+			initPlaceholder(placeholder, target)
+			bodyToPlaceholder[target] = placeholder
+			bodies = append(bodies, target)
+		}
+		source := constraint.secondary
+		if _, ok := bodyToPlaceholder[source]; !ok {
+			placeholders = append(placeholders, solver.Placeholder{})
+			placeholder := &placeholders[len(placeholders)-1]
+			initPlaceholder(placeholder, source)
+			bodyToPlaceholder[source] = placeholder
+			bodies = append(bodies, source)
+		}
+		constraint.solution.Reset(solver.PairContext{
+			Target:      bodyToPlaceholder[constraint.primary],
+			Source:      bodyToPlaceholder[constraint.secondary],
+			DeltaTime:   elapsedSeconds,
+			ImpulseBeta: ImpulseDriftAdjustmentRatio,
+			NudgeBeta:   NudgeDriftAdjustmentRatio,
+		})
+	}
+	for constraint := s.firstSBConstraint; constraint != nil; constraint = constraint.next {
+		if constraint.solution == nil {
+			continue // TODO: REMOVE
+		}
+		target := constraint.body
+		if _, ok := bodyToPlaceholder[target]; !ok {
+			placeholders = append(placeholders, solver.Placeholder{})
+			placeholder := &placeholders[len(placeholders)-1]
+			initPlaceholder(placeholder, target)
+			bodyToPlaceholder[target] = placeholder
+			bodies = append(bodies, target)
+		}
+		constraint.solution.Reset(solver.Context{
+			Target:      bodyToPlaceholder[constraint.body],
+			DeltaTime:   elapsedSeconds,
+			ImpulseBeta: ImpulseDriftAdjustmentRatio,
+			NudgeBeta:   NudgeDriftAdjustmentRatio,
+		})
+	}
+
 	for i := 0; i < ImpulseIterationCount; i++ {
 		for constraint := s.firstDBConstraint; constraint != nil; constraint = constraint.next {
-			constraint.solver.ApplyImpulses(DBSolverContext{
-				Primary:        constraint.primary,
-				Secondary:      constraint.secondary,
-				ElapsedSeconds: elapsedSeconds,
+			if constraint.solution == nil {
+				continue // TODO: REMOVE
+			}
+			constraint.solution.ApplyImpulses(solver.PairContext{
+				Target:      bodyToPlaceholder[constraint.primary],
+				Source:      bodyToPlaceholder[constraint.secondary],
+				DeltaTime:   elapsedSeconds,
+				ImpulseBeta: ImpulseDriftAdjustmentRatio,
+				NudgeBeta:   NudgeDriftAdjustmentRatio,
 			})
 		}
 		for constraint := s.firstSBConstraint; constraint != nil; constraint = constraint.next {
-			constraint.solver.ApplyImpulses(SBSolverContext{
-				Body:           constraint.body,
-				ElapsedSeconds: elapsedSeconds,
+			if constraint.solution == nil {
+				continue // TODO: REMOVE
+			}
+			constraint.solution.ApplyImpulses(solver.Context{
+				Target:      bodyToPlaceholder[constraint.body],
+				DeltaTime:   elapsedSeconds,
+				ImpulseBeta: ImpulseDriftAdjustmentRatio,
+				NudgeBeta:   NudgeDriftAdjustmentRatio,
 			})
 		}
+	}
+
+	for _, body := range bodies {
+		deinitPlaceholder(bodyToPlaceholder[body], body)
 	}
 }
 
@@ -462,24 +530,42 @@ func (s *Scene) applyMotion(elapsedSeconds float64) {
 func (s *Scene) applyNudges(elapsedSeconds float64) {
 	defer metrics.BeginSpan("nudges").End()
 
+	for _, body := range bodies {
+		initPlaceholder(bodyToPlaceholder[body], body)
+	}
+
 	for i := 0; i < NudgeIterationCount; i++ {
 		for constraint := s.firstDBConstraint; constraint != nil; constraint = constraint.next {
-			ctx := DBSolverContext{
-				Primary:        constraint.primary,
-				Secondary:      constraint.secondary,
-				ElapsedSeconds: elapsedSeconds,
+			if constraint.solution == nil {
+				continue // TODO: REMOVE
 			}
-			constraint.solver.Reset(ctx)
-			constraint.solver.ApplyNudges(ctx)
+			ctx := solver.PairContext{
+				Target:      bodyToPlaceholder[constraint.primary],
+				Source:      bodyToPlaceholder[constraint.secondary],
+				DeltaTime:   elapsedSeconds,
+				ImpulseBeta: ImpulseDriftAdjustmentRatio,
+				NudgeBeta:   NudgeDriftAdjustmentRatio,
+			}
+			constraint.solution.Reset(ctx)
+			constraint.solution.ApplyNudges(ctx)
 		}
 		for constraint := s.firstSBConstraint; constraint != nil; constraint = constraint.next {
-			ctx := SBSolverContext{
-				Body:           constraint.body,
-				ElapsedSeconds: elapsedSeconds,
+			if constraint.solution == nil {
+				continue // TODO: REMOVE
 			}
-			constraint.solver.Reset(ctx)
-			constraint.solver.ApplyNudges(ctx)
+			ctx := solver.Context{
+				Target:      bodyToPlaceholder[constraint.body],
+				DeltaTime:   elapsedSeconds,
+				ImpulseBeta: ImpulseDriftAdjustmentRatio,
+				NudgeBeta:   NudgeDriftAdjustmentRatio,
+			}
+			constraint.solution.Reset(ctx)
+			constraint.solution.ApplyNudges(ctx)
 		}
+	}
+
+	for _, body := range bodies {
+		deinitPlaceholder(bodyToPlaceholder[body], body)
 	}
 }
 
@@ -525,20 +611,20 @@ func (s *Scene) detectCollisions() {
 	}
 }
 
-func (s *Scene) allocateGroundCollisionSolver() *soloCollisionSolver {
+func (s *Scene) allocateGroundCollisionSolver() *constraint.Collision {
 	if len(s.collisionSolvers) < cap(s.collisionSolvers) {
 		s.collisionSolvers = s.collisionSolvers[:len(s.collisionSolvers)+1]
 	} else {
-		s.collisionSolvers = append(s.collisionSolvers, soloCollisionSolver{})
+		s.collisionSolvers = append(s.collisionSolvers, constraint.Collision{})
 	}
 	return &s.collisionSolvers[len(s.collisionSolvers)-1]
 }
 
-func (s *Scene) allocateDualCollisionSolver() *dualCollisionSolver {
+func (s *Scene) allocateDualCollisionSolver() *constraint.PairCollision {
 	if len(s.dualCollisionSolvers) < cap(s.dualCollisionSolvers) {
 		s.dualCollisionSolvers = s.dualCollisionSolvers[:len(s.dualCollisionSolvers)+1]
 	} else {
-		s.dualCollisionSolvers = append(s.dualCollisionSolvers, dualCollisionSolver{})
+		s.dualCollisionSolvers = append(s.dualCollisionSolvers, constraint.PairCollision{})
 	}
 	return &s.dualCollisionSolvers[len(s.dualCollisionSolvers)-1]
 }
@@ -566,28 +652,34 @@ func (s *Scene) checkCollisionTwoBodies(primary, secondary *Body) {
 			for _, intersection := range s.intersectionSet.Intersections() {
 				if !primary.static && !secondary.static {
 					solver := s.allocateDualCollisionSolver()
-					solver.primaryCollisionNormal = intersection.FirstDisplaceNormal
-					solver.primaryCollisionPoint = intersection.FirstContact
-					solver.secondaryCollisionNormal = intersection.SecondDisplaceNormal
-					solver.secondaryCollisionPoint = intersection.SecondContact
-					solver.collisionDepth = intersection.Depth
+					solver.Init(constraint.PairCollisionState{
+						TargetNormal: intersection.FirstDisplaceNormal,
+						TargetPoint:  intersection.FirstContact,
+						SourceNormal: intersection.SecondDisplaceNormal,
+						SourcePoint:  intersection.SecondContact,
+						Depth:        intersection.Depth,
+					})
 					s.dualCollisionConstraints = append(s.dualCollisionConstraints, s.CreateDoubleBodyConstraint(primary, secondary, solver))
 					continue
 				}
 
 				if !primary.static {
 					solver := s.allocateGroundCollisionSolver()
-					solver.collisionNormal = intersection.FirstDisplaceNormal
-					solver.collisionPoint = intersection.FirstContact
-					solver.collisionDepth = intersection.Depth
+					solver.Init(constraint.CollisionState{ // TODO: Just pass the intersection directly?
+						Normal: intersection.FirstDisplaceNormal,
+						Point:  intersection.FirstContact,
+						Depth:  intersection.Depth,
+					})
 					s.collisionConstraints = append(s.collisionConstraints, s.CreateSingleBodyConstraint(primary, solver))
 				}
 
 				if !secondary.static {
 					solver := s.allocateGroundCollisionSolver()
-					solver.collisionNormal = intersection.SecondDisplaceNormal
-					solver.collisionPoint = intersection.SecondContact
-					solver.collisionDepth = intersection.Depth
+					solver.Init(constraint.CollisionState{ // TODO: Just pass the intersection directly?
+						Normal: intersection.SecondDisplaceNormal,
+						Point:  intersection.SecondContact,
+						Depth:  intersection.Depth,
+					})
 					s.collisionConstraints = append(s.collisionConstraints, s.CreateSingleBodyConstraint(secondary, solver))
 				}
 			}

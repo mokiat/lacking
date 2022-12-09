@@ -1,8 +1,8 @@
-package solver
+package constraint
 
 import (
 	"github.com/mokiat/gomath/dprec"
-	"github.com/mokiat/lacking/game/physics"
+	"github.com/mokiat/lacking/game/physics/solver"
 )
 
 // NewClampDirectionOffset creates a new ClampDirectionOffset constraint solver.
@@ -15,7 +15,7 @@ func NewClampDirectionOffset() *ClampDirectionOffset {
 	}
 }
 
-var _ physics.DBConstraintSolver = (*ClampDirectionOffset)(nil)
+var _ solver.PairConstraint = (*ClampDirectionOffset)(nil)
 
 // ClampDirectionOffset represents the solution for a constraint which ensures that
 // the second body is within certain min and max bounds relative to the first
@@ -26,7 +26,7 @@ type ClampDirectionOffset struct {
 	max         float64
 	restitution float64
 
-	jacobian physics.PairJacobian
+	jacobian solver.PairJacobian
 	drift    float64
 }
 
@@ -78,9 +78,9 @@ func (s *ClampDirectionOffset) SetRestitution(restitution float64) *ClampDirecti
 	return s
 }
 
-func (s *ClampDirectionOffset) Reset(ctx physics.DBSolverContext) {
-	dirWS := dprec.QuatVec3Rotation(ctx.Primary.Orientation(), s.direction)
-	deltaPosition := dprec.Vec3Diff(ctx.Secondary.Position(), ctx.Primary.Position())
+func (s *ClampDirectionOffset) Reset(ctx solver.PairContext) {
+	dirWS := dprec.QuatVec3Rotation(ctx.Target.Rotation(), s.direction)
+	deltaPosition := dprec.Vec3Diff(ctx.Source.Position(), ctx.Target.Position())
 	dirDistance := dprec.Vec3Dot(deltaPosition, dirWS)
 
 	switch {
@@ -89,14 +89,14 @@ func (s *ClampDirectionOffset) Reset(ctx physics.DBSolverContext) {
 			deltaPosition,
 			dprec.Vec3Prod(dirWS, dirDistance-s.max),
 		)
-		s.jacobian = physics.PairJacobian{
-			Primary: physics.Jacobian{
-				SlopeVelocity:        dprec.InverseVec3(dirWS),
-				SlopeAngularVelocity: dprec.Vec3Cross(dirWS, radius),
+		s.jacobian = solver.PairJacobian{
+			Target: solver.Jacobian{
+				LinearSlope:  dprec.InverseVec3(dirWS),
+				AngularSlope: dprec.Vec3Cross(dirWS, radius),
 			},
-			Secondary: physics.Jacobian{
-				SlopeVelocity:        dirWS,
-				SlopeAngularVelocity: dprec.ZeroVec3(),
+			Source: solver.Jacobian{
+				LinearSlope:  dirWS,
+				AngularSlope: dprec.ZeroVec3(),
 			},
 		}
 		s.drift = dirDistance - s.max
@@ -106,36 +106,38 @@ func (s *ClampDirectionOffset) Reset(ctx physics.DBSolverContext) {
 			deltaPosition,
 			dprec.Vec3Prod(dirWS, s.min-dirDistance),
 		)
-		s.jacobian = physics.PairJacobian{
-			Primary: physics.Jacobian{
-				SlopeVelocity:        dirWS,
-				SlopeAngularVelocity: dprec.Vec3Cross(radius, dirWS),
+		s.jacobian = solver.PairJacobian{
+			Target: solver.Jacobian{
+				LinearSlope:  dirWS,
+				AngularSlope: dprec.Vec3Cross(radius, dirWS),
 			},
-			Secondary: physics.Jacobian{
-				SlopeVelocity:        dprec.InverseVec3(dirWS),
-				SlopeAngularVelocity: dprec.ZeroVec3(),
+			Source: solver.Jacobian{
+				LinearSlope:  dprec.InverseVec3(dirWS),
+				AngularSlope: dprec.ZeroVec3(),
 			},
 		}
 		s.drift = s.min - dirDistance
 
 	default:
-		s.jacobian = physics.PairJacobian{}
+		s.jacobian = solver.PairJacobian{}
 		s.drift = 0
 	}
 }
 
-func (s *ClampDirectionOffset) ApplyImpulses(ctx physics.DBSolverContext) {
+func (s *ClampDirectionOffset) ApplyImpulses(ctx solver.PairContext) {
 	lambda := ctx.JacobianImpulseLambda(s.jacobian, s.drift, s.restitution)
 	if lambda > 0.0 {
 		return // moving away
 	}
-	solution := s.jacobian.ImpulseSolution(lambda)
-	ctx.ApplyImpulseSolution(solution)
+	solution := ctx.JacobianImpulseSolution(s.jacobian, s.drift, 0.0)
+	ctx.Target.ApplyImpulse(solution.Target)
+	ctx.Source.ApplyImpulse(solution.Source)
 }
 
-func (s *ClampDirectionOffset) ApplyNudges(ctx physics.DBSolverContext) {
+func (s *ClampDirectionOffset) ApplyNudges(ctx solver.PairContext) {
 	if s.drift > 0 {
 		solution := ctx.JacobianNudgeSolution(s.jacobian, s.drift)
-		ctx.ApplyNudgeSolution(solution)
+		ctx.Target.ApplyNudge(solution.Target)
+		ctx.Source.ApplyNudge(solution.Source)
 	}
 }

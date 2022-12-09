@@ -1,8 +1,8 @@
-package solver
+package constraint
 
 import (
 	"github.com/mokiat/gomath/dprec"
-	"github.com/mokiat/lacking/game/physics"
+	"github.com/mokiat/lacking/game/physics/solver"
 )
 
 // NewCoilover creates a new Coilover constraint solver.
@@ -15,7 +15,7 @@ func NewCoilover() *Coilover {
 	}
 }
 
-var _ physics.DBConstraintSolver = (*Coilover)(nil)
+var _ solver.PairConstraint = (*Coilover)(nil)
 
 // Coilover represents the solution for a constraint that immitates
 // a car coilover through a damped harmonic oscillator.
@@ -26,7 +26,7 @@ type Coilover struct {
 	damping         float64
 
 	appliedLambda float64
-	jacobian      physics.PairJacobian
+	jacobian      solver.PairJacobian
 }
 
 // PrimaryRadius returns the radius vector of the contact point
@@ -89,46 +89,48 @@ func (s *Coilover) SetDamping(damping float64) *Coilover {
 	return s
 }
 
-func (s *Coilover) Reset(physics.DBSolverContext) {
+func (s *Coilover) Reset(solver.PairContext) {
 	s.appliedLambda = 0.0
 }
 
-func (s *Coilover) ApplyImpulses(ctx physics.DBSolverContext) {
-	primaryRadiusWS := dprec.QuatVec3Rotation(ctx.Primary.Orientation(), s.primaryRadius)
-	primaryPointWS := dprec.Vec3Sum(ctx.Primary.Position(), primaryRadiusWS)
-	secondaryRadiusWS := dprec.QuatVec3Rotation(ctx.Secondary.Orientation(), s.secondaryRadius)
-	secondaryPointWS := dprec.Vec3Sum(ctx.Secondary.Position(), secondaryRadiusWS)
+func (s *Coilover) ApplyImpulses(ctx solver.PairContext) {
+	primaryRadiusWS := dprec.QuatVec3Rotation(ctx.Target.Rotation(), s.primaryRadius)
+	primaryPointWS := dprec.Vec3Sum(ctx.Target.Position(), primaryRadiusWS)
+	secondaryRadiusWS := dprec.QuatVec3Rotation(ctx.Source.Rotation(), s.secondaryRadius)
+	secondaryPointWS := dprec.Vec3Sum(ctx.Source.Position(), secondaryRadiusWS)
 
 	deltaPosition := dprec.Vec3Diff(secondaryPointWS, primaryPointWS)
 	drift := deltaPosition.Length()
-	if drift < epsilon {
+	if drift < solver.Epsilon {
 		return
 	}
 	normal := dprec.UnitVec3(deltaPosition)
 
-	jacobian := physics.PairJacobian{
-		Primary: physics.Jacobian{
-			SlopeVelocity:        dprec.InverseVec3(normal),
-			SlopeAngularVelocity: dprec.Vec3Cross(normal, primaryRadiusWS),
+	jacobian := solver.PairJacobian{
+		Target: solver.Jacobian{
+			LinearSlope:  dprec.InverseVec3(normal),
+			AngularSlope: dprec.Vec3Cross(normal, primaryRadiusWS),
 		},
-		Secondary: physics.Jacobian{
-			SlopeVelocity:        normal,
-			SlopeAngularVelocity: dprec.Vec3Cross(secondaryRadiusWS, normal),
+		Source: solver.Jacobian{
+			LinearSlope:  normal,
+			AngularSlope: dprec.Vec3Cross(secondaryRadiusWS, normal),
 		},
 	}
 
-	invertedEffectiveMass := jacobian.InverseEffectiveMass(ctx.Primary, ctx.Secondary)
+	invertedEffectiveMass := jacobian.InverseEffectiveMass(ctx.Target, ctx.Source)
 	w := 2.0 * dprec.Pi * s.frequency
 	dc := 2.0 * s.damping * w / invertedEffectiveMass
 	k := w * w / invertedEffectiveMass
 
-	gamma := 1.0 / (ctx.ElapsedSeconds * (dc + ctx.ElapsedSeconds*k))
-	beta := ctx.ElapsedSeconds * k * gamma
+	gamma := 1.0 / (ctx.DeltaTime * (dc + ctx.DeltaTime*k))
+	beta := ctx.DeltaTime * k * gamma
 
-	effectiveVelocity := jacobian.EffectiveVelocity(ctx.Primary, ctx.Secondary)
+	effectiveVelocity := jacobian.EffectiveVelocity(ctx.Target, ctx.Source)
 	lambda := -(effectiveVelocity + beta*drift + gamma*s.appliedLambda) / (invertedEffectiveMass + gamma)
-	ctx.ApplyImpulseSolution(jacobian.ImpulseSolution(lambda))
+	solution := jacobian.Impulse(lambda)
+	ctx.Target.ApplyImpulse(solution.Target)
+	ctx.Source.ApplyImpulse(solution.Source)
 	s.appliedLambda += lambda
 }
 
-func (s *Coilover) ApplyNudges(ctx physics.DBSolverContext) {}
+func (s *Coilover) ApplyNudges(ctx solver.PairContext) {}

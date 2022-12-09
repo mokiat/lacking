@@ -1,8 +1,8 @@
-package solver
+package constraint
 
 import (
 	"github.com/mokiat/gomath/dprec"
-	"github.com/mokiat/lacking/game/physics"
+	"github.com/mokiat/lacking/game/physics/solver"
 )
 
 // NewStaticRotation creates a new StaticRotation constraint solver.
@@ -12,12 +12,12 @@ func NewStaticRotation() *StaticRotation {
 	}
 }
 
-var _ physics.SBConstraintSolver = (*StaticRotation)(nil)
+var _ solver.Constraint = (*StaticRotation)(nil)
 
 // StaticRotation represents the solution for a constraint
 // that keeps a body positioned at the specified fixture location.
 //
-// This solver is immediate - it does not use impulses or nudges.
+// This solver is immediate - it converges in a single step.
 type StaticRotation struct {
 	rotation dprec.Quat
 }
@@ -33,12 +33,12 @@ func (t *StaticRotation) SetRotation(rotation dprec.Quat) *StaticRotation {
 	return t
 }
 
-func (s *StaticRotation) Reset(ctx physics.SBSolverContext) {}
+func (s *StaticRotation) Reset(ctx solver.Context) {}
 
-func (s *StaticRotation) ApplyImpulses(ctx physics.SBSolverContext) {
-	ctx.Body.SetAngularVelocity(dprec.ZeroVec3())
+func (s *StaticRotation) ApplyImpulses(ctx solver.Context) {
+	ctx.Target.SetAngularVelocity(dprec.ZeroVec3())
 }
 
-func (s *StaticRotation) ApplyNudges(ctx physics.SBSolverContext) {
-	ctx.Body.SetOrientation(s.rotation)
+func (s *StaticRotation) ApplyNudges(ctx solver.Context) {
+	ctx.Target.SetRotation(s.rotation)
 }

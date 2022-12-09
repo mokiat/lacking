@@ -1,20 +1,22 @@
 package physics
 
+import "github.com/mokiat/lacking/game/physics/solver"
+
 // SBConstraint represents a restriction enforced on one body.
 type SBConstraint struct {
-	solver SBConstraintSolver
-
 	scene *Scene
 	prev  *SBConstraint
 	next  *SBConstraint
 
 	body *Body
+
+	solution solver.Constraint
 }
 
-// Solver returns the constraint solver that will be used
+// Solution returns the constraint solver that will be used
 // to enforce mathematically this constraint.
-func (c *SBConstraint) Solver() SBConstraintSolver {
-	return c.solver
+func (c *SBConstraint) Solution() solver.Constraint {
+	return c.solution
 }
 
 // Body returns the body on which this constraint acts.
@@ -50,25 +52,25 @@ func (c *SBConstraint) Delete() {
 	c.scene.cacheSBConstraint(c)
 	c.scene = nil
 	c.body = nil
-	c.solver = nil
+	c.solution = nil
 }
 
 // DBConstraint represents a restriction enforced two bodies in conjunction.
 type DBConstraint struct {
-	solver DBConstraintSolver
-
 	scene *Scene
 	prev  *DBConstraint
 	next  *DBConstraint
 
 	primary   *Body
 	secondary *Body
+
+	solution solver.PairConstraint
 }
 
-// Solver returns the constraint solver that will be used
+// Solution returns the constraint solver that will be used
 // to enforce mathematically this constraint.
-func (c *DBConstraint) Solver() DBConstraintSolver {
-	return c.solver
+func (c *DBConstraint) Solution() solver.PairConstraint {
+	return c.solution
 }
 
 // Primary returns the primary body on which this constraint
@@ -112,7 +114,7 @@ func (c *DBConstraint) Delete() {
 	c.scene = nil
 	c.primary = nil
 	c.secondary = nil
-	c.solver = nil
+	c.solution = nil
 }
 
 // ConstraintSet represents a set of constraints.
@@ -129,7 +131,7 @@ type ConstraintSet struct {
 //
 // Note: Constraints creates as part of this set should not be deleted
 // individually.
-func (s *ConstraintSet) CreateSingleBodyConstraint(body *Body, solver SBConstraintSolver) *SBConstraint {
+func (s *ConstraintSet) CreateSingleBodyConstraint(body *Body, solver solver.Constraint) *SBConstraint {
 	constraint := s.scene.CreateSingleBodyConstraint(body, solver)
 	s.sbConstraints = append(s.sbConstraints, constraint)
 	return constraint
@@ -140,7 +142,7 @@ func (s *ConstraintSet) CreateSingleBodyConstraint(body *Body, solver SBConstrai
 //
 // Note: Constraints creates as part of this set should not be deleted
 // individually.
-func (s *ConstraintSet) CreateDoubleBodyConstraint(primary, secondary *Body, solver DBConstraintSolver) *DBConstraint {
+func (s *ConstraintSet) CreateDoubleBodyConstraint(primary, secondary *Body, solver solver.PairConstraint) *DBConstraint {
 	constraint := s.scene.CreateDoubleBodyConstraint(primary, secondary, solver)
 	s.dbConstraints = append(s.dbConstraints, constraint)
 	return constraint

@@ -1,8 +1,8 @@
-package solver
+package constraint
 
 import (
 	"github.com/mokiat/gomath/dprec"
-	"github.com/mokiat/lacking/game/physics"
+	"github.com/mokiat/lacking/game/physics/solver"
 )
 
 // NewHingedRod creates a new HingedRod constraint solver.
@@ -14,7 +14,7 @@ func NewHingedRod() *HingedRod {
 	}
 }
 
-var _ physics.DBConstraintSolver = (*HingedRod)(nil)
+var _ solver.PairConstraint = (*HingedRod)(nil)
 
 // HingedRod represents the solution for a constraint that keeps two bodies
 // tied together with a hard link of specific length.
@@ -23,7 +23,7 @@ type HingedRod struct {
 	secondaryRadius dprec.Vec3
 	length          float64
 
-	jacobian physics.PairJacobian
+	jacobian solver.PairJacobian
 	drift    float64
 }
 
@@ -71,41 +71,43 @@ func (s *HingedRod) SetLength(length float64) *HingedRod {
 }
 
 // Reset re-evaluates the constraint.
-func (s *HingedRod) Reset(ctx physics.DBSolverContext) {
-	primaryRadiusWS := dprec.QuatVec3Rotation(ctx.Primary.Orientation(), s.primaryRadius)
-	primaryAnchorWS := dprec.Vec3Sum(ctx.Primary.Position(), primaryRadiusWS)
-	secondaryRadiusWS := dprec.QuatVec3Rotation(ctx.Secondary.Orientation(), s.secondaryRadius)
-	secondaryAnchorWS := dprec.Vec3Sum(ctx.Secondary.Position(), secondaryRadiusWS)
+func (s *HingedRod) Reset(ctx solver.PairContext) {
+	primaryRadiusWS := dprec.QuatVec3Rotation(ctx.Target.Rotation(), s.primaryRadius)
+	primaryAnchorWS := dprec.Vec3Sum(ctx.Target.Position(), primaryRadiusWS)
+	secondaryRadiusWS := dprec.QuatVec3Rotation(ctx.Source.Rotation(), s.secondaryRadius)
+	secondaryAnchorWS := dprec.Vec3Sum(ctx.Source.Position(), secondaryRadiusWS)
 	deltaPosition := dprec.Vec3Diff(secondaryAnchorWS, primaryAnchorWS)
-	if lng := deltaPosition.Length(); lng > epsilon {
+	if lng := deltaPosition.Length(); lng > solver.Epsilon {
 		normal := dprec.Vec3Quot(deltaPosition, lng)
-		s.jacobian = physics.PairJacobian{
-			Primary: physics.Jacobian{
-				SlopeVelocity:        dprec.InverseVec3(normal),
-				SlopeAngularVelocity: dprec.Vec3Cross(normal, primaryRadiusWS),
+		s.jacobian = solver.PairJacobian{
+			Target: solver.Jacobian{
+				LinearSlope:  dprec.InverseVec3(normal),
+				AngularSlope: dprec.Vec3Cross(normal, primaryRadiusWS),
 			},
-			Secondary: physics.Jacobian{
-				SlopeVelocity:        normal,
-				SlopeAngularVelocity: dprec.Vec3Cross(secondaryRadiusWS, normal),
+			Source: solver.Jacobian{
+				LinearSlope:  normal,
+				AngularSlope: dprec.Vec3Cross(secondaryRadiusWS, normal),
 			},
 		}
 		s.drift = lng - s.length
 	} else {
-		s.jacobian = physics.PairJacobian{}
+		s.jacobian = solver.PairJacobian{}
 		s.drift = 0.0
 	}
 }
 
 // ApplyImpulses applies impulses in order to keep the velocity part of
 // the constraint satisfied.
-func (s *HingedRod) ApplyImpulses(ctx physics.DBSolverContext) {
+func (s *HingedRod) ApplyImpulses(ctx solver.PairContext) {
 	solution := ctx.JacobianImpulseSolution(s.jacobian, s.drift, 0.0)
-	ctx.ApplyImpulseSolution(solution)
+	ctx.Target.ApplyImpulse(solution.Target)
+	ctx.Source.ApplyImpulse(solution.Source)
 }
 
 // ApplyNudges applies nudges in order to keep the positional part of the
 // constraint satisfied.
-func (s *HingedRod) ApplyNudges(ctx physics.DBSolverContext) {
+func (s *HingedRod) ApplyNudges(ctx solver.PairContext) {
 	solution := ctx.JacobianNudgeSolution(s.jacobian, s.drift)
-	ctx.ApplyNudgeSolution(solution)
+	ctx.Target.ApplyNudge(solution.Target)
+	ctx.Source.ApplyNudge(solution.Source)
 }
