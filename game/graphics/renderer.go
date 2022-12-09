@@ -613,7 +613,7 @@ func lightOrtho() sprec.Mat4 {
 }
 
 func (r *sceneRenderer) renderShadowPass(ctx renderCtx) {
-	defer metrics.BeginSpan("shadow pass").End()
+	defer metrics.BeginRegion("graphics:shadow pass").End()
 
 	// TODO: Support array of shadow-casting lights, not just one
 	var directionalLight *Light
@@ -748,7 +748,7 @@ func (r *sceneRenderer) renderShadowMeshesList(ctx renderCtx) {
 }
 
 func (r *sceneRenderer) renderGeometryPass(ctx renderCtx) {
-	defer metrics.BeginSpan("geometry pass").End()
+	defer metrics.BeginRegion("graphics:geometry pass").End()
 
 	r.api.BeginRenderPass(render.RenderPassInfo{
 		Framebuffer: r.geometryFramebuffer,
@@ -879,7 +879,7 @@ func (r *sceneRenderer) renderMeshesList(ctx renderCtx) {
 }
 
 func (r *sceneRenderer) renderLightingPass(ctx renderCtx) {
-	defer metrics.BeginSpan("lighting pass").End()
+	defer metrics.BeginRegion("graphics:lighting pass").End()
 
 	r.api.BeginRenderPass(render.RenderPassInfo{
 		Framebuffer: r.lightingFramebuffer,
@@ -964,7 +964,7 @@ func (r *sceneRenderer) renderPointLight(ctx renderCtx, light *Light) {
 }
 
 func (r *sceneRenderer) renderForwardPass(ctx renderCtx) {
-	defer metrics.BeginSpan("forward pass").End()
+	defer metrics.BeginRegion("graphics:forward pass").End()
 
 	r.api.BeginRenderPass(render.RenderPassInfo{
 		Framebuffer: r.forwardFramebuffer,
@@ -1030,7 +1030,7 @@ func (r *sceneRenderer) renderForwardPass(ctx renderCtx) {
 }
 
 func (r *sceneRenderer) renderExposureProbePass(ctx renderCtx) {
-	defer metrics.BeginSpan("exposure pass").End()
+	defer metrics.BeginRegion("graphics:exposure pass").End()
 
 	if r.exposureFormat != render.DataFormatRGBA16F && r.exposureFormat != render.DataFormatRGBA32F {
 		log.Error("Skipping exposure due to unsupported framebuffer format %q", r.exposureFormat)
@@ -1120,7 +1120,7 @@ func (r *sceneRenderer) renderExposureProbePass(ctx renderCtx) {
 }
 
 func (r *sceneRenderer) renderPostprocessingPass(ctx renderCtx) {
-	defer metrics.BeginSpan("postprocessing pass").End()
+	defer metrics.BeginRegion("graphics:postprocessing pass").End()
 
 	r.api.BeginRenderPass(render.RenderPassInfo{
 		Framebuffer: ctx.framebuffer,
