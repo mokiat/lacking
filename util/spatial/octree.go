@@ -12,8 +12,6 @@ var sizeToDoubleRadius = dprec.Sqrt(3)
 
 // Visitor represents a callback mechanism to pass items back to the client.
 type Visitor[T any] interface {
-	// Reset indicates that a new batch of items will be provided.
-	Reset()
 	// Visit is called for each observed item.
 	Visit(item T)
 }
@@ -89,18 +87,9 @@ func (s *OctreeStats) reset() {
 }
 
 // NewOctree creates a new Octree instance using the specified size and depth.
-func NewOctree[T any](size float64, depth, capacity int) *Octree[T] {
-	var (
-		nodePool datastruct.Pool[octreeNode[T]]
-		itemPool datastruct.Pool[OctreeItem[T]]
-	)
-	if capacity > 0 {
-		nodePool = datastruct.NewStaticPool[octreeNode[T]](capacity)
-		itemPool = datastruct.NewStaticPool[OctreeItem[T]](capacity)
-	} else {
-		nodePool = datastruct.NewDynamicPool[octreeNode[T]]()
-		itemPool = datastruct.NewDynamicPool[OctreeItem[T]]()
-	}
+func NewOctree[T any](size float64, depth int) *Octree[T] {
+	nodePool := datastruct.NewDynamicPool[octreeNode[T]]()
+	itemPool := datastruct.NewDynamicPool[OctreeItem[T]]()
 	root := nodePool.Fetch()
 	*root = octreeNode[T]{
 		head: &OctreeItem[T]{
@@ -169,7 +158,6 @@ func (t *Octree[T]) CreateItem(value T) *OctreeItem[T] {
 // specified hexahedron region. It calls the specified visitor for each found
 // item.
 func (t *Octree[T]) VisitHexahedronRegion(region *HexahedronRegion, visitor Visitor[T]) {
-	visitor.Reset()
 	t.stats.reset()
 	t.visitNodeInHexahedronRegion(t.root, region, visitor)
 }
