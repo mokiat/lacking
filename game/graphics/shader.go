@@ -25,6 +25,7 @@ type ShadowMappingShaderConfig struct {
 type PBRGeometryShaderConfig struct {
 	HasArmature      bool
 	HasAlphaTesting  bool
+	HasVertexColors  bool
 	HasAlbedoTexture bool
 }
 

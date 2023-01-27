@@ -201,6 +201,7 @@ func (e *Engine) CreateMeshDefinition(info MeshDefinitionInfo) *MeshDefinition {
 		vertexArray:          vertexArray,
 		fragments:            make([]meshFragmentDefinition, len(info.Fragments)),
 		boundingSphereRadius: info.BoundingSphereRadius,
+		hasVertexColors:      info.VertexFormat.HasColor,
 		needsArmature:        info.NeedsArmature(),
 	}
 	for i, fragmentInfo := range info.Fragments {

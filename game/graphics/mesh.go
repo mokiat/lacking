@@ -88,6 +88,7 @@ type MeshDefinition struct {
 	vertexArray          render.VertexArray
 	fragments            []meshFragmentDefinition
 	boundingSphereRadius float64
+	hasVertexColors      bool
 	needsArmature        bool
 }
 
