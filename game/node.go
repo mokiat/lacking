@@ -66,12 +66,14 @@ type Node struct {
 	transform TransformFunc
 	absMatrix dprec.Mat4
 
-	body         *physics.Body
-	mesh         *graphics.Mesh
-	armature     *graphics.Armature
-	armatureBone int
-	camera       *graphics.Camera
-	light        *graphics.Light
+	// TODO: Abstract all of these through a common interface
+	body             *physics.Body
+	mesh             *graphics.Mesh
+	armature         *graphics.Armature
+	armatureBone     int
+	camera           *graphics.Camera
+	pointLight       *graphics.PointLight
+	directionalLight *graphics.DirectionalLight
 }
 
 // PrintHierarchy prints debug information regarding the hierarchy that starts
@@ -387,14 +389,16 @@ func (n *Node) SetArmatureBone(bone int) {
 	n.armatureBone = bone
 }
 
-// Light returns the graphics Light that is attached to this Node.
-func (n *Node) Light() *graphics.Light {
-	return n.light
+func (n *Node) PointLight() *graphics.PointLight {
+	return n.pointLight
 }
 
-// SetLight attaches a graphics Light to this Node.
-func (n *Node) SetLight(light *graphics.Light) {
-	n.light = light
+func (n *Node) SetPointLight(light *graphics.PointLight) {
+	n.pointLight = light
+}
+
+func (n *Node) SetDirectionalLight(light *graphics.DirectionalLight) {
+	n.directionalLight = light
 }
 
 func (n *Node) isStaleHierarchy() bool {

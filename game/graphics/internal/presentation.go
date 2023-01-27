@@ -91,8 +91,10 @@ func NewSkyboxPresentation(api render.API, vertexSrc, fragmentSrc string) *Skybo
 type LightingPresentation struct {
 	Presentation
 
+	// TODO: Move to lighting uniform buffer
 	LightDirection render.UniformLocation
 	LightIntensity render.UniformLocation
+	LightRange     render.UniformLocation
 }
 
 func NewLightingPresentation(api render.API, vertexSrc, fragmentSrc string) *LightingPresentation {
@@ -114,6 +116,7 @@ func NewLightingPresentation(api render.API, vertexSrc, fragmentSrc string) *Lig
 
 		LightDirection: program.UniformLocation("lightDirectionIn"),
 		LightIntensity: program.UniformLocation("lightIntensityIn"),
+		LightRange:     program.UniformLocation("lightRangeIn"),
 	}
 }
 

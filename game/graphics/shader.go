@@ -11,6 +11,7 @@ type ShaderCollection struct {
 	DirectionalLightSet func() ShaderSet
 	AmbientLightSet     func() ShaderSet
 	PointLightSet       func() ShaderSet
+	SpotLightSet        func() ShaderSet
 	SkyboxSet           func() ShaderSet
 	SkycolorSet         func() ShaderSet
 	DebugSet            func() ShaderSet

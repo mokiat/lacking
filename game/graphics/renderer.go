@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/mokiat/gomath/dprec"
+	"github.com/mokiat/gomath/dtos"
 	"github.com/mokiat/gomath/sprec"
 	"github.com/mokiat/gomath/stod"
 	"github.com/mokiat/lacking/game/graphics/internal"
@@ -34,6 +35,10 @@ func newRenderer(api render.API, shaders ShaderCollection) *sceneRenderer {
 		exposureTarget:     1.0,
 
 		visibleMeshes: spatial.NewVisitorBucket[*Mesh](2_000_000),
+
+		ambientLightBucket:     spatial.NewVisitorBucket[*AmbientLight](16),
+		pointLightBucket:       spatial.NewVisitorBucket[*PointLight](16),
+		directionalLightBucket: spatial.NewVisitorBucket[*DirectionalLight](16),
 	}
 }
 
@@ -45,8 +50,9 @@ type sceneRenderer struct {
 	framebufferWidth  int
 	framebufferHeight int
 
-	quadShape *internal.Shape
-	cubeShape *internal.Shape
+	quadShape   *internal.Shape
+	cubeShape   *internal.Shape
+	sphereShape *internal.Shape
 
 	geometryAlbedoTexture render.Texture
 	geometryNormalTexture render.Texture
@@ -107,6 +113,10 @@ type sceneRenderer struct {
 
 	visibleMeshes *spatial.VisitorBucket[*Mesh]
 	renderItems   []renderItem
+
+	ambientLightBucket     *spatial.VisitorBucket[*AmbientLight]
+	pointLightBucket       *spatial.VisitorBucket[*PointLight]
+	directionalLightBucket *spatial.VisitorBucket[*DirectionalLight]
 }
 
 func (r *sceneRenderer) createFramebuffers(width, height int) {
@@ -185,6 +195,7 @@ func (r *sceneRenderer) Allocate() {
 
 	r.quadShape = internal.CreateQuadShape(r.api)
 	r.cubeShape = internal.CreateCubeShape(r.api)
+	r.sphereShape = internal.CreateSphereShape(r.api)
 
 	defaultShadowDepth := float32(1.0)
 	r.shadowDepthTexture = r.api.CreateDepthTexture2D(render.DepthTexture2DInfo{
@@ -312,13 +323,13 @@ func (r *sceneRenderer) Allocate() {
 	)
 	r.pointLightPipeline = r.api.CreatePipeline(render.PipelineInfo{
 		Program:                     r.pointLightPresentation.Program,
-		VertexArray:                 r.quadShape.VertexArray(), // TODO: Sphere (r=1) mesh!
-		Topology:                    r.quadShape.Topology(),    // TODO: Sphere (r=1) mesh!
-		Culling:                     render.CullModeBack,
+		VertexArray:                 r.sphereShape.VertexArray(),
+		Topology:                    r.sphereShape.Topology(),
+		Culling:                     render.CullModeFront,
 		FrontFace:                   render.FaceOrientationCCW,
-		DepthTest:                   false, // TODO: True, once sphere shape is used!
+		DepthTest:                   false,
 		DepthWrite:                  false,
-		DepthComparison:             render.ComparisonAlways, // TODO: LEQUAL, once sphere shape is used!
+		DepthComparison:             render.ComparisonAlways,
 		StencilTest:                 false,
 		ColorWrite:                  render.ColorMaskTrue,
 		BlendEnabled:                true,
@@ -420,7 +431,7 @@ func (r *sceneRenderer) Allocate() {
 		BlendEnabled:    false,
 	})
 
-	r.cameraUniformBufferData = make([]byte, 3*64) // 3 x mat4
+	r.cameraUniformBufferData = make([]byte, 3*64+1*16) // 3 x mat4 + 1 x vec4
 	r.cameraUniformBuffer = r.api.CreateUniformBuffer(render.BufferInfo{
 		Dynamic: true,
 		Size:    len(r.cameraUniformBufferData),
@@ -430,7 +441,7 @@ func (r *sceneRenderer) Allocate() {
 		Dynamic: true,
 		Size:    len(r.modelUniformBufferData),
 	})
-	r.materialUniformBufferData = make([]byte, 2*4*4) // 2 x vec4
+	r.materialUniformBufferData = make([]byte, 2*16) // 2 x vec4
 	r.materialUniformBuffer = r.api.CreateUniformBuffer(render.BufferInfo{
 		Dynamic: true,
 		Size:    len(r.materialUniformBufferData),
@@ -449,6 +460,7 @@ func (r *sceneRenderer) Release() {
 
 	defer r.quadShape.Release()
 	defer r.cubeShape.Release()
+	defer r.sphereShape.Release()
 
 	defer r.shadowDepthTexture.Release()
 	defer r.shadowFramebuffer.Release()
@@ -528,14 +540,14 @@ func (r *sceneRenderer) Render(framebuffer render.Framebuffer, viewport Viewport
 	projectionViewMatrix := sprec.Mat4Prod(projectionMatrix, viewMatrix)
 	frustum := spatial.ProjectionRegion(stod.Mat4(projectionViewMatrix))
 
-	if scene.firstLight != nil && ShowLightView {
-		dirLight := scene.firstLight.next
-		projectionMatrix = lightOrtho()
-		cameraMatrix = dirLight.gfxMatrix()
-		viewMatrix = sprec.InverseMat4(cameraMatrix)
-		projectionViewMatrix = sprec.Mat4Prod(projectionMatrix, viewMatrix)
-		frustum = spatial.ProjectionRegion(stod.Mat4(projectionViewMatrix))
-	}
+	// if scene.firstLight != nil && ShowLightView {
+	// 	dirLight := scene.firstLight
+	// 	projectionMatrix = lightOrtho()
+	// 	cameraMatrix = dirLight.gfxMatrix()
+	// 	viewMatrix = sprec.InverseMat4(cameraMatrix)
+	// 	projectionViewMatrix = sprec.Mat4Prod(projectionMatrix, viewMatrix)
+	// 	frustum = spatial.ProjectionRegion(stod.Mat4(projectionViewMatrix))
+	// }
 
 	ctx := renderCtx{
 		framebuffer: framebuffer,
@@ -552,6 +564,12 @@ func (r *sceneRenderer) Render(framebuffer render.Framebuffer, viewport Viewport
 	cameraPlotter.PlotSPMat4(projectionMatrix)
 	cameraPlotter.PlotSPMat4(viewMatrix)
 	cameraPlotter.PlotSPMat4(cameraMatrix)
+	cameraPlotter.PlotSPVec4(sprec.NewVec4(
+		float32(viewport.X),
+		float32(viewport.Y),
+		float32(viewport.Width),
+		float32(viewport.Height),
+	))
 	r.cameraUniformBuffer.Update(render.BufferUpdateInfo{
 		Data: r.cameraUniformBufferData,
 	})
@@ -574,7 +592,9 @@ func (r *sceneRenderer) Render(framebuffer render.Framebuffer, viewport Viewport
 func (r *sceneRenderer) evaluateProjectionMatrix(camera *Camera, width, height int) sprec.Mat4 {
 	const (
 		near = float32(0.5)
-		far  = float32(1600.0) // At 400 on a flat plane with forests, you don't really notice the far clipping plane.
+		// far  = float32(400.0) // At 400 on a flat plane with forests, you don't really notice the far clipping plane.
+		// far = float32(1600.0) // At 400 on a flat plane with forests, you don't really notice the far clipping plane.
+		far = float32(16000.0) // At 400 on a flat plane with forests, you don't really notice the far clipping plane.
 	)
 	var (
 		fWidth  = sprec.Max(1.0, float32(width))
@@ -615,10 +635,12 @@ func lightOrtho() sprec.Mat4 {
 func (r *sceneRenderer) renderShadowPass(ctx renderCtx) {
 	defer metrics.BeginRegion("graphics:shadow pass").End()
 
-	// TODO: Support array of shadow-casting lights, not just one
-	var directionalLight *Light
-	for light := ctx.scene.firstLight; light != nil; light = light.next {
-		if light.mode == LightModeDirectional {
+	r.directionalLightBucket.Reset()
+	ctx.scene.directionalLightOctree.VisitHexahedronRegion(&ctx.frustum, r.directionalLightBucket)
+
+	var directionalLight *DirectionalLight
+	for _, light := range r.directionalLightBucket.Items() {
+		if light.active {
 			directionalLight = light
 			break
 		}
@@ -634,6 +656,7 @@ func (r *sceneRenderer) renderShadowPass(ctx renderCtx) {
 	frustum := spatial.ProjectionRegion(stod.Mat4(projectionViewMatrix))
 
 	r.renderItems = r.renderItems[:0]
+	r.visibleMeshes.Reset()
 	ctx.scene.meshOctree.VisitHexahedronRegion(&frustum, r.visibleMeshes)
 	for _, mesh := range r.visibleMeshes.Items() {
 		r.queueShadowMesh(ctx, mesh)
@@ -783,6 +806,7 @@ func (r *sceneRenderer) renderGeometryPass(ctx renderCtx) {
 	})
 
 	r.renderItems = r.renderItems[:0]
+	r.visibleMeshes.Reset()
 	ctx.scene.meshOctree.VisitHexahedronRegion(&ctx.frustum, r.visibleMeshes)
 	for _, mesh := range r.visibleMeshes.Items() {
 		r.queueMesh(ctx, mesh)
@@ -901,38 +925,62 @@ func (r *sceneRenderer) renderLightingPass(ctx renderCtx) {
 			},
 		},
 	})
-	// TODO: Traverse octree
-	for light := ctx.scene.firstLight; light != nil; light = light.next {
-		switch light.mode {
-		case LightModeDirectional:
-			r.renderDirectionalLight(ctx, light)
-		case LightModeAmbient:
-			r.renderAmbientLight(ctx, light)
-		case LightModePoint:
-			r.renderPointLight(ctx, light)
+
+	r.ambientLightBucket.Reset()
+	ctx.scene.ambientLightOctree.VisitHexahedronRegion(&ctx.frustum, r.ambientLightBucket)
+	for _, ambientLight := range r.ambientLightBucket.Items() {
+		r.renderAmbientLight(ctx, ambientLight)
+	}
+
+	// TODO: Use batching (instancing) when rendering point lights
+	r.pointLightBucket.Reset()
+	ctx.scene.pointLightOctree.VisitHexahedronRegion(&ctx.frustum, r.pointLightBucket)
+	for _, pointLight := range r.pointLightBucket.Items() {
+		if pointLight.active {
+			r.renderPointLight(ctx, pointLight)
 		}
 	}
+
+	r.directionalLightBucket.Reset()
+	ctx.scene.directionalLightOctree.VisitHexahedronRegion(&ctx.frustum, r.directionalLightBucket)
+	for _, directionalLight := range r.directionalLightBucket.Items() {
+		if directionalLight.active {
+			r.renderDirectionalLight(ctx, directionalLight)
+		}
+	}
+
 	r.api.SubmitQueue(r.commands)
 	r.api.EndRenderPass()
 }
 
-func (r *sceneRenderer) renderAmbientLight(ctx renderCtx, light *Light) {
+func (r *sceneRenderer) renderAmbientLight(ctx renderCtx, light *AmbientLight) {
 	r.commands.BindPipeline(r.ambientLightPipeline)
 	r.commands.TextureUnit(internal.TextureBindingLightingFramebufferColor0, r.geometryAlbedoTexture)
 	r.commands.TextureUnit(internal.TextureBindingLightingFramebufferColor1, r.geometryNormalTexture)
 	r.commands.TextureUnit(internal.TextureBindingLightingFramebufferDepth, r.geometryDepthTexture)
+	// TODO: Intensity based on distance and inner and outer radius
 	r.commands.TextureUnit(internal.TextureBindingLightingReflectionTexture, light.reflectionTexture.texture)
 	r.commands.TextureUnit(internal.TextureBindingLightingRefractionTexture, light.refractionTexture.texture)
 	r.commands.DrawIndexed(0, r.quadShape.IndexCount(), 1)
 }
 
-func (r *sceneRenderer) renderDirectionalLight(ctx renderCtx, light *Light) {
-	// TODO: Update Light uniform
+func (r *sceneRenderer) renderDirectionalLight(ctx renderCtx, light *DirectionalLight) {
+	projectionMatrix := lightOrtho()
+	lightMatrix := light.gfxMatrix()
+	viewMatrix := sprec.InverseMat4(lightMatrix)
 
+	lightPlotter := blob.NewPlotter(r.lightUniformBufferData)
+	lightPlotter.PlotSPMat4(projectionMatrix)
+	lightPlotter.PlotSPMat4(viewMatrix)
+	lightPlotter.PlotSPMat4(lightMatrix)
+
+	r.commands.UpdateBufferData(r.lightUniformBuffer, render.BufferUpdateInfo{
+		Data: r.lightUniformBufferData,
+	})
 	r.commands.BindPipeline(r.directionalLightPipeline)
 	direction := light.gfxMatrix().OrientationZ()
 	r.commands.Uniform3f(r.directionalLightPresentation.LightDirection, direction.Array())
-	intensity := light.intensity
+	intensity := dtos.Vec3(light.emitColor)
 	r.commands.Uniform3f(r.directionalLightPresentation.LightIntensity, intensity.Array())
 	r.commands.TextureUnit(internal.TextureBindingLightingFramebufferColor0, r.geometryAlbedoTexture)
 	r.commands.TextureUnit(internal.TextureBindingLightingFramebufferColor1, r.geometryNormalTexture)
@@ -941,7 +989,7 @@ func (r *sceneRenderer) renderDirectionalLight(ctx renderCtx, light *Light) {
 	r.commands.DrawIndexed(0, r.quadShape.IndexCount(), 1)
 }
 
-func (r *sceneRenderer) renderPointLight(ctx renderCtx, light *Light) {
+func (r *sceneRenderer) renderPointLight(ctx renderCtx, light *PointLight) {
 	projectionMatrix := sprec.IdentityMat4()
 	lightMatrix := light.gfxMatrix()
 	viewMatrix := sprec.InverseMat4(lightMatrix)
@@ -955,12 +1003,14 @@ func (r *sceneRenderer) renderPointLight(ctx renderCtx, light *Light) {
 	r.commands.UpdateBufferData(r.lightUniformBuffer, render.BufferUpdateInfo{
 		Data: r.lightUniformBufferData,
 	})
-	r.commands.Uniform3f(r.pointLightPresentation.LightIntensity, light.intensity.Array())
+	// TODO: Move to lighting uniform buffer
+	r.commands.Uniform3f(r.pointLightPresentation.LightIntensity, dtos.Vec3(light.emitColor).Array())
+	r.commands.Uniform1f(r.pointLightPresentation.LightRange, float32(light.emitRange))
+
 	r.commands.TextureUnit(internal.TextureBindingLightingFramebufferColor0, r.geometryAlbedoTexture)
 	r.commands.TextureUnit(internal.TextureBindingLightingFramebufferColor1, r.geometryNormalTexture)
 	r.commands.TextureUnit(internal.TextureBindingLightingFramebufferDepth, r.geometryDepthTexture)
-	// TODO: Use a sphere mesh positioned where the light is!
-	r.commands.DrawIndexed(0, r.quadShape.IndexCount(), 1)
+	r.commands.DrawIndexed(0, r.sphereShape.IndexCount(), 1)
 }
 
 func (r *sceneRenderer) renderForwardPass(ctx renderCtx) {

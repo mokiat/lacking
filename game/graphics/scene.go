@@ -1,11 +1,15 @@
 package graphics
 
 import (
-	"github.com/mokiat/gomath/sprec"
 	"github.com/mokiat/lacking/render"
 	"github.com/mokiat/lacking/util/blob"
+	"github.com/mokiat/lacking/util/datastruct"
 	"github.com/mokiat/lacking/util/shape"
 	"github.com/mokiat/lacking/util/spatial"
+)
+
+const (
+	maxSceneSize = 32_000.0
 )
 
 func newScene(renderer *sceneRenderer) *Scene {
@@ -14,7 +18,20 @@ func newScene(renderer *sceneRenderer) *Scene {
 
 		sky: newSky(),
 
-		meshOctree: spatial.NewOctree[*Mesh](32000.0, 9, 2_000_000),
+		meshOctree: spatial.NewOctree[*Mesh](maxSceneSize, 15),
+		meshPool:   datastruct.NewDynamicPool[Mesh](),
+
+		ambientLightOctree: spatial.NewOctree[*AmbientLight](maxSceneSize, 15),
+		ambientLightPool:   datastruct.NewDynamicPool[AmbientLight](),
+
+		pointLightOctree: spatial.NewOctree[*PointLight](maxSceneSize, 15),
+		pointLightPool:   datastruct.NewDynamicPool[PointLight](),
+
+		spotLightOctree: spatial.NewOctree[*SpotLight](maxSceneSize, 15),
+		spotLightPool:   datastruct.NewDynamicPool[SpotLight](),
+
+		directionalLightOctree: spatial.NewOctree[*DirectionalLight](maxSceneSize, 15),
+		directionalLightPool:   datastruct.NewDynamicPool[DirectionalLight](),
 	}
 }
 
@@ -26,13 +43,19 @@ type Scene struct {
 	sky *Sky
 
 	meshOctree *spatial.Octree[*Mesh]
-	firstMesh  *Mesh
-	lastMesh   *Mesh
-	cachedMesh *Mesh
+	meshPool   datastruct.Pool[Mesh]
 
-	firstLight  *Light
-	lastLight   *Light
-	cachedLight *Light
+	ambientLightOctree *spatial.Octree[*AmbientLight]
+	ambientLightPool   datastruct.Pool[AmbientLight]
+
+	pointLightOctree *spatial.Octree[*PointLight]
+	pointLightPool   datastruct.Pool[PointLight]
+
+	spotLightOctree *spatial.Octree[*SpotLight]
+	spotLightPool   datastruct.Pool[SpotLight]
+
+	directionalLightOctree *spatial.Octree[*DirectionalLight]
+	directionalLightPool   datastruct.Pool[DirectionalLight]
 
 	activeCamera *Camera
 }
@@ -62,88 +85,34 @@ func (s *Scene) CreateCamera() *Camera {
 	return result
 }
 
-// CreateDirectionalLight creates a new directional light object to be
+// CreateAmbientLight creates a new AmbientLight object to be used
+// within this scene.
+func (s *Scene) CreateAmbientLightNew(info AmbientLightInfo) *AmbientLight {
+	return newAmbientLight(s, info)
+}
+
+// CreatePointLight creates a new PointLight object to be used
+// within this scene.
+func (s *Scene) CreatePointLight(info PointLightInfo) *PointLight {
+	return newPointLight(s, info)
+}
+
+// CreateSpotLight creates a new SpotLight object to be used
+// within this scene.
+func (s *Scene) CreateSpotLight(info SpotLightInfo) *SpotLight {
+	return newSpotLight(s, info)
+}
+
+// CreateDirectionalLight creates a new DirectionalLight object to be
 // used within this scene.
-func (s *Scene) CreateDirectionalLight() *Light {
-	var light *Light
-	if s.cachedLight != nil {
-		light = s.cachedLight
-		s.cachedLight = s.cachedLight.next
-	} else {
-		light = &Light{}
-	}
-	light.mode = LightModeDirectional
-	light.Node = *newNode()
-	light.scene = s
-	light.prev = nil
-	light.next = nil
-	light.intensity = sprec.NewVec3(1.0, 1.0, 1.0)
-	s.attachLight(light)
-	return light
-}
-
-// CreateAmbientLight creates a new ambient light object to be used
-// within this scene.
-func (s *Scene) CreateAmbientLight() *Light {
-	var light *Light
-	if s.cachedLight != nil {
-		light = s.cachedLight
-		s.cachedLight = s.cachedLight.next
-	} else {
-		light = &Light{}
-	}
-	light.mode = LightModeAmbient
-	light.Node = *newNode()
-	light.scene = s
-	light.prev = nil
-	light.next = nil
-	light.intensity = sprec.NewVec3(1.0, 1.0, 1.0)
-	s.attachLight(light)
-	return light
-}
-
-// CreatePointLight creates a new ambient light object to be used
-// within this scene.
-func (s *Scene) CreatePointLight() *Light {
-	var light *Light
-	if s.cachedLight != nil {
-		light = s.cachedLight
-		s.cachedLight = s.cachedLight.next
-	} else {
-		light = &Light{}
-	}
-	light.mode = LightModePoint
-	light.Node = *newNode()
-	light.scene = s
-	light.prev = nil
-	light.next = nil
-	light.intensity = sprec.NewVec3(1.0, 1.0, 1.0)
-	s.attachLight(light)
-	return light
+func (s *Scene) CreateDirectionalLight(info DirectionalLightInfo) *DirectionalLight {
+	return newDirectionalLight(s, info)
 }
 
 // CreateMesh creates a new mesh instance from the specified
 // template and places it in the scene.
 func (s *Scene) CreateMesh(info MeshInfo) *Mesh {
-	var mesh *Mesh
-	if s.cachedMesh != nil {
-		mesh = s.cachedMesh
-		s.cachedMesh = s.cachedMesh.next
-	} else {
-		mesh = &Mesh{}
-	}
-
-	definition := info.Definition
-	mesh.Node = *newNode()
-	mesh.item = s.meshOctree.CreateItem(mesh)
-	mesh.item.SetRadius(definition.boundingSphereRadius)
-	mesh.scene = s
-	mesh.prev = nil
-	mesh.next = nil
-	mesh.definition = definition
-	mesh.armature = info.Armature
-	s.attachMesh(mesh)
-	return mesh
+	return newMesh(s, info)
 }
 
 func (s *Scene) CreateArmature(info ArmatureInfo) *Armature {
@@ -177,79 +146,8 @@ func (s *Scene) RenderFramebuffer(framebuffer render.Framebuffer, viewport Viewp
 // Delete removes this scene and releases all
 // entities allocated for it.
 func (s *Scene) Delete() {
-	s.firstMesh = nil
-	s.lastMesh = nil
-	s.cachedMesh = nil
-
-	s.firstLight = nil
-	s.lastLight = nil
-	s.cachedLight = nil
-}
-
-func (s *Scene) attachMesh(mesh *Mesh) {
-	if s.firstMesh == nil {
-		s.firstMesh = mesh
-	}
-	if s.lastMesh != nil {
-		s.lastMesh.next = mesh
-		mesh.prev = s.lastMesh
-	}
-	mesh.next = nil
-	s.lastMesh = mesh
-}
-
-func (s *Scene) detachMesh(mesh *Mesh) {
-	if s.firstMesh == mesh {
-		s.firstMesh = mesh.next
-	}
-	if s.lastMesh == mesh {
-		s.lastMesh = mesh.prev
-	}
-	if mesh.next != nil {
-		mesh.next.prev = mesh.prev
-	}
-	if mesh.prev != nil {
-		mesh.prev.next = mesh.next
-	}
-	mesh.prev = nil
-	mesh.next = nil
-}
-
-func (s *Scene) cacheMesh(mesh *Mesh) {
-	mesh.next = s.cachedMesh
-	s.cachedMesh = mesh
-}
-
-func (s *Scene) attachLight(light *Light) {
-	if s.firstLight == nil {
-		s.firstLight = light
-	}
-	if s.lastLight != nil {
-		s.lastLight.next = light
-		light.prev = s.lastLight
-	}
-	light.next = nil
-	s.lastLight = light
-}
-
-func (s *Scene) detachLight(light *Light) {
-	if s.firstLight == light {
-		s.firstLight = light.next
-	}
-	if s.lastLight == light {
-		s.lastLight = light.prev
-	}
-	if light.next != nil {
-		light.next.prev = light.prev
-	}
-	if light.prev != nil {
-		light.prev.next = light.next
-	}
-	light.prev = nil
-	light.next = nil
-}
-
-func (s *Scene) cacheLight(light *Light) {
-	light.next = s.cachedLight
-	s.cachedLight = light
+	s.ambientLightPool = nil
+	s.pointLightPool = nil
+	s.spotLightPool = nil
+	s.directionalLightPool = nil
 }

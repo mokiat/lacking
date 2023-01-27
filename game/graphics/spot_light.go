@@ -8,24 +8,28 @@ import (
 	"github.com/mokiat/lacking/util/spatial"
 )
 
-// PointLightInfo contains the information needed to create a PointLight.
-type PointLightInfo struct {
-	Position  dprec.Vec3
-	EmitRange float64
-	EmitColor dprec.Vec3
+// SpotLightInfo contains the information needed to create a SpotLight.
+type SpotLightInfo struct {
+	Position           dprec.Vec3
+	EmitRange          float64
+	EmitOuterConeAngle float64
+	EmitInnerConeAngle float64
+	EmitColor          dprec.Vec3
 }
 
-func newPointLight(scene *Scene, info PointLightInfo) *PointLight {
-	light := scene.pointLightPool.Fetch()
+func newSpotLight(scene *Scene, info SpotLightInfo) *SpotLight {
+	light := scene.spotLightPool.Fetch()
 
 	light.scene = scene
-	light.item = scene.pointLightOctree.CreateItem(light)
+	light.item = scene.spotLightOctree.CreateItem(light)
 	light.item.SetPosition(info.Position)
 	light.item.SetRadius(info.EmitRange)
 
 	light.active = true
 	light.position = info.Position
 	light.emitRange = info.EmitRange
+	light.emitOuterConeAngle = info.EmitOuterConeAngle
+	light.emitInnerConeAngle = info.EmitInnerConeAngle
 	light.emitColor = info.EmitColor
 
 	light.matrix = sprec.IdentityMat4()
@@ -33,38 +37,40 @@ func newPointLight(scene *Scene, info PointLightInfo) *PointLight {
 	return light
 }
 
-// PointLight represents a light source that is positioned at a point in
-// space and emits light evenly in all directions up to a range.
-type PointLight struct {
+// SpotLight represents a light source that is positioned at a point in
+// space and emits a light cone in down the -Z axis up to a range.
+type SpotLight struct {
 	scene *Scene
-	item  *spatial.OctreeItem[*PointLight]
+	item  *spatial.OctreeItem[*SpotLight]
 
-	active    bool
-	position  dprec.Vec3
-	emitRange float64
-	emitColor dprec.Vec3
+	active             bool
+	position           dprec.Vec3
+	emitRange          float64
+	emitOuterConeAngle float64
+	emitInnerConeAngle float64
+	emitColor          dprec.Vec3
 
 	matrix      sprec.Mat4
 	matrixDirty bool
 }
 
 // Active returns whether this light will be applied.
-func (l *PointLight) Active() bool {
+func (l *SpotLight) Active() bool {
 	return l.active
 }
 
 // SetActive changes whether this light will be applied.
-func (l *PointLight) SetActive(active bool) {
+func (l *SpotLight) SetActive(active bool) {
 	l.active = active
 }
 
 // Position returns the location of this light source.
-func (l *PointLight) Position() dprec.Vec3 {
+func (l *SpotLight) Position() dprec.Vec3 {
 	return l.position
 }
 
 // SetPosition changes the position of this light source.
-func (l *PointLight) SetPosition(position dprec.Vec3) {
+func (l *SpotLight) SetPosition(position dprec.Vec3) {
 	if position != l.position {
 		l.position = position
 		l.item.SetPosition(l.position)
@@ -73,12 +79,12 @@ func (l *PointLight) SetPosition(position dprec.Vec3) {
 }
 
 // EmitRange returns the distance that this light source covers.
-func (l *PointLight) EmitRange() float64 {
+func (l *SpotLight) EmitRange() float64 {
 	return l.emitRange
 }
 
 // SetEmitRange changes the distance that this light source covers.
-func (l *PointLight) SetEmitRange(emitRange float64) {
+func (l *SpotLight) SetEmitRange(emitRange float64) {
 	if emitRange != l.emitRange {
 		l.emitRange = dprec.Max(0.0, emitRange)
 		l.item.SetRadius(l.emitRange)
@@ -87,28 +93,28 @@ func (l *PointLight) SetEmitRange(emitRange float64) {
 }
 
 // EmitColor returns the linear color of this light.
-func (l *PointLight) EmitColor() dprec.Vec3 {
+func (l *SpotLight) EmitColor() dprec.Vec3 {
 	return l.emitColor
 }
 
 // SetEmitColor changes the linear color of this light. The values
 // can be outside the [0.0, 1.0] range for higher intensity.
-func (l *PointLight) SetEmitColor(color dprec.Vec3) {
+func (l *SpotLight) SetEmitColor(color dprec.Vec3) {
 	l.emitColor = color
 }
 
 // Delete removes this light from the scene.
-func (l *PointLight) Delete() {
+func (l *SpotLight) Delete() {
 	if l.scene == nil {
-		panic(fmt.Errorf("point light already deleted"))
+		panic(fmt.Errorf("spot light already deleted"))
 	}
 	l.item.Delete()
 	l.item = nil
-	l.scene.pointLightPool.Restore(l)
+	l.scene.spotLightPool.Restore(l)
 	l.scene = nil
 }
 
-func (l *PointLight) gfxMatrix() sprec.Mat4 {
+func (l *SpotLight) gfxMatrix() sprec.Mat4 {
 	if l.matrixDirty {
 		l.matrix = sprec.Mat4Prod(
 			sprec.TranslationMat4(

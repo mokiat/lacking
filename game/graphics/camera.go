@@ -28,7 +28,7 @@ const (
 
 func newCamera(scene *Scene) *Camera {
 	return &Camera{
-		Node:              *newNode(),
+		Node:              newNode(),
 		fov:               sprec.Degrees(120),
 		fovMode:           FoVModeHorizontalPlus,
 		maxExposure:       10000.0,

@@ -53,9 +53,13 @@ func (s *Scene) Initialize(definition *SceneDefinition) {
 	}
 
 	if definition.reflectionTexture != nil && definition.refractionTexture != nil {
-		ambientLight := s.Graphics().CreateAmbientLight()
-		ambientLight.SetReflectionTexture(definition.reflectionTexture.gfxTexture)
-		ambientLight.SetRefractionTexture(definition.refractionTexture.gfxTexture)
+		s.Graphics().CreateAmbientLightNew(graphics.AmbientLightInfo{
+			ReflectionTexture: definition.reflectionTexture.gfxTexture,
+			RefractionTexture: definition.refractionTexture.gfxTexture,
+			Position:          dprec.ZeroVec3(),
+			InnerRadius:       25000.0,
+			OuterRadius:       25000.0, // FIXME
+		})
 	}
 
 	s.CreateModel(ModelInfo{
@@ -263,8 +267,11 @@ func (s *Scene) applyNodeToGraphics(node *Node) {
 	if camera := node.Camera(); camera != nil {
 		camera.SetMatrix(absMatrix)
 	}
-	if light := node.light; light != nil {
+	if light := node.directionalLight; light != nil {
 		light.SetMatrix(absMatrix)
+	}
+	if light := node.pointLight; light != nil {
+		light.SetPosition(absMatrix.Translation())
 	}
 	if armature := node.armature; armature != nil {
 		armature.SetBone(node.armatureBone, dtos.Mat4(absMatrix))
