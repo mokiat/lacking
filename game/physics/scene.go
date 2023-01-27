@@ -15,7 +15,7 @@ import (
 func newScene(engine *Engine, timestep time.Duration) *Scene {
 	return &Scene{
 		engine:     engine,
-		bodyOctree: spatial.NewOctree[*Body](32000.0, 9, 2_000_000),
+		bodyOctree: spatial.NewOctree[*Body](32000.0, 15),
 
 		dynamicBodies: make(map[*Body]struct{}),
 
@@ -373,6 +373,7 @@ func (s *Scene) runSimulation(elapsedSeconds float64) {
 
 func (s *Scene) applyForces() {
 	defer metrics.BeginRegion("physics:forces").End()
+
 	for body := range s.dynamicBodies {
 		body.resetAcceleration()
 		body.resetAngularAcceleration()
@@ -385,6 +386,21 @@ func (s *Scene) applyForces() {
 
 		angularDragForce := dprec.Vec3Prod(body.angularVelocity, -body.angularVelocity.Length()*s.windDensity*body.angularDragFactor)
 		body.applyTorque(angularDragForce)
+
+		if len(body.aerodynamicShapes) > 0 {
+			bodyTransform := shape.NewTransform(body.position, body.orientation)
+
+			for _, aerodynamicShape := range body.aerodynamicShapes {
+				aerodynamicShape = aerodynamicShape.Transformed(bodyTransform)
+				relativeWindSpeed := dprec.QuatVec3Rotation(dprec.InverseQuat(aerodynamicShape.Rotation()), deltaWindVelocity)
+
+				// TODO: Apply at offset
+				force := aerodynamicShape.Shape().Force(relativeWindSpeed)
+				absoluteForce := dprec.QuatVec3Rotation(aerodynamicShape.Rotation(), force)
+				body.applyForce(absoluteForce)
+				// body.applyOffsetForce(absoluteForce, aerodynamicShape.Position())
+			}
+		}
 	}
 
 	// TODO: Apply custom force fields
