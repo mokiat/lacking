@@ -26,6 +26,34 @@ func (i Intersection) Flipped() Intersection {
 	return i
 }
 
+// IntersectionCollection represents a data structure that can hold
+// intersections.
+type IntersectionCollection interface {
+	AddIntersection(intersection Intersection)
+}
+
+func NewLastIntersectionCollection() *LastIntersectionCollection {
+	return &LastIntersectionCollection{}
+}
+
+type LastIntersectionCollection struct {
+	intersection    Intersection
+	hasIntersection bool
+}
+
+func (c *LastIntersectionCollection) Reset() {
+	c.hasIntersection = false
+}
+
+func (c *LastIntersectionCollection) AddIntersection(intersection Intersection) {
+	c.intersection = intersection
+	c.hasIntersection = true
+}
+
+func (c *LastIntersectionCollection) Intersection() (Intersection, bool) {
+	return c.intersection, c.hasIntersection
+}
+
 // NewIntersectionResultSet creates a new IntersectionResultSet instance with
 // the specified initial capacity. The set is allowed to grow past the
 // specified capacity.
@@ -47,7 +75,7 @@ func (s *IntersectionResultSet) Reset() {
 }
 
 // Add adds a new Intersection to this set.
-func (s *IntersectionResultSet) Add(intersection Intersection) {
+func (s *IntersectionResultSet) AddIntersection(intersection Intersection) {
 	s.intersections = append(s.intersections, intersection)
 }
 
@@ -64,7 +92,7 @@ func (s *IntersectionResultSet) Intersections() []Intersection {
 
 // CheckIntersectionLineWithMesh checks if a StaticLine intersects with a
 // StaticMesh shape.
-func CheckIntersectionLineWithMesh(line StaticLine, mesh Placement[StaticMesh], resultSet *IntersectionResultSet) {
+func CheckIntersectionLineWithMesh(line StaticLine, mesh Placement[StaticMesh], resultSet IntersectionCollection) {
 	for _, triangle := range mesh.shape.Triangles() {
 		heightA := dprec.Vec3Dot(triangle.Normal(), dprec.Vec3Diff(dprec.Vec3(line.A()), dprec.Vec3(triangle.A())))
 		heightB := dprec.Vec3Dot(triangle.Normal(), dprec.Vec3Diff(dprec.Vec3(line.B()), dprec.Vec3(triangle.A())))
@@ -97,21 +125,21 @@ func CheckIntersectionLineWithMesh(line StaticLine, mesh Placement[StaticMesh], 
 }
 
 // CheckIntersectionSphereWithSphere checks if two StaticSphere shapes intersect.
-func CheckIntersectionSphereWithSphere(first, second Placement[StaticSphere], resultSet *IntersectionResultSet) {
+func CheckIntersectionSphereWithSphere(first, second Placement[StaticSphere], resultSet IntersectionCollection) {
 	if isIntersectionPossible(first, second) {
 		checkIntersectionSphereWithSphere(first, second, resultSet)
 	}
 }
 
 // CheckIntersectionBoxWithBox checks if two StaticBox shapes intersect.
-func CheckIntersectionBoxWithBox(first, second Placement[StaticBox], resultSet *IntersectionResultSet) {
+func CheckIntersectionBoxWithBox(first, second Placement[StaticBox], resultSet IntersectionCollection) {
 	if isIntersectionPossible(first, second) {
 		checkIntersectionBoxWithBox(first, second, resultSet)
 	}
 }
 
 // CheckIntersectionMeshWithMesh checks if two StaticMesh shapes intersect.
-func CheckIntersectionMeshWithMesh(first, second Placement[StaticMesh], resultSet *IntersectionResultSet) {
+func CheckIntersectionMeshWithMesh(first, second Placement[StaticMesh], resultSet IntersectionCollection) {
 	if isIntersectionPossible(first, second) {
 		checkIntersectionMeshWithMesh(first, second, resultSet)
 	}
@@ -119,7 +147,7 @@ func CheckIntersectionMeshWithMesh(first, second Placement[StaticMesh], resultSe
 
 // CheckIntersectionSphereWithBox checks if a StaticSphere shape intersects with
 // a StaticBox shape.
-func CheckIntersectionSphereWithBox(first Placement[StaticSphere], second Placement[StaticBox], resultSet *IntersectionResultSet) {
+func CheckIntersectionSphereWithBox(first Placement[StaticSphere], second Placement[StaticBox], resultSet IntersectionCollection) {
 	if isIntersectionPossible(first, second) {
 		checkIntersectionSphereWithBox(first, second, false, resultSet)
 	}
@@ -127,7 +155,7 @@ func CheckIntersectionSphereWithBox(first Placement[StaticSphere], second Placem
 
 // CheckIntersectionBoxWithSphere checks if a StaticBox shape intersects with
 // a StaticSphere shape.
-func CheckIntersectionBoxWithSphere(first Placement[StaticBox], second Placement[StaticSphere], resultSet *IntersectionResultSet) {
+func CheckIntersectionBoxWithSphere(first Placement[StaticBox], second Placement[StaticSphere], resultSet IntersectionCollection) {
 	if isIntersectionPossible(first, second) {
 		checkIntersectionSphereWithBox(second, first, true, resultSet)
 	}
@@ -135,7 +163,7 @@ func CheckIntersectionBoxWithSphere(first Placement[StaticBox], second Placement
 
 // CheckIntersectionSphereWithMesh checks if a StaticSphere shape intersects with
 // a StaticMesh shape.
-func CheckIntersectionSphereWithMesh(first Placement[StaticSphere], second Placement[StaticMesh], resultSet *IntersectionResultSet) {
+func CheckIntersectionSphereWithMesh(first Placement[StaticSphere], second Placement[StaticMesh], resultSet IntersectionCollection) {
 	if isIntersectionPossible(first, second) {
 		checkIntersectionSphereWithMesh(first, second, false, resultSet)
 	}
@@ -143,7 +171,7 @@ func CheckIntersectionSphereWithMesh(first Placement[StaticSphere], second Place
 
 // CheckIntersectionMeshWithSphere checks if a StaticMesh shape intersects with
 // a StaticSphere shape.
-func CheckIntersectionMeshWithSphere(first Placement[StaticMesh], second Placement[StaticSphere], resultSet *IntersectionResultSet) {
+func CheckIntersectionMeshWithSphere(first Placement[StaticMesh], second Placement[StaticSphere], resultSet IntersectionCollection) {
 	if isIntersectionPossible(first, second) {
 		checkIntersectionSphereWithMesh(second, first, true, resultSet)
 	}
@@ -151,7 +179,7 @@ func CheckIntersectionMeshWithSphere(first Placement[StaticMesh], second Placeme
 
 // CheckIntersectionBoxWithMesh checks if a StaticBox shape intersects with
 // a StaticMesh shape.
-func CheckIntersectionBoxWithMesh(first Placement[StaticBox], second Placement[StaticMesh], resultSet *IntersectionResultSet) {
+func CheckIntersectionBoxWithMesh(first Placement[StaticBox], second Placement[StaticMesh], resultSet IntersectionCollection) {
 	if isIntersectionPossible(first, second) {
 		checkIntersectionBoxWithMesh(first, second, false, resultSet)
 	}
@@ -159,7 +187,7 @@ func CheckIntersectionBoxWithMesh(first Placement[StaticBox], second Placement[S
 
 // CheckIntersectionMeshWithBox checks if a StaticMesh shape intersects with
 // a StaticBox shape.
-func CheckIntersectionMeshWithBox(first Placement[StaticMesh], second Placement[StaticBox], resultSet *IntersectionResultSet) {
+func CheckIntersectionMeshWithBox(first Placement[StaticMesh], second Placement[StaticBox], resultSet IntersectionCollection) {
 	if isIntersectionPossible(first, second) {
 		checkIntersectionBoxWithMesh(second, first, true, resultSet)
 	}
@@ -169,7 +197,7 @@ func CheckIntersectionMeshWithBox(first Placement[StaticMesh], second Placement[
 //
 // If you know the types of the shapes, you should use the specific Check
 // methods instead.
-func CheckIntersection(first, second Placement[Shape], resultSet *IntersectionResultSet) {
+func CheckIntersection(first, second Placement[Shape], resultSet IntersectionCollection) {
 	if !isIntersectionPossible(first, second) {
 		return
 	}
@@ -194,15 +222,15 @@ func isIntersectionPossible[A, B Shape](first Placement[A], second Placement[B])
 
 // addIntersection is a helper function that adds an intersection to a result
 // set and can flip it beforehand.
-func addIntersection(resultSet *IntersectionResultSet, flipped bool, intersection Intersection) {
+func addIntersection(resultSet IntersectionCollection, flipped bool, intersection Intersection) {
 	if flipped {
-		resultSet.Add(intersection.Flipped())
+		resultSet.AddIntersection(intersection.Flipped())
 	} else {
-		resultSet.Add(intersection)
+		resultSet.AddIntersection(intersection)
 	}
 }
 
-func checkIntersectionSphereWithSphere(first, second Placement[StaticSphere], resultSet *IntersectionResultSet) {
+func checkIntersectionSphereWithSphere(first, second Placement[StaticSphere], resultSet IntersectionCollection) {
 	firstPosition := first.Position()
 	firstRadius := first.Shape().Radius()
 
@@ -236,7 +264,11 @@ var (
 	boxTriangles = make([]StaticTriangle, 2*6)
 )
 
-func checkIntersectionBoxWithBox(first, second Placement[StaticBox], resultSet *IntersectionResultSet) {
+func checkIntersectionBoxWithBox(first, second Placement[StaticBox], resultSet IntersectionCollection) {
+	if true {
+		return // NOT YET STABLE
+	}
+
 	halfWidth := second.shape.HalfWidth()
 	halfHeight := second.shape.HalfHeight()
 	halfLength := second.shape.HalfLength()
@@ -317,11 +349,11 @@ func checkIntersectionBoxWithBox(first, second Placement[StaticBox], resultSet *
 	checkIntersectionBoxWithMesh(first, secondAsMesh, false, resultSet)
 }
 
-func checkIntersectionMeshWithMesh(first, second Placement[StaticMesh], resultSet *IntersectionResultSet) {
+func checkIntersectionMeshWithMesh(first, second Placement[StaticMesh], resultSet IntersectionCollection) {
 	// TODO
 }
 
-func checkIntersectionSphereWithBox(first Placement[StaticSphere], second Placement[StaticBox], flipped bool, resultSet *IntersectionResultSet) {
+func checkIntersectionSphereWithBox(first Placement[StaticSphere], second Placement[StaticBox], flipped bool, resultSet IntersectionCollection) {
 	// Note: Storing everything in temp variables actually yields a performance boost
 	spherePosition := first.Position()
 	sphereShape := first.Shape()
@@ -696,13 +728,23 @@ func checkIntersectionSphereWithBox(first Placement[StaticSphere], second Placem
 	}
 }
 
-func checkIntersectionSphereWithMesh(sphere Placement[StaticSphere], mesh Placement[StaticMesh], flipped bool, resultSet *IntersectionResultSet) {
+func checkIntersectionSphereWithMesh(sphere Placement[StaticSphere], mesh Placement[StaticMesh], flipped bool, resultSet IntersectionCollection) {
+	var worstIntersection Intersection
+
+	result := NewLastIntersectionCollection()
 	for _, triangle := range mesh.Shape().Triangles() {
-		checkIntersectionSphereWithTriangle(sphere, triangle.Transformed(mesh.Transform), flipped, resultSet)
+		checkIntersectionSphereWithTriangle(sphere, triangle.Transformed(mesh.Transform), flipped, result)
+		intersection, ok := result.Intersection()
+		if ok && (intersection.Depth > worstIntersection.Depth) {
+			worstIntersection = intersection
+		}
+	}
+	if worstIntersection.Depth > 0 {
+		addIntersection(resultSet, flipped, worstIntersection)
 	}
 }
 
-func checkIntersectionSphereWithTriangle(sphere Placement[StaticSphere], triangle StaticTriangle, flipped bool, resultSet *IntersectionResultSet) {
+func checkIntersectionSphereWithTriangle(sphere Placement[StaticSphere], triangle StaticTriangle, flipped bool, resultSet IntersectionCollection) {
 	spherePosition := sphere.Position()
 	sphereRadius := sphere.Shape().Radius()
 	triangleA := dprec.Vec3(triangle.A())
@@ -856,7 +898,7 @@ func checkIntersectionSphereWithTriangle(sphere Placement[StaticSphere], triangl
 	}
 }
 
-func checkIntersectionBoxWithMesh(box Placement[StaticBox], mesh Placement[StaticMesh], flipped bool, resultSet *IntersectionResultSet) {
+func checkIntersectionBoxWithMesh(box Placement[StaticBox], mesh Placement[StaticMesh], flipped bool, resultSet IntersectionCollection) {
 	minX := dprec.Vec3Prod(box.Rotation().OrientationX(), -box.Shape().HalfWidth())
 	maxX := dprec.Vec3Prod(box.Rotation().OrientationX(), box.Shape().HalfWidth())
 	minY := dprec.Vec3Prod(box.Rotation().OrientationY(), -box.Shape().HalfHeight())
@@ -922,7 +964,7 @@ func checkIntersectionBoxWithMesh(box Placement[StaticBox], mesh Placement[Stati
 	}
 }
 
-func checkIntersectionSphereWithUnknown(first Placement[StaticSphere], second Placement[Shape], resultSet *IntersectionResultSet) {
+func checkIntersectionSphereWithUnknown(first Placement[StaticSphere], second Placement[Shape], resultSet IntersectionCollection) {
 	switch secondShape := second.shape.(type) {
 	case StaticSphere:
 		checkIntersectionSphereWithSphere(first, NewPlacement(second.Transform, secondShape), resultSet)
@@ -933,7 +975,7 @@ func checkIntersectionSphereWithUnknown(first Placement[StaticSphere], second Pl
 	}
 }
 
-func checkIntersectionBoxWithUnknown(first Placement[StaticBox], second Placement[Shape], resultSet *IntersectionResultSet) {
+func checkIntersectionBoxWithUnknown(first Placement[StaticBox], second Placement[Shape], resultSet IntersectionCollection) {
 	switch secondShape := second.shape.(type) {
 	case StaticSphere:
 		checkIntersectionSphereWithBox(NewPlacement(second.Transform, secondShape), first, true, resultSet)
@@ -944,7 +986,7 @@ func checkIntersectionBoxWithUnknown(first Placement[StaticBox], second Placemen
 	}
 }
 
-func checkIntersectionMeshWithUnknown(first Placement[StaticMesh], second Placement[Shape], resultSet *IntersectionResultSet) {
+func checkIntersectionMeshWithUnknown(first Placement[StaticMesh], second Placement[Shape], resultSet IntersectionCollection) {
 	switch secondShape := second.shape.(type) {
 	case StaticSphere:
 		checkIntersectionSphereWithMesh(NewPlacement(second.Transform, secondShape), first, true, resultSet)
