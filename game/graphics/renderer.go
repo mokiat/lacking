@@ -36,8 +36,12 @@ func newRenderer(api render.API, shaders ShaderCollection) *sceneRenderer {
 
 		visibleMeshes: spatial.NewVisitorBucket[*Mesh](2_000_000),
 
-		ambientLightBucket:     spatial.NewVisitorBucket[*AmbientLight](16),
-		pointLightBucket:       spatial.NewVisitorBucket[*PointLight](16),
+		ambientLightBucket: spatial.NewVisitorBucket[*AmbientLight](16),
+
+		pointLightBucket: spatial.NewVisitorBucket[*PointLight](16),
+
+		spotLightBucket: spatial.NewVisitorBucket[*SpotLight](16),
+
 		directionalLightBucket: spatial.NewVisitorBucket[*DirectionalLight](16),
 	}
 }
@@ -53,6 +57,7 @@ type sceneRenderer struct {
 	quadShape   *internal.Shape
 	cubeShape   *internal.Shape
 	sphereShape *internal.Shape
+	coneShape   *internal.Shape
 
 	geometryAlbedoTexture render.Texture
 	geometryNormalTexture render.Texture
@@ -78,15 +83,21 @@ type sceneRenderer struct {
 	exposureTarget          float32
 	exposureUpdateTimestamp time.Time
 
-	postprocessingPresentation *internal.PostprocessingPresentation
-	postprocessingPipeline     render.Pipeline
+	ambientLightPresentation *internal.LightingPresentation
+	ambientLightPipeline     render.Pipeline
+	ambientLightBucket       *spatial.VisitorBucket[*AmbientLight]
+
+	pointLightPresentation *internal.LightingPresentation
+	pointLightPipeline     render.Pipeline
+	pointLightBucket       *spatial.VisitorBucket[*PointLight]
+
+	spotLightPresentation *internal.LightingPresentation
+	spotLightPipeline     render.Pipeline
+	spotLightBucket       *spatial.VisitorBucket[*SpotLight]
 
 	directionalLightPresentation *internal.LightingPresentation
 	directionalLightPipeline     render.Pipeline
-	ambientLightPresentation     *internal.LightingPresentation
-	ambientLightPipeline         render.Pipeline
-	pointLightPresentation       *internal.LightingPresentation
-	pointLightPipeline           render.Pipeline
+	directionalLightBucket       *spatial.VisitorBucket[*DirectionalLight]
 
 	skyboxPresentation   *internal.SkyboxPresentation
 	skyboxPipeline       render.Pipeline
@@ -98,6 +109,9 @@ type sceneRenderer struct {
 	debugVertexBuffer render.Buffer
 	debugVertexArray  render.VertexArray
 	debugPipeline     render.Pipeline
+
+	postprocessingPresentation *internal.PostprocessingPresentation
+	postprocessingPipeline     render.Pipeline
 
 	cameraUniformBufferData blob.Buffer
 	cameraUniformBuffer     render.Buffer
@@ -113,10 +127,6 @@ type sceneRenderer struct {
 
 	visibleMeshes *spatial.VisitorBucket[*Mesh]
 	renderItems   []renderItem
-
-	ambientLightBucket     *spatial.VisitorBucket[*AmbientLight]
-	pointLightBucket       *spatial.VisitorBucket[*PointLight]
-	directionalLightBucket *spatial.VisitorBucket[*DirectionalLight]
 }
 
 func (r *sceneRenderer) createFramebuffers(width, height int) {
@@ -196,6 +206,7 @@ func (r *sceneRenderer) Allocate() {
 	r.quadShape = internal.CreateQuadShape(r.api)
 	r.cubeShape = internal.CreateCubeShape(r.api)
 	r.sphereShape = internal.CreateSphereShape(r.api)
+	r.coneShape = internal.CreateConeShape(r.api)
 
 	defaultShadowDepth := float32(1.0)
 	r.shadowDepthTexture = r.api.CreateDepthTexture2D(render.DepthTexture2DInfo{
@@ -316,6 +327,7 @@ func (r *sceneRenderer) Allocate() {
 		BlendOpColor:                render.BlendOperationAdd,
 		BlendOpAlpha:                render.BlendOperationAdd,
 	})
+
 	pointLightShaders := r.shaders.PointLightSet()
 	r.pointLightPresentation = internal.NewLightingPresentation(r.api,
 		pointLightShaders.VertexShader,
@@ -325,6 +337,32 @@ func (r *sceneRenderer) Allocate() {
 		Program:                     r.pointLightPresentation.Program,
 		VertexArray:                 r.sphereShape.VertexArray(),
 		Topology:                    r.sphereShape.Topology(),
+		Culling:                     render.CullModeFront,
+		FrontFace:                   render.FaceOrientationCCW,
+		DepthTest:                   false,
+		DepthWrite:                  false,
+		DepthComparison:             render.ComparisonAlways,
+		StencilTest:                 false,
+		ColorWrite:                  render.ColorMaskTrue,
+		BlendEnabled:                true,
+		BlendColor:                  [4]float32{0.0, 0.0, 0.0, 0.0},
+		BlendSourceColorFactor:      render.BlendFactorOne,
+		BlendSourceAlphaFactor:      render.BlendFactorOne,
+		BlendDestinationColorFactor: render.BlendFactorOne,
+		BlendDestinationAlphaFactor: render.BlendFactorZero,
+		BlendOpColor:                render.BlendOperationAdd,
+		BlendOpAlpha:                render.BlendOperationAdd,
+	})
+
+	spotLightShaders := r.shaders.SpotLightSet()
+	r.spotLightPresentation = internal.NewLightingPresentation(r.api,
+		spotLightShaders.VertexShader,
+		spotLightShaders.FragmentShader,
+	)
+	r.spotLightPipeline = r.api.CreatePipeline(render.PipelineInfo{
+		Program:                     r.spotLightPresentation.Program,
+		VertexArray:                 r.coneShape.VertexArray(),
+		Topology:                    r.coneShape.Topology(),
 		Culling:                     render.CullModeFront,
 		FrontFace:                   render.FaceOrientationCCW,
 		DepthTest:                   false,
@@ -461,6 +499,7 @@ func (r *sceneRenderer) Release() {
 	defer r.quadShape.Release()
 	defer r.cubeShape.Release()
 	defer r.sphereShape.Release()
+	defer r.coneShape.Release()
 
 	defer r.shadowDepthTexture.Release()
 	defer r.shadowFramebuffer.Release()
@@ -471,18 +510,25 @@ func (r *sceneRenderer) Release() {
 	defer r.exposurePipeline.Release()
 	defer r.exposureBuffer.Release()
 
-	defer r.postprocessingPresentation.Delete()
-	defer r.postprocessingPipeline.Release()
+	defer r.ambientLightPresentation.Delete()
+	defer r.ambientLightPipeline.Release()
+
+	defer r.pointLightPresentation.Delete()
+	defer r.pointLightPipeline.Release()
+
+	defer r.spotLightPresentation.Delete()
+	defer r.spotLightPipeline.Release()
 
 	defer r.directionalLightPresentation.Delete()
 	defer r.directionalLightPipeline.Release()
-	defer r.ambientLightPresentation.Delete()
-	defer r.ambientLightPipeline.Release()
 
 	defer r.skyboxPresentation.Delete()
 	defer r.skyboxPipeline.Release()
 	defer r.skycolorPresentation.Delete()
 	defer r.skycolorPipeline.Release()
+
+	defer r.postprocessingPresentation.Delete()
+	defer r.postprocessingPipeline.Release()
 
 	defer r.cameraUniformBuffer.Release()
 	defer r.modelUniformBuffer.Release()
@@ -941,6 +987,15 @@ func (r *sceneRenderer) renderLightingPass(ctx renderCtx) {
 		}
 	}
 
+	// TODO: Use batching (instancing) when rendering spot lights
+	r.spotLightBucket.Reset()
+	ctx.scene.spotLightOctree.VisitHexahedronRegion(&ctx.frustum, r.spotLightBucket)
+	for _, spotLight := range r.spotLightBucket.Items() {
+		if spotLight.active {
+			r.renderSpotLight(ctx, spotLight)
+		}
+	}
+
 	r.directionalLightBucket.Reset()
 	ctx.scene.directionalLightOctree.VisitHexahedronRegion(&ctx.frustum, r.directionalLightBucket)
 	for _, directionalLight := range r.directionalLightBucket.Items() {
@@ -1011,6 +1066,30 @@ func (r *sceneRenderer) renderPointLight(ctx renderCtx, light *PointLight) {
 	r.commands.TextureUnit(internal.TextureBindingLightingFramebufferColor1, r.geometryNormalTexture)
 	r.commands.TextureUnit(internal.TextureBindingLightingFramebufferDepth, r.geometryDepthTexture)
 	r.commands.DrawIndexed(0, r.sphereShape.IndexCount(), 1)
+}
+
+func (r *sceneRenderer) renderSpotLight(ctx renderCtx, light *SpotLight) {
+	projectionMatrix := sprec.IdentityMat4()
+	lightMatrix := light.gfxMatrix()
+	viewMatrix := sprec.InverseMat4(lightMatrix)
+
+	lightPlotter := blob.NewPlotter(r.lightUniformBufferData)
+	lightPlotter.PlotSPMat4(projectionMatrix)
+	lightPlotter.PlotSPMat4(viewMatrix)
+	lightPlotter.PlotSPMat4(lightMatrix)
+
+	r.commands.BindPipeline(r.spotLightPipeline)
+	r.commands.UpdateBufferData(r.lightUniformBuffer, render.BufferUpdateInfo{
+		Data: r.lightUniformBufferData,
+	})
+	// TODO: Move to lighting uniform buffer
+	r.commands.Uniform3f(r.spotLightPresentation.LightIntensity, dtos.Vec3(light.emitColor).Array())
+	r.commands.Uniform1f(r.spotLightPresentation.LightRange, float32(light.emitRange))
+
+	r.commands.TextureUnit(internal.TextureBindingLightingFramebufferColor0, r.geometryAlbedoTexture)
+	r.commands.TextureUnit(internal.TextureBindingLightingFramebufferColor1, r.geometryNormalTexture)
+	r.commands.TextureUnit(internal.TextureBindingLightingFramebufferDepth, r.geometryDepthTexture)
+	r.commands.DrawIndexed(0, r.coneShape.IndexCount(), 1)
 }
 
 func (r *sceneRenderer) renderForwardPass(ctx renderCtx) {

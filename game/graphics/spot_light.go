@@ -12,8 +12,8 @@ import (
 type SpotLightInfo struct {
 	Position           dprec.Vec3
 	EmitRange          float64
-	EmitOuterConeAngle float64
-	EmitInnerConeAngle float64
+	EmitOuterConeAngle dprec.Angle
+	EmitInnerConeAngle dprec.Angle
 	EmitColor          dprec.Vec3
 }
 
@@ -46,8 +46,8 @@ type SpotLight struct {
 	active             bool
 	position           dprec.Vec3
 	emitRange          float64
-	emitOuterConeAngle float64
-	emitInnerConeAngle float64
+	emitOuterConeAngle dprec.Angle
+	emitInnerConeAngle dprec.Angle
 	emitColor          dprec.Vec3
 
 	matrix      sprec.Mat4

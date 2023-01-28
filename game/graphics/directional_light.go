@@ -1,6 +1,8 @@
 package graphics
 
 import (
+	"fmt"
+
 	"github.com/mokiat/gomath/dprec"
 	"github.com/mokiat/gomath/dtos"
 	"github.com/mokiat/gomath/sprec"
@@ -53,6 +55,17 @@ func (l *DirectionalLight) SetMatrix(matrix dprec.Mat4) { // FIXME
 	l.item.SetPosition(t)
 	l.orientation = r
 	l.matrixDirty = true
+}
+
+// Delete removes this light from the scene.
+func (l *DirectionalLight) Delete() {
+	if l.scene == nil {
+		panic(fmt.Errorf("directional light already deleted"))
+	}
+	l.item.Delete()
+	l.item = nil
+	l.scene.directionalLightPool.Restore(l)
+	l.scene = nil
 }
 
 func (l *DirectionalLight) gfxMatrix() sprec.Mat4 {
