@@ -95,6 +95,8 @@ type LightingPresentation struct {
 	LightDirection render.UniformLocation
 	LightIntensity render.UniformLocation
 	LightRange     render.UniformLocation
+	LightOuterCos  render.UniformLocation
+	LightInnerCos  render.UniformLocation
 }
 
 func NewLightingPresentation(api render.API, vertexSrc, fragmentSrc string) *LightingPresentation {
@@ -117,6 +119,8 @@ func NewLightingPresentation(api render.API, vertexSrc, fragmentSrc string) *Lig
 		LightDirection: program.UniformLocation("lightDirectionIn"),
 		LightIntensity: program.UniformLocation("lightIntensityIn"),
 		LightRange:     program.UniformLocation("lightRangeIn"),
+		LightOuterCos:  program.UniformLocation("lightOuterCosIn"),
+		LightInnerCos:  program.UniformLocation("lightInnerCosIn"),
 	}
 }
 

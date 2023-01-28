@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/mokiat/gomath/dprec"
+	"github.com/mokiat/gomath/dtos"
 	"github.com/mokiat/gomath/sprec"
 	"github.com/mokiat/lacking/util/spatial"
 )
@@ -11,6 +12,7 @@ import (
 // SpotLightInfo contains the information needed to create a SpotLight.
 type SpotLightInfo struct {
 	Position           dprec.Vec3
+	Rotation           dprec.Quat
 	EmitRange          float64
 	EmitOuterConeAngle dprec.Angle
 	EmitInnerConeAngle dprec.Angle
@@ -27,6 +29,7 @@ func newSpotLight(scene *Scene, info SpotLightInfo) *SpotLight {
 
 	light.active = true
 	light.position = info.Position
+	light.rotation = info.Rotation
 	light.emitRange = info.EmitRange
 	light.emitOuterConeAngle = info.EmitOuterConeAngle
 	light.emitInnerConeAngle = info.EmitInnerConeAngle
@@ -45,6 +48,7 @@ type SpotLight struct {
 
 	active             bool
 	position           dprec.Vec3
+	rotation           dprec.Quat
 	emitRange          float64
 	emitOuterConeAngle dprec.Angle
 	emitInnerConeAngle dprec.Angle
@@ -74,6 +78,14 @@ func (l *SpotLight) SetPosition(position dprec.Vec3) {
 	if position != l.position {
 		l.position = position
 		l.item.SetPosition(l.position)
+		l.matrixDirty = true
+	}
+}
+
+func (l *SpotLight) SetRotation(rotation dprec.Quat) {
+	if rotation != l.rotation {
+		l.rotation = rotation
+		// TODO: Recalculate item position, once it is at offset
 		l.matrixDirty = true
 	}
 }
@@ -114,19 +126,27 @@ func (l *SpotLight) Delete() {
 	l.scene = nil
 }
 
+func (l *SpotLight) SetMatrix(matrix dprec.Mat4) {
+	t, r, _ := matrix.TRS()
+	l.SetPosition(t)
+	l.SetRotation(r)
+}
+
 func (l *SpotLight) gfxMatrix() sprec.Mat4 {
 	if l.matrixDirty {
-		l.matrix = sprec.Mat4Prod(
-			sprec.TranslationMat4(
-				float32(l.position.X),
-				float32(l.position.Y),
-				float32(l.position.Z),
-			),
-			sprec.ScaleMat4(
-				float32(l.emitRange),
-				float32(l.emitRange),
-				float32(l.emitRange),
-			),
+		distScale := l.emitRange
+		flatScale := dprec.Tan(l.emitOuterConeAngle) * distScale
+
+		rotation := dtos.Quat(dprec.QuatProd(
+			l.rotation,
+			dprec.RotationQuat(dprec.Degrees(90), dprec.BasisXVec3()),
+		))
+		scale := sprec.NewVec3(float32(flatScale), float32(distScale), float32(flatScale))
+
+		l.matrix = sprec.TRSMat4(
+			dtos.Vec3(l.position),
+			rotation,
+			scale,
 		)
 		l.matrixDirty = false
 	}

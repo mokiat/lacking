@@ -1084,6 +1084,8 @@ func (r *sceneRenderer) renderSpotLight(ctx renderCtx, light *SpotLight) {
 	})
 	// TODO: Move to lighting uniform buffer
 	r.commands.Uniform3f(r.spotLightPresentation.LightIntensity, dtos.Vec3(light.emitColor).Array())
+	r.commands.Uniform1f(r.spotLightPresentation.LightOuterCos, float32(dprec.Cos(light.emitOuterConeAngle)))
+	r.commands.Uniform1f(r.spotLightPresentation.LightInnerCos, float32(dprec.Cos(light.emitInnerConeAngle)))
 	r.commands.Uniform1f(r.spotLightPresentation.LightRange, float32(light.emitRange))
 
 	r.commands.TextureUnit(internal.TextureBindingLightingFramebufferColor0, r.geometryAlbedoTexture)
