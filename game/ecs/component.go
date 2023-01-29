@@ -29,6 +29,13 @@ type Component interface {
 	TypeID() ComponentTypeID
 }
 
+// AttachComponent is a helper generic function that allows one to attach
+// a component to an Entity without dealing with type identifiers.
+func AttachComponent[T Component](entity *Entity, component T) {
+	typeID := component.TypeID()
+	entity.SetComponent(typeID, component)
+}
+
 // FetchComponent is a helper generic function that allows one to check whether
 // a given Entity has a particular component and if it does, the component will
 // be injected into the specified pointer target.
