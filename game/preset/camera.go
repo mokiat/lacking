@@ -7,14 +7,20 @@ import (
 	"github.com/mokiat/lacking/ui"
 )
 
-func NewYawPitchCameraSystem(ecsScene *ecs.Scene) *YawPitchCameraSystem {
+type GamepadStateProvider interface {
+	GamepadState(index int) (app.GamepadState, bool)
+}
+
+func NewYawPitchCameraSystem(ecsScene *ecs.Scene, gamepadProvider GamepadStateProvider) *YawPitchCameraSystem {
 	return &YawPitchCameraSystem{
-		ecsScene: ecsScene,
+		ecsScene:        ecsScene,
+		gamepadProvider: gamepadProvider,
 	}
 }
 
 type YawPitchCameraSystem struct {
-	ecsScene *ecs.Scene
+	ecsScene        *ecs.Scene
+	gamepadProvider GamepadStateProvider
 
 	translationSpeed float64
 	rotationSpeed    dprec.Angle
@@ -45,7 +51,7 @@ type YawPitchCameraSystem struct {
 }
 
 func (s *YawPitchCameraSystem) UseDefaults() {
-	s.translationSpeed = 15.0
+	s.translationSpeed = 20.0
 	s.rotationSpeed = dprec.Degrees(120.0)
 
 	s.keyMoveForward = ui.KeyCodeW
@@ -64,7 +70,7 @@ func (s *YawPitchCameraSystem) OnKeyboardEvent(event ui.KeyboardEvent) bool {
 	if !s.hasKeyboardConsumer {
 		return false
 	}
-	active := event.Type != app.KeyboardEventTypeKeyUp
+	active := event.Type != ui.KeyboardEventTypeKeyUp
 	switch event.Code {
 	case s.keyMoveForward:
 		s.isMoveForward = active
@@ -117,6 +123,11 @@ func (s *YawPitchCameraSystem) Update(elapsedSeconds float64) {
 		if controlled.Inputs.Is(ControlInputKeyboard) {
 			hasKeyboardConsumer = true
 			s.updateKeyboard(elapsedSeconds, entity)
+		}
+		if controlled.Inputs.Is(ControlInputGamepad0) {
+			if gamepad, ok := s.gamepadProvider.GamepadState(0); ok {
+				s.updateGamepad(elapsedSeconds, gamepad, entity)
+			}
 		}
 	}
 	s.hasKeyboardConsumer = hasKeyboardConsumer
@@ -173,6 +184,45 @@ func (s *YawPitchCameraSystem) updateKeyboard(elapsedSeconds float64, entity *ec
 		deltaTranslation = dprec.ZeroVec3()
 	} else {
 		deltaTranslation = dprec.ResizedVec3(deltaTranslation, s.translationSpeed*elapsedSeconds)
+	}
+	deltaTranslation = dprec.QuatVec3Rotation(yawRotation, deltaTranslation)
+
+	nodeComp.Node.SetAbsoluteMatrix(dprec.TRSMat4(
+		dprec.Vec3Sum(oldTranslation, deltaTranslation),
+		dprec.QuatProd(yawRotation, pitchRotation),
+		oldScale,
+	))
+}
+
+func (s *YawPitchCameraSystem) updateGamepad(elapsedSeconds float64, gamepad app.GamepadState, entity *ecs.Entity) {
+	var nodeComp *NodeComponent
+	ecs.FetchComponent(entity, &nodeComp)
+	var cameraComp *YawPitchCameraComponent
+	ecs.FetchComponent(entity, &cameraComp)
+
+	oldTranslation, _, oldScale := nodeComp.Node.AbsoluteMatrix().TRS()
+
+	deltaRotation := dprec.Vec2{
+		X: gamepad.RightStickY,
+		Y: gamepad.RightStickX,
+	}
+	if deltaRotation.Length() < 0.1 {
+		deltaRotation = dprec.ZeroVec2()
+	}
+	cameraComp.PitchAngle += dprec.Angle(deltaRotation.X*elapsedSeconds) * s.rotationSpeed
+	pitchRotation := dprec.RotationQuat(cameraComp.PitchAngle, dprec.BasisXVec3())
+	cameraComp.YawAngle -= dprec.Angle(deltaRotation.Y*elapsedSeconds) * s.rotationSpeed
+	yawRotation := dprec.RotationQuat(cameraComp.YawAngle, dprec.BasisYVec3())
+
+	deltaTranslation := dprec.Vec3{
+		X: gamepad.LeftStickX,
+		Y: gamepad.RightTrigger - gamepad.LeftTrigger,
+		Z: -gamepad.LeftStickY,
+	}
+	if deltaTranslation.Length() < 0.1 {
+		deltaTranslation = dprec.ZeroVec3()
+	} else {
+		deltaTranslation = dprec.Vec3Prod(deltaTranslation, s.translationSpeed*elapsedSeconds)
 	}
 	deltaTranslation = dprec.QuatVec3Rotation(yawRotation, deltaTranslation)
 
