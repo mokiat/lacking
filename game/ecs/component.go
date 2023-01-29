@@ -1,5 +1,19 @@
 package ecs
 
+import "errors"
+
+var freeComponentTypeID ComponentTypeID
+
+// NewComponentTypeID creates a new unique ComponentTypeID.
+func NewComponentTypeID() ComponentTypeID {
+	if freeComponentTypeID >= 64 {
+		panic(errors.New("max component type count reached"))
+	}
+	result := freeComponentTypeID
+	freeComponentTypeID++
+	return result
+}
+
 // ComponentTypeID is an identifier for a component type.
 // Numbers should be in the range [0..63]. That is, the
 // ECS framework supports at most 64 component types at
