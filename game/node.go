@@ -33,6 +33,10 @@ func DefaultTransformFunc(parent, current dprec.Mat4) dprec.Mat4 {
 	return dprec.Mat4Prod(parent, current)
 }
 
+type Attachable interface {
+	SetMatrix(matrix dprec.Mat4)
+}
+
 // NewNode creates a new detached Node instance.
 func NewNode() *Node {
 	return &Node{
@@ -74,6 +78,7 @@ type Node struct {
 	camera           *graphics.Camera
 	pointLight       *graphics.PointLight
 	directionalLight *graphics.DirectionalLight
+	attachable       Attachable
 }
 
 // PrintHierarchy prints debug information regarding the hierarchy that starts
@@ -399,6 +404,10 @@ func (n *Node) SetPointLight(light *graphics.PointLight) {
 
 func (n *Node) SetDirectionalLight(light *graphics.DirectionalLight) {
 	n.directionalLight = light
+}
+
+func (n *Node) SetAttachable(attachable Attachable) {
+	n.attachable = attachable
 }
 
 func (n *Node) isStaleHierarchy() bool {
