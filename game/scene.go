@@ -276,6 +276,9 @@ func (s *Scene) applyNodeToGraphics(node *Node) {
 	if armature := node.armature; armature != nil {
 		armature.SetBone(node.armatureBone, dtos.Mat4(absMatrix))
 	}
+	if attachable := node.attachable; attachable != nil {
+		attachable.SetMatrix(absMatrix)
+	}
 	for child := node.firstChild; child != nil; child = child.rightSibling {
 		s.applyNodeToGraphics(child)
 	}

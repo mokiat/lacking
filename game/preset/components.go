@@ -11,6 +11,7 @@ var (
 	ControlledComponentID     = ecs.NewComponentTypeID()
 	YawPitchCameraComponentID = ecs.NewComponentTypeID()
 	FollowCameraComponentID   = ecs.NewComponentTypeID()
+	CarComponentID            = ecs.NewComponentTypeID()
 )
 
 type NodeComponent struct {
@@ -64,4 +65,12 @@ type FollowCameraComponent struct {
 
 func (*FollowCameraComponent) TypeID() ecs.ComponentTypeID {
 	return FollowCameraComponentID
+}
+
+type CarComponent struct {
+	Car *Car
+}
+
+func (*CarComponent) TypeID() ecs.ComponentTypeID {
+	return CarComponentID
 }

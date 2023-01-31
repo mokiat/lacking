@@ -458,6 +458,10 @@ func (m *Model) Root() *Node {
 	return m.root
 }
 
+func (m *Model) FindNode(name string) *Node {
+	return m.root.FindNode(name)
+}
+
 func (m *Model) BodyInstances() []*physics.Body {
 	return m.bodyInstances
 }
