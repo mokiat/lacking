@@ -104,7 +104,7 @@ func (r *ResourceSet) allocateScene(resource asset.Resource) (*SceneDefinition, 
 			Rotation:          instanceAsset.Rotation,
 			Scale:             instanceAsset.Scale,
 			IsDynamic:         false, // TODO
-			PrepareAnimations: false,
+			PrepareAnimations: true,  // TODO
 		}
 	}
 
