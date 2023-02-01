@@ -129,6 +129,7 @@ func (a *OpenLevelResourceAction) Run() error {
 
 	for i, jsonStaticEntity := range jsonLevel.StaticEntities {
 		a.level.StaticEntities[i] = &LevelEntity{
+			Name:  jsonStaticEntity.Name,
 			Model: jsonStaticEntity.Model,
 			Matrix: sprec.NewMat4(
 				jsonStaticEntity.Matrix[0], jsonStaticEntity.Matrix[4], jsonStaticEntity.Matrix[8], jsonStaticEntity.Matrix[12],

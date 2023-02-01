@@ -86,6 +86,7 @@ func (a *SaveLevelAssetAction) Run() error {
 		modelInstances[i] = asset.ModelInstance{
 			ModelIndex:  -1,
 			ModelID:     staticEntity.Model,
+			Name:        staticEntity.Name,
 			Translation: t,
 			Rotation:    r,
 			Scale:       s,
