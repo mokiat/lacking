@@ -23,6 +23,7 @@ type Scene struct {
 	gfxScene     *graphics.Scene
 	ecsScene     *ecs.Scene
 	root         *Node
+	models       []*Model
 }
 
 func (s *Scene) Delete() {
@@ -73,8 +74,18 @@ func (s *Scene) Initialize(definition *SceneDefinition) {
 	})
 
 	for _, instance := range definition.modelInstances {
-		s.CreateModel(instance)
+		model := s.CreateModel(instance)
+		s.models = append(s.models, model)
 	}
+}
+
+func (s *Scene) FindModel(name string) *Model {
+	for _, model := range s.models {
+		if model.root.name == name {
+			return model
+		}
+	}
+	return nil
 }
 
 func (s *Scene) Update(elapsedSeconds float64) {
