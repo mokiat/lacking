@@ -3,6 +3,7 @@ package preset
 import (
 	"github.com/mokiat/gomath/dprec"
 	"github.com/mokiat/lacking/game"
+	"github.com/mokiat/lacking/game/ecs"
 	"github.com/mokiat/lacking/game/physics"
 	"github.com/mokiat/lacking/game/physics/constraint"
 )
@@ -79,6 +80,10 @@ type AxisDefinition struct {
 	springLength     float64
 	springFrequency  float64
 	springDamping    float64
+	maxSteeringAngle dprec.Angle
+	maxAcceleration  float64
+	maxBraking       float64
+	reverseRatio     float64
 	leftWheelDef     *WheelDefinition
 	rightWheelDef    *WheelDefinition
 	leftHubDef       *HubDefinition
@@ -135,6 +140,26 @@ func (d *AxisDefinition) WithRightHubDefinition(def *HubDefinition) *AxisDefinit
 	return d
 }
 
+func (d *AxisDefinition) WithMaxSteeringAngle(maxAngle dprec.Angle) *AxisDefinition {
+	d.maxSteeringAngle = maxAngle
+	return d
+}
+
+func (d *AxisDefinition) WithMaxAcceleration(maxAcceleration float64) *AxisDefinition {
+	d.maxAcceleration = maxAcceleration
+	return d
+}
+
+func (d *AxisDefinition) WithMaxBraking(maxBraking float64) *AxisDefinition {
+	d.maxBraking = maxBraking
+	return d
+}
+
+func (d *AxisDefinition) WithReverseRatio(ratio float64) *AxisDefinition {
+	d.reverseRatio = ratio
+	return d
+}
+
 func NewCarDefinition() *CarDefinition {
 	return &CarDefinition{}
 }
@@ -154,11 +179,10 @@ func (d *CarDefinition) WithAxisDefinition(def *AxisDefinition) *CarDefinition {
 	return d
 }
 
-func (d *CarDefinition) ApplyToModel(scene *game.Scene, model *game.Model, position dprec.Vec3, rotation dprec.Quat) *Car {
-	chassisNode := model.FindNode(d.chassisDef.nodeName)
-
-	chassisPosition := position
-	chassisRotation := rotation
+func (d *CarDefinition) ApplyToModel(scene *game.Scene, info CarApplyInfo) *Car {
+	chassisNode := info.Model.FindNode(d.chassisDef.nodeName)
+	chassisPosition := info.Position
+	chassisRotation := info.Rotation
 
 	chassisBody := scene.Physics().CreateBody(physics.BodyInfo{
 		Name:       d.chassisDef.nodeName,
@@ -182,7 +206,7 @@ func (d *CarDefinition) ApplyToModel(scene *game.Scene, model *game.Model, posit
 			dprec.QuatVec3Rotation(chassisRotation, leftWheelRelativePosition),
 		)
 
-		leftWheelNode := model.FindNode(axisDef.leftWheelDef.nodeName)
+		leftWheelNode := info.Model.FindNode(axisDef.leftWheelDef.nodeName)
 		leftWheelBody := scene.Physics().CreateBody(physics.BodyInfo{
 			Name:       axisDef.leftWheelDef.nodeName,
 			Definition: axisDef.leftWheelDef.bodyDef,
@@ -221,7 +245,7 @@ func (d *CarDefinition) ApplyToModel(scene *game.Scene, model *game.Model, posit
 
 		var leftHub *Hub
 		if hubDef := axisDef.leftHubDef; hubDef != nil {
-			hubNode := model.FindNode(hubDef.nodeName)
+			hubNode := info.Model.FindNode(hubDef.nodeName)
 			hubBody := scene.Physics().CreateBody(physics.BodyInfo{
 				Name:       hubDef.nodeName,
 				Definition: hubDef.bodyDef,
@@ -258,7 +282,7 @@ func (d *CarDefinition) ApplyToModel(scene *game.Scene, model *game.Model, posit
 			dprec.QuatVec3Rotation(chassisRotation, rightWheelRelativePosition),
 		)
 
-		rightWheelNode := model.FindNode(axisDef.rightWheelDef.nodeName)
+		rightWheelNode := info.Model.FindNode(axisDef.rightWheelDef.nodeName)
 		rightWheelBody := scene.Physics().CreateBody(physics.BodyInfo{
 			Name:       axisDef.rightWheelDef.nodeName,
 			Definition: axisDef.rightWheelDef.bodyDef,
@@ -297,7 +321,7 @@ func (d *CarDefinition) ApplyToModel(scene *game.Scene, model *game.Model, posit
 
 		var rightHub *Hub
 		if hubDef := axisDef.rightHubDef; hubDef != nil {
-			hubNode := model.FindNode(hubDef.nodeName)
+			hubNode := info.Model.FindNode(hubDef.nodeName)
 			hubBody := scene.Physics().CreateBody(physics.BodyInfo{
 				Name:       hubDef.nodeName,
 				Definition: hubDef.bodyDef,
@@ -323,6 +347,8 @@ func (d *CarDefinition) ApplyToModel(scene *game.Scene, model *game.Model, posit
 				node: hubNode,
 				body: hubBody,
 			}
+
+			scene.Physics().CreateDoubleBodyConstraint(leftWheelBody, rightWheelBody, constraint.NewDifferential())
 		}
 
 		axes = append(axes, &Axis{
@@ -343,18 +369,38 @@ func (d *CarDefinition) ApplyToModel(scene *game.Scene, model *game.Model, posit
 		})
 	}
 
-	return &Car{
+	entity := scene.ECS().CreateEntity()
+	ecs.AttachComponent(entity, &NodeComponent{
+		Node: chassisNode,
+	})
+	ecs.AttachComponent(entity, &ControlledComponent{
+		Inputs: info.Inputs,
+	})
+	result := &Car{
 		chassis: &Chassis{
 			node: chassisNode,
 			body: chassisBody,
 		},
-		axes: axes,
+		axes:   axes,
+		entity: entity,
 	}
+	ecs.AttachComponent(entity, &CarComponent{
+		Car: result,
+	})
+	return result
+}
+
+type CarApplyInfo struct {
+	Model    *game.Model
+	Position dprec.Vec3
+	Rotation dprec.Quat
+	Inputs   ControlInput
 }
 
 type Car struct {
 	chassis *Chassis
 	axes    []*Axis
+	entity  *ecs.Entity
 }
 
 func (c *Car) Chassis() *Chassis {
@@ -363,6 +409,10 @@ func (c *Car) Chassis() *Chassis {
 
 func (c *Car) Axes() []*Axis {
 	return c.axes
+}
+
+func (c *Car) Entity() *ecs.Entity {
+	return c.entity
 }
 
 type Chassis struct {
@@ -379,10 +429,30 @@ func (c *Chassis) Body() *physics.Body {
 }
 
 type Axis struct {
-	leftWheel  *Wheel
-	rightWheel *Wheel
-	leftHub    *Hub
-	rightHub   *Hub
+	maxSteeringAngle dprec.Angle
+	maxAcceleration  float64
+	maxBraking       float64
+	reverseRatio     float64
+	leftWheel        *Wheel
+	rightWheel       *Wheel
+	leftHub          *Hub
+	rightHub         *Hub
+}
+
+func (a *Axis) MaxSteeringAngle() dprec.Angle {
+	return a.maxSteeringAngle
+}
+
+func (a *Axis) MaxAcceleration() float64 {
+	return a.maxAcceleration
+}
+
+func (a *Axis) MaxBraking() float64 {
+	return a.maxBraking
+}
+
+func (a *Axis) ReverseRatio() float64 {
+	return a.reverseRatio
 }
 
 func (a *Axis) LeftWheel() *Wheel {
