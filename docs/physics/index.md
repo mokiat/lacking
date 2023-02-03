@@ -107,7 +107,7 @@ $$
 \lambda = - \frac{J\vec{v_0}}{JM^{-1}J^T}
 $$
 
-Here $\vec{v_0}$ is the current velocity of the object and $M^{-1}$ is the inverse mass matrix, though $\frac{1}{m}$ works just as well in the general case. It is also the case that $JM^{-1}J^T$ produces the [inverse effective mass](./theory.md#effective-mass).
+Here $\vec{v_0}$ is the current velocity of the object and $M^{-1}$ is the inverse mass matrix, though $\frac{1}{m}$ works just as well in the general case. It is also the case that $JM^{-1}J^T$ produces the [inverse effective mass](./theory/effective-mass.md).
 
 This brings the equation down to:
 

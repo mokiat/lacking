@@ -13,6 +13,7 @@ The following is a table of first order derivatives.
 | Reciprocal | $\frac{1}{x}$ | $\frac{-x'}{x^2}$ |
 | Power | $(x^y)'$ | $yx^{y-1}$ |
 | Square root | $\sqrt{x}'$ | $\frac{1}{2\sqrt{x}}$ |
-| Chained functions | $f(g(x))'$ | $f'(g(x))g'(x)$ |
+| Chained rule | $\frac{\partial f(g(x))}{\partial x}$ | $\frac{\partial f(g(x))}{\partial g(x)} \frac{\partial g(x)}{\partial x} $ |
+| Multivariable rule | $\frac{\partial f(u(x), v(x))}{\partial x}$ | $\frac{\partial f(u(x), v(x))}{\partial u(x)}\frac{\partial f(u(x), v(x))}{\partial u(x)} + \frac{\partial f(u(x), v(x))}{\partial x}$ |
 | Vector square length | $(\vec{v}.\vec{v})'$ | $2\vec{v}\vec{v}'$ |
 | Vector length | $\|\vec{v}\|'$ | $\hat{v}\vec{v}'$ |
