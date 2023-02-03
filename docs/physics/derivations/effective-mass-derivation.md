@@ -4,7 +4,7 @@ title: Effective Mass
 
 # Effective Mass Derivation
 
-Following is a derivation of the `effective mass` as discussed in the physics [theory](../theory.md#effective-mass) section.
+Following is a derivation of the `effective mass` as discussed in the physics [theory](../theory/effective-mass.md) section.
 
 Let us consider an object that is experiencing both a linear acceleration $a$ and an angular acceleration $\alpha$ but has one of its sides attached to a stationary anchor point $p$. We would like to know what force the anchor point exerts on the object (and vice versa). Following is a depiction of the scenario.
 
@@ -18,7 +18,7 @@ $$
 a_{object} = a + \alpha r
 $$
 
-The equation above is the one we already looked at in the [tangental acceleration](../theory.md#tangental-acceleration) section.
+The equation above is the one we already looked at in the [tangental acceleration](../theory/principles.md#tangental-acceleration) section.
 
 The second acceleration it experiences is the one from the anchor, which is trying to resist the point's motion.
 
@@ -30,7 +30,7 @@ $$
 
 The second equation might be a bit more complicated. Let's look at how we arrived at the two terms. The first one represents the linear acceleration that the whole object would experience because of $F_{anchor}$ and the second one is the angular acceleration.
 
-Recall from [offset force](../theory.md#offset-force) that a force applied to an object induces both a force at the center of mass and a torque.
+Recall from [offset force](../theory/principles.md#offset-force) that a force applied to an object induces both a force at the center of mass and a torque.
 
 The linear acceleration is dervied as follows.
 
