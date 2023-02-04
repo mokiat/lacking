@@ -119,4 +119,283 @@ It tells us that a torque can be induced by the angular velocity alone, even if 
 
 > NOTE: This torque does not appear if an object is rotated about one of its principal axes.
 
-TODO
+The best way to reason about this is to look at a very simplified and idealized version of a scenario where a torque is induced due to velocity. Let us explore the following setup.
+
+![Image 01](./moment-of-inertia-01.svg)
+
+We have an object comprised of two particles ($p_1$ and $p_2$), connected by a zero-mass rod (in red). The object is rotating with an angular velocity $\omega$.
+
+Before diving into the moment inertia tensor and the equations from above, let us try to use high-school physics to evaluate what forces will act on the particles and if there is any torque actually induced.
+
+If we look at point $p_1$, we can see that it is spinning with tangental velocity magninute of $x \omega$ (again, using high-school physics/math), which in our case is $2 \omega$.
+
+Since there are no external forces (there is no angular acceleration on the object), the only force that the particle experiences is the one by the rod that is keeping it attached to the object. The opposite (but equal) force is actually the fictitious [Centrifugal force](https://en.wikipedia.org/wiki/Centrifugal_force).
+
+That force is equal to the following.
+
+$$
+F_1 = mw^2r = mw^2x = 2mw^2
+$$
+
+This force induces a torque on the whole object.
+
+$$
+{\tau}_1 = rF_1 = yF_1 = 2mw^2
+$$
+
+We have the same thing occuring with $p_2$ as well. While the force has a negative sign, so does the torque radius ($r=-y=-1$) so we end up with the same torque. The total torque is the sum of the torques.
+
+$$
+\tau = {\tau}_1 + {\tau}_2 = 4mw^2
+$$
+
+The torque acts in a clockwise direction (if we were to use a vector, it would point inwards). If we think about it, it makes sense. The torque tries to level the two points to be on the same rotational plane.
+
+This should give us some explanation to what the induced torque might be due to. Let's compare with the actual equations and see if they would produce the same.
+
+Following is the calculation of the moment of inertia tensor.
+
+$$
+I_{xx} =
+\sum_i{m_i (y_i^2 + z_i^2)} =
+m (1^2 + 0^2) + m ((-1)^2 + 0^2) =
+2m
+$$
+
+$$
+I_{yy} =
+\sum_i{m_i (x_i^2 + z_i^2)} =
+m (2^2 + 0^2) + m ((-2)^2 + 0^2) =
+8m
+$$
+
+$$
+I_{zz} =
+\sum_i{m_i (x_i^2 + y_i^2)} =
+m (2^2 + 1^2) + m ((-2)^2 + (-1)^2) =
+10m
+$$
+
+$$
+I_{xy} = I_{yx} =
+- \sum_i{m_i x_i y_i} =
+- m(2)(1) -m(-2)(-1) =
+- 4m
+$$
+
+$$
+I_{xz} = I_{zx} =
+- \sum_i{m_i x_i z_i} =
+- m(2)(0) - m(-2)(0) =
+0
+$$
+
+$$
+I_{yz} = I_{zy} =
+- \sum_i{m_i y_i z_i} =
+- m(1)(0) - m(-1)(0) =
+0
+$$
+
+Which leads to the following tensor matrix.
+
+$$
+I =
+\begin{bmatrix}
+2m & -4m & 0 \\
+-4m & 8m & 0 \\
+0 & 0 & 10m \\
+\end{bmatrix}
+=
+2m
+\begin{bmatrix}
+1 & -2 & 0 \\
+-2 & 4 & 0 \\
+0 & 0 & 5 \\
+\end{bmatrix}
+$$
+
+Next we can use it to calculate the torque.
+
+$$
+\vec{\tau} = \vec{\omega} \times I \vec{\omega} =
+2m
+\begin{bmatrix}
+0 \\
+\omega \\
+0 \\
+\end{bmatrix}
+\times
+\begin{bmatrix}
+1 & -2 & 0 \\
+-2 & 4 & 0 \\
+0 & 0 & 5 \\
+\end{bmatrix}
+\begin{bmatrix}
+0 \\
+\omega \\
+0 \\
+\end{bmatrix}
+$$
+
+$$
+\vec{\tau} =
+2m
+\begin{bmatrix}
+0 \\
+\omega \\
+0 \\
+\end{bmatrix}
+\times
+\begin{bmatrix}
+-2 \omega \\
+4 \omega \\
+0 \\
+\end{bmatrix} =
+4m
+\begin{bmatrix}
+0 \\
+\omega \\
+0 \\
+\end{bmatrix}
+\times
+\begin{bmatrix}
+-1 \omega \\
+2 \omega \\
+0 \\
+\end{bmatrix}
+$$
+
+Just the cross product is calculated as follows.
+
+$$
+\begin{bmatrix}
+0 \\
+\omega \\
+0 \\
+\end{bmatrix}
+\times
+\begin{bmatrix}
+-1 \omega \\
+2 \omega \\
+0 \\
+\end{bmatrix} =
+\begin{bmatrix}
+\omega (0) - 0(2\omega) \\
+0 (-1\omega) - 0(0) \\
+0(2\omega) - \omega(-1\omega) \\
+\end{bmatrix} =
+\begin{bmatrix}
+0 \\
+0 \\
+{\omega}^2 \\
+\end{bmatrix} =
+$$
+
+All of this produces the following result.
+
+$$
+\vec{\tau} =
+4m
+\begin{bmatrix}
+0 \\
+0 \\
+{\omega}^2 \\
+\end{bmatrix}
+$$
+
+This is a vector pointing inward that has a magnitude of $4m{\omega}^2$, just like we derived using the more basic math. What this means is that the centrifugal force must be the reason for the induced torque.
+
+> NOTE: As previously stated, this is my personal reasoning for this and the math above seems to support it. Either way, there isn't much easy to read material out there on the matter, so this will have to do. End of the day, one should choose to use the official equations and should be fine. This is just an attempt to give some intuition and reasoning to those equations.
+
+## Acceleration torque
+
+If an object has an angular acceleration, then clearly it can apply torque to whatever is trying to resist it. According to the main equation above, we should be able to calculate that torque using the first part.
+
+$$
+\vec{\tau} = I\vec{\alpha}
+$$
+
+Let's have a look at our example setup again.
+
+![Image 01](./moment-of-inertia-01.svg)
+
+Before using the moment of inertia matrix to try and calculate that torque,
+let's try and figure it out using more basic physics and math.
+
+If we were to examine point $p_1$, we can reason that it must have a tangential acceleration, if the whole object has an angular acceleration. The tangential acceleration of the point can be calculated as follows.
+
+$$
+\vec{a_t} = \vec{\alpha} \times \vec{r}
+$$
+
+Looking at the diagrams and the vectors, we know that that acceleration points inward, so we can use the more basic equations to calculate the magnitude.
+
+$$
+a_t = \alpha x = 2 \alpha
+$$
+
+The force of that particle is then equal to the following.
+
+$$
+F_1 = 2 m \alpha
+$$
+
+Now that we have the particle's force, let's see how does that force affect the object across its three main axes.
+
+Since the force points inwards, it is parallel to the $Z$ axis, hence it does not apply any torque over that axis. Hence we have ${\tau}_z = 0$.
+
+It does apply a torque over the $Y$ axis and the torque vector is of length $x = 2$. This results in a torque ${\tau}_y = 2 m \alpha 2 = 4 m \alpha$.
+
+Similarly, it applies a torque over the $X$ axis and the torque vector is of length $y = 1$. This results in a torque ${\tau}_x = - 2 m \alpha 1 = - 2 m \alpha$. The negative sign is since the torque vector points to the left in this case.
+
+Combined, and multiplied by two, since particle $p_2$ produces the same torques, we end up with the following torque vector.
+
+$$
+\vec{\tau} =
+4 m
+\begin{bmatrix}
+- \alpha \\
+2 \alpha \\
+0 \\
+\end{bmatrix}
+$$
+
+Another example how the torque is not parallel to the angular acceleration.
+
+Now, let's use the official method of calculating it and see if we get the same result. We can reuse the tensor matrix from above, since the reference frame has not changed.
+
+$$
+\vec{\tau} = I\vec{\alpha} =
+2m
+\begin{bmatrix}
+1 & -2 & 0 \\
+-2 & 4 & 0 \\
+0 & 0 & 5 \\
+\end{bmatrix}
+\begin{bmatrix}
+0 \\
+\alpha \\
+0 \\
+\end{bmatrix} =
+2m
+\begin{bmatrix}
+-2 \alpha \\
+4 \alpha \\
+0 \\
+\end{bmatrix}
+$$
+
+$$
+\vec{\tau} = I\vec{\alpha} =
+4m
+\begin{bmatrix}
+- \alpha \\
+2 \alpha \\
+0 \\
+\end{bmatrix}
+$$
+
+Once again, we got the same result as with the manual, per-particle, approach. Hopefully, this should give an understanding as to why torque and angular acceleration need not point in the same direction.
+
+> NOTE: And once again, take all of this with a grain of salt.
