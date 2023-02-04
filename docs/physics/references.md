@@ -2,10 +2,13 @@
 
 The following articles and videos are a good place to start.
 
-## Inertia Tensor
+## Moment of Intertia
 
 - [What is a tensor](https://www.physlink.com/education/askexperts/ae168.cfm)
 - [Inertia Tensor](http://www.kwon3d.com/theory/moi/iten.html)
+- [The Inertia Tensor for a Cube](https://hepweb.ucsd.edu/ph110b/110b_notes/node26.html)
+- [Why is inertia tensor called a tensor as opposed to matrix](https://www.quora.com/Why-is-inertia-tensor-called-a-tensor-as-opposed-to-matrix)
+- [Relation between torque and moment of inertia](https://physics.stackexchange.com/questions/139630/relation-between-torque-and-moment-of-inertia)
 
 ## Jacobian
 
