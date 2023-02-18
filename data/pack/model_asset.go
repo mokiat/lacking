@@ -3,11 +3,12 @@ package pack
 import (
 	"fmt"
 
+	"github.com/mokiat/gblob"
+	"github.com/mokiat/gog"
 	"github.com/mokiat/gomath/dprec"
 	"github.com/mokiat/gomath/stod"
 	"github.com/mokiat/lacking/game/asset"
 	"github.com/mokiat/lacking/log"
-	"github.com/mokiat/lacking/util/blob"
 	"github.com/x448/float16"
 )
 
@@ -315,7 +316,7 @@ func (c *converter) BuildMeshDefinition(meshDefinition *MeshDefinition) asset.Me
 	}
 
 	var (
-		vertexData = blob.Buffer(make([]byte, len(meshDefinition.Vertices)*int(stride)))
+		vertexData = gblob.LittleEndianBlock(make([]byte, len(meshDefinition.Vertices)*int(stride)))
 	)
 	if layout.HasCoords {
 		offset := int(coordOffset)
@@ -385,20 +386,20 @@ func (c *converter) BuildMeshDefinition(meshDefinition *MeshDefinition) asset.Me
 
 	var (
 		indexLayout asset.IndexLayout
-		indexData   blob.Buffer
+		indexData   gblob.LittleEndianBlock
 		indexSize   int
 	)
 	if len(meshDefinition.Vertices) >= 0xFFFF {
 		indexSize = sizeUnsignedInt
 		indexLayout = asset.IndexLayoutUint32
-		indexData = blob.Buffer(make([]byte, len(meshDefinition.Indices)*sizeUnsignedInt))
+		indexData = gblob.LittleEndianBlock(make([]byte, len(meshDefinition.Indices)*sizeUnsignedInt))
 		for i, index := range meshDefinition.Indices {
 			indexData.SetUint32(i*sizeUnsignedInt, uint32(index))
 		}
 	} else {
 		indexSize = sizeUnsignedShort
 		indexLayout = asset.IndexLayoutUint16
-		indexData = blob.Buffer(make([]byte, len(meshDefinition.Indices)*sizeUnsignedShort))
+		indexData = gblob.LittleEndianBlock(make([]byte, len(meshDefinition.Indices)*sizeUnsignedShort))
 		for i, index := range meshDefinition.Indices {
 			indexData.SetUint16(i*sizeUnsignedShort, uint16(index))
 		}

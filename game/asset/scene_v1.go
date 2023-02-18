@@ -1,14 +1,15 @@
 package asset
 
 import (
-	"encoding/gob"
 	"io"
+
+	"github.com/mokiat/gblob"
 )
 
 func (s *Scene) encodeV1(out io.Writer) error {
-	return gob.NewEncoder(out).Encode(s)
+	return gblob.NewLittleEndianPackedEncoder(out).Encode(s)
 }
 
 func (s *Scene) decodeV1(in io.Reader) error {
-	return gob.NewDecoder(in).Decode(s)
+	return gblob.NewLittleEndianPackedDecoder(in).Decode(s)
 }

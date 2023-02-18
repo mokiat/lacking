@@ -92,7 +92,6 @@ type LightingPresentation struct {
 	Presentation
 
 	// TODO: Move to lighting uniform buffer
-	LightDirection  render.UniformLocation
 	LightIntensity  render.UniformLocation
 	LightRange      render.UniformLocation
 	LightOuterAngle render.UniformLocation
@@ -116,7 +115,6 @@ func NewLightingPresentation(api render.API, vertexSrc, fragmentSrc string) *Lig
 			Program: program,
 		},
 
-		LightDirection:  program.UniformLocation("lightDirectionIn"),
 		LightIntensity:  program.UniformLocation("lightIntensityIn"),
 		LightRange:      program.UniformLocation("lightRangeIn"),
 		LightOuterAngle: program.UniformLocation("lightOuterAngleIn"),

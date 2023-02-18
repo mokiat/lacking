@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/mokiat/lacking/util/blob"
+	"github.com/mokiat/gblob"
 )
 
 type headerFlag uint16
@@ -24,29 +24,11 @@ func (h header) HasFlag(flag headerFlag) bool {
 }
 
 func (h *header) EncodeTo(out io.Writer) error {
-	writer := blob.NewTypedWriter(out)
-	if err := writer.WriteUint16(h.Version); err != nil {
-		return err
-	}
-	if err := writer.WriteUint16(uint16(h.Flags)); err != nil {
-		return err
-	}
-	return nil
+	return gblob.NewLittleEndianPackedEncoder(out).Encode(h)
 }
 
 func (h *header) DecodeFrom(in io.Reader) error {
-	reader := blob.NewTypedReader(in)
-	if version, err := reader.ReadUint16(); err != nil {
-		return err
-	} else {
-		h.Version = version
-	}
-	if flags, err := reader.ReadUint16(); err != nil {
-		return err
-	} else {
-		h.Flags = headerFlag(flags)
-	}
-	return nil
+	return gblob.NewLittleEndianPackedDecoder(in).Decode(h)
 }
 
 type versionedEncodable interface {

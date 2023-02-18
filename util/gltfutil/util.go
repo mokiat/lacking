@@ -3,6 +3,7 @@ package gltfutil
 import (
 	"fmt"
 
+	"github.com/mokiat/gblob"
 	"github.com/mokiat/gomath/dprec"
 	"github.com/mokiat/gomath/sprec"
 	"github.com/mokiat/gomath/stod"
@@ -488,12 +489,12 @@ func AnimationScales(doc *gltf.Document, sampler *gltf.AnimationSampler) []dprec
 	}
 }
 
-func BufferViewData(doc *gltf.Document, index uint32) blob.Buffer {
+func BufferViewData(doc *gltf.Document, index uint32) gblob.LittleEndianBlock {
 	bufferView := doc.BufferViews[index]
 	offset := bufferView.ByteOffset
 	count := bufferView.ByteLength
 	buffer := doc.Buffers[bufferView.Buffer]
-	return blob.Buffer(buffer.Data[offset : offset+count])
+	return gblob.LittleEndianBlock(buffer.Data[offset : offset+count])
 }
 
 func IsMeshCollisionDisabled(mesh *gltf.Mesh) bool {

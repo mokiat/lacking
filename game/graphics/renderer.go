@@ -2,8 +2,10 @@ package graphics
 
 import (
 	"fmt"
+	"math"
 	"time"
 
+	"github.com/mokiat/gblob"
 	"github.com/mokiat/gomath/dprec"
 	"github.com/mokiat/gomath/dtos"
 	"github.com/mokiat/gomath/sprec"
@@ -20,8 +22,10 @@ import (
 )
 
 const (
-	shadowMapWidth  = 4096
-	shadowMapHeight = 4096
+	shadowMapWidth  = 2048
+	shadowMapHeight = 2048
+
+	shadowMapClipping = 512 / 64
 )
 
 var ShowLightView bool
@@ -76,7 +80,7 @@ type sceneRenderer struct {
 	exposureFramebuffer     render.Framebuffer
 	exposurePresentation    *internal.LightingPresentation
 	exposurePipeline        render.Pipeline
-	exposureBufferData      blob.Buffer
+	exposureBufferData      gblob.LittleEndianBlock
 	exposureBuffer          render.Buffer
 	exposureFormat          render.DataFormat
 	exposureSync            render.Fence
@@ -113,16 +117,16 @@ type sceneRenderer struct {
 	postprocessingPresentation *internal.PostprocessingPresentation
 	postprocessingPipeline     render.Pipeline
 
-	cameraUniformBufferData blob.Buffer
+	cameraUniformBufferData gblob.LittleEndianBlock
 	cameraUniformBuffer     render.Buffer
 
-	modelUniformBufferData blob.Buffer
+	modelUniformBufferData gblob.LittleEndianBlock
 	modelUniformBuffer     render.Buffer
 
-	materialUniformBufferData blob.Buffer
+	materialUniformBufferData gblob.LittleEndianBlock
 	materialUniformBuffer     render.Buffer
 
-	lightUniformBufferData blob.Buffer
+	lightUniformBufferData gblob.LittleEndianBlock
 	lightUniformBuffer     render.Buffer
 
 	visibleMeshes *spatial.VisitorBucket[*Mesh]
@@ -586,14 +590,25 @@ func (r *sceneRenderer) Render(framebuffer render.Framebuffer, viewport Viewport
 	projectionViewMatrix := sprec.Mat4Prod(projectionMatrix, viewMatrix)
 	frustum := spatial.ProjectionRegion(stod.Mat4(projectionViewMatrix))
 
-	// if scene.firstLight != nil && ShowLightView {
-	// 	dirLight := scene.firstLight
-	// 	projectionMatrix = lightOrtho()
-	// 	cameraMatrix = dirLight.gfxMatrix()
-	// 	viewMatrix = sprec.InverseMat4(cameraMatrix)
-	// 	projectionViewMatrix = sprec.Mat4Prod(projectionMatrix, viewMatrix)
-	// 	frustum = spatial.ProjectionRegion(stod.Mat4(projectionViewMatrix))
-	// }
+	if ShowLightView {
+		r.directionalLightBucket.Reset()
+		scene.directionalLightOctree.VisitHexahedronRegion(&frustum, r.directionalLightBucket)
+
+		var directionalLight *DirectionalLight
+		for _, light := range r.directionalLightBucket.Items() {
+			if light.active {
+				directionalLight = light
+				break
+			}
+		}
+		if directionalLight != nil {
+			projectionMatrix = lightOrtho()
+			cameraMatrix = directionalLight.gfxMatrix()
+			viewMatrix = sprec.InverseMat4(cameraMatrix)
+			projectionViewMatrix = sprec.Mat4Prod(projectionMatrix, viewMatrix)
+			frustum = spatial.ProjectionRegion(stod.Mat4(projectionViewMatrix))
+		}
+	}
 
 	ctx := renderCtx{
 		framebuffer: framebuffer,
@@ -675,7 +690,7 @@ func (r *sceneRenderer) evaluateProjectionMatrix(camera *Camera, width, height i
 }
 
 func lightOrtho() sprec.Mat4 {
-	return sprec.OrthoMat4(-64, 64, 64, -64, 0, 200)
+	return sprec.OrthoMat4(-32, 32, 32, -32, 0, 256)
 }
 
 func (r *sceneRenderer) renderShadowPass(ctx renderCtx) {
@@ -697,6 +712,9 @@ func (r *sceneRenderer) renderShadowPass(ctx renderCtx) {
 
 	projectionMatrix := lightOrtho()
 	lightMatrix := directionalLight.gfxMatrix()
+	lightMatrix.M14 = floor(lightMatrix.M14*shadowMapWidth) / float32(shadowMapWidth)
+	lightMatrix.M24 = floor(lightMatrix.M24*shadowMapWidth) / float32(shadowMapWidth)
+	lightMatrix.M34 = floor(lightMatrix.M34*shadowMapWidth) / float32(shadowMapWidth)
 	viewMatrix := sprec.InverseMat4(lightMatrix)
 	projectionViewMatrix := sprec.Mat4Prod(projectionMatrix, viewMatrix)
 	frustum := spatial.ProjectionRegion(stod.Mat4(projectionViewMatrix))
@@ -1019,9 +1037,16 @@ func (r *sceneRenderer) renderAmbientLight(ctx renderCtx, light *AmbientLight) {
 	r.commands.DrawIndexed(0, r.quadShape.IndexCount(), 1)
 }
 
+func floor(a float32) float32 {
+	return float32(math.Floor(float64(a)))
+}
+
 func (r *sceneRenderer) renderDirectionalLight(ctx renderCtx, light *DirectionalLight) {
 	projectionMatrix := lightOrtho()
 	lightMatrix := light.gfxMatrix()
+	lightMatrix.M14 = floor(lightMatrix.M14*shadowMapWidth) / float32(shadowMapWidth)
+	lightMatrix.M24 = floor(lightMatrix.M24*shadowMapWidth) / float32(shadowMapWidth)
+	lightMatrix.M34 = floor(lightMatrix.M34*shadowMapWidth) / float32(shadowMapWidth)
 	viewMatrix := sprec.InverseMat4(lightMatrix)
 
 	lightPlotter := blob.NewPlotter(r.lightUniformBufferData)
@@ -1033,8 +1058,6 @@ func (r *sceneRenderer) renderDirectionalLight(ctx renderCtx, light *Directional
 		Data: r.lightUniformBufferData,
 	})
 	r.commands.BindPipeline(r.directionalLightPipeline)
-	direction := light.gfxMatrix().OrientationZ()
-	r.commands.Uniform3f(r.directionalLightPresentation.LightDirection, direction.Array())
 	intensity := dtos.Vec3(light.emitColor)
 	r.commands.Uniform3f(r.directionalLightPresentation.LightIntensity, intensity.Array())
 	r.commands.TextureUnit(internal.TextureBindingLightingFramebufferColor0, r.geometryAlbedoTexture)
@@ -1180,7 +1203,7 @@ func (r *sceneRenderer) renderExposureProbePass(ctx renderCtx) {
 			case render.DataFormatRGBA16F:
 				brightness = float16.Frombits(r.exposureBufferData.Uint16(0 * 2)).Float32()
 			case render.DataFormatRGBA32F:
-				brightness = blob.Buffer(r.exposureBufferData).Float32(0 * 4)
+				brightness = gblob.LittleEndianBlock(r.exposureBufferData).Float32(0 * 4)
 			}
 			brightness = sprec.Clamp(brightness, 0.001, 1000.0)
 

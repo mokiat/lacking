@@ -1,6 +1,7 @@
 package graphics
 
 import (
+	"github.com/mokiat/gblob"
 	"github.com/mokiat/gomath/sprec"
 	"github.com/mokiat/lacking/util/blob"
 )
@@ -11,7 +12,7 @@ type ArmatureInfo struct {
 
 type Armature struct {
 	inverseMatrices   []sprec.Mat4
-	uniformBufferData blob.Buffer
+	uniformBufferData gblob.LittleEndianBlock
 }
 
 func (a *Armature) BoneCount() int {
