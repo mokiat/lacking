@@ -1,5 +1,7 @@
 package app
 
+import "time"
+
 // NOTE: As much as I would have liked to include joysticks and racing wheels,
 // there just isn't an official standard for them and it would not make sense
 // for me to come up with something on my own that I can only test with the
@@ -100,5 +102,9 @@ type Gamepad interface {
 	// BackButton represents the left button of the center cluster.
 	BackButton() bool
 
-	// TODO: Add ability to trigger haptics
+	// Pulse causes the Gamepad controller to vibrate with the specified
+	// intensity (0.0 to 1.0) for the specified duration.
+	//
+	// If the device does not have haptic feedback then this method does nothing.
+	Pulse(intensity float64, duration time.Duration)
 }
