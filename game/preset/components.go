@@ -25,8 +25,6 @@ const (
 	ControlInputKeyboard ControlInput = 1 << iota
 	ControlInputMouse
 	ControlInputGamepad0
-	ControlInputJoystick0
-	ControlInputWheel0
 )
 
 type ControlInput int

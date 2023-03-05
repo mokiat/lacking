@@ -7,11 +7,7 @@ import (
 	"github.com/mokiat/lacking/ui"
 )
 
-type GamepadStateProvider interface {
-	GamepadState(index int) (app.GamepadState, bool)
-}
-
-func NewYawPitchCameraSystem(ecsScene *ecs.Scene, gamepadProvider GamepadStateProvider) *YawPitchCameraSystem {
+func NewYawPitchCameraSystem(ecsScene *ecs.Scene, gamepadProvider GamepadProvider) *YawPitchCameraSystem {
 	return &YawPitchCameraSystem{
 		ecsScene:        ecsScene,
 		gamepadProvider: gamepadProvider,
@@ -20,7 +16,7 @@ func NewYawPitchCameraSystem(ecsScene *ecs.Scene, gamepadProvider GamepadStatePr
 
 type YawPitchCameraSystem struct {
 	ecsScene        *ecs.Scene
-	gamepadProvider GamepadStateProvider
+	gamepadProvider GamepadProvider
 
 	translationSpeed float64
 	rotationSpeed    dprec.Angle
@@ -125,7 +121,7 @@ func (s *YawPitchCameraSystem) Update(elapsedSeconds float64) {
 			s.updateKeyboard(elapsedSeconds, entity)
 		}
 		if controlled.Inputs.Is(ControlInputGamepad0) {
-			if gamepad, ok := s.gamepadProvider.GamepadState(0); ok {
+			if gamepad := s.gamepadProvider.Gamepads()[0]; gamepad.Connected() && gamepad.Supported() {
 				s.updateGamepad(elapsedSeconds, gamepad, entity)
 			}
 		}
@@ -180,9 +176,7 @@ func (s *YawPitchCameraSystem) updateKeyboard(elapsedSeconds float64, entity *ec
 	if s.isMoveDown {
 		deltaTranslation.Y -= 1.0
 	}
-	if deltaTranslation.Length() < 0.1 {
-		deltaTranslation = dprec.ZeroVec3()
-	} else {
+	if deltaTranslation.Length() > 0.00001 {
 		deltaTranslation = dprec.ResizedVec3(deltaTranslation, s.translationSpeed*elapsedSeconds)
 	}
 	deltaTranslation = dprec.QuatVec3Rotation(yawRotation, deltaTranslation)
@@ -194,7 +188,7 @@ func (s *YawPitchCameraSystem) updateKeyboard(elapsedSeconds float64, entity *ec
 	))
 }
 
-func (s *YawPitchCameraSystem) updateGamepad(elapsedSeconds float64, gamepad app.GamepadState, entity *ecs.Entity) {
+func (s *YawPitchCameraSystem) updateGamepad(elapsedSeconds float64, gamepad app.Gamepad, entity *ecs.Entity) {
 	var nodeComp *NodeComponent
 	ecs.FetchComponent(entity, &nodeComp)
 	var cameraComp *YawPitchCameraComponent
@@ -203,11 +197,8 @@ func (s *YawPitchCameraSystem) updateGamepad(elapsedSeconds float64, gamepad app
 	oldTranslation, _, oldScale := nodeComp.Node.AbsoluteMatrix().TRS()
 
 	deltaRotation := dprec.Vec2{
-		X: gamepad.RightStickY,
-		Y: gamepad.RightStickX,
-	}
-	if deltaRotation.Length() < 0.1 {
-		deltaRotation = dprec.ZeroVec2()
+		X: -gamepad.RightStickY(),
+		Y: gamepad.RightStickX(),
 	}
 	cameraComp.PitchAngle += dprec.Angle(deltaRotation.X*elapsedSeconds) * s.rotationSpeed
 	pitchRotation := dprec.RotationQuat(cameraComp.PitchAngle, dprec.BasisXVec3())
@@ -215,15 +206,11 @@ func (s *YawPitchCameraSystem) updateGamepad(elapsedSeconds float64, gamepad app
 	yawRotation := dprec.RotationQuat(cameraComp.YawAngle, dprec.BasisYVec3())
 
 	deltaTranslation := dprec.Vec3{
-		X: gamepad.LeftStickX,
-		Y: gamepad.RightTrigger - gamepad.LeftTrigger,
-		Z: -gamepad.LeftStickY,
+		X: gamepad.LeftStickX(),
+		Y: gamepad.RightTrigger() - gamepad.LeftTrigger(),
+		Z: gamepad.LeftStickY(),
 	}
-	if deltaTranslation.Length() < 0.1 {
-		deltaTranslation = dprec.ZeroVec3()
-	} else {
-		deltaTranslation = dprec.Vec3Prod(deltaTranslation, s.translationSpeed*elapsedSeconds)
-	}
+	deltaTranslation = dprec.Vec3Prod(deltaTranslation, s.translationSpeed*elapsedSeconds)
 	deltaTranslation = dprec.QuatVec3Rotation(yawRotation, deltaTranslation)
 
 	nodeComp.Node.SetAbsoluteMatrix(dprec.TRSMat4(
@@ -233,7 +220,7 @@ func (s *YawPitchCameraSystem) updateGamepad(elapsedSeconds float64, gamepad app
 	))
 }
 
-func NewFollowCameraSystem(ecsScene *ecs.Scene, gamepadProvider GamepadStateProvider) *FollowCameraSystem {
+func NewFollowCameraSystem(ecsScene *ecs.Scene, gamepadProvider GamepadProvider) *FollowCameraSystem {
 	return &FollowCameraSystem{
 		ecsScene:        ecsScene,
 		gamepadProvider: gamepadProvider,
@@ -242,7 +229,7 @@ func NewFollowCameraSystem(ecsScene *ecs.Scene, gamepadProvider GamepadStateProv
 
 type FollowCameraSystem struct {
 	ecsScene        *ecs.Scene
-	gamepadProvider GamepadStateProvider
+	gamepadProvider GamepadProvider
 
 	rotationSpeed    dprec.Angle
 	rotationStrength dprec.Angle
@@ -324,7 +311,7 @@ func (s *FollowCameraSystem) Update(elapsedSeconds float64) {
 				s.updateKeyboard(elapsedSeconds, entity)
 			}
 			if controlled.Inputs.Is(ControlInputGamepad0) {
-				if gamepad, ok := s.gamepadProvider.GamepadState(0); ok {
+				if gamepad := s.gamepadProvider.Gamepads()[0]; gamepad.Connected() && gamepad.Supported() {
 					s.updateGamepad(elapsedSeconds, gamepad, entity)
 				}
 			}
@@ -360,32 +347,32 @@ func (s *FollowCameraSystem) updateKeyboard(elapsedSeconds float64, entity *ecs.
 	}
 }
 
-func (s *FollowCameraSystem) updateGamepad(elapsedSeconds float64, gamepad app.GamepadState, entity *ecs.Entity) {
+func (s *FollowCameraSystem) updateGamepad(elapsedSeconds float64, gamepad app.Gamepad, entity *ecs.Entity) {
 	var cameraComp *FollowCameraComponent
 	ecs.FetchComponent(entity, &cameraComp)
 
-	if gamepad.DpadUpButton {
+	if gamepad.DpadUpButton() {
 		cameraComp.PitchAngle -= s.rotationSpeed * dprec.Angle(elapsedSeconds)
 	}
-	if gamepad.DpadDownButton {
+	if gamepad.DpadDownButton() {
 		cameraComp.PitchAngle += s.rotationSpeed * dprec.Angle(elapsedSeconds)
 	}
 
-	if gamepad.DpadLeftButton {
+	if gamepad.DpadLeftButton() {
 		cameraComp.YawAngle -= s.rotationSpeed * dprec.Angle(elapsedSeconds)
 	}
-	if gamepad.DpadRightButton {
+	if gamepad.DpadRightButton() {
 		cameraComp.YawAngle += s.rotationSpeed * dprec.Angle(elapsedSeconds)
 	}
 
-	if gamepad.RightBumper {
+	if gamepad.RightBumper() {
 		cameraComp.Zoom -= cameraComp.Zoom * elapsedSeconds
 	}
-	if gamepad.LeftBumper {
+	if gamepad.LeftBumper() {
 		cameraComp.Zoom += cameraComp.Zoom * elapsedSeconds
 	}
 
-	if dprec.Abs(gamepad.RightStickX) > 0.1 || dprec.Abs(gamepad.RightStickY) > 0.1 {
+	if dprec.Abs(gamepad.RightStickX()) > 0.0 || dprec.Abs(gamepad.RightStickY()) > 0.0 {
 		target := cameraComp.Target
 		targetPosition := target.AbsoluteMatrix().Translation()
 		anchorVector := dprec.Vec3Diff(cameraComp.AnchorPosition, targetPosition)
@@ -394,15 +381,11 @@ func (s *FollowCameraSystem) updateGamepad(elapsedSeconds float64, gamepad app.G
 		cameraVectorX := dprec.Vec3Cross(dprec.BasisYVec3(), cameraVectorZ)
 		cameraVectorY := dprec.Vec3Cross(cameraVectorZ, cameraVectorX)
 
-		if dprec.Abs(gamepad.RightStickY) > 0.1 {
-			angle := s.rotationStrength * dprec.Angle(gamepad.RightStickY*elapsedSeconds)
-			anchorVector = dprec.QuatVec3Rotation(dprec.RotationQuat(angle, cameraVectorX), anchorVector)
-		}
-		if dprec.Abs(gamepad.RightStickX) > 0.1 {
-			angle := -s.rotationStrength * dprec.Angle(gamepad.RightStickX*elapsedSeconds)
-			rotation := dprec.RotationQuat(angle, cameraVectorY)
-			anchorVector = dprec.QuatVec3Rotation(rotation, anchorVector)
-		}
+		angle := -s.rotationStrength * dprec.Angle(gamepad.RightStickY()*elapsedSeconds)
+		anchorVector = dprec.QuatVec3Rotation(dprec.RotationQuat(angle, cameraVectorX), anchorVector)
+
+		angle = -s.rotationStrength * dprec.Angle(gamepad.RightStickX()*elapsedSeconds)
+		anchorVector = dprec.QuatVec3Rotation(dprec.RotationQuat(angle, cameraVectorY), anchorVector)
 
 		cameraComp.AnchorPosition = dprec.Vec3Sum(targetPosition, anchorVector)
 	}

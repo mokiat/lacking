@@ -18,9 +18,14 @@ type Window interface {
 	// SetSize changes the content area of this window.
 	SetSize(width, height int)
 
-	// GamepadState returns the state of the specified gamepad and
-	// whether a gamepad at the specified index is at all connected.
-	GamepadState(index int) (GamepadState, bool)
+	// Gamepads returns an array of potentially available gamepad
+	// controllers.
+	//
+	// Use the Connected and Supported methods on the Gamepad object to check
+	// whether it is connected and can be used.
+	//
+	// This API supports up to 4 connected devices.
+	Gamepads() [4]Gamepad
 
 	// Schedule queues a function to be called on the main thread
 	// when possible. There are no guarantees that that will necessarily

@@ -7,7 +7,7 @@ import (
 	"github.com/mokiat/lacking/ui"
 )
 
-func NewCarSystem(ecsScene *ecs.Scene, gamepadProvider GamepadStateProvider) *CarSystem {
+func NewCarSystem(ecsScene *ecs.Scene, gamepadProvider GamepadProvider) *CarSystem {
 	return &CarSystem{
 		ecsScene:        ecsScene,
 		gamepadProvider: gamepadProvider,
@@ -16,7 +16,7 @@ func NewCarSystem(ecsScene *ecs.Scene, gamepadProvider GamepadStateProvider) *Ca
 
 type CarSystem struct {
 	ecsScene        *ecs.Scene
-	gamepadProvider GamepadStateProvider
+	gamepadProvider GamepadProvider
 
 	hasKeyboardConsumer bool
 
@@ -90,7 +90,7 @@ func (s *CarSystem) Update(elapsedSeconds float64) {
 				s.updateMouse(elapsedSeconds, entity)
 			}
 			if controlled.Inputs.Is(ControlInputGamepad0) {
-				if gamepad, ok := s.gamepadProvider.GamepadState(0); ok {
+				if gamepad := s.gamepadProvider.Gamepads()[0]; gamepad.Connected() && gamepad.Supported() {
 					s.updateGamepad(elapsedSeconds, gamepad, entity)
 				}
 			}
@@ -109,21 +109,21 @@ func (s *CarSystem) updateMouse(elapsedSeconds float64, entity *ecs.Entity) {
 	// TODO
 }
 
-func (s *CarSystem) updateGamepad(elapsedSeconds float64, gamepad app.GamepadState, entity *ecs.Entity) {
+func (s *CarSystem) updateGamepad(elapsedSeconds float64, gamepad app.Gamepad, entity *ecs.Entity) {
 	var carComp *CarComponent
 	ecs.FetchComponent(entity, &carComp)
 
-	carComp.SteeringAmount = gamepad.LeftStickX * gamepad.LeftStickX * gamepad.LeftStickX
-	carComp.Acceleration = gamepad.RightTrigger
-	carComp.Deceleration = gamepad.LeftTrigger
-	carComp.DesiredDirection = CarDirectionNeutral
-	if gamepad.SquareButton {
-		carComp.DesiredDirection = CarDirectionReverse
+	leftStickX := gamepad.LeftStickX()
+	carComp.SteeringAmount = leftStickX * leftStickX * leftStickX
+	carComp.Acceleration = gamepad.RightTrigger()
+	carComp.Deceleration = gamepad.LeftTrigger()
+	if gamepad.ActionLeftButton() {
+		carComp.Direction = CarDirectionReverse
 	}
-	if gamepad.CrossButton {
-		carComp.DesiredDirection = CarDirectionForward
+	if gamepad.ActionDownButton() {
+		carComp.Direction = CarDirectionForward
 	}
-	carComp.Recover = gamepad.TriangleButton
+	carComp.Recover = gamepad.ActionUpButton()
 }
 
 func (s *CarSystem) updateCar(elapsedSeconds float64, entity *ecs.Entity) {
@@ -147,20 +147,6 @@ func (s *CarSystem) updateCar(elapsedSeconds float64, entity *ecs.Entity) {
 		velocity := chassisBody.Velocity()
 		velocity.Y = 2.0
 		chassisBody.SetVelocity(velocity)
-	}
-
-	forwardSpeed := dprec.Vec3Dot(
-		car.Chassis().Body().Velocity(),
-		car.Chassis().Body().Orientation().OrientationZ(),
-	)
-	isMovingForward := forwardSpeed > 2.0
-	isMovingBackward := forwardSpeed < -2.0
-
-	if !isMovingBackward && (carComp.DesiredDirection == CarDirectionForward) {
-		carComp.Direction = CarDirectionForward
-	}
-	if !isMovingForward && (carComp.DesiredDirection == CarDirectionReverse) {
-		carComp.Direction = CarDirectionReverse
 	}
 
 	for _, axis := range car.Axes() {

@@ -21,13 +21,12 @@ const (
 )
 
 type CarComponent struct {
-	Car              *Car
-	Direction        CarDirection
-	DesiredDirection CarDirection
-	SteeringAmount   float64
-	Acceleration     float64
-	Deceleration     float64
-	Recover          bool
+	Car            *Car
+	Direction      CarDirection
+	SteeringAmount float64
+	Acceleration   float64
+	Deceleration   float64
+	Recover        bool
 }
 
 func (*CarComponent) TypeID() ecs.ComponentTypeID {
@@ -415,13 +414,12 @@ func (d *CarDefinition) ApplyToModel(scene *game.Scene, info CarApplyInfo) *Car 
 		entity: entity,
 	}
 	ecs.AttachComponent(entity, &CarComponent{
-		Car:              result,
-		Direction:        CarDirectionForward,
-		DesiredDirection: CarDirectionForward,
-		SteeringAmount:   0.0,
-		Acceleration:     0.0,
-		Deceleration:     0.0,
-		Recover:          false,
+		Car:            result,
+		Direction:      CarDirectionForward,
+		SteeringAmount: 0.0,
+		Acceleration:   0.0,
+		Deceleration:   0.0,
+		Recover:        false,
 	})
 	return result
 }
