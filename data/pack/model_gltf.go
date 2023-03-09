@@ -85,6 +85,7 @@ func (a *OpenGLTFResourceAction) Run() error {
 			MetallicRoughnessTexture: nil,
 			NormalScale:              1.0,
 			NormalTexture:            nil,
+			Properties:               gltfutil.Properties(gltfMaterial.Extras),
 		}
 		if gltfPBR := gltfMaterial.PBRMetallicRoughness; gltfPBR != nil {
 			material.Color = gltfutil.BaseColor(gltfPBR)
@@ -115,9 +116,9 @@ func (a *OpenGLTFResourceAction) Run() error {
 	meshDefinitionFromIndex := make(map[uint32]*MeshDefinition)
 	for i, gltfMesh := range gltfDoc.Meshes {
 		mesh := &MeshDefinition{
-			Name:         gltfMesh.Name,
-			Fragments:    make([]MeshFragment, len(gltfMesh.Primitives)),
-			HasCollision: !gltfutil.IsMeshCollisionDisabled(gltfMesh),
+			Name:       gltfMesh.Name,
+			Fragments:  make([]MeshFragment, len(gltfMesh.Primitives)),
+			Properties: gltfutil.Properties(gltfMesh.Extras),
 		}
 		meshDefinitionFromIndex[uint32(i)] = mesh
 		a.model.MeshDefinitions = append(a.model.MeshDefinitions, mesh)
@@ -262,6 +263,7 @@ func (a *OpenGLTFResourceAction) Run() error {
 			Translation: dprec.ZeroVec3(),
 			Rotation:    dprec.IdentityQuat(),
 			Scale:       dprec.NewVec3(1.0, 1.0, 1.0),
+			Properties:  gltfutil.Properties(gltfNode.Extras),
 		}
 		nodeFromIndex[nodeIndex] = node
 
@@ -293,16 +295,12 @@ func (a *OpenGLTFResourceAction) Run() error {
 		if gltfNode.Mesh != nil {
 			meshDefinition := meshDefinitionFromIndex[*gltfNode.Mesh]
 			meshInstance := &MeshInstance{
-				Name:         gltfNode.Name,
-				Node:         node,
-				Definition:   meshDefinition,
-				HasCollision: !gltfutil.IsCollisionDisabled(gltfNode) && meshDefinition.HasCollision,
+				Name:       gltfNode.Name,
+				Node:       node,
+				Definition: meshDefinition,
 			}
 			if gltfNode.Skin != nil {
 				meshInstance.Armature = armatureDefinitionFromIndex[*gltfNode.Skin]
-			}
-			if gltfutil.IsCollisionDisabled(gltfNode) {
-				meshInstance.HasCollision = false
 			}
 			a.model.MeshInstances = append(a.model.MeshInstances, meshInstance)
 		}

@@ -497,6 +497,21 @@ func BufferViewData(doc *gltf.Document, index uint32) gblob.LittleEndianBlock {
 	return gblob.LittleEndianBlock(buffer.Data[offset : offset+count])
 }
 
+func Properties(extras any) map[string]string {
+	result := make(map[string]string)
+	props, ok := extras.(map[string]any)
+	if ok {
+		for key, value := range props {
+			if strValue, ok := value.(string); ok {
+				result[key] = strValue
+			} else {
+				result[key] = ""
+			}
+		}
+	}
+	return result
+}
+
 func IsMeshCollisionDisabled(mesh *gltf.Mesh) bool {
 	props, ok := mesh.Extras.(map[string]any)
 	if !ok {

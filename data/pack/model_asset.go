@@ -16,14 +16,14 @@ type SaveModelAssetOption func(a *SaveModelAssetAction)
 
 func WithCollisionMesh(collisionMesh bool) SaveModelAssetOption {
 	return func(a *SaveModelAssetAction) {
-		a.collisionMesh = collisionMesh
+		a.forceCollidable = collisionMesh
 	}
 }
 
 type SaveModelAssetAction struct {
-	resource      asset.Resource
-	modelProvider ModelProvider
-	collisionMesh bool
+	resource        asset.Resource
+	modelProvider   ModelProvider
+	forceCollidable bool
 }
 
 func (a *SaveModelAssetAction) Describe() string {
@@ -31,7 +31,7 @@ func (a *SaveModelAssetAction) Describe() string {
 }
 
 func (a *SaveModelAssetAction) Run() error {
-	conv := newConverter(a.collisionMesh)
+	conv := newConverter(a.forceCollidable)
 	modelAsset := conv.BuildModel(a.modelProvider.Model())
 	if err := a.resource.WriteContent(modelAsset); err != nil {
 		return fmt.Errorf("failed to write asset: %w", err)
@@ -41,22 +41,24 @@ func (a *SaveModelAssetAction) Run() error {
 
 func newConverter(collisionMeshes bool) *converter {
 	return &converter{
-		collisionMeshes:                       collisionMeshes,
+		forceCollidable:                       collisionMeshes,
 		assetNodes:                            make([]asset.Node, 0),
 		assetNodeIndexFromNode:                make(map[*Node]int),
 		assetMaterialIndexFromMaterial:        make(map[*Material]int),
 		assetArmatureIndexFromArmature:        make(map[*Armature]int),
 		assetMeshDefinitionFromMeshDefinition: make(map[*MeshDefinition]int),
+		assetBodyDefinitionFromMeshDefinition: make(map[*MeshDefinition]int),
 	}
 }
 
 type converter struct {
-	collisionMeshes                       bool
+	forceCollidable                       bool
 	assetNodes                            []asset.Node
 	assetNodeIndexFromNode                map[*Node]int
 	assetMaterialIndexFromMaterial        map[*Material]int
 	assetArmatureIndexFromArmature        map[*Armature]int
 	assetMeshDefinitionFromMeshDefinition map[*MeshDefinition]int
+	assetBodyDefinitionFromMeshDefinition map[*MeshDefinition]int
 }
 
 func (c *converter) BuildModel(model *Model) *asset.Model {
@@ -113,17 +115,16 @@ func (c *converter) BuildModel(model *Model) *asset.Model {
 		assetBodyDefinitions []asset.BodyDefinition
 		assetBodyInstances   []asset.BodyInstance
 	)
-	if c.collisionMeshes {
-		assetBodyDefinitions = make([]asset.BodyDefinition, len(model.MeshDefinitions))
-		for i, meshDefinition := range model.MeshDefinitions {
-			assetBodyDefinitions[i] = c.BuildBodyDefinition(meshDefinition)
-		}
+	assetBodyDefinitions = make([]asset.BodyDefinition, len(model.MeshDefinitions))
+	for i, meshDefinition := range model.MeshDefinitions {
+		assetBodyDefinitions[i] = c.BuildBodyDefinition(meshDefinition)
+		c.assetBodyDefinitionFromMeshDefinition[meshDefinition] = i
+	}
 
-		assetBodyInstances = make([]asset.BodyInstance, 0, len(model.MeshInstances))
-		for _, meshInstance := range model.MeshInstances {
-			if meshInstance.HasCollision {
-				assetBodyInstances = append(assetBodyInstances, c.BuildBodyInstance(meshInstance))
-			}
+	assetBodyInstances = make([]asset.BodyInstance, 0, len(model.MeshInstances))
+	for _, meshInstance := range model.MeshInstances {
+		if c.forceCollidable || meshInstance.HasCollision() {
+			assetBodyInstances = append(assetBodyInstances, c.BuildBodyInstance(meshInstance))
 		}
 	}
 
@@ -406,10 +407,12 @@ func (c *converter) BuildMeshDefinition(meshDefinition *MeshDefinition) asset.Me
 	}
 
 	var (
-		fragments = make([]asset.MeshFragment, len(meshDefinition.Fragments))
+		fragments = make([]asset.MeshFragment, 0, len(meshDefinition.Fragments))
 	)
-	for i, fragment := range meshDefinition.Fragments {
-		fragments[i] = c.BuildFragment(fragment, indexSize)
+	for _, fragment := range meshDefinition.Fragments {
+		if !fragment.Material.IsInvisible() {
+			fragments = append(fragments, c.BuildFragment(fragment, indexSize))
+		}
 	}
 
 	var boundingSphereRadius float64
@@ -515,8 +518,11 @@ func (c *converter) BuildBodyDefinition(meshDefinition *MeshDefinition) asset.Bo
 	var triangles []asset.CollisionTriangle
 
 	for _, fragment := range meshDefinition.Fragments {
+		if fragment.Material.HasSkipCollision() {
+			continue
+		}
 		if fragment.Primitive != PrimitiveTriangles {
-			log.Warn("Skipping collision mesh due to primitive no being triangles")
+			log.Warn("Skipping collision mesh due to primitive not being triangles")
 			continue
 		}
 		for i := fragment.IndexOffset; i < fragment.IndexOffset+fragment.IndexCount; i += 3 {
@@ -536,15 +542,49 @@ func (c *converter) BuildBodyDefinition(meshDefinition *MeshDefinition) asset.Bo
 		}
 	}
 
+	// TODO: Dynamic grid size based on density
+	const gridSize = 10
+
+	type cell struct {
+		X int
+		Y int
+		Z int
+	}
+
+	cells := gog.Partition(triangles, func(triangle asset.CollisionTriangle) cell {
+		centroid := dprec.Vec3Quot(dprec.Vec3Sum(dprec.Vec3Sum(triangle.A, triangle.B), triangle.C), 3.0)
+		return cell{
+			X: int(centroid.X) / gridSize,
+			Y: int(centroid.Y) / gridSize,
+			Z: int(centroid.Z) / gridSize,
+		}
+	})
+
+	meshes := gog.Map(gog.Entries(cells), func(pair gog.KV[cell, []asset.CollisionTriangle]) asset.CollisionMesh {
+		triangles := pair.Value
+
+		center := dprec.Vec3Quot(gog.Reduce(triangles, dprec.ZeroVec3(), func(accum dprec.Vec3, triangle asset.CollisionTriangle) dprec.Vec3 {
+			return dprec.Vec3Sum(triangle.C, dprec.Vec3Sum(triangle.B, dprec.Vec3Sum(triangle.A, accum)))
+		}), 3*float64(len(triangles)))
+
+		triangles = gog.Map(triangles, func(triangle asset.CollisionTriangle) asset.CollisionTriangle {
+			return asset.CollisionTriangle{
+				A: dprec.Vec3Diff(triangle.A, center),
+				B: dprec.Vec3Diff(triangle.B, center),
+				C: dprec.Vec3Diff(triangle.C, center),
+			}
+		})
+
+		return asset.CollisionMesh{
+			Translation: center,
+			Rotation:    dprec.IdentityQuat(),
+			Triangles:   triangles,
+		}
+	})
+
 	return asset.BodyDefinition{
-		Name: meshDefinition.Name,
-		CollisionMeshes: []asset.CollisionMesh{
-			{
-				Translation: dprec.ZeroVec3(),
-				Rotation:    dprec.IdentityQuat(),
-				Triangles:   triangles,
-			},
-		},
+		Name:            meshDefinition.Name,
+		CollisionMeshes: meshes,
 	}
 }
 
@@ -556,10 +596,10 @@ func (c *converter) BuildBodyInstance(meshInstance *MeshInstance) asset.BodyInst
 		panic(fmt.Errorf("node %s not found", meshInstance.Node.Name))
 	}
 	var definitionIndex int32
-	if index, ok := c.assetMeshDefinitionFromMeshDefinition[meshInstance.Definition]; ok {
+	if index, ok := c.assetBodyDefinitionFromMeshDefinition[meshInstance.Definition]; ok {
 		definitionIndex = int32(index)
 	} else {
-		panic(fmt.Errorf("mesh definition %s not found", meshInstance.Definition.Name))
+		panic(fmt.Errorf("body definition %s not found", meshInstance.Definition.Name))
 	}
 	return asset.BodyInstance{
 		Name:      meshInstance.Name,
