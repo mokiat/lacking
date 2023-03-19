@@ -82,7 +82,10 @@ func (r *webRegistry) ResourceByID(id string) Resource {
 }
 
 func (r *webRegistry) ResourceByName(name string) Resource {
-	return r.resourcesFromName[name]
+	if resource, ok := r.resourcesFromName[name]; ok {
+		return resource
+	}
+	return nil
 }
 
 func (r *webRegistry) ResourcesByName(name string) []Resource {
