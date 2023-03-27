@@ -1,12 +1,14 @@
 package game
 
 import (
+	"github.com/mokiat/gog/ds"
 	"github.com/mokiat/gomath/dprec"
 	"github.com/mokiat/gomath/dtos"
 	"github.com/mokiat/lacking/game/ecs"
 	"github.com/mokiat/lacking/game/graphics"
 	"github.com/mokiat/lacking/game/physics"
 	"github.com/mokiat/lacking/log"
+	"github.com/mokiat/lacking/util/datastruct"
 )
 
 func newScene(resourceSet *ResourceSet, physicsScene *physics.Scene, gfxScene *graphics.Scene, ecsScene *ecs.Scene) *Scene {
@@ -15,6 +17,9 @@ func newScene(resourceSet *ResourceSet, physicsScene *physics.Scene, gfxScene *g
 		gfxScene:     gfxScene,
 		ecsScene:     ecsScene,
 		root:         NewNode(),
+
+		playbackPool: datastruct.NewDynamicPool[Playback](),
+		playbacks:    ds.NewList[*Playback](4),
 	}
 }
 
@@ -24,6 +29,9 @@ type Scene struct {
 	ecsScene     *ecs.Scene
 	root         *Node
 	models       []*Model
+
+	playbackPool datastruct.Pool[Playback]
+	playbacks    *ds.List[*Playback]
 }
 
 func (s *Scene) Delete() {
@@ -89,6 +97,7 @@ func (s *Scene) FindModel(name string) *Model {
 }
 
 func (s *Scene) Update(elapsedSeconds float64) {
+	s.applyPlaybacks(elapsedSeconds)
 	s.applyNodeToPhysics(s.root)
 	s.physicsScene.Update(elapsedSeconds)
 	s.applyPhysicsToNode(s.root)
@@ -238,6 +247,28 @@ func (s *Scene) CreateModel(info ModelInfo) *Model {
 	return result
 }
 
+func (s *Scene) PlayAnimation(animation *Animation) *Playback {
+	result := s.playbackPool.Fetch()
+	result.scene = s
+	result.animation = animation
+	result.head = animation.StartTime()
+	result.startTime = animation.StartTime()
+	result.endTime = animation.EndTime()
+	result.speed = 1.0
+	result.Play()
+	s.playbacks.Add(result)
+	return result
+}
+
+func (s *Scene) FindPlayback(name string) *Playback {
+	for _, playback := range s.playbacks.Items() {
+		if playback.name == name {
+			return playback
+		}
+	}
+	return nil
+}
+
 func (s *Scene) applyPhysicsToNode(node *Node) {
 	if body := node.body; body != nil {
 		if !body.Static() {
@@ -251,6 +282,15 @@ func (s *Scene) applyPhysicsToNode(node *Node) {
 	}
 	for child := node.firstChild; child != nil; child = child.rightSibling {
 		s.applyPhysicsToNode(child)
+	}
+}
+
+func (s *Scene) applyPlaybacks(elapsedSeconds float64) {
+	for _, playback := range s.playbacks.Items() {
+		if playback.playing {
+			playback.Advance(elapsedSeconds)
+			playback.animation.Apply(playback.head)
+		}
 	}
 }
 

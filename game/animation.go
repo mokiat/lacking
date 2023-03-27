@@ -1,6 +1,8 @@
 package game
 
 import (
+	"math"
+
 	"github.com/mokiat/gomath/dprec"
 )
 
@@ -123,4 +125,99 @@ func (l KeyframeList[T]) Keyframe(timestamp float64) (Keyframe[T], Keyframe[T], 
 type Keyframe[T any] struct {
 	Timestamp float64
 	Value     T
+}
+
+type Playback struct {
+	scene     *Scene
+	animation *Animation
+
+	name      string
+	head      float64
+	startTime float64
+	endTime   float64
+	speed     float64
+	playing   bool
+	loop      bool
+}
+
+func (p *Playback) Name() string {
+	return p.name
+}
+
+func (p *Playback) SetName(name string) {
+	p.name = name
+}
+
+func (p *Playback) Play() {
+	p.playing = true
+}
+
+func (p *Playback) Pause() {
+	p.playing = false
+}
+
+func (p *Playback) Stop() {
+	p.Pause()
+	p.head = p.animation.StartTime()
+}
+
+func (p *Playback) Loop() bool {
+	return p.loop
+}
+
+func (p *Playback) SetLoop(loop bool) {
+	p.loop = loop
+}
+
+func (p *Playback) Speed() float64 {
+	return p.speed
+}
+
+func (p *Playback) SetSpeed(speed float64) {
+	p.speed = speed
+}
+
+func (p *Playback) Advance(amount float64) {
+	p.head += amount * p.speed
+	if p.head > p.endTime {
+		if p.loop {
+			p.head = p.startTime + math.Mod(p.head, p.Length())
+		} else {
+			p.head = p.endTime
+			p.Pause()
+		}
+	}
+}
+
+func (p *Playback) Seek(head float64) {
+	p.head = head
+}
+
+func (p *Playback) Head() float64 {
+	return p.head
+}
+
+func (p *Playback) StartTime() float64 {
+	return p.startTime
+}
+
+func (p *Playback) SetStartTime(startTime float64) {
+	p.startTime = startTime
+}
+
+func (p *Playback) EndTime() float64 {
+	return p.endTime
+}
+
+func (p *Playback) SetEndTime(endTime float64) {
+	p.endTime = endTime
+}
+
+func (p *Playback) Length() float64 {
+	return p.endTime - p.startTime
+}
+
+func (p *Playback) Delete() {
+	p.scene.playbacks.Remove(p)
+	p.scene.playbackPool.Restore(p)
 }
