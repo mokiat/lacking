@@ -19,6 +19,8 @@ type ElementData struct {
 	Layout    ui.Layout
 }
 
+// TODO: What about ditching Essence in favour of ElementCallbackData?
+
 // Element represents the most basic component, which is translated
 // to a UI Element. All higher-order components eventually boil down to an
 // Element.
