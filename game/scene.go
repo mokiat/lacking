@@ -32,12 +32,26 @@ type Scene struct {
 
 	playbackPool datastruct.Pool[Playback]
 	playbacks    *ds.List[*Playback]
+
+	frozen bool
 }
 
 func (s *Scene) Delete() {
 	defer s.physicsScene.Delete()
 	defer s.gfxScene.Delete()
 	defer s.ecsScene.Delete()
+}
+
+func (s *Scene) IsFrozen() bool {
+	return s.frozen
+}
+
+func (s *Scene) Freeze() {
+	s.frozen = true
+}
+
+func (s *Scene) Unfreeze() {
+	s.frozen = false
 }
 
 func (s *Scene) Physics() *physics.Scene {
@@ -97,10 +111,12 @@ func (s *Scene) FindModel(name string) *Model {
 }
 
 func (s *Scene) Update(elapsedSeconds float64) {
-	s.applyPlaybacks(elapsedSeconds)
-	s.applyNodeToPhysics(s.root)
-	s.physicsScene.Update(elapsedSeconds)
-	s.applyPhysicsToNode(s.root)
+	if !s.frozen {
+		s.applyPlaybacks(elapsedSeconds)
+		s.applyNodeToPhysics(s.root)
+		s.physicsScene.Update(elapsedSeconds)
+		s.applyPhysicsToNode(s.root)
+	}
 }
 
 func (s *Scene) Render(viewport graphics.Viewport) {
