@@ -410,7 +410,7 @@ func (c *converter) BuildMeshDefinition(meshDefinition *MeshDefinition) asset.Me
 		fragments = make([]asset.MeshFragment, 0, len(meshDefinition.Fragments))
 	)
 	for _, fragment := range meshDefinition.Fragments {
-		if !fragment.Material.IsInvisible() {
+		if fragment.Material != nil && !fragment.Material.IsInvisible() {
 			fragments = append(fragments, c.BuildFragment(fragment, indexSize))
 		}
 	}
@@ -518,7 +518,7 @@ func (c *converter) BuildBodyDefinition(meshDefinition *MeshDefinition) asset.Bo
 	var triangles []asset.CollisionTriangle
 
 	for _, fragment := range meshDefinition.Fragments {
-		if fragment.Material.HasSkipCollision() {
+		if fragment.Material != nil && fragment.Material.HasSkipCollision() {
 			continue
 		}
 		if fragment.Primitive != PrimitiveTriangles {
