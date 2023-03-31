@@ -8,6 +8,7 @@ import (
 // ElementData is the struct that should be used when configuring
 // an Element component's data.
 type ElementData struct {
+	Reference **ui.Element
 	Essence   ui.Essence
 	Enabled   opt.T[bool]
 	Visible   opt.T[bool]
@@ -40,6 +41,10 @@ var Element = Define(func(props Properties, scope Scope) Instance {
 	Defer(func() {
 		element.Destroy()
 	})
+
+	if data.Reference != nil {
+		*data.Reference = element
+	}
 
 	element.SetEssence(data.Essence)
 	if data.Enabled.Specified {
