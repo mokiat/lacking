@@ -61,7 +61,7 @@ var Dropdown = co.Define(func(props co.Properties, scope co.Scope) co.Instance {
 	}
 
 	onOpen := func() {
-		overlay := co.OpenOverlay(co.New(dropdownList, func() {
+		overlay := co.OpenOverlay(scope, co.New(dropdownList, func() {
 			co.WithData(data)
 			co.WithCallbackData(dropdownListCallbackData{
 				OnSelected: onItemSelected,
