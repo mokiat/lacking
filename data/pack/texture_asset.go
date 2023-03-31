@@ -10,7 +10,7 @@ func BuildTwoDTextureAsset(image *Image) *asset.TwoDTexture {
 	return &asset.TwoDTexture{
 		Width:     uint16(image.Width),
 		Height:    uint16(image.Height),
-		Wrapping:  asset.WrapModeRepeat,
+		Wrapping:  asset.WrapModeClampToEdge,
 		Filtering: asset.FilterModeLinear,
 		Flags:     asset.TextureFlagMipmapping,
 		Format:    asset.TexelFormatRGBA8,
