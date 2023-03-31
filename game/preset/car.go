@@ -449,6 +449,10 @@ func (c *Car) Entity() *ecs.Entity {
 	return c.entity
 }
 
+func (c *Car) Velocity() float64 {
+	return c.Chassis().Body().Velocity().Length()
+}
+
 type Chassis struct {
 	node *game.Node
 	body *physics.Body
