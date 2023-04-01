@@ -80,11 +80,21 @@ func DefineType(template TypeComponent) Component {
 				return definition.NewInstance()
 			}).Get()
 
+			invalidateProp := UseState(func() int {
+				return 0
+			})
+
+			invalidate := UseState(func() func() {
+				return func() {
+					invalidateProp.Set(invalidateProp.Get() + 1)
+				}
+			}).Get()
+
 			var justCreated bool
 			Once(func() {
 				justCreated = true
 				target := reflect.ValueOf(presenter).Elem()
-				definition.AssignProperties(target, scope, props)
+				definition.AssignProperties(target, invalidate, scope, props)
 				if notifiable, ok := presenter.(CreateNotifiable); ok {
 					notifiable.OnCreate()
 				}
@@ -100,7 +110,7 @@ func DefineType(template TypeComponent) Component {
 
 			if !justCreated && !justDeleted {
 				target := reflect.ValueOf(presenter).Elem()
-				definition.AssignProperties(target, scope, props)
+				definition.AssignProperties(target, invalidate, scope, props)
 				if notifiable, ok := presenter.(UpdateNotifiable); ok {
 					notifiable.OnUpdate()
 				}
@@ -121,6 +131,7 @@ func newTypeComponentDefinition(reflType reflect.Type) typeComponentDefinition {
 		dataFieldIndices         []int
 		callbackDataFieldIndices []int
 		layoutDataFieldIndices   []int
+		invalidateFieldIndices   []int
 	)
 
 	if reflType.Kind() == reflect.Struct {
@@ -137,6 +148,8 @@ func newTypeComponentDefinition(reflType reflect.Type) typeComponentDefinition {
 				callbackDataFieldIndices = append(callbackDataFieldIndices, i)
 			case "layout":
 				layoutDataFieldIndices = append(layoutDataFieldIndices, i)
+			case "invalidate":
+				invalidateFieldIndices = append(invalidateFieldIndices, i)
 			default:
 				log.Warn("Unknown type component field tag %q!", tag)
 			}
@@ -150,6 +163,7 @@ func newTypeComponentDefinition(reflType reflect.Type) typeComponentDefinition {
 		dataFieldIndices:         dataFieldIndices,
 		callbackDataFieldIndices: callbackDataFieldIndices,
 		layoutDataFieldIndices:   layoutDataFieldIndices,
+		invalidateFieldIndices:   invalidateFieldIndices,
 	}
 }
 
@@ -160,6 +174,7 @@ type typeComponentDefinition struct {
 	dataFieldIndices         []int
 	callbackDataFieldIndices []int
 	layoutDataFieldIndices   []int
+	invalidateFieldIndices   []int
 }
 
 func (d typeComponentDefinition) Name() string {
@@ -170,7 +185,7 @@ func (d typeComponentDefinition) NewInstance() TypeComponent {
 	return reflect.New(d.reflType).Interface().(TypeComponent)
 }
 
-func (d typeComponentDefinition) AssignProperties(target reflect.Value, scope Scope, props Properties) {
+func (d typeComponentDefinition) AssignProperties(target reflect.Value, invalidate func(), scope Scope, props Properties) {
 	for _, index := range d.scopeFieldIndices {
 		target.Field(index).Set(reflect.ValueOf(scope))
 	}
@@ -188,5 +203,8 @@ func (d typeComponentDefinition) AssignProperties(target reflect.Value, scope Sc
 		for _, index := range d.layoutDataFieldIndices {
 			target.Field(index).Set(reflect.ValueOf(value))
 		}
+	}
+	for _, index := range d.invalidateFieldIndices {
+		target.Field(index).Set(reflect.ValueOf(invalidate))
 	}
 }

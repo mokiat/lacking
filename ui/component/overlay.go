@@ -8,8 +8,6 @@ type Overlay interface {
 	Close()
 }
 
-// TODO: Add scope to OpenOverlay?
-
 // OpenOverlay opens a new Overlay that will take the appearance described
 // in the specified instance.
 func OpenOverlay(scope Scope, instance Instance) Overlay {

@@ -11,7 +11,6 @@ import (
 type applicationKey struct{}
 
 var (
-	rootLifecycle *windowLifecycle
 	rootUIContext *ui.Context
 	rootScope     Scope
 )
@@ -29,6 +28,7 @@ func Initialize(window *ui.Window, instance Instance) {
 	window.Root().AppendChild(rootNode.element)
 }
 
+// TODO: Use TypeDefine instead
 var application = Define(func(props Properties, scope Scope) Instance {
 	lifecycle := UseLifecycle(func(handle LifecycleHandle) *windowLifecycle {
 		return &windowLifecycle{
@@ -57,14 +57,6 @@ type windowLifecycle struct {
 	handle        LifecycleHandle
 	overlays      *ds.List[*overlayHandle]
 	freeOverlayID int
-}
-
-func (l *windowLifecycle) OnCreate(props Properties, scope Scope) {
-	rootLifecycle = l
-}
-
-func (l *windowLifecycle) OnDestroy(scope Scope) {
-	rootLifecycle = nil
 }
 
 func (l *windowLifecycle) OpenOverlay(instance Instance) *overlayHandle {
