@@ -24,6 +24,7 @@ func newAmbientLight(scene *Scene, info AmbientLightInfo) *AmbientLight {
 	light.outerRadius = info.OuterRadius
 	light.reflectionTexture = info.ReflectionTexture
 	light.refractionTexture = info.RefractionTexture
+	light.active = true
 	return light
 }
 
@@ -35,6 +36,16 @@ type AmbientLight struct {
 	outerRadius       float64
 	reflectionTexture *CubeTexture
 	refractionTexture *CubeTexture
+
+	active bool
+}
+
+func (l *AmbientLight) Active() bool {
+	return l.active
+}
+
+func (l *AmbientLight) SetActive(active bool) {
+	l.active = active
 }
 
 // TODO: Set/Get Position

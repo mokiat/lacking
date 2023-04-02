@@ -993,7 +993,9 @@ func (r *sceneRenderer) renderLightingPass(ctx renderCtx) {
 	r.ambientLightBucket.Reset()
 	ctx.scene.ambientLightOctree.VisitHexahedronRegion(&ctx.frustum, r.ambientLightBucket)
 	for _, ambientLight := range r.ambientLightBucket.Items() {
-		r.renderAmbientLight(ctx, ambientLight)
+		if ambientLight.active {
+			r.renderAmbientLight(ctx, ambientLight)
+		}
 	}
 
 	// TODO: Use batching (instancing) when rendering point lights

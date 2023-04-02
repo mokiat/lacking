@@ -395,3 +395,17 @@ func (n *Node) isStaleHierarchy() bool {
 	// it is unclear if the parent is up to date.
 	return n.parent.isStaleHierarchy()
 }
+
+func IgnoreParentRotation(parent, current dprec.Mat4) dprec.Mat4 {
+	// Remove parent's rotation
+	parent.M11 = 1.0
+	parent.M12 = 0.0
+	parent.M13 = 0.0
+	parent.M21 = 0.0
+	parent.M22 = 1.0
+	parent.M23 = 0.0
+	parent.M31 = 0.0
+	parent.M32 = 0.0
+	parent.M33 = 1.0
+	return dprec.Mat4Prod(parent, current)
+}

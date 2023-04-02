@@ -87,7 +87,7 @@ func (s *Scene) CreateCamera() *Camera {
 
 // CreateAmbientLight creates a new AmbientLight object to be used
 // within this scene.
-func (s *Scene) CreateAmbientLightNew(info AmbientLightInfo) *AmbientLight {
+func (s *Scene) CreateAmbientLight(info AmbientLightInfo) *AmbientLight {
 	return newAmbientLight(s, info)
 }
 

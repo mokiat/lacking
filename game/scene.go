@@ -76,7 +76,7 @@ func (s *Scene) Initialize(definition *SceneDefinition) {
 	}
 
 	if definition.reflectionTexture != nil && definition.refractionTexture != nil {
-		s.Graphics().CreateAmbientLightNew(graphics.AmbientLightInfo{
+		s.Graphics().CreateAmbientLight(graphics.AmbientLightInfo{
 			ReflectionTexture: definition.reflectionTexture.gfxTexture,
 			RefractionTexture: definition.refractionTexture.gfxTexture,
 			Position:          dprec.ZeroVec3(),
@@ -210,7 +210,7 @@ func (s *Scene) CreateModel(info ModelInfo) *Model {
 			} else {
 				jointNode = modelNode
 			}
-			// TODO: Use single method SetArmatureBinding(armature, joint)
+			// TODO: Use single method SetAttachment(BoneAttachment{armature, joint})
 			jointNode.SetArmature(armature)
 			jointNode.SetArmatureBone(j)
 		}
