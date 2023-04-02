@@ -72,6 +72,10 @@ func (l *PointLight) SetPosition(position dprec.Vec3) {
 	}
 }
 
+func (l *PointLight) SetMatrix(matrix dprec.Mat4) {
+	l.SetPosition(matrix.Translation())
+}
+
 // EmitRange returns the distance that this light source covers.
 func (l *PointLight) EmitRange() float64 {
 	return l.emitRange

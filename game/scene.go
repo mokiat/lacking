@@ -233,7 +233,7 @@ func (s *Scene) CreateModel(info ModelInfo) *Model {
 			Definition: meshDefinition,
 			Armature:   armature,
 		})
-		meshNode.SetMesh(mesh)
+		meshNode.SetAttachable(mesh)
 	}
 
 	if info.IsDynamic {
@@ -328,18 +328,6 @@ func (s *Scene) applyNodeToGraphics(node *Node) {
 	// NOTE: call AbsoluteMatrix regardless if there is anything attached or not,
 	// since this Node could be used as an armature.
 	absMatrix := node.AbsoluteMatrix()
-	if mesh := node.Mesh(); mesh != nil {
-		mesh.SetMatrix(absMatrix)
-	}
-	if camera := node.Camera(); camera != nil {
-		camera.SetMatrix(absMatrix)
-	}
-	if light := node.directionalLight; light != nil {
-		light.SetMatrix(absMatrix)
-	}
-	if light := node.pointLight; light != nil {
-		light.SetPosition(absMatrix.Translation())
-	}
 	if armature := node.armature; armature != nil {
 		armature.SetBone(node.armatureBone, dtos.Mat4(absMatrix))
 	}

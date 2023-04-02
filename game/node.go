@@ -71,14 +71,10 @@ type Node struct {
 	absMatrix dprec.Mat4
 
 	// TODO: Abstract all of these through a common interface
-	body             *physics.Body
-	mesh             *graphics.Mesh
-	armature         *graphics.Armature
-	armatureBone     int
-	camera           *graphics.Camera
-	pointLight       *graphics.PointLight
-	directionalLight *graphics.DirectionalLight
-	attachable       Attachable
+	body         *physics.Body
+	armature     *graphics.Armature
+	armatureBone int
+	attachable   Attachable
 }
 
 // PrintHierarchy prints debug information regarding the hierarchy that starts
@@ -352,26 +348,6 @@ func (n *Node) SetBody(body *physics.Body) {
 	n.body = body
 }
 
-// Mesh returns the graphics Mesh that is attached to this Node.
-func (n *Node) Mesh() *graphics.Mesh {
-	return n.mesh
-}
-
-// SetMesh attaches a graphics Mesh to this Node.
-func (n *Node) SetMesh(mesh *graphics.Mesh) {
-	n.mesh = mesh
-}
-
-// Camera returns the graphics Camera that is attached to this Node.
-func (n *Node) Camera() *graphics.Camera {
-	return n.camera
-}
-
-// SetCamera attaches a graphics Camera to this Node.
-func (n *Node) SetCamera(camera *graphics.Camera) {
-	n.camera = camera
-}
-
 // Armature returns the graphics Armature that is attached to this Node.
 func (n *Node) Armature() *graphics.Armature {
 	return n.armature
@@ -394,16 +370,8 @@ func (n *Node) SetArmatureBone(bone int) {
 	n.armatureBone = bone
 }
 
-func (n *Node) PointLight() *graphics.PointLight {
-	return n.pointLight
-}
-
-func (n *Node) SetPointLight(light *graphics.PointLight) {
-	n.pointLight = light
-}
-
-func (n *Node) SetDirectionalLight(light *graphics.DirectionalLight) {
-	n.directionalLight = light
+func (n *Node) Attachable() Attachable {
+	return n.attachable
 }
 
 func (n *Node) SetAttachable(attachable Attachable) {

@@ -160,6 +160,8 @@ func (s *ResourceSet) OpenSceneByName(name string) async.Promise[*SceneDefinitio
 // Calling this method twice is not allowed. Allocating new resources after this
 // method has been called is also not allowed.
 func (s *ResourceSet) Delete() {
+	// FIXME: All of the release calls need to occur on the GPU thread.
+	// Also, rework this method to return a promise.
 	go func() {
 		for _, promise := range s.namedTwoDTextures {
 			if texture, err := promise.Wait(); err == nil {

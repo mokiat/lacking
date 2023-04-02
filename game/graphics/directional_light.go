@@ -57,6 +57,14 @@ func (l *DirectionalLight) SetMatrix(matrix dprec.Mat4) { // FIXME
 	l.matrixDirty = true
 }
 
+func (l *DirectionalLight) Active() bool {
+	return l.active
+}
+
+func (l *DirectionalLight) SetActive(active bool) {
+	l.active = active
+}
+
 // Delete removes this light from the scene.
 func (l *DirectionalLight) Delete() {
 	if l.scene == nil {
