@@ -8,7 +8,7 @@ import (
 // NewDifferential creates a new Differential constraint solver.
 func NewDifferential() *Differential {
 	return &Differential{
-		maxDelta: 100.0,
+		maxDelta: 20.0,
 	}
 }
 
@@ -41,25 +41,17 @@ func (d *Differential) ApplyImpulses(ctx solver.PairContext) {
 	sourceVelocity := dprec.Vec3Dot(sourceAxisX, ctx.Source.AngularVelocity())
 
 	var targetCorrection dprec.Vec3
+	var sourceCorrection dprec.Vec3
 	if delta := targetVelocity - sourceVelocity; delta > d.maxDelta {
-		targetCorrection = dprec.Vec3Prod(targetAxisX, d.maxDelta-delta)
+		targetCorrection = dprec.Vec3Prod(targetAxisX, (d.maxDelta-delta)/2.0)
+		sourceCorrection = dprec.Vec3Prod(sourceAxisX, (delta-d.maxDelta)/2.0)
 	}
-	var sourceCorrectiom dprec.Vec3
 	if delta := sourceVelocity - targetVelocity; delta > d.maxDelta {
-		sourceCorrectiom = dprec.Vec3Prod(sourceAxisX, d.maxDelta-delta)
+		sourceCorrection = dprec.Vec3Prod(sourceAxisX, (d.maxDelta-delta)/2.0)
+		targetCorrection = dprec.Vec3Prod(targetAxisX, (delta-d.maxDelta)/2.0)
 	}
-
-	// FIXME: This is a naive implementation. It adjusts only the velocity
-	// of one of the wheels, without affecting the other. Furthermore, it is
-	// sharp when the threshold is passed, instead of gradual.
-	ctx.Target.ApplyImpulse(solver.Impulse{
-		Linear:  dprec.ZeroVec3(),
-		Angular: targetCorrection,
-	})
-	ctx.Source.ApplyImpulse(solver.Impulse{
-		Linear:  dprec.ZeroVec3(),
-		Angular: sourceCorrectiom,
-	})
+	ctx.Target.SetAngularVelocity(dprec.Vec3Sum(ctx.Target.AngularVelocity(), targetCorrection))
+	ctx.Source.SetAngularVelocity(dprec.Vec3Sum(ctx.Source.AngularVelocity(), sourceCorrection))
 }
 
 func (d *Differential) ApplyNudges(ctx solver.PairContext) {}

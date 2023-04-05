@@ -372,9 +372,9 @@ func (d *CarDefinition) ApplyToModel(scene *game.Scene, info CarApplyInfo) *Car 
 				node: hubNode,
 				body: hubBody,
 			}
-
-			scene.Physics().CreateDoubleBodyConstraint(leftWheelBody, rightWheelBody, constraint.NewDifferential())
 		}
+
+		scene.Physics().CreateDoubleBodyConstraint(leftWheelBody, rightWheelBody, constraint.NewDifferential())
 
 		axes = append(axes, &Axis{
 			maxSteeringAngle: axisDef.maxSteeringAngle,
@@ -514,6 +514,10 @@ type Wheel struct {
 	body                 *physics.Body
 	directionSolver      *constraint.MatchDirections
 	attachmentConstraint *physics.DBConstraint
+}
+
+func (w *Wheel) Velocity() float64 {
+	return dprec.Vec3Dot(w.body.AngularVelocity(), w.body.Orientation().OrientationX())
 }
 
 func (w *Wheel) Node() *game.Node {
