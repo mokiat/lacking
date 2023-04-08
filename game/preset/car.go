@@ -8,31 +8,6 @@ import (
 	"github.com/mokiat/lacking/game/physics/constraint"
 )
 
-var (
-	CarComponentID = ecs.NewComponentTypeID()
-)
-
-type CarDirection int
-
-const (
-	CarDirectionNeutral CarDirection = iota
-	CarDirectionForward
-	CarDirectionReverse
-)
-
-type CarComponent struct {
-	Car            *Car
-	Direction      CarDirection
-	SteeringAmount float64
-	Acceleration   float64
-	Deceleration   float64
-	Recover        bool
-}
-
-func (*CarComponent) TypeID() ecs.ComponentTypeID {
-	return CarComponentID
-}
-
 func NewChassisDefinition() *ChassisDefinition {
 	return &ChassisDefinition{}
 }
@@ -402,9 +377,6 @@ func (d *CarDefinition) ApplyToModel(scene *game.Scene, info CarApplyInfo) *Car 
 	ecs.AttachComponent(entity, &NodeComponent{
 		Node: chassisNode,
 	})
-	ecs.AttachComponent(entity, &ControlledComponent{
-		Inputs: info.Inputs,
-	})
 	result := &Car{
 		chassis: &Chassis{
 			node: chassisNode,
@@ -415,7 +387,7 @@ func (d *CarDefinition) ApplyToModel(scene *game.Scene, info CarApplyInfo) *Car 
 	}
 	ecs.AttachComponent(entity, &CarComponent{
 		Car:            result,
-		Direction:      CarDirectionForward,
+		Gear:           CarGearForward,
 		SteeringAmount: 0.0,
 		Acceleration:   0.0,
 		Deceleration:   0.0,
@@ -428,7 +400,6 @@ type CarApplyInfo struct {
 	Model    *game.Model
 	Position dprec.Vec3
 	Rotation dprec.Quat
-	Inputs   ControlInput
 }
 
 type Car struct {
