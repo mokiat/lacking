@@ -833,53 +833,56 @@ func checkIntersectionSphereWithTriangle(sphere Placement[StaticSphere], triangl
 		sphereDisplaceNormal dprec.Vec3
 	)
 	switch {
+	// TODO: Recover all cases once the physics engine is fixed to check
+	// collisions precisely (via binary search or similar).
+
 	case outsideA:
-		cornerOffset := dprec.Vec3Diff(spherePosition, triangleA)
-		cornerDistance := cornerOffset.Length()
-		if isIntersection = (cornerDistance <= sphereRadius); isIntersection {
-			depth = sphereRadius - cornerDistance
-			sphereDisplaceNormal = dprec.Vec3Quot(cornerOffset, cornerDistance)
-		}
+	// 	cornerOffset := dprec.Vec3Diff(spherePosition, triangleA)
+	// 	cornerDistance := cornerOffset.Length()
+	// 	if isIntersection = (cornerDistance <= sphereRadius); isIntersection {
+	// 		depth = sphereRadius - cornerDistance
+	// 		sphereDisplaceNormal = dprec.Vec3Quot(cornerOffset, cornerDistance)
+	// 	}
 
 	case outsideB:
-		cornerOffset := dprec.Vec3Diff(spherePosition, triangleB)
-		cornerDistance := cornerOffset.Length()
-		if isIntersection = (cornerDistance <= sphereRadius); isIntersection {
-			depth = sphereRadius - cornerDistance
-			sphereDisplaceNormal = dprec.Vec3Quot(cornerOffset, cornerDistance)
-		}
+	// 	cornerOffset := dprec.Vec3Diff(spherePosition, triangleB)
+	// 	cornerDistance := cornerOffset.Length()
+	// 	if isIntersection = (cornerDistance <= sphereRadius); isIntersection {
+	// 		depth = sphereRadius - cornerDistance
+	// 		sphereDisplaceNormal = dprec.Vec3Quot(cornerOffset, cornerDistance)
+	// 	}
 
 	case outsideC:
-		cornerOffset := dprec.Vec3Diff(spherePosition, triangleC)
-		cornerDistance := cornerOffset.Length()
-		if isIntersection = (cornerDistance <= sphereRadius); isIntersection {
-			depth = sphereRadius - cornerDistance
-			sphereDisplaceNormal = dprec.Vec3Quot(cornerOffset, cornerDistance)
-		}
+	// 	cornerOffset := dprec.Vec3Diff(spherePosition, triangleC)
+	// 	cornerDistance := cornerOffset.Length()
+	// 	if isIntersection = (cornerDistance <= sphereRadius); isIntersection {
+	// 		depth = sphereRadius - cornerDistance
+	// 		sphereDisplaceNormal = dprec.Vec3Quot(cornerOffset, cornerDistance)
+	// 	}
 
 	case outsideAB:
-		edgeOffset := dprec.Vec3Sum(dprec.Vec3Prod(normAB, distAB), dprec.Vec3Prod(triangleNormal, height))
-		edgeDistance := edgeOffset.Length()
-		if isIntersection = (edgeDistance <= sphereRadius); isIntersection {
-			depth = sphereRadius - edgeDistance
-			sphereDisplaceNormal = dprec.Vec3Quot(edgeOffset, edgeDistance)
-		}
+	// 	edgeOffset := dprec.Vec3Sum(dprec.Vec3Prod(normAB, distAB), dprec.Vec3Prod(triangleNormal, height))
+	// 	edgeDistance := edgeOffset.Length()
+	// 	if isIntersection = (edgeDistance <= sphereRadius); isIntersection {
+	// 		depth = sphereRadius - edgeDistance
+	// 		sphereDisplaceNormal = dprec.Vec3Quot(edgeOffset, edgeDistance)
+	// 	}
 
 	case outsideBC:
-		edgeOffset := dprec.Vec3Sum(dprec.Vec3Prod(normBC, distBC), dprec.Vec3Prod(triangleNormal, height))
-		edgeDistance := edgeOffset.Length()
-		if isIntersection = (edgeDistance <= sphereRadius); isIntersection {
-			depth = sphereRadius - edgeDistance
-			sphereDisplaceNormal = dprec.Vec3Quot(edgeOffset, edgeDistance)
-		}
+	// 	edgeOffset := dprec.Vec3Sum(dprec.Vec3Prod(normBC, distBC), dprec.Vec3Prod(triangleNormal, height))
+	// 	edgeDistance := edgeOffset.Length()
+	// 	if isIntersection = (edgeDistance <= sphereRadius); isIntersection {
+	// 		depth = sphereRadius - edgeDistance
+	// 		sphereDisplaceNormal = dprec.Vec3Quot(edgeOffset, edgeDistance)
+	// 	}
 
 	case outsideCA:
-		edgeOffset := dprec.Vec3Sum(dprec.Vec3Prod(normCA, distCA), dprec.Vec3Prod(triangleNormal, height))
-		edgeDistance := edgeOffset.Length()
-		if isIntersection = (edgeDistance <= sphereRadius); isIntersection {
-			depth = sphereRadius - edgeDistance
-			sphereDisplaceNormal = dprec.Vec3Quot(edgeOffset, edgeDistance)
-		}
+	// 	edgeOffset := dprec.Vec3Sum(dprec.Vec3Prod(normCA, distCA), dprec.Vec3Prod(triangleNormal, height))
+	// 	edgeDistance := edgeOffset.Length()
+	// 	if isIntersection = (edgeDistance <= sphereRadius); isIntersection {
+	// 		depth = sphereRadius - edgeDistance
+	// 		sphereDisplaceNormal = dprec.Vec3Quot(edgeOffset, edgeDistance)
+	// 	}
 
 	case inside:
 		isIntersection = true
