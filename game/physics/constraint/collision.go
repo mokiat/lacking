@@ -64,7 +64,8 @@ func (s *Collision) ApplyImpulses(ctx solver.Context) {
 		}
 		frictionLambda := ctx.JacobianImpulseLambda(frictionJacobian, 0.0, 0.0)
 		// TODO: Have friction coefficient configurable
-		const frictionCoefficient = 0.9 // around 0.7 to 0.9 is realistic for dry asphalt
+		// const frictionCoefficient = 0.9 // around 0.7 to 0.9 is realistic for dry asphalt
+		const frictionCoefficient = 1.2
 		maxFrictionLambda := pressureLambda * frictionCoefficient
 		if -frictionLambda > -maxFrictionLambda {
 			frictionLambda = maxFrictionLambda
