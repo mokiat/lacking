@@ -27,6 +27,7 @@ type Coilover struct {
 
 	appliedLambda float64
 	jacobian      solver.PairJacobian
+	drift         float64
 }
 
 // PrimaryRadius returns the radius vector of the contact point
@@ -89,24 +90,21 @@ func (s *Coilover) SetDamping(damping float64) *Coilover {
 	return s
 }
 
-func (s *Coilover) Reset(solver.PairContext) {
+func (s *Coilover) Reset(ctx solver.PairContext) {
 	s.appliedLambda = 0.0
-}
 
-func (s *Coilover) ApplyImpulses(ctx solver.PairContext) {
 	primaryRadiusWS := dprec.QuatVec3Rotation(ctx.Target.Rotation(), s.primaryRadius)
 	primaryPointWS := dprec.Vec3Sum(ctx.Target.Position(), primaryRadiusWS)
 	secondaryRadiusWS := dprec.QuatVec3Rotation(ctx.Source.Rotation(), s.secondaryRadius)
 	secondaryPointWS := dprec.Vec3Sum(ctx.Source.Position(), secondaryRadiusWS)
 
 	deltaPosition := dprec.Vec3Diff(secondaryPointWS, primaryPointWS)
-	drift := deltaPosition.Length()
-	if drift < solver.Epsilon {
-		return
+	s.drift = deltaPosition.Length()
+	normal := dprec.BasisYVec3()
+	if s.drift > solver.Epsilon {
+		normal = dprec.UnitVec3(deltaPosition)
 	}
-	normal := dprec.UnitVec3(deltaPosition)
-
-	jacobian := solver.PairJacobian{
+	s.jacobian = solver.PairJacobian{
 		Target: solver.Jacobian{
 			LinearSlope:  dprec.InverseVec3(normal),
 			AngularSlope: dprec.Vec3Cross(normal, primaryRadiusWS),
@@ -116,8 +114,13 @@ func (s *Coilover) ApplyImpulses(ctx solver.PairContext) {
 			AngularSlope: dprec.Vec3Cross(secondaryRadiusWS, normal),
 		},
 	}
+}
 
-	invertedEffectiveMass := jacobian.InverseEffectiveMass(ctx.Target, ctx.Source)
+func (s *Coilover) ApplyImpulses(ctx solver.PairContext) {
+	if s.drift < solver.Epsilon {
+		return
+	}
+	invertedEffectiveMass := s.jacobian.InverseEffectiveMass(ctx.Target, ctx.Source)
 	w := 2.0 * dprec.Pi * s.frequency
 	dc := 2.0 * s.damping * w / invertedEffectiveMass
 	k := w * w / invertedEffectiveMass
@@ -125,9 +128,9 @@ func (s *Coilover) ApplyImpulses(ctx solver.PairContext) {
 	gamma := 1.0 / (ctx.DeltaTime * (dc + ctx.DeltaTime*k))
 	beta := ctx.DeltaTime * k * gamma
 
-	effectiveVelocity := jacobian.EffectiveVelocity(ctx.Target, ctx.Source)
-	lambda := -(effectiveVelocity + beta*drift + gamma*s.appliedLambda) / (invertedEffectiveMass + gamma)
-	solution := jacobian.Impulse(lambda)
+	effectiveVelocity := s.jacobian.EffectiveVelocity(ctx.Target, ctx.Source)
+	lambda := -(effectiveVelocity + beta*s.drift + gamma*s.appliedLambda) / (invertedEffectiveMass + gamma)
+	solution := s.jacobian.Impulse(lambda)
 	ctx.Target.ApplyImpulse(solution.Target)
 	ctx.Source.ApplyImpulse(solution.Source)
 	s.appliedLambda += lambda
