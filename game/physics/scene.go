@@ -26,7 +26,7 @@ func newScene(engine *Engine, timestep time.Duration) *Scene {
 
 		intersectionSet: shape.NewIntersectionResultSet(128),
 
-		timestep:     timestep,
+		stepSeconds:  timestep.Seconds(),
 		timeSpeed:    1.0,
 		gravity:      dprec.NewVec3(0.0, -9.8, 0.0),
 		windVelocity: dprec.NewVec3(0.0, 0.0, 0.0),
@@ -43,7 +43,7 @@ type Scene struct {
 	engine     *Engine
 	bodyOctree *spatial.Octree[*Body]
 
-	timestep               time.Duration
+	stepSeconds            float64
 	maxAcceleration        float64
 	maxAngularAcceleration float64
 	maxVelocity            float64
@@ -208,9 +208,11 @@ func (s *Scene) CreateDoubleBodyConstraint(primary, secondary *Body, solver solv
 func (s *Scene) Update(elapsedSeconds float64) {
 	defer metrics.BeginRegion("physics:update").End()
 
-	stepSeconds := s.timestep.Seconds()
-
+	stepSeconds := s.stepSeconds
 	s.accumulatedSeconds += elapsedSeconds
+	if s.accumulatedSeconds > 1.0 {
+		s.accumulatedSeconds = stepSeconds // Ease load if too much accumulation.
+	}
 	for s.accumulatedSeconds > 0 {
 		s.runSimulation(stepSeconds * s.timeSpeed)
 		s.accumulatedSeconds -= stepSeconds
