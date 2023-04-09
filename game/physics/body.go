@@ -320,6 +320,11 @@ func (b *Body) applyForce(force dprec.Vec3) {
 	b.addAcceleration(dprec.Vec3Quot(force, b.mass))
 }
 
+func (b *Body) applyOffsetForce(offset, force dprec.Vec3) {
+	b.applyForce(force)
+	b.applyTorque(dprec.Vec3Cross(offset, force))
+}
+
 func (b *Body) applyTorque(torque dprec.Vec3) {
 	// FIXME: the moment of intertia is in local space, whereas the torque is in world space
 	b.addAngularAcceleration(dprec.Mat3Vec3Prod(dprec.InverseMat3(b.momentOfInertia), torque))
