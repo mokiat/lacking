@@ -74,7 +74,7 @@ func (t *Triangle) IsLookingTowards(direction dprec.Vec3) bool {
 //
 // Beware, currently this method assumes that the point lies somewhere on the
 // surface plane of the triangle.
-func (t Triangle) ContainsPoint(point dprec.Vec3) bool {
+func (t *Triangle) ContainsPoint(point dprec.Vec3) bool {
 	normal := t.Normal()
 	if triangleABP := NewTriangle(t.a, t.b, point); !triangleABP.IsLookingTowards(normal) {
 		return false

@@ -34,6 +34,6 @@ func (s *Sphere) Radius() float64 {
 }
 
 // Diameter returns the diameter of this sphere.
-func (s Sphere) Diameter() float64 {
+func (s *Sphere) Diameter() float64 {
 	return s.radius * 2.0
 }
