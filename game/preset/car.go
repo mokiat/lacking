@@ -189,7 +189,6 @@ func (d *CarDefinition) ApplyToModel(scene *game.Scene, info CarApplyInfo) *Car 
 		Definition: d.chassisDef.bodyDef,
 		Position:   chassisPosition,
 		Rotation:   chassisRotation,
-		IsDynamic:  true,
 	})
 	chassisNode.SetBody(chassisBody)
 
@@ -212,7 +211,6 @@ func (d *CarDefinition) ApplyToModel(scene *game.Scene, info CarApplyInfo) *Car 
 			Definition: axisDef.leftWheelDef.bodyDef,
 			Position:   leftWheelAbsolutePosition,
 			Rotation:   chassisRotation,
-			IsDynamic:  true,
 		})
 		leftWheelNode.SetBody(leftWheelBody)
 
@@ -251,7 +249,6 @@ func (d *CarDefinition) ApplyToModel(scene *game.Scene, info CarApplyInfo) *Car 
 				Definition: hubDef.bodyDef,
 				Position:   leftWheelAbsolutePosition,
 				Rotation:   chassisRotation,
-				IsDynamic:  true,
 			})
 			hubNode.SetBody(hubBody)
 
@@ -288,7 +285,6 @@ func (d *CarDefinition) ApplyToModel(scene *game.Scene, info CarApplyInfo) *Car 
 			Definition: axisDef.rightWheelDef.bodyDef,
 			Position:   rightWheelAbsolutePosition,
 			Rotation:   chassisRotation,
-			IsDynamic:  true,
 		})
 		rightWheelNode.SetBody(rightWheelBody)
 
@@ -327,7 +323,6 @@ func (d *CarDefinition) ApplyToModel(scene *game.Scene, info CarApplyInfo) *Car 
 				Definition: hubDef.bodyDef,
 				Position:   rightWheelAbsolutePosition,
 				Rotation:   chassisRotation,
-				IsDynamic:  true,
 			})
 			hubNode.SetBody(hubBody)
 

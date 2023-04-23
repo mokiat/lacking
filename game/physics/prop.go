@@ -16,7 +16,9 @@ type Prop struct {
 }
 
 func (p *Prop) Delete() {
+	delete(p.scene.props, p)
 	p.octreeItem.Delete()
 	p.collisionSet = collision.Set{}
-	delete(p.scene.props, p)
+	p.scene.propPool.Restore(p)
+	p.scene = nil
 }

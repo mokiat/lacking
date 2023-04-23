@@ -113,7 +113,6 @@ func (s *Scene) FindModel(name string) *Model {
 func (s *Scene) Update(elapsedSeconds float64) {
 	if !s.frozen {
 		s.applyPlaybacks(elapsedSeconds)
-		s.applyNodeToPhysics(s.root)
 		s.physicsScene.Update(elapsedSeconds)
 		s.applyPhysicsToNode(s.root)
 	}
@@ -193,7 +192,6 @@ func (s *Scene) CreateModel(info ModelInfo) *Model {
 				Definition: bodyDefinition,
 				Position:   dprec.ZeroVec3(),
 				Rotation:   dprec.IdentityQuat(),
-				IsDynamic:  info.IsDynamic,
 			})
 			bodyNode.SetBody(body)
 			bodyInstances = append(bodyInstances, body)
@@ -250,7 +248,6 @@ func (s *Scene) CreateModel(info ModelInfo) *Model {
 		s.Root().AppendChild(modelNode)
 	}
 	s.applyPhysicsToNode(modelNode)
-	s.applyNodeToPhysics(modelNode)
 	s.applyNodeToGraphics(modelNode)
 
 	result := &Model{
@@ -297,14 +294,12 @@ func (s *Scene) FindPlayback(name string) *Playback {
 
 func (s *Scene) applyPhysicsToNode(node *Node) {
 	if body := node.body; body != nil {
-		if !body.Static() {
-			absMatrix := dprec.TRSMat4(
-				body.VisualPosition(),
-				body.VisualOrientation(),
-				dprec.NewVec3(1.0, 1.0, 1.0),
-			)
-			node.SetAbsoluteMatrix(absMatrix)
-		}
+		absMatrix := dprec.TRSMat4(
+			body.VisualPosition(),
+			body.VisualOrientation(),
+			dprec.NewVec3(1.0, 1.0, 1.0),
+		)
+		node.SetAbsoluteMatrix(absMatrix)
 	}
 	for child := node.firstChild; child != nil; child = child.rightSibling {
 		s.applyPhysicsToNode(child)
@@ -320,23 +315,7 @@ func (s *Scene) applyPlaybacks(elapsedSeconds float64) {
 	}
 }
 
-func (s *Scene) applyNodeToPhysics(node *Node) {
-	if body := node.body; body != nil {
-		if body.Static() {
-			absMatrix := node.AbsoluteMatrix()
-			translation, rotation, _ := absMatrix.TRS()
-			body.SetPosition(translation)
-			body.SetOrientation(rotation)
-		}
-	}
-	for child := node.firstChild; child != nil; child = child.rightSibling {
-		s.applyNodeToPhysics(child)
-	}
-}
-
 func (s *Scene) applyNodeToGraphics(node *Node) {
-	// NOTE: call AbsoluteMatrix regardless if there is anything attached or not,
-	// since this Node could be used as an armature.
 	absMatrix := node.AbsoluteMatrix()
 	if armature := node.armature; armature != nil {
 		armature.SetBone(node.armatureBone, dtos.Mat4(absMatrix))

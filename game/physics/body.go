@@ -41,23 +41,19 @@ type BodyInfo struct {
 	Definition *BodyDefinition
 	Position   dprec.Vec3
 	Rotation   dprec.Quat
-	IsDynamic  bool
 }
 
 // Body represents a physical body that has physics
 // act upon it.
 type Body struct {
-	scene *Scene
-	prev  *Body
-	next  *Body
-	item  *spatial.OctreeItem[*Body]
+	scene      *Scene
+	octreeItem *spatial.OctreeItem[*Body]
 
 	revision   int
 	definition *BodyDefinition
 
 	name string
 
-	static                 bool
 	mass                   float64
 	momentOfInertia        dprec.Mat3
 	frictionCoefficient    float64
@@ -92,7 +88,8 @@ func (b *Body) invalidateCollisionShapes() {
 
 	bs := b.collisionSet.BoundingSphere()
 	delta := dprec.Vec3Diff(bs.Position(), b.position)
-	b.item.SetRadius(delta.Length() + bs.Radius())
+	b.bsRadius = delta.Length() + bs.Radius()
+	b.octreeItem.SetRadius(b.bsRadius)
 }
 
 // Name returns the name of this body.
@@ -103,21 +100,6 @@ func (b *Body) Name() string {
 // SetName sets a new name for this body.
 func (b *Body) SetName(name string) {
 	b.name = name
-}
-
-// Static returns whether this body is static.
-func (b *Body) Static() bool {
-	return b.static
-}
-
-// SetStatic changes whether this body is static.
-func (b *Body) SetStatic(static bool) {
-	b.static = static
-	if static {
-		delete(b.scene.dynamicBodies, b)
-	} else {
-		b.scene.dynamicBodies[b] = struct{}{}
-	}
 }
 
 // Mass returns the mass of this body in kg.
@@ -197,7 +179,7 @@ func (b *Body) Position() dprec.Vec3 {
 func (b *Body) SetPosition(position dprec.Vec3) {
 	b.position = position
 	b.lerpPosition = position
-	b.item.SetPosition(position)
+	b.octreeItem.SetPosition(position)
 
 	// TODO: Do this only on demand. Also, consider splitting bodies into two
 	// types: static and dynamic, without allowing one to switch from one
@@ -293,10 +275,10 @@ func (b *Body) SetAerodynamicShapes(shapes []AerodynamicShape) {
 // should no longer be used after calling this
 // method.
 func (b *Body) Delete() {
-	b.SetStatic(true)
-	b.item.Delete()
-	b.scene.removeBody(b)
-	b.scene.cacheBody(b)
+	delete(b.scene.dynamicBodies, b)
+	b.octreeItem.Delete()
+	b.scene.bodyPool.Restore(b)
+	b.collisionSet = collision.Set{}
 	b.scene = nil
 }
 

@@ -22,6 +22,7 @@ func newScene(engine *Engine, timestep time.Duration) *Scene {
 		props:      make(map[*Prop]struct{}),
 
 		bodyOctree:    spatial.NewOctree[*Body](32000.0, 15),
+		bodyPool:      ds.NewPool[Body](),
 		dynamicBodies: make(map[*Body]struct{}),
 
 		maxAcceleration:        200.0, // TODO: Measure something reasonable
@@ -45,8 +46,7 @@ func newScene(engine *Engine, timestep time.Duration) *Scene {
 // a number of bodies that are independent on any
 // bodies managed by other scene objects.
 type Scene struct {
-	engine     *Engine
-	bodyOctree *spatial.Octree[*Body]
+	engine *Engine
 
 	stepSeconds            float64
 	maxAcceleration        float64
@@ -58,10 +58,9 @@ type Scene struct {
 	propPool   *ds.Pool[Prop]
 	props      map[*Prop]struct{}
 
+	bodyOctree    *spatial.Octree[*Body]
+	bodyPool      *ds.Pool[Body]
 	dynamicBodies map[*Body]struct{}
-	firstBody     *Body
-	lastBody      *Body
-	cachedBody    *Body
 
 	firstSBConstraint  *SBConstraint
 	lastSBConstraint   *SBConstraint
@@ -136,14 +135,15 @@ func (s *Scene) SetWindDensity(density float64) {
 // that is static and rarely removed.
 func (s *Scene) CreateProp(info PropInfo) *Prop {
 	prop := s.propPool.Fetch()
+	prop.scene = s
 
-	prop.collisionSet = info.CollisionSet
 	bs := info.CollisionSet.BoundingSphere()
-
 	propOctreeItem := s.propOctree.CreateItem(prop)
 	propOctreeItem.SetPosition(bs.Position())
 	propOctreeItem.SetRadius(bs.Radius())
 	prop.octreeItem = propOctreeItem
+
+	prop.collisionSet = info.CollisionSet
 
 	s.props[prop] = struct{}{}
 	return prop
@@ -152,18 +152,9 @@ func (s *Scene) CreateProp(info PropInfo) *Prop {
 // CreateBody creates a new physics body and places
 // it within this scene.
 func (s *Scene) CreateBody(info BodyInfo) *Body {
-	// TODO: Use Pool?
-	var body *Body
-	if s.cachedBody != nil {
-		body = s.cachedBody
-		s.cachedBody = s.cachedBody.next
-	} else {
-		body = &Body{}
-	}
+	body := s.bodyPool.Fetch()
 	body.scene = s
-	body.item = s.bodyOctree.CreateItem(body)
-	body.prev = nil
-	body.next = nil
+	body.octreeItem = s.bodyOctree.CreateItem(body)
 
 	// TODO: Don't use Setters, since these are intended for external use
 	// and not all should be allowed as well as some might have invalidation
@@ -173,7 +164,6 @@ func (s *Scene) CreateBody(info BodyInfo) *Body {
 	body.SetName(info.Name)
 	body.SetPosition(info.Position)
 	body.SetOrientation(info.Rotation)
-	body.SetStatic(!info.IsDynamic)
 
 	body.SetMass(def.mass)
 	body.SetMomentOfInertia(def.momentOfInertia)
@@ -190,7 +180,7 @@ func (s *Scene) CreateBody(info BodyInfo) *Body {
 
 	body.invalidateCollisionShapes()
 
-	s.appendBody(body)
+	s.dynamicBodies[body] = struct{}{}
 	return body
 }
 
@@ -262,7 +252,7 @@ func (s *Scene) Update(elapsedSeconds float64) {
 }
 
 func (s *Scene) Each(cb func(b *Body)) {
-	for body := s.firstBody; body != nil; body = body.next {
+	for body := range s.dynamicBodies {
 		cb(body)
 	}
 }
@@ -283,48 +273,19 @@ func (s *Scene) Nearby(body *Body, distance float64, cb func(b *Body)) {
 // scene. Users should not call any further methods
 // on this object.
 func (s *Scene) Delete() {
-	s.firstBody = nil
-	s.lastBody = nil
+	s.propOctree = nil
+	s.propPool = nil
+	s.props = nil
+
+	s.bodyOctree = nil
+	s.bodyPool = nil
+	s.dynamicBodies = nil
 
 	s.firstSBConstraint = nil
 	s.lastSBConstraint = nil
 
 	s.firstDBConstraint = nil
 	s.lastDBConstraint = nil
-}
-
-func (s *Scene) appendBody(body *Body) {
-	if s.firstBody == nil {
-		s.firstBody = body
-	}
-	if s.lastBody != nil {
-		s.lastBody.next = body
-		body.prev = s.lastBody
-	}
-	body.next = nil
-	s.lastBody = body
-}
-
-func (s *Scene) removeBody(body *Body) {
-	if s.firstBody == body {
-		s.firstBody = body.next
-	}
-	if s.lastBody == body {
-		s.lastBody = body.prev
-	}
-	if body.next != nil {
-		body.next.prev = body.prev
-	}
-	if body.prev != nil {
-		body.prev.next = body.next
-	}
-	body.prev = nil
-	body.next = nil
-}
-
-func (s *Scene) cacheBody(body *Body) {
-	body.next = s.cachedBody
-	s.cachedBody = body
 }
 
 func (s *Scene) appendSBConstraint(constraint *SBConstraint) {
@@ -699,16 +660,6 @@ func (s *Scene) allocateDualCollisionSolver() *constraint.PairCollision {
 func (s *Scene) checkCollisionBodyWithProp(primary *Body, prop *Prop) {
 	s.collisionSet.Reset()
 	collision.CheckIntersectionSetWithSet(primary.collisionSet, prop.collisionSet, false, s.collisionSet)
-	s.handleBodyWithPropIntersections(primary, prop) // TODO: Move here...
-}
-
-func (s *Scene) checkCollisionTwoBodies(primary, secondary *Body) {
-	s.collisionSet.Reset()
-	collision.CheckIntersectionSetWithSet(primary.collisionSet, secondary.collisionSet, false, s.collisionSet)
-	s.handleIntersections(primary, secondary)
-}
-
-func (s *Scene) handleBodyWithPropIntersections(primary *Body, prop *Prop) {
 	for _, intersection := range s.collisionSet.Intersections() {
 		solver := s.allocateGroundCollisionSolver()
 		solver.Init(constraint.CollisionState{
@@ -717,8 +668,8 @@ func (s *Scene) handleBodyWithPropIntersections(primary *Body, prop *Prop) {
 			BodyFrictionCoefficient:    primary.frictionCoefficient,
 			BodyRestitutionCoefficient: primary.restitutionCoefficient,
 
-			PropFrictionCoefficient:    1.0, // FIXME
-			PropRestitutionCoefficient: 0.5, // FIXME
+			PropFrictionCoefficient:    1.0, // TODO: Take from prop or shape material
+			PropRestitutionCoefficient: 0.5, // TODO: Take from prop or shape material
 
 			Depth: intersection.Depth,
 		})
@@ -726,57 +677,24 @@ func (s *Scene) handleBodyWithPropIntersections(primary *Body, prop *Prop) {
 	}
 }
 
-func (s *Scene) handleIntersections(primary, secondary *Body) {
+func (s *Scene) checkCollisionTwoBodies(primary, secondary *Body) {
+	s.collisionSet.Reset()
+	collision.CheckIntersectionSetWithSet(primary.collisionSet, secondary.collisionSet, false, s.collisionSet)
 	for _, intersection := range s.collisionSet.Intersections() {
-		if !primary.static && !secondary.static {
-			solver := s.allocateDualCollisionSolver()
-			solver.Init(constraint.PairCollisionState{
-				PrimaryNormal:                 intersection.FirstDisplaceNormal,
-				PrimaryPoint:                  intersection.FirstContact,
-				PrimaryFrictionCoefficient:    primary.frictionCoefficient,
-				PrimaryRestitutionCoefficient: primary.restitutionCoefficient,
+		solver := s.allocateDualCollisionSolver()
+		solver.Init(constraint.PairCollisionState{
+			PrimaryNormal:                 intersection.FirstDisplaceNormal,
+			PrimaryPoint:                  intersection.FirstContact,
+			PrimaryFrictionCoefficient:    primary.frictionCoefficient,
+			PrimaryRestitutionCoefficient: primary.restitutionCoefficient,
 
-				SecondaryNormal:                 intersection.SecondDisplaceNormal,
-				SecondaryPoint:                  intersection.SecondContact,
-				SecondaryFrictionCoefficient:    secondary.frictionCoefficient,
-				SecondaryRestitutionCoefficient: secondary.restitutionCoefficient,
+			SecondaryNormal:                 intersection.SecondDisplaceNormal,
+			SecondaryPoint:                  intersection.SecondContact,
+			SecondaryFrictionCoefficient:    secondary.frictionCoefficient,
+			SecondaryRestitutionCoefficient: secondary.restitutionCoefficient,
 
-				Depth: intersection.Depth,
-			})
-			s.dualCollisionConstraints = append(s.dualCollisionConstraints, s.CreateDoubleBodyConstraint(primary, secondary, solver))
-			continue
-		}
-
-		if !primary.static {
-			solver := s.allocateGroundCollisionSolver()
-			solver.Init(constraint.CollisionState{
-				BodyNormal:                 intersection.FirstDisplaceNormal,
-				BodyPoint:                  intersection.FirstContact,
-				BodyFrictionCoefficient:    primary.frictionCoefficient,
-				BodyRestitutionCoefficient: primary.restitutionCoefficient,
-
-				PropFrictionCoefficient:    secondary.frictionCoefficient,
-				PropRestitutionCoefficient: secondary.restitutionCoefficient,
-
-				Depth: intersection.Depth,
-			})
-			s.collisionConstraints = append(s.collisionConstraints, s.CreateSingleBodyConstraint(primary, solver))
-		}
-
-		if !secondary.static {
-			solver := s.allocateGroundCollisionSolver()
-			solver.Init(constraint.CollisionState{
-				BodyNormal:                 intersection.SecondDisplaceNormal,
-				BodyPoint:                  intersection.SecondContact,
-				BodyFrictionCoefficient:    secondary.frictionCoefficient,
-				BodyRestitutionCoefficient: secondary.restitutionCoefficient,
-
-				PropFrictionCoefficient:    primary.frictionCoefficient,
-				PropRestitutionCoefficient: primary.restitutionCoefficient,
-
-				Depth: intersection.Depth,
-			})
-			s.collisionConstraints = append(s.collisionConstraints, s.CreateSingleBodyConstraint(secondary, solver))
-		}
+			Depth: intersection.Depth,
+		})
+		s.dualCollisionConstraints = append(s.dualCollisionConstraints, s.CreateDoubleBodyConstraint(primary, secondary, solver))
 	}
 }
