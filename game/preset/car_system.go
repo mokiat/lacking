@@ -5,8 +5,8 @@ import (
 	"github.com/mokiat/lacking/app"
 	"github.com/mokiat/lacking/game/ecs"
 	"github.com/mokiat/lacking/game/graphics"
+	"github.com/mokiat/lacking/game/physics/collision"
 	"github.com/mokiat/lacking/ui"
-	"github.com/mokiat/lacking/util/shape"
 )
 
 func NewCarSystem(ecsScene *ecs.Scene, gfxScene *graphics.Scene, gamepadProvider GamepadProvider) *CarSystem {
@@ -237,24 +237,23 @@ func (s *CarSystem) updateMouse(elapsedSeconds float64, entity *ecs.Entity) {
 		dprec.Vec3Prod(orientationZ, -1000),
 	), position)
 
-	surface := shape.NewPlacement(shape.IdentityTransform(), shape.NewStaticMesh([]shape.StaticTriangle{
-		shape.NewStaticTriangle(shape.Point(a), shape.Point(b), shape.Point(c)),
-		shape.NewStaticTriangle(shape.Point(a), shape.Point(c), shape.Point(d)),
-	}))
+	surface := collision.NewMesh([]collision.Triangle{
+		collision.NewTriangle(a, b, c),
+		collision.NewTriangle(a, c, d),
+	})
 
 	camera := s.gfxScene.ActiveCamera()
 	viewport := graphics.Viewport{
 		Width:  s.mouseAreaWidth,
 		Height: s.mouseAreaHeight,
 	}
-	line := s.gfxScene.Ray(viewport, camera, s.mouseX, s.mouseY)
+	start, end := s.gfxScene.Ray(viewport, camera, s.mouseX, s.mouseY)
 
-	result := shape.NewIntersectionResultSet(1)
-	shape.CheckIntersectionLineWithMesh(line, surface, result)
+	var result collision.LastIntersection
+	collision.CheckIntersectionLineWithMesh(collision.NewLine(start, end), surface, false, &result)
 
 	// TODO: Use sphere
-	if result.Found() {
-		intersection := result.Intersections()[0]
+	if intersection, ok := result.Intersection(); ok {
 		mouseTarget := intersection.FirstContact
 
 		delta := dprec.Vec3Diff(mouseTarget, chassis.Body().Position())

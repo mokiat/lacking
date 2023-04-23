@@ -15,7 +15,6 @@ import (
 	"github.com/mokiat/lacking/render"
 	"github.com/mokiat/lacking/util/blob"
 	"github.com/mokiat/lacking/util/metrics"
-	"github.com/mokiat/lacking/util/shape"
 	"github.com/mokiat/lacking/util/spatial"
 	"github.com/x448/float16"
 	"golang.org/x/exp/slices"
@@ -552,7 +551,7 @@ func (r *sceneRenderer) QueueDebugLine(line debugLine) {
 	r.debugLines = append(r.debugLines, line)
 }
 
-func (r *sceneRenderer) Ray(viewport Viewport, camera *Camera, x, y int) shape.StaticLine {
+func (r *sceneRenderer) Ray(viewport Viewport, camera *Camera, x, y int) (dprec.Vec3, dprec.Vec3) {
 	projectionMatrix := stod.Mat4(r.evaluateProjectionMatrix(camera, viewport.Width, viewport.Height))
 	inverseProjection := dprec.InverseMat4(projectionMatrix)
 
@@ -573,7 +572,7 @@ func (r *sceneRenderer) Ray(viewport Viewport, camera *Camera, x, y int) shape.S
 	a = dprec.Mat4Vec4Prod(cameraMatrix, a)
 	b = dprec.Mat4Vec4Prod(cameraMatrix, b)
 
-	return shape.NewStaticLine(shape.Point(a.VecXYZ()), shape.Point(b.VecXYZ()))
+	return a.VecXYZ(), b.VecXYZ()
 }
 
 func (r *sceneRenderer) Render(framebuffer render.Framebuffer, viewport Viewport, scene *Scene, camera *Camera) {

@@ -9,7 +9,6 @@ import (
 	"github.com/mokiat/lacking/game/physics/constraint"
 	"github.com/mokiat/lacking/game/physics/solver"
 	"github.com/mokiat/lacking/util/metrics"
-	"github.com/mokiat/lacking/util/shape"
 	"github.com/mokiat/lacking/util/spatial"
 	"golang.org/x/exp/maps"
 )
@@ -428,14 +427,14 @@ func (s *Scene) applyForces() {
 		body.applyTorque(angularDragForce)
 
 		if len(body.aerodynamicShapes) > 0 {
-			bodyTransform := shape.NewTransform(body.position, body.orientation)
+			bodyTransform := NewTransform(body.position, body.orientation)
 
 			for _, aerodynamicShape := range body.aerodynamicShapes {
 				aerodynamicShape = aerodynamicShape.Transformed(bodyTransform)
 				relativeWindSpeed := dprec.QuatVec3Rotation(dprec.InverseQuat(aerodynamicShape.Rotation()), deltaWindVelocity)
 
 				// TODO: Apply at offset
-				force := aerodynamicShape.Shape().Force(relativeWindSpeed)
+				force := aerodynamicShape.solver.Force(relativeWindSpeed)
 				absoluteForce := dprec.QuatVec3Rotation(aerodynamicShape.Rotation(), force)
 				body.applyForce(absoluteForce)
 				// body.applyOffsetForce(absoluteForce, aerodynamicShape.Position())

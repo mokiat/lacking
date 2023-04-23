@@ -2,16 +2,80 @@ package physics
 
 import (
 	"github.com/mokiat/gomath/dprec"
-	"github.com/mokiat/lacking/util/shape"
 )
 
-type AerodynamicShape = shape.Placement[AerodynamicSolver]
+// TODO: Move under aerodynamics package
+
+// IdentityTransform returns a new Transform that represents the origin.
+func IdentityTransform() Transform {
+	return Transform{
+		position: dprec.ZeroVec3(),
+		rotation: dprec.IdentityQuat(),
+	}
+}
+
+// NewTransform creates a new Transform with the specified position and
+// rotation.
+func NewTransform(position dprec.Vec3, rotation dprec.Quat) Transform {
+	return Transform{
+		position: position,
+		rotation: rotation,
+	}
+}
+
+// Transform represents a shape transformation - translation and rotation.
+type Transform struct {
+	position dprec.Vec3
+	rotation dprec.Quat
+}
+
+// Position returns the translation of this Transform.
+func (t Transform) Position() dprec.Vec3 {
+	return t.position
+}
+
+// Rotation returns the orientation of this Transform.
+func (t Transform) Rotation() dprec.Quat {
+	return t.rotation
+}
+
+// Transformed returns a new Transform that is based on this one but has the
+// specified Transform applied to it.
+func (t Transform) Transformed(transform Transform) Transform {
+	// Note: Doing an identity check on the current or parent transform,
+	// as a form of quick return, actually worsens the performance.
+	return Transform{
+		position: dprec.Vec3Sum(
+			transform.position,
+			dprec.QuatVec3Rotation(transform.rotation, t.position),
+		),
+		rotation: dprec.QuatProd(transform.rotation, t.rotation),
+	}
+}
+
+func NewAerodynamicShape(transform Transform, solver AerodynamicSolver) AerodynamicShape {
+	return AerodynamicShape{
+		Transform: transform,
+		solver:    solver,
+	}
+}
+
+type AerodynamicShape struct {
+	Transform
+	solver AerodynamicSolver
+}
+
+// Transformed returns a new Placement that is based on this one but has
+// the specified transform applied to it.
+func (p AerodynamicShape) Transformed(parent Transform) AerodynamicShape {
+	p.Transform = p.Transform.Transformed(parent)
+	return p
+}
 
 // AerodynamicSolver represents a shape that is affected
 // by air or liquid motion and inflicts a force on the body.
 type AerodynamicSolver interface {
 	Force(windSpeed dprec.Vec3) dprec.Vec3
-	shape.Shape // FIXME
 }
 
 func NewSurfaceAerodynamicShape(width, height, length float64) *SurfaceAerodynamicShape {

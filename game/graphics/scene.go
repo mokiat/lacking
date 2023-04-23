@@ -3,8 +3,8 @@ package graphics
 import (
 	"github.com/mokiat/gblob"
 	"github.com/mokiat/gog/ds"
+	"github.com/mokiat/gomath/dprec"
 	"github.com/mokiat/lacking/render"
-	"github.com/mokiat/lacking/util/shape"
 	"github.com/mokiat/lacking/util/spatial"
 )
 
@@ -131,7 +131,7 @@ func (s *Scene) Render(viewport Viewport) {
 	}
 }
 
-func (s *Scene) Ray(viewport Viewport, camera *Camera, x, y int) shape.StaticLine {
+func (s *Scene) Ray(viewport Viewport, camera *Camera, x, y int) (dprec.Vec3, dprec.Vec3) {
 	return s.renderer.Ray(viewport, camera, x, y)
 }
 
