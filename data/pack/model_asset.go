@@ -6,6 +6,7 @@ import (
 	"github.com/mokiat/gblob"
 	"github.com/mokiat/gog"
 	"github.com/mokiat/gomath/dprec"
+	"github.com/mokiat/gomath/sprec"
 	"github.com/mokiat/gomath/stod"
 	"github.com/mokiat/lacking/game/asset"
 	"github.com/mokiat/lacking/log"
@@ -533,6 +534,13 @@ func (c *converter) BuildBodyDefinition(meshDefinition *MeshDefinition) asset.Bo
 			coordA := meshDefinition.Vertices[indexA].Coord
 			coordB := meshDefinition.Vertices[indexB].Coord
 			coordC := meshDefinition.Vertices[indexC].Coord
+
+			vecAB := sprec.Vec3Diff(coordB, coordA)
+			vecAC := sprec.Vec3Diff(coordC, coordA)
+			if sprec.Vec3Cross(vecAB, vecAC).Length() < 0.00001 {
+				log.Warn("Degenerate triangle omitted")
+				continue
+			}
 
 			triangles = append(triangles, asset.CollisionTriangle{
 				A: stod.Vec3(coordA),
