@@ -3,9 +3,9 @@ package spatial
 import (
 	"math"
 
+	"github.com/mokiat/gog/ds"
 	"github.com/mokiat/gomath/dprec"
 	"github.com/mokiat/lacking/log"
-	"github.com/mokiat/lacking/util/datastruct"
 )
 
 var sizeToDoubleRadius = dprec.Sqrt(3)
@@ -19,9 +19,6 @@ type Visitor[T any] interface {
 // VisitorFunc is an implementation of Visitor that passes each observed
 // item to the wrapped function.
 type VisitorFunc[T any] func(item T)
-
-// Reset does nothing and is just so Visitor interface is implemented.
-func (f VisitorFunc[T]) Reset() {}
 
 // Visit calls the wrapped function.
 func (f VisitorFunc[T]) Visit(item T) {
@@ -88,8 +85,8 @@ func (s *OctreeStats) reset() {
 
 // NewOctree creates a new Octree instance using the specified size and depth.
 func NewOctree[T any](size float64, depth int) *Octree[T] {
-	nodePool := datastruct.NewDynamicPool[octreeNode[T]]()
-	itemPool := datastruct.NewDynamicPool[OctreeItem[T]]()
+	nodePool := ds.NewPool[octreeNode[T]]()
+	itemPool := ds.NewPool[OctreeItem[T]]()
 	root := nodePool.Fetch()
 	*root = octreeNode[T]{
 		head: &OctreeItem[T]{
@@ -117,8 +114,8 @@ func NewOctree[T any](size float64, depth int) *Octree[T] {
 type Octree[T any] struct {
 	size     int32
 	depth    int32
-	nodePool datastruct.Pool[octreeNode[T]]
-	itemPool datastruct.Pool[OctreeItem[T]]
+	nodePool *ds.Pool[octreeNode[T]]
+	itemPool *ds.Pool[OctreeItem[T]]
 	root     *octreeNode[T]
 	stats    *OctreeStats
 }

@@ -1,6 +1,10 @@
 package physics
 
-import "time"
+import (
+	"time"
+
+	"github.com/mokiat/lacking/game/physics/collision"
+)
 
 // NewEngine creates a new physics engine.
 func NewEngine(timestep time.Duration) *Engine {
@@ -30,12 +34,17 @@ func (e *Engine) CreateBodyDefinition(info BodyDefinitionInfo) *BodyDefinition {
 	return &BodyDefinition{
 		mass:                   info.Mass,
 		momentOfInertia:        info.MomentOfInertia,
+		frictionCoefficient:    info.FrictionCoefficient,
 		restitutionCoefficient: info.RestitutionCoefficient,
 		dragFactor:             info.DragFactor,
 		angularDragFactor:      info.AngularDragFactor,
 		collisionGroup:         info.CollisionGroup,
-		collisionShapes:        info.CollisionShapes,
-		aerodynamicShapes:      info.AerodynamicShapes,
+		collisionSet: collision.NewSet(
+			collision.WithSpheres(info.CollisionSpheres),
+			collision.WithBoxes(info.CollisionBoxes),
+			collision.WithMeshes(info.CollisionMeshes),
+		),
+		aerodynamicShapes: info.AerodynamicShapes,
 	}
 }
 

@@ -7,8 +7,8 @@ import (
 	"github.com/mokiat/lacking/game/ecs"
 	"github.com/mokiat/lacking/game/graphics"
 	"github.com/mokiat/lacking/game/physics"
+	"github.com/mokiat/lacking/game/physics/collision"
 	"github.com/mokiat/lacking/log"
-	"github.com/mokiat/lacking/util/datastruct"
 )
 
 func newScene(resourceSet *ResourceSet, physicsScene *physics.Scene, gfxScene *graphics.Scene, ecsScene *ecs.Scene) *Scene {
@@ -18,7 +18,7 @@ func newScene(resourceSet *ResourceSet, physicsScene *physics.Scene, gfxScene *g
 		ecsScene:     ecsScene,
 		root:         NewNode(),
 
-		playbackPool: datastruct.NewDynamicPool[Playback](),
+		playbackPool: ds.NewPool[Playback](),
 		playbacks:    ds.NewList[*Playback](4),
 	}
 }
@@ -30,7 +30,7 @@ type Scene struct {
 	root         *Node
 	models       []*Model
 
-	playbackPool datastruct.Pool[Playback]
+	playbackPool *ds.Pool[Playback]
 	playbacks    *ds.List[*Playback]
 
 	frozen bool
@@ -187,15 +187,25 @@ func (s *Scene) CreateModel(info ModelInfo) *Model {
 			bodyNode = modelNode
 		}
 		bodyDefinition := definition.bodyDefinitions[instance.DefinitionIndex]
-		body := s.physicsScene.CreateBody(physics.BodyInfo{
-			Name:       instance.Name,
-			Definition: bodyDefinition,
-			Position:   dprec.ZeroVec3(),
-			Rotation:   dprec.IdentityQuat(),
-			IsDynamic:  info.IsDynamic,
-		})
-		bodyNode.SetBody(body)
-		bodyInstances = append(bodyInstances, body)
+		if info.IsDynamic {
+			body := s.physicsScene.CreateBody(physics.BodyInfo{
+				Name:       instance.Name,
+				Definition: bodyDefinition,
+				Position:   dprec.ZeroVec3(),
+				Rotation:   dprec.IdentityQuat(),
+				IsDynamic:  info.IsDynamic,
+			})
+			bodyNode.SetBody(body)
+			bodyInstances = append(bodyInstances, body)
+		} else {
+			absMatrix := bodyNode.AbsoluteMatrix()
+			transform := collision.TRTransform(absMatrix.Translation(), absMatrix.Rotation())
+			collisionSet := collision.NewSet()
+			collisionSet.Replace(bodyDefinition.CollisionSet(), transform)
+			s.physicsScene.CreateProp(physics.PropInfo{
+				CollisionSet: collisionSet,
+			})
+		}
 	}
 
 	armatures := make([]*graphics.Armature, len(definition.armatures))

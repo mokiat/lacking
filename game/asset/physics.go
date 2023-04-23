@@ -30,7 +30,7 @@ type CollisionBox struct {
 
 type CollisionSphere struct {
 	Translation dprec.Vec3
-	Rotation    dprec.Quat
+	Rotation    dprec.Quat // TODO: REMOVE!!!
 	Radius      float64
 }
 

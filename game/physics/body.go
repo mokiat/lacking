@@ -1,31 +1,39 @@
 package physics
 
 import (
-	"github.com/mokiat/gog"
 	"github.com/mokiat/gomath/dprec"
+	"github.com/mokiat/lacking/game/physics/collision"
 	"github.com/mokiat/lacking/util/spatial"
 )
 
 type BodyDefinitionInfo struct {
 	Mass                   float64
 	MomentOfInertia        dprec.Mat3
+	FrictionCoefficient    float64
 	RestitutionCoefficient float64
 	DragFactor             float64
 	AngularDragFactor      float64
 	CollisionGroup         int
-	CollisionShapes        []CollisionShape
+	CollisionSpheres       []collision.Sphere
+	CollisionBoxes         []collision.Box
+	CollisionMeshes        []collision.Mesh
 	AerodynamicShapes      []AerodynamicShape
 }
 
 type BodyDefinition struct {
 	mass                   float64
 	momentOfInertia        dprec.Mat3
+	frictionCoefficient    float64
 	restitutionCoefficient float64
 	dragFactor             float64
 	angularDragFactor      float64
 	collisionGroup         int
-	collisionShapes        []CollisionShape
+	collisionSet           collision.Set
 	aerodynamicShapes      []AerodynamicShape
+}
+
+func (d *BodyDefinition) CollisionSet() collision.Set {
+	return d.collisionSet
 }
 
 type BodyInfo struct {
@@ -52,6 +60,7 @@ type Body struct {
 	static                 bool
 	mass                   float64
 	momentOfInertia        dprec.Mat3
+	frictionCoefficient    float64
 	restitutionCoefficient float64
 	dragFactor             float64
 	angularDragFactor      float64
@@ -73,8 +82,17 @@ type Body struct {
 
 	bsRadius          float64
 	collisionGroup    int
-	collisionShapes   []CollisionShape
+	collisionSet      collision.Set
 	aerodynamicShapes []AerodynamicShape
+}
+
+func (b *Body) invalidateCollisionShapes() {
+	transform := collision.TRTransform(b.position, b.orientation)
+	b.collisionSet.Replace(b.definition.collisionSet, transform)
+
+	bs := b.collisionSet.BoundingSphere()
+	delta := dprec.Vec3Diff(bs.Position(), b.position)
+	b.item.SetRadius(delta.Length() + bs.Radius())
 }
 
 // Name returns the name of this body.
@@ -180,6 +198,11 @@ func (b *Body) SetPosition(position dprec.Vec3) {
 	b.position = position
 	b.lerpPosition = position
 	b.item.SetPosition(position)
+
+	// TODO: Do this only on demand. Also, consider splitting bodies into two
+	// types: static and dynamic, without allowing one to switch from one
+	// to the other.
+	b.invalidateCollisionShapes()
 }
 
 // VisualPosition returns the position of the Body as would
@@ -248,20 +271,9 @@ func (b *Body) SetCollisionGroup(group int) {
 	b.collisionGroup = group
 }
 
-// CollisionShapes returns a slice of shapes that
-// dictate how this body collides with others.
-func (b *Body) CollisionShapes() []CollisionShape {
-	return b.collisionShapes
-}
-
-// SetCollisionShapes sets the collision shapes
-// for this body to be used in collision detection.
-func (b *Body) SetCollisionShapes(shapes []CollisionShape) {
-	b.collisionShapes = shapes
-	b.bsRadius = gog.Reduce(shapes, 0.0, func(accum float64, s CollisionShape) float64 {
-		return dprec.Max(accum, s.Shape().BoundingSphereRadius()+s.Position().Length())
-	})
-	b.item.SetRadius(b.bsRadius)
+// CollisionSet contains the collision shapes for this body.
+func (b *Body) CollisionSet() collision.Set {
+	return b.collisionSet
 }
 
 // AerodynamicShapes returns a slice of shapes that

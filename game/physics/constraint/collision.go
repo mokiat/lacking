@@ -6,19 +6,29 @@ import (
 )
 
 type CollisionState struct {
-	Normal dprec.Vec3
-	Point  dprec.Vec3
-	Depth  float64
+	PropFrictionCoefficient    float64
+	PropRestitutionCoefficient float64
+
+	BodyNormal                 dprec.Vec3
+	BodyPoint                  dprec.Vec3
+	BodyFrictionCoefficient    float64
+	BodyRestitutionCoefficient float64
+
+	Depth float64
 }
 
 var _ solver.Constraint = (*Collision)(nil)
 
 type Collision struct {
-	collisionNormal dprec.Vec3
-	collisionPoint  dprec.Vec3
-	collisionDepth  float64
-	// collisionFrictionCoefficient float64
-	// collisionRestitutionCoefficient float64
+	propFrictionCoefficient    float64
+	propRestitutionCoefficient float64
+
+	bodyCollisionNormal        dprec.Vec3
+	bodyCollisionPoint         dprec.Vec3
+	bodyFrictionCoefficient    float64
+	bodyRestitutionCoefficient float64
+
+	collisionDepth float64
 
 	radius   dprec.Vec3
 	jacobian solver.Jacobian
@@ -26,34 +36,45 @@ type Collision struct {
 }
 
 func (s *Collision) Init(state CollisionState) {
-	s.collisionNormal = state.Normal
-	s.collisionPoint = state.Point
+	s.propFrictionCoefficient = state.PropFrictionCoefficient
+	s.propRestitutionCoefficient = state.PropRestitutionCoefficient
+
+	s.bodyCollisionNormal = state.BodyNormal
+	s.bodyCollisionPoint = state.BodyPoint
+	s.bodyFrictionCoefficient = state.BodyFrictionCoefficient
+	s.bodyRestitutionCoefficient = state.BodyRestitutionCoefficient
+
 	s.collisionDepth = state.Depth
 }
 
 func (s *Collision) Reset(ctx solver.Context) {
-	radiusWS := dprec.Vec3Diff(s.collisionPoint, ctx.Target.Position())
+	radiusWS := dprec.Vec3Diff(s.bodyCollisionPoint, ctx.Target.Position())
 	s.radius = dprec.QuatVec3Rotation(dprec.ConjugateQuat(ctx.Target.Rotation()), radiusWS)
 	s.jacobian = solver.Jacobian{
-		LinearSlope:  dprec.InverseVec3(s.collisionNormal),
-		AngularSlope: dprec.Vec3Cross(s.collisionNormal, radiusWS),
+		LinearSlope:  dprec.InverseVec3(s.bodyCollisionNormal),
+		AngularSlope: dprec.Vec3Cross(s.bodyCollisionNormal, radiusWS),
 	}
 	s.drift = s.collisionDepth
 }
 
 func (s *Collision) ApplyImpulses(ctx solver.Context) {
+	// NOTE: We include the bounce force in the max friction calculation.
+	// This might actually be accurate, since you have both the force of
+	// the object pushing down, as well as the elastic force pushing further
+	// down, trying to bounce the object up.
+	restitution := s.propRestitutionCoefficient * s.bodyRestitutionCoefficient
+
 	// Bounce solution
-	pressureLambda := ctx.JacobianImpulseLambda(s.jacobian, 0.0, 0.0)
+	pressureLambda := ctx.JacobianImpulseLambda(s.jacobian, 0.0, restitution)
 	if pressureLambda > 0 {
 		return // moving away
 	}
-	restitution := 0.5 // FIXME: ctx.Target.RestitutionCoefficient
 	bounceSolution := ctx.JacobianImpulseSolution(s.jacobian, s.collisionDepth, restitution)
 
 	// Friction solution
 	radiusWS := dprec.QuatVec3Rotation(ctx.Target.Rotation(), s.radius)
 	pointVelocity := dprec.Vec3Sum(ctx.Target.LinearVelocity(), dprec.Vec3Cross(ctx.Target.AngularVelocity(), radiusWS))
-	verticalVelocity := dprec.Vec3Prod(s.collisionNormal, dprec.Vec3Dot(s.collisionNormal, pointVelocity))
+	verticalVelocity := dprec.Vec3Prod(s.bodyCollisionNormal, dprec.Vec3Dot(s.bodyCollisionNormal, pointVelocity))
 	lateralVelocity := dprec.Vec3Diff(pointVelocity, verticalVelocity)
 	frictionSolution := solver.Impulse{}
 	if lng := lateralVelocity.Length(); lng > solver.Epsilon {
@@ -84,21 +105,33 @@ func (s *Collision) ApplyNudges(ctx solver.Context) {
 }
 
 type PairCollisionState struct {
-	TargetNormal dprec.Vec3
-	TargetPoint  dprec.Vec3
-	SourceNormal dprec.Vec3
-	SourcePoint  dprec.Vec3
-	Depth        float64
+	PrimaryNormal                 dprec.Vec3
+	PrimaryPoint                  dprec.Vec3
+	PrimaryFrictionCoefficient    float64
+	PrimaryRestitutionCoefficient float64
+
+	SecondaryNormal                 dprec.Vec3
+	SecondaryPoint                  dprec.Vec3
+	SecondaryFrictionCoefficient    float64
+	SecondaryRestitutionCoefficient float64
+
+	Depth float64
 }
 
 var _ solver.PairConstraint = (*PairCollision)(nil)
 
 type PairCollision struct {
-	primaryCollisionNormal   dprec.Vec3
-	primaryCollisionPoint    dprec.Vec3
-	secondaryCollisionNormal dprec.Vec3
-	secondaryCollisionPoint  dprec.Vec3
-	collisionDepth           float64
+	primaryCollisionNormal        dprec.Vec3
+	primaryCollisionPoint         dprec.Vec3
+	primaryFrictionCoefficient    float64
+	primaryRestitutionCoefficient float64
+
+	secondaryCollisionNormal        dprec.Vec3
+	secondaryCollisionPoint         dprec.Vec3
+	secondaryFrictionCoefficient    float64
+	secondaryRestitutionCoefficient float64
+
+	collisionDepth float64
 
 	primaryRadius   dprec.Vec3
 	secondaryRadius dprec.Vec3
@@ -106,10 +139,16 @@ type PairCollision struct {
 }
 
 func (s *PairCollision) Init(state PairCollisionState) {
-	s.primaryCollisionNormal = state.TargetNormal
-	s.primaryCollisionPoint = state.TargetPoint
-	s.secondaryCollisionNormal = state.SourceNormal
-	s.secondaryCollisionPoint = state.SourcePoint
+	s.primaryCollisionNormal = state.PrimaryNormal
+	s.primaryCollisionPoint = state.PrimaryPoint
+	s.primaryFrictionCoefficient = state.PrimaryFrictionCoefficient
+	s.primaryRestitutionCoefficient = state.PrimaryRestitutionCoefficient
+
+	s.secondaryCollisionNormal = state.SecondaryNormal
+	s.secondaryCollisionPoint = state.SecondaryPoint
+	s.secondaryFrictionCoefficient = state.SecondaryFrictionCoefficient
+	s.secondaryRestitutionCoefficient = state.SecondaryRestitutionCoefficient
+
 	s.collisionDepth = state.Depth
 }
 
@@ -131,12 +170,17 @@ func (s *PairCollision) Reset(ctx solver.PairContext) {
 }
 
 func (s *PairCollision) ApplyImpulses(ctx solver.PairContext) {
+	// NOTE: We include the bounce force in the max friction calculation.
+	// This might actually be accurate, since you have both the force of
+	// the object pushing down, as well as the elastic force pushing further
+	// down, trying to bounce the object up.
+	restitution := s.primaryRestitutionCoefficient * s.secondaryRestitutionCoefficient
+
 	// Bounce solution
-	pressureLambda := ctx.JacobianImpulseLambda(s.jacobian, 0.0, 0.0)
+	pressureLambda := ctx.JacobianImpulseLambda(s.jacobian, 0.0, restitution)
 	if pressureLambda > 0 {
 		return // moving away
 	}
-	restitution := 0.5 // FIXME
 	bounceSolution := ctx.JacobianImpulseSolution(s.jacobian, s.collisionDepth, restitution)
 
 	// Friction solution

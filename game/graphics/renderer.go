@@ -38,7 +38,7 @@ func newRenderer(api render.API, shaders ShaderCollection) *sceneRenderer {
 		exposureBufferData: make([]byte, 4*render.SizeF32), // Worst case RGBA32F
 		exposureTarget:     1.0,
 
-		visibleMeshes: spatial.NewVisitorBucket[*Mesh](2_000_000),
+		visibleMeshes: spatial.NewVisitorBucket[*Mesh](2_000),
 
 		ambientLightBucket: spatial.NewVisitorBucket[*AmbientLight](16),
 

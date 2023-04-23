@@ -2,8 +2,8 @@ package graphics
 
 import (
 	"github.com/mokiat/gblob"
+	"github.com/mokiat/gog/ds"
 	"github.com/mokiat/lacking/render"
-	"github.com/mokiat/lacking/util/datastruct"
 	"github.com/mokiat/lacking/util/shape"
 	"github.com/mokiat/lacking/util/spatial"
 )
@@ -19,19 +19,19 @@ func newScene(renderer *sceneRenderer) *Scene {
 		sky: newSky(),
 
 		meshOctree: spatial.NewOctree[*Mesh](maxSceneSize, 15),
-		meshPool:   datastruct.NewDynamicPool[Mesh](),
+		meshPool:   ds.NewPool[Mesh](),
 
 		ambientLightOctree: spatial.NewOctree[*AmbientLight](maxSceneSize, 15),
-		ambientLightPool:   datastruct.NewDynamicPool[AmbientLight](),
+		ambientLightPool:   ds.NewPool[AmbientLight](),
 
 		pointLightOctree: spatial.NewOctree[*PointLight](maxSceneSize, 15),
-		pointLightPool:   datastruct.NewDynamicPool[PointLight](),
+		pointLightPool:   ds.NewPool[PointLight](),
 
 		spotLightOctree: spatial.NewOctree[*SpotLight](maxSceneSize, 15),
-		spotLightPool:   datastruct.NewDynamicPool[SpotLight](),
+		spotLightPool:   ds.NewPool[SpotLight](),
 
 		directionalLightOctree: spatial.NewOctree[*DirectionalLight](maxSceneSize, 15),
-		directionalLightPool:   datastruct.NewDynamicPool[DirectionalLight](),
+		directionalLightPool:   ds.NewPool[DirectionalLight](),
 	}
 }
 
@@ -43,19 +43,19 @@ type Scene struct {
 	sky *Sky
 
 	meshOctree *spatial.Octree[*Mesh]
-	meshPool   datastruct.Pool[Mesh]
+	meshPool   *ds.Pool[Mesh]
 
 	ambientLightOctree *spatial.Octree[*AmbientLight]
-	ambientLightPool   datastruct.Pool[AmbientLight]
+	ambientLightPool   *ds.Pool[AmbientLight]
 
 	pointLightOctree *spatial.Octree[*PointLight]
-	pointLightPool   datastruct.Pool[PointLight]
+	pointLightPool   *ds.Pool[PointLight]
 
 	spotLightOctree *spatial.Octree[*SpotLight]
-	spotLightPool   datastruct.Pool[SpotLight]
+	spotLightPool   *ds.Pool[SpotLight]
 
 	directionalLightOctree *spatial.Octree[*DirectionalLight]
-	directionalLightPool   datastruct.Pool[DirectionalLight]
+	directionalLightPool   *ds.Pool[DirectionalLight]
 
 	activeCamera *Camera
 }

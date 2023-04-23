@@ -7,7 +7,7 @@ require (
 	github.com/mdouchement/hdr v0.2.4
 	github.com/mokiat/gblob v0.2.0
 	github.com/mokiat/goexr v0.1.0
-	github.com/mokiat/gog v0.5.0
+	github.com/mokiat/gog v0.8.0
 	github.com/mokiat/gomath v0.7.0
 	github.com/qmuntal/gltf v0.23.1
 	github.com/x448/float16 v0.8.4

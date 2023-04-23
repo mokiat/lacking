@@ -3,12 +3,12 @@ package metrics
 import (
 	"time"
 
-	"github.com/mokiat/lacking/util/datastruct"
+	"github.com/mokiat/gog/ds"
 	"golang.org/x/exp/slices"
 )
 
 var (
-	spanPool     = datastruct.NewDynamicPool[Span]()
+	spanPool     = ds.NewPool[Span]()
 	spans        []*Span
 	spanLayer    = 0
 	spanSnapshot []Span

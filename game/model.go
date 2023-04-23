@@ -8,8 +8,8 @@ import (
 	"github.com/mokiat/lacking/game/asset"
 	"github.com/mokiat/lacking/game/graphics"
 	"github.com/mokiat/lacking/game/physics"
+	"github.com/mokiat/lacking/game/physics/collision"
 	"github.com/mokiat/lacking/util/async"
-	"github.com/mokiat/lacking/util/shape"
 )
 
 type ModelDefinition struct {
@@ -161,8 +161,10 @@ func (r *ResourceSet) allocateModel(modelAsset *asset.Model) (*ModelDefinition, 
 				RestitutionCoefficient: definitionAsset.RestitutionCoefficient,
 				DragFactor:             definitionAsset.DragFactor,
 				AngularDragFactor:      definitionAsset.AngularDragFactor,
-				CollisionShapes:        r.constructCollisionShapes(definitionAsset),
 				AerodynamicShapes:      nil, // TODO
+				CollisionSpheres:       r.constructCollisionSpheres(definitionAsset),
+				CollisionBoxes:         r.constructCollisionBoxes(definitionAsset),
+				CollisionMeshes:        r.constructCollisionMeshes(definitionAsset),
 			})
 		}).Wait()
 	}
@@ -302,56 +304,43 @@ func (r *ResourceSet) releaseModel(model *ModelDefinition) {
 	model.textures = nil
 }
 
-func (r *ResourceSet) constructCollisionShapes(bodyDef asset.BodyDefinition) []physics.CollisionShape {
-	var result []physics.CollisionShape
-	for _, collisionBoxAsset := range bodyDef.CollisionBoxes {
-		result = append(result, physics.CollisionShape(
-			shape.NewPlacement[shape.Shape](
-				shape.NewTransform(
-					collisionBoxAsset.Translation,
-					collisionBoxAsset.Rotation,
-				),
-				shape.NewStaticBox(
-					collisionBoxAsset.Width,
-					collisionBoxAsset.Height,
-					collisionBoxAsset.Lenght,
-				),
-			),
-		))
+func (r *ResourceSet) constructCollisionSpheres(bodyDef asset.BodyDefinition) []collision.Sphere {
+	result := make([]collision.Sphere, len(bodyDef.CollisionSpheres))
+	for i, collisionSphereAsset := range bodyDef.CollisionSpheres {
+		result[i] = collision.NewSphere(
+			collisionSphereAsset.Translation,
+			collisionSphereAsset.Radius,
+		)
 	}
-	for _, collisionSphereAsset := range bodyDef.CollisionSpheres {
-		result = append(result, physics.CollisionShape(
-			shape.NewPlacement[shape.Shape](
-				shape.NewTransform(
-					collisionSphereAsset.Translation,
-					collisionSphereAsset.Rotation,
-				),
-				shape.NewStaticSphere(
-					collisionSphereAsset.Radius,
-				),
-			),
-		))
+	return result
+}
+
+func (r *ResourceSet) constructCollisionBoxes(bodyDef asset.BodyDefinition) []collision.Box {
+	result := make([]collision.Box, len(bodyDef.CollisionBoxes))
+	for i, collisionBoxAsset := range bodyDef.CollisionBoxes {
+		result[i] = collision.NewBox(
+			collisionBoxAsset.Translation,
+			collisionBoxAsset.Rotation,
+			dprec.NewVec3(collisionBoxAsset.Width, collisionBoxAsset.Height, collisionBoxAsset.Lenght),
+		)
 	}
-	for _, collisionMeshAsset := range bodyDef.CollisionMeshes {
-		triangles := make([]shape.StaticTriangle, len(collisionMeshAsset.Triangles))
+	return result
+}
+
+func (r *ResourceSet) constructCollisionMeshes(bodyDef asset.BodyDefinition) []collision.Mesh {
+	result := make([]collision.Mesh, len(bodyDef.CollisionMeshes))
+	for i, collisionMeshAsset := range bodyDef.CollisionMeshes {
+		transform := collision.TRTransform(collisionMeshAsset.Translation, collisionMeshAsset.Rotation)
+		triangles := make([]collision.Triangle, len(collisionMeshAsset.Triangles))
 		for j, triangleAsset := range collisionMeshAsset.Triangles {
-			triangles[j] = shape.NewStaticTriangle(
-				shape.Point(triangleAsset.A),
-				shape.Point(triangleAsset.B),
-				shape.Point(triangleAsset.C),
+			template := collision.NewTriangle(
+				triangleAsset.A,
+				triangleAsset.B,
+				triangleAsset.C,
 			)
+			triangles[j].Replace(template, transform)
 		}
-		result = append(result, physics.CollisionShape(
-			shape.NewPlacement[shape.Shape](
-				shape.NewTransform(
-					collisionMeshAsset.Translation,
-					collisionMeshAsset.Rotation,
-				),
-				shape.NewStaticMesh(
-					triangles,
-				),
-			),
-		))
+		result[i] = collision.NewMesh(triangles)
 	}
 	return result
 }
