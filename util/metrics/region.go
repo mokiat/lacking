@@ -67,9 +67,8 @@ func RegionStats() []RegionStat {
 type Region struct {
 	parent *Region
 
-	id        int
-	namespace string
-	name      string
+	id   int
+	name string
 
 	startTime time.Time
 	duration  time.Duration
