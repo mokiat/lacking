@@ -23,8 +23,6 @@ import (
 const (
 	shadowMapWidth  = 2048
 	shadowMapHeight = 2048
-
-	shadowMapClipping = 512 / 64
 )
 
 var ShowLightView bool

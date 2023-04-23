@@ -12,6 +12,7 @@ type SceneDefinition struct {
 	reflectionTexture *CubeTexture
 	refractionTexture *CubeTexture
 	model             *ModelDefinition
+	modelDefinitions  []*ModelDefinition
 	modelInstances    []ModelInfo
 }
 
@@ -113,10 +114,17 @@ func (r *ResourceSet) allocateScene(resource asset.Resource) (*SceneDefinition, 
 		reflectionTexture: reflectionTexture,
 		refractionTexture: refractionTexture,
 		model:             model,
+		modelDefinitions:  modelDefinitions,
 		modelInstances:    modelInstances,
 	}, nil
 }
 
 func (r *ResourceSet) releaseScene(scene *SceneDefinition) {
-	// TODO
+	r.releaseCubeTexture(scene.skyboxTexture)
+	r.releaseCubeTexture(scene.reflectionTexture)
+	r.releaseCubeTexture(scene.refractionTexture)
+	r.releaseModel(scene.model)
+	for _, def := range scene.modelDefinitions {
+		r.releaseModel(def)
+	}
 }
