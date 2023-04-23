@@ -19,8 +19,8 @@ func newScene(engine *Engine, timestep time.Duration) *Scene {
 		engine: engine,
 
 		propOctree: spatial.NewOctree[*Prop](32000.0, 15),
-		propPool:   ds.NewStack[int](0),
-		propSlice:  make([]Prop, 0),
+		propPool:   ds.NewPool[Prop](),
+		props:      make(map[*Prop]struct{}),
 
 		bodyOctree:    spatial.NewOctree[*Body](32000.0, 15),
 		dynamicBodies: make(map[*Body]struct{}),
@@ -56,8 +56,8 @@ type Scene struct {
 	maxAngularVelocity     float64
 
 	propOctree *spatial.Octree[*Prop]
-	propPool   *ds.Stack[int]
-	propSlice  []Prop
+	propPool   *ds.Pool[Prop]
+	props      map[*Prop]struct{}
 
 	dynamicBodies map[*Body]struct{}
 	firstBody     *Body
@@ -136,28 +136,17 @@ func (s *Scene) SetWindDensity(density float64) {
 // CreateProp creates a new static Prop. A prop is an object
 // that is static and rarely removed.
 func (s *Scene) CreateProp(info PropInfo) *Prop {
-	var index int
-	if s.propPool.IsEmpty() {
-		index = len(s.propSlice)
-		s.propSlice = append(s.propSlice, Prop{
-			scene: s,
-			index: index,
-		})
-	} else {
-		index = s.propPool.Pop()
-	}
+	prop := s.propPool.Fetch()
 
-	collisionSet := info.CollisionSet
-	bs := collisionSet.BoundingSphere()
-
-	prop := &s.propSlice[index]
+	prop.collisionSet = info.CollisionSet
+	bs := info.CollisionSet.BoundingSphere()
 
 	propOctreeItem := s.propOctree.CreateItem(prop)
 	propOctreeItem.SetPosition(bs.Position())
 	propOctreeItem.SetRadius(bs.Radius())
-
 	prop.octreeItem = propOctreeItem
-	prop.collisionSet = collisionSet
+
+	s.props[prop] = struct{}{}
 	return prop
 }
 

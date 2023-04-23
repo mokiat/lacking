@@ -10,9 +10,7 @@ type PropInfo struct {
 }
 
 type Prop struct {
-	scene *Scene
-	index int
-
+	scene        *Scene
 	octreeItem   *spatial.OctreeItem[*Prop]
 	collisionSet collision.Set
 }
@@ -20,5 +18,5 @@ type Prop struct {
 func (p *Prop) Delete() {
 	p.octreeItem.Delete()
 	p.collisionSet = collision.Set{}
-	p.scene.propPool.Push(p.index)
+	delete(p.scene.props, p)
 }
