@@ -16,6 +16,10 @@ type ScrollPaneData struct {
 
 	// DisableVertical stops the pane from scrolling vertically.
 	DisableVertical bool
+
+	// Focused specifies whether this scroll pane should automatically get
+	// the focus.
+	Focused bool
 }
 
 var defaultScrollPaneData = ScrollPaneData{
@@ -39,6 +43,7 @@ var ScrollPane = co.Define(func(props co.Properties, scope co.Scope) co.Instance
 	return co.New(Element, func() {
 		co.WithData(co.ElementData{
 			Focusable: opt.V(true),
+			Focused:   opt.V(data.Focused),
 			Essence:   essence,
 			Layout:    essence,
 		})
@@ -106,9 +111,19 @@ func (e *scrollPaneEssence) Apply(element *ui.Element) {
 
 func (e *scrollPaneEssence) OnKeyboardEvent(element *ui.Element, event ui.KeyboardEvent) bool {
 	switch event.Code {
+	case ui.KeyCodeArrowDown:
+		if event.Type == ui.KeyboardEventTypeKeyDown || event.Type == ui.KeyboardEventTypeRepeat {
+			e.scroll(element, 0.0, -10.0)
+			return true
+		}
 	case ui.KeyCodePageDown:
 		if event.Type == ui.KeyboardEventTypeKeyDown || event.Type == ui.KeyboardEventTypeRepeat {
 			e.scroll(element, 0.0, -100.0)
+			return true
+		}
+	case ui.KeyCodeArrowUp:
+		if event.Type == ui.KeyboardEventTypeKeyDown || event.Type == ui.KeyboardEventTypeRepeat {
+			e.scroll(element, 0.0, 10.0)
 			return true
 		}
 	case ui.KeyCodePageUp:
