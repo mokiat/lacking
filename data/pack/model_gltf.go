@@ -13,6 +13,7 @@ import (
 	"github.com/mokiat/lacking/util/gltfutil"
 	"github.com/mokiat/lacking/util/resource"
 	"github.com/qmuntal/gltf"
+	"github.com/qmuntal/gltf/ext/lightspuntual"
 )
 
 // NOTE: glTF allows a sub-mesh to use totally different
@@ -253,6 +254,42 @@ func (a *OpenGLTFResourceAction) Run() error {
 		a.model.Armatures = append(a.model.Armatures, armature)
 	}
 
+	lightDefinitionFromIndex := make(map[uint32]*LightDefinition)
+	if ext, ok := gltfDoc.Extensions[lightspuntual.ExtensionName]; ok {
+		if gltfLights, ok := ext.(lightspuntual.Lights); ok {
+			for i, gltfLight := range gltfLights {
+				var lightType LightType
+				switch gltfLight.Type {
+				case lightspuntual.TypePoint:
+					lightType = LightTypePoint
+				case lightspuntual.TypeSpot:
+					lightType = LightTypeSpot
+				case lightspuntual.TypeDirectional:
+					lightType = LightTypeDirectional
+				default:
+					return fmt.Errorf("unsupported light type %q", gltfLight.Type)
+				}
+				definition := &LightDefinition{
+					Name:      gltfLight.Name,
+					Type:      lightType,
+					EmitRange: 100.0,
+				}
+				if gltfLight.Range != nil {
+					definition.EmitRange = float64(*gltfLight.Range)
+				}
+				if spot := gltfLight.Spot; spot != nil {
+					definition.EmitInnerConeAngle = dprec.Radians(float64(spot.InnerConeAngle))
+					definition.EmitOuterConeAngle = dprec.Radians(float64(spot.OuterConeAngleOrDefault()))
+				}
+				emitColor := stod.Vec3(sprec.ArrayToVec3(gltfLight.ColorOrDefault()))
+				emitColor = dprec.Vec3Prod(emitColor, float64(gltfLight.IntensityOrDefault()))
+				definition.EmitColor = emitColor
+				lightDefinitionFromIndex[uint32(i)] = definition
+				a.model.LightDefinitions = append(a.model.LightDefinitions, definition)
+			}
+		}
+	}
+
 	// build nodes
 	nodeFromIndex := make(map[uint32]*Node)
 	var visitNode func(nodeIndex uint32) *Node
@@ -290,6 +327,18 @@ func (a *OpenGLTFResourceAction) Run() error {
 				float64(gltfNode.Scale[1]),
 				float64(gltfNode.Scale[2]),
 			)
+		}
+
+		if ext, ok := gltfNode.Extensions[lightspuntual.ExtensionName]; ok {
+			if lightIndex, ok := ext.(lightspuntual.LightIndex); ok {
+				lightDefinition := lightDefinitionFromIndex[uint32(lightIndex)]
+				lightInstance := &LightInstance{
+					Name:       gltfNode.Name,
+					Node:       node,
+					Definition: lightDefinition,
+				}
+				a.model.LightInstances = append(a.model.LightInstances, lightInstance)
+			}
 		}
 
 		if gltfNode.Mesh != nil {

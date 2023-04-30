@@ -13,15 +13,18 @@ import (
 )
 
 type ModelDefinition struct {
-	nodes               []nodeDefinition
-	armatures           []armatureDefinition
-	animations          []*AnimationDefinition
-	textures            []*TwoDTexture
-	materialDefinitions []*graphics.MaterialDefinition
-	meshDefinitions     []*graphics.MeshDefinition
-	meshInstances       []meshInstance
-	bodyDefinitions     []*physics.BodyDefinition
-	bodyInstances       []bodyInstance
+	nodes                     []nodeDefinition
+	armatures                 []armatureDefinition
+	animations                []*AnimationDefinition
+	textures                  []*TwoDTexture
+	materialDefinitions       []*graphics.MaterialDefinition
+	meshDefinitions           []*graphics.MeshDefinition
+	meshInstances             []meshInstance
+	bodyDefinitions           []*physics.BodyDefinition
+	bodyInstances             []bodyInstance
+	pointLightInstances       []pointLightInstance
+	spotLightInstances        []spotLightInstance
+	directionalLightInstances []directionalLightInstance
 }
 
 func (d *ModelDefinition) FindAnimation(name string) *AnimationDefinition {
@@ -69,6 +72,29 @@ func (d armatureDefinition) InverseBindMatrices() []sprec.Mat4 {
 type armatureJoint struct {
 	NodeIndex         int
 	InverseBindMatrix sprec.Mat4
+}
+
+type pointLightInstance struct {
+	Name      string
+	NodeIndex int
+	EmitRange float64
+	EmitColor dprec.Vec3
+}
+
+type spotLightInstance struct {
+	Name               string
+	NodeIndex          int
+	EmitRange          float64
+	EmitOuterConeAngle dprec.Angle
+	EmitInnerConeAngle dprec.Angle
+	EmitColor          dprec.Vec3
+}
+
+type directionalLightInstance struct {
+	Name      string
+	NodeIndex int
+	EmitRange float64
+	EmitColor dprec.Vec3
 }
 
 func (r *ResourceSet) loadModel(resource asset.Resource) (*ModelDefinition, error) {
@@ -284,16 +310,52 @@ func (r *ResourceSet) allocateModel(modelAsset *asset.Model) (*ModelDefinition, 
 		}
 	}
 
+	pointLightInstances := make([]pointLightInstance, 0)
+	spotLightInstances := make([]spotLightInstance, 0)
+	directionalLightInstances := make([]directionalLightInstance, 0)
+	for _, instanceAsset := range modelAsset.LightInstances {
+		switch instanceAsset.Type {
+		case asset.LightTypePoint:
+			pointLightInstances = append(pointLightInstances, pointLightInstance{
+				Name:      instanceAsset.Name,
+				NodeIndex: int(instanceAsset.NodeIndex),
+				EmitRange: instanceAsset.EmitRange,
+				EmitColor: instanceAsset.EmitColor,
+			})
+		case asset.LightTypeSpot:
+			spotLightInstances = append(spotLightInstances, spotLightInstance{
+				Name:               instanceAsset.Name,
+				NodeIndex:          int(instanceAsset.NodeIndex),
+				EmitRange:          instanceAsset.EmitRange,
+				EmitOuterConeAngle: instanceAsset.EmitOuterConeAngle,
+				EmitInnerConeAngle: instanceAsset.EmitInnerConeAngle,
+				EmitColor:          instanceAsset.EmitColor,
+			})
+		case asset.LightTypeDirectional:
+			directionalLightInstances = append(directionalLightInstances, directionalLightInstance{
+				Name:      instanceAsset.Name,
+				NodeIndex: int(instanceAsset.NodeIndex),
+				EmitRange: instanceAsset.EmitRange,
+				EmitColor: instanceAsset.EmitColor,
+			})
+		default:
+			return nil, fmt.Errorf("unknown light type: %d", instanceAsset.Type)
+		}
+	}
+
 	return &ModelDefinition{
-		nodes:               nodes,
-		armatures:           armatures,
-		animations:          animations,
-		textures:            textures,
-		materialDefinitions: materialDefinitions,
-		meshDefinitions:     meshDefinitions,
-		meshInstances:       meshInstances,
-		bodyDefinitions:     bodyDefinitions,
-		bodyInstances:       bodyInstances,
+		nodes:                     nodes,
+		armatures:                 armatures,
+		animations:                animations,
+		textures:                  textures,
+		materialDefinitions:       materialDefinitions,
+		meshDefinitions:           meshDefinitions,
+		meshInstances:             meshInstances,
+		bodyDefinitions:           bodyDefinitions,
+		bodyInstances:             bodyInstances,
+		pointLightInstances:       pointLightInstances,
+		spotLightInstances:        spotLightInstances,
+		directionalLightInstances: directionalLightInstances,
 	}, nil
 }
 
@@ -437,10 +499,13 @@ type Model struct {
 	definition *ModelDefinition
 	root       *Node
 
-	nodes         []*Node
-	armatures     []*graphics.Armature
-	animations    []*Animation
-	bodyInstances []*physics.Body
+	nodes                     []*Node
+	armatures                 []*graphics.Armature
+	animations                []*Animation
+	bodyInstances             []*physics.Body
+	pointLightInstances       []*graphics.PointLight
+	spotLightInstances        []*graphics.SpotLight
+	directionalLightInstances []*graphics.DirectionalLight
 }
 
 func (m *Model) Root() *Node {

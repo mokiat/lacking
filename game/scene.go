@@ -206,6 +206,61 @@ func (s *Scene) CreateModel(info ModelInfo) *Model {
 		}
 	}
 
+	pointLightInstances := make([]*graphics.PointLight, len(definition.pointLightInstances))
+	for i, instance := range definition.pointLightInstances {
+		var lightNode *Node
+		if instance.NodeIndex >= 0 {
+			lightNode = nodes[instance.NodeIndex]
+		} else {
+			lightNode = modelNode
+		}
+		light := s.gfxScene.CreatePointLight(graphics.PointLightInfo{
+			Position:  dprec.ZeroVec3(),
+			EmitRange: instance.EmitRange,
+			EmitColor: instance.EmitColor,
+		})
+		lightNode.SetAttachable(light)
+		pointLightInstances[i] = light
+	}
+
+	spotLightInstances := make([]*graphics.SpotLight, len(definition.spotLightInstances))
+	for i, instance := range definition.spotLightInstances {
+		var lightNode *Node
+		if instance.NodeIndex >= 0 {
+			lightNode = nodes[instance.NodeIndex]
+		} else {
+			lightNode = modelNode
+		}
+		light := s.gfxScene.CreateSpotLight(graphics.SpotLightInfo{
+			Position:           dprec.ZeroVec3(),
+			Rotation:           dprec.IdentityQuat(),
+			EmitRange:          instance.EmitRange,
+			EmitOuterConeAngle: instance.EmitOuterConeAngle,
+			EmitInnerConeAngle: instance.EmitInnerConeAngle,
+			EmitColor:          instance.EmitColor,
+		})
+		lightNode.SetAttachable(light)
+		spotLightInstances[i] = light
+	}
+
+	directionalLightInstances := make([]*graphics.DirectionalLight, len(definition.directionalLightInstances))
+	for i, instance := range definition.directionalLightInstances {
+		var lightNode *Node
+		if instance.NodeIndex >= 0 {
+			lightNode = nodes[instance.NodeIndex]
+		} else {
+			lightNode = modelNode
+		}
+		light := s.gfxScene.CreateDirectionalLight(graphics.DirectionalLightInfo{
+			Position:    dprec.ZeroVec3(),
+			Orientation: dprec.IdentityQuat(),
+			EmitRange:   instance.EmitRange,
+			EmitColor:   instance.EmitColor,
+		})
+		lightNode.SetAttachable(light)
+		directionalLightInstances[i] = light
+	}
+
 	armatures := make([]*graphics.Armature, len(definition.armatures))
 	for i, instance := range definition.armatures {
 		armature := s.gfxScene.CreateArmature(graphics.ArmatureInfo{
@@ -251,11 +306,14 @@ func (s *Scene) CreateModel(info ModelInfo) *Model {
 	s.applyNodeToGraphics(modelNode)
 
 	result := &Model{
-		definition:    definition,
-		root:          modelNode,
-		bodyInstances: bodyInstances,
-		nodes:         nodes,
-		armatures:     armatures,
+		definition:                definition,
+		root:                      modelNode,
+		bodyInstances:             bodyInstances,
+		nodes:                     nodes,
+		armatures:                 armatures,
+		pointLightInstances:       pointLightInstances,
+		spotLightInstances:        spotLightInstances,
+		directionalLightInstances: directionalLightInstances,
 	}
 	if info.PrepareAnimations {
 		animations := make([]*Animation, len(definition.animations))

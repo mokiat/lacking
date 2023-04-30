@@ -4,6 +4,7 @@ import (
 	"github.com/mokiat/gomath/dprec"
 	"github.com/mokiat/lacking/game"
 	"github.com/mokiat/lacking/game/ecs"
+	"github.com/mokiat/lacking/game/graphics"
 	"github.com/mokiat/lacking/game/physics"
 	"github.com/mokiat/lacking/game/physics/constraint"
 )
@@ -13,8 +14,12 @@ func NewChassisDefinition() *ChassisDefinition {
 }
 
 type ChassisDefinition struct {
-	nodeName string
-	bodyDef  *physics.BodyDefinition
+	nodeName           string
+	bodyDef            *physics.BodyDefinition
+	headLightNodeNames []string
+	tailLightNodeNames []string
+	beamLightNodeNames []string
+	stopLightNodeNames []string
 }
 
 func (d *ChassisDefinition) WithNodeName(name string) *ChassisDefinition {
@@ -24,6 +29,26 @@ func (d *ChassisDefinition) WithNodeName(name string) *ChassisDefinition {
 
 func (d *ChassisDefinition) WithBodyDefinition(def *physics.BodyDefinition) *ChassisDefinition {
 	d.bodyDef = def
+	return d
+}
+
+func (d *ChassisDefinition) WithHeadLightNodeNames(names ...string) *ChassisDefinition {
+	d.headLightNodeNames = names
+	return d
+}
+
+func (d *ChassisDefinition) WithTailLightNodeNames(names ...string) *ChassisDefinition {
+	d.tailLightNodeNames = names
+	return d
+}
+
+func (d *ChassisDefinition) WithBeamLightNodeNames(names ...string) *ChassisDefinition {
+	d.beamLightNodeNames = names
+	return d
+}
+
+func (d *ChassisDefinition) WithStopLightNodeNames(names ...string) *ChassisDefinition {
+	d.stopLightNodeNames = names
 	return d
 }
 
@@ -191,6 +216,30 @@ func (d *CarDefinition) ApplyToModel(scene *game.Scene, info CarApplyInfo) *Car 
 		Rotation:   chassisRotation,
 	})
 	chassisNode.SetBody(chassisBody)
+
+	headLights := make([]*graphics.PointLight, len(d.chassisDef.headLightNodeNames))
+	for i, nodeName := range d.chassisDef.headLightNodeNames {
+		node := info.Model.FindNode(nodeName)
+		headLights[i] = node.Attachable().(*graphics.PointLight)
+	}
+
+	tailLights := make([]*graphics.PointLight, len(d.chassisDef.tailLightNodeNames))
+	for i, nodeName := range d.chassisDef.tailLightNodeNames {
+		node := info.Model.FindNode(nodeName)
+		tailLights[i] = node.Attachable().(*graphics.PointLight)
+	}
+
+	beamLights := make([]*graphics.SpotLight, len(d.chassisDef.beamLightNodeNames))
+	for i, nodeName := range d.chassisDef.beamLightNodeNames {
+		node := info.Model.FindNode(nodeName)
+		beamLights[i] = node.Attachable().(*graphics.SpotLight)
+	}
+
+	stopLights := make([]*graphics.PointLight, len(d.chassisDef.stopLightNodeNames))
+	for i, nodeName := range d.chassisDef.stopLightNodeNames {
+		node := info.Model.FindNode(nodeName)
+		stopLights[i] = node.Attachable().(*graphics.PointLight)
+	}
 
 	var axes []*Axis
 	for _, axisDef := range d.axesDef {
@@ -374,8 +423,12 @@ func (d *CarDefinition) ApplyToModel(scene *game.Scene, info CarApplyInfo) *Car 
 	})
 	result := &Car{
 		chassis: &Chassis{
-			node: chassisNode,
-			body: chassisBody,
+			node:       chassisNode,
+			body:       chassisBody,
+			headLights: headLights,
+			tailLights: tailLights,
+			beamLights: beamLights,
+			stopLights: stopLights,
 		},
 		axes:   axes,
 		entity: entity,
@@ -420,8 +473,12 @@ func (c *Car) Velocity() float64 {
 }
 
 type Chassis struct {
-	node *game.Node
-	body *physics.Body
+	node       *game.Node
+	body       *physics.Body
+	headLights []*graphics.PointLight
+	tailLights []*graphics.PointLight
+	beamLights []*graphics.SpotLight
+	stopLights []*graphics.PointLight
 }
 
 func (c *Chassis) Node() *game.Node {
@@ -430,6 +487,22 @@ func (c *Chassis) Node() *game.Node {
 
 func (c *Chassis) Body() *physics.Body {
 	return c.body
+}
+
+func (c *Chassis) HeadLights() []*graphics.PointLight {
+	return c.headLights
+}
+
+func (c *Chassis) TailLights() []*graphics.PointLight {
+	return c.tailLights
+}
+
+func (c *Chassis) BeamLights() []*graphics.SpotLight {
+	return c.beamLights
+}
+
+func (c *Chassis) StopLights() []*graphics.PointLight {
+	return c.stopLights
 }
 
 type Axis struct {

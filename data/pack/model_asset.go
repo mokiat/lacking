@@ -67,66 +67,55 @@ func (c *converter) BuildModel(model *Model) *asset.Model {
 		c.BuildNode(-1, node)
 	}
 
-	var (
-		assetTextures = make([]asset.TwoDTexture, len(model.Textures))
-	)
+	assetTextures := make([]asset.TwoDTexture, len(model.Textures))
 	for i, texture := range model.Textures {
 		assetTextures[i] = *BuildTwoDTextureAsset(texture)
 	}
 
-	var (
-		assetAnimations = make([]asset.Animation, len(model.Animations))
-	)
+	assetAnimations := make([]asset.Animation, len(model.Animations))
 	for i, animation := range model.Animations {
 		assetAnimations[i] = c.BuildAnimation(animation)
 	}
 
-	var (
-		assetMaterials = make([]asset.Material, len(model.Materials))
-	)
+	assetMaterials := make([]asset.Material, len(model.Materials))
 	for i, material := range model.Materials {
 		assetMaterials[i] = c.BuildMaterial(material)
 		c.assetMaterialIndexFromMaterial[material] = i
 	}
 
-	var (
-		assetArmatures = make([]asset.Armature, len(model.Armatures))
-	)
+	assetArmatures := make([]asset.Armature, len(model.Armatures))
 	for i, armature := range model.Armatures {
 		assetArmatures[i] = c.BuildArmature(armature)
 		c.assetArmatureIndexFromArmature[armature] = i
 	}
 
-	var (
-		assetMeshDefinitions = make([]asset.MeshDefinition, len(model.MeshDefinitions))
-	)
+	assetMeshDefinitions := make([]asset.MeshDefinition, len(model.MeshDefinitions))
 	for i, meshDefinition := range model.MeshDefinitions {
 		assetMeshDefinitions[i] = c.BuildMeshDefinition(meshDefinition)
 		c.assetMeshDefinitionFromMeshDefinition[meshDefinition] = i
 	}
 
-	var (
-		assetMeshInstances = make([]asset.MeshInstance, len(model.MeshInstances))
-	)
+	assetMeshInstances := make([]asset.MeshInstance, len(model.MeshInstances))
 	for i, meshInstance := range model.MeshInstances {
 		assetMeshInstances[i] = c.BuildMeshInstance(meshInstance)
 	}
 
-	var (
-		assetBodyDefinitions []asset.BodyDefinition
-		assetBodyInstances   []asset.BodyInstance
-	)
-	assetBodyDefinitions = make([]asset.BodyDefinition, len(model.MeshDefinitions))
+	assetBodyDefinitions := make([]asset.BodyDefinition, len(model.MeshDefinitions))
 	for i, meshDefinition := range model.MeshDefinitions {
 		assetBodyDefinitions[i] = c.BuildBodyDefinition(meshDefinition)
 		c.assetBodyDefinitionFromMeshDefinition[meshDefinition] = i
 	}
 
-	assetBodyInstances = make([]asset.BodyInstance, 0, len(model.MeshInstances))
+	assetBodyInstances := make([]asset.BodyInstance, 0, len(model.MeshInstances))
 	for _, meshInstance := range model.MeshInstances {
 		if c.forceCollidable || meshInstance.HasCollision() {
 			assetBodyInstances = append(assetBodyInstances, c.BuildBodyInstance(meshInstance))
 		}
+	}
+
+	assetLightInstances := make([]asset.LightInstance, len(model.LightInstances))
+	for i, lightInstance := range model.LightInstances {
+		assetLightInstances[i] = c.BuildLightInstance(lightInstance)
 	}
 
 	return &asset.Model{
@@ -139,6 +128,7 @@ func (c *converter) BuildModel(model *Model) *asset.Model {
 		MeshInstances:   assetMeshInstances,
 		BodyDefinitions: assetBodyDefinitions,
 		BodyInstances:   assetBodyInstances,
+		LightInstances:  assetLightInstances,
 	}
 }
 
@@ -613,5 +603,35 @@ func (c *converter) BuildBodyInstance(meshInstance *MeshInstance) asset.BodyInst
 		Name:      meshInstance.Name,
 		NodeIndex: nodeIndex,
 		BodyIndex: definitionIndex,
+	}
+}
+
+func (c *converter) BuildLightInstance(lightInstance *LightInstance) asset.LightInstance {
+	var nodeIndex int32
+	if index, ok := c.assetNodeIndexFromNode[lightInstance.Node]; ok {
+		nodeIndex = int32(index)
+	} else {
+		panic(fmt.Errorf("node %s not found", lightInstance.Node.Name))
+	}
+	definition := lightInstance.Definition
+	var lightType asset.LightType
+	switch definition.Type {
+	case LightTypePoint:
+		lightType = asset.LightTypePoint
+	case LightTypeSpot:
+		lightType = asset.LightTypeSpot
+	case LightTypeDirectional:
+		lightType = asset.LightTypeDirectional
+	default:
+		panic(fmt.Errorf("unknown light type %q", definition.Type))
+	}
+	return asset.LightInstance{
+		Name:               lightInstance.Name,
+		NodeIndex:          nodeIndex,
+		Type:               lightType,
+		EmitRange:          definition.EmitRange,
+		EmitOuterConeAngle: definition.EmitOuterConeAngle,
+		EmitInnerConeAngle: definition.EmitInnerConeAngle,
+		EmitColor:          definition.EmitColor,
 	}
 }

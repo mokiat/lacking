@@ -310,6 +310,19 @@ func (s *CarSystem) updateCar(elapsedSeconds float64, entity *ecs.Entity) {
 		chassisBody = car.Chassis().Body()
 	)
 
+	for _, light := range carComp.Car.Chassis().HeadLights() {
+		light.SetActive(carComp.LightsOn)
+	}
+	for _, light := range carComp.Car.Chassis().BeamLights() {
+		light.SetActive(carComp.LightsOn)
+	}
+	for _, light := range carComp.Car.Chassis().TailLights() {
+		light.SetActive(carComp.LightsOn)
+	}
+	for _, light := range carComp.Car.Chassis().StopLights() {
+		light.SetActive(carComp.Deceleration > 0.1)
+	}
+
 	if carComp.Recover {
 		rotationVector := dprec.Vec3Cross(
 			chassisBody.Orientation().OrientationY(),

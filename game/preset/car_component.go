@@ -29,6 +29,7 @@ type CarComponent struct {
 	Acceleration   float64
 	Deceleration   float64
 	Recover        bool
+	LightsOn       bool
 }
 
 func (*CarComponent) TypeID() ecs.ComponentTypeID {

@@ -32,14 +32,16 @@ func (p Properties) IsSet(key string) bool {
 }
 
 type Model struct {
-	RootNodes       []*Node
-	Animations      []*Animation
-	Armatures       []*Armature
-	Materials       []*Material
-	MeshDefinitions []*MeshDefinition
-	MeshInstances   []*MeshInstance
-	Textures        []*Image
-	Properties      Properties
+	RootNodes        []*Node
+	Animations       []*Animation
+	Armatures        []*Armature
+	Materials        []*Material
+	MeshDefinitions  []*MeshDefinition
+	MeshInstances    []*MeshInstance
+	LightDefinitions []*LightDefinition
+	LightInstances   []*LightInstance
+	Textures         []*Image
+	Properties       Properties
 }
 
 type Node struct {
@@ -179,4 +181,28 @@ type RotationKeyframe struct {
 type ScaleKeyframe struct {
 	Timestamp float64
 	Scale     dprec.Vec3
+}
+
+type LightDefinition struct {
+	Name               string
+	Type               LightType
+	EmitRange          float64
+	EmitOuterConeAngle dprec.Angle
+	EmitInnerConeAngle dprec.Angle
+	EmitColor          dprec.Vec3
+}
+
+type LightType string
+
+const (
+	LightTypePoint       LightType = "point"
+	LightTypeSpot        LightType = "spot"
+	LightTypeDirectional LightType = "directional"
+	// TODO: Ambient Light
+)
+
+type LightInstance struct {
+	Name       string
+	Node       *Node
+	Definition *LightDefinition
 }

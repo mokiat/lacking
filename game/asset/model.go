@@ -26,9 +26,9 @@ type Model struct {
 	MeshInstances   []MeshInstance
 	BodyDefinitions []BodyDefinition
 	BodyInstances   []BodyInstance
+	LightInstances  []LightInstance
 	// TODO: Model Instances (ref model resources)
 	// TODO: Speakers
-	// TODO: Lights
 	// TODO: Cameras
 	// TODO: Constraints
 }
