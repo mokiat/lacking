@@ -644,6 +644,65 @@ func CheckIntersectionLineWithTriangle(line Line, triangle Triangle, flipped boo
 	}
 }
 
+// LineWithSurfaceIntersectionPoint returns the point where a line intersects
+// with a surface, if there is one.
+func LineWithSurfaceIntersectionPoint(line Line, point, normal dprec.Vec3) (dprec.Vec3, bool) {
+	h1 := dprec.Vec3Dot(normal, dprec.Vec3Diff(line.A(), point))
+	h2 := dprec.Vec3Dot(normal, dprec.Vec3Diff(point, line.B()))
+	if h1 > 0.0 && h2 < 0.0 {
+		return dprec.Vec3{}, false
+	}
+	if h1 < 0.0 && h2 > 0.0 {
+		return dprec.Vec3{}, false
+	}
+	return dprec.Vec3Sum(
+		dprec.Vec3Prod(line.A(), h2/(h1+h2)),
+		dprec.Vec3Prod(line.B(), h1/(h1+h2)),
+	), true
+}
+
+// LineWithSphereIntersectionPoints returns the two intersection points of
+// a line with a sphere, if there are such.
+func LineWithSphereIntersectionPoints(line Line, sphere Sphere) (dprec.Vec3, dprec.Vec3, bool) {
+	tangent := dprec.UnitVec3(dprec.Vec3Diff(line.A(), line.B()))
+	h1 := dprec.Vec3Dot(tangent, dprec.Vec3Diff(line.A(), sphere.Position()))
+	h2 := dprec.Vec3Dot(tangent, dprec.Vec3Diff(sphere.Position(), line.B()))
+	point := dprec.Vec3Sum(
+		dprec.Vec3Prod(line.A(), h2/(h1+h2)),
+		dprec.Vec3Prod(line.B(), h1/(h1+h2)),
+	)
+
+	diff := dprec.Vec3Diff(point, sphere.Position())
+	height := diff.Length()
+	r := sphere.Radius()
+	if height >= r {
+		return dprec.Vec3{}, dprec.Vec3{}, false
+	}
+	shift := dprec.Sqrt(r*r - height*height)
+
+	var first dprec.Vec3
+	if h1 > shift {
+		first = dprec.Vec3Sum(
+			dprec.Vec3Prod(line.A(), (h2+shift)/(h1+h2)),
+			dprec.Vec3Prod(line.B(), (h1-shift)/(h1+h2)),
+		)
+	} else {
+		first = line.A()
+	}
+
+	var second dprec.Vec3
+	if h2 > shift {
+		second = dprec.Vec3Sum(
+			dprec.Vec3Prod(line.A(), (h2-shift)/(h1+h2)),
+			dprec.Vec3Prod(line.B(), (h1+shift)/(h1+h2)),
+		)
+	} else {
+		second = line.B()
+	}
+
+	return first, second, true
+}
+
 // CheckIntersectionBoxWithMesh checks if a Box shape intersects with a Mesh
 // shape.
 func CheckIntersectionBoxWithMesh(box Box, mesh Mesh, flipped bool, resultSet IntersectionCollection) {

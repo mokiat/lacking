@@ -213,34 +213,7 @@ func (s *CarSystem) updateMouse(elapsedSeconds float64, entity *ecs.Entity) {
 	carComp.Recover = s.mouseButtonStates[ui.MouseButtonMiddle]
 
 	chassis := carComp.Car.Chassis()
-	orientation := chassis.Body().Orientation()
-	orientationX := orientation.OrientationX()
-	orientationZ := orientation.OrientationZ()
-
-	// TODO: Use sphere shape instead
-	// TODO: Move Position and orientation into placement
 	position := chassis.Body().Position()
-	a := dprec.Vec3Sum(dprec.Vec3Sum(
-		dprec.Vec3Prod(orientationX, -1000),
-		dprec.Vec3Prod(orientationZ, -1000),
-	), position)
-	b := dprec.Vec3Sum(dprec.Vec3Sum(
-		dprec.Vec3Prod(orientationX, -1000),
-		dprec.Vec3Prod(orientationZ, 1000),
-	), position)
-	c := dprec.Vec3Sum(dprec.Vec3Sum(
-		dprec.Vec3Prod(orientationX, 1000),
-		dprec.Vec3Prod(orientationZ, 1000),
-	), position)
-	d := dprec.Vec3Sum(dprec.Vec3Sum(
-		dprec.Vec3Prod(orientationX, 1000),
-		dprec.Vec3Prod(orientationZ, -1000),
-	), position)
-
-	surface := collision.NewMesh([]collision.Triangle{
-		collision.NewTriangle(a, b, c),
-		collision.NewTriangle(a, c, d),
-	})
 
 	camera := s.gfxScene.ActiveCamera()
 	viewport := graphics.Viewport{
@@ -249,14 +222,15 @@ func (s *CarSystem) updateMouse(elapsedSeconds float64, entity *ecs.Entity) {
 	}
 	start, end := s.gfxScene.Ray(viewport, camera, s.mouseX, s.mouseY)
 
-	var result collision.LastIntersection
-	collision.CheckIntersectionLineWithMesh(collision.NewLine(start, end), surface, false, &result)
+	line := collision.NewLine(start, end)
 
-	// TODO: Use sphere
-	if intersection, ok := result.Intersection(); ok {
-		mouseTarget := intersection.FirstContact
-
-		delta := dprec.Vec3Diff(mouseTarget, chassis.Body().Position())
+	intersection, ok := collision.LineWithSurfaceIntersectionPoint(line, position, dprec.BasisYVec3())
+	if !ok {
+		sphere := collision.NewSphere(position, 1000.0)
+		_, intersection, ok = collision.LineWithSphereIntersectionPoints(line, sphere)
+	}
+	if ok {
+		delta := dprec.Vec3Diff(intersection, position)
 		delta.Y = 0.0
 
 		forward := chassis.Body().Orientation().OrientationZ()
