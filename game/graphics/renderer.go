@@ -649,10 +649,8 @@ func (r *sceneRenderer) Render(framebuffer render.Framebuffer, viewport Viewport
 
 func (r *sceneRenderer) evaluateProjectionMatrix(camera *Camera, width, height int) sprec.Mat4 {
 	const (
-		near = float32(0.5)
-		// far  = float32(400.0) // At 400 on a flat plane with forests, you don't really notice the far clipping plane.
-		// far = float32(1600.0) // At 400 on a flat plane with forests, you don't really notice the far clipping plane.
-		far = float32(16000.0) // At 400 on a flat plane with forests, you don't really notice the far clipping plane.
+		near = float32(0.1)
+		far  = float32(4000.0)
 	)
 	var (
 		fWidth  = sprec.Max(1.0, float32(width))
