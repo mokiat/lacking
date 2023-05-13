@@ -73,8 +73,7 @@ func (c *Controller) OnResize(window app.Window, width, height int) {
 }
 
 func (c *Controller) OnRender(window app.Window) {
-	frameSpan := metrics.BeginRegion("game:frame")
-	defer frameSpan.End()
+	defer metrics.BeginRegion("game:frame").End()
 
 	c.engine.Update()
 	c.engine.Render(c.viewport)

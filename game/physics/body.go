@@ -181,9 +181,7 @@ func (b *Body) SetPosition(position dprec.Vec3) {
 	b.lerpPosition = position
 	b.octreeItem.SetPosition(position)
 
-	// TODO: Do this only on demand. Also, consider splitting bodies into two
-	// types: static and dynamic, without allowing one to switch from one
-	// to the other.
+	// TODO: Do this only on demand.
 	b.invalidateCollisionShapes()
 }
 

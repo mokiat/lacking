@@ -721,7 +721,7 @@ func (r *sceneRenderer) renderShadowPass(ctx renderCtx) {
 		r.queueShadowMesh(ctx, mesh)
 	}
 	slices.SortFunc(r.renderItems, func(a, b renderItem) bool {
-		// TODO: If fragment IDs are stored inside the items thelsevles, there
+		// TODO: If fragment IDs are stored inside the items themselves, there
 		// would be fewer pointer jumps and cache misses.
 		return a.fragment.id < b.fragment.id
 	})
