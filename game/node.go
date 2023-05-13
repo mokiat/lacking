@@ -33,6 +33,10 @@ func DefaultTransformFunc(parent, current dprec.Mat4) dprec.Mat4 {
 	return dprec.Mat4Prod(parent, current)
 }
 
+type Attachable interface {
+	SetMatrix(matrix dprec.Mat4)
+}
+
 // NewNode creates a new detached Node instance.
 func NewNode() *Node {
 	return &Node{
@@ -66,12 +70,11 @@ type Node struct {
 	transform TransformFunc
 	absMatrix dprec.Mat4
 
+	// TODO: Abstract all of these through a common interface
 	body         *physics.Body
-	mesh         *graphics.Mesh
 	armature     *graphics.Armature
 	armatureBone int
-	camera       *graphics.Camera
-	light        *graphics.Light
+	attachable   Attachable
 }
 
 // PrintHierarchy prints debug information regarding the hierarchy that starts
@@ -282,6 +285,28 @@ func (n *Node) SetScale(scale dprec.Vec3) {
 	}
 }
 
+// SetAbsoluteMatrix changes the absolute position, rotation and scale
+// of this node.
+func (n *Node) SetAbsoluteMatrix(matrix dprec.Mat4) {
+	if n.parent == nil {
+		t, r, s := matrix.TRS()
+		n.position = t
+		n.rotation = r
+		n.scale = s
+	} else {
+		parentMatrix := n.parent.AbsoluteMatrix()
+		relativeMatrix := dprec.Mat4Prod(
+			dprec.InverseMat4(parentMatrix),
+			matrix,
+		)
+		t, r, s := relativeMatrix.TRS()
+		n.position = t
+		n.rotation = r
+		n.scale = s
+	}
+	n.revision = initialRevision
+}
+
 // Matrix returns the matrix transformation of this Node relative to the
 // parent.
 func (n *Node) Matrix() dprec.Mat4 {
@@ -323,26 +348,6 @@ func (n *Node) SetBody(body *physics.Body) {
 	n.body = body
 }
 
-// Mesh returns the graphics Mesh that is attached to this Node.
-func (n *Node) Mesh() *graphics.Mesh {
-	return n.mesh
-}
-
-// SetMesh attaches a graphics Mesh to this Node.
-func (n *Node) SetMesh(mesh *graphics.Mesh) {
-	n.mesh = mesh
-}
-
-// Camera returns the graphics Camera that is attached to this Node.
-func (n *Node) Camera() *graphics.Camera {
-	return n.camera
-}
-
-// SetCamera attaches a graphics Camera to this Node.
-func (n *Node) SetCamera(camera *graphics.Camera) {
-	n.camera = camera
-}
-
 // Armature returns the graphics Armature that is attached to this Node.
 func (n *Node) Armature() *graphics.Armature {
 	return n.armature
@@ -365,14 +370,12 @@ func (n *Node) SetArmatureBone(bone int) {
 	n.armatureBone = bone
 }
 
-// Light returns the graphics Light that is attached to this Node.
-func (n *Node) Light() *graphics.Light {
-	return n.light
+func (n *Node) Attachable() Attachable {
+	return n.attachable
 }
 
-// SetLight attaches a graphics Light to this Node.
-func (n *Node) SetLight(light *graphics.Light) {
-	n.light = light
+func (n *Node) SetAttachable(attachable Attachable) {
+	n.attachable = attachable
 }
 
 func (n *Node) isStaleHierarchy() bool {
@@ -391,4 +394,18 @@ func (n *Node) isStaleHierarchy() bool {
 	// This node appears to be fine with relation to its parent but
 	// it is unclear if the parent is up to date.
 	return n.parent.isStaleHierarchy()
+}
+
+func IgnoreParentRotation(parent, current dprec.Mat4) dprec.Mat4 {
+	// Remove parent's rotation
+	parent.M11 = 1.0
+	parent.M12 = 0.0
+	parent.M13 = 0.0
+	parent.M21 = 0.0
+	parent.M22 = 1.0
+	parent.M23 = 0.0
+	parent.M31 = 0.0
+	parent.M32 = 0.0
+	parent.M33 = 1.0
+	return dprec.Mat4Prod(parent, current)
 }

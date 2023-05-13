@@ -48,22 +48,13 @@ func GetContext[T any]() T {
 //
 // The specified target must be a pointer to the type
 // that was used in RegisterContext.
-func InjectContext(target any) {
+func InjectContext[T any](target *T) {
 	if target == nil {
-		panic("target cannot be nil")
-	}
-	value := reflect.ValueOf(target)
-	valueType := value.Type()
-	if valueType.Kind() != reflect.Ptr {
-		panic("target must be a pointer")
-	}
-	if value.IsNil() {
 		panic("target pointer cannot be nil")
 	}
-	targetRefType := valueType.Elem()
-	contextValue, ok := contexts[targetRefType]
+	contextValue, ok := contexts[reflect.TypeOf(*target)]
 	if !ok {
-		panic(fmt.Errorf("there is no context of type %s", targetRefType))
+		panic(fmt.Errorf("there is no context of type %T", *target))
 	}
-	value.Elem().Set(reflect.ValueOf(contextValue))
+	*target = contextValue.(T)
 }

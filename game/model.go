@@ -8,20 +8,23 @@ import (
 	"github.com/mokiat/lacking/game/asset"
 	"github.com/mokiat/lacking/game/graphics"
 	"github.com/mokiat/lacking/game/physics"
+	"github.com/mokiat/lacking/game/physics/collision"
 	"github.com/mokiat/lacking/util/async"
-	"github.com/mokiat/lacking/util/shape"
 )
 
 type ModelDefinition struct {
-	nodes               []nodeDefinition
-	armatures           []armatureDefinition
-	animations          []*AnimationDefinition
-	textures            []*TwoDTexture
-	materialDefinitions []*graphics.MaterialDefinition
-	meshDefinitions     []*graphics.MeshDefinition
-	meshInstances       []meshInstance
-	bodyDefinitions     []*physics.BodyDefinition
-	bodyInstances       []bodyInstance
+	nodes                     []nodeDefinition
+	armatures                 []armatureDefinition
+	animations                []*AnimationDefinition
+	textures                  []*TwoDTexture
+	materialDefinitions       []*graphics.MaterialDefinition
+	meshDefinitions           []*graphics.MeshDefinition
+	meshInstances             []meshInstance
+	bodyDefinitions           []*physics.BodyDefinition
+	bodyInstances             []bodyInstance
+	pointLightInstances       []pointLightInstance
+	spotLightInstances        []spotLightInstance
+	directionalLightInstances []directionalLightInstance
 }
 
 func (d *ModelDefinition) FindAnimation(name string) *AnimationDefinition {
@@ -69,6 +72,29 @@ func (d armatureDefinition) InverseBindMatrices() []sprec.Mat4 {
 type armatureJoint struct {
 	NodeIndex         int
 	InverseBindMatrix sprec.Mat4
+}
+
+type pointLightInstance struct {
+	Name      string
+	NodeIndex int
+	EmitRange float64
+	EmitColor dprec.Vec3
+}
+
+type spotLightInstance struct {
+	Name               string
+	NodeIndex          int
+	EmitRange          float64
+	EmitOuterConeAngle dprec.Angle
+	EmitInnerConeAngle dprec.Angle
+	EmitColor          dprec.Vec3
+}
+
+type directionalLightInstance struct {
+	Name      string
+	NodeIndex int
+	EmitRange float64
+	EmitColor dprec.Vec3
 }
 
 func (r *ResourceSet) loadModel(resource asset.Resource) (*ModelDefinition, error) {
@@ -161,8 +187,10 @@ func (r *ResourceSet) allocateModel(modelAsset *asset.Model) (*ModelDefinition, 
 				RestitutionCoefficient: definitionAsset.RestitutionCoefficient,
 				DragFactor:             definitionAsset.DragFactor,
 				AngularDragFactor:      definitionAsset.AngularDragFactor,
-				CollisionShapes:        r.constructCollisionShapes(definitionAsset),
 				AerodynamicShapes:      nil, // TODO
+				CollisionSpheres:       r.constructCollisionSpheres(definitionAsset),
+				CollisionBoxes:         r.constructCollisionBoxes(definitionAsset),
+				CollisionMeshes:        r.constructCollisionMeshes(definitionAsset),
 			})
 		}).Wait()
 	}
@@ -282,16 +310,52 @@ func (r *ResourceSet) allocateModel(modelAsset *asset.Model) (*ModelDefinition, 
 		}
 	}
 
+	pointLightInstances := make([]pointLightInstance, 0)
+	spotLightInstances := make([]spotLightInstance, 0)
+	directionalLightInstances := make([]directionalLightInstance, 0)
+	for _, instanceAsset := range modelAsset.LightInstances {
+		switch instanceAsset.Type {
+		case asset.LightTypePoint:
+			pointLightInstances = append(pointLightInstances, pointLightInstance{
+				Name:      instanceAsset.Name,
+				NodeIndex: int(instanceAsset.NodeIndex),
+				EmitRange: instanceAsset.EmitRange,
+				EmitColor: instanceAsset.EmitColor,
+			})
+		case asset.LightTypeSpot:
+			spotLightInstances = append(spotLightInstances, spotLightInstance{
+				Name:               instanceAsset.Name,
+				NodeIndex:          int(instanceAsset.NodeIndex),
+				EmitRange:          instanceAsset.EmitRange,
+				EmitOuterConeAngle: instanceAsset.EmitOuterConeAngle,
+				EmitInnerConeAngle: instanceAsset.EmitInnerConeAngle,
+				EmitColor:          instanceAsset.EmitColor,
+			})
+		case asset.LightTypeDirectional:
+			directionalLightInstances = append(directionalLightInstances, directionalLightInstance{
+				Name:      instanceAsset.Name,
+				NodeIndex: int(instanceAsset.NodeIndex),
+				EmitRange: instanceAsset.EmitRange,
+				EmitColor: instanceAsset.EmitColor,
+			})
+		default:
+			return nil, fmt.Errorf("unknown light type: %d", instanceAsset.Type)
+		}
+	}
+
 	return &ModelDefinition{
-		nodes:               nodes,
-		armatures:           armatures,
-		animations:          animations,
-		textures:            textures,
-		materialDefinitions: materialDefinitions,
-		meshDefinitions:     meshDefinitions,
-		meshInstances:       meshInstances,
-		bodyDefinitions:     bodyDefinitions,
-		bodyInstances:       bodyInstances,
+		nodes:                     nodes,
+		armatures:                 armatures,
+		animations:                animations,
+		textures:                  textures,
+		materialDefinitions:       materialDefinitions,
+		meshDefinitions:           meshDefinitions,
+		meshInstances:             meshInstances,
+		bodyDefinitions:           bodyDefinitions,
+		bodyInstances:             bodyInstances,
+		pointLightInstances:       pointLightInstances,
+		spotLightInstances:        spotLightInstances,
+		directionalLightInstances: directionalLightInstances,
 	}, nil
 }
 
@@ -302,42 +366,43 @@ func (r *ResourceSet) releaseModel(model *ModelDefinition) {
 	model.textures = nil
 }
 
-func (r *ResourceSet) constructCollisionShapes(bodyDef asset.BodyDefinition) []physics.CollisionShape {
-	var result []physics.CollisionShape
-	for _, collisionBoxAsset := range bodyDef.CollisionBoxes {
-		result = append(result, shape.NewPlacement(
-			shape.NewStaticBox(
-				collisionBoxAsset.Width,
-				collisionBoxAsset.Height,
-				collisionBoxAsset.Lenght,
-			),
+func (r *ResourceSet) constructCollisionSpheres(bodyDef asset.BodyDefinition) []collision.Sphere {
+	result := make([]collision.Sphere, len(bodyDef.CollisionSpheres))
+	for i, collisionSphereAsset := range bodyDef.CollisionSpheres {
+		result[i] = collision.NewSphere(
+			collisionSphereAsset.Translation,
+			collisionSphereAsset.Radius,
+		)
+	}
+	return result
+}
+
+func (r *ResourceSet) constructCollisionBoxes(bodyDef asset.BodyDefinition) []collision.Box {
+	result := make([]collision.Box, len(bodyDef.CollisionBoxes))
+	for i, collisionBoxAsset := range bodyDef.CollisionBoxes {
+		result[i] = collision.NewBox(
 			collisionBoxAsset.Translation,
 			collisionBoxAsset.Rotation,
-		))
+			dprec.NewVec3(collisionBoxAsset.Width, collisionBoxAsset.Height, collisionBoxAsset.Lenght),
+		)
 	}
-	for _, collisionSphereAsset := range bodyDef.CollisionSpheres {
-		result = append(result, shape.NewPlacement(
-			shape.NewStaticSphere(
-				collisionSphereAsset.Radius,
-			),
-			collisionSphereAsset.Translation,
-			collisionSphereAsset.Rotation,
-		))
-	}
-	for _, collisionMeshAsset := range bodyDef.CollisionMeshes {
-		triangles := make([]shape.StaticTriangle, len(collisionMeshAsset.Triangles))
+	return result
+}
+
+func (r *ResourceSet) constructCollisionMeshes(bodyDef asset.BodyDefinition) []collision.Mesh {
+	result := make([]collision.Mesh, len(bodyDef.CollisionMeshes))
+	for i, collisionMeshAsset := range bodyDef.CollisionMeshes {
+		transform := collision.TRTransform(collisionMeshAsset.Translation, collisionMeshAsset.Rotation)
+		triangles := make([]collision.Triangle, len(collisionMeshAsset.Triangles))
 		for j, triangleAsset := range collisionMeshAsset.Triangles {
-			triangles[j] = shape.NewStaticTriangle(
+			template := collision.NewTriangle(
 				triangleAsset.A,
 				triangleAsset.B,
 				triangleAsset.C,
 			)
+			triangles[j].Replace(template, transform)
 		}
-		result = append(result, shape.NewPlacement(
-			shape.NewStaticMesh(triangles),
-			collisionMeshAsset.Translation,
-			collisionMeshAsset.Rotation,
-		))
+		result[i] = collision.NewMesh(triangles)
 	}
 	return result
 }
@@ -434,14 +499,21 @@ type Model struct {
 	definition *ModelDefinition
 	root       *Node
 
-	nodes         []*Node
-	armatures     []*graphics.Armature
-	animations    []*Animation
-	bodyInstances []*physics.Body
+	nodes                     []*Node
+	armatures                 []*graphics.Armature
+	animations                []*Animation
+	bodyInstances             []*physics.Body
+	pointLightInstances       []*graphics.PointLight
+	spotLightInstances        []*graphics.SpotLight
+	directionalLightInstances []*graphics.DirectionalLight
 }
 
 func (m *Model) Root() *Node {
 	return m.root
+}
+
+func (m *Model) FindNode(name string) *Node {
+	return m.root.FindNode(name)
 }
 
 func (m *Model) BodyInstances() []*physics.Body {

@@ -11,8 +11,10 @@ type ShaderCollection struct {
 	DirectionalLightSet func() ShaderSet
 	AmbientLightSet     func() ShaderSet
 	PointLightSet       func() ShaderSet
+	SpotLightSet        func() ShaderSet
 	SkyboxSet           func() ShaderSet
 	SkycolorSet         func() ShaderSet
+	DebugSet            func() ShaderSet
 	ExposureSet         func() ShaderSet
 	PostprocessingSet   func(cfg PostprocessingShaderConfig) ShaderSet
 }
@@ -24,6 +26,7 @@ type ShadowMappingShaderConfig struct {
 type PBRGeometryShaderConfig struct {
 	HasArmature      bool
 	HasAlphaTesting  bool
+	HasVertexColors  bool
 	HasAlbedoTexture bool
 }
 

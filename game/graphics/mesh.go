@@ -1,6 +1,8 @@
 package graphics
 
 import (
+	"fmt"
+
 	"github.com/mokiat/gomath/dprec"
 	"github.com/mokiat/lacking/render"
 	"github.com/mokiat/lacking/util/spatial"
@@ -88,6 +90,7 @@ type MeshDefinition struct {
 	vertexArray          render.VertexArray
 	fragments            []meshFragmentDefinition
 	boundingSphereRadius float64
+	hasVertexColors      bool
 	needsArmature        bool
 }
 
@@ -151,14 +154,25 @@ type MeshInfo struct {
 	Armature   *Armature
 }
 
+func newMesh(scene *Scene, info MeshInfo) *Mesh {
+	definition := info.Definition
+
+	mesh := scene.meshPool.Fetch()
+	mesh.Node = newNode()
+	mesh.scene = scene
+	mesh.item = scene.meshOctree.CreateItem(mesh)
+	mesh.item.SetRadius(definition.boundingSphereRadius)
+	mesh.definition = definition
+	mesh.armature = info.Armature
+	return mesh
+}
+
 // Mesh represents an instance of a 3D mesh.
 type Mesh struct {
 	Node
 
-	item  *spatial.OctreeItem[*Mesh]
 	scene *Scene
-	prev  *Mesh
-	next  *Mesh
+	item  *spatial.OctreeItem[*Mesh]
 
 	definition *MeshDefinition
 	armature   *Armature
@@ -171,8 +185,11 @@ func (m *Mesh) SetMatrix(matrix dprec.Mat4) {
 
 // Delete removes this mesh from the scene.
 func (m *Mesh) Delete() {
+	if m.scene == nil {
+		panic(fmt.Errorf("mesh already deleted"))
+	}
 	m.item.Delete()
-	m.scene.detachMesh(m)
-	m.scene.cacheMesh(m)
+	m.item = nil
+	m.scene.meshPool.Restore(m)
 	m.scene = nil
 }

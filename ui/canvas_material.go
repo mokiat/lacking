@@ -12,8 +12,8 @@ func newMaterial(shaders ShaderSet) *material {
 }
 
 type material struct {
-	vertexSrc   func() string
-	fragmentSrc func() string
+	vertexSrc   string
+	fragmentSrc string
 
 	program                        render.Program
 	projectionMatrixLocation       render.UniformLocation
@@ -26,14 +26,14 @@ type material struct {
 
 func (m *material) Allocate(api render.API) {
 	vertexShader := api.CreateVertexShader(render.ShaderInfo{
-		SourceCode: m.vertexSrc(),
+		SourceCode: m.vertexSrc,
 	})
 	defer func() {
 		vertexShader.Release()
 	}()
 
 	fragmentShader := api.CreateFragmentShader(render.ShaderInfo{
-		SourceCode: m.fragmentSrc(),
+		SourceCode: m.fragmentSrc,
 	})
 	defer func() {
 		fragmentShader.Release()

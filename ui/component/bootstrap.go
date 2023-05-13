@@ -3,13 +3,14 @@ package component
 import (
 	"fmt"
 
+	"github.com/mokiat/gog/ds"
 	"github.com/mokiat/lacking/log"
 	"github.com/mokiat/lacking/ui"
-	"golang.org/x/exp/slices"
 )
 
+type applicationKey struct{}
+
 var (
-	rootLifecycle *windowLifecycle
 	rootUIContext *ui.Context
 	rootScope     Scope
 )
@@ -27,10 +28,12 @@ func Initialize(window *ui.Window, instance Instance) {
 	window.Root().AppendChild(rootNode.element)
 }
 
+// TODO: Use TypeDefine instead
 var application = Define(func(props Properties, scope Scope) Instance {
 	lifecycle := UseLifecycle(func(handle LifecycleHandle) *windowLifecycle {
 		return &windowLifecycle{
 			BaseLifecycle: NewBaseLifecycle(),
+			overlays:      ds.NewList[*overlayHandle](0),
 			handle:        handle,
 		}
 	})
@@ -39,10 +42,11 @@ var application = Define(func(props Properties, scope Scope) Instance {
 			Essence: lifecycle,
 			Layout:  ui.NewFillLayout(),
 		})
+		WithScope(ValueScope(scope, applicationKey{}, lifecycle)) // TODO: cache
 		for _, child := range props.Children() {
 			WithChild(child.Key(), child)
 		}
-		for _, overlay := range lifecycle.overlays {
+		for _, overlay := range lifecycle.overlays.Items() {
 			WithChild(overlay.key, overlay.instance)
 		}
 	})
@@ -51,16 +55,8 @@ var application = Define(func(props Properties, scope Scope) Instance {
 type windowLifecycle struct {
 	*BaseLifecycle
 	handle        LifecycleHandle
-	overlays      []*overlayHandle
+	overlays      *ds.List[*overlayHandle]
 	freeOverlayID int
-}
-
-func (l *windowLifecycle) OnCreate(props Properties, scope Scope) {
-	rootLifecycle = l
-}
-
-func (l *windowLifecycle) OnDestroy(scope Scope) {
-	rootLifecycle = nil
 }
 
 func (l *windowLifecycle) OpenOverlay(instance Instance) *overlayHandle {
@@ -70,17 +66,15 @@ func (l *windowLifecycle) OpenOverlay(instance Instance) *overlayHandle {
 		instance:  instance,
 		key:       fmt.Sprintf("overlay-%d", l.freeOverlayID),
 	}
-	l.overlays = append(l.overlays, result)
+	l.overlays.Add(result)
 	l.handle.NotifyChanged()
 	return result
 }
 
 func (l *windowLifecycle) CloseOverlay(overlay *overlayHandle) {
-	index := slices.Index(l.overlays, overlay)
-	if index < 0 {
-		log.Warn("[component] Overlay already closed")
+	if !l.overlays.Remove(overlay) {
+		log.Warn("[component] Overlay already closed!")
 		return
 	}
-	l.overlays = slices.Delete(l.overlays, index, index+1)
 	l.handle.NotifyChanged()
 }

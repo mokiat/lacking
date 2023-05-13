@@ -1,6 +1,7 @@
 package blob
 
 import (
+	"github.com/mokiat/gblob"
 	"github.com/mokiat/gomath/sprec"
 	"github.com/x448/float16"
 )
@@ -15,7 +16,7 @@ func NewPlotter(data []byte) *Plotter {
 // Plotter is a wrapper over a byte slice that enables writing of various types
 // of primitives in little-endian order.
 type Plotter struct {
-	data   Buffer
+	data   gblob.LittleEndianBlock
 	offset int
 }
 
@@ -76,7 +77,7 @@ func (p *Plotter) PlotUint64(value uint64) {
 // PlotFloat16 sets a single float16 value at the current offset and
 // advances the offset with 2 bytes.
 func (p *Plotter) PlotFloat16(value float16.Float16) {
-	p.data.SetFloat16(p.offset, value)
+	p.data.SetUint16(p.offset, value.Bits())
 	p.offset += 2
 }
 

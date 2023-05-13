@@ -1,6 +1,7 @@
 package blob
 
 import (
+	"github.com/mokiat/gblob"
 	"github.com/mokiat/gomath/sprec"
 )
 
@@ -14,7 +15,7 @@ func NewScanner(data []byte) *Scanner {
 // Scanner is a wrapper over a byte slice that enables
 // writing of various types of primitives.
 type Scanner struct {
-	data   Buffer
+	data   gblob.LittleEndianBlock
 	offset int
 }
 

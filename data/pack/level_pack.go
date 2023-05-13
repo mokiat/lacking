@@ -17,6 +17,7 @@ type Level struct {
 }
 
 type LevelEntity struct {
+	Name   string
 	Model  string
 	Matrix sprec.Mat4
 }

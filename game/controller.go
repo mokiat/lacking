@@ -1,6 +1,8 @@
 package game
 
 import (
+	"time"
+
 	"github.com/mokiat/lacking/app"
 	"github.com/mokiat/lacking/game/asset"
 	"github.com/mokiat/lacking/game/ecs"
@@ -8,6 +10,7 @@ import (
 	"github.com/mokiat/lacking/game/physics"
 	"github.com/mokiat/lacking/render"
 	"github.com/mokiat/lacking/util/async"
+	"github.com/mokiat/lacking/util/metrics"
 )
 
 func NewController(registry asset.Registry, api render.API, shaders graphics.ShaderCollection) *Controller {
@@ -15,7 +18,7 @@ func NewController(registry asset.Registry, api render.API, shaders graphics.Sha
 		registry:      registry,
 		gfxEngine:     graphics.NewEngine(api, shaders),
 		ecsEngine:     ecs.NewEngine(),
-		physicsEngine: physics.NewEngine(),
+		physicsEngine: physics.NewEngine(16 * time.Millisecond),
 	}
 }
 
@@ -70,8 +73,11 @@ func (c *Controller) OnResize(window app.Window, width, height int) {
 }
 
 func (c *Controller) OnRender(window app.Window) {
+	defer metrics.BeginRegion("game:frame").End()
+
 	c.engine.Update()
 	c.engine.Render(c.viewport)
+
 	window.Invalidate() // force redraw
 }
 

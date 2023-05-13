@@ -3,11 +3,11 @@ package game
 import (
 	"time"
 
+	"github.com/mokiat/gog/ds"
 	"github.com/mokiat/lacking/game/asset"
 	"github.com/mokiat/lacking/game/ecs"
 	"github.com/mokiat/lacking/game/graphics"
 	"github.com/mokiat/lacking/game/physics"
-	"github.com/mokiat/lacking/util/datastruct"
 	"github.com/mokiat/lacking/util/metrics"
 )
 
@@ -51,8 +51,8 @@ func WithECS(ecsEngine *ecs.Engine) EngineOption {
 
 func NewEngine(opts ...EngineOption) *Engine {
 	result := &Engine{
-		preUpdateSubscriptions:  datastruct.NewList[*UpdateSubscription](),
-		postUpdateSubscriptions: datastruct.NewList[*UpdateSubscription](),
+		preUpdateSubscriptions:  ds.NewList[*UpdateSubscription](0),
+		postUpdateSubscriptions: ds.NewList[*UpdateSubscription](0),
 
 		lastTick: time.Now(),
 	}
@@ -70,8 +70,8 @@ type Engine struct {
 	gfxEngine     *graphics.Engine
 	ecsEngine     *ecs.Engine
 
-	preUpdateSubscriptions  *datastruct.List[*UpdateSubscription]
-	postUpdateSubscriptions *datastruct.List[*UpdateSubscription]
+	preUpdateSubscriptions  *ds.List[*UpdateSubscription]
+	postUpdateSubscriptions *ds.List[*UpdateSubscription]
 
 	activeScene *Scene
 	lastTick    time.Time
@@ -144,7 +144,7 @@ func (e *Engine) CreateResourceSet() *ResourceSet {
 }
 
 func (e *Engine) CreateScene() *Scene {
-	physicsScene := e.physicsEngine.CreateScene(0.015)
+	physicsScene := e.physicsEngine.CreateScene()
 	gfxScene := e.gfxEngine.CreateScene()
 	ecsScene := e.ecsEngine.CreateScene()
 	resourceSet := e.CreateResourceSet()
@@ -169,7 +169,9 @@ func (e *Engine) ResetDeltaTime() {
 }
 
 func (e *Engine) Update() {
-	defer metrics.BeginSpan("update").End()
+	defer metrics.BeginRegion("game:update").End()
+
+	e.gfxEngine.Debug().Reset()
 
 	currentTime := time.Now()
 	elapsedSeconds := currentTime.Sub(e.lastTick).Seconds()
@@ -187,9 +189,9 @@ func (e *Engine) Update() {
 }
 
 func (e *Engine) Render(viewport graphics.Viewport) {
-	defer metrics.BeginSpan("render").End()
+	defer metrics.BeginRegion("game:render").End()
 
 	if e.activeScene != nil {
-		e.activeScene.Graphics().Render(viewport)
+		e.activeScene.Render(viewport)
 	}
 }

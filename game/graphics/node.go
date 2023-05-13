@@ -6,11 +6,11 @@ import (
 	"github.com/mokiat/lacking/util/blob"
 )
 
-func newNode() *Node {
+func newNode() Node {
 	matrixData := make([]byte, 64)
 	plotter := blob.NewPlotter(matrixData)
 	plotter.PlotSPMat4(sprec.IdentityMat4())
-	return &Node{
+	return Node{
 		matrixData: matrixData,
 	}
 }

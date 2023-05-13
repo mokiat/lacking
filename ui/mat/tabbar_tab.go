@@ -1,10 +1,10 @@
 package mat
 
 import (
+	"github.com/mokiat/gog/opt"
 	"github.com/mokiat/gomath/sprec"
 	"github.com/mokiat/lacking/ui"
 	co "github.com/mokiat/lacking/ui/component"
-	"github.com/mokiat/lacking/util/optional"
 )
 
 var (
@@ -61,7 +61,7 @@ var TabbarTab = co.Define(func(props co.Properties, scope co.Scope) co.Instance 
 	}).Get()
 
 	// force specific height
-	layoutData.Height = optional.Value(TabbarTabHeight)
+	layoutData.Height = opt.V(TabbarTabHeight)
 
 	return co.New(Element, func() {
 		co.WithData(ElementData{
@@ -82,12 +82,12 @@ var TabbarTab = co.Define(func(props co.Properties, scope co.Scope) co.Instance 
 			co.WithChild("icon", co.New(Picture, func() {
 				co.WithData(PictureData{
 					Image:      data.Icon,
-					ImageColor: optional.Value(OnSurfaceColor),
+					ImageColor: opt.V(OnSurfaceColor),
 					Mode:       ImageModeFit,
 				})
 				co.WithLayoutData(LayoutData{
-					Width:  optional.Value(TabbarTabIconSize),
-					Height: optional.Value(TabbarTabIconSize),
+					Width:  opt.V(TabbarTabIconSize),
+					Height: opt.V(TabbarTabIconSize),
 				})
 			}))
 		}
@@ -96,8 +96,8 @@ var TabbarTab = co.Define(func(props co.Properties, scope co.Scope) co.Instance 
 			co.WithChild("text", co.New(Label, func() {
 				co.WithData(LabelData{
 					Font:      co.OpenFont(scope, TabbarTabFontFile),
-					FontSize:  optional.Value(TabbarTabFontSize),
-					FontColor: optional.Value(OnSurfaceColor),
+					FontSize:  opt.V(TabbarTabFontSize),
+					FontColor: opt.V(OnSurfaceColor),
 					Text:      data.Text,
 				})
 			}))
@@ -111,14 +111,14 @@ var TabbarTab = co.Define(func(props co.Properties, scope co.Scope) co.Instance 
 				})
 
 				co.WithLayoutData(LayoutData{
-					Width:  optional.Value(TabbarTabIconSize),
-					Height: optional.Value(TabbarTabIconSize),
+					Width:  opt.V(TabbarTabIconSize),
+					Height: opt.V(TabbarTabIconSize),
 				})
 
 				co.WithChild("icon", co.New(Picture, func() {
 					co.WithData(PictureData{
 						Image:      co.OpenImage(scope, TabbarTabCloseIconFile),
-						ImageColor: optional.Value(OnSurfaceColor),
+						ImageColor: opt.V(OnSurfaceColor),
 						Mode:       ImageModeFit,
 					})
 				}))

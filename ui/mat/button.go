@@ -1,10 +1,10 @@
 package mat
 
 import (
+	"github.com/mokiat/gog/opt"
 	"github.com/mokiat/gomath/sprec"
 	"github.com/mokiat/lacking/ui"
 	co "github.com/mokiat/lacking/ui/component"
-	"github.com/mokiat/lacking/util/optional"
 )
 
 var (
@@ -20,7 +20,7 @@ var (
 type ButtonData struct {
 	Text    string
 	Icon    *ui.Image
-	Enabled optional.V[bool]
+	Enabled opt.T[bool]
 }
 
 var defaultButtonData = ButtonData{}
@@ -49,7 +49,7 @@ var Button = co.Define(func(props co.Properties, scope co.Scope) co.Instance {
 	}).Get()
 
 	// force specific height
-	layoutData.Height = optional.Value(ButtonHeight)
+	layoutData.Height = opt.V(ButtonHeight)
 
 	foregroundColor := OnSurfaceColor
 	if data.Enabled.Specified && !data.Enabled.Value {
@@ -75,12 +75,12 @@ var Button = co.Define(func(props co.Properties, scope co.Scope) co.Instance {
 			co.WithChild("icon", co.New(Picture, func() {
 				co.WithData(PictureData{
 					Image:      data.Icon,
-					ImageColor: optional.Value(foregroundColor),
+					ImageColor: opt.V(foregroundColor),
 					Mode:       ImageModeFit,
 				})
 				co.WithLayoutData(LayoutData{
-					Width:  optional.Value(ButtonIconSize),
-					Height: optional.Value(ButtonIconSize),
+					Width:  opt.V(ButtonIconSize),
+					Height: opt.V(ButtonIconSize),
 				})
 			}))
 		}
@@ -89,8 +89,8 @@ var Button = co.Define(func(props co.Properties, scope co.Scope) co.Instance {
 			co.WithChild("text", co.New(Label, func() {
 				co.WithData(LabelData{
 					Font:      co.OpenFont(scope, ButtonFontFile),
-					FontSize:  optional.Value(float32(ButtonFontSize)),
-					FontColor: optional.Value(foregroundColor),
+					FontSize:  opt.V(float32(ButtonFontSize)),
+					FontColor: opt.V(foregroundColor),
 					Text:      data.Text,
 				})
 				co.WithLayoutData(LayoutData{})

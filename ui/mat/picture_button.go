@@ -1,16 +1,16 @@
 package mat
 
 import (
+	"github.com/mokiat/gog/opt"
 	"github.com/mokiat/gomath/sprec"
 	"github.com/mokiat/lacking/ui"
 	co "github.com/mokiat/lacking/ui/component"
-	"github.com/mokiat/lacking/util/optional"
 )
 
 type PictureButtonData struct {
 	Font      *ui.Font
-	FontSize  optional.V[float32]
-	FontColor optional.V[ui.Color]
+	FontSize  opt.T[float32]
+	FontColor opt.T[ui.Color]
 	UpImage   *ui.Image
 	OverImage *ui.Image
 	DownImage *ui.Image

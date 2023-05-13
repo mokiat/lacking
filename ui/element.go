@@ -393,6 +393,7 @@ func (e *Element) SetVisible(visible bool) {
 	if visible != e.visible {
 		e.visible = visible
 		e.Invalidate()
+		// TODO: Also update parent's layout
 	}
 }
 

@@ -1,6 +1,7 @@
 package mat
 
 import (
+	"github.com/mokiat/gog/opt"
 	"github.com/mokiat/gomath/dprec"
 	"github.com/mokiat/lacking/ui"
 	co "github.com/mokiat/lacking/ui/component"
@@ -15,6 +16,10 @@ type ScrollPaneData struct {
 
 	// DisableVertical stops the pane from scrolling vertically.
 	DisableVertical bool
+
+	// Focused specifies whether this scroll pane should automatically get
+	// the focus.
+	Focused bool
 }
 
 var defaultScrollPaneData = ScrollPaneData{
@@ -37,8 +42,10 @@ var ScrollPane = co.Define(func(props co.Properties, scope co.Scope) co.Instance
 
 	return co.New(Element, func() {
 		co.WithData(co.ElementData{
-			Essence: essence,
-			Layout:  essence,
+			Focusable: opt.V(true),
+			Focused:   opt.V(data.Focused),
+			Essence:   essence,
+			Layout:    essence,
 		})
 		co.WithLayoutData(props.LayoutData())
 		co.WithChildren(props.Children())
@@ -46,6 +53,7 @@ var ScrollPane = co.Define(func(props co.Properties, scope co.Scope) co.Instance
 })
 
 var _ ui.Layout = (*scrollPaneEssence)(nil)
+var _ ui.ElementKeyboardHandler = (*scrollPaneEssence)(nil)
 var _ ui.ElementMouseHandler = (*scrollPaneEssence)(nil)
 
 type scrollPaneEssence struct {
@@ -101,22 +109,47 @@ func (e *scrollPaneEssence) Apply(element *ui.Element) {
 	})
 }
 
+func (e *scrollPaneEssence) OnKeyboardEvent(element *ui.Element, event ui.KeyboardEvent) bool {
+	switch event.Code {
+	case ui.KeyCodeArrowDown:
+		if event.Type == ui.KeyboardEventTypeKeyDown || event.Type == ui.KeyboardEventTypeRepeat {
+			e.scroll(element, 0.0, -10.0)
+			return true
+		}
+	case ui.KeyCodePageDown:
+		if event.Type == ui.KeyboardEventTypeKeyDown || event.Type == ui.KeyboardEventTypeRepeat {
+			e.scroll(element, 0.0, -100.0)
+			return true
+		}
+	case ui.KeyCodeArrowUp:
+		if event.Type == ui.KeyboardEventTypeKeyDown || event.Type == ui.KeyboardEventTypeRepeat {
+			e.scroll(element, 0.0, 10.0)
+			return true
+		}
+	case ui.KeyCodePageUp:
+		if event.Type == ui.KeyboardEventTypeKeyDown || event.Type == ui.KeyboardEventTypeRepeat {
+			e.scroll(element, 0.0, 100.0)
+			return true
+		}
+	}
+	return false
+}
+
 func (e *scrollPaneEssence) OnMouseEvent(element *ui.Element, event ui.MouseEvent) bool {
 	// TODO: Support mouse dragging as a means to scroll
+	e.scroll(element, event.ScrollX*10.0, event.ScrollY*10.0)
+	return true
+}
 
-	if event.Type != ui.MouseEventTypeScroll {
-		return false
-	}
-
-	e.offsetX -= event.ScrollX * 10
-	e.offsetY -= event.ScrollY * 10
+func (e *scrollPaneEssence) scroll(element *ui.Element, deltaX, deltaY float64) {
+	e.offsetX -= deltaX
+	e.offsetY -= deltaY
 	if e.scrollHorizontally && !e.scrollVertically {
-		e.offsetX -= event.ScrollY * 10
+		e.offsetX -= deltaY * 10
 	}
 	e.offsetX = dprec.Clamp(e.offsetX, 0.0, e.maxOffsetX)
 	e.offsetY = dprec.Clamp(e.offsetY, 0.0, e.maxOffsetY)
 
 	e.Apply(element)
 	element.Invalidate()
-	return true
 }

@@ -25,6 +25,7 @@ type CollisionMesh struct {
 type Triangle [3]Position
 
 type Entity struct {
+	Name   string      `json:"name"`
 	Model  string      `json:"model"`
 	Matrix [16]float32 `json:"matrix"`
 }

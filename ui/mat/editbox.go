@@ -1,10 +1,10 @@
 package mat
 
 import (
+	"github.com/mokiat/gog/opt"
 	"github.com/mokiat/gomath/sprec"
 	"github.com/mokiat/lacking/ui"
 	co "github.com/mokiat/lacking/ui/component"
-	"github.com/mokiat/lacking/util/optional"
 )
 
 var (
@@ -54,13 +54,13 @@ var Editbox = co.Define(func(props co.Properties, scope co.Scope) co.Instance {
 	essence.textSize = essence.font.TextSize(data.Text, EditboxFontSize)
 
 	// force specific height
-	layoutData.Height = optional.Value(EditboxHeight)
+	layoutData.Height = opt.V(EditboxHeight)
 
 	return co.New(Element, func() {
 		co.WithData(ElementData{
 			Essence:   essence,
-			Focusable: optional.Value(true),
-			IdealSize: optional.Value(ui.NewSize(
+			Focusable: opt.V(true),
+			IdealSize: opt.V(ui.NewSize(
 				EditboxMinWidth,
 				EditboxHeight,
 			)),

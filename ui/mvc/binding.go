@@ -1,8 +1,8 @@
 package mvc
 
 import (
+	"github.com/mokiat/gog/filter"
 	co "github.com/mokiat/lacking/ui/component"
-	"github.com/mokiat/lacking/util/filter"
 )
 
 // UseBinding is a render hook that binds the current Component to the specified
@@ -13,7 +13,7 @@ func UseBinding(obs Observable, fltrs ...ChangeFilter) {
 	lifecycle := co.UseLifecycle(func(handle co.LifecycleHandle) *bindingLifecycle {
 		return &bindingLifecycle{
 			obs:    obs,
-			fltr:   filter.All(fltrs...),
+			fltr:   filter.And(fltrs...),
 			handle: handle,
 		}
 	})

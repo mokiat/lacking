@@ -18,14 +18,14 @@ func newCanvasRenderer(api render.API, shaders ShaderCollection) *canvasRenderer
 		api: api,
 
 		shapeMesh:          newShapeMesh(maxVertexCount),
-		shapeShadeMaterial: newMaterial(shaders.ShapeMaterial),
-		shapeBlankMaterial: newMaterial(shaders.ShapeBlankMaterial),
+		shapeShadeMaterial: newMaterial(shaders.ShapeShadedSet()),
+		shapeBlankMaterial: newMaterial(shaders.ShapeBlankSet()),
 
 		contourMesh:     newContourMesh(maxVertexCount),
-		contourMaterial: newMaterial(shaders.ContourMaterial),
+		contourMaterial: newMaterial(shaders.ContourSet()),
 
 		textMesh:     newTextMesh(maxVertexCount),
-		textMaterial: newMaterial(shaders.TextMaterial),
+		textMaterial: newMaterial(shaders.TextSet()),
 
 		topLayer:         &canvasLayer{},
 		projectionMatrix: sprec.IdentityMat4(),

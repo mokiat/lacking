@@ -1,10 +1,10 @@
 package mat
 
 import (
+	"github.com/mokiat/gog/opt"
 	"github.com/mokiat/gomath/sprec"
 	"github.com/mokiat/lacking/ui"
 	co "github.com/mokiat/lacking/ui/component"
-	"github.com/mokiat/lacking/util/optional"
 )
 
 var (
@@ -61,7 +61,7 @@ var Dropdown = co.Define(func(props co.Properties, scope co.Scope) co.Instance {
 	}
 
 	onOpen := func() {
-		overlay := co.OpenOverlay(co.New(dropdownList, func() {
+		overlay := co.OpenOverlay(scope, co.New(dropdownList, func() {
 			co.WithData(data)
 			co.WithCallbackData(dropdownListCallbackData{
 				OnSelected: onItemSelected,
@@ -95,28 +95,28 @@ var Dropdown = co.Define(func(props co.Properties, scope co.Scope) co.Instance {
 		co.WithChild("label", co.New(Label, func() {
 			co.WithData(LabelData{
 				Font:      co.OpenFont(scope, DropdownFontFile),
-				FontSize:  optional.Value(DropdownFontSize),
-				FontColor: optional.Value(OnSurfaceColor),
+				FontSize:  opt.V(DropdownFontSize),
+				FontColor: opt.V(OnSurfaceColor),
 				Text:      label,
 			})
 			co.WithLayoutData(LayoutData{
-				Left:           optional.Value(0),
-				Right:          optional.Value(DropdownIconSize),
-				VerticalCenter: optional.Value(0),
+				Left:           opt.V(0),
+				Right:          opt.V(DropdownIconSize),
+				VerticalCenter: opt.V(0),
 			})
 		}))
 
 		co.WithChild("button", co.New(Picture, func() {
 			co.WithData(PictureData{
 				Image:      co.OpenImage(scope, DropdownIconFile),
-				ImageColor: optional.Value(OnSurfaceColor),
+				ImageColor: opt.V(OnSurfaceColor),
 				Mode:       ImageModeFit,
 			})
 			co.WithLayoutData(LayoutData{
-				Width:          optional.Value(DropdownIconSize),
-				Height:         optional.Value(DropdownIconSize),
-				Right:          optional.Value(0),
-				VerticalCenter: optional.Value(0),
+				Width:          opt.V(DropdownIconSize),
+				Height:         opt.V(DropdownIconSize),
+				Right:          opt.V(0),
+				VerticalCenter: opt.V(0),
 			})
 		}))
 	})

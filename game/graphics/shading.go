@@ -37,6 +37,7 @@ func (s *pbrShading) GeometryPipeline(meshDef *MeshDefinition, fragmentDef *mesh
 	shaderSet := s.shaders.PBRGeometrySet(PBRGeometryShaderConfig{
 		HasArmature:      meshDef.needsArmature,
 		HasAlphaTesting:  materialDef.alphaTesting,
+		HasVertexColors:  meshDef.hasVertexColors,
 		HasAlbedoTexture: len(materialDef.twoDTextures) > 0 && materialDef.twoDTextures[0] != nil,
 	})
 	program := internal.NewGeometryProgram(s.api, shaderSet.VertexShader, shaderSet.FragmentShader)

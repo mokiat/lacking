@@ -2,9 +2,12 @@ package graphics
 
 import (
 	"fmt"
+	"math"
 	"time"
 
+	"github.com/mokiat/gblob"
 	"github.com/mokiat/gomath/dprec"
+	"github.com/mokiat/gomath/dtos"
 	"github.com/mokiat/gomath/sprec"
 	"github.com/mokiat/gomath/stod"
 	"github.com/mokiat/lacking/game/graphics/internal"
@@ -12,15 +15,14 @@ import (
 	"github.com/mokiat/lacking/render"
 	"github.com/mokiat/lacking/util/blob"
 	"github.com/mokiat/lacking/util/metrics"
-	"github.com/mokiat/lacking/util/shape"
 	"github.com/mokiat/lacking/util/spatial"
 	"github.com/x448/float16"
 	"golang.org/x/exp/slices"
 )
 
 const (
-	shadowMapWidth  = 4096
-	shadowMapHeight = 4096
+	shadowMapWidth  = 2048
+	shadowMapHeight = 2048
 )
 
 var ShowLightView bool
@@ -33,7 +35,15 @@ func newRenderer(api render.API, shaders ShaderCollection) *sceneRenderer {
 		exposureBufferData: make([]byte, 4*render.SizeF32), // Worst case RGBA32F
 		exposureTarget:     1.0,
 
-		visibleMeshes: spatial.NewVisitorBucket[*Mesh](2_000_000),
+		visibleMeshes: spatial.NewVisitorBucket[*Mesh](2_000),
+
+		ambientLightBucket: spatial.NewVisitorBucket[*AmbientLight](16),
+
+		pointLightBucket: spatial.NewVisitorBucket[*PointLight](16),
+
+		spotLightBucket: spatial.NewVisitorBucket[*SpotLight](16),
+
+		directionalLightBucket: spatial.NewVisitorBucket[*DirectionalLight](16),
 	}
 }
 
@@ -45,8 +55,10 @@ type sceneRenderer struct {
 	framebufferWidth  int
 	framebufferHeight int
 
-	quadShape *internal.Shape
-	cubeShape *internal.Shape
+	quadShape   *internal.Shape
+	cubeShape   *internal.Shape
+	sphereShape *internal.Shape
+	coneShape   *internal.Shape
 
 	geometryAlbedoTexture render.Texture
 	geometryNormalTexture render.Texture
@@ -65,38 +77,53 @@ type sceneRenderer struct {
 	exposureFramebuffer     render.Framebuffer
 	exposurePresentation    *internal.LightingPresentation
 	exposurePipeline        render.Pipeline
-	exposureBufferData      blob.Buffer
+	exposureBufferData      gblob.LittleEndianBlock
 	exposureBuffer          render.Buffer
 	exposureFormat          render.DataFormat
 	exposureSync            render.Fence
 	exposureTarget          float32
 	exposureUpdateTimestamp time.Time
 
-	postprocessingPresentation *internal.PostprocessingPresentation
-	postprocessingPipeline     render.Pipeline
+	ambientLightPresentation *internal.LightingPresentation
+	ambientLightPipeline     render.Pipeline
+	ambientLightBucket       *spatial.VisitorBucket[*AmbientLight]
+
+	pointLightPresentation *internal.LightingPresentation
+	pointLightPipeline     render.Pipeline
+	pointLightBucket       *spatial.VisitorBucket[*PointLight]
+
+	spotLightPresentation *internal.LightingPresentation
+	spotLightPipeline     render.Pipeline
+	spotLightBucket       *spatial.VisitorBucket[*SpotLight]
 
 	directionalLightPresentation *internal.LightingPresentation
 	directionalLightPipeline     render.Pipeline
-	ambientLightPresentation     *internal.LightingPresentation
-	ambientLightPipeline         render.Pipeline
-	pointLightPresentation       *internal.LightingPresentation
-	pointLightPipeline           render.Pipeline
+	directionalLightBucket       *spatial.VisitorBucket[*DirectionalLight]
 
 	skyboxPresentation   *internal.SkyboxPresentation
 	skyboxPipeline       render.Pipeline
 	skycolorPresentation *internal.SkyboxPresentation
 	skycolorPipeline     render.Pipeline
 
-	cameraUniformBufferData blob.Buffer
+	debugLines        []debugLine
+	debugVertexData   []byte
+	debugVertexBuffer render.Buffer
+	debugVertexArray  render.VertexArray
+	debugPipeline     render.Pipeline
+
+	postprocessingPresentation *internal.PostprocessingPresentation
+	postprocessingPipeline     render.Pipeline
+
+	cameraUniformBufferData gblob.LittleEndianBlock
 	cameraUniformBuffer     render.Buffer
 
-	modelUniformBufferData blob.Buffer
+	modelUniformBufferData gblob.LittleEndianBlock
 	modelUniformBuffer     render.Buffer
 
-	materialUniformBufferData blob.Buffer
+	materialUniformBufferData gblob.LittleEndianBlock
 	materialUniformBuffer     render.Buffer
 
-	lightUniformBufferData blob.Buffer
+	lightUniformBufferData gblob.LittleEndianBlock
 	lightUniformBuffer     render.Buffer
 
 	visibleMeshes *spatial.VisitorBucket[*Mesh]
@@ -179,6 +206,8 @@ func (r *sceneRenderer) Allocate() {
 
 	r.quadShape = internal.CreateQuadShape(r.api)
 	r.cubeShape = internal.CreateCubeShape(r.api)
+	r.sphereShape = internal.CreateSphereShape(r.api)
+	r.coneShape = internal.CreateConeShape(r.api)
 
 	defaultShadowDepth := float32(1.0)
 	r.shadowDepthTexture = r.api.CreateDepthTexture2D(render.DepthTexture2DInfo{
@@ -299,6 +328,7 @@ func (r *sceneRenderer) Allocate() {
 		BlendOpColor:                render.BlendOperationAdd,
 		BlendOpAlpha:                render.BlendOperationAdd,
 	})
+
 	pointLightShaders := r.shaders.PointLightSet()
 	r.pointLightPresentation = internal.NewLightingPresentation(r.api,
 		pointLightShaders.VertexShader,
@@ -306,13 +336,39 @@ func (r *sceneRenderer) Allocate() {
 	)
 	r.pointLightPipeline = r.api.CreatePipeline(render.PipelineInfo{
 		Program:                     r.pointLightPresentation.Program,
-		VertexArray:                 r.quadShape.VertexArray(), // TODO: Sphere (r=1) mesh!
-		Topology:                    r.quadShape.Topology(),    // TODO: Sphere (r=1) mesh!
-		Culling:                     render.CullModeBack,
+		VertexArray:                 r.sphereShape.VertexArray(),
+		Topology:                    r.sphereShape.Topology(),
+		Culling:                     render.CullModeFront,
 		FrontFace:                   render.FaceOrientationCCW,
-		DepthTest:                   false, // TODO: True, once sphere shape is used!
+		DepthTest:                   false,
 		DepthWrite:                  false,
-		DepthComparison:             render.ComparisonAlways, // TODO: LEQUAL, once sphere shape is used!
+		DepthComparison:             render.ComparisonAlways,
+		StencilTest:                 false,
+		ColorWrite:                  render.ColorMaskTrue,
+		BlendEnabled:                true,
+		BlendColor:                  [4]float32{0.0, 0.0, 0.0, 0.0},
+		BlendSourceColorFactor:      render.BlendFactorOne,
+		BlendSourceAlphaFactor:      render.BlendFactorOne,
+		BlendDestinationColorFactor: render.BlendFactorOne,
+		BlendDestinationAlphaFactor: render.BlendFactorZero,
+		BlendOpColor:                render.BlendOperationAdd,
+		BlendOpAlpha:                render.BlendOperationAdd,
+	})
+
+	spotLightShaders := r.shaders.SpotLightSet()
+	r.spotLightPresentation = internal.NewLightingPresentation(r.api,
+		spotLightShaders.VertexShader,
+		spotLightShaders.FragmentShader,
+	)
+	r.spotLightPipeline = r.api.CreatePipeline(render.PipelineInfo{
+		Program:                     r.spotLightPresentation.Program,
+		VertexArray:                 r.coneShape.VertexArray(),
+		Topology:                    r.coneShape.Topology(),
+		Culling:                     render.CullModeFront,
+		FrontFace:                   render.FaceOrientationCCW,
+		DepthTest:                   false,
+		DepthWrite:                  false,
+		DepthComparison:             render.ComparisonAlways,
 		StencilTest:                 false,
 		ColorWrite:                  render.ColorMaskTrue,
 		BlendEnabled:                true,
@@ -365,7 +421,56 @@ func (r *sceneRenderer) Allocate() {
 		BlendEnabled:    false,
 	})
 
-	r.cameraUniformBufferData = make([]byte, 3*64) // 3 x mat4
+	r.debugLines = make([]debugLine, 131072)
+	r.debugVertexData = make([]byte, len(r.debugLines)*4*4*2)
+	r.debugVertexBuffer = r.api.CreateVertexBuffer(render.BufferInfo{
+		Dynamic: true,
+		Data:    r.debugVertexData,
+	})
+	r.debugVertexArray = r.api.CreateVertexArray(render.VertexArrayInfo{
+		Bindings: []render.VertexArrayBindingInfo{
+			{
+				VertexBuffer: r.debugVertexBuffer,
+				Stride:       4 * 4,
+			},
+		},
+		Attributes: []render.VertexArrayAttributeInfo{
+			{
+				Binding:  0,
+				Location: internal.CoordAttributeIndex,
+				Format:   render.VertexAttributeFormatRGB32F,
+				Offset:   0,
+			},
+			{
+				Binding:  0,
+				Location: internal.ColorAttributeIndex,
+				Format:   render.VertexAttributeFormatRGB8UN,
+				Offset:   3 * 4,
+			},
+		},
+	})
+	debugShaders := r.shaders.DebugSet()
+	debugProgram := internal.BuildProgram(r.api, debugShaders.VertexShader, debugShaders.FragmentShader, nil, []render.UniformBinding{
+		{
+			Name:  "Camera",
+			Index: internal.UniformBufferBindingCamera,
+		},
+	})
+	r.debugPipeline = r.api.CreatePipeline(render.PipelineInfo{
+		Program:         debugProgram,
+		VertexArray:     r.debugVertexArray,
+		Topology:        render.TopologyLines,
+		Culling:         render.CullModeNone,
+		FrontFace:       render.FaceOrientationCCW,
+		DepthTest:       true,
+		DepthWrite:      false,
+		DepthComparison: render.ComparisonLessOrEqual,
+		StencilTest:     false,
+		ColorWrite:      render.ColorMaskTrue,
+		BlendEnabled:    false,
+	})
+
+	r.cameraUniformBufferData = make([]byte, 3*64+1*16) // 3 x mat4 + 1 x vec4
 	r.cameraUniformBuffer = r.api.CreateUniformBuffer(render.BufferInfo{
 		Dynamic: true,
 		Size:    len(r.cameraUniformBufferData),
@@ -375,7 +480,7 @@ func (r *sceneRenderer) Allocate() {
 		Dynamic: true,
 		Size:    len(r.modelUniformBufferData),
 	})
-	r.materialUniformBufferData = make([]byte, 2*4*4) // 2 x vec4
+	r.materialUniformBufferData = make([]byte, 2*16) // 2 x vec4
 	r.materialUniformBuffer = r.api.CreateUniformBuffer(render.BufferInfo{
 		Dynamic: true,
 		Size:    len(r.materialUniformBufferData),
@@ -394,6 +499,8 @@ func (r *sceneRenderer) Release() {
 
 	defer r.quadShape.Release()
 	defer r.cubeShape.Release()
+	defer r.sphereShape.Release()
+	defer r.coneShape.Release()
 
 	defer r.shadowDepthTexture.Release()
 	defer r.shadowFramebuffer.Release()
@@ -404,18 +511,25 @@ func (r *sceneRenderer) Release() {
 	defer r.exposurePipeline.Release()
 	defer r.exposureBuffer.Release()
 
-	defer r.postprocessingPresentation.Delete()
-	defer r.postprocessingPipeline.Release()
+	defer r.ambientLightPresentation.Delete()
+	defer r.ambientLightPipeline.Release()
+
+	defer r.pointLightPresentation.Delete()
+	defer r.pointLightPipeline.Release()
+
+	defer r.spotLightPresentation.Delete()
+	defer r.spotLightPipeline.Release()
 
 	defer r.directionalLightPresentation.Delete()
 	defer r.directionalLightPipeline.Release()
-	defer r.ambientLightPresentation.Delete()
-	defer r.ambientLightPipeline.Release()
 
 	defer r.skyboxPresentation.Delete()
 	defer r.skyboxPipeline.Release()
 	defer r.skycolorPresentation.Delete()
 	defer r.skycolorPipeline.Release()
+
+	defer r.postprocessingPresentation.Delete()
+	defer r.postprocessingPipeline.Release()
 
 	defer r.cameraUniformBuffer.Release()
 	defer r.modelUniformBuffer.Release()
@@ -423,7 +537,19 @@ func (r *sceneRenderer) Release() {
 	defer r.lightUniformBuffer.Release()
 }
 
-func (r *sceneRenderer) Ray(viewport Viewport, camera *Camera, x, y int) shape.StaticLine {
+func (r *sceneRenderer) ResetDebugLines() {
+	r.debugLines = r.debugLines[:0]
+}
+
+func (r *sceneRenderer) QueueDebugLine(line debugLine) {
+	if len(r.debugLines) == cap(r.debugLines) {
+		log.Warn("No more debug lines allowed")
+		return
+	}
+	r.debugLines = append(r.debugLines, line)
+}
+
+func (r *sceneRenderer) Ray(viewport Viewport, camera *Camera, x, y int) (dprec.Vec3, dprec.Vec3) {
 	projectionMatrix := stod.Mat4(r.evaluateProjectionMatrix(camera, viewport.Width, viewport.Height))
 	inverseProjection := dprec.InverseMat4(projectionMatrix)
 
@@ -444,7 +570,7 @@ func (r *sceneRenderer) Ray(viewport Viewport, camera *Camera, x, y int) shape.S
 	a = dprec.Mat4Vec4Prod(cameraMatrix, a)
 	b = dprec.Mat4Vec4Prod(cameraMatrix, b)
 
-	return shape.NewStaticLine(a.VecXYZ(), b.VecXYZ())
+	return a.VecXYZ(), b.VecXYZ()
 }
 
 func (r *sceneRenderer) Render(framebuffer render.Framebuffer, viewport Viewport, scene *Scene, camera *Camera) {
@@ -461,13 +587,24 @@ func (r *sceneRenderer) Render(framebuffer render.Framebuffer, viewport Viewport
 	projectionViewMatrix := sprec.Mat4Prod(projectionMatrix, viewMatrix)
 	frustum := spatial.ProjectionRegion(stod.Mat4(projectionViewMatrix))
 
-	if scene.firstLight != nil && ShowLightView {
-		dirLight := scene.firstLight.next
-		projectionMatrix = lightOrtho()
-		cameraMatrix = dirLight.gfxMatrix()
-		viewMatrix = sprec.InverseMat4(cameraMatrix)
-		projectionViewMatrix = sprec.Mat4Prod(projectionMatrix, viewMatrix)
-		frustum = spatial.ProjectionRegion(stod.Mat4(projectionViewMatrix))
+	if ShowLightView {
+		r.directionalLightBucket.Reset()
+		scene.directionalLightOctree.VisitHexahedronRegion(&frustum, r.directionalLightBucket)
+
+		var directionalLight *DirectionalLight
+		for _, light := range r.directionalLightBucket.Items() {
+			if light.active {
+				directionalLight = light
+				break
+			}
+		}
+		if directionalLight != nil {
+			projectionMatrix = lightOrtho()
+			cameraMatrix = directionalLight.gfxMatrix()
+			viewMatrix = sprec.InverseMat4(cameraMatrix)
+			projectionViewMatrix = sprec.Mat4Prod(projectionMatrix, viewMatrix)
+			frustum = spatial.ProjectionRegion(stod.Mat4(projectionViewMatrix))
+		}
 	}
 
 	ctx := renderCtx{
@@ -485,6 +622,12 @@ func (r *sceneRenderer) Render(framebuffer render.Framebuffer, viewport Viewport
 	cameraPlotter.PlotSPMat4(projectionMatrix)
 	cameraPlotter.PlotSPMat4(viewMatrix)
 	cameraPlotter.PlotSPMat4(cameraMatrix)
+	cameraPlotter.PlotSPVec4(sprec.NewVec4(
+		float32(viewport.X),
+		float32(viewport.Y),
+		float32(viewport.Width),
+		float32(viewport.Height),
+	))
 	r.cameraUniformBuffer.Update(render.BufferUpdateInfo{
 		Data: r.cameraUniformBufferData,
 	})
@@ -506,8 +649,8 @@ func (r *sceneRenderer) Render(framebuffer render.Framebuffer, viewport Viewport
 
 func (r *sceneRenderer) evaluateProjectionMatrix(camera *Camera, width, height int) sprec.Mat4 {
 	const (
-		near = float32(0.5)
-		far  = float32(1600.0) // At 400 on a flat plane with forests, you don't really notice the far clipping plane.
+		near = float32(0.1)
+		far  = float32(4000.0)
 	)
 	var (
 		fWidth  = sprec.Max(1.0, float32(width))
@@ -542,16 +685,18 @@ func (r *sceneRenderer) evaluateProjectionMatrix(camera *Camera, width, height i
 }
 
 func lightOrtho() sprec.Mat4 {
-	return sprec.OrthoMat4(-64, 64, 64, -64, 0, 200)
+	return sprec.OrthoMat4(-32, 32, 32, -32, 0, 256)
 }
 
 func (r *sceneRenderer) renderShadowPass(ctx renderCtx) {
-	defer metrics.BeginSpan("shadow pass").End()
+	defer metrics.BeginRegion("graphics:shadow pass").End()
 
-	// TODO: Support array of shadow-casting lights, not just one
-	var directionalLight *Light
-	for light := ctx.scene.firstLight; light != nil; light = light.next {
-		if light.mode == LightModeDirectional {
+	r.directionalLightBucket.Reset()
+	ctx.scene.directionalLightOctree.VisitHexahedronRegion(&ctx.frustum, r.directionalLightBucket)
+
+	var directionalLight *DirectionalLight
+	for _, light := range r.directionalLightBucket.Items() {
+		if light.active {
 			directionalLight = light
 			break
 		}
@@ -562,17 +707,21 @@ func (r *sceneRenderer) renderShadowPass(ctx renderCtx) {
 
 	projectionMatrix := lightOrtho()
 	lightMatrix := directionalLight.gfxMatrix()
+	lightMatrix.M14 = floor(lightMatrix.M14*shadowMapWidth) / float32(shadowMapWidth)
+	lightMatrix.M24 = floor(lightMatrix.M24*shadowMapWidth) / float32(shadowMapWidth)
+	lightMatrix.M34 = floor(lightMatrix.M34*shadowMapWidth) / float32(shadowMapWidth)
 	viewMatrix := sprec.InverseMat4(lightMatrix)
 	projectionViewMatrix := sprec.Mat4Prod(projectionMatrix, viewMatrix)
 	frustum := spatial.ProjectionRegion(stod.Mat4(projectionViewMatrix))
 
 	r.renderItems = r.renderItems[:0]
+	r.visibleMeshes.Reset()
 	ctx.scene.meshOctree.VisitHexahedronRegion(&frustum, r.visibleMeshes)
 	for _, mesh := range r.visibleMeshes.Items() {
 		r.queueShadowMesh(ctx, mesh)
 	}
 	slices.SortFunc(r.renderItems, func(a, b renderItem) bool {
-		// TODO: If fragment IDs are stored inside the items thelsevles, there
+		// TODO: If fragment IDs are stored inside the items themselves, there
 		// would be fewer pointer jumps and cache misses.
 		return a.fragment.id < b.fragment.id
 	})
@@ -681,7 +830,7 @@ func (r *sceneRenderer) renderShadowMeshesList(ctx renderCtx) {
 }
 
 func (r *sceneRenderer) renderGeometryPass(ctx renderCtx) {
-	defer metrics.BeginSpan("geometry pass").End()
+	defer metrics.BeginRegion("graphics:geometry pass").End()
 
 	r.api.BeginRenderPass(render.RenderPassInfo{
 		Framebuffer: r.geometryFramebuffer,
@@ -716,6 +865,7 @@ func (r *sceneRenderer) renderGeometryPass(ctx renderCtx) {
 	})
 
 	r.renderItems = r.renderItems[:0]
+	r.visibleMeshes.Reset()
 	ctx.scene.meshOctree.VisitHexahedronRegion(&ctx.frustum, r.visibleMeshes)
 	for _, mesh := range r.visibleMeshes.Items() {
 		r.queueMesh(ctx, mesh)
@@ -812,7 +962,7 @@ func (r *sceneRenderer) renderMeshesList(ctx renderCtx) {
 }
 
 func (r *sceneRenderer) renderLightingPass(ctx renderCtx) {
-	defer metrics.BeginSpan("lighting pass").End()
+	defer metrics.BeginRegion("graphics:lighting pass").End()
 
 	r.api.BeginRenderPass(render.RenderPassInfo{
 		Framebuffer: r.lightingFramebuffer,
@@ -834,38 +984,78 @@ func (r *sceneRenderer) renderLightingPass(ctx renderCtx) {
 			},
 		},
 	})
-	// TODO: Traverse octree
-	for light := ctx.scene.firstLight; light != nil; light = light.next {
-		switch light.mode {
-		case LightModeDirectional:
-			r.renderDirectionalLight(ctx, light)
-		case LightModeAmbient:
-			r.renderAmbientLight(ctx, light)
-		case LightModePoint:
-			r.renderPointLight(ctx, light)
+
+	r.ambientLightBucket.Reset()
+	ctx.scene.ambientLightOctree.VisitHexahedronRegion(&ctx.frustum, r.ambientLightBucket)
+	for _, ambientLight := range r.ambientLightBucket.Items() {
+		if ambientLight.active {
+			r.renderAmbientLight(ctx, ambientLight)
 		}
 	}
+
+	// TODO: Use batching (instancing) when rendering point lights
+	r.pointLightBucket.Reset()
+	ctx.scene.pointLightOctree.VisitHexahedronRegion(&ctx.frustum, r.pointLightBucket)
+	for _, pointLight := range r.pointLightBucket.Items() {
+		if pointLight.active {
+			r.renderPointLight(ctx, pointLight)
+		}
+	}
+
+	// TODO: Use batching (instancing) when rendering spot lights
+	r.spotLightBucket.Reset()
+	ctx.scene.spotLightOctree.VisitHexahedronRegion(&ctx.frustum, r.spotLightBucket)
+	for _, spotLight := range r.spotLightBucket.Items() {
+		if spotLight.active {
+			r.renderSpotLight(ctx, spotLight)
+		}
+	}
+
+	r.directionalLightBucket.Reset()
+	ctx.scene.directionalLightOctree.VisitHexahedronRegion(&ctx.frustum, r.directionalLightBucket)
+	for _, directionalLight := range r.directionalLightBucket.Items() {
+		if directionalLight.active {
+			r.renderDirectionalLight(ctx, directionalLight)
+		}
+	}
+
 	r.api.SubmitQueue(r.commands)
 	r.api.EndRenderPass()
 }
 
-func (r *sceneRenderer) renderAmbientLight(ctx renderCtx, light *Light) {
+func (r *sceneRenderer) renderAmbientLight(ctx renderCtx, light *AmbientLight) {
 	r.commands.BindPipeline(r.ambientLightPipeline)
 	r.commands.TextureUnit(internal.TextureBindingLightingFramebufferColor0, r.geometryAlbedoTexture)
 	r.commands.TextureUnit(internal.TextureBindingLightingFramebufferColor1, r.geometryNormalTexture)
 	r.commands.TextureUnit(internal.TextureBindingLightingFramebufferDepth, r.geometryDepthTexture)
+	// TODO: Intensity based on distance and inner and outer radius
 	r.commands.TextureUnit(internal.TextureBindingLightingReflectionTexture, light.reflectionTexture.texture)
 	r.commands.TextureUnit(internal.TextureBindingLightingRefractionTexture, light.refractionTexture.texture)
 	r.commands.DrawIndexed(0, r.quadShape.IndexCount(), 1)
 }
 
-func (r *sceneRenderer) renderDirectionalLight(ctx renderCtx, light *Light) {
-	// TODO: Update Light uniform
+func floor(a float32) float32 {
+	return float32(math.Floor(float64(a)))
+}
 
+func (r *sceneRenderer) renderDirectionalLight(ctx renderCtx, light *DirectionalLight) {
+	projectionMatrix := lightOrtho()
+	lightMatrix := light.gfxMatrix()
+	lightMatrix.M14 = floor(lightMatrix.M14*shadowMapWidth) / float32(shadowMapWidth)
+	lightMatrix.M24 = floor(lightMatrix.M24*shadowMapWidth) / float32(shadowMapWidth)
+	lightMatrix.M34 = floor(lightMatrix.M34*shadowMapWidth) / float32(shadowMapWidth)
+	viewMatrix := sprec.InverseMat4(lightMatrix)
+
+	lightPlotter := blob.NewPlotter(r.lightUniformBufferData)
+	lightPlotter.PlotSPMat4(projectionMatrix)
+	lightPlotter.PlotSPMat4(viewMatrix)
+	lightPlotter.PlotSPMat4(lightMatrix)
+
+	r.commands.UpdateBufferData(r.lightUniformBuffer, render.BufferUpdateInfo{
+		Data: r.lightUniformBufferData,
+	})
 	r.commands.BindPipeline(r.directionalLightPipeline)
-	direction := light.gfxMatrix().OrientationZ()
-	r.commands.Uniform3f(r.directionalLightPresentation.LightDirection, direction.Array())
-	intensity := light.intensity
+	intensity := dtos.Vec3(light.emitColor)
 	r.commands.Uniform3f(r.directionalLightPresentation.LightIntensity, intensity.Array())
 	r.commands.TextureUnit(internal.TextureBindingLightingFramebufferColor0, r.geometryAlbedoTexture)
 	r.commands.TextureUnit(internal.TextureBindingLightingFramebufferColor1, r.geometryNormalTexture)
@@ -874,7 +1064,7 @@ func (r *sceneRenderer) renderDirectionalLight(ctx renderCtx, light *Light) {
 	r.commands.DrawIndexed(0, r.quadShape.IndexCount(), 1)
 }
 
-func (r *sceneRenderer) renderPointLight(ctx renderCtx, light *Light) {
+func (r *sceneRenderer) renderPointLight(ctx renderCtx, light *PointLight) {
 	projectionMatrix := sprec.IdentityMat4()
 	lightMatrix := light.gfxMatrix()
 	viewMatrix := sprec.InverseMat4(lightMatrix)
@@ -888,16 +1078,44 @@ func (r *sceneRenderer) renderPointLight(ctx renderCtx, light *Light) {
 	r.commands.UpdateBufferData(r.lightUniformBuffer, render.BufferUpdateInfo{
 		Data: r.lightUniformBufferData,
 	})
-	r.commands.Uniform3f(r.pointLightPresentation.LightIntensity, light.intensity.Array())
+	// TODO: Move to lighting uniform buffer
+	r.commands.Uniform3f(r.pointLightPresentation.LightIntensity, dtos.Vec3(light.emitColor).Array())
+	r.commands.Uniform1f(r.pointLightPresentation.LightRange, float32(light.emitRange))
+
 	r.commands.TextureUnit(internal.TextureBindingLightingFramebufferColor0, r.geometryAlbedoTexture)
 	r.commands.TextureUnit(internal.TextureBindingLightingFramebufferColor1, r.geometryNormalTexture)
 	r.commands.TextureUnit(internal.TextureBindingLightingFramebufferDepth, r.geometryDepthTexture)
-	// TODO: Use a sphere mesh positioned where the light is!
-	r.commands.DrawIndexed(0, r.quadShape.IndexCount(), 1)
+	r.commands.DrawIndexed(0, r.sphereShape.IndexCount(), 1)
+}
+
+func (r *sceneRenderer) renderSpotLight(ctx renderCtx, light *SpotLight) {
+	projectionMatrix := sprec.IdentityMat4()
+	lightMatrix := light.gfxMatrix()
+	viewMatrix := sprec.InverseMat4(lightMatrix)
+
+	lightPlotter := blob.NewPlotter(r.lightUniformBufferData)
+	lightPlotter.PlotSPMat4(projectionMatrix)
+	lightPlotter.PlotSPMat4(viewMatrix)
+	lightPlotter.PlotSPMat4(lightMatrix)
+
+	r.commands.BindPipeline(r.spotLightPipeline)
+	r.commands.UpdateBufferData(r.lightUniformBuffer, render.BufferUpdateInfo{
+		Data: r.lightUniformBufferData,
+	})
+	// TODO: Move to lighting uniform buffer
+	r.commands.Uniform3f(r.spotLightPresentation.LightIntensity, dtos.Vec3(light.emitColor).Array())
+	r.commands.Uniform1f(r.spotLightPresentation.LightOuterAngle, float32(light.emitOuterConeAngle.Radians()))
+	r.commands.Uniform1f(r.spotLightPresentation.LightInnerAngle, float32(light.emitInnerConeAngle.Radians()))
+	r.commands.Uniform1f(r.spotLightPresentation.LightRange, float32(light.emitRange))
+
+	r.commands.TextureUnit(internal.TextureBindingLightingFramebufferColor0, r.geometryAlbedoTexture)
+	r.commands.TextureUnit(internal.TextureBindingLightingFramebufferColor1, r.geometryNormalTexture)
+	r.commands.TextureUnit(internal.TextureBindingLightingFramebufferDepth, r.geometryDepthTexture)
+	r.commands.DrawIndexed(0, r.coneShape.IndexCount(), 1)
 }
 
 func (r *sceneRenderer) renderForwardPass(ctx renderCtx) {
-	defer metrics.BeginSpan("forward pass").End()
+	defer metrics.BeginRegion("graphics:forward pass").End()
 
 	r.api.BeginRenderPass(render.RenderPassInfo{
 		Framebuffer: r.forwardFramebuffer,
@@ -935,12 +1153,35 @@ func (r *sceneRenderer) renderForwardPass(ctx renderCtx) {
 		r.commands.DrawIndexed(0, r.cubeShape.IndexCount(), 1)
 	}
 
+	if len(r.debugLines) > 0 {
+		plotter := blob.NewPlotter(r.debugVertexData)
+		for _, line := range r.debugLines {
+			plotter.PlotSPVec3(line.Start)
+			plotter.PlotUint8(uint8(line.Color.X * 255))
+			plotter.PlotUint8(uint8(line.Color.Y * 255))
+			plotter.PlotUint8(uint8(line.Color.Z * 255))
+			plotter.PlotUint8(uint8(255))
+
+			plotter.PlotSPVec3(line.End)
+			plotter.PlotUint8(uint8(line.Color.X * 255))
+			plotter.PlotUint8(uint8(line.Color.Y * 255))
+			plotter.PlotUint8(uint8(line.Color.Z * 255))
+			plotter.PlotUint8(uint8(255))
+		}
+		r.commands.UpdateBufferData(r.debugVertexBuffer, render.BufferUpdateInfo{
+			Data:   r.debugVertexData[:plotter.Offset()],
+			Offset: 0,
+		})
+		r.commands.BindPipeline(r.debugPipeline)
+		r.commands.Draw(0, len(r.debugLines)*2, 1)
+	}
+
 	r.api.SubmitQueue(r.commands)
 	r.api.EndRenderPass()
 }
 
 func (r *sceneRenderer) renderExposureProbePass(ctx renderCtx) {
-	defer metrics.BeginSpan("exposure pass").End()
+	defer metrics.BeginRegion("graphics:exposure pass").End()
 
 	if r.exposureFormat != render.DataFormatRGBA16F && r.exposureFormat != render.DataFormatRGBA32F {
 		log.Error("Skipping exposure due to unsupported framebuffer format %q", r.exposureFormat)
@@ -959,7 +1200,7 @@ func (r *sceneRenderer) renderExposureProbePass(ctx renderCtx) {
 			case render.DataFormatRGBA16F:
 				brightness = float16.Frombits(r.exposureBufferData.Uint16(0 * 2)).Float32()
 			case render.DataFormatRGBA32F:
-				brightness = blob.Buffer(r.exposureBufferData).Float32(0 * 4)
+				brightness = gblob.LittleEndianBlock(r.exposureBufferData).Float32(0 * 4)
 			}
 			brightness = sprec.Clamp(brightness, 0.001, 1000.0)
 
@@ -1030,7 +1271,7 @@ func (r *sceneRenderer) renderExposureProbePass(ctx renderCtx) {
 }
 
 func (r *sceneRenderer) renderPostprocessingPass(ctx renderCtx) {
-	defer metrics.BeginSpan("postprocessing pass").End()
+	defer metrics.BeginRegion("graphics:postprocessing pass").End()
 
 	r.api.BeginRenderPass(render.RenderPassInfo{
 		Framebuffer: ctx.framebuffer,

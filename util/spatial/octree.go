@@ -3,17 +3,15 @@ package spatial
 import (
 	"math"
 
+	"github.com/mokiat/gog/ds"
 	"github.com/mokiat/gomath/dprec"
 	"github.com/mokiat/lacking/log"
-	"github.com/mokiat/lacking/util/datastruct"
 )
 
 var sizeToDoubleRadius = dprec.Sqrt(3)
 
 // Visitor represents a callback mechanism to pass items back to the client.
 type Visitor[T any] interface {
-	// Reset indicates that a new batch of items will be provided.
-	Reset()
 	// Visit is called for each observed item.
 	Visit(item T)
 }
@@ -21,9 +19,6 @@ type Visitor[T any] interface {
 // VisitorFunc is an implementation of Visitor that passes each observed
 // item to the wrapped function.
 type VisitorFunc[T any] func(item T)
-
-// Reset does nothing and is just so Visitor interface is implemented.
-func (f VisitorFunc[T]) Reset() {}
 
 // Visit calls the wrapped function.
 func (f VisitorFunc[T]) Visit(item T) {
@@ -89,18 +84,9 @@ func (s *OctreeStats) reset() {
 }
 
 // NewOctree creates a new Octree instance using the specified size and depth.
-func NewOctree[T any](size float64, depth, capacity int) *Octree[T] {
-	var (
-		nodePool datastruct.Pool[octreeNode[T]]
-		itemPool datastruct.Pool[OctreeItem[T]]
-	)
-	if capacity > 0 {
-		nodePool = datastruct.NewStaticPool[octreeNode[T]](capacity)
-		itemPool = datastruct.NewStaticPool[OctreeItem[T]](capacity)
-	} else {
-		nodePool = datastruct.NewDynamicPool[octreeNode[T]]()
-		itemPool = datastruct.NewDynamicPool[OctreeItem[T]]()
-	}
+func NewOctree[T any](size float64, depth int) *Octree[T] {
+	nodePool := ds.NewPool[octreeNode[T]]()
+	itemPool := ds.NewPool[OctreeItem[T]]()
 	root := nodePool.Fetch()
 	*root = octreeNode[T]{
 		head: &OctreeItem[T]{
@@ -128,8 +114,8 @@ func NewOctree[T any](size float64, depth, capacity int) *Octree[T] {
 type Octree[T any] struct {
 	size     int32
 	depth    int32
-	nodePool datastruct.Pool[octreeNode[T]]
-	itemPool datastruct.Pool[OctreeItem[T]]
+	nodePool *ds.Pool[octreeNode[T]]
+	itemPool *ds.Pool[OctreeItem[T]]
 	root     *octreeNode[T]
 	stats    *OctreeStats
 }
@@ -169,7 +155,6 @@ func (t *Octree[T]) CreateItem(value T) *OctreeItem[T] {
 // specified hexahedron region. It calls the specified visitor for each found
 // item.
 func (t *Octree[T]) VisitHexahedronRegion(region *HexahedronRegion, visitor Visitor[T]) {
-	visitor.Reset()
 	t.stats.reset()
 	t.visitNodeInHexahedronRegion(t.root, region, visitor)
 }
@@ -329,7 +314,9 @@ func (i *OctreeItem[T]) SetPosition(position dprec.Vec3) {
 // Radius returns the bounding sphere radius of this item. This is used to
 // determine visibility of the item.
 func (i *OctreeItem[T]) Radius() float64 {
-	return float64(i.radius)
+	// Note: Adding +3 due to the rounding of the position (error up to 1.8) and
+	// the radius (error up to 1.0)
+	return float64(i.radius + 3)
 }
 
 // SetRadius changes the bounding sphere radius of this item.

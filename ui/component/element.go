@@ -1,36 +1,50 @@
 package component
 
 import (
+	"github.com/mokiat/gog/opt"
 	"github.com/mokiat/lacking/ui"
-	"github.com/mokiat/lacking/util/optional"
 )
 
 // ElementData is the struct that should be used when configuring
 // an Element component's data.
 type ElementData struct {
+	Reference **ui.Element
 	Essence   ui.Essence
-	Enabled   optional.V[bool]
-	Visible   optional.V[bool]
-	Focusable optional.V[bool]
-	Bounds    optional.V[ui.Bounds]
-	IdealSize optional.V[ui.Size]
+	Enabled   opt.T[bool]
+	Visible   opt.T[bool]
+	Focusable opt.T[bool]
+	Focused   opt.T[bool]
+	Bounds    opt.T[ui.Bounds]
+	IdealSize opt.T[ui.Size]
 	Padding   ui.Spacing
 	Layout    ui.Layout
 }
+
+// TODO: What about ditching Essence in favour of ElementCallbackData?
 
 // Element represents the most basic component, which is translated
 // to a UI Element. All higher-order components eventually boil down to an
 // Element.
 var Element = Define(func(props Properties, scope Scope) Instance {
+	data := GetData[ElementData](props)
+
 	element := UseState(func() *ui.Element {
 		return Window(scope).CreateElement()
 	}).Get()
+
+	Once(func() {
+		if data.Focused.Specified && data.Focused.Value {
+			Window(scope).GrantFocus(element)
+		}
+	})
 
 	Defer(func() {
 		element.Destroy()
 	})
 
-	data := GetData[ElementData](props)
+	if data.Reference != nil {
+		*data.Reference = element
+	}
 
 	element.SetEssence(data.Essence)
 	if data.Enabled.Specified {

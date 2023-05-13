@@ -147,6 +147,12 @@ func (w *Window) IsElementFocused(element *Element) bool {
 	return w.focusedElement == element
 }
 
+// GrantFocus grants the focus to the specified Element.
+func (w *Window) GrantFocus(element *Element) {
+	w.focusedElement = element
+	w.Invalidate()
+}
+
 // DiscardFocus removes the focus from any Element.
 func (w *Window) DiscardFocus() {
 	w.focusedElement = nil

@@ -295,10 +295,6 @@ func (r *dirRegistry) resourcesFile() string {
 	return filepath.Join(r.dir, "resources.yml")
 }
 
-func (r *dirRegistry) dependenciesFile() string {
-	return filepath.Join(r.dir, "dependencies.yml")
-}
-
 func (r *dirRegistry) previewFile(guid string) string {
 	return filepath.Join(r.previewDir, fmt.Sprintf("%s.png", guid))
 }

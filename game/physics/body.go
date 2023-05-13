@@ -2,27 +2,38 @@ package physics
 
 import (
 	"github.com/mokiat/gomath/dprec"
+	"github.com/mokiat/lacking/game/physics/collision"
 	"github.com/mokiat/lacking/util/spatial"
 )
 
 type BodyDefinitionInfo struct {
 	Mass                   float64
 	MomentOfInertia        dprec.Mat3
+	FrictionCoefficient    float64
 	RestitutionCoefficient float64
 	DragFactor             float64
 	AngularDragFactor      float64
-	CollisionShapes        []CollisionShape
+	CollisionGroup         int
+	CollisionSpheres       []collision.Sphere
+	CollisionBoxes         []collision.Box
+	CollisionMeshes        []collision.Mesh
 	AerodynamicShapes      []AerodynamicShape
 }
 
 type BodyDefinition struct {
 	mass                   float64
 	momentOfInertia        dprec.Mat3
+	frictionCoefficient    float64
 	restitutionCoefficient float64
 	dragFactor             float64
 	angularDragFactor      float64
-	collisionShapes        []CollisionShape
+	collisionGroup         int
+	collisionSet           collision.Set
 	aerodynamicShapes      []AerodynamicShape
+}
+
+func (d *BodyDefinition) CollisionSet() collision.Set {
+	return d.collisionSet
 }
 
 type BodyInfo struct {
@@ -30,31 +41,34 @@ type BodyInfo struct {
 	Definition *BodyDefinition
 	Position   dprec.Vec3
 	Rotation   dprec.Quat
-	IsDynamic  bool
 }
 
 // Body represents a physical body that has physics
 // act upon it.
 type Body struct {
-	scene *Scene
-	prev  *Body
-	next  *Body
-	item  *spatial.OctreeItem[*Body]
+	scene      *Scene
+	octreeItem *spatial.OctreeItem[*Body]
 
 	revision   int
 	definition *BodyDefinition
 
 	name string
 
-	static                 bool
 	mass                   float64
 	momentOfInertia        dprec.Mat3
+	frictionCoefficient    float64
 	restitutionCoefficient float64
 	dragFactor             float64
 	angularDragFactor      float64
 
+	oldPosition    dprec.Vec3
+	oldOrientation dprec.Quat
+
 	position    dprec.Vec3
 	orientation dprec.Quat
+
+	lerpPosition     dprec.Vec3
+	slerpOrientation dprec.Quat
 
 	acceleration        dprec.Vec3
 	angularAcceleration dprec.Vec3
@@ -62,8 +76,20 @@ type Body struct {
 	velocity        dprec.Vec3
 	angularVelocity dprec.Vec3
 
-	collisionShapes   []CollisionShape
+	bsRadius          float64
+	collisionGroup    int
+	collisionSet      collision.Set
 	aerodynamicShapes []AerodynamicShape
+}
+
+func (b *Body) invalidateCollisionShapes() {
+	transform := collision.TRTransform(b.position, b.orientation)
+	b.collisionSet.Replace(b.definition.collisionSet, transform)
+
+	bs := b.collisionSet.BoundingSphere()
+	delta := dprec.Vec3Diff(bs.Position(), b.position)
+	b.bsRadius = delta.Length() + bs.Radius()
+	b.octreeItem.SetRadius(b.bsRadius)
 }
 
 // Name returns the name of this body.
@@ -74,21 +100,6 @@ func (b *Body) Name() string {
 // SetName sets a new name for this body.
 func (b *Body) SetName(name string) {
 	b.name = name
-}
-
-// Static returns whether this body is static.
-func (b *Body) Static() bool {
-	return b.static
-}
-
-// SetStatic changes whether this body is static.
-func (b *Body) SetStatic(static bool) {
-	b.static = static
-	if static {
-		delete(b.scene.dynamicBodies, b)
-	} else {
-		b.scene.dynamicBodies[b] = struct{}{}
-	}
 }
 
 // Mass returns the mass of this body in kg.
@@ -167,7 +178,20 @@ func (b *Body) Position() dprec.Vec3 {
 // SetPosition changes the position of this body.
 func (b *Body) SetPosition(position dprec.Vec3) {
 	b.position = position
-	b.item.SetPosition(position)
+	b.lerpPosition = position
+	b.octreeItem.SetPosition(position)
+
+	// TODO: Do this only on demand.
+	b.invalidateCollisionShapes()
+}
+
+// VisualPosition returns the position of the Body as would
+// be seen by the current frame.
+//
+// NOTE: The physics engine can advance past the current frame,
+// which is the reason for this method.
+func (b *Body) VisualPosition() dprec.Vec3 {
+	return b.lerpPosition
 }
 
 // Orientation returns the quaternion rotation
@@ -180,6 +204,16 @@ func (b *Body) Orientation() dprec.Quat {
 // of this body.
 func (b *Body) SetOrientation(orientation dprec.Quat) {
 	b.orientation = orientation
+	b.slerpOrientation = orientation
+}
+
+// VisualOrientation returns the orientation of the Body as would
+// be seen by the current frame.
+//
+// NOTE: The physics engine can advance past the current frame,
+// which is the reason for this method.
+func (b *Body) VisualOrientation() dprec.Quat {
+	return b.slerpOrientation
 }
 
 // Velocity returns the velocity of this body.
@@ -204,21 +238,22 @@ func (b *Body) SetAngularVelocity(angularVelocity dprec.Vec3) {
 	b.angularVelocity = angularVelocity
 }
 
-// CollisionShapes returns a slice of shapes that
-// dictate how this body collides with others.
-func (b *Body) CollisionShapes() []CollisionShape {
-	return b.collisionShapes
+// CollisionGroup returns the collision group for this body. Two bodies
+// with the same collision group are not checked for collisions.
+func (b *Body) CollisionGroup() int {
+	return b.collisionGroup
 }
 
-// SetCollisionShapes sets the collision shapes
-// for this body to be used in collision detection.
-func (b *Body) SetCollisionShapes(shapes []CollisionShape) {
-	maxRadius := float64(0.0)
-	b.collisionShapes = shapes
-	for _, s := range shapes {
-		maxRadius = dprec.Max(maxRadius, s.BoundingSphereRadius())
-	}
-	b.item.SetRadius(maxRadius)
+// SetCollisionGroup changes the collision group for this body.
+//
+// A value of 0 disables the collision group.
+func (b *Body) SetCollisionGroup(group int) {
+	b.collisionGroup = group
+}
+
+// CollisionSet contains the collision shapes for this body.
+func (b *Body) CollisionSet() collision.Set {
+	return b.collisionSet
 }
 
 // AerodynamicShapes returns a slice of shapes that
@@ -238,10 +273,10 @@ func (b *Body) SetAerodynamicShapes(shapes []AerodynamicShape) {
 // should no longer be used after calling this
 // method.
 func (b *Body) Delete() {
-	b.SetStatic(true)
-	b.item.Delete()
-	b.scene.removeBody(b)
-	b.scene.cacheBody(b)
+	delete(b.scene.dynamicBodies, b)
+	b.octreeItem.Delete()
+	b.scene.bodyPool.Restore(b)
+	b.collisionSet = collision.Set{}
 	b.scene = nil
 }
 
@@ -275,6 +310,11 @@ func (b *Body) addAngularAcceleration(amount dprec.Vec3) {
 
 func (b *Body) applyForce(force dprec.Vec3) {
 	b.addAcceleration(dprec.Vec3Quot(force, b.mass))
+}
+
+func (b *Body) applyOffsetForce(offset, force dprec.Vec3) {
+	b.applyForce(force)
+	b.applyTorque(dprec.Vec3Cross(offset, force))
 }
 
 func (b *Body) applyTorque(torque dprec.Vec3) {

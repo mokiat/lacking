@@ -9,10 +9,14 @@ import (
 )
 
 func NewEngine(api render.API, shaders ShaderCollection) *Engine {
+	renderer := newRenderer(api, shaders)
 	return &Engine{
 		api:      api,
 		shaders:  shaders,
-		renderer: newRenderer(api, shaders),
+		renderer: renderer,
+		debug: &Debug{
+			renderer: renderer,
+		},
 	}
 }
 
@@ -21,6 +25,7 @@ type Engine struct {
 	api      render.API
 	shaders  ShaderCollection
 	renderer *sceneRenderer
+	debug    *Debug
 
 	freeFragmentID int
 }
@@ -34,6 +39,10 @@ func (e *Engine) Create() {
 // 3D engine.
 func (e *Engine) Destroy() {
 	e.renderer.Release()
+}
+
+func (e *Engine) Debug() *Debug {
+	return e.debug
 }
 
 // PBRShading returns the Shading implementaton for phisically-based rendering.
@@ -192,6 +201,7 @@ func (e *Engine) CreateMeshDefinition(info MeshDefinitionInfo) *MeshDefinition {
 		vertexArray:          vertexArray,
 		fragments:            make([]meshFragmentDefinition, len(info.Fragments)),
 		boundingSphereRadius: info.BoundingSphereRadius,
+		hasVertexColors:      info.VertexFormat.HasColor,
 		needsArmature:        info.NeedsArmature(),
 	}
 	for i, fragmentInfo := range info.Fragments {

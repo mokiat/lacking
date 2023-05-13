@@ -3,6 +3,7 @@ package gltfutil
 import (
 	"fmt"
 
+	"github.com/mokiat/gblob"
 	"github.com/mokiat/gomath/dprec"
 	"github.com/mokiat/gomath/sprec"
 	"github.com/mokiat/gomath/stod"
@@ -188,6 +189,19 @@ func Color0s(doc *gltf.Document, primitive *gltf.Primitive) ([]sprec.Vec4, error
 		for i := range result {
 			result[i] = scanner.ScanSPVec4()
 		}
+	case gltf.ComponentUshort:
+		for i := range result {
+			r := scanner.ScanUint16()
+			g := scanner.ScanUint16()
+			b := scanner.ScanUint16()
+			a := scanner.ScanUint16()
+			result[i] = sprec.NewVec4(
+				float32(r)/float32(0xFFFF),
+				float32(g)/float32(0xFFFF),
+				float32(b)/float32(0xFFFF),
+				float32(a)/float32(0xFFFF),
+			)
+		}
 	default:
 		return nil, fmt.Errorf("unsupported accessor component type %d", accessor.ComponentType)
 	}
@@ -367,11 +381,7 @@ func InverseBindMatrix(doc *gltf.Document, skin *gltf.Skin, index int) sprec.Mat
 }
 
 func AnimationKeyframes(doc *gltf.Document, sampler *gltf.AnimationSampler) []float64 {
-	if sampler.Input == nil {
-		log.Error("Animation sampler input is unspecified")
-		return nil
-	}
-	accessor := doc.Accessors[*sampler.Input]
+	accessor := doc.Accessors[sampler.Input]
 	if accessor.BufferView == nil {
 		log.Warn("Accessor lacks a buffer view")
 		return nil
@@ -395,11 +405,7 @@ func AnimationKeyframes(doc *gltf.Document, sampler *gltf.AnimationSampler) []fl
 }
 
 func AnimationTranslations(doc *gltf.Document, sampler *gltf.AnimationSampler) []dprec.Vec3 {
-	if sampler.Output == nil {
-		log.Error("Animation sampler output is unspecified")
-		return nil
-	}
-	accessor := doc.Accessors[*sampler.Output]
+	accessor := doc.Accessors[sampler.Output]
 	if accessor.BufferView == nil {
 		log.Warn("Accessor lacks a buffer view")
 		return nil
@@ -427,11 +433,7 @@ func AnimationTranslations(doc *gltf.Document, sampler *gltf.AnimationSampler) [
 }
 
 func AnimationRotations(doc *gltf.Document, sampler *gltf.AnimationSampler) []dprec.Quat {
-	if sampler.Output == nil {
-		log.Error("Animation sampler output is unspecified")
-		return nil
-	}
-	accessor := doc.Accessors[*sampler.Output]
+	accessor := doc.Accessors[sampler.Output]
 	if accessor.BufferView == nil {
 		log.Warn("Accessor lacks a buffer view")
 		return nil
@@ -460,11 +462,7 @@ func AnimationRotations(doc *gltf.Document, sampler *gltf.AnimationSampler) []dp
 }
 
 func AnimationScales(doc *gltf.Document, sampler *gltf.AnimationSampler) []dprec.Vec3 {
-	if sampler.Output == nil {
-		log.Error("Animation sampler output is unspecified")
-		return nil
-	}
-	accessor := doc.Accessors[*sampler.Output]
+	accessor := doc.Accessors[sampler.Output]
 	if accessor.BufferView == nil {
 		log.Warn("Accessor lacks a buffer view")
 		return nil
@@ -491,12 +489,35 @@ func AnimationScales(doc *gltf.Document, sampler *gltf.AnimationSampler) []dprec
 	}
 }
 
-func BufferViewData(doc *gltf.Document, index uint32) blob.Buffer {
+func BufferViewData(doc *gltf.Document, index uint32) gblob.LittleEndianBlock {
 	bufferView := doc.BufferViews[index]
 	offset := bufferView.ByteOffset
 	count := bufferView.ByteLength
 	buffer := doc.Buffers[bufferView.Buffer]
-	return blob.Buffer(buffer.Data[offset : offset+count])
+	return gblob.LittleEndianBlock(buffer.Data[offset : offset+count])
+}
+
+func Properties(extras any) map[string]string {
+	result := make(map[string]string)
+	props, ok := extras.(map[string]any)
+	if ok {
+		for key, value := range props {
+			if strValue, ok := value.(string); ok {
+				result[key] = strValue
+			} else {
+				result[key] = ""
+			}
+		}
+	}
+	return result
+}
+
+func IsMeshCollisionDisabled(mesh *gltf.Mesh) bool {
+	props, ok := mesh.Extras.(map[string]any)
+	if !ok {
+		return false
+	}
+	return props["collision"] == "none"
 }
 
 func IsCollisionDisabled(node *gltf.Node) bool {

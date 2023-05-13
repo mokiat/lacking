@@ -1,11 +1,11 @@
 package game
 
-import "github.com/mokiat/lacking/util/datastruct"
+import "github.com/mokiat/gog/ds"
 
 type UpdateCallback func(engine *Engine, scene *Scene, elapsedSeconds float64)
 
 type UpdateSubscription struct {
-	list     *datastruct.List[*UpdateSubscription]
+	list     *ds.List[*UpdateSubscription]
 	callback UpdateCallback
 }
 

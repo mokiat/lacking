@@ -3,7 +3,7 @@ package mvc
 import (
 	"fmt"
 
-	"github.com/mokiat/lacking/util/filter"
+	"github.com/mokiat/gog/filter"
 )
 
 // Change represents a notification that something has changed.

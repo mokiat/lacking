@@ -1,10 +1,10 @@
 package mat
 
 import (
+	"github.com/mokiat/gog/opt"
 	"github.com/mokiat/gomath/sprec"
 	"github.com/mokiat/lacking/ui"
 	co "github.com/mokiat/lacking/ui/component"
-	"github.com/mokiat/lacking/util/optional"
 )
 
 // PictureData represents the available data properties for the
@@ -12,13 +12,13 @@ import (
 type PictureData struct {
 
 	// BackgroundColor specifies the color to be rendered behind the image.
-	BackgroundColor optional.V[ui.Color]
+	BackgroundColor opt.T[ui.Color]
 
 	// Image specifies the Image to be displayed.
 	Image *ui.Image
 
 	// ImageColor specifies an optional multiplier color.
-	ImageColor optional.V[ui.Color]
+	ImageColor opt.T[ui.Color]
 
 	// Mode specifies how the image will be scaled and visualized within the
 	// Picture component.
@@ -70,9 +70,9 @@ var Picture = co.Define(func(props co.Properties, scope co.Scope) co.Instance {
 	essence.image = data.Image
 	essence.mode = data.Mode
 
-	var idealSize optional.V[ui.Size]
+	var idealSize opt.T[ui.Size]
 	if data.Image != nil {
-		idealSize = optional.Value(data.Image.Size())
+		idealSize = opt.V(data.Image.Size())
 	}
 
 	return co.New(Element, func() {

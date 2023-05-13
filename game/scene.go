@@ -1,13 +1,14 @@
 package game
 
 import (
+	"github.com/mokiat/gog/ds"
 	"github.com/mokiat/gomath/dprec"
 	"github.com/mokiat/gomath/dtos"
 	"github.com/mokiat/lacking/game/ecs"
 	"github.com/mokiat/lacking/game/graphics"
 	"github.com/mokiat/lacking/game/physics"
+	"github.com/mokiat/lacking/game/physics/collision"
 	"github.com/mokiat/lacking/log"
-	"github.com/mokiat/lacking/util/metrics"
 )
 
 func newScene(resourceSet *ResourceSet, physicsScene *physics.Scene, gfxScene *graphics.Scene, ecsScene *ecs.Scene) *Scene {
@@ -16,6 +17,9 @@ func newScene(resourceSet *ResourceSet, physicsScene *physics.Scene, gfxScene *g
 		gfxScene:     gfxScene,
 		ecsScene:     ecsScene,
 		root:         NewNode(),
+
+		playbackPool: ds.NewPool[Playback](),
+		playbacks:    ds.NewList[*Playback](4),
 	}
 }
 
@@ -24,12 +28,30 @@ type Scene struct {
 	gfxScene     *graphics.Scene
 	ecsScene     *ecs.Scene
 	root         *Node
+	models       []*Model
+
+	playbackPool *ds.Pool[Playback]
+	playbacks    *ds.List[*Playback]
+
+	frozen bool
 }
 
 func (s *Scene) Delete() {
 	defer s.physicsScene.Delete()
 	defer s.gfxScene.Delete()
 	defer s.ecsScene.Delete()
+}
+
+func (s *Scene) IsFrozen() bool {
+	return s.frozen
+}
+
+func (s *Scene) Freeze() {
+	s.frozen = true
+}
+
+func (s *Scene) Unfreeze() {
+	s.frozen = false
 }
 
 func (s *Scene) Physics() *physics.Scene {
@@ -54,9 +76,13 @@ func (s *Scene) Initialize(definition *SceneDefinition) {
 	}
 
 	if definition.reflectionTexture != nil && definition.refractionTexture != nil {
-		ambientLight := s.Graphics().CreateAmbientLight()
-		ambientLight.SetReflectionTexture(definition.reflectionTexture.gfxTexture)
-		ambientLight.SetRefractionTexture(definition.refractionTexture.gfxTexture)
+		s.Graphics().CreateAmbientLight(graphics.AmbientLightInfo{
+			ReflectionTexture: definition.reflectionTexture.gfxTexture,
+			RefractionTexture: definition.refractionTexture.gfxTexture,
+			Position:          dprec.ZeroVec3(),
+			InnerRadius:       25000.0,
+			OuterRadius:       25000.0, // FIXME
+		})
 	}
 
 	s.CreateModel(ModelInfo{
@@ -70,20 +96,31 @@ func (s *Scene) Initialize(definition *SceneDefinition) {
 	})
 
 	for _, instance := range definition.modelInstances {
-		s.CreateModel(instance)
+		model := s.CreateModel(instance)
+		s.models = append(s.models, model)
 	}
 }
 
-func (s *Scene) Update(elapsedSeconds float64) {
-	// TODO: Add OnUpdate hook here so that user code can modify stuff based off
-	// of stable state.
-	s.physicsScene.Update(elapsedSeconds)
+func (s *Scene) FindModel(name string) *Model {
+	for _, model := range s.models {
+		if model.root.name == name {
+			return model
+		}
+	}
+	return nil
+}
 
-	transform := metrics.BeginSpan("transform")
-	s.applyPhysicsToNode(s.root)
-	s.applyNodeToPhysics(s.root)
+func (s *Scene) Update(elapsedSeconds float64) {
+	if !s.frozen {
+		s.applyPlaybacks(elapsedSeconds)
+		s.physicsScene.Update(elapsedSeconds)
+		s.applyPhysicsToNode(s.root)
+	}
+}
+
+func (s *Scene) Render(viewport graphics.Viewport) {
 	s.applyNodeToGraphics(s.root)
-	transform.End()
+	s.gfxScene.Render(viewport)
 }
 
 func (s *Scene) CreateAnimation(info AnimationInfo) *Animation {
@@ -139,9 +176,6 @@ func (s *Scene) CreateModel(info ModelInfo) *Model {
 		}
 		parent.AppendChild(nodes[i])
 	}
-	// if info.IsDynamic {
-	s.Root().AppendChild(modelNode)
-	// }
 
 	var bodyInstances []*physics.Body
 	for _, instance := range definition.bodyInstances {
@@ -152,15 +186,79 @@ func (s *Scene) CreateModel(info ModelInfo) *Model {
 			bodyNode = modelNode
 		}
 		bodyDefinition := definition.bodyDefinitions[instance.DefinitionIndex]
-		body := s.physicsScene.CreateBody(physics.BodyInfo{
-			Name:       instance.Name,
-			Definition: bodyDefinition,
-			Position:   dprec.ZeroVec3(),
-			Rotation:   dprec.IdentityQuat(),
-			IsDynamic:  info.IsDynamic,
+		if info.IsDynamic {
+			body := s.physicsScene.CreateBody(physics.BodyInfo{
+				Name:       instance.Name,
+				Definition: bodyDefinition,
+				Position:   dprec.ZeroVec3(),
+				Rotation:   dprec.IdentityQuat(),
+			})
+			bodyNode.SetBody(body)
+			bodyInstances = append(bodyInstances, body)
+		} else {
+			absMatrix := bodyNode.AbsoluteMatrix()
+			transform := collision.TRTransform(absMatrix.Translation(), absMatrix.Rotation())
+			collisionSet := collision.NewSet()
+			collisionSet.Replace(bodyDefinition.CollisionSet(), transform)
+			s.physicsScene.CreateProp(physics.PropInfo{
+				CollisionSet: collisionSet,
+			})
+		}
+	}
+
+	pointLightInstances := make([]*graphics.PointLight, len(definition.pointLightInstances))
+	for i, instance := range definition.pointLightInstances {
+		var lightNode *Node
+		if instance.NodeIndex >= 0 {
+			lightNode = nodes[instance.NodeIndex]
+		} else {
+			lightNode = modelNode
+		}
+		light := s.gfxScene.CreatePointLight(graphics.PointLightInfo{
+			Position:  dprec.ZeroVec3(),
+			EmitRange: instance.EmitRange,
+			EmitColor: instance.EmitColor,
 		})
-		bodyNode.SetBody(body)
-		bodyInstances = append(bodyInstances, body)
+		lightNode.SetAttachable(light)
+		pointLightInstances[i] = light
+	}
+
+	spotLightInstances := make([]*graphics.SpotLight, len(definition.spotLightInstances))
+	for i, instance := range definition.spotLightInstances {
+		var lightNode *Node
+		if instance.NodeIndex >= 0 {
+			lightNode = nodes[instance.NodeIndex]
+		} else {
+			lightNode = modelNode
+		}
+		light := s.gfxScene.CreateSpotLight(graphics.SpotLightInfo{
+			Position:           dprec.ZeroVec3(),
+			Rotation:           dprec.IdentityQuat(),
+			EmitRange:          instance.EmitRange,
+			EmitOuterConeAngle: instance.EmitOuterConeAngle,
+			EmitInnerConeAngle: instance.EmitInnerConeAngle,
+			EmitColor:          instance.EmitColor,
+		})
+		lightNode.SetAttachable(light)
+		spotLightInstances[i] = light
+	}
+
+	directionalLightInstances := make([]*graphics.DirectionalLight, len(definition.directionalLightInstances))
+	for i, instance := range definition.directionalLightInstances {
+		var lightNode *Node
+		if instance.NodeIndex >= 0 {
+			lightNode = nodes[instance.NodeIndex]
+		} else {
+			lightNode = modelNode
+		}
+		light := s.gfxScene.CreateDirectionalLight(graphics.DirectionalLightInfo{
+			Position:    dprec.ZeroVec3(),
+			Orientation: dprec.IdentityQuat(),
+			EmitRange:   instance.EmitRange,
+			EmitColor:   instance.EmitColor,
+		})
+		lightNode.SetAttachable(light)
+		directionalLightInstances[i] = light
 	}
 
 	armatures := make([]*graphics.Armature, len(definition.armatures))
@@ -175,7 +273,7 @@ func (s *Scene) CreateModel(info ModelInfo) *Model {
 			} else {
 				jointNode = modelNode
 			}
-			// TODO: Use single method SetArmatureBinding(armature, joint)
+			// TODO: Use single method SetAttachment(BoneAttachment{armature, joint})
 			jointNode.SetArmature(armature)
 			jointNode.SetArmatureBone(j)
 		}
@@ -198,15 +296,24 @@ func (s *Scene) CreateModel(info ModelInfo) *Model {
 			Definition: meshDefinition,
 			Armature:   armature,
 		})
-		meshNode.SetMesh(mesh)
+		meshNode.SetAttachable(mesh)
 	}
 
+	if info.IsDynamic {
+		s.Root().AppendChild(modelNode)
+	}
+	s.applyPhysicsToNode(modelNode)
+	s.applyNodeToGraphics(modelNode)
+
 	result := &Model{
-		definition:    definition,
-		root:          modelNode,
-		bodyInstances: bodyInstances,
-		nodes:         nodes,
-		armatures:     armatures,
+		definition:                definition,
+		root:                      modelNode,
+		bodyInstances:             bodyInstances,
+		nodes:                     nodes,
+		armatures:                 armatures,
+		pointLightInstances:       pointLightInstances,
+		spotLightInstances:        spotLightInstances,
+		directionalLightInstances: directionalLightInstances,
 	}
 	if info.PrepareAnimations {
 		animations := make([]*Animation, len(definition.animations))
@@ -221,45 +328,58 @@ func (s *Scene) CreateModel(info ModelInfo) *Model {
 	return result
 }
 
+func (s *Scene) PlayAnimation(animation *Animation) *Playback {
+	result := s.playbackPool.Fetch()
+	result.scene = s
+	result.animation = animation
+	result.head = animation.StartTime()
+	result.startTime = animation.StartTime()
+	result.endTime = animation.EndTime()
+	result.speed = 1.0
+	result.Play()
+	s.playbacks.Add(result)
+	return result
+}
+
+func (s *Scene) FindPlayback(name string) *Playback {
+	for _, playback := range s.playbacks.Items() {
+		if playback.name == name {
+			return playback
+		}
+	}
+	return nil
+}
+
 func (s *Scene) applyPhysicsToNode(node *Node) {
 	if body := node.body; body != nil {
-		if !body.Static() {
-			// FIXME: This should be SetAbsolutePosition and SetAbsoluteRotation
-			node.SetPosition(body.Position())
-			node.SetRotation(body.Orientation())
-		}
+		absMatrix := dprec.TRSMat4(
+			body.VisualPosition(),
+			body.VisualOrientation(),
+			dprec.NewVec3(1.0, 1.0, 1.0),
+		)
+		node.SetAbsoluteMatrix(absMatrix)
 	}
 	for child := node.firstChild; child != nil; child = child.rightSibling {
 		s.applyPhysicsToNode(child)
 	}
 }
 
-func (s *Scene) applyNodeToPhysics(node *Node) {
-	if body := node.body; body != nil {
-		if body.Static() {
-			absMatrix := node.AbsoluteMatrix()
-			translation, rotation, _ := absMatrix.TRS()
-			body.SetPosition(translation)
-			body.SetOrientation(rotation)
+func (s *Scene) applyPlaybacks(elapsedSeconds float64) {
+	for _, playback := range s.playbacks.Items() {
+		if playback.playing {
+			playback.Advance(elapsedSeconds)
+			playback.animation.Apply(playback.head)
 		}
-	}
-	for child := node.firstChild; child != nil; child = child.rightSibling {
-		s.applyNodeToPhysics(child)
 	}
 }
 
 func (s *Scene) applyNodeToGraphics(node *Node) {
-	if mesh := node.Mesh(); mesh != nil {
-		mesh.SetMatrix(node.AbsoluteMatrix())
-	}
-	if camera := node.Camera(); camera != nil {
-		camera.SetMatrix(node.AbsoluteMatrix())
-	}
-	if light := node.light; light != nil {
-		light.SetMatrix(node.AbsoluteMatrix())
-	}
+	absMatrix := node.AbsoluteMatrix()
 	if armature := node.armature; armature != nil {
-		armature.SetBone(node.armatureBone, dtos.Mat4(node.AbsoluteMatrix()))
+		armature.SetBone(node.armatureBone, dtos.Mat4(absMatrix))
+	}
+	if attachable := node.attachable; attachable != nil {
+		attachable.SetMatrix(absMatrix)
 	}
 	for child := node.firstChild; child != nil; child = child.rightSibling {
 		s.applyNodeToGraphics(child)

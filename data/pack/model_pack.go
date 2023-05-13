@@ -9,14 +9,39 @@ type ModelProvider interface {
 	Model() *Model
 }
 
+type Properties map[string]string
+
+func (p Properties) HasCollision() bool {
+	return p.IsSet("collidable")
+}
+
+func (p Properties) HasSkipCollision() bool {
+	return p.IsSet("non-collidable")
+}
+
+func (p Properties) IsInvisible() bool {
+	return p.IsSet("invisible")
+}
+
+func (p Properties) IsSet(key string) bool {
+	if p == nil {
+		return false
+	}
+	_, ok := p[key]
+	return ok
+}
+
 type Model struct {
-	RootNodes       []*Node
-	Animations      []*Animation
-	Armatures       []*Armature
-	Materials       []*Material
-	MeshDefinitions []*MeshDefinition
-	MeshInstances   []*MeshInstance
-	Textures        []*Image
+	RootNodes        []*Node
+	Animations       []*Animation
+	Armatures        []*Armature
+	Materials        []*Material
+	MeshDefinitions  []*MeshDefinition
+	MeshInstances    []*MeshInstance
+	LightDefinitions []*LightDefinition
+	LightInstances   []*LightInstance
+	Textures         []*Image
+	Properties       Properties
 }
 
 type Node struct {
@@ -25,6 +50,7 @@ type Node struct {
 	Scale       dprec.Vec3
 	Rotation    dprec.Quat
 	Children    []*Node
+	Properties  Properties
 }
 
 type MeshDefinition struct {
@@ -33,6 +59,11 @@ type MeshDefinition struct {
 	Vertices     []Vertex
 	Indices      []int
 	Fragments    []MeshFragment
+	Properties   Properties
+}
+
+func (d MeshDefinition) HasCollision() bool {
+	return d.Properties.HasCollision()
 }
 
 type Armature struct {
@@ -45,11 +76,14 @@ type Joint struct {
 }
 
 type MeshInstance struct {
-	Name         string
-	Node         *Node
-	Armature     *Armature
-	Definition   *MeshDefinition
-	HasCollision bool
+	Name       string
+	Node       *Node
+	Armature   *Armature
+	Definition *MeshDefinition
+}
+
+func (i MeshInstance) HasCollision() bool {
+	return i.Definition.HasCollision()
 }
 
 type VertexLayout struct {
@@ -104,6 +138,15 @@ type Material struct {
 	MetallicRoughnessTexture *TextureRef
 	NormalScale              float32
 	NormalTexture            *TextureRef
+	Properties               Properties
+}
+
+func (m Material) HasSkipCollision() bool {
+	return m.Properties.HasSkipCollision()
+}
+
+func (m Material) IsInvisible() bool {
+	return m.Properties.IsInvisible()
 }
 
 type TextureRef struct {
@@ -138,4 +181,28 @@ type RotationKeyframe struct {
 type ScaleKeyframe struct {
 	Timestamp float64
 	Scale     dprec.Vec3
+}
+
+type LightDefinition struct {
+	Name               string
+	Type               LightType
+	EmitRange          float64
+	EmitOuterConeAngle dprec.Angle
+	EmitInnerConeAngle dprec.Angle
+	EmitColor          dprec.Vec3
+}
+
+type LightType string
+
+const (
+	LightTypePoint       LightType = "point"
+	LightTypeSpot        LightType = "spot"
+	LightTypeDirectional LightType = "directional"
+	// TODO: Ambient Light
+)
+
+type LightInstance struct {
+	Name       string
+	Node       *Node
+	Definition *LightDefinition
 }

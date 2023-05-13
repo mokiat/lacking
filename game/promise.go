@@ -1,8 +1,12 @@
 package game
 
 import (
+	"errors"
+
 	"github.com/mokiat/lacking/util/async"
 )
+
+var ErrNotReady = errors.New("not ready")
 
 func NewPromise[T any](engine *Engine) Promise[T] {
 	return SafePromise(async.NewPromise[T](), engine)
@@ -26,6 +30,23 @@ func (p Promise[T]) Unsafe() async.Promise[T] {
 
 func (p Promise[T]) Ready() bool {
 	return p.delegate.Ready()
+}
+
+func (p Promise[T]) OnReady(cb func()) {
+	go func() {
+		p.delegate.Wait()
+		p.worker.ScheduleVoid(func() {
+			cb()
+		})
+	}()
+}
+
+func (p Promise[T]) Get() (T, error) {
+	if !p.Ready() {
+		var v T
+		return v, ErrNotReady
+	}
+	return p.delegate.Wait()
 }
 
 func (p Promise[T]) OnSuccess(cb func(value T)) {

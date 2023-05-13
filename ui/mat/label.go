@@ -1,16 +1,16 @@
 package mat
 
 import (
+	"github.com/mokiat/gog/opt"
 	"github.com/mokiat/gomath/sprec"
 	"github.com/mokiat/lacking/ui"
 	co "github.com/mokiat/lacking/ui/component"
-	"github.com/mokiat/lacking/util/optional"
 )
 
 type LabelData struct {
 	Font          *ui.Font
-	FontSize      optional.V[float32]
-	FontColor     optional.V[ui.Color]
+	FontSize      opt.T[float32]
+	FontColor     opt.T[ui.Color]
 	TextAlignment Alignment
 	Text          string
 }
@@ -44,7 +44,7 @@ var Label = co.Define(func(props co.Properties, scope co.Scope) co.Instance {
 	return co.New(Element, func() {
 		co.WithData(ElementData{
 			Essence:   essence,
-			IdealSize: optional.Value(ui.NewSize(int(txtSize.X), int(txtSize.Y))),
+			IdealSize: opt.V(ui.NewSize(int(txtSize.X), int(txtSize.Y))),
 		})
 		co.WithLayoutData(props.LayoutData())
 		co.WithChildren(props.Children())
