@@ -13,7 +13,6 @@ func Fill() ui.Layout {
 
 type fillLayout struct{}
 
-// Apply applies this layout to the specified Element.
 func (l *fillLayout) Apply(element *ui.Element) {
 	contentBounds := element.ContentBounds()
 	for childElement := element.FirstChild(); childElement != nil; childElement = childElement.RightSibling() {

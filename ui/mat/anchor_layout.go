@@ -7,6 +7,8 @@ import "github.com/mokiat/lacking/ui"
 type AnchorLayoutSettings struct{}
 
 // NewAnchorLayout creates a new AnchorLayout instance.
+//
+// Deprecated: Use layout.Anchor
 func NewAnchorLayout(settings AnchorLayoutSettings) *AnchorLayout {
 	return &AnchorLayout{}
 }
