@@ -1,22 +1,20 @@
-package mat
+package layout
 
 import "github.com/mokiat/lacking/ui"
 
-// NewFillLayout creates a new FillLayout instance.
+// Fill returns a layout that positions elements within the whole bounds of
+// the receiver element.
 //
-// Deprecated: Use layout.Fill instead.
-func NewFillLayout() *FillLayout {
-	return &FillLayout{}
+// If the receiver element has multiple children then each one is positioned
+// independently to take up the whole space.
+func Fill() ui.Layout {
+	return &fillLayout{}
 }
 
-var _ ui.Layout = (*FillLayout)(nil)
-
-// FillLayout is an implementation of Layout that positions and
-// resizes elements so that they take up the whole content area.
-type FillLayout struct{}
+type fillLayout struct{}
 
 // Apply applies this layout to the specified Element.
-func (l *FillLayout) Apply(element *ui.Element) {
+func (l *fillLayout) Apply(element *ui.Element) {
 	contentBounds := element.ContentBounds()
 	for childElement := element.FirstChild(); childElement != nil; childElement = childElement.RightSibling() {
 		childElement.SetBounds(contentBounds)
@@ -24,10 +22,10 @@ func (l *FillLayout) Apply(element *ui.Element) {
 	element.SetIdealSize(l.calculateIdealSize(element))
 }
 
-func (l *FillLayout) calculateIdealSize(element *ui.Element) ui.Size {
+func (l *fillLayout) calculateIdealSize(element *ui.Element) ui.Size {
 	result := ui.NewSize(0, 0)
 	for childElement := element.FirstChild(); childElement != nil; childElement = childElement.RightSibling() {
-		layoutConfig := ElementLayoutData(childElement)
+		layoutConfig := ElementData(childElement)
 
 		childSize := childElement.IdealSize()
 		if layoutConfig.Width.Specified {
@@ -40,7 +38,5 @@ func (l *FillLayout) calculateIdealSize(element *ui.Element) ui.Size {
 		result.Width = maxInt(result.Width, childSize.Width)
 		result.Height = maxInt(result.Height, childSize.Height)
 	}
-	result.Width += element.Padding().Horizontal()
-	result.Height += element.Padding().Vertical()
-	return result
+	return result.Grow(element.Padding().Size())
 }

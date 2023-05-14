@@ -6,7 +6,7 @@ import (
 )
 
 // LayoutData represents a layout configuration for a component
-// that is added to a Container.
+// that is added to a container.
 type LayoutData struct {
 	Left             opt.T[int]
 	Right            opt.T[int]
