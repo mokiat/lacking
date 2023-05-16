@@ -3,6 +3,7 @@ package mat
 import (
 	"github.com/mokiat/lacking/ui"
 	co "github.com/mokiat/lacking/ui/component"
+	"github.com/mokiat/lacking/ui/mat/layout"
 )
 
 // DropZoneCallbackData can be used to specify callback data for a DropZone
@@ -33,7 +34,7 @@ var DropZone = co.Define(func(props co.Properties, scope co.Scope) co.Instance {
 	return co.New(Element, func() {
 		co.WithData(ElementData{
 			Essence: essence,
-			Layout:  NewFillLayout(),
+			Layout:  layout.Fill(),
 		})
 		co.WithLayoutData(props.LayoutData())
 		co.WithChildren(props.Children())

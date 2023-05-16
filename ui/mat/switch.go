@@ -2,6 +2,7 @@ package mat
 
 import (
 	co "github.com/mokiat/lacking/ui/component"
+	"github.com/mokiat/lacking/ui/mat/layout"
 )
 
 // SwitchData holds the data for a Switch component.
@@ -22,7 +23,7 @@ var Switch = co.Define(func(props co.Properties, scope co.Scope) co.Instance {
 
 	return co.New(Element, func() {
 		co.WithData(ElementData{
-			Layout: NewFillLayout(),
+			Layout: layout.Fill(),
 		})
 		co.WithLayoutData(props.LayoutData())
 

@@ -4,6 +4,7 @@ import (
 	"github.com/mokiat/gomath/sprec"
 	"github.com/mokiat/lacking/ui"
 	co "github.com/mokiat/lacking/ui/component"
+	"github.com/mokiat/lacking/ui/mat/layout"
 )
 
 var (
@@ -49,7 +50,7 @@ var ListItem = co.Define(func(props co.Properties, scope co.Scope) co.Instance {
 				Bottom: ListItemPadding,
 			},
 			Essence: essence,
-			Layout:  NewFillLayout(),
+			Layout:  layout.Fill(),
 		})
 		co.WithLayoutData(props.LayoutData())
 		co.WithChildren(props.Children())

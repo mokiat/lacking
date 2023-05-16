@@ -3,6 +3,7 @@ package mat
 import (
 	"github.com/mokiat/gog/opt"
 	co "github.com/mokiat/lacking/ui/component"
+	"github.com/mokiat/lacking/ui/mat/layout"
 )
 
 // Modal is a helper container that can be used as an overlay. It creates
@@ -11,14 +12,14 @@ var Modal = co.Define(func(props co.Properties, scope co.Scope) co.Instance {
 	return co.New(Container, func() {
 		co.WithData(ContainerData{
 			BackgroundColor: opt.V(ModalOverlayColor),
-			Layout:          NewAnchorLayout(AnchorLayoutSettings{}),
+			Layout:          layout.Anchor(),
 		})
 
 		co.WithChild("content", co.New(Paper, func() {
-			co.WithData(PaperData{
-				Layout: NewFrameLayout(),
-			})
 			co.WithLayoutData(props.LayoutData())
+			co.WithData(PaperData{
+				Layout: layout.Frame(),
+			})
 			co.WithChildren(props.Children())
 		}))
 	})

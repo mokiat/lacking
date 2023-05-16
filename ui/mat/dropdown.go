@@ -5,6 +5,7 @@ import (
 	"github.com/mokiat/gomath/sprec"
 	"github.com/mokiat/lacking/ui"
 	co "github.com/mokiat/lacking/ui/component"
+	"github.com/mokiat/lacking/ui/mat/layout"
 )
 
 var (
@@ -88,35 +89,35 @@ var Dropdown = co.Define(func(props co.Properties, scope co.Scope) co.Instance {
 	return co.New(Element, func() {
 		co.WithData(ElementData{
 			Essence: essence,
-			Layout:  NewAnchorLayout(AnchorLayoutSettings{}),
+			Layout:  layout.Anchor(),
 		})
 		co.WithLayoutData(props.LayoutData())
 
 		co.WithChild("label", co.New(Label, func() {
+			co.WithLayoutData(layout.Data{
+				Left:           opt.V(0),
+				Right:          opt.V(DropdownIconSize),
+				VerticalCenter: opt.V(0),
+			})
 			co.WithData(LabelData{
 				Font:      co.OpenFont(scope, DropdownFontFile),
 				FontSize:  opt.V(DropdownFontSize),
 				FontColor: opt.V(OnSurfaceColor),
 				Text:      label,
 			})
-			co.WithLayoutData(LayoutData{
-				Left:           opt.V(0),
-				Right:          opt.V(DropdownIconSize),
-				VerticalCenter: opt.V(0),
-			})
 		}))
 
 		co.WithChild("button", co.New(Picture, func() {
-			co.WithData(PictureData{
-				Image:      co.OpenImage(scope, DropdownIconFile),
-				ImageColor: opt.V(OnSurfaceColor),
-				Mode:       ImageModeFit,
-			})
-			co.WithLayoutData(LayoutData{
+			co.WithLayoutData(layout.Data{
 				Width:          opt.V(DropdownIconSize),
 				Height:         opt.V(DropdownIconSize),
 				Right:          opt.V(0),
 				VerticalCenter: opt.V(0),
+			})
+			co.WithData(PictureData{
+				Image:      co.OpenImage(scope, DropdownIconFile),
+				ImageColor: opt.V(OnSurfaceColor),
+				Mode:       ImageModeFit,
 			})
 		}))
 	})

@@ -7,6 +7,7 @@ import (
 	"github.com/mokiat/gomath/sprec"
 	"github.com/mokiat/lacking/ui"
 	co "github.com/mokiat/lacking/ui/component"
+	"github.com/mokiat/lacking/ui/mat/layout"
 )
 
 var (
@@ -34,19 +35,19 @@ var dropdownList = co.Define(func(props co.Properties, scope co.Scope) co.Instan
 	return co.New(Element, func() {
 		co.WithData(ElementData{
 			Essence: essence,
-			Layout:  NewAnchorLayout(AnchorLayoutSettings{}),
+			Layout:  layout.Anchor(),
 		})
 		co.WithLayoutData(props.LayoutData())
 
 		co.WithChild("content", co.New(Paper, func() {
+			co.WithLayoutData(layout.Data{
+				HorizontalCenter: opt.V(0),
+				VerticalCenter:   opt.V(0),
+			})
 			co.WithData(PaperData{
 				Layout: NewVerticalLayout(VerticalLayoutSettings{
 					ContentSpacing: 5,
 				}),
-			})
-			co.WithLayoutData(LayoutData{
-				HorizontalCenter: opt.V(0),
-				VerticalCenter:   opt.V(0),
 			})
 
 			for i, item := range data.Items {

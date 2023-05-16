@@ -5,6 +5,7 @@ import (
 	"github.com/mokiat/gomath/sprec"
 	"github.com/mokiat/lacking/ui"
 	co "github.com/mokiat/lacking/ui/component"
+	"github.com/mokiat/lacking/ui/mat/layout"
 )
 
 var (
@@ -107,7 +108,7 @@ var TabbarTab = co.Define(func(props co.Properties, scope co.Scope) co.Instance 
 			co.WithChild("close", co.New(Element, func() {
 				co.WithData(ElementData{
 					Essence: closeButtonEssence,
-					Layout:  NewFillLayout(),
+					Layout:  layout.Fill(),
 				})
 
 				co.WithLayoutData(LayoutData{
