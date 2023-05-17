@@ -3,7 +3,7 @@ package mat
 import (
 	"github.com/mokiat/lacking/ui"
 	co "github.com/mokiat/lacking/ui/component"
-	"github.com/mokiat/lacking/ui/mat/layout"
+	"github.com/mokiat/lacking/ui/layout"
 )
 
 // DropZoneCallbackData can be used to specify callback data for a DropZone

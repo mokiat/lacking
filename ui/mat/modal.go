@@ -3,7 +3,7 @@ package mat
 import (
 	"github.com/mokiat/gog/opt"
 	co "github.com/mokiat/lacking/ui/component"
-	"github.com/mokiat/lacking/ui/mat/layout"
+	"github.com/mokiat/lacking/ui/layout"
 )
 
 // Modal is a helper container that can be used as an overlay. It creates
