@@ -10,6 +10,8 @@ type VerticalLayoutSettings struct {
 }
 
 // NewVerticalLayout creates a new VerticalLayout instance.
+//
+// Deprecated
 func NewVerticalLayout(settings VerticalLayoutSettings) *VerticalLayout {
 	return &VerticalLayout{
 		contentAlignment: settings.ContentAlignment,

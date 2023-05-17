@@ -45,7 +45,7 @@ var dropdownList = co.Define(func(props co.Properties, scope co.Scope) co.Instan
 				VerticalCenter:   opt.V(0),
 			})
 			co.WithData(PaperData{
-				Layout: NewVerticalLayout(VerticalLayoutSettings{
+				Layout: layout.Vertical(layout.VerticalSettings{
 					ContentSpacing: 5,
 				}),
 			})
@@ -53,11 +53,11 @@ var dropdownList = co.Define(func(props co.Properties, scope co.Scope) co.Instan
 			for i, item := range data.Items {
 				func(i int, item DropdownItem) {
 					co.WithChild(fmt.Sprintf("item-%d", i), co.New(dropdownItem, func() {
+						co.WithLayoutData(layout.Data{
+							GrowHorizontally: true,
+						})
 						co.WithData(dropdownItemData{
 							Selected: item.Key == data.SelectedKey,
-						})
-						co.WithLayoutData(LayoutData{
-							GrowHorizontally: true,
 						})
 						co.WithCallbackData(dropdownItemCallbackData{
 							OnSelected: func() {

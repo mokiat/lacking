@@ -5,6 +5,7 @@ import (
 	"github.com/mokiat/gomath/sprec"
 	"github.com/mokiat/lacking/ui"
 	co "github.com/mokiat/lacking/ui/component"
+	"github.com/mokiat/lacking/ui/mat/layout"
 )
 
 var (
@@ -56,13 +57,16 @@ var Accordion = co.Define(func(props co.Properties, scope co.Scope) co.Instance 
 
 	return co.New(Element, func() {
 		co.WithData(ElementData{
-			Layout: NewVerticalLayout(VerticalLayoutSettings{
-				ContentAlignment: AlignmentLeft,
+			Layout: layout.Vertical(layout.VerticalSettings{
+				ContentAlignment: layout.HorizontalAlignmentLeft,
 			}),
 		})
 		co.WithLayoutData(props.LayoutData())
 
 		co.WithChild("header", co.New(Element, func() {
+			co.WithLayoutData(layout.Data{
+				GrowHorizontally: true,
+			})
 			co.WithData(ElementData{
 				Essence: headerEssence,
 				Padding: ui.Spacing{
@@ -75,9 +79,6 @@ var Accordion = co.Define(func(props co.Properties, scope co.Scope) co.Instance 
 					ContentAlignment: AlignmentCenter,
 					ContentSpacing:   AccordionHeaderContentSpacing,
 				}),
-			})
-			co.WithLayoutData(LayoutData{
-				GrowHorizontally: true,
 			})
 
 			co.WithChild("icon", co.New(Picture, func() {
