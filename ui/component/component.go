@@ -57,6 +57,15 @@ type UpdateNotifiable interface {
 	OnUpdate()
 }
 
+// UpsertNotifiable should be implemented by TypeComponent types that want
+// to be notified of component changes.
+type UpsertNotifiable interface {
+
+	// OnUpsert is called when the component is first instantiated and whenever
+	// the properties have changed.
+	OnUpsert()
+}
+
 // DeleteNotifiable should be implemented by TypeComponent types that want
 // to be notified of component deletion.
 type DeleteNotifiable interface {
@@ -102,6 +111,9 @@ func DefineType(template TypeComponent) Component {
 				if notifiable, ok := presenter.(CreateNotifiable); ok {
 					notifiable.OnCreate()
 				}
+				if notifiable, ok := presenter.(UpsertNotifiable); ok {
+					notifiable.OnUpsert()
+				}
 			})
 
 			var justDeleted bool
@@ -118,6 +130,9 @@ func DefineType(template TypeComponent) Component {
 				if notifiable, ok := presenter.(UpdateNotifiable); ok {
 					notifiable.OnUpdate()
 				}
+				if notifiable, ok := presenter.(UpsertNotifiable); ok {
+					notifiable.OnUpsert()
+				}
 			}
 
 			return presenter.Render()
@@ -132,8 +147,10 @@ func newTypeComponentDefinition(reflType reflect.Type) typeComponentDefinition {
 
 	var (
 		scopeFieldIndices        []int
+		propertiesFieldIndices   []int
 		dataFieldIndices         []int
 		callbackDataFieldIndices []int
+		childrenFieldIndices     []int
 		layoutDataFieldIndices   []int
 		invalidateFieldIndices   []int
 	)
@@ -144,12 +161,16 @@ func newTypeComponentDefinition(reflType reflect.Type) typeComponentDefinition {
 			switch tag := field.Tag.Get("co"); tag {
 			case "":
 				// no tag
+			case "props", "properties":
+				propertiesFieldIndices = append(propertiesFieldIndices, i)
 			case "scope":
 				scopeFieldIndices = append(scopeFieldIndices, i)
 			case "data":
 				dataFieldIndices = append(dataFieldIndices, i)
 			case "callback":
 				callbackDataFieldIndices = append(callbackDataFieldIndices, i)
+			case "children":
+				childrenFieldIndices = append(childrenFieldIndices, i)
 			case "layout":
 				layoutDataFieldIndices = append(layoutDataFieldIndices, i)
 			case "invalidate":
@@ -164,8 +185,10 @@ func newTypeComponentDefinition(reflType reflect.Type) typeComponentDefinition {
 		reflType:                 reflType,
 		name:                     fmt.Sprintf("%s.%s", reflType.PkgPath(), reflType.Name()),
 		scopeFieldIndices:        scopeFieldIndices,
+		propertiesFieldIndices:   propertiesFieldIndices,
 		dataFieldIndices:         dataFieldIndices,
 		callbackDataFieldIndices: callbackDataFieldIndices,
+		childrenFieldIndices:     childrenFieldIndices,
 		layoutDataFieldIndices:   layoutDataFieldIndices,
 		invalidateFieldIndices:   invalidateFieldIndices,
 	}
@@ -175,8 +198,10 @@ type typeComponentDefinition struct {
 	reflType                 reflect.Type
 	name                     string
 	scopeFieldIndices        []int
+	propertiesFieldIndices   []int
 	dataFieldIndices         []int
 	callbackDataFieldIndices []int
+	childrenFieldIndices     []int
 	layoutDataFieldIndices   []int
 	invalidateFieldIndices   []int
 }
@@ -193,6 +218,9 @@ func (d typeComponentDefinition) AssignProperties(target reflect.Value, invalida
 	for _, index := range d.scopeFieldIndices {
 		target.Field(index).Set(reflect.ValueOf(scope))
 	}
+	for _, index := range d.propertiesFieldIndices {
+		target.Field(index).Set(reflect.ValueOf(props))
+	}
 	if value := props.data; value != nil {
 		for _, index := range d.dataFieldIndices {
 			target.Field(index).Set(reflect.ValueOf(value))
@@ -207,6 +235,9 @@ func (d typeComponentDefinition) AssignProperties(target reflect.Value, invalida
 		for _, index := range d.layoutDataFieldIndices {
 			target.Field(index).Set(reflect.ValueOf(value))
 		}
+	}
+	for _, index := range d.childrenFieldIndices {
+		target.Field(index).Set(reflect.ValueOf(props.children))
 	}
 	for _, index := range d.invalidateFieldIndices {
 		target.Field(index).Set(reflect.ValueOf(invalidate))
