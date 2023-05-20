@@ -12,6 +12,8 @@ type HorizontalLayoutSettings struct {
 }
 
 // NewHorizontalLayout creates a new HorizontalLayout instance.
+//
+// Deprecated: Use layout.Horizontal
 func NewHorizontalLayout(settings HorizontalLayoutSettings) *HorizontalLayout {
 	return &HorizontalLayout{
 		contentAlignment: settings.ContentAlignment,
