@@ -4,6 +4,7 @@ import (
 	"github.com/mokiat/gomath/sprec"
 	"github.com/mokiat/lacking/ui"
 	co "github.com/mokiat/lacking/ui/component"
+	"github.com/mokiat/lacking/ui/layout"
 )
 
 var (
@@ -18,7 +19,7 @@ type PaperData struct {
 }
 
 var defaultPaperData = PaperData{
-	Layout: NewFillLayout(),
+	Layout: layout.Fill(),
 }
 
 // Paper represents an outlined container.

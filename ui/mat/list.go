@@ -3,6 +3,7 @@ package mat
 import (
 	"github.com/mokiat/gog/opt"
 	co "github.com/mokiat/lacking/ui/component"
+	"github.com/mokiat/lacking/ui/layout"
 )
 
 var (
@@ -15,8 +16,8 @@ var List = co.Define(func(props co.Properties, scope co.Scope) co.Instance {
 	return co.New(Container, func() {
 		co.WithData(ContainerData{
 			BackgroundColor: opt.V(SurfaceColor),
-			Layout: NewVerticalLayout(VerticalLayoutSettings{
-				ContentAlignment: AlignmentLeft,
+			Layout: layout.Vertical(layout.VerticalSettings{
+				ContentAlignment: layout.HorizontalAlignmentLeft,
 				ContentSpacing:   ListItemSpacing,
 			}),
 		})

@@ -77,6 +77,10 @@ func DefineType(template TypeComponent) Component {
 		componentType: definition.Name(),
 		componentFunc: func(props Properties, scope Scope) Instance {
 			presenter := UseState(func() TypeComponent {
+				// TODO: Consider instantiating the ui Element here and assign it to the
+				// instance, if the instance has an `element` tag. That way the element
+				// will be available from the beginning, even if not initially attached.
+
 				return definition.NewInstance()
 			}).Get()
 

@@ -5,6 +5,7 @@ import (
 	"github.com/mokiat/gomath/sprec"
 	"github.com/mokiat/lacking/ui"
 	co "github.com/mokiat/lacking/ui/component"
+	"github.com/mokiat/lacking/ui/layout"
 )
 
 var (
@@ -44,7 +45,7 @@ var TabbarTab = co.Define(func(props co.Properties, scope co.Scope) co.Instance 
 	var (
 		data         = co.GetOptionalData(props, defaultTabbarTabData)
 		callbackData = co.GetOptionalCallbackData(props, defaultTabbarTabCallbackData)
-		layoutData   = co.GetOptionalLayoutData(props, LayoutData{})
+		layoutData   = co.GetOptionalLayoutData(props, layout.Data{})
 	)
 
 	essence := co.UseState(func() *tabbarTabEssence {
@@ -66,8 +67,8 @@ var TabbarTab = co.Define(func(props co.Properties, scope co.Scope) co.Instance 
 	return co.New(Element, func() {
 		co.WithData(ElementData{
 			Essence: essence,
-			Layout: NewHorizontalLayout(HorizontalLayoutSettings{
-				ContentAlignment: AlignmentCenter,
+			Layout: layout.Horizontal(layout.HorizontalSettings{
+				ContentAlignment: layout.VerticalAlignmentCenter,
 				ContentSpacing:   TabbarTabContentSpacing,
 			}),
 			Padding: ui.Spacing{
@@ -85,7 +86,7 @@ var TabbarTab = co.Define(func(props co.Properties, scope co.Scope) co.Instance 
 					ImageColor: opt.V(OnSurfaceColor),
 					Mode:       ImageModeFit,
 				})
-				co.WithLayoutData(LayoutData{
+				co.WithLayoutData(layout.Data{
 					Width:  opt.V(TabbarTabIconSize),
 					Height: opt.V(TabbarTabIconSize),
 				})
@@ -107,10 +108,10 @@ var TabbarTab = co.Define(func(props co.Properties, scope co.Scope) co.Instance 
 			co.WithChild("close", co.New(Element, func() {
 				co.WithData(ElementData{
 					Essence: closeButtonEssence,
-					Layout:  NewFillLayout(),
+					Layout:  layout.Fill(),
 				})
 
-				co.WithLayoutData(LayoutData{
+				co.WithLayoutData(layout.Data{
 					Width:  opt.V(TabbarTabIconSize),
 					Height: opt.V(TabbarTabIconSize),
 				})

@@ -5,6 +5,7 @@ import (
 	"github.com/mokiat/gomath/dprec"
 	"github.com/mokiat/lacking/ui"
 	co "github.com/mokiat/lacking/ui/component"
+	"github.com/mokiat/lacking/ui/layout"
 )
 
 // ScrollPaneData holds the available configuration options for the
@@ -71,7 +72,7 @@ func (e *scrollPaneEssence) Apply(element *ui.Element) {
 
 	contentBounds := element.ContentBounds()
 	for childElement := element.FirstChild(); childElement != nil; childElement = childElement.RightSibling() {
-		layoutConfig := ElementLayoutData(childElement)
+		layoutConfig := layout.ElementData(childElement)
 
 		childSize := childElement.IdealSize()
 		if layoutConfig.Width.Specified {

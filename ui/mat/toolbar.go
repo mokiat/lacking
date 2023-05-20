@@ -5,6 +5,7 @@ import (
 	"github.com/mokiat/gomath/sprec"
 	"github.com/mokiat/lacking/ui"
 	co "github.com/mokiat/lacking/ui/component"
+	"github.com/mokiat/lacking/ui/layout"
 )
 
 var (
@@ -47,7 +48,7 @@ var defaultToolbarData = ToolbarData{}
 var Toolbar = co.Define(func(props co.Properties, scope co.Scope) co.Instance {
 	var (
 		data       = co.GetOptionalData(props, defaultToolbarData)
-		layoutData = co.GetOptionalLayoutData(props, LayoutData{})
+		layoutData = co.GetOptionalLayoutData(props, layout.Data{})
 	)
 
 	essence := co.UseState(func() *toolbarEssence {
@@ -67,8 +68,8 @@ var Toolbar = co.Define(func(props co.Properties, scope co.Scope) co.Instance {
 				Top:    ToolbarBorderSize,
 				Bottom: ToolbarBorderSize,
 			},
-			Layout: NewHorizontalLayout(HorizontalLayoutSettings{
-				ContentAlignment: AlignmentCenter,
+			Layout: layout.Horizontal(layout.HorizontalSettings{
+				ContentAlignment: layout.VerticalAlignmentCenter,
 				ContentSpacing:   ToolbarItemSpacing,
 			}),
 		})
