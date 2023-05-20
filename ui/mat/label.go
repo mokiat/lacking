@@ -5,16 +5,13 @@ import (
 	"github.com/mokiat/gomath/sprec"
 	"github.com/mokiat/lacking/ui"
 	co "github.com/mokiat/lacking/ui/component"
-	"github.com/mokiat/lacking/ui/layout"
 )
 
 type LabelData struct {
-	Font                *ui.Font
-	FontSize            opt.T[float32]
-	FontColor           opt.T[ui.Color]
-	HorizontalAlignment layout.HorizontalAlignment
-	VerticalAlignment   layout.VerticalAlignment
-	Text                string
+	Font      *ui.Font
+	FontSize  opt.T[float32]
+	FontColor opt.T[ui.Color]
+	Text      string
 }
 
 var Label = co.Define(func(props co.Properties, scope co.Scope) co.Instance {

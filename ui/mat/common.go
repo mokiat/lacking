@@ -16,10 +16,3 @@ type ButtonState int
 
 // ClickListener can be used to get notifications about click events.
 type ClickListener func()
-
-func maxInt(a, b int) int {
-	if a > b {
-		return a
-	}
-	return b
-}
