@@ -4,6 +4,7 @@ import (
 	"github.com/mokiat/gog/opt"
 	"github.com/mokiat/lacking/ui"
 	co "github.com/mokiat/lacking/ui/component"
+	"github.com/mokiat/lacking/ui/layout"
 )
 
 var (
@@ -15,7 +16,7 @@ var (
 // Tabbar is a container intended to hold Tab components.
 var Tabbar = co.Define(func(props co.Properties, scope co.Scope) co.Instance {
 	var (
-		layoutData = co.GetOptionalLayoutData(props, LayoutData{})
+		layoutData = co.GetOptionalLayoutData(props, layout.Data{})
 	)
 
 	// force specific height
@@ -28,8 +29,8 @@ var Tabbar = co.Define(func(props co.Properties, scope co.Scope) co.Instance {
 				Left:  TabbarSidePadding,
 				Right: TabbarSidePadding,
 			},
-			Layout: NewHorizontalLayout(HorizontalLayoutSettings{
-				ContentAlignment: AlignmentCenter,
+			Layout: layout.Horizontal(layout.HorizontalSettings{
+				ContentAlignment: layout.VerticalAlignmentCenter,
 				ContentSpacing:   TabbarItemSpacing,
 			}),
 		})

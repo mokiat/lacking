@@ -5,6 +5,7 @@ import (
 	"github.com/mokiat/gomath/sprec"
 	"github.com/mokiat/lacking/ui"
 	co "github.com/mokiat/lacking/ui/component"
+	"github.com/mokiat/lacking/ui/layout"
 )
 
 var (
@@ -38,7 +39,7 @@ var defaultButtonCallbackData = ButtonCallbackData{
 var Button = co.Define(func(props co.Properties, scope co.Scope) co.Instance {
 	var (
 		data         = co.GetOptionalData(props, defaultButtonData)
-		layoutData   = co.GetOptionalLayoutData(props, LayoutData{})
+		layoutData   = co.GetOptionalLayoutData(props, layout.Data{})
 		callbackData = co.GetOptionalCallbackData(props, defaultButtonCallbackData)
 	)
 
@@ -59,8 +60,8 @@ var Button = co.Define(func(props co.Properties, scope co.Scope) co.Instance {
 	return co.New(Element, func() {
 		co.WithData(ElementData{
 			Essence: essence,
-			Layout: NewHorizontalLayout(HorizontalLayoutSettings{
-				ContentAlignment: AlignmentCenter,
+			Layout: layout.Horizontal(layout.HorizontalSettings{
+				ContentAlignment: layout.VerticalAlignmentCenter,
 				ContentSpacing:   ButtonContentSpacing,
 			}),
 			Padding: ui.Spacing{
@@ -78,7 +79,7 @@ var Button = co.Define(func(props co.Properties, scope co.Scope) co.Instance {
 					ImageColor: opt.V(foregroundColor),
 					Mode:       ImageModeFit,
 				})
-				co.WithLayoutData(LayoutData{
+				co.WithLayoutData(layout.Data{
 					Width:  opt.V(ButtonIconSize),
 					Height: opt.V(ButtonIconSize),
 				})
@@ -93,7 +94,7 @@ var Button = co.Define(func(props co.Properties, scope co.Scope) co.Instance {
 					FontColor: opt.V(foregroundColor),
 					Text:      data.Text,
 				})
-				co.WithLayoutData(LayoutData{})
+				co.WithLayoutData(layout.Data{})
 			}))
 		}
 	})

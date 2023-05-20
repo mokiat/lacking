@@ -5,6 +5,7 @@ import (
 	"github.com/mokiat/gomath/sprec"
 	"github.com/mokiat/lacking/ui"
 	co "github.com/mokiat/lacking/ui/component"
+	"github.com/mokiat/lacking/ui/layout"
 )
 
 var (
@@ -38,7 +39,7 @@ var defaultEditboxCallbackData = EditboxCallbackData{
 var Editbox = co.Define(func(props co.Properties, scope co.Scope) co.Instance {
 	var (
 		data         = co.GetOptionalData(props, defaultEditboxData)
-		layoutData   = co.GetOptionalLayoutData(props, LayoutData{})
+		layoutData   = co.GetOptionalLayoutData(props, layout.Data{})
 		callbackData = co.GetOptionalCallbackData(props, defaultEditboxCallbackData)
 	)
 

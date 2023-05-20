@@ -75,8 +75,8 @@ var Accordion = co.Define(func(props co.Properties, scope co.Scope) co.Instance 
 					Top:    AccordionHeaderPadding,
 					Bottom: AccordionHeaderPadding,
 				},
-				Layout: NewHorizontalLayout(HorizontalLayoutSettings{
-					ContentAlignment: AlignmentCenter,
+				Layout: layout.Horizontal(layout.HorizontalSettings{
+					ContentAlignment: layout.VerticalAlignmentCenter,
 					ContentSpacing:   AccordionHeaderContentSpacing,
 				}),
 			})
@@ -87,7 +87,7 @@ var Accordion = co.Define(func(props co.Properties, scope co.Scope) co.Instance 
 					ImageColor: opt.V(OnPrimaryLightColor),
 					Mode:       ImageModeFit,
 				})
-				co.WithLayoutData(LayoutData{
+				co.WithLayoutData(layout.Data{
 					Width:  opt.V(AccordionHeaderIconSize),
 					Height: opt.V(AccordionHeaderIconSize),
 				})
