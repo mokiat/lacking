@@ -6,7 +6,6 @@ import (
 	"github.com/mokiat/lacking/ui"
 	co "github.com/mokiat/lacking/ui/component"
 	"github.com/mokiat/lacking/ui/layout"
-	"github.com/mokiat/lacking/ui/mat"
 )
 
 var (
@@ -89,11 +88,11 @@ func (c *ButtonComponent) Render() co.Instance {
 		})
 
 		if c.icon != nil {
-			co.WithChild("icon", co.New(mat.Picture, func() {
-				co.WithData(mat.PictureData{
+			co.WithChild("icon", co.New(Picture, func() {
+				co.WithData(PictureData{
 					Image:      c.icon,
 					ImageColor: opt.V(foregroundColor),
-					Mode:       mat.ImageModeFit,
+					Mode:       ImageModeFit,
 				})
 				co.WithLayoutData(layout.Data{
 					Width:  opt.V(ButtonIconSize),
@@ -103,8 +102,8 @@ func (c *ButtonComponent) Render() co.Instance {
 		}
 
 		if c.text != "" {
-			co.WithChild("text", co.New(mat.Label, func() {
-				co.WithData(mat.LabelData{
+			co.WithChild("text", co.New(Label, func() {
+				co.WithData(LabelData{
 					Font:      co.OpenFont(c.Scope, ButtonFontFile),
 					FontSize:  opt.V(float32(ButtonFontSize)),
 					FontColor: opt.V(foregroundColor),
