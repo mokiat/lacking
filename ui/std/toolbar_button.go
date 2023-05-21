@@ -30,7 +30,7 @@ var toolbarButtonDefaultData = ToolbarButtonData{}
 // ToolbarButtonCallbackData holds the callback handlers for a
 // ToolbarButton component.
 type ToolbarButtonCallbackData struct {
-	OnClick OnClickFunc
+	OnClick OnActionFunc
 }
 
 var toolbarButtonDefaultCallbackData = ToolbarButtonCallbackData{
@@ -59,7 +59,7 @@ func (c *ToolbarButtonComponent) OnUpsert() {
 	c.isSelected = data.Selected
 
 	callbackData := co.GetOptionalCallbackData(c.Properties, toolbarButtonDefaultCallbackData)
-	c.SetOnClickListener(callbackData.OnClick)
+	c.SetOnClickFunc(callbackData.OnClick)
 }
 
 func (c *ToolbarButtonComponent) Render() co.Instance {

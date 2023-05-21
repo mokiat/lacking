@@ -31,8 +31,8 @@ var tabbarTabDefaultData = TabbarTabData{}
 
 // TabbarTabCallbackData holds the callback data for a TabbarTab component.
 type TabbarTabCallbackData struct {
-	OnClick OnClickFunc
-	OnClose OnClickFunc
+	OnClick OnActionFunc
+	OnClose OnActionFunc
 }
 
 var tabbarTabDefaultCallbackData = TabbarTabCallbackData{
@@ -60,8 +60,8 @@ func (c *TabbarTabComponent) OnUpsert() {
 	c.main.isSelected = data.Selected
 
 	callbackData := co.GetOptionalCallbackData(c.Properties, tabbarTabDefaultCallbackData)
-	c.main.SetOnClickListener(callbackData.OnClick)
-	c.close.SetOnClickListener(callbackData.OnClose)
+	c.main.SetOnClickFunc(callbackData.OnClick)
+	c.close.SetOnClickFunc(callbackData.OnClose)
 }
 
 func (c *TabbarTabComponent) Render() co.Instance {

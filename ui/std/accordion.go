@@ -28,7 +28,7 @@ var accordionDefaultData = AccordionData{}
 
 // AccordionCallbackData holds the callback data for an Accordion container.
 type AccordionCallbackData struct {
-	OnToggle OnClickFunc
+	OnToggle OnActionFunc
 }
 
 var accordionDefaultCallbackData = AccordionCallbackData{
@@ -59,7 +59,7 @@ func (c *AccordionComponent) OnUpsert() {
 	c.title = data.Title
 
 	callbackData := co.GetOptionalCallbackData(c.Properties, accordionDefaultCallbackData)
-	c.SetOnClickListener(callbackData.OnToggle)
+	c.SetOnClickFunc(callbackData.OnToggle)
 }
 
 func (c *AccordionComponent) Render() co.Instance {

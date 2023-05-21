@@ -20,7 +20,7 @@ var listItemDefaultData = ListItemData{}
 
 // ListItemCallbackData holds the callback data for a ListItem component.
 type ListItemCallbackData struct {
-	OnSelected OnClickFunc
+	OnSelected OnActionFunc
 }
 
 var listItemDefaultCallbackData = ListItemCallbackData{
@@ -43,7 +43,7 @@ func (c *ListItemComponent) OnUpsert() {
 	c.isSelected = data.Selected
 
 	callbackData := co.GetOptionalCallbackData(c.Properties, listItemDefaultCallbackData)
-	c.SetOnClickListener(callbackData.OnSelected)
+	c.SetOnClickFunc(callbackData.OnSelected)
 }
 
 func (c *ListItemComponent) Render() co.Instance {

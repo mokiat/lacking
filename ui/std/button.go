@@ -17,8 +17,8 @@ var (
 	ButtonFontSize       = float32(18)
 )
 
-// OnClickFunc can be used to get notifications about click events.
-type OnClickFunc func()
+// OnActionFunc can be used to get notifications about action (click) events.
+type OnActionFunc func()
 
 // ButtonData holds the data for the Button component.
 type ButtonData struct {
@@ -31,7 +31,7 @@ var buttonDefaultData = ButtonData{}
 
 // ButtonCallbackData holds the callback data for the Button component.
 type ButtonCallbackData struct {
-	OnClick OnClickFunc
+	OnClick OnActionFunc
 }
 
 var buttonDefaultCallbackData = ButtonCallbackData{
@@ -59,7 +59,7 @@ func (c *ButtonComponent) OnUpsert() {
 	c.isEnabled = !data.Enabled.Specified || data.Enabled.Value
 
 	callbackData := co.GetOptionalCallbackData(c.Properties, buttonDefaultCallbackData)
-	c.SetOnClickListener(callbackData.OnClick)
+	c.SetOnClickFunc(callbackData.OnClick)
 }
 
 func (c *ButtonComponent) Render() co.Instance {
@@ -168,15 +168,15 @@ const (
 // that can do the actual rendering.
 type BaseButtonComponent struct {
 	state   ButtonState
-	onClick OnClickFunc
+	onClick OnActionFunc
 }
 
-func (c *BaseButtonComponent) OnClickListener() OnClickFunc {
+func (c *BaseButtonComponent) OnClickFunc() OnActionFunc {
 	return c.onClick
 }
 
-func (c *BaseButtonComponent) SetOnClickListener(onClick OnClickFunc) {
-	c.onClick = onClick
+func (c *BaseButtonComponent) SetOnClickFunc(onAction OnActionFunc) {
+	c.onClick = onAction
 }
 
 func (c *BaseButtonComponent) State() ButtonState {
