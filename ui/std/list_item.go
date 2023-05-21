@@ -1,4 +1,4 @@
-package mat
+package std
 
 import (
 	"github.com/mokiat/gomath/sprec"
@@ -16,58 +16,56 @@ type ListItemData struct {
 	Selected bool
 }
 
-var defaultListItemData = ListItemData{}
+var listItemDefaultData = ListItemData{}
 
 // ListItemCallbackData holds the callback data for a ListItem component.
 type ListItemCallbackData struct {
-	OnSelected func()
+	OnSelected OnClickFunc
 }
 
-var defaultListItemCallbackData = ListItemCallbackData{
+var listItemDefaultCallbackData = ListItemCallbackData{
 	OnSelected: func() {},
 }
 
 // ListItem represents a component to be displayed in a List.
-var ListItem = co.Define(func(props co.Properties, scope co.Scope) co.Instance {
-	var (
-		data         = co.GetOptionalData(props, defaultListItemData)
-		callbackData = co.GetOptionalCallbackData(props, defaultListItemCallbackData)
-	)
+var ListItem = co.DefineType(&ListItemComponent{})
 
-	essence := co.UseState(func() *listItemEssence {
-		return &listItemEssence{
-			ButtonBaseEssence: NewButtonBaseEssence(callbackData.OnSelected),
-		}
-	}).Get()
-	essence.selected = data.Selected
+type ListItemComponent struct {
+	BaseButtonComponent
 
-	return co.New(Element, func() {
-		co.WithData(ElementData{
+	Properties co.Properties `co:"properties"`
+
+	isSelected bool
+}
+
+func (c *ListItemComponent) OnUpsert() {
+	data := co.GetOptionalData(c.Properties, listItemDefaultData)
+	c.isSelected = data.Selected
+
+	callbackData := co.GetOptionalCallbackData(c.Properties, listItemDefaultCallbackData)
+	c.SetOnClickListener(callbackData.OnSelected)
+}
+
+func (c *ListItemComponent) Render() co.Instance {
+	return co.New(co.Element, func() {
+		co.WithLayoutData(c.Properties.LayoutData())
+		co.WithData(co.ElementData{
 			Padding: ui.Spacing{
 				Left:   ListItemPadding,
 				Right:  ListItemPadding,
 				Top:    ListItemPadding,
 				Bottom: ListItemPadding,
 			},
-			Essence: essence,
+			Essence: c,
 			Layout:  layout.Fill(),
 		})
-		co.WithLayoutData(props.LayoutData())
-		co.WithChildren(props.Children())
+		co.WithChildren(c.Properties.Children())
 	})
-})
-
-var _ ui.ElementRenderHandler = (*listItemEssence)(nil)
-
-type listItemEssence struct {
-	*ButtonBaseEssence
-
-	selected bool
 }
 
-func (e *listItemEssence) OnRender(element *ui.Element, canvas *ui.Canvas) {
+func (c *ListItemComponent) OnRender(element *ui.Element, canvas *ui.Canvas) {
 	var backgroundColor ui.Color
-	switch e.State() {
+	switch c.State() {
 	case ButtonStateOver:
 		backgroundColor = HoverOverlayColor
 	case ButtonStateDown:
@@ -75,7 +73,7 @@ func (e *listItemEssence) OnRender(element *ui.Element, canvas *ui.Canvas) {
 	default:
 		backgroundColor = ui.Transparent()
 	}
-	if e.selected {
+	if c.isSelected {
 		backgroundColor = SecondaryColor
 	}
 

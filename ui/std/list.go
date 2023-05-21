@@ -1,4 +1,4 @@
-package mat
+package std
 
 import (
 	"github.com/mokiat/gog/opt"
@@ -12,8 +12,15 @@ var (
 
 // List represents a container that holds a sequence of ListItem
 // components in a vertical orientation.
-var List = co.Define(func(props co.Properties, scope co.Scope) co.Instance {
+var List = co.DefineType(&ListComponent{})
+
+type ListComponent struct {
+	Properties co.Properties `co:"properties"`
+}
+
+func (c *ListComponent) Render() co.Instance {
 	return co.New(Container, func() {
+		co.WithLayoutData(c.Properties.LayoutData())
 		co.WithData(ContainerData{
 			BackgroundColor: opt.V(SurfaceColor),
 			Layout: layout.Vertical(layout.VerticalSettings{
@@ -21,7 +28,6 @@ var List = co.Define(func(props co.Properties, scope co.Scope) co.Instance {
 				ContentSpacing:   ListItemSpacing,
 			}),
 		})
-		co.WithLayoutData(props.LayoutData())
-		co.WithChildren(props.Children())
+		co.WithChildren(c.Properties.Children())
 	})
-})
+}
