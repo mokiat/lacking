@@ -1,4 +1,4 @@
-package mat
+package std
 
 import (
 	"github.com/mokiat/gomath/sprec"
@@ -18,22 +18,30 @@ type PaperData struct {
 	Layout ui.Layout
 }
 
-var defaultPaperData = PaperData{
+var paperDefaultData = PaperData{
 	Layout: layout.Fill(),
 }
 
 // Paper represents an outlined container.
-var Paper = co.Define(func(props co.Properties, scope co.Scope) co.Instance {
-	data := co.GetOptionalData(props, defaultPaperData)
+var Paper = co.DefineType(&PaperComponent{})
 
-	essenceState := co.UseState(func() *paperEssence {
-		return &paperEssence{}
-	})
+type PaperComponent struct {
+	Properties co.Properties `co:"properties"`
 
+	layout ui.Layout
+}
+
+func (c *PaperComponent) OnUpsert() {
+	data := co.GetOptionalData(c.Properties, paperDefaultData)
+	c.layout = data.Layout
+}
+
+func (c *PaperComponent) Render() co.Instance {
 	return co.New(co.Element, func() {
+		co.WithLayoutData(c.Properties.LayoutData())
 		co.WithData(co.ElementData{
-			Essence: essenceState.Get(),
-			Layout:  data.Layout,
+			Essence: c,
+			Layout:  c.layout,
 			Padding: ui.Spacing{
 				Left:   PaperPadding,
 				Right:  PaperPadding,
@@ -41,16 +49,11 @@ var Paper = co.Define(func(props co.Properties, scope co.Scope) co.Instance {
 				Bottom: PaperPadding,
 			},
 		})
-		co.WithLayoutData(props.LayoutData())
-		co.WithChildren(props.Children())
+		co.WithChildren(c.Properties.Children())
 	})
-})
+}
 
-var _ ui.ElementRenderHandler = (*paperEssence)(nil)
-
-type paperEssence struct{}
-
-func (e *paperEssence) OnRender(element *ui.Element, canvas *ui.Canvas) {
+func (c *PaperComponent) OnRender(element *ui.Element, canvas *ui.Canvas) {
 	bounds := element.Bounds()
 	size := sprec.NewVec2(
 		float32(bounds.Width),

@@ -33,8 +33,8 @@ var dropdownItem = co.Define(func(props co.Properties, scope co.Scope) co.Instan
 	}).Get()
 	essence.selected = data.Selected
 
-	return co.New(Element, func() {
-		co.WithData(ElementData{
+	return co.New(co.Element, func() {
+		co.WithData(co.ElementData{
 			Padding: ui.Spacing{
 				Left: DropdownItemIndicatorSize + DropdownItemIndicatorPadding,
 			},

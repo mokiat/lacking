@@ -1,4 +1,4 @@
-package mat
+package std
 
 import (
 	"github.com/mokiat/gog/opt"
@@ -24,51 +24,59 @@ type AccordionData struct {
 	Expanded bool
 }
 
-var defaultAccordionData = AccordionData{}
+var accordionDefaultData = AccordionData{}
 
 // AccordionCallbackData holds the callback data for an Accordion container.
 type AccordionCallbackData struct {
-	OnToggle func()
+	OnToggle OnClickFunc
 }
 
-var defaultAccordionCallbackData = AccordionCallbackData{
+var accordionDefaultCallbackData = AccordionCallbackData{
 	OnToggle: func() {},
 }
 
-// Accordion is a container that hides a big chunk of UI until it is expanded.
-var Accordion = co.Define(func(props co.Properties, scope co.Scope) co.Instance {
-	var (
-		data         = co.GetOptionalData(props, defaultAccordionData)
-		callbackData = co.GetOptionalCallbackData(props, defaultAccordionCallbackData)
-	)
+var Accordion = co.DefineType(&AccordionComponent{})
 
-	headerEssence := co.UseState(func() *accordionHeaderEssence {
-		return &accordionHeaderEssence{
-			ButtonBaseEssence: NewButtonBaseEssence(callbackData.OnToggle),
-		}
-	}).Get()
+type AccordionComponent struct {
+	BaseButtonComponent
 
-	var icon *ui.Image
+	Scope      co.Scope      `co:"scope"`
+	Properties co.Properties `co:"properties"`
+
+	icon       *ui.Image
+	title      string
+	isExpanded bool
+}
+
+func (c *AccordionComponent) OnUpsert() {
+	data := co.GetOptionalData(c.Properties, accordionDefaultData)
 	if data.Expanded {
-		icon = co.OpenImage(scope, AccordionExpandedIconFile)
+		c.icon = co.OpenImage(c.Scope, AccordionExpandedIconFile)
 	} else {
-		icon = co.OpenImage(scope, AccordionCollapsedIconFile)
+		c.icon = co.OpenImage(c.Scope, AccordionCollapsedIconFile)
 	}
+	c.isExpanded = data.Expanded
+	c.title = data.Title
 
-	return co.New(Element, func() {
-		co.WithData(ElementData{
+	callbackData := co.GetOptionalCallbackData(c.Properties, accordionDefaultCallbackData)
+	c.SetOnClickListener(callbackData.OnToggle)
+}
+
+func (c *AccordionComponent) Render() co.Instance {
+	return co.New(co.Element, func() {
+		co.WithLayoutData(c.Properties.LayoutData())
+		co.WithData(co.ElementData{
 			Layout: layout.Vertical(layout.VerticalSettings{
 				ContentAlignment: layout.HorizontalAlignmentLeft,
 			}),
 		})
-		co.WithLayoutData(props.LayoutData())
 
-		co.WithChild("header", co.New(Element, func() {
+		co.WithChild("header", co.New(co.Element, func() {
 			co.WithLayoutData(layout.Data{
 				GrowHorizontally: true,
 			})
-			co.WithData(ElementData{
-				Essence: headerEssence,
+			co.WithData(co.ElementData{
+				Essence: c,
 				Padding: ui.Spacing{
 					Left:   AccordionHeaderPadding,
 					Right:  AccordionHeaderPadding,
@@ -83,7 +91,7 @@ var Accordion = co.Define(func(props co.Properties, scope co.Scope) co.Instance 
 
 			co.WithChild("icon", co.New(Picture, func() {
 				co.WithData(PictureData{
-					Image:      icon,
+					Image:      c.icon,
 					ImageColor: opt.V(OnPrimaryLightColor),
 					Mode:       ImageModeFit,
 				})
@@ -95,31 +103,25 @@ var Accordion = co.Define(func(props co.Properties, scope co.Scope) co.Instance 
 
 			co.WithChild("title", co.New(Label, func() {
 				co.WithData(LabelData{
-					Font:      co.OpenFont(scope, AccordionHeaderFontFile),
+					Font:      co.OpenFont(c.Scope, AccordionHeaderFontFile),
 					FontSize:  opt.V(AccordionHeaderFontSize),
 					FontColor: opt.V(OnPrimaryLightColor),
-					Text:      data.Title,
+					Text:      c.title,
 				})
 			}))
 		}))
 
-		if data.Expanded {
-			for _, child := range props.Children() {
+		if c.isExpanded {
+			for _, child := range c.Properties.Children() {
 				co.WithChild(child.Key(), child)
 			}
 		}
 	})
-})
-
-var _ ui.ElementRenderHandler = (*accordionHeaderEssence)(nil)
-
-type accordionHeaderEssence struct {
-	*ButtonBaseEssence
 }
 
-func (e *accordionHeaderEssence) OnRender(element *ui.Element, canvas *ui.Canvas) {
+func (c *AccordionComponent) OnRender(element *ui.Element, canvas *ui.Canvas) {
 	var backgroundColor ui.Color
-	switch e.State() {
+	switch c.State() {
 	case ButtonStateOver:
 		backgroundColor = PrimaryLightColor.Overlay(HoverOverlayColor)
 	case ButtonStateDown:

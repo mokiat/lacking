@@ -51,8 +51,8 @@ var Viewport = co.Define(func(props co.Properties, scope co.Scope) co.Instance {
 	essence := co.UseLifecycle(func(handle co.LifecycleHandle) *viewportEssence {
 		return &viewportEssence{}
 	})
-	return co.New(Element, func() {
-		co.WithData(ElementData{
+	return co.New(co.Element, func() {
+		co.WithData(co.ElementData{
 			Essence:   essence,
 			Focusable: opt.V(true),
 		})

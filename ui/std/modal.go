@@ -1,4 +1,4 @@
-package mat
+package std
 
 import (
 	"github.com/mokiat/gog/opt"
@@ -6,9 +6,13 @@ import (
 	"github.com/mokiat/lacking/ui/layout"
 )
 
-// Modal is a helper container that can be used as an overlay. It creates
-// a dimmed background and central container.
-var Modal = co.Define(func(props co.Properties, scope co.Scope) co.Instance {
+var Modal = co.DefineType(&ModalComponent{})
+
+type ModalComponent struct {
+	Properties co.Properties `co:"properties"`
+}
+
+func (c *ModalComponent) Render() co.Instance {
 	return co.New(Container, func() {
 		co.WithData(ContainerData{
 			BackgroundColor: opt.V(ModalOverlayColor),
@@ -16,11 +20,11 @@ var Modal = co.Define(func(props co.Properties, scope co.Scope) co.Instance {
 		})
 
 		co.WithChild("content", co.New(Paper, func() {
-			co.WithLayoutData(props.LayoutData())
+			co.WithLayoutData(c.Properties.LayoutData())
 			co.WithData(PaperData{
 				Layout: layout.Frame(),
 			})
-			co.WithChildren(props.Children())
+			co.WithChildren(c.Properties.Children())
 		}))
 	})
-})
+}

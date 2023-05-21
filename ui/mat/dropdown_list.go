@@ -32,8 +32,8 @@ var dropdownList = co.Define(func(props co.Properties, scope co.Scope) co.Instan
 		}
 	}).Get()
 
-	return co.New(Element, func() {
-		co.WithData(ElementData{
+	return co.New(co.Element, func() {
+		co.WithData(co.ElementData{
 			Essence: essence,
 			Layout:  layout.Anchor(),
 		})

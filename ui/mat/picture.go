@@ -75,7 +75,7 @@ var Picture = co.Define(func(props co.Properties, scope co.Scope) co.Instance {
 		idealSize = opt.V(data.Image.Size())
 	}
 
-	return co.New(Element, func() {
+	return co.New(co.Element, func() {
 		co.WithData(co.ElementData{
 			Essence:   essence,
 			IdealSize: idealSize,

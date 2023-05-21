@@ -39,8 +39,8 @@ var Label = co.Define(func(props co.Properties, scope co.Scope) co.Instance {
 
 	txtSize := essence.font.TextSize(essence.text, essence.fontSize)
 
-	return co.New(Element, func() {
-		co.WithData(ElementData{
+	return co.New(co.Element, func() {
+		co.WithData(co.ElementData{
 			Essence:   essence,
 			IdealSize: opt.V(ui.NewSize(int(txtSize.X), int(txtSize.Y))),
 		})

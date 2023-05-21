@@ -1,4 +1,4 @@
-package mat
+package std
 
 import (
 	"github.com/mokiat/gog/opt"
@@ -22,7 +22,7 @@ type EditboxData struct {
 	Text string
 }
 
-var defaultEditboxData = EditboxData{}
+var editboxDefaultData = EditboxData{}
 
 // EditboxCallbackData holds the callback data for the Editbox component.
 type EditboxCallbackData struct {
@@ -31,89 +31,90 @@ type EditboxCallbackData struct {
 	OnChanged func(text string)
 }
 
-var defaultEditboxCallbackData = EditboxCallbackData{
+var editboxDefaultCallbackData = EditboxCallbackData{
 	OnChanged: func(text string) {},
 }
 
 // Editbox is a component that allows a user to input a string.
-var Editbox = co.Define(func(props co.Properties, scope co.Scope) co.Instance {
-	var (
-		data         = co.GetOptionalData(props, defaultEditboxData)
-		layoutData   = co.GetOptionalLayoutData(props, layout.Data{})
-		callbackData = co.GetOptionalCallbackData(props, defaultEditboxCallbackData)
-	)
+var Editbox = co.DefineType(&EditboxComponent{})
 
-	essence := co.UseState(func() *editboxEssence {
-		return &editboxEssence{}
-	}).Get()
-	essence.font = co.OpenFont(scope, EditboxFontFile)
-	essence.onChanged = callbackData.OnChanged
-	if data.Text != essence.text {
-		essence.text = data.Text
-		essence.volatileText = data.Text
+type EditboxComponent struct {
+	Scope      co.Scope      `co:"scope"`
+	Properties co.Properties `co:"properties"`
+
+	font         *ui.Font
+	textSize     sprec.Vec2
+	text         string
+	volatileText string
+
+	onChanged func(string)
+}
+
+func (c *EditboxComponent) OnUpsert() {
+	c.font = co.OpenFont(c.Scope, EditboxFontFile)
+
+	data := co.GetOptionalData(c.Properties, editboxDefaultData)
+	if data.Text != c.text {
+		c.text = data.Text
+		c.volatileText = data.Text
 	}
-	essence.textSize = essence.font.TextSize(data.Text, EditboxFontSize)
+	c.textSize = c.font.TextSize(c.text, EditboxFontSize)
 
+	callbackData := co.GetOptionalCallbackData(c.Properties, editboxDefaultCallbackData)
+	c.onChanged = callbackData.OnChanged
+}
+
+func (c *EditboxComponent) Render() co.Instance {
 	// force specific height
+	layoutData := co.GetOptionalLayoutData(c.Properties, layout.Data{})
 	layoutData.Height = opt.V(EditboxHeight)
 
-	return co.New(Element, func() {
-		co.WithData(ElementData{
-			Essence:   essence,
+	return co.New(co.Element, func() {
+		co.WithLayoutData(layoutData)
+		co.WithData(co.ElementData{
+			Essence:   c,
 			Focusable: opt.V(true),
 			IdealSize: opt.V(ui.NewSize(
 				EditboxMinWidth,
 				EditboxHeight,
 			)),
 		})
-		co.WithLayoutData(layoutData)
 	})
-})
-
-var _ ui.ElementKeyboardHandler = (*editboxEssence)(nil)
-var _ ui.ElementRenderHandler = (*editboxEssence)(nil)
-
-type editboxEssence struct {
-	text         string
-	textSize     sprec.Vec2
-	volatileText string
-	font         *ui.Font
-	onChanged    func(string)
 }
 
-func (e *editboxEssence) OnKeyboardEvent(element *ui.Element, event ui.KeyboardEvent) bool {
+func (c *EditboxComponent) OnKeyboardEvent(element *ui.Element, event ui.KeyboardEvent) bool {
 	switch event.Type {
 	case ui.KeyboardEventTypeKeyDown, ui.KeyboardEventTypeRepeat:
 		switch event.Code {
 		case ui.KeyCodeBackspace:
-			if len(e.volatileText) > 0 {
-				e.volatileText = e.volatileText[:len(e.volatileText)-1]
+			if len(c.volatileText) > 0 {
+				c.volatileText = c.volatileText[:len(c.volatileText)-1]
 				element.Invalidate()
 			}
 		case ui.KeyCodeEscape:
-			e.volatileText = e.text
+			c.volatileText = c.text
 			element.Window().DiscardFocus()
 		case ui.KeyCodeEnter:
-			e.text = e.volatileText
-			e.onChanged(e.text)
+			c.text = c.volatileText
+			c.onChanged(c.text)
 			element.Window().DiscardFocus()
 		}
 	case ui.KeyboardEventTypeType:
-		e.volatileText += string(event.Rune)
+		c.volatileText += string(event.Rune)
 		element.Invalidate()
 	}
 	return true
 }
 
-func (e *editboxEssence) OnRender(element *ui.Element, canvas *ui.Canvas) {
+func (c *EditboxComponent) OnRender(element *ui.Element, canvas *ui.Canvas) {
 	var strokeColor ui.Color
 	var text string
 	if element.Window().IsElementFocused(element) {
 		strokeColor = SecondaryColor
-		text = e.volatileText + "|"
+		text = c.volatileText + "|"
 	} else {
 		strokeColor = PrimaryLightColor
-		text = e.volatileText
+		text = c.volatileText
 	}
 
 	size := element.Bounds().Size
@@ -133,12 +134,12 @@ func (e *editboxEssence) OnRender(element *ui.Element, canvas *ui.Canvas) {
 	})
 	canvas.Stroke()
 
-	textPosition := sprec.NewVec2(5, (height-e.textSize.Y)/2)
+	textPosition := sprec.NewVec2(5, (height-c.textSize.Y)/2)
 	canvas.Push()
 	canvas.SetClipRect(5, width-5, 2, height-2)
 	canvas.Reset()
 	canvas.FillText(text, textPosition, ui.Typography{
-		Font:  e.font,
+		Font:  c.font,
 		Size:  EditboxFontSize,
 		Color: OnSurfaceColor,
 	})
