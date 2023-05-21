@@ -1,4 +1,4 @@
-package mat
+package std
 
 import (
 	"github.com/mokiat/gog/opt"
@@ -13,16 +13,19 @@ var (
 	TabbarSidePadding = 5
 )
 
-// Tabbar is a container intended to hold Tab components.
-var Tabbar = co.Define(func(props co.Properties, scope co.Scope) co.Instance {
-	var (
-		layoutData = co.GetOptionalLayoutData(props, layout.Data{})
-	)
+var Tabbar = co.DefineType(&TabbarComponent{})
 
+type TabbarComponent struct {
+	Properties co.Properties `co:"properties"`
+}
+
+func (c *TabbarComponent) Render() co.Instance {
 	// force specific height
+	layoutData := co.GetOptionalLayoutData(c.Properties, layout.Data{})
 	layoutData.Height = opt.V(TabbarHeight)
 
 	return co.New(Container, func() {
+		co.WithLayoutData(layoutData)
 		co.WithData(ContainerData{
 			BackgroundColor: opt.V(PrimaryLightColor),
 			Padding: ui.Spacing{
@@ -34,8 +37,6 @@ var Tabbar = co.Define(func(props co.Properties, scope co.Scope) co.Instance {
 				ContentSpacing:   TabbarItemSpacing,
 			}),
 		})
-
-		co.WithLayoutData(layoutData)
-		co.WithChildren(props.Children())
+		co.WithChildren(c.Properties.Children())
 	})
-})
+}

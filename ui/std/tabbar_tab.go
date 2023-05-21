@@ -1,4 +1,4 @@
-package mat
+package std
 
 import (
 	"github.com/mokiat/gog/opt"
@@ -27,46 +27,52 @@ type TabbarTabData struct {
 	Selected bool
 }
 
-var defaultTabbarTabData = TabbarTabData{}
+var tabbarTabDefaultData = TabbarTabData{}
 
 // TabbarTabCallbackData holds the callback data for a TabbarTab component.
 type TabbarTabCallbackData struct {
-	OnClick func()
-	OnClose func()
+	OnClick OnClickFunc
+	OnClose OnClickFunc
 }
 
-var defaultTabbarTabCallbackData = TabbarTabCallbackData{
+var tabbarTabDefaultCallbackData = TabbarTabCallbackData{
 	OnClick: func() {},
 	OnClose: func() {},
 }
 
-// TabbarTab is a tab component to be placed inside a Tabbar.
-var TabbarTab = co.Define(func(props co.Properties, scope co.Scope) co.Instance {
-	var (
-		data         = co.GetOptionalData(props, defaultTabbarTabData)
-		callbackData = co.GetOptionalCallbackData(props, defaultTabbarTabCallbackData)
-		layoutData   = co.GetOptionalLayoutData(props, layout.Data{})
-	)
+var TabbarTab = co.DefineType(&TabbarTabComponent{})
 
-	essence := co.UseState(func() *tabbarTabEssence {
-		return &tabbarTabEssence{
-			ButtonBaseEssence: NewButtonBaseEssence(callbackData.OnClick),
-		}
-	}).Get()
-	essence.selected = data.Selected
+type TabbarTabComponent struct {
+	Scope      co.Scope      `co:"scope"`
+	Properties co.Properties `co:"properties"`
 
-	closeButtonEssence := co.UseState(func() *tabbarTabCloseButtonEssence {
-		return &tabbarTabCloseButtonEssence{
-			ButtonBaseEssence: NewButtonBaseEssence(callbackData.OnClose),
-		}
-	}).Get()
+	main  tabbarTabMainComponent
+	close tabbarTabCloseComponent
 
+	icon *ui.Image
+	text string
+}
+
+func (c *TabbarTabComponent) OnUpsert() {
+	data := co.GetOptionalData(c.Properties, tabbarTabDefaultData)
+	c.icon = data.Icon
+	c.text = data.Text
+	c.main.isSelected = data.Selected
+
+	callbackData := co.GetOptionalCallbackData(c.Properties, tabbarTabDefaultCallbackData)
+	c.main.SetOnClickListener(callbackData.OnClick)
+	c.close.SetOnClickListener(callbackData.OnClose)
+}
+
+func (c *TabbarTabComponent) Render() co.Instance {
 	// force specific height
+	layoutData := co.GetOptionalLayoutData(c.Properties, layout.Data{})
 	layoutData.Height = opt.V(TabbarTabHeight)
 
 	return co.New(Element, func() {
+		co.WithLayoutData(layoutData)
 		co.WithData(ElementData{
-			Essence: essence,
+			Essence: &c.main,
 			Layout: layout.Horizontal(layout.HorizontalSettings{
 				ContentAlignment: layout.VerticalAlignmentCenter,
 				ContentSpacing:   TabbarTabContentSpacing,
@@ -77,12 +83,11 @@ var TabbarTab = co.Define(func(props co.Properties, scope co.Scope) co.Instance 
 				Right: TabbarTabSidePadding,
 			},
 		})
-		co.WithLayoutData(layoutData)
 
-		if data.Icon != nil {
+		if c.icon != nil {
 			co.WithChild("icon", co.New(Picture, func() {
 				co.WithData(PictureData{
-					Image:      data.Icon,
+					Image:      c.icon,
 					ImageColor: opt.V(OnSurfaceColor),
 					Mode:       ImageModeFit,
 				})
@@ -93,21 +98,21 @@ var TabbarTab = co.Define(func(props co.Properties, scope co.Scope) co.Instance 
 			}))
 		}
 
-		if data.Text != "" {
+		if c.text != "" {
 			co.WithChild("text", co.New(Label, func() {
 				co.WithData(LabelData{
-					Font:      co.OpenFont(scope, TabbarTabFontFile),
+					Font:      co.OpenFont(c.Scope, TabbarTabFontFile),
 					FontSize:  opt.V(TabbarTabFontSize),
 					FontColor: opt.V(OnSurfaceColor),
-					Text:      data.Text,
+					Text:      c.text,
 				})
 			}))
 		}
 
-		if data.Selected {
+		if c.main.isSelected {
 			co.WithChild("close", co.New(Element, func() {
 				co.WithData(ElementData{
-					Essence: closeButtonEssence,
+					Essence: &c.close,
 					Layout:  layout.Fill(),
 				})
 
@@ -118,7 +123,7 @@ var TabbarTab = co.Define(func(props co.Properties, scope co.Scope) co.Instance 
 
 				co.WithChild("icon", co.New(Picture, func() {
 					co.WithData(PictureData{
-						Image:      co.OpenImage(scope, TabbarTabCloseIconFile),
+						Image:      co.OpenImage(c.Scope, TabbarTabCloseIconFile),
 						ImageColor: opt.V(OnSurfaceColor),
 						Mode:       ImageModeFit,
 					})
@@ -126,21 +131,19 @@ var TabbarTab = co.Define(func(props co.Properties, scope co.Scope) co.Instance 
 			}))
 		}
 	})
-})
-
-var _ ui.ElementRenderHandler = (*tabbarTabEssence)(nil)
-
-type tabbarTabEssence struct {
-	*ButtonBaseEssence
-	selected bool
 }
 
-func (e *tabbarTabEssence) OnRender(element *ui.Element, canvas *ui.Canvas) {
+type tabbarTabMainComponent struct {
+	BaseButtonComponent
+	isSelected bool
+}
+
+func (c tabbarTabMainComponent) OnRender(element *ui.Element, canvas *ui.Canvas) {
 	var backgroundColor ui.Color
-	if e.selected {
+	if c.isSelected {
 		backgroundColor = SurfaceColor
 	} else {
-		switch e.State() {
+		switch c.State() {
 		case ButtonStateOver:
 			backgroundColor = HoverOverlayColor
 		case ButtonStateDown:
@@ -182,15 +185,13 @@ func (e *tabbarTabEssence) OnRender(element *ui.Element, canvas *ui.Canvas) {
 	}
 }
 
-var _ ui.ElementRenderHandler = (*tabbarTabCloseButtonEssence)(nil)
-
-type tabbarTabCloseButtonEssence struct {
-	*ButtonBaseEssence
+type tabbarTabCloseComponent struct {
+	BaseButtonComponent
 }
 
-func (e *tabbarTabCloseButtonEssence) OnRender(element *ui.Element, canvas *ui.Canvas) {
+func (c tabbarTabCloseComponent) OnRender(element *ui.Element, canvas *ui.Canvas) {
 	var backgroundColor ui.Color
-	switch e.State() {
+	switch c.State() {
 	case ButtonStateOver:
 		backgroundColor = HoverOverlayColor
 	case ButtonStateDown:
