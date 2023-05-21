@@ -1,4 +1,4 @@
-package mat
+package std
 
 import (
 	"github.com/mokiat/gog/opt"
@@ -6,6 +6,7 @@ import (
 	"github.com/mokiat/lacking/ui"
 	co "github.com/mokiat/lacking/ui/component"
 	"github.com/mokiat/lacking/ui/layout"
+	"github.com/mokiat/lacking/ui/mat"
 )
 
 var (
@@ -25,7 +26,7 @@ type ToolbarButtonData struct {
 	Selected bool
 }
 
-var defaultToolbarButtonData = ToolbarButtonData{}
+var toolbarButtonDefaultData = ToolbarButtonData{}
 
 // ToolbarButtonCallbackData holds the callback handlers for a
 // ToolbarButton component.
@@ -33,37 +34,49 @@ type ToolbarButtonCallbackData struct {
 	OnClick ClickListener
 }
 
-var defaultToolbarButtonCallbackData = ToolbarButtonCallbackData{
+var toolbarButtonDefaultCallbackData = ToolbarButtonCallbackData{
 	OnClick: func() {},
 }
 
-// ToolbarButton is a button component intended to be placed inside a
-// Toolbar container.
-var ToolbarButton = co.Define(func(props co.Properties, scope co.Scope) co.Instance {
-	var (
-		data         = co.GetOptionalData(props, defaultToolbarButtonData)
-		layoutData   = co.GetOptionalLayoutData(props, layout.Data{})
-		callbackData = co.GetOptionalCallbackData(props, defaultToolbarButtonCallbackData)
-	)
+var ToolbarButton = co.DefineType(&ToolbarButtonComponent{})
 
-	essence := co.UseState(func() *toolbarButtonBackgroundEssence {
-		return &toolbarButtonBackgroundEssence{
-			ButtonBaseEssence: NewButtonBaseEssence(callbackData.OnClick),
-		}
-	}).Get()
-	essence.selected = data.Selected
+type ToolbarButtonComponent struct {
+	BaseButtonComponent
 
+	Scope      co.Scope      `co:"scope"`
+	Properties co.Properties `co:"properties"`
+
+	icon     *ui.Image
+	text     string
+	enabled  bool
+	selected bool
+}
+
+func (c *ToolbarButtonComponent) OnUpsert() {
+	data := co.GetOptionalData(c.Properties, toolbarButtonDefaultData)
+	c.icon = data.Icon
+	c.text = data.Text
+	c.enabled = !data.Enabled.Specified || data.Enabled.Value
+	c.selected = data.Selected
+
+	callbackData := co.GetOptionalCallbackData(c.Properties, toolbarButtonDefaultCallbackData)
+	c.SetOnClickListener(callbackData.OnClick)
+}
+
+func (c *ToolbarButtonComponent) Render() co.Instance {
 	// force specific height
+	layoutData := co.GetOptionalLayoutData(c.Properties, layout.Data{})
 	layoutData.Height = opt.V(ToolbarItemHeight)
 
 	foregroundColor := OnSurfaceColor
-	if data.Enabled.Specified && !data.Enabled.Value {
+	if !c.enabled {
 		foregroundColor = OutlineColor
 	}
 
-	return co.New(Element, func() {
-		co.WithData(ElementData{
-			Essence: essence,
+	return co.New(co.Element, func() {
+		co.WithLayoutData(layoutData)
+		co.WithData(co.ElementData{
+			Essence: c,
 			Layout: layout.Horizontal(layout.HorizontalSettings{
 				ContentAlignment: layout.VerticalAlignmentCenter,
 				ContentSpacing:   ToolbarButtonContentSpacing,
@@ -72,16 +85,15 @@ var ToolbarButton = co.Define(func(props co.Properties, scope co.Scope) co.Insta
 				Left:  ToolbarButtonSidePadding,
 				Right: ToolbarButtonSidePadding,
 			},
-			Enabled: data.Enabled,
+			Enabled: opt.V(c.enabled),
 		})
-		co.WithLayoutData(layoutData)
 
-		if data.Icon != nil {
-			co.WithChild("icon", co.New(Picture, func() {
-				co.WithData(PictureData{
-					Image:      data.Icon,
+		if c.icon != nil {
+			co.WithChild("icon", co.New(mat.Picture, func() {
+				co.WithData(mat.PictureData{
+					Image:      c.icon,
 					ImageColor: opt.V(foregroundColor),
-					Mode:       ImageModeFit,
+					Mode:       mat.ImageModeFit,
 				})
 				co.WithLayoutData(layout.Data{
 					Width:  opt.V(ToolbarButtonIconSize),
@@ -90,28 +102,21 @@ var ToolbarButton = co.Define(func(props co.Properties, scope co.Scope) co.Insta
 			}))
 		}
 
-		if data.Text != "" {
-			co.WithChild("text", co.New(Label, func() {
-				co.WithData(LabelData{
-					Font:      co.OpenFont(scope, ToolbarButtonFontFile),
+		if c.text != "" {
+			co.WithChild("text", co.New(mat.Label, func() {
+				co.WithData(mat.LabelData{
+					Font:      co.OpenFont(c.Scope, ToolbarButtonFontFile),
 					FontSize:  opt.V(float32(ToolbarButtonFontSize)),
 					FontColor: opt.V(foregroundColor),
-					Text:      data.Text,
+					Text:      c.text,
 				})
 				co.WithLayoutData(layout.Data{})
 			}))
 		}
 	})
-})
-
-var _ ui.ElementRenderHandler = (*toolbarButtonBackgroundEssence)(nil)
-
-type toolbarButtonBackgroundEssence struct {
-	*ButtonBaseEssence
-	selected bool
 }
 
-func (e *toolbarButtonBackgroundEssence) OnRender(element *ui.Element, canvas *ui.Canvas) {
+func (e *ToolbarButtonComponent) OnRender(element *ui.Element, canvas *ui.Canvas) {
 	var backgroundColor ui.Color
 	switch e.State() {
 	case ButtonStateOver:

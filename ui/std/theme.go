@@ -1,0 +1,17 @@
+package std
+
+import "github.com/mokiat/lacking/ui"
+
+var (
+	SecondaryColor   ui.Color = ui.RGB(0x8B, 0xC3, 0x4A)
+	OnSecondaryColor ui.Color = ui.RGB(0x00, 0x00, 0x00)
+
+	SurfaceColor   ui.Color = ui.RGB(0xFF, 0xFF, 0xFF)
+	OnSurfaceColor ui.Color = ui.RGB(0x00, 0x00, 0x00)
+
+	OutlineColor ui.Color = ui.RGB(0xB0, 0xB0, 0xB0)
+
+	HoverOverlayColor ui.Color = ui.RGBA(0x00, 0x00, 0x00, 0x40)
+	PressOverlayColor ui.Color = ui.RGBA(0x00, 0x00, 0x00, 0x80)
+	ModalOverlayColor ui.Color = ui.RGBA(0x00, 0x00, 0x00, 0xA0)
+)

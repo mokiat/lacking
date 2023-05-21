@@ -1,4 +1,4 @@
-package mat
+package std
 
 import (
 	"github.com/mokiat/gog/opt"
@@ -13,30 +13,26 @@ var (
 	ToolbarSeparatorLineLengthRatio = float32(0.7)
 )
 
-// ToolbarSeparator separates controls within a Toolbar container.
-// It is visualized as a vertical line.
-var ToolbarSeparator = co.Define(func(props co.Properties, scope co.Scope) co.Instance {
-	essence := co.UseState(func() *toolbarSeparatorEssence {
-		return &toolbarSeparatorEssence{}
-	}).Get()
+var ToolbarSeparator = co.DefineType(&ToolbarSeparatorComponent{})
 
-	return co.New(Element, func() {
-		co.WithData(ElementData{
-			Essence: essence,
+type ToolbarSeparatorComponent struct {
+	Properties co.Properties `co:"properties"`
+}
+
+func (c *ToolbarSeparatorComponent) Render() co.Instance {
+	return co.New(co.Element, func() {
+		co.WithLayoutData(c.Properties.LayoutData())
+		co.WithData(co.ElementData{
+			Essence: c,
 			IdealSize: opt.V(ui.NewSize(
 				ToolbarSeparatorWidth,
 				ToolbarItemHeight,
 			)),
 		})
-		co.WithLayoutData(props.LayoutData())
 	})
-})
+}
 
-var _ ui.ElementRenderHandler = (*toolbarSeparatorEssence)(nil)
-
-type toolbarSeparatorEssence struct{}
-
-func (e *toolbarSeparatorEssence) OnRender(element *ui.Element, canvas *ui.Canvas) {
+func (c *ToolbarSeparatorComponent) OnRender(element *ui.Element, canvas *ui.Canvas) {
 	bounds := element.Bounds()
 	size := sprec.NewVec2(
 		float32(bounds.Width),
