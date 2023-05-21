@@ -1,9 +1,152 @@
 package std
 
-import "github.com/mokiat/lacking/ui"
+import (
+	"github.com/mokiat/gog/opt"
+	"github.com/mokiat/gomath/sprec"
+	"github.com/mokiat/lacking/ui"
+	co "github.com/mokiat/lacking/ui/component"
+	"github.com/mokiat/lacking/ui/layout"
+	"github.com/mokiat/lacking/ui/mat"
+)
 
-// ClickListener can be used to get notifications about click events.
-type ClickListener func()
+var (
+	ButtonSidePadding    = 6
+	ButtonContentSpacing = 5
+	ButtonIconSize       = 24
+	ButtonHeight         = 28
+	ButtonFontFile       = "mat:///roboto-regular.ttf"
+	ButtonFontSize       = float32(18)
+)
+
+// OnClickFunc can be used to get notifications about click events.
+type OnClickFunc func()
+
+// ButtonData holds the data for the Button component.
+type ButtonData struct {
+	Text    string
+	Icon    *ui.Image
+	Enabled opt.T[bool]
+}
+
+var buttonDefaultData = ButtonData{}
+
+// ButtonCallbackData holds the callback data for the Button component.
+type ButtonCallbackData struct {
+	OnClick OnClickFunc
+}
+
+var buttonDefaultCallbackData = ButtonCallbackData{
+	OnClick: func() {},
+}
+
+// Button is a component that allows a user click on it to activate a process.
+var Button = co.DefineType(&ButtonComponent{})
+
+type ButtonComponent struct {
+	BaseButtonComponent
+
+	Scope      co.Scope      `co:"scope"`
+	Properties co.Properties `co:"properties"`
+
+	icon      *ui.Image
+	text      string
+	isEnabled bool
+}
+
+func (c *ButtonComponent) OnUpsert() {
+	data := co.GetOptionalData(c.Properties, buttonDefaultData)
+	c.icon = data.Icon
+	c.text = data.Text
+	c.isEnabled = !data.Enabled.Specified || data.Enabled.Value
+
+	callbackData := co.GetOptionalCallbackData(c.Properties, buttonDefaultCallbackData)
+	c.SetOnClickListener(callbackData.OnClick)
+}
+
+func (c *ButtonComponent) Render() co.Instance {
+	// force specific height
+	layoutData := co.GetOptionalLayoutData(c.Properties, layout.Data{})
+	layoutData.Height = opt.V(ButtonHeight)
+
+	foregroundColor := OnSurfaceColor
+	if !c.isEnabled {
+		foregroundColor = OutlineColor
+	}
+
+	return co.New(co.Element, func() {
+		co.WithLayoutData(layoutData)
+		co.WithData(co.ElementData{
+			Essence: c,
+			Layout: layout.Horizontal(layout.HorizontalSettings{
+				ContentAlignment: layout.VerticalAlignmentCenter,
+				ContentSpacing:   ButtonContentSpacing,
+			}),
+			Padding: ui.Spacing{
+				Left:  ButtonSidePadding,
+				Right: ButtonSidePadding,
+			},
+			Enabled: opt.V(c.isEnabled),
+		})
+
+		if c.icon != nil {
+			co.WithChild("icon", co.New(mat.Picture, func() {
+				co.WithData(mat.PictureData{
+					Image:      c.icon,
+					ImageColor: opt.V(foregroundColor),
+					Mode:       mat.ImageModeFit,
+				})
+				co.WithLayoutData(layout.Data{
+					Width:  opt.V(ButtonIconSize),
+					Height: opt.V(ButtonIconSize),
+				})
+			}))
+		}
+
+		if c.text != "" {
+			co.WithChild("text", co.New(mat.Label, func() {
+				co.WithData(mat.LabelData{
+					Font:      co.OpenFont(c.Scope, ButtonFontFile),
+					FontSize:  opt.V(float32(ButtonFontSize)),
+					FontColor: opt.V(foregroundColor),
+					Text:      c.text,
+				})
+				co.WithLayoutData(layout.Data{})
+			}))
+		}
+	})
+}
+
+func (c *ButtonComponent) OnRender(element *ui.Element, canvas *ui.Canvas) {
+	backgroundColor := SurfaceColor
+	strokeColor := PrimaryLightColor
+	if element.Enabled() {
+		switch c.State() {
+		case ButtonStateOver:
+			backgroundColor = backgroundColor.Overlay(HoverOverlayColor)
+		case ButtonStateDown:
+			backgroundColor = backgroundColor.Overlay(PressOverlayColor)
+		}
+	} else {
+		strokeColor = OutlineColor
+	}
+
+	size := element.Bounds().Size
+	width := float32(size.Width)
+	height := float32(size.Height)
+
+	canvas.Reset()
+	canvas.SetStrokeSize(2.0)
+	canvas.SetStrokeColor(strokeColor)
+	canvas.RoundRectangle(
+		sprec.ZeroVec2(),
+		sprec.NewVec2(width, height),
+		sprec.NewVec4(8, 8, 8, 8),
+	)
+	canvas.Fill(ui.Fill{
+		Color: backgroundColor,
+	})
+	canvas.Stroke()
+}
 
 // ButtonState indicates the state of a Button control.
 type ButtonState int
@@ -26,14 +169,14 @@ const (
 // that can do the actual rendering.
 type BaseButtonComponent struct {
 	state   ButtonState
-	onClick ClickListener
+	onClick OnClickFunc
 }
 
-func (c *BaseButtonComponent) OnClickListener() ClickListener {
+func (c *BaseButtonComponent) OnClickListener() OnClickFunc {
 	return c.onClick
 }
 
-func (c *BaseButtonComponent) SetOnClickListener(onClick ClickListener) {
+func (c *BaseButtonComponent) SetOnClickListener(onClick OnClickFunc) {
 	c.onClick = onClick
 }
 

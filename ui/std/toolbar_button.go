@@ -31,7 +31,7 @@ var toolbarButtonDefaultData = ToolbarButtonData{}
 // ToolbarButtonCallbackData holds the callback handlers for a
 // ToolbarButton component.
 type ToolbarButtonCallbackData struct {
-	OnClick ClickListener
+	OnClick OnClickFunc
 }
 
 var toolbarButtonDefaultCallbackData = ToolbarButtonCallbackData{
@@ -46,18 +46,18 @@ type ToolbarButtonComponent struct {
 	Scope      co.Scope      `co:"scope"`
 	Properties co.Properties `co:"properties"`
 
-	icon     *ui.Image
-	text     string
-	enabled  bool
-	selected bool
+	icon       *ui.Image
+	text       string
+	isEnabled  bool
+	isSelected bool
 }
 
 func (c *ToolbarButtonComponent) OnUpsert() {
 	data := co.GetOptionalData(c.Properties, toolbarButtonDefaultData)
 	c.icon = data.Icon
 	c.text = data.Text
-	c.enabled = !data.Enabled.Specified || data.Enabled.Value
-	c.selected = data.Selected
+	c.isEnabled = !data.Enabled.Specified || data.Enabled.Value
+	c.isSelected = data.Selected
 
 	callbackData := co.GetOptionalCallbackData(c.Properties, toolbarButtonDefaultCallbackData)
 	c.SetOnClickListener(callbackData.OnClick)
@@ -69,7 +69,7 @@ func (c *ToolbarButtonComponent) Render() co.Instance {
 	layoutData.Height = opt.V(ToolbarItemHeight)
 
 	foregroundColor := OnSurfaceColor
-	if !c.enabled {
+	if !c.isEnabled {
 		foregroundColor = OutlineColor
 	}
 
@@ -85,7 +85,7 @@ func (c *ToolbarButtonComponent) Render() co.Instance {
 				Left:  ToolbarButtonSidePadding,
 				Right: ToolbarButtonSidePadding,
 			},
-			Enabled: opt.V(c.enabled),
+			Enabled: opt.V(c.isEnabled),
 		})
 
 		if c.icon != nil {
@@ -143,7 +143,7 @@ func (e *ToolbarButtonComponent) OnRender(element *ui.Element, canvas *ui.Canvas
 			Color: backgroundColor,
 		})
 	}
-	if e.selected {
+	if e.isSelected {
 		canvas.Reset()
 		canvas.Rectangle(
 			sprec.NewVec2(0.0, size.Y-ToolbarBottonSelectionHeight),
