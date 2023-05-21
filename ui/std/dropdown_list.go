@@ -1,4 +1,4 @@
-package mat
+package std
 
 import (
 	"fmt"
@@ -16,28 +16,40 @@ var (
 )
 
 type dropdownListCallbackData struct {
-	OnSelected func(key interface{})
-	OnClose    func() bool
+	OnSelected func(key any)
+	OnClose    OnActionFunc
 }
 
-var dropdownList = co.Define(func(props co.Properties, scope co.Scope) co.Instance {
-	var (
-		data         = co.GetData[DropdownData](props)
-		callbackData = co.GetCallbackData[dropdownListCallbackData](props)
-	)
+var dropdownList = co.DefineType(&dropdownListComponent{})
 
-	essence := co.UseState(func() *dropdownListEssence {
-		return &dropdownListEssence{
-			onClose: callbackData.OnClose,
-		}
-	}).Get()
+type dropdownListComponent struct {
+	Scope      co.Scope      `co:"scope"`
+	Properties co.Properties `co:"properties"`
 
+	items           []DropdownItem
+	selectedItemKey any
+
+	onSelected func(key any)
+	onClose    OnActionFunc
+}
+
+func (c *dropdownListComponent) OnUpsert() {
+	data := co.GetOptionalData(c.Properties, dropdownDefaultData)
+	c.items = data.Items
+	c.selectedItemKey = data.SelectedKey
+
+	callbackData := co.GetCallbackData[dropdownListCallbackData](c.Properties)
+	c.onSelected = callbackData.OnSelected
+	c.onClose = callbackData.OnClose
+}
+
+func (c *dropdownListComponent) Render() co.Instance {
 	return co.New(co.Element, func() {
 		co.WithData(co.ElementData{
-			Essence: essence,
+			Essence: c,
 			Layout:  layout.Anchor(),
 		})
-		co.WithLayoutData(props.LayoutData())
+		co.WithLayoutData(c.Properties.LayoutData())
 
 		co.WithChild("content", co.New(Paper, func() {
 			co.WithLayoutData(layout.Data{
@@ -50,23 +62,23 @@ var dropdownList = co.Define(func(props co.Properties, scope co.Scope) co.Instan
 				}),
 			})
 
-			for i, item := range data.Items {
+			for i, item := range c.items {
 				func(i int, item DropdownItem) {
 					co.WithChild(fmt.Sprintf("item-%d", i), co.New(dropdownItem, func() {
 						co.WithLayoutData(layout.Data{
 							GrowHorizontally: true,
 						})
 						co.WithData(dropdownItemData{
-							Selected: item.Key == data.SelectedKey,
+							Selected: item.Key == c.selectedItemKey,
 						})
 						co.WithCallbackData(dropdownItemCallbackData{
 							OnSelected: func() {
-								callbackData.OnSelected(item.Key)
+								c.onSelected(item.Key)
 							},
 						})
 						co.WithChild("label", co.New(Label, func() {
 							co.WithData(LabelData{
-								Font:      co.OpenFont(scope, DropdownListFontFile),
+								Font:      co.OpenFont(c.Scope, DropdownListFontFile),
 								FontSize:  opt.V(DropdownListFontSize),
 								FontColor: opt.V(OnSurfaceColor),
 								Text:      item.Label,
@@ -77,23 +89,17 @@ var dropdownList = co.Define(func(props co.Properties, scope co.Scope) co.Instan
 			}
 		}))
 	})
-})
-
-var _ ui.ElementMouseHandler = (*dropdownListEssence)(nil)
-var _ ui.ElementRenderHandler = (*dropdownListEssence)(nil)
-
-type dropdownListEssence struct {
-	onClose func() bool
 }
 
-func (e *dropdownListEssence) OnMouseEvent(element *ui.Element, event ui.MouseEvent) bool {
+func (c *dropdownListComponent) OnMouseEvent(element *ui.Element, event ui.MouseEvent) bool {
 	if event.Type == ui.MouseEventTypeUp && event.Button == ui.MouseButtonLeft {
-		return e.onClose()
+		c.onClose()
+		return true
 	}
 	return false
 }
 
-func (e *dropdownListEssence) OnRender(element *ui.Element, canvas *ui.Canvas) {
+func (c *dropdownListComponent) OnRender(element *ui.Element, canvas *ui.Canvas) {
 	size := element.Bounds().Size
 	width := float32(size.Width)
 	height := float32(size.Height)

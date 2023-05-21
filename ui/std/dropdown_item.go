@@ -1,4 +1,4 @@
-package mat
+package std
 
 import (
 	"github.com/mokiat/gomath/sprec"
@@ -17,44 +17,42 @@ type dropdownItemData struct {
 }
 
 type dropdownItemCallbackData struct {
-	OnSelected func()
+	OnSelected OnActionFunc
 }
 
-var dropdownItem = co.Define(func(props co.Properties, scope co.Scope) co.Instance {
-	var (
-		data         = co.GetData[dropdownItemData](props)
-		callbackData = co.GetCallbackData[dropdownItemCallbackData](props)
-	)
+var dropdownItem = co.DefineType(&dropdownItemComponent{})
 
-	essence := co.UseState(func() *dropdownItemEssence {
-		return &dropdownItemEssence{
-			ButtonBaseEssence: NewButtonBaseEssence(callbackData.OnSelected),
-		}
-	}).Get()
-	essence.selected = data.Selected
+type dropdownItemComponent struct {
+	BaseButtonComponent
 
+	Properties co.Properties `co:"properties"`
+
+	isSelected bool
+}
+
+func (c *dropdownItemComponent) OnUpsert() {
+	data := co.GetData[dropdownItemData](c.Properties)
+	c.isSelected = data.Selected
+
+	callbackData := co.GetCallbackData[dropdownItemCallbackData](c.Properties)
+	c.SetOnClickFunc(callbackData.OnSelected)
+}
+
+func (c *dropdownItemComponent) Render() co.Instance {
 	return co.New(co.Element, func() {
+		co.WithLayoutData(c.Properties.LayoutData())
 		co.WithData(co.ElementData{
 			Padding: ui.Spacing{
 				Left: DropdownItemIndicatorSize + DropdownItemIndicatorPadding,
 			},
-			Essence: essence,
+			Essence: c,
 			Layout:  layout.Fill(),
 		})
-		co.WithLayoutData(props.LayoutData())
-		co.WithChildren(props.Children())
+		co.WithChildren(c.Properties.Children())
 	})
-})
-
-var _ ui.ElementRenderHandler = (*dropdownItemEssence)(nil)
-
-type dropdownItemEssence struct {
-	*ButtonBaseEssence
-
-	selected bool
 }
 
-func (e *dropdownItemEssence) OnRender(element *ui.Element, canvas *ui.Canvas) {
+func (e *dropdownItemComponent) OnRender(element *ui.Element, canvas *ui.Canvas) {
 	var backgroundColor ui.Color
 	switch e.State() {
 	case ButtonStateOver:
@@ -69,7 +67,7 @@ func (e *dropdownItemEssence) OnRender(element *ui.Element, canvas *ui.Canvas) {
 	width := float32(size.Width)
 	height := float32(size.Height)
 
-	if e.selected {
+	if e.isSelected {
 		canvas.Reset()
 		canvas.Rectangle(
 			sprec.ZeroVec2(),

@@ -1,4 +1,4 @@
-package mat
+package std
 
 import (
 	"github.com/mokiat/gog/opt"
@@ -18,80 +18,68 @@ var (
 // DropdownData holds the data for a Dropdown container.
 type DropdownData struct {
 	Items       []DropdownItem
-	SelectedKey interface{}
+	SelectedKey any
 }
 
-var defaultDropdownData = DropdownData{}
+var dropdownDefaultData = DropdownData{}
 
 // DropdownItem represents a single dropdown entry.
 type DropdownItem struct {
-	Key   interface{}
+	Key   any
 	Label string
 }
 
 // DropdownCallbackData holds the callback data for a Dropdown container.
 type DropdownCallbackData struct {
-	OnItemSelected func(key interface{})
+	OnItemSelected func(key any)
 }
 
-var defaultDropdownCallbackData = DropdownCallbackData{
-	OnItemSelected: func(key interface{}) {},
+var dropdownDefaultCallbackData = DropdownCallbackData{
+	OnItemSelected: func(key any) {},
 }
 
-// Dropdown is a container that hides a number of UI options in a compact way.
-var Dropdown = co.Define(func(props co.Properties, scope co.Scope) co.Instance {
-	var (
-		data         = co.GetOptionalData(props, defaultDropdownData)
-		callbackData = co.GetOptionalCallbackData(props, defaultDropdownCallbackData)
-	)
+var Dropdown = co.DefineType(&DropdownComponent{})
 
-	listOverlay := co.UseState(func() co.Overlay {
-		return nil
-	})
+type DropdownComponent struct {
+	BaseButtonComponent
 
-	onClose := func() bool {
-		overlay := listOverlay.Get()
-		overlay.Close()
-		listOverlay.Set(nil)
-		return true
-	}
+	Scope      co.Scope      `co:"scope"`
+	Properties co.Properties `co:"properties"`
+	Invalidate func()        `co:"invalidate"`
 
-	onItemSelected := func(key interface{}) {
-		onClose()
-		callbackData.OnItemSelected(key)
-	}
+	items           []DropdownItem
+	selectedItemKey any
 
-	onOpen := func() {
-		overlay := co.OpenOverlay(scope, co.New(dropdownList, func() {
-			co.WithData(data)
-			co.WithCallbackData(dropdownListCallbackData{
-				OnSelected: onItemSelected,
-				OnClose:    onClose,
-			})
-		}))
-		listOverlay.Set(overlay)
-	}
+	overlay co.Overlay
 
-	essence := co.UseState(func() *dropdownEssence {
-		return &dropdownEssence{
-			ButtonBaseEssence: NewButtonBaseEssence(onOpen),
-		}
-	}).Get()
-	essence.SetOnClick(onOpen) // override onOpen as old one refs old data
+	onItemSelected func(key any)
+}
 
+func (c *DropdownComponent) OnUpsert() {
+	data := co.GetOptionalData(c.Properties, dropdownDefaultData)
+	c.items = data.Items
+	c.selectedItemKey = data.SelectedKey
+
+	callbackData := co.GetOptionalCallbackData(c.Properties, dropdownDefaultCallbackData)
+	c.onItemSelected = callbackData.OnItemSelected
+
+	c.SetOnClickFunc(c.onOpen)
+}
+
+func (c *DropdownComponent) Render() co.Instance {
 	label := ""
-	for _, item := range data.Items {
-		if item.Key == data.SelectedKey {
+	for _, item := range c.items {
+		if item.Key == c.selectedItemKey {
 			label = item.Label
 		}
 	}
 
 	return co.New(co.Element, func() {
 		co.WithData(co.ElementData{
-			Essence: essence,
+			Essence: c,
 			Layout:  layout.Anchor(),
 		})
-		co.WithLayoutData(props.LayoutData())
+		co.WithLayoutData(c.Properties.LayoutData())
 
 		co.WithChild("label", co.New(Label, func() {
 			co.WithLayoutData(layout.Data{
@@ -100,7 +88,7 @@ var Dropdown = co.Define(func(props co.Properties, scope co.Scope) co.Instance {
 				VerticalCenter: opt.V(0),
 			})
 			co.WithData(LabelData{
-				Font:      co.OpenFont(scope, DropdownFontFile),
+				Font:      co.OpenFont(c.Scope, DropdownFontFile),
 				FontSize:  opt.V(DropdownFontSize),
 				FontColor: opt.V(OnSurfaceColor),
 				Text:      label,
@@ -115,23 +103,17 @@ var Dropdown = co.Define(func(props co.Properties, scope co.Scope) co.Instance {
 				VerticalCenter: opt.V(0),
 			})
 			co.WithData(PictureData{
-				Image:      co.OpenImage(scope, DropdownIconFile),
+				Image:      co.OpenImage(c.Scope, DropdownIconFile),
 				ImageColor: opt.V(OnSurfaceColor),
 				Mode:       ImageModeFit,
 			})
 		}))
 	})
-})
-
-var _ ui.ElementRenderHandler = (*dropdownEssence)(nil)
-
-type dropdownEssence struct {
-	*ButtonBaseEssence
 }
 
-func (e *dropdownEssence) OnRender(element *ui.Element, canvas *ui.Canvas) {
+func (c *DropdownComponent) OnRender(element *ui.Element, canvas *ui.Canvas) {
 	var backgroundColor ui.Color
-	switch e.State() {
+	switch c.State() {
 	case ButtonStateOver:
 		backgroundColor = HoverOverlayColor
 	case ButtonStateDown:
@@ -158,4 +140,27 @@ func (e *dropdownEssence) OnRender(element *ui.Element, canvas *ui.Canvas) {
 		})
 	}
 	canvas.Stroke()
+}
+
+func (c *DropdownComponent) onSelected(key any) {
+	c.onClose()
+	c.onItemSelected(key)
+	c.Invalidate()
+}
+
+func (c *DropdownComponent) onOpen() {
+	c.overlay = co.OpenOverlay(c.Scope, co.New(dropdownList, func() {
+		co.WithData(c.Properties.Data())
+		co.WithCallbackData(dropdownListCallbackData{
+			OnSelected: c.onSelected,
+			OnClose:    c.onClose,
+		})
+	}))
+	c.Invalidate()
+}
+
+func (c *DropdownComponent) onClose() {
+	c.overlay.Close()
+	c.overlay = nil
+	c.Invalidate()
 }
