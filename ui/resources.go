@@ -1,4 +1,4 @@
-package mat
+package ui
 
 import (
 	"embed"
@@ -13,19 +13,19 @@ import (
 var uiResources embed.FS
 
 // WrapResourceLocator returns a new resource.ReadLocator that is capable of
-// providing mat resources as well as custom user resources.
-func WrappedResourceLocator(delegate resource.ReadLocator) resource.ReadLocator {
-	return &wrappedResourceLocator{
+// providing ui built-in resources as well as custom user resources.
+func WrappedLocator(delegate resource.ReadLocator) resource.ReadLocator {
+	return &wrappedLocator{
 		delegate: delegate,
 	}
 }
 
-type wrappedResourceLocator struct {
+type wrappedLocator struct {
 	delegate resource.ReadLocator
 }
 
-func (l *wrappedResourceLocator) ReadResource(uri string) (io.ReadCloser, error) {
-	const matScheme = "mat:///"
+func (l *wrappedLocator) ReadResource(uri string) (io.ReadCloser, error) {
+	const matScheme = "ui:///"
 	if strings.HasPrefix(uri, matScheme) {
 		dir, err := fs.Sub(uiResources, "resources")
 		if err != nil {

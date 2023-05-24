@@ -5,6 +5,8 @@ import (
 	"reflect"
 )
 
+// TODO: Add debug logging
+
 var contexts map[reflect.Type]any
 
 func init() {

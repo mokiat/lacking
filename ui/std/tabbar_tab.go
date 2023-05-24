@@ -14,9 +14,9 @@ var (
 	TabbarTabSidePadding    = 10
 	TabbarTabContentSpacing = 5
 	TabbarTabIconSize       = 24
-	TabbarTabFontFile       = "mat:///roboto-regular.ttf"
+	TabbarTabFontFile       = "ui:///roboto-regular.ttf"
 	TabbarTabFontSize       = float32(20)
-	TabbarTabCloseIconFile  = "mat:///close.png"
+	TabbarTabCloseIconFile  = "ui:///close.png"
 	TabbarTabRadius         = float32(15)
 )
 

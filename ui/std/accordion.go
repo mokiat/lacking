@@ -13,9 +13,9 @@ var (
 	AccordionHeaderContentSpacing = 5
 	AccordionHeaderIconSize       = 24
 	AccordionHeaderFontSize       = float32(20)
-	AccordionHeaderFontFile       = "mat:///roboto-regular.ttf"
-	AccordionExpandedIconFile     = "mat:///expanded.png"
-	AccordionCollapsedIconFile    = "mat:///collapsed.png"
+	AccordionHeaderFontFile       = "ui:///roboto-regular.ttf"
+	AccordionExpandedIconFile     = "ui:///expanded.png"
+	AccordionCollapsedIconFile    = "ui:///collapsed.png"
 )
 
 // AccordionData holds the data for an Accordion container.

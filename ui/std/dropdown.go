@@ -10,9 +10,9 @@ import (
 
 var (
 	DropdownFontSize = float32(18)
-	DropdownFontFile = "mat:///roboto-regular.ttf"
+	DropdownFontFile = "ui:///roboto-regular.ttf"
 	DropdownIconSize = 24
-	DropdownIconFile = "mat:///expanded.png"
+	DropdownIconFile = "ui:///expanded.png"
 )
 
 // DropdownData holds the data for a Dropdown container.

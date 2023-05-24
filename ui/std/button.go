@@ -13,7 +13,7 @@ var (
 	ButtonContentSpacing = 5
 	ButtonIconSize       = 24
 	ButtonHeight         = 28
-	ButtonFontFile       = "mat:///roboto-regular.ttf"
+	ButtonFontFile       = "ui:///roboto-regular.ttf"
 	ButtonFontSize       = float32(18)
 )
 

@@ -12,7 +12,7 @@ import (
 
 var (
 	DropdownListFontSize = float32(18)
-	DropdownListFontFile = "mat:///roboto-regular.ttf"
+	DropdownListFontFile = "ui:///roboto-regular.ttf"
 )
 
 type dropdownListCallbackData struct {

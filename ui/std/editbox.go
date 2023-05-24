@@ -11,7 +11,7 @@ import (
 var (
 	EditboxMinWidth = 100
 	EditboxHeight   = 28
-	EditboxFontFile = "mat:///roboto-regular.ttf"
+	EditboxFontFile = "ui:///roboto-regular.ttf"
 	EditboxFontSize = float32(18)
 )
 

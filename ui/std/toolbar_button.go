@@ -12,7 +12,7 @@ var (
 	ToolbarButtonSidePadding     = 4
 	ToolbarButtonContentSpacing  = 5
 	ToolbarButtonIconSize        = 24
-	ToolbarButtonFontFile        = "mat:///roboto-regular.ttf"
+	ToolbarButtonFontFile        = "ui:///roboto-regular.ttf"
 	ToolbarButtonFontSize        = float32(20)
 	ToolbarBottonSelectionHeight = float32(5.0)
 )

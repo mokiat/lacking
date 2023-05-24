@@ -22,6 +22,8 @@ type ComponentFunc func(props Properties, scope Scope) Instance
 //
 // The provided component function (i.e. render function) will be called by the
 // framework to initialize, reconcicle,or destroy a component instance.
+//
+// Deprecated: Use DefineType instead
 func Define(fn ComponentFunc) Component {
 	return Component{
 		componentType: evaluateComponentType(),

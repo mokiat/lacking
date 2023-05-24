@@ -8,7 +8,7 @@ import (
 )
 
 var (
-	LabelFontFile = "mat:///roboto-regular.ttf"
+	LabelFontFile = "ui:///roboto-regular.ttf"
 	LabelFontSize = float32(24.0)
 )
 
@@ -40,7 +40,7 @@ func (c *LabelComponent) OnUpsert() {
 	if data.Font != nil {
 		c.font = data.Font
 	} else {
-		c.font = co.OpenFont(c.Scope, "mat:///roboto-regular.ttf")
+		c.font = co.OpenFont(c.Scope, "ui:///roboto-regular.ttf")
 	}
 	if data.FontSize.Specified {
 		c.fontSize = data.FontSize.Value
