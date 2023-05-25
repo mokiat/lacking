@@ -57,6 +57,9 @@ func Defer(fn func()) {
 //
 // The framework ensures that the closure will not be called if the
 // component had been destroyed in the meantime.
+//
+// Deprecated: This does not resolve the correct renderCtx, since it is called
+// from within a go routine.
 func Schedule(fn func()) {
 	node := renderCtx.node
 	rootUIContext.Schedule(func() {

@@ -8,12 +8,6 @@ import (
 	"golang.org/x/image/font/opentype"
 )
 
-// RootScope returns the main scope for the UI hierarchy. Resources loaded from
-// the ui.Context of this scope will not be released until the UI has completed.
-func RootScope() Scope {
-	return rootScope
-}
-
 // Scope represents a component sub-hierarchy region.
 type Scope interface {
 

@@ -16,6 +16,8 @@ type Component struct {
 
 // ComponentFunc is the mechanism through which components can construct their
 // hierarchies based on input properties and scope.
+//
+// Deprecated: Use DefineType instead
 type ComponentFunc func(props Properties, scope Scope) Instance
 
 // Define is the mechanism through which new components can be defined.

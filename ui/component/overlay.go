@@ -11,18 +11,18 @@ type Overlay interface {
 // OpenOverlay opens a new Overlay that will take the appearance described
 // in the specified instance.
 func OpenOverlay(scope Scope, instance Instance) Overlay {
-	app := scope.Value(applicationKey{}).(*windowLifecycle)
+	app := scope.Value(applicationKey{}).(*applicationComponent)
 	return app.OpenOverlay(instance)
 }
 
 var _ Overlay = (*overlayHandle)(nil)
 
 type overlayHandle struct {
-	lifecycle *windowLifecycle
-	instance  Instance
-	key       string
+	app      *applicationComponent
+	instance Instance
+	key      string
 }
 
 func (o *overlayHandle) Close() {
-	o.lifecycle.CloseOverlay(o)
+	o.app.CloseOverlay(o)
 }
