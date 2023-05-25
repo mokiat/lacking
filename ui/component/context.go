@@ -5,8 +5,6 @@ import (
 	"reflect"
 )
 
-// TODO: Add debug logging
-
 var contexts map[reflect.Type]any
 
 func init() {
@@ -26,6 +24,8 @@ func init() {
 // Contexts should be used only for global configurations
 // that will not change, like graphics handles or i18n
 // functions.
+//
+// Deprecated:
 func RegisterContext(value any) {
 	valueType := reflect.TypeOf(value)
 	if _, ok := contexts[valueType]; ok {
@@ -36,6 +36,8 @@ func RegisterContext(value any) {
 
 // GetContext retrieves the appropriate context based on the generic type param
 // and returns it.
+//
+// Deprecated:
 func GetContext[T any]() T {
 	var result T
 	contextValue, ok := contexts[reflect.TypeOf(result)]
@@ -50,6 +52,8 @@ func GetContext[T any]() T {
 //
 // The specified target must be a pointer to the type
 // that was used in RegisterContext.
+//
+// Deprecated
 func InjectContext[T any](target *T) {
 	if target == nil {
 		panic("target pointer cannot be nil")

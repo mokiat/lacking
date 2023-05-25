@@ -2,11 +2,21 @@ package component
 
 import (
 	"image"
+	"reflect"
 
 	"github.com/mokiat/lacking/log"
 	"github.com/mokiat/lacking/ui"
 	"golang.org/x/image/font/opentype"
 )
+
+// RootScope initializes a new scope associated with the specified window.
+//
+// One would usually use this method to acquire a root scope to be later
+// used in Initialize to bootstrap the framework.
+func RootScope(window *ui.Window) Scope {
+	rootUIContext = window.Context() // FIXME
+	return ContextScope(nil, rootUIContext)
+}
 
 // Scope represents a component sub-hierarchy region.
 type Scope interface {
@@ -24,12 +34,32 @@ type Scope interface {
 // generic param type from the specified scope using the provided key.
 //
 // If there is no value with the specified key in the Scope or if the value
-// is not of the correct type then nil is returned.
+// is not of the correct type then the zero value for that type is returned.
 func GetScopeValue[T any](scope Scope, key interface{}) T {
 	value, ok := scope.Value(key).(T)
 	if !ok {
-		var defaultValue T
-		return defaultValue
+		var zeroValue T
+		return zeroValue
+	}
+	return value
+}
+
+// TypedValueScope returns a ValueScope that uses the value's type as the
+// key.
+func TypedValueScope[T any](parent Scope, value T) Scope {
+	return ValueScope(parent, reflect.TypeOf(value), value)
+}
+
+// TypedValue returns the value in the specified scope associated with the
+// generic type.
+//
+// If there is no value with the specified type in the Scope then the zero
+// value for that type is returned.
+func TypedValue[T any](scope Scope) T {
+	var zeroValue T
+	value, ok := scope.Value(reflect.TypeOf(zeroValue)).(T)
+	if !ok {
+		return zeroValue
 	}
 	return value
 }

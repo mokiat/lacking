@@ -9,18 +9,17 @@ import (
 	"github.com/mokiat/lacking/ui/layout"
 )
 
-type applicationKey struct{}
-
 var rootUIContext *ui.Context // TODO: Remove
 
-// Initialize wires the framework to the specified ui.Window.
-// The specified Instance will be the root component used.
-func Initialize(window *ui.Window, instance Instance) {
-	rootUIContext = window.Context()
-	rootScope := ContextScope(nil, rootUIContext)
-
+// Initialize wires the framework using the specified root scope.
+// The specified instance will be the root component used.
+func Initialize(scope Scope, instance Instance) {
+	window := Window(scope)
+	if instance.scope != nil {
+		panic(fmt.Errorf("root instances should not have scope assigned"))
+	}
 	rootNode := createComponentNode(New(application, func() {
-		WithScope(rootScope)
+		WithScope(scope)
 		WithChild("root", instance)
 	}), nil)
 	window.Root().AppendChild(rootNode.element)
@@ -40,7 +39,7 @@ type applicationComponent struct {
 
 func (c *applicationComponent) OnCreate() {
 	c.overlays = ds.NewList[*overlayHandle](2)
-	c.childrenScope = ValueScope(c.Scope, applicationKey{}, c)
+	c.childrenScope = TypedValueScope(c.Scope, c)
 }
 
 func (c *applicationComponent) Render() Instance {

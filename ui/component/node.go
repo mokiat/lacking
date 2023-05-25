@@ -4,6 +4,8 @@ import (
 	"github.com/mokiat/lacking/ui"
 )
 
+// TODO: Add debug logging
+
 type dirtiable interface {
 	isDirty() bool
 	setDirty(bool)

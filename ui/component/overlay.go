@@ -11,7 +11,7 @@ type Overlay interface {
 // OpenOverlay opens a new Overlay that will take the appearance described
 // in the specified instance.
 func OpenOverlay(scope Scope, instance Instance) Overlay {
-	app := scope.Value(applicationKey{}).(*applicationComponent)
+	app := TypedValue[*applicationComponent](scope)
 	return app.OpenOverlay(instance)
 }
 
