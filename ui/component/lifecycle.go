@@ -2,6 +2,8 @@ package component
 
 // UseLifecycle attaches a Lifecycle to the given Component instance in which
 // this hook is used.
+//
+// Deprecated: Use new component types
 func UseLifecycle[T Lifecycle](constructor func(handle LifecycleHandle) T) T {
 	changeState := UseState(func() int {
 		return int(0)
@@ -51,6 +53,8 @@ type Lifecycle interface {
 }
 
 // NewBaseLifecycle returns a new BaseLifecycle.
+//
+// Deprecated: Use new component types
 func NewBaseLifecycle() *BaseLifecycle {
 	return &BaseLifecycle{}
 }
