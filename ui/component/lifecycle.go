@@ -52,13 +52,6 @@ type Lifecycle interface {
 	OnDestroy(scope Scope)
 }
 
-// NewBaseLifecycle returns a new BaseLifecycle.
-//
-// Deprecated: Use new component types
-func NewBaseLifecycle() *BaseLifecycle {
-	return &BaseLifecycle{}
-}
-
 var _ Lifecycle = (*BaseLifecycle)(nil)
 
 // BaseLifecycle is an implementation of Lifecycle that does nothing.

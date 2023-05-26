@@ -38,8 +38,8 @@ func evaluateComponentType() string {
 	return fmt.Sprintf("%s#%d", file, line)
 }
 
-// TypeComponent is a component that is implemented through a Go type.
-type TypeComponent interface {
+// Renderable is a component that is implemented through a Go type.
+type Renderable interface {
 
 	// Render should produce the UI hierarchy for this component.
 	Render() Instance
@@ -79,7 +79,7 @@ type DeleteNotifiable interface {
 }
 
 // DefineType defines a new component using the specified Go type as template.
-func DefineType(template TypeComponent) Component {
+func DefineType(template Renderable) Component {
 	// TODO: Flip things around. Have this be the main way to create
 	// components and reimplement the old behavior to use this internally
 	// for storing state and notifications.
@@ -89,7 +89,7 @@ func DefineType(template TypeComponent) Component {
 	return Component{
 		componentType: definition.Name(),
 		componentFunc: func(props Properties, scope Scope) Instance {
-			presenter := UseState(func() TypeComponent {
+			presenter := UseState(func() Renderable {
 				// TODO: Consider instantiating the ui Element here and assign it to the
 				// instance, if the instance has an `element` tag. That way the element
 				// will be available from the beginning, even if not initially attached.
@@ -214,8 +214,8 @@ func (d typeComponentDefinition) Name() string {
 	return d.name
 }
 
-func (d typeComponentDefinition) NewInstance() TypeComponent {
-	return reflect.New(d.reflType).Interface().(TypeComponent)
+func (d typeComponentDefinition) NewInstance() Renderable {
+	return reflect.New(d.reflType).Interface().(Renderable)
 }
 
 func (d typeComponentDefinition) AssignProperties(target reflect.Value, invalidate func(), scope Scope, props Properties) {
