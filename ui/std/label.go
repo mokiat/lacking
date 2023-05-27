@@ -23,9 +23,9 @@ type LabelData struct {
 var labelDefaultData = LabelData{}
 
 // Label represents a component that visualizes a text string.
-var Label = co.Define(&LabelComponent{})
+var Label = co.Define(&labelComponent{})
 
-type LabelComponent struct {
+type labelComponent struct {
 	Scope      co.Scope      `co:"scope"`
 	Properties co.Properties `co:"properties"`
 
@@ -35,7 +35,7 @@ type LabelComponent struct {
 	text      string
 }
 
-func (c *LabelComponent) OnUpsert() {
+func (c *labelComponent) OnUpsert() {
 	data := co.GetOptionalData(c.Properties, labelDefaultData)
 	if data.Font != nil {
 		c.font = data.Font
@@ -55,7 +55,7 @@ func (c *LabelComponent) OnUpsert() {
 	c.text = data.Text
 }
 
-func (c *LabelComponent) Render() co.Instance {
+func (c *labelComponent) Render() co.Instance {
 	textSize := c.font.TextSize(c.text, c.fontSize)
 	return co.New(co.Element, func() {
 		co.WithLayoutData(c.Properties.LayoutData())
@@ -67,7 +67,7 @@ func (c *LabelComponent) Render() co.Instance {
 	})
 }
 
-func (c *LabelComponent) OnRender(element *ui.Element, canvas *ui.Canvas) {
+func (c *labelComponent) OnRender(element *ui.Element, canvas *ui.Canvas) {
 	if c.text != "" {
 		contentArea := element.Bounds()
 		textDrawSize := c.font.TextSize(c.text, c.fontSize)

@@ -35,9 +35,9 @@ var accordionDefaultCallbackData = AccordionCallbackData{
 	OnToggle: func() {},
 }
 
-var Accordion = co.Define(&AccordionComponent{})
+var Accordion = co.Define(&accordionComponent{})
 
-type AccordionComponent struct {
+type accordionComponent struct {
 	BaseButtonComponent
 
 	Scope      co.Scope      `co:"scope"`
@@ -48,7 +48,7 @@ type AccordionComponent struct {
 	isExpanded bool
 }
 
-func (c *AccordionComponent) OnUpsert() {
+func (c *accordionComponent) OnUpsert() {
 	data := co.GetOptionalData(c.Properties, accordionDefaultData)
 	if data.Expanded {
 		c.icon = co.OpenImage(c.Scope, AccordionExpandedIconFile)
@@ -62,7 +62,7 @@ func (c *AccordionComponent) OnUpsert() {
 	c.SetOnClickFunc(callbackData.OnToggle)
 }
 
-func (c *AccordionComponent) Render() co.Instance {
+func (c *accordionComponent) Render() co.Instance {
 	return co.New(co.Element, func() {
 		co.WithLayoutData(c.Properties.LayoutData())
 		co.WithData(co.ElementData{
@@ -119,7 +119,7 @@ func (c *AccordionComponent) Render() co.Instance {
 	})
 }
 
-func (c *AccordionComponent) OnRender(element *ui.Element, canvas *ui.Canvas) {
+func (c *accordionComponent) OnRender(element *ui.Element, canvas *ui.Canvas) {
 	var backgroundColor ui.Color
 	switch c.State() {
 	case ButtonStateOver:

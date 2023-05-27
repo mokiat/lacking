@@ -17,20 +17,20 @@ var switchDefaultData = SwitchData{}
 
 // Switch is a container that can switch between different views depending
 // on the specified SwitchData.
-var Switch = co.Define(&SwitchComponent{})
+var Switch = co.Define(&switchComponent{})
 
-type SwitchComponent struct {
+type switchComponent struct {
 	Properties co.Properties `co:"properties"`
 
 	activeChildKey string
 }
 
-func (c *SwitchComponent) OnUpsert() {
+func (c *switchComponent) OnUpsert() {
 	data := co.GetOptionalData(c.Properties, switchDefaultData)
 	c.activeChildKey = data.ChildKey
 }
 
-func (c *SwitchComponent) Render() co.Instance {
+func (c *switchComponent) Render() co.Instance {
 	return co.New(co.Element, func() {
 		co.WithData(co.ElementData{
 			Layout: layout.Fill(),

@@ -28,9 +28,9 @@ var listItemDefaultCallbackData = ListItemCallbackData{
 }
 
 // ListItem represents a component to be displayed in a List.
-var ListItem = co.Define(&ListItemComponent{})
+var ListItem = co.Define(&listItemComponent{})
 
-type ListItemComponent struct {
+type listItemComponent struct {
 	BaseButtonComponent
 
 	Properties co.Properties `co:"properties"`
@@ -38,7 +38,7 @@ type ListItemComponent struct {
 	isSelected bool
 }
 
-func (c *ListItemComponent) OnUpsert() {
+func (c *listItemComponent) OnUpsert() {
 	data := co.GetOptionalData(c.Properties, listItemDefaultData)
 	c.isSelected = data.Selected
 
@@ -46,7 +46,7 @@ func (c *ListItemComponent) OnUpsert() {
 	c.SetOnClickFunc(callbackData.OnSelected)
 }
 
-func (c *ListItemComponent) Render() co.Instance {
+func (c *listItemComponent) Render() co.Instance {
 	return co.New(co.Element, func() {
 		co.WithLayoutData(c.Properties.LayoutData())
 		co.WithData(co.ElementData{
@@ -63,7 +63,7 @@ func (c *ListItemComponent) Render() co.Instance {
 	})
 }
 
-func (c *ListItemComponent) OnRender(element *ui.Element, canvas *ui.Canvas) {
+func (c *listItemComponent) OnRender(element *ui.Element, canvas *ui.Canvas) {
 	var backgroundColor ui.Color
 	switch c.State() {
 	case ButtonStateOver:

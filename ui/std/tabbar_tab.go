@@ -40,9 +40,9 @@ var tabbarTabDefaultCallbackData = TabbarTabCallbackData{
 	OnClose: func() {},
 }
 
-var TabbarTab = co.Define(&TabbarTabComponent{})
+var TabbarTab = co.Define(&tabbarTabComponent{})
 
-type TabbarTabComponent struct {
+type tabbarTabComponent struct {
 	Scope      co.Scope      `co:"scope"`
 	Properties co.Properties `co:"properties"`
 
@@ -53,7 +53,7 @@ type TabbarTabComponent struct {
 	text string
 }
 
-func (c *TabbarTabComponent) OnUpsert() {
+func (c *tabbarTabComponent) OnUpsert() {
 	data := co.GetOptionalData(c.Properties, tabbarTabDefaultData)
 	c.icon = data.Icon
 	c.text = data.Text
@@ -64,7 +64,7 @@ func (c *TabbarTabComponent) OnUpsert() {
 	c.close.SetOnClickFunc(callbackData.OnClose)
 }
 
-func (c *TabbarTabComponent) Render() co.Instance {
+func (c *tabbarTabComponent) Render() co.Instance {
 	// force specific height
 	layoutData := co.GetOptionalLayoutData(c.Properties, layout.Data{})
 	layoutData.Height = opt.V(TabbarTabHeight)

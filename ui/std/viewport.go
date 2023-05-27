@@ -47,9 +47,9 @@ var viewportDefaultCallbackData = ViewportCallbackData{
 
 // Viewport represents a component that uses low-level API calls to render
 // an external scene, unlike other components that rely on the Canvas API.
-var Viewport = co.Define(&ViewportComponent{})
+var Viewport = co.Define(&viewportComponent{})
 
-type ViewportComponent struct {
+type viewportComponent struct {
 	Properties co.Properties `co:"properties"`
 
 	surface viewportSurfaceComponent
@@ -62,14 +62,14 @@ type ViewportComponent struct {
 	onMouseEvent    func(event ViewportMouseEvent) bool
 }
 
-func (c *ViewportComponent) OnCreate() {
+func (c *viewportComponent) OnCreate() {
 	data := co.GetData[ViewportData](c.Properties)
 	c.surface.api = data.API
 
 	c.surface.createFramebuffer(ViewportInitialFBWidth, ViewportInitialFBHeight)
 }
 
-func (c *ViewportComponent) OnUpsert() {
+func (c *viewportComponent) OnUpsert() {
 	data := co.GetData[ViewportData](c.Properties)
 	c.surface.api = data.API
 
@@ -79,11 +79,11 @@ func (c *ViewportComponent) OnUpsert() {
 	c.surface.onRender = callbackData.OnRender
 }
 
-func (c *ViewportComponent) OnDelete() {
+func (c *viewportComponent) OnDelete() {
 	c.surface.releaseFramebuffer()
 }
 
-func (c *ViewportComponent) Render() co.Instance {
+func (c *viewportComponent) Render() co.Instance {
 	return co.New(co.Element, func() {
 		co.WithLayoutData(c.Properties.LayoutData())
 		co.WithData(co.ElementData{
@@ -95,11 +95,11 @@ func (c *ViewportComponent) Render() co.Instance {
 	})
 }
 
-func (c *ViewportComponent) OnKeyboardEvent(element *ui.Element, event ui.KeyboardEvent) bool {
+func (c *viewportComponent) OnKeyboardEvent(element *ui.Element, event ui.KeyboardEvent) bool {
 	return c.onKeyboardEvent(event)
 }
 
-func (c *ViewportComponent) OnMouseEvent(element *ui.Element, event ui.MouseEvent) bool {
+func (c *viewportComponent) OnMouseEvent(element *ui.Element, event ui.MouseEvent) bool {
 	size := element.Bounds().Size
 	x := -1.0 + 2.0*float32(event.Position.X)/float32(size.Width)
 	y := 1.0 - 2.0*float32(event.Position.Y)/float32(size.Height)
@@ -110,7 +110,7 @@ func (c *ViewportComponent) OnMouseEvent(element *ui.Element, event ui.MouseEven
 	})
 }
 
-func (c *ViewportComponent) OnRender(element *ui.Element, canvas *ui.Canvas) {
+func (c *viewportComponent) OnRender(element *ui.Element, canvas *ui.Canvas) {
 	size := element.Bounds().Size
 	c.fbDesiredWidth = size.Width
 	c.fbDesiredHeight = size.Height
@@ -164,10 +164,10 @@ type viewportSurfaceComponent struct {
 	onRender func(framebuffer render.Framebuffer, size ui.Size)
 }
 
-func (e *viewportSurfaceComponent) Render() (render.Texture, ui.Size) {
-	fbSize := ui.NewSize(e.fbWidth, e.fbHeight)
-	e.onRender(e.framebuffer, fbSize)
-	return e.colorTexture, fbSize
+func (c *viewportSurfaceComponent) Render() (render.Texture, ui.Size) {
+	fbSize := ui.NewSize(c.fbWidth, c.fbHeight)
+	c.onRender(c.framebuffer, fbSize)
+	return c.colorTexture, fbSize
 }
 
 func (c *viewportSurfaceComponent) createFramebuffer(width, height int) {

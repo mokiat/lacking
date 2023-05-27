@@ -27,9 +27,9 @@ var scrollPaneDefaultData = ScrollPaneData{}
 
 // ScrollPane is a container component that provides scrolling functionality
 // in order to accommodate all children.
-var ScrollPane = co.Define(&ScrollPaneComponent{})
+var ScrollPane = co.Define(&scrollPaneComponent{})
 
-type ScrollPaneComponent struct {
+type scrollPaneComponent struct {
 	Properties co.Properties `co:"properties"`
 
 	canScrollHorizontally bool
@@ -42,14 +42,14 @@ type ScrollPaneComponent struct {
 	maxOffsetY float64
 }
 
-func (c *ScrollPaneComponent) OnUpsert() {
+func (c *scrollPaneComponent) OnUpsert() {
 	data := co.GetOptionalData(c.Properties, scrollPaneDefaultData)
 	c.canScrollHorizontally = !data.DisableHorizontal
 	c.canScrollVertically = !data.DisableVertical
 	c.isFocused = data.Focused
 }
 
-func (c *ScrollPaneComponent) Apply(element *ui.Element) {
+func (c *scrollPaneComponent) Apply(element *ui.Element) {
 	var maxChildSize ui.Size
 
 	contentBounds := element.ContentBounds()
@@ -89,7 +89,7 @@ func (c *ScrollPaneComponent) Apply(element *ui.Element) {
 	element.SetIdealSize(maxChildSize.Grow(element.Padding().Size()))
 }
 
-func (c *ScrollPaneComponent) OnKeyboardEvent(element *ui.Element, event ui.KeyboardEvent) bool {
+func (c *scrollPaneComponent) OnKeyboardEvent(element *ui.Element, event ui.KeyboardEvent) bool {
 	switch event.Code {
 	case ui.KeyCodeArrowDown:
 		if event.Type == ui.KeyboardEventTypeKeyDown || event.Type == ui.KeyboardEventTypeRepeat {
@@ -115,13 +115,13 @@ func (c *ScrollPaneComponent) OnKeyboardEvent(element *ui.Element, event ui.Keyb
 	return false
 }
 
-func (c *ScrollPaneComponent) OnMouseEvent(element *ui.Element, event ui.MouseEvent) bool {
+func (c *scrollPaneComponent) OnMouseEvent(element *ui.Element, event ui.MouseEvent) bool {
 	// TODO: Support mouse dragging as a means to scroll
 	c.scroll(element, event.ScrollX*10.0, event.ScrollY*10.0)
 	return true
 }
 
-func (c *ScrollPaneComponent) Render() co.Instance {
+func (c *scrollPaneComponent) Render() co.Instance {
 	return co.New(co.Element, func() {
 		co.WithData(co.ElementData{
 			Focusable: opt.V(true),
@@ -134,7 +134,7 @@ func (c *ScrollPaneComponent) Render() co.Instance {
 	})
 }
 
-func (c *ScrollPaneComponent) scroll(element *ui.Element, deltaX, deltaY float64) {
+func (c *scrollPaneComponent) scroll(element *ui.Element, deltaX, deltaY float64) {
 	c.offsetX -= deltaX
 	c.offsetY -= deltaY
 	if c.canScrollHorizontally && !c.canScrollVertically {

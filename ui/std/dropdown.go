@@ -38,9 +38,9 @@ var dropdownDefaultCallbackData = DropdownCallbackData{
 	OnItemSelected: func(key any) {},
 }
 
-var Dropdown = co.Define(&DropdownComponent{})
+var Dropdown = co.Define(&dropdownComponent{})
 
-type DropdownComponent struct {
+type dropdownComponent struct {
 	BaseButtonComponent
 
 	Scope      co.Scope      `co:"scope"`
@@ -55,7 +55,7 @@ type DropdownComponent struct {
 	onItemSelected func(key any)
 }
 
-func (c *DropdownComponent) OnUpsert() {
+func (c *dropdownComponent) OnUpsert() {
 	data := co.GetOptionalData(c.Properties, dropdownDefaultData)
 	c.items = data.Items
 	c.selectedItemKey = data.SelectedKey
@@ -66,7 +66,7 @@ func (c *DropdownComponent) OnUpsert() {
 	c.SetOnClickFunc(c.onOpen)
 }
 
-func (c *DropdownComponent) Render() co.Instance {
+func (c *dropdownComponent) Render() co.Instance {
 	label := ""
 	for _, item := range c.items {
 		if item.Key == c.selectedItemKey {
@@ -111,7 +111,7 @@ func (c *DropdownComponent) Render() co.Instance {
 	})
 }
 
-func (c *DropdownComponent) OnRender(element *ui.Element, canvas *ui.Canvas) {
+func (c *dropdownComponent) OnRender(element *ui.Element, canvas *ui.Canvas) {
 	var backgroundColor ui.Color
 	switch c.State() {
 	case ButtonStateOver:
@@ -142,13 +142,13 @@ func (c *DropdownComponent) OnRender(element *ui.Element, canvas *ui.Canvas) {
 	canvas.Stroke()
 }
 
-func (c *DropdownComponent) onSelected(key any) {
+func (c *dropdownComponent) onSelected(key any) {
 	c.onClose()
 	c.onItemSelected(key)
 	c.Invalidate()
 }
 
-func (c *DropdownComponent) onOpen() {
+func (c *dropdownComponent) onOpen() {
 	c.overlay = co.OpenOverlay(c.Scope, co.New(dropdownList, func() {
 		co.WithData(c.Properties.Data())
 		co.WithCallbackData(dropdownListCallbackData{
@@ -159,7 +159,7 @@ func (c *DropdownComponent) onOpen() {
 	c.Invalidate()
 }
 
-func (c *DropdownComponent) onClose() {
+func (c *dropdownComponent) onClose() {
 	c.overlay.Close()
 	c.overlay = nil
 	c.Invalidate()

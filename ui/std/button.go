@@ -39,9 +39,9 @@ var buttonDefaultCallbackData = ButtonCallbackData{
 }
 
 // Button is a component that allows a user click on it to activate a process.
-var Button = co.Define(&ButtonComponent{})
+var Button = co.Define(&buttonComponent{})
 
-type ButtonComponent struct {
+type buttonComponent struct {
 	BaseButtonComponent
 
 	Scope      co.Scope      `co:"scope"`
@@ -52,7 +52,7 @@ type ButtonComponent struct {
 	isEnabled bool
 }
 
-func (c *ButtonComponent) OnUpsert() {
+func (c *buttonComponent) OnUpsert() {
 	data := co.GetOptionalData(c.Properties, buttonDefaultData)
 	c.icon = data.Icon
 	c.text = data.Text
@@ -62,7 +62,7 @@ func (c *ButtonComponent) OnUpsert() {
 	c.SetOnClickFunc(callbackData.OnClick)
 }
 
-func (c *ButtonComponent) Render() co.Instance {
+func (c *buttonComponent) Render() co.Instance {
 	// force specific height
 	layoutData := co.GetOptionalLayoutData(c.Properties, layout.Data{})
 	layoutData.Height = opt.V(ButtonHeight)
@@ -115,7 +115,7 @@ func (c *ButtonComponent) Render() co.Instance {
 	})
 }
 
-func (c *ButtonComponent) OnRender(element *ui.Element, canvas *ui.Canvas) {
+func (c *buttonComponent) OnRender(element *ui.Element, canvas *ui.Canvas) {
 	backgroundColor := SurfaceColor
 	strokeColor := PrimaryLightColor
 	if element.Enabled() {

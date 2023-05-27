@@ -13,13 +13,13 @@ var (
 	TabbarSidePadding = 5
 )
 
-var Tabbar = co.Define(&TabbarComponent{})
+var Tabbar = co.Define(&tabbarComponent{})
 
-type TabbarComponent struct {
+type tabbarComponent struct {
 	Properties co.Properties `co:"properties"`
 }
 
-func (c *TabbarComponent) Render() co.Instance {
+func (c *tabbarComponent) Render() co.Instance {
 	// force specific height
 	layoutData := co.GetOptionalLayoutData(c.Properties, layout.Data{})
 	layoutData.Height = opt.V(TabbarHeight)

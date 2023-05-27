@@ -23,9 +23,9 @@ var containerDefaultData = ContainerData{
 
 // Container represents a component that holds other components and has
 // some sort of visual boundary.
-var Container = co.Define(&ContainerComponent{})
+var Container = co.Define(&containerComponent{})
 
-type ContainerComponent struct {
+type containerComponent struct {
 	Properties co.Properties `co:"properties"`
 
 	backgroundColor ui.Color
@@ -35,7 +35,7 @@ type ContainerComponent struct {
 	layout          ui.Layout
 }
 
-func (c *ContainerComponent) OnUpsert() {
+func (c *containerComponent) OnUpsert() {
 	data := co.GetOptionalData(c.Properties, containerDefaultData)
 	if data.BackgroundColor.Specified {
 		c.backgroundColor = data.BackgroundColor.Value
@@ -52,7 +52,7 @@ func (c *ContainerComponent) OnUpsert() {
 	c.layout = data.Layout
 }
 
-func (c *ContainerComponent) Render() co.Instance {
+func (c *containerComponent) Render() co.Instance {
 	return co.New(co.Element, func() {
 		co.WithLayoutData(c.Properties.LayoutData())
 		co.WithData(co.ElementData{
@@ -64,7 +64,7 @@ func (c *ContainerComponent) Render() co.Instance {
 	})
 }
 
-func (c *ContainerComponent) OnRender(element *ui.Element, canvas *ui.Canvas) {
+func (c *containerComponent) OnRender(element *ui.Element, canvas *ui.Canvas) {
 	bounds := element.Bounds().Size
 	drawBounds := sprec.NewVec2(float32(bounds.Width), float32(bounds.Height))
 

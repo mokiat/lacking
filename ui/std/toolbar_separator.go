@@ -13,13 +13,13 @@ var (
 	ToolbarSeparatorLineLengthRatio = float32(0.7)
 )
 
-var ToolbarSeparator = co.Define(&ToolbarSeparatorComponent{})
+var ToolbarSeparator = co.Define(&toolbarSeparatorComponent{})
 
-type ToolbarSeparatorComponent struct {
+type toolbarSeparatorComponent struct {
 	Properties co.Properties `co:"properties"`
 }
 
-func (c *ToolbarSeparatorComponent) Render() co.Instance {
+func (c *toolbarSeparatorComponent) Render() co.Instance {
 	return co.New(co.Element, func() {
 		co.WithLayoutData(c.Properties.LayoutData())
 		co.WithData(co.ElementData{
@@ -32,7 +32,7 @@ func (c *ToolbarSeparatorComponent) Render() co.Instance {
 	})
 }
 
-func (c *ToolbarSeparatorComponent) OnRender(element *ui.Element, canvas *ui.Canvas) {
+func (c *toolbarSeparatorComponent) OnRender(element *ui.Element, canvas *ui.Canvas) {
 	bounds := element.Bounds()
 	size := sprec.NewVec2(
 		float32(bounds.Width),

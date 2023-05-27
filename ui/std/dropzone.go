@@ -20,21 +20,20 @@ var dropZoneDefaultCallbackData = DropZoneCallbackData{
 //
 // It is intended to be used as a container for a different component that
 // provides a visual aid (e.g. an upload icon or some type of viewport).
-var DropZone = co.Define(&DropZoneComponent{})
+var DropZone = co.Define(&dropZoneComponent{})
 
-// DropZoneComponent represents the implementation of a DropZone component.
-type DropZoneComponent struct {
+type dropZoneComponent struct {
 	Properties co.Properties `co:"properties"`
 
 	onDrop func(paths []string) bool
 }
 
-func (c *DropZoneComponent) OnUpsert() {
+func (c *dropZoneComponent) OnUpsert() {
 	callbackData := co.GetOptionalCallbackData(c.Properties, dropZoneDefaultCallbackData)
 	c.onDrop = callbackData.OnDrop
 }
 
-func (c *DropZoneComponent) OnMouseEvent(element *ui.Element, event ui.MouseEvent) bool {
+func (c *dropZoneComponent) OnMouseEvent(element *ui.Element, event ui.MouseEvent) bool {
 	if event.Type != ui.MouseEventTypeDrop {
 		return false
 	}
@@ -45,7 +44,7 @@ func (c *DropZoneComponent) OnMouseEvent(element *ui.Element, event ui.MouseEven
 	return c.onDrop(filePayload.Paths)
 }
 
-func (c *DropZoneComponent) Render() co.Instance {
+func (c *dropZoneComponent) Render() co.Instance {
 	return co.New(co.Element, func() {
 		co.WithLayoutData(c.Properties.LayoutData())
 		co.WithData(co.ElementData{

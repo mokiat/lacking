@@ -17,20 +17,20 @@ var spacingDefaultData = SpacingData{
 
 // Spacing represents an invisible component that requests that a specific
 // amount of visual space be reserved for it.
-var Spacing = co.Define(&SpacingComponent{})
+var Spacing = co.Define(&spacingComponent{})
 
-type SpacingComponent struct {
+type spacingComponent struct {
 	Properties co.Properties `co:"properties"`
 
 	spacing ui.Size
 }
 
-func (c *SpacingComponent) OnUpsert() {
+func (c *spacingComponent) OnUpsert() {
 	data := co.GetOptionalData(c.Properties, spacingDefaultData)
 	c.spacing = data.Size
 }
 
-func (c *SpacingComponent) Render() co.Instance {
+func (c *spacingComponent) Render() co.Instance {
 	return co.New(co.Element, func() {
 		co.WithLayoutData(c.Properties.LayoutData())
 		co.WithData(co.ElementData{

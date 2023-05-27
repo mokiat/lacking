@@ -36,20 +36,20 @@ var toolbarDefaultData = ToolbarData{
 
 // Toolbar represents a container that holds key controls (mostly buttons)
 // in a horizontal fashion.
-var Toolbar = co.Define(&ToolbarComponent{})
+var Toolbar = co.Define(&toolbarComponent{})
 
-type ToolbarComponent struct {
+type toolbarComponent struct {
 	Properties co.Properties `co:"properties"`
 
 	positioning ToolbarPositioning
 }
 
-func (c *ToolbarComponent) OnUpsert() {
+func (c *toolbarComponent) OnUpsert() {
 	data := co.GetOptionalData(c.Properties, toolbarDefaultData)
 	c.positioning = data.Positioning
 }
 
-func (c *ToolbarComponent) OnRender(element *ui.Element, canvas *ui.Canvas) {
+func (c *toolbarComponent) OnRender(element *ui.Element, canvas *ui.Canvas) {
 	bounds := element.Bounds()
 	size := sprec.NewVec2(
 		float32(bounds.Width),
@@ -79,7 +79,7 @@ func (c *ToolbarComponent) OnRender(element *ui.Element, canvas *ui.Canvas) {
 	canvas.Stroke()
 }
 
-func (c *ToolbarComponent) Render() co.Instance {
+func (c *toolbarComponent) Render() co.Instance {
 	return co.New(co.Element, func() {
 		co.WithLayoutData(c.Properties.LayoutData())
 		co.WithData(co.ElementData{

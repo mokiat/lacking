@@ -28,16 +28,16 @@ var elementDefaultData = ElementData{
 // Element represents the most basic component, which is translated
 // to a UI Element. All higher-order components eventually boil down to an
 // Element.
-var Element = Define(&ElementComponent{})
+var Element = Define(&elementComponent{})
 
-type ElementComponent struct {
+type elementComponent struct {
 	Scope      Scope      `co:"scope"`
 	Properties Properties `co:"properties"`
 
 	element *ui.Element
 }
 
-func (c *ElementComponent) OnCreate() {
+func (c *elementComponent) OnCreate() {
 	c.element = Window(c.Scope).CreateElement()
 
 	c.OnUpdate()
@@ -48,7 +48,7 @@ func (c *ElementComponent) OnCreate() {
 	}
 }
 
-func (c *ElementComponent) OnUpdate() {
+func (c *elementComponent) OnUpdate() {
 	data := GetOptionalData(c.Properties, elementDefaultData)
 	if data.Reference != nil {
 		*data.Reference = c.element
@@ -75,11 +75,11 @@ func (c *ElementComponent) OnUpdate() {
 	c.element.SetLayoutConfig(c.Properties.LayoutData())
 }
 
-func (c *ElementComponent) OnDelete() {
+func (c *elementComponent) OnDelete() {
 	c.element.Destroy()
 }
 
-func (c *ElementComponent) Render() Instance {
+func (c *elementComponent) Render() Instance {
 	return Instance{
 		element:  c.element,
 		children: c.Properties.Children(),

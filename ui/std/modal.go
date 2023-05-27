@@ -6,13 +6,13 @@ import (
 	"github.com/mokiat/lacking/ui/layout"
 )
 
-var Modal = co.Define(&ModalComponent{})
+var Modal = co.Define(&modalComponent{})
 
-type ModalComponent struct {
+type modalComponent struct {
 	Properties co.Properties `co:"properties"`
 }
 
-func (c *ModalComponent) Render() co.Instance {
+func (c *modalComponent) Render() co.Instance {
 	return co.New(Container, func() {
 		co.WithData(ContainerData{
 			BackgroundColor: opt.V(ModalOverlayColor),

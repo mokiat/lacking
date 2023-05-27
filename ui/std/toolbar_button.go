@@ -37,9 +37,9 @@ var toolbarButtonDefaultCallbackData = ToolbarButtonCallbackData{
 	OnClick: func() {},
 }
 
-var ToolbarButton = co.Define(&ToolbarButtonComponent{})
+var ToolbarButton = co.Define(&toolbarButtonComponent{})
 
-type ToolbarButtonComponent struct {
+type toolbarButtonComponent struct {
 	BaseButtonComponent
 
 	Scope      co.Scope      `co:"scope"`
@@ -51,7 +51,7 @@ type ToolbarButtonComponent struct {
 	isSelected bool
 }
 
-func (c *ToolbarButtonComponent) OnUpsert() {
+func (c *toolbarButtonComponent) OnUpsert() {
 	data := co.GetOptionalData(c.Properties, toolbarButtonDefaultData)
 	c.icon = data.Icon
 	c.text = data.Text
@@ -62,7 +62,7 @@ func (c *ToolbarButtonComponent) OnUpsert() {
 	c.SetOnClickFunc(callbackData.OnClick)
 }
 
-func (c *ToolbarButtonComponent) Render() co.Instance {
+func (c *toolbarButtonComponent) Render() co.Instance {
 	// force specific height
 	layoutData := co.GetOptionalLayoutData(c.Properties, layout.Data{})
 	layoutData.Height = opt.V(ToolbarItemHeight)
@@ -115,9 +115,9 @@ func (c *ToolbarButtonComponent) Render() co.Instance {
 	})
 }
 
-func (e *ToolbarButtonComponent) OnRender(element *ui.Element, canvas *ui.Canvas) {
+func (c *toolbarButtonComponent) OnRender(element *ui.Element, canvas *ui.Canvas) {
 	var backgroundColor ui.Color
-	switch e.State() {
+	switch c.State() {
 	case ButtonStateOver:
 		backgroundColor = HoverOverlayColor
 	case ButtonStateDown:
@@ -142,7 +142,7 @@ func (e *ToolbarButtonComponent) OnRender(element *ui.Element, canvas *ui.Canvas
 			Color: backgroundColor,
 		})
 	}
-	if e.isSelected {
+	if c.isSelected {
 		canvas.Reset()
 		canvas.Rectangle(
 			sprec.NewVec2(0.0, size.Y-ToolbarBottonSelectionHeight),

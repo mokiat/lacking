@@ -52,9 +52,9 @@ func (c *dropdownItemComponent) Render() co.Instance {
 	})
 }
 
-func (e *dropdownItemComponent) OnRender(element *ui.Element, canvas *ui.Canvas) {
+func (c *dropdownItemComponent) OnRender(element *ui.Element, canvas *ui.Canvas) {
 	var backgroundColor ui.Color
-	switch e.State() {
+	switch c.State() {
 	case ButtonStateOver:
 		backgroundColor = HoverOverlayColor
 	case ButtonStateDown:
@@ -67,7 +67,7 @@ func (e *dropdownItemComponent) OnRender(element *ui.Element, canvas *ui.Canvas)
 	width := float32(size.Width)
 	height := float32(size.Height)
 
-	if e.isSelected {
+	if c.isSelected {
 		canvas.Reset()
 		canvas.Rectangle(
 			sprec.ZeroVec2(),

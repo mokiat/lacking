@@ -23,20 +23,20 @@ var paperDefaultData = PaperData{
 }
 
 // Paper represents an outlined container.
-var Paper = co.Define(&PaperComponent{})
+var Paper = co.Define(&paperComponent{})
 
-type PaperComponent struct {
+type paperComponent struct {
 	Properties co.Properties `co:"properties"`
 
 	layout ui.Layout
 }
 
-func (c *PaperComponent) OnUpsert() {
+func (c *paperComponent) OnUpsert() {
 	data := co.GetOptionalData(c.Properties, paperDefaultData)
 	c.layout = data.Layout
 }
 
-func (c *PaperComponent) Render() co.Instance {
+func (c *paperComponent) Render() co.Instance {
 	return co.New(co.Element, func() {
 		co.WithLayoutData(c.Properties.LayoutData())
 		co.WithData(co.ElementData{
@@ -53,7 +53,7 @@ func (c *PaperComponent) Render() co.Instance {
 	})
 }
 
-func (c *PaperComponent) OnRender(element *ui.Element, canvas *ui.Canvas) {
+func (c *paperComponent) OnRender(element *ui.Element, canvas *ui.Canvas) {
 	bounds := element.Bounds()
 	size := sprec.NewVec2(
 		float32(bounds.Width),

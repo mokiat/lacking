@@ -36,9 +36,9 @@ var editboxDefaultCallbackData = EditboxCallbackData{
 }
 
 // Editbox is a component that allows a user to input a string.
-var Editbox = co.Define(&EditboxComponent{})
+var Editbox = co.Define(&editboxComponent{})
 
-type EditboxComponent struct {
+type editboxComponent struct {
 	Scope      co.Scope      `co:"scope"`
 	Properties co.Properties `co:"properties"`
 
@@ -50,7 +50,7 @@ type EditboxComponent struct {
 	onChanged func(string)
 }
 
-func (c *EditboxComponent) OnUpsert() {
+func (c *editboxComponent) OnUpsert() {
 	c.font = co.OpenFont(c.Scope, EditboxFontFile)
 
 	data := co.GetOptionalData(c.Properties, editboxDefaultData)
@@ -64,7 +64,7 @@ func (c *EditboxComponent) OnUpsert() {
 	c.onChanged = callbackData.OnChanged
 }
 
-func (c *EditboxComponent) Render() co.Instance {
+func (c *editboxComponent) Render() co.Instance {
 	// force specific height
 	layoutData := co.GetOptionalLayoutData(c.Properties, layout.Data{})
 	layoutData.Height = opt.V(EditboxHeight)
@@ -82,7 +82,7 @@ func (c *EditboxComponent) Render() co.Instance {
 	})
 }
 
-func (c *EditboxComponent) OnKeyboardEvent(element *ui.Element, event ui.KeyboardEvent) bool {
+func (c *editboxComponent) OnKeyboardEvent(element *ui.Element, event ui.KeyboardEvent) bool {
 	switch event.Type {
 	case ui.KeyboardEventTypeKeyDown, ui.KeyboardEventTypeRepeat:
 		switch event.Code {
@@ -106,7 +106,7 @@ func (c *EditboxComponent) OnKeyboardEvent(element *ui.Element, event ui.Keyboar
 	return true
 }
 
-func (c *EditboxComponent) OnRender(element *ui.Element, canvas *ui.Canvas) {
+func (c *editboxComponent) OnRender(element *ui.Element, canvas *ui.Canvas) {
 	var strokeColor ui.Color
 	var text string
 	if element.Window().IsElementFocused(element) {

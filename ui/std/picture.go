@@ -49,9 +49,9 @@ type PictureData struct {
 
 var pictureDefaultData = PictureData{}
 
-var Picture = co.Define(&PictureComponent{})
+var Picture = co.Define(&pictureComponent{})
 
-type PictureComponent struct {
+type pictureComponent struct {
 	Properties co.Properties `co:"properties"`
 
 	backgroundColor ui.Color
@@ -60,7 +60,7 @@ type PictureComponent struct {
 	mode            ImageMode
 }
 
-func (c *PictureComponent) OnUpsert() {
+func (c *pictureComponent) OnUpsert() {
 	data := co.GetOptionalData(c.Properties, pictureDefaultData)
 	if data.BackgroundColor.Specified {
 		c.backgroundColor = data.BackgroundColor.Value
@@ -76,7 +76,7 @@ func (c *PictureComponent) OnUpsert() {
 	c.mode = data.Mode
 }
 
-func (c *PictureComponent) Render() co.Instance {
+func (c *pictureComponent) Render() co.Instance {
 	var idealSize opt.T[ui.Size]
 	if c.image != nil {
 		idealSize = opt.V(c.image.Size())
@@ -91,7 +91,7 @@ func (c *PictureComponent) Render() co.Instance {
 	})
 }
 
-func (c *PictureComponent) OnRender(element *ui.Element, canvas *ui.Canvas) {
+func (c *pictureComponent) OnRender(element *ui.Element, canvas *ui.Canvas) {
 	if !c.backgroundColor.Transparent() {
 		canvas.Reset()
 		canvas.Rectangle(
@@ -122,7 +122,7 @@ func (c *PictureComponent) OnRender(element *ui.Element, canvas *ui.Canvas) {
 	}
 }
 
-func (c *PictureComponent) evaluateImageDrawLocation(element *ui.Element) (sprec.Vec2, sprec.Vec2) {
+func (c *pictureComponent) evaluateImageDrawLocation(element *ui.Element) (sprec.Vec2, sprec.Vec2) {
 	elementSize := element.Bounds().Size
 	imageSize := c.image.Size()
 	determinant := imageSize.Width*elementSize.Height - imageSize.Height*elementSize.Width

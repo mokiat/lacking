@@ -12,13 +12,13 @@ var (
 
 // List represents a container that holds a sequence of ListItem
 // components in a vertical orientation.
-var List = co.Define(&ListComponent{})
+var List = co.Define(&listComponent{})
 
-type ListComponent struct {
+type listComponent struct {
 	Properties co.Properties `co:"properties"`
 }
 
-func (c *ListComponent) Render() co.Instance {
+func (c *listComponent) Render() co.Instance {
 	return co.New(Container, func() {
 		co.WithLayoutData(c.Properties.LayoutData())
 		co.WithData(ContainerData{
