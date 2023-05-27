@@ -13,7 +13,7 @@ var (
 	ToolbarSeparatorLineLengthRatio = float32(0.7)
 )
 
-var ToolbarSeparator = co.DefineType(&ToolbarSeparatorComponent{})
+var ToolbarSeparator = co.Define(&ToolbarSeparatorComponent{})
 
 type ToolbarSeparatorComponent struct {
 	Properties co.Properties `co:"properties"`

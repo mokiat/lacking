@@ -28,7 +28,7 @@ var listItemDefaultCallbackData = ListItemCallbackData{
 }
 
 // ListItem represents a component to be displayed in a List.
-var ListItem = co.DefineType(&ListItemComponent{})
+var ListItem = co.Define(&ListItemComponent{})
 
 type ListItemComponent struct {
 	BaseButtonComponent

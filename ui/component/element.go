@@ -28,7 +28,7 @@ var elementDefaultData = ElementData{
 // Element represents the most basic component, which is translated
 // to a UI Element. All higher-order components eventually boil down to an
 // Element.
-var Element = DefineType(&ElementComponent{})
+var Element = Define(&ElementComponent{})
 
 type ElementComponent struct {
 	Scope      Scope      `co:"scope"`

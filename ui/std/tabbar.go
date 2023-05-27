@@ -13,7 +13,7 @@ var (
 	TabbarSidePadding = 5
 )
 
-var Tabbar = co.DefineType(&TabbarComponent{})
+var Tabbar = co.Define(&TabbarComponent{})
 
 type TabbarComponent struct {
 	Properties co.Properties `co:"properties"`

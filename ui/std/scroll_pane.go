@@ -27,7 +27,7 @@ var scrollPaneDefaultData = ScrollPaneData{}
 
 // ScrollPane is a container component that provides scrolling functionality
 // in order to accommodate all children.
-var ScrollPane = co.DefineType(&ScrollPaneComponent{})
+var ScrollPane = co.Define(&ScrollPaneComponent{})
 
 type ScrollPaneComponent struct {
 	Properties co.Properties `co:"properties"`

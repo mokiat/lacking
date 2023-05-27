@@ -20,7 +20,7 @@ type dropdownListCallbackData struct {
 	OnClose    OnActionFunc
 }
 
-var dropdownList = co.DefineType(&dropdownListComponent{})
+var dropdownList = co.Define(&dropdownListComponent{})
 
 type dropdownListComponent struct {
 	Scope      co.Scope      `co:"scope"`

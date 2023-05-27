@@ -39,7 +39,7 @@ var buttonDefaultCallbackData = ButtonCallbackData{
 }
 
 // Button is a component that allows a user click on it to activate a process.
-var Button = co.DefineType(&ButtonComponent{})
+var Button = co.Define(&ButtonComponent{})
 
 type ButtonComponent struct {
 	BaseButtonComponent

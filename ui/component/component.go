@@ -3,7 +3,6 @@ package component
 import (
 	"fmt"
 	"reflect"
-	"runtime"
 
 	"github.com/mokiat/lacking/log"
 )
@@ -20,24 +19,6 @@ type Component struct {
 // Deprecated: Use DefineType instead
 type ComponentFunc func(props Properties, scope Scope) Instance
 
-// Define is the mechanism through which new components can be defined.
-//
-// The provided component function (i.e. render function) will be called by the
-// framework to initialize, reconcicle,or destroy a component instance.
-//
-// Deprecated: Use DefineType instead
-func Define(fn ComponentFunc) Component {
-	return Component{
-		componentType: evaluateComponentType(),
-		componentFunc: fn,
-	}
-}
-
-func evaluateComponentType() string {
-	_, file, line, _ := runtime.Caller(2)
-	return fmt.Sprintf("%s#%d", file, line)
-}
-
 // Renderable is a component that is implemented through a Go type.
 type Renderable interface {
 
@@ -45,7 +26,7 @@ type Renderable interface {
 	Render() Instance
 }
 
-// CreateNotifiable should be implemented by TypeComponent types that want
+// CreateNotifiable should be implemented by component types that want
 // to be notified of component creation.
 type CreateNotifiable interface {
 
@@ -53,7 +34,7 @@ type CreateNotifiable interface {
 	OnCreate()
 }
 
-// UpdateNotifiable should be implemented by TypeComponent types that want
+// UpdateNotifiable should be implemented by component types that want
 // to be notified of component update.
 type UpdateNotifiable interface {
 
@@ -61,7 +42,7 @@ type UpdateNotifiable interface {
 	OnUpdate()
 }
 
-// UpsertNotifiable should be implemented by TypeComponent types that want
+// UpsertNotifiable should be implemented by component types that want
 // to be notified of component changes.
 type UpsertNotifiable interface {
 
@@ -70,7 +51,7 @@ type UpsertNotifiable interface {
 	OnUpsert()
 }
 
-// DeleteNotifiable should be implemented by TypeComponent types that want
+// DeleteNotifiable should be implemented by component types that want
 // to be notified of component deletion.
 type DeleteNotifiable interface {
 
@@ -78,8 +59,8 @@ type DeleteNotifiable interface {
 	OnDelete()
 }
 
-// DefineType defines a new component using the specified Go type as template.
-func DefineType(template Renderable) Component {
+// Define defines a new component using the specified Go type as template.
+func Define(template Renderable) Component {
 	// TODO: Flip things around. Have this be the main way to create
 	// components and reimplement the old behavior to use this internally
 	// for storing state and notifications.

@@ -47,7 +47,7 @@ var viewportDefaultCallbackData = ViewportCallbackData{
 
 // Viewport represents a component that uses low-level API calls to render
 // an external scene, unlike other components that rely on the Canvas API.
-var Viewport = co.DefineType(&ViewportComponent{})
+var Viewport = co.Define(&ViewportComponent{})
 
 type ViewportComponent struct {
 	Properties co.Properties `co:"properties"`

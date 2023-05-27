@@ -23,7 +23,7 @@ var containerDefaultData = ContainerData{
 
 // Container represents a component that holds other components and has
 // some sort of visual boundary.
-var Container = co.DefineType(&ContainerComponent{})
+var Container = co.Define(&ContainerComponent{})
 
 type ContainerComponent struct {
 	Properties co.Properties `co:"properties"`

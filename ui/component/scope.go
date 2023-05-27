@@ -1,6 +1,7 @@
 package component
 
 import (
+	"fmt"
 	"image"
 	"reflect"
 
@@ -131,7 +132,7 @@ func ContextScoped(delegate Component) Component {
 	ctxSet := make(map[*componentNode]*ui.Context)
 
 	return Component{
-		componentType: evaluateComponentType(),
+		componentType: fmt.Sprintf("context-scoped(%s)", delegate.componentType),
 		componentFunc: func(props Properties, scope Scope) Instance {
 			ctx := ctxSet[renderCtx.node]
 			if renderCtx.isFirstRender() {

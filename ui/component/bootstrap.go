@@ -25,7 +25,7 @@ func Initialize(scope Scope, instance Instance) {
 	window.Root().AppendChild(rootNode.element)
 }
 
-var application = DefineType(&applicationComponent{})
+var application = Define(&applicationComponent{})
 
 type applicationComponent struct {
 	Scope      Scope      `co:"scope"`

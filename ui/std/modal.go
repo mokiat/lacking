@@ -6,7 +6,7 @@ import (
 	"github.com/mokiat/lacking/ui/layout"
 )
 
-var Modal = co.DefineType(&ModalComponent{})
+var Modal = co.Define(&ModalComponent{})
 
 type ModalComponent struct {
 	Properties co.Properties `co:"properties"`

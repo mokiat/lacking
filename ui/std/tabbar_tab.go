@@ -40,7 +40,7 @@ var tabbarTabDefaultCallbackData = TabbarTabCallbackData{
 	OnClose: func() {},
 }
 
-var TabbarTab = co.DefineType(&TabbarTabComponent{})
+var TabbarTab = co.Define(&TabbarTabComponent{})
 
 type TabbarTabComponent struct {
 	Scope      co.Scope      `co:"scope"`

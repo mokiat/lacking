@@ -37,7 +37,7 @@ var toolbarButtonDefaultCallbackData = ToolbarButtonCallbackData{
 	OnClick: func() {},
 }
 
-var ToolbarButton = co.DefineType(&ToolbarButtonComponent{})
+var ToolbarButton = co.Define(&ToolbarButtonComponent{})
 
 type ToolbarButtonComponent struct {
 	BaseButtonComponent

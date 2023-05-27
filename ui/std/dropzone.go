@@ -20,7 +20,7 @@ var dropZoneDefaultCallbackData = DropZoneCallbackData{
 //
 // It is intended to be used as a container for a different component that
 // provides a visual aid (e.g. an upload icon or some type of viewport).
-var DropZone = co.DefineType(&DropZoneComponent{})
+var DropZone = co.Define(&DropZoneComponent{})
 
 // DropZoneComponent represents the implementation of a DropZone component.
 type DropZoneComponent struct {

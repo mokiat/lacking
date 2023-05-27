@@ -36,7 +36,7 @@ var editboxDefaultCallbackData = EditboxCallbackData{
 }
 
 // Editbox is a component that allows a user to input a string.
-var Editbox = co.DefineType(&EditboxComponent{})
+var Editbox = co.Define(&EditboxComponent{})
 
 type EditboxComponent struct {
 	Scope      co.Scope      `co:"scope"`
