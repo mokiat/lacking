@@ -26,8 +26,7 @@ var labelDefaultData = LabelData{}
 var Label = co.Define(&labelComponent{})
 
 type labelComponent struct {
-	Scope      co.Scope      `co:"scope"`
-	Properties co.Properties `co:"properties"`
+	co.BaseComponent
 
 	font      *ui.Font
 	fontSize  float32
@@ -36,11 +35,11 @@ type labelComponent struct {
 }
 
 func (c *labelComponent) OnUpsert() {
-	data := co.GetOptionalData(c.Properties, labelDefaultData)
+	data := co.GetOptionalData(c.Properties(), labelDefaultData)
 	if data.Font != nil {
 		c.font = data.Font
 	} else {
-		c.font = co.OpenFont(c.Scope, "ui:///roboto-regular.ttf")
+		c.font = co.OpenFont(c.Scope(), "ui:///roboto-regular.ttf")
 	}
 	if data.FontSize.Specified {
 		c.fontSize = data.FontSize.Value
@@ -58,12 +57,12 @@ func (c *labelComponent) OnUpsert() {
 func (c *labelComponent) Render() co.Instance {
 	textSize := c.font.TextSize(c.text, c.fontSize)
 	return co.New(co.Element, func() {
-		co.WithLayoutData(c.Properties.LayoutData())
+		co.WithLayoutData(c.Properties().LayoutData())
 		co.WithData(co.ElementData{
 			Essence:   c,
 			IdealSize: opt.V(ui.NewSize(int(textSize.X), int(textSize.Y))),
 		})
-		co.WithChildren(c.Properties.Children())
+		co.WithChildren(c.Properties().Children())
 	})
 }
 

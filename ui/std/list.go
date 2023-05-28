@@ -15,12 +15,12 @@ var (
 var List = co.Define(&listComponent{})
 
 type listComponent struct {
-	Properties co.Properties `co:"properties"`
+	co.BaseComponent
 }
 
 func (c *listComponent) Render() co.Instance {
 	return co.New(Container, func() {
-		co.WithLayoutData(c.Properties.LayoutData())
+		co.WithLayoutData(c.Properties().LayoutData())
 		co.WithData(ContainerData{
 			BackgroundColor: opt.V(SurfaceColor),
 			Layout: layout.Vertical(layout.VerticalSettings{
@@ -28,6 +28,6 @@ func (c *listComponent) Render() co.Instance {
 				ContentSpacing:   ListItemSpacing,
 			}),
 		})
-		co.WithChildren(c.Properties.Children())
+		co.WithChildren(c.Properties().Children())
 	})
 }

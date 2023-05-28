@@ -38,10 +38,8 @@ var accordionDefaultCallbackData = AccordionCallbackData{
 var Accordion = co.Define(&accordionComponent{})
 
 type accordionComponent struct {
+	co.BaseComponent
 	BaseButtonComponent
-
-	Scope      co.Scope      `co:"scope"`
-	Properties co.Properties `co:"properties"`
 
 	icon       *ui.Image
 	title      string
@@ -49,22 +47,22 @@ type accordionComponent struct {
 }
 
 func (c *accordionComponent) OnUpsert() {
-	data := co.GetOptionalData(c.Properties, accordionDefaultData)
+	data := co.GetOptionalData(c.Properties(), accordionDefaultData)
 	if data.Expanded {
-		c.icon = co.OpenImage(c.Scope, AccordionExpandedIconFile)
+		c.icon = co.OpenImage(c.Scope(), AccordionExpandedIconFile)
 	} else {
-		c.icon = co.OpenImage(c.Scope, AccordionCollapsedIconFile)
+		c.icon = co.OpenImage(c.Scope(), AccordionCollapsedIconFile)
 	}
 	c.isExpanded = data.Expanded
 	c.title = data.Title
 
-	callbackData := co.GetOptionalCallbackData(c.Properties, accordionDefaultCallbackData)
+	callbackData := co.GetOptionalCallbackData(c.Properties(), accordionDefaultCallbackData)
 	c.SetOnClickFunc(callbackData.OnToggle)
 }
 
 func (c *accordionComponent) Render() co.Instance {
 	return co.New(co.Element, func() {
-		co.WithLayoutData(c.Properties.LayoutData())
+		co.WithLayoutData(c.Properties().LayoutData())
 		co.WithData(co.ElementData{
 			Layout: layout.Vertical(layout.VerticalSettings{
 				ContentAlignment: layout.HorizontalAlignmentLeft,
@@ -103,7 +101,7 @@ func (c *accordionComponent) Render() co.Instance {
 
 			co.WithChild("title", co.New(Label, func() {
 				co.WithData(LabelData{
-					Font:      co.OpenFont(c.Scope, AccordionHeaderFontFile),
+					Font:      co.OpenFont(c.Scope(), AccordionHeaderFontFile),
 					FontSize:  opt.V(AccordionHeaderFontSize),
 					FontColor: opt.V(OnPrimaryLightColor),
 					Text:      c.title,
@@ -112,7 +110,7 @@ func (c *accordionComponent) Render() co.Instance {
 		}))
 
 		if c.isExpanded {
-			for _, child := range c.Properties.Children() {
+			for _, child := range c.Properties().Children() {
 				co.WithChild(child.Key(), child)
 			}
 		}

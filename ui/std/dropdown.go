@@ -41,11 +41,8 @@ var dropdownDefaultCallbackData = DropdownCallbackData{
 var Dropdown = co.Define(&dropdownComponent{})
 
 type dropdownComponent struct {
+	co.BaseComponent
 	BaseButtonComponent
-
-	Scope      co.Scope      `co:"scope"`
-	Properties co.Properties `co:"properties"`
-	Invalidate func()        `co:"invalidate"`
 
 	items           []DropdownItem
 	selectedItemKey any
@@ -56,11 +53,11 @@ type dropdownComponent struct {
 }
 
 func (c *dropdownComponent) OnUpsert() {
-	data := co.GetOptionalData(c.Properties, dropdownDefaultData)
+	data := co.GetOptionalData(c.Properties(), dropdownDefaultData)
 	c.items = data.Items
 	c.selectedItemKey = data.SelectedKey
 
-	callbackData := co.GetOptionalCallbackData(c.Properties, dropdownDefaultCallbackData)
+	callbackData := co.GetOptionalCallbackData(c.Properties(), dropdownDefaultCallbackData)
 	c.onItemSelected = callbackData.OnItemSelected
 
 	c.SetOnClickFunc(c.onOpen)
@@ -79,7 +76,7 @@ func (c *dropdownComponent) Render() co.Instance {
 			Essence: c,
 			Layout:  layout.Anchor(),
 		})
-		co.WithLayoutData(c.Properties.LayoutData())
+		co.WithLayoutData(c.Properties().LayoutData())
 
 		co.WithChild("label", co.New(Label, func() {
 			co.WithLayoutData(layout.Data{
@@ -88,7 +85,7 @@ func (c *dropdownComponent) Render() co.Instance {
 				VerticalCenter: opt.V(0),
 			})
 			co.WithData(LabelData{
-				Font:      co.OpenFont(c.Scope, DropdownFontFile),
+				Font:      co.OpenFont(c.Scope(), DropdownFontFile),
 				FontSize:  opt.V(DropdownFontSize),
 				FontColor: opt.V(OnSurfaceColor),
 				Text:      label,
@@ -103,7 +100,7 @@ func (c *dropdownComponent) Render() co.Instance {
 				VerticalCenter: opt.V(0),
 			})
 			co.WithData(PictureData{
-				Image:      co.OpenImage(c.Scope, DropdownIconFile),
+				Image:      co.OpenImage(c.Scope(), DropdownIconFile),
 				ImageColor: opt.V(OnSurfaceColor),
 				Mode:       ImageModeFit,
 			})
@@ -149,8 +146,8 @@ func (c *dropdownComponent) onSelected(key any) {
 }
 
 func (c *dropdownComponent) onOpen() {
-	c.overlay = co.OpenOverlay(c.Scope, co.New(dropdownList, func() {
-		co.WithData(c.Properties.Data())
+	c.overlay = co.OpenOverlay(c.Scope(), co.New(dropdownList, func() {
+		co.WithData(c.Properties().Data())
 		co.WithCallbackData(dropdownListCallbackData{
 			OnSelected: c.onSelected,
 			OnClose:    c.onClose,

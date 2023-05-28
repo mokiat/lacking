@@ -30,7 +30,7 @@ var scrollPaneDefaultData = ScrollPaneData{}
 var ScrollPane = co.Define(&scrollPaneComponent{})
 
 type scrollPaneComponent struct {
-	Properties co.Properties `co:"properties"`
+	co.BaseComponent
 
 	canScrollHorizontally bool
 	canScrollVertically   bool
@@ -43,7 +43,7 @@ type scrollPaneComponent struct {
 }
 
 func (c *scrollPaneComponent) OnUpsert() {
-	data := co.GetOptionalData(c.Properties, scrollPaneDefaultData)
+	data := co.GetOptionalData(c.Properties(), scrollPaneDefaultData)
 	c.canScrollHorizontally = !data.DisableHorizontal
 	c.canScrollVertically = !data.DisableVertical
 	c.isFocused = data.Focused
@@ -129,8 +129,8 @@ func (c *scrollPaneComponent) Render() co.Instance {
 			Essence:   c,
 			Layout:    c,
 		})
-		co.WithLayoutData(c.Properties.LayoutData())
-		co.WithChildren(c.Properties.Children())
+		co.WithLayoutData(c.Properties().LayoutData())
+		co.WithChildren(c.Properties().Children())
 	})
 }
 

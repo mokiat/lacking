@@ -39,13 +39,13 @@ var toolbarDefaultData = ToolbarData{
 var Toolbar = co.Define(&toolbarComponent{})
 
 type toolbarComponent struct {
-	Properties co.Properties `co:"properties"`
+	co.BaseComponent
 
 	positioning ToolbarPositioning
 }
 
 func (c *toolbarComponent) OnUpsert() {
-	data := co.GetOptionalData(c.Properties, toolbarDefaultData)
+	data := co.GetOptionalData(c.Properties(), toolbarDefaultData)
 	c.positioning = data.Positioning
 }
 
@@ -81,7 +81,7 @@ func (c *toolbarComponent) OnRender(element *ui.Element, canvas *ui.Canvas) {
 
 func (c *toolbarComponent) Render() co.Instance {
 	return co.New(co.Element, func() {
-		co.WithLayoutData(c.Properties.LayoutData())
+		co.WithLayoutData(c.Properties().LayoutData())
 		co.WithData(co.ElementData{
 			Essence: c,
 			Padding: ui.Spacing{
@@ -95,6 +95,6 @@ func (c *toolbarComponent) Render() co.Instance {
 				ContentSpacing:   ToolbarItemSpacing,
 			}),
 		})
-		co.WithChildren(c.Properties.Children())
+		co.WithChildren(c.Properties().Children())
 	})
 }

@@ -52,7 +52,7 @@ var pictureDefaultData = PictureData{}
 var Picture = co.Define(&pictureComponent{})
 
 type pictureComponent struct {
-	Properties co.Properties `co:"properties"`
+	co.BaseComponent
 
 	backgroundColor ui.Color
 	image           *ui.Image
@@ -61,7 +61,7 @@ type pictureComponent struct {
 }
 
 func (c *pictureComponent) OnUpsert() {
-	data := co.GetOptionalData(c.Properties, pictureDefaultData)
+	data := co.GetOptionalData(c.Properties(), pictureDefaultData)
 	if data.BackgroundColor.Specified {
 		c.backgroundColor = data.BackgroundColor.Value
 	} else {
@@ -82,12 +82,12 @@ func (c *pictureComponent) Render() co.Instance {
 		idealSize = opt.V(c.image.Size())
 	}
 	return co.New(co.Element, func() {
-		co.WithLayoutData(c.Properties.LayoutData())
+		co.WithLayoutData(c.Properties().LayoutData())
 		co.WithData(co.ElementData{
 			Essence:   c,
 			IdealSize: idealSize,
 		})
-		co.WithChildren(c.Properties.Children())
+		co.WithChildren(c.Properties().Children())
 	})
 }
 

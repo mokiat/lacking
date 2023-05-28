@@ -42,10 +42,8 @@ var buttonDefaultCallbackData = ButtonCallbackData{
 var Button = co.Define(&buttonComponent{})
 
 type buttonComponent struct {
+	co.BaseComponent
 	BaseButtonComponent
-
-	Scope      co.Scope      `co:"scope"`
-	Properties co.Properties `co:"properties"`
 
 	icon      *ui.Image
 	text      string
@@ -53,18 +51,18 @@ type buttonComponent struct {
 }
 
 func (c *buttonComponent) OnUpsert() {
-	data := co.GetOptionalData(c.Properties, buttonDefaultData)
+	data := co.GetOptionalData(c.Properties(), buttonDefaultData)
 	c.icon = data.Icon
 	c.text = data.Text
 	c.isEnabled = !data.Enabled.Specified || data.Enabled.Value
 
-	callbackData := co.GetOptionalCallbackData(c.Properties, buttonDefaultCallbackData)
+	callbackData := co.GetOptionalCallbackData(c.Properties(), buttonDefaultCallbackData)
 	c.SetOnClickFunc(callbackData.OnClick)
 }
 
 func (c *buttonComponent) Render() co.Instance {
 	// force specific height
-	layoutData := co.GetOptionalLayoutData(c.Properties, layout.Data{})
+	layoutData := co.GetOptionalLayoutData(c.Properties(), layout.Data{})
 	layoutData.Height = opt.V(ButtonHeight)
 
 	foregroundColor := OnSurfaceColor
@@ -104,7 +102,7 @@ func (c *buttonComponent) Render() co.Instance {
 		if c.text != "" {
 			co.WithChild("text", co.New(Label, func() {
 				co.WithData(LabelData{
-					Font:      co.OpenFont(c.Scope, ButtonFontFile),
+					Font:      co.OpenFont(c.Scope(), ButtonFontFile),
 					FontSize:  opt.V(float32(ButtonFontSize)),
 					FontColor: opt.V(foregroundColor),
 					Text:      c.text,

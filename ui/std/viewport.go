@@ -50,7 +50,7 @@ var viewportDefaultCallbackData = ViewportCallbackData{
 var Viewport = co.Define(&viewportComponent{})
 
 type viewportComponent struct {
-	Properties co.Properties `co:"properties"`
+	co.BaseComponent
 
 	surface viewportSurfaceComponent
 
@@ -63,17 +63,17 @@ type viewportComponent struct {
 }
 
 func (c *viewportComponent) OnCreate() {
-	data := co.GetData[ViewportData](c.Properties)
+	data := co.GetData[ViewportData](c.Properties())
 	c.surface.api = data.API
 
 	c.surface.createFramebuffer(ViewportInitialFBWidth, ViewportInitialFBHeight)
 }
 
 func (c *viewportComponent) OnUpsert() {
-	data := co.GetData[ViewportData](c.Properties)
+	data := co.GetData[ViewportData](c.Properties())
 	c.surface.api = data.API
 
-	callbackData := co.GetOptionalCallbackData(c.Properties, viewportDefaultCallbackData)
+	callbackData := co.GetOptionalCallbackData(c.Properties(), viewportDefaultCallbackData)
 	c.onKeyboardEvent = callbackData.OnKeyboardEvent
 	c.onMouseEvent = callbackData.OnMouseEvent
 	c.surface.onRender = callbackData.OnRender
@@ -85,13 +85,13 @@ func (c *viewportComponent) OnDelete() {
 
 func (c *viewportComponent) Render() co.Instance {
 	return co.New(co.Element, func() {
-		co.WithLayoutData(c.Properties.LayoutData())
+		co.WithLayoutData(c.Properties().LayoutData())
 		co.WithData(co.ElementData{
 			Essence:   c,
 			Focusable: opt.V(true),
 			Focused:   opt.V(true),
 		})
-		co.WithChildren(c.Properties.Children())
+		co.WithChildren(c.Properties().Children())
 	})
 }
 

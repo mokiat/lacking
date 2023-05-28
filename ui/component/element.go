@@ -31,29 +31,25 @@ var elementDefaultData = ElementData{
 var Element = Define(&elementComponent{})
 
 type elementComponent struct {
-	Scope      Scope      `co:"scope"`
-	Properties Properties `co:"properties"`
+	BaseComponent
 
 	element *ui.Element
 }
 
 func (c *elementComponent) OnCreate() {
-	c.element = Window(c.Scope).CreateElement()
+	c.element = Window(c.Scope()).CreateElement()
 
-	c.OnUpdate()
-
-	data := GetOptionalData(c.Properties, elementDefaultData)
+	data := GetOptionalData(c.Properties(), elementDefaultData)
 	if data.Focused.Specified && data.Focused.Value {
-		Window(c.Scope).GrantFocus(c.element)
+		Window(c.Scope()).GrantFocus(c.element)
 	}
 }
 
-func (c *elementComponent) OnUpdate() {
-	data := GetOptionalData(c.Properties, elementDefaultData)
+func (c *elementComponent) OnUpsert() {
+	data := GetOptionalData(c.Properties(), elementDefaultData)
 	if data.Reference != nil {
 		*data.Reference = c.element
 	}
-
 	c.element.SetEssence(data.Essence)
 	if data.Enabled.Specified {
 		c.element.SetEnabled(data.Enabled.Value)
@@ -72,7 +68,7 @@ func (c *elementComponent) OnUpdate() {
 	}
 	c.element.SetLayout(data.Layout)
 	c.element.SetPadding(data.Padding)
-	c.element.SetLayoutConfig(c.Properties.LayoutData())
+	c.element.SetLayoutConfig(c.Properties().LayoutData())
 }
 
 func (c *elementComponent) OnDelete() {
@@ -81,7 +77,6 @@ func (c *elementComponent) OnDelete() {
 
 func (c *elementComponent) Render() Instance {
 	return Instance{
-		element:  c.element,
-		children: c.Properties.Children(),
+		element: c.element,
 	}
 }

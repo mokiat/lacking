@@ -31,24 +31,23 @@ var listItemDefaultCallbackData = ListItemCallbackData{
 var ListItem = co.Define(&listItemComponent{})
 
 type listItemComponent struct {
+	co.BaseComponent
 	BaseButtonComponent
-
-	Properties co.Properties `co:"properties"`
 
 	isSelected bool
 }
 
 func (c *listItemComponent) OnUpsert() {
-	data := co.GetOptionalData(c.Properties, listItemDefaultData)
+	data := co.GetOptionalData(c.Properties(), listItemDefaultData)
 	c.isSelected = data.Selected
 
-	callbackData := co.GetOptionalCallbackData(c.Properties, listItemDefaultCallbackData)
+	callbackData := co.GetOptionalCallbackData(c.Properties(), listItemDefaultCallbackData)
 	c.SetOnClickFunc(callbackData.OnSelected)
 }
 
 func (c *listItemComponent) Render() co.Instance {
 	return co.New(co.Element, func() {
-		co.WithLayoutData(c.Properties.LayoutData())
+		co.WithLayoutData(c.Properties().LayoutData())
 		co.WithData(co.ElementData{
 			Padding: ui.Spacing{
 				Left:   ListItemPadding,
@@ -59,7 +58,7 @@ func (c *listItemComponent) Render() co.Instance {
 			Essence: c,
 			Layout:  layout.Fill(),
 		})
-		co.WithChildren(c.Properties.Children())
+		co.WithChildren(c.Properties().Children())
 	})
 }
 

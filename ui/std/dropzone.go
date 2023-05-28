@@ -23,13 +23,13 @@ var dropZoneDefaultCallbackData = DropZoneCallbackData{
 var DropZone = co.Define(&dropZoneComponent{})
 
 type dropZoneComponent struct {
-	Properties co.Properties `co:"properties"`
+	co.BaseComponent
 
 	onDrop func(paths []string) bool
 }
 
 func (c *dropZoneComponent) OnUpsert() {
-	callbackData := co.GetOptionalCallbackData(c.Properties, dropZoneDefaultCallbackData)
+	callbackData := co.GetOptionalCallbackData(c.Properties(), dropZoneDefaultCallbackData)
 	c.onDrop = callbackData.OnDrop
 }
 
@@ -46,11 +46,11 @@ func (c *dropZoneComponent) OnMouseEvent(element *ui.Element, event ui.MouseEven
 
 func (c *dropZoneComponent) Render() co.Instance {
 	return co.New(co.Element, func() {
-		co.WithLayoutData(c.Properties.LayoutData())
+		co.WithLayoutData(c.Properties().LayoutData())
 		co.WithData(co.ElementData{
 			Essence: c,
 			Layout:  layout.Fill(),
 		})
-		co.WithChildren(c.Properties.Children())
+		co.WithChildren(c.Properties().Children())
 	})
 }

@@ -40,10 +40,8 @@ var toolbarButtonDefaultCallbackData = ToolbarButtonCallbackData{
 var ToolbarButton = co.Define(&toolbarButtonComponent{})
 
 type toolbarButtonComponent struct {
+	co.BaseComponent
 	BaseButtonComponent
-
-	Scope      co.Scope      `co:"scope"`
-	Properties co.Properties `co:"properties"`
 
 	icon       *ui.Image
 	text       string
@@ -52,19 +50,19 @@ type toolbarButtonComponent struct {
 }
 
 func (c *toolbarButtonComponent) OnUpsert() {
-	data := co.GetOptionalData(c.Properties, toolbarButtonDefaultData)
+	data := co.GetOptionalData(c.Properties(), toolbarButtonDefaultData)
 	c.icon = data.Icon
 	c.text = data.Text
 	c.isEnabled = !data.Enabled.Specified || data.Enabled.Value
 	c.isSelected = data.Selected
 
-	callbackData := co.GetOptionalCallbackData(c.Properties, toolbarButtonDefaultCallbackData)
+	callbackData := co.GetOptionalCallbackData(c.Properties(), toolbarButtonDefaultCallbackData)
 	c.SetOnClickFunc(callbackData.OnClick)
 }
 
 func (c *toolbarButtonComponent) Render() co.Instance {
 	// force specific height
-	layoutData := co.GetOptionalLayoutData(c.Properties, layout.Data{})
+	layoutData := co.GetOptionalLayoutData(c.Properties(), layout.Data{})
 	layoutData.Height = opt.V(ToolbarItemHeight)
 
 	foregroundColor := OnSurfaceColor
@@ -104,7 +102,7 @@ func (c *toolbarButtonComponent) Render() co.Instance {
 		if c.text != "" {
 			co.WithChild("text", co.New(Label, func() {
 				co.WithData(LabelData{
-					Font:      co.OpenFont(c.Scope, ToolbarButtonFontFile),
+					Font:      co.OpenFont(c.Scope(), ToolbarButtonFontFile),
 					FontSize:  opt.V(float32(ToolbarButtonFontSize)),
 					FontColor: opt.V(foregroundColor),
 					Text:      c.text,

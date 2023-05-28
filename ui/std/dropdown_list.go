@@ -23,8 +23,7 @@ type dropdownListCallbackData struct {
 var dropdownList = co.Define(&dropdownListComponent{})
 
 type dropdownListComponent struct {
-	Scope      co.Scope      `co:"scope"`
-	Properties co.Properties `co:"properties"`
+	co.BaseComponent
 
 	items           []DropdownItem
 	selectedItemKey any
@@ -34,11 +33,11 @@ type dropdownListComponent struct {
 }
 
 func (c *dropdownListComponent) OnUpsert() {
-	data := co.GetOptionalData(c.Properties, dropdownDefaultData)
+	data := co.GetOptionalData(c.Properties(), dropdownDefaultData)
 	c.items = data.Items
 	c.selectedItemKey = data.SelectedKey
 
-	callbackData := co.GetCallbackData[dropdownListCallbackData](c.Properties)
+	callbackData := co.GetCallbackData[dropdownListCallbackData](c.Properties())
 	c.onSelected = callbackData.OnSelected
 	c.onClose = callbackData.OnClose
 }
@@ -49,7 +48,7 @@ func (c *dropdownListComponent) Render() co.Instance {
 			Essence: c,
 			Layout:  layout.Anchor(),
 		})
-		co.WithLayoutData(c.Properties.LayoutData())
+		co.WithLayoutData(c.Properties().LayoutData())
 
 		co.WithChild("content", co.New(Paper, func() {
 			co.WithLayoutData(layout.Data{
@@ -78,7 +77,7 @@ func (c *dropdownListComponent) Render() co.Instance {
 						})
 						co.WithChild("label", co.New(Label, func() {
 							co.WithData(LabelData{
-								Font:      co.OpenFont(c.Scope, DropdownListFontFile),
+								Font:      co.OpenFont(c.Scope(), DropdownListFontFile),
 								FontSize:  opt.V(DropdownListFontSize),
 								FontColor: opt.V(OnSurfaceColor),
 								Text:      item.Label,

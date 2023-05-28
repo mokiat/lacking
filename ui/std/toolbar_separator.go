@@ -16,12 +16,12 @@ var (
 var ToolbarSeparator = co.Define(&toolbarSeparatorComponent{})
 
 type toolbarSeparatorComponent struct {
-	Properties co.Properties `co:"properties"`
+	co.BaseComponent
 }
 
 func (c *toolbarSeparatorComponent) Render() co.Instance {
 	return co.New(co.Element, func() {
-		co.WithLayoutData(c.Properties.LayoutData())
+		co.WithLayoutData(c.Properties().LayoutData())
 		co.WithData(co.ElementData{
 			Essence: c,
 			IdealSize: opt.V(ui.NewSize(

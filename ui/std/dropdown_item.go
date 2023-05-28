@@ -23,24 +23,23 @@ type dropdownItemCallbackData struct {
 var dropdownItem = co.Define(&dropdownItemComponent{})
 
 type dropdownItemComponent struct {
+	co.BaseComponent
 	BaseButtonComponent
-
-	Properties co.Properties `co:"properties"`
 
 	isSelected bool
 }
 
 func (c *dropdownItemComponent) OnUpsert() {
-	data := co.GetData[dropdownItemData](c.Properties)
+	data := co.GetData[dropdownItemData](c.Properties())
 	c.isSelected = data.Selected
 
-	callbackData := co.GetCallbackData[dropdownItemCallbackData](c.Properties)
+	callbackData := co.GetCallbackData[dropdownItemCallbackData](c.Properties())
 	c.SetOnClickFunc(callbackData.OnSelected)
 }
 
 func (c *dropdownItemComponent) Render() co.Instance {
 	return co.New(co.Element, func() {
-		co.WithLayoutData(c.Properties.LayoutData())
+		co.WithLayoutData(c.Properties().LayoutData())
 		co.WithData(co.ElementData{
 			Padding: ui.Spacing{
 				Left: DropdownItemIndicatorSize + DropdownItemIndicatorPadding,
@@ -48,7 +47,7 @@ func (c *dropdownItemComponent) Render() co.Instance {
 			Essence: c,
 			Layout:  layout.Fill(),
 		})
-		co.WithChildren(c.Properties.Children())
+		co.WithChildren(c.Properties().Children())
 	})
 }
 

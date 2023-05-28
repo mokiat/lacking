@@ -26,7 +26,7 @@ var containerDefaultData = ContainerData{
 var Container = co.Define(&containerComponent{})
 
 type containerComponent struct {
-	Properties co.Properties `co:"properties"`
+	co.BaseComponent
 
 	backgroundColor ui.Color
 	borderColor     ui.Color
@@ -36,7 +36,7 @@ type containerComponent struct {
 }
 
 func (c *containerComponent) OnUpsert() {
-	data := co.GetOptionalData(c.Properties, containerDefaultData)
+	data := co.GetOptionalData(c.Properties(), containerDefaultData)
 	if data.BackgroundColor.Specified {
 		c.backgroundColor = data.BackgroundColor.Value
 	} else {
@@ -54,13 +54,13 @@ func (c *containerComponent) OnUpsert() {
 
 func (c *containerComponent) Render() co.Instance {
 	return co.New(co.Element, func() {
-		co.WithLayoutData(c.Properties.LayoutData())
+		co.WithLayoutData(c.Properties().LayoutData())
 		co.WithData(co.ElementData{
 			Essence: c,
 			Padding: c.padding,
 			Layout:  c.layout,
 		})
-		co.WithChildren(c.Properties.Children())
+		co.WithChildren(c.Properties().Children())
 	})
 }
 

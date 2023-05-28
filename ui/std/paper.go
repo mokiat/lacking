@@ -26,19 +26,19 @@ var paperDefaultData = PaperData{
 var Paper = co.Define(&paperComponent{})
 
 type paperComponent struct {
-	Properties co.Properties `co:"properties"`
+	co.BaseComponent
 
 	layout ui.Layout
 }
 
 func (c *paperComponent) OnUpsert() {
-	data := co.GetOptionalData(c.Properties, paperDefaultData)
+	data := co.GetOptionalData(c.Properties(), paperDefaultData)
 	c.layout = data.Layout
 }
 
 func (c *paperComponent) Render() co.Instance {
 	return co.New(co.Element, func() {
-		co.WithLayoutData(c.Properties.LayoutData())
+		co.WithLayoutData(c.Properties().LayoutData())
 		co.WithData(co.ElementData{
 			Essence: c,
 			Layout:  c.layout,
@@ -49,7 +49,7 @@ func (c *paperComponent) Render() co.Instance {
 				Bottom: PaperPadding,
 			},
 		})
-		co.WithChildren(c.Properties.Children())
+		co.WithChildren(c.Properties().Children())
 	})
 }
 

@@ -15,8 +15,7 @@ import (
 // One would usually use this method to acquire a root scope to be later
 // used in Initialize to bootstrap the framework.
 func RootScope(window *ui.Window) Scope {
-	rootUIContext = window.Context() // FIXME
-	return ContextScope(nil, rootUIContext)
+	return ContextScope(nil, window.Context())
 }
 
 // Scope represents a component sub-hierarchy region.
@@ -28,7 +27,7 @@ type Scope interface {
 	// Value returns the stored arbitrary value for the specified arbitrary key.
 	// This is a mechanism through which external frameworks can attach metadata
 	// to scopes.
-	Value(key interface{}) interface{}
+	Value(key any) any
 }
 
 // GetScopeValue is a helper function that retrieves the value as the specified
@@ -36,7 +35,7 @@ type Scope interface {
 //
 // If there is no value with the specified key in the Scope or if the value
 // is not of the correct type then the zero value for that type is returned.
-func GetScopeValue[T any](scope Scope, key interface{}) T {
+func GetScopeValue[T any](scope Scope, key any) T {
 	value, ok := scope.Value(key).(T)
 	if !ok {
 		var zeroValue T
@@ -67,7 +66,7 @@ func TypedValue[T any](scope Scope) T {
 
 // ValueScope creates a new Scope that extends the specified parent scope
 // by adding the specified key-value pair.
-func ValueScope(parent Scope, key, value interface{}) Scope {
+func ValueScope(parent Scope, key, value any) Scope {
 	return &valueScope{
 		parent: parent,
 		key:    key,
@@ -77,8 +76,8 @@ func ValueScope(parent Scope, key, value interface{}) Scope {
 
 type valueScope struct {
 	parent Scope
-	key    interface{}
-	value  interface{}
+	key    any
+	value  any
 }
 
 func (s *valueScope) Context() *ui.Context {
@@ -129,27 +128,34 @@ func (s *contextScope) Value(key interface{}) interface{} {
 // dedicated ui.Context with a lifecycle equal to the lifecycle of the
 // component instance.
 func ContextScoped(delegate Component) Component {
-	ctxSet := make(map[*componentNode]*ui.Context)
-
-	return Component{
-		componentType: fmt.Sprintf("context-scoped(%s)", delegate.componentType),
-		componentFunc: func(props Properties, scope Scope) Instance {
-			ctx := ctxSet[renderCtx.node]
-			if renderCtx.isFirstRender() {
-				ctx = scope.Context().CreateContext()
-				ctxSet[renderCtx.node] = ctx
-			}
-			if renderCtx.isLastRender() {
-				defer func() {
-					ctx.Destroy()
-					delete(ctxSet, renderCtx.node)
-				}()
-			}
-			scope = ContextScope(scope, ctx)
-			renderCtx.node.scope = scope
-			return delegate.componentFunc(props, scope)
-		},
+	return &contextScopedComponent{
+		Component: delegate,
+		contexts:  make(map[Renderable]*ui.Context),
 	}
+}
+
+type contextScopedComponent struct {
+	Component
+	contexts map[Renderable]*ui.Context
+}
+
+func (c *contextScopedComponent) TypeName() string {
+	return fmt.Sprintf("context-scoped(%s)", c.Component.TypeName())
+}
+
+func (c *contextScopedComponent) Allocate(scope Scope, invalidate InvalidateFunc) Renderable {
+	context := scope.Context().CreateContext()
+	scope = ContextScope(scope, context)
+	ref := c.Component.Allocate(scope, invalidate)
+	c.contexts[ref] = context
+	return ref
+}
+
+func (c *contextScopedComponent) NotifyDelete(ref Renderable) {
+	context := c.contexts[ref]
+	delete(c.contexts, ref)
+	context.Destroy()
+	c.Component.NotifyDelete(ref)
 }
 
 // Window uses the specified scope to retrieve the Window that owns that

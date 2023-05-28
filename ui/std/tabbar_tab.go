@@ -43,8 +43,7 @@ var tabbarTabDefaultCallbackData = TabbarTabCallbackData{
 var TabbarTab = co.Define(&tabbarTabComponent{})
 
 type tabbarTabComponent struct {
-	Scope      co.Scope      `co:"scope"`
-	Properties co.Properties `co:"properties"`
+	co.BaseComponent
 
 	main  tabbarTabMainComponent
 	close tabbarTabCloseComponent
@@ -54,19 +53,19 @@ type tabbarTabComponent struct {
 }
 
 func (c *tabbarTabComponent) OnUpsert() {
-	data := co.GetOptionalData(c.Properties, tabbarTabDefaultData)
+	data := co.GetOptionalData(c.Properties(), tabbarTabDefaultData)
 	c.icon = data.Icon
 	c.text = data.Text
 	c.main.isSelected = data.Selected
 
-	callbackData := co.GetOptionalCallbackData(c.Properties, tabbarTabDefaultCallbackData)
+	callbackData := co.GetOptionalCallbackData(c.Properties(), tabbarTabDefaultCallbackData)
 	c.main.SetOnClickFunc(callbackData.OnClick)
 	c.close.SetOnClickFunc(callbackData.OnClose)
 }
 
 func (c *tabbarTabComponent) Render() co.Instance {
 	// force specific height
-	layoutData := co.GetOptionalLayoutData(c.Properties, layout.Data{})
+	layoutData := co.GetOptionalLayoutData(c.Properties(), layout.Data{})
 	layoutData.Height = opt.V(TabbarTabHeight)
 
 	return co.New(Element, func() {
@@ -101,7 +100,7 @@ func (c *tabbarTabComponent) Render() co.Instance {
 		if c.text != "" {
 			co.WithChild("text", co.New(Label, func() {
 				co.WithData(LabelData{
-					Font:      co.OpenFont(c.Scope, TabbarTabFontFile),
+					Font:      co.OpenFont(c.Scope(), TabbarTabFontFile),
 					FontSize:  opt.V(TabbarTabFontSize),
 					FontColor: opt.V(OnSurfaceColor),
 					Text:      c.text,
@@ -123,7 +122,7 @@ func (c *tabbarTabComponent) Render() co.Instance {
 
 				co.WithChild("icon", co.New(Picture, func() {
 					co.WithData(PictureData{
-						Image:      co.OpenImage(c.Scope, TabbarTabCloseIconFile),
+						Image:      co.OpenImage(c.Scope(), TabbarTabCloseIconFile),
 						ImageColor: opt.V(OnSurfaceColor),
 						Mode:       ImageModeFit,
 					})

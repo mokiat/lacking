@@ -39,8 +39,7 @@ var editboxDefaultCallbackData = EditboxCallbackData{
 var Editbox = co.Define(&editboxComponent{})
 
 type editboxComponent struct {
-	Scope      co.Scope      `co:"scope"`
-	Properties co.Properties `co:"properties"`
+	co.BaseComponent
 
 	font         *ui.Font
 	textSize     sprec.Vec2
@@ -51,22 +50,22 @@ type editboxComponent struct {
 }
 
 func (c *editboxComponent) OnUpsert() {
-	c.font = co.OpenFont(c.Scope, EditboxFontFile)
+	c.font = co.OpenFont(c.Scope(), EditboxFontFile)
 
-	data := co.GetOptionalData(c.Properties, editboxDefaultData)
+	data := co.GetOptionalData(c.Properties(), editboxDefaultData)
 	if data.Text != c.text {
 		c.text = data.Text
 		c.volatileText = data.Text
 	}
 	c.textSize = c.font.TextSize(c.text, EditboxFontSize)
 
-	callbackData := co.GetOptionalCallbackData(c.Properties, editboxDefaultCallbackData)
+	callbackData := co.GetOptionalCallbackData(c.Properties(), editboxDefaultCallbackData)
 	c.onChanged = callbackData.OnChanged
 }
 
 func (c *editboxComponent) Render() co.Instance {
 	// force specific height
-	layoutData := co.GetOptionalLayoutData(c.Properties, layout.Data{})
+	layoutData := co.GetOptionalLayoutData(c.Properties(), layout.Data{})
 	layoutData.Height = opt.V(EditboxHeight)
 
 	return co.New(co.Element, func() {

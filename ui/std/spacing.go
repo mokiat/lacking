@@ -20,19 +20,19 @@ var spacingDefaultData = SpacingData{
 var Spacing = co.Define(&spacingComponent{})
 
 type spacingComponent struct {
-	Properties co.Properties `co:"properties"`
+	co.BaseComponent
 
 	spacing ui.Size
 }
 
 func (c *spacingComponent) OnUpsert() {
-	data := co.GetOptionalData(c.Properties, spacingDefaultData)
+	data := co.GetOptionalData(c.Properties(), spacingDefaultData)
 	c.spacing = data.Size
 }
 
 func (c *spacingComponent) Render() co.Instance {
 	return co.New(co.Element, func() {
-		co.WithLayoutData(c.Properties.LayoutData())
+		co.WithLayoutData(c.Properties().LayoutData())
 		co.WithData(co.ElementData{
 			IdealSize: opt.V(c.spacing),
 		})

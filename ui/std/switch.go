@@ -20,13 +20,13 @@ var switchDefaultData = SwitchData{}
 var Switch = co.Define(&switchComponent{})
 
 type switchComponent struct {
-	Properties co.Properties `co:"properties"`
+	co.BaseComponent
 
 	activeChildKey string
 }
 
 func (c *switchComponent) OnUpsert() {
-	data := co.GetOptionalData(c.Properties, switchDefaultData)
+	data := co.GetOptionalData(c.Properties(), switchDefaultData)
 	c.activeChildKey = data.ChildKey
 }
 
@@ -35,9 +35,9 @@ func (c *switchComponent) Render() co.Instance {
 		co.WithData(co.ElementData{
 			Layout: layout.Fill(),
 		})
-		co.WithLayoutData(c.Properties.LayoutData())
+		co.WithLayoutData(c.Properties().LayoutData())
 
-		for _, child := range c.Properties.Children() {
+		for _, child := range c.Properties().Children() {
 			if child.Key() == c.activeChildKey {
 				co.WithChild(child.Key(), child)
 			}

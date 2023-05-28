@@ -20,7 +20,6 @@ var _ Overlay = (*overlayHandle)(nil)
 type overlayHandle struct {
 	app      *applicationComponent
 	instance Instance
-	key      string
 }
 
 func (o *overlayHandle) Close() {

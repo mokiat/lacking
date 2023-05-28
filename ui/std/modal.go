@@ -9,7 +9,7 @@ import (
 var Modal = co.Define(&modalComponent{})
 
 type modalComponent struct {
-	Properties co.Properties `co:"properties"`
+	co.BaseComponent
 }
 
 func (c *modalComponent) Render() co.Instance {
@@ -20,11 +20,11 @@ func (c *modalComponent) Render() co.Instance {
 		})
 
 		co.WithChild("content", co.New(Paper, func() {
-			co.WithLayoutData(c.Properties.LayoutData())
+			co.WithLayoutData(c.Properties().LayoutData())
 			co.WithData(PaperData{
 				Layout: layout.Frame(),
 			})
-			co.WithChildren(c.Properties.Children())
+			co.WithChildren(c.Properties().Children())
 		}))
 	})
 }

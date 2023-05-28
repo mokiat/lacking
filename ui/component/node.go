@@ -4,137 +4,155 @@ import (
 	"github.com/mokiat/lacking/ui"
 )
 
-// TODO: Add debug logging
+var (
+	nodeLogger = coLogger.Path("/node")
+)
 
-type dirtiable interface {
-	isDirty() bool
-	setDirty(bool)
-}
+type componentNodeKey struct{}
 
 type componentNode struct {
-	instance Instance
-	children []*componentNode
-	element  *ui.Element
-	scope    Scope
+	outerScope Scope
+	instance   Instance
+	ref        Renderable
 
-	states [][]dirtiable
+	innerNode *componentNode
+	children  []*componentNode
+	element   *ui.Element
+
+	isDirty bool
 }
 
-func createComponentNode(instance Instance, scope Scope) *componentNode {
-	result := &componentNode{
-		instance: instance,
-		scope:    scope,
-		states:   make([][]dirtiable, 1),
-	}
+func createComponentNode(scope Scope, instance Instance) *componentNode {
+	component := instance.component
+	nodeLogger.Debug("Creating node of type %q", component.TypeName())
 
-	renderCtx = renderContext{
-		node:        result,
-		firstRender: true,
-		lastRender:  false,
-		properties:  instance.properties(),
+	if instance.scope != nil {
+		scope = instance.scope
 	}
-	for instance.element == nil {
-		if instance.scope != nil {
-			result.scope = instance.scope
-		}
-		instance = instance.componentFunc(instance.properties(), result.scope)
-		renderCtx.stateDepth++
-		renderCtx.stateIndex = 0
-		renderCtx.properties = instance.properties()
-		result.states = append(result.states, nil)
+	node := &componentNode{
+		outerScope: scope,
+		instance:   instance,
 	}
+	node.ref = component.Allocate(scope, node.invalidate)
 
-	result.element = instance.element
-	result.children = make([]*componentNode, len(instance.children))
-	for i, childInstance := range instance.children {
-		child := createComponentNode(childInstance, result.scope)
-		instance.element.AppendChild(child.element)
-		result.children[i] = child
-	}
+	// Notify that the component has been created.
+	component.NotifyCreate(node.ref, instance.Properties())
 
-	return result
+	// Check if there is a inner component to delegate to.
+	// In reality this check fails only once an Element component is reached.
+	innerInstance := node.ref.Render()
+	if innerInstance.element == nil {
+		node.innerNode = createComponentNode(node, innerInstance)
+		return node // nothing more to do
+	}
+	node.element = innerInstance.element
+
+	// We are the leaf Element component, so we need to do element and children
+	// management.
+	node.children = make([]*componentNode, len(instance.properties.children))
+	for i, childInstance := range instance.properties.children {
+		child := createComponentNode(node, childInstance)
+		node.leafElement().AppendChild(child.leafElement())
+		node.children[i] = child
+	}
+	return node
 }
 
-func (node *componentNode) destroy() {
-	for _, child := range node.children {
-		child.destroy()
-	}
-	node.children = nil
+func (node *componentNode) reconcile(instance Instance) {
+	nodeLogger.Debug("Updating node of type %q", node.instance.component.TypeName())
 
-	instance := node.instance
-	renderCtx = renderContext{
-		node:        node,
-		firstRender: false,
-		lastRender:  true,
+	component := instance.component
+	if component != node.instance.component {
+		panic("dynamic component chain: component type mismatch")
 	}
-	for instance.element == nil {
-		instance = instance.componentFunc(instance.properties(), node.scope)
-		renderCtx.stateDepth++
-		renderCtx.stateIndex = 0
-	}
-	node.element = nil
-}
-
-func (node *componentNode) reconcile(instance Instance, scope Scope) {
 	node.instance = instance
-	node.scope = scope
-	renderCtx = renderContext{
-		node:         node,
-		firstRender:  false,
-		lastRender:   false,
-		forcedRender: node.consumeDirty(),
-		properties:   instance.properties(),
+
+	// Notify that the component has been updated.
+	component.NotifyUpdate(node.ref, instance.Properties())
+
+	// Check if there is a inner component to delegate to.
+	innerInstance := node.ref.Render()
+	if node.innerNode != nil {
+		node.innerNode.reconcile(innerInstance)
+		return // nothing more to do
 	}
-	for instance.element == nil {
-		if instance.scope != nil {
-			node.scope = instance.scope
-		}
-		instance = instance.componentFunc(instance.properties(), node.scope)
-		renderCtx.stateDepth++
-		renderCtx.stateIndex = 0
-		renderCtx.properties = instance.properties()
-	}
-	if instance.element != node.element {
-		panic("component chain should not return a different element instance")
+	if innerInstance.element != node.element {
+		panic("dynamic component chain: element mismatch")
 	}
 
+	// We are the leaf Element component, so we need to do element and children
+	// management.
 	if node.hasMatchingChildren(instance) {
-		for i, child := range node.children {
-			child.reconcile(instance.children[i], node.scope)
+		for i, childNode := range node.children {
+			childNode.reconcile(instance.properties.children[i])
 		}
 	} else {
-		for _, child := range node.children {
-			if instance.hasMatchingChild(child.instance) {
-				child.element.Detach()
+		for _, childNode := range node.children {
+			if instance.hasMatchingChild(childNode.instance) {
+				childNode.leafElement().Detach()
 			} else {
-				child.destroy()
+				childNode.destroy()
 			}
 		}
-		newChildren := make([]*componentNode, len(instance.children))
-		for i, childInstance := range instance.children {
-			if existingChild, index := node.findChild(childInstance); index >= 0 {
-				existingChild.reconcile(childInstance, node.scope)
-				newChildren[i] = existingChild
+		newChildren := make([]*componentNode, len(instance.properties.children))
+		for i, childInstance := range instance.properties.children {
+			if existingChildNode, index := node.findChild(childInstance); index >= 0 {
+				existingChildNode.reconcile(childInstance)
+				newChildren[i] = existingChildNode
 			} else {
-				newChildren[i] = createComponentNode(childInstance, node.scope)
+				newChildren[i] = createComponentNode(node, childInstance)
 			}
-			node.element.AppendChild(newChildren[i].element)
+			node.leafElement().AppendChild(newChildren[i].leafElement())
 		}
 		node.children = newChildren
 	}
 }
 
-func (node *componentNode) consumeDirty() bool {
-	var dirty = false
-	for _, depth := range node.states {
-		for _, state := range depth {
-			if state.isDirty() {
-				dirty = true
-				state.setDirty(false)
-			}
-		}
+func (node *componentNode) destroy() {
+	nodeLogger.Debug("Destroying node of type %q", node.instance.component.TypeName())
+
+	// Start by destroying nested components first.
+	if node.innerNode != nil {
+		node.innerNode.destroy()
+		node.innerNode = nil
 	}
-	return dirty
+
+	// Destroy any children, if there are such. This will only loop for
+	// leaf Element component nodes.
+	for _, childNode := range node.children {
+		childNode.destroy()
+	}
+	node.children = nil
+
+	// Notify that the component has been destroyed. The Element component
+	// implementation will automatically detach and destroy the ui Element.
+	component := node.instance.component
+	component.NotifyDelete(node.ref)
+
+	node.element = nil
+	component.Release(node.ref)
+}
+
+func (node *componentNode) leafElement() *ui.Element {
+	if node.innerNode != nil {
+		return node.innerNode.leafElement()
+	}
+	return node.element
+}
+
+func (node *componentNode) invalidate() {
+	// TODO: Optimize by grouping and sorting so that lower depth components
+	// are invalidated first, making higher level component reconciliations
+	// no-op in most cases.
+	if !node.isDirty {
+		node.isDirty = true
+		node.Context().Schedule(func() {
+			if node.isValid() && node.isDirty {
+				node.reconcile(node.instance)
+				node.isDirty = false
+			}
+		})
+	}
 }
 
 func (node *componentNode) hasMatchingKey(instance Instance) bool {
@@ -142,18 +160,18 @@ func (node *componentNode) hasMatchingKey(instance Instance) bool {
 }
 
 func (node *componentNode) hasMatchingType(instance Instance) bool {
-	return node.instance.componentType == instance.componentType
+	return node.instance.component == instance.component
 }
 
 func (node *componentNode) hasMatchingChildren(instance Instance) bool {
-	if len(node.children) != len(instance.children) {
+	if len(node.children) != len(instance.properties.children) {
 		return false
 	}
 	for i, child := range node.children {
-		if !child.hasMatchingKey(instance.children[i]) {
+		if !child.hasMatchingKey(instance.properties.children[i]) {
 			return false
 		}
-		if !child.hasMatchingType(instance.children[i]) {
+		if !child.hasMatchingType(instance.properties.children[i]) {
 			return false
 		}
 	}
@@ -170,5 +188,16 @@ func (node *componentNode) findChild(instance Instance) (*componentNode, int) {
 }
 
 func (node *componentNode) isValid() bool {
-	return node.element != nil
+	return node.leafElement() != nil
+}
+
+func (node *componentNode) Context() *ui.Context {
+	return node.outerScope.Context()
+}
+
+func (node *componentNode) Value(key any) any {
+	if key == (componentNodeKey{}) {
+		return node
+	}
+	return node.outerScope.Value(key)
 }

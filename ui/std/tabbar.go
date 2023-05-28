@@ -16,12 +16,12 @@ var (
 var Tabbar = co.Define(&tabbarComponent{})
 
 type tabbarComponent struct {
-	Properties co.Properties `co:"properties"`
+	co.BaseComponent
 }
 
 func (c *tabbarComponent) Render() co.Instance {
 	// force specific height
-	layoutData := co.GetOptionalLayoutData(c.Properties, layout.Data{})
+	layoutData := co.GetOptionalLayoutData(c.Properties(), layout.Data{})
 	layoutData.Height = opt.V(TabbarHeight)
 
 	return co.New(Container, func() {
@@ -37,6 +37,6 @@ func (c *tabbarComponent) Render() co.Instance {
 				ContentSpacing:   TabbarItemSpacing,
 			}),
 		})
-		co.WithChildren(c.Properties.Children())
+		co.WithChildren(c.Properties().Children())
 	})
 }
