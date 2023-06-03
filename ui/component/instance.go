@@ -9,17 +9,13 @@ type instanceContext struct {
 	instance Instance
 }
 
-// Instance represents the instantiation of a given Component.
+// Instance represents the instantiation of a given Component chain.
 type Instance struct {
-	key           string
-	componentType string
-	componentFunc ComponentFunc
+	key       string
+	component Component
 
-	data         interface{}
-	layoutData   interface{}
-	callbackData interface{}
-	scope        Scope
-	children     []Instance
+	scope      Scope
+	properties Properties
 
 	element *ui.Element
 }
@@ -30,18 +26,38 @@ func (i Instance) Key() string {
 	return i.key
 }
 
-func (i Instance) properties() Properties {
-	return Properties{
-		data:         i.data,
-		layoutData:   i.layoutData,
-		callbackData: i.callbackData,
-		children:     i.children,
-	}
+// Properties returns the properties assigned to this instance.
+func (i Instance) Properties() Properties {
+	return i.properties
+}
+
+func (i *Instance) setScope(scope Scope) {
+	i.scope = scope
+}
+
+func (i *Instance) setData(data any) {
+	i.properties.data = data
+}
+
+func (i *Instance) setLayoutData(layoutData any) {
+	i.properties.layoutData = layoutData
+}
+
+func (i *Instance) setCallbackData(callbackData any) {
+	i.properties.callbackData = callbackData
+}
+
+func (i *Instance) setChildren(children []Instance) {
+	i.properties.children = children
+}
+
+func (i *Instance) addChild(child Instance) {
+	i.properties.children = append(i.properties.children, child)
 }
 
 func (i Instance) hasMatchingChild(instance Instance) bool {
-	for _, child := range i.children {
-		if child.key == instance.key && child.componentType == instance.componentType {
+	for _, child := range i.properties.children {
+		if child.key == instance.key && child.component == instance.component {
 			return true
 		}
 	}
@@ -63,8 +79,7 @@ func New(component Component, setupFn func()) Instance {
 	}()
 
 	instanceCtx.instance = Instance{
-		componentType: component.componentType,
-		componentFunc: component.componentFunc,
+		component: component,
 	}
 	if setupFn != nil {
 		setupFn()
@@ -79,7 +94,7 @@ func New(component Component, setupFn func()) Instance {
 // done by the framework. If you'd like to pass functions, in case of
 // callbacks, they can be passed through the callback data.
 func WithData(data interface{}) {
-	instanceCtx.instance.data = data
+	instanceCtx.instance.setData(data)
 }
 
 // XWithData is a helper function that resembles WithData but does nothing.
@@ -97,7 +112,7 @@ func XWithData(data interface{}) {}
 // Your layout data should be comparable in order to enable optimizations
 // done by the framework.
 func WithLayoutData(layoutData interface{}) {
-	instanceCtx.instance.layoutData = layoutData
+	instanceCtx.instance.setLayoutData(layoutData)
 }
 
 // XWithLayoutData is a helper function that resembles WithLayoutData
@@ -116,7 +131,7 @@ func XWithLayoutData(layoutData interface{}) {}
 // they are not comparable in Go and as such cannot follow the
 // lifecycle of data or layout data.
 func WithCallbackData(callbackData interface{}) {
-	instanceCtx.instance.callbackData = callbackData
+	instanceCtx.instance.setCallbackData(callbackData)
 }
 
 // XWithCallbackData is a helper function that resembles WithCallbackData
@@ -128,7 +143,7 @@ func XWithCallbackData(callbackData interface{}) {}
 // WithScope attaches a custom Scope to this component. Any child components
 // will inherit the Scope unless overridden by another call to WithScope.
 func WithScope(scope Scope) {
-	instanceCtx.instance.scope = scope
+	instanceCtx.instance.setScope(scope)
 }
 
 // XWithScope is a helper function that resembles WithScope but does nothing.
@@ -146,7 +161,7 @@ func XWithScope(scope Scope) {}
 // to them.
 func WithChild(key string, instance Instance) {
 	instance.key = key
-	instanceCtx.instance.children = append(instanceCtx.instance.children, instance)
+	instanceCtx.instance.addChild(instance)
 }
 
 // XWithChild is a helper function that resembles WithChild but does nothing.
@@ -157,7 +172,7 @@ func XWithChild(key string, instance Instance) {}
 // WithChildren sets the children for the given component. Keep in mind that
 // any former children assigned via WithChild are replaced.
 func WithChildren(children []Instance) {
-	instanceCtx.instance.children = children
+	instanceCtx.instance.setChildren(children)
 }
 
 // XWithChildren is a helper function that resembles WithChildren but does

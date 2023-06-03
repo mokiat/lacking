@@ -3,6 +3,7 @@ package component
 import (
 	"github.com/mokiat/gog/opt"
 	"github.com/mokiat/lacking/ui"
+	"github.com/mokiat/lacking/ui/layout"
 )
 
 // ElementData is the struct that should be used when configuring
@@ -20,54 +21,62 @@ type ElementData struct {
 	Layout    ui.Layout
 }
 
-// TODO: What about ditching Essence in favour of ElementCallbackData?
+var elementDefaultData = ElementData{
+	Layout: layout.Fill(),
+}
 
 // Element represents the most basic component, which is translated
 // to a UI Element. All higher-order components eventually boil down to an
 // Element.
-var Element = Define(func(props Properties, scope Scope) Instance {
-	data := GetData[ElementData](props)
+var Element = Define(&elementComponent{})
 
-	element := UseState(func() *ui.Element {
-		return Window(scope).CreateElement()
-	}).Get()
+type elementComponent struct {
+	BaseComponent
 
-	Once(func() {
-		if data.Focused.Specified && data.Focused.Value {
-			Window(scope).GrantFocus(element)
-		}
-	})
+	element *ui.Element
+}
 
-	Defer(func() {
-		element.Destroy()
-	})
+func (c *elementComponent) OnCreate() {
+	c.element = Window(c.Scope()).CreateElement()
 
-	if data.Reference != nil {
-		*data.Reference = element
+	data := GetOptionalData(c.Properties(), elementDefaultData)
+	if data.Focused.Specified && data.Focused.Value {
+		Window(c.Scope()).GrantFocus(c.element)
 	}
+}
 
-	element.SetEssence(data.Essence)
+func (c *elementComponent) OnUpsert() {
+	data := GetOptionalData(c.Properties(), elementDefaultData)
+	if data.Reference != nil {
+		*data.Reference = c.element
+	}
+	c.element.SetEssence(data.Essence)
 	if data.Enabled.Specified {
-		element.SetEnabled(data.Enabled.Value)
+		c.element.SetEnabled(data.Enabled.Value)
 	}
 	if data.Visible.Specified {
-		element.SetVisible(data.Visible.Value)
+		c.element.SetVisible(data.Visible.Value)
 	}
 	if data.Focusable.Specified {
-		element.SetFocusable(data.Focusable.Value)
+		c.element.SetFocusable(data.Focusable.Value)
 	}
 	if data.Bounds.Specified {
-		element.SetBounds(data.Bounds.Value)
+		c.element.SetBounds(data.Bounds.Value)
 	}
 	if data.IdealSize.Specified {
-		element.SetIdealSize(data.IdealSize.Value)
+		c.element.SetIdealSize(data.IdealSize.Value)
 	}
-	element.SetLayout(data.Layout)
-	element.SetPadding(data.Padding)
-	element.SetLayoutConfig(props.LayoutData())
+	c.element.SetLayout(data.Layout)
+	c.element.SetPadding(data.Padding)
+	c.element.SetLayoutConfig(c.Properties().LayoutData())
+}
 
+func (c *elementComponent) OnDelete() {
+	c.element.Destroy()
+}
+
+func (c *elementComponent) Render() Instance {
 	return Instance{
-		element:  element,
-		children: props.Children(),
+		element: c.element,
 	}
-})
+}

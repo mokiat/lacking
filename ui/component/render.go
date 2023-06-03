@@ -2,52 +2,6 @@ package component
 
 import "time"
 
-var renderCtx renderContext
-
-type renderContext struct {
-	node         *componentNode
-	firstRender  bool
-	lastRender   bool
-	forcedRender bool
-	stateIndex   int
-	stateDepth   int
-	properties   Properties
-}
-
-func (c renderContext) isFirstRender() bool {
-	return c.firstRender
-}
-
-func (c renderContext) isLastRender() bool {
-	return c.lastRender
-}
-
-// Once can be used to perform an initialization action in a
-// component's render function. During subsequent renders for the
-// same component instance, the specified closure function will not
-// be called.
-//
-// You can use Once multiple times within a component's render function
-// and all closure functions will be called in the respective order.
-func Once(fn func()) {
-	if renderCtx.isFirstRender() {
-		fn()
-	}
-}
-
-// Defer can be used to perform a cleanup action. The framework will issue
-// one final render of a component before it gets destroyed. During that
-// final render all closure functions specified via the Defer function
-// will be invoked in the respective order.
-//
-// Similar to Once, Defer can be used multiple times within a component's
-// render function.
-func Defer(fn func()) {
-	if renderCtx.isLastRender() {
-		fn()
-	}
-}
-
 // Schedule will schedule a closure function to run as soon as possible
 // on the UI thread.
 //
@@ -57,9 +11,9 @@ func Defer(fn func()) {
 //
 // The framework ensures that the closure will not be called if the
 // component had been destroyed in the meantime.
-func Schedule(fn func()) {
-	node := renderCtx.node
-	rootUIContext.Schedule(func() {
+func Schedule(scope Scope, fn func()) {
+	node := scope.Value(componentNodeKey{}).(*componentNode)
+	scope.Context().Schedule(func() {
 		if node.isValid() {
 			fn()
 		}
@@ -76,13 +30,20 @@ func Schedule(fn func()) {
 // Not doing so would cause the closure function to be scheduled on every
 // rendering of the component, since the framework is free to render a component
 // at any time it deems necessary.
-func After(duration time.Duration, fn func()) {
-	node := renderCtx.node
+func After(scope Scope, duration time.Duration, fn func()) {
+	node := scope.Value(componentNodeKey{}).(*componentNode)
 	time.AfterFunc(duration, func() {
-		rootUIContext.Schedule(func() {
+		scope.Context().Schedule(func() {
 			if node.isValid() {
 				fn()
 			}
 		})
 	})
+}
+
+// Invalidate causes the component that owns the specified scope to be
+// recalculated.
+func Invalidate(scope Scope) {
+	node := scope.Value(componentNodeKey{}).(*componentNode)
+	node.invalidate()
 }

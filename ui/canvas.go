@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"github.com/mokiat/gomath/sprec"
 	"github.com/mokiat/lacking/render"
 )
 
@@ -18,6 +19,23 @@ type Canvas struct {
 
 	framebuffer render.Framebuffer
 	windowSize  Size
+}
+
+// DrawBounds returns the bounds to be used for drawing for the specified
+// element.
+func (c *Canvas) DrawBounds(element *Element, padding bool) DrawBounds {
+	if !padding {
+		size := element.Bounds().Size
+		return DrawBounds{
+			Position: sprec.ZeroVec2(),
+			Size:     sprec.NewVec2(float32(size.Width), float32(size.Height)),
+		}
+	}
+	contentBounds := element.ContentBounds()
+	return DrawBounds{
+		Position: sprec.NewVec2(float32(contentBounds.X), float32(contentBounds.Y)),
+		Size:     sprec.NewVec2(float32(contentBounds.Width), float32(contentBounds.Height)),
+	}
 }
 
 func (c *Canvas) onResize(size Size) {
@@ -56,4 +74,30 @@ func (c *Canvas) onEnd() {
 	})
 	c.canvasRenderer.onEnd()
 	c.api.EndRenderPass()
+}
+
+// DrawBounds represents a rectangle area to be used for drawing.
+type DrawBounds struct {
+	Position sprec.Vec2
+	Size     sprec.Vec2
+}
+
+// X returns the left side of the draw area.
+func (b DrawBounds) X() float32 {
+	return b.Position.X
+}
+
+// Y returns the top side of the draw area.
+func (b DrawBounds) Y() float32 {
+	return b.Position.Y
+}
+
+// Width returns the width of the draw area.
+func (b DrawBounds) Width() float32 {
+	return b.Size.X
+}
+
+// Height returns the height of the draw area.
+func (b DrawBounds) Height() float32 {
+	return b.Size.Y
 }

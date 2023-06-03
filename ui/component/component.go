@@ -3,45 +3,36 @@ package component
 import (
 	"fmt"
 	"reflect"
-	"runtime"
-
-	"github.com/mokiat/lacking/log"
 )
 
 // Component represents the definition of a component.
-type Component struct {
-	componentType string
-	componentFunc ComponentFunc
+type Component interface {
+	TypeName() string
+
+	Allocate(scope Scope, invalidate InvalidateFunc) Renderable
+	Release(ref Renderable)
+
+	NotifyCreate(ref Renderable, properties Properties)
+	NotifyUpdate(ref Renderable, properties Properties)
+	NotifyDelete(ref Renderable)
 }
 
-// ComponentFunc is the mechanism through which components can construct their
-// hierarchies based on input properties and scope.
-type ComponentFunc func(props Properties, scope Scope) Instance
-
-// Define is the mechanism through which new components can be defined.
-//
-// The provided component function (i.e. render function) will be called by the
-// framework to initialize, reconcicle,or destroy a component instance.
-func Define(fn ComponentFunc) Component {
-	return Component{
-		componentType: evaluateComponentType(),
-		componentFunc: fn,
-	}
-}
-
-func evaluateComponentType() string {
-	_, file, line, _ := runtime.Caller(2)
-	return fmt.Sprintf("%s#%d", file, line)
-}
-
-// TypeComponent is a component that is implemented through a Go type.
-type TypeComponent interface {
+// Renderable is a component that is implemented through a Go type.
+type Renderable interface {
 
 	// Render should produce the UI hierarchy for this component.
 	Render() Instance
+
+	setScope(scope Scope)
+	setProperties(properties Properties)
+	setInvalidate(invalidate InvalidateFunc)
 }
 
-// CreateNotifiable should be implemented by TypeComponent types that want
+// InvalidateFunc can be used to indicate that the component's data has
+// been internally modified and it needs to be reconciled.
+type InvalidateFunc func()
+
+// CreateNotifiable should be implemented by component types that want
 // to be notified of component creation.
 type CreateNotifiable interface {
 
@@ -49,15 +40,23 @@ type CreateNotifiable interface {
 	OnCreate()
 }
 
-// UpdateNotifiable should be implemented by TypeComponent types that want
-// to be notified of component update.
+// UpdateNotifiable should be implemented by component types that want
+// to be notified of component updates.
 type UpdateNotifiable interface {
 
 	// OnUpdate is called whenever a component's properties have changed.
 	OnUpdate()
 }
 
-// DeleteNotifiable should be implemented by TypeComponent types that want
+// UpsertNotifiable should be implemented by component types that want
+// to be notified of component creations and updates.
+type UpsertNotifiable interface {
+
+	// OnUpsert is called whenever a component's properties have changed.
+	OnUpsert()
+}
+
+// DeleteNotifiable should be implemented by component types that want
 // to be notified of component deletion.
 type DeleteNotifiable interface {
 
@@ -65,150 +64,94 @@ type DeleteNotifiable interface {
 	OnDelete()
 }
 
-// DefineType defines a new component using the specified Go type as template.
-func DefineType(template TypeComponent) Component {
-	// TODO: Flip things around. Have this be the main way to create
-	// components and reimplement the old behavior to use this internally
-	// for storing state and notifications.
-
-	definition := newTypeComponentDefinition(reflect.TypeOf(template))
-
-	return Component{
-		componentType: definition.Name(),
-		componentFunc: func(props Properties, scope Scope) Instance {
-			presenter := UseState(func() TypeComponent {
-				// TODO: Consider instantiating the ui Element here and assign it to the
-				// instance, if the instance has an `element` tag. That way the element
-				// will be available from the beginning, even if not initially attached.
-
-				return definition.NewInstance()
-			}).Get()
-
-			invalidateProp := UseState(func() int {
-				return 0
-			})
-
-			invalidate := UseState(func() func() {
-				return func() {
-					invalidateProp.Set(invalidateProp.Get() + 1)
-				}
-			}).Get()
-
-			var justCreated bool
-			Once(func() {
-				justCreated = true
-				target := reflect.ValueOf(presenter).Elem()
-				definition.AssignProperties(target, invalidate, scope, props)
-				if notifiable, ok := presenter.(CreateNotifiable); ok {
-					notifiable.OnCreate()
-				}
-			})
-
-			var justDeleted bool
-			Defer(func() {
-				justDeleted = true
-				if notifiable, ok := presenter.(DeleteNotifiable); ok {
-					notifiable.OnDelete()
-				}
-			})
-
-			if !justCreated && !justDeleted {
-				target := reflect.ValueOf(presenter).Elem()
-				definition.AssignProperties(target, invalidate, scope, props)
-				if notifiable, ok := presenter.(UpdateNotifiable); ok {
-					notifiable.OnUpdate()
-				}
-			}
-
-			return presenter.Render()
-		},
-	}
+// Define defines a new component using the specified Go type as template.
+func Define(template Renderable) Component {
+	return newComponentDefinition(reflect.TypeOf(template))
 }
 
-func newTypeComponentDefinition(reflType reflect.Type) typeComponentDefinition {
+func newComponentDefinition(reflType reflect.Type) *componentDefinition {
 	if reflType.Kind() == reflect.Pointer {
-		return newTypeComponentDefinition(reflType.Elem())
+		return newComponentDefinition(reflType.Elem())
 	}
-
-	var (
-		scopeFieldIndices        []int
-		dataFieldIndices         []int
-		callbackDataFieldIndices []int
-		layoutDataFieldIndices   []int
-		invalidateFieldIndices   []int
-	)
-
-	if reflType.Kind() == reflect.Struct {
-		for i := 0; i < reflType.NumField(); i++ {
-			field := reflType.Field(i)
-			switch tag := field.Tag.Get("co"); tag {
-			case "":
-				// no tag
-			case "scope":
-				scopeFieldIndices = append(scopeFieldIndices, i)
-			case "data":
-				dataFieldIndices = append(dataFieldIndices, i)
-			case "callback":
-				callbackDataFieldIndices = append(callbackDataFieldIndices, i)
-			case "layout":
-				layoutDataFieldIndices = append(layoutDataFieldIndices, i)
-			case "invalidate":
-				invalidateFieldIndices = append(invalidateFieldIndices, i)
-			default:
-				log.Warn("Unknown type component field tag %q!", tag)
-			}
-		}
-	}
-
-	return typeComponentDefinition{
-		reflType:                 reflType,
-		name:                     fmt.Sprintf("%s.%s", reflType.PkgPath(), reflType.Name()),
-		scopeFieldIndices:        scopeFieldIndices,
-		dataFieldIndices:         dataFieldIndices,
-		callbackDataFieldIndices: callbackDataFieldIndices,
-		layoutDataFieldIndices:   layoutDataFieldIndices,
-		invalidateFieldIndices:   invalidateFieldIndices,
+	return &componentDefinition{
+		reflType: reflType,
+		name:     fmt.Sprintf("%s.%s", reflType.PkgPath(), reflType.Name()),
 	}
 }
 
-type typeComponentDefinition struct {
-	reflType                 reflect.Type
-	name                     string
-	scopeFieldIndices        []int
-	dataFieldIndices         []int
-	callbackDataFieldIndices []int
-	layoutDataFieldIndices   []int
-	invalidateFieldIndices   []int
+type componentDefinition struct {
+	reflType reflect.Type
+	name     string
 }
 
-func (d typeComponentDefinition) Name() string {
+func (d *componentDefinition) TypeName() string {
 	return d.name
 }
 
-func (d typeComponentDefinition) NewInstance() TypeComponent {
-	return reflect.New(d.reflType).Interface().(TypeComponent)
+func (d *componentDefinition) Allocate(scope Scope, invalidate InvalidateFunc) Renderable {
+	ref := reflect.New(d.reflType).Interface().(Renderable)
+	ref.setScope(scope)
+	ref.setInvalidate(invalidate)
+	return ref
 }
 
-func (d typeComponentDefinition) AssignProperties(target reflect.Value, invalidate func(), scope Scope, props Properties) {
-	for _, index := range d.scopeFieldIndices {
-		target.Field(index).Set(reflect.ValueOf(scope))
+func (d *componentDefinition) Release(ref Renderable) {
+	ref.setScope(nil)
+	ref.setInvalidate(nil)
+}
+
+func (d *componentDefinition) NotifyCreate(ref Renderable, properties Properties) {
+	ref.setProperties(properties)
+	if notifiable, ok := ref.(CreateNotifiable); ok {
+		notifiable.OnCreate()
 	}
-	if value := props.data; value != nil {
-		for _, index := range d.dataFieldIndices {
-			target.Field(index).Set(reflect.ValueOf(value))
-		}
+	if notifiable, ok := ref.(UpsertNotifiable); ok {
+		notifiable.OnUpsert()
 	}
-	if value := props.callbackData; value != nil {
-		for _, index := range d.callbackDataFieldIndices {
-			target.Field(index).Set(reflect.ValueOf(value))
-		}
+}
+
+func (d *componentDefinition) NotifyUpdate(ref Renderable, properties Properties) {
+	ref.setProperties(properties)
+	if notifiable, ok := ref.(UpdateNotifiable); ok {
+		notifiable.OnUpdate()
 	}
-	if value := props.layoutData; value != nil {
-		for _, index := range d.layoutDataFieldIndices {
-			target.Field(index).Set(reflect.ValueOf(value))
-		}
+	if notifiable, ok := ref.(UpsertNotifiable); ok {
+		notifiable.OnUpsert()
 	}
-	for _, index := range d.invalidateFieldIndices {
-		target.Field(index).Set(reflect.ValueOf(invalidate))
+}
+
+func (d *componentDefinition) NotifyDelete(ref Renderable) {
+	if notifiable, ok := ref.(DeleteNotifiable); ok {
+		notifiable.OnDelete()
 	}
+}
+
+type BaseComponent struct {
+	scope      Scope
+	properties Properties
+	invalidate InvalidateFunc
+}
+
+func (c *BaseComponent) Scope() Scope {
+	return c.scope
+}
+
+func (c *BaseComponent) Properties() Properties {
+	return c.properties
+}
+
+func (c *BaseComponent) Invalidate() {
+	c.invalidate()
+}
+
+func (c *BaseComponent) setScope(scope Scope) {
+	c.scope = scope
+}
+
+func (c *BaseComponent) setProperties(properties Properties) {
+	c.properties = properties
+}
+
+func (c *BaseComponent) setInvalidate(invalidate InvalidateFunc) {
+	c.invalidate = invalidate
 }

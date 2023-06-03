@@ -11,7 +11,7 @@ require (
 	github.com/mokiat/gomath v0.7.0
 	github.com/qmuntal/gltf v0.23.1
 	github.com/x448/float16 v0.8.4
-	golang.org/x/exp v0.0.0-20230510235704-dd950f8aeaea
+	golang.org/x/exp v0.0.0-20230519143937-03e91628a987
 	golang.org/x/image v0.7.0
 	golang.org/x/sync v0.2.0
 	gopkg.in/yaml.v2 v2.4.0

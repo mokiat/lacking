@@ -5,76 +5,72 @@ import (
 
 	"github.com/mokiat/gog/ds"
 	"github.com/mokiat/lacking/log"
-	"github.com/mokiat/lacking/ui"
+	"github.com/mokiat/lacking/ui/layout"
 )
-
-type applicationKey struct{}
 
 var (
-	rootUIContext *ui.Context
-	rootScope     Scope
+	coLogger = log.Path("/ui/component")
 )
 
-// Initialize wires the framework to the specified ui.Window.
-// The specified Instance will be the root component used.
-func Initialize(window *ui.Window, instance Instance) {
-	rootUIContext = window.Context()
-	rootScope = ContextScope(nil, rootUIContext)
-
-	rootNode := createComponentNode(New(application, func() {
-		WithScope(rootScope)
+// Initialize wires the framework using the specified root scope.
+// The specified instance will be the root component used.
+func Initialize(scope Scope, instance Instance) {
+	window := Window(scope)
+	if instance.scope != nil {
+		panic(fmt.Errorf("root instances should not have scope assigned"))
+	}
+	rootNode := createComponentNode(scope, New(application, func() {
 		WithChild("root", instance)
-	}), nil)
-	window.Root().AppendChild(rootNode.element)
+	}))
+	window.Root().AppendChild(rootNode.leafElement())
 }
 
-// TODO: Use TypeDefine instead
-var application = Define(func(props Properties, scope Scope) Instance {
-	lifecycle := UseLifecycle(func(handle LifecycleHandle) *windowLifecycle {
-		return &windowLifecycle{
-			BaseLifecycle: NewBaseLifecycle(),
-			overlays:      ds.NewList[*overlayHandle](0),
-			handle:        handle,
-		}
-	})
-	return New(Element, func() {
-		WithData(ElementData{
-			Essence: lifecycle,
-			Layout:  ui.NewFillLayout(),
-		})
-		WithScope(ValueScope(scope, applicationKey{}, lifecycle)) // TODO: cache
-		for _, child := range props.Children() {
-			WithChild(child.Key(), child)
-		}
-		for _, overlay := range lifecycle.overlays.Items() {
-			WithChild(overlay.key, overlay.instance)
-		}
-	})
-})
+var application = Define(&applicationComponent{})
 
-type windowLifecycle struct {
-	*BaseLifecycle
-	handle        LifecycleHandle
+type applicationComponent struct {
+	BaseComponent
+
+	childrenScope Scope
 	overlays      *ds.List[*overlayHandle]
 	freeOverlayID int
 }
 
-func (l *windowLifecycle) OpenOverlay(instance Instance) *overlayHandle {
-	l.freeOverlayID++
+func (c *applicationComponent) OnCreate() {
+	c.overlays = ds.NewList[*overlayHandle](2)
+	c.childrenScope = TypedValueScope(c.Scope(), c)
+}
+
+func (c *applicationComponent) Render() Instance {
+	return New(Element, func() {
+		WithData(ElementData{
+			Essence: c,
+			Layout:  layout.Fill(),
+		})
+		WithScope(c.childrenScope)
+		for _, child := range c.Properties().Children() {
+			WithChild(child.Key(), child)
+		}
+		for _, overlay := range c.overlays.Items() {
+			WithChild(overlay.instance.key, overlay.instance)
+		}
+	})
+}
+
+func (c *applicationComponent) OpenOverlay(instance Instance) *overlayHandle {
+	c.freeOverlayID++
+	instance.key = fmt.Sprintf("overlay-%d", c.freeOverlayID)
 	result := &overlayHandle{
-		lifecycle: l,
-		instance:  instance,
-		key:       fmt.Sprintf("overlay-%d", l.freeOverlayID),
+		app:      c,
+		instance: instance,
 	}
-	l.overlays.Add(result)
-	l.handle.NotifyChanged()
+	c.overlays.Add(result)
+	c.Invalidate()
 	return result
 }
 
-func (l *windowLifecycle) CloseOverlay(overlay *overlayHandle) {
-	if !l.overlays.Remove(overlay) {
-		log.Warn("[component] Overlay already closed!")
-		return
+func (c *applicationComponent) CloseOverlay(overlay *overlayHandle) {
+	if !c.overlays.Remove(overlay) {
+		panic("closing a closed overlay")
 	}
-	l.handle.NotifyChanged()
+	c.Invalidate()
 }
