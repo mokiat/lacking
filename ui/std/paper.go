@@ -54,18 +54,14 @@ func (c *paperComponent) Render() co.Instance {
 }
 
 func (c *paperComponent) OnRender(element *ui.Element, canvas *ui.Canvas) {
-	bounds := element.Bounds()
-	size := sprec.NewVec2(
-		float32(bounds.Width),
-		float32(bounds.Height),
-	)
+	drawBounds := canvas.DrawBounds(element, false)
 
 	canvas.Reset()
 	canvas.SetStrokeSize(PaperBorderSize)
 	canvas.SetStrokeColor(OutlineColor)
 	canvas.RoundRectangle(
-		sprec.ZeroVec2(),
-		size,
+		drawBounds.Position,
+		drawBounds.Size,
 		sprec.NewVec4(PaperRoundness, PaperRoundness, PaperRoundness, PaperRoundness),
 	)
 	canvas.Fill(ui.Fill{

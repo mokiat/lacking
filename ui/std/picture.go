@@ -92,14 +92,13 @@ func (c *pictureComponent) Render() co.Instance {
 }
 
 func (c *pictureComponent) OnRender(element *ui.Element, canvas *ui.Canvas) {
+	drawBounds := canvas.DrawBounds(element, false)
+
 	if !c.backgroundColor.Transparent() {
 		canvas.Reset()
 		canvas.Rectangle(
-			sprec.NewVec2(0, 0),
-			sprec.NewVec2(
-				float32(element.Bounds().Size.Width),
-				float32(element.Bounds().Size.Height),
-			),
+			drawBounds.Position,
+			drawBounds.Size,
 		)
 		canvas.Fill(ui.Fill{
 			Color: c.backgroundColor,
@@ -107,74 +106,84 @@ func (c *pictureComponent) OnRender(element *ui.Element, canvas *ui.Canvas) {
 	}
 
 	if c.image != nil {
-		drawPosition, drawSize := c.evaluateImageDrawLocation(element)
+		pictureBounds := c.evaluateImageDrawLocation(drawBounds)
 		canvas.Reset()
 		canvas.Rectangle(
-			drawPosition,
-			drawSize,
+			pictureBounds.Position,
+			pictureBounds.Size,
 		)
 		canvas.Fill(ui.Fill{
 			Color:       c.imageColor,
 			Image:       c.image,
-			ImageOffset: drawPosition,
-			ImageSize:   drawSize,
+			ImageOffset: pictureBounds.Position,
+			ImageSize:   pictureBounds.Size,
 		})
 	}
 }
 
-func (c *pictureComponent) evaluateImageDrawLocation(element *ui.Element) (sprec.Vec2, sprec.Vec2) {
-	elementSize := element.Bounds().Size
-	imageSize := c.image.Size()
-	determinant := imageSize.Width*elementSize.Height - imageSize.Height*elementSize.Width
+func (c *pictureComponent) evaluateImageDrawLocation(drawBounds ui.DrawBounds) ui.DrawBounds {
+	imageSize := sprec.NewVec2(
+		float32(c.image.Size().Width),
+		float32(c.image.Size().Height),
+	)
+	determinant := float32(imageSize.X)*drawBounds.Height() - float32(imageSize.Y)*drawBounds.Width()
 	imageHasHigherAspectRatio := determinant >= 0
 
 	switch c.mode {
 	case ImageModeCover:
 		if imageHasHigherAspectRatio {
-			return sprec.NewVec2(
-					-float32(determinant/(2*imageSize.Height)),
-					0,
+			return ui.DrawBounds{
+				Position: sprec.NewVec2(
+					-determinant/(2.0*imageSize.Y),
+					0.0,
 				),
-				sprec.NewVec2(
-					float32((elementSize.Height*imageSize.Width)/imageSize.Height),
-					float32(elementSize.Height),
-				)
+				Size: sprec.NewVec2(
+					(drawBounds.Height()*imageSize.X)/imageSize.Y,
+					drawBounds.Height(),
+				),
+			}
 		} else {
-			return sprec.NewVec2(
-					0,
-					float32(determinant/(2*imageSize.Width)),
+			return ui.DrawBounds{
+				Position: sprec.NewVec2(
+					0.0,
+					determinant/(2.0*imageSize.X),
 				),
-				sprec.NewVec2(
-					float32(elementSize.Width),
-					float32((elementSize.Width*imageSize.Height)/imageSize.Width),
-				)
+				Size: sprec.NewVec2(
+					drawBounds.Width(),
+					(drawBounds.Width()*imageSize.Y)/imageSize.X,
+				),
+			}
 		}
 
 	case ImageModeFit:
 		if imageHasHigherAspectRatio {
-			return sprec.NewVec2(
-					0,
-					float32(determinant/(2*imageSize.Width)),
+			return ui.DrawBounds{
+				Position: sprec.NewVec2(
+					0.0,
+					determinant/(2.0*imageSize.X),
 				),
-				sprec.NewVec2(
-					float32(elementSize.Width),
-					float32((elementSize.Width*imageSize.Height)/imageSize.Width),
-				)
+				Size: sprec.NewVec2(
+					drawBounds.Width(),
+					(drawBounds.Width()*imageSize.Y)/imageSize.X,
+				),
+			}
 		} else {
-			return sprec.NewVec2(
-					-float32(determinant/(2*imageSize.Height)),
+			return ui.DrawBounds{
+				Position: sprec.NewVec2(
+					-determinant/(2.0*imageSize.Y),
 					0,
 				),
-				sprec.NewVec2(
-					float32((elementSize.Height*imageSize.Width)/imageSize.Height),
-					float32(elementSize.Height),
-				)
+				Size: sprec.NewVec2(
+					(drawBounds.Height()*imageSize.X)/imageSize.Y,
+					drawBounds.Height(),
+				),
+			}
 		}
 
 	case ImageModeStretch:
 		fallthrough
 
 	default:
-		return sprec.ZeroVec2(), sprec.NewVec2(float32(elementSize.Width), float32(elementSize.Height))
+		return drawBounds
 	}
 }

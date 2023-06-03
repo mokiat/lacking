@@ -127,16 +127,14 @@ func (c *buttonComponent) OnRender(element *ui.Element, canvas *ui.Canvas) {
 		strokeColor = OutlineColor
 	}
 
-	size := element.Bounds().Size
-	width := float32(size.Width)
-	height := float32(size.Height)
+	drawBounds := canvas.DrawBounds(element, false)
 
 	canvas.Reset()
 	canvas.SetStrokeSize(2.0)
 	canvas.SetStrokeColor(strokeColor)
 	canvas.RoundRectangle(
-		sprec.ZeroVec2(),
-		sprec.NewVec2(width, height),
+		drawBounds.Position,
+		drawBounds.Size,
 		sprec.NewVec4(8, 8, 8, 8),
 	)
 	canvas.Fill(ui.Fill{

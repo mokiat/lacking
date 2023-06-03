@@ -116,16 +116,14 @@ func (c *editboxComponent) OnRender(element *ui.Element, canvas *ui.Canvas) {
 		text = c.volatileText
 	}
 
-	size := element.Bounds().Size
-	width := float32(size.Width)
-	height := float32(size.Height)
+	drawBounds := canvas.DrawBounds(element, false)
 
 	canvas.Reset()
 	canvas.SetStrokeSize(2.0)
 	canvas.SetStrokeColor(strokeColor)
 	canvas.RoundRectangle(
-		sprec.ZeroVec2(),
-		sprec.NewVec2(width, height),
+		drawBounds.Position,
+		drawBounds.Size,
 		sprec.NewVec4(8, 8, 8, 8),
 	)
 	canvas.Fill(ui.Fill{
@@ -133,9 +131,9 @@ func (c *editboxComponent) OnRender(element *ui.Element, canvas *ui.Canvas) {
 	})
 	canvas.Stroke()
 
-	textPosition := sprec.NewVec2(5, (height-c.textSize.Y)/2)
+	textPosition := sprec.NewVec2(5, (drawBounds.Height()-c.textSize.Y)/2)
 	canvas.Push()
-	canvas.SetClipRect(5, width-5, 2, height-2)
+	canvas.SetClipRect(5, drawBounds.Width()-5, 2, drawBounds.Height()-2)
 	canvas.Reset()
 	canvas.FillText(text, textPosition, ui.Typography{
 		Font:  c.font,

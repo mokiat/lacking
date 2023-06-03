@@ -152,31 +152,29 @@ func (c tabbarTabMainComponent) OnRender(element *ui.Element, canvas *ui.Canvas)
 		}
 	}
 
-	size := element.Bounds().Size
-	width := float32(size.Width)
-	height := float32(size.Height)
+	drawBounds := canvas.DrawBounds(element, false)
 
 	if !backgroundColor.Transparent() {
 		canvas.Reset()
 		canvas.MoveTo(
-			sprec.NewVec2(0, height),
+			sprec.NewVec2(0.0, drawBounds.Height()),
 		)
 		canvas.LineTo(
-			sprec.NewVec2(width, height),
+			sprec.NewVec2(drawBounds.Width(), drawBounds.Height()),
 		)
 		canvas.LineTo(
-			sprec.NewVec2(width, TabbarTabRadius),
+			sprec.NewVec2(drawBounds.Width(), TabbarTabRadius),
 		)
 		canvas.QuadTo(
-			sprec.NewVec2(width, 0),
-			sprec.NewVec2(width-TabbarTabRadius, 0),
+			sprec.NewVec2(drawBounds.Width(), 0.0),
+			sprec.NewVec2(drawBounds.Width()-TabbarTabRadius, 0.0),
 		)
 		canvas.LineTo(
-			sprec.NewVec2(TabbarTabRadius, 0),
+			sprec.NewVec2(TabbarTabRadius, 0.0),
 		)
 		canvas.QuadTo(
-			sprec.NewVec2(0, 0),
-			sprec.NewVec2(0, TabbarTabRadius),
+			sprec.NewVec2(0.0, 0.0),
+			sprec.NewVec2(0.0, TabbarTabRadius),
 		)
 		canvas.Fill(ui.Fill{
 			Color: backgroundColor,
@@ -200,13 +198,11 @@ func (c tabbarTabCloseComponent) OnRender(element *ui.Element, canvas *ui.Canvas
 	}
 
 	if !backgroundColor.Transparent() {
-		size := element.Bounds().Size
-		width := float32(size.Width)
-		height := float32(size.Height)
+		drawBounds := canvas.DrawBounds(element, false)
 		canvas.Reset()
 		canvas.Rectangle(
-			sprec.ZeroVec2(),
-			sprec.NewVec2(width, height),
+			drawBounds.Position,
+			drawBounds.Size,
 		)
 		canvas.Fill(ui.Fill{
 			Color: backgroundColor,

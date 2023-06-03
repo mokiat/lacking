@@ -124,17 +124,13 @@ func (c *toolbarButtonComponent) OnRender(element *ui.Element, canvas *ui.Canvas
 		backgroundColor = ui.Transparent()
 	}
 
-	bounds := element.Bounds()
-	size := sprec.NewVec2(
-		float32(bounds.Width),
-		float32(bounds.Height),
-	)
+	drawBounds := canvas.DrawBounds(element, false)
 
 	if !backgroundColor.Transparent() {
 		canvas.Reset()
 		canvas.Rectangle(
-			sprec.ZeroVec2(),
-			size,
+			drawBounds.Position,
+			drawBounds.Size,
 		)
 		canvas.Fill(ui.Fill{
 			Color: backgroundColor,
@@ -143,8 +139,8 @@ func (c *toolbarButtonComponent) OnRender(element *ui.Element, canvas *ui.Canvas
 	if c.isSelected {
 		canvas.Reset()
 		canvas.Rectangle(
-			sprec.NewVec2(0.0, size.Y-ToolbarBottonSelectionHeight),
-			sprec.NewVec2(size.X, ToolbarBottonSelectionHeight),
+			sprec.NewVec2(0.0, drawBounds.Height()-ToolbarBottonSelectionHeight),
+			sprec.NewVec2(drawBounds.Width(), ToolbarBottonSelectionHeight),
 		)
 		canvas.Fill(ui.Fill{
 			Color: SecondaryColor,

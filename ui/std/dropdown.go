@@ -119,16 +119,14 @@ func (c *dropdownComponent) OnRender(element *ui.Element, canvas *ui.Canvas) {
 		backgroundColor = ui.Transparent()
 	}
 
-	size := element.Bounds().Size
-	width := float32(size.Width)
-	height := float32(size.Height)
+	drawBounds := canvas.DrawBounds(element, false)
 
 	canvas.Reset()
 	canvas.SetStrokeSize(2.0)
 	canvas.SetStrokeColor(PrimaryLightColor)
 	canvas.RoundRectangle(
-		sprec.ZeroVec2(),
-		sprec.NewVec2(width, height),
+		drawBounds.Position,
+		drawBounds.Size,
 		sprec.NewVec4(5.0, 5.0, 5.0, 5.0),
 	)
 	if !backgroundColor.Transparent() {

@@ -68,13 +68,13 @@ func (c *labelComponent) Render() co.Instance {
 
 func (c *labelComponent) OnRender(element *ui.Element, canvas *ui.Canvas) {
 	if c.text != "" {
-		contentArea := element.Bounds()
+		drawBounds := canvas.DrawBounds(element, false)
 		textDrawSize := c.font.TextSize(c.text, c.fontSize)
 
 		canvas.Reset()
 		canvas.FillText(c.text, sprec.NewVec2(
-			(float32(contentArea.Width)-textDrawSize.X)/2,
-			(float32(contentArea.Height)-textDrawSize.Y)/2,
+			(drawBounds.Width()-textDrawSize.X)/2.0,
+			(drawBounds.Height()-textDrawSize.Y)/2.0,
 		), ui.Typography{
 			Font:  c.font,
 			Size:  c.fontSize,

@@ -2,7 +2,6 @@ package std
 
 import (
 	"github.com/mokiat/gog/opt"
-	"github.com/mokiat/gomath/sprec"
 	"github.com/mokiat/lacking/ui"
 	co "github.com/mokiat/lacking/ui/component"
 	"github.com/mokiat/lacking/ui/layout"
@@ -128,16 +127,14 @@ func (c *accordionComponent) OnRender(element *ui.Element, canvas *ui.Canvas) {
 		backgroundColor = PrimaryLightColor
 	}
 
-	size := element.Bounds().Size
-	width := float32(size.Width)
-	height := float32(size.Height)
+	drawBounds := canvas.DrawBounds(element, false)
 
 	canvas.Reset()
 	canvas.SetStrokeSize(1.0)
 	canvas.SetStrokeColor(OutlineColor)
 	canvas.Rectangle(
-		sprec.ZeroVec2(),
-		sprec.NewVec2(width, height),
+		drawBounds.Position,
+		drawBounds.Size,
 	)
 	if !backgroundColor.Transparent() {
 		canvas.Fill(ui.Fill{

@@ -50,16 +50,12 @@ func (c *toolbarComponent) OnUpsert() {
 }
 
 func (c *toolbarComponent) OnRender(element *ui.Element, canvas *ui.Canvas) {
-	bounds := element.Bounds()
-	size := sprec.NewVec2(
-		float32(bounds.Width),
-		float32(bounds.Height),
-	)
+	drawBounds := canvas.DrawBounds(element, false)
 
 	canvas.Reset()
 	canvas.Rectangle(
-		sprec.ZeroVec2(),
-		size,
+		drawBounds.Position,
+		drawBounds.Size,
 	)
 	canvas.Fill(ui.Fill{
 		Color: SurfaceColor,
@@ -69,12 +65,12 @@ func (c *toolbarComponent) OnRender(element *ui.Element, canvas *ui.Canvas) {
 	canvas.SetStrokeSize(float32(ToolbarBorderSize))
 	canvas.SetStrokeColor(OutlineColor)
 	if c.positioning != ToolbarPositioningTop {
-		canvas.MoveTo(sprec.NewVec2(size.X, 0.0))
+		canvas.MoveTo(sprec.NewVec2(drawBounds.Width(), 0.0))
 		canvas.LineTo(sprec.NewVec2(0.0, 0.0))
 	}
 	if c.positioning != ToolbarPositioningBottom {
-		canvas.MoveTo(sprec.NewVec2(0.0, size.Y))
-		canvas.LineTo(sprec.NewVec2(size.X, size.Y))
+		canvas.MoveTo(sprec.NewVec2(0.0, drawBounds.Height()))
+		canvas.LineTo(sprec.NewVec2(drawBounds.Width(), drawBounds.Height()))
 	}
 	canvas.Stroke()
 }

@@ -65,12 +65,11 @@ func (c *containerComponent) Render() co.Instance {
 }
 
 func (c *containerComponent) OnRender(element *ui.Element, canvas *ui.Canvas) {
-	bounds := element.Bounds().Size
-	drawBounds := sprec.NewVec2(float32(bounds.Width), float32(bounds.Height))
+	drawBounds := canvas.DrawBounds(element, false)
 
 	if !c.backgroundColor.Transparent() {
 		canvas.Reset()
-		canvas.Rectangle(sprec.ZeroVec2(), drawBounds)
+		canvas.Rectangle(drawBounds.Position, drawBounds.Size)
 		canvas.Fill(ui.Fill{
 			Color: c.backgroundColor,
 		})
@@ -80,23 +79,23 @@ func (c *containerComponent) OnRender(element *ui.Element, canvas *ui.Canvas) {
 		canvas.SetStrokeColor(c.borderColor)
 		if c.borderSize.Top > 0 {
 			canvas.SetStrokeSizeSeparate(float32(c.borderSize.Top), 0.0)
-			canvas.MoveTo(sprec.NewVec2(drawBounds.X, 0.0))
+			canvas.MoveTo(sprec.NewVec2(drawBounds.Width(), 0.0))
 			canvas.LineTo(sprec.NewVec2(0.0, 0.0))
 		}
 		if c.borderSize.Left > 0 {
 			canvas.SetStrokeSizeSeparate(float32(c.borderSize.Left), 0.0)
 			canvas.MoveTo(sprec.NewVec2(0.0, 0.0))
-			canvas.LineTo(sprec.NewVec2(0.0, drawBounds.Y))
+			canvas.LineTo(sprec.NewVec2(0.0, drawBounds.Height()))
 		}
 		if c.borderSize.Bottom > 0 {
 			canvas.SetStrokeSizeSeparate(float32(c.borderSize.Bottom), 0.0)
-			canvas.MoveTo(sprec.NewVec2(0.0, drawBounds.Y))
-			canvas.LineTo(sprec.NewVec2(drawBounds.X, drawBounds.Y))
+			canvas.MoveTo(sprec.NewVec2(0.0, drawBounds.Height()))
+			canvas.LineTo(sprec.NewVec2(drawBounds.Width(), drawBounds.Height()))
 		}
 		if c.borderSize.Right > 0 {
 			canvas.SetStrokeSizeSeparate(float32(c.borderSize.Right), 0.0)
-			canvas.MoveTo(sprec.NewVec2(drawBounds.X, drawBounds.Y))
-			canvas.LineTo(sprec.NewVec2(drawBounds.X, 0.0))
+			canvas.MoveTo(sprec.NewVec2(drawBounds.Width(), drawBounds.Height()))
+			canvas.LineTo(sprec.NewVec2(drawBounds.Width(), 0.0))
 		}
 		canvas.Stroke()
 	}

@@ -33,14 +33,10 @@ func (c *toolbarSeparatorComponent) Render() co.Instance {
 }
 
 func (c *toolbarSeparatorComponent) OnRender(element *ui.Element, canvas *ui.Canvas) {
-	bounds := element.Bounds()
-	size := sprec.NewVec2(
-		float32(bounds.Width),
-		float32(bounds.Height),
-	)
-	halfWidth := size.X / 2.0
-	lineLength := size.Y * ToolbarSeparatorLineLengthRatio
-	linePadding := (size.Y - lineLength) / 2.0
+	drawBounds := canvas.DrawBounds(element, false)
+	halfWidth := drawBounds.Width() / 2.0
+	lineLength := drawBounds.Height() * ToolbarSeparatorLineLengthRatio
+	linePadding := (drawBounds.Height() - lineLength) / 2.0
 
 	canvas.Reset()
 	canvas.SetStrokeSizeSeparate(

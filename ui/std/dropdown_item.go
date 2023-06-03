@@ -62,15 +62,13 @@ func (c *dropdownItemComponent) OnRender(element *ui.Element, canvas *ui.Canvas)
 		backgroundColor = ui.Transparent()
 	}
 
-	size := element.Bounds().Size
-	width := float32(size.Width)
-	height := float32(size.Height)
+	drawBounds := canvas.DrawBounds(element, false)
 
 	if c.isSelected {
 		canvas.Reset()
 		canvas.Rectangle(
 			sprec.ZeroVec2(),
-			sprec.NewVec2(float32(DropdownItemIndicatorSize), height),
+			sprec.NewVec2(float32(DropdownItemIndicatorSize), drawBounds.Height()),
 		)
 		canvas.Fill(ui.Fill{
 			Color: SecondaryColor,
@@ -82,7 +80,7 @@ func (c *dropdownItemComponent) OnRender(element *ui.Element, canvas *ui.Canvas)
 		canvas.Reset()
 		canvas.Rectangle(
 			sprec.NewVec2(spacing, 0.0),
-			sprec.NewVec2(width-spacing, height),
+			sprec.NewVec2(drawBounds.Width()-spacing, drawBounds.Height()),
 		)
 		canvas.Fill(ui.Fill{
 			Color: backgroundColor,

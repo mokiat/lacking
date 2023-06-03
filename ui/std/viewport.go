@@ -4,7 +4,6 @@ import (
 	"time"
 
 	"github.com/mokiat/gog/opt"
-	"github.com/mokiat/gomath/sprec"
 	"github.com/mokiat/lacking/render"
 	"github.com/mokiat/lacking/ui"
 	co "github.com/mokiat/lacking/ui/component"
@@ -131,20 +130,19 @@ func (c *viewportComponent) OnRender(element *ui.Element, canvas *ui.Canvas) {
 		}
 	}
 
-	width := float32(size.Width)
-	height := float32(size.Height)
+	drawBounds := canvas.DrawBounds(element, false)
 
 	if c.surface.onRender != nil {
 		canvas.DrawSurface(
 			&c.surface,
-			sprec.ZeroVec2(),
-			sprec.NewVec2(width, height),
+			drawBounds.Position,
+			drawBounds.Size,
 		)
 	} else {
 		canvas.Reset()
 		canvas.Rectangle(
-			sprec.ZeroVec2(),
-			sprec.NewVec2(width, height),
+			drawBounds.Position,
+			drawBounds.Size,
 		)
 		canvas.Fill(ui.Fill{
 			Rule:  ui.FillRuleSimple,
