@@ -3,6 +3,7 @@ package graphics
 import (
 	"github.com/mokiat/gblob"
 	"github.com/mokiat/gog/ds"
+	"github.com/mokiat/gog/opt"
 	"github.com/mokiat/gomath/dprec"
 	"github.com/mokiat/lacking/render"
 	"github.com/mokiat/lacking/util/spatial"
@@ -17,6 +18,14 @@ func newScene(renderer *sceneRenderer) *Scene {
 		renderer: renderer,
 
 		sky: newSky(),
+
+		staticMeshOctree: spatial.NewStaticOctree[uint32](spatial.StaticOctreeSettings{
+			Size:                opt.V(maxSceneSize),
+			MaxDepth:            opt.V(int32(15)),
+			BiasRatio:           opt.V(4.0),
+			InitialNodeCapacity: opt.V(int32(128 * 1024)),
+			InitialItemCapacity: opt.V(int32(1024 * 1024)),
+		}),
 
 		meshOctree: spatial.NewOctree[*Mesh](maxSceneSize, 15),
 		meshPool:   ds.NewPool[Mesh](),
@@ -42,6 +51,9 @@ type Scene struct {
 
 	sky *Sky
 
+	staticMeshes     []StaticMesh
+	staticMeshOctree *spatial.StaticOctree[uint32]
+
 	meshOctree *spatial.Octree[*Mesh]
 	meshPool   *ds.Pool[Mesh]
 
@@ -60,10 +72,12 @@ type Scene struct {
 	activeCamera *Camera
 }
 
+// ActiveCamera returns the currently active camera for this scene.
 func (s *Scene) ActiveCamera() *Camera {
 	return s.activeCamera
 }
 
+// SetActiveCamera changes the active camera for this scene.
 func (s *Scene) SetActiveCamera(camera *Camera) {
 	s.activeCamera = camera
 }
@@ -109,12 +123,21 @@ func (s *Scene) CreateDirectionalLight(info DirectionalLightInfo) *DirectionalLi
 	return newDirectionalLight(s, info)
 }
 
+// CreateStaticMesh creates a new static mesh to be rendered in this scene.
+//
+// Static meshes cannot be removed from a scene but are rendered more
+// efficiently.
+func (s *Scene) CreateStaticMesh(info StaticMeshInfo) {
+	createStaticMesh(s, info)
+}
+
 // CreateMesh creates a new mesh instance from the specified
 // template and places it in the scene.
 func (s *Scene) CreateMesh(info MeshInfo) *Mesh {
 	return newMesh(s, info)
 }
 
+// CreateArmature creates an armature to be used with meshes.
 func (s *Scene) CreateArmature(info ArmatureInfo) *Armature {
 	boneCount := len(info.InverseMatrices)
 	return &Armature{

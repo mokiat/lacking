@@ -35,7 +35,8 @@ func newRenderer(api render.API, shaders ShaderCollection) *sceneRenderer {
 		exposureBufferData: make([]byte, 4*render.SizeF32), // Worst case RGBA32F
 		exposureTarget:     1.0,
 
-		visibleMeshes: spatial.NewVisitorBucket[*Mesh](2_000),
+		visibleStaticMeshes: spatial.NewVisitorBucket[uint32](2_000),
+		visibleMeshes:       spatial.NewVisitorBucket[*Mesh](2_000),
 
 		ambientLightBucket: spatial.NewVisitorBucket[*AmbientLight](16),
 
@@ -126,8 +127,9 @@ type sceneRenderer struct {
 	lightUniformBufferData gblob.LittleEndianBlock
 	lightUniformBuffer     render.Buffer
 
-	visibleMeshes *spatial.VisitorBucket[*Mesh]
-	renderItems   []renderItem
+	visibleStaticMeshes *spatial.VisitorBucket[uint32]
+	visibleMeshes       *spatial.VisitorBucket[*Mesh]
+	renderItems         []renderItem
 }
 
 func (r *sceneRenderer) createFramebuffers(width, height int) {
@@ -715,11 +717,19 @@ func (r *sceneRenderer) renderShadowPass(ctx renderCtx) {
 	frustum := spatial.ProjectionRegion(stod.Mat4(projectionViewMatrix))
 
 	r.renderItems = r.renderItems[:0]
+
 	r.visibleMeshes.Reset()
 	ctx.scene.meshOctree.VisitHexahedronRegion(&frustum, r.visibleMeshes)
 	for _, mesh := range r.visibleMeshes.Items() {
 		r.queueShadowMesh(ctx, mesh)
 	}
+
+	r.visibleStaticMeshes.Reset()
+	ctx.scene.staticMeshOctree.VisitHexahedronRegion(&frustum, r.visibleStaticMeshes)
+	for _, meshIndex := range r.visibleStaticMeshes.Items() {
+		r.queueStaticShadowMesh(ctx, &ctx.scene.staticMeshes[meshIndex])
+	}
+
 	slices.SortFunc(r.renderItems, func(a, b renderItem) bool {
 		// TODO: If fragment IDs are stored inside the items themselves, there
 		// would be fewer pointer jumps and cache misses.
@@ -765,6 +775,20 @@ func (r *sceneRenderer) queueShadowMesh(ctx renderCtx, mesh *Mesh) {
 			fragment:    fragment,
 			modelMatrix: modelMatrix,
 			armature:    mesh.armature,
+		})
+	}
+}
+
+func (r *sceneRenderer) queueStaticShadowMesh(ctx renderCtx, mesh *StaticMesh) {
+	modelMatrix := mesh.matrixData
+	definition := mesh.definition
+	for i := range definition.fragments {
+		// TODO: Fragment is a somewhat shallow structure. Consider copying the
+		// relevant information instead of dealing with pointers.
+		fragment := &definition.fragments[i]
+		r.renderItems = append(r.renderItems, renderItem{
+			fragment:    fragment,
+			modelMatrix: modelMatrix,
 		})
 	}
 }
@@ -865,11 +889,19 @@ func (r *sceneRenderer) renderGeometryPass(ctx renderCtx) {
 	})
 
 	r.renderItems = r.renderItems[:0]
+
 	r.visibleMeshes.Reset()
 	ctx.scene.meshOctree.VisitHexahedronRegion(&ctx.frustum, r.visibleMeshes)
 	for _, mesh := range r.visibleMeshes.Items() {
 		r.queueMesh(ctx, mesh)
 	}
+
+	r.visibleStaticMeshes.Reset()
+	ctx.scene.staticMeshOctree.VisitHexahedronRegion(&ctx.frustum, r.visibleStaticMeshes)
+	for _, meshIndex := range r.visibleStaticMeshes.Items() {
+		r.queueStaticMesh(ctx, &ctx.scene.staticMeshes[meshIndex])
+	}
+
 	slices.SortFunc(r.renderItems, func(a, b renderItem) bool {
 		return a.fragment.id < b.fragment.id
 	})
@@ -888,6 +920,19 @@ func (r *sceneRenderer) queueMesh(ctx renderCtx, mesh *Mesh) {
 			fragment:    fragment,
 			modelMatrix: modelMatrix,
 			armature:    mesh.armature,
+		})
+	}
+}
+
+func (r *sceneRenderer) queueStaticMesh(ctx renderCtx, mesh *StaticMesh) {
+	modelMatrix := mesh.matrixData
+	definition := mesh.definition
+	for i := range definition.fragments {
+		fragment := &definition.fragments[i]
+		r.renderItems = append(r.renderItems, renderItem{
+			fragment:    fragment,
+			modelMatrix: modelMatrix[:],
+			armature:    nil,
 		})
 	}
 }

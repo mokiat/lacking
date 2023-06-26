@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/mokiat/gog/ds"
+	"github.com/mokiat/gog/opt"
 	"github.com/mokiat/gomath/dprec"
 	"github.com/mokiat/lacking/game/physics/collision"
 	"github.com/mokiat/lacking/game/physics/constraint"
@@ -17,9 +18,13 @@ func newScene(engine *Engine, timestep time.Duration) *Scene {
 	return &Scene{
 		engine: engine,
 
-		propOctree: spatial.NewOctree[*Prop](32000.0, 15),
-		propPool:   ds.NewPool[Prop](),
-		props:      make(map[*Prop]struct{}),
+		propOctree: spatial.NewStaticOctree[uint32](spatial.StaticOctreeSettings{
+			Size:                opt.V(32000.0),
+			MaxDepth:            opt.V(int32(15)),
+			BiasRatio:           opt.V(2.0),
+			InitialNodeCapacity: opt.V(int32(4 * 1024)),
+			InitialItemCapacity: opt.V(int32(8 * 1024)),
+		}),
 
 		bodyOctree:    spatial.NewOctree[*Body](32000.0, 15),
 		bodyPool:      ds.NewPool[Body](),
@@ -54,9 +59,8 @@ type Scene struct {
 	maxVelocity            float64
 	maxAngularVelocity     float64
 
-	propOctree *spatial.Octree[*Prop]
-	propPool   *ds.Pool[Prop]
-	props      map[*Prop]struct{}
+	props      []Prop
+	propOctree *spatial.StaticOctree[uint32]
 
 	bodyOctree    *spatial.Octree[*Body]
 	bodyPool      *ds.Pool[Body]
@@ -133,20 +137,16 @@ func (s *Scene) SetWindDensity(density float64) {
 
 // CreateProp creates a new static Prop. A prop is an object
 // that is static and rarely removed.
-func (s *Scene) CreateProp(info PropInfo) *Prop {
-	prop := s.propPool.Fetch()
-	prop.scene = s
-
+func (s *Scene) CreateProp(info PropInfo) {
 	bs := info.CollisionSet.BoundingSphere()
-	propOctreeItem := s.propOctree.CreateItem(prop)
-	propOctreeItem.SetPosition(bs.Position())
-	propOctreeItem.SetRadius(bs.Radius())
-	prop.octreeItem = propOctreeItem
+	position := bs.Position()
+	radius := bs.Radius()
 
-	prop.collisionSet = info.CollisionSet
-
-	s.props[prop] = struct{}{}
-	return prop
+	propIndex := uint32(len(s.props))
+	s.props = append(s.props, Prop{
+		collisionSet: info.CollisionSet,
+	})
+	s.propOctree.Insert(position, radius, propIndex)
 }
 
 // CreateBody creates a new physics body and places
@@ -274,7 +274,6 @@ func (s *Scene) Nearby(body *Body, distance float64, cb func(b *Body)) {
 // on this object.
 func (s *Scene) Delete() {
 	s.propOctree = nil
-	s.propPool = nil
 	s.props = nil
 
 	s.bodyOctree = nil
@@ -617,8 +616,8 @@ func (s *Scene) detectCollisions() {
 			dprec.NewVec3(primary.bsRadius*2.0, primary.bsRadius*2.0, primary.bsRadius*2.0),
 		)
 
-		s.propOctree.VisitHexahedronRegion(&region, spatial.VisitorFunc[*Prop](func(prop *Prop) {
-			s.checkCollisionBodyWithProp(primary, prop)
+		s.propOctree.VisitHexahedronRegion(&region, spatial.VisitorFunc[uint32](func(propIndex uint32) {
+			s.checkCollisionBodyWithProp(primary, &s.props[propIndex])
 		}))
 
 		s.bodyOctree.VisitHexahedronRegion(&region, spatial.VisitorFunc[*Body](func(secondary *Body) {
