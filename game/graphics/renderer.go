@@ -591,7 +591,7 @@ func (r *sceneRenderer) Render(framebuffer render.Framebuffer, viewport Viewport
 
 	if ShowLightView {
 		r.directionalLightBucket.Reset()
-		scene.directionalLightOctree.VisitHexahedronRegion(&frustum, r.directionalLightBucket)
+		scene.directionalLightSet.VisitHexahedronRegion(&frustum, r.directionalLightBucket)
 
 		var directionalLight *DirectionalLight
 		for _, light := range r.directionalLightBucket.Items() {
@@ -694,7 +694,7 @@ func (r *sceneRenderer) renderShadowPass(ctx renderCtx) {
 	defer metrics.BeginRegion("graphics:shadow pass").End()
 
 	r.directionalLightBucket.Reset()
-	ctx.scene.directionalLightOctree.VisitHexahedronRegion(&ctx.frustum, r.directionalLightBucket)
+	ctx.scene.directionalLightSet.VisitHexahedronRegion(&ctx.frustum, r.directionalLightBucket)
 
 	var directionalLight *DirectionalLight
 	for _, light := range r.directionalLightBucket.Items() {
@@ -719,7 +719,7 @@ func (r *sceneRenderer) renderShadowPass(ctx renderCtx) {
 	r.renderItems = r.renderItems[:0]
 
 	r.visibleMeshes.Reset()
-	ctx.scene.meshOctree.VisitHexahedronRegion(&frustum, r.visibleMeshes)
+	ctx.scene.dynamicMeshSet.VisitHexahedronRegion(&frustum, r.visibleMeshes)
 	for _, mesh := range r.visibleMeshes.Items() {
 		r.queueShadowMesh(ctx, mesh)
 	}
@@ -891,7 +891,7 @@ func (r *sceneRenderer) renderGeometryPass(ctx renderCtx) {
 	r.renderItems = r.renderItems[:0]
 
 	r.visibleMeshes.Reset()
-	ctx.scene.meshOctree.VisitHexahedronRegion(&ctx.frustum, r.visibleMeshes)
+	ctx.scene.dynamicMeshSet.VisitHexahedronRegion(&ctx.frustum, r.visibleMeshes)
 	for _, mesh := range r.visibleMeshes.Items() {
 		r.queueMesh(ctx, mesh)
 	}
@@ -1031,7 +1031,7 @@ func (r *sceneRenderer) renderLightingPass(ctx renderCtx) {
 	})
 
 	r.ambientLightBucket.Reset()
-	ctx.scene.ambientLightOctree.VisitHexahedronRegion(&ctx.frustum, r.ambientLightBucket)
+	ctx.scene.ambientLightSet.VisitHexahedronRegion(&ctx.frustum, r.ambientLightBucket)
 	for _, ambientLight := range r.ambientLightBucket.Items() {
 		if ambientLight.active {
 			r.renderAmbientLight(ctx, ambientLight)
@@ -1040,7 +1040,7 @@ func (r *sceneRenderer) renderLightingPass(ctx renderCtx) {
 
 	// TODO: Use batching (instancing) when rendering point lights
 	r.pointLightBucket.Reset()
-	ctx.scene.pointLightOctree.VisitHexahedronRegion(&ctx.frustum, r.pointLightBucket)
+	ctx.scene.pointLightSet.VisitHexahedronRegion(&ctx.frustum, r.pointLightBucket)
 	for _, pointLight := range r.pointLightBucket.Items() {
 		if pointLight.active {
 			r.renderPointLight(ctx, pointLight)
@@ -1049,7 +1049,7 @@ func (r *sceneRenderer) renderLightingPass(ctx renderCtx) {
 
 	// TODO: Use batching (instancing) when rendering spot lights
 	r.spotLightBucket.Reset()
-	ctx.scene.spotLightOctree.VisitHexahedronRegion(&ctx.frustum, r.spotLightBucket)
+	ctx.scene.spotLightSet.VisitHexahedronRegion(&ctx.frustum, r.spotLightBucket)
 	for _, spotLight := range r.spotLightBucket.Items() {
 		if spotLight.active {
 			r.renderSpotLight(ctx, spotLight)
@@ -1057,7 +1057,7 @@ func (r *sceneRenderer) renderLightingPass(ctx renderCtx) {
 	}
 
 	r.directionalLightBucket.Reset()
-	ctx.scene.directionalLightOctree.VisitHexahedronRegion(&ctx.frustum, r.directionalLightBucket)
+	ctx.scene.directionalLightSet.VisitHexahedronRegion(&ctx.frustum, r.directionalLightBucket)
 	for _, directionalLight := range r.directionalLightBucket.Items() {
 		if directionalLight.active {
 			r.renderDirectionalLight(ctx, directionalLight)

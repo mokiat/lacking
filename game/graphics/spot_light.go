@@ -23,9 +23,9 @@ func newSpotLight(scene *Scene, info SpotLightInfo) *SpotLight {
 	light := scene.spotLightPool.Fetch()
 
 	light.scene = scene
-	light.item = scene.spotLightOctree.CreateItem(light)
-	light.item.SetPosition(info.Position)
-	light.item.SetRadius(info.EmitRange)
+	light.itemID = scene.spotLightSet.Insert(
+		info.Position, info.EmitRange, light,
+	)
 
 	light.active = true
 	light.position = info.Position
@@ -43,8 +43,8 @@ func newSpotLight(scene *Scene, info SpotLightInfo) *SpotLight {
 // SpotLight represents a light source that is positioned at a point in
 // space and emits a light cone in down the -Z axis up to a range.
 type SpotLight struct {
-	scene *Scene
-	item  *spatial.OctreeItem[*SpotLight]
+	scene  *Scene
+	itemID spatial.DynamicSetItemID
 
 	active             bool
 	position           dprec.Vec3
@@ -77,7 +77,9 @@ func (l *SpotLight) Position() dprec.Vec3 {
 func (l *SpotLight) SetPosition(position dprec.Vec3) {
 	if position != l.position {
 		l.position = position
-		l.item.SetPosition(l.position)
+		l.scene.spotLightSet.Update(
+			l.itemID, l.position, l.emitRange,
+		)
 		l.matrixDirty = true
 	}
 }
@@ -99,7 +101,9 @@ func (l *SpotLight) EmitRange() float64 {
 func (l *SpotLight) SetEmitRange(emitRange float64) {
 	if emitRange != l.emitRange {
 		l.emitRange = dprec.Max(0.0, emitRange)
-		l.item.SetRadius(l.emitRange)
+		l.scene.spotLightSet.Update(
+			l.itemID, l.position, l.emitRange,
+		)
 		l.matrixDirty = true
 	}
 }
@@ -120,8 +124,7 @@ func (l *SpotLight) Delete() {
 	if l.scene == nil {
 		panic(fmt.Errorf("spot light already deleted"))
 	}
-	l.item.Delete()
-	l.item = nil
+	l.scene.spotLightSet.Remove(l.itemID)
 	l.scene.spotLightPool.Restore(l)
 	l.scene = nil
 }

@@ -159,11 +159,10 @@ type MeshInfo struct {
 func newMesh(scene *Scene, info MeshInfo) *Mesh {
 	definition := info.Definition
 
-	mesh := scene.meshPool.Fetch()
+	mesh := scene.dynamicMeshPool.Fetch()
 	mesh.Node = newNode()
 	mesh.scene = scene
-	mesh.item = scene.meshOctree.CreateItem(mesh)
-	mesh.item.SetRadius(definition.boundingSphereRadius)
+	mesh.itemID = scene.dynamicMeshSet.Insert(dprec.ZeroVec3(), definition.boundingSphereRadius, mesh)
 	mesh.definition = definition
 	mesh.armature = info.Armature
 	return mesh
@@ -173,8 +172,8 @@ func newMesh(scene *Scene, info MeshInfo) *Mesh {
 type Mesh struct {
 	Node
 
-	scene *Scene
-	item  *spatial.OctreeItem[*Mesh]
+	scene  *Scene
+	itemID spatial.DynamicSetItemID
 
 	definition *MeshDefinition
 	armature   *Armature
@@ -182,7 +181,9 @@ type Mesh struct {
 
 func (m *Mesh) SetMatrix(matrix dprec.Mat4) {
 	m.Node.SetMatrix(matrix)
-	m.item.SetPosition(matrix.Translation())
+	position := matrix.Translation()
+	radius := m.definition.boundingSphereRadius
+	m.scene.dynamicMeshSet.Update(m.itemID, position, radius)
 }
 
 // Delete removes this mesh from the scene.
@@ -190,9 +191,8 @@ func (m *Mesh) Delete() {
 	if m.scene == nil {
 		panic(fmt.Errorf("mesh already deleted"))
 	}
-	m.item.Delete()
-	m.item = nil
-	m.scene.meshPool.Restore(m)
+	m.scene.dynamicMeshSet.Remove(m.itemID)
+	m.scene.dynamicMeshPool.Restore(m)
 	m.scene = nil
 }
 

@@ -27,20 +27,30 @@ func newScene(renderer *sceneRenderer) *Scene {
 			InitialItemCapacity: opt.V(int32(1024 * 1024)),
 		}),
 
-		meshOctree: spatial.NewOctree[*Mesh](maxSceneSize, 15),
-		meshPool:   ds.NewPool[Mesh](),
+		dynamicMeshPool: ds.NewPool[Mesh](),
+		dynamicMeshSet: spatial.NewDynamicSet[*Mesh](spatial.DynamicSetSettings{
+			InitialItemCapacity: opt.V(int32(1024)),
+		}),
 
-		ambientLightOctree: spatial.NewOctree[*AmbientLight](maxSceneSize, 15),
-		ambientLightPool:   ds.NewPool[AmbientLight](),
+		ambientLightPool: ds.NewPool[AmbientLight](),
+		ambientLightSet: spatial.NewDynamicSet[*AmbientLight](spatial.DynamicSetSettings{
+			InitialItemCapacity: opt.V(int32(4)),
+		}),
 
-		pointLightOctree: spatial.NewOctree[*PointLight](maxSceneSize, 15),
-		pointLightPool:   ds.NewPool[PointLight](),
+		pointLightPool: ds.NewPool[PointLight](),
+		pointLightSet: spatial.NewDynamicSet[*PointLight](spatial.DynamicSetSettings{
+			InitialItemCapacity: opt.V(int32(128)),
+		}),
 
-		spotLightOctree: spatial.NewOctree[*SpotLight](maxSceneSize, 15),
-		spotLightPool:   ds.NewPool[SpotLight](),
+		spotLightPool: ds.NewPool[SpotLight](),
+		spotLightSet: spatial.NewDynamicSet[*SpotLight](spatial.DynamicSetSettings{
+			InitialItemCapacity: opt.V(int32(128)),
+		}),
 
-		directionalLightOctree: spatial.NewOctree[*DirectionalLight](maxSceneSize, 15),
-		directionalLightPool:   ds.NewPool[DirectionalLight](),
+		directionalLightPool: ds.NewPool[DirectionalLight](),
+		directionalLightSet: spatial.NewDynamicSet[*DirectionalLight](spatial.DynamicSetSettings{
+			InitialItemCapacity: opt.V(int32(16)),
+		}),
 	}
 }
 
@@ -54,20 +64,20 @@ type Scene struct {
 	staticMeshes     []StaticMesh
 	staticMeshOctree *spatial.StaticOctree[uint32]
 
-	meshOctree *spatial.Octree[*Mesh]
-	meshPool   *ds.Pool[Mesh]
+	dynamicMeshPool *ds.Pool[Mesh]
+	dynamicMeshSet  *spatial.DynamicSet[*Mesh]
 
-	ambientLightOctree *spatial.Octree[*AmbientLight]
-	ambientLightPool   *ds.Pool[AmbientLight]
+	ambientLightPool *ds.Pool[AmbientLight]
+	ambientLightSet  *spatial.DynamicSet[*AmbientLight]
 
-	pointLightOctree *spatial.Octree[*PointLight]
-	pointLightPool   *ds.Pool[PointLight]
+	pointLightPool *ds.Pool[PointLight]
+	pointLightSet  *spatial.DynamicSet[*PointLight]
 
-	spotLightOctree *spatial.Octree[*SpotLight]
-	spotLightPool   *ds.Pool[SpotLight]
+	spotLightPool *ds.Pool[SpotLight]
+	spotLightSet  *spatial.DynamicSet[*SpotLight]
 
-	directionalLightOctree *spatial.Octree[*DirectionalLight]
-	directionalLightPool   *ds.Pool[DirectionalLight]
+	directionalLightPool *ds.Pool[DirectionalLight]
+	directionalLightSet  *spatial.DynamicSet[*DirectionalLight]
 
 	activeCamera *Camera
 }

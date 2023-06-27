@@ -20,9 +20,9 @@ func newDirectionalLight(scene *Scene, info DirectionalLightInfo) *DirectionalLi
 	light := scene.directionalLightPool.Fetch()
 
 	light.scene = scene
-	light.item = scene.directionalLightOctree.CreateItem(light)
-	light.item.SetPosition(info.Position)
-	light.item.SetRadius(info.EmitRange)
+	light.itemID = scene.directionalLightSet.Insert(
+		info.Position, info.EmitRange, light,
+	)
 
 	light.active = true
 	light.position = info.Position
@@ -36,8 +36,8 @@ func newDirectionalLight(scene *Scene, info DirectionalLightInfo) *DirectionalLi
 }
 
 type DirectionalLight struct {
-	scene *Scene
-	item  *spatial.OctreeItem[*DirectionalLight]
+	scene  *Scene
+	itemID spatial.DynamicSetItemID
 
 	active      bool
 	position    dprec.Vec3
@@ -52,8 +52,10 @@ type DirectionalLight struct {
 func (l *DirectionalLight) SetMatrix(matrix dprec.Mat4) { // FIXME
 	t, r, _ := matrix.TRS()
 	l.position = t
-	l.item.SetPosition(t)
 	l.orientation = r
+	l.scene.directionalLightSet.Update(
+		l.itemID, l.position, l.emitRange,
+	)
 	l.matrixDirty = true
 }
 
@@ -70,8 +72,7 @@ func (l *DirectionalLight) Delete() {
 	if l.scene == nil {
 		panic(fmt.Errorf("directional light already deleted"))
 	}
-	l.item.Delete()
-	l.item = nil
+	l.scene.directionalLightSet.Remove(l.itemID)
 	l.scene.directionalLightPool.Restore(l)
 	l.scene = nil
 }
