@@ -59,6 +59,14 @@ func (p Promise[T]) Fail(err error) {
 	}
 }
 
+func (p Promise[T]) OnReady(cb func()) Promise[T] {
+	go func() {
+		p.Wait()
+		cb()
+	}()
+	return p
+}
+
 func (p Promise[T]) OnSuccess(cb func(value T)) Promise[T] {
 	go func() {
 		if value, err := p.Wait(); err == nil {
