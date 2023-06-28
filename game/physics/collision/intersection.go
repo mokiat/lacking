@@ -33,8 +33,8 @@ func (i *Intersection) Flipped() Intersection {
 		Depth:                i.Depth,
 		FirstContact:         i.SecondContact,
 		FirstDisplaceNormal:  i.SecondDisplaceNormal,
-		SecondContact:        i.SecondContact,
-		SecondDisplaceNormal: i.SecondDisplaceNormal,
+		SecondContact:        i.FirstContact,
+		SecondDisplaceNormal: i.FirstDisplaceNormal,
 	}
 }
 
@@ -167,7 +167,7 @@ func IsSphereWithSphereIntersecting(bs1, bs2 Sphere) bool {
 
 // CheckIntersectionSetWithSet checks for any intersections between the two
 // collision Sets.
-func CheckIntersectionSetWithSet(first, second Set, flipped bool, resultSet IntersectionCollection) {
+func CheckIntersectionSetWithSet(first, second Set, resultSet IntersectionCollection) {
 	if !IsSphereWithSphereIntersecting(first.BoundingSphere(), second.BoundingSphere()) {
 		return
 	}

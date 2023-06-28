@@ -658,7 +658,7 @@ func (s *Scene) allocateDualCollisionSolver() *constraint.PairCollision {
 
 func (s *Scene) checkCollisionBodyWithProp(primary *Body, prop *Prop) {
 	s.collisionSet.Reset()
-	collision.CheckIntersectionSetWithSet(primary.collisionSet, prop.collisionSet, false, s.collisionSet)
+	collision.CheckIntersectionSetWithSet(primary.collisionSet, prop.collisionSet, s.collisionSet)
 	for _, intersection := range s.collisionSet.Intersections() {
 		solver := s.allocateGroundCollisionSolver()
 		solver.Init(constraint.CollisionState{
@@ -678,7 +678,7 @@ func (s *Scene) checkCollisionBodyWithProp(primary *Body, prop *Prop) {
 
 func (s *Scene) checkCollisionTwoBodies(primary, secondary *Body) {
 	s.collisionSet.Reset()
-	collision.CheckIntersectionSetWithSet(primary.collisionSet, secondary.collisionSet, false, s.collisionSet)
+	collision.CheckIntersectionSetWithSet(primary.collisionSet, secondary.collisionSet, s.collisionSet)
 	for _, intersection := range s.collisionSet.Intersections() {
 		solver := s.allocateDualCollisionSolver()
 		solver.Init(constraint.PairCollisionState{
