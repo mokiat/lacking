@@ -8,6 +8,8 @@ import (
 
 var staticOctreeLogger = spatialLogger.Path("/static-octree")
 
+var sizeToDoubleRadius = dprec.Sqrt(3)
+
 const unspecifiedIndex = int32(-1)
 
 // StaticOctreeStats represents the current state of a StaticOctree.
