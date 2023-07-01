@@ -26,8 +26,14 @@ func newScene(engine *Engine, timestep time.Duration) *Scene {
 			InitialItemCapacity: opt.V(int32(8 * 1024)),
 		}),
 
-		bodyOctree:    spatial.NewOctree[*Body](32000.0, 15),
-		bodyPool:      ds.NewPool[Body](),
+		bodyPool: ds.NewPool[Body](),
+		bodyOctree: spatial.NewDynamicOctree[*Body](spatial.DynamicOctreeSettings{
+			Size:                opt.V(32000.0),
+			MaxDepth:            opt.V(int32(15)),
+			BiasRatio:           opt.V(2.0),
+			InitialNodeCapacity: opt.V(int32(4 * 1024)),
+			InitialItemCapacity: opt.V(int32(8 * 1024)),
+		}),
 		dynamicBodies: make(map[*Body]struct{}),
 
 		maxAcceleration:        200.0, // TODO: Measure something reasonable
@@ -62,8 +68,8 @@ type Scene struct {
 	props      []Prop
 	propOctree *spatial.StaticOctree[uint32]
 
-	bodyOctree    *spatial.Octree[*Body]
 	bodyPool      *ds.Pool[Body]
+	bodyOctree    *spatial.DynamicOctree[*Body]
 	dynamicBodies map[*Body]struct{}
 
 	firstSBConstraint  *SBConstraint
@@ -154,7 +160,9 @@ func (s *Scene) CreateProp(info PropInfo) {
 func (s *Scene) CreateBody(info BodyInfo) *Body {
 	body := s.bodyPool.Fetch()
 	body.scene = s
-	body.octreeItem = s.bodyOctree.CreateItem(body)
+	body.itemID = s.bodyOctree.Insert(
+		info.Position, 1.0, body,
+	)
 
 	// TODO: Don't use Setters, since these are intended for external use
 	// and not all should be allowed as well as some might have invalidation
@@ -276,7 +284,6 @@ func (s *Scene) Delete() {
 	s.propOctree = nil
 	s.props = nil
 
-	s.bodyOctree = nil
 	s.bodyPool = nil
 	s.dynamicBodies = nil
 
