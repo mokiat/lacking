@@ -2,7 +2,6 @@ package mvc
 
 import (
 	"github.com/mokiat/gog/ds"
-	"github.com/mokiat/lacking/log"
 )
 
 var PropertyChange = NewChange("property")
@@ -31,7 +30,6 @@ func (p *Property[T]) Set(value T) {
 }
 
 func (p *Property[T]) Subscribe(callback Callback) Subscription {
-	log.Info("SUBSCRIBE")
 	sub := &propertySubscription[T]{
 		property: p,
 		callback: callback,
@@ -46,6 +44,5 @@ type propertySubscription[T any] struct {
 }
 
 func (s *propertySubscription[T]) Delete() {
-	log.Info("UNSUBSCRIBE")
 	s.property.subscriptions.Remove(s)
 }
