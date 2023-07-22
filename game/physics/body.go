@@ -46,8 +46,8 @@ type BodyInfo struct {
 // Body represents a physical body that has physics
 // act upon it.
 type Body struct {
-	scene      *Scene
-	octreeItem *spatial.OctreeItem[*Body]
+	scene  *Scene
+	itemID spatial.DynamicOctreeItemID
 
 	revision   int
 	definition *BodyDefinition
@@ -89,7 +89,7 @@ func (b *Body) invalidateCollisionShapes() {
 	bs := b.collisionSet.BoundingSphere()
 	delta := dprec.Vec3Diff(bs.Position(), b.position)
 	b.bsRadius = delta.Length() + bs.Radius()
-	b.octreeItem.SetRadius(b.bsRadius)
+	b.scene.bodyOctree.Update(b.itemID, b.position, b.bsRadius)
 }
 
 // Name returns the name of this body.
@@ -179,8 +179,7 @@ func (b *Body) Position() dprec.Vec3 {
 func (b *Body) SetPosition(position dprec.Vec3) {
 	b.position = position
 	b.lerpPosition = position
-	b.octreeItem.SetPosition(position)
-
+	b.scene.bodyOctree.Update(b.itemID, b.position, b.bsRadius)
 	// TODO: Do this only on demand.
 	b.invalidateCollisionShapes()
 }
@@ -274,7 +273,7 @@ func (b *Body) SetAerodynamicShapes(shapes []AerodynamicShape) {
 // method.
 func (b *Body) Delete() {
 	delete(b.scene.dynamicBodies, b)
-	b.octreeItem.Delete()
+	b.scene.bodyOctree.Remove(b.itemID)
 	b.scene.bodyPool.Restore(b)
 	b.collisionSet = collision.Set{}
 	b.scene = nil

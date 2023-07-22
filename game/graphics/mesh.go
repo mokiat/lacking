@@ -4,7 +4,9 @@ import (
 	"fmt"
 
 	"github.com/mokiat/gomath/dprec"
+	"github.com/mokiat/gomath/dtos"
 	"github.com/mokiat/lacking/render"
+	"github.com/mokiat/lacking/util/blob"
 	"github.com/mokiat/lacking/util/spatial"
 )
 
@@ -157,11 +159,10 @@ type MeshInfo struct {
 func newMesh(scene *Scene, info MeshInfo) *Mesh {
 	definition := info.Definition
 
-	mesh := scene.meshPool.Fetch()
+	mesh := scene.dynamicMeshPool.Fetch()
 	mesh.Node = newNode()
 	mesh.scene = scene
-	mesh.item = scene.meshOctree.CreateItem(mesh)
-	mesh.item.SetRadius(definition.boundingSphereRadius)
+	mesh.itemID = scene.dynamicMeshSet.Insert(dprec.ZeroVec3(), definition.boundingSphereRadius, mesh)
 	mesh.definition = definition
 	mesh.armature = info.Armature
 	return mesh
@@ -171,8 +172,8 @@ func newMesh(scene *Scene, info MeshInfo) *Mesh {
 type Mesh struct {
 	Node
 
-	scene *Scene
-	item  *spatial.OctreeItem[*Mesh]
+	scene  *Scene
+	itemID spatial.DynamicSetItemID
 
 	definition *MeshDefinition
 	armature   *Armature
@@ -180,7 +181,9 @@ type Mesh struct {
 
 func (m *Mesh) SetMatrix(matrix dprec.Mat4) {
 	m.Node.SetMatrix(matrix)
-	m.item.SetPosition(matrix.Translation())
+	position := matrix.Translation()
+	radius := m.definition.boundingSphereRadius
+	m.scene.dynamicMeshSet.Update(m.itemID, position, radius)
 }
 
 // Delete removes this mesh from the scene.
@@ -188,8 +191,51 @@ func (m *Mesh) Delete() {
 	if m.scene == nil {
 		panic(fmt.Errorf("mesh already deleted"))
 	}
-	m.item.Delete()
-	m.item = nil
-	m.scene.meshPool.Restore(m)
+	m.scene.dynamicMeshSet.Remove(m.itemID)
+	m.scene.dynamicMeshPool.Restore(m)
 	m.scene = nil
+}
+
+type StaticMeshInfo struct {
+	Definition *MeshDefinition
+	Matrix     dprec.Mat4
+}
+
+func createStaticMesh(scene *Scene, info StaticMeshInfo) {
+	position := info.Matrix.Translation()
+	scale := info.Matrix.Scale()
+	maxScale := dprec.Max(scale.X, dprec.Max(scale.Y, scale.Z))
+	radius := info.Definition.boundingSphereRadius * maxScale
+
+	meshIndex := uint32(len(scene.staticMeshes))
+	scene.staticMeshes = append(scene.staticMeshes, StaticMesh{})
+	scene.staticMeshOctree.Insert(position, radius, meshIndex)
+
+	staticMesh := &scene.staticMeshes[meshIndex]
+	staticMesh.definition = info.Definition
+	staticMesh.matrixData = make([]byte, 16*4)
+
+	matrix := dtos.Mat4(info.Matrix)
+	plotter := blob.NewPlotter(staticMesh.matrixData)
+	plotter.PlotFloat32(matrix.M11)
+	plotter.PlotFloat32(matrix.M21)
+	plotter.PlotFloat32(matrix.M31)
+	plotter.PlotFloat32(matrix.M41)
+	plotter.PlotFloat32(matrix.M12)
+	plotter.PlotFloat32(matrix.M22)
+	plotter.PlotFloat32(matrix.M32)
+	plotter.PlotFloat32(matrix.M42)
+	plotter.PlotFloat32(matrix.M13)
+	plotter.PlotFloat32(matrix.M23)
+	plotter.PlotFloat32(matrix.M33)
+	plotter.PlotFloat32(matrix.M43)
+	plotter.PlotFloat32(matrix.M14)
+	plotter.PlotFloat32(matrix.M24)
+	plotter.PlotFloat32(matrix.M34)
+	plotter.PlotFloat32(matrix.M44)
+}
+
+type StaticMesh struct {
+	matrixData []byte
+	definition *MeshDefinition
 }

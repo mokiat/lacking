@@ -89,3 +89,20 @@ func UseBinding(scope co.Scope, obs Observable, fltrs ...ChangeFilter) {
 		co.Invalidate(scope)
 	}, fltrs...))
 }
+
+// BindProperty is a hook that binds the current Component to the specified
+// Property. Whenever a Change is reported by the Property the Component is
+// invalidated and eventually re-rendered.
+func BindProperty[T any](scope co.Scope, prop *Property[T]) {
+	scopeValue := scope.Value(mvcScopeKey{})
+	mvcComp, ok := scopeValue.(*mvcComponent)
+	if !ok {
+		panic("component not wrapped with mvc")
+	}
+	if mvcComp.activeRef == nil {
+		panic("binding not allowed here")
+	}
+	mvcComp.addPendingSubscription(prop.Subscribe(func(change Change) {
+		co.Invalidate(scope)
+	}))
+}

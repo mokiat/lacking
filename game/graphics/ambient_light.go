@@ -17,9 +17,9 @@ type AmbientLightInfo struct {
 func newAmbientLight(scene *Scene, info AmbientLightInfo) *AmbientLight {
 	light := scene.ambientLightPool.Fetch()
 	light.scene = scene
-	light.item = scene.ambientLightOctree.CreateItem(light)
-	light.item.SetPosition(info.Position)
-	light.item.SetRadius(info.OuterRadius)
+	light.itemID = scene.ambientLightSet.Insert(
+		info.Position, info.OuterRadius, light,
+	)
 	light.innerRadius = info.InnerRadius
 	light.outerRadius = info.OuterRadius
 	light.reflectionTexture = info.ReflectionTexture
@@ -29,8 +29,8 @@ func newAmbientLight(scene *Scene, info AmbientLightInfo) *AmbientLight {
 }
 
 type AmbientLight struct {
-	scene *Scene
-	item  *spatial.OctreeItem[*AmbientLight]
+	scene  *Scene
+	itemID spatial.DynamicSetItemID
 
 	innerRadius       float64
 	outerRadius       float64

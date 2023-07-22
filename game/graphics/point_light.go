@@ -19,9 +19,9 @@ func newPointLight(scene *Scene, info PointLightInfo) *PointLight {
 	light := scene.pointLightPool.Fetch()
 
 	light.scene = scene
-	light.item = scene.pointLightOctree.CreateItem(light)
-	light.item.SetPosition(info.Position)
-	light.item.SetRadius(info.EmitRange)
+	light.itemID = scene.pointLightSet.Insert(
+		info.Position, info.EmitRange, light,
+	)
 
 	light.active = true
 	light.position = info.Position
@@ -36,8 +36,8 @@ func newPointLight(scene *Scene, info PointLightInfo) *PointLight {
 // PointLight represents a light source that is positioned at a point in
 // space and emits light evenly in all directions up to a range.
 type PointLight struct {
-	scene *Scene
-	item  *spatial.OctreeItem[*PointLight]
+	scene  *Scene
+	itemID spatial.DynamicSetItemID
 
 	active    bool
 	position  dprec.Vec3
@@ -67,7 +67,9 @@ func (l *PointLight) Position() dprec.Vec3 {
 func (l *PointLight) SetPosition(position dprec.Vec3) {
 	if position != l.position {
 		l.position = position
-		l.item.SetPosition(l.position)
+		l.scene.pointLightSet.Update(
+			l.itemID, l.position, l.emitRange,
+		)
 		l.matrixDirty = true
 	}
 }
@@ -85,7 +87,9 @@ func (l *PointLight) EmitRange() float64 {
 func (l *PointLight) SetEmitRange(emitRange float64) {
 	if emitRange != l.emitRange {
 		l.emitRange = dprec.Max(0.0, emitRange)
-		l.item.SetRadius(l.emitRange)
+		l.scene.pointLightSet.Update(
+			l.itemID, l.position, l.emitRange,
+		)
 		l.matrixDirty = true
 	}
 }
@@ -106,8 +110,7 @@ func (l *PointLight) Delete() {
 	if l.scene == nil {
 		panic(fmt.Errorf("point light already deleted"))
 	}
-	l.item.Delete()
-	l.item = nil
+	l.scene.pointLightSet.Remove(l.itemID)
 	l.scene.pointLightPool.Restore(l)
 	l.scene = nil
 }

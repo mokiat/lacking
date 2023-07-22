@@ -292,11 +292,19 @@ func (s *Scene) CreateModel(info ModelInfo) *Model {
 			armature = armatures[instance.ArmatureIndex]
 		}
 		meshDefinition := definition.meshDefinitions[instance.DefinitionIndex]
-		mesh := s.gfxScene.CreateMesh(graphics.MeshInfo{
-			Definition: meshDefinition,
-			Armature:   armature,
-		})
-		meshNode.SetAttachable(mesh)
+
+		if info.IsDynamic {
+			mesh := s.gfxScene.CreateMesh(graphics.MeshInfo{
+				Definition: meshDefinition,
+				Armature:   armature,
+			})
+			meshNode.SetAttachable(mesh)
+		} else {
+			s.gfxScene.CreateStaticMesh(graphics.StaticMeshInfo{
+				Definition: meshDefinition,
+				Matrix:     meshNode.AbsoluteMatrix(),
+			})
+		}
 	}
 
 	if info.IsDynamic {
