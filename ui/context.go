@@ -59,10 +59,7 @@ func (c *Context) Window() *Window {
 // a given frame iteration. Once the buffer is full, new functions will be
 // dropped.
 func (c *Context) Schedule(fn func()) {
-	c.window.Schedule(func() error {
-		fn()
-		return nil
-	})
+	c.window.Schedule(fn)
 }
 
 // CreateContext returns a new Context that is a child of the current

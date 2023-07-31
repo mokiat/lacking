@@ -1,4 +1,3 @@
-// Package app contains an API for working with a native
-// application window and relevant input / output that
-// goes with it.
+// Package app contains an API for working with an application window
+// and the relevant input / output mechanisms that go with it.
 package app

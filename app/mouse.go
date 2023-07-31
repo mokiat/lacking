@@ -101,21 +101,21 @@ type MouseEventType int
 func (t MouseEventType) String() string {
 	switch t {
 	case MouseEventTypeDown:
-		return "down"
+		return "DOWN"
 	case MouseEventTypeUp:
-		return "up"
+		return "UP"
 	case MouseEventTypeMove:
-		return "move"
+		return "MOVE"
 	case MouseEventTypeDrag:
-		return "drag"
+		return "DRAG"
 	case MouseEventTypeDragCancel:
-		return "drag_cancel"
+		return "DRAGCANCEL"
 	case MouseEventTypeEnter:
-		return "enter"
+		return "ENTER"
 	case MouseEventTypeLeave:
-		return "leave"
+		return "LEAVE"
 	default:
-		return "unknown"
+		return "UNKNOWN"
 	}
 }
 
@@ -137,19 +137,20 @@ type MouseButton int
 func (b MouseButton) String() string {
 	switch b {
 	case MouseButtonLeft:
-		return "left"
+		return "LEFT"
 	case MouseButtonMiddle:
-		return "middle"
+		return "MIDDLE"
 	case MouseButtonRight:
-		return "right"
+		return "RIGHT"
 	default:
-		return "unknown"
+		return "UNKNOWN"
 	}
 }
 
 // FilepathPayload is a type of Payload that occurs when files
 // have been dragged and dropped into the window.
 type FilepathPayload struct {
+
 	// Paths contains file paths to the dropped resources.
 	Paths []string
 }

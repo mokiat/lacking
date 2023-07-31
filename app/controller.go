@@ -4,7 +4,7 @@ package app
 // notified of changes to the application window.
 //
 // All methods will be invoked on the UI thread (UI goroutine),
-// unless specified otherwise.
+// unless otherwise specified.
 type Controller interface {
 
 	// OnCreate is called when the window has been created and is
@@ -18,13 +18,19 @@ type Controller interface {
 	// OnFramebufferResize is called when the window's framebuffer has
 	// been resized.
 	// Note that the framebuffer need not match the content size. This
-	// especially the case on devices with high DPI setting.
+	// is mostly the case on devices with high DPI setting.
 	OnFramebufferResize(window Window, width, height int)
 
 	// OnKeyboardEvent is called whenever a keyboard event has occurred.
+	//
+	// Return true to indicate that the event has been consumed and should
+	// not be propagated to other potential receivers, otherwise return false.
 	OnKeyboardEvent(window Window, event KeyboardEvent) bool
 
 	// OnMouseEvent is called whenever a mouse event has occurred.
+	//
+	// Return true to indicate that the event has been consumed and should
+	// not be propagated to other potential receivers, otherwise return false.
 	OnMouseEvent(window Window, event MouseEvent) bool
 
 	// OnRender is called whenever the window would like to be redrawn.
@@ -39,7 +45,7 @@ type Controller interface {
 	// decide to show a prompt and not want the close to occur).
 	OnCloseRequested(window Window)
 
-	// OnDestroy is called whenever the window is about to close.
+	// OnDestroy is called before the window is closed.
 	OnDestroy(window Window)
 }
 
@@ -65,7 +71,7 @@ func (NopController) OnCloseRequested(window Window) {}
 func (NopController) OnDestroy(window Window) {}
 
 // NewLayeredController returns a new LayeredController that has
-// the specified layers configured.
+// the specified controller layers configured.
 func NewLayeredController(layers ...Controller) *LayeredController {
 	return &LayeredController{
 		layers: layers,
@@ -75,8 +81,8 @@ func NewLayeredController(layers ...Controller) *LayeredController {
 var _ (Controller) = (*LayeredController)(nil)
 
 // LayeredController is an implementation of Controller that invokes
-// the specified controller layers in a certain order, mostly favouring
-// layers with higher index.
+// the specified controller layers in an order emulating multiple overlays
+// of a window.
 type LayeredController struct {
 	layers []Controller
 }
@@ -124,7 +130,7 @@ func (c *LayeredController) OnRender(window Window) {
 }
 
 func (c *LayeredController) OnCloseRequested(window Window) {
-	for i := 0; i < len(c.layers); i++ {
+	for i := len(c.layers) - 1; i >= 0; i-- {
 		c.layers[i].OnCloseRequested(window)
 	}
 }

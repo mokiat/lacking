@@ -81,17 +81,15 @@ func (c *Controller) OnRender(window app.Window) {
 	window.Invalidate() // force redraw
 }
 
-func (c *Controller) schedule(fn func() error) {
+func (c *Controller) schedule(fn func()) {
 	c.window.Schedule(fn)
 }
 
 func (c *Controller) gfxWorkerAdapter() Worker {
 	return WorkerFunc(func(fn func() error) Operation {
 		operation := NewOperation()
-		c.schedule(func() error {
-			err := fn()
-			operation.Complete(err)
-			return err
+		c.schedule(func() {
+			operation.Complete(fn())
 		})
 		return operation
 	})

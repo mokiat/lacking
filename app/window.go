@@ -3,7 +3,7 @@ package app
 // Window represents a native application window.
 //
 // All methods must be invoked on the UI thread (UI goroutine),
-// unless specified otherwise.
+// unless otherwise specified.
 type Window interface {
 
 	// Title returns this window's title.
@@ -18,6 +18,12 @@ type Window interface {
 	// SetSize changes the content area of this window.
 	SetSize(width, height int)
 
+	// FramebufferSize returns the texel size of the underlying framebuffer.
+	// This would normally be used as reference when using graphics libraries
+	// to draw on the screen as the framebuffer size may differ from the
+	// window size.
+	FramebufferSize() (int, int)
+
 	// Gamepads returns an array of potentially available gamepad
 	// controllers.
 	//
@@ -28,11 +34,11 @@ type Window interface {
 	Gamepads() [4]Gamepad
 
 	// Schedule queues a function to be called on the main thread
-	// when possible. There are no guarantees that that will necessarily
+	// when possible. There are no guarantees that it will necessarily
 	// be on the next frame iteration.
-	Schedule(fn func() error)
+	Schedule(fn func())
 
-	// Invalidate causes this window to be redrawn.
+	// Invalidate causes this window to be redrawn when possible.
 	Invalidate()
 
 	// CreateCursor creates a new cursor object based on the specified
