@@ -1,5 +1,6 @@
 package render
 
+// API provides access to low-level graphics manipulation and rendering.
 type API interface {
 	Capabilities() Capabilities
 
