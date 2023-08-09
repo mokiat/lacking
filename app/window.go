@@ -1,5 +1,10 @@
 package app
 
+import (
+	"github.com/mokiat/lacking/audio"
+	"github.com/mokiat/lacking/render"
+)
+
 // Window represents a native application window.
 //
 // All methods must be invoked on the UI thread (UI goroutine),
@@ -61,6 +66,20 @@ type Window interface {
 	// SetCursorLocked traps the cursor within the boundaries of the window
 	// and reports relative motion events. This method also hides the cursor.
 	SetCursorLocked(locked bool)
+
+	// RenderAPI provides access to a usable Render API based on the current
+	// window's screen.
+	//
+	// If the implementation of this API does not support graphics, then this
+	// method returns nil.
+	RenderAPI() render.API
+
+	// AudioAPI provides access to a usable Audio API based on the current
+	// window.
+	//
+	// If the implementation of this API does not support graphics, then this
+	// method returns nil.
+	AudioAPI() audio.API
 
 	// Close disposes of this window.
 	Close()
