@@ -2,6 +2,27 @@ package ui
 
 import "fmt"
 
+// SymmetricSpacing returns a Spacing that is horizontally and
+// vertically symmetric.
+func SymmetricSpacing(horizontal, vertical int) Spacing {
+	return Spacing{
+		Left:   horizontal,
+		Right:  horizontal,
+		Top:    vertical,
+		Bottom: vertical,
+	}
+}
+
+// UniformSpacing returns a Spacing that is equal all around.
+func UniformSpacing(spacing int) Spacing {
+	return Spacing{
+		Left:   spacing,
+		Right:  spacing,
+		Top:    spacing,
+		Bottom: spacing,
+	}
+}
+
 // Spacing represents a spacing around or inside a given
 // screen entity (e.g. Element).
 type Spacing struct {

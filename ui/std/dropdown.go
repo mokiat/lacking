@@ -71,8 +71,8 @@ func (c *dropdownComponent) Render() co.Instance {
 		}
 	}
 
-	return co.New(co.Element, func() {
-		co.WithData(co.ElementData{
+	return co.New(Element, func() {
+		co.WithData(ElementData{
 			Essence: c,
 			Layout:  layout.Anchor(),
 		})
@@ -112,11 +112,11 @@ func (c *dropdownComponent) OnRender(element *ui.Element, canvas *ui.Canvas) {
 	var backgroundColor ui.Color
 	switch c.State() {
 	case ButtonStateOver:
-		backgroundColor = HoverOverlayColor
+		backgroundColor = SurfaceColor.Overlay(HoverOverlayColor)
 	case ButtonStateDown:
-		backgroundColor = PressOverlayColor
+		backgroundColor = SurfaceColor.Overlay(PressOverlayColor)
 	default:
-		backgroundColor = ui.Transparent()
+		backgroundColor = SurfaceColor
 	}
 
 	drawBounds := canvas.DrawBounds(element, false)

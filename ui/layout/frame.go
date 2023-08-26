@@ -2,6 +2,11 @@ package layout
 
 import "github.com/mokiat/lacking/ui"
 
+// FrameSettings contains configurations for the Frame layout.
+type FrameSettings struct {
+	ContentSpacing ui.Spacing
+}
+
 // Frame returns a layout that positions elements around a frame (like a picture
 // frame). The five main sections are top,left,center,right,bottom and are
 // distributed as follows.
@@ -12,11 +17,19 @@ import "github.com/mokiat/lacking/ui"
 //	| L |  C  | R |
 //	|___|_____|___|
 //	|______B______|
-func Frame() ui.Layout {
-	return &frameLayout{}
+func Frame(settings ...FrameSettings) ui.Layout {
+	cfg := FrameSettings{}
+	if len(settings) > 0 {
+		cfg = settings[0]
+	}
+	return &frameLayout{
+		spacing: cfg.ContentSpacing,
+	}
 }
 
-type frameLayout struct{}
+type frameLayout struct {
+	spacing ui.Spacing
+}
 
 func (l *frameLayout) Apply(element *ui.Element) {
 	var (
@@ -65,15 +78,15 @@ func (l *frameLayout) Apply(element *ui.Element) {
 	}
 	leftSize := ui.Size{
 		Width:  minInt(leftWidth, contentBounds.Width/2),
-		Height: contentBounds.Height - topSize.Height - bottomSize.Height,
+		Height: contentBounds.Height - topSize.Height - bottomSize.Height - l.spacing.Top,
 	}
 	rightSize := ui.Size{
 		Width:  minInt(rightWidth, contentBounds.Width/2),
-		Height: contentBounds.Height - topSize.Height - bottomSize.Height,
+		Height: contentBounds.Height - topSize.Height - bottomSize.Height - l.spacing.Top,
 	}
 	centerSize := ui.Size{
-		Width:  contentBounds.Width - leftSize.Width - rightSize.Width,
-		Height: contentBounds.Height - topSize.Height - bottomSize.Height,
+		Width:  contentBounds.Width - leftSize.Width - rightSize.Width - l.spacing.Left - l.spacing.Right,
+		Height: contentBounds.Height - topSize.Height - bottomSize.Height - l.spacing.Top - l.spacing.Bottom,
 	}
 
 	// During second iteration we actually layout the children.
@@ -93,7 +106,7 @@ func (l *frameLayout) Apply(element *ui.Element) {
 			childElement.SetBounds(ui.Bounds{
 				Position: ui.NewPosition(
 					contentBounds.X,
-					contentBounds.Y+topSize.Height+centerSize.Height,
+					contentBounds.Y+topSize.Height+centerSize.Height+l.spacing.Top+l.spacing.Bottom,
 				),
 				Size: bottomSize,
 			})
@@ -103,23 +116,23 @@ func (l *frameLayout) Apply(element *ui.Element) {
 				childElement.SetBounds(ui.Bounds{
 					Position: ui.NewPosition(
 						contentBounds.X,
-						contentBounds.Y+topSize.Height,
+						contentBounds.Y+topSize.Height+l.spacing.Top,
 					),
 					Size: leftSize,
 				})
 			case HorizontalAlignmentRight:
 				childElement.SetBounds(ui.Bounds{
 					Position: ui.NewPosition(
-						contentBounds.X+leftSize.Width+centerSize.Width,
-						contentBounds.Y+topSize.Height,
+						contentBounds.X+leftSize.Width+centerSize.Width+l.spacing.Left+l.spacing.Right,
+						contentBounds.Y+topSize.Height+l.spacing.Top,
 					),
 					Size: rightSize,
 				})
 			default: // treat as center
 				childElement.SetBounds(ui.Bounds{
 					Position: ui.NewPosition(
-						contentBounds.X+leftSize.Width,
-						contentBounds.Y+topSize.Height,
+						contentBounds.X+leftSize.Width+l.spacing.Left,
+						contentBounds.Y+topSize.Height+l.spacing.Top,
 					),
 					Size: centerSize,
 				})
@@ -192,5 +205,5 @@ func (l *frameLayout) calculateIdealSize(element *ui.Element) ui.Size {
 			centerSize.Height,
 		),
 	}
-	return result.Grow(element.Padding().Size())
+	return result.Grow(l.spacing.Size()).Grow(element.Padding().Size())
 }
