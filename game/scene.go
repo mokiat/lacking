@@ -350,7 +350,7 @@ func (s *Scene) PlayAnimation(animation *Animation) *Playback {
 }
 
 func (s *Scene) FindPlayback(name string) *Playback {
-	for _, playback := range s.playbacks.Items() {
+	for _, playback := range s.playbacks.Unbox() {
 		if playback.name == name {
 			return playback
 		}
@@ -373,7 +373,7 @@ func (s *Scene) applyPhysicsToNode(node *Node) {
 }
 
 func (s *Scene) applyPlaybacks(elapsedSeconds float64) {
-	for _, playback := range s.playbacks.Items() {
+	for _, playback := range s.playbacks.Unbox() {
 		if playback.playing {
 			playback.Advance(elapsedSeconds)
 			playback.animation.Apply(playback.head)

@@ -24,7 +24,7 @@ func (p *Property[T]) Get() T {
 
 func (p *Property[T]) Set(value T) {
 	p.value = value
-	for _, sub := range p.subscriptions.Items() {
+	for _, sub := range p.subscriptions.Unbox() {
 		sub.callback(PropertyChange)
 	}
 }

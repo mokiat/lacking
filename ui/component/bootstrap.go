@@ -50,7 +50,7 @@ func (c *applicationComponent) Render() Instance {
 		for _, child := range c.Properties().Children() {
 			WithChild(child.Key(), child)
 		}
-		for _, overlay := range c.overlays.Items() {
+		for _, overlay := range c.overlays.Unbox() {
 			WithChild(overlay.instance.key, overlay.instance)
 		}
 	})
