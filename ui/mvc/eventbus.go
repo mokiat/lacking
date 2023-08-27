@@ -1,6 +1,12 @@
 package mvc
 
-import "golang.org/x/exp/slices"
+import (
+	"fmt"
+
+	"github.com/mokiat/lacking/log"
+	co "github.com/mokiat/lacking/ui/component"
+	"golang.org/x/exp/slices"
+)
 
 // Event represents an arbitrary notification event.
 type Event any
@@ -66,4 +72,45 @@ type eventBusSubscription struct {
 
 func (s *eventBusSubscription) Delete() {
 	s.eventBus.Unsubscribe(s)
+}
+
+func EventListener(delegate co.Component) co.Component {
+	return &mvcListenerComponent{
+		Component:     delegate,
+		subscriptions: make(map[co.Renderable]Subscription),
+	}
+}
+
+type mvcListenerComponent struct {
+	co.Component
+
+	subscriptions map[co.Renderable]Subscription
+}
+
+func (c *mvcListenerComponent) TypeName() string {
+	return fmt.Sprintf("mvc-listener(%s)", c.Component.TypeName())
+}
+
+func (c *mvcListenerComponent) NotifyCreate(ref co.Renderable, properties co.Properties) {
+	candidate, ok := ref.(interface {
+		Scope() co.Scope
+		OnEvent(event Event)
+	})
+	if ok {
+		eventBus := co.TypedValue[*EventBus](candidate.Scope())
+		subscription := eventBus.Subscribe(candidate.OnEvent)
+		c.subscriptions[ref] = subscription
+	} else {
+		log.Warn("Component instance marked as listener but does not satisfy contract")
+	}
+
+	c.Component.NotifyCreate(ref, properties)
+}
+
+func (c *mvcListenerComponent) NotifyDelete(ref co.Renderable) {
+	c.Component.NotifyDelete(ref)
+
+	if subscription, ok := c.subscriptions[ref]; ok {
+		subscription.Delete()
+	}
 }
