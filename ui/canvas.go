@@ -19,9 +19,10 @@ func newCanvas(renderer *canvasRenderer) *Canvas {
 type Canvas struct {
 	*canvasRenderer
 
-	framebuffer render.Framebuffer
-	windowSize  Size
-	deltaTime   time.Duration
+	framebuffer     render.Framebuffer
+	windowSize      Size
+	framebufferSize Size
+	deltaTime       time.Duration
 }
 
 // ElapsedTime returns the amount of time that has passed since the last
@@ -58,6 +59,7 @@ func (c *Canvas) onResize(size Size) {
 func (c *Canvas) onResizeFramebuffer(size Size) {
 	// TODO: Use own framebuffer which would allow for
 	// only dirty region rerendering even when overlay.
+	c.framebufferSize = size
 }
 
 func (c *Canvas) onBegin(deltaTime time.Duration) {
@@ -71,8 +73,8 @@ func (c *Canvas) onEnd() {
 		Viewport: render.Area{
 			X:      0,
 			Y:      0,
-			Width:  c.windowSize.Width,
-			Height: c.windowSize.Height,
+			Width:  c.framebufferSize.Width,
+			Height: c.framebufferSize.Height,
 		},
 		Colors: [4]render.ColorAttachmentInfo{
 			{
