@@ -56,13 +56,17 @@ func (c *applicationComponent) Render() Instance {
 	})
 }
 
-func (c *applicationComponent) OpenOverlay(instance Instance) *overlayHandle {
+func (c *applicationComponent) OpenOverlay(scope Scope, instance Instance) *overlayHandle {
 	c.freeOverlayID++
-	instance.key = fmt.Sprintf("overlay-%d", c.freeOverlayID)
+
 	result := &overlayHandle{
-		app:      c,
-		instance: instance,
+		app: c,
 	}
+
+	instance.key = fmt.Sprintf("overlay-%d", c.freeOverlayID)
+	instance.setScope(TypedValueScope(scope, result))
+	result.instance = instance
+
 	c.overlays.Add(result)
 	c.Invalidate()
 	return result
@@ -70,7 +74,7 @@ func (c *applicationComponent) OpenOverlay(instance Instance) *overlayHandle {
 
 func (c *applicationComponent) CloseOverlay(overlay *overlayHandle) {
 	if !c.overlays.Remove(overlay) {
-		panic("closing a closed overlay")
+		log.Warn("Overlay already closed!")
 	}
 	c.Invalidate()
 }
