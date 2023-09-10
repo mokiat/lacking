@@ -447,8 +447,8 @@ func (t *DynamicOctree[T]) itemsAtDepth(nodeIndex, currentDepth, depth int32) in
 	return result
 }
 
-func compareDynamicOctreeItems[T any](a, b dynamicOctreeItem[T]) bool {
-	return a.node < b.node
+func compareDynamicOctreeItems[T any](a, b dynamicOctreeItem[T]) int {
+	return int(a.node - b.node)
 }
 
 type dynamicOctreeNode[T any] struct {

@@ -2,6 +2,7 @@ package ui
 
 import (
 	"fmt"
+	"time"
 
 	"golang.org/x/exp/maps"
 
@@ -17,6 +18,7 @@ func newWindow(appWindow app.Window, canvas *Canvas, resMan *resourceManager) (*
 		canvas:             canvas,
 		oldEnteredElements: make(map[*Element]struct{}),
 		enteredElements:    make(map[*Element]struct{}),
+		lastRender:         time.Now(),
 	}
 	window.context = newContext(nil, window, resMan)
 	window.root = newElement(window)
@@ -74,6 +76,8 @@ type Window struct {
 	enteredElements    map[*Element]struct{}
 
 	oldMousePosition Position
+
+	lastRender time.Time
 }
 
 // Size returns the content area of this Window.
@@ -213,7 +217,14 @@ func (w *windowHandler) OnRender() {
 	}
 	dirtyRegion := clipBounds // TODO: Handle dirty sub-regions
 
-	w.canvas.onBegin()
+	currentTime := time.Now()
+	elapsedTime := currentTime.Sub(w.lastRender)
+	if elapsedTime > time.Second {
+		elapsedTime = time.Second
+	}
+	w.lastRender = currentTime
+
+	w.canvas.onBegin(elapsedTime)
 	w.canvas.SetClipRect(
 		0.0,
 		float32(w.size.Width),

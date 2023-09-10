@@ -1,6 +1,8 @@
 package ui
 
 import (
+	"time"
+
 	"github.com/mokiat/gomath/sprec"
 	"github.com/mokiat/lacking/render"
 )
@@ -17,8 +19,20 @@ func newCanvas(renderer *canvasRenderer) *Canvas {
 type Canvas struct {
 	*canvasRenderer
 
-	framebuffer render.Framebuffer
-	windowSize  Size
+	framebuffer     render.Framebuffer
+	windowSize      Size
+	framebufferSize Size
+	deltaTime       time.Duration
+}
+
+// ElapsedTime returns the amount of time that has passed since the last
+// render iteration.
+//
+// This should only be used by elements that are constantly being invalidated
+// (i.e. do real-time rendering), as otherwise this duration would be
+// incorrect since a non-dirty element could be omitted during some frames.
+func (c *Canvas) ElapsedTime() time.Duration {
+	return c.deltaTime
 }
 
 // DrawBounds returns the bounds to be used for drawing for the specified
@@ -45,9 +59,11 @@ func (c *Canvas) onResize(size Size) {
 func (c *Canvas) onResizeFramebuffer(size Size) {
 	// TODO: Use own framebuffer which would allow for
 	// only dirty region rerendering even when overlay.
+	c.framebufferSize = size
 }
 
-func (c *Canvas) onBegin() {
+func (c *Canvas) onBegin(deltaTime time.Duration) {
+	c.deltaTime = deltaTime
 	c.canvasRenderer.onBegin(c.windowSize)
 }
 
@@ -57,8 +73,8 @@ func (c *Canvas) onEnd() {
 		Viewport: render.Area{
 			X:      0,
 			Y:      0,
-			Width:  c.windowSize.Width,
-			Height: c.windowSize.Height,
+			Width:  c.framebufferSize.Width,
+			Height: c.framebufferSize.Height,
 		},
 		Colors: [4]render.ColorAttachmentInfo{
 			{

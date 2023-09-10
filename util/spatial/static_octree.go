@@ -342,8 +342,8 @@ func (t *StaticOctree[T]) itemsAtDepth(nodeIndex, currentDepth, depth int32) int
 	return result
 }
 
-func compareStaticItems[T any](a, b staticOctreeItem[T]) bool {
-	return a.node < b.node
+func compareStaticItems[T any](a, b staticOctreeItem[T]) int {
+	return int(a.node - b.node)
 }
 
 type staticOctreeNode[T any] struct {

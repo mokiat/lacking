@@ -730,10 +730,10 @@ func (r *sceneRenderer) renderShadowPass(ctx renderCtx) {
 		r.queueStaticShadowMesh(ctx, &ctx.scene.staticMeshes[meshIndex])
 	}
 
-	slices.SortFunc(r.renderItems, func(a, b renderItem) bool {
+	slices.SortFunc(r.renderItems, func(a, b renderItem) int {
 		// TODO: If fragment IDs are stored inside the items themselves, there
 		// would be fewer pointer jumps and cache misses.
-		return a.fragment.id < b.fragment.id
+		return a.fragment.id - b.fragment.id
 	})
 
 	r.api.BeginRenderPass(render.RenderPassInfo{
@@ -902,8 +902,8 @@ func (r *sceneRenderer) renderGeometryPass(ctx renderCtx) {
 		r.queueStaticMesh(ctx, &ctx.scene.staticMeshes[meshIndex])
 	}
 
-	slices.SortFunc(r.renderItems, func(a, b renderItem) bool {
-		return a.fragment.id < b.fragment.id
+	slices.SortFunc(r.renderItems, func(a, b renderItem) int {
+		return a.fragment.id - b.fragment.id
 	})
 	r.renderMeshesList(ctx)
 

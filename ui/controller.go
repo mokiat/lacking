@@ -2,6 +2,7 @@ package ui
 
 import (
 	"github.com/mokiat/lacking/app"
+	"github.com/mokiat/lacking/util/resource"
 )
 
 // InitFunc can be used to initialize the Window with the
@@ -10,22 +11,20 @@ type InitFunc func(window *Window)
 
 // NewController creates a new app.Controller that integrates
 // with the ui package to render a user interface.
-func NewController(cfg *Config, initFn InitFunc) app.Controller {
-	renderer := newCanvasRenderer(
-		cfg.renderAPI,
-		cfg.shaders,
-	)
-	imgFact := newImageFactory(cfg.renderAPI)
-	fntFact := newFontFactory(cfg.renderAPI, renderer)
-	return &controller{
-		canvas:  newCanvas(renderer),
-		fntFact: fntFact,
-		resMan:  newResourceManager(cfg.locator, imgFact, fntFact),
+func NewController(locator resource.ReadLocator, shaders ShaderCollection, initFn InitFunc) *Controller {
+	return &Controller{
+		locator: locator,
+		shaders: shaders,
 		initFn:  initFn,
 	}
 }
 
-type controller struct {
+var _ app.Controller = (*Controller)(nil)
+
+type Controller struct {
+	locator resource.ReadLocator
+	shaders ShaderCollection
+
 	canvas  *Canvas
 	fntFact *fontFactory
 	resMan  *resourceManager
@@ -35,7 +34,15 @@ type controller struct {
 	uiWindowHandler WindowHandler
 }
 
-func (c *controller) OnCreate(appWindow app.Window) {
+func (c *Controller) OnCreate(appWindow app.Window) {
+	renderer := newCanvasRenderer(appWindow.RenderAPI(), c.shaders)
+
+	c.canvas = newCanvas(renderer)
+	c.fntFact = newFontFactory(appWindow.RenderAPI(), renderer)
+
+	imgFact := newImageFactory(appWindow.RenderAPI())
+	c.resMan = newResourceManager(c.locator, imgFact, c.fntFact)
+
 	c.canvas.onCreate()
 	c.fntFact.Init()
 
@@ -43,15 +50,15 @@ func (c *controller) OnCreate(appWindow app.Window) {
 	c.initFn(c.uiWindow)
 }
 
-func (c *controller) OnResize(window app.Window, width, height int) {
+func (c *Controller) OnResize(window app.Window, width, height int) {
 	c.uiWindowHandler.OnResize(NewSize(width, height))
 }
 
-func (c *controller) OnFramebufferResize(window app.Window, width, height int) {
+func (c *Controller) OnFramebufferResize(window app.Window, width, height int) {
 	c.uiWindowHandler.OnFramebufferResize(NewSize(width, height))
 }
 
-func (c *controller) OnKeyboardEvent(window app.Window, event app.KeyboardEvent) bool {
+func (c *Controller) OnKeyboardEvent(window app.Window, event app.KeyboardEvent) bool {
 	return c.uiWindowHandler.OnKeyboardEvent(KeyboardEvent{
 		Type:      event.Type,
 		Code:      event.Code,
@@ -60,7 +67,7 @@ func (c *controller) OnKeyboardEvent(window app.Window, event app.KeyboardEvent)
 	})
 }
 
-func (c *controller) OnMouseEvent(window app.Window, event app.MouseEvent) bool {
+func (c *Controller) OnMouseEvent(window app.Window, event app.MouseEvent) bool {
 	return c.uiWindowHandler.OnMouseEvent(MouseEvent{
 		Index:    event.Index,
 		Position: NewPosition(event.X, event.Y),
@@ -72,15 +79,15 @@ func (c *controller) OnMouseEvent(window app.Window, event app.MouseEvent) bool 
 	})
 }
 
-func (c *controller) OnRender(window app.Window) {
+func (c *Controller) OnRender(window app.Window) {
 	c.uiWindowHandler.OnRender()
 }
 
-func (c *controller) OnCloseRequested(window app.Window) {
+func (c *Controller) OnCloseRequested(window app.Window) {
 	c.uiWindowHandler.OnCloseRequested()
 }
 
-func (c *controller) OnDestroy(window app.Window) {
+func (c *Controller) OnDestroy(window app.Window) {
 	c.fntFact.Free()
 	c.canvas.onDestroy()
 }

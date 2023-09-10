@@ -121,10 +121,9 @@ func (c *viewportComponent) OnRender(element *ui.Element, canvas *ui.Canvas) {
 			c.fbResizeBlocked = true
 
 			time.AfterFunc(time.Second, func() {
-				element.Window().Schedule(func() error {
+				element.Window().Schedule(func() {
 					c.fbResizeBlocked = false
 					element.Invalidate()
-					return nil
 				})
 			})
 		}

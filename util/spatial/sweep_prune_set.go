@@ -233,8 +233,8 @@ type sweepPruneMarker struct {
 type sweepPruneMarkerList []sweepPruneMarker
 
 func (l sweepPruneMarkerList) Sort() {
-	slices.SortFunc(l, func(a, b sweepPruneMarker) bool {
-		return a.Coord < b.Coord
+	slices.SortFunc(l, func(a, b sweepPruneMarker) int {
+		return int(a.Coord - b.Coord)
 	})
 }
 

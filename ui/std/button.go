@@ -70,14 +70,14 @@ func (c *buttonComponent) Render() co.Instance {
 		foregroundColor = OutlineColor
 	}
 
+	hasIcon := c.icon != nil
+	hasText := c.text != ""
+
 	return co.New(co.Element, func() {
 		co.WithLayoutData(layoutData)
 		co.WithData(co.ElementData{
 			Essence: c,
-			Layout: layout.Horizontal(layout.HorizontalSettings{
-				ContentAlignment: layout.VerticalAlignmentCenter,
-				ContentSpacing:   ButtonContentSpacing,
-			}),
+			Layout:  layout.Anchor(),
 			Padding: ui.Spacing{
 				Left:  ButtonSidePadding,
 				Right: ButtonSidePadding,
@@ -85,29 +85,40 @@ func (c *buttonComponent) Render() co.Instance {
 			Enabled: opt.V(c.isEnabled),
 		})
 
-		if c.icon != nil {
+		if hasIcon {
 			co.WithChild("icon", co.New(Picture, func() {
+				co.WithLayoutData(layout.Data{
+					Width:          opt.V(ButtonIconSize),
+					Height:         opt.V(ButtonIconSize),
+					Left:           opt.V(0),
+					VerticalCenter: opt.V(0),
+				})
 				co.WithData(PictureData{
 					Image:      c.icon,
 					ImageColor: opt.V(foregroundColor),
 					Mode:       ImageModeFit,
 				})
-				co.WithLayoutData(layout.Data{
-					Width:  opt.V(ButtonIconSize),
-					Height: opt.V(ButtonIconSize),
-				})
 			}))
 		}
 
-		if c.text != "" {
+		if hasText {
+			left := 0
+			if hasIcon {
+				left = ButtonIconSize + ButtonContentSpacing
+			}
+
 			co.WithChild("text", co.New(Label, func() {
+				co.WithLayoutData(layout.Data{
+					Left:           opt.V(left),
+					Right:          opt.V(0),
+					VerticalCenter: opt.V(0),
+				})
 				co.WithData(LabelData{
 					Font:      co.OpenFont(c.Scope(), ButtonFontFile),
 					FontSize:  opt.V(float32(ButtonFontSize)),
 					FontColor: opt.V(foregroundColor),
 					Text:      c.text,
 				})
-				co.WithLayoutData(layout.Data{})
 			}))
 		}
 	})

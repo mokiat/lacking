@@ -8,17 +8,14 @@ import (
 	"github.com/mokiat/lacking/game/ecs"
 	"github.com/mokiat/lacking/game/graphics"
 	"github.com/mokiat/lacking/game/physics"
-	"github.com/mokiat/lacking/render"
 	"github.com/mokiat/lacking/util/async"
 	"github.com/mokiat/lacking/util/metrics"
 )
 
-func NewController(registry asset.Registry, api render.API, shaders graphics.ShaderCollection) *Controller {
+func NewController(registry asset.Registry, shaders graphics.ShaderCollection) *Controller {
 	return &Controller{
-		registry:      registry,
-		gfxEngine:     graphics.NewEngine(api, shaders),
-		ecsEngine:     ecs.NewEngine(),
-		physicsEngine: physics.NewEngine(16 * time.Millisecond),
+		registry: registry,
+		shaders:  shaders,
 	}
 }
 
@@ -27,7 +24,9 @@ var _ app.Controller = (*Controller)(nil)
 type Controller struct {
 	app.NopController
 
-	registry      asset.Registry
+	registry asset.Registry
+	shaders  graphics.ShaderCollection
+
 	gfxEngine     *graphics.Engine
 	ecsEngine     *ecs.Engine
 	physicsEngine *physics.Engine
@@ -45,6 +44,9 @@ func (c *Controller) Engine() *Engine {
 
 func (c *Controller) OnCreate(window app.Window) {
 	c.window = window
+	c.gfxEngine = graphics.NewEngine(window.RenderAPI(), c.shaders)
+	c.ecsEngine = ecs.NewEngine()
+	c.physicsEngine = physics.NewEngine(16 * time.Millisecond)
 
 	c.ioWorker = async.NewWorker(16)
 	go c.ioWorker.ProcessAll()
@@ -69,6 +71,9 @@ func (c *Controller) OnDestroy(window app.Window) {
 }
 
 func (c *Controller) OnResize(window app.Window, width, height int) {
+}
+
+func (c *Controller) OnFramebufferResize(window app.Window, width, height int) {
 	c.viewport = graphics.NewViewport(0, 0, width, height)
 }
 
@@ -81,17 +86,15 @@ func (c *Controller) OnRender(window app.Window) {
 	window.Invalidate() // force redraw
 }
 
-func (c *Controller) schedule(fn func() error) {
+func (c *Controller) schedule(fn func()) {
 	c.window.Schedule(fn)
 }
 
 func (c *Controller) gfxWorkerAdapter() Worker {
 	return WorkerFunc(func(fn func() error) Operation {
 		operation := NewOperation()
-		c.schedule(func() error {
-			err := fn()
-			operation.Complete(err)
-			return err
+		c.schedule(func() {
+			operation.Complete(fn())
 		})
 		return operation
 	})
