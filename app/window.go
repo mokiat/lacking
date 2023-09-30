@@ -11,6 +11,9 @@ import (
 // unless otherwise specified.
 type Window interface {
 
+	// Platform returns the information on the platform that is running the app.
+	Platform() Platform
+
 	// Title returns this window's title.
 	Title() string
 
