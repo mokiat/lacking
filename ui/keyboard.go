@@ -138,6 +138,7 @@ const (
 	KeyModifierShift    = app.KeyModifierShift
 	KeyModifierAlt      = app.KeyModifierAlt
 	KeyModifierCapsLock = app.KeyModifierCapsLock
+	KeyModifierSuper    = app.KeyModifierSuper
 )
 
 // KeyModifier represents a modifier key.

@@ -328,6 +328,7 @@ const (
 	KeyModifierShift
 	KeyModifierAlt
 	KeyModifierCapsLock
+	KeyModifierSuper
 )
 
 // KeyModifier represents a modifier key.
@@ -344,6 +345,8 @@ func (m KeyModifier) String() string {
 		return "ALT"
 	case KeyModifierCapsLock:
 		return "CAPS"
+	case KeyModifierSuper:
+		return "SUPER"
 	default:
 		return "UNKNOWN"
 	}
@@ -373,6 +376,9 @@ func (s KeyModifierSet) String() string {
 	}
 	if s.Contains(KeyModifierCapsLock) {
 		descriptions = append(descriptions, KeyModifierCapsLock.String())
+	}
+	if s.Contains(KeyModifierSuper) {
+		descriptions = append(descriptions, KeyModifierSuper.String())
 	}
 	return fmt.Sprintf("(%s)", strings.Join(descriptions, ","))
 }
