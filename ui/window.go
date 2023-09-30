@@ -163,6 +163,28 @@ func (w *Window) DiscardFocus() {
 	w.Invalidate()
 }
 
+func (w *Window) Undo() bool {
+	currentElement := w.focusedElement
+	for currentElement != nil {
+		if currentElement.onUndo() {
+			return true
+		}
+		currentElement = currentElement.parent
+	}
+	return false
+}
+
+func (w *Window) Redo() bool {
+	currentElement := w.focusedElement
+	for currentElement != nil {
+		if currentElement.onRedo() {
+			return true
+		}
+		currentElement = currentElement.parent
+	}
+	return false
+}
+
 type windowHandler struct {
 	*Window
 }

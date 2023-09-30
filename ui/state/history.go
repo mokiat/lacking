@@ -20,6 +20,12 @@ type History struct {
 	redoStack *ds.Stack[Change]
 }
 
+// Clear removes all undo and redo history tracked.
+func (h *History) Clear() {
+	h.undoStack.Clear()
+	h.redoStack.Clear()
+}
+
 // LastChange returns the last applied change, if there is one, otherwise
 // it returns nil.
 func (h *History) LastChange() Change {

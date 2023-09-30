@@ -32,6 +32,13 @@ type ElementRenderHandler interface {
 	OnRender(element *Element, canvas *Canvas)
 }
 
+// ElementHistoryHandler is a type of ElementHandler that can be
+// used to receive undo and redo related events.
+type ElementHistoryHandler interface {
+	OnUndo(element *Element) bool
+	OnRedo(element *Element) bool
+}
+
 func newElement(window *Window) *Element {
 	return &Element{
 		window:    window,
@@ -455,6 +462,20 @@ func (e *Element) onKeyboardEvent(event KeyboardEvent) bool {
 func (e *Element) onMouseEvent(event MouseEvent) bool {
 	if mouseHandler, ok := e.essence.(ElementMouseHandler); ok {
 		return mouseHandler.OnMouseEvent(e, event)
+	}
+	return false
+}
+
+func (e *Element) onUndo() bool {
+	if historyHandler, ok := e.essence.(ElementHistoryHandler); ok {
+		return historyHandler.OnUndo(e)
+	}
+	return false
+}
+
+func (e *Element) onRedo() bool {
+	if historyHandler, ok := e.essence.(ElementHistoryHandler); ok {
+		return historyHandler.OnRedo(e)
 	}
 	return false
 }
