@@ -352,6 +352,16 @@ func (m KeyModifier) String() string {
 	}
 }
 
+// KeyModifiers constructs a KeyModifierSet by combining the specified
+// modifier entries.
+func KeyModifiers(entries ...KeyModifier) KeyModifierSet {
+	var result KeyModifierSet
+	for _, entry := range entries {
+		result |= KeyModifierSet(entry)
+	}
+	return result
+}
+
 // KeyModifierSet is used to indicate which modifier
 // keys were active at the event occurrence.
 type KeyModifierSet int

@@ -141,6 +141,12 @@ const (
 	KeyModifierSuper    = app.KeyModifierSuper
 )
 
+// KeyModifiers constructs a KeyModifierSet by combining the specified
+// modifier entries.
+func KeyModifiers(entries ...KeyModifier) KeyModifierSet {
+	return app.KeyModifiers(entries...)
+}
+
 // KeyModifier represents a modifier key.
 type KeyModifier = app.KeyModifier
 
