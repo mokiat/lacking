@@ -66,6 +66,22 @@ func (f *Font) SubFamily() string {
 	return f.subFamilyName
 }
 
+// LineHeight returns the height of a single line based on the font size.
+func (f *Font) LineHeight(fontSize float32) float32 {
+	return (f.lineAscent + f.lineDescent) * fontSize
+}
+
+// TextIterator returns a new TextIterator over the specified text for the
+// specified font size.
+func (f *Font) TextIterator(text string, fontSize float32) *TextIterator {
+	return &TextIterator{
+		font:     f,
+		text:     []rune(text),
+		offset:   0,
+		fontSize: fontSize,
+	}
+}
+
 // TextSize returns the size it would take to draw the
 // specified text string at the specified font size.
 func (f *Font) TextSize(text string, fontSize float32) sprec.Vec2 {
@@ -137,4 +153,62 @@ type fontGlyph struct {
 	// kerns holds positional adjustments between two glyphs. A positive
 	// value means to move them further apart.
 	kerns map[rune]float32
+}
+
+// TextIterator represents an optimal way of evaluating the size of a text
+// once character at a time.
+type TextIterator struct {
+	font     *Font
+	offset   int
+	text     []rune
+	fontSize float32
+	result   Character
+}
+
+// Next evaluates a character from the text and returns whether
+// there was any character.
+func (i *TextIterator) Next() bool {
+	if i.offset >= len(i.text) {
+		return false
+	}
+
+	char := i.text[i.offset]
+	i.result = Character{
+		Rune:  char,
+		Kern:  0.0,
+		Width: 0.0,
+	}
+
+	glyph, ok := i.font.glyphs[char]
+	if ok {
+		i.result.Width = glyph.advance * i.fontSize
+
+		if i.offset > 0 {
+			prevChar := i.text[i.offset-1]
+			if prevGlyph, ok := i.font.glyphs[prevChar]; ok {
+				i.result.Kern = prevGlyph.kerns[char]
+			}
+		}
+	}
+
+	i.offset++
+	return true
+}
+
+// Character returns the last iterated character.
+func (i *TextIterator) Character() Character {
+	return i.result
+}
+
+// Character contains information on a character from a text iteration.
+type Character struct {
+
+	// Rune contains the representation of the character.
+	Rune rune
+
+	// Kern indicates the offset from the previous character.
+	Kern float32
+
+	// Width holds the horizontal size of the character.
+	Width float32
 }

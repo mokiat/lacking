@@ -65,7 +65,7 @@ const (
 	// MouseEventTypeDrag indicates that the mouse that
 	// was previously pressed within the receiver control
 	// is being moved.
-	// The even could be received for a motion outside the
+	// The event could be received for a motion outside the
 	// bounds of the control.
 	MouseEventTypeDrag
 
