@@ -60,19 +60,27 @@ func (c *scrollPaneComponent) Apply(element *ui.Element) {
 		if layoutConfig.Width.Specified {
 			childSize.Width = layoutConfig.Width.Value
 		}
-		if !c.canScrollHorizontally && layoutConfig.GrowHorizontally {
-			childSize.Width = maxInt(childSize.Width, contentBounds.Width)
+		if !c.canScrollHorizontally {
+			if layoutConfig.GrowHorizontally {
+				childSize.Width = contentBounds.Width
+			} else {
+				childSize.Width = min(contentBounds.Width, childSize.Width)
+			}
 		}
 		if layoutConfig.Height.Specified {
 			childSize.Height = layoutConfig.Height.Value
 		}
-		if !c.canScrollVertically && layoutConfig.GrowVertically {
-			childSize.Height = maxInt(childSize.Height, contentBounds.Height)
+		if !c.canScrollVertically {
+			if layoutConfig.GrowVertically {
+				childSize.Height = contentBounds.Height
+			} else {
+				childSize.Height = min(contentBounds.Height, childSize.Height)
+			}
 		}
 
 		maxChildSize = ui.Size{
-			Width:  maxInt(maxChildSize.Width, childSize.Width),
-			Height: maxInt(maxChildSize.Height, childSize.Height),
+			Width:  max(maxChildSize.Width, childSize.Width),
+			Height: max(maxChildSize.Height, childSize.Height),
 		}
 
 		childElement.SetBounds(ui.Bounds{
@@ -81,8 +89,8 @@ func (c *scrollPaneComponent) Apply(element *ui.Element) {
 		})
 	}
 
-	c.maxOffsetX = float64(maxInt(0, maxChildSize.Width-contentBounds.Width))
-	c.maxOffsetY = float64(maxInt(0, maxChildSize.Height-contentBounds.Height))
+	c.maxOffsetX = float64(max(0, maxChildSize.Width-contentBounds.Width))
+	c.maxOffsetY = float64(max(0, maxChildSize.Height-contentBounds.Height))
 	c.offsetX = dprec.Clamp(c.offsetX, 0.0, c.maxOffsetX)
 	c.offsetY = dprec.Clamp(c.offsetY, 0.0, c.maxOffsetY)
 
