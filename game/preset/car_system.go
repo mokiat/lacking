@@ -2,33 +2,30 @@ package preset
 
 import (
 	"github.com/mokiat/gomath/dprec"
-	"github.com/mokiat/lacking/app"
 	"github.com/mokiat/lacking/game/ecs"
 	"github.com/mokiat/lacking/game/graphics"
 	"github.com/mokiat/lacking/game/physics/collision"
 	"github.com/mokiat/lacking/ui"
 )
 
-func NewCarSystem(ecsScene *ecs.Scene, gfxScene *graphics.Scene, gamepadProvider GamepadProvider) *CarSystem {
+func NewCarSystem(ecsScene *ecs.Scene, gfxScene *graphics.Scene) *CarSystem {
 	return &CarSystem{
-		ecsScene:        ecsScene,
-		gfxScene:        gfxScene,
-		gamepadProvider: gamepadProvider,
+		ecsScene: ecsScene,
+		gfxScene: gfxScene,
 
-		keysOfInterest: make(map[app.KeyCode]struct{}),
-		keyStates:      make(map[app.KeyCode]bool),
+		keysOfInterest: make(map[ui.KeyCode]struct{}),
+		keyStates:      make(map[ui.KeyCode]bool),
 
 		mouseOfInterest:   false,
-		mouseButtonStates: make(map[app.MouseButton]bool),
+		mouseButtonStates: make(map[ui.MouseButton]bool),
 		mouseAreaWidth:    1.0,
 		mouseAreaHeight:   1.0,
 	}
 }
 
 type CarSystem struct {
-	ecsScene        *ecs.Scene
-	gfxScene        *graphics.Scene
-	gamepadProvider GamepadProvider
+	ecsScene *ecs.Scene
+	gfxScene *graphics.Scene
 
 	keysOfInterest map[ui.KeyCode]struct{}
 	keyStates      map[ui.KeyCode]bool
