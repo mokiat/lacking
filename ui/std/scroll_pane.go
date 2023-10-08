@@ -125,8 +125,11 @@ func (c *scrollPaneComponent) OnKeyboardEvent(element *ui.Element, event ui.Keyb
 
 func (c *scrollPaneComponent) OnMouseEvent(element *ui.Element, event ui.MouseEvent) bool {
 	// TODO: Support mouse dragging as a means to scroll
-	c.scroll(element, event.ScrollX*10.0, event.ScrollY*10.0)
-	return true
+	if event.Type == ui.MouseEventTypeScroll {
+		c.scroll(element, event.ScrollX*10.0, event.ScrollY*10.0)
+		return true
+	}
+	return false
 }
 
 func (c *scrollPaneComponent) Render() co.Instance {
