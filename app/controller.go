@@ -18,7 +18,7 @@ type Controller interface {
 	// OnFramebufferResize is called when the window's framebuffer has
 	// been resized.
 	// Note that the framebuffer need not match the content size. This
-	// is mostly the case on devices with high DPI setting.
+	// is mostly the case on devices with a high DPI setting.
 	OnFramebufferResize(window Window, width, height int)
 
 	// OnKeyboardEvent is called whenever a keyboard event has occurred.
@@ -40,10 +40,13 @@ type Controller interface {
 	// that the application be closed through the native OS means
 	// (e.g. pressing the close button or ALT+F4).
 	//
-	// It is up to the controller implementation to call Close on the
-	// window if they accept the end-user's request (e.g. games might
-	// decide to show a prompt and not want the close to occur).
-	OnCloseRequested(window Window)
+	// Unlike regular events, returning false from this function indicates
+	// that the operation should not be performed. Furthermore, the event will
+	// not be passed to other potential receivers.
+	//
+	// Note that on some platforms (e.g. browser) returning false may invoke
+	// a native warning dialog.
+	OnCloseRequested(window Window) bool
 
 	// OnDestroy is called before the window is closed.
 	OnDestroy(window Window)
@@ -66,7 +69,7 @@ func (NopController) OnMouseEvent(window Window, event MouseEvent) bool { return
 
 func (NopController) OnRender(window Window) {}
 
-func (NopController) OnCloseRequested(window Window) {}
+func (NopController) OnCloseRequested(window Window) bool { return true }
 
 func (NopController) OnDestroy(window Window) {}
 
@@ -129,10 +132,13 @@ func (c *LayeredController) OnRender(window Window) {
 	}
 }
 
-func (c *LayeredController) OnCloseRequested(window Window) {
+func (c *LayeredController) OnCloseRequested(window Window) bool {
 	for i := len(c.layers) - 1; i >= 0; i-- {
-		c.layers[i].OnCloseRequested(window)
+		if !c.layers[i].OnCloseRequested(window) {
+			return false
+		}
 	}
+	return true
 }
 
 func (c *LayeredController) OnDestroy(window Window) {

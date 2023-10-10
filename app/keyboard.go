@@ -2,64 +2,63 @@ package app
 
 import (
 	"fmt"
-	"strings"
 )
 
-// KeyboardEvent is used to propagate events related to keyboard
-// actions.
+// KeyboardEvent is used to propagate events related to keyboard actions.
 type KeyboardEvent struct {
 
-	// Type specifies the keyboard event type.
-	Type KeyboardEventType
+	// Action specifies the keyboard event type.
+	Action KeyboardAction
 
 	// Code returns the code of the keyboard key.
 	Code KeyCode
 
-	// Rune returns the character that was typed in case
-	// of an KeyboardEventTypeType event.
-	Rune rune
+	// Character returns the character that was typed in case
+	// of an KeyboardActionType event.
+	Character rune
+}
 
-	// Modifiers contains a set of modifier keys that were
-	// pressed during the event.
-	Modifiers KeyModifierSet
+// String returns a string representation of this event.
+func (e KeyboardEvent) String() string {
+	return fmt.Sprintf("(%s,%s,%s)",
+		e.Action,
+		e.Code,
+		string(e.Character),
+	)
 }
 
 const (
-	// KeyboardEventTypeKeyDown indicates that a keyboard key
-	// was pressed.
-	KeyboardEventTypeKeyDown KeyboardEventType = 1 + iota
+	// KeyboardActionDown indicates that a keyboard key was pressed.
+	KeyboardActionDown KeyboardAction = 1 + iota
 
-	// KeyboardEventTypeKeyUp indicates that a keyboard key was
-	// released.
-	KeyboardEventTypeKeyUp
+	// KeyboardActionUp indicates that a keyboard key was released.
+	KeyboardActionUp
 
-	// keyboardEventTypeType indicates that a keyboard key is
-	// being pressed continuously.
-	KeyboardEventTypeRepeat
+	// KeyboardActionRepeat indicates that a keyboard key is being held pressed.
+	KeyboardActionRepeat
 
-	// KeyboardEventTypeType indicates that a character is typed
-	// with the keyboard.
-	// Such events would be duplicates to KeyboardEventTypeDown
-	// or KeyboardEventTypeRepeat but allow for the character
-	// rune to be read after all modifiers have been applied so that
-	// one does not have to implement that on their own.
-	KeyboardEventTypeType
+	// KeyboardActionType indicates that a character is typed with the keyboard.
+	//
+	// Such actions would be duplicates of KeyboardActionDown and
+	// KeyboardActionRepeat but allow for the character rune to be read which
+	// might be the result of modifiers or special keys that would be hard
+	// to reconstruct from just the key code.
+	KeyboardActionType
 )
 
-// KeyboardEventType is used to specify the type of keyboard
-// action that occurred.
-type KeyboardEventType int
+// KeyboardAction is used to specify the type of keyboard action that occurred.
+type KeyboardAction int
 
 // String returns a string representation of this event type,
-func (t KeyboardEventType) String() string {
-	switch t {
-	case KeyboardEventTypeKeyDown:
+func (a KeyboardAction) String() string {
+	switch a {
+	case KeyboardActionDown:
 		return "DOWN"
-	case KeyboardEventTypeKeyUp:
+	case KeyboardActionUp:
 		return "UP"
-	case KeyboardEventTypeRepeat:
+	case KeyboardActionRepeat:
 		return "REPEAT"
-	case KeyboardEventTypeType:
+	case KeyboardActionType:
 		return "TYPE"
 	default:
 		return "UNKNOWN"
@@ -321,74 +320,4 @@ func (c KeyCode) String() string {
 	default:
 		return "UNKNOWN"
 	}
-}
-
-const (
-	KeyModifierControl KeyModifier = 1 << (iota + 1)
-	KeyModifierShift
-	KeyModifierAlt
-	KeyModifierCapsLock
-	KeyModifierSuper
-)
-
-// KeyModifier represents a modifier key.
-type KeyModifier int
-
-// String returns a string representation of this key modifier.
-func (m KeyModifier) String() string {
-	switch m {
-	case KeyModifierControl:
-		return "CONTROL"
-	case KeyModifierShift:
-		return "SHIFT"
-	case KeyModifierAlt:
-		return "ALT"
-	case KeyModifierCapsLock:
-		return "CAPS"
-	case KeyModifierSuper:
-		return "SUPER"
-	default:
-		return "UNKNOWN"
-	}
-}
-
-// KeyModifiers constructs a KeyModifierSet by combining the specified
-// modifier entries.
-func KeyModifiers(entries ...KeyModifier) KeyModifierSet {
-	var result KeyModifierSet
-	for _, entry := range entries {
-		result |= KeyModifierSet(entry)
-	}
-	return result
-}
-
-// KeyModifierSet is used to indicate which modifier
-// keys were active at the event occurrence.
-type KeyModifierSet int
-
-// Contains returns whether the set contains the
-// specified modifier
-func (s KeyModifierSet) Contains(modifier KeyModifier) bool {
-	return (int(s) & int(modifier)) == int(modifier)
-}
-
-// String returns a string representation of this key modifier set.
-func (s KeyModifierSet) String() string {
-	var descriptions []string
-	if s.Contains(KeyModifierControl) {
-		descriptions = append(descriptions, KeyModifierControl.String())
-	}
-	if s.Contains(KeyModifierShift) {
-		descriptions = append(descriptions, KeyModifierShift.String())
-	}
-	if s.Contains(KeyModifierAlt) {
-		descriptions = append(descriptions, KeyModifierAlt.String())
-	}
-	if s.Contains(KeyModifierCapsLock) {
-		descriptions = append(descriptions, KeyModifierCapsLock.String())
-	}
-	if s.Contains(KeyModifierSuper) {
-		descriptions = append(descriptions, KeyModifierSuper.String())
-	}
-	return fmt.Sprintf("(%s)", strings.Join(descriptions, ","))
 }
