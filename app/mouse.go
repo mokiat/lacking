@@ -13,23 +13,23 @@ type MouseEvent struct {
 	// (e.g. with a game controller).
 	Index int
 
-	// X specifies the horizontal position of the mouse.
-	X int
-
-	// Y specifies the vertical position of the mouse.
-	Y int
-
 	// Action indicates the action performed with the mouse.
 	Action MouseAction
 
 	// Button specifies the button for which the event is applicable.
 	Button MouseButton
 
+	// X specifies the horizontal position of the mouse.
+	X int
+
+	// Y specifies the vertical position of the mouse.
+	Y int
+
 	// ScrollX determines the amount of horizontal scroll.
-	ScrollX float64
+	ScrollX int
 
 	// ScrollY determines the amount of vertical scroll.
-	ScrollY float64
+	ScrollY int
 
 	// Payload contains any external data associated with the event.
 	Payload any
@@ -37,12 +37,12 @@ type MouseEvent struct {
 
 // String returns a string representation of this event.
 func (e MouseEvent) String() string {
-	return fmt.Sprintf("(%d,(%d,%d),%s,%s,(%.2f,%.2f))",
+	return fmt.Sprintf("(%d,%s,%s,(%d,%d),(%d,%d))",
 		e.Index,
-		e.X,
-		e.Y,
 		e.Action,
 		e.Button,
+		e.X,
+		e.Y,
 		e.ScrollX,
 		e.ScrollY,
 	)
@@ -72,7 +72,8 @@ const (
 
 	// MouseActionScroll indicates that the mouse wheel was scrolled.
 	//
-	// The X and Y values of the event indicate the offset in abstract units.
+	// The ScrollX and ScrollY values of the event indicate the offset in
+	// abstract units (comparable to pixels in magnitude).
 	MouseActionScroll
 )
 
