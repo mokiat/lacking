@@ -70,6 +70,13 @@ type Window interface {
 	// and reports relative motion events. This method also hides the cursor.
 	SetCursorLocked(locked bool)
 
+	// RequestCopy requests that the specified text be stored in the clipboard.
+	RequestCopy(text string)
+
+	// RequestPaste requests that the clipboard be read and the content be
+	// passed down through an event.
+	RequestPaste()
+
 	// RenderAPI provides access to a usable Render API based on the current
 	// window's screen.
 	//

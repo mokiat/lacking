@@ -33,6 +33,10 @@ type Controller interface {
 	// not be propagated to other potential receivers, otherwise return false.
 	OnMouseEvent(window Window, event MouseEvent) bool
 
+	// OnClipboardEvent is called whenever the clipboard content has been
+	// requested and the underlying window has managed to retrieve it.
+	OnClipboardEvent(window Window, event ClipboardEvent) bool
+
 	// OnRender is called whenever the window would like to be redrawn.
 	OnRender(window Window)
 
@@ -66,6 +70,8 @@ func (NopController) OnFramebufferResize(window Window, width, height int) {}
 func (NopController) OnKeyboardEvent(window Window, event KeyboardEvent) bool { return false }
 
 func (NopController) OnMouseEvent(window Window, event MouseEvent) bool { return false }
+
+func (NopController) OnClipboardEvent(window Window, event ClipboardEvent) bool { return false }
 
 func (NopController) OnRender(window Window) {}
 
@@ -120,6 +126,15 @@ func (c *LayeredController) OnKeyboardEvent(window Window, event KeyboardEvent) 
 func (c *LayeredController) OnMouseEvent(window Window, event MouseEvent) bool {
 	for i := len(c.layers) - 1; i >= 0; i-- {
 		if c.layers[i].OnMouseEvent(window, event) {
+			return true
+		}
+	}
+	return false
+}
+
+func (c *LayeredController) OnClipboardEvent(window Window, event ClipboardEvent) bool {
+	for i := len(c.layers) - 1; i >= 0; i-- {
+		if c.layers[i].OnClipboardEvent(window, event) {
 			return true
 		}
 	}
