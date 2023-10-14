@@ -25,10 +25,11 @@ type KeyboardEvent struct {
 
 // String returns a string representation of this event.
 func (e KeyboardEvent) String() string {
-	return fmt.Sprintf("(%s,%s,%s)",
+	return fmt.Sprintf("(%s,%s,%c,%s)",
 		e.Action,
 		e.Code,
-		string(e.Character),
+		e.Character,
+		e.Modifiers,
 	)
 }
 
