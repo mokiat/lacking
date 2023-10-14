@@ -2,6 +2,7 @@ package app
 
 import (
 	"fmt"
+	"strings"
 )
 
 // KeyboardEvent is used to propagate events related to keyboard actions.
@@ -16,6 +17,10 @@ type KeyboardEvent struct {
 	// Character returns the character that was typed in case
 	// of an KeyboardActionType event.
 	Character rune
+
+	// Modifiers contains a set of modifier keys that were
+	// pressed during the event.
+	Modifiers KeyModifierSet
 }
 
 // String returns a string representation of this event.
@@ -320,4 +325,74 @@ func (c KeyCode) String() string {
 	default:
 		return "UNKNOWN"
 	}
+}
+
+const (
+	KeyModifierControl KeyModifier = 1 << (iota + 1)
+	KeyModifierShift
+	KeyModifierAlt
+	KeyModifierCapsLock
+	KeyModifierSuper
+)
+
+// KeyModifier represents a modifier key.
+type KeyModifier int
+
+// String returns a string representation of this key modifier.
+func (m KeyModifier) String() string {
+	switch m {
+	case KeyModifierControl:
+		return "CONTROL"
+	case KeyModifierShift:
+		return "SHIFT"
+	case KeyModifierAlt:
+		return "ALT"
+	case KeyModifierCapsLock:
+		return "CAPS"
+	case KeyModifierSuper:
+		return "SUPER"
+	default:
+		return "UNKNOWN"
+	}
+}
+
+// KeyModifiers constructs a KeyModifierSet by combining the specified
+// modifier entries.
+func KeyModifiers(entries ...KeyModifier) KeyModifierSet {
+	var result KeyModifierSet
+	for _, entry := range entries {
+		result |= KeyModifierSet(entry)
+	}
+	return result
+}
+
+// KeyModifierSet is used to indicate which modifier
+// keys were active at the event occurrence.
+type KeyModifierSet int
+
+// Contains returns whether the set contains the
+// specified modifier
+func (s KeyModifierSet) Contains(modifier KeyModifier) bool {
+	return (int(s) & int(modifier)) == int(modifier)
+}
+
+// String returns a string representation of this key modifier set.
+func (s KeyModifierSet) String() string {
+	var descriptions []string
+	if s.Contains(KeyModifierControl) {
+		descriptions = append(descriptions, KeyModifierControl.String())
+	}
+	if s.Contains(KeyModifierShift) {
+		descriptions = append(descriptions, KeyModifierShift.String())
+	}
+	if s.Contains(KeyModifierAlt) {
+		descriptions = append(descriptions, KeyModifierAlt.String())
+	}
+	if s.Contains(KeyModifierCapsLock) {
+		descriptions = append(descriptions, KeyModifierCapsLock.String())
+	}
+	if s.Contains(KeyModifierSuper) {
+		descriptions = append(descriptions, KeyModifierSuper.String())
+	}
+	return fmt.Sprintf("(%s)", strings.Join(descriptions, ","))
 }
