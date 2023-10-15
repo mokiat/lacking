@@ -90,7 +90,7 @@ func (c *dropdownListComponent) Render() co.Instance {
 }
 
 func (c *dropdownListComponent) OnMouseEvent(element *ui.Element, event ui.MouseEvent) bool {
-	if event.Type == ui.MouseEventTypeUp && event.Button == ui.MouseButtonLeft {
+	if event.Action == ui.MouseActionUp && event.Button == ui.MouseButtonLeft {
 		c.onClose()
 		return true
 	}

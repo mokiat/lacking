@@ -39,6 +39,13 @@ type ElementHistoryHandler interface {
 	OnRedo(element *Element) bool
 }
 
+// ElementClipboardHandler is a type of EventHandler that can be
+// used to receive events when an element is focused and clipboard
+// actions are performed.
+type ElementClipboardHandler interface {
+	OnClipboardEvent(element *Element, event ClipboardEvent) bool
+}
+
 func newElement(window *Window) *Element {
 	return &Element{
 		window:    window,
@@ -462,6 +469,13 @@ func (e *Element) onKeyboardEvent(event KeyboardEvent) bool {
 func (e *Element) onMouseEvent(event MouseEvent) bool {
 	if mouseHandler, ok := e.essence.(ElementMouseHandler); ok {
 		return mouseHandler.OnMouseEvent(e, event)
+	}
+	return false
+}
+
+func (e *Element) onClipboardEvent(event ClipboardEvent) bool {
+	if keyboardHandler, ok := e.essence.(ElementClipboardHandler); ok {
+		return keyboardHandler.OnClipboardEvent(e, event)
 	}
 	return false
 }

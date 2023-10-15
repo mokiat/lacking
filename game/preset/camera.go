@@ -66,7 +66,7 @@ func (s *YawPitchCameraSystem) OnKeyboardEvent(event ui.KeyboardEvent) bool {
 	if !s.hasKeyboardConsumer {
 		return false
 	}
-	active := event.Type != ui.KeyboardEventTypeKeyUp
+	active := event.Action != ui.KeyboardActionUp
 	switch event.Code {
 	case s.keyMoveForward:
 		s.isMoveForward = active
@@ -269,7 +269,7 @@ func (s *FollowCameraSystem) OnKeyboardEvent(event ui.KeyboardEvent) bool {
 	if !s.hasKeyboardConsumer {
 		return false
 	}
-	active := event.Type != ui.KeyboardEventTypeKeyUp
+	active := event.Action != ui.KeyboardActionUp
 	switch event.Code {
 	case s.keyRotateUp:
 		s.isRotateUp = active

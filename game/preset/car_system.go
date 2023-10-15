@@ -36,7 +36,7 @@ type CarSystem struct {
 	mouseAreaHeight   int
 	mouseX            int
 	mouseY            int
-	mouseScroll       float64
+	mouseScroll       int
 }
 
 func (s *CarSystem) OnMouseEvent(element *ui.Element, event ui.MouseEvent) bool {
@@ -46,16 +46,16 @@ func (s *CarSystem) OnMouseEvent(element *ui.Element, event ui.MouseEvent) bool 
 	bounds := element.Bounds()
 	s.mouseAreaWidth = bounds.Width
 	s.mouseAreaHeight = bounds.Height
-	switch event.Type {
-	case ui.MouseEventTypeDown:
+	switch event.Action {
+	case ui.MouseActionDown:
 		s.mouseButtonStates[event.Button] = true
-	case ui.MouseEventTypeUp:
+	case ui.MouseActionUp:
 		s.mouseButtonStates[event.Button] = false
-	case ui.MouseEventTypeScroll:
+	case ui.MouseActionScroll:
 		s.mouseScroll += event.ScrollY
-	case ui.MouseEventTypeMove:
-		s.mouseX = event.Position.X
-		s.mouseY = event.Position.Y
+	case ui.MouseActionMove:
+		s.mouseX = event.X
+		s.mouseY = event.Y
 	}
 	return true
 }
@@ -64,10 +64,10 @@ func (s *CarSystem) OnKeyboardEvent(event ui.KeyboardEvent) bool {
 	if _, ok := s.keysOfInterest[event.Code]; !ok {
 		return false
 	}
-	switch event.Type {
-	case ui.KeyboardEventTypeKeyDown:
+	switch event.Action {
+	case ui.KeyboardActionDown:
 		s.keyStates[event.Code] = true
-	case ui.KeyboardEventTypeKeyUp:
+	case ui.KeyboardActionUp:
 		s.keyStates[event.Code] = false
 	}
 	return true
@@ -199,13 +199,14 @@ func (s *CarSystem) updateMouse(elapsedSeconds float64, entity *ecs.Entity) {
 	}
 	carComp.Deceleration = dprec.Clamp(carComp.Deceleration, 0.0, 1.0)
 
-	if s.mouseScroll < -0.1 {
+	const epsilon = 1
+	if s.mouseScroll < -epsilon {
 		carComp.Gear = CarGearReverse
 	}
-	if s.mouseScroll > 0.1 {
+	if s.mouseScroll > epsilon {
 		carComp.Gear = CarGearForward
 	}
-	s.mouseScroll = 0.0
+	s.mouseScroll = 0
 
 	carComp.Recover = s.mouseButtonStates[ui.MouseButtonMiddle]
 

@@ -191,16 +191,16 @@ func (c *BaseButtonComponent) State() ButtonState {
 }
 
 func (c *BaseButtonComponent) OnMouseEvent(element *ui.Element, event ui.MouseEvent) bool {
-	switch event.Type {
-	case ui.MouseEventTypeEnter:
+	switch event.Action {
+	case ui.MouseActionEnter:
 		c.state = ButtonStateOver
 		element.Invalidate()
 		return true
-	case ui.MouseEventTypeLeave:
+	case ui.MouseActionLeave:
 		c.state = ButtonStateUp
 		element.Invalidate()
 		return true
-	case ui.MouseEventTypeUp:
+	case ui.MouseActionUp:
 		if event.Button == ui.MouseButtonLeft {
 			if c.state == ButtonStateDown {
 				c.notifyClicked()
@@ -209,7 +209,7 @@ func (c *BaseButtonComponent) OnMouseEvent(element *ui.Element, event ui.MouseEv
 			element.Invalidate()
 			return true
 		}
-	case ui.MouseEventTypeDown:
+	case ui.MouseActionDown:
 		if event.Button == ui.MouseButtonLeft {
 			c.state = ButtonStateDown
 			element.Invalidate()

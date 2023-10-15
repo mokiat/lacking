@@ -104,7 +104,7 @@ func (a MouseAction) String() string {
 
 const (
 	// MouseButtonLeft specifies the left mouse button.
-	MouseButtonLeft = 1 + iota
+	MouseButtonLeft MouseButton = 1 + iota
 
 	// MouseButtonMiddle specifies the middle mouse button.
 	MouseButtonMiddle
