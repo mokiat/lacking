@@ -39,6 +39,12 @@ type ElementHistoryHandler interface {
 	OnRedo(element *Element) bool
 }
 
+// ElementStateHandler is a type of ElementHandler that can be
+// used to receive state related events.
+type ElementStateHandler interface {
+	OnSave(element *Element) bool
+}
+
 // ElementClipboardHandler is a type of EventHandler that can be
 // used to receive events when an element is focused and clipboard
 // actions are performed.
@@ -437,6 +443,11 @@ func (e *Element) SetFocusable(focusable bool) {
 	e.focusable = focusable
 }
 
+// IsFocused returns whether this Element is currently focused.
+func (e *Element) IsFocused() bool {
+	return e.window.IsElementFocused(e)
+}
+
 // Destroy removes this Element from the hierarchy, as well
 // as any child Elements and releases all allocated resources.
 func (e *Element) Destroy() {
@@ -476,6 +487,13 @@ func (e *Element) onMouseEvent(event MouseEvent) bool {
 func (e *Element) onClipboardEvent(event ClipboardEvent) bool {
 	if keyboardHandler, ok := e.essence.(ElementClipboardHandler); ok {
 		return keyboardHandler.OnClipboardEvent(e, event)
+	}
+	return false
+}
+
+func (e *Element) onSave() bool {
+	if historyHandler, ok := e.essence.(ElementStateHandler); ok {
+		return historyHandler.OnSave(e)
 	}
 	return false
 }

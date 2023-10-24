@@ -71,12 +71,29 @@ func (f *Font) LineHeight(fontSize float32) float32 {
 	return (f.lineAscent + f.lineDescent) * fontSize
 }
 
-// TextIterator returns a new TextIterator over the specified text for the
+// LineWidth returns the width of a single text line.
+func (f *Font) LineWidth(characters []rune, fontSize float32) float32 {
+	var result float32
+
+	lastGlyph := (*fontGlyph)(nil)
+	for _, ch := range characters {
+		if glyph, ok := f.glyphs[ch]; ok {
+			result += glyph.advance
+			if lastGlyph != nil {
+				result += lastGlyph.kerns[ch]
+			}
+			lastGlyph = glyph
+		}
+	}
+	return result * fontSize
+}
+
+// LineIterator returns a new LineIterator over the specified text for the
 // specified font size.
-func (f *Font) TextIterator(text string, fontSize float32) *TextIterator {
-	return &TextIterator{
+func (f *Font) LineIterator(characters []rune, fontSize float32) *LineIterator {
+	return &LineIterator{
 		font:     f,
-		text:     []rune(text),
+		text:     characters,
 		offset:   0,
 		fontSize: fontSize,
 	}
@@ -85,10 +102,11 @@ func (f *Font) TextIterator(text string, fontSize float32) *TextIterator {
 // TextSize returns the size it would take to draw the
 // specified text string at the specified font size.
 func (f *Font) TextSize(text string, fontSize float32) sprec.Vec2 {
-	result := sprec.NewVec2(0, f.lineAscent+f.lineDescent)
+	result := sprec.NewVec2(0, f.lineHeight)
 	if len(text) == 0 {
-		return sprec.Vec2Prod(result, float32(fontSize))
+		return sprec.Vec2Prod(result, fontSize)
 	}
+
 	currentWidth := float32(0.0)
 	lastGlyph := (*fontGlyph)(nil)
 	for _, ch := range text {
@@ -114,8 +132,7 @@ func (f *Font) TextSize(text string, fontSize float32) sprec.Vec2 {
 		}
 	}
 	result.X = sprec.Max(result.X, currentWidth)
-	result = sprec.Vec2Prod(result, float32(fontSize))
-	return result
+	return sprec.Vec2Prod(result, fontSize)
 }
 
 // Destroy releases all resources related to this Font.
@@ -155,9 +172,9 @@ type fontGlyph struct {
 	kerns map[rune]float32
 }
 
-// TextIterator represents an optimal way of evaluating the size of a text
+// LineIterator represents an optimal way of evaluating the size of a text
 // once character at a time.
-type TextIterator struct {
+type LineIterator struct {
 	font     *Font
 	offset   int
 	text     []rune
@@ -167,7 +184,7 @@ type TextIterator struct {
 
 // Next evaluates a character from the text and returns whether
 // there was any character.
-func (i *TextIterator) Next() bool {
+func (i *LineIterator) Next() bool {
 	if i.offset >= len(i.text) {
 		return false
 	}
@@ -196,7 +213,7 @@ func (i *TextIterator) Next() bool {
 }
 
 // Character returns the last iterated character.
-func (i *TextIterator) Character() Character {
+func (i *LineIterator) Character() Character {
 	return i.result
 }
 

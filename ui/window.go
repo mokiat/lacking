@@ -167,6 +167,17 @@ func (w *Window) DiscardFocus() {
 	w.Invalidate()
 }
 
+func (w *Window) Save() bool {
+	currentElement := w.focusedElement
+	for currentElement != nil {
+		if currentElement.onSave() {
+			return true
+		}
+		currentElement = currentElement.parent
+	}
+	return false
+}
+
 func (w *Window) Undo() bool {
 	currentElement := w.focusedElement
 	for currentElement != nil {
