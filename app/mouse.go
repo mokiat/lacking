@@ -26,10 +26,10 @@ type MouseEvent struct {
 	Y int
 
 	// ScrollX determines the amount of horizontal scroll.
-	ScrollX int
+	ScrollX float64
 
 	// ScrollY determines the amount of vertical scroll.
-	ScrollY int
+	ScrollY float64
 
 	// Payload contains any external data associated with the event.
 	Payload any
@@ -37,7 +37,7 @@ type MouseEvent struct {
 
 // String returns a string representation of this event.
 func (e MouseEvent) String() string {
-	return fmt.Sprintf("(%d,%s,%s,(%d,%d),(%d,%d))",
+	return fmt.Sprintf("(%d,%s,%s,(%d,%d),(%f,%f))",
 		e.Index,
 		e.Action,
 		e.Button,

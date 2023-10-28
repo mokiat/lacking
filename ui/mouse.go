@@ -30,10 +30,10 @@ type MouseEvent struct {
 	Y int
 
 	// ScrollX determines the amount of horizontal scroll.
-	ScrollX int
+	ScrollX float32
 
 	// ScrollY determines the amount of vertical scroll.
-	ScrollY int
+	ScrollY float32
 
 	// Modifiers contains active key modifiers.
 	Modifiers KeyModifierSet
@@ -50,7 +50,7 @@ func (e MouseEvent) Position() Position {
 
 // String returns a string representation for this mouse event.
 func (e MouseEvent) String() string {
-	return fmt.Sprintf("(%d,%s,%s,(%d,%d),(%d,%d),%s)",
+	return fmt.Sprintf("(%d,%s,%s,(%d,%d),(%f,%f),%s)",
 		e.Index,
 		e.Action,
 		e.Button,

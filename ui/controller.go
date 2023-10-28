@@ -87,8 +87,8 @@ func (c *Controller) OnMouseEvent(window app.Window, event app.MouseEvent) bool 
 		Button:    MouseButton(event.Button),
 		X:         event.X,
 		Y:         event.Y,
-		ScrollX:   int(event.ScrollX * 100.0),
-		ScrollY:   int(event.ScrollY * 100.0),
+		ScrollX:   float32(event.ScrollX),
+		ScrollY:   float32(event.ScrollY),
 		Modifiers: c.buildModifierSet(),
 		Payload:   event.Payload,
 	})

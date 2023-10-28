@@ -36,7 +36,7 @@ type CarSystem struct {
 	mouseAreaHeight   int
 	mouseX            int
 	mouseY            int
-	mouseScroll       int
+	mouseScroll       float32
 }
 
 func (s *CarSystem) OnMouseEvent(element *ui.Element, event ui.MouseEvent) bool {
@@ -199,7 +199,7 @@ func (s *CarSystem) updateMouse(elapsedSeconds float64, entity *ecs.Entity) {
 	}
 	carComp.Deceleration = dprec.Clamp(carComp.Deceleration, 0.0, 1.0)
 
-	const epsilon = 1
+	const epsilon = 1.0
 	if s.mouseScroll < -epsilon {
 		carComp.Gear = CarGearReverse
 	}

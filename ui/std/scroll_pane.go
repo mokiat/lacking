@@ -35,10 +35,10 @@ type scrollPaneComponent struct {
 	canScrollVertically   bool
 	isFocused             bool
 
-	offsetX    int
-	offsetY    int
-	maxOffsetX int
-	maxOffsetY int
+	offsetX    float32
+	offsetY    float32
+	maxOffsetX float32
+	maxOffsetY float32
 }
 
 func (c *scrollPaneComponent) OnUpsert() {
@@ -88,8 +88,8 @@ func (c *scrollPaneComponent) Apply(element *ui.Element) {
 		})
 	}
 
-	c.maxOffsetX = max(0, maxChildSize.Width-contentBounds.Width)
-	c.maxOffsetY = max(0, maxChildSize.Height-contentBounds.Height)
+	c.maxOffsetX = float32(max(0, maxChildSize.Width-contentBounds.Width))
+	c.maxOffsetY = float32(max(0, maxChildSize.Height-contentBounds.Height))
 	c.offsetX = min(max(c.offsetX, 0), c.maxOffsetX)
 	c.offsetY = min(max(c.offsetY, 0), c.maxOffsetY)
 
@@ -144,7 +144,7 @@ func (c *scrollPaneComponent) Render() co.Instance {
 	})
 }
 
-func (c *scrollPaneComponent) scroll(element *ui.Element, deltaX, deltaY int) {
+func (c *scrollPaneComponent) scroll(element *ui.Element, deltaX, deltaY float32) {
 	c.offsetX -= deltaX
 	c.offsetY -= deltaY
 	if c.canScrollHorizontally && !c.canScrollVertically {
