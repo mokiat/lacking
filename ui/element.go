@@ -451,6 +451,9 @@ func (e *Element) IsFocused() bool {
 // Destroy removes this Element from the hierarchy, as well
 // as any child Elements and releases all allocated resources.
 func (e *Element) Destroy() {
+	if e.window != nil {
+		e.window.BubbleFocus()
+	}
 	e.Detach()
 }
 

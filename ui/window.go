@@ -161,6 +161,22 @@ func (w *Window) GrantFocus(element *Element) {
 	w.Invalidate()
 }
 
+// BubbleFocus releases focus from the current element and tries to find
+// a parent that is focusable in order to grant it focus.
+func (w *Window) BubbleFocus() {
+	if w.focusedElement == nil {
+		return
+	}
+	current := w.focusedElement.parent
+	for current != nil {
+		if current.focusable {
+			w.focusedElement = current
+			return
+		}
+		current = current.parent
+	}
+}
+
 // DiscardFocus removes the focus from any Element.
 func (w *Window) DiscardFocus() {
 	w.focusedElement = nil

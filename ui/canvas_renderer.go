@@ -350,6 +350,28 @@ func (c *canvasRenderer) Scale(amount sprec.Vec2) {
 	)
 }
 
+// ClipRect creates a clipping rectangle region. This clipping mechanism
+// is slighly faster than using Clip with a Path and is used by the UI framework
+// for clipping Element contents.
+//
+// Note: This clipping model does not nest, hence you can escape the boundaries
+// of your Element depending on the provided values. In most cases, the Clip
+// method should be used instead.
+func (c *canvasRenderer) ClipRect(position, size sprec.Vec2) {
+	// TODO: Make this apply on top of parent clip rects, so that an element
+	// cannot escape its bounds.
+
+	c.currentLayer.ClipTransform = sprec.Mat4Prod(
+		sprec.NewMat4(
+			1.0, 0.0, 0.0, -position.X,
+			-1.0, 0.0, 0.0, position.X+size.X,
+			0.0, 1.0, 0.0, -position.Y,
+			0.0, -1.0, 0.0, position.Y+size.Y,
+		),
+		sprec.InverseMat4(c.currentLayer.Transform),
+	)
+}
+
 // SetClipRect creates a clipping rectangle region. This clipping mechanism
 // is slighly faster than using Clip with a Path and is used by the UI framework
 // for clipping Element contents.
@@ -357,6 +379,8 @@ func (c *canvasRenderer) Scale(amount sprec.Vec2) {
 // Note: This clipping model does not nest, hence you can escape the boundaries
 // of your Element depending on the provided values. In most cases, the Clip
 // method should be used instead.
+//
+// Deprecated: Use ClipRect instead
 func (c *canvasRenderer) SetClipRect(left, right, top, bottom float32) {
 	c.currentLayer.ClipTransform = sprec.Mat4Prod(
 		sprec.NewMat4(
@@ -392,8 +416,105 @@ func (c *canvasRenderer) DrawSurface(surface Surface, position, size sprec.Vec2)
 	})
 }
 
+// FillTextLine draws a solid text line at the specified position using the
+// provided typography settings.
+func (c *canvasRenderer) FillTextLine(text []rune, position sprec.Vec2, typography Typography) {
+	currentLayer := c.currentLayer
+	transformMatrix := currentLayer.Transform
+	clipMatrix := currentLayer.ClipTransform
+
+	font := typography.Font
+	fontSize := typography.Size
+	color := uiColorToVec(typography.Color)
+
+	vertexOffset := c.textMesh.Offset()
+	offset := position
+	lastGlyph := (*fontGlyph)(nil)
+
+	for _, ch := range text {
+		lineAscent := font.lineAscent * fontSize
+
+		if glyph, ok := font.glyphs[ch]; ok {
+			advance := glyph.advance * fontSize
+			leftBearing := glyph.leftBearing * fontSize
+			rightBearing := glyph.rightBearing * fontSize
+			ascent := glyph.ascent * fontSize
+			descent := glyph.descent * fontSize
+
+			vertTopLeft := textVertex{
+				position: sprec.Vec2Sum(
+					sprec.NewVec2(
+						leftBearing,
+						lineAscent-ascent,
+					),
+					offset,
+				),
+				texCoord: sprec.NewVec2(glyph.leftU, glyph.topV),
+			}
+			vertTopRight := textVertex{
+				position: sprec.Vec2Sum(
+					sprec.NewVec2(
+						advance-rightBearing,
+						lineAscent-ascent,
+					),
+					offset,
+				),
+				texCoord: sprec.NewVec2(glyph.rightU, glyph.topV),
+			}
+			vertBottomLeft := textVertex{
+				position: sprec.Vec2Sum(
+					sprec.NewVec2(
+						leftBearing,
+						lineAscent+descent,
+					),
+					offset,
+				),
+				texCoord: sprec.NewVec2(glyph.leftU, glyph.bottomV),
+			}
+			vertBottomRight := textVertex{
+				position: sprec.Vec2Sum(
+					sprec.NewVec2(
+						advance-rightBearing,
+						lineAscent+descent,
+					),
+					offset,
+				),
+				texCoord: sprec.NewVec2(glyph.rightU, glyph.bottomV),
+			}
+
+			c.textMesh.Append(vertTopLeft)
+			c.textMesh.Append(vertBottomLeft)
+			c.textMesh.Append(vertBottomRight)
+
+			c.textMesh.Append(vertTopLeft)
+			c.textMesh.Append(vertBottomRight)
+			c.textMesh.Append(vertTopRight)
+
+			offset.X += advance
+			if lastGlyph != nil {
+				offset.X += lastGlyph.kerns[ch] * fontSize
+			}
+			lastGlyph = glyph
+		}
+	}
+
+	vertexCount := c.textMesh.Offset() - vertexOffset
+	if vertexCount > 0 {
+		c.commandQueue.BindPipeline(c.textPipeline)
+		c.commandQueue.Uniform4f(c.textMaterial.colorLocation, color.Array())
+		c.commandQueue.UniformMatrix4f(c.textMaterial.projectionMatrixLocation, c.projectionMatrix.ColumnMajorArray())
+		c.commandQueue.UniformMatrix4f(c.textMaterial.transformMatrixLocation, transformMatrix.ColumnMajorArray())
+		c.commandQueue.UniformMatrix4f(c.textMaterial.clipMatrixLocation, clipMatrix.ColumnMajorArray())
+		c.commandQueue.TextureUnit(0, font.texture)
+		c.commandQueue.Uniform1i(c.textMaterial.textureLocation, 0)
+		c.commandQueue.Draw(vertexOffset, vertexCount, 1)
+	}
+}
+
 // FillText draws a solid text at the specified position using the provided
 // typography settings.
+//
+// Deprecated: Use FillTextLine
 func (c *canvasRenderer) FillText(text string, position sprec.Vec2, typography Typography) {
 	currentLayer := c.currentLayer
 	transformMatrix := currentLayer.Transform
@@ -411,7 +532,6 @@ func (c *canvasRenderer) FillText(text string, position sprec.Vec2, typography T
 		lineHeight := font.lineHeight * fontSize
 		lineAscent := font.lineAscent * fontSize
 		if ch == '\r' {
-			offset.X = position.X
 			lastGlyph = nil
 			continue
 		}

@@ -111,8 +111,6 @@ func (f *Font) TextSize(text string, fontSize float32) sprec.Vec2 {
 	lastGlyph := (*fontGlyph)(nil)
 	for _, ch := range text {
 		if ch == '\r' {
-			result.X = sprec.Max(result.X, currentWidth)
-			currentWidth = 0.0
 			lastGlyph = nil
 			continue
 		}
