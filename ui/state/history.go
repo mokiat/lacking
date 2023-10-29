@@ -37,6 +37,9 @@ func (h *History) LastChange() Change {
 
 // Do applies the specified change and tracks it in the undo history.
 func (h *History) Do(change Change) {
+	if change == nil {
+		return
+	}
 	if extChange, ok := h.extendableChange(); !ok || !extChange.Extend(change) {
 		h.undoStack.Push(change)
 	}
