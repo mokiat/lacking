@@ -18,8 +18,8 @@ var (
 // X and Y coordinates that are in the [0..1] range, making them size agnostic.
 type ViewportMouseEvent struct {
 	ui.MouseEvent
-	X float32
-	Y float32
+	ViewportX float32
+	ViewportY float32
 }
 
 // ViewportData holds the data for a Viewport component.
@@ -100,12 +100,12 @@ func (c *viewportComponent) OnKeyboardEvent(element *ui.Element, event ui.Keyboa
 
 func (c *viewportComponent) OnMouseEvent(element *ui.Element, event ui.MouseEvent) bool {
 	size := element.Bounds().Size
-	x := -1.0 + 2.0*float32(event.Position.X)/float32(size.Width)
-	y := 1.0 - 2.0*float32(event.Position.Y)/float32(size.Height)
+	x := -1.0 + 2.0*float32(event.X)/float32(size.Width)
+	y := 1.0 - 2.0*float32(event.Y)/float32(size.Height)
 	return c.onMouseEvent(ViewportMouseEvent{
 		MouseEvent: event,
-		X:          x,
-		Y:          y,
+		ViewportX:  x,
+		ViewportY:  y,
 	})
 }
 

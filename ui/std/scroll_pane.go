@@ -2,7 +2,6 @@ package std
 
 import (
 	"github.com/mokiat/gog/opt"
-	"github.com/mokiat/gomath/dprec"
 	"github.com/mokiat/lacking/ui"
 	co "github.com/mokiat/lacking/ui/component"
 	"github.com/mokiat/lacking/ui/layout"
@@ -36,10 +35,10 @@ type scrollPaneComponent struct {
 	canScrollVertically   bool
 	isFocused             bool
 
-	offsetX    float64
-	offsetY    float64
-	maxOffsetX float64
-	maxOffsetY float64
+	offsetX    float32
+	offsetY    float32
+	maxOffsetX float32
+	maxOffsetY float32
 }
 
 func (c *scrollPaneComponent) OnUpsert() {
@@ -60,19 +59,27 @@ func (c *scrollPaneComponent) Apply(element *ui.Element) {
 		if layoutConfig.Width.Specified {
 			childSize.Width = layoutConfig.Width.Value
 		}
-		if !c.canScrollHorizontally && layoutConfig.GrowHorizontally {
-			childSize.Width = maxInt(childSize.Width, contentBounds.Width)
+		if !c.canScrollHorizontally {
+			if layoutConfig.GrowHorizontally {
+				childSize.Width = contentBounds.Width
+			} else {
+				childSize.Width = min(contentBounds.Width, childSize.Width)
+			}
 		}
 		if layoutConfig.Height.Specified {
 			childSize.Height = layoutConfig.Height.Value
 		}
-		if !c.canScrollVertically && layoutConfig.GrowVertically {
-			childSize.Height = maxInt(childSize.Height, contentBounds.Height)
+		if !c.canScrollVertically {
+			if layoutConfig.GrowVertically {
+				childSize.Height = contentBounds.Height
+			} else {
+				childSize.Height = min(contentBounds.Height, childSize.Height)
+			}
 		}
 
 		maxChildSize = ui.Size{
-			Width:  maxInt(maxChildSize.Width, childSize.Width),
-			Height: maxInt(maxChildSize.Height, childSize.Height),
+			Width:  max(maxChildSize.Width, childSize.Width),
+			Height: max(maxChildSize.Height, childSize.Height),
 		}
 
 		childElement.SetBounds(ui.Bounds{
@@ -81,10 +88,10 @@ func (c *scrollPaneComponent) Apply(element *ui.Element) {
 		})
 	}
 
-	c.maxOffsetX = float64(maxInt(0, maxChildSize.Width-contentBounds.Width))
-	c.maxOffsetY = float64(maxInt(0, maxChildSize.Height-contentBounds.Height))
-	c.offsetX = dprec.Clamp(c.offsetX, 0.0, c.maxOffsetX)
-	c.offsetY = dprec.Clamp(c.offsetY, 0.0, c.maxOffsetY)
+	c.maxOffsetX = float32(max(0, maxChildSize.Width-contentBounds.Width))
+	c.maxOffsetY = float32(max(0, maxChildSize.Height-contentBounds.Height))
+	c.offsetX = min(max(c.offsetX, 0), c.maxOffsetX)
+	c.offsetY = min(max(c.offsetY, 0), c.maxOffsetY)
 
 	element.SetIdealSize(maxChildSize.Grow(element.Padding().Size()))
 }
@@ -92,22 +99,22 @@ func (c *scrollPaneComponent) Apply(element *ui.Element) {
 func (c *scrollPaneComponent) OnKeyboardEvent(element *ui.Element, event ui.KeyboardEvent) bool {
 	switch event.Code {
 	case ui.KeyCodeArrowDown:
-		if event.Type == ui.KeyboardEventTypeKeyDown || event.Type == ui.KeyboardEventTypeRepeat {
+		if event.Action == ui.KeyboardActionDown || event.Action == ui.KeyboardActionRepeat {
 			c.scroll(element, 0.0, -10.0)
 			return true
 		}
 	case ui.KeyCodePageDown:
-		if event.Type == ui.KeyboardEventTypeKeyDown || event.Type == ui.KeyboardEventTypeRepeat {
+		if event.Action == ui.KeyboardActionDown || event.Action == ui.KeyboardActionRepeat {
 			c.scroll(element, 0.0, -100.0)
 			return true
 		}
 	case ui.KeyCodeArrowUp:
-		if event.Type == ui.KeyboardEventTypeKeyDown || event.Type == ui.KeyboardEventTypeRepeat {
+		if event.Action == ui.KeyboardActionDown || event.Action == ui.KeyboardActionRepeat {
 			c.scroll(element, 0.0, 10.0)
 			return true
 		}
 	case ui.KeyCodePageUp:
-		if event.Type == ui.KeyboardEventTypeKeyDown || event.Type == ui.KeyboardEventTypeRepeat {
+		if event.Action == ui.KeyboardActionDown || event.Action == ui.KeyboardActionRepeat {
 			c.scroll(element, 0.0, 100.0)
 			return true
 		}
@@ -117,8 +124,11 @@ func (c *scrollPaneComponent) OnKeyboardEvent(element *ui.Element, event ui.Keyb
 
 func (c *scrollPaneComponent) OnMouseEvent(element *ui.Element, event ui.MouseEvent) bool {
 	// TODO: Support mouse dragging as a means to scroll
-	c.scroll(element, event.ScrollX*10.0, event.ScrollY*10.0)
-	return true
+	if event.Action == ui.MouseActionScroll {
+		c.scroll(element, event.ScrollX, event.ScrollY)
+		return true
+	}
+	return false
 }
 
 func (c *scrollPaneComponent) Render() co.Instance {
@@ -134,14 +144,14 @@ func (c *scrollPaneComponent) Render() co.Instance {
 	})
 }
 
-func (c *scrollPaneComponent) scroll(element *ui.Element, deltaX, deltaY float64) {
+func (c *scrollPaneComponent) scroll(element *ui.Element, deltaX, deltaY float32) {
 	c.offsetX -= deltaX
 	c.offsetY -= deltaY
 	if c.canScrollHorizontally && !c.canScrollVertically {
-		c.offsetX -= deltaY * 10
+		c.offsetX -= deltaY
 	}
-	c.offsetX = dprec.Clamp(c.offsetX, 0.0, c.maxOffsetX)
-	c.offsetY = dprec.Clamp(c.offsetY, 0.0, c.maxOffsetY)
+	c.offsetX = min(max(c.offsetX, 0), c.maxOffsetX)
+	c.offsetY = min(max(c.offsetY, 0), c.maxOffsetY)
 
 	c.Apply(element)
 	element.Invalidate()

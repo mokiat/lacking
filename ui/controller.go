@@ -22,6 +22,8 @@ func NewController(locator resource.ReadLocator, shaders ShaderCollection, initF
 var _ app.Controller = (*Controller)(nil)
 
 type Controller struct {
+	app.NopController
+
 	locator resource.ReadLocator
 	shaders ShaderCollection
 
@@ -32,6 +34,16 @@ type Controller struct {
 
 	uiWindow        *Window
 	uiWindowHandler WindowHandler
+
+	modifierLeftControl  bool
+	modifierRightControl bool
+	modifierLeftShift    bool
+	modifierRightShift   bool
+	modifierLeftAlt      bool
+	modifierRightAlt     bool
+	modifierLeftSuper    bool
+	modifierRightSuper   bool
+	modifierCapsLock     bool
 }
 
 func (c *Controller) OnCreate(appWindow app.Window) {
@@ -59,23 +71,33 @@ func (c *Controller) OnFramebufferResize(window app.Window, width, height int) {
 }
 
 func (c *Controller) OnKeyboardEvent(window app.Window, event app.KeyboardEvent) bool {
+	c.trackModifiers(event)
 	return c.uiWindowHandler.OnKeyboardEvent(KeyboardEvent{
-		Type:      event.Type,
-		Code:      event.Code,
-		Rune:      event.Rune,
-		Modifiers: event.Modifiers,
+		Action:    KeyboardAction(event.Action),
+		Code:      KeyCode(event.Code),
+		Rune:      event.Character,
+		Modifiers: c.buildModifierSet(),
 	})
 }
 
 func (c *Controller) OnMouseEvent(window app.Window, event app.MouseEvent) bool {
 	return c.uiWindowHandler.OnMouseEvent(MouseEvent{
-		Index:    event.Index,
-		Position: NewPosition(event.X, event.Y),
-		Type:     event.Type,
-		Button:   event.Button,
-		Payload:  event.Payload,
-		ScrollX:  event.ScrollX,
-		ScrollY:  event.ScrollY,
+		Index:     event.Index,
+		Action:    MouseAction(event.Action),
+		Button:    MouseButton(event.Button),
+		X:         event.X,
+		Y:         event.Y,
+		ScrollX:   float32(event.ScrollX),
+		ScrollY:   float32(event.ScrollY),
+		Modifiers: c.buildModifierSet(),
+		Payload:   event.Payload,
+	})
+}
+
+func (c *Controller) OnClipboardEvent(window app.Window, event app.ClipboardEvent) bool {
+	return c.uiWindowHandler.OnClipboardEvent(ClipboardEvent{
+		Action: ClipboardActionPaste,
+		Text:   event.Text,
 	})
 }
 
@@ -83,11 +105,63 @@ func (c *Controller) OnRender(window app.Window) {
 	c.uiWindowHandler.OnRender()
 }
 
-func (c *Controller) OnCloseRequested(window app.Window) {
-	c.uiWindowHandler.OnCloseRequested()
+func (c *Controller) OnCloseRequested(window app.Window) bool {
+	return c.uiWindowHandler.OnCloseRequested()
 }
 
 func (c *Controller) OnDestroy(window app.Window) {
 	c.fntFact.Free()
 	c.canvas.onDestroy()
+}
+
+func (c *Controller) trackModifiers(event app.KeyboardEvent) {
+	var pressed bool
+	switch event.Action {
+	case app.KeyboardActionUp:
+		pressed = false
+	case app.KeyboardActionDown:
+		pressed = true
+	default:
+		return // does not affect modifiers
+	}
+	switch event.Code {
+	case app.KeyCodeLeftControl:
+		c.modifierLeftControl = pressed
+	case app.KeyCodeRightControl:
+		c.modifierRightControl = pressed
+	case app.KeyCodeLeftShift:
+		c.modifierLeftShift = pressed
+	case app.KeyCodeRightShift:
+		c.modifierRightShift = pressed
+	case app.KeyCodeLeftAlt:
+		c.modifierLeftAlt = pressed
+	case app.KeyCodeRightAlt:
+		c.modifierRightAlt = pressed
+	case app.KeyCodeLeftSuper:
+		c.modifierLeftSuper = pressed
+	case app.KeyCodeRightSuper:
+		c.modifierRightSuper = pressed
+	case app.KeyCodeCaps:
+		c.modifierCapsLock = pressed
+	}
+}
+
+func (c *Controller) buildModifierSet() KeyModifierSet {
+	var result KeyModifierSet
+	if c.modifierLeftControl || c.modifierRightControl {
+		result |= KeyModifierSet(KeyModifierControl)
+	}
+	if c.modifierLeftShift || c.modifierRightShift {
+		result |= KeyModifierSet(KeyModifierShift)
+	}
+	if c.modifierLeftAlt || c.modifierRightAlt {
+		result |= KeyModifierSet(KeyModifierAlt)
+	}
+	if c.modifierLeftSuper || c.modifierRightSuper {
+		result |= KeyModifierSet(KeyModifierSuper)
+	}
+	if c.modifierCapsLock {
+		result |= KeyModifierSet(KeyModifierCapsLock)
+	}
+	return result
 }

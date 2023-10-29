@@ -2,33 +2,30 @@ package preset
 
 import (
 	"github.com/mokiat/gomath/dprec"
-	"github.com/mokiat/lacking/app"
 	"github.com/mokiat/lacking/game/ecs"
 	"github.com/mokiat/lacking/game/graphics"
 	"github.com/mokiat/lacking/game/physics/collision"
 	"github.com/mokiat/lacking/ui"
 )
 
-func NewCarSystem(ecsScene *ecs.Scene, gfxScene *graphics.Scene, gamepadProvider GamepadProvider) *CarSystem {
+func NewCarSystem(ecsScene *ecs.Scene, gfxScene *graphics.Scene) *CarSystem {
 	return &CarSystem{
-		ecsScene:        ecsScene,
-		gfxScene:        gfxScene,
-		gamepadProvider: gamepadProvider,
+		ecsScene: ecsScene,
+		gfxScene: gfxScene,
 
-		keysOfInterest: make(map[app.KeyCode]struct{}),
-		keyStates:      make(map[app.KeyCode]bool),
+		keysOfInterest: make(map[ui.KeyCode]struct{}),
+		keyStates:      make(map[ui.KeyCode]bool),
 
 		mouseOfInterest:   false,
-		mouseButtonStates: make(map[app.MouseButton]bool),
+		mouseButtonStates: make(map[ui.MouseButton]bool),
 		mouseAreaWidth:    1.0,
 		mouseAreaHeight:   1.0,
 	}
 }
 
 type CarSystem struct {
-	ecsScene        *ecs.Scene
-	gfxScene        *graphics.Scene
-	gamepadProvider GamepadProvider
+	ecsScene *ecs.Scene
+	gfxScene *graphics.Scene
 
 	keysOfInterest map[ui.KeyCode]struct{}
 	keyStates      map[ui.KeyCode]bool
@@ -39,7 +36,7 @@ type CarSystem struct {
 	mouseAreaHeight   int
 	mouseX            int
 	mouseY            int
-	mouseScroll       float64
+	mouseScroll       float32
 }
 
 func (s *CarSystem) OnMouseEvent(element *ui.Element, event ui.MouseEvent) bool {
@@ -49,16 +46,16 @@ func (s *CarSystem) OnMouseEvent(element *ui.Element, event ui.MouseEvent) bool 
 	bounds := element.Bounds()
 	s.mouseAreaWidth = bounds.Width
 	s.mouseAreaHeight = bounds.Height
-	switch event.Type {
-	case ui.MouseEventTypeDown:
+	switch event.Action {
+	case ui.MouseActionDown:
 		s.mouseButtonStates[event.Button] = true
-	case ui.MouseEventTypeUp:
+	case ui.MouseActionUp:
 		s.mouseButtonStates[event.Button] = false
-	case ui.MouseEventTypeScroll:
+	case ui.MouseActionScroll:
 		s.mouseScroll += event.ScrollY
-	case ui.MouseEventTypeMove:
-		s.mouseX = event.Position.X
-		s.mouseY = event.Position.Y
+	case ui.MouseActionMove:
+		s.mouseX = event.X
+		s.mouseY = event.Y
 	}
 	return true
 }
@@ -67,10 +64,10 @@ func (s *CarSystem) OnKeyboardEvent(event ui.KeyboardEvent) bool {
 	if _, ok := s.keysOfInterest[event.Code]; !ok {
 		return false
 	}
-	switch event.Type {
-	case ui.KeyboardEventTypeKeyDown:
+	switch event.Action {
+	case ui.KeyboardActionDown:
 		s.keyStates[event.Code] = true
-	case ui.KeyboardEventTypeKeyUp:
+	case ui.KeyboardActionUp:
 		s.keyStates[event.Code] = false
 	}
 	return true
@@ -202,13 +199,14 @@ func (s *CarSystem) updateMouse(elapsedSeconds float64, entity *ecs.Entity) {
 	}
 	carComp.Deceleration = dprec.Clamp(carComp.Deceleration, 0.0, 1.0)
 
-	if s.mouseScroll < -0.1 {
+	const epsilon = 1.0
+	if s.mouseScroll < -epsilon {
 		carComp.Gear = CarGearReverse
 	}
-	if s.mouseScroll > 0.1 {
+	if s.mouseScroll > epsilon {
 		carComp.Gear = CarGearForward
 	}
-	s.mouseScroll = 0.0
+	s.mouseScroll = 0
 
 	carComp.Recover = s.mouseButtonStates[ui.MouseButtonMiddle]
 

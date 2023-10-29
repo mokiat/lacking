@@ -34,7 +34,7 @@ func (c *dropZoneComponent) OnUpsert() {
 }
 
 func (c *dropZoneComponent) OnMouseEvent(element *ui.Element, event ui.MouseEvent) bool {
-	if event.Type != ui.MouseEventTypeDrop {
+	if event.Action != ui.MouseActionDrop {
 		return false
 	}
 	filePayload, ok := event.Payload.(ui.FilepathPayload)

@@ -7,10 +7,17 @@ type MouseEvent struct {
 
 	// Index indicates which mouse triggered the event. By default
 	// the index for a the primary mouse is 0.
+	//
 	// This is applicable for devices with multiple pointers
 	// (mobile) or in case a second mouse is emulated
 	// (e.g. with a game controller).
 	Index int
+
+	// Action indicates the action performed with the mouse.
+	Action MouseAction
+
+	// Button specifies the button for which the event is applicable.
+	Button MouseButton
 
 	// X specifies the horizontal position of the mouse.
 	X int
@@ -18,102 +25,78 @@ type MouseEvent struct {
 	// Y specifies the vertical position of the mouse.
 	Y int
 
-	// Type specifies the mouse event type.
-	Type MouseEventType
-
-	// Button specifies the button for which the event is
-	// applicable.
-	Button MouseButton
-
 	// ScrollX determines the amount of horizontal scroll.
 	ScrollX float64
 
 	// ScrollY determines the amount of vertical scroll.
 	ScrollY float64
 
-	// Payload contains the data that was dropped in case of
-	// a MouseEventTypeDrop event.
-	Payload interface{}
+	// Payload contains any external data associated with the event.
+	Payload any
 }
 
 // String returns a string representation of this event.
 func (e MouseEvent) String() string {
-	return fmt.Sprintf("(%d,(%d,%d),%s,%s,%.2f,%.2f)",
+	return fmt.Sprintf("(%d,%s,%s,(%d,%d),(%f,%f))",
 		e.Index,
+		e.Action,
+		e.Button,
 		e.X,
 		e.Y,
-		e.Type,
-		e.Button,
 		e.ScrollX,
 		e.ScrollY,
 	)
 }
 
 const (
-	// MouseEventTypeDown indicates that a mouse button
-	// was pressed down over the receiver control.
-	MouseEventTypeDown MouseEventType = 1 + iota
+	// MouseActionDown indicates that a mouse button was pressed down.
+	MouseActionDown MouseAction = 1 + iota
 
-	// MouseEventTypeUp indicates that a mouse button
-	// was released over the receiver control.
-	MouseEventTypeUp
+	// MouseActionUp indicates that a mouse button was released.
+	MouseActionUp
 
-	// MouseEventTypeMove indicates that the mouse was
-	// moved over the receiver control.
-	MouseEventTypeMove
+	// MouseActionMove indicates that the mouse was moved.
+	MouseActionMove
 
-	// MouseEventTypeDrag indicates that the mouse that
-	// was previously pressed within the receiver control
-	// is being moved.
-	// The even could be received for a motion outside the
-	// bounds of the control.
-	MouseEventTypeDrag
+	// MouseActionEnter indicates that the mouse has entered the window.
+	MouseActionEnter
 
-	// MouseEventTypeDrop indicates that some content was dropped
-	// within the receiver.
-	MouseEventTypeDrop
+	// MouseActionLeave indicates that the mouse has left the window.
+	//
+	// If the mouse was being dragged, further events may be sent from outside
+	// the window boundary.
+	MouseActionLeave
 
-	// MouseEventTypeDragCancel indicates that a drag operation
-	// was cancelled by the parent control (other control might
-	// have taken over).
-	MouseEventTypeDragCancel
+	// MouseActionDrop indicates that some payload was dropped onto the window.
+	MouseActionDrop
 
-	// MouseEventTypeEnter indicates that the mouse has
-	// entered the bounds of the control.
-	MouseEventTypeEnter
-
-	// MouseEventTypeLeave indicates that the mouse has
-	// left the bounds of the control.
-	// If the mouse was being dragged, the control may
-	// receive further events.
-	MouseEventTypeLeave
-
-	// MouseEventTypeScroll indicates that the mouse wheel
-	// was scrolled. The X and Y values of the event indicate the
-	// offset.
-	MouseEventTypeScroll
+	// MouseActionScroll indicates that the mouse wheel was scrolled.
+	//
+	// The ScrollX and ScrollY values of the event indicate the offset in
+	// abstract units (comparable to pixels in magnitude).
+	MouseActionScroll
 )
 
-// MouseEventType represents the type of mouse event.
-type MouseEventType int
+// MouseAction represents the type of action performed with the mouse.
+type MouseAction int
 
 // String returns a string representation of this event type.
-func (t MouseEventType) String() string {
-	switch t {
-	case MouseEventTypeDown:
+func (a MouseAction) String() string {
+	switch a {
+	case MouseActionDown:
 		return "DOWN"
-	case MouseEventTypeUp:
+	case MouseActionUp:
 		return "UP"
-	case MouseEventTypeMove:
+	case MouseActionMove:
 		return "MOVE"
-	case MouseEventTypeDrag:
-		return "DRAG"
-	case MouseEventTypeDragCancel:
-		return "DRAGCANCEL"
-	case MouseEventTypeEnter:
+	case MouseActionEnter:
 		return "ENTER"
-	case MouseEventTypeLeave:
+	case MouseActionLeave:
 		return "LEAVE"
+	case MouseActionDrop:
+		return "DROP"
+	case MouseActionScroll:
+		return "SCROLL"
 	default:
 		return "UNKNOWN"
 	}
@@ -121,7 +104,7 @@ func (t MouseEventType) String() string {
 
 const (
 	// MouseButtonLeft specifies the left mouse button.
-	MouseButtonLeft = 1 + iota
+	MouseButtonLeft MouseButton = 1 + iota
 
 	// MouseButtonMiddle specifies the middle mouse button.
 	MouseButtonMiddle
@@ -148,7 +131,7 @@ func (b MouseButton) String() string {
 }
 
 // FilepathPayload is a type of Payload that occurs when files
-// have been dragged and dropped into the window.
+// have been dragged and dropped onto the window.
 type FilepathPayload struct {
 
 	// Paths contains file paths to the dropped resources.

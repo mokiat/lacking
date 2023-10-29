@@ -82,8 +82,8 @@ func (c *editboxComponent) Render() co.Instance {
 }
 
 func (c *editboxComponent) OnKeyboardEvent(element *ui.Element, event ui.KeyboardEvent) bool {
-	switch event.Type {
-	case ui.KeyboardEventTypeKeyDown, ui.KeyboardEventTypeRepeat:
+	switch event.Action {
+	case ui.KeyboardActionDown, ui.KeyboardActionRepeat:
 		switch event.Code {
 		case ui.KeyCodeBackspace:
 			if len(c.volatileText) > 0 {
@@ -98,7 +98,7 @@ func (c *editboxComponent) OnKeyboardEvent(element *ui.Element, event ui.Keyboar
 			c.onChanged(c.text)
 			element.Window().DiscardFocus()
 		}
-	case ui.KeyboardEventTypeType:
+	case ui.KeyboardActionType:
 		c.volatileText += string(event.Rune)
 		element.Invalidate()
 	}

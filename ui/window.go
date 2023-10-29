@@ -34,7 +34,7 @@ func newWindow(appWindow app.Window, canvas *Canvas, resMan *resourceManager) (*
 // critical events.
 type WindowHandler interface {
 
-	// TOOD: Remove this interface and make it all internal
+	// TODO: Remove this interface and make it all internal
 
 	// OnResize is called whenever the native window has
 	// been resized.
@@ -52,14 +52,18 @@ type WindowHandler interface {
 	// has been registered.
 	OnMouseEvent(event MouseEvent) bool
 
+	// OnClipboardEvent is called whenever a clipboard paste operation
+	// is being performed.
+	OnClipboardEvent(event ClipboardEvent) bool
+
 	// OnRender is called whenever the Window should redraw
 	// itself.
 	OnRender()
 
 	// OnCloseRequested is called whenever the end-user has
-	// indicated that they would like to close the appplication.
+	// indicated that they would like to close the application.
 	// (e.g. using the close button on the application)
-	OnCloseRequested()
+	OnCloseRequested() bool
 }
 
 // Window represents an application window.
@@ -76,6 +80,8 @@ type Window struct {
 	enteredElements    map[*Element]struct{}
 
 	oldMousePosition Position
+
+	closeInterceptor func() bool
 
 	lastRender time.Time
 }
@@ -145,6 +151,12 @@ func (w *Window) dfsElementByID(current *Element, id string) (*Element, bool) {
 	return nil, false
 }
 
+// SetCloseInterceptor configures a handler to be notified of close
+// requests by the user. This is not called on manual Close operations.
+func (w *Window) SetCloseInterceptor(interceptor func() bool) {
+	w.closeInterceptor = interceptor
+}
+
 // IsElementFocused returns whether the specified element is the currently
 // focused Element.
 func (w *Window) IsElementFocused(element *Element) bool {
@@ -157,10 +169,92 @@ func (w *Window) GrantFocus(element *Element) {
 	w.Invalidate()
 }
 
+// BubbleFocus releases focus from the current element and tries to find
+// a parent that is focusable in order to grant it focus.
+func (w *Window) BubbleFocus() {
+	if w.focusedElement == nil {
+		return
+	}
+	current := w.focusedElement.parent
+	for current != nil {
+		if current.focusable {
+			w.focusedElement = current
+			return
+		}
+		current = current.parent
+	}
+}
+
 // DiscardFocus removes the focus from any Element.
 func (w *Window) DiscardFocus() {
 	w.focusedElement = nil
 	w.Invalidate()
+}
+
+func (w *Window) Save() bool {
+	currentElement := w.focusedElement
+	for currentElement != nil {
+		if currentElement.onSave() {
+			return true
+		}
+		currentElement = currentElement.parent
+	}
+	return false
+}
+
+func (w *Window) Undo() bool {
+	currentElement := w.focusedElement
+	for currentElement != nil {
+		if currentElement.onUndo() {
+			return true
+		}
+		currentElement = currentElement.parent
+	}
+	return false
+}
+
+func (w *Window) Redo() bool {
+	currentElement := w.focusedElement
+	for currentElement != nil {
+		if currentElement.onRedo() {
+			return true
+		}
+		currentElement = currentElement.parent
+	}
+	return false
+}
+
+func (w *Window) Cut() bool {
+	event := ClipboardEvent{
+		Action: ClipboardActionCut,
+	}
+	currentElement := w.focusedElement
+	for currentElement != nil {
+		if currentElement.onClipboardEvent(event) {
+			return true
+		}
+		currentElement = currentElement.parent
+	}
+	return false
+}
+
+func (w *Window) Copy() bool {
+	event := ClipboardEvent{
+		Action: ClipboardActionCopy,
+	}
+	currentElement := w.focusedElement
+	for currentElement != nil {
+		if currentElement.onClipboardEvent(event) {
+			return true
+		}
+		currentElement = currentElement.parent
+	}
+	return false
+}
+
+func (w *Window) Paste() bool {
+	w.RequestPaste()
+	return true
 }
 
 type windowHandler struct {
@@ -192,18 +286,29 @@ func (w *windowHandler) OnKeyboardEvent(event KeyboardEvent) bool {
 }
 
 func (w *windowHandler) OnMouseEvent(event MouseEvent) bool {
-	w.checkMouseLeaveEnter(event.Position)
-	w.oldMousePosition = event.Position
+	w.checkMouseLeaveEnter(event.Position())
+	w.oldMousePosition = event.Position()
 
-	if event.Type == MouseEventTypeDown {
+	if event.Action == MouseActionDown {
 		oldFocusedElement := w.focusedElement
-		w.processFocusChange(w.root, event.Position)
+		w.processFocusChange(w.root, event.Position())
 		if w.focusedElement != oldFocusedElement {
 			w.Invalidate()
 		}
 	}
 
 	return w.processMouseEvent(w.root, event)
+}
+
+func (w *windowHandler) OnClipboardEvent(event ClipboardEvent) bool {
+	current := w.focusedElement
+	for current != nil {
+		if current.focusable && current.onClipboardEvent(event) {
+			return true
+		}
+		current = current.parent
+	}
+	return false
 }
 
 func (w *windowHandler) OnRender() {
@@ -235,8 +340,11 @@ func (w *windowHandler) OnRender() {
 	w.canvas.onEnd()
 }
 
-func (w *windowHandler) OnCloseRequested() {
-	w.Close()
+func (w *windowHandler) OnCloseRequested() bool {
+	if w.closeInterceptor != nil {
+		return w.closeInterceptor()
+	}
+	return true
 }
 
 func (w *windowHandler) processFocusChange(element *Element, position Position) {
@@ -284,8 +392,9 @@ func (w *windowHandler) processMouseLeave(element *Element, mousePosition Positi
 	relativeMousePosition := mousePosition.Translate(bounds.Position.Inverse())
 	if !bounds.Contains(mousePosition) || !element.enabled {
 		element.onMouseEvent(MouseEvent{
-			Position: relativeMousePosition,
-			Type:     MouseEventTypeLeave,
+			Action: MouseActionLeave,
+			X:      relativeMousePosition.X,
+			Y:      relativeMousePosition.Y,
 		})
 	}
 
@@ -300,8 +409,9 @@ func (w *windowHandler) processMouseLeaveInvisible(mousePosition Position) {
 			bounds := element.AbsoluteBounds()
 			relativeMousePosition := mousePosition.Translate(bounds.Position.Inverse())
 			element.onMouseEvent(MouseEvent{
-				Position: relativeMousePosition,
-				Type:     MouseEventTypeLeave,
+				Action: MouseActionLeave,
+				X:      relativeMousePosition.X,
+				Y:      relativeMousePosition.Y,
 			})
 		}
 	}
@@ -322,8 +432,9 @@ func (w *windowHandler) processMouseEnter(element *Element, mousePosition Positi
 	relativeMousePosition := mousePosition.Translate(bounds.Position.Inverse())
 	if _, ok := w.oldEnteredElements[element]; !ok {
 		element.onMouseEvent(MouseEvent{
-			Position: relativeMousePosition,
-			Type:     MouseEventTypeEnter,
+			Action: MouseActionEnter,
+			X:      relativeMousePosition.X,
+			Y:      relativeMousePosition.Y,
 		})
 	}
 	w.enteredElements[element] = struct{}{}
@@ -340,9 +451,11 @@ func (w *windowHandler) processMouseEvent(element *Element, event MouseEvent) bo
 
 	// Check if any of the children (from top to bottom) can process the event.
 	for childElement := element.lastChild; childElement != nil; childElement = childElement.leftSibling {
-		if childBounds := childElement.Bounds(); childBounds.Contains(event.Position) {
+		if childBounds := childElement.Bounds(); childBounds.Contains(event.Position()) {
+			translatedPosition := event.Position().Translate(childBounds.Position.Inverse())
 			translatedEvent := event
-			translatedEvent.Position = event.Position.Translate(childBounds.Position.Inverse())
+			translatedEvent.X = translatedPosition.X
+			translatedEvent.Y = translatedPosition.Y
 			if w.processMouseEvent(childElement, translatedEvent) {
 				return true
 			}

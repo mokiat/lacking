@@ -32,6 +32,26 @@ type ElementRenderHandler interface {
 	OnRender(element *Element, canvas *Canvas)
 }
 
+// ElementHistoryHandler is a type of ElementHandler that can be
+// used to receive undo and redo related events.
+type ElementHistoryHandler interface {
+	OnUndo(element *Element) bool
+	OnRedo(element *Element) bool
+}
+
+// ElementStateHandler is a type of ElementHandler that can be
+// used to receive state related events.
+type ElementStateHandler interface {
+	OnSave(element *Element) bool
+}
+
+// ElementClipboardHandler is a type of EventHandler that can be
+// used to receive events when an element is focused and clipboard
+// actions are performed.
+type ElementClipboardHandler interface {
+	OnClipboardEvent(element *Element, event ClipboardEvent) bool
+}
+
 func newElement(window *Window) *Element {
 	return &Element{
 		window:    window,
@@ -423,9 +443,17 @@ func (e *Element) SetFocusable(focusable bool) {
 	e.focusable = focusable
 }
 
+// IsFocused returns whether this Element is currently focused.
+func (e *Element) IsFocused() bool {
+	return e.window.IsElementFocused(e)
+}
+
 // Destroy removes this Element from the hierarchy, as well
 // as any child Elements and releases all allocated resources.
 func (e *Element) Destroy() {
+	if e.window != nil {
+		e.window.BubbleFocus()
+	}
 	e.Detach()
 }
 
@@ -455,6 +483,34 @@ func (e *Element) onKeyboardEvent(event KeyboardEvent) bool {
 func (e *Element) onMouseEvent(event MouseEvent) bool {
 	if mouseHandler, ok := e.essence.(ElementMouseHandler); ok {
 		return mouseHandler.OnMouseEvent(e, event)
+	}
+	return false
+}
+
+func (e *Element) onClipboardEvent(event ClipboardEvent) bool {
+	if keyboardHandler, ok := e.essence.(ElementClipboardHandler); ok {
+		return keyboardHandler.OnClipboardEvent(e, event)
+	}
+	return false
+}
+
+func (e *Element) onSave() bool {
+	if historyHandler, ok := e.essence.(ElementStateHandler); ok {
+		return historyHandler.OnSave(e)
+	}
+	return false
+}
+
+func (e *Element) onUndo() bool {
+	if historyHandler, ok := e.essence.(ElementHistoryHandler); ok {
+		return historyHandler.OnUndo(e)
+	}
+	return false
+}
+
+func (e *Element) onRedo() bool {
+	if historyHandler, ok := e.essence.(ElementHistoryHandler); ok {
+		return historyHandler.OnRedo(e)
 	}
 	return false
 }
