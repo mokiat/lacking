@@ -70,9 +70,6 @@ func (c *Controller) OnDestroy(window app.Window) {
 	c.ioWorker.Shutdown()
 }
 
-func (c *Controller) OnResize(window app.Window, width, height int) {
-}
-
 func (c *Controller) OnFramebufferResize(window app.Window, width, height int) {
 	c.viewport = graphics.NewViewport(0, 0, width, height)
 }
