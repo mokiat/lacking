@@ -81,6 +81,8 @@ type Window struct {
 
 	oldMousePosition Position
 
+	closeInterceptor func() bool
+
 	lastRender time.Time
 }
 
@@ -147,6 +149,12 @@ func (w *Window) dfsElementByID(current *Element, id string) (*Element, bool) {
 		}
 	}
 	return nil, false
+}
+
+// SetCloseInterceptor configures a handler to be notified of close
+// requests by the user. This is not called on manual Close operations.
+func (w *Window) SetCloseInterceptor(interceptor func() bool) {
+	w.closeInterceptor = interceptor
 }
 
 // IsElementFocused returns whether the specified element is the currently
@@ -333,7 +341,10 @@ func (w *windowHandler) OnRender() {
 }
 
 func (w *windowHandler) OnCloseRequested() bool {
-	return true // TODO: Propagate event down. (BFS or active element up?)
+	if w.closeInterceptor != nil {
+		return w.closeInterceptor()
+	}
+	return true
 }
 
 func (w *windowHandler) processFocusChange(element *Element, position Position) {
