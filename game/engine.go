@@ -3,7 +3,6 @@ package game
 import (
 	"time"
 
-	"github.com/mokiat/gog/ds"
 	"github.com/mokiat/lacking/game/asset"
 	"github.com/mokiat/lacking/game/ecs"
 	"github.com/mokiat/lacking/game/graphics"
@@ -51,9 +50,6 @@ func WithECS(ecsEngine *ecs.Engine) EngineOption {
 
 func NewEngine(opts ...EngineOption) *Engine {
 	result := &Engine{
-		preUpdateSubscriptions:  ds.NewList[*UpdateSubscription](0),
-		postUpdateSubscriptions: ds.NewList[*UpdateSubscription](0),
-
 		lastTick: time.Now(),
 	}
 	for _, opt := range opts {
@@ -70,9 +66,6 @@ type Engine struct {
 	gfxEngine     *graphics.Engine
 	ecsEngine     *ecs.Engine
 
-	preUpdateSubscriptions  *ds.List[*UpdateSubscription]
-	postUpdateSubscriptions *ds.List[*UpdateSubscription]
-
 	activeScene *Scene
 	lastTick    time.Time
 }
@@ -83,8 +76,6 @@ func (e *Engine) Create() {
 }
 
 func (e *Engine) Destroy() {
-	e.preUpdateSubscriptions.Clear()
-	e.postUpdateSubscriptions.Clear()
 	e.gfxEngine.Destroy()
 	// TODO: Release all scenes and all resource sets
 }
@@ -111,24 +102,6 @@ func (e *Engine) Graphics() *graphics.Engine {
 
 func (e *Engine) ECS() *ecs.Engine {
 	return e.ecsEngine
-}
-
-func (e *Engine) SubscribePreUpdate(callback UpdateCallback) *UpdateSubscription {
-	result := &UpdateSubscription{
-		list:     e.preUpdateSubscriptions,
-		callback: callback,
-	}
-	e.preUpdateSubscriptions.Add(result)
-	return result
-}
-
-func (e *Engine) SubscribePostUpdate(callback UpdateCallback) *UpdateSubscription {
-	result := &UpdateSubscription{
-		list:     e.postUpdateSubscriptions,
-		callback: callback,
-	}
-	e.postUpdateSubscriptions.Add(result)
-	return result
 }
 
 func (e *Engine) ActiveScene() *Scene {
@@ -174,17 +147,11 @@ func (e *Engine) Update() {
 	e.gfxEngine.Debug().Reset()
 
 	currentTime := time.Now()
-	elapsedSeconds := currentTime.Sub(e.lastTick).Seconds()
+	elapsedTime := currentTime.Sub(e.lastTick)
 	e.lastTick = currentTime
 
 	if e.activeScene != nil {
-		e.preUpdateSubscriptions.Each(func(sub *UpdateSubscription) {
-			sub.callback(e, e.activeScene, elapsedSeconds)
-		})
-		e.activeScene.Update(elapsedSeconds)
-		e.postUpdateSubscriptions.Each(func(sub *UpdateSubscription) {
-			sub.callback(e, e.activeScene, elapsedSeconds)
-		})
+		e.activeScene.Update(elapsedTime)
 	}
 }
 

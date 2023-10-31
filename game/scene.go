@@ -1,6 +1,8 @@
 package game
 
 import (
+	"time"
+
 	"github.com/mokiat/gog/ds"
 	"github.com/mokiat/gomath/dprec"
 	"github.com/mokiat/gomath/dtos"
@@ -20,6 +22,9 @@ func newScene(resourceSet *ResourceSet, physicsScene *physics.Scene, gfxScene *g
 
 		playbackPool: ds.NewPool[Playback](),
 		playbacks:    ds.NewList[*Playback](4),
+
+		preUpdateSubscriptions:  NewSubscriptionSet[UpdateCallback](),
+		postUpdateSubscriptions: NewSubscriptionSet[UpdateCallback](),
 	}
 }
 
@@ -32,6 +37,9 @@ type Scene struct {
 
 	playbackPool *ds.Pool[Playback]
 	playbacks    *ds.List[*Playback]
+
+	preUpdateSubscriptions  *SubscriptionSet[UpdateCallback]
+	postUpdateSubscriptions *SubscriptionSet[UpdateCallback]
 
 	frozen bool
 }
@@ -110,12 +118,35 @@ func (s *Scene) FindModel(name string) *Model {
 	return nil
 }
 
-func (s *Scene) Update(elapsedSeconds float64) {
-	if !s.frozen {
-		s.applyPlaybacks(elapsedSeconds)
-		s.physicsScene.Update(elapsedSeconds)
-		s.applyPhysicsToNode(s.root)
+func (s *Scene) SubscribePreUpdate(callback UpdateCallback) *UpdateSubscription {
+	return s.preUpdateSubscriptions.Subscribe(callback)
+}
+
+func (s *Scene) SubscribePostUpdate(callback UpdateCallback) *UpdateSubscription {
+	return s.postUpdateSubscriptions.Subscribe(callback)
+}
+
+func (s *Scene) Update(elapsedTime time.Duration) {
+	if s.frozen {
+		return
 	}
+
+	s.preUpdateSubscriptions.Each(func(callback UpdateCallback) {
+		callback(elapsedTime)
+	})
+
+	// TODO: Pre-physics
+	s.physicsScene.Update(elapsedTime.Seconds()) // FIXME: use ticker
+	// TODO: Post-physics
+
+	// TDOO: Pre-node
+	s.applyPlaybacks(elapsedTime)
+	s.applyPhysicsToNode(s.root)
+	// TODO: Post-node
+
+	s.postUpdateSubscriptions.Each(func(callback UpdateCallback) {
+		callback(elapsedTime)
+	})
 }
 
 func (s *Scene) Render(viewport graphics.Viewport) {
@@ -372,10 +403,10 @@ func (s *Scene) applyPhysicsToNode(node *Node) {
 	}
 }
 
-func (s *Scene) applyPlaybacks(elapsedSeconds float64) {
+func (s *Scene) applyPlaybacks(elapsedTime time.Duration) {
 	for _, playback := range s.playbacks.Unbox() {
 		if playback.playing {
-			playback.Advance(elapsedSeconds)
+			playback.Advance(elapsedTime.Seconds())
 			playback.animation.Apply(playback.head)
 		}
 	}
