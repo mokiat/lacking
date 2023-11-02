@@ -10,6 +10,7 @@ import (
 	"github.com/mokiat/lacking/game/graphics"
 	"github.com/mokiat/lacking/game/physics"
 	"github.com/mokiat/lacking/game/physics/collision"
+	"github.com/mokiat/lacking/game/timestep"
 	"github.com/mokiat/lacking/log"
 )
 
@@ -23,8 +24,8 @@ func newScene(resourceSet *ResourceSet, physicsScene *physics.Scene, gfxScene *g
 		playbackPool: ds.NewPool[Playback](),
 		playbacks:    ds.NewList[*Playback](4),
 
-		preUpdateSubscriptions:  NewSubscriptionSet[UpdateCallback](),
-		postUpdateSubscriptions: NewSubscriptionSet[UpdateCallback](),
+		preUpdateSubscriptions:  timestep.NewSubscriptionSet[timestep.UpdateCallback](),
+		postUpdateSubscriptions: timestep.NewSubscriptionSet[timestep.UpdateCallback](),
 	}
 }
 
@@ -38,8 +39,8 @@ type Scene struct {
 	playbackPool *ds.Pool[Playback]
 	playbacks    *ds.List[*Playback]
 
-	preUpdateSubscriptions  *SubscriptionSet[UpdateCallback]
-	postUpdateSubscriptions *SubscriptionSet[UpdateCallback]
+	preUpdateSubscriptions  *timestep.SubscriptionSet[timestep.UpdateCallback]
+	postUpdateSubscriptions *timestep.SubscriptionSet[timestep.UpdateCallback]
 
 	frozen bool
 }
@@ -118,11 +119,11 @@ func (s *Scene) FindModel(name string) *Model {
 	return nil
 }
 
-func (s *Scene) SubscribePreUpdate(callback UpdateCallback) *UpdateSubscription {
+func (s *Scene) SubscribePreUpdate(callback timestep.UpdateCallback) *timestep.UpdateSubscription {
 	return s.preUpdateSubscriptions.Subscribe(callback)
 }
 
-func (s *Scene) SubscribePostUpdate(callback UpdateCallback) *UpdateSubscription {
+func (s *Scene) SubscribePostUpdate(callback timestep.UpdateCallback) *timestep.UpdateSubscription {
 	return s.postUpdateSubscriptions.Subscribe(callback)
 }
 
@@ -131,12 +132,12 @@ func (s *Scene) Update(elapsedTime time.Duration) {
 		return
 	}
 
-	s.preUpdateSubscriptions.Each(func(callback UpdateCallback) {
+	s.preUpdateSubscriptions.Each(func(callback timestep.UpdateCallback) {
 		callback(elapsedTime)
 	})
 
 	// TODO: Pre-physics
-	s.physicsScene.Update(elapsedTime.Seconds()) // FIXME: use ticker
+	s.physicsScene.OnUpdate(elapsedTime)
 	// TODO: Post-physics
 
 	// TDOO: Pre-node
@@ -144,7 +145,7 @@ func (s *Scene) Update(elapsedTime time.Duration) {
 	s.applyPhysicsToNode(s.root)
 	// TODO: Post-node
 
-	s.postUpdateSubscriptions.Each(func(callback UpdateCallback) {
+	s.postUpdateSubscriptions.Each(func(callback timestep.UpdateCallback) {
 		callback(elapsedTime)
 	})
 }

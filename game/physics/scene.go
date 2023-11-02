@@ -9,14 +9,17 @@ import (
 	"github.com/mokiat/lacking/game/physics/collision"
 	"github.com/mokiat/lacking/game/physics/constraint"
 	"github.com/mokiat/lacking/game/physics/solver"
+	"github.com/mokiat/lacking/game/timestep"
 	"github.com/mokiat/lacking/util/metrics"
 	"github.com/mokiat/lacking/util/spatial"
 	"golang.org/x/exp/maps"
 )
 
-func newScene(engine *Engine, timestep time.Duration) *Scene {
+func newScene(engine *Engine, interval time.Duration) *Scene {
 	return &Scene{
 		engine: engine,
+
+		timeSegmenter: timestep.NewSegmenter(interval),
 
 		propOctree: spatial.NewStaticOctree[uint32](spatial.StaticOctreeSettings{
 			Size:                opt.V(32000.0),
@@ -43,7 +46,7 @@ func newScene(engine *Engine, timestep time.Duration) *Scene {
 
 		collisionSet: collision.NewIntersectionBucket(128),
 
-		stepSeconds:  timestep.Seconds(),
+		stepSeconds:  interval.Seconds(),
 		timeSpeed:    1.0,
 		gravity:      dprec.NewVec3(0.0, -9.8, 0.0),
 		windVelocity: dprec.NewVec3(0.0, 0.0, 0.0),
@@ -59,6 +62,7 @@ func newScene(engine *Engine, timestep time.Duration) *Scene {
 type Scene struct {
 	engine *Engine
 
+	timeSegmenter          *timestep.Segmenter
 	stepSeconds            float64
 	maxAcceleration        float64
 	maxAngularAcceleration float64
@@ -236,6 +240,24 @@ func (s *Scene) CreateDoubleBodyConstraint(primary, secondary *Body, solver solv
 	constraint.secondary = secondary
 	s.appendDBConstraint(constraint)
 	return constraint
+}
+
+// TODO: Rename to Update and get rid of the old Update
+func (s *Scene) OnUpdate(elapsedTime time.Duration) {
+	defer metrics.BeginRegion("physics:update").End()
+	s.timeSegmenter.Update(elapsedTime, s.onTickInterval, s.onTickLerp)
+}
+
+func (s *Scene) onTickInterval(elapsedTime time.Duration) {
+	elapsedSeconds := elapsedTime.Seconds()
+	s.runSimulation(elapsedSeconds * s.timeSpeed)
+}
+
+func (s *Scene) onTickLerp(alpha float64) {
+	for body := range s.dynamicBodies {
+		body.lerpPosition = dprec.Vec3Lerp(body.oldPosition, body.position, alpha)
+		body.slerpOrientation = dprec.QuatSlerp(body.oldOrientation, body.orientation, alpha)
+	}
 }
 
 // Update runs a number of physics iterations until the specified number of
