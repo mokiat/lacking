@@ -6,8 +6,6 @@ import (
 	"golang.org/x/exp/slices"
 )
 
-var staticOctreeLogger = spatialLogger.Path("/static-octree")
-
 var sizeToDoubleRadius = dprec.Sqrt(3)
 
 const unspecifiedIndex = int32(-1)
@@ -178,7 +176,7 @@ func (t *StaticOctree[T]) VisitStats() StaticOctreeVisitStats {
 // specified radius into account.
 func (t *StaticOctree[T]) Insert(position dprec.Vec3, radius float64, item T) {
 	if len(t.items) == cap(t.items) {
-		staticOctreeLogger.Warn("Item slice capacity %d reached. Will grow.", len(t.items))
+		logger.Warn("Item slice capacity (%d) reached for static octree! Will grow.", len(t.items))
 	}
 	t.isDirty = true
 	nodeIndex := t.pickNodeForItem(position, radius)
@@ -260,7 +258,7 @@ func (t *StaticOctree[T]) pickChildNode(parentNodeIndex int32, position dprec.Ve
 	parentNode.children[childIndex] = childNodeIndex
 
 	if len(t.nodes) == cap(t.nodes) {
-		staticOctreeLogger.Warn("Node slice capacity %d reached. Will grow.", len(t.nodes))
+		logger.Warn("Node slice capacity (%d) reached for static octree! Will grow.", len(t.nodes))
 	}
 	// NOTE: DO NOT use parentNode after this append as the ref might be towards
 	// an old slice.
