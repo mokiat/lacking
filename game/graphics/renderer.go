@@ -11,7 +11,6 @@ import (
 	"github.com/mokiat/gomath/sprec"
 	"github.com/mokiat/gomath/stod"
 	"github.com/mokiat/lacking/game/graphics/internal"
-	"github.com/mokiat/lacking/log"
 	"github.com/mokiat/lacking/render"
 	"github.com/mokiat/lacking/util/blob"
 	"github.com/mokiat/lacking/util/metrics"
@@ -545,7 +544,7 @@ func (r *sceneRenderer) ResetDebugLines() {
 
 func (r *sceneRenderer) QueueDebugLine(line debugLine) {
 	if len(r.debugLines) == cap(r.debugLines) {
-		log.Warn("No more debug lines allowed")
+		logger.Warn("No more debug lines allowed!")
 		return
 	}
 	r.debugLines = append(r.debugLines, line)
@@ -1229,7 +1228,7 @@ func (r *sceneRenderer) renderExposureProbePass(ctx renderCtx) {
 	defer metrics.BeginRegion("graphics:exposure pass").End()
 
 	if r.exposureFormat != render.DataFormatRGBA16F && r.exposureFormat != render.DataFormatRGBA32F {
-		log.Error("Skipping exposure due to unsupported framebuffer format %q", r.exposureFormat)
+		logger.Error("Skipping exposure due to unsupported framebuffer format (%q)!", r.exposureFormat)
 		return
 	}
 
