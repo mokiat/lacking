@@ -5,7 +5,6 @@ import (
 	"image"
 	"reflect"
 
-	"github.com/mokiat/lacking/log"
 	"github.com/mokiat/lacking/ui"
 	"golang.org/x/image/font/opentype"
 )
@@ -172,8 +171,8 @@ func Window(scope Scope) *ui.Window {
 func OpenImage(scope Scope, uri string) *ui.Image {
 	img, err := scope.Context().OpenImage(uri)
 	if err != nil {
-		log.Error("[component] Error opening image (%q): %v", uri, err)
-		return nil
+		logger.Error("Error opening named image (%q): %v!", uri, err)
+		return nil // TODO: Return no-op value.
 	}
 	return img
 }
@@ -186,8 +185,8 @@ func OpenImage(scope Scope, uri string) *ui.Image {
 func CreateImage(scope Scope, img image.Image) *ui.Image {
 	result, err := scope.Context().CreateImage(img)
 	if err != nil {
-		log.Error("[component] Error creating image: %v", err)
-		return nil
+		logger.Error("Error creating ad-hoc image: %v!", err)
+		return nil // TODO: Return no-op value.
 	}
 	return result
 }
@@ -200,8 +199,8 @@ func CreateImage(scope Scope, img image.Image) *ui.Image {
 func OpenFont(scope Scope, uri string) *ui.Font {
 	font, err := scope.Context().OpenFont(uri)
 	if err != nil {
-		log.Error("[component] Error opening font (%q): %v", uri, err)
-		return nil
+		logger.Error("Error opening named font (%q): %v!", uri, err)
+		return nil // TODO: Return no-op value.
 	}
 	return font
 }
@@ -213,8 +212,8 @@ func OpenFont(scope Scope, uri string) *ui.Font {
 func CreateFont(scope Scope, otFont *opentype.Font) *ui.Font {
 	font, err := scope.Context().CreateFont(otFont)
 	if err != nil {
-		log.Error("[component] Error creating font: %v", err)
-		return nil
+		logger.Error("Error creating ad-hoc font: %v!", err)
+		return nil // TODO: Return no-op value.
 	}
 	return font
 }
@@ -227,8 +226,8 @@ func CreateFont(scope Scope, otFont *opentype.Font) *ui.Font {
 func OpenFontCollection(scope Scope, uri string) *ui.FontCollection {
 	collection, err := scope.Context().OpenFontCollection(uri)
 	if err != nil {
-		log.Error("[component] Error opening font collection (%q): %v", uri, err)
-		return nil
+		logger.Error("Error opening named font collection (%q): %v!", uri, err)
+		return nil // TODO: Return no-op value.
 	}
 	return collection
 }
@@ -242,8 +241,8 @@ func OpenFontCollection(scope Scope, uri string) *ui.FontCollection {
 func GetFont(scope Scope, family, style string) *ui.Font {
 	font, found := scope.Context().GetFont(family, style)
 	if !found {
-		log.Warn("[component] Unable to find font (%q / %q)", family, style)
-		return nil
+		logger.Warn("Unable to find font (%q - %q)!", family, style)
+		return nil // TODO: Return no-op value.
 	}
 	return font
 }
