@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"path"
 
-	"github.com/mokiat/lacking/log"
 	"gopkg.in/yaml.v2"
 )
 
@@ -46,7 +45,7 @@ func NewWebRegistry(assetsURL string) (Registry, error) {
 		sourceResource := registry.resourcesFromID[dtoDependency.SourceGUID]
 		targetResource := registry.resourcesFromID[dtoDependency.TargetGUID]
 		if sourceResource == nil || targetResource == nil {
-			log.Warn("[registry] Dangling dependency detected")
+			logger.Warn("Dangling dependency detected!")
 			continue
 		}
 		sourceResource.dependencies[targetResource.id] = struct{}{}
