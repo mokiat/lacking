@@ -11,7 +11,6 @@ import (
 	"github.com/mokiat/lacking/game/physics"
 	"github.com/mokiat/lacking/game/physics/collision"
 	"github.com/mokiat/lacking/game/timestep"
-	"github.com/mokiat/lacking/log"
 )
 
 func newScene(resourceSet *ResourceSet, physicsScene *physics.Scene, gfxScene *graphics.Scene, ecsScene *ecs.Scene) *Scene {
@@ -269,7 +268,7 @@ func (s *Scene) CreateAnimation(info AnimationInfo) *Animation {
 			target = info.Model.root.FindNode(bindingDef.NodeName)
 		}
 		if target == nil {
-			log.Warn("Animation cannot find target node %q", bindingDef.NodeName)
+			logger.Warn("Animation cannot find target node (%q)!", bindingDef.NodeName)
 		}
 		bindings[i] = animationBinding{
 			node:                 target,
