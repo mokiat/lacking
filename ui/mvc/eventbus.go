@@ -3,7 +3,6 @@ package mvc
 import (
 	"fmt"
 
-	"github.com/mokiat/lacking/log"
 	co "github.com/mokiat/lacking/ui/component"
 	"golang.org/x/exp/slices"
 )
@@ -101,7 +100,7 @@ func (c *mvcListenerComponent) NotifyCreate(ref co.Renderable, properties co.Pro
 		subscription := eventBus.Subscribe(candidate.OnEvent)
 		c.subscriptions[ref] = subscription
 	} else {
-		log.Warn("Component instance marked as listener but does not satisfy contract")
+		logger.Warn("Component instance marked as listener but does not satisfy contract!")
 	}
 
 	c.Component.NotifyCreate(ref, properties)
