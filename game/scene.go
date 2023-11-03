@@ -26,6 +26,15 @@ func newScene(resourceSet *ResourceSet, physicsScene *physics.Scene, gfxScene *g
 
 		preUpdateSubscriptions:  timestep.NewSubscriptionSet[timestep.UpdateCallback](),
 		postUpdateSubscriptions: timestep.NewSubscriptionSet[timestep.UpdateCallback](),
+
+		prePhysicsSubscriptions:  timestep.NewSubscriptionSet[timestep.UpdateCallback](),
+		postPhysicsSubscriptions: timestep.NewSubscriptionSet[timestep.UpdateCallback](),
+
+		preAnimationSubscriptions:  timestep.NewSubscriptionSet[timestep.UpdateCallback](),
+		postAnimationSubscriptions: timestep.NewSubscriptionSet[timestep.UpdateCallback](),
+
+		preNodeSubscriptions:  timestep.NewSubscriptionSet[timestep.UpdateCallback](),
+		postNodeSubscriptions: timestep.NewSubscriptionSet[timestep.UpdateCallback](),
 	}
 }
 
@@ -41,6 +50,15 @@ type Scene struct {
 
 	preUpdateSubscriptions  *timestep.SubscriptionSet[timestep.UpdateCallback]
 	postUpdateSubscriptions *timestep.SubscriptionSet[timestep.UpdateCallback]
+
+	prePhysicsSubscriptions  *timestep.SubscriptionSet[timestep.UpdateCallback]
+	postPhysicsSubscriptions *timestep.SubscriptionSet[timestep.UpdateCallback]
+
+	preAnimationSubscriptions  *timestep.SubscriptionSet[timestep.UpdateCallback]
+	postAnimationSubscriptions *timestep.SubscriptionSet[timestep.UpdateCallback]
+
+	preNodeSubscriptions  *timestep.SubscriptionSet[timestep.UpdateCallback]
+	postNodeSubscriptions *timestep.SubscriptionSet[timestep.UpdateCallback]
 
 	frozen bool
 }
@@ -127,32 +145,117 @@ func (s *Scene) SubscribePostUpdate(callback timestep.UpdateCallback) *timestep.
 	return s.postUpdateSubscriptions.Subscribe(callback)
 }
 
+func (s *Scene) SubscribePrePhysics(callback timestep.UpdateCallback) *timestep.UpdateSubscription {
+	return s.prePhysicsSubscriptions.Subscribe(callback)
+}
+
+func (s *Scene) SubscribePostPhysics(callback timestep.UpdateCallback) *timestep.UpdateSubscription {
+	return s.postPhysicsSubscriptions.Subscribe(callback)
+}
+
+func (s *Scene) SubscribePreAnimation(callback timestep.UpdateCallback) *timestep.UpdateSubscription {
+	return s.preAnimationSubscriptions.Subscribe(callback)
+}
+
+func (s *Scene) SubscribePostAnimation(callback timestep.UpdateCallback) *timestep.UpdateSubscription {
+	return s.postAnimationSubscriptions.Subscribe(callback)
+}
+
+func (s *Scene) SubscribePreNode(callback timestep.UpdateCallback) *timestep.UpdateSubscription {
+	return s.preNodeSubscriptions.Subscribe(callback)
+}
+
+func (s *Scene) SubscribePostNode(callback timestep.UpdateCallback) *timestep.UpdateSubscription {
+	return s.postNodeSubscriptions.Subscribe(callback)
+}
+
 func (s *Scene) Update(elapsedTime time.Duration) {
 	if s.frozen {
 		return
 	}
 
+	// preUpdateSpan := metrics.BeginRegion("game:pre-update")
 	s.preUpdateSubscriptions.Each(func(callback timestep.UpdateCallback) {
 		callback(elapsedTime)
 	})
+	// preUpdateSpan.End()
 
-	// TODO: Pre-physics
-	s.physicsScene.OnUpdate(elapsedTime)
-	// TODO: Post-physics
+	// updateSpan := metrics.BeginRegion("game:update")
+	s.updatePhysics(elapsedTime)
+	s.updateAnimations(elapsedTime)
+	s.updateNodes(elapsedTime)
+	// updateSpan.End()
 
-	// TDOO: Pre-node
-	s.applyPlaybacks(elapsedTime)
-	s.applyPhysicsToNode(s.root)
-	// TODO: Post-node
-
+	// postUpdateSpan := metrics.BeginRegion("game:post-update")
 	s.postUpdateSubscriptions.Each(func(callback timestep.UpdateCallback) {
 		callback(elapsedTime)
 	})
+	// postUpdateSpan.End()
+}
+
+func (s *Scene) updatePhysics(elapsedTime time.Duration) {
+	// prePhysicsSpan := metrics.BeginRegion("game:pre-physics")
+	s.prePhysicsSubscriptions.Each(func(callback timestep.UpdateCallback) {
+		callback(elapsedTime)
+	})
+	// prePhysicsSpan.End()
+
+	// physicsSpan := metrics.BeginRegion("game:physics")
+	s.physicsScene.OnUpdate(elapsedTime)
+	// physicsSpan.End()
+
+	// postPhysicsSpan := metrics.BeginRegion("game:post-physics")
+	s.postPhysicsSubscriptions.Each(func(callback timestep.UpdateCallback) {
+		callback(elapsedTime)
+	})
+	// postPhysicsSpan.End()
+}
+
+func (s *Scene) updateAnimations(elapsedTime time.Duration) {
+	// preAnimationSpan := metrics.BeginRegion("game:pre-anim")
+	s.preAnimationSubscriptions.Each(func(callback timestep.UpdateCallback) {
+		callback(elapsedTime)
+	})
+	// preAnimationSpan.End()
+
+	// animationSpan := metrics.BeginRegion("game:anim")
+	s.applyPlaybacks(elapsedTime)
+	// animationSpan.End()
+
+	// postAnimationSpan := metrics.BeginRegion("game:post-anim")
+	s.postAnimationSubscriptions.Each(func(callback timestep.UpdateCallback) {
+		callback(elapsedTime)
+	})
+	// postAnimationSpan.End()
+
+}
+
+func (s *Scene) updateNodes(elapsedTime time.Duration) {
+	// preNodeSpan := metrics.BeginRegion("game:pre-node")
+	s.preNodeSubscriptions.Each(func(callback timestep.UpdateCallback) {
+		callback(elapsedTime)
+	})
+	// preNodeSpan.End()
+
+	// nodeSpan := metrics.BeginRegion("game:node")
+	s.applyPhysicsToNode(s.root)
+	// nodeSpan.End()
+
+	// postNodeSpan := metrics.BeginRegion("game:post-node")
+	s.postNodeSubscriptions.Each(func(callback timestep.UpdateCallback) {
+		callback(elapsedTime)
+	})
+	// postNodeSpan.End()
 }
 
 func (s *Scene) Render(viewport graphics.Viewport) {
+	// stageSpan := metrics.BeginRegion("game:stage")
 	s.applyNodeToGraphics(s.root)
+	// stageSpan.End()
+
+	// renderSpan := metrics.BeginRegion("game:render")
 	s.gfxScene.Render(viewport)
+	// renderSpan.End()
 }
 
 func (s *Scene) CreateAnimation(info AnimationInfo) *Animation {
