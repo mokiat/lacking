@@ -27,7 +27,7 @@ func createComponentNode(scope Scope, instance Instance) *componentNode {
 		outerScope: scope,
 		instance:   instance,
 	}
-	node.ref = component.Allocate(scope, node.invalidate)
+	node.ref = component.Allocate(node, node.invalidate)
 
 	// Notify that the component has been created.
 	component.NotifyCreate(node.ref, instance.Properties())

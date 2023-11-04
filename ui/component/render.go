@@ -31,13 +31,8 @@ func Schedule(scope Scope, fn func()) {
 // rendering of the component, since the framework is free to render a component
 // at any time it deems necessary.
 func After(scope Scope, duration time.Duration, fn func()) {
-	node := scope.Value(componentNodeKey{}).(*componentNode)
 	time.AfterFunc(duration, func() {
-		scope.Context().Schedule(func() {
-			if node.isValid() {
-				fn()
-			}
-		})
+		Schedule(scope, fn)
 	})
 }
 
@@ -45,5 +40,7 @@ func After(scope Scope, duration time.Duration, fn func()) {
 // recalculated.
 func Invalidate(scope Scope) {
 	node := scope.Value(componentNodeKey{}).(*componentNode)
-	node.invalidate()
+	if node.isValid() {
+		node.invalidate()
+	}
 }
