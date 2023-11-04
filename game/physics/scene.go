@@ -6,11 +6,11 @@ import (
 	"github.com/mokiat/gog/ds"
 	"github.com/mokiat/gog/opt"
 	"github.com/mokiat/gomath/dprec"
+	"github.com/mokiat/lacking/debug/metric"
 	"github.com/mokiat/lacking/game/physics/collision"
 	"github.com/mokiat/lacking/game/physics/constraint"
 	"github.com/mokiat/lacking/game/physics/solver"
 	"github.com/mokiat/lacking/game/timestep"
-	"github.com/mokiat/lacking/util/metrics"
 	"github.com/mokiat/lacking/util/spatial"
 	"golang.org/x/exp/maps"
 )
@@ -244,7 +244,6 @@ func (s *Scene) CreateDoubleBodyConstraint(primary, secondary *Body, solver solv
 
 // TODO: Rename to Update and get rid of the old Update
 func (s *Scene) OnUpdate(elapsedTime time.Duration) {
-	defer metrics.BeginRegion("physics:update").End()
 	s.timeSegmenter.Update(elapsedTime, s.onTickInterval, s.onTickLerp)
 }
 
@@ -263,8 +262,6 @@ func (s *Scene) onTickLerp(alpha float64) {
 // Update runs a number of physics iterations until the specified number of
 // seconds worth of simulation have passed.
 func (s *Scene) Update(elapsedSeconds float64) {
-	defer metrics.BeginRegion("physics:update").End()
-
 	stepSeconds := s.stepSeconds
 	s.accumulatedSeconds += elapsedSeconds
 	if s.accumulatedSeconds > 1.0 {
@@ -400,7 +397,7 @@ func (s *Scene) runSimulation(elapsedSeconds float64) {
 }
 
 func (s *Scene) applyForces() {
-	defer metrics.BeginRegion("physics:forces").End()
+	defer metric.BeginRegion("forces").End()
 
 	for body := range s.dynamicBodies {
 		body.resetAcceleration()
@@ -435,7 +432,7 @@ func (s *Scene) applyForces() {
 }
 
 func (s *Scene) applyAcceleration(elapsedSeconds float64) {
-	defer metrics.BeginRegion("physics:acceleration").End()
+	defer metric.BeginRegion("acceleration").End()
 	for body := range s.dynamicBodies {
 		body.clampAcceleration(s.maxAcceleration)
 		body.clampAngularAcceleration(s.maxAngularAcceleration)
@@ -475,7 +472,7 @@ func deinitPlaceholder(placeholder *solver.Placeholder, body *Body) {
 }
 
 func (s *Scene) applyImpulses(elapsedSeconds float64) {
-	defer metrics.BeginRegion("physics:impulses").End()
+	defer metric.BeginRegion("impulses").End()
 
 	bodies = bodies[:0]
 	placeholders = placeholders[:0]
@@ -561,7 +558,7 @@ func (s *Scene) applyImpulses(elapsedSeconds float64) {
 }
 
 func (s *Scene) applyMotion(elapsedSeconds float64) {
-	defer metrics.BeginRegion("physics:motion").End()
+	defer metric.BeginRegion("motion").End()
 	for body := range s.dynamicBodies {
 		body.clampVelocity(s.maxVelocity)
 		body.clampAngularVelocity(s.maxAngularVelocity)
@@ -574,7 +571,7 @@ func (s *Scene) applyMotion(elapsedSeconds float64) {
 }
 
 func (s *Scene) applyNudges(elapsedSeconds float64) {
-	defer metrics.BeginRegion("physics:nudges").End()
+	defer metric.BeginRegion("nudges").End()
 
 	for _, body := range bodies {
 		initPlaceholder(bodyToPlaceholder[body], body)
@@ -616,7 +613,7 @@ func (s *Scene) applyNudges(elapsedSeconds float64) {
 }
 
 func (s *Scene) detectCollisions() {
-	defer metrics.BeginRegion("physics:collision").End()
+	defer metric.BeginRegion("collision").End()
 	s.revision++
 
 	for body := range s.dynamicBodies {

@@ -6,6 +6,7 @@ import (
 	"github.com/mokiat/gog/ds"
 	"github.com/mokiat/gomath/dprec"
 	"github.com/mokiat/gomath/dtos"
+	"github.com/mokiat/lacking/debug/metric"
 	"github.com/mokiat/lacking/game/ecs"
 	"github.com/mokiat/lacking/game/graphics"
 	"github.com/mokiat/lacking/game/physics"
@@ -173,88 +174,88 @@ func (s *Scene) Update(elapsedTime time.Duration) {
 		return
 	}
 
-	// preUpdateSpan := metrics.BeginRegion("game:pre-update")
+	preUpdateSpan := metric.BeginRegion("pre-update")
 	s.preUpdateSubscriptions.Each(func(callback timestep.UpdateCallback) {
 		callback(elapsedTime)
 	})
-	// preUpdateSpan.End()
+	preUpdateSpan.End()
 
-	// updateSpan := metrics.BeginRegion("game:update")
+	updateSpan := metric.BeginRegion("update")
 	s.updatePhysics(elapsedTime)
 	s.updateAnimations(elapsedTime)
 	s.updateNodes(elapsedTime)
-	// updateSpan.End()
+	updateSpan.End()
 
-	// postUpdateSpan := metrics.BeginRegion("game:post-update")
+	postUpdateSpan := metric.BeginRegion("post-update")
 	s.postUpdateSubscriptions.Each(func(callback timestep.UpdateCallback) {
 		callback(elapsedTime)
 	})
-	// postUpdateSpan.End()
+	postUpdateSpan.End()
 }
 
 func (s *Scene) updatePhysics(elapsedTime time.Duration) {
-	// prePhysicsSpan := metrics.BeginRegion("game:pre-physics")
+	prePhysicsSpan := metric.BeginRegion("pre-physics")
 	s.prePhysicsSubscriptions.Each(func(callback timestep.UpdateCallback) {
 		callback(elapsedTime)
 	})
-	// prePhysicsSpan.End()
+	prePhysicsSpan.End()
 
-	// physicsSpan := metrics.BeginRegion("game:physics")
+	physicsSpan := metric.BeginRegion("physics")
 	s.physicsScene.OnUpdate(elapsedTime)
-	// physicsSpan.End()
+	physicsSpan.End()
 
-	// postPhysicsSpan := metrics.BeginRegion("game:post-physics")
+	postPhysicsSpan := metric.BeginRegion("post-physics")
 	s.postPhysicsSubscriptions.Each(func(callback timestep.UpdateCallback) {
 		callback(elapsedTime)
 	})
-	// postPhysicsSpan.End()
+	postPhysicsSpan.End()
 }
 
 func (s *Scene) updateAnimations(elapsedTime time.Duration) {
-	// preAnimationSpan := metrics.BeginRegion("game:pre-anim")
+	preAnimationSpan := metric.BeginRegion("pre-anim")
 	s.preAnimationSubscriptions.Each(func(callback timestep.UpdateCallback) {
 		callback(elapsedTime)
 	})
-	// preAnimationSpan.End()
+	preAnimationSpan.End()
 
-	// animationSpan := metrics.BeginRegion("game:anim")
+	animationSpan := metric.BeginRegion("anim")
 	s.applyPlaybacks(elapsedTime)
-	// animationSpan.End()
+	animationSpan.End()
 
-	// postAnimationSpan := metrics.BeginRegion("game:post-anim")
+	postAnimationSpan := metric.BeginRegion("post-anim")
 	s.postAnimationSubscriptions.Each(func(callback timestep.UpdateCallback) {
 		callback(elapsedTime)
 	})
-	// postAnimationSpan.End()
+	postAnimationSpan.End()
 
 }
 
 func (s *Scene) updateNodes(elapsedTime time.Duration) {
-	// preNodeSpan := metrics.BeginRegion("game:pre-node")
+	preNodeSpan := metric.BeginRegion("pre-node")
 	s.preNodeSubscriptions.Each(func(callback timestep.UpdateCallback) {
 		callback(elapsedTime)
 	})
-	// preNodeSpan.End()
+	preNodeSpan.End()
 
-	// nodeSpan := metrics.BeginRegion("game:node")
+	nodeSpan := metric.BeginRegion("node")
 	s.applyPhysicsToNode(s.root)
-	// nodeSpan.End()
+	nodeSpan.End()
 
-	// postNodeSpan := metrics.BeginRegion("game:post-node")
+	postNodeSpan := metric.BeginRegion("post-node")
 	s.postNodeSubscriptions.Each(func(callback timestep.UpdateCallback) {
 		callback(elapsedTime)
 	})
-	// postNodeSpan.End()
+	postNodeSpan.End()
 }
 
 func (s *Scene) Render(viewport graphics.Viewport) {
-	// stageSpan := metrics.BeginRegion("game:stage")
+	stageSpan := metric.BeginRegion("stage")
 	s.applyNodeToGraphics(s.root)
-	// stageSpan.End()
+	stageSpan.End()
 
-	// renderSpan := metrics.BeginRegion("game:render")
+	renderSpan := metric.BeginRegion("render")
 	s.gfxScene.Render(viewport)
-	// renderSpan.End()
+	renderSpan.End()
 }
 
 func (s *Scene) CreateAnimation(info AnimationInfo) *Animation {

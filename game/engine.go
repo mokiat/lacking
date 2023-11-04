@@ -7,7 +7,6 @@ import (
 	"github.com/mokiat/lacking/game/ecs"
 	"github.com/mokiat/lacking/game/graphics"
 	"github.com/mokiat/lacking/game/physics"
-	"github.com/mokiat/lacking/util/metrics"
 )
 
 type EngineOption func(e *Engine)
@@ -142,8 +141,6 @@ func (e *Engine) ResetDeltaTime() {
 }
 
 func (e *Engine) Update() {
-	defer metrics.BeginRegion("game:update").End()
-
 	e.gfxEngine.Debug().Reset()
 
 	currentTime := time.Now()
@@ -156,8 +153,6 @@ func (e *Engine) Update() {
 }
 
 func (e *Engine) Render(viewport graphics.Viewport) {
-	defer metrics.BeginRegion("game:render").End()
-
 	if e.activeScene != nil {
 		e.activeScene.Render(viewport)
 	}
