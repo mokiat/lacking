@@ -4,6 +4,7 @@ import (
 	"math"
 
 	"github.com/mokiat/gomath/dprec"
+	"github.com/mokiat/lacking/game/hierarchy"
 )
 
 type AnimationDefinitionInfo struct {
@@ -77,7 +78,7 @@ func (a *Animation) Apply(timestamp float64) {
 }
 
 type animationBinding struct {
-	node                 *Node
+	node                 *hierarchy.Node
 	translationKeyframes KeyframeList[dprec.Vec3]
 	rotationKeyframes    KeyframeList[dprec.Quat]
 	scaleKeyframes       KeyframeList[dprec.Vec3]

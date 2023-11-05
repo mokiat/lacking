@@ -5,10 +5,10 @@ import (
 
 	"github.com/mokiat/gog/ds"
 	"github.com/mokiat/gomath/dprec"
-	"github.com/mokiat/gomath/dtos"
 	"github.com/mokiat/lacking/debug/metric"
 	"github.com/mokiat/lacking/game/ecs"
 	"github.com/mokiat/lacking/game/graphics"
+	"github.com/mokiat/lacking/game/hierarchy"
 	"github.com/mokiat/lacking/game/physics"
 	"github.com/mokiat/lacking/game/physics/collision"
 	"github.com/mokiat/lacking/game/timestep"
@@ -19,7 +19,7 @@ func newScene(resourceSet *ResourceSet, physicsScene *physics.Scene, gfxScene *g
 		physicsScene: physicsScene,
 		gfxScene:     gfxScene,
 		ecsScene:     ecsScene,
-		root:         NewNode(),
+		root:         hierarchy.NewNode(),
 
 		playbackPool: ds.NewPool[Playback](),
 		playbacks:    ds.NewList[*Playback](4),
@@ -42,7 +42,7 @@ type Scene struct {
 	physicsScene *physics.Scene
 	gfxScene     *graphics.Scene
 	ecsScene     *ecs.Scene
-	root         *Node
+	root         *hierarchy.Node
 	models       []*Model
 
 	playbackPool *ds.Pool[Playback]
@@ -93,7 +93,7 @@ func (s *Scene) ECS() *ecs.Scene {
 	return s.ecsScene
 }
 
-func (s *Scene) Root() *Node {
+func (s *Scene) Root() *hierarchy.Node {
 	return s.root
 }
 
@@ -130,7 +130,7 @@ func (s *Scene) Initialize(definition *SceneDefinition) {
 
 func (s *Scene) FindModel(name string) *Model {
 	for _, model := range s.models {
-		if model.root.name == name {
+		if model.root.Name() == name {
 			return model
 		}
 	}
@@ -238,7 +238,7 @@ func (s *Scene) updateNodes(elapsedTime time.Duration) {
 	preNodeSpan.End()
 
 	nodeSpan := metric.BeginRegion("node")
-	s.applyPhysicsToNode(s.root)
+	s.root.ApplyFromSource(true)
 	nodeSpan.End()
 
 	postNodeSpan := metric.BeginRegion("post-node")
@@ -250,7 +250,7 @@ func (s *Scene) updateNodes(elapsedTime time.Duration) {
 
 func (s *Scene) Render(viewport graphics.Viewport) {
 	stageSpan := metric.BeginRegion("stage")
-	s.applyNodeToGraphics(s.root)
+	s.root.ApplyToTarget(true)
 	stageSpan.End()
 
 	renderSpan := metric.BeginRegion("render")
@@ -262,7 +262,7 @@ func (s *Scene) CreateAnimation(info AnimationInfo) *Animation {
 	def := info.Definition
 	bindings := make([]animationBinding, len(def.bindings))
 	for i, bindingDef := range def.bindings {
-		var target *Node
+		var target *hierarchy.Node
 		if bindingDef.NodeIndex >= 0 {
 			target = info.Model.nodes[bindingDef.NodeIndex]
 		} else {
@@ -286,16 +286,16 @@ func (s *Scene) CreateAnimation(info AnimationInfo) *Animation {
 }
 
 func (s *Scene) CreateModel(info ModelInfo) *Model {
-	modelNode := NewNode()
+	modelNode := hierarchy.NewNode()
 	modelNode.SetName(info.Name)
 	modelNode.SetPosition(info.Position)
 	modelNode.SetRotation(info.Rotation)
 	modelNode.SetScale(info.Scale)
 
 	definition := info.Definition
-	nodes := make([]*Node, len(definition.nodes))
+	nodes := make([]*hierarchy.Node, len(definition.nodes))
 	for i, nodeDef := range definition.nodes {
-		node := NewNode()
+		node := hierarchy.NewNode()
 		node.SetName(nodeDef.Name)
 		node.SetPosition(nodeDef.Position)
 		node.SetRotation(nodeDef.Rotation)
@@ -303,7 +303,7 @@ func (s *Scene) CreateModel(info ModelInfo) *Model {
 		nodes[i] = node
 	}
 	for i, nodeDef := range definition.nodes {
-		var parent *Node
+		var parent *hierarchy.Node
 		if nodeDef.ParentIndex >= 0 {
 			parent = nodes[nodeDef.ParentIndex]
 		} else {
@@ -314,7 +314,7 @@ func (s *Scene) CreateModel(info ModelInfo) *Model {
 
 	var bodyInstances []*physics.Body
 	for _, instance := range definition.bodyInstances {
-		var bodyNode *Node
+		var bodyNode *hierarchy.Node
 		if instance.NodeIndex >= 0 {
 			bodyNode = nodes[instance.NodeIndex]
 		} else {
@@ -328,7 +328,9 @@ func (s *Scene) CreateModel(info ModelInfo) *Model {
 				Position:   dprec.ZeroVec3(),
 				Rotation:   dprec.IdentityQuat(),
 			})
-			bodyNode.SetBody(body)
+			bodyNode.SetSource(BodyNodeSource{
+				Body: body,
+			})
 			bodyInstances = append(bodyInstances, body)
 		} else {
 			absMatrix := bodyNode.AbsoluteMatrix()
@@ -343,7 +345,7 @@ func (s *Scene) CreateModel(info ModelInfo) *Model {
 
 	pointLightInstances := make([]*graphics.PointLight, len(definition.pointLightInstances))
 	for i, instance := range definition.pointLightInstances {
-		var lightNode *Node
+		var lightNode *hierarchy.Node
 		if instance.NodeIndex >= 0 {
 			lightNode = nodes[instance.NodeIndex]
 		} else {
@@ -354,13 +356,15 @@ func (s *Scene) CreateModel(info ModelInfo) *Model {
 			EmitRange: instance.EmitRange,
 			EmitColor: instance.EmitColor,
 		})
-		lightNode.SetAttachable(light)
+		lightNode.SetTarget(PointLightNodeTarget{
+			Light: light,
+		})
 		pointLightInstances[i] = light
 	}
 
 	spotLightInstances := make([]*graphics.SpotLight, len(definition.spotLightInstances))
 	for i, instance := range definition.spotLightInstances {
-		var lightNode *Node
+		var lightNode *hierarchy.Node
 		if instance.NodeIndex >= 0 {
 			lightNode = nodes[instance.NodeIndex]
 		} else {
@@ -374,13 +378,15 @@ func (s *Scene) CreateModel(info ModelInfo) *Model {
 			EmitInnerConeAngle: instance.EmitInnerConeAngle,
 			EmitColor:          instance.EmitColor,
 		})
-		lightNode.SetAttachable(light)
+		lightNode.SetTarget(SpotLightNodeTarget{
+			Light: light,
+		})
 		spotLightInstances[i] = light
 	}
 
 	directionalLightInstances := make([]*graphics.DirectionalLight, len(definition.directionalLightInstances))
 	for i, instance := range definition.directionalLightInstances {
-		var lightNode *Node
+		var lightNode *hierarchy.Node
 		if instance.NodeIndex >= 0 {
 			lightNode = nodes[instance.NodeIndex]
 		} else {
@@ -392,7 +398,9 @@ func (s *Scene) CreateModel(info ModelInfo) *Model {
 			EmitRange:   instance.EmitRange,
 			EmitColor:   instance.EmitColor,
 		})
-		lightNode.SetAttachable(light)
+		lightNode.SetTarget(DirectionalLightNodeTarget{
+			Light: light,
+		})
 		directionalLightInstances[i] = light
 	}
 
@@ -402,21 +410,22 @@ func (s *Scene) CreateModel(info ModelInfo) *Model {
 			InverseMatrices: instance.InverseBindMatrices(),
 		})
 		for j, joint := range instance.Joints {
-			var jointNode *Node
+			var jointNode *hierarchy.Node
 			if joint.NodeIndex >= 0 {
 				jointNode = nodes[joint.NodeIndex]
 			} else {
 				jointNode = modelNode
 			}
-			// TODO: Use single method SetAttachment(BoneAttachment{armature, joint})
-			jointNode.SetArmature(armature)
-			jointNode.SetArmatureBone(j)
+			jointNode.SetTarget(BoneNodeTarget{
+				Armature:  armature,
+				BoneIndex: j,
+			})
 		}
 		armatures[i] = armature
 	}
 
 	for _, instance := range definition.meshInstances {
-		var meshNode *Node
+		var meshNode *hierarchy.Node
 		if instance.NodeIndex >= 0 {
 			meshNode = nodes[instance.NodeIndex]
 		} else {
@@ -433,7 +442,9 @@ func (s *Scene) CreateModel(info ModelInfo) *Model {
 				Definition: meshDefinition,
 				Armature:   armature,
 			})
-			meshNode.SetAttachable(mesh)
+			meshNode.SetTarget(MeshNodeTarget{
+				Mesh: mesh,
+			})
 		} else {
 			s.gfxScene.CreateStaticMesh(graphics.StaticMeshInfo{
 				Definition: meshDefinition,
@@ -445,8 +456,8 @@ func (s *Scene) CreateModel(info ModelInfo) *Model {
 	if info.IsDynamic {
 		s.Root().AppendChild(modelNode)
 	}
-	s.applyPhysicsToNode(modelNode)
-	s.applyNodeToGraphics(modelNode)
+	modelNode.ApplyFromSource(true)
+	modelNode.ApplyToTarget(true)
 
 	result := &Model{
 		definition:                definition,
@@ -493,38 +504,11 @@ func (s *Scene) FindPlayback(name string) *Playback {
 	return nil
 }
 
-func (s *Scene) applyPhysicsToNode(node *Node) {
-	if body := node.body; body != nil {
-		absMatrix := dprec.TRSMat4(
-			body.VisualPosition(),
-			body.VisualOrientation(),
-			dprec.NewVec3(1.0, 1.0, 1.0),
-		)
-		node.SetAbsoluteMatrix(absMatrix)
-	}
-	for child := node.firstChild; child != nil; child = child.rightSibling {
-		s.applyPhysicsToNode(child)
-	}
-}
-
 func (s *Scene) applyPlaybacks(elapsedTime time.Duration) {
 	for _, playback := range s.playbacks.Unbox() {
 		if playback.playing {
 			playback.Advance(elapsedTime.Seconds())
 			playback.animation.Apply(playback.head)
 		}
-	}
-}
-
-func (s *Scene) applyNodeToGraphics(node *Node) {
-	absMatrix := node.AbsoluteMatrix()
-	if armature := node.armature; armature != nil {
-		armature.SetBone(node.armatureBone, dtos.Mat4(absMatrix))
-	}
-	if attachable := node.attachable; attachable != nil {
-		attachable.SetMatrix(absMatrix)
-	}
-	for child := node.firstChild; child != nil; child = child.rightSibling {
-		s.applyNodeToGraphics(child)
 	}
 }

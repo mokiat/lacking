@@ -1,8 +1,6 @@
 package graphics
 
 import (
-	"fmt"
-
 	"github.com/mokiat/gomath/dprec"
 	"github.com/mokiat/gomath/dtos"
 	"github.com/mokiat/gomath/sprec"
@@ -26,7 +24,7 @@ func newDirectionalLight(scene *Scene, info DirectionalLightInfo) *DirectionalLi
 
 	light.active = true
 	light.position = info.Position
-	light.orientation = info.Orientation
+	light.rotation = info.Orientation
 	light.emitRange = info.EmitRange
 	light.emitColor = info.EmitColor
 
@@ -39,38 +37,85 @@ type DirectionalLight struct {
 	scene  *Scene
 	itemID spatial.DynamicSetItemID
 
-	active      bool
-	position    dprec.Vec3
-	orientation dprec.Quat
-	emitRange   float64
-	emitColor   dprec.Vec3
+	active    bool
+	position  dprec.Vec3
+	rotation  dprec.Quat
+	emitRange float64
+	emitColor dprec.Vec3
 
 	matrix      sprec.Mat4
 	matrixDirty bool
 }
 
-func (l *DirectionalLight) SetMatrix(matrix dprec.Mat4) { // FIXME
-	t, r, _ := matrix.TRS()
-	l.position = t
-	l.orientation = r
-	l.scene.directionalLightSet.Update(
-		l.itemID, l.position, l.emitRange,
-	)
-	l.matrixDirty = true
-}
-
+// Active returns whether this light will be applied.
 func (l *DirectionalLight) Active() bool {
 	return l.active
 }
 
+// SetActive changes whether this light will be applied.
 func (l *DirectionalLight) SetActive(active bool) {
 	l.active = active
+}
+
+// Position returns the location of this light source.
+func (l *DirectionalLight) Position() dprec.Vec3 {
+	return l.position
+}
+
+// SetPosition changes the position of this light source.
+func (l *DirectionalLight) SetPosition(position dprec.Vec3) {
+	if position != l.position {
+		l.position = position
+		l.scene.directionalLightSet.Update(
+			l.itemID, l.position, l.emitRange,
+		)
+		l.matrixDirty = true
+	}
+}
+
+// Rotation returns the orientation of this light source.
+func (l *DirectionalLight) Rotation() dprec.Quat {
+	return l.rotation
+}
+
+// SetRotation changes the orientation of this light source.
+func (l *DirectionalLight) SetRotation(rotation dprec.Quat) {
+	if rotation != l.rotation {
+		l.rotation = rotation
+		l.matrixDirty = true
+	}
+}
+
+// EmitRange returns the distance that this light source covers.
+func (l *DirectionalLight) EmitRange() float64 {
+	return l.emitRange
+}
+
+// SetEmitRange changes the distance that this light source covers.
+func (l *DirectionalLight) SetEmitRange(emitRange float64) {
+	if emitRange != l.emitRange {
+		l.emitRange = dprec.Max(0.0, emitRange)
+		l.scene.directionalLightSet.Update(
+			l.itemID, l.position, l.emitRange,
+		)
+	}
+}
+
+// EmitColor returns the linear color of this light.
+func (l *DirectionalLight) EmitColor() dprec.Vec3 {
+	return l.emitColor
+}
+
+// SetEmitColor changes the linear color of this light. The values
+// can be outside the [0.0, 1.0] range for higher intensity.
+func (l *DirectionalLight) SetEmitColor(color dprec.Vec3) {
+	l.emitColor = color
 }
 
 // Delete removes this light from the scene.
 func (l *DirectionalLight) Delete() {
 	if l.scene == nil {
-		panic(fmt.Errorf("directional light already deleted"))
+		panic("directional light already deleted")
 	}
 	l.scene.directionalLightSet.Remove(l.itemID)
 	l.scene.directionalLightPool.Restore(l)
@@ -78,26 +123,13 @@ func (l *DirectionalLight) Delete() {
 }
 
 func (l *DirectionalLight) gfxMatrix() sprec.Mat4 {
-	if l.matrixDirty || true { // FIXME
+	if l.matrixDirty {
 		l.matrix = sprec.TRSMat4(
 			dtos.Vec3(l.position),
-			dtos.Quat(l.orientation),
+			dtos.Quat(l.rotation),
 			sprec.NewVec3(1.0, 1.0, 1.0),
 		)
-		// l.matrix = sprec.Mat4Prod(
-		// 	sprec.TranslationMat4(
-		// 		float32(l.position.X),
-		// 		float32(l.position.Y),
-		// 		float32(l.position.Z),
-		// 	),
-		// 	sprec.ScaleMat4(
-		// 		float32(l.emitRange),
-		// 		float32(l.emitRange),
-		// 		float32(l.emitRange),
-		// 	),
-		// )
-		// FIXME
-		// l.matrixDirty = false
+		l.matrixDirty = false
 	}
 	return l.matrix
 }

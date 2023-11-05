@@ -1,8 +1,6 @@
 package graphics
 
 import (
-	"fmt"
-
 	"github.com/mokiat/gomath/dprec"
 	"github.com/mokiat/gomath/sprec"
 	"github.com/mokiat/lacking/util/spatial"
@@ -74,10 +72,6 @@ func (l *PointLight) SetPosition(position dprec.Vec3) {
 	}
 }
 
-func (l *PointLight) SetMatrix(matrix dprec.Mat4) {
-	l.SetPosition(matrix.Translation())
-}
-
 // EmitRange returns the distance that this light source covers.
 func (l *PointLight) EmitRange() float64 {
 	return l.emitRange
@@ -108,7 +102,7 @@ func (l *PointLight) SetEmitColor(color dprec.Vec3) {
 // Delete removes this light from the scene.
 func (l *PointLight) Delete() {
 	if l.scene == nil {
-		panic(fmt.Errorf("point light already deleted"))
+		panic("light already deleted")
 	}
 	l.scene.pointLightSet.Remove(l.itemID)
 	l.scene.pointLightPool.Restore(l)
