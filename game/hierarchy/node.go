@@ -252,6 +252,15 @@ func (n *Node) SetMatrix(matrix dprec.Mat4) {
 	n.SetScale(scale)
 }
 
+// BaseAbsoluteMatrix returns the absolute matrix of the parent, if there is
+// one, otherwise the identity matrix.
+func (n *Node) BaseAbsoluteMatrix() dprec.Mat4 {
+	if n.parent == nil {
+		return dprec.IdentityMat4()
+	}
+	return n.parent.AbsoluteMatrix()
+}
+
 // AbsoluteMatrix returns the matrix transformation of this Node relative
 // to the root coordinate system.
 func (n *Node) AbsoluteMatrix() dprec.Mat4 {
@@ -305,7 +314,9 @@ func (n *Node) SetTarget(target NodeTarget) {
 // ApplyFromSource requests that this node be updated based on its source.
 // If recursive is specified, the same is applied down the hierarchy as well.
 func (n *Node) ApplyFromSource(recursive bool) {
-	n.source.ApplyTo(n)
+	if n.source != nil {
+		n.source.ApplyTo(n)
+	}
 	if recursive {
 		for child := n.firstChild; child != nil; child = child.rightSibling {
 			child.ApplyFromSource(recursive)
@@ -316,7 +327,9 @@ func (n *Node) ApplyFromSource(recursive bool) {
 // ApplyToTarget requests that this node be applied to its target.
 // If recursive is specified, the same is applied down the hierarchy as well.
 func (n *Node) ApplyToTarget(recursive bool) {
-	n.target.ApplyFrom(n)
+	if n.target != nil {
+		n.target.ApplyFrom(n)
+	}
 	if recursive {
 		for child := n.firstChild; child != nil; child = child.rightSibling {
 			child.ApplyToTarget(recursive)
