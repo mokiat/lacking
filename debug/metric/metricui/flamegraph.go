@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/mokiat/gog/opt"
+	"github.com/mokiat/gomath/dprec"
 	"github.com/mokiat/gomath/sprec"
 	"github.com/mokiat/lacking/debug/metric"
 	"github.com/mokiat/lacking/ui"
@@ -22,8 +23,9 @@ const (
 var FlameGraph = co.Define(&flamegraphComponent{})
 
 type FlameGraphData struct {
-	UpdateInterval time.Duration
-	FocusPath      []string
+	UpdateInterval   time.Duration
+	AggregationRatio float64
+	FocusPath        []string
 }
 
 type flamegraphComponent struct {
@@ -34,8 +36,9 @@ type flamegraphComponent struct {
 
 	element *ui.Element
 
-	interval time.Duration
-	path     []string
+	interval         time.Duration
+	aggregationRatio float64
+	path             []string
 
 	tree metric.Span
 }
@@ -46,6 +49,7 @@ func (c *flamegraphComponent) OnCreate() {
 
 	data := co.GetOptionalData[FlameGraphData](c.Properties(), FlameGraphData{})
 	c.interval = data.UpdateInterval
+	c.aggregationRatio = data.AggregationRatio
 	c.path = data.FocusPath
 	if len(c.path) == 0 {
 		if value, ok := os.LookupEnv("FLAME_FOCUS"); ok {
@@ -59,6 +63,7 @@ func (c *flamegraphComponent) OnCreate() {
 func (c *flamegraphComponent) OnUpsert() {
 	data := co.GetOptionalData[FlameGraphData](c.Properties(), FlameGraphData{})
 	c.interval = data.UpdateInterval
+	c.aggregationRatio = data.AggregationRatio
 }
 
 func (c *flamegraphComponent) Render() co.Instance {
@@ -186,7 +191,7 @@ func (c *flamegraphComponent) findSpan(node metric.Span, path []string) (metric.
 
 func (c *flamegraphComponent) updateTree(target, source *metric.Span) {
 	target.Name = source.Name
-	target.Duration = source.Duration
+	target.Duration = time.Duration(dprec.Mix(float64(source.Duration), float64(target.Duration), c.aggregationRatio))
 	if missing := len(source.Children) - len(target.Children); missing > 0 {
 		target.Children = append(target.Children, make([]metric.Span, missing)...)
 	}
