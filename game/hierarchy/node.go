@@ -16,8 +16,9 @@ type Node struct {
 	rotation dprec.Quat
 	scale    dprec.Vec3
 
-	source NodeSource
-	target NodeTarget
+	transform TransformFunc
+	source    NodeSource
+	target    NodeTarget
 
 	// revision is a mechanism through which it is determined if the absolute
 	// matrix cached for this Node is up to date. It borrows ideas from Lamport
@@ -35,6 +36,8 @@ func NewNode() *Node {
 		position: dprec.ZeroVec3(),
 		rotation: dprec.IdentityQuat(),
 		scale:    dprec.NewVec3(1.0, 1.0, 1.0),
+
+		transform: DefaultTransformFunc,
 	}
 }
 
@@ -198,6 +201,16 @@ func (n *Node) FindNode(name string) *Node {
 	return nil
 }
 
+// UseTransformation configures a TransformFunc to be used for calculating
+// the absolute matrix of this node. Pass nil to restore the default behavior.
+func (n *Node) UseTransformation(transform TransformFunc) {
+	if transform != nil {
+		n.transform = transform
+	} else {
+		n.transform = DefaultTransformFunc
+	}
+}
+
 // Position returns this Node's relative position to the parent.
 func (n *Node) Position() dprec.Vec3 {
 	return n.position
@@ -267,11 +280,7 @@ func (n *Node) AbsoluteMatrix() dprec.Mat4 {
 	if !n.isStaleHierarchy() {
 		return n.absMatrix
 	}
-	if n.parent == nil {
-		n.absMatrix = n.Matrix()
-	} else {
-		n.absMatrix = dprec.Mat4Prod(n.parent.AbsoluteMatrix(), n.Matrix())
-	}
+	n.absMatrix = n.transform(n)
 	n.revision = nextRevision() // make sure to call this last
 	return n.absMatrix
 }
