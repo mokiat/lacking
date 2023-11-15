@@ -9,7 +9,6 @@ import (
 	"github.com/mokiat/gomath/sprec"
 	"github.com/mokiat/gomath/stod"
 	"github.com/mokiat/lacking/game/asset"
-	"github.com/mokiat/lacking/log"
 	"github.com/x448/float16"
 )
 
@@ -513,7 +512,7 @@ func (c *converter) BuildBodyDefinition(meshDefinition *MeshDefinition) asset.Bo
 			continue
 		}
 		if fragment.Primitive != PrimitiveTriangles {
-			log.Warn("Skipping collision mesh due to primitive not being triangles")
+			logger.Warn("Skipping collision mesh due to primitive not being triangles!")
 			continue
 		}
 		for i := fragment.IndexOffset; i < fragment.IndexOffset+fragment.IndexCount; i += 3 {
@@ -528,7 +527,7 @@ func (c *converter) BuildBodyDefinition(meshDefinition *MeshDefinition) asset.Bo
 			vecAB := sprec.Vec3Diff(coordB, coordA)
 			vecAC := sprec.Vec3Diff(coordC, coordA)
 			if sprec.Vec3Cross(vecAB, vecAC).Length() < 0.00001 {
-				log.Warn("Degenerate triangle omitted")
+				logger.Warn("Degenerate triangle omitted!")
 				continue
 			}
 

@@ -1,14 +1,17 @@
 package game
 
 import (
+	"time"
+
 	"github.com/mokiat/gog/ds"
 	"github.com/mokiat/gomath/dprec"
-	"github.com/mokiat/gomath/dtos"
+	"github.com/mokiat/lacking/debug/metric"
 	"github.com/mokiat/lacking/game/ecs"
 	"github.com/mokiat/lacking/game/graphics"
+	"github.com/mokiat/lacking/game/hierarchy"
 	"github.com/mokiat/lacking/game/physics"
 	"github.com/mokiat/lacking/game/physics/collision"
-	"github.com/mokiat/lacking/log"
+	"github.com/mokiat/lacking/game/timestep"
 )
 
 func newScene(resourceSet *ResourceSet, physicsScene *physics.Scene, gfxScene *graphics.Scene, ecsScene *ecs.Scene) *Scene {
@@ -16,10 +19,22 @@ func newScene(resourceSet *ResourceSet, physicsScene *physics.Scene, gfxScene *g
 		physicsScene: physicsScene,
 		gfxScene:     gfxScene,
 		ecsScene:     ecsScene,
-		root:         NewNode(),
+		root:         hierarchy.NewNode(),
 
 		playbackPool: ds.NewPool[Playback](),
 		playbacks:    ds.NewList[*Playback](4),
+
+		preUpdateSubscriptions:  timestep.NewSubscriptionSet[timestep.UpdateCallback](),
+		postUpdateSubscriptions: timestep.NewSubscriptionSet[timestep.UpdateCallback](),
+
+		prePhysicsSubscriptions:  timestep.NewSubscriptionSet[timestep.UpdateCallback](),
+		postPhysicsSubscriptions: timestep.NewSubscriptionSet[timestep.UpdateCallback](),
+
+		preAnimationSubscriptions:  timestep.NewSubscriptionSet[timestep.UpdateCallback](),
+		postAnimationSubscriptions: timestep.NewSubscriptionSet[timestep.UpdateCallback](),
+
+		preNodeSubscriptions:  timestep.NewSubscriptionSet[timestep.UpdateCallback](),
+		postNodeSubscriptions: timestep.NewSubscriptionSet[timestep.UpdateCallback](),
 	}
 }
 
@@ -27,11 +42,23 @@ type Scene struct {
 	physicsScene *physics.Scene
 	gfxScene     *graphics.Scene
 	ecsScene     *ecs.Scene
-	root         *Node
+	root         *hierarchy.Node
 	models       []*Model
 
 	playbackPool *ds.Pool[Playback]
 	playbacks    *ds.List[*Playback]
+
+	preUpdateSubscriptions  *timestep.SubscriptionSet[timestep.UpdateCallback]
+	postUpdateSubscriptions *timestep.SubscriptionSet[timestep.UpdateCallback]
+
+	prePhysicsSubscriptions  *timestep.SubscriptionSet[timestep.UpdateCallback]
+	postPhysicsSubscriptions *timestep.SubscriptionSet[timestep.UpdateCallback]
+
+	preAnimationSubscriptions  *timestep.SubscriptionSet[timestep.UpdateCallback]
+	postAnimationSubscriptions *timestep.SubscriptionSet[timestep.UpdateCallback]
+
+	preNodeSubscriptions  *timestep.SubscriptionSet[timestep.UpdateCallback]
+	postNodeSubscriptions *timestep.SubscriptionSet[timestep.UpdateCallback]
 
 	frozen bool
 }
@@ -66,7 +93,7 @@ func (s *Scene) ECS() *ecs.Scene {
 	return s.ecsScene
 }
 
-func (s *Scene) Root() *Node {
+func (s *Scene) Root() *hierarchy.Node {
 	return s.root
 }
 
@@ -103,38 +130,146 @@ func (s *Scene) Initialize(definition *SceneDefinition) {
 
 func (s *Scene) FindModel(name string) *Model {
 	for _, model := range s.models {
-		if model.root.name == name {
+		if model.root.Name() == name {
 			return model
 		}
 	}
 	return nil
 }
 
-func (s *Scene) Update(elapsedSeconds float64) {
-	if !s.frozen {
-		s.applyPlaybacks(elapsedSeconds)
-		s.physicsScene.Update(elapsedSeconds)
-		s.applyPhysicsToNode(s.root)
+func (s *Scene) SubscribePreUpdate(callback timestep.UpdateCallback) *timestep.UpdateSubscription {
+	return s.preUpdateSubscriptions.Subscribe(callback)
+}
+
+func (s *Scene) SubscribePostUpdate(callback timestep.UpdateCallback) *timestep.UpdateSubscription {
+	return s.postUpdateSubscriptions.Subscribe(callback)
+}
+
+func (s *Scene) SubscribePrePhysics(callback timestep.UpdateCallback) *timestep.UpdateSubscription {
+	return s.prePhysicsSubscriptions.Subscribe(callback)
+}
+
+func (s *Scene) SubscribePostPhysics(callback timestep.UpdateCallback) *timestep.UpdateSubscription {
+	return s.postPhysicsSubscriptions.Subscribe(callback)
+}
+
+func (s *Scene) SubscribePreAnimation(callback timestep.UpdateCallback) *timestep.UpdateSubscription {
+	return s.preAnimationSubscriptions.Subscribe(callback)
+}
+
+func (s *Scene) SubscribePostAnimation(callback timestep.UpdateCallback) *timestep.UpdateSubscription {
+	return s.postAnimationSubscriptions.Subscribe(callback)
+}
+
+func (s *Scene) SubscribePreNode(callback timestep.UpdateCallback) *timestep.UpdateSubscription {
+	return s.preNodeSubscriptions.Subscribe(callback)
+}
+
+func (s *Scene) SubscribePostNode(callback timestep.UpdateCallback) *timestep.UpdateSubscription {
+	return s.postNodeSubscriptions.Subscribe(callback)
+}
+
+func (s *Scene) Update(elapsedTime time.Duration) {
+	if s.frozen {
+		return
 	}
+
+	preUpdateSpan := metric.BeginRegion("pre-update")
+	s.preUpdateSubscriptions.Each(func(callback timestep.UpdateCallback) {
+		callback(elapsedTime)
+	})
+	preUpdateSpan.End()
+
+	updateSpan := metric.BeginRegion("update")
+	s.updatePhysics(elapsedTime)
+	s.updateAnimations(elapsedTime)
+	s.updateNodes(elapsedTime)
+	updateSpan.End()
+
+	postUpdateSpan := metric.BeginRegion("post-update")
+	s.postUpdateSubscriptions.Each(func(callback timestep.UpdateCallback) {
+		callback(elapsedTime)
+	})
+	postUpdateSpan.End()
+}
+
+func (s *Scene) updatePhysics(elapsedTime time.Duration) {
+	prePhysicsSpan := metric.BeginRegion("pre-physics")
+	s.prePhysicsSubscriptions.Each(func(callback timestep.UpdateCallback) {
+		callback(elapsedTime)
+	})
+	prePhysicsSpan.End()
+
+	physicsSpan := metric.BeginRegion("physics")
+	s.physicsScene.OnUpdate(elapsedTime)
+	physicsSpan.End()
+
+	postPhysicsSpan := metric.BeginRegion("post-physics")
+	s.postPhysicsSubscriptions.Each(func(callback timestep.UpdateCallback) {
+		callback(elapsedTime)
+	})
+	postPhysicsSpan.End()
+}
+
+func (s *Scene) updateAnimations(elapsedTime time.Duration) {
+	preAnimationSpan := metric.BeginRegion("pre-anim")
+	s.preAnimationSubscriptions.Each(func(callback timestep.UpdateCallback) {
+		callback(elapsedTime)
+	})
+	preAnimationSpan.End()
+
+	animationSpan := metric.BeginRegion("anim")
+	s.applyPlaybacks(elapsedTime)
+	animationSpan.End()
+
+	postAnimationSpan := metric.BeginRegion("post-anim")
+	s.postAnimationSubscriptions.Each(func(callback timestep.UpdateCallback) {
+		callback(elapsedTime)
+	})
+	postAnimationSpan.End()
+
+}
+
+func (s *Scene) updateNodes(elapsedTime time.Duration) {
+	preNodeSpan := metric.BeginRegion("pre-node")
+	s.preNodeSubscriptions.Each(func(callback timestep.UpdateCallback) {
+		callback(elapsedTime)
+	})
+	preNodeSpan.End()
+
+	nodeSpan := metric.BeginRegion("node")
+	s.root.ApplyFromSource(true)
+	nodeSpan.End()
+
+	postNodeSpan := metric.BeginRegion("post-node")
+	s.postNodeSubscriptions.Each(func(callback timestep.UpdateCallback) {
+		callback(elapsedTime)
+	})
+	postNodeSpan.End()
 }
 
 func (s *Scene) Render(viewport graphics.Viewport) {
-	s.applyNodeToGraphics(s.root)
+	stageSpan := metric.BeginRegion("stage")
+	s.root.ApplyToTarget(true)
+	stageSpan.End()
+
+	renderSpan := metric.BeginRegion("render")
 	s.gfxScene.Render(viewport)
+	renderSpan.End()
 }
 
 func (s *Scene) CreateAnimation(info AnimationInfo) *Animation {
 	def := info.Definition
 	bindings := make([]animationBinding, len(def.bindings))
 	for i, bindingDef := range def.bindings {
-		var target *Node
+		var target *hierarchy.Node
 		if bindingDef.NodeIndex >= 0 {
 			target = info.Model.nodes[bindingDef.NodeIndex]
 		} else {
 			target = info.Model.root.FindNode(bindingDef.NodeName)
 		}
 		if target == nil {
-			log.Warn("Animation cannot find target node %q", bindingDef.NodeName)
+			logger.Warn("Animation cannot find target node (%q)!", bindingDef.NodeName)
 		}
 		bindings[i] = animationBinding{
 			node:                 target,
@@ -151,16 +286,16 @@ func (s *Scene) CreateAnimation(info AnimationInfo) *Animation {
 }
 
 func (s *Scene) CreateModel(info ModelInfo) *Model {
-	modelNode := NewNode()
+	modelNode := hierarchy.NewNode()
 	modelNode.SetName(info.Name)
 	modelNode.SetPosition(info.Position)
 	modelNode.SetRotation(info.Rotation)
 	modelNode.SetScale(info.Scale)
 
 	definition := info.Definition
-	nodes := make([]*Node, len(definition.nodes))
+	nodes := make([]*hierarchy.Node, len(definition.nodes))
 	for i, nodeDef := range definition.nodes {
-		node := NewNode()
+		node := hierarchy.NewNode()
 		node.SetName(nodeDef.Name)
 		node.SetPosition(nodeDef.Position)
 		node.SetRotation(nodeDef.Rotation)
@@ -168,7 +303,7 @@ func (s *Scene) CreateModel(info ModelInfo) *Model {
 		nodes[i] = node
 	}
 	for i, nodeDef := range definition.nodes {
-		var parent *Node
+		var parent *hierarchy.Node
 		if nodeDef.ParentIndex >= 0 {
 			parent = nodes[nodeDef.ParentIndex]
 		} else {
@@ -179,7 +314,7 @@ func (s *Scene) CreateModel(info ModelInfo) *Model {
 
 	var bodyInstances []*physics.Body
 	for _, instance := range definition.bodyInstances {
-		var bodyNode *Node
+		var bodyNode *hierarchy.Node
 		if instance.NodeIndex >= 0 {
 			bodyNode = nodes[instance.NodeIndex]
 		} else {
@@ -193,7 +328,9 @@ func (s *Scene) CreateModel(info ModelInfo) *Model {
 				Position:   dprec.ZeroVec3(),
 				Rotation:   dprec.IdentityQuat(),
 			})
-			bodyNode.SetBody(body)
+			bodyNode.SetSource(BodyNodeSource{
+				Body: body,
+			})
 			bodyInstances = append(bodyInstances, body)
 		} else {
 			absMatrix := bodyNode.AbsoluteMatrix()
@@ -208,7 +345,7 @@ func (s *Scene) CreateModel(info ModelInfo) *Model {
 
 	pointLightInstances := make([]*graphics.PointLight, len(definition.pointLightInstances))
 	for i, instance := range definition.pointLightInstances {
-		var lightNode *Node
+		var lightNode *hierarchy.Node
 		if instance.NodeIndex >= 0 {
 			lightNode = nodes[instance.NodeIndex]
 		} else {
@@ -219,13 +356,15 @@ func (s *Scene) CreateModel(info ModelInfo) *Model {
 			EmitRange: instance.EmitRange,
 			EmitColor: instance.EmitColor,
 		})
-		lightNode.SetAttachable(light)
+		lightNode.SetTarget(PointLightNodeTarget{
+			Light: light,
+		})
 		pointLightInstances[i] = light
 	}
 
 	spotLightInstances := make([]*graphics.SpotLight, len(definition.spotLightInstances))
 	for i, instance := range definition.spotLightInstances {
-		var lightNode *Node
+		var lightNode *hierarchy.Node
 		if instance.NodeIndex >= 0 {
 			lightNode = nodes[instance.NodeIndex]
 		} else {
@@ -239,13 +378,15 @@ func (s *Scene) CreateModel(info ModelInfo) *Model {
 			EmitInnerConeAngle: instance.EmitInnerConeAngle,
 			EmitColor:          instance.EmitColor,
 		})
-		lightNode.SetAttachable(light)
+		lightNode.SetTarget(SpotLightNodeTarget{
+			Light: light,
+		})
 		spotLightInstances[i] = light
 	}
 
 	directionalLightInstances := make([]*graphics.DirectionalLight, len(definition.directionalLightInstances))
 	for i, instance := range definition.directionalLightInstances {
-		var lightNode *Node
+		var lightNode *hierarchy.Node
 		if instance.NodeIndex >= 0 {
 			lightNode = nodes[instance.NodeIndex]
 		} else {
@@ -257,7 +398,9 @@ func (s *Scene) CreateModel(info ModelInfo) *Model {
 			EmitRange:   instance.EmitRange,
 			EmitColor:   instance.EmitColor,
 		})
-		lightNode.SetAttachable(light)
+		lightNode.SetTarget(DirectionalLightNodeTarget{
+			Light: light,
+		})
 		directionalLightInstances[i] = light
 	}
 
@@ -267,21 +410,22 @@ func (s *Scene) CreateModel(info ModelInfo) *Model {
 			InverseMatrices: instance.InverseBindMatrices(),
 		})
 		for j, joint := range instance.Joints {
-			var jointNode *Node
+			var jointNode *hierarchy.Node
 			if joint.NodeIndex >= 0 {
 				jointNode = nodes[joint.NodeIndex]
 			} else {
 				jointNode = modelNode
 			}
-			// TODO: Use single method SetAttachment(BoneAttachment{armature, joint})
-			jointNode.SetArmature(armature)
-			jointNode.SetArmatureBone(j)
+			jointNode.SetTarget(BoneNodeTarget{
+				Armature:  armature,
+				BoneIndex: j,
+			})
 		}
 		armatures[i] = armature
 	}
 
 	for _, instance := range definition.meshInstances {
-		var meshNode *Node
+		var meshNode *hierarchy.Node
 		if instance.NodeIndex >= 0 {
 			meshNode = nodes[instance.NodeIndex]
 		} else {
@@ -298,7 +442,9 @@ func (s *Scene) CreateModel(info ModelInfo) *Model {
 				Definition: meshDefinition,
 				Armature:   armature,
 			})
-			meshNode.SetAttachable(mesh)
+			meshNode.SetTarget(MeshNodeTarget{
+				Mesh: mesh,
+			})
 		} else {
 			s.gfxScene.CreateStaticMesh(graphics.StaticMeshInfo{
 				Definition: meshDefinition,
@@ -310,8 +456,8 @@ func (s *Scene) CreateModel(info ModelInfo) *Model {
 	if info.IsDynamic {
 		s.Root().AppendChild(modelNode)
 	}
-	s.applyPhysicsToNode(modelNode)
-	s.applyNodeToGraphics(modelNode)
+	modelNode.ApplyFromSource(true)
+	modelNode.ApplyToTarget(true)
 
 	result := &Model{
 		definition:                definition,
@@ -358,38 +504,11 @@ func (s *Scene) FindPlayback(name string) *Playback {
 	return nil
 }
 
-func (s *Scene) applyPhysicsToNode(node *Node) {
-	if body := node.body; body != nil {
-		absMatrix := dprec.TRSMat4(
-			body.VisualPosition(),
-			body.VisualOrientation(),
-			dprec.NewVec3(1.0, 1.0, 1.0),
-		)
-		node.SetAbsoluteMatrix(absMatrix)
-	}
-	for child := node.firstChild; child != nil; child = child.rightSibling {
-		s.applyPhysicsToNode(child)
-	}
-}
-
-func (s *Scene) applyPlaybacks(elapsedSeconds float64) {
+func (s *Scene) applyPlaybacks(elapsedTime time.Duration) {
 	for _, playback := range s.playbacks.Unbox() {
 		if playback.playing {
-			playback.Advance(elapsedSeconds)
+			playback.Advance(elapsedTime.Seconds())
 			playback.animation.Apply(playback.head)
 		}
-	}
-}
-
-func (s *Scene) applyNodeToGraphics(node *Node) {
-	absMatrix := node.AbsoluteMatrix()
-	if armature := node.armature; armature != nil {
-		armature.SetBone(node.armatureBone, dtos.Mat4(absMatrix))
-	}
-	if attachable := node.attachable; attachable != nil {
-		attachable.SetMatrix(absMatrix)
-	}
-	for child := node.firstChild; child != nil; child = child.rightSibling {
-		s.applyNodeToGraphics(child)
 	}
 }

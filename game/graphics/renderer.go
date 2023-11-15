@@ -10,11 +10,10 @@ import (
 	"github.com/mokiat/gomath/dtos"
 	"github.com/mokiat/gomath/sprec"
 	"github.com/mokiat/gomath/stod"
+	"github.com/mokiat/lacking/debug/metric"
 	"github.com/mokiat/lacking/game/graphics/internal"
-	"github.com/mokiat/lacking/log"
 	"github.com/mokiat/lacking/render"
 	"github.com/mokiat/lacking/util/blob"
-	"github.com/mokiat/lacking/util/metrics"
 	"github.com/mokiat/lacking/util/spatial"
 	"github.com/x448/float16"
 	"golang.org/x/exp/slices"
@@ -545,7 +544,7 @@ func (r *sceneRenderer) ResetDebugLines() {
 
 func (r *sceneRenderer) QueueDebugLine(line debugLine) {
 	if len(r.debugLines) == cap(r.debugLines) {
-		log.Warn("No more debug lines allowed")
+		logger.Warn("No more debug lines allowed!")
 		return
 	}
 	r.debugLines = append(r.debugLines, line)
@@ -691,7 +690,7 @@ func lightOrtho() sprec.Mat4 {
 }
 
 func (r *sceneRenderer) renderShadowPass(ctx renderCtx) {
-	defer metrics.BeginRegion("graphics:shadow pass").End()
+	defer metric.BeginRegion("shadow").End()
 
 	r.directionalLightBucket.Reset()
 	ctx.scene.directionalLightSet.VisitHexahedronRegion(&ctx.frustum, r.directionalLightBucket)
@@ -854,7 +853,7 @@ func (r *sceneRenderer) renderShadowMeshesList(ctx renderCtx) {
 }
 
 func (r *sceneRenderer) renderGeometryPass(ctx renderCtx) {
-	defer metrics.BeginRegion("graphics:geometry pass").End()
+	defer metric.BeginRegion("geometry").End()
 
 	r.api.BeginRenderPass(render.RenderPassInfo{
 		Framebuffer: r.geometryFramebuffer,
@@ -1007,7 +1006,7 @@ func (r *sceneRenderer) renderMeshesList(ctx renderCtx) {
 }
 
 func (r *sceneRenderer) renderLightingPass(ctx renderCtx) {
-	defer metrics.BeginRegion("graphics:lighting pass").End()
+	defer metric.BeginRegion("lighting").End()
 
 	r.api.BeginRenderPass(render.RenderPassInfo{
 		Framebuffer: r.lightingFramebuffer,
@@ -1160,7 +1159,7 @@ func (r *sceneRenderer) renderSpotLight(ctx renderCtx, light *SpotLight) {
 }
 
 func (r *sceneRenderer) renderForwardPass(ctx renderCtx) {
-	defer metrics.BeginRegion("graphics:forward pass").End()
+	defer metric.BeginRegion("forward").End()
 
 	r.api.BeginRenderPass(render.RenderPassInfo{
 		Framebuffer: r.forwardFramebuffer,
@@ -1226,10 +1225,10 @@ func (r *sceneRenderer) renderForwardPass(ctx renderCtx) {
 }
 
 func (r *sceneRenderer) renderExposureProbePass(ctx renderCtx) {
-	defer metrics.BeginRegion("graphics:exposure pass").End()
+	defer metric.BeginRegion("exposure").End()
 
 	if r.exposureFormat != render.DataFormatRGBA16F && r.exposureFormat != render.DataFormatRGBA32F {
-		log.Error("Skipping exposure due to unsupported framebuffer format %q", r.exposureFormat)
+		logger.Error("Skipping exposure due to unsupported framebuffer format (%q)!", r.exposureFormat)
 		return
 	}
 
@@ -1316,7 +1315,7 @@ func (r *sceneRenderer) renderExposureProbePass(ctx renderCtx) {
 }
 
 func (r *sceneRenderer) renderPostprocessingPass(ctx renderCtx) {
-	defer metrics.BeginRegion("graphics:postprocessing pass").End()
+	defer metric.BeginRegion("post").End()
 
 	r.api.BeginRenderPass(render.RenderPassInfo{
 		Framebuffer: ctx.framebuffer,

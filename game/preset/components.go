@@ -2,8 +2,8 @@ package preset
 
 import (
 	"github.com/mokiat/gomath/dprec"
-	"github.com/mokiat/lacking/game"
 	"github.com/mokiat/lacking/game/ecs"
+	"github.com/mokiat/lacking/game/hierarchy"
 )
 
 var (
@@ -14,7 +14,7 @@ var (
 )
 
 type NodeComponent struct {
-	Node *game.Node
+	Node *hierarchy.Node
 }
 
 func (*NodeComponent) TypeID() ecs.ComponentTypeID {
@@ -51,7 +51,7 @@ func (*YawPitchCameraComponent) TypeID() ecs.ComponentTypeID {
 }
 
 type FollowCameraComponent struct {
-	Target         *game.Node
+	Target         *hierarchy.Node
 	AnchorPosition dprec.Vec3
 	AnchorDistance float64
 	CameraDistance float64

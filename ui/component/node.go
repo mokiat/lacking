@@ -1,12 +1,6 @@
 package component
 
-import (
-	"github.com/mokiat/lacking/ui"
-)
-
-var (
-	nodeLogger = coLogger.Path("/node")
-)
+import "github.com/mokiat/lacking/ui"
 
 type componentNodeKey struct{}
 
@@ -24,7 +18,7 @@ type componentNode struct {
 
 func createComponentNode(scope Scope, instance Instance) *componentNode {
 	component := instance.component
-	nodeLogger.Debug("Creating node of type %q", component.TypeName())
+	logger.Debug("Creating node (type: %q).", component.TypeName())
 
 	if instance.scope != nil {
 		scope = instance.scope
@@ -33,7 +27,7 @@ func createComponentNode(scope Scope, instance Instance) *componentNode {
 		outerScope: scope,
 		instance:   instance,
 	}
-	node.ref = component.Allocate(scope, node.invalidate)
+	node.ref = component.Allocate(node, node.invalidate)
 
 	// Notify that the component has been created.
 	component.NotifyCreate(node.ref, instance.Properties())
@@ -59,7 +53,7 @@ func createComponentNode(scope Scope, instance Instance) *componentNode {
 }
 
 func (node *componentNode) reconcile(instance Instance) {
-	nodeLogger.Debug("Updating node of type %q", node.instance.component.TypeName())
+	logger.Debug("Updating node (type: %q).", node.instance.component.TypeName())
 
 	component := instance.component
 	if component != node.instance.component {
@@ -109,7 +103,7 @@ func (node *componentNode) reconcile(instance Instance) {
 }
 
 func (node *componentNode) destroy() {
-	nodeLogger.Debug("Destroying node of type %q", node.instance.component.TypeName())
+	logger.Debug("Destroying node (type: %q).", node.instance.component.TypeName())
 
 	// Start by destroying nested components first.
 	if node.innerNode != nil {

@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/mokiat/lacking/game/asset"
-	"github.com/mokiat/lacking/log"
 	"github.com/mokiat/lacking/util/resource"
 )
 
@@ -159,7 +158,7 @@ func (p *Pipeline) execute() error {
 		elapsedTime := time.Since(startTime)
 
 		if isDescribed {
-			log.Info("[pipeline %d] %s - %s", p.id, described.Describe(), elapsedTime)
+			logger.Info("[ Pipeline %d ] %s - %s", p.id, described.Describe(), elapsedTime)
 		}
 	}
 	return nil

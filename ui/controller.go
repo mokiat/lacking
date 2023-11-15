@@ -2,6 +2,7 @@ package ui
 
 import (
 	"github.com/mokiat/lacking/app"
+	"github.com/mokiat/lacking/debug/metric"
 	"github.com/mokiat/lacking/util/resource"
 )
 
@@ -102,6 +103,7 @@ func (c *Controller) OnClipboardEvent(window app.Window, event app.ClipboardEven
 }
 
 func (c *Controller) OnRender(window app.Window) {
+	defer metric.BeginRegion("ui").End()
 	c.uiWindowHandler.OnRender()
 }
 

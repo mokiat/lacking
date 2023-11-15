@@ -1,8 +1,6 @@
 package graphics
 
 import (
-	"fmt"
-
 	"github.com/mokiat/gomath/dprec"
 	"github.com/mokiat/gomath/dtos"
 	"github.com/mokiat/gomath/sprec"
@@ -84,10 +82,15 @@ func (l *SpotLight) SetPosition(position dprec.Vec3) {
 	}
 }
 
+// Rotation returns the orientation of this light source.
+func (l *SpotLight) Rotation() dprec.Quat {
+	return l.rotation
+}
+
+// SetRotation changes the orientation of this light source.
 func (l *SpotLight) SetRotation(rotation dprec.Quat) {
 	if rotation != l.rotation {
 		l.rotation = rotation
-		// TODO: Recalculate item position, once it is at offset
 		l.matrixDirty = true
 	}
 }
@@ -122,17 +125,11 @@ func (l *SpotLight) SetEmitColor(color dprec.Vec3) {
 // Delete removes this light from the scene.
 func (l *SpotLight) Delete() {
 	if l.scene == nil {
-		panic(fmt.Errorf("spot light already deleted"))
+		panic("spot light already deleted")
 	}
 	l.scene.spotLightSet.Remove(l.itemID)
 	l.scene.spotLightPool.Restore(l)
 	l.scene = nil
-}
-
-func (l *SpotLight) SetMatrix(matrix dprec.Mat4) {
-	t, r, _ := matrix.TRS()
-	l.SetPosition(t)
-	l.SetRotation(r)
 }
 
 func (l *SpotLight) gfxMatrix() sprec.Mat4 {

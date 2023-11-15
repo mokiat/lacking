@@ -4,12 +4,12 @@ import (
 	"time"
 
 	"github.com/mokiat/lacking/app"
+	"github.com/mokiat/lacking/debug/metric"
 	"github.com/mokiat/lacking/game/asset"
 	"github.com/mokiat/lacking/game/ecs"
 	"github.com/mokiat/lacking/game/graphics"
 	"github.com/mokiat/lacking/game/physics"
 	"github.com/mokiat/lacking/util/async"
-	"github.com/mokiat/lacking/util/metrics"
 )
 
 func NewController(registry asset.Registry, shaders graphics.ShaderCollection) *Controller {
@@ -75,7 +75,7 @@ func (c *Controller) OnFramebufferResize(window app.Window, width, height int) {
 }
 
 func (c *Controller) OnRender(window app.Window) {
-	defer metrics.BeginRegion("game:frame").End()
+	defer metric.BeginRegion("game").End()
 
 	c.engine.Update()
 	c.engine.Render(c.viewport)

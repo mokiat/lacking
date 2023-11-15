@@ -10,7 +10,6 @@ import (
 	"path/filepath"
 
 	"github.com/google/uuid"
-	"github.com/mokiat/lacking/log"
 	"golang.org/x/exp/slices"
 	"gopkg.in/yaml.v2"
 )
@@ -73,7 +72,7 @@ func NewDirRegistry(dir string) (Registry, error) {
 		sourceResource := registry.resourcesFromID[dtoDependency.SourceGUID]
 		targetResource := registry.resourcesFromID[dtoDependency.TargetGUID]
 		if sourceResource == nil || targetResource == nil {
-			log.Warn("[registry] Dangling dependency detected")
+			logger.Warn("Dangling dependency detected!")
 			continue
 		}
 		sourceResource.dependencies[targetResource.id] = struct{}{}

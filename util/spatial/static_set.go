@@ -5,8 +5,6 @@ import (
 	"github.com/mokiat/gomath/dprec"
 )
 
-var staticSetLogger = spatialLogger.Path("/static-set")
-
 // StaticSetSettings contains the settings for a StaticSet.
 type StaticSetSettings struct {
 
@@ -44,7 +42,7 @@ type StaticSet[T any] struct {
 // Insert adds an item to this set.
 func (t *StaticSet[T]) Insert(position dprec.Vec3, radius float64, item T) {
 	if len(t.items) == cap(t.items) {
-		staticSetLogger.Warn("Item slice capacity %d reached. Will grow.", len(t.items))
+		logger.Warn("Item slice capacity (%d) reached for static set! Will grow.", len(t.items))
 	}
 	t.items = append(t.items, staticSetItem[T]{
 		position: position,

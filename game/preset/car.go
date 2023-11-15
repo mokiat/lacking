@@ -5,6 +5,7 @@ import (
 	"github.com/mokiat/lacking/game"
 	"github.com/mokiat/lacking/game/ecs"
 	"github.com/mokiat/lacking/game/graphics"
+	"github.com/mokiat/lacking/game/hierarchy"
 	"github.com/mokiat/lacking/game/physics"
 	"github.com/mokiat/lacking/game/physics/constraint"
 )
@@ -215,30 +216,32 @@ func (d *CarDefinition) ApplyToModel(scene *game.Scene, info CarApplyInfo) *Car 
 		Position:   chassisPosition,
 		Rotation:   chassisRotation,
 	})
-	chassisNode.SetBody(chassisBody)
+	chassisNode.SetSource(game.BodyNodeSource{
+		Body: chassisBody,
+	})
 
 	headLights := make([]*graphics.PointLight, len(d.chassisDef.headLightNodeNames))
 	for i, nodeName := range d.chassisDef.headLightNodeNames {
 		node := info.Model.FindNode(nodeName)
-		headLights[i] = node.Attachable().(*graphics.PointLight)
+		headLights[i] = node.Target().(game.PointLightNodeTarget).Light
 	}
 
 	tailLights := make([]*graphics.PointLight, len(d.chassisDef.tailLightNodeNames))
 	for i, nodeName := range d.chassisDef.tailLightNodeNames {
 		node := info.Model.FindNode(nodeName)
-		tailLights[i] = node.Attachable().(*graphics.PointLight)
+		tailLights[i] = node.Target().(game.PointLightNodeTarget).Light
 	}
 
 	beamLights := make([]*graphics.SpotLight, len(d.chassisDef.beamLightNodeNames))
 	for i, nodeName := range d.chassisDef.beamLightNodeNames {
 		node := info.Model.FindNode(nodeName)
-		beamLights[i] = node.Attachable().(*graphics.SpotLight)
+		beamLights[i] = node.Target().(game.SpotLightNodeTarget).Light
 	}
 
 	stopLights := make([]*graphics.PointLight, len(d.chassisDef.stopLightNodeNames))
 	for i, nodeName := range d.chassisDef.stopLightNodeNames {
 		node := info.Model.FindNode(nodeName)
-		stopLights[i] = node.Attachable().(*graphics.PointLight)
+		stopLights[i] = node.Target().(game.PointLightNodeTarget).Light
 	}
 
 	var axes []*Axis
@@ -261,7 +264,9 @@ func (d *CarDefinition) ApplyToModel(scene *game.Scene, info CarApplyInfo) *Car 
 			Position:   leftWheelAbsolutePosition,
 			Rotation:   chassisRotation,
 		})
-		leftWheelNode.SetBody(leftWheelBody)
+		leftWheelNode.SetSource(game.BodyNodeSource{
+			Body: leftWheelBody,
+		})
 
 		leftWheelDirection := constraint.NewMatchDirections().
 			SetPrimaryDirection(dprec.BasisXVec3()).
@@ -299,7 +304,9 @@ func (d *CarDefinition) ApplyToModel(scene *game.Scene, info CarApplyInfo) *Car 
 				Position:   leftWheelAbsolutePosition,
 				Rotation:   chassisRotation,
 			})
-			hubNode.SetBody(hubBody)
+			hubNode.SetSource(game.BodyNodeSource{
+				Body: hubBody,
+			})
 
 			scene.Physics().CreateDoubleBodyConstraint(hubBody, leftWheelBody, constraint.NewPairCombined(
 				constraint.NewCopyPosition(),
@@ -335,7 +342,9 @@ func (d *CarDefinition) ApplyToModel(scene *game.Scene, info CarApplyInfo) *Car 
 			Position:   rightWheelAbsolutePosition,
 			Rotation:   chassisRotation,
 		})
-		rightWheelNode.SetBody(rightWheelBody)
+		rightWheelNode.SetSource(game.BodyNodeSource{
+			Body: rightWheelBody,
+		})
 
 		rightWheelDirection := constraint.NewMatchDirections().
 			SetPrimaryDirection(dprec.BasisXVec3()).
@@ -373,7 +382,9 @@ func (d *CarDefinition) ApplyToModel(scene *game.Scene, info CarApplyInfo) *Car 
 				Position:   rightWheelAbsolutePosition,
 				Rotation:   chassisRotation,
 			})
-			hubNode.SetBody(hubBody)
+			hubNode.SetSource(game.BodyNodeSource{
+				Body: hubBody,
+			})
 
 			scene.Physics().CreateDoubleBodyConstraint(hubBody, rightWheelBody, constraint.NewPairCombined(
 				constraint.NewCopyPosition(),
@@ -473,7 +484,7 @@ func (c *Car) Velocity() float64 {
 }
 
 type Chassis struct {
-	node       *game.Node
+	node       *hierarchy.Node
 	body       *physics.Body
 	headLights []*graphics.PointLight
 	tailLights []*graphics.PointLight
@@ -481,7 +492,7 @@ type Chassis struct {
 	stopLights []*graphics.PointLight
 }
 
-func (c *Chassis) Node() *game.Node {
+func (c *Chassis) Node() *hierarchy.Node {
 	return c.node
 }
 
@@ -549,7 +560,7 @@ func (a *Axis) RightHub() *Hub {
 }
 
 type Wheel struct {
-	node                 *game.Node
+	node                 *hierarchy.Node
 	body                 *physics.Body
 	directionSolver      *constraint.MatchDirections
 	attachmentConstraint *physics.DBConstraint
@@ -559,7 +570,7 @@ func (w *Wheel) Velocity() float64 {
 	return dprec.Vec3Dot(w.body.AngularVelocity(), w.body.Orientation().OrientationX())
 }
 
-func (w *Wheel) Node() *game.Node {
+func (w *Wheel) Node() *hierarchy.Node {
 	return w.node
 }
 
@@ -576,11 +587,11 @@ func (w *Wheel) AttachmentConstraint() *physics.DBConstraint {
 }
 
 type Hub struct {
-	node *game.Node
+	node *hierarchy.Node
 	body *physics.Body
 }
 
-func (h *Hub) Node() *game.Node {
+func (h *Hub) Node() *hierarchy.Node {
 	return h.node
 }
 

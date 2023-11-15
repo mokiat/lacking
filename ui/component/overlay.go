@@ -1,7 +1,5 @@
 package component
 
-import "github.com/mokiat/lacking/log"
-
 // Overlay represents a UI Element that stays on top of all existing
 // elements and is first to receive events.
 type Overlay interface {
@@ -38,6 +36,6 @@ func CloseOverlay(scope Scope) {
 	if overlay != nil {
 		overlay.Close()
 	} else {
-		log.Warn("No overlay in scope!")
+		logger.Warn("No overlay in scope!")
 	}
 }

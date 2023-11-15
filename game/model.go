@@ -7,6 +7,7 @@ import (
 	"github.com/mokiat/gomath/sprec"
 	"github.com/mokiat/lacking/game/asset"
 	"github.com/mokiat/lacking/game/graphics"
+	"github.com/mokiat/lacking/game/hierarchy"
 	"github.com/mokiat/lacking/game/physics"
 	"github.com/mokiat/lacking/game/physics/collision"
 	"github.com/mokiat/lacking/util/async"
@@ -497,9 +498,9 @@ type ModelInfo struct {
 
 type Model struct {
 	definition *ModelDefinition
-	root       *Node
+	root       *hierarchy.Node
 
-	nodes                     []*Node
+	nodes                     []*hierarchy.Node
 	armatures                 []*graphics.Armature
 	animations                []*Animation
 	bodyInstances             []*physics.Body
@@ -508,11 +509,11 @@ type Model struct {
 	directionalLightInstances []*graphics.DirectionalLight
 }
 
-func (m *Model) Root() *Node {
+func (m *Model) Root() *hierarchy.Node {
 	return m.root
 }
 
-func (m *Model) FindNode(name string) *Node {
+func (m *Model) FindNode(name string) *hierarchy.Node {
 	return m.root.FindNode(name)
 }
 

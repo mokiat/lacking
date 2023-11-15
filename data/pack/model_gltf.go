@@ -9,7 +9,6 @@ import (
 	"github.com/mokiat/gomath/dprec"
 	"github.com/mokiat/gomath/sprec"
 	"github.com/mokiat/gomath/stod"
-	"github.com/mokiat/lacking/log"
 	"github.com/mokiat/lacking/util/gltfutil"
 	"github.com/mokiat/lacking/util/resource"
 	"github.com/qmuntal/gltf"
@@ -380,12 +379,12 @@ func (a *OpenGLTFResourceAction) Run() error {
 		for _, gltfChannel := range gltfAnimation.Channels {
 			nodeRef := gltfChannel.Target.Node
 			if nodeRef == nil {
-				log.Warn("Channel does not reference a node")
+				logger.Warn("Channel does not reference a node!")
 				continue
 			}
 			samplerRef := gltfChannel.Sampler
 			if samplerRef == nil {
-				log.Warn("Channel does not reference a sampler")
+				logger.Warn("Channel does not reference a sampler!")
 				continue
 			}
 			binding := bindingFromNodeIndex[*nodeRef]
@@ -399,7 +398,7 @@ func (a *OpenGLTFResourceAction) Run() error {
 
 			gltfSampler := gltfAnimation.Samplers[*samplerRef]
 			if gltfSampler.Interpolation != gltf.InterpolationLinear {
-				log.Warn("Unsupported animation interpolation - results may be wrong")
+				logger.Warn("Unsupported animation interpolation - results may be wrong!")
 			}
 
 			timestamps := gltfutil.AnimationKeyframes(gltfDoc, gltfSampler)
@@ -416,7 +415,7 @@ func (a *OpenGLTFResourceAction) Run() error {
 			case gltf.TRSTranslation:
 				translations := gltfutil.AnimationTranslations(gltfDoc, gltfSampler)
 				if len(translations) != len(timestamps) {
-					log.Error("Translations do not match number of keyframes")
+					logger.Error("Translations do not match number of keyframes!")
 					continue
 				}
 				binding.TranslationKeyframes = make([]TranslationKeyframe, len(timestamps))
@@ -430,7 +429,7 @@ func (a *OpenGLTFResourceAction) Run() error {
 			case gltf.TRSRotation:
 				rotations := gltfutil.AnimationRotations(gltfDoc, gltfSampler)
 				if len(rotations) != len(timestamps) {
-					log.Error("Rotations do not match number of keyframes")
+					logger.Error("Rotations do not match number of keyframes!")
 					continue
 				}
 				binding.RotationKeyframes = make([]RotationKeyframe, len(timestamps))
@@ -444,7 +443,7 @@ func (a *OpenGLTFResourceAction) Run() error {
 			case gltf.TRSScale:
 				scales := gltfutil.AnimationScales(gltfDoc, gltfSampler)
 				if len(scales) != len(timestamps) {
-					log.Error("Scales do not match number of keyframes")
+					logger.Error("Scales do not match number of keyframes!")
 					continue
 				}
 				binding.ScaleKeyframes = make([]ScaleKeyframe, len(timestamps))
@@ -456,7 +455,7 @@ func (a *OpenGLTFResourceAction) Run() error {
 				}
 
 			default:
-				log.Warn("Channel has unsupported path")
+				logger.Warn("Channel has unsupported path!")
 			}
 		}
 		a.model.Animations = append(a.model.Animations, animation)

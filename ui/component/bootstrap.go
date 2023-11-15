@@ -4,12 +4,7 @@ import (
 	"fmt"
 
 	"github.com/mokiat/gog/ds"
-	"github.com/mokiat/lacking/log"
 	"github.com/mokiat/lacking/ui/layout"
-)
-
-var (
-	coLogger = log.Path("/ui/component")
 )
 
 // Initialize wires the framework using the specified root scope.
@@ -74,7 +69,7 @@ func (c *applicationComponent) OpenOverlay(scope Scope, instance Instance) *over
 
 func (c *applicationComponent) CloseOverlay(overlay *overlayHandle) {
 	if !c.overlays.Remove(overlay) {
-		log.Warn("Overlay already closed!")
+		logger.Warn("Overlay already closed!")
 	}
 	c.Invalidate()
 }

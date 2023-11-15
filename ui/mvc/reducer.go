@@ -1,7 +1,6 @@
 package mvc
 
 import (
-	"github.com/mokiat/lacking/log"
 	co "github.com/mokiat/lacking/ui/component"
 )
 
@@ -38,7 +37,7 @@ func Dispatch(scope co.Scope, action Action) {
 		}
 		registration = registration.parent
 	}
-	log.Warn("[mvc] No Reducer found that can process Action (%T)", action)
+	logger.Warn("No reducer found that can process action (type: %T)!", action)
 }
 
 // UseReducer extends the specified Scope with the specified Reducer. Dispatch

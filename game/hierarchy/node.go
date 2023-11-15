@@ -1,57 +1,11 @@
-package game
+package hierarchy
 
-import (
-	"strings"
-	"sync/atomic"
+import "github.com/mokiat/gomath/dprec"
 
-	"github.com/mokiat/gomath/dprec"
-	"github.com/mokiat/lacking/game/graphics"
-	"github.com/mokiat/lacking/game/physics"
-	"github.com/mokiat/lacking/log"
-)
-
-const (
-	initialRevision int32 = -1
-)
-
-var (
-	freeRevision int32
-)
-
-func nextRevision() int32 {
-	return atomic.AddInt32(&freeRevision, 1)
-}
-
-// TransformFunc is a mechanism to calculate a custom absolute matrix
-// off of the parent and the current matrix, circumventing standard
-// matrix multiplication rules.
-type TransformFunc func(parent, current dprec.Mat4) dprec.Mat4
-
-// DefaultTransformFunc is a TransformFunc that applies standard matrix
-// multiplication rules.
-func DefaultTransformFunc(parent, current dprec.Mat4) dprec.Mat4 {
-	return dprec.Mat4Prod(parent, current)
-}
-
-type Attachable interface {
-	SetMatrix(matrix dprec.Mat4)
-}
-
-// NewNode creates a new detached Node instance.
-func NewNode() *Node {
-	return &Node{
-		revision:  initialRevision,
-		transform: DefaultTransformFunc,
-
-		position: dprec.ZeroVec3(),
-		rotation: dprec.IdentityQuat(),
-		scale:    dprec.NewVec3(1.0, 1.0, 1.0),
-	}
-}
-
-// Node represents a positioning of an object or part of one in the 3D scene.
+// Node represents the transformation of an object or part of one in 3D space.
 type Node struct {
-	name         string
+	name string
+
 	parent       *Node
 	firstChild   *Node
 	lastChild    *Node
@@ -62,27 +16,28 @@ type Node struct {
 	rotation dprec.Quat
 	scale    dprec.Vec3
 
+	transform TransformFunc
+	source    NodeSource
+	target    NodeTarget
+
 	// revision is a mechanism through which it is determined if the absolute
 	// matrix cached for this Node is up to date. It borrows ideas from Lamport
 	// timestamps used in distributed systems. The matrix is considered up to date
 	// if the revision is larger than the parent's revision.
 	revision  int32
-	transform TransformFunc
 	absMatrix dprec.Mat4
-
-	// TODO: Abstract all of these through a common interface
-	body         *physics.Body
-	armature     *graphics.Armature
-	armatureBone int
-	attachable   Attachable
 }
 
-// PrintHierarchy prints debug information regarding the hierarchy that starts
-// from this node.
-func (n *Node) PrintHierarchy(depth int) {
-	log.Info("%sNODE:%s", strings.Repeat(" ", depth), n.name)
-	for child := n.FirstChild(); child != nil; child = child.RightSibling() {
-		child.PrintHierarchy(depth + 2)
+// NewNode creates a new detached Node instance.
+func NewNode() *Node {
+	return &Node{
+		revision: initialRevision,
+
+		position: dprec.ZeroVec3(),
+		rotation: dprec.IdentityQuat(),
+		scale:    dprec.NewVec3(1.0, 1.0, 1.0),
+
+		transform: DefaultTransformFunc,
 	}
 }
 
@@ -128,13 +83,13 @@ func (n *Node) RightSibling() *Node {
 	return n.rightSibling
 }
 
-// Detach removes this Node from the hierarchy but does not release any
-// resources.
+// Detach removes this Node from the hierarchy.
 func (n *Node) Detach() {
 	if n.parent != nil {
 		absMatrix := n.AbsoluteMatrix()
 		n.parent.RemoveChild(n)
 		translation, rotation, scale := absMatrix.TRS()
+		// TODO: SetMatrix
 		n.SetPosition(translation)
 		n.SetRotation(rotation)
 		n.SetScale(scale)
@@ -246,6 +201,16 @@ func (n *Node) FindNode(name string) *Node {
 	return nil
 }
 
+// UseTransformation configures a TransformFunc to be used for calculating
+// the absolute matrix of this node. Pass nil to restore the default behavior.
+func (n *Node) UseTransformation(transform TransformFunc) {
+	if transform != nil {
+		n.transform = transform
+	} else {
+		n.transform = DefaultTransformFunc
+	}
+}
+
 // Position returns this Node's relative position to the parent.
 func (n *Node) Position() dprec.Vec3 {
 	return n.position
@@ -285,42 +250,28 @@ func (n *Node) SetScale(scale dprec.Vec3) {
 	}
 }
 
-// SetAbsoluteMatrix changes the absolute position, rotation and scale
-// of this node.
-func (n *Node) SetAbsoluteMatrix(matrix dprec.Mat4) {
-	if n.parent == nil {
-		t, r, s := matrix.TRS()
-		n.position = t
-		n.rotation = r
-		n.scale = s
-	} else {
-		parentMatrix := n.parent.AbsoluteMatrix()
-		relativeMatrix := dprec.Mat4Prod(
-			dprec.InverseMat4(parentMatrix),
-			matrix,
-		)
-		t, r, s := relativeMatrix.TRS()
-		n.position = t
-		n.rotation = r
-		n.scale = s
-	}
-	n.revision = initialRevision
-}
-
 // Matrix returns the matrix transformation of this Node relative to the
 // parent.
 func (n *Node) Matrix() dprec.Mat4 {
 	return dprec.TRSMat4(n.position, n.rotation, n.scale)
 }
 
-// UseTransformation configures a TransformFunc to be used for calculating
-// the absolute matrix of this node. Pass nil to restore default behavior.
-func (n *Node) UseTransformation(transform TransformFunc) {
-	if transform != nil {
-		n.transform = transform
-	} else {
-		n.transform = DefaultTransformFunc
+// SetMatrix changes this node's relative transformation th the specified
+// matrix.
+func (n *Node) SetMatrix(matrix dprec.Mat4) {
+	translation, rotation, scale := matrix.TRS()
+	n.SetPosition(translation)
+	n.SetRotation(rotation)
+	n.SetScale(scale)
+}
+
+// BaseAbsoluteMatrix returns the absolute matrix of the parent, if there is
+// one, otherwise the identity matrix.
+func (n *Node) BaseAbsoluteMatrix() dprec.Mat4 {
+	if n.parent == nil {
+		return dprec.IdentityMat4()
 	}
+	return n.parent.AbsoluteMatrix()
 }
 
 // AbsoluteMatrix returns the matrix transformation of this Node relative
@@ -329,53 +280,70 @@ func (n *Node) AbsoluteMatrix() dprec.Mat4 {
 	if !n.isStaleHierarchy() {
 		return n.absMatrix
 	}
-	if n.parent == nil {
-		n.absMatrix = n.Matrix()
-	} else {
-		n.absMatrix = n.transform(n.parent.AbsoluteMatrix(), n.Matrix())
-	}
+	n.absMatrix = n.transform(n)
 	n.revision = nextRevision() // make sure to call this last
 	return n.absMatrix
 }
 
-// Body returns the physics Body that is attached to this Node.
-func (n *Node) Body() *physics.Body {
-	return n.body
+// SetAbsoluteMatrix changes the relative position, rotation and scale
+// of this node based on the specified absolute transformation matrix.
+func (n *Node) SetAbsoluteMatrix(matrix dprec.Mat4) {
+	if n.parent == nil {
+		n.SetMatrix(matrix)
+	} else {
+		parentMatrix := n.parent.AbsoluteMatrix()
+		relativeMatrix := dprec.Mat4Prod(
+			dprec.InverseMat4(parentMatrix),
+			matrix,
+		)
+		n.SetMatrix(relativeMatrix)
+	}
 }
 
-// SetBody attaches a physics Body to this node.
-func (n *Node) SetBody(body *physics.Body) {
-	n.body = body
+// Source returns the transformation input for this node.
+func (n *Node) Source() NodeSource {
+	return n.source
 }
 
-// Armature returns the graphics Armature that is attached to this Node.
-func (n *Node) Armature() *graphics.Armature {
-	return n.armature
+// SetSource changes the transformation input for this node.
+func (n *Node) SetSource(source NodeSource) {
+	n.source = source
 }
 
-// SetArmature attaches a graphics Armature to this Node.
-func (n *Node) SetArmature(armature *graphics.Armature) {
-	n.armature = armature
+// Target returns the transformation output for this node.
+func (n *Node) Target() NodeTarget {
+	return n.target
 }
 
-// ArmatureBone returns the bone index if the Armature that is affected by
-// this Node.
-func (n *Node) ArmatureBone() int {
-	return n.armatureBone
+// SetTarget changes the transformation output for this node.
+func (n *Node) SetTarget(target NodeTarget) {
+	n.target = target
 }
 
-// SetArmatureBone configures the bone index of the Armature that is affected
-// by this Node.
-func (n *Node) SetArmatureBone(bone int) {
-	n.armatureBone = bone
+// ApplyFromSource requests that this node be updated based on its source.
+// If recursive is specified, the same is applied down the hierarchy as well.
+func (n *Node) ApplyFromSource(recursive bool) {
+	if n.source != nil {
+		n.source.ApplyTo(n)
+	}
+	if recursive {
+		for child := n.firstChild; child != nil; child = child.rightSibling {
+			child.ApplyFromSource(recursive)
+		}
+	}
 }
 
-func (n *Node) Attachable() Attachable {
-	return n.attachable
-}
-
-func (n *Node) SetAttachable(attachable Attachable) {
-	n.attachable = attachable
+// ApplyToTarget requests that this node be applied to its target.
+// If recursive is specified, the same is applied down the hierarchy as well.
+func (n *Node) ApplyToTarget(recursive bool) {
+	if n.target != nil {
+		n.target.ApplyFrom(n)
+	}
+	if recursive {
+		for child := n.firstChild; child != nil; child = child.rightSibling {
+			child.ApplyToTarget(recursive)
+		}
+	}
 }
 
 func (n *Node) isStaleHierarchy() bool {
@@ -394,18 +362,4 @@ func (n *Node) isStaleHierarchy() bool {
 	// This node appears to be fine with relation to its parent but
 	// it is unclear if the parent is up to date.
 	return n.parent.isStaleHierarchy()
-}
-
-func IgnoreParentRotation(parent, current dprec.Mat4) dprec.Mat4 {
-	// Remove parent's rotation
-	parent.M11 = 1.0
-	parent.M12 = 0.0
-	parent.M13 = 0.0
-	parent.M21 = 0.0
-	parent.M22 = 1.0
-	parent.M23 = 0.0
-	parent.M31 = 0.0
-	parent.M32 = 0.0
-	parent.M33 = 1.0
-	return dprec.Mat4Prod(parent, current)
 }
