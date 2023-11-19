@@ -8,6 +8,11 @@ import (
 	"github.com/mokiat/lacking/util/async"
 )
 
+// TOOD: Only the game resource sets should manage resource set hierarchies.
+// The graphics, physics, audio packages should expose resource creation
+// through their engine's and their scenes should only serve as a
+// grouping/switch mechanism.
+
 var (
 	ErrNotFound     = errors.New("resource not found")
 	ErrStillLoading = errors.New("resource still loading")

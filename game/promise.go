@@ -12,6 +12,8 @@ func NewPromise[T any](engine *Engine) Promise[T] {
 	return SafePromise(async.NewPromise[T](), engine)
 }
 
+// TODO: REMOVE
+// Deprecated: Use async.Promise instead
 func SafePromise[T any](delegate async.Promise[T], engine *Engine) Promise[T] {
 	return Promise[T]{
 		delegate: delegate,
@@ -19,6 +21,8 @@ func SafePromise[T any](delegate async.Promise[T], engine *Engine) Promise[T] {
 	}
 }
 
+// TODO: REMOVE
+// Deprecated: Use async.Promise instead
 type Promise[T any] struct {
 	delegate async.Promise[T]
 	worker   Worker
