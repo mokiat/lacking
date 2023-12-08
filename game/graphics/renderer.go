@@ -574,6 +574,18 @@ func (r *sceneRenderer) Ray(viewport Viewport, camera *Camera, x, y int) (dprec.
 	return a.VecXYZ(), b.VecXYZ()
 }
 
+func (r *sceneRenderer) Point(viewport Viewport, camera *Camera, position dprec.Vec3) dprec.Vec2 {
+	pos := dprec.NewVec4(position.X, position.Y, position.Z, 1.0)
+	projectionMatrix := stod.Mat4(r.evaluateProjectionMatrix(camera, viewport.Width, viewport.Height))
+	viewMatrix := stod.Mat4(sprec.InverseMat4(camera.gfxMatrix()))
+	ndc := dprec.Mat4Vec4Prod(projectionMatrix, dprec.Mat4Vec4Prod(viewMatrix, pos))
+	if dprec.Abs(ndc.W) < 0.0001 {
+		return dprec.ZeroVec2()
+	}
+	clip := dprec.Vec4Quot(ndc, ndc.W)
+	return dprec.NewVec2((clip.X+1.0)*float64(viewport.Width)/2.0, (1.0-clip.Y)*float64(viewport.Height)/2.0)
+}
+
 func (r *sceneRenderer) Render(framebuffer render.Framebuffer, viewport Viewport, scene *Scene, camera *Camera) {
 	r.api.Invalidate()
 
