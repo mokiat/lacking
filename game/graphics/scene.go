@@ -168,6 +168,10 @@ func (s *Scene) Ray(viewport Viewport, camera *Camera, x, y int) (dprec.Vec3, dp
 	return s.renderer.Ray(viewport, camera, x, y)
 }
 
+func (s *Scene) Point(viewport Viewport, camera *Camera, position dprec.Vec3) dprec.Vec2 {
+	return s.renderer.Point(viewport, camera, position)
+}
+
 // Render draws this scene to the specified viewport
 // looking through the specified camera.
 func (s *Scene) RenderFramebuffer(framebuffer render.Framebuffer, viewport Viewport) {
