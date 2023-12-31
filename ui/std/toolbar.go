@@ -8,7 +8,7 @@ import (
 )
 
 var (
-	ToolbarHeight      = 64
+	ToolbarHeight      = 48
 	ToolbarBorderSize  = 1
 	ToolbarSidePadding = 5
 	ToolbarItemSpacing = 10
