@@ -468,6 +468,9 @@ func (w *windowHandler) processMouseEvent(element *Element, event MouseEvent) bo
 }
 
 func (w *Window) renderElement(element *Element, canvas *Canvas, clipBounds, dirtyRegion Bounds) {
+	if !element.visible {
+		return
+	}
 	dirtyRegion = dirtyRegion.Intersect(element.bounds)
 	if dirtyRegion.Empty() {
 		return
