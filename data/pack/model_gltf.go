@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"path"
 
 	"github.com/mokiat/gomath/dprec"
 	"github.com/mokiat/gomath/sprec"
@@ -52,20 +51,34 @@ func (a *OpenGLTFResourceAction) Run() error {
 	}
 	defer in.Close()
 
-	gltfDoc := new(gltf.Document)
-	if err := gltf.NewDecoder(in).Decode(gltfDoc); err != nil {
-		return fmt.Errorf("failed to parse gltf model %q: %w", a.uri, err)
+	model, err := ParseGLTFResource(in)
+	if err != nil {
+		return err
 	}
 
-	a.model = &Model{}
+	a.model = model
+	return nil
+
+}
+
+func ParseGLTFResource(in io.Reader) (*Model, error) {
+	gltfDoc := new(gltf.Document)
+	if err := gltf.NewDecoder(in).Decode(gltfDoc); err != nil {
+		return nil, fmt.Errorf("failed to parse gltf model: %w", err)
+	}
+	return BuildModelResource(gltfDoc)
+}
+
+func BuildModelResource(gltfDoc *gltf.Document) (*Model, error) {
+	model := &Model{}
 
 	imagesFromIndex := make(map[uint32]*Image)
 	for i, gltfImage := range gltfDoc.Images {
-		img, err := a.openImage(gltfDoc, gltfImage, a.locator)
+		img, err := openGLTFImage(gltfDoc, gltfImage)
 		if err != nil {
-			return fmt.Errorf("error loading image: %w", err)
+			return nil, fmt.Errorf("error loading image: %w", err)
 		}
-		a.model.Textures = append(a.model.Textures, img)
+		model.Textures = append(model.Textures, img)
 		imagesFromIndex[uint32(i)] = img
 	}
 
@@ -108,7 +121,7 @@ func (a *OpenGLTFResourceAction) Run() error {
 			}
 			material.NormalScale = texScale
 		}
-		a.model.Materials = append(a.model.Materials, material)
+		model.Materials = append(model.Materials, material)
 		materialFromIndex[uint32(i)] = material
 	}
 
@@ -121,42 +134,42 @@ func (a *OpenGLTFResourceAction) Run() error {
 			Properties: gltfutil.Properties(gltfMesh.Extras),
 		}
 		meshDefinitionFromIndex[uint32(i)] = mesh
-		a.model.MeshDefinitions = append(a.model.MeshDefinitions, mesh)
+		model.MeshDefinitions = append(model.MeshDefinitions, mesh)
 		indexFromVertex := make(map[Vertex]int)
 
 		for j, gltfPrimitive := range gltfMesh.Primitives {
 			indexOffset := len(mesh.Indices) // this needs to happen first
 			gltfIndices, err := gltfutil.Indices(gltfDoc, gltfPrimitive)
 			if err != nil {
-				return fmt.Errorf("error reading indices: %w", err)
+				return nil, fmt.Errorf("error reading indices: %w", err)
 			}
 			gltfCoords, err := gltfutil.Coords(gltfDoc, gltfPrimitive)
 			if err != nil {
-				return fmt.Errorf("error reading coords: %w", err)
+				return nil, fmt.Errorf("error reading coords: %w", err)
 			}
 			gltfNormals, err := gltfutil.Normals(gltfDoc, gltfPrimitive)
 			if err != nil {
-				return fmt.Errorf("error reading normals: %w", err)
+				return nil, fmt.Errorf("error reading normals: %w", err)
 			}
 			gltfTangents, err := gltfutil.Tangents(gltfDoc, gltfPrimitive)
 			if err != nil {
-				return fmt.Errorf("error reading tangents: %w", err)
+				return nil, fmt.Errorf("error reading tangents: %w", err)
 			}
 			gltfTexCoords, err := gltfutil.TexCoord0s(gltfDoc, gltfPrimitive)
 			if err != nil {
-				return fmt.Errorf("error reading tex coords: %w", err)
+				return nil, fmt.Errorf("error reading tex coords: %w", err)
 			}
 			gltfColors, err := gltfutil.Color0s(gltfDoc, gltfPrimitive)
 			if err != nil {
-				return fmt.Errorf("error reading colors: %w", err)
+				return nil, fmt.Errorf("error reading colors: %w", err)
 			}
 			gltfWeights, err := gltfutil.Weight0s(gltfDoc, gltfPrimitive)
 			if err != nil {
-				return fmt.Errorf("error reading weights: %w", err)
+				return nil, fmt.Errorf("error reading weights: %w", err)
 			}
 			gltfJoints, err := gltfutil.Joint0s(gltfDoc, gltfPrimitive)
 			if err != nil {
-				return fmt.Errorf("error reading joints: %w", err)
+				return nil, fmt.Errorf("error reading joints: %w", err)
 			}
 
 			if gltfCoords != nil {
@@ -250,7 +263,7 @@ func (a *OpenGLTFResourceAction) Run() error {
 			Joints: make([]Joint, len(gltfSkin.Joints)),
 		}
 		armatureDefinitionFromIndex[uint32(i)] = armature
-		a.model.Armatures = append(a.model.Armatures, armature)
+		model.Armatures = append(model.Armatures, armature)
 	}
 
 	lightDefinitionFromIndex := make(map[uint32]*LightDefinition)
@@ -266,7 +279,7 @@ func (a *OpenGLTFResourceAction) Run() error {
 				case lightspuntual.TypeDirectional:
 					lightType = LightTypeDirectional
 				default:
-					return fmt.Errorf("unsupported light type %q", gltfLight.Type)
+					return nil, fmt.Errorf("unsupported light type %q", gltfLight.Type)
 				}
 				definition := &LightDefinition{
 					Name:      gltfLight.Name,
@@ -284,7 +297,7 @@ func (a *OpenGLTFResourceAction) Run() error {
 				emitColor = dprec.Vec3Prod(emitColor, float64(gltfLight.IntensityOrDefault()))
 				definition.EmitColor = emitColor
 				lightDefinitionFromIndex[uint32(i)] = definition
-				a.model.LightDefinitions = append(a.model.LightDefinitions, definition)
+				model.LightDefinitions = append(model.LightDefinitions, definition)
 			}
 		}
 	}
@@ -336,7 +349,7 @@ func (a *OpenGLTFResourceAction) Run() error {
 					Node:       node,
 					Definition: lightDefinition,
 				}
-				a.model.LightInstances = append(a.model.LightInstances, lightInstance)
+				model.LightInstances = append(model.LightInstances, lightInstance)
 			}
 		}
 
@@ -350,7 +363,7 @@ func (a *OpenGLTFResourceAction) Run() error {
 			if gltfNode.Skin != nil {
 				meshInstance.Armature = armatureDefinitionFromIndex[*gltfNode.Skin]
 			}
-			a.model.MeshInstances = append(a.model.MeshInstances, meshInstance)
+			model.MeshInstances = append(model.MeshInstances, meshInstance)
 		}
 		for _, childID := range gltfNode.Children {
 			node.Children = append(node.Children, visitNode(childID))
@@ -358,12 +371,12 @@ func (a *OpenGLTFResourceAction) Run() error {
 		return node
 	}
 	for _, nodeIndex := range gltfutil.RootNodeIndices(gltfDoc) {
-		a.model.RootNodes = append(a.model.RootNodes, visitNode(nodeIndex))
+		model.RootNodes = append(model.RootNodes, visitNode(nodeIndex))
 	}
 
 	// finalize armatures (now that all nodes are available)
 	for i, gltfSkin := range gltfDoc.Skins {
-		armature := a.model.Armatures[i]
+		armature := model.Armatures[i]
 		for j, joint := range gltfSkin.Joints {
 			armature.Joints[j].Node = nodeFromIndex[joint]
 			armature.Joints[j].InverseBindMatrix = gltfutil.InverseBindMatrix(gltfDoc, gltfSkin, j)
@@ -458,24 +471,26 @@ func (a *OpenGLTFResourceAction) Run() error {
 				logger.Warn("Channel has unsupported path!")
 			}
 		}
-		a.model.Animations = append(a.model.Animations, animation)
+		model.Animations = append(model.Animations, animation)
 	}
-	return nil
+	return model, nil
 }
 
-func (a *OpenGLTFResourceAction) openImage(doc *gltf.Document, img *gltf.Image, locator resource.ReadLocator) (*Image, error) {
+func openGLTFImage(doc *gltf.Document, img *gltf.Image) (*Image, error) {
 	var content []byte
 	if img.BufferView != nil {
 		content = gltfutil.BufferViewData(doc, *img.BufferView)
 	} else {
-		in, err := locator.ReadResource(path.Join(path.Dir(a.uri), img.URI))
-		if err != nil {
-			return nil, fmt.Errorf("error opening resource: %w", err)
-		}
-		content, err = io.ReadAll(in)
-		if err != nil {
-			return nil, fmt.Errorf("error reading resource: %w", err)
-		}
+		// TODO: Add support for external images
+		// in, err := locator.ReadResource(path.Join(path.Dir(a.uri), img.URI))
+		// if err != nil {
+		// 	return nil, fmt.Errorf("error opening resource: %w", err)
+		// }
+		// content, err = io.ReadAll(in)
+		// if err != nil {
+		// 	return nil, fmt.Errorf("error reading resource: %w", err)
+		// }
+		return nil, fmt.Errorf("external images not supported right now")
 	}
 	return ParseImageResource(bytes.NewReader(content))
 }

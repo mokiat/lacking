@@ -38,12 +38,12 @@ func (a *OpenImageResourceAction) Run() error {
 	}
 	defer in.Close()
 
-	img, _, err := image.Decode(in)
+	img, err := ParseImageResource(in)
 	if err != nil {
-		return fmt.Errorf("failed to decode image: %w", err)
+		return err
 	}
 
-	a.image = BuildImageResource(img)
+	a.image = img
 	return nil
 }
 
