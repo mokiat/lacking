@@ -72,6 +72,8 @@ type editboxComponent struct {
 }
 
 func (c *editboxComponent) OnCreate() {
+	// TODO: Make it possible to pass the history from outside so that
+	// it can be persisted in a model?
 	c.history = state.NewHistory(editboxHistoryCapacity)
 
 	c.font = co.OpenFont(c.Scope(), "ui:///roboto-mono-regular.ttf")
