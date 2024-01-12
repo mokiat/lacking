@@ -1,12 +1,39 @@
 package render
 
+// ProgramCodeObject marks a type as being a ProgramCode.
+type ProgramCodeObject interface {
+	_isProgramCodeObject() // ensures interface uniqueness
+}
+
+// ProgramCode represents the shader language source code for a program.
+//
+// This can differ depending on the API implementation. It could be a single
+// string or a struct with multiple strings for each shader stage.
+type ProgramCode interface {
+	ProgramCodeObject
+}
+
+// ProgramInfo represents the information needed to create a Program.
 type ProgramInfo struct {
-	VertexShader    Shader
-	FragmentShader  Shader
+
+	// Label specifies a human-readable label for the program. Intended for
+	// debugging and logging purposes only.
+	Label string
+
+	// SourceCode specifies the source code for the program.
+	SourceCode ProgramCode
+
+	// TextureBindings specifies the texture bindings for the program, in case
+	// the implementation does not support shader-specified bindings.
 	TextureBindings []TextureBinding
+
+	// UniformBindings specifies the uniform bindings for the program, in case
+	// the implementation does not support shader-specified bindings.
 	UniformBindings []UniformBinding
 }
 
+// NewTextureBinding creates a new TextureBinding with the specified name and
+// index.
 func NewTextureBinding(name string, index int) TextureBinding {
 	return TextureBinding{
 		Name:  name,
@@ -14,11 +41,18 @@ func NewTextureBinding(name string, index int) TextureBinding {
 	}
 }
 
+// TextureBinding represents a texture binding for a program.
 type TextureBinding struct {
-	Name  string
+
+	// Name specifies the name of the texture in the shader.
+	Name string
+
+	// Index specifies the binding index.
 	Index int
 }
 
+// NewUniformBinding creates a new UniformBinding with the specified name and
+// index.
 func NewUniformBinding(name string, index int) UniformBinding {
 	return UniformBinding{
 		Name:  name,
@@ -26,19 +60,31 @@ func NewUniformBinding(name string, index int) UniformBinding {
 	}
 }
 
+// UniformBinding represents a uniform binding for a program.
 type UniformBinding struct {
-	Name  string
+
+	// Name specifies the name of the uniform object in the shader.
+	Name string
+
+	// Index specifies the binding index.
 	Index int
 }
 
+// Deprecated: Legacy, use uniform buffers instead.
 type UniformLocation interface{}
 
+// ProgramObject marks a type as being a Program.
 type ProgramObject interface {
 	_isProgramObject() bool // ensures interface uniqueness
 }
 
+// Program represents a graphics program.
 type Program interface {
 	ProgramObject
+
+	// Deprecated: Legacy, use uniform buffers instead.
 	UniformLocation(name string) UniformLocation
+
+	// Release releases the resources used by the program.
 	Release()
 }

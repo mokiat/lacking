@@ -1,31 +1,29 @@
 package graphics
 
-import "github.com/mokiat/lacking/game/graphics/shading"
-
-type ShaderSet struct {
-	VertexShader   string
-	FragmentShader string
-}
+import (
+	"github.com/mokiat/lacking/game/graphics/shading"
+	"github.com/mokiat/lacking/render"
+)
 
 type MeshConfig struct {
 	HasArmature bool
 }
 
 type ShaderCollection struct {
-	BuildGeometry func(meshConfig MeshConfig, fn shading.GeometryFunc) ShaderSet
-	BuildForward  func(meshConfig MeshConfig, fn shading.ForwardFunc) ShaderSet
+	BuildGeometry func(meshConfig MeshConfig, fn shading.GeometryFunc) render.ProgramCode
+	BuildForward  func(meshConfig MeshConfig, fn shading.ForwardFunc) render.ProgramCode
 
-	ShadowMappingSet    func(cfg ShadowMappingShaderConfig) ShaderSet
-	PBRGeometrySet      func(cfg PBRGeometryShaderConfig) ShaderSet
-	DirectionalLightSet func() ShaderSet
-	AmbientLightSet     func() ShaderSet
-	PointLightSet       func() ShaderSet
-	SpotLightSet        func() ShaderSet
-	SkyboxSet           func() ShaderSet
-	SkycolorSet         func() ShaderSet
-	DebugSet            func() ShaderSet
-	ExposureSet         func() ShaderSet
-	PostprocessingSet   func(cfg PostprocessingShaderConfig) ShaderSet
+	ShadowMappingSet    func(cfg ShadowMappingShaderConfig) render.ProgramCode
+	PBRGeometrySet      func(cfg PBRGeometryShaderConfig) render.ProgramCode
+	DirectionalLightSet func() render.ProgramCode
+	AmbientLightSet     func() render.ProgramCode
+	PointLightSet       func() render.ProgramCode
+	SpotLightSet        func() render.ProgramCode
+	SkyboxSet           func() render.ProgramCode
+	SkycolorSet         func() render.ProgramCode
+	DebugSet            func() render.ProgramCode
+	ExposureSet         func() render.ProgramCode
+	PostprocessingSet   func(cfg PostprocessingShaderConfig) render.ProgramCode
 }
 
 type ShadowMappingShaderConfig struct {

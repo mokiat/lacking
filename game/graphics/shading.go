@@ -60,8 +60,8 @@ func (s *customShading) GeometryPipeline(meshDef *MeshDefinition, fragmentDef *m
 	meshCfg := MeshConfig{
 		HasArmature: meshDef.needsArmature,
 	}
-	shaderSet := s.shaders.BuildGeometry(meshCfg, s.geometryFunc)
-	program := internal.NewGeometryProgram(s.api, shaderSet.VertexShader, shaderSet.FragmentShader)
+	programCode := s.shaders.BuildGeometry(meshCfg, s.geometryFunc)
+	program := internal.NewGeometryProgram(s.api, programCode)
 	cullMode := render.CullModeNone
 	if materialDef.backfaceCulling {
 		cullMode = render.CullModeBack
@@ -100,8 +100,8 @@ func (s *customShading) ForwardPipeline(meshDef *MeshDefinition, fragmentDef *me
 	meshCfg := MeshConfig{
 		HasArmature: meshDef.needsArmature,
 	}
-	shaderSet := s.shaders.BuildForward(meshCfg, s.forwardFunc)
-	program := internal.NewGeometryProgram(s.api, shaderSet.VertexShader, shaderSet.FragmentShader)
+	programCode := s.shaders.BuildForward(meshCfg, s.forwardFunc)
+	program := internal.NewGeometryProgram(s.api, programCode)
 	cullMode := render.CullModeNone
 	if materialDef.backfaceCulling {
 		cullMode = render.CullModeBack
@@ -133,13 +133,13 @@ func (s *pbrShading) GeometryPipeline(meshDef *MeshDefinition, fragmentDef *mesh
 	material := fragmentDef.material
 	materialDef := material.definition
 	// TODO: Cache programs
-	shaderSet := s.shaders.PBRGeometrySet(PBRGeometryShaderConfig{
+	programCode := s.shaders.PBRGeometrySet(PBRGeometryShaderConfig{
 		HasArmature:      meshDef.needsArmature,
 		HasAlphaTesting:  materialDef.alphaTesting,
 		HasVertexColors:  meshDef.hasVertexColors,
 		HasAlbedoTexture: len(materialDef.twoDTextures) > 0 && materialDef.twoDTextures[0] != nil,
 	})
-	program := internal.NewGeometryProgram(s.api, shaderSet.VertexShader, shaderSet.FragmentShader)
+	program := internal.NewGeometryProgram(s.api, programCode)
 	cullMode := render.CullModeNone
 	if materialDef.backfaceCulling {
 		cullMode = render.CullModeBack
@@ -167,10 +167,10 @@ func (s *pbrShading) ShadowPipeline(meshDef *MeshDefinition, fragmentDef *meshFr
 	material := fragmentDef.material
 	materialDef := material.definition
 	// TODO: Cache programs
-	shaderSet := s.shaders.ShadowMappingSet(ShadowMappingShaderConfig{
+	programCode := s.shaders.ShadowMappingSet(ShadowMappingShaderConfig{
 		HasArmature: meshDef.needsArmature,
 	})
-	program := internal.NewShadowProgram(s.api, shaderSet.VertexShader, shaderSet.FragmentShader)
+	program := internal.NewShadowProgram(s.api, programCode)
 	cullMode := render.CullModeNone
 	if materialDef.backfaceCulling {
 		cullMode = render.CullModeBack

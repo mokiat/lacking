@@ -4,16 +4,14 @@ import (
 	"github.com/mokiat/lacking/render"
 )
 
-func newMaterial(shaders ShaderSet) *material {
+func newMaterial(sourceCode render.ProgramCode) *material {
 	return &material{
-		vertexSrc:   shaders.VertexShader,
-		fragmentSrc: shaders.FragmentShader,
+		sourceCode: sourceCode,
 	}
 }
 
 type material struct {
-	vertexSrc   string
-	fragmentSrc string
+	sourceCode render.ProgramCode
 
 	program                        render.Program
 	projectionMatrixLocation       render.UniformLocation
@@ -25,23 +23,8 @@ type material struct {
 }
 
 func (m *material) Allocate(api render.API) {
-	vertexShader := api.CreateVertexShader(render.ShaderInfo{
-		SourceCode: m.vertexSrc,
-	})
-	defer func() {
-		vertexShader.Release()
-	}()
-
-	fragmentShader := api.CreateFragmentShader(render.ShaderInfo{
-		SourceCode: m.fragmentSrc,
-	})
-	defer func() {
-		fragmentShader.Release()
-	}()
-
 	m.program = api.CreateProgram(render.ProgramInfo{
-		VertexShader:   vertexShader,
-		FragmentShader: fragmentShader,
+		SourceCode: m.sourceCode,
 	})
 
 	m.projectionMatrixLocation = m.program.UniformLocation("projectionMatrixIn")

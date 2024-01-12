@@ -235,11 +235,8 @@ func (r *sceneRenderer) Allocate() {
 			r.exposureAlbedoTexture,
 		},
 	})
-	exposureShaders := r.shaders.ExposureSet()
-	r.exposurePresentation = internal.NewLightingPresentation(r.api,
-		exposureShaders.VertexShader,
-		exposureShaders.FragmentShader,
-	)
+	exposureCode := r.shaders.ExposureSet()
+	r.exposurePresentation = internal.NewLightingPresentation(r.api, exposureCode)
 	r.exposurePipeline = r.api.CreatePipeline(render.PipelineInfo{
 		Program:      r.exposurePresentation.Program,
 		VertexArray:  r.quadShape.VertexArray(),
@@ -258,13 +255,10 @@ func (r *sceneRenderer) Allocate() {
 	})
 	r.exposureFormat = r.api.DetermineContentFormat(r.exposureFramebuffer)
 
-	postprocessingShaders := r.shaders.PostprocessingSet(PostprocessingShaderConfig{
+	postprocessingCode := r.shaders.PostprocessingSet(PostprocessingShaderConfig{
 		ToneMapping: ExponentialToneMapping,
 	})
-	r.postprocessingPresentation = internal.NewPostprocessingPresentation(r.api,
-		postprocessingShaders.VertexShader,
-		postprocessingShaders.FragmentShader,
-	)
+	r.postprocessingPresentation = internal.NewPostprocessingPresentation(r.api, postprocessingCode)
 	r.postprocessingPipeline = r.api.CreatePipeline(render.PipelineInfo{
 		Program:         r.postprocessingPresentation.Program,
 		VertexArray:     r.quadShape.VertexArray(),
@@ -279,11 +273,8 @@ func (r *sceneRenderer) Allocate() {
 		BlendEnabled:    false,
 	})
 
-	directionalLightShaders := r.shaders.DirectionalLightSet()
-	r.directionalLightPresentation = internal.NewLightingPresentation(r.api,
-		directionalLightShaders.VertexShader,
-		directionalLightShaders.FragmentShader,
-	)
+	directionalLightCode := r.shaders.DirectionalLightSet()
+	r.directionalLightPresentation = internal.NewLightingPresentation(r.api, directionalLightCode)
 	r.directionalLightPipeline = r.api.CreatePipeline(render.PipelineInfo{
 		Program:                     r.directionalLightPresentation.Program,
 		VertexArray:                 r.quadShape.VertexArray(),
@@ -304,11 +295,8 @@ func (r *sceneRenderer) Allocate() {
 		BlendOpColor:                render.BlendOperationAdd,
 		BlendOpAlpha:                render.BlendOperationAdd,
 	})
-	ambientLightShaders := r.shaders.AmbientLightSet()
-	r.ambientLightPresentation = internal.NewLightingPresentation(r.api,
-		ambientLightShaders.VertexShader,
-		ambientLightShaders.FragmentShader,
-	)
+	ambientLightCode := r.shaders.AmbientLightSet()
+	r.ambientLightPresentation = internal.NewLightingPresentation(r.api, ambientLightCode)
 	r.ambientLightPipeline = r.api.CreatePipeline(render.PipelineInfo{
 		Program:                     r.ambientLightPresentation.Program,
 		VertexArray:                 r.quadShape.VertexArray(),
@@ -330,11 +318,8 @@ func (r *sceneRenderer) Allocate() {
 		BlendOpAlpha:                render.BlendOperationAdd,
 	})
 
-	pointLightShaders := r.shaders.PointLightSet()
-	r.pointLightPresentation = internal.NewLightingPresentation(r.api,
-		pointLightShaders.VertexShader,
-		pointLightShaders.FragmentShader,
-	)
+	pointLightCode := r.shaders.PointLightSet()
+	r.pointLightPresentation = internal.NewLightingPresentation(r.api, pointLightCode)
 	r.pointLightPipeline = r.api.CreatePipeline(render.PipelineInfo{
 		Program:                     r.pointLightPresentation.Program,
 		VertexArray:                 r.sphereShape.VertexArray(),
@@ -356,11 +341,8 @@ func (r *sceneRenderer) Allocate() {
 		BlendOpAlpha:                render.BlendOperationAdd,
 	})
 
-	spotLightShaders := r.shaders.SpotLightSet()
-	r.spotLightPresentation = internal.NewLightingPresentation(r.api,
-		spotLightShaders.VertexShader,
-		spotLightShaders.FragmentShader,
-	)
+	spotLightCode := r.shaders.SpotLightSet()
+	r.spotLightPresentation = internal.NewLightingPresentation(r.api, spotLightCode)
 	r.spotLightPipeline = r.api.CreatePipeline(render.PipelineInfo{
 		Program:                     r.spotLightPresentation.Program,
 		VertexArray:                 r.coneShape.VertexArray(),
@@ -382,11 +364,8 @@ func (r *sceneRenderer) Allocate() {
 		BlendOpAlpha:                render.BlendOperationAdd,
 	})
 
-	skyboxShaders := r.shaders.SkyboxSet()
-	r.skyboxPresentation = internal.NewSkyboxPresentation(r.api,
-		skyboxShaders.VertexShader,
-		skyboxShaders.FragmentShader,
-	)
+	skyboxCode := r.shaders.SkyboxSet()
+	r.skyboxPresentation = internal.NewSkyboxPresentation(r.api, skyboxCode)
 	r.skyboxPipeline = r.api.CreatePipeline(render.PipelineInfo{
 		Program:     r.skyboxPresentation.Program,
 		VertexArray: r.cubeShape.VertexArray(),
@@ -402,11 +381,8 @@ func (r *sceneRenderer) Allocate() {
 		BlendEnabled:    false,
 	})
 
-	skycolorShaders := r.shaders.SkycolorSet()
-	r.skycolorPresentation = internal.NewSkyboxPresentation(r.api,
-		skycolorShaders.VertexShader,
-		skycolorShaders.FragmentShader,
-	)
+	skycolorCode := r.shaders.SkycolorSet()
+	r.skycolorPresentation = internal.NewSkyboxPresentation(r.api, skycolorCode)
 	r.skycolorPipeline = r.api.CreatePipeline(render.PipelineInfo{
 		Program:     r.skycolorPresentation.Program,
 		VertexArray: r.cubeShape.VertexArray(),
@@ -450,8 +426,8 @@ func (r *sceneRenderer) Allocate() {
 			},
 		},
 	})
-	debugShaders := r.shaders.DebugSet()
-	debugProgram := internal.BuildProgram(r.api, debugShaders.VertexShader, debugShaders.FragmentShader, nil, []render.UniformBinding{
+	debugCode := r.shaders.DebugSet()
+	debugProgram := internal.BuildProgram(r.api, debugCode, nil, []render.UniformBinding{
 		{
 			Name:  "Camera",
 			Index: internal.UniformBufferBindingCamera,
