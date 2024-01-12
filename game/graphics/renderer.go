@@ -621,10 +621,10 @@ func (r *sceneRenderer) Render(framebuffer render.Framebuffer, viewport Viewport
 		Data: r.cameraUniformBufferData,
 	})
 
-	r.api.UniformBufferUnit(internal.UniformBufferBindingCamera, r.cameraUniformBuffer)
-	r.api.UniformBufferUnit(internal.UniformBufferBindingModel, r.modelUniformBuffer)
-	r.api.UniformBufferUnit(internal.UniformBufferBindingMaterial, r.materialUniformBuffer)
-	r.api.UniformBufferUnit(internal.UniformBufferBindingLight, r.lightUniformBuffer)
+	r.commands.UniformBufferUnit(internal.UniformBufferBindingCamera, r.cameraUniformBuffer)
+	r.commands.UniformBufferUnit(internal.UniformBufferBindingModel, r.modelUniformBuffer)
+	r.commands.UniformBufferUnit(internal.UniformBufferBindingMaterial, r.materialUniformBuffer)
+	r.commands.UniformBufferUnit(internal.UniformBufferBindingLight, r.lightUniformBuffer)
 
 	r.renderShadowPass(ctx)
 	r.renderGeometryPass(ctx)
