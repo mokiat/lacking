@@ -953,6 +953,9 @@ func (r *sceneRenderer) renderMeshesList(ctx renderCtx) {
 	count := 0
 	for _, item := range r.renderItems {
 		fragment := item.fragment
+		if fragment.material.geometryPipeline == nil {
+			continue // skip non-geometry meshes
+		}
 
 		// just append the modelmatrix
 		if fragment == lastFragment && item.armature == nil {
@@ -1232,8 +1235,80 @@ func (r *sceneRenderer) renderForwardPass(ctx renderCtx) {
 		r.commands.Draw(0, len(r.debugLines)*2, 1)
 	}
 
+	// NOTE: Reusing renderItems and assuming same as geometry pass.
+	r.renderForwardMeshesList(ctx)
+
 	r.api.SubmitQueue(r.commands)
 	r.api.EndRenderPass()
+}
+
+func (r *sceneRenderer) renderForwardMeshesList(ctx renderCtx) {
+	var lastFragment *meshFragmentDefinition
+	count := 0
+	for _, item := range r.renderItems {
+		fragment := item.fragment
+		if fragment.material.forwardPipeline == nil {
+			continue // skip non-forward meshes
+		}
+
+		// just append the modelmatrix
+		if fragment == lastFragment && item.armature == nil {
+			copy(r.modelUniformBufferData[count*64:], item.modelMatrix)
+			count++
+
+			// flush batch
+			if count >= 256 {
+				r.commands.UpdateBufferData(r.modelUniformBuffer, render.BufferUpdateInfo{
+					Data:   r.modelUniformBufferData,
+					Offset: 0,
+				})
+				r.commands.DrawIndexed(lastFragment.indexOffsetBytes, lastFragment.indexCount, count)
+				count = 0
+			}
+		} else {
+			// flush batch
+			if lastFragment != nil && count > 0 {
+				r.commands.UpdateBufferData(r.modelUniformBuffer, render.BufferUpdateInfo{
+					Data:   r.modelUniformBufferData,
+					Offset: 0,
+				})
+				r.commands.DrawIndexed(lastFragment.indexOffsetBytes, lastFragment.indexCount, count)
+			}
+
+			count = 0
+			lastFragment = fragment
+			material := fragment.material
+			materialValues := material.definition
+			copy(r.materialUniformBufferData, materialValues.uniformData)
+			r.commands.BindPipeline(material.forwardPipeline)
+			r.commands.UpdateBufferData(r.materialUniformBuffer, render.BufferUpdateInfo{
+				Data:   r.materialUniformBufferData,
+				Offset: 0,
+			})
+			if item.armature == nil {
+				copy(r.modelUniformBufferData[count*64:], item.modelMatrix)
+				count++
+			} else {
+				// No batching for submeshes with armature. Zero index is the model
+				// matrix
+				copy(r.modelUniformBufferData, item.armature.uniformBufferData)
+				r.commands.UpdateBufferData(r.modelUniformBuffer, render.BufferUpdateInfo{
+					Data:   r.modelUniformBufferData,
+					Offset: 0,
+				})
+				r.commands.DrawIndexed(lastFragment.indexOffsetBytes, lastFragment.indexCount, 1)
+			}
+		}
+	}
+
+	// flush remainder
+	if lastFragment != nil && count > 0 {
+		r.commands.UpdateBufferData(r.modelUniformBuffer, render.BufferUpdateInfo{
+			Data:   r.modelUniformBufferData,
+			Offset: 0,
+		})
+		r.commands.DrawIndexed(lastFragment.indexOffsetBytes, lastFragment.indexCount, count)
+	}
 }
 
 func (r *sceneRenderer) renderExposureProbePass(ctx renderCtx) {

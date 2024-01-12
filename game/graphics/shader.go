@@ -1,11 +1,20 @@
 package graphics
 
+import "github.com/mokiat/lacking/game/graphics/shading"
+
 type ShaderSet struct {
 	VertexShader   string
 	FragmentShader string
 }
 
+type MeshConfig struct {
+	HasArmature bool
+}
+
 type ShaderCollection struct {
+	BuildGeometry func(meshConfig MeshConfig, fn shading.GeometryFunc) ShaderSet
+	BuildForward  func(meshConfig MeshConfig, fn shading.ForwardFunc) ShaderSet
+
 	ShadowMappingSet    func(cfg ShadowMappingShaderConfig) ShaderSet
 	PBRGeometrySet      func(cfg PBRGeometryShaderConfig) ShaderSet
 	DirectionalLightSet func() ShaderSet
