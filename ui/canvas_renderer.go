@@ -1,8 +1,10 @@
 package ui
 
 import (
+	"github.com/mokiat/gblob"
 	"github.com/mokiat/gomath/sprec"
 	"github.com/mokiat/lacking/render"
+	"github.com/mokiat/lacking/util/blob"
 )
 
 const (
@@ -17,18 +19,49 @@ func newCanvasRenderer(api render.API, shaders ShaderCollection) *canvasRenderer
 
 		api: api,
 
-		shapeMesh:          newShapeMesh(maxVertexCount),
-		shapeShadeMaterial: newMaterial(shaders.ShapeShadedSet()),
-		shapeBlankMaterial: newMaterial(shaders.ShapeBlankSet()),
+		shapeMesh: newShapeMesh(maxVertexCount),
+		shapeShadeMaterial: newMaterial(render.ProgramInfo{
+			Label:      "Shaded Shape",
+			SourceCode: shaders.ShapeShadedSet(),
+			TextureBindings: []render.TextureBinding{
+				render.NewTextureBinding("colorTextureIn", textureBindingColorTexture),
+			},
+			UniformBindings: []render.UniformBinding{
+				render.NewUniformBinding("Camera", uniformBufferBindingCamera),
+			},
+		}),
+		shapeBlankMaterial: newMaterial(render.ProgramInfo{
+			Label:           "Blank Shape",
+			SourceCode:      shaders.ShapeBlankSet(),
+			TextureBindings: []render.TextureBinding{},
+			UniformBindings: []render.UniformBinding{
+				render.NewUniformBinding("Camera", uniformBufferBindingCamera),
+			},
+		}),
 
-		contourMesh:     newContourMesh(maxVertexCount),
-		contourMaterial: newMaterial(shaders.ContourSet()),
+		contourMesh: newContourMesh(maxVertexCount),
+		contourMaterial: newMaterial(render.ProgramInfo{
+			Label:           "Contour Material",
+			SourceCode:      shaders.ContourSet(),
+			TextureBindings: []render.TextureBinding{},
+			UniformBindings: []render.UniformBinding{
+				render.NewUniformBinding("Camera", uniformBufferBindingCamera),
+			},
+		}),
 
-		textMesh:     newTextMesh(maxVertexCount),
-		textMaterial: newMaterial(shaders.TextSet()),
+		textMesh: newTextMesh(maxVertexCount),
+		textMaterial: newMaterial(render.ProgramInfo{
+			Label:      "Text Material",
+			SourceCode: shaders.TextSet(),
+			TextureBindings: []render.TextureBinding{
+				render.NewTextureBinding("fontTextureIn", textureBindingFontTexture),
+			},
+			UniformBindings: []render.UniformBinding{
+				render.NewUniformBinding("Camera", uniformBufferBindingCamera),
+			},
+		}),
 
-		topLayer:         &canvasLayer{},
-		projectionMatrix: sprec.IdentityMat4(),
+		topLayer: &canvasLayer{},
 	}
 }
 
@@ -37,6 +70,9 @@ type canvasRenderer struct {
 
 	api          render.API
 	commandQueue render.CommandQueue
+
+	cameraUniformBufferData gblob.LittleEndianBlock
+	cameraUniformBuffer     render.Buffer
 
 	whiteMask render.Texture
 
@@ -56,13 +92,18 @@ type canvasRenderer struct {
 	textMaterial *material
 	textPipeline render.Pipeline
 
-	topLayer         *canvasLayer
-	currentLayer     *canvasLayer
-	projectionMatrix sprec.Mat4
+	topLayer     *canvasLayer
+	currentLayer *canvasLayer
 }
 
 func (c *canvasRenderer) onCreate() {
 	c.commandQueue = c.api.CreateCommandQueue()
+
+	c.cameraUniformBufferData = make([]byte, 64) // 1 x mat4
+	c.cameraUniformBuffer = c.api.CreateUniformBuffer(render.BufferInfo{
+		Dynamic: true,
+		Size:    len(c.cameraUniformBufferData),
+	})
 
 	c.whiteMask = c.api.CreateColorTexture2D(render.ColorTexture2DInfo{
 		Width:           1,
@@ -245,6 +286,8 @@ func (c *canvasRenderer) onCreate() {
 func (c *canvasRenderer) onDestroy() {
 	defer c.commandQueue.Release()
 
+	defer c.cameraUniformBuffer.Release()
+
 	defer c.whiteMask.Release()
 
 	defer c.shapeMesh.Release()
@@ -268,11 +311,18 @@ func (c *canvasRenderer) onBegin(size Size) {
 	c.currentLayer = c.topLayer
 	c.SetTransform(sprec.IdentityMat4())
 	c.SetClipRect(0, float32(size.Width), 0, float32(size.Height))
-	c.projectionMatrix = sprec.OrthoMat4(
+
+	// Configure Camera uniform buffer.
+	cameraPlotter := blob.NewPlotter(c.cameraUniformBufferData)
+	cameraPlotter.PlotSPMat4(sprec.OrthoMat4(
 		0.0, float32(size.Width),
 		0.0, float32(size.Height),
 		0.0, 1.0,
-	)
+	))
+	c.cameraUniformBuffer.Update(render.BufferUpdateInfo{
+		Data: c.cameraUniformBufferData,
+	})
+	c.commandQueue.UniformBufferUnit(uniformBufferBindingCamera, c.cameraUniformBuffer)
 
 	c.shapeMesh.Reset()
 	c.contourMesh.Reset()
@@ -501,12 +551,10 @@ func (c *canvasRenderer) FillTextLine(text []rune, position sprec.Vec2, typograp
 	vertexCount := c.textMesh.Offset() - vertexOffset
 	if vertexCount > 0 {
 		c.commandQueue.BindPipeline(c.textPipeline)
-		c.commandQueue.Uniform4f(c.textMaterial.colorLocation, color.Array())
-		c.commandQueue.UniformMatrix4f(c.textMaterial.projectionMatrixLocation, c.projectionMatrix.ColumnMajorArray())
+		c.commandQueue.TextureUnit(textureBindingFontTexture, font.texture)
 		c.commandQueue.UniformMatrix4f(c.textMaterial.transformMatrixLocation, transformMatrix.ColumnMajorArray())
 		c.commandQueue.UniformMatrix4f(c.textMaterial.clipMatrixLocation, clipMatrix.ColumnMajorArray())
-		c.commandQueue.TextureUnit(0, font.texture)
-		c.commandQueue.Uniform1i(c.textMaterial.textureLocation, 0)
+		c.commandQueue.Uniform4f(c.textMaterial.colorLocation, color.Array())
 		c.commandQueue.Draw(vertexOffset, vertexCount, 1)
 	}
 }
@@ -612,12 +660,10 @@ func (c *canvasRenderer) FillText(text string, position sprec.Vec2, typography T
 	}
 
 	c.commandQueue.BindPipeline(c.textPipeline)
-	c.commandQueue.Uniform4f(c.textMaterial.colorLocation, color.Array())
-	c.commandQueue.UniformMatrix4f(c.textMaterial.projectionMatrixLocation, c.projectionMatrix.ColumnMajorArray())
+	c.commandQueue.TextureUnit(textureBindingFontTexture, font.texture)
 	c.commandQueue.UniformMatrix4f(c.textMaterial.transformMatrixLocation, transformMatrix.ColumnMajorArray())
 	c.commandQueue.UniformMatrix4f(c.textMaterial.clipMatrixLocation, clipMatrix.ColumnMajorArray())
-	c.commandQueue.TextureUnit(0, font.texture)
-	c.commandQueue.Uniform1i(c.textMaterial.textureLocation, 0)
+	c.commandQueue.Uniform4f(c.textMaterial.colorLocation, color.Array())
 	c.commandQueue.Draw(vertexOffset, vertexCount, 1)
 }
 
@@ -664,7 +710,6 @@ func (c *canvasRenderer) fillPath(path *canvasPath, fill Fill) {
 	// draw stencil mask for all sub-shapes
 	if fill.Rule != FillRuleSimple {
 		c.commandQueue.BindPipeline(c.shapeMaskPipeline)
-		c.commandQueue.UniformMatrix4f(c.shapeBlankMaterial.projectionMatrixLocation, c.projectionMatrix.ColumnMajorArray())
 		c.commandQueue.UniformMatrix4f(c.shapeBlankMaterial.transformMatrixLocation, transformMatrix.ColumnMajorArray())
 		c.commandQueue.UniformMatrix4f(c.shapeBlankMaterial.clipMatrixLocation, clipMatrix.ColumnMajorArray())
 
@@ -695,13 +740,12 @@ func (c *canvasRenderer) fillPath(path *canvasPath, fill Fill) {
 	}
 	color := uiColorToVec(fill.Color)
 
-	c.commandQueue.Uniform4f(c.shapeShadeMaterial.colorLocation, color.Array())
-	c.commandQueue.UniformMatrix4f(c.shapeShadeMaterial.projectionMatrixLocation, c.projectionMatrix.ColumnMajorArray())
+	c.commandQueue.TextureUnit(textureBindingColorTexture, texture)
+	// c.commandQueue.UniformMatrix4f(c.shapeShadeMaterial.projectionMatrixLocation, c.projectionMatrix.ColumnMajorArray())
 	c.commandQueue.UniformMatrix4f(c.shapeShadeMaterial.transformMatrixLocation, transformMatrix.ColumnMajorArray())
 	c.commandQueue.UniformMatrix4f(c.shapeShadeMaterial.clipMatrixLocation, clipMatrix.ColumnMajorArray())
 	c.commandQueue.UniformMatrix4f(c.shapeShadeMaterial.textureTransformMatrixLocation, textureTransformMatrix.ColumnMajorArray())
-	c.commandQueue.TextureUnit(0, texture)
-	c.commandQueue.Uniform1i(c.shapeShadeMaterial.textureLocation, 0)
+	c.commandQueue.Uniform4f(c.shapeShadeMaterial.colorLocation, color.Array())
 
 	for i, pointOffset := range path.subPathOffsets {
 		pointCount := len(path.points) - pointOffset
@@ -722,7 +766,6 @@ func (c *canvasRenderer) strokePath(path *canvasPath) {
 	clipMatrix := currentLayer.ClipTransform
 
 	c.commandQueue.BindPipeline(c.contourPipeline)
-	c.commandQueue.UniformMatrix4f(c.contourMaterial.projectionMatrixLocation, c.projectionMatrix.ColumnMajorArray())
 	c.commandQueue.UniformMatrix4f(c.contourMaterial.transformMatrixLocation, transformMatrix.ColumnMajorArray())
 	c.commandQueue.UniformMatrix4f(c.contourMaterial.clipMatrixLocation, clipMatrix.ColumnMajorArray())
 
