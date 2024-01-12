@@ -16,9 +16,14 @@ type API interface {
 	// the specified Framebuffer.
 	DetermineContentFormat(framebuffer Framebuffer) DataFormat
 
+	// CreateFramebuffer creates a new Framebuffer object based on the
+	// provided FramebufferInfo.
 	CreateFramebuffer(info FramebufferInfo) Framebuffer
 
+	// CreateProgram creates a new Program object based on the provided
+	// ProgramInfo.
 	CreateProgram(info ProgramInfo) Program
+
 	CreateColorTexture2D(info ColorTexture2DInfo) Texture
 	CreateColorTextureCube(info ColorTextureCubeInfo) Texture
 	CreateDepthTexture2D(info DepthTexture2DInfo) Texture
