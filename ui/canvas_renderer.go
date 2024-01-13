@@ -28,55 +28,12 @@ func newCanvasRenderer(api render.API, shaders ShaderCollection) *canvasRenderer
 	return &canvasRenderer{
 		canvasPath: newCanvasPath(),
 
-		api: api,
+		api:     api,
+		shaders: shaders,
 
-		shapeMesh: newShapeMesh(maxVertexCount),
-		shapeShadeMaterial: newMaterial(render.ProgramInfo{
-			Label:      "Shaded Shape",
-			SourceCode: shaders.ShapeShadedSet(),
-			TextureBindings: []render.TextureBinding{
-				render.NewTextureBinding("colorTextureIn", textureBindingColorTexture),
-			},
-			UniformBindings: []render.UniformBinding{
-				render.NewUniformBinding("Camera", uniformBufferBindingCamera),
-				render.NewUniformBinding("Model", uniformBufferBindingModel),
-				render.NewUniformBinding("Material", uniformBufferBindingMaterial),
-			},
-		}),
-		shapeBlankMaterial: newMaterial(render.ProgramInfo{
-			Label:           "Blank Shape",
-			SourceCode:      shaders.ShapeBlankSet(),
-			TextureBindings: []render.TextureBinding{},
-			UniformBindings: []render.UniformBinding{
-				render.NewUniformBinding("Camera", uniformBufferBindingCamera),
-				render.NewUniformBinding("Model", uniformBufferBindingModel),
-			},
-		}),
-
+		shapeMesh:   newShapeMesh(maxVertexCount),
 		contourMesh: newContourMesh(maxVertexCount),
-		contourMaterial: newMaterial(render.ProgramInfo{
-			Label:           "Contour Material",
-			SourceCode:      shaders.ContourSet(),
-			TextureBindings: []render.TextureBinding{},
-			UniformBindings: []render.UniformBinding{
-				render.NewUniformBinding("Camera", uniformBufferBindingCamera),
-				render.NewUniformBinding("Model", uniformBufferBindingModel),
-			},
-		}),
-
-		textMesh: newTextMesh(maxVertexCount),
-		textMaterial: newMaterial(render.ProgramInfo{
-			Label:      "Text Material",
-			SourceCode: shaders.TextSet(),
-			TextureBindings: []render.TextureBinding{
-				render.NewTextureBinding("fontTextureIn", textureBindingFontTexture),
-			},
-			UniformBindings: []render.UniformBinding{
-				render.NewUniformBinding("Camera", uniformBufferBindingCamera),
-				render.NewUniformBinding("Model", uniformBufferBindingModel),
-				render.NewUniformBinding("Material", uniformBufferBindingMaterial),
-			},
-		}),
+		textMesh:    newTextMesh(maxVertexCount),
 
 		topLayer: &canvasLayer{},
 	}
@@ -85,7 +42,9 @@ func newCanvasRenderer(api render.API, shaders ShaderCollection) *canvasRenderer
 type canvasRenderer struct {
 	*canvasPath
 
-	api          render.API
+	api     render.API
+	shaders ShaderCollection
+
 	commandQueue render.CommandQueue
 
 	cameraUniformBufferData gblob.LittleEndianBlock
@@ -101,19 +60,19 @@ type canvasRenderer struct {
 	whiteMask render.Texture
 
 	shapeMesh            *shapeMesh
-	shapeShadeMaterial   *material
-	shapeBlankMaterial   *material
+	shapeShadeProgram    render.Program
+	shapeBlankProgram    render.Program
 	shapeMaskPipeline    render.Pipeline
 	shapeSimplePipeline  render.Pipeline
 	shapeNonZeroPipeline render.Pipeline
 	shapeOddPipeline     render.Pipeline
 
 	contourMesh     *contourMesh
-	contourMaterial *material
+	contourProgram  render.Program
 	contourPipeline render.Pipeline
 
 	textMesh     *textMesh
-	textMaterial *material
+	textProgram  render.Program
 	textPipeline render.Pipeline
 
 	topLayer     *canvasLayer
@@ -153,9 +112,17 @@ func (c *canvasRenderer) onCreate() {
 	})
 
 	c.shapeMesh.Allocate(c.api)
-	c.shapeBlankMaterial.Allocate(c.api)
+	c.shapeBlankProgram = c.api.CreateProgram(render.ProgramInfo{
+		Label:           "Blank Shape Material",
+		SourceCode:      c.shaders.ShapeBlankSet(),
+		TextureBindings: []render.TextureBinding{},
+		UniformBindings: []render.UniformBinding{
+			render.NewUniformBinding("Camera", uniformBufferBindingCamera),
+			render.NewUniformBinding("Model", uniformBufferBindingModel),
+		},
+	})
 	c.shapeMaskPipeline = c.api.CreatePipeline(render.PipelineInfo{
-		Program:     c.shapeBlankMaterial.program,
+		Program:     c.shapeBlankProgram,
 		VertexArray: c.shapeMesh.vertexArray,
 		Topology:    render.TopologyTriangleFan,
 		Culling:     render.CullModeNone,
@@ -184,9 +151,20 @@ func (c *canvasRenderer) onCreate() {
 		ColorWrite:   render.ColorMaskFalse,
 		BlendEnabled: false,
 	})
-	c.shapeShadeMaterial.Allocate(c.api)
+	c.shapeShadeProgram = c.api.CreateProgram(render.ProgramInfo{
+		Label:      "Shaded Shape Material",
+		SourceCode: c.shaders.ShapeShadedSet(),
+		TextureBindings: []render.TextureBinding{
+			render.NewTextureBinding("colorTextureIn", textureBindingColorTexture),
+		},
+		UniformBindings: []render.UniformBinding{
+			render.NewUniformBinding("Camera", uniformBufferBindingCamera),
+			render.NewUniformBinding("Model", uniformBufferBindingModel),
+			render.NewUniformBinding("Material", uniformBufferBindingMaterial),
+		},
+	})
 	c.shapeSimplePipeline = c.api.CreatePipeline(render.PipelineInfo{
-		Program:                     c.shapeShadeMaterial.program,
+		Program:                     c.shapeShadeProgram,
 		VertexArray:                 c.shapeMesh.vertexArray,
 		Topology:                    render.TopologyTriangleFan,
 		Culling:                     render.CullModeNone,
@@ -204,7 +182,7 @@ func (c *canvasRenderer) onCreate() {
 		BlendOpAlpha:                render.BlendOperationAdd,
 	})
 	c.shapeNonZeroPipeline = c.api.CreatePipeline(render.PipelineInfo{
-		Program:     c.shapeShadeMaterial.program,
+		Program:     c.shapeShadeProgram,
 		VertexArray: c.shapeMesh.vertexArray,
 		Topology:    render.TopologyTriangleFan,
 		Culling:     render.CullModeNone,
@@ -240,7 +218,7 @@ func (c *canvasRenderer) onCreate() {
 		BlendOpAlpha:                render.BlendOperationAdd,
 	})
 	c.shapeOddPipeline = c.api.CreatePipeline(render.PipelineInfo{
-		Program:     c.shapeShadeMaterial.program,
+		Program:     c.shapeShadeProgram,
 		VertexArray: c.shapeMesh.vertexArray,
 		Topology:    render.TopologyTriangleFan,
 		Culling:     render.CullModeNone,
@@ -277,9 +255,17 @@ func (c *canvasRenderer) onCreate() {
 	})
 
 	c.contourMesh.Allocate(c.api)
-	c.contourMaterial.Allocate(c.api)
+	c.contourProgram = c.api.CreateProgram(render.ProgramInfo{
+		Label:           "Contour Material",
+		SourceCode:      c.shaders.ContourSet(),
+		TextureBindings: []render.TextureBinding{},
+		UniformBindings: []render.UniformBinding{
+			render.NewUniformBinding("Camera", uniformBufferBindingCamera),
+			render.NewUniformBinding("Model", uniformBufferBindingModel),
+		},
+	})
 	c.contourPipeline = c.api.CreatePipeline(render.PipelineInfo{
-		Program:                     c.contourMaterial.program,
+		Program:                     c.contourProgram,
 		VertexArray:                 c.contourMesh.vertexArray,
 		Topology:                    render.TopologyTriangles,
 		Culling:                     render.CullModeNone,
@@ -298,9 +284,20 @@ func (c *canvasRenderer) onCreate() {
 	})
 
 	c.textMesh.Allocate(c.api)
-	c.textMaterial.Allocate(c.api)
+	c.textProgram = c.api.CreateProgram(render.ProgramInfo{
+		Label:      "Text Material",
+		SourceCode: c.shaders.TextSet(),
+		TextureBindings: []render.TextureBinding{
+			render.NewTextureBinding("fontTextureIn", textureBindingFontTexture),
+		},
+		UniformBindings: []render.UniformBinding{
+			render.NewUniformBinding("Camera", uniformBufferBindingCamera),
+			render.NewUniformBinding("Model", uniformBufferBindingModel),
+			render.NewUniformBinding("Material", uniformBufferBindingMaterial),
+		},
+	})
 	c.textPipeline = c.api.CreatePipeline(render.PipelineInfo{
-		Program:                     c.textMaterial.program,
+		Program:                     c.textProgram,
 		VertexArray:                 c.textMesh.vertexArray,
 		Topology:                    render.TopologyTriangles,
 		Culling:                     render.CullModeNone,
@@ -329,19 +326,19 @@ func (c *canvasRenderer) onDestroy() {
 	defer c.whiteMask.Release()
 
 	defer c.shapeMesh.Release()
-	defer c.shapeShadeMaterial.Release()
-	defer c.shapeBlankMaterial.Release()
+	defer c.shapeShadeProgram.Release()
+	defer c.shapeBlankProgram.Release()
 	defer c.shapeMaskPipeline.Release()
 	defer c.shapeSimplePipeline.Release()
 	defer c.shapeNonZeroPipeline.Release()
 	defer c.shapeOddPipeline.Release()
 
 	defer c.contourMesh.Release()
-	defer c.contourMaterial.Release()
+	defer c.contourProgram.Release()
 	defer c.contourPipeline.Release()
 
 	defer c.textMesh.Release()
-	defer c.textMaterial.Release()
+	defer c.textProgram.Release()
 	defer c.textPipeline.Release()
 }
 
