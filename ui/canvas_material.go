@@ -4,16 +4,6 @@ import (
 	"github.com/mokiat/lacking/render"
 )
 
-const (
-	uniformBufferBindingCamera = iota
-	uniformBufferBindingModel
-)
-
-const (
-	textureBindingColorTexture = iota
-	textureBindingFontTexture
-)
-
 func newMaterial(programInfo render.ProgramInfo) *material {
 	return &material{
 		programInfo: programInfo,
@@ -23,20 +13,10 @@ func newMaterial(programInfo render.ProgramInfo) *material {
 type material struct {
 	programInfo render.ProgramInfo
 	program     render.Program
-
-	transformMatrixLocation        render.UniformLocation
-	clipMatrixLocation             render.UniformLocation
-	textureTransformMatrixLocation render.UniformLocation
-	colorLocation                  render.UniformLocation
 }
 
 func (m *material) Allocate(api render.API) {
 	m.program = api.CreateProgram(m.programInfo)
-
-	m.transformMatrixLocation = m.program.UniformLocation("transformMatrixIn")
-	m.clipMatrixLocation = m.program.UniformLocation("clipMatrixIn")
-	m.textureTransformMatrixLocation = m.program.UniformLocation("textureTransformMatrixIn")
-	m.colorLocation = m.program.UniformLocation("colorIn")
 }
 
 func (m *material) Release() {

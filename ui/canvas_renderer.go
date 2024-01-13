@@ -13,6 +13,17 @@ const (
 	maxVertexCount = 524288
 )
 
+const (
+	uniformBufferBindingCamera = iota
+	uniformBufferBindingModel
+	uniformBufferBindingMaterial
+)
+
+const (
+	textureBindingColorTexture = iota
+	textureBindingFontTexture
+)
+
 func newCanvasRenderer(api render.API, shaders ShaderCollection) *canvasRenderer {
 	return &canvasRenderer{
 		canvasPath: newCanvasPath(),
@@ -29,6 +40,7 @@ func newCanvasRenderer(api render.API, shaders ShaderCollection) *canvasRenderer
 			UniformBindings: []render.UniformBinding{
 				render.NewUniformBinding("Camera", uniformBufferBindingCamera),
 				render.NewUniformBinding("Model", uniformBufferBindingModel),
+				render.NewUniformBinding("Material", uniformBufferBindingMaterial),
 			},
 		}),
 		shapeBlankMaterial: newMaterial(render.ProgramInfo{
@@ -62,6 +74,7 @@ func newCanvasRenderer(api render.API, shaders ShaderCollection) *canvasRenderer
 			UniformBindings: []render.UniformBinding{
 				render.NewUniformBinding("Camera", uniformBufferBindingCamera),
 				render.NewUniformBinding("Model", uniformBufferBindingModel),
+				render.NewUniformBinding("Material", uniformBufferBindingMaterial),
 			},
 		}),
 
@@ -81,6 +94,9 @@ type canvasRenderer struct {
 	modelUniformBufferData gblob.LittleEndianBlock
 	modelUniformBuffer     render.Buffer
 	modelIsDirty           bool
+
+	materialUniformBufferData gblob.LittleEndianBlock
+	materialUniformBuffer     render.Buffer
 
 	whiteMask render.Texture
 
@@ -117,6 +133,12 @@ func (c *canvasRenderer) onCreate() {
 	c.modelUniformBuffer = c.api.CreateUniformBuffer(render.BufferInfo{
 		Dynamic: true,
 		Size:    len(c.modelUniformBufferData),
+	})
+
+	c.materialUniformBufferData = make([]byte, 64+16) // 1 x mat4 + 1 x vec4
+	c.materialUniformBuffer = c.api.CreateUniformBuffer(render.BufferInfo{
+		Dynamic: true,
+		Size:    len(c.materialUniformBufferData),
 	})
 
 	c.whiteMask = c.api.CreateColorTexture2D(render.ColorTexture2DInfo{
@@ -302,6 +324,7 @@ func (c *canvasRenderer) onDestroy() {
 
 	defer c.cameraUniformBuffer.Release()
 	defer c.modelUniformBuffer.Release()
+	defer c.materialUniformBuffer.Release()
 
 	defer c.whiteMask.Release()
 
@@ -325,6 +348,7 @@ func (c *canvasRenderer) onDestroy() {
 func (c *canvasRenderer) onBegin(size Size) {
 	c.commandQueue.UniformBufferUnit(uniformBufferBindingCamera, c.cameraUniformBuffer)
 	c.commandQueue.UniformBufferUnit(uniformBufferBindingModel, c.modelUniformBuffer)
+	c.commandQueue.UniformBufferUnit(uniformBufferBindingMaterial, c.materialUniformBuffer)
 
 	c.updateCameraUniformBuffer(size)
 
@@ -488,7 +512,6 @@ func (c *canvasRenderer) DrawSurface(surface Surface, position, size sprec.Vec2)
 func (c *canvasRenderer) FillTextLine(text []rune, position sprec.Vec2, typography Typography) {
 	font := typography.Font
 	fontSize := typography.Size
-	color := uiColorToVec(typography.Color)
 
 	vertexOffset := c.textMesh.Offset()
 	offset := position
@@ -564,9 +587,9 @@ func (c *canvasRenderer) FillTextLine(text []rune, position sprec.Vec2, typograp
 	vertexCount := c.textMesh.Offset() - vertexOffset
 	if vertexCount > 0 {
 		c.updateModelUniformBuffer(c.currentLayer)
+		c.updateMaterialUniformBufferFromTypography(typography)
 		c.commandQueue.BindPipeline(c.textPipeline)
 		c.commandQueue.TextureUnit(textureBindingFontTexture, font.texture)
-		c.commandQueue.Uniform4f(c.textMaterial.colorLocation, color.Array())
 		c.commandQueue.Draw(vertexOffset, vertexCount, 1)
 	}
 }
@@ -578,7 +601,6 @@ func (c *canvasRenderer) FillTextLine(text []rune, position sprec.Vec2, typograp
 func (c *canvasRenderer) FillText(text string, position sprec.Vec2, typography Typography) {
 	font := typography.Font
 	fontSize := typography.Size
-	color := uiColorToVec(typography.Color)
 
 	vertexOffset := c.textMesh.Offset()
 	offset := position
@@ -664,9 +686,10 @@ func (c *canvasRenderer) FillText(text string, position sprec.Vec2, typography T
 	vertexCount := c.textMesh.Offset() - vertexOffset
 	if vertexCount > 0 {
 		c.updateModelUniformBuffer(c.currentLayer)
+		c.updateMaterialUniformBufferFromTypography(typography)
+
 		c.commandQueue.BindPipeline(c.textPipeline)
 		c.commandQueue.TextureUnit(textureBindingFontTexture, font.texture)
-		c.commandQueue.Uniform4f(c.textMaterial.colorLocation, color.Array())
 		c.commandQueue.Draw(vertexOffset, vertexCount, 1)
 	}
 }
@@ -709,6 +732,8 @@ func (c *canvasRenderer) fillPath(path *canvasPath, fill Fill) {
 		}
 	}
 
+	c.updateMaterialUniformBufferFromFill(fill)
+
 	// render color shader shape and clear stencil buffer
 	switch fill.Rule {
 	case FillRuleSimple:
@@ -725,25 +750,8 @@ func (c *canvasRenderer) fillPath(path *canvasPath, fill Fill) {
 	if fill.Image != nil {
 		texture = fill.Image.texture
 	}
-	color := uiColorToVec(fill.Color)
-
-	textureTransformMatrix := sprec.Mat4MultiProd(
-		sprec.ScaleMat4(
-			1.0/fill.ImageSize.X,
-			1.0/fill.ImageSize.Y,
-			1.0,
-		),
-		sprec.TranslationMat4(
-			-fill.ImageOffset.X,
-			-fill.ImageOffset.Y,
-			0.0,
-		),
-	)
 
 	c.commandQueue.TextureUnit(textureBindingColorTexture, texture)
-	c.commandQueue.UniformMatrix4f(c.shapeShadeMaterial.textureTransformMatrixLocation, textureTransformMatrix.ColumnMajorArray())
-	c.commandQueue.Uniform4f(c.shapeShadeMaterial.colorLocation, color.Array())
-
 	for i, pointOffset := range path.subPathOffsets {
 		pointCount := len(path.points) - pointOffset
 		if i+1 < len(path.subPathOffsets) {
@@ -862,6 +870,29 @@ func (c *canvasRenderer) updateModelUniformBuffer(layer *canvasLayer) {
 		})
 		c.modelIsDirty = false
 	}
+}
+
+func (c *canvasRenderer) updateMaterialUniformBufferFromFill(fill Fill) {
+	materialPlotter := blob.NewPlotter(c.materialUniformBufferData)
+	materialPlotter.PlotSPMat4(sprec.Mat4MultiProd(
+		sprec.ScaleMat4(1.0/fill.ImageSize.X, 1.0/fill.ImageSize.Y, 1.0),
+		sprec.TranslationMat4(-fill.ImageOffset.X, -fill.ImageOffset.Y, 0.0),
+	))
+	materialPlotter.PlotSPVec4(uiColorToVec(fill.Color))
+
+	c.commandQueue.UpdateBufferData(c.materialUniformBuffer, render.BufferUpdateInfo{
+		Data: c.materialUniformBufferData,
+	})
+}
+
+func (c *canvasRenderer) updateMaterialUniformBufferFromTypography(typography Typography) {
+	materialPlotter := blob.NewPlotter(c.materialUniformBufferData)
+	materialPlotter.Skip(64)
+	materialPlotter.PlotSPVec4(uiColorToVec(typography.Color))
+
+	c.commandQueue.UpdateBufferData(c.materialUniformBuffer, render.BufferUpdateInfo{
+		Data: c.materialUniformBufferData,
+	})
 }
 
 // Typography configures how text is to be drawn.
