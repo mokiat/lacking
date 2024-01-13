@@ -28,6 +28,7 @@ func newCanvasRenderer(api render.API, shaders ShaderCollection) *canvasRenderer
 			},
 			UniformBindings: []render.UniformBinding{
 				render.NewUniformBinding("Camera", uniformBufferBindingCamera),
+				render.NewUniformBinding("Model", uniformBufferBindingModel),
 			},
 		}),
 		shapeBlankMaterial: newMaterial(render.ProgramInfo{
@@ -36,6 +37,7 @@ func newCanvasRenderer(api render.API, shaders ShaderCollection) *canvasRenderer
 			TextureBindings: []render.TextureBinding{},
 			UniformBindings: []render.UniformBinding{
 				render.NewUniformBinding("Camera", uniformBufferBindingCamera),
+				render.NewUniformBinding("Model", uniformBufferBindingModel),
 			},
 		}),
 
@@ -46,6 +48,7 @@ func newCanvasRenderer(api render.API, shaders ShaderCollection) *canvasRenderer
 			TextureBindings: []render.TextureBinding{},
 			UniformBindings: []render.UniformBinding{
 				render.NewUniformBinding("Camera", uniformBufferBindingCamera),
+				render.NewUniformBinding("Model", uniformBufferBindingModel),
 			},
 		}),
 
@@ -58,6 +61,7 @@ func newCanvasRenderer(api render.API, shaders ShaderCollection) *canvasRenderer
 			},
 			UniformBindings: []render.UniformBinding{
 				render.NewUniformBinding("Camera", uniformBufferBindingCamera),
+				render.NewUniformBinding("Model", uniformBufferBindingModel),
 			},
 		}),
 
@@ -73,6 +77,10 @@ type canvasRenderer struct {
 
 	cameraUniformBufferData gblob.LittleEndianBlock
 	cameraUniformBuffer     render.Buffer
+
+	modelUniformBufferData gblob.LittleEndianBlock
+	modelUniformBuffer     render.Buffer
+	modelIsDirty           bool
 
 	whiteMask render.Texture
 
@@ -103,6 +111,12 @@ func (c *canvasRenderer) onCreate() {
 	c.cameraUniformBuffer = c.api.CreateUniformBuffer(render.BufferInfo{
 		Dynamic: true,
 		Size:    len(c.cameraUniformBufferData),
+	})
+
+	c.modelUniformBufferData = make([]byte, 2*64) // 2 x mat4
+	c.modelUniformBuffer = c.api.CreateUniformBuffer(render.BufferInfo{
+		Dynamic: true,
+		Size:    len(c.modelUniformBufferData),
 	})
 
 	c.whiteMask = c.api.CreateColorTexture2D(render.ColorTexture2DInfo{
@@ -287,6 +301,7 @@ func (c *canvasRenderer) onDestroy() {
 	defer c.commandQueue.Release()
 
 	defer c.cameraUniformBuffer.Release()
+	defer c.modelUniformBuffer.Release()
 
 	defer c.whiteMask.Release()
 
@@ -308,21 +323,15 @@ func (c *canvasRenderer) onDestroy() {
 }
 
 func (c *canvasRenderer) onBegin(size Size) {
+	c.commandQueue.UniformBufferUnit(uniformBufferBindingCamera, c.cameraUniformBuffer)
+	c.commandQueue.UniformBufferUnit(uniformBufferBindingModel, c.modelUniformBuffer)
+
+	c.updateCameraUniformBuffer(size)
+
+	c.modelIsDirty = true
 	c.currentLayer = c.topLayer
 	c.SetTransform(sprec.IdentityMat4())
 	c.SetClipRect(0, float32(size.Width), 0, float32(size.Height))
-
-	// Configure Camera uniform buffer.
-	cameraPlotter := blob.NewPlotter(c.cameraUniformBufferData)
-	cameraPlotter.PlotSPMat4(sprec.OrthoMat4(
-		0.0, float32(size.Width),
-		0.0, float32(size.Height),
-		0.0, 1.0,
-	))
-	c.cameraUniformBuffer.Update(render.BufferUpdateInfo{
-		Data: c.cameraUniformBufferData,
-	})
-	c.commandQueue.UniformBufferUnit(uniformBufferBindingCamera, c.cameraUniformBuffer)
 
 	c.shapeMesh.Reset()
 	c.contourMesh.Reset()
@@ -350,6 +359,7 @@ func (c *canvasRenderer) Push() {
 // first layer, then this method panics.
 func (c *canvasRenderer) Pop() {
 	c.currentLayer = c.currentLayer.Previous()
+	c.modelIsDirty = true
 }
 
 // ResetTransform restores the transform to the value it had
@@ -361,6 +371,7 @@ func (c *canvasRenderer) ResetTransform() {
 	} else {
 		c.currentLayer.Transform = c.currentLayer.previous.Transform
 	}
+	c.modelIsDirty = true
 }
 
 // SetTransform changes the transform relative to the former layer transform.
@@ -373,6 +384,7 @@ func (c *canvasRenderer) SetTransform(transform sprec.Mat4) {
 			transform,
 		)
 	}
+	c.modelIsDirty = true
 }
 
 // Translate moves the drawing position by the specified delta amount.
@@ -381,6 +393,7 @@ func (c *canvasRenderer) Translate(delta sprec.Vec2) {
 		c.currentLayer.Transform,
 		sprec.TranslationMat4(delta.X, delta.Y, 0.0),
 	)
+	c.modelIsDirty = true
 }
 
 // Rotate rotates the drawing coordinate system by the specified angle.
@@ -389,6 +402,7 @@ func (c *canvasRenderer) Rotate(angle sprec.Angle) {
 		c.currentLayer.Transform,
 		sprec.RotationMat4(angle, 0.0, 0.0, 1.0),
 	)
+	c.modelIsDirty = true
 }
 
 // Scale scales the drawing coordinate system by the specified amount in
@@ -398,6 +412,7 @@ func (c *canvasRenderer) Scale(amount sprec.Vec2) {
 		c.currentLayer.Transform,
 		sprec.ScaleMat4(amount.X, amount.Y, 1.0),
 	)
+	c.modelIsDirty = true
 }
 
 // ClipRect creates a clipping rectangle region. This clipping mechanism
@@ -420,6 +435,7 @@ func (c *canvasRenderer) ClipRect(position, size sprec.Vec2) {
 		),
 		sprec.InverseMat4(c.currentLayer.Transform),
 	)
+	c.modelIsDirty = true
 }
 
 // SetClipRect creates a clipping rectangle region. This clipping mechanism
@@ -441,6 +457,7 @@ func (c *canvasRenderer) SetClipRect(left, right, top, bottom float32) {
 		),
 		sprec.InverseMat4(c.currentLayer.Transform),
 	)
+	c.modelIsDirty = true
 }
 
 // DrawSurface renders the specified surface. The surface's Render
@@ -469,10 +486,6 @@ func (c *canvasRenderer) DrawSurface(surface Surface, position, size sprec.Vec2)
 // FillTextLine draws a solid text line at the specified position using the
 // provided typography settings.
 func (c *canvasRenderer) FillTextLine(text []rune, position sprec.Vec2, typography Typography) {
-	currentLayer := c.currentLayer
-	transformMatrix := currentLayer.Transform
-	clipMatrix := currentLayer.ClipTransform
-
 	font := typography.Font
 	fontSize := typography.Size
 	color := uiColorToVec(typography.Color)
@@ -550,10 +563,9 @@ func (c *canvasRenderer) FillTextLine(text []rune, position sprec.Vec2, typograp
 
 	vertexCount := c.textMesh.Offset() - vertexOffset
 	if vertexCount > 0 {
+		c.updateModelUniformBuffer(c.currentLayer)
 		c.commandQueue.BindPipeline(c.textPipeline)
 		c.commandQueue.TextureUnit(textureBindingFontTexture, font.texture)
-		c.commandQueue.UniformMatrix4f(c.textMaterial.transformMatrixLocation, transformMatrix.ColumnMajorArray())
-		c.commandQueue.UniformMatrix4f(c.textMaterial.clipMatrixLocation, clipMatrix.ColumnMajorArray())
 		c.commandQueue.Uniform4f(c.textMaterial.colorLocation, color.Array())
 		c.commandQueue.Draw(vertexOffset, vertexCount, 1)
 	}
@@ -564,10 +576,6 @@ func (c *canvasRenderer) FillTextLine(text []rune, position sprec.Vec2, typograp
 //
 // Deprecated: Use FillTextLine
 func (c *canvasRenderer) FillText(text string, position sprec.Vec2, typography Typography) {
-	currentLayer := c.currentLayer
-	transformMatrix := currentLayer.Transform
-	clipMatrix := currentLayer.ClipTransform
-
 	font := typography.Font
 	fontSize := typography.Size
 	color := uiColorToVec(typography.Color)
@@ -654,17 +662,13 @@ func (c *canvasRenderer) FillText(text string, position sprec.Vec2, typography T
 		}
 	}
 	vertexCount := c.textMesh.Offset() - vertexOffset
-
-	if vertexCount == 0 {
-		return
+	if vertexCount > 0 {
+		c.updateModelUniformBuffer(c.currentLayer)
+		c.commandQueue.BindPipeline(c.textPipeline)
+		c.commandQueue.TextureUnit(textureBindingFontTexture, font.texture)
+		c.commandQueue.Uniform4f(c.textMaterial.colorLocation, color.Array())
+		c.commandQueue.Draw(vertexOffset, vertexCount, 1)
 	}
-
-	c.commandQueue.BindPipeline(c.textPipeline)
-	c.commandQueue.TextureUnit(textureBindingFontTexture, font.texture)
-	c.commandQueue.UniformMatrix4f(c.textMaterial.transformMatrixLocation, transformMatrix.ColumnMajorArray())
-	c.commandQueue.UniformMatrix4f(c.textMaterial.clipMatrixLocation, clipMatrix.ColumnMajorArray())
-	c.commandQueue.Uniform4f(c.textMaterial.colorLocation, color.Array())
-	c.commandQueue.Draw(vertexOffset, vertexCount, 1)
 }
 
 // Fill fills the currently constructed Path according to the fill settings.
@@ -684,22 +688,6 @@ func (c *canvasRenderer) Clip() {
 }
 
 func (c *canvasRenderer) fillPath(path *canvasPath, fill Fill) {
-	currentLayer := c.currentLayer
-	transformMatrix := currentLayer.Transform
-	clipMatrix := currentLayer.ClipTransform
-	textureTransformMatrix := sprec.Mat4MultiProd(
-		sprec.ScaleMat4(
-			1.0/fill.ImageSize.X,
-			1.0/fill.ImageSize.Y,
-			1.0,
-		),
-		sprec.TranslationMat4(
-			-fill.ImageOffset.X,
-			-fill.ImageOffset.Y,
-			0.0,
-		),
-	)
-
 	vertexOffset := c.shapeMesh.Offset()
 	for _, point := range path.points {
 		c.shapeMesh.Append(shapeVertex{
@@ -707,12 +695,11 @@ func (c *canvasRenderer) fillPath(path *canvasPath, fill Fill) {
 		})
 	}
 
+	c.updateModelUniformBuffer(c.currentLayer)
+
 	// draw stencil mask for all sub-shapes
 	if fill.Rule != FillRuleSimple {
 		c.commandQueue.BindPipeline(c.shapeMaskPipeline)
-		c.commandQueue.UniformMatrix4f(c.shapeBlankMaterial.transformMatrixLocation, transformMatrix.ColumnMajorArray())
-		c.commandQueue.UniformMatrix4f(c.shapeBlankMaterial.clipMatrixLocation, clipMatrix.ColumnMajorArray())
-
 		for i, pointOffset := range path.subPathOffsets {
 			pointCount := len(path.points) - pointOffset
 			if i+1 < len(path.subPathOffsets) {
@@ -740,10 +727,20 @@ func (c *canvasRenderer) fillPath(path *canvasPath, fill Fill) {
 	}
 	color := uiColorToVec(fill.Color)
 
+	textureTransformMatrix := sprec.Mat4MultiProd(
+		sprec.ScaleMat4(
+			1.0/fill.ImageSize.X,
+			1.0/fill.ImageSize.Y,
+			1.0,
+		),
+		sprec.TranslationMat4(
+			-fill.ImageOffset.X,
+			-fill.ImageOffset.Y,
+			0.0,
+		),
+	)
+
 	c.commandQueue.TextureUnit(textureBindingColorTexture, texture)
-	// c.commandQueue.UniformMatrix4f(c.shapeShadeMaterial.projectionMatrixLocation, c.projectionMatrix.ColumnMajorArray())
-	c.commandQueue.UniformMatrix4f(c.shapeShadeMaterial.transformMatrixLocation, transformMatrix.ColumnMajorArray())
-	c.commandQueue.UniformMatrix4f(c.shapeShadeMaterial.clipMatrixLocation, clipMatrix.ColumnMajorArray())
 	c.commandQueue.UniformMatrix4f(c.shapeShadeMaterial.textureTransformMatrixLocation, textureTransformMatrix.ColumnMajorArray())
 	c.commandQueue.Uniform4f(c.shapeShadeMaterial.colorLocation, color.Array())
 
@@ -761,13 +758,8 @@ func (c *canvasRenderer) strokePath(path *canvasPath) {
 		return
 	}
 
-	currentLayer := c.currentLayer
-	transformMatrix := currentLayer.Transform
-	clipMatrix := currentLayer.ClipTransform
-
+	c.updateModelUniformBuffer(c.currentLayer)
 	c.commandQueue.BindPipeline(c.contourPipeline)
-	c.commandQueue.UniformMatrix4f(c.contourMaterial.transformMatrixLocation, transformMatrix.ColumnMajorArray())
-	c.commandQueue.UniformMatrix4f(c.contourMaterial.clipMatrixLocation, clipMatrix.ColumnMajorArray())
 
 	for i, pointOffset := range path.subPathOffsets {
 		pointCount := len(path.points) - pointOffset
@@ -846,6 +838,30 @@ func (c *canvasRenderer) clipPath(path *canvasPath) {
 	// with mode EQUAL and the given layer's (or iteration's) depth value.
 	// NOTE: How does Pop work with this approach? Do we redraw the clip (meaning
 	// we need to keep track of it)?
+}
+
+func (c *canvasRenderer) updateCameraUniformBuffer(size Size) {
+	cameraPlotter := blob.NewPlotter(c.cameraUniformBufferData)
+	cameraPlotter.PlotSPMat4(sprec.OrthoMat4(
+		0.0, float32(size.Width),
+		0.0, float32(size.Height),
+		0.0, 1.0,
+	))
+	c.commandQueue.UpdateBufferData(c.cameraUniformBuffer, render.BufferUpdateInfo{
+		Data: c.cameraUniformBufferData,
+	})
+}
+
+func (c *canvasRenderer) updateModelUniformBuffer(layer *canvasLayer) {
+	if c.modelIsDirty {
+		modelPlotter := blob.NewPlotter(c.modelUniformBufferData)
+		modelPlotter.PlotSPMat4(layer.Transform)
+		modelPlotter.PlotSPMat4(layer.ClipTransform)
+		c.commandQueue.UpdateBufferData(c.modelUniformBuffer, render.BufferUpdateInfo{
+			Data: c.modelUniformBufferData,
+		})
+		c.modelIsDirty = false
+	}
 }
 
 // Typography configures how text is to be drawn.

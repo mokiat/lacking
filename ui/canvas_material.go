@@ -5,12 +5,13 @@ import (
 )
 
 const (
-	uniformBufferBindingCamera = 0
+	uniformBufferBindingCamera = iota
+	uniformBufferBindingModel
 )
 
 const (
-	textureBindingColorTexture = 0
-	textureBindingFontTexture  = 1
+	textureBindingColorTexture = iota
+	textureBindingFontTexture
 )
 
 func newMaterial(programInfo render.ProgramInfo) *material {
