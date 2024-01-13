@@ -22,7 +22,12 @@ type BufferObject interface {
 
 type Buffer interface {
 	BufferObject
+
+	// Deprecated: Use queue commands.
 	Update(info BufferUpdateInfo)
+
+	// Deprecated: Use queue commands.
 	Fetch(info BufferFetchInfo)
+
 	Release()
 }

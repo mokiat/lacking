@@ -3,6 +3,9 @@ package render
 // API provides access to low-level graphics manipulation and rendering.
 type API interface {
 
+	// Limits returns information on the supported limits of the implementation.
+	Limits() Limits
+
 	// Capabilities returns the information on the supported features and
 	// performance characteristics of the implementation.
 	Capabilities() Capabilities
@@ -36,11 +39,9 @@ type API interface {
 	CreateVertexArray(info VertexArrayInfo) VertexArray
 	CreatePipeline(info PipelineInfo) Pipeline
 
-	// Deprecated: use Queue instead.
 	CreateCommandQueue() CommandQueue
 
-	// TODO
-	// Queue() CommandQueue // this should be an immediate queue
+	// Queue() CommandQueue // TODO
 
 	BeginRenderPass(info RenderPassInfo)
 	EndRenderPass()
