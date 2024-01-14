@@ -2,31 +2,46 @@ package render
 
 // API provides access to low-level graphics manipulation and rendering.
 type API interface {
+
+	// Limits returns information on the supported limits of the implementation.
+	Limits() Limits
+
+	// Capabilities returns the information on the supported features and
+	// performance characteristics of the implementation.
 	Capabilities() Capabilities
 
+	// DefaultFramebuffer returns the default framebuffer that is provided
+	// by the target window surface.
 	DefaultFramebuffer() Framebuffer
 
+	// DetermineContentFormat returns the format that should be used
+	// with CopyContentToTexture and similar methods when dealing with
+	// the specified Framebuffer.
+	DetermineContentFormat(framebuffer Framebuffer) DataFormat
+
+	// CreateFramebuffer creates a new Framebuffer object based on the
+	// provided FramebufferInfo.
 	CreateFramebuffer(info FramebufferInfo) Framebuffer
+
+	// CreateProgram creates a new Program object based on the provided
+	// ProgramInfo.
+	CreateProgram(info ProgramInfo) Program
+
 	CreateColorTexture2D(info ColorTexture2DInfo) Texture
 	CreateColorTextureCube(info ColorTextureCubeInfo) Texture
 	CreateDepthTexture2D(info DepthTexture2DInfo) Texture
 	CreateStencilTexture2D(info StencilTexture2DInfo) Texture
 	CreateDepthStencilTexture2D(info DepthStencilTexture2DInfo) Texture
-	CreateVertexShader(info ShaderInfo) Shader
-	CreateFragmentShader(info ShaderInfo) Shader
-	CreateProgram(info ProgramInfo) Program
 	CreateVertexBuffer(info BufferInfo) Buffer
 	CreateIndexBuffer(info BufferInfo) Buffer
 	CreatePixelTransferBuffer(info BufferInfo) Buffer
 	CreateUniformBuffer(info BufferInfo) Buffer
 	CreateVertexArray(info VertexArrayInfo) VertexArray
 	CreatePipeline(info PipelineInfo) Pipeline
+
 	CreateCommandQueue() CommandQueue
 
-	// DetermineContentFormat returns the format that should be used
-	// with CopyContentToTexture and similar methods when dealing with
-	// the specified Framebuffer.
-	DetermineContentFormat(framebuffer Framebuffer) DataFormat
+	// Queue() CommandQueue // TODO
 
 	BeginRenderPass(info RenderPassInfo)
 	EndRenderPass()
@@ -39,17 +54,6 @@ type API interface {
 	// all graphics state (e.g. blend state, depth state, stencil state, etc.)
 	Invalidate()
 
-	BindPipeline(pipeline Pipeline)
-	Uniform1f(location UniformLocation, value float32)
-	Uniform1i(location UniformLocation, value int)
-	Uniform3f(location UniformLocation, values [3]float32)
-	Uniform4f(location UniformLocation, values [4]float32)
-	UniformMatrix4f(location UniformLocation, values [16]float32)
-	UniformBufferUnit(index int, buffer Buffer)
-	UniformBufferUnitRange(index int, buffer Buffer, offset, size int)
-	TextureUnit(index int, texture Texture)
-	Draw(vertexOffset, vertexCount, instanceCount int)
-	DrawIndexed(indexOffset, indexCount, instanceCount int)
 	CopyContentToTexture(info CopyContentToTextureInfo)
 	SubmitQueue(queue CommandQueue)
 	CreateFence() Fence

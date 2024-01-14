@@ -92,6 +92,17 @@ func (e *Engine) CreateCubeTexture(definition CubeTextureDefinition) *CubeTextur
 	}))
 }
 
+func (e *Engine) CreateShading(info ShadingInfo) Shading {
+	return &customShading{
+		api:          e.api,
+		shaders:      e.shaders,
+		shadowFunc:   info.ShadowFunc,
+		geometryFunc: info.GeometryFunc,
+		emissiveFunc: info.EmissiveFunc,
+		forwardFunc:  info.ForwardFunc,
+	}
+}
+
 // CreateMaterialDefinition creates a new MaterialDefinition from the specified
 // info object.
 func (e *Engine) CreateMaterialDefinition(info MaterialDefinitionInfo) *MaterialDefinition {

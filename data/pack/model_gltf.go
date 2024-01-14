@@ -492,5 +492,10 @@ func openGLTFImage(doc *gltf.Document, img *gltf.Image) (*Image, error) {
 		// }
 		return nil, fmt.Errorf("external images not supported right now")
 	}
-	return ParseImageResource(bytes.NewReader(content))
+	result, err := ParseImageResource(bytes.NewReader(content))
+	if err != nil {
+		return nil, err
+	}
+	result.Name = img.Name
+	return result, nil
 }
