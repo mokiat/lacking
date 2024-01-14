@@ -61,7 +61,17 @@ func (s *customShading) GeometryPipeline(meshDef *MeshDefinition, fragmentDef *m
 		HasArmature: meshDef.needsArmature,
 	}
 	programCode := s.shaders.BuildGeometry(meshCfg, s.geometryFunc)
-	program := internal.NewGeometryProgram(s.api, programCode)
+	program := s.api.CreateProgram(render.ProgramInfo{
+		SourceCode: programCode,
+		TextureBindings: []render.TextureBinding{
+			render.NewTextureBinding("albedoTwoDTextureIn", internal.TextureBindingGeometryAlbedoTexture),
+		},
+		UniformBindings: []render.UniformBinding{
+			render.NewUniformBinding("Camera", internal.UniformBufferBindingCamera),
+			render.NewUniformBinding("Model", internal.UniformBufferBindingModel),
+			render.NewUniformBinding("Material", internal.UniformBufferBindingMaterial),
+		},
+	})
 	cullMode := render.CullModeNone
 	if materialDef.backfaceCulling {
 		cullMode = render.CullModeBack
@@ -101,7 +111,17 @@ func (s *customShading) ForwardPipeline(meshDef *MeshDefinition, fragmentDef *me
 		HasArmature: meshDef.needsArmature,
 	}
 	programCode := s.shaders.BuildForward(meshCfg, s.forwardFunc)
-	program := internal.NewGeometryProgram(s.api, programCode)
+	program := s.api.CreateProgram(render.ProgramInfo{
+		SourceCode: programCode,
+		TextureBindings: []render.TextureBinding{
+			render.NewTextureBinding("albedoTwoDTextureIn", internal.TextureBindingGeometryAlbedoTexture),
+		},
+		UniformBindings: []render.UniformBinding{
+			render.NewUniformBinding("Camera", internal.UniformBufferBindingCamera),
+			render.NewUniformBinding("Model", internal.UniformBufferBindingModel),
+			render.NewUniformBinding("Material", internal.UniformBufferBindingMaterial),
+		},
+	})
 	cullMode := render.CullModeNone
 	if materialDef.backfaceCulling {
 		cullMode = render.CullModeBack
@@ -139,7 +159,17 @@ func (s *pbrShading) GeometryPipeline(meshDef *MeshDefinition, fragmentDef *mesh
 		HasVertexColors:  meshDef.hasVertexColors,
 		HasAlbedoTexture: len(materialDef.twoDTextures) > 0 && materialDef.twoDTextures[0] != nil,
 	})
-	program := internal.NewGeometryProgram(s.api, programCode)
+	program := s.api.CreateProgram(render.ProgramInfo{
+		SourceCode: programCode,
+		TextureBindings: []render.TextureBinding{
+			render.NewTextureBinding("albedoTwoDTextureIn", internal.TextureBindingGeometryAlbedoTexture),
+		},
+		UniformBindings: []render.UniformBinding{
+			render.NewUniformBinding("Camera", internal.UniformBufferBindingCamera),
+			render.NewUniformBinding("Model", internal.UniformBufferBindingModel),
+			render.NewUniformBinding("Material", internal.UniformBufferBindingMaterial),
+		},
+	})
 	cullMode := render.CullModeNone
 	if materialDef.backfaceCulling {
 		cullMode = render.CullModeBack
@@ -170,7 +200,14 @@ func (s *pbrShading) ShadowPipeline(meshDef *MeshDefinition, fragmentDef *meshFr
 	programCode := s.shaders.ShadowMappingSet(ShadowMappingShaderConfig{
 		HasArmature: meshDef.needsArmature,
 	})
-	program := internal.NewShadowProgram(s.api, programCode)
+	program := s.api.CreateProgram(render.ProgramInfo{
+		SourceCode:      programCode,
+		TextureBindings: []render.TextureBinding{},
+		UniformBindings: []render.UniformBinding{
+			render.NewUniformBinding("Light", internal.UniformBufferBindingLight),
+			render.NewUniformBinding("Model", internal.UniformBufferBindingModel),
+		},
+	})
 	cullMode := render.CullModeNone
 	if materialDef.backfaceCulling {
 		cullMode = render.CullModeBack
