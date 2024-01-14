@@ -5,6 +5,9 @@ import (
 	"github.com/mokiat/lacking/util/blob"
 )
 
+// TODO: Consider reusing the same UniformSequence for all uniforms,
+// as long as the alignment is followed.
+
 type UniformType interface {
 	Plot(plotter *blob.Plotter, padding int)
 	Std140Size() int

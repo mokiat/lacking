@@ -127,6 +127,7 @@ type sceneRenderer struct {
 	lightUniformBuffer     render.Buffer
 
 	lightPropertiesUniforms *internal.UniformSequence[internal.LightPropertiesUniform]
+	skyboxUniforms          *internal.UniformSequence[internal.SkyboxUniform]
 	postprocessUniforms     *internal.UniformSequence[internal.PostprocessUniform]
 
 	visibleStaticMeshes *spatial.VisitorBucket[uint32]
@@ -472,6 +473,7 @@ func (r *sceneRenderer) Allocate() {
 	})
 
 	r.lightPropertiesUniforms = internal.NewUniformSequence[internal.LightPropertiesUniform](r.api, 2048)
+	r.skyboxUniforms = internal.NewUniformSequence[internal.SkyboxUniform](r.api, 1)
 	r.postprocessUniforms = internal.NewUniformSequence[internal.PostprocessUniform](r.api, 1)
 }
 
@@ -520,6 +522,7 @@ func (r *sceneRenderer) Release() {
 	defer r.lightUniformBuffer.Release()
 
 	defer r.lightPropertiesUniforms.Release()
+	defer r.skyboxUniforms.Release()
 	defer r.postprocessUniforms.Release()
 }
 
@@ -1210,19 +1213,30 @@ func (r *sceneRenderer) renderForwardPass(ctx renderCtx) {
 		},
 	})
 
+	r.skyboxUniforms.Reset()
+
 	sky := ctx.scene.sky
 	if texture := sky.skyboxTexture; texture != nil {
 		r.commands.BindPipeline(r.skyboxPipeline)
 		r.commands.TextureUnit(internal.TextureBindingSkyboxAlbedoTexture, texture.texture)
 		r.commands.DrawIndexed(0, r.cubeShape.IndexCount(), 1)
 	} else {
-		r.commands.BindPipeline(r.skycolorPipeline)
-		r.commands.Uniform4f(r.skycolorPresentation.AlbedoColorLocation, [4]float32{
-			sky.backgroundColor.X,
-			sky.backgroundColor.Y,
-			sky.backgroundColor.Z,
-			1.0,
+		r.skyboxUniforms.Append(internal.SkyboxUniform{
+			Color: sprec.Vec4{
+				X: sky.backgroundColor.X,
+				Y: sky.backgroundColor.Y,
+				Z: sky.backgroundColor.Z,
+				W: 1.0,
+			},
 		})
+
+		r.commands.BindPipeline(r.skycolorPipeline)
+		r.commands.UniformBufferUnitRange(
+			internal.UniformBufferBindingSkybox,
+			r.skyboxUniforms.Buffer(),
+			r.skyboxUniforms.BlockOffset(),
+			r.skyboxUniforms.BlockSize(),
+		)
 		r.commands.DrawIndexed(0, r.cubeShape.IndexCount(), 1)
 	}
 
@@ -1251,6 +1265,8 @@ func (r *sceneRenderer) renderForwardPass(ctx renderCtx) {
 
 	// NOTE: Reusing renderItems and assuming same as geometry pass.
 	r.renderForwardMeshesList(ctx)
+
+	r.skyboxUniforms.Upload(r.api)
 
 	r.api.SubmitQueue(r.commands)
 	r.api.EndRenderPass()

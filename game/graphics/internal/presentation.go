@@ -9,6 +9,8 @@ const (
 	UniformBufferBindingLight           = 3
 	UniformBufferBindingLightProperties = 4
 
+	UniformBufferBindingSkybox = 1
+
 	UniformBufferBindingPostprocess = 0
 )
 
@@ -81,8 +83,6 @@ func NewPostprocessingPresentation(api render.API, sourceCode render.ProgramCode
 
 type SkyboxPresentation struct {
 	Presentation
-
-	AlbedoColorLocation render.UniformLocation
 }
 
 func NewSkyboxPresentation(api render.API, sourceCode render.ProgramCode) *SkyboxPresentation {
@@ -92,13 +92,13 @@ func NewSkyboxPresentation(api render.API, sourceCode render.ProgramCode) *Skybo
 		},
 		[]render.UniformBinding{
 			render.NewUniformBinding("Camera", UniformBufferBindingCamera),
+			render.NewUniformBinding("Skybox", UniformBufferBindingSkybox),
 		},
 	)
 	return &SkyboxPresentation{
 		Presentation: Presentation{
 			Program: program,
 		},
-		AlbedoColorLocation: program.UniformLocation("albedoColorIn"),
 	}
 }
 
