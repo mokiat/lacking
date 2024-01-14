@@ -21,6 +21,7 @@ type ImageProvider interface {
 }
 
 type Image struct {
+	Name   string
 	Width  int
 	Height int
 	Texels [][]Color
