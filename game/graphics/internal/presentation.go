@@ -8,6 +8,8 @@ const (
 	UniformBufferBindingMaterial        = 2
 	UniformBufferBindingLight           = 3
 	UniformBufferBindingLightProperties = 4
+
+	UniformBufferBindingPostprocess = 0
 )
 
 const (
@@ -27,20 +29,26 @@ const (
 )
 
 func NewShadowProgram(api render.API, sourceCode render.ProgramCode) render.Program {
-	return BuildProgram(api, sourceCode, nil, []render.UniformBinding{
-		render.NewUniformBinding("Light", UniformBufferBindingLight),
-		render.NewUniformBinding("Model", UniformBufferBindingModel),
-	})
+	return BuildProgram(api, sourceCode,
+		[]render.TextureBinding{},
+		[]render.UniformBinding{
+			render.NewUniformBinding("Light", UniformBufferBindingLight),
+			render.NewUniformBinding("Model", UniformBufferBindingModel),
+		},
+	)
 }
 
 func NewGeometryProgram(api render.API, sourceCode render.ProgramCode) render.Program {
-	return BuildProgram(api, sourceCode, []render.TextureBinding{
-		render.NewTextureBinding("albedoTwoDTextureIn", TextureBindingGeometryAlbedoTexture),
-	}, []render.UniformBinding{
-		render.NewUniformBinding("Camera", UniformBufferBindingCamera),
-		render.NewUniformBinding("Model", UniformBufferBindingModel),
-		render.NewUniformBinding("Material", UniformBufferBindingMaterial),
-	})
+	return BuildProgram(api, sourceCode,
+		[]render.TextureBinding{
+			render.NewTextureBinding("albedoTwoDTextureIn", TextureBindingGeometryAlbedoTexture),
+		},
+		[]render.UniformBinding{
+			render.NewUniformBinding("Camera", UniformBufferBindingCamera),
+			render.NewUniformBinding("Model", UniformBufferBindingModel),
+			render.NewUniformBinding("Material", UniformBufferBindingMaterial),
+		},
+	)
 }
 
 type Presentation struct {
@@ -53,19 +61,21 @@ func (p *Presentation) Delete() {
 
 type PostprocessingPresentation struct {
 	Presentation
-
-	ExposureLocation render.UniformLocation
 }
 
 func NewPostprocessingPresentation(api render.API, sourceCode render.ProgramCode) *PostprocessingPresentation {
-	program := BuildProgram(api, sourceCode, []render.TextureBinding{
-		render.NewTextureBinding("fbColor0TextureIn", TextureBindingPostprocessFramebufferColor0),
-	}, nil)
+	program := BuildProgram(api, sourceCode,
+		[]render.TextureBinding{
+			render.NewTextureBinding("fbColor0TextureIn", TextureBindingPostprocessFramebufferColor0),
+		},
+		[]render.UniformBinding{
+			render.NewUniformBinding("Postprocess", UniformBufferBindingPostprocess),
+		},
+	)
 	return &PostprocessingPresentation{
 		Presentation: Presentation{
 			Program: program,
 		},
-		ExposureLocation: program.UniformLocation("exposureIn"),
 	}
 }
 
@@ -76,11 +86,14 @@ type SkyboxPresentation struct {
 }
 
 func NewSkyboxPresentation(api render.API, sourceCode render.ProgramCode) *SkyboxPresentation {
-	program := BuildProgram(api, sourceCode, []render.TextureBinding{
-		render.NewTextureBinding("albedoCubeTextureIn", TextureBindingSkyboxAlbedoTexture),
-	}, []render.UniformBinding{
-		render.NewUniformBinding("Camera", UniformBufferBindingCamera),
-	})
+	program := BuildProgram(api, sourceCode,
+		[]render.TextureBinding{
+			render.NewTextureBinding("albedoCubeTextureIn", TextureBindingSkyboxAlbedoTexture),
+		},
+		[]render.UniformBinding{
+			render.NewUniformBinding("Camera", UniformBufferBindingCamera),
+		},
+	)
 	return &SkyboxPresentation{
 		Presentation: Presentation{
 			Program: program,
@@ -94,18 +107,21 @@ type LightingPresentation struct {
 }
 
 func NewLightingPresentation(api render.API, sourceCode render.ProgramCode) *LightingPresentation {
-	program := BuildProgram(api, sourceCode, []render.TextureBinding{
-		render.NewTextureBinding("fbColor0TextureIn", TextureBindingLightingFramebufferColor0),
-		render.NewTextureBinding("fbColor1TextureIn", TextureBindingLightingFramebufferColor1),
-		render.NewTextureBinding("fbDepthTextureIn", TextureBindingLightingFramebufferDepth),
-		render.NewTextureBinding("fbShadowTextureIn", TextureBindingShadowFramebufferDepth),
-		render.NewTextureBinding("reflectionTextureIn", TextureBindingLightingReflectionTexture),
-		render.NewTextureBinding("refractionTextureIn", TextureBindingLightingRefractionTexture),
-	}, []render.UniformBinding{
-		render.NewUniformBinding("Light", UniformBufferBindingLight),
-		render.NewUniformBinding("Camera", UniformBufferBindingCamera),
-		render.NewUniformBinding("LightProperties", UniformBufferBindingLightProperties),
-	})
+	program := BuildProgram(api, sourceCode,
+		[]render.TextureBinding{
+			render.NewTextureBinding("fbColor0TextureIn", TextureBindingLightingFramebufferColor0),
+			render.NewTextureBinding("fbColor1TextureIn", TextureBindingLightingFramebufferColor1),
+			render.NewTextureBinding("fbDepthTextureIn", TextureBindingLightingFramebufferDepth),
+			render.NewTextureBinding("fbShadowTextureIn", TextureBindingShadowFramebufferDepth),
+			render.NewTextureBinding("reflectionTextureIn", TextureBindingLightingReflectionTexture),
+			render.NewTextureBinding("refractionTextureIn", TextureBindingLightingRefractionTexture),
+		},
+		[]render.UniformBinding{
+			render.NewUniformBinding("Light", UniformBufferBindingLight),
+			render.NewUniformBinding("Camera", UniformBufferBindingCamera),
+			render.NewUniformBinding("LightProperties", UniformBufferBindingLightProperties),
+		},
+	)
 	return &LightingPresentation{
 		Presentation: Presentation{
 			Program: program,

@@ -127,6 +127,7 @@ type sceneRenderer struct {
 	lightUniformBuffer     render.Buffer
 
 	lightPropertiesUniforms *internal.UniformSequence[internal.LightPropertiesUniform]
+	postprocessUniforms     *internal.UniformSequence[internal.PostprocessUniform]
 
 	visibleStaticMeshes *spatial.VisitorBucket[uint32]
 	visibleMeshes       *spatial.VisitorBucket[*Mesh]
@@ -471,6 +472,7 @@ func (r *sceneRenderer) Allocate() {
 	})
 
 	r.lightPropertiesUniforms = internal.NewUniformSequence[internal.LightPropertiesUniform](r.api, 2048)
+	r.postprocessUniforms = internal.NewUniformSequence[internal.PostprocessUniform](r.api, 1)
 }
 
 func (r *sceneRenderer) Release() {
@@ -518,6 +520,7 @@ func (r *sceneRenderer) Release() {
 	defer r.lightUniformBuffer.Release()
 
 	defer r.lightPropertiesUniforms.Release()
+	defer r.postprocessUniforms.Release()
 }
 
 func (r *sceneRenderer) ResetDebugLines() {
@@ -1415,6 +1418,11 @@ func (r *sceneRenderer) renderExposureProbePass(ctx renderCtx) {
 func (r *sceneRenderer) renderPostprocessingPass(ctx renderCtx) {
 	defer metric.BeginRegion("post").End()
 
+	r.postprocessUniforms.Reset()
+	r.postprocessUniforms.Append(internal.PostprocessUniform{
+		Exposure: ctx.camera.exposure,
+	})
+
 	r.api.BeginRenderPass(render.RenderPassInfo{
 		Framebuffer: ctx.framebuffer,
 		Viewport: render.Area{
@@ -1437,8 +1445,16 @@ func (r *sceneRenderer) renderPostprocessingPass(ctx renderCtx) {
 
 	r.commands.BindPipeline(r.postprocessingPipeline)
 	r.commands.TextureUnit(internal.TextureBindingPostprocessFramebufferColor0, r.lightingAlbedoTexture)
-	r.commands.Uniform1f(r.postprocessingPresentation.ExposureLocation, ctx.camera.exposure)
+	r.commands.UniformBufferUnitRange(
+		internal.UniformBufferBindingPostprocess,
+		r.postprocessUniforms.Buffer(),
+		r.postprocessUniforms.BlockOffset(),
+		r.postprocessUniforms.BlockSize(),
+	)
 	r.commands.DrawIndexed(0, r.quadShape.IndexCount(), 1)
+
+	r.postprocessUniforms.Upload(r.api)
+
 	r.api.SubmitQueue(r.commands)
 	r.api.EndRenderPass()
 }
