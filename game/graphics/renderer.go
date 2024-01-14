@@ -126,6 +126,8 @@ type sceneRenderer struct {
 	lightUniformBufferData gblob.LittleEndianBlock
 	lightUniformBuffer     render.Buffer
 
+	lightPropertiesUniforms *internal.UniformSequence[internal.LightPropertiesUniform]
+
 	visibleStaticMeshes *spatial.VisitorBucket[uint32]
 	visibleMeshes       *spatial.VisitorBucket[*Mesh]
 	renderItems         []renderItem
@@ -467,6 +469,8 @@ func (r *sceneRenderer) Allocate() {
 		Dynamic: true,
 		Size:    len(r.lightUniformBufferData),
 	})
+
+	r.lightPropertiesUniforms = internal.NewUniformSequence[internal.LightPropertiesUniform](r.api, 2048)
 }
 
 func (r *sceneRenderer) Release() {
@@ -512,6 +516,8 @@ func (r *sceneRenderer) Release() {
 	defer r.modelUniformBuffer.Release()
 	defer r.materialUniformBuffer.Release()
 	defer r.lightUniformBuffer.Release()
+
+	defer r.lightPropertiesUniforms.Release()
 }
 
 func (r *sceneRenderer) ResetDebugLines() {
@@ -999,6 +1005,8 @@ func (r *sceneRenderer) renderMeshesList(ctx renderCtx) {
 func (r *sceneRenderer) renderLightingPass(ctx renderCtx) {
 	defer metric.BeginRegion("lighting").End()
 
+	r.lightPropertiesUniforms.Reset()
+
 	r.api.BeginRenderPass(render.RenderPassInfo{
 		Framebuffer: r.lightingFramebuffer,
 		Viewport: render.Area{
@@ -1054,6 +1062,8 @@ func (r *sceneRenderer) renderLightingPass(ctx renderCtx) {
 		}
 	}
 
+	r.lightPropertiesUniforms.Upload(r.api)
+
 	r.api.SubmitQueue(r.commands)
 	r.api.EndRenderPass()
 }
@@ -1063,9 +1073,9 @@ func (r *sceneRenderer) renderAmbientLight(ctx renderCtx, light *AmbientLight) {
 	r.commands.TextureUnit(internal.TextureBindingLightingFramebufferColor0, r.geometryAlbedoTexture)
 	r.commands.TextureUnit(internal.TextureBindingLightingFramebufferColor1, r.geometryNormalTexture)
 	r.commands.TextureUnit(internal.TextureBindingLightingFramebufferDepth, r.geometryDepthTexture)
-	// TODO: Intensity based on distance and inner and outer radius
 	r.commands.TextureUnit(internal.TextureBindingLightingReflectionTexture, light.reflectionTexture.texture)
 	r.commands.TextureUnit(internal.TextureBindingLightingRefractionTexture, light.refractionTexture.texture)
+	// TODO: Intensity based on distance and inner and outer radius
 	r.commands.DrawIndexed(0, r.quadShape.IndexCount(), 1)
 }
 
@@ -1085,17 +1095,26 @@ func (r *sceneRenderer) renderDirectionalLight(ctx renderCtx, light *Directional
 	lightPlotter.PlotSPMat4(projectionMatrix)
 	lightPlotter.PlotSPMat4(viewMatrix)
 	lightPlotter.PlotSPMat4(lightMatrix)
-
 	r.commands.UpdateBufferData(r.lightUniformBuffer, render.BufferUpdateInfo{
 		Data: r.lightUniformBufferData,
 	})
+
+	r.lightPropertiesUniforms.Append(internal.LightPropertiesUniform{
+		Color:     dtos.Vec3(light.emitColor),
+		Intensity: 1.0,
+	})
+
 	r.commands.BindPipeline(r.directionalLightPipeline)
-	intensity := dtos.Vec3(light.emitColor)
-	r.commands.Uniform3f(r.directionalLightPresentation.LightIntensity, intensity.Array())
 	r.commands.TextureUnit(internal.TextureBindingLightingFramebufferColor0, r.geometryAlbedoTexture)
 	r.commands.TextureUnit(internal.TextureBindingLightingFramebufferColor1, r.geometryNormalTexture)
 	r.commands.TextureUnit(internal.TextureBindingLightingFramebufferDepth, r.geometryDepthTexture)
 	r.commands.TextureUnit(internal.TextureBindingShadowFramebufferDepth, r.shadowDepthTexture)
+	r.commands.UniformBufferUnitRange(
+		internal.UniformBufferBindingLightProperties,
+		r.lightPropertiesUniforms.Buffer(),
+		r.lightPropertiesUniforms.BlockOffset(),
+		r.lightPropertiesUniforms.BlockSize(),
+	)
 	r.commands.DrawIndexed(0, r.quadShape.IndexCount(), 1)
 }
 
@@ -1108,18 +1127,26 @@ func (r *sceneRenderer) renderPointLight(ctx renderCtx, light *PointLight) {
 	lightPlotter.PlotSPMat4(projectionMatrix)
 	lightPlotter.PlotSPMat4(viewMatrix)
 	lightPlotter.PlotSPMat4(lightMatrix)
-
-	r.commands.BindPipeline(r.pointLightPipeline)
 	r.commands.UpdateBufferData(r.lightUniformBuffer, render.BufferUpdateInfo{
 		Data: r.lightUniformBufferData,
 	})
-	// TODO: Move to lighting uniform buffer
-	r.commands.Uniform3f(r.pointLightPresentation.LightIntensity, dtos.Vec3(light.emitColor).Array())
-	r.commands.Uniform1f(r.pointLightPresentation.LightRange, float32(light.emitRange))
 
+	r.lightPropertiesUniforms.Append(internal.LightPropertiesUniform{
+		Color:     dtos.Vec3(light.emitColor),
+		Intensity: 1.0,
+		Range:     float32(light.emitRange),
+	})
+
+	r.commands.BindPipeline(r.pointLightPipeline)
 	r.commands.TextureUnit(internal.TextureBindingLightingFramebufferColor0, r.geometryAlbedoTexture)
 	r.commands.TextureUnit(internal.TextureBindingLightingFramebufferColor1, r.geometryNormalTexture)
 	r.commands.TextureUnit(internal.TextureBindingLightingFramebufferDepth, r.geometryDepthTexture)
+	r.commands.UniformBufferUnitRange(
+		internal.UniformBufferBindingLightProperties,
+		r.lightPropertiesUniforms.Buffer(),
+		r.lightPropertiesUniforms.BlockOffset(),
+		r.lightPropertiesUniforms.BlockSize(),
+	)
 	r.commands.DrawIndexed(0, r.sphereShape.IndexCount(), 1)
 }
 
@@ -1132,20 +1159,28 @@ func (r *sceneRenderer) renderSpotLight(ctx renderCtx, light *SpotLight) {
 	lightPlotter.PlotSPMat4(projectionMatrix)
 	lightPlotter.PlotSPMat4(viewMatrix)
 	lightPlotter.PlotSPMat4(lightMatrix)
-
-	r.commands.BindPipeline(r.spotLightPipeline)
 	r.commands.UpdateBufferData(r.lightUniformBuffer, render.BufferUpdateInfo{
 		Data: r.lightUniformBufferData,
 	})
-	// TODO: Move to lighting uniform buffer
-	r.commands.Uniform3f(r.spotLightPresentation.LightIntensity, dtos.Vec3(light.emitColor).Array())
-	r.commands.Uniform1f(r.spotLightPresentation.LightOuterAngle, float32(light.emitOuterConeAngle.Radians()))
-	r.commands.Uniform1f(r.spotLightPresentation.LightInnerAngle, float32(light.emitInnerConeAngle.Radians()))
-	r.commands.Uniform1f(r.spotLightPresentation.LightRange, float32(light.emitRange))
 
+	r.lightPropertiesUniforms.Append(internal.LightPropertiesUniform{
+		Color:      dtos.Vec3(light.emitColor),
+		Intensity:  1.0,
+		Range:      float32(light.emitRange),
+		OuterAngle: float32(light.emitOuterConeAngle.Radians()),
+		InnerAngle: float32(light.emitInnerConeAngle.Radians()),
+	})
+
+	r.commands.BindPipeline(r.spotLightPipeline)
 	r.commands.TextureUnit(internal.TextureBindingLightingFramebufferColor0, r.geometryAlbedoTexture)
 	r.commands.TextureUnit(internal.TextureBindingLightingFramebufferColor1, r.geometryNormalTexture)
 	r.commands.TextureUnit(internal.TextureBindingLightingFramebufferDepth, r.geometryDepthTexture)
+	r.commands.UniformBufferUnitRange(
+		internal.UniformBufferBindingLightProperties,
+		r.lightPropertiesUniforms.Buffer(),
+		r.lightPropertiesUniforms.BlockOffset(),
+		r.lightPropertiesUniforms.BlockSize(),
+	)
 	r.commands.DrawIndexed(0, r.coneShape.IndexCount(), 1)
 }
 

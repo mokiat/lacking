@@ -3,10 +3,11 @@ package internal
 import "github.com/mokiat/lacking/render"
 
 const (
-	UniformBufferBindingCamera   = 0
-	UniformBufferBindingModel    = 1
-	UniformBufferBindingMaterial = 2
-	UniformBufferBindingLight    = 3
+	UniformBufferBindingCamera          = 0
+	UniformBufferBindingModel           = 1
+	UniformBufferBindingMaterial        = 2
+	UniformBufferBindingLight           = 3
+	UniformBufferBindingLightProperties = 4
 )
 
 const (
@@ -90,12 +91,6 @@ func NewSkyboxPresentation(api render.API, sourceCode render.ProgramCode) *Skybo
 
 type LightingPresentation struct {
 	Presentation
-
-	// TODO: Move to lighting uniform buffer
-	LightIntensity  render.UniformLocation
-	LightRange      render.UniformLocation
-	LightOuterAngle render.UniformLocation
-	LightInnerAngle render.UniformLocation
 }
 
 func NewLightingPresentation(api render.API, sourceCode render.ProgramCode) *LightingPresentation {
@@ -109,16 +104,12 @@ func NewLightingPresentation(api render.API, sourceCode render.ProgramCode) *Lig
 	}, []render.UniformBinding{
 		render.NewUniformBinding("Light", UniformBufferBindingLight),
 		render.NewUniformBinding("Camera", UniformBufferBindingCamera),
+		render.NewUniformBinding("LightProperties", UniformBufferBindingLightProperties),
 	})
 	return &LightingPresentation{
 		Presentation: Presentation{
 			Program: program,
 		},
-
-		LightIntensity:  program.UniformLocation("lightIntensityIn"),
-		LightRange:      program.UniformLocation("lightRangeIn"),
-		LightOuterAngle: program.UniformLocation("lightOuterAngleIn"),
-		LightInnerAngle: program.UniformLocation("lightInnerAngleIn"),
 	}
 }
 
