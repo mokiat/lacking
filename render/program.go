@@ -70,9 +70,6 @@ type UniformBinding struct {
 	Index int
 }
 
-// Deprecated: Legacy, use uniform buffers instead.
-type UniformLocation interface{}
-
 // ProgramObject marks a type as being a Program.
 type ProgramObject interface {
 	_isProgramObject() bool // ensures interface uniqueness
@@ -81,9 +78,6 @@ type ProgramObject interface {
 // Program represents a graphics program.
 type Program interface {
 	ProgramObject
-
-	// Deprecated: Legacy, use uniform buffers instead.
-	UniformLocation(name string) UniformLocation
 
 	// Release releases the resources used by the program.
 	Release()
