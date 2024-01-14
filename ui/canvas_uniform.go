@@ -62,9 +62,11 @@ func (s *uniformSequence[T]) Append(uniform T) {
 }
 
 func (s *uniformSequence[T]) Upload(api render.API) {
-	s.buffer.Update(render.BufferUpdateInfo{
-		Data: s.plotter.Data()[:s.plotter.Offset()],
-	})
+	if offset := s.plotter.Offset(); offset > 0 {
+		s.buffer.Update(render.BufferUpdateInfo{
+			Data: s.plotter.Data()[:offset],
+		})
+	}
 }
 
 func (s *uniformSequence[T]) Release() {
