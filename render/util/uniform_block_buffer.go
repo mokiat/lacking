@@ -83,9 +83,7 @@ func (b *UniformBlockBuffer) Placement(uniformSize int) UniformPlacement {
 func (b *UniformBlockBuffer) Upload() {
 	b.skipToAlignment()
 	if offset := b.plotter.Offset(); offset > 0 {
-		b.buffer.Update(render.BufferUpdateInfo{
-			Data: b.plotter.Data()[:offset],
-		})
+		b.api.Queue().WriteBuffer(b.buffer, 0, b.plotter.Data()[:offset])
 	}
 }
 

@@ -94,9 +94,7 @@ func (s *UniformSequence[T]) Append(uniform T) {
 
 func (s *UniformSequence[T]) Upload(api render.API) {
 	if offset := s.plotter.Offset(); offset > 0 {
-		s.buffer.Update(render.BufferUpdateInfo{
-			Data: s.plotter.Data()[:offset],
-		})
+		api.Queue().WriteBuffer(s.buffer, 0, s.plotter.Data()[:offset])
 	}
 }
 

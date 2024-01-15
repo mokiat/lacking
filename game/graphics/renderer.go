@@ -735,9 +735,7 @@ func (r *sceneRenderer) Render(framebuffer render.Framebuffer, viewport Viewport
 		float32(viewport.Width),
 		float32(viewport.Height),
 	))
-	r.cameraUniformBuffer.Update(render.BufferUpdateInfo{
-		Data: r.cameraUniformBufferData,
-	})
+	r.api.Queue().WriteBuffer(r.cameraUniformBuffer, 0, r.cameraUniformBufferData)
 
 	r.commands.UniformBufferUnit(internal.UniformBufferBindingCamera, r.cameraUniformBuffer)
 	r.commands.UniformBufferUnit(internal.UniformBufferBindingModel, r.modelUniformBuffer)
@@ -860,9 +858,7 @@ func (r *sceneRenderer) renderShadowPass(ctx renderCtx) {
 	lightPlotter.PlotSPMat4(projectionMatrix)
 	lightPlotter.PlotSPMat4(viewMatrix)
 	lightPlotter.PlotSPMat4(lightMatrix)
-	r.lightUniformBuffer.Update(render.BufferUpdateInfo{
-		Data: r.lightUniformBufferData,
-	})
+	r.api.Queue().WriteBuffer(r.lightUniformBuffer, 0, r.lightUniformBufferData)
 	r.renderShadowMeshesList(ctx)
 
 	r.api.SubmitQueue(r.commands)

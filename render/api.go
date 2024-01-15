@@ -41,7 +41,8 @@ type API interface {
 
 	CreateCommandQueue() CommandQueue
 
-	// Queue() CommandQueue // TODO
+	// Queue can be used to schedule commands to be executed on the GPU.
+	Queue() Queue
 
 	BeginRenderPass(info RenderPassInfo)
 	EndRenderPass()

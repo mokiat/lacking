@@ -19,15 +19,17 @@ const (
 	textMeshVertexSize      = 2*4 + 2*4
 )
 
-func newShapeMesh(vertexCount int) *shapeMesh {
+func newShapeMesh(api render.API, vertexCount int) *shapeMesh {
 	data := make([]byte, vertexCount*shapeMeshVertexSize)
 	return &shapeMesh{
+		api:           api,
 		vertexData:    data,
 		vertexPlotter: blob.NewPlotter(data),
 	}
 }
 
 type shapeMesh struct {
+	api           render.API
 	vertexData    []byte
 	vertexPlotter *blob.Plotter
 	vertexOffset  int
@@ -66,10 +68,7 @@ func (m *shapeMesh) Release() {
 
 func (m *shapeMesh) Upload() {
 	if length := m.vertexPlotter.Offset(); length > 0 {
-		m.vertexBuffer.Update(render.BufferUpdateInfo{
-			Data:   m.vertexData[:length],
-			Offset: 0,
-		})
+		m.api.Queue().WriteBuffer(m.vertexBuffer, 0, m.vertexData[:length])
 	}
 }
 
@@ -92,15 +91,17 @@ type shapeVertex struct {
 	position sprec.Vec2
 }
 
-func newContourMesh(vertexCount int) *contourMesh {
+func newContourMesh(api render.API, vertexCount int) *contourMesh {
 	data := make([]byte, vertexCount*contourMeshVertexSize)
 	return &contourMesh{
+		api:           api,
 		vertexData:    data,
 		vertexPlotter: blob.NewPlotter(data),
 	}
 }
 
 type contourMesh struct {
+	api           render.API
 	vertexData    []byte
 	vertexPlotter *blob.Plotter
 	vertexOffset  int
@@ -145,10 +146,7 @@ func (m *contourMesh) Release() {
 
 func (m *contourMesh) Upload() {
 	if length := m.vertexPlotter.Offset(); length > 0 {
-		m.vertexBuffer.Update(render.BufferUpdateInfo{
-			Data:   m.vertexData[:length],
-			Offset: 0,
-		})
+		m.api.Queue().WriteBuffer(m.vertexBuffer, 0, m.vertexData[:length])
 	}
 }
 
@@ -176,15 +174,17 @@ type contourVertex struct {
 	color    Color
 }
 
-func newTextMesh(vertexCount int) *textMesh {
+func newTextMesh(api render.API, vertexCount int) *textMesh {
 	data := make([]byte, vertexCount*textMeshVertexSize)
 	return &textMesh{
+		api:           api,
 		vertexData:    data,
 		vertexPlotter: blob.NewPlotter(data),
 	}
 }
 
 type textMesh struct {
+	api           render.API
 	vertexData    []byte
 	vertexPlotter *blob.Plotter
 	vertexOffset  int
@@ -229,10 +229,7 @@ func (m *textMesh) Release() {
 
 func (m *textMesh) Upload() {
 	if length := m.vertexPlotter.Offset(); length > 0 {
-		m.vertexBuffer.Update(render.BufferUpdateInfo{
-			Data:   m.vertexData[:length],
-			Offset: 0,
-		})
+		m.api.Queue().WriteBuffer(m.vertexBuffer, 0, m.vertexData[:length])
 	}
 }
 

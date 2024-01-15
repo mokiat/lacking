@@ -34,9 +34,9 @@ func newCanvasRenderer(api render.API, shaders ShaderCollection) *canvasRenderer
 		api:     api,
 		shaders: shaders,
 
-		shapeMesh:   newShapeMesh(maxVertexCount),
-		contourMesh: newContourMesh(maxVertexCount),
-		textMesh:    newTextMesh(maxVertexCount),
+		shapeMesh:   newShapeMesh(api, maxVertexCount),
+		contourMesh: newContourMesh(api, maxVertexCount),
+		textMesh:    newTextMesh(api, maxVertexCount),
 
 		topLayer: &canvasLayer{},
 	}
