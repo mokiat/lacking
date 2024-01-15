@@ -64,7 +64,7 @@ func (m *shapeMesh) Release() {
 	m.vertexBuffer.Release()
 }
 
-func (m *shapeMesh) Update() {
+func (m *shapeMesh) Upload() {
 	if length := m.vertexPlotter.Offset(); length > 0 {
 		m.vertexBuffer.Update(render.BufferUpdateInfo{
 			Data:   m.vertexData[:length],
@@ -143,7 +143,7 @@ func (m *contourMesh) Release() {
 	m.vertexBuffer.Release()
 }
 
-func (m *contourMesh) Update() {
+func (m *contourMesh) Upload() {
 	if length := m.vertexPlotter.Offset(); length > 0 {
 		m.vertexBuffer.Update(render.BufferUpdateInfo{
 			Data:   m.vertexData[:length],
@@ -227,7 +227,7 @@ func (m *textMesh) Release() {
 	m.vertexBuffer.Release()
 }
 
-func (m *textMesh) Update() {
+func (m *textMesh) Upload() {
 	if length := m.vertexPlotter.Offset(); length > 0 {
 		m.vertexBuffer.Update(render.BufferUpdateInfo{
 			Data:   m.vertexData[:length],

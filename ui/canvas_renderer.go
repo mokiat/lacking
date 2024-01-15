@@ -3,6 +3,7 @@ package ui
 import (
 	"github.com/mokiat/gomath/sprec"
 	"github.com/mokiat/lacking/render"
+	renderutil "github.com/mokiat/lacking/render/util"
 )
 
 const (
@@ -23,9 +24,7 @@ const (
 )
 
 const (
-	cameraUniformBlockCount   = 1
-	modelUniformBlockCount    = 2048
-	materialUniformBlockCount = 2048
+	uniformBufferSize = 1024 * 1024 // 1MB
 )
 
 func newCanvasRenderer(api render.API, shaders ShaderCollection) *canvasRenderer {
@@ -51,12 +50,11 @@ type canvasRenderer struct {
 
 	commandQueue render.CommandQueue
 
-	cameraUniforms *uniformSequence[cameraUniform]
-
-	modelUniforms *uniformSequence[modelUniform]
-	modelIsDirty  bool
-
-	materialUniforms *uniformSequence[materialUniform]
+	uniforms                 *renderutil.UniformBlockBuffer
+	cameraUniformPlacement   renderutil.UniformPlacement
+	modelUniformPlacement    renderutil.UniformPlacement
+	materialUniformPlacement renderutil.UniformPlacement
+	modelIsDirty             bool
 
 	whiteMask render.Texture
 
@@ -83,10 +81,7 @@ type canvasRenderer struct {
 func (c *canvasRenderer) onCreate() {
 	c.commandQueue = c.api.CreateCommandQueue()
 
-	c.cameraUniforms = newUniformSequence[cameraUniform](c.api, cameraUniformBlockCount)
-
-	c.modelUniforms = newUniformSequence[modelUniform](c.api, modelUniformBlockCount)
-	c.materialUniforms = newUniformSequence[materialUniform](c.api, materialUniformBlockCount)
+	c.uniforms = renderutil.NewUniformBlockBuffer(c.api, uniformBufferSize)
 
 	c.whiteMask = c.api.CreateColorTexture2D(render.ColorTexture2DInfo{
 		Width:           1,
@@ -307,9 +302,7 @@ func (c *canvasRenderer) onCreate() {
 func (c *canvasRenderer) onDestroy() {
 	defer c.commandQueue.Release()
 
-	defer c.cameraUniforms.Release()
-	defer c.modelUniforms.Release()
-	defer c.materialUniforms.Release()
+	defer c.uniforms.Release()
 
 	defer c.whiteMask.Release()
 
@@ -334,10 +327,7 @@ func (c *canvasRenderer) onBegin(size Size) {
 	c.shapeMesh.Reset()
 	c.contourMesh.Reset()
 	c.textMesh.Reset()
-
-	c.cameraUniforms.Reset()
-	c.modelUniforms.Reset()
-	c.materialUniforms.Reset()
+	c.uniforms.Reset()
 
 	c.updateCameraUniformBuffer(size)
 
@@ -350,13 +340,10 @@ func (c *canvasRenderer) onBegin(size Size) {
 func (c *canvasRenderer) onEnd() {
 	c.api.Invalidate()
 
-	c.shapeMesh.Update()
-	c.contourMesh.Update()
-	c.textMesh.Update()
-
-	c.cameraUniforms.Upload(c.api)
-	c.modelUniforms.Upload(c.api)
-	c.materialUniforms.Upload(c.api)
+	c.shapeMesh.Upload()
+	c.contourMesh.Upload()
+	c.textMesh.Upload()
+	c.uniforms.Upload()
 
 	c.api.SubmitQueue(c.commandQueue)
 }
@@ -583,21 +570,21 @@ func (c *canvasRenderer) FillTextLine(text []rune, position sprec.Vec2, typograp
 		c.commandQueue.TextureUnit(textureBindingFontTexture, font.texture)
 		c.commandQueue.UniformBufferUnitRange(
 			uniformBufferBindingCamera,
-			c.cameraUniforms.Buffer(),
-			c.cameraUniforms.BlockOffset(),
-			c.cameraUniforms.BlockSize(),
+			c.cameraUniformPlacement.Buffer,
+			c.cameraUniformPlacement.Offset,
+			c.cameraUniformPlacement.Size,
 		)
 		c.commandQueue.UniformBufferUnitRange(
 			uniformBufferBindingModel,
-			c.modelUniforms.Buffer(),
-			c.modelUniforms.BlockOffset(),
-			c.modelUniforms.BlockSize(),
+			c.modelUniformPlacement.Buffer,
+			c.modelUniformPlacement.Offset,
+			c.modelUniformPlacement.Size,
 		)
 		c.commandQueue.UniformBufferUnitRange(
 			uniformBufferBindingMaterial,
-			c.materialUniforms.Buffer(),
-			c.materialUniforms.BlockOffset(),
-			c.materialUniforms.BlockSize(),
+			c.materialUniformPlacement.Buffer,
+			c.materialUniformPlacement.Offset,
+			c.materialUniformPlacement.Size,
 		)
 		c.commandQueue.Draw(vertexOffset, vertexCount, 1)
 	}
@@ -701,21 +688,21 @@ func (c *canvasRenderer) FillText(text string, position sprec.Vec2, typography T
 		c.commandQueue.TextureUnit(textureBindingFontTexture, font.texture)
 		c.commandQueue.UniformBufferUnitRange(
 			uniformBufferBindingCamera,
-			c.cameraUniforms.Buffer(),
-			c.cameraUniforms.BlockOffset(),
-			c.cameraUniforms.BlockSize(),
+			c.cameraUniformPlacement.Buffer,
+			c.cameraUniformPlacement.Offset,
+			c.cameraUniformPlacement.Size,
 		)
 		c.commandQueue.UniformBufferUnitRange(
 			uniformBufferBindingModel,
-			c.modelUniforms.Buffer(),
-			c.modelUniforms.BlockOffset(),
-			c.modelUniforms.BlockSize(),
+			c.modelUniformPlacement.Buffer,
+			c.modelUniformPlacement.Offset,
+			c.modelUniformPlacement.Size,
 		)
 		c.commandQueue.UniformBufferUnitRange(
 			uniformBufferBindingMaterial,
-			c.materialUniforms.Buffer(),
-			c.materialUniforms.BlockOffset(),
-			c.materialUniforms.BlockSize(),
+			c.materialUniformPlacement.Buffer,
+			c.materialUniformPlacement.Offset,
+			c.materialUniformPlacement.Size,
 		)
 		c.commandQueue.Draw(vertexOffset, vertexCount, 1)
 	}
@@ -752,15 +739,15 @@ func (c *canvasRenderer) fillPath(path *canvasPath, fill Fill) {
 		c.commandQueue.BindPipeline(c.shapeMaskPipeline)
 		c.commandQueue.UniformBufferUnitRange(
 			uniformBufferBindingCamera,
-			c.cameraUniforms.Buffer(),
-			c.cameraUniforms.BlockOffset(),
-			c.cameraUniforms.BlockSize(),
+			c.cameraUniformPlacement.Buffer,
+			c.cameraUniformPlacement.Offset,
+			c.cameraUniformPlacement.Size,
 		)
 		c.commandQueue.UniformBufferUnitRange(
 			uniformBufferBindingModel,
-			c.modelUniforms.Buffer(),
-			c.modelUniforms.BlockOffset(),
-			c.modelUniforms.BlockSize(),
+			c.modelUniformPlacement.Buffer,
+			c.modelUniformPlacement.Offset,
+			c.modelUniformPlacement.Size,
 		)
 		for i, pointOffset := range path.subPathOffsets {
 			pointCount := len(path.points) - pointOffset
@@ -793,21 +780,21 @@ func (c *canvasRenderer) fillPath(path *canvasPath, fill Fill) {
 	c.commandQueue.TextureUnit(textureBindingColorTexture, texture)
 	c.commandQueue.UniformBufferUnitRange(
 		uniformBufferBindingCamera,
-		c.cameraUniforms.Buffer(),
-		c.cameraUniforms.BlockOffset(),
-		c.cameraUniforms.BlockSize(),
+		c.cameraUniformPlacement.Buffer,
+		c.cameraUniformPlacement.Offset,
+		c.cameraUniformPlacement.Size,
 	)
 	c.commandQueue.UniformBufferUnitRange(
 		uniformBufferBindingModel,
-		c.modelUniforms.Buffer(),
-		c.modelUniforms.BlockOffset(),
-		c.modelUniforms.BlockSize(),
+		c.modelUniformPlacement.Buffer,
+		c.modelUniformPlacement.Offset,
+		c.modelUniformPlacement.Size,
 	)
 	c.commandQueue.UniformBufferUnitRange(
 		uniformBufferBindingMaterial,
-		c.materialUniforms.Buffer(),
-		c.materialUniforms.BlockOffset(),
-		c.materialUniforms.BlockSize(),
+		c.materialUniformPlacement.Buffer,
+		c.materialUniformPlacement.Offset,
+		c.materialUniformPlacement.Size,
 	)
 	for i, pointOffset := range path.subPathOffsets {
 		pointCount := len(path.points) - pointOffset
@@ -828,15 +815,15 @@ func (c *canvasRenderer) strokePath(path *canvasPath) {
 	c.commandQueue.BindPipeline(c.contourPipeline)
 	c.commandQueue.UniformBufferUnitRange(
 		uniformBufferBindingCamera,
-		c.cameraUniforms.Buffer(),
-		c.cameraUniforms.BlockOffset(),
-		c.cameraUniforms.BlockSize(),
+		c.cameraUniformPlacement.Buffer,
+		c.cameraUniformPlacement.Offset,
+		c.cameraUniformPlacement.Size,
 	)
 	c.commandQueue.UniformBufferUnitRange(
 		uniformBufferBindingModel,
-		c.modelUniforms.Buffer(),
-		c.modelUniforms.BlockOffset(),
-		c.modelUniforms.BlockSize(),
+		c.modelUniformPlacement.Buffer,
+		c.modelUniformPlacement.Offset,
+		c.modelUniformPlacement.Size,
 	)
 
 	for i, pointOffset := range path.subPathOffsets {
@@ -919,7 +906,7 @@ func (c *canvasRenderer) clipPath(path *canvasPath) {
 }
 
 func (c *canvasRenderer) updateCameraUniformBuffer(size Size) {
-	c.cameraUniforms.Append(cameraUniform{
+	c.cameraUniformPlacement = renderutil.WriteUniform(c.uniforms, cameraUniform{
 		Projection: sprec.OrthoMat4(
 			0.0, float32(size.Width),
 			0.0, float32(size.Height),
@@ -930,7 +917,7 @@ func (c *canvasRenderer) updateCameraUniformBuffer(size Size) {
 
 func (c *canvasRenderer) updateModelUniformBuffer(layer *canvasLayer) {
 	if c.modelIsDirty {
-		c.modelUniforms.Append(modelUniform{
+		c.modelUniformPlacement = renderutil.WriteUniform(c.uniforms, modelUniform{
 			Transform:     layer.Transform,
 			ClipTransform: layer.ClipTransform,
 		})
@@ -939,7 +926,7 @@ func (c *canvasRenderer) updateModelUniformBuffer(layer *canvasLayer) {
 }
 
 func (c *canvasRenderer) updateMaterialUniformBufferFromFill(fill Fill) {
-	c.materialUniforms.Append(materialUniform{
+	c.materialUniformPlacement = renderutil.WriteUniform(c.uniforms, materialUniform{
 		TextureTransform: sprec.Mat4MultiProd(
 			sprec.ScaleMat4(1.0/fill.ImageSize.X, 1.0/fill.ImageSize.Y, 1.0),
 			sprec.TranslationMat4(-fill.ImageOffset.X, -fill.ImageOffset.Y, 0.0),
@@ -949,7 +936,7 @@ func (c *canvasRenderer) updateMaterialUniformBufferFromFill(fill Fill) {
 }
 
 func (c *canvasRenderer) updateMaterialUniformBufferFromTypography(typography Typography) {
-	c.materialUniforms.Append(materialUniform{
+	c.materialUniformPlacement = renderutil.WriteUniform(c.uniforms, materialUniform{
 		TextureTransform: sprec.Mat4{},
 		Color:            uiColorToVec(typography.Color),
 	})

@@ -2,6 +2,7 @@ package internal
 
 import (
 	"github.com/mokiat/lacking/render"
+	renderutil "github.com/mokiat/lacking/render/util"
 	"github.com/mokiat/lacking/util/blob"
 )
 
@@ -44,7 +45,7 @@ type UniformType interface {
 func NewUniformSequence[T UniformType](api render.API, count int) *UniformSequence[T] {
 	var zeroT T
 	std140Size := zeroT.Std140Size()
-	alignmentSize := render.DetermineUniformBlockSize(api, std140Size)
+	alignmentSize := renderutil.DetermineUniformBlockSize(api, std140Size)
 	data := make([]byte, count*alignmentSize)
 
 	return &UniformSequence[T]{
