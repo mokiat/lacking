@@ -39,23 +39,12 @@ type API interface {
 	CreateVertexArray(info VertexArrayInfo) VertexArray
 	CreatePipeline(info PipelineInfo) Pipeline
 
-	CreateCommandQueue() CommandQueue
+	// CreateCommandBuffer creates a new CommandBuffer object with the
+	// specified initial capacity. The buffer will automatically grow
+	// as needed but it is recommended to provide a reasonable initial
+	// capacity to avoid unnecessary allocations.
+	CreateCommandBuffer(initialCapacity int) CommandBuffer
 
 	// Queue can be used to schedule commands to be executed on the GPU.
 	Queue() Queue
-
-	BeginRenderPass(info RenderPassInfo)
-	EndRenderPass()
-
-	// Invalidate indicates that the graphics state might have changed
-	// from outside this API and any cached state by the API should
-	// be discarded.
-	//
-	// Using this command will force a subsequent draw command to initialize
-	// all graphics state (e.g. blend state, depth state, stencil state, etc.)
-	Invalidate()
-
-	CopyContentToTexture(info CopyContentToTextureInfo)
-	SubmitQueue(queue CommandQueue)
-	CreateFence() Fence
 }

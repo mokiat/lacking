@@ -37,9 +37,9 @@ type Framebuffer interface {
 	Release()
 }
 
-// ColorTexture2DInfo describes the configuration of a copy operation from
-// the current framebuffer to a texture.
-type CopyContentToTextureInfo struct {
+// CopyFramebufferToTextureInfo describes the configuration of a copy operation
+// from the current framebuffer to a texture.
+type CopyFramebufferToTextureInfo struct {
 
 	// Texture is the texture that should be updated with the contents of
 	// the current framebuffer.
@@ -70,13 +70,16 @@ type CopyContentToTextureInfo struct {
 	GenerateMipmaps bool
 }
 
-// CopyContentToBufferInfo describes the configuration of a copy operation
+// CopyFramebufferToBufferInfo describes the configuration of a copy operation
 // from the current framebuffer to a pixel transfer buffer.
-type CopyContentToBufferInfo struct {
+type CopyFramebufferToBufferInfo struct {
 
 	// Buffer is the pixel transfer buffer that should be updated with the
 	// contents of the current framebuffer.
 	Buffer Buffer
+
+	// Offset is the offset into the pixel transfer buffer.
+	Offset int
 
 	// X is the X offset of the framebuffer that should be copied.
 	X int
@@ -90,9 +93,6 @@ type CopyContentToBufferInfo struct {
 	// Height is the height amount of the framebuffer that should be copied.
 	Height int
 
-	// Format is the format of the pixel transfer buffer.
+	// Format is the format of the data.
 	Format DataFormat
-
-	// Offset is the offset into the pixel transfer buffer.
-	Offset int
 }

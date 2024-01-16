@@ -16,4 +16,13 @@ type Queue interface {
 	// WriteBuffer writes the provided data to the specified buffer at the
 	// specified offset.
 	WriteBuffer(buffer Buffer, offset int, data []byte)
+
+	// Submit schedules the provided command buffer to be executed on the GPU.
+	//
+	// Once submitted the command buffer is reset and can be reused.
+	Submit(commands CommandBuffer)
+
+	// TrackSubmittedWorkDone creates a fence that will be signaled once all
+	// work submitted to the queue before this call has been completed.
+	TrackSubmittedWorkDone() Fence
 }
