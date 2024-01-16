@@ -48,7 +48,7 @@ type canvasRenderer struct {
 	api     render.API
 	shaders ShaderCollection
 
-	commandQueue render.CommandQueue
+	commandBuffer render.CommandBuffer
 
 	uniforms                 *renderutil.UniformBlockBuffer
 	cameraUniformPlacement   renderutil.UniformPlacement
@@ -79,8 +79,6 @@ type canvasRenderer struct {
 }
 
 func (c *canvasRenderer) onCreate() {
-	c.commandQueue = c.api.CreateCommandQueue()
-
 	c.uniforms = renderutil.NewUniformBlockBuffer(c.api, uniformBufferSize)
 
 	c.whiteMask = c.api.CreateColorTexture2D(render.ColorTexture2DInfo{
@@ -300,8 +298,6 @@ func (c *canvasRenderer) onCreate() {
 }
 
 func (c *canvasRenderer) onDestroy() {
-	defer c.commandQueue.Release()
-
 	defer c.uniforms.Release()
 
 	defer c.whiteMask.Release()
@@ -323,7 +319,9 @@ func (c *canvasRenderer) onDestroy() {
 	defer c.textPipeline.Release()
 }
 
-func (c *canvasRenderer) onBegin(size Size) {
+func (c *canvasRenderer) onBegin(commandBuffer render.CommandBuffer, size Size) {
+	c.commandBuffer = commandBuffer
+
 	c.shapeMesh.Reset()
 	c.contourMesh.Reset()
 	c.textMesh.Reset()
@@ -338,14 +336,11 @@ func (c *canvasRenderer) onBegin(size Size) {
 }
 
 func (c *canvasRenderer) onEnd() {
-	c.api.Invalidate()
-
 	c.shapeMesh.Upload()
 	c.contourMesh.Upload()
 	c.textMesh.Upload()
 	c.uniforms.Upload()
-
-	c.api.SubmitQueue(c.commandQueue)
+	c.commandBuffer = nil
 }
 
 // Push records the current state and creates a new state layer. Changes done
@@ -566,27 +561,27 @@ func (c *canvasRenderer) FillTextLine(text []rune, position sprec.Vec2, typograp
 	if vertexCount > 0 {
 		c.updateModelUniformBuffer(c.currentLayer)
 		c.updateMaterialUniformBufferFromTypography(typography)
-		c.commandQueue.BindPipeline(c.textPipeline)
-		c.commandQueue.TextureUnit(textureBindingFontTexture, font.texture)
-		c.commandQueue.UniformBufferUnitRange(
+		c.commandBuffer.BindPipeline(c.textPipeline)
+		c.commandBuffer.TextureUnit(textureBindingFontTexture, font.texture)
+		c.commandBuffer.UniformBufferUnit(
 			uniformBufferBindingCamera,
 			c.cameraUniformPlacement.Buffer,
 			c.cameraUniformPlacement.Offset,
 			c.cameraUniformPlacement.Size,
 		)
-		c.commandQueue.UniformBufferUnitRange(
+		c.commandBuffer.UniformBufferUnit(
 			uniformBufferBindingModel,
 			c.modelUniformPlacement.Buffer,
 			c.modelUniformPlacement.Offset,
 			c.modelUniformPlacement.Size,
 		)
-		c.commandQueue.UniformBufferUnitRange(
+		c.commandBuffer.UniformBufferUnit(
 			uniformBufferBindingMaterial,
 			c.materialUniformPlacement.Buffer,
 			c.materialUniformPlacement.Offset,
 			c.materialUniformPlacement.Size,
 		)
-		c.commandQueue.Draw(vertexOffset, vertexCount, 1)
+		c.commandBuffer.Draw(vertexOffset, vertexCount, 1)
 	}
 }
 
@@ -684,27 +679,27 @@ func (c *canvasRenderer) FillText(text string, position sprec.Vec2, typography T
 		c.updateModelUniformBuffer(c.currentLayer)
 		c.updateMaterialUniformBufferFromTypography(typography)
 
-		c.commandQueue.BindPipeline(c.textPipeline)
-		c.commandQueue.TextureUnit(textureBindingFontTexture, font.texture)
-		c.commandQueue.UniformBufferUnitRange(
+		c.commandBuffer.BindPipeline(c.textPipeline)
+		c.commandBuffer.TextureUnit(textureBindingFontTexture, font.texture)
+		c.commandBuffer.UniformBufferUnit(
 			uniformBufferBindingCamera,
 			c.cameraUniformPlacement.Buffer,
 			c.cameraUniformPlacement.Offset,
 			c.cameraUniformPlacement.Size,
 		)
-		c.commandQueue.UniformBufferUnitRange(
+		c.commandBuffer.UniformBufferUnit(
 			uniformBufferBindingModel,
 			c.modelUniformPlacement.Buffer,
 			c.modelUniformPlacement.Offset,
 			c.modelUniformPlacement.Size,
 		)
-		c.commandQueue.UniformBufferUnitRange(
+		c.commandBuffer.UniformBufferUnit(
 			uniformBufferBindingMaterial,
 			c.materialUniformPlacement.Buffer,
 			c.materialUniformPlacement.Offset,
 			c.materialUniformPlacement.Size,
 		)
-		c.commandQueue.Draw(vertexOffset, vertexCount, 1)
+		c.commandBuffer.Draw(vertexOffset, vertexCount, 1)
 	}
 }
 
@@ -736,14 +731,14 @@ func (c *canvasRenderer) fillPath(path *canvasPath, fill Fill) {
 
 	// draw stencil mask for all sub-shapes
 	if fill.Rule != FillRuleSimple {
-		c.commandQueue.BindPipeline(c.shapeMaskPipeline)
-		c.commandQueue.UniformBufferUnitRange(
+		c.commandBuffer.BindPipeline(c.shapeMaskPipeline)
+		c.commandBuffer.UniformBufferUnit(
 			uniformBufferBindingCamera,
 			c.cameraUniformPlacement.Buffer,
 			c.cameraUniformPlacement.Offset,
 			c.cameraUniformPlacement.Size,
 		)
-		c.commandQueue.UniformBufferUnitRange(
+		c.commandBuffer.UniformBufferUnit(
 			uniformBufferBindingModel,
 			c.modelUniformPlacement.Buffer,
 			c.modelUniformPlacement.Offset,
@@ -754,7 +749,7 @@ func (c *canvasRenderer) fillPath(path *canvasPath, fill Fill) {
 			if i+1 < len(path.subPathOffsets) {
 				pointCount = path.subPathOffsets[i+1] - pointOffset
 			}
-			c.commandQueue.Draw(vertexOffset+pointOffset, pointCount, 1)
+			c.commandBuffer.Draw(vertexOffset+pointOffset, pointCount, 1)
 		}
 	}
 
@@ -763,13 +758,13 @@ func (c *canvasRenderer) fillPath(path *canvasPath, fill Fill) {
 	// render color shader shape and clear stencil buffer
 	switch fill.Rule {
 	case FillRuleSimple:
-		c.commandQueue.BindPipeline(c.shapeSimplePipeline)
+		c.commandBuffer.BindPipeline(c.shapeSimplePipeline)
 	case FillRuleNonZero:
-		c.commandQueue.BindPipeline(c.shapeNonZeroPipeline)
+		c.commandBuffer.BindPipeline(c.shapeNonZeroPipeline)
 	case FillRuleEvenOdd:
-		c.commandQueue.BindPipeline(c.shapeOddPipeline)
+		c.commandBuffer.BindPipeline(c.shapeOddPipeline)
 	default:
-		c.commandQueue.BindPipeline(c.shapeSimplePipeline)
+		c.commandBuffer.BindPipeline(c.shapeSimplePipeline)
 	}
 
 	texture := c.whiteMask
@@ -777,20 +772,20 @@ func (c *canvasRenderer) fillPath(path *canvasPath, fill Fill) {
 		texture = fill.Image.texture
 	}
 
-	c.commandQueue.TextureUnit(textureBindingColorTexture, texture)
-	c.commandQueue.UniformBufferUnitRange(
+	c.commandBuffer.TextureUnit(textureBindingColorTexture, texture)
+	c.commandBuffer.UniformBufferUnit(
 		uniformBufferBindingCamera,
 		c.cameraUniformPlacement.Buffer,
 		c.cameraUniformPlacement.Offset,
 		c.cameraUniformPlacement.Size,
 	)
-	c.commandQueue.UniformBufferUnitRange(
+	c.commandBuffer.UniformBufferUnit(
 		uniformBufferBindingModel,
 		c.modelUniformPlacement.Buffer,
 		c.modelUniformPlacement.Offset,
 		c.modelUniformPlacement.Size,
 	)
-	c.commandQueue.UniformBufferUnitRange(
+	c.commandBuffer.UniformBufferUnit(
 		uniformBufferBindingMaterial,
 		c.materialUniformPlacement.Buffer,
 		c.materialUniformPlacement.Offset,
@@ -801,7 +796,7 @@ func (c *canvasRenderer) fillPath(path *canvasPath, fill Fill) {
 		if i+1 < len(path.subPathOffsets) {
 			pointCount = path.subPathOffsets[i+1] - pointOffset
 		}
-		c.commandQueue.Draw(vertexOffset+pointOffset, pointCount, 1)
+		c.commandBuffer.Draw(vertexOffset+pointOffset, pointCount, 1)
 	}
 }
 
@@ -812,14 +807,14 @@ func (c *canvasRenderer) strokePath(path *canvasPath) {
 
 	c.updateModelUniformBuffer(c.currentLayer)
 
-	c.commandQueue.BindPipeline(c.contourPipeline)
-	c.commandQueue.UniformBufferUnitRange(
+	c.commandBuffer.BindPipeline(c.contourPipeline)
+	c.commandBuffer.UniformBufferUnit(
 		uniformBufferBindingCamera,
 		c.cameraUniformPlacement.Buffer,
 		c.cameraUniformPlacement.Offset,
 		c.cameraUniformPlacement.Size,
 	)
-	c.commandQueue.UniformBufferUnitRange(
+	c.commandBuffer.UniformBufferUnit(
 		uniformBufferBindingModel,
 		c.modelUniformPlacement.Buffer,
 		c.modelUniformPlacement.Offset,
@@ -890,7 +885,7 @@ func (c *canvasRenderer) strokePath(path *canvasPath) {
 		}
 		vertexCount := c.contourMesh.Offset() - vertexOffset
 
-		c.commandQueue.Draw(vertexOffset, vertexCount, 1)
+		c.commandBuffer.Draw(vertexOffset, vertexCount, 1)
 	}
 }
 
