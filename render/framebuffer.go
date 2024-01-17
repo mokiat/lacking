@@ -1,8 +1,16 @@
 package render
 
-// FramebufferObject marks a type as being a Framebuffer object.
-type FramebufferObject interface {
-	_isFramebufferObject() bool // ensures interface uniqueness
+// FramebufferMarker marks a type as being a Framebuffer.
+type FramebufferMarker interface {
+	_isFramebufferType()
+}
+
+// Framebuffer represents a combination of target textures to be rendered to.
+type Framebuffer interface {
+	FramebufferMarker
+
+	// Release releases the resources associated with the Framebuffer.
+	Release()
 }
 
 // FramebufferInfo describes the configuration of a Framebuffer.
@@ -27,14 +35,6 @@ type FramebufferInfo struct {
 	// DepthStencilAttachment is the depth+stencil attachment that should
 	// be attached to the Framebuffer.
 	DepthStencilAttachment Texture
-}
-
-// Framebuffer represents a combination of target textures to be rendered to.
-type Framebuffer interface {
-	FramebufferObject
-
-	// Release releases the resources associated with the Framebuffer.
-	Release()
 }
 
 // CopyFramebufferToTextureInfo describes the configuration of a copy operation

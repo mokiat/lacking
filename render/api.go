@@ -6,10 +6,6 @@ type API interface {
 	// Limits returns information on the supported limits of the implementation.
 	Limits() Limits
 
-	// Capabilities returns the information on the supported features and
-	// performance characteristics of the implementation.
-	Capabilities() Capabilities
-
 	// DefaultFramebuffer returns the default framebuffer that is provided
 	// by the target window surface.
 	DefaultFramebuffer() Framebuffer
@@ -27,16 +23,48 @@ type API interface {
 	// ProgramInfo.
 	CreateProgram(info ProgramInfo) Program
 
+	// CreateColorTexture2D creates a new 2D Texture that can be
+	// used to store color values.
 	CreateColorTexture2D(info ColorTexture2DInfo) Texture
+
+	// CreateColorTextureCube creates a new Cube Texture that can be
+	// used to store color values.
 	CreateColorTextureCube(info ColorTextureCubeInfo) Texture
+
+	// CreateDepthTexture2D creates a new 2D Texture that can be
+	// used to store depth values.
 	CreateDepthTexture2D(info DepthTexture2DInfo) Texture
+
+	// CreateStencilTexture2D creates a new 2D Texture that can be
+	// used to store stencil values.
 	CreateStencilTexture2D(info StencilTexture2DInfo) Texture
+
+	// CreateDepthStencilTexture2D creates a new 2D Texture that can be
+	// used to store depth and stencil values together.
 	CreateDepthStencilTexture2D(info DepthStencilTexture2DInfo) Texture
+
+	// CreateVertexBuffer creates a new Buffer object that can be used
+	// to store vertex data.
 	CreateVertexBuffer(info BufferInfo) Buffer
+
+	// CreateIndexBuffer creates a new Buffer object that can be used
+	// to store index data.
 	CreateIndexBuffer(info BufferInfo) Buffer
+
+	// CreatePixelTransferBuffer creates a new Buffer object that can be used
+	// to store pixel data from a transfer operation.
 	CreatePixelTransferBuffer(info BufferInfo) Buffer
+
+	// CreateUniformBuffer creates a new Buffer object that can be used
+	// to store uniform data.
 	CreateUniformBuffer(info BufferInfo) Buffer
+
+	// CreateVertexArray creates a new VertexArray object that describes
+	// the layout of vertex and index data for a mesh.
 	CreateVertexArray(info VertexArrayInfo) VertexArray
+
+	// CreatePipeline creates a new Pipeline object that describes the
+	// desired rendering state.
 	CreatePipeline(info PipelineInfo) Pipeline
 
 	// CreateCommandBuffer creates a new CommandBuffer object with the

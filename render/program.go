@@ -1,8 +1,21 @@
 package render
 
-// ProgramCodeObject marks a type as being a ProgramCode.
-type ProgramCodeObject interface {
-	_isProgramCodeObject() // ensures interface uniqueness
+// ProgramMarker marks a type as being a Program.
+type ProgramMarker interface {
+	_isProgramType()
+}
+
+// Program represents a graphics program.
+type Program interface {
+	ProgramMarker
+
+	// Release releases the resources used by the program.
+	Release()
+}
+
+// ProgramCodeMarker marks a type as being a ProgramCode.
+type ProgramCodeMarker interface {
+	_isProgramCodeType() // ensures interface uniqueness
 }
 
 // ProgramCode represents the shader language source code for a program.
@@ -10,7 +23,7 @@ type ProgramCodeObject interface {
 // This can differ depending on the API implementation. It could be a single
 // string or a struct with multiple strings for each shader stage.
 type ProgramCode interface {
-	ProgramCodeObject
+	ProgramCodeMarker
 }
 
 // ProgramInfo represents the information needed to create a Program.
@@ -68,17 +81,4 @@ type UniformBinding struct {
 
 	// Index specifies the binding index.
 	Index int
-}
-
-// ProgramObject marks a type as being a Program.
-type ProgramObject interface {
-	_isProgramObject() bool // ensures interface uniqueness
-}
-
-// Program represents a graphics program.
-type Program interface {
-	ProgramObject
-
-	// Release releases the resources used by the program.
-	Release()
 }

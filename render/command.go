@@ -1,8 +1,14 @@
 package render
 
+// BufferMarker marks a type as being a CommandBuffer.
+type CommandBufferMarker interface {
+	isCommandBufferType()
+}
+
 // CommandBuffer is used to record commands that should be executed
 // on the GPU.
 type CommandBuffer interface {
+	CommandBufferMarker
 
 	// CopyFramebufferToBuffer copies the contents of the current framebuffer
 	// to the specified buffer.
