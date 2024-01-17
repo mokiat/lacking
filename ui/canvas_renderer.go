@@ -248,7 +248,7 @@ func (c *canvasRenderer) onCreate() {
 	c.contourPipeline = c.api.CreatePipeline(render.PipelineInfo{
 		Program:                     c.contourProgram,
 		VertexArray:                 c.contourMesh.vertexArray,
-		Topology:                    render.TopologyTriangles,
+		Topology:                    render.TopologyTriangleList,
 		Culling:                     render.CullModeNone,
 		FrontFace:                   render.FaceOrientationCCW,
 		DepthTest:                   false,
@@ -280,7 +280,7 @@ func (c *canvasRenderer) onCreate() {
 	c.textPipeline = c.api.CreatePipeline(render.PipelineInfo{
 		Program:                     c.textProgram,
 		VertexArray:                 c.textMesh.vertexArray,
-		Topology:                    render.TopologyTriangles,
+		Topology:                    render.TopologyTriangleList,
 		Culling:                     render.CullModeNone,
 		FrontFace:                   render.FaceOrientationCCW,
 		DepthTest:                   false,

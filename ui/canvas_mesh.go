@@ -44,26 +44,18 @@ func (m *shapeMesh) Allocate(api render.API) {
 	})
 
 	m.vertexArray = api.CreateVertexArray(render.VertexArrayInfo{
-		Bindings: []render.VertexArrayBindingInfo{
-			{
-				VertexBuffer: m.vertexBuffer,
-				Stride:       shapeMeshVertexSize,
-			},
+		Bindings: []render.VertexArrayBinding{
+			render.NewVertexArrayBinding(m.vertexBuffer, shapeMeshVertexSize),
 		},
-		Attributes: []render.VertexArrayAttributeInfo{
-			{
-				Binding:  0,
-				Location: shapePositionAttribIndex,
-				Format:   render.VertexAttributeFormatRG32F,
-				Offset:   0,
-			},
+		Attributes: []render.VertexArrayAttribute{
+			render.NewVertexArrayAttribute(0, shapePositionAttribIndex, 0, render.VertexAttributeFormatRG32F),
 		},
 	})
 }
 
 func (m *shapeMesh) Release() {
-	m.vertexArray.Release()
-	m.vertexBuffer.Release()
+	defer m.vertexBuffer.Release()
+	defer m.vertexArray.Release()
 }
 
 func (m *shapeMesh) Upload() {
@@ -116,32 +108,19 @@ func (m *contourMesh) Allocate(api render.API) {
 	})
 
 	m.vertexArray = api.CreateVertexArray(render.VertexArrayInfo{
-		Bindings: []render.VertexArrayBindingInfo{
-			{
-				VertexBuffer: m.vertexBuffer,
-				Stride:       contourMeshVertexSize,
-			},
+		Bindings: []render.VertexArrayBinding{
+			render.NewVertexArrayBinding(m.vertexBuffer, contourMeshVertexSize),
 		},
-		Attributes: []render.VertexArrayAttributeInfo{
-			{
-				Binding:  0,
-				Location: contourPositionAttribIndex,
-				Format:   render.VertexAttributeFormatRG32F,
-				Offset:   0,
-			},
-			{
-				Binding:  0,
-				Location: contourColorAttribIndex,
-				Format:   render.VertexAttributeFormatRGBA8UN,
-				Offset:   2 * 4,
-			},
+		Attributes: []render.VertexArrayAttribute{
+			render.NewVertexArrayAttribute(0, contourPositionAttribIndex, 0, render.VertexAttributeFormatRG32F),
+			render.NewVertexArrayAttribute(0, contourColorAttribIndex, 2*4, render.VertexAttributeFormatRGBA8UN),
 		},
 	})
 }
 
 func (m *contourMesh) Release() {
-	m.vertexArray.Release()
-	m.vertexBuffer.Release()
+	defer m.vertexBuffer.Release()
+	defer m.vertexArray.Release()
 }
 
 func (m *contourMesh) Upload() {
@@ -199,32 +178,19 @@ func (m *textMesh) Allocate(api render.API) {
 	})
 
 	m.vertexArray = api.CreateVertexArray(render.VertexArrayInfo{
-		Bindings: []render.VertexArrayBindingInfo{
-			{
-				VertexBuffer: m.vertexBuffer,
-				Stride:       textMeshVertexSize,
-			},
+		Bindings: []render.VertexArrayBinding{
+			render.NewVertexArrayBinding(m.vertexBuffer, textMeshVertexSize),
 		},
-		Attributes: []render.VertexArrayAttributeInfo{
-			{
-				Binding:  0,
-				Location: textPositionAttribIndex,
-				Format:   render.VertexAttributeFormatRG32F,
-				Offset:   0,
-			},
-			{
-				Binding:  0,
-				Location: textTexCoordAttribIndex,
-				Format:   render.VertexAttributeFormatRG32F,
-				Offset:   2 * 4,
-			},
+		Attributes: []render.VertexArrayAttribute{
+			render.NewVertexArrayAttribute(0, textPositionAttribIndex, 0, render.VertexAttributeFormatRG32F),
+			render.NewVertexArrayAttribute(0, textTexCoordAttribIndex, 2*4, render.VertexAttributeFormatRG32F),
 		},
 	})
 }
 
 func (m *textMesh) Release() {
-	m.vertexArray.Release()
-	m.vertexBuffer.Release()
+	defer m.vertexBuffer.Release()
+	defer m.vertexArray.Release()
 }
 
 func (m *textMesh) Upload() {

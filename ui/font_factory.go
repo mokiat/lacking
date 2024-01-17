@@ -57,7 +57,7 @@ type fontFactory struct {
 }
 
 func (f *fontFactory) Init() {
-	switch f.api.Capabilities().Quality {
+	switch f.api.Limits().Quality() {
 	case render.QualityHigh:
 		f.fontImageSize = 2048
 	case render.QualityMedium:
