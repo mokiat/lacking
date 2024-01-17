@@ -46,6 +46,13 @@ func (p *Plotter) Skip(offset int) {
 	p.offset += offset
 }
 
+// PlotBytes copies the specified data at the current offset and
+// advances the offset with the length of the data.
+func (p *Plotter) PlotBytes(data []byte) {
+	copy(p.data[p.offset:], data)
+	p.offset += len(data)
+}
+
 // PlotUint8 sets a single byte at the current offset
 // and advances the offset with 1 byte.
 func (p *Plotter) PlotUint8(value byte) {
