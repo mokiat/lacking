@@ -40,13 +40,13 @@ func CreateQuadShape(api render.API) *Shape {
 	})
 
 	vertexArray := api.CreateVertexArray(render.VertexArrayInfo{
-		Bindings: []render.VertexArrayBindingInfo{
+		Bindings: []render.VertexArrayBinding{
 			{
 				VertexBuffer: vertexBuffer,
 				Stride:       vertexSize,
 			},
 		},
-		Attributes: []render.VertexArrayAttributeInfo{
+		Attributes: []render.VertexArrayAttribute{
 			{
 				Binding:  0,
 				Location: CoordAttributeIndex,

@@ -136,9 +136,9 @@ func (e *Engine) CreateMeshDefinition(info MeshDefinitionInfo) *MeshDefinition {
 		Data:    info.IndexData,
 	})
 
-	var attributes []render.VertexArrayAttributeInfo
+	var attributes []render.VertexArrayAttribute
 	if info.VertexFormat.HasCoord {
-		attributes = append(attributes, render.VertexArrayAttributeInfo{
+		attributes = append(attributes, render.VertexArrayAttribute{
 			Binding:  0,
 			Location: internal.CoordAttributeIndex,
 			Format:   render.VertexAttributeFormatRGB32F,
@@ -146,7 +146,7 @@ func (e *Engine) CreateMeshDefinition(info MeshDefinitionInfo) *MeshDefinition {
 		})
 	}
 	if info.VertexFormat.HasNormal {
-		attributes = append(attributes, render.VertexArrayAttributeInfo{
+		attributes = append(attributes, render.VertexArrayAttribute{
 			Binding:  0,
 			Location: internal.NormalAttributeIndex,
 			Format:   render.VertexAttributeFormatRGB16F,
@@ -154,7 +154,7 @@ func (e *Engine) CreateMeshDefinition(info MeshDefinitionInfo) *MeshDefinition {
 		})
 	}
 	if info.VertexFormat.HasTangent {
-		attributes = append(attributes, render.VertexArrayAttributeInfo{
+		attributes = append(attributes, render.VertexArrayAttribute{
 			Binding:  0,
 			Location: internal.TangentAttributeIndex,
 			Format:   render.VertexAttributeFormatRGB16F,
@@ -162,7 +162,7 @@ func (e *Engine) CreateMeshDefinition(info MeshDefinitionInfo) *MeshDefinition {
 		})
 	}
 	if info.VertexFormat.HasTexCoord {
-		attributes = append(attributes, render.VertexArrayAttributeInfo{
+		attributes = append(attributes, render.VertexArrayAttribute{
 			Binding:  0,
 			Location: internal.TexCoordAttributeIndex,
 			Format:   render.VertexAttributeFormatRG16F,
@@ -170,7 +170,7 @@ func (e *Engine) CreateMeshDefinition(info MeshDefinitionInfo) *MeshDefinition {
 		})
 	}
 	if info.VertexFormat.HasColor {
-		attributes = append(attributes, render.VertexArrayAttributeInfo{
+		attributes = append(attributes, render.VertexArrayAttribute{
 			Binding:  0,
 			Location: internal.ColorAttributeIndex,
 			Format:   render.VertexAttributeFormatRGBA8UN,
@@ -178,7 +178,7 @@ func (e *Engine) CreateMeshDefinition(info MeshDefinitionInfo) *MeshDefinition {
 		})
 	}
 	if info.VertexFormat.HasWeights {
-		attributes = append(attributes, render.VertexArrayAttributeInfo{
+		attributes = append(attributes, render.VertexArrayAttribute{
 			Binding:  0,
 			Location: internal.WeightsAttributeIndex,
 			Format:   render.VertexAttributeFormatRGBA8UN,
@@ -186,7 +186,7 @@ func (e *Engine) CreateMeshDefinition(info MeshDefinitionInfo) *MeshDefinition {
 		})
 	}
 	if info.VertexFormat.HasJoints {
-		attributes = append(attributes, render.VertexArrayAttributeInfo{
+		attributes = append(attributes, render.VertexArrayAttribute{
 			Binding:  0,
 			Location: internal.JointsAttributeIndex,
 			Format:   render.VertexAttributeFormatRGBA8IU,
@@ -195,7 +195,7 @@ func (e *Engine) CreateMeshDefinition(info MeshDefinitionInfo) *MeshDefinition {
 	}
 
 	vertexArray := e.api.CreateVertexArray(render.VertexArrayInfo{
-		Bindings: []render.VertexArrayBindingInfo{
+		Bindings: []render.VertexArrayBinding{
 			{
 				VertexBuffer: vertexBuffer,
 				Stride:       info.VertexFormat.CoordStrideBytes, // FIXME: Not accurate
@@ -315,17 +315,13 @@ func (e *Engine) convertPrimitive(primitive Primitive) render.Topology {
 	case PrimitivePoints:
 		return render.TopologyPoints
 	case PrimitiveLines:
-		return render.TopologyLines
+		return render.TopologyLineList
 	case PrimitiveLineStrip:
 		return render.TopologyLineStrip
-	case PrimitiveLineLoop:
-		return render.TopologyLineLoop
 	case PrimitiveTriangles:
-		return render.TopologyTriangles
+		return render.TopologyTriangleList
 	case PrimitiveTriangleStrip:
 		return render.TopologyTriangleStrip
-	case PrimitiveTriangleFan:
-		return render.TopologyTriangleFan
 	default:
 		panic(fmt.Errorf("unknown primitive: %d", primitive))
 	}

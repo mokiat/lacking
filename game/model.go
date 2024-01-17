@@ -453,14 +453,10 @@ func resolvePrimitive(primitive asset.MeshTopology) graphics.Primitive {
 		return graphics.PrimitiveLines
 	case asset.MeshTopologyLineStrip:
 		return graphics.PrimitiveLineStrip
-	case asset.MeshTopologyLineLoop:
-		return graphics.PrimitiveLineLoop
 	case asset.MeshTopologyTriangles:
 		return graphics.PrimitiveTriangles
 	case asset.MeshTopologyTriangleStrip:
 		return graphics.PrimitiveTriangleStrip
-	case asset.MeshTopologyTriangleFan:
-		return graphics.PrimitiveTriangleFan
 	default:
 		panic(fmt.Errorf("unsupported primitive: %d", primitive))
 	}
