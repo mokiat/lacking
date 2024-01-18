@@ -14,7 +14,7 @@ func CreateConeShape(api render.API) *Shape {
 		vertexCount = 1 + slices
 
 		indexSize  = 1 * render.SizeU16
-		indexCount = (1 + slices) + 1 + (1 + slices)
+		indexCount = 3*slices + 3*(slices-2)
 	)
 
 	vertexData := make([]byte, vertexCount*vertexSize)
@@ -30,14 +30,18 @@ func CreateConeShape(api render.API) *Shape {
 	indexData := make([]byte, indexCount*indexSize)
 	indexPlotter := blob.NewPlotter(indexData)
 	// sides
-	indexPlotter.PlotUint16(0)
-	for s := 1; s <= slices; s++ {
+	indexPlotter.PlotUint16(uint16(0))
+	indexPlotter.PlotUint16(uint16(slices))
+	indexPlotter.PlotUint16(uint16(1))
+	for s := 1; s < slices; s++ {
+		indexPlotter.PlotUint16(uint16(0))
 		indexPlotter.PlotUint16(uint16(s))
+		indexPlotter.PlotUint16(uint16(s + 1))
 	}
-	indexPlotter.PlotUint16(1)
 	// bottom
-	indexPlotter.PlotUint16(0xFFFF)
-	for s := slices; s >= 1; s-- {
+	for s := slices - 1; s > 1; s-- {
+		indexPlotter.PlotUint16(uint16(1))
+		indexPlotter.PlotUint16(uint16(s + 1))
 		indexPlotter.PlotUint16(uint16(s))
 	}
 
@@ -52,13 +56,13 @@ func CreateConeShape(api render.API) *Shape {
 	})
 
 	vertexArray := api.CreateVertexArray(render.VertexArrayInfo{
-		Bindings: []render.VertexArrayBindingInfo{
+		Bindings: []render.VertexArrayBinding{
 			{
 				VertexBuffer: vertexBuffer,
 				Stride:       vertexSize,
 			},
 		},
-		Attributes: []render.VertexArrayAttributeInfo{
+		Attributes: []render.VertexArrayAttribute{
 			{
 				Binding:  0,
 				Location: CoordAttributeIndex,
@@ -76,7 +80,7 @@ func CreateConeShape(api render.API) *Shape {
 
 		vertexArray: vertexArray,
 
-		topology:   render.TopologyTriangleFan,
+		topology:   render.TopologyTriangleList,
 		indexCount: indexCount,
 	}
 }

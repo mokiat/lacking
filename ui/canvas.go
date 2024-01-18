@@ -7,9 +7,14 @@ import (
 	"github.com/mokiat/lacking/render"
 )
 
+const (
+	canvasCommandBufferSize = 1024 * 1024 // 1MB
+)
+
 func newCanvas(renderer *canvasRenderer) *Canvas {
 	return &Canvas{
 		canvasRenderer: renderer,
+		commandBuffer:  renderer.api.CreateCommandBuffer(canvasCommandBufferSize),
 		framebuffer:    renderer.api.DefaultFramebuffer(),
 	}
 }
@@ -18,6 +23,8 @@ func newCanvas(renderer *canvasRenderer) *Canvas {
 // to the screen.
 type Canvas struct {
 	*canvasRenderer
+
+	commandBuffer render.CommandBuffer
 
 	framebuffer     render.Framebuffer
 	windowSize      Size
@@ -64,11 +71,7 @@ func (c *Canvas) onResizeFramebuffer(size Size) {
 
 func (c *Canvas) onBegin(deltaTime time.Duration) {
 	c.deltaTime = deltaTime
-	c.canvasRenderer.onBegin(c.windowSize)
-}
-
-func (c *Canvas) onEnd() {
-	c.api.BeginRenderPass(render.RenderPassInfo{
+	c.commandBuffer.BeginRenderPass(render.RenderPassInfo{
 		Framebuffer: c.framebuffer,
 		Viewport: render.Area{
 			X:      0,
@@ -88,8 +91,15 @@ func (c *Canvas) onEnd() {
 		StencilStoreOp:    render.StoreOperationDontCare,
 		StencilClearValue: 0x00,
 	})
+	c.canvasRenderer.onBegin(c.commandBuffer, c.windowSize)
+}
+
+func (c *Canvas) onEnd() {
 	c.canvasRenderer.onEnd()
-	c.api.EndRenderPass()
+	c.commandBuffer.EndRenderPass()
+
+	c.api.Queue().Invalidate()
+	c.api.Queue().Submit(c.commandBuffer)
 }
 
 // DrawBounds represents a rectangle area to be used for drawing.

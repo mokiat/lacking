@@ -16,6 +16,8 @@ import (
 
 const (
 	fontImageCells = 16
+
+	fontCommandBufferSize = 128 * 1024 // 128KB
 )
 
 var supportedCharacters []rune
@@ -55,7 +57,7 @@ type fontFactory struct {
 }
 
 func (f *fontFactory) Init() {
-	switch f.api.Capabilities().Quality {
+	switch f.api.Limits().Quality() {
 	case render.QualityHigh:
 		f.fontImageSize = 2048
 	case render.QualityMedium:
@@ -94,7 +96,9 @@ func (f *fontFactory) Free() {
 }
 
 func (f *fontFactory) CreateFont(font *opentype.Font) (*Font, error) {
-	f.api.BeginRenderPass(render.RenderPassInfo{
+	commandBuffer := f.api.CreateCommandBuffer(fontCommandBufferSize)
+
+	commandBuffer.BeginRenderPass(render.RenderPassInfo{
 		Framebuffer: f.framebuffer,
 		Viewport: render.Area{
 			X:      0,
@@ -115,7 +119,7 @@ func (f *fontFactory) CreateFont(font *opentype.Font) (*Font, error) {
 		StencilStoreOp:    render.StoreOperationDontCare,
 		StencilClearValue: 0x00,
 	})
-	f.renderer.onBegin(NewSize(f.fontImageSize, f.fontImageSize))
+	f.renderer.onBegin(commandBuffer, NewSize(f.fontImageSize, f.fontImageSize))
 
 	cellSize := float32(f.fontImageSize) / float32(fontImageCells)
 	// Use 4% padding to ensure that glyphs don't touch
@@ -278,7 +282,7 @@ func (f *fontFactory) CreateFont(font *opentype.Font) (*Font, error) {
 		GammaCorrection: false,
 		Format:          render.DataFormatRGBA8,
 	})
-	f.api.CopyContentToTexture(render.CopyContentToTextureInfo{
+	commandBuffer.CopyFramebufferToTexture(render.CopyFramebufferToTextureInfo{
 		Texture:         resultTexture,
 		TextureLevel:    0,
 		TextureX:        0,
@@ -290,7 +294,8 @@ func (f *fontFactory) CreateFont(font *opentype.Font) (*Font, error) {
 		GenerateMipmaps: true,
 	})
 
-	f.api.EndRenderPass()
+	commandBuffer.EndRenderPass()
+	f.api.Queue().Submit(commandBuffer)
 
 	return &Font{
 		familyName:    reader.FontFamilyName(),

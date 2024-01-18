@@ -3,17 +3,32 @@ package render
 // Limits describes the limits of the implementation.
 type Limits interface {
 
+	// Quality returns the supported quality level by the implementation.
+	// This is usually based on the performance characteristics of the
+	// underlying hardware.
+	//
+	// This is meant to be used as a hint for the application to decide
+	// on the level of detail to use for rendering.
+	Quality() Quality
+
 	// UniformBufferOffsetAlignment returns the alignment requirement
 	// for uniform buffer offsets.
 	UniformBufferOffsetAlignment() int
 }
 
-// DetermineUniformBlockSize returns the size of the uniform block
-// in case multiple ones need to be aligned inside a buffer.
-func DetermineUniformBlockSize(api API, blockSize int) int {
-	uniformBufferOffsetAlignemnt := api.Limits().UniformBufferOffsetAlignment()
-	if excess := blockSize % uniformBufferOffsetAlignemnt; excess > 0 {
-		blockSize += uniformBufferOffsetAlignemnt - excess
-	}
-	return blockSize
-}
+// Quality is an enumeration of the supported render quality levels.
+type Quality int
+
+const (
+	// QualityLow indicates that the implementation is running on hardware
+	// with low performance capabilities.
+	QualityLow Quality = iota
+
+	// QualityMedium indicates that the implementation is running on hardware
+	// with medium performance capabilities.
+	QualityMedium
+
+	// QualityHigh indicates that the implementation is running on hardware
+	// with high performance capabilities.
+	QualityHigh
+)

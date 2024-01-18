@@ -73,10 +73,8 @@ const (
 	PrimitivePoints Primitive = 1 + iota
 	PrimitiveLines
 	PrimitiveLineStrip
-	PrimitiveLineLoop
 	PrimitiveTriangles
 	PrimitiveTriangleStrip
-	PrimitiveTriangleFan
 )
 
 // Primitive represents the basic shape unit that is described by indices

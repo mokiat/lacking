@@ -9,11 +9,9 @@ type SkyboxUniform struct {
 	Color sprec.Vec4
 }
 
-func (u SkyboxUniform) Plot(plotter *blob.Plotter, padding int) {
+func (u SkyboxUniform) Std140Plot(plotter *blob.Plotter) {
 	// vec4
 	plotter.PlotSPVec4(u.Color)
-
-	plotter.Skip(padding)
 }
 
 func (u SkyboxUniform) Std140Size() int {

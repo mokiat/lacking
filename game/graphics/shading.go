@@ -165,8 +165,8 @@ func (s *pbrShading) GeometryPipeline(meshDef *MeshDefinition, fragmentDef *mesh
 			render.NewTextureBinding("albedoTwoDTextureIn", internal.TextureBindingGeometryAlbedoTexture),
 		},
 		UniformBindings: []render.UniformBinding{
-			render.NewUniformBinding("Camera", internal.UniformBufferBindingCamera),
 			render.NewUniformBinding("Model", internal.UniformBufferBindingModel),
+			render.NewUniformBinding("Camera", internal.UniformBufferBindingCamera),
 			render.NewUniformBinding("Material", internal.UniformBufferBindingMaterial),
 		},
 	})
@@ -204,8 +204,8 @@ func (s *pbrShading) ShadowPipeline(meshDef *MeshDefinition, fragmentDef *meshFr
 		SourceCode:      programCode,
 		TextureBindings: []render.TextureBinding{},
 		UniformBindings: []render.UniformBinding{
-			render.NewUniformBinding("Light", internal.UniformBufferBindingLight),
 			render.NewUniformBinding("Model", internal.UniformBufferBindingModel),
+			render.NewUniformBinding("Light", internal.UniformBufferBindingLight),
 		},
 	})
 	cullMode := render.CullModeNone
