@@ -12,7 +12,7 @@ func CreateQuadShape(api render.API) *Shape {
 		vertexCount = 4
 
 		indexSize  = 1 * render.SizeU16
-		indexCount = 4
+		indexCount = 6
 	)
 
 	vertexData := make([]byte, vertexCount*vertexSize)
@@ -26,6 +26,9 @@ func CreateQuadShape(api render.API) *Shape {
 	indexPlotter := blob.NewPlotter(indexData)
 	indexPlotter.PlotUint16(0)
 	indexPlotter.PlotUint16(1)
+	indexPlotter.PlotUint16(2)
+
+	indexPlotter.PlotUint16(0)
 	indexPlotter.PlotUint16(2)
 	indexPlotter.PlotUint16(3)
 
@@ -64,7 +67,7 @@ func CreateQuadShape(api render.API) *Shape {
 
 		vertexArray: vertexArray,
 
-		topology:   render.TopologyTriangleFan,
+		topology:   render.TopologyTriangleList,
 		indexCount: indexCount,
 	}
 }

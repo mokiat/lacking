@@ -24,6 +24,9 @@ import (
 const (
 	shadowMapWidth  = 2048
 	shadowMapHeight = 2048
+
+	commandBufferSize = 2 * 1024 * 1024  // 2MB
+	uniformBufferSize = 32 * 1024 * 1024 // 32MB
 )
 
 var ShowLightView bool
@@ -197,7 +200,7 @@ func (r *sceneRenderer) releaseFramebuffers() {
 }
 
 func (r *sceneRenderer) Allocate() {
-	r.commandBuffer = r.api.CreateCommandBuffer(1024 * 1024) // TODO: Adjust
+	r.commandBuffer = r.api.CreateCommandBuffer(commandBufferSize)
 
 	r.quadShape = internal.CreateQuadShape(r.api)
 	r.cubeShape = internal.CreateCubeShape(r.api)
@@ -500,8 +503,8 @@ func (r *sceneRenderer) Allocate() {
 		BlendEnabled:    false,
 	})
 
-	r.uniforms = renderutil.NewUniformBlockBuffer(r.api, 32*1024*1024) // TODO: Adjust
-	r.modelUniformBufferData = make([]byte, 64*256)                    // 256 x mat4
+	r.uniforms = renderutil.NewUniformBlockBuffer(r.api, uniformBufferSize)
+	r.modelUniformBufferData = make([]byte, 64*256) // 256 x mat4
 }
 
 func (r *sceneRenderer) Release() {

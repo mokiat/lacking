@@ -16,7 +16,7 @@ func CreateSphereShape(api render.API) *Shape {
 		vertexCount = 2 * (1 + slices*(1+slices))
 
 		indexSize  = 1 * render.SizeU16
-		indexCount = (2 + 2*slices + 1) * horizontalSliceCount
+		indexCount = (3 + 6*(slices-1) + 3) * horizontalSliceCount
 	)
 
 	vertexData := make([]byte, vertexCount*vertexSize)
@@ -38,19 +38,37 @@ func CreateSphereShape(api render.API) *Shape {
 	indexData := make([]byte, indexCount*indexSize)
 	indexPlotter := blob.NewPlotter(indexData)
 	for x := 0; x < horizontalSliceCount; x++ {
-		indexPlotter.PlotUint16(0)
 		left := x % horizontalSliceCount
 		right := (x + 1) % horizontalSliceCount
 		leftOffset := left * slices
 		rightOffset := right * slices
-		for y := 0; y < slices; y++ {
-			left := 2 + uint16(leftOffset+y)
-			right := 2 + uint16(rightOffset+y)
-			indexPlotter.PlotUint16(left)
-			indexPlotter.PlotUint16(right)
+
+		upperLeft := uint16(2 + leftOffset)
+		upperRight := uint16(2 + rightOffset)
+
+		indexPlotter.PlotUint16(0) // top
+		indexPlotter.PlotUint16(upperLeft)
+		indexPlotter.PlotUint16(upperRight)
+
+		for y := 0; y < slices-1; y++ {
+			lowerLeft := upperLeft + 1
+			lowerRight := upperRight + 1
+
+			indexPlotter.PlotUint16(upperLeft)
+			indexPlotter.PlotUint16(lowerLeft)
+			indexPlotter.PlotUint16(lowerRight)
+
+			indexPlotter.PlotUint16(upperLeft)
+			indexPlotter.PlotUint16(lowerRight)
+			indexPlotter.PlotUint16(upperRight)
+
+			upperLeft++
+			upperRight++
 		}
-		indexPlotter.PlotUint16(1)
-		indexPlotter.PlotUint16(0xFFFF)
+
+		indexPlotter.PlotUint16(upperLeft)
+		indexPlotter.PlotUint16(1) // bottom
+		indexPlotter.PlotUint16(upperRight)
 	}
 
 	vertexBuffer := api.CreateVertexBuffer(render.BufferInfo{
@@ -88,7 +106,7 @@ func CreateSphereShape(api render.API) *Shape {
 
 		vertexArray: vertexArray,
 
-		topology:   render.TopologyTriangleStrip,
+		topology:   render.TopologyTriangleList,
 		indexCount: indexCount,
 	}
 }
