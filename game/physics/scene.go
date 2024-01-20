@@ -19,6 +19,9 @@ func newScene(engine *Engine, interval time.Duration) *Scene {
 	return &Scene{
 		engine: engine,
 
+		preUpdateSubscriptions:  NewUpdateSubscriptionSet(),
+		postUpdateSubscriptions: NewUpdateSubscriptionSet(),
+
 		timeSegmenter: timestep.NewSegmenter(interval),
 
 		propOctree: spatial.NewStaticOctree[uint32](spatial.StaticOctreeSettings{
@@ -46,7 +49,7 @@ func newScene(engine *Engine, interval time.Duration) *Scene {
 
 		collisionSet: collision.NewIntersectionBucket(128),
 
-		stepSeconds:  interval.Seconds(),
+		interval:     interval,
 		timeSpeed:    1.0,
 		gravity:      dprec.NewVec3(0.0, -9.8, 0.0),
 		windVelocity: dprec.NewVec3(0.0, 0.0, 0.0),
@@ -62,8 +65,11 @@ func newScene(engine *Engine, interval time.Duration) *Scene {
 type Scene struct {
 	engine *Engine
 
+	preUpdateSubscriptions  *UpdateSubscriptionSet
+	postUpdateSubscriptions *UpdateSubscriptionSet
+
 	timeSegmenter          *timestep.Segmenter
-	stepSeconds            float64
+	interval               time.Duration
 	maxAcceleration        float64
 	maxAngularAcceleration float64
 	maxVelocity            float64
@@ -102,6 +108,18 @@ type Scene struct {
 // Engine returns the physics Engine that owns this Scene.
 func (s *Scene) Engine() *Engine {
 	return s.engine
+}
+
+// SubscribePreUpdate registers a callback that is invoked before each physics
+// iteration.
+func (s *Scene) SubscribePreUpdate(callback UpdateCallback) *UpdateSubscription {
+	return s.preUpdateSubscriptions.Subscribe(callback)
+}
+
+// SubscribePostUpdate registers a callback that is invoked after each physics
+// iteration.
+func (s *Scene) SubscribePostUpdate(callback UpdateCallback) *UpdateSubscription {
+	return s.postUpdateSubscriptions.Subscribe(callback)
 }
 
 // TimeSpeed returns the speed at which time runs, where 1.0 is the default
@@ -262,13 +280,21 @@ func (s *Scene) onTickLerp(alpha float64) {
 // Update runs a number of physics iterations until the specified number of
 // seconds worth of simulation have passed.
 func (s *Scene) Update(elapsedSeconds float64) {
-	stepSeconds := s.stepSeconds
+	interval := s.interval
+	stepSeconds := interval.Seconds()
 	s.accumulatedSeconds += elapsedSeconds
 	if s.accumulatedSeconds > 1.0 {
 		s.accumulatedSeconds = stepSeconds // Ease load if too much accumulation.
 	}
 	for s.accumulatedSeconds > 0 {
+		s.preUpdateSubscriptions.Each(func(callback UpdateCallback) {
+			callback(interval)
+		})
 		s.runSimulation(stepSeconds * s.timeSpeed)
+		// TODO: Collisions
+		s.postUpdateSubscriptions.Each(func(callback UpdateCallback) {
+			callback(interval)
+		})
 		s.accumulatedSeconds -= stepSeconds
 	}
 	for body := range s.dynamicBodies {
