@@ -6,9 +6,14 @@ import (
 )
 
 var (
-	rootSpan      Span
-	rootRegion    *Region
-	currentRegion *Region
+	rootSpan           Span
+	recordedIterations int
+
+	rootRegion *Region
+	iterations int
+
+	currentRegion  *Region
+	resetRequested bool
 )
 
 func init() {
@@ -21,19 +26,26 @@ func init() {
 	currentRegion = rootRegion
 }
 
-func FrameTree() Span {
-	return rootSpan
+func FrameTree() (Span, int) {
+	resetRequested = true
+	return rootSpan, recordedIterations
 }
 
 func BeginFrame() {
+	iterations++
 	currentRegion = rootRegion
 	rootRegion.startTime = time.Now()
 }
 
 func EndFrame() {
-	rootRegion.duration = time.Since(rootRegion.startTime)
+	rootRegion.duration += time.Since(rootRegion.startTime)
 	updateSpan(&rootSpan, rootRegion)
-	resetRegion(rootRegion)
+	recordedIterations = iterations
+	if resetRequested {
+		iterations = 0
+		resetRegion(rootRegion)
+		resetRequested = false
+	}
 }
 
 type Span struct {

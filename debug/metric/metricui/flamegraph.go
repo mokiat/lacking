@@ -148,11 +148,12 @@ func (c *flamegraphComponent) renderSpan(canvas *ui.Canvas, span metric.Span, ra
 }
 
 func (c *flamegraphComponent) onRefresh() {
-	tree := metric.FrameTree()
+	tree, iterations := metric.FrameTree()
+	iterations = max(1, iterations)
 	if focusedNode, ok := c.findSpan(tree, c.path); ok {
 		tree = focusedNode
 	}
-	c.updateTree(&c.tree, &tree)
+	c.updateTree(&c.tree, &tree, iterations)
 
 	treeDepth := c.spanTreeDepth(tree)
 	c.element.SetIdealSize(ui.Size{
@@ -189,13 +190,13 @@ func (c *flamegraphComponent) findSpan(node metric.Span, path []string) (metric.
 	return metric.Span{}, false
 }
 
-func (c *flamegraphComponent) updateTree(target, source *metric.Span) {
+func (c *flamegraphComponent) updateTree(target, source *metric.Span, iterations int) {
 	target.Name = source.Name
-	target.Duration = time.Duration(dprec.Mix(float64(source.Duration), float64(target.Duration), c.aggregationRatio))
+	target.Duration = time.Duration(dprec.Mix(float64(source.Duration), float64(target.Duration), c.aggregationRatio) / float64(iterations))
 	if missing := len(source.Children) - len(target.Children); missing > 0 {
 		target.Children = append(target.Children, make([]metric.Span, missing)...)
 	}
 	for i := range source.Children {
-		c.updateTree(&target.Children[i], &source.Children[i])
+		c.updateTree(&target.Children[i], &source.Children[i], iterations)
 	}
 }
