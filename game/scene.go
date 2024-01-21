@@ -201,7 +201,7 @@ func (s *Scene) updatePhysics(elapsedTime time.Duration) {
 	prePhysicsSpan.End()
 
 	physicsSpan := metric.BeginRegion("physics")
-	s.physicsScene.OnUpdate(elapsedTime)
+	s.physicsScene.Update(elapsedTime)
 	physicsSpan.End()
 
 	postPhysicsSpan := metric.BeginRegion("post-physics")

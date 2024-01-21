@@ -43,9 +43,12 @@ type BodyInfo struct {
 	Rotation   dprec.Quat
 }
 
+var freeBodyID uint32
+
 // Body represents a physical body that has physics
 // act upon it.
 type Body struct {
+	id     uint32
 	scene  *Scene
 	itemID spatial.DynamicOctreeItemID
 

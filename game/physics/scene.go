@@ -19,8 +19,10 @@ func newScene(engine *Engine, interval time.Duration) *Scene {
 	return &Scene{
 		engine: engine,
 
-		preUpdateSubscriptions:  NewUpdateSubscriptionSet(),
-		postUpdateSubscriptions: NewUpdateSubscriptionSet(),
+		preUpdateSubscriptions:        NewUpdateSubscriptionSet(),
+		postUpdateSubscriptions:       NewUpdateSubscriptionSet(),
+		dynamicCollisionSubscriptions: NewDynamicCollisionSubscriptionSet(),
+		staticCollisionSubscriptions:  NewStaticCollisionSubscriptionSet(),
 
 		timeSegmenter: timestep.NewSegmenter(interval),
 
@@ -55,6 +57,9 @@ func newScene(engine *Engine, interval time.Duration) *Scene {
 		windVelocity: dprec.NewVec3(0.0, 0.0, 0.0),
 		windDensity:  1.2,
 
+		oldDynamicCollisions: make(map[uint64]dynamicCollisionPair, 32),
+		newDynamicCollisions: make(map[uint64]dynamicCollisionPair, 32),
+
 		revision: 1,
 	}
 }
@@ -65,8 +70,10 @@ func newScene(engine *Engine, interval time.Duration) *Scene {
 type Scene struct {
 	engine *Engine
 
-	preUpdateSubscriptions  *UpdateSubscriptionSet
-	postUpdateSubscriptions *UpdateSubscriptionSet
+	preUpdateSubscriptions        *UpdateSubscriptionSet
+	postUpdateSubscriptions       *UpdateSubscriptionSet
+	dynamicCollisionSubscriptions *DynamicCollisionSubscriptionSet
+	staticCollisionSubscriptions  *StaticCollisionSubscriptionSet
 
 	timeSegmenter          *timestep.Segmenter
 	interval               time.Duration
@@ -102,6 +109,9 @@ type Scene struct {
 	windVelocity       dprec.Vec3
 	windDensity        float64
 
+	oldDynamicCollisions map[uint64]dynamicCollisionPair
+	newDynamicCollisions map[uint64]dynamicCollisionPair
+
 	revision int
 }
 
@@ -120,6 +130,18 @@ func (s *Scene) SubscribePreUpdate(callback UpdateCallback) *UpdateSubscription 
 // iteration.
 func (s *Scene) SubscribePostUpdate(callback UpdateCallback) *UpdateSubscription {
 	return s.postUpdateSubscriptions.Subscribe(callback)
+}
+
+// SubscribeDynamicCollision registers a callback that is invoked when two bodies
+// collide.
+func (s *Scene) SubscribeDynamicCollision(callback DynamicCollisionCallback) *DynamicCollisionSubscription {
+	return s.dynamicCollisionSubscriptions.Subscribe(callback)
+}
+
+// SubscribeStaticCollision registers a callback that is invoked when a body
+// collides with a static object.
+func (s *Scene) SubscribeStaticCollision(callback StaticCollisionCallback) *StaticCollisionSubscription {
+	return s.staticCollisionSubscriptions.Subscribe(callback)
 }
 
 // TimeSpeed returns the speed at which time runs, where 1.0 is the default
@@ -185,6 +207,8 @@ func (s *Scene) CreateBody(info BodyInfo) *Body {
 	body.itemID = s.bodyOctree.Insert(
 		info.Position, 1.0, body,
 	)
+	body.id = freeBodyID
+	freeBodyID++
 
 	// TODO: Don't use Setters, since these are intended for external use
 	// and not all should be allowed as well as some might have invalidation
@@ -260,14 +284,18 @@ func (s *Scene) CreateDoubleBodyConstraint(primary, secondary *Body, solver solv
 	return constraint
 }
 
-// TODO: Rename to Update and get rid of the old Update
-func (s *Scene) OnUpdate(elapsedTime time.Duration) {
+// Update runs a number of physics iterations until the specified duration has
+// been reached or surpassed (yes physics can get ahead).
+func (s *Scene) Update(elapsedTime time.Duration) {
 	s.timeSegmenter.Update(elapsedTime, s.onTickInterval, s.onTickLerp)
 }
 
 func (s *Scene) onTickInterval(elapsedTime time.Duration) {
 	elapsedSeconds := elapsedTime.Seconds()
+	s.notifyPreUpdate()
 	s.runSimulation(elapsedSeconds * s.timeSpeed)
+	s.notifyDynamicCollisions()
+	s.notifyPostUpdate()
 }
 
 func (s *Scene) onTickLerp(alpha float64) {
@@ -277,31 +305,36 @@ func (s *Scene) onTickLerp(alpha float64) {
 	}
 }
 
-// Update runs a number of physics iterations until the specified number of
-// seconds worth of simulation have passed.
-func (s *Scene) Update(elapsedSeconds float64) {
-	interval := s.interval
-	stepSeconds := interval.Seconds()
-	s.accumulatedSeconds += elapsedSeconds
-	if s.accumulatedSeconds > 1.0 {
-		s.accumulatedSeconds = stepSeconds // Ease load if too much accumulation.
+func (s *Scene) notifyPreUpdate() {
+	s.preUpdateSubscriptions.Each(func(callback UpdateCallback) {
+		callback(s.interval)
+	})
+}
+
+func (s *Scene) notifyPostUpdate() {
+	s.postUpdateSubscriptions.Each(func(callback UpdateCallback) {
+		callback(s.interval)
+	})
+}
+
+func (s *Scene) notifyDynamicCollisions() {
+	for newHash, newPair := range s.newDynamicCollisions {
+		if _, ok := s.oldDynamicCollisions[newHash]; !ok {
+			s.dynamicCollisionSubscriptions.Each(func(callback DynamicCollisionCallback) {
+				callback(newPair.First, newPair.Second, true)
+			})
+		}
 	}
-	for s.accumulatedSeconds > 0 {
-		s.preUpdateSubscriptions.Each(func(callback UpdateCallback) {
-			callback(interval)
-		})
-		s.runSimulation(stepSeconds * s.timeSpeed)
-		// TODO: Collisions
-		s.postUpdateSubscriptions.Each(func(callback UpdateCallback) {
-			callback(interval)
-		})
-		s.accumulatedSeconds -= stepSeconds
+	for oldHash, oldPair := range s.oldDynamicCollisions {
+		if _, ok := s.newDynamicCollisions[oldHash]; !ok {
+			s.dynamicCollisionSubscriptions.Each(func(callback DynamicCollisionCallback) {
+				callback(oldPair.First, oldPair.Second, false)
+			})
+		}
 	}
-	for body := range s.dynamicBodies {
-		alpha := (stepSeconds + s.accumulatedSeconds) / stepSeconds
-		body.lerpPosition = dprec.Vec3Lerp(body.oldPosition, body.position, alpha)
-		body.slerpOrientation = dprec.QuatSlerp(body.oldOrientation, body.orientation, alpha)
-	}
+	clear(s.oldDynamicCollisions)
+	maps.Copy(s.oldDynamicCollisions, s.newDynamicCollisions)
+	clear(s.newDynamicCollisions)
 }
 
 func (s *Scene) Each(cb func(b *Body)) {
@@ -746,6 +779,28 @@ func (s *Scene) checkCollisionTwoBodies(primary, secondary *Body) {
 
 			Depth: intersection.Depth,
 		})
+
+		pair := dynamicCollisionPair{
+			First:  primary,
+			Second: secondary,
+		}
+		s.newDynamicCollisions[pair.Hash()] = pair
+
 		s.dualCollisionConstraints = append(s.dualCollisionConstraints, s.CreateDoubleBodyConstraint(primary, secondary, solver))
+	}
+}
+
+type dynamicCollisionPair struct {
+	First  *Body
+	Second *Body
+}
+
+func (p dynamicCollisionPair) Hash() uint64 {
+	hash1 := uint64(p.First.id)
+	hash2 := uint64(p.Second.id)
+	if hash1 < hash2 {
+		return hash1 + uint64(hash2)*0xFFFFFFFF
+	} else {
+		return hash2 + uint64(hash1)*0xFFFFFFFF
 	}
 }

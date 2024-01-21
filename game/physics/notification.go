@@ -19,3 +19,23 @@ type UpdateSubscriptionSet = observer.SubscriptionSet[UpdateCallback]
 func NewUpdateSubscriptionSet() *UpdateSubscriptionSet {
 	return observer.NewSubscriptionSet[UpdateCallback]()
 }
+
+type DynamicCollisionCallback func(first, second *Body, colliding bool)
+
+type DynamicCollisionSubscription = observer.Subscription[DynamicCollisionCallback]
+
+type DynamicCollisionSubscriptionSet = observer.SubscriptionSet[DynamicCollisionCallback]
+
+func NewDynamicCollisionSubscriptionSet() *DynamicCollisionSubscriptionSet {
+	return observer.NewSubscriptionSet[DynamicCollisionCallback]()
+}
+
+type StaticCollisionCallback func(body *Body)
+
+type StaticCollisionSubscription = observer.Subscription[StaticCollisionCallback]
+
+type StaticCollisionSubscriptionSet = observer.SubscriptionSet[StaticCollisionCallback]
+
+func NewStaticCollisionSubscriptionSet() *StaticCollisionSubscriptionSet {
+	return observer.NewSubscriptionSet[StaticCollisionCallback]()
+}
