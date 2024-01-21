@@ -44,6 +44,14 @@ func newScene(engine *Engine, interval time.Duration) *Scene {
 		}),
 		dynamicBodies: make(map[*Body]struct{}),
 
+		// bodyAccelerators   []any // TOOD
+		// areaAccelerators   []any // TODO
+		globalAccelerators: make([]globalAcceleratorState, 0, 64),
+
+		freeBodyAcceleratorIndices:   ds.NewStack[uint32](16),
+		freeAreaAcceleratorIndices:   ds.NewStack[uint32](16),
+		freeGlobalAcceleratorIndices: ds.NewStack[uint32](16),
+
 		maxAcceleration:        200.0, // TODO: Measure something reasonable
 		maxAngularAcceleration: 200.0, // TODO: Measure something reasonable
 		maxVelocity:            2000.0,
@@ -60,7 +68,7 @@ func newScene(engine *Engine, interval time.Duration) *Scene {
 		oldDynamicCollisions: make(map[uint64]dynamicCollisionPair, 32),
 		newDynamicCollisions: make(map[uint64]dynamicCollisionPair, 32),
 
-		revision: 1,
+		collisionRevision: 1,
 	}
 }
 
@@ -85,9 +93,18 @@ type Scene struct {
 	props      []Prop
 	propOctree *spatial.StaticOctree[uint32]
 
+	// bodies        []Body // TODO
 	bodyPool      *ds.Pool[Body]
 	bodyOctree    *spatial.DynamicOctree[*Body]
 	dynamicBodies map[*Body]struct{}
+
+	// bodyAccelerators   []any // TOOD
+	// areaAccelerators   []any // TODO
+	globalAccelerators []globalAcceleratorState
+
+	freeBodyAcceleratorIndices   *ds.Stack[uint32]
+	freeAreaAcceleratorIndices   *ds.Stack[uint32]
+	freeGlobalAcceleratorIndices *ds.Stack[uint32]
 
 	firstSBConstraint  *SBConstraint
 	lastSBConstraint   *SBConstraint
@@ -103,16 +120,17 @@ type Scene struct {
 	dualCollisionSolvers     []constraint.PairCollision
 	collisionSet             *collision.IntersectionBucket
 
-	accumulatedSeconds float64
-	timeSpeed          float64
-	gravity            dprec.Vec3
-	windVelocity       dprec.Vec3
-	windDensity        float64
+	timeSpeed    float64
+	gravity      dprec.Vec3
+	windVelocity dprec.Vec3
+	windDensity  float64
 
 	oldDynamicCollisions map[uint64]dynamicCollisionPair
 	newDynamicCollisions map[uint64]dynamicCollisionPair
 
-	revision int
+	freeRevision uint32
+
+	collisionRevision int
 }
 
 // Engine returns the physics Engine that owns this Scene.
@@ -183,6 +201,12 @@ func (s *Scene) WindDensity() float64 {
 // SetWindDensity changes the wind density.
 func (s *Scene) SetWindDensity(density float64) {
 	s.windDensity = density
+}
+
+// CreateGlobalAccelerator creates a new accelerator that affects the whole
+// scene.
+func (s *Scene) CreateGlobalAccelerator(logic solver.Acceleration) Accelerator {
+	return newGlobalAccelerator(s, logic)
 }
 
 // CreateProp creates a new static Prop. A prop is an object
@@ -461,7 +485,33 @@ func (s *Scene) applyForces() {
 	for body := range s.dynamicBodies {
 		body.resetAcceleration()
 		body.resetAngularAcceleration()
+	}
 
+	// TODO: The target needs to be global across all accelerator types.
+	// The current implementation below works only while there is a single
+	// accelerator type.
+
+	for body := range s.dynamicBodies {
+		target := solver.NewAccelerationTarget(body.velocity, body.angularVelocity)
+		for _, accelerator := range s.globalAccelerators {
+			if !accelerator.reference.IsValid() {
+				continue
+			}
+			accelerator.logic.ApplyAcceleration(solver.AccelerationContext{
+				Target: &target,
+			})
+		}
+
+		// TODO: These should be moved outside, after all accelerator types have
+		// had their way with the targets. Furthermore, it should apply directly
+		// on the velocity, skipping the applyAcceleration step and
+		// getting rid of the acceleration fields on the body.
+
+		body.addAcceleration(target.AccumulatedLinearAcceleration())
+		body.addAngularAcceleration(target.AccumulatedAngularAcceleration())
+	}
+
+	for body := range s.dynamicBodies {
 		body.addAcceleration(s.gravity)
 
 		deltaWindVelocity := dprec.Vec3Diff(s.windVelocity, body.velocity)
@@ -673,7 +723,7 @@ func (s *Scene) applyNudges(elapsedSeconds float64) {
 
 func (s *Scene) detectCollisions() {
 	defer metric.BeginRegion("collision").End()
-	s.revision++
+	s.collisionRevision++
 
 	for body := range s.dynamicBodies {
 		body.invalidateCollisionShapes()
@@ -692,7 +742,7 @@ func (s *Scene) detectCollisions() {
 	s.dualCollisionSolvers = s.dualCollisionSolvers[:0]
 
 	for primary := range s.dynamicBodies {
-		primary.revision = s.revision
+		primary.revision = s.collisionRevision
 		if primary.collisionSet.IsEmpty() {
 			continue
 		}
@@ -709,7 +759,7 @@ func (s *Scene) detectCollisions() {
 			if secondary == primary {
 				return
 			}
-			if secondary.revision == s.revision {
+			if secondary.revision == s.collisionRevision {
 				return // secondary already processed
 			}
 			if secondary.collisionSet.IsEmpty() {
@@ -788,6 +838,11 @@ func (s *Scene) checkCollisionTwoBodies(primary, secondary *Body) {
 
 		s.dualCollisionConstraints = append(s.dualCollisionConstraints, s.CreateDoubleBodyConstraint(primary, secondary, solver))
 	}
+}
+
+func (s *Scene) nextRevision() uint32 {
+	s.freeRevision++
+	return s.freeRevision
 }
 
 type dynamicCollisionPair struct {
