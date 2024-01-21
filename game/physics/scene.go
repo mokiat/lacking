@@ -61,7 +61,6 @@ func newScene(engine *Engine, interval time.Duration) *Scene {
 
 		interval:     interval,
 		timeSpeed:    1.0,
-		gravity:      dprec.NewVec3(0.0, -9.8, 0.0),
 		windVelocity: dprec.NewVec3(0.0, 0.0, 0.0),
 		windDensity:  1.2,
 
@@ -121,7 +120,6 @@ type Scene struct {
 	collisionSet             *collision.IntersectionBucket
 
 	timeSpeed    float64
-	gravity      dprec.Vec3
 	windVelocity dprec.Vec3
 	windDensity  float64
 
@@ -171,16 +169,6 @@ func (s *Scene) TimeSpeed() float64 {
 // SetTimeSpeed changes the rate at which time runs.
 func (s *Scene) SetTimeSpeed(timeSpeed float64) {
 	s.timeSpeed = timeSpeed
-}
-
-// Gravity returns the gravity acceleration.
-func (s *Scene) Gravity() dprec.Vec3 {
-	return s.gravity
-}
-
-// SetGravity changes the gravity acceleration.
-func (s *Scene) SetGravity(gravity dprec.Vec3) {
-	s.gravity = gravity
 }
 
 // WindVelocity returns the wind speed.
@@ -492,7 +480,13 @@ func (s *Scene) applyForces() {
 	// accelerator type.
 
 	for body := range s.dynamicBodies {
-		target := solver.NewAccelerationTarget(body.velocity, body.angularVelocity)
+		target := solver.NewAccelerationTarget(
+			body.position,
+			body.orientation,
+			body.velocity,
+			body.angularVelocity,
+		)
+
 		for _, accelerator := range s.globalAccelerators {
 			if !accelerator.reference.IsValid() {
 				continue
@@ -512,8 +506,6 @@ func (s *Scene) applyForces() {
 	}
 
 	for body := range s.dynamicBodies {
-		body.addAcceleration(s.gravity)
-
 		deltaWindVelocity := dprec.Vec3Diff(s.windVelocity, body.velocity)
 		dragForce := dprec.Vec3Prod(deltaWindVelocity, deltaWindVelocity.Length()*s.windDensity*body.dragFactor)
 		body.applyForce(dragForce)
