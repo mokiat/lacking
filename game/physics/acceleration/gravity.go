@@ -50,3 +50,53 @@ func (d *GravityDirection) ApplyAcceleration(ctx solver.AccelerationContext) {
 		dprec.Vec3Prod(d.direction, d.acceleration),
 	)
 }
+
+// NewGravityPosition creates a new GravityPosition acceleration
+// that applies a constant force towards a specific position.
+func NewGravityPosition() *GravityPosition {
+	return &GravityPosition{
+		position: dprec.ZeroVec3(),
+	}
+}
+
+var _ solver.Acceleration = (*GravityPosition)(nil)
+
+// GravityPosition represents the solution for an acceleration that
+// applies a constant force towards a specific position.
+type GravityPosition struct {
+	position     dprec.Vec3
+	acceleration float64
+
+	// TODO: Add ability to control distance falloff.
+}
+
+// Position returns the position of the gravity force.
+func (d *GravityPosition) Position() dprec.Vec3 {
+	return d.position
+}
+
+// SetPosition changes the position of the gravity force.
+func (d *GravityPosition) SetPosition(position dprec.Vec3) *GravityPosition {
+	d.position = position
+	return d
+}
+
+// Acceleration returns the acceleration of the gravity force.
+func (d *GravityPosition) Acceleration() float64 {
+	return d.acceleration
+}
+
+// SetAcceleration changes the acceleration of the gravity force.
+func (d *GravityPosition) SetAcceleration(acceleration float64) *GravityPosition {
+	d.acceleration = acceleration
+	return d
+}
+
+func (d *GravityPosition) ApplyAcceleration(ctx solver.AccelerationContext) {
+	delta := dprec.Vec3Diff(d.position, ctx.Target.Position())
+	if distance := delta.Length(); distance > solver.Epsilon {
+		ctx.Target.AddLinearAcceleration(
+			dprec.ResizedVec3(delta, d.acceleration),
+		)
+	}
+}
