@@ -46,7 +46,7 @@ func (d *GravityDirection) SetAcceleration(acceleration float64) *GravityDirecti
 }
 
 func (d *GravityDirection) ApplyAcceleration(ctx solver.AccelerationContext) {
-	ctx.Target.AddLinearAcceleration(
+	ctx.Target.ApplyLinearAcceleration(
 		dprec.Vec3Prod(d.direction, d.acceleration),
 	)
 }
@@ -95,7 +95,7 @@ func (d *GravityPosition) SetAcceleration(acceleration float64) *GravityPosition
 func (d *GravityPosition) ApplyAcceleration(ctx solver.AccelerationContext) {
 	delta := dprec.Vec3Diff(d.position, ctx.Target.Position())
 	if distance := delta.Length(); distance > solver.Epsilon {
-		ctx.Target.AddLinearAcceleration(
+		ctx.Target.ApplyLinearAcceleration(
 			dprec.ResizedVec3(delta, d.acceleration),
 		)
 	}

@@ -193,7 +193,7 @@ func (s *Scene) SetWindDensity(density float64) {
 
 // CreateGlobalAccelerator creates a new accelerator that affects the whole
 // scene.
-func (s *Scene) CreateGlobalAccelerator(logic solver.Acceleration) Accelerator {
+func (s *Scene) CreateGlobalAccelerator(logic solver.Acceleration) GlobalAccelerator {
 	return newGlobalAccelerator(s, logic)
 }
 
@@ -206,6 +206,7 @@ func (s *Scene) CreateProp(info PropInfo) {
 
 	propIndex := uint32(len(s.props))
 	s.props = append(s.props, Prop{
+		name:         info.Name,
 		collisionSet: info.CollisionSet,
 	})
 	s.propOctree.Insert(position, radius, propIndex)
@@ -481,6 +482,8 @@ func (s *Scene) applyForces() {
 
 	for body := range s.dynamicBodies {
 		target := solver.NewAccelerationTarget(
+			body.mass,
+			body.momentOfInertia,
 			body.position,
 			body.orientation,
 			body.velocity,
@@ -488,7 +491,7 @@ func (s *Scene) applyForces() {
 		)
 
 		for _, accelerator := range s.globalAccelerators {
-			if !accelerator.reference.IsValid() {
+			if !accelerator.reference.IsValid() || !accelerator.enabled {
 				continue
 			}
 			accelerator.logic.ApplyAcceleration(solver.AccelerationContext{
