@@ -669,9 +669,14 @@ func (r *sceneRenderer) Render(framebuffer render.Framebuffer, viewport Viewport
 	}
 	r.renderPostprocessingPass(ctx)
 
+	uniformSpan := metric.BeginRegion("upload")
 	r.uniforms.Upload()
+	uniformSpan.End()
+
+	submitSpan := metric.BeginRegion("submit")
 	r.api.Queue().Invalidate()
 	r.api.Queue().Submit(r.commandBuffer)
+	submitSpan.End()
 }
 
 func (r *sceneRenderer) evaluateProjectionMatrix(camera *Camera, width, height int) sprec.Mat4 {
