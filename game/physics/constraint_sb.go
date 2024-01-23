@@ -31,7 +31,7 @@ func (c SBConstraint) Logic() solver.Constraint {
 }
 
 // Body returns the body on which this constraint acts.
-func (c SBConstraint) Body() *Body {
+func (c SBConstraint) Body() Body {
 	state := c.state()
 	return state.body
 }
@@ -53,7 +53,7 @@ func (c SBConstraint) state() *sbConstraintState {
 type sbConstraintState struct {
 	reference indexReference
 	logic     solver.Constraint
-	body      *Body
+	body      Body
 	enabled   bool
 }
 
@@ -61,7 +61,7 @@ func (s sbConstraintState) CanUse() bool {
 	return s.reference.IsValid() && s.enabled
 }
 
-func createSBConstraint(scene *Scene, logic solver.Constraint, body *Body) SBConstraint {
+func createSBConstraint(scene *Scene, logic solver.Constraint, body Body) SBConstraint {
 	var freeIndex uint32
 	if scene.freeSBConstraintIndices.IsEmpty() {
 		freeIndex = uint32(len(scene.sbConstraints))
@@ -89,7 +89,6 @@ func deleteSBConstraint(scene *Scene, reference indexReference) {
 	if state.reference == reference {
 		state.reference = newIndexReference(index, 0)
 		state.logic = nil
-		state.body = nil
 		scene.freeSBConstraintIndices.Push(index)
 	}
 }

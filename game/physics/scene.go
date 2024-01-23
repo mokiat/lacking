@@ -33,7 +33,7 @@ func newScene(engine *Engine, interval time.Duration) *Scene {
 		maxVelocity:            2000.0, // TODO: Measure something reasonable
 		maxAngularVelocity:     2000.0, // TODO: Measure something reasonable
 
-		props: make([]propState, 0, 64),
+		props: make([]propState, 0, 1024),
 		propOctree: spatial.NewStaticOctree[uint32](spatial.StaticOctreeSettings{
 			Size:                opt.V(32000.0),
 			MaxDepth:            opt.V(int32(15)),
@@ -42,15 +42,15 @@ func newScene(engine *Engine, interval time.Duration) *Scene {
 			InitialItemCapacity: opt.V(int32(8 * 1024)),
 		}),
 
-		bodyPool: ds.NewPool[Body](),
-		bodyOctree: spatial.NewDynamicOctree[*Body](spatial.DynamicOctreeSettings{
+		bodies:          make([]bodyState, 0, 64),
+		freeBodyIndices: ds.NewStack[uint32](16),
+		bodyOctree: spatial.NewDynamicOctree[uint32](spatial.DynamicOctreeSettings{
 			Size:                opt.V(32000.0),
 			MaxDepth:            opt.V(int32(15)),
 			BiasRatio:           opt.V(2.0),
 			InitialNodeCapacity: opt.V(int32(4 * 1024)),
 			InitialItemCapacity: opt.V(int32(8 * 1024)),
 		}),
-		dynamicBodies: make(map[*Body]struct{}),
 
 		// bodyAccelerators   []any // TOOD
 		// areaAccelerators   []any // TODO
@@ -101,30 +101,34 @@ type Scene struct {
 	props      []propState
 	propOctree *spatial.StaticOctree[uint32]
 
-	// bodies        []Body // TODO
-	bodyPool      *ds.Pool[Body]
-	bodyOctree    *spatial.DynamicOctree[*Body]
-	dynamicBodies map[*Body]struct{}
+	bodies          []bodyState
+	freeBodyIndices *ds.Stack[uint32]
+	bodyOctree      *spatial.DynamicOctree[uint32]
 
 	// bodyAccelerators   []any // TOOD
-	// areaAccelerators   []any // TODO
-	globalAccelerators []globalAcceleratorState
+	freeBodyAcceleratorIndices *ds.Stack[uint32]
 
-	freeBodyAcceleratorIndices   *ds.Stack[uint32]
-	freeAreaAcceleratorIndices   *ds.Stack[uint32]
+	// areaAccelerators   []any // TODO
+	freeAreaAcceleratorIndices *ds.Stack[uint32]
+
+	globalAccelerators           []globalAcceleratorState
 	freeGlobalAcceleratorIndices *ds.Stack[uint32]
 
-	sbConstraints []sbConstraintState
-	dbConstraints []dbConstraintState
-
+	sbConstraints           []sbConstraintState
 	freeSBConstraintIndices *ds.Stack[uint32]
+
+	dbConstraints           []dbConstraintState
 	freeDBConstraintIndices *ds.Stack[uint32]
 
 	sbCollisionConstraints []SBConstraint
 	sbCollisionSolvers     []constraint.Collision
+
 	dbCollisionConstraints []DBConstraint
 	dbCollisionSolvers     []constraint.PairCollision
-	collisionSet           *collision.IntersectionBucket
+
+	collisionSet *collision.IntersectionBucket
+
+	placeholders []solver.Placeholder
 
 	oldDBCollisions map[uint64]dbCollisionPair
 	newDBCollisions map[uint64]dbCollisionPair
@@ -135,6 +139,29 @@ type Scene struct {
 	freeRevision uint32
 
 	collisionRevision int
+}
+
+// Delete releases resources allocated by this scene. Users should not call
+// any further methods on this object.
+func (s *Scene) Delete() {
+	s.engine = nil
+
+	s.props = nil
+	s.propOctree = nil
+
+	s.bodies = nil
+	s.freeBodyIndices = nil
+	s.bodyOctree = nil
+
+	s.globalAccelerators = nil
+	s.freeBodyAcceleratorIndices = nil
+	s.freeAreaAcceleratorIndices = nil
+	s.freeGlobalAcceleratorIndices = nil
+
+	s.sbConstraints = nil
+	s.dbConstraints = nil
+	s.freeSBConstraintIndices = nil
+	s.freeDBConstraintIndices = nil
 }
 
 // Engine returns the physics Engine that owns this Scene.
@@ -220,41 +247,8 @@ func (s *Scene) CreateProp(info PropInfo) {
 
 // CreateBody creates a new physics body and places
 // it within this scene.
-func (s *Scene) CreateBody(info BodyInfo) *Body {
-	body := s.bodyPool.Fetch()
-	body.scene = s
-	body.itemID = s.bodyOctree.Insert(
-		info.Position, 1.0, body,
-	)
-	body.id = freeBodyID
-	freeBodyID++
-
-	// TODO: Don't use Setters, since these are intended for external use
-	// and not all should be allowed as well as some might have invalidation
-	// logic that we don't need to trigger here.
-	def := info.Definition
-	body.definition = def
-	body.SetName(info.Name)
-	body.SetPosition(info.Position)
-	body.SetOrientation(info.Rotation)
-
-	body.SetMass(def.mass)
-	body.SetMomentOfInertia(def.momentOfInertia)
-
-	// TODO: Move these to Material and have Material be assigned
-	// to the collision shapes instead of the body.
-	body.frictionCoefficient = def.frictionCoefficient
-	body.SetRestitutionCoefficient(def.restitutionCoefficient)
-
-	body.SetDragFactor(def.dragFactor)
-	body.SetAngularDragFactor(def.angularDragFactor)
-	body.SetCollisionGroup(def.collisionGroup)
-	body.SetAerodynamicShapes(def.aerodynamicShapes)
-
-	body.invalidateCollisionShapes()
-
-	s.dynamicBodies[body] = struct{}{}
-	return body
+func (s *Scene) CreateBody(info BodyInfo) Body {
+	return createBody(s, info)
 }
 
 // CreateConstraintSet creates a new ConstraintSet.
@@ -266,13 +260,13 @@ func (s *Scene) CreateConstraintSet() *ConstraintSet {
 
 // CreateSingleBodyConstraint creates a new physics constraint that acts on
 // a single body and enables it for this scene.
-func (s *Scene) CreateSingleBodyConstraint(body *Body, logic solver.Constraint) SBConstraint {
+func (s *Scene) CreateSingleBodyConstraint(body Body, logic solver.Constraint) SBConstraint {
 	return createSBConstraint(s, logic, body)
 }
 
 // CreateDoubleBodyConstraint creates a new physics constraint that acts on
 // two bodies and enables it for this scene.
-func (s *Scene) CreateDoubleBodyConstraint(primary, secondary *Body, logic solver.PairConstraint) DBConstraint {
+func (s *Scene) CreateDoubleBodyConstraint(primary, secondary Body, logic solver.PairConstraint) DBConstraint {
 	return createDBConstraint(s, logic, primary, secondary)
 }
 
@@ -291,9 +285,17 @@ func (s *Scene) onTickInterval(elapsedTime time.Duration) {
 }
 
 func (s *Scene) onTickLerp(alpha float64) {
-	for body := range s.dynamicBodies {
-		body.lerpPosition = dprec.Vec3Lerp(body.oldPosition, body.position, alpha)
-		body.slerpOrientation = dprec.QuatSlerp(body.oldOrientation, body.orientation, alpha)
+	s.eachBody(func(body *bodyState) {
+		body.intermediatePosition = dprec.Vec3Lerp(body.oldPosition, body.position, alpha)
+		body.intermediateRotation = dprec.QuatSlerp(body.oldRotation, body.rotation, alpha)
+	})
+}
+
+func (s *Scene) eachBody(cb func(b *bodyState)) {
+	for i := range s.bodies {
+		if body := &s.bodies[i]; body.CanUse() {
+			cb(body)
+		}
 	}
 }
 
@@ -329,52 +331,40 @@ func (s *Scene) notifyDynamicCollisions() {
 	clear(s.newDBCollisions)
 }
 
-func (s *Scene) Each(cb func(b *Body)) {
-	for body := range s.dynamicBodies {
-		cb(body)
-	}
+func (s *Scene) Each(cb func(b Body)) {
+	s.eachBody(func(b *bodyState) {
+		cb(Body{
+			scene:     s,
+			reference: b.reference,
+		})
+	})
 }
 
-func (s *Scene) Nearby(body *Body, distance float64, cb func(b *Body)) {
+func (s *Scene) Nearby(body Body, distance float64, cb func(b Body)) {
+	state := &s.bodies[body.reference.Index()]
+	if !state.CanUse() {
+		return
+	}
 	region := spatial.CuboidRegion(
-		body.position,
+		state.position,
 		dprec.NewVec3(distance, distance, distance),
 	)
-	s.bodyOctree.VisitHexahedronRegion(&region, spatial.VisitorFunc[*Body](func(candidate *Body) {
-		if candidate != body {
-			cb(candidate)
+	s.bodyOctree.VisitHexahedronRegion(&region, spatial.VisitorFunc[uint32](func(candidate uint32) {
+		candidateState := &s.bodies[candidate]
+		if candidateState != state {
+			cb(Body{
+				scene:     s,
+				reference: candidateState.reference,
+			})
 		}
 	}))
 }
 
-// Delete releases resources allocated by this
-// scene. Users should not call any further methods
-// on this object.
-func (s *Scene) Delete() {
-	s.engine = nil
-
-	s.props = nil
-	s.propOctree = nil
-
-	s.bodyPool = nil
-	s.dynamicBodies = nil
-
-	s.globalAccelerators = nil
-	s.freeBodyAcceleratorIndices = nil
-	s.freeAreaAcceleratorIndices = nil
-	s.freeGlobalAcceleratorIndices = nil
-
-	s.sbConstraints = nil
-	s.dbConstraints = nil
-	s.freeSBConstraintIndices = nil
-	s.freeDBConstraintIndices = nil
-}
-
 func (s *Scene) runSimulation(elapsedSeconds float64) {
-	for body := range s.dynamicBodies {
+	s.eachBody(func(body *bodyState) {
 		body.oldPosition = body.position
-		body.oldOrientation = body.orientation
-	}
+		body.oldRotation = body.rotation
+	})
 	if elapsedSeconds > 0.0001 {
 		s.applyForces()
 		s.applyAcceleration(elapsedSeconds)
@@ -388,21 +378,21 @@ func (s *Scene) runSimulation(elapsedSeconds float64) {
 func (s *Scene) applyForces() {
 	defer metric.BeginRegion("forces").End()
 
-	for body := range s.dynamicBodies {
-		body.resetAcceleration()
-		body.resetAngularAcceleration()
-	}
+	s.eachBody(func(body *bodyState) {
+		body.ResetLinearAcceleration()
+		body.ResetAngularAcceleration()
+	})
 
 	// TODO: The target needs to be global across all accelerator types.
 	// The current implementation below works only while there is a single
 	// accelerator type.
 
-	for body := range s.dynamicBodies {
+	s.eachBody(func(body *bodyState) {
 		target := solver.NewAccelerationTarget(
 			body.mass,
 			body.momentOfInertia,
 			body.position,
-			body.orientation,
+			body.rotation,
 			body.velocity,
 			body.angularVelocity,
 		)
@@ -426,20 +416,20 @@ func (s *Scene) applyForces() {
 		// on the velocity, skipping the applyAcceleration step and
 		// getting rid of the acceleration fields on the body.
 
-		body.addAcceleration(target.AccumulatedLinearAcceleration())
-		body.addAngularAcceleration(target.AccumulatedAngularAcceleration())
-	}
+		body.AddLinearAcceleration(target.AccumulatedLinearAcceleration())
+		body.AddAngularAcceleration(target.AccumulatedAngularAcceleration())
+	})
 
-	for body := range s.dynamicBodies {
+	s.eachBody(func(body *bodyState) {
 		deltaWindVelocity := dprec.Vec3Diff(s.windVelocity, body.velocity)
 		dragForce := dprec.Vec3Prod(deltaWindVelocity, deltaWindVelocity.Length()*s.windDensity*body.dragFactor)
-		body.applyForce(dragForce)
+		body.ApplyForce(dragForce)
 
 		angularDragForce := dprec.Vec3Prod(body.angularVelocity, -body.angularVelocity.Length()*s.windDensity*body.angularDragFactor)
-		body.applyTorque(angularDragForce)
+		body.ApplyTorque(angularDragForce)
 
 		if len(body.aerodynamicShapes) > 0 {
-			bodyTransform := NewTransform(body.position, body.orientation)
+			bodyTransform := NewTransform(body.position, body.rotation)
 
 			for _, aerodynamicShape := range body.aerodynamicShapes {
 				aerodynamicShape = aerodynamicShape.Transformed(bodyTransform)
@@ -448,85 +438,48 @@ func (s *Scene) applyForces() {
 				// TODO: Apply at offset
 				force := aerodynamicShape.solver.Force(relativeWindSpeed)
 				absoluteForce := dprec.QuatVec3Rotation(aerodynamicShape.Rotation(), force)
-				body.applyForce(absoluteForce)
+				body.ApplyForce(absoluteForce)
 				// body.applyOffsetForce(absoluteForce, aerodynamicShape.Position())
 			}
 		}
-	}
-
-	// TODO: Apply custom force fields
+	})
 }
 
 func (s *Scene) applyAcceleration(elapsedSeconds float64) {
 	defer metric.BeginRegion("acceleration").End()
-	for body := range s.dynamicBodies {
-		body.clampAcceleration(s.maxAcceleration)
-		body.clampAngularAcceleration(s.maxAngularAcceleration)
+	s.eachBody(func(body *bodyState) {
+		body.ClampLinearAcceleration(s.maxAcceleration)
+		body.ClampAngularAcceleration(s.maxAngularAcceleration)
 
-		deltaVelocity := dprec.Vec3Prod(body.acceleration, elapsedSeconds)
-		body.addVelocity(deltaVelocity)
+		deltaVelocity := dprec.Vec3Prod(body.linearAcceleration, elapsedSeconds)
+		body.AddVelocity(deltaVelocity)
 		deltaAngularVelocity := dprec.Vec3Prod(body.angularAcceleration, elapsedSeconds)
-		body.addAngularVelocity(deltaAngularVelocity)
-	}
-}
-
-var (
-	bodies = make([]*Body, 0, 1024)
-
-	placeholders = make([]solver.Placeholder, 0, 1024)
-
-	// TODO: Maybe assign and unassign to/from a Body
-	bodyToPlaceholder = make(map[*Body]*solver.Placeholder)
-)
-
-func initPlaceholder(placeholder *solver.Placeholder, body *Body) {
-	placeholder.Init(solver.PlaceholderState{
-		Mass:            body.mass,
-		MomentOfInertia: body.momentOfInertia,
-		LinearVelocity:  body.velocity,
-		AngularVelocity: body.angularVelocity,
-		Position:        body.position,
-		Rotation:        body.orientation,
+		body.AddAngularVelocity(deltaAngularVelocity)
 	})
-}
-
-func deinitPlaceholder(placeholder *solver.Placeholder, body *Body) {
-	body.SetVelocity(placeholder.LinearVelocity())
-	body.SetAngularVelocity(placeholder.AngularVelocity())
-	body.SetPosition(placeholder.Position())
-	body.SetOrientation(placeholder.Rotation())
 }
 
 func (s *Scene) applyImpulses(elapsedSeconds float64) {
 	defer metric.BeginRegion("impulses").End()
 
-	bodies = bodies[:0]
-	placeholders = placeholders[:0]
-	maps.Clear(bodyToPlaceholder)
+	// TODO: Use Grow instead
+	s.placeholders = s.placeholders[:0]
+	for i := range s.bodies {
+		placeholder := solver.Placeholder{}
+		if body := &s.bodies[i]; body.CanUse() {
+			s.initPlaceholder(&placeholder, body)
+		}
+		s.placeholders = append(s.placeholders, placeholder)
+	}
 
 	for _, constraint := range s.dbConstraints {
 		if !constraint.CanUse() {
 			continue
 		}
-		target := constraint.primary
-		if _, ok := bodyToPlaceholder[target]; !ok {
-			placeholders = append(placeholders, solver.Placeholder{})
-			placeholder := &placeholders[len(placeholders)-1]
-			initPlaceholder(placeholder, target)
-			bodyToPlaceholder[target] = placeholder
-			bodies = append(bodies, target)
-		}
-		source := constraint.secondary
-		if _, ok := bodyToPlaceholder[source]; !ok {
-			placeholders = append(placeholders, solver.Placeholder{})
-			placeholder := &placeholders[len(placeholders)-1]
-			initPlaceholder(placeholder, source)
-			bodyToPlaceholder[source] = placeholder
-			bodies = append(bodies, source)
-		}
+		target := &s.placeholders[constraint.primary.reference.Index()]
+		source := &s.placeholders[constraint.secondary.reference.Index()]
 		constraint.logic.Reset(solver.PairContext{
-			Target:      bodyToPlaceholder[constraint.primary],
-			Source:      bodyToPlaceholder[constraint.secondary],
+			Target:      target,
+			Source:      source,
 			DeltaTime:   elapsedSeconds,
 			ImpulseBeta: ImpulseDriftAdjustmentRatio,
 			NudgeBeta:   NudgeDriftAdjustmentRatio,
@@ -536,16 +489,9 @@ func (s *Scene) applyImpulses(elapsedSeconds float64) {
 		if !constraint.CanUse() {
 			continue
 		}
-		target := constraint.body
-		if _, ok := bodyToPlaceholder[target]; !ok {
-			placeholders = append(placeholders, solver.Placeholder{})
-			placeholder := &placeholders[len(placeholders)-1]
-			initPlaceholder(placeholder, target)
-			bodyToPlaceholder[target] = placeholder
-			bodies = append(bodies, target)
-		}
+		target := &s.placeholders[constraint.body.reference.Index()]
 		constraint.logic.Reset(solver.Context{
-			Target:      bodyToPlaceholder[constraint.body],
+			Target:      target,
 			DeltaTime:   elapsedSeconds,
 			ImpulseBeta: ImpulseDriftAdjustmentRatio,
 			NudgeBeta:   NudgeDriftAdjustmentRatio,
@@ -557,9 +503,11 @@ func (s *Scene) applyImpulses(elapsedSeconds float64) {
 			if !constraint.CanUse() {
 				continue
 			}
+			target := &s.placeholders[constraint.primary.reference.Index()]
+			source := &s.placeholders[constraint.secondary.reference.Index()]
 			constraint.logic.ApplyImpulses(solver.PairContext{
-				Target:      bodyToPlaceholder[constraint.primary],
-				Source:      bodyToPlaceholder[constraint.secondary],
+				Target:      target,
+				Source:      source,
 				DeltaTime:   elapsedSeconds,
 				ImpulseBeta: ImpulseDriftAdjustmentRatio,
 				NudgeBeta:   NudgeDriftAdjustmentRatio,
@@ -569,8 +517,9 @@ func (s *Scene) applyImpulses(elapsedSeconds float64) {
 			if !constraint.CanUse() {
 				continue
 			}
+			target := &s.placeholders[constraint.body.reference.Index()]
 			constraint.logic.ApplyImpulses(solver.Context{
-				Target:      bodyToPlaceholder[constraint.body],
+				Target:      target,
 				DeltaTime:   elapsedSeconds,
 				ImpulseBeta: ImpulseDriftAdjustmentRatio,
 				NudgeBeta:   NudgeDriftAdjustmentRatio,
@@ -578,29 +527,42 @@ func (s *Scene) applyImpulses(elapsedSeconds float64) {
 		}
 	}
 
-	for _, body := range bodies {
-		deinitPlaceholder(bodyToPlaceholder[body], body)
+	for i := range s.bodies {
+		placeholder := s.placeholders[i]
+		if body := &s.bodies[i]; body.CanUse() {
+			s.deinitPlaceholder(&placeholder, body)
+		}
 	}
 }
 
 func (s *Scene) applyMotion(elapsedSeconds float64) {
 	defer metric.BeginRegion("motion").End()
-	for body := range s.dynamicBodies {
-		body.clampVelocity(s.maxVelocity)
-		body.clampAngularVelocity(s.maxAngularVelocity)
+	s.eachBody(func(body *bodyState) {
+		body.ClampVelocity(s.maxVelocity)
+		body.ClampAngularVelocity(s.maxAngularVelocity)
 
 		deltaPosition := dprec.Vec3Prod(body.velocity, elapsedSeconds)
-		body.translate(deltaPosition)
+		body.Translate(deltaPosition)
 		deltaRotation := dprec.Vec3Prod(body.angularVelocity, elapsedSeconds)
-		body.vectorRotate(deltaRotation)
-	}
+		body.VectorRotate(deltaRotation)
+
+		// FIXME
+		s.bodyOctree.Update(body.itemID, body.position, body.bsRadius)
+		body.InvalidateCollisionShapes(s)
+	})
 }
 
 func (s *Scene) applyNudges(elapsedSeconds float64) {
 	defer metric.BeginRegion("nudges").End()
 
-	for _, body := range bodies {
-		initPlaceholder(bodyToPlaceholder[body], body)
+	// TODO: Use Grow instead
+	s.placeholders = s.placeholders[:0]
+	for i := range s.bodies {
+		placeholder := solver.Placeholder{}
+		if body := &s.bodies[i]; body.CanUse() {
+			s.initPlaceholder(&placeholder, body)
+		}
+		s.placeholders = append(s.placeholders, placeholder)
 	}
 
 	for i := 0; i < NudgeIterationCount; i++ {
@@ -608,9 +570,11 @@ func (s *Scene) applyNudges(elapsedSeconds float64) {
 			if !constraint.CanUse() {
 				continue
 			}
+			target := &s.placeholders[constraint.primary.reference.Index()]
+			source := &s.placeholders[constraint.secondary.reference.Index()]
 			ctx := solver.PairContext{
-				Target:      bodyToPlaceholder[constraint.primary],
-				Source:      bodyToPlaceholder[constraint.secondary],
+				Target:      target,
+				Source:      source,
 				DeltaTime:   elapsedSeconds,
 				ImpulseBeta: ImpulseDriftAdjustmentRatio,
 				NudgeBeta:   NudgeDriftAdjustmentRatio,
@@ -622,8 +586,9 @@ func (s *Scene) applyNudges(elapsedSeconds float64) {
 			if !constraint.CanUse() {
 				continue
 			}
+			target := &s.placeholders[constraint.body.reference.Index()]
 			ctx := solver.Context{
-				Target:      bodyToPlaceholder[constraint.body],
+				Target:      target,
 				DeltaTime:   elapsedSeconds,
 				ImpulseBeta: ImpulseDriftAdjustmentRatio,
 				NudgeBeta:   NudgeDriftAdjustmentRatio,
@@ -633,8 +598,11 @@ func (s *Scene) applyNudges(elapsedSeconds float64) {
 		}
 	}
 
-	for _, body := range bodies {
-		deinitPlaceholder(bodyToPlaceholder[body], body)
+	for i := range s.bodies {
+		placeholder := s.placeholders[i]
+		if body := &s.bodies[i]; body.CanUse() {
+			s.deinitPlaceholder(&placeholder, body)
+		}
 	}
 }
 
@@ -642,9 +610,9 @@ func (s *Scene) detectCollisions() {
 	defer metric.BeginRegion("collision").End()
 	s.collisionRevision++
 
-	for body := range s.dynamicBodies {
-		body.invalidateCollisionShapes()
-	}
+	s.eachBody(func(body *bodyState) {
+		body.InvalidateCollisionShapes(s)
+	})
 
 	for _, constraint := range s.sbCollisionConstraints {
 		constraint.Delete()
@@ -658,10 +626,9 @@ func (s *Scene) detectCollisions() {
 	s.dbCollisionConstraints = s.dbCollisionConstraints[:0]
 	s.dbCollisionSolvers = s.dbCollisionSolvers[:0]
 
-	for primary := range s.dynamicBodies {
-		primary.revision = s.collisionRevision
+	s.eachBody(func(primary *bodyState) {
 		if primary.collisionSet.IsEmpty() {
-			continue
+			return
 		}
 		region := spatial.CuboidRegion(
 			primary.position,
@@ -672,12 +639,10 @@ func (s *Scene) detectCollisions() {
 			s.checkCollisionBodyWithProp(primary, &s.props[propIndex])
 		}))
 
-		s.bodyOctree.VisitHexahedronRegion(&region, spatial.VisitorFunc[*Body](func(secondary *Body) {
-			if secondary == primary {
-				return
-			}
-			if secondary.revision == s.collisionRevision {
-				return // secondary already processed
+		s.bodyOctree.VisitHexahedronRegion(&region, spatial.VisitorFunc[uint32](func(secondaryIndex uint32) {
+			secondary := &s.bodies[secondaryIndex]
+			if secondary.reference.Index() <= primary.reference.Index() {
+				return // secondary is the same or was already a primary
 			}
 			if secondary.collisionSet.IsEmpty() {
 				return
@@ -687,7 +652,7 @@ func (s *Scene) detectCollisions() {
 			}
 			s.checkCollisionTwoBodies(primary, secondary)
 		}))
-	}
+	})
 }
 
 func (s *Scene) allocateGroundCollisionSolver() *constraint.Collision {
@@ -708,7 +673,7 @@ func (s *Scene) allocateDualCollisionSolver() *constraint.PairCollision {
 	return &s.dbCollisionSolvers[len(s.dbCollisionSolvers)-1]
 }
 
-func (s *Scene) checkCollisionBodyWithProp(primary *Body, prop *propState) {
+func (s *Scene) checkCollisionBodyWithProp(primary *bodyState, prop *propState) {
 	s.collisionSet.Reset()
 	collision.CheckIntersectionSetWithSet(primary.collisionSet, prop.collisionSet, s.collisionSet)
 	for _, intersection := range s.collisionSet.Intersections() {
@@ -724,11 +689,17 @@ func (s *Scene) checkCollisionBodyWithProp(primary *Body, prop *propState) {
 
 			Depth: intersection.Depth,
 		})
-		s.sbCollisionConstraints = append(s.sbCollisionConstraints, s.CreateSingleBodyConstraint(primary, solver))
+
+		primaryBody := Body{
+			scene:     s,
+			reference: primary.reference,
+		}
+
+		s.sbCollisionConstraints = append(s.sbCollisionConstraints, s.CreateSingleBodyConstraint(primaryBody, solver))
 	}
 }
 
-func (s *Scene) checkCollisionTwoBodies(primary, secondary *Body) {
+func (s *Scene) checkCollisionTwoBodies(primary, secondary *bodyState) {
 	s.collisionSet.Reset()
 	collision.CheckIntersectionSetWithSet(primary.collisionSet, secondary.collisionSet, s.collisionSet)
 	for _, intersection := range s.collisionSet.Intersections() {
@@ -747,13 +718,21 @@ func (s *Scene) checkCollisionTwoBodies(primary, secondary *Body) {
 			Depth: intersection.Depth,
 		})
 
+		primaryBody := Body{
+			scene:     s,
+			reference: primary.reference,
+		}
+		secondaryBody := Body{
+			scene:     s,
+			reference: secondary.reference,
+		}
 		pair := dbCollisionPair{
-			First:  primary,
-			Second: secondary,
+			First:  primaryBody,
+			Second: secondaryBody,
 		}
 		s.newDBCollisions[pair.Hash()] = pair
 
-		s.dbCollisionConstraints = append(s.dbCollisionConstraints, s.CreateDoubleBodyConstraint(primary, secondary, solver))
+		s.dbCollisionConstraints = append(s.dbCollisionConstraints, s.CreateDoubleBodyConstraint(primaryBody, secondaryBody, solver))
 	}
 }
 
@@ -763,16 +742,36 @@ func (s *Scene) nextRevision() uint32 {
 }
 
 type dbCollisionPair struct {
-	First  *Body
-	Second *Body
+	// TODO: Handle when one of the bodies becomes deleted
+
+	First  Body
+	Second Body
 }
 
 func (p dbCollisionPair) Hash() uint64 {
-	hash1 := uint64(p.First.id)
-	hash2 := uint64(p.Second.id)
-	if hash1 < hash2 {
-		return hash1 + uint64(hash2)*0xFFFFFFFF
-	} else {
-		return hash2 + uint64(hash1)*0xFFFFFFFF
-	}
+	hash1 := uint64(p.First.reference.Index())
+	hash2 := uint64(p.Second.reference.Index())
+	return hash1 + uint64(hash2)*0xFFFFFFFF
+}
+
+func (s *Scene) initPlaceholder(placeholder *solver.Placeholder, body *bodyState) {
+	placeholder.Init(solver.PlaceholderState{
+		Mass:            body.mass,
+		MomentOfInertia: body.momentOfInertia,
+		LinearVelocity:  body.velocity,
+		AngularVelocity: body.angularVelocity,
+		Position:        body.position,
+		Rotation:        body.rotation,
+	})
+}
+
+func (s *Scene) deinitPlaceholder(placeholder *solver.Placeholder, body *bodyState) {
+	body.velocity = placeholder.LinearVelocity()
+	body.angularVelocity = placeholder.AngularVelocity()
+	body.position = placeholder.Position()
+	body.rotation = placeholder.Rotation()
+
+	// FIXME
+	s.bodyOctree.Update(body.itemID, body.position, body.bsRadius)
+	body.InvalidateCollisionShapes(s)
 }

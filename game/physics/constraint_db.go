@@ -31,14 +31,14 @@ func (c DBConstraint) Logic() solver.PairConstraint {
 
 // PrimaryBody returns the primary body on which this constraint
 // acts.
-func (c DBConstraint) PrimaryBody() *Body {
+func (c DBConstraint) PrimaryBody() Body {
 	state := c.state()
 	return state.primary
 }
 
 // SecondaryBody returns the secondary body on which this constraint
 // acts.
-func (c DBConstraint) SecondaryBody() *Body {
+func (c DBConstraint) SecondaryBody() Body {
 	state := c.state()
 	return state.secondary
 }
@@ -60,8 +60,8 @@ func (c DBConstraint) state() *dbConstraintState {
 type dbConstraintState struct {
 	reference indexReference
 	logic     solver.PairConstraint
-	primary   *Body
-	secondary *Body
+	primary   Body
+	secondary Body
 	enabled   bool
 }
 
@@ -69,7 +69,7 @@ func (s dbConstraintState) CanUse() bool {
 	return s.reference.IsValid() && s.enabled
 }
 
-func createDBConstraint(scene *Scene, logic solver.PairConstraint, primary *Body, secondary *Body) DBConstraint {
+func createDBConstraint(scene *Scene, logic solver.PairConstraint, primary, secondary Body) DBConstraint {
 	var freeIndex uint32
 	if scene.freeDBConstraintIndices.IsEmpty() {
 		freeIndex = uint32(len(scene.dbConstraints))
@@ -98,8 +98,6 @@ func deleteDBConstraint(scene *Scene, reference indexReference) {
 	if state.reference == reference {
 		state.reference = newIndexReference(index, 0)
 		state.logic = nil
-		state.primary = nil
-		state.secondary = nil
 		scene.freeDBConstraintIndices.Push(index)
 	}
 }

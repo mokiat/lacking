@@ -151,7 +151,7 @@ func (s *CarSystem) updateKeyboard(elapsedSeconds float64, entity *ecs.Entity) {
 	maxSteeringAngle := carComp.Car.Axes()[0].MaxSteeringAngle()
 	steeringAngle := maxSteeringAngle * dprec.Angle(keyboardComp.SteeringAmount)
 
-	carDirection := carComp.Car.Chassis().Body().Orientation().OrientationZ()
+	carDirection := carComp.Car.Chassis().Body().Rotation().OrientationZ()
 	carDirection.Y = 0.0
 
 	carActualDirection := carComp.Car.Chassis().Body().Velocity()
@@ -231,7 +231,7 @@ func (s *CarSystem) updateMouse(elapsedSeconds float64, entity *ecs.Entity) {
 		delta := dprec.Vec3Diff(intersection, position)
 		delta.Y = 0.0
 
-		forward := chassis.Body().Orientation().OrientationZ()
+		forward := chassis.Body().Rotation().OrientationZ()
 		forward.Y = 0.0
 
 		sin := dprec.Vec3Cross(
@@ -297,7 +297,7 @@ func (s *CarSystem) updateCar(elapsedSeconds float64, entity *ecs.Entity) {
 
 	if carComp.Recover {
 		rotationVector := dprec.Vec3Cross(
-			chassisBody.Orientation().OrientationY(),
+			chassisBody.Rotation().OrientationY(),
 			dprec.BasisYVec3(),
 		)
 		chassisBody.SetAngularVelocity(dprec.Vec3Prod(
@@ -332,10 +332,10 @@ func (s *CarSystem) updateCar(elapsedSeconds float64, entity *ecs.Entity) {
 		rightWheelBody := axis.RightWheel().Body()
 
 		leftWheelBody.SetAngularVelocity(dprec.Vec3Sum(leftWheelBody.AngularVelocity(),
-			dprec.Vec3Prod(leftWheelBody.Orientation().OrientationX(), deltaVelocity),
+			dprec.Vec3Prod(leftWheelBody.Rotation().OrientationX(), deltaVelocity),
 		))
 		rightWheelBody.SetAngularVelocity(dprec.Vec3Sum(rightWheelBody.AngularVelocity(),
-			dprec.Vec3Prod(rightWheelBody.Orientation().OrientationX(), deltaVelocity),
+			dprec.Vec3Prod(rightWheelBody.Rotation().OrientationX(), deltaVelocity),
 		))
 
 		// Braking
@@ -344,22 +344,22 @@ func (s *CarSystem) updateCar(elapsedSeconds float64, entity *ecs.Entity) {
 
 			leftWheelVelocity := dprec.Vec3Dot(
 				leftWheelBody.AngularVelocity(),
-				leftWheelBody.Orientation().OrientationX(),
+				leftWheelBody.Rotation().OrientationX(),
 			)
 			leftWheelCorrection := -dprec.Min(axis.maxBraking*carComp.Deceleration*elapsedSeconds, leftWheelVelocity)
 			leftWheelBody.SetAngularVelocity(dprec.Vec3Sum(
 				leftWheelBody.AngularVelocity(),
-				dprec.Vec3Prod(leftWheelBody.Orientation().OrientationX(), leftWheelCorrection),
+				dprec.Vec3Prod(leftWheelBody.Rotation().OrientationX(), leftWheelCorrection),
 			))
 
 			rightWheelVelocity := dprec.Vec3Dot(
 				rightWheelBody.AngularVelocity(),
-				rightWheelBody.Orientation().OrientationX(),
+				rightWheelBody.Rotation().OrientationX(),
 			)
 			rightWheelCorrection := -dprec.Min(axis.maxBraking*carComp.Deceleration*elapsedSeconds, rightWheelVelocity)
 			rightWheelBody.SetAngularVelocity(dprec.Vec3Sum(
 				rightWheelBody.AngularVelocity(),
-				dprec.Vec3Prod(rightWheelBody.Orientation().OrientationX(), rightWheelCorrection),
+				dprec.Vec3Prod(rightWheelBody.Rotation().OrientationX(), rightWheelCorrection),
 			))
 		}
 	}

@@ -17,7 +17,7 @@ type ConstraintSet struct {
 //
 // Note: Constraints creates as part of this set should not be deleted
 // individually.
-func (s *ConstraintSet) CreateSingleBodyConstraint(body *Body, solver solver.Constraint) SBConstraint {
+func (s *ConstraintSet) CreateSingleBodyConstraint(body Body, solver solver.Constraint) SBConstraint {
 	constraint := s.scene.CreateSingleBodyConstraint(body, solver)
 	s.sbConstraints = append(s.sbConstraints, constraint)
 	return constraint
@@ -28,7 +28,7 @@ func (s *ConstraintSet) CreateSingleBodyConstraint(body *Body, solver solver.Con
 //
 // Note: Constraints creates as part of this set should not be deleted
 // individually.
-func (s *ConstraintSet) CreateDoubleBodyConstraint(primary, secondary *Body, solver solver.PairConstraint) DBConstraint {
+func (s *ConstraintSet) CreateDoubleBodyConstraint(primary, secondary Body, solver solver.PairConstraint) DBConstraint {
 	constraint := s.scene.CreateDoubleBodyConstraint(primary, secondary, solver)
 	s.dbConstraints = append(s.dbConstraints, constraint)
 	return constraint

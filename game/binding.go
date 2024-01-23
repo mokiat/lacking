@@ -9,12 +9,12 @@ import (
 )
 
 type BodyNodeSource struct {
-	Body *physics.Body
+	Body physics.Body
 }
 
 func (s BodyNodeSource) ApplyTo(node *hierarchy.Node) {
-	translation := s.Body.VisualPosition()
-	rotation := s.Body.VisualOrientation()
+	translation := s.Body.IntermediatePosition()
+	rotation := s.Body.IntermediateRotation()
 	scale := dprec.NewVec3(1.0, 1.0, 1.0)
 	node.SetAbsoluteMatrix(dprec.TRSMat4(translation, rotation, scale))
 }

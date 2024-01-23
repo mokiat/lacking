@@ -312,7 +312,7 @@ func (s *Scene) CreateModel(info ModelInfo) *Model {
 		parent.AppendChild(nodes[i])
 	}
 
-	var bodyInstances []*physics.Body
+	var bodyInstances []physics.Body
 	for _, instance := range definition.bodyInstances {
 		var bodyNode *hierarchy.Node
 		if instance.NodeIndex >= 0 {
