@@ -52,6 +52,11 @@ func newScene(engine *Engine, interval time.Duration) *Scene {
 		freeAreaAcceleratorIndices:   ds.NewStack[uint32](16),
 		freeGlobalAcceleratorIndices: ds.NewStack[uint32](16),
 
+		sbConstraints: make([]sbConstraintState, 0, 64),
+
+		freeSBConstraintIndices: ds.NewStack[uint32](16),
+		freeDBConstraintIndices: ds.NewStack[uint32](16),
+
 		maxAcceleration:        200.0, // TODO: Measure something reasonable
 		maxAngularAcceleration: 200.0, // TODO: Measure something reasonable
 		maxVelocity:            2000.0,
@@ -82,8 +87,10 @@ type Scene struct {
 	dynamicCollisionSubscriptions *DynamicCollisionSubscriptionSet
 	staticCollisionSubscriptions  *StaticCollisionSubscriptionSet
 
-	timeSegmenter          *timestep.Segmenter
-	interval               time.Duration
+	timeSegmenter *timestep.Segmenter
+	interval      time.Duration
+	timeSpeed     float64
+
 	maxAcceleration        float64
 	maxAngularAcceleration float64
 	maxVelocity            float64
@@ -105,21 +112,21 @@ type Scene struct {
 	freeAreaAcceleratorIndices   *ds.Stack[uint32]
 	freeGlobalAcceleratorIndices *ds.Stack[uint32]
 
-	firstSBConstraint  *SBConstraint
-	lastSBConstraint   *SBConstraint
-	cachedSBConstraint *SBConstraint
+	sbConstraints []sbConstraintState
+
+	freeSBConstraintIndices *ds.Stack[uint32]
+	freeDBConstraintIndices *ds.Stack[uint32]
 
 	firstDBConstraint  *DBConstraint
 	lastDBConstraint   *DBConstraint
 	cachedDBConstraint *DBConstraint
 
-	collisionConstraints     []*SBConstraint
+	collisionConstraints     []SBConstraint
 	collisionSolvers         []constraint.Collision
 	dualCollisionConstraints []*DBConstraint
 	dualCollisionSolvers     []constraint.PairCollision
 	collisionSet             *collision.IntersectionBucket
 
-	timeSpeed    float64
 	windVelocity dprec.Vec3
 	windDensity  float64
 
@@ -194,7 +201,7 @@ func (s *Scene) SetWindDensity(density float64) {
 // CreateGlobalAccelerator creates a new accelerator that affects the whole
 // scene.
 func (s *Scene) CreateGlobalAccelerator(logic solver.Acceleration) GlobalAccelerator {
-	return newGlobalAccelerator(s, logic)
+	return createGlobalAccelerator(s, logic)
 }
 
 // CreateProp creates a new static Prop. A prop is an object
@@ -260,21 +267,8 @@ func (s *Scene) CreateConstraintSet() *ConstraintSet {
 
 // CreateSingleBodyConstraint2 creates a new physics constraint that acts on
 // a single body and enables it for this scene.
-func (s *Scene) CreateSingleBodyConstraint(body *Body, solver solver.Constraint) *SBConstraint {
-	var constraint *SBConstraint
-	if s.cachedSBConstraint != nil {
-		constraint = s.cachedSBConstraint
-		s.cachedSBConstraint = s.cachedSBConstraint.next
-	} else {
-		constraint = &SBConstraint{}
-	}
-	constraint.scene = s
-	constraint.solution = solver
-	constraint.prev = nil
-	constraint.next = nil
-	constraint.body = body
-	s.appendSBConstraint(constraint)
-	return constraint
+func (s *Scene) CreateSingleBodyConstraint(body *Body, logic solver.Constraint) SBConstraint {
+	return createSBConstraint(s, logic, body)
 }
 
 // CreateDoubleBodyConstraint2 creates a new physics constraint that acts on
@@ -378,45 +372,8 @@ func (s *Scene) Delete() {
 	s.bodyPool = nil
 	s.dynamicBodies = nil
 
-	s.firstSBConstraint = nil
-	s.lastSBConstraint = nil
-
 	s.firstDBConstraint = nil
 	s.lastDBConstraint = nil
-}
-
-func (s *Scene) appendSBConstraint(constraint *SBConstraint) {
-	constraint.prev = s.lastSBConstraint
-	constraint.next = nil
-	if s.firstSBConstraint == nil {
-		s.firstSBConstraint = constraint
-	}
-	if s.lastSBConstraint != nil {
-		s.lastSBConstraint.next = constraint
-	}
-	s.lastSBConstraint = constraint
-}
-
-func (s *Scene) removeSBConstraint(constraint *SBConstraint) {
-	if s.firstSBConstraint == constraint {
-		s.firstSBConstraint = constraint.next
-	}
-	if s.lastSBConstraint == constraint {
-		s.lastSBConstraint = constraint.prev
-	}
-	if constraint.next != nil {
-		constraint.next.prev = constraint.prev
-	}
-	if constraint.prev != nil {
-		constraint.prev.next = constraint.next
-	}
-	constraint.prev = nil
-	constraint.next = nil
-}
-
-func (s *Scene) cacheSBConstraint(constraint *SBConstraint) {
-	constraint.next = s.cachedSBConstraint
-	s.cachedSBConstraint = constraint
 }
 
 func (s *Scene) appendDBConstraint(constraint *DBConstraint) {
@@ -610,9 +567,9 @@ func (s *Scene) applyImpulses(elapsedSeconds float64) {
 			NudgeBeta:   NudgeDriftAdjustmentRatio,
 		})
 	}
-	for constraint := s.firstSBConstraint; constraint != nil; constraint = constraint.next {
-		if constraint.solution == nil {
-			continue // TODO: REMOVE
+	for _, constraint := range s.sbConstraints {
+		if !constraint.CanUse() {
+			continue
 		}
 		target := constraint.body
 		if _, ok := bodyToPlaceholder[target]; !ok {
@@ -622,7 +579,7 @@ func (s *Scene) applyImpulses(elapsedSeconds float64) {
 			bodyToPlaceholder[target] = placeholder
 			bodies = append(bodies, target)
 		}
-		constraint.solution.Reset(solver.Context{
+		constraint.logic.Reset(solver.Context{
 			Target:      bodyToPlaceholder[constraint.body],
 			DeltaTime:   elapsedSeconds,
 			ImpulseBeta: ImpulseDriftAdjustmentRatio,
@@ -643,11 +600,11 @@ func (s *Scene) applyImpulses(elapsedSeconds float64) {
 				NudgeBeta:   NudgeDriftAdjustmentRatio,
 			})
 		}
-		for constraint := s.firstSBConstraint; constraint != nil; constraint = constraint.next {
-			if constraint.solution == nil {
-				continue // TODO: REMOVE
+		for _, constraint := range s.sbConstraints {
+			if !constraint.CanUse() {
+				continue
 			}
-			constraint.solution.ApplyImpulses(solver.Context{
+			constraint.logic.ApplyImpulses(solver.Context{
 				Target:      bodyToPlaceholder[constraint.body],
 				DeltaTime:   elapsedSeconds,
 				ImpulseBeta: ImpulseDriftAdjustmentRatio,
@@ -696,9 +653,9 @@ func (s *Scene) applyNudges(elapsedSeconds float64) {
 			constraint.solution.Reset(ctx)
 			constraint.solution.ApplyNudges(ctx)
 		}
-		for constraint := s.firstSBConstraint; constraint != nil; constraint = constraint.next {
-			if constraint.solution == nil {
-				continue // TODO: REMOVE
+		for _, constraint := range s.sbConstraints {
+			if !constraint.CanUse() {
+				continue
 			}
 			ctx := solver.Context{
 				Target:      bodyToPlaceholder[constraint.body],
@@ -706,8 +663,8 @@ func (s *Scene) applyNudges(elapsedSeconds float64) {
 				ImpulseBeta: ImpulseDriftAdjustmentRatio,
 				NudgeBeta:   NudgeDriftAdjustmentRatio,
 			}
-			constraint.solution.Reset(ctx)
-			constraint.solution.ApplyNudges(ctx)
+			constraint.logic.Reset(ctx)
+			constraint.logic.ApplyNudges(ctx)
 		}
 	}
 

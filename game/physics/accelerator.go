@@ -4,21 +4,33 @@ import "github.com/mokiat/lacking/game/physics/solver"
 
 var invalidGlobalAcceleratorState = &globalAcceleratorState{}
 
+// GlobalAccelerator represents a force that is applied to all
+// bodies in the scene.
 type GlobalAccelerator struct {
 	scene     *Scene
 	reference indexReference
 }
 
+// Logic returns the acceleration solver that will be used to
+// apply this global accelerator.
+func (a GlobalAccelerator) Logic() solver.Acceleration {
+	state := a.state()
+	return state.logic
+}
+
+// Enabled returns whether this global accelerator will be applied.
 func (a GlobalAccelerator) Enabled() bool {
 	state := a.state()
 	return state.enabled
 }
 
+// SetEnabled changes whether this global accelerator will be applied.
 func (a GlobalAccelerator) SetEnabled(enabled bool) {
 	state := a.state()
 	state.enabled = enabled
 }
 
+// Delete removes this global accelerator.
 func (a GlobalAccelerator) Delete() {
 	deleteGlobalAccelerator(a.scene, a.reference)
 }
@@ -38,7 +50,7 @@ type globalAcceleratorState struct {
 	enabled   bool
 }
 
-func newGlobalAccelerator(scene *Scene, logic solver.Acceleration) GlobalAccelerator {
+func createGlobalAccelerator(scene *Scene, logic solver.Acceleration) GlobalAccelerator {
 	var freeIndex uint32
 	if scene.freeGlobalAcceleratorIndices.IsEmpty() {
 		freeIndex = uint32(len(scene.globalAccelerators))

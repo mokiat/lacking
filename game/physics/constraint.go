@@ -2,59 +2,6 @@ package physics
 
 import "github.com/mokiat/lacking/game/physics/solver"
 
-// SBConstraint represents a restriction enforced on one body.
-type SBConstraint struct {
-	scene *Scene
-	prev  *SBConstraint
-	next  *SBConstraint
-
-	body *Body
-
-	solution solver.Constraint
-}
-
-// Solution returns the constraint solver that will be used
-// to enforce mathematically this constraint.
-func (c *SBConstraint) Solution() solver.Constraint {
-	return c.solution
-}
-
-// Body returns the body on which this constraint acts.
-func (c *SBConstraint) Body() *Body {
-	return c.body
-}
-
-// Enabled returns whether this constraint will be enforced.
-// By default a constraint is enabled.
-func (c *SBConstraint) Enabled() bool {
-	if c.prev != nil || c.next != nil {
-		return true
-	}
-	if c.scene != nil {
-		return c.scene.firstSBConstraint == c || c.scene.lastSBConstraint == c
-	}
-	return false
-}
-
-// SetEnabled changes whether this constraint will be enforced.
-func (c *SBConstraint) SetEnabled(enabled bool) {
-	switch enabled {
-	case true:
-		c.scene.appendSBConstraint(c)
-	case false:
-		c.scene.removeSBConstraint(c)
-	}
-}
-
-// Delete removes this constraint.
-func (c *SBConstraint) Delete() {
-	c.scene.removeSBConstraint(c)
-	c.scene.cacheSBConstraint(c)
-	c.scene = nil
-	c.body = nil
-	c.solution = nil
-}
-
 // DBConstraint represents a restriction enforced two bodies in conjunction.
 type DBConstraint struct {
 	scene *Scene
@@ -122,7 +69,7 @@ func (c *DBConstraint) Delete() {
 // be managed (enabled,disabled,deleted) in parallel.
 type ConstraintSet struct {
 	scene         *Scene
-	sbConstraints []*SBConstraint
+	sbConstraints []SBConstraint
 	dbConstraints []*DBConstraint
 }
 
@@ -131,7 +78,7 @@ type ConstraintSet struct {
 //
 // Note: Constraints creates as part of this set should not be deleted
 // individually.
-func (s *ConstraintSet) CreateSingleBodyConstraint(body *Body, solver solver.Constraint) *SBConstraint {
+func (s *ConstraintSet) CreateSingleBodyConstraint(body *Body, solver solver.Constraint) SBConstraint {
 	constraint := s.scene.CreateSingleBodyConstraint(body, solver)
 	s.sbConstraints = append(s.sbConstraints, constraint)
 	return constraint

@@ -2,6 +2,9 @@ package physics
 
 import "fmt"
 
+// TODO: Just use a composite type with uint64 fields
+// instead of splitting a single uint64 into two uint32s.
+
 func newIndexReference(index, revision uint32) indexReference {
 	return indexReference(uint64(revision)<<32 | uint64(index))
 }
