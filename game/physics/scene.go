@@ -19,10 +19,10 @@ func newScene(engine *Engine, interval time.Duration) *Scene {
 	return &Scene{
 		engine: engine,
 
-		preUpdateSubscriptions:        NewUpdateSubscriptionSet(),
-		postUpdateSubscriptions:       NewUpdateSubscriptionSet(),
-		staticCollisionSubscriptions:  NewStaticCollisionSubscriptionSet(),
-		dynamicCollisionSubscriptions: NewDynamicCollisionSubscriptionSet(),
+		preUpdateSubscriptions:   NewUpdateSubscriptionSet(),
+		postUpdateSubscriptions:  NewUpdateSubscriptionSet(),
+		sbCollisionSubscriptions: NewStaticCollisionSubscriptionSet(),
+		dbCollisionSubscriptions: NewDynamicCollisionSubscriptionSet(),
 
 		timeSegmenter: timestep.NewSegmenter(interval),
 		interval:      interval,
@@ -70,8 +70,8 @@ func newScene(engine *Engine, interval time.Duration) *Scene {
 		windVelocity: dprec.NewVec3(0.0, 0.0, 0.0),
 		windDensity:  1.2,
 
-		oldDynamicCollisions: make(map[uint64]dynamicCollisionPair, 32),
-		newDynamicCollisions: make(map[uint64]dynamicCollisionPair, 32),
+		oldDBCollisions: make(map[uint64]dbCollisionPair, 32),
+		newDBCollisions: make(map[uint64]dbCollisionPair, 32),
 
 		collisionRevision: 1,
 	}
@@ -83,10 +83,10 @@ func newScene(engine *Engine, interval time.Duration) *Scene {
 type Scene struct {
 	engine *Engine
 
-	preUpdateSubscriptions        *UpdateSubscriptionSet
-	postUpdateSubscriptions       *UpdateSubscriptionSet
-	staticCollisionSubscriptions  *StaticCollisionSubscriptionSet
-	dynamicCollisionSubscriptions *DynamicCollisionSubscriptionSet
+	preUpdateSubscriptions   *UpdateSubscriptionSet
+	postUpdateSubscriptions  *UpdateSubscriptionSet
+	sbCollisionSubscriptions *StaticCollisionSubscriptionSet
+	dbCollisionSubscriptions *DynamicCollisionSubscriptionSet
 
 	timeSegmenter *timestep.Segmenter
 	interval      time.Duration
@@ -119,17 +119,17 @@ type Scene struct {
 	freeSBConstraintIndices *ds.Stack[uint32]
 	freeDBConstraintIndices *ds.Stack[uint32]
 
-	collisionConstraints     []SBConstraint
-	collisionSolvers         []constraint.Collision
-	dualCollisionConstraints []DBConstraint
-	dualCollisionSolvers     []constraint.PairCollision
-	collisionSet             *collision.IntersectionBucket
+	sbCollisionConstraints []SBConstraint
+	sbCollisionSolvers     []constraint.Collision
+	dbCollisionConstraints []DBConstraint
+	dbCollisionSolvers     []constraint.PairCollision
+	collisionSet           *collision.IntersectionBucket
+
+	oldDBCollisions map[uint64]dbCollisionPair
+	newDBCollisions map[uint64]dbCollisionPair
 
 	windVelocity dprec.Vec3
 	windDensity  float64
-
-	oldDynamicCollisions map[uint64]dynamicCollisionPair
-	newDynamicCollisions map[uint64]dynamicCollisionPair
 
 	freeRevision uint32
 
@@ -153,16 +153,16 @@ func (s *Scene) SubscribePostUpdate(callback UpdateCallback) *UpdateSubscription
 	return s.postUpdateSubscriptions.Subscribe(callback)
 }
 
-// SubscribeDynamicCollision registers a callback that is invoked when two bodies
-// collide.
-func (s *Scene) SubscribeDynamicCollision(callback DynamicCollisionCallback) *DynamicCollisionSubscription {
-	return s.dynamicCollisionSubscriptions.Subscribe(callback)
+// SubscribeSingleBodyCollision registers a callback that is invoked when a body
+// collides with a static object.
+func (s *Scene) SubscribeSingleBodyCollision(callback StaticCollisionCallback) *StaticCollisionSubscription {
+	return s.sbCollisionSubscriptions.Subscribe(callback)
 }
 
-// SubscribeStaticCollision registers a callback that is invoked when a body
-// collides with a static object.
-func (s *Scene) SubscribeStaticCollision(callback StaticCollisionCallback) *StaticCollisionSubscription {
-	return s.staticCollisionSubscriptions.Subscribe(callback)
+// SubscribeDoubleBodyCollision registers a callback that is invoked when two
+// bodies collide.
+func (s *Scene) SubscribeDoubleBodyCollision(callback DynamicCollisionCallback) *DynamicCollisionSubscription {
+	return s.dbCollisionSubscriptions.Subscribe(callback)
 }
 
 // TimeSpeed returns the speed at which time runs, where 1.0 is the default
@@ -309,23 +309,23 @@ func (s *Scene) notifyPostUpdate() {
 }
 
 func (s *Scene) notifyDynamicCollisions() {
-	for newHash, newPair := range s.newDynamicCollisions {
-		if _, ok := s.oldDynamicCollisions[newHash]; !ok {
-			s.dynamicCollisionSubscriptions.Each(func(callback DynamicCollisionCallback) {
+	for newHash, newPair := range s.newDBCollisions {
+		if _, ok := s.oldDBCollisions[newHash]; !ok {
+			s.dbCollisionSubscriptions.Each(func(callback DynamicCollisionCallback) {
 				callback(newPair.First, newPair.Second, true)
 			})
 		}
 	}
-	for oldHash, oldPair := range s.oldDynamicCollisions {
-		if _, ok := s.newDynamicCollisions[oldHash]; !ok {
-			s.dynamicCollisionSubscriptions.Each(func(callback DynamicCollisionCallback) {
+	for oldHash, oldPair := range s.oldDBCollisions {
+		if _, ok := s.newDBCollisions[oldHash]; !ok {
+			s.dbCollisionSubscriptions.Each(func(callback DynamicCollisionCallback) {
 				callback(oldPair.First, oldPair.Second, false)
 			})
 		}
 	}
-	clear(s.oldDynamicCollisions)
-	maps.Copy(s.oldDynamicCollisions, s.newDynamicCollisions)
-	clear(s.newDynamicCollisions)
+	clear(s.oldDBCollisions)
+	maps.Copy(s.oldDBCollisions, s.newDBCollisions)
+	clear(s.newDBCollisions)
 }
 
 func (s *Scene) Each(cb func(b *Body)) {
@@ -638,17 +638,17 @@ func (s *Scene) detectCollisions() {
 		body.invalidateCollisionShapes()
 	}
 
-	for _, constraint := range s.collisionConstraints {
+	for _, constraint := range s.sbCollisionConstraints {
 		constraint.Delete()
 	}
-	s.collisionConstraints = s.collisionConstraints[:0]
-	s.collisionSolvers = s.collisionSolvers[:0]
+	s.sbCollisionConstraints = s.sbCollisionConstraints[:0]
+	s.sbCollisionSolvers = s.sbCollisionSolvers[:0]
 
-	for _, constraint := range s.dualCollisionConstraints {
+	for _, constraint := range s.dbCollisionConstraints {
 		constraint.Delete()
 	}
-	s.dualCollisionConstraints = s.dualCollisionConstraints[:0]
-	s.dualCollisionSolvers = s.dualCollisionSolvers[:0]
+	s.dbCollisionConstraints = s.dbCollisionConstraints[:0]
+	s.dbCollisionSolvers = s.dbCollisionSolvers[:0]
 
 	for primary := range s.dynamicBodies {
 		primary.revision = s.collisionRevision
@@ -683,21 +683,21 @@ func (s *Scene) detectCollisions() {
 }
 
 func (s *Scene) allocateGroundCollisionSolver() *constraint.Collision {
-	if len(s.collisionSolvers) < cap(s.collisionSolvers) {
-		s.collisionSolvers = s.collisionSolvers[:len(s.collisionSolvers)+1]
+	if len(s.sbCollisionSolvers) < cap(s.sbCollisionSolvers) {
+		s.sbCollisionSolvers = s.sbCollisionSolvers[:len(s.sbCollisionSolvers)+1]
 	} else {
-		s.collisionSolvers = append(s.collisionSolvers, constraint.Collision{})
+		s.sbCollisionSolvers = append(s.sbCollisionSolvers, constraint.Collision{})
 	}
-	return &s.collisionSolvers[len(s.collisionSolvers)-1]
+	return &s.sbCollisionSolvers[len(s.sbCollisionSolvers)-1]
 }
 
 func (s *Scene) allocateDualCollisionSolver() *constraint.PairCollision {
-	if len(s.dualCollisionSolvers) < cap(s.dualCollisionSolvers) {
-		s.dualCollisionSolvers = s.dualCollisionSolvers[:len(s.dualCollisionSolvers)+1]
+	if len(s.dbCollisionSolvers) < cap(s.dbCollisionSolvers) {
+		s.dbCollisionSolvers = s.dbCollisionSolvers[:len(s.dbCollisionSolvers)+1]
 	} else {
-		s.dualCollisionSolvers = append(s.dualCollisionSolvers, constraint.PairCollision{})
+		s.dbCollisionSolvers = append(s.dbCollisionSolvers, constraint.PairCollision{})
 	}
-	return &s.dualCollisionSolvers[len(s.dualCollisionSolvers)-1]
+	return &s.dbCollisionSolvers[len(s.dbCollisionSolvers)-1]
 }
 
 func (s *Scene) checkCollisionBodyWithProp(primary *Body, prop *Prop) {
@@ -716,7 +716,7 @@ func (s *Scene) checkCollisionBodyWithProp(primary *Body, prop *Prop) {
 
 			Depth: intersection.Depth,
 		})
-		s.collisionConstraints = append(s.collisionConstraints, s.CreateSingleBodyConstraint(primary, solver))
+		s.sbCollisionConstraints = append(s.sbCollisionConstraints, s.CreateSingleBodyConstraint(primary, solver))
 	}
 }
 
@@ -739,13 +739,13 @@ func (s *Scene) checkCollisionTwoBodies(primary, secondary *Body) {
 			Depth: intersection.Depth,
 		})
 
-		pair := dynamicCollisionPair{
+		pair := dbCollisionPair{
 			First:  primary,
 			Second: secondary,
 		}
-		s.newDynamicCollisions[pair.Hash()] = pair
+		s.newDBCollisions[pair.Hash()] = pair
 
-		s.dualCollisionConstraints = append(s.dualCollisionConstraints, s.CreateDoubleBodyConstraint(primary, secondary, solver))
+		s.dbCollisionConstraints = append(s.dbCollisionConstraints, s.CreateDoubleBodyConstraint(primary, secondary, solver))
 	}
 }
 
@@ -754,12 +754,12 @@ func (s *Scene) nextRevision() uint32 {
 	return s.freeRevision
 }
 
-type dynamicCollisionPair struct {
+type dbCollisionPair struct {
 	First  *Body
 	Second *Body
 }
 
-func (p dynamicCollisionPair) Hash() uint64 {
+func (p dbCollisionPair) Hash() uint64 {
 	hash1 := uint64(p.First.id)
 	hash2 := uint64(p.Second.id)
 	if hash1 < hash2 {
