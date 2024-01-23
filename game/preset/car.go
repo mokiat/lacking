@@ -563,7 +563,7 @@ type Wheel struct {
 	node                 *hierarchy.Node
 	body                 *physics.Body
 	directionSolver      *constraint.MatchDirections
-	attachmentConstraint *physics.DBConstraint
+	attachmentConstraint physics.DBConstraint
 }
 
 func (w *Wheel) Velocity() float64 {
@@ -582,7 +582,7 @@ func (w *Wheel) DirectionSolver() *constraint.MatchDirections {
 	return w.directionSolver
 }
 
-func (w *Wheel) AttachmentConstraint() *physics.DBConstraint {
+func (w *Wheel) AttachmentConstraint() physics.DBConstraint {
 	return w.attachmentConstraint
 }
 

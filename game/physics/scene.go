@@ -21,10 +21,17 @@ func newScene(engine *Engine, interval time.Duration) *Scene {
 
 		preUpdateSubscriptions:        NewUpdateSubscriptionSet(),
 		postUpdateSubscriptions:       NewUpdateSubscriptionSet(),
-		dynamicCollisionSubscriptions: NewDynamicCollisionSubscriptionSet(),
 		staticCollisionSubscriptions:  NewStaticCollisionSubscriptionSet(),
+		dynamicCollisionSubscriptions: NewDynamicCollisionSubscriptionSet(),
 
 		timeSegmenter: timestep.NewSegmenter(interval),
+		interval:      interval,
+		timeSpeed:     1.0,
+
+		maxAcceleration:        200.0,  // TODO: Measure something reasonable
+		maxAngularAcceleration: 200.0,  // TODO: Measure something reasonable
+		maxVelocity:            2000.0, // TODO: Measure something reasonable
+		maxAngularVelocity:     2000.0, // TODO: Measure something reasonable
 
 		propOctree: spatial.NewStaticOctree[uint32](spatial.StaticOctreeSettings{
 			Size:                opt.V(32000.0),
@@ -53,19 +60,13 @@ func newScene(engine *Engine, interval time.Duration) *Scene {
 		freeGlobalAcceleratorIndices: ds.NewStack[uint32](16),
 
 		sbConstraints: make([]sbConstraintState, 0, 64),
+		dbConstraints: make([]dbConstraintState, 0, 64),
 
 		freeSBConstraintIndices: ds.NewStack[uint32](16),
 		freeDBConstraintIndices: ds.NewStack[uint32](16),
 
-		maxAcceleration:        200.0, // TODO: Measure something reasonable
-		maxAngularAcceleration: 200.0, // TODO: Measure something reasonable
-		maxVelocity:            2000.0,
-		maxAngularVelocity:     2000.0, // TODO: Measure something reasonable
-
 		collisionSet: collision.NewIntersectionBucket(128),
 
-		interval:     interval,
-		timeSpeed:    1.0,
 		windVelocity: dprec.NewVec3(0.0, 0.0, 0.0),
 		windDensity:  1.2,
 
@@ -84,8 +85,8 @@ type Scene struct {
 
 	preUpdateSubscriptions        *UpdateSubscriptionSet
 	postUpdateSubscriptions       *UpdateSubscriptionSet
-	dynamicCollisionSubscriptions *DynamicCollisionSubscriptionSet
 	staticCollisionSubscriptions  *StaticCollisionSubscriptionSet
+	dynamicCollisionSubscriptions *DynamicCollisionSubscriptionSet
 
 	timeSegmenter *timestep.Segmenter
 	interval      time.Duration
@@ -113,17 +114,14 @@ type Scene struct {
 	freeGlobalAcceleratorIndices *ds.Stack[uint32]
 
 	sbConstraints []sbConstraintState
+	dbConstraints []dbConstraintState
 
 	freeSBConstraintIndices *ds.Stack[uint32]
 	freeDBConstraintIndices *ds.Stack[uint32]
 
-	firstDBConstraint  *DBConstraint
-	lastDBConstraint   *DBConstraint
-	cachedDBConstraint *DBConstraint
-
 	collisionConstraints     []SBConstraint
 	collisionSolvers         []constraint.Collision
-	dualCollisionConstraints []*DBConstraint
+	dualCollisionConstraints []DBConstraint
 	dualCollisionSolvers     []constraint.PairCollision
 	collisionSet             *collision.IntersectionBucket
 
@@ -265,30 +263,16 @@ func (s *Scene) CreateConstraintSet() *ConstraintSet {
 	}
 }
 
-// CreateSingleBodyConstraint2 creates a new physics constraint that acts on
+// CreateSingleBodyConstraint creates a new physics constraint that acts on
 // a single body and enables it for this scene.
 func (s *Scene) CreateSingleBodyConstraint(body *Body, logic solver.Constraint) SBConstraint {
 	return createSBConstraint(s, logic, body)
 }
 
-// CreateDoubleBodyConstraint2 creates a new physics constraint that acts on
+// CreateDoubleBodyConstraint creates a new physics constraint that acts on
 // two bodies and enables it for this scene.
-func (s *Scene) CreateDoubleBodyConstraint(primary, secondary *Body, solver solver.PairConstraint) *DBConstraint {
-	var constraint *DBConstraint
-	if s.cachedDBConstraint != nil {
-		constraint = s.cachedDBConstraint
-		s.cachedDBConstraint = s.cachedDBConstraint.next
-	} else {
-		constraint = &DBConstraint{}
-	}
-	constraint.scene = s
-	constraint.solution = solver
-	constraint.prev = nil
-	constraint.next = nil
-	constraint.primary = primary
-	constraint.secondary = secondary
-	s.appendDBConstraint(constraint)
-	return constraint
+func (s *Scene) CreateDoubleBodyConstraint(primary, secondary *Body, logic solver.PairConstraint) DBConstraint {
+	return createDBConstraint(s, logic, primary, secondary)
 }
 
 // Update runs a number of physics iterations until the specified duration has
@@ -372,42 +356,15 @@ func (s *Scene) Delete() {
 	s.bodyPool = nil
 	s.dynamicBodies = nil
 
-	s.firstDBConstraint = nil
-	s.lastDBConstraint = nil
-}
+	s.globalAccelerators = nil
+	s.freeBodyAcceleratorIndices = nil
+	s.freeAreaAcceleratorIndices = nil
+	s.freeGlobalAcceleratorIndices = nil
 
-func (s *Scene) appendDBConstraint(constraint *DBConstraint) {
-	if s.firstDBConstraint == nil {
-		s.firstDBConstraint = constraint
-	}
-	if s.lastDBConstraint != nil {
-		s.lastDBConstraint.next = constraint
-		constraint.prev = s.lastDBConstraint
-	}
-	constraint.next = nil
-	s.lastDBConstraint = constraint
-}
-
-func (s *Scene) removeDBConstraint(constraint *DBConstraint) {
-	if s.firstDBConstraint == constraint {
-		s.firstDBConstraint = constraint.next
-	}
-	if s.lastDBConstraint == constraint {
-		s.lastDBConstraint = constraint.prev
-	}
-	if constraint.next != nil {
-		constraint.next.prev = constraint.prev
-	}
-	if constraint.prev != nil {
-		constraint.prev.next = constraint.next
-	}
-	constraint.prev = nil
-	constraint.next = nil
-}
-
-func (s *Scene) cacheDBConstraint(constraint *DBConstraint) {
-	constraint.next = s.cachedDBConstraint
-	s.cachedDBConstraint = constraint
+	s.sbConstraints = nil
+	s.dbConstraints = nil
+	s.freeSBConstraintIndices = nil
+	s.freeDBConstraintIndices = nil
 }
 
 func (s *Scene) runSimulation(elapsedSeconds float64) {
@@ -539,9 +496,9 @@ func (s *Scene) applyImpulses(elapsedSeconds float64) {
 	placeholders = placeholders[:0]
 	maps.Clear(bodyToPlaceholder)
 
-	for constraint := s.firstDBConstraint; constraint != nil; constraint = constraint.next {
-		if constraint.solution == nil {
-			continue // TODO: REMOVE
+	for _, constraint := range s.dbConstraints {
+		if !constraint.CanUse() {
+			continue
 		}
 		target := constraint.primary
 		if _, ok := bodyToPlaceholder[target]; !ok {
@@ -559,7 +516,7 @@ func (s *Scene) applyImpulses(elapsedSeconds float64) {
 			bodyToPlaceholder[source] = placeholder
 			bodies = append(bodies, source)
 		}
-		constraint.solution.Reset(solver.PairContext{
+		constraint.logic.Reset(solver.PairContext{
 			Target:      bodyToPlaceholder[constraint.primary],
 			Source:      bodyToPlaceholder[constraint.secondary],
 			DeltaTime:   elapsedSeconds,
@@ -588,11 +545,11 @@ func (s *Scene) applyImpulses(elapsedSeconds float64) {
 	}
 
 	for i := 0; i < ImpulseIterationCount; i++ {
-		for constraint := s.firstDBConstraint; constraint != nil; constraint = constraint.next {
-			if constraint.solution == nil {
-				continue // TODO: REMOVE
+		for _, constraint := range s.dbConstraints {
+			if !constraint.CanUse() {
+				continue
 			}
-			constraint.solution.ApplyImpulses(solver.PairContext{
+			constraint.logic.ApplyImpulses(solver.PairContext{
 				Target:      bodyToPlaceholder[constraint.primary],
 				Source:      bodyToPlaceholder[constraint.secondary],
 				DeltaTime:   elapsedSeconds,
@@ -639,9 +596,9 @@ func (s *Scene) applyNudges(elapsedSeconds float64) {
 	}
 
 	for i := 0; i < NudgeIterationCount; i++ {
-		for constraint := s.firstDBConstraint; constraint != nil; constraint = constraint.next {
-			if constraint.solution == nil {
-				continue // TODO: REMOVE
+		for _, constraint := range s.dbConstraints {
+			if !constraint.CanUse() {
+				continue
 			}
 			ctx := solver.PairContext{
 				Target:      bodyToPlaceholder[constraint.primary],
@@ -650,8 +607,8 @@ func (s *Scene) applyNudges(elapsedSeconds float64) {
 				ImpulseBeta: ImpulseDriftAdjustmentRatio,
 				NudgeBeta:   NudgeDriftAdjustmentRatio,
 			}
-			constraint.solution.Reset(ctx)
-			constraint.solution.ApplyNudges(ctx)
+			constraint.logic.Reset(ctx)
+			constraint.logic.ApplyNudges(ctx)
 		}
 		for _, constraint := range s.sbConstraints {
 			if !constraint.CanUse() {
