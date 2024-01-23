@@ -33,6 +33,7 @@ func newScene(engine *Engine, interval time.Duration) *Scene {
 		maxVelocity:            2000.0, // TODO: Measure something reasonable
 		maxAngularVelocity:     2000.0, // TODO: Measure something reasonable
 
+		props: make([]propState, 0, 64),
 		propOctree: spatial.NewStaticOctree[uint32](spatial.StaticOctreeSettings{
 			Size:                opt.V(32000.0),
 			MaxDepth:            opt.V(int32(15)),
@@ -97,7 +98,7 @@ type Scene struct {
 	maxVelocity            float64
 	maxAngularVelocity     float64
 
-	props      []Prop
+	props      []propState
 	propOctree *spatial.StaticOctree[uint32]
 
 	// bodies        []Body // TODO
@@ -210,7 +211,7 @@ func (s *Scene) CreateProp(info PropInfo) {
 	radius := bs.Radius()
 
 	propIndex := uint32(len(s.props))
-	s.props = append(s.props, Prop{
+	s.props = append(s.props, propState{
 		name:         info.Name,
 		collisionSet: info.CollisionSet,
 	})
@@ -350,8 +351,10 @@ func (s *Scene) Nearby(body *Body, distance float64, cb func(b *Body)) {
 // scene. Users should not call any further methods
 // on this object.
 func (s *Scene) Delete() {
-	s.propOctree = nil
+	s.engine = nil
+
 	s.props = nil
+	s.propOctree = nil
 
 	s.bodyPool = nil
 	s.dynamicBodies = nil
@@ -404,6 +407,8 @@ func (s *Scene) applyForces() {
 			body.angularVelocity,
 		)
 
+		// TODO: Other accelerators
+
 		for _, accelerator := range s.globalAccelerators {
 			if !accelerator.reference.IsValid() || !accelerator.enabled {
 				continue
@@ -412,6 +417,9 @@ func (s *Scene) applyForces() {
 				Target: &target,
 			})
 		}
+
+		// TODO:
+		// s.applyWindAcceleration(&target)
 
 		// TODO: These should be moved outside, after all accelerator types have
 		// had their way with the targets. Furthermore, it should apply directly
@@ -700,7 +708,7 @@ func (s *Scene) allocateDualCollisionSolver() *constraint.PairCollision {
 	return &s.dbCollisionSolvers[len(s.dbCollisionSolvers)-1]
 }
 
-func (s *Scene) checkCollisionBodyWithProp(primary *Body, prop *Prop) {
+func (s *Scene) checkCollisionBodyWithProp(primary *Body, prop *propState) {
 	s.collisionSet.Reset()
 	collision.CheckIntersectionSetWithSet(primary.collisionSet, prop.collisionSet, s.collisionSet)
 	for _, intersection := range s.collisionSet.Intersections() {

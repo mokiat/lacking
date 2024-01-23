@@ -9,7 +9,7 @@ type PropInfo struct {
 	CollisionSet collision.Set
 }
 
-type Prop struct {
+type propState struct {
 	name         string
 	collisionSet collision.Set
 }
