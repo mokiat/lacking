@@ -21,8 +21,8 @@ func newScene(engine *Engine, interval time.Duration) *Scene {
 
 		preUpdateSubscriptions:   NewUpdateSubscriptionSet(),
 		postUpdateSubscriptions:  NewUpdateSubscriptionSet(),
-		sbCollisionSubscriptions: NewStaticCollisionSubscriptionSet(),
-		dbCollisionSubscriptions: NewDynamicCollisionSubscriptionSet(),
+		sbCollisionSubscriptions: NewSingleBodyCollisionSubscriptionSet(),
+		dbCollisionSubscriptions: NewDoubleBodyCollisionSubscriptionSet(),
 
 		timeSegmenter: timestep.NewSegmenter(interval),
 		interval:      interval,
@@ -51,6 +51,7 @@ func newScene(engine *Engine, interval time.Duration) *Scene {
 			InitialNodeCapacity: opt.V(int32(4 * 1024)),
 			InitialItemCapacity: opt.V(int32(8 * 1024)),
 		}),
+		placeholders: make([]solver.Placeholder, 0, 64),
 
 		// bodyAccelerators   []any // TOOD
 		// areaAccelerators   []any // TODO
@@ -68,11 +69,14 @@ func newScene(engine *Engine, interval time.Duration) *Scene {
 
 		collisionSet: collision.NewIntersectionBucket(128),
 
+		oldSBCollisions: make(map[sbCollisionPair]struct{}, 32),
+		newSBCollisions: make(map[sbCollisionPair]struct{}, 32),
+
+		oldDBCollisions: make(map[dbCollisionPair]struct{}, 32),
+		newDBCollisions: make(map[dbCollisionPair]struct{}, 32),
+
 		windVelocity: dprec.NewVec3(0.0, 0.0, 0.0),
 		windDensity:  1.2,
-
-		oldDBCollisions: make(map[uint64]dbCollisionPair, 32),
-		newDBCollisions: make(map[uint64]dbCollisionPair, 32),
 
 		collisionRevision: 1,
 	}
@@ -86,8 +90,8 @@ type Scene struct {
 
 	preUpdateSubscriptions   *UpdateSubscriptionSet
 	postUpdateSubscriptions  *UpdateSubscriptionSet
-	sbCollisionSubscriptions *StaticCollisionSubscriptionSet
-	dbCollisionSubscriptions *DynamicCollisionSubscriptionSet
+	sbCollisionSubscriptions *SingleBodyCollisionSubscriptionSet
+	dbCollisionSubscriptions *DoubleBodyCollisionSubscriptionSet
 
 	timeSegmenter *timestep.Segmenter
 	interval      time.Duration
@@ -104,6 +108,7 @@ type Scene struct {
 	bodies          []bodyState
 	freeBodyIndices *ds.Stack[uint32]
 	bodyOctree      *spatial.DynamicOctree[uint32]
+	placeholders    []solver.Placeholder
 
 	// bodyAccelerators   []any // TOOD
 	freeBodyAcceleratorIndices *ds.Stack[uint32]
@@ -128,10 +133,11 @@ type Scene struct {
 
 	collisionSet *collision.IntersectionBucket
 
-	placeholders []solver.Placeholder
+	oldSBCollisions map[sbCollisionPair]struct{}
+	newSBCollisions map[sbCollisionPair]struct{}
 
-	oldDBCollisions map[uint64]dbCollisionPair
-	newDBCollisions map[uint64]dbCollisionPair
+	oldDBCollisions map[dbCollisionPair]struct{}
+	newDBCollisions map[dbCollisionPair]struct{}
 
 	windVelocity dprec.Vec3
 	windDensity  float64
@@ -183,13 +189,13 @@ func (s *Scene) SubscribePostUpdate(callback UpdateCallback) *UpdateSubscription
 
 // SubscribeSingleBodyCollision registers a callback that is invoked when a body
 // collides with a static object.
-func (s *Scene) SubscribeSingleBodyCollision(callback StaticCollisionCallback) *StaticCollisionSubscription {
+func (s *Scene) SubscribeSingleBodyCollision(callback SingleBodyCollisionCallback) *SingleBodyCollisionSubscription {
 	return s.sbCollisionSubscriptions.Subscribe(callback)
 }
 
 // SubscribeDoubleBodyCollision registers a callback that is invoked when two
 // bodies collide.
-func (s *Scene) SubscribeDoubleBodyCollision(callback DynamicCollisionCallback) *DynamicCollisionSubscription {
+func (s *Scene) SubscribeDoubleBodyCollision(callback DoubleBodyCollisionCallback) *DoubleBodyCollisionSubscription {
 	return s.dbCollisionSubscriptions.Subscribe(callback)
 }
 
@@ -276,61 +282,6 @@ func (s *Scene) Update(elapsedTime time.Duration) {
 	s.timeSegmenter.Update(elapsedTime, s.onTickInterval, s.onTickLerp)
 }
 
-func (s *Scene) onTickInterval(elapsedTime time.Duration) {
-	elapsedSeconds := elapsedTime.Seconds()
-	s.notifyPreUpdate()
-	s.runSimulation(elapsedSeconds * s.timeSpeed)
-	s.notifyDynamicCollisions()
-	s.notifyPostUpdate()
-}
-
-func (s *Scene) onTickLerp(alpha float64) {
-	s.eachBody(func(body *bodyState) {
-		body.intermediatePosition = dprec.Vec3Lerp(body.oldPosition, body.position, alpha)
-		body.intermediateRotation = dprec.QuatSlerp(body.oldRotation, body.rotation, alpha)
-	})
-}
-
-func (s *Scene) eachBody(cb func(b *bodyState)) {
-	for i := range s.bodies {
-		if body := &s.bodies[i]; body.CanUse() {
-			cb(body)
-		}
-	}
-}
-
-func (s *Scene) notifyPreUpdate() {
-	s.preUpdateSubscriptions.Each(func(callback UpdateCallback) {
-		callback(s.interval)
-	})
-}
-
-func (s *Scene) notifyPostUpdate() {
-	s.postUpdateSubscriptions.Each(func(callback UpdateCallback) {
-		callback(s.interval)
-	})
-}
-
-func (s *Scene) notifyDynamicCollisions() {
-	for newHash, newPair := range s.newDBCollisions {
-		if _, ok := s.oldDBCollisions[newHash]; !ok {
-			s.dbCollisionSubscriptions.Each(func(callback DynamicCollisionCallback) {
-				callback(newPair.First, newPair.Second, true)
-			})
-		}
-	}
-	for oldHash, oldPair := range s.oldDBCollisions {
-		if _, ok := s.newDBCollisions[oldHash]; !ok {
-			s.dbCollisionSubscriptions.Each(func(callback DynamicCollisionCallback) {
-				callback(oldPair.First, oldPair.Second, false)
-			})
-		}
-	}
-	clear(s.oldDBCollisions)
-	maps.Copy(s.oldDBCollisions, s.newDBCollisions)
-	clear(s.newDBCollisions)
-}
-
 func (s *Scene) Each(cb func(b Body)) {
 	s.eachBody(func(b *bodyState) {
 		cb(Body{
@@ -341,8 +292,8 @@ func (s *Scene) Each(cb func(b Body)) {
 }
 
 func (s *Scene) Nearby(body Body, distance float64, cb func(b Body)) {
-	state := &s.bodies[body.reference.Index()]
-	if !state.CanUse() {
+	state := s.getBody(body.reference)
+	if state == nil {
 		return
 	}
 	region := spatial.CuboidRegion(
@@ -361,6 +312,7 @@ func (s *Scene) Nearby(body Body, distance float64, cb func(b Body)) {
 }
 
 func (s *Scene) runSimulation(elapsedSeconds float64) {
+	// TODO: Should this be moved inside if statement below?
 	s.eachBody(func(body *bodyState) {
 		body.oldPosition = body.position
 		body.oldRotation = body.rotation
@@ -461,22 +413,21 @@ func (s *Scene) applyAcceleration(elapsedSeconds float64) {
 func (s *Scene) applyImpulses(elapsedSeconds float64) {
 	defer metric.BeginRegion("impulses").End()
 
-	// TODO: Use Grow instead
-	s.placeholders = s.placeholders[:0]
+	// TODO: Check that bodies referenced by constraints are still valid.
+
 	for i := range s.bodies {
-		placeholder := solver.Placeholder{}
+		placeholder := &s.placeholders[i]
 		if body := &s.bodies[i]; body.CanUse() {
-			s.initPlaceholder(&placeholder, body)
+			s.initPlaceholder(placeholder, body)
 		}
-		s.placeholders = append(s.placeholders, placeholder)
 	}
 
 	for _, constraint := range s.dbConstraints {
 		if !constraint.CanUse() {
 			continue
 		}
-		target := &s.placeholders[constraint.primary.reference.Index()]
-		source := &s.placeholders[constraint.secondary.reference.Index()]
+		target := &s.placeholders[constraint.primary.reference.Index]
+		source := &s.placeholders[constraint.secondary.reference.Index]
 		constraint.logic.Reset(solver.PairContext{
 			Target:      target,
 			Source:      source,
@@ -489,7 +440,7 @@ func (s *Scene) applyImpulses(elapsedSeconds float64) {
 		if !constraint.CanUse() {
 			continue
 		}
-		target := &s.placeholders[constraint.body.reference.Index()]
+		target := &s.placeholders[constraint.body.reference.Index]
 		constraint.logic.Reset(solver.Context{
 			Target:      target,
 			DeltaTime:   elapsedSeconds,
@@ -503,8 +454,8 @@ func (s *Scene) applyImpulses(elapsedSeconds float64) {
 			if !constraint.CanUse() {
 				continue
 			}
-			target := &s.placeholders[constraint.primary.reference.Index()]
-			source := &s.placeholders[constraint.secondary.reference.Index()]
+			target := &s.placeholders[constraint.primary.reference.Index]
+			source := &s.placeholders[constraint.secondary.reference.Index]
 			constraint.logic.ApplyImpulses(solver.PairContext{
 				Target:      target,
 				Source:      source,
@@ -517,7 +468,7 @@ func (s *Scene) applyImpulses(elapsedSeconds float64) {
 			if !constraint.CanUse() {
 				continue
 			}
-			target := &s.placeholders[constraint.body.reference.Index()]
+			target := &s.placeholders[constraint.body.reference.Index]
 			constraint.logic.ApplyImpulses(solver.Context{
 				Target:      target,
 				DeltaTime:   elapsedSeconds,
@@ -570,8 +521,8 @@ func (s *Scene) applyNudges(elapsedSeconds float64) {
 			if !constraint.CanUse() {
 				continue
 			}
-			target := &s.placeholders[constraint.primary.reference.Index()]
-			source := &s.placeholders[constraint.secondary.reference.Index()]
+			target := &s.placeholders[constraint.primary.reference.Index]
+			source := &s.placeholders[constraint.secondary.reference.Index]
 			ctx := solver.PairContext{
 				Target:      target,
 				Source:      source,
@@ -586,7 +537,7 @@ func (s *Scene) applyNudges(elapsedSeconds float64) {
 			if !constraint.CanUse() {
 				continue
 			}
-			target := &s.placeholders[constraint.body.reference.Index()]
+			target := &s.placeholders[constraint.body.reference.Index]
 			ctx := solver.Context{
 				Target:      target,
 				DeltaTime:   elapsedSeconds,
@@ -641,7 +592,7 @@ func (s *Scene) detectCollisions() {
 
 		s.bodyOctree.VisitHexahedronRegion(&region, spatial.VisitorFunc[uint32](func(secondaryIndex uint32) {
 			secondary := &s.bodies[secondaryIndex]
-			if secondary.reference.Index() <= primary.reference.Index() {
+			if secondary.reference.Index <= primary.reference.Index {
 				return // secondary is the same or was already a primary
 			}
 			if secondary.collisionSet.IsEmpty() {
@@ -718,6 +669,12 @@ func (s *Scene) checkCollisionTwoBodies(primary, secondary *bodyState) {
 			Depth: intersection.Depth,
 		})
 
+		pair := dbCollisionPair{
+			PrimaryRef:   primary.reference,
+			SecondaryRef: secondary.reference,
+		}
+		s.newDBCollisions[pair] = struct{}{}
+
 		primaryBody := Body{
 			scene:     s,
 			reference: primary.reference,
@@ -726,12 +683,6 @@ func (s *Scene) checkCollisionTwoBodies(primary, secondary *bodyState) {
 			scene:     s,
 			reference: secondary.reference,
 		}
-		pair := dbCollisionPair{
-			First:  primaryBody,
-			Second: secondaryBody,
-		}
-		s.newDBCollisions[pair.Hash()] = pair
-
 		s.dbCollisionConstraints = append(s.dbCollisionConstraints, s.CreateDoubleBodyConstraint(primaryBody, secondaryBody, solver))
 	}
 }
@@ -741,17 +692,83 @@ func (s *Scene) nextRevision() uint32 {
 	return s.freeRevision
 }
 
-type dbCollisionPair struct {
-	// TODO: Handle when one of the bodies becomes deleted
-
-	First  Body
-	Second Body
+func (s *Scene) onTickInterval(elapsedTime time.Duration) {
+	elapsedSeconds := elapsedTime.Seconds()
+	s.notifyPreUpdate()
+	s.runSimulation(elapsedSeconds * s.timeSpeed)
+	s.notifyDynamicCollisions()
+	s.notifyPostUpdate()
 }
 
-func (p dbCollisionPair) Hash() uint64 {
-	hash1 := uint64(p.First.reference.Index())
-	hash2 := uint64(p.Second.reference.Index())
-	return hash1 + uint64(hash2)*0xFFFFFFFF
+func (s *Scene) onTickLerp(alpha float64) {
+	s.eachBody(func(body *bodyState) {
+		body.intermediatePosition = dprec.Vec3Lerp(body.oldPosition, body.position, alpha)
+		body.intermediateRotation = dprec.QuatSlerp(body.oldRotation, body.rotation, alpha)
+	})
+}
+
+func (s *Scene) notifyPreUpdate() {
+	s.preUpdateSubscriptions.Each(func(callback UpdateCallback) {
+		callback(s.interval)
+	})
+}
+
+func (s *Scene) notifyPostUpdate() {
+	s.postUpdateSubscriptions.Each(func(callback UpdateCallback) {
+		callback(s.interval)
+	})
+}
+
+func (s *Scene) notifyDynamicCollisions() {
+	for newCollision := range s.newDBCollisions {
+		if _, ok := s.oldDBCollisions[newCollision]; !ok {
+			primary := Body{
+				scene:     s,
+				reference: newCollision.PrimaryRef,
+			}
+			secondary := Body{
+				scene:     s,
+				reference: newCollision.SecondaryRef,
+			}
+			s.dbCollisionSubscriptions.Each(func(callback DoubleBodyCollisionCallback) {
+				callback(primary, secondary, true)
+			})
+		}
+	}
+	for oldCollision := range s.oldDBCollisions {
+		if _, ok := s.newDBCollisions[oldCollision]; !ok {
+			primary := Body{
+				scene:     s,
+				reference: oldCollision.PrimaryRef,
+			}
+			secondary := Body{
+				scene:     s,
+				reference: oldCollision.SecondaryRef,
+			}
+			s.dbCollisionSubscriptions.Each(func(callback DoubleBodyCollisionCallback) {
+				callback(primary, secondary, false)
+			})
+		}
+	}
+	clear(s.oldDBCollisions)
+	maps.Copy(s.oldDBCollisions, s.newDBCollisions)
+	clear(s.newDBCollisions)
+}
+
+func (s *Scene) eachBody(cb func(b *bodyState)) {
+	for i := range s.bodies {
+		if body := &s.bodies[i]; body.CanUse() {
+			cb(body)
+		}
+	}
+}
+
+func (s *Scene) getBody(reference indexReference) *bodyState {
+	state := &s.bodies[reference.Index]
+	if !state.CanUse() || state.reference.Revision != reference.Revision {
+		return nil
+	}
+	return state
 }
 
 func (s *Scene) initPlaceholder(placeholder *solver.Placeholder, body *bodyState) {

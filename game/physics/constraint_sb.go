@@ -42,7 +42,7 @@ func (c SBConstraint) Delete() {
 }
 
 func (c SBConstraint) state() *sbConstraintState {
-	index := c.reference.Index()
+	index := c.reference.Index
 	state := &c.scene.sbConstraints[index]
 	if state.reference != c.reference {
 		return invalidSBConstraintState
@@ -84,7 +84,7 @@ func createSBConstraint(scene *Scene, logic solver.Constraint, body Body) SBCons
 }
 
 func deleteSBConstraint(scene *Scene, reference indexReference) {
-	index := reference.Index()
+	index := reference.Index
 	state := &scene.sbConstraints[index]
 	if state.reference == reference {
 		state.reference = newIndexReference(index, 0)

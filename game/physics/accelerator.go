@@ -36,7 +36,7 @@ func (a GlobalAccelerator) Delete() {
 }
 
 func (a GlobalAccelerator) state() *globalAcceleratorState {
-	index := a.reference.Index()
+	index := a.reference.Index
 	state := &a.scene.globalAccelerators[index]
 	if state.reference != a.reference {
 		return invalidGlobalAcceleratorState
@@ -72,7 +72,7 @@ func createGlobalAccelerator(scene *Scene, logic solver.Acceleration) GlobalAcce
 }
 
 func deleteGlobalAccelerator(scene *Scene, reference indexReference) {
-	index := reference.Index()
+	index := reference.Index
 	state := &scene.globalAccelerators[index]
 	if state.reference == reference {
 		state.reference = newIndexReference(index, 0)

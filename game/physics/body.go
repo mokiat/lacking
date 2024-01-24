@@ -3,6 +3,7 @@ package physics
 import (
 	"github.com/mokiat/gomath/dprec"
 	"github.com/mokiat/lacking/game/physics/collision"
+	"github.com/mokiat/lacking/game/physics/solver"
 	"github.com/mokiat/lacking/util/spatial"
 )
 
@@ -255,7 +256,7 @@ func (b Body) Delete() {
 }
 
 func (b Body) state() *bodyState {
-	index := b.reference.Index()
+	index := b.reference.Index
 	state := &b.scene.bodies[index]
 	if state.reference != b.reference {
 		return invalidBodyState
@@ -425,6 +426,7 @@ func createBody(scene *Scene, info BodyInfo) Body {
 	if scene.freeBodyIndices.IsEmpty() {
 		freeIndex = uint32(len(scene.bodies))
 		scene.bodies = append(scene.bodies, bodyState{})
+		scene.placeholders = append(scene.placeholders, solver.Placeholder{})
 	} else {
 		freeIndex = scene.freeBodyIndices.Pop()
 	}
@@ -469,7 +471,7 @@ func createBody(scene *Scene, info BodyInfo) Body {
 }
 
 func deleteBody(scene *Scene, reference indexReference) {
-	index := reference.Index()
+	index := reference.Index
 	state := &scene.bodies[index]
 	if state.reference == reference {
 		state.reference = newIndexReference(index, 0)

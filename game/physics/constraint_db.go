@@ -49,7 +49,7 @@ func (c DBConstraint) Delete() {
 }
 
 func (c DBConstraint) state() *dbConstraintState {
-	index := c.reference.Index()
+	index := c.reference.Index
 	state := &c.scene.dbConstraints[index]
 	if state.reference != c.reference {
 		return invalidDBConstraintState
@@ -93,7 +93,7 @@ func createDBConstraint(scene *Scene, logic solver.PairConstraint, primary, seco
 }
 
 func deleteDBConstraint(scene *Scene, reference indexReference) {
-	index := reference.Index()
+	index := reference.Index
 	state := &scene.dbConstraints[index]
 	if state.reference == reference {
 		state.reference = newIndexReference(index, 0)

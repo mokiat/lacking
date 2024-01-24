@@ -20,22 +20,38 @@ func NewUpdateSubscriptionSet() *UpdateSubscriptionSet {
 	return observer.NewSubscriptionSet[UpdateCallback]()
 }
 
-type DynamicCollisionCallback func(first, second Body, colliding bool)
+// DoubleBodyCollisionCallback is a mechanism to receive notifications
+// about collisions between two bodies.
+type DoubleBodyCollisionCallback func(first, second Body, active bool)
 
-type DynamicCollisionSubscription = observer.Subscription[DynamicCollisionCallback]
+// DoubleBodyCollisionSubscription represents a notification subscription
+// for double body collisions.
+type DoubleBodyCollisionSubscription = observer.Subscription[DoubleBodyCollisionCallback]
 
-type DynamicCollisionSubscriptionSet = observer.SubscriptionSet[DynamicCollisionCallback]
+// DoubleBodyCollisionSubscriptionSet represents a set of double body
+// collision subscriptions.
+type DoubleBodyCollisionSubscriptionSet = observer.SubscriptionSet[DoubleBodyCollisionCallback]
 
-func NewDynamicCollisionSubscriptionSet() *DynamicCollisionSubscriptionSet {
-	return observer.NewSubscriptionSet[DynamicCollisionCallback]()
+// NewDoubleBodyCollisionSubscriptionSet creates a new
+// DoubleBodyCollisionSubscriptionSet.
+func NewDoubleBodyCollisionSubscriptionSet() *DoubleBodyCollisionSubscriptionSet {
+	return observer.NewSubscriptionSet[DoubleBodyCollisionCallback]()
 }
 
-type StaticCollisionCallback func(body Body)
+// SingleBodyCollisionCallback is a mechanism to receive notifications
+// about collisions between a body and a prop in the scene.
+type SingleBodyCollisionCallback func(body Body, prop Prop, active bool)
 
-type StaticCollisionSubscription = observer.Subscription[StaticCollisionCallback]
+// SingleBodyCollisionSubscription represents a notification subscription
+// for single body collisions.
+type SingleBodyCollisionSubscription = observer.Subscription[SingleBodyCollisionCallback]
 
-type StaticCollisionSubscriptionSet = observer.SubscriptionSet[StaticCollisionCallback]
+// SingleBodyCollisionSubscriptionSet represents a set of single body
+// collision subscriptions.
+type SingleBodyCollisionSubscriptionSet = observer.SubscriptionSet[SingleBodyCollisionCallback]
 
-func NewStaticCollisionSubscriptionSet() *StaticCollisionSubscriptionSet {
-	return observer.NewSubscriptionSet[StaticCollisionCallback]()
+// NewSingleBodyCollisionSubscriptionSet creates a new
+// SingleBodyCollisionSubscriptionSet.
+func NewSingleBodyCollisionSubscriptionSet() *SingleBodyCollisionSubscriptionSet {
+	return observer.NewSubscriptionSet[SingleBodyCollisionCallback]()
 }

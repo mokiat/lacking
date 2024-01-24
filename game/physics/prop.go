@@ -9,6 +9,14 @@ type PropInfo struct {
 	CollisionSet collision.Set
 }
 
+type Prop struct {
+	name string
+}
+
+func (p Prop) Name() string {
+	return p.name
+}
+
 type propState struct {
 	name         string
 	collisionSet collision.Set
