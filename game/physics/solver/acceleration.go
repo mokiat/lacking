@@ -81,12 +81,15 @@ func (t *AccelerationTarget) AccumulatedLinearAcceleration() dprec.Vec3 {
 	return t.linearAcceleration
 }
 
-// ApplyLinearAcceleration adds linear acceleration to the target.
-func (t *AccelerationTarget) ApplyLinearAcceleration(acceleration dprec.Vec3) {
+// AddLinearAcceleration adds linear acceleration to the target.
+func (t *AccelerationTarget) AddLinearAcceleration(acceleration dprec.Vec3) {
 	t.linearAcceleration = dprec.Vec3Sum(t.linearAcceleration, acceleration)
 }
 
-// TODO: Apply force
+// ApplyForce adds force to the target.
+func (t *AccelerationTarget) ApplyForce(force dprec.Vec3) {
+	t.AddLinearAcceleration(dprec.Vec3Quot(force, t.mass))
+}
 
 // AccumulatedAngularAcceleration returns the accumulated angular acceleration
 // of the target.
@@ -94,11 +97,14 @@ func (t *AccelerationTarget) AccumulatedAngularAcceleration() dprec.Vec3 {
 	return t.angularAcceleration
 }
 
-// ApplyAngularAcceleration adds angular acceleration to the target.
-func (t *AccelerationTarget) ApplyAngularAcceleration(acceleration dprec.Vec3) {
+// AddAngularAcceleration adds angular acceleration to the target.
+func (t *AccelerationTarget) AddAngularAcceleration(acceleration dprec.Vec3) {
 	t.angularAcceleration = dprec.Vec3Sum(t.angularAcceleration, acceleration)
 }
 
-// TODO: Apply torque
+func (t *AccelerationTarget) ApplyTorque(torque dprec.Vec3) {
+	// FIXME: the moment of intertia is in local space, whereas the torque is in world space
+	t.AddAngularAcceleration(dprec.Mat3Vec3Prod(dprec.InverseMat3(t.momentOfInertia), torque))
+}
 
 // TODO: Apply offset force

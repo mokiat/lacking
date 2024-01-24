@@ -18,6 +18,7 @@ func (p Prop) Name() string {
 }
 
 type propState struct {
+	reference    indexReference
 	name         string
 	collisionSet collision.Set
 }

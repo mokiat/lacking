@@ -9,6 +9,7 @@ import (
 	"github.com/mokiat/lacking/debug/metric"
 	"github.com/mokiat/lacking/game/physics/collision"
 	"github.com/mokiat/lacking/game/physics/constraint"
+	"github.com/mokiat/lacking/game/physics/medium"
 	"github.com/mokiat/lacking/game/physics/solver"
 	"github.com/mokiat/lacking/game/timestep"
 	"github.com/mokiat/lacking/util/spatial"
@@ -32,6 +33,8 @@ func newScene(engine *Engine, interval time.Duration) *Scene {
 		maxAngularAcceleration: 200.0,
 		maxLinearVelocity:      2000.0,
 		maxAngularVelocity:     2000.0,
+
+		mediumSolver: medium.NewStaticAirMedium(),
 
 		props: make([]propState, 0, 1024),
 		propOctree: spatial.NewStaticOctree[uint32](spatial.StaticOctreeSettings{
@@ -75,11 +78,6 @@ func newScene(engine *Engine, interval time.Duration) *Scene {
 
 		oldDBCollisions: make(map[dbCollisionPair]struct{}, 32),
 		newDBCollisions: make(map[dbCollisionPair]struct{}, 32),
-
-		windVelocity: dprec.NewVec3(0.0, 0.0, 0.0),
-		windDensity:  1.2,
-
-		collisionRevision: 1,
 	}
 }
 
@@ -102,6 +100,8 @@ type Scene struct {
 	maxAngularAcceleration float64
 	maxLinearVelocity      float64
 	maxAngularVelocity     float64
+
+	mediumSolver solver.Medium
 
 	props      []propState
 	propOctree *spatial.StaticOctree[uint32]
@@ -141,12 +141,7 @@ type Scene struct {
 	oldDBCollisions map[dbCollisionPair]struct{}
 	newDBCollisions map[dbCollisionPair]struct{}
 
-	windVelocity dprec.Vec3
-	windDensity  float64
-
 	freeRevision uint32
-
-	collisionRevision int
 }
 
 // Delete releases resources allocated by this scene. Users should not call
@@ -253,24 +248,16 @@ func (s *Scene) SetMaxAngularAcceleration(acceleration float64) {
 	s.maxAngularAcceleration = acceleration
 }
 
-// WindVelocity returns the wind speed.
-func (s *Scene) WindVelocity() dprec.Vec3 {
-	return s.windVelocity
+// MediumSolver returns the solver that is used to calculate the medium
+// properties of the scene.
+func (s *Scene) MediumSolver() solver.Medium {
+	return s.mediumSolver
 }
 
-// SetWindVelocity sets the wind speed.
-func (s *Scene) SetWindVelocity(velocity dprec.Vec3) {
-	s.windVelocity = velocity
-}
-
-// WindDensity returns the wind density.
-func (s *Scene) WindDensity() float64 {
-	return s.windDensity
-}
-
-// SetWindDensity changes the wind density.
-func (s *Scene) SetWindDensity(density float64) {
-	s.windDensity = density
+// SetMediumSolver changes the solver that is used to calculate the medium
+// properties of the scene.
+func (s *Scene) SetMediumSolver(solver solver.Medium) {
+	s.mediumSolver = solver
 }
 
 // CreateGlobalAccelerator creates a new accelerator that affects the whole
@@ -290,6 +277,7 @@ func (s *Scene) CreateProp(info PropInfo) {
 
 	propIndex := uint32(len(s.props))
 	s.props = append(s.props, propState{
+		reference:    newIndexReference(propIndex, s.nextRevision()),
 		name:         info.Name,
 		collisionSet: info.CollisionSet,
 	})
@@ -357,10 +345,8 @@ func (s *Scene) Nearby(body Body, distance float64, cb func(b Body)) {
 }
 
 func (s *Scene) runSimulation(elapsedSeconds float64) {
-	// TODO: Should this be moved inside if statement below?
 	s.resetOldPositions()
 	if elapsedSeconds > 0.0001 {
-		s.applyForces()
 		s.applyAcceleration(elapsedSeconds)
 		s.applyImpulses(elapsedSeconds)
 		s.applyMotion(elapsedSeconds)
@@ -376,20 +362,19 @@ func (s *Scene) resetOldPositions() {
 	})
 }
 
-func (s *Scene) applyForces() {
-	defer metric.BeginRegion("forces").End()
+func (s *Scene) applyAcceleration(elapsedSeconds float64) {
+	defer metric.BeginRegion("acceleration").End()
+	s.prepareAccelerationTargets()
+	s.applyBodyAccelerators()
+	s.applyAreaAccelerators()
+	s.applyGlobalAccelerators()
+	s.applyAerodynamicAccelerations()
+	s.applyAccelerationTargets(elapsedSeconds)
+}
 
-	s.eachBodyState(func(_ int, body *bodyState) {
-		body.ResetLinearAcceleration()
-		body.ResetAngularAcceleration()
-	})
-
-	// TODO: The target needs to be global across all accelerator types.
-	// The current implementation below works only while there is a single
-	// accelerator type.
-
-	s.eachBodyState(func(_ int, body *bodyState) {
-		target := solver.NewAccelerationTarget(
+func (s *Scene) prepareAccelerationTargets() {
+	s.eachBodyState(func(index int, body *bodyState) {
+		s.bodyAccelerationTargets[index] = solver.NewAccelerationTarget(
 			body.mass,
 			body.momentOfInertia,
 			body.position,
@@ -397,65 +382,78 @@ func (s *Scene) applyForces() {
 			body.velocity,
 			body.angularVelocity,
 		)
+	})
+}
 
-		// TODO: Other accelerators
+func (s *Scene) applyBodyAccelerators() {
+	// TODO
+}
 
+func (s *Scene) applyAreaAccelerators() {
+	// TODO
+}
+
+func (s *Scene) applyGlobalAccelerators() {
+	s.eachBodyState(func(index int, body *bodyState) {
+		target := &s.bodyAccelerationTargets[index]
 		for _, accelerator := range s.globalAccelerators {
 			if !accelerator.reference.IsValid() || !accelerator.enabled {
 				continue
 			}
 			accelerator.logic.ApplyAcceleration(solver.AccelerationContext{
-				Target: &target,
+				Target: target,
 			})
-		}
-
-		// TODO:
-		// s.applyWindAcceleration(&target)
-
-		// TODO: These should be moved outside, after all accelerator types have
-		// had their way with the targets. Furthermore, it should apply directly
-		// on the velocity, skipping the applyAcceleration step and
-		// getting rid of the acceleration fields on the body.
-
-		body.AddLinearAcceleration(target.AccumulatedLinearAcceleration())
-		body.AddAngularAcceleration(target.AccumulatedAngularAcceleration())
-	})
-
-	s.eachBodyState(func(_ int, body *bodyState) {
-		deltaWindVelocity := dprec.Vec3Diff(s.windVelocity, body.velocity)
-		dragForce := dprec.Vec3Prod(deltaWindVelocity, deltaWindVelocity.Length()*s.windDensity*body.dragFactor)
-		body.ApplyForce(dragForce)
-
-		angularDragForce := dprec.Vec3Prod(body.angularVelocity, -body.angularVelocity.Length()*s.windDensity*body.angularDragFactor)
-		body.ApplyTorque(angularDragForce)
-
-		if len(body.aerodynamicShapes) > 0 {
-			bodyTransform := NewTransform(body.position, body.rotation)
-
-			for _, aerodynamicShape := range body.aerodynamicShapes {
-				aerodynamicShape = aerodynamicShape.Transformed(bodyTransform)
-				relativeWindSpeed := dprec.QuatVec3Rotation(dprec.InverseQuat(aerodynamicShape.Rotation()), deltaWindVelocity)
-
-				// TODO: Apply at offset
-				force := aerodynamicShape.solver.Force(relativeWindSpeed)
-				absoluteForce := dprec.QuatVec3Rotation(aerodynamicShape.Rotation(), force)
-				body.ApplyForce(absoluteForce)
-				// body.applyOffsetForce(absoluteForce, aerodynamicShape.Position())
-			}
 		}
 	})
 }
 
-func (s *Scene) applyAcceleration(elapsedSeconds float64) {
-	defer metric.BeginRegion("acceleration").End()
-	s.eachBodyState(func(_ int, body *bodyState) {
-		body.ClampLinearAcceleration(s.maxLinearAcceleration)
-		body.ClampAngularAcceleration(s.maxAngularAcceleration)
+func (s *Scene) applyAerodynamicAccelerations() {
+	if s.mediumSolver == nil {
+		return
+	}
+	s.eachBodyState(func(index int, body *bodyState) {
+		if len(body.aerodynamicShapes) == 0 {
+			return
+		}
+		target := &s.bodyAccelerationTargets[index]
+		mediumDensity := s.mediumSolver.Density(body.position)
+		mediumVelocity := s.mediumSolver.Velocity(body.position)
 
-		deltaVelocity := dprec.Vec3Prod(body.linearAcceleration, elapsedSeconds)
-		body.AddVelocity(deltaVelocity)
-		deltaAngularVelocity := dprec.Vec3Prod(body.angularAcceleration, elapsedSeconds)
-		body.AddAngularVelocity(deltaAngularVelocity)
+		deltaVelocity := dprec.Vec3Diff(mediumVelocity, body.velocity)
+		dragForce := dprec.Vec3Prod(deltaVelocity, deltaVelocity.Length()*mediumDensity*body.dragFactor)
+		target.ApplyForce(dragForce)
+
+		angularDragForce := dprec.Vec3Prod(body.angularVelocity, -body.angularVelocity.Length()*mediumDensity*body.angularDragFactor)
+		target.ApplyTorque(angularDragForce)
+
+		bodyTransform := NewTransform(body.position, body.rotation)
+		for _, aerodynamicShape := range body.aerodynamicShapes {
+			aerodynamicShape = aerodynamicShape.Transformed(bodyTransform)
+			relativeSpeed := dprec.QuatVec3Rotation(dprec.InverseQuat(aerodynamicShape.Rotation()), deltaVelocity)
+
+			force := aerodynamicShape.solver.Force(relativeSpeed)
+			absoluteForce := dprec.QuatVec3Rotation(aerodynamicShape.Rotation(), force)
+			target.ApplyForce(absoluteForce) // TODO: Apply at offset
+			// target.ApplyOffsetForce(absoluteForce, aerodynamicShape.Position())
+		}
+	})
+}
+
+func (s *Scene) applyAccelerationTargets(elapsedSeconds float64) {
+	s.eachBodyState(func(index int, body *bodyState) {
+		target := s.bodyAccelerationTargets[index]
+
+		linearAcceleration := target.AccumulatedLinearAcceleration()
+		if linearAcceleration.Length() > s.maxLinearAcceleration {
+			linearAcceleration = dprec.ResizedVec3(linearAcceleration, s.maxLinearAcceleration)
+		}
+		body.AddVelocity(dprec.Vec3Prod(linearAcceleration, elapsedSeconds))
+
+		angularAcceleration := target.AccumulatedAngularAcceleration()
+		if angularAcceleration.Length() > s.maxAngularAcceleration {
+			angularAcceleration = dprec.ResizedVec3(angularAcceleration, s.maxAngularAcceleration)
+		}
+		body.AddAngularVelocity(dprec.Vec3Prod(angularAcceleration, elapsedSeconds))
 	})
 }
 
@@ -608,7 +606,6 @@ func (s *Scene) applyNudges(elapsedSeconds float64) {
 
 func (s *Scene) detectCollisions() {
 	defer metric.BeginRegion("collision").End()
-	s.collisionRevision++
 
 	s.eachBodyState(func(_ int, body *bodyState) {
 		body.InvalidateCollisionShapes(s)
@@ -690,11 +687,16 @@ func (s *Scene) checkCollisionBodyWithProp(primary *bodyState, prop *propState) 
 			Depth: intersection.Depth,
 		})
 
+		pair := sbCollisionPair{
+			BodyRef: primary.reference,
+			PropRef: prop.reference,
+		}
+		s.newSBCollisions[pair] = struct{}{}
+
 		primaryBody := Body{
 			scene:     s,
 			reference: primary.reference,
 		}
-
 		s.sbCollisionConstraints = append(s.sbCollisionConstraints, s.CreateSingleBodyConstraint(primaryBody, solver))
 	}
 }
@@ -745,7 +747,8 @@ func (s *Scene) onTickInterval(elapsedTime time.Duration) {
 	elapsedSeconds := elapsedTime.Seconds()
 	s.notifyPreUpdate()
 	s.runSimulation(elapsedSeconds * s.timeSpeed)
-	s.notifyDynamicCollisions()
+	s.notifySingleBodyCollisions()
+	s.notifyDoubleBodyCollisions()
 	s.notifyPostUpdate()
 }
 
@@ -768,7 +771,41 @@ func (s *Scene) notifyPostUpdate() {
 	})
 }
 
-func (s *Scene) notifyDynamicCollisions() {
+func (s *Scene) notifySingleBodyCollisions() {
+	for newCollision := range s.newSBCollisions {
+		if _, ok := s.oldSBCollisions[newCollision]; !ok {
+			primary := Body{
+				scene:     s,
+				reference: newCollision.BodyRef,
+			}
+			prop := Prop{
+				name: s.props[newCollision.PropRef.Index].name,
+			}
+			s.sbCollisionSubscriptions.Each(func(callback SingleBodyCollisionCallback) {
+				callback(primary, prop, true)
+			})
+		}
+	}
+	for oldCollision := range s.oldSBCollisions {
+		if _, ok := s.newSBCollisions[oldCollision]; !ok {
+			primary := Body{
+				scene:     s,
+				reference: oldCollision.BodyRef,
+			}
+			prop := Prop{
+				name: s.props[oldCollision.PropRef.Index].name,
+			}
+			s.sbCollisionSubscriptions.Each(func(callback SingleBodyCollisionCallback) {
+				callback(primary, prop, false)
+			})
+		}
+	}
+	clear(s.oldSBCollisions)
+	maps.Copy(s.oldSBCollisions, s.newSBCollisions)
+	clear(s.newSBCollisions)
+}
+
+func (s *Scene) notifyDoubleBodyCollisions() {
 	for newCollision := range s.newDBCollisions {
 		if _, ok := s.oldDBCollisions[newCollision]; !ok {
 			primary := Body{

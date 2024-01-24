@@ -308,8 +308,14 @@ type bodyState struct {
 	mass            float64
 	momentOfInertia dprec.Mat3
 
+	// TODO: Move friction and restitution to the collision Set through
+	// a material.
+
 	frictionCoefficient    float64
 	restitutionCoefficient float64
+
+	// TODO: dragFactor and angularDragFactor should be moved to the
+	// aerodynamic shapes.
 
 	dragFactor        float64
 	angularDragFactor float64
@@ -322,9 +328,6 @@ type bodyState struct {
 
 	intermediatePosition dprec.Vec3
 	intermediateRotation dprec.Quat
-
-	linearAcceleration  dprec.Vec3
-	angularAcceleration dprec.Vec3
 
 	velocity        dprec.Vec3
 	angularVelocity dprec.Vec3
@@ -347,43 +350,6 @@ func (b *bodyState) InvalidateCollisionShapes(scene *Scene) {
 	delta := dprec.Vec3Diff(bs.Position(), b.position)
 	b.bsRadius = delta.Length() + bs.Radius()
 	scene.bodyOctree.Update(b.itemID, b.position, b.bsRadius)
-}
-
-func (b *bodyState) ResetLinearAcceleration() {
-	b.linearAcceleration = dprec.ZeroVec3()
-}
-
-func (b *bodyState) ResetAngularAcceleration() {
-	b.angularAcceleration = dprec.ZeroVec3()
-}
-
-func (b *bodyState) AddLinearAcceleration(amount dprec.Vec3) {
-	b.linearAcceleration = dprec.Vec3Sum(b.linearAcceleration, amount)
-}
-
-func (b *bodyState) AddAngularAcceleration(amount dprec.Vec3) {
-	b.angularAcceleration = dprec.Vec3Sum(b.angularAcceleration, amount)
-}
-
-func (b *bodyState) ApplyForce(force dprec.Vec3) {
-	b.AddLinearAcceleration(dprec.Vec3Quot(force, b.mass))
-}
-
-func (b *bodyState) ApplyTorque(torque dprec.Vec3) {
-	// FIXME: the moment of intertia is in local space, whereas the torque is in world space
-	b.AddAngularAcceleration(dprec.Mat3Vec3Prod(dprec.InverseMat3(b.momentOfInertia), torque))
-}
-
-func (b *bodyState) ClampLinearAcceleration(max float64) {
-	if b.linearAcceleration.SqrLength() > max*max {
-		b.linearAcceleration = dprec.ResizedVec3(b.linearAcceleration, max)
-	}
-}
-
-func (b *bodyState) ClampAngularAcceleration(max float64) {
-	if b.angularAcceleration.SqrLength() > max*max {
-		b.angularAcceleration = dprec.ResizedVec3(b.angularAcceleration, max)
-	}
 }
 
 func (b *bodyState) AddVelocity(amount dprec.Vec3) {
@@ -475,10 +441,11 @@ func deleteBody(scene *Scene, reference indexReference) {
 	index := reference.Index
 	state := &scene.bodies[index]
 	if state.reference == reference {
+		scene.bodyOctree.Remove(state.itemID)
 		state.reference = newIndexReference(index, 0)
-
-		// TODO
-
+		state.definition = nil
+		state.collisionSet = collision.NewSet()
+		state.aerodynamicShapes = nil
 		scene.freeBodyIndices.Push(index)
 	}
 }
