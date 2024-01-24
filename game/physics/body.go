@@ -335,7 +335,7 @@ type bodyState struct {
 	aerodynamicShapes []AerodynamicShape
 }
 
-func (s bodyState) CanUse() bool {
+func (s bodyState) IsActive() bool {
 	return s.reference.IsValid()
 }
 
@@ -426,7 +426,8 @@ func createBody(scene *Scene, info BodyInfo) Body {
 	if scene.freeBodyIndices.IsEmpty() {
 		freeIndex = uint32(len(scene.bodies))
 		scene.bodies = append(scene.bodies, bodyState{})
-		scene.placeholders = append(scene.placeholders, solver.Placeholder{})
+		scene.bodyAccelerationTargets = append(scene.bodyAccelerationTargets, solver.AccelerationTarget{})
+		scene.bodyConstraintPlaceholders = append(scene.bodyConstraintPlaceholders, solver.Placeholder{})
 	} else {
 		freeIndex = scene.freeBodyIndices.Pop()
 	}

@@ -28,10 +28,10 @@ func newScene(engine *Engine, interval time.Duration) *Scene {
 		interval:      interval,
 		timeSpeed:     1.0,
 
-		maxAcceleration:        200.0,  // TODO: Measure something reasonable
-		maxAngularAcceleration: 200.0,  // TODO: Measure something reasonable
-		maxVelocity:            2000.0, // TODO: Measure something reasonable
-		maxAngularVelocity:     2000.0, // TODO: Measure something reasonable
+		maxLinearAcceleration:  200.0,
+		maxAngularAcceleration: 200.0,
+		maxLinearVelocity:      2000.0,
+		maxAngularVelocity:     2000.0,
 
 		props: make([]propState, 0, 1024),
 		propOctree: spatial.NewStaticOctree[uint32](spatial.StaticOctreeSettings{
@@ -42,8 +42,10 @@ func newScene(engine *Engine, interval time.Duration) *Scene {
 			InitialItemCapacity: opt.V(int32(8 * 1024)),
 		}),
 
-		bodies:          make([]bodyState, 0, 64),
-		freeBodyIndices: ds.NewStack[uint32](16),
+		freeBodyIndices:            ds.NewStack[uint32](16),
+		bodies:                     make([]bodyState, 0, 64),
+		bodyAccelerationTargets:    make([]solver.AccelerationTarget, 0, 64),
+		bodyConstraintPlaceholders: make([]solver.Placeholder, 0, 64),
 		bodyOctree: spatial.NewDynamicOctree[uint32](spatial.DynamicOctreeSettings{
 			Size:                opt.V(32000.0),
 			MaxDepth:            opt.V(int32(15)),
@@ -51,7 +53,6 @@ func newScene(engine *Engine, interval time.Duration) *Scene {
 			InitialNodeCapacity: opt.V(int32(4 * 1024)),
 			InitialItemCapacity: opt.V(int32(8 * 1024)),
 		}),
-		placeholders: make([]solver.Placeholder, 0, 64),
 
 		// bodyAccelerators   []any // TOOD
 		// areaAccelerators   []any // TODO
@@ -97,18 +98,19 @@ type Scene struct {
 	interval      time.Duration
 	timeSpeed     float64
 
-	maxAcceleration        float64
+	maxLinearAcceleration  float64
 	maxAngularAcceleration float64
-	maxVelocity            float64
+	maxLinearVelocity      float64
 	maxAngularVelocity     float64
 
 	props      []propState
 	propOctree *spatial.StaticOctree[uint32]
 
-	bodies          []bodyState
-	freeBodyIndices *ds.Stack[uint32]
-	bodyOctree      *spatial.DynamicOctree[uint32]
-	placeholders    []solver.Placeholder
+	bodies                     []bodyState
+	bodyAccelerationTargets    []solver.AccelerationTarget
+	bodyConstraintPlaceholders []solver.Placeholder
+	freeBodyIndices            *ds.Stack[uint32]
+	bodyOctree                 *spatial.DynamicOctree[uint32]
 
 	// bodyAccelerators   []any // TOOD
 	freeBodyAcceleratorIndices *ds.Stack[uint32]
@@ -155,8 +157,10 @@ func (s *Scene) Delete() {
 	s.props = nil
 	s.propOctree = nil
 
-	s.bodies = nil
 	s.freeBodyIndices = nil
+	s.bodies = nil
+	s.bodyAccelerationTargets = nil
+	s.bodyConstraintPlaceholders = nil
 	s.bodyOctree = nil
 
 	s.globalAccelerators = nil
@@ -165,9 +169,24 @@ func (s *Scene) Delete() {
 	s.freeGlobalAcceleratorIndices = nil
 
 	s.sbConstraints = nil
-	s.dbConstraints = nil
 	s.freeSBConstraintIndices = nil
+
+	s.dbConstraints = nil
 	s.freeDBConstraintIndices = nil
+
+	s.sbCollisionConstraints = nil
+	s.sbCollisionSolvers = nil
+
+	s.dbCollisionConstraints = nil
+	s.dbCollisionSolvers = nil
+
+	s.collisionSet = nil
+
+	s.oldSBCollisions = nil
+	s.newSBCollisions = nil
+
+	s.oldDBCollisions = nil
+	s.newDBCollisions = nil
 }
 
 // Engine returns the physics Engine that owns this Scene.
@@ -210,6 +229,30 @@ func (s *Scene) SetTimeSpeed(timeSpeed float64) {
 	s.timeSpeed = timeSpeed
 }
 
+// MaxLinearAcceleration returns the maximum linear acceleration that a body
+// can have.
+func (s *Scene) MaxLinearAcceleration() float64 {
+	return s.maxLinearAcceleration
+}
+
+// SetMaxLinearAcceleration changes the maximum linear acceleration that a body
+// can have.
+func (s *Scene) SetMaxLinearAcceleration(acceleration float64) {
+	s.maxLinearAcceleration = acceleration
+}
+
+// MaxAngularAcceleration returns the maximum angular acceleration that a body
+// can have.
+func (s *Scene) MaxAngularAcceleration() float64 {
+	return s.maxAngularAcceleration
+}
+
+// SetMaxAngularAcceleration changes the maximum angular acceleration that a
+// body can have.
+func (s *Scene) SetMaxAngularAcceleration(acceleration float64) {
+	s.maxAngularAcceleration = acceleration
+}
+
 // WindVelocity returns the wind speed.
 func (s *Scene) WindVelocity() dprec.Vec3 {
 	return s.windVelocity
@@ -239,6 +282,8 @@ func (s *Scene) CreateGlobalAccelerator(logic solver.Acceleration) GlobalAcceler
 // CreateProp creates a new static Prop. A prop is an object
 // that is static and rarely removed.
 func (s *Scene) CreateProp(info PropInfo) {
+	// TODO: createProp(s, info)
+
 	bs := info.CollisionSet.BoundingSphere()
 	position := bs.Position()
 	radius := bs.Radius()
@@ -283,7 +328,7 @@ func (s *Scene) Update(elapsedTime time.Duration) {
 }
 
 func (s *Scene) Each(cb func(b Body)) {
-	s.eachBody(func(b *bodyState) {
+	s.eachBodyState(func(_ int, b *bodyState) {
 		cb(Body{
 			scene:     s,
 			reference: b.reference,
@@ -292,7 +337,7 @@ func (s *Scene) Each(cb func(b Body)) {
 }
 
 func (s *Scene) Nearby(body Body, distance float64, cb func(b Body)) {
-	state := s.getBody(body.reference)
+	state := s.resolveBodyState(body.reference)
 	if state == nil {
 		return
 	}
@@ -313,10 +358,7 @@ func (s *Scene) Nearby(body Body, distance float64, cb func(b Body)) {
 
 func (s *Scene) runSimulation(elapsedSeconds float64) {
 	// TODO: Should this be moved inside if statement below?
-	s.eachBody(func(body *bodyState) {
-		body.oldPosition = body.position
-		body.oldRotation = body.rotation
-	})
+	s.resetOldPositions()
 	if elapsedSeconds > 0.0001 {
 		s.applyForces()
 		s.applyAcceleration(elapsedSeconds)
@@ -327,10 +369,17 @@ func (s *Scene) runSimulation(elapsedSeconds float64) {
 	}
 }
 
+func (s *Scene) resetOldPositions() {
+	s.eachBodyState(func(_ int, body *bodyState) {
+		body.oldPosition = body.position
+		body.oldRotation = body.rotation
+	})
+}
+
 func (s *Scene) applyForces() {
 	defer metric.BeginRegion("forces").End()
 
-	s.eachBody(func(body *bodyState) {
+	s.eachBodyState(func(_ int, body *bodyState) {
 		body.ResetLinearAcceleration()
 		body.ResetAngularAcceleration()
 	})
@@ -339,7 +388,7 @@ func (s *Scene) applyForces() {
 	// The current implementation below works only while there is a single
 	// accelerator type.
 
-	s.eachBody(func(body *bodyState) {
+	s.eachBodyState(func(_ int, body *bodyState) {
 		target := solver.NewAccelerationTarget(
 			body.mass,
 			body.momentOfInertia,
@@ -372,7 +421,7 @@ func (s *Scene) applyForces() {
 		body.AddAngularAcceleration(target.AccumulatedAngularAcceleration())
 	})
 
-	s.eachBody(func(body *bodyState) {
+	s.eachBodyState(func(_ int, body *bodyState) {
 		deltaWindVelocity := dprec.Vec3Diff(s.windVelocity, body.velocity)
 		dragForce := dprec.Vec3Prod(deltaWindVelocity, deltaWindVelocity.Length()*s.windDensity*body.dragFactor)
 		body.ApplyForce(dragForce)
@@ -399,8 +448,8 @@ func (s *Scene) applyForces() {
 
 func (s *Scene) applyAcceleration(elapsedSeconds float64) {
 	defer metric.BeginRegion("acceleration").End()
-	s.eachBody(func(body *bodyState) {
-		body.ClampLinearAcceleration(s.maxAcceleration)
+	s.eachBodyState(func(_ int, body *bodyState) {
+		body.ClampLinearAcceleration(s.maxLinearAcceleration)
 		body.ClampAngularAcceleration(s.maxAngularAcceleration)
 
 		deltaVelocity := dprec.Vec3Prod(body.linearAcceleration, elapsedSeconds)
@@ -416,8 +465,8 @@ func (s *Scene) applyImpulses(elapsedSeconds float64) {
 	// TODO: Check that bodies referenced by constraints are still valid.
 
 	for i := range s.bodies {
-		placeholder := &s.placeholders[i]
-		if body := &s.bodies[i]; body.CanUse() {
+		placeholder := &s.bodyConstraintPlaceholders[i]
+		if body := &s.bodies[i]; body.IsActive() {
 			s.initPlaceholder(placeholder, body)
 		}
 	}
@@ -426,8 +475,8 @@ func (s *Scene) applyImpulses(elapsedSeconds float64) {
 		if !constraint.CanUse() {
 			continue
 		}
-		target := &s.placeholders[constraint.primary.reference.Index]
-		source := &s.placeholders[constraint.secondary.reference.Index]
+		target := &s.bodyConstraintPlaceholders[constraint.primary.reference.Index]
+		source := &s.bodyConstraintPlaceholders[constraint.secondary.reference.Index]
 		constraint.logic.Reset(solver.PairContext{
 			Target:      target,
 			Source:      source,
@@ -440,7 +489,7 @@ func (s *Scene) applyImpulses(elapsedSeconds float64) {
 		if !constraint.CanUse() {
 			continue
 		}
-		target := &s.placeholders[constraint.body.reference.Index]
+		target := &s.bodyConstraintPlaceholders[constraint.body.reference.Index]
 		constraint.logic.Reset(solver.Context{
 			Target:      target,
 			DeltaTime:   elapsedSeconds,
@@ -454,8 +503,8 @@ func (s *Scene) applyImpulses(elapsedSeconds float64) {
 			if !constraint.CanUse() {
 				continue
 			}
-			target := &s.placeholders[constraint.primary.reference.Index]
-			source := &s.placeholders[constraint.secondary.reference.Index]
+			target := &s.bodyConstraintPlaceholders[constraint.primary.reference.Index]
+			source := &s.bodyConstraintPlaceholders[constraint.secondary.reference.Index]
 			constraint.logic.ApplyImpulses(solver.PairContext{
 				Target:      target,
 				Source:      source,
@@ -468,7 +517,7 @@ func (s *Scene) applyImpulses(elapsedSeconds float64) {
 			if !constraint.CanUse() {
 				continue
 			}
-			target := &s.placeholders[constraint.body.reference.Index]
+			target := &s.bodyConstraintPlaceholders[constraint.body.reference.Index]
 			constraint.logic.ApplyImpulses(solver.Context{
 				Target:      target,
 				DeltaTime:   elapsedSeconds,
@@ -479,8 +528,8 @@ func (s *Scene) applyImpulses(elapsedSeconds float64) {
 	}
 
 	for i := range s.bodies {
-		placeholder := s.placeholders[i]
-		if body := &s.bodies[i]; body.CanUse() {
+		placeholder := s.bodyConstraintPlaceholders[i]
+		if body := &s.bodies[i]; body.IsActive() {
 			s.deinitPlaceholder(&placeholder, body)
 		}
 	}
@@ -488,8 +537,8 @@ func (s *Scene) applyImpulses(elapsedSeconds float64) {
 
 func (s *Scene) applyMotion(elapsedSeconds float64) {
 	defer metric.BeginRegion("motion").End()
-	s.eachBody(func(body *bodyState) {
-		body.ClampVelocity(s.maxVelocity)
+	s.eachBodyState(func(_ int, body *bodyState) {
+		body.ClampVelocity(s.maxLinearVelocity)
 		body.ClampAngularVelocity(s.maxAngularVelocity)
 
 		deltaPosition := dprec.Vec3Prod(body.velocity, elapsedSeconds)
@@ -507,13 +556,13 @@ func (s *Scene) applyNudges(elapsedSeconds float64) {
 	defer metric.BeginRegion("nudges").End()
 
 	// TODO: Use Grow instead
-	s.placeholders = s.placeholders[:0]
+	s.bodyConstraintPlaceholders = s.bodyConstraintPlaceholders[:0]
 	for i := range s.bodies {
 		placeholder := solver.Placeholder{}
-		if body := &s.bodies[i]; body.CanUse() {
+		if body := &s.bodies[i]; body.IsActive() {
 			s.initPlaceholder(&placeholder, body)
 		}
-		s.placeholders = append(s.placeholders, placeholder)
+		s.bodyConstraintPlaceholders = append(s.bodyConstraintPlaceholders, placeholder)
 	}
 
 	for i := 0; i < NudgeIterationCount; i++ {
@@ -521,8 +570,8 @@ func (s *Scene) applyNudges(elapsedSeconds float64) {
 			if !constraint.CanUse() {
 				continue
 			}
-			target := &s.placeholders[constraint.primary.reference.Index]
-			source := &s.placeholders[constraint.secondary.reference.Index]
+			target := &s.bodyConstraintPlaceholders[constraint.primary.reference.Index]
+			source := &s.bodyConstraintPlaceholders[constraint.secondary.reference.Index]
 			ctx := solver.PairContext{
 				Target:      target,
 				Source:      source,
@@ -537,7 +586,7 @@ func (s *Scene) applyNudges(elapsedSeconds float64) {
 			if !constraint.CanUse() {
 				continue
 			}
-			target := &s.placeholders[constraint.body.reference.Index]
+			target := &s.bodyConstraintPlaceholders[constraint.body.reference.Index]
 			ctx := solver.Context{
 				Target:      target,
 				DeltaTime:   elapsedSeconds,
@@ -550,8 +599,8 @@ func (s *Scene) applyNudges(elapsedSeconds float64) {
 	}
 
 	for i := range s.bodies {
-		placeholder := s.placeholders[i]
-		if body := &s.bodies[i]; body.CanUse() {
+		placeholder := s.bodyConstraintPlaceholders[i]
+		if body := &s.bodies[i]; body.IsActive() {
 			s.deinitPlaceholder(&placeholder, body)
 		}
 	}
@@ -561,7 +610,7 @@ func (s *Scene) detectCollisions() {
 	defer metric.BeginRegion("collision").End()
 	s.collisionRevision++
 
-	s.eachBody(func(body *bodyState) {
+	s.eachBodyState(func(_ int, body *bodyState) {
 		body.InvalidateCollisionShapes(s)
 	})
 
@@ -577,7 +626,7 @@ func (s *Scene) detectCollisions() {
 	s.dbCollisionConstraints = s.dbCollisionConstraints[:0]
 	s.dbCollisionSolvers = s.dbCollisionSolvers[:0]
 
-	s.eachBody(func(primary *bodyState) {
+	s.eachBodyState(func(_ int, primary *bodyState) {
 		if primary.collisionSet.IsEmpty() {
 			return
 		}
@@ -701,7 +750,7 @@ func (s *Scene) onTickInterval(elapsedTime time.Duration) {
 }
 
 func (s *Scene) onTickLerp(alpha float64) {
-	s.eachBody(func(body *bodyState) {
+	s.eachBodyState(func(_ int, body *bodyState) {
 		body.intermediatePosition = dprec.Vec3Lerp(body.oldPosition, body.position, alpha)
 		body.intermediateRotation = dprec.QuatSlerp(body.oldRotation, body.rotation, alpha)
 	})
@@ -755,17 +804,17 @@ func (s *Scene) notifyDynamicCollisions() {
 	clear(s.newDBCollisions)
 }
 
-func (s *Scene) eachBody(cb func(b *bodyState)) {
+func (s *Scene) eachBodyState(cb func(index int, b *bodyState)) {
 	for i := range s.bodies {
-		if body := &s.bodies[i]; body.CanUse() {
-			cb(body)
+		if body := &s.bodies[i]; body.IsActive() {
+			cb(i, body)
 		}
 	}
 }
 
-func (s *Scene) getBody(reference indexReference) *bodyState {
+func (s *Scene) resolveBodyState(reference indexReference) *bodyState {
 	state := &s.bodies[reference.Index]
-	if !state.CanUse() || state.reference.Revision != reference.Revision {
+	if !state.IsActive() || state.reference.Revision != reference.Revision {
 		return nil
 	}
 	return state
