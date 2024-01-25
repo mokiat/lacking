@@ -24,17 +24,17 @@ func newScene(resourceSet *ResourceSet, physicsScene *physics.Scene, gfxScene *g
 		playbackPool: ds.NewPool[Playback](),
 		playbacks:    ds.NewList[*Playback](4),
 
-		preUpdateSubscriptions:  timestep.NewSubscriptionSet[timestep.UpdateCallback](),
-		postUpdateSubscriptions: timestep.NewSubscriptionSet[timestep.UpdateCallback](),
+		preUpdateSubscriptions:  timestep.NewUpdateSubscriptionSet(),
+		postUpdateSubscriptions: timestep.NewUpdateSubscriptionSet(),
 
-		prePhysicsSubscriptions:  timestep.NewSubscriptionSet[timestep.UpdateCallback](),
-		postPhysicsSubscriptions: timestep.NewSubscriptionSet[timestep.UpdateCallback](),
+		prePhysicsSubscriptions:  timestep.NewUpdateSubscriptionSet(),
+		postPhysicsSubscriptions: timestep.NewUpdateSubscriptionSet(),
 
-		preAnimationSubscriptions:  timestep.NewSubscriptionSet[timestep.UpdateCallback](),
-		postAnimationSubscriptions: timestep.NewSubscriptionSet[timestep.UpdateCallback](),
+		preAnimationSubscriptions:  timestep.NewUpdateSubscriptionSet(),
+		postAnimationSubscriptions: timestep.NewUpdateSubscriptionSet(),
 
-		preNodeSubscriptions:  timestep.NewSubscriptionSet[timestep.UpdateCallback](),
-		postNodeSubscriptions: timestep.NewSubscriptionSet[timestep.UpdateCallback](),
+		preNodeSubscriptions:  timestep.NewUpdateSubscriptionSet(),
+		postNodeSubscriptions: timestep.NewUpdateSubscriptionSet(),
 	}
 }
 
@@ -48,17 +48,17 @@ type Scene struct {
 	playbackPool *ds.Pool[Playback]
 	playbacks    *ds.List[*Playback]
 
-	preUpdateSubscriptions  *timestep.SubscriptionSet[timestep.UpdateCallback]
-	postUpdateSubscriptions *timestep.SubscriptionSet[timestep.UpdateCallback]
+	preUpdateSubscriptions  *timestep.UpdateSubscriptionSet
+	postUpdateSubscriptions *timestep.UpdateSubscriptionSet
 
-	prePhysicsSubscriptions  *timestep.SubscriptionSet[timestep.UpdateCallback]
-	postPhysicsSubscriptions *timestep.SubscriptionSet[timestep.UpdateCallback]
+	prePhysicsSubscriptions  *timestep.UpdateSubscriptionSet
+	postPhysicsSubscriptions *timestep.UpdateSubscriptionSet
 
-	preAnimationSubscriptions  *timestep.SubscriptionSet[timestep.UpdateCallback]
-	postAnimationSubscriptions *timestep.SubscriptionSet[timestep.UpdateCallback]
+	preAnimationSubscriptions  *timestep.UpdateSubscriptionSet
+	postAnimationSubscriptions *timestep.UpdateSubscriptionSet
 
-	preNodeSubscriptions  *timestep.SubscriptionSet[timestep.UpdateCallback]
-	postNodeSubscriptions *timestep.SubscriptionSet[timestep.UpdateCallback]
+	preNodeSubscriptions  *timestep.UpdateSubscriptionSet
+	postNodeSubscriptions *timestep.UpdateSubscriptionSet
 
 	frozen bool
 }
@@ -201,7 +201,7 @@ func (s *Scene) updatePhysics(elapsedTime time.Duration) {
 	prePhysicsSpan.End()
 
 	physicsSpan := metric.BeginRegion("physics")
-	s.physicsScene.OnUpdate(elapsedTime)
+	s.physicsScene.Update(elapsedTime)
 	physicsSpan.End()
 
 	postPhysicsSpan := metric.BeginRegion("post-physics")
@@ -312,7 +312,7 @@ func (s *Scene) CreateModel(info ModelInfo) *Model {
 		parent.AppendChild(nodes[i])
 	}
 
-	var bodyInstances []*physics.Body
+	var bodyInstances []physics.Body
 	for _, instance := range definition.bodyInstances {
 		var bodyNode *hierarchy.Node
 		if instance.NodeIndex >= 0 {
@@ -338,6 +338,7 @@ func (s *Scene) CreateModel(info ModelInfo) *Model {
 			collisionSet := collision.NewSet()
 			collisionSet.Replace(bodyDefinition.CollisionSet(), transform)
 			s.physicsScene.CreateProp(physics.PropInfo{
+				Name:         instance.Name,
 				CollisionSet: collisionSet,
 			})
 		}

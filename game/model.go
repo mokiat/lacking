@@ -499,7 +499,7 @@ type Model struct {
 	nodes                     []*hierarchy.Node
 	armatures                 []*graphics.Armature
 	animations                []*Animation
-	bodyInstances             []*physics.Body
+	bodyInstances             []physics.Body
 	pointLightInstances       []*graphics.PointLight
 	spotLightInstances        []*graphics.SpotLight
 	directionalLightInstances []*graphics.DirectionalLight
@@ -513,7 +513,7 @@ func (m *Model) FindNode(name string) *hierarchy.Node {
 	return m.root.FindNode(name)
 }
 
-func (m *Model) BodyInstances() []*physics.Body {
+func (m *Model) BodyInstances() []physics.Body {
 	return m.bodyInstances
 }
 

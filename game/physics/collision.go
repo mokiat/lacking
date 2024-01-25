@@ -7,3 +7,13 @@ func NewCollisionGroup() int {
 	nextCollisionGroup++
 	return result
 }
+
+type sbCollisionPair struct {
+	BodyRef indexReference
+	PropRef indexReference
+}
+
+type dbCollisionPair struct {
+	PrimaryRef   indexReference
+	SecondaryRef indexReference
+}

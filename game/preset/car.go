@@ -485,7 +485,7 @@ func (c *Car) Velocity() float64 {
 
 type Chassis struct {
 	node       *hierarchy.Node
-	body       *physics.Body
+	body       physics.Body
 	headLights []*graphics.PointLight
 	tailLights []*graphics.PointLight
 	beamLights []*graphics.SpotLight
@@ -496,7 +496,7 @@ func (c *Chassis) Node() *hierarchy.Node {
 	return c.node
 }
 
-func (c *Chassis) Body() *physics.Body {
+func (c *Chassis) Body() physics.Body {
 	return c.body
 }
 
@@ -561,20 +561,20 @@ func (a *Axis) RightHub() *Hub {
 
 type Wheel struct {
 	node                 *hierarchy.Node
-	body                 *physics.Body
+	body                 physics.Body
 	directionSolver      *constraint.MatchDirections
-	attachmentConstraint *physics.DBConstraint
+	attachmentConstraint physics.DBConstraint
 }
 
 func (w *Wheel) Velocity() float64 {
-	return dprec.Vec3Dot(w.body.AngularVelocity(), w.body.Orientation().OrientationX())
+	return dprec.Vec3Dot(w.body.AngularVelocity(), w.body.Rotation().OrientationX())
 }
 
 func (w *Wheel) Node() *hierarchy.Node {
 	return w.node
 }
 
-func (w *Wheel) Body() *physics.Body {
+func (w *Wheel) Body() physics.Body {
 	return w.body
 }
 
@@ -582,19 +582,19 @@ func (w *Wheel) DirectionSolver() *constraint.MatchDirections {
 	return w.directionSolver
 }
 
-func (w *Wheel) AttachmentConstraint() *physics.DBConstraint {
+func (w *Wheel) AttachmentConstraint() physics.DBConstraint {
 	return w.attachmentConstraint
 }
 
 type Hub struct {
 	node *hierarchy.Node
-	body *physics.Body
+	body physics.Body
 }
 
 func (h *Hub) Node() *hierarchy.Node {
 	return h.node
 }
 
-func (h *Hub) Body() *physics.Body {
+func (h *Hub) Body() physics.Body {
 	return h.body
 }
