@@ -338,6 +338,7 @@ func (s *Scene) CreateModel(info ModelInfo) *Model {
 			collisionSet := collision.NewSet()
 			collisionSet.Replace(bodyDefinition.CollisionSet(), transform)
 			s.physicsScene.CreateProp(physics.PropInfo{
+				Name:         instance.Name,
 				CollisionSet: collisionSet,
 			})
 		}
