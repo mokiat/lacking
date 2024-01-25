@@ -65,7 +65,7 @@ type dbConstraintState struct {
 	enabled   bool
 }
 
-func (s dbConstraintState) CanUse() bool {
+func (s dbConstraintState) IsActive() bool {
 	return s.reference.IsValid() && s.enabled
 }
 

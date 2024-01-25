@@ -57,7 +57,7 @@ type sbConstraintState struct {
 	enabled   bool
 }
 
-func (s sbConstraintState) CanUse() bool {
+func (s sbConstraintState) IsActive() bool {
 	return s.reference.IsValid() && s.enabled
 }
 

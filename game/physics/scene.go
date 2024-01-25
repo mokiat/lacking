@@ -460,19 +460,29 @@ func (s *Scene) applyAccelerationTargets(elapsedSeconds float64) {
 func (s *Scene) applyImpulses(elapsedSeconds float64) {
 	defer metric.BeginRegion("impulses").End()
 
-	// TODO: Check that bodies referenced by constraints are still valid.
-
-	for i := range s.bodies {
+	s.eachBodyState(func(i int, body *bodyState) {
 		placeholder := &s.bodyConstraintPlaceholders[i]
-		if body := &s.bodies[i]; body.IsActive() {
-			s.initPlaceholder(placeholder, body)
-		}
-	}
+		s.initPlaceholder(placeholder, body)
+	})
 
-	for _, constraint := range s.dbConstraints {
-		if !constraint.CanUse() {
-			continue
+	s.eachSBConstraintState(func(_ int, constraint *sbConstraintState) {
+		if s.resolveBodyState(constraint.body.reference) == nil {
+			deleteSBConstraint(s, constraint.reference)
+			return
 		}
+	})
+	s.eachDBConstraintState(func(_ int, constraint *dbConstraintState) {
+		if s.resolveBodyState(constraint.primary.reference) == nil {
+			deleteDBConstraint(s, constraint.reference)
+			return
+		}
+		if s.resolveBodyState(constraint.secondary.reference) == nil {
+			deleteDBConstraint(s, constraint.reference)
+			return
+		}
+	})
+
+	s.eachDBConstraintState(func(_ int, constraint *dbConstraintState) {
 		target := &s.bodyConstraintPlaceholders[constraint.primary.reference.Index]
 		source := &s.bodyConstraintPlaceholders[constraint.secondary.reference.Index]
 		constraint.logic.Reset(solver.PairContext{
@@ -482,11 +492,8 @@ func (s *Scene) applyImpulses(elapsedSeconds float64) {
 			ImpulseBeta: ImpulseDriftAdjustmentRatio,
 			NudgeBeta:   NudgeDriftAdjustmentRatio,
 		})
-	}
-	for _, constraint := range s.sbConstraints {
-		if !constraint.CanUse() {
-			continue
-		}
+	})
+	s.eachSBConstraintState(func(_ int, constraint *sbConstraintState) {
 		target := &s.bodyConstraintPlaceholders[constraint.body.reference.Index]
 		constraint.logic.Reset(solver.Context{
 			Target:      target,
@@ -494,13 +501,10 @@ func (s *Scene) applyImpulses(elapsedSeconds float64) {
 			ImpulseBeta: ImpulseDriftAdjustmentRatio,
 			NudgeBeta:   NudgeDriftAdjustmentRatio,
 		})
-	}
+	})
 
 	for i := 0; i < ImpulseIterationCount; i++ {
-		for _, constraint := range s.dbConstraints {
-			if !constraint.CanUse() {
-				continue
-			}
+		s.eachDBConstraintState(func(_ int, constraint *dbConstraintState) {
 			target := &s.bodyConstraintPlaceholders[constraint.primary.reference.Index]
 			source := &s.bodyConstraintPlaceholders[constraint.secondary.reference.Index]
 			constraint.logic.ApplyImpulses(solver.PairContext{
@@ -510,11 +514,8 @@ func (s *Scene) applyImpulses(elapsedSeconds float64) {
 				ImpulseBeta: ImpulseDriftAdjustmentRatio,
 				NudgeBeta:   NudgeDriftAdjustmentRatio,
 			})
-		}
-		for _, constraint := range s.sbConstraints {
-			if !constraint.CanUse() {
-				continue
-			}
+		})
+		s.eachSBConstraintState(func(_ int, constraint *sbConstraintState) {
 			target := &s.bodyConstraintPlaceholders[constraint.body.reference.Index]
 			constraint.logic.ApplyImpulses(solver.Context{
 				Target:      target,
@@ -522,15 +523,13 @@ func (s *Scene) applyImpulses(elapsedSeconds float64) {
 				ImpulseBeta: ImpulseDriftAdjustmentRatio,
 				NudgeBeta:   NudgeDriftAdjustmentRatio,
 			})
-		}
+		})
 	}
 
-	for i := range s.bodies {
-		placeholder := s.bodyConstraintPlaceholders[i]
-		if body := &s.bodies[i]; body.IsActive() {
-			s.deinitPlaceholder(&placeholder, body)
-		}
-	}
+	s.eachBodyState(func(i int, body *bodyState) {
+		placeholder := &s.bodyConstraintPlaceholders[i]
+		s.deinitPlaceholder(placeholder, body)
+	})
 }
 
 func (s *Scene) applyMotion(elapsedSeconds float64) {
@@ -565,7 +564,7 @@ func (s *Scene) applyNudges(elapsedSeconds float64) {
 
 	for i := 0; i < NudgeIterationCount; i++ {
 		for _, constraint := range s.dbConstraints {
-			if !constraint.CanUse() {
+			if !constraint.IsActive() {
 				continue
 			}
 			target := &s.bodyConstraintPlaceholders[constraint.primary.reference.Index]
@@ -581,7 +580,7 @@ func (s *Scene) applyNudges(elapsedSeconds float64) {
 			constraint.logic.ApplyNudges(ctx)
 		}
 		for _, constraint := range s.sbConstraints {
-			if !constraint.CanUse() {
+			if !constraint.IsActive() {
 				continue
 			}
 			target := &s.bodyConstraintPlaceholders[constraint.body.reference.Index]
@@ -845,6 +844,22 @@ func (s *Scene) eachBodyState(cb func(index int, b *bodyState)) {
 	for i := range s.bodies {
 		if body := &s.bodies[i]; body.IsActive() {
 			cb(i, body)
+		}
+	}
+}
+
+func (s *Scene) eachSBConstraintState(cb func(index int, constraint *sbConstraintState)) {
+	for i := range s.sbConstraints {
+		if constraint := &s.sbConstraints[i]; constraint.IsActive() {
+			cb(i, constraint)
+		}
+	}
+}
+
+func (s *Scene) eachDBConstraintState(cb func(index int, constraint *dbConstraintState)) {
+	for i := range s.dbConstraints {
+		if constraint := &s.dbConstraints[i]; constraint.IsActive() {
+			cb(i, constraint)
 		}
 	}
 }
