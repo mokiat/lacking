@@ -75,7 +75,7 @@ func (p AerodynamicShape) Transformed(parent Transform) AerodynamicShape {
 // AerodynamicSolver represents a shape that is affected
 // by air or liquid motion and inflicts a force on the body.
 type AerodynamicSolver interface {
-	Force(windSpeed dprec.Vec3) dprec.Vec3
+	Force(windSpeed dprec.Vec3, density float64) dprec.Vec3
 }
 
 func NewSurfaceAerodynamicShape(width, height, length float64) *SurfaceAerodynamicShape {
@@ -83,6 +83,9 @@ func NewSurfaceAerodynamicShape(width, height, length float64) *SurfaceAerodynam
 		width:  width,
 		height: height,
 		length: length,
+
+		dragCoefficient: 0.5,
+		liftCoefficient: 2.1,
 	}
 }
 
@@ -92,16 +95,27 @@ type SurfaceAerodynamicShape struct {
 	width  float64
 	height float64
 	length float64
+
+	dragCoefficient float64
+	liftCoefficient float64
 }
 
-func (s *SurfaceAerodynamicShape) Force(windSpeed dprec.Vec3) dprec.Vec3 {
+func (s *SurfaceAerodynamicShape) SetDragCoefficient(coefficient float64) *SurfaceAerodynamicShape {
+	s.dragCoefficient = coefficient
+	return s
+}
+
+func (s *SurfaceAerodynamicShape) SetLiftCoefficient(coefficient float64) *SurfaceAerodynamicShape {
+	s.liftCoefficient = coefficient
+	return s
+}
+
+func (s *SurfaceAerodynamicShape) Force(windSpeed dprec.Vec3, density float64) dprec.Vec3 {
 	// DRAG
 	dragX := s.length * s.height * dprec.Vec3Dot(windSpeed, dprec.BasisXVec3())
 	dragY := s.width * s.length * dprec.Vec3Dot(windSpeed, dprec.BasisYVec3())
 	dragZ := s.width * s.height * dprec.Vec3Dot(windSpeed, dprec.BasisZVec3())
-	ro := 1.2
-	cD := 0.5
-	result := dprec.Vec3Prod(dprec.NewVec3(dragX, dragY, dragZ), windSpeed.Length()*ro*cD/2.0)
+	result := dprec.Vec3Prod(dprec.NewVec3(dragX, dragY, dragZ), windSpeed.Length()*density*s.dragCoefficient/2.0)
 
 	// LIFT
 	liftVelocity := -dprec.Vec3Dot(windSpeed, dprec.BasisZVec3())
@@ -111,7 +125,7 @@ func (s *SurfaceAerodynamicShape) Force(windSpeed dprec.Vec3) dprec.Vec3 {
 		if dprec.Abs(sn) < stallSN {
 			result = dprec.Vec3Sum(result, dprec.NewVec3(
 				0.0,
-				sn*2.5*liftVelocity*liftVelocity*s.width*s.length,
+				sn*density*s.liftCoefficient*liftVelocity*liftVelocity*s.width*s.length,
 				0.0,
 			))
 		}

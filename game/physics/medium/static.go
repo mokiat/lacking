@@ -23,16 +23,18 @@ func (m *StaticAirMedium) AirDensity() float64 {
 	return m.airDensity
 }
 
-func (m *StaticAirMedium) SetAirDensity(density float64) {
+func (m *StaticAirMedium) SetAirDensity(density float64) *StaticAirMedium {
 	m.airDensity = density
+	return m
 }
 
 func (m *StaticAirMedium) AirVelocity() dprec.Vec3 {
 	return m.airVelocity
 }
 
-func (m *StaticAirMedium) SetAirVelocity(velocity dprec.Vec3) {
+func (m *StaticAirMedium) SetAirVelocity(velocity dprec.Vec3) *StaticAirMedium {
 	m.airVelocity = velocity
+	return m
 }
 
 func (m *StaticAirMedium) Density(position dprec.Vec3) float64 {

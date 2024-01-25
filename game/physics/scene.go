@@ -431,7 +431,7 @@ func (s *Scene) applyAerodynamicAccelerations() {
 			aerodynamicShape = aerodynamicShape.Transformed(bodyTransform)
 			relativeSpeed := dprec.QuatVec3Rotation(dprec.InverseQuat(aerodynamicShape.Rotation()), deltaVelocity)
 
-			force := aerodynamicShape.solver.Force(relativeSpeed)
+			force := aerodynamicShape.solver.Force(relativeSpeed, mediumDensity)
 			absoluteForce := dprec.QuatVec3Rotation(aerodynamicShape.Rotation(), force)
 			target.ApplyForce(absoluteForce) // TODO: Apply at offset
 			// target.ApplyOffsetForce(absoluteForce, aerodynamicShape.Position())
