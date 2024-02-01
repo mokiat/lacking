@@ -97,18 +97,67 @@ func (s *Scene) Root() *hierarchy.Node {
 	return s.root
 }
 
+// IDEA: Have an array of nodes with change revisions (as right now) and
+// index references (like in physics).
+// Have an array of directional light handles that have a reference to a node
+// and a revision.
+// If the revision is changed, then apply the transform. If the index ref
+// is invalid, then delete the light.
+//
+// But is this really good? Right now a single node represents a single
+// concept. This allows the node to keep hold of the name of the thing
+// and represent it uniquely.
+
+func (s *Scene) ApplyModel(owner *hierarchy.Node, def *ModelDefinition) {
+	// TODO
+}
+
+func (s *Scene) ApplyAmbientLight(owner *hierarchy.Node, def AmbientLightDefinition) {
+	nodeMatrix := owner.AbsoluteMatrix()
+	translation, _, _ := nodeMatrix.TRS()
+
+	light := s.gfxScene.CreateAmbientLight(graphics.AmbientLightInfo{
+		Position:          translation,
+		InnerRadius:       def.InnerRadius,
+		OuterRadius:       def.OuterRadius,
+		ReflectionTexture: def.ReflectionTexture.gfxTexture,
+		RefractionTexture: def.RefractionTexture.gfxTexture,
+	})
+	owner.SetTarget(AmbientLightNodeTarget{
+		Light: light,
+	})
+}
+
+func (s *Scene) ApplyDirectionalLight(owner *hierarchy.Node, def DirectionalLightDefinition) {
+	nodeMatrix := owner.AbsoluteMatrix()
+	translation, rotation, _ := nodeMatrix.TRS()
+
+	light := s.gfxScene.CreateDirectionalLight(graphics.DirectionalLightInfo{
+		Position:    translation,
+		Orientation: rotation,
+		EmitColor:   def.EmitColor,
+		EmitRange:   def.EmitRange,
+	})
+	owner.SetTarget(DirectionalLightNodeTarget{
+		Light: light,
+	})
+}
+
 func (s *Scene) Initialize(definition *SceneDefinition) {
 	if definition.skyboxTexture != nil {
 		s.Graphics().Sky().SetSkybox(definition.skyboxTexture.gfxTexture)
 	}
 
 	if definition.reflectionTexture != nil && definition.refractionTexture != nil {
-		s.Graphics().CreateAmbientLight(graphics.AmbientLightInfo{
-			ReflectionTexture: definition.reflectionTexture.gfxTexture,
-			RefractionTexture: definition.refractionTexture.gfxTexture,
-			Position:          dprec.ZeroVec3(),
-			InnerRadius:       25000.0,
-			OuterRadius:       25000.0, // FIXME
+		node := hierarchy.NewNode()
+		node.SetName("AmbientLight")
+		s.root.AppendChild(node)
+
+		s.ApplyAmbientLight(node, AmbientLightDefinition{
+			ReflectionTexture: definition.reflectionTexture,
+			RefractionTexture: definition.refractionTexture,
+			InnerRadius:       25000.0, // TODO
+			OuterRadius:       25000.0, // TODO
 		})
 	}
 

@@ -48,6 +48,15 @@ func (l *AmbientLight) SetActive(active bool) {
 	l.active = active
 }
 
+func (l *AmbientLight) Delete() {
+	if l.scene == nil {
+		panic("ambient light already deleted")
+	}
+	l.scene.ambientLightSet.Remove(l.itemID)
+	l.scene.ambientLightPool.Restore(l)
+	l.scene = nil
+}
+
 // TODO: Set/Get Position
 // TODO: Set/Get Inner Radius
 // TODO: Set/Get Outer Radius
