@@ -9,7 +9,7 @@ import (
 
 type DirectionalLightInfo struct {
 	Position    dprec.Vec3
-	Orientation dprec.Quat
+	Orientation dprec.Quat // TODO: Rename to rotation
 	EmitColor   dprec.Vec3
 	EmitRange   float64
 }
