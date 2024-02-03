@@ -38,6 +38,7 @@ func newScene(resourceSet *ResourceSet, physicsScene *physics.Scene, gfxScene *g
 	}
 }
 
+// Scene is the main container for all game objects and systems.
 type Scene struct {
 	physicsScene *physics.Scene
 	gfxScene     *graphics.Scene
@@ -63,61 +64,104 @@ type Scene struct {
 	frozen bool
 }
 
+// Delete removes all resources associated with the scene.
 func (s *Scene) Delete() {
 	defer s.physicsScene.Delete()
 	defer s.gfxScene.Delete()
 	defer s.ecsScene.Delete()
 }
 
+// SubscribePreUpdate adds a callback to be executed before the scene updates.
+func (s *Scene) SubscribePreUpdate(callback timestep.UpdateCallback) *timestep.UpdateSubscription {
+	return s.preUpdateSubscriptions.Subscribe(callback)
+}
+
+// SubscribePostUpdate adds a callback to be executed after the scene updates.
+func (s *Scene) SubscribePostUpdate(callback timestep.UpdateCallback) *timestep.UpdateSubscription {
+	return s.postUpdateSubscriptions.Subscribe(callback)
+}
+
+// SubscribePrePhysics adds a callback to be executed before the physics scene
+// updates.
+func (s *Scene) SubscribePrePhysics(callback timestep.UpdateCallback) *timestep.UpdateSubscription {
+	return s.prePhysicsSubscriptions.Subscribe(callback)
+}
+
+// SubscribePostPhysics adds a callback to be executed after the physics scene
+// updates.
+func (s *Scene) SubscribePostPhysics(callback timestep.UpdateCallback) *timestep.UpdateSubscription {
+	return s.postPhysicsSubscriptions.Subscribe(callback)
+}
+
+// SubscribePreAnimation adds a callback to be executed before the animations
+// are updated.
+func (s *Scene) SubscribePreAnimation(callback timestep.UpdateCallback) *timestep.UpdateSubscription {
+	return s.preAnimationSubscriptions.Subscribe(callback)
+}
+
+// SubscribePostAnimation adds a callback to be executed after the animations
+// are updated.
+func (s *Scene) SubscribePostAnimation(callback timestep.UpdateCallback) *timestep.UpdateSubscription {
+	return s.postAnimationSubscriptions.Subscribe(callback)
+}
+
+// SubscribePreNode adds a callback to be executed before the nodes are updated.
+func (s *Scene) SubscribePreNode(callback timestep.UpdateCallback) *timestep.UpdateSubscription {
+	return s.preNodeSubscriptions.Subscribe(callback)
+}
+
+// SubscribePostNode adds a callback to be executed after the nodes are updated.
+func (s *Scene) SubscribePostNode(callback timestep.UpdateCallback) *timestep.UpdateSubscription {
+	return s.postNodeSubscriptions.Subscribe(callback)
+}
+
+// IsFrozen returns whether the scene is currently frozen. A frozen scene
+// will not update any of its systems.
 func (s *Scene) IsFrozen() bool {
 	return s.frozen
 }
 
+// Freeze stops the scene from updating any of its systems.
 func (s *Scene) Freeze() {
 	s.frozen = true
 }
 
+// Unfreeze allows the scene to update its systems.
 func (s *Scene) Unfreeze() {
 	s.frozen = false
 }
 
+// Physics returns the physics scene associated with the scene.
 func (s *Scene) Physics() *physics.Scene {
 	return s.physicsScene
 }
 
+// Graphics returns the graphics scene associated with the scene.
 func (s *Scene) Graphics() *graphics.Scene {
 	return s.gfxScene
 }
 
+// ECS returns the ECS scene associated with the scene.
 func (s *Scene) ECS() *ecs.Scene {
 	return s.ecsScene
 }
 
+// Root returns the root node of the scene.
 func (s *Scene) Root() *hierarchy.Node {
 	return s.root
 }
-
-// IDEA: Have an array of nodes with change revisions (as right now) and
-// index references (like in physics).
-// Have an array of directional light handles that have a reference to a node
-// and a revision.
-// If the revision is changed, then apply the transform. If the index ref
-// is invalid, then delete the light.
-//
-// But is this really good? Right now a single node represents a single
-// concept. This allows the node to keep hold of the name of the thing
-// and represent it uniquely.
 
 func (s *Scene) ApplyModel(owner *hierarchy.Node, def *ModelDefinition) {
 	// TODO
 }
 
+// ApplyAmbientLight creates and configures an ambient light on the owner node.
 func (s *Scene) ApplyAmbientLight(owner *hierarchy.Node, def AmbientLightDefinition) {
 	nodeMatrix := owner.AbsoluteMatrix()
-	translation, _, _ := nodeMatrix.TRS()
+	position := nodeMatrix.Translation()
 
 	light := s.gfxScene.CreateAmbientLight(graphics.AmbientLightInfo{
-		Position:          translation,
+		Position:          position,
 		InnerRadius:       def.InnerRadius,
 		OuterRadius:       def.OuterRadius,
 		ReflectionTexture: def.ReflectionTexture.gfxTexture,
@@ -128,21 +172,59 @@ func (s *Scene) ApplyAmbientLight(owner *hierarchy.Node, def AmbientLightDefinit
 	})
 }
 
+// ApplyPointLight creates and configures a point light on the owner node.
+func (s *Scene) ApplyPointLight(owner *hierarchy.Node, def PointLightDefinition) {
+	nodeMatrix := owner.AbsoluteMatrix()
+	position := nodeMatrix.Translation()
+
+	light := s.gfxScene.CreatePointLight(graphics.PointLightInfo{
+		Position:  position,
+		EmitColor: def.EmitColor,
+		EmitRange: def.EmitRange,
+	})
+	owner.SetTarget(PointLightNodeTarget{
+		Light: light,
+	})
+}
+
+// ApplySpotLight creates and configures a spot light on the owner node.
+func (s *Scene) ApplySpotLight(owner *hierarchy.Node, def SpotLightDefinition) {
+	nodeMatrix := owner.AbsoluteMatrix()
+	position, rotation, _ := nodeMatrix.TRS()
+
+	light := s.gfxScene.CreateSpotLight(graphics.SpotLightInfo{
+		Position:           position,
+		Rotation:           rotation,
+		EmitColor:          def.EmitColor,
+		EmitOuterConeAngle: def.EmitOuterConeAngle,
+		EmitInnerConeAngle: def.EmitInnerConeAngle,
+		EmitRange:          def.EmitRange,
+	})
+	owner.SetTarget(SpotLightNodeTarget{
+		Light: light,
+	})
+}
+
+// ApplyDirectionalLight creates and configures a directional light on the
+// owner node.
 func (s *Scene) ApplyDirectionalLight(owner *hierarchy.Node, def DirectionalLightDefinition) {
 	nodeMatrix := owner.AbsoluteMatrix()
-	translation, rotation, _ := nodeMatrix.TRS()
+	position, rotation, _ := nodeMatrix.TRS()
 
 	light := s.gfxScene.CreateDirectionalLight(graphics.DirectionalLightInfo{
-		Position:    translation,
-		Orientation: rotation,
-		EmitColor:   def.EmitColor,
-		EmitRange:   def.EmitRange,
+		Position:  position,
+		Rotation:  rotation,
+		EmitColor: def.EmitColor,
+		EmitRange: def.EmitRange,
 	})
 	owner.SetTarget(DirectionalLightNodeTarget{
 		Light: light,
 	})
 }
 
+// Initialize prepares the scene for use by applying the provided definition.
+//
+// Deprecated: Will be replaced by Apply calls.
 func (s *Scene) Initialize(definition *SceneDefinition) {
 	if definition.skyboxTexture != nil {
 		s.Graphics().Sky().SetSkybox(definition.skyboxTexture.gfxTexture)
@@ -177,6 +259,7 @@ func (s *Scene) Initialize(definition *SceneDefinition) {
 	}
 }
 
+// Deprecated: Use the node hierarchy to find models.
 func (s *Scene) FindModel(name string) *Model {
 	for _, model := range s.models {
 		if model.root.Name() == name {
@@ -186,38 +269,7 @@ func (s *Scene) FindModel(name string) *Model {
 	return nil
 }
 
-func (s *Scene) SubscribePreUpdate(callback timestep.UpdateCallback) *timestep.UpdateSubscription {
-	return s.preUpdateSubscriptions.Subscribe(callback)
-}
-
-func (s *Scene) SubscribePostUpdate(callback timestep.UpdateCallback) *timestep.UpdateSubscription {
-	return s.postUpdateSubscriptions.Subscribe(callback)
-}
-
-func (s *Scene) SubscribePrePhysics(callback timestep.UpdateCallback) *timestep.UpdateSubscription {
-	return s.prePhysicsSubscriptions.Subscribe(callback)
-}
-
-func (s *Scene) SubscribePostPhysics(callback timestep.UpdateCallback) *timestep.UpdateSubscription {
-	return s.postPhysicsSubscriptions.Subscribe(callback)
-}
-
-func (s *Scene) SubscribePreAnimation(callback timestep.UpdateCallback) *timestep.UpdateSubscription {
-	return s.preAnimationSubscriptions.Subscribe(callback)
-}
-
-func (s *Scene) SubscribePostAnimation(callback timestep.UpdateCallback) *timestep.UpdateSubscription {
-	return s.postAnimationSubscriptions.Subscribe(callback)
-}
-
-func (s *Scene) SubscribePreNode(callback timestep.UpdateCallback) *timestep.UpdateSubscription {
-	return s.preNodeSubscriptions.Subscribe(callback)
-}
-
-func (s *Scene) SubscribePostNode(callback timestep.UpdateCallback) *timestep.UpdateSubscription {
-	return s.postNodeSubscriptions.Subscribe(callback)
-}
-
+// Update advances the scene by the provided time.
 func (s *Scene) Update(elapsedTime time.Duration) {
 	if s.frozen {
 		return
@@ -242,61 +294,7 @@ func (s *Scene) Update(elapsedTime time.Duration) {
 	postUpdateSpan.End()
 }
 
-func (s *Scene) updatePhysics(elapsedTime time.Duration) {
-	prePhysicsSpan := metric.BeginRegion("pre-physics")
-	s.prePhysicsSubscriptions.Each(func(callback timestep.UpdateCallback) {
-		callback(elapsedTime)
-	})
-	prePhysicsSpan.End()
-
-	physicsSpan := metric.BeginRegion("physics")
-	s.physicsScene.Update(elapsedTime)
-	physicsSpan.End()
-
-	postPhysicsSpan := metric.BeginRegion("post-physics")
-	s.postPhysicsSubscriptions.Each(func(callback timestep.UpdateCallback) {
-		callback(elapsedTime)
-	})
-	postPhysicsSpan.End()
-}
-
-func (s *Scene) updateAnimations(elapsedTime time.Duration) {
-	preAnimationSpan := metric.BeginRegion("pre-anim")
-	s.preAnimationSubscriptions.Each(func(callback timestep.UpdateCallback) {
-		callback(elapsedTime)
-	})
-	preAnimationSpan.End()
-
-	animationSpan := metric.BeginRegion("anim")
-	s.applyPlaybacks(elapsedTime)
-	animationSpan.End()
-
-	postAnimationSpan := metric.BeginRegion("post-anim")
-	s.postAnimationSubscriptions.Each(func(callback timestep.UpdateCallback) {
-		callback(elapsedTime)
-	})
-	postAnimationSpan.End()
-
-}
-
-func (s *Scene) updateNodes(elapsedTime time.Duration) {
-	preNodeSpan := metric.BeginRegion("pre-node")
-	s.preNodeSubscriptions.Each(func(callback timestep.UpdateCallback) {
-		callback(elapsedTime)
-	})
-	preNodeSpan.End()
-
-	nodeSpan := metric.BeginRegion("node")
-	s.root.ApplyFromSource(true)
-	nodeSpan.End()
-
-	postNodeSpan := metric.BeginRegion("post-node")
-	s.postNodeSubscriptions.Each(func(callback timestep.UpdateCallback) {
-		callback(elapsedTime)
-	})
-	postNodeSpan.End()
-}
-
+// Render draws the scene to the provided viewport.
 func (s *Scene) Render(viewport graphics.Viewport) {
 	stageSpan := metric.BeginRegion("stage")
 	s.root.ApplyToTarget(true)
@@ -443,10 +441,10 @@ func (s *Scene) CreateModel(info ModelInfo) *Model {
 			lightNode = modelNode
 		}
 		light := s.gfxScene.CreateDirectionalLight(graphics.DirectionalLightInfo{
-			Position:    dprec.ZeroVec3(),
-			Orientation: dprec.IdentityQuat(),
-			EmitRange:   instance.EmitRange,
-			EmitColor:   instance.EmitColor,
+			Position:  dprec.ZeroVec3(),
+			Rotation:  dprec.IdentityQuat(),
+			EmitRange: instance.EmitRange,
+			EmitColor: instance.EmitColor,
 		})
 		lightNode.SetTarget(DirectionalLightNodeTarget{
 			Light: light,
@@ -552,6 +550,61 @@ func (s *Scene) FindPlayback(name string) *Playback {
 		}
 	}
 	return nil
+}
+
+func (s *Scene) updatePhysics(elapsedTime time.Duration) {
+	prePhysicsSpan := metric.BeginRegion("pre-physics")
+	s.prePhysicsSubscriptions.Each(func(callback timestep.UpdateCallback) {
+		callback(elapsedTime)
+	})
+	prePhysicsSpan.End()
+
+	physicsSpan := metric.BeginRegion("physics")
+	s.physicsScene.Update(elapsedTime)
+	physicsSpan.End()
+
+	postPhysicsSpan := metric.BeginRegion("post-physics")
+	s.postPhysicsSubscriptions.Each(func(callback timestep.UpdateCallback) {
+		callback(elapsedTime)
+	})
+	postPhysicsSpan.End()
+}
+
+func (s *Scene) updateAnimations(elapsedTime time.Duration) {
+	preAnimationSpan := metric.BeginRegion("pre-anim")
+	s.preAnimationSubscriptions.Each(func(callback timestep.UpdateCallback) {
+		callback(elapsedTime)
+	})
+	preAnimationSpan.End()
+
+	animationSpan := metric.BeginRegion("anim")
+	s.applyPlaybacks(elapsedTime)
+	animationSpan.End()
+
+	postAnimationSpan := metric.BeginRegion("post-anim")
+	s.postAnimationSubscriptions.Each(func(callback timestep.UpdateCallback) {
+		callback(elapsedTime)
+	})
+	postAnimationSpan.End()
+
+}
+
+func (s *Scene) updateNodes(elapsedTime time.Duration) {
+	preNodeSpan := metric.BeginRegion("pre-node")
+	s.preNodeSubscriptions.Each(func(callback timestep.UpdateCallback) {
+		callback(elapsedTime)
+	})
+	preNodeSpan.End()
+
+	nodeSpan := metric.BeginRegion("node")
+	s.root.ApplyFromSource(true)
+	nodeSpan.End()
+
+	postNodeSpan := metric.BeginRegion("post-node")
+	s.postNodeSubscriptions.Each(func(callback timestep.UpdateCallback) {
+		callback(elapsedTime)
+	})
+	postNodeSpan.End()
 }
 
 func (s *Scene) applyPlaybacks(elapsedTime time.Duration) {
