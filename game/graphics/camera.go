@@ -31,6 +31,8 @@ func newCamera(scene *Scene) *Camera {
 		Node:              newNode(),
 		fov:               sprec.Degrees(120),
 		fovMode:           FoVModeHorizontalPlus,
+		near:              0.1,
+		far:               4000.0,
 		maxExposure:       10000.0,
 		minExposure:       0.00001,
 		autoExposureSpeed: 2.0,
@@ -45,6 +47,8 @@ type Camera struct {
 	fov                 sprec.Angle
 	fovMode             FoVMode
 	aspectRatio         float32
+	near                float32
+	far                 float32
 	autoFocusEnabled    bool
 	nearFocus           float32
 	farFocus            float32
@@ -87,6 +91,26 @@ func (c *Camera) AspectRatio() float32 {
 // SetAspectRatio changes the aspect ratio of this camera.
 func (c *Camera) SetAspectRatio(ratio float32) {
 	c.aspectRatio = ratio
+}
+
+// Near returns the distance to the near clipping plane.
+func (c *Camera) Near() float32 {
+	return c.near
+}
+
+// SetNear changes the distance to the near clipping plane.
+func (c *Camera) SetNear(near float32) {
+	c.near = near
+}
+
+// Far returns the distance to the far clipping plane.
+func (c *Camera) Far() float32 {
+	return c.far
+}
+
+// SetFar changes the distance to the far clipping plane.
+func (c *Camera) SetFar(far float32) {
+	c.far = far
 }
 
 // AutoFocus returns whether this camera will try and automatically
