@@ -8,6 +8,10 @@ import (
 type AmbientLightInfo struct {
 	Position dprec.Vec3
 	// TODO: Use a Box shape instead
+	// Width
+	// Height
+	// Length
+	// Overflow (for linear falloff into neighboring lights)
 	InnerRadius       float64
 	OuterRadius       float64
 	ReflectionTexture *CubeTexture
