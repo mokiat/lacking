@@ -680,11 +680,9 @@ func (r *sceneRenderer) Render(framebuffer render.Framebuffer, viewport Viewport
 }
 
 func (r *sceneRenderer) evaluateProjectionMatrix(camera *Camera, width, height int) sprec.Mat4 {
-	const (
-		near = float32(0.1)
-		far  = float32(4000.0)
-	)
 	var (
+		near    = camera.Near()
+		far     = camera.Far()
 		fWidth  = sprec.Max(1.0, float32(width))
 		fHeight = sprec.Max(1.0, float32(height))
 	)
