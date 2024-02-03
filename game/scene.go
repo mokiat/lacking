@@ -19,7 +19,7 @@ func newScene(resourceSet *ResourceSet, physicsScene *physics.Scene, gfxScene *g
 		physicsScene: physicsScene,
 		gfxScene:     gfxScene,
 		ecsScene:     ecsScene,
-		root:         hierarchy.NewNode(),
+		root:         hierarchy.NewNode(), // TODO: Make this node stationary
 
 		playbackPool: ds.NewPool[Playback](),
 		playbacks:    ds.NewList[*Playback](4),
@@ -151,13 +151,23 @@ func (s *Scene) Root() *hierarchy.Node {
 	return s.root
 }
 
-func (s *Scene) ApplyModel(owner *hierarchy.Node, def *ModelDefinition) {
-	// TODO
+// ApplyNode reconfigures the target node according to the provided definition.
+func (s *Scene) ApplyNode(target *hierarchy.Node, def NodeDefinition) {
+	target.SetName(def.Name)
+	target.SetPosition(def.Position)
+	target.SetRotation(def.Rotation)
+	target.SetScale(def.Scale)
+	// TODO: Add support for stationary and inseparable flags
+	if def.Parent != nil {
+		def.Parent.AppendChild(target)
+	} else {
+		s.root.AppendChild(target)
+	}
 }
 
-// ApplyAmbientLight creates and configures an ambient light on the owner node.
-func (s *Scene) ApplyAmbientLight(owner *hierarchy.Node, def AmbientLightDefinition) {
-	nodeMatrix := owner.AbsoluteMatrix()
+// ApplyAmbientLight creates and configures an ambient light on the target node.
+func (s *Scene) ApplyAmbientLight(target *hierarchy.Node, def AmbientLightDefinition) {
+	nodeMatrix := target.AbsoluteMatrix()
 	position := nodeMatrix.Translation()
 
 	light := s.gfxScene.CreateAmbientLight(graphics.AmbientLightInfo{
@@ -167,14 +177,14 @@ func (s *Scene) ApplyAmbientLight(owner *hierarchy.Node, def AmbientLightDefinit
 		ReflectionTexture: def.ReflectionTexture.gfxTexture,
 		RefractionTexture: def.RefractionTexture.gfxTexture,
 	})
-	owner.SetTarget(AmbientLightNodeTarget{
+	target.SetTarget(AmbientLightNodeTarget{
 		Light: light,
 	})
 }
 
-// ApplyPointLight creates and configures a point light on the owner node.
-func (s *Scene) ApplyPointLight(owner *hierarchy.Node, def PointLightDefinition) {
-	nodeMatrix := owner.AbsoluteMatrix()
+// ApplyPointLight creates and configures a point light on the target node.
+func (s *Scene) ApplyPointLight(target *hierarchy.Node, def PointLightDefinition) {
+	nodeMatrix := target.AbsoluteMatrix()
 	position := nodeMatrix.Translation()
 
 	light := s.gfxScene.CreatePointLight(graphics.PointLightInfo{
@@ -182,14 +192,14 @@ func (s *Scene) ApplyPointLight(owner *hierarchy.Node, def PointLightDefinition)
 		EmitColor: def.EmitColor,
 		EmitRange: def.EmitRange,
 	})
-	owner.SetTarget(PointLightNodeTarget{
+	target.SetTarget(PointLightNodeTarget{
 		Light: light,
 	})
 }
 
-// ApplySpotLight creates and configures a spot light on the owner node.
-func (s *Scene) ApplySpotLight(owner *hierarchy.Node, def SpotLightDefinition) {
-	nodeMatrix := owner.AbsoluteMatrix()
+// ApplySpotLight creates and configures a spot light on the target node.
+func (s *Scene) ApplySpotLight(target *hierarchy.Node, def SpotLightDefinition) {
+	nodeMatrix := target.AbsoluteMatrix()
 	position, rotation, _ := nodeMatrix.TRS()
 
 	light := s.gfxScene.CreateSpotLight(graphics.SpotLightInfo{
@@ -200,15 +210,15 @@ func (s *Scene) ApplySpotLight(owner *hierarchy.Node, def SpotLightDefinition) {
 		EmitInnerConeAngle: def.EmitInnerConeAngle,
 		EmitRange:          def.EmitRange,
 	})
-	owner.SetTarget(SpotLightNodeTarget{
+	target.SetTarget(SpotLightNodeTarget{
 		Light: light,
 	})
 }
 
 // ApplyDirectionalLight creates and configures a directional light on the
-// owner node.
-func (s *Scene) ApplyDirectionalLight(owner *hierarchy.Node, def DirectionalLightDefinition) {
-	nodeMatrix := owner.AbsoluteMatrix()
+// target node.
+func (s *Scene) ApplyDirectionalLight(target *hierarchy.Node, def DirectionalLightDefinition) {
+	nodeMatrix := target.AbsoluteMatrix()
 	position, rotation, _ := nodeMatrix.TRS()
 
 	light := s.gfxScene.CreateDirectionalLight(graphics.DirectionalLightInfo{
@@ -217,9 +227,13 @@ func (s *Scene) ApplyDirectionalLight(owner *hierarchy.Node, def DirectionalLigh
 		EmitColor: def.EmitColor,
 		EmitRange: def.EmitRange,
 	})
-	owner.SetTarget(DirectionalLightNodeTarget{
+	target.SetTarget(DirectionalLightNodeTarget{
 		Light: light,
 	})
+}
+
+func (s *Scene) ApplyFragment(target *hierarchy.Node, def FragmentDefinition) {
+	// TODO
 }
 
 // Initialize prepares the scene for use by applying the provided definition.
