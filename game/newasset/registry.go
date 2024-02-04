@@ -159,10 +159,13 @@ func (r *fsRegistry) open() error {
 	}
 
 	r.resources = gog.Map(dtoRegistry.Resources, func(dto resourceDTO) *fsResource {
-		preview, err := png.Decode(bytes.NewReader(dto.PreviewData))
-		if err != nil {
-			log.Warn("Error decoding preview image: %v", err)
-			preview = nil
+		var preview image.Image
+		if len(dto.PreviewData) > 0 {
+			preview, err = png.Decode(bytes.NewReader(dto.PreviewData))
+			if err != nil {
+				log.Warn("Error decoding preview image: %v", err)
+				preview = nil
+			}
 		}
 		return &fsResource{
 			registry: r,
@@ -188,9 +191,11 @@ func (r *fsRegistry) save() error {
 
 	dtoResources := gog.Map(r.resources, func(res *fsResource) resourceDTO {
 		var previewData bytes.Buffer
-		if err := png.Encode(&previewData, res.preview); err != nil {
-			log.Warn("Error encoding preview image: %v", err)
-			previewData.Reset()
+		if res.preview != nil {
+			if err := png.Encode(&previewData, res.preview); err != nil {
+				log.Warn("Error encoding preview image: %v", err)
+				previewData.Reset()
+			}
 		}
 		return resourceDTO{
 			ID:          res.id,
