@@ -25,7 +25,9 @@ func NewJSONFormatter() Formatter {
 type jsonFormatter struct{}
 
 func (*jsonFormatter) Encode(out io.Writer, value any) error {
-	return json.NewEncoder(out).Encode(value)
+	encoder := json.NewEncoder(out)
+	encoder.SetIndent("", "  ")
+	return encoder.Encode(value)
 }
 
 func (*jsonFormatter) Decode(in io.Reader, target any) error {
