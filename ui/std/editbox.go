@@ -32,11 +32,13 @@ var EditBox = co.Define(&editboxComponent{})
 type EditBoxData struct {
 	ReadOnly bool
 	Text     string
+	Focused  bool
 }
 
 type EditBoxCallbackData struct {
 	OnChange func(string)
 	OnSubmit func(string)
+	OnReject func()
 }
 
 var _ ui.ElementHistoryHandler = (*editboxComponent)(nil)
@@ -57,10 +59,12 @@ type editboxComponent struct {
 	cursorColumn   int
 	selectorColumn int
 
+	isFocused  bool
 	isReadOnly bool
 	line       []rune
 	onChange   func(string)
 	onSubmit   func(string)
+	onReject   func()
 
 	textWidth  int
 	textHeight int
@@ -83,6 +87,7 @@ func (c *editboxComponent) OnCreate() {
 	c.selectorColumn = 0
 
 	data := co.GetData[EditBoxData](c.Properties())
+	c.isFocused = data.Focused
 	c.isReadOnly = data.ReadOnly
 	c.line = []rune(data.Text)
 	c.refreshTextSize()
@@ -103,6 +108,7 @@ func (c *editboxComponent) OnUpsert() {
 	callbackData := co.GetOptionalCallbackData(c.Properties(), EditBoxCallbackData{})
 	c.onChange = callbackData.OnChange
 	c.onSubmit = callbackData.OnSubmit
+	c.onReject = callbackData.OnReject
 
 	c.cursorColumn = min(c.cursorColumn, len(c.line))
 	c.selectorColumn = min(c.selectorColumn, len(c.line))
@@ -122,7 +128,7 @@ func (c *editboxComponent) Render() co.Instance {
 		co.WithData(ElementData{
 			Essence:   c,
 			Focusable: opt.V(true),
-			Focused:   opt.V(true), // TODO: should be configured from outside
+			Focused:   opt.V(c.isFocused),
 			IdealSize: opt.V(ui.Size{
 				Width:  c.textWidth + textPadding,
 				Height: c.textHeight,
@@ -342,8 +348,12 @@ func (c *editboxComponent) onKeyboardPressEvent(element *ui.Element, event ui.Ke
 	switch event.Code {
 
 	case ui.KeyCodeEscape:
-		c.isDragging = false
-		c.clearSelection()
+		if c.isDragging || c.hasSelection() {
+			c.isDragging = false
+			c.clearSelection()
+		} else {
+			c.handleRejected()
+		}
 		return true
 
 	case ui.KeyCodeArrowUp:
@@ -495,5 +505,11 @@ func (c *editboxComponent) handleChanged() {
 func (c *editboxComponent) handleSubmitted() {
 	if c.onSubmit != nil {
 		c.onSubmit(string(c.line))
+	}
+}
+
+func (c *editboxComponent) handleRejected() {
+	if c.onReject != nil {
+		c.onReject()
 	}
 }
