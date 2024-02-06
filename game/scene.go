@@ -233,7 +233,32 @@ func (s *Scene) ApplyDirectionalLight(target *hierarchy.Node, def DirectionalLig
 }
 
 func (s *Scene) ApplyFragment(target *hierarchy.Node, def FragmentDefinition) {
-	// TODO
+	nodeByIndex := make(map[int]*hierarchy.Node)
+	for i := range def.Nodes {
+		nodeByIndex[i] = hierarchy.NewNode()
+	}
+	for i, nodeDef := range def.Nodes {
+		node := nodeByIndex[i]
+		node.SetName(nodeDef.Name)
+		node.SetPosition(nodeDef.Translation)
+		node.SetRotation(nodeDef.Rotation)
+		node.SetScale(nodeDef.Scale)
+		if nodeDef.ParentIndex >= 0 {
+			nodeByIndex[nodeDef.ParentIndex].AppendChild(node)
+		} else {
+			target.AppendChild(node)
+		}
+	}
+
+	for i, lightDef := range def.PointLights {
+		node := nodeByIndex[i]
+		s.ApplyPointLight(node, PointLightDefinition(lightDef))
+	}
+
+	for i, lightDef := range def.DirectionalLights {
+		node := nodeByIndex[i]
+		s.ApplyDirectionalLight(node, DirectionalLightDefinition(lightDef))
+	}
 }
 
 // Initialize prepares the scene for use by applying the provided definition.

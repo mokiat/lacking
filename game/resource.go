@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/mokiat/lacking/game/asset"
+	newasset "github.com/mokiat/lacking/game/newasset"
 	"github.com/mokiat/lacking/util/async"
 )
 
@@ -20,11 +21,12 @@ var (
 
 func newResourceSet(parent *ResourceSet, engine *Engine) *ResourceSet {
 	return &ResourceSet{
-		parent:    parent,
-		engine:    engine,
-		registry:  engine.registry,
-		ioWorker:  engine.ioWorker,
-		gfxWorker: engine.gfxWorker,
+		parent:      parent,
+		engine:      engine,
+		registry:    engine.registry,
+		newRegistry: engine.newRegistry,
+		ioWorker:    engine.ioWorker,
+		gfxWorker:   engine.gfxWorker,
 
 		namedTwoDTextures: make(map[string]async.Promise[*TwoDTexture]),
 		namedCubeTextures: make(map[string]async.Promise[*CubeTexture]),
@@ -34,11 +36,12 @@ func newResourceSet(parent *ResourceSet, engine *Engine) *ResourceSet {
 }
 
 type ResourceSet struct {
-	parent    *ResourceSet
-	engine    *Engine
-	registry  asset.Registry
-	ioWorker  Worker
-	gfxWorker Worker
+	parent      *ResourceSet
+	engine      *Engine
+	registry    asset.Registry
+	newRegistry *newasset.Registry
+	ioWorker    Worker
+	gfxWorker   Worker
 
 	namedTwoDTextures map[string]async.Promise[*TwoDTexture]
 	namedCubeTextures map[string]async.Promise[*CubeTexture]
@@ -156,6 +159,34 @@ func (s *ResourceSet) OpenSceneByName(name string) async.Promise[*SceneDefinitio
 		return async.NewFailedPromise[*SceneDefinition](fmt.Errorf("%w: %q", ErrNotFound, name))
 	}
 	return s.OpenScene(resource.ID())
+}
+
+func (s *ResourceSet) OpenFragmentWithID(id string) async.Promise[FragmentDefinition] {
+	// TODO: Use caching
+
+	resource := s.newRegistry.ResourceByID(id)
+	if resource == nil {
+		return async.NewFailedPromise[FragmentDefinition](fmt.Errorf("%w: %q", ErrNotFound, id))
+	}
+
+	result := async.NewPromise[FragmentDefinition]()
+	go func() {
+		fragment, err := s.loadFragment(resource)
+		if err != nil {
+			result.Fail(fmt.Errorf("error loading fragment %q: %w", id, err))
+		} else {
+			result.Deliver(fragment)
+		}
+	}()
+	return result
+}
+
+func (s *ResourceSet) OpenFragmentWithName(name string) async.Promise[FragmentDefinition] {
+	resource := s.newRegistry.ResourceByName(name)
+	if resource == nil {
+		return async.NewFailedPromise[FragmentDefinition](fmt.Errorf("%w: %q", ErrNotFound, name))
+	}
+	return s.OpenFragmentWithID(resource.ID())
 }
 
 // Delete schedules all resources managed by this ResourceSet for deletion.
