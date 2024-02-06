@@ -17,63 +17,10 @@ import (
 // ErrNotFound indicates that the specified content is not available.
 var ErrNotFound = fs.ErrNotExist
 
-// Registry represents a managment interface for assets.
-type Registry interface {
-
-	// Resources returns a list of all resources in the registry.
-	Resources() []Resource
-
-	// ResourceByID returns the resource with the specified ID.
-	// If no resource with the specified ID exists, nil is returned.
-	ResourceByID(id string) Resource
-
-	// ResourceByName returns the resource with the specified name.
-	// If no resource with the specified name exists, nil is returned.
-	ResourceByName(name string) Resource
-
-	// CreateResource creates a new resource with the specified name.
-	CreateResource(name string) (Resource, error)
-}
-
-// Resource represents the generic aspects of an asset.
-type Resource interface {
-
-	// ID returns the unique identifier of the resource.
-	ID() string
-
-	// Dependencies returns a list of resources that this resource depends on.
-	Dependencies() []Resource
-
-	// Dependants returns a list of resources that depend on this resource.
-	Dependants() []Resource
-
-	// Name returns the name of the resource.
-	Name() string
-
-	// SetName changes the name of the resource. Two resources cannot have
-	// the same name.
-	SetName(newName string) error
-
-	// Preview returns an image that represents the resource.
-	Preview() image.Image
-
-	// SetPreview changes the preview image of the resource.
-	SetPreview(image.Image) error
-
-	// OpenContent returns the content of the resource.
-	OpenContent() (Fragment, error)
-
-	// SaveContent saves the content of the resource.
-	SaveContent(Fragment) error
-
-	// Delete removes the resource from the registry.
-	Delete() error
-}
-
 // NewRegistry creates a new Registry that stores its as specified by the
 // provided storage and formatter.
-func NewRegistry(storage Storage, formatter Formatter) (Registry, error) {
-	registry := &fsRegistry{
+func NewRegistry(storage Storage, formatter Formatter) (*Registry, error) {
+	registry := &Registry{
 		storage:   storage,
 		formatter: formatter,
 	}
@@ -83,22 +30,24 @@ func NewRegistry(storage Storage, formatter Formatter) (Registry, error) {
 	return registry, nil
 }
 
-type fsRegistry struct {
+// Registry represents a managment interface for assets.
+type Registry struct {
 	storage   Storage
 	formatter Formatter
 
-	resources    []*fsResource
+	resources    []*Resource
 	dependencies []fsDependency
 }
 
-func (r *fsRegistry) Resources() []Resource {
-	return gog.Map(r.resources, func(res *fsResource) Resource {
-		return res
-	})
+// Resources returns a list of all resources in the registry.
+func (r *Registry) Resources() []*Resource {
+	return r.resources
 }
 
-func (r *fsRegistry) ResourceByID(id string) Resource {
-	resource, ok := gog.FindFunc(r.resources, func(res *fsResource) bool {
+// ResourceByID returns the resource with the specified ID.
+// If no resource with the specified ID exists, nil is returned.
+func (r *Registry) ResourceByID(id string) *Resource {
+	resource, ok := gog.FindFunc(r.resources, func(res *Resource) bool {
 		return res.id == id
 	})
 	if !ok {
@@ -107,8 +56,10 @@ func (r *fsRegistry) ResourceByID(id string) Resource {
 	return resource
 }
 
-func (r *fsRegistry) ResourceByName(name string) Resource {
-	resource, ok := gog.FindFunc(r.resources, func(res *fsResource) bool {
+// ResourceByName returns the resource with the specified name.
+// If no resource with the specified name exists, nil is returned.
+func (r *Registry) ResourceByName(name string) *Resource {
+	resource, ok := gog.FindFunc(r.resources, func(res *Resource) bool {
 		return res.name == name
 	})
 	if !ok {
@@ -117,8 +68,9 @@ func (r *fsRegistry) ResourceByName(name string) Resource {
 	return resource
 }
 
-func (r *fsRegistry) CreateResource(name string) (Resource, error) {
-	result := &fsResource{
+// CreateResource creates a new resource with the specified name.
+func (r *Registry) CreateResource(name string) (*Resource, error) {
+	result := &Resource{
 		registry: r,
 		id:       uuid.NewString(),
 		name:     name,
@@ -131,19 +83,19 @@ func (r *fsRegistry) CreateResource(name string) (Resource, error) {
 	return result, nil
 }
 
-func (r *fsRegistry) dependenciesOf(targetID string) []fsDependency {
+func (r *Registry) dependenciesOf(targetID string) []fsDependency {
 	return gog.Select(r.dependencies, func(dep fsDependency) bool {
 		return dep.TargetID == targetID
 	})
 }
 
-func (r *fsRegistry) dependentsOf(sourceID string) []fsDependency {
+func (r *Registry) dependentsOf(sourceID string) []fsDependency {
 	return gog.Select(r.dependencies, func(dep fsDependency) bool {
 		return dep.SourceID == sourceID
 	})
 }
 
-func (r *fsRegistry) open() error {
+func (r *Registry) open() error {
 	in, err := r.storage.OpenRegistryRead()
 	if err != nil {
 		if errors.Is(err, ErrNotFound) {
@@ -158,7 +110,7 @@ func (r *fsRegistry) open() error {
 		return fmt.Errorf("failed to decode registry: %w", err)
 	}
 
-	r.resources = gog.Map(dtoRegistry.Resources, func(dto resourceDTO) *fsResource {
+	r.resources = gog.Map(dtoRegistry.Resources, func(dto resourceDTO) *Resource {
 		var preview image.Image
 		if len(dto.PreviewData) > 0 {
 			preview, err = png.Decode(bytes.NewReader(dto.PreviewData))
@@ -167,7 +119,7 @@ func (r *fsRegistry) open() error {
 				preview = nil
 			}
 		}
-		return &fsResource{
+		return &Resource{
 			registry: r,
 			id:       dto.ID,
 			name:     dto.Name,
@@ -182,14 +134,14 @@ func (r *fsRegistry) open() error {
 	return nil
 }
 
-func (r *fsRegistry) save() error {
+func (r *Registry) save() error {
 	out, err := r.storage.OpenRegistryWrite()
 	if err != nil {
 		return fmt.Errorf("failed to create resources file: %w", err)
 	}
 	defer out.Close()
 
-	dtoResources := gog.Map(r.resources, func(res *fsResource) resourceDTO {
+	dtoResources := gog.Map(r.resources, func(res *Resource) resourceDTO {
 		var previewData bytes.Buffer
 		if res.preview != nil {
 			if err := png.Encode(&previewData, res.preview); err != nil {
@@ -217,7 +169,7 @@ func (r *fsRegistry) save() error {
 	return nil
 }
 
-func (r *fsRegistry) openContent(id string) (Fragment, error) {
+func (r *Registry) openContent(id string) (Fragment, error) {
 	in, err := r.storage.OpenContentRead(id)
 	if err != nil {
 		return Fragment{}, fmt.Errorf("failed to open content file: %w", err)
@@ -231,7 +183,7 @@ func (r *fsRegistry) openContent(id string) (Fragment, error) {
 	return fragment, nil
 }
 
-func (r *fsRegistry) saveContent(id string, content Fragment) error {
+func (r *Registry) saveContent(id string, content Fragment) error {
 	newDependencies := gog.Map(content.Dependencies, func(sourceID string) fsDependency {
 		return fsDependency{
 			TargetID: id,
@@ -259,7 +211,7 @@ func (r *fsRegistry) saveContent(id string, content Fragment) error {
 	return nil
 }
 
-func (r *fsRegistry) deleteContent(id string) error {
+func (r *Registry) deleteContent(id string) error {
 	if err := r.storage.DeleteContent(id); err != nil {
 		if errors.Is(err, ErrNotFound) {
 			return nil
@@ -269,8 +221,8 @@ func (r *fsRegistry) deleteContent(id string) error {
 	return nil
 }
 
-func (r *fsRegistry) deleteResource(id string) error {
-	r.resources = slices.DeleteFunc(r.resources, func(res *fsResource) bool {
+func (r *Registry) deleteResource(id string) error {
+	r.resources = slices.DeleteFunc(r.resources, func(res *Resource) bool {
 		return res.id == id
 	})
 	r.dependencies = slices.DeleteFunc(r.dependencies, func(dep fsDependency) bool {
@@ -282,58 +234,70 @@ func (r *fsRegistry) deleteResource(id string) error {
 	return nil
 }
 
-type fsResource struct {
-	registry *fsRegistry
+// Resource represents the generic aspects of an asset.
+type Resource struct {
+	registry *Registry
 	id       string
 	name     string
 	preview  image.Image
 }
 
-func (r *fsResource) ID() string {
+// ID returns the unique identifier of the resource.
+func (r *Resource) ID() string {
 	return r.id
 }
 
-func (r *fsResource) Name() string {
+// Name returns the name of the resource.
+func (r *Resource) Name() string {
 	return r.name
 }
 
-func (r *fsResource) SetName(name string) error {
+// SetName changes the name of the resource. Two resources cannot have
+// the same name.
+func (r *Resource) SetName(name string) error {
 	r.name = name
 	return r.registry.save()
 }
 
-func (r *fsResource) Preview() image.Image {
+// Preview returns an image that represents the resource.
+func (r *Resource) Preview() image.Image {
 	return r.preview
 }
 
-func (r *fsResource) SetPreview(preview image.Image) error {
+// SetPreview changes the preview image of the resource.
+func (r *Resource) SetPreview(preview image.Image) error {
 	r.preview = preview
 	return r.registry.save()
 }
 
-func (r *fsResource) OpenContent() (Fragment, error) {
+// OpenContent returns the content of the resource.
+func (r *Resource) OpenContent() (Fragment, error) {
 	return r.registry.openContent(r.id)
 }
 
-func (r *fsResource) SaveContent(content Fragment) error {
+// SaveContent saves the content of the resource.
+func (r *Resource) SaveContent(content Fragment) error {
 	return r.registry.saveContent(r.id, content)
 }
 
-func (r *fsResource) Dependencies() []Resource {
+// Dependencies returns a list of resources that this resource depends on.
+func (r *Resource) Dependencies() []*Resource {
 	dependencies := r.registry.dependenciesOf(r.id)
-	return gog.Map(dependencies, func(dep fsDependency) Resource {
+	return gog.Map(dependencies, func(dep fsDependency) *Resource {
 		return r.registry.ResourceByID(dep.SourceID)
 	})
 }
 
-func (r *fsResource) Dependants() []Resource {
+// Dependants returns a list of resources that depend on this resource.
+func (r *Resource) Dependants() []*Resource {
 	dependants := r.registry.dependentsOf(r.id)
-	return gog.Map(dependants, func(dep fsDependency) Resource {
+	return gog.Map(dependants, func(dep fsDependency) *Resource {
 		return r.registry.ResourceByID(dep.TargetID)
 	})
 }
 
-func (r *fsResource) Delete() error {
+// Delete removes the resource from the registry.
+func (r *Resource) Delete() error {
 	if err := r.registry.deleteContent(r.id); err != nil {
 		return fmt.Errorf("failed to delete content: %w", err)
 	}

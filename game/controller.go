@@ -8,6 +8,7 @@ import (
 	"github.com/mokiat/lacking/game/asset"
 	"github.com/mokiat/lacking/game/ecs"
 	"github.com/mokiat/lacking/game/graphics"
+	newasset "github.com/mokiat/lacking/game/newasset"
 	"github.com/mokiat/lacking/game/physics"
 	"github.com/mokiat/lacking/util/async"
 )
@@ -24,8 +25,9 @@ var _ app.Controller = (*Controller)(nil)
 type Controller struct {
 	app.NopController
 
-	registry asset.Registry
-	shaders  graphics.ShaderCollection
+	registry    asset.Registry
+	newRegistry *newasset.Registry
+	shaders     graphics.ShaderCollection
 
 	gfxEngine     *graphics.Engine
 	ecsEngine     *ecs.Engine
@@ -36,6 +38,10 @@ type Controller struct {
 	engine   *Engine
 
 	viewport graphics.Viewport
+}
+
+func (c *Controller) SetNewRegistry(registry *newasset.Registry) {
+	c.newRegistry = registry
 }
 
 func (c *Controller) Engine() *Engine {
@@ -55,6 +61,7 @@ func (c *Controller) OnCreate(window app.Window) {
 		WithGFXWorker(c.gfxWorkerAdapter()),
 		WithIOWorker(c.ioWorkerAdapter()),
 		WithRegistry(c.registry),
+		WithNewRegistry(c.newRegistry),
 		WithGraphics(c.gfxEngine),
 		WithECS(c.ecsEngine),
 		WithPhysics(c.physicsEngine),
