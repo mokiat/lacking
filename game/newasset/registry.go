@@ -69,7 +69,7 @@ func (r *Registry) ResourceByName(name string) *Resource {
 }
 
 // CreateResource creates a new resource with the specified name.
-func (r *Registry) CreateResource(name string) (*Resource, error) {
+func (r *Registry) CreateResource(name string, content Fragment) (*Resource, error) {
 	result := &Resource{
 		registry: r,
 		id:       uuid.NewString(),
@@ -79,6 +79,9 @@ func (r *Registry) CreateResource(name string) (*Resource, error) {
 	r.resources = append(r.resources, result)
 	if err := r.save(); err != nil {
 		return nil, fmt.Errorf("failed to save registry: %w", err)
+	}
+	if err := r.saveContent(result.id, content); err != nil {
+		return nil, fmt.Errorf("failed to save content: %w", err)
 	}
 	return result, nil
 }
@@ -240,6 +243,11 @@ type Resource struct {
 	id       string
 	name     string
 	preview  image.Image
+}
+
+// Registry returns the registry that manages the resource.
+func (r *Resource) Registry() *Registry {
+	return r.registry
 }
 
 // ID returns the unique identifier of the resource.
