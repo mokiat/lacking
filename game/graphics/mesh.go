@@ -64,9 +64,9 @@ type IndexFormat int
 // that is drawn with a specific material and primitives.
 type MeshFragmentDefinitionInfo struct {
 	Primitive   Primitive
-	IndexOffset int
-	IndexCount  int
 	Material    *MaterialDefinition
+	IndexOffset int // TODO: Make these uint32; Also rename to indicate bytes.
+	IndexCount  int // TODO: Make these uint32
 }
 
 const (
