@@ -8,69 +8,75 @@ import (
 	"github.com/x448/float16"
 )
 
+// MeshBuilderWithCoords is a MeshBuilderOption that enables the
+// construction of vertices with coordinates.
 func MeshBuilderWithCoords() MeshBuilderOption {
 	return func(b *MeshBuilder) {
 		b.hasCoords = true
 	}
 }
 
+// MeshBuilderWithNormals is a MeshBuilderOption that enables the
+// construction of vertices with normals.
 func MeshBuilderWithNormals() MeshBuilderOption {
 	return func(b *MeshBuilder) {
 		b.hasNormals = true
 	}
 }
 
+// MeshBuilderWithTangents is a MeshBuilderOption that enables the
+// construction of vertices with tangents.
 func MeshBuilderWithTangents() MeshBuilderOption {
 	return func(b *MeshBuilder) {
 		b.hasTangents = true
 	}
 }
 
+// MeshBuilderWithTexCoords is a MeshBuilderOption that enables the
+// construction of vertices with texture coordinates.
 func MeshBuilderWithTexCoords() MeshBuilderOption {
 	return func(b *MeshBuilder) {
 		b.hasTexCoords = true
 	}
 }
 
+// MeshBuilderWithColors is a MeshBuilderOption that enables the
+// construction of vertices with colors.
 func MeshBuilderWithColors() MeshBuilderOption {
 	return func(b *MeshBuilder) {
 		b.hasColors = true
 	}
 }
 
+// MeshBuilderWithJoints is a MeshBuilderOption that enables the
+// construction of vertices with joint indices.
 func MeshBuilderWithJoints() MeshBuilderOption {
 	return func(b *MeshBuilder) {
 		b.hasJoints = true
 	}
 }
 
+// MeshBuilderWithWeights is a MeshBuilderOption that enables the
+// construction of vertices with joint weights.
 func MeshBuilderWithWeights() MeshBuilderOption {
 	return func(b *MeshBuilder) {
 		b.hasWeights = true
 	}
 }
 
+// MeshBuilderOption is a function that modifies a MeshBuilder.
 type MeshBuilderOption func(*MeshBuilder)
 
+// NewMeshBuilder creates a new MeshBuilder with the provided options.
 func NewMeshBuilder(opts ...MeshBuilderOption) *MeshBuilder {
-	fragments := []meshBuilderFragment{
-		{
-			primitive:   -1,
-			material:    nil,
-			indexOffset: 0,
-			indexCount:  0,
-		},
-	}
-	result := &MeshBuilder{
-		fragments:       fragments,
-		currentFragment: &fragments[0],
-	}
+	result := &MeshBuilder{}
 	for _, opt := range opts {
 		opt(result)
 	}
 	return result
 }
 
+// MeshBuilder is a helper for constructing a MeshDefinitionInfo.
 type MeshBuilder struct {
 	hasCoords    bool
 	hasNormals   bool
@@ -80,111 +86,66 @@ type MeshBuilder struct {
 	hasJoints    bool
 	hasWeights   bool
 
-	vertices      []meshBuilderVertex
-	currentVertex *meshBuilderVertex
-
-	indices []uint32
-
-	fragments       []meshBuilderFragment
-	currentFragment *meshBuilderFragment
+	vertices  []meshBuilderVertex
+	indices   []uint32
+	fragments []meshBuilderFragment
 }
 
-func (mb *MeshBuilder) AddVertex() {
+// VertexOffset returns the index of the first vertex that will be added
+// by the next call to Vertex.
+func (mb *MeshBuilder) VertexOffset() uint32 {
+	return uint32(len(mb.vertices))
+}
+
+// Vertex returns a builder for the next vertex to be added to the mesh.
+func (mb *MeshBuilder) Vertex() VertexBuilder {
+	position := uint32(len(mb.vertices))
 	mb.vertices = append(mb.vertices, meshBuilderVertex{})
-	mb.currentVertex = &mb.vertices[len(mb.vertices)-1]
-}
-
-func (mb *MeshBuilder) Coord(x, y, z float32) {
-	mb.CoordVec3(sprec.NewVec3(x, y, z))
-}
-
-func (mb *MeshBuilder) CoordVec3(vec sprec.Vec3) {
-	mb.currentVertex.coord = vec
-}
-
-func (mb *MeshBuilder) Normal(x, y, z float32) {
-	mb.NormalVec3(sprec.NewVec3(x, y, z))
-}
-
-func (mb *MeshBuilder) NormalVec3(vec sprec.Vec3) {
-	mb.currentVertex.normal = vec
-}
-
-func (mb *MeshBuilder) Tangent(x, y, z float32) {
-	mb.TangentVec3(sprec.NewVec3(x, y, z))
-}
-
-func (mb *MeshBuilder) TangentVec3(vec sprec.Vec3) {
-	mb.currentVertex.tangent = vec
-}
-
-func (mb *MeshBuilder) TexCoord(x, y float32) {
-	mb.TexCoordVec2(sprec.NewVec2(x, y))
-}
-
-func (mb *MeshBuilder) TexCoordVec2(vec sprec.Vec2) {
-	mb.currentVertex.texCoord = vec
-}
-
-func (mb *MeshBuilder) Color(r, g, b, a float32) {
-	mb.ColorVec4(sprec.NewVec4(r, g, b, a))
-}
-
-func (b *MeshBuilder) ColorVec4(vec sprec.Vec4) {
-	b.currentVertex.color = vec
-}
-
-func (mb *MeshBuilder) Joints(a, b, c, d uint8) {
-	mb.currentVertex.joints = [4]uint8{a, b, c, d}
-}
-
-func (mb *MeshBuilder) Weights(a, b, c, d float32) {
-	mb.WeightsVec4(sprec.NewVec4(a, b, c, d))
-}
-
-func (mb *MeshBuilder) WeightsVec4(vec sprec.Vec4) {
-	mb.currentVertex.weights = vec
-}
-
-func (mb *MeshBuilder) UseMaterial(material *MaterialDefinition) {
-	if material == mb.currentFragment.material {
-		return
-	}
-	if mb.currentFragment.indexCount > 0 {
-		mb.fragments = append(mb.fragments, meshBuilderFragment{
-			primitive:   mb.currentFragment.primitive,
-			material:    material,
-			indexOffset: uint32(len(mb.indices)),
-			indexCount:  0,
-		})
-		mb.currentFragment = &mb.fragments[len(mb.fragments)-1]
-	} else {
-		mb.currentFragment.material = material
+	return VertexBuilder{
+		builder: mb,
+		vertex:  &mb.vertices[position],
 	}
 }
 
-func (mb *MeshBuilder) UsePrimitive(primitive Primitive) {
-	if primitive == mb.currentFragment.primitive {
-		return
-	}
-	if mb.currentFragment.indexCount > 0 {
-		mb.fragments = append(mb.fragments, meshBuilderFragment{
-			primitive:   primitive,
-			material:    mb.currentFragment.material,
-			indexOffset: uint32(len(mb.indices)),
-			indexCount:  0,
-		})
-		mb.currentFragment = &mb.fragments[len(mb.fragments)-1]
-	} else {
-		mb.currentFragment.primitive = primitive
-	}
+// IndexOffset returns the index of the first index that will be added
+// by the next call to Index.
+func (mb *MeshBuilder) IndexOffset() uint32 {
+	return uint32(len(mb.indices))
 }
 
-func (mb *MeshBuilder) AddIndex(index uint32) {
+// Index adds an index to the mesh.
+func (mb *MeshBuilder) Index(index uint32) uint32 {
+	position := uint32(len(mb.indices))
 	mb.indices = append(mb.indices, index)
-	mb.currentFragment.indexCount++
+	return position
 }
 
+// IndexLine adds two indices to the mesh.
+func (mb *MeshBuilder) IndexLine(a, b uint32) (uint32, uint32) {
+	position := uint32(len(mb.indices))
+	mb.indices = append(mb.indices, a, b)
+	return position, position + 2
+}
+
+// IndexTriangle adds three indices to the mesh.
+func (mb *MeshBuilder) IndexTriangle(a, b, c uint32) (uint32, uint32) {
+	position := uint32(len(mb.indices))
+	mb.indices = append(mb.indices, a, b, c)
+	return position, position + 3
+}
+
+// Fragment adds a mesh fragment to the mesh.
+func (mb *MeshBuilder) Fragment(primitive Primitive, material *MaterialDefinition, indexOffset, indexCount uint32) {
+	mb.fragments = append(mb.fragments, meshBuilderFragment{
+		primitive:   primitive,
+		material:    material,
+		indexOffset: indexOffset,
+		indexCount:  indexCount,
+	})
+}
+
+// BuildInfo returns the MeshDefinitionInfo that has been constructed
+// by the builder.
 func (mb *MeshBuilder) BuildInfo() MeshDefinitionInfo {
 	var (
 		vertexFormat VertexFormat
@@ -340,6 +301,84 @@ func (mb *MeshBuilder) bsRadius() float64 {
 		maxRadius = max(maxRadius, float64(vertex.coord.Length()))
 	}
 	return maxRadius
+}
+
+// VertexBuilder is a helper for constructing a vertex for a mesh.
+type VertexBuilder struct {
+	builder *MeshBuilder
+	vertex  *meshBuilderVertex
+}
+
+// CoordVec3 sets the coordinate of the vertex.
+func (vb VertexBuilder) CoordVec3(vec sprec.Vec3) VertexBuilder {
+	vb.vertex.coord = vec
+	return vb
+}
+
+// Coord sets the coordinate of the vertex.
+func (vb VertexBuilder) Coord(x, y, z float32) VertexBuilder {
+	return vb.CoordVec3(sprec.NewVec3(x, y, z))
+}
+
+// NormalVec3 sets the normal of the vertex.
+func (vb VertexBuilder) NormalVec3(vec sprec.Vec3) VertexBuilder {
+	vb.vertex.normal = vec
+	return vb
+}
+
+// Normal sets the normal of the vertex.
+func (vb VertexBuilder) Normal(x, y, z float32) VertexBuilder {
+	return vb.NormalVec3(sprec.NewVec3(x, y, z))
+}
+
+// TangentVec3 sets the tangent of the vertex.
+func (vb VertexBuilder) TangentVec3(vec sprec.Vec3) VertexBuilder {
+	vb.vertex.tangent = vec
+	return vb
+}
+
+// Tangent sets the tangent of the vertex.
+func (vb VertexBuilder) Tangent(x, y, z float32) VertexBuilder {
+	return vb.TangentVec3(sprec.NewVec3(x, y, z))
+}
+
+// TexCoordVec2 sets the texture coordinate of the vertex.
+func (vb VertexBuilder) TexCoordVec2(vec sprec.Vec2) VertexBuilder {
+	vb.vertex.texCoord = vec
+	return vb
+}
+
+// TexCoord sets the texture coordinate of the vertex.
+func (vb VertexBuilder) TexCoord(x, y float32) VertexBuilder {
+	return vb.TexCoordVec2(sprec.NewVec2(x, y))
+}
+
+// ColorVec4 sets the color of the vertex.
+func (vb VertexBuilder) ColorVec4(vec sprec.Vec4) VertexBuilder {
+	vb.vertex.color = vec
+	return vb
+}
+
+// Color sets the color of the vertex.
+func (vb VertexBuilder) Color(r, g, b, a float32) VertexBuilder {
+	return vb.ColorVec4(sprec.NewVec4(r, g, b, a))
+}
+
+// Joints sets the joint indices of the vertex.
+func (vb VertexBuilder) Joints(a, b, c, d uint8) VertexBuilder {
+	vb.vertex.joints = [4]uint8{a, b, c, d}
+	return vb
+}
+
+// WeightsVec4 sets the joint weights of the vertex.
+func (vb VertexBuilder) WeightsVec4(vec sprec.Vec4) VertexBuilder {
+	vb.vertex.weights = vec
+	return vb
+}
+
+// Weights sets the joint weights of the vertex.
+func (vb VertexBuilder) Weights(a, b, c, d float32) VertexBuilder {
+	return vb.WeightsVec4(sprec.NewVec4(a, b, c, d))
 }
 
 type meshBuilderVertex struct {
