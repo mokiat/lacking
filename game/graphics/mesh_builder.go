@@ -69,7 +69,9 @@ type MeshBuilderOption func(*MeshBuilder)
 
 // NewMeshBuilder creates a new MeshBuilder with the provided options.
 func NewMeshBuilder(opts ...MeshBuilderOption) *MeshBuilder {
-	result := &MeshBuilder{}
+	result := &MeshBuilder{
+		transform: sprec.IdentityMat4(),
+	}
 	for _, opt := range opts {
 		opt(result)
 	}
@@ -86,9 +88,16 @@ type MeshBuilder struct {
 	hasJoints    bool
 	hasWeights   bool
 
+	transform sprec.Mat4
 	vertices  []meshBuilderVertex
 	indices   []uint32
 	fragments []meshBuilderFragment
+}
+
+// Transform sets the transformation matrix that will be applied to
+// future vertices added to the mesh.
+func (mb *MeshBuilder) Transform(transform sprec.Mat4) {
+	mb.transform = transform
 }
 
 // VertexOffset returns the index of the first vertex that will be added
@@ -127,11 +136,18 @@ func (mb *MeshBuilder) IndexLine(a, b uint32) (uint32, uint32) {
 	return position, position + 2
 }
 
-// IndexTriangle adds three indices to the mesh.
+// IndexTriangle adds indices to the mesh to form a triangle.
 func (mb *MeshBuilder) IndexTriangle(a, b, c uint32) (uint32, uint32) {
 	position := uint32(len(mb.indices))
 	mb.indices = append(mb.indices, a, b, c)
 	return position, position + 3
+}
+
+// IndexQuad adds indices to the mesh to form a quad based off of two triangles.
+func (mb *MeshBuilder) IndexQuad(a, b, c, d uint32) (uint32, uint32) {
+	position := uint32(len(mb.indices))
+	mb.indices = append(mb.indices, a, b, c, a, c, d)
+	return position, position + 6
 }
 
 // Fragment adds a mesh fragment to the mesh.
@@ -311,7 +327,8 @@ type VertexBuilder struct {
 
 // CoordVec3 sets the coordinate of the vertex.
 func (vb VertexBuilder) CoordVec3(vec sprec.Vec3) VertexBuilder {
-	vb.vertex.coord = vec
+	transform := vb.builder.transform
+	vb.vertex.coord = sprec.Mat4Vec3Transformation(transform, vec)
 	return vb
 }
 
