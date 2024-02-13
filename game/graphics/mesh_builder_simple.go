@@ -65,7 +65,20 @@ type WireframeMeshBuilder struct {
 	indices     *indexRange
 }
 
-// TODO: Add sphere, cylinder, rectangle, etc. methods
+// Line creates a new line segment.
+func (mb WireframeMeshBuilder) Line(from, to sprec.Vec3) WireframeMeshBuilder {
+	vertexStart := mb.meshBuilder.VertexOffset()
+	mb.meshBuilder.Vertex().Coord(from.X, from.Y, from.Z)
+	mb.meshBuilder.Vertex().Coord(to.X, to.Y, to.Z)
+
+	indexStart := mb.meshBuilder.IndexOffset()
+	mb.meshBuilder.IndexLine(vertexStart, vertexStart+1)
+
+	mb.indices.Count += mb.meshBuilder.IndexOffset() - indexStart
+	return mb
+}
+
+// TODO: Add cuboid, sphere, cylinder, rectangle, etc. methods
 
 // SolidMeshBuilder is responsible for creating solid mesh triangles.
 type SolidMeshBuilder struct {
@@ -73,6 +86,7 @@ type SolidMeshBuilder struct {
 	indices     *indexRange
 }
 
+// Cuboid creates a new cuboid solid shape.
 func (mb SolidMeshBuilder) Cuboid(position sprec.Vec3, rotation sprec.Quat, dimensions sprec.Vec3) SolidMeshBuilder {
 	mb.meshBuilder.Transform(sprec.TRSMat4(
 		position,
@@ -115,6 +129,7 @@ func (mb SolidMeshBuilder) Cuboid(position sprec.Vec3, rotation sprec.Quat, dime
 	return mb
 }
 
+// Cylinder creates a new cylinder solid shape.
 func (mb SolidMeshBuilder) Cylinder(position sprec.Vec3, rotation sprec.Quat, radius float32, height float32, segments int) SolidMeshBuilder {
 	if segments < 3 {
 		panic("segments must be at least 3")
@@ -167,6 +182,7 @@ func (mb SolidMeshBuilder) Cylinder(position sprec.Vec3, rotation sprec.Quat, ra
 	return mb
 }
 
+// Cone creates a new cone solid shape.
 func (mb SolidMeshBuilder) Cone(position sprec.Vec3, rotation sprec.Quat, radius float32, height float32, segments int) SolidMeshBuilder {
 	if segments < 3 {
 		panic("segments must be at least 3")
@@ -207,7 +223,7 @@ func (mb SolidMeshBuilder) Cone(position sprec.Vec3, rotation sprec.Quat, radius
 	return mb
 }
 
-// TODO: Add sphere, cylinder, rectangle, etc. methods
+// TODO: Add sphere
 
 type indexRange struct {
 	Offset uint32
