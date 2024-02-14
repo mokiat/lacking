@@ -3,9 +3,8 @@ package graphics
 import "github.com/mokiat/gomath/sprec"
 
 // NewSimpleMeshBuilder creates a new simple mesh builder.
-func NewSimpleMeshBuilder(material *MaterialDefinition) *SimpleMeshBuilder {
+func NewSimpleMeshBuilder() *SimpleMeshBuilder {
 	return &SimpleMeshBuilder{
-		material: material,
 		meshBuilder: NewMeshBuilder(
 			MeshBuilderWithCoords(),
 		),
@@ -15,32 +14,33 @@ func NewSimpleMeshBuilder(material *MaterialDefinition) *SimpleMeshBuilder {
 // SimpleMeshBuilder is responsible for creating meshes made of a single
 // material.
 type SimpleMeshBuilder struct {
-	material    *MaterialDefinition
 	meshBuilder *MeshBuilder
 
-	lineFragments     []indexRange
-	triangleFragments []indexRange
+	lineFragments     []simpleMeshFragment
+	triangleFragments []simpleMeshFragment
 }
 
 // Wireframe creates a new fragment composed of lines.
-func (mb *SimpleMeshBuilder) Wireframe() WireframeMeshBuilder {
+func (mb *SimpleMeshBuilder) Wireframe(material *MaterialDefinition) WireframeMeshBuilder {
 	itemIndex := len(mb.lineFragments)
-	mb.lineFragments = append(mb.lineFragments, indexRange{
-		Offset: mb.meshBuilder.IndexOffset(),
-		Count:  0,
+	mb.lineFragments = append(mb.lineFragments, simpleMeshFragment{
+		Material:    material,
+		IndexOffset: mb.meshBuilder.IndexOffset(),
+		IndexCount:  0,
 	})
 	return WireframeMeshBuilder{
 		meshBuilder: mb.meshBuilder,
-		indices:     &mb.lineFragments[itemIndex],
+		fragment:    &mb.lineFragments[itemIndex],
 	}
 }
 
 // Solid creates a new fragment composed of solid triangles.
-func (mb *SimpleMeshBuilder) Solid() SolidMeshBuilder {
+func (mb *SimpleMeshBuilder) Solid(material *MaterialDefinition) SolidMeshBuilder {
 	itemIndex := len(mb.triangleFragments)
-	mb.triangleFragments = append(mb.triangleFragments, indexRange{
-		Offset: mb.meshBuilder.IndexOffset(),
-		Count:  0,
+	mb.triangleFragments = append(mb.triangleFragments, simpleMeshFragment{
+		Material:    material,
+		IndexOffset: mb.meshBuilder.IndexOffset(),
+		IndexCount:  0,
 	})
 	return SolidMeshBuilder{
 		meshBuilder: mb.meshBuilder,
@@ -50,11 +50,11 @@ func (mb *SimpleMeshBuilder) Solid() SolidMeshBuilder {
 
 // BuildInfo returns the mesh definition info of the built mesh.
 func (mb *SimpleMeshBuilder) BuildInfo() MeshDefinitionInfo {
-	for _, indexRange := range mb.lineFragments {
-		mb.meshBuilder.Fragment(PrimitiveLines, mb.material, indexRange.Offset, indexRange.Count)
+	for _, fragment := range mb.lineFragments {
+		mb.meshBuilder.Fragment(PrimitiveLines, fragment.Material, fragment.IndexOffset, fragment.IndexCount)
 	}
-	for _, indexRange := range mb.triangleFragments {
-		mb.meshBuilder.Fragment(PrimitiveTriangles, mb.material, indexRange.Offset, indexRange.Count)
+	for _, fragment := range mb.triangleFragments {
+		mb.meshBuilder.Fragment(PrimitiveTriangles, fragment.Material, fragment.IndexOffset, fragment.IndexCount)
 	}
 	return mb.meshBuilder.BuildInfo()
 }
@@ -62,7 +62,7 @@ func (mb *SimpleMeshBuilder) BuildInfo() MeshDefinitionInfo {
 // WireframeMeshBuilder is responsible for creating solid mesh lines.
 type WireframeMeshBuilder struct {
 	meshBuilder *MeshBuilder
-	indices     *indexRange
+	fragment    *simpleMeshFragment
 }
 
 // Line creates a new line segment.
@@ -74,7 +74,7 @@ func (mb WireframeMeshBuilder) Line(from, to sprec.Vec3) WireframeMeshBuilder {
 	indexStart := mb.meshBuilder.IndexOffset()
 	mb.meshBuilder.IndexLine(vertexStart, vertexStart+1)
 
-	mb.indices.Count += mb.meshBuilder.IndexOffset() - indexStart
+	mb.fragment.IndexCount += mb.meshBuilder.IndexOffset() - indexStart
 	return mb
 }
 
@@ -83,7 +83,7 @@ func (mb WireframeMeshBuilder) Line(from, to sprec.Vec3) WireframeMeshBuilder {
 // SolidMeshBuilder is responsible for creating solid mesh triangles.
 type SolidMeshBuilder struct {
 	meshBuilder *MeshBuilder
-	indices     *indexRange
+	indices     *simpleMeshFragment
 }
 
 // Cuboid creates a new cuboid solid shape.
@@ -125,7 +125,7 @@ func (mb SolidMeshBuilder) Cuboid(position sprec.Vec3, rotation sprec.Quat, dime
 	mb.meshBuilder.IndexTriangle(vertexStart+4, vertexStart+5, vertexStart+1)
 	mb.meshBuilder.IndexTriangle(vertexStart+4, vertexStart+1, vertexStart+0)
 
-	mb.indices.Count += mb.meshBuilder.IndexOffset() - indexStart
+	mb.indices.IndexCount += mb.meshBuilder.IndexOffset() - indexStart
 	return mb
 }
 
@@ -178,7 +178,7 @@ func (mb SolidMeshBuilder) Cylinder(position sprec.Vec3, rotation sprec.Quat, ra
 		mb.meshBuilder.IndexQuad(b, d, c, a)
 	}
 
-	mb.indices.Count += mb.meshBuilder.IndexOffset() - indexStart
+	mb.indices.IndexCount += mb.meshBuilder.IndexOffset() - indexStart
 	return mb
 }
 
@@ -219,13 +219,14 @@ func (mb SolidMeshBuilder) Cone(position sprec.Vec3, rotation sprec.Quat, radius
 		mb.meshBuilder.IndexTriangle(a, c, b)
 	}
 
-	mb.indices.Count += mb.meshBuilder.IndexOffset() - indexStart
+	mb.indices.IndexCount += mb.meshBuilder.IndexOffset() - indexStart
 	return mb
 }
 
 // TODO: Add sphere
 
-type indexRange struct {
-	Offset uint32
-	Count  uint32
+type simpleMeshFragment struct {
+	Material    *MaterialDefinition
+	IndexOffset uint32
+	IndexCount  uint32
 }
