@@ -78,7 +78,57 @@ func (mb WireframeMeshBuilder) Line(from, to sprec.Vec3) WireframeMeshBuilder {
 	return mb
 }
 
-// TODO: Add cuboid, sphere, cylinder, rectangle, etc. methods
+func (mb WireframeMeshBuilder) Circle(position sprec.Vec3, rotation sprec.Quat, radius float32, segments int) WireframeMeshBuilder {
+	mb.meshBuilder.Transform(sprec.TRSMat4(
+		position,
+		rotation,
+		sprec.NewVec3(radius, radius, 1.0),
+	))
+	defer mb.meshBuilder.Transform(sprec.IdentityMat4())
+
+	vertexStart := mb.meshBuilder.VertexOffset()
+	for i := 0; i < segments; i++ {
+		angle := sprec.Degrees(360.0 * (float32(i) / float32(segments)))
+		mb.meshBuilder.Vertex().Coord(sprec.Cos(angle), sprec.Sin(angle), 0.0)
+	}
+
+	indexStart := mb.meshBuilder.IndexOffset()
+	for i := uint32(0); i < uint32(segments); i++ {
+		a := vertexStart + i
+		b := vertexStart + ((i + 1) % uint32(segments))
+		mb.meshBuilder.IndexLine(a, b)
+	}
+
+	mb.fragment.IndexCount += mb.meshBuilder.IndexOffset() - indexStart
+	return mb
+}
+
+func (mb WireframeMeshBuilder) Arc(position sprec.Vec3, rotation sprec.Quat, radius float32, from, to sprec.Angle, segments int) WireframeMeshBuilder {
+	mb.meshBuilder.Transform(sprec.TRSMat4(
+		position,
+		rotation,
+		sprec.NewVec3(radius, radius, 1.0),
+	))
+	defer mb.meshBuilder.Transform(sprec.IdentityMat4())
+
+	delta := to - from
+
+	vertexStart := mb.meshBuilder.VertexOffset()
+	for i := 0; i < segments; i++ {
+		angle := from + sprec.Degrees(delta.Degrees()*(float32(i)/float32(segments-1)))
+		mb.meshBuilder.Vertex().Coord(sprec.Cos(angle), sprec.Sin(angle), 0.0)
+	}
+
+	indexStart := mb.meshBuilder.IndexOffset()
+	for i := uint32(0); i < uint32(segments)-1; i++ {
+		a := vertexStart + i
+		b := vertexStart + i + 1
+		mb.meshBuilder.IndexLine(a, b)
+	}
+
+	mb.fragment.IndexCount += mb.meshBuilder.IndexOffset() - indexStart
+	return mb
+}
 
 // SolidMeshBuilder is responsible for creating solid mesh triangles.
 type SolidMeshBuilder struct {
@@ -223,7 +273,82 @@ func (mb SolidMeshBuilder) Cone(position sprec.Vec3, rotation sprec.Quat, radius
 	return mb
 }
 
-// TODO: Add sphere
+// Sphere creates a new sphere solid shape.
+func (mb SolidMeshBuilder) Sphere(position sprec.Vec3, radius float32, segments int) SolidMeshBuilder {
+	if segments < 3 {
+		panic("segments must be at least 3")
+	}
+
+	mb.meshBuilder.Transform(sprec.TRSMat4(
+		position,
+		sprec.IdentityQuat(),
+		sprec.NewVec3(radius, radius, radius),
+	))
+	defer mb.meshBuilder.Transform(sprec.IdentityMat4())
+
+	hAngleCount := (segments * 3) / 2
+	vAngleCount := segments
+
+	vertexStart := mb.meshBuilder.VertexOffset()
+	mb.meshBuilder.Vertex().Coord(0.0, 1.0, 0.0)  // 0. top center
+	mb.meshBuilder.Vertex().Coord(0.0, -1.0, 0.0) // 1. bottom center
+	for x := 0; x < hAngleCount; x++ {
+		hAngle := sprec.Degrees(360.0 * (float32(x) / float32(hAngleCount)))
+		hCos := sprec.Cos(hAngle)
+		hSin := sprec.Sin(hAngle)
+		for y := 1; y < vAngleCount-1; y++ {
+			vAngle := sprec.Degrees(90.0 - 180.0*(float32(y)/float32(vAngleCount-1)))
+			vCos := sprec.Cos(vAngle)
+			vSin := sprec.Sin(vAngle)
+			mb.meshBuilder.Vertex().Coord(hCos*vCos, vSin, hSin*vCos)
+		}
+	}
+
+	indexStart := mb.meshBuilder.IndexOffset()
+	for x := 0; x < hAngleCount; x++ {
+		left := x % hAngleCount
+		right := (x + 1) % hAngleCount
+		leftOffset := uint32(left * (vAngleCount - 2))
+		rightOffset := uint32(right * (vAngleCount - 2))
+
+		upperLeft := uint32(2 + leftOffset)
+		upperRight := uint32(2 + rightOffset)
+
+		mb.meshBuilder.IndexTriangle(
+			vertexStart+0,
+			vertexStart+upperLeft,
+			vertexStart+upperRight,
+		)
+
+		for y := 1; y < vAngleCount-2; y++ {
+			lowerLeft := upperLeft + 1
+			lowerRight := upperRight + 1
+
+			mb.meshBuilder.IndexTriangle(
+				vertexStart+upperLeft,
+				vertexStart+lowerLeft,
+				vertexStart+lowerRight,
+			)
+			mb.meshBuilder.IndexTriangle(
+				vertexStart+upperLeft,
+				vertexStart+lowerRight,
+				vertexStart+upperRight,
+			)
+
+			upperLeft++
+			upperRight++
+		}
+
+		mb.meshBuilder.IndexTriangle(
+			vertexStart+upperLeft,
+			vertexStart+1,
+			vertexStart+upperRight,
+		)
+	}
+
+	mb.indices.IndexCount += mb.meshBuilder.IndexOffset() - indexStart
+	return mb
+}
 
 type simpleMeshFragment struct {
 	Material    *MaterialDefinition
