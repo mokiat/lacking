@@ -768,7 +768,7 @@ func (c *canvasRenderer) fillPath(path *canvasPath, fill Fill) {
 	}
 
 	texture := c.whiteMask
-	if fill.Image != nil {
+	if fill.Image != nil && fill.Image.texture != nil {
 		texture = fill.Image.texture
 	}
 
