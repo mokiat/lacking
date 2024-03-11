@@ -1,8 +1,10 @@
 package graphics
 
 import (
+	"cmp"
 	"fmt"
 	"math"
+	"slices"
 	"time"
 
 	"github.com/mokiat/gblob"
@@ -18,8 +20,12 @@ import (
 	"github.com/mokiat/lacking/util/blob"
 	"github.com/mokiat/lacking/util/spatial"
 	"github.com/x448/float16"
-	"golang.org/x/exp/slices"
 )
+
+const maxTextureCount = 8
+
+// TODO: When rendering emissive passes, they need to use LEQUAL depth
+// testing, otherwise emission pass will not work correctly.
 
 const (
 	shadowMapWidth  = 2048
@@ -27,6 +33,11 @@ const (
 
 	commandBufferSize = 2 * 1024 * 1024  // 2MB
 	uniformBufferSize = 32 * 1024 * 1024 // 32MB
+
+	// TODO: Move these next to the uniform types
+	modelUniformBufferItemSize  = 64
+	modelUniformBufferItemCount = 256
+	modelUniformBufferSize      = modelUniformBufferItemSize * modelUniformBufferItemCount
 )
 
 var ShowLightView bool
@@ -41,6 +52,9 @@ func newRenderer(api render.API, shaders ShaderCollection) *sceneRenderer {
 
 		visibleStaticMeshes: spatial.NewVisitorBucket[uint32](2_000),
 		visibleMeshes:       spatial.NewVisitorBucket[*Mesh](2_000),
+
+		litStaticMeshes: spatial.NewVisitorBucket[uint32](2_000),
+		litMeshes:       spatial.NewVisitorBucket[*Mesh](2_000),
 
 		ambientLightBucket: spatial.NewVisitorBucket[*AmbientLight](16),
 
@@ -78,16 +92,17 @@ type sceneRenderer struct {
 	shadowDepthTexture render.Texture
 	shadowFramebuffer  render.Framebuffer
 
-	exposureAlbedoTexture   render.Texture
-	exposureFramebuffer     render.Framebuffer
-	exposureFormat          render.DataFormat
-	exposureProgram         render.Program
-	exposurePipeline        render.Pipeline
-	exposureBufferData      gblob.LittleEndianBlock
-	exposureBuffer          render.Buffer
-	exposureSync            render.Fence
-	exposureTarget          float32
-	exposureUpdateTimestamp time.Time
+	exposureAlbedoTexture     render.Texture
+	exposureFramebuffer       render.Framebuffer
+	exposureFormat            render.DataFormat
+	exposureProgram           render.Program
+	exposurePipeline          render.Pipeline
+	exposureBufferData        gblob.LittleEndianBlock
+	exposureBuffer            render.Buffer
+	exposureSync              render.Fence
+	exposureTarget            float32
+	exposureUpdateTimestamp   time.Time
+	exposureReadbackSupported bool
 
 	postprocessingProgram  render.Program
 	postprocessingPipeline render.Pipeline
@@ -122,7 +137,11 @@ type sceneRenderer struct {
 
 	visibleStaticMeshes *spatial.VisitorBucket[uint32]
 	visibleMeshes       *spatial.VisitorBucket[*Mesh]
-	renderItems         []renderItem
+
+	litStaticMeshes *spatial.VisitorBucket[uint32]
+	litMeshes       *spatial.VisitorBucket[*Mesh]
+
+	renderItems []renderItem
 
 	uniforms                  *renderutil.UniformBlockBuffer
 	modelUniformBufferData    gblob.LittleEndianBlock
@@ -134,6 +153,12 @@ func (r *sceneRenderer) createFramebuffers(width, height int) {
 	r.framebufferWidth = width
 	r.framebufferHeight = height
 
+	// TODO: Do one of the following to support emissive passes:
+	// 1. Add an emissive amount to the framebuffer to be multiplied
+	//   by the albedo color. (zero means non-emissive). Will not produce good
+	//   linearity.
+	// 2. Make the albedo float and add a boolean emissive flag to
+	//   control lighting afterwards.
 	r.geometryAlbedoTexture = r.api.CreateColorTexture2D(render.ColorTexture2DInfo{
 		Width:           r.framebufferWidth,
 		Height:          r.framebufferHeight,
@@ -257,6 +282,10 @@ func (r *sceneRenderer) Allocate() {
 		Dynamic: true,
 		Size:    len(r.exposureBufferData),
 	})
+	r.exposureReadbackSupported = (r.exposureFormat == render.DataFormatRGBA16F) || (r.exposureFormat == render.DataFormatRGBA32F)
+	if !r.exposureReadbackSupported {
+		logger.Error("Skipping exposure due to unsupported framebuffer format: %s", r.exposureFormat)
+	}
 
 	r.postprocessingProgram = r.api.CreateProgram(render.ProgramInfo{
 		SourceCode: r.shaders.PostprocessingSet(PostprocessingShaderConfig{
@@ -504,7 +533,7 @@ func (r *sceneRenderer) Allocate() {
 	})
 
 	r.uniforms = renderutil.NewUniformBlockBuffer(r.api, uniformBufferSize)
-	r.modelUniformBufferData = make([]byte, 64*256) // 256 x mat4
+	r.modelUniformBufferData = make([]byte, modelUniformBufferSize)
 }
 
 func (r *sceneRenderer) Release() {
@@ -648,6 +677,12 @@ func (r *sceneRenderer) Render(framebuffer render.Framebuffer, viewport Viewport
 		frustum:     frustum,
 	}
 
+	r.visibleMeshes.Reset()
+	ctx.scene.dynamicMeshSet.VisitHexahedronRegion(&frustum, r.visibleMeshes)
+
+	r.visibleStaticMeshes.Reset()
+	ctx.scene.staticMeshOctree.VisitHexahedronRegion(&ctx.frustum, r.visibleStaticMeshes)
+
 	r.cameraPlacement = renderutil.WriteUniform(r.uniforms, internal.CameraUniform{
 		ProjectionMatrix: projectionMatrix,
 		ViewMatrix:       viewMatrix,
@@ -664,7 +699,7 @@ func (r *sceneRenderer) Render(framebuffer render.Framebuffer, viewport Viewport
 	r.renderGeometryPass(ctx)
 	r.renderLightingPass(ctx)
 	r.renderForwardPass(ctx)
-	if camera.autoExposureEnabled {
+	if camera.autoExposureEnabled && r.exposureReadbackSupported {
 		r.renderExposureProbePass(ctx)
 	}
 	r.renderPostprocessingPass(ctx)
@@ -677,6 +712,10 @@ func (r *sceneRenderer) Render(framebuffer render.Framebuffer, viewport Viewport
 	r.api.Queue().Invalidate()
 	r.api.Queue().Submit(r.commandBuffer)
 	submitSpan.End()
+
+	if camera.autoExposureEnabled && r.exposureReadbackSupported && r.exposureSync == nil {
+		r.exposureSync = r.api.Queue().TrackSubmittedWorkDone()
+	}
 }
 
 func (r *sceneRenderer) evaluateProjectionMatrix(camera *Camera, width, height int) sprec.Mat4 {
@@ -737,32 +776,27 @@ func (r *sceneRenderer) renderShadowPass(ctx renderCtx) {
 
 	projectionMatrix := lightOrtho()
 	lightMatrix := directionalLight.gfxMatrix()
-	lightMatrix.M14 = floor(lightMatrix.M14*shadowMapWidth) / float32(shadowMapWidth)
-	lightMatrix.M24 = floor(lightMatrix.M24*shadowMapWidth) / float32(shadowMapWidth)
-	lightMatrix.M34 = floor(lightMatrix.M34*shadowMapWidth) / float32(shadowMapWidth)
+	lightMatrix.M14 = sprec.Floor(lightMatrix.M14*shadowMapWidth) / float32(shadowMapWidth)
+	lightMatrix.M24 = sprec.Floor(lightMatrix.M24*shadowMapWidth) / float32(shadowMapWidth)
+	lightMatrix.M34 = sprec.Floor(lightMatrix.M34*shadowMapWidth) / float32(shadowMapWidth)
 	viewMatrix := sprec.InverseMat4(lightMatrix)
 	projectionViewMatrix := sprec.Mat4Prod(projectionMatrix, viewMatrix)
 	frustum := spatial.ProjectionRegion(stod.Mat4(projectionViewMatrix))
 
+	r.litMeshes.Reset()
+	ctx.scene.dynamicMeshSet.VisitHexahedronRegion(&frustum, r.litMeshes)
+
+	r.litStaticMeshes.Reset()
+	ctx.scene.staticMeshOctree.VisitHexahedronRegion(&frustum, r.litStaticMeshes)
+
 	r.renderItems = r.renderItems[:0]
-
-	r.visibleMeshes.Reset()
-	ctx.scene.dynamicMeshSet.VisitHexahedronRegion(&frustum, r.visibleMeshes)
-	for _, mesh := range r.visibleMeshes.Items() {
-		r.queueShadowMesh(ctx, mesh)
+	for _, mesh := range r.litMeshes.Items() {
+		r.queueMeshRenderItems(mesh, internal.MeshRenderPassTypeShadow)
 	}
-
-	r.visibleStaticMeshes.Reset()
-	ctx.scene.staticMeshOctree.VisitHexahedronRegion(&frustum, r.visibleStaticMeshes)
-	for _, meshIndex := range r.visibleStaticMeshes.Items() {
-		r.queueStaticShadowMesh(ctx, &ctx.scene.staticMeshes[meshIndex])
+	for _, meshIndex := range r.litStaticMeshes.Items() {
+		staticMesh := &ctx.scene.staticMeshes[meshIndex]
+		r.queueStaticMeshRenderItems(staticMesh, internal.MeshRenderPassTypeShadow)
 	}
-
-	slices.SortFunc(r.renderItems, func(a, b renderItem) int {
-		// TODO: If fragment IDs are stored inside the items themselves, there
-		// would be fewer pointer jumps and cache misses.
-		return a.fragment.id - b.fragment.id
-	})
 
 	r.commandBuffer.BeginRenderPass(render.RenderPassInfo{
 		Framebuffer: r.shadowFramebuffer,
@@ -775,138 +809,35 @@ func (r *sceneRenderer) renderShadowPass(ctx renderCtx) {
 		DepthLoadOp:     render.LoadOperationClear,
 		DepthStoreOp:    render.StoreOperationStore,
 		DepthClearValue: 1.0,
-		StencilLoadOp:   render.LoadOperationDontCare,
-		StencilStoreOp:  render.StoreOperationDontCare,
+		StencilLoadOp:   render.LoadOperationLoad,
+		StencilStoreOp:  render.StoreOperationDiscard,
 	})
 
-	r.directionalLightPlacement = renderutil.WriteUniform(r.uniforms, internal.LightUniform{
+	lightCameraPlacement := renderutil.WriteUniform(r.uniforms, internal.CameraUniform{
 		ProjectionMatrix: projectionMatrix,
 		ViewMatrix:       viewMatrix,
-		LightMatrix:      lightMatrix,
+		CameraMatrix:     lightMatrix,
+		Viewport:         sprec.ZeroVec4(), // TODO?
 	})
-	r.renderShadowMeshesList(ctx)
 
+	meshCtx := renderMeshContext{
+		CameraPlacement: lightCameraPlacement,
+	}
+	r.renderMeshRenderItems(meshCtx, r.renderItems)
 	r.commandBuffer.EndRenderPass()
-}
-
-func (r *sceneRenderer) queueShadowMesh(ctx renderCtx, mesh *Mesh) {
-	modelMatrix := mesh.matrixData
-	definition := mesh.definition
-	for i := range definition.fragments {
-		// TODO: Fragment is a somewhat shallow structure. Consider copying the
-		// relevant information instead of dealing with pointers.
-		fragment := &definition.fragments[i]
-		r.renderItems = append(r.renderItems, renderItem{
-			fragment:    fragment,
-			modelMatrix: modelMatrix,
-			armature:    mesh.armature,
-		})
-	}
-}
-
-func (r *sceneRenderer) queueStaticShadowMesh(ctx renderCtx, mesh *StaticMesh) {
-	modelMatrix := mesh.matrixData
-	definition := mesh.definition
-	for i := range definition.fragments {
-		// TODO: Fragment is a somewhat shallow structure. Consider copying the
-		// relevant information instead of dealing with pointers.
-		fragment := &definition.fragments[i]
-		r.renderItems = append(r.renderItems, renderItem{
-			fragment:    fragment,
-			modelMatrix: modelMatrix,
-		})
-	}
-}
-
-func (r *sceneRenderer) renderShadowMeshesList(ctx renderCtx) {
-	var lastFragment *meshFragmentDefinition
-	count := 0
-	for _, item := range r.renderItems {
-		fragment := item.fragment
-		material := fragment.material
-
-		// just append the modelmatrix
-		if fragment == lastFragment && item.armature == nil {
-			copy(r.modelUniformBufferData[count*64:], item.modelMatrix)
-			count++
-
-			// flush batch
-			if count >= 256 {
-				modelPlacement := renderutil.WriteUniform(r.uniforms, internal.ModelUniform{
-					ModelMatrices: r.modelUniformBufferData,
-				})
-				r.commandBuffer.UniformBufferUnit(
-					internal.UniformBufferBindingModel,
-					modelPlacement.Buffer,
-					modelPlacement.Offset,
-					modelPlacement.Size,
-				)
-				r.commandBuffer.DrawIndexed(lastFragment.indexOffsetBytes, lastFragment.indexCount, count)
-				count = 0
-			}
-		} else {
-			// flush batch
-			if lastFragment != nil && count > 0 {
-				modelPlacement := renderutil.WriteUniform(r.uniforms, internal.ModelUniform{
-					ModelMatrices: r.modelUniformBufferData,
-				})
-				r.commandBuffer.UniformBufferUnit(
-					internal.UniformBufferBindingModel,
-					modelPlacement.Buffer,
-					modelPlacement.Offset,
-					modelPlacement.Size,
-				)
-				r.commandBuffer.DrawIndexed(lastFragment.indexOffsetBytes, lastFragment.indexCount, count)
-			}
-
-			count = 0
-			lastFragment = fragment
-			r.commandBuffer.BindPipeline(material.shadowPipeline)
-			r.commandBuffer.UniformBufferUnit(
-				internal.UniformBufferBindingLight,
-				r.directionalLightPlacement.Buffer,
-				r.directionalLightPlacement.Offset,
-				r.directionalLightPlacement.Size,
-			)
-
-			if item.armature == nil {
-				copy(r.modelUniformBufferData[count*64:], item.modelMatrix)
-				count++
-			} else {
-				// No batching for submeshes with armature. Zero index is the model
-				// matrix
-				copy(r.modelUniformBufferData, item.armature.uniformBufferData)
-				modelPlacement := renderutil.WriteUniform(r.uniforms, internal.ModelUniform{
-					ModelMatrices: r.modelUniformBufferData,
-				})
-				r.commandBuffer.UniformBufferUnit(
-					internal.UniformBufferBindingModel,
-					modelPlacement.Buffer,
-					modelPlacement.Offset,
-					modelPlacement.Size,
-				)
-				r.commandBuffer.DrawIndexed(lastFragment.indexOffsetBytes, lastFragment.indexCount, 1)
-			}
-		}
-	}
-
-	// flush remainder
-	if lastFragment != nil && count > 0 {
-		modelPlacement := renderutil.WriteUniform(r.uniforms, internal.ModelUniform{
-			ModelMatrices: r.modelUniformBufferData,
-		})
-		r.commandBuffer.UniformBufferUnit(
-			internal.UniformBufferBindingModel,
-			modelPlacement.Buffer,
-			modelPlacement.Offset,
-			modelPlacement.Size,
-		)
-		r.commandBuffer.DrawIndexed(lastFragment.indexOffsetBytes, lastFragment.indexCount, count)
-	}
 }
 
 func (r *sceneRenderer) renderGeometryPass(ctx renderCtx) {
 	defer metric.BeginRegion("geometry").End()
+
+	r.renderItems = r.renderItems[:0]
+	for _, mesh := range r.visibleMeshes.Items() {
+		r.queueMeshRenderItems(mesh, internal.MeshRenderPassTypeGeometry)
+	}
+	for _, meshIndex := range r.visibleStaticMeshes.Items() {
+		staticMesh := &ctx.scene.staticMeshes[meshIndex]
+		r.queueStaticMeshRenderItems(staticMesh, internal.MeshRenderPassTypeGeometry)
+	}
 
 	r.commandBuffer.BeginRenderPass(render.RenderPassInfo{
 		Framebuffer: r.geometryFramebuffer,
@@ -919,8 +850,8 @@ func (r *sceneRenderer) renderGeometryPass(ctx renderCtx) {
 		DepthLoadOp:     render.LoadOperationClear,
 		DepthStoreOp:    render.StoreOperationStore,
 		DepthClearValue: 1.0,
-		StencilLoadOp:   render.LoadOperationDontCare,
-		StencilStoreOp:  render.StoreOperationDontCare,
+		StencilLoadOp:   render.LoadOperationLoad,
+		StencilStoreOp:  render.StoreOperationDiscard,
 		Colors: [4]render.ColorAttachmentInfo{
 			{
 				LoadOp:  render.LoadOperationClear,
@@ -939,159 +870,27 @@ func (r *sceneRenderer) renderGeometryPass(ctx renderCtx) {
 			},
 		},
 	})
-
-	r.renderItems = r.renderItems[:0]
-
-	r.visibleMeshes.Reset()
-	ctx.scene.dynamicMeshSet.VisitHexahedronRegion(&ctx.frustum, r.visibleMeshes)
-	for _, mesh := range r.visibleMeshes.Items() {
-		r.queueMesh(ctx, mesh)
+	meshCtx := renderMeshContext{
+		CameraPlacement: r.cameraPlacement,
 	}
-
-	r.visibleStaticMeshes.Reset()
-	ctx.scene.staticMeshOctree.VisitHexahedronRegion(&ctx.frustum, r.visibleStaticMeshes)
-	for _, meshIndex := range r.visibleStaticMeshes.Items() {
-		r.queueStaticMesh(ctx, &ctx.scene.staticMeshes[meshIndex])
-	}
-
-	slices.SortFunc(r.renderItems, func(a, b renderItem) int {
-		return a.fragment.id - b.fragment.id
-	})
-	r.renderMeshesList(ctx)
-
+	r.renderMeshRenderItems(meshCtx, r.renderItems)
 	r.commandBuffer.EndRenderPass()
-}
-
-func (r *sceneRenderer) queueMesh(ctx renderCtx, mesh *Mesh) {
-	modelMatrix := mesh.matrixData
-	definition := mesh.definition
-	for i := range definition.fragments {
-		fragment := &definition.fragments[i]
-		r.renderItems = append(r.renderItems, renderItem{
-			fragment:    fragment,
-			modelMatrix: modelMatrix,
-			armature:    mesh.armature,
-		})
-	}
-}
-
-func (r *sceneRenderer) queueStaticMesh(ctx renderCtx, mesh *StaticMesh) {
-	modelMatrix := mesh.matrixData
-	definition := mesh.definition
-	for i := range definition.fragments {
-		fragment := &definition.fragments[i]
-		r.renderItems = append(r.renderItems, renderItem{
-			fragment:    fragment,
-			modelMatrix: modelMatrix[:],
-			armature:    nil,
-		})
-	}
-}
-
-func (r *sceneRenderer) renderMeshesList(ctx renderCtx) {
-	var lastFragment *meshFragmentDefinition
-	count := 0
-	for _, item := range r.renderItems {
-		fragment := item.fragment
-		if fragment.material.geometryPipeline == nil {
-			continue // skip non-geometry meshes
-		}
-
-		// just append the modelmatrix
-		if fragment == lastFragment && item.armature == nil {
-			copy(r.modelUniformBufferData[count*64:], item.modelMatrix)
-			count++
-
-			// flush batch
-			if count >= 256 {
-				modelPlacement := renderutil.WriteUniform(r.uniforms, internal.ModelUniform{
-					ModelMatrices: r.modelUniformBufferData,
-				})
-				r.commandBuffer.UniformBufferUnit(
-					internal.UniformBufferBindingModel,
-					modelPlacement.Buffer,
-					modelPlacement.Offset,
-					modelPlacement.Size,
-				)
-				r.commandBuffer.DrawIndexed(lastFragment.indexOffsetBytes, lastFragment.indexCount, count)
-				count = 0
-			}
-		} else {
-			// flush batch
-			if lastFragment != nil && count > 0 {
-				modelPlacement := renderutil.WriteUniform(r.uniforms, internal.ModelUniform{
-					ModelMatrices: r.modelUniformBufferData,
-				})
-				r.commandBuffer.UniformBufferUnit(
-					internal.UniformBufferBindingModel,
-					modelPlacement.Buffer,
-					modelPlacement.Offset,
-					modelPlacement.Size,
-				)
-				r.commandBuffer.DrawIndexed(lastFragment.indexOffsetBytes, lastFragment.indexCount, count)
-			}
-
-			count = 0
-			lastFragment = fragment
-			material := fragment.material
-			materialValues := material.definition
-			r.commandBuffer.BindPipeline(material.geometryPipeline)
-			if materialValues.twoDTextures[0] != nil {
-				r.commandBuffer.TextureUnit(internal.TextureBindingGeometryAlbedoTexture, materialValues.twoDTextures[0])
-			}
-			r.commandBuffer.UniformBufferUnit(
-				internal.UniformBufferBindingCamera,
-				r.cameraPlacement.Buffer,
-				r.cameraPlacement.Offset,
-				r.cameraPlacement.Size,
-			)
-			materialPlacement := renderutil.WriteUniform(r.uniforms, internal.MaterialUniform{
-				Data: materialValues.uniformData,
-			})
-			r.commandBuffer.UniformBufferUnit(
-				internal.UniformBufferBindingMaterial,
-				materialPlacement.Buffer,
-				materialPlacement.Offset,
-				materialPlacement.Size,
-			)
-			if item.armature == nil {
-				copy(r.modelUniformBufferData[count*64:], item.modelMatrix)
-				count++
-			} else {
-				// No batching for submeshes with armature. Zero index is the model
-				// matrix
-				copy(r.modelUniformBufferData, item.armature.uniformBufferData)
-				modelPlacement := renderutil.WriteUniform(r.uniforms, internal.ModelUniform{
-					ModelMatrices: r.modelUniformBufferData,
-				})
-				r.commandBuffer.UniformBufferUnit(
-					internal.UniformBufferBindingModel,
-					modelPlacement.Buffer,
-					modelPlacement.Offset,
-					modelPlacement.Size,
-				)
-				r.commandBuffer.DrawIndexed(lastFragment.indexOffsetBytes, lastFragment.indexCount, 1)
-			}
-		}
-	}
-
-	// flush remainder
-	if lastFragment != nil && count > 0 {
-		modelPlacement := renderutil.WriteUniform(r.uniforms, internal.ModelUniform{
-			ModelMatrices: r.modelUniformBufferData,
-		})
-		r.commandBuffer.UniformBufferUnit(
-			internal.UniformBufferBindingModel,
-			modelPlacement.Buffer,
-			modelPlacement.Offset,
-			modelPlacement.Size,
-		)
-		r.commandBuffer.DrawIndexed(lastFragment.indexOffsetBytes, lastFragment.indexCount, count)
-	}
 }
 
 func (r *sceneRenderer) renderLightingPass(ctx renderCtx) {
 	defer metric.BeginRegion("lighting").End()
+
+	r.ambientLightBucket.Reset()
+	ctx.scene.ambientLightSet.VisitHexahedronRegion(&ctx.frustum, r.ambientLightBucket)
+
+	r.pointLightBucket.Reset()
+	ctx.scene.pointLightSet.VisitHexahedronRegion(&ctx.frustum, r.pointLightBucket)
+
+	r.spotLightBucket.Reset()
+	ctx.scene.spotLightSet.VisitHexahedronRegion(&ctx.frustum, r.spotLightBucket)
+
+	r.directionalLightBucket.Reset()
+	ctx.scene.directionalLightSet.VisitHexahedronRegion(&ctx.frustum, r.directionalLightBucket)
 
 	r.commandBuffer.BeginRenderPass(render.RenderPassInfo{
 		Framebuffer: r.lightingFramebuffer,
@@ -1101,10 +900,10 @@ func (r *sceneRenderer) renderLightingPass(ctx renderCtx) {
 			Width:  r.framebufferWidth,
 			Height: r.framebufferHeight,
 		},
-		DepthLoadOp:    render.LoadOperationDontCare, // TODO: LoadOperationLoad: we do care
+		DepthLoadOp:    render.LoadOperationLoad,
 		DepthStoreOp:   render.StoreOperationStore,
-		StencilLoadOp:  render.LoadOperationDontCare,
-		StencilStoreOp: render.StoreOperationDontCare,
+		StencilLoadOp:  render.LoadOperationLoad,
+		StencilStoreOp: render.StoreOperationDiscard,
 		Colors: [4]render.ColorAttachmentInfo{
 			{
 				LoadOp:     render.LoadOperationClear,
@@ -1114,197 +913,43 @@ func (r *sceneRenderer) renderLightingPass(ctx renderCtx) {
 		},
 	})
 
-	r.ambientLightBucket.Reset()
-	ctx.scene.ambientLightSet.VisitHexahedronRegion(&ctx.frustum, r.ambientLightBucket)
+	// TODO: Use batching (instancing) when rendering lights, if possible.
+
 	for _, ambientLight := range r.ambientLightBucket.Items() {
 		if ambientLight.active {
-			r.renderAmbientLight(ctx, ambientLight)
+			r.renderAmbientLight(ambientLight)
 		}
 	}
-
-	// TODO: Use batching (instancing) when rendering point lights
-	r.pointLightBucket.Reset()
-	ctx.scene.pointLightSet.VisitHexahedronRegion(&ctx.frustum, r.pointLightBucket)
 	for _, pointLight := range r.pointLightBucket.Items() {
 		if pointLight.active {
-			r.renderPointLight(ctx, pointLight)
+			r.renderPointLight(pointLight)
 		}
 	}
-
-	// TODO: Use batching (instancing) when rendering spot lights
-	r.spotLightBucket.Reset()
-	ctx.scene.spotLightSet.VisitHexahedronRegion(&ctx.frustum, r.spotLightBucket)
 	for _, spotLight := range r.spotLightBucket.Items() {
 		if spotLight.active {
-			r.renderSpotLight(ctx, spotLight)
+			r.renderSpotLight(spotLight)
 		}
 	}
-
-	r.directionalLightBucket.Reset()
-	ctx.scene.directionalLightSet.VisitHexahedronRegion(&ctx.frustum, r.directionalLightBucket)
 	for _, directionalLight := range r.directionalLightBucket.Items() {
 		if directionalLight.active {
-			r.renderDirectionalLight(ctx, directionalLight)
+			r.renderDirectionalLight(directionalLight)
 		}
 	}
 
 	r.commandBuffer.EndRenderPass()
 }
 
-func (r *sceneRenderer) renderAmbientLight(ctx renderCtx, light *AmbientLight) {
-	r.commandBuffer.BindPipeline(r.ambientLightPipeline)
-	r.commandBuffer.TextureUnit(internal.TextureBindingLightingFramebufferColor0, r.geometryAlbedoTexture)
-	r.commandBuffer.TextureUnit(internal.TextureBindingLightingFramebufferColor1, r.geometryNormalTexture)
-	r.commandBuffer.TextureUnit(internal.TextureBindingLightingFramebufferDepth, r.geometryDepthTexture)
-	r.commandBuffer.TextureUnit(internal.TextureBindingLightingReflectionTexture, light.reflectionTexture.texture)
-	r.commandBuffer.TextureUnit(internal.TextureBindingLightingRefractionTexture, light.refractionTexture.texture)
-	r.commandBuffer.UniformBufferUnit(
-		internal.UniformBufferBindingCamera,
-		r.cameraPlacement.Buffer,
-		r.cameraPlacement.Offset,
-		r.cameraPlacement.Size,
-	)
-	// TODO: Intensity based on distance and inner and outer radius
-	r.commandBuffer.DrawIndexed(0, r.quadShape.IndexCount(), 1)
-}
-
-func floor(a float32) float32 {
-	return float32(math.Floor(float64(a)))
-}
-
-func (r *sceneRenderer) renderDirectionalLight(ctx renderCtx, light *DirectionalLight) {
-	projectionMatrix := lightOrtho()
-	lightMatrix := light.gfxMatrix()
-	lightMatrix.M14 = floor(lightMatrix.M14*shadowMapWidth) / float32(shadowMapWidth)
-	lightMatrix.M24 = floor(lightMatrix.M24*shadowMapWidth) / float32(shadowMapWidth)
-	lightMatrix.M34 = floor(lightMatrix.M34*shadowMapWidth) / float32(shadowMapWidth)
-	viewMatrix := sprec.InverseMat4(lightMatrix)
-
-	lightPlacement := renderutil.WriteUniform(r.uniforms, internal.LightUniform{
-		ProjectionMatrix: projectionMatrix,
-		ViewMatrix:       viewMatrix,
-		LightMatrix:      lightMatrix,
-	})
-
-	lightPropertiesPlacement := renderutil.WriteUniform(r.uniforms, internal.LightPropertiesUniform{
-		Color:     dtos.Vec3(light.emitColor),
-		Intensity: 1.0,
-	})
-
-	r.commandBuffer.BindPipeline(r.directionalLightPipeline)
-	r.commandBuffer.TextureUnit(internal.TextureBindingLightingFramebufferColor0, r.geometryAlbedoTexture)
-	r.commandBuffer.TextureUnit(internal.TextureBindingLightingFramebufferColor1, r.geometryNormalTexture)
-	r.commandBuffer.TextureUnit(internal.TextureBindingLightingFramebufferDepth, r.geometryDepthTexture)
-	r.commandBuffer.TextureUnit(internal.TextureBindingShadowFramebufferDepth, r.shadowDepthTexture)
-	r.commandBuffer.UniformBufferUnit(
-		internal.UniformBufferBindingCamera,
-		r.cameraPlacement.Buffer,
-		r.cameraPlacement.Offset,
-		r.cameraPlacement.Size,
-	)
-	r.commandBuffer.UniformBufferUnit(
-		internal.UniformBufferBindingLight,
-		lightPlacement.Buffer,
-		lightPlacement.Offset,
-		lightPlacement.Size,
-	)
-	r.commandBuffer.UniformBufferUnit(
-		internal.UniformBufferBindingLightProperties,
-		lightPropertiesPlacement.Buffer,
-		lightPropertiesPlacement.Offset,
-		lightPropertiesPlacement.Size,
-	)
-	r.commandBuffer.DrawIndexed(0, r.quadShape.IndexCount(), 1)
-}
-
-func (r *sceneRenderer) renderPointLight(ctx renderCtx, light *PointLight) {
-	projectionMatrix := sprec.IdentityMat4()
-	lightMatrix := light.gfxMatrix()
-	viewMatrix := sprec.InverseMat4(lightMatrix)
-
-	lightPlacement := renderutil.WriteUniform(r.uniforms, internal.LightUniform{
-		ProjectionMatrix: projectionMatrix,
-		ViewMatrix:       viewMatrix,
-		LightMatrix:      lightMatrix,
-	})
-
-	lightPropertiesPlacement := renderutil.WriteUniform(r.uniforms, internal.LightPropertiesUniform{
-		Color:     dtos.Vec3(light.emitColor),
-		Intensity: 1.0,
-		Range:     float32(light.emitRange),
-	})
-
-	r.commandBuffer.BindPipeline(r.pointLightPipeline)
-	r.commandBuffer.TextureUnit(internal.TextureBindingLightingFramebufferColor0, r.geometryAlbedoTexture)
-	r.commandBuffer.TextureUnit(internal.TextureBindingLightingFramebufferColor1, r.geometryNormalTexture)
-	r.commandBuffer.TextureUnit(internal.TextureBindingLightingFramebufferDepth, r.geometryDepthTexture)
-	r.commandBuffer.UniformBufferUnit(
-		internal.UniformBufferBindingCamera,
-		r.cameraPlacement.Buffer,
-		r.cameraPlacement.Offset,
-		r.cameraPlacement.Size,
-	)
-	r.commandBuffer.UniformBufferUnit(
-		internal.UniformBufferBindingLight,
-		lightPlacement.Buffer,
-		lightPlacement.Offset,
-		lightPlacement.Size,
-	)
-	r.commandBuffer.UniformBufferUnit(
-		internal.UniformBufferBindingLightProperties,
-		lightPropertiesPlacement.Buffer,
-		lightPropertiesPlacement.Offset,
-		lightPropertiesPlacement.Size,
-	)
-	r.commandBuffer.DrawIndexed(0, r.sphereShape.IndexCount(), 1)
-}
-
-func (r *sceneRenderer) renderSpotLight(ctx renderCtx, light *SpotLight) {
-	projectionMatrix := sprec.IdentityMat4()
-	lightMatrix := light.gfxMatrix()
-	viewMatrix := sprec.InverseMat4(lightMatrix)
-
-	lightPlacement := renderutil.WriteUniform(r.uniforms, internal.LightUniform{
-		ProjectionMatrix: projectionMatrix,
-		ViewMatrix:       viewMatrix,
-		LightMatrix:      lightMatrix,
-	})
-
-	lightPropertiesPlacement := renderutil.WriteUniform(r.uniforms, internal.LightPropertiesUniform{
-		Color:      dtos.Vec3(light.emitColor),
-		Intensity:  1.0,
-		Range:      float32(light.emitRange),
-		OuterAngle: float32(light.emitOuterConeAngle.Radians()),
-		InnerAngle: float32(light.emitInnerConeAngle.Radians()),
-	})
-
-	r.commandBuffer.BindPipeline(r.spotLightPipeline)
-	r.commandBuffer.TextureUnit(internal.TextureBindingLightingFramebufferColor0, r.geometryAlbedoTexture)
-	r.commandBuffer.TextureUnit(internal.TextureBindingLightingFramebufferColor1, r.geometryNormalTexture)
-	r.commandBuffer.TextureUnit(internal.TextureBindingLightingFramebufferDepth, r.geometryDepthTexture)
-	r.commandBuffer.UniformBufferUnit(
-		internal.UniformBufferBindingCamera,
-		r.cameraPlacement.Buffer,
-		r.cameraPlacement.Offset,
-		r.cameraPlacement.Size,
-	)
-	r.commandBuffer.UniformBufferUnit(
-		internal.UniformBufferBindingLight,
-		lightPlacement.Buffer,
-		lightPlacement.Offset,
-		lightPlacement.Size,
-	)
-	r.commandBuffer.UniformBufferUnit(
-		internal.UniformBufferBindingLightProperties,
-		lightPropertiesPlacement.Buffer,
-		lightPropertiesPlacement.Offset,
-		lightPropertiesPlacement.Size,
-	)
-	r.commandBuffer.DrawIndexed(0, r.coneShape.IndexCount(), 1)
-}
-
 func (r *sceneRenderer) renderForwardPass(ctx renderCtx) {
 	defer metric.BeginRegion("forward").End()
+
+	r.renderItems = r.renderItems[:0]
+	for _, mesh := range r.visibleMeshes.Items() {
+		r.queueMeshRenderItems(mesh, internal.MeshRenderPassTypeForward)
+	}
+	for _, meshIndex := range r.visibleStaticMeshes.Items() {
+		staticMesh := &ctx.scene.staticMeshes[meshIndex]
+		r.queueStaticMeshRenderItems(staticMesh, internal.MeshRenderPassTypeForward)
+	}
 
 	r.commandBuffer.BeginRenderPass(render.RenderPassInfo{
 		Framebuffer: r.forwardFramebuffer,
@@ -1314,13 +959,13 @@ func (r *sceneRenderer) renderForwardPass(ctx renderCtx) {
 			Width:  r.framebufferWidth,
 			Height: r.framebufferHeight,
 		},
-		DepthLoadOp:    render.LoadOperationDontCare, // TODO: LoadOperationLoad: we do care
+		DepthLoadOp:    render.LoadOperationLoad,
 		DepthStoreOp:   render.StoreOperationStore,
-		StencilLoadOp:  render.LoadOperationDontCare,
-		StencilStoreOp: render.StoreOperationDontCare,
+		StencilLoadOp:  render.LoadOperationLoad,
+		StencilStoreOp: render.StoreOperationDiscard,
 		Colors: [4]render.ColorAttachmentInfo{
 			{
-				LoadOp:  render.LoadOperationDontCare, // TODO: LoadOperationLoad: we do care
+				LoadOp:  render.LoadOperationLoad,
 				StoreOp: render.StoreOperationStore,
 			},
 		},
@@ -1336,6 +981,7 @@ func (r *sceneRenderer) renderForwardPass(ctx renderCtx) {
 			r.cameraPlacement.Size,
 		)
 		r.commandBuffer.TextureUnit(internal.TextureBindingSkyboxAlbedoTexture, texture.texture)
+		r.commandBuffer.SamplerUnit(internal.TextureBindingSkyboxAlbedoTexture, nil) // TODO
 		r.commandBuffer.DrawIndexed(0, r.cubeShape.IndexCount(), 1)
 	} else {
 		skyboxPlacement := renderutil.WriteUniform(r.uniforms, internal.SkyboxUniform{
@@ -1389,119 +1035,18 @@ func (r *sceneRenderer) renderForwardPass(ctx renderCtx) {
 		r.commandBuffer.Draw(0, len(r.debugLines)*2, 1)
 	}
 
-	// NOTE: Reusing renderItems and assuming same as geometry pass.
-	r.renderForwardMeshesList(ctx)
-
+	// FIXME/TODO: Reusing renderItems and assuming same as geometry pass.
+	// Maybe rename the variable to something dedicated so that mistakes
+	// don't happen if ordering is changed in the future.
+	meshCtx := renderMeshContext{
+		CameraPlacement: r.cameraPlacement,
+	}
+	r.renderMeshRenderItems(meshCtx, r.renderItems)
 	r.commandBuffer.EndRenderPass()
-}
-
-func (r *sceneRenderer) renderForwardMeshesList(ctx renderCtx) {
-	var lastFragment *meshFragmentDefinition
-	count := 0
-	for _, item := range r.renderItems {
-		fragment := item.fragment
-		if fragment.material.forwardPipeline == nil {
-			continue // skip non-forward meshes
-		}
-
-		// just append the modelmatrix
-		if fragment == lastFragment && item.armature == nil {
-			copy(r.modelUniformBufferData[count*64:], item.modelMatrix)
-			count++
-
-			// flush batch
-			if count >= 256 {
-				modelPlacement := renderutil.WriteUniform(r.uniforms, internal.ModelUniform{
-					ModelMatrices: r.modelUniformBufferData,
-				})
-				r.commandBuffer.UniformBufferUnit(
-					internal.UniformBufferBindingModel,
-					modelPlacement.Buffer,
-					modelPlacement.Offset,
-					modelPlacement.Size,
-				)
-				r.commandBuffer.DrawIndexed(lastFragment.indexOffsetBytes, lastFragment.indexCount, count)
-				count = 0
-			}
-		} else {
-			// flush batch
-			if lastFragment != nil && count > 0 {
-				modelPlacement := renderutil.WriteUniform(r.uniforms, internal.ModelUniform{
-					ModelMatrices: r.modelUniformBufferData,
-				})
-				r.commandBuffer.UniformBufferUnit(
-					internal.UniformBufferBindingModel,
-					modelPlacement.Buffer,
-					modelPlacement.Offset,
-					modelPlacement.Size,
-				)
-				r.commandBuffer.DrawIndexed(lastFragment.indexOffsetBytes, lastFragment.indexCount, count)
-			}
-
-			count = 0
-			lastFragment = fragment
-			material := fragment.material
-			materialValues := material.definition
-			r.commandBuffer.BindPipeline(material.forwardPipeline)
-			r.commandBuffer.UniformBufferUnit(
-				internal.UniformBufferBindingCamera,
-				r.cameraPlacement.Buffer,
-				r.cameraPlacement.Offset,
-				r.cameraPlacement.Size,
-			)
-
-			materialPlacement := renderutil.WriteUniform(r.uniforms, internal.MaterialUniform{
-				Data: materialValues.uniformData,
-			})
-			r.commandBuffer.UniformBufferUnit(
-				internal.UniformBufferBindingMaterial,
-				materialPlacement.Buffer,
-				materialPlacement.Offset,
-				materialPlacement.Size,
-			)
-			if item.armature == nil {
-				copy(r.modelUniformBufferData[count*64:], item.modelMatrix)
-				count++
-			} else {
-				// No batching for submeshes with armature. Zero index is the model
-				// matrix
-				copy(r.modelUniformBufferData, item.armature.uniformBufferData)
-				modelPlacement := renderutil.WriteUniform(r.uniforms, internal.ModelUniform{
-					ModelMatrices: r.modelUniformBufferData,
-				})
-				r.commandBuffer.UniformBufferUnit(
-					internal.UniformBufferBindingModel,
-					modelPlacement.Buffer,
-					modelPlacement.Offset,
-					modelPlacement.Size,
-				)
-				r.commandBuffer.DrawIndexed(lastFragment.indexOffsetBytes, lastFragment.indexCount, 1)
-			}
-		}
-	}
-
-	// flush remainder
-	if lastFragment != nil && count > 0 {
-		modelPlacement := renderutil.WriteUniform(r.uniforms, internal.ModelUniform{
-			ModelMatrices: r.modelUniformBufferData,
-		})
-		r.commandBuffer.UniformBufferUnit(
-			internal.UniformBufferBindingModel,
-			modelPlacement.Buffer,
-			modelPlacement.Offset,
-			modelPlacement.Size,
-		)
-		r.commandBuffer.DrawIndexed(lastFragment.indexOffsetBytes, lastFragment.indexCount, count)
-	}
 }
 
 func (r *sceneRenderer) renderExposureProbePass(ctx renderCtx) {
 	defer metric.BeginRegion("exposure").End()
-
-	if r.exposureFormat != render.DataFormatRGBA16F && r.exposureFormat != render.DataFormatRGBA32F {
-		logger.Error("Skipping exposure due to unsupported framebuffer format (%q)!", r.exposureFormat)
-		return
-	}
 
 	if r.exposureSync != nil {
 		switch r.exposureSync.Status() {
@@ -1523,7 +1068,8 @@ func (r *sceneRenderer) renderExposureProbePass(ctx renderCtx) {
 			if r.exposureTarget < ctx.camera.minExposure {
 				r.exposureTarget = ctx.camera.minExposure
 			}
-			fallthrough
+			r.exposureSync.Release()
+			r.exposureSync = nil
 
 		case render.FenceStatusNotReady:
 			// wait until next frame
@@ -1549,20 +1095,21 @@ func (r *sceneRenderer) renderExposureProbePass(ctx renderCtx) {
 				Width:  1,
 				Height: 1,
 			},
-			DepthLoadOp:    render.LoadOperationDontCare,
-			DepthStoreOp:   render.StoreOperationDontCare,
-			StencilLoadOp:  render.LoadOperationDontCare,
-			StencilStoreOp: render.StoreOperationDontCare,
+			DepthLoadOp:    render.LoadOperationLoad,
+			DepthStoreOp:   render.StoreOperationDiscard,
+			StencilLoadOp:  render.LoadOperationLoad,
+			StencilStoreOp: render.StoreOperationDiscard,
 			Colors: [4]render.ColorAttachmentInfo{
 				{
 					LoadOp:     render.LoadOperationClear,
-					StoreOp:    render.StoreOperationDontCare,
+					StoreOp:    render.StoreOperationDiscard,
 					ClearValue: [4]float32{0.0, 0.0, 0.0, 0.0},
 				},
 			},
 		})
 		r.commandBuffer.BindPipeline(r.exposurePipeline)
 		r.commandBuffer.TextureUnit(internal.TextureBindingLightingFramebufferColor0, r.lightingAlbedoTexture)
+		r.commandBuffer.SamplerUnit(internal.TextureBindingLightingFramebufferColor0, nil)
 		r.commandBuffer.UniformBufferUnit(
 			internal.UniformBufferBindingCamera,
 			r.cameraPlacement.Buffer,
@@ -1578,7 +1125,6 @@ func (r *sceneRenderer) renderExposureProbePass(ctx renderCtx) {
 			Height: 1,
 			Format: r.exposureFormat,
 		})
-		r.exposureSync = r.api.Queue().TrackSubmittedWorkDone() // FIXME: Incorrect place
 		r.commandBuffer.EndRenderPass()
 	}
 }
@@ -1598,13 +1144,13 @@ func (r *sceneRenderer) renderPostprocessingPass(ctx renderCtx) {
 			Width:  ctx.width,
 			Height: ctx.height,
 		},
-		DepthLoadOp:    render.LoadOperationDontCare,
-		DepthStoreOp:   render.StoreOperationDontCare,
-		StencilLoadOp:  render.LoadOperationDontCare,
-		StencilStoreOp: render.StoreOperationStore, // TODO: We need this due to UI. Figure out how to control this.
+		DepthLoadOp:    render.LoadOperationLoad,
+		DepthStoreOp:   render.StoreOperationDiscard,
+		StencilLoadOp:  render.LoadOperationLoad,
+		StencilStoreOp: render.StoreOperationDiscard,
 		Colors: [4]render.ColorAttachmentInfo{
 			{
-				LoadOp:  render.LoadOperationDontCare,
+				LoadOp:  render.LoadOperationLoad,
 				StoreOp: render.StoreOperationStore,
 			},
 		},
@@ -1612,6 +1158,7 @@ func (r *sceneRenderer) renderPostprocessingPass(ctx renderCtx) {
 
 	r.commandBuffer.BindPipeline(r.postprocessingPipeline)
 	r.commandBuffer.TextureUnit(internal.TextureBindingPostprocessFramebufferColor0, r.lightingAlbedoTexture)
+	r.commandBuffer.SamplerUnit(internal.TextureBindingPostprocessFramebufferColor0, nil)
 	r.commandBuffer.UniformBufferUnit(
 		internal.UniformBufferBindingCamera,
 		r.cameraPlacement.Buffer,
@@ -1629,6 +1176,318 @@ func (r *sceneRenderer) renderPostprocessingPass(ctx renderCtx) {
 	r.commandBuffer.EndRenderPass()
 }
 
+func (r *sceneRenderer) queueMeshRenderItems(mesh *Mesh, passType internal.MeshRenderPassType) {
+	definition := mesh.definition
+	passes := definition.passesByType[passType]
+	for _, pass := range passes {
+		r.renderItems = append(r.renderItems, renderItem{
+			Layer:       pass.Layer,
+			MaterialKey: pass.Key,
+			ArmatureKey: mesh.armature.key(),
+
+			Pipeline:     pass.Pipeline,
+			Textures:     pass.Textures,
+			Samplers:     pass.Samplers,
+			MaterialData: pass.MaterialData,
+			ModelData:    mesh.matrixData,
+			ArmatureData: mesh.armature.uniformData(),
+
+			IndexByteOffset: pass.IndexByteOffset,
+			IndexCount:      pass.IndexCount,
+		})
+	}
+}
+
+func (r *sceneRenderer) queueStaticMeshRenderItems(mesh *StaticMesh, passType internal.MeshRenderPassType) {
+	// TODO: Extract common stuff between mesh and static mesh into a type
+	// that is passed ot this function instead so that it can be reused.
+	definition := mesh.definition
+	passes := definition.passesByType[passType]
+	for _, pass := range passes {
+		r.renderItems = append(r.renderItems, renderItem{
+			Layer:       pass.Layer,
+			MaterialKey: pass.Key,
+			ArmatureKey: math.MaxUint32,
+
+			Pipeline:     pass.Pipeline,
+			Textures:     pass.Textures,
+			Samplers:     pass.Samplers,
+			MaterialData: pass.MaterialData,
+			ModelData:    mesh.matrixData,
+			ArmatureData: nil,
+
+			IndexByteOffset: pass.IndexByteOffset,
+			IndexCount:      pass.IndexCount,
+		})
+	}
+}
+
+func (r *sceneRenderer) renderMeshRenderItems(ctx renderMeshContext, items []renderItem) {
+	const maxBatchSize = modelUniformBufferItemCount
+	var (
+		lastMaterialKey = uint32(math.MaxUint32)
+		lastArmatureKey = uint32(math.MaxUint32)
+
+		batchStart = 0
+		batchEnd   = 0
+	)
+
+	slices.SortFunc(items, compareMeshRenderItems)
+
+	itemCount := len(items)
+	for i, item := range items {
+		materialKey := item.MaterialKey
+		armatureKey := item.ArmatureKey
+
+		isSame := (materialKey == lastMaterialKey) && (armatureKey == lastArmatureKey)
+		if !isSame {
+			if batchStart < batchEnd {
+				r.renderMeshRenderItemBatch(ctx, items[batchStart:batchEnd])
+			}
+			batchStart = batchEnd
+		}
+		batchEnd++
+
+		batchSize := batchEnd - batchStart
+		if (batchSize >= maxBatchSize) || (i == itemCount-1) {
+			r.renderMeshRenderItemBatch(ctx, items[batchStart:batchEnd])
+			batchStart = batchEnd
+		}
+
+		lastMaterialKey = materialKey
+		lastArmatureKey = armatureKey
+	}
+}
+
+func (r *sceneRenderer) renderMeshRenderItemBatch(ctx renderMeshContext, items []renderItem) {
+	template := items[0]
+
+	r.commandBuffer.BindPipeline(template.Pipeline)
+
+	// Camera data is shared between all items.
+	cameraPlacement := ctx.CameraPlacement
+	r.commandBuffer.UniformBufferUnit(
+		internal.UniformBufferBindingCamera,
+		cameraPlacement.Buffer,
+		cameraPlacement.Offset,
+		cameraPlacement.Size,
+	)
+
+	// Material data is shared between all items.
+	materialPlacement := renderutil.WriteUniform(r.uniforms, internal.MaterialUniform{
+		Data: template.MaterialData,
+	})
+	r.commandBuffer.UniformBufferUnit(
+		internal.UniformBufferBindingMaterial,
+		materialPlacement.Buffer,
+		materialPlacement.Offset,
+		materialPlacement.Size,
+	)
+
+	for i := range maxTextureCount {
+		if texture := template.Textures[i]; texture != nil {
+			r.commandBuffer.TextureUnit(i, texture)
+		}
+		if sampler := template.Samplers[i]; sampler != nil {
+			r.commandBuffer.SamplerUnit(i, sampler)
+		}
+	}
+
+	// Model data needs to be combined.
+	for i, item := range items {
+		start := i * modelUniformBufferItemSize
+		end := start + modelUniformBufferItemSize
+		copy(r.modelUniformBufferData[start:end], item.ModelData)
+	}
+	modelPlacement := renderutil.WriteUniform(r.uniforms, internal.ModelUniform{
+		ModelMatrices: r.modelUniformBufferData,
+	})
+	r.commandBuffer.UniformBufferUnit(
+		internal.UniformBufferBindingModel,
+		modelPlacement.Buffer,
+		modelPlacement.Offset,
+		modelPlacement.Size,
+	)
+
+	// Armature data is shared between all items.
+	if template.ArmatureData != nil {
+		armaturePlacement := renderutil.WriteUniform(r.uniforms, internal.ArmatureUniform{
+			BoneMatrices: template.ArmatureData,
+		})
+		r.commandBuffer.UniformBufferUnit(
+			internal.UniformBufferBindingArmature,
+			armaturePlacement.Buffer,
+			armaturePlacement.Offset,
+			armaturePlacement.Size,
+		)
+	}
+
+	r.commandBuffer.DrawIndexed(int(template.IndexByteOffset), int(template.IndexCount), len(items))
+}
+
+func (r *sceneRenderer) renderAmbientLight(light *AmbientLight) {
+	// TODO: Ambient light intensity based on distance and inner and outer radius
+	r.commandBuffer.BindPipeline(r.ambientLightPipeline)
+	r.commandBuffer.TextureUnit(internal.TextureBindingLightingFramebufferColor0, r.geometryAlbedoTexture)
+	r.commandBuffer.SamplerUnit(internal.TextureBindingLightingFramebufferColor0, nil) // TODO
+	r.commandBuffer.TextureUnit(internal.TextureBindingLightingFramebufferColor1, r.geometryNormalTexture)
+	r.commandBuffer.SamplerUnit(internal.TextureBindingLightingFramebufferColor1, nil) // TODO
+	r.commandBuffer.TextureUnit(internal.TextureBindingLightingFramebufferDepth, r.geometryDepthTexture)
+	r.commandBuffer.SamplerUnit(internal.TextureBindingLightingFramebufferDepth, nil) // TODO
+	r.commandBuffer.TextureUnit(internal.TextureBindingLightingReflectionTexture, light.reflectionTexture.texture)
+	r.commandBuffer.SamplerUnit(internal.TextureBindingLightingReflectionTexture, nil) // TODO
+	r.commandBuffer.TextureUnit(internal.TextureBindingLightingRefractionTexture, light.refractionTexture.texture)
+	r.commandBuffer.SamplerUnit(internal.TextureBindingLightingRefractionTexture, nil) // TODO
+	r.commandBuffer.UniformBufferUnit(
+		internal.UniformBufferBindingCamera,
+		r.cameraPlacement.Buffer,
+		r.cameraPlacement.Offset,
+		r.cameraPlacement.Size,
+	)
+	r.commandBuffer.DrawIndexed(0, r.quadShape.IndexCount(), 1)
+}
+
+func (r *sceneRenderer) renderPointLight(light *PointLight) {
+	projectionMatrix := sprec.IdentityMat4()
+	lightMatrix := light.gfxMatrix()
+	viewMatrix := sprec.InverseMat4(lightMatrix)
+
+	lightPlacement := renderutil.WriteUniform(r.uniforms, internal.LightUniform{
+		ProjectionMatrix: projectionMatrix,
+		ViewMatrix:       viewMatrix,
+		LightMatrix:      lightMatrix,
+	})
+
+	lightPropertiesPlacement := renderutil.WriteUniform(r.uniforms, internal.LightPropertiesUniform{
+		Color:     dtos.Vec3(light.emitColor),
+		Intensity: 1.0,
+		Range:     float32(light.emitRange),
+	})
+
+	r.commandBuffer.BindPipeline(r.pointLightPipeline)
+	r.commandBuffer.TextureUnit(internal.TextureBindingLightingFramebufferColor0, r.geometryAlbedoTexture)
+	r.commandBuffer.SamplerUnit(internal.TextureBindingLightingFramebufferColor0, nil) // TODO
+	r.commandBuffer.TextureUnit(internal.TextureBindingLightingFramebufferColor1, r.geometryNormalTexture)
+	r.commandBuffer.SamplerUnit(internal.TextureBindingLightingFramebufferColor1, nil) // TODO
+	r.commandBuffer.TextureUnit(internal.TextureBindingLightingFramebufferDepth, r.geometryDepthTexture)
+	r.commandBuffer.SamplerUnit(internal.TextureBindingLightingFramebufferDepth, nil) // TODO
+	r.commandBuffer.UniformBufferUnit(
+		internal.UniformBufferBindingCamera,
+		r.cameraPlacement.Buffer,
+		r.cameraPlacement.Offset,
+		r.cameraPlacement.Size,
+	)
+	r.commandBuffer.UniformBufferUnit(
+		internal.UniformBufferBindingLight,
+		lightPlacement.Buffer,
+		lightPlacement.Offset,
+		lightPlacement.Size,
+	)
+	r.commandBuffer.UniformBufferUnit(
+		internal.UniformBufferBindingLightProperties,
+		lightPropertiesPlacement.Buffer,
+		lightPropertiesPlacement.Offset,
+		lightPropertiesPlacement.Size,
+	)
+	r.commandBuffer.DrawIndexed(0, r.sphereShape.IndexCount(), 1)
+}
+
+func (r *sceneRenderer) renderSpotLight(light *SpotLight) {
+	projectionMatrix := sprec.IdentityMat4()
+	lightMatrix := light.gfxMatrix()
+	viewMatrix := sprec.InverseMat4(lightMatrix)
+
+	lightPlacement := renderutil.WriteUniform(r.uniforms, internal.LightUniform{
+		ProjectionMatrix: projectionMatrix,
+		ViewMatrix:       viewMatrix,
+		LightMatrix:      lightMatrix,
+	})
+
+	lightPropertiesPlacement := renderutil.WriteUniform(r.uniforms, internal.LightPropertiesUniform{
+		Color:      dtos.Vec3(light.emitColor),
+		Intensity:  1.0,
+		Range:      float32(light.emitRange),
+		OuterAngle: float32(light.emitOuterConeAngle.Radians()),
+		InnerAngle: float32(light.emitInnerConeAngle.Radians()),
+	})
+
+	r.commandBuffer.BindPipeline(r.spotLightPipeline)
+	r.commandBuffer.TextureUnit(internal.TextureBindingLightingFramebufferColor0, r.geometryAlbedoTexture)
+	r.commandBuffer.SamplerUnit(internal.TextureBindingLightingFramebufferColor0, nil) // TODO
+	r.commandBuffer.TextureUnit(internal.TextureBindingLightingFramebufferColor1, r.geometryNormalTexture)
+	r.commandBuffer.SamplerUnit(internal.TextureBindingLightingFramebufferColor1, nil) // TODO
+	r.commandBuffer.TextureUnit(internal.TextureBindingLightingFramebufferDepth, r.geometryDepthTexture)
+	r.commandBuffer.SamplerUnit(internal.TextureBindingLightingFramebufferDepth, nil) // TODO
+	r.commandBuffer.UniformBufferUnit(
+		internal.UniformBufferBindingCamera,
+		r.cameraPlacement.Buffer,
+		r.cameraPlacement.Offset,
+		r.cameraPlacement.Size,
+	)
+	r.commandBuffer.UniformBufferUnit(
+		internal.UniformBufferBindingLight,
+		lightPlacement.Buffer,
+		lightPlacement.Offset,
+		lightPlacement.Size,
+	)
+	r.commandBuffer.UniformBufferUnit(
+		internal.UniformBufferBindingLightProperties,
+		lightPropertiesPlacement.Buffer,
+		lightPropertiesPlacement.Offset,
+		lightPropertiesPlacement.Size,
+	)
+	r.commandBuffer.DrawIndexed(0, r.coneShape.IndexCount(), 1)
+}
+
+func (r *sceneRenderer) renderDirectionalLight(light *DirectionalLight) {
+	projectionMatrix := lightOrtho()
+	lightMatrix := light.gfxMatrix()
+	lightMatrix.M14 = sprec.Floor(lightMatrix.M14*shadowMapWidth) / float32(shadowMapWidth)
+	lightMatrix.M24 = sprec.Floor(lightMatrix.M24*shadowMapWidth) / float32(shadowMapWidth)
+	lightMatrix.M34 = sprec.Floor(lightMatrix.M34*shadowMapWidth) / float32(shadowMapWidth)
+	viewMatrix := sprec.InverseMat4(lightMatrix)
+
+	lightPlacement := renderutil.WriteUniform(r.uniforms, internal.LightUniform{
+		ProjectionMatrix: projectionMatrix,
+		ViewMatrix:       viewMatrix,
+		LightMatrix:      lightMatrix,
+	})
+
+	lightPropertiesPlacement := renderutil.WriteUniform(r.uniforms, internal.LightPropertiesUniform{
+		Color:     dtos.Vec3(light.emitColor),
+		Intensity: 1.0,
+	})
+
+	r.commandBuffer.BindPipeline(r.directionalLightPipeline)
+	r.commandBuffer.TextureUnit(internal.TextureBindingLightingFramebufferColor0, r.geometryAlbedoTexture)
+	r.commandBuffer.SamplerUnit(internal.TextureBindingLightingFramebufferColor0, nil) // TODO
+	r.commandBuffer.TextureUnit(internal.TextureBindingLightingFramebufferColor1, r.geometryNormalTexture)
+	r.commandBuffer.SamplerUnit(internal.TextureBindingLightingFramebufferColor1, nil) // TODO
+	r.commandBuffer.TextureUnit(internal.TextureBindingLightingFramebufferDepth, r.geometryDepthTexture)
+	r.commandBuffer.SamplerUnit(internal.TextureBindingLightingFramebufferDepth, nil) // TODO
+	r.commandBuffer.TextureUnit(internal.TextureBindingShadowFramebufferDepth, r.shadowDepthTexture)
+	r.commandBuffer.SamplerUnit(internal.TextureBindingShadowFramebufferDepth, nil) // TODO
+	r.commandBuffer.UniformBufferUnit(
+		internal.UniformBufferBindingCamera,
+		r.cameraPlacement.Buffer,
+		r.cameraPlacement.Offset,
+		r.cameraPlacement.Size,
+	)
+	r.commandBuffer.UniformBufferUnit(
+		internal.UniformBufferBindingLight,
+		lightPlacement.Buffer,
+		lightPlacement.Offset,
+		lightPlacement.Size,
+	)
+	r.commandBuffer.UniformBufferUnit(
+		internal.UniformBufferBindingLightProperties,
+		lightPropertiesPlacement.Buffer,
+		lightPropertiesPlacement.Offset,
+		lightPropertiesPlacement.Size,
+	)
+	r.commandBuffer.DrawIndexed(0, r.quadShape.IndexCount(), 1)
+}
+
 type renderCtx struct {
 	framebuffer render.Framebuffer
 	scene       *Scene
@@ -1640,8 +1499,33 @@ type renderCtx struct {
 	frustum     spatial.HexahedronRegion
 }
 
+type renderMeshContext struct {
+	CameraPlacement renderutil.UniformPlacement
+}
+
+// TODO: Rename to meshRenderItem
 type renderItem struct {
-	fragment    *meshFragmentDefinition
-	armature    *Armature
-	modelMatrix []byte
+	Layer       int32
+	MaterialKey uint32
+	ArmatureKey uint32
+
+	Pipeline render.Pipeline
+
+	Textures     [maxTextureCount]render.Texture
+	Samplers     [maxTextureCount]render.Sampler
+	MaterialData []byte
+
+	ModelData    []byte
+	ArmatureData []byte
+
+	IndexByteOffset uint32
+	IndexCount      uint32
+}
+
+func compareMeshRenderItems(a, b renderItem) int {
+	return cmp.Or(
+		cmp.Compare(a.Layer, b.Layer),
+		cmp.Compare(a.MaterialKey, b.MaterialKey),
+		cmp.Compare(a.ArmatureKey, b.ArmatureKey),
+	)
 }

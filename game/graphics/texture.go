@@ -2,6 +2,14 @@ package graphics
 
 import "github.com/mokiat/lacking/render"
 
+// Deprecated: Remove this file. Graphics should use render.Texture
+// directly. The `game` package should deal with higher-level texture
+// management / modification capabilities.
+
+type Texture interface {
+	Name() string
+}
+
 func newTwoDTexture(texture render.Texture) *TwoDTexture {
 	return &TwoDTexture{
 		texture: texture,
@@ -24,8 +32,10 @@ type TwoDTextureDefinition struct {
 	Width  int
 	Height int
 
-	Wrapping        Wrap
-	Filtering       Filter
+	// TODO: Deprecated: Use samplers
+	Wrapping  Wrap
+	Filtering Filter
+
 	GenerateMipmaps bool
 	GammaCorrection bool
 
@@ -55,7 +65,9 @@ func (t *CubeTexture) Delete() {
 type CubeTextureDefinition struct {
 	Dimension int
 
-	Filtering       Filter
+	// TODO: Deprecated: Use samplers
+	Filtering Filter
+
 	GenerateMipmaps bool
 	GammaCorrection bool
 

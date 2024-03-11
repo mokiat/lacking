@@ -10,6 +10,7 @@ import (
 	"github.com/mokiat/lacking/game/hierarchy"
 	"github.com/mokiat/lacking/game/physics"
 	"github.com/mokiat/lacking/game/physics/collision"
+	"github.com/mokiat/lacking/render"
 	"github.com/mokiat/lacking/util/async"
 )
 
@@ -18,7 +19,7 @@ type ModelDefinition struct {
 	armatures                 []armatureDefinition
 	animations                []*AnimationDefinition
 	textures                  []*TwoDTexture
-	materialDefinitions       []*graphics.MaterialDefinition
+	materialDefinitions       []*graphics.Material
 	meshDefinitions           []*graphics.MeshDefinition
 	meshInstances             []meshInstance
 	bodyDefinitions           []*physics.BodyDefinition
@@ -210,7 +211,7 @@ func (r *ResourceSet) allocateModel(modelAsset *asset.Model) (*ModelDefinition, 
 		textures[i] = r.allocateTwoDTexture(&textureAsset)
 	}
 
-	materialDefinitions := make([]*graphics.MaterialDefinition, len(modelAsset.Materials))
+	materialDefinitions := make([]*graphics.Material, len(modelAsset.Materials))
 	for i, materialAsset := range modelAsset.Materials {
 		pbrAsset := asset.NewPBRMaterialView(&materialAsset)
 
@@ -259,7 +260,7 @@ func (r *ResourceSet) allocateModel(modelAsset *asset.Model) (*ModelDefinition, 
 
 		gfxEngine := r.engine.Graphics()
 		r.gfxWorker.ScheduleVoid(func() {
-			materialDefinitions[i] = gfxEngine.CreatePBRMaterialDefinition(graphics.PBRMaterialInfo{
+			materialDefinitions[i] = gfxEngine.CreatePBRMaterial(graphics.PBRMaterialInfo{
 				BackfaceCulling:          materialAsset.BackfaceCulling,
 				AlphaBlending:            materialAsset.Blending,
 				AlphaTesting:             materialAsset.AlphaTesting,
@@ -275,28 +276,43 @@ func (r *ResourceSet) allocateModel(modelAsset *asset.Model) (*ModelDefinition, 
 		}).Wait()
 	}
 
-	meshDefinitions := make([]*graphics.MeshDefinition, len(modelAsset.MeshDefinitions))
+	meshGeometries := make([]*graphics.MeshGeometry, len(modelAsset.MeshDefinitions))
 	for i, definitionAsset := range modelAsset.MeshDefinitions {
-		meshFragments := make([]graphics.MeshFragmentDefinitionInfo, len(definitionAsset.Fragments))
+		meshFragments := make([]graphics.MeshGeometryFragmentInfo, len(definitionAsset.Fragments))
 		for j, fragmentAsset := range definitionAsset.Fragments {
 			material := materialDefinitions[fragmentAsset.MaterialIndex]
-			meshFragments[j] = graphics.MeshFragmentDefinitionInfo{
-				Primitive:   resolvePrimitive(fragmentAsset.Topology),
-				IndexOffset: int(fragmentAsset.IndexOffset),
-				IndexCount:  int(fragmentAsset.IndexCount),
-				Material:    material,
+			meshFragments[j] = graphics.MeshGeometryFragmentInfo{
+				Name:            material.Name(),
+				Topology:        resolveTopology(fragmentAsset.Topology),
+				IndexByteOffset: fragmentAsset.IndexOffset,
+				IndexCount:      fragmentAsset.IndexCount,
 			}
 		}
 
 		gfxEngine := r.engine.Graphics()
 		r.gfxWorker.ScheduleVoid(func() {
-			meshDefinitions[i] = gfxEngine.CreateMeshDefinition(graphics.MeshDefinitionInfo{
+			meshGeometries[i] = gfxEngine.CreateMeshGeometry(graphics.MeshGeometryInfo{
 				VertexData:           definitionAsset.VertexData,
 				VertexFormat:         resolveVertexFormat(definitionAsset.VertexLayout),
 				IndexData:            definitionAsset.IndexData,
 				IndexFormat:          resolveIndexFormat(definitionAsset.IndexLayout),
 				Fragments:            meshFragments,
 				BoundingSphereRadius: definitionAsset.BoundingSphereRadius,
+			})
+		}).Wait()
+	}
+
+	meshDefinitions := make([]*graphics.MeshDefinition, len(modelAsset.MeshDefinitions))
+	for i, definitionAsset := range modelAsset.MeshDefinitions {
+		gfxEngine := r.engine.Graphics()
+		r.gfxWorker.ScheduleVoid(func() {
+			var materials []*graphics.Material
+			for _, fragmentAsset := range definitionAsset.Fragments {
+				materials = append(materials, materialDefinitions[fragmentAsset.MaterialIndex])
+			}
+			meshDefinitions[i] = gfxEngine.CreateMeshDefinition(graphics.MeshDefinitionInfo{
+				Geometry:  meshGeometries[i],
+				Materials: materials,
 			})
 		}).Wait()
 	}
@@ -445,18 +461,18 @@ func resolveIndexFormat(layout asset.IndexLayout) graphics.IndexFormat {
 	}
 }
 
-func resolvePrimitive(primitive asset.MeshTopology) graphics.Primitive {
+func resolveTopology(primitive asset.MeshTopology) render.Topology {
 	switch primitive {
 	case asset.MeshTopologyPoints:
-		return graphics.PrimitivePoints
+		return render.TopologyPoints
 	case asset.MeshTopologyLines:
-		return graphics.PrimitiveLines
+		return render.TopologyLineList
 	case asset.MeshTopologyLineStrip:
-		return graphics.PrimitiveLineStrip
+		return render.TopologyLineStrip
 	case asset.MeshTopologyTriangles:
-		return graphics.PrimitiveTriangles
+		return render.TopologyTriangleList
 	case asset.MeshTopologyTriangleStrip:
-		return graphics.PrimitiveTriangleStrip
+		return render.TopologyTriangleStrip
 	default:
 		panic(fmt.Errorf("unsupported primitive: %d", primitive))
 	}

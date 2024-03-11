@@ -14,7 +14,7 @@ import (
 	"github.com/mokiat/lacking/game/timestep"
 )
 
-func newScene(resourceSet *ResourceSet, physicsScene *physics.Scene, gfxScene *graphics.Scene, ecsScene *ecs.Scene) *Scene {
+func newScene(physicsScene *physics.Scene, gfxScene *graphics.Scene, ecsScene *ecs.Scene) *Scene {
 	return &Scene{
 		physicsScene: physicsScene,
 		gfxScene:     gfxScene,

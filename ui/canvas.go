@@ -81,14 +81,14 @@ func (c *Canvas) onBegin(deltaTime time.Duration) {
 		},
 		Colors: [4]render.ColorAttachmentInfo{
 			{
-				LoadOp:  render.LoadOperationDontCare,
+				LoadOp:  render.LoadOperationLoad,
 				StoreOp: render.StoreOperationStore,
 			},
 		},
-		DepthLoadOp:       render.LoadOperationDontCare,
-		DepthStoreOp:      render.StoreOperationDontCare,
+		DepthLoadOp:       render.LoadOperationLoad,
+		DepthStoreOp:      render.StoreOperationDiscard,
 		StencilLoadOp:     render.LoadOperationClear,
-		StencilStoreOp:    render.StoreOperationDontCare,
+		StencilStoreOp:    render.StoreOperationDiscard,
 		StencilClearValue: 0x00,
 	})
 	c.canvasRenderer.onBegin(c.commandBuffer, c.windowSize)

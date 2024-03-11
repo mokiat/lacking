@@ -127,8 +127,7 @@ func (e *Engine) CreateScene() *Scene {
 	physicsScene := e.physicsEngine.CreateScene()
 	gfxScene := e.gfxEngine.CreateScene()
 	ecsScene := e.ecsEngine.CreateScene()
-	resourceSet := e.CreateResourceSet()
-	result := newScene(resourceSet, physicsScene, gfxScene, ecsScene)
+	result := newScene(physicsScene, gfxScene, ecsScene)
 	if e.activeScene == nil {
 		e.activeScene = result
 	}

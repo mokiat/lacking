@@ -102,7 +102,7 @@ func (s *Scene) Sky() *Sky {
 // CreateCamera creates a new camera object to be
 // used with this scene.
 func (s *Scene) CreateCamera() *Camera {
-	result := newCamera(s)
+	result := newCamera()
 	if s.activeCamera == nil {
 		s.activeCamera = result
 	}

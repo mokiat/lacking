@@ -109,14 +109,14 @@ func (f *fontFactory) CreateFont(font *opentype.Font) (*Font, error) {
 		Colors: [4]render.ColorAttachmentInfo{
 			{
 				LoadOp:     render.LoadOperationClear,
-				StoreOp:    render.StoreOperationDontCare,
+				StoreOp:    render.StoreOperationDiscard,
 				ClearValue: [4]float32{0.0, 0.0, 0.0, 0.0},
 			},
 		},
-		DepthLoadOp:       render.LoadOperationDontCare,
-		DepthStoreOp:      render.StoreOperationDontCare,
+		DepthLoadOp:       render.LoadOperationLoad,
+		DepthStoreOp:      render.StoreOperationDiscard,
 		StencilLoadOp:     render.LoadOperationClear,
-		StencilStoreOp:    render.StoreOperationDontCare,
+		StencilStoreOp:    render.StoreOperationDiscard,
 		StencilClearValue: 0x00,
 	})
 	f.renderer.onBegin(commandBuffer, NewSize(f.fontImageSize, f.fontImageSize))

@@ -1,11 +1,14 @@
 package internal
 
 const (
-	UniformBufferBindingCamera          = 0
-	UniformBufferBindingModel           = 1
-	UniformBufferBindingMaterial        = 2
-	UniformBufferBindingLight           = 3
-	UniformBufferBindingLightProperties = 4
+	UniformBufferBindingCamera = 0
+
+	UniformBufferBindingModel    = 1
+	UniformBufferBindingMaterial = 2
+	UniformBufferBindingArmature = 3
+
+	UniformBufferBindingLight           = 4
+	UniformBufferBindingLightProperties = 5
 
 	UniformBufferBindingSkybox = 1
 
