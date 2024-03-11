@@ -43,9 +43,9 @@ type RenderPassInfo struct {
 type LoadOperation int
 
 const (
-	// LoadOperationDontCare means that the contents of the resource should not
-	// be loaded.
-	LoadOperationDontCare LoadOperation = iota
+	// LoadOperationLoad means that the contents of the resource should be
+	// made available as is.
+	LoadOperationLoad LoadOperation = iota
 
 	// LoadOperationClear means that the contents of the resource should be
 	// cleared.
@@ -56,12 +56,12 @@ const (
 type StoreOperation int
 
 const (
-	// StoreOperationDontCare means that the contents of the resource should not
-	// be stored.
-	StoreOperationDontCare StoreOperation = iota
+	// StoreOperationDiscard means that the contents of the resource may be
+	// discarded if that would improve performance.
+	StoreOperationDiscard StoreOperation = iota
 
 	// StoreOperationStore means that the contents of the resource should be
-	// stored.
+	// preserved.
 	StoreOperationStore
 )
 
