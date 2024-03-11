@@ -15,9 +15,7 @@ type TextureMarker interface {
 // to store image data.
 type Texture interface {
 	TextureMarker
-
-	// Release releases the resources associated with this Texture.
-	Release()
+	Resource
 }
 
 // SamplerMarker marks a type as being a Sampler.
@@ -28,9 +26,7 @@ type SamplerMarker interface {
 // Sampler represents a texture sampling configuration.
 type Sampler interface {
 	SamplerMarker
-
-	// Release releases the resources associated with this Sampler.
-	Release()
+	Resource
 }
 
 const (

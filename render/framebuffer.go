@@ -8,9 +8,7 @@ type FramebufferMarker interface {
 // Framebuffer represents a combination of target textures to be rendered to.
 type Framebuffer interface {
 	FramebufferMarker
-
-	// Release releases the resources associated with the Framebuffer.
-	Release()
+	Resource
 }
 
 // FramebufferInfo describes the configuration of a Framebuffer.

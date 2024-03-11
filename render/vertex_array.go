@@ -8,9 +8,7 @@ type VertexArrayMarker interface {
 // VertexArray represents the geometry for a mesh.
 type VertexArray interface {
 	VertexArrayMarker
-
-	// Release releases the resources associated with this VertexArray.
-	Release()
+	Resource
 }
 
 // VertexArrayInfo represents the information needed to create a VertexArray.
