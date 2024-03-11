@@ -2,107 +2,42 @@ package graphics
 
 import (
 	"github.com/mokiat/gomath/sprec"
-	"github.com/mokiat/lacking/render"
+	"github.com/mokiat/lacking/game/graphics/internal"
 )
 
-// MaterialDefinitionInfo contains the information needed to create a
-// MaterialDefinition.
-type MaterialDefinitionInfo struct {
-	BackfaceCulling bool
-	AlphaTesting    bool
-	AlphaBlending   bool
-	AlphaThreshold  float32
-	Vectors         []sprec.Vec4
-	TwoDTextures    []render.Texture
-	CubeTextures    []render.Texture
-	Shading         Shading
-}
+// MaterialInfo contains the information needed to create a Material.
+type MaterialInfo struct {
 
-// MaterialDefinition represents a particular material template. Multiple meshes
-// can share the same MaterialDefinition though their Material instances will
-// differ.
-type MaterialDefinition struct {
-	revision int
+	// Name specifies the name of the material.
+	Name string
 
-	backfaceCulling bool
-	alphaTesting    bool
-	alphaBlending   bool
-	alphaThreshold  float32
+	// GeometryPasses specifies a list of geometry passes to be applied.
+	// This is used for opaque materials that go through deferred shading.
+	GeometryPasses []GeometryRenderPassInfo
 
-	uniformData  []byte
-	twoDTextures []render.Texture
-	cubeTextures []render.Texture
+	// ShadowPasses specifies a list of shadow passes to be applied.
+	// This should be omitted if the material does not cast shadows.
+	ShadowPasses []ShadowRenderPassInfo
 
-	shading Shading
-}
-
-// BackfaceCulling returns whether the back face of triangles should be
-// skipped during rendering.
-func (d *MaterialDefinition) BackfaceCulling() bool {
-	return d.backfaceCulling
-}
-
-// SetBackfaceCulling changes the back face culling configuration of this
-// material definition.
-func (d *MaterialDefinition) SetBackfaceCulling(culling bool) {
-	if culling != d.backfaceCulling {
-		d.revision++
-		d.backfaceCulling = culling
-	}
-}
-
-// AlphaTesting returns whether the mesh will be checked for transparent
-// sections.
-func (d *MaterialDefinition) AlphaTesting() bool {
-	return d.alphaTesting
-}
-
-// SetAlphaTesting changes whether alpha testing will be performed.
-func (d *MaterialDefinition) SetAlphaTesting(testing bool) {
-	if testing != d.alphaTesting {
-		d.revision++
-		d.alphaTesting = testing
-	}
-}
-
-// AlphaBlending returns whether the mesh will be checked for translucency
-// and will be mixed with the background.
-func (d *MaterialDefinition) AlphaBlending() bool {
-	return d.alphaBlending
-}
-
-// SetAlphaBlending changes whether alpha blending will be performed.
-func (d *MaterialDefinition) SetAlphaBlending(blending bool) {
-	if blending != d.alphaBlending {
-		d.revision++
-		d.alphaBlending = blending
-	}
-}
-
-// AlphaThreshold returns the alpha value below which a pixel will be
-// considered transparent.
-func (d *MaterialDefinition) AlphaThreshold() float32 {
-	return d.alphaThreshold
-}
-
-// SetAlphaThreshold changes the alpha threshold.
-func (d *MaterialDefinition) SetAlphaThreshold(threshold float32) {
-	if !sprec.Eq(threshold, d.alphaThreshold) {
-		d.revision++
-		d.alphaThreshold = threshold
-	}
+	// ForwardPasses specifies a list of forward passes to be applied.
+	// This is useful when dealing with translucent materials or when special
+	// effects are needed.
+	ForwardPasses []ForwardRenderPassInfo
 }
 
 // Material determines the appearance of a mesh on the screen.
 type Material struct {
-	definitionRevision int
-	definition         *MaterialDefinition
-
-	shadowPipeline   render.Pipeline
-	geometryPipeline render.Pipeline
-	emissivePipeline render.Pipeline
-	forwardPipeline  render.Pipeline
+	name           string
+	geometryPasses []internal.MaterialGeometryRenderPassDefinition
+	shadowPasses   []internal.MaterialShadowRenderPassDefinition
+	forwardPasses  []internal.MaterialForwardRenderPassDefinition
 }
+
+func (m *Material) Name() string {
+	return m.name
+}
+
+/// OLD STUFF BELOW
 
 // PBRMaterialInfo contains the information needed to create a PBR Material.
 type PBRMaterialInfo struct {

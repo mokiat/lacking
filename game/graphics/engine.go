@@ -3,17 +3,22 @@ package graphics
 import (
 	"fmt"
 
+	"github.com/mokiat/gog"
+	"github.com/mokiat/gog/opt"
+	"github.com/mokiat/lacking/debug/log"
 	"github.com/mokiat/lacking/game/graphics/internal"
 	"github.com/mokiat/lacking/render"
 	"github.com/mokiat/lacking/util/blob"
 )
 
-func NewEngine(api render.API, shaders ShaderCollection) *Engine {
+func NewEngine(api render.API, shaders ShaderCollection, shaderBuilder ShaderBuilder) *Engine {
 	renderer := newRenderer(api, shaders)
 	return &Engine{
-		api:      api,
-		shaders:  shaders,
-		renderer: renderer,
+		api:           api,
+		shaders:       shaders,
+		shaderBuilder: shaderBuilder,
+		renderer:      renderer,
+
 		debug: &Debug{
 			renderer: renderer,
 		},
@@ -22,12 +27,14 @@ func NewEngine(api render.API, shaders ShaderCollection) *Engine {
 
 // Engine represents an entrypoint to 3D graphics rendering.
 type Engine struct {
-	api      render.API
-	shaders  ShaderCollection
-	renderer *sceneRenderer
-	debug    *Debug
+	api           render.API
+	shaders       ShaderCollection
+	shaderBuilder ShaderBuilder
+	renderer      *sceneRenderer
 
-	freeFragmentID int
+	debug *Debug
+
+	freeRenderPassKey uint32
 }
 
 // Create initializes this 3D engine.
@@ -41,22 +48,68 @@ func (e *Engine) Destroy() {
 	e.renderer.Release()
 }
 
+// Debug allows the rendering of debug lines on the screen.
+//
+// Deprecated: Figure out how to fix/improve this. Maybe not needed anymore
+// with custom shaders and forward passes?
 func (e *Engine) Debug() *Debug {
 	return e.debug
 }
 
-// PBRShading returns the Shading implementaton for phisically-based rendering.
-func (e *Engine) PBRShading() Shading {
-	return &pbrShading{
-		api:     e.api,
+// DefaultGeometryShader returns a basic implementation of a GeometryShader.
+//
+// Deprecated: Use custom shaders instead.
+func (e *Engine) DefaultGeometryShader(alphaTesting, albedoTexture bool) GeometryShader {
+	return &defaultGeometryShader{
+		shaders:          e.shaders,
+		useAlphaTesting:  alphaTesting,
+		useAlbedoTexture: albedoTexture,
+	}
+}
+
+// DefaultShadowShader returns a basic implementation of a ShadowShader.
+//
+// Deprecated: Use custom shaders instead.
+func (e *Engine) DefaultShadowShader() ShadowShader {
+	return &defaultShadowShader{
 		shaders: e.shaders,
 	}
 }
 
-// CreateScene creates a new 3D Scene. Entities managed
-// within a given scene are isolated within that scene.
-func (e *Engine) CreateScene() *Scene {
-	return newScene(e.renderer)
+// CreateGeometryShader creates a new custom GeometryShader using the
+// specified info object.
+func (e *Engine) CreateGeometryShader(info GeometryShaderInfo) GeometryShader {
+	// TODO: Handle the case where the vertex or fragment function is nil
+	// and use the default one instead.
+	return &customGeometryShader{
+		builder:  e.shaderBuilder,
+		vertex:   info.VertexTemplate,
+		fragment: info.FragmentTemplate,
+	}
+}
+
+// CreateShadowShader creates a new custom ShadowShader using the
+// specified info object.
+func (e *Engine) CreateShadowShader(info ShadowShaderInfo) ShadowShader {
+	// TODO: Handle the case where the vertex or fragment function is nil
+	// and use the default one instead.
+	return &customShadowShader{
+		builder:  e.shaderBuilder,
+		vertex:   info.VertexTemplate,
+		fragment: info.FragmentTemplate,
+	}
+}
+
+// CreateForwardShader creates a new custom ForwardShader using the
+// specified info object.
+func (e *Engine) CreateForwardShader(info ForwardShaderInfo) ForwardShader {
+	// TODO: Handle the case where the vertex or fragment function is nil
+	// and use the default one instead.
+	return &customForwardShader{
+		builder:  e.shaderBuilder,
+		vertex:   info.VertexTemplate,
+		fragment: info.FragmentTemplate,
+	}
 }
 
 // CreateTwoDTexture creates a new TwoDTexture using the
@@ -69,7 +122,7 @@ func (e *Engine) CreateTwoDTexture(definition TwoDTextureDefinition) *TwoDTextur
 		Filtering:       e.convertFilter(definition.Filtering),
 		Mipmapping:      definition.GenerateMipmaps,
 		GammaCorrection: true,
-		Format:          e.convertFormat(definition.InternalFormat, definition.DataFormat),
+		Format:          e.convertFormat(definition.DataFormat),
 		Data:            definition.Data,
 	}))
 }
@@ -82,7 +135,7 @@ func (e *Engine) CreateCubeTexture(definition CubeTextureDefinition) *CubeTextur
 		Filtering:       e.convertFilter(definition.Filtering),
 		Mipmapping:      definition.GenerateMipmaps,
 		GammaCorrection: true,
-		Format:          e.convertFormat(definition.InternalFormat, definition.DataFormat),
+		Format:          e.convertFormat(definition.DataFormat),
 		FrontSideData:   definition.FrontSideData,
 		BackSideData:    definition.BackSideData,
 		LeftSideData:    definition.LeftSideData,
@@ -92,41 +145,194 @@ func (e *Engine) CreateCubeTexture(definition CubeTextureDefinition) *CubeTextur
 	}))
 }
 
-func (e *Engine) CreateShading(info ShadingInfo) Shading {
-	return &customShading{
-		api:          e.api,
-		shaders:      e.shaders,
-		shadowFunc:   info.ShadowFunc,
-		geometryFunc: info.GeometryFunc,
-		emissiveFunc: info.EmissiveFunc,
-		forwardFunc:  info.ForwardFunc,
+// CreateMaterial creates a new Material from the specified info object.
+func (e *Engine) CreateMaterial(info MaterialInfo) *Material {
+	geometryPasses := gog.Map(info.GeometryPasses, func(passInfo GeometryRenderPassInfo) internal.MaterialGeometryRenderPassDefinition {
+		if len(passInfo.Textures) > 8 {
+			passInfo.Textures = passInfo.Textures[:8]
+		}
+
+		var textures [8]render.Texture
+		for i, textureInfo := range passInfo.Textures {
+			textures[i] = textureInfo.Texture
+		}
+
+		var samplers [8]render.Sampler
+		for i, textureInfo := range passInfo.Textures {
+			samplers[i] = e.api.CreateSampler(render.SamplerInfo{
+				Wrapping:   textureInfo.Wrapping,
+				Filtering:  textureInfo.Filtering,
+				Mipmapping: textureInfo.Mipmapping,
+			})
+		}
+
+		return internal.MaterialGeometryRenderPassDefinition{
+			Shader: passInfo.Shader,
+			MaterialRenderPassDefinition: internal.MaterialRenderPassDefinition{
+				Layer:           passInfo.Layer,
+				Culling:         passInfo.Culling.ValueOrDefault(render.CullModeNone),
+				FrontFace:       passInfo.FrontFace.ValueOrDefault(render.FaceOrientationCCW),
+				DepthTest:       passInfo.DepthTest.ValueOrDefault(true),
+				DepthWrite:      passInfo.DepthWrite.ValueOrDefault(true),
+				DepthComparison: passInfo.DepthComparison.ValueOrDefault(render.ComparisonLessOrEqual),
+				Blending:        false,
+
+				Textures:    textures,
+				Samplers:    samplers,
+				UniformData: passInfo.MaterialDataStd140,
+			},
+		}
+	})
+
+	shadowPasses := gog.Map(info.ShadowPasses, func(passInfo ShadowRenderPassInfo) internal.MaterialShadowRenderPassDefinition {
+		if len(passInfo.Textures) > 8 {
+			passInfo.Textures = passInfo.Textures[:8]
+		}
+
+		var textures [8]render.Texture
+		for i, textureInfo := range passInfo.Textures {
+			textures[i] = textureInfo.Texture
+		}
+
+		var samplers [8]render.Sampler
+		for i, textureInfo := range passInfo.Textures {
+			samplers[i] = e.api.CreateSampler(render.SamplerInfo{
+				Wrapping:   textureInfo.Wrapping,
+				Filtering:  textureInfo.Filtering,
+				Mipmapping: textureInfo.Mipmapping,
+			})
+		}
+
+		return internal.MaterialShadowRenderPassDefinition{
+			Shader: passInfo.Shader,
+			MaterialRenderPassDefinition: internal.MaterialRenderPassDefinition{
+				Layer:           0,
+				Culling:         passInfo.Culling.ValueOrDefault(render.CullModeNone),
+				FrontFace:       passInfo.FrontFace.ValueOrDefault(render.FaceOrientationCCW),
+				DepthTest:       true,
+				DepthWrite:      true,
+				DepthComparison: render.ComparisonLessOrEqual,
+				Blending:        false,
+
+				Textures:    textures,
+				Samplers:    samplers,
+				UniformData: passInfo.MaterialDataStd140,
+			},
+		}
+	})
+
+	forwardPasses := gog.Map(info.ForwardPasses, func(passInfo ForwardRenderPassInfo) internal.MaterialForwardRenderPassDefinition {
+		if len(passInfo.Textures) > 8 {
+			passInfo.Textures = passInfo.Textures[:8]
+		}
+
+		var textures [8]render.Texture
+		for i, textureInfo := range passInfo.Textures {
+			textures[i] = textureInfo.Texture
+		}
+
+		var samplers [8]render.Sampler
+		for i, textureInfo := range passInfo.Textures {
+			samplers[i] = e.api.CreateSampler(render.SamplerInfo{
+				Wrapping:   textureInfo.Wrapping,
+				Filtering:  textureInfo.Filtering,
+				Mipmapping: textureInfo.Mipmapping,
+			})
+		}
+
+		return internal.MaterialForwardRenderPassDefinition{
+			Shader: passInfo.Shader,
+			MaterialRenderPassDefinition: internal.MaterialRenderPassDefinition{
+				Layer:           passInfo.Layer,
+				Culling:         passInfo.Culling.ValueOrDefault(render.CullModeNone),
+				FrontFace:       passInfo.FrontFace.ValueOrDefault(render.FaceOrientationCCW),
+				DepthTest:       passInfo.DepthTest.ValueOrDefault(true),
+				DepthWrite:      passInfo.DepthWrite.ValueOrDefault(true),
+				DepthComparison: passInfo.DepthComparison.ValueOrDefault(render.ComparisonLessOrEqual),
+				Blending:        passInfo.AlphaBlending.ValueOrDefault(false),
+
+				Textures:    textures,
+				Samplers:    samplers,
+				UniformData: passInfo.MaterialDataStd140,
+			},
+		}
+	})
+
+	return &Material{
+		name:           info.Name,
+		geometryPasses: geometryPasses,
+		shadowPasses:   shadowPasses,
+		forwardPasses:  forwardPasses,
 	}
 }
 
-// CreateMaterialDefinition creates a new MaterialDefinition from the specified
-// info object.
-func (e *Engine) CreateMaterialDefinition(info MaterialDefinitionInfo) *MaterialDefinition {
-	data := make([]byte, 4*4*len(info.Vectors))
-	plotter := blob.NewPlotter(data)
-	for _, vec := range info.Vectors {
-		plotter.PlotSPVec4(vec)
+// CreatePBRMaterial creates a new Material that is based on PBR properties.
+//
+// Deprecated: Use CreateMaterial instead.
+func (e *Engine) CreatePBRMaterial(info PBRMaterialInfo) *Material {
+	var textures []TextureBindingInfo
+	if info.AlbedoTexture != nil {
+		textures = append(textures, TextureBindingInfo{
+			Texture:    info.AlbedoTexture.texture,
+			Wrapping:   render.WrapModeClamp,
+			Filtering:  render.FilterModeLinear,
+			Mipmapping: true,
+		})
 	}
-	return &MaterialDefinition{
-		revision:        1,
-		backfaceCulling: info.BackfaceCulling,
-		alphaTesting:    info.AlphaTesting,
-		alphaBlending:   info.AlphaBlending,
-		alphaThreshold:  info.AlphaThreshold,
-		uniformData:     data,
-		twoDTextures:    info.TwoDTextures,
-		cubeTextures:    info.CubeTextures,
-		shading:         info.Shading,
+	if info.NormalTexture != nil {
+		textures = append(textures, TextureBindingInfo{
+			Texture:    info.NormalTexture.texture,
+			Wrapping:   render.WrapModeClamp,
+			Filtering:  render.FilterModeNearest,
+			Mipmapping: true,
+		})
 	}
+	if info.MetallicRoughnessTexture != nil {
+		textures = append(textures, TextureBindingInfo{
+			Texture:    info.MetallicRoughnessTexture.texture,
+			Wrapping:   render.WrapModeClamp,
+			Filtering:  render.FilterModeLinear,
+			Mipmapping: true,
+		})
+	}
+
+	uniformData := make([]byte, 2*4*4)
+	plotter := blob.NewPlotter(uniformData)
+	plotter.PlotSPVec4(info.AlbedoColor)
+	plotter.PlotFloat32(info.AlphaThreshold)
+	plotter.PlotFloat32(info.NormalScale)
+	plotter.PlotFloat32(info.Metallic)
+	plotter.PlotFloat32(info.Roughness)
+
+	culling := render.CullModeNone
+	if info.BackfaceCulling {
+		culling = render.CullModeBack
+	}
+
+	return e.CreateMaterial(MaterialInfo{
+		Name: "PBR-Unspecified",
+		GeometryPasses: []GeometryRenderPassInfo{
+			{
+				Culling:            opt.V(culling),
+				MaterialDataStd140: uniformData,
+				Textures:           textures,
+				Shader:             e.DefaultGeometryShader(info.AlphaTesting, info.AlbedoTexture != nil),
+			},
+		},
+		ShadowPasses: []ShadowRenderPassInfo{
+			{
+				Culling:            opt.V(culling),
+				MaterialDataStd140: uniformData,
+				Shader:             e.DefaultShadowShader(),
+			},
+		},
+	})
+
 }
 
-// CreateMeshDefinition creates a new MeshDefinition using the specified
+// CreateMeshGeometry creates a new MeshGeometry using the specified
 // info object.
-func (e *Engine) CreateMeshDefinition(info MeshDefinitionInfo) *MeshDefinition {
+func (e *Engine) CreateMeshGeometry(info MeshGeometryInfo) *MeshGeometry {
 	vertexBuffer := e.api.CreateVertexBuffer(render.BufferInfo{
 		Dynamic: false,
 		Data:    info.VertexData,
@@ -206,69 +412,212 @@ func (e *Engine) CreateMeshDefinition(info MeshDefinitionInfo) *MeshDefinition {
 		IndexFormat: e.convertIndexType(info.IndexFormat),
 	})
 
-	result := &MeshDefinition{
-		vertexBuffer:         vertexBuffer,
-		indexBuffer:          indexBuffer,
-		vertexArray:          vertexArray,
-		fragments:            make([]meshFragmentDefinition, len(info.Fragments)),
+	return &MeshGeometry{
+		vertexBuffer: vertexBuffer,
+		indexBuffer:  indexBuffer,
+		vertexArray:  vertexArray,
+		vertexFormat: info.VertexFormat,
+		fragments: gog.Map(info.Fragments, func(fragmentInfo MeshGeometryFragmentInfo) MeshGeometryFragment {
+			return MeshGeometryFragment{
+				name:            fragmentInfo.Name,
+				topology:        fragmentInfo.Topology,
+				indexByteOffset: fragmentInfo.IndexByteOffset,
+				indexCount:      fragmentInfo.IndexCount,
+			}
+		}),
 		boundingSphereRadius: info.BoundingSphereRadius,
-		hasVertexColors:      info.VertexFormat.HasColor,
-		needsArmature:        info.NeedsArmature(),
 	}
-	for i, fragmentInfo := range info.Fragments {
-		materialDef := fragmentInfo.Material
-		fragmentDef := meshFragmentDefinition{
-			id:               e.freeFragmentID,
-			mesh:             result,
-			topology:         e.convertPrimitive(fragmentInfo.Primitive),
-			indexCount:       fragmentInfo.IndexCount,
-			indexOffsetBytes: fragmentInfo.IndexOffset,
-			material: &Material{
-				definitionRevision: materialDef.revision,
-				definition:         materialDef,
-			},
-		}
-		fragmentDef.rebuildPipelines()
-		result.fragments[i] = fragmentDef
-		e.freeFragmentID++
+}
+
+// CreateMeshDefinition creates a new MeshDefinition using the specified
+// info object.
+func (e *Engine) CreateMeshDefinition(info MeshDefinitionInfo) *MeshDefinition {
+	geometry := info.Geometry
+
+	if len(info.Materials) != len(geometry.fragments) {
+		log.Warn("Number of materials (%d) does not match number of fragments (%d)", len(info.Materials), len(geometry.fragments))
+	}
+
+	result := &MeshDefinition{
+		engine:         e,
+		geometry:       geometry,
+		materials:      make([]*Material, len(geometry.fragments)),
+		materialPasses: make([][internal.MeshRenderPassTypeCount][]internal.MeshRenderPass, len(geometry.fragments)),
+	}
+	for i := range min(len(info.Materials), len(geometry.fragments)) {
+		result.SetMaterial(i, info.Materials[i])
 	}
 	return result
 }
 
-// CreatePBRMaterialDefinition creates a new Material that is based on PBR
-// definition.
-// TODO: Remove this and create a PBR builder over MaterialDefinitionInfo.
-func (e *Engine) CreatePBRMaterialDefinition(info PBRMaterialInfo) *MaterialDefinition {
-	extractTwoDTexture := func(src *TwoDTexture) render.Texture {
-		if src == nil {
-			return nil
-		}
-		return src.texture
-	}
+// CreateScene creates a new 3D Scene. Entities managed
+// within a given scene are isolated within that scene.
+func (e *Engine) CreateScene() *Scene {
+	return newScene(e.renderer)
+}
 
-	uniformData := make([]byte, 2*4*4)
-	plotter := blob.NewPlotter(uniformData)
-	plotter.PlotSPVec4(info.AlbedoColor)
-	plotter.PlotFloat32(info.AlphaThreshold)
-	plotter.PlotFloat32(info.NormalScale)
-	plotter.PlotFloat32(info.Metallic)
-	plotter.PlotFloat32(info.Roughness)
-
-	return &MaterialDefinition{
-		revision:        1,
-		backfaceCulling: info.BackfaceCulling,
-		alphaBlending:   info.AlphaBlending,
-		alphaTesting:    info.AlphaTesting,
-		alphaThreshold:  info.AlphaThreshold,
-		uniformData:     uniformData,
-		twoDTextures: []render.Texture{
-			extractTwoDTexture(info.AlbedoTexture),
-			extractTwoDTexture(info.NormalTexture),
-			extractTwoDTexture(info.MetallicRoughnessTexture),
+func (e *Engine) createGeometryPassProgram(programCode render.ProgramCode) render.Program {
+	return e.api.CreateProgram(render.ProgramInfo{
+		SourceCode: programCode,
+		TextureBindings: []render.TextureBinding{
+			render.NewTextureBinding("lackingTexture0", 0),
+			render.NewTextureBinding("lackingTexture1", 1),
+			render.NewTextureBinding("lackingTexture2", 2),
+			render.NewTextureBinding("lackingTexture3", 3),
+			render.NewTextureBinding("lackingTexture4", 4),
+			render.NewTextureBinding("lackingTexture5", 5),
+			render.NewTextureBinding("lackingTexture6", 6),
+			render.NewTextureBinding("lackingTexture7", 7),
 		},
-		cubeTextures: []render.Texture{},
-		shading:      e.PBRShading(),
-	}
+		UniformBindings: []render.UniformBinding{
+			render.NewUniformBinding("Camera", internal.UniformBufferBindingCamera),
+			render.NewUniformBinding("Model", internal.UniformBufferBindingModel),
+			render.NewUniformBinding("Material", internal.UniformBufferBindingMaterial),
+			render.NewUniformBinding("Armature", internal.UniformBufferBindingArmature),
+		},
+	})
+}
+
+func (e *Engine) createGeometryPassPipeline(info internal.RenderPassPipelineInfo) render.Pipeline {
+	return e.api.CreatePipeline(render.PipelineInfo{
+		Program: info.Program,
+
+		VertexArray: info.MeshVertexArray,
+		Topology:    info.FragmentTopology,
+
+		Culling:   info.PassDefinition.Culling,
+		FrontFace: info.PassDefinition.FrontFace,
+
+		DepthTest:       info.PassDefinition.DepthTest,
+		DepthWrite:      info.PassDefinition.DepthWrite,
+		DepthComparison: info.PassDefinition.DepthComparison,
+
+		StencilTest:  false,                          // the GBuffer does not have a stencil component
+		StencilFront: render.StencilOperationState{}, // irrelevant
+		StencilBack:  render.StencilOperationState{}, // irrelevant
+
+		ColorWrite: render.ColorMaskTrue,
+
+		BlendEnabled:                false,                    // the GBuffer does not have an alpha component
+		BlendColor:                  [4]float32{},             // irrelevant
+		BlendSourceColorFactor:      render.BlendFactorZero,   // irrelevant
+		BlendDestinationColorFactor: render.BlendFactorZero,   // irrelevant
+		BlendSourceAlphaFactor:      render.BlendFactorZero,   // irrelevant
+		BlendDestinationAlphaFactor: render.BlendFactorZero,   // irrelevant
+		BlendOpColor:                render.BlendOperationAdd, // irrelevant
+		BlendOpAlpha:                render.BlendOperationAdd, // irrelevant
+	})
+}
+
+func (e *Engine) createShadowPassProgram(programCode render.ProgramCode) render.Program {
+	return e.api.CreateProgram(render.ProgramInfo{
+		SourceCode: programCode,
+		TextureBindings: []render.TextureBinding{
+			render.NewTextureBinding("lackingTexture0", 0),
+			render.NewTextureBinding("lackingTexture1", 1),
+			render.NewTextureBinding("lackingTexture2", 2),
+			render.NewTextureBinding("lackingTexture3", 3),
+			render.NewTextureBinding("lackingTexture4", 4),
+			render.NewTextureBinding("lackingTexture5", 5),
+			render.NewTextureBinding("lackingTexture6", 6),
+			render.NewTextureBinding("lackingTexture7", 7),
+		},
+		UniformBindings: []render.UniformBinding{
+			render.NewUniformBinding("Camera", internal.UniformBufferBindingCamera),
+			render.NewUniformBinding("Model", internal.UniformBufferBindingModel),
+			render.NewUniformBinding("Material", internal.UniformBufferBindingMaterial),
+			render.NewUniformBinding("Armature", internal.UniformBufferBindingArmature),
+		},
+	})
+}
+
+func (e *Engine) createShadowPassPipeline(info internal.RenderPassPipelineInfo) render.Pipeline {
+	return e.api.CreatePipeline(render.PipelineInfo{
+		Program: info.Program,
+
+		VertexArray: info.MeshVertexArray,
+		Topology:    info.FragmentTopology,
+
+		Culling:   info.PassDefinition.Culling,
+		FrontFace: info.PassDefinition.FrontFace,
+
+		DepthTest:       info.PassDefinition.DepthTest,
+		DepthWrite:      info.PassDefinition.DepthWrite,
+		DepthComparison: info.PassDefinition.DepthComparison,
+
+		StencilTest:  false,                          // the only target is a depth buffer
+		StencilFront: render.StencilOperationState{}, // irrelevant
+		StencilBack:  render.StencilOperationState{}, // irrelevant
+
+		ColorWrite: render.ColorMaskFalse, // the only target is a depth buffer
+
+		BlendEnabled:                false,                    // the only target is a depth buffer
+		BlendColor:                  [4]float32{},             // irrelevant
+		BlendSourceColorFactor:      render.BlendFactorZero,   // irrelevant
+		BlendDestinationColorFactor: render.BlendFactorZero,   // irrelevant
+		BlendSourceAlphaFactor:      render.BlendFactorZero,   // irrelevant
+		BlendDestinationAlphaFactor: render.BlendFactorZero,   // irrelevant
+		BlendOpColor:                render.BlendOperationAdd, // irrelevant
+		BlendOpAlpha:                render.BlendOperationAdd, // irrelevant
+	})
+}
+
+func (e *Engine) createForwardPassProgram(programCode render.ProgramCode) render.Program {
+	return e.api.CreateProgram(render.ProgramInfo{
+		SourceCode: programCode,
+		TextureBindings: []render.TextureBinding{
+			render.NewTextureBinding("lackingTexture0", 0),
+			render.NewTextureBinding("lackingTexture1", 1),
+			render.NewTextureBinding("lackingTexture2", 2),
+			render.NewTextureBinding("lackingTexture3", 3),
+			render.NewTextureBinding("lackingTexture4", 4),
+			render.NewTextureBinding("lackingTexture5", 5),
+			render.NewTextureBinding("lackingTexture6", 6),
+			render.NewTextureBinding("lackingTexture7", 7),
+		},
+		UniformBindings: []render.UniformBinding{
+			render.NewUniformBinding("Camera", internal.UniformBufferBindingCamera),
+			render.NewUniformBinding("Model", internal.UniformBufferBindingModel),
+			render.NewUniformBinding("Material", internal.UniformBufferBindingMaterial),
+			render.NewUniformBinding("Armature", internal.UniformBufferBindingArmature),
+		},
+	})
+}
+
+func (e *Engine) createForwardPassPipeline(info internal.RenderPassPipelineInfo) render.Pipeline {
+	return e.api.CreatePipeline(render.PipelineInfo{
+		Program: info.Program,
+
+		VertexArray: info.MeshVertexArray,
+		Topology:    info.FragmentTopology,
+
+		Culling:   info.PassDefinition.Culling,   // default: render.CullModeNone
+		FrontFace: info.PassDefinition.FrontFace, // default: render.FaceOrientationCCW
+
+		DepthTest:       info.PassDefinition.DepthTest,       // default: true
+		DepthWrite:      info.PassDefinition.DepthWrite,      // default: true
+		DepthComparison: info.PassDefinition.DepthComparison, // default: render.ComparisonLessOrEqual
+
+		StencilTest:  false,                          // the lighting buffer does not have a stencil component
+		StencilFront: render.StencilOperationState{}, // irrelevant
+		StencilBack:  render.StencilOperationState{}, // irrelevant
+
+		ColorWrite: render.ColorMaskTrue,
+
+		BlendEnabled:                info.PassDefinition.Blending, // default: false
+		BlendColor:                  [4]float32{0.0, 0.0, 0.0, 0.0},
+		BlendSourceColorFactor:      render.BlendFactorOne,
+		BlendSourceAlphaFactor:      render.BlendFactorOne,
+		BlendDestinationColorFactor: render.BlendFactorOne,
+		BlendDestinationAlphaFactor: render.BlendFactorZero,
+		BlendOpColor:                render.BlendOperationAdd,
+		BlendOpAlpha:                render.BlendOperationAdd,
+	})
+}
+
+func (e *Engine) pickFreeRenderPassKey() uint32 {
+	e.freeRenderPassKey++
+	return e.freeRenderPassKey
 }
 
 func (e *Engine) convertWrap(wrap Wrap) render.WrapMode {
@@ -297,7 +646,7 @@ func (e *Engine) convertFilter(filter Filter) render.FilterMode {
 	}
 }
 
-func (e *Engine) convertFormat(internalFormat InternalFormat, dataFormat DataFormat) render.DataFormat {
+func (e *Engine) convertFormat(dataFormat DataFormat) render.DataFormat {
 	switch dataFormat {
 	case DataFormatRGBA8:
 		return render.DataFormatRGBA8
@@ -307,23 +656,6 @@ func (e *Engine) convertFormat(internalFormat InternalFormat, dataFormat DataFor
 		return render.DataFormatRGBA32F
 	default:
 		panic(fmt.Errorf("unknown data format: %d", dataFormat))
-	}
-}
-
-func (e *Engine) convertPrimitive(primitive Primitive) render.Topology {
-	switch primitive {
-	case PrimitivePoints:
-		return render.TopologyPoints
-	case PrimitiveLines:
-		return render.TopologyLineList
-	case PrimitiveLineStrip:
-		return render.TopologyLineStrip
-	case PrimitiveTriangles:
-		return render.TopologyTriangleList
-	case PrimitiveTriangleStrip:
-		return render.TopologyTriangleStrip
-	default:
-		panic(fmt.Errorf("unknown primitive: %d", primitive))
 	}
 }
 

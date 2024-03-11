@@ -26,7 +26,7 @@ const (
 	FoVModePixelBased FoVMode = "pixel-based"
 )
 
-func newCamera(scene *Scene) *Camera {
+func newCamera() *Camera {
 	return &Camera{
 		Node:              newNode(),
 		fov:               sprec.Degrees(120),

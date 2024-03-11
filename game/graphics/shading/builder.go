@@ -1,16 +1,15 @@
 package shading
 
-// TODO: MeshFunc (used for vertex shader)
+type ShaderFunc[P any] func(palette P)
 
-type ShadowFunc func(palette *ShadowPalette)
+type GeometryVertexFunc ShaderFunc[GeometryVertexPalette]
+type GeometryFragmentFunc ShaderFunc[GeometryFragmentPalette]
 
-type GeometryFunc func(palette *GeometryPalette)
+type ShadowVertexFunc ShaderFunc[ShadowVertexPalette]
+type ShadowFragmentFunc ShaderFunc[ShadowFragmentPalette]
 
-type EmissiveFunc func(palette *EmissivePalette)
-
-type ForwardFunc func(palette *ForwardPalette)
-
-type LightingFunc func(palette *LightingPalette)
+type ForwardVertexFunc ShaderFunc[ForwardVertexPalette]
+type ForwardFragmentFunc func(palette *ForwardFragmentPalette)
 
 type Palette struct {
 	nodes []Node
@@ -43,33 +42,37 @@ func (p *Palette) MulVec4(inVec *Vec4Param, ratio float32) *Vec4Param {
 	return node.outVec
 }
 
-type ShadowPalette struct {
+type GeometryVertexPalette struct {
 	Palette
 }
 
-type GeometryPalette struct {
+type GeometryFragmentPalette struct {
 	Palette
 }
 
-type EmissivePalette struct {
+type ShadowVertexPalette struct {
 	Palette
 }
 
-func NewForwardPalette() *ForwardPalette {
-	return &ForwardPalette{}
-}
-
-type ForwardPalette struct {
+type ShadowFragmentPalette struct {
 	Palette
 }
 
-func (p *ForwardPalette) OutputColor(inColor *Vec4Param) {
+type ForwardVertexPalette struct {
+	Palette
+}
+
+func NewForwardFragmentPalette() *ForwardFragmentPalette {
+	return &ForwardFragmentPalette{}
+}
+
+type ForwardFragmentPalette struct {
+	Palette
+}
+
+func (p *ForwardFragmentPalette) OutputColor(inColor *Vec4Param) {
 	inColor.MarkUsed()
 	p.nodes = append(p.nodes, &OutputColorNode{
 		inColor: inColor,
 	})
-}
-
-type LightingPalette struct {
-	Palette
 }

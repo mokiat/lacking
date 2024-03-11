@@ -5,149 +5,53 @@ import (
 
 	"github.com/mokiat/gomath/dprec"
 	"github.com/mokiat/gomath/dtos"
-	"github.com/mokiat/lacking/render"
 	"github.com/mokiat/lacking/util/blob"
 	"github.com/mokiat/lacking/util/spatial"
 )
 
-// MeshDefinitionInfo contains everything needed to create a new MeshDefinition.
-type MeshDefinitionInfo struct {
-	VertexData           []byte
-	VertexFormat         VertexFormat
-	IndexData            []byte
-	IndexFormat          IndexFormat
-	Fragments            []MeshFragmentDefinitionInfo
-	BoundingSphereRadius float64
-}
+// type meshFragmentDefinition struct {
+// 	id               uint32
+// 	mesh             *MeshDefinition
+// 	topology         render.Topology
+// 	indexCount       int
+// 	indexOffsetBytes int
+// 	material         *Material
+// }
 
-// NeedsArmature returns whether the mesh described by this info object will
-// require an Armature to be visualized.
-func (i *MeshDefinitionInfo) NeedsArmature() bool {
-	return i.VertexFormat.HasWeights && i.VertexFormat.HasJoints
-}
+// func (d *meshFragmentDefinition) rebuildPipelines() {
+// 	d.deletePipelines()
+// 	d.createPipelines()
+// }
 
-// VertexFormat describes the data that is contained in a single vertex.
-type VertexFormat struct {
-	HasCoord            bool
-	CoordOffsetBytes    int
-	CoordStrideBytes    int
-	HasNormal           bool
-	NormalOffsetBytes   int
-	NormalStrideBytes   int
-	HasTangent          bool
-	TangentOffsetBytes  int
-	TangentStrideBytes  int
-	HasTexCoord         bool
-	TexCoordOffsetBytes int
-	TexCoordStrideBytes int
-	HasColor            bool
-	ColorOffsetBytes    int
-	ColorStrideBytes    int
-	HasWeights          bool
-	WeightsOffsetBytes  int
-	WeightsStrideBytes  int
-	HasJoints           bool
-	JointsOffsetBytes   int
-	JointsStrideBytes   int
-}
+// func (d *meshFragmentDefinition) deletePipelines() {
+// 	if d.material.shadowPipeline != nil {
+// 		d.material.shadowPipeline.Release()
+// 		d.material.shadowPipeline = nil
+// 	}
+// 	if d.material.geometryPipeline != nil {
+// 		d.material.geometryPipeline.Release()
+// 		d.material.geometryPipeline = nil
+// 	}
+// 	if d.material.emissivePipeline != nil {
+// 		d.material.emissivePipeline.Release()
+// 		d.material.emissivePipeline = nil
+// 	}
+// 	if d.material.forwardPipeline != nil {
+// 		d.material.forwardPipeline.Release()
+// 		d.material.forwardPipeline = nil
+// 	}
+// }
 
-const (
-	IndexFormatU16 IndexFormat = 1 + iota
-	IndexFormatU32
-)
-
-// IndexFormat specifies the data type that is used to represent individual
-// indices.
-type IndexFormat int
-
-// MeshFragmentDefinitionInfo represents the definition of a portion of a mesh
-// that is drawn with a specific material and primitives.
-type MeshFragmentDefinitionInfo struct {
-	Primitive   Primitive
-	Material    *MaterialDefinition
-	IndexOffset int // TODO: Make these uint32; Also rename to indicate bytes.
-	IndexCount  int // TODO: Make these uint32
-}
-
-const (
-	PrimitivePoints Primitive = 1 + iota
-	PrimitiveLines
-	PrimitiveLineStrip
-	PrimitiveTriangles
-	PrimitiveTriangleStrip
-)
-
-// Primitive represents the basic shape unit that is described by indices
-// (for example: triangles).
-type Primitive int
-
-// MeshDefinition represents the definition of a mesh.
-// Multiple mesh instances can be created off of one template
-// reusing resources.
-type MeshDefinition struct {
-	vertexBuffer         render.Buffer
-	indexBuffer          render.Buffer
-	vertexArray          render.VertexArray
-	fragments            []meshFragmentDefinition
-	boundingSphereRadius float64
-	hasVertexColors      bool
-	needsArmature        bool
-}
-
-// Delete releases any resources owned by this MeshDefinition.
-func (t *MeshDefinition) Delete() {
-	t.vertexArray.Release()
-	t.indexBuffer.Release()
-	t.vertexBuffer.Release()
-	for _, fragment := range t.fragments {
-		fragment.deletePipelines()
-	}
-	t.fragments = nil
-}
-
-type meshFragmentDefinition struct {
-	id               int
-	mesh             *MeshDefinition
-	topology         render.Topology
-	indexCount       int
-	indexOffsetBytes int
-	material         *Material
-}
-
-func (d *meshFragmentDefinition) rebuildPipelines() {
-	d.deletePipelines()
-	d.createPipelines()
-}
-
-func (d *meshFragmentDefinition) deletePipelines() {
-	if d.material.shadowPipeline != nil {
-		d.material.shadowPipeline.Release()
-		d.material.shadowPipeline = nil
-	}
-	if d.material.geometryPipeline != nil {
-		d.material.geometryPipeline.Release()
-		d.material.geometryPipeline = nil
-	}
-	if d.material.emissivePipeline != nil {
-		d.material.emissivePipeline.Release()
-		d.material.emissivePipeline = nil
-	}
-	if d.material.forwardPipeline != nil {
-		d.material.forwardPipeline.Release()
-		d.material.forwardPipeline = nil
-	}
-}
-
-func (d *meshFragmentDefinition) createPipelines() {
-	// TODO: Consider moving to Material object instead
-	material := d.material
-	materialDef := material.definition
-	material.definitionRevision = materialDef.revision
-	material.shadowPipeline = materialDef.shading.ShadowPipeline(d.mesh, d)
-	material.geometryPipeline = materialDef.shading.GeometryPipeline(d.mesh, d)
-	material.emissivePipeline = materialDef.shading.EmissivePipeline(d.mesh, d)
-	material.forwardPipeline = materialDef.shading.ForwardPipeline(d.mesh, d)
-}
+// func (d *meshFragmentDefinition) createPipelines() {
+// 	// TODO: Consider moving to Material object instead
+// 	material := d.material
+// 	materialDef := material.definition
+// 	material.definitionRevision = materialDef.revision
+// 	material.shadowPipeline = materialDef.shading.ShadowPipeline(d.mesh, d)
+// 	material.geometryPipeline = materialDef.shading.GeometryPipeline(d.mesh, d)
+// 	material.emissivePipeline = materialDef.shading.EmissivePipeline(d.mesh, d)
+// 	material.forwardPipeline = materialDef.shading.ForwardPipeline(d.mesh, d)
+// }
 
 type MeshInfo struct {
 	Definition *MeshDefinition
@@ -156,11 +60,10 @@ type MeshInfo struct {
 
 func newMesh(scene *Scene, info MeshInfo) *Mesh {
 	definition := info.Definition
-
 	mesh := scene.dynamicMeshPool.Fetch()
 	mesh.Node = newNode()
 	mesh.scene = scene
-	mesh.itemID = scene.dynamicMeshSet.Insert(dprec.ZeroVec3(), definition.boundingSphereRadius, mesh)
+	mesh.itemID = scene.dynamicMeshSet.Insert(dprec.ZeroVec3(), definition.geometry.boundingSphereRadius, mesh)
 	mesh.definition = definition
 	mesh.armature = info.Armature
 	return mesh
@@ -170,9 +73,8 @@ func newMesh(scene *Scene, info MeshInfo) *Mesh {
 type Mesh struct {
 	Node
 
-	scene  *Scene
-	itemID spatial.DynamicSetItemID
-
+	scene      *Scene
+	itemID     spatial.DynamicSetItemID
 	definition *MeshDefinition
 	armature   *Armature
 }
@@ -180,7 +82,7 @@ type Mesh struct {
 func (m *Mesh) SetMatrix(matrix dprec.Mat4) {
 	m.Node.SetMatrix(matrix)
 	position := matrix.Translation()
-	radius := m.definition.boundingSphereRadius
+	radius := m.definition.geometry.boundingSphereRadius
 	m.scene.dynamicMeshSet.Update(m.itemID, position, radius)
 }
 
@@ -203,7 +105,7 @@ func createStaticMesh(scene *Scene, info StaticMeshInfo) {
 	position := info.Matrix.Translation()
 	scale := info.Matrix.Scale()
 	maxScale := dprec.Max(scale.X, dprec.Max(scale.Y, scale.Z))
-	radius := info.Definition.boundingSphereRadius * maxScale
+	radius := info.Definition.geometry.boundingSphereRadius * maxScale
 
 	meshIndex := uint32(len(scene.staticMeshes))
 	scene.staticMeshes = append(scene.staticMeshes, StaticMesh{})

@@ -13,10 +13,11 @@ import (
 	"github.com/mokiat/lacking/util/async"
 )
 
-func NewController(registry asset.Registry, shaders graphics.ShaderCollection) *Controller {
+func NewController(registry asset.Registry, shaders graphics.ShaderCollection, shaderBuilder graphics.ShaderBuilder) *Controller {
 	return &Controller{
-		registry: registry,
-		shaders:  shaders,
+		registry:      registry,
+		shaders:       shaders,
+		shaderBuilder: shaderBuilder,
 	}
 }
 
@@ -25,9 +26,10 @@ var _ app.Controller = (*Controller)(nil)
 type Controller struct {
 	app.NopController
 
-	registry    asset.Registry
-	newRegistry *newasset.Registry
-	shaders     graphics.ShaderCollection
+	registry      asset.Registry
+	newRegistry   *newasset.Registry
+	shaders       graphics.ShaderCollection
+	shaderBuilder graphics.ShaderBuilder
 
 	gfxEngine     *graphics.Engine
 	ecsEngine     *ecs.Engine
@@ -50,7 +52,7 @@ func (c *Controller) Engine() *Engine {
 
 func (c *Controller) OnCreate(window app.Window) {
 	c.window = window
-	c.gfxEngine = graphics.NewEngine(window.RenderAPI(), c.shaders)
+	c.gfxEngine = graphics.NewEngine(window.RenderAPI(), c.shaders, c.shaderBuilder)
 	c.ecsEngine = ecs.NewEngine()
 	c.physicsEngine = physics.NewEngine(16 * time.Millisecond)
 
