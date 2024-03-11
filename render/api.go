@@ -43,6 +43,10 @@ type API interface {
 	// used to store depth and stencil values together.
 	CreateDepthStencilTexture2D(info DepthStencilTexture2DInfo) Texture
 
+	// CreateSampler creates a new Sampler object based on the provided
+	// SamplerInfo.
+	CreateSampler(info SamplerInfo) Sampler
+
 	// CreateVertexBuffer creates a new Buffer object that can be used
 	// to store vertex data.
 	CreateVertexBuffer(info BufferInfo) Buffer
