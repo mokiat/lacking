@@ -8,9 +8,7 @@ type ProgramMarker interface {
 // Program represents a graphics program.
 type Program interface {
 	ProgramMarker
-
-	// Release releases the resources used by the program.
-	Release()
+	Resource
 }
 
 // ProgramCodeMarker marks a type as being a ProgramCode.

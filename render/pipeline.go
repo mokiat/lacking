@@ -8,9 +8,7 @@ type PipelineMarker interface {
 // Pipeline is used to configure the GPU for drawing.
 type Pipeline interface {
 	PipelineMarker
-
-	// Release releases the resources associated with this Pipeline.
-	Release()
+	Resource
 }
 
 // PipelineInfo describes the information needed to create a new Pipeline.

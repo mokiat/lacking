@@ -9,12 +9,10 @@ type FenceMarker interface {
 // to synchronize with the GPU.
 type Fence interface {
 	FenceMarker
+	Resource
 
 	// Status returns the current status of the fence.
 	Status() FenceStatus
-
-	// Release releases the resources associated with the fence.
-	Release()
 }
 
 const (
