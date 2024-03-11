@@ -30,6 +30,10 @@ type CommandBuffer interface {
 	// specified texture unit.
 	TextureUnit(index int, texture Texture)
 
+	// SamplerUnit configures which sampler should be used for the
+	// specified texture unit.
+	SamplerUnit(index int, sampler Sampler)
+
 	// UniformBufferUnit configures which buffer should be used for the
 	// specified buffer unit.
 	UniformBufferUnit(index int, buffer Buffer, offset, size int)

@@ -20,6 +20,19 @@ type Texture interface {
 	Release()
 }
 
+// SamplerMarker marks a type as being a Sampler.
+type SamplerMarker interface {
+	_isSamplerType()
+}
+
+// Sampler represents a texture sampling configuration.
+type Sampler interface {
+	SamplerMarker
+
+	// Release releases the resources associated with this Sampler.
+	Release()
+}
+
 const (
 	// WrapModeClamp indicates that the texture coordinates should
 	// be clamped to the range [0, 1].
@@ -236,4 +249,18 @@ type DepthStencilTexture2DInfo struct {
 	// DepthClippedValue specifies the value that should be used for depth
 	// clipping.
 	DepthClippedValue opt.T[float32]
+}
+
+// SamplerInfo represents the information needed to create a Sampler.
+type SamplerInfo struct {
+
+	// Wrapping specifies the texture wrapping mode.
+	Wrapping WrapMode
+
+	// Filtering specifies the texture filtering mode.
+	Filtering FilterMode
+
+	// Mipmapping specifies whether mipmapping should be enabled and whether
+	// mipmaps should be generated.
+	Mipmapping bool
 }
