@@ -143,10 +143,9 @@ type sceneRenderer struct {
 
 	renderItems []renderItem
 
-	uniforms                  *renderutil.UniformBlockBuffer
-	modelUniformBufferData    gblob.LittleEndianBlock
-	cameraPlacement           renderutil.UniformPlacement
-	directionalLightPlacement renderutil.UniformPlacement
+	uniforms               *renderutil.UniformBlockBuffer
+	modelUniformBufferData gblob.LittleEndianBlock
+	cameraPlacement        renderutil.UniformPlacement
 }
 
 func (r *sceneRenderer) createFramebuffers(width, height int) {
