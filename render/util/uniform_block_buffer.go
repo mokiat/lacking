@@ -11,6 +11,13 @@ type UniformType interface {
 	Std140Size() int
 }
 
+// UniformBytes returns the byte representation of the specified uniform.
+func UniformBytes[T UniformType](uniform T) []byte {
+	data := make([]byte, uniform.Std140Size())
+	uniform.Std140Plot(blob.NewPlotter(data))
+	return data
+}
+
 // UniformPlacement contains information on the positioning of a uniform
 // within a uniform buffer.
 type UniformPlacement struct {
