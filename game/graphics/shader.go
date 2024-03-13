@@ -35,105 +35,114 @@ type ForwardConstraints struct {
 type ShaderBuilder interface {
 
 	// BuildGeometryCode creates the program code for a geometry pass.
-	BuildGeometryCode(constraints GeometryConstraints, vertex shading.GeometryVertexFunc, fragment shading.GeometryFragmentFunc) render.ProgramCode
+	BuildGeometryCode(constraints GeometryConstraints, vertex shading.GenericBuilderFunc, fragment shading.GenericBuilderFunc) render.ProgramCode
 
 	// BuildShadowCode creates the program code for a shadow pass.
-	BuildShadowCode(constraints ShadowConstraints, vertex shading.ShadowVertexFunc, fragment shading.ShadowFragmentFunc) render.ProgramCode
+	BuildShadowCode(constraints ShadowConstraints, vertex shading.GenericBuilderFunc, fragment shading.GenericBuilderFunc) render.ProgramCode
 
 	// BuildForwardCode creates the program code for a shadow pass.
-	BuildForwardCode(constraints ForwardConstraints, vertex shading.ForwardVertexFunc, fragment shading.ForwardFragmentFunc) render.ProgramCode
+	BuildForwardCode(constraints ForwardConstraints, vertex shading.GenericBuilderFunc, fragment shading.GenericBuilderFunc) render.ProgramCode
 }
 
 // GeometryShaderInfo contains the information needed to create a
 // custom GeometryShader.
 type GeometryShaderInfo struct {
 
-	// VertexTemplate is the function that will be used to build the
+	// VertexBuilder is the function that will be used to build the
 	// program code for the vertex shader.
-	VertexTemplate shading.GeometryVertexFunc
+	VertexBuilder shading.GeometryVertexBuilderFunc
 
-	// FragmentTemplate is the function that will be used to build the
+	// FragmentBuilder is the function that will be used to build the
 	// program code for the fragment shader.
-	FragmentTemplate shading.GeometryFragmentFunc
+	FragmentBuilder shading.GeometryFragmentBuilderFunc
 }
 
 // GeometryShader represents a shader that is used during the geometry pass.
 type GeometryShader interface {
-	internal.GeometryShader
+	internal.Shader
+	_isGeometryShader()
 }
 
 // ShadowShaderInfo contains the information needed to create a
 // custom ShadowShader.
 type ShadowShaderInfo struct {
 
-	// VertexTemplate is the function that will be used to build the
+	// VertexBuilder is the function that will be used to build the
 	// program code for the vertex shader.
-	VertexTemplate shading.ShadowVertexFunc
+	VertexBuilder shading.ShadowVertexBuilderFunc
 
-	// FragmentTemplate is the function that will be used to build the
+	// FragmentBuilder is the function that will be used to build the
 	// program code for the fragment shader.
-	FragmentTemplate shading.ShadowFragmentFunc
+	FragmentBuilder shading.ShadowFragmentBuilderFunc
 }
 
 // ShadowShader represents a shader that is used during the shadow pass for
 // a particular light source.
 type ShadowShader interface {
-	internal.ShadowShader
+	internal.Shader
+	_isShadowShader()
 }
 
 // ForwardShaderInfo contains the information needed to create a
 // custom ForwardShader.
 type ForwardShaderInfo struct {
 
-	// VertexTemplate is the function that will be used to build the
+	// VertexBuilder is the function that will be used to build the
 	// program code for the vertex shader.
-	VertexTemplate shading.ForwardVertexFunc
+	VertexBuilder shading.ForwardVertexBuilderFunc
 
-	// FragmentTemplate is the function that will be used to build the
+	// FragmentBuilder is the function that will be used to build the
 	// program code for the fragment shader.
-	FragmentTemplate shading.ForwardFragmentFunc
+	FragmentBuilder shading.ForwardFragmentBuilderFunc
 }
 
 // ForwardShader represents a shader that is used during the forward pass.
 type ForwardShader interface {
-	internal.ForwardShader
+	internal.Shader
+	_isForwardShader()
 }
 
 type customGeometryShader struct {
 	builder  ShaderBuilder
-	vertex   shading.GeometryVertexFunc
-	fragment shading.GeometryFragmentFunc
+	vertex   shading.GenericBuilderFunc
+	fragment shading.GenericBuilderFunc
 }
 
-func (s *customGeometryShader) CreateProgramCode(info internal.GeometryShaderProgramCodeInfo) render.ProgramCode {
+func (s *customGeometryShader) CreateProgramCode(info internal.ShaderProgramCodeInfo) render.ProgramCode {
 	return s.builder.BuildGeometryCode(GeometryConstraints{
 		HasArmature: info.MeshHasArmature,
 	}, s.vertex, s.fragment)
 }
 
+func (*customGeometryShader) _isGeometryShader() {}
+
 type customShadowShader struct {
 	builder  ShaderBuilder
-	vertex   shading.ShadowVertexFunc
-	fragment shading.ShadowFragmentFunc
+	vertex   shading.GenericBuilderFunc
+	fragment shading.GenericBuilderFunc
 }
 
-func (s *customShadowShader) CreateProgramCode(info internal.ShadowShaderProgramCodeInfo) render.ProgramCode {
+func (s *customShadowShader) CreateProgramCode(info internal.ShaderProgramCodeInfo) render.ProgramCode {
 	return s.builder.BuildShadowCode(ShadowConstraints{
 		HasArmature: info.MeshHasArmature,
 	}, s.vertex, s.fragment)
 }
 
+func (*customShadowShader) _isShadowShader() {}
+
 type customForwardShader struct {
 	builder  ShaderBuilder
-	vertex   shading.ForwardVertexFunc
-	fragment shading.ForwardFragmentFunc
+	vertex   shading.GenericBuilderFunc
+	fragment shading.GenericBuilderFunc
 }
 
-func (s *customForwardShader) CreateProgramCode(info internal.ForwardShaderProgramCodeInfo) render.ProgramCode {
+func (s *customForwardShader) CreateProgramCode(info internal.ShaderProgramCodeInfo) render.ProgramCode {
 	return s.builder.BuildForwardCode(ForwardConstraints{
 		HasArmature: info.MeshHasArmature,
 	}, s.vertex, s.fragment)
 }
+
+func (*customForwardShader) _isForwardShader() {}
 
 type defaultGeometryShader struct {
 	shaders ShaderCollection
@@ -142,7 +151,7 @@ type defaultGeometryShader struct {
 	useAlbedoTexture bool
 }
 
-func (s *defaultGeometryShader) CreateProgramCode(info internal.GeometryShaderProgramCodeInfo) render.ProgramCode {
+func (s *defaultGeometryShader) CreateProgramCode(info internal.ShaderProgramCodeInfo) render.ProgramCode {
 	return s.shaders.PBRGeometrySet(PBRGeometryShaderConfig{
 		HasArmature:      info.MeshHasArmature,
 		HasAlphaTesting:  s.useAlphaTesting,
@@ -151,15 +160,19 @@ func (s *defaultGeometryShader) CreateProgramCode(info internal.GeometryShaderPr
 	})
 }
 
+func (*defaultGeometryShader) _isGeometryShader() {}
+
 type defaultShadowShader struct {
 	shaders ShaderCollection
 }
 
-func (s *defaultShadowShader) CreateProgramCode(info internal.ShadowShaderProgramCodeInfo) render.ProgramCode {
+func (s *defaultShadowShader) CreateProgramCode(info internal.ShaderProgramCodeInfo) render.ProgramCode {
 	return s.shaders.ShadowMappingSet(ShadowMappingShaderConfig{
 		HasArmature: info.MeshHasArmature,
 	})
 }
+
+func (*defaultShadowShader) _isShadowShader() {}
 
 ///////////////// OLD CODE FOLLOWS ////////////////////////////
 

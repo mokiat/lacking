@@ -76,10 +76,11 @@ func (d *MeshDefinition) createMaterialPasses(index int, passType internal.MeshR
 	fragment := d.geometry.fragments[index]
 	material := d.materials[index]
 
+	// TODO: Rework this. There are very few differences now...
 	switch passType {
 	case internal.MeshRenderPassTypeGeometry:
 		for _, pass := range material.geometryPasses {
-			programCode := pass.Shader.CreateProgramCode(internal.GeometryShaderProgramCodeInfo{
+			programCode := pass.Shader.CreateProgramCode(internal.ShaderProgramCodeInfo{
 				ShaderMeshInfo: meshShaderInfo,
 			})
 			program := d.engine.createGeometryPassProgram(programCode)
@@ -87,7 +88,7 @@ func (d *MeshDefinition) createMaterialPasses(index int, passType internal.MeshR
 				Program:          program,
 				MeshVertexArray:  d.geometry.vertexArray,
 				FragmentTopology: fragment.topology,
-				PassDefinition:   pass.MaterialRenderPassDefinition,
+				PassDefinition:   pass,
 			})
 			d.materialPasses[index][passType] = append(d.materialPasses[index][passType], internal.MeshRenderPass{
 				MeshRenderPassDefinition: internal.MeshRenderPassDefinition{
@@ -106,7 +107,7 @@ func (d *MeshDefinition) createMaterialPasses(index int, passType internal.MeshR
 
 	case internal.MeshRenderPassTypeShadow:
 		for _, pass := range material.shadowPasses {
-			programCode := pass.Shader.CreateProgramCode(internal.ShadowShaderProgramCodeInfo{
+			programCode := pass.Shader.CreateProgramCode(internal.ShaderProgramCodeInfo{
 				ShaderMeshInfo: meshShaderInfo,
 			})
 			program := d.engine.createShadowPassProgram(programCode)
@@ -114,7 +115,7 @@ func (d *MeshDefinition) createMaterialPasses(index int, passType internal.MeshR
 				Program:          program,
 				MeshVertexArray:  d.geometry.vertexArray,
 				FragmentTopology: fragment.topology,
-				PassDefinition:   pass.MaterialRenderPassDefinition,
+				PassDefinition:   pass,
 			})
 			d.materialPasses[index][passType] = append(d.materialPasses[index][passType], internal.MeshRenderPass{
 				MeshRenderPassDefinition: internal.MeshRenderPassDefinition{
@@ -133,7 +134,7 @@ func (d *MeshDefinition) createMaterialPasses(index int, passType internal.MeshR
 
 	case internal.MeshRenderPassTypeForward:
 		for _, pass := range material.forwardPasses {
-			programCode := pass.Shader.CreateProgramCode(internal.ForwardShaderProgramCodeInfo{
+			programCode := pass.Shader.CreateProgramCode(internal.ShaderProgramCodeInfo{
 				ShaderMeshInfo: meshShaderInfo,
 			})
 			program := d.engine.createForwardPassProgram(programCode)
@@ -141,7 +142,7 @@ func (d *MeshDefinition) createMaterialPasses(index int, passType internal.MeshR
 				Program:          program,
 				MeshVertexArray:  d.geometry.vertexArray,
 				FragmentTopology: fragment.topology,
-				PassDefinition:   pass.MaterialRenderPassDefinition,
+				PassDefinition:   pass,
 			})
 			d.materialPasses[index][passType] = append(d.materialPasses[index][passType], internal.MeshRenderPass{
 				MeshRenderPassDefinition: internal.MeshRenderPassDefinition{

@@ -27,10 +27,12 @@ type MaterialInfo struct {
 
 // Material determines the appearance of a mesh on the screen.
 type Material struct {
-	name           string
-	geometryPasses []internal.MaterialGeometryRenderPassDefinition
-	shadowPasses   []internal.MaterialShadowRenderPassDefinition
-	forwardPasses  []internal.MaterialForwardRenderPassDefinition
+	name string
+
+	// TODO: Restructure in fixed array
+	geometryPasses []internal.MaterialRenderPassDefinition
+	shadowPasses   []internal.MaterialRenderPassDefinition
+	forwardPasses  []internal.MaterialRenderPassDefinition
 }
 
 func (m *Material) Name() string {
