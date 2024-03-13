@@ -40,21 +40,8 @@ type MaterialRenderPassDefinition struct {
 	Textures    [8]render.Texture
 	Samplers    [8]render.Sampler
 	UniformData []byte
-}
 
-type MaterialGeometryRenderPassDefinition struct {
-	MaterialRenderPassDefinition
-	Shader GeometryShader
-}
-
-type MaterialShadowRenderPassDefinition struct {
-	MaterialRenderPassDefinition
-	Shader ShadowShader
-}
-
-type MaterialForwardRenderPassDefinition struct {
-	MaterialRenderPassDefinition
-	Shader ForwardShader
+	Shader Shader
 }
 
 type RenderPassPipelineInfo struct {

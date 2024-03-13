@@ -12,26 +12,10 @@ type ShaderMeshInfo struct {
 	MeshHasArmature     bool
 }
 
-type GeometryShaderProgramCodeInfo struct {
+type ShaderProgramCodeInfo struct {
 	ShaderMeshInfo
 }
 
-type GeometryShader interface {
-	CreateProgramCode(info GeometryShaderProgramCodeInfo) render.ProgramCode
-}
-
-type ShadowShaderProgramCodeInfo struct {
-	ShaderMeshInfo
-}
-
-type ShadowShader interface {
-	CreateProgramCode(info ShadowShaderProgramCodeInfo) render.ProgramCode
-}
-
-type ForwardShaderProgramCodeInfo struct {
-	ShaderMeshInfo
-}
-
-type ForwardShader interface {
-	CreateProgramCode(info ForwardShaderProgramCodeInfo) render.ProgramCode
+type Shader interface {
+	CreateProgramCode(info ShaderProgramCodeInfo) render.ProgramCode
 }

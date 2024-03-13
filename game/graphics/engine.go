@@ -83,8 +83,8 @@ func (e *Engine) CreateGeometryShader(info GeometryShaderInfo) GeometryShader {
 	// and use the default one instead.
 	return &customGeometryShader{
 		builder:  e.shaderBuilder,
-		vertex:   info.VertexTemplate,
-		fragment: info.FragmentTemplate,
+		vertex:   info.VertexBuilder.GenericBuilder(),
+		fragment: info.FragmentBuilder.GenericBuilder(),
 	}
 }
 
@@ -95,8 +95,8 @@ func (e *Engine) CreateShadowShader(info ShadowShaderInfo) ShadowShader {
 	// and use the default one instead.
 	return &customShadowShader{
 		builder:  e.shaderBuilder,
-		vertex:   info.VertexTemplate,
-		fragment: info.FragmentTemplate,
+		vertex:   info.VertexBuilder.GenericBuilder(),
+		fragment: info.FragmentBuilder.GenericBuilder(),
 	}
 }
 
@@ -107,8 +107,8 @@ func (e *Engine) CreateForwardShader(info ForwardShaderInfo) ForwardShader {
 	// and use the default one instead.
 	return &customForwardShader{
 		builder:  e.shaderBuilder,
-		vertex:   info.VertexTemplate,
-		fragment: info.FragmentTemplate,
+		vertex:   info.VertexBuilder.GenericBuilder(),
+		fragment: info.FragmentBuilder.GenericBuilder(),
 	}
 }
 
@@ -147,7 +147,7 @@ func (e *Engine) CreateCubeTexture(definition CubeTextureDefinition) *CubeTextur
 
 // CreateMaterial creates a new Material from the specified info object.
 func (e *Engine) CreateMaterial(info MaterialInfo) *Material {
-	geometryPasses := gog.Map(info.GeometryPasses, func(passInfo GeometryRenderPassInfo) internal.MaterialGeometryRenderPassDefinition {
+	geometryPasses := gog.Map(info.GeometryPasses, func(passInfo GeometryRenderPassInfo) internal.MaterialRenderPassDefinition {
 		if len(passInfo.Textures) > 8 {
 			passInfo.Textures = passInfo.Textures[:8]
 		}
@@ -166,25 +166,24 @@ func (e *Engine) CreateMaterial(info MaterialInfo) *Material {
 			})
 		}
 
-		return internal.MaterialGeometryRenderPassDefinition{
-			Shader: passInfo.Shader,
-			MaterialRenderPassDefinition: internal.MaterialRenderPassDefinition{
-				Layer:           passInfo.Layer,
-				Culling:         passInfo.Culling.ValueOrDefault(render.CullModeNone),
-				FrontFace:       passInfo.FrontFace.ValueOrDefault(render.FaceOrientationCCW),
-				DepthTest:       passInfo.DepthTest.ValueOrDefault(true),
-				DepthWrite:      passInfo.DepthWrite.ValueOrDefault(true),
-				DepthComparison: passInfo.DepthComparison.ValueOrDefault(render.ComparisonLessOrEqual),
-				Blending:        false,
+		return internal.MaterialRenderPassDefinition{
+			Layer:           passInfo.Layer,
+			Culling:         passInfo.Culling.ValueOrDefault(render.CullModeNone),
+			FrontFace:       passInfo.FrontFace.ValueOrDefault(render.FaceOrientationCCW),
+			DepthTest:       passInfo.DepthTest.ValueOrDefault(true),
+			DepthWrite:      passInfo.DepthWrite.ValueOrDefault(true),
+			DepthComparison: passInfo.DepthComparison.ValueOrDefault(render.ComparisonLessOrEqual),
+			Blending:        false,
 
-				Textures:    textures,
-				Samplers:    samplers,
-				UniformData: passInfo.MaterialDataStd140,
-			},
+			Textures:    textures,
+			Samplers:    samplers,
+			UniformData: passInfo.MaterialDataStd140,
+
+			Shader: passInfo.Shader,
 		}
 	})
 
-	shadowPasses := gog.Map(info.ShadowPasses, func(passInfo ShadowRenderPassInfo) internal.MaterialShadowRenderPassDefinition {
+	shadowPasses := gog.Map(info.ShadowPasses, func(passInfo ShadowRenderPassInfo) internal.MaterialRenderPassDefinition {
 		if len(passInfo.Textures) > 8 {
 			passInfo.Textures = passInfo.Textures[:8]
 		}
@@ -203,25 +202,24 @@ func (e *Engine) CreateMaterial(info MaterialInfo) *Material {
 			})
 		}
 
-		return internal.MaterialShadowRenderPassDefinition{
-			Shader: passInfo.Shader,
-			MaterialRenderPassDefinition: internal.MaterialRenderPassDefinition{
-				Layer:           0,
-				Culling:         passInfo.Culling.ValueOrDefault(render.CullModeNone),
-				FrontFace:       passInfo.FrontFace.ValueOrDefault(render.FaceOrientationCCW),
-				DepthTest:       true,
-				DepthWrite:      true,
-				DepthComparison: render.ComparisonLessOrEqual,
-				Blending:        false,
+		return internal.MaterialRenderPassDefinition{
+			Layer:           0,
+			Culling:         passInfo.Culling.ValueOrDefault(render.CullModeNone),
+			FrontFace:       passInfo.FrontFace.ValueOrDefault(render.FaceOrientationCCW),
+			DepthTest:       true,
+			DepthWrite:      true,
+			DepthComparison: render.ComparisonLessOrEqual,
+			Blending:        false,
 
-				Textures:    textures,
-				Samplers:    samplers,
-				UniformData: passInfo.MaterialDataStd140,
-			},
+			Textures:    textures,
+			Samplers:    samplers,
+			UniformData: passInfo.MaterialDataStd140,
+
+			Shader: passInfo.Shader,
 		}
 	})
 
-	forwardPasses := gog.Map(info.ForwardPasses, func(passInfo ForwardRenderPassInfo) internal.MaterialForwardRenderPassDefinition {
+	forwardPasses := gog.Map(info.ForwardPasses, func(passInfo ForwardRenderPassInfo) internal.MaterialRenderPassDefinition {
 		if len(passInfo.Textures) > 8 {
 			passInfo.Textures = passInfo.Textures[:8]
 		}
@@ -240,21 +238,20 @@ func (e *Engine) CreateMaterial(info MaterialInfo) *Material {
 			})
 		}
 
-		return internal.MaterialForwardRenderPassDefinition{
-			Shader: passInfo.Shader,
-			MaterialRenderPassDefinition: internal.MaterialRenderPassDefinition{
-				Layer:           passInfo.Layer,
-				Culling:         passInfo.Culling.ValueOrDefault(render.CullModeNone),
-				FrontFace:       passInfo.FrontFace.ValueOrDefault(render.FaceOrientationCCW),
-				DepthTest:       passInfo.DepthTest.ValueOrDefault(true),
-				DepthWrite:      passInfo.DepthWrite.ValueOrDefault(true),
-				DepthComparison: passInfo.DepthComparison.ValueOrDefault(render.ComparisonLessOrEqual),
-				Blending:        passInfo.AlphaBlending.ValueOrDefault(false),
+		return internal.MaterialRenderPassDefinition{
+			Layer:           passInfo.Layer,
+			Culling:         passInfo.Culling.ValueOrDefault(render.CullModeNone),
+			FrontFace:       passInfo.FrontFace.ValueOrDefault(render.FaceOrientationCCW),
+			DepthTest:       passInfo.DepthTest.ValueOrDefault(true),
+			DepthWrite:      passInfo.DepthWrite.ValueOrDefault(true),
+			DepthComparison: passInfo.DepthComparison.ValueOrDefault(render.ComparisonLessOrEqual),
+			Blending:        passInfo.AlphaBlending.ValueOrDefault(false),
 
-				Textures:    textures,
-				Samplers:    samplers,
-				UniformData: passInfo.MaterialDataStd140,
-			},
+			Textures:    textures,
+			Samplers:    samplers,
+			UniformData: passInfo.MaterialDataStd140,
+
+			Shader: passInfo.Shader,
 		}
 	})
 
