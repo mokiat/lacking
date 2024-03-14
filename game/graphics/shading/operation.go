@@ -1,12 +1,17 @@
 package shading
 
 type OperationDetails struct {
-	ParamsOffset uint32
-	ParamsCount  uint32
+	InputParams  ParamRange
+	OutputParams ParamRange
 	Type         OperationType
 }
 
-type OperationType uint8
+type ParamRange struct {
+	Offset uint32
+	Count  uint32
+}
+
+type OperationType uint16
 
 const (
 	OperationDefineVec1 OperationType = 1 + iota
