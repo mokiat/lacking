@@ -46,10 +46,22 @@ const (
 
 type VariableIndex uint32
 
-type Vec1Variable VariableIndex
+func (i VariableIndex) Index() VariableIndex {
+	return i
+}
 
-type Vec2Variable VariableIndex
+type Vec1Variable struct {
+	VariableIndex
+}
 
-type Vec3Variable VariableIndex
+type Vec2Variable struct {
+	VariableIndex
+}
 
-type Vec4Variable VariableIndex
+type Vec3Variable struct {
+	VariableIndex
+}
+
+type Vec4Variable struct {
+	VariableIndex
+}
