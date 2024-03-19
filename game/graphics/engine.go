@@ -7,6 +7,7 @@ import (
 	"github.com/mokiat/gog/opt"
 	"github.com/mokiat/lacking/debug/log"
 	"github.com/mokiat/lacking/game/graphics/internal"
+	"github.com/mokiat/lacking/game/graphics/lsl"
 	"github.com/mokiat/lacking/render"
 	"github.com/mokiat/lacking/util/blob"
 )
@@ -78,37 +79,46 @@ func (e *Engine) DefaultShadowShader() ShadowShader {
 
 // CreateGeometryShader creates a new custom GeometryShader using the
 // specified info object.
-func (e *Engine) CreateGeometryShader(info GeometryShaderInfo) GeometryShader {
-	// TODO: Handle the case where the vertex or fragment function is nil
-	// and use the default one instead.
+func (e *Engine) CreateGeometryShader(info ShaderInfo) GeometryShader {
+	ast, err := lsl.Parse(info.SourceCode)
+	if err != nil {
+		log.Error("Failed to parse geometry shader: %v", err)
+		ast = &lsl.Shader{Declarations: []lsl.Declaration{}} // TODO: Something meaningful
+	}
+	// TODO: Validate against Geometry globals.
 	return &customGeometryShader{
-		builder:  e.shaderBuilder,
-		vertex:   info.VertexBuilder.GenericBuilder(),
-		fragment: info.FragmentBuilder.GenericBuilder(),
+		builder: e.shaderBuilder,
+		ast:     ast,
 	}
 }
 
 // CreateShadowShader creates a new custom ShadowShader using the
 // specified info object.
-func (e *Engine) CreateShadowShader(info ShadowShaderInfo) ShadowShader {
-	// TODO: Handle the case where the vertex or fragment function is nil
-	// and use the default one instead.
+func (e *Engine) CreateShadowShader(info ShaderInfo) ShadowShader {
+	ast, err := lsl.Parse(info.SourceCode)
+	if err != nil {
+		log.Error("Failed to parse shadow shader: %v", err)
+		ast = &lsl.Shader{Declarations: []lsl.Declaration{}} // TODO: Something meaningful
+	}
+	// TODO: Validate against Shadow globals.
 	return &customShadowShader{
-		builder:  e.shaderBuilder,
-		vertex:   info.VertexBuilder.GenericBuilder(),
-		fragment: info.FragmentBuilder.GenericBuilder(),
+		builder: e.shaderBuilder,
+		ast:     ast,
 	}
 }
 
 // CreateForwardShader creates a new custom ForwardShader using the
 // specified info object.
-func (e *Engine) CreateForwardShader(info ForwardShaderInfo) ForwardShader {
-	// TODO: Handle the case where the vertex or fragment function is nil
-	// and use the default one instead.
+func (e *Engine) CreateForwardShader(info ShaderInfo) ForwardShader {
+	ast, err := lsl.Parse(info.SourceCode)
+	if err != nil {
+		log.Error("Failed to parse forward shader: %v", err)
+		ast = &lsl.Shader{Declarations: []lsl.Declaration{}} // TODO: Something meaningful
+	}
+	// TODO: Validate against Forward globals.
 	return &customForwardShader{
-		builder:  e.shaderBuilder,
-		vertex:   info.VertexBuilder.GenericBuilder(),
-		fragment: info.FragmentBuilder.GenericBuilder(),
+		builder: e.shaderBuilder,
+		ast:     ast,
 	}
 }
 
@@ -293,13 +303,14 @@ func (e *Engine) CreatePBRMaterial(info PBRMaterialInfo) *Material {
 		})
 	}
 
-	uniformData := make([]byte, 2*4*4)
+	uniformData := make([]byte, 3*4*4)
 	plotter := blob.NewPlotter(uniformData)
 	plotter.PlotSPVec4(info.AlbedoColor)
 	plotter.PlotFloat32(info.AlphaThreshold)
 	plotter.PlotFloat32(info.NormalScale)
 	plotter.PlotFloat32(info.Metallic)
 	plotter.PlotFloat32(info.Roughness)
+	plotter.PlotSPVec4(info.EmissiveColor)
 
 	culling := render.CullModeNone
 	if info.BackfaceCulling {

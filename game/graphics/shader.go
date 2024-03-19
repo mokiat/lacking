@@ -2,7 +2,7 @@ package graphics
 
 import (
 	"github.com/mokiat/lacking/game/graphics/internal"
-	"github.com/mokiat/lacking/game/graphics/shading"
+	"github.com/mokiat/lacking/game/graphics/lsl"
 	"github.com/mokiat/lacking/render"
 )
 
@@ -35,45 +35,26 @@ type ForwardConstraints struct {
 type ShaderBuilder interface {
 
 	// BuildGeometryCode creates the program code for a geometry pass.
-	BuildGeometryCode(constraints GeometryConstraints, vertex shading.GenericBuilderFunc, fragment shading.GenericBuilderFunc) render.ProgramCode
+	BuildGeometryCode(constraints GeometryConstraints, shader *lsl.Shader) render.ProgramCode
 
 	// BuildShadowCode creates the program code for a shadow pass.
-	BuildShadowCode(constraints ShadowConstraints, vertex shading.GenericBuilderFunc, fragment shading.GenericBuilderFunc) render.ProgramCode
+	BuildShadowCode(constraints ShadowConstraints, shader *lsl.Shader) render.ProgramCode
 
 	// BuildForwardCode creates the program code for a shadow pass.
-	BuildForwardCode(constraints ForwardConstraints, vertex shading.GenericBuilderFunc, fragment shading.GenericBuilderFunc) render.ProgramCode
+	BuildForwardCode(constraints ForwardConstraints, shader *lsl.Shader) render.ProgramCode
 }
 
-// GeometryShaderInfo contains the information needed to create a
-// custom GeometryShader.
-type GeometryShaderInfo struct {
+// ShaderInfo contains the information needed to create a custom Shader.
+type ShaderInfo struct {
 
-	// VertexBuilder is the function that will be used to build the
-	// program code for the vertex shader.
-	VertexBuilder shading.GeometryVertexBuilderFunc
-
-	// FragmentBuilder is the function that will be used to build the
-	// program code for the fragment shader.
-	FragmentBuilder shading.GeometryFragmentBuilderFunc
+	// SourceCode is the source code of the shader.
+	SourceCode string
 }
 
 // GeometryShader represents a shader that is used during the geometry pass.
 type GeometryShader interface {
 	internal.Shader
 	_isGeometryShader()
-}
-
-// ShadowShaderInfo contains the information needed to create a
-// custom ShadowShader.
-type ShadowShaderInfo struct {
-
-	// VertexBuilder is the function that will be used to build the
-	// program code for the vertex shader.
-	VertexBuilder shading.ShadowVertexBuilderFunc
-
-	// FragmentBuilder is the function that will be used to build the
-	// program code for the fragment shader.
-	FragmentBuilder shading.ShadowFragmentBuilderFunc
 }
 
 // ShadowShader represents a shader that is used during the shadow pass for
@@ -83,19 +64,6 @@ type ShadowShader interface {
 	_isShadowShader()
 }
 
-// ForwardShaderInfo contains the information needed to create a
-// custom ForwardShader.
-type ForwardShaderInfo struct {
-
-	// VertexBuilder is the function that will be used to build the
-	// program code for the vertex shader.
-	VertexBuilder shading.ForwardVertexBuilderFunc
-
-	// FragmentBuilder is the function that will be used to build the
-	// program code for the fragment shader.
-	FragmentBuilder shading.ForwardFragmentBuilderFunc
-}
-
 // ForwardShader represents a shader that is used during the forward pass.
 type ForwardShader interface {
 	internal.Shader
@@ -103,43 +71,40 @@ type ForwardShader interface {
 }
 
 type customGeometryShader struct {
-	builder  ShaderBuilder
-	vertex   shading.GenericBuilderFunc
-	fragment shading.GenericBuilderFunc
+	builder ShaderBuilder
+	ast     *lsl.Shader
 }
 
 func (s *customGeometryShader) CreateProgramCode(info internal.ShaderProgramCodeInfo) render.ProgramCode {
 	return s.builder.BuildGeometryCode(GeometryConstraints{
 		HasArmature: info.MeshHasArmature,
-	}, s.vertex, s.fragment)
+	}, s.ast)
 }
 
 func (*customGeometryShader) _isGeometryShader() {}
 
 type customShadowShader struct {
-	builder  ShaderBuilder
-	vertex   shading.GenericBuilderFunc
-	fragment shading.GenericBuilderFunc
+	builder ShaderBuilder
+	ast     *lsl.Shader
 }
 
 func (s *customShadowShader) CreateProgramCode(info internal.ShaderProgramCodeInfo) render.ProgramCode {
 	return s.builder.BuildShadowCode(ShadowConstraints{
 		HasArmature: info.MeshHasArmature,
-	}, s.vertex, s.fragment)
+	}, s.ast)
 }
 
 func (*customShadowShader) _isShadowShader() {}
 
 type customForwardShader struct {
-	builder  ShaderBuilder
-	vertex   shading.GenericBuilderFunc
-	fragment shading.GenericBuilderFunc
+	builder ShaderBuilder
+	ast     *lsl.Shader
 }
 
 func (s *customForwardShader) CreateProgramCode(info internal.ShaderProgramCodeInfo) render.ProgramCode {
 	return s.builder.BuildForwardCode(ForwardConstraints{
 		HasArmature: info.MeshHasArmature,
-	}, s.vertex, s.fragment)
+	}, s.ast)
 }
 
 func (*customForwardShader) _isForwardShader() {}
@@ -155,6 +120,7 @@ func (s *defaultGeometryShader) CreateProgramCode(info internal.ShaderProgramCod
 	return s.shaders.PBRGeometrySet(PBRGeometryShaderConfig{
 		HasArmature:      info.MeshHasArmature,
 		HasAlphaTesting:  s.useAlphaTesting,
+		HasNormals:       info.MeshHasNormals,
 		HasVertexColors:  info.MeshHasVertexColors,
 		HasAlbedoTexture: s.useAlbedoTexture,
 	})
@@ -180,6 +146,7 @@ type ShaderCollection struct {
 	ShadowMappingSet    func(cfg ShadowMappingShaderConfig) render.ProgramCode
 	PBRGeometrySet      func(cfg PBRGeometryShaderConfig) render.ProgramCode
 	DirectionalLightSet func() render.ProgramCode
+	EmissiveLightSet    func() render.ProgramCode
 	AmbientLightSet     func() render.ProgramCode
 	PointLightSet       func() render.ProgramCode
 	SpotLightSet        func() render.ProgramCode
@@ -187,6 +154,8 @@ type ShaderCollection struct {
 	SkycolorSet         func() render.ProgramCode
 	DebugSet            func() render.ProgramCode
 	ExposureSet         func() render.ProgramCode
+	BloomDownsampleSet  func() render.ProgramCode
+	BloomBlurSet        func() render.ProgramCode
 	PostprocessingSet   func(cfg PostprocessingShaderConfig) render.ProgramCode
 }
 
@@ -197,12 +166,14 @@ type ShadowMappingShaderConfig struct {
 type PBRGeometryShaderConfig struct {
 	HasArmature      bool
 	HasAlphaTesting  bool
+	HasNormals       bool
 	HasVertexColors  bool
 	HasAlbedoTexture bool
 }
 
 type PostprocessingShaderConfig struct {
 	ToneMapping ToneMapping
+	Bloom       bool
 }
 
 type ToneMapping string
