@@ -27,6 +27,7 @@ const (
 	TextureBindingLightingRefractionTexture = 5
 
 	TextureBindingPostprocessFramebufferColor0 = 0
+	TextureBindingPostprocessBloom             = 1
 
 	TextureBindingSkyboxAlbedoTexture = 0
 )

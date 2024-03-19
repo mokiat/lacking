@@ -54,4 +54,5 @@ type PBRMaterialInfo struct {
 	AlbedoTexture            *TwoDTexture
 	NormalScale              float32
 	NormalTexture            *TwoDTexture
+	EmissiveColor            sprec.Vec4
 }
