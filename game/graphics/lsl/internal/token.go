@@ -7,7 +7,7 @@ import (
 
 var (
 	operatorChars = []rune{
-		'{', '}', '=',
+		'{', '}', '=', '(', ')', ',', '-', ';',
 	}
 )
 
@@ -20,6 +20,7 @@ const (
 	TokenTypeComment
 	TokenTypeIdentifier
 	TokenTypeOperator
+	TokenTypeNumber
 )
 
 type Token struct {
@@ -41,4 +42,8 @@ func IsIdentifier(p int, ch rune) bool {
 
 func IsOperator(ch rune) bool {
 	return slices.Contains(operatorChars, ch)
+}
+
+func IsNumber(p int, ch rune) bool {
+	return unicode.IsDigit(ch) || (p > 0 && ch == '.')
 }

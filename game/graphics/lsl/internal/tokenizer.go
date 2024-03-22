@@ -33,6 +33,8 @@ func (t *Tokenizer) Next() Token {
 			return t.scanIdentifier()
 		case t.nextIsOperator():
 			return t.scanOperator()
+		case t.nextIsNumber():
+			return t.scanNumber()
 		default:
 			return t.scanUnknown()
 		}
@@ -131,6 +133,24 @@ func (t *Tokenizer) scanOperator() Token {
 	ch1, ch1Offset := t.peekRune(t.offset)
 	ch2, ch2Offset := t.peekRune(ch1Offset)
 	switch {
+	case ch1 == '(':
+		t.offset = ch1Offset
+		return Token{
+			Type:  TokenTypeOperator,
+			Value: "(",
+		}
+	case ch1 == ')':
+		t.offset = ch1Offset
+		return Token{
+			Type:  TokenTypeOperator,
+			Value: ")",
+		}
+	case ch1 == ',':
+		t.offset = ch1Offset
+		return Token{
+			Type:  TokenTypeOperator,
+			Value: ",",
+		}
 	case ch1 == '{':
 		t.offset = ch1Offset
 		return Token{
@@ -149,8 +169,42 @@ func (t *Tokenizer) scanOperator() Token {
 			Type:  TokenTypeOperator,
 			Value: "==",
 		}
+	case ch1 == '=':
+		t.offset = ch1Offset
+		return Token{
+			Type:  TokenTypeOperator,
+			Value: "=",
+		}
+	case ch1 == '-':
+		t.offset = ch1Offset
+		return Token{
+			Type:  TokenTypeOperator,
+			Value: "-",
+		}
 	default:
 		return Token{}
+	}
+}
+
+func (t *Tokenizer) nextIsNumber() bool {
+	ch, _ := t.peekRune(t.offset)
+	return IsNumber(0, ch)
+}
+
+func (t *Tokenizer) scanNumber() Token {
+	start := t.offset
+	charIndex := 0
+	for t.offset < len(t.source) {
+		ch, newOffset := t.peekRune(t.offset)
+		if !IsNumber(charIndex, ch) {
+			break
+		}
+		t.offset = newOffset
+		charIndex++
+	}
+	return Token{
+		Type:  TokenTypeNumber,
+		Value: t.source[start:t.offset],
 	}
 }
 
