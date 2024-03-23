@@ -15,7 +15,7 @@ var _ = Describe("Parse", func() {
 	)
 
 	JustBeforeEach(func() {
-		outShader, outErr = lsl.Parse(inSource)
+		outShader, outErr = lsl.Parse2(inSource) // TODO: Change to Parse
 	})
 
 	When("empty shader", func() {
@@ -36,9 +36,15 @@ var _ = Describe("Parse", func() {
 			`
 		})
 
-		It("ignores the line", func() {
+		It("stores the comments", func() {
 			Expect(outErr).ToNot(HaveOccurred())
-			Expect(outShader).To(Equal(&lsl.Shader{}))
+			Expect(outShader).To(Equal(&lsl.Shader{
+				Declarations: []lsl.Declaration{
+					&lsl.CommentDeclaration{
+						Comment: "This is a comment",
+					},
+				},
+			}))
 		})
 	})
 
@@ -209,5 +215,4 @@ var _ = Describe("Parse", func() {
 			}))
 		})
 	})
-
 })
