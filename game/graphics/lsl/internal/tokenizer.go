@@ -132,6 +132,7 @@ func (t *Tokenizer) nextIsOperator() bool {
 func (t *Tokenizer) scanOperator() Token {
 	ch1, ch1Offset := t.peekRune(t.offset)
 	ch2, ch2Offset := t.peekRune(ch1Offset)
+	ch3, ch3Offset := t.peekRune(ch2Offset)
 	switch {
 	case ch1 == '(':
 		t.offset = ch1Offset
@@ -168,6 +169,66 @@ func (t *Tokenizer) scanOperator() Token {
 		return Token{
 			Type:  TokenTypeOperator,
 			Value: "==",
+		}
+	case ch1 == '+' && ch2 == '=':
+		t.offset = ch2Offset
+		return Token{
+			Type:  TokenTypeOperator,
+			Value: "+=",
+		}
+	case ch1 == '-' && ch2 == '=':
+		t.offset = ch2Offset
+		return Token{
+			Type:  TokenTypeOperator,
+			Value: "-=",
+		}
+	case ch1 == '*' && ch2 == '=':
+		t.offset = ch2Offset
+		return Token{
+			Type:  TokenTypeOperator,
+			Value: "*=",
+		}
+	case ch1 == '/' && ch2 == '=':
+		t.offset = ch2Offset
+		return Token{
+			Type:  TokenTypeOperator,
+			Value: "/=",
+		}
+	case ch1 == '%' && ch2 == '=':
+		t.offset = ch2Offset
+		return Token{
+			Type:  TokenTypeOperator,
+			Value: "%=",
+		}
+	case ch1 == '>' && ch2 == '>' && ch3 == '=':
+		t.offset = ch3Offset
+		return Token{
+			Type:  TokenTypeOperator,
+			Value: ">>=",
+		}
+	case ch1 == '<' && ch2 == '<' && ch3 == '=':
+		t.offset = ch3Offset
+		return Token{
+			Type:  TokenTypeOperator,
+			Value: "<<=",
+		}
+	case ch1 == '&' && ch2 == '=':
+		t.offset = ch2Offset
+		return Token{
+			Type:  TokenTypeOperator,
+			Value: "&=",
+		}
+	case ch1 == '^' && ch2 == '=':
+		t.offset = ch2Offset
+		return Token{
+			Type:  TokenTypeOperator,
+			Value: "^=",
+		}
+	case ch1 == '|' && ch2 == '=':
+		t.offset = ch2Offset
+		return Token{
+			Type:  TokenTypeOperator,
+			Value: "|=",
 		}
 	case ch1 == '=':
 		t.offset = ch1Offset
