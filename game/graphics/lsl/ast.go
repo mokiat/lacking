@@ -86,6 +86,14 @@ type Shader struct {
 	Declarations []Declaration
 }
 
+type CommentDeclaration struct {
+	Comment string
+}
+
+func (*CommentDeclaration) _isDeclaration() {}
+
+func (*CommentDeclaration) _isStatement() {}
+
 type UniformBlockDeclaration struct {
 	Fields []Field
 }
