@@ -156,6 +156,155 @@ var _ = Describe("Tokenizer", func() {
 				{Type: internal.TokenTypeNewLine, Value: "\n"},
 			},
 		),
+		Entry("assignments",
+			`
+			a=13
+			b = 55.3
+			c += 5
+			d+=-5
+			e -= 5
+			f-=-5
+			g *= 5
+			h*=-5
+			i /= 5
+			j/=-5
+			k %= 5
+			l%=-5
+			m >>= 5
+			n>>=-5
+			o <<= 5
+			p<<=-5
+			q &= 5
+			r&=-5
+			s ^= 5
+			t^=-5
+			u |= 5
+			v|=-5
+			`,
+			[]internal.Token{
+				{Type: internal.TokenTypeNewLine, Value: "\n"},
+
+				{Type: internal.TokenTypeIdentifier, Value: "a"},
+				{Type: internal.TokenTypeOperator, Value: "="},
+				{Type: internal.TokenTypeNumber, Value: "13"},
+				{Type: internal.TokenTypeNewLine, Value: "\n"},
+
+				{Type: internal.TokenTypeIdentifier, Value: "b"},
+				{Type: internal.TokenTypeOperator, Value: "="},
+				{Type: internal.TokenTypeNumber, Value: "55.3"},
+				{Type: internal.TokenTypeNewLine, Value: "\n"},
+
+				{Type: internal.TokenTypeIdentifier, Value: "c"},
+				{Type: internal.TokenTypeOperator, Value: "+="},
+				{Type: internal.TokenTypeNumber, Value: "5"},
+				{Type: internal.TokenTypeNewLine, Value: "\n"},
+
+				{Type: internal.TokenTypeIdentifier, Value: "d"},
+				{Type: internal.TokenTypeOperator, Value: "+="},
+				{Type: internal.TokenTypeOperator, Value: "-"},
+				{Type: internal.TokenTypeNumber, Value: "5"},
+				{Type: internal.TokenTypeNewLine, Value: "\n"},
+
+				{Type: internal.TokenTypeIdentifier, Value: "e"},
+				{Type: internal.TokenTypeOperator, Value: "-="},
+				{Type: internal.TokenTypeNumber, Value: "5"},
+				{Type: internal.TokenTypeNewLine, Value: "\n"},
+
+				{Type: internal.TokenTypeIdentifier, Value: "f"},
+				{Type: internal.TokenTypeOperator, Value: "-="},
+				{Type: internal.TokenTypeOperator, Value: "-"},
+				{Type: internal.TokenTypeNumber, Value: "5"},
+				{Type: internal.TokenTypeNewLine, Value: "\n"},
+
+				{Type: internal.TokenTypeIdentifier, Value: "g"},
+				{Type: internal.TokenTypeOperator, Value: "*="},
+				{Type: internal.TokenTypeNumber, Value: "5"},
+				{Type: internal.TokenTypeNewLine, Value: "\n"},
+
+				{Type: internal.TokenTypeIdentifier, Value: "h"},
+				{Type: internal.TokenTypeOperator, Value: "*="},
+				{Type: internal.TokenTypeOperator, Value: "-"},
+				{Type: internal.TokenTypeNumber, Value: "5"},
+				{Type: internal.TokenTypeNewLine, Value: "\n"},
+
+				{Type: internal.TokenTypeIdentifier, Value: "i"},
+				{Type: internal.TokenTypeOperator, Value: "/="},
+				{Type: internal.TokenTypeNumber, Value: "5"},
+				{Type: internal.TokenTypeNewLine, Value: "\n"},
+
+				{Type: internal.TokenTypeIdentifier, Value: "j"},
+				{Type: internal.TokenTypeOperator, Value: "/="},
+				{Type: internal.TokenTypeOperator, Value: "-"},
+				{Type: internal.TokenTypeNumber, Value: "5"},
+				{Type: internal.TokenTypeNewLine, Value: "\n"},
+
+				{Type: internal.TokenTypeIdentifier, Value: "k"},
+				{Type: internal.TokenTypeOperator, Value: "%="},
+				{Type: internal.TokenTypeNumber, Value: "5"},
+				{Type: internal.TokenTypeNewLine, Value: "\n"},
+
+				{Type: internal.TokenTypeIdentifier, Value: "l"},
+				{Type: internal.TokenTypeOperator, Value: "%="},
+				{Type: internal.TokenTypeOperator, Value: "-"},
+				{Type: internal.TokenTypeNumber, Value: "5"},
+				{Type: internal.TokenTypeNewLine, Value: "\n"},
+
+				{Type: internal.TokenTypeIdentifier, Value: "m"},
+				{Type: internal.TokenTypeOperator, Value: ">>="},
+				{Type: internal.TokenTypeNumber, Value: "5"},
+				{Type: internal.TokenTypeNewLine, Value: "\n"},
+
+				{Type: internal.TokenTypeIdentifier, Value: "n"},
+				{Type: internal.TokenTypeOperator, Value: ">>="},
+				{Type: internal.TokenTypeOperator, Value: "-"},
+				{Type: internal.TokenTypeNumber, Value: "5"},
+				{Type: internal.TokenTypeNewLine, Value: "\n"},
+
+				{Type: internal.TokenTypeIdentifier, Value: "o"},
+				{Type: internal.TokenTypeOperator, Value: "<<="},
+				{Type: internal.TokenTypeNumber, Value: "5"},
+				{Type: internal.TokenTypeNewLine, Value: "\n"},
+
+				{Type: internal.TokenTypeIdentifier, Value: "p"},
+				{Type: internal.TokenTypeOperator, Value: "<<="},
+				{Type: internal.TokenTypeOperator, Value: "-"},
+				{Type: internal.TokenTypeNumber, Value: "5"},
+				{Type: internal.TokenTypeNewLine, Value: "\n"},
+
+				{Type: internal.TokenTypeIdentifier, Value: "q"},
+				{Type: internal.TokenTypeOperator, Value: "&="},
+				{Type: internal.TokenTypeNumber, Value: "5"},
+				{Type: internal.TokenTypeNewLine, Value: "\n"},
+
+				{Type: internal.TokenTypeIdentifier, Value: "r"},
+				{Type: internal.TokenTypeOperator, Value: "&="},
+				{Type: internal.TokenTypeOperator, Value: "-"},
+				{Type: internal.TokenTypeNumber, Value: "5"},
+				{Type: internal.TokenTypeNewLine, Value: "\n"},
+
+				{Type: internal.TokenTypeIdentifier, Value: "s"},
+				{Type: internal.TokenTypeOperator, Value: "^="},
+				{Type: internal.TokenTypeNumber, Value: "5"},
+				{Type: internal.TokenTypeNewLine, Value: "\n"},
+
+				{Type: internal.TokenTypeIdentifier, Value: "t"},
+				{Type: internal.TokenTypeOperator, Value: "^="},
+				{Type: internal.TokenTypeOperator, Value: "-"},
+				{Type: internal.TokenTypeNumber, Value: "5"},
+				{Type: internal.TokenTypeNewLine, Value: "\n"},
+
+				{Type: internal.TokenTypeIdentifier, Value: "u"},
+				{Type: internal.TokenTypeOperator, Value: "|="},
+				{Type: internal.TokenTypeNumber, Value: "5"},
+				{Type: internal.TokenTypeNewLine, Value: "\n"},
+
+				{Type: internal.TokenTypeIdentifier, Value: "v"},
+				{Type: internal.TokenTypeOperator, Value: "|="},
+				{Type: internal.TokenTypeOperator, Value: "-"},
+				{Type: internal.TokenTypeNumber, Value: "5"},
+				{Type: internal.TokenTypeNewLine, Value: "\n"},
+			},
+		),
 		Entry("func invocation",
 			`
 			doSomething(15.55, 10, someVar)
