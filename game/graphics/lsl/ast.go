@@ -86,14 +86,6 @@ type Shader struct {
 	Declarations []Declaration
 }
 
-type CommentDeclaration struct {
-	Comment string
-}
-
-func (*CommentDeclaration) _isDeclaration() {}
-
-func (*CommentDeclaration) _isStatement() {}
-
 type UniformBlockDeclaration struct {
 	Fields []Field
 }
@@ -177,3 +169,18 @@ type Field struct {
 	Name string
 	Type string
 }
+
+type UnaryExpression struct {
+	Operator string
+	Operand  Expression
+}
+
+func (*UnaryExpression) _isExpression() {}
+
+type BinaryExpression struct {
+	Operator string
+	Left     Expression
+	Right    Expression
+}
+
+func (*BinaryExpression) _isExpression() {}
