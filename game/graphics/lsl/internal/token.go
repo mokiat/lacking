@@ -74,6 +74,24 @@ func (t Token) IsOperator() bool {
 	return t.Type == TokenTypeOperator
 }
 
+func (t Token) IsAssignmentOperator() bool {
+	if !t.IsOperator() {
+		return false
+	}
+	return t.Value == "=" ||
+		t.Value == "+=" || t.Value == "-=" ||
+		t.Value == "*=" || t.Value == "/=" || t.Value == "%=" ||
+		t.Value == "<<=" || t.Value == ">>=" ||
+		t.Value == "&=" || t.Value == "^=" || t.Value == "|="
+}
+
+func (t Token) IsUnaryOperator() bool {
+	if !t.IsOperator() {
+		return false
+	}
+	return t.Value == "!" || t.Value == "-" || t.Value == "+" || t.Value == "^"
+}
+
 func (t Token) IsSpecificOperator(value string) bool {
 	return t.Type == TokenTypeOperator && t.Value == value
 }
