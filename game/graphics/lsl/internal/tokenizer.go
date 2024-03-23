@@ -134,35 +134,17 @@ func (t *Tokenizer) scanOperator() Token {
 	ch2, ch2Offset := t.peekRune(ch1Offset)
 	ch3, ch3Offset := t.peekRune(ch2Offset)
 	switch {
-	case ch1 == '(':
-		t.offset = ch1Offset
+	case ch1 == '>' && ch2 == '>' && ch3 == '=':
+		t.offset = ch3Offset
 		return Token{
 			Type:  TokenTypeOperator,
-			Value: "(",
+			Value: ">>=",
 		}
-	case ch1 == ')':
-		t.offset = ch1Offset
+	case ch1 == '<' && ch2 == '<' && ch3 == '=':
+		t.offset = ch3Offset
 		return Token{
 			Type:  TokenTypeOperator,
-			Value: ")",
-		}
-	case ch1 == ',':
-		t.offset = ch1Offset
-		return Token{
-			Type:  TokenTypeOperator,
-			Value: ",",
-		}
-	case ch1 == '{':
-		t.offset = ch1Offset
-		return Token{
-			Type:  TokenTypeOperator,
-			Value: "{",
-		}
-	case ch1 == '}':
-		t.offset = ch1Offset
-		return Token{
-			Type:  TokenTypeOperator,
-			Value: "}",
+			Value: "<<=",
 		}
 	case ch1 == '=' && ch2 == '=':
 		t.offset = ch2Offset
@@ -200,18 +182,6 @@ func (t *Tokenizer) scanOperator() Token {
 			Type:  TokenTypeOperator,
 			Value: "%=",
 		}
-	case ch1 == '>' && ch2 == '>' && ch3 == '=':
-		t.offset = ch3Offset
-		return Token{
-			Type:  TokenTypeOperator,
-			Value: ">>=",
-		}
-	case ch1 == '<' && ch2 == '<' && ch3 == '=':
-		t.offset = ch3Offset
-		return Token{
-			Type:  TokenTypeOperator,
-			Value: "<<=",
-		}
 	case ch1 == '&' && ch2 == '=':
 		t.offset = ch2Offset
 		return Token{
@@ -230,17 +200,149 @@ func (t *Tokenizer) scanOperator() Token {
 			Type:  TokenTypeOperator,
 			Value: "|=",
 		}
+	case ch1 == '<' && ch2 == '<':
+		t.offset = ch2Offset
+		return Token{
+			Type:  TokenTypeOperator,
+			Value: "<<",
+		}
+	case ch1 == '>' && ch2 == '>':
+		t.offset = ch2Offset
+		return Token{
+			Type:  TokenTypeOperator,
+			Value: ">>",
+		}
+	case ch1 == '!' && ch2 == '=':
+		t.offset = ch2Offset
+		return Token{
+			Type:  TokenTypeOperator,
+			Value: "!=",
+		}
+	case ch1 == '>' && ch2 == '=':
+		t.offset = ch2Offset
+		return Token{
+			Type:  TokenTypeOperator,
+			Value: ">=",
+		}
+	case ch1 == '<' && ch2 == '=':
+		t.offset = ch2Offset
+		return Token{
+			Type:  TokenTypeOperator,
+			Value: "<=",
+		}
+	case ch1 == '&' && ch2 == '&':
+		t.offset = ch2Offset
+		return Token{
+			Type:  TokenTypeOperator,
+			Value: "&&",
+		}
+	case ch1 == '|' && ch2 == '|':
+		t.offset = ch2Offset
+		return Token{
+			Type:  TokenTypeOperator,
+			Value: "||",
+		}
+	case ch1 == '(':
+		t.offset = ch1Offset
+		return Token{
+			Type:  TokenTypeOperator,
+			Value: "(",
+		}
+	case ch1 == ')':
+		t.offset = ch1Offset
+		return Token{
+			Type:  TokenTypeOperator,
+			Value: ")",
+		}
+	case ch1 == ',':
+		t.offset = ch1Offset
+		return Token{
+			Type:  TokenTypeOperator,
+			Value: ",",
+		}
+	case ch1 == '{':
+		t.offset = ch1Offset
+		return Token{
+			Type:  TokenTypeOperator,
+			Value: "{",
+		}
+	case ch1 == '}':
+		t.offset = ch1Offset
+		return Token{
+			Type:  TokenTypeOperator,
+			Value: "}",
+		}
 	case ch1 == '=':
 		t.offset = ch1Offset
 		return Token{
 			Type:  TokenTypeOperator,
 			Value: "=",
 		}
+	case ch1 == '+':
+		t.offset = ch1Offset
+		return Token{
+			Type:  TokenTypeOperator,
+			Value: "+",
+		}
 	case ch1 == '-':
 		t.offset = ch1Offset
 		return Token{
 			Type:  TokenTypeOperator,
 			Value: "-",
+		}
+	case ch1 == '.':
+		t.offset = ch1Offset
+		return Token{
+			Type:  TokenTypeOperator,
+			Value: ".",
+		}
+	case ch1 == '*':
+		t.offset = ch1Offset
+		return Token{
+			Type:  TokenTypeOperator,
+			Value: "*",
+		}
+	case ch1 == '/':
+		t.offset = ch1Offset
+		return Token{
+			Type:  TokenTypeOperator,
+			Value: "/",
+		}
+	case ch1 == '%':
+		t.offset = ch1Offset
+		return Token{
+			Type:  TokenTypeOperator,
+			Value: "%",
+		}
+	case ch1 == '^':
+		t.offset = ch1Offset
+		return Token{
+			Type:  TokenTypeOperator,
+			Value: "^",
+		}
+	case ch1 == '|':
+		t.offset = ch1Offset
+		return Token{
+			Type:  TokenTypeOperator,
+			Value: "|",
+		}
+	case ch1 == '&':
+		t.offset = ch1Offset
+		return Token{
+			Type:  TokenTypeOperator,
+			Value: "&",
+		}
+	case ch1 == '<':
+		t.offset = ch1Offset
+		return Token{
+			Type:  TokenTypeOperator,
+			Value: "<",
+		}
+	case ch1 == '>':
+		t.offset = ch1Offset
+		return Token{
+			Type:  TokenTypeOperator,
+			Value: ">",
 		}
 	default:
 		return Token{}
