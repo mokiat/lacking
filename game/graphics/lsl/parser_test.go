@@ -431,6 +431,76 @@ var _ = Describe("Parser", func() {
 		),
 	)
 
+	DescribeTable("ParseExpression", func(inSource string, expectedExp lsl.Expression) {
+		parser := lsl.NewParser(inSource)
+		exp, err := parser.ParseExpression()
+		Expect(err).ToNot(HaveOccurred())
+		Expect(exp).To(Equal(expectedExp))
+	},
+		Entry("float literal",
+			`5.3`,
+			&lsl.FloatLiteral{
+				Value: 5.3,
+			},
+		),
+		Entry("int literal",
+			`3999`,
+			&lsl.IntLiteral{
+				Value: 3999,
+			},
+		),
+		Entry("unary (+) operator",
+			`+10`,
+			&lsl.UnaryExpression{
+				Operator: "+",
+				Operand: &lsl.IntLiteral{
+					Value: 10,
+				},
+			},
+		),
+		Entry("unary (-) operator",
+			`-10`,
+			&lsl.UnaryExpression{
+				Operator: "-",
+				Operand: &lsl.IntLiteral{
+					Value: 10,
+				},
+			},
+		),
+		Entry("unary (^) operator",
+			`^10`,
+			&lsl.UnaryExpression{
+				Operator: "^",
+				Operand: &lsl.IntLiteral{
+					Value: 10,
+				},
+			},
+		),
+		Entry("unary (!) operator",
+			`!10`,
+			&lsl.UnaryExpression{
+				Operator: "!",
+				Operand: &lsl.IntLiteral{
+					Value: 10,
+				},
+			},
+		),
+		Entry("identifier",
+			`hello`,
+			&lsl.Identifier{
+				Name: "hello",
+			},
+		),
+		Entry("field identifier",
+			`hello.world`,
+			&lsl.FieldIdentifier{
+				ObjName:   "hello",
+				FieldName: "world",
+			},
+		),
+		// TODO: function call
+	)
+
 	DescribeTable("ParseFunction", func(inSource string, expectedDecl *lsl.FunctionDeclaration) {
 		parser := lsl.NewParser(inSource)
 		decl, err := parser.ParseFunction()
@@ -480,7 +550,7 @@ var _ = Describe("Parser", func() {
 			},
 		),
 		Entry("with single output",
-			`func test() vec3 {
+			`func test() (vec3) {
 			}`,
 			&lsl.FunctionDeclaration{
 				Name:   "test",
@@ -531,5 +601,7 @@ var _ = Describe("Parser", func() {
 				Body:    nil,
 			},
 		),
+
+		// TODO: Test body with statements
 	)
 })

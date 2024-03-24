@@ -251,6 +251,7 @@ var _ = Describe("Tokenizer", func() {
 		Entry("boolean expression",
 			`
 			x = ((x.z == z) && (5 != 4) && (1 < 2) && (1.1>3) && true) || (false&&(5 >= 9)&& (2 <= 1))
+			y = !true
 			`,
 			[]internal.Token{
 				{Type: internal.TokenTypeNewLine, Value: "\n"},
@@ -301,6 +302,12 @@ var _ = Describe("Tokenizer", func() {
 				{Type: internal.TokenTypeNumber, Value: "1"},
 				{Type: internal.TokenTypeOperator, Value: ")"},
 				{Type: internal.TokenTypeOperator, Value: ")"},
+				{Type: internal.TokenTypeNewLine, Value: "\n"},
+
+				{Type: internal.TokenTypeIdentifier, Value: "y"},
+				{Type: internal.TokenTypeOperator, Value: "="},
+				{Type: internal.TokenTypeOperator, Value: "!"},
+				{Type: internal.TokenTypeIdentifier, Value: "true"},
 				{Type: internal.TokenTypeNewLine, Value: "\n"},
 			},
 		),

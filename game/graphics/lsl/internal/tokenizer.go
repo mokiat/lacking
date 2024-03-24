@@ -344,6 +344,12 @@ func (t *Tokenizer) scanOperator() Token {
 			Type:  TokenTypeOperator,
 			Value: ">",
 		}
+	case ch1 == '!':
+		t.offset = ch1Offset
+		return Token{
+			Type:  TokenTypeOperator,
+			Value: "!",
+		}
 	default:
 		return Token{}
 	}
