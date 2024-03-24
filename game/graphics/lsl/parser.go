@@ -310,100 +310,79 @@ func (p *Parser) ParseVaryingBlock() (*VaryingBlockDeclaration, error) {
 }
 
 func (p *Parser) ParseExpression() (Expression, error) {
-	values := ds.NewStack[Expression](2)
-	operators := ds.NewStack[string](1)
+	valStack := ds.NewStack[Expression](2)
+	opStack := ds.NewStack[string](1)
 
-	expectValue := true
-	expectMoreTokens := true
-	for expectMoreTokens {
-		if expectValue {
-			value, err := p.parseExpressionValue()
-			if err != nil {
-				return nil, fmt.Errorf("error parsing value expression: %w", err)
-			}
-			values.Push(value)
+	value, err := p.parseExpressionValue()
+	if err != nil {
+		return nil, fmt.Errorf("error parsing value expression: %w", err)
+	}
+	valStack.Push(value)
 
-			nextToken := p.peekToken()
-			switch {
-			case nextToken.IsNewLine():
-				if err := p.ParseNewLine(); err != nil {
-					return nil, fmt.Errorf("error parsing new line: %w", err)
-				}
-				expectMoreTokens = false
-			case nextToken.IsEOF():
-				expectMoreTokens = false
-			}
-		} else {
-			operatorToken := p.nextToken()
-			if !operatorToken.IsOperator() {
-				return nil, fmt.Errorf("expected operator")
-			}
-			// TODO: Is non-binary operator -> exit
-			if operatorToken.IsSpecificOperator(")") {
+	nextToken := p.peekToken()
+	for nextToken.IsBinaryOperator() {
+		operatorToken := p.nextToken()
+		if !operatorToken.IsBinaryOperator() {
+			return nil, fmt.Errorf("expected binary operator")
+		}
+
+		operator := operatorToken.Value
+		operatorPrio := operatorPriority(operator)
+		for !opStack.IsEmpty() {
+			oldOperator := opStack.Peek()
+			oldOperatorPrio := operatorPriority(oldOperator)
+			if oldOperatorPrio <= operatorPrio {
 				break
 			}
-			if operatorToken.IsSpecificOperator(",") {
-				break
+			opStack.Pop() // pop it
+			right := valStack.Pop()
+			left := valStack.Pop()
+			valStack.Push(&BinaryExpression{
+				Operator: oldOperator,
+				Left:     left,
+				Right:    right,
+			})
+		}
+		opStack.Push(operator)
+
+		nextToken = p.peekToken()
+		switch {
+		case nextToken.IsNewLine():
+			if err := p.ParseNewLine(); err != nil {
+				return nil, fmt.Errorf("error parsing new line: %w", err)
 			}
-
-			newOperator := operatorToken.Value
-			newOperatorPrio := operatorPriority(newOperator)
-
-			if !operators.IsEmpty() {
-				oldOperator := operators.Peek()
-				oldOperatorPrio := operatorPriority(oldOperator)
-
-				for oldOperatorPrio > newOperatorPrio {
-					right := values.Pop()
-					left := values.Pop()
-					operator := operators.Pop()
-					values.Push(&BinaryExpression{
-						Left:     left,
-						Operator: operator,
-						Right:    right,
-					})
-					if operators.IsEmpty() {
-						break
-					}
-					oldOperator = operators.Peek()
-					oldOperatorPrio = operatorPriority(oldOperator)
-				}
-			}
-
-			operators.Push(newOperator)
-
-			nextToken := p.peekToken()
-			switch {
-			case nextToken.IsComment():
-				if err := p.ParseComment(); err != nil {
-					return nil, fmt.Errorf("error parsing comment: %w", err)
-				}
-			case nextToken.IsNewLine():
-				if err := p.ParseNewLine(); err != nil {
-					return nil, fmt.Errorf("error parsing new line: %w", err)
-				}
+		case nextToken.IsComment():
+			if err := p.ParseComment(); err != nil {
+				return nil, fmt.Errorf("error parsing comment: %w", err)
 			}
 		}
-		expectValue = !expectValue
+
+		valueToken, err := p.parseExpressionValue()
+		if err != nil {
+			return nil, fmt.Errorf("error parsing value expression: %w", err)
+		}
+		valStack.Push(valueToken)
+
+		nextToken = p.peekToken()
 	}
 
-	for values.Size() > 1 {
-		right := values.Pop()
-		left := values.Pop()
-		if operators.IsEmpty() {
+	for valStack.Size() > 1 {
+		right := valStack.Pop()
+		left := valStack.Pop()
+		if opStack.IsEmpty() {
 			return nil, fmt.Errorf("no operator found for binary expression")
 		}
-		operator := operators.Pop()
-		values.Push(&BinaryExpression{
+		operator := opStack.Pop()
+		valStack.Push(&BinaryExpression{
 			Left:     left,
 			Operator: operator,
 			Right:    right,
 		})
 	}
-	if values.IsEmpty() {
+	if valStack.IsEmpty() {
 		return nil, fmt.Errorf("no value expressions found")
 	}
-	return values.Pop(), nil
+	return valStack.Pop(), nil
 }
 
 func (p *Parser) ParseFunction() (*FunctionDeclaration, error) {
