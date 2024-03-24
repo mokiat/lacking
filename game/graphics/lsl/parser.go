@@ -79,7 +79,7 @@ func (p *Parser) ParseShader() (*Shader, error) {
 			}
 			shader.Declarations = append(shader.Declarations, decl)
 		case token.IsSpecificIdentifier("func"):
-			decl, err := p.parseFunction()
+			decl, err := p.ParseFunction()
 			if err != nil {
 				return nil, fmt.Errorf("error parsing function: %w", err)
 			}
@@ -309,7 +309,7 @@ func (p *Parser) ParseVaryingBlock() (*VaryingBlockDeclaration, error) {
 	}, nil
 }
 
-func (p *Parser) parseFunction() (*FunctionDeclaration, error) {
+func (p *Parser) ParseFunction() (*FunctionDeclaration, error) {
 	var decl FunctionDeclaration
 	if err := p.parseFunctionHeader(&decl); err != nil {
 		return nil, fmt.Errorf("error parsing function header: %w", err)
