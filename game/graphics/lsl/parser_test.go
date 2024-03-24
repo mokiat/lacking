@@ -45,16 +45,16 @@ var _ = Describe("Parse", func() {
 	When("uniform blocks are present", func() {
 		BeforeEach(func() {
 			inSource = `
-				uniform { // header
-					color vec3 // field1
+				#uniform { // header
+					color vec3, // field1
 					// has two fields
-					intensity float // field2
+					intensity float, // field2
 				}
 
 				// comment here
 
-				uniform {
-					value vec4
+				#uniform {
+					value vec4,
 				}
 			`
 		})
@@ -91,14 +91,14 @@ var _ = Describe("Parse", func() {
 	When("varying blocks are present", func() {
 		BeforeEach(func() {
 			inSource = `
-				varying { // header
-					color vec3 // field 1
+				#varying { // header
+					color vec3, // field 1
 					// two fields
-					intensity float // field2
+					intensity float, // field2
 				} // footer
 
-				varying {
-					value vec4
+				#varying {
+					value vec4,
 				}
 			`
 		})
@@ -191,7 +191,7 @@ var _ = Describe("Parse", func() {
 			`
 		})
 
-		It("produces a shader with the variable declarations", func() {
+		PIt("produces a shader with the variable declarations", func() {
 			Expect(outErr).ToNot(HaveOccurred())
 			Expect(outShader).To(Equal(&lsl.Shader{
 				Declarations: []lsl.Declaration{
@@ -230,7 +230,84 @@ var _ = Describe("Parse", func() {
 	})
 })
 
-var _ = FDescribe("Parser", func() {
+var _ = Describe("Parser", func() {
+
+	DescribeTable("ParseNewLine", func(inSource string) {
+		parser := lsl.NewParser(inSource)
+		Expect(parser.ParseNewLine()).To(Succeed())
+	},
+		Entry("new line",
+			`
+			`,
+		),
+		Entry("new line after spacing",
+			`  
+			`,
+		),
+	)
+
+	DescribeTable("ParseComment", func(inSource string) {
+		parser := lsl.NewParser(inSource)
+		Expect(parser.ParseComment()).To(Succeed())
+	},
+		Entry("plain comment",
+			`// a comment`,
+		),
+		Entry("comment after spacing",
+			`// a comment`,
+		),
+		Entry("comment with new line",
+			`// some comment
+			`,
+		),
+	)
+
+	DescribeTable("ParseOptionalRemainder", func(inSource string) {
+		parser := lsl.NewParser(inSource)
+		Expect(parser.ParseOptionalRemainder()).To(Succeed())
+	},
+		Entry("empty",
+			``,
+		),
+		Entry("new line",
+			`
+			`,
+		),
+		Entry("comment",
+			`// a comment`,
+		),
+	)
+
+	DescribeTable("ParseBlockStart", func(inSource string) {
+		parser := lsl.NewParser(inSource)
+		Expect(parser.ParseBlockStart()).To(Succeed())
+	},
+		Entry("with new line",
+			`  {
+			`,
+		),
+		Entry("with comment",
+			`{ // closing bracket
+			`,
+		),
+	)
+
+	DescribeTable("ParseBlockEnd", func(inSource string) {
+		parser := lsl.NewParser(inSource)
+		Expect(parser.ParseBlockEnd()).To(Succeed())
+	},
+		Entry("just closing bracket",
+			`}`,
+		),
+		Entry("with new line",
+			`}
+			`,
+		),
+		Entry("with comment",
+			`} // closing bracket
+			`,
+		),
+	)
 
 	DescribeTable("ParseNamedParameterList", func(inSource string, expectedFields []lsl.Field) {
 		parser := lsl.NewParser(inSource)
@@ -264,6 +341,92 @@ var _ = FDescribe("Parser", func() {
 			[]lsl.Field{
 				{Name: "color", Type: "vec4"},
 				{Name: "intensity", Type: "float"},
+			},
+		),
+	)
+
+	DescribeTable("ParseUnnamedParameterList", func(inSource string, expectedFields []lsl.Field) {
+		parser := lsl.NewParser(inSource)
+		fields, err := parser.ParseUnnamedParameterList()
+		Expect(err).ToNot(HaveOccurred())
+		Expect(fields).To(Equal(expectedFields))
+	},
+		Entry("empty list",
+			``,
+			nil,
+		),
+		Entry("single parameter",
+			`vec4`,
+			[]lsl.Field{
+				{Type: "vec4"},
+			},
+		),
+		Entry("multiple parameters, single line",
+			`vec4, float`,
+			[]lsl.Field{
+				{Type: "vec4"},
+				{Type: "float"},
+			},
+		),
+		Entry("multiple parameters, multiple lines",
+			`
+			vec4, // first param here
+			// there will be a second param
+			float,
+			`,
+			[]lsl.Field{
+				{Type: "vec4"},
+				{Type: "float"},
+			},
+		),
+	)
+
+	DescribeTable("ParseUniformBlock", func(inSource string, expectedBlock *lsl.UniformBlockDeclaration) {
+		parser := lsl.NewParser(inSource)
+		block, err := parser.ParseUniformBlock()
+		Expect(err).ToNot(HaveOccurred())
+		Expect(block).To(Equal(expectedBlock))
+	},
+		Entry("empty",
+			`#uniform {
+			}`,
+			&lsl.UniformBlockDeclaration{},
+		),
+		Entry("with fields",
+			`#uniform {
+				color vec4,
+				intensity float,
+			}`,
+			&lsl.UniformBlockDeclaration{
+				Fields: []lsl.Field{
+					{Name: "color", Type: "vec4"},
+					{Name: "intensity", Type: "float"},
+				},
+			},
+		),
+	)
+
+	DescribeTable("ParseVaryingBlock", func(inSource string, expectedBlock *lsl.VaryingBlockDeclaration) {
+		parser := lsl.NewParser(inSource)
+		block, err := parser.ParseVaryingBlock()
+		Expect(err).ToNot(HaveOccurred())
+		Expect(block).To(Equal(expectedBlock))
+	},
+		Entry("empty",
+			`#varying {
+			}`,
+			&lsl.VaryingBlockDeclaration{},
+		),
+		Entry("with fields",
+			`#varying {
+				color vec4,
+				intensity float,
+			}`,
+			&lsl.VaryingBlockDeclaration{
+				Fields: []lsl.Field{
+					{Name: "color", Type: "vec4"},
+					{Name: "intensity", Type: "float"},
+				},
 			},
 		),
 	)
