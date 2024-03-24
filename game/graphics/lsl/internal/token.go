@@ -92,6 +92,19 @@ func (t Token) IsUnaryOperator() bool {
 	return t.Value == "!" || t.Value == "-" || t.Value == "+" || t.Value == "^"
 }
 
+func (t Token) IsBinaryOperator() bool {
+	if !t.IsOperator() {
+		return false
+	}
+	return t.Value == "+" || t.Value == "-" ||
+		t.Value == "*" || t.Value == "/" || t.Value == "%" ||
+		t.Value == "<<" || t.Value == ">>" ||
+		t.Value == "==" || t.Value == "!=" ||
+		t.Value == "<" || t.Value == ">" || t.Value == "<=" || t.Value == ">=" ||
+		t.Value == "&" || t.Value == "|" || t.Value == "^" ||
+		t.Value == "&&" || t.Value == "||"
+}
+
 func (t Token) IsSpecificOperator(value string) bool {
 	return t.Type == TokenTypeOperator && t.Value == value
 }

@@ -191,7 +191,7 @@ var _ = Describe("Parse", func() {
 			`
 		})
 
-		PIt("produces a shader with the variable declarations", func() {
+		It("produces a shader with the variable declarations", func() {
 			Expect(outErr).ToNot(HaveOccurred())
 			Expect(outShader).To(Equal(&lsl.Shader{
 				Declarations: []lsl.Declaration{
@@ -209,8 +209,11 @@ var _ = Describe("Parse", func() {
 										&lsl.FloatLiteral{
 											Value: 1.0,
 										},
-										&lsl.FloatLiteral{
-											Value: -0.5,
+										&lsl.UnaryExpression{
+											Operator: "-",
+											Operand: &lsl.FloatLiteral{
+												Value: 0.5,
+											},
 										},
 										&lsl.FloatLiteral{
 											Value: 0.1,
@@ -498,7 +501,23 @@ var _ = Describe("Parser", func() {
 				FieldName: "world",
 			},
 		),
-		// TODO: function call
+		Entry("function call",
+			`rand()`,
+			&lsl.FunctionCall{
+				Name:      "rand",
+				Arguments: nil,
+			},
+		),
+		Entry("function call with args",
+			`test(200, 1.5)`,
+			&lsl.FunctionCall{
+				Name: "test",
+				Arguments: []lsl.Expression{
+					&lsl.IntLiteral{Value: 200},
+					&lsl.FloatLiteral{Value: 1.5},
+				},
+			},
+		),
 	)
 
 	DescribeTable("ParseFunction", func(inSource string, expectedDecl *lsl.FunctionDeclaration) {
