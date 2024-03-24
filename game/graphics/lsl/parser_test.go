@@ -430,4 +430,106 @@ var _ = Describe("Parser", func() {
 			},
 		),
 	)
+
+	DescribeTable("ParseFunction", func(inSource string, expectedDecl *lsl.FunctionDeclaration) {
+		parser := lsl.NewParser(inSource)
+		decl, err := parser.ParseFunction()
+		Expect(err).ToNot(HaveOccurred())
+		Expect(decl).To(Equal(expectedDecl))
+	},
+		Entry("simple",
+			`func test() {
+			}`,
+			&lsl.FunctionDeclaration{
+				Name:    "test",
+				Inputs:  nil,
+				Outputs: nil,
+				Body:    nil,
+			},
+		),
+		Entry("with inputs",
+			`func test(color vec3, intensity float) {
+			}`,
+			&lsl.FunctionDeclaration{
+				Name: "test",
+				Inputs: []lsl.Field{
+					{Name: "color", Type: "vec3"},
+					{Name: "intensity", Type: "float"},
+				},
+				Outputs: nil,
+				Body:    nil,
+			},
+		),
+		Entry("with inputs on new lines",
+			`func test(
+				// color param to follow
+				color vec3,  // color param
+				// intensity param to follow
+				intensity float, // intensity param
+				// all done
+			) {
+			}`,
+			&lsl.FunctionDeclaration{
+				Name: "test",
+				Inputs: []lsl.Field{
+					{Name: "color", Type: "vec3"},
+					{Name: "intensity", Type: "float"},
+				},
+				Outputs: nil,
+				Body:    nil,
+			},
+		),
+		Entry("with single output",
+			`func test() vec3 {
+			}`,
+			&lsl.FunctionDeclaration{
+				Name:   "test",
+				Inputs: nil,
+				Outputs: []lsl.Field{
+					{Type: "vec3"},
+				},
+				Body: nil,
+			},
+		),
+		Entry("with multiple outputs",
+			`func test() (vec3, float) {
+			}`,
+			&lsl.FunctionDeclaration{
+				Name:   "test",
+				Inputs: nil,
+				Outputs: []lsl.Field{
+					{Type: "vec3"},
+					{Type: "float"},
+				},
+				Body: nil,
+			},
+		),
+		Entry("with inputs and outputs",
+			`func test(color vec3, intensity float) (vec3, float) {
+			}`,
+			&lsl.FunctionDeclaration{
+				Name: "test",
+				Inputs: []lsl.Field{
+					{Name: "color", Type: "vec3"},
+					{Name: "intensity", Type: "float"},
+				},
+				Outputs: []lsl.Field{
+					{Type: "vec3"},
+					{Type: "float"},
+				},
+				Body: nil,
+			},
+		),
+		Entry("with comment in body",
+			`func test() {
+				// some comment
+			}`,
+			&lsl.FunctionDeclaration{
+				Name:    "test",
+				Inputs:  nil,
+				Outputs: nil,
+				Body:    nil,
+			},
+		),
+	)
 })
