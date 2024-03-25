@@ -15,7 +15,7 @@ var _ = Describe("Parse", func() {
 	)
 
 	JustBeforeEach(func() {
-		outShader, outErr = lsl.Parse2(inSource) // TODO: Change to Parse
+		outShader, outErr = lsl.Parse(inSource)
 	})
 
 	When("empty shader", func() {
@@ -518,6 +518,79 @@ var _ = Describe("Parser", func() {
 				},
 			},
 		),
+		Entry("function call with args and new lines",
+			`test(
+				200, 
+				1.5,
+			)`,
+			&lsl.FunctionCall{
+				Name: "test",
+				Arguments: []lsl.Expression{
+					&lsl.IntLiteral{Value: 200},
+					&lsl.FloatLiteral{Value: 1.5},
+				},
+			},
+		),
+		Entry("function call with args and comments",
+			`test( // function
+				200, // first arg
+				// some comment here
+				1.5, // second arg
+			) // end`,
+			&lsl.FunctionCall{
+				Name: "test",
+				Arguments: []lsl.Expression{
+					&lsl.IntLiteral{Value: 200},
+					&lsl.FloatLiteral{Value: 1.5},
+				},
+			},
+		),
+		Entry("binary expression (numbers)",
+			`1 + 2.3`,
+			&lsl.BinaryExpression{
+				Operator: "+",
+				Left:     &lsl.IntLiteral{Value: 1},
+				Right:    &lsl.FloatLiteral{Value: 2.3},
+			},
+		),
+		Entry("binary expression (identifiers)",
+			`amount + color.x`,
+			&lsl.BinaryExpression{
+				Operator: "+",
+				Left:     &lsl.Identifier{Name: "amount"},
+				Right:    &lsl.FieldIdentifier{ObjName: "color", FieldName: "x"},
+			},
+		),
+		Entry("binary expression (functions)",
+			`first() * second()`,
+			&lsl.BinaryExpression{
+				Operator: "*",
+				Left:     &lsl.FunctionCall{Name: "first"},
+				Right:    &lsl.FunctionCall{Name: "second"},
+			},
+		),
+		Entry("complex expression",
+			`5.5 + hello * (13 / 2 - 77)`,
+			&lsl.BinaryExpression{
+				Operator: "+",
+				Left:     &lsl.FloatLiteral{Value: 5.5},
+				Right: &lsl.BinaryExpression{
+					Operator: "*",
+					Left:     &lsl.Identifier{Name: "hello"},
+					Right: &lsl.BinaryExpression{
+						Operator: "-",
+						Left: &lsl.BinaryExpression{
+							Operator: "/",
+							Left:     &lsl.IntLiteral{Value: 13},
+							Right:    &lsl.IntLiteral{Value: 2},
+						},
+						Right: &lsl.IntLiteral{Value: 77},
+					},
+				},
+			},
+		),
+
+		// TODO: Test logical expressions
 	)
 
 	DescribeTable("ParseFunction", func(inSource string, expectedDecl *lsl.FunctionDeclaration) {
@@ -620,7 +693,99 @@ var _ = Describe("Parser", func() {
 				Body:    nil,
 			},
 		),
+		Entry("with function call statements",
+			`func test() {
+				doFirst()
+				doSecond()
+			}`,
+			&lsl.FunctionDeclaration{
+				Name:    "test",
+				Inputs:  nil,
+				Outputs: nil,
+				Body: []lsl.Statement{
+					&lsl.FunctionCall{Name: "doFirst"},
+					&lsl.FunctionCall{Name: "doSecond"},
+				},
+			},
+		),
+		Entry("with variable declarations",
+			`func test() {
+				var x float = 5.3
+				var y int = 3
+				var z vec3 = vec3(1.0, 0.0, -0.5)
+			}`,
+			&lsl.FunctionDeclaration{
+				Name:    "test",
+				Inputs:  nil,
+				Outputs: nil,
+				Body: []lsl.Statement{
+					&lsl.VariableDeclaration{
+						Name:       "x",
+						Type:       "float",
+						Assignment: &lsl.FloatLiteral{Value: 5.3},
+					},
+					&lsl.VariableDeclaration{
+						Name:       "y",
+						Type:       "int",
+						Assignment: &lsl.IntLiteral{Value: 3},
+					},
+					&lsl.VariableDeclaration{
+						Name: "z",
+						Type: "vec3",
+						Assignment: &lsl.FunctionCall{
+							Name: "vec3",
+							Arguments: []lsl.Expression{
+								&lsl.FloatLiteral{Value: 1.0},
+								&lsl.FloatLiteral{Value: 0.0},
+								&lsl.UnaryExpression{
+									Operator: "-",
+									Operand:  &lsl.FloatLiteral{Value: 0.5},
+								},
+							},
+						},
+					},
+				},
+			},
+		),
 
-		// TODO: Test body with statements
+		Entry("with variable assignments",
+			`func test() {
+				color.x += 5.3
+				color.y *= 3
+				z = vec3(1.0, 0.0, -0.5)
+			}`,
+			&lsl.FunctionDeclaration{
+				Name:    "test",
+				Inputs:  nil,
+				Outputs: nil,
+				Body: []lsl.Statement{
+					&lsl.Assignment{
+						Target:     &lsl.FieldIdentifier{ObjName: "color", FieldName: "x"},
+						Operator:   "+=",
+						Expression: &lsl.FloatLiteral{Value: 5.3},
+					},
+					&lsl.Assignment{
+						Target:     &lsl.FieldIdentifier{ObjName: "color", FieldName: "y"},
+						Operator:   "*=",
+						Expression: &lsl.IntLiteral{Value: 3},
+					},
+					&lsl.Assignment{
+						Target:   &lsl.Identifier{Name: "z"},
+						Operator: "=",
+						Expression: &lsl.FunctionCall{
+							Name: "vec3",
+							Arguments: []lsl.Expression{
+								&lsl.FloatLiteral{Value: 1.0},
+								&lsl.FloatLiteral{Value: 0.0},
+								&lsl.UnaryExpression{
+									Operator: "-",
+									Operand:  &lsl.FloatLiteral{Value: 0.5},
+								},
+							},
+						},
+					},
+				},
+			},
+		),
 	)
 })
