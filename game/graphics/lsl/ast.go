@@ -125,7 +125,8 @@ func (*FunctionCall) _isExpression() {}
 func (*FunctionCall) _isStatement() {}
 
 type Assignment struct {
-	Target     string
+	Operator   string
+	Target     Expression
 	Expression Expression
 }
 
