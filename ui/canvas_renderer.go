@@ -563,6 +563,7 @@ func (c *canvasRenderer) FillTextLine(text []rune, position sprec.Vec2, typograp
 		c.updateMaterialUniformBufferFromTypography(typography)
 		c.commandBuffer.BindPipeline(c.textPipeline)
 		c.commandBuffer.TextureUnit(textureBindingFontTexture, font.texture)
+		c.commandBuffer.SamplerUnit(textureBindingFontTexture, nil) // TODO
 		c.commandBuffer.UniformBufferUnit(
 			uniformBufferBindingCamera,
 			c.cameraUniformPlacement.Buffer,
@@ -681,6 +682,7 @@ func (c *canvasRenderer) FillText(text string, position sprec.Vec2, typography T
 
 		c.commandBuffer.BindPipeline(c.textPipeline)
 		c.commandBuffer.TextureUnit(textureBindingFontTexture, font.texture)
+		c.commandBuffer.SamplerUnit(textureBindingFontTexture, nil) // TODO
 		c.commandBuffer.UniformBufferUnit(
 			uniformBufferBindingCamera,
 			c.cameraUniformPlacement.Buffer,
@@ -773,6 +775,7 @@ func (c *canvasRenderer) fillPath(path *canvasPath, fill Fill) {
 	}
 
 	c.commandBuffer.TextureUnit(textureBindingColorTexture, texture)
+	c.commandBuffer.SamplerUnit(textureBindingColorTexture, nil) // TODO
 	c.commandBuffer.UniformBufferUnit(
 		uniformBufferBindingCamera,
 		c.cameraUniformPlacement.Buffer,
