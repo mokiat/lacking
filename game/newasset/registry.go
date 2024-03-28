@@ -123,10 +123,11 @@ func (r *Registry) open() error {
 			}
 		}
 		return &Resource{
-			registry: r,
-			id:       dto.ID,
-			name:     dto.Name,
-			preview:  preview,
+			registry:     r,
+			id:           dto.ID,
+			name:         dto.Name,
+			preview:      preview,
+			sourceDigest: dto.SourceDigest,
 		}
 	})
 
@@ -153,9 +154,10 @@ func (r *Registry) save() error {
 			}
 		}
 		return resourceDTO{
-			ID:          res.id,
-			Name:        res.name,
-			PreviewData: previewData.Bytes(),
+			ID:           res.id,
+			Name:         res.name,
+			PreviewData:  previewData.Bytes(),
+			SourceDigest: res.sourceDigest,
 		}
 	})
 	dtoDependencies := gog.Map(r.dependencies, func(dep fsDependency) dependencyDTO {
@@ -239,10 +241,11 @@ func (r *Registry) deleteResource(id string) error {
 
 // Resource represents the generic aspects of an asset.
 type Resource struct {
-	registry *Registry
-	id       string
-	name     string
-	preview  image.Image
+	registry     *Registry
+	id           string
+	name         string
+	preview      image.Image
+	sourceDigest string
 }
 
 // Registry returns the registry that manages the resource.
@@ -275,6 +278,17 @@ func (r *Resource) Preview() image.Image {
 // SetPreview changes the preview image of the resource.
 func (r *Resource) SetPreview(preview image.Image) error {
 	r.preview = preview
+	return r.registry.save()
+}
+
+// SourceDigest returns the digest of the source content of the resource.
+func (r *Resource) SourceDigest() string {
+	return r.sourceDigest
+}
+
+// SetSourceDigest changes the digest of the source content of the resource.
+func (r *Resource) SetSourceDigest(digest string) error {
+	r.sourceDigest = digest
 	return r.registry.save()
 }
 

@@ -6,9 +6,10 @@ type registryDTO struct {
 }
 
 type resourceDTO struct {
-	ID          string `json:"id"`
-	Name        string `json:"name"`
-	PreviewData []byte `json:"preview"`
+	ID           string `json:"id"`
+	Name         string `json:"name"`
+	PreviewData  []byte `json:"preview"`
+	SourceDigest string `json:"source_digest"`
 }
 
 type dependencyDTO struct {
