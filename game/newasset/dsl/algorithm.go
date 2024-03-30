@@ -21,7 +21,7 @@ func Run(storage asset.Storage, formatter asset.Formatter) error {
 
 	for name, fragment := range fragments {
 		g.Go(func() error {
-			log.Info("Processing fragment %q", name)
+			log.Info("Fragment %q - processing", name)
 
 			digest, err := digestString(fragment)
 			if err != nil {
@@ -30,10 +30,12 @@ func Run(storage asset.Storage, formatter asset.Formatter) error {
 
 			resource := registry.ResourceByName(name)
 			if resource != nil && resource.SourceDigest() == digest {
-				log.Info("Resource %q is up to date", name)
+				log.Info("Fragment %q - up to date", name)
+				log.Info("Fragment %q - done", name)
 				return nil
 			}
 
+			log.Info("Fragment %q - building", name)
 			fragmentModel, err := fragment.Get()
 			if err != nil {
 				return fmt.Errorf("error getting fragment %q: %w", name, err)
@@ -45,13 +47,13 @@ func Run(storage asset.Storage, formatter asset.Formatter) error {
 			}
 
 			if resource == nil {
-				log.Info("Resource %q needs to be created", name)
+				log.Info("Fragment %q - creating", name)
 				resource, err = registry.CreateResource(name, fragmentAsset)
 				if err != nil {
 					return fmt.Errorf("error creating resource: %w", err)
 				}
 			} else {
-				log.Info("Resource %q needs updating", name)
+				log.Info("Fragment %q - updating", name)
 				if err := resource.SaveContent(fragmentAsset); err != nil {
 					return fmt.Errorf("error saving resource: %w", err)
 				}
@@ -61,6 +63,7 @@ func Run(storage asset.Storage, formatter asset.Formatter) error {
 				return fmt.Errorf("error setting resource digest: %w", err)
 			}
 
+			log.Info("Fragment %q - done", name)
 			return nil
 		})
 	}
