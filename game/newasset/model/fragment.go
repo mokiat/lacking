@@ -26,6 +26,9 @@ func (f *Fragment) AddNode(node *Node) {
 
 func (f *Fragment) ToAsset() (asset.Fragment, error) {
 	nodes := make([]asset.Node, len(f.nodes))
+
+	// FIXME: There is a problem with how we are handling the node index.
+	// This does not work for hierarchies.
 	nodeIndex := make(map[*Node]int)
 	for i, node := range f.nodes {
 		nodeAsset, err := node.ToAsset()
@@ -36,7 +39,19 @@ func (f *Fragment) ToAsset() (asset.Fragment, error) {
 		nodeIndex[node] = i
 	}
 
+	pointLights := make([]asset.PointLight, 0)
+	for _, node := range f.nodes {
+		light, ok := node.Content().(*PointLight)
+		if !ok {
+			continue
+		}
+		lightAsset := light.ToAsset()
+		lightAsset.NodeIndex = int32(nodeIndex[node])
+		pointLights = append(pointLights, lightAsset)
+	}
+
 	return asset.Fragment{
-		Nodes: nodes,
+		Nodes:       nodes,
+		PointLights: pointLights,
 	}, nil
 }

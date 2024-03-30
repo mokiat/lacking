@@ -5,6 +5,8 @@ import (
 	"encoding/hex"
 	"io"
 	"strconv"
+
+	"github.com/mokiat/gomath/dprec"
 )
 
 type DigestFunc func() ([]byte, error)
@@ -23,6 +25,8 @@ func digestItems(name string, items ...any) ([]byte, error) {
 			io.WriteString(h, strconv.Itoa(item))
 		case string:
 			io.WriteString(h, item)
+		case dprec.Vec3:
+			io.WriteString(h, item.GoString())
 		case digestable:
 			digest, err := item.Digest()
 			if err != nil {
