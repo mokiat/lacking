@@ -7,6 +7,8 @@ import (
 	"strconv"
 )
 
+type DigestFunc func() ([]byte, error)
+
 type digestable interface {
 	Digest() ([]byte, error)
 }
