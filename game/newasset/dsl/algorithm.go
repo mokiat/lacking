@@ -9,7 +9,7 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
-var fragments = make(map[string]Provider[*model.Fragment])
+var fragments = make(map[string]Provider[*model.Scene])
 
 func Run(storage asset.Storage, formatter asset.Formatter) error {
 	registry, err := asset.NewRegistry(storage, formatter)

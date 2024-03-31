@@ -6,9 +6,9 @@ import (
 	"github.com/mokiat/lacking/game/newasset/model"
 )
 
-func CreateFragment(name string, operations ...Operation) Provider[*model.Fragment] {
-	get := func() (*model.Fragment, error) {
-		fragment := &model.Fragment{}
+func CreateFragment(name string, operations ...Operation) Provider[*model.Scene] {
+	get := func() (*model.Scene, error) {
+		fragment := &model.Scene{}
 		fragment.SetName(name)
 		for _, operation := range operations {
 			if err := operation.Apply(fragment); err != nil {
