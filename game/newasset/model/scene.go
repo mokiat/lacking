@@ -1,57 +1,46 @@
 package model
 
-import asset "github.com/mokiat/lacking/game/newasset"
+import "slices"
 
 type Scene struct {
 	name string
 
-	nodes []*Node
+	nodes []Node
 }
 
-func (f *Scene) Name() string {
-	return f.name
+func (s *Scene) Name() string {
+	return s.name
 }
 
-func (f *Scene) SetName(name string) {
-	f.name = name
+func (s *Scene) SetName(name string) {
+	s.name = name
 }
 
-func (f *Scene) Nodes() []*Node {
-	return f.nodes
+func (s *Scene) Nodes() []Node {
+	return s.nodes
 }
 
-func (f *Scene) AddNode(node *Node) {
-	f.nodes = append(f.nodes, node)
+func (s *Scene) AddNode(node Node) {
+	s.nodes = append(s.nodes, node)
 }
 
-func (f *Scene) ToAsset() (asset.Scene, error) {
-	nodes := make([]asset.Node, len(f.nodes))
+func (s *Scene) RemoveNode(node Node) {
+	s.nodes = slices.DeleteFunc(s.nodes, func(candidate Node) bool {
+		return candidate == node
+	})
+}
 
-	// FIXME: There is a problem with how we are handling the node index.
-	// This does not work for hierarchies.
-	nodeIndex := make(map[*Node]uint32)
-	for i, node := range f.nodes {
-		nodeAsset, err := node.ToAsset()
-		if err != nil {
-			return asset.Scene{}, err
+func (s *Scene) FlattenNodes() []Node {
+	var nodes []Node
+	var visit func(Node)
+	visit = func(n Node) {
+		nodes = append(nodes, n)
+		for _, child := range n.Nodes() {
+			visit(child)
 		}
-		nodes[i] = nodeAsset
-		nodeIndex[node] = uint32(i)
 	}
-
-	pointLights := make([]asset.PointLight, 0)
-	for _, node := range f.nodes {
-		light, ok := node.Content().(*PointLight)
-		if !ok {
-			continue
-		}
-		lightAsset := light.ToAsset()
-		lightAsset.NodeIndex = nodeIndex[node]
-		pointLights = append(pointLights, lightAsset)
+	for _, node := range s.nodes {
+		visit(node)
 	}
-
-	return asset.Scene{
-		Nodes:       nodes,
-		PointLights: pointLights,
-	}, nil
+	return nodes
 }

@@ -1,12 +1,29 @@
 package model
 
 import (
+	"slices"
+
 	"github.com/mokiat/gomath/dprec"
-	asset "github.com/mokiat/lacking/game/newasset"
 )
 
 type NodeContainer interface {
-	AddNode(node *Node)
+	AddNode(node Node)
+	RemoveNode(node Node)
+	Nodes() []Node
+}
+
+type Node interface {
+	Name() string
+	SetName(name string)
+
+	Translatable
+	Rotatable
+	Scalable
+
+	Parent() Node
+	SetParent(parent Node)
+
+	NodeContainer
 }
 
 type Translatable interface {
@@ -24,67 +41,69 @@ type Scalable interface {
 	SetScale(scale dprec.Vec3)
 }
 
-type ContentHolder interface {
-	Content() any
-	SetContent(content any)
-}
+var _ Node = (*BlankNode)(nil)
 
-type Node struct {
-	name        string
+type BlankNode struct {
+	name string
+
 	translation dprec.Vec3
 	rotation    dprec.Quat
 	scale       dprec.Vec3
-	content     any
+
+	parent Node
+	nodes  []Node
 }
 
-func (n *Node) Name() string {
+func (n *BlankNode) Name() string {
 	return n.name
 }
 
-func (n *Node) SetName(name string) {
+func (n *BlankNode) SetName(name string) {
 	n.name = name
 }
 
-func (n *Node) Translation() dprec.Vec3 {
+func (n *BlankNode) Translation() dprec.Vec3 {
 	return n.translation
 }
 
-func (n *Node) SetTranslation(translation dprec.Vec3) {
+func (n *BlankNode) SetTranslation(translation dprec.Vec3) {
 	n.translation = translation
 }
 
-func (n *Node) Rotation() dprec.Quat {
+func (n *BlankNode) Rotation() dprec.Quat {
 	return n.rotation
 }
 
-func (n *Node) SetRotation(rotation dprec.Quat) {
+func (n *BlankNode) SetRotation(rotation dprec.Quat) {
 	n.rotation = rotation
 }
 
-func (n *Node) Scale() dprec.Vec3 {
+func (n *BlankNode) Scale() dprec.Vec3 {
 	return n.scale
 }
 
-func (n *Node) SetScale(scale dprec.Vec3) {
+func (n *BlankNode) SetScale(scale dprec.Vec3) {
 	n.scale = scale
 }
 
-func (n *Node) Content() any {
-	return n.content
+func (n *BlankNode) Parent() Node {
+	return n.parent
 }
 
-func (n *Node) SetContent(content any) {
-	n.content = content
+func (n *BlankNode) SetParent(parent Node) {
+	n.parent = parent
 }
 
-func (n *Node) ToAsset() (asset.Node, error) {
-	result := asset.Node{
-		Name:        n.name,
-		ParentIndex: asset.UnspecifiedNodeIndex,
-		Translation: n.translation,
-		Rotation:    n.rotation,
-		Scale:       n.scale,
-		Mask:        asset.NodeMaskNone,
-	}
-	return result, nil
+func (n *BlankNode) Nodes() []Node {
+	return n.nodes
+}
+
+func (n *BlankNode) AddNode(node Node) {
+	n.nodes = append(n.nodes, node)
+}
+
+func (n *BlankNode) RemoveNode(node Node) {
+	n.nodes = slices.DeleteFunc(n.nodes, func(candidate Node) bool {
+		return candidate == node
+	})
 }
