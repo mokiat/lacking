@@ -24,23 +24,6 @@ func SetEmitColor(color dprec.Vec3) Operation {
 	return FuncOperation(apply, digest)
 }
 
-func SetEmitIntensity(intensity float64) Operation {
-	apply := func(target any) error {
-		emitter, ok := target.(model.IntensityEmitter)
-		if !ok {
-			return fmt.Errorf("target %T is not an intensity emitter", target)
-		}
-		emitter.SetEmitIntensity(intensity)
-		return nil
-	}
-
-	digest := func() ([]byte, error) {
-		return digestItems("set-emit-intensity", intensity)
-	}
-
-	return FuncOperation(apply, digest)
-}
-
 func SetEmitDistance(distance float64) Operation {
 	apply := func(target any) error {
 		emitter, ok := target.(model.DistanceEmitter)
