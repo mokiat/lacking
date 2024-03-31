@@ -161,15 +161,15 @@ func (s *ResourceSet) OpenSceneByName(name string) async.Promise[*SceneDefinitio
 	return s.OpenScene(resource.ID())
 }
 
-func (s *ResourceSet) OpenFragmentWithID(id string) async.Promise[FragmentDefinition] {
+func (s *ResourceSet) OpenFragmentWithID(id string) async.Promise[SceneDefinition2] {
 	// TODO: Use caching
 
 	resource := s.newRegistry.ResourceByID(id)
 	if resource == nil {
-		return async.NewFailedPromise[FragmentDefinition](fmt.Errorf("%w: %q", ErrNotFound, id))
+		return async.NewFailedPromise[SceneDefinition2](fmt.Errorf("%w: %q", ErrNotFound, id))
 	}
 
-	result := async.NewPromise[FragmentDefinition]()
+	result := async.NewPromise[SceneDefinition2]()
 	go func() {
 		fragment, err := s.loadFragment(resource)
 		if err != nil {
@@ -181,10 +181,10 @@ func (s *ResourceSet) OpenFragmentWithID(id string) async.Promise[FragmentDefini
 	return result
 }
 
-func (s *ResourceSet) OpenFragmentWithName(name string) async.Promise[FragmentDefinition] {
+func (s *ResourceSet) OpenFragmentWithName(name string) async.Promise[SceneDefinition2] {
 	resource := s.newRegistry.ResourceByName(name)
 	if resource == nil {
-		return async.NewFailedPromise[FragmentDefinition](fmt.Errorf("%w: %q", ErrNotFound, name))
+		return async.NewFailedPromise[SceneDefinition2](fmt.Errorf("%w: %q", ErrNotFound, name))
 	}
 	return s.OpenFragmentWithID(resource.ID())
 }

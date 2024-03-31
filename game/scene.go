@@ -232,7 +232,7 @@ func (s *Scene) ApplyDirectionalLight(target *hierarchy.Node, def DirectionalLig
 	})
 }
 
-func (s *Scene) ApplyFragment(target *hierarchy.Node, def FragmentDefinition) {
+func (s *Scene) ApplyFragment(target *hierarchy.Node, def SceneDefinition2) {
 	nodeByIndex := make(map[int]*hierarchy.Node)
 	for i := range def.Nodes {
 		nodeByIndex[i] = hierarchy.NewNode()

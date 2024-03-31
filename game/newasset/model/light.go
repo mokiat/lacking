@@ -52,9 +52,8 @@ func (p *PointLight) SetEmitDistance(distance float64) {
 
 func (p *PointLight) ToAsset() asset.PointLight {
 	return asset.PointLight{
-		NodeIndex:     asset.UnspecifiedNodeIndex,
-		EmitColor:     p.emitColor,
-		EmitIntensity: p.emitIntensity,
-		EmitRange:     p.emitDistance,
+		NodeIndex:    0, // FIXME
+		EmitColor:    dprec.Vec3Prod(p.emitColor, p.emitIntensity),
+		EmitDistance: p.emitDistance,
 	}
 }
