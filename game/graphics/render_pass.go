@@ -41,7 +41,7 @@ type GeometryRenderPassInfo struct {
 }
 
 // ShadowRenderPassInfo contains the information representing the rendering
-// behavior of a material during the forward pass.
+// behavior of a material during the shadow pass.
 type ShadowRenderPassInfo struct {
 
 	// Culling specifies the culling mode.
@@ -51,7 +51,7 @@ type ShadowRenderPassInfo struct {
 	FrontFace opt.T[render.FaceOrientation]
 
 	// MaterialDataStd140 is the material data that will be passed to the
-	// forward shader. It must be in std140 layout.
+	// shader. It must be in std140 layout.
 	MaterialDataStd140 []byte
 
 	// Textures is a list of textures that will be bound to the material.

@@ -7,39 +7,91 @@ type ColorEmitter interface {
 	SetEmitColor(color dprec.Vec3)
 }
 
+type BaseColorEmitter struct {
+	emitColor dprec.Vec3
+}
+
+func (b *BaseColorEmitter) EmitColor() dprec.Vec3 {
+	return b.emitColor
+}
+
+func (b *BaseColorEmitter) SetEmitColor(color dprec.Vec3) {
+	b.emitColor = color
+}
+
 type DistanceEmitter interface {
 	EmitDistance() float64
 	SetEmitDistance(distance float64)
 }
 
-type PointLight struct {
-	BlankNode
-
-	emitColor    dprec.Vec3
+type BaseDistanceEmitter struct {
 	emitDistance float64
-	castShadow   bool
 }
 
-func (p *PointLight) EmitColor() dprec.Vec3 {
-	return p.emitColor
+func (b *BaseDistanceEmitter) EmitDistance() float64 {
+	return b.emitDistance
 }
 
-func (p *PointLight) SetEmitColor(color dprec.Vec3) {
-	p.emitColor = color
+func (b *BaseDistanceEmitter) SetEmitDistance(distance float64) {
+	b.emitDistance = distance
 }
 
-func (p *PointLight) EmitDistance() float64 {
-	return p.emitDistance
+type ConeEmitter interface {
+	EmitAngleOuter() dprec.Angle
+	SetEmitAngleOuter(angle dprec.Angle)
+	EmitAngleInner() dprec.Angle
+	SetEmitAngleInner(angle dprec.Angle)
 }
 
-func (p *PointLight) SetEmitDistance(distance float64) {
-	p.emitDistance = distance
+type BaseConeEmitter struct {
+	emitAngleOuter dprec.Angle
+	emitAngleInner dprec.Angle
 }
 
-func (p *PointLight) CastShadow() bool {
-	return p.castShadow
+func (b *BaseConeEmitter) EmitAngleOuter() dprec.Angle {
+	return b.emitAngleOuter
 }
 
-func (p *PointLight) SetCastShadow(castShadow bool) {
-	p.castShadow = castShadow
+func (b *BaseConeEmitter) SetEmitAngleOuter(angle dprec.Angle) {
+	b.emitAngleOuter = angle
+}
+
+func (b *BaseConeEmitter) EmitAngleInner() dprec.Angle {
+	return b.emitAngleInner
+}
+
+func (b *BaseConeEmitter) SetEmitAngleInner(angle dprec.Angle) {
+	b.emitAngleInner = angle
+}
+
+type ShadowCaster interface {
+	CastShadow() bool
+	SetCastShadow(castShadow bool)
+}
+
+type BaseShadowCaster struct {
+	castShadow bool
+}
+
+func (b *BaseShadowCaster) CastShadow() bool {
+	return b.castShadow
+}
+
+func (b *BaseShadowCaster) SetCastShadow(castShadow bool) {
+	b.castShadow = castShadow
+}
+
+type PointLight struct {
+	BaseNode
+	BaseColorEmitter
+	BaseDistanceEmitter
+	BaseShadowCaster
+}
+
+type SpotLight struct {
+	BaseNode
+	BaseColorEmitter
+	BaseDistanceEmitter
+	BaseConeEmitter
+	BaseShadowCaster
 }

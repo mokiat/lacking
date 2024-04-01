@@ -40,3 +40,37 @@ func SetEmitDistance(distance float64) Operation {
 
 	return FuncOperation(apply, digest)
 }
+
+func SetEmitAngleOuter(angle dprec.Angle) Operation {
+	apply := func(target any) error {
+		emitter, ok := target.(model.ConeEmitter)
+		if !ok {
+			return fmt.Errorf("target %T is not a cone emitter", target)
+		}
+		emitter.SetEmitAngleOuter(angle)
+		return nil
+	}
+
+	digest := func() ([]byte, error) {
+		return digestItems("set-emit-angle-outer", angle)
+	}
+
+	return FuncOperation(apply, digest)
+}
+
+func SetEmitAngleInner(angle dprec.Angle) Operation {
+	apply := func(target any) error {
+		emitter, ok := target.(model.ConeEmitter)
+		if !ok {
+			return fmt.Errorf("target %T is not a cone emitter", target)
+		}
+		emitter.SetEmitAngleInner(angle)
+		return nil
+	}
+
+	digest := func() ([]byte, error) {
+		return digestItems("set-emit-angle-inner", angle)
+	}
+
+	return FuncOperation(apply, digest)
+}

@@ -2,9 +2,9 @@ package dsl
 
 import "github.com/mokiat/lacking/game/newasset/model"
 
-func CreateNode(name string, operations ...Operation) Provider[*model.BlankNode] {
-	get := func() (*model.BlankNode, error) {
-		node := &model.BlankNode{}
+func CreateNode(name string, operations ...Operation) Provider[*model.BaseNode] {
+	get := func() (*model.BaseNode, error) {
+		node := &model.BaseNode{}
 		node.SetName(name)
 		for _, op := range operations {
 			if err := op.Apply(node); err != nil {

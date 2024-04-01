@@ -206,9 +206,9 @@ func (s *Scene) ApplySpotLight(target *hierarchy.Node, def SpotLightDefinition) 
 		Position:           position,
 		Rotation:           rotation,
 		EmitColor:          def.EmitColor,
+		EmitRange:          def.EmitDistance,
 		EmitOuterConeAngle: def.EmitOuterConeAngle,
 		EmitInnerConeAngle: def.EmitInnerConeAngle,
-		EmitRange:          def.EmitRange,
 	})
 	target.SetTarget(SpotLightNodeTarget{
 		Light: light,
@@ -253,6 +253,11 @@ func (s *Scene) ApplyFragment(target *hierarchy.Node, def SceneDefinition2) {
 	for i, lightDef := range def.PointLights {
 		node := nodeByIndex[i]
 		s.ApplyPointLight(node, PointLightDefinition(lightDef))
+	}
+
+	for i, lightDef := range def.SpotLights {
+		node := nodeByIndex[i]
+		s.ApplySpotLight(node, SpotLightDefinition(lightDef))
 	}
 
 	for i, lightDef := range def.DirectionalLights {
