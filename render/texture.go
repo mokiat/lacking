@@ -45,7 +45,7 @@ const (
 
 // WrapMode is an enumeration of the supported texture wrapping
 // modes.
-type WrapMode int
+type WrapMode uint8
 
 // String returns a string representation of the WrapMode.
 func (m WrapMode) String() string {
@@ -77,7 +77,7 @@ const (
 
 // FilterMode is an enumeration of the supported texture filtering
 // modes.
-type FilterMode int
+type FilterMode uint8
 
 // String returns a string representation of the FilterMode.
 func (m FilterMode) String() string {
@@ -109,7 +109,7 @@ const (
 
 // DataFormat describes the format of the data that is stored in a
 // Texture object.
-type DataFormat int
+type DataFormat uint8
 
 // String returns a string representation of the DataFormat.
 func (f DataFormat) String() string {
