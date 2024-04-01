@@ -49,7 +49,7 @@ type SpotLight struct {
 	EmitColor dprec.Vec3
 
 	// EmitDistance is the distance at which the light intensity reaches zero.
-	EmitDistance dprec.Vec3
+	EmitDistance float64
 
 	// EmitAngleOuter is the angle at which the light intensity reaches zero.
 	EmitAngleOuter dprec.Angle

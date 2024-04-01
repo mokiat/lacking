@@ -3,6 +3,7 @@ package dsl
 import (
 	"crypto/sha256"
 	"encoding/hex"
+	"fmt"
 	"io"
 	"strconv"
 
@@ -25,8 +26,14 @@ func digestItems(name string, items ...any) ([]byte, error) {
 			io.WriteString(h, strconv.Itoa(item))
 		case string:
 			io.WriteString(h, item)
+		case float64:
+			io.WriteString(h, fmt.Sprintf("%f", item))
 		case dprec.Vec3:
 			io.WriteString(h, item.GoString())
+		case dprec.Quat:
+			io.WriteString(h, item.GoString())
+		case dprec.Angle:
+			io.WriteString(h, fmt.Sprintf("%f", item))
 		case digestable:
 			digest, err := item.Digest()
 			if err != nil {
@@ -41,6 +48,8 @@ func digestItems(name string, items ...any) ([]byte, error) {
 				}
 				h.Write(digest)
 			}
+		default:
+			panic(fmt.Errorf("unsupported item type: %T", item))
 		}
 		io.WriteString(h, ":")
 	}

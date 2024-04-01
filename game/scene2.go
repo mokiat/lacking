@@ -12,6 +12,7 @@ import (
 type SceneDefinition2 struct {
 	Nodes             []SceneNodeDefinition
 	PointLights       []ScenePointLight
+	SpotLights        []SceneSpotLight
 	DirectionalLights []SceneDirectionalLight
 }
 
@@ -30,6 +31,13 @@ type SceneNodeDefinition struct {
 type ScenePointLight struct {
 	EmitColor dprec.Vec3
 	EmitRange float64
+}
+
+type SceneSpotLight struct {
+	EmitColor          dprec.Vec3
+	EmitDistance       float64
+	EmitOuterConeAngle dprec.Angle
+	EmitInnerConeAngle dprec.Angle
 }
 
 // SceneDirectionalLight describes a directional light within a fragment of
@@ -72,6 +80,15 @@ func (r *ResourceSet) transformFragmentAsset(sceneAsset newasset.Scene) (SceneDe
 		}
 	})
 
+	spotLights := gog.Map(sceneAsset.SpotLights, func(light newasset.SpotLight) SceneSpotLight {
+		return SceneSpotLight{
+			EmitColor:          light.EmitColor,
+			EmitDistance:       light.EmitDistance,
+			EmitOuterConeAngle: light.EmitAngleOuter,
+			EmitInnerConeAngle: light.EmitAngleInner,
+		}
+	})
+
 	directionalLights := gog.Map(sceneAsset.DirectionalLights, func(light newasset.DirectionalLight) SceneDirectionalLight {
 		return SceneDirectionalLight{
 			EmitColor: light.EmitColor,
@@ -82,6 +99,7 @@ func (r *ResourceSet) transformFragmentAsset(sceneAsset newasset.Scene) (SceneDe
 	return SceneDefinition2{
 		Nodes:             nodes,
 		PointLights:       pointLights,
+		SpotLights:        spotLights,
 		DirectionalLights: directionalLights,
 	}, nil
 }

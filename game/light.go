@@ -19,9 +19,9 @@ type PointLightDefinition struct {
 // SpotLightDefinition contains the properties of a spot light.
 type SpotLightDefinition struct {
 	EmitColor          dprec.Vec3
+	EmitDistance       float64
 	EmitOuterConeAngle dprec.Angle
 	EmitInnerConeAngle dprec.Angle
-	EmitRange          float64
 }
 
 // DirectionalLightDefinition contains the properties of a directional light.

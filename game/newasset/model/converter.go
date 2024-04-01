@@ -20,6 +20,7 @@ func (c *Converter) convertScene(s *Scene) (asset.Scene, error) {
 	var (
 		assetNodes       []asset.Node
 		assetPointLights []asset.PointLight
+		assetSpotLights  []asset.SpotLight
 	)
 
 	nodes := s.FlattenNodes()
@@ -51,11 +52,21 @@ func (c *Converter) convertScene(s *Scene) (asset.Scene, error) {
 				EmitDistance: essence.EmitDistance(),
 				CastShadow:   essence.CastShadow(),
 			})
+		case *SpotLight:
+			assetSpotLights = append(assetSpotLights, asset.SpotLight{
+				NodeIndex:      uint32(i),
+				EmitColor:      essence.EmitColor(),
+				EmitDistance:   essence.EmitDistance(),
+				EmitAngleOuter: essence.EmitAngleOuter(),
+				EmitAngleInner: essence.EmitAngleInner(),
+				CastShadow:     essence.CastShadow(),
+			})
 		}
 	}
 
 	return asset.Scene{
 		Nodes:       assetNodes,
 		PointLights: assetPointLights,
+		SpotLights:  assetSpotLights,
 	}, nil
 }

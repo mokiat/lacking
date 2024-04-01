@@ -7,6 +7,15 @@ type Scene struct {
 	// Nodes is the collection of nodes that are part of the scene.
 	Nodes []Node
 
+	// Cameras is the collection of cameras that are part of the scene.
+	Cameras []Camera
+
+	// Shaders is the collection of shaders that are part of the scene.
+	Shaders []Shader
+
+	// Materials is the collection of materials that are part of the scene.
+	Materials []Material
+
 	// Animations is the collection of animations that are part of the scene.
 	Armatures []Armature
 

@@ -41,9 +41,9 @@ type Scalable interface {
 	SetScale(scale dprec.Vec3)
 }
 
-var _ Node = (*BlankNode)(nil)
+var _ Node = (*BaseNode)(nil)
 
-type BlankNode struct {
+type BaseNode struct {
 	name string
 
 	translation dprec.Vec3
@@ -54,55 +54,55 @@ type BlankNode struct {
 	nodes  []Node
 }
 
-func (n *BlankNode) Name() string {
+func (n *BaseNode) Name() string {
 	return n.name
 }
 
-func (n *BlankNode) SetName(name string) {
+func (n *BaseNode) SetName(name string) {
 	n.name = name
 }
 
-func (n *BlankNode) Translation() dprec.Vec3 {
+func (n *BaseNode) Translation() dprec.Vec3 {
 	return n.translation
 }
 
-func (n *BlankNode) SetTranslation(translation dprec.Vec3) {
+func (n *BaseNode) SetTranslation(translation dprec.Vec3) {
 	n.translation = translation
 }
 
-func (n *BlankNode) Rotation() dprec.Quat {
+func (n *BaseNode) Rotation() dprec.Quat {
 	return n.rotation
 }
 
-func (n *BlankNode) SetRotation(rotation dprec.Quat) {
+func (n *BaseNode) SetRotation(rotation dprec.Quat) {
 	n.rotation = rotation
 }
 
-func (n *BlankNode) Scale() dprec.Vec3 {
+func (n *BaseNode) Scale() dprec.Vec3 {
 	return n.scale
 }
 
-func (n *BlankNode) SetScale(scale dprec.Vec3) {
+func (n *BaseNode) SetScale(scale dprec.Vec3) {
 	n.scale = scale
 }
 
-func (n *BlankNode) Parent() Node {
+func (n *BaseNode) Parent() Node {
 	return n.parent
 }
 
-func (n *BlankNode) SetParent(parent Node) {
+func (n *BaseNode) SetParent(parent Node) {
 	n.parent = parent
 }
 
-func (n *BlankNode) Nodes() []Node {
+func (n *BaseNode) Nodes() []Node {
 	return n.nodes
 }
 
-func (n *BlankNode) AddNode(node Node) {
+func (n *BaseNode) AddNode(node Node) {
 	n.nodes = append(n.nodes, node)
 }
 
-func (n *BlankNode) RemoveNode(node Node) {
+func (n *BaseNode) RemoveNode(node Node) {
 	n.nodes = slices.DeleteFunc(n.nodes, func(candidate Node) bool {
 		return candidate == node
 	})
