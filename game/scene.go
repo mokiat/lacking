@@ -5,14 +5,15 @@ import (
 
 	"github.com/mokiat/gog/ds"
 	"github.com/mokiat/gomath/dprec"
-	"github.com/mokiat/lacking/debug/log"
 	"github.com/mokiat/lacking/debug/metric"
 	"github.com/mokiat/lacking/game/ecs"
 	"github.com/mokiat/lacking/game/graphics"
 	"github.com/mokiat/lacking/game/hierarchy"
+	asset "github.com/mokiat/lacking/game/newasset"
 	"github.com/mokiat/lacking/game/physics"
 	"github.com/mokiat/lacking/game/physics/collision"
 	"github.com/mokiat/lacking/game/timestep"
+	"github.com/mokiat/lacking/render"
 )
 
 func newScene(physicsScene *physics.Scene, gfxScene *graphics.Scene, ecsScene *ecs.Scene) *Scene {
@@ -159,82 +160,42 @@ func (s *Scene) CreateNode() *hierarchy.Node {
 	return result
 }
 
+// CreateAmbientLight creates a new ambient light and appends it to the root of
+// the scene.
 func (s *Scene) CreateAmbientLight(info AmbientLightInfo) *hierarchy.Node {
-	panic("TODO")
+	node := s.CreateNode()
+	s.placeAmbientLight(node, asset.AmbientLight{
+		ReflectionTextureIndex: 0,
+		RefractionTextureIndex: 1,
+	}, []render.Texture{
+		info.ReflectionTexture,
+		info.RefractionTexture,
+	})
+	return node
+}
+
+// CreatePointLight creates a new point light and appends it to the root of the
+// scene.
+func (s *Scene) CreatePointLight(info PointLightInfo) *hierarchy.Node {
+	node := s.CreateNode()
+	s.placePointLight(node, asset.PointLight{
+		EmitColor:    info.EmitColor.ValueOrDefault(dprec.NewVec3(10.0, 0.0, 10.0)),
+		EmitDistance: info.EmitDistance.ValueOrDefault(20.0),
+	})
+	return node
 }
 
 // CreateSpotLight creates a new spot light and appends it to the root of the
 // scene.
 func (s *Scene) CreateSpotLight(info SpotLightInfo) *hierarchy.Node {
-	light := s.gfxScene.CreateSpotLight(graphics.SpotLightInfo{
-		Position:           dprec.ZeroVec3(),
-		Rotation:           dprec.IdentityQuat(),
-		EmitColor:          info.EmitColor.ValueOrDefault(dprec.NewVec3(1.0, 0.0, 1.0)),
-		EmitRange:          info.EmitDistance.ValueOrDefault(20.0),
-		EmitOuterConeAngle: info.EmitOuterConeAngle.ValueOrDefault(dprec.Degrees(60)),
-		EmitInnerConeAngle: info.EmitInnerConeAngle.ValueOrDefault(dprec.Degrees(30)),
-	})
 	node := s.CreateNode()
-	node.SetTarget(SpotLightNodeTarget{
-		Light: light,
+	s.placeSpotLight(node, asset.SpotLight{
+		EmitColor:      info.EmitColor.ValueOrDefault(dprec.NewVec3(10.0, 0.0, 10.0)),
+		EmitDistance:   info.EmitDistance.ValueOrDefault(20.0),
+		EmitAngleOuter: info.EmitOuterConeAngle.ValueOrDefault(dprec.Degrees(60)),
+		EmitAngleInner: info.EmitInnerConeAngle.ValueOrDefault(dprec.Degrees(30)),
 	})
 	return node
-}
-
-// ApplyAmbientLight creates and configures an ambient light on the target node.
-//
-// Deprecated: Broken
-func (s *Scene) ApplyAmbientLight(target *hierarchy.Node, def AmbientLightDefinition) {
-	nodeMatrix := target.AbsoluteMatrix()
-	position := nodeMatrix.Translation()
-
-	light := s.gfxScene.CreateAmbientLight(graphics.AmbientLightInfo{
-		Position:          position,
-		InnerRadius:       def.InnerRadius,
-		OuterRadius:       def.OuterRadius,
-		ReflectionTexture: def.ReflectionTexture.gfxTexture,
-		RefractionTexture: def.RefractionTexture.gfxTexture,
-	})
-	target.SetTarget(AmbientLightNodeTarget{
-		Light: light,
-	})
-}
-
-// ApplyPointLight creates and configures a point light on the target node.
-//
-// Deprecated: Broken
-func (s *Scene) ApplyPointLight(target *hierarchy.Node, def PointLightDefinition) {
-	nodeMatrix := target.AbsoluteMatrix()
-	position := nodeMatrix.Translation()
-
-	light := s.gfxScene.CreatePointLight(graphics.PointLightInfo{
-		Position:  position,
-		EmitColor: def.EmitColor,
-		EmitRange: def.EmitRange,
-	})
-	target.SetTarget(PointLightNodeTarget{
-		Light: light,
-	})
-}
-
-// ApplySpotLight creates and configures a spot light on the target node.
-//
-// Deprecated: Broken
-func (s *Scene) ApplySpotLight(target *hierarchy.Node, def SpotLightDefinition) {
-	nodeMatrix := target.AbsoluteMatrix()
-	position, rotation, _ := nodeMatrix.TRS()
-
-	light := s.gfxScene.CreateSpotLight(graphics.SpotLightInfo{
-		Position:           position,
-		Rotation:           rotation,
-		EmitColor:          def.EmitColor,
-		EmitRange:          def.EmitDistance,
-		EmitOuterConeAngle: def.EmitOuterConeAngle,
-		EmitInnerConeAngle: def.EmitInnerConeAngle,
-	})
-	target.SetTarget(SpotLightNodeTarget{
-		Light: light,
-	})
 }
 
 // ApplyDirectionalLight creates and configures a directional light on the
@@ -264,30 +225,26 @@ func (s *Scene) ApplyFragment(target *hierarchy.Node, def SceneDefinition2) {
 		nodeByIndex[i] = hierarchy.NewNode()
 	}
 	for i, nodeDef := range def.Nodes {
-		log.Info("NODE DEF: %+v", nodeDef)
-
 		node := nodeByIndex[i]
 		node.SetName(nodeDef.Name)
 		node.SetPosition(nodeDef.Translation)
 		node.SetRotation(nodeDef.Rotation)
 		node.SetScale(nodeDef.Scale)
 		if nodeDef.ParentIndex >= 0 {
-			log.Info("NODE %q HAS PARENT", node.Name())
 			nodeByIndex[nodeDef.ParentIndex].AppendChild(node)
 		} else {
-			log.Info("NODE %q HAS NO PARENT", node.Name())
 			target.AppendChild(node)
 		}
 	}
 
-	for i, lightDef := range def.PointLights {
-		node := nodeByIndex[i]
-		s.ApplyPointLight(node, PointLightDefinition(lightDef))
+	for _, lightDef := range def.PointLights {
+		node := nodeByIndex[int(lightDef.NodeIndex)]
+		s.placePointLight(node, lightDef)
 	}
 
-	for i, lightDef := range def.SpotLights {
-		node := nodeByIndex[i]
-		s.ApplySpotLight(node, SpotLightDefinition(lightDef))
+	for _, lightDef := range def.SpotLights {
+		node := nodeByIndex[int(lightDef.NodeIndex)]
+		s.placeSpotLight(node, lightDef)
 	}
 
 	for i, lightDef := range def.DirectionalLights {
@@ -305,16 +262,12 @@ func (s *Scene) Initialize(definition *SceneDefinition) {
 	}
 
 	if definition.reflectionTexture != nil && definition.refractionTexture != nil {
-		node := hierarchy.NewNode()
-		node.SetName("AmbientLight")
-		s.root.AppendChild(node)
 
-		s.ApplyAmbientLight(node, AmbientLightDefinition{
-			ReflectionTexture: definition.reflectionTexture,
-			RefractionTexture: definition.refractionTexture,
-			InnerRadius:       25000.0, // TODO
-			OuterRadius:       25000.0, // TODO
+		node := s.CreateAmbientLight(AmbientLightInfo{
+			ReflectionTexture: definition.reflectionTexture.gfxTexture.Texture(),
+			RefractionTexture: definition.refractionTexture.gfxTexture.Texture(),
 		})
+		node.SetName("AmbientLight")
 	}
 
 	s.CreateModel(ModelInfo{
@@ -688,4 +641,48 @@ func (s *Scene) applyPlaybacks(elapsedTime time.Duration) {
 			playback.animation.Apply(playback.head)
 		}
 	}
+}
+
+func (s *Scene) placeAmbientLight(node *hierarchy.Node, def asset.AmbientLight, textures []render.Texture) {
+	reflectionTexture := textures[def.ReflectionTextureIndex]
+	refractionTexture := textures[def.RefractionTextureIndex]
+	light := s.gfxScene.CreateAmbientLight(graphics.AmbientLightInfo{
+		Position:          dprec.ZeroVec3(),
+		InnerRadius:       25000.0,
+		OuterRadius:       25000.0,
+		ReflectionTexture: reflectionTexture,
+		RefractionTexture: refractionTexture,
+	})
+	node.SetTarget(AmbientLightNodeTarget{
+		Light: light,
+	})
+	node.ApplyToTarget(false)
+}
+
+func (s *Scene) placePointLight(node *hierarchy.Node, def asset.PointLight) {
+	light := s.gfxScene.CreatePointLight(graphics.PointLightInfo{
+		Position:  dprec.ZeroVec3(),
+		EmitColor: def.EmitColor,
+		EmitRange: def.EmitDistance,
+	})
+	node.SetTarget(PointLightNodeTarget{
+		Light: light,
+	})
+	node.ApplyToTarget(false)
+}
+
+func (s *Scene) placeSpotLight(node *hierarchy.Node, def asset.SpotLight) {
+	light := s.gfxScene.CreateSpotLight(graphics.SpotLightInfo{
+		Position:           dprec.ZeroVec3(),
+		Rotation:           dprec.IdentityQuat(),
+		EmitColor:          def.EmitColor,
+		EmitRange:          def.EmitDistance,
+		EmitOuterConeAngle: def.EmitAngleOuter,
+		EmitInnerConeAngle: def.EmitAngleInner,
+		CastShadow:         def.CastShadow,
+	})
+	node.SetTarget(SpotLightNodeTarget{
+		Light: light,
+	})
+	node.ApplyToTarget(false)
 }
