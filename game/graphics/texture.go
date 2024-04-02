@@ -55,6 +55,10 @@ type CubeTexture struct {
 	texture render.Texture
 }
 
+func (t *CubeTexture) Texture() render.Texture {
+	return t.texture
+}
+
 // Delete releases any resources allocated for this texture.
 func (t *CubeTexture) Delete() {
 	t.texture.Release()

@@ -1435,9 +1435,9 @@ func (r *sceneRenderer) renderAmbientLight(light *AmbientLight) {
 	commandBuffer.SamplerUnit(internal.TextureBindingLightingFramebufferColor1, nil) // TODO
 	commandBuffer.TextureUnit(internal.TextureBindingLightingFramebufferDepth, r.geometryDepthTexture)
 	commandBuffer.SamplerUnit(internal.TextureBindingLightingFramebufferDepth, nil) // TODO
-	commandBuffer.TextureUnit(internal.TextureBindingLightingReflectionTexture, light.reflectionTexture.texture)
+	commandBuffer.TextureUnit(internal.TextureBindingLightingReflectionTexture, light.reflectionTexture)
 	commandBuffer.SamplerUnit(internal.TextureBindingLightingReflectionTexture, nil) // TODO
-	commandBuffer.TextureUnit(internal.TextureBindingLightingRefractionTexture, light.refractionTexture.texture)
+	commandBuffer.TextureUnit(internal.TextureBindingLightingRefractionTexture, light.refractionTexture)
 	commandBuffer.SamplerUnit(internal.TextureBindingLightingRefractionTexture, nil) // TODO
 	commandBuffer.UniformBufferUnit(
 		internal.UniformBufferBindingCamera,

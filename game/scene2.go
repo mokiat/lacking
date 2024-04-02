@@ -9,10 +9,12 @@ import (
 )
 
 // SceneDefinition2 describes a fragment of a game scene.
+//
+// Deprecated: Get rid of this and use the newasset.Scene directly.
 type SceneDefinition2 struct {
 	Nodes             []SceneNodeDefinition
-	PointLights       []ScenePointLight
-	SpotLights        []SceneSpotLight
+	PointLights       []newasset.PointLight
+	SpotLights        []newasset.SpotLight
 	DirectionalLights []SceneDirectionalLight
 }
 
@@ -25,19 +27,6 @@ type SceneNodeDefinition struct {
 	Scale         dprec.Vec3
 	IsStationary  bool
 	IsInseparable bool
-}
-
-// ScenePointLight describes a point light within a fragment of a game scene.
-type ScenePointLight struct {
-	EmitColor dprec.Vec3
-	EmitRange float64
-}
-
-type SceneSpotLight struct {
-	EmitColor          dprec.Vec3
-	EmitDistance       float64
-	EmitOuterConeAngle dprec.Angle
-	EmitInnerConeAngle dprec.Angle
 }
 
 // SceneDirectionalLight describes a directional light within a fragment of
@@ -73,22 +62,6 @@ func (r *ResourceSet) transformFragmentAsset(sceneAsset newasset.Scene) (SceneDe
 		}
 	})
 
-	pointLights := gog.Map(sceneAsset.PointLights, func(light newasset.PointLight) ScenePointLight {
-		return ScenePointLight{
-			EmitColor: light.EmitColor,
-			EmitRange: light.EmitDistance,
-		}
-	})
-
-	spotLights := gog.Map(sceneAsset.SpotLights, func(light newasset.SpotLight) SceneSpotLight {
-		return SceneSpotLight{
-			EmitColor:          light.EmitColor,
-			EmitDistance:       light.EmitDistance,
-			EmitOuterConeAngle: light.EmitAngleOuter,
-			EmitInnerConeAngle: light.EmitAngleInner,
-		}
-	})
-
 	directionalLights := gog.Map(sceneAsset.DirectionalLights, func(light newasset.DirectionalLight) SceneDirectionalLight {
 		return SceneDirectionalLight{
 			EmitColor: light.EmitColor,
@@ -98,8 +71,8 @@ func (r *ResourceSet) transformFragmentAsset(sceneAsset newasset.Scene) (SceneDe
 
 	return SceneDefinition2{
 		Nodes:             nodes,
-		PointLights:       pointLights,
-		SpotLights:        spotLights,
+		PointLights:       sceneAsset.PointLights,
+		SpotLights:        sceneAsset.SpotLights,
 		DirectionalLights: directionalLights,
 	}, nil
 }

@@ -2,6 +2,7 @@ package graphics
 
 import (
 	"github.com/mokiat/gomath/dprec"
+	"github.com/mokiat/lacking/render"
 	"github.com/mokiat/lacking/util/spatial"
 )
 
@@ -14,8 +15,8 @@ type AmbientLightInfo struct {
 	// Overflow (for linear falloff into neighboring lights)
 	InnerRadius       float64
 	OuterRadius       float64
-	ReflectionTexture *CubeTexture
-	RefractionTexture *CubeTexture
+	ReflectionTexture render.Texture
+	RefractionTexture render.Texture
 }
 
 func newAmbientLight(scene *Scene, info AmbientLightInfo) *AmbientLight {
@@ -38,8 +39,8 @@ type AmbientLight struct {
 
 	innerRadius       float64
 	outerRadius       float64
-	reflectionTexture *CubeTexture
-	refractionTexture *CubeTexture
+	reflectionTexture render.Texture
+	refractionTexture render.Texture
 
 	active bool
 }
