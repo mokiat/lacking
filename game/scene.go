@@ -5,6 +5,7 @@ import (
 
 	"github.com/mokiat/gog/ds"
 	"github.com/mokiat/gomath/dprec"
+	"github.com/mokiat/lacking/debug/log"
 	"github.com/mokiat/lacking/debug/metric"
 	"github.com/mokiat/lacking/game/ecs"
 	"github.com/mokiat/lacking/game/graphics"
@@ -151,21 +152,38 @@ func (s *Scene) Root() *hierarchy.Node {
 	return s.root
 }
 
-// ApplyNode reconfigures the target node according to the provided definition.
-func (s *Scene) ApplyNode(target *hierarchy.Node, def NodeDefinition) {
-	target.SetName(def.Name)
-	target.SetPosition(def.Position)
-	target.SetRotation(def.Rotation)
-	target.SetScale(def.Scale)
-	// TODO: Add support for stationary and inseparable flags
-	if def.Parent != nil {
-		def.Parent.AppendChild(target)
-	} else {
-		s.root.AppendChild(target)
-	}
+// CreateNode creates a new node and appends it to the root of the scene.
+func (s *Scene) CreateNode() *hierarchy.Node {
+	result := hierarchy.NewNode()
+	s.root.AppendChild(result)
+	return result
+}
+
+func (s *Scene) CreateAmbientLight(info AmbientLightInfo) *hierarchy.Node {
+	panic("TODO")
+}
+
+// CreateSpotLight creates a new spot light and appends it to the root of the
+// scene.
+func (s *Scene) CreateSpotLight(info SpotLightInfo) *hierarchy.Node {
+	light := s.gfxScene.CreateSpotLight(graphics.SpotLightInfo{
+		Position:           dprec.ZeroVec3(),
+		Rotation:           dprec.IdentityQuat(),
+		EmitColor:          info.EmitColor.ValueOrDefault(dprec.NewVec3(1.0, 0.0, 1.0)),
+		EmitRange:          info.EmitDistance.ValueOrDefault(20.0),
+		EmitOuterConeAngle: info.EmitOuterConeAngle.ValueOrDefault(dprec.Degrees(60)),
+		EmitInnerConeAngle: info.EmitInnerConeAngle.ValueOrDefault(dprec.Degrees(30)),
+	})
+	node := s.CreateNode()
+	node.SetTarget(SpotLightNodeTarget{
+		Light: light,
+	})
+	return node
 }
 
 // ApplyAmbientLight creates and configures an ambient light on the target node.
+//
+// Deprecated: Broken
 func (s *Scene) ApplyAmbientLight(target *hierarchy.Node, def AmbientLightDefinition) {
 	nodeMatrix := target.AbsoluteMatrix()
 	position := nodeMatrix.Translation()
@@ -183,6 +201,8 @@ func (s *Scene) ApplyAmbientLight(target *hierarchy.Node, def AmbientLightDefini
 }
 
 // ApplyPointLight creates and configures a point light on the target node.
+//
+// Deprecated: Broken
 func (s *Scene) ApplyPointLight(target *hierarchy.Node, def PointLightDefinition) {
 	nodeMatrix := target.AbsoluteMatrix()
 	position := nodeMatrix.Translation()
@@ -198,6 +218,8 @@ func (s *Scene) ApplyPointLight(target *hierarchy.Node, def PointLightDefinition
 }
 
 // ApplySpotLight creates and configures a spot light on the target node.
+//
+// Deprecated: Broken
 func (s *Scene) ApplySpotLight(target *hierarchy.Node, def SpotLightDefinition) {
 	nodeMatrix := target.AbsoluteMatrix()
 	position, rotation, _ := nodeMatrix.TRS()
@@ -217,35 +239,43 @@ func (s *Scene) ApplySpotLight(target *hierarchy.Node, def SpotLightDefinition) 
 
 // ApplyDirectionalLight creates and configures a directional light on the
 // target node.
+//
+// Deprecated: Broken
 func (s *Scene) ApplyDirectionalLight(target *hierarchy.Node, def DirectionalLightDefinition) {
-	nodeMatrix := target.AbsoluteMatrix()
-	position, rotation, _ := nodeMatrix.TRS()
+	// nodeMatrix := target.AbsoluteMatrix()
+	// position, rotation, _ := nodeMatrix.TRS()
 
 	light := s.gfxScene.CreateDirectionalLight(graphics.DirectionalLightInfo{
-		Position:  position,
-		Rotation:  rotation,
+		Position:  dprec.ZeroVec3(),
+		Rotation:  dprec.IdentityQuat(),
 		EmitColor: def.EmitColor,
 		EmitRange: def.EmitRange,
 	})
 	target.SetTarget(DirectionalLightNodeTarget{
 		Light: light,
 	})
+	target.ApplyToTarget(false)
 }
 
+// Deprecated: Broken
 func (s *Scene) ApplyFragment(target *hierarchy.Node, def SceneDefinition2) {
 	nodeByIndex := make(map[int]*hierarchy.Node)
 	for i := range def.Nodes {
 		nodeByIndex[i] = hierarchy.NewNode()
 	}
 	for i, nodeDef := range def.Nodes {
+		log.Info("NODE DEF: %+v", nodeDef)
+
 		node := nodeByIndex[i]
 		node.SetName(nodeDef.Name)
 		node.SetPosition(nodeDef.Translation)
 		node.SetRotation(nodeDef.Rotation)
 		node.SetScale(nodeDef.Scale)
 		if nodeDef.ParentIndex >= 0 {
+			log.Info("NODE %q HAS PARENT", node.Name())
 			nodeByIndex[nodeDef.ParentIndex].AppendChild(node)
 		} else {
+			log.Info("NODE %q HAS NO PARENT", node.Name())
 			target.AppendChild(node)
 		}
 	}
