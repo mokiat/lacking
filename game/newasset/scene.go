@@ -43,6 +43,9 @@ type Scene struct {
 	// of the scene.
 	DirectionalLights []DirectionalLight
 
+	// Skies is the collection of skies that are part of the scene.
+	Skies []Sky
+
 	// SceneDefinitions is the collection of external scene definitions that
 	// are used by the scene.
 	SceneDefinitions []string

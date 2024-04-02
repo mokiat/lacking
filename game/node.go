@@ -2,15 +2,10 @@ package game
 
 import (
 	"github.com/mokiat/gomath/dprec"
-	"github.com/mokiat/lacking/game/hierarchy"
 )
 
 // NodeDefinition describes a node within a game scene.
 type NodeDefinition struct {
-
-	// Parent is the parent node of the node. If nil, the node is attached to
-	// the root.
-	Parent *hierarchy.Node
 
 	// Name is the name of the node.
 	Name string

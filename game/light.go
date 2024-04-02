@@ -1,6 +1,21 @@
 package game
 
-import "github.com/mokiat/gomath/dprec"
+import (
+	"github.com/mokiat/gog/opt"
+	"github.com/mokiat/gomath/dprec"
+)
+
+type AmbientLightInfo struct {
+}
+
+type SpotLightInfo struct {
+	EmitColor          opt.T[dprec.Vec3]
+	EmitDistance       opt.T[float64]
+	EmitOuterConeAngle opt.T[dprec.Angle]
+	EmitInnerConeAngle opt.T[dprec.Angle]
+}
+
+/// DEPRECATED BELOW
 
 // AmbientLightDefinition contains the properties of an ambient light.
 type AmbientLightDefinition struct {
