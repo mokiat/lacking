@@ -17,6 +17,7 @@ type AmbientLightInfo struct {
 	OuterRadius       float64
 	ReflectionTexture render.Texture
 	RefractionTexture render.Texture
+	CastShadow        bool // TODO: Implement SSAO
 }
 
 func newAmbientLight(scene *Scene, info AmbientLightInfo) *AmbientLight {

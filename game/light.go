@@ -6,29 +6,35 @@ import (
 	"github.com/mokiat/lacking/render"
 )
 
+// AmbientLightInfo contains the information required to create an ambient
+// light.
 type AmbientLightInfo struct {
 	ReflectionTexture render.Texture
 	RefractionTexture render.Texture
 	OuterRadius       opt.T[float64]
 	InnerRadius       opt.T[float64]
+	CastShadow        opt.T[bool]
 }
 
+// PointLightInfo contains the information required to create a point light.
 type PointLightInfo struct {
 	EmitColor    opt.T[dprec.Vec3]
 	EmitDistance opt.T[float64]
+	CastShadow   opt.T[bool]
 }
 
+// SpotLightInfo contains the information required to create a spot light.
 type SpotLightInfo struct {
 	EmitColor          opt.T[dprec.Vec3]
 	EmitDistance       opt.T[float64]
 	EmitOuterConeAngle opt.T[dprec.Angle]
 	EmitInnerConeAngle opt.T[dprec.Angle]
+	CastShadow         opt.T[bool]
 }
 
-/// DEPRECATED BELOW
-
-// DirectionalLightDefinition contains the properties of a directional light.
-type DirectionalLightDefinition struct {
-	EmitColor dprec.Vec3
-	EmitRange float64
+// DirectionalLightInfo contains the information required to create a
+// directional light.
+type DirectionalLightInfo struct {
+	EmitColor  opt.T[dprec.Vec3]
+	CastShadow opt.T[bool]
 }

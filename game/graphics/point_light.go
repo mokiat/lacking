@@ -8,9 +8,10 @@ import (
 
 // PointLightInfo contains the information needed to create a PointLight.
 type PointLightInfo struct {
-	Position  dprec.Vec3
-	EmitRange float64
-	EmitColor dprec.Vec3
+	Position   dprec.Vec3
+	EmitRange  float64
+	EmitColor  dprec.Vec3
+	CastShadow bool // TODO: Implement shadow casting
 }
 
 func newPointLight(scene *Scene, info PointLightInfo) *PointLight {

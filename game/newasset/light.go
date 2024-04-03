@@ -72,9 +72,6 @@ type DirectionalLight struct {
 	// EmitColor is the linear color of the light that is emitted.
 	EmitColor dprec.Vec3
 
-	// EmitDistance is the distance at which the light intensity reaches zero.
-	EmitDistance float64
-
 	// CastShadow specifies whether the light should cast shadows.
 	CastShadow bool
 }
