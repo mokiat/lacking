@@ -1,36 +1,36 @@
-package model
+package mdl
 
 import "slices"
 
-type Scene struct {
+type Model struct {
 	name string
 
 	nodes []Node
 }
 
-func (s *Scene) Name() string {
+func (s *Model) Name() string {
 	return s.name
 }
 
-func (s *Scene) SetName(name string) {
+func (s *Model) SetName(name string) {
 	s.name = name
 }
 
-func (s *Scene) Nodes() []Node {
+func (s *Model) Nodes() []Node {
 	return s.nodes
 }
 
-func (s *Scene) AddNode(node Node) {
+func (s *Model) AddNode(node Node) {
 	s.nodes = append(s.nodes, node)
 }
 
-func (s *Scene) RemoveNode(node Node) {
+func (s *Model) RemoveNode(node Node) {
 	s.nodes = slices.DeleteFunc(s.nodes, func(candidate Node) bool {
 		return candidate == node
 	})
 }
 
-func (s *Scene) FlattenNodes() []Node {
+func (s *Model) FlattenNodes() []Node {
 	var nodes []Node
 	var visit func(Node)
 	visit = func(n Node) {

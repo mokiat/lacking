@@ -4,12 +4,12 @@ import (
 	"fmt"
 
 	"github.com/mokiat/gomath/dprec"
-	"github.com/mokiat/lacking/game/newasset/model"
+	"github.com/mokiat/lacking/game/newasset/mdl"
 )
 
 func SetEmitColor(color dprec.Vec3) Operation {
 	apply := func(target any) error {
-		emitter, ok := target.(model.ColorEmitter)
+		emitter, ok := target.(mdl.ColorEmitter)
 		if !ok {
 			return fmt.Errorf("target %T is not a color emitter", target)
 		}
@@ -26,7 +26,7 @@ func SetEmitColor(color dprec.Vec3) Operation {
 
 func SetEmitDistance(distance float64) Operation {
 	apply := func(target any) error {
-		emitter, ok := target.(model.DistanceEmitter)
+		emitter, ok := target.(mdl.DistanceEmitter)
 		if !ok {
 			return fmt.Errorf("target %T is not a distance emitter", target)
 		}
@@ -43,7 +43,7 @@ func SetEmitDistance(distance float64) Operation {
 
 func SetEmitAngleOuter(angle dprec.Angle) Operation {
 	apply := func(target any) error {
-		emitter, ok := target.(model.ConeEmitter)
+		emitter, ok := target.(mdl.ConeEmitter)
 		if !ok {
 			return fmt.Errorf("target %T is not a cone emitter", target)
 		}
@@ -60,7 +60,7 @@ func SetEmitAngleOuter(angle dprec.Angle) Operation {
 
 func SetEmitAngleInner(angle dprec.Angle) Operation {
 	apply := func(target any) error {
-		emitter, ok := target.(model.ConeEmitter)
+		emitter, ok := target.(mdl.ConeEmitter)
 		if !ok {
 			return fmt.Errorf("target %T is not a cone emitter", target)
 		}

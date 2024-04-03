@@ -4,12 +4,12 @@ import (
 	"fmt"
 
 	"github.com/mokiat/gomath/dprec"
-	"github.com/mokiat/lacking/game/newasset/model"
+	"github.com/mokiat/lacking/game/newasset/mdl"
 )
 
 func SetTranslation(translation dprec.Vec3) Operation {
 	apply := func(target any) error {
-		transformable, ok := target.(model.Translatable)
+		transformable, ok := target.(mdl.Translatable)
 		if !ok {
 			return fmt.Errorf("target %T is not a translatable", target)
 		}
@@ -26,7 +26,7 @@ func SetTranslation(translation dprec.Vec3) Operation {
 
 func SetRotation(rotation dprec.Quat) Operation {
 	apply := func(target any) error {
-		transformable, ok := target.(model.Rotatable)
+		transformable, ok := target.(mdl.Rotatable)
 		if !ok {
 			return fmt.Errorf("target %T is not a rotatable", target)
 		}
@@ -43,7 +43,7 @@ func SetRotation(rotation dprec.Quat) Operation {
 
 func SetScale(scale dprec.Vec3) Operation {
 	apply := func(target any) error {
-		transformable, ok := target.(model.Scalable)
+		transformable, ok := target.(mdl.Scalable)
 		if !ok {
 			return fmt.Errorf("target %T is not a scalable", target)
 		}

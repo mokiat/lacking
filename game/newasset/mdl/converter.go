@@ -1,4 +1,4 @@
-package model
+package mdl
 
 import (
 	"bytes"
@@ -10,9 +10,9 @@ import (
 	asset "github.com/mokiat/lacking/game/newasset"
 )
 
-func NewConverter(scene *Scene) *Converter {
+func NewConverter(model *Model) *Converter {
 	return &Converter{
-		scene: scene,
+		model: model,
 
 		convertedShaders: make(map[*Shader]uint32),
 		parsedShaders:    make(map[*Shader]*lsl.Shader),
@@ -20,18 +20,18 @@ func NewConverter(scene *Scene) *Converter {
 }
 
 type Converter struct {
-	scene *Scene
+	model *Model
 
 	assetShaders     []asset.Shader
 	convertedShaders map[*Shader]uint32
 	parsedShaders    map[*Shader]*lsl.Shader
 }
 
-func (c *Converter) Convert() (asset.Scene, error) {
-	return c.convertScene(c.scene)
+func (c *Converter) Convert() (asset.Model, error) {
+	return c.convertModel(c.model)
 }
 
-func (c *Converter) convertScene(s *Scene) (asset.Scene, error) {
+func (c *Converter) convertModel(s *Model) (asset.Model, error) {
 	var (
 		assetNodes       []asset.Node
 		assetPointLights []asset.PointLight
@@ -70,13 +70,13 @@ func (c *Converter) convertScene(s *Scene) (asset.Scene, error) {
 		case *Sky:
 			assetSky, err := c.convertSky(uint32(i), essence)
 			if err != nil {
-				return asset.Scene{}, fmt.Errorf("error converting sky %q: %w", node.Name(), err)
+				return asset.Model{}, fmt.Errorf("error converting sky %q: %w", node.Name(), err)
 			}
 			assetSkies = append(assetSkies, assetSky)
 		}
 	}
 
-	return asset.Scene{
+	return asset.Model{
 		Nodes:       assetNodes,
 		Shaders:     c.assetShaders,
 		PointLights: assetPointLights,
