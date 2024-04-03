@@ -12,7 +12,7 @@ const (
 // in the horizontal and vertical directions.
 type FoVMode uint8
 
-// Camera represents a camera that is part of a scene.
+// Camera represents a camera that is part of a model.
 type Camera struct {
 
 	// NodeIndex is the index of the node that is used by this camera.

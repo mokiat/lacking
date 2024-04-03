@@ -1,4 +1,4 @@
-package model
+package mdl
 
 import "github.com/mokiat/gomath/dprec"
 

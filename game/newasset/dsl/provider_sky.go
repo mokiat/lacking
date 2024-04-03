@@ -4,12 +4,12 @@ import (
 	"fmt"
 
 	"github.com/mokiat/gomath/dprec"
-	"github.com/mokiat/lacking/game/newasset/model"
+	"github.com/mokiat/lacking/game/newasset/mdl"
 )
 
-func CreateSky(name string, operations ...Operation) Provider[model.Node] {
-	get := func() (model.Node, error) {
-		var sky model.Sky
+func CreateSky(name string, operations ...Operation) Provider[mdl.Node] {
+	get := func() (mdl.Node, error) {
+		var sky mdl.Sky
 		sky.SetName(name)
 		sky.SetTranslation(dprec.ZeroVec3())
 		sky.SetRotation(dprec.IdentityQuat())
@@ -29,15 +29,15 @@ func CreateSky(name string, operations ...Operation) Provider[model.Node] {
 	return OnceProvider(FuncProvider(get, digest))
 }
 
-func CreateColorSkyLayer(color dprec.Vec3) Provider[model.SkyLayer] {
+func CreateColorSkyLayer(color dprec.Vec3) Provider[mdl.SkyLayer] {
 	shaderProvider := presetColorSkyShader
 
-	get := func() (model.SkyLayer, error) {
+	get := func() (mdl.SkyLayer, error) {
 		shader, err := shaderProvider.Get()
 		if err != nil {
-			return model.SkyLayer{}, fmt.Errorf("error getting preset shader: %w", err)
+			return mdl.SkyLayer{}, fmt.Errorf("error getting preset shader: %w", err)
 		}
-		var layer model.SkyLayer
+		var layer mdl.SkyLayer
 		layer.SetBlending(false)
 		layer.SetProperty("skyColor", color)
 		layer.SetShader(shader)
@@ -51,9 +51,9 @@ func CreateColorSkyLayer(color dprec.Vec3) Provider[model.SkyLayer] {
 	return OnceProvider(FuncProvider(get, digest))
 }
 
-var presetColorSkyShader = func() Provider[*model.Shader] {
-	get := func() (*model.Shader, error) {
-		var shader model.Shader
+var presetColorSkyShader = func() Provider[*mdl.Shader] {
+	get := func() (*mdl.Shader, error) {
+		var shader mdl.Shader
 		shader.SetSourceCode(`
 		// lsl shading language
 

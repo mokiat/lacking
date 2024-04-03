@@ -1,4 +1,4 @@
-package model
+package mdl
 
 type SkyLayerable interface {
 	AddSkyLayer(layer SkyLayer)

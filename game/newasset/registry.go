@@ -69,7 +69,7 @@ func (r *Registry) ResourceByName(name string) *Resource {
 }
 
 // CreateResource creates a new resource with the specified name.
-func (r *Registry) CreateResource(name string, content Scene) (*Resource, error) {
+func (r *Registry) CreateResource(name string, content Model) (*Resource, error) {
 	result := &Resource{
 		registry: r,
 		id:       uuid.NewString(),
@@ -174,22 +174,22 @@ func (r *Registry) save() error {
 	return nil
 }
 
-func (r *Registry) openContent(id string) (Scene, error) {
+func (r *Registry) openContent(id string) (Model, error) {
 	in, err := r.storage.OpenContentRead(id)
 	if err != nil {
-		return Scene{}, fmt.Errorf("failed to open content file: %w", err)
+		return Model{}, fmt.Errorf("failed to open content file: %w", err)
 	}
 	defer in.Close()
 
-	var fragment Scene
-	if err := r.formatter.Decode(in, &fragment); err != nil {
-		return Scene{}, fmt.Errorf("failed to decode content: %w", err)
+	var content Model
+	if err := r.formatter.Decode(in, &content); err != nil {
+		return Model{}, fmt.Errorf("failed to decode content: %w", err)
 	}
-	return fragment, nil
+	return content, nil
 }
 
-func (r *Registry) saveContent(id string, content Scene) error {
-	newDependencies := gog.Map(content.SceneDefinitions, func(sourceID string) fsDependency {
+func (r *Registry) saveContent(id string, content Model) error {
+	newDependencies := gog.Map(content.ModelDefinitions, func(sourceID string) fsDependency {
 		return fsDependency{
 			TargetID: id,
 			SourceID: sourceID,
@@ -293,12 +293,12 @@ func (r *Resource) SetSourceDigest(digest string) error {
 }
 
 // OpenContent returns the content of the resource.
-func (r *Resource) OpenContent() (Scene, error) {
+func (r *Resource) OpenContent() (Model, error) {
 	return r.registry.openContent(r.id)
 }
 
 // SaveContent saves the content of the resource.
-func (r *Resource) SaveContent(content Scene) error {
+func (r *Resource) SaveContent(content Model) error {
 	return r.registry.saveContent(r.id, content)
 }
 

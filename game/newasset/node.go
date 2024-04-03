@@ -6,7 +6,7 @@ const (
 	UnspecifiedNodeIndex = int32(-1)
 )
 
-// Node represents a single node in a scene.
+// Node represents a single node in a model.
 type Node struct {
 
 	// Name is the name of the node.

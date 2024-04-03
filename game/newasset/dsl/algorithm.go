@@ -5,11 +5,11 @@ import (
 
 	"github.com/mokiat/lacking/debug/log"
 	asset "github.com/mokiat/lacking/game/newasset"
-	"github.com/mokiat/lacking/game/newasset/model"
+	"github.com/mokiat/lacking/game/newasset/mdl"
 	"golang.org/x/sync/errgroup"
 )
 
-var sceneProviders = make(map[string]Provider[*model.Scene])
+var modelProviders = make(map[string]Provider[*mdl.Model])
 
 func Run(storage asset.Storage, formatter asset.Formatter) error {
 	registry, err := asset.NewRegistry(storage, formatter)
@@ -19,42 +19,42 @@ func Run(storage asset.Storage, formatter asset.Formatter) error {
 
 	var g errgroup.Group
 
-	for name, sceneProvider := range sceneProviders {
+	for name, modelProvider := range modelProviders {
 		g.Go(func() error {
-			log.Info("Scene %q - processing", name)
+			log.Info("Model %q - processing", name)
 
-			digest, err := digestString(sceneProvider)
+			digest, err := digestString(modelProvider)
 			if err != nil {
-				return fmt.Errorf("error calculating scene %q digest: %w", name, err)
+				return fmt.Errorf("error calculating model %q digest: %w", name, err)
 			}
 
 			resource := registry.ResourceByName(name)
 			if resource != nil && resource.SourceDigest() == digest {
-				log.Info("Scene %q - up to date", name)
-				log.Info("Scene %q - done", name)
+				log.Info("Model %q - up to date", name)
+				log.Info("Model %q - done", name)
 				return nil
 			}
 
-			log.Info("Scene %q - building", name)
-			scene, err := sceneProvider.Get()
+			log.Info("Model %q - building", name)
+			model, err := modelProvider.Get()
 			if err != nil {
-				return fmt.Errorf("error getting scene %q: %w", name, err)
+				return fmt.Errorf("error getting model %q: %w", name, err)
 			}
 
-			sceneAsset, err := model.NewConverter(scene).Convert()
+			modelAsset, err := mdl.NewConverter(model).Convert()
 			if err != nil {
-				return fmt.Errorf("error converting scene %q to asset: %w", name, err)
+				return fmt.Errorf("error converting model %q to asset: %w", name, err)
 			}
 
 			if resource == nil {
-				log.Info("Scene %q - creating", name)
-				resource, err = registry.CreateResource(name, sceneAsset)
+				log.Info("Model %q - creating", name)
+				resource, err = registry.CreateResource(name, modelAsset)
 				if err != nil {
 					return fmt.Errorf("error creating resource: %w", err)
 				}
 			} else {
-				log.Info("Scene %q - updating", name)
-				if err := resource.SaveContent(sceneAsset); err != nil {
+				log.Info("Model %q - updating", name)
+				if err := resource.SaveContent(modelAsset); err != nil {
 					return fmt.Errorf("error saving resource: %w", err)
 				}
 			}
@@ -63,7 +63,7 @@ func Run(storage asset.Storage, formatter asset.Formatter) error {
 				return fmt.Errorf("error setting resource digest: %w", err)
 			}
 
-			log.Info("Scene %q - done", name)
+			log.Info("Model %q - done", name)
 			return nil
 		})
 	}

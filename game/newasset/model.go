@@ -1,8 +1,8 @@
 package asset
 
-// Scene represents a virtual world that is composed of various visual
+// Model represents a virtual world that is composed of various visual
 // and logical elements.
-type Scene struct {
+type Model struct {
 
 	// Nodes is the collection of nodes that are part of the scene.
 	Nodes []Node
@@ -46,18 +46,18 @@ type Scene struct {
 	// Skies is the collection of skies that are part of the scene.
 	Skies []Sky
 
-	// SceneDefinitions is the collection of external scene definitions that
+	// ModelDefinitions is the collection of external scene definitions that
 	// are used by the scene.
-	SceneDefinitions []string
+	ModelDefinitions []string
 
-	// SceneInstances is the instantiation of external scene definitions within
+	// ModelInstances is the instantiation of external scene definitions within
 	// this scene.
-	SceneInstances []SceneInstance
+	ModelInstances []ModelInstance
 }
 
-// SceneInstance represents the instantiation of an external scene definition
+// ModelInstance represents the instantiation of an external scene definition
 // within a scene.
-type SceneInstance struct {
+type ModelInstance struct {
 
 	// SceneDefinitionIndex is the index of the scene definition that is used
 	// by this scene instance.

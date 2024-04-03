@@ -3,12 +3,12 @@ package dsl
 import (
 	"fmt"
 
-	"github.com/mokiat/lacking/game/newasset/model"
+	"github.com/mokiat/lacking/game/newasset/mdl"
 )
 
-func AddNode(nodeProvider Provider[model.Node]) Operation {
+func AddNode(nodeProvider Provider[mdl.Node]) Operation {
 	apply := func(target any) error {
-		container, ok := target.(model.NodeContainer)
+		container, ok := target.(mdl.NodeContainer)
 		if !ok {
 			return fmt.Errorf("target %T is not a node container", target)
 		}

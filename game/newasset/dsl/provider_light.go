@@ -2,12 +2,12 @@ package dsl
 
 import (
 	"github.com/mokiat/gomath/dprec"
-	"github.com/mokiat/lacking/game/newasset/model"
+	"github.com/mokiat/lacking/game/newasset/mdl"
 )
 
-func CreatePointLight(name string, operations ...Operation) Provider[model.Node] {
-	get := func() (model.Node, error) {
-		var light model.PointLight
+func CreatePointLight(name string, operations ...Operation) Provider[mdl.Node] {
+	get := func() (mdl.Node, error) {
+		var light mdl.PointLight
 		light.SetName(name)
 		light.SetTranslation(dprec.ZeroVec3())
 		light.SetRotation(dprec.IdentityQuat())
@@ -30,9 +30,9 @@ func CreatePointLight(name string, operations ...Operation) Provider[model.Node]
 	return OnceProvider(FuncProvider(get, digest))
 }
 
-func CreateSpotLight(name string, operations ...Operation) Provider[model.Node] {
-	get := func() (model.Node, error) {
-		var light model.SpotLight
+func CreateSpotLight(name string, operations ...Operation) Provider[mdl.Node] {
+	get := func() (mdl.Node, error) {
+		var light mdl.SpotLight
 		light.SetName(name)
 		light.SetTranslation(dprec.ZeroVec3())
 		light.SetRotation(dprec.IdentityQuat())

@@ -27,7 +27,7 @@ type SceneNodeDefinition struct {
 }
 
 func (r *ResourceSet) loadFragment(resource *newasset.Resource) (SceneDefinition2, error) {
-	var fragmentAsset newasset.Scene
+	var fragmentAsset newasset.Model
 	ioTask := func() error {
 		var err error
 		fragmentAsset, err = resource.OpenContent()
@@ -39,7 +39,7 @@ func (r *ResourceSet) loadFragment(resource *newasset.Resource) (SceneDefinition
 	return r.transformFragmentAsset(fragmentAsset)
 }
 
-func (r *ResourceSet) transformFragmentAsset(sceneAsset newasset.Scene) (SceneDefinition2, error) {
+func (r *ResourceSet) transformFragmentAsset(sceneAsset newasset.Model) (SceneDefinition2, error) {
 	// TODO: Load textures, shaders, etc. This is what differentiates
 	// SceneDefinition with just the asset.Scene.
 

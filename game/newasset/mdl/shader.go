@@ -1,4 +1,4 @@
-package model
+package mdl
 
 type Programmable interface {
 	SourceCode() string
