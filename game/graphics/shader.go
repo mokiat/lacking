@@ -30,6 +30,11 @@ type ForwardConstraints struct {
 	HasArmature bool
 }
 
+// SkyConstraints contains the constraints imposed on the sky shader
+// construction process.
+type SkyConstraints struct {
+}
+
 // ShaderBuilder abstracts the process of building a shader program. The
 // implementation of this interface will depend on the rendering backend.
 type ShaderBuilder interface {
@@ -42,6 +47,9 @@ type ShaderBuilder interface {
 
 	// BuildForwardCode creates the program code for a shadow pass.
 	BuildForwardCode(constraints ForwardConstraints, shader *lsl.Shader) render.ProgramCode
+
+	// BuildSkyCode creates the program code for a sky pass.
+	BuildSkyCode(constraints SkyConstraints, shader *lsl.Shader) render.ProgramCode
 }
 
 // ShaderInfo contains the information needed to create a custom Shader.
@@ -68,6 +76,12 @@ type ShadowShader interface {
 type ForwardShader interface {
 	internal.Shader
 	_isForwardShader()
+}
+
+// SkyShader represents a shader that is used during the sky pass.
+type SkyShader interface {
+	internal.Shader
+	_isSkyShader()
 }
 
 type customGeometryShader struct {
@@ -108,6 +122,17 @@ func (s *customForwardShader) CreateProgramCode(info internal.ShaderProgramCodeI
 }
 
 func (*customForwardShader) _isForwardShader() {}
+
+type customSkyShader struct {
+	builder ShaderBuilder
+	ast     *lsl.Shader
+}
+
+func (s *customSkyShader) CreateProgramCode(info internal.ShaderProgramCodeInfo) render.ProgramCode {
+	return s.builder.BuildSkyCode(SkyConstraints{}, s.ast)
+}
+
+func (*customSkyShader) _isSkyShader() {}
 
 type defaultGeometryShader struct {
 	shaders ShaderCollection

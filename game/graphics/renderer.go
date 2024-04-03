@@ -1036,43 +1036,69 @@ func (r *sceneRenderer) renderForwardPass(ctx renderCtx) {
 		},
 	})
 
-	sky := ctx.scene.sky
-	if texture := sky.skyboxTexture; texture != nil {
-		commandBuffer.BindPipeline(r.skyboxPipeline)
-		commandBuffer.UniformBufferUnit(
-			internal.UniformBufferBindingCamera,
-			r.cameraPlacement.Buffer,
-			r.cameraPlacement.Offset,
-			r.cameraPlacement.Size,
-		)
-		commandBuffer.TextureUnit(internal.TextureBindingSkyboxAlbedoTexture, texture.texture)
-		commandBuffer.SamplerUnit(internal.TextureBindingSkyboxAlbedoTexture, nil) // TODO
-		commandBuffer.DrawIndexed(0, cubeShape.IndexCount(), 1)
-	} else {
+	if !ctx.scene.skies.IsEmpty() {
+		sky := ctx.scene.skies.Get(0)
 		uniformBuffer := r.stageData.UniformBuffer()
-		skyboxPlacement := renderutil.WriteUniform(uniformBuffer, internal.SkyboxUniform{
-			Color: sprec.Vec4{
-				X: sky.backgroundColor.X,
-				Y: sky.backgroundColor.Y,
-				Z: sky.backgroundColor.Z,
-				W: 1.0,
-			},
-		})
+		for _, layer := range sky.layers {
+			commandBuffer.BindPipeline(layer.pipeline)
+			commandBuffer.UniformBufferUnit(
+				internal.UniformBufferBindingCamera,
+				r.cameraPlacement.Buffer,
+				r.cameraPlacement.Offset,
+				r.cameraPlacement.Size,
+			)
+			// TODO: Bind textures
+			materialData := renderutil.WriteUniform(uniformBuffer, internal.MaterialUniform{
+				Data: layer.materialData,
+			})
+			commandBuffer.UniformBufferUnit(
+				internal.UniformBufferBindingMaterial,
+				materialData.Buffer,
+				materialData.Offset,
+				materialData.Size,
+			)
+			commandBuffer.DrawIndexed(0, cubeShape.IndexCount(), 1)
+		}
+	} else {
+		// Fallback to old sky implementation
+		sky := ctx.scene.sky
+		if texture := sky.skyboxTexture; texture != nil {
+			commandBuffer.BindPipeline(r.skyboxPipeline)
+			commandBuffer.UniformBufferUnit(
+				internal.UniformBufferBindingCamera,
+				r.cameraPlacement.Buffer,
+				r.cameraPlacement.Offset,
+				r.cameraPlacement.Size,
+			)
+			commandBuffer.TextureUnit(internal.TextureBindingSkyboxAlbedoTexture, texture.texture)
+			commandBuffer.SamplerUnit(internal.TextureBindingSkyboxAlbedoTexture, nil) // TODO
+			commandBuffer.DrawIndexed(0, cubeShape.IndexCount(), 1)
+		} else {
+			uniformBuffer := r.stageData.UniformBuffer()
+			skyboxPlacement := renderutil.WriteUniform(uniformBuffer, internal.SkyboxUniform{
+				Color: sprec.Vec4{
+					X: sky.backgroundColor.X,
+					Y: sky.backgroundColor.Y,
+					Z: sky.backgroundColor.Z,
+					W: 1.0,
+				},
+			})
 
-		commandBuffer.BindPipeline(r.skycolorPipeline)
-		commandBuffer.UniformBufferUnit(
-			internal.UniformBufferBindingCamera,
-			r.cameraPlacement.Buffer,
-			r.cameraPlacement.Offset,
-			r.cameraPlacement.Size,
-		)
-		commandBuffer.UniformBufferUnit(
-			internal.UniformBufferBindingSkybox,
-			skyboxPlacement.Buffer,
-			skyboxPlacement.Offset,
-			skyboxPlacement.Size,
-		)
-		commandBuffer.DrawIndexed(0, cubeShape.IndexCount(), 1)
+			commandBuffer.BindPipeline(r.skycolorPipeline)
+			commandBuffer.UniformBufferUnit(
+				internal.UniformBufferBindingCamera,
+				r.cameraPlacement.Buffer,
+				r.cameraPlacement.Offset,
+				r.cameraPlacement.Size,
+			)
+			commandBuffer.UniformBufferUnit(
+				internal.UniformBufferBindingSkybox,
+				skyboxPlacement.Buffer,
+				skyboxPlacement.Offset,
+				skyboxPlacement.Size,
+			)
+			commandBuffer.DrawIndexed(0, cubeShape.IndexCount(), 1)
+		}
 	}
 
 	if len(r.debugLines) > 0 {

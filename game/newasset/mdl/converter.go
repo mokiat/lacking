@@ -6,6 +6,7 @@ import (
 
 	"github.com/mokiat/gblob"
 	"github.com/mokiat/gomath/sprec"
+	"github.com/mokiat/lacking/debug/log"
 	"github.com/mokiat/lacking/game/graphics/lsl"
 	asset "github.com/mokiat/lacking/game/newasset"
 )
@@ -14,17 +15,19 @@ func NewConverter(model *Model) *Converter {
 	return &Converter{
 		model: model,
 
-		convertedShaders: make(map[*Shader]uint32),
-		parsedShaders:    make(map[*Shader]*lsl.Shader),
+		convertedSkyShaders: make(map[*Shader]uint32),
+
+		parsedShaders: make(map[*Shader]*lsl.Shader),
 	}
 }
 
 type Converter struct {
 	model *Model
 
-	assetShaders     []asset.Shader
-	convertedShaders map[*Shader]uint32
-	parsedShaders    map[*Shader]*lsl.Shader
+	assetSkyShaders     []asset.Shader
+	convertedSkyShaders map[*Shader]uint32
+
+	parsedShaders map[*Shader]*lsl.Shader
 }
 
 func (c *Converter) Convert() (asset.Model, error) {
@@ -78,7 +81,7 @@ func (c *Converter) convertModel(s *Model) (asset.Model, error) {
 
 	return asset.Model{
 		Nodes:       assetNodes,
-		Shaders:     c.assetShaders,
+		SkyShaders:  c.assetSkyShaders,
 		PointLights: assetPointLights,
 		SpotLights:  assetSpotLights,
 		Skies:       assetSkies,
@@ -121,7 +124,7 @@ func (c *Converter) convertSky(nodeIndex uint32, sky *Sky) (asset.Sky, error) {
 }
 
 func (c *Converter) convertSkyLayer(layer SkyLayer) (asset.SkyLayer, error) {
-	shaderIndex, err := c.convertShader(layer.shader)
+	shaderIndex, err := c.convertSkyShader(layer.shader)
 	if err != nil {
 		return asset.SkyLayer{}, fmt.Errorf("error converting shader: %w", err)
 	}
@@ -157,16 +160,16 @@ func (c *Converter) convertSkyLayer(layer SkyLayer) (asset.SkyLayer, error) {
 	}, nil
 }
 
-func (c *Converter) convertShader(shader *Shader) (uint32, error) {
-	if index, ok := c.convertedShaders[shader]; ok {
+func (c *Converter) convertSkyShader(shader *Shader) (uint32, error) {
+	if index, ok := c.convertedSkyShaders[shader]; ok {
 		return index, nil
 	}
-	shaderIndex := uint32(len(c.assetShaders))
+	shaderIndex := uint32(len(c.assetSkyShaders))
 	assetShader := asset.Shader{
 		SourceCode: shader.SourceCode(),
 	}
-	c.convertedShaders[shader] = shaderIndex
-	c.assetShaders = append(c.assetShaders, assetShader)
+	c.convertedSkyShaders[shader] = shaderIndex
+	c.assetSkyShaders = append(c.assetSkyShaders, assetShader)
 	return shaderIndex, nil
 }
 
@@ -195,6 +198,8 @@ func convert[T any](value any) T {
 	var result T
 	if actual, ok := value.(T); ok {
 		result = actual
+	} else {
+		log.Warn("failed to convert value %v to type %T", value, result)
 	}
 	return result
 }
