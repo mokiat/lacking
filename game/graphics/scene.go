@@ -19,6 +19,8 @@ func newScene(renderer *sceneRenderer) *Scene {
 
 		sky: newSky(),
 
+		skies: ds.NewList[*Sky2](1),
+
 		staticMeshOctree: spatial.NewStaticOctree[uint32](spatial.StaticOctreeSettings{
 			Size:                opt.V(maxSceneSize),
 			MaxDepth:            opt.V(int32(15)),
@@ -60,6 +62,8 @@ type Scene struct {
 	renderer *sceneRenderer
 
 	sky *Sky
+
+	skies *ds.List[*Sky2]
 
 	staticMeshes     []StaticMesh
 	staticMeshOctree *spatial.StaticOctree[uint32]
@@ -131,6 +135,11 @@ func (s *Scene) CreateSpotLight(info SpotLightInfo) *SpotLight {
 // used within this scene.
 func (s *Scene) CreateDirectionalLight(info DirectionalLightInfo) *DirectionalLight {
 	return newDirectionalLight(s, info)
+}
+
+// CreateSky creates a new Sky object to be used within this scene.
+func (s *Scene) CreateSky(info Sky2Info) *Sky2 {
+	return newSky2(s, info)
 }
 
 // CreateStaticMesh creates a new static mesh to be rendered in this scene.

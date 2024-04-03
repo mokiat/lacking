@@ -10,8 +10,21 @@ type Model struct {
 	// Cameras is the collection of cameras that are part of the scene.
 	Cameras []Camera
 
-	// Shaders is the collection of shaders that are part of the scene.
-	Shaders []Shader
+	// GeometryShaders is the collection of shaders that are are to be used
+	// during the geometry pass.
+	GeometryShaders []Shader
+
+	// ShadowShaders is the collection of shaders that are are to be used
+	// during the shadow pass.
+	ShadowShaders []Shader
+
+	// LightShaders is the collection of shaders that are are to be used during
+	// the light pass.
+	LightShaders []Shader
+
+	// SkyShaders is the collection of shaders that are are to be used during
+	// the sky pass.
+	SkyShaders []Shader
 
 	// Materials is the collection of materials that are part of the scene.
 	Materials []Material

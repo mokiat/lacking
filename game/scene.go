@@ -244,9 +244,12 @@ func (s *Scene) ApplyFragment(target *hierarchy.Node, def SceneDefinition2) {
 		}
 	}
 
+	skyShaderByIndex := def.SkyShaders
+
 	pData := placementData{
-		Nodes:    nodeByIndex,
-		Textures: []render.Texture{}, // TODO
+		Nodes:      nodeByIndex,
+		Textures:   []render.Texture{}, // TODO
+		SkyShaders: skyShaderByIndex,
 	}
 
 	for _, lightDef := range def.PointLights {
@@ -257,6 +260,9 @@ func (s *Scene) ApplyFragment(target *hierarchy.Node, def SceneDefinition2) {
 	}
 	for _, lightDef := range def.DirectionalLights {
 		s.placeDirectionalLight(pData, lightDef)
+	}
+	for _, skyDef := range def.Skies {
+		s.placeSky(pData, skyDef)
 	}
 }
 
@@ -714,7 +720,25 @@ func (s *Scene) placeDirectionalLight(data placementData, def asset.DirectionalL
 	node.ApplyToTarget(false)
 }
 
+func (s *Scene) placeSky(data placementData, def asset.Sky) {
+	// node := data.Nodes[def.NodeIndex]
+	s.gfxScene.CreateSky(graphics.Sky2Info{
+		Layers: gog.Map(def.Layers, func(layerDef asset.SkyLayer) graphics.Sky2LayerInfo {
+			return graphics.Sky2LayerInfo{
+				Blending:     layerDef.Blending,
+				Textures:     []render.Texture{}, // TODO
+				MaterialData: layerDef.MaterialDataStd140,
+				Shader:       data.SkyShaders[layerDef.ShaderIndex],
+			}
+		}),
+	})
+	// TODO: Attach sky to node not for possition but so that
+	// when node is deleted, the sky is removed.
+}
+
 type placementData struct {
+	SkyShaders []graphics.SkyShader
+
 	Nodes    []*hierarchy.Node
 	Textures []render.Texture
 }

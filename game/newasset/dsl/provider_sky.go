@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/mokiat/gomath/dprec"
+	"github.com/mokiat/gomath/sprec"
 	"github.com/mokiat/lacking/game/newasset/mdl"
 )
 
@@ -39,7 +40,9 @@ func CreateColorSkyLayer(color dprec.Vec3) Provider[mdl.SkyLayer] {
 		}
 		var layer mdl.SkyLayer
 		layer.SetBlending(false)
-		layer.SetProperty("skyColor", color)
+		layer.SetProperty("skyColor",
+			sprec.NewVec4(float32(color.X), float32(color.Y), float32(color.Z), 1.0),
+		)
 		layer.SetShader(shader)
 		return layer, nil
 	}
@@ -58,7 +61,7 @@ var presetColorSkyShader = func() Provider[*mdl.Shader] {
 		// lsl shading language
 
 		#uniform {
-			skyColor vec3,
+			skyColor vec4,
 		}
 
 		func #fragment() {
