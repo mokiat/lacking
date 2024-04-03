@@ -3,19 +3,16 @@ package game
 import (
 	"fmt"
 
-	"github.com/mokiat/gog"
 	"github.com/mokiat/gomath/dprec"
 	newasset "github.com/mokiat/lacking/game/newasset"
 )
 
 // SceneDefinition2 describes a fragment of a game scene.
-//
-// Deprecated: Get rid of this and use the newasset.Scene directly.
 type SceneDefinition2 struct {
-	Nodes             []SceneNodeDefinition
+	Nodes             []newasset.Node
 	PointLights       []newasset.PointLight
 	SpotLights        []newasset.SpotLight
-	DirectionalLights []SceneDirectionalLight
+	DirectionalLights []newasset.DirectionalLight
 }
 
 // SceneNodeDefinition describes a node within a fragment of a game scene.
@@ -27,13 +24,6 @@ type SceneNodeDefinition struct {
 	Scale         dprec.Vec3
 	IsStationary  bool
 	IsInseparable bool
-}
-
-// SceneDirectionalLight describes a directional light within a fragment of
-// a game scene.
-type SceneDirectionalLight struct {
-	EmitColor dprec.Vec3
-	EmitRange float64
 }
 
 func (r *ResourceSet) loadFragment(resource *newasset.Resource) (SceneDefinition2, error) {
@@ -50,29 +40,13 @@ func (r *ResourceSet) loadFragment(resource *newasset.Resource) (SceneDefinition
 }
 
 func (r *ResourceSet) transformFragmentAsset(sceneAsset newasset.Scene) (SceneDefinition2, error) {
-	nodes := gog.Map(sceneAsset.Nodes, func(node newasset.Node) SceneNodeDefinition {
-		return SceneNodeDefinition{
-			Name:          node.Name,
-			ParentIndex:   int(node.ParentIndex),
-			Translation:   node.Translation,
-			Rotation:      node.Rotation,
-			Scale:         node.Scale,
-			IsStationary:  node.Mask&newasset.NodeMaskStationary != 0,
-			IsInseparable: node.Mask&newasset.NodeMaskInseparable != 0,
-		}
-	})
-
-	directionalLights := gog.Map(sceneAsset.DirectionalLights, func(light newasset.DirectionalLight) SceneDirectionalLight {
-		return SceneDirectionalLight{
-			EmitColor: light.EmitColor,
-			EmitRange: light.EmitDistance,
-		}
-	})
+	// TODO: Load textures, shaders, etc. This is what differentiates
+	// SceneDefinition with just the asset.Scene.
 
 	return SceneDefinition2{
-		Nodes:             nodes,
+		Nodes:             sceneAsset.Nodes,
 		PointLights:       sceneAsset.PointLights,
 		SpotLights:        sceneAsset.SpotLights,
-		DirectionalLights: directionalLights,
+		DirectionalLights: sceneAsset.DirectionalLights,
 	}, nil
 }

@@ -8,10 +8,11 @@ import (
 )
 
 type DirectionalLightInfo struct {
-	Position  dprec.Vec3
-	Rotation  dprec.Quat
-	EmitColor dprec.Vec3
-	EmitRange float64
+	Position   dprec.Vec3
+	Rotation   dprec.Quat
+	EmitColor  dprec.Vec3
+	EmitRange  float64
+	CastShadow bool // TODO: Implement shadow casting
 }
 
 func newDirectionalLight(scene *Scene, info DirectionalLightInfo) *DirectionalLight {
