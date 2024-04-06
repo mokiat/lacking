@@ -17,9 +17,9 @@ func newScene(renderer *sceneRenderer) *Scene {
 	return &Scene{
 		renderer: renderer,
 
-		sky: newSky(),
+		sky: newLegacySky(),
 
-		skies: ds.NewList[*Sky2](1),
+		skies: ds.NewList[*Sky](1),
 
 		staticMeshOctree: spatial.NewStaticOctree[uint32](spatial.StaticOctreeSettings{
 			Size:                opt.V(maxSceneSize),
@@ -61,9 +61,9 @@ func newScene(renderer *sceneRenderer) *Scene {
 type Scene struct {
 	renderer *sceneRenderer
 
-	sky *Sky
+	sky *OldSky
 
-	skies *ds.List[*Sky2]
+	skies *ds.List[*Sky]
 
 	staticMeshes     []StaticMesh
 	staticMeshOctree *spatial.StaticOctree[uint32]
@@ -99,7 +99,7 @@ func (s *Scene) SetActiveCamera(camera *Camera) {
 // Sky returns this scene's sky object.
 // You can use the Sky object to control the
 // background appearance.
-func (s *Scene) Sky() *Sky {
+func (s *Scene) Sky() *OldSky {
 	return s.sky
 }
 
@@ -138,8 +138,8 @@ func (s *Scene) CreateDirectionalLight(info DirectionalLightInfo) *DirectionalLi
 }
 
 // CreateSky creates a new Sky object to be used within this scene.
-func (s *Scene) CreateSky(info Sky2Info) *Sky2 {
-	return newSky2(s, info)
+func (s *Scene) CreateSky(info SkyInfo) *Sky {
+	return newSky(s, info)
 }
 
 // CreateStaticMesh creates a new static mesh to be rendered in this scene.

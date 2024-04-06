@@ -137,3 +137,15 @@ func DirectionalLightFromNode(node *hierarchy.Node) *graphics.DirectionalLight {
 	}
 	return target.Light
 }
+
+type SkyNodeTarget struct {
+	Sky *graphics.Sky
+}
+
+func (t SkyNodeTarget) ApplyFrom(node *hierarchy.Node) {
+	// Do nothing. Skies don't have position.
+}
+
+func (t SkyNodeTarget) Release() {
+	t.Sky.Delete()
+}

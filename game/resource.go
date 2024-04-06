@@ -171,7 +171,7 @@ func (s *ResourceSet) OpenFragmentWithID(id string) async.Promise[SceneDefinitio
 
 	result := async.NewPromise[SceneDefinition2]()
 	go func() {
-		fragment, err := s.loadFragment(resource)
+		fragment, err := s.loadModel2(resource)
 		if err != nil {
 			result.Fail(fmt.Errorf("error loading fragment %q: %w", id, err))
 		} else {
