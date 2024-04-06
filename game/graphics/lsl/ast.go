@@ -86,6 +86,15 @@ type Shader struct {
 	Declarations []Declaration
 }
 
+func (s *Shader) FindUniformBlock() (*UniformBlockDeclaration, bool) {
+	for _, decl := range s.Declarations {
+		if block, ok := decl.(*UniformBlockDeclaration); ok {
+			return block, true
+		}
+	}
+	return nil, false
+}
+
 type UniformBlockDeclaration struct {
 	Fields []Field
 }

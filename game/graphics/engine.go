@@ -132,14 +132,14 @@ func (e *Engine) CreateForwardShader(info ShaderInfo) ForwardShader {
 
 // CreateSkyShader creates a new custom SkyShader using the
 // specified info object.
-func (e *Engine) CreateSkyShader(info ShaderInfo) SkyShader {
+func (e *Engine) CreateSkyShader(info ShaderInfo) *SkyShader {
 	ast, err := lsl.Parse(info.SourceCode)
 	if err != nil {
 		log.Error("Failed to parse sky shader: %v", err)
 		ast = &lsl.Shader{Declarations: []lsl.Declaration{}} // TODO: Something meaningful
 	}
 	// TODO: Validate against Sky globals.
-	return &customSkyShader{
+	return &SkyShader{
 		builder: e.shaderBuilder,
 		ast:     ast,
 	}
@@ -148,22 +148,7 @@ func (e *Engine) CreateSkyShader(info ShaderInfo) SkyShader {
 // CreateSkyDefinition creates a new SkyDefinition using the specified info
 // object.
 func (e *Engine) CreateSkyDefinition(info SkyDefinitionInfo) *SkyDefinition {
-	layers := make([]SkyLayerDefinition, len(info.Layers))
-	for i, layerInfo := range info.Layers {
-		layer := SkyLayerDefinition{
-			engine:      e,
-			textures:    layerInfo.Textures,
-			samplers:    layerInfo.Samplers,
-			uniformData: layerInfo.UniformData,
-			shader:      layerInfo.Shader,
-			blending:    layerInfo.Blending,
-		}
-		layer.createPipeline()
-		layers[i] = layer
-	}
-	return &SkyDefinition{
-		layers: layers,
-	}
+	return newSkyDefinition(e, info)
 }
 
 // CreateTwoDTexture creates a new TwoDTexture using the

@@ -3,6 +3,9 @@ package asset
 // TextureBinding represents a binding of a texture to a shader.
 type TextureBinding struct {
 
+	// BindingName is the name of the binding in the shader.
+	BindingName string
+
 	// TextureIndex is the index of the texture to be bound.
 	TextureIndex uint32
 
@@ -14,6 +17,16 @@ type TextureBinding struct {
 
 	// Mipmapping specifies whether mipmapping should be applied.
 	Mipmapping bool
+}
+
+// PropertyBinding represents a binding of a uniform property to a shader.
+type PropertyBinding struct {
+
+	// BindingName is the name of the binding in the shader.
+	BindingName string
+
+	// Data is the data to be bound.
+	Data []byte
 }
 
 // GeometryPass represents a pass that is applied to the geometry of a mesh.
