@@ -25,6 +25,8 @@ func digestItems(name string, items ...any) ([]byte, error) {
 		switch item := item.(type) {
 		case int:
 			io.WriteString(h, strconv.Itoa(item))
+		case uint8:
+			io.WriteString(h, strconv.Itoa(int(item)))
 		case string:
 			io.WriteString(h, item)
 		case float32:
