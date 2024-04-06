@@ -57,6 +57,12 @@ const (
 
 	// TypeNameMat4 is the name of the 4x4 matrix type.
 	TypeNameMat4 = "mat4"
+
+	// TypeNameSampler2D is the name of the 2D sampler type.
+	TypeNameSampler2D = "sampler2D"
+
+	// TypeNameSamplerCube is the name of the cube sampler type.
+	TypeNameSamplerCube = "samplerCube"
 )
 
 // Expression represents a sequence of tokens that can be evaluated to a value.
@@ -86,6 +92,24 @@ type Shader struct {
 	Declarations []Declaration
 }
 
+func (s *Shader) FindFunction(name string) (*FunctionDeclaration, bool) {
+	for _, decl := range s.Declarations {
+		if fn, ok := decl.(*FunctionDeclaration); ok && fn.Name == name {
+			return fn, true
+		}
+	}
+	return nil, false
+}
+
+func (s *Shader) FindTextureBlock() (*TextureBlockDeclaration, bool) {
+	for _, decl := range s.Declarations {
+		if block, ok := decl.(*TextureBlockDeclaration); ok {
+			return block, true
+		}
+	}
+	return nil, false
+}
+
 func (s *Shader) FindUniformBlock() (*UniformBlockDeclaration, bool) {
 	for _, decl := range s.Declarations {
 		if block, ok := decl.(*UniformBlockDeclaration); ok {
@@ -94,6 +118,12 @@ func (s *Shader) FindUniformBlock() (*UniformBlockDeclaration, bool) {
 	}
 	return nil, false
 }
+
+type TextureBlockDeclaration struct {
+	Fields []Field
+}
+
+func (*TextureBlockDeclaration) _isDeclaration() {}
 
 type UniformBlockDeclaration struct {
 	Fields []Field

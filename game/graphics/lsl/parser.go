@@ -38,7 +38,13 @@ func (p *Parser) ParseShader() (*Shader, error) {
 			if err := p.ParseComment(); err != nil {
 				return nil, fmt.Errorf("error parsing comment: %w", err)
 			}
-		case token.IsSpecificIdentifier("#uniform"):
+		case token.IsSpecificIdentifier("textures"):
+			decl, err := p.ParseTextureBlock()
+			if err != nil {
+				return nil, fmt.Errorf("error parsing texture block: %w", err)
+			}
+			shader.Declarations = append(shader.Declarations, decl)
+		case token.IsSpecificIdentifier("uniforms"):
 			decl, err := p.ParseUniformBlock()
 			if err != nil {
 				return nil, fmt.Errorf("error parsing uniform block: %w", err)
@@ -241,9 +247,29 @@ func (p *Parser) ParseUnnamedParameterList() ([]Field, error) {
 	}
 }
 
+func (p *Parser) ParseTextureBlock() (*TextureBlockDeclaration, error) {
+	uniformToken := p.nextToken()
+	if !uniformToken.IsSpecificIdentifier("textures") {
+		return nil, fmt.Errorf("expected uniform keyword")
+	}
+	if err := p.ParseBlockStart(); err != nil {
+		return nil, fmt.Errorf("error parsing uniform block start: %w", err)
+	}
+	fields, err := p.ParseNamedParameterList()
+	if err != nil {
+		return nil, fmt.Errorf("error parsing varying block fields: %w", err)
+	}
+	if err := p.ParseBlockEnd(); err != nil {
+		return nil, fmt.Errorf("error parsing uniform block end: %w", err)
+	}
+	return &TextureBlockDeclaration{
+		Fields: fields,
+	}, nil
+}
+
 func (p *Parser) ParseUniformBlock() (*UniformBlockDeclaration, error) {
 	uniformToken := p.nextToken()
-	if !uniformToken.IsSpecificIdentifier("#uniform") {
+	if !uniformToken.IsSpecificIdentifier("uniforms") {
 		return nil, fmt.Errorf("expected uniform keyword")
 	}
 	if err := p.ParseBlockStart(); err != nil {
@@ -559,6 +585,7 @@ func (p *Parser) parseImperativeStatement() (Statement, error) {
 		}
 		return &Assignment{
 			Target:     target,
+			Operator:   operatorToken.Value,
 			Expression: expr,
 		}, nil
 
