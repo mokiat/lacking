@@ -1115,7 +1115,7 @@ func (r *sceneRenderer) renderSky(sky *Sky) {
 	commandBuffer := r.stageData.CommandBuffer()
 	uniformBuffer := r.stageData.UniformBuffer()
 	for _, layer := range sky.definition.layers {
-		commandBuffer.BindPipeline(layer.pipeline)
+		commandBuffer.BindPipeline(layer.Pipeline)
 		commandBuffer.UniformBufferUnit(
 			internal.UniformBufferBindingCamera,
 			r.cameraPlacement.Buffer,
@@ -1123,7 +1123,7 @@ func (r *sceneRenderer) renderSky(sky *Sky) {
 			r.cameraPlacement.Size,
 		)
 		materialData := renderutil.WriteUniform(uniformBuffer, internal.MaterialUniform{
-			Data: layer.uniformData,
+			Data: layer.UniformSet.Data(),
 		})
 		commandBuffer.UniformBufferUnit(
 			internal.UniformBufferBindingMaterial,
@@ -1131,16 +1131,15 @@ func (r *sceneRenderer) renderSky(sky *Sky) {
 			materialData.Offset,
 			materialData.Size,
 		)
-		texCount := min(len(layer.textures), len(layer.samplers))
-		for i := range texCount {
-			if texture := layer.textures[i]; texture != nil {
+		for i := range layer.TextureSet.TextureCount() {
+			if texture := layer.TextureSet.TextureAt(i); texture != nil {
 				commandBuffer.TextureUnit(i, texture)
 			}
-			if sampler := layer.samplers[i]; sampler != nil {
+			if sampler := layer.TextureSet.SamplerAt(i); sampler != nil {
 				commandBuffer.SamplerUnit(i, sampler)
 			}
 		}
-		commandBuffer.DrawIndexed(int(layer.indexByteOffset), int(layer.indexCount), 1)
+		commandBuffer.DrawIndexed(int(layer.IndexByteOffset), int(layer.IndexCount), 1)
 	}
 }
 

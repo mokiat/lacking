@@ -7,11 +7,12 @@ import (
 	"github.com/mokiat/gomath/dprec"
 	"github.com/mokiat/lacking/game/graphics"
 	newasset "github.com/mokiat/lacking/game/newasset"
+	"github.com/mokiat/lacking/render"
 )
 
 // SceneDefinition2 describes a fragment of a game scene.
 type SceneDefinition2 struct {
-	SkyShaders     []graphics.SkyShader
+	SkyShaders     []*graphics.SkyShader
 	SkyDefinitions []*graphics.SkyDefinition
 
 	Nodes             []newasset.Node
@@ -60,7 +61,9 @@ func (r *ResourceSet) transformModel2Asset(sceneAsset newasset.Model) (SceneDefi
 	// TODO: Load textures, shaders, etc. This is what differentiates
 	// SceneDefinition with just the asset.Scene.
 
-	skyShaders := make([]graphics.SkyShader, len(sceneAsset.SkyShaders))
+	textures := make([]render.Texture, 0) // TODO
+
+	skyShaders := make([]*graphics.SkyShader, len(sceneAsset.SkyShaders))
 	for i, skyShaderAsset := range sceneAsset.SkyShaders {
 		shaderInfo := graphics.ShaderInfo{
 			SourceCode: skyShaderAsset.SourceCode,
@@ -75,16 +78,21 @@ func (r *ResourceSet) transformModel2Asset(sceneAsset newasset.Model) (SceneDefi
 		skyDefinitionInfo := graphics.SkyDefinitionInfo{
 			Layers: gog.Map(skyAsset.Layers, func(layerAsset newasset.SkyLayer) graphics.SkyLayerDefinitionInfo {
 				return graphics.SkyLayerDefinitionInfo{
-					Shader: skyShaders[layerAsset.ShaderIndex],
-					// Textures: layerAsset.Textures, // TODO
-					// Samplers: 	 layerAsset.Samplers, // TODO
-					UniformData: layerAsset.MaterialDataStd140,
-					Blending:    layerAsset.Blending,
+					Shader:   skyShaders[layerAsset.ShaderIndex],
+					Blending: layerAsset.Blending,
 				}
 			}),
 		}
 		r.gfxWorker.ScheduleVoid(func() {
-			skyDefinitions[i] = gfxEngine.CreateSkyDefinition(skyDefinitionInfo)
+			skyDefinition := gfxEngine.CreateSkyDefinition(skyDefinitionInfo)
+			for _, binding := range skyAsset.Textures {
+				texture := textures[binding.TextureIndex]
+				skyDefinition.SetTexture(binding.BindingName, texture)
+			}
+			for _, binding := range skyAsset.Properties {
+				skyDefinition.SetProperty(binding.BindingName, binding.Data)
+			}
+			skyDefinitions[i] = skyDefinition
 		})
 	}
 

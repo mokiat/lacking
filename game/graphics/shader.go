@@ -78,12 +78,6 @@ type ForwardShader interface {
 	_isForwardShader()
 }
 
-// SkyShader represents a shader that is used during the sky pass.
-type SkyShader interface {
-	internal.Shader
-	_isSkyShader()
-}
-
 type customGeometryShader struct {
 	builder ShaderBuilder
 	ast     *lsl.Shader
@@ -123,16 +117,15 @@ func (s *customForwardShader) CreateProgramCode(info internal.ShaderProgramCodeI
 
 func (*customForwardShader) _isForwardShader() {}
 
-type customSkyShader struct {
+// SkyShader represents a shader that is used during the sky pass.
+type SkyShader struct {
 	builder ShaderBuilder
 	ast     *lsl.Shader
 }
 
-func (s *customSkyShader) CreateProgramCode(info internal.ShaderProgramCodeInfo) render.ProgramCode {
+func (s *SkyShader) createProgramCode() render.ProgramCode {
 	return s.builder.BuildSkyCode(SkyConstraints{}, s.ast)
 }
-
-func (*customSkyShader) _isSkyShader() {}
 
 type defaultGeometryShader struct {
 	shaders ShaderCollection

@@ -8,6 +8,7 @@ import (
 	"strconv"
 
 	"github.com/mokiat/gomath/dprec"
+	"github.com/mokiat/gomath/sprec"
 )
 
 type DigestFunc func() ([]byte, error)
@@ -26,9 +27,19 @@ func digestItems(name string, items ...any) ([]byte, error) {
 			io.WriteString(h, strconv.Itoa(item))
 		case string:
 			io.WriteString(h, item)
+		case float32:
+			io.WriteString(h, fmt.Sprintf("%f", item))
+		case sprec.Vec2:
+			io.WriteString(h, item.GoString())
+		case sprec.Vec3:
+			io.WriteString(h, item.GoString())
+		case sprec.Vec4:
+			io.WriteString(h, item.GoString())
 		case float64:
 			io.WriteString(h, fmt.Sprintf("%f", item))
 		case dprec.Vec3:
+			io.WriteString(h, item.GoString())
+		case dprec.Vec4:
 			io.WriteString(h, item.GoString())
 		case dprec.Quat:
 			io.WriteString(h, item.GoString())

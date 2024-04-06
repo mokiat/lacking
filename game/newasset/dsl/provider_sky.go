@@ -30,7 +30,7 @@ func CreateSky(name string, operations ...Operation) Provider[mdl.Node] {
 	return OnceProvider(FuncProvider(get, digest))
 }
 
-func CreateColorSkyLayer(color dprec.Vec3) Provider[mdl.SkyLayer] {
+func CreateColorSkyLayer() Provider[mdl.SkyLayer] {
 	shaderProvider := presetColorSkyShader
 
 	get := func() (mdl.SkyLayer, error) {
@@ -40,26 +40,30 @@ func CreateColorSkyLayer(color dprec.Vec3) Provider[mdl.SkyLayer] {
 		}
 		var layer mdl.SkyLayer
 		layer.SetBlending(false)
-		layer.SetProperty("skyColor",
-			sprec.NewVec4(float32(color.X), float32(color.Y), float32(color.Z), 1.0),
-		)
 		layer.SetShader(shader)
 		return layer, nil
 	}
 
 	digest := func() ([]byte, error) {
-		return digestItems("color-sky-layer", color, shaderProvider)
+		return digestItems("color-sky-layer", shaderProvider)
 	}
 
 	return OnceProvider(FuncProvider(get, digest))
+}
+
+func SetSkyColor(color dprec.Vec3) Operation {
+	return SetProperty("skyColor", sprec.NewVec4(
+		float32(color.X),
+		float32(color.Y),
+		float32(color.Z),
+		1.0,
+	))
 }
 
 var presetColorSkyShader = func() Provider[*mdl.Shader] {
 	get := func() (*mdl.Shader, error) {
 		var shader mdl.Shader
 		shader.SetSourceCode(`
-		// lsl shading language
-
 		#uniform {
 			skyColor vec4,
 		}
