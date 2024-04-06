@@ -15,7 +15,7 @@ func (b *BaseSkyLayerable) AddSkyLayer(layer SkyLayer) {
 type Sky struct {
 	BaseNode
 	BasePropertyHolder
-	BaseTextureHolder
+	BaseSamplerHolder
 	BaseSkyLayerable
 }
 

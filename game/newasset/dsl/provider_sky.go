@@ -60,11 +60,36 @@ func SetSkyColor(color dprec.Vec3) Operation {
 	))
 }
 
+func CreateTextureSkyLayer() Provider[mdl.SkyLayer] {
+	shaderProvider := presetTextureSkyShader
+
+	get := func() (mdl.SkyLayer, error) {
+		shader, err := shaderProvider.Get()
+		if err != nil {
+			return mdl.SkyLayer{}, fmt.Errorf("error getting preset shader: %w", err)
+		}
+		var layer mdl.SkyLayer
+		layer.SetBlending(false)
+		layer.SetShader(shader)
+		return layer, nil
+	}
+
+	digest := func() ([]byte, error) {
+		return digestItems("texture-sky-layer", shaderProvider)
+	}
+
+	return OnceProvider(FuncProvider(get, digest))
+}
+
+func SetSkySampler(samplerProvider Provider[*mdl.Sampler]) Operation {
+	return SetSampler("skyColor", samplerProvider)
+}
+
 var presetColorSkyShader = func() Provider[*mdl.Shader] {
 	get := func() (*mdl.Shader, error) {
 		var shader mdl.Shader
 		shader.SetSourceCode(`
-		#uniform {
+		uniforms {
 			skyColor vec4,
 		}
 
@@ -77,6 +102,28 @@ var presetColorSkyShader = func() Provider[*mdl.Shader] {
 
 	digest := func() ([]byte, error) {
 		return digestItems("color-sky-shader")
+	}
+
+	return OnceProvider(FuncProvider(get, digest))
+}()
+
+var presetTextureSkyShader = func() Provider[*mdl.Shader] {
+	get := func() (*mdl.Shader, error) {
+		var shader mdl.Shader
+		shader.SetSourceCode(`
+		textures {
+			skyColor textureCube,
+		}
+
+		func #fragment() {
+			#color = sample(skyColor, #direction)
+		}
+		`)
+		return &shader, nil
+	}
+
+	digest := func() ([]byte, error) {
+		return digestItems("texture-sky-shader")
 	}
 
 	return OnceProvider(FuncProvider(get, digest))

@@ -41,11 +41,26 @@ func (b *BasePropertyHolder) SetProperty(name string, value any) {
 }
 
 type TextureHolder interface {
-	// TODO
+	Sampler(name string) *Sampler
+	SetSampler(name string, texture *Sampler)
 }
 
-type BaseTextureHolder struct {
-	// TODO
+type BaseSamplerHolder struct {
+	samplers map[string]*Sampler
+}
+
+func (b *BaseSamplerHolder) Sampler(name string) *Sampler {
+	if b.samplers == nil {
+		return nil
+	}
+	return b.samplers[name]
+}
+
+func (b *BaseSamplerHolder) SetSampler(name string, sampler *Sampler) {
+	if b.samplers == nil {
+		b.samplers = make(map[string]*Sampler)
+	}
+	b.samplers[name] = sampler
 }
 
 type Shadable interface {
