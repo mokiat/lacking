@@ -42,10 +42,56 @@ var _ = Describe("Parse", func() {
 		})
 	})
 
+	When("texture blocks are present", func() {
+		BeforeEach(func() {
+			inSource = `
+				textures { // header
+					color sampler2D, // field1
+					// has two fields
+					intensity samplerCube, // field2
+				}
+
+				// comment here
+
+				textures {
+					value sampler2D,
+				}
+			`
+		})
+
+		It("produces a shader with the texture blocks", func() {
+			Expect(outErr).ToNot(HaveOccurred())
+			Expect(outShader).To(Equal(&lsl.Shader{
+				Declarations: []lsl.Declaration{
+					&lsl.TextureBlockDeclaration{
+						Fields: []lsl.Field{
+							{
+								Name: "color",
+								Type: lsl.TypeNameSampler2D,
+							},
+							{
+								Name: "intensity",
+								Type: lsl.TypeNameSamplerCube,
+							},
+						},
+					},
+					&lsl.TextureBlockDeclaration{
+						Fields: []lsl.Field{
+							{
+								Name: "value",
+								Type: lsl.TypeNameSampler2D,
+							},
+						},
+					},
+				},
+			}))
+		})
+	})
+
 	When("uniform blocks are present", func() {
 		BeforeEach(func() {
 			inSource = `
-				#uniform { // header
+				uniforms { // header
 					color vec3, // field1
 					// has two fields
 					intensity float, // field2
@@ -53,7 +99,7 @@ var _ = Describe("Parse", func() {
 
 				// comment here
 
-				#uniform {
+				uniforms {
 					value vec4,
 				}
 			`
@@ -384,6 +430,31 @@ var _ = Describe("Parser", func() {
 		),
 	)
 
+	DescribeTable("ParseTextureBlock", func(inSource string, expectedBlock *lsl.TextureBlockDeclaration) {
+		parser := lsl.NewParser(inSource)
+		block, err := parser.ParseTextureBlock()
+		Expect(err).ToNot(HaveOccurred())
+		Expect(block).To(Equal(expectedBlock))
+	},
+		Entry("empty",
+			`textures {
+			}`,
+			&lsl.TextureBlockDeclaration{},
+		),
+		Entry("with fields",
+			`textures {
+				first sampler2D,
+				second samplerCube,
+			}`,
+			&lsl.TextureBlockDeclaration{
+				Fields: []lsl.Field{
+					{Name: "first", Type: "sampler2D"},
+					{Name: "second", Type: "samplerCube"},
+				},
+			},
+		),
+	)
+
 	DescribeTable("ParseUniformBlock", func(inSource string, expectedBlock *lsl.UniformBlockDeclaration) {
 		parser := lsl.NewParser(inSource)
 		block, err := parser.ParseUniformBlock()
@@ -391,12 +462,12 @@ var _ = Describe("Parser", func() {
 		Expect(block).To(Equal(expectedBlock))
 	},
 		Entry("empty",
-			`#uniform {
+			`uniforms {
 			}`,
 			&lsl.UniformBlockDeclaration{},
 		),
 		Entry("with fields",
-			`#uniform {
+			`uniforms {
 				color vec4,
 				intensity float,
 			}`,
