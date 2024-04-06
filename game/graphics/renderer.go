@@ -42,9 +42,7 @@ const (
 
 var ShowLightView bool
 
-func newRenderer(api render.API, shaders ShaderCollection) *sceneRenderer {
-	stageData := newCommonStageData(api)
-
+func newRenderer(api render.API, shaders ShaderCollection, stageData *commonStageData) *sceneRenderer {
 	return &sceneRenderer{
 		api:     api,
 		shaders: shaders,
@@ -242,7 +240,6 @@ func (r *sceneRenderer) releaseFramebuffers() {
 }
 
 func (r *sceneRenderer) Allocate() {
-	r.stageData.Allocate()
 	r.createFramebuffers(800, 600)
 	r.bloomStage.Allocate()
 
@@ -585,8 +582,6 @@ func (r *sceneRenderer) Allocate() {
 }
 
 func (r *sceneRenderer) Release() {
-	defer r.stageData.Release()
-
 	defer r.releaseFramebuffers()
 
 	defer r.bloomStage.Release()
@@ -1037,28 +1032,7 @@ func (r *sceneRenderer) renderForwardPass(ctx renderCtx) {
 	})
 
 	if !ctx.scene.skies.IsEmpty() {
-		sky := ctx.scene.skies.Get(0)
-		uniformBuffer := r.stageData.UniformBuffer()
-		for _, layer := range sky.layers {
-			commandBuffer.BindPipeline(layer.pipeline)
-			commandBuffer.UniformBufferUnit(
-				internal.UniformBufferBindingCamera,
-				r.cameraPlacement.Buffer,
-				r.cameraPlacement.Offset,
-				r.cameraPlacement.Size,
-			)
-			// TODO: Bind textures
-			materialData := renderutil.WriteUniform(uniformBuffer, internal.MaterialUniform{
-				Data: layer.materialData,
-			})
-			commandBuffer.UniformBufferUnit(
-				internal.UniformBufferBindingMaterial,
-				materialData.Buffer,
-				materialData.Offset,
-				materialData.Size,
-			)
-			commandBuffer.DrawIndexed(0, cubeShape.IndexCount(), 1)
-		}
+		r.renderSky(ctx.scene.skies.Get(0))
 	} else {
 		// Fallback to old sky implementation
 		sky := ctx.scene.sky
@@ -1135,6 +1109,39 @@ func (r *sceneRenderer) renderForwardPass(ctx renderCtx) {
 	}
 	r.renderMeshRenderItems(meshCtx, r.renderItems)
 	commandBuffer.EndRenderPass()
+}
+
+func (r *sceneRenderer) renderSky(sky *Sky) {
+	commandBuffer := r.stageData.CommandBuffer()
+	uniformBuffer := r.stageData.UniformBuffer()
+	for _, layer := range sky.definition.layers {
+		commandBuffer.BindPipeline(layer.pipeline)
+		commandBuffer.UniformBufferUnit(
+			internal.UniformBufferBindingCamera,
+			r.cameraPlacement.Buffer,
+			r.cameraPlacement.Offset,
+			r.cameraPlacement.Size,
+		)
+		materialData := renderutil.WriteUniform(uniformBuffer, internal.MaterialUniform{
+			Data: layer.uniformData,
+		})
+		commandBuffer.UniformBufferUnit(
+			internal.UniformBufferBindingMaterial,
+			materialData.Buffer,
+			materialData.Offset,
+			materialData.Size,
+		)
+		texCount := min(len(layer.textures), len(layer.samplers))
+		for i := range texCount {
+			if texture := layer.textures[i]; texture != nil {
+				commandBuffer.TextureUnit(i, texture)
+			}
+			if sampler := layer.samplers[i]; sampler != nil {
+				commandBuffer.SamplerUnit(i, sampler)
+			}
+		}
+		commandBuffer.DrawIndexed(int(layer.indexByteOffset), int(layer.indexCount), 1)
+	}
 }
 
 func (r *sceneRenderer) renderExposureProbePass(ctx renderCtx) {

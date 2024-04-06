@@ -13,12 +13,16 @@ import (
 )
 
 func NewEngine(api render.API, shaders ShaderCollection, shaderBuilder ShaderBuilder) *Engine {
-	renderer := newRenderer(api, shaders)
+	stageData := newCommonStageData(api)
+	renderer := newRenderer(api, shaders, stageData)
+
 	return &Engine{
 		api:           api,
 		shaders:       shaders,
 		shaderBuilder: shaderBuilder,
-		renderer:      renderer,
+
+		stageData: stageData,
+		renderer:  renderer,
 
 		debug: &Debug{
 			renderer: renderer,
@@ -31,7 +35,9 @@ type Engine struct {
 	api           render.API
 	shaders       ShaderCollection
 	shaderBuilder ShaderBuilder
-	renderer      *sceneRenderer
+
+	stageData *commonStageData
+	renderer  *sceneRenderer
 
 	debug *Debug
 
@@ -40,13 +46,15 @@ type Engine struct {
 
 // Create initializes this 3D engine.
 func (e *Engine) Create() {
+	e.stageData.Allocate()
 	e.renderer.Allocate()
 }
 
 // Destroy releases resources allocated by this
 // 3D engine.
 func (e *Engine) Destroy() {
-	e.renderer.Release()
+	defer e.stageData.Release()
+	defer e.renderer.Release()
 }
 
 // Debug allows the rendering of debug lines on the screen.
@@ -134,6 +142,27 @@ func (e *Engine) CreateSkyShader(info ShaderInfo) SkyShader {
 	return &customSkyShader{
 		builder: e.shaderBuilder,
 		ast:     ast,
+	}
+}
+
+// CreateSkyDefinition creates a new SkyDefinition using the specified info
+// object.
+func (e *Engine) CreateSkyDefinition(info SkyDefinitionInfo) *SkyDefinition {
+	layers := make([]SkyLayerDefinition, len(info.Layers))
+	for i, layerInfo := range info.Layers {
+		layer := SkyLayerDefinition{
+			engine:      e,
+			textures:    layerInfo.Textures,
+			samplers:    layerInfo.Samplers,
+			uniformData: layerInfo.UniformData,
+			shader:      layerInfo.Shader,
+			blending:    layerInfo.Blending,
+		}
+		layer.createPipeline()
+		layers[i] = layer
+	}
+	return &SkyDefinition{
+		layers: layers,
 	}
 }
 
@@ -636,6 +665,51 @@ func (e *Engine) createForwardPassPipeline(info internal.RenderPassPipelineInfo)
 		BlendOpColor:                render.BlendOperationAdd,
 		BlendOpAlpha:                render.BlendOperationAdd,
 	})
+}
+
+func (e *Engine) createSkyProgram(programCode render.ProgramCode) render.Program {
+	return e.api.CreateProgram(render.ProgramInfo{
+		SourceCode: programCode,
+		TextureBindings: []render.TextureBinding{
+			render.NewTextureBinding("lackingTexture0", 0),
+			render.NewTextureBinding("lackingTexture1", 1),
+			render.NewTextureBinding("lackingTexture2", 2),
+			render.NewTextureBinding("lackingTexture3", 3),
+			render.NewTextureBinding("lackingTexture4", 4),
+			render.NewTextureBinding("lackingTexture5", 5),
+			render.NewTextureBinding("lackingTexture6", 6),
+			render.NewTextureBinding("lackingTexture7", 7),
+		},
+		UniformBindings: []render.UniformBinding{
+			render.NewUniformBinding("Camera", internal.UniformBufferBindingCamera),
+			render.NewUniformBinding("Material", internal.UniformBufferBindingMaterial),
+		},
+	})
+}
+
+func (e *Engine) createSkyPipeline(info internal.SkyPipelineInfo) (render.Pipeline, uint32, uint32) {
+	cubeShape := e.stageData.CubeShape()
+	pipeline := e.api.CreatePipeline(render.PipelineInfo{
+		Program:                     info.Program,
+		VertexArray:                 cubeShape.VertexArray(),
+		Topology:                    cubeShape.Topology(),
+		Culling:                     render.CullModeBack,
+		FrontFace:                   render.FaceOrientationCW, // we are inside the cube
+		DepthTest:                   true,
+		DepthWrite:                  false,
+		DepthComparison:             render.ComparisonLessOrEqual,
+		StencilTest:                 false,
+		ColorWrite:                  render.ColorMaskTrue,
+		BlendEnabled:                info.Blending,
+		BlendSourceColorFactor:      render.BlendFactorSourceAlpha,
+		BlendSourceAlphaFactor:      render.BlendFactorOne,
+		BlendDestinationColorFactor: render.BlendFactorOneMinusSourceAlpha,
+		BlendDestinationAlphaFactor: render.BlendFactorZero,
+		BlendOpColor:                render.BlendOperationAdd,
+		BlendOpAlpha:                render.BlendOperationAdd,
+		BlendColor:                  [4]float32{0.0, 0.0, 0.0, 0.0},
+	})
+	return pipeline, 0, uint32(cubeShape.IndexCount())
 }
 
 func (e *Engine) pickFreeRenderPassKey() uint32 {
