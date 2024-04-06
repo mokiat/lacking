@@ -112,7 +112,7 @@ var presetTextureSkyShader = func() Provider[*mdl.Shader] {
 		var shader mdl.Shader
 		shader.SetSourceCode(`
 		textures {
-			skyColor textureCube,
+			skyColor samplerCube,
 		}
 
 		func #fragment() {

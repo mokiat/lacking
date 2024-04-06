@@ -1,80 +1,109 @@
 package mdl
 
-import asset "github.com/mokiat/lacking/game/newasset"
+import (
+	"fmt"
 
-const (
-	WrapModeClamp          WrapMode = asset.WrapModeClamp
-	WrapModeRepeat         WrapMode = asset.WrapModeRepeat
-	WrapModeMirroredRepeat WrapMode = asset.WrapModeMirroredRepeat
+	"github.com/mokiat/lacking/game/asset"
 )
 
-type WrapMode = asset.WrapMode
-
 const (
-	FilterModeNearest     FilterMode = asset.FilterModeNearest
-	FilterModeLinear      FilterMode = asset.FilterModeLinear
-	FilterModeAnisotropic FilterMode = asset.FilterModeAnisotropic
+	TextureFormatR8       TextureFormat = asset.TexelFormatR8
+	TextureFormatR16      TextureFormat = asset.TexelFormatR16
+	TextureFormatR16F     TextureFormat = asset.TexelFormatR16F
+	TextureFormatR32F     TextureFormat = asset.TexelFormatR32F
+	TextureFormatRG8      TextureFormat = asset.TexelFormatRG8
+	TextureFormatRG16     TextureFormat = asset.TexelFormatRG16
+	TextureFormatRG16F    TextureFormat = asset.TexelFormatRG16F
+	TextureFormatRG32F    TextureFormat = asset.TexelFormatRG32F
+	TextureFormatRGB8     TextureFormat = asset.TexelFormatRGB8
+	TextureFormatRGB16    TextureFormat = asset.TexelFormatRGB16
+	TextureFormatRGB16F   TextureFormat = asset.TexelFormatRGB16F
+	TextureFormatRGB32F   TextureFormat = asset.TexelFormatRGB32F
+	TextureFormatRGBA8    TextureFormat = asset.TexelFormatRGBA8
+	TextureFormatRGBA16   TextureFormat = asset.TexelFormatRGBA16
+	TextureFormatRGBA16F  TextureFormat = asset.TexelFormatRGBA16F
+	TextureFormatRGBA32F  TextureFormat = asset.TexelFormatRGBA32F
+	TextureFormatDepth16F TextureFormat = asset.TexelFormatDepth16F
+	TextureFormatDepth32F TextureFormat = asset.TexelFormatDepth32F
 )
 
-type FilterMode = asset.FilterMode
+type TextureFormat = asset.TexelFormat
 
 type Texture struct {
-	// TODO
+	width  int
+	height int
+	format TextureFormat
+	layers []TextureLayer
 }
 
-type TextureReferrer interface {
-	Texture() *Texture
-	SetTexture(texture *Texture)
+func (t *Texture) Width() int {
+	return t.width
 }
 
-type BaseTextureReferrer struct {
-	texture *Texture
+func (t *Texture) Height() int {
+	return t.height
 }
 
-func (b *BaseTextureReferrer) Texture() *Texture {
-	return b.texture
+func (t *Texture) Format() TextureFormat {
+	return t.format
 }
 
-func (b *BaseTextureReferrer) SetTexture(texture *Texture) {
-	b.texture = texture
+func (t *Texture) SetFormat(format TextureFormat) {
+	t.format = format
+	if len(t.layers) > 0 {
+		panic("setting texture format with layers is not supported yet")
+	}
 }
 
-type Wrappable interface {
-	WrapMode() WrapMode
-	SetWrapMode(mode WrapMode)
+func (t *Texture) Resize(width, height int) {
+	t.width = width
+	t.height = height
+	if len(t.layers) > 0 {
+		panic("resizing texture with layers is not supported yet")
+	}
 }
 
-type BaseWrappable struct {
-	wrapMode WrapMode
+func (t *Texture) EnsureLayer(index int) {
+	for index >= len(t.layers) {
+		t.layers = append(t.layers, createTextureLayer(t.width, t.height, t.format))
+	}
 }
 
-func (b *BaseWrappable) WrapMode() WrapMode {
-	return b.wrapMode
+func (t *Texture) SetLayerImage(index int, image *Image) {
+	t.EnsureLayer(index)
+
+	if image.width != t.width || image.height != t.height {
+		image = image.Scale(t.width, t.height)
+	}
+	switch t.format {
+	case TextureFormatRGBA8:
+		copy(t.layers[index].data, image.RGBA8Data())
+	case TextureFormatRGBA16F:
+		panic("TODO")
+	case TextureFormatRGBA32F:
+		copy(t.layers[index].data, image.RGBA32FData())
+	default:
+		panic(fmt.Errorf("unsupported texture format: %v", t.format))
+	}
 }
 
-func (b *BaseWrappable) SetWrapMode(mode WrapMode) {
-	b.wrapMode = mode
+func createTextureLayer(width, height int, format TextureFormat) TextureLayer {
+	var texelSize int
+	switch format {
+	case TextureFormatRGBA8:
+		texelSize = 4
+	case TextureFormatRGBA16F:
+		texelSize = 8
+	case TextureFormatRGBA32F:
+		texelSize = 16
+	default:
+		panic(fmt.Errorf("unsupported texture format: %v", format))
+	}
+	return TextureLayer{
+		data: make([]byte, width*height*texelSize),
+	}
 }
 
-type Filterable interface {
-	FilterMode() FilterMode
-	SetFilterMode(mode FilterMode)
-}
-
-type BaseFilterable struct {
-	filterMode FilterMode
-}
-
-func (b *BaseFilterable) FilterMode() FilterMode {
-	return b.filterMode
-}
-
-func (b *BaseFilterable) SetFilterMode(mode FilterMode) {
-	b.filterMode = mode
-}
-
-type Sampler struct {
-	BaseTextureReferrer
-	BaseWrappable
-	BaseFilterable
+type TextureLayer struct {
+	data []byte
 }
