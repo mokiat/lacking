@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/mokiat/lacking/game/asset"
+	newasset "github.com/mokiat/lacking/game/newasset"
 	"github.com/mokiat/lacking/util/resource"
 )
 
@@ -53,7 +54,7 @@ func (p *Pipeline) SaveCubeTextureAsset(resource asset.Resource, image CubeImage
 	action := &SaveCubeTextureAction{
 		resource:      resource,
 		imageProvider: image,
-		format:        asset.TexelFormatRGBA8,
+		format:        newasset.TexelFormatRGBA8,
 	}
 	for _, opt := range opts {
 		opt(action)

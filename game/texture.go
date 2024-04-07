@@ -8,19 +8,6 @@ import (
 	"github.com/mokiat/lacking/render"
 )
 
-func (r *ResourceSet) loadTwoDTexture(resource asset.Resource) (render.Texture, error) {
-	texAsset := new(asset.TwoDTexture)
-
-	ioTask := func() error {
-		return resource.ReadContent(texAsset)
-	}
-	if err := r.ioWorker.Schedule(ioTask).Wait(); err != nil {
-		return nil, fmt.Errorf("failed to read asset: %w", err)
-	}
-
-	return r.allocateTwoDTexture(texAsset), nil
-}
-
 func (r *ResourceSet) allocateTwoDTexture(texAsset *asset.TwoDTexture) render.Texture {
 	renderAPI := r.engine.Graphics().API()
 
@@ -31,7 +18,7 @@ func (r *ResourceSet) allocateTwoDTexture(texAsset *asset.TwoDTexture) render.Te
 			Height:          uint32(texAsset.Height),
 			GenerateMipmaps: texAsset.Flags.Has(newasset.TextureFlagMipmapping),
 			GammaCorrection: !texAsset.Flags.Has(newasset.TextureFlagLinearSpace),
-			Format:          resolveDataFormat3(texAsset.Format),
+			Format:          resolveDataFormat(texAsset.Format),
 			Data:            texAsset.Data,
 		})
 	}).Wait()
@@ -55,7 +42,7 @@ func (r *ResourceSet) allocateCubeTexture(resource asset.Resource) (render.Textu
 			Dimension:       uint32(texAsset.Dimension),
 			GenerateMipmaps: texAsset.Flags.Has(newasset.TextureFlagMipmapping),
 			GammaCorrection: !texAsset.Flags.Has(newasset.TextureFlagLinearSpace),
-			Format:          resolveDataFormat3(texAsset.Format),
+			Format:          resolveDataFormat(texAsset.Format),
 			FrontSideData:   texAsset.FrontSide.Data,
 			BackSideData:    texAsset.BackSide.Data,
 			LeftSideData:    texAsset.LeftSide.Data,
@@ -65,17 +52,4 @@ func (r *ResourceSet) allocateCubeTexture(resource asset.Resource) (render.Textu
 		})
 	}).Wait()
 	return texture, nil
-}
-
-func resolveDataFormat3(format asset.TexelFormat) render.DataFormat {
-	switch format {
-	case asset.TexelFormatRGBA8:
-		return render.DataFormatRGBA8
-	case asset.TexelFormatRGBA16F:
-		return render.DataFormatRGBA16F
-	case asset.TexelFormatRGBA32F:
-		return render.DataFormatRGBA32F
-	default:
-		panic(fmt.Errorf("unknown format: %v", format))
-	}
 }
