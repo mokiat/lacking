@@ -6,8 +6,18 @@ import (
 )
 
 func NewShaderTextureSet(shader *lsl.Shader) TextureSet {
+	textureBlock, ok := shader.FindTextureBlock()
+	if !ok {
+		return TextureSet{}
+	}
+
+	var names [8]string
+	for i := range min(8, len(textureBlock.Fields)) {
+		names[i] = textureBlock.Fields[i].Name
+	}
+
 	return TextureSet{
-		// TODO: Needs to find texture block declaration in shader
+		names: names,
 	}
 }
 

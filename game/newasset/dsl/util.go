@@ -23,6 +23,8 @@ func digestItems(name string, items ...any) ([]byte, error) {
 	io.WriteString(h, ":")
 	for _, item := range items {
 		switch item := item.(type) {
+		case bool:
+			io.WriteString(h, strconv.FormatBool(item))
 		case int:
 			io.WriteString(h, strconv.Itoa(item))
 		case uint8:

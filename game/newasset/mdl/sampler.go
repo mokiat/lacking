@@ -69,8 +69,26 @@ func (b *BaseFilterable) SetFilterMode(mode FilterMode) {
 	b.filterMode = mode
 }
 
+type Mipmappable interface {
+	Mipmapping() bool
+	SetMipmapping(mipmapping bool)
+}
+
+type BaseMipmappable struct {
+	mipmapping bool
+}
+
+func (b *BaseMipmappable) Mipmapping() bool {
+	return b.mipmapping
+}
+
+func (b *BaseMipmappable) SetMipmapping(mipmapping bool) {
+	b.mipmapping = mipmapping
+}
+
 type Sampler struct {
 	BaseTextureReferrer
 	BaseWrappable
 	BaseFilterable
+	BaseMipmappable
 }

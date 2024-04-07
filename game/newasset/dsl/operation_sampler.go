@@ -39,3 +39,20 @@ func SetFilterMode(filterMode mdl.FilterMode) Operation {
 
 	return FuncOperation(apply, digest)
 }
+
+func SetMipmapping(mipmapping bool) Operation {
+	apply := func(target any) error {
+		mipmappable, ok := target.(mdl.Mipmappable)
+		if !ok {
+			return fmt.Errorf("target %T is not a mipmappable", target)
+		}
+		mipmappable.SetMipmapping(mipmapping)
+		return nil
+	}
+
+	digest := func() ([]byte, error) {
+		return digestItems("set-mipmapping", mipmapping)
+	}
+
+	return FuncOperation(apply, digest)
+}

@@ -21,6 +21,10 @@ type TwoDTexture struct {
 	texture render.Texture
 }
 
+func (t *TwoDTexture) Texture() render.Texture {
+	return t.texture
+}
+
 // Delete releases any resources allocated for this texture.
 func (t *TwoDTexture) Delete() {
 	t.texture.Release()
