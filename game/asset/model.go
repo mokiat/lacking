@@ -5,6 +5,7 @@ import (
 	"io"
 
 	"github.com/mokiat/gomath/dprec"
+	newasset "github.com/mokiat/lacking/game/newasset"
 )
 
 type ModelInstance struct {
@@ -17,7 +18,7 @@ type ModelInstance struct {
 }
 
 type Model struct {
-	Nodes           []Node
+	Nodes           []newasset.Node
 	Animations      []Animation
 	Armatures       []Armature
 	Textures        []TwoDTexture
@@ -27,10 +28,6 @@ type Model struct {
 	BodyDefinitions []BodyDefinition
 	BodyInstances   []BodyInstance
 	LightInstances  []LightInstance
-	// TODO: Model Instances (ref model resources)
-	// TODO: Speakers
-	// TODO: Cameras
-	// TODO: Constraints
 }
 
 func (m *Model) EncodeTo(out io.Writer) error {
