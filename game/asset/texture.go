@@ -60,13 +60,11 @@ func (f TextureFlag) Has(flag TextureFlag) bool {
 }
 
 type TwoDTexture struct {
-	Width     uint16
-	Height    uint16
-	Wrapping  WrapMode
-	Filtering FilterMode
-	Format    TexelFormat
-	Flags     TextureFlag
-	Data      []byte
+	Width  uint16
+	Height uint16
+	Format TexelFormat
+	Flags  TextureFlag
+	Data   []byte
 }
 
 func (t *TwoDTexture) EncodeTo(out io.Writer) error {
@@ -104,7 +102,6 @@ type CubeTextureSide struct {
 
 type CubeTexture struct {
 	Dimension  uint16
-	Filtering  FilterMode
 	Format     TexelFormat
 	Flags      TextureFlag
 	FrontSide  CubeTextureSide

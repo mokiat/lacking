@@ -156,9 +156,7 @@ func (c *viewportSurface) createFramebuffer(width, height int) {
 	c.colorTexture = c.api.CreateColorTexture2D(render.ColorTexture2DInfo{
 		Width:           width,
 		Height:          height,
-		Wrapping:        render.WrapModeClamp,
-		Filtering:       render.FilterModeNearest,
-		Mipmapping:      false,
+		GenerateMipmaps: false,
 		GammaCorrection: false,
 		Format:          render.DataFormatRGBA8,
 	})

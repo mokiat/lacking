@@ -69,9 +69,7 @@ func (f *fontFactory) Init() {
 	f.colorTexture = f.api.CreateColorTexture2D(render.ColorTexture2DInfo{
 		Width:           f.fontImageSize,
 		Height:          f.fontImageSize,
-		Wrapping:        render.WrapModeClamp,
-		Filtering:       render.FilterModeNearest,
-		Mipmapping:      false,
+		GenerateMipmaps: false,
 		GammaCorrection: false,
 		Format:          render.DataFormatRGBA8,
 	})
@@ -276,9 +274,7 @@ func (f *fontFactory) CreateFont(font *opentype.Font) (*Font, error) {
 	resultTexture := f.api.CreateColorTexture2D(render.ColorTexture2DInfo{
 		Width:           f.fontImageSize,
 		Height:          f.fontImageSize,
-		Wrapping:        render.WrapModeClamp,
-		Filtering:       render.FilterModeLinear,
-		Mipmapping:      true,
+		GenerateMipmaps: true,
 		GammaCorrection: false,
 		Format:          render.DataFormatRGBA8,
 	})

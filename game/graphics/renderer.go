@@ -166,18 +166,14 @@ func (r *sceneRenderer) createFramebuffers(width, height int) {
 	r.geometryAlbedoTexture = r.api.CreateColorTexture2D(render.ColorTexture2DInfo{
 		Width:           r.framebufferWidth,
 		Height:          r.framebufferHeight,
-		Wrapping:        render.WrapModeClamp,
-		Filtering:       render.FilterModeNearest,
-		Mipmapping:      false,
+		GenerateMipmaps: false,
 		GammaCorrection: false,
 		Format:          render.DataFormatRGBA8,
 	})
 	r.geometryNormalTexture = r.api.CreateColorTexture2D(render.ColorTexture2DInfo{
 		Width:           r.framebufferWidth,
 		Height:          r.framebufferHeight,
-		Wrapping:        render.WrapModeClamp,
-		Filtering:       render.FilterModeNearest,
-		Mipmapping:      false,
+		GenerateMipmaps: false,
 		GammaCorrection: false,
 		Format:          render.DataFormatRGBA16F,
 	})
@@ -188,9 +184,7 @@ func (r *sceneRenderer) createFramebuffers(width, height int) {
 	r.geometryEmissiveTexture = r.api.CreateColorTexture2D(render.ColorTexture2DInfo{
 		Width:           r.framebufferWidth,
 		Height:          r.framebufferHeight,
-		Wrapping:        render.WrapModeClamp,
-		Filtering:       render.FilterModeNearest,
-		Mipmapping:      false,
+		GenerateMipmaps: false,
 		GammaCorrection: false,
 		Format:          render.DataFormatRGBA16F,
 	})
@@ -206,9 +200,7 @@ func (r *sceneRenderer) createFramebuffers(width, height int) {
 	r.lightingAlbedoTexture = r.api.CreateColorTexture2D(render.ColorTexture2DInfo{
 		Width:           r.framebufferWidth,
 		Height:          r.framebufferHeight,
-		Wrapping:        render.WrapModeClamp,
-		Filtering:       render.FilterModeNearest,
-		Mipmapping:      false,
+		GenerateMipmaps: false,
 		GammaCorrection: false,
 		Format:          render.DataFormatRGBA16F,
 	})
@@ -261,9 +253,7 @@ func (r *sceneRenderer) Allocate() {
 	r.exposureAlbedoTexture = r.api.CreateColorTexture2D(render.ColorTexture2DInfo{
 		Width:           1,
 		Height:          1,
-		Wrapping:        render.WrapModeClamp,
-		Filtering:       render.FilterModeNearest,
-		Mipmapping:      false,
+		GenerateMipmaps: false,
 		GammaCorrection: false,
 		Format:          render.DataFormatRGBA16F,
 	})

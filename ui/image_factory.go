@@ -22,9 +22,7 @@ func (f *imageFactory) CreateImage(img image.Image) *Image {
 	texture := f.api.CreateColorTexture2D(render.ColorTexture2DInfo{
 		Width:           size.Width,
 		Height:          size.Height,
-		Wrapping:        render.WrapModeClamp,
-		Filtering:       render.FilterModeLinear,
-		Mipmapping:      true,
+		GenerateMipmaps: true,
 		GammaCorrection: false,
 		Format:          render.DataFormatRGBA8,
 		Data:            imgToRGBA8(img),

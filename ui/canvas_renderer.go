@@ -65,6 +65,7 @@ type canvasRenderer struct {
 	shapeSimplePipeline  render.Pipeline
 	shapeNonZeroPipeline render.Pipeline
 	shapeOddPipeline     render.Pipeline
+	shapeSampler         render.Sampler
 
 	contourMesh     *contourMesh
 	contourProgram  render.Program
@@ -73,6 +74,7 @@ type canvasRenderer struct {
 	textMesh     *textMesh
 	textProgram  render.Program
 	textPipeline render.Pipeline
+	textSampler  render.Sampler
 
 	topLayer     *canvasLayer
 	currentLayer *canvasLayer
@@ -84,9 +86,7 @@ func (c *canvasRenderer) onCreate() {
 	c.whiteMask = c.api.CreateColorTexture2D(render.ColorTexture2DInfo{
 		Width:           1,
 		Height:          1,
-		Filtering:       render.FilterModeNearest,
-		Wrapping:        render.WrapModeClamp,
-		Mipmapping:      false,
+		GenerateMipmaps: false,
 		GammaCorrection: false,
 		Format:          render.DataFormatRGBA8,
 		Data:            []byte{0xFF, 0xFF, 0xFF, 0xFF},
@@ -234,6 +234,11 @@ func (c *canvasRenderer) onCreate() {
 		BlendOpColor:                render.BlendOperationAdd,
 		BlendOpAlpha:                render.BlendOperationAdd,
 	})
+	c.shapeSampler = c.api.CreateSampler(render.SamplerInfo{
+		Wrapping:   render.WrapModeClamp,
+		Filtering:  render.FilterModeLinear,
+		Mipmapping: true,
+	})
 
 	c.contourMesh.Allocate(c.api)
 	c.contourProgram = c.api.CreateProgram(render.ProgramInfo{
@@ -295,6 +300,11 @@ func (c *canvasRenderer) onCreate() {
 		BlendOpColor:                render.BlendOperationAdd,
 		BlendOpAlpha:                render.BlendOperationAdd,
 	})
+	c.textSampler = c.api.CreateSampler(render.SamplerInfo{
+		Wrapping:   render.WrapModeClamp,
+		Filtering:  render.FilterModeLinear,
+		Mipmapping: true,
+	})
 }
 
 func (c *canvasRenderer) onDestroy() {
@@ -309,6 +319,7 @@ func (c *canvasRenderer) onDestroy() {
 	defer c.shapeSimplePipeline.Release()
 	defer c.shapeNonZeroPipeline.Release()
 	defer c.shapeOddPipeline.Release()
+	defer c.shapeSampler.Release()
 
 	defer c.contourMesh.Release()
 	defer c.contourProgram.Release()
@@ -317,6 +328,7 @@ func (c *canvasRenderer) onDestroy() {
 	defer c.textMesh.Release()
 	defer c.textProgram.Release()
 	defer c.textPipeline.Release()
+	defer c.textSampler.Release()
 }
 
 func (c *canvasRenderer) onBegin(commandBuffer render.CommandBuffer, size Size) {
@@ -563,7 +575,7 @@ func (c *canvasRenderer) FillTextLine(text []rune, position sprec.Vec2, typograp
 		c.updateMaterialUniformBufferFromTypography(typography)
 		c.commandBuffer.BindPipeline(c.textPipeline)
 		c.commandBuffer.TextureUnit(textureBindingFontTexture, font.texture)
-		c.commandBuffer.SamplerUnit(textureBindingFontTexture, nil) // TODO
+		c.commandBuffer.SamplerUnit(textureBindingFontTexture, c.textSampler)
 		c.commandBuffer.UniformBufferUnit(
 			uniformBufferBindingCamera,
 			c.cameraUniformPlacement.Buffer,
@@ -682,7 +694,7 @@ func (c *canvasRenderer) FillText(text string, position sprec.Vec2, typography T
 
 		c.commandBuffer.BindPipeline(c.textPipeline)
 		c.commandBuffer.TextureUnit(textureBindingFontTexture, font.texture)
-		c.commandBuffer.SamplerUnit(textureBindingFontTexture, nil) // TODO
+		c.commandBuffer.SamplerUnit(textureBindingFontTexture, c.textSampler)
 		c.commandBuffer.UniformBufferUnit(
 			uniformBufferBindingCamera,
 			c.cameraUniformPlacement.Buffer,
@@ -775,7 +787,7 @@ func (c *canvasRenderer) fillPath(path *canvasPath, fill Fill) {
 	}
 
 	c.commandBuffer.TextureUnit(textureBindingColorTexture, texture)
-	c.commandBuffer.SamplerUnit(textureBindingColorTexture, nil) // TODO
+	c.commandBuffer.SamplerUnit(textureBindingColorTexture, c.shapeSampler)
 	c.commandBuffer.UniformBufferUnit(
 		uniformBufferBindingCamera,
 		c.cameraUniformPlacement.Buffer,
