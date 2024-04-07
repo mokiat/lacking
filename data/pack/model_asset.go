@@ -68,9 +68,9 @@ func (c *converter) BuildModel(model *Model) *asset.Model {
 		c.BuildNode(-1, node)
 	}
 
-	assetTextures := make([]asset.TwoDTexture, len(model.Textures))
+	assetTextures := make([]newasset.Texture, len(model.Textures))
 	for i, texture := range model.Textures {
-		assetTextures[i] = *BuildTwoDTextureAsset(texture)
+		assetTextures[i] = BuildTwoDTextureAsset(texture)
 	}
 
 	assetAnimations := make([]asset.Animation, len(model.Animations))

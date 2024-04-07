@@ -21,7 +21,7 @@ type Model struct {
 	Nodes           []newasset.Node
 	Animations      []Animation
 	Armatures       []Armature
-	Textures        []TwoDTexture
+	Textures        []newasset.Texture
 	Materials       []Material
 	MeshDefinitions []MeshDefinition
 	MeshInstances   []MeshInstance

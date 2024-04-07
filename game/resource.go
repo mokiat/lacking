@@ -23,6 +23,7 @@ var (
 func newResourceSet(parent *ResourceSet, engine *Engine) *ResourceSet {
 	return &ResourceSet{
 		parent:      parent,
+		renderAPI:   engine.Graphics().API(),
 		engine:      engine,
 		registry:    engine.registry,
 		newRegistry: engine.newRegistry,
@@ -37,6 +38,7 @@ func newResourceSet(parent *ResourceSet, engine *Engine) *ResourceSet {
 
 type ResourceSet struct {
 	parent      *ResourceSet
+	renderAPI   render.API
 	engine      *Engine
 	registry    asset.Registry
 	newRegistry *newasset.Registry

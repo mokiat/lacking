@@ -41,15 +41,6 @@ func (p *Pipeline) OpenImageResource(uri string) *OpenImageResourceAction {
 	return action
 }
 
-func (p *Pipeline) SaveTwoDTextureAsset(resource asset.Resource, image ImageProvider) *SaveTwoDTextureAssetAction {
-	action := &SaveTwoDTextureAssetAction{
-		resource:      resource,
-		imageProvider: image,
-	}
-	p.scheduleAction(action)
-	return action
-}
-
 func (p *Pipeline) SaveCubeTextureAsset(resource asset.Resource, image CubeImageProvider, opts ...SaveCubeTextureOption) *SaveCubeTextureAction {
 	action := &SaveCubeTextureAction{
 		resource:      resource,

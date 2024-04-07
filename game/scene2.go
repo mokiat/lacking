@@ -65,40 +65,7 @@ func (r *ResourceSet) transformModel2Asset(sceneAsset asset.Model) (SceneDefinit
 
 	textures := make([]render.Texture, len(sceneAsset.Textures))
 	for i, textureAsset := range sceneAsset.Textures {
-		var texture render.Texture
-		switch {
-		case textureAsset.Flags.Has(asset.TextureFlag2D):
-			// TODO: Move to allocate method
-			r.gfxWorker.ScheduleVoid(func() {
-				texture = renderAPI.CreateColorTexture2D(render.ColorTexture2DInfo{
-					Width:           textureAsset.Width,
-					Height:          textureAsset.Height,
-					GenerateMipmaps: textureAsset.Flags.Has(asset.TextureFlagMipmapping),
-					GammaCorrection: !textureAsset.Flags.Has(asset.TextureFlagLinearSpace),
-					Format:          resolveDataFormat(textureAsset.Format),
-					Data:            textureAsset.Layers[0].Data,
-				})
-			}).Wait()
-		case textureAsset.Flags.Has(asset.TextureFlagCubeMap):
-			// TODO: Move to allocate method
-			r.gfxWorker.ScheduleVoid(func() {
-				texture = renderAPI.CreateColorTextureCube(render.ColorTextureCubeInfo{
-					Dimension:       textureAsset.Width,
-					GenerateMipmaps: textureAsset.Flags.Has(asset.TextureFlagMipmapping),
-					GammaCorrection: !textureAsset.Flags.Has(asset.TextureFlagLinearSpace),
-					Format:          resolveDataFormat(textureAsset.Format),
-					FrontSideData:   textureAsset.Layers[0].Data,
-					BackSideData:    textureAsset.Layers[1].Data,
-					LeftSideData:    textureAsset.Layers[2].Data,
-					RightSideData:   textureAsset.Layers[3].Data,
-					TopSideData:     textureAsset.Layers[4].Data,
-					BottomSideData:  textureAsset.Layers[5].Data,
-				})
-			}).Wait()
-		default:
-			return SceneDefinition2{}, fmt.Errorf("unsupported texture kind (flags: %v)", textureAsset.Flags)
-		}
-		textures[i] = texture
+		textures[i] = r.allocateTexture(textureAsset)
 	}
 
 	skyShaders := make([]*graphics.SkyShader, len(sceneAsset.SkyShaders))

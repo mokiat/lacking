@@ -207,7 +207,7 @@ func (r *ResourceSet) allocateModel(modelAsset *asset.Model) (*ModelDefinition, 
 
 	textures := make([]render.Texture, len(modelAsset.Textures))
 	for i, textureAsset := range modelAsset.Textures {
-		textures[i] = r.allocateTwoDTexture(&textureAsset)
+		textures[i] = r.allocateTexture(textureAsset)
 	}
 
 	materialDefinitions := make([]*graphics.Material, len(modelAsset.Materials))
