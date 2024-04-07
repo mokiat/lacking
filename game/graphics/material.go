@@ -3,6 +3,7 @@ package graphics
 import (
 	"github.com/mokiat/gomath/sprec"
 	"github.com/mokiat/lacking/game/graphics/internal"
+	"github.com/mokiat/lacking/render"
 )
 
 // MaterialInfo contains the information needed to create a Material.
@@ -49,10 +50,10 @@ type PBRMaterialInfo struct {
 	AlphaThreshold           float32
 	Metallic                 float32
 	Roughness                float32
-	MetallicRoughnessTexture *TwoDTexture
+	MetallicRoughnessTexture render.Texture
 	AlbedoColor              sprec.Vec4
-	AlbedoTexture            *TwoDTexture
+	AlbedoTexture            render.Texture
 	NormalScale              float32
-	NormalTexture            *TwoDTexture
+	NormalTexture            render.Texture
 	EmissiveColor            sprec.Vec4
 }

@@ -18,7 +18,7 @@ type ModelDefinition struct {
 	nodes                     []nodeDefinition
 	armatures                 []armatureDefinition
 	animations                []*AnimationDefinition
-	textures                  []*TwoDTexture
+	textures                  []render.Texture
 	materialDefinitions       []*graphics.Material
 	meshDefinitions           []*graphics.MeshDefinition
 	meshInstances             []meshInstance
@@ -206,7 +206,7 @@ func (r *ResourceSet) allocateModel(modelAsset *asset.Model) (*ModelDefinition, 
 		}
 	}
 
-	textures := make([]*TwoDTexture, len(modelAsset.Textures))
+	textures := make([]render.Texture, len(modelAsset.Textures))
 	for i, textureAsset := range modelAsset.Textures {
 		textures[i] = r.allocateTwoDTexture(&textureAsset)
 	}
@@ -215,12 +215,12 @@ func (r *ResourceSet) allocateModel(modelAsset *asset.Model) (*ModelDefinition, 
 	for i, materialAsset := range modelAsset.Materials {
 		pbrAsset := asset.NewPBRMaterialView(&materialAsset)
 
-		var albedoTexture *graphics.TwoDTexture
+		var albedoTexture render.Texture
 		if ref := pbrAsset.BaseColorTexture(); ref.Valid() {
 			if ref.TextureIndex >= 0 {
-				albedoTexture = textures[ref.TextureIndex].gfxTexture
+				albedoTexture = textures[ref.TextureIndex]
 			} else {
-				var promise async.Promise[*TwoDTexture]
+				var promise async.Promise[render.Texture]
 				r.gfxWorker.ScheduleVoid(func() {
 					promise = r.OpenTwoDTexture(ref.TextureID)
 				}).Wait()
@@ -228,11 +228,11 @@ func (r *ResourceSet) allocateModel(modelAsset *asset.Model) (*ModelDefinition, 
 				if err != nil {
 					return nil, fmt.Errorf("error loading albedo texture: %w", err)
 				}
-				albedoTexture = texture.gfxTexture
+				albedoTexture = texture
 			}
 		}
 
-		var metallicRoughnessTexture *graphics.TwoDTexture
+		var metallicRoughnessTexture render.Texture
 		// if texID := pbrAsset.MetallicRoughnessTexture(); texID != "" {
 		// 	var promise async.Promise[*TwoDTexture]
 		// 	r.gfxWorker.ScheduleVoid(func() {
@@ -245,7 +245,7 @@ func (r *ResourceSet) allocateModel(modelAsset *asset.Model) (*ModelDefinition, 
 		// 	metallicRoughnessTexture = texture.gfxTexture
 		// }
 
-		var normalTexture *graphics.TwoDTexture
+		var normalTexture render.Texture
 		// if texID := pbrAsset.NormalTexture(); texID != "" {
 		// 	var promise async.Promise[*TwoDTexture]
 		// 	r.gfxWorker.ScheduleVoid(func() {
@@ -378,7 +378,7 @@ func (r *ResourceSet) allocateModel(modelAsset *asset.Model) (*ModelDefinition, 
 
 func (r *ResourceSet) releaseModel(model *ModelDefinition) {
 	for _, texture := range model.textures {
-		r.releaseTwoDTexture(texture)
+		texture.Release()
 	}
 	model.textures = nil
 }
