@@ -68,34 +68,32 @@ func (r *ResourceSet) transformModel2Asset(sceneAsset asset.Model) (SceneDefinit
 		var texture render.Texture
 		switch {
 		case textureAsset.Flags.Has(asset.TextureFlag2D):
-			// TODO: Use render API directly?
-			textureInfo := graphics.TwoDTextureDefinition{
-				Width:           int(textureAsset.Width),
-				Height:          int(textureAsset.Height),
-				GenerateMipmaps: textureAsset.Flags.Has(asset.TextureFlagMipmapping),
-				GammaCorrection: !textureAsset.Flags.Has(asset.TextureFlagLinearSpace),
-				DataFormat:      resolveDataFormat2(textureAsset.Format),
-				InternalFormat:  resolveInternalFormat2(textureAsset.Format),
-				Data:            textureAsset.Layers[0].Data,
-			}
+			// TODO: Move to allocate method
 			r.gfxWorker.ScheduleVoid(func() {
-				texture = gfxEngine.CreateTwoDTexture(textureInfo).Texture()
+				texture = renderAPI.CreateColorTexture2D(render.ColorTexture2DInfo{
+					Width:           int(textureAsset.Width),
+					Height:          int(textureAsset.Height),
+					GenerateMipmaps: textureAsset.Flags.Has(asset.TextureFlagMipmapping),
+					GammaCorrection: !textureAsset.Flags.Has(asset.TextureFlagLinearSpace),
+					Format:          resolveDataFormat2(textureAsset.Format),
+					Data:            textureAsset.Layers[0].Data,
+				})
 			}).Wait()
 		case textureAsset.Flags.Has(asset.TextureFlagCubeMap):
-			// TODO: Use render API directly?
-			textureInfo := graphics.CubeTextureDefinition{
-				Dimension:      int(textureAsset.Width),
-				DataFormat:     resolveDataFormat2(textureAsset.Format),
-				InternalFormat: resolveInternalFormat2(textureAsset.Format),
-				FrontSideData:  textureAsset.Layers[0].Data,
-				BackSideData:   textureAsset.Layers[1].Data,
-				LeftSideData:   textureAsset.Layers[2].Data,
-				RightSideData:  textureAsset.Layers[3].Data,
-				TopSideData:    textureAsset.Layers[4].Data,
-				BottomSideData: textureAsset.Layers[5].Data,
-			}
+			// TODO: Move to allocate method
 			r.gfxWorker.ScheduleVoid(func() {
-				texture = gfxEngine.CreateCubeTexture(textureInfo).Texture()
+				texture = renderAPI.CreateColorTextureCube(render.ColorTextureCubeInfo{
+					Dimension:       int(textureAsset.Width),
+					GenerateMipmaps: textureAsset.Flags.Has(asset.TextureFlagMipmapping),
+					GammaCorrection: !textureAsset.Flags.Has(asset.TextureFlagLinearSpace),
+					Format:          resolveDataFormat2(textureAsset.Format),
+					FrontSideData:   textureAsset.Layers[0].Data,
+					BackSideData:    textureAsset.Layers[1].Data,
+					LeftSideData:    textureAsset.Layers[2].Data,
+					RightSideData:   textureAsset.Layers[3].Data,
+					TopSideData:     textureAsset.Layers[4].Data,
+					BottomSideData:  textureAsset.Layers[5].Data,
+				})
 			}).Wait()
 		default:
 			return SceneDefinition2{}, fmt.Errorf("unsupported texture kind (flags: %v)", textureAsset.Flags)
@@ -192,29 +190,14 @@ func resolveFiltering(filter asset.FilterMode) render.FilterMode {
 	}
 }
 
-func resolveDataFormat2(format asset.TexelFormat) graphics.DataFormat {
-	// FIXME: Support other formats as well
+func resolveDataFormat2(format asset.TexelFormat) render.DataFormat {
 	switch format {
 	case asset.TexelFormatRGBA8:
-		return graphics.DataFormatRGBA8
+		return render.DataFormatRGBA8
 	case asset.TexelFormatRGBA16F:
-		return graphics.DataFormatRGBA16F
+		return render.DataFormatRGBA16F
 	case asset.TexelFormatRGBA32F:
-		return graphics.DataFormatRGBA32F
-	default:
-		panic(fmt.Errorf("unknown format: %v", format))
-	}
-}
-
-func resolveInternalFormat2(format asset.TexelFormat) graphics.InternalFormat {
-	// FIXME: Support other formats as well
-	switch format {
-	case asset.TexelFormatRGBA8:
-		return graphics.InternalFormatRGBA8
-	case asset.TexelFormatRGBA16F:
-		return graphics.InternalFormatRGBA16F
-	case asset.TexelFormatRGBA32F:
-		return graphics.InternalFormatRGBA32F
+		return render.DataFormatRGBA32F
 	default:
 		panic(fmt.Errorf("unknown format: %v", format))
 	}

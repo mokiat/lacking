@@ -269,14 +269,14 @@ func (s *Scene) ApplyFragment(target *hierarchy.Node, def SceneDefinition2) {
 // Deprecated: Will be replaced by CreateScene calls.
 func (s *Scene) Initialize(definition *SceneDefinition) {
 	if definition.skyboxTexture != nil {
-		s.Graphics().Sky().SetSkybox(definition.skyboxTexture.gfxTexture)
+		s.Graphics().Sky().SetSkybox(definition.skyboxTexture)
 	}
 
 	if definition.reflectionTexture != nil && definition.refractionTexture != nil {
 
 		node := s.CreateAmbientLight(AmbientLightInfo{
-			ReflectionTexture: definition.reflectionTexture.gfxTexture.Texture(),
-			RefractionTexture: definition.refractionTexture.gfxTexture.Texture(),
+			ReflectionTexture: definition.reflectionTexture,
+			RefractionTexture: definition.refractionTexture,
 		})
 		node.SetName("AmbientLight")
 	}

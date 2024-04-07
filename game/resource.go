@@ -6,6 +6,7 @@ import (
 
 	"github.com/mokiat/lacking/game/asset"
 	newasset "github.com/mokiat/lacking/game/newasset"
+	"github.com/mokiat/lacking/render"
 	"github.com/mokiat/lacking/util/async"
 )
 
@@ -29,7 +30,7 @@ func newResourceSet(parent *ResourceSet, engine *Engine) *ResourceSet {
 		gfxWorker:   engine.gfxWorker,
 
 		namedTwoDTextures: make(map[string]async.Promise[*TwoDTexture]),
-		namedCubeTextures: make(map[string]async.Promise[*CubeTexture]),
+		namedCubeTextures: make(map[string]async.Promise[render.Texture]),
 		namedModels:       make(map[string]async.Promise[*ModelDefinition]),
 		namedScenes:       make(map[string]async.Promise[*SceneDefinition]),
 	}
@@ -44,7 +45,7 @@ type ResourceSet struct {
 	gfxWorker   Worker
 
 	namedTwoDTextures map[string]async.Promise[*TwoDTexture]
-	namedCubeTextures map[string]async.Promise[*CubeTexture]
+	namedCubeTextures map[string]async.Promise[render.Texture]
 	namedModels       map[string]async.Promise[*ModelDefinition]
 	namedScenes       map[string]async.Promise[*SceneDefinition]
 }
@@ -76,17 +77,17 @@ func (s *ResourceSet) OpenTwoDTexture(id string) async.Promise[*TwoDTexture] {
 	return result
 }
 
-func (s *ResourceSet) OpenCubeTexture(id string) async.Promise[*CubeTexture] {
+func (s *ResourceSet) OpenCubeTexture(id string) async.Promise[render.Texture] {
 	if result, ok := s.findCubeTexture(id); ok {
 		return result
 	}
 
 	resource := s.registry.ResourceByID(id)
 	if resource == nil {
-		return async.NewFailedPromise[*CubeTexture](fmt.Errorf("%w: %q", ErrNotFound, id))
+		return async.NewFailedPromise[render.Texture](fmt.Errorf("%w: %q", ErrNotFound, id))
 	}
 
-	result := async.NewPromise[*CubeTexture]()
+	result := async.NewPromise[render.Texture]()
 	go func() {
 		texture, err := s.allocateCubeTexture(resource)
 		if err != nil {
@@ -213,7 +214,7 @@ func (s *ResourceSet) Delete() {
 		s.namedTwoDTextures = nil
 		for _, promise := range s.namedCubeTextures {
 			if texture, err := promise.Wait(); err == nil {
-				s.releaseCubeTexture(texture)
+				texture.Release()
 			}
 		}
 		s.namedCubeTextures = nil
@@ -236,14 +237,14 @@ func (s *ResourceSet) findTwoDTexture(id string) (async.Promise[*TwoDTexture], b
 	return async.Promise[*TwoDTexture]{}, false
 }
 
-func (s *ResourceSet) findCubeTexture(id string) (async.Promise[*CubeTexture], bool) {
+func (s *ResourceSet) findCubeTexture(id string) (async.Promise[render.Texture], bool) {
 	if result, ok := s.namedCubeTextures[id]; ok {
 		return result, true
 	}
 	if s.parent != nil {
 		return s.parent.findCubeTexture(id)
 	}
-	return async.Promise[*CubeTexture]{}, false
+	return async.Promise[render.Texture]{}, false
 }
 
 func (s *ResourceSet) findModel(id string) (async.Promise[*ModelDefinition], bool) {
