@@ -7,32 +7,18 @@ import (
 	newasset "github.com/mokiat/lacking/game/newasset"
 )
 
-func BuildTwoDTextureAsset(image *Image) *asset.TwoDTexture {
-	return &asset.TwoDTexture{
+func BuildTwoDTextureAsset(image *Image) newasset.Texture {
+	return newasset.Texture{
 		Width:  uint32(image.Width),
 		Height: uint32(image.Height),
 		Flags:  newasset.TextureFlag2D | newasset.TextureFlagMipmapping,
 		Format: newasset.TexelFormatRGBA8,
-		Data:   image.RGBA8Data(),
+		Layers: []newasset.TextureLayer{
+			{
+				Data: image.RGBA8Data(),
+			},
+		},
 	}
-}
-
-type SaveTwoDTextureAssetAction struct {
-	resource      asset.Resource
-	imageProvider ImageProvider
-}
-
-func (a *SaveTwoDTextureAssetAction) Describe() string {
-	return fmt.Sprintf("save_twod_texture_asset(%q)", a.resource.Name())
-}
-
-func (a *SaveTwoDTextureAssetAction) Run() error {
-	image := a.imageProvider.Image()
-	textureAsset := BuildTwoDTextureAsset(image)
-	if err := a.resource.WriteContent(textureAsset); err != nil {
-		return fmt.Errorf("failed to write asset: %w", err)
-	}
-	return nil
 }
 
 func BuildCubeTextureAsset(image *CubeImage, format newasset.TexelFormat) *asset.CubeTexture {
