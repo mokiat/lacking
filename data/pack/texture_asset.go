@@ -4,13 +4,14 @@ import (
 	"fmt"
 
 	"github.com/mokiat/lacking/game/asset"
+	newasset "github.com/mokiat/lacking/game/newasset"
 )
 
 func BuildTwoDTextureAsset(image *Image) *asset.TwoDTexture {
 	return &asset.TwoDTexture{
 		Width:  uint16(image.Width),
 		Height: uint16(image.Height),
-		Flags:  asset.TextureFlagMipmapping,
+		Flags:  newasset.TextureFlag2D | newasset.TextureFlagMipmapping,
 		Format: asset.TexelFormatRGBA8,
 		Data:   image.RGBA8Data(),
 	}
@@ -49,7 +50,7 @@ func BuildCubeTextureAsset(image *CubeImage, format asset.TexelFormat) *asset.Cu
 	}
 	return &asset.CubeTexture{
 		Dimension: uint16(image.Dimension),
-		Flags:     asset.TextureFlagNone,
+		Flags:     newasset.TextureFlagCubeMap,
 		Format:    format,
 		FrontSide: asset.CubeTextureSide{
 			Data: textureData(CubeSideFront),

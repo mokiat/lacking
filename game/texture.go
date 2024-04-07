@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/mokiat/lacking/game/asset"
+	newasset "github.com/mokiat/lacking/game/newasset"
 	"github.com/mokiat/lacking/render"
 )
 
@@ -28,8 +29,8 @@ func (r *ResourceSet) allocateTwoDTexture(texAsset *asset.TwoDTexture) render.Te
 		texture = renderAPI.CreateColorTexture2D(render.ColorTexture2DInfo{
 			Width:           uint32(texAsset.Width),
 			Height:          uint32(texAsset.Height),
-			GenerateMipmaps: texAsset.Flags.Has(asset.TextureFlagMipmapping),
-			GammaCorrection: !texAsset.Flags.Has(asset.TextureFlagLinear),
+			GenerateMipmaps: texAsset.Flags.Has(newasset.TextureFlagMipmapping),
+			GammaCorrection: !texAsset.Flags.Has(newasset.TextureFlagLinearSpace),
 			Format:          resolveDataFormat3(texAsset.Format),
 			Data:            texAsset.Data,
 		})
@@ -52,8 +53,8 @@ func (r *ResourceSet) allocateCubeTexture(resource asset.Resource) (render.Textu
 	r.gfxWorker.ScheduleVoid(func() {
 		texture = renderAPI.CreateColorTextureCube(render.ColorTextureCubeInfo{
 			Dimension:       uint32(texAsset.Dimension),
-			GenerateMipmaps: texAsset.Flags.Has(asset.TextureFlagMipmapping),
-			GammaCorrection: !texAsset.Flags.Has(asset.TextureFlagLinear),
+			GenerateMipmaps: texAsset.Flags.Has(newasset.TextureFlagMipmapping),
+			GammaCorrection: !texAsset.Flags.Has(newasset.TextureFlagLinearSpace),
 			Format:          resolveDataFormat3(texAsset.Format),
 			FrontSideData:   texAsset.FrontSide.Data,
 			BackSideData:    texAsset.BackSide.Data,
