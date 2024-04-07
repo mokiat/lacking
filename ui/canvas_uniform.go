@@ -13,7 +13,7 @@ func (u cameraUniform) Std140Plot(plotter *blob.Plotter) {
 	plotter.PlotSPMat4(u.Projection)
 }
 
-func (u cameraUniform) Std140Size() int {
+func (u cameraUniform) Std140Size() uint32 {
 	return 64
 }
 
@@ -27,7 +27,7 @@ func (u modelUniform) Std140Plot(plotter *blob.Plotter) {
 	plotter.PlotSPMat4(u.ClipTransform)
 }
 
-func (u modelUniform) Std140Size() int {
+func (u modelUniform) Std140Size() uint32 {
 	return 64 + 64
 }
 
@@ -41,6 +41,6 @@ func (u materialUniform) Std140Plot(plotter *blob.Plotter) {
 	plotter.PlotSPVec4(u.Color)
 }
 
-func (u materialUniform) Std140Size() int {
+func (u materialUniform) Std140Size() uint32 {
 	return 64 + 16
 }

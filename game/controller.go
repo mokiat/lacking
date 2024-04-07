@@ -80,7 +80,7 @@ func (c *Controller) OnDestroy(window app.Window) {
 }
 
 func (c *Controller) OnFramebufferResize(window app.Window, width, height int) {
-	c.viewport = graphics.NewViewport(0, 0, width, height)
+	c.viewport = graphics.NewViewport(0, 0, uint32(width), uint32(height))
 }
 
 func (c *Controller) OnRender(window app.Window) {

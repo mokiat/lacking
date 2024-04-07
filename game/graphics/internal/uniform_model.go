@@ -10,6 +10,6 @@ func (u ModelUniform) Std140Plot(plotter *blob.Plotter) {
 	plotter.PlotBytes(u.ModelMatrices)
 }
 
-func (u ModelUniform) Std140Size() int {
+func (u ModelUniform) Std140Size() uint32 {
 	return 64 * 256
 }

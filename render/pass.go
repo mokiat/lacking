@@ -36,11 +36,8 @@ type RenderPassInfo struct {
 
 	// StencilClearValue is the value that should be used to clear the stencil
 	// attachment when StencilLoadOp is LoadOperationClear.
-	StencilClearValue int
+	StencilClearValue uint32
 }
-
-// LoadOperation describes how the contents of a resource should be loaded.
-type LoadOperation int
 
 const (
 	// LoadOperationLoad means that the contents of the resource should be
@@ -52,8 +49,20 @@ const (
 	LoadOperationClear
 )
 
-// StoreOperation describes how the contents of a resource should be stored.
-type StoreOperation int
+// LoadOperation describes how the contents of a resource should be loaded.
+type LoadOperation int8
+
+// String returns a string representation of the LoadOperation.
+func (o LoadOperation) String() string {
+	switch o {
+	case LoadOperationLoad:
+		return "LOAD"
+	case LoadOperationClear:
+		return "CLEAR"
+	default:
+		return "UNKNOWN"
+	}
+}
 
 const (
 	// StoreOperationDiscard means that the contents of the resource may be
@@ -64,6 +73,21 @@ const (
 	// preserved.
 	StoreOperationStore
 )
+
+// StoreOperation describes how the contents of a resource should be stored.
+type StoreOperation int8
+
+// String returns a string representation of the StoreOperation.
+func (o StoreOperation) String() string {
+	switch o {
+	case StoreOperationDiscard:
+		return "DISCARD"
+	case StoreOperationStore:
+		return "STORE"
+	default:
+		return "UNKNOWN"
+	}
+}
 
 // ColorAttachmentInfo describes how a color attachment should be handled.
 type ColorAttachmentInfo struct {
@@ -85,14 +109,14 @@ type ColorAttachmentInfo struct {
 type Area struct {
 
 	// X is the X coordinate of the area.
-	X int
+	X uint32
 
 	// Y is the Y coordinate of the area.
-	Y int
+	Y uint32
 
 	// Width is the width of the area.
-	Width int
+	Width uint32
 
 	// Height is the height of the area.
-	Height int
+	Height uint32
 }

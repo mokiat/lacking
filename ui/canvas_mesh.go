@@ -40,7 +40,7 @@ type shapeMesh struct {
 func (m *shapeMesh) Allocate(api render.API) {
 	m.vertexBuffer = api.CreateVertexBuffer(render.BufferInfo{
 		Dynamic: true,
-		Size:    len(m.vertexData),
+		Size:    uint32(len(m.vertexData)),
 	})
 
 	m.vertexArray = api.CreateVertexArray(render.VertexArrayInfo{
@@ -104,7 +104,7 @@ type contourMesh struct {
 func (m *contourMesh) Allocate(api render.API) {
 	m.vertexBuffer = api.CreateVertexBuffer(render.BufferInfo{
 		Dynamic: true,
-		Size:    len(m.vertexData),
+		Size:    uint32(len(m.vertexData)),
 	})
 
 	m.vertexArray = api.CreateVertexArray(render.VertexArrayInfo{
@@ -174,7 +174,7 @@ type textMesh struct {
 func (m *textMesh) Allocate(api render.API) {
 	m.vertexBuffer = api.CreateVertexBuffer(render.BufferInfo{
 		Dynamic: true,
-		Size:    len(m.vertexData),
+		Size:    uint32(len(m.vertexData)),
 	})
 
 	m.vertexArray = api.CreateVertexArray(render.VertexArrayInfo{

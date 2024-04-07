@@ -71,7 +71,7 @@ func CreateConeShape(api render.API) *Shape {
 			},
 		},
 		IndexBuffer: indexBuffer,
-		IndexFormat: render.IndexFormatUnsignedShort,
+		IndexFormat: render.IndexFormatUnsignedU16,
 	})
 
 	return &Shape{

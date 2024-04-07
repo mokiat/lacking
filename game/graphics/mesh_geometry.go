@@ -81,24 +81,24 @@ type VertexFormat struct {
 	// Coord 				opt.T[VertexAttribute]
 
 	HasCoord            bool
-	CoordOffsetBytes    int
-	CoordStrideBytes    int
+	CoordOffsetBytes    uint32
+	CoordStrideBytes    uint32
 	HasNormal           bool
-	NormalOffsetBytes   int
-	NormalStrideBytes   int
+	NormalOffsetBytes   uint32
+	NormalStrideBytes   uint32
 	HasTangent          bool
-	TangentOffsetBytes  int
-	TangentStrideBytes  int
+	TangentOffsetBytes  uint32
+	TangentStrideBytes  uint32
 	HasTexCoord         bool
-	TexCoordOffsetBytes int
-	TexCoordStrideBytes int
+	TexCoordOffsetBytes uint32
+	TexCoordStrideBytes uint32
 	HasColor            bool
-	ColorOffsetBytes    int
-	ColorStrideBytes    int
+	ColorOffsetBytes    uint32
+	ColorStrideBytes    uint32
 	HasWeights          bool
-	WeightsOffsetBytes  int
-	WeightsStrideBytes  int
+	WeightsOffsetBytes  uint32
+	WeightsStrideBytes  uint32
 	HasJoints           bool
-	JointsOffsetBytes   int
-	JointsStrideBytes   int
+	JointsOffsetBytes   uint32
+	JointsStrideBytes   uint32
 }

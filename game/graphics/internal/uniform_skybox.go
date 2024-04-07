@@ -14,6 +14,6 @@ func (u SkyboxUniform) Std140Plot(plotter *blob.Plotter) {
 	plotter.PlotSPVec4(u.Color)
 }
 
-func (u SkyboxUniform) Std140Size() int {
+func (u SkyboxUniform) Std140Size() uint32 {
 	return 16
 }

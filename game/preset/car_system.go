@@ -215,8 +215,8 @@ func (s *CarSystem) updateMouse(elapsedSeconds float64, entity *ecs.Entity) {
 
 	camera := s.gfxScene.ActiveCamera()
 	viewport := graphics.Viewport{
-		Width:  s.mouseAreaWidth,
-		Height: s.mouseAreaHeight,
+		Width:  uint32(s.mouseAreaWidth),
+		Height: uint32(s.mouseAreaHeight),
 	}
 	start, end := s.gfxScene.Ray(viewport, camera, s.mouseX, s.mouseY)
 

@@ -76,8 +76,8 @@ func (c *Canvas) onBegin(deltaTime time.Duration) {
 		Viewport: render.Area{
 			X:      0,
 			Y:      0,
-			Width:  c.framebufferSize.Width,
-			Height: c.framebufferSize.Height,
+			Width:  uint32(c.framebufferSize.Width),
+			Height: uint32(c.framebufferSize.Height),
 		},
 		Colors: [4]render.ColorAttachmentInfo{
 			{

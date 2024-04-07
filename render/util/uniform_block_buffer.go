@@ -8,7 +8,7 @@ import (
 // UniformType represents a type that can be written to a uniform buffer.
 type UniformType interface {
 	Std140Plot(plotter *blob.Plotter)
-	Std140Size() int
+	Std140Size() uint32
 }
 
 // UniformBytes returns the byte representation of the specified uniform.
@@ -23,8 +23,8 @@ func UniformBytes[T UniformType](uniform T) []byte {
 type UniformPlacement struct {
 	Buffer  render.Buffer
 	Plotter *blob.Plotter
-	Offset  int
-	Size    int
+	Offset  uint32
+	Size    uint32
 }
 
 // WriteUniform writes the specified uniform to the specified uniform block
@@ -50,7 +50,7 @@ func NewUniformBlockBuffer(api render.API, capacity int) *UniformBlockBuffer {
 		plotter: blob.NewPlotter(data),
 		buffer: api.CreateUniformBuffer(render.BufferInfo{
 			Dynamic: true,
-			Size:    len(data),
+			Size:    uint32(len(data)),
 		}),
 		blockAlignment: api.Limits().UniformBufferOffsetAlignment(),
 	}
@@ -75,12 +75,12 @@ func (b *UniformBlockBuffer) Reset() {
 
 // Placement returns a UniformPlacement that can be used to write a uniform
 // of the specified size.
-func (b *UniformBlockBuffer) Placement(uniformSize int) UniformPlacement {
+func (b *UniformBlockBuffer) Placement(uniformSize uint32) UniformPlacement {
 	b.skipToAlignment()
 	return UniformPlacement{
 		Buffer:  b.buffer,
 		Plotter: b.plotter,
-		Offset:  b.plotter.Offset(),
+		Offset:  uint32(b.plotter.Offset()),
 		Size:    uniformSize,
 	}
 }

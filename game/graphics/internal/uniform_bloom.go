@@ -15,6 +15,6 @@ func (u BloomBlurUniform) Std140Plot(plotter *blob.Plotter) {
 	plotter.PlotFloat32(u.Steps)
 }
 
-func (u BloomBlurUniform) Std140Size() int {
+func (u BloomBlurUniform) Std140Size() uint32 {
 	return render.SizeF16 + render.SizeF16
 }

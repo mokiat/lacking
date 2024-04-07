@@ -26,8 +26,8 @@ func (r *ResourceSet) allocateTwoDTexture(texAsset *asset.TwoDTexture) render.Te
 	var texture render.Texture
 	r.gfxWorker.ScheduleVoid(func() {
 		texture = renderAPI.CreateColorTexture2D(render.ColorTexture2DInfo{
-			Width:           int(texAsset.Width),
-			Height:          int(texAsset.Height),
+			Width:           uint32(texAsset.Width),
+			Height:          uint32(texAsset.Height),
 			GenerateMipmaps: texAsset.Flags.Has(asset.TextureFlagMipmapping),
 			GammaCorrection: !texAsset.Flags.Has(asset.TextureFlagLinear),
 			Format:          resolveDataFormat3(texAsset.Format),
@@ -51,7 +51,7 @@ func (r *ResourceSet) allocateCubeTexture(resource asset.Resource) (render.Textu
 	var texture render.Texture
 	r.gfxWorker.ScheduleVoid(func() {
 		texture = renderAPI.CreateColorTextureCube(render.ColorTextureCubeInfo{
-			Dimension:       int(texAsset.Dimension),
+			Dimension:       uint32(texAsset.Dimension),
 			GenerateMipmaps: texAsset.Flags.Has(asset.TextureFlagMipmapping),
 			GammaCorrection: !texAsset.Flags.Has(asset.TextureFlagLinear),
 			Format:          resolveDataFormat3(texAsset.Format),

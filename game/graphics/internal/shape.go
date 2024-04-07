@@ -20,7 +20,7 @@ type Shape struct {
 	vertexArray render.VertexArray
 
 	topology   render.Topology
-	indexCount int
+	indexCount uint32
 }
 
 // VertexArray returns the VertexArray that contains the vertices and indices
@@ -35,7 +35,7 @@ func (s *Shape) Topology() render.Topology {
 }
 
 // IndexCount returns the number of indices that comprise this Shape.
-func (s *Shape) IndexCount() int {
+func (s *Shape) IndexCount() uint32 {
 	return s.indexCount
 }
 

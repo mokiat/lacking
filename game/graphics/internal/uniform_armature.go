@@ -10,6 +10,6 @@ func (u ArmatureUniform) Std140Plot(plotter *blob.Plotter) {
 	plotter.PlotBytes(u.BoneMatrices)
 }
 
-func (u ArmatureUniform) Std140Size() int {
+func (u ArmatureUniform) Std140Size() uint32 {
 	return 64 * 256
 }

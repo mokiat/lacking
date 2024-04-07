@@ -30,8 +30,8 @@ type bloomRenderStage struct {
 	shaders ShaderCollection
 	data    *commonStageData
 
-	framebufferWidth  int
-	framebufferHeight int
+	framebufferWidth  uint32
+	framebufferHeight uint32
 
 	pingFramebuffer render.Framebuffer
 	pingTexture     render.Texture
@@ -130,7 +130,7 @@ func (s *bloomRenderStage) Release() {
 	defer s.outputSampler.Release()
 }
 
-func (s *bloomRenderStage) Resize(width, height int) {
+func (s *bloomRenderStage) Resize(width, height uint32) {
 	width = max(1, width/2)
 	height = max(1, height/2)
 
@@ -216,7 +216,7 @@ func (s *bloomRenderStage) OutputSampler() render.Sampler {
 	return s.outputSampler
 }
 
-func (s *bloomRenderStage) allocateTextures(width, height int) {
+func (s *bloomRenderStage) allocateTextures(width, height uint32) {
 	s.framebufferWidth = width
 	s.framebufferHeight = height
 

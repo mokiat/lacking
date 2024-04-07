@@ -19,6 +19,6 @@ func (u CameraUniform) Std140Plot(plotter *blob.Plotter) {
 	plotter.PlotSPVec4(u.Viewport)
 }
 
-func (u CameraUniform) Std140Size() int {
+func (u CameraUniform) Std140Size() uint32 {
 	return 64 + 64 + 64 + 16
 }

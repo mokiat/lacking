@@ -17,7 +17,7 @@ func (u LightUniform) Std140Plot(plotter *blob.Plotter) {
 	plotter.PlotSPMat4(u.LightMatrix)
 }
 
-func (u LightUniform) Std140Size() int {
+func (u LightUniform) Std140Size() uint32 {
 	return 64 + 64 + 64
 }
 
@@ -42,6 +42,6 @@ func (u LightPropertiesUniform) Std140Plot(plotter *blob.Plotter) {
 	plotter.Skip(4)
 }
 
-func (u LightPropertiesUniform) Std140Size() int {
+func (u LightPropertiesUniform) Std140Size() uint32 {
 	return 16 + 16
 }

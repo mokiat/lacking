@@ -12,6 +12,6 @@ func (u PostprocessUniform) Std140Plot(plotter *blob.Plotter) {
 	plotter.Skip(4 + 4 + 4)
 }
 
-func (u PostprocessUniform) Std140Size() int {
+func (u PostprocessUniform) Std140Size() uint32 {
 	return 16
 }

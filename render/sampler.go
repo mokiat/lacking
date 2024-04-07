@@ -1,7 +1,5 @@
 package render
 
-import "fmt"
-
 // SamplerMarker marks a type as being a Sampler.
 type SamplerMarker interface {
 	_isSamplerType()
@@ -55,7 +53,7 @@ func (m WrapMode) String() string {
 	case WrapModeMirroredRepeat:
 		return "MIRRORED_REPEAT"
 	default:
-		return fmt.Sprintf("UNKNOWN(%d)", m)
+		return "UNKNOWN"
 	}
 }
 
@@ -87,6 +85,6 @@ func (m FilterMode) String() string {
 	case FilterModeAnisotropic:
 		return "ANISOTROPIC"
 	default:
-		return fmt.Sprintf("UNKNOWN(%d)", m)
+		return "UNKNOWN"
 	}
 }

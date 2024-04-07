@@ -164,7 +164,7 @@ func (mb *MeshGeometryBuilder) Fragment(topology render.Topology, indexOffset, i
 func (mb *MeshGeometryBuilder) BuildInfo() MeshGeometryInfo {
 	var (
 		vertexFormat VertexFormat
-		vertexOffset int
+		vertexOffset uint32
 		vertexData   gblob.LittleEndianBlock
 	)
 	if mb.hasCoords {
@@ -204,12 +204,12 @@ func (mb *MeshGeometryBuilder) BuildInfo() MeshGeometryInfo {
 	}
 
 	vertexStride := vertexOffset
-	vertexData = make(gblob.LittleEndianBlock, vertexStride*len(mb.vertices))
+	vertexData = make(gblob.LittleEndianBlock, int(vertexStride)*len(mb.vertices))
 
 	if mb.hasCoords {
 		vertexFormat.CoordStrideBytes = vertexOffset
 		for i, vertex := range mb.vertices {
-			offset := i*vertexStride + vertexFormat.CoordOffsetBytes
+			offset := i*int(vertexStride) + int(vertexFormat.CoordOffsetBytes)
 			vertexData.SetFloat32(offset+0, vertex.coord.X)
 			vertexData.SetFloat32(offset+4, vertex.coord.Y)
 			vertexData.SetFloat32(offset+8, vertex.coord.Z)
@@ -218,7 +218,7 @@ func (mb *MeshGeometryBuilder) BuildInfo() MeshGeometryInfo {
 	if mb.hasNormals {
 		vertexFormat.NormalStrideBytes = vertexOffset
 		for i, vertex := range mb.vertices {
-			offset := i*vertexStride + vertexFormat.NormalOffsetBytes
+			offset := i*int(vertexStride) + int(vertexFormat.NormalOffsetBytes)
 			vertexData.SetUint16(offset+0, float16.Fromfloat32(vertex.normal.X).Bits())
 			vertexData.SetUint16(offset+2, float16.Fromfloat32(vertex.normal.Y).Bits())
 			vertexData.SetUint16(offset+4, float16.Fromfloat32(vertex.normal.Z).Bits())
@@ -227,7 +227,7 @@ func (mb *MeshGeometryBuilder) BuildInfo() MeshGeometryInfo {
 	if mb.hasTangents {
 		vertexFormat.TangentStrideBytes = vertexOffset
 		for i, vertex := range mb.vertices {
-			offset := i*vertexStride + vertexFormat.TangentOffsetBytes
+			offset := i*int(vertexStride) + int(vertexFormat.TangentOffsetBytes)
 			vertexData.SetUint16(offset+0, float16.Fromfloat32(vertex.tangent.X).Bits())
 			vertexData.SetUint16(offset+2, float16.Fromfloat32(vertex.tangent.Y).Bits())
 			vertexData.SetUint16(offset+4, float16.Fromfloat32(vertex.tangent.Z).Bits())
@@ -236,7 +236,7 @@ func (mb *MeshGeometryBuilder) BuildInfo() MeshGeometryInfo {
 	if mb.hasTexCoords {
 		vertexFormat.TexCoordStrideBytes = vertexOffset
 		for i, vertex := range mb.vertices {
-			offset := i*vertexStride + vertexFormat.TexCoordOffsetBytes
+			offset := i*int(vertexStride) + int(vertexFormat.TexCoordOffsetBytes)
 			vertexData.SetUint16(offset+0, float16.Fromfloat32(vertex.texCoord.X).Bits())
 			vertexData.SetUint16(offset+2, float16.Fromfloat32(vertex.texCoord.Y).Bits())
 		}
@@ -244,7 +244,7 @@ func (mb *MeshGeometryBuilder) BuildInfo() MeshGeometryInfo {
 	if mb.hasColors {
 		vertexFormat.ColorStrideBytes = vertexOffset
 		for i, vertex := range mb.vertices {
-			offset := i*vertexStride + vertexFormat.ColorOffsetBytes
+			offset := i*int(vertexStride) + int(vertexFormat.ColorOffsetBytes)
 			vertexData.SetUint8(offset+0, uint8(vertex.color.X*255))
 			vertexData.SetUint8(offset+1, uint8(vertex.color.Y*255))
 			vertexData.SetUint8(offset+2, uint8(vertex.color.Z*255))
@@ -254,7 +254,7 @@ func (mb *MeshGeometryBuilder) BuildInfo() MeshGeometryInfo {
 	if mb.hasWeights {
 		vertexFormat.WeightsStrideBytes = vertexOffset
 		for i, vertex := range mb.vertices {
-			offset := i*vertexStride + vertexFormat.WeightsOffsetBytes
+			offset := i*int(vertexStride) + int(vertexFormat.WeightsOffsetBytes)
 			vertexData.SetUint8(offset+0, uint8(vertex.weights.X*255))
 			vertexData.SetUint8(offset+1, uint8(vertex.weights.Y*255))
 			vertexData.SetUint8(offset+2, uint8(vertex.weights.Z*255))
@@ -264,7 +264,7 @@ func (mb *MeshGeometryBuilder) BuildInfo() MeshGeometryInfo {
 	if mb.hasJoints {
 		vertexFormat.JointsStrideBytes = vertexOffset
 		for i, vertex := range mb.vertices {
-			offset := i*vertexStride + vertexFormat.JointsOffsetBytes
+			offset := i*int(vertexStride) + int(vertexFormat.JointsOffsetBytes)
 			vertexData.SetUint8(offset+0, vertex.joints[0])
 			vertexData.SetUint8(offset+1, vertex.joints[1])
 			vertexData.SetUint8(offset+2, vertex.joints[2])
@@ -278,14 +278,14 @@ func (mb *MeshGeometryBuilder) BuildInfo() MeshGeometryInfo {
 		indexSize   int
 	)
 	if len(mb.indices) > 0xFFFF {
-		indexFormat = render.IndexFormatUnsignedInt
+		indexFormat = render.IndexFormatUnsignedU32
 		indexSize = render.SizeU32
 		indexData = make(gblob.LittleEndianBlock, indexSize*len(mb.indices))
 		for i, index := range mb.indices {
 			indexData.SetUint32(i*4, index)
 		}
 	} else {
-		indexFormat = render.IndexFormatUnsignedShort
+		indexFormat = render.IndexFormatUnsignedU16
 		indexSize = render.SizeU16
 		indexData = make(gblob.LittleEndianBlock, indexSize*len(mb.indices))
 		for i, index := range mb.indices {

@@ -10,8 +10,8 @@ import (
 )
 
 var (
-	ViewportInitialFBWidth  = 400
-	ViewportInitialFBHeight = 300
+	ViewportInitialFBWidth  = uint32(400)
+	ViewportInitialFBHeight = uint32(300)
 )
 
 // Viewport represents a component that uses low-level API calls to render
@@ -36,8 +36,8 @@ type viewportComponent struct {
 	surface viewportSurface
 
 	fbResizeBlocked bool
-	fbDesiredWidth  int
-	fbDesiredHeight int
+	fbDesiredWidth  uint32
+	fbDesiredHeight uint32
 
 	onKeyboardEvent func(element *ui.Element, event ui.KeyboardEvent) bool
 	onMouseEvent    func(element *ui.Element, event ui.MouseEvent) bool
@@ -96,8 +96,8 @@ func (c *viewportComponent) OnMouseEvent(element *ui.Element, event ui.MouseEven
 
 func (c *viewportComponent) OnRender(element *ui.Element, canvas *ui.Canvas) {
 	size := element.Bounds().Size
-	c.fbDesiredWidth = size.Width
-	c.fbDesiredHeight = size.Height
+	c.fbDesiredWidth = uint32(size.Width)
+	c.fbDesiredHeight = uint32(size.Height)
 
 	if c.fbDesiredWidth != c.surface.fbWidth || c.fbDesiredHeight != c.surface.fbHeight {
 		if !c.fbResizeBlocked {
@@ -138,19 +138,19 @@ type viewportSurface struct {
 	colorTexture render.Texture
 	framebuffer  render.Framebuffer
 
-	fbWidth  int
-	fbHeight int
+	fbWidth  uint32
+	fbHeight uint32
 
 	onRender func(framebuffer render.Framebuffer, size ui.Size)
 }
 
 func (c *viewportSurface) Render() (render.Texture, ui.Size) {
-	fbSize := ui.NewSize(c.fbWidth, c.fbHeight)
+	fbSize := ui.NewSize(int(c.fbWidth), int(c.fbHeight))
 	c.onRender(c.framebuffer, fbSize)
 	return c.colorTexture, fbSize
 }
 
-func (c *viewportSurface) createFramebuffer(width, height int) {
+func (c *viewportSurface) createFramebuffer(width, height uint32) {
 	c.fbWidth = width
 	c.fbHeight = height
 	c.colorTexture = c.api.CreateColorTexture2D(render.ColorTexture2DInfo{
