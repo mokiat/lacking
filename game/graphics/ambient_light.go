@@ -6,13 +6,12 @@ import (
 	"github.com/mokiat/lacking/util/spatial"
 )
 
+// TODO: Use a Box shape for ambient light size
+// - Width, Height, Length
+// Overflow (for linear falloff into neighboring lights)
+
 type AmbientLightInfo struct {
-	Position dprec.Vec3
-	// TODO: Use a Box shape instead
-	// Width
-	// Height
-	// Length
-	// Overflow (for linear falloff into neighboring lights)
+	Position          dprec.Vec3
 	InnerRadius       float64
 	OuterRadius       float64
 	ReflectionTexture render.Texture
@@ -62,7 +61,3 @@ func (l *AmbientLight) Delete() {
 	l.scene.ambientLightPool.Restore(l)
 	l.scene = nil
 }
-
-// TODO: Set/Get Position
-// TODO: Set/Get Inner Radius
-// TODO: Set/Get Outer Radius

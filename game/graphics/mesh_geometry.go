@@ -7,7 +7,7 @@ type MeshGeometryInfo struct {
 	VertexData           []byte
 	VertexFormat         VertexFormat
 	IndexData            []byte
-	IndexFormat          IndexFormat
+	IndexFormat          render.IndexFormat
 	Fragments            []MeshGeometryFragmentInfo
 	BoundingSphereRadius float64
 }
@@ -102,12 +102,3 @@ type VertexFormat struct {
 	JointsOffsetBytes   int
 	JointsStrideBytes   int
 }
-
-const (
-	IndexFormatU16 IndexFormat = 1 + iota
-	IndexFormatU32
-)
-
-// IndexFormat specifies the data type that is used to represent individual
-// indices.
-type IndexFormat int // TODO: Use render.IndexFormat
