@@ -8,8 +8,10 @@ import (
 	"github.com/mokiat/gomath/dprec"
 	"github.com/mokiat/gomath/sprec"
 	"github.com/mokiat/gomath/stod"
-	"github.com/mokiat/lacking/game/asset"
 	"github.com/x448/float16"
+
+	"github.com/mokiat/lacking/game/asset"
+	newasset "github.com/mokiat/lacking/game/newasset"
 )
 
 type SaveModelAssetOption func(a *SaveModelAssetAction)
@@ -42,7 +44,7 @@ func (a *SaveModelAssetAction) Run() error {
 func newConverter(collisionMeshes bool) *converter {
 	return &converter{
 		forceCollidable:                       collisionMeshes,
-		assetNodes:                            make([]asset.Node, 0),
+		assetNodes:                            make([]newasset.Node, 0),
 		assetNodeIndexFromNode:                make(map[*Node]int),
 		assetMaterialIndexFromMaterial:        make(map[*Material]int),
 		assetArmatureIndexFromArmature:        make(map[*Armature]int),
@@ -53,7 +55,7 @@ func newConverter(collisionMeshes bool) *converter {
 
 type converter struct {
 	forceCollidable                       bool
-	assetNodes                            []asset.Node
+	assetNodes                            []newasset.Node
 	assetNodeIndexFromNode                map[*Node]int
 	assetMaterialIndexFromMaterial        map[*Material]int
 	assetArmatureIndexFromArmature        map[*Armature]int
@@ -132,7 +134,7 @@ func (c *converter) BuildModel(model *Model) *asset.Model {
 }
 
 func (c *converter) BuildNode(parentIndex int, node *Node) {
-	result := asset.Node{
+	result := newasset.Node{
 		Name:        node.Name,
 		ParentIndex: int32(parentIndex),
 		Translation: node.Translation,
