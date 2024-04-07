@@ -4,21 +4,10 @@ import (
 	"fmt"
 
 	"github.com/mokiat/lacking/game/asset"
-	"github.com/mokiat/lacking/game/graphics"
 	"github.com/mokiat/lacking/render"
 )
 
-// NOTE: The reason why we have a TwoDTexture wrapper in this package is
-// to prevent the use from deleting the resource, as this is managed by
-// the ResourceSet instead.
-// Furthermore, in the future, we could have a `keep` option, which preserves
-// the data and allows modification or using it as a hit-mask or similar.
-
-type TwoDTexture struct {
-	gfxTexture *graphics.TwoDTexture
-}
-
-func (r *ResourceSet) loadTwoDTexture(resource asset.Resource) (*TwoDTexture, error) {
+func (r *ResourceSet) loadTwoDTexture(resource asset.Resource) (render.Texture, error) {
 	texAsset := new(asset.TwoDTexture)
 
 	ioTask := func() error {
@@ -31,27 +20,21 @@ func (r *ResourceSet) loadTwoDTexture(resource asset.Resource) (*TwoDTexture, er
 	return r.allocateTwoDTexture(texAsset), nil
 }
 
-func (r *ResourceSet) allocateTwoDTexture(texAsset *asset.TwoDTexture) *TwoDTexture {
-	var gfxTexture *graphics.TwoDTexture
+func (r *ResourceSet) allocateTwoDTexture(texAsset *asset.TwoDTexture) render.Texture {
+	renderAPI := r.engine.Graphics().API()
+
+	var texture render.Texture
 	r.gfxWorker.ScheduleVoid(func() {
-		gfxEngine := r.engine.Graphics()
-		gfxTexture = gfxEngine.CreateTwoDTexture(graphics.TwoDTextureDefinition{
+		texture = renderAPI.CreateColorTexture2D(render.ColorTexture2DInfo{
 			Width:           int(texAsset.Width),
 			Height:          int(texAsset.Height),
 			GenerateMipmaps: texAsset.Flags.Has(asset.TextureFlagMipmapping),
 			GammaCorrection: !texAsset.Flags.Has(asset.TextureFlagLinear),
-			DataFormat:      resolveDataFormat(texAsset.Format),
-			InternalFormat:  resolveInternalFormat(texAsset.Format),
+			Format:          resolveDataFormat3(texAsset.Format),
 			Data:            texAsset.Data,
 		})
 	}).Wait()
-	return &TwoDTexture{
-		gfxTexture: gfxTexture,
-	}
-}
-
-func (r *ResourceSet) releaseTwoDTexture(texture *TwoDTexture) {
-	texture.gfxTexture.Delete()
+	return texture
 }
 
 func (r *ResourceSet) allocateCubeTexture(resource asset.Resource) (render.Texture, error) {
@@ -91,34 +74,6 @@ func resolveDataFormat3(format asset.TexelFormat) render.DataFormat {
 		return render.DataFormatRGBA16F
 	case asset.TexelFormatRGBA32F:
 		return render.DataFormatRGBA32F
-	default:
-		panic(fmt.Errorf("unknown format: %v", format))
-	}
-}
-
-func resolveDataFormat(format asset.TexelFormat) graphics.DataFormat {
-	// FIXME: Support other formats as well
-	switch format {
-	case asset.TexelFormatRGBA8:
-		return graphics.DataFormatRGBA8
-	case asset.TexelFormatRGBA16F:
-		return graphics.DataFormatRGBA16F
-	case asset.TexelFormatRGBA32F:
-		return graphics.DataFormatRGBA32F
-	default:
-		panic(fmt.Errorf("unknown format: %v", format))
-	}
-}
-
-func resolveInternalFormat(format asset.TexelFormat) graphics.InternalFormat {
-	// FIXME: Support other formats as well
-	switch format {
-	case asset.TexelFormatRGBA8:
-		return graphics.InternalFormatRGBA8
-	case asset.TexelFormatRGBA16F:
-		return graphics.InternalFormatRGBA16F
-	case asset.TexelFormatRGBA32F:
-		return graphics.InternalFormatRGBA32F
 	default:
 		panic(fmt.Errorf("unknown format: %v", format))
 	}

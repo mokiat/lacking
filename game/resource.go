@@ -29,7 +29,7 @@ func newResourceSet(parent *ResourceSet, engine *Engine) *ResourceSet {
 		ioWorker:    engine.ioWorker,
 		gfxWorker:   engine.gfxWorker,
 
-		namedTwoDTextures: make(map[string]async.Promise[*TwoDTexture]),
+		namedTwoDTextures: make(map[string]async.Promise[render.Texture]),
 		namedCubeTextures: make(map[string]async.Promise[render.Texture]),
 		namedModels:       make(map[string]async.Promise[*ModelDefinition]),
 		namedScenes:       make(map[string]async.Promise[*SceneDefinition]),
@@ -44,7 +44,7 @@ type ResourceSet struct {
 	ioWorker    Worker
 	gfxWorker   Worker
 
-	namedTwoDTextures map[string]async.Promise[*TwoDTexture]
+	namedTwoDTextures map[string]async.Promise[render.Texture]
 	namedCubeTextures map[string]async.Promise[render.Texture]
 	namedModels       map[string]async.Promise[*ModelDefinition]
 	namedScenes       map[string]async.Promise[*SceneDefinition]
@@ -54,17 +54,17 @@ func (s *ResourceSet) CreateResourceSet() *ResourceSet {
 	return newResourceSet(s, s.engine)
 }
 
-func (s *ResourceSet) OpenTwoDTexture(id string) async.Promise[*TwoDTexture] {
+func (s *ResourceSet) OpenTwoDTexture(id string) async.Promise[render.Texture] {
 	if result, ok := s.findTwoDTexture(id); ok {
 		return result
 	}
 
 	resource := s.registry.ResourceByID(id)
 	if resource == nil {
-		return async.NewFailedPromise[*TwoDTexture](fmt.Errorf("%w: %q", ErrNotFound, id))
+		return async.NewFailedPromise[render.Texture](fmt.Errorf("%w: %q", ErrNotFound, id))
 	}
 
-	result := async.NewPromise[*TwoDTexture]()
+	result := async.NewPromise[render.Texture]()
 	go func() {
 		texture, err := s.loadTwoDTexture(resource)
 		if err != nil {
@@ -208,7 +208,7 @@ func (s *ResourceSet) Delete() {
 		s.namedScenes = nil
 		for _, promise := range s.namedTwoDTextures {
 			if texture, err := promise.Wait(); err == nil {
-				s.releaseTwoDTexture(texture)
+				texture.Release()
 			}
 		}
 		s.namedTwoDTextures = nil
@@ -227,14 +227,14 @@ func (s *ResourceSet) Delete() {
 	}()
 }
 
-func (s *ResourceSet) findTwoDTexture(id string) (async.Promise[*TwoDTexture], bool) {
+func (s *ResourceSet) findTwoDTexture(id string) (async.Promise[render.Texture], bool) {
 	if result, ok := s.namedTwoDTextures[id]; ok {
 		return result, true
 	}
 	if s.parent != nil {
 		return s.parent.findTwoDTexture(id)
 	}
-	return async.Promise[*TwoDTexture]{}, false
+	return async.Promise[render.Texture]{}, false
 }
 
 func (s *ResourceSet) findCubeTexture(id string) (async.Promise[render.Texture], bool) {

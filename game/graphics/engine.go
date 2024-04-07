@@ -155,19 +155,6 @@ func (e *Engine) CreateSkyDefinition(info SkyDefinitionInfo) *SkyDefinition {
 	return newSkyDefinition(e, info)
 }
 
-// CreateTwoDTexture creates a new TwoDTexture using the
-// specified definition.
-func (e *Engine) CreateTwoDTexture(definition TwoDTextureDefinition) *TwoDTexture {
-	return newTwoDTexture(e.api.CreateColorTexture2D(render.ColorTexture2DInfo{
-		Width:           definition.Width,
-		Height:          definition.Height,
-		GenerateMipmaps: definition.GenerateMipmaps,
-		GammaCorrection: true,
-		Format:          e.convertFormat(definition.DataFormat),
-		Data:            definition.Data,
-	}))
-}
-
 // CreateMaterial creates a new Material from the specified info object.
 func (e *Engine) CreateMaterial(info MaterialInfo) *Material {
 	geometryPasses := gog.Map(info.GeometryPasses, func(passInfo GeometryRenderPassInfo) internal.MaterialRenderPassDefinition {
@@ -293,7 +280,7 @@ func (e *Engine) CreatePBRMaterial(info PBRMaterialInfo) *Material {
 	var textures []TextureBindingInfo
 	if info.AlbedoTexture != nil {
 		textures = append(textures, TextureBindingInfo{
-			Texture:    info.AlbedoTexture.texture,
+			Texture:    info.AlbedoTexture,
 			Wrapping:   render.WrapModeClamp,
 			Filtering:  render.FilterModeLinear,
 			Mipmapping: true,
@@ -301,7 +288,7 @@ func (e *Engine) CreatePBRMaterial(info PBRMaterialInfo) *Material {
 	}
 	if info.NormalTexture != nil {
 		textures = append(textures, TextureBindingInfo{
-			Texture:    info.NormalTexture.texture,
+			Texture:    info.NormalTexture,
 			Wrapping:   render.WrapModeClamp,
 			Filtering:  render.FilterModeNearest,
 			Mipmapping: true,
@@ -309,7 +296,7 @@ func (e *Engine) CreatePBRMaterial(info PBRMaterialInfo) *Material {
 	}
 	if info.MetallicRoughnessTexture != nil {
 		textures = append(textures, TextureBindingInfo{
-			Texture:    info.MetallicRoughnessTexture.texture,
+			Texture:    info.MetallicRoughnessTexture,
 			Wrapping:   render.WrapModeClamp,
 			Filtering:  render.FilterModeLinear,
 			Mipmapping: true,
@@ -683,19 +670,6 @@ func (e *Engine) createSkyPipeline(info internal.SkyPipelineInfo) (render.Pipeli
 func (e *Engine) pickFreeRenderPassKey() uint32 {
 	e.freeRenderPassKey++
 	return e.freeRenderPassKey
-}
-
-func (e *Engine) convertFormat(dataFormat DataFormat) render.DataFormat {
-	switch dataFormat {
-	case DataFormatRGBA8:
-		return render.DataFormatRGBA8
-	case DataFormatRGBA16F:
-		return render.DataFormatRGBA16F
-	case DataFormatRGBA32F:
-		return render.DataFormatRGBA32F
-	default:
-		panic(fmt.Errorf("unknown data format: %d", dataFormat))
-	}
 }
 
 func (e *Engine) convertIndexType(indexFormat IndexFormat) render.IndexFormat {
