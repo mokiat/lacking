@@ -3,25 +3,11 @@ package asset
 import (
 	"fmt"
 	"io"
+
+	newasset "github.com/mokiat/lacking/game/newasset"
 )
 
 const UnspecifiedIndex = int32(-1)
-
-const (
-	WrapModeRepeat WrapMode = iota
-	WrapModeMirroredRepeat
-	WrapModeClampToEdge
-)
-
-type WrapMode uint8
-
-const (
-	FilterModeNearest FilterMode = iota
-	FilterModeLinear
-	FilterModeAnisotropic
-)
-
-type FilterMode uint8
 
 const (
 	TexelFormatR8 TexelFormat = iota
@@ -46,24 +32,11 @@ const (
 
 type TexelFormat uint8
 
-const (
-	TextureFlagMipmapping TextureFlag = 1 << iota
-	TextureFlagLinear
-
-	TextureFlagNone TextureFlag = 0
-)
-
-type TextureFlag uint8
-
-func (f TextureFlag) Has(flag TextureFlag) bool {
-	return f&flag == flag
-}
-
 type TwoDTexture struct {
 	Width  uint16
 	Height uint16
 	Format TexelFormat
-	Flags  TextureFlag
+	Flags  newasset.TextureFlag
 	Data   []byte
 }
 
@@ -103,7 +76,7 @@ type CubeTextureSide struct {
 type CubeTexture struct {
 	Dimension  uint16
 	Format     TexelFormat
-	Flags      TextureFlag
+	Flags      newasset.TextureFlag
 	FrontSide  CubeTextureSide
 	BackSide   CubeTextureSide
 	LeftSide   CubeTextureSide
