@@ -150,7 +150,6 @@ func (m Material) IsInvisible() bool {
 }
 
 type TextureRef struct {
-	TextureID    string
 	TextureIndex int
 }
 

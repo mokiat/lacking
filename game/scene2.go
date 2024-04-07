@@ -75,7 +75,7 @@ func (r *ResourceSet) transformModel2Asset(sceneAsset asset.Model) (SceneDefinit
 					Height:          textureAsset.Height,
 					GenerateMipmaps: textureAsset.Flags.Has(asset.TextureFlagMipmapping),
 					GammaCorrection: !textureAsset.Flags.Has(asset.TextureFlagLinearSpace),
-					Format:          resolveDataFormat2(textureAsset.Format),
+					Format:          resolveDataFormat(textureAsset.Format),
 					Data:            textureAsset.Layers[0].Data,
 				})
 			}).Wait()
@@ -86,7 +86,7 @@ func (r *ResourceSet) transformModel2Asset(sceneAsset asset.Model) (SceneDefinit
 					Dimension:       textureAsset.Width,
 					GenerateMipmaps: textureAsset.Flags.Has(asset.TextureFlagMipmapping),
 					GammaCorrection: !textureAsset.Flags.Has(asset.TextureFlagLinearSpace),
-					Format:          resolveDataFormat2(textureAsset.Format),
+					Format:          resolveDataFormat(textureAsset.Format),
 					FrontSideData:   textureAsset.Layers[0].Data,
 					BackSideData:    textureAsset.Layers[1].Data,
 					LeftSideData:    textureAsset.Layers[2].Data,
@@ -129,7 +129,7 @@ func (r *ResourceSet) transformModel2Asset(sceneAsset asset.Model) (SceneDefinit
 			}
 			for _, binding := range skyAsset.Textures {
 				sampler := renderAPI.CreateSampler(render.SamplerInfo{
-					Wrapping:   resolveWrapMode2(binding.Wrapping),
+					Wrapping:   resolveWrapMode(binding.Wrapping),
 					Filtering:  resolveFiltering(binding.Filtering),
 					Mipmapping: binding.Mipmapping,
 				})
@@ -164,7 +164,7 @@ func (r *ResourceSet) transformModel2Asset(sceneAsset asset.Model) (SceneDefinit
 	}, nil
 }
 
-func resolveWrapMode2(wrap asset.WrapMode) render.WrapMode {
+func resolveWrapMode(wrap asset.WrapMode) render.WrapMode {
 	switch wrap {
 	case asset.WrapModeClamp:
 		return render.WrapModeClamp
@@ -190,7 +190,7 @@ func resolveFiltering(filter asset.FilterMode) render.FilterMode {
 	}
 }
 
-func resolveDataFormat2(format asset.TexelFormat) render.DataFormat {
+func resolveDataFormat(format asset.TexelFormat) render.DataFormat {
 	switch format {
 	case asset.TexelFormatRGBA8:
 		return render.DataFormatRGBA8

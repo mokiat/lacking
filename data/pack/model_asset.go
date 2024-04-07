@@ -208,7 +208,6 @@ func (c *converter) BuildMaterial(material *Material) asset.Material {
 	if ref := material.ColorTexture; ref != nil {
 		pbr.SetBaseColorTexture(asset.TextureRef{
 			TextureIndex: int32(ref.TextureIndex),
-			TextureID:    ref.TextureID,
 		})
 	}
 	pbr.SetMetallic(material.Metallic)
@@ -216,14 +215,12 @@ func (c *converter) BuildMaterial(material *Material) asset.Material {
 	if ref := material.MetallicRoughnessTexture; ref != nil {
 		pbr.SetMetallicRoughnessTexture(asset.TextureRef{
 			TextureIndex: int32(ref.TextureIndex),
-			TextureID:    ref.TextureID,
 		})
 	}
 	pbr.SetNormalScale(material.NormalScale)
 	if ref := material.NormalTexture; ref != nil {
 		pbr.SetNormalTexture(asset.TextureRef{
 			TextureIndex: int32(ref.TextureIndex),
-			TextureID:    ref.TextureID,
 		})
 	}
 	return assetMaterial

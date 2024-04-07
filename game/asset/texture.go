@@ -9,33 +9,10 @@ import (
 
 const UnspecifiedIndex = int32(-1)
 
-const (
-	TexelFormatR8 TexelFormat = iota
-	TexelFormatR16
-	TexelFormatR16F
-	TexelFormatR32F
-	TexelFormatRG8
-	TexelFormatRG16
-	TexelFormatRG16F
-	TexelFormatRG32F
-	TexelFormatRGB8
-	TexelFormatRGB16
-	TexelFormatRGB16F
-	TexelFormatRGB32F
-	TexelFormatRGBA8
-	TexelFormatRGBA16
-	TexelFormatRGBA16F
-	TexelFormatRGBA32F
-	TexelFormatDepth16F
-	TexelFormatDepth32F
-)
-
-type TexelFormat uint8
-
 type TwoDTexture struct {
-	Width  uint16
-	Height uint16
-	Format TexelFormat
+	Width  uint32
+	Height uint32
+	Format newasset.TexelFormat
 	Flags  newasset.TextureFlag
 	Data   []byte
 }
@@ -74,8 +51,8 @@ type CubeTextureSide struct {
 }
 
 type CubeTexture struct {
-	Dimension  uint16
-	Format     TexelFormat
+	Dimension  uint32
+	Format     newasset.TexelFormat
 	Flags      newasset.TextureFlag
 	FrontSide  CubeTextureSide
 	BackSide   CubeTextureSide
@@ -116,9 +93,8 @@ func (t *CubeTexture) decodeVersionFrom(in io.Reader, version uint16) error {
 
 type TextureRef struct {
 	TextureIndex int32
-	TextureID    string
 }
 
 func (r TextureRef) Valid() bool {
-	return r.TextureID != "" || r.TextureIndex >= 0
+	return r.TextureIndex >= 0
 }

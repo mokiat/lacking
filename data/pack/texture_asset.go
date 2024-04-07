@@ -9,10 +9,10 @@ import (
 
 func BuildTwoDTextureAsset(image *Image) *asset.TwoDTexture {
 	return &asset.TwoDTexture{
-		Width:  uint16(image.Width),
-		Height: uint16(image.Height),
+		Width:  uint32(image.Width),
+		Height: uint32(image.Height),
 		Flags:  newasset.TextureFlag2D | newasset.TextureFlagMipmapping,
-		Format: asset.TexelFormatRGBA8,
+		Format: newasset.TexelFormatRGBA8,
 		Data:   image.RGBA8Data(),
 	}
 }
@@ -35,21 +35,21 @@ func (a *SaveTwoDTextureAssetAction) Run() error {
 	return nil
 }
 
-func BuildCubeTextureAsset(image *CubeImage, format asset.TexelFormat) *asset.CubeTexture {
+func BuildCubeTextureAsset(image *CubeImage, format newasset.TexelFormat) *asset.CubeTexture {
 	textureData := func(side CubeSide) []byte {
 		switch format {
-		case asset.TexelFormatRGBA8:
+		case newasset.TexelFormatRGBA8:
 			return image.RGBA8Data(side)
-		case asset.TexelFormatRGBA16F:
+		case newasset.TexelFormatRGBA16F:
 			return image.RGBA16FData(side)
-		case asset.TexelFormatRGBA32F:
+		case newasset.TexelFormatRGBA32F:
 			return image.RGBA32FData(side)
 		default:
 			panic(fmt.Errorf("unsupported format: %d", format))
 		}
 	}
 	return &asset.CubeTexture{
-		Dimension: uint16(image.Dimension),
+		Dimension: uint32(image.Dimension),
 		Flags:     newasset.TextureFlagCubeMap,
 		Format:    format,
 		FrontSide: asset.CubeTextureSide{
@@ -76,12 +76,12 @@ func BuildCubeTextureAsset(image *CubeImage, format asset.TexelFormat) *asset.Cu
 type SaveCubeTextureAction struct {
 	resource      asset.Resource
 	imageProvider CubeImageProvider
-	format        asset.TexelFormat
+	format        newasset.TexelFormat
 }
 
 type SaveCubeTextureOption func(a *SaveCubeTextureAction)
 
-func WithFormat(format asset.TexelFormat) SaveCubeTextureOption {
+func WithFormat(format newasset.TexelFormat) SaveCubeTextureOption {
 	return func(a *SaveCubeTextureAction) {
 		a.format = format
 	}

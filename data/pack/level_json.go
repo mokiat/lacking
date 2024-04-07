@@ -108,7 +108,6 @@ func (a *OpenLevelResourceAction) Run() error {
 				MetallicRoughnessTexture: nil,
 				Color:                    sprec.ZeroVec4(),
 				ColorTexture: &TextureRef{
-					TextureID:    jsonSubMesh.DiffuseTexture,
 					TextureIndex: -1,
 				},
 				NormalScale:   1.0,

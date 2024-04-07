@@ -11,7 +11,6 @@ import (
 	"github.com/mokiat/lacking/game/physics"
 	"github.com/mokiat/lacking/game/physics/collision"
 	"github.com/mokiat/lacking/render"
-	"github.com/mokiat/lacking/util/async"
 )
 
 type ModelDefinition struct {
@@ -217,46 +216,18 @@ func (r *ResourceSet) allocateModel(modelAsset *asset.Model) (*ModelDefinition, 
 
 		var albedoTexture render.Texture
 		if ref := pbrAsset.BaseColorTexture(); ref.Valid() {
-			if ref.TextureIndex >= 0 {
-				albedoTexture = textures[ref.TextureIndex]
-			} else {
-				var promise async.Promise[render.Texture]
-				r.gfxWorker.ScheduleVoid(func() {
-					promise = r.OpenTwoDTexture(ref.TextureID)
-				}).Wait()
-				texture, err := promise.Wait()
-				if err != nil {
-					return nil, fmt.Errorf("error loading albedo texture: %w", err)
-				}
-				albedoTexture = texture
-			}
+			albedoTexture = textures[ref.TextureIndex]
 		}
 
 		var metallicRoughnessTexture render.Texture
-		// if texID := pbrAsset.MetallicRoughnessTexture(); texID != "" {
-		// 	var promise async.Promise[*TwoDTexture]
-		// 	r.gfxWorker.ScheduleVoid(func() {
-		// 		promise = r.OpenTwoDTexture(texID)
-		// 	}).Wait()
-		// 	texture, err := promise.Wait()
-		// 	if err != nil {
-		// 		return nil, fmt.Errorf("error loading albedo texture: %w", err)
-		// 	}
-		// 	metallicRoughnessTexture = texture.gfxTexture
-		// }
+		if ref := pbrAsset.MetallicRoughnessTexture(); ref.Valid() {
+			metallicRoughnessTexture = textures[ref.TextureIndex]
+		}
 
 		var normalTexture render.Texture
-		// if texID := pbrAsset.NormalTexture(); texID != "" {
-		// 	var promise async.Promise[*TwoDTexture]
-		// 	r.gfxWorker.ScheduleVoid(func() {
-		// 		promise = r.OpenTwoDTexture(texID)
-		// 	}).Wait()
-		// 	texture, err := promise.Wait()
-		// 	if err != nil {
-		// 		return nil, fmt.Errorf("error loading albedo texture: %w", err)
-		// 	}
-		// 	normalTexture = texture.gfxTexture
-		// }
+		if ref := pbrAsset.NormalTexture(); ref.Valid() {
+			normalTexture = textures[ref.TextureIndex]
+		}
 
 		gfxEngine := r.engine.Graphics()
 		r.gfxWorker.ScheduleVoid(func() {
