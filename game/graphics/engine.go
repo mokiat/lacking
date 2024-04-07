@@ -1,8 +1,6 @@
 package graphics
 
 import (
-	"fmt"
-
 	"github.com/mokiat/gog"
 	"github.com/mokiat/gog/opt"
 	"github.com/mokiat/lacking/debug/log"
@@ -417,7 +415,7 @@ func (e *Engine) CreateMeshGeometry(info MeshGeometryInfo) *MeshGeometry {
 		},
 		Attributes:  attributes,
 		IndexBuffer: indexBuffer,
-		IndexFormat: e.convertIndexType(info.IndexFormat),
+		IndexFormat: info.IndexFormat,
 	})
 
 	return &MeshGeometry{
@@ -670,15 +668,4 @@ func (e *Engine) createSkyPipeline(info internal.SkyPipelineInfo) (render.Pipeli
 func (e *Engine) pickFreeRenderPassKey() uint32 {
 	e.freeRenderPassKey++
 	return e.freeRenderPassKey
-}
-
-func (e *Engine) convertIndexType(indexFormat IndexFormat) render.IndexFormat {
-	switch indexFormat {
-	case IndexFormatU16:
-		return render.IndexFormatUnsignedShort
-	case IndexFormatU32:
-		return render.IndexFormatUnsignedInt
-	default:
-		panic(fmt.Errorf("unknown index format: %d", indexFormat))
-	}
 }

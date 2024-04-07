@@ -450,12 +450,12 @@ func resolveVertexFormat(layout asset.VertexLayout) graphics.VertexFormat {
 	}
 }
 
-func resolveIndexFormat(layout asset.IndexLayout) graphics.IndexFormat {
+func resolveIndexFormat(layout asset.IndexLayout) render.IndexFormat {
 	switch layout {
 	case asset.IndexLayoutUint16:
-		return graphics.IndexFormatU16
+		return render.IndexFormatUnsignedShort
 	case asset.IndexLayoutUint32:
-		return graphics.IndexFormatU32
+		return render.IndexFormatUnsignedInt
 	default:
 		panic(fmt.Errorf("unsupported index layout: %d", layout))
 	}

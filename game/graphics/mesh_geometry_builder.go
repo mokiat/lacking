@@ -273,19 +273,19 @@ func (mb *MeshGeometryBuilder) BuildInfo() MeshGeometryInfo {
 	}
 
 	var (
-		indexFormat IndexFormat
+		indexFormat render.IndexFormat
 		indexData   gblob.LittleEndianBlock
 		indexSize   int
 	)
 	if len(mb.indices) > 0xFFFF {
-		indexFormat = IndexFormatU32
+		indexFormat = render.IndexFormatUnsignedInt
 		indexSize = render.SizeU32
 		indexData = make(gblob.LittleEndianBlock, indexSize*len(mb.indices))
 		for i, index := range mb.indices {
 			indexData.SetUint32(i*4, index)
 		}
 	} else {
-		indexFormat = IndexFormatU16
+		indexFormat = render.IndexFormatUnsignedShort
 		indexSize = render.SizeU16
 		indexData = make(gblob.LittleEndianBlock, indexSize*len(mb.indices))
 		for i, index := range mb.indices {
