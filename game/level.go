@@ -4,13 +4,14 @@ import (
 	"fmt"
 
 	"github.com/mokiat/lacking/game/asset"
+	"github.com/mokiat/lacking/render"
 	"github.com/mokiat/lacking/util/async"
 )
 
 type SceneDefinition struct {
-	skyboxTexture     *CubeTexture
-	reflectionTexture *CubeTexture
-	refractionTexture *CubeTexture
+	skyboxTexture     render.Texture
+	reflectionTexture render.Texture
+	refractionTexture render.Texture
 	model             *ModelDefinition
 	modelDefinitions  []*ModelDefinition
 	modelInstances    []ModelInfo
@@ -26,10 +27,10 @@ func (r *ResourceSet) allocateScene(resource asset.Resource) (*SceneDefinition, 
 		return nil, fmt.Errorf("failed to read asset: %w", err)
 	}
 
-	var skyboxTexture *CubeTexture
+	var skyboxTexture render.Texture
 	if texID := levelAsset.SkyboxTexture; texID != "" {
-		var promise async.Promise[*CubeTexture]
-		r.gfxWorker.ScheduleVoid(func() {
+		var promise async.Promise[render.Texture]
+		r.gfxWorker.ScheduleVoid(func() { // FIXME: gfx worker not needed here!
 			promise = r.OpenCubeTexture(texID)
 		}).Wait()
 		texture, err := promise.Wait()
@@ -39,9 +40,9 @@ func (r *ResourceSet) allocateScene(resource asset.Resource) (*SceneDefinition, 
 		skyboxTexture = texture
 	}
 
-	var reflectionTexture *CubeTexture
+	var reflectionTexture render.Texture
 	if texID := levelAsset.AmbientReflectionTexture; texID != "" {
-		var promise async.Promise[*CubeTexture]
+		var promise async.Promise[render.Texture]
 		r.gfxWorker.ScheduleVoid(func() {
 			promise = r.OpenCubeTexture(texID)
 		}).Wait()
@@ -52,9 +53,9 @@ func (r *ResourceSet) allocateScene(resource asset.Resource) (*SceneDefinition, 
 		reflectionTexture = texture
 	}
 
-	var refractionTexture *CubeTexture
+	var refractionTexture render.Texture
 	if texID := levelAsset.AmbientRefractionTexture; texID != "" {
-		var promise async.Promise[*CubeTexture]
+		var promise async.Promise[render.Texture]
 		r.gfxWorker.ScheduleVoid(func() {
 			promise = r.OpenCubeTexture(texID)
 		}).Wait()
@@ -120,9 +121,9 @@ func (r *ResourceSet) allocateScene(resource asset.Resource) (*SceneDefinition, 
 }
 
 func (r *ResourceSet) releaseScene(scene *SceneDefinition) {
-	r.releaseCubeTexture(scene.skyboxTexture)
-	r.releaseCubeTexture(scene.reflectionTexture)
-	r.releaseCubeTexture(scene.refractionTexture)
+	defer scene.skyboxTexture.Release()
+	defer scene.reflectionTexture.Release()
+	defer scene.refractionTexture.Release()
 	r.releaseModel(scene.model)
 	for _, def := range scene.modelDefinitions {
 		r.releaseModel(def)

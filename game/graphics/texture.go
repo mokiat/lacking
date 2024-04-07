@@ -44,44 +44,6 @@ type TwoDTextureDefinition struct {
 	Data           []byte
 }
 
-func newCubeTexture(texture render.Texture) *CubeTexture {
-	return &CubeTexture{
-		texture: texture,
-	}
-}
-
-// CubeTexture represents a cube texture.
-type CubeTexture struct {
-	texture render.Texture
-}
-
-func (t *CubeTexture) Texture() render.Texture {
-	return t.texture
-}
-
-// Delete releases any resources allocated for this texture.
-func (t *CubeTexture) Delete() {
-	t.texture.Release()
-}
-
-// CubeTextureDefinition contains all the information needed
-// to create a CubeTexture.
-type CubeTextureDefinition struct {
-	Dimension int
-
-	GenerateMipmaps bool
-	GammaCorrection bool
-
-	InternalFormat InternalFormat
-	DataFormat     DataFormat
-	FrontSideData  []byte
-	BackSideData   []byte
-	LeftSideData   []byte
-	RightSideData  []byte
-	TopSideData    []byte
-	BottomSideData []byte
-}
-
 const (
 	DataFormatRGBA8 DataFormat = 1 + iota
 	DataFormatRGBA16F

@@ -1034,7 +1034,7 @@ func (r *sceneRenderer) renderForwardPass(ctx renderCtx) {
 				r.cameraPlacement.Offset,
 				r.cameraPlacement.Size,
 			)
-			commandBuffer.TextureUnit(internal.TextureBindingSkyboxAlbedoTexture, texture.texture)
+			commandBuffer.TextureUnit(internal.TextureBindingSkyboxAlbedoTexture, texture)
 			commandBuffer.SamplerUnit(internal.TextureBindingSkyboxAlbedoTexture, nil) // TODO
 			commandBuffer.DrawIndexed(0, cubeShape.IndexCount(), 1)
 		} else {

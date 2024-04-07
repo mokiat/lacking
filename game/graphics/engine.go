@@ -168,23 +168,6 @@ func (e *Engine) CreateTwoDTexture(definition TwoDTextureDefinition) *TwoDTextur
 	}))
 }
 
-// CreateCubeTexture creates a new CubeTexture using the
-// specified definition.
-func (e *Engine) CreateCubeTexture(definition CubeTextureDefinition) *CubeTexture {
-	return newCubeTexture(e.api.CreateColorTextureCube(render.ColorTextureCubeInfo{
-		Dimension:       definition.Dimension,
-		GenerateMipmaps: definition.GenerateMipmaps,
-		GammaCorrection: true,
-		Format:          e.convertFormat(definition.DataFormat),
-		FrontSideData:   definition.FrontSideData,
-		BackSideData:    definition.BackSideData,
-		LeftSideData:    definition.LeftSideData,
-		RightSideData:   definition.RightSideData,
-		TopSideData:     definition.TopSideData,
-		BottomSideData:  definition.BottomSideData,
-	}))
-}
-
 // CreateMaterial creates a new Material from the specified info object.
 func (e *Engine) CreateMaterial(info MaterialInfo) *Material {
 	geometryPasses := gog.Map(info.GeometryPasses, func(passInfo GeometryRenderPassInfo) internal.MaterialRenderPassDefinition {
