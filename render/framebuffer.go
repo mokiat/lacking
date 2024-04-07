@@ -44,25 +44,25 @@ type CopyFramebufferToTextureInfo struct {
 	Texture Texture
 
 	// TextureLevel is the mipmap level of the texture that should be updated.
-	TextureLevel int
+	TextureLevel uint32
 
 	// TextureX is the X offset of the texture that should be updated.
-	TextureX int
+	TextureX uint32
 
 	// TextureY is the Y offset of the texture that should be updated.
-	TextureY int
+	TextureY uint32
 
 	// FramebufferX is the X offset of the framebuffer that should be copied.
-	FramebufferX int
+	FramebufferX uint32
 
 	// FramebufferY is the Y offset of the framebuffer that should be copied.
-	FramebufferY int
+	FramebufferY uint32
 
 	// Width is the width amount of the framebuffer that should be copied.
-	Width int
+	Width uint32
 
 	// Height is the height amount of the framebuffer that should be copied.
-	Height int
+	Height uint32
 
 	// GenerateMipmaps indicates whether or not mipmaps should be generated.
 	GenerateMipmaps bool
@@ -77,19 +77,19 @@ type CopyFramebufferToBufferInfo struct {
 	Buffer Buffer
 
 	// Offset is the offset into the pixel transfer buffer.
-	Offset int
+	Offset uint32
 
 	// X is the X offset of the framebuffer that should be copied.
-	X int
+	X uint32
 
 	// Y is the Y offset of the framebuffer that should be copied.
-	Y int
+	Y uint32
 
 	// Width is the width amount of the framebuffer that should be copied.
-	Width int
+	Width uint32
 
 	// Height is the height amount of the framebuffer that should be copied.
-	Height int
+	Height uint32
 
 	// Format is the format of the data.
 	Format DataFormat

@@ -625,7 +625,7 @@ func (e *Engine) createSkyProgram(programCode render.ProgramCode, shader *lsl.Sh
 	var textureBindings []render.TextureBinding
 
 	if textureBlock, ok := shader.FindTextureBlock(); ok {
-		for i := range min(8, len(textureBlock.Fields)) {
+		for i := range uint(min(8, len(textureBlock.Fields))) {
 			textureBindings = append(textureBindings, render.NewTextureBinding(textureBlock.Fields[i].Name, i))
 		}
 	}

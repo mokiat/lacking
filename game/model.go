@@ -427,35 +427,35 @@ func (r *ResourceSet) constructCollisionMeshes(bodyDef asset.BodyDefinition) []c
 func resolveVertexFormat(layout asset.VertexLayout) graphics.VertexFormat {
 	return graphics.VertexFormat{
 		HasCoord:            layout.CoordOffset != asset.UnspecifiedOffset,
-		CoordOffsetBytes:    int(layout.CoordOffset),
-		CoordStrideBytes:    int(layout.CoordStride),
+		CoordOffsetBytes:    uint32(layout.CoordOffset),
+		CoordStrideBytes:    uint32(layout.CoordStride),
 		HasNormal:           layout.NormalOffset != asset.UnspecifiedOffset,
-		NormalOffsetBytes:   int(layout.NormalOffset),
-		NormalStrideBytes:   int(layout.NormalStride),
+		NormalOffsetBytes:   uint32(layout.NormalOffset),
+		NormalStrideBytes:   uint32(layout.NormalStride),
 		HasTangent:          layout.TangentOffset != asset.UnspecifiedOffset,
-		TangentOffsetBytes:  int(layout.TangentOffset),
-		TangentStrideBytes:  int(layout.TangentStride),
+		TangentOffsetBytes:  uint32(layout.TangentOffset),
+		TangentStrideBytes:  uint32(layout.TangentStride),
 		HasTexCoord:         layout.TexCoordOffset != asset.UnspecifiedOffset,
-		TexCoordOffsetBytes: int(layout.TexCoordOffset),
-		TexCoordStrideBytes: int(layout.TexCoordStride),
+		TexCoordOffsetBytes: uint32(layout.TexCoordOffset),
+		TexCoordStrideBytes: uint32(layout.TexCoordStride),
 		HasColor:            layout.ColorOffset != asset.UnspecifiedOffset,
-		ColorOffsetBytes:    int(layout.ColorOffset),
-		ColorStrideBytes:    int(layout.ColorStride),
+		ColorOffsetBytes:    uint32(layout.ColorOffset),
+		ColorStrideBytes:    uint32(layout.ColorStride),
 		HasWeights:          layout.WeightsOffset != asset.UnspecifiedOffset,
-		WeightsOffsetBytes:  int(layout.WeightsOffset),
-		WeightsStrideBytes:  int(layout.WeightsStride),
+		WeightsOffsetBytes:  uint32(layout.WeightsOffset),
+		WeightsStrideBytes:  uint32(layout.WeightsStride),
 		HasJoints:           layout.JointsOffset != asset.UnspecifiedOffset,
-		JointsOffsetBytes:   int(layout.JointsOffset),
-		JointsStrideBytes:   int(layout.JointsStride),
+		JointsOffsetBytes:   uint32(layout.JointsOffset),
+		JointsStrideBytes:   uint32(layout.JointsStride),
 	}
 }
 
 func resolveIndexFormat(layout asset.IndexLayout) render.IndexFormat {
 	switch layout {
 	case asset.IndexLayoutUint16:
-		return render.IndexFormatUnsignedShort
+		return render.IndexFormatUnsignedU16
 	case asset.IndexLayoutUint32:
-		return render.IndexFormatUnsignedInt
+		return render.IndexFormatUnsignedU32
 	default:
 		panic(fmt.Errorf("unsupported index layout: %d", layout))
 	}

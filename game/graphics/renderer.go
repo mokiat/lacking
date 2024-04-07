@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/mokiat/gblob"
-	"github.com/mokiat/gog/opt"
 	"github.com/mokiat/gomath/dprec"
 	"github.com/mokiat/gomath/dtos"
 	"github.com/mokiat/gomath/sprec"
@@ -76,8 +75,8 @@ type sceneRenderer struct {
 
 	stageData *commonStageData
 
-	framebufferWidth  int
-	framebufferHeight int
+	framebufferWidth  uint32
+	framebufferHeight uint32
 
 	geometryAlbedoTexture   render.Texture
 	geometryNormalTexture   render.Texture
@@ -153,7 +152,7 @@ type sceneRenderer struct {
 	cameraPlacement        renderutil.UniformPlacement
 }
 
-func (r *sceneRenderer) createFramebuffers(width, height int) {
+func (r *sceneRenderer) createFramebuffers(width, height uint32) {
 	r.framebufferWidth = width
 	r.framebufferHeight = height
 
@@ -241,10 +240,9 @@ func (r *sceneRenderer) Allocate() {
 	coneShape := r.stageData.ConeShape()
 
 	r.shadowDepthTexture = r.api.CreateDepthTexture2D(render.DepthTexture2DInfo{
-		Width:        shadowMapWidth,
-		Height:       shadowMapHeight,
-		ClippedValue: opt.V(float32(1.0)),
-		Comparable:   true,
+		Width:      shadowMapWidth,
+		Height:     shadowMapHeight,
+		Comparable: true,
 	})
 	r.shadowFramebuffer = r.api.CreateFramebuffer(render.FramebufferInfo{
 		DepthAttachment: r.shadowDepthTexture,
@@ -284,7 +282,7 @@ func (r *sceneRenderer) Allocate() {
 	})
 	r.exposureBuffer = r.api.CreatePixelTransferBuffer(render.BufferInfo{
 		Dynamic: true,
-		Size:    len(r.exposureBufferData),
+		Size:    uint32(len(r.exposureBufferData)),
 	})
 	r.exposureReadbackSupported = (r.exposureFormat == render.DataFormatRGBA16F) || (r.exposureFormat == render.DataFormatRGBA32F)
 	if !r.exposureReadbackSupported {
@@ -635,8 +633,8 @@ func (r *sceneRenderer) Ray(viewport Viewport, camera *Camera, x, y int) (dprec.
 
 	cameraMatrix := stod.Mat4(camera.gfxMatrix())
 
-	pX := (float64(x-viewport.X)/float64(viewport.Width))*2.0 - 1.0
-	pY := (float64(viewport.Y-y)/float64(viewport.Height))*2.0 + 1.0
+	pX := (float64(x-int(viewport.X))/float64(viewport.Width))*2.0 - 1.0
+	pY := (float64(int(viewport.Y)-y)/float64(viewport.Height))*2.0 + 1.0
 
 	a := dprec.Mat4Vec4Prod(inverseProjection, dprec.NewVec4(
 		pX, pY, -1.0, 1.0,
@@ -755,7 +753,7 @@ func (r *sceneRenderer) Render(framebuffer render.Framebuffer, viewport Viewport
 	}
 }
 
-func (r *sceneRenderer) evaluateProjectionMatrix(camera *Camera, width, height int) sprec.Mat4 {
+func (r *sceneRenderer) evaluateProjectionMatrix(camera *Camera, width, height uint32) sprec.Mat4 {
 	var (
 		near    = camera.Near()
 		far     = camera.Far()
@@ -1088,7 +1086,7 @@ func (r *sceneRenderer) renderForwardPass(ctx renderCtx) {
 			r.cameraPlacement.Offset,
 			r.cameraPlacement.Size,
 		)
-		commandBuffer.Draw(0, len(r.debugLines)*2, 1)
+		commandBuffer.Draw(0, uint32(len(r.debugLines)*2), 1)
 	}
 
 	// FIXME/TODO: Reusing renderItems and assuming same as geometry pass.
@@ -1123,13 +1121,13 @@ func (r *sceneRenderer) renderSky(sky *Sky) {
 		)
 		for i := range layer.TextureSet.TextureCount() {
 			if texture := layer.TextureSet.TextureAt(i); texture != nil {
-				commandBuffer.TextureUnit(i, texture)
+				commandBuffer.TextureUnit(uint(i), texture)
 			}
 			if sampler := layer.TextureSet.SamplerAt(i); sampler != nil {
-				commandBuffer.SamplerUnit(i, sampler)
+				commandBuffer.SamplerUnit(uint(i), sampler)
 			}
 		}
-		commandBuffer.DrawIndexed(int(layer.IndexByteOffset), int(layer.IndexCount), 1)
+		commandBuffer.DrawIndexed(layer.IndexByteOffset, layer.IndexCount, 1)
 	}
 }
 
@@ -1389,10 +1387,10 @@ func (r *sceneRenderer) renderMeshRenderItemBatch(ctx renderMeshContext, items [
 
 	for i := range maxTextureCount {
 		if texture := template.Textures[i]; texture != nil {
-			commandBuffer.TextureUnit(i, texture)
+			commandBuffer.TextureUnit(uint(i), texture)
 		}
 		if sampler := template.Samplers[i]; sampler != nil {
-			commandBuffer.SamplerUnit(i, sampler)
+			commandBuffer.SamplerUnit(uint(i), sampler)
 		}
 	}
 
@@ -1425,7 +1423,7 @@ func (r *sceneRenderer) renderMeshRenderItemBatch(ctx renderMeshContext, items [
 		)
 	}
 
-	commandBuffer.DrawIndexed(int(template.IndexByteOffset), int(template.IndexCount), len(items))
+	commandBuffer.DrawIndexed(template.IndexByteOffset, template.IndexCount, uint32(len(items)))
 }
 
 // Deprecated: Emissive can be handled with a forward pass
@@ -1623,10 +1621,10 @@ func (r *sceneRenderer) renderDirectionalLight(light *DirectionalLight) {
 type renderCtx struct {
 	framebuffer render.Framebuffer
 	scene       *Scene
-	x           int
-	y           int
-	width       int
-	height      int
+	x           uint32
+	y           uint32
+	width       uint32
+	height      uint32
 	camera      *Camera
 	frustum     spatial.HexahedronRegion
 }

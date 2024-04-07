@@ -13,7 +13,7 @@ type Buffer interface {
 
 // BufferInfo describes the information needed to create a new Buffer.
 type BufferInfo struct {
-	Dynamic bool
+	Size    uint32
 	Data    []byte
-	Size    int
+	Dynamic bool
 }

@@ -2,7 +2,7 @@ package graphics
 
 // NewViewport creates a new Viewport with the specified
 // parameters.
-func NewViewport(x, y, width, height int) Viewport {
+func NewViewport(x, y, width, height uint32) Viewport {
 	return Viewport{
 		X:      x,
 		Y:      y,
@@ -14,8 +14,8 @@ func NewViewport(x, y, width, height int) Viewport {
 // Viewport represents an area on the screen to
 // which rendering will occur.
 type Viewport struct {
-	X      int
-	Y      int
-	Width  int
-	Height int
+	X      uint32
+	Y      uint32
+	Width  uint32
+	Height uint32
 }

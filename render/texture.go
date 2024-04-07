@@ -1,11 +1,5 @@
 package render
 
-import (
-	"fmt"
-
-	"github.com/mokiat/gog/opt"
-)
-
 // TextureMarker marks a type as being a Texture.
 type TextureMarker interface {
 	_isTextureType()
@@ -48,7 +42,7 @@ func (f DataFormat) String() string {
 	case DataFormatRGBA32F:
 		return "RGBA32F"
 	default:
-		return fmt.Sprintf("UNKNOWN(%d)", f)
+		return "UNKNOWN"
 	}
 }
 
@@ -57,10 +51,10 @@ func (f DataFormat) String() string {
 type ColorTexture2DInfo struct {
 
 	// Width specifies the width of the texture.
-	Width int // TODO: uint32
+	Width uint32
 
 	// Height specifies the height of the texture.
-	Height int // TODO: uint32
+	Height uint32
 
 	// GenerateMipmaps specifies whether mipmaps should be generated.
 	GenerateMipmaps bool
@@ -81,7 +75,7 @@ type ColorTexture2DInfo struct {
 type ColorTextureCubeInfo struct {
 
 	// Dimension specifies the width, height and length of the texture.
-	Dimension int // TODO: uint32
+	Dimension uint32
 
 	// GenerateMipmaps specifies whether mipmaps should be generated.
 	GenerateMipmaps bool
@@ -123,13 +117,10 @@ type ColorTextureCubeInfo struct {
 type DepthTexture2DInfo struct {
 
 	// Width specifies the width of the texture.
-	Width int // TODO: uint32
+	Width uint32
 
 	// Height specifies the height of the texture.
-	Height int // TODO: uint32
-
-	// ClippedValue specifies the value that should be used for depth clipping.
-	ClippedValue opt.T[float32]
+	Height uint32
 
 	// Comparable specifies whether the depth texture should be comparable.
 	Comparable bool
@@ -140,10 +131,10 @@ type DepthTexture2DInfo struct {
 type StencilTexture2DInfo struct {
 
 	// Width specifies the width of the texture.
-	Width int // TODO: uint32
+	Width uint32
 
 	// Height specifies the height of the texture.
-	Height int // TODO: uint32
+	Height uint32
 }
 
 // DepthStencilTexture2DInfo represents the information needed to create a
@@ -151,12 +142,8 @@ type StencilTexture2DInfo struct {
 type DepthStencilTexture2DInfo struct {
 
 	// Width specifies the width of the texture.
-	Width int // TODO: uint32
+	Width uint32
 
 	// Height specifies the height of the texture.
-	Height int // TODO: uint32
-
-	// DepthClippedValue specifies the value that should be used for depth
-	// clipping.
-	DepthClippedValue opt.T[float32]
+	Height uint32
 }

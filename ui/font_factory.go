@@ -49,7 +49,7 @@ func newFontFactory(api render.API, renderer *canvasRenderer) *fontFactory {
 type fontFactory struct {
 	api            render.API
 	renderer       *canvasRenderer
-	fontImageSize  int
+	fontImageSize  uint32
 	colorTexture   render.Texture
 	stencilTexture render.Texture
 	framebuffer    render.Framebuffer
@@ -117,7 +117,7 @@ func (f *fontFactory) CreateFont(font *opentype.Font) (*Font, error) {
 		StencilStoreOp:    render.StoreOperationDiscard,
 		StencilClearValue: 0x00,
 	})
-	f.renderer.onBegin(commandBuffer, NewSize(f.fontImageSize, f.fontImageSize))
+	f.renderer.onBegin(commandBuffer, NewSize(int(f.fontImageSize), int(f.fontImageSize)))
 
 	cellSize := float32(f.fontImageSize) / float32(fontImageCells)
 	// Use 4% padding to ensure that glyphs don't touch

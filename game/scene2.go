@@ -71,8 +71,8 @@ func (r *ResourceSet) transformModel2Asset(sceneAsset asset.Model) (SceneDefinit
 			// TODO: Move to allocate method
 			r.gfxWorker.ScheduleVoid(func() {
 				texture = renderAPI.CreateColorTexture2D(render.ColorTexture2DInfo{
-					Width:           int(textureAsset.Width),
-					Height:          int(textureAsset.Height),
+					Width:           textureAsset.Width,
+					Height:          textureAsset.Height,
 					GenerateMipmaps: textureAsset.Flags.Has(asset.TextureFlagMipmapping),
 					GammaCorrection: !textureAsset.Flags.Has(asset.TextureFlagLinearSpace),
 					Format:          resolveDataFormat2(textureAsset.Format),
@@ -83,7 +83,7 @@ func (r *ResourceSet) transformModel2Asset(sceneAsset asset.Model) (SceneDefinit
 			// TODO: Move to allocate method
 			r.gfxWorker.ScheduleVoid(func() {
 				texture = renderAPI.CreateColorTextureCube(render.ColorTextureCubeInfo{
-					Dimension:       int(textureAsset.Width),
+					Dimension:       textureAsset.Width,
 					GenerateMipmaps: textureAsset.Flags.Has(asset.TextureFlagMipmapping),
 					GammaCorrection: !textureAsset.Flags.Has(asset.TextureFlagLinearSpace),
 					Format:          resolveDataFormat2(textureAsset.Format),

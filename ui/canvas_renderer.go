@@ -594,7 +594,7 @@ func (c *canvasRenderer) FillTextLine(text []rune, position sprec.Vec2, typograp
 			c.materialUniformPlacement.Offset,
 			c.materialUniformPlacement.Size,
 		)
-		c.commandBuffer.Draw(vertexOffset, vertexCount, 1)
+		c.commandBuffer.Draw(uint32(vertexOffset), uint32(vertexCount), 1)
 	}
 }
 
@@ -713,7 +713,7 @@ func (c *canvasRenderer) FillText(text string, position sprec.Vec2, typography T
 			c.materialUniformPlacement.Offset,
 			c.materialUniformPlacement.Size,
 		)
-		c.commandBuffer.Draw(vertexOffset, vertexCount, 1)
+		c.commandBuffer.Draw(uint32(vertexOffset), uint32(vertexCount), 1)
 	}
 }
 
@@ -763,7 +763,7 @@ func (c *canvasRenderer) fillPath(path *canvasPath, fill Fill) {
 			if i+1 < len(path.subPathOffsets) {
 				pointCount = path.subPathOffsets[i+1] - pointOffset
 			}
-			c.commandBuffer.Draw(vertexOffset+pointOffset, pointCount, 1)
+			c.commandBuffer.Draw(uint32(vertexOffset+pointOffset), uint32(pointCount), 1)
 		}
 	}
 
@@ -811,7 +811,7 @@ func (c *canvasRenderer) fillPath(path *canvasPath, fill Fill) {
 		if i+1 < len(path.subPathOffsets) {
 			pointCount = path.subPathOffsets[i+1] - pointOffset
 		}
-		c.commandBuffer.Draw(vertexOffset+pointOffset, pointCount, 1)
+		c.commandBuffer.Draw(uint32(vertexOffset+pointOffset), uint32(pointCount), 1)
 	}
 }
 
@@ -900,7 +900,7 @@ func (c *canvasRenderer) strokePath(path *canvasPath) {
 		}
 		vertexCount := c.contourMesh.Offset() - vertexOffset
 
-		c.commandBuffer.Draw(vertexOffset, vertexCount, 1)
+		c.commandBuffer.Draw(uint32(vertexOffset), uint32(vertexCount), 1)
 	}
 }
 

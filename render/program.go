@@ -45,7 +45,7 @@ type ProgramInfo struct {
 
 // NewTextureBinding creates a new TextureBinding with the specified name and
 // index.
-func NewTextureBinding(name string, index int) TextureBinding {
+func NewTextureBinding(name string, index uint) TextureBinding {
 	return TextureBinding{
 		Name:  name,
 		Index: index,
@@ -59,12 +59,12 @@ type TextureBinding struct {
 	Name string
 
 	// Index specifies the binding index.
-	Index int
+	Index uint
 }
 
 // NewUniformBinding creates a new UniformBinding with the specified name and
 // index.
-func NewUniformBinding(name string, index int) UniformBinding {
+func NewUniformBinding(name string, index uint) UniformBinding {
 	return UniformBinding{
 		Name:  name,
 		Index: index,
@@ -78,5 +78,5 @@ type UniformBinding struct {
 	Name string
 
 	// Index specifies the binding index.
-	Index int
+	Index uint
 }

@@ -29,7 +29,7 @@ type VertexArrayInfo struct {
 
 // NewVertexArrayBinding creates a new VertexArrayBinding with the specified
 // buffer and stride.
-func NewVertexArrayBinding(buffer Buffer, stride int) VertexArrayBinding {
+func NewVertexArrayBinding(buffer Buffer, stride uint32) VertexArrayBinding {
 	return VertexArrayBinding{
 		VertexBuffer: buffer,
 		Stride:       stride,
@@ -43,12 +43,12 @@ type VertexArrayBinding struct {
 	VertexBuffer Buffer
 
 	// Stride specifies the byte stride of subsequent elements in the buffer.
-	Stride int
+	Stride uint32
 }
 
 // NewVertexArrayAttribute creates a new VertexArrayAttribute with the specified
 // binding, location, offset and format.
-func NewVertexArrayAttribute(binding, location, offset int, format VertexAttributeFormat) VertexArrayAttribute {
+func NewVertexArrayAttribute(binding, location uint, offset uint32, format VertexAttributeFormat) VertexArrayAttribute {
 	return VertexArrayAttribute{
 		Binding:  binding,
 		Location: location,
@@ -61,20 +61,17 @@ func NewVertexArrayAttribute(binding, location, offset int, format VertexAttribu
 type VertexArrayAttribute struct {
 
 	// Binding specifies the binding inside the Vertex Array that this uses.
-	Binding int
+	Binding uint
 
 	// Location specifies the location of the attribute in the shader.
-	Location int
+	Location uint
 
 	// Format specifies the format of the attribute.
 	Format VertexAttributeFormat
 
 	// Offset specifies the byte offset of the attribute in the buffer.
-	Offset int
+	Offset uint32
 }
-
-// VertexAttributeFormat specifies the format of a vertex attribute.
-type VertexAttributeFormat uint8
 
 const (
 	// VertexAttributeFormatR32F specifies that the vertex attribute is a
@@ -257,14 +254,124 @@ const (
 	VertexAttributeFormatRGBA8IU
 )
 
+// VertexAttributeFormat specifies the format of a vertex attribute.
+type VertexAttributeFormat uint8
+
+// String returns a string representation of the VertexAttributeFormat.
+func (f VertexAttributeFormat) String() string {
+	switch f {
+	case VertexAttributeFormatR32F:
+		return "R32F"
+	case VertexAttributeFormatRG32F:
+		return "RG32F"
+	case VertexAttributeFormatRGB32F:
+		return "RGB32F"
+	case VertexAttributeFormatRGBA32F:
+		return "RGBA32F"
+	case VertexAttributeFormatR16F:
+		return "R16F"
+	case VertexAttributeFormatRG16F:
+		return "RG16F"
+	case VertexAttributeFormatRGB16F:
+		return "RGB16F"
+	case VertexAttributeFormatRGBA16F:
+		return "RGBA16F"
+	case VertexAttributeFormatR16S:
+		return "R16S"
+	case VertexAttributeFormatRG16S:
+		return "RG16S"
+	case VertexAttributeFormatRGB16S:
+		return "RGB16S"
+	case VertexAttributeFormatRGBA16S:
+		return "RGBA16S"
+	case VertexAttributeFormatR16SN:
+		return "R16SN"
+	case VertexAttributeFormatRG16SN:
+		return "RG16SN"
+	case VertexAttributeFormatRGB16SN:
+		return "RGB16SN"
+	case VertexAttributeFormatRGBA16SN:
+		return "RGBA16SN"
+	case VertexAttributeFormatR16U:
+		return "R16U"
+	case VertexAttributeFormatRG16U:
+		return "RG16U"
+	case VertexAttributeFormatRGB16U:
+		return "RGB16U"
+	case VertexAttributeFormatRGBA16U:
+		return "RGBA16U"
+	case VertexAttributeFormatR16UN:
+		return "R16UN"
+	case VertexAttributeFormatRG16UN:
+		return "RG16UN"
+	case VertexAttributeFormatRGB16UN:
+		return "RGB16UN"
+	case VertexAttributeFormatRGBA16UN:
+		return "RGBA16UN"
+	case VertexAttributeFormatR8S:
+		return "R8S"
+	case VertexAttributeFormatRG8S:
+		return "RG8S"
+	case VertexAttributeFormatRGB8S:
+		return "RGB8S"
+	case VertexAttributeFormatRGBA8S:
+		return "RGBA8S"
+	case VertexAttributeFormatR8SN:
+		return "R8SN"
+	case VertexAttributeFormatRG8SN:
+		return "RG8SN"
+	case VertexAttributeFormatRGB8SN:
+		return "RGB8SN"
+	case VertexAttributeFormatRGBA8SN:
+		return "RGBA8SN"
+	case VertexAttributeFormatR8U:
+		return "R8U"
+	case VertexAttributeFormatRG8U:
+		return "RG8U"
+	case VertexAttributeFormatRGB8U:
+		return "RGB8U"
+	case VertexAttributeFormatRGBA8U:
+		return "RGBA8U"
+	case VertexAttributeFormatR8UN:
+		return "R8UN"
+	case VertexAttributeFormatRG8UN:
+		return "RG8UN"
+	case VertexAttributeFormatRGB8UN:
+		return "RGB8UN"
+	case VertexAttributeFormatRGBA8UN:
+		return "RGBA8UN"
+	case VertexAttributeFormatR8IU:
+		return "R8IU"
+	case VertexAttributeFormatRG8IU:
+		return "RG8IU"
+	case VertexAttributeFormatRGB8IU:
+		return "RGB8IU"
+	case VertexAttributeFormatRGBA8IU:
+		return "RGBA8IU"
+	default:
+		return "UNKNOWN"
+	}
+}
+
+const (
+	// IndexFormatUnsignedU16 specifies that the index buffer is unsigned
+	// short.
+	IndexFormatUnsignedU16 IndexFormat = iota
+
+	// IndexFormatUnsignedU32 specifies that the index buffer is unsigned int.
+	IndexFormatUnsignedU32
+)
+
 // IndexFormat specifies the format of an index buffer.
 type IndexFormat uint8
 
-const (
-	// IndexFormatUnsignedShort specifies that the index buffer is unsigned
-	// short.
-	IndexFormatUnsignedShort IndexFormat = iota
-
-	// IndexFormatUnsignedInt specifies that the index buffer is unsigned int.
-	IndexFormatUnsignedInt
-)
+func (f IndexFormat) String() string {
+	switch f {
+	case IndexFormatUnsignedU16:
+		return "UNSIGNED_SHORT"
+	case IndexFormatUnsignedU32:
+		return "UNSIGNED_INT"
+	default:
+		return "UNKNOWN"
+	}
+}
