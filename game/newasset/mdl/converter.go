@@ -2,8 +2,10 @@ package mdl
 
 import (
 	"fmt"
+	"slices"
 
 	"github.com/mokiat/gblob"
+	"github.com/mokiat/gog"
 	"github.com/mokiat/gomath/sprec"
 	"github.com/mokiat/lacking/game/graphics/lsl"
 	asset "github.com/mokiat/lacking/game/newasset"
@@ -13,6 +15,7 @@ func NewConverter(model *Model) *Converter {
 	return &Converter{
 		model: model,
 
+		convertedTextures:   make(map[*Texture]uint32),
 		convertedSkyShaders: make(map[*Shader]uint32),
 
 		parsedShaders: make(map[*Shader]*lsl.Shader),
@@ -21,6 +24,9 @@ func NewConverter(model *Model) *Converter {
 
 type Converter struct {
 	model *Model
+
+	assetTextures     []asset.Texture
+	convertedTextures map[*Texture]uint32
 
 	assetSkyShaders     []asset.Shader
 	convertedSkyShaders map[*Shader]uint32
@@ -80,6 +86,7 @@ func (c *Converter) convertModel(s *Model) (asset.Model, error) {
 	return asset.Model{
 		Nodes:       assetNodes,
 		SkyShaders:  c.assetSkyShaders,
+		Textures:    c.assetTextures,
 		PointLights: assetPointLights,
 		SpotLights:  assetSpotLights,
 		Skies:       assetSkies,
@@ -107,21 +114,26 @@ func (c *Converter) convertSpotLight(nodeIndex uint32, light *SpotLight) asset.S
 }
 
 func (c *Converter) convertSky(nodeIndex uint32, sky *Sky) (asset.Sky, error) {
+	textures, err := c.convertSamplers(sky.samplers)
+	if err != nil {
+		return asset.Sky{}, fmt.Errorf("error converting samplers: %w", err)
+	}
+
 	properties, err := c.convertProperties(sky.properties)
 	if err != nil {
-		return asset.Sky{}, fmt.Errorf("error converting sky properties: %w", err)
+		return asset.Sky{}, fmt.Errorf("error converting properties: %w", err)
 	}
 
 	assetSky := asset.Sky{
 		NodeIndex:  nodeIndex,
-		Textures:   []asset.TextureBinding{}, // TODO
+		Textures:   textures,
 		Properties: properties,
 		Layers:     make([]asset.SkyLayer, len(sky.layers)),
 	}
 	for i, layer := range sky.layers {
 		assetLayer, err := c.convertSkyLayer(layer)
 		if err != nil {
-			return asset.Sky{}, fmt.Errorf("error converting sky layer: %w", err)
+			return asset.Sky{}, fmt.Errorf("error converting layer: %w", err)
 		}
 		assetSky.Layers[i] = assetLayer
 	}
@@ -157,6 +169,71 @@ func (c *Converter) convertSkyShader(shader *Shader) (uint32, error) {
 	c.convertedSkyShaders[shader] = shaderIndex
 	c.assetSkyShaders = append(c.assetSkyShaders, assetShader)
 	return shaderIndex, nil
+}
+
+func (c *Converter) convertSamplers(samplers map[string]*Sampler) ([]asset.TextureBinding, error) {
+	bindings := make([]asset.TextureBinding, 0, len(samplers))
+	for name, sampler := range samplers {
+		textureIndex, err := c.convertTexture(sampler.texture)
+		if err != nil {
+			return nil, fmt.Errorf("error converting texture: %w", err)
+		}
+		bindings = append(bindings, asset.TextureBinding{
+			BindingName:  name,
+			TextureIndex: textureIndex,
+			Wrapping:     sampler.wrapMode,
+			Filtering:    sampler.filterMode,
+			Mipmapping:   sampler.mipmapping,
+		})
+	}
+	return bindings, nil
+}
+
+func isLikelyLinearSpace(format TextureFormat) bool {
+	linearFormats := []TextureFormat{
+		TextureFormatRGBA16F,
+		TextureFormatRGBA32F,
+	}
+	return slices.Contains(linearFormats, format)
+}
+
+func (c *Converter) convertTexture(texture *Texture) (uint32, error) {
+	if index, ok := c.convertedTextures[texture]; ok {
+		return index, nil
+	}
+
+	var flags asset.TextureFlag
+	switch texture.Kind() {
+	case TextureKind2D:
+		flags = asset.TextureFlag2D
+	case TextureKind2DArray:
+		flags = asset.TextureFlag2DArray
+	case TextureKind3D:
+		flags = asset.TextureFlag3D
+	case TextureKindCube:
+		flags = asset.TextureFlagCubeMap
+	default:
+		return 0, fmt.Errorf("unsupported texture kind %d", texture.Kind())
+	}
+	if isLikelyLinearSpace(texture.format) {
+		flags |= asset.TextureFlagLinearSpace
+	}
+	assetTexture := asset.Texture{
+		Width:  uint32(texture.Width()),
+		Height: uint32(texture.Height()),
+		Format: texture.Format(),
+		Flags:  flags,
+		Layers: gog.Map(texture.layers, func(layer TextureLayer) asset.TextureLayer {
+			return asset.TextureLayer{
+				Data: layer.Data(),
+			}
+		}),
+	}
+
+	index := uint32(len(c.assetTextures))
+	c.assetTextures = append(c.assetTextures, assetTexture)
+	c.convertedTextures[texture] = index
+	return index, nil
 }
 
 func (c *Converter) convertProperties(properties map[string]interface{}) ([]asset.PropertyBinding, error) {

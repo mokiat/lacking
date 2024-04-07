@@ -26,6 +26,9 @@ type Model struct {
 	// the sky pass.
 	SkyShaders []Shader
 
+	// Textures is the collection of textures that are part of the scene.
+	Textures []Texture
+
 	// Materials is the collection of materials that are part of the scene.
 	Materials []Material
 

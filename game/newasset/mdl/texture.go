@@ -3,7 +3,7 @@ package mdl
 import (
 	"fmt"
 
-	"github.com/mokiat/lacking/game/asset"
+	asset "github.com/mokiat/lacking/game/newasset"
 )
 
 const (
@@ -29,11 +29,29 @@ const (
 
 type TextureFormat = asset.TexelFormat
 
+const (
+	TextureKind2D TextureKind = iota
+	TextureKind2DArray
+	TextureKind3D
+	TextureKindCube
+)
+
+type TextureKind uint8
+
 type Texture struct {
+	kind   TextureKind
 	width  int
 	height int
 	format TextureFormat
 	layers []TextureLayer
+}
+
+func (t *Texture) Kind() TextureKind {
+	return t.kind
+}
+
+func (t *Texture) SetKind(kind TextureKind) {
+	t.kind = kind
 }
 
 func (t *Texture) Width() int {
@@ -106,4 +124,8 @@ func createTextureLayer(width, height int, format TextureFormat) TextureLayer {
 
 type TextureLayer struct {
 	data []byte
+}
+
+func (l *TextureLayer) Data() []byte {
+	return l.data
 }

@@ -95,7 +95,7 @@ func (d *SkyDefinition) Delete() {
 
 func newSkyLayerDefinition(engine *Engine, info SkyLayerDefinitionInfo) internal.SkyLayerDefinition {
 	programCode := info.Shader.createProgramCode()
-	program := engine.createSkyProgram(programCode)
+	program := engine.createSkyProgram(programCode, info.Shader.ast)
 	pipeline, indexByteOffset, indexCount := engine.createSkyPipeline(internal.SkyPipelineInfo{
 		Program:  program,
 		Blending: info.Blending,

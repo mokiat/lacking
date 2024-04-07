@@ -44,6 +44,10 @@ type Engine struct {
 	freeRenderPassKey uint32
 }
 
+func (e *Engine) API() render.API {
+	return e.api
+}
+
 // Create initializes this 3D engine.
 func (e *Engine) Create() {
 	e.stageData.Allocate()
@@ -652,19 +656,18 @@ func (e *Engine) createForwardPassPipeline(info internal.RenderPassPipelineInfo)
 	})
 }
 
-func (e *Engine) createSkyProgram(programCode render.ProgramCode) render.Program {
+func (e *Engine) createSkyProgram(programCode render.ProgramCode, shader *lsl.Shader) render.Program {
+	var textureBindings []render.TextureBinding
+
+	if textureBlock, ok := shader.FindTextureBlock(); ok {
+		for i := range min(8, len(textureBlock.Fields)) {
+			textureBindings = append(textureBindings, render.NewTextureBinding(textureBlock.Fields[i].Name, i))
+		}
+	}
+
 	return e.api.CreateProgram(render.ProgramInfo{
-		SourceCode: programCode,
-		TextureBindings: []render.TextureBinding{
-			render.NewTextureBinding("lackingTexture0", 0),
-			render.NewTextureBinding("lackingTexture1", 1),
-			render.NewTextureBinding("lackingTexture2", 2),
-			render.NewTextureBinding("lackingTexture3", 3),
-			render.NewTextureBinding("lackingTexture4", 4),
-			render.NewTextureBinding("lackingTexture5", 5),
-			render.NewTextureBinding("lackingTexture6", 6),
-			render.NewTextureBinding("lackingTexture7", 7),
-		},
+		SourceCode:      programCode,
+		TextureBindings: textureBindings,
 		UniformBindings: []render.UniformBinding{
 			render.NewUniformBinding("Camera", internal.UniformBufferBindingCamera),
 			render.NewUniformBinding("Material", internal.UniformBufferBindingMaterial),
