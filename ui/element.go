@@ -468,7 +468,7 @@ func (e *Element) onBoundsChanged(bounds Bounds) {
 		e.layout.Apply(e)
 	}
 	if resizeHandler, ok := e.essence.(ElementResizeHandler); ok {
-		resizeHandler.OnResize(e, e.Bounds())
+		resizeHandler.OnResize(e, bounds)
 	}
 	e.Invalidate()
 }

@@ -36,10 +36,6 @@ type TwoDTextureDefinition struct {
 	Width  int
 	Height int
 
-	// TODO: Deprecated: Use samplers
-	Wrapping  Wrap
-	Filtering Filter
-
 	GenerateMipmaps bool
 	GammaCorrection bool
 
@@ -73,9 +69,6 @@ func (t *CubeTexture) Delete() {
 type CubeTextureDefinition struct {
 	Dimension int
 
-	// TODO: Deprecated: Use samplers
-	Filtering Filter
-
 	GenerateMipmaps bool
 	GammaCorrection bool
 
@@ -88,22 +81,6 @@ type CubeTextureDefinition struct {
 	TopSideData    []byte
 	BottomSideData []byte
 }
-
-const (
-	WrapClampToEdge Wrap = iota
-	WrapRepeat
-	WrapMirroredRepat
-)
-
-type Wrap int
-
-const (
-	FilterNearest Filter = iota
-	FilterLinear
-	FilterAnisotropic
-)
-
-type Filter int
 
 const (
 	DataFormatRGBA8 DataFormat = 1 + iota

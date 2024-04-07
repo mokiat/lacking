@@ -8,13 +8,11 @@ import (
 
 func BuildTwoDTextureAsset(image *Image) *asset.TwoDTexture {
 	return &asset.TwoDTexture{
-		Width:     uint16(image.Width),
-		Height:    uint16(image.Height),
-		Wrapping:  asset.WrapModeClampToEdge,
-		Filtering: asset.FilterModeLinear,
-		Flags:     asset.TextureFlagMipmapping,
-		Format:    asset.TexelFormatRGBA8,
-		Data:      image.RGBA8Data(),
+		Width:  uint16(image.Width),
+		Height: uint16(image.Height),
+		Flags:  asset.TextureFlagMipmapping,
+		Format: asset.TexelFormatRGBA8,
+		Data:   image.RGBA8Data(),
 	}
 }
 
@@ -51,7 +49,6 @@ func BuildCubeTextureAsset(image *CubeImage, format asset.TexelFormat) *asset.Cu
 	}
 	return &asset.CubeTexture{
 		Dimension: uint16(image.Dimension),
-		Filtering: asset.FilterModeLinear,
 		Flags:     asset.TextureFlagNone,
 		Format:    format,
 		FrontSide: asset.CubeTextureSide{

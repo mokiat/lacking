@@ -161,9 +161,7 @@ func (e *Engine) CreateTwoDTexture(definition TwoDTextureDefinition) *TwoDTextur
 	return newTwoDTexture(e.api.CreateColorTexture2D(render.ColorTexture2DInfo{
 		Width:           definition.Width,
 		Height:          definition.Height,
-		Wrapping:        e.convertWrap(definition.Wrapping),
-		Filtering:       e.convertFilter(definition.Filtering),
-		Mipmapping:      definition.GenerateMipmaps,
+		GenerateMipmaps: definition.GenerateMipmaps,
 		GammaCorrection: true,
 		Format:          e.convertFormat(definition.DataFormat),
 		Data:            definition.Data,
@@ -175,8 +173,7 @@ func (e *Engine) CreateTwoDTexture(definition TwoDTextureDefinition) *TwoDTextur
 func (e *Engine) CreateCubeTexture(definition CubeTextureDefinition) *CubeTexture {
 	return newCubeTexture(e.api.CreateColorTextureCube(render.ColorTextureCubeInfo{
 		Dimension:       definition.Dimension,
-		Filtering:       e.convertFilter(definition.Filtering),
-		Mipmapping:      definition.GenerateMipmaps,
+		GenerateMipmaps: definition.GenerateMipmaps,
 		GammaCorrection: true,
 		Format:          e.convertFormat(definition.DataFormat),
 		FrontSideData:   definition.FrontSideData,
@@ -703,32 +700,6 @@ func (e *Engine) createSkyPipeline(info internal.SkyPipelineInfo) (render.Pipeli
 func (e *Engine) pickFreeRenderPassKey() uint32 {
 	e.freeRenderPassKey++
 	return e.freeRenderPassKey
-}
-
-func (e *Engine) convertWrap(wrap Wrap) render.WrapMode {
-	switch wrap {
-	case WrapClampToEdge:
-		return render.WrapModeClamp
-	case WrapRepeat:
-		return render.WrapModeRepeat
-	case WrapMirroredRepat:
-		return render.WrapModeMirroredRepeat
-	default:
-		panic(fmt.Errorf("unknown wrap mode: %d", wrap))
-	}
-}
-
-func (e *Engine) convertFilter(filter Filter) render.FilterMode {
-	switch filter {
-	case FilterNearest:
-		return render.FilterModeNearest
-	case FilterLinear:
-		return render.FilterModeLinear
-	case FilterAnisotropic:
-		return render.FilterModeAnisotropic
-	default:
-		panic(fmt.Errorf("unknown min filter mode: %d", filter))
-	}
 }
 
 func (e *Engine) convertFormat(dataFormat DataFormat) render.DataFormat {

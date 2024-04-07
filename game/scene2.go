@@ -72,8 +72,6 @@ func (r *ResourceSet) transformModel2Asset(sceneAsset asset.Model) (SceneDefinit
 			textureInfo := graphics.TwoDTextureDefinition{
 				Width:           int(textureAsset.Width),
 				Height:          int(textureAsset.Height),
-				Wrapping:        graphics.WrapClampToEdge,
-				Filtering:       graphics.FilterNearest,
 				GenerateMipmaps: textureAsset.Flags.Has(asset.TextureFlagMipmapping),
 				GammaCorrection: !textureAsset.Flags.Has(asset.TextureFlagLinearSpace),
 				DataFormat:      resolveDataFormat2(textureAsset.Format),
@@ -87,7 +85,6 @@ func (r *ResourceSet) transformModel2Asset(sceneAsset asset.Model) (SceneDefinit
 			// TODO: Use render API directly?
 			textureInfo := graphics.CubeTextureDefinition{
 				Dimension:      int(textureAsset.Width),
-				Filtering:      graphics.FilterNearest,
 				DataFormat:     resolveDataFormat2(textureAsset.Format),
 				InternalFormat: resolveInternalFormat2(textureAsset.Format),
 				FrontSideData:  textureAsset.Layers[0].Data,

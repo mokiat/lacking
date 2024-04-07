@@ -223,9 +223,7 @@ func (s *bloomRenderStage) allocateTextures(width, height int) {
 	s.pingTexture = s.api.CreateColorTexture2D(render.ColorTexture2DInfo{
 		Width:           width,
 		Height:          height,
-		Wrapping:        render.WrapModeClamp,
-		Filtering:       render.FilterModeNearest,
-		Mipmapping:      false,
+		GenerateMipmaps: false,
 		GammaCorrection: false,
 		Format:          render.DataFormatRGBA16F,
 	})
@@ -238,9 +236,7 @@ func (s *bloomRenderStage) allocateTextures(width, height int) {
 	s.pongTexture = s.api.CreateColorTexture2D(render.ColorTexture2DInfo{
 		Width:           width,
 		Height:          height,
-		Wrapping:        render.WrapModeClamp,
-		Filtering:       render.FilterModeNearest,
-		Mipmapping:      false,
+		GenerateMipmaps: false,
 		GammaCorrection: false,
 		Format:          render.DataFormatRGBA16F,
 	})

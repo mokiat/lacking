@@ -41,8 +41,6 @@ func (r *ResourceSet) allocateTwoDTexture(texAsset *asset.TwoDTexture) *TwoDText
 		gfxTexture = gfxEngine.CreateTwoDTexture(graphics.TwoDTextureDefinition{
 			Width:           int(texAsset.Width),
 			Height:          int(texAsset.Height),
-			Wrapping:        resolveWrapMode(texAsset.Wrapping),
-			Filtering:       resolveFilter(texAsset.Filtering),
 			GenerateMipmaps: texAsset.Flags.Has(asset.TextureFlagMipmapping),
 			GammaCorrection: !texAsset.Flags.Has(asset.TextureFlagLinear),
 			DataFormat:      resolveDataFormat(texAsset.Format),
@@ -74,7 +72,6 @@ func (r *ResourceSet) allocateCubeTexture(resource asset.Resource) (*CubeTexture
 		gfxEngine := r.engine.Graphics()
 		gfxTexture = gfxEngine.CreateCubeTexture(graphics.CubeTextureDefinition{
 			Dimension:      int(texAsset.Dimension),
-			Filtering:      resolveFilter(texAsset.Filtering),
 			DataFormat:     resolveDataFormat(texAsset.Format),
 			InternalFormat: resolveInternalFormat(texAsset.Format),
 			FrontSideData:  texAsset.FrontSide.Data,
@@ -92,32 +89,6 @@ func (r *ResourceSet) allocateCubeTexture(resource asset.Resource) (*CubeTexture
 
 func (r *ResourceSet) releaseCubeTexture(texture *CubeTexture) {
 	texture.gfxTexture.Delete()
-}
-
-func resolveWrapMode(wrap asset.WrapMode) graphics.Wrap {
-	switch wrap {
-	case asset.WrapModeRepeat:
-		return graphics.WrapRepeat
-	case asset.WrapModeMirroredRepeat:
-		return graphics.WrapMirroredRepat
-	case asset.WrapModeClampToEdge:
-		return graphics.WrapClampToEdge
-	default:
-		panic(fmt.Errorf("unknown wrap mode: %v", wrap))
-	}
-}
-
-func resolveFilter(filter asset.FilterMode) graphics.Filter {
-	switch filter {
-	case asset.FilterModeNearest:
-		return graphics.FilterNearest
-	case asset.FilterModeLinear:
-		return graphics.FilterLinear
-	case asset.FilterModeAnisotropic:
-		return graphics.FilterAnisotropic
-	default:
-		panic(fmt.Errorf("unknown filter mode: %v", filter))
-	}
 }
 
 func resolveDataFormat(format asset.TexelFormat) graphics.DataFormat {
