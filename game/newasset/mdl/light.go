@@ -1,6 +1,8 @@
 package mdl
 
-import "github.com/mokiat/gomath/dprec"
+import (
+	"github.com/mokiat/gomath/dprec"
+)
 
 type ColorEmitter interface {
 	EmitColor() dprec.Vec3
@@ -79,6 +81,29 @@ func (b *BaseShadowCaster) CastShadow() bool {
 
 func (b *BaseShadowCaster) SetCastShadow(castShadow bool) {
 	b.castShadow = castShadow
+}
+
+type AmbientLight struct {
+	BaseNode
+	BaseShadowCaster
+	reflectionTexture *Texture
+	refractionTexture *Texture
+}
+
+func (l *AmbientLight) ReflectionTexture() *Texture {
+	return l.reflectionTexture
+}
+
+func (l *AmbientLight) SetReflectionTexture(texture *Texture) {
+	l.reflectionTexture = texture
+}
+
+func (l *AmbientLight) RefractionTexture() *Texture {
+	return l.refractionTexture
+}
+
+func (l *AmbientLight) SetRefractionTexture(texture *Texture) {
+	l.refractionTexture = texture
 }
 
 type PointLight struct {

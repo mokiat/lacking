@@ -40,10 +40,11 @@ func (c *Converter) Convert() (asset.Model, error) {
 
 func (c *Converter) convertModel(s *Model) (asset.Model, error) {
 	var (
-		assetNodes       []asset.Node
-		assetPointLights []asset.PointLight
-		assetSpotLights  []asset.SpotLight
-		assetSkies       []asset.Sky
+		assetNodes         []asset.Node
+		assetAmbientLights []asset.AmbientLight
+		assetPointLights   []asset.PointLight
+		assetSpotLights    []asset.SpotLight
+		assetSkies         []asset.Sky
 	)
 
 	nodes := s.FlattenNodes()
@@ -68,6 +69,12 @@ func (c *Converter) convertModel(s *Model) (asset.Model, error) {
 		})
 
 		switch essence := node.(type) {
+		case *AmbientLight:
+			ambientLightAsset, err := c.convertAmbientLight(uint32(i), essence)
+			if err != nil {
+				return asset.Model{}, fmt.Errorf("error converting ambient light %q: %w", node.Name(), err)
+			}
+			assetAmbientLights = append(assetAmbientLights, ambientLightAsset)
 		case *PointLight:
 			pointLightAsset := c.convertPointLight(uint32(i), essence)
 			assetPointLights = append(assetPointLights, pointLightAsset)
@@ -84,12 +91,32 @@ func (c *Converter) convertModel(s *Model) (asset.Model, error) {
 	}
 
 	return asset.Model{
-		Nodes:       assetNodes,
-		SkyShaders:  c.assetSkyShaders,
-		Textures:    c.assetTextures,
-		PointLights: assetPointLights,
-		SpotLights:  assetSpotLights,
-		Skies:       assetSkies,
+		Nodes:         assetNodes,
+		SkyShaders:    c.assetSkyShaders,
+		Textures:      c.assetTextures,
+		AmbientLights: assetAmbientLights,
+		PointLights:   assetPointLights,
+		SpotLights:    assetSpotLights,
+		Skies:         assetSkies,
+	}, nil
+}
+
+func (c *Converter) convertAmbientLight(nodeIndex uint32, light *AmbientLight) (asset.AmbientLight, error) {
+	reflectionTextureIndex, err := c.convertTexture(light.reflectionTexture)
+	if err != nil {
+		return asset.AmbientLight{}, fmt.Errorf("error converting reflection texture: %w", err)
+	}
+
+	refractionTextureIndex, err := c.convertTexture(light.refractionTexture)
+	if err != nil {
+		return asset.AmbientLight{}, fmt.Errorf("error converting refraction texture: %w", err)
+	}
+
+	return asset.AmbientLight{
+		NodeIndex:              nodeIndex,
+		ReflectionTextureIndex: reflectionTextureIndex,
+		RefractionTextureIndex: refractionTextureIndex,
+		CastShadow:             light.CastShadow(),
 	}, nil
 }
 

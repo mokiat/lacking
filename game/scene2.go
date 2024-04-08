@@ -17,6 +17,7 @@ type SceneDefinition2 struct {
 	SkyDefinitions []*graphics.SkyDefinition
 
 	Nodes             []asset.Node
+	AmbientLights     []asset.AmbientLight
 	PointLights       []asset.PointLight
 	SpotLights        []asset.SpotLight
 	DirectionalLights []asset.DirectionalLight
@@ -124,6 +125,7 @@ func (r *ResourceSet) transformModel2Asset(sceneAsset asset.Model) (SceneDefinit
 		SkyDefinitions: skyDefinitions,
 
 		Nodes:             sceneAsset.Nodes,
+		AmbientLights:     sceneAsset.AmbientLights,
 		PointLights:       sceneAsset.PointLights,
 		SpotLights:        sceneAsset.SpotLights,
 		DirectionalLights: sceneAsset.DirectionalLights,
