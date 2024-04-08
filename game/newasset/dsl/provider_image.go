@@ -41,6 +41,70 @@ func OpenImage(path string) Provider[*mdl.Image] {
 	return OnceProvider(FuncProvider(get, digest))
 }
 
+func CubeImageFromEquirectangular(imageProvider Provider[*mdl.Image]) Provider[*mdl.CubeImage] {
+	get := func() (*mdl.CubeImage, error) {
+		image, err := imageProvider.Get()
+		if err != nil {
+			return nil, fmt.Errorf("error getting image: %w", err)
+		}
+
+		frontImage := mdl.BuildCubeSideFromEquirectangular(mdl.CubeSideFront, image)
+		rearImage := mdl.BuildCubeSideFromEquirectangular(mdl.CubeSideRear, image)
+		leftImage := mdl.BuildCubeSideFromEquirectangular(mdl.CubeSideLeft, image)
+		rightImage := mdl.BuildCubeSideFromEquirectangular(mdl.CubeSideRight, image)
+		topImage := mdl.BuildCubeSideFromEquirectangular(mdl.CubeSideTop, image)
+		bottomImage := mdl.BuildCubeSideFromEquirectangular(mdl.CubeSideBottom, image)
+
+		dstImage := mdl.NewCubeImage(frontImage.Width())
+		dstImage.SetSide(mdl.CubeSideFront, frontImage)
+		dstImage.SetSide(mdl.CubeSideRear, rearImage)
+		dstImage.SetSide(mdl.CubeSideLeft, leftImage)
+		dstImage.SetSide(mdl.CubeSideRight, rightImage)
+		dstImage.SetSide(mdl.CubeSideTop, topImage)
+		dstImage.SetSide(mdl.CubeSideBottom, bottomImage)
+		return dstImage, nil
+	}
+
+	digest := func() ([]byte, error) {
+		return digestItems("cube-image-from-equirectangular", imageProvider)
+	}
+
+	return OnceProvider(FuncProvider(get, digest))
+}
+
+func ResizedCubeImage(imageProvider Provider[*mdl.CubeImage], newSize int) Provider[*mdl.CubeImage] {
+	get := func() (*mdl.CubeImage, error) {
+		image, err := imageProvider.Get()
+		if err != nil {
+			return nil, fmt.Errorf("error getting image: %w", err)
+		}
+		return image.Scale(newSize), nil
+	}
+
+	digest := func() ([]byte, error) {
+		return digestItems("resized-cube-image", imageProvider, newSize)
+	}
+
+	return OnceProvider(FuncProvider(get, digest))
+}
+
+func IrradianceCubeImage(imageProvider Provider[*mdl.CubeImage]) Provider[*mdl.CubeImage] {
+	get := func() (*mdl.CubeImage, error) {
+		image, err := imageProvider.Get()
+		if err != nil {
+			return nil, fmt.Errorf("error getting image: %w", err)
+		}
+
+		return mdl.BuildIrradianceCubeImage(image, 10), nil
+	}
+
+	digest := func() ([]byte, error) {
+		return digestItems("irradiance-cube-image", imageProvider)
+	}
+
+	return OnceProvider(FuncProvider(get, digest))
+}
+
 func parseGoImage(in io.Reader) (image.Image, error) {
 	img, _, err := image.Decode(in)
 	if err != nil {

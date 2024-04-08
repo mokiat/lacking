@@ -247,9 +247,12 @@ func (s *Scene) ApplyFragment(target *hierarchy.Node, def SceneDefinition2) {
 	pData := placementData{
 		Nodes:          nodeByIndex,
 		SkyDefinitions: def.SkyDefinitions,
-		Textures:       []render.Texture{}, // TODO
+		Textures:       def.Textures,
 	}
 
+	for _, lightDef := range def.AmbientLights {
+		s.placeAmbientLight(pData, lightDef)
+	}
 	for _, lightDef := range def.PointLights {
 		s.placePointLight(pData, lightDef)
 	}
@@ -272,14 +275,13 @@ func (s *Scene) Initialize(definition *SceneDefinition) {
 		s.Graphics().Sky().SetSkybox(definition.skyboxTexture)
 	}
 
-	if definition.reflectionTexture != nil && definition.refractionTexture != nil {
-
-		node := s.CreateAmbientLight(AmbientLightInfo{
-			ReflectionTexture: definition.reflectionTexture,
-			RefractionTexture: definition.refractionTexture,
-		})
-		node.SetName("AmbientLight")
-	}
+	// if definition.reflectionTexture != nil && definition.refractionTexture != nil {
+	// 	node := s.CreateAmbientLight(AmbientLightInfo{
+	// 		ReflectionTexture: definition.reflectionTexture,
+	// 		RefractionTexture: definition.refractionTexture,
+	// 	})
+	// 	node.SetName("AmbientLight")
+	// }
 
 	s.CreateModel(ModelInfo{
 		Name:              "scene",
