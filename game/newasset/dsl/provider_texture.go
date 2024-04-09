@@ -13,12 +13,12 @@ func CreateCubeTexture(format mdl.TextureFormat, cubeImageProvider Provider[*mdl
 			return nil, fmt.Errorf("failed to get cube image: %w", err)
 		}
 
-		frontImage := cubeImage.SideToImage(mdl.CubeSideFront)
-		rearImage := cubeImage.SideToImage(mdl.CubeSideRear)
-		leftImage := cubeImage.SideToImage(mdl.CubeSideLeft)
-		rightImage := cubeImage.SideToImage(mdl.CubeSideRight)
-		topImage := cubeImage.SideToImage(mdl.CubeSideTop)
-		bottomImage := cubeImage.SideToImage(mdl.CubeSideBottom)
+		frontImage := cubeImage.Side(mdl.CubeSideFront)
+		rearImage := cubeImage.Side(mdl.CubeSideRear)
+		leftImage := cubeImage.Side(mdl.CubeSideLeft)
+		rightImage := cubeImage.Side(mdl.CubeSideRight)
+		topImage := cubeImage.Side(mdl.CubeSideTop)
+		bottomImage := cubeImage.Side(mdl.CubeSideBottom)
 
 		var texture mdl.Texture
 		texture.SetKind(mdl.TextureKindCube)
