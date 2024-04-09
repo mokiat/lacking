@@ -138,7 +138,6 @@ func (i *Image) DataRGBA8() []byte {
 		for x := range i.width {
 			texel := i.Texel(x, i.height-y-1)
 			r, g, b, a := texel.RGBA8()
-			_ = data[offset+3] // avoid bounds check
 			data[offset+0] = r
 			data[offset+1] = g
 			data[offset+2] = b
