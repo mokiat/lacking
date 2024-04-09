@@ -39,7 +39,7 @@ func CreateCubeTexture(format mdl.TextureFormat, cubeImageProvider Provider[*mdl
 	}
 
 	digest := func() ([]byte, error) {
-		return digestItems("cube-texture", operations)
+		return digestItems("cube-texture", uint8(format), cubeImageProvider, operations)
 	}
 
 	return OnceProvider(FuncProvider(get, digest))
