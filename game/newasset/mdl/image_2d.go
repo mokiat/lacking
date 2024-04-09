@@ -8,10 +8,7 @@ import (
 )
 
 func NewImage(width, height int) *Image {
-	texels := make([][]Color, height)
-	for y := range texels {
-		texels[y] = make([]Color, width)
-	}
+	texels := make([]Color, width*height)
 	return &Image{
 		width:  width,
 		height: height,
@@ -22,7 +19,7 @@ func NewImage(width, height int) *Image {
 type Image struct {
 	width  int
 	height int
-	texels [][]Color // TODO: Use single slice
+	texels []Color
 }
 
 func (i *Image) Width() int {
@@ -45,19 +42,17 @@ func (i *Image) CopyFrom(src *Image) {
 	if !src.IsEqualSize(i) {
 		src = src.Scale(i.width, i.height)
 	}
-	for y := range i.height {
-		copy(i.texels[y], src.texels[y])
-	}
+	copy(i.texels, src.texels)
 }
 
 func (i *Image) Texel(x, y int) Color {
 	x = max(0, min(x, i.width-1))
 	y = max(0, min(y, i.height-1))
-	return i.texels[y][x]
+	return i.texels[y*i.width+x]
 }
 
 func (i *Image) SetTexel(x, y int, texel Color) {
-	i.texels[y][x] = texel
+	i.texels[y*i.width+x] = texel
 }
 
 func (i *Image) TexelUV(uv dprec.Vec2) Color {
