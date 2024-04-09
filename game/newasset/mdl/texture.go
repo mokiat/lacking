@@ -95,11 +95,11 @@ func (t *Texture) SetLayerImage(index int, image *Image) {
 	}
 	switch t.format {
 	case TextureFormatRGBA8:
-		copy(t.layers[index].data, image.RGBA8Data())
+		copy(t.layers[index].data, image.DataRGBA8())
 	case TextureFormatRGBA16F:
-		panic("TODO")
+		copy(t.layers[index].data, image.DataRGBA16F())
 	case TextureFormatRGBA32F:
-		copy(t.layers[index].data, image.RGBA32FData())
+		copy(t.layers[index].data, image.DataRGBA32F())
 	default:
 		panic(fmt.Errorf("unsupported texture format: %v", t.format))
 	}
