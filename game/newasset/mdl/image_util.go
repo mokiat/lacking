@@ -3,6 +3,7 @@ package mdl
 import (
 	"fmt"
 	"math"
+	"sync"
 
 	"github.com/mokiat/gomath/dprec"
 )
@@ -63,81 +64,96 @@ func BuildCubeSideFromEquirectangular(side CubeSide, srcImage *Image) *Image {
 	dstImage := NewImage(dimension, dimension)
 
 	uv := dprec.ZeroVec2()
-	startU := 0.0
-	deltaU := 1.0 / float64(dimension-1)
-	startV := 1.0
-	deltaV := -1.0 / float64(dimension-1)
-	uv.Y = startV
-	for y := 0; y < dimension; y++ {
-		uv.X = startU
-		for x := 0; x < dimension; x++ {
-			dstImage.SetTexel(x, y, srcImage.TexelUVBilinear(UVWToEquirectangularUV(CubeUVToUVW(side, uv))))
-			uv.X += deltaU
+	startUV := dprec.NewVec2(0.0, 1.0)
+	deltaUV := dprec.NewVec2(1.0/float64(dimension-1), -1.0/float64(dimension-1))
+
+	uv.Y = startUV.Y
+	for y := range dimension {
+		uv.X = startUV.X
+		for x := range dimension {
+			texel := srcImage.TexelUVBilinear(UVWToEquirectangularUV(CubeUVToUVW(side, uv)))
+			dstImage.SetTexel(x, y, texel)
+			uv.X += deltaUV.X
 		}
-		uv.Y += deltaV
+		uv.Y += deltaUV.Y
 	}
 	return dstImage
 }
 
 func BuildIrradianceCubeImage(srcImage *CubeImage, sampleCount int) *CubeImage {
+	dstImage := NewCubeImage(srcImage.size)
+	var group sync.WaitGroup
+	for i := range srcImage.sides {
+		group.Add(1)
+		go func() {
+			defer group.Done()
+			projectIrradianceCubeImageSide(srcImage, dstImage, CubeSide(i), sampleCount)
+		}()
+	}
+	group.Wait()
+	return dstImage
+}
+
+func projectIrradianceCubeImageSide(srcImage, dstImage *CubeImage, side CubeSide, sampleCount int) {
 	dimension := srcImage.size
 
-	dstImage := &CubeImage{
-		size: dimension,
-	}
-	for i := range srcImage.sides {
-		dstSide := NewImage(dimension, dimension)
+	startLat := dprec.Degrees(-90.0)
+	endLat := dprec.Degrees(90.0)
+	deltaLat := (endLat - startLat) / dprec.Radians(float64(sampleCount))
 
-		uv := dprec.ZeroVec2()
-		startU := 0.0
-		deltaU := 1.0 / float64(dimension-1)
-		startV := 1.0
-		deltaV := -1.0 / float64(dimension-1)
+	startLong := dprec.Degrees(-180.0)
+	endLong := dprec.Degrees(180.0)
 
-		uv.Y = startV
-		for y := 0; y < dimension; y++ {
-			uv.X = startU
+	dstSide := dstImage.Side(side)
+	uv := dprec.ZeroVec2()
+	startU := 0.0
+	deltaU := 1.0 / float64(dimension-1)
+	startV := 1.0
+	deltaV := -1.0 / float64(dimension-1)
 
-			for x := 0; x < dimension; x++ {
-				uvw := CubeUVToUVW(CubeSide(i), uv)
-				startLat := dprec.Radians(-dprec.Pi / 2.0)
-				endLat := dprec.Radians(dprec.Pi / 2.0)
-				deltaLat := (endLat - startLat) / dprec.Radians(float64(sampleCount))
+	uv.Y = startV
+	for y := range dimension {
+		uv.X = startU
 
-				color := Color{}
-				positiveSamples := 0.0
-				for lat := startLat; lat < endLat; lat += deltaLat {
-					startLong := dprec.Radians(-dprec.Pi)
-					endLong := dprec.Radians(dprec.Pi)
-					deltaLong := (endLong - startLong) / (dprec.Radians(float64(sampleCount) * (dprec.Cos(lat) + 0.01)))
+		for x := range dimension {
+			uvw := CubeUVToUVW(side, uv)
 
-					for long := startLong; long < endLong; long += deltaLong {
-						flatX := dprec.Sin(long) * dprec.Cos(lat)
-						flatY := dprec.Cos(long) * dprec.Cos(lat)
-						targetUVW := dprec.NewVec3(flatX, flatY, dprec.Sin(lat))
-						if dot := dprec.Vec3Dot(uvw, targetUVW); dot > 0.0 {
-							positiveSamples++
-							targetColor := srcImage.TexelUVW(targetUVW)
-							color.R += targetColor.R * dot
-							color.G += targetColor.G * dot
-							color.B += targetColor.B * dot
-						}
+			var color Color
+			var positiveSamples int
+			for lat := startLat; lat < endLat; lat += deltaLat {
+				latitudeCS := dprec.Cos(lat)
+				latitudeSN := dprec.Sin(lat)
+
+				deltaLong := (endLong - startLong) / (dprec.Radians(float64(sampleCount) * (latitudeCS + 0.01)))
+				for long := startLong; long < endLong; long += deltaLong {
+					longitudeCS := dprec.Cos(long)
+					longitudeSN := dprec.Sin(long)
+
+					direction := dprec.NewVec3(
+						longitudeSN*latitudeCS,
+						longitudeCS*latitudeCS,
+						latitudeSN,
+					)
+					if dot := dprec.Vec3Dot(uvw, direction); dot > 0.0 {
+						positiveSamples++
+						srcColor := srcImage.TexelUVW(direction)
+						color.R += srcColor.R * dot
+						color.G += srcColor.G * dot
+						color.B += srcColor.B * dot
 					}
 				}
-
-				dstSide.SetTexel(x, y, Color{
-					R: dprec.Pi * color.R / positiveSamples,
-					G: dprec.Pi * color.G / positiveSamples,
-					B: dprec.Pi * color.B / positiveSamples,
-					A: 1.0,
-				})
-
-				uv.X += deltaU
 			}
-			uv.Y += deltaV
-		}
 
-		dstImage.sides[i] = dstSide
+			if positiveSamples > 0 {
+				color.R *= dprec.Pi / float64(positiveSamples)
+				color.G *= dprec.Pi / float64(positiveSamples)
+				color.B *= dprec.Pi / float64(positiveSamples)
+			}
+			color.A = 1.0
+			dstSide.SetTexel(x, y, color)
+
+			uv.X += deltaU
+		}
+		uv.Y += deltaV
 	}
-	return dstImage
 }

@@ -95,7 +95,7 @@ func IrradianceCubeImage(imageProvider Provider[*mdl.CubeImage]) Provider[*mdl.C
 			return nil, fmt.Errorf("error getting image: %w", err)
 		}
 
-		return mdl.BuildIrradianceCubeImage(image, 10), nil
+		return mdl.BuildIrradianceCubeImage(image, 60), nil
 	}
 
 	digest := func() ([]byte, error) {
