@@ -2,13 +2,16 @@ package dsl
 
 import "sync"
 
+// GetFunc is a function that returns a value of a specific type.
 type GetFunc[T any] func() (T, error)
 
+// Provider is an interface that provides a value of a specific type.
 type Provider[T any] interface {
+	Digestable
 	Get() (T, error)
-	Digest() ([]byte, error)
 }
 
+// FuncProvider creates a provider from a get and a digest function.
 func FuncProvider[T any](get GetFunc[T], digest DigestFunc) Provider[T] {
 	return &funcProvider[T]{
 		getFunc:    get,
@@ -29,6 +32,8 @@ func (p *funcProvider[T]) Digest() ([]byte, error) {
 	return p.digestFunc()
 }
 
+// OnceProvider creates a provider that caches the result of the delegate
+// provider.
 func OnceProvider[T any](delegate Provider[T]) Provider[T] {
 	return FuncProvider[T](
 		sync.OnceValues(func() (T, error) {

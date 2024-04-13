@@ -1,12 +1,15 @@
 package dsl
 
+// ApplyFunc is a function that applies an operation to a target.
 type ApplyFunc func(target any) error
 
+// Operation is an operation that can be applied to a target.
 type Operation interface {
+	Digestable
 	Apply(target any) error
-	Digest() ([]byte, error)
 }
 
+// FuncOperation creates an operation from an apply and a digest functions.
 func FuncOperation(apply ApplyFunc, digest DigestFunc) Operation {
 	return &funcOperation{
 		applyFunc:  apply,
