@@ -6,8 +6,7 @@ import (
 )
 
 type Scene struct {
-	ModelDefinitions []Model
-	ModelInstances   []ModelInstance
+	ModelInstances []ModelInstance
 }
 
 func (s *Scene) EncodeTo(out io.Writer) error {
