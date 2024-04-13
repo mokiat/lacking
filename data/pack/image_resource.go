@@ -10,43 +10,10 @@ import (
 	"github.com/mdouchement/hdr"
 	_ "github.com/mdouchement/hdr/codec/rgbe"
 	"github.com/mokiat/goexr/exr"
-	"github.com/mokiat/lacking/util/resource"
 	_ "golang.org/x/image/tiff"
 )
 
-type OpenImageResourceAction struct {
-	locator resource.ReadLocator
-	uri     string
-	image   *Image
-}
-
-func (a *OpenImageResourceAction) Describe() string {
-	return fmt.Sprintf("open_image_resource(%q)", a.uri)
-}
-
-func (a *OpenImageResourceAction) Image() *Image {
-	if a.image == nil {
-		panic("reading data from unprocessed action")
-	}
-	return a.image
-}
-
-func (a *OpenImageResourceAction) Run() error {
-	in, err := a.locator.ReadResource(a.uri)
-	if err != nil {
-		return fmt.Errorf("failed to open image resource: %w", err)
-	}
-	defer in.Close()
-
-	img, err := ParseImageResource(in)
-	if err != nil {
-		return err
-	}
-
-	a.image = img
-	return nil
-}
-
+// TODO: Use mdl Image
 func ParseImageResource(in io.Reader) (*Image, error) {
 	img, _, err := image.Decode(in)
 	if err != nil {

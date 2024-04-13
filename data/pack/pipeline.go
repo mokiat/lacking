@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/mokiat/lacking/game/asset"
-	newasset "github.com/mokiat/lacking/game/newasset"
 	"github.com/mokiat/lacking/util/resource"
 )
 
@@ -30,67 +29,6 @@ type Pipeline struct {
 	registry        asset.Registry
 	resourceLocator resource.ReadLocator
 	actions         []Action
-}
-
-func (p *Pipeline) OpenImageResource(uri string) *OpenImageResourceAction {
-	action := &OpenImageResourceAction{
-		locator: p.resourceLocator,
-		uri:     uri,
-	}
-	p.scheduleAction(action)
-	return action
-}
-
-func (p *Pipeline) SaveCubeTextureAsset(resource asset.Resource, image CubeImageProvider, opts ...SaveCubeTextureOption) *SaveCubeTextureAction {
-	action := &SaveCubeTextureAction{
-		resource:      resource,
-		imageProvider: image,
-		format:        newasset.TexelFormatRGBA8,
-	}
-	for _, opt := range opts {
-		opt(action)
-	}
-	p.scheduleAction(action)
-	return action
-}
-
-func (p *Pipeline) BuildCubeSideFromEquirectangular(side CubeSide, image ImageProvider) *BuildCubeSideFromEquirectangularAction {
-	action := &BuildCubeSideFromEquirectangularAction{
-		side:          side,
-		imageProvider: image,
-	}
-	p.scheduleAction(action)
-	return action
-}
-
-func (p *Pipeline) BuildCubeImage(opts ...BuildCubeImageOption) *BuildCubeImageAction {
-	action := &BuildCubeImageAction{}
-	for _, opt := range opts {
-		opt(action)
-	}
-	p.scheduleAction(action)
-	return action
-}
-
-func (p *Pipeline) ScaleCubeImage(image CubeImageProvider, dimension int) *ScaleCubeImageAction {
-	action := &ScaleCubeImageAction{
-		imageProvider: image,
-		dimension:     dimension,
-	}
-	p.scheduleAction(action)
-	return action
-}
-
-func (p *Pipeline) BuildIrradianceCubeImage(image CubeImageProvider, opts ...BuildIrradianceCubeImageOption) *BuildIrradianceCubeImageAction {
-	action := &BuildIrradianceCubeImageAction{
-		imageProvider: image,
-		sampleCount:   10,
-	}
-	for _, opt := range opts {
-		opt(action)
-	}
-	p.scheduleAction(action)
-	return action
 }
 
 func (p *Pipeline) OpenGLTFResource(uri string) *OpenGLTFResourceAction {
