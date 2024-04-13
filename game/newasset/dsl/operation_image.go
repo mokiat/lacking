@@ -4,8 +4,8 @@ import (
 	"fmt"
 )
 
-// WithSampleCount configures the sample count of the target.
-func WithSampleCount(countProvider Provider[int]) Operation {
+// SetSampleCount configures the sample count of the target.
+func SetSampleCount(countProvider Provider[int]) Operation {
 	type sampleCountConfigurable interface {
 		SetSampleCount(int)
 	}
@@ -29,7 +29,7 @@ func WithSampleCount(countProvider Provider[int]) Operation {
 
 		// digest function
 		func() ([]byte, error) {
-			return digestItems("with-sample-count", countProvider)
+			return digestItems("set-sample-count", countProvider)
 		},
 	)
 }

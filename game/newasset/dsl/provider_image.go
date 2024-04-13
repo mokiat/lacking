@@ -224,3 +224,47 @@ func (c *irradianceConfig) SampleCount() int {
 func (c *irradianceConfig) SetSampleCount(value int) {
 	c.sampleCount = value
 }
+
+var defaultImageProvider = func() Provider[*mdl.Image] {
+	return OnceProvider(FuncProvider(
+		// get function
+		func() (*mdl.Image, error) {
+			image := mdl.NewImage(1, 1)
+			image.SetTexel(0, 0, mdl.Color{
+				R: 1.0, G: 0.0, B: 1.0, // purple
+			})
+			return image, nil
+		},
+
+		// digest function
+		func() ([]byte, error) {
+			return digestItems("default-image")
+		},
+	))
+}()
+
+var defaultCubeImageProvider = func() Provider[*mdl.CubeImage] {
+	return OnceProvider(FuncProvider(
+		// get function
+		func() (*mdl.CubeImage, error) {
+			image, err := defaultImageProvider.Get()
+			if err != nil {
+				return nil, fmt.Errorf("failed to get default image: %w", err)
+			}
+
+			result := mdl.NewCubeImage(image.Width())
+			result.SetSide(mdl.CubeSideFront, image)
+			result.SetSide(mdl.CubeSideRear, image)
+			result.SetSide(mdl.CubeSideLeft, image)
+			result.SetSide(mdl.CubeSideRight, image)
+			result.SetSide(mdl.CubeSideTop, image)
+			result.SetSide(mdl.CubeSideBottom, image)
+			return result, nil
+		},
+
+		// digest function
+		func() ([]byte, error) {
+			return digestItems("default-cube-image")
+		},
+	))
+}()

@@ -7,70 +7,160 @@ import (
 	"github.com/mokiat/lacking/game/newasset/mdl"
 )
 
-func SetEmitColor(color dprec.Vec3) Operation {
-	apply := func(target any) error {
-		emitter, ok := target.(mdl.ColorEmitter)
-		if !ok {
-			return fmt.Errorf("target %T is not a color emitter", target)
-		}
-		emitter.SetEmitColor(color)
-		return nil
-	}
+// SetEmitColor configures the emit color of the target.
+func SetEmitColor(colorProvider Provider[dprec.Vec3]) Operation {
+	return FuncOperation(
+		// apply function
+		func(target any) error {
+			color, err := colorProvider.Get()
+			if err != nil {
+				return fmt.Errorf("error getting emit color: %w", err)
+			}
 
-	digest := func() ([]byte, error) {
-		return digestItems("set-emit-color", color)
-	}
+			emitter, ok := target.(mdl.ColorEmitter)
+			if !ok {
+				return fmt.Errorf("target %T is not a color emitter", target)
+			}
+			emitter.SetEmitColor(color)
+			return nil
+		},
 
-	return FuncOperation(apply, digest)
+		// digest function
+		func() ([]byte, error) {
+			return digestItems("set-emit-color", colorProvider)
+		},
+	)
 }
 
-func SetEmitDistance(distance float64) Operation {
-	apply := func(target any) error {
-		emitter, ok := target.(mdl.DistanceEmitter)
-		if !ok {
-			return fmt.Errorf("target %T is not a distance emitter", target)
-		}
-		emitter.SetEmitDistance(distance)
-		return nil
-	}
+// SetEmitDistance configures the emit distance of the target.
+func SetEmitDistance(distanceProvider Provider[float64]) Operation {
+	return FuncOperation(
+		// apply function
+		func(target any) error {
+			distance, err := distanceProvider.Get()
+			if err != nil {
+				return fmt.Errorf("error getting emit distance: %w", err)
+			}
 
-	digest := func() ([]byte, error) {
-		return digestItems("set-emit-distance", distance)
-	}
+			emitter, ok := target.(mdl.DistanceEmitter)
+			if !ok {
+				return fmt.Errorf("target %T is not a distance emitter", target)
+			}
+			emitter.SetEmitDistance(distance)
+			return nil
+		},
 
-	return FuncOperation(apply, digest)
+		// digest function
+		func() ([]byte, error) {
+			return digestItems("set-emit-distance", distanceProvider)
+		},
+	)
 }
 
-func SetEmitAngleOuter(angle dprec.Angle) Operation {
-	apply := func(target any) error {
-		emitter, ok := target.(mdl.ConeEmitter)
-		if !ok {
-			return fmt.Errorf("target %T is not a cone emitter", target)
-		}
-		emitter.SetEmitAngleOuter(angle)
-		return nil
-	}
+// SetEmitAngleOuter configures the outer emit angle of the target.
+func SetEmitAngleOuter(angleProvider Provider[dprec.Angle]) Operation {
+	return FuncOperation(
+		// apply function
+		func(target any) error {
+			angle, err := angleProvider.Get()
+			if err != nil {
+				return fmt.Errorf("error getting outer emit angle: %w", err)
+			}
 
-	digest := func() ([]byte, error) {
-		return digestItems("set-emit-angle-outer", angle)
-	}
+			emitter, ok := target.(mdl.ConeEmitter)
+			if !ok {
+				return fmt.Errorf("target %T is not a cone emitter", target)
+			}
+			emitter.SetEmitAngleOuter(angle)
+			return nil
+		},
 
-	return FuncOperation(apply, digest)
+		// digest function
+		func() ([]byte, error) {
+			return digestItems("set-emit-angle-outer", angleProvider)
+		},
+	)
 }
 
-func SetEmitAngleInner(angle dprec.Angle) Operation {
-	apply := func(target any) error {
-		emitter, ok := target.(mdl.ConeEmitter)
-		if !ok {
-			return fmt.Errorf("target %T is not a cone emitter", target)
-		}
-		emitter.SetEmitAngleInner(angle)
-		return nil
+// SetEmitAngleInner configures the inner emit angle of the target.
+func SetEmitAngleInner(angleProvider Provider[dprec.Angle]) Operation {
+	return FuncOperation(
+		// apply function
+		func(target any) error {
+			angle, err := angleProvider.Get()
+			if err != nil {
+				return fmt.Errorf("error getting inner emit angle: %w", err)
+			}
+
+			emitter, ok := target.(mdl.ConeEmitter)
+			if !ok {
+				return fmt.Errorf("target %T is not a cone emitter", target)
+			}
+			emitter.SetEmitAngleInner(angle)
+			return nil
+		},
+
+		// digest function
+		func() ([]byte, error) {
+			return digestItems("set-emit-angle-inner", angleProvider)
+		},
+	)
+}
+
+// SetReflectionTexture configures the reflection texture of the target.
+func SetReflectionTexture(textureProvider Provider[*mdl.Texture]) Operation {
+	type reflectionTextureConfigurable interface {
+		SetReflectionTexture(*mdl.Texture)
 	}
 
-	digest := func() ([]byte, error) {
-		return digestItems("set-emit-angle-inner", angle)
+	return FuncOperation(
+		// apply function
+		func(target any) error {
+			texture, err := textureProvider.Get()
+			if err != nil {
+				return fmt.Errorf("error getting reflection texture: %w", err)
+			}
+
+			configurable, ok := target.(reflectionTextureConfigurable)
+			if !ok {
+				return fmt.Errorf("target %T is not configurable with a reflection texture", target)
+			}
+			configurable.SetReflectionTexture(texture)
+			return nil
+		},
+
+		// digest function
+		func() ([]byte, error) {
+			return digestItems("set-reflection-texture", textureProvider)
+		},
+	)
+}
+
+// SetRefractionTexture configures the refraction texture of the target.
+func SetRefractionTexture(textureProvider Provider[*mdl.Texture]) Operation {
+	type refractionTextureConfigurable interface {
+		SetRefractionTexture(*mdl.Texture)
 	}
 
-	return FuncOperation(apply, digest)
+	return FuncOperation(
+		// apply function
+		func(target any) error {
+			texture, err := textureProvider.Get()
+			if err != nil {
+				return fmt.Errorf("error getting refraction texture: %w", err)
+			}
+
+			configurable, ok := target.(refractionTextureConfigurable)
+			if !ok {
+				return fmt.Errorf("target %T is not configurable with a refraction texture", target)
+			}
+			configurable.SetRefractionTexture(texture)
+			return nil
+		},
+
+		// digest function
+		func() ([]byte, error) {
+			return digestItems("set-refraction-texture", textureProvider)
+		},
+	)
 }
