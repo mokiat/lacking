@@ -3,6 +3,7 @@ package pack
 import (
 	"github.com/mokiat/gomath/dprec"
 	"github.com/mokiat/gomath/sprec"
+	"github.com/mokiat/lacking/game/newasset/mdl"
 )
 
 type ModelProvider interface {
@@ -40,7 +41,7 @@ type Model struct {
 	MeshInstances    []*MeshInstance
 	LightDefinitions []*LightDefinition
 	LightInstances   []*LightInstance
-	Textures         []*Image
+	Textures         []*mdl.Image
 	Properties       Properties
 }
 
