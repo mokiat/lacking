@@ -120,3 +120,9 @@ type SpotLight struct {
 	BaseConeEmitter
 	BaseShadowCaster
 }
+
+type DirectionalLight struct {
+	BaseNode
+	BaseColorEmitter
+	BaseShadowCaster
+}

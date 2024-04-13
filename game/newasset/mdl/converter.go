@@ -40,11 +40,12 @@ func (c *Converter) Convert() (asset.Model, error) {
 
 func (c *Converter) convertModel(s *Model) (asset.Model, error) {
 	var (
-		assetNodes         []asset.Node
-		assetAmbientLights []asset.AmbientLight
-		assetPointLights   []asset.PointLight
-		assetSpotLights    []asset.SpotLight
-		assetSkies         []asset.Sky
+		assetNodes             []asset.Node
+		assetAmbientLights     []asset.AmbientLight
+		assetPointLights       []asset.PointLight
+		assetSpotLights        []asset.SpotLight
+		assetDirectionalLights []asset.DirectionalLight
+		assetSkies             []asset.Sky
 	)
 
 	nodes := s.FlattenNodes()
@@ -81,6 +82,9 @@ func (c *Converter) convertModel(s *Model) (asset.Model, error) {
 		case *SpotLight:
 			spotLightAsset := c.convertSpotLight(uint32(i), essence)
 			assetSpotLights = append(assetSpotLights, spotLightAsset)
+		case *DirectionalLight:
+			directionalLightAsset := c.convertDirectionalLight(uint32(i), essence)
+			assetDirectionalLights = append(assetDirectionalLights, directionalLightAsset)
 		case *Sky:
 			assetSky, err := c.convertSky(uint32(i), essence)
 			if err != nil {
@@ -91,13 +95,14 @@ func (c *Converter) convertModel(s *Model) (asset.Model, error) {
 	}
 
 	return asset.Model{
-		Nodes:         assetNodes,
-		SkyShaders:    c.assetSkyShaders,
-		Textures:      c.assetTextures,
-		AmbientLights: assetAmbientLights,
-		PointLights:   assetPointLights,
-		SpotLights:    assetSpotLights,
-		Skies:         assetSkies,
+		Nodes:             assetNodes,
+		SkyShaders:        c.assetSkyShaders,
+		Textures:          c.assetTextures,
+		AmbientLights:     assetAmbientLights,
+		PointLights:       assetPointLights,
+		SpotLights:        assetSpotLights,
+		DirectionalLights: assetDirectionalLights,
+		Skies:             assetSkies,
 	}, nil
 }
 
@@ -137,6 +142,14 @@ func (c *Converter) convertSpotLight(nodeIndex uint32, light *SpotLight) asset.S
 		EmitAngleOuter: light.EmitAngleOuter(),
 		EmitAngleInner: light.EmitAngleInner(),
 		CastShadow:     light.CastShadow(),
+	}
+}
+
+func (c *Converter) convertDirectionalLight(nodeIndex uint32, light *DirectionalLight) asset.DirectionalLight {
+	return asset.DirectionalLight{
+		NodeIndex:  nodeIndex,
+		EmitColor:  light.EmitColor(),
+		CastShadow: light.CastShadow(),
 	}
 }
 

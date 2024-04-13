@@ -102,3 +102,30 @@ func CreateSpotLight(name string, opts ...Operation) Provider[mdl.Node] {
 		},
 	))
 }
+
+// CreateDirectionalLight creates a new directional light.
+func CreateDirectionalLight(name string, opts ...Operation) Provider[mdl.Node] {
+	return OnceProvider(FuncProvider(
+		// get function
+		func() (mdl.Node, error) {
+			var light mdl.DirectionalLight
+			light.SetName(name)
+			light.SetTranslation(dprec.ZeroVec3())
+			light.SetRotation(dprec.IdentityQuat())
+			light.SetScale(dprec.NewVec3(1.0, 1.0, 1.0))
+			light.SetEmitColor(dprec.NewVec3(1.0, 1.0, 1.0))
+			light.SetCastShadow(false)
+			for _, opts := range opts {
+				if err := opts.Apply(&light); err != nil {
+					return nil, err
+				}
+			}
+			return &light, nil
+		},
+
+		// digest function
+		func() ([]byte, error) {
+			return CreateDigest("create-directional-light", name, opts)
+		},
+	))
+}
