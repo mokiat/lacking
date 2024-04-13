@@ -8,7 +8,7 @@ import (
 )
 
 // SetEmitColor configures the emit color of the target.
-func SetEmitColor(colorProvider Provider[dprec.Vec3]) Operation {
+func SetEmitColor(colorProvider Provider[dprec.Vec4]) Operation {
 	return FuncOperation(
 		// apply function
 		func(target any) error {
@@ -21,7 +21,8 @@ func SetEmitColor(colorProvider Provider[dprec.Vec3]) Operation {
 			if !ok {
 				return fmt.Errorf("target %T is not a color emitter", target)
 			}
-			emitter.SetEmitColor(color)
+			emitter.SetEmitColor(color.VecXYZ())
+
 			return nil
 		},
 
@@ -47,6 +48,7 @@ func SetEmitDistance(distanceProvider Provider[float64]) Operation {
 				return fmt.Errorf("target %T is not a distance emitter", target)
 			}
 			emitter.SetEmitDistance(distance)
+
 			return nil
 		},
 
@@ -72,6 +74,7 @@ func SetEmitAngleOuter(angleProvider Provider[dprec.Angle]) Operation {
 				return fmt.Errorf("target %T is not a cone emitter", target)
 			}
 			emitter.SetEmitAngleOuter(angle)
+
 			return nil
 		},
 
@@ -97,6 +100,7 @@ func SetEmitAngleInner(angleProvider Provider[dprec.Angle]) Operation {
 				return fmt.Errorf("target %T is not a cone emitter", target)
 			}
 			emitter.SetEmitAngleInner(angle)
+
 			return nil
 		},
 
@@ -126,6 +130,7 @@ func SetReflectionTexture(textureProvider Provider[*mdl.Texture]) Operation {
 				return fmt.Errorf("target %T is not configurable with a reflection texture", target)
 			}
 			configurable.SetReflectionTexture(texture)
+
 			return nil
 		},
 
@@ -155,6 +160,7 @@ func SetRefractionTexture(textureProvider Provider[*mdl.Texture]) Operation {
 				return fmt.Errorf("target %T is not configurable with a refraction texture", target)
 			}
 			configurable.SetRefractionTexture(texture)
+
 			return nil
 		},
 
