@@ -15,10 +15,7 @@ import (
 // through their engine's and their scenes should only serve as a
 // grouping/switch mechanism.
 
-var (
-	ErrNotFound     = errors.New("resource not found")
-	ErrStillLoading = errors.New("resource still loading")
-)
+var ErrNotFound = errors.New("resource not found")
 
 func newResourceSet(parent *ResourceSet, engine *Engine) *ResourceSet {
 	return &ResourceSet{
@@ -30,9 +27,8 @@ func newResourceSet(parent *ResourceSet, engine *Engine) *ResourceSet {
 		ioWorker:    engine.ioWorker,
 		gfxWorker:   engine.gfxWorker,
 
-		namedCubeTextures: make(map[string]async.Promise[render.Texture]),
-		namedModels:       make(map[string]async.Promise[*ModelDefinition]),
-		namedScenes:       make(map[string]async.Promise[*SceneDefinition]),
+		namedModels:  make(map[string]async.Promise[*ModelDefinition]),
+		namedModels2: make(map[string]async.Promise[SceneDefinition2]),
 	}
 }
 
@@ -45,36 +41,12 @@ type ResourceSet struct {
 	ioWorker    Worker
 	gfxWorker   Worker
 
-	namedCubeTextures map[string]async.Promise[render.Texture]
-	namedModels       map[string]async.Promise[*ModelDefinition]
-	namedScenes       map[string]async.Promise[*SceneDefinition]
+	namedModels  map[string]async.Promise[*ModelDefinition]
+	namedModels2 map[string]async.Promise[SceneDefinition2]
 }
 
 func (s *ResourceSet) CreateResourceSet() *ResourceSet {
 	return newResourceSet(s, s.engine)
-}
-
-func (s *ResourceSet) OpenCubeTexture(id string) async.Promise[render.Texture] {
-	if result, ok := s.findCubeTexture(id); ok {
-		return result
-	}
-
-	resource := s.registry.ResourceByID(id)
-	if resource == nil {
-		return async.NewFailedPromise[render.Texture](fmt.Errorf("%w: %q", ErrNotFound, id))
-	}
-
-	result := async.NewPromise[render.Texture]()
-	go func() {
-		texture, err := s.allocateCubeTexture(resource)
-		if err != nil {
-			result.Fail(fmt.Errorf("error loading cube texture %q: %w", id, err))
-		} else {
-			result.Deliver(texture)
-		}
-	}()
-	s.namedCubeTextures[id] = result
-	return result
 }
 
 func (s *ResourceSet) OpenModel(id string) async.Promise[*ModelDefinition] {
@@ -108,39 +80,10 @@ func (s *ResourceSet) OpenModelByName(name string) async.Promise[*ModelDefinitio
 	return s.OpenModel(resource.ID())
 }
 
-func (s *ResourceSet) OpenScene(id string) async.Promise[*SceneDefinition] {
-	if result, ok := s.findScene(id); ok {
+func (s *ResourceSet) OpenFragmentWithID(id string) async.Promise[SceneDefinition2] {
+	if result, ok := s.findModel2(id); ok {
 		return result
 	}
-
-	resource := s.registry.ResourceByID(id)
-	if resource == nil {
-		return async.NewFailedPromise[*SceneDefinition](fmt.Errorf("%w: %q", ErrNotFound, id))
-	}
-
-	result := async.NewPromise[*SceneDefinition]()
-	go func() {
-		model, err := s.allocateScene(resource)
-		if err != nil {
-			result.Fail(fmt.Errorf("error loading level %q: %w", id, err))
-		} else {
-			result.Deliver(model)
-		}
-	}()
-	s.namedScenes[id] = result
-	return result
-}
-
-func (s *ResourceSet) OpenSceneByName(name string) async.Promise[*SceneDefinition] {
-	resource := s.registry.ResourceByName(name)
-	if resource == nil {
-		return async.NewFailedPromise[*SceneDefinition](fmt.Errorf("%w: %q", ErrNotFound, name))
-	}
-	return s.OpenScene(resource.ID())
-}
-
-func (s *ResourceSet) OpenFragmentWithID(id string) async.Promise[SceneDefinition2] {
-	// TODO: Use caching
 
 	resource := s.newRegistry.ResourceByID(id)
 	if resource == nil {
@@ -177,30 +120,15 @@ func (s *ResourceSet) Delete() {
 	// FIXME: All of the release calls need to occur on the GPU thread.
 	// Also, rework this method to return a promise.
 	go func() {
-		s.namedScenes = nil
-		for _, promise := range s.namedCubeTextures {
-			if texture, err := promise.Wait(); err == nil {
-				texture.Release()
-			}
-		}
-		s.namedCubeTextures = nil
 		for _, promise := range s.namedModels {
 			if model, err := promise.Wait(); err == nil {
 				s.releaseModel(model)
 			}
 		}
 		s.namedModels = nil
-	}()
-}
 
-func (s *ResourceSet) findCubeTexture(id string) (async.Promise[render.Texture], bool) {
-	if result, ok := s.namedCubeTextures[id]; ok {
-		return result, true
-	}
-	if s.parent != nil {
-		return s.parent.findCubeTexture(id)
-	}
-	return async.Promise[render.Texture]{}, false
+		// TODO: Release named models2
+	}()
 }
 
 func (s *ResourceSet) findModel(id string) (async.Promise[*ModelDefinition], bool) {
@@ -213,12 +141,12 @@ func (s *ResourceSet) findModel(id string) (async.Promise[*ModelDefinition], boo
 	return async.Promise[*ModelDefinition]{}, false
 }
 
-func (s *ResourceSet) findScene(id string) (async.Promise[*SceneDefinition], bool) {
-	if result, ok := s.namedScenes[id]; ok {
+func (s *ResourceSet) findModel2(id string) (async.Promise[SceneDefinition2], bool) {
+	if result, ok := s.namedModels2[id]; ok {
 		return result, true
 	}
 	if s.parent != nil {
-		return s.parent.findScene(id)
+		return s.parent.findModel2(id)
 	}
-	return async.Promise[*SceneDefinition]{}, false
+	return async.Promise[SceneDefinition2]{}, false
 }

@@ -75,9 +75,9 @@ type Model struct {
 // within a scene.
 type ModelInstance struct {
 
-	// SceneDefinitionIndex is the index of the scene definition that is used
+	// ModelDefinitionIndex is the index of the scene definition that is used
 	// by this scene instance.
-	SceneDefinitionIndex uint32
+	ModelDefinitionIndex uint32
 
 	// NodeIndex is the index of the node that is used by this scene instance.
 	NodeIndex uint32
