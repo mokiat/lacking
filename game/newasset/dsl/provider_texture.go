@@ -3,12 +3,18 @@ package dsl
 import (
 	"fmt"
 
+	"github.com/mokiat/gog/opt"
 	"github.com/mokiat/lacking/game/newasset/mdl"
 )
 
 // CreateCubeTexture creates a new cube texture with the specified format and
 // source image.
-func CreateCubeTexture(format mdl.TextureFormat, cubeImageProvider Provider[*mdl.CubeImage]) Provider[*mdl.Texture] {
+func CreateCubeTexture(cubeImageProvider Provider[*mdl.CubeImage], opts ...Operation) Provider[*mdl.Texture] {
+	var cfg cubeTextureConfig
+	for _, opt := range opts {
+		opt.Apply(&cfg)
+	}
+
 	return OnceProvider(FuncProvider(
 		// get function
 		func() (*mdl.Texture, error) {
@@ -26,7 +32,7 @@ func CreateCubeTexture(format mdl.TextureFormat, cubeImageProvider Provider[*mdl
 
 			var texture mdl.Texture
 			texture.SetKind(mdl.TextureKindCube)
-			texture.SetFormat(format)
+			texture.SetFormat(cfg.format.ValueOrDefault(mdl.TextureFormatRGBA16F))
 			texture.Resize(frontImage.Width(), frontImage.Height())
 			texture.SetLayerImage(0, frontImage)
 			texture.SetLayerImage(1, rearImage)
@@ -39,9 +45,17 @@ func CreateCubeTexture(format mdl.TextureFormat, cubeImageProvider Provider[*mdl
 
 		// digest function
 		func() ([]byte, error) {
-			return CreateDigest("create-cube-texture", uint8(format), cubeImageProvider)
+			return CreateDigest("create-cube-texture", cubeImageProvider, opts)
 		},
 	))
 }
 
-var defaultCubeTextureProvider = CreateCubeTexture(mdl.TextureFormatRGBA32F, defaultCubeImageProvider)
+type cubeTextureConfig struct {
+	format opt.T[mdl.TextureFormat]
+}
+
+func (c *cubeTextureConfig) SetFormat(format mdl.TextureFormat) {
+	c.format = opt.V(format)
+}
+
+var defaultCubeTextureProvider = CreateCubeTexture(defaultCubeImageProvider)

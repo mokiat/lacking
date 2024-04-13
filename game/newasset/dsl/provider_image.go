@@ -12,6 +12,7 @@ import (
 	"github.com/mdouchement/hdr"
 	_ "github.com/mdouchement/hdr/codec/rgbe"
 	"github.com/mokiat/goexr/exr"
+	"github.com/mokiat/gog/opt"
 	_ "golang.org/x/image/tiff"
 
 	"github.com/mokiat/lacking/game/newasset/mdl"
@@ -138,9 +139,7 @@ func ResizedCubeImage(imageProvider Provider[*mdl.CubeImage], newSizeProvider Pr
 // IrradianceCubeImage creates an irradiance cube image from the provided
 // HDR skybox cube image.
 func IrradianceCubeImage(imageProvider Provider[*mdl.CubeImage], opts ...Operation) Provider[*mdl.CubeImage] {
-	cfg := irradianceConfig{
-		sampleCount: 20,
-	}
+	var cfg irradianceConfig
 	for _, opt := range opts {
 		opt.Apply(&cfg)
 	}
@@ -153,12 +152,13 @@ func IrradianceCubeImage(imageProvider Provider[*mdl.CubeImage], opts ...Operati
 				return nil, fmt.Errorf("error getting image: %w", err)
 			}
 
-			return mdl.BuildIrradianceCubeImage(image, cfg.sampleCount), nil
+			sampleCount := cfg.sampleCount.ValueOrDefault(20)
+			return mdl.BuildIrradianceCubeImage(image, sampleCount), nil
 		},
 
 		// digest function
 		func() ([]byte, error) {
-			return CreateDigest("irradiance-cube-image", imageProvider, cfg.sampleCount, opts)
+			return CreateDigest("irradiance-cube-image", imageProvider, opts)
 		},
 	))
 }
@@ -214,15 +214,11 @@ func buildImageResource(img image.Image) *mdl.Image {
 }
 
 type irradianceConfig struct {
-	sampleCount int
-}
-
-func (c *irradianceConfig) SampleCount() int {
-	return c.sampleCount
+	sampleCount opt.T[int]
 }
 
 func (c *irradianceConfig) SetSampleCount(value int) {
-	c.sampleCount = value
+	c.sampleCount = opt.V(value)
 }
 
 var defaultImageProvider = func() Provider[*mdl.Image] {
