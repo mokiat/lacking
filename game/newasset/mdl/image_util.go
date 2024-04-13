@@ -60,7 +60,7 @@ func UVWToEquirectangularUV(uvw dprec.Vec3) dprec.Vec2 {
 }
 
 func BuildCubeSideFromEquirectangular(side CubeSide, srcImage *Image) *Image {
-	dimension := srcImage.Height() / 2
+	dimension := max(1, srcImage.Height()/2)
 	dstImage := NewImage(dimension, dimension)
 
 	uv := dprec.ZeroVec2()
