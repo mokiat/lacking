@@ -47,7 +47,6 @@ type Scene struct {
 	gfxScene     *graphics.Scene
 	ecsScene     *ecs.Scene
 	root         *hierarchy.Node
-	models       []*Model
 
 	playbackPool *ds.Pool[Playback]
 	playbacks    *ds.List[*Playback]
@@ -271,26 +270,6 @@ func (s *Scene) placeModel(target *hierarchy.Node, def SceneDefinition2) {
 	for _, skyDef := range def.Skies {
 		s.placeSky(pData, skyDef)
 	}
-}
-
-// Initialize prepares the scene for use by applying the provided definition.
-//
-// Deprecated: Will be replaced by CreateScene calls.
-func (s *Scene) Initialize(definition *SceneDefinition) {
-	for _, instance := range definition.modelInstances {
-		model := s.CreateModel(instance)
-		s.models = append(s.models, model)
-	}
-}
-
-// Deprecated: Use the node hierarchy to find models.
-func (s *Scene) FindModel(name string) *Model {
-	for _, model := range s.models {
-		if model.root.Name() == name {
-			return model
-		}
-	}
-	return nil
 }
 
 // Update advances the scene by the provided time.
