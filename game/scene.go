@@ -223,8 +223,14 @@ func (s *Scene) CreateDirectionalLight(info DirectionalLightInfo) *hierarchy.Nod
 	return node
 }
 
-// Deprecated: Broken
-func (s *Scene) ApplyFragment(target *hierarchy.Node, def SceneDefinition2) {
+// TODO: Rename to CreateModel
+func (s *Scene) CreateScene(def SceneDefinition2) *hierarchy.Node {
+	node := s.CreateNode()
+	s.placeModel(node, def)
+	return node
+}
+
+func (s *Scene) placeModel(target *hierarchy.Node, def SceneDefinition2) {
 	nodeByIndex := gog.Map(def.Nodes, func(nodeDef asset.Node) *hierarchy.Node {
 		// TODO: Handle mask flags
 		node := hierarchy.NewNode()
@@ -271,28 +277,6 @@ func (s *Scene) ApplyFragment(target *hierarchy.Node, def SceneDefinition2) {
 //
 // Deprecated: Will be replaced by CreateScene calls.
 func (s *Scene) Initialize(definition *SceneDefinition) {
-	if definition.skyboxTexture != nil {
-		s.Graphics().Sky().SetSkybox(definition.skyboxTexture)
-	}
-
-	// if definition.reflectionTexture != nil && definition.refractionTexture != nil {
-	// 	node := s.CreateAmbientLight(AmbientLightInfo{
-	// 		ReflectionTexture: definition.reflectionTexture,
-	// 		RefractionTexture: definition.refractionTexture,
-	// 	})
-	// 	node.SetName("AmbientLight")
-	// }
-
-	s.CreateModel(ModelInfo{
-		Name:              "scene",
-		Definition:        definition.model,
-		Position:          dprec.ZeroVec3(),
-		Rotation:          dprec.IdentityQuat(),
-		Scale:             dprec.NewVec3(1.0, 1.0, 1.0),
-		IsDynamic:         false,
-		PrepareAnimations: false,
-	})
-
 	for _, instance := range definition.modelInstances {
 		model := s.CreateModel(instance)
 		s.models = append(s.models, model)

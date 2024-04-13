@@ -38,7 +38,7 @@ func SetSkyColor(colorProvider Provider[dprec.Vec4]) Operation {
 	return SetProperty("skyColor", DPVec4ToSPVec4(colorProvider))
 }
 
-// SetSkySampler sets the sampler of the sky.
-func SetSkySampler(samplerProvider Provider[*mdl.Sampler]) Operation {
+// SetSkyColorSampler sets the color sampler of the sky.
+func SetSkyColorSampler(samplerProvider Provider[*mdl.Sampler]) Operation {
 	return SetSampler("skyColorSampler", samplerProvider)
 }

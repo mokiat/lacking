@@ -6,12 +6,8 @@ import (
 )
 
 type Scene struct {
-	Model
-	SkyboxTexture            string
-	AmbientReflectionTexture string
-	AmbientRefractionTexture string
-	ModelDefinitions         []Model
-	ModelInstances           []ModelInstance
+	ModelDefinitions []Model
+	ModelInstances   []ModelInstance
 }
 
 func (s *Scene) EncodeTo(out io.Writer) error {

@@ -38,13 +38,10 @@ func (a *OpenLevelResourceAction) Run() error {
 	}
 
 	a.level = &Level{
-		SkyboxTexture:            jsonLevel.SkyboxTexture,
-		AmbientReflectionTexture: jsonLevel.AmbientReflectionTexture,
-		AmbientRefractionTexture: jsonLevel.AmbientRefractionTexture,
-		Materials:                make([]*Material, 0),
-		CollisionMeshes:          make([]*LevelCollisionMesh, len(jsonLevel.CollisionMeshes)),
-		StaticMeshes:             make([]*MeshDefinition, len(jsonLevel.StaticMeshes)),
-		StaticEntities:           make([]*LevelEntity, len(jsonLevel.StaticEntities)),
+		Materials:       make([]*Material, 0),
+		CollisionMeshes: make([]*LevelCollisionMesh, len(jsonLevel.CollisionMeshes)),
+		StaticMeshes:    make([]*MeshDefinition, len(jsonLevel.StaticMeshes)),
+		StaticEntities:  make([]*LevelEntity, len(jsonLevel.StaticEntities)),
 	}
 
 	for i, jsonCollisionMesh := range jsonLevel.CollisionMeshes {

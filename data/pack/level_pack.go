@@ -7,13 +7,10 @@ type LevelProvider interface {
 }
 
 type Level struct {
-	SkyboxTexture            string
-	AmbientReflectionTexture string
-	AmbientRefractionTexture string
-	Materials                []*Material
-	StaticEntities           []*LevelEntity
-	StaticMeshes             []*MeshDefinition
-	CollisionMeshes          []*LevelCollisionMesh
+	Materials       []*Material
+	StaticEntities  []*LevelEntity
+	StaticMeshes    []*MeshDefinition
+	CollisionMeshes []*LevelCollisionMesh
 }
 
 type LevelEntity struct {
