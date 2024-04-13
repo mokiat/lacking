@@ -12,97 +12,155 @@ import (
 	"github.com/mdouchement/hdr"
 	_ "github.com/mdouchement/hdr/codec/rgbe"
 	"github.com/mokiat/goexr/exr"
-	"github.com/mokiat/gomath/dprec"
 	_ "golang.org/x/image/tiff"
 
 	"github.com/mokiat/lacking/game/newasset/mdl"
 )
 
+// OpenImage opens an image file from the provided path.
 func OpenImage(path string) Provider[*mdl.Image] {
-	get := func() (*mdl.Image, error) {
-		file, err := os.Open(path)
-		if err != nil {
-			return nil, fmt.Errorf("failed to open image file: %w", err)
-		}
-		defer file.Close()
+	return OnceProvider(FuncProvider(
+		// get function
+		func() (*mdl.Image, error) {
+			file, err := os.Open(path)
+			if err != nil {
+				return nil, fmt.Errorf("failed to open image file %q: %w", path, err)
+			}
+			defer file.Close()
 
-		img, err := parseGoImage(file)
-		if err != nil {
-			return nil, fmt.Errorf("failed to parse image: %w", err)
-		}
+			img, err := parseGoImage(file)
+			if err != nil {
+				return nil, fmt.Errorf("failed to parse image %q: %w", path, err)
+			}
 
-		return buildImageResource(img), nil
-	}
+			return buildImageResource(img), nil
+		},
 
-	digest := func() ([]byte, error) {
-		return digestItems("open-image", path)
-	}
-
-	return OnceProvider(FuncProvider(get, digest))
+		// digest function
+		func() ([]byte, error) {
+			info, err := os.Stat(path)
+			if err != nil {
+				return nil, fmt.Errorf("failed to stat file %q: %w", path, err)
+			}
+			return digestItems("open-image", path, info.ModTime())
+		},
+	))
 }
 
+// ResizedImage returns an image with the provided dimensions.
+func ResizedImage(imageProvider Provider[*mdl.Image], newWidthProvider, newHeightProvider Provider[int]) Provider[*mdl.Image] {
+	return OnceProvider(FuncProvider(
+		// get function
+		func() (*mdl.Image, error) {
+			newWidth, err := newWidthProvider.Get()
+			if err != nil {
+				return nil, fmt.Errorf("error getting new width: %w", err)
+			}
+
+			newHeight, err := newHeightProvider.Get()
+			if err != nil {
+				return nil, fmt.Errorf("error getting new height: %w", err)
+			}
+
+			image, err := imageProvider.Get()
+			if err != nil {
+				return nil, fmt.Errorf("error getting image: %w", err)
+			}
+			return image.Scale(newWidth, newHeight), nil
+		},
+
+		// digest function
+		func() ([]byte, error) {
+			return digestItems("resized-image", imageProvider, newWidthProvider, newHeightProvider)
+		},
+	))
+}
+
+// CubeImageFromEquirectangular creates a cube image from an
+// equirectangular image.
 func CubeImageFromEquirectangular(imageProvider Provider[*mdl.Image]) Provider[*mdl.CubeImage] {
-	get := func() (*mdl.CubeImage, error) {
-		image, err := imageProvider.Get()
-		if err != nil {
-			return nil, fmt.Errorf("error getting image: %w", err)
-		}
+	return OnceProvider(FuncProvider(
+		// get function
+		func() (*mdl.CubeImage, error) {
+			image, err := imageProvider.Get()
+			if err != nil {
+				return nil, fmt.Errorf("error getting image: %w", err)
+			}
 
-		frontImage := mdl.BuildCubeSideFromEquirectangular(mdl.CubeSideFront, image)
-		rearImage := mdl.BuildCubeSideFromEquirectangular(mdl.CubeSideRear, image)
-		leftImage := mdl.BuildCubeSideFromEquirectangular(mdl.CubeSideLeft, image)
-		rightImage := mdl.BuildCubeSideFromEquirectangular(mdl.CubeSideRight, image)
-		topImage := mdl.BuildCubeSideFromEquirectangular(mdl.CubeSideTop, image)
-		bottomImage := mdl.BuildCubeSideFromEquirectangular(mdl.CubeSideBottom, image)
+			frontImage := mdl.BuildCubeSideFromEquirectangular(mdl.CubeSideFront, image)
+			rearImage := mdl.BuildCubeSideFromEquirectangular(mdl.CubeSideRear, image)
+			leftImage := mdl.BuildCubeSideFromEquirectangular(mdl.CubeSideLeft, image)
+			rightImage := mdl.BuildCubeSideFromEquirectangular(mdl.CubeSideRight, image)
+			topImage := mdl.BuildCubeSideFromEquirectangular(mdl.CubeSideTop, image)
+			bottomImage := mdl.BuildCubeSideFromEquirectangular(mdl.CubeSideBottom, image)
 
-		dstImage := mdl.NewCubeImage(frontImage.Width())
-		dstImage.SetSide(mdl.CubeSideFront, frontImage)
-		dstImage.SetSide(mdl.CubeSideRear, rearImage)
-		dstImage.SetSide(mdl.CubeSideLeft, leftImage)
-		dstImage.SetSide(mdl.CubeSideRight, rightImage)
-		dstImage.SetSide(mdl.CubeSideTop, topImage)
-		dstImage.SetSide(mdl.CubeSideBottom, bottomImage)
-		return dstImage, nil
-	}
+			dstImage := mdl.NewCubeImage(frontImage.Width())
+			dstImage.SetSide(mdl.CubeSideFront, frontImage)
+			dstImage.SetSide(mdl.CubeSideRear, rearImage)
+			dstImage.SetSide(mdl.CubeSideLeft, leftImage)
+			dstImage.SetSide(mdl.CubeSideRight, rightImage)
+			dstImage.SetSide(mdl.CubeSideTop, topImage)
+			dstImage.SetSide(mdl.CubeSideBottom, bottomImage)
+			return dstImage, nil
+		},
 
-	digest := func() ([]byte, error) {
-		return digestItems("cube-image-from-equirectangular", imageProvider)
-	}
-
-	return OnceProvider(FuncProvider(get, digest))
+		// digest function
+		func() ([]byte, error) {
+			return digestItems("cube-image-from-equirectangular", imageProvider)
+		},
+	))
 }
 
-func ResizedCubeImage(imageProvider Provider[*mdl.CubeImage], newSize int) Provider[*mdl.CubeImage] {
-	get := func() (*mdl.CubeImage, error) {
-		image, err := imageProvider.Get()
-		if err != nil {
-			return nil, fmt.Errorf("error getting image: %w", err)
-		}
-		return image.Scale(newSize), nil
-	}
+// ResizedCubeImage returns a cube image with the provided dimensions.
+func ResizedCubeImage(imageProvider Provider[*mdl.CubeImage], newSizeProvider Provider[int]) Provider[*mdl.CubeImage] {
+	return OnceProvider(FuncProvider(
+		// get function
+		func() (*mdl.CubeImage, error) {
+			newSize, err := newSizeProvider.Get()
+			if err != nil {
+				return nil, fmt.Errorf("error getting new size: %w", err)
+			}
 
-	digest := func() ([]byte, error) {
-		return digestItems("resized-cube-image", imageProvider, newSize)
-	}
+			image, err := imageProvider.Get()
+			if err != nil {
+				return nil, fmt.Errorf("error getting image: %w", err)
+			}
+			return image.Scale(newSize), nil
+		},
 
-	return OnceProvider(FuncProvider(get, digest))
+		// digest function
+		func() ([]byte, error) {
+			return digestItems("resized-cube-image", imageProvider, newSizeProvider)
+		},
+	))
 }
 
-func IrradianceCubeImage(imageProvider Provider[*mdl.CubeImage]) Provider[*mdl.CubeImage] {
-	get := func() (*mdl.CubeImage, error) {
-		image, err := imageProvider.Get()
-		if err != nil {
-			return nil, fmt.Errorf("error getting image: %w", err)
-		}
-
-		return mdl.BuildIrradianceCubeImage(image, 60), nil
+// IrradianceCubeImage creates an irradiance cube image from the provided
+// HDR skybox cube image.
+func IrradianceCubeImage(imageProvider Provider[*mdl.CubeImage], opts ...Operation) Provider[*mdl.CubeImage] {
+	cfg := irradianceConfig{
+		sampleCount: 20,
+	}
+	for _, opt := range opts {
+		opt.Apply(&cfg)
 	}
 
-	digest := func() ([]byte, error) {
-		return digestItems("irradiance-cube-image", imageProvider)
-	}
+	return OnceProvider(FuncProvider(
+		// get function
+		func() (*mdl.CubeImage, error) {
+			image, err := imageProvider.Get()
+			if err != nil {
+				return nil, fmt.Errorf("error getting image: %w", err)
+			}
 
-	return OnceProvider(FuncProvider(get, digest))
+			return mdl.BuildIrradianceCubeImage(image, cfg.sampleCount), nil
+		},
+
+		// digest function
+		func() ([]byte, error) {
+			return digestItems("irradiance-cube-image", imageProvider, cfg.sampleCount)
+		},
+	))
 }
 
 func parseGoImage(in io.Reader) (image.Image, error) {
@@ -120,11 +178,13 @@ func buildImageResource(img image.Image) *mdl.Image {
 	height := img.Bounds().Dy()
 
 	image := mdl.NewImage(width, height)
-	for y := 0; y < height; y++ {
-		for x := 0; x < width; x++ {
+	for y := range height {
+		for x := range width {
+			atX := imgStartX + x
+			atY := imgStartY + y
 			switch img := img.(type) {
 			case hdr.Image:
-				r, g, b, a := img.HDRAt(imgStartX+x, imgStartY+y).HDRPixel()
+				r, g, b, a := img.HDRAt(atX, atY).HDRPixel()
 				image.SetTexel(x, y, mdl.Color{
 					R: r,
 					G: g,
@@ -132,7 +192,7 @@ func buildImageResource(img image.Image) *mdl.Image {
 					A: a,
 				})
 			case *exr.RGBAImage:
-				clr := img.At(x, y).(exr.RGBAColor)
+				clr := img.At(atX, atY).(exr.RGBAColor)
 				image.SetTexel(x, y, mdl.Color{
 					R: float64(clr.R),
 					G: float64(clr.G),
@@ -140,7 +200,7 @@ func buildImageResource(img image.Image) *mdl.Image {
 					A: float64(clr.A),
 				})
 			default:
-				c := color.NRGBAModel.Convert(img.At(imgStartX+x, imgStartY+y)).(color.NRGBA)
+				c := color.NRGBAModel.Convert(img.At(atX, atY)).(color.NRGBA)
 				image.SetTexel(x, y, mdl.Color{
 					R: float64(float64(c.R) / 255.0),
 					G: float64(float64(c.G) / 255.0),
@@ -153,37 +213,14 @@ func buildImageResource(img image.Image) *mdl.Image {
 	return image
 }
 
-func BuildCubeSideFromEquirectangular(side mdl.CubeSide, imageProvider Provider[*mdl.Image]) Provider[*mdl.Image] {
-	get := func() (*mdl.Image, error) {
-		srcImage, err := imageProvider.Get()
-		if err != nil {
-			return nil, fmt.Errorf("error getting image: %w", err)
-		}
+type irradianceConfig struct {
+	sampleCount int
+}
 
-		dimension := srcImage.Height() / 2
-		dstImage := mdl.NewImage(dimension, dimension)
+func (c *irradianceConfig) SampleCount() int {
+	return c.sampleCount
+}
 
-		uv := dprec.ZeroVec2()
-		startU := 0.0
-		deltaU := 1.0 / float64(dimension-1)
-		startV := 1.0
-		deltaV := -1.0 / float64(dimension-1)
-
-		uv.Y = startV
-		for y := 0; y < dimension; y++ {
-			uv.X = startU
-			for x := 0; x < dimension; x++ {
-				dstImage.SetTexel(x, y, srcImage.TexelUV(mdl.UVWToEquirectangularUV(mdl.CubeUVToUVW(side, uv))))
-				uv.X += deltaU
-			}
-			uv.Y += deltaV
-		}
-		return dstImage, nil
-	}
-
-	digest := func() ([]byte, error) {
-		return digestItems("build-cube-side-from-equirectangular", uint8(side), imageProvider)
-	}
-
-	return OnceProvider(FuncProvider(get, digest))
+func (c *irradianceConfig) SetSampleCount(value int) {
+	c.sampleCount = value
 }

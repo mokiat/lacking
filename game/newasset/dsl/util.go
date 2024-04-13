@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"strconv"
+	"time"
 
 	"github.com/mokiat/gomath/dprec"
 	"github.com/mokiat/gomath/sprec"
@@ -33,6 +34,8 @@ func digestItems(name string, items ...any) ([]byte, error) {
 			io.WriteString(h, item)
 		case float32:
 			io.WriteString(h, fmt.Sprintf("%f", item))
+		case time.Time:
+			io.WriteString(h, item.Format(time.RFC3339))
 		case sprec.Vec2:
 			io.WriteString(h, item.GoString())
 		case sprec.Vec3:
