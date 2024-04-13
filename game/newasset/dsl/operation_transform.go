@@ -7,53 +7,80 @@ import (
 	"github.com/mokiat/lacking/game/newasset/mdl"
 )
 
-func SetTranslation(translation dprec.Vec3) Operation {
-	apply := func(target any) error {
-		transformable, ok := target.(mdl.Translatable)
-		if !ok {
-			return fmt.Errorf("target %T is not a translatable", target)
-		}
-		transformable.SetTranslation(translation)
-		return nil
-	}
+// SetTranslation sets the translation of the target.
+func SetTranslation(translationProvider Provider[dprec.Vec3]) Operation {
+	return FuncOperation(
+		// apply function
+		func(target any) error {
+			translation, err := translationProvider.Get()
+			if err != nil {
+				return fmt.Errorf("error getting translation: %w", err)
+			}
 
-	digest := func() ([]byte, error) {
-		return CreateDigest("set-translation", translation)
-	}
+			transformable, ok := target.(mdl.Translatable)
+			if !ok {
+				return fmt.Errorf("target %T is not a translatable", target)
+			}
+			transformable.SetTranslation(translation)
 
-	return FuncOperation(apply, digest)
+			return nil
+		},
+
+		// digest function
+		func() ([]byte, error) {
+			return CreateDigest("set-translation", translationProvider)
+		},
+	)
 }
 
-func SetRotation(rotation dprec.Quat) Operation {
-	apply := func(target any) error {
-		transformable, ok := target.(mdl.Rotatable)
-		if !ok {
-			return fmt.Errorf("target %T is not a rotatable", target)
-		}
-		transformable.SetRotation(rotation)
-		return nil
-	}
+// SetRotation sets the rotation of the target.
+func SetRotation(rotationProvider Provider[dprec.Quat]) Operation {
+	return FuncOperation(
+		// apply function
+		func(target any) error {
+			rotation, err := rotationProvider.Get()
+			if err != nil {
+				return fmt.Errorf("error getting rotation: %w", err)
+			}
 
-	digest := func() ([]byte, error) {
-		return CreateDigest("set-rotation", rotation)
-	}
+			transformable, ok := target.(mdl.Rotatable)
+			if !ok {
+				return fmt.Errorf("target %T is not a rotatable", target)
+			}
+			transformable.SetRotation(rotation)
 
-	return FuncOperation(apply, digest)
+			return nil
+		},
+
+		// digest function
+		func() ([]byte, error) {
+			return CreateDigest("set-rotation", rotationProvider)
+		},
+	)
 }
 
-func SetScale(scale dprec.Vec3) Operation {
-	apply := func(target any) error {
-		transformable, ok := target.(mdl.Scalable)
-		if !ok {
-			return fmt.Errorf("target %T is not a scalable", target)
-		}
-		transformable.SetScale(scale)
-		return nil
-	}
+// SetScale sets the scale of the target.
+func SetScale(scaleProvider Provider[dprec.Vec3]) Operation {
+	return FuncOperation(
+		// apply function
+		func(target any) error {
+			scale, err := scaleProvider.Get()
+			if err != nil {
+				return fmt.Errorf("error getting scale: %w", err)
+			}
 
-	digest := func() ([]byte, error) {
-		return CreateDigest("set-scale", scale)
-	}
+			transformable, ok := target.(mdl.Scalable)
+			if !ok {
+				return fmt.Errorf("target %T is not a scalable", target)
+			}
+			transformable.SetScale(scale)
 
-	return FuncOperation(apply, digest)
+			return nil
+		},
+
+		// digest function
+		func() ([]byte, error) {
+			return CreateDigest("set-scale", scaleProvider)
+		},
+	)
 }
