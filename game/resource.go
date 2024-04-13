@@ -177,11 +177,6 @@ func (s *ResourceSet) Delete() {
 	// FIXME: All of the release calls need to occur on the GPU thread.
 	// Also, rework this method to return a promise.
 	go func() {
-		for _, promise := range s.namedScenes {
-			if scene, err := promise.Wait(); err == nil {
-				s.releaseScene(scene)
-			}
-		}
 		s.namedScenes = nil
 		for _, promise := range s.namedCubeTextures {
 			if texture, err := promise.Wait(); err == nil {

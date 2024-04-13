@@ -9,7 +9,6 @@ import (
 )
 
 type ModelInstance struct {
-	ModelIndex  int32
 	ModelID     string
 	Name        string
 	Translation dprec.Vec3

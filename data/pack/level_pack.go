@@ -7,24 +7,10 @@ type LevelProvider interface {
 }
 
 type Level struct {
-	Materials       []*Material
-	StaticEntities  []*LevelEntity
-	StaticMeshes    []*MeshDefinition
-	CollisionMeshes []*LevelCollisionMesh
+	StaticEntities []*LevelEntity
 }
 
 type LevelEntity struct {
-	Name   string
 	Model  string
 	Matrix sprec.Mat4
-}
-
-type LevelCollisionMesh struct {
-	Triangles []Triangle
-}
-
-type Triangle struct {
-	A sprec.Vec3
-	B sprec.Vec3
-	C sprec.Vec3
 }
