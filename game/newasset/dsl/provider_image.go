@@ -2,18 +2,9 @@ package dsl
 
 import (
 	"fmt"
-	"image"
-	"image/color"
-	_ "image/jpeg"
-	_ "image/png"
-	"io"
 	"os"
 
-	"github.com/mdouchement/hdr"
-	_ "github.com/mdouchement/hdr/codec/rgbe"
-	"github.com/mokiat/goexr/exr"
 	"github.com/mokiat/gog/opt"
-	_ "golang.org/x/image/tiff"
 
 	"github.com/mokiat/lacking/game/newasset/mdl"
 )
@@ -29,12 +20,12 @@ func OpenImage(path string) Provider[*mdl.Image] {
 			}
 			defer file.Close()
 
-			img, err := parseGoImage(file)
+			img, err := mdl.ParseImage(file)
 			if err != nil {
 				return nil, fmt.Errorf("failed to parse image %q: %w", path, err)
 			}
 
-			return buildImageResource(img), nil
+			return img, nil
 		},
 
 		// digest function
@@ -161,56 +152,6 @@ func IrradianceCubeImage(imageProvider Provider[*mdl.CubeImage], opts ...Operati
 			return CreateDigest("irradiance-cube-image", imageProvider, opts)
 		},
 	))
-}
-
-func parseGoImage(in io.Reader) (image.Image, error) {
-	img, _, err := image.Decode(in)
-	if err != nil {
-		return nil, fmt.Errorf("failed to decode image: %w", err)
-	}
-	return img, nil
-}
-
-func buildImageResource(img image.Image) *mdl.Image {
-	imgStartX := img.Bounds().Min.X
-	imgStartY := img.Bounds().Min.Y
-	width := img.Bounds().Dx()
-	height := img.Bounds().Dy()
-
-	image := mdl.NewImage(width, height)
-	for y := range height {
-		for x := range width {
-			atX := imgStartX + x
-			atY := imgStartY + y
-			switch img := img.(type) {
-			case hdr.Image:
-				r, g, b, a := img.HDRAt(atX, atY).HDRPixel()
-				image.SetTexel(x, y, mdl.Color{
-					R: r,
-					G: g,
-					B: b,
-					A: a,
-				})
-			case *exr.RGBAImage:
-				clr := img.At(atX, atY).(exr.RGBAColor)
-				image.SetTexel(x, y, mdl.Color{
-					R: float64(clr.R),
-					G: float64(clr.G),
-					B: float64(clr.B),
-					A: float64(clr.A),
-				})
-			default:
-				c := color.NRGBAModel.Convert(img.At(atX, atY)).(color.NRGBA)
-				image.SetTexel(x, y, mdl.Color{
-					R: float64(float64(c.R) / 255.0),
-					G: float64(float64(c.G) / 255.0),
-					B: float64(float64(c.B) / 255.0),
-					A: float64(float64(c.A) / 255.0),
-				})
-			}
-		}
-	}
-	return image
 }
 
 type irradianceConfig struct {

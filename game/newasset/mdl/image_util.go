@@ -2,9 +2,20 @@ package mdl
 
 import (
 	"fmt"
+	"image"
+	"image/color"
+	"io"
 	"math"
 	"sync"
 
+	_ "image/jpeg"
+	_ "image/png"
+
+	_ "github.com/mdouchement/hdr/codec/rgbe"
+	_ "golang.org/x/image/tiff"
+
+	"github.com/mdouchement/hdr"
+	"github.com/mokiat/goexr/exr"
 	"github.com/mokiat/gomath/dprec"
 )
 
@@ -57,6 +68,56 @@ func UVWToEquirectangularUV(uvw dprec.Vec3) dprec.Vec2 {
 		0.5+(0.5/dprec.Pi)*math.Atan2(uvw.Z, uvw.X),
 		0.5+(1.0/dprec.Pi)*math.Asin(uvw.Y),
 	)
+}
+
+func ParseImage(in io.Reader) (*Image, error) {
+	img, _, err := image.Decode(in)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode image: %w", err)
+	}
+	return BuildImageResource(img), nil
+}
+
+func BuildImageResource(img image.Image) *Image {
+	imgStartX := img.Bounds().Min.X
+	imgStartY := img.Bounds().Min.Y
+	width := img.Bounds().Dx()
+	height := img.Bounds().Dy()
+
+	image := NewImage(width, height)
+	for y := range height {
+		for x := range width {
+			atX := imgStartX + x
+			atY := imgStartY + y
+			switch img := img.(type) {
+			case hdr.Image:
+				r, g, b, a := img.HDRAt(atX, atY).HDRPixel()
+				image.SetTexel(x, y, Color{
+					R: r,
+					G: g,
+					B: b,
+					A: a,
+				})
+			case *exr.RGBAImage:
+				clr := img.At(atX, atY).(exr.RGBAColor)
+				image.SetTexel(x, y, Color{
+					R: float64(clr.R),
+					G: float64(clr.G),
+					B: float64(clr.B),
+					A: float64(clr.A),
+				})
+			default:
+				c := color.NRGBAModel.Convert(img.At(atX, atY)).(color.NRGBA)
+				image.SetTexel(x, y, Color{
+					R: float64(float64(c.R) / 255.0),
+					G: float64(float64(c.G) / 255.0),
+					B: float64(float64(c.B) / 255.0),
+					A: float64(float64(c.A) / 255.0),
+				})
+			}
+		}
+	}
+	return image
 }
 
 func BuildCubeSideFromEquirectangular(side CubeSide, srcImage *Image) *Image {

@@ -8,6 +8,7 @@ import (
 	"github.com/mokiat/gomath/dprec"
 	"github.com/mokiat/gomath/sprec"
 	"github.com/mokiat/gomath/stod"
+	"github.com/mokiat/lacking/game/newasset/mdl"
 	"github.com/mokiat/lacking/util/gltfutil"
 	"github.com/mokiat/lacking/util/resource"
 	"github.com/qmuntal/gltf"
@@ -72,7 +73,7 @@ func ParseGLTFResource(in io.Reader) (*Model, error) {
 func BuildModelResource(gltfDoc *gltf.Document) (*Model, error) {
 	model := &Model{}
 
-	imagesFromIndex := make(map[uint32]*Image)
+	imagesFromIndex := make(map[uint32]*mdl.Image)
 	for i, gltfImage := range gltfDoc.Images {
 		img, err := openGLTFImage(gltfDoc, gltfImage)
 		if err != nil {
@@ -476,7 +477,7 @@ func BuildModelResource(gltfDoc *gltf.Document) (*Model, error) {
 	return model, nil
 }
 
-func openGLTFImage(doc *gltf.Document, img *gltf.Image) (*Image, error) {
+func openGLTFImage(doc *gltf.Document, img *gltf.Image) (*mdl.Image, error) {
 	var content []byte
 	if img.BufferView != nil {
 		content = gltfutil.BufferViewData(doc, *img.BufferView)
@@ -492,10 +493,10 @@ func openGLTFImage(doc *gltf.Document, img *gltf.Image) (*Image, error) {
 		// }
 		return nil, fmt.Errorf("external images not supported right now")
 	}
-	result, err := ParseImageResource(bytes.NewReader(content))
+
+	result, err := mdl.ParseImage(bytes.NewReader(content))
 	if err != nil {
 		return nil, err
 	}
-	result.Name = img.Name
 	return result, nil
 }
