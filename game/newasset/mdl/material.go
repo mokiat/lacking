@@ -40,7 +40,7 @@ func (b *BasePropertyHolder) SetProperty(name string, value any) {
 	b.properties[name] = value
 }
 
-type TextureHolder interface {
+type SamplerHolder interface {
 	Sampler(name string) *Sampler
 	SetSampler(name string, texture *Sampler)
 }

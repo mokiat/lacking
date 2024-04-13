@@ -124,7 +124,7 @@ func writeValue(out io.Writer, value any) error {
 		}
 		io.WriteString(out, digest)
 	default:
-		panic(fmt.Errorf("unsupported value type: %T", value))
+		io.WriteString(out, fmt.Sprintf("%v", value))
 	}
 	return nil
 }

@@ -50,12 +50,12 @@ func CreateColorSkyLayer() Provider[mdl.SkyLayer] {
 }
 
 func SetSkyColor(color dprec.Vec3) Operation {
-	return SetProperty("skyColor", sprec.NewVec4(
+	return SetProperty("skyColor", Const(sprec.NewVec4(
 		float32(color.X),
 		float32(color.Y),
 		float32(color.Z),
 		1.0,
-	))
+	)))
 }
 
 func CreateTextureSkyLayer() Provider[mdl.SkyLayer] {
