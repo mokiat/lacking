@@ -6,19 +6,27 @@ import (
 	"github.com/mokiat/lacking/game/newasset/mdl"
 )
 
-func SetProperty(name string, value any) Operation {
-	apply := func(target any) error {
-		container, ok := target.(mdl.PropertyHolder)
-		if !ok {
-			return fmt.Errorf("target %T is not a property holder", target)
-		}
-		container.SetProperty(name, value)
-		return nil
-	}
+// SetProperty sets the specified property on the target property holder.
+func SetProperty[T any](name string, valueProvider Provider[T]) Operation {
+	return FuncOperation(
+		// apply function
+		func(target any) error {
+			value, err := valueProvider.Get()
+			if err != nil {
+				return fmt.Errorf("error getting value: %w", err)
+			}
 
-	digest := func() ([]byte, error) {
-		return CreateDigest("set-property", name, value)
-	}
+			container, ok := target.(mdl.PropertyHolder)
+			if !ok {
+				return fmt.Errorf("target %T is not a property holder", target)
+			}
+			container.SetProperty(name, value)
+			return nil
+		},
 
-	return FuncOperation(apply, digest)
+		// digest function
+		func() ([]byte, error) {
+			return CreateDigest("set-property", name, valueProvider)
+		},
+	)
 }
