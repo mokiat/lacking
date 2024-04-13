@@ -44,3 +44,5 @@ func CreateCubeTexture(format mdl.TextureFormat, cubeImageProvider Provider[*mdl
 
 	return OnceProvider(FuncProvider(get, digest))
 }
+
+var defaultCubeTextureProvider = CreateCubeTexture(mdl.TextureFormatRGBA32F, defaultCubeImageProvider)
