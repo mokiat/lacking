@@ -29,7 +29,7 @@ func SetSampleCount(countProvider Provider[int]) Operation {
 
 		// digest function
 		func() ([]byte, error) {
-			return digestItems("set-sample-count", countProvider)
+			return CreateDigest("set-sample-count", countProvider)
 		},
 	)
 }

@@ -24,7 +24,7 @@ func CreateSampler(textureProvider Provider[*mdl.Texture], operations ...Operati
 	}
 
 	digest := func() ([]byte, error) {
-		return digestItems("sampler", textureProvider, operations)
+		return CreateDigest("sampler", textureProvider, operations)
 	}
 
 	return OnceProvider(FuncProvider(get, digest))

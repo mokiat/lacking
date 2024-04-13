@@ -27,7 +27,7 @@ func SetEmitColor(colorProvider Provider[dprec.Vec3]) Operation {
 
 		// digest function
 		func() ([]byte, error) {
-			return digestItems("set-emit-color", colorProvider)
+			return CreateDigest("set-emit-color", colorProvider)
 		},
 	)
 }
@@ -52,7 +52,7 @@ func SetEmitDistance(distanceProvider Provider[float64]) Operation {
 
 		// digest function
 		func() ([]byte, error) {
-			return digestItems("set-emit-distance", distanceProvider)
+			return CreateDigest("set-emit-distance", distanceProvider)
 		},
 	)
 }
@@ -77,7 +77,7 @@ func SetEmitAngleOuter(angleProvider Provider[dprec.Angle]) Operation {
 
 		// digest function
 		func() ([]byte, error) {
-			return digestItems("set-emit-angle-outer", angleProvider)
+			return CreateDigest("set-emit-angle-outer", angleProvider)
 		},
 	)
 }
@@ -102,7 +102,7 @@ func SetEmitAngleInner(angleProvider Provider[dprec.Angle]) Operation {
 
 		// digest function
 		func() ([]byte, error) {
-			return digestItems("set-emit-angle-inner", angleProvider)
+			return CreateDigest("set-emit-angle-inner", angleProvider)
 		},
 	)
 }
@@ -131,7 +131,7 @@ func SetReflectionTexture(textureProvider Provider[*mdl.Texture]) Operation {
 
 		// digest function
 		func() ([]byte, error) {
-			return digestItems("set-reflection-texture", textureProvider)
+			return CreateDigest("set-reflection-texture", textureProvider)
 		},
 	)
 }
@@ -160,7 +160,7 @@ func SetRefractionTexture(textureProvider Provider[*mdl.Texture]) Operation {
 
 		// digest function
 		func() ([]byte, error) {
-			return digestItems("set-refraction-texture", textureProvider)
+			return CreateDigest("set-refraction-texture", textureProvider)
 		},
 	)
 }

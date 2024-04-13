@@ -35,7 +35,7 @@ func StaticProvider[T any](value T) Provider[T] {
 		},
 
 		func() ([]byte, error) {
-			return digestItems("static", typeName, value)
+			return CreateDigest("static", typeName, value)
 		},
 	))
 }

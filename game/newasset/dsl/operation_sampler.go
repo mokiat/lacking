@@ -17,7 +17,7 @@ func SetWrapMode(wrapMode mdl.WrapMode) Operation {
 	}
 
 	digest := func() ([]byte, error) {
-		return digestItems("set-wrap-mode", uint8(wrapMode))
+		return CreateDigest("set-wrap-mode", uint8(wrapMode))
 	}
 
 	return FuncOperation(apply, digest)
@@ -34,7 +34,7 @@ func SetFilterMode(filterMode mdl.FilterMode) Operation {
 	}
 
 	digest := func() ([]byte, error) {
-		return digestItems("set-filter-mode", uint8(filterMode))
+		return CreateDigest("set-filter-mode", uint8(filterMode))
 	}
 
 	return FuncOperation(apply, digest)
@@ -51,7 +51,7 @@ func SetMipmapping(mipmapping bool) Operation {
 	}
 
 	digest := func() ([]byte, error) {
-		return digestItems("set-mipmapping", mipmapping)
+		return CreateDigest("set-mipmapping", mipmapping)
 	}
 
 	return FuncOperation(apply, digest)

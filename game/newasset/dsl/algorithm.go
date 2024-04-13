@@ -23,7 +23,7 @@ func Run(storage asset.Storage, formatter asset.Formatter) error {
 		g.Go(func() error {
 			log.Info("Model %q - processing", name)
 
-			digest, err := digestString(modelProvider)
+			digest, err := StringDigest(modelProvider)
 			if err != nil {
 				return fmt.Errorf("error calculating model %q digest: %w", name, err)
 			}

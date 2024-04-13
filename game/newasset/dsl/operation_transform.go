@@ -18,7 +18,7 @@ func SetTranslation(translation dprec.Vec3) Operation {
 	}
 
 	digest := func() ([]byte, error) {
-		return digestItems("set-translation", translation)
+		return CreateDigest("set-translation", translation)
 	}
 
 	return FuncOperation(apply, digest)
@@ -35,7 +35,7 @@ func SetRotation(rotation dprec.Quat) Operation {
 	}
 
 	digest := func() ([]byte, error) {
-		return digestItems("set-rotation", rotation)
+		return CreateDigest("set-rotation", rotation)
 	}
 
 	return FuncOperation(apply, digest)
@@ -52,7 +52,7 @@ func SetScale(scale dprec.Vec3) Operation {
 	}
 
 	digest := func() ([]byte, error) {
-		return digestItems("set-scale", scale)
+		return CreateDigest("set-scale", scale)
 	}
 
 	return FuncOperation(apply, digest)

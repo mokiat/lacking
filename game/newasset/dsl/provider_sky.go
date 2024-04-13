@@ -24,17 +24,15 @@ func CreateSky(name string, operations ...Operation) Provider[mdl.Node] {
 	}
 
 	digest := func() ([]byte, error) {
-		return digestItems("sky", name, operations)
+		return CreateDigest("create-sky", name, operations)
 	}
 
 	return OnceProvider(FuncProvider(get, digest))
 }
 
 func CreateColorSkyLayer() Provider[mdl.SkyLayer] {
-	shaderProvider := presetColorSkyShader
-
 	get := func() (mdl.SkyLayer, error) {
-		shader, err := shaderProvider.Get()
+		shader, err := defaultColorSkyShader.Get()
 		if err != nil {
 			return mdl.SkyLayer{}, fmt.Errorf("error getting preset shader: %w", err)
 		}
@@ -45,7 +43,7 @@ func CreateColorSkyLayer() Provider[mdl.SkyLayer] {
 	}
 
 	digest := func() ([]byte, error) {
-		return digestItems("color-sky-layer", shaderProvider)
+		return CreateDigest("create-color-sky-layer")
 	}
 
 	return OnceProvider(FuncProvider(get, digest))
@@ -61,10 +59,8 @@ func SetSkyColor(color dprec.Vec3) Operation {
 }
 
 func CreateTextureSkyLayer() Provider[mdl.SkyLayer] {
-	shaderProvider := presetTextureSkyShader
-
 	get := func() (mdl.SkyLayer, error) {
-		shader, err := shaderProvider.Get()
+		shader, err := defaultTextureSkyShader.Get()
 		if err != nil {
 			return mdl.SkyLayer{}, fmt.Errorf("error getting preset shader: %w", err)
 		}
@@ -75,7 +71,7 @@ func CreateTextureSkyLayer() Provider[mdl.SkyLayer] {
 	}
 
 	digest := func() ([]byte, error) {
-		return digestItems("texture-sky-layer", shaderProvider)
+		return CreateDigest("create-texture-sky-layer")
 	}
 
 	return OnceProvider(FuncProvider(get, digest))
@@ -85,7 +81,7 @@ func SetSkySampler(samplerProvider Provider[*mdl.Sampler]) Operation {
 	return SetSampler("skyColor", samplerProvider)
 }
 
-var presetColorSkyShader = func() Provider[*mdl.Shader] {
+var defaultColorSkyShader = func() Provider[*mdl.Shader] {
 	get := func() (*mdl.Shader, error) {
 		var shader mdl.Shader
 		shader.SetSourceCode(`
@@ -101,13 +97,13 @@ var presetColorSkyShader = func() Provider[*mdl.Shader] {
 	}
 
 	digest := func() ([]byte, error) {
-		return digestItems("color-sky-shader")
+		return CreateDigest("default-color-sky-shader")
 	}
 
 	return OnceProvider(FuncProvider(get, digest))
 }()
 
-var presetTextureSkyShader = func() Provider[*mdl.Shader] {
+var defaultTextureSkyShader = func() Provider[*mdl.Shader] {
 	get := func() (*mdl.Shader, error) {
 		var shader mdl.Shader
 		shader.SetSourceCode(`
@@ -123,7 +119,7 @@ var presetTextureSkyShader = func() Provider[*mdl.Shader] {
 	}
 
 	digest := func() ([]byte, error) {
-		return digestItems("texture-sky-shader")
+		return CreateDigest("default-texture-sky-shader")
 	}
 
 	return OnceProvider(FuncProvider(get, digest))

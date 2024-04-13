@@ -19,7 +19,7 @@ func CreateModel(name string, operations ...Operation) Provider[*mdl.Model] {
 	}
 
 	digest := func() ([]byte, error) {
-		return digestItems("model", name, operations)
+		return CreateDigest("create-model", name, operations)
 	}
 
 	provider := OnceProvider(FuncProvider(get, digest))

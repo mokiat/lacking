@@ -17,7 +17,7 @@ func SetProperty(name string, value any) Operation {
 	}
 
 	digest := func() ([]byte, error) {
-		return digestItems("set-property", name, value)
+		return CreateDigest("set-property", name, value)
 	}
 
 	return FuncOperation(apply, digest)

@@ -21,7 +21,7 @@ func AddSkyLayer(layerProvider Provider[mdl.SkyLayer]) Operation {
 	}
 
 	digest := func() ([]byte, error) {
-		return digestItems("add-sky-layer", layerProvider)
+		return CreateDigest("add-sky-layer", layerProvider)
 	}
 
 	return FuncOperation(apply, digest)
