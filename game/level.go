@@ -4,17 +4,12 @@ import (
 	"fmt"
 
 	"github.com/mokiat/lacking/game/asset"
-	"github.com/mokiat/lacking/render"
 	"github.com/mokiat/lacking/util/async"
 )
 
 type SceneDefinition struct {
-	skyboxTexture     render.Texture
-	reflectionTexture render.Texture
-	refractionTexture render.Texture
-	model             *ModelDefinition
-	modelDefinitions  []*ModelDefinition
-	modelInstances    []ModelInfo
+	modelDefinitions []*ModelDefinition
+	modelInstances   []ModelInfo
 }
 
 func (r *ResourceSet) allocateScene(resource asset.Resource) (*SceneDefinition, error) {
@@ -25,50 +20,6 @@ func (r *ResourceSet) allocateScene(resource asset.Resource) (*SceneDefinition, 
 	}
 	if err := r.ioWorker.Schedule(ioTask).Wait(); err != nil {
 		return nil, fmt.Errorf("failed to read asset: %w", err)
-	}
-
-	var skyboxTexture render.Texture
-	if texID := levelAsset.SkyboxTexture; texID != "" {
-		var promise async.Promise[render.Texture]
-		r.gfxWorker.ScheduleVoid(func() { // FIXME: gfx worker not needed here!
-			promise = r.OpenCubeTexture(texID)
-		}).Wait()
-		texture, err := promise.Wait()
-		if err != nil {
-			return nil, fmt.Errorf("error loading skybox texture: %w", err)
-		}
-		skyboxTexture = texture
-	}
-
-	var reflectionTexture render.Texture
-	if texID := levelAsset.AmbientReflectionTexture; texID != "" {
-		var promise async.Promise[render.Texture]
-		r.gfxWorker.ScheduleVoid(func() {
-			promise = r.OpenCubeTexture(texID)
-		}).Wait()
-		texture, err := promise.Wait()
-		if err != nil {
-			return nil, fmt.Errorf("error loading reflection texture: %w", err)
-		}
-		reflectionTexture = texture
-	}
-
-	var refractionTexture render.Texture
-	if texID := levelAsset.AmbientRefractionTexture; texID != "" {
-		var promise async.Promise[render.Texture]
-		r.gfxWorker.ScheduleVoid(func() {
-			promise = r.OpenCubeTexture(texID)
-		}).Wait()
-		texture, err := promise.Wait()
-		if err != nil {
-			return nil, fmt.Errorf("error loading refraction texture: %w", err)
-		}
-		refractionTexture = texture
-	}
-
-	model, err := r.allocateModel(&levelAsset.Model)
-	if err != nil {
-		return nil, err
 	}
 
 	var (
@@ -94,6 +45,7 @@ func (r *ResourceSet) allocateScene(resource asset.Resource) (*SceneDefinition, 
 			r.gfxWorker.ScheduleVoid(func() {
 				promise = r.OpenModel(instanceAsset.ModelID)
 			}).Wait()
+			var err error
 			modelDef, err = promise.Wait()
 			if err != nil {
 				return nil, fmt.Errorf("error loading model %q: %w", instanceAsset.ModelID, err)
@@ -111,20 +63,12 @@ func (r *ResourceSet) allocateScene(resource asset.Resource) (*SceneDefinition, 
 	}
 
 	return &SceneDefinition{
-		skyboxTexture:     skyboxTexture,
-		reflectionTexture: reflectionTexture,
-		refractionTexture: refractionTexture,
-		model:             model,
-		modelDefinitions:  modelDefinitions,
-		modelInstances:    modelInstances,
+		modelDefinitions: modelDefinitions,
+		modelInstances:   modelInstances,
 	}, nil
 }
 
 func (r *ResourceSet) releaseScene(scene *SceneDefinition) {
-	defer scene.skyboxTexture.Release()
-	defer scene.reflectionTexture.Release()
-	defer scene.refractionTexture.Release()
-	r.releaseModel(scene.model)
 	for _, def := range scene.modelDefinitions {
 		r.releaseModel(def)
 	}

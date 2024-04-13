@@ -94,11 +94,7 @@ func (a *SaveLevelAssetAction) Run() error {
 	}
 
 	levelAsset := &asset.Scene{
-		SkyboxTexture:            level.SkyboxTexture,
-		AmbientReflectionTexture: level.AmbientReflectionTexture,
-		AmbientRefractionTexture: level.AmbientRefractionTexture,
-		ModelInstances:           modelInstances,
-		Model:                    modelAsset,
+		ModelInstances: modelInstances,
 	}
 	if err := a.resource.WriteContent(levelAsset); err != nil {
 		return fmt.Errorf("failed to write asset: %w", err)
