@@ -145,9 +145,16 @@ func projectIrradianceCubeImageSide(srcImage, dstImage *CubeImage, side CubeSide
 			}
 
 			if positiveSamples > 0 {
-				color.R *= dprec.Pi / float64(positiveSamples)
-				color.G *= dprec.Pi / float64(positiveSamples)
-				color.B *= dprec.Pi / float64(positiveSamples)
+				// NOTE: Unlike some tutorials, we scale by 2*Pi instead of just Pi.
+				// This is because we have uniform sampling across the semi-sphere
+				// and we then need to scale according to the surface of a unit
+				// semisphere, which is 2 * Pi, not Pi.
+				// If you consider this integration as a Monte Carlo integration,
+				// the volume term is 2 * Pi, not Pi.
+				weight := 2.0 * dprec.Pi / float64(positiveSamples)
+				color.R *= weight
+				color.G *= weight
+				color.B *= weight
 			}
 			color.A = 1.0
 			dstSide.SetTexel(x, y, color)
