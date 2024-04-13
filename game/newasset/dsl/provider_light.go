@@ -40,7 +40,7 @@ func CreateAmbientLight(name string, opts ...Operation) Provider[mdl.Node] {
 
 		// digest function
 		func() ([]byte, error) {
-			return digestItems("ambient-light", name, opts)
+			return CreateDigest("create-ambient-light", name, opts)
 		},
 	))
 }
@@ -68,7 +68,7 @@ func CreatePointLight(name string, opts ...Operation) Provider[mdl.Node] {
 
 		// digest function
 		func() ([]byte, error) {
-			return digestItems("point-light", name, opts)
+			return CreateDigest("create-point-light", name, opts)
 		},
 	))
 }
@@ -98,7 +98,7 @@ func CreateSpotLight(name string, opts ...Operation) Provider[mdl.Node] {
 
 		// digest function
 		func() ([]byte, error) {
-			return digestItems("spot-light", name, opts)
+			return CreateDigest("create-spot-light", name, opts)
 		},
 	))
 }

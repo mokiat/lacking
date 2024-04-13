@@ -21,7 +21,7 @@ func SetSampler(name string, samplerProvider Provider[*mdl.Sampler]) Operation {
 	}
 
 	digest := func() ([]byte, error) {
-		return digestItems("set-sampler", name, samplerProvider)
+		return CreateDigest("set-sampler", name, samplerProvider)
 	}
 
 	return FuncOperation(apply, digest)

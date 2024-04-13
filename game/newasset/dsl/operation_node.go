@@ -21,7 +21,7 @@ func AddNode(nodeProvider Provider[mdl.Node]) Operation {
 	}
 
 	digest := func() ([]byte, error) {
-		return digestItems("add-node", nodeProvider)
+		return CreateDigest("add-node", nodeProvider)
 	}
 
 	return FuncOperation(apply, digest)

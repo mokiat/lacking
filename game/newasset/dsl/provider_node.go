@@ -21,7 +21,7 @@ func CreateNode(name string, operations ...Operation) Provider[*mdl.BaseNode] {
 	}
 
 	digest := func() ([]byte, error) {
-		return digestItems("node", name, operations)
+		return CreateDigest("node", name, operations)
 	}
 
 	return OnceProvider(FuncProvider(get, digest))

@@ -42,7 +42,7 @@ func OpenImage(path string) Provider[*mdl.Image] {
 			if err != nil {
 				return nil, fmt.Errorf("failed to stat file %q: %w", path, err)
 			}
-			return digestItems("open-image", path, info.ModTime())
+			return CreateDigest("open-image", path, info.ModTime())
 		},
 	))
 }
@@ -71,7 +71,7 @@ func ResizedImage(imageProvider Provider[*mdl.Image], newWidthProvider, newHeigh
 
 		// digest function
 		func() ([]byte, error) {
-			return digestItems("resized-image", imageProvider, newWidthProvider, newHeightProvider)
+			return CreateDigest("resized-image", imageProvider, newWidthProvider, newHeightProvider)
 		},
 	))
 }
@@ -106,7 +106,7 @@ func CubeImageFromEquirectangular(imageProvider Provider[*mdl.Image]) Provider[*
 
 		// digest function
 		func() ([]byte, error) {
-			return digestItems("cube-image-from-equirectangular", imageProvider)
+			return CreateDigest("cube-image-from-equirectangular", imageProvider)
 		},
 	))
 }
@@ -130,7 +130,7 @@ func ResizedCubeImage(imageProvider Provider[*mdl.CubeImage], newSizeProvider Pr
 
 		// digest function
 		func() ([]byte, error) {
-			return digestItems("resized-cube-image", imageProvider, newSizeProvider)
+			return CreateDigest("resized-cube-image", imageProvider, newSizeProvider)
 		},
 	))
 }
@@ -158,7 +158,7 @@ func IrradianceCubeImage(imageProvider Provider[*mdl.CubeImage], opts ...Operati
 
 		// digest function
 		func() ([]byte, error) {
-			return digestItems("irradiance-cube-image", imageProvider, cfg.sampleCount)
+			return CreateDigest("irradiance-cube-image", imageProvider, cfg.sampleCount, opts)
 		},
 	))
 }
@@ -238,7 +238,7 @@ var defaultImageProvider = func() Provider[*mdl.Image] {
 
 		// digest function
 		func() ([]byte, error) {
-			return digestItems("default-image")
+			return CreateDigest("default-image")
 		},
 	))
 }()
@@ -264,7 +264,7 @@ var defaultCubeImageProvider = func() Provider[*mdl.CubeImage] {
 
 		// digest function
 		func() ([]byte, error) {
-			return digestItems("default-cube-image")
+			return CreateDigest("default-cube-image")
 		},
 	))
 }()
