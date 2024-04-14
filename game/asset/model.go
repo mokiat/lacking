@@ -17,16 +17,18 @@ type ModelInstance struct {
 }
 
 type Model struct {
-	Nodes           []newasset.Node
-	Animations      []Animation
-	Armatures       []Armature
-	Textures        []newasset.Texture
-	Materials       []Material
-	MeshDefinitions []MeshDefinition
-	MeshInstances   []MeshInstance
-	BodyDefinitions []BodyDefinition
-	BodyInstances   []BodyInstance
-	LightInstances  []LightInstance
+	Nodes             []newasset.Node
+	Animations        []Animation
+	Armatures         []Armature
+	Textures          []newasset.Texture
+	Materials         []Material
+	MeshDefinitions   []MeshDefinition
+	MeshInstances     []MeshInstance
+	BodyDefinitions   []BodyDefinition
+	BodyInstances     []BodyInstance
+	PointLights       []newasset.PointLight
+	SpotLights        []newasset.SpotLight
+	DirectionalLights []newasset.DirectionalLight
 }
 
 func (m *Model) EncodeTo(out io.Writer) error {

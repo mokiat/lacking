@@ -8,6 +8,7 @@ import (
 	"github.com/mokiat/lacking/game/asset"
 	"github.com/mokiat/lacking/game/graphics"
 	"github.com/mokiat/lacking/game/hierarchy"
+	newasset "github.com/mokiat/lacking/game/newasset"
 	"github.com/mokiat/lacking/game/physics"
 	"github.com/mokiat/lacking/game/physics/collision"
 	"github.com/mokiat/lacking/render"
@@ -23,9 +24,9 @@ type ModelDefinition struct {
 	meshInstances             []meshInstance
 	bodyDefinitions           []*physics.BodyDefinition
 	bodyInstances             []bodyInstance
-	pointLightInstances       []pointLightInstance
-	spotLightInstances        []spotLightInstance
-	directionalLightInstances []directionalLightInstance
+	pointLightInstances       []newasset.PointLight
+	spotLightInstances        []newasset.SpotLight
+	directionalLightInstances []newasset.DirectionalLight
 }
 
 func (d *ModelDefinition) FindAnimation(name string) *AnimationDefinition {
@@ -73,29 +74,6 @@ func (d armatureDefinition) InverseBindMatrices() []sprec.Mat4 {
 type armatureJoint struct {
 	NodeIndex         int
 	InverseBindMatrix sprec.Mat4
-}
-
-type pointLightInstance struct {
-	Name      string
-	NodeIndex int
-	EmitRange float64
-	EmitColor dprec.Vec3
-}
-
-type spotLightInstance struct {
-	Name               string
-	NodeIndex          int
-	EmitRange          float64
-	EmitOuterConeAngle dprec.Angle
-	EmitInnerConeAngle dprec.Angle
-	EmitColor          dprec.Vec3
-}
-
-type directionalLightInstance struct {
-	Name      string
-	NodeIndex int
-	EmitRange float64
-	EmitColor dprec.Vec3
 }
 
 func (r *ResourceSet) loadModel(resource asset.Resource) (*ModelDefinition, error) {
@@ -298,39 +276,6 @@ func (r *ResourceSet) allocateModel(modelAsset *asset.Model) (*ModelDefinition, 
 		}
 	}
 
-	pointLightInstances := make([]pointLightInstance, 0)
-	spotLightInstances := make([]spotLightInstance, 0)
-	directionalLightInstances := make([]directionalLightInstance, 0)
-	for _, instanceAsset := range modelAsset.LightInstances {
-		switch instanceAsset.Type {
-		case asset.LightTypePoint:
-			pointLightInstances = append(pointLightInstances, pointLightInstance{
-				Name:      instanceAsset.Name,
-				NodeIndex: int(instanceAsset.NodeIndex),
-				EmitRange: instanceAsset.EmitRange,
-				EmitColor: instanceAsset.EmitColor,
-			})
-		case asset.LightTypeSpot:
-			spotLightInstances = append(spotLightInstances, spotLightInstance{
-				Name:               instanceAsset.Name,
-				NodeIndex:          int(instanceAsset.NodeIndex),
-				EmitRange:          instanceAsset.EmitRange,
-				EmitOuterConeAngle: instanceAsset.EmitOuterConeAngle,
-				EmitInnerConeAngle: instanceAsset.EmitInnerConeAngle,
-				EmitColor:          instanceAsset.EmitColor,
-			})
-		case asset.LightTypeDirectional:
-			directionalLightInstances = append(directionalLightInstances, directionalLightInstance{
-				Name:      instanceAsset.Name,
-				NodeIndex: int(instanceAsset.NodeIndex),
-				EmitRange: instanceAsset.EmitRange,
-				EmitColor: instanceAsset.EmitColor,
-			})
-		default:
-			return nil, fmt.Errorf("unknown light type: %d", instanceAsset.Type)
-		}
-	}
-
 	return &ModelDefinition{
 		nodes:                     nodes,
 		armatures:                 armatures,
@@ -341,9 +286,9 @@ func (r *ResourceSet) allocateModel(modelAsset *asset.Model) (*ModelDefinition, 
 		meshInstances:             meshInstances,
 		bodyDefinitions:           bodyDefinitions,
 		bodyInstances:             bodyInstances,
-		pointLightInstances:       pointLightInstances,
-		spotLightInstances:        spotLightInstances,
-		directionalLightInstances: directionalLightInstances,
+		pointLightInstances:       modelAsset.PointLights,
+		spotLightInstances:        modelAsset.SpotLights,
+		directionalLightInstances: modelAsset.DirectionalLights,
 	}, nil
 }
 
@@ -483,13 +428,10 @@ type Model struct {
 	definition *ModelDefinition
 	root       *hierarchy.Node
 
-	nodes                     []*hierarchy.Node
-	armatures                 []*graphics.Armature
-	animations                []*Animation
-	bodyInstances             []physics.Body
-	pointLightInstances       []*graphics.PointLight
-	spotLightInstances        []*graphics.SpotLight
-	directionalLightInstances []*graphics.DirectionalLight
+	nodes         []*hierarchy.Node
+	armatures     []*graphics.Armature
+	animations    []*Animation
+	bodyInstances []physics.Body
 }
 
 func (m *Model) Root() *hierarchy.Node {

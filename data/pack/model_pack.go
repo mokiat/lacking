@@ -198,7 +198,6 @@ const (
 	LightTypePoint       LightType = "point"
 	LightTypeSpot        LightType = "spot"
 	LightTypeDirectional LightType = "directional"
-	// TODO: Ambient Light
 )
 
 type LightInstance struct {

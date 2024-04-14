@@ -114,22 +114,56 @@ func (c *converter) BuildModel(model *Model) *asset.Model {
 		}
 	}
 
-	assetLightInstances := make([]asset.LightInstance, len(model.LightInstances))
-	for i, lightInstance := range model.LightInstances {
-		assetLightInstances[i] = c.BuildLightInstance(lightInstance)
+	assetPointLights := make([]newasset.PointLight, 0)
+	assetSpotLights := make([]newasset.SpotLight, 0)
+	assetDirectionalLights := make([]newasset.DirectionalLight, 0)
+	for _, lightInstance := range model.LightInstances {
+		lightDefinition := lightInstance.Definition
+		nodeIndex, ok := c.assetNodeIndexFromNode[lightInstance.Node]
+		if !ok {
+			panic(fmt.Errorf("node %s not found", lightInstance.Node.Name))
+		}
+		switch lightDefinition.Type {
+		case LightTypePoint:
+			assetPointLights = append(assetPointLights, newasset.PointLight{
+				NodeIndex:    uint32(nodeIndex),
+				EmitColor:    lightDefinition.EmitColor,
+				EmitDistance: lightDefinition.EmitRange,
+				CastShadow:   false,
+			})
+		case LightTypeSpot:
+			assetSpotLights = append(assetSpotLights, newasset.SpotLight{
+				NodeIndex:      uint32(nodeIndex),
+				EmitColor:      lightDefinition.EmitColor,
+				EmitDistance:   lightDefinition.EmitRange,
+				EmitAngleOuter: lightDefinition.EmitOuterConeAngle,
+				EmitAngleInner: lightDefinition.EmitInnerConeAngle,
+				CastShadow:     false,
+			})
+		case LightTypeDirectional:
+			assetDirectionalLights = append(assetDirectionalLights, newasset.DirectionalLight{
+				NodeIndex:  uint32(nodeIndex),
+				EmitColor:  lightDefinition.EmitColor,
+				CastShadow: false,
+			})
+		default:
+			panic(fmt.Errorf("unknown light type %q", lightInstance.Definition.Type))
+		}
 	}
 
 	return &asset.Model{
-		Nodes:           c.assetNodes,
-		Animations:      assetAnimations,
-		Armatures:       assetArmatures,
-		Textures:        assetTextures,
-		Materials:       assetMaterials,
-		MeshDefinitions: assetMeshDefinitions,
-		MeshInstances:   assetMeshInstances,
-		BodyDefinitions: assetBodyDefinitions,
-		BodyInstances:   assetBodyInstances,
-		LightInstances:  assetLightInstances,
+		Nodes:             c.assetNodes,
+		Animations:        assetAnimations,
+		Armatures:         assetArmatures,
+		Textures:          assetTextures,
+		Materials:         assetMaterials,
+		MeshDefinitions:   assetMeshDefinitions,
+		MeshInstances:     assetMeshInstances,
+		BodyDefinitions:   assetBodyDefinitions,
+		BodyInstances:     assetBodyInstances,
+		PointLights:       assetPointLights,
+		SpotLights:        assetSpotLights,
+		DirectionalLights: assetDirectionalLights,
 	}
 }
 
@@ -601,35 +635,5 @@ func (c *converter) BuildBodyInstance(meshInstance *MeshInstance) asset.BodyInst
 		Name:      meshInstance.Name,
 		NodeIndex: nodeIndex,
 		BodyIndex: definitionIndex,
-	}
-}
-
-func (c *converter) BuildLightInstance(lightInstance *LightInstance) asset.LightInstance {
-	var nodeIndex int32
-	if index, ok := c.assetNodeIndexFromNode[lightInstance.Node]; ok {
-		nodeIndex = int32(index)
-	} else {
-		panic(fmt.Errorf("node %s not found", lightInstance.Node.Name))
-	}
-	definition := lightInstance.Definition
-	var lightType asset.LightType
-	switch definition.Type {
-	case LightTypePoint:
-		lightType = asset.LightTypePoint
-	case LightTypeSpot:
-		lightType = asset.LightTypeSpot
-	case LightTypeDirectional:
-		lightType = asset.LightTypeDirectional
-	default:
-		panic(fmt.Errorf("unknown light type %q", definition.Type))
-	}
-	return asset.LightInstance{
-		Name:               lightInstance.Name,
-		NodeIndex:          nodeIndex,
-		Type:               lightType,
-		EmitRange:          definition.EmitRange,
-		EmitOuterConeAngle: definition.EmitOuterConeAngle,
-		EmitInnerConeAngle: definition.EmitInnerConeAngle,
-		EmitColor:          definition.EmitColor,
 	}
 }
