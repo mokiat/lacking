@@ -116,7 +116,7 @@ type VertexAttribute struct {
 
 	// ByteOffset specifies the byte offset within the VertexBuffer where the
 	// attribute data starts.
-	ByteOffset int32
+	ByteOffset uint32
 
 	// Format specifies the format of the attribute data.
 	Format VertexAttributeFormat

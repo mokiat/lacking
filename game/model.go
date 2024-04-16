@@ -3,6 +3,8 @@ package game
 import (
 	"fmt"
 
+	"github.com/mokiat/gog"
+	"github.com/mokiat/gog/opt"
 	"github.com/mokiat/gomath/dprec"
 	"github.com/mokiat/gomath/sprec"
 	"github.com/mokiat/lacking/game/asset"
@@ -227,10 +229,10 @@ func (r *ResourceSet) allocateModel(modelAsset *asset.Model) (*ModelDefinition, 
 
 	meshGeometries := make([]*graphics.MeshGeometry, len(modelAsset.MeshDefinitions))
 	for i, definitionAsset := range modelAsset.MeshDefinitions {
-		meshFragments := make([]graphics.MeshGeometryFragmentInfo, len(definitionAsset.Fragments))
+		meshFragmentsInfo := make([]graphics.MeshGeometryFragmentInfo, len(definitionAsset.Fragments))
 		for j, fragmentAsset := range definitionAsset.Fragments {
 			material := materialDefinitions[fragmentAsset.MaterialIndex]
-			meshFragments[j] = graphics.MeshGeometryFragmentInfo{
+			meshFragmentsInfo[j] = graphics.MeshGeometryFragmentInfo{
 				Name:            material.Name(),
 				Topology:        resolveTopology(fragmentAsset.Topology),
 				IndexByteOffset: fragmentAsset.IndexOffset,
@@ -238,16 +240,25 @@ func (r *ResourceSet) allocateModel(modelAsset *asset.Model) (*ModelDefinition, 
 			}
 		}
 
+		meshGeometryInfo := graphics.MeshGeometryInfo{
+			VertexBuffers: gog.Map(definitionAsset.VertexBuffers, func(buffer newasset.VertexBuffer) graphics.MeshGeometryVertexBuffer {
+				return graphics.MeshGeometryVertexBuffer{
+					ByteStride: buffer.Stride,
+					Data:       buffer.Data,
+				}
+			}),
+			VertexFormat: resolveVertexFormat(definitionAsset.VertexLayout),
+			IndexBuffer: graphics.MeshGeometryIndexBuffer{
+				Data:   definitionAsset.IndexBuffer.Data,
+				Format: resolveIndexFormat(definitionAsset.IndexBuffer.IndexLayout),
+			},
+			Fragments:            meshFragmentsInfo,
+			BoundingSphereRadius: definitionAsset.BoundingSphereRadius,
+		}
+
 		gfxEngine := r.engine.Graphics()
 		r.gfxWorker.ScheduleVoid(func() {
-			meshGeometries[i] = gfxEngine.CreateMeshGeometry(graphics.MeshGeometryInfo{
-				VertexData:           definitionAsset.VertexData,
-				VertexFormat:         resolveVertexFormat(definitionAsset.VertexLayout),
-				IndexData:            definitionAsset.IndexData,
-				IndexFormat:          resolveIndexFormat(definitionAsset.IndexLayout),
-				Fragments:            meshFragments,
-				BoundingSphereRadius: definitionAsset.BoundingSphereRadius,
-			})
+			meshGeometries[i] = gfxEngine.CreateMeshGeometry(meshGeometryInfo)
 		}).Wait()
 	}
 
@@ -340,54 +351,188 @@ func (r *ResourceSet) constructCollisionMeshes(bodyDef asset.BodyDefinition) []c
 	return result
 }
 
-func resolveVertexFormat(layout asset.VertexLayout) graphics.VertexFormat {
-	return graphics.VertexFormat{
-		HasCoord:            layout.CoordOffset != asset.UnspecifiedOffset,
-		CoordOffsetBytes:    uint32(layout.CoordOffset),
-		CoordStrideBytes:    uint32(layout.CoordStride),
-		HasNormal:           layout.NormalOffset != asset.UnspecifiedOffset,
-		NormalOffsetBytes:   uint32(layout.NormalOffset),
-		NormalStrideBytes:   uint32(layout.NormalStride),
-		HasTangent:          layout.TangentOffset != asset.UnspecifiedOffset,
-		TangentOffsetBytes:  uint32(layout.TangentOffset),
-		TangentStrideBytes:  uint32(layout.TangentStride),
-		HasTexCoord:         layout.TexCoordOffset != asset.UnspecifiedOffset,
-		TexCoordOffsetBytes: uint32(layout.TexCoordOffset),
-		TexCoordStrideBytes: uint32(layout.TexCoordStride),
-		HasColor:            layout.ColorOffset != asset.UnspecifiedOffset,
-		ColorOffsetBytes:    uint32(layout.ColorOffset),
-		ColorStrideBytes:    uint32(layout.ColorStride),
-		HasWeights:          layout.WeightsOffset != asset.UnspecifiedOffset,
-		WeightsOffsetBytes:  uint32(layout.WeightsOffset),
-		WeightsStrideBytes:  uint32(layout.WeightsStride),
-		HasJoints:           layout.JointsOffset != asset.UnspecifiedOffset,
-		JointsOffsetBytes:   uint32(layout.JointsOffset),
-		JointsStrideBytes:   uint32(layout.JointsStride),
+func resolveVertexFormat(layout newasset.VertexLayout) graphics.MeshGeometryVertexFormat {
+	var result graphics.MeshGeometryVertexFormat
+	if attrib := layout.Coord; attrib.BufferIndex != newasset.UnspecifiedBufferIndex {
+		result.Coord = opt.V(graphics.MeshGeometryVertexAttribute{
+			BufferIndex: uint32(attrib.BufferIndex),
+			ByteOffset:  attrib.ByteOffset,
+			Format:      resolveVertexAttributeFormat(attrib.Format),
+		})
+	}
+	if attrib := layout.Normal; attrib.BufferIndex != newasset.UnspecifiedBufferIndex {
+		result.Normal = opt.V(graphics.MeshGeometryVertexAttribute{
+			BufferIndex: uint32(attrib.BufferIndex),
+			ByteOffset:  attrib.ByteOffset,
+			Format:      resolveVertexAttributeFormat(attrib.Format),
+		})
+	}
+	if attrib := layout.Tangent; attrib.BufferIndex != newasset.UnspecifiedBufferIndex {
+		result.Tangent = opt.V(graphics.MeshGeometryVertexAttribute{
+			BufferIndex: uint32(attrib.BufferIndex),
+			ByteOffset:  attrib.ByteOffset,
+			Format:      resolveVertexAttributeFormat(attrib.Format),
+		})
+	}
+	if attrib := layout.TexCoord; attrib.BufferIndex != newasset.UnspecifiedBufferIndex {
+		result.TexCoord = opt.V(graphics.MeshGeometryVertexAttribute{
+			BufferIndex: uint32(attrib.BufferIndex),
+			ByteOffset:  attrib.ByteOffset,
+			Format:      resolveVertexAttributeFormat(attrib.Format),
+		})
+	}
+	if attrib := layout.Color; attrib.BufferIndex != newasset.UnspecifiedBufferIndex {
+		result.Color = opt.V(graphics.MeshGeometryVertexAttribute{
+			BufferIndex: uint32(attrib.BufferIndex),
+			ByteOffset:  attrib.ByteOffset,
+			Format:      resolveVertexAttributeFormat(attrib.Format),
+		})
+	}
+	if attrib := layout.Weights; attrib.BufferIndex != newasset.UnspecifiedBufferIndex {
+		result.Weights = opt.V(graphics.MeshGeometryVertexAttribute{
+			BufferIndex: uint32(attrib.BufferIndex),
+			ByteOffset:  attrib.ByteOffset,
+			Format:      resolveVertexAttributeFormat(attrib.Format),
+		})
+	}
+	if attrib := layout.Joints; attrib.BufferIndex != newasset.UnspecifiedBufferIndex {
+		result.Joints = opt.V(graphics.MeshGeometryVertexAttribute{
+			BufferIndex: uint32(attrib.BufferIndex),
+			ByteOffset:  attrib.ByteOffset,
+			Format:      resolveVertexAttributeFormat(attrib.Format),
+		})
+	}
+	return result
+}
+
+func resolveVertexAttributeFormat(format newasset.VertexAttributeFormat) render.VertexAttributeFormat {
+	switch format {
+	case newasset.VertexAttributeFormatRGBA32F:
+		return render.VertexAttributeFormatRGBA32F
+	case newasset.VertexAttributeFormatRGB32F:
+		return render.VertexAttributeFormatRGB32F
+	case newasset.VertexAttributeFormatRG32F:
+		return render.VertexAttributeFormatRG32F
+	case newasset.VertexAttributeFormatR32F:
+		return render.VertexAttributeFormatR32F
+
+	case newasset.VertexAttributeFormatRGBA16F:
+		return render.VertexAttributeFormatRGBA16F
+	case newasset.VertexAttributeFormatRGB16F:
+		return render.VertexAttributeFormatRGB16F
+	case newasset.VertexAttributeFormatRG16F:
+		return render.VertexAttributeFormatRG16F
+	case newasset.VertexAttributeFormatR16F:
+		return render.VertexAttributeFormatR16F
+
+	case newasset.VertexAttributeFormatRGBA16S:
+		return render.VertexAttributeFormatRGBA16S
+	case newasset.VertexAttributeFormatRGB16S:
+		return render.VertexAttributeFormatRGB16S
+	case newasset.VertexAttributeFormatRG16S:
+		return render.VertexAttributeFormatRG16S
+	case newasset.VertexAttributeFormatR16S:
+		return render.VertexAttributeFormatR16S
+
+	case newasset.VertexAttributeFormatRGBA16SN:
+		return render.VertexAttributeFormatRGBA16SN
+	case newasset.VertexAttributeFormatRGB16SN:
+		return render.VertexAttributeFormatRGB16SN
+	case newasset.VertexAttributeFormatRG16SN:
+		return render.VertexAttributeFormatRG16SN
+	case newasset.VertexAttributeFormatR16SN:
+		return render.VertexAttributeFormatR16SN
+
+	case newasset.VertexAttributeFormatRGBA16U:
+		return render.VertexAttributeFormatRGBA16U
+	case newasset.VertexAttributeFormatRGB16U:
+		return render.VertexAttributeFormatRGB16U
+	case newasset.VertexAttributeFormatRG16U:
+		return render.VertexAttributeFormatRG16U
+	case newasset.VertexAttributeFormatR16U:
+		return render.VertexAttributeFormatR16U
+
+	case newasset.VertexAttributeFormatRGBA16UN:
+		return render.VertexAttributeFormatRGBA16UN
+	case newasset.VertexAttributeFormatRGB16UN:
+		return render.VertexAttributeFormatRGB16UN
+	case newasset.VertexAttributeFormatRG16UN:
+		return render.VertexAttributeFormatRG16UN
+	case newasset.VertexAttributeFormatR16UN:
+		return render.VertexAttributeFormatR16UN
+
+	case newasset.VertexAttributeFormatRGBA8S:
+		return render.VertexAttributeFormatRGBA8S
+	case newasset.VertexAttributeFormatRGB8S:
+		return render.VertexAttributeFormatRGB8S
+	case newasset.VertexAttributeFormatRG8S:
+		return render.VertexAttributeFormatRG8S
+	case newasset.VertexAttributeFormatR8S:
+		return render.VertexAttributeFormatR8S
+
+	case newasset.VertexAttributeFormatRGBA8SN:
+		return render.VertexAttributeFormatRGBA8SN
+	case newasset.VertexAttributeFormatRGB8SN:
+		return render.VertexAttributeFormatRGB8SN
+	case newasset.VertexAttributeFormatRG8SN:
+		return render.VertexAttributeFormatRG8SN
+	case newasset.VertexAttributeFormatR8SN:
+		return render.VertexAttributeFormatR8SN
+
+	case newasset.VertexAttributeFormatRGBA8U:
+		return render.VertexAttributeFormatRGBA8U
+	case newasset.VertexAttributeFormatRGB8U:
+		return render.VertexAttributeFormatRGB8U
+	case newasset.VertexAttributeFormatRG8U:
+		return render.VertexAttributeFormatRG8U
+	case newasset.VertexAttributeFormatR8U:
+		return render.VertexAttributeFormatR8U
+
+	case newasset.VertexAttributeFormatRGBA8UN:
+		return render.VertexAttributeFormatRGBA8UN
+	case newasset.VertexAttributeFormatRGB8UN:
+		return render.VertexAttributeFormatRGB8UN
+	case newasset.VertexAttributeFormatRG8UN:
+		return render.VertexAttributeFormatRG8UN
+	case newasset.VertexAttributeFormatR8UN:
+		return render.VertexAttributeFormatR8UN
+
+	case newasset.VertexAttributeFormatRGBA8IU:
+		return render.VertexAttributeFormatRGBA8IU
+	case newasset.VertexAttributeFormatRGB8IU:
+		return render.VertexAttributeFormatRGB8IU
+	case newasset.VertexAttributeFormatRG8IU:
+		return render.VertexAttributeFormatRG8IU
+	case newasset.VertexAttributeFormatR8IU:
+		return render.VertexAttributeFormatR8IU
+
+	default:
+		panic(fmt.Errorf("unsupported vertex attribute format: %d", format))
 	}
 }
 
-func resolveIndexFormat(layout asset.IndexLayout) render.IndexFormat {
+func resolveIndexFormat(layout newasset.IndexLayout) render.IndexFormat {
 	switch layout {
-	case asset.IndexLayoutUint16:
+	case newasset.IndexLayoutUint16:
 		return render.IndexFormatUnsignedU16
-	case asset.IndexLayoutUint32:
+	case newasset.IndexLayoutUint32:
 		return render.IndexFormatUnsignedU32
 	default:
 		panic(fmt.Errorf("unsupported index layout: %d", layout))
 	}
 }
 
-func resolveTopology(primitive asset.MeshTopology) render.Topology {
+func resolveTopology(primitive newasset.Topology) render.Topology {
 	switch primitive {
-	case asset.MeshTopologyPoints:
+	case newasset.TopologyPoints:
 		return render.TopologyPoints
-	case asset.MeshTopologyLines:
+	case newasset.TopologyLineList:
 		return render.TopologyLineList
-	case asset.MeshTopologyLineStrip:
+	case newasset.TopologyLineStrip:
 		return render.TopologyLineStrip
-	case asset.MeshTopologyTriangles:
+	case newasset.TopologyTriangleList:
 		return render.TopologyTriangleList
-	case asset.MeshTopologyTriangleStrip:
+	case newasset.TopologyTriangleStrip:
 		return render.TopologyTriangleStrip
 	default:
 		panic(fmt.Errorf("unsupported primitive: %d", primitive))

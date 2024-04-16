@@ -1,13 +1,15 @@
 package graphics
 
-import "github.com/mokiat/lacking/render"
+import (
+	"github.com/mokiat/gog/opt"
+	"github.com/mokiat/lacking/render"
+)
 
 // MeshGeometryInfo contains everything needed to create a new MeshGeometry.
 type MeshGeometryInfo struct {
-	VertexData           []byte
-	VertexFormat         VertexFormat
-	IndexData            []byte
-	IndexFormat          render.IndexFormat
+	VertexBuffers        []MeshGeometryVertexBuffer
+	VertexFormat         MeshGeometryVertexFormat
+	IndexBuffer          MeshGeometryIndexBuffer
 	Fragments            []MeshGeometryFragmentInfo
 	BoundingSphereRadius float64
 }
@@ -24,10 +26,10 @@ type MeshGeometryFragmentInfo struct {
 // MeshGeometry represents the raw geometry of a mesh, without any materials
 // or shading.
 type MeshGeometry struct {
-	vertexBuffer         render.Buffer
+	vertexBuffers        []render.Buffer
 	indexBuffer          render.Buffer
 	vertexArray          render.VertexArray
-	vertexFormat         VertexFormat
+	vertexFormat         MeshGeometryVertexFormat
 	fragments            []MeshGeometryFragment
 	boundingSphereRadius float64
 }
@@ -47,7 +49,9 @@ func (g *MeshGeometry) Fragment(index int) *MeshGeometryFragment {
 
 // Delete releases the resources that are associated with this mesh geometry.
 func (g *MeshGeometry) Delete() {
-	defer g.vertexBuffer.Release()
+	for _, buffer := range g.vertexBuffers {
+		defer buffer.Release()
+	}
 	defer g.indexBuffer.Release()
 	defer g.vertexArray.Release()
 }
@@ -71,34 +75,32 @@ func (g *MeshGeometryFragment) Topology() render.Topology {
 	return g.topology
 }
 
-// VertexFormat describes the data that is contained in a single vertex.
-type VertexFormat struct {
-	// TODO:
-	// Stride uint32
+// MeshGeometryVertexBuffer represents a buffer that contains vertex data.
+type MeshGeometryVertexBuffer struct {
+	ByteStride uint32
+	Data       []byte
+}
 
-	// TODO: VertexAttribute { enabled, offset, stride } // rethink stride as well
-	//
-	// Coord 				opt.T[VertexAttribute]
+// MeshGeometryVertexFormat describes the data that is contained in a single vertex.
+type MeshGeometryVertexFormat struct {
+	Coord    opt.T[MeshGeometryVertexAttribute]
+	Normal   opt.T[MeshGeometryVertexAttribute]
+	Tangent  opt.T[MeshGeometryVertexAttribute]
+	TexCoord opt.T[MeshGeometryVertexAttribute]
+	Color    opt.T[MeshGeometryVertexAttribute]
+	Weights  opt.T[MeshGeometryVertexAttribute]
+	Joints   opt.T[MeshGeometryVertexAttribute]
+}
 
-	HasCoord            bool
-	CoordOffsetBytes    uint32
-	CoordStrideBytes    uint32
-	HasNormal           bool
-	NormalOffsetBytes   uint32
-	NormalStrideBytes   uint32
-	HasTangent          bool
-	TangentOffsetBytes  uint32
-	TangentStrideBytes  uint32
-	HasTexCoord         bool
-	TexCoordOffsetBytes uint32
-	TexCoordStrideBytes uint32
-	HasColor            bool
-	ColorOffsetBytes    uint32
-	ColorStrideBytes    uint32
-	HasWeights          bool
-	WeightsOffsetBytes  uint32
-	WeightsStrideBytes  uint32
-	HasJoints           bool
-	JointsOffsetBytes   uint32
-	JointsStrideBytes   uint32
+// MeshGeometryVertexAttribute describes a single attribute of a vertex.
+type MeshGeometryVertexAttribute struct {
+	BufferIndex uint32
+	ByteOffset  uint32
+	Format      render.VertexAttributeFormat
+}
+
+// MeshGeometryIndexBuffer represents a buffer that contains index data.
+type MeshGeometryIndexBuffer struct {
+	Data   []byte
+	Format render.IndexFormat
 }

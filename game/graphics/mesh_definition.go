@@ -65,12 +65,12 @@ func (d *MeshDefinition) deleteMaterialPasses(index int, passType internal.MeshR
 func (d *MeshDefinition) createMaterialPasses(index int, passType internal.MeshRenderPassType) {
 	meshShaderInfo := internal.ShaderMeshInfo{
 		VertexArray:         d.geometry.vertexArray,
-		MeshHasCoords:       d.geometry.vertexFormat.HasCoord,
-		MeshHasNormals:      d.geometry.vertexFormat.HasNormal,
-		MeshHasTangents:     d.geometry.vertexFormat.HasTangent,
-		MeshHasTextureUVs:   d.geometry.vertexFormat.HasTexCoord,
-		MeshHasVertexColors: d.geometry.vertexFormat.HasColor,
-		MeshHasArmature:     d.geometry.vertexFormat.HasWeights && d.geometry.vertexFormat.HasJoints,
+		MeshHasCoords:       d.geometry.vertexFormat.Coord.Specified,
+		MeshHasNormals:      d.geometry.vertexFormat.Normal.Specified,
+		MeshHasTangents:     d.geometry.vertexFormat.Tangent.Specified,
+		MeshHasTextureUVs:   d.geometry.vertexFormat.TexCoord.Specified,
+		MeshHasVertexColors: d.geometry.vertexFormat.Color.Specified,
+		MeshHasArmature:     d.geometry.vertexFormat.Weights.Specified && d.geometry.vertexFormat.Joints.Specified,
 	}
 
 	fragment := d.geometry.fragments[index]

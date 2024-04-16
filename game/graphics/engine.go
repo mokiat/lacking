@@ -339,90 +339,94 @@ func (e *Engine) CreatePBRMaterial(info PBRMaterialInfo) *Material {
 // CreateMeshGeometry creates a new MeshGeometry using the specified
 // info object.
 func (e *Engine) CreateMeshGeometry(info MeshGeometryInfo) *MeshGeometry {
-	vertexBuffer := e.api.CreateVertexBuffer(render.BufferInfo{
-		Dynamic: false,
-		Data:    info.VertexData,
-	})
+	vertexBuffers := make([]render.Buffer, len(info.VertexBuffers))
+	for _, bufferInfo := range info.VertexBuffers {
+		vertexBuffer := e.api.CreateVertexBuffer(render.BufferInfo{
+			Dynamic: false,
+			Data:    bufferInfo.Data,
+		})
+		vertexBuffers = append(vertexBuffers, vertexBuffer)
+	}
 	indexBuffer := e.api.CreateIndexBuffer(render.BufferInfo{
 		Dynamic: false,
-		Data:    info.IndexData,
+		Data:    info.IndexBuffer.Data,
 	})
 
 	var attributes []render.VertexArrayAttribute
-	if info.VertexFormat.HasCoord {
+	if attribInfo := info.VertexFormat.Coord; attribInfo.Specified {
 		attributes = append(attributes, render.VertexArrayAttribute{
-			Binding:  0,
+			Binding:  uint(attribInfo.Value.BufferIndex),
 			Location: internal.CoordAttributeIndex,
-			Format:   render.VertexAttributeFormatRGB32F,
-			Offset:   info.VertexFormat.CoordOffsetBytes,
+			Format:   attribInfo.Value.Format,
+			Offset:   attribInfo.Value.ByteOffset,
 		})
 	}
-	if info.VertexFormat.HasNormal {
+	if attribInfo := info.VertexFormat.Normal; attribInfo.Specified {
 		attributes = append(attributes, render.VertexArrayAttribute{
-			Binding:  0,
+			Binding:  uint(attribInfo.Value.BufferIndex),
 			Location: internal.NormalAttributeIndex,
-			Format:   render.VertexAttributeFormatRGB16F,
-			Offset:   info.VertexFormat.NormalOffsetBytes,
+			Format:   attribInfo.Value.Format,
+			Offset:   attribInfo.Value.ByteOffset,
 		})
 	}
-	if info.VertexFormat.HasTangent {
+	if attribInfo := info.VertexFormat.Tangent; attribInfo.Specified {
 		attributes = append(attributes, render.VertexArrayAttribute{
-			Binding:  0,
+			Binding:  uint(attribInfo.Value.BufferIndex),
 			Location: internal.TangentAttributeIndex,
-			Format:   render.VertexAttributeFormatRGB16F,
-			Offset:   info.VertexFormat.TangentOffsetBytes,
+			Format:   attribInfo.Value.Format,
+			Offset:   attribInfo.Value.ByteOffset,
 		})
 	}
-	if info.VertexFormat.HasTexCoord {
+	if attribInfo := info.VertexFormat.TexCoord; attribInfo.Specified {
 		attributes = append(attributes, render.VertexArrayAttribute{
-			Binding:  0,
+			Binding:  uint(attribInfo.Value.BufferIndex),
 			Location: internal.TexCoordAttributeIndex,
-			Format:   render.VertexAttributeFormatRG16F,
-			Offset:   info.VertexFormat.TexCoordOffsetBytes,
+			Format:   attribInfo.Value.Format,
+			Offset:   attribInfo.Value.ByteOffset,
 		})
 	}
-	if info.VertexFormat.HasColor {
+	if attribInfo := info.VertexFormat.Color; attribInfo.Specified {
 		attributes = append(attributes, render.VertexArrayAttribute{
-			Binding:  0,
+			Binding:  uint(attribInfo.Value.BufferIndex),
 			Location: internal.ColorAttributeIndex,
-			Format:   render.VertexAttributeFormatRGBA8UN,
-			Offset:   info.VertexFormat.ColorOffsetBytes,
+			Format:   attribInfo.Value.Format,
+			Offset:   attribInfo.Value.ByteOffset,
 		})
 	}
-	if info.VertexFormat.HasWeights {
+	if attribInfo := info.VertexFormat.Weights; attribInfo.Specified {
 		attributes = append(attributes, render.VertexArrayAttribute{
-			Binding:  0,
+			Binding:  uint(attribInfo.Value.BufferIndex),
 			Location: internal.WeightsAttributeIndex,
-			Format:   render.VertexAttributeFormatRGBA8UN,
-			Offset:   info.VertexFormat.WeightsOffsetBytes,
+			Format:   attribInfo.Value.Format,
+			Offset:   attribInfo.Value.ByteOffset,
 		})
 	}
-	if info.VertexFormat.HasJoints {
+	if attribInfo := info.VertexFormat.Joints; attribInfo.Specified {
 		attributes = append(attributes, render.VertexArrayAttribute{
-			Binding:  0,
+			Binding:  uint(attribInfo.Value.BufferIndex),
 			Location: internal.JointsAttributeIndex,
-			Format:   render.VertexAttributeFormatRGBA8IU,
-			Offset:   info.VertexFormat.JointsOffsetBytes,
+			Format:   attribInfo.Value.Format,
+			Offset:   attribInfo.Value.ByteOffset,
 		})
 	}
 
 	vertexArray := e.api.CreateVertexArray(render.VertexArrayInfo{
-		Bindings: []render.VertexArrayBinding{
-			{
-				VertexBuffer: vertexBuffer,
-				Stride:       info.VertexFormat.CoordStrideBytes, // FIXME: Not accurate
-			},
-		},
+		Bindings: gog.MapIndex(info.VertexBuffers, func(index int, bufferInfo MeshGeometryVertexBuffer) render.VertexArrayBinding {
+			return render.VertexArrayBinding{
+				VertexBuffer: vertexBuffers[index],
+				Stride:       bufferInfo.ByteStride,
+			}
+		}),
 		Attributes:  attributes,
 		IndexBuffer: indexBuffer,
-		IndexFormat: info.IndexFormat,
+		IndexFormat: info.IndexBuffer.Format,
 	})
 
 	return &MeshGeometry{
-		vertexBuffer: vertexBuffer,
-		indexBuffer:  indexBuffer,
-		vertexArray:  vertexArray,
-		vertexFormat: info.VertexFormat,
+		vertexBuffers: vertexBuffers,
+		indexBuffer:   indexBuffer,
+		vertexArray:   vertexArray,
+		vertexFormat:  info.VertexFormat,
 		fragments: gog.Map(info.Fragments, func(fragmentInfo MeshGeometryFragmentInfo) MeshGeometryFragment {
 			return MeshGeometryFragment{
 				name:            fragmentInfo.Name,

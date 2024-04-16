@@ -281,60 +281,74 @@ func (c *converter) BuildMeshDefinition(meshDefinition *MeshDefinition) asset.Me
 	)
 
 	var (
-		stride         int32
-		coordOffset    int32
-		normalOffset   int32
-		tangentOffset  int32
-		texCoordOffset int32
-		colorOffset    int32
-		weightsOffset  int32
-		jointsOffset   int32
+		stride              uint32
+		coordBufferIndex    int32
+		coordOffset         uint32
+		normalBufferIndex   int32
+		normalOffset        uint32
+		tangentBufferIndex  int32
+		tangentOffset       uint32
+		texCoordBufferIndex int32
+		texCoordOffset      uint32
+		colorBufferIndex    int32
+		colorOffset         uint32
+		weightsBufferIndex  int32
+		weightsOffset       uint32
+		jointsBufferIndex   int32
+		jointsOffset        uint32
 	)
 
 	layout := meshDefinition.VertexLayout
 	if layout.HasCoords {
+		coordBufferIndex = 0
 		coordOffset = stride
 		stride += 3 * sizeFloat
 	} else {
-		coordOffset = asset.UnspecifiedOffset
+		coordBufferIndex = newasset.UnspecifiedBufferIndex
 	}
 	if layout.HasNormals {
+		normalBufferIndex = 0
 		normalOffset = stride
 		stride += 3 * sizeHalfFloat
 		stride += sizeHalfFloat // due to alignment requirements
 	} else {
-		normalOffset = asset.UnspecifiedOffset
+		normalBufferIndex = newasset.UnspecifiedBufferIndex
 	}
 	if layout.HasTangents {
+		tangentBufferIndex = 0
 		tangentOffset = stride
 		stride += 3 * sizeHalfFloat
 		stride += sizeHalfFloat // due to alignment requirements
 	} else {
-		tangentOffset = asset.UnspecifiedOffset
+		tangentBufferIndex = newasset.UnspecifiedBufferIndex
 	}
 	if layout.HasTexCoords {
+		texCoordBufferIndex = 0
 		texCoordOffset = stride
 		stride += 2 * sizeHalfFloat
 	} else {
-		texCoordOffset = asset.UnspecifiedOffset
+		texCoordBufferIndex = newasset.UnspecifiedBufferIndex
 	}
 	if layout.HasColors {
+		colorBufferIndex = 0
 		colorOffset = stride
 		stride += 4 * sizeUnsignedByte
 	} else {
-		colorOffset = asset.UnspecifiedOffset
+		colorBufferIndex = newasset.UnspecifiedBufferIndex
 	}
 	if layout.HasWeights {
+		weightsBufferIndex = 0
 		weightsOffset = stride
 		stride += 4 * sizeUnsignedByte
 	} else {
-		weightsOffset = asset.UnspecifiedOffset
+		weightsBufferIndex = newasset.UnspecifiedBufferIndex
 	}
 	if layout.HasJoints {
+		jointsBufferIndex = 0
 		jointsOffset = stride
 		stride += 4 * sizeUnsignedByte
 	} else {
-		jointsOffset = asset.UnspecifiedOffset
+		jointsBufferIndex = newasset.UnspecifiedBufferIndex
 	}
 
 	var (
@@ -407,20 +421,20 @@ func (c *converter) BuildMeshDefinition(meshDefinition *MeshDefinition) asset.Me
 	}
 
 	var (
-		indexLayout asset.IndexLayout
+		indexLayout newasset.IndexLayout
 		indexData   gblob.LittleEndianBlock
 		indexSize   int
 	)
 	if len(meshDefinition.Vertices) >= 0xFFFF {
 		indexSize = sizeUnsignedInt
-		indexLayout = asset.IndexLayoutUint32
+		indexLayout = newasset.IndexLayoutUint32
 		indexData = gblob.LittleEndianBlock(make([]byte, len(meshDefinition.Indices)*sizeUnsignedInt))
 		for i, index := range meshDefinition.Indices {
 			indexData.SetUint32(i*sizeUnsignedInt, uint32(index))
 		}
 	} else {
 		indexSize = sizeUnsignedShort
-		indexLayout = asset.IndexLayoutUint16
+		indexLayout = newasset.IndexLayoutUint16
 		indexData = gblob.LittleEndianBlock(make([]byte, len(meshDefinition.Indices)*sizeUnsignedShort))
 		for i, index := range meshDefinition.Indices {
 			indexData.SetUint16(i*sizeUnsignedShort, uint16(index))
@@ -446,47 +460,71 @@ func (c *converter) BuildMeshDefinition(meshDefinition *MeshDefinition) asset.Me
 
 	return asset.MeshDefinition{
 		Name: meshDefinition.Name,
-		VertexLayout: asset.VertexLayout{
-			CoordOffset:    coordOffset,
-			CoordStride:    stride,
-			NormalOffset:   normalOffset,
-			NormalStride:   stride,
-			TangentOffset:  tangentOffset,
-			TangentStride:  stride,
-			TexCoordOffset: texCoordOffset,
-			TexCoordStride: stride,
-			ColorOffset:    colorOffset,
-			ColorStride:    stride,
-			WeightsOffset:  weightsOffset,
-			WeightsStride:  stride,
-			JointsOffset:   jointsOffset,
-			JointsStride:   stride,
+		VertexBuffers: []newasset.VertexBuffer{
+			{
+				Stride: stride,
+				Data:   vertexData,
+			},
 		},
-		VertexData:           vertexData,
-		IndexLayout:          indexLayout,
-		IndexData:            indexData,
+		VertexLayout: newasset.VertexLayout{
+			Coord: newasset.VertexAttribute{
+				BufferIndex: coordBufferIndex,
+				ByteOffset:  coordOffset,
+				Format:      newasset.VertexAttributeFormatRGB32F,
+			},
+			Normal: newasset.VertexAttribute{
+				BufferIndex: normalBufferIndex,
+				ByteOffset:  normalOffset,
+				Format:      newasset.VertexAttributeFormatRGB16F,
+			},
+			Tangent: newasset.VertexAttribute{
+				BufferIndex: tangentBufferIndex,
+				ByteOffset:  tangentOffset,
+				Format:      newasset.VertexAttributeFormatRGB16F,
+			},
+			TexCoord: newasset.VertexAttribute{
+				BufferIndex: texCoordBufferIndex,
+				ByteOffset:  texCoordOffset,
+				Format:      newasset.VertexAttributeFormatRG16F,
+			},
+			Color: newasset.VertexAttribute{
+				BufferIndex: colorBufferIndex,
+				ByteOffset:  colorOffset,
+				Format:      newasset.VertexAttributeFormatRGBA8UN,
+			},
+			Weights: newasset.VertexAttribute{
+				BufferIndex: weightsBufferIndex,
+				ByteOffset:  weightsOffset,
+				Format:      newasset.VertexAttributeFormatRGBA8UN,
+			},
+			Joints: newasset.VertexAttribute{
+				BufferIndex: jointsBufferIndex,
+				ByteOffset:  jointsOffset,
+				Format:      newasset.VertexAttributeFormatRGBA8IU,
+			},
+		},
+		IndexBuffer: newasset.IndexBuffer{
+			IndexLayout: indexLayout,
+			Data:        indexData,
+		},
 		Fragments:            fragments,
 		BoundingSphereRadius: boundingSphereRadius,
 	}
 }
 
 func (c *converter) BuildFragment(fragment MeshFragment, indexSize int) asset.MeshFragment {
-	var topology asset.MeshTopology
+	var topology newasset.Topology
 	switch fragment.Primitive {
 	case PrimitivePoints:
-		topology = asset.MeshTopologyPoints
+		topology = newasset.TopologyPoints
 	case PrimitiveLines:
-		topology = asset.MeshTopologyLines
+		topology = newasset.TopologyLineList
 	case PrimitiveLineStrip:
-		topology = asset.MeshTopologyLineStrip
-	case PrimitiveLineLoop:
-		topology = asset.MeshTopologyLineLoop
+		topology = newasset.TopologyLineStrip
 	case PrimitiveTriangles:
-		topology = asset.MeshTopologyTriangles
+		topology = newasset.TopologyTriangleList
 	case PrimitiveTriangleStrip:
-		topology = asset.MeshTopologyTriangleStrip
-	case PrimitiveTriangleFan:
-		topology = asset.MeshTopologyTriangleFan
+		topology = newasset.TopologyTriangleStrip
 	default:
 		panic(fmt.Errorf("unsupported primitive type: %d", fragment.Primitive))
 	}
