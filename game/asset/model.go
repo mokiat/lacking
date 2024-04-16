@@ -19,7 +19,7 @@ type ModelInstance struct {
 type Model struct {
 	Nodes             []newasset.Node
 	Animations        []Animation
-	Armatures         []Armature
+	Armatures         []newasset.Armature
 	Textures          []newasset.Texture
 	Materials         []Material
 	MeshDefinitions   []MeshDefinition

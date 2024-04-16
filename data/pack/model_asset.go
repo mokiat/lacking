@@ -84,7 +84,7 @@ func (c *converter) BuildModel(model *Model) *asset.Model {
 		c.assetMaterialIndexFromMaterial[material] = i
 	}
 
-	assetArmatures := make([]asset.Armature, len(model.Armatures))
+	assetArmatures := make([]newasset.Armature, len(model.Armatures))
 	for i, armature := range model.Armatures {
 		assetArmatures[i] = c.BuildArmature(armature)
 		c.assetArmatureIndexFromArmature[armature] = i
@@ -260,17 +260,15 @@ func (c *converter) BuildMaterial(material *Material) asset.Material {
 	return assetMaterial
 }
 
-func (c *converter) BuildArmature(armature *Armature) asset.Armature {
-	assetArmature := asset.Armature{
-		Joints: make([]asset.Joint, len(armature.Joints)),
+func (c *converter) BuildArmature(armature *Armature) newasset.Armature {
+	return newasset.Armature{
+		Joints: gog.Map(armature.Joints, func(joint Joint) newasset.Joint {
+			return newasset.Joint{
+				NodeIndex:         uint32(c.assetNodeIndexFromNode[joint.Node]),
+				InverseBindMatrix: joint.InverseBindMatrix,
+			}
+		}),
 	}
-	for i, joint := range armature.Joints {
-		assetArmature.Joints[i] = asset.Joint{
-			NodeIndex:         int32(c.assetNodeIndexFromNode[joint.Node]),
-			InverseBindMatrix: joint.InverseBindMatrix,
-		}
-	}
-	return assetArmature
 }
 
 func (c *converter) BuildMeshDefinition(meshDefinition *MeshDefinition) asset.MeshDefinition {
