@@ -120,10 +120,8 @@ const (
 	PrimitivePoints Primitive = iota
 	PrimitiveLines
 	PrimitiveLineStrip
-	PrimitiveLineLoop
 	PrimitiveTriangles
 	PrimitiveTriangleStrip
-	PrimitiveTriangleFan
 )
 
 type Material struct {

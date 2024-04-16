@@ -237,18 +237,14 @@ func BuildModelResource(gltfDoc *gltf.Document) (*Model, error) {
 				fragment.Primitive = PrimitivePoints
 			case gltf.PrimitiveLines:
 				fragment.Primitive = PrimitiveLines
-			case gltf.PrimitiveLineLoop:
-				fragment.Primitive = PrimitiveLineLoop
 			case gltf.PrimitiveLineStrip:
 				fragment.Primitive = PrimitiveLineStrip
 			case gltf.PrimitiveTriangles:
 				fragment.Primitive = PrimitiveTriangles
 			case gltf.PrimitiveTriangleStrip:
 				fragment.Primitive = PrimitiveTriangleStrip
-			case gltf.PrimitiveTriangleFan:
-				fragment.Primitive = PrimitiveTriangleFan
 			default:
-				fragment.Primitive = PrimitiveTriangles
+				return nil, fmt.Errorf("unsupported primitive mode %d", gltfPrimitive.Mode)
 			}
 			if gltfPrimitive.Material != nil {
 				fragment.Material = materialFromIndex[*gltfPrimitive.Material]
