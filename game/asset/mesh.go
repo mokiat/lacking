@@ -1,7 +1,5 @@
 package asset
 
-import "github.com/mokiat/gomath/sprec"
-
 const (
 	UnspecifiedOffset        = int32(-1)
 	UnspecifiedMaterialIndex = int32(-1)
@@ -23,15 +21,6 @@ type MeshInstance struct {
 	NodeIndex       int32
 	ArmatureIndex   int32
 	DefinitionIndex int32
-}
-
-type Armature struct {
-	Joints []Joint
-}
-
-type Joint struct {
-	NodeIndex         int32
-	InverseBindMatrix sprec.Mat4
 }
 
 // VertexLayout describes how vertex data is positioned within the VertexData

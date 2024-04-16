@@ -5,9 +5,6 @@ import "github.com/mokiat/gomath/sprec"
 // Armature represents the definition of a skeleton.
 type Armature struct {
 
-	// Name is the name of the armature.
-	Name string
-
 	// Joints is the collection of joints that make up the armature.
 	Joints []Joint
 }
