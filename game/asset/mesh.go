@@ -2,10 +2,6 @@ package asset
 
 import newasset "github.com/mokiat/lacking/game/newasset"
 
-const (
-	UnspecifiedArmatureIndex = int32(-1)
-)
-
 type MeshDefinition struct {
 	Name                 string
 	VertexBuffers        []newasset.VertexBuffer
@@ -13,13 +9,6 @@ type MeshDefinition struct {
 	IndexBuffer          newasset.IndexBuffer
 	Fragments            []MeshFragment
 	BoundingSphereRadius float64
-}
-
-type MeshInstance struct {
-	Name            string
-	NodeIndex       int32
-	ArmatureIndex   int32
-	DefinitionIndex int32
 }
 
 type MeshFragment struct {

@@ -49,7 +49,6 @@ type nodeDefinition struct {
 }
 
 type meshInstance struct {
-	Name            string
 	NodeIndex       int
 	ArmatureIndex   int
 	DefinitionIndex int
@@ -280,10 +279,9 @@ func (r *ResourceSet) allocateModel(modelAsset *asset.Model) (*ModelDefinition, 
 	meshInstances := make([]meshInstance, len(modelAsset.MeshInstances))
 	for i, instanceAsset := range modelAsset.MeshInstances {
 		meshInstances[i] = meshInstance{
-			Name:            instanceAsset.Name,
 			NodeIndex:       int(instanceAsset.NodeIndex),
 			ArmatureIndex:   int(instanceAsset.ArmatureIndex),
-			DefinitionIndex: int(instanceAsset.DefinitionIndex),
+			DefinitionIndex: int(instanceAsset.MeshDefinitionIndex),
 		}
 	}
 
