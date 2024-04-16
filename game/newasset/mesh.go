@@ -32,6 +32,9 @@ type MeshDefinition struct {
 // Mesh represents an instance of a mesh definition.
 type Mesh struct {
 
+	// NodeIndex is the index of the node that is used by this mesh.
+	NodeIndex uint32
+
 	// MeshDefinitionIndex is the index of the mesh definition that is used by
 	// this mesh.
 	MeshDefinitionIndex uint32
@@ -41,7 +44,4 @@ type Mesh struct {
 	// If the mesh does not use an armature, this value is set to
 	// UnspecifiedArmatureIndex.
 	ArmatureIndex int32
-
-	// NodeIndex is the index of the node that is used by this mesh.
-	NodeIndex uint32
 }

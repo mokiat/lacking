@@ -96,7 +96,7 @@ func (c *converter) BuildModel(model *Model) *asset.Model {
 		c.assetMeshDefinitionFromMeshDefinition[meshDefinition] = i
 	}
 
-	assetMeshInstances := make([]asset.MeshInstance, len(model.MeshInstances))
+	assetMeshInstances := make([]newasset.Mesh, len(model.MeshInstances))
 	for i, meshInstance := range model.MeshInstances {
 		assetMeshInstances[i] = c.BuildMeshInstance(meshInstance)
 	}
@@ -544,7 +544,7 @@ func (c *converter) BuildFragment(fragment MeshFragment, indexSize int) asset.Me
 	}
 }
 
-func (c *converter) BuildMeshInstance(meshInstance *MeshInstance) asset.MeshInstance {
+func (c *converter) BuildMeshInstance(meshInstance *MeshInstance) newasset.Mesh {
 	var nodeIndex int32
 	if index, ok := c.assetNodeIndexFromNode[meshInstance.Node]; ok {
 		nodeIndex = int32(index)
@@ -557,7 +557,7 @@ func (c *converter) BuildMeshInstance(meshInstance *MeshInstance) asset.MeshInst
 	} else {
 		panic(fmt.Errorf("mesh definition %s not found", meshInstance.Definition.Name))
 	}
-	var armatureIndex int32 = asset.UnspecifiedArmatureIndex
+	var armatureIndex int32 = newasset.UnspecifiedArmatureIndex
 	if meshInstance.Armature != nil {
 		if index, ok := c.assetArmatureIndexFromArmature[meshInstance.Armature]; ok {
 			armatureIndex = int32(index)
@@ -565,11 +565,10 @@ func (c *converter) BuildMeshInstance(meshInstance *MeshInstance) asset.MeshInst
 			panic(fmt.Errorf("armature not found"))
 		}
 	}
-	return asset.MeshInstance{
-		Name:            meshInstance.Name,
-		NodeIndex:       nodeIndex,
-		ArmatureIndex:   armatureIndex,
-		DefinitionIndex: definitionIndex,
+	return newasset.Mesh{
+		NodeIndex:           uint32(nodeIndex),
+		ArmatureIndex:       armatureIndex,
+		MeshDefinitionIndex: uint32(definitionIndex),
 	}
 }
 
