@@ -21,11 +21,6 @@ import (
 	"github.com/x448/float16"
 )
 
-const maxTextureCount = 8
-
-// TODO: When rendering emissive passes, they need to use LEQUAL depth
-// testing, otherwise emission pass will not work correctly.
-
 const (
 	shadowMapWidth  = 2048
 	shadowMapHeight = 2048
@@ -78,11 +73,10 @@ type sceneRenderer struct {
 	framebufferWidth  uint32
 	framebufferHeight uint32
 
-	geometryAlbedoTexture   render.Texture
-	geometryNormalTexture   render.Texture
-	geometryDepthTexture    render.Texture
-	geometryEmissiveTexture render.Texture
-	geometryFramebuffer     render.Framebuffer
+	geometryAlbedoTexture render.Texture
+	geometryNormalTexture render.Texture
+	geometryDepthTexture  render.Texture
+	geometryFramebuffer   render.Framebuffer
 
 	lightingAlbedoTexture render.Texture
 	lightingFramebuffer   render.Framebuffer
@@ -108,9 +102,6 @@ type sceneRenderer struct {
 
 	postprocessingProgram  render.Program
 	postprocessingPipeline render.Pipeline
-
-	emissiveLightProgram  render.Program
-	emissiveLightPipeline render.Pipeline
 
 	ambientLightProgram  render.Program
 	ambientLightPipeline render.Pipeline
@@ -156,12 +147,6 @@ func (r *sceneRenderer) createFramebuffers(width, height uint32) {
 	r.framebufferWidth = width
 	r.framebufferHeight = height
 
-	// TODO: Do one of the following to support emissive passes:
-	// 1. Add an emissive amount to the framebuffer to be multiplied
-	//   by the albedo color. (zero means non-emissive). Will not produce good
-	//   linearity.
-	// 2. Make the albedo float and add a boolean emissive flag to
-	//   control lighting afterwards.
 	r.geometryAlbedoTexture = r.api.CreateColorTexture2D(render.ColorTexture2DInfo{
 		Width:           r.framebufferWidth,
 		Height:          r.framebufferHeight,
@@ -180,18 +165,10 @@ func (r *sceneRenderer) createFramebuffers(width, height uint32) {
 		Width:  r.framebufferWidth,
 		Height: r.framebufferHeight,
 	})
-	r.geometryEmissiveTexture = r.api.CreateColorTexture2D(render.ColorTexture2DInfo{
-		Width:           r.framebufferWidth,
-		Height:          r.framebufferHeight,
-		GenerateMipmaps: false,
-		GammaCorrection: false,
-		Format:          render.DataFormatRGBA16F,
-	})
 	r.geometryFramebuffer = r.api.CreateFramebuffer(render.FramebufferInfo{
 		ColorAttachments: [4]render.Texture{
 			r.geometryAlbedoTexture,
 			r.geometryNormalTexture,
-			r.geometryEmissiveTexture,
 		},
 		DepthAttachment: r.geometryDepthTexture,
 	})
@@ -221,7 +198,6 @@ func (r *sceneRenderer) releaseFramebuffers() {
 	defer r.geometryAlbedoTexture.Release()
 	defer r.geometryNormalTexture.Release()
 	defer r.geometryDepthTexture.Release()
-	defer r.geometryEmissiveTexture.Release()
 	defer r.geometryFramebuffer.Release()
 
 	defer r.lightingAlbedoTexture.Release()
@@ -314,36 +290,6 @@ func (r *sceneRenderer) Allocate() {
 		StencilTest:     false,
 		ColorWrite:      [4]bool{true, true, true, true},
 		BlendEnabled:    false,
-	})
-
-	r.emissiveLightProgram = r.api.CreateProgram(render.ProgramInfo{
-		SourceCode: r.shaders.EmissiveLightSet(),
-		TextureBindings: []render.TextureBinding{
-			render.NewTextureBinding("fbColor2TextureIn", internal.TextureBindingLightingFramebufferColor2),
-		},
-		UniformBindings: []render.UniformBinding{
-			render.NewUniformBinding("Camera", internal.UniformBufferBindingCamera),
-		},
-	})
-	r.emissiveLightPipeline = r.api.CreatePipeline(render.PipelineInfo{
-		Program:                     r.emissiveLightProgram,
-		VertexArray:                 quadShape.VertexArray(),
-		Topology:                    quadShape.Topology(),
-		Culling:                     render.CullModeBack,
-		FrontFace:                   render.FaceOrientationCCW,
-		DepthTest:                   false,
-		DepthWrite:                  false,
-		DepthComparison:             render.ComparisonAlways,
-		StencilTest:                 false,
-		ColorWrite:                  render.ColorMaskTrue,
-		BlendEnabled:                true,
-		BlendColor:                  [4]float32{0.0, 0.0, 0.0, 0.0},
-		BlendSourceColorFactor:      render.BlendFactorOne,
-		BlendSourceAlphaFactor:      render.BlendFactorOne,
-		BlendDestinationColorFactor: render.BlendFactorOne,
-		BlendDestinationAlphaFactor: render.BlendFactorZero,
-		BlendOpColor:                render.BlendOperationAdd,
-		BlendOpAlpha:                render.BlendOperationAdd,
 	})
 
 	r.ambientLightProgram = r.api.CreateProgram(render.ProgramInfo{
@@ -585,9 +531,6 @@ func (r *sceneRenderer) Release() {
 
 	defer r.postprocessingProgram.Release()
 	defer r.postprocessingPipeline.Release()
-
-	defer r.emissiveLightProgram.Release()
-	defer r.emissiveLightPipeline.Release()
 
 	defer r.ambientLightProgram.Release()
 	defer r.ambientLightPipeline.Release()
@@ -959,7 +902,6 @@ func (r *sceneRenderer) renderLightingPass(ctx renderCtx) {
 
 	// TODO: Use batching (instancing) when rendering lights, if possible.
 
-	r.renderEmissiveLight()
 	for _, ambientLight := range r.ambientLightBucket.Items() {
 		if ambientLight.active {
 			r.renderAmbientLight(ambientLight)
@@ -1422,24 +1364,6 @@ func (r *sceneRenderer) renderMeshRenderItemBatch(ctx renderMeshContext, items [
 	}
 
 	commandBuffer.DrawIndexed(template.IndexByteOffset, template.IndexCount, uint32(len(items)))
-}
-
-// Deprecated: Emissive can be handled with a forward pass
-// that outputs outside [0.0..1.0] range.
-func (r *sceneRenderer) renderEmissiveLight() {
-	quadShape := r.stageData.QuadShape()
-	commandBuffer := r.stageData.CommandBuffer()
-	// TODO: Ambient light intensity based on distance and inner and outer radius
-	commandBuffer.BindPipeline(r.emissiveLightPipeline)
-	commandBuffer.TextureUnit(internal.TextureBindingLightingFramebufferColor2, r.geometryEmissiveTexture)
-	commandBuffer.SamplerUnit(internal.TextureBindingLightingFramebufferColor2, nil) // TODO
-	commandBuffer.UniformBufferUnit(
-		internal.UniformBufferBindingCamera,
-		r.cameraPlacement.Buffer,
-		r.cameraPlacement.Offset,
-		r.cameraPlacement.Size,
-	)
-	commandBuffer.DrawIndexed(0, quadShape.IndexCount(), 1)
 }
 
 func (r *sceneRenderer) renderAmbientLight(light *AmbientLight) {

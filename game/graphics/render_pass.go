@@ -42,7 +42,7 @@ type ShadowRenderPassInfo struct {
 	// FrontFace specifies the front face orientation.
 	FrontFace opt.T[render.FaceOrientation]
 
-	// Shader is the emissive shader that will be used to render the material.
+	// Shader is the shadow shader that will be used to render the material.
 	Shader *ShadowShader
 }
 
@@ -73,7 +73,7 @@ type ForwardRenderPassInfo struct {
 	// background. Useful for unlit/emissive special effects.
 	Blending opt.T[bool]
 
-	// Shader is the emissive shader that will be used to render the material.
+	// Shader is the forward shader that will be used to render the material.
 	Shader *ForwardShader
 }
 

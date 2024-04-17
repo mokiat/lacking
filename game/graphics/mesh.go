@@ -9,50 +9,6 @@ import (
 	"github.com/mokiat/lacking/util/spatial"
 )
 
-// type meshFragmentDefinition struct {
-// 	id               uint32
-// 	mesh             *MeshDefinition
-// 	topology         render.Topology
-// 	indexCount       int
-// 	indexOffsetBytes int
-// 	material         *Material
-// }
-
-// func (d *meshFragmentDefinition) rebuildPipelines() {
-// 	d.deletePipelines()
-// 	d.createPipelines()
-// }
-
-// func (d *meshFragmentDefinition) deletePipelines() {
-// 	if d.material.shadowPipeline != nil {
-// 		d.material.shadowPipeline.Release()
-// 		d.material.shadowPipeline = nil
-// 	}
-// 	if d.material.geometryPipeline != nil {
-// 		d.material.geometryPipeline.Release()
-// 		d.material.geometryPipeline = nil
-// 	}
-// 	if d.material.emissivePipeline != nil {
-// 		d.material.emissivePipeline.Release()
-// 		d.material.emissivePipeline = nil
-// 	}
-// 	if d.material.forwardPipeline != nil {
-// 		d.material.forwardPipeline.Release()
-// 		d.material.forwardPipeline = nil
-// 	}
-// }
-
-// func (d *meshFragmentDefinition) createPipelines() {
-// 	// TODO: Consider moving to Material object instead
-// 	material := d.material
-// 	materialDef := material.definition
-// 	material.definitionRevision = materialDef.revision
-// 	material.shadowPipeline = materialDef.shading.ShadowPipeline(d.mesh, d)
-// 	material.geometryPipeline = materialDef.shading.GeometryPipeline(d.mesh, d)
-// 	material.emissivePipeline = materialDef.shading.EmissivePipeline(d.mesh, d)
-// 	material.forwardPipeline = materialDef.shading.ForwardPipeline(d.mesh, d)
-// }
-
 type MeshInfo struct {
 	Definition *MeshDefinition
 	Armature   *Armature

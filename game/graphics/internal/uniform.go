@@ -20,7 +20,6 @@ const (
 
 	TextureBindingLightingFramebufferColor0 = 0
 	TextureBindingLightingFramebufferColor1 = 1
-	TextureBindingLightingFramebufferColor2 = 2
 	TextureBindingLightingFramebufferDepth  = 3
 	TextureBindingShadowFramebufferDepth    = 4
 	TextureBindingLightingReflectionTexture = 4
