@@ -21,10 +21,9 @@ type MeshRenderPassDefinition struct {
 
 type MeshRenderPass struct {
 	MeshRenderPassDefinition
-	Key          uint32
-	Textures     [8]render.Texture
-	Samplers     [8]render.Sampler
-	MaterialData []byte
+	Key        uint32
+	TextureSet TextureSet
+	UniformSet UniformSet
 }
 
 // TODO: Rename to non-definition
@@ -36,12 +35,9 @@ type MaterialRenderPassDefinition struct {
 	DepthWrite      bool
 	DepthComparison render.Comparison
 	Blending        bool
-
-	Textures    [8]render.Texture
-	Samplers    [8]render.Sampler
-	UniformData []byte
-
-	Shader Shader
+	TextureSet      TextureSet
+	UniformSet      UniformSet
+	Shader          Shader
 }
 
 type RenderPassPipelineInfo struct {

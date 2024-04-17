@@ -7,8 +7,6 @@ type Sky struct {
 	NodeIndex uint32
 
 	// Textures is a list of textures that will be bound to the material.
-	//
-	// The textures will be bound in the order they are specified.
 	Textures []TextureBinding
 
 	// Properties is a list of properties that will be passed to the shader.

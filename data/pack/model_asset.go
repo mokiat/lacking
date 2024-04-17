@@ -46,6 +46,8 @@ func newConverter(collisionMeshes bool) *converter {
 		forceCollidable:                       collisionMeshes,
 		assetNodes:                            make([]newasset.Node, 0),
 		assetNodeIndexFromNode:                make(map[*Node]int),
+		assetGeometryShaderIndexFromMaterial:  make(map[*Material]int),
+		assetShadowShaderIndexFromMaterial:    make(map[*Material]int),
 		assetMaterialIndexFromMaterial:        make(map[*Material]int),
 		assetArmatureIndexFromArmature:        make(map[*Armature]int),
 		assetMeshDefinitionFromMeshDefinition: make(map[*MeshDefinition]int),
@@ -57,6 +59,8 @@ type converter struct {
 	forceCollidable                       bool
 	assetNodes                            []newasset.Node
 	assetNodeIndexFromNode                map[*Node]int
+	assetGeometryShaderIndexFromMaterial  map[*Material]int
+	assetShadowShaderIndexFromMaterial    map[*Material]int
 	assetMaterialIndexFromMaterial        map[*Material]int
 	assetArmatureIndexFromArmature        map[*Armature]int
 	assetMeshDefinitionFromMeshDefinition map[*MeshDefinition]int
@@ -66,6 +70,16 @@ type converter struct {
 func (c *converter) BuildModel(model *Model) *asset.Model {
 	for _, node := range model.RootNodes {
 		c.BuildNode(-1, node)
+	}
+
+	assetGeometryShaders := make([]newasset.Shader, len(model.Materials))
+	assetShadowShaders := make([]newasset.Shader, len(model.Materials))
+	for i, material := range model.Materials {
+		assetGeometryShaders[i] = c.BuildGeometryShader(material)
+		c.assetGeometryShaderIndexFromMaterial[material] = i
+
+		assetShadowShaders[i] = c.BuildShadowShader(material)
+		c.assetShadowShaderIndexFromMaterial[material] = i
 	}
 
 	assetTextures := make([]newasset.Texture, len(model.Textures))
@@ -78,7 +92,7 @@ func (c *converter) BuildModel(model *Model) *asset.Model {
 		assetAnimations[i] = c.BuildAnimation(animation)
 	}
 
-	assetMaterials := make([]asset.Material, len(model.Materials))
+	assetMaterials := make([]newasset.Material, len(model.Materials))
 	for i, material := range model.Materials {
 		assetMaterials[i] = c.BuildMaterial(material)
 		c.assetMaterialIndexFromMaterial[material] = i
@@ -153,6 +167,8 @@ func (c *converter) BuildModel(model *Model) *asset.Model {
 
 	return &asset.Model{
 		Nodes:             c.assetNodes,
+		GeometryShaders:   assetGeometryShaders,
+		ShadowShaders:     assetShadowShaders,
 		Animations:        assetAnimations,
 		Armatures:         assetArmatures,
 		Textures:          assetTextures,
@@ -222,42 +238,167 @@ func (c *converter) BuildAnimation(animation *Animation) asset.Animation {
 	return assetAnimation
 }
 
-func (c *converter) BuildMaterial(material *Material) asset.Material {
-	assetMaterial := asset.Material{
-		Name:            material.Name,
-		Type:            asset.MaterialTypePBR,
-		BackfaceCulling: material.BackfaceCulling,
-		AlphaTesting:    material.AlphaTesting,
-		AlphaThreshold:  material.AlphaThreshold,
-		Blending:        material.Blending,
-		ScalarMask:      0xFFFFFFFF, // TODO: In PBRView
-	}
-	for i := range assetMaterial.Textures {
-		assetMaterial.Textures[i] = asset.TextureRef{
-			TextureIndex: asset.UnspecifiedIndex,
-		}
-	}
-	pbr := asset.NewPBRMaterialView(&assetMaterial)
-	pbr.SetBaseColor(material.Color)
+func (c *converter) BuildGeometryShader(material *Material) newasset.Shader {
+	var sourceCode string
+
+	var textureLines string
 	if ref := material.ColorTexture; ref != nil {
-		pbr.SetBaseColorTexture(asset.TextureRef{
-			TextureIndex: int32(ref.TextureIndex),
-		})
+		textureLines += "  baseColorSampler sampler2D,\n"
 	}
-	pbr.SetMetallic(material.Metallic)
-	pbr.SetRoughness(material.Roughness)
 	if ref := material.MetallicRoughnessTexture; ref != nil {
-		pbr.SetMetallicRoughnessTexture(asset.TextureRef{
-			TextureIndex: int32(ref.TextureIndex),
-		})
+		textureLines += "  metallicRoughnessSampler sampler2D,\n"
 	}
-	pbr.SetNormalScale(material.NormalScale)
 	if ref := material.NormalTexture; ref != nil {
-		pbr.SetNormalTexture(asset.TextureRef{
-			TextureIndex: int32(ref.TextureIndex),
+		textureLines += "  normalSampler sampler2D,\n"
+	}
+	if textureLines != "" {
+		sourceCode += "textures {\n" + textureLines + "}\n"
+	}
+
+	sourceCode += `
+		uniforms {
+			baseColor vec4,
+			metallic float,
+			roughness float,
+			normalScale float,
+		}
+	`
+	sourceCode += `
+		func #fragment() {
+	`
+
+	if ref := material.ColorTexture; ref != nil {
+		sourceCode += `
+			#color = rgb(sample(baseColorSampler, #uv))
+		`
+	} else {
+		sourceCode += `
+			#color = rgb(baseColor)
+		`
+	}
+
+	sourceCode += `
+			#metallic = metallic
+			#roughness = roughness
+		}
+	`
+	// TODO
+	// 	AlphaTesting:   material.AlphaTesting,
+	// 	AlphaThreshold: material.AlphaThreshold,
+	// 	Blending:       material.Blending,
+
+	return newasset.Shader{
+		SourceCode: sourceCode,
+	}
+}
+
+func (c *converter) BuildShadowShader(material *Material) newasset.Shader {
+	return newasset.Shader{
+		SourceCode: `
+			// Use default.
+		`,
+	}
+}
+
+func (c *converter) BuildMaterial(material *Material) newasset.Material {
+	geometryShaderIndex := uint32(c.assetGeometryShaderIndexFromMaterial[material])
+	shadowShaderIndex := uint32(c.assetShadowShaderIndexFromMaterial[material])
+
+	var culling = newasset.CullModeNone
+	if material.BackfaceCulling {
+		culling = newasset.CullModeBack
+	}
+
+	var textures []newasset.TextureBinding
+	if ref := material.ColorTexture; ref != nil {
+		textures = append(textures, newasset.TextureBinding{
+			BindingName:  "baseColorSampler",
+			TextureIndex: uint32(ref.TextureIndex),
+			Wrapping:     newasset.WrapModeClamp,
+			Filtering:    newasset.FilterModeLinear,
+			Mipmapping:   true,
 		})
 	}
-	return assetMaterial
+	if ref := material.MetallicRoughnessTexture; ref != nil {
+		textures = append(textures, newasset.TextureBinding{
+			BindingName:  "metallicRoughnessSampler",
+			TextureIndex: uint32(ref.TextureIndex),
+			Wrapping:     newasset.WrapModeClamp,
+			Filtering:    newasset.FilterModeLinear,
+			Mipmapping:   true,
+		})
+	}
+	if ref := material.NormalTexture; ref != nil {
+		textures = append(textures, newasset.TextureBinding{
+			BindingName:  "normalSampler",
+			TextureIndex: uint32(ref.TextureIndex),
+			Wrapping:     newasset.WrapModeClamp,
+			Filtering:    newasset.FilterModeLinear,
+			Mipmapping:   true,
+		})
+	}
+
+	return newasset.Material{
+		Name:     material.Name,
+		Textures: textures,
+		Properties: []newasset.PropertyBinding{
+			c.convertProperty("baseColor", material.Color),
+			c.convertProperty("metallic", material.Metallic),
+			c.convertProperty("roughness", material.Roughness),
+			c.convertProperty("normalScale", material.NormalScale),
+		},
+		GeometryPasses: []newasset.GeometryPass{
+			{
+				Layer:           0,
+				Culling:         culling,
+				FrontFace:       newasset.FaceOrientationCCW,
+				DepthTest:       true,
+				DepthWrite:      true,
+				DepthComparison: newasset.ComparisonLess,
+				ShaderIndex:     geometryShaderIndex,
+			},
+		},
+		ShadowPasses: []newasset.ShadowPass{
+			{
+				Layer:       0,
+				Culling:     culling,
+				FrontFace:   newasset.FaceOrientationCCW,
+				ShaderIndex: shadowShaderIndex,
+			},
+		},
+		ForwardPasses: []newasset.ForwardPass{},
+	}
+
+}
+
+func (c *converter) convertProperty(name string, value any) newasset.PropertyBinding {
+	var data gblob.LittleEndianBlock
+	switch value := value.(type) {
+	case float32:
+		data = make(gblob.LittleEndianBlock, 4)
+		data.SetFloat32(0, value)
+	case sprec.Vec2:
+		data = make(gblob.LittleEndianBlock, 8)
+		data.SetFloat32(0, value.X)
+		data.SetFloat32(4, value.Y)
+	case sprec.Vec3:
+		data = make(gblob.LittleEndianBlock, 12)
+		data.SetFloat32(0, value.X)
+		data.SetFloat32(4, value.Y)
+		data.SetFloat32(8, value.Z)
+	case sprec.Vec4:
+		data = make(gblob.LittleEndianBlock, 16)
+		data.SetFloat32(0, value.X)
+		data.SetFloat32(4, value.Y)
+		data.SetFloat32(8, value.Z)
+		data.SetFloat32(12, value.W)
+	default:
+		panic(fmt.Errorf("unsupported property type %T", value))
+	}
+	return newasset.PropertyBinding{
+		BindingName: name,
+		Data:        data,
+	}
 }
 
 func (c *converter) BuildArmature(armature *Armature) newasset.Armature {

@@ -1285,9 +1285,8 @@ func (r *sceneRenderer) queueMeshRenderItems(mesh *Mesh, passType internal.MeshR
 			ArmatureKey: mesh.armature.key(),
 
 			Pipeline:     pass.Pipeline,
-			Textures:     pass.Textures,
-			Samplers:     pass.Samplers,
-			MaterialData: pass.MaterialData,
+			TextureSet:   pass.TextureSet,
+			UniformSet:   pass.UniformSet,
 			ModelData:    mesh.matrixData,
 			ArmatureData: mesh.armature.uniformData(),
 
@@ -1309,9 +1308,8 @@ func (r *sceneRenderer) queueStaticMeshRenderItems(mesh *StaticMesh, passType in
 			ArmatureKey: math.MaxUint32,
 
 			Pipeline:     pass.Pipeline,
-			Textures:     pass.Textures,
-			Samplers:     pass.Samplers,
-			MaterialData: pass.MaterialData,
+			TextureSet:   pass.TextureSet,
+			UniformSet:   pass.UniformSet,
 			ModelData:    mesh.matrixData,
 			ArmatureData: nil,
 
@@ -1376,7 +1374,7 @@ func (r *sceneRenderer) renderMeshRenderItemBatch(ctx renderMeshContext, items [
 	// Material data is shared between all items.
 	uniformBuffer := r.stageData.UniformBuffer()
 	materialPlacement := renderutil.WriteUniform(uniformBuffer, internal.MaterialUniform{
-		Data: template.MaterialData,
+		Data: template.UniformSet.Data(),
 	})
 	commandBuffer.UniformBufferUnit(
 		internal.UniformBufferBindingMaterial,
@@ -1385,11 +1383,11 @@ func (r *sceneRenderer) renderMeshRenderItemBatch(ctx renderMeshContext, items [
 		materialPlacement.Size,
 	)
 
-	for i := range maxTextureCount {
-		if texture := template.Textures[i]; texture != nil {
+	for i := range template.TextureSet.TextureCount() {
+		if texture := template.TextureSet.TextureAt(i); texture != nil {
 			commandBuffer.TextureUnit(uint(i), texture)
 		}
-		if sampler := template.Samplers[i]; sampler != nil {
+		if sampler := template.TextureSet.SamplerAt(i); sampler != nil {
 			commandBuffer.SamplerUnit(uint(i), sampler)
 		}
 	}
@@ -1641,9 +1639,8 @@ type renderItem struct {
 
 	Pipeline render.Pipeline
 
-	Textures     [maxTextureCount]render.Texture
-	Samplers     [maxTextureCount]render.Sampler
-	MaterialData []byte
+	TextureSet internal.TextureSet
+	UniformSet internal.UniformSet
 
 	ModelData    []byte
 	ArmatureData []byte

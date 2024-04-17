@@ -2,12 +2,10 @@ package graphics
 
 import (
 	"github.com/mokiat/gog"
-	"github.com/mokiat/gog/opt"
 	"github.com/mokiat/lacking/debug/log"
 	"github.com/mokiat/lacking/game/graphics/internal"
 	"github.com/mokiat/lacking/game/graphics/lsl"
 	"github.com/mokiat/lacking/render"
-	"github.com/mokiat/lacking/util/blob"
 )
 
 func NewEngine(api render.API, shaders ShaderCollection, shaderBuilder ShaderBuilder) *Engine {
@@ -67,36 +65,16 @@ func (e *Engine) Debug() *Debug {
 	return e.debug
 }
 
-// DefaultGeometryShader returns a basic implementation of a GeometryShader.
-//
-// Deprecated: Use custom shaders instead.
-func (e *Engine) DefaultGeometryShader(alphaTesting, albedoTexture bool) GeometryShader {
-	return &defaultGeometryShader{
-		shaders:          e.shaders,
-		useAlphaTesting:  alphaTesting,
-		useAlbedoTexture: albedoTexture,
-	}
-}
-
-// DefaultShadowShader returns a basic implementation of a ShadowShader.
-//
-// Deprecated: Use custom shaders instead.
-func (e *Engine) DefaultShadowShader() ShadowShader {
-	return &defaultShadowShader{
-		shaders: e.shaders,
-	}
-}
-
 // CreateGeometryShader creates a new custom GeometryShader using the
 // specified info object.
-func (e *Engine) CreateGeometryShader(info ShaderInfo) GeometryShader {
+func (e *Engine) CreateGeometryShader(info ShaderInfo) *GeometryShader {
 	ast, err := lsl.Parse(info.SourceCode)
 	if err != nil {
 		log.Error("Failed to parse geometry shader: %v", err)
 		ast = &lsl.Shader{Declarations: []lsl.Declaration{}} // TODO: Something meaningful
 	}
 	// TODO: Validate against Geometry globals.
-	return &customGeometryShader{
+	return &GeometryShader{
 		builder: e.shaderBuilder,
 		ast:     ast,
 	}
@@ -104,14 +82,14 @@ func (e *Engine) CreateGeometryShader(info ShaderInfo) GeometryShader {
 
 // CreateShadowShader creates a new custom ShadowShader using the
 // specified info object.
-func (e *Engine) CreateShadowShader(info ShaderInfo) ShadowShader {
+func (e *Engine) CreateShadowShader(info ShaderInfo) *ShadowShader {
 	ast, err := lsl.Parse(info.SourceCode)
 	if err != nil {
 		log.Error("Failed to parse shadow shader: %v", err)
 		ast = &lsl.Shader{Declarations: []lsl.Declaration{}} // TODO: Something meaningful
 	}
 	// TODO: Validate against Shadow globals.
-	return &customShadowShader{
+	return &ShadowShader{
 		builder: e.shaderBuilder,
 		ast:     ast,
 	}
@@ -119,14 +97,14 @@ func (e *Engine) CreateShadowShader(info ShaderInfo) ShadowShader {
 
 // CreateForwardShader creates a new custom ForwardShader using the
 // specified info object.
-func (e *Engine) CreateForwardShader(info ShaderInfo) ForwardShader {
+func (e *Engine) CreateForwardShader(info ShaderInfo) *ForwardShader {
 	ast, err := lsl.Parse(info.SourceCode)
 	if err != nil {
 		log.Error("Failed to parse forward shader: %v", err)
 		ast = &lsl.Shader{Declarations: []lsl.Declaration{}} // TODO: Something meaningful
 	}
 	// TODO: Validate against Forward globals.
-	return &customForwardShader{
+	return &ForwardShader{
 		builder: e.shaderBuilder,
 		ast:     ast,
 	}
@@ -156,24 +134,6 @@ func (e *Engine) CreateSkyDefinition(info SkyDefinitionInfo) *SkyDefinition {
 // CreateMaterial creates a new Material from the specified info object.
 func (e *Engine) CreateMaterial(info MaterialInfo) *Material {
 	geometryPasses := gog.Map(info.GeometryPasses, func(passInfo GeometryRenderPassInfo) internal.MaterialRenderPassDefinition {
-		if len(passInfo.Textures) > 8 {
-			passInfo.Textures = passInfo.Textures[:8]
-		}
-
-		var textures [8]render.Texture
-		for i, textureInfo := range passInfo.Textures {
-			textures[i] = textureInfo.Texture
-		}
-
-		var samplers [8]render.Sampler
-		for i, textureInfo := range passInfo.Textures {
-			samplers[i] = e.api.CreateSampler(render.SamplerInfo{
-				Wrapping:   textureInfo.Wrapping,
-				Filtering:  textureInfo.Filtering,
-				Mipmapping: textureInfo.Mipmapping,
-			})
-		}
-
 		return internal.MaterialRenderPassDefinition{
 			Layer:           passInfo.Layer,
 			Culling:         passInfo.Culling.ValueOrDefault(render.CullModeNone),
@@ -182,34 +142,13 @@ func (e *Engine) CreateMaterial(info MaterialInfo) *Material {
 			DepthWrite:      passInfo.DepthWrite.ValueOrDefault(true),
 			DepthComparison: passInfo.DepthComparison.ValueOrDefault(render.ComparisonLessOrEqual),
 			Blending:        false,
-
-			Textures:    textures,
-			Samplers:    samplers,
-			UniformData: passInfo.MaterialDataStd140,
-
-			Shader: passInfo.Shader,
+			TextureSet:      internal.NewShaderTextureSet(passInfo.Shader.ast),
+			UniformSet:      internal.NewShaderUniformSet(passInfo.Shader.ast),
+			Shader:          passInfo.Shader,
 		}
 	})
 
 	shadowPasses := gog.Map(info.ShadowPasses, func(passInfo ShadowRenderPassInfo) internal.MaterialRenderPassDefinition {
-		if len(passInfo.Textures) > 8 {
-			passInfo.Textures = passInfo.Textures[:8]
-		}
-
-		var textures [8]render.Texture
-		for i, textureInfo := range passInfo.Textures {
-			textures[i] = textureInfo.Texture
-		}
-
-		var samplers [8]render.Sampler
-		for i, textureInfo := range passInfo.Textures {
-			samplers[i] = e.api.CreateSampler(render.SamplerInfo{
-				Wrapping:   textureInfo.Wrapping,
-				Filtering:  textureInfo.Filtering,
-				Mipmapping: textureInfo.Mipmapping,
-			})
-		}
-
 		return internal.MaterialRenderPassDefinition{
 			Layer:           0,
 			Culling:         passInfo.Culling.ValueOrDefault(render.CullModeNone),
@@ -218,34 +157,13 @@ func (e *Engine) CreateMaterial(info MaterialInfo) *Material {
 			DepthWrite:      true,
 			DepthComparison: render.ComparisonLessOrEqual,
 			Blending:        false,
-
-			Textures:    textures,
-			Samplers:    samplers,
-			UniformData: passInfo.MaterialDataStd140,
-
-			Shader: passInfo.Shader,
+			TextureSet:      internal.NewShaderTextureSet(passInfo.Shader.ast),
+			UniformSet:      internal.NewShaderUniformSet(passInfo.Shader.ast),
+			Shader:          passInfo.Shader,
 		}
 	})
 
 	forwardPasses := gog.Map(info.ForwardPasses, func(passInfo ForwardRenderPassInfo) internal.MaterialRenderPassDefinition {
-		if len(passInfo.Textures) > 8 {
-			passInfo.Textures = passInfo.Textures[:8]
-		}
-
-		var textures [8]render.Texture
-		for i, textureInfo := range passInfo.Textures {
-			textures[i] = textureInfo.Texture
-		}
-
-		var samplers [8]render.Sampler
-		for i, textureInfo := range passInfo.Textures {
-			samplers[i] = e.api.CreateSampler(render.SamplerInfo{
-				Wrapping:   textureInfo.Wrapping,
-				Filtering:  textureInfo.Filtering,
-				Mipmapping: textureInfo.Mipmapping,
-			})
-		}
-
 		return internal.MaterialRenderPassDefinition{
 			Layer:           passInfo.Layer,
 			Culling:         passInfo.Culling.ValueOrDefault(render.CullModeNone),
@@ -253,13 +171,10 @@ func (e *Engine) CreateMaterial(info MaterialInfo) *Material {
 			DepthTest:       passInfo.DepthTest.ValueOrDefault(true),
 			DepthWrite:      passInfo.DepthWrite.ValueOrDefault(true),
 			DepthComparison: passInfo.DepthComparison.ValueOrDefault(render.ComparisonLessOrEqual),
-			Blending:        passInfo.AlphaBlending.ValueOrDefault(false),
-
-			Textures:    textures,
-			Samplers:    samplers,
-			UniformData: passInfo.MaterialDataStd140,
-
-			Shader: passInfo.Shader,
+			Blending:        passInfo.Blending.ValueOrDefault(false),
+			TextureSet:      internal.NewShaderTextureSet(passInfo.Shader.ast),
+			UniformSet:      internal.NewShaderUniformSet(passInfo.Shader.ast),
+			Shader:          passInfo.Shader,
 		}
 	})
 
@@ -269,71 +184,6 @@ func (e *Engine) CreateMaterial(info MaterialInfo) *Material {
 		shadowPasses:   shadowPasses,
 		forwardPasses:  forwardPasses,
 	}
-}
-
-// CreatePBRMaterial creates a new Material that is based on PBR properties.
-//
-// Deprecated: Use CreateMaterial instead.
-func (e *Engine) CreatePBRMaterial(info PBRMaterialInfo) *Material {
-	var textures []TextureBindingInfo
-	if info.AlbedoTexture != nil {
-		textures = append(textures, TextureBindingInfo{
-			Texture:    info.AlbedoTexture,
-			Wrapping:   render.WrapModeClamp,
-			Filtering:  render.FilterModeLinear,
-			Mipmapping: true,
-		})
-	}
-	if info.NormalTexture != nil {
-		textures = append(textures, TextureBindingInfo{
-			Texture:    info.NormalTexture,
-			Wrapping:   render.WrapModeClamp,
-			Filtering:  render.FilterModeNearest,
-			Mipmapping: true,
-		})
-	}
-	if info.MetallicRoughnessTexture != nil {
-		textures = append(textures, TextureBindingInfo{
-			Texture:    info.MetallicRoughnessTexture,
-			Wrapping:   render.WrapModeClamp,
-			Filtering:  render.FilterModeLinear,
-			Mipmapping: true,
-		})
-	}
-
-	uniformData := make([]byte, 3*4*4)
-	plotter := blob.NewPlotter(uniformData)
-	plotter.PlotSPVec4(info.AlbedoColor)
-	plotter.PlotFloat32(info.AlphaThreshold)
-	plotter.PlotFloat32(info.NormalScale)
-	plotter.PlotFloat32(info.Metallic)
-	plotter.PlotFloat32(info.Roughness)
-	plotter.PlotSPVec4(info.EmissiveColor)
-
-	culling := render.CullModeNone
-	if info.BackfaceCulling {
-		culling = render.CullModeBack
-	}
-
-	return e.CreateMaterial(MaterialInfo{
-		Name: "PBR-Unspecified",
-		GeometryPasses: []GeometryRenderPassInfo{
-			{
-				Culling:            opt.V(culling),
-				MaterialDataStd140: uniformData,
-				Textures:           textures,
-				Shader:             e.DefaultGeometryShader(info.AlphaTesting, info.AlbedoTexture != nil),
-			},
-		},
-		ShadowPasses: []ShadowRenderPassInfo{
-			{
-				Culling:            opt.V(culling),
-				MaterialDataStd140: uniformData,
-				Shader:             e.DefaultShadowShader(),
-			},
-		},
-	})
-
 }
 
 // CreateMeshGeometry creates a new MeshGeometry using the specified

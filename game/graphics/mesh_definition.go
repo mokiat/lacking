@@ -98,10 +98,9 @@ func (d *MeshDefinition) createMaterialPasses(index int, passType internal.MeshR
 					IndexByteOffset: fragment.indexByteOffset,
 					IndexCount:      fragment.indexCount,
 				},
-				Key:          d.engine.pickFreeRenderPassKey(),
-				Textures:     pass.Textures,
-				Samplers:     pass.Samplers,
-				MaterialData: pass.UniformData,
+				Key:        d.engine.pickFreeRenderPassKey(),
+				TextureSet: pass.TextureSet,
+				UniformSet: pass.UniformSet,
 			})
 		}
 
@@ -125,10 +124,9 @@ func (d *MeshDefinition) createMaterialPasses(index int, passType internal.MeshR
 					IndexByteOffset: fragment.indexByteOffset,
 					IndexCount:      fragment.indexCount,
 				},
-				Key:          d.engine.pickFreeRenderPassKey(),
-				Textures:     pass.Textures,
-				Samplers:     pass.Samplers,
-				MaterialData: pass.UniformData,
+				Key:        d.engine.pickFreeRenderPassKey(),
+				TextureSet: pass.TextureSet,
+				UniformSet: pass.UniformSet,
 			})
 		}
 
@@ -152,10 +150,9 @@ func (d *MeshDefinition) createMaterialPasses(index int, passType internal.MeshR
 					IndexByteOffset: fragment.indexByteOffset,
 					IndexCount:      fragment.indexCount,
 				},
-				Key:          d.engine.pickFreeRenderPassKey(),
-				Textures:     pass.Textures,
-				Samplers:     pass.Samplers,
-				MaterialData: pass.UniformData,
+				Key:        d.engine.pickFreeRenderPassKey(),
+				TextureSet: pass.TextureSet,
+				UniformSet: pass.UniformSet,
 			})
 		}
 	}

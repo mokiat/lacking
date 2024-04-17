@@ -51,15 +51,6 @@ type GeometryPass struct {
 	// DepthComparison specifies the depth comparison function.
 	DepthComparison Comparison
 
-	// Textures is a list of textures that will be bound to the material.
-	//
-	// The textures will be bound in the order they are specified.
-	Textures []TextureBinding
-
-	// MaterialDataStd140 is the material data that will be passed to the
-	// shader. It must be in std140 layout.
-	MaterialDataStd140 []byte
-
 	// ShaderIndex is the index of the shader to be used.
 	ShaderIndex uint32
 }
@@ -76,15 +67,6 @@ type ShadowPass struct {
 
 	// FrontFace specifies the front face orientation.
 	FrontFace FaceOrientation
-
-	// Textures is a list of textures that will be bound to the material.
-	//
-	// The textures will be bound in the order they are specified.
-	Textures []TextureBinding
-
-	// MaterialDataStd140 is the material data that will be passed to the
-	// shader. It must be in std140 layout.
-	MaterialDataStd140 []byte
 
 	// ShaderIndex is the index of the shader to be used.
 	ShaderIndex uint32
@@ -116,15 +98,6 @@ type ForwardPass struct {
 	// Blending specifies whether blending should be enabled.
 	Blending bool
 
-	// Textures is a list of textures that will be bound to the material.
-	//
-	// The textures will be bound in the order they are specified.
-	Textures []TextureBinding
-
-	// MaterialDataStd140 is the material data that will be passed to the
-	// shader. It must be in std140 layout.
-	MaterialDataStd140 []byte
-
 	// ShaderIndex is the index of the shader to be used.
 	ShaderIndex uint32
 }
@@ -134,6 +107,12 @@ type Material struct {
 
 	// Name is the name of the material.
 	Name string
+
+	// Textures is a list of textures that will be bound to the material.
+	Textures []TextureBinding
+
+	// Properties is a list of properties that will be passed to the shader.
+	Properties []PropertyBinding
 
 	// GeometryPasses specifies a list of geometry passes to be applied.
 	GeometryPasses []GeometryPass
