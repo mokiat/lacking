@@ -9,10 +9,13 @@ import (
 
 type Model struct {
 	Nodes             []newasset.Node
+	GeometryShaders   []newasset.Shader
+	ShadowShaders     []newasset.Shader
+	ForwardShaders    []newasset.Shader
 	Animations        []Animation
 	Armatures         []newasset.Armature
 	Textures          []newasset.Texture
-	Materials         []Material
+	Materials         []newasset.Material
 	MeshDefinitions   []MeshDefinition
 	MeshInstances     []newasset.Mesh
 	BodyDefinitions   []BodyDefinition

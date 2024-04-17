@@ -189,41 +189,97 @@ func (r *ResourceSet) allocateModel(modelAsset *asset.Model) (*ModelDefinition, 
 		textures[i] = r.allocateTexture(textureAsset)
 	}
 
-	materialDefinitions := make([]*graphics.Material, len(modelAsset.Materials))
-	for i, materialAsset := range modelAsset.Materials {
-		pbrAsset := asset.NewPBRMaterialView(&materialAsset)
+	gfxEngine := r.engine.Graphics()
 
-		var albedoTexture render.Texture
-		if ref := pbrAsset.BaseColorTexture(); ref.Valid() {
-			albedoTexture = textures[ref.TextureIndex]
-		}
-
-		var metallicRoughnessTexture render.Texture
-		if ref := pbrAsset.MetallicRoughnessTexture(); ref.Valid() {
-			metallicRoughnessTexture = textures[ref.TextureIndex]
-		}
-
-		var normalTexture render.Texture
-		if ref := pbrAsset.NormalTexture(); ref.Valid() {
-			normalTexture = textures[ref.TextureIndex]
-		}
-
-		gfxEngine := r.engine.Graphics()
+	geometryShaders := make([]*graphics.GeometryShader, len(modelAsset.GeometryShaders))
+	for i, shaderAsset := range modelAsset.GeometryShaders {
+		var shader *graphics.GeometryShader
 		r.gfxWorker.ScheduleVoid(func() {
-			materialDefinitions[i] = gfxEngine.CreatePBRMaterial(graphics.PBRMaterialInfo{
-				BackfaceCulling:          materialAsset.BackfaceCulling,
-				AlphaBlending:            materialAsset.Blending,
-				AlphaTesting:             materialAsset.AlphaTesting,
-				AlphaThreshold:           materialAsset.AlphaThreshold,
-				Metallic:                 pbrAsset.Metallic(),
-				Roughness:                pbrAsset.Roughness(),
-				MetallicRoughnessTexture: metallicRoughnessTexture,
-				AlbedoColor:              pbrAsset.BaseColor(),
-				AlbedoTexture:            albedoTexture,
-				NormalScale:              pbrAsset.NormalScale(),
-				NormalTexture:            normalTexture,
+			shader = gfxEngine.CreateGeometryShader(graphics.ShaderInfo{
+				SourceCode: shaderAsset.SourceCode,
 			})
 		}).Wait()
+		geometryShaders[i] = shader
+	}
+
+	shadowShaders := make([]*graphics.ShadowShader, len(modelAsset.ShadowShaders))
+	for i, shaderAsset := range modelAsset.ShadowShaders {
+		var shader *graphics.ShadowShader
+		r.gfxWorker.ScheduleVoid(func() {
+			shader = gfxEngine.CreateShadowShader(graphics.ShaderInfo{
+				SourceCode: shaderAsset.SourceCode,
+			})
+		}).Wait()
+		shadowShaders[i] = shader
+	}
+
+	forwardShaders := make([]*graphics.ForwardShader, len(modelAsset.ForwardShaders))
+	for i, shaderAsset := range modelAsset.ForwardShaders {
+		var shader *graphics.ForwardShader
+		r.gfxWorker.ScheduleVoid(func() {
+			shader = gfxEngine.CreateForwardShader(graphics.ShaderInfo{
+				SourceCode: shaderAsset.SourceCode,
+			})
+		}).Wait()
+		forwardShaders[i] = shader
+	}
+
+	materialDefinitions := make([]*graphics.Material, len(modelAsset.Materials))
+	for i, materialAsset := range modelAsset.Materials {
+		materialInfo := graphics.MaterialInfo{
+			Name: materialAsset.Name,
+			GeometryPasses: gog.Map(materialAsset.GeometryPasses, func(pass newasset.GeometryPass) graphics.GeometryRenderPassInfo {
+				return graphics.GeometryRenderPassInfo{
+					Layer:           pass.Layer,
+					Culling:         opt.V(resolveCullMode(pass.Culling)),
+					FrontFace:       opt.V(resolveFaceOrientation(pass.FrontFace)),
+					DepthTest:       opt.V(pass.DepthTest),
+					DepthWrite:      opt.V(pass.DepthWrite),
+					DepthComparison: opt.V(resolveComparison(pass.DepthComparison)),
+					Shader:          geometryShaders[pass.ShaderIndex],
+				}
+			}),
+			ShadowPasses: gog.Map(materialAsset.ShadowPasses, func(pass newasset.ShadowPass) graphics.ShadowRenderPassInfo {
+				return graphics.ShadowRenderPassInfo{
+					Culling:   opt.V(resolveCullMode(pass.Culling)),
+					FrontFace: opt.V(resolveFaceOrientation(pass.FrontFace)),
+					Shader:    shadowShaders[pass.ShaderIndex],
+				}
+			}),
+			ForwardPasses: gog.Map(materialAsset.ForwardPasses, func(pass newasset.ForwardPass) graphics.ForwardRenderPassInfo {
+				return graphics.ForwardRenderPassInfo{
+					Layer:           pass.Layer,
+					Culling:         opt.V(resolveCullMode(pass.Culling)),
+					FrontFace:       opt.V(resolveFaceOrientation(pass.FrontFace)),
+					DepthTest:       opt.V(pass.DepthTest),
+					DepthWrite:      opt.V(pass.DepthWrite),
+					DepthComparison: opt.V(resolveComparison(pass.DepthComparison)),
+					Blending:        opt.V(pass.Blending),
+					Shader:          forwardShaders[pass.ShaderIndex],
+				}
+			}),
+		}
+
+		var material *graphics.Material
+		r.gfxWorker.ScheduleVoid(func() {
+			material = gfxEngine.CreateMaterial(materialInfo)
+			for _, binding := range materialAsset.Textures {
+				texture := textures[binding.TextureIndex]
+				material.SetTexture(binding.BindingName, texture)
+			}
+			for _, binding := range materialAsset.Textures {
+				sampler := r.renderAPI.CreateSampler(render.SamplerInfo{
+					Wrapping:   resolveWrapMode(binding.Wrapping),
+					Filtering:  resolveFiltering(binding.Filtering),
+					Mipmapping: binding.Mipmapping,
+				})
+				material.SetSampler(binding.BindingName, sampler)
+			}
+			for _, binding := range materialAsset.Properties {
+				material.SetProperty(binding.BindingName, binding.Data)
+			}
+		}).Wait()
+		materialDefinitions[i] = material
 	}
 
 	meshGeometries := make([]*graphics.MeshGeometry, len(modelAsset.MeshDefinitions))

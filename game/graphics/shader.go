@@ -12,6 +12,15 @@ type GeometryConstraints struct {
 
 	// HasArmature specifies whether the mesh has an armature.
 	HasArmature bool
+
+	// HasNormals specifies whether the mesh has normals.
+	HasNormals bool
+
+	// HasTexCoords specifies whether the mesh has texture coordinates.
+	HasTexCoords bool
+
+	// HasVertexColors specifies whether the mesh has vertex colors.
+	HasVertexColors bool
 }
 
 // ShadowConstraints contains the constraints imposed on the shadow shader
@@ -60,62 +69,44 @@ type ShaderInfo struct {
 }
 
 // GeometryShader represents a shader that is used during the geometry pass.
-type GeometryShader interface {
-	internal.Shader
-	_isGeometryShader()
+type GeometryShader struct {
+	builder ShaderBuilder
+	ast     *lsl.Shader
+}
+
+func (s *GeometryShader) CreateProgramCode(info internal.ShaderProgramCodeInfo) render.ProgramCode {
+	return s.builder.BuildGeometryCode(GeometryConstraints{
+		HasArmature:     info.MeshHasArmature,
+		HasNormals:      info.MeshHasNormals,
+		HasTexCoords:    info.MeshHasTextureUVs,
+		HasVertexColors: info.MeshHasVertexColors,
+	}, s.ast)
 }
 
 // ShadowShader represents a shader that is used during the shadow pass for
 // a particular light source.
-type ShadowShader interface {
-	internal.Shader
-	_isShadowShader()
-}
-
-// ForwardShader represents a shader that is used during the forward pass.
-type ForwardShader interface {
-	internal.Shader
-	_isForwardShader()
-}
-
-type customGeometryShader struct {
+type ShadowShader struct {
 	builder ShaderBuilder
 	ast     *lsl.Shader
 }
 
-func (s *customGeometryShader) CreateProgramCode(info internal.ShaderProgramCodeInfo) render.ProgramCode {
-	return s.builder.BuildGeometryCode(GeometryConstraints{
-		HasArmature: info.MeshHasArmature,
-	}, s.ast)
-}
-
-func (*customGeometryShader) _isGeometryShader() {}
-
-type customShadowShader struct {
-	builder ShaderBuilder
-	ast     *lsl.Shader
-}
-
-func (s *customShadowShader) CreateProgramCode(info internal.ShaderProgramCodeInfo) render.ProgramCode {
+func (s *ShadowShader) CreateProgramCode(info internal.ShaderProgramCodeInfo) render.ProgramCode {
 	return s.builder.BuildShadowCode(ShadowConstraints{
 		HasArmature: info.MeshHasArmature,
 	}, s.ast)
 }
 
-func (*customShadowShader) _isShadowShader() {}
-
-type customForwardShader struct {
+// ForwardShader represents a shader that is used during the forward pass.
+type ForwardShader struct {
 	builder ShaderBuilder
 	ast     *lsl.Shader
 }
 
-func (s *customForwardShader) CreateProgramCode(info internal.ShaderProgramCodeInfo) render.ProgramCode {
+func (s *ForwardShader) CreateProgramCode(info internal.ShaderProgramCodeInfo) render.ProgramCode {
 	return s.builder.BuildForwardCode(ForwardConstraints{
 		HasArmature: info.MeshHasArmature,
 	}, s.ast)
 }
-
-func (*customForwardShader) _isForwardShader() {}
 
 // SkyShader represents a shader that is used during the sky pass.
 type SkyShader struct {
@@ -127,42 +118,9 @@ func (s *SkyShader) createProgramCode() render.ProgramCode {
 	return s.builder.BuildSkyCode(SkyConstraints{}, s.ast)
 }
 
-type defaultGeometryShader struct {
-	shaders ShaderCollection
-
-	useAlphaTesting  bool
-	useAlbedoTexture bool
-}
-
-func (s *defaultGeometryShader) CreateProgramCode(info internal.ShaderProgramCodeInfo) render.ProgramCode {
-	return s.shaders.PBRGeometrySet(PBRGeometryShaderConfig{
-		HasArmature:      info.MeshHasArmature,
-		HasAlphaTesting:  s.useAlphaTesting,
-		HasNormals:       info.MeshHasNormals,
-		HasVertexColors:  info.MeshHasVertexColors,
-		HasAlbedoTexture: s.useAlbedoTexture,
-	})
-}
-
-func (*defaultGeometryShader) _isGeometryShader() {}
-
-type defaultShadowShader struct {
-	shaders ShaderCollection
-}
-
-func (s *defaultShadowShader) CreateProgramCode(info internal.ShaderProgramCodeInfo) render.ProgramCode {
-	return s.shaders.ShadowMappingSet(ShadowMappingShaderConfig{
-		HasArmature: info.MeshHasArmature,
-	})
-}
-
-func (*defaultShadowShader) _isShadowShader() {}
-
 ///////////////// OLD CODE FOLLOWS ////////////////////////////
 
 type ShaderCollection struct {
-	ShadowMappingSet    func(cfg ShadowMappingShaderConfig) render.ProgramCode
-	PBRGeometrySet      func(cfg PBRGeometryShaderConfig) render.ProgramCode
 	DirectionalLightSet func() render.ProgramCode
 	EmissiveLightSet    func() render.ProgramCode
 	AmbientLightSet     func() render.ProgramCode
@@ -175,18 +133,6 @@ type ShaderCollection struct {
 	BloomDownsampleSet  func() render.ProgramCode
 	BloomBlurSet        func() render.ProgramCode
 	PostprocessingSet   func(cfg PostprocessingShaderConfig) render.ProgramCode
-}
-
-type ShadowMappingShaderConfig struct {
-	HasArmature bool
-}
-
-type PBRGeometryShaderConfig struct {
-	HasArmature      bool
-	HasAlphaTesting  bool
-	HasNormals       bool
-	HasVertexColors  bool
-	HasAlbedoTexture bool
 }
 
 type PostprocessingShaderConfig struct {

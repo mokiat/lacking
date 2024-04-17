@@ -28,16 +28,8 @@ type GeometryRenderPassInfo struct {
 	// DepthComparison specifies the depth comparison function.
 	DepthComparison opt.T[render.Comparison]
 
-	// MaterialDataStd140 is the material data that will be passed to the
-	// geometry shader. It must be in std140 layout.
-	MaterialDataStd140 []byte
-
-	// Textures is a list of textures that will be bound to the material.
-	// The textures will be bound in the order they are specified.
-	Textures []TextureBindingInfo
-
 	// Shader is the geometry shader that will be used to render the material.
-	Shader GeometryShader
+	Shader *GeometryShader
 }
 
 // ShadowRenderPassInfo contains the information representing the rendering
@@ -50,16 +42,8 @@ type ShadowRenderPassInfo struct {
 	// FrontFace specifies the front face orientation.
 	FrontFace opt.T[render.FaceOrientation]
 
-	// MaterialDataStd140 is the material data that will be passed to the
-	// shader. It must be in std140 layout.
-	MaterialDataStd140 []byte
-
-	// Textures is a list of textures that will be bound to the material.
-	// The textures will be bound in the order they are specified.
-	Textures []TextureBindingInfo
-
 	// Shader is the emissive shader that will be used to render the material.
-	Shader ShadowShader
+	Shader *ShadowShader
 }
 
 // ForwardRenderPassInfo contains the information representing the rendering
@@ -85,20 +69,12 @@ type ForwardRenderPassInfo struct {
 	// DepthComparison specifies the depth comparison function.
 	DepthComparison opt.T[render.Comparison]
 
-	// AlphaBlending specifies whether the output will be mixed with the
+	// Blending specifies whether the output will be mixed with the
 	// background. Useful for unlit/emissive special effects.
-	AlphaBlending opt.T[bool]
-
-	// MaterialDataStd140 is the material data that will be passed to the
-	// forward shader. It must be in std140 layout.
-	MaterialDataStd140 []byte
-
-	// Textures is a list of textures that will be bound to the material.
-	// The textures will be bound in the order they are specified.
-	Textures []TextureBindingInfo
+	Blending opt.T[bool]
 
 	// Shader is the emissive shader that will be used to render the material.
-	Shader ForwardShader
+	Shader *ForwardShader
 }
 
 // TextureBindingInfo contains the information needed to bind a texture to a

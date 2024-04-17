@@ -171,3 +171,52 @@ func resolveDataFormat(format asset.TexelFormat) render.DataFormat {
 		panic(fmt.Errorf("unknown format: %v", format))
 	}
 }
+
+func resolveCullMode(mode asset.CullMode) render.CullMode {
+	switch mode {
+	case asset.CullModeNone:
+		return render.CullModeNone
+	case asset.CullModeFront:
+		return render.CullModeFront
+	case asset.CullModeBack:
+		return render.CullModeBack
+	case asset.CullModeFrontAndBack:
+		return render.CullModeFrontAndBack
+	default:
+		panic(fmt.Errorf("unknown cull mode: %v", mode))
+	}
+}
+
+func resolveFaceOrientation(orientation asset.FaceOrientation) render.FaceOrientation {
+	switch orientation {
+	case asset.FaceOrientationCCW:
+		return render.FaceOrientationCCW
+	case asset.FaceOrientationCW:
+		return render.FaceOrientationCW
+	default:
+		panic(fmt.Errorf("unknown face orientation: %v", orientation))
+	}
+}
+
+func resolveComparison(comparison asset.Comparison) render.Comparison {
+	switch comparison {
+	case asset.ComparisonNever:
+		return render.ComparisonNever
+	case asset.ComparisonLess:
+		return render.ComparisonLess
+	case asset.ComparisonEqual:
+		return render.ComparisonEqual
+	case asset.ComparisonLessOrEqual:
+		return render.ComparisonLessOrEqual
+	case asset.ComparisonGreater:
+		return render.ComparisonGreater
+	case asset.ComparisonNotEqual:
+		return render.ComparisonNotEqual
+	case asset.ComparisonGreaterOrEqual:
+		return render.ComparisonGreaterOrEqual
+	case asset.ComparisonAlways:
+		return render.ComparisonAlways
+	default:
+		panic(fmt.Errorf("unknown comparison: %v", comparison))
+	}
+}
