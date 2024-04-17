@@ -121,18 +121,22 @@ func (s *SkyShader) createProgramCode() render.ProgramCode {
 ///////////////// OLD CODE FOLLOWS ////////////////////////////
 
 type ShaderCollection struct {
-	DirectionalLightSet func() render.ProgramCode
-	EmissiveLightSet    func() render.ProgramCode
 	AmbientLightSet     func() render.ProgramCode
 	PointLightSet       func() render.ProgramCode
 	SpotLightSet        func() render.ProgramCode
-	SkyboxSet           func() render.ProgramCode
-	SkycolorSet         func() render.ProgramCode
-	DebugSet            func() render.ProgramCode
-	ExposureSet         func() render.ProgramCode
-	BloomDownsampleSet  func() render.ProgramCode
-	BloomBlurSet        func() render.ProgramCode
-	PostprocessingSet   func(cfg PostprocessingShaderConfig) render.ProgramCode
+	DirectionalLightSet func() render.ProgramCode
+
+	SkyboxSet   func() render.ProgramCode
+	SkycolorSet func() render.ProgramCode
+
+	DebugSet func() render.ProgramCode
+
+	ExposureSet func() render.ProgramCode
+
+	BloomDownsampleSet func() render.ProgramCode
+	BloomBlurSet       func() render.ProgramCode
+
+	PostprocessingSet func(cfg PostprocessingShaderConfig) render.ProgramCode
 }
 
 type PostprocessingShaderConfig struct {
