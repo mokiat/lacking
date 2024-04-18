@@ -292,32 +292,31 @@ func (r *ResourceSet) allocateModel(modelAsset *asset.Model) (*ModelDefinition, 
 	}
 
 	meshGeometries := make([]*graphics.MeshGeometry, len(modelAsset.MeshDefinitions))
-	for i, definitionAsset := range modelAsset.MeshDefinitions {
-		meshFragmentsInfo := make([]graphics.MeshGeometryFragmentInfo, len(definitionAsset.Fragments))
-		for j, fragmentAsset := range definitionAsset.Fragments {
-			material := materialDefinitions[fragmentAsset.MaterialIndex]
+	for i, assetGeometry := range modelAsset.Geometries {
+		meshFragmentsInfo := make([]graphics.MeshGeometryFragmentInfo, len(assetGeometry.Fragments))
+		for j, assetFragment := range assetGeometry.Fragments {
 			meshFragmentsInfo[j] = graphics.MeshGeometryFragmentInfo{
-				Name:            material.Name(),
-				Topology:        resolveTopology(fragmentAsset.Topology),
-				IndexByteOffset: fragmentAsset.IndexOffset,
-				IndexCount:      fragmentAsset.IndexCount,
+				Name:            assetFragment.Name,
+				Topology:        resolveTopology(assetFragment.Topology),
+				IndexByteOffset: assetFragment.IndexByteOffset,
+				IndexCount:      assetFragment.IndexCount,
 			}
 		}
 
 		meshGeometryInfo := graphics.MeshGeometryInfo{
-			VertexBuffers: gog.Map(definitionAsset.VertexBuffers, func(buffer newasset.VertexBuffer) graphics.MeshGeometryVertexBuffer {
+			VertexBuffers: gog.Map(assetGeometry.VertexBuffers, func(buffer newasset.VertexBuffer) graphics.MeshGeometryVertexBuffer {
 				return graphics.MeshGeometryVertexBuffer{
 					ByteStride: buffer.Stride,
 					Data:       buffer.Data,
 				}
 			}),
-			VertexFormat: resolveVertexFormat(definitionAsset.VertexLayout),
+			VertexFormat: resolveVertexFormat(assetGeometry.VertexLayout),
 			IndexBuffer: graphics.MeshGeometryIndexBuffer{
-				Data:   definitionAsset.IndexBuffer.Data,
-				Format: resolveIndexFormat(definitionAsset.IndexBuffer.IndexLayout),
+				Data:   assetGeometry.IndexBuffer.Data,
+				Format: resolveIndexFormat(assetGeometry.IndexBuffer.IndexLayout),
 			},
 			Fragments:            meshFragmentsInfo,
-			BoundingSphereRadius: definitionAsset.BoundingSphereRadius,
+			BoundingSphereRadius: assetGeometry.BoundingSphereRadius,
 		}
 
 		gfxEngine := r.engine.Graphics()
@@ -327,12 +326,12 @@ func (r *ResourceSet) allocateModel(modelAsset *asset.Model) (*ModelDefinition, 
 	}
 
 	meshDefinitions := make([]*graphics.MeshDefinition, len(modelAsset.MeshDefinitions))
-	for i, definitionAsset := range modelAsset.MeshDefinitions {
+	for i, assetDefinition := range modelAsset.MeshDefinitions {
 		gfxEngine := r.engine.Graphics()
 		r.gfxWorker.ScheduleVoid(func() {
 			var materials []*graphics.Material
-			for _, fragmentAsset := range definitionAsset.Fragments {
-				materials = append(materials, materialDefinitions[fragmentAsset.MaterialIndex])
+			for _, assetBinding := range assetDefinition.MaterialBindings {
+				materials = append(materials, materialDefinitions[assetBinding.MaterialIndex])
 			}
 			meshDefinitions[i] = gfxEngine.CreateMeshDefinition(graphics.MeshDefinitionInfo{
 				Geometry:  meshGeometries[i],

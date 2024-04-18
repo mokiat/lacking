@@ -172,9 +172,6 @@ type Fragment struct {
 // to render a mesh.
 type Geometry struct {
 
-	// Name is the name of the geometry.
-	Name string
-
 	// VertexBuffers is the collection of buffers that contain the vertex data.
 	VertexBuffers []VertexBuffer
 
