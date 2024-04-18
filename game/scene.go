@@ -373,7 +373,7 @@ func (s *Scene) CreateModel(info ModelInfo) *Model {
 		bodyDefinition := definition.bodyDefinitions[instance.DefinitionIndex]
 		if info.IsDynamic {
 			body := s.physicsScene.CreateBody(physics.BodyInfo{
-				Name:       instance.Name,
+				Name:       bodyNode.Name(),
 				Definition: bodyDefinition,
 				Position:   dprec.ZeroVec3(),
 				Rotation:   dprec.IdentityQuat(),
@@ -388,7 +388,7 @@ func (s *Scene) CreateModel(info ModelInfo) *Model {
 			collisionSet := collision.NewSet()
 			collisionSet.Replace(bodyDefinition.CollisionSet(), transform)
 			s.physicsScene.CreateProp(physics.PropInfo{
-				Name:         instance.Name,
+				Name:         bodyNode.Name(),
 				CollisionSet: collisionSet,
 			})
 		}

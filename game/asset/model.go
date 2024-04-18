@@ -18,8 +18,9 @@ type Model struct {
 	Materials         []newasset.Material
 	MeshDefinitions   []MeshDefinition
 	MeshInstances     []newasset.Mesh
-	BodyDefinitions   []BodyDefinition
-	BodyInstances     []BodyInstance
+	BodyMaterials     []newasset.BodyMaterial
+	BodyDefinitions   []newasset.BodyDefinition
+	BodyInstances     []newasset.Body
 	PointLights       []newasset.PointLight
 	SpotLights        []newasset.SpotLight
 	DirectionalLights []newasset.DirectionalLight

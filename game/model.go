@@ -55,7 +55,6 @@ type meshInstance struct {
 }
 
 type bodyInstance struct {
-	Name            string
 	NodeIndex       int
 	DefinitionIndex int
 }
@@ -157,14 +156,25 @@ func (r *ResourceSet) allocateModel(modelAsset *asset.Model) (*ModelDefinition, 
 		}).Wait()
 	}
 
+	bodyMaterials := make([]*physics.Material, len(modelAsset.BodyMaterials))
+	for i, materialAsset := range modelAsset.BodyMaterials {
+		physicsEngine := r.engine.Physics()
+		bodyMaterials[i] = physicsEngine.CreateMaterial(physics.MaterialInfo{
+			FrictionCoefficient:    materialAsset.FrictionCoefficient,
+			RestitutionCoefficient: materialAsset.RestitutionCoefficient,
+		})
+	}
+
 	bodyDefinitions := make([]*physics.BodyDefinition, len(modelAsset.BodyDefinitions))
 	for i, definitionAsset := range modelAsset.BodyDefinitions {
+		material := bodyMaterials[definitionAsset.MaterialIndex]
 		physicsEngine := r.engine.Physics()
 		r.gfxWorker.ScheduleVoid(func() {
 			bodyDefinitions[i] = physicsEngine.CreateBodyDefinition(physics.BodyDefinitionInfo{
 				Mass:                   definitionAsset.Mass,
 				MomentOfInertia:        definitionAsset.MomentOfInertia,
-				RestitutionCoefficient: definitionAsset.RestitutionCoefficient,
+				FrictionCoefficient:    material.FrictionCoefficient(),
+				RestitutionCoefficient: material.RestitutionCoefficient(),
 				DragFactor:             definitionAsset.DragFactor,
 				AngularDragFactor:      definitionAsset.AngularDragFactor,
 				AerodynamicShapes:      nil, // TODO
@@ -178,9 +188,8 @@ func (r *ResourceSet) allocateModel(modelAsset *asset.Model) (*ModelDefinition, 
 	bodyInstances := make([]bodyInstance, len(modelAsset.BodyInstances))
 	for i, instanceAsset := range modelAsset.BodyInstances {
 		bodyInstances[i] = bodyInstance{
-			Name:            instanceAsset.Name,
 			NodeIndex:       int(instanceAsset.NodeIndex),
-			DefinitionIndex: int(instanceAsset.BodyIndex),
+			DefinitionIndex: int(instanceAsset.BodyDefinitionIndex),
 		}
 	}
 
@@ -364,7 +373,7 @@ func (r *ResourceSet) releaseModel(model *ModelDefinition) {
 	model.textures = nil
 }
 
-func (r *ResourceSet) constructCollisionSpheres(bodyDef asset.BodyDefinition) []collision.Sphere {
+func (r *ResourceSet) constructCollisionSpheres(bodyDef newasset.BodyDefinition) []collision.Sphere {
 	result := make([]collision.Sphere, len(bodyDef.CollisionSpheres))
 	for i, collisionSphereAsset := range bodyDef.CollisionSpheres {
 		result[i] = collision.NewSphere(
@@ -375,7 +384,7 @@ func (r *ResourceSet) constructCollisionSpheres(bodyDef asset.BodyDefinition) []
 	return result
 }
 
-func (r *ResourceSet) constructCollisionBoxes(bodyDef asset.BodyDefinition) []collision.Box {
+func (r *ResourceSet) constructCollisionBoxes(bodyDef newasset.BodyDefinition) []collision.Box {
 	result := make([]collision.Box, len(bodyDef.CollisionBoxes))
 	for i, collisionBoxAsset := range bodyDef.CollisionBoxes {
 		result[i] = collision.NewBox(
@@ -387,7 +396,7 @@ func (r *ResourceSet) constructCollisionBoxes(bodyDef asset.BodyDefinition) []co
 	return result
 }
 
-func (r *ResourceSet) constructCollisionMeshes(bodyDef asset.BodyDefinition) []collision.Mesh {
+func (r *ResourceSet) constructCollisionMeshes(bodyDef newasset.BodyDefinition) []collision.Mesh {
 	result := make([]collision.Mesh, len(bodyDef.CollisionMeshes))
 	for i, collisionMeshAsset := range bodyDef.CollisionMeshes {
 		transform := collision.TRTransform(collisionMeshAsset.Translation, collisionMeshAsset.Rotation)
