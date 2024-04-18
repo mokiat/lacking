@@ -50,6 +50,7 @@ func newConverter(collisionMeshes bool) *converter {
 		assetShadowShaderIndexFromMaterial:    make(map[*Material]int),
 		assetMaterialIndexFromMaterial:        make(map[*Material]int),
 		assetArmatureIndexFromArmature:        make(map[*Armature]int),
+		assetGeometriesFromMeshDefinition:     make(map[*MeshDefinition]int),
 		assetMeshDefinitionFromMeshDefinition: make(map[*MeshDefinition]int),
 		assetBodyMaterialFromMeshDefinition:   make(map[*MeshDefinition]int),
 		assetBodyDefinitionFromMeshDefinition: make(map[*MeshDefinition]int),
@@ -64,6 +65,7 @@ type converter struct {
 	assetShadowShaderIndexFromMaterial    map[*Material]int
 	assetMaterialIndexFromMaterial        map[*Material]int
 	assetArmatureIndexFromArmature        map[*Armature]int
+	assetGeometriesFromMeshDefinition     map[*MeshDefinition]int
 	assetMeshDefinitionFromMeshDefinition map[*MeshDefinition]int
 	assetBodyMaterialFromMeshDefinition   map[*MeshDefinition]int
 	assetBodyDefinitionFromMeshDefinition map[*MeshDefinition]int
@@ -106,7 +108,13 @@ func (c *converter) BuildModel(model *Model) *asset.Model {
 		c.assetArmatureIndexFromArmature[armature] = i
 	}
 
-	assetMeshDefinitions := make([]asset.MeshDefinition, len(model.MeshDefinitions))
+	assetGeometries := make([]newasset.Geometry, len(model.MeshDefinitions))
+	for i, meshDefinition := range model.MeshDefinitions {
+		assetGeometries[i] = c.BuildGeometry(meshDefinition)
+		c.assetGeometriesFromMeshDefinition[meshDefinition] = i
+	}
+
+	assetMeshDefinitions := make([]newasset.MeshDefinition, len(model.MeshDefinitions))
 	for i, meshDefinition := range model.MeshDefinitions {
 		assetMeshDefinitions[i] = c.BuildMeshDefinition(meshDefinition)
 		c.assetMeshDefinitionFromMeshDefinition[meshDefinition] = i
@@ -181,6 +189,7 @@ func (c *converter) BuildModel(model *Model) *asset.Model {
 		Armatures:         assetArmatures,
 		Textures:          assetTextures,
 		Materials:         assetMaterials,
+		Geometries:        assetGeometries,
 		MeshDefinitions:   assetMeshDefinitions,
 		MeshInstances:     assetMeshInstances,
 		BodyMaterials:     assetBodyMaterials,
@@ -421,7 +430,7 @@ func (c *converter) BuildArmature(armature *Armature) newasset.Armature {
 	}
 }
 
-func (c *converter) BuildMeshDefinition(meshDefinition *MeshDefinition) asset.MeshDefinition {
+func (c *converter) BuildGeometry(meshDefinition *MeshDefinition) newasset.Geometry {
 	const (
 		sizeUnsignedByte  = 1
 		sizeUnsignedShort = 2
@@ -592,7 +601,7 @@ func (c *converter) BuildMeshDefinition(meshDefinition *MeshDefinition) asset.Me
 	}
 
 	var (
-		fragments = make([]asset.MeshFragment, 0, len(meshDefinition.Fragments))
+		fragments = make([]newasset.Fragment, 0, len(meshDefinition.Fragments))
 	)
 	for _, fragment := range meshDefinition.Fragments {
 		if fragment.Material != nil && !fragment.Material.IsInvisible() {
@@ -608,8 +617,7 @@ func (c *converter) BuildMeshDefinition(meshDefinition *MeshDefinition) asset.Me
 		)
 	}
 
-	return asset.MeshDefinition{
-		Name: meshDefinition.Name,
+	return newasset.Geometry{
 		VertexBuffers: []newasset.VertexBuffer{
 			{
 				Stride: stride,
@@ -662,7 +670,23 @@ func (c *converter) BuildMeshDefinition(meshDefinition *MeshDefinition) asset.Me
 	}
 }
 
-func (c *converter) BuildFragment(fragment MeshFragment, indexSize int) asset.MeshFragment {
+func (c *converter) BuildMeshDefinition(meshDefinition *MeshDefinition) newasset.MeshDefinition {
+	var materialBindings []newasset.MaterialBinding
+	for _, fragment := range meshDefinition.Fragments {
+		if fragment.Material != nil && !fragment.Material.IsInvisible() {
+			materialBindings = append(materialBindings, newasset.MaterialBinding{
+				MaterialIndex: uint32(c.assetMaterialIndexFromMaterial[fragment.Material]),
+			})
+		}
+	}
+
+	return newasset.MeshDefinition{
+		GeometryIndex:    uint32(c.assetGeometriesFromMeshDefinition[meshDefinition]),
+		MaterialBindings: materialBindings,
+	}
+}
+
+func (c *converter) BuildFragment(fragment MeshFragment, indexSize int) newasset.Fragment {
 	var topology newasset.Topology
 	switch fragment.Primitive {
 	case PrimitivePoints:
@@ -679,18 +703,11 @@ func (c *converter) BuildFragment(fragment MeshFragment, indexSize int) asset.Me
 		panic(fmt.Errorf("unsupported primitive type: %d", fragment.Primitive))
 	}
 
-	var materialIndex int32
-	if index, ok := c.assetMaterialIndexFromMaterial[fragment.Material]; ok {
-		materialIndex = int32(index)
-	} else {
-		panic(fmt.Errorf("material %s not found", fragment.Material.Name))
-	}
-
-	return asset.MeshFragment{
-		Topology:      topology,
-		IndexOffset:   uint32(fragment.IndexOffset * indexSize),
-		IndexCount:    uint32(fragment.IndexCount),
-		MaterialIndex: materialIndex,
+	return newasset.Fragment{
+		Name:            "", // TODO: Take from material
+		Topology:        topology,
+		IndexByteOffset: uint32(fragment.IndexOffset * indexSize),
+		IndexCount:      uint32(fragment.IndexCount),
 	}
 }
 

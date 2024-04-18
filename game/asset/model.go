@@ -16,7 +16,8 @@ type Model struct {
 	Armatures         []newasset.Armature
 	Textures          []newasset.Texture
 	Materials         []newasset.Material
-	MeshDefinitions   []MeshDefinition
+	Geometries        []newasset.Geometry
+	MeshDefinitions   []newasset.MeshDefinition
 	MeshInstances     []newasset.Mesh
 	BodyMaterials     []newasset.BodyMaterial
 	BodyDefinitions   []newasset.BodyDefinition
