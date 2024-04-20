@@ -86,17 +86,16 @@ type sceneRenderer struct {
 	shadowDepthTexture render.Texture
 	shadowFramebuffer  render.Framebuffer
 
-	exposureAlbedoTexture     render.Texture
-	exposureFramebuffer       render.Framebuffer
-	exposureFormat            render.DataFormat
-	exposureProgram           render.Program
-	exposurePipeline          render.Pipeline
-	exposureBufferData        gblob.LittleEndianBlock
-	exposureBuffer            render.Buffer
-	exposureSync              render.Fence
-	exposureTarget            float32
-	exposureUpdateTimestamp   time.Time
-	exposureReadbackSupported bool
+	exposureAlbedoTexture   render.Texture
+	exposureFramebuffer     render.Framebuffer
+	exposureFormat          render.DataFormat
+	exposureProgram         render.Program
+	exposurePipeline        render.Pipeline
+	exposureBufferData      gblob.LittleEndianBlock
+	exposureBuffer          render.Buffer
+	exposureSync            render.Fence
+	exposureTarget          float32
+	exposureUpdateTimestamp time.Time
 
 	bloomStage *bloomRenderStage
 
@@ -236,7 +235,6 @@ func (r *sceneRenderer) Allocate() {
 			r.exposureAlbedoTexture,
 		},
 	})
-	r.exposureFormat = r.api.DetermineContentFormat(r.exposureFramebuffer)
 	r.exposureProgram = r.api.CreateProgram(render.ProgramInfo{
 		SourceCode: r.shaders.ExposureSet(),
 		TextureBindings: []render.TextureBinding{
@@ -260,9 +258,11 @@ func (r *sceneRenderer) Allocate() {
 		Dynamic: true,
 		Size:    uint32(len(r.exposureBufferData)),
 	})
-	r.exposureReadbackSupported = (r.exposureFormat == render.DataFormatRGBA16F) || (r.exposureFormat == render.DataFormatRGBA32F)
-	if !r.exposureReadbackSupported {
-		logger.Error("Skipping exposure due to unsupported framebuffer format: %s", r.exposureFormat)
+	r.exposureFormat = r.api.DetermineContentFormat(r.exposureFramebuffer)
+	if r.exposureFormat == render.DataFormatUnsupported {
+		// This happens on MacOS on native; fallback to a default format and
+		// hope for the best.
+		r.exposureFormat = render.DataFormatRGBA32F
 	}
 
 	r.postprocessingProgram = r.api.CreateProgram(render.ProgramInfo{
@@ -676,7 +676,7 @@ func (r *sceneRenderer) Render(framebuffer render.Framebuffer, viewport Viewport
 	r.renderGeometryPass(ctx)
 	r.renderLightingPass(ctx)
 	r.renderForwardPass(ctx)
-	if camera.autoExposureEnabled && r.exposureReadbackSupported {
+	if camera.autoExposureEnabled {
 		r.renderExposureProbePass(ctx)
 	}
 	r.renderBloomStage()
@@ -691,7 +691,7 @@ func (r *sceneRenderer) Render(framebuffer render.Framebuffer, viewport Viewport
 	r.api.Queue().Submit(commandBuffer)
 	submitSpan.End()
 
-	if camera.autoExposureEnabled && r.exposureReadbackSupported && r.exposureSync == nil {
+	if camera.autoExposureEnabled && r.exposureSync == nil {
 		r.exposureSync = r.api.Queue().TrackSubmittedWorkDone()
 	}
 }
@@ -1083,9 +1083,9 @@ func (r *sceneRenderer) renderExposureProbePass(ctx renderCtx) {
 			var brightness float32
 			switch r.exposureFormat {
 			case render.DataFormatRGBA16F:
-				brightness = float16.Frombits(r.exposureBufferData.Uint16(0 * 2)).Float32()
+				brightness = float16.Frombits(r.exposureBufferData.Uint16(0)).Float32()
 			case render.DataFormatRGBA32F:
-				brightness = gblob.LittleEndianBlock(r.exposureBufferData).Float32(0 * 4)
+				brightness = r.exposureBufferData.Float32(0)
 			}
 			brightness = sprec.Clamp(brightness, 0.001, 1000.0)
 

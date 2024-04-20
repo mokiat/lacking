@@ -13,8 +13,9 @@ const (
 	maxSceneSize = 32_000.0
 )
 
-func newScene(renderer *sceneRenderer) *Scene {
+func newScene(engine *Engine, renderer *sceneRenderer) *Scene {
 	return &Scene{
+		engine:   engine,
 		renderer: renderer,
 
 		sky: newLegacySky(),
@@ -59,6 +60,7 @@ func newScene(renderer *sceneRenderer) *Scene {
 // Scene represents a collection of 3D render entities
 // that comprise a single visual scene.
 type Scene struct {
+	engine   *Engine
 	renderer *sceneRenderer
 
 	sky *OldSky
@@ -84,6 +86,11 @@ type Scene struct {
 	directionalLightSet  *spatial.DynamicSet[*DirectionalLight]
 
 	activeCamera *Camera
+}
+
+// Engine returns the graphics engine that owns this scene.
+func (s *Scene) Engine() *Engine {
+	return s.engine
 }
 
 // ActiveCamera returns the currently active camera for this scene.

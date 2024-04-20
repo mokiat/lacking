@@ -313,7 +313,7 @@ func (e *Engine) CreateMeshDefinition(info MeshDefinitionInfo) *MeshDefinition {
 // CreateScene creates a new 3D Scene. Entities managed
 // within a given scene are isolated within that scene.
 func (e *Engine) CreateScene() *Scene {
-	return newScene(e.renderer)
+	return newScene(e, e.renderer)
 }
 
 func (e *Engine) createGeometryPassProgram(programCode render.ProgramCode) render.Program {
