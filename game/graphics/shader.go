@@ -6,6 +6,52 @@ import (
 	"github.com/mokiat/lacking/render"
 )
 
+// ShaderConstraints contains the constraints imposed on the shader construction
+// process.
+type ShaderConstraints struct {
+
+	// LoadGeometryPreset specifies whether the shader should load the geometry
+	// preset.
+	LoadGeometryPreset bool
+
+	// LoadSkyPreset specifies whether the shader should load the sky preset.
+	LoadSkyPreset bool
+
+	// HasOutput0 specifies whether the shader has an output for the first
+	// render target.
+	HasOutput0 bool
+
+	// HasOutput1 specifies whether the shader has an output for the second
+	// render target.
+	HasOutput1 bool
+
+	// HasOutput2 specifies whether the shader has an output for the third
+	// render target.
+	HasOutput2 bool
+
+	// HasOutput3 specifies whether the shader has an output for the fourth
+	// render target.
+	HasOutput3 bool
+
+	// HasCoords specifies whether the mesh has coordinates.
+	HasCoords bool
+
+	// HasNormals specifies whether the mesh has normals.
+	HasNormals bool
+
+	// HasTangents specifies whether the mesh has tangents.
+	HasTangents bool
+
+	// HasTexCoords specifies whether the mesh has texture coordinates.
+	HasTexCoords bool
+
+	// HasVertexColors specifies whether the mesh has vertex colors.
+	HasVertexColors bool
+
+	// HasArmature specifies whether the mesh has an armature.
+	HasArmature bool
+}
+
 // GeometryConstraints contains the constraints imposed on the geometry shader
 // construction process.
 type GeometryConstraints struct {
@@ -47,6 +93,9 @@ type SkyConstraints struct {
 // ShaderBuilder abstracts the process of building a shader program. The
 // implementation of this interface will depend on the rendering backend.
 type ShaderBuilder interface {
+
+	// BuildCode creates the program code for a custom shader.
+	BuildCode(constraints ShaderConstraints, shader *lsl.Shader) render.ProgramCode
 
 	// BuildGeometryCode creates the program code for a geometry pass.
 	BuildGeometryCode(constraints GeometryConstraints, shader *lsl.Shader) render.ProgramCode
@@ -115,7 +164,11 @@ type SkyShader struct {
 }
 
 func (s *SkyShader) createProgramCode() render.ProgramCode {
-	return s.builder.BuildSkyCode(SkyConstraints{}, s.ast)
+	return s.builder.BuildCode(ShaderConstraints{
+		LoadSkyPreset: true,
+		HasCoords:     true,
+		HasOutput0:    true,
+	}, s.ast)
 }
 
 ///////////////// OLD CODE FOLLOWS ////////////////////////////
