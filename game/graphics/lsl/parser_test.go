@@ -931,5 +931,21 @@ var _ = Describe("Parser", func() {
 				},
 			},
 		),
+
+		Entry("with discard",
+			`func test() {
+				discard
+				discard // with comment
+			}`,
+			&lsl.FunctionDeclaration{
+				Name:    "test",
+				Inputs:  nil,
+				Outputs: nil,
+				Body: []lsl.Statement{
+					&lsl.Discard{},
+					&lsl.Discard{},
+				},
+			},
+		),
 	)
 })

@@ -480,6 +480,8 @@ func (p *Parser) ParseStatement() (Statement, error) {
 		return p.parseVariableDeclaration()
 	case token.IsSpecificIdentifier("if"):
 		return p.parseConditionalStatement()
+	case token.IsSpecificIdentifier("discard"):
+		return p.parseDiscardStatement()
 	case token.IsIdentifier():
 		return p.parseImperativeStatement()
 	default:
@@ -587,6 +589,17 @@ func (p *Parser) parseConditionalStatement() (*Conditional, error) {
 	}
 
 	return &statement, nil
+}
+
+func (p *Parser) parseDiscardStatement() (*Discard, error) {
+	discardToken := p.nextToken()
+	if !discardToken.IsSpecificIdentifier("discard") {
+		return nil, fmt.Errorf("expected discard keyword")
+	}
+	if err := p.ParseOptionalRemainder(); err != nil {
+		return nil, fmt.Errorf("error parsing end of line: %w", err)
+	}
+	return &Discard{}, nil
 }
 
 func (p *Parser) parseImperativeStatement() (Statement, error) {
