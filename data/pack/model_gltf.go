@@ -7,12 +7,11 @@ import (
 
 	"github.com/mokiat/gomath/dprec"
 	"github.com/mokiat/gomath/sprec"
-	"github.com/mokiat/gomath/stod"
 	"github.com/mokiat/lacking/game/asset/mdl"
 	"github.com/mokiat/lacking/util/gltfutil"
 	"github.com/mokiat/lacking/util/resource"
 	"github.com/qmuntal/gltf"
-	"github.com/qmuntal/gltf/ext/lightspuntual"
+	lightspunctual "github.com/qmuntal/gltf/ext/lightspuntual"
 )
 
 // NOTE: glTF allows a sub-mesh to use totally different
@@ -90,7 +89,7 @@ func BuildModelResource(gltfDoc *gltf.Document) (*Model, error) {
 			Name:                     gltfMaterial.Name,
 			BackfaceCulling:          !gltfMaterial.DoubleSided,
 			AlphaTesting:             gltfMaterial.AlphaMode == gltf.AlphaMask,
-			AlphaThreshold:           gltfMaterial.AlphaCutoffOrDefault(),
+			AlphaThreshold:           float32(gltfMaterial.AlphaCutoffOrDefault()),
 			Blending:                 gltfMaterial.AlphaMode == gltf.AlphaBlend,
 			Color:                    sprec.NewVec4(1.0, 1.0, 1.0, 1.0),
 			ColorTexture:             nil,
@@ -103,8 +102,8 @@ func BuildModelResource(gltfDoc *gltf.Document) (*Model, error) {
 		}
 		if gltfPBR := gltfMaterial.PBRMetallicRoughness; gltfPBR != nil {
 			material.Color = gltfutil.BaseColor(gltfPBR)
-			material.Metallic = gltfPBR.MetallicFactorOrDefault()
-			material.Roughness = gltfPBR.RoughnessFactorOrDefault()
+			material.Metallic = float32(gltfPBR.MetallicFactorOrDefault())
+			material.Roughness = float32(gltfPBR.RoughnessFactorOrDefault())
 			if texIndex := gltfutil.ColorTextureIndex(gltfDoc, gltfPBR); texIndex != nil {
 				material.ColorTexture = &TextureRef{
 					TextureIndex: int(*texIndex),
@@ -264,16 +263,16 @@ func BuildModelResource(gltfDoc *gltf.Document) (*Model, error) {
 	}
 
 	lightDefinitionFromIndex := make(map[uint32]*LightDefinition)
-	if ext, ok := gltfDoc.Extensions[lightspuntual.ExtensionName]; ok {
-		if gltfLights, ok := ext.(lightspuntual.Lights); ok {
+	if ext, ok := gltfDoc.Extensions[lightspunctual.ExtensionName]; ok {
+		if gltfLights, ok := ext.(lightspunctual.Lights); ok {
 			for i, gltfLight := range gltfLights {
 				var lightType LightType
 				switch gltfLight.Type {
-				case lightspuntual.TypePoint:
+				case lightspunctual.TypePoint:
 					lightType = LightTypePoint
-				case lightspuntual.TypeSpot:
+				case lightspunctual.TypeSpot:
 					lightType = LightTypeSpot
-				case lightspuntual.TypeDirectional:
+				case lightspunctual.TypeDirectional:
 					lightType = LightTypeDirectional
 				default:
 					return nil, fmt.Errorf("unsupported light type %q", gltfLight.Type)
@@ -290,7 +289,7 @@ func BuildModelResource(gltfDoc *gltf.Document) (*Model, error) {
 					definition.EmitInnerConeAngle = dprec.Radians(float64(spot.InnerConeAngle))
 					definition.EmitOuterConeAngle = dprec.Radians(float64(spot.OuterConeAngleOrDefault()))
 				}
-				emitColor := stod.Vec3(sprec.ArrayToVec3(gltfLight.ColorOrDefault()))
+				emitColor := dprec.ArrayToVec3(gltfLight.ColorOrDefault())
 				emitColor = dprec.Vec3Prod(emitColor, float64(gltfLight.IntensityOrDefault()))
 				definition.EmitColor = emitColor
 				lightDefinitionFromIndex[uint32(i)] = definition
@@ -314,7 +313,7 @@ func BuildModelResource(gltfDoc *gltf.Document) (*Model, error) {
 		nodeFromIndex[nodeIndex] = node
 
 		if gltfNode.Matrix != gltf.DefaultMatrix {
-			matrix := stod.Mat4(sprec.ColumnMajorArrayToMat4(gltfNode.Matrix))
+			matrix := dprec.ColumnMajorArrayToMat4(gltfNode.Matrix)
 			translation, rotation, scale := matrix.TRS()
 			node.Translation = translation
 			node.Rotation = rotation
@@ -338,8 +337,8 @@ func BuildModelResource(gltfDoc *gltf.Document) (*Model, error) {
 			)
 		}
 
-		if ext, ok := gltfNode.Extensions[lightspuntual.ExtensionName]; ok {
-			if lightIndex, ok := ext.(lightspuntual.LightIndex); ok {
+		if ext, ok := gltfNode.Extensions[lightspunctual.ExtensionName]; ok {
+			if lightIndex, ok := ext.(lightspunctual.LightIndex); ok {
 				lightDefinition := lightDefinitionFromIndex[uint32(lightIndex)]
 				lightInstance := &LightInstance{
 					Name:       gltfNode.Name,

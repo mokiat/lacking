@@ -282,7 +282,7 @@ func PrimitiveMaterial(doc *gltf.Document, primitive *gltf.Primitive) *gltf.Mate
 
 func BaseColor(pbr *gltf.PBRMetallicRoughness) sprec.Vec4 {
 	factor := pbr.BaseColorFactorOrDefault()
-	return sprec.NewVec4(factor[0], factor[1], factor[2], factor[3])
+	return sprec.NewVec4(float32(factor[0]), float32(factor[1]), float32(factor[2]), float32(factor[3]))
 }
 
 func ColorTextureIndex(doc *gltf.Document, pbr *gltf.PBRMetallicRoughness) *uint32 {
@@ -330,9 +330,9 @@ func NormalTextureIndexScale(doc *gltf.Document, material *gltf.Material) (*uint
 	}
 	if normalTexture.Index == nil {
 		logger.Error("Unsupported normal texture: lacks an index!")
-		return nil, normalTexture.ScaleOrDefault()
+		return nil, float32(normalTexture.ScaleOrDefault())
 	}
-	return normalTexture.Index, normalTexture.ScaleOrDefault()
+	return normalTexture.Index, float32(normalTexture.ScaleOrDefault())
 }
 
 func InverseBindMatrix(doc *gltf.Document, skin *gltf.Skin, index int) sprec.Mat4 {
