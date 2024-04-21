@@ -19,7 +19,7 @@ func (s *ResourceSet) convertSkyDefinition(textures []render.Texture, skyShaders
 	}
 
 	promise := async.NewPromise[*graphics.SkyDefinition]()
-	s.gfxWorker.ScheduleVoid(func() {
+	s.gfxWorker.Schedule(func() {
 		gfxEngine := s.engine.Graphics()
 		skyDefinition := gfxEngine.CreateSkyDefinition(skyDefinitionInfo)
 		for _, binding := range assetSky.Textures {

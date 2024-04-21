@@ -11,13 +11,9 @@ import (
 )
 
 func (s *ResourceSet) loadModel(resource *asset.Resource) (*ModelDefinition, error) {
-	var assetModel asset.Model
-	ioTask := func() error {
-		var err error
-		assetModel, err = resource.OpenContent()
-		return err
-	}
-	if err := s.ioWorker.Schedule(ioTask).Wait(); err != nil {
+	assetModelPromise := s.openResource(resource)
+	assetModel, err := assetModelPromise.Wait()
+	if err != nil {
 		return nil, fmt.Errorf("failed to read asset: %w", err)
 	}
 	return s.convertModel(assetModel)
@@ -30,6 +26,19 @@ func (s *ResourceSet) freeModel(model *ModelDefinition) {
 	}
 	model.textures = nil
 	panic("TODO") // TODO: Free other resources
+}
+
+func (s *ResourceSet) openResource(resource *asset.Resource) async.Promise[asset.Model] {
+	promise := async.NewPromise[asset.Model]()
+	s.ioWorker.Schedule(func() {
+		assetModel, err := resource.OpenContent()
+		if err != nil {
+			promise.Fail(err)
+		} else {
+			promise.Deliver(assetModel)
+		}
+	})
+	return promise
 }
 
 func (s *ResourceSet) convertModel(assetModel asset.Model) (*ModelDefinition, error) {

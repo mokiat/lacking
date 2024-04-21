@@ -49,7 +49,7 @@ func (s *ResourceSet) convertAnimation(assetAnimation asset.Animation) async.Pro
 	}
 
 	promise := async.NewPromise[*AnimationDefinition]()
-	s.gfxWorker.ScheduleVoid(func() {
+	s.gfxWorker.Schedule(func() {
 		animation := s.engine.CreateAnimationDefinition(AnimationDefinitionInfo{
 			Name:      assetAnimation.Name,
 			StartTime: assetAnimation.StartTime,

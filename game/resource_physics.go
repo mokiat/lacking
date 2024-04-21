@@ -14,7 +14,7 @@ func (s *ResourceSet) convertBodyMaterial(assetBodyMaterial asset.BodyMaterial) 
 		RestitutionCoefficient: assetBodyMaterial.RestitutionCoefficient,
 	}
 	promise := async.NewPromise[*physics.Material]()
-	s.gfxWorker.ScheduleVoid(func() {
+	s.gfxWorker.Schedule(func() {
 		physicsEngine := s.engine.Physics()
 		material := physicsEngine.CreateMaterial(materialInfo)
 		promise.Deliver(material)
@@ -39,7 +39,7 @@ func (s *ResourceSet) convertBodyDefinition(bodyMaterials []*physics.Material, a
 	}
 
 	promise := async.NewPromise[*physics.BodyDefinition]()
-	s.gfxWorker.ScheduleVoid(func() {
+	s.gfxWorker.Schedule(func() {
 		physicsEngine := s.engine.Physics()
 		bodyDefinition := physicsEngine.CreateBodyDefinition(bodyDefinitionInfo)
 		promise.Deliver(bodyDefinition)

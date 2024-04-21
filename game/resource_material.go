@@ -52,7 +52,7 @@ func (s *ResourceSet) convertMaterial(
 	}
 
 	promise := async.NewPromise[*graphics.Material]()
-	s.gfxWorker.ScheduleVoid(func() {
+	s.gfxWorker.Schedule(func() {
 		gfxEngine := s.engine.Graphics()
 		material := gfxEngine.CreateMaterial(materialInfo)
 		for _, binding := range assetMaterial.Textures {

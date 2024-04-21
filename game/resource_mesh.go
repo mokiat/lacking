@@ -35,7 +35,7 @@ func (s *ResourceSet) convertMeshGeometry(assetGeometry asset.Geometry) async.Pr
 	}
 
 	promise := async.NewPromise[*graphics.MeshGeometry]()
-	s.gfxWorker.ScheduleVoid(func() {
+	s.gfxWorker.Schedule(func() {
 		gfxEngine := s.engine.Graphics()
 		meshGeometry := gfxEngine.CreateMeshGeometry(meshGeometryInfo)
 		promise.Deliver(meshGeometry)
@@ -55,7 +55,7 @@ func (s *ResourceSet) convertMeshDefinition(geometris []*graphics.MeshGeometry, 
 	}
 
 	promise := async.NewPromise[*graphics.MeshDefinition]()
-	s.gfxWorker.ScheduleVoid(func() {
+	s.gfxWorker.Schedule(func() {
 		gfxEngine := s.engine.Graphics()
 		meshDefinition := gfxEngine.CreateMeshDefinition(meshDefinitionInfo)
 		promise.Deliver(meshDefinition)
