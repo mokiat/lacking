@@ -3,8 +3,8 @@ package game
 import (
 	"fmt"
 
+	"github.com/mokiat/lacking/game/asset"
 	"github.com/mokiat/lacking/game/graphics"
-	asset "github.com/mokiat/lacking/game/newasset"
 	"github.com/mokiat/lacking/game/physics"
 	"github.com/mokiat/lacking/render"
 	"github.com/mokiat/lacking/util/async"

@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/mokiat/gomath/dprec"
-	"github.com/mokiat/lacking/game/newasset/mdl"
+	"github.com/mokiat/lacking/game/asset/mdl"
 )
 
 // SetTranslation sets the translation of the target.

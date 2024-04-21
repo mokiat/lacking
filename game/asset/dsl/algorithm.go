@@ -4,8 +4,8 @@ import (
 	"fmt"
 
 	"github.com/mokiat/lacking/debug/log"
-	asset "github.com/mokiat/lacking/game/newasset"
-	"github.com/mokiat/lacking/game/newasset/mdl"
+	"github.com/mokiat/lacking/game/asset"
+	"github.com/mokiat/lacking/game/asset/mdl"
 	"golang.org/x/sync/errgroup"
 )
 

@@ -10,7 +10,7 @@ import (
 	"github.com/mokiat/gomath/stod"
 	"github.com/x448/float16"
 
-	asset "github.com/mokiat/lacking/game/newasset"
+	"github.com/mokiat/lacking/game/asset"
 )
 
 type SaveModelAssetOption func(a *SaveModelAssetAction)

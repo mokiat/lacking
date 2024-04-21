@@ -5,9 +5,9 @@ import (
 
 	"github.com/mokiat/lacking/app"
 	"github.com/mokiat/lacking/debug/metric"
+	"github.com/mokiat/lacking/game/asset"
 	"github.com/mokiat/lacking/game/ecs"
 	"github.com/mokiat/lacking/game/graphics"
-	asset "github.com/mokiat/lacking/game/newasset"
 	"github.com/mokiat/lacking/game/physics"
 	"github.com/mokiat/lacking/util/async"
 )

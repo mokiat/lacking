@@ -3,7 +3,7 @@ package mdl
 import (
 	"fmt"
 
-	asset "github.com/mokiat/lacking/game/newasset"
+	"github.com/mokiat/lacking/game/asset"
 )
 
 const (

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"runtime/debug"
 
-	asset "github.com/mokiat/lacking/game/newasset"
+	"github.com/mokiat/lacking/game/asset"
 	"github.com/mokiat/lacking/util/resource"
 	"golang.org/x/sync/errgroup"
 )

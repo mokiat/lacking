@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/mokiat/gog/opt"
-	"github.com/mokiat/lacking/game/newasset/mdl"
+	"github.com/mokiat/lacking/game/asset/mdl"
 )
 
 // CreateCubeTexture creates a new cube texture with the specified format and

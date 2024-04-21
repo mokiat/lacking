@@ -3,7 +3,7 @@ package dsl
 import (
 	"fmt"
 
-	"github.com/mokiat/lacking/game/newasset/mdl"
+	"github.com/mokiat/lacking/game/asset/mdl"
 )
 
 // AddNode adds the specified node to the target node container.

@@ -2,7 +2,7 @@ package game
 
 import (
 	"github.com/mokiat/gomath/dprec"
-	asset "github.com/mokiat/lacking/game/newasset"
+	"github.com/mokiat/lacking/game/asset"
 	"github.com/mokiat/lacking/game/physics"
 	"github.com/mokiat/lacking/game/physics/collision"
 	"github.com/mokiat/lacking/util/async"

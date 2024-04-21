@@ -1,6 +1,6 @@
 package mdl
 
-import asset "github.com/mokiat/lacking/game/newasset"
+import "github.com/mokiat/lacking/game/asset"
 
 const (
 	WrapModeClamp          WrapMode = asset.WrapModeClamp

@@ -2,7 +2,7 @@ package dsl
 
 import (
 	"github.com/mokiat/gomath/dprec"
-	"github.com/mokiat/lacking/game/newasset/mdl"
+	"github.com/mokiat/lacking/game/asset/mdl"
 )
 
 // CreateNode creates a new node with the specified name and operations.

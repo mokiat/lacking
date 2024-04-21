@@ -6,7 +6,7 @@ import (
 
 	"github.com/mokiat/gog/opt"
 
-	"github.com/mokiat/lacking/game/newasset/mdl"
+	"github.com/mokiat/lacking/game/asset/mdl"
 )
 
 // OpenImage opens an image file from the provided path.
