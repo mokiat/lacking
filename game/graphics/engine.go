@@ -191,12 +191,12 @@ func (e *Engine) CreateMaterial(info MaterialInfo) *Material {
 // info object.
 func (e *Engine) CreateMeshGeometry(info MeshGeometryInfo) *MeshGeometry {
 	vertexBuffers := make([]render.Buffer, len(info.VertexBuffers))
-	for _, bufferInfo := range info.VertexBuffers {
+	for i, bufferInfo := range info.VertexBuffers {
 		vertexBuffer := e.api.CreateVertexBuffer(render.BufferInfo{
 			Dynamic: false,
 			Data:    bufferInfo.Data,
 		})
-		vertexBuffers = append(vertexBuffers, vertexBuffer)
+		vertexBuffers[i] = vertexBuffer
 	}
 	indexBuffer := e.api.CreateIndexBuffer(render.BufferInfo{
 		Dynamic: false,
