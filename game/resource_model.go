@@ -20,12 +20,26 @@ func (s *ResourceSet) loadModel(resource *asset.Resource) (*ModelDefinition, err
 }
 
 func (s *ResourceSet) freeModel(model *ModelDefinition) {
-	// TODO: Run on GPU tread
-	for _, texture := range model.textures {
-		texture.Release()
-	}
-	model.textures = nil
-	panic("TODO") // TODO: Free other resources
+	s.gfxWorker.Schedule(func() {
+		for _, skyDefinition := range model.skyDefinitions {
+			skyDefinition.Delete()
+		}
+	})
+	s.gfxWorker.Schedule(func() {
+		for _, meshDefinition := range model.meshDefinitions {
+			meshDefinition.Delete()
+		}
+	})
+	s.gfxWorker.Schedule(func() {
+		for _, meshGeometry := range model.meshGeometries {
+			meshGeometry.Delete()
+		}
+	})
+	s.gfxWorker.Schedule(func() {
+		for _, texture := range model.textures {
+			texture.Release()
+		}
+	})
 }
 
 func (s *ResourceSet) openResource(resource *asset.Resource) async.Promise[asset.Model] {
