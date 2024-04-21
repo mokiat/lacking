@@ -86,6 +86,26 @@ func (r *Registry) CreateResource(name string, content Model) (*Resource, error)
 	return result, nil
 }
 
+// CreateResource creates a new resource with the specified name.
+//
+// Deprecated: Use only until new DSL approach is ready.
+func (r *Registry) CreateResourceWithID(id, name string, content Model) (*Resource, error) {
+	result := &Resource{
+		registry: r,
+		id:       id,
+		name:     name,
+		preview:  nil,
+	}
+	r.resources = append(r.resources, result)
+	if err := r.save(); err != nil {
+		return nil, fmt.Errorf("failed to save registry: %w", err)
+	}
+	if err := r.saveContent(result.id, content); err != nil {
+		return nil, fmt.Errorf("failed to save content: %w", err)
+	}
+	return result, nil
+}
+
 func (r *Registry) dependenciesOf(targetID string) []fsDependency {
 	return gog.Select(r.dependencies, func(dep fsDependency) bool {
 		return dep.TargetID == targetID

@@ -3,14 +3,12 @@ package game
 import (
 	"time"
 
-	"github.com/mokiat/gog"
 	"github.com/mokiat/gog/ds"
 	"github.com/mokiat/gomath/dprec"
 	"github.com/mokiat/lacking/debug/metric"
 	"github.com/mokiat/lacking/game/ecs"
 	"github.com/mokiat/lacking/game/graphics"
 	"github.com/mokiat/lacking/game/hierarchy"
-	asset "github.com/mokiat/lacking/game/newasset"
 	"github.com/mokiat/lacking/game/physics"
 	"github.com/mokiat/lacking/game/physics/collision"
 	"github.com/mokiat/lacking/game/timestep"
@@ -165,13 +163,12 @@ func (s *Scene) CreateNode() *hierarchy.Node {
 func (s *Scene) CreateAmbientLight(info AmbientLightInfo) *hierarchy.Node {
 	node := s.CreateNode()
 	s.placeAmbientLight(placementData{
-		Nodes:    []*hierarchy.Node{node},
-		Textures: []render.Texture{info.ReflectionTexture, info.RefractionTexture},
-	}, asset.AmbientLight{
-		NodeIndex:              0,
-		ReflectionTextureIndex: 0,
-		RefractionTextureIndex: 1,
-		CastShadow:             info.CastShadow.ValueOrDefault(false),
+		Nodes: []*hierarchy.Node{node},
+	}, ambientLightInstance{
+		nodeIndex:         0,
+		reflectionTexture: info.ReflectionTexture,
+		refractionTexture: info.RefractionTexture,
+		castShadow:        info.CastShadow.ValueOrDefault(false),
 	})
 	return node
 }
@@ -182,11 +179,11 @@ func (s *Scene) CreatePointLight(info PointLightInfo) *hierarchy.Node {
 	node := s.CreateNode()
 	s.placePointLight(placementData{
 		Nodes: []*hierarchy.Node{node},
-	}, asset.PointLight{
-		NodeIndex:    0,
-		EmitColor:    info.EmitColor.ValueOrDefault(dprec.NewVec3(10.0, 0.0, 10.0)),
-		EmitDistance: info.EmitDistance.ValueOrDefault(20.0),
-		CastShadow:   info.CastShadow.ValueOrDefault(false),
+	}, pointLightInstance{
+		nodeIndex:    0,
+		emitColor:    info.EmitColor.ValueOrDefault(dprec.NewVec3(10.0, 0.0, 10.0)),
+		emitDistance: info.EmitDistance.ValueOrDefault(20.0),
+		castShadow:   info.CastShadow.ValueOrDefault(false),
 	})
 	return node
 }
@@ -197,13 +194,13 @@ func (s *Scene) CreateSpotLight(info SpotLightInfo) *hierarchy.Node {
 	node := s.CreateNode()
 	s.placeSpotLight(placementData{
 		Nodes: []*hierarchy.Node{node},
-	}, asset.SpotLight{
-		NodeIndex:      0,
-		EmitColor:      info.EmitColor.ValueOrDefault(dprec.NewVec3(10.0, 0.0, 10.0)),
-		EmitDistance:   info.EmitDistance.ValueOrDefault(20.0),
-		EmitAngleOuter: info.EmitOuterConeAngle.ValueOrDefault(dprec.Degrees(60)),
-		EmitAngleInner: info.EmitInnerConeAngle.ValueOrDefault(dprec.Degrees(30)),
-		CastShadow:     info.CastShadow.ValueOrDefault(false),
+	}, spotLightInstance{
+		nodeIndex:      0,
+		emitColor:      info.EmitColor.ValueOrDefault(dprec.NewVec3(10.0, 0.0, 10.0)),
+		emitDistance:   info.EmitDistance.ValueOrDefault(20.0),
+		emitAngleOuter: info.EmitOuterConeAngle.ValueOrDefault(dprec.Degrees(60)),
+		emitAngleInner: info.EmitInnerConeAngle.ValueOrDefault(dprec.Degrees(30)),
+		castShadow:     info.CastShadow.ValueOrDefault(false),
 	})
 	return node
 }
@@ -214,62 +211,12 @@ func (s *Scene) CreateDirectionalLight(info DirectionalLightInfo) *hierarchy.Nod
 	node := s.CreateNode()
 	s.placeDirectionalLight(placementData{
 		Nodes: []*hierarchy.Node{node},
-	}, asset.DirectionalLight{
-		NodeIndex:  0,
-		EmitColor:  info.EmitColor.ValueOrDefault(dprec.NewVec3(10.0, 0.0, 10.0)),
-		CastShadow: info.CastShadow.ValueOrDefault(false),
+	}, directionalLightInstance{
+		nodeIndex:  0,
+		emitColor:  info.EmitColor.ValueOrDefault(dprec.NewVec3(10.0, 0.0, 10.0)),
+		castShadow: info.CastShadow.ValueOrDefault(false),
 	})
 	return node
-}
-
-// TODO: Rename to CreateModel
-func (s *Scene) CreateScene(def SceneDefinition2) *hierarchy.Node {
-	node := s.CreateNode()
-	s.placeModel(node, def)
-	return node
-}
-
-func (s *Scene) placeModel(target *hierarchy.Node, def SceneDefinition2) {
-	nodeByIndex := gog.Map(def.Nodes, func(nodeDef asset.Node) *hierarchy.Node {
-		// TODO: Handle mask flags
-		node := hierarchy.NewNode()
-		node.SetName(nodeDef.Name)
-		node.SetPosition(nodeDef.Translation)
-		node.SetRotation(nodeDef.Rotation)
-		node.SetScale(nodeDef.Scale)
-		return node
-	})
-	for i, nodeDef := range def.Nodes {
-		node := nodeByIndex[i]
-		if nodeDef.ParentIndex >= 0 {
-			parent := nodeByIndex[nodeDef.ParentIndex]
-			parent.AppendChild(node)
-		} else {
-			target.AppendChild(node)
-		}
-	}
-
-	pData := placementData{
-		Nodes:          nodeByIndex,
-		SkyDefinitions: def.SkyDefinitions,
-		Textures:       def.Textures,
-	}
-
-	for _, lightDef := range def.AmbientLights {
-		s.placeAmbientLight(pData, lightDef)
-	}
-	for _, lightDef := range def.PointLights {
-		s.placePointLight(pData, lightDef)
-	}
-	for _, lightDef := range def.SpotLights {
-		s.placeSpotLight(pData, lightDef)
-	}
-	for _, lightDef := range def.DirectionalLights {
-		s.placeDirectionalLight(pData, lightDef)
-	}
-	for _, skyDef := range def.Skies {
-		s.placeSky(pData, skyDef)
-	}
 }
 
 // Update advances the scene by the provided time.
@@ -312,7 +259,7 @@ func (s *Scene) CreateAnimation(info AnimationInfo) *Animation {
 	def := info.Definition
 	bindings := make([]animationBinding, len(def.bindings))
 	for i, bindingDef := range def.bindings {
-		target := info.Model.root.FindNode(bindingDef.NodeName)
+		target := info.Root.FindNode(bindingDef.NodeName)
 		if target == nil {
 			logger.Warn("Animation cannot find target node (%q)!", bindingDef.NodeName)
 		}
@@ -330,6 +277,7 @@ func (s *Scene) CreateAnimation(info AnimationInfo) *Animation {
 	}
 }
 
+// TODO: Return the node instead and have the Model be a target?
 func (s *Scene) CreateModel(info ModelInfo) *Model {
 	modelNode := hierarchy.NewNode()
 	modelNode.SetName(info.Name)
@@ -357,8 +305,67 @@ func (s *Scene) CreateModel(info ModelInfo) *Model {
 		parent.AppendChild(nodes[i])
 	}
 
+	animations := make([]*Animation, len(definition.animations))
+	for i, animationDef := range definition.animations {
+		animations[i] = s.CreateAnimation(AnimationInfo{
+			Root:       modelNode,
+			Definition: animationDef,
+		})
+	}
+
+	armatures := make([]*graphics.Armature, len(definition.armatures))
+	for i, instance := range definition.armatures {
+		armature := s.gfxScene.CreateArmature(graphics.ArmatureInfo{
+			InverseMatrices: instance.InverseBindMatrices(),
+		})
+		for j, joint := range instance.Joints {
+			var jointNode *hierarchy.Node
+			if joint.NodeIndex >= 0 {
+				jointNode = nodes[joint.NodeIndex]
+			} else {
+				jointNode = modelNode
+			}
+			jointNode.SetTarget(BoneNodeTarget{
+				Armature:  armature,
+				BoneIndex: j,
+			})
+		}
+		armatures[i] = armature
+	}
+
+	// TODO: Track mesh instances?
+	for _, instance := range definition.meshes {
+		var meshNode *hierarchy.Node
+		if instance.NodeIndex >= 0 {
+			meshNode = nodes[instance.NodeIndex]
+		} else {
+			meshNode = modelNode
+		}
+		var armature *graphics.Armature
+		if instance.ArmatureIndex >= 0 {
+			armature = armatures[instance.ArmatureIndex]
+		}
+		meshDefinition := definition.meshDefinitions[instance.DefinitionIndex]
+
+		// TODO: Base this on node flags
+		if info.IsDynamic {
+			mesh := s.gfxScene.CreateMesh(graphics.MeshInfo{
+				Definition: meshDefinition,
+				Armature:   armature,
+			})
+			meshNode.SetTarget(MeshNodeTarget{
+				Mesh: mesh,
+			})
+		} else {
+			s.gfxScene.CreateStaticMesh(graphics.StaticMeshInfo{
+				Definition: meshDefinition,
+				Matrix:     meshNode.AbsoluteMatrix(),
+			})
+		}
+	}
+
 	var bodyInstances []physics.Body
-	for _, instance := range definition.bodyInstances {
+	for _, instance := range definition.bodies {
 		var bodyNode *hierarchy.Node
 		if instance.NodeIndex >= 0 {
 			bodyNode = nodes[instance.NodeIndex]
@@ -389,69 +396,32 @@ func (s *Scene) CreateModel(info ModelInfo) *Model {
 		}
 	}
 
-	for _, instance := range definition.pointLightInstances {
+	for _, instance := range definition.ambientLights {
+		s.placeAmbientLight(placementData{
+			Nodes:    nodes,
+			Textures: definition.textures,
+		}, instance)
+	}
+	for _, instance := range definition.pointLights {
 		s.placePointLight(placementData{
 			Nodes: nodes,
 		}, instance)
 	}
-	for _, instance := range definition.spotLightInstances {
+	for _, instance := range definition.spotLights {
 		s.placeSpotLight(placementData{
 			Nodes: nodes,
 		}, instance)
 	}
-	for _, instance := range definition.directionalLightInstances {
+	for _, instance := range definition.directionalLights {
 		s.placeDirectionalLight(placementData{
 			Nodes: nodes,
 		}, instance)
 	}
-
-	armatures := make([]*graphics.Armature, len(definition.armatures))
-	for i, instance := range definition.armatures {
-		armature := s.gfxScene.CreateArmature(graphics.ArmatureInfo{
-			InverseMatrices: instance.InverseBindMatrices(),
-		})
-		for j, joint := range instance.Joints {
-			var jointNode *hierarchy.Node
-			if joint.NodeIndex >= 0 {
-				jointNode = nodes[joint.NodeIndex]
-			} else {
-				jointNode = modelNode
-			}
-			jointNode.SetTarget(BoneNodeTarget{
-				Armature:  armature,
-				BoneIndex: j,
-			})
-		}
-		armatures[i] = armature
-	}
-
-	for _, instance := range definition.meshInstances {
-		var meshNode *hierarchy.Node
-		if instance.NodeIndex >= 0 {
-			meshNode = nodes[instance.NodeIndex]
-		} else {
-			meshNode = modelNode
-		}
-		var armature *graphics.Armature
-		if instance.ArmatureIndex >= 0 {
-			armature = armatures[instance.ArmatureIndex]
-		}
-		meshDefinition := definition.meshDefinitions[instance.DefinitionIndex]
-
-		if info.IsDynamic {
-			mesh := s.gfxScene.CreateMesh(graphics.MeshInfo{
-				Definition: meshDefinition,
-				Armature:   armature,
-			})
-			meshNode.SetTarget(MeshNodeTarget{
-				Mesh: mesh,
-			})
-		} else {
-			s.gfxScene.CreateStaticMesh(graphics.StaticMeshInfo{
-				Definition: meshDefinition,
-				Matrix:     meshNode.AbsoluteMatrix(),
-			})
-		}
+	for _, instance := range definition.skies {
+		s.placeSky(placementData{
+			Nodes:          nodes,
+			SkyDefinitions: definition.skyDefinitions,
+		}, instance)
 	}
 
 	if info.IsDynamic {
@@ -460,24 +430,14 @@ func (s *Scene) CreateModel(info ModelInfo) *Model {
 	modelNode.ApplyFromSource(true)
 	modelNode.ApplyToTarget(true)
 
-	result := &Model{
+	return &Model{
 		definition:    definition,
 		root:          modelNode,
 		bodyInstances: bodyInstances,
 		nodes:         nodes,
 		armatures:     armatures,
+		animations:    animations,
 	}
-	if info.PrepareAnimations {
-		animations := make([]*Animation, len(definition.animations))
-		for i, animationDef := range definition.animations {
-			animations[i] = s.CreateAnimation(AnimationInfo{
-				Model:      result,
-				Definition: animationDef,
-			})
-		}
-		result.animations = animations
-	}
-	return result
 }
 
 func (s *Scene) PlayAnimation(animation *Animation) *Playback {
@@ -566,17 +526,15 @@ func (s *Scene) applyPlaybacks(elapsedTime time.Duration) {
 	}
 }
 
-func (s *Scene) placeAmbientLight(data placementData, def asset.AmbientLight) {
-	node := data.Nodes[def.NodeIndex]
-	reflectionTexture := data.Textures[def.ReflectionTextureIndex]
-	refractionTexture := data.Textures[def.RefractionTextureIndex]
+func (s *Scene) placeAmbientLight(data placementData, instance ambientLightInstance) {
+	node := data.Nodes[instance.nodeIndex]
 	light := s.gfxScene.CreateAmbientLight(graphics.AmbientLightInfo{
 		Position:          dprec.ZeroVec3(),
 		InnerRadius:       25000.0,
 		OuterRadius:       25000.0,
-		ReflectionTexture: reflectionTexture,
-		RefractionTexture: refractionTexture,
-		CastShadow:        def.CastShadow,
+		ReflectionTexture: instance.reflectionTexture,
+		RefractionTexture: instance.refractionTexture,
+		CastShadow:        instance.castShadow,
 	})
 	node.SetTarget(AmbientLightNodeTarget{
 		Light: light,
@@ -584,13 +542,13 @@ func (s *Scene) placeAmbientLight(data placementData, def asset.AmbientLight) {
 	node.ApplyToTarget(false)
 }
 
-func (s *Scene) placePointLight(data placementData, def asset.PointLight) {
-	node := data.Nodes[def.NodeIndex]
+func (s *Scene) placePointLight(data placementData, instance pointLightInstance) {
+	node := data.Nodes[instance.nodeIndex]
 	light := s.gfxScene.CreatePointLight(graphics.PointLightInfo{
 		Position:   dprec.ZeroVec3(),
-		EmitColor:  def.EmitColor,
-		EmitRange:  def.EmitDistance,
-		CastShadow: def.CastShadow,
+		EmitColor:  instance.emitColor,
+		EmitRange:  instance.emitDistance,
+		CastShadow: instance.castShadow,
 	})
 	node.SetTarget(PointLightNodeTarget{
 		Light: light,
@@ -598,16 +556,16 @@ func (s *Scene) placePointLight(data placementData, def asset.PointLight) {
 	node.ApplyToTarget(false)
 }
 
-func (s *Scene) placeSpotLight(data placementData, def asset.SpotLight) {
-	node := data.Nodes[def.NodeIndex]
+func (s *Scene) placeSpotLight(data placementData, instance spotLightInstance) {
+	node := data.Nodes[instance.nodeIndex]
 	light := s.gfxScene.CreateSpotLight(graphics.SpotLightInfo{
 		Position:           dprec.ZeroVec3(),
 		Rotation:           dprec.IdentityQuat(),
-		EmitColor:          def.EmitColor,
-		EmitRange:          def.EmitDistance,
-		EmitOuterConeAngle: def.EmitAngleOuter,
-		EmitInnerConeAngle: def.EmitAngleInner,
-		CastShadow:         def.CastShadow,
+		EmitColor:          instance.emitColor,
+		EmitRange:          instance.emitDistance,
+		EmitOuterConeAngle: instance.emitAngleOuter,
+		EmitInnerConeAngle: instance.emitAngleInner,
+		CastShadow:         instance.castShadow,
 	})
 	node.SetTarget(SpotLightNodeTarget{
 		Light: light,
@@ -615,14 +573,14 @@ func (s *Scene) placeSpotLight(data placementData, def asset.SpotLight) {
 	node.ApplyToTarget(false)
 }
 
-func (s *Scene) placeDirectionalLight(data placementData, def asset.DirectionalLight) {
-	node := data.Nodes[def.NodeIndex]
+func (s *Scene) placeDirectionalLight(data placementData, instance directionalLightInstance) {
+	node := data.Nodes[instance.nodeIndex]
 	light := s.gfxScene.CreateDirectionalLight(graphics.DirectionalLightInfo{
 		Position:   dprec.ZeroVec3(),
 		Rotation:   dprec.IdentityQuat(),
-		EmitColor:  def.EmitColor,
+		EmitColor:  instance.emitColor,
 		EmitRange:  25000.0,
-		CastShadow: def.CastShadow,
+		CastShadow: instance.castShadow,
 	})
 	node.SetTarget(DirectionalLightNodeTarget{
 		Light: light,
@@ -630,10 +588,10 @@ func (s *Scene) placeDirectionalLight(data placementData, def asset.DirectionalL
 	node.ApplyToTarget(false)
 }
 
-func (s *Scene) placeSky(data placementData, inst modelSkyInstance) {
-	node := data.Nodes[inst.NodeIndex]
+func (s *Scene) placeSky(data placementData, instance skyInstance) {
+	node := data.Nodes[instance.nodeIndex]
 	sky := s.gfxScene.CreateSky(graphics.SkyInfo{
-		Definition: data.SkyDefinitions[inst.SkyDefinitionIndex],
+		Definition: data.SkyDefinitions[instance.definitionIndex],
 	})
 	node.SetTarget(SkyNodeTarget{
 		Sky: sky,

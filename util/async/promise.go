@@ -1,5 +1,7 @@
 package async
 
+import "errors"
+
 func NewDeliveredPromise[T any](value T) Promise[T] {
 	result := NewPromise[T]()
 	result.Deliver(value)
@@ -88,4 +90,18 @@ func (p Promise[T]) OnError(cb func(err error)) Promise[T] {
 type promiseOutcome[T any] struct {
 	value T
 	err   error
+}
+
+func WaitPromises[T any](promises ...Promise[T]) ([]T, error) {
+	var errs []error
+	results := make([]T, len(promises))
+	for i, promise := range promises {
+		result, err := promise.Wait()
+		if err != nil {
+			errs = append(errs, err)
+		} else {
+			results[i] = result
+		}
+	}
+	return results, errors.Join(errs...)
 }

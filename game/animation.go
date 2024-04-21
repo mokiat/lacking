@@ -29,7 +29,7 @@ type AnimationDefinition struct {
 }
 
 type AnimationInfo struct {
-	Model      *Model
+	Root       *hierarchy.Node
 	Definition *AnimationDefinition
 }
 
