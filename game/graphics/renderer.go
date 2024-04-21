@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/mokiat/gblob"
+	"github.com/mokiat/gog/ds"
 	"github.com/mokiat/gomath/dprec"
 	"github.com/mokiat/gomath/dtos"
 	"github.com/mokiat/gomath/sprec"
@@ -895,8 +896,8 @@ func (r *sceneRenderer) renderForwardPass(ctx renderCtx) {
 		},
 	})
 
-	if !ctx.scene.skies.IsEmpty() {
-		r.renderSky(ctx.scene.skies.Get(0))
+	if sky := r.findActiveSky(ctx.scene.skies); sky != nil {
+		r.renderSky(sky)
 	}
 
 	if len(r.debugLines) > 0 {
@@ -933,6 +934,15 @@ func (r *sceneRenderer) renderForwardPass(ctx renderCtx) {
 	}
 	r.renderMeshRenderItems(meshCtx, r.renderItems)
 	commandBuffer.EndRenderPass()
+}
+
+func (r *sceneRenderer) findActiveSky(skies *ds.List[*Sky]) *Sky {
+	for _, sky := range skies.Unbox() {
+		if sky.Active() {
+			return sky
+		}
+	}
+	return nil
 }
 
 func (r *sceneRenderer) renderSky(sky *Sky) {
