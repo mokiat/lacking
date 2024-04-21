@@ -3,8 +3,8 @@ package game
 import (
 	"github.com/mokiat/gog"
 	"github.com/mokiat/gog/opt"
+	"github.com/mokiat/lacking/game/asset"
 	"github.com/mokiat/lacking/game/graphics"
-	asset "github.com/mokiat/lacking/game/newasset"
 	"github.com/mokiat/lacking/render"
 	"github.com/mokiat/lacking/util/async"
 )

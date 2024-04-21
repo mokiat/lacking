@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 
-	asset "github.com/mokiat/lacking/game/newasset"
+	"github.com/mokiat/lacking/game/asset"
 	"github.com/mokiat/lacking/render"
 	"github.com/mokiat/lacking/util/async"
 	"golang.org/x/exp/maps"

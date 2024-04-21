@@ -3,9 +3,9 @@ package game
 import (
 	"time"
 
+	"github.com/mokiat/lacking/game/asset"
 	"github.com/mokiat/lacking/game/ecs"
 	"github.com/mokiat/lacking/game/graphics"
-	asset "github.com/mokiat/lacking/game/newasset"
 	"github.com/mokiat/lacking/game/physics"
 )
 

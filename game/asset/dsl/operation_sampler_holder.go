@@ -3,7 +3,7 @@ package dsl
 import (
 	"fmt"
 
-	"github.com/mokiat/lacking/game/newasset/mdl"
+	"github.com/mokiat/lacking/game/asset/mdl"
 )
 
 // SetSampler sets the sampler of the target.

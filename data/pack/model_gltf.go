@@ -8,7 +8,7 @@ import (
 	"github.com/mokiat/gomath/dprec"
 	"github.com/mokiat/gomath/sprec"
 	"github.com/mokiat/gomath/stod"
-	"github.com/mokiat/lacking/game/newasset/mdl"
+	"github.com/mokiat/lacking/game/asset/mdl"
 	"github.com/mokiat/lacking/util/gltfutil"
 	"github.com/mokiat/lacking/util/resource"
 	"github.com/qmuntal/gltf"

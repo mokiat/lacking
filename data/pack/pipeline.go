@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	asset "github.com/mokiat/lacking/game/newasset"
+	"github.com/mokiat/lacking/game/asset"
 	"github.com/mokiat/lacking/util/resource"
 )
 

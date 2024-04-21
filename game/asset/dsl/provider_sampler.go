@@ -3,7 +3,7 @@ package dsl
 import (
 	"fmt"
 
-	"github.com/mokiat/lacking/game/newasset/mdl"
+	"github.com/mokiat/lacking/game/asset/mdl"
 )
 
 // CreateSampler creates a new sampler with the provided texture and operations.

@@ -7,8 +7,8 @@ import (
 	"github.com/mokiat/gblob"
 	"github.com/mokiat/gog"
 	"github.com/mokiat/gomath/sprec"
+	"github.com/mokiat/lacking/game/asset"
 	"github.com/mokiat/lacking/game/graphics/lsl"
-	asset "github.com/mokiat/lacking/game/newasset"
 )
 
 func NewConverter(model *Model) *Converter {
