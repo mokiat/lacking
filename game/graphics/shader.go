@@ -105,9 +105,6 @@ type ShaderBuilder interface {
 
 	// BuildForwardCode creates the program code for a shadow pass.
 	BuildForwardCode(constraints ForwardConstraints, shader *lsl.Shader) render.ProgramCode
-
-	// BuildSkyCode creates the program code for a sky pass.
-	BuildSkyCode(constraints SkyConstraints, shader *lsl.Shader) render.ProgramCode
 }
 
 // ShaderInfo contains the information needed to create a custom Shader.
@@ -178,9 +175,6 @@ type ShaderCollection struct {
 	PointLightSet       func() render.ProgramCode
 	SpotLightSet        func() render.ProgramCode
 	DirectionalLightSet func() render.ProgramCode
-
-	SkyboxSet   func() render.ProgramCode
-	SkycolorSet func() render.ProgramCode
 
 	DebugSet func() render.ProgramCode
 

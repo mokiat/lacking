@@ -18,8 +18,6 @@ func newScene(engine *Engine, renderer *sceneRenderer) *Scene {
 		engine:   engine,
 		renderer: renderer,
 
-		sky: newLegacySky(),
-
 		skies: ds.NewList[*Sky](1),
 
 		staticMeshOctree: spatial.NewStaticOctree[uint32](spatial.StaticOctreeSettings{
@@ -63,8 +61,6 @@ type Scene struct {
 	engine   *Engine
 	renderer *sceneRenderer
 
-	sky *OldSky
-
 	skies *ds.List[*Sky]
 
 	staticMeshes     []StaticMesh
@@ -101,13 +97,6 @@ func (s *Scene) ActiveCamera() *Camera {
 // SetActiveCamera changes the active camera for this scene.
 func (s *Scene) SetActiveCamera(camera *Camera) {
 	s.activeCamera = camera
-}
-
-// Sky returns this scene's sky object.
-// You can use the Sky object to control the
-// background appearance.
-func (s *Scene) Sky() *OldSky {
-	return s.sky
 }
 
 // CreateCamera creates a new camera object to be

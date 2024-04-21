@@ -10,8 +10,6 @@ const (
 	UniformBufferBindingLight           = 4
 	UniformBufferBindingLightProperties = 5
 
-	UniformBufferBindingSkybox = 1
-
 	UniformBufferBindingPostprocess = 0
 )
 
@@ -27,6 +25,4 @@ const (
 
 	TextureBindingPostprocessFramebufferColor0 = 0
 	TextureBindingPostprocessBloom             = 1
-
-	TextureBindingSkyboxAlbedoTexture = 0
 )

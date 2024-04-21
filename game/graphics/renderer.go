@@ -118,11 +118,6 @@ type sceneRenderer struct {
 	directionalLightPipeline render.Pipeline
 	directionalLightBucket   *spatial.VisitorBucket[*DirectionalLight]
 
-	skyboxProgram    render.Program
-	skyboxPipeline   render.Pipeline
-	skycolorProgram  render.Program
-	skycolorPipeline render.Pipeline
-
 	debugLines        []debugLine
 	debugVertexData   []byte
 	debugVertexBuffer render.Buffer
@@ -210,7 +205,6 @@ func (r *sceneRenderer) Allocate() {
 	r.bloomStage.Allocate()
 
 	quadShape := r.stageData.QuadShape()
-	cubeShape := r.stageData.CubeShape()
 	sphereShape := r.stageData.SphereShape()
 	coneShape := r.stageData.ConeShape()
 
@@ -429,53 +423,6 @@ func (r *sceneRenderer) Allocate() {
 		BlendOpAlpha:                render.BlendOperationAdd,
 	})
 
-	r.skyboxProgram = r.api.CreateProgram(render.ProgramInfo{
-		SourceCode: r.shaders.SkyboxSet(),
-		TextureBindings: []render.TextureBinding{
-			render.NewTextureBinding("albedoCubeTextureIn", internal.TextureBindingSkyboxAlbedoTexture),
-		},
-		UniformBindings: []render.UniformBinding{
-			render.NewUniformBinding("Camera", internal.UniformBufferBindingCamera),
-		},
-	})
-	r.skyboxPipeline = r.api.CreatePipeline(render.PipelineInfo{
-		Program:     r.skyboxProgram,
-		VertexArray: cubeShape.VertexArray(),
-		Topology:    cubeShape.Topology(),
-		Culling:     render.CullModeBack,
-		// We are looking from within the cube shape so we need to flip the winding.
-		FrontFace:       render.FaceOrientationCW,
-		DepthTest:       true,
-		DepthWrite:      false,
-		DepthComparison: render.ComparisonLessOrEqual,
-		StencilTest:     false,
-		ColorWrite:      render.ColorMaskTrue,
-		BlendEnabled:    false,
-	})
-
-	r.skycolorProgram = r.api.CreateProgram(render.ProgramInfo{
-		SourceCode:      r.shaders.SkycolorSet(),
-		TextureBindings: []render.TextureBinding{},
-		UniformBindings: []render.UniformBinding{
-			render.NewUniformBinding("Camera", internal.UniformBufferBindingCamera),
-			render.NewUniformBinding("Skybox", internal.UniformBufferBindingSkybox),
-		},
-	})
-	r.skycolorPipeline = r.api.CreatePipeline(render.PipelineInfo{
-		Program:     r.skycolorProgram,
-		VertexArray: cubeShape.VertexArray(),
-		Topology:    cubeShape.Topology(),
-		Culling:     render.CullModeBack,
-		// We are looking from within the cube shape so we need to flip the winding.
-		FrontFace:       render.FaceOrientationCW,
-		DepthTest:       true,
-		DepthWrite:      false,
-		DepthComparison: render.ComparisonLessOrEqual,
-		StencilTest:     false,
-		ColorWrite:      render.ColorMaskTrue,
-		BlendEnabled:    false,
-	})
-
 	r.debugLines = make([]debugLine, 131072)
 	r.debugVertexData = make([]byte, len(r.debugLines)*4*4*2)
 	r.debugVertexBuffer = r.api.CreateVertexBuffer(render.BufferInfo{
@@ -543,12 +490,6 @@ func (r *sceneRenderer) Release() {
 
 	defer r.directionalLightProgram.Release()
 	defer r.directionalLightPipeline.Release()
-
-	defer r.skyboxProgram.Release()
-	defer r.skyboxPipeline.Release()
-
-	defer r.skycolorProgram.Release()
-	defer r.skycolorPipeline.Release()
 
 	defer r.debugVertexBuffer.Release()
 	defer r.debugVertexArray.Release()
@@ -835,14 +776,9 @@ func (r *sceneRenderer) renderGeometryPass(ctx renderCtx) {
 		StencilStoreOp:  render.StoreOperationDiscard,
 		Colors: [4]render.ColorAttachmentInfo{
 			{
-				LoadOp:  render.LoadOperationClear,
-				StoreOp: render.StoreOperationStore,
-				ClearValue: [4]float32{
-					ctx.scene.sky.backgroundColor.X,
-					ctx.scene.sky.backgroundColor.Y,
-					ctx.scene.sky.backgroundColor.Z,
-					1.0,
-				},
+				LoadOp:     render.LoadOperationClear,
+				StoreOp:    render.StoreOperationStore,
+				ClearValue: [4]float32{0.0, 0.0, 0.0, 1.0},
 			},
 			{
 				LoadOp:     render.LoadOperationClear,
@@ -929,8 +865,6 @@ func (r *sceneRenderer) renderLightingPass(ctx renderCtx) {
 func (r *sceneRenderer) renderForwardPass(ctx renderCtx) {
 	defer metric.BeginRegion("forward").End()
 
-	cubeShape := r.stageData.CubeShape()
-
 	r.renderItems = r.renderItems[:0]
 	for _, mesh := range r.visibleMeshes.Items() {
 		r.queueMeshRenderItems(mesh, internal.MeshRenderPassTypeForward)
@@ -963,46 +897,6 @@ func (r *sceneRenderer) renderForwardPass(ctx renderCtx) {
 
 	if !ctx.scene.skies.IsEmpty() {
 		r.renderSky(ctx.scene.skies.Get(0))
-	} else {
-		// Fallback to old sky implementation
-		sky := ctx.scene.sky
-		if texture := sky.skyboxTexture; texture != nil {
-			commandBuffer.BindPipeline(r.skyboxPipeline)
-			commandBuffer.UniformBufferUnit(
-				internal.UniformBufferBindingCamera,
-				r.cameraPlacement.Buffer,
-				r.cameraPlacement.Offset,
-				r.cameraPlacement.Size,
-			)
-			commandBuffer.TextureUnit(internal.TextureBindingSkyboxAlbedoTexture, texture)
-			commandBuffer.SamplerUnit(internal.TextureBindingSkyboxAlbedoTexture, nil) // TODO
-			commandBuffer.DrawIndexed(0, cubeShape.IndexCount(), 1)
-		} else {
-			uniformBuffer := r.stageData.UniformBuffer()
-			skyboxPlacement := renderutil.WriteUniform(uniformBuffer, internal.SkyboxUniform{
-				Color: sprec.Vec4{
-					X: sky.backgroundColor.X,
-					Y: sky.backgroundColor.Y,
-					Z: sky.backgroundColor.Z,
-					W: 1.0,
-				},
-			})
-
-			commandBuffer.BindPipeline(r.skycolorPipeline)
-			commandBuffer.UniformBufferUnit(
-				internal.UniformBufferBindingCamera,
-				r.cameraPlacement.Buffer,
-				r.cameraPlacement.Offset,
-				r.cameraPlacement.Size,
-			)
-			commandBuffer.UniformBufferUnit(
-				internal.UniformBufferBindingSkybox,
-				skyboxPlacement.Buffer,
-				skyboxPlacement.Offset,
-				skyboxPlacement.Size,
-			)
-			commandBuffer.DrawIndexed(0, cubeShape.IndexCount(), 1)
-		}
 	}
 
 	if len(r.debugLines) > 0 {
