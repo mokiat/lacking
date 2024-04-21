@@ -22,7 +22,7 @@ func (s *ResourceSet) convertTexture(assetTexture asset.Texture) async.Promise[r
 
 func (s *ResourceSet) allocateTexture2D(assetTexture asset.Texture) async.Promise[render.Texture] {
 	promise := async.NewPromise[render.Texture]()
-	s.gfxWorker.ScheduleVoid(func() {
+	s.gfxWorker.Schedule(func() {
 		texture := s.renderAPI.CreateColorTexture2D(render.ColorTexture2DInfo{
 			Width:           assetTexture.Width,
 			Height:          assetTexture.Height,
@@ -38,7 +38,7 @@ func (s *ResourceSet) allocateTexture2D(assetTexture asset.Texture) async.Promis
 
 func (s *ResourceSet) allocateTextureCube(assetTexture asset.Texture) async.Promise[render.Texture] {
 	promise := async.NewPromise[render.Texture]()
-	s.gfxWorker.ScheduleVoid(func() {
+	s.gfxWorker.Schedule(func() {
 		texture := s.renderAPI.CreateColorTextureCube(render.ColorTextureCubeInfo{
 			Dimension:       assetTexture.Width,
 			GenerateMipmaps: assetTexture.Flags.Has(asset.TextureFlagMipmapping),

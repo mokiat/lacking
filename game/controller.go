@@ -50,12 +50,12 @@ func (c *Controller) OnCreate(window app.Window) {
 	c.ecsEngine = ecs.NewEngine()
 	c.physicsEngine = physics.NewEngine(16 * time.Millisecond)
 
-	c.ioWorker = async.NewWorker(16)
+	c.ioWorker = async.NewWorker(4)
 	go c.ioWorker.ProcessAll()
 
 	c.engine = NewEngine(
-		WithGFXWorker(c.gfxWorkerAdapter()),
-		WithIOWorker(c.ioWorkerAdapter()),
+		WithGFXWorker(window),
+		WithIOWorker(c.ioWorker),
 		WithRegistry(c.registry),
 		WithGraphics(c.gfxEngine),
 		WithECS(c.ecsEngine),
@@ -83,30 +83,4 @@ func (c *Controller) OnRender(window app.Window) {
 	c.engine.Render(c.viewport)
 
 	window.Invalidate() // force redraw
-}
-
-func (c *Controller) schedule(fn func()) {
-	c.window.Schedule(fn)
-}
-
-func (c *Controller) gfxWorkerAdapter() Worker {
-	return WorkerFunc(func(fn func() error) Operation {
-		operation := NewOperation()
-		c.schedule(func() {
-			operation.Complete(fn())
-		})
-		return operation
-	})
-}
-
-func (c *Controller) ioWorkerAdapter() Worker {
-	return WorkerFunc(func(fn func() error) Operation {
-		operation := NewOperation()
-		c.ioWorker.Schedule(func() error {
-			err := fn()
-			operation.Complete(err)
-			return err
-		})
-		return operation
-	})
 }

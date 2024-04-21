@@ -6,28 +6,23 @@ import (
 	"time"
 )
 
-type Func func() error
+type Func = func()
 
 func NewWorker(capacity int) *Worker {
 	return &Worker{
-		tasks:   make(chan workerTask, capacity),
+		tasks:   make(chan Func, capacity),
 		running: 1,
 	}
 }
 
 type Worker struct {
-	tasks     chan workerTask
+	tasks     chan Func
 	running   int32
 	pipelines sync.WaitGroup
 }
 
-func (w *Worker) Schedule(fn Func) Promise[error] {
-	promise := NewPromise[error]()
-	w.tasks <- workerTask{
-		fn:      fn,
-		promise: promise,
-	}
-	return promise
+func (w *Worker) Schedule(fn Func) {
+	w.tasks <- fn
 }
 
 func (w *Worker) ProcessCount(count int) bool {
@@ -70,7 +65,7 @@ func (w *Worker) ProcessAll() {
 	defer w.pipelines.Done()
 
 	for task := range w.tasks {
-		task.Run()
+		task()
 	}
 }
 
@@ -78,7 +73,7 @@ func (w *Worker) Shutdown() {
 	atomic.StoreInt32(&w.running, 0)
 	close(w.tasks)
 	for task := range w.tasks {
-		task.Run()
+		task()
 	}
 	w.pipelines.Wait()
 }
@@ -87,20 +82,11 @@ func (w *Worker) processNextTask() bool {
 	select {
 	case task, ok := <-w.tasks:
 		if ok {
-			task.Run()
+			task()
 			return true
 		}
 		return false
 	default:
 		return false
 	}
-}
-
-type workerTask struct {
-	fn      Func
-	promise Promise[error]
-}
-
-func (t workerTask) Run() {
-	t.promise.Deliver(t.fn())
 }
