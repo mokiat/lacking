@@ -12,7 +12,7 @@ type Model struct {
 	GeometryShaders   []newasset.Shader
 	ShadowShaders     []newasset.Shader
 	ForwardShaders    []newasset.Shader
-	Animations        []Animation
+	Animations        []newasset.Animation
 	Armatures         []newasset.Armature
 	Textures          []newasset.Texture
 	Materials         []newasset.Material
