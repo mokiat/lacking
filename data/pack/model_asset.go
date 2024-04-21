@@ -287,11 +287,11 @@ func (c *converter) BuildGeometryShader(material *Material) newasset.Shader {
 
 	if ref := material.ColorTexture; ref != nil {
 		sourceCode += `
-			#color = rgb(sample(baseColorSampler, #uv))
+			#color = sample(baseColorSampler, #uv)
 		`
 	} else {
 		sourceCode += `
-			#color = rgb(baseColor)
+			#color = baseColor
 		`
 	}
 
