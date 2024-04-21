@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/mokiat/lacking/game/asset"
+	asset "github.com/mokiat/lacking/game/newasset"
 	"github.com/mokiat/lacking/util/resource"
 )
 
@@ -16,7 +16,7 @@ type Described interface {
 	Describe() string
 }
 
-func newPipeline(id int, registry asset.Registry, resourceLocator resource.ReadLocator) *Pipeline {
+func newPipeline(id int, registry *asset.Registry, resourceLocator resource.ReadLocator) *Pipeline {
 	return &Pipeline{
 		id:              id,
 		registry:        registry,
@@ -26,7 +26,7 @@ func newPipeline(id int, registry asset.Registry, resourceLocator resource.ReadL
 
 type Pipeline struct {
 	id              int
-	registry        asset.Registry
+	registry        *asset.Registry
 	resourceLocator resource.ReadLocator
 	actions         []Action
 }
@@ -40,7 +40,7 @@ func (p *Pipeline) OpenGLTFResource(uri string) *OpenGLTFResourceAction {
 	return action
 }
 
-func (p *Pipeline) SaveModelAsset(resource asset.Resource, model ModelProvider, opts ...SaveModelAssetOption) *SaveModelAssetAction {
+func (p *Pipeline) SaveModelAsset(resource *asset.Resource, model ModelProvider, opts ...SaveModelAssetOption) *SaveModelAssetAction {
 	action := &SaveModelAssetAction{
 		resource:      resource,
 		modelProvider: model,

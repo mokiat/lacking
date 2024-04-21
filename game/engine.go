@@ -3,24 +3,17 @@ package game
 import (
 	"time"
 
-	"github.com/mokiat/lacking/game/asset"
 	"github.com/mokiat/lacking/game/ecs"
 	"github.com/mokiat/lacking/game/graphics"
-	newasset "github.com/mokiat/lacking/game/newasset"
+	asset "github.com/mokiat/lacking/game/newasset"
 	"github.com/mokiat/lacking/game/physics"
 )
 
 type EngineOption func(e *Engine)
 
-func WithRegistry(registry asset.Registry) EngineOption {
+func WithRegistry(registry *asset.Registry) EngineOption {
 	return func(e *Engine) {
 		e.registry = registry
-	}
-}
-
-func WithNewRegistry(registry *newasset.Registry) EngineOption {
-	return func(e *Engine) {
-		e.newRegistry = registry
 	}
 }
 
@@ -65,8 +58,7 @@ func NewEngine(opts ...EngineOption) *Engine {
 }
 
 type Engine struct {
-	registry      asset.Registry
-	newRegistry   *newasset.Registry
+	registry      *asset.Registry
 	ioWorker      Worker
 	gfxWorker     Worker
 	physicsEngine *physics.Engine
@@ -87,7 +79,7 @@ func (e *Engine) Destroy() {
 	// TODO: Release all scenes and all resource sets
 }
 
-func (e *Engine) Registry() asset.Registry {
+func (e *Engine) Registry() *asset.Registry {
 	return e.registry
 }
 

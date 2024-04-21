@@ -11,15 +11,19 @@ import (
 
 var modelProviders = make(map[string]Provider[*mdl.Model])
 
-func Run(storage asset.Storage, formatter asset.Formatter) error {
-	registry, err := asset.NewRegistry(storage, formatter)
-	if err != nil {
-		return fmt.Errorf("error creating registry: %w", err)
-	}
-
+func Run(registry *asset.Registry) error {
 	var g errgroup.Group
 
 	for name, modelProvider := range modelProviders {
+		resource := registry.ResourceByName(name)
+		if resource == nil {
+			var err error
+			resource, err = registry.CreateResource(name, asset.Model{})
+			if err != nil {
+				return fmt.Errorf("error creating resource: %w", err)
+			}
+		}
+
 		g.Go(func() error {
 			log.Info("Model %q - processing", name)
 
@@ -28,8 +32,7 @@ func Run(storage asset.Storage, formatter asset.Formatter) error {
 				return fmt.Errorf("error calculating model %q digest: %w", name, err)
 			}
 
-			resource := registry.ResourceByName(name)
-			if resource != nil && resource.SourceDigest() == digest {
+			if resource.SourceDigest() == digest {
 				log.Info("Model %q - up to date", name)
 				log.Info("Model %q - done", name)
 				return nil
@@ -46,19 +49,10 @@ func Run(storage asset.Storage, formatter asset.Formatter) error {
 				return fmt.Errorf("error converting model %q to asset: %w", name, err)
 			}
 
-			if resource == nil {
-				log.Info("Model %q - creating", name)
-				resource, err = registry.CreateResource(name, modelAsset)
-				if err != nil {
-					return fmt.Errorf("error creating resource: %w", err)
-				}
-			} else {
-				log.Info("Model %q - updating", name)
-				if err := resource.SaveContent(modelAsset); err != nil {
-					return fmt.Errorf("error saving resource: %w", err)
-				}
+			log.Info("Model %q - updating", name)
+			if err := resource.SaveContent(modelAsset); err != nil {
+				return fmt.Errorf("error saving resource: %w", err)
 			}
-
 			if err := resource.SetSourceDigest(digest); err != nil {
 				return fmt.Errorf("error setting resource digest: %w", err)
 			}

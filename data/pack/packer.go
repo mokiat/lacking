@@ -4,21 +4,21 @@ import (
 	"fmt"
 	"runtime/debug"
 
-	"github.com/mokiat/lacking/game/asset"
+	asset "github.com/mokiat/lacking/game/newasset"
 	"github.com/mokiat/lacking/util/resource"
 	"golang.org/x/sync/errgroup"
 )
 
 var ErrFocused = fmt.Errorf("focused pipelines")
 
-func NewPacker(registry asset.Registry) *Packer {
+func NewPacker(registry *asset.Registry) *Packer {
 	return &Packer{
 		registry: registry,
 	}
 }
 
 type Packer struct {
-	registry         asset.Registry
+	registry         *asset.Registry
 	pipelines        []*Pipeline
 	focusedPipelines []*Pipeline
 }

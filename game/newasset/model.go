@@ -7,6 +7,12 @@ type Model struct {
 	// Nodes is the collection of nodes that are part of the scene.
 	Nodes []Node
 
+	// Animations is the collection of animations that are part of the scene.
+	Animations []Animation
+
+	// Armatures is the collection of armatures that are part of the scene.
+	Armatures []Armature
+
 	// Cameras is the collection of cameras that are part of the scene.
 	Cameras []Camera
 
@@ -18,9 +24,9 @@ type Model struct {
 	// during the shadow pass.
 	ShadowShaders []Shader
 
-	// LightShaders is the collection of shaders that are are to be used during
-	// the light pass.
-	LightShaders []Shader
+	// ForwardShaders is the collection of shaders that are are to be used
+	// during the forward pass.
+	ForwardShaders []Shader
 
 	// SkyShaders is the collection of shaders that are are to be used during
 	// the sky pass.
@@ -32,9 +38,6 @@ type Model struct {
 	// Materials is the collection of materials that are part of the scene.
 	Materials []Material
 
-	// Animations is the collection of animations that are part of the scene.
-	Armatures []Armature
-
 	// Geometries is the collection of geometries that are part of the scene.
 	Geometries []Geometry
 
@@ -44,6 +47,17 @@ type Model struct {
 
 	// Meshes is the collection of mesh instances that are part of the scene.
 	Meshes []Mesh
+
+	// BodyMaterials is the collection of body materials that are part of the
+	// scene.
+	BodyMaterials []BodyMaterial
+
+	// BodyDefinitions is the collection of body definitions that are part of
+	// the scene.
+	BodyDefinitions []BodyDefinition
+
+	// Bodies is the collection of body instances that are part of the scene.
+	Bodies []Body
 
 	// AmbientLights is the collection of ambient lights that are part of the
 	// scene.
