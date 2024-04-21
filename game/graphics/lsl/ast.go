@@ -92,15 +92,6 @@ type Shader struct {
 	Declarations []Declaration
 }
 
-func (s *Shader) FindFunction(name string) (*FunctionDeclaration, bool) {
-	for _, decl := range s.Declarations {
-		if fn, ok := decl.(*FunctionDeclaration); ok && fn.Name == name {
-			return fn, true
-		}
-	}
-	return nil, false
-}
-
 func (s *Shader) FindTextureBlock() (*TextureBlockDeclaration, bool) {
 	for _, decl := range s.Declarations {
 		if block, ok := decl.(*TextureBlockDeclaration); ok {
@@ -114,6 +105,24 @@ func (s *Shader) FindUniformBlock() (*UniformBlockDeclaration, bool) {
 	for _, decl := range s.Declarations {
 		if block, ok := decl.(*UniformBlockDeclaration); ok {
 			return block, true
+		}
+	}
+	return nil, false
+}
+
+func (s *Shader) FindVaryingBlock() (*VaryingBlockDeclaration, bool) {
+	for _, decl := range s.Declarations {
+		if block, ok := decl.(*VaryingBlockDeclaration); ok {
+			return block, true
+		}
+	}
+	return nil, false
+}
+
+func (s *Shader) FindFunction(name string) (*FunctionDeclaration, bool) {
+	for _, decl := range s.Declarations {
+		if fn, ok := decl.(*FunctionDeclaration); ok && fn.Name == name {
+			return fn, true
 		}
 	}
 	return nil, false

@@ -118,7 +118,6 @@ func (e *Engine) CreateSkyShader(info ShaderInfo) *SkyShader {
 		log.Error("Failed to parse sky shader: %v", err)
 		ast = &lsl.Shader{Declarations: []lsl.Declaration{}} // TODO: Something meaningful
 	}
-	// TODO: Rework ast based on sky shader constraints.
 	// TODO: Validate against Sky globals.
 	return &SkyShader{
 		builder: e.shaderBuilder,
