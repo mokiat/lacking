@@ -278,6 +278,7 @@ func (c *converter) BuildGeometryShader(material *Material) asset.Shader {
 			metallic float,
 			roughness float,
 			normalScale float,
+			alphaThreshold float,
 		}
 	`
 	sourceCode += `
@@ -294,15 +295,19 @@ func (c *converter) BuildGeometryShader(material *Material) asset.Shader {
 		`
 	}
 
+	if material.AlphaTesting {
+		sourceCode += `
+				if #color.a < alphaThreshold {
+					discard
+				}
+		`
+	}
+
 	sourceCode += `
 			#metallic = metallic
 			#roughness = roughness
 		}
 	`
-	// TODO
-	// 	AlphaTesting:   material.AlphaTesting,
-	// 	AlphaThreshold: material.AlphaThreshold,
-	// 	Blending:       material.Blending,
 
 	return asset.Shader{
 		SourceCode: sourceCode,
@@ -363,6 +368,7 @@ func (c *converter) BuildMaterial(material *Material) asset.Material {
 			c.convertProperty("metallic", material.Metallic),
 			c.convertProperty("roughness", material.Roughness),
 			c.convertProperty("normalScale", material.NormalScale),
+			c.convertProperty("alphaThreshold", material.AlphaThreshold),
 		},
 		GeometryPasses: []asset.GeometryPass{
 			{
