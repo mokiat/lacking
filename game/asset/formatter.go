@@ -1,6 +1,7 @@
 package asset
 
 import (
+	"compress/zlib"
 	"encoding/json"
 	"io"
 
@@ -43,9 +44,20 @@ func NewBlobFormatter() Formatter {
 type blobFormatter struct{}
 
 func (*blobFormatter) Encode(out io.Writer, value any) error {
-	return gblob.NewLittleEndianPackedEncoder(out).Encode(value)
+	zlibOut := zlib.NewWriter(out)
+	if err := gblob.NewLittleEndianPackedEncoder(zlibOut).Encode(value); err != nil {
+		return err
+	}
+	return zlibOut.Close()
 }
 
 func (*blobFormatter) Decode(in io.Reader, target any) error {
-	return gblob.NewLittleEndianPackedDecoder(in).Decode(target)
+	zlibIn, err := zlib.NewReader(in)
+	if err != nil {
+		return err
+	}
+	if err := gblob.NewLittleEndianPackedDecoder(zlibIn).Decode(target); err != nil {
+		return err
+	}
+	return zlibIn.Close()
 }
