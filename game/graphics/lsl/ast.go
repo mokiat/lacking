@@ -171,6 +171,15 @@ type Assignment struct {
 
 func (*Assignment) _isStatement() {}
 
+type Conditional struct {
+	Condition Expression
+	Then      []Statement
+	ElseIf    *Conditional
+	Else      []Statement
+}
+
+func (*Conditional) _isStatement() {}
+
 type IntLiteral struct {
 	Value int64
 }

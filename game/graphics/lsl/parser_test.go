@@ -858,5 +858,78 @@ var _ = Describe("Parser", func() {
 				},
 			},
 		),
+
+		Entry("with conditionals",
+			`func test() {
+				if 10 > 5 {
+					doFirst()
+				}
+				if 10 > 20 {
+					doFirst()
+				} else {
+					doSecond()
+				}
+				if 10 > 20 {
+					doFirst()
+				} else if 10 > 5 {
+					doSecond()
+				} else {
+					doThird()
+				}
+			}`,
+			&lsl.FunctionDeclaration{
+				Name:    "test",
+				Inputs:  nil,
+				Outputs: nil,
+				Body: []lsl.Statement{
+					&lsl.Conditional{
+						Condition: &lsl.BinaryExpression{
+							Operator: ">",
+							Left:     &lsl.IntLiteral{Value: 10},
+							Right:    &lsl.IntLiteral{Value: 5},
+						},
+						Then: []lsl.Statement{
+							&lsl.FunctionCall{Name: "doFirst"},
+						},
+					},
+					&lsl.Conditional{
+						Condition: &lsl.BinaryExpression{
+							Operator: ">",
+							Left:     &lsl.IntLiteral{Value: 10},
+							Right:    &lsl.IntLiteral{Value: 20},
+						},
+						Then: []lsl.Statement{
+							&lsl.FunctionCall{Name: "doFirst"},
+						},
+						Else: []lsl.Statement{
+							&lsl.FunctionCall{Name: "doSecond"},
+						},
+					},
+					&lsl.Conditional{
+						Condition: &lsl.BinaryExpression{
+							Operator: ">",
+							Left:     &lsl.IntLiteral{Value: 10},
+							Right:    &lsl.IntLiteral{Value: 20},
+						},
+						Then: []lsl.Statement{
+							&lsl.FunctionCall{Name: "doFirst"},
+						},
+						ElseIf: &lsl.Conditional{
+							Condition: &lsl.BinaryExpression{
+								Operator: ">",
+								Left:     &lsl.IntLiteral{Value: 10},
+								Right:    &lsl.IntLiteral{Value: 5},
+							},
+							Then: []lsl.Statement{
+								&lsl.FunctionCall{Name: "doSecond"},
+							},
+							Else: []lsl.Statement{
+								&lsl.FunctionCall{Name: "doThird"},
+							},
+						},
+					},
+				},
+			},
+		),
 	)
 })

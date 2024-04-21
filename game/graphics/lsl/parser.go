@@ -478,6 +478,8 @@ func (p *Parser) ParseStatement() (Statement, error) {
 	switch {
 	case token.IsSpecificIdentifier("var"):
 		return p.parseVariableDeclaration()
+	case token.IsSpecificIdentifier("if"):
+		return p.parseConditionalStatement()
 	case token.IsIdentifier():
 		return p.parseImperativeStatement()
 	default:
@@ -522,6 +524,69 @@ func (p *Parser) parseVariableDeclaration() (*VariableDeclaration, error) {
 		}
 	}
 	return &decl, nil
+}
+
+func (p *Parser) parseConditionalStatement() (*Conditional, error) {
+	var statement Conditional
+
+	ifToken := p.nextToken()
+	if !ifToken.IsSpecificIdentifier("if") {
+		return nil, fmt.Errorf("expected if keyword")
+	}
+
+	conditionExpression, err := p.ParseExpression()
+	if err != nil {
+		return nil, fmt.Errorf("error parsing condition expression: %w", err)
+	}
+	statement.Condition = conditionExpression
+
+	if err := p.ParseBlockStart(); err != nil {
+		return nil, fmt.Errorf("error parsing block start: %w", err)
+	}
+
+	thenStatements, err := p.ParseStatementList()
+	if err != nil {
+		return nil, fmt.Errorf("error parsing function body: %w", err)
+	}
+	statement.Then = thenStatements
+
+	bracketToken := p.nextToken()
+	if !bracketToken.IsSpecificOperator("}") {
+		return nil, fmt.Errorf("expected closing bracket")
+	}
+
+	nextToken := p.peekToken()
+	if nextToken.IsSpecificIdentifier("else") {
+		_ = p.nextToken() // consume else token
+		nextToken = p.peekToken()
+		if nextToken.IsSpecificIdentifier("if") {
+			elseIfConditional, err := p.parseConditionalStatement()
+			if err != nil {
+				return nil, fmt.Errorf("error parsing else if conditional: %w", err)
+			}
+			statement.ElseIf = elseIfConditional
+		} else {
+			if err := p.ParseBlockStart(); err != nil {
+				return nil, fmt.Errorf("error parsing block start: %w", err)
+			}
+
+			elseStatements, err := p.ParseStatementList()
+			if err != nil {
+				return nil, fmt.Errorf("error parsing function body: %w", err)
+			}
+			statement.Else = elseStatements
+
+			if err := p.ParseBlockEnd(); err != nil {
+				return nil, fmt.Errorf("error parsing block end: %w", err)
+			}
+		}
+	} else {
+		if err := p.ParseOptionalRemainder(); err != nil {
+			return nil, fmt.Errorf("error parsing end of line: %w", err)
+		}
+	}
+
+	return &statement, nil
 }
 
 func (p *Parser) parseImperativeStatement() (Statement, error) {
