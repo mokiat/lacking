@@ -180,6 +180,10 @@ type Conditional struct {
 
 func (*Conditional) _isStatement() {}
 
+type Discard struct{}
+
+func (*Discard) _isStatement() {}
+
 type IntLiteral struct {
 	Value int64
 }
