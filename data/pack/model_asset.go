@@ -91,7 +91,7 @@ func (c *converter) BuildModel(model *Model) *asset.Model {
 		assetTextures[i] = BuildTwoDTextureAsset(texture)
 	}
 
-	assetAnimations := make([]asset.Animation, len(model.Animations))
+	assetAnimations := make([]newasset.Animation, len(model.Animations))
 	for i, animation := range model.Animations {
 		assetAnimations[i] = c.BuildAnimation(animation)
 	}
@@ -217,37 +217,37 @@ func (c *converter) BuildNode(parentIndex int, node *Node) {
 	}
 }
 
-func (c *converter) BuildAnimation(animation *Animation) asset.Animation {
-	assetAnimation := asset.Animation{
+func (c *converter) BuildAnimation(animation *Animation) newasset.Animation {
+	assetAnimation := newasset.Animation{
 		Name:      animation.Name,
 		StartTime: animation.StartTime,
 		EndTime:   animation.EndTime,
-		Bindings:  make([]asset.AnimationBinding, len(animation.Bindings)),
+		Bindings:  make([]newasset.AnimationBinding, len(animation.Bindings)),
 	}
 	for i, binding := range animation.Bindings {
-		translationKeyframes := make([]asset.TranslationKeyframe, len(binding.TranslationKeyframes))
+		translationKeyframes := make([]newasset.AnimationKeyframe[dprec.Vec3], len(binding.TranslationKeyframes))
 		for j, keyframe := range binding.TranslationKeyframes {
-			translationKeyframes[j] = asset.TranslationKeyframe{
-				Timestamp:   keyframe.Timestamp,
-				Translation: keyframe.Translation,
+			translationKeyframes[j] = newasset.AnimationKeyframe[dprec.Vec3]{
+				Timestamp: keyframe.Timestamp,
+				Value:     keyframe.Translation,
 			}
 		}
-		rotationKeyframes := make([]asset.RotationKeyframe, len(binding.RotationKeyframes))
+		rotationKeyframes := make([]newasset.AnimationKeyframe[dprec.Quat], len(binding.RotationKeyframes))
 		for j, keyframe := range binding.RotationKeyframes {
-			rotationKeyframes[j] = asset.RotationKeyframe{
+			rotationKeyframes[j] = newasset.AnimationKeyframe[dprec.Quat]{
 				Timestamp: keyframe.Timestamp,
-				Rotation:  keyframe.Rotation,
+				Value:     keyframe.Rotation,
 			}
 		}
-		scaleKeyframes := make([]asset.ScaleKeyframe, len(binding.ScaleKeyframes))
+		scaleKeyframes := make([]newasset.AnimationKeyframe[dprec.Vec3], len(binding.ScaleKeyframes))
 		for j, keyframe := range binding.ScaleKeyframes {
-			scaleKeyframes[j] = asset.ScaleKeyframe{
+			scaleKeyframes[j] = newasset.AnimationKeyframe[dprec.Vec3]{
 				Timestamp: keyframe.Timestamp,
-				Scale:     keyframe.Scale,
+				Value:     keyframe.Scale,
 			}
 		}
-		assetAnimation.Bindings[i] = asset.AnimationBinding{
-			NodeIndex:            int32(c.assetNodeIndexFromNode[binding.Node]),
+		assetAnimation.Bindings[i] = newasset.AnimationBinding{
+			NodeName:             binding.Node.Name,
 			TranslationKeyframes: translationKeyframes,
 			RotationKeyframes:    rotationKeyframes,
 			ScaleKeyframes:       scaleKeyframes,

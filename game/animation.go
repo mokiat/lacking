@@ -15,8 +15,7 @@ type AnimationDefinitionInfo struct {
 }
 
 type AnimationBindingDefinitionInfo struct {
-	NodeIndex            int
-	NodeName             string //alternative in case of isolated animation
+	NodeName             string
 	TranslationKeyframes KeyframeList[dprec.Vec3]
 	RotationKeyframes    KeyframeList[dprec.Quat]
 	ScaleKeyframes       KeyframeList[dprec.Vec3]

@@ -121,25 +121,24 @@ func (r *ResourceSet) allocateModel(modelAsset *asset.Model) (*ModelDefinition, 
 			for k, keyframe := range assetBinding.TranslationKeyframes {
 				translationKeyframes[k] = Keyframe[dprec.Vec3]{
 					Timestamp: keyframe.Timestamp,
-					Value:     keyframe.Translation,
+					Value:     keyframe.Value,
 				}
 			}
 			rotationKeyframes := make([]Keyframe[dprec.Quat], len(assetBinding.RotationKeyframes))
 			for k, keyframe := range assetBinding.RotationKeyframes {
 				rotationKeyframes[k] = Keyframe[dprec.Quat]{
 					Timestamp: keyframe.Timestamp,
-					Value:     keyframe.Rotation,
+					Value:     keyframe.Value,
 				}
 			}
 			scaleKeyframes := make([]Keyframe[dprec.Vec3], len(assetBinding.ScaleKeyframes))
 			for k, keyframe := range assetBinding.ScaleKeyframes {
 				scaleKeyframes[k] = Keyframe[dprec.Vec3]{
 					Timestamp: keyframe.Timestamp,
-					Value:     keyframe.Scale,
+					Value:     keyframe.Value,
 				}
 			}
 			bindings[j] = AnimationBindingDefinitionInfo{
-				NodeIndex:            int(assetBinding.NodeIndex),
 				NodeName:             assetBinding.NodeName,
 				TranslationKeyframes: translationKeyframes,
 				RotationKeyframes:    rotationKeyframes,

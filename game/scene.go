@@ -312,12 +312,7 @@ func (s *Scene) CreateAnimation(info AnimationInfo) *Animation {
 	def := info.Definition
 	bindings := make([]animationBinding, len(def.bindings))
 	for i, bindingDef := range def.bindings {
-		var target *hierarchy.Node
-		if bindingDef.NodeIndex >= 0 {
-			target = info.Model.nodes[bindingDef.NodeIndex]
-		} else {
-			target = info.Model.root.FindNode(bindingDef.NodeName)
-		}
+		target := info.Model.root.FindNode(bindingDef.NodeName)
 		if target == nil {
 			logger.Warn("Animation cannot find target node (%q)!", bindingDef.NodeName)
 		}
