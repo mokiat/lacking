@@ -39,6 +39,16 @@ type Registry struct {
 	dependencies []fsDependency
 }
 
+// Reload reloads the registry from the storage.
+//
+// Existing Resource handles should not be used.
+func (r *Registry) Reload() error {
+	if err := r.open(); err != nil {
+		return fmt.Errorf("failed to open registry: %w", err)
+	}
+	return nil
+}
+
 // Resources returns a list of all resources in the registry.
 func (r *Registry) Resources() []*Resource {
 	return r.resources
