@@ -7,6 +7,7 @@ import (
 	"github.com/mokiat/lacking/game/ecs"
 	"github.com/mokiat/lacking/game/graphics"
 	"github.com/mokiat/lacking/game/physics"
+	"github.com/mokiat/lacking/render"
 )
 
 type EngineOption func(e *Engine)
@@ -119,7 +120,7 @@ func (e *Engine) CreateScene() *Scene {
 	physicsScene := e.physicsEngine.CreateScene()
 	gfxScene := e.gfxEngine.CreateScene()
 	ecsScene := e.ecsEngine.CreateScene()
-	result := newScene(physicsScene, gfxScene, ecsScene)
+	result := newScene(e, physicsScene, gfxScene, ecsScene)
 	if e.activeScene == nil {
 		e.activeScene = result
 	}
@@ -151,8 +152,8 @@ func (e *Engine) Update() {
 	}
 }
 
-func (e *Engine) Render(viewport graphics.Viewport) {
+func (e *Engine) Render(framebuffer render.Framebuffer, viewport graphics.Viewport) {
 	if e.activeScene != nil {
-		e.activeScene.Render(viewport)
+		e.activeScene.Render(framebuffer, viewport)
 	}
 }
