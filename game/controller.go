@@ -40,6 +40,10 @@ type Controller struct {
 	viewport graphics.Viewport
 }
 
+func (c *Controller) Registry() *asset.Registry {
+	return c.registry
+}
+
 func (c *Controller) Engine() *Engine {
 	return c.engine
 }
@@ -80,7 +84,7 @@ func (c *Controller) OnRender(window app.Window) {
 	defer metric.BeginRegion("game").End()
 
 	c.engine.Update()
-	c.engine.Render(c.viewport)
+	c.engine.Render(window.RenderAPI().DefaultFramebuffer(), c.viewport)
 
 	window.Invalidate() // force redraw
 }

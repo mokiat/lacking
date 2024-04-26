@@ -15,8 +15,10 @@ import (
 	"github.com/mokiat/lacking/render"
 )
 
-func newScene(physicsScene *physics.Scene, gfxScene *graphics.Scene, ecsScene *ecs.Scene) *Scene {
+func newScene(engine *Engine, physicsScene *physics.Scene, gfxScene *graphics.Scene, ecsScene *ecs.Scene) *Scene {
 	return &Scene{
+		engine: engine,
+
 		physicsScene: physicsScene,
 		gfxScene:     gfxScene,
 		ecsScene:     ecsScene,
@@ -41,6 +43,8 @@ func newScene(physicsScene *physics.Scene, gfxScene *graphics.Scene, ecsScene *e
 
 // Scene is the main container for all game objects and systems.
 type Scene struct {
+	engine *Engine
+
 	physicsScene *physics.Scene
 	gfxScene     *graphics.Scene
 	ecsScene     *ecs.Scene
@@ -69,6 +73,8 @@ func (s *Scene) Delete() {
 	defer s.physicsScene.Delete()
 	defer s.gfxScene.Delete()
 	defer s.ecsScene.Delete()
+	s.engine.SetActiveScene(nil)
+	s.engine = nil
 }
 
 // SubscribePreUpdate adds a callback to be executed before the scene updates.
@@ -245,13 +251,13 @@ func (s *Scene) Update(elapsedTime time.Duration) {
 }
 
 // Render draws the scene to the provided viewport.
-func (s *Scene) Render(viewport graphics.Viewport) {
+func (s *Scene) Render(framebuffer render.Framebuffer, viewport graphics.Viewport) {
 	stageSpan := metric.BeginRegion("stage")
 	s.root.ApplyToTarget(true)
 	stageSpan.End()
 
 	renderSpan := metric.BeginRegion("render")
-	s.gfxScene.Render(viewport)
+	s.gfxScene.Render(framebuffer, viewport)
 	renderSpan.End()
 }
 
