@@ -27,11 +27,11 @@ var accordionDefaultData = AccordionData{}
 
 // AccordionCallbackData holds the callback data for an Accordion container.
 type AccordionCallbackData struct {
-	OnToggle OnActionFunc
+	OnToggle func(bool)
 }
 
 var accordionDefaultCallbackData = AccordionCallbackData{
-	OnToggle: func() {},
+	OnToggle: func(bool) {},
 }
 
 var Accordion = co.Define(&accordionComponent{})
@@ -40,23 +40,31 @@ type accordionComponent struct {
 	co.BaseComponent
 	BaseButtonComponent
 
-	icon       *ui.Image
+	expandedIcon  *ui.Image
+	collapsedIcon *ui.Image
+
 	title      string
 	isExpanded bool
+
+	onToggle func(bool)
+}
+
+func (c *accordionComponent) OnCreate() {
+	c.SetOnClickFunc(c.handleOnClick)
+	c.expandedIcon = co.OpenImage(c.Scope(), AccordionExpandedIconFile)
+	c.collapsedIcon = co.OpenImage(c.Scope(), AccordionCollapsedIconFile)
 }
 
 func (c *accordionComponent) OnUpsert() {
 	data := co.GetOptionalData(c.Properties(), accordionDefaultData)
-	if data.Expanded {
-		c.icon = co.OpenImage(c.Scope(), AccordionExpandedIconFile)
-	} else {
-		c.icon = co.OpenImage(c.Scope(), AccordionCollapsedIconFile)
-	}
 	c.isExpanded = data.Expanded
 	c.title = data.Title
 
 	callbackData := co.GetOptionalCallbackData(c.Properties(), accordionDefaultCallbackData)
-	c.SetOnClickFunc(callbackData.OnToggle)
+	c.onToggle = callbackData.OnToggle
+	if c.onToggle == nil {
+		c.onToggle = func(bool) {}
+	}
 }
 
 func (c *accordionComponent) Render() co.Instance {
@@ -88,7 +96,7 @@ func (c *accordionComponent) Render() co.Instance {
 
 			co.WithChild("icon", co.New(Picture, func() {
 				co.WithData(PictureData{
-					Image:      c.icon,
+					Image:      c.icon(),
 					ImageColor: opt.V(OnPrimaryLightColor),
 					Mode:       ImageModeFit,
 				})
@@ -142,4 +150,15 @@ func (c *accordionComponent) OnRender(element *ui.Element, canvas *ui.Canvas) {
 		})
 	}
 	canvas.Stroke()
+}
+
+func (c *accordionComponent) icon() *ui.Image {
+	if c.isExpanded {
+		return c.expandedIcon
+	}
+	return c.collapsedIcon
+}
+
+func (c *accordionComponent) handleOnClick() {
+	c.onToggle(!c.isExpanded)
 }
