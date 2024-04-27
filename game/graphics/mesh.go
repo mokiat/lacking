@@ -22,6 +22,7 @@ func newMesh(scene *Scene, info MeshInfo) *Mesh {
 	mesh.itemID = scene.dynamicMeshSet.Insert(dprec.ZeroVec3(), definition.geometry.boundingSphereRadius, mesh)
 	mesh.definition = definition
 	mesh.armature = info.Armature
+	mesh.active = true
 	return mesh
 }
 
@@ -33,6 +34,15 @@ type Mesh struct {
 	itemID     spatial.DynamicSetItemID
 	definition *MeshDefinition
 	armature   *Armature
+	active     bool
+}
+
+func (m *Mesh) Active() bool {
+	return m.active
+}
+
+func (m *Mesh) SetActive(active bool) {
+	m.active = active
 }
 
 func (m *Mesh) SetMatrix(matrix dprec.Mat4) {
@@ -70,6 +80,7 @@ func createStaticMesh(scene *Scene, info StaticMeshInfo) {
 	staticMesh := &scene.staticMeshes[meshIndex]
 	staticMesh.definition = info.Definition
 	staticMesh.matrixData = make([]byte, 16*4)
+	staticMesh.active = true
 
 	matrix := dtos.Mat4(info.Matrix)
 	plotter := blob.NewPlotter(staticMesh.matrixData)
@@ -94,4 +105,13 @@ func createStaticMesh(scene *Scene, info StaticMeshInfo) {
 type StaticMesh struct {
 	matrixData []byte
 	definition *MeshDefinition
+	active     bool
+}
+
+func (m *StaticMesh) Active() bool {
+	return m.active
+}
+
+func (m *StaticMesh) SetActive(active bool) {
+	m.active = active
 }

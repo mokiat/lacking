@@ -1122,6 +1122,9 @@ func (r *sceneRenderer) renderPostprocessingPass(ctx renderCtx) {
 }
 
 func (r *sceneRenderer) queueMeshRenderItems(mesh *Mesh, passType internal.MeshRenderPassType) {
+	if !mesh.active {
+		return
+	}
 	definition := mesh.definition
 	passes := definition.passesByType[passType]
 	for _, pass := range passes {
@@ -1143,6 +1146,10 @@ func (r *sceneRenderer) queueMeshRenderItems(mesh *Mesh, passType internal.MeshR
 }
 
 func (r *sceneRenderer) queueStaticMeshRenderItems(mesh *StaticMesh, passType internal.MeshRenderPassType) {
+	if !mesh.active {
+		return
+	}
+
 	// TODO: Extract common stuff between mesh and static mesh into a type
 	// that is passed ot this function instead so that it can be reused.
 	definition := mesh.definition
