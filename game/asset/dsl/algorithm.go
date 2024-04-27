@@ -2,6 +2,7 @@ package dsl
 
 import (
 	"fmt"
+	"slices"
 
 	"github.com/mokiat/lacking/debug/log"
 	"github.com/mokiat/lacking/game/asset"
@@ -11,10 +12,16 @@ import (
 
 var modelProviders = make(map[string]Provider[*mdl.Model])
 
-func Run(registry *asset.Registry) error {
+func Run(registry *asset.Registry, modelNames []string) error {
 	var g errgroup.Group
 
 	for name, modelProvider := range modelProviders {
+		if len(modelNames) > 0 {
+			if !slices.Contains(modelNames, name) {
+				continue // skip this one
+			}
+		}
+
 		resource := registry.ResourceByName(name)
 		if resource == nil {
 			var err error
