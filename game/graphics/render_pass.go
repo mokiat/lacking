@@ -5,50 +5,9 @@ import (
 	"github.com/mokiat/lacking/render"
 )
 
-// GeometryRenderPassInfo contains the information representing the rendering
-// behavior of a material during the geometry pass.
-type GeometryRenderPassInfo struct {
-
-	// Layer controls the render ordering of this pass. Lower values will be
-	// rendered first. Having too many layers can affect performance.
-	Layer int32
-
-	// Culling specifies the culling mode.
-	Culling opt.T[render.CullMode]
-
-	// FrontFace specifies the front face orientation.
-	FrontFace opt.T[render.FaceOrientation]
-
-	// DepthTest specifies whether depth testing should be enabled.
-	DepthTest opt.T[bool]
-
-	// DepthWrite specifies whether depth writing should be enabled.
-	DepthWrite opt.T[bool]
-
-	// DepthComparison specifies the depth comparison function.
-	DepthComparison opt.T[render.Comparison]
-
-	// Shader is the geometry shader that will be used to render the material.
-	Shader *GeometryShader
-}
-
-// ShadowRenderPassInfo contains the information representing the rendering
-// behavior of a material during the shadow pass.
-type ShadowRenderPassInfo struct {
-
-	// Culling specifies the culling mode.
-	Culling opt.T[render.CullMode]
-
-	// FrontFace specifies the front face orientation.
-	FrontFace opt.T[render.FaceOrientation]
-
-	// Shader is the shadow shader that will be used to render the material.
-	Shader *ShadowShader
-}
-
-// ForwardRenderPassInfo contains the information representing the rendering
-// behavior of a material during the forward pass.
-type ForwardRenderPassInfo struct {
+// MaterialPassInfo contains the information representing the rendering
+// behavior of a material during a pass.
+type MaterialPassInfo struct {
 
 	// Layer controls the render ordering of this pass. Lower values will be
 	// rendered first. Having too many layers can affect performance.
@@ -74,7 +33,7 @@ type ForwardRenderPassInfo struct {
 	Blending opt.T[bool]
 
 	// Shader is the forward shader that will be used to render the material.
-	Shader *ForwardShader
+	Shader *Shader
 }
 
 // TextureBindingInfo contains the information needed to bind a texture to a

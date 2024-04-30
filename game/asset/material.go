@@ -29,52 +29,8 @@ type PropertyBinding struct {
 	Data []byte
 }
 
-// GeometryPass represents a pass that is applied to the geometry of a mesh.
-type GeometryPass struct {
-
-	// Layer controls the render ordering of this pass. Lower values will be
-	// rendered first. Having too many layers can affect performance.
-	Layer int32
-
-	// Culling specifies the culling mode.
-	Culling CullMode
-
-	// FrontFace specifies the front face orientation.
-	FrontFace FaceOrientation
-
-	// DepthTest specifies whether depth testing should be enabled.
-	DepthTest bool
-
-	// DepthWrite specifies whether depth writing should be enabled.
-	DepthWrite bool
-
-	// DepthComparison specifies the depth comparison function.
-	DepthComparison Comparison
-
-	// ShaderIndex is the index of the shader to be used.
-	ShaderIndex uint32
-}
-
-// ShadowPass represents a pass that is applied to form the shadow of a mesh.
-type ShadowPass struct {
-
-	// Layer controls the render ordering of this pass. Lower values will be
-	// rendered first. Having too many layers can affect performance.
-	Layer int32
-
-	// Culling specifies the culling mode.
-	Culling CullMode
-
-	// FrontFace specifies the front face orientation.
-	FrontFace FaceOrientation
-
-	// ShaderIndex is the index of the shader to be used.
-	ShaderIndex uint32
-}
-
-// ForwardPass represents a pass that is applied to the mesh during the forward
-// rendering phase.
-type ForwardPass struct {
+// MaterialPass represents a pass that is applied during material rendering.
+type MaterialPass struct {
 
 	// Layer controls the render ordering of this pass. Lower values will be
 	// rendered first. Having too many layers can affect performance.
@@ -115,11 +71,19 @@ type Material struct {
 	Properties []PropertyBinding
 
 	// GeometryPasses specifies a list of geometry passes to be applied.
-	GeometryPasses []GeometryPass
+	GeometryPasses []MaterialPass
 
 	// ShadowPasses specifies a list of shadow passes to be applied.
-	ShadowPasses []ShadowPass
+	ShadowPasses []MaterialPass
 
 	// ForwardPasses specifies a list of forward passes to be applied.
-	ForwardPasses []ForwardPass
+	ForwardPasses []MaterialPass
+
+	// SkyPasses specifies a list of sky passes to be applied,
+	// applicable only to sky materials.
+	SkyPasses []MaterialPass
+
+	// PostprocessingPasses specifies a list of postprocessing passes to
+	// be applied. Applicable only to postprocessing materials.
+	PostprocessingPasses []MaterialPass
 }

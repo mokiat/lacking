@@ -1,25 +1,15 @@
 package mdl
 
-type SkyLayerable interface {
-	AddSkyLayer(layer SkyLayer)
-}
-
-type BaseSkyLayerable struct {
-	layers []SkyLayer
-}
-
-func (b *BaseSkyLayerable) AddSkyLayer(layer SkyLayer) {
-	b.layers = append(b.layers, layer)
-}
-
 type Sky struct {
 	BaseNode
-	BasePropertyHolder
-	BaseSamplerHolder
-	BaseSkyLayerable
+
+	material *Material
 }
 
-type SkyLayer struct {
-	BaseBlendable
-	BaseShadable
+func (s *Sky) Material() *Material {
+	return s.material
+}
+
+func (s *Sky) SetMaterial(material *Material) {
+	s.material = material
 }

@@ -13,10 +13,7 @@ type ModelDefinition struct {
 	nodes             []nodeDefinition
 	animations        []*AnimationDefinition
 	armatures         []armatureDefinition
-	geometryShaders   []*graphics.GeometryShader
-	shadowShaders     []*graphics.ShadowShader
-	forwardShaders    []*graphics.ForwardShader
-	skyShaders        []*graphics.SkyShader
+	shaders           []*graphics.Shader
 	textures          []render.Texture
 	materials         []*graphics.Material
 	meshGeometries    []*graphics.MeshGeometry

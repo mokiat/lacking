@@ -65,63 +65,17 @@ func (e *Engine) Debug() *Debug {
 	return e.debug
 }
 
-// CreateGeometryShader creates a new custom GeometryShader using the
-// specified info object.
-func (e *Engine) CreateGeometryShader(info ShaderInfo) *GeometryShader {
+// CreateShader creates a new custom Shader using the specified info object.
+func (e *Engine) CreateShader(info ShaderInfo) *Shader {
 	ast, err := lsl.Parse(info.SourceCode)
 	if err != nil {
 		log.Error("Failed to parse geometry shader: %v", err)
 		ast = &lsl.Shader{Declarations: []lsl.Declaration{}} // TODO: Something meaningful
 	}
-	// TODO: Validate against Geometry globals.
-	return &GeometryShader{
-		builder: e.shaderBuilder,
-		ast:     ast,
-	}
-}
-
-// CreateShadowShader creates a new custom ShadowShader using the
-// specified info object.
-func (e *Engine) CreateShadowShader(info ShaderInfo) *ShadowShader {
-	ast, err := lsl.Parse(info.SourceCode)
-	if err != nil {
-		log.Error("Failed to parse shadow shader: %v", err)
-		ast = &lsl.Shader{Declarations: []lsl.Declaration{}} // TODO: Something meaningful
-	}
-	// TODO: Validate against Shadow globals.
-	return &ShadowShader{
-		builder: e.shaderBuilder,
-		ast:     ast,
-	}
-}
-
-// CreateForwardShader creates a new custom ForwardShader using the
-// specified info object.
-func (e *Engine) CreateForwardShader(info ShaderInfo) *ForwardShader {
-	ast, err := lsl.Parse(info.SourceCode)
-	if err != nil {
-		log.Error("Failed to parse forward shader: %v", err)
-		ast = &lsl.Shader{Declarations: []lsl.Declaration{}} // TODO: Something meaningful
-	}
-	// TODO: Validate against Forward globals.
-	return &ForwardShader{
-		builder: e.shaderBuilder,
-		ast:     ast,
-	}
-}
-
-// CreateSkyShader creates a new custom SkyShader using the
-// specified info object.
-func (e *Engine) CreateSkyShader(info ShaderInfo) *SkyShader {
-	ast, err := lsl.Parse(info.SourceCode)
-	if err != nil {
-		log.Error("Failed to parse sky shader: %v", err)
-		ast = &lsl.Shader{Declarations: []lsl.Declaration{}} // TODO: Something meaningful
-	}
-	// TODO: Validate against Sky globals.
-	return &SkyShader{
-		builder: e.shaderBuilder,
-		ast:     ast,
+	// TODO: Depending on the info.ShaderType, validate against the appropriate
+	// globals.
+	return &Shader{
+		ast: ast,
 	}
 }
 
@@ -133,8 +87,8 @@ func (e *Engine) CreateSkyDefinition(info SkyDefinitionInfo) *SkyDefinition {
 
 // CreateMaterial creates a new Material from the specified info object.
 func (e *Engine) CreateMaterial(info MaterialInfo) *Material {
-	geometryPasses := gog.Map(info.GeometryPasses, func(passInfo GeometryRenderPassInfo) internal.MaterialRenderPassDefinition {
-		return internal.MaterialRenderPassDefinition{
+	geometryPasses := gog.Map(info.GeometryPasses, func(passInfo MaterialPassInfo) internal.MaterialRenderPass {
+		return internal.MaterialRenderPass{
 			Layer:           passInfo.Layer,
 			Culling:         passInfo.Culling.ValueOrDefault(render.CullModeNone),
 			FrontFace:       passInfo.FrontFace.ValueOrDefault(render.FaceOrientationCCW),
@@ -144,12 +98,12 @@ func (e *Engine) CreateMaterial(info MaterialInfo) *Material {
 			Blending:        false,
 			TextureSet:      internal.NewShaderTextureSet(passInfo.Shader.ast),
 			UniformSet:      internal.NewShaderUniformSet(passInfo.Shader.ast),
-			Shader:          passInfo.Shader,
+			Shader:          passInfo.Shader.ast,
 		}
 	})
 
-	shadowPasses := gog.Map(info.ShadowPasses, func(passInfo ShadowRenderPassInfo) internal.MaterialRenderPassDefinition {
-		return internal.MaterialRenderPassDefinition{
+	shadowPasses := gog.Map(info.ShadowPasses, func(passInfo MaterialPassInfo) internal.MaterialRenderPass {
+		return internal.MaterialRenderPass{
 			Layer:           0,
 			Culling:         passInfo.Culling.ValueOrDefault(render.CullModeNone),
 			FrontFace:       passInfo.FrontFace.ValueOrDefault(render.FaceOrientationCCW),
@@ -159,12 +113,12 @@ func (e *Engine) CreateMaterial(info MaterialInfo) *Material {
 			Blending:        false,
 			TextureSet:      internal.NewShaderTextureSet(passInfo.Shader.ast),
 			UniformSet:      internal.NewShaderUniformSet(passInfo.Shader.ast),
-			Shader:          passInfo.Shader,
+			Shader:          passInfo.Shader.ast,
 		}
 	})
 
-	forwardPasses := gog.Map(info.ForwardPasses, func(passInfo ForwardRenderPassInfo) internal.MaterialRenderPassDefinition {
-		return internal.MaterialRenderPassDefinition{
+	forwardPasses := gog.Map(info.ForwardPasses, func(passInfo MaterialPassInfo) internal.MaterialRenderPass {
+		return internal.MaterialRenderPass{
 			Layer:           passInfo.Layer,
 			Culling:         passInfo.Culling.ValueOrDefault(render.CullModeNone),
 			FrontFace:       passInfo.FrontFace.ValueOrDefault(render.FaceOrientationCCW),
@@ -174,7 +128,22 @@ func (e *Engine) CreateMaterial(info MaterialInfo) *Material {
 			Blending:        passInfo.Blending.ValueOrDefault(false),
 			TextureSet:      internal.NewShaderTextureSet(passInfo.Shader.ast),
 			UniformSet:      internal.NewShaderUniformSet(passInfo.Shader.ast),
-			Shader:          passInfo.Shader,
+			Shader:          passInfo.Shader.ast,
+		}
+	})
+
+	skyPasses := gog.Map(info.SkyPasses, func(passInfo MaterialPassInfo) internal.MaterialRenderPass {
+		return internal.MaterialRenderPass{
+			Layer:           passInfo.Layer,
+			Culling:         passInfo.Culling.ValueOrDefault(render.CullModeBack),
+			FrontFace:       passInfo.FrontFace.ValueOrDefault(render.FaceOrientationCW),
+			DepthTest:       passInfo.DepthTest.ValueOrDefault(true),
+			DepthWrite:      passInfo.DepthWrite.ValueOrDefault(false),
+			DepthComparison: passInfo.DepthComparison.ValueOrDefault(render.ComparisonLessOrEqual),
+			Blending:        passInfo.Blending.ValueOrDefault(false),
+			TextureSet:      internal.NewShaderTextureSet(passInfo.Shader.ast),
+			UniformSet:      internal.NewShaderUniformSet(passInfo.Shader.ast),
+			Shader:          passInfo.Shader.ast,
 		}
 	})
 
@@ -183,6 +152,7 @@ func (e *Engine) CreateMaterial(info MaterialInfo) *Material {
 		geometryPasses: geometryPasses,
 		shadowPasses:   shadowPasses,
 		forwardPasses:  forwardPasses,
+		skyPasses:      skyPasses,
 	}
 }
 

@@ -10,44 +10,27 @@ import (
 )
 
 func (s *ResourceSet) convertMaterial(
-	geometryShaders []*graphics.GeometryShader,
-	shadowShaders []*graphics.ShadowShader,
-	forwardShaders []*graphics.ForwardShader,
+	shaders []*graphics.Shader,
 	textures []render.Texture,
 	assetMaterial asset.Material,
 ) async.Promise[*graphics.Material] {
 
 	materialInfo := graphics.MaterialInfo{
 		Name: assetMaterial.Name,
-		GeometryPasses: gog.Map(assetMaterial.GeometryPasses, func(pass asset.GeometryPass) graphics.GeometryRenderPassInfo {
-			return graphics.GeometryRenderPassInfo{
-				Layer:           pass.Layer,
-				Culling:         opt.V(s.resolveCullMode(pass.Culling)),
-				FrontFace:       opt.V(s.resolveFaceOrientation(pass.FrontFace)),
-				DepthTest:       opt.V(pass.DepthTest),
-				DepthWrite:      opt.V(pass.DepthWrite),
-				DepthComparison: opt.V(s.resolveComparison(pass.DepthComparison)),
-				Shader:          geometryShaders[pass.ShaderIndex],
-			}
+		GeometryPasses: gog.Map(assetMaterial.GeometryPasses, func(pass asset.MaterialPass) graphics.MaterialPassInfo {
+			return s.convertMaterialPass(shaders, pass)
 		}),
-		ShadowPasses: gog.Map(assetMaterial.ShadowPasses, func(pass asset.ShadowPass) graphics.ShadowRenderPassInfo {
-			return graphics.ShadowRenderPassInfo{
-				Culling:   opt.V(s.resolveCullMode(pass.Culling)),
-				FrontFace: opt.V(s.resolveFaceOrientation(pass.FrontFace)),
-				Shader:    shadowShaders[pass.ShaderIndex],
-			}
+		ShadowPasses: gog.Map(assetMaterial.ShadowPasses, func(pass asset.MaterialPass) graphics.MaterialPassInfo {
+			return s.convertMaterialPass(shaders, pass)
 		}),
-		ForwardPasses: gog.Map(assetMaterial.ForwardPasses, func(pass asset.ForwardPass) graphics.ForwardRenderPassInfo {
-			return graphics.ForwardRenderPassInfo{
-				Layer:           pass.Layer,
-				Culling:         opt.V(s.resolveCullMode(pass.Culling)),
-				FrontFace:       opt.V(s.resolveFaceOrientation(pass.FrontFace)),
-				DepthTest:       opt.V(pass.DepthTest),
-				DepthWrite:      opt.V(pass.DepthWrite),
-				DepthComparison: opt.V(s.resolveComparison(pass.DepthComparison)),
-				Blending:        opt.V(pass.Blending),
-				Shader:          forwardShaders[pass.ShaderIndex],
-			}
+		ForwardPasses: gog.Map(assetMaterial.ForwardPasses, func(pass asset.MaterialPass) graphics.MaterialPassInfo {
+			return s.convertMaterialPass(shaders, pass)
+		}),
+		SkyPasses: gog.Map(assetMaterial.SkyPasses, func(pass asset.MaterialPass) graphics.MaterialPassInfo {
+			return s.convertMaterialPass(shaders, pass)
+		}),
+		PostprocessingPasses: gog.Map(assetMaterial.PostprocessingPasses, func(pass asset.MaterialPass) graphics.MaterialPassInfo {
+			return s.convertMaterialPass(shaders, pass)
 		}),
 	}
 
@@ -73,4 +56,17 @@ func (s *ResourceSet) convertMaterial(
 		promise.Deliver(material)
 	})
 	return promise
+}
+
+func (s *ResourceSet) convertMaterialPass(shaders []*graphics.Shader, assetPass asset.MaterialPass) graphics.MaterialPassInfo {
+	return graphics.MaterialPassInfo{
+		Layer:           assetPass.Layer,
+		Culling:         opt.V(s.resolveCullMode(assetPass.Culling)),
+		FrontFace:       opt.V(s.resolveFaceOrientation(assetPass.FrontFace)),
+		DepthTest:       opt.V(assetPass.DepthTest),
+		DepthWrite:      opt.V(assetPass.DepthWrite),
+		DepthComparison: opt.V(s.resolveComparison(assetPass.DepthComparison)),
+		Blending:        opt.V(assetPass.Blending),
+		Shader:          shaders[assetPass.ShaderIndex],
+	}
 }

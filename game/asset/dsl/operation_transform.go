@@ -84,3 +84,93 @@ func SetScale(scaleProvider Provider[dprec.Vec3]) Operation {
 		},
 	)
 }
+
+// SetWidth sets the width of the target.
+func SetWidth(widthProvider Provider[float64]) Operation {
+	type widthConfigurable interface {
+		SetWidth(float64)
+	}
+
+	return FuncOperation(
+		// apply function
+		func(target any) error {
+			width, err := widthProvider.Get()
+			if err != nil {
+				return fmt.Errorf("error getting width: %w", err)
+			}
+
+			configurable, ok := target.(widthConfigurable)
+			if !ok {
+				return fmt.Errorf("target %T is not a box", target)
+			}
+			configurable.SetWidth(width)
+
+			return nil
+		},
+
+		// digest function
+		func() ([]byte, error) {
+			return CreateDigest("set-width", widthProvider)
+		},
+	)
+}
+
+// SetHeight sets the width of the target.
+func SetHeight(heightProvider Provider[float64]) Operation {
+	type heightConfigurable interface {
+		SetHeight(float64)
+	}
+
+	return FuncOperation(
+		// apply function
+		func(target any) error {
+			height, err := heightProvider.Get()
+			if err != nil {
+				return fmt.Errorf("error getting height: %w", err)
+			}
+
+			configurable, ok := target.(heightConfigurable)
+			if !ok {
+				return fmt.Errorf("target %T is not a box", target)
+			}
+			configurable.SetHeight(height)
+
+			return nil
+		},
+
+		// digest function
+		func() ([]byte, error) {
+			return CreateDigest("set-height", heightProvider)
+		},
+	)
+}
+
+// SetLength sets the width of the target.
+func SetLength(lengthProvider Provider[float64]) Operation {
+	type lengthConfigurable interface {
+		SetLength(float64)
+	}
+
+	return FuncOperation(
+		// apply function
+		func(target any) error {
+			length, err := lengthProvider.Get()
+			if err != nil {
+				return fmt.Errorf("error getting length: %w", err)
+			}
+
+			configurable, ok := target.(lengthConfigurable)
+			if !ok {
+				return fmt.Errorf("target %T is not a box", target)
+			}
+			configurable.SetLength(length)
+
+			return nil
+		},
+
+		// digest function
+		func() ([]byte, error) {
+			return CreateDigest("set-length", lengthProvider)
+		},
+	)
+}

@@ -8,30 +8,29 @@ import (
 	"github.com/mokiat/gog"
 	"github.com/mokiat/gomath/sprec"
 	"github.com/mokiat/lacking/game/asset"
-	"github.com/mokiat/lacking/game/graphics/lsl"
 )
 
 func NewConverter(model *Model) *Converter {
 	return &Converter{
 		model: model,
 
-		convertedTextures:   make(map[*Texture]uint32),
-		convertedSkyShaders: make(map[*Shader]uint32),
-
-		parsedShaders: make(map[*Shader]*lsl.Shader),
+		convertedShaders:   make(map[*Shader]uint32),
+		convertedTextures:  make(map[*Texture]uint32),
+		convertedMaterials: make(map[*Material]uint32),
 	}
 }
 
 type Converter struct {
 	model *Model
 
+	assetShaders     []asset.Shader
+	convertedShaders map[*Shader]uint32
+
 	assetTextures     []asset.Texture
 	convertedTextures map[*Texture]uint32
 
-	assetSkyShaders     []asset.Shader
-	convertedSkyShaders map[*Shader]uint32
-
-	parsedShaders map[*Shader]*lsl.Shader
+	assetMaterials     []asset.Material
+	convertedMaterials map[*Material]uint32
 }
 
 func (c *Converter) Convert() (asset.Model, error) {
@@ -96,14 +95,100 @@ func (c *Converter) convertModel(s *Model) (asset.Model, error) {
 
 	return asset.Model{
 		Nodes:             assetNodes,
-		SkyShaders:        c.assetSkyShaders,
+		Shaders:           c.assetShaders,
 		Textures:          c.assetTextures,
+		Materials:         c.assetMaterials,
 		AmbientLights:     assetAmbientLights,
 		PointLights:       assetPointLights,
 		SpotLights:        assetSpotLights,
 		DirectionalLights: assetDirectionalLights,
 		Skies:             assetSkies,
 	}, nil
+}
+
+func (c *Converter) convertMaterialPass(pass *MaterialPass) (asset.MaterialPass, error) {
+	shaderIndex, err := c.convertShader(pass.shader)
+	if err != nil {
+		return asset.MaterialPass{}, fmt.Errorf("error converting shader: %w", err)
+	}
+	return asset.MaterialPass{
+		Layer:           int32(pass.layer),
+		Culling:         pass.culling,
+		FrontFace:       pass.frontFace,
+		DepthTest:       pass.depthTest,
+		DepthWrite:      pass.depthWrite,
+		DepthComparison: pass.depthComparison,
+		Blending:        pass.blending,
+		ShaderIndex:     shaderIndex,
+	}, nil
+}
+
+func (c *Converter) convertMaterial(material *Material) (uint32, error) {
+	if index, ok := c.convertedMaterials[material]; ok {
+		return index, nil
+	}
+
+	textures, err := c.convertSamplers(material.samplers)
+	if err != nil {
+		return 0, fmt.Errorf("error converting samplers: %w", err)
+	}
+
+	properties, err := c.convertProperties(material.properties)
+	if err != nil {
+		return 0, fmt.Errorf("error converting properties: %w", err)
+	}
+
+	assetMaterial := asset.Material{
+		Name:                 material.name,
+		Textures:             textures,
+		Properties:           properties,
+		GeometryPasses:       make([]asset.MaterialPass, len(material.geometryPasses)),
+		ShadowPasses:         make([]asset.MaterialPass, len(material.shadowPasses)),
+		ForwardPasses:        make([]asset.MaterialPass, len(material.forwardPasses)),
+		SkyPasses:            make([]asset.MaterialPass, len(material.skyPasses)),
+		PostprocessingPasses: make([]asset.MaterialPass, len(material.postprocessingPasses)),
+	}
+	for i, pass := range material.geometryPasses {
+		assetPass, err := c.convertMaterialPass(pass)
+		if err != nil {
+			return 0, fmt.Errorf("error converting material pass: %w", err)
+		}
+		assetMaterial.GeometryPasses[i] = assetPass
+	}
+	for i, pass := range material.shadowPasses {
+		assetPass, err := c.convertMaterialPass(pass)
+		if err != nil {
+			return 0, fmt.Errorf("error converting material pass: %w", err)
+		}
+		assetMaterial.ShadowPasses[i] = assetPass
+	}
+	for i, pass := range material.forwardPasses {
+		assetPass, err := c.convertMaterialPass(pass)
+		if err != nil {
+			return 0, fmt.Errorf("error converting material pass: %w", err)
+		}
+		assetMaterial.ForwardPasses[i] = assetPass
+	}
+	for i, pass := range material.skyPasses {
+		assetPass, err := c.convertMaterialPass(pass)
+		if err != nil {
+			return 0, fmt.Errorf("error converting material pass: %w", err)
+		}
+		assetMaterial.SkyPasses[i] = assetPass
+	}
+	for i, pass := range material.postprocessingPasses {
+		assetPass, err := c.convertMaterialPass(pass)
+		if err != nil {
+			return 0, fmt.Errorf("error converting material pass: %w", err)
+		}
+		assetMaterial.PostprocessingPasses[i] = assetPass
+	}
+
+	index := uint32(len(c.assetMaterials))
+	c.assetMaterials = append(c.assetMaterials, assetMaterial)
+	c.convertedMaterials[material] = index
+	return index, nil
+
 }
 
 func (c *Converter) convertAmbientLight(nodeIndex uint32, light *AmbientLight) (asset.AmbientLight, error) {
@@ -154,60 +239,30 @@ func (c *Converter) convertDirectionalLight(nodeIndex uint32, light *Directional
 }
 
 func (c *Converter) convertSky(nodeIndex uint32, sky *Sky) (asset.Sky, error) {
-	textures, err := c.convertSamplers(sky.samplers)
-	if err != nil {
-		return asset.Sky{}, fmt.Errorf("error converting samplers: %w", err)
-	}
 
-	properties, err := c.convertProperties(sky.properties)
+	materialIndex, err := c.convertMaterial(sky.material)
 	if err != nil {
-		return asset.Sky{}, fmt.Errorf("error converting properties: %w", err)
+		return asset.Sky{}, fmt.Errorf("error converting material: %w", err)
 	}
 
 	assetSky := asset.Sky{
-		NodeIndex:  nodeIndex,
-		Textures:   textures,
-		Properties: properties,
-		Layers:     make([]asset.SkyLayer, len(sky.layers)),
-	}
-	for i, layer := range sky.layers {
-		assetLayer, err := c.convertSkyLayer(layer)
-		if err != nil {
-			return asset.Sky{}, fmt.Errorf("error converting layer: %w", err)
-		}
-		assetSky.Layers[i] = assetLayer
+		NodeIndex:     nodeIndex,
+		MaterialIndex: materialIndex,
 	}
 	return assetSky, nil
 }
 
-func (c *Converter) convertSkyLayer(layer SkyLayer) (asset.SkyLayer, error) {
-	shaderIndex, err := c.convertSkyShader(layer.shader)
-	if err != nil {
-		return asset.SkyLayer{}, fmt.Errorf("error converting shader: %w", err)
-	}
-
-	_, err = c.parseShader(layer.shader)
-	if err != nil {
-		return asset.SkyLayer{}, fmt.Errorf("error parsing shader: %w", err)
-	}
-	// TODO: Run validation with sky "Globals"
-
-	return asset.SkyLayer{
-		Blending:    layer.Blending(),
-		ShaderIndex: shaderIndex,
-	}, nil
-}
-
-func (c *Converter) convertSkyShader(shader *Shader) (uint32, error) {
-	if index, ok := c.convertedSkyShaders[shader]; ok {
+func (c *Converter) convertShader(shader *Shader) (uint32, error) {
+	if index, ok := c.convertedShaders[shader]; ok {
 		return index, nil
 	}
-	shaderIndex := uint32(len(c.assetSkyShaders))
+	shaderIndex := uint32(len(c.assetShaders))
 	assetShader := asset.Shader{
+		ShaderType: shader.ShaderType(),
 		SourceCode: shader.SourceCode(),
 	}
-	c.convertedSkyShaders[shader] = shaderIndex
-	c.assetSkyShaders = append(c.assetSkyShaders, assetShader)
+	c.convertedShaders[shader] = shaderIndex
+	c.assetShaders = append(c.assetShaders, assetShader)
 	return shaderIndex, nil
 }
 
@@ -308,16 +363,4 @@ func (c *Converter) convertProperties(properties map[string]interface{}) ([]asse
 		})
 	}
 	return bindings, nil
-}
-
-func (c *Converter) parseShader(shader *Shader) (*lsl.Shader, error) {
-	if parsed, ok := c.parsedShaders[shader]; ok {
-		return parsed, nil
-	}
-	parsed, err := lsl.Parse(shader.SourceCode())
-	if err != nil {
-		return nil, err
-	}
-	c.parsedShaders[shader] = parsed
-	return parsed, nil
 }

@@ -1,22 +1,34 @@
 package mdl
 
-type Programmable interface {
-	SourceCode() string
-	SetSourceCode(sourceCode string)
-}
+import "github.com/mokiat/lacking/game/asset"
 
-type BaseProgrammable struct {
+type ShaderType = asset.ShaderType
+
+const (
+	ShaderTypeGeometry    ShaderType = asset.ShaderTypeGeometry
+	ShaderTypeShadow      ShaderType = asset.ShaderTypeShadow
+	ShaderTypeForward     ShaderType = asset.ShaderTypeForward
+	ShaderTypeSky         ShaderType = asset.ShaderTypeSky
+	ShaderTypePostprocess ShaderType = asset.ShaderTypePostprocess
+)
+
+type Shader struct {
+	shaderType ShaderType
 	sourceCode string
 }
 
-func (b *BaseProgrammable) SourceCode() string {
-	return b.sourceCode
+func (s *Shader) SourceCode() string {
+	return s.sourceCode
 }
 
-func (b *BaseProgrammable) SetSourceCode(sourceCode string) {
-	b.sourceCode = sourceCode
+func (s *Shader) SetSourceCode(sourceCode string) {
+	s.sourceCode = sourceCode
 }
 
-type Shader struct {
-	BaseProgrammable
+func (s *Shader) ShaderType() ShaderType {
+	return s.shaderType
+}
+
+func (s *Shader) SetShaderType(shaderType ShaderType) {
+	s.shaderType = shaderType
 }

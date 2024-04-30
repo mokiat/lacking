@@ -1,81 +1,176 @@
 package mdl
 
-type Blendable interface {
-	Blending() bool
-	SetBlending(blending bool)
-}
+import "github.com/mokiat/lacking/game/asset"
 
-type BaseBlendable struct {
-	blending bool
-}
+const (
+	CullModeNone         CullMode = asset.CullModeNone
+	CullModeFront        CullMode = asset.CullModeFront
+	CullModeBack         CullMode = asset.CullModeBack
+	CullModeFrontAndBack CullMode = asset.CullModeFrontAndBack
+)
 
-func (b *BaseBlendable) Blending() bool {
-	return b.blending
-}
+type CullMode = asset.CullMode
 
-func (b *BaseBlendable) SetBlending(blending bool) {
-	b.blending = blending
-}
+const (
+	FaceOrientationCCW FaceOrientation = asset.FaceOrientationCCW
+	FaceOrientationCW  FaceOrientation = asset.FaceOrientationCW
+)
 
-type PropertyHolder interface {
-	Property(name string) any
-	SetProperty(name string, value any)
-}
+type FaceOrientation = asset.FaceOrientation
 
-type BasePropertyHolder struct {
+const (
+	ComparisonNever          Comparison = asset.ComparisonNever
+	ComparisonLess           Comparison = asset.ComparisonLess
+	ComparisonEqual          Comparison = asset.ComparisonEqual
+	ComparisonLessOrEqual    Comparison = asset.ComparisonLessOrEqual
+	ComparisonGreater        Comparison = asset.ComparisonGreater
+	ComparisonNotEqual       Comparison = asset.ComparisonNotEqual
+	ComparisonGreaterOrEqual Comparison = asset.ComparisonGreaterOrEqual
+	ComparisonAlways         Comparison = asset.ComparisonAlways
+)
+
+type Comparison = asset.Comparison
+
+type Material struct {
+	name string
+
+	samplers   map[string]*Sampler
 	properties map[string]any
+
+	geometryPasses       []*MaterialPass
+	shadowPasses         []*MaterialPass
+	forwardPasses        []*MaterialPass
+	skyPasses            []*MaterialPass
+	postprocessingPasses []*MaterialPass
 }
 
-func (b *BasePropertyHolder) Property(name string) any {
-	if b.properties == nil {
+func (m *Material) Name() string {
+	return m.name
+}
+
+func (m *Material) SetName(name string) {
+	m.name = name
+}
+
+func (m *Material) Sampler(name string) *Sampler {
+	if m.samplers == nil {
 		return nil
 	}
-	return b.properties[name]
+	return m.samplers[name]
 }
 
-func (b *BasePropertyHolder) SetProperty(name string, value any) {
-	if b.properties == nil {
-		b.properties = make(map[string]any)
+func (m *Material) SetSampler(name string, sampler *Sampler) {
+	if m.samplers == nil {
+		m.samplers = make(map[string]*Sampler)
 	}
-	b.properties[name] = value
+	m.samplers[name] = sampler
 }
 
-type SamplerHolder interface {
-	Sampler(name string) *Sampler
-	SetSampler(name string, texture *Sampler)
-}
-
-type BaseSamplerHolder struct {
-	samplers map[string]*Sampler
-}
-
-func (b *BaseSamplerHolder) Sampler(name string) *Sampler {
-	if b.samplers == nil {
+func (m *Material) Property(name string) any {
+	if m.properties == nil {
 		return nil
 	}
-	return b.samplers[name]
+	return m.properties[name]
 }
 
-func (b *BaseSamplerHolder) SetSampler(name string, sampler *Sampler) {
-	if b.samplers == nil {
-		b.samplers = make(map[string]*Sampler)
+func (m *Material) SetProperty(name string, value any) {
+	if m.properties == nil {
+		m.properties = make(map[string]any)
 	}
-	b.samplers[name] = sampler
+	m.properties[name] = value
 }
 
-type Shadable interface {
-	Shader() *Shader
-	SetShader(shader *Shader)
+func (m *Material) AddGeometryPass(pass *MaterialPass) {
+	m.geometryPasses = append(m.geometryPasses, pass)
 }
 
-type BaseShadable struct {
-	shader *Shader
+func (m *Material) AddShadowPass(pass *MaterialPass) {
+	m.shadowPasses = append(m.shadowPasses, pass)
 }
 
-func (b *BaseShadable) Shader() *Shader {
-	return b.shader
+func (m *Material) AddForwardPass(pass *MaterialPass) {
+	m.forwardPasses = append(m.forwardPasses, pass)
 }
 
-func (b *BaseShadable) SetShader(shader *Shader) {
-	b.shader = shader
+func (m *Material) AddSkyPass(pass *MaterialPass) {
+	m.skyPasses = append(m.skyPasses, pass)
+}
+
+func (m *Material) AddPostprocessPass(pass *MaterialPass) {
+	m.postprocessingPasses = append(m.postprocessingPasses, pass)
+}
+
+type MaterialPass struct {
+	layer           int
+	culling         CullMode
+	frontFace       FaceOrientation
+	depthTest       bool
+	depthWrite      bool
+	depthComparison Comparison
+	blending        bool
+	shader          *Shader
+}
+
+func (m *MaterialPass) Layer() int {
+	return m.layer
+}
+
+func (m *MaterialPass) SetLayer(layer int) {
+	m.layer = layer
+}
+
+func (m *MaterialPass) Culling() CullMode {
+	return m.culling
+}
+
+func (m *MaterialPass) SetCulling(culling CullMode) {
+	m.culling = culling
+}
+
+func (m *MaterialPass) FrontFace() FaceOrientation {
+	return m.frontFace
+}
+
+func (m *MaterialPass) SetFrontFace(frontFace FaceOrientation) {
+	m.frontFace = frontFace
+}
+
+func (m *MaterialPass) DepthTest() bool {
+	return m.depthTest
+}
+
+func (m *MaterialPass) SetDepthTest(depthTest bool) {
+	m.depthTest = depthTest
+}
+
+func (m *MaterialPass) DepthWrite() bool {
+	return m.depthWrite
+}
+
+func (m *MaterialPass) SetDepthWrite(depthWrite bool) {
+	m.depthWrite = depthWrite
+}
+
+func (m *MaterialPass) DepthComparison() Comparison {
+	return m.depthComparison
+}
+
+func (m *MaterialPass) SetDepthComparison(depthComparison Comparison) {
+	m.depthComparison = depthComparison
+}
+
+func (m *MaterialPass) Blending() bool {
+	return m.blending
+}
+
+func (m *MaterialPass) SetBlending(blending bool) {
+	m.blending = blending
+}
+
+func (m *MaterialPass) Shader() *Shader {
+	return m.shader
+}
+
+func (m *MaterialPass) SetShader(shader *Shader) {
+	m.shader = shader
 }

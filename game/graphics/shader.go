@@ -110,62 +110,61 @@ type ShaderBuilder interface {
 // ShaderInfo contains the information needed to create a custom Shader.
 type ShaderInfo struct {
 
+	// ShaderType specifies the type of the shader.
+	ShaderType ShaderType
+
 	// SourceCode is the source code of the shader.
 	SourceCode string
 }
 
-// GeometryShader represents a shader that is used during the geometry pass.
-type GeometryShader struct {
-	builder ShaderBuilder
-	ast     *lsl.Shader
+// ShaderType specifies the type of a shader.
+type ShaderType uint8
+
+const (
+	ShaderTypeGeometry ShaderType = iota
+	ShaderTypeShadow
+	ShaderTypeForward
+	ShaderTypeSky
+	ShaderTypePostprocess
+)
+
+// Shader represents a custom shader program.
+type Shader struct {
+	ast *lsl.Shader
 }
 
-func (s *GeometryShader) CreateProgramCode(info internal.ShaderProgramCodeInfo) render.ProgramCode {
-	return s.builder.BuildGeometryCode(GeometryConstraints{
+func (e *Engine) createGeometryProgramCode(shader *lsl.Shader, info internal.ShaderProgramCodeInfo) render.ProgramCode {
+	return e.shaderBuilder.BuildGeometryCode(GeometryConstraints{
 		HasArmature:     info.MeshHasArmature,
 		HasNormals:      info.MeshHasNormals,
 		HasTexCoords:    info.MeshHasTextureUVs,
 		HasVertexColors: info.MeshHasVertexColors,
-	}, s.ast)
+	}, shader)
 }
 
-// ShadowShader represents a shader that is used during the shadow pass for
-// a particular light source.
-type ShadowShader struct {
-	builder ShaderBuilder
-	ast     *lsl.Shader
-}
-
-func (s *ShadowShader) CreateProgramCode(info internal.ShaderProgramCodeInfo) render.ProgramCode {
-	return s.builder.BuildShadowCode(ShadowConstraints{
+func (e *Engine) createShadowProgramCode(shader *lsl.Shader, info internal.ShaderProgramCodeInfo) render.ProgramCode {
+	return e.shaderBuilder.BuildShadowCode(ShadowConstraints{
 		HasArmature: info.MeshHasArmature,
-	}, s.ast)
+	}, shader)
 }
 
-// ForwardShader represents a shader that is used during the forward pass.
-type ForwardShader struct {
-	builder ShaderBuilder
-	ast     *lsl.Shader
-}
-
-func (s *ForwardShader) CreateProgramCode(info internal.ShaderProgramCodeInfo) render.ProgramCode {
-	return s.builder.BuildForwardCode(ForwardConstraints{
+func (e *Engine) createForwardProgramCode(shader *lsl.Shader, info internal.ShaderProgramCodeInfo) render.ProgramCode {
+	return e.shaderBuilder.BuildForwardCode(ForwardConstraints{
 		HasArmature: info.MeshHasArmature,
-	}, s.ast)
+	}, shader)
 }
 
-// SkyShader represents a shader that is used during the sky pass.
-type SkyShader struct {
-	builder ShaderBuilder
-	ast     *lsl.Shader
-}
-
-func (s *SkyShader) createProgramCode() render.ProgramCode {
-	return s.builder.BuildCode(ShaderConstraints{
-		LoadSkyPreset: true,
-		HasCoords:     true,
-		HasOutput0:    true,
-	}, s.ast)
+func (e *Engine) createProgramCode(shader *lsl.Shader, info internal.ShaderProgramCodeInfo) render.ProgramCode {
+	return e.shaderBuilder.BuildCode(ShaderConstraints{
+		LoadSkyPreset:   true,
+		HasOutput0:      true,
+		HasCoords:       info.MeshHasCoords,
+		HasNormals:      info.MeshHasNormals,
+		HasTangents:     info.MeshHasTangents,
+		HasTexCoords:    info.MeshHasTextureUVs,
+		HasVertexColors: info.MeshHasVertexColors,
+		HasArmature:     info.MeshHasArmature,
+	}, shader)
 }
 
 ///////////////// OLD CODE FOLLOWS ////////////////////////////
