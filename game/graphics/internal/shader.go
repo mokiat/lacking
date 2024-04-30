@@ -3,7 +3,6 @@ package internal
 import "github.com/mokiat/lacking/render"
 
 type ShaderMeshInfo struct {
-	VertexArray         render.VertexArray
 	MeshHasCoords       bool
 	MeshHasNormals      bool
 	MeshHasTangents     bool

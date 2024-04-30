@@ -75,14 +75,13 @@ func (c *converter) BuildModel(model *Model) asset.Model {
 		c.BuildNode(-1, node)
 	}
 
-	assetGeometryShaders := make([]asset.Shader, len(model.Materials))
-	assetShadowShaders := make([]asset.Shader, len(model.Materials))
-	for i, material := range model.Materials {
-		assetGeometryShaders[i] = c.BuildGeometryShader(material)
-		c.assetGeometryShaderIndexFromMaterial[material] = i
+	var assetShaders []asset.Shader
+	for _, material := range model.Materials {
+		c.assetGeometryShaderIndexFromMaterial[material] = len(assetShaders)
+		assetShaders = append(assetShaders, c.BuildGeometryShader(material))
 
-		assetShadowShaders[i] = c.BuildShadowShader(material)
-		c.assetShadowShaderIndexFromMaterial[material] = i
+		c.assetShadowShaderIndexFromMaterial[material] = len(assetShaders)
+		assetShaders = append(assetShaders, c.BuildShadowShader(material))
 	}
 
 	assetTextures := make([]asset.Texture, len(model.Textures))
@@ -182,8 +181,7 @@ func (c *converter) BuildModel(model *Model) asset.Model {
 
 	return asset.Model{
 		Nodes:             c.assetNodes,
-		GeometryShaders:   assetGeometryShaders,
-		ShadowShaders:     assetShadowShaders,
+		Shaders:           assetShaders,
 		Animations:        assetAnimations,
 		Armatures:         assetArmatures,
 		Textures:          assetTextures,
@@ -370,7 +368,7 @@ func (c *converter) BuildMaterial(material *Material) asset.Material {
 			c.convertProperty("normalScale", material.NormalScale),
 			c.convertProperty("alphaThreshold", material.AlphaThreshold),
 		},
-		GeometryPasses: []asset.GeometryPass{
+		GeometryPasses: []asset.MaterialPass{
 			{
 				Layer:           0,
 				Culling:         culling,
@@ -378,18 +376,23 @@ func (c *converter) BuildMaterial(material *Material) asset.Material {
 				DepthTest:       true,
 				DepthWrite:      true,
 				DepthComparison: asset.ComparisonLess,
+				Blending:        false,
 				ShaderIndex:     geometryShaderIndex,
 			},
 		},
-		ShadowPasses: []asset.ShadowPass{
+		ShadowPasses: []asset.MaterialPass{
 			{
-				Layer:       0,
-				Culling:     culling,
-				FrontFace:   asset.FaceOrientationCCW,
-				ShaderIndex: shadowShaderIndex,
+				Layer:           0,
+				Culling:         culling,
+				FrontFace:       asset.FaceOrientationCCW,
+				DepthTest:       true,
+				DepthWrite:      true,
+				DepthComparison: asset.ComparisonLess,
+				Blending:        false,
+				ShaderIndex:     shadowShaderIndex,
 			},
 		},
-		ForwardPasses: []asset.ForwardPass{},
+		ForwardPasses: []asset.MaterialPass{},
 	}
 
 }

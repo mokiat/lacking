@@ -64,7 +64,6 @@ func (d *MeshDefinition) deleteMaterialPasses(index int, passType internal.MeshR
 
 func (d *MeshDefinition) createMaterialPasses(index int, passType internal.MeshRenderPassType) {
 	meshShaderInfo := internal.ShaderMeshInfo{
-		VertexArray:         d.geometry.vertexArray,
 		MeshHasCoords:       d.geometry.vertexFormat.Coord.Specified,
 		MeshHasNormals:      d.geometry.vertexFormat.Normal.Specified,
 		MeshHasTangents:     d.geometry.vertexFormat.Tangent.Specified,
@@ -80,7 +79,7 @@ func (d *MeshDefinition) createMaterialPasses(index int, passType internal.MeshR
 	switch passType {
 	case internal.MeshRenderPassTypeGeometry:
 		for _, pass := range material.geometryPasses {
-			programCode := pass.Shader.CreateProgramCode(internal.ShaderProgramCodeInfo{
+			programCode := d.engine.createGeometryProgramCode(pass.Shader, internal.ShaderProgramCodeInfo{
 				ShaderMeshInfo: meshShaderInfo,
 			})
 			program := d.engine.createGeometryPassProgram(programCode)
@@ -91,22 +90,20 @@ func (d *MeshDefinition) createMaterialPasses(index int, passType internal.MeshR
 				PassDefinition:   pass,
 			})
 			d.materialPasses[index][passType] = append(d.materialPasses[index][passType], internal.MeshRenderPass{
-				MeshRenderPassDefinition: internal.MeshRenderPassDefinition{
-					Layer:           pass.Layer,
-					Program:         program,
-					Pipeline:        pipeline,
-					IndexByteOffset: fragment.indexByteOffset,
-					IndexCount:      fragment.indexCount,
-				},
-				Key:        d.engine.pickFreeRenderPassKey(),
-				TextureSet: pass.TextureSet,
-				UniformSet: pass.UniformSet,
+				Layer:           pass.Layer,
+				Program:         program,
+				Pipeline:        pipeline,
+				IndexByteOffset: fragment.indexByteOffset,
+				IndexCount:      fragment.indexCount,
+				Key:             d.engine.pickFreeRenderPassKey(),
+				TextureSet:      pass.TextureSet,
+				UniformSet:      pass.UniformSet,
 			})
 		}
 
 	case internal.MeshRenderPassTypeShadow:
 		for _, pass := range material.shadowPasses {
-			programCode := pass.Shader.CreateProgramCode(internal.ShaderProgramCodeInfo{
+			programCode := d.engine.createShadowProgramCode(pass.Shader, internal.ShaderProgramCodeInfo{
 				ShaderMeshInfo: meshShaderInfo,
 			})
 			program := d.engine.createShadowPassProgram(programCode)
@@ -117,22 +114,20 @@ func (d *MeshDefinition) createMaterialPasses(index int, passType internal.MeshR
 				PassDefinition:   pass,
 			})
 			d.materialPasses[index][passType] = append(d.materialPasses[index][passType], internal.MeshRenderPass{
-				MeshRenderPassDefinition: internal.MeshRenderPassDefinition{
-					Layer:           pass.Layer,
-					Program:         program,
-					Pipeline:        pipeline,
-					IndexByteOffset: fragment.indexByteOffset,
-					IndexCount:      fragment.indexCount,
-				},
-				Key:        d.engine.pickFreeRenderPassKey(),
-				TextureSet: pass.TextureSet,
-				UniformSet: pass.UniformSet,
+				Layer:           pass.Layer,
+				Program:         program,
+				Pipeline:        pipeline,
+				IndexByteOffset: fragment.indexByteOffset,
+				IndexCount:      fragment.indexCount,
+				Key:             d.engine.pickFreeRenderPassKey(),
+				TextureSet:      pass.TextureSet,
+				UniformSet:      pass.UniformSet,
 			})
 		}
 
 	case internal.MeshRenderPassTypeForward:
 		for _, pass := range material.forwardPasses {
-			programCode := pass.Shader.CreateProgramCode(internal.ShaderProgramCodeInfo{
+			programCode := d.engine.createForwardProgramCode(pass.Shader, internal.ShaderProgramCodeInfo{
 				ShaderMeshInfo: meshShaderInfo,
 			})
 			program := d.engine.createForwardPassProgram(programCode)
@@ -143,16 +138,14 @@ func (d *MeshDefinition) createMaterialPasses(index int, passType internal.MeshR
 				PassDefinition:   pass,
 			})
 			d.materialPasses[index][passType] = append(d.materialPasses[index][passType], internal.MeshRenderPass{
-				MeshRenderPassDefinition: internal.MeshRenderPassDefinition{
-					Layer:           pass.Layer,
-					Program:         program,
-					Pipeline:        pipeline,
-					IndexByteOffset: fragment.indexByteOffset,
-					IndexCount:      fragment.indexCount,
-				},
-				Key:        d.engine.pickFreeRenderPassKey(),
-				TextureSet: pass.TextureSet,
-				UniformSet: pass.UniformSet,
+				Layer:           pass.Layer,
+				Program:         program,
+				Pipeline:        pipeline,
+				IndexByteOffset: fragment.indexByteOffset,
+				IndexCount:      fragment.indexCount,
+				Key:             d.engine.pickFreeRenderPassKey(),
+				TextureSet:      pass.TextureSet,
+				UniformSet:      pass.UniformSet,
 			})
 		}
 	}

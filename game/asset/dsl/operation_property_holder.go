@@ -2,12 +2,14 @@ package dsl
 
 import (
 	"fmt"
-
-	"github.com/mokiat/lacking/game/asset/mdl"
 )
 
-// SetProperty sets the specified property on the target property holder.
-func SetProperty[T any](name string, valueProvider Provider[T]) Operation {
+// BindProperty sets the specified property on the target property holder.
+func BindProperty[T any](name string, valueProvider Provider[T]) Operation {
+	type propertyHolder interface {
+		SetProperty(name string, value any)
+	}
+
 	return FuncOperation(
 		// apply function
 		func(target any) error {
@@ -16,7 +18,7 @@ func SetProperty[T any](name string, valueProvider Provider[T]) Operation {
 				return fmt.Errorf("error getting value: %w", err)
 			}
 
-			container, ok := target.(mdl.PropertyHolder)
+			container, ok := target.(propertyHolder)
 			if !ok {
 				return fmt.Errorf("target %T is not a property holder", target)
 			}

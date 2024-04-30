@@ -77,40 +77,13 @@ func (s *ResourceSet) convertModel(assetModel asset.Model) (*ModelDefinition, er
 
 	// TODO: Convert cameras
 
-	geometryShaderPromises := make([]async.Promise[*graphics.GeometryShader], len(assetModel.GeometryShaders))
-	for i, assetShader := range assetModel.GeometryShaders {
-		geometryShaderPromises[i] = s.convertGeometryShader(assetShader)
+	shaderPromises := make([]async.Promise[*graphics.Shader], len(assetModel.Shaders))
+	for i, assetShader := range assetModel.Shaders {
+		shaderPromises[i] = s.convertShader(assetShader)
 	}
-	geometryShaders, err := async.WaitPromises(geometryShaderPromises...)
+	shaders, err := async.WaitPromises(shaderPromises...)
 	if err != nil {
-		return nil, fmt.Errorf("failed to convert geometry shaders: %w", err)
-	}
-
-	shadowShaderPromises := make([]async.Promise[*graphics.ShadowShader], len(assetModel.ShadowShaders))
-	for i, assetShader := range assetModel.ShadowShaders {
-		shadowShaderPromises[i] = s.convertShadowShader(assetShader)
-	}
-	shadowShaders, err := async.WaitPromises(shadowShaderPromises...)
-	if err != nil {
-		return nil, fmt.Errorf("failed to convert shadow shaders: %w", err)
-	}
-
-	forwardShaderPromises := make([]async.Promise[*graphics.ForwardShader], len(assetModel.ForwardShaders))
-	for i, assetShader := range assetModel.ForwardShaders {
-		forwardShaderPromises[i] = s.convertForwardShader(assetShader)
-	}
-	forwardShaders, err := async.WaitPromises(forwardShaderPromises...)
-	if err != nil {
-		return nil, fmt.Errorf("failed to convert forward shaders: %w", err)
-	}
-
-	skyShaderPromises := make([]async.Promise[*graphics.SkyShader], len(assetModel.SkyShaders))
-	for i, assetShader := range assetModel.SkyShaders {
-		skyShaderPromises[i] = s.convertSkyShader(assetShader)
-	}
-	skyShaders, err := async.WaitPromises(skyShaderPromises...)
-	if err != nil {
-		return nil, fmt.Errorf("failed to convert sky shaders: %w", err)
+		return nil, fmt.Errorf("failed to convert shaders: %w", err)
 	}
 
 	texturePromises := make([]async.Promise[render.Texture], len(assetModel.Textures))
@@ -125,9 +98,7 @@ func (s *ResourceSet) convertModel(assetModel asset.Model) (*ModelDefinition, er
 	materialPromises := make([]async.Promise[*graphics.Material], len(assetModel.Materials))
 	for i, assetMaterial := range assetModel.Materials {
 		materialPromises[i] = s.convertMaterial(
-			geometryShaders,
-			shadowShaders,
-			forwardShaders,
+			shaders,
 			textures,
 			assetMaterial,
 		)
@@ -216,8 +187,7 @@ func (s *ResourceSet) convertModel(assetModel asset.Model) (*ModelDefinition, er
 	skyDefinitionPromises := make([]async.Promise[*graphics.SkyDefinition], len(assetModel.Skies))
 	for i, assetSky := range assetModel.Skies {
 		skyDefinitionPromises[i] = s.convertSkyDefinition(
-			textures,
-			skyShaders,
+			materials,
 			assetSky,
 		)
 	}
@@ -235,10 +205,7 @@ func (s *ResourceSet) convertModel(assetModel asset.Model) (*ModelDefinition, er
 		nodes:             nodes,
 		animations:        animations,
 		armatures:         armatures,
-		geometryShaders:   geometryShaders,
-		shadowShaders:     shadowShaders,
-		forwardShaders:    forwardShaders,
-		skyShaders:        skyShaders,
+		shaders:           shaders,
 		textures:          textures,
 		materials:         materials,
 		meshGeometries:    meshGeometries,

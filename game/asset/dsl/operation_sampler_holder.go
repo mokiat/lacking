@@ -6,8 +6,12 @@ import (
 	"github.com/mokiat/lacking/game/asset/mdl"
 )
 
-// SetSampler sets the sampler of the target.
-func SetSampler(name string, samplerProvider Provider[*mdl.Sampler]) Operation {
+// BindSampler sets the sampler of the target.
+func BindSampler(name string, samplerProvider Provider[*mdl.Sampler]) Operation {
+	type samplerHolder interface {
+		SetSampler(name string, sampler *mdl.Sampler)
+	}
+
 	return FuncOperation(
 		// apply function
 		func(target any) error {
@@ -16,7 +20,7 @@ func SetSampler(name string, samplerProvider Provider[*mdl.Sampler]) Operation {
 				return fmt.Errorf("error getting sampler: %w", err)
 			}
 
-			container, ok := target.(mdl.SamplerHolder)
+			container, ok := target.(samplerHolder)
 			if !ok {
 				return fmt.Errorf("target %T is not a sampler holder", target)
 			}
