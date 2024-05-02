@@ -6,17 +6,21 @@ import (
 
 	"github.com/mokiat/gblob"
 	"github.com/mokiat/gog"
+	"github.com/mokiat/gomath/dprec"
 	"github.com/mokiat/gomath/sprec"
 	"github.com/mokiat/lacking/game/asset"
+	"github.com/x448/float16"
 )
 
 func NewConverter(model *Model) *Converter {
 	return &Converter{
 		model: model,
 
-		convertedShaders:   make(map[*Shader]uint32),
-		convertedTextures:  make(map[*Texture]uint32),
-		convertedMaterials: make(map[*Material]uint32),
+		convertedShaders:         make(map[*Shader]uint32),
+		convertedTextures:        make(map[*Texture]uint32),
+		convertedMaterials:       make(map[*Material]uint32),
+		convertedGeometries:      make(map[*Geometry]uint32),
+		convertedMeshDefinitions: make(map[*MeshDefinition]uint32),
 	}
 }
 
@@ -31,6 +35,12 @@ type Converter struct {
 
 	assetMaterials     []asset.Material
 	convertedMaterials map[*Material]uint32
+
+	assetGeometries     []asset.Geometry
+	convertedGeometries map[*Geometry]uint32
+
+	assetMeshDefinitions     []asset.MeshDefinition
+	convertedMeshDefinitions map[*MeshDefinition]uint32
 }
 
 func (c *Converter) Convert() (asset.Model, error) {
@@ -40,6 +50,7 @@ func (c *Converter) Convert() (asset.Model, error) {
 func (c *Converter) convertModel(s *Model) (asset.Model, error) {
 	var (
 		assetNodes             []asset.Node
+		assetMeshes            []asset.Mesh
 		assetAmbientLights     []asset.AmbientLight
 		assetPointLights       []asset.PointLight
 		assetSpotLights        []asset.SpotLight
@@ -69,6 +80,12 @@ func (c *Converter) convertModel(s *Model) (asset.Model, error) {
 		})
 
 		switch essence := node.(type) {
+		case *Mesh:
+			assetMesh, err := c.convertMesh(uint32(i), essence)
+			if err != nil {
+				return asset.Model{}, fmt.Errorf("error converting mesh %q: %w", node.Name(), err)
+			}
+			assetMeshes = append(assetMeshes, assetMesh)
 		case *AmbientLight:
 			ambientLightAsset, err := c.convertAmbientLight(uint32(i), essence)
 			if err != nil {
@@ -93,17 +110,65 @@ func (c *Converter) convertModel(s *Model) (asset.Model, error) {
 		}
 	}
 
+	assetAnimations := make([]asset.Animation, len(c.model.animations))
+	for i, animation := range c.model.animations {
+		assetAnimations[i] = c.convertAnimation(animation)
+	}
+
 	return asset.Model{
 		Nodes:             assetNodes,
+		Animations:        assetAnimations,
 		Shaders:           c.assetShaders,
 		Textures:          c.assetTextures,
 		Materials:         c.assetMaterials,
+		Geometries:        c.assetGeometries,
+		MeshDefinitions:   c.assetMeshDefinitions,
+		Meshes:            assetMeshes,
 		AmbientLights:     assetAmbientLights,
 		PointLights:       assetPointLights,
 		SpotLights:        assetSpotLights,
 		DirectionalLights: assetDirectionalLights,
 		Skies:             assetSkies,
 	}, nil
+}
+
+func (c *Converter) convertAnimation(animation *Animation) asset.Animation {
+	assetAnimation := asset.Animation{
+		Name:      animation.name,
+		StartTime: animation.startTime,
+		EndTime:   animation.endTime,
+		Bindings:  make([]asset.AnimationBinding, len(animation.bindings)),
+	}
+	for i, binding := range animation.bindings {
+		translationKeyframes := make([]asset.AnimationKeyframe[dprec.Vec3], len(binding.translationKeyframes))
+		for j, keyframe := range binding.translationKeyframes {
+			translationKeyframes[j] = asset.AnimationKeyframe[dprec.Vec3]{
+				Timestamp: keyframe.Timestamp,
+				Value:     keyframe.Value,
+			}
+		}
+		rotationKeyframes := make([]asset.AnimationKeyframe[dprec.Quat], len(binding.rotationKeyframes))
+		for j, keyframe := range binding.rotationKeyframes {
+			rotationKeyframes[j] = asset.AnimationKeyframe[dprec.Quat]{
+				Timestamp: keyframe.Timestamp,
+				Value:     keyframe.Value,
+			}
+		}
+		scaleKeyframes := make([]asset.AnimationKeyframe[dprec.Vec3], len(binding.scaleKeyframes))
+		for j, keyframe := range binding.scaleKeyframes {
+			scaleKeyframes[j] = asset.AnimationKeyframe[dprec.Vec3]{
+				Timestamp: keyframe.Timestamp,
+				Value:     keyframe.Value,
+			}
+		}
+		assetAnimation.Bindings[i] = asset.AnimationBinding{
+			NodeName:             binding.nodeName,
+			TranslationKeyframes: translationKeyframes,
+			RotationKeyframes:    rotationKeyframes,
+			ScaleKeyframes:       scaleKeyframes,
+		}
+	}
+	return assetAnimation
 }
 
 func (c *Converter) convertMaterialPass(pass *MaterialPass) (asset.MaterialPass, error) {
@@ -188,7 +253,322 @@ func (c *Converter) convertMaterial(material *Material) (uint32, error) {
 	c.assetMaterials = append(c.assetMaterials, assetMaterial)
 	c.convertedMaterials[material] = index
 	return index, nil
+}
 
+func (c *Converter) convertMesh(nodeIndex uint32, mesh *Mesh) (asset.Mesh, error) {
+	meshDefinitionIndex, err := c.convertMeshDefinition(mesh.definition)
+	if err != nil {
+		return asset.Mesh{}, fmt.Errorf("error converting mesh definition: %w", err)
+	}
+
+	var armatureIndex = asset.UnspecifiedArmatureIndex
+	if mesh.armature != nil {
+		assetArmatureIndex, err := c.convertArmature(mesh.armature)
+		if err != nil {
+			return asset.Mesh{}, fmt.Errorf("error converting armature: %w", err)
+		}
+		armatureIndex = int32(assetArmatureIndex)
+	}
+
+	return asset.Mesh{
+		NodeIndex:           nodeIndex,
+		MeshDefinitionIndex: meshDefinitionIndex,
+		ArmatureIndex:       armatureIndex,
+	}, nil
+}
+
+func (c *Converter) convertGeometry(geometry *Geometry) (uint32, error) {
+	if index, ok := c.convertedGeometries[geometry]; ok {
+		return index, nil
+	}
+
+	const (
+		sizeUnsignedByte  = 1
+		sizeUnsignedShort = 2
+		sizeUnsignedInt   = 4
+		sizeHalfFloat     = 2
+		sizeFloat         = 4
+	)
+
+	var (
+		stride              uint32
+		coordBufferIndex    int32
+		coordOffset         uint32
+		normalBufferIndex   int32
+		normalOffset        uint32
+		tangentBufferIndex  int32
+		tangentOffset       uint32
+		texCoordBufferIndex int32
+		texCoordOffset      uint32
+		colorBufferIndex    int32
+		colorOffset         uint32
+		weightsBufferIndex  int32
+		weightsOffset       uint32
+		jointsBufferIndex   int32
+		jointsOffset        uint32
+	)
+
+	layout := geometry.vertexFormat
+	if layout&VertexFormatCoord != 0 {
+		coordBufferIndex = 0
+		coordOffset = stride
+		stride += 3 * sizeFloat
+	} else {
+		coordBufferIndex = asset.UnspecifiedBufferIndex
+	}
+	if layout&VertexFormatNormal != 0 {
+		normalBufferIndex = 0
+		normalOffset = stride
+		stride += 3 * sizeHalfFloat
+		stride += sizeHalfFloat // due to alignment requirements
+	} else {
+		normalBufferIndex = asset.UnspecifiedBufferIndex
+	}
+	if layout&VertexFormatTangent != 0 {
+		tangentBufferIndex = 0
+		tangentOffset = stride
+		stride += 3 * sizeHalfFloat
+		stride += sizeHalfFloat // due to alignment requirements
+	} else {
+		tangentBufferIndex = asset.UnspecifiedBufferIndex
+	}
+	if layout&VertexFormatTexCoord != 0 {
+		texCoordBufferIndex = 0
+		texCoordOffset = stride
+		stride += 2 * sizeHalfFloat
+	} else {
+		texCoordBufferIndex = asset.UnspecifiedBufferIndex
+	}
+	if layout&VertexFormatColor != 0 {
+		colorBufferIndex = 0
+		colorOffset = stride
+		stride += 4 * sizeUnsignedByte
+	} else {
+		colorBufferIndex = asset.UnspecifiedBufferIndex
+	}
+	if layout&VertexFormatWeights != 0 {
+		weightsBufferIndex = 0
+		weightsOffset = stride
+		stride += 4 * sizeUnsignedByte
+	} else {
+		weightsBufferIndex = asset.UnspecifiedBufferIndex
+	}
+	if layout&VertexFormatJoints != 0 {
+		jointsBufferIndex = 0
+		jointsOffset = stride
+		stride += 4 * sizeUnsignedByte
+	} else {
+		jointsBufferIndex = asset.UnspecifiedBufferIndex
+	}
+
+	vertexData := gblob.LittleEndianBlock(make([]byte, len(geometry.vertices)*int(stride)))
+	if layout&VertexFormatCoord != 0 {
+		offset := int(coordOffset)
+		for _, vertex := range geometry.vertices {
+			vertexData.SetFloat32(offset+0*sizeFloat, vertex.Coord.X)
+			vertexData.SetFloat32(offset+1*sizeFloat, vertex.Coord.Y)
+			vertexData.SetFloat32(offset+2*sizeFloat, vertex.Coord.Z)
+			offset += int(stride)
+		}
+	}
+	if layout&VertexFormatNormal != 0 {
+		offset := int(normalOffset)
+		for _, vertex := range geometry.vertices {
+			vertexData.SetUint16(offset+0*sizeHalfFloat, float16.Fromfloat32(vertex.Normal.X).Bits())
+			vertexData.SetUint16(offset+1*sizeHalfFloat, float16.Fromfloat32(vertex.Normal.Y).Bits())
+			vertexData.SetUint16(offset+2*sizeHalfFloat, float16.Fromfloat32(vertex.Normal.Z).Bits())
+			offset += int(stride)
+		}
+	}
+	if layout&VertexFormatTangent != 0 {
+		offset := int(tangentOffset)
+		for _, vertex := range geometry.vertices {
+			vertexData.SetUint16(offset+0*sizeHalfFloat, float16.Fromfloat32(vertex.Tangent.X).Bits())
+			vertexData.SetUint16(offset+1*sizeHalfFloat, float16.Fromfloat32(vertex.Tangent.Y).Bits())
+			vertexData.SetUint16(offset+2*sizeHalfFloat, float16.Fromfloat32(vertex.Tangent.Z).Bits())
+			offset += int(stride)
+		}
+	}
+	if layout&VertexFormatTexCoord != 0 {
+		offset := int(texCoordOffset)
+		for _, vertex := range geometry.vertices {
+			vertexData.SetUint16(offset+0*sizeHalfFloat, float16.Fromfloat32(vertex.TexCoord.X).Bits())
+			vertexData.SetUint16(offset+1*sizeHalfFloat, float16.Fromfloat32(vertex.TexCoord.Y).Bits())
+			offset += int(stride)
+		}
+	}
+	if layout&VertexFormatColor != 0 {
+		offset := int(colorOffset)
+		for _, vertex := range geometry.vertices {
+			vertexData.SetUint8(offset+0*sizeUnsignedByte, uint8(vertex.Color.X*255.0))
+			vertexData.SetUint8(offset+1*sizeUnsignedByte, uint8(vertex.Color.Y*255.0))
+			vertexData.SetUint8(offset+2*sizeUnsignedByte, uint8(vertex.Color.Z*255.0))
+			vertexData.SetUint8(offset+3*sizeUnsignedByte, uint8(vertex.Color.W*255.0))
+			offset += int(stride)
+		}
+	}
+	if layout&VertexFormatWeights != 0 {
+		offset := int(weightsOffset)
+		for _, vertex := range geometry.vertices {
+			vertexData.SetUint8(offset+0*sizeUnsignedByte, uint8(vertex.Weights.X*255.0))
+			vertexData.SetUint8(offset+1*sizeUnsignedByte, uint8(vertex.Weights.Y*255.0))
+			vertexData.SetUint8(offset+2*sizeUnsignedByte, uint8(vertex.Weights.Z*255.0))
+			vertexData.SetUint8(offset+3*sizeUnsignedByte, uint8(vertex.Weights.W*255.0))
+			offset += int(stride)
+		}
+	}
+	if layout&VertexFormatJoints != 0 {
+		offset := int(jointsOffset)
+		for _, vertex := range geometry.vertices {
+			vertexData.SetUint8(offset+0*sizeUnsignedByte, uint8(vertex.Joints[0]))
+			vertexData.SetUint8(offset+1*sizeUnsignedByte, uint8(vertex.Joints[1]))
+			vertexData.SetUint8(offset+2*sizeUnsignedByte, uint8(vertex.Joints[2]))
+			vertexData.SetUint8(offset+3*sizeUnsignedByte, uint8(vertex.Joints[3]))
+			offset += int(stride)
+		}
+	}
+
+	var (
+		indexLayout asset.IndexLayout
+		indexData   gblob.LittleEndianBlock
+		indexSize   int
+	)
+	if len(geometry.vertices) >= 0xFFFF {
+		indexSize = sizeUnsignedInt
+		indexLayout = asset.IndexLayoutUint32
+		indexData = gblob.LittleEndianBlock(make([]byte, len(geometry.indices)*sizeUnsignedInt))
+		for i, index := range geometry.indices {
+			indexData.SetUint32(i*sizeUnsignedInt, uint32(index))
+		}
+	} else {
+		indexSize = sizeUnsignedShort
+		indexLayout = asset.IndexLayoutUint16
+		indexData = gblob.LittleEndianBlock(make([]byte, len(geometry.indices)*sizeUnsignedShort))
+		for i, index := range geometry.indices {
+			indexData.SetUint16(i*sizeUnsignedShort, uint16(index))
+		}
+	}
+
+	assetFragments := make([]asset.Fragment, 0, len(geometry.fragments))
+	for _, fragment := range geometry.fragments {
+		// if fragment.Material != nil && !fragment.Material.IsInvisible() {
+		assetFragments = append(assetFragments, asset.Fragment{
+			Name:            fragment.Name(),
+			Topology:        fragment.topology,
+			IndexByteOffset: uint32(fragment.indexOffset * indexSize),
+			IndexCount:      uint32(fragment.indexCount),
+		})
+		// }
+	}
+
+	var boundingSphereRadius float64
+	for _, vertex := range geometry.vertices {
+		boundingSphereRadius = dprec.Max(
+			boundingSphereRadius,
+			float64(vertex.Coord.Length()),
+		)
+	}
+
+	assetGeometry := asset.Geometry{
+		VertexBuffers: []asset.VertexBuffer{
+			{
+				Stride: stride,
+				Data:   vertexData,
+			},
+		},
+		VertexLayout: asset.VertexLayout{
+			Coord: asset.VertexAttribute{
+				BufferIndex: coordBufferIndex,
+				ByteOffset:  coordOffset,
+				Format:      asset.VertexAttributeFormatRGB32F,
+			},
+			Normal: asset.VertexAttribute{
+				BufferIndex: normalBufferIndex,
+				ByteOffset:  normalOffset,
+				Format:      asset.VertexAttributeFormatRGB16F,
+			},
+			Tangent: asset.VertexAttribute{
+				BufferIndex: tangentBufferIndex,
+				ByteOffset:  tangentOffset,
+				Format:      asset.VertexAttributeFormatRGB16F,
+			},
+			TexCoord: asset.VertexAttribute{
+				BufferIndex: texCoordBufferIndex,
+				ByteOffset:  texCoordOffset,
+				Format:      asset.VertexAttributeFormatRG16F,
+			},
+			Color: asset.VertexAttribute{
+				BufferIndex: colorBufferIndex,
+				ByteOffset:  colorOffset,
+				Format:      asset.VertexAttributeFormatRGBA8UN,
+			},
+			Weights: asset.VertexAttribute{
+				BufferIndex: weightsBufferIndex,
+				ByteOffset:  weightsOffset,
+				Format:      asset.VertexAttributeFormatRGBA8UN,
+			},
+			Joints: asset.VertexAttribute{
+				BufferIndex: jointsBufferIndex,
+				ByteOffset:  jointsOffset,
+				Format:      asset.VertexAttributeFormatRGBA8IU,
+			},
+		},
+		IndexBuffer: asset.IndexBuffer{
+			IndexLayout: indexLayout,
+			Data:        indexData,
+		},
+		Fragments:            assetFragments,
+		BoundingSphereRadius: boundingSphereRadius,
+	}
+
+	index := uint32(len(c.assetGeometries))
+	c.assetGeometries = append(c.assetGeometries, assetGeometry)
+	c.convertedGeometries[geometry] = index
+	return index, nil
+}
+
+func (c *Converter) convertMeshDefinition(definition *MeshDefinition) (uint32, error) {
+	if index, ok := c.convertedMeshDefinitions[definition]; ok {
+		return index, nil
+	}
+
+	geometryIndex, err := c.convertGeometry(definition.geometry)
+	if err != nil {
+		return 0, fmt.Errorf("error converting geometry: %w", err)
+	}
+	geometry := c.assetGeometries[geometryIndex]
+
+	materialBindings := make([]asset.MaterialBinding, len(geometry.Fragments))
+	for i, fragment := range geometry.Fragments {
+		material, ok := definition.materialBindings[fragment.Name]
+		if !ok {
+			return 0, fmt.Errorf("missing material binding for fragment %q", fragment.Name)
+		}
+		materialIndex, err := c.convertMaterial(material)
+		if err != nil {
+			return 0, fmt.Errorf("error converting material: %w", err)
+		}
+		materialBindings[i] = asset.MaterialBinding{
+			MaterialIndex: materialIndex,
+		}
+	}
+
+	assetDefinition := asset.MeshDefinition{
+		GeometryIndex:    geometryIndex,
+		MaterialBindings: materialBindings,
+		// HasCollision:       definition.HasCollision(),
+		// 	HasShadowCasting:   definition.HasShadowCasting(),
+		// 	HasShadowReceiving: definition.HasShadowReceiving(),
+	}
+
+	index := uint32(len(c.assetMeshDefinitions))
+	c.assetMeshDefinitions = append(c.assetMeshDefinitions, assetDefinition)
+	c.convertedMeshDefinitions[definition] = index
+	return index, nil
+}
+
+func (c *Converter) convertArmature(armature *Armature) (uint32, error) {
+	panic("TODO")
 }
 
 func (c *Converter) convertAmbientLight(nodeIndex uint32, light *AmbientLight) (asset.AmbientLight, error) {
