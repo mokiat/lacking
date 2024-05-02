@@ -5,7 +5,8 @@ import "slices"
 type Model struct {
 	name string
 
-	nodes []Node
+	nodes      []Node
+	animations []*Animation
 }
 
 func (s *Model) Name() string {
@@ -43,4 +44,12 @@ func (s *Model) FlattenNodes() []Node {
 		visit(node)
 	}
 	return nodes
+}
+
+func (s *Model) Animations() []*Animation {
+	return s.animations
+}
+
+func (s *Model) AddAnimation(animation *Animation) {
+	s.animations = append(s.animations, animation)
 }
