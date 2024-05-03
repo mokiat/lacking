@@ -99,10 +99,14 @@ func (n *BaseNode) Nodes() []Node {
 }
 
 func (n *BaseNode) AddNode(node Node) {
+	node.SetParent(n)
 	n.nodes = append(n.nodes, node)
 }
 
 func (n *BaseNode) RemoveNode(node Node) {
+	if node.Parent() == n {
+		node.SetParent(nil)
+	}
 	n.nodes = slices.DeleteFunc(n.nodes, func(candidate Node) bool {
 		return candidate == node
 	})
