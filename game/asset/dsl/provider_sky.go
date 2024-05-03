@@ -9,32 +9,28 @@ import (
 )
 
 // CreateSky creates a new sky with the provided name and operations.
-func CreateSky(name string, materialProvider Provider[*mdl.Material], opts ...Operation) Provider[mdl.Node] {
+func CreateSky(materialProvider Provider[*mdl.Material], opts ...Operation) Provider[*mdl.Sky] {
 	return OnceProvider(FuncProvider(
 		// get function
-		func() (mdl.Node, error) {
+		func() (*mdl.Sky, error) {
 			material, err := materialProvider.Get()
 			if err != nil {
 				return nil, fmt.Errorf("error getting material: %w", err)
 			}
 
-			var sky mdl.Sky
-			sky.SetName(name)
+			sky := mdl.NewSky()
 			sky.SetMaterial(material)
-			sky.SetTranslation(dprec.ZeroVec3())
-			sky.SetRotation(dprec.IdentityQuat())
-			sky.SetScale(dprec.NewVec3(1.0, 1.0, 1.0))
 			for _, opt := range opts {
-				if err := opt.Apply(&sky); err != nil {
+				if err := opt.Apply(sky); err != nil {
 					return nil, err
 				}
 			}
-			return &sky, nil
+			return sky, nil
 		},
 
 		// digest function
 		func() ([]byte, error) {
-			return CreateDigest("create-sky", name, opts)
+			return CreateDigest("create-sky", materialProvider, opts)
 		},
 	))
 }

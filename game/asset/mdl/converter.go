@@ -16,7 +16,7 @@ func NewConverter(model *Model) *Converter {
 	return &Converter{
 		model: model,
 
-		convertedNodes:           make(map[Node]uint32),
+		convertedNodes:           make(map[*Node]uint32),
 		convertedArmatures:       make(map[*Armature]uint32),
 		convertedShaders:         make(map[*Shader]uint32),
 		convertedTextures:        make(map[*Texture]uint32),
@@ -30,7 +30,7 @@ type Converter struct {
 	model *Model
 
 	assetNodes     []asset.Node
-	convertedNodes map[Node]uint32
+	convertedNodes map[*Node]uint32
 
 	assetArmatures     []asset.Armature
 	convertedArmatures map[*Armature]uint32
@@ -67,14 +67,12 @@ func (c *Converter) convertModel(s *Model) (asset.Model, error) {
 
 	nodes := s.FlattenNodes()
 
-	nodeIndex := make(map[Node]uint32)
-
+	c.assetNodes = nil
 	for i, node := range nodes {
-		nodeIndex[node] = uint32(i)
 		c.convertedNodes[node] = uint32(i)
 
 		parentIndex := asset.UnspecifiedNodeIndex
-		if pIndex, ok := nodeIndex[node.Parent()]; ok {
+		if pIndex, ok := c.convertedNodes[node.Parent()]; ok {
 			parentIndex = int32(pIndex)
 		}
 
@@ -87,30 +85,32 @@ func (c *Converter) convertModel(s *Model) (asset.Model, error) {
 			Mask:        asset.NodeMaskNone,
 		})
 
-		switch essence := node.(type) {
+		// TODO: Handle sources (i.e. physics)
+
+		switch target := node.target.(type) {
 		case *Mesh:
-			assetMesh, err := c.convertMesh(uint32(i), essence)
+			assetMesh, err := c.convertMesh(uint32(i), target)
 			if err != nil {
 				return asset.Model{}, fmt.Errorf("error converting mesh %q: %w", node.Name(), err)
 			}
 			assetMeshes = append(assetMeshes, assetMesh)
 		case *AmbientLight:
-			ambientLightAsset, err := c.convertAmbientLight(uint32(i), essence)
+			ambientLightAsset, err := c.convertAmbientLight(uint32(i), target)
 			if err != nil {
 				return asset.Model{}, fmt.Errorf("error converting ambient light %q: %w", node.Name(), err)
 			}
 			assetAmbientLights = append(assetAmbientLights, ambientLightAsset)
 		case *PointLight:
-			pointLightAsset := c.convertPointLight(uint32(i), essence)
+			pointLightAsset := c.convertPointLight(uint32(i), target)
 			assetPointLights = append(assetPointLights, pointLightAsset)
 		case *SpotLight:
-			spotLightAsset := c.convertSpotLight(uint32(i), essence)
+			spotLightAsset := c.convertSpotLight(uint32(i), target)
 			assetSpotLights = append(assetSpotLights, spotLightAsset)
 		case *DirectionalLight:
-			directionalLightAsset := c.convertDirectionalLight(uint32(i), essence)
+			directionalLightAsset := c.convertDirectionalLight(uint32(i), target)
 			assetDirectionalLights = append(assetDirectionalLights, directionalLightAsset)
 		case *Sky:
-			assetSky, err := c.convertSky(uint32(i), essence)
+			assetSky, err := c.convertSky(uint32(i), target)
 			if err != nil {
 				return asset.Model{}, fmt.Errorf("error converting sky %q: %w", node.Name(), err)
 			}

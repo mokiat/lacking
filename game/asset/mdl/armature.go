@@ -15,15 +15,15 @@ func (a *Armature) AddJoint(joint *Joint) {
 }
 
 type Joint struct {
-	node              Node
+	node              *Node
 	inverseBindMatrix sprec.Mat4
 }
 
-func (j *Joint) Node() Node {
+func (j *Joint) Node() *Node {
 	return j.node
 }
 
-func (j *Joint) SetNode(node Node) {
+func (j *Joint) SetNode(node *Node) {
 	j.node = node
 }
 
