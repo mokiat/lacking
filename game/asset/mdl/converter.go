@@ -16,6 +16,8 @@ func NewConverter(model *Model) *Converter {
 	return &Converter{
 		model: model,
 
+		convertedNodes:           make(map[Node]uint32),
+		convertedArmatures:       make(map[*Armature]uint32),
 		convertedShaders:         make(map[*Shader]uint32),
 		convertedTextures:        make(map[*Texture]uint32),
 		convertedMaterials:       make(map[*Material]uint32),
@@ -26,6 +28,12 @@ func NewConverter(model *Model) *Converter {
 
 type Converter struct {
 	model *Model
+
+	assetNodes     []asset.Node
+	convertedNodes map[Node]uint32
+
+	assetArmatures     []asset.Armature
+	convertedArmatures map[*Armature]uint32
 
 	assetShaders     []asset.Shader
 	convertedShaders map[*Shader]uint32
@@ -49,7 +57,6 @@ func (c *Converter) Convert() (asset.Model, error) {
 
 func (c *Converter) convertModel(s *Model) (asset.Model, error) {
 	var (
-		assetNodes             []asset.Node
 		assetMeshes            []asset.Mesh
 		assetAmbientLights     []asset.AmbientLight
 		assetPointLights       []asset.PointLight
@@ -64,13 +71,14 @@ func (c *Converter) convertModel(s *Model) (asset.Model, error) {
 
 	for i, node := range nodes {
 		nodeIndex[node] = uint32(i)
+		c.convertedNodes[node] = uint32(i)
 
 		parentIndex := asset.UnspecifiedNodeIndex
 		if pIndex, ok := nodeIndex[node.Parent()]; ok {
 			parentIndex = int32(pIndex)
 		}
 
-		assetNodes = append(assetNodes, asset.Node{
+		c.assetNodes = append(c.assetNodes, asset.Node{
 			Name:        node.Name(),
 			ParentIndex: parentIndex,
 			Translation: node.Translation(),
@@ -116,8 +124,9 @@ func (c *Converter) convertModel(s *Model) (asset.Model, error) {
 	}
 
 	return asset.Model{
-		Nodes:             assetNodes,
+		Nodes:             c.assetNodes,
 		Animations:        assetAnimations,
+		Armatures:         c.assetArmatures,
 		Shaders:           c.assetShaders,
 		Textures:          c.assetTextures,
 		Materials:         c.assetMaterials,
@@ -568,7 +577,23 @@ func (c *Converter) convertMeshDefinition(definition *MeshDefinition) (uint32, e
 }
 
 func (c *Converter) convertArmature(armature *Armature) (uint32, error) {
-	panic("TODO")
+	if index, ok := c.convertedArmatures[armature]; ok {
+		return index, nil
+	}
+
+	assetArmature := asset.Armature{
+		Joints: gog.Map(armature.joints, func(joint *Joint) asset.Joint {
+			return asset.Joint{
+				NodeIndex:         c.convertedNodes[joint.node],
+				InverseBindMatrix: joint.inverseBindMatrix,
+			}
+		}),
+	}
+
+	index := uint32(len(c.assetArmatures))
+	c.assetArmatures = append(c.assetArmatures, assetArmature)
+	c.convertedArmatures[armature] = index
+	return index, nil
 }
 
 func (c *Converter) convertAmbientLight(nodeIndex uint32, light *AmbientLight) (asset.AmbientLight, error) {
