@@ -4,11 +4,14 @@ import (
 	"fmt"
 
 	"github.com/mokiat/gomath/dprec"
-	"github.com/mokiat/lacking/game/asset/mdl"
 )
 
 // SetTranslation sets the translation of the target.
 func SetTranslation(translationProvider Provider[dprec.Vec3]) Operation {
+	type translatable interface {
+		SetTranslation(dprec.Vec3)
+	}
+
 	return FuncOperation(
 		// apply function
 		func(target any) error {
@@ -17,7 +20,7 @@ func SetTranslation(translationProvider Provider[dprec.Vec3]) Operation {
 				return fmt.Errorf("error getting translation: %w", err)
 			}
 
-			transformable, ok := target.(mdl.Translatable)
+			transformable, ok := target.(translatable)
 			if !ok {
 				return fmt.Errorf("target %T is not a translatable", target)
 			}
@@ -35,6 +38,10 @@ func SetTranslation(translationProvider Provider[dprec.Vec3]) Operation {
 
 // SetRotation sets the rotation of the target.
 func SetRotation(rotationProvider Provider[dprec.Quat]) Operation {
+	type rotatable interface {
+		SetRotation(dprec.Quat)
+	}
+
 	return FuncOperation(
 		// apply function
 		func(target any) error {
@@ -43,7 +50,7 @@ func SetRotation(rotationProvider Provider[dprec.Quat]) Operation {
 				return fmt.Errorf("error getting rotation: %w", err)
 			}
 
-			transformable, ok := target.(mdl.Rotatable)
+			transformable, ok := target.(rotatable)
 			if !ok {
 				return fmt.Errorf("target %T is not a rotatable", target)
 			}
@@ -61,6 +68,10 @@ func SetRotation(rotationProvider Provider[dprec.Quat]) Operation {
 
 // SetScale sets the scale of the target.
 func SetScale(scaleProvider Provider[dprec.Vec3]) Operation {
+	type scalable interface {
+		SetScale(dprec.Vec3)
+	}
+
 	return FuncOperation(
 		// apply function
 		func(target any) error {
@@ -69,7 +80,7 @@ func SetScale(scaleProvider Provider[dprec.Vec3]) Operation {
 				return fmt.Errorf("error getting scale: %w", err)
 			}
 
-			transformable, ok := target.(mdl.Scalable)
+			transformable, ok := target.(scalable)
 			if !ok {
 				return fmt.Errorf("target %T is not a scalable", target)
 			}

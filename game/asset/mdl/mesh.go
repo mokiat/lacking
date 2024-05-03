@@ -29,9 +29,11 @@ func (m *MeshDefinition) BindMaterial(name string, material *Material) {
 	m.materialBindings[name] = material
 }
 
-type Mesh struct {
-	BaseNode
+func NewMesh() *Mesh {
+	return &Mesh{}
+}
 
+type Mesh struct {
 	definition *MeshDefinition
 	armature   *Armature
 }

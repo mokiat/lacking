@@ -1,8 +1,10 @@
 package mdl
 
-type Sky struct {
-	BaseNode
+func NewSky() *Sky {
+	return &Sky{}
+}
 
+type Sky struct {
 	material *Material
 }
 
