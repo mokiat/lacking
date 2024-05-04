@@ -27,12 +27,21 @@ const (
 	VertexFormatJoints
 )
 
+func NewGeometry() *Geometry {
+	return &Geometry{}
+}
+
 type Geometry struct {
 	name         string
+	metadata     Metadata
 	vertexFormat VertexFormat
 	vertices     []Vertex
 	indices      []int
 	fragments    []*Fragment
+}
+
+func (g *Geometry) SetMetadata(metadata Metadata) {
+	g.metadata = metadata
 }
 
 func (g *Geometry) Name() string {

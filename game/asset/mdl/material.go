@@ -34,6 +34,8 @@ type Comparison = asset.Comparison
 type Material struct {
 	name string
 
+	metadata Metadata
+
 	samplers   map[string]*Sampler
 	properties map[string]any
 
@@ -42,6 +44,10 @@ type Material struct {
 	forwardPasses        []*MaterialPass
 	skyPasses            []*MaterialPass
 	postprocessingPasses []*MaterialPass
+}
+
+func (m *Material) SetMetadata(metadata Metadata) {
+	m.metadata = metadata
 }
 
 func (m *Material) Name() string {

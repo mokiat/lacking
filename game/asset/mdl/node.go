@@ -18,6 +18,8 @@ func NewNode(name string) *Node {
 type Node struct {
 	name string
 
+	metadata Metadata
+
 	source any
 	target any
 
@@ -27,6 +29,10 @@ type Node struct {
 
 	parent *Node
 	nodes  []*Node
+}
+
+func (n *Node) SetMetadata(metadata Metadata) {
+	n.metadata = metadata
 }
 
 func (n *Node) Source() any {
