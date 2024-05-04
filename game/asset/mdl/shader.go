@@ -12,6 +12,12 @@ const (
 	ShaderTypePostprocess ShaderType = asset.ShaderTypePostprocess
 )
 
+func NewShader(shaderType ShaderType) *Shader {
+	return &Shader{
+		shaderType: shaderType,
+	}
+}
+
 type Shader struct {
 	shaderType ShaderType
 	sourceCode string

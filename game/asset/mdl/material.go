@@ -106,6 +106,10 @@ func (m *Material) AddPostprocessPass(pass *MaterialPass) {
 	m.postprocessingPasses = append(m.postprocessingPasses, pass)
 }
 
+func NewMaterialPass() *MaterialPass {
+	return &MaterialPass{}
+}
+
 type MaterialPass struct {
 	layer           int
 	culling         CullMode
