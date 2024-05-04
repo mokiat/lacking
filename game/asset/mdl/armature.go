@@ -2,6 +2,10 @@ package mdl
 
 import "github.com/mokiat/gomath/sprec"
 
+func NewArmature() *Armature {
+	return &Armature{}
+}
+
 type Armature struct {
 	joints []*Joint
 }
@@ -12,6 +16,12 @@ func (a *Armature) Joints() []*Joint {
 
 func (a *Armature) AddJoint(joint *Joint) {
 	a.joints = append(a.joints, joint)
+}
+
+func NewJoint() *Joint {
+	return &Joint{
+		inverseBindMatrix: sprec.IdentityMat4(),
+	}
 }
 
 type Joint struct {

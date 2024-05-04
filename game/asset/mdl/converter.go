@@ -68,9 +68,14 @@ func (c *Converter) convertModel(s *Model) (asset.Model, error) {
 	nodes := s.FlattenNodes()
 
 	c.assetNodes = nil
+
+	// First nodes pass, so that all nodes are tracked, otherwise
+	// armature resolution will fail.
 	for i, node := range nodes {
 		c.convertedNodes[node] = uint32(i)
+	}
 
+	for i, node := range nodes {
 		parentIndex := asset.UnspecifiedNodeIndex
 		if pIndex, ok := c.convertedNodes[node.Parent()]; ok {
 			parentIndex = int32(pIndex)
