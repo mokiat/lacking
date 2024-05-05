@@ -72,8 +72,8 @@ type CollisionBox struct {
 	// Height is the height of the box.
 	Height float64
 
-	// Lenght is the length of the box.
-	Lenght float64
+	// Length is the length of the box.
+	Length float64
 }
 
 // CollisionSphere represents a sphere-shaped collision volume.

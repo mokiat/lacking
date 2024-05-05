@@ -10,6 +10,7 @@ import (
 	"github.com/mokiat/gog/ds"
 	"github.com/mokiat/gomath/dprec"
 	"github.com/mokiat/gomath/sprec"
+	"github.com/mokiat/gomath/stod"
 	"github.com/mokiat/lacking/debug/log"
 	"github.com/mokiat/lacking/game/asset/mdl"
 	"github.com/mokiat/lacking/util/gltfutil"
@@ -275,7 +276,11 @@ func BuildModelResource(gltfDoc *gltf.Document) (*mdl.Model, error) {
 
 	// build mesh definitions
 	meshDefinitionFromIndex := make(map[uint32]*mdl.MeshDefinition)
+	bodyDefinitionFromIndex := make(map[uint32]*mdl.BodyDefinition)
 	for i, gltfMesh := range gltfDoc.Meshes {
+		bodyMaterial := mdl.NewBodyMaterial()
+		bodyDefinition := mdl.NewBodyDefinition(bodyMaterial)
+
 		geometry := &mdl.Geometry{}
 		geometry.SetName(gltfMesh.Name)
 		geometry.SetMetadata(gltfutil.Properties(gltfMesh.Extras))
@@ -380,7 +385,8 @@ func BuildModelResource(gltfDoc *gltf.Document) (*mdl.Model, error) {
 				}
 			}
 
-			fragment := &mdl.Fragment{}
+			fragment := mdl.NewFragment()
+			fragment.SetMetadata(gltfutil.Properties(gltfPrimitive.Extras))
 			fragment.SetIndexOffset(indexOffset)
 			fragment.SetIndexCount(len(gltfIndices))
 			switch gltfPrimitive.Mode {
@@ -409,11 +415,19 @@ func BuildModelResource(gltfDoc *gltf.Document) (*mdl.Model, error) {
 				return nil, fmt.Errorf("missing material for primitive")
 			}
 			geometry.AddFragment(fragment)
+
+			if geometry.Metadata().HasCollision() && !fragment.Metadata().HasSkipCollision() {
+				bodyDefinition.AddCollisionMeshes(createCollisionMeshes(geometry, fragment))
+			}
 		}
 
 		meshDefinition.SetName(gltfMesh.Name)
 		meshDefinition.SetGeometry(geometry)
 		meshDefinitionFromIndex[uint32(i)] = meshDefinition
+
+		if geometry.Metadata().HasCollision() && len(bodyDefinition.CollisionMeshes()) > 0 {
+			bodyDefinitionFromIndex[uint32(i)] = bodyDefinition
+		}
 	}
 
 	// prepare armatures
@@ -487,6 +501,14 @@ func BuildModelResource(gltfDoc *gltf.Document) (*mdl.Model, error) {
 		return mesh
 	}
 
+	createBody := func(gltfNode *gltf.Node) *mdl.Body {
+		bodyDefinition, ok := bodyDefinitionFromIndex[*gltfNode.Mesh]
+		if !ok {
+			return nil // no collision mesh
+		}
+		return mdl.NewBody(bodyDefinition)
+	}
+
 	// ensure unique node names
 	nodeNames := ds.NewSet[string](0)
 	for i, gltfNode := range gltfDoc.Nodes {
@@ -508,6 +530,9 @@ func BuildModelResource(gltfDoc *gltf.Document) (*mdl.Model, error) {
 		switch {
 		case gltfNodeHasMesh(gltfNode):
 			node.SetTarget(createMesh(gltfNode))
+			if body := createBody(gltfNode); body != nil {
+				node.SetSource(body)
+			}
 		case gltfNodeHasLight(gltfNode):
 			node.SetTarget(createLight(gltfNode))
 		}
@@ -754,4 +779,76 @@ func gltfNodeHasLight(node *gltf.Node) bool {
 	}
 	_, ok = ext.(lightspunctual.LightIndex)
 	return ok
+}
+
+func createCollisionMeshes(geometry *mdl.Geometry, fragment *mdl.Fragment) []*mdl.CollisionMesh {
+	if fragment.Topology() != mdl.TopologyTriangleList {
+		log.Warn("Skipping collision mesh due to primitive not being triangles")
+		return nil
+	}
+
+	var triangles []mdl.CollisionTriangle
+	for i := fragment.IndexOffset(); i < fragment.IndexOffset()+fragment.IndexCount(); i += 3 {
+		indexA := geometry.Index(i + 0)
+		indexB := geometry.Index(i + 1)
+		indexC := geometry.Index(i + 2)
+
+		coordA := geometry.Vertex(indexA).Coord
+		coordB := geometry.Vertex(indexB).Coord
+		coordC := geometry.Vertex(indexC).Coord
+
+		vecAB := sprec.Vec3Diff(coordB, coordA)
+		vecAC := sprec.Vec3Diff(coordC, coordA)
+		if sprec.Vec3Cross(vecAB, vecAC).Length() < 0.00001 {
+			log.Warn("Skipping degenerate triangle")
+			continue
+		}
+
+		triangles = append(triangles, mdl.CollisionTriangle{
+			A: stod.Vec3(coordA),
+			B: stod.Vec3(coordB),
+			C: stod.Vec3(coordC),
+		})
+	}
+
+	const gridSize = 10 // TODO: Dynamic grid size based on density
+
+	type cell struct {
+		X int
+		Y int
+		Z int
+	}
+
+	cells := gog.Partition(triangles, func(triangle mdl.CollisionTriangle) cell {
+		centroid := dprec.Vec3Quot(dprec.Vec3Sum(dprec.Vec3Sum(triangle.A, triangle.B), triangle.C), 3.0)
+		return cell{
+			X: int(centroid.X) / gridSize,
+			Y: int(centroid.Y) / gridSize,
+			Z: int(centroid.Z) / gridSize,
+		}
+	})
+
+	meshes := gog.Map(gog.Entries(cells), func(pair gog.KV[cell, []mdl.CollisionTriangle]) *mdl.CollisionMesh {
+		triangles := pair.Value
+
+		center := dprec.Vec3Quot(gog.Reduce(triangles, dprec.ZeroVec3(), func(accum dprec.Vec3, triangle mdl.CollisionTriangle) dprec.Vec3 {
+			return dprec.Vec3Sum(triangle.C, dprec.Vec3Sum(triangle.B, dprec.Vec3Sum(triangle.A, accum)))
+		}), 3*float64(len(triangles)))
+
+		triangles = gog.Map(triangles, func(triangle mdl.CollisionTriangle) mdl.CollisionTriangle {
+			return mdl.CollisionTriangle{
+				A: dprec.Vec3Diff(triangle.A, center),
+				B: dprec.Vec3Diff(triangle.B, center),
+				C: dprec.Vec3Diff(triangle.C, center),
+			}
+		})
+
+		mesh := mdl.NewCollisionMesh()
+		mesh.SetTranslation(center)
+		mesh.SetRotation(dprec.IdentityQuat())
+		mesh.SetTriangles(triangles)
+		return mesh
+	})
+
+	return meshes
 }
