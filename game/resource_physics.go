@@ -64,7 +64,7 @@ func (s *ResourceSet) convertCollisionBoxes(bodyDef asset.BodyDefinition) []coll
 		result[i] = collision.NewBox(
 			collisionBoxAsset.Translation,
 			collisionBoxAsset.Rotation,
-			dprec.NewVec3(collisionBoxAsset.Width, collisionBoxAsset.Height, collisionBoxAsset.Lenght),
+			dprec.NewVec3(collisionBoxAsset.Width, collisionBoxAsset.Height, collisionBoxAsset.Length),
 		)
 	}
 	return result

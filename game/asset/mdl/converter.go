@@ -23,6 +23,8 @@ func NewConverter(model *Model) *Converter {
 		convertedMaterials:       make(map[*Material]uint32),
 		convertedGeometries:      make(map[*Geometry]uint32),
 		convertedMeshDefinitions: make(map[*MeshDefinition]uint32),
+		convertedBodyMaterials:   make(map[*BodyMaterial]uint32),
+		convertedBodyDefinitions: make(map[*BodyDefinition]uint32),
 	}
 }
 
@@ -49,6 +51,12 @@ type Converter struct {
 
 	assetMeshDefinitions     []asset.MeshDefinition
 	convertedMeshDefinitions map[*MeshDefinition]uint32
+
+	assetBodyMaterials     []asset.BodyMaterial
+	convertedBodyMaterials map[*BodyMaterial]uint32
+
+	assetBodyDefinitions     []asset.BodyDefinition
+	convertedBodyDefinitions map[*BodyDefinition]uint32
 }
 
 func (c *Converter) Convert() (asset.Model, error) {
@@ -58,6 +66,7 @@ func (c *Converter) Convert() (asset.Model, error) {
 func (c *Converter) convertModel(s *Model) (asset.Model, error) {
 	var (
 		assetMeshes            []asset.Mesh
+		assetBodies            []asset.Body
 		assetAmbientLights     []asset.AmbientLight
 		assetPointLights       []asset.PointLight
 		assetSpotLights        []asset.SpotLight
@@ -90,8 +99,14 @@ func (c *Converter) convertModel(s *Model) (asset.Model, error) {
 			Mask:        asset.NodeMaskNone,
 		})
 
-		// TODO: Handle sources (i.e. physics)
-
+		switch source := node.source.(type) {
+		case *Body:
+			assetBody, err := c.convertBody(uint32(i), source)
+			if err != nil {
+				return asset.Model{}, fmt.Errorf("error converting body %q: %w", node.Name(), err)
+			}
+			assetBodies = append(assetBodies, assetBody)
+		}
 		switch target := node.target.(type) {
 		case *Mesh:
 			assetMesh, err := c.convertMesh(uint32(i), target)
@@ -138,6 +153,9 @@ func (c *Converter) convertModel(s *Model) (asset.Model, error) {
 		Geometries:        c.assetGeometries,
 		MeshDefinitions:   c.assetMeshDefinitions,
 		Meshes:            assetMeshes,
+		BodyMaterials:     c.assetBodyMaterials,
+		BodyDefinitions:   c.assetBodyDefinitions,
+		Bodies:            assetBodies,
 		AmbientLights:     assetAmbientLights,
 		PointLights:       assetPointLights,
 		SpotLights:        assetSpotLights,
@@ -267,6 +285,85 @@ func (c *Converter) convertMaterial(material *Material) (uint32, error) {
 	c.assetMaterials = append(c.assetMaterials, assetMaterial)
 	c.convertedMaterials[material] = index
 	return index, nil
+}
+
+func (c *Converter) convertBodyMaterial(material *BodyMaterial) (uint32, error) {
+	if index, ok := c.convertedBodyMaterials[material]; ok {
+		return index, nil
+	}
+
+	assetMaterial := asset.BodyMaterial{
+		FrictionCoefficient:    material.frictionCoefficient,
+		RestitutionCoefficient: material.restitutionCoefficient,
+	}
+
+	index := uint32(len(c.assetBodyMaterials))
+	c.assetBodyMaterials = append(c.assetBodyMaterials, assetMaterial)
+	c.convertedBodyMaterials[material] = index
+	return index, nil
+}
+
+func (c *Converter) convertBodyDefinition(definition *BodyDefinition) (uint32, error) {
+	if index, ok := c.convertedBodyDefinitions[definition]; ok {
+		return index, nil
+	}
+
+	materialIndex, err := c.convertBodyMaterial(definition.material)
+	if err != nil {
+		return 0, fmt.Errorf("error converting body material: %w", err)
+	}
+
+	assetDefinition := asset.BodyDefinition{
+		MaterialIndex:     materialIndex,
+		Mass:              definition.mass,
+		MomentOfInertia:   definition.momentOfInertia,
+		DragFactor:        definition.dragFactor,
+		AngularDragFactor: definition.angularDragFactor,
+		CollisionBoxes: gog.Map(definition.collisionBoxes, func(box *CollisionBox) asset.CollisionBox {
+			return asset.CollisionBox{
+				Translation: box.Translation(),
+				Rotation:    box.Rotation(),
+				Width:       box.Width(),
+				Height:      box.Height(),
+				Length:      box.Length(),
+			}
+		}),
+		CollisionSpheres: gog.Map(definition.collisionSpheres, func(sphere *CollisionSphere) asset.CollisionSphere {
+			return asset.CollisionSphere{
+				Translation: sphere.Translation(),
+				Radius:      sphere.Radius(),
+			}
+		}),
+		CollisionMeshes: gog.Map(definition.collisionMeshes, func(mesh *CollisionMesh) asset.CollisionMesh {
+			return asset.CollisionMesh{
+				Translation: mesh.Translation(),
+				Rotation:    mesh.Rotation(),
+				Triangles: gog.Map(mesh.Triangles(), func(triangle CollisionTriangle) asset.CollisionTriangle {
+					return asset.CollisionTriangle{
+						A: triangle.A,
+						B: triangle.B,
+						C: triangle.C,
+					}
+				}),
+			}
+		}),
+	}
+
+	index := uint32(len(c.assetBodyDefinitions))
+	c.assetBodyDefinitions = append(c.assetBodyDefinitions, assetDefinition)
+	c.convertedBodyDefinitions[definition] = index
+	return index, nil
+}
+
+func (c *Converter) convertBody(nodeIndex uint32, body *Body) (asset.Body, error) {
+	bodyDefinitionIndex, err := c.convertBodyDefinition(body.definition)
+	if err != nil {
+		return asset.Body{}, fmt.Errorf("error converting body definition: %w", err)
+	}
+	return asset.Body{
+		NodeIndex:           nodeIndex,
+		BodyDefinitionIndex: bodyDefinitionIndex,
+	}, nil
 }
 
 func (c *Converter) convertMesh(nodeIndex uint32, mesh *Mesh) (asset.Mesh, error) {
@@ -465,14 +562,12 @@ func (c *Converter) convertGeometry(geometry *Geometry) (uint32, error) {
 
 	assetFragments := make([]asset.Fragment, 0, len(geometry.fragments))
 	for _, fragment := range geometry.fragments {
-		// if fragment.Material != nil && !fragment.Material.IsInvisible() {
 		assetFragments = append(assetFragments, asset.Fragment{
 			Name:            fragment.Name(),
 			Topology:        fragment.topology,
 			IndexByteOffset: uint32(fragment.indexOffset * indexSize),
 			IndexCount:      uint32(fragment.indexCount),
 		})
-		// }
 	}
 
 	var boundingSphereRadius float64
@@ -556,8 +651,7 @@ func (c *Converter) convertMeshDefinition(definition *MeshDefinition) (uint32, e
 	for i, fragment := range geometry.Fragments {
 		material, ok := definition.materialBindings[fragment.Name]
 		if !ok {
-			// Likely invisible fragment.
-			continue
+			continue // likely invisible fragment.
 		}
 		materialIndex, err := c.convertMaterial(material)
 		if err != nil {
@@ -572,9 +666,6 @@ func (c *Converter) convertMeshDefinition(definition *MeshDefinition) (uint32, e
 	assetDefinition := asset.MeshDefinition{
 		GeometryIndex:    geometryIndex,
 		MaterialBindings: materialBindings,
-		// HasCollision:       definition.HasCollision(),
-		// 	HasShadowCasting:   definition.HasShadowCasting(),
-		// 	HasShadowReceiving: definition.HasShadowReceiving(),
 	}
 
 	index := uint32(len(c.assetMeshDefinitions))
@@ -651,7 +742,6 @@ func (c *Converter) convertDirectionalLight(nodeIndex uint32, light *Directional
 }
 
 func (c *Converter) convertSky(nodeIndex uint32, sky *Sky) (asset.Sky, error) {
-
 	materialIndex, err := c.convertMaterial(sky.material)
 	if err != nil {
 		return asset.Sky{}, fmt.Errorf("error converting material: %w", err)

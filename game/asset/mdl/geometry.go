@@ -40,6 +40,10 @@ type Geometry struct {
 	fragments    []*Fragment
 }
 
+func (g *Geometry) Metadata() Metadata {
+	return g.metadata
+}
+
 func (g *Geometry) SetMetadata(metadata Metadata) {
 	g.metadata = metadata
 }
@@ -64,12 +68,28 @@ func (g *Geometry) VertexOffset() int {
 	return len(g.vertices)
 }
 
+func (g *Geometry) Vertices() []Vertex {
+	return g.vertices
+}
+
+func (g *Geometry) Vertex(at int) Vertex {
+	return g.vertices[at]
+}
+
 func (g *Geometry) AddVertex(vertex Vertex) {
 	g.vertices = append(g.vertices, vertex)
 }
 
 func (g *Geometry) IndexOffset() int {
 	return len(g.indices)
+}
+
+func (g *Geometry) Indices() []int {
+	return g.indices
+}
+
+func (g *Geometry) Index(at int) int {
+	return g.indices[at]
 }
 
 func (g *Geometry) AddIndex(index int) {
@@ -80,11 +100,24 @@ func (g *Geometry) AddFragment(fragment *Fragment) {
 	g.fragments = append(g.fragments, fragment)
 }
 
+func NewFragment() *Fragment {
+	return &Fragment{}
+}
+
 type Fragment struct {
 	name        string
+	metadata    Metadata
 	topology    Topology
 	indexOffset int
 	indexCount  int
+}
+
+func (f *Fragment) Metadata() Metadata {
+	return f.metadata
+}
+
+func (f *Fragment) SetMetadata(metadata Metadata) {
+	f.metadata = metadata
 }
 
 func (f *Fragment) Name() string {
