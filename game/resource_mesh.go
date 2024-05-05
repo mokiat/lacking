@@ -44,13 +44,15 @@ func (s *ResourceSet) convertMeshGeometry(assetGeometry asset.Geometry) async.Pr
 }
 
 func (s *ResourceSet) convertMeshDefinition(geometris []*graphics.MeshGeometry, materials []*graphics.Material, assetMeshDefinition asset.MeshDefinition) async.Promise[*graphics.MeshDefinition] {
-	var bindingMaterials []*graphics.Material
+	geometry := geometris[assetMeshDefinition.GeometryIndex]
+
+	bindingMaterials := make([]*graphics.Material, geometry.FragmentCount())
 	for _, assetBinding := range assetMeshDefinition.MaterialBindings {
-		bindingMaterials = append(bindingMaterials, materials[assetBinding.MaterialIndex])
+		bindingMaterials[assetBinding.FragmentIndex] = materials[assetBinding.MaterialIndex]
 	}
 
 	meshDefinitionInfo := graphics.MeshDefinitionInfo{
-		Geometry:  geometris[assetMeshDefinition.GeometryIndex],
+		Geometry:  geometry,
 		Materials: bindingMaterials,
 	}
 

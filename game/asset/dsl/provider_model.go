@@ -400,7 +400,11 @@ func BuildModelResource(gltfDoc *gltf.Document) (*mdl.Model, error) {
 			if gltfPrimitive.Material != nil {
 				gltfMaterial := gltfDoc.Materials[*gltfPrimitive.Material]
 				fragment.SetName(gltfMaterial.Name)
-				meshDefinition.BindMaterial(gltfMaterial.Name, materialFromIndex[*gltfPrimitive.Material])
+				if material, ok := materialFromIndex[*gltfPrimitive.Material]; ok {
+					if !material.Metadata().IsInvisible() {
+						meshDefinition.BindMaterial(gltfMaterial.Name, materialFromIndex[*gltfPrimitive.Material])
+					}
+				}
 			} else {
 				return nil, fmt.Errorf("missing material for primitive")
 			}

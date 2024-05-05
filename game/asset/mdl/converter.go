@@ -552,19 +552,21 @@ func (c *Converter) convertMeshDefinition(definition *MeshDefinition) (uint32, e
 	}
 	geometry := c.assetGeometries[geometryIndex]
 
-	materialBindings := make([]asset.MaterialBinding, len(geometry.Fragments))
+	var materialBindings []asset.MaterialBinding
 	for i, fragment := range geometry.Fragments {
 		material, ok := definition.materialBindings[fragment.Name]
 		if !ok {
-			return 0, fmt.Errorf("missing material binding for fragment %q", fragment.Name)
+			// Likely invisible fragment.
+			continue
 		}
 		materialIndex, err := c.convertMaterial(material)
 		if err != nil {
 			return 0, fmt.Errorf("error converting material: %w", err)
 		}
-		materialBindings[i] = asset.MaterialBinding{
+		materialBindings = append(materialBindings, asset.MaterialBinding{
+			FragmentIndex: uint32(i),
 			MaterialIndex: materialIndex,
-		}
+		})
 	}
 
 	assetDefinition := asset.MeshDefinition{
