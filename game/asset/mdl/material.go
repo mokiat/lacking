@@ -46,6 +46,10 @@ type Material struct {
 	postprocessingPasses []*MaterialPass
 }
 
+func (m *Material) Metadata() Metadata {
+	return m.metadata
+}
+
 func (m *Material) SetMetadata(metadata Metadata) {
 	m.metadata = metadata
 }

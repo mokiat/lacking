@@ -7,6 +7,9 @@ const (
 // MaterialBinding represents the binding of a material to a geometry fragment.
 type MaterialBinding struct {
 
+	// FragmentIndex is the index of the fragment that is bound to the material.
+	FragmentIndex uint32
+
 	// MaterialIndex is the index of the material that is bound to the fragment.
 	MaterialIndex uint32
 }
