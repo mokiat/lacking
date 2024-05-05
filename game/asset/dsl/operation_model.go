@@ -37,3 +37,27 @@ func AppendModel(modelProvider Provider[*mdl.Model]) Operation {
 		},
 	)
 }
+
+// ForceCollision creates an operation that forces the target
+// model to have a collision mesh.
+func ForceCollision() Operation {
+	type collisionConfigurable interface {
+		SetForceCollision(bool)
+	}
+	return FuncOperation(
+		// apply function
+		func(target any) error {
+			configurable, ok := target.(collisionConfigurable)
+			if !ok {
+				return fmt.Errorf("target %T is not configurable for collision", target)
+			}
+			configurable.SetForceCollision(true)
+			return nil
+		},
+
+		// digest function
+		func() ([]byte, error) {
+			return CreateDigest("force-collision")
+		},
+	)
+}

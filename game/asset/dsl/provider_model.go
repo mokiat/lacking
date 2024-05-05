@@ -48,17 +48,24 @@ func CreateModel(name string, operations ...Operation) Provider[*mdl.Model] {
 
 // OpenGLTFModel creates a new model provider that loads a model from the
 // specified path.
-func OpenGLTFModel(path string) Provider[*mdl.Model] {
+func OpenGLTFModel(path string, opts ...Operation) Provider[*mdl.Model] {
 	return FuncProvider(
 		// get function
 		func() (*mdl.Model, error) {
+			var cfg openGLTFModelConfig
+			for _, opt := range opts {
+				if err := opt.Apply(&cfg); err != nil {
+					return nil, err
+				}
+			}
+
 			file, err := os.Open(path)
 			if err != nil {
 				return nil, fmt.Errorf("failed to open model file %q: %w", path, err)
 			}
 			defer file.Close()
 
-			model, err := parseGLTFResource(file)
+			model, err := parseGLTFResource(file, cfg.forceCollision)
 			if err != nil {
 				return nil, fmt.Errorf("failed to parse gltf model: %w", err)
 			}
@@ -71,9 +78,17 @@ func OpenGLTFModel(path string) Provider[*mdl.Model] {
 			if err != nil {
 				return nil, fmt.Errorf("failed to stat file %q: %w", path, err)
 			}
-			return CreateDigest("opengl-gltf-model", path, info.ModTime())
+			return CreateDigest("opengl-gltf-model", path, info.ModTime(), opts)
 		},
 	)
+}
+
+type openGLTFModelConfig struct {
+	forceCollision bool
+}
+
+func (c *openGLTFModelConfig) SetForceCollision(value bool) {
+	c.forceCollision = value
 }
 
 // NOTE: glTF allows a sub-mesh to use totally different
@@ -89,15 +104,15 @@ func OpenGLTFModel(path string) Provider[*mdl.Model] {
 // mesh partitioning, we would be getting rid of the unnecessary
 // partitioning.
 
-func parseGLTFResource(in io.Reader) (*mdl.Model, error) {
+func parseGLTFResource(in io.Reader, forceCollision bool) (*mdl.Model, error) {
 	gltfDoc := new(gltf.Document)
 	if err := gltf.NewDecoder(in).Decode(gltfDoc); err != nil {
 		return nil, fmt.Errorf("failed to parse gltf model: %w", err)
 	}
-	return BuildModelResource(gltfDoc)
+	return BuildModelResource(gltfDoc, forceCollision)
 }
 
-func BuildModelResource(gltfDoc *gltf.Document) (*mdl.Model, error) {
+func BuildModelResource(gltfDoc *gltf.Document, forceCollision bool) (*mdl.Model, error) {
 	model := &mdl.Model{}
 
 	// build images
@@ -416,7 +431,7 @@ func BuildModelResource(gltfDoc *gltf.Document) (*mdl.Model, error) {
 			}
 			geometry.AddFragment(fragment)
 
-			if geometry.Metadata().HasCollision() && !fragment.Metadata().HasSkipCollision() {
+			if (geometry.Metadata().HasCollision() || forceCollision) && !fragment.Metadata().HasSkipCollision() {
 				bodyDefinition.AddCollisionMeshes(createCollisionMeshes(geometry, fragment))
 			}
 		}
@@ -425,7 +440,7 @@ func BuildModelResource(gltfDoc *gltf.Document) (*mdl.Model, error) {
 		meshDefinition.SetGeometry(geometry)
 		meshDefinitionFromIndex[uint32(i)] = meshDefinition
 
-		if geometry.Metadata().HasCollision() && len(bodyDefinition.CollisionMeshes()) > 0 {
+		if (geometry.Metadata().HasCollision() || forceCollision) && len(bodyDefinition.CollisionMeshes()) > 0 {
 			bodyDefinitionFromIndex[uint32(i)] = bodyDefinition
 		}
 	}
