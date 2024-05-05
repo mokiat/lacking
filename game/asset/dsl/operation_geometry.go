@@ -3,7 +3,6 @@ package dsl
 import (
 	"fmt"
 
-	"github.com/mokiat/gomath/dprec"
 	"github.com/mokiat/lacking/game/asset/mdl"
 )
 
@@ -152,36 +151,36 @@ func AddFragment(fragmentProvider Provider[*mdl.Fragment]) Operation {
 // 	)
 // }
 
-type addBoxConfig struct {
-	width  float64
-	height float64
-	length float64
-}
+// type addBoxConfig struct {
+// 	width  float64
+// 	height float64
+// 	length float64
+// }
 
-func (c *addBoxConfig) Width() float64 {
-	return c.width
-}
+// func (c *addBoxConfig) Width() float64 {
+// 	return c.width
+// }
 
-func (c *addBoxConfig) SetWidth(width float64) {
-	c.width = width
-}
+// func (c *addBoxConfig) SetWidth(width float64) {
+// 	c.width = width
+// }
 
-func (c *addBoxConfig) Height() float64 {
-	return c.height
-}
+// func (c *addBoxConfig) Height() float64 {
+// 	return c.height
+// }
 
-func (c *addBoxConfig) SetHeight(height float64) {
-	c.height = height
-}
+// func (c *addBoxConfig) SetHeight(height float64) {
+// 	c.height = height
+// }
 
-func (c *addBoxConfig) Length() float64 {
-	return c.length
-}
+// func (c *addBoxConfig) Length() float64 {
+// 	return c.length
+// }
 
-func (c *addBoxConfig) SetLength(length float64) {
-	c.length = length
-}
+// func (c *addBoxConfig) SetLength(length float64) {
+// 	c.length = length
+// }
 
-func (c *addBoxConfig) halfSize() dprec.Vec3 {
-	return dprec.NewVec3(c.width/2.0, c.height/2.0, c.length/2.0)
-}
+// func (c *addBoxConfig) halfSize() dprec.Vec3 {
+// 	return dprec.NewVec3(c.width/2.0, c.height/2.0, c.length/2.0)
+// }
