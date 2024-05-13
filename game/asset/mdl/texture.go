@@ -39,11 +39,12 @@ const (
 type TextureKind uint8
 
 type Texture struct {
-	kind   TextureKind
-	width  int
-	height int
-	format TextureFormat
-	layers []TextureLayer
+	kind            TextureKind
+	width           int
+	height          int
+	format          TextureFormat
+	generateMipmaps bool
+	layers          []TextureLayer
 }
 
 func (t *Texture) Kind() TextureKind {
@@ -71,6 +72,14 @@ func (t *Texture) SetFormat(format TextureFormat) {
 	if len(t.layers) > 0 {
 		panic("setting texture format with layers is not supported yet")
 	}
+}
+
+func (t *Texture) GenerateMipmaps() bool {
+	return t.generateMipmaps
+}
+
+func (t *Texture) SetGenerateMipmaps(generateMipmaps bool) {
+	t.generateMipmaps = generateMipmaps
 }
 
 func (t *Texture) Resize(width, height int) {

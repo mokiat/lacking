@@ -815,6 +815,9 @@ func (c *Converter) convertTexture(texture *Texture) (uint32, error) {
 	if isLikelyLinearSpace(texture.format) {
 		flags |= asset.TextureFlagLinearSpace
 	}
+	if texture.generateMipmaps {
+		flags |= asset.TextureFlagMipmapping
+	}
 	assetTexture := asset.Texture{
 		Width:  uint32(texture.Width()),
 		Height: uint32(texture.Height()),
