@@ -35,3 +35,31 @@ func SetFormat(formatProvider Provider[mdl.TextureFormat]) Operation {
 		},
 	)
 }
+
+// SetGenerateMipmaps configures the generate mipmaps flag of the target.
+func SetGenerateMipmaps(generateMipmapsProvider Provider[bool]) Operation {
+	type generateMipmapsConfigurable interface {
+		SetGenerateMipmaps(bool)
+	}
+
+	return FuncOperation(
+		func(target any) error {
+			generateMipmaps, err := generateMipmapsProvider.Get()
+			if err != nil {
+				return fmt.Errorf("error getting generate mipmaps flag: %w", err)
+			}
+
+			configurable, ok := target.(generateMipmapsConfigurable)
+			if !ok {
+				return fmt.Errorf("target %T is not configurable with generate mipmaps", target)
+			}
+			configurable.SetGenerateMipmaps(generateMipmaps)
+
+			return nil
+		},
+
+		func() ([]byte, error) {
+			return CreateDigest("set-generate-mipmaps", generateMipmapsProvider)
+		},
+	)
+}

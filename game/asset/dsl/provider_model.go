@@ -131,6 +131,7 @@ func BuildModelResource(gltfDoc *gltf.Document, forceCollision bool) (*mdl.Model
 		texture := &mdl.Texture{}
 		texture.SetKind(mdl.TextureKind2D)
 		texture.SetFormat(mdl.TextureFormatRGBA8)
+		texture.SetGenerateMipmaps(true)
 		texture.Resize(img.Width(), img.Height())
 		texture.SetLayerImage(0, img)
 		texturesFromIndex[i] = texture
