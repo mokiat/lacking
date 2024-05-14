@@ -39,12 +39,21 @@ const (
 type TextureKind uint8
 
 type Texture struct {
+	name            string
 	kind            TextureKind
 	width           int
 	height          int
 	format          TextureFormat
 	generateMipmaps bool
 	layers          []TextureLayer
+}
+
+func (t *Texture) Name() string {
+	return t.name
+}
+
+func (t *Texture) SetName(name string) {
+	t.name = name
 }
 
 func (t *Texture) Kind() TextureKind {

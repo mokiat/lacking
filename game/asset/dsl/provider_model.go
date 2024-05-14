@@ -129,6 +129,7 @@ func BuildModelResource(gltfDoc *gltf.Document, forceCollision bool) (*mdl.Model
 	texturesFromIndex := make(map[uint32]*mdl.Texture)
 	for i, img := range imagesFromIndex {
 		texture := &mdl.Texture{}
+		texture.SetName(img.Name())
 		texture.SetKind(mdl.TextureKind2D)
 		texture.SetFormat(mdl.TextureFormatRGBA8)
 		texture.SetGenerateMipmaps(true)
@@ -709,6 +710,7 @@ func openGLTFImage(doc *gltf.Document, img *gltf.Image) (*mdl.Image, error) {
 	if err != nil {
 		return nil, err
 	}
+	result.SetName(img.Name)
 	return result, nil
 }
 
