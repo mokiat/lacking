@@ -294,12 +294,7 @@ func ColorTextureIndex(doc *gltf.Document, pbr *gltf.PBRMetallicRoughness) *uint
 		logger.Warn("Unsupported color texture: tex coord layer unsupported!")
 		return nil
 	}
-	texture := doc.Textures[colorTexture.Index]
-	if texture.Source == nil {
-		logger.Warn("Unsupported color texture: no source!")
-		return nil
-	}
-	return texture.Source
+	return &colorTexture.Index
 }
 
 func MetallicRoughnessTextureIndex(doc *gltf.Document, pbr *gltf.PBRMetallicRoughness) *uint32 {
@@ -311,12 +306,7 @@ func MetallicRoughnessTextureIndex(doc *gltf.Document, pbr *gltf.PBRMetallicRoug
 		logger.Warn("Unsupported metallic-roughness texture: tex coord layer unsupported!")
 		return nil
 	}
-	texture := doc.Textures[mrTexture.Index]
-	if texture.Source == nil {
-		logger.Warn("Unsupported metallic-roughness texture: no source!")
-		return nil
-	}
-	return texture.Source
+	return &mrTexture.Index
 }
 
 func NormalTextureIndexScale(doc *gltf.Document, material *gltf.Material) (*uint32, float32) {
@@ -327,10 +317,6 @@ func NormalTextureIndexScale(doc *gltf.Document, material *gltf.Material) (*uint
 	if normalTexture.TexCoord > 0 {
 		logger.Warn("Unsupported normal texture: tex coord layer unsupported!")
 		return nil, 1.0
-	}
-	if normalTexture.Index == nil {
-		logger.Error("Unsupported normal texture: lacks an index!")
-		return nil, float32(normalTexture.ScaleOrDefault())
 	}
 	return normalTexture.Index, float32(normalTexture.ScaleOrDefault())
 }

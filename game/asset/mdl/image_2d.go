@@ -17,9 +17,18 @@ func NewImage(width, height int) *Image {
 }
 
 type Image struct {
+	name   string
 	width  int
 	height int
 	texels []Color
+}
+
+func (i *Image) Name() string {
+	return i.name
+}
+
+func (i *Image) SetName(name string) {
+	i.name = name
 }
 
 func (i *Image) Width() int {
