@@ -12,6 +12,8 @@ type MeshGeometryInfo struct {
 	IndexBuffer          MeshGeometryIndexBuffer
 	Fragments            []MeshGeometryFragmentInfo
 	BoundingSphereRadius float64
+	MinDistance          opt.T[float64]
+	MaxDistance          opt.T[float64]
 }
 
 // MeshGeometryFragmentInfo contains the information needed to represent a
@@ -32,6 +34,8 @@ type MeshGeometry struct {
 	vertexFormat         MeshGeometryVertexFormat
 	fragments            []MeshGeometryFragment
 	boundingSphereRadius float64
+	minDistance          float64
+	maxDistance          float64
 }
 
 // FragmentCount returns the number of fragments that make up this mesh.

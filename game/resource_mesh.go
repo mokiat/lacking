@@ -2,6 +2,7 @@ package game
 
 import (
 	"github.com/mokiat/gog"
+	"github.com/mokiat/gog/opt"
 	"github.com/mokiat/lacking/game/asset"
 	"github.com/mokiat/lacking/game/graphics"
 	"github.com/mokiat/lacking/util/async"
@@ -32,6 +33,8 @@ func (s *ResourceSet) convertMeshGeometry(assetGeometry asset.Geometry) async.Pr
 		},
 		Fragments:            meshFragmentsInfo,
 		BoundingSphereRadius: assetGeometry.BoundingSphereRadius,
+		MinDistance:          opt.V(assetGeometry.MinDistance),
+		MaxDistance:          opt.V(assetGeometry.MaxDistance),
 	}
 
 	promise := async.NewPromise[*graphics.MeshGeometry]()

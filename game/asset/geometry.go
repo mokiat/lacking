@@ -188,4 +188,12 @@ type Geometry struct {
 	// BoundingSphereRadius is the radius of the sphere that encompasses the
 	// entire geometry.
 	BoundingSphereRadius float64
+
+	// MinDistance is the minimum distance to the camera after which the geometry
+	// should be drawn.
+	MinDistance float64
+
+	// MaxDistance is the maximum distance to the camera before which the geometry
+	// should be drawn.
+	MaxDistance float64
 }

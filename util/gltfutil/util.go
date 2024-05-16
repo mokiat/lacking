@@ -486,11 +486,15 @@ func Properties(extras any) map[string]string {
 	result := make(map[string]string)
 	props, ok := extras.(map[string]any)
 	if ok {
+		// FIXME: Make metadata map[string]any and preserve original type.
 		for key, value := range props {
-			if strValue, ok := value.(string); ok {
-				result[key] = strValue
-			} else {
-				result[key] = ""
+			switch value := value.(type) {
+			case string:
+				result[key] = value
+			case float64:
+				result[key] = fmt.Sprintf("%f", value)
+			default:
+				result[key] = "unsupported"
 			}
 		}
 	}

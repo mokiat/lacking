@@ -78,6 +78,9 @@ func createStaticMesh(scene *Scene, info StaticMeshInfo) {
 	scene.staticMeshOctree.Insert(position, radius, meshIndex)
 
 	staticMesh := &scene.staticMeshes[meshIndex]
+	staticMesh.position = position
+	staticMesh.minDistance = info.Definition.geometry.minDistance
+	staticMesh.maxDistance = info.Definition.geometry.maxDistance
 	staticMesh.definition = info.Definition
 	staticMesh.matrixData = make([]byte, 16*4)
 	staticMesh.active = true
@@ -103,9 +106,12 @@ func createStaticMesh(scene *Scene, info StaticMeshInfo) {
 }
 
 type StaticMesh struct {
-	matrixData []byte
-	definition *MeshDefinition
-	active     bool
+	position    dprec.Vec3
+	minDistance float64
+	maxDistance float64
+	matrixData  []byte
+	definition  *MeshDefinition
+	active      bool
 }
 
 func (m *StaticMesh) Active() bool {

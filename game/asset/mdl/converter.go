@@ -628,6 +628,8 @@ func (c *Converter) convertGeometry(geometry *Geometry) (uint32, error) {
 		},
 		Fragments:            assetFragments,
 		BoundingSphereRadius: boundingSphereRadius,
+		MinDistance:          geometry.minDistance,
+		MaxDistance:          geometry.maxDistance,
 	}
 
 	index := uint32(len(c.assetGeometries))

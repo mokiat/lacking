@@ -28,7 +28,10 @@ const (
 )
 
 func NewGeometry() *Geometry {
-	return &Geometry{}
+	return &Geometry{
+		minDistance: -32000.0,
+		maxDistance: 32000.0,
+	}
 }
 
 type Geometry struct {
@@ -38,6 +41,8 @@ type Geometry struct {
 	vertices     []Vertex
 	indices      []int
 	fragments    []*Fragment
+	minDistance  float64
+	maxDistance  float64
 }
 
 func (g *Geometry) Metadata() Metadata {
@@ -96,8 +101,28 @@ func (g *Geometry) AddIndex(index int) {
 	g.indices = append(g.indices, index)
 }
 
+func (g *Geometry) Fragments() []*Fragment {
+	return g.fragments
+}
+
 func (g *Geometry) AddFragment(fragment *Fragment) {
 	g.fragments = append(g.fragments, fragment)
+}
+
+func (g *Geometry) MinDistance() float64 {
+	return g.minDistance
+}
+
+func (g *Geometry) SetMinDistance(distance float64) {
+	g.minDistance = distance
+}
+
+func (g *Geometry) MaxDistance() float64 {
+	return g.maxDistance
+}
+
+func (g *Geometry) SetMaxDistance(distance float64) {
+	g.maxDistance = distance
 }
 
 func NewFragment() *Fragment {
