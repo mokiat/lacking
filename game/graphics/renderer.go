@@ -715,7 +715,7 @@ func (r *sceneRenderer) renderShadowPass(ctx renderCtx) {
 	}
 	for _, meshIndex := range r.litStaticMeshes.Items() {
 		staticMesh := &ctx.scene.staticMeshes[meshIndex]
-		r.queueStaticMeshRenderItems(staticMesh, internal.MeshRenderPassTypeShadow)
+		r.queueStaticMeshRenderItems(ctx, staticMesh, internal.MeshRenderPassTypeShadow)
 	}
 
 	commandBuffer := r.stageData.CommandBuffer()
@@ -758,7 +758,7 @@ func (r *sceneRenderer) renderGeometryPass(ctx renderCtx) {
 	}
 	for _, meshIndex := range r.visibleStaticMeshes.Items() {
 		staticMesh := &ctx.scene.staticMeshes[meshIndex]
-		r.queueStaticMeshRenderItems(staticMesh, internal.MeshRenderPassTypeGeometry)
+		r.queueStaticMeshRenderItems(ctx, staticMesh, internal.MeshRenderPassTypeGeometry)
 	}
 
 	commandBuffer := r.stageData.CommandBuffer()
@@ -872,7 +872,7 @@ func (r *sceneRenderer) renderForwardPass(ctx renderCtx) {
 	}
 	for _, meshIndex := range r.visibleStaticMeshes.Items() {
 		staticMesh := &ctx.scene.staticMeshes[meshIndex]
-		r.queueStaticMeshRenderItems(staticMesh, internal.MeshRenderPassTypeForward)
+		r.queueStaticMeshRenderItems(ctx, staticMesh, internal.MeshRenderPassTypeForward)
 	}
 
 	commandBuffer := r.stageData.CommandBuffer()
@@ -1146,8 +1146,13 @@ func (r *sceneRenderer) queueMeshRenderItems(mesh *Mesh, passType internal.MeshR
 	}
 }
 
-func (r *sceneRenderer) queueStaticMeshRenderItems(mesh *StaticMesh, passType internal.MeshRenderPassType) {
+func (r *sceneRenderer) queueStaticMeshRenderItems(ctx renderCtx, mesh *StaticMesh, passType internal.MeshRenderPassType) {
 	if !mesh.active {
+		return
+	}
+	nearPlane := ctx.frustum[5]
+	nearPlaneDistance := nearPlane.Distance(mesh.position)
+	if nearPlaneDistance < mesh.minDistance || mesh.maxDistance < nearPlaneDistance {
 		return
 	}
 

@@ -256,6 +256,8 @@ func (e *Engine) CreateMeshGeometry(info MeshGeometryInfo) *MeshGeometry {
 			}
 		}),
 		boundingSphereRadius: info.BoundingSphereRadius,
+		minDistance:          info.MinDistance.ValueOrDefault(-32000),
+		maxDistance:          info.MaxDistance.ValueOrDefault(32000),
 	}
 }
 

@@ -298,9 +298,17 @@ func BuildModelResource(gltfDoc *gltf.Document, forceCollision bool) (*mdl.Model
 		bodyMaterial := mdl.NewBodyMaterial()
 		bodyDefinition := mdl.NewBodyDefinition(bodyMaterial)
 
-		geometry := &mdl.Geometry{}
+		metadata := mdl.Metadata(gltfutil.Properties(gltfMesh.Extras))
+
+		geometry := mdl.NewGeometry()
 		geometry.SetName(gltfMesh.Name)
-		geometry.SetMetadata(gltfutil.Properties(gltfMesh.Extras))
+		geometry.SetMetadata(metadata)
+		if minDistance, ok := metadata.HasMinDistance(); ok {
+			geometry.SetMinDistance(minDistance)
+		}
+		if maxDistance, ok := metadata.HasMaxDistance(); ok {
+			geometry.SetMaxDistance(maxDistance)
+		}
 
 		meshDefinition := &mdl.MeshDefinition{}
 		meshDefinition.SetName(gltfMesh.Name)
