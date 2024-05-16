@@ -586,14 +586,15 @@ func (r *sceneRenderer) Render(framebuffer render.Framebuffer, viewport Viewport
 	}
 
 	ctx := renderCtx{
-		framebuffer: framebuffer,
-		scene:       scene,
-		x:           viewport.X,
-		y:           viewport.Y,
-		width:       viewport.Width,
-		height:      viewport.Height,
-		camera:      camera,
-		frustum:     frustum,
+		framebuffer:    framebuffer,
+		scene:          scene,
+		x:              viewport.X,
+		y:              viewport.Y,
+		width:          viewport.Width,
+		height:         viewport.Height,
+		camera:         camera,
+		cameraPosition: stod.Vec3(cameraMatrix.Translation()),
+		frustum:        frustum,
 	}
 
 	r.visibleMeshes.Reset()
@@ -1150,9 +1151,8 @@ func (r *sceneRenderer) queueStaticMeshRenderItems(ctx renderCtx, mesh *StaticMe
 	if !mesh.active {
 		return
 	}
-	nearPlane := ctx.frustum[5]
-	nearPlaneDistance := nearPlane.Distance(mesh.position)
-	if nearPlaneDistance < mesh.minDistance || mesh.maxDistance < nearPlaneDistance {
+	distance := dprec.Vec3Diff(mesh.position, ctx.cameraPosition).Length()
+	if distance < mesh.minDistance || mesh.maxDistance < distance {
 		return
 	}
 
@@ -1458,14 +1458,15 @@ func (r *sceneRenderer) renderDirectionalLight(light *DirectionalLight) {
 }
 
 type renderCtx struct {
-	framebuffer render.Framebuffer
-	scene       *Scene
-	x           uint32
-	y           uint32
-	width       uint32
-	height      uint32
-	camera      *Camera
-	frustum     spatial.HexahedronRegion
+	framebuffer    render.Framebuffer
+	scene          *Scene
+	x              uint32
+	y              uint32
+	width          uint32
+	height         uint32
+	camera         *Camera
+	cameraPosition dprec.Vec3
+	frustum        spatial.HexahedronRegion
 }
 
 type renderMeshContext struct {
