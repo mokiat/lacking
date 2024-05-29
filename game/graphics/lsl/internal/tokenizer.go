@@ -40,19 +40,19 @@ func (t *Tokenizer) Next() Token {
 		}
 	}
 	return Token{
-		Type: TokenTypeOEF,
+		Type: TokenTypeEOF,
 	}
 }
 
 func (t *Tokenizer) nextIsWhitespace() bool {
 	ch, _ := t.peekRune(t.offset)
-	return IsWhitespace(ch)
+	return IsWhitespaceChar(ch)
 }
 
 func (t *Tokenizer) scanWhitespace() {
 	for t.offset < len(t.source) {
 		ch, newOffset := t.peekRune(t.offset)
-		if !IsWhitespace(ch) {
+		if !IsWhitespaceChar(ch) {
 			break
 		}
 		t.offset = newOffset
@@ -61,14 +61,14 @@ func (t *Tokenizer) scanWhitespace() {
 
 func (t *Tokenizer) nextIsNewLine() bool {
 	ch, _ := t.peekRune(t.offset)
-	return IsNewLine(ch)
+	return IsNewLineChar(ch)
 }
 
 func (t *Tokenizer) scanNewLine() Token {
 	start := t.offset
 	for t.offset < len(t.source) {
 		ch, newOffset := t.peekRune(t.offset)
-		if !IsNewLine(ch) {
+		if !IsNewLineChar(ch) {
 			break
 		}
 		t.offset = newOffset
@@ -91,7 +91,7 @@ func (t *Tokenizer) scanComment() Token {
 	start := t.offset
 	for t.offset < len(t.source) {
 		ch, newOffset := t.peekRune(t.offset)
-		if IsNewLine(ch) {
+		if IsNewLineChar(ch) {
 			break
 		}
 		t.offset = newOffset
@@ -104,7 +104,7 @@ func (t *Tokenizer) scanComment() Token {
 
 func (t *Tokenizer) nextIsIdentifier() bool {
 	ch, _ := t.peekRune(t.offset)
-	return IsIdentifier(0, ch)
+	return IsIdentifierChar(ch, 0)
 }
 
 func (t *Tokenizer) scanIdentifier() Token {
@@ -112,7 +112,7 @@ func (t *Tokenizer) scanIdentifier() Token {
 	charIndex := 0
 	for t.offset < len(t.source) {
 		ch, newOffset := t.peekRune(t.offset)
-		if !IsIdentifier(charIndex, ch) {
+		if !IsIdentifierChar(ch, charIndex) {
 			break
 		}
 		t.offset = newOffset
@@ -126,7 +126,7 @@ func (t *Tokenizer) scanIdentifier() Token {
 
 func (t *Tokenizer) nextIsOperator() bool {
 	ch, _ := t.peekRune(t.offset)
-	return IsOperator(ch)
+	return IsOperatorChar(ch)
 }
 
 func (t *Tokenizer) scanOperator() Token {
@@ -357,7 +357,7 @@ func (t *Tokenizer) scanOperator() Token {
 
 func (t *Tokenizer) nextIsNumber() bool {
 	ch, _ := t.peekRune(t.offset)
-	return IsNumber(0, ch)
+	return IsNumberChar(ch, 0)
 }
 
 func (t *Tokenizer) scanNumber() Token {
@@ -365,7 +365,7 @@ func (t *Tokenizer) scanNumber() Token {
 	charIndex := 0
 	for t.offset < len(t.source) {
 		ch, newOffset := t.peekRune(t.offset)
-		if !IsNumber(charIndex, ch) {
+		if !IsNumberChar(ch, charIndex) {
 			break
 		}
 		t.offset = newOffset
@@ -379,7 +379,7 @@ func (t *Tokenizer) scanNumber() Token {
 
 func (t *Tokenizer) scanUnknown() Token {
 	return Token{
-		Type: TokenTypeOEF, // FIXME
+		Type: TokenTypeEOF,
 	}
 }
 

@@ -3,20 +3,22 @@ package internal
 import (
 	"fmt"
 	"slices"
-	"unicode"
 )
 
-var (
-	operatorChars = []rune{
-		'{', '}', '=', '(', ')', ',', '-', ';', '+', '*', '/', '%', '!', '<', '>', '&', '|', '^', '.',
-	}
+const (
+	TokenTypeEOF TokenType = iota
+	TokenTypeNewLine
+	TokenTypeComment
+	TokenTypeIdentifier
+	TokenTypeOperator
+	TokenTypeNumber
 )
 
 type TokenType uint8
 
 func (t TokenType) String() string {
 	switch t {
-	case TokenTypeOEF:
+	case TokenTypeEOF:
 		return "EOF"
 	case TokenTypeNewLine:
 		return "NewLine"
@@ -32,15 +34,6 @@ func (t TokenType) String() string {
 	return "Unknown"
 }
 
-const (
-	TokenTypeOEF TokenType = iota
-	TokenTypeNewLine
-	TokenTypeComment
-	TokenTypeIdentifier
-	TokenTypeOperator
-	TokenTypeNumber
-)
-
 type Token struct {
 	Type  TokenType
 	Value string
@@ -51,7 +44,7 @@ func (t Token) String() string {
 }
 
 func (t Token) IsEOF() bool {
-	return t.Type == TokenTypeOEF
+	return t.Type == TokenTypeEOF
 }
 
 func (t Token) IsNewLine() bool {
@@ -75,34 +68,15 @@ func (t Token) IsOperator() bool {
 }
 
 func (t Token) IsAssignmentOperator() bool {
-	if !t.IsOperator() {
-		return false
-	}
-	return t.Value == "=" ||
-		t.Value == "+=" || t.Value == "-=" ||
-		t.Value == "*=" || t.Value == "/=" || t.Value == "%=" ||
-		t.Value == "<<=" || t.Value == ">>=" ||
-		t.Value == "&=" || t.Value == "^=" || t.Value == "|="
+	return t.IsOperator() && slices.Contains(assignmentOperators, t.Value)
 }
 
 func (t Token) IsUnaryOperator() bool {
-	if !t.IsOperator() {
-		return false
-	}
-	return t.Value == "!" || t.Value == "-" || t.Value == "+" || t.Value == "^"
+	return t.IsOperator() && slices.Contains(unaryOperators, t.Value)
 }
 
 func (t Token) IsBinaryOperator() bool {
-	if !t.IsOperator() {
-		return false
-	}
-	return t.Value == "+" || t.Value == "-" ||
-		t.Value == "*" || t.Value == "/" || t.Value == "%" ||
-		t.Value == "<<" || t.Value == ">>" ||
-		t.Value == "==" || t.Value == "!=" ||
-		t.Value == "<" || t.Value == ">" || t.Value == "<=" || t.Value == ">=" ||
-		t.Value == "&" || t.Value == "|" || t.Value == "^" ||
-		t.Value == "&&" || t.Value == "||"
+	return t.IsOperator() && slices.Contains(binaryOperators, t.Value)
 }
 
 func (t Token) IsSpecificOperator(value string) bool {
@@ -111,24 +85,4 @@ func (t Token) IsSpecificOperator(value string) bool {
 
 func (t Token) IsNumber() bool {
 	return t.Type == TokenTypeNumber
-}
-
-func IsWhitespace(ch rune) bool {
-	return ch == ' ' || ch == '\t'
-}
-
-func IsNewLine(ch rune) bool {
-	return ch == '\n' || ch == '\r'
-}
-
-func IsIdentifier(p int, ch rune) bool {
-	return unicode.IsLetter(ch) || (p > 0 && unicode.IsDigit(ch)) || (p == 0 && ch == '#')
-}
-
-func IsOperator(ch rune) bool {
-	return slices.Contains(operatorChars, ch)
-}
-
-func IsNumber(p int, ch rune) bool {
-	return unicode.IsDigit(ch) || (p > 0 && ch == '.')
 }

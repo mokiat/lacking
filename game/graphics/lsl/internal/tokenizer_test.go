@@ -14,7 +14,7 @@ var _ = Describe("Tokenizer", func() {
 		var outTokens []internal.Token
 		for {
 			token := tokenizer.Next()
-			if token.Type == internal.TokenTypeOEF {
+			if token.Type == internal.TokenTypeEOF {
 				break
 			}
 			outTokens = append(outTokens, token)
