@@ -9,6 +9,7 @@ import (
 
 	"github.com/mokiat/gblob"
 	"github.com/mokiat/gog/ds"
+	"github.com/mokiat/gog/opt"
 	"github.com/mokiat/gomath/dprec"
 	"github.com/mokiat/gomath/dtos"
 	"github.com/mokiat/gomath/sprec"
@@ -73,6 +74,10 @@ type sceneRenderer struct {
 
 	framebufferWidth  uint32
 	framebufferHeight uint32
+
+	nearestSampler render.Sampler
+	linearSampler  render.Sampler
+	depthSampler   render.Sampler
 
 	geometryAlbedoTexture render.Texture
 	geometryNormalTexture render.Texture
@@ -204,6 +209,23 @@ func (r *sceneRenderer) releaseFramebuffers() {
 func (r *sceneRenderer) Allocate() {
 	r.createFramebuffers(800, 600)
 	r.bloomStage.Allocate()
+
+	r.nearestSampler = r.api.CreateSampler(render.SamplerInfo{
+		Wrapping:   render.WrapModeClamp,
+		Filtering:  render.FilterModeNearest,
+		Mipmapping: false,
+	})
+	r.linearSampler = r.api.CreateSampler(render.SamplerInfo{
+		Wrapping:   render.WrapModeClamp,
+		Filtering:  render.FilterModeLinear,
+		Mipmapping: false,
+	})
+	r.depthSampler = r.api.CreateSampler(render.SamplerInfo{
+		Wrapping:   render.WrapModeClamp,
+		Filtering:  render.FilterModeLinear,
+		Comparison: opt.V(render.ComparisonLess),
+		Mipmapping: false,
+	})
 
 	quadShape := r.stageData.QuadShape()
 	sphereShape := r.stageData.SphereShape()
@@ -467,6 +489,10 @@ func (r *sceneRenderer) Release() {
 	defer r.releaseFramebuffers()
 
 	defer r.bloomStage.Release()
+
+	defer r.nearestSampler.Release()
+	defer r.linearSampler.Release()
+	defer r.depthSampler.Release()
 
 	defer r.shadowDepthTexture.Release()
 	defer r.shadowFramebuffer.Release()
@@ -1045,7 +1071,7 @@ func (r *sceneRenderer) renderExposureProbePass(ctx renderCtx) {
 		})
 		commandBuffer.BindPipeline(r.exposurePipeline)
 		commandBuffer.TextureUnit(internal.TextureBindingLightingFramebufferColor0, r.lightingAlbedoTexture)
-		commandBuffer.SamplerUnit(internal.TextureBindingLightingFramebufferColor0, nil)
+		commandBuffer.SamplerUnit(internal.TextureBindingLightingFramebufferColor0, r.nearestSampler)
 		commandBuffer.UniformBufferUnit(
 			internal.UniformBufferBindingCamera,
 			r.cameraPlacement.Buffer,
@@ -1103,7 +1129,7 @@ func (r *sceneRenderer) renderPostprocessingPass(ctx renderCtx) {
 
 	commandBuffer.BindPipeline(r.postprocessingPipeline)
 	commandBuffer.TextureUnit(internal.TextureBindingPostprocessFramebufferColor0, r.lightingAlbedoTexture)
-	commandBuffer.SamplerUnit(internal.TextureBindingPostprocessFramebufferColor0, nil)
+	commandBuffer.SamplerUnit(internal.TextureBindingPostprocessFramebufferColor0, r.nearestSampler)
 	commandBuffer.TextureUnit(internal.TextureBindingPostprocessBloom, r.bloomStage.OutputTexture())
 	commandBuffer.SamplerUnit(internal.TextureBindingPostprocessBloom, r.bloomStage.OutputSampler())
 	commandBuffer.UniformBufferUnit(
@@ -1289,15 +1315,15 @@ func (r *sceneRenderer) renderAmbientLight(light *AmbientLight) {
 	// TODO: Ambient light intensity based on distance and inner and outer radius
 	commandBuffer.BindPipeline(r.ambientLightPipeline)
 	commandBuffer.TextureUnit(internal.TextureBindingLightingFramebufferColor0, r.geometryAlbedoTexture)
-	commandBuffer.SamplerUnit(internal.TextureBindingLightingFramebufferColor0, nil) // TODO
+	commandBuffer.SamplerUnit(internal.TextureBindingLightingFramebufferColor0, r.nearestSampler)
 	commandBuffer.TextureUnit(internal.TextureBindingLightingFramebufferColor1, r.geometryNormalTexture)
-	commandBuffer.SamplerUnit(internal.TextureBindingLightingFramebufferColor1, nil) // TODO
+	commandBuffer.SamplerUnit(internal.TextureBindingLightingFramebufferColor1, r.nearestSampler)
 	commandBuffer.TextureUnit(internal.TextureBindingLightingFramebufferDepth, r.geometryDepthTexture)
-	commandBuffer.SamplerUnit(internal.TextureBindingLightingFramebufferDepth, nil) // TODO
+	commandBuffer.SamplerUnit(internal.TextureBindingLightingFramebufferDepth, r.nearestSampler)
 	commandBuffer.TextureUnit(internal.TextureBindingLightingReflectionTexture, light.reflectionTexture)
-	commandBuffer.SamplerUnit(internal.TextureBindingLightingReflectionTexture, nil) // TODO
+	commandBuffer.SamplerUnit(internal.TextureBindingLightingReflectionTexture, r.linearSampler)
 	commandBuffer.TextureUnit(internal.TextureBindingLightingRefractionTexture, light.refractionTexture)
-	commandBuffer.SamplerUnit(internal.TextureBindingLightingRefractionTexture, nil) // TODO
+	commandBuffer.SamplerUnit(internal.TextureBindingLightingRefractionTexture, r.linearSampler)
 	commandBuffer.UniformBufferUnit(
 		internal.UniformBufferBindingCamera,
 		r.cameraPlacement.Buffer,
@@ -1329,11 +1355,11 @@ func (r *sceneRenderer) renderPointLight(light *PointLight) {
 	commandBuffer := r.stageData.CommandBuffer()
 	commandBuffer.BindPipeline(r.pointLightPipeline)
 	commandBuffer.TextureUnit(internal.TextureBindingLightingFramebufferColor0, r.geometryAlbedoTexture)
-	commandBuffer.SamplerUnit(internal.TextureBindingLightingFramebufferColor0, nil) // TODO
+	commandBuffer.SamplerUnit(internal.TextureBindingLightingFramebufferColor0, r.nearestSampler)
 	commandBuffer.TextureUnit(internal.TextureBindingLightingFramebufferColor1, r.geometryNormalTexture)
-	commandBuffer.SamplerUnit(internal.TextureBindingLightingFramebufferColor1, nil) // TODO
+	commandBuffer.SamplerUnit(internal.TextureBindingLightingFramebufferColor1, r.nearestSampler)
 	commandBuffer.TextureUnit(internal.TextureBindingLightingFramebufferDepth, r.geometryDepthTexture)
-	commandBuffer.SamplerUnit(internal.TextureBindingLightingFramebufferDepth, nil) // TODO
+	commandBuffer.SamplerUnit(internal.TextureBindingLightingFramebufferDepth, r.nearestSampler)
 	commandBuffer.UniformBufferUnit(
 		internal.UniformBufferBindingCamera,
 		r.cameraPlacement.Buffer,
@@ -1379,11 +1405,11 @@ func (r *sceneRenderer) renderSpotLight(light *SpotLight) {
 	commandBuffer := r.stageData.CommandBuffer()
 	commandBuffer.BindPipeline(r.spotLightPipeline)
 	commandBuffer.TextureUnit(internal.TextureBindingLightingFramebufferColor0, r.geometryAlbedoTexture)
-	commandBuffer.SamplerUnit(internal.TextureBindingLightingFramebufferColor0, nil) // TODO
+	commandBuffer.SamplerUnit(internal.TextureBindingLightingFramebufferColor0, r.nearestSampler)
 	commandBuffer.TextureUnit(internal.TextureBindingLightingFramebufferColor1, r.geometryNormalTexture)
-	commandBuffer.SamplerUnit(internal.TextureBindingLightingFramebufferColor1, nil) // TODO
+	commandBuffer.SamplerUnit(internal.TextureBindingLightingFramebufferColor1, r.nearestSampler)
 	commandBuffer.TextureUnit(internal.TextureBindingLightingFramebufferDepth, r.geometryDepthTexture)
-	commandBuffer.SamplerUnit(internal.TextureBindingLightingFramebufferDepth, nil) // TODO
+	commandBuffer.SamplerUnit(internal.TextureBindingLightingFramebufferDepth, r.nearestSampler)
 	commandBuffer.UniformBufferUnit(
 		internal.UniformBufferBindingCamera,
 		r.cameraPlacement.Buffer,
@@ -1429,13 +1455,13 @@ func (r *sceneRenderer) renderDirectionalLight(light *DirectionalLight) {
 	commandBuffer := r.stageData.CommandBuffer()
 	commandBuffer.BindPipeline(r.directionalLightPipeline)
 	commandBuffer.TextureUnit(internal.TextureBindingLightingFramebufferColor0, r.geometryAlbedoTexture)
-	commandBuffer.SamplerUnit(internal.TextureBindingLightingFramebufferColor0, nil) // TODO
+	commandBuffer.SamplerUnit(internal.TextureBindingLightingFramebufferColor0, r.nearestSampler)
 	commandBuffer.TextureUnit(internal.TextureBindingLightingFramebufferColor1, r.geometryNormalTexture)
-	commandBuffer.SamplerUnit(internal.TextureBindingLightingFramebufferColor1, nil) // TODO
+	commandBuffer.SamplerUnit(internal.TextureBindingLightingFramebufferColor1, r.nearestSampler)
 	commandBuffer.TextureUnit(internal.TextureBindingLightingFramebufferDepth, r.geometryDepthTexture)
-	commandBuffer.SamplerUnit(internal.TextureBindingLightingFramebufferDepth, nil) // TODO
+	commandBuffer.SamplerUnit(internal.TextureBindingLightingFramebufferDepth, r.nearestSampler)
 	commandBuffer.TextureUnit(internal.TextureBindingShadowFramebufferDepth, r.shadowDepthTexture)
-	commandBuffer.SamplerUnit(internal.TextureBindingShadowFramebufferDepth, nil) // TODO
+	commandBuffer.SamplerUnit(internal.TextureBindingShadowFramebufferDepth, r.depthSampler)
 	commandBuffer.UniformBufferUnit(
 		internal.UniformBufferBindingCamera,
 		r.cameraPlacement.Buffer,
