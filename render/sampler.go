@@ -1,5 +1,7 @@
 package render
 
+import "github.com/mokiat/gog/opt"
+
 // SamplerMarker marks a type as being a Sampler.
 type SamplerMarker interface {
 	_isSamplerType()
@@ -19,6 +21,10 @@ type SamplerInfo struct {
 
 	// Filtering specifies the texture filtering mode.
 	Filtering FilterMode
+
+	// Comparable specifies whether the texture should be used for depth
+	// comparison.
+	Comparison opt.T[Comparison]
 
 	// Mipmapping specifies whether mipmapping should be enabled and whether
 	// mipmaps should be generated.
