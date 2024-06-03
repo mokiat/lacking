@@ -1,6 +1,9 @@
 package mdl
 
-import "github.com/mokiat/lacking/game/asset"
+import (
+	"github.com/mokiat/lacking/game/asset"
+	"golang.org/x/exp/maps"
+)
 
 const (
 	CullModeNone         CullMode = asset.CullModeNone
@@ -44,6 +47,17 @@ type Material struct {
 	forwardPasses        []*MaterialPass
 	skyPasses            []*MaterialPass
 	postprocessingPasses []*MaterialPass
+}
+
+func (m *Material) Clear() {
+	maps.Clear(m.metadata)
+	maps.Clear(m.samplers)
+	maps.Clear(m.properties)
+	m.geometryPasses = nil
+	m.shadowPasses = nil
+	m.forwardPasses = nil
+	m.skyPasses = nil
+	m.postprocessingPasses = nil
 }
 
 func (m *Material) Metadata() Metadata {
@@ -90,20 +104,40 @@ func (m *Material) SetProperty(name string, value any) {
 	m.properties[name] = value
 }
 
+func (m *Material) GeometryPasses() []*MaterialPass {
+	return m.geometryPasses
+}
+
 func (m *Material) AddGeometryPass(pass *MaterialPass) {
 	m.geometryPasses = append(m.geometryPasses, pass)
+}
+
+func (m *Material) ShadowPasses() []*MaterialPass {
+	return m.shadowPasses
 }
 
 func (m *Material) AddShadowPass(pass *MaterialPass) {
 	m.shadowPasses = append(m.shadowPasses, pass)
 }
 
+func (m *Material) ForwardPasses() []*MaterialPass {
+	return m.forwardPasses
+}
+
 func (m *Material) AddForwardPass(pass *MaterialPass) {
 	m.forwardPasses = append(m.forwardPasses, pass)
 }
 
+func (m *Material) SkyPasses() []*MaterialPass {
+	return m.skyPasses
+}
+
 func (m *Material) AddSkyPass(pass *MaterialPass) {
 	m.skyPasses = append(m.skyPasses, pass)
+}
+
+func (m *Material) PostprocessPasses() []*MaterialPass {
+	return m.postprocessingPasses
 }
 
 func (m *Material) AddPostprocessPass(pass *MaterialPass) {
@@ -111,7 +145,15 @@ func (m *Material) AddPostprocessPass(pass *MaterialPass) {
 }
 
 func NewMaterialPass() *MaterialPass {
-	return &MaterialPass{}
+	return &MaterialPass{
+		layer:           0,
+		culling:         CullModeNone,
+		frontFace:       FaceOrientationCCW,
+		depthTest:       true,
+		depthWrite:      true,
+		depthComparison: ComparisonLess,
+		blending:        false,
+	}
 }
 
 type MaterialPass struct {

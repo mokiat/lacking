@@ -61,3 +61,65 @@ func ForceCollision() Operation {
 		},
 	)
 }
+
+// EditMaterial creates an operation that edits the material with the
+// provided name in the target node holder.
+func EditMaterial(name string, opts ...Operation) Operation {
+	type nodeHolder interface {
+		Nodes() []*mdl.Node
+	}
+	return FuncOperation(
+		// apply function
+		func(target any) error {
+			nodeHolder, ok := target.(nodeHolder)
+			if !ok {
+				return fmt.Errorf("target %T is not a node holder", target)
+			}
+			material := findMaterial(nodeHolder.Nodes(), name)
+			if material == nil {
+				return fmt.Errorf("material %q not found", name)
+			}
+			for _, opt := range opts {
+				if err := opt.Apply(material); err != nil {
+					return fmt.Errorf("error applying material operation: %w", err)
+				}
+			}
+			return nil
+		},
+
+		// digest function
+		func() ([]byte, error) {
+			return CreateDigest("edit-material", name, opts)
+		},
+	)
+}
+
+func findMaterial(nodes []*mdl.Node, name string) *mdl.Material {
+	nodes = flattenNodes(nodes)
+	for _, node := range nodes {
+		if mesh, ok := node.Target().(*mdl.Mesh); ok {
+			materials := mesh.Definition().Materials()
+			for _, material := range materials {
+				if material.Name() == name {
+					return material
+				}
+			}
+		}
+	}
+	return nil
+}
+
+func flattenNodes(nodes []*mdl.Node) []*mdl.Node {
+	var flattened []*mdl.Node
+	visitNodes(nodes, func(node *mdl.Node) {
+		flattened = append(flattened, node)
+	})
+	return flattened
+}
+
+func visitNodes(nodes []*mdl.Node, visitor func(*mdl.Node)) {
+	for _, node := range nodes {
+		visitor(node)
+		visitNodes(node.Nodes(), visitor)
+	}
+}
