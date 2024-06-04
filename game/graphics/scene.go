@@ -1,6 +1,8 @@
 package graphics
 
 import (
+	"time"
+
 	"github.com/mokiat/gblob"
 	"github.com/mokiat/gog/ds"
 	"github.com/mokiat/gog/opt"
@@ -61,6 +63,8 @@ type Scene struct {
 	engine   *Engine
 	renderer *sceneRenderer
 
+	time float32
+
 	skies *ds.List[*Sky]
 
 	staticMeshes     []StaticMesh
@@ -87,6 +91,10 @@ type Scene struct {
 // Engine returns the graphics engine that owns this scene.
 func (s *Scene) Engine() *Engine {
 	return s.engine
+}
+
+func (s *Scene) Time() float32 {
+	return s.time
 }
 
 // ActiveCamera returns the currently active camera for this scene.
@@ -167,6 +175,10 @@ func (s *Scene) Ray(viewport Viewport, camera *Camera, x, y int) (dprec.Vec3, dp
 
 func (s *Scene) Point(viewport Viewport, camera *Camera, position dprec.Vec3) dprec.Vec2 {
 	return s.renderer.Point(viewport, camera, position)
+}
+
+func (s *Scene) Update(elapsedTime time.Duration) {
+	s.time += float32(elapsedTime.Seconds())
 }
 
 // Render draws this scene to the specified viewport
