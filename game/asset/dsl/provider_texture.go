@@ -7,10 +7,43 @@ import (
 	"github.com/mokiat/lacking/game/asset/mdl"
 )
 
+// Create2DTexture creates a new 2D texture with the specified format and
+// source image.
+func Create2DTexture(imageProvider Provider[*mdl.Image], opts ...Operation) Provider[*mdl.Texture] {
+	var cfg textureConfig
+	for _, opt := range opts {
+		opt.Apply(&cfg)
+	}
+
+	return OnceProvider(FuncProvider(
+		// get function
+		func() (*mdl.Texture, error) {
+			image, err := imageProvider.Get()
+			if err != nil {
+				return nil, fmt.Errorf("failed to get image: %w", err)
+			}
+
+			var texture mdl.Texture
+			texture.SetName(image.Name())
+			texture.SetKind(mdl.TextureKind2D)
+			texture.SetFormat(cfg.format.ValueOrDefault(mdl.TextureFormatRGBA8))
+			texture.SetGenerateMipmaps(true)
+			texture.Resize(image.Width(), image.Height())
+			texture.SetLayerImage(0, image)
+			return &texture, nil
+		},
+
+		// digest function
+		func() ([]byte, error) {
+			return CreateDigest("create-2d-texture", imageProvider, opts)
+		},
+	))
+}
+
 // CreateCubeTexture creates a new cube texture with the specified format and
 // source image.
 func CreateCubeTexture(cubeImageProvider Provider[*mdl.CubeImage], opts ...Operation) Provider[*mdl.Texture] {
-	var cfg cubeTextureConfig
+	var cfg textureConfig
 	for _, opt := range opts {
 		opt.Apply(&cfg)
 	}
@@ -50,11 +83,11 @@ func CreateCubeTexture(cubeImageProvider Provider[*mdl.CubeImage], opts ...Opera
 	))
 }
 
-type cubeTextureConfig struct {
+type textureConfig struct {
 	format opt.T[mdl.TextureFormat]
 }
 
-func (c *cubeTextureConfig) SetFormat(format mdl.TextureFormat) {
+func (c *textureConfig) SetFormat(format mdl.TextureFormat) {
 	c.format = opt.V(format)
 }
 
