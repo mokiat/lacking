@@ -621,6 +621,7 @@ func (r *sceneRenderer) Render(framebuffer render.Framebuffer, viewport Viewport
 		camera:         camera,
 		cameraPosition: stod.Vec3(cameraMatrix.Translation()),
 		frustum:        frustum,
+		time:           scene.Time(),
 	}
 
 	r.visibleMeshes.Reset()
@@ -639,6 +640,7 @@ func (r *sceneRenderer) Render(framebuffer render.Framebuffer, viewport Viewport
 			float32(viewport.Width),
 			float32(viewport.Height),
 		),
+		Time: ctx.time,
 	})
 
 	r.renderShadowPass(ctx)
@@ -767,6 +769,7 @@ func (r *sceneRenderer) renderShadowPass(ctx renderCtx) {
 		ViewMatrix:       viewMatrix,
 		CameraMatrix:     lightMatrix,
 		Viewport:         sprec.ZeroVec4(), // TODO?
+		Time:             ctx.time,
 	})
 
 	meshCtx := renderMeshContext{
@@ -1493,6 +1496,7 @@ type renderCtx struct {
 	camera         *Camera
 	cameraPosition dprec.Vec3
 	frustum        spatial.HexahedronRegion
+	time           float32
 }
 
 type renderMeshContext struct {

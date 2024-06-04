@@ -248,6 +248,8 @@ func (s *Scene) Update(elapsedTime time.Duration) {
 		callback(elapsedTime)
 	})
 	postUpdateSpan.End()
+
+	s.gfxScene.Update(elapsedTime)
 }
 
 // Render draws the scene to the provided viewport.

@@ -10,6 +10,7 @@ type CameraUniform struct {
 	ViewMatrix       sprec.Mat4
 	CameraMatrix     sprec.Mat4
 	Viewport         sprec.Vec4
+	Time             float32
 }
 
 func (u CameraUniform) Std140Plot(plotter *blob.Plotter) {
@@ -17,8 +18,9 @@ func (u CameraUniform) Std140Plot(plotter *blob.Plotter) {
 	plotter.PlotSPMat4(u.ViewMatrix)
 	plotter.PlotSPMat4(u.CameraMatrix)
 	plotter.PlotSPVec4(u.Viewport)
+	plotter.PlotFloat32(u.Time)
 }
 
 func (u CameraUniform) Std140Size() uint32 {
-	return 64 + 64 + 64 + 16
+	return 64 + 64 + 64 + 16 + 4
 }
