@@ -28,6 +28,10 @@ type AnimationDefinition struct {
 	bindings  []AnimationBindingDefinitionInfo
 }
 
+func (d *AnimationDefinition) Name() string {
+	return d.name
+}
+
 type AnimationInfo struct {
 	Root       *hierarchy.Node
 	Definition *AnimationDefinition

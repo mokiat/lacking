@@ -30,6 +30,10 @@ type ModelDefinition struct {
 	skies             []skyInstance
 }
 
+func (d *ModelDefinition) Animations() []*AnimationDefinition {
+	return d.animations
+}
+
 func (d *ModelDefinition) FindAnimation(name string) *AnimationDefinition {
 	for _, def := range d.animations {
 		if def.name == name {
