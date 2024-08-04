@@ -167,6 +167,10 @@ func (s *UniformSet) Data() []byte {
 	return s.data
 }
 
+func (s *UniformSet) IsEmpty() bool {
+	return len(s.properties) == 0 || len(s.data) == 0
+}
+
 func (s *UniformSet) findProperty(name string) (UniformProperty, bool) {
 	return gog.FindFunc(s.properties, func(prop UniformProperty) bool {
 		return prop.name == name

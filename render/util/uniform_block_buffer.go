@@ -77,6 +77,9 @@ func (b *UniformBlockBuffer) Reset() {
 // of the specified size.
 func (b *UniformBlockBuffer) Placement(uniformSize uint32) UniformPlacement {
 	b.skipToAlignment()
+	if overshoot := uniformSize % 16; overshoot > 0 {
+		uniformSize += 16 - overshoot
+	}
 	return UniformPlacement{
 		Buffer:  b.buffer,
 		Plotter: b.plotter,

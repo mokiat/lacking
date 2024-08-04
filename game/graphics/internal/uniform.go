@@ -10,7 +10,8 @@ const (
 	UniformBufferBindingLight           = 4
 	UniformBufferBindingLightProperties = 5
 
-	UniformBufferBindingPostprocess = 0
+	UniformBufferBindingPostprocess = 6
+	UniformBufferBindingBloom       = 7
 )
 
 const (

@@ -14,7 +14,6 @@ const (
 
 const (
 	blurIterations = 2
-	blurSize       = 4
 )
 
 func newBloomRenderStage(api render.API, shaders ShaderCollection, data *commonStageData) *bloomRenderStage {
@@ -87,7 +86,7 @@ func (s *bloomRenderStage) Allocate() {
 			render.NewTextureBinding("lackingSourceImage", bloomBlurSourceImageSlot),
 		},
 		UniformBindings: []render.UniformBinding{
-			render.NewUniformBinding("BloomBlurData", 0),
+			render.NewUniformBinding("BloomBlurData", internal.UniformBufferBindingBloom),
 		},
 	})
 	s.blurPipeline = s.api.CreatePipeline(render.PipelineInfo{
@@ -109,6 +108,7 @@ func (s *bloomRenderStage) Allocate() {
 		Mipmapping: false,
 	})
 
+	s.outputTexture = s.pingTexture
 	s.outputSampler = s.api.CreateSampler(render.SamplerInfo{
 		Wrapping:   render.WrapModeClamp,
 		Filtering:  render.FilterModeLinear,
@@ -194,9 +194,8 @@ func (s *bloomRenderStage) Run(hdrImage render.Texture) {
 		commandBuffer.SamplerUnit(bloomBlurSourceImageSlot, s.blurSampler)
 		uniformPlacement := renderutil.WriteUniform(uniformBuffer, internal.BloomBlurUniform{
 			Horizontal: horizontal,
-			Steps:      float32(blurSize),
 		})
-		commandBuffer.UniformBufferUnit(0, uniformPlacement.Buffer, uniformPlacement.Offset, uniformPlacement.Size)
+		commandBuffer.UniformBufferUnit(internal.UniformBufferBindingBloom, uniformPlacement.Buffer, uniformPlacement.Offset, uniformPlacement.Size)
 		commandBuffer.DrawIndexed(0, quadShape.IndexCount(), 1)
 		commandBuffer.EndRenderPass()
 

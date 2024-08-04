@@ -987,15 +987,17 @@ func (r *sceneRenderer) renderSky(sky *Sky) {
 			r.cameraPlacement.Offset,
 			r.cameraPlacement.Size,
 		)
-		materialData := renderutil.WriteUniform(uniformBuffer, internal.MaterialUniform{
-			Data: pass.UniformSet.Data(),
-		})
-		commandBuffer.UniformBufferUnit(
-			internal.UniformBufferBindingMaterial,
-			materialData.Buffer,
-			materialData.Offset,
-			materialData.Size,
-		)
+		if !pass.UniformSet.IsEmpty() {
+			materialData := renderutil.WriteUniform(uniformBuffer, internal.MaterialUniform{
+				Data: pass.UniformSet.Data(),
+			})
+			commandBuffer.UniformBufferUnit(
+				internal.UniformBufferBindingMaterial,
+				materialData.Buffer,
+				materialData.Offset,
+				materialData.Size,
+			)
+		}
 		for i := range pass.TextureSet.TextureCount() {
 			if texture := pass.TextureSet.TextureAt(i); texture != nil {
 				commandBuffer.TextureUnit(uint(i), texture)
@@ -1136,12 +1138,6 @@ func (r *sceneRenderer) renderPostprocessingPass(ctx renderCtx) {
 	commandBuffer.TextureUnit(internal.TextureBindingPostprocessBloom, r.bloomStage.OutputTexture())
 	commandBuffer.SamplerUnit(internal.TextureBindingPostprocessBloom, r.bloomStage.OutputSampler())
 	commandBuffer.UniformBufferUnit(
-		internal.UniformBufferBindingCamera,
-		r.cameraPlacement.Buffer,
-		r.cameraPlacement.Offset,
-		r.cameraPlacement.Size,
-	)
-	commandBuffer.UniformBufferUnit(
 		internal.UniformBufferBindingPostprocess,
 		postprocessPlacement.Buffer,
 		postprocessPlacement.Offset,
@@ -1261,15 +1257,17 @@ func (r *sceneRenderer) renderMeshRenderItemBatch(ctx renderMeshContext, items [
 
 	// Material data is shared between all items.
 	uniformBuffer := r.stageData.UniformBuffer()
-	materialPlacement := renderutil.WriteUniform(uniformBuffer, internal.MaterialUniform{
-		Data: template.UniformSet.Data(),
-	})
-	commandBuffer.UniformBufferUnit(
-		internal.UniformBufferBindingMaterial,
-		materialPlacement.Buffer,
-		materialPlacement.Offset,
-		materialPlacement.Size,
-	)
+	if !template.UniformSet.IsEmpty() {
+		materialPlacement := renderutil.WriteUniform(uniformBuffer, internal.MaterialUniform{
+			Data: template.UniformSet.Data(),
+		})
+		commandBuffer.UniformBufferUnit(
+			internal.UniformBufferBindingMaterial,
+			materialPlacement.Buffer,
+			materialPlacement.Offset,
+			materialPlacement.Size,
+		)
+	}
 
 	for i := range template.TextureSet.TextureCount() {
 		if texture := template.TextureSet.TextureAt(i); texture != nil {

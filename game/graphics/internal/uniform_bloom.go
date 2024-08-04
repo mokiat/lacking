@@ -7,14 +7,12 @@ import (
 
 type BloomBlurUniform struct {
 	Horizontal float32
-	Steps      float32
 }
 
 func (u BloomBlurUniform) Std140Plot(plotter *blob.Plotter) {
 	plotter.PlotFloat32(u.Horizontal)
-	plotter.PlotFloat32(u.Steps)
 }
 
 func (u BloomBlurUniform) Std140Size() uint32 {
-	return render.SizeF16 + render.SizeF16
+	return render.SizeF32
 }
