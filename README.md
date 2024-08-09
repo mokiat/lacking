@@ -75,6 +75,6 @@ A Game Jam entry. Use the keyboard to defend your ship from alien airships. User
 
 ### Dem Cows
 
-Fly around in a plane and use a hanging club to pop cow balloons. As it uses semi-realistic aerodynamic physics it is best played with a gamepad. There wasn't enough time to balance this game so winning it with keyboard is nearly impossible.
+Fly around in a plane and use a hanging club to pop cow balloons. As it uses semi-realistic physics it is best played with a gamepad and care should be taken regarding stall and speed. There wasn't enough time to balance this game. Winning it with keyboard is nearly impossible.
 
 [![Dem Cows](example-dem-cows.png)](https://mokiat.itch.io/dem-cows)
