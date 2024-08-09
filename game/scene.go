@@ -285,6 +285,15 @@ func (s *Scene) CreateAnimation(info AnimationInfo) *Animation {
 	}
 }
 
+// CreateAnimationBlending creates a new animation blending source that can be
+// used to blend two animations together.
+func (s *Scene) CreateAnimationBlending(first, second AnimationSource) *AnimationBlending {
+	return &AnimationBlending{
+		first:  first,
+		second: second,
+	}
+}
+
 // TODO: Return the node instead and have the Model be a target?
 func (s *Scene) CreateModel(info ModelInfo) *Model {
 	modelNode := hierarchy.NewNode()
@@ -496,7 +505,7 @@ func (s *Scene) updateAnimations(elapsedTime time.Duration) {
 	preAnimationSpan.End()
 
 	animationSpan := metric.BeginRegion("anim")
-	s.applyPlaybacks(elapsedTime)
+	s.updatePlaybacks(elapsedTime)
 	animationSpan.End()
 
 	postAnimationSpan := metric.BeginRegion("post-anim")
@@ -525,11 +534,10 @@ func (s *Scene) updateNodes(elapsedTime time.Duration) {
 	postNodeSpan.End()
 }
 
-func (s *Scene) applyPlaybacks(elapsedTime time.Duration) {
+func (s *Scene) updatePlaybacks(elapsedTime time.Duration) {
 	for _, playback := range s.playbacks.Unbox() {
 		if playback.playing {
 			playback.Advance(elapsedTime.Seconds())
-			playback.animation.Apply(playback.head)
 		}
 	}
 }

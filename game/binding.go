@@ -23,6 +23,27 @@ func (s BodyNodeSource) Release() {
 	s.Body.Delete()
 }
 
+type AnimationNodeSource struct {
+	Source AnimationSource
+}
+
+func (s AnimationNodeSource) ApplyTo(node *hierarchy.Node) {
+	transform := s.Source.NodeTransform(node.Name())
+	if transform.Translation.Specified {
+		node.SetPosition(transform.Translation.Value)
+	}
+	if transform.Rotation.Specified {
+		node.SetRotation(transform.Rotation.Value)
+	}
+	if transform.Scale.Specified {
+		node.SetScale(transform.Scale.Value)
+	}
+}
+
+func (s AnimationNodeSource) Release() {
+	// Nothing to do
+}
+
 type CameraNodeTarget struct {
 	Camera *graphics.Camera
 }

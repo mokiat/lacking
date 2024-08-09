@@ -1,6 +1,7 @@
 package game
 
 import (
+	"github.com/mokiat/gog/ds"
 	"github.com/mokiat/gomath/dprec"
 	"github.com/mokiat/gomath/sprec"
 	"github.com/mokiat/lacking/game/graphics"
@@ -32,6 +33,16 @@ type ModelDefinition struct {
 
 func (d *ModelDefinition) Animations() []*AnimationDefinition {
 	return d.animations
+}
+
+func (d *ModelDefinition) AnimatedNodeNames() []string {
+	result := ds.NewSet[string](0)
+	for _, def := range d.animations {
+		for _, binding := range def.bindings {
+			result.Add(binding.NodeName)
+		}
+	}
+	return result.Items()
 }
 
 func (d *ModelDefinition) FindAnimation(name string) *AnimationDefinition {
@@ -173,4 +184,22 @@ func (m *Model) FindAnimation(name string) *Animation {
 		}
 	}
 	return nil
+}
+
+func (m *Model) AnimatedNodes() []*hierarchy.Node {
+	result := ds.NewSet[*hierarchy.Node](0)
+	for _, animation := range m.animations {
+		for _, binding := range animation.bindings {
+			result.Add(binding.node)
+		}
+	}
+	return result.Items()
+}
+
+func (m *Model) BindAnimationSource(source AnimationSource) {
+	for _, node := range m.AnimatedNodes() {
+		node.SetSource(AnimationNodeSource{
+			Source: source,
+		})
+	}
 }
