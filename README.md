@@ -21,7 +21,7 @@ You will need the [gonew](https://go.dev/blog/gonew) tool, which you can install
 go install golang.org/x/tools/cmd/gonew@latest
 ```
 
-Afterwards, you can use the following command to setup a project:
+Afterwards, you can use the following command to set up a project:
 
 ```sh
 gonew github.com/mokiat/lacking/template@latest example.com/your/namespace projectdir
@@ -62,13 +62,19 @@ I have uploaded some example games made with this engine on `itch.io`.
 
 ### Rally MKA
 
-<iframe frameborder="0" src="https://itch.io/embed/1902496" width="552" height="167"><a href="https://mokiat.itch.io/rally-mka">Rally MKA by mokiat</a></iframe>
+Drive around in a car with no particular purpose except to zone out.
+Best played with keyboard or mouse. The gamepad option is hard.
+
+[![Rally MKA](example-rally-mka.png)](https://mokiat.itch.io/rally-mka)
 
 ### AI Suppression
 
-<iframe frameborder="0" src="https://itch.io/embed/2398927" width="552" height="167"><a href="https://mokiat.itch.io/ai-suppression">AI Suppression by mokiat</a></iframe>
+A Game Jam entry. Use the keyboard to defend your ship from alien airships. Users of vim will have an easy time here.
+
+[![AI Suppression](example-ai-suppression.png)](https://mokiat.itch.io/ai-suppression)
 
 ### Dem Cows
 
-<iframe frameborder="0" src="https://itch.io/embed/2495020" width="552" height="167"><a href="https://mokiat.itch.io/dem-cows">Dem Cows by mokiat, Damage Software</a></iframe>
+Fly around in a plane and use a hanging club to pop cow balloons. As it uses semi-realistic aerodynamic physics it is best played with a gamepad. There wasn't enough time to balance this game so winning it with keyboard is nearly impossible.
 
+[![Dem Cows](example-dem-cows.png)](https://mokiat.itch.io/dem-cows)
