@@ -3,7 +3,7 @@ package graphics
 import (
 	"github.com/mokiat/lacking/game/graphics/internal"
 	"github.com/mokiat/lacking/render"
-	renderutil "github.com/mokiat/lacking/render/util"
+	"github.com/mokiat/lacking/render/ubo"
 )
 
 const (
@@ -192,7 +192,7 @@ func (s *bloomRenderStage) Run(hdrImage render.Texture) {
 		commandBuffer.BindPipeline(s.blurPipeline)
 		commandBuffer.TextureUnit(bloomBlurSourceImageSlot, s.pingTexture)
 		commandBuffer.SamplerUnit(bloomBlurSourceImageSlot, s.blurSampler)
-		uniformPlacement := renderutil.WriteUniform(uniformBuffer, internal.BloomBlurUniform{
+		uniformPlacement := ubo.WriteUniform(uniformBuffer, internal.BloomBlurUniform{
 			Horizontal: horizontal,
 		})
 		commandBuffer.UniformBufferUnit(internal.UniformBufferBindingBloom, uniformPlacement.Buffer, uniformPlacement.Offset, uniformPlacement.Size)

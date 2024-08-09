@@ -1,4 +1,4 @@
-package util
+package ubo
 
 import (
 	"github.com/mokiat/lacking/render"
@@ -77,8 +77,9 @@ func (b *UniformBlockBuffer) Reset() {
 // of the specified size.
 func (b *UniformBlockBuffer) Placement(uniformSize uint32) UniformPlacement {
 	b.skipToAlignment()
-	if overshoot := uniformSize % 16; overshoot > 0 {
-		uniformSize += 16 - overshoot
+	const alignment = 16
+	if unaligned := uniformSize % alignment; unaligned > 0 {
+		uniformSize += alignment - unaligned
 	}
 	return UniformPlacement{
 		Buffer:  b.buffer,
@@ -104,7 +105,7 @@ func (b *UniformBlockBuffer) Release() {
 
 func (b *UniformBlockBuffer) skipToAlignment() {
 	offset := b.plotter.Offset()
-	if overshoot := offset % b.blockAlignment; overshoot > 0 {
-		b.plotter.Skip(b.blockAlignment - overshoot)
+	if unaligned := offset % b.blockAlignment; unaligned > 0 {
+		b.plotter.Skip(b.blockAlignment - unaligned)
 	}
 }

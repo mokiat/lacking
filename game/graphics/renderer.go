@@ -17,7 +17,7 @@ import (
 	"github.com/mokiat/lacking/debug/metric"
 	"github.com/mokiat/lacking/game/graphics/internal"
 	"github.com/mokiat/lacking/render"
-	renderutil "github.com/mokiat/lacking/render/util"
+	"github.com/mokiat/lacking/render/ubo"
 	"github.com/mokiat/lacking/util/blob"
 	"github.com/mokiat/lacking/util/spatial"
 	"github.com/x448/float16"
@@ -140,7 +140,7 @@ type sceneRenderer struct {
 	renderItems []renderItem
 
 	modelUniformBufferData gblob.LittleEndianBlock
-	cameraPlacement        renderutil.UniformPlacement
+	cameraPlacement        ubo.UniformPlacement
 }
 
 func (r *sceneRenderer) createFramebuffers(width, height uint32) {
@@ -630,7 +630,7 @@ func (r *sceneRenderer) Render(framebuffer render.Framebuffer, viewport Viewport
 	r.visibleStaticMeshes.Reset()
 	ctx.scene.staticMeshOctree.VisitHexahedronRegion(&ctx.frustum, r.visibleStaticMeshes)
 
-	r.cameraPlacement = renderutil.WriteUniform(uniformBuffer, internal.CameraUniform{
+	r.cameraPlacement = ubo.WriteUniform(uniformBuffer, internal.CameraUniform{
 		ProjectionMatrix: projectionMatrix,
 		ViewMatrix:       viewMatrix,
 		CameraMatrix:     cameraMatrix,
@@ -764,7 +764,7 @@ func (r *sceneRenderer) renderShadowPass(ctx renderCtx) {
 	})
 
 	uniformBuffer := r.stageData.UniformBuffer()
-	lightCameraPlacement := renderutil.WriteUniform(uniformBuffer, internal.CameraUniform{
+	lightCameraPlacement := ubo.WriteUniform(uniformBuffer, internal.CameraUniform{
 		ProjectionMatrix: projectionMatrix,
 		ViewMatrix:       viewMatrix,
 		CameraMatrix:     lightMatrix,
@@ -988,7 +988,7 @@ func (r *sceneRenderer) renderSky(sky *Sky) {
 			r.cameraPlacement.Size,
 		)
 		if !pass.UniformSet.IsEmpty() {
-			materialData := renderutil.WriteUniform(uniformBuffer, internal.MaterialUniform{
+			materialData := ubo.WriteUniform(uniformBuffer, internal.MaterialUniform{
 				Data: pass.UniformSet.Data(),
 			})
 			commandBuffer.UniformBufferUnit(
@@ -1107,7 +1107,7 @@ func (r *sceneRenderer) renderPostprocessingPass(ctx renderCtx) {
 	quadShape := r.stageData.QuadShape()
 
 	uniformBuffer := r.stageData.UniformBuffer()
-	postprocessPlacement := renderutil.WriteUniform(uniformBuffer, internal.PostprocessUniform{
+	postprocessPlacement := ubo.WriteUniform(uniformBuffer, internal.PostprocessUniform{
 		Exposure: ctx.camera.exposure,
 	})
 
@@ -1258,7 +1258,7 @@ func (r *sceneRenderer) renderMeshRenderItemBatch(ctx renderMeshContext, items [
 	// Material data is shared between all items.
 	uniformBuffer := r.stageData.UniformBuffer()
 	if !template.UniformSet.IsEmpty() {
-		materialPlacement := renderutil.WriteUniform(uniformBuffer, internal.MaterialUniform{
+		materialPlacement := ubo.WriteUniform(uniformBuffer, internal.MaterialUniform{
 			Data: template.UniformSet.Data(),
 		})
 		commandBuffer.UniformBufferUnit(
@@ -1284,7 +1284,7 @@ func (r *sceneRenderer) renderMeshRenderItemBatch(ctx renderMeshContext, items [
 		end := start + modelUniformBufferItemSize
 		copy(r.modelUniformBufferData[start:end], item.ModelData)
 	}
-	modelPlacement := renderutil.WriteUniform(uniformBuffer, internal.ModelUniform{
+	modelPlacement := ubo.WriteUniform(uniformBuffer, internal.ModelUniform{
 		ModelMatrices: r.modelUniformBufferData,
 	})
 	commandBuffer.UniformBufferUnit(
@@ -1296,7 +1296,7 @@ func (r *sceneRenderer) renderMeshRenderItemBatch(ctx renderMeshContext, items [
 
 	// Armature data is shared between all items.
 	if template.ArmatureData != nil {
-		armaturePlacement := renderutil.WriteUniform(uniformBuffer, internal.ArmatureUniform{
+		armaturePlacement := ubo.WriteUniform(uniformBuffer, internal.ArmatureUniform{
 			BoneMatrices: template.ArmatureData,
 		})
 		commandBuffer.UniformBufferUnit(
@@ -1341,13 +1341,13 @@ func (r *sceneRenderer) renderPointLight(light *PointLight) {
 	viewMatrix := sprec.InverseMat4(lightMatrix)
 
 	uniformBuffer := r.stageData.UniformBuffer()
-	lightPlacement := renderutil.WriteUniform(uniformBuffer, internal.LightUniform{
+	lightPlacement := ubo.WriteUniform(uniformBuffer, internal.LightUniform{
 		ProjectionMatrix: projectionMatrix,
 		ViewMatrix:       viewMatrix,
 		LightMatrix:      lightMatrix,
 	})
 
-	lightPropertiesPlacement := renderutil.WriteUniform(uniformBuffer, internal.LightPropertiesUniform{
+	lightPropertiesPlacement := ubo.WriteUniform(uniformBuffer, internal.LightPropertiesUniform{
 		Color:     dtos.Vec3(light.emitColor),
 		Intensity: 1.0,
 		Range:     float32(light.emitRange),
@@ -1389,13 +1389,13 @@ func (r *sceneRenderer) renderSpotLight(light *SpotLight) {
 	viewMatrix := sprec.InverseMat4(lightMatrix)
 
 	uniformBuffer := r.stageData.UniformBuffer()
-	lightPlacement := renderutil.WriteUniform(uniformBuffer, internal.LightUniform{
+	lightPlacement := ubo.WriteUniform(uniformBuffer, internal.LightUniform{
 		ProjectionMatrix: projectionMatrix,
 		ViewMatrix:       viewMatrix,
 		LightMatrix:      lightMatrix,
 	})
 
-	lightPropertiesPlacement := renderutil.WriteUniform(uniformBuffer, internal.LightPropertiesUniform{
+	lightPropertiesPlacement := ubo.WriteUniform(uniformBuffer, internal.LightPropertiesUniform{
 		Color:      dtos.Vec3(light.emitColor),
 		Intensity:  1.0,
 		Range:      float32(light.emitRange),
@@ -1442,13 +1442,13 @@ func (r *sceneRenderer) renderDirectionalLight(light *DirectionalLight) {
 	viewMatrix := sprec.InverseMat4(lightMatrix)
 
 	uniformBuffer := r.stageData.UniformBuffer()
-	lightPlacement := renderutil.WriteUniform(uniformBuffer, internal.LightUniform{
+	lightPlacement := ubo.WriteUniform(uniformBuffer, internal.LightUniform{
 		ProjectionMatrix: projectionMatrix,
 		ViewMatrix:       viewMatrix,
 		LightMatrix:      lightMatrix,
 	})
 
-	lightPropertiesPlacement := renderutil.WriteUniform(uniformBuffer, internal.LightPropertiesUniform{
+	lightPropertiesPlacement := ubo.WriteUniform(uniformBuffer, internal.LightPropertiesUniform{
 		Color:     dtos.Vec3(light.emitColor),
 		Intensity: 1.0,
 	})
@@ -1498,7 +1498,7 @@ type renderCtx struct {
 }
 
 type renderMeshContext struct {
-	CameraPlacement renderutil.UniformPlacement
+	CameraPlacement ubo.UniformPlacement
 }
 
 // TODO: Rename to meshRenderItem

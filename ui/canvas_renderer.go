@@ -3,7 +3,7 @@ package ui
 import (
 	"github.com/mokiat/gomath/sprec"
 	"github.com/mokiat/lacking/render"
-	renderutil "github.com/mokiat/lacking/render/util"
+	"github.com/mokiat/lacking/render/ubo"
 )
 
 const (
@@ -50,10 +50,10 @@ type canvasRenderer struct {
 
 	commandBuffer render.CommandBuffer
 
-	uniforms                 *renderutil.UniformBlockBuffer
-	cameraUniformPlacement   renderutil.UniformPlacement
-	modelUniformPlacement    renderutil.UniformPlacement
-	materialUniformPlacement renderutil.UniformPlacement
+	uniforms                 *ubo.UniformBlockBuffer
+	cameraUniformPlacement   ubo.UniformPlacement
+	modelUniformPlacement    ubo.UniformPlacement
+	materialUniformPlacement ubo.UniformPlacement
 	modelIsDirty             bool
 
 	whiteMask render.Texture
@@ -81,7 +81,7 @@ type canvasRenderer struct {
 }
 
 func (c *canvasRenderer) onCreate() {
-	c.uniforms = renderutil.NewUniformBlockBuffer(c.api, uniformBufferSize)
+	c.uniforms = ubo.NewUniformBlockBuffer(c.api, uniformBufferSize)
 
 	c.whiteMask = c.api.CreateColorTexture2D(render.ColorTexture2DInfo{
 		Width:           1,
@@ -916,7 +916,7 @@ func (c *canvasRenderer) clipPath(path *canvasPath) {
 }
 
 func (c *canvasRenderer) updateCameraUniformBuffer(size Size) {
-	c.cameraUniformPlacement = renderutil.WriteUniform(c.uniforms, cameraUniform{
+	c.cameraUniformPlacement = ubo.WriteUniform(c.uniforms, cameraUniform{
 		Projection: sprec.OrthoMat4(
 			0.0, float32(size.Width),
 			0.0, float32(size.Height),
@@ -927,7 +927,7 @@ func (c *canvasRenderer) updateCameraUniformBuffer(size Size) {
 
 func (c *canvasRenderer) updateModelUniformBuffer(layer *canvasLayer) {
 	if c.modelIsDirty {
-		c.modelUniformPlacement = renderutil.WriteUniform(c.uniforms, modelUniform{
+		c.modelUniformPlacement = ubo.WriteUniform(c.uniforms, modelUniform{
 			Transform:     layer.Transform,
 			ClipTransform: layer.ClipTransform,
 		})
@@ -936,7 +936,7 @@ func (c *canvasRenderer) updateModelUniformBuffer(layer *canvasLayer) {
 }
 
 func (c *canvasRenderer) updateMaterialUniformBufferFromFill(fill Fill) {
-	c.materialUniformPlacement = renderutil.WriteUniform(c.uniforms, materialUniform{
+	c.materialUniformPlacement = ubo.WriteUniform(c.uniforms, materialUniform{
 		TextureTransform: sprec.Mat4MultiProd(
 			sprec.ScaleMat4(1.0/fill.ImageSize.X, 1.0/fill.ImageSize.Y, 1.0),
 			sprec.TranslationMat4(-fill.ImageOffset.X, -fill.ImageOffset.Y, 0.0),
@@ -946,7 +946,7 @@ func (c *canvasRenderer) updateMaterialUniformBufferFromFill(fill Fill) {
 }
 
 func (c *canvasRenderer) updateMaterialUniformBufferFromTypography(typography Typography) {
-	c.materialUniformPlacement = renderutil.WriteUniform(c.uniforms, materialUniform{
+	c.materialUniformPlacement = ubo.WriteUniform(c.uniforms, materialUniform{
 		TextureTransform: sprec.Mat4{},
 		Color:            uiColorToVec(typography.Color),
 	})

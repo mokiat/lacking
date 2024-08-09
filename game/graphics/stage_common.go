@@ -3,7 +3,7 @@ package graphics
 import (
 	"github.com/mokiat/lacking/game/graphics/internal"
 	"github.com/mokiat/lacking/render"
-	renderutil "github.com/mokiat/lacking/render/util"
+	"github.com/mokiat/lacking/render/ubo"
 )
 
 func newCommonStageData(api render.API) *commonStageData {
@@ -21,7 +21,7 @@ type commonStageData struct {
 	coneShape   *internal.Shape
 
 	commandBuffer render.CommandBuffer
-	uniformBuffer *renderutil.UniformBlockBuffer
+	uniformBuffer *ubo.UniformBlockBuffer
 }
 
 func (d *commonStageData) Allocate() {
@@ -31,7 +31,7 @@ func (d *commonStageData) Allocate() {
 	d.coneShape = internal.CreateConeShape(d.api)
 
 	d.commandBuffer = d.api.CreateCommandBuffer(commandBufferSize)
-	d.uniformBuffer = renderutil.NewUniformBlockBuffer(d.api, uniformBufferSize)
+	d.uniformBuffer = ubo.NewUniformBlockBuffer(d.api, uniformBufferSize)
 }
 
 func (d *commonStageData) Release() {
@@ -47,7 +47,7 @@ func (d *commonStageData) CommandBuffer() render.CommandBuffer {
 	return d.commandBuffer
 }
 
-func (d *commonStageData) UniformBuffer() *renderutil.UniformBlockBuffer {
+func (d *commonStageData) UniformBuffer() *ubo.UniformBlockBuffer {
 	return d.uniformBuffer
 }
 
