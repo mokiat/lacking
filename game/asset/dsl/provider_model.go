@@ -620,10 +620,6 @@ func BuildModelResource(gltfDoc *gltf.Document, forceCollision bool) (*mdl.Model
 				continue
 			}
 			samplerRef := gltfChannel.Sampler
-			if samplerRef == nil {
-				log.Warn("Channel does not reference a sampler!")
-				continue
-			}
 
 			binding := bindingFromNodeIndex[*nodeRef]
 			if binding == nil {
@@ -633,7 +629,7 @@ func BuildModelResource(gltfDoc *gltf.Document, forceCollision bool) (*mdl.Model
 				bindingFromNodeIndex[*nodeRef] = binding
 			}
 
-			gltfSampler := gltfAnimation.Samplers[*samplerRef]
+			gltfSampler := gltfAnimation.Samplers[samplerRef]
 			if gltfSampler.Interpolation != gltf.InterpolationLinear {
 				log.Warn("Unsupported animation interpolation - results may be wrong!")
 			}
