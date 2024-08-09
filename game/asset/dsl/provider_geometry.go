@@ -25,6 +25,7 @@ func CreateGeometry(name string, opts ...Operation) Provider[*mdl.Geometry] {
 	))
 }
 
+// CreateFragment creates a new geometry fragment.
 func CreateFragment(name string, topology mdl.Topology, opts ...Operation) Provider[*mdl.Fragment] {
 	return OnceProvider(FuncProvider(
 		// get function

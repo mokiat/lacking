@@ -12,6 +12,8 @@ import (
 
 var modelProviders = make(map[string]Provider[*mdl.Model])
 
+// Run runs the DSL algorithm on the provided registry. If modelNames
+// is not empty, only the models with the provided names will be processed.
 func Run(registry *asset.Registry, modelNames []string) error {
 	var g errgroup.Group
 
