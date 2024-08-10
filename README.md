@@ -3,7 +3,7 @@
 [![Go Report Card](https://goreportcard.com/badge/github.com/mokiat/lacking)](https://goreportcard.com/report/github.com/mokiat/lacking)
 [![Go Reference](https://pkg.go.dev/badge/github.com/mokiat/lacking.svg)](https://pkg.go.dev/github.com/mokiat/lacking)
 
-[![logo](logo.png)](https://mokiat.com/lacking/)
+[![logo](docs/images/logo.png)](https://mokiat.com/lacking/)
 
 A 3D game engine / framework that lacks a lot of features, hence the name.
 
@@ -13,48 +13,10 @@ As I am quickly iterating over the code and making breaking changes all the time
 
 ## Getting Started
 
-If you decide to give this project a try, you should give the `template` package a try. This is a quick way to set up a Hello World project.
+To get a feel for how a game is structured and implemented using Lacking, have a look at the [source code](https://github.com/mokiat/rally-mka) of [Rally MKA](#rally-mka).
 
-You will need the [gonew](https://go.dev/blog/gonew) tool, which you can install as follows:
+Otherwise, have a look at the official [web page](https://mokiat.com/lacking/) which contains information on how to set up a Hello World project.
 
-```sh
-go install golang.org/x/tools/cmd/gonew@latest
-```
-
-Afterwards, you can use the following command to set up a project:
-
-```sh
-gonew github.com/mokiat/lacking/template@latest example.com/your/namespace projectdir
-cd projectdir
-```
-
-You can then use `go run` to start the game:
-
-```sh
-go run ./cmd/game
-```
-
-However, the preferable way is to use the provided [Taskfile](https://taskfile.dev/). Installing the necessary CLI is easy:
-
-```sh
-go install github.com/go-task/task/v3/cmd/task@latest
-```
-
-After which, you can start the game with the following command:
-
-```sh
-task run
-```
-
-You can check for available task commands as follows:
-
-```sh
-task --list-all
-```
-
-## Documentation
-
-A more detailed documentation (work in progress) can be found on the `lacking`'s web page: https://mokiat.com/lacking/
 
 ## Examples
 
@@ -65,16 +27,22 @@ I have uploaded some example games made with this engine on `itch.io`.
 Drive around in a car with no particular purpose except to zone out.
 Best played with keyboard or mouse. The gamepad option is hard.
 
-[![Rally MKA](example-rally-mka.png)](https://mokiat.itch.io/rally-mka)
+[![Rally MKA](docs/images/example-rally-mka.png)](https://mokiat.itch.io/rally-mka)
+
+> This game was the initial reason for the lacking game engine.
 
 ### AI Suppression
 
 A Game Jam entry. Use the keyboard to defend your ship from alien airships. Users of vim will have an easy time here.
 
-[![AI Suppression](example-ai-suppression.png)](https://mokiat.itch.io/ai-suppression)
+[![AI Suppression](docs/images/example-ai-suppression.png)](https://mokiat.itch.io/ai-suppression)
+
+> A solo 48h Sofia Game Jam (2023) entry.
 
 ### Dem Cows
 
 Fly around in a plane and use a hanging club to pop cow balloons. As it uses semi-realistic physics it is best played with a gamepad and care should be taken regarding stall and speed. There wasn't enough time to balance this game. Winning it with keyboard is nearly impossible.
 
-[![Dem Cows](example-dem-cows.png)](https://mokiat.itch.io/dem-cows)
+[![Dem Cows](docs/images/example-dem-cows.png)](https://mokiat.itch.io/dem-cows)
+
+> A duo 48h Hardcore Game Jam (2024) entry.

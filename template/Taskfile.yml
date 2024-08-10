@@ -2,5 +2,10 @@ version: '3'
 
 tasks:
   run:
+    desc: Run the game.
     cmds:
       - go run './cmd/game'
+
+  pack:
+    desc: Package and prepare assets for the game.
+    cmds: []
