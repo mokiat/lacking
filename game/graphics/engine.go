@@ -69,11 +69,30 @@ func (e *Engine) Debug() *Debug {
 func (e *Engine) CreateShader(info ShaderInfo) *Shader {
 	ast, err := lsl.Parse(info.SourceCode)
 	if err != nil {
-		log.Error("Failed to parse geometry shader: %v", err)
-		ast = &lsl.Shader{Declarations: []lsl.Declaration{}} // TODO: Something meaningful
+		log.Error("Failed to parse shader: %v", err)
+		ast = &lsl.Shader{Declarations: []lsl.Declaration{}}
 	}
-	// TODO: Depending on the info.ShaderType, validate against the appropriate
-	// globals.
+	if !info.SkipValidation {
+		var schema lsl.Schema
+		switch info.ShaderType {
+		case ShaderTypeGeometry:
+			schema = lsl.GeometrySchema()
+		case ShaderTypeShadow:
+			schema = lsl.ShadowSchema()
+		case ShaderTypeForward:
+			schema = lsl.ForwardSchema()
+		case ShaderTypeSky:
+			schema = lsl.SkySchema()
+		case ShaderTypePostprocess:
+			schema = lsl.PostprocessSchema()
+		default:
+			schema = lsl.DefaultSchema()
+		}
+		if err := lsl.Validate(ast, schema); err != nil {
+			log.Error("Failed to validate shader: %v", err)
+			ast = &lsl.Shader{Declarations: []lsl.Declaration{}}
+		}
+	}
 	return &Shader{
 		ast: ast,
 	}

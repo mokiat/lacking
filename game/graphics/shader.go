@@ -115,6 +115,12 @@ type ShaderInfo struct {
 
 	// SourceCode is the source code of the shader.
 	SourceCode string
+
+	// SkipValidation specifies whether the engine should skip shader validation.
+	//
+	// This is useful when the shader is known to be valid and the validation
+	// process is not needed.
+	SkipValidation bool
 }
 
 // ShaderType specifies the type of a shader.

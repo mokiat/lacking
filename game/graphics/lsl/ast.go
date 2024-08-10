@@ -92,6 +92,16 @@ type Shader struct {
 	Declarations []Declaration
 }
 
+func (s *Shader) TextureBlocks() []*TextureBlockDeclaration {
+	var blocks []*TextureBlockDeclaration
+	for _, decl := range s.Declarations {
+		if block, ok := decl.(*TextureBlockDeclaration); ok {
+			blocks = append(blocks, block)
+		}
+	}
+	return blocks
+}
+
 func (s *Shader) FindTextureBlock() (*TextureBlockDeclaration, bool) {
 	for _, decl := range s.Declarations {
 		if block, ok := decl.(*TextureBlockDeclaration); ok {
@@ -101,6 +111,16 @@ func (s *Shader) FindTextureBlock() (*TextureBlockDeclaration, bool) {
 	return nil, false
 }
 
+func (s *Shader) UniformBlocks() []*UniformBlockDeclaration {
+	var blocks []*UniformBlockDeclaration
+	for _, decl := range s.Declarations {
+		if block, ok := decl.(*UniformBlockDeclaration); ok {
+			blocks = append(blocks, block)
+		}
+	}
+	return blocks
+}
+
 func (s *Shader) FindUniformBlock() (*UniformBlockDeclaration, bool) {
 	for _, decl := range s.Declarations {
 		if block, ok := decl.(*UniformBlockDeclaration); ok {
@@ -108,6 +128,16 @@ func (s *Shader) FindUniformBlock() (*UniformBlockDeclaration, bool) {
 		}
 	}
 	return nil, false
+}
+
+func (s *Shader) VaryingBlocks() []*VaryingBlockDeclaration {
+	var blocks []*VaryingBlockDeclaration
+	for _, decl := range s.Declarations {
+		if block, ok := decl.(*VaryingBlockDeclaration); ok {
+			blocks = append(blocks, block)
+		}
+	}
+	return blocks
 }
 
 func (s *Shader) FindVaryingBlock() (*VaryingBlockDeclaration, bool) {

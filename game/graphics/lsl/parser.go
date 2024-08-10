@@ -8,6 +8,14 @@ import (
 	"github.com/mokiat/lacking/game/graphics/lsl/internal"
 )
 
+func MustParse(source string) *Shader {
+	shader, err := Parse(source)
+	if err != nil {
+		panic(err)
+	}
+	return shader
+}
+
 func Parse(source string) (*Shader, error) {
 	return NewParser(source).ParseShader()
 }

@@ -9,6 +9,7 @@ import (
 	"github.com/mokiat/gomath/dprec"
 	"github.com/mokiat/gomath/sprec"
 	"github.com/mokiat/lacking/game/asset"
+	"github.com/mokiat/lacking/game/graphics/lsl"
 	"github.com/x448/float16"
 )
 
@@ -759,6 +760,28 @@ func (c *Converter) convertSky(nodeIndex uint32, sky *Sky) (asset.Sky, error) {
 func (c *Converter) convertShader(shader *Shader) (uint32, error) {
 	if index, ok := c.convertedShaders[shader]; ok {
 		return index, nil
+	}
+	ast, err := lsl.Parse(shader.SourceCode())
+	if err != nil {
+		return 0, fmt.Errorf("error parsing shader: %w", err)
+	}
+	var schema lsl.Schema
+	switch shader.ShaderType() {
+	case ShaderTypeGeometry:
+		schema = lsl.GeometrySchema()
+	case ShaderTypeShadow:
+		schema = lsl.ShadowSchema()
+	case ShaderTypeForward:
+		schema = lsl.ForwardSchema()
+	case ShaderTypeSky:
+		schema = lsl.SkySchema()
+	case ShaderTypePostprocess:
+		schema = lsl.PostprocessSchema()
+	default:
+		schema = lsl.DefaultSchema()
+	}
+	if err := lsl.Validate(ast, schema); err != nil {
+		return 0, fmt.Errorf("error validating shader: %w", err)
 	}
 	shaderIndex := uint32(len(c.assetShaders))
 	assetShader := asset.Shader{
