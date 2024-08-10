@@ -1,19 +1,16 @@
 # Home
 
-This GitHub page contains documentation on the [lacking](https://github.com/mokiat/lacking/) game engine/framework. The framework is divided into a number of core modules as follows:
+![Logo](images/logo.png)
 
-* [Application](./application/index.md)
+Lacking is a game engine, or rather framework, written in Go. Unlike other engines that have an Editor UI through which a game is developed in a scripting language, with lacking one makes use of Go's lightning fast compilation times to develop in Go directly with their faviourite IDE and tools.
 
-    This module allows one to start an application and handle user input (mouse, keyboard, etc.) events.
+What lacking provides is mechanisms to parse images and 3D model files, to load and render them, and apply physics and another effects on top. All of this is done through DSL or API calls.
 
-* [Rendering](./rendering/index.md)
+While there is something like an Editor, its purpose is currently for previewing a scene only.
 
-    This module exposes a generic API that can be used to issue render commands to the GPU.
+**WARNING** The [lacking](https://github.com/mokiat/lacking) repository is a solo hobby project of mine and is still in the prototyping phase. I am iterating fast and making breaking changes. Use at your discretion.
 
-* [User interface](./user-interface/index.md)
+## Next steps
 
-    This module provides a user interface framework that is inspired by React. It can be used to construct complex widget hierarchies and display them on the screen.
-
-* [Game](./game/index.md)
-
-    This module contains all the code that is necessary to load, run and visualize a game scene.
+* Check the [Getting Started](./getting-started.md) page on how to set up your own Hello World project.
+* Check the [Examples](./examples.md) page on games and apps that have been implemented using Lacking.
