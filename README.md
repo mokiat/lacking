@@ -11,6 +11,7 @@ A 3D game engine / framework that lacks a lot of features, hence the name.
 
 As I am quickly iterating over the code and making breaking changes all the time, avoid opening Pull Requests. The best you can do, if you want to contribute, is to open an Issue. Similarly, if you plan to use it for your own project, make sure to use a stable tag and be ready to face the consequences.
 
+
 ## Getting Started
 
 To get a feel for how a game is structured and implemented using Lacking, have a look at the [source code](https://github.com/mokiat/rally-mka) of [Rally MKA](#rally-mka).

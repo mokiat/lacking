@@ -25,7 +25,7 @@ Afterwards, you can use the following steps:
 1. Create new project using the Lacking template.
 
     ```
-    gonew github.com/mokiat/lacking/template@latest example.com/your/namespace projectdir
+    gonew github.com/mokiat/lacking-template@latest example.com/your/namespace projectdir
     ```
 
     ```
