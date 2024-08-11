@@ -1,120 +1,123 @@
 package graphics
 
 import (
-	"github.com/mokiat/gomath/sprec"
+	"github.com/mokiat/lacking/game/graphics/internal"
 	"github.com/mokiat/lacking/render"
 )
 
-// MaterialDefinitionInfo contains the information needed to create a
-// MaterialDefinition.
-type MaterialDefinitionInfo struct {
-	BackfaceCulling bool
-	AlphaTesting    bool
-	AlphaBlending   bool
-	AlphaThreshold  float32
-	Vectors         []sprec.Vec4
-	TwoDTextures    []render.Texture
-	CubeTextures    []render.Texture
-	Shading         Shading
-}
+// MaterialInfo contains the information needed to create a Material.
+type MaterialInfo struct {
 
-// MaterialDefinition represents a particular material template. Multiple meshes
-// can share the same MaterialDefinition though their Material instances will
-// differ.
-type MaterialDefinition struct {
-	revision int
+	// Name specifies the name of the material.
+	Name string
 
-	backfaceCulling bool
-	alphaTesting    bool
-	alphaBlending   bool
-	alphaThreshold  float32
+	// GeometryPasses specifies a list of geometry passes to be applied.
+	// This is used for opaque materials that go through deferred shading.
+	GeometryPasses []MaterialPassInfo
 
-	uniformData  []byte
-	twoDTextures []render.Texture
-	cubeTextures []render.Texture
+	// ShadowPasses specifies a list of shadow passes to be applied.
+	// This should be omitted if the material does not cast shadows.
+	ShadowPasses []MaterialPassInfo
 
-	shading Shading
-}
+	// ForwardPasses specifies a list of forward passes to be applied.
+	// This is useful when dealing with translucent materials or when special
+	// effects are needed.
+	ForwardPasses []MaterialPassInfo
 
-// BackfaceCulling returns whether the back face of triangles should be
-// skipped during rendering.
-func (d *MaterialDefinition) BackfaceCulling() bool {
-	return d.backfaceCulling
-}
+	// SkyPasses specifies a list of sky passes to be applied.
+	// This is used for materials that are used to render the sky.
+	SkyPasses []MaterialPassInfo
 
-// SetBackfaceCulling changes the back face culling configuration of this
-// material definition.
-func (d *MaterialDefinition) SetBackfaceCulling(culling bool) {
-	if culling != d.backfaceCulling {
-		d.revision++
-		d.backfaceCulling = culling
-	}
-}
-
-// AlphaTesting returns whether the mesh will be checked for transparent
-// sections.
-func (d *MaterialDefinition) AlphaTesting() bool {
-	return d.alphaTesting
-}
-
-// SetAlphaTesting changes whether alpha testing will be performed.
-func (d *MaterialDefinition) SetAlphaTesting(testing bool) {
-	if testing != d.alphaTesting {
-		d.revision++
-		d.alphaTesting = testing
-	}
-}
-
-// AlphaBlending returns whether the mesh will be checked for translucency
-// and will be mixed with the background.
-func (d *MaterialDefinition) AlphaBlending() bool {
-	return d.alphaBlending
-}
-
-// SetAlphaBlending changes whether alpha blending will be performed.
-func (d *MaterialDefinition) SetAlphaBlending(blending bool) {
-	if blending != d.alphaBlending {
-		d.revision++
-		d.alphaBlending = blending
-	}
-}
-
-// AlphaThreshold returns the alpha value below which a pixel will be
-// considered transparent.
-func (d *MaterialDefinition) AlphaThreshold() float32 {
-	return d.alphaThreshold
-}
-
-// SetAlphaThreshold changes the alpha threshold.
-func (d *MaterialDefinition) SetAlphaThreshold(threshold float32) {
-	if !sprec.Eq(threshold, d.alphaThreshold) {
-		d.revision++
-		d.alphaThreshold = threshold
-	}
+	// PostprocessingPasses specifies a list of postprocess passes to be applied.
+	PostprocessingPasses []MaterialPassInfo
 }
 
 // Material determines the appearance of a mesh on the screen.
 type Material struct {
-	definitionRevision int
-	definition         *MaterialDefinition
+	name string
 
-	shadowPipeline   render.Pipeline
-	geometryPipeline render.Pipeline
-	emissivePipeline render.Pipeline
-	forwardPipeline  render.Pipeline
+	geometryPasses    []internal.MaterialRenderPass
+	shadowPasses      []internal.MaterialRenderPass
+	forwardPasses     []internal.MaterialRenderPass
+	skyPasses         []internal.MaterialRenderPass
+	postprocessPasses []internal.MaterialRenderPass
 }
 
-// PBRMaterialInfo contains the information needed to create a PBR Material.
-type PBRMaterialInfo struct {
-	BackfaceCulling          bool
-	AlphaBlending            bool
-	AlphaTesting             bool
-	AlphaThreshold           float32
-	Metallic                 float32
-	Roughness                float32
-	MetallicRoughnessTexture *TwoDTexture
-	AlbedoColor              sprec.Vec4
-	AlbedoTexture            *TwoDTexture
-	NormalScale              float32
-	NormalTexture            *TwoDTexture
+func (m *Material) Name() string {
+	return m.name
+}
+
+// Texture returns the texture with the specified name.
+// If the texture is not found, nil is returned.
+func (m *Material) Texture(name string) render.Texture {
+	var result render.Texture
+	m.eachPass(func(pass *internal.MaterialRenderPass) {
+		if texture := pass.TextureSet.Texture(name); texture != nil {
+			result = texture
+		}
+	})
+	return result
+}
+
+// SetTexture sets the texture with the specified name.
+func (m *Material) SetTexture(name string, texture render.Texture) {
+	m.eachPass(func(pass *internal.MaterialRenderPass) {
+		pass.TextureSet.SetTexture(name, texture)
+	})
+}
+
+// Sampler returns the sampler with the specified name.
+// If the sampler is not found, nil is returned.
+func (m *Material) Sampler(name string) render.Sampler {
+	var result render.Sampler
+	m.eachPass(func(pass *internal.MaterialRenderPass) {
+		if sampler := pass.TextureSet.Sampler(name); sampler != nil {
+			result = sampler
+		}
+	})
+	return result
+}
+
+// SetSampler sets the sampler with the specified name.
+func (m *Material) SetSampler(name string, sampler render.Sampler) {
+	m.eachPass(func(pass *internal.MaterialRenderPass) {
+		pass.TextureSet.SetSampler(name, sampler)
+	})
+}
+
+// Property returns the property with the specified name.
+// If the property is not found, nil is returned.
+func (m *Material) Property(name string) any {
+	var result any
+	m.eachPass(func(pass *internal.MaterialRenderPass) {
+		if value := pass.UniformSet.Property(name); value != nil {
+			result = value
+		}
+	})
+	return result
+}
+
+// SetProperty sets the property with the specified name.
+func (m *Material) SetProperty(name string, value any) {
+	m.eachPass(func(pass *internal.MaterialRenderPass) {
+		pass.UniformSet.SetProperty(name, value)
+	})
+}
+
+func (m *Material) eachPass(cb func(pass *internal.MaterialRenderPass)) {
+	for i := range m.geometryPasses {
+		cb(&m.geometryPasses[i])
+	}
+	for i := range m.shadowPasses {
+		cb(&m.shadowPasses[i])
+	}
+	for i := range m.forwardPasses {
+		cb(&m.forwardPasses[i])
+	}
+	for i := range m.skyPasses {
+		cb(&m.skyPasses[i])
+	}
+	for i := range m.postprocessPasses {
+		cb(&m.postprocessPasses[i])
+	}
 }

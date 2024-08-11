@@ -1,15 +1,17 @@
 package internal
 
 const (
-	UniformBufferBindingCamera          = 0
-	UniformBufferBindingModel           = 1
-	UniformBufferBindingMaterial        = 2
-	UniformBufferBindingLight           = 3
-	UniformBufferBindingLightProperties = 4
+	UniformBufferBindingCamera = 0
 
-	UniformBufferBindingSkybox = 1
+	UniformBufferBindingModel    = 1
+	UniformBufferBindingMaterial = 2
+	UniformBufferBindingArmature = 3
 
-	UniformBufferBindingPostprocess = 0
+	UniformBufferBindingLight           = 4
+	UniformBufferBindingLightProperties = 5
+
+	UniformBufferBindingPostprocess = 6
+	UniformBufferBindingBloom       = 7
 )
 
 const (
@@ -17,13 +19,11 @@ const (
 
 	TextureBindingLightingFramebufferColor0 = 0
 	TextureBindingLightingFramebufferColor1 = 1
-	TextureBindingLightingFramebufferColor2 = 2
 	TextureBindingLightingFramebufferDepth  = 3
 	TextureBindingShadowFramebufferDepth    = 4
 	TextureBindingLightingReflectionTexture = 4
 	TextureBindingLightingRefractionTexture = 5
 
 	TextureBindingPostprocessFramebufferColor0 = 0
-
-	TextureBindingSkyboxAlbedoTexture = 0
+	TextureBindingPostprocessBloom             = 1
 )

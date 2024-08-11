@@ -3,7 +3,7 @@ package ui
 import (
 	"github.com/mokiat/gomath/sprec"
 	"github.com/mokiat/lacking/render"
-	renderutil "github.com/mokiat/lacking/render/util"
+	"github.com/mokiat/lacking/render/ubo"
 )
 
 const (
@@ -50,10 +50,10 @@ type canvasRenderer struct {
 
 	commandBuffer render.CommandBuffer
 
-	uniforms                 *renderutil.UniformBlockBuffer
-	cameraUniformPlacement   renderutil.UniformPlacement
-	modelUniformPlacement    renderutil.UniformPlacement
-	materialUniformPlacement renderutil.UniformPlacement
+	uniforms                 *ubo.UniformBlockBuffer
+	cameraUniformPlacement   ubo.UniformPlacement
+	modelUniformPlacement    ubo.UniformPlacement
+	materialUniformPlacement ubo.UniformPlacement
 	modelIsDirty             bool
 
 	whiteMask render.Texture
@@ -65,6 +65,7 @@ type canvasRenderer struct {
 	shapeSimplePipeline  render.Pipeline
 	shapeNonZeroPipeline render.Pipeline
 	shapeOddPipeline     render.Pipeline
+	shapeSampler         render.Sampler
 
 	contourMesh     *contourMesh
 	contourProgram  render.Program
@@ -73,20 +74,19 @@ type canvasRenderer struct {
 	textMesh     *textMesh
 	textProgram  render.Program
 	textPipeline render.Pipeline
+	textSampler  render.Sampler
 
 	topLayer     *canvasLayer
 	currentLayer *canvasLayer
 }
 
 func (c *canvasRenderer) onCreate() {
-	c.uniforms = renderutil.NewUniformBlockBuffer(c.api, uniformBufferSize)
+	c.uniforms = ubo.NewUniformBlockBuffer(c.api, uniformBufferSize)
 
 	c.whiteMask = c.api.CreateColorTexture2D(render.ColorTexture2DInfo{
 		Width:           1,
 		Height:          1,
-		Filtering:       render.FilterModeNearest,
-		Wrapping:        render.WrapModeClamp,
-		Mipmapping:      false,
+		GenerateMipmaps: false,
 		GammaCorrection: false,
 		Format:          render.DataFormatRGBA8,
 		Data:            []byte{0xFF, 0xFF, 0xFF, 0xFF},
@@ -234,6 +234,11 @@ func (c *canvasRenderer) onCreate() {
 		BlendOpColor:                render.BlendOperationAdd,
 		BlendOpAlpha:                render.BlendOperationAdd,
 	})
+	c.shapeSampler = c.api.CreateSampler(render.SamplerInfo{
+		Wrapping:   render.WrapModeClamp,
+		Filtering:  render.FilterModeLinear,
+		Mipmapping: true,
+	})
 
 	c.contourMesh.Allocate(c.api)
 	c.contourProgram = c.api.CreateProgram(render.ProgramInfo{
@@ -295,6 +300,11 @@ func (c *canvasRenderer) onCreate() {
 		BlendOpColor:                render.BlendOperationAdd,
 		BlendOpAlpha:                render.BlendOperationAdd,
 	})
+	c.textSampler = c.api.CreateSampler(render.SamplerInfo{
+		Wrapping:   render.WrapModeClamp,
+		Filtering:  render.FilterModeLinear,
+		Mipmapping: true,
+	})
 }
 
 func (c *canvasRenderer) onDestroy() {
@@ -309,6 +319,7 @@ func (c *canvasRenderer) onDestroy() {
 	defer c.shapeSimplePipeline.Release()
 	defer c.shapeNonZeroPipeline.Release()
 	defer c.shapeOddPipeline.Release()
+	defer c.shapeSampler.Release()
 
 	defer c.contourMesh.Release()
 	defer c.contourProgram.Release()
@@ -317,6 +328,7 @@ func (c *canvasRenderer) onDestroy() {
 	defer c.textMesh.Release()
 	defer c.textProgram.Release()
 	defer c.textPipeline.Release()
+	defer c.textSampler.Release()
 }
 
 func (c *canvasRenderer) onBegin(commandBuffer render.CommandBuffer, size Size) {
@@ -563,6 +575,7 @@ func (c *canvasRenderer) FillTextLine(text []rune, position sprec.Vec2, typograp
 		c.updateMaterialUniformBufferFromTypography(typography)
 		c.commandBuffer.BindPipeline(c.textPipeline)
 		c.commandBuffer.TextureUnit(textureBindingFontTexture, font.texture)
+		c.commandBuffer.SamplerUnit(textureBindingFontTexture, c.textSampler)
 		c.commandBuffer.UniformBufferUnit(
 			uniformBufferBindingCamera,
 			c.cameraUniformPlacement.Buffer,
@@ -581,7 +594,7 @@ func (c *canvasRenderer) FillTextLine(text []rune, position sprec.Vec2, typograp
 			c.materialUniformPlacement.Offset,
 			c.materialUniformPlacement.Size,
 		)
-		c.commandBuffer.Draw(vertexOffset, vertexCount, 1)
+		c.commandBuffer.Draw(uint32(vertexOffset), uint32(vertexCount), 1)
 	}
 }
 
@@ -681,6 +694,7 @@ func (c *canvasRenderer) FillText(text string, position sprec.Vec2, typography T
 
 		c.commandBuffer.BindPipeline(c.textPipeline)
 		c.commandBuffer.TextureUnit(textureBindingFontTexture, font.texture)
+		c.commandBuffer.SamplerUnit(textureBindingFontTexture, c.textSampler)
 		c.commandBuffer.UniformBufferUnit(
 			uniformBufferBindingCamera,
 			c.cameraUniformPlacement.Buffer,
@@ -699,7 +713,7 @@ func (c *canvasRenderer) FillText(text string, position sprec.Vec2, typography T
 			c.materialUniformPlacement.Offset,
 			c.materialUniformPlacement.Size,
 		)
-		c.commandBuffer.Draw(vertexOffset, vertexCount, 1)
+		c.commandBuffer.Draw(uint32(vertexOffset), uint32(vertexCount), 1)
 	}
 }
 
@@ -749,7 +763,7 @@ func (c *canvasRenderer) fillPath(path *canvasPath, fill Fill) {
 			if i+1 < len(path.subPathOffsets) {
 				pointCount = path.subPathOffsets[i+1] - pointOffset
 			}
-			c.commandBuffer.Draw(vertexOffset+pointOffset, pointCount, 1)
+			c.commandBuffer.Draw(uint32(vertexOffset+pointOffset), uint32(pointCount), 1)
 		}
 	}
 
@@ -768,11 +782,12 @@ func (c *canvasRenderer) fillPath(path *canvasPath, fill Fill) {
 	}
 
 	texture := c.whiteMask
-	if fill.Image != nil {
+	if fill.Image != nil && fill.Image.texture != nil {
 		texture = fill.Image.texture
 	}
 
 	c.commandBuffer.TextureUnit(textureBindingColorTexture, texture)
+	c.commandBuffer.SamplerUnit(textureBindingColorTexture, c.shapeSampler)
 	c.commandBuffer.UniformBufferUnit(
 		uniformBufferBindingCamera,
 		c.cameraUniformPlacement.Buffer,
@@ -796,7 +811,7 @@ func (c *canvasRenderer) fillPath(path *canvasPath, fill Fill) {
 		if i+1 < len(path.subPathOffsets) {
 			pointCount = path.subPathOffsets[i+1] - pointOffset
 		}
-		c.commandBuffer.Draw(vertexOffset+pointOffset, pointCount, 1)
+		c.commandBuffer.Draw(uint32(vertexOffset+pointOffset), uint32(pointCount), 1)
 	}
 }
 
@@ -885,7 +900,7 @@ func (c *canvasRenderer) strokePath(path *canvasPath) {
 		}
 		vertexCount := c.contourMesh.Offset() - vertexOffset
 
-		c.commandBuffer.Draw(vertexOffset, vertexCount, 1)
+		c.commandBuffer.Draw(uint32(vertexOffset), uint32(vertexCount), 1)
 	}
 }
 
@@ -901,7 +916,7 @@ func (c *canvasRenderer) clipPath(path *canvasPath) {
 }
 
 func (c *canvasRenderer) updateCameraUniformBuffer(size Size) {
-	c.cameraUniformPlacement = renderutil.WriteUniform(c.uniforms, cameraUniform{
+	c.cameraUniformPlacement = ubo.WriteUniform(c.uniforms, cameraUniform{
 		Projection: sprec.OrthoMat4(
 			0.0, float32(size.Width),
 			0.0, float32(size.Height),
@@ -912,7 +927,7 @@ func (c *canvasRenderer) updateCameraUniformBuffer(size Size) {
 
 func (c *canvasRenderer) updateModelUniformBuffer(layer *canvasLayer) {
 	if c.modelIsDirty {
-		c.modelUniformPlacement = renderutil.WriteUniform(c.uniforms, modelUniform{
+		c.modelUniformPlacement = ubo.WriteUniform(c.uniforms, modelUniform{
 			Transform:     layer.Transform,
 			ClipTransform: layer.ClipTransform,
 		})
@@ -921,7 +936,7 @@ func (c *canvasRenderer) updateModelUniformBuffer(layer *canvasLayer) {
 }
 
 func (c *canvasRenderer) updateMaterialUniformBufferFromFill(fill Fill) {
-	c.materialUniformPlacement = renderutil.WriteUniform(c.uniforms, materialUniform{
+	c.materialUniformPlacement = ubo.WriteUniform(c.uniforms, materialUniform{
 		TextureTransform: sprec.Mat4MultiProd(
 			sprec.ScaleMat4(1.0/fill.ImageSize.X, 1.0/fill.ImageSize.Y, 1.0),
 			sprec.TranslationMat4(-fill.ImageOffset.X, -fill.ImageOffset.Y, 0.0),
@@ -931,7 +946,7 @@ func (c *canvasRenderer) updateMaterialUniformBufferFromFill(fill Fill) {
 }
 
 func (c *canvasRenderer) updateMaterialUniformBufferFromTypography(typography Typography) {
-	c.materialUniformPlacement = renderutil.WriteUniform(c.uniforms, materialUniform{
+	c.materialUniformPlacement = ubo.WriteUniform(c.uniforms, materialUniform{
 		TextureTransform: sprec.Mat4{},
 		Color:            uiColorToVec(typography.Color),
 	})

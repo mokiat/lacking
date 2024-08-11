@@ -10,17 +10,13 @@ import (
 )
 
 var (
-	ViewportInitialFBWidth  = 400
-	ViewportInitialFBHeight = 300
+	ViewportInitialFBWidth  = uint32(400)
+	ViewportInitialFBHeight = uint32(300)
 )
 
-// ViewportMouseEvent is a wrapper on top of ui.MouseEvent which includes
-// X and Y coordinates that are in the [0..1] range, making them size agnostic.
-type ViewportMouseEvent struct {
-	ui.MouseEvent
-	ViewportX float32
-	ViewportY float32
-}
+// Viewport represents a component that uses low-level API calls to render
+// an external scene, unlike other components that rely on the Canvas API.
+var Viewport = co.Define(&viewportComponent{})
 
 // ViewportData holds the data for a Viewport component.
 type ViewportData struct {
@@ -29,53 +25,49 @@ type ViewportData struct {
 
 // ViewportCallbackData holds the callback data for a Viewport component.
 type ViewportCallbackData struct {
-	OnKeyboardEvent func(event ui.KeyboardEvent) bool
-	OnMouseEvent    func(event ViewportMouseEvent) bool
-	OnRender        func(framebuffer render.Framebuffer, size ui.Size)
+	OnKeyboardEvent func(element *ui.Element, event ui.KeyboardEvent) bool
+	OnMouseEvent    func(element *ui.Element, event ui.MouseEvent) bool
+	OnRender        func(framebuffer render.Framebuffer, fbSize ui.Size)
 }
-
-var viewportDefaultCallbackData = ViewportCallbackData{
-	OnKeyboardEvent: func(event ui.KeyboardEvent) bool {
-		return false
-	},
-	OnMouseEvent: func(event ViewportMouseEvent) bool {
-		return false
-	},
-	OnRender: func(framebuffer render.Framebuffer, size ui.Size) {},
-}
-
-// Viewport represents a component that uses low-level API calls to render
-// an external scene, unlike other components that rely on the Canvas API.
-var Viewport = co.Define(&viewportComponent{})
 
 type viewportComponent struct {
 	co.BaseComponent
 
-	surface viewportSurfaceComponent
+	surface viewportSurface
 
 	fbResizeBlocked bool
-	fbDesiredWidth  int
-	fbDesiredHeight int
+	fbDesiredWidth  uint32
+	fbDesiredHeight uint32
 
-	onKeyboardEvent func(event ui.KeyboardEvent) bool
-	onMouseEvent    func(event ViewportMouseEvent) bool
+	onKeyboardEvent func(element *ui.Element, event ui.KeyboardEvent) bool
+	onMouseEvent    func(element *ui.Element, event ui.MouseEvent) bool
+	onRender        func(framebuffer render.Framebuffer, fbSize ui.Size)
 }
 
 func (c *viewportComponent) OnCreate() {
 	data := co.GetData[ViewportData](c.Properties())
 	c.surface.api = data.API
 
-	c.surface.createFramebuffer(ViewportInitialFBWidth, ViewportInitialFBHeight)
-}
-
-func (c *viewportComponent) OnUpsert() {
-	data := co.GetData[ViewportData](c.Properties())
-	c.surface.api = data.API
-
-	callbackData := co.GetOptionalCallbackData(c.Properties(), viewportDefaultCallbackData)
+	callbackData := co.GetOptionalCallbackData(c.Properties(), ViewportCallbackData{})
 	c.onKeyboardEvent = callbackData.OnKeyboardEvent
+	if c.onKeyboardEvent == nil {
+		c.onKeyboardEvent = func(element *ui.Element, event ui.KeyboardEvent) bool {
+			return false
+		}
+	}
 	c.onMouseEvent = callbackData.OnMouseEvent
-	c.surface.onRender = callbackData.OnRender
+	if c.onMouseEvent == nil {
+		c.onMouseEvent = func(element *ui.Element, event ui.MouseEvent) bool {
+			return false
+		}
+	}
+	c.onRender = callbackData.OnRender
+	if c.onRender == nil {
+		c.onRender = func(framebuffer render.Framebuffer, fbSize ui.Size) {}
+	}
+
+	c.surface.onRender = c.onRender
+	c.surface.createFramebuffer(ViewportInitialFBWidth, ViewportInitialFBHeight)
 }
 
 func (c *viewportComponent) OnDelete() {
@@ -95,24 +87,17 @@ func (c *viewportComponent) Render() co.Instance {
 }
 
 func (c *viewportComponent) OnKeyboardEvent(element *ui.Element, event ui.KeyboardEvent) bool {
-	return c.onKeyboardEvent(event)
+	return c.onKeyboardEvent(element, event)
 }
 
 func (c *viewportComponent) OnMouseEvent(element *ui.Element, event ui.MouseEvent) bool {
-	size := element.Bounds().Size
-	x := -1.0 + 2.0*float32(event.X)/float32(size.Width)
-	y := 1.0 - 2.0*float32(event.Y)/float32(size.Height)
-	return c.onMouseEvent(ViewportMouseEvent{
-		MouseEvent: event,
-		ViewportX:  x,
-		ViewportY:  y,
-	})
+	return c.onMouseEvent(element, event)
 }
 
 func (c *viewportComponent) OnRender(element *ui.Element, canvas *ui.Canvas) {
 	size := element.Bounds().Size
-	c.fbDesiredWidth = size.Width
-	c.fbDesiredHeight = size.Height
+	c.fbDesiredWidth = uint32(size.Width)
+	c.fbDesiredHeight = uint32(size.Height)
 
 	if c.fbDesiredWidth != c.surface.fbWidth || c.fbDesiredHeight != c.surface.fbHeight {
 		if !c.fbResizeBlocked {
@@ -120,11 +105,9 @@ func (c *viewportComponent) OnRender(element *ui.Element, canvas *ui.Canvas) {
 			c.surface.createFramebuffer(c.fbDesiredWidth, c.fbDesiredHeight)
 			c.fbResizeBlocked = true
 
-			time.AfterFunc(time.Second, func() {
-				element.Window().Schedule(func() {
-					c.fbResizeBlocked = false
-					element.Invalidate()
-				})
+			co.After(c.Scope(), time.Second, func() {
+				c.fbResizeBlocked = false
+				element.Invalidate()
 			})
 		}
 	}
@@ -150,32 +133,30 @@ func (c *viewportComponent) OnRender(element *ui.Element, canvas *ui.Canvas) {
 	}
 }
 
-type viewportSurfaceComponent struct {
+type viewportSurface struct {
 	api          render.API
 	colorTexture render.Texture
 	framebuffer  render.Framebuffer
 
-	fbWidth  int
-	fbHeight int
+	fbWidth  uint32
+	fbHeight uint32
 
 	onRender func(framebuffer render.Framebuffer, size ui.Size)
 }
 
-func (c *viewportSurfaceComponent) Render() (render.Texture, ui.Size) {
-	fbSize := ui.NewSize(c.fbWidth, c.fbHeight)
+func (c *viewportSurface) Render() (render.Texture, ui.Size) {
+	fbSize := ui.NewSize(int(c.fbWidth), int(c.fbHeight))
 	c.onRender(c.framebuffer, fbSize)
 	return c.colorTexture, fbSize
 }
 
-func (c *viewportSurfaceComponent) createFramebuffer(width, height int) {
+func (c *viewportSurface) createFramebuffer(width, height uint32) {
 	c.fbWidth = width
 	c.fbHeight = height
 	c.colorTexture = c.api.CreateColorTexture2D(render.ColorTexture2DInfo{
 		Width:           width,
 		Height:          height,
-		Wrapping:        render.WrapModeClamp,
-		Filtering:       render.FilterModeNearest,
-		Mipmapping:      false,
+		GenerateMipmaps: false,
 		GammaCorrection: false,
 		Format:          render.DataFormatRGBA8,
 	})
@@ -186,7 +167,7 @@ func (c *viewportSurfaceComponent) createFramebuffer(width, height int) {
 	})
 }
 
-func (c *viewportSurfaceComponent) releaseFramebuffer() {
+func (c *viewportSurface) releaseFramebuffer() {
 	if c.framebuffer != nil {
 		c.framebuffer.Release()
 		c.framebuffer = nil

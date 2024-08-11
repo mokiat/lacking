@@ -8,14 +8,12 @@ type BufferMarker interface {
 // Buffer is used to store data that can be used by the GPU.
 type Buffer interface {
 	BufferMarker
-
-	// Release releases the resources associated with this Buffer.
-	Release()
+	Resource
 }
 
 // BufferInfo describes the information needed to create a new Buffer.
 type BufferInfo struct {
-	Dynamic bool
+	Size    uint32
 	Data    []byte
-	Size    int
+	Dynamic bool
 }

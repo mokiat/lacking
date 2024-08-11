@@ -1,11 +1,5 @@
 package render
 
-import (
-	"fmt"
-
-	"github.com/mokiat/gog/opt"
-)
-
 // TextureMarker marks a type as being a Texture.
 type TextureMarker interface {
 	_isTextureType()
@@ -15,73 +9,7 @@ type TextureMarker interface {
 // to store image data.
 type Texture interface {
 	TextureMarker
-
-	// Release releases the resources associated with this Texture.
-	Release()
-}
-
-const (
-	// WrapModeClamp indicates that the texture coordinates should
-	// be clamped to the range [0, 1].
-	WrapModeClamp WrapMode = iota
-
-	// WrapModeRepeat indicates that the texture coordinates should
-	// be repeated.
-	WrapModeRepeat
-
-	// WrapModeMirroredRepeat indicates that the texture coordinates
-	// should be repeated with mirroring.
-	WrapModeMirroredRepeat
-)
-
-// WrapMode is an enumeration of the supported texture wrapping
-// modes.
-type WrapMode int
-
-// String returns a string representation of the WrapMode.
-func (m WrapMode) String() string {
-	switch m {
-	case WrapModeClamp:
-		return "CLAMP"
-	case WrapModeRepeat:
-		return "REPEAT"
-	case WrapModeMirroredRepeat:
-		return "MIRRORED_REPEAT"
-	default:
-		return fmt.Sprintf("UNKNOWN(%d)", m)
-	}
-}
-
-const (
-	// FilterModeNearest indicates that the nearest texel should be
-	// used for sampling.
-	FilterModeNearest FilterMode = iota
-
-	// FilterModeLinear indicates that the linear interpolation of
-	// the nearest texels should be used for sampling.
-	FilterModeLinear
-
-	// FilterModeAnisotropic indicates that the anisotropic filtering
-	// should be used for sampling.
-	FilterModeAnisotropic
-)
-
-// FilterMode is an enumeration of the supported texture filtering
-// modes.
-type FilterMode int
-
-// String returns a string representation of the FilterMode.
-func (m FilterMode) String() string {
-	switch m {
-	case FilterModeNearest:
-		return "NEAREST"
-	case FilterModeLinear:
-		return "LINEAR"
-	case FilterModeAnisotropic:
-		return "ANISOTROPIC"
-	default:
-		return fmt.Sprintf("UNKNOWN(%d)", m)
-	}
+	Resource
 }
 
 const (
@@ -100,7 +28,7 @@ const (
 
 // DataFormat describes the format of the data that is stored in a
 // Texture object.
-type DataFormat int
+type DataFormat uint8
 
 // String returns a string representation of the DataFormat.
 func (f DataFormat) String() string {
@@ -114,7 +42,7 @@ func (f DataFormat) String() string {
 	case DataFormatRGBA32F:
 		return "RGBA32F"
 	default:
-		return fmt.Sprintf("UNKNOWN(%d)", f)
+		return "UNKNOWN"
 	}
 }
 
@@ -123,20 +51,13 @@ func (f DataFormat) String() string {
 type ColorTexture2DInfo struct {
 
 	// Width specifies the width of the texture.
-	Width int
+	Width uint32
 
 	// Height specifies the height of the texture.
-	Height int
+	Height uint32
 
-	// Wrapping specifies the texture wrapping mode.
-	Wrapping WrapMode
-
-	// Filtering specifies the texture filtering mode.
-	Filtering FilterMode
-
-	// Mipmapping specifies whether mipmapping should be enabled and whether
-	// mipmaps should be generated.
-	Mipmapping bool
+	// GenerateMipmaps specifies whether mipmaps should be generated.
+	GenerateMipmaps bool
 
 	// GammaCorrection specifies whether gamma correction should be performed
 	// in order to convert the colors into linear space.
@@ -154,14 +75,10 @@ type ColorTexture2DInfo struct {
 type ColorTextureCubeInfo struct {
 
 	// Dimension specifies the width, height and length of the texture.
-	Dimension int
+	Dimension uint32
 
-	// Filtering specifies the texture filtering mode.
-	Filtering FilterMode
-
-	// Mipmapping specifies whether mipmapping should be enabled and whether
-	// mipmaps should be generated.
-	Mipmapping bool
+	// GenerateMipmaps specifies whether mipmaps should be generated.
+	GenerateMipmaps bool
 
 	// GammaCorrection specifies whether gamma correction should be performed
 	// in order to convert the colors into linear space.
@@ -200,13 +117,10 @@ type ColorTextureCubeInfo struct {
 type DepthTexture2DInfo struct {
 
 	// Width specifies the width of the texture.
-	Width int
+	Width uint32
 
 	// Height specifies the height of the texture.
-	Height int
-
-	// ClippedValue specifies the value that should be used for depth clipping.
-	ClippedValue opt.T[float32]
+	Height uint32
 
 	// Comparable specifies whether the depth texture should be comparable.
 	Comparable bool
@@ -217,10 +131,10 @@ type DepthTexture2DInfo struct {
 type StencilTexture2DInfo struct {
 
 	// Width specifies the width of the texture.
-	Width int
+	Width uint32
 
 	// Height specifies the height of the texture.
-	Height int
+	Height uint32
 }
 
 // DepthStencilTexture2DInfo represents the information needed to create a
@@ -228,12 +142,8 @@ type StencilTexture2DInfo struct {
 type DepthStencilTexture2DInfo struct {
 
 	// Width specifies the width of the texture.
-	Width int
+	Width uint32
 
 	// Height specifies the height of the texture.
-	Height int
-
-	// DepthClippedValue specifies the value that should be used for depth
-	// clipping.
-	DepthClippedValue opt.T[float32]
+	Height uint32
 }

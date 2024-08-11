@@ -282,7 +282,7 @@ func PrimitiveMaterial(doc *gltf.Document, primitive *gltf.Primitive) *gltf.Mate
 
 func BaseColor(pbr *gltf.PBRMetallicRoughness) sprec.Vec4 {
 	factor := pbr.BaseColorFactorOrDefault()
-	return sprec.NewVec4(factor[0], factor[1], factor[2], factor[3])
+	return sprec.NewVec4(float32(factor[0]), float32(factor[1]), float32(factor[2]), float32(factor[3]))
 }
 
 func ColorTextureIndex(doc *gltf.Document, pbr *gltf.PBRMetallicRoughness) *uint32 {
@@ -294,12 +294,7 @@ func ColorTextureIndex(doc *gltf.Document, pbr *gltf.PBRMetallicRoughness) *uint
 		logger.Warn("Unsupported color texture: tex coord layer unsupported!")
 		return nil
 	}
-	texture := doc.Textures[colorTexture.Index]
-	if texture.Source == nil {
-		logger.Warn("Unsupported color texture: no source!")
-		return nil
-	}
-	return texture.Source
+	return &colorTexture.Index
 }
 
 func MetallicRoughnessTextureIndex(doc *gltf.Document, pbr *gltf.PBRMetallicRoughness) *uint32 {
@@ -311,12 +306,7 @@ func MetallicRoughnessTextureIndex(doc *gltf.Document, pbr *gltf.PBRMetallicRoug
 		logger.Warn("Unsupported metallic-roughness texture: tex coord layer unsupported!")
 		return nil
 	}
-	texture := doc.Textures[mrTexture.Index]
-	if texture.Source == nil {
-		logger.Warn("Unsupported metallic-roughness texture: no source!")
-		return nil
-	}
-	return texture.Source
+	return &mrTexture.Index
 }
 
 func NormalTextureIndexScale(doc *gltf.Document, material *gltf.Material) (*uint32, float32) {
@@ -328,11 +318,7 @@ func NormalTextureIndexScale(doc *gltf.Document, material *gltf.Material) (*uint
 		logger.Warn("Unsupported normal texture: tex coord layer unsupported!")
 		return nil, 1.0
 	}
-	if normalTexture.Index == nil {
-		logger.Error("Unsupported normal texture: lacks an index!")
-		return nil, normalTexture.ScaleOrDefault()
-	}
-	return normalTexture.Index, normalTexture.ScaleOrDefault()
+	return normalTexture.Index, float32(normalTexture.ScaleOrDefault())
 }
 
 func InverseBindMatrix(doc *gltf.Document, skin *gltf.Skin, index int) sprec.Mat4 {
@@ -500,11 +486,15 @@ func Properties(extras any) map[string]string {
 	result := make(map[string]string)
 	props, ok := extras.(map[string]any)
 	if ok {
+		// FIXME: Make metadata map[string]any and preserve original type.
 		for key, value := range props {
-			if strValue, ok := value.(string); ok {
-				result[key] = strValue
-			} else {
-				result[key] = ""
+			switch value := value.(type) {
+			case string:
+				result[key] = value
+			case float64:
+				result[key] = fmt.Sprintf("%f", value)
+			default:
+				result[key] = "unsupported"
 			}
 		}
 	}

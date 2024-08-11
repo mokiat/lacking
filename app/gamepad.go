@@ -105,6 +105,7 @@ type Gamepad interface {
 	// Pulse causes the Gamepad controller to vibrate with the specified
 	// intensity (0.0 to 1.0) for the specified duration.
 	//
-	// If the device does not have haptic feedback then this method does nothing.
+	// If the device does not have haptic feedback or if this API implementation
+	// does not support it then this method does nothing.
 	Pulse(intensity float64, duration time.Duration)
 }

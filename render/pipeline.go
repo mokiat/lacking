@@ -8,9 +8,7 @@ type PipelineMarker interface {
 // Pipeline is used to configure the GPU for drawing.
 type Pipeline interface {
 	PipelineMarker
-
-	// Release releases the resources associated with this Pipeline.
-	Release()
+	Resource
 }
 
 // PipelineInfo describes the information needed to create a new Pipeline.
@@ -81,9 +79,6 @@ type PipelineInfo struct {
 	BlendOpAlpha BlendOperation
 }
 
-// Topology specifies the primitive topology.
-type Topology uint8
-
 const (
 	// TopologyPoints specifies that the primitive topology is points.
 	TopologyPoints Topology = iota
@@ -105,12 +100,32 @@ const (
 	// TopologyTriangleFan specifies that the primitive topology is a triangle
 	// fan.
 	//
-	// TODO: This topology is not supported by WebGPU. Try to phase it out.
+	// Deprecated: This topology is not supported by WebGPU. Try to phase it out.
 	TopologyTriangleFan
 )
 
-// CullMode specifies the culling mode.
-type CullMode uint8
+// Topology specifies the primitive topology.
+type Topology uint8
+
+// String returns a string representation of the Topology.
+func (t Topology) String() string {
+	switch t {
+	case TopologyPoints:
+		return "POINTS"
+	case TopologyLineList:
+		return "LINE_LIST"
+	case TopologyLineStrip:
+		return "LINE_STRIP"
+	case TopologyTriangleList:
+		return "TRIANGLE_LIST"
+	case TopologyTriangleStrip:
+		return "TRIANGLE_STRIP"
+	case TopologyTriangleFan:
+		return "TRIANGLE_FAN"
+	default:
+		return "UNKNOWN"
+	}
+}
 
 const (
 	// CullModeNone specifies that no culling should be performed.
@@ -127,8 +142,24 @@ const (
 	CullModeFrontAndBack
 )
 
-// FaceOrientation specifies the front face orientation.
-type FaceOrientation uint8
+// CullMode specifies the culling mode.
+type CullMode uint8
+
+// String returns a string representation of the CullMode.
+func (m CullMode) String() string {
+	switch m {
+	case CullModeNone:
+		return "NONE"
+	case CullModeFront:
+		return "FRONT"
+	case CullModeBack:
+		return "BACK"
+	case CullModeFrontAndBack:
+		return "FRONT_AND_BACK"
+	default:
+		return "UNKNOWN"
+	}
+}
 
 const (
 	// FaceOrientationCCW specifies that counter-clockwise primitives are
@@ -139,8 +170,20 @@ const (
 	FaceOrientationCW
 )
 
-// Comparison specifies the comparison function.
-type Comparison uint8
+// FaceOrientation specifies the front face orientation.
+type FaceOrientation uint8
+
+// String returns a string representation of the FaceOrientation.
+func (o FaceOrientation) String() string {
+	switch o {
+	case FaceOrientationCCW:
+		return "CCW"
+	case FaceOrientationCW:
+		return "CW"
+	default:
+		return "UNKNOWN"
+	}
+}
 
 const (
 	// ComparisonNever specifies that the comparison should never pass.
@@ -174,6 +217,33 @@ const (
 	ComparisonAlways
 )
 
+// Comparison specifies the comparison function.
+type Comparison uint8
+
+// String returns a string representation of the Comparison.
+func (c Comparison) String() string {
+	switch c {
+	case ComparisonNever:
+		return "NEVER"
+	case ComparisonLess:
+		return "LESS"
+	case ComparisonEqual:
+		return "EQUAL"
+	case ComparisonLessOrEqual:
+		return "LESS_OR_EQUAL"
+	case ComparisonGreater:
+		return "GREATER"
+	case ComparisonNotEqual:
+		return "NOT_EQUAL"
+	case ComparisonGreaterOrEqual:
+		return "GREATER_OR_EQUAL"
+	case ComparisonAlways:
+		return "ALWAYS"
+	default:
+		return "UNKNOWN"
+	}
+}
+
 // StencilOperationState specifies the stencil operation state.
 type StencilOperationState struct {
 
@@ -201,9 +271,6 @@ type StencilOperationState struct {
 	// WriteMask specifies the write mask.
 	WriteMask uint32
 }
-
-// StencilOperation specifies the stencil operation.
-type StencilOperation uint8
 
 const (
 	// StencilOperationKeep specifies that the current stencil value should be
@@ -239,6 +306,33 @@ const (
 	StencilOperationInvert
 )
 
+// StencilOperation specifies the stencil operation.
+type StencilOperation uint8
+
+// String returns a string representation of the StencilOperation.
+func (o StencilOperation) String() string {
+	switch o {
+	case StencilOperationKeep:
+		return "KEEP"
+	case StencilOperationZero:
+		return "ZERO"
+	case StencilOperationReplace:
+		return "REPLACE"
+	case StencilOperationIncrease:
+		return "INCREASE"
+	case StencilOperationIncreaseWrap:
+		return "INCREASE_WRAP"
+	case StencilOperationDecrease:
+		return "DECREASE"
+	case StencilOperationDecreaseWrap:
+		return "DECREASE_WRAP"
+	case StencilOperationInvert:
+		return "INVERT"
+	default:
+		return "UNKNOWN"
+	}
+}
+
 var (
 	// ColorMaskFalse specifies that no color channels should be written to.
 	ColorMaskFalse = [4]bool{false, false, false, false}
@@ -246,9 +340,6 @@ var (
 	// ColorMaskTrue specifies that all color channels should be written to.
 	ColorMaskTrue = [4]bool{true, true, true, true}
 )
-
-// BlendFactor specifies the blend factor.
-type BlendFactor uint8
 
 const (
 	// BlendFactorZero specifies that the blend factor is zero.
@@ -310,8 +401,46 @@ const (
 	BlendFactorSourceAlphaSaturate
 )
 
-// BlendOperation specifies the blend operation.
-type BlendOperation uint8
+// BlendFactor specifies the blend factor.
+type BlendFactor uint8
+
+// String returns a string representation of the BlendFactor.
+func (f BlendFactor) String() string {
+	switch f {
+	case BlendFactorZero:
+		return "ZERO"
+	case BlendFactorOne:
+		return "ONE"
+	case BlendFactorSourceColor:
+		return "SOURCE_COLOR"
+	case BlendFactorOneMinusSourceColor:
+		return "ONE_MINUS_SOURCE_COLOR"
+	case BlendFactorDestinationColor:
+		return "DESTINATION_COLOR"
+	case BlendFactorOneMinusDestinationColor:
+		return "ONE_MINUS_DESTINATION_COLOR"
+	case BlendFactorSourceAlpha:
+		return "SOURCE_ALPHA"
+	case BlendFactorOneMinusSourceAlpha:
+		return "ONE_MINUS_SOURCE_ALPHA"
+	case BlendFactorDestinationAlpha:
+		return "DESTINATION_ALPHA"
+	case BlendFactorOneMinusDestinationAlpha:
+		return "ONE_MINUS_DESTINATION_ALPHA"
+	case BlendFactorConstantColor:
+		return "CONSTANT_COLOR"
+	case BlendFactorOneMinusConstantColor:
+		return "ONE_MINUS_CONSTANT_COLOR"
+	case BlendFactorConstantAlpha:
+		return "CONSTANT_ALPHA"
+	case BlendFactorOneMinusConstantAlpha:
+		return "ONE_MINUS_CONSTANT_ALPHA"
+	case BlendFactorSourceAlphaSaturate:
+		return "SOURCE_ALPHA_SATURATE"
+	default:
+		return "UNKNOWN"
+	}
+}
 
 const (
 	// BlendOperationAdd specifies that the blend operation is addition.
@@ -330,3 +459,24 @@ const (
 	// BlendOperationMax specifies that the blend operation is maximum.
 	BlendOperationMax
 )
+
+// BlendOperation specifies the blend operation.
+type BlendOperation uint8
+
+// String returns a string representation of the BlendOperation.
+func (o BlendOperation) String() string {
+	switch o {
+	case BlendOperationAdd:
+		return "ADD"
+	case BlendOperationSubtract:
+		return "SUBTRACT"
+	case BlendOperationReverseSubtract:
+		return "REVERSE_SUBTRACT"
+	case BlendOperationMin:
+		return "MIN"
+	case BlendOperationMax:
+		return "MAX"
+	default:
+		return "UNKNOWN"
+	}
+}

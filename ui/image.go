@@ -29,6 +29,7 @@ func (i *Image) Size() Size {
 // image.
 func (i *Image) Destroy() {
 	i.texture.Release()
+	i.texture = nil
 }
 
 func imgToRGBA8(img image.Image) []byte {

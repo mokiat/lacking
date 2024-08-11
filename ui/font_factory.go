@@ -49,7 +49,7 @@ func newFontFactory(api render.API, renderer *canvasRenderer) *fontFactory {
 type fontFactory struct {
 	api            render.API
 	renderer       *canvasRenderer
-	fontImageSize  int
+	fontImageSize  uint32
 	colorTexture   render.Texture
 	stencilTexture render.Texture
 	framebuffer    render.Framebuffer
@@ -69,9 +69,7 @@ func (f *fontFactory) Init() {
 	f.colorTexture = f.api.CreateColorTexture2D(render.ColorTexture2DInfo{
 		Width:           f.fontImageSize,
 		Height:          f.fontImageSize,
-		Wrapping:        render.WrapModeClamp,
-		Filtering:       render.FilterModeNearest,
-		Mipmapping:      false,
+		GenerateMipmaps: false,
 		GammaCorrection: false,
 		Format:          render.DataFormatRGBA8,
 	})
@@ -109,17 +107,17 @@ func (f *fontFactory) CreateFont(font *opentype.Font) (*Font, error) {
 		Colors: [4]render.ColorAttachmentInfo{
 			{
 				LoadOp:     render.LoadOperationClear,
-				StoreOp:    render.StoreOperationDontCare,
+				StoreOp:    render.StoreOperationDiscard,
 				ClearValue: [4]float32{0.0, 0.0, 0.0, 0.0},
 			},
 		},
-		DepthLoadOp:       render.LoadOperationDontCare,
-		DepthStoreOp:      render.StoreOperationDontCare,
+		DepthLoadOp:       render.LoadOperationLoad,
+		DepthStoreOp:      render.StoreOperationDiscard,
 		StencilLoadOp:     render.LoadOperationClear,
-		StencilStoreOp:    render.StoreOperationDontCare,
+		StencilStoreOp:    render.StoreOperationDiscard,
 		StencilClearValue: 0x00,
 	})
-	f.renderer.onBegin(commandBuffer, NewSize(f.fontImageSize, f.fontImageSize))
+	f.renderer.onBegin(commandBuffer, NewSize(int(f.fontImageSize), int(f.fontImageSize)))
 
 	cellSize := float32(f.fontImageSize) / float32(fontImageCells)
 	// Use 4% padding to ensure that glyphs don't touch
@@ -276,9 +274,7 @@ func (f *fontFactory) CreateFont(font *opentype.Font) (*Font, error) {
 	resultTexture := f.api.CreateColorTexture2D(render.ColorTexture2DInfo{
 		Width:           f.fontImageSize,
 		Height:          f.fontImageSize,
-		Wrapping:        render.WrapModeClamp,
-		Filtering:       render.FilterModeLinear,
-		Mipmapping:      true,
+		GenerateMipmaps: true,
 		GammaCorrection: false,
 		Format:          render.DataFormatRGBA8,
 	})

@@ -2,16 +2,21 @@ package graphics
 
 import (
 	"github.com/mokiat/gomath/dprec"
+	"github.com/mokiat/lacking/render"
 	"github.com/mokiat/lacking/util/spatial"
 )
 
+// TODO: Use a Box shape for ambient light size
+// - Width, Height, Length
+// Overflow (for linear falloff into neighboring lights)
+
 type AmbientLightInfo struct {
-	Position dprec.Vec3
-	// TODO: Use a Box shape instead
+	Position          dprec.Vec3
 	InnerRadius       float64
 	OuterRadius       float64
-	ReflectionTexture *CubeTexture
-	RefractionTexture *CubeTexture
+	ReflectionTexture render.Texture
+	RefractionTexture render.Texture
+	CastShadow        bool // TODO: Implement SSAO
 }
 
 func newAmbientLight(scene *Scene, info AmbientLightInfo) *AmbientLight {
@@ -34,8 +39,8 @@ type AmbientLight struct {
 
 	innerRadius       float64
 	outerRadius       float64
-	reflectionTexture *CubeTexture
-	refractionTexture *CubeTexture
+	reflectionTexture render.Texture
+	refractionTexture render.Texture
 
 	active bool
 }
@@ -48,6 +53,11 @@ func (l *AmbientLight) SetActive(active bool) {
 	l.active = active
 }
 
-// TODO: Set/Get Position
-// TODO: Set/Get Inner Radius
-// TODO: Set/Get Outer Radius
+func (l *AmbientLight) Delete() {
+	if l.scene == nil {
+		panic("ambient light already deleted")
+	}
+	l.scene.ambientLightSet.Remove(l.itemID)
+	l.scene.ambientLightPool.Restore(l)
+	l.scene = nil
+}

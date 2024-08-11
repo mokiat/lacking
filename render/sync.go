@@ -9,12 +9,10 @@ type FenceMarker interface {
 // to synchronize with the GPU.
 type Fence interface {
 	FenceMarker
+	Resource
 
 	// Status returns the current status of the fence.
 	Status() FenceStatus
-
-	// Release releases the resources associated with the fence.
-	Release()
 }
 
 const (
@@ -27,4 +25,16 @@ const (
 )
 
 // FenceStatus represents the status of a Fence.
-type FenceStatus int
+type FenceStatus uint8
+
+// String returns a string representation of the FenceStatus.
+func (s FenceStatus) String() string {
+	switch s {
+	case FenceStatusNotReady:
+		return "NOT_READY"
+	case FenceStatusSuccess:
+		return "SUCCESS"
+	default:
+		return "UNKNOWN"
+	}
+}

@@ -76,6 +76,7 @@ func (c *mvcComponent) deleteSubscriptions(ref co.Renderable) {
 // Observable. Whenever a Change is reported by the Observable and is accepted
 // by all of the specified ChangeFilters, the Component is invalidated and
 // eventually re-rendered.
+// Deprecated: Use EventBus
 func UseBinding(scope co.Scope, obs Observable, fltrs ...ChangeFilter) {
 	scopeValue := scope.Value(mvcScopeKey{})
 	mvcComp, ok := scopeValue.(*mvcComponent)
@@ -93,6 +94,7 @@ func UseBinding(scope co.Scope, obs Observable, fltrs ...ChangeFilter) {
 // BindProperty is a hook that binds the current Component to the specified
 // Property. Whenever a Change is reported by the Property the Component is
 // invalidated and eventually re-rendered.
+// Deprecated: Use EventBus
 func BindProperty[T any](scope co.Scope, prop *Property[T]) {
 	scopeValue := scope.Value(mvcScopeKey{})
 	mvcComp, ok := scopeValue.(*mvcComponent)

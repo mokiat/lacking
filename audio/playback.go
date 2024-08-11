@@ -14,6 +14,7 @@ type PlayInfo struct {
 	Pan float64
 }
 
+// Playback represents the audio playback of a media file.
 type Playback interface {
 
 	// Stop causes the playback to stop.

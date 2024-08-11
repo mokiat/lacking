@@ -15,6 +15,7 @@ type SpotLightInfo struct {
 	EmitOuterConeAngle dprec.Angle
 	EmitInnerConeAngle dprec.Angle
 	EmitColor          dprec.Vec3
+	CastShadow         bool // TODO: Implement shadow casting
 }
 
 func newSpotLight(scene *Scene, info SpotLightInfo) *SpotLight {

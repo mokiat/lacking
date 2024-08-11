@@ -20,8 +20,12 @@ const (
 	flamegraphRowHeigth  = 45
 )
 
+// FlameGraph is a component that displays a flamegraph of the
+// recorded metric data.
 var FlameGraph = co.Define(&flamegraphComponent{})
 
+// FlameGraphData is the data that can be provided to the FlameGraph
+// component.
 type FlameGraphData struct {
 	UpdateInterval   time.Duration
 	AggregationRatio float64

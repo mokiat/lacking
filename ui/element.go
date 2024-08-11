@@ -451,7 +451,7 @@ func (e *Element) IsFocused() bool {
 // Destroy removes this Element from the hierarchy, as well
 // as any child Elements and releases all allocated resources.
 func (e *Element) Destroy() {
-	if e.window != nil {
+	if e.window != nil && e.IsFocused() {
 		e.window.BubbleFocus()
 	}
 	e.Detach()
@@ -468,7 +468,7 @@ func (e *Element) onBoundsChanged(bounds Bounds) {
 		e.layout.Apply(e)
 	}
 	if resizeHandler, ok := e.essence.(ElementResizeHandler); ok {
-		resizeHandler.OnResize(e, e.Bounds())
+		resizeHandler.OnResize(e, bounds)
 	}
 	e.Invalidate()
 }

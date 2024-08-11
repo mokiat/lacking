@@ -5,13 +5,18 @@ import "github.com/mokiat/gomath/dprec"
 // Plane represents a plane that can be used to split a 3D space
 // into two sub-spaces. It is represented through the mathematical formula
 //
-// 		a*x + b*y + c*z + d = 0
+//	a*x + b*y + c*z + d = 0
 //
 // A point (x, y, z) that produces zero in the left part of the equation is
 // considered to lay on the plane. A positive value indicates that the point
 // is inside the sub-region defined by the plane. A negative value indicates
 // that the point is outside the sub-region.
 type Plane dprec.Vec4
+
+// Distance returns the distance of the specified position to this Plane.
+func (p Plane) Distance(position dprec.Vec3) float64 {
+	return p.X*position.X + p.Y*position.Y + p.Z*position.Z + p.W
+}
 
 // ContainsPoint checks whether a point with the specified position
 // is inside the sub-region of this Plane or at least partailly inside.

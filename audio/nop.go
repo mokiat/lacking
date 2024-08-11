@@ -2,6 +2,7 @@ package audio
 
 import "time"
 
+// NewNopAPI returns an API that does nothing.
 func NewNopAPI() API {
 	return &nopAPI{}
 }

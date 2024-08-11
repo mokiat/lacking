@@ -5,105 +5,60 @@ import (
 	"fmt"
 
 	"github.com/mokiat/lacking/game/asset"
+	"github.com/mokiat/lacking/render"
 	"github.com/mokiat/lacking/util/async"
+	"golang.org/x/exp/maps"
 )
 
-// TOOD: Only the game resource sets should manage resource set hierarchies.
-// The graphics, physics, audio packages should expose resource creation
-// through their engine's and their scenes should only serve as a
-// grouping/switch mechanism.
-
-var (
-	ErrNotFound     = errors.New("resource not found")
-	ErrStillLoading = errors.New("resource still loading")
-)
+// ErrNotFound indicates that a resource was not found.
+var ErrNotFound = errors.New("resource not found")
 
 func newResourceSet(parent *ResourceSet, engine *Engine) *ResourceSet {
 	return &ResourceSet{
-		parent:    parent,
+		parent: parent,
+
 		engine:    engine,
 		registry:  engine.registry,
+		renderAPI: engine.Graphics().API(),
+
 		ioWorker:  engine.ioWorker,
 		gfxWorker: engine.gfxWorker,
 
-		namedTwoDTextures: make(map[string]async.Promise[*TwoDTexture]),
-		namedCubeTextures: make(map[string]async.Promise[*CubeTexture]),
-		namedModels:       make(map[string]async.Promise[*ModelDefinition]),
-		namedScenes:       make(map[string]async.Promise[*SceneDefinition]),
+		namedModels: make(map[string]async.Promise[*ModelDefinition]),
 	}
 }
 
+// ResourceSet is a collection of resources that are managed together.
 type ResourceSet struct {
-	parent    *ResourceSet
+	parent *ResourceSet
+
 	engine    *Engine
-	registry  asset.Registry
+	registry  *asset.Registry
+	renderAPI render.API
+
 	ioWorker  Worker
 	gfxWorker Worker
 
-	namedTwoDTextures map[string]async.Promise[*TwoDTexture]
-	namedCubeTextures map[string]async.Promise[*CubeTexture]
-	namedModels       map[string]async.Promise[*ModelDefinition]
-	namedScenes       map[string]async.Promise[*SceneDefinition]
+	namedModels map[string]async.Promise[*ModelDefinition]
 }
 
+// CreateResourceSet creates a new ResourceSet that inherits resources from
+// the current one. Opening a resource in the new resource set will first
+// check if the current one has it.
 func (s *ResourceSet) CreateResourceSet() *ResourceSet {
 	return newResourceSet(s, s.engine)
 }
 
-func (s *ResourceSet) OpenTwoDTexture(id string) async.Promise[*TwoDTexture] {
-	if result, ok := s.findTwoDTexture(id); ok {
-		return result
-	}
-
-	resource := s.registry.ResourceByID(id)
-	if resource == nil {
-		return async.NewFailedPromise[*TwoDTexture](fmt.Errorf("%w: %q", ErrNotFound, id))
-	}
-
-	result := async.NewPromise[*TwoDTexture]()
-	go func() {
-		texture, err := s.loadTwoDTexture(resource)
-		if err != nil {
-			result.Fail(fmt.Errorf("error loading twod texture %q: %w", id, err))
-		} else {
-			result.Deliver(texture)
-		}
-	}()
-	s.namedTwoDTextures[id] = result
-	return result
-}
-
-func (s *ResourceSet) OpenCubeTexture(id string) async.Promise[*CubeTexture] {
-	if result, ok := s.findCubeTexture(id); ok {
-		return result
-	}
-
-	resource := s.registry.ResourceByID(id)
-	if resource == nil {
-		return async.NewFailedPromise[*CubeTexture](fmt.Errorf("%w: %q", ErrNotFound, id))
-	}
-
-	result := async.NewPromise[*CubeTexture]()
-	go func() {
-		texture, err := s.allocateCubeTexture(resource)
-		if err != nil {
-			result.Fail(fmt.Errorf("error loading cube texture %q: %w", id, err))
-		} else {
-			result.Deliver(texture)
-		}
-	}()
-	s.namedCubeTextures[id] = result
-	return result
-}
-
-func (s *ResourceSet) OpenModel(id string) async.Promise[*ModelDefinition] {
+// OpenModelByID loads a model definition by its ID.
+func (s *ResourceSet) OpenModelByID(id string) async.Promise[*ModelDefinition] {
 	if result, ok := s.findModel(id); ok {
 		return result
 	}
 
 	resource := s.registry.ResourceByID(id)
 	if resource == nil {
-		return async.NewFailedPromise[*ModelDefinition](fmt.Errorf("%w: %q", ErrNotFound, id))
+		err := fmt.Errorf("%w: resource %q not found", ErrNotFound, id)
+		return async.NewFailedPromise[*ModelDefinition](err)
 	}
 
 	result := async.NewPromise[*ModelDefinition]()
@@ -119,100 +74,28 @@ func (s *ResourceSet) OpenModel(id string) async.Promise[*ModelDefinition] {
 	return result
 }
 
+// OpenModelByName loads a model definition by its name.
 func (s *ResourceSet) OpenModelByName(name string) async.Promise[*ModelDefinition] {
 	resource := s.registry.ResourceByName(name)
 	if resource == nil {
-		return async.NewFailedPromise[*ModelDefinition](fmt.Errorf("%w: %q", ErrNotFound, name))
+		err := fmt.Errorf("%w: resource %q not found", ErrNotFound, name)
+		return async.NewFailedPromise[*ModelDefinition](err)
 	}
-	return s.OpenModel(resource.ID())
-}
-
-func (s *ResourceSet) OpenScene(id string) async.Promise[*SceneDefinition] {
-	if result, ok := s.findScene(id); ok {
-		return result
-	}
-
-	resource := s.registry.ResourceByID(id)
-	if resource == nil {
-		return async.NewFailedPromise[*SceneDefinition](fmt.Errorf("%w: %q", ErrNotFound, id))
-	}
-
-	result := async.NewPromise[*SceneDefinition]()
-	go func() {
-		model, err := s.allocateScene(resource)
-		if err != nil {
-			result.Fail(fmt.Errorf("error loading level %q: %w", id, err))
-		} else {
-			result.Deliver(model)
-		}
-	}()
-	s.namedScenes[id] = result
-	return result
-}
-
-func (s *ResourceSet) OpenSceneByName(name string) async.Promise[*SceneDefinition] {
-	resource := s.registry.ResourceByName(name)
-	if resource == nil {
-		return async.NewFailedPromise[*SceneDefinition](fmt.Errorf("%w: %q", ErrNotFound, name))
-	}
-	return s.OpenScene(resource.ID())
+	return s.OpenModelByID(resource.ID())
 }
 
 // Delete schedules all resources managed by this ResourceSet for deletion.
 // After this method returns, the resources are not guaranteed to have been
 // released.
-//
-// Calling this method twice is not allowed. Allocating new resources after this
-// method has been called is also not allowed.
 func (s *ResourceSet) Delete() {
-	// FIXME: All of the release calls need to occur on the GPU thread.
-	// Also, rework this method to return a promise.
-	go func() {
-		for _, promise := range s.namedScenes {
-			if scene, err := promise.Wait(); err == nil {
-				s.releaseScene(scene)
-			}
-		}
-		s.namedScenes = nil
-		for _, promise := range s.namedTwoDTextures {
-			if texture, err := promise.Wait(); err == nil {
-				s.releaseTwoDTexture(texture)
-			}
-		}
-		s.namedTwoDTextures = nil
-		for _, promise := range s.namedCubeTextures {
-			if texture, err := promise.Wait(); err == nil {
-				s.releaseCubeTexture(texture)
-			}
-		}
-		s.namedCubeTextures = nil
-		for _, promise := range s.namedModels {
+	for _, promise := range s.namedModels {
+		go func() {
 			if model, err := promise.Wait(); err == nil {
-				s.releaseModel(model)
+				s.freeModel(model)
 			}
-		}
-		s.namedModels = nil
-	}()
-}
-
-func (s *ResourceSet) findTwoDTexture(id string) (async.Promise[*TwoDTexture], bool) {
-	if result, ok := s.namedTwoDTextures[id]; ok {
-		return result, true
+		}()
 	}
-	if s.parent != nil {
-		return s.parent.findTwoDTexture(id)
-	}
-	return async.Promise[*TwoDTexture]{}, false
-}
-
-func (s *ResourceSet) findCubeTexture(id string) (async.Promise[*CubeTexture], bool) {
-	if result, ok := s.namedCubeTextures[id]; ok {
-		return result, true
-	}
-	if s.parent != nil {
-		return s.parent.findCubeTexture(id)
-	}
-	return async.Promise[*CubeTexture]{}, false
+	maps.Clear(s.namedModels)
 }
 
 func (s *ResourceSet) findModel(id string) (async.Promise[*ModelDefinition], bool) {
@@ -223,14 +106,4 @@ func (s *ResourceSet) findModel(id string) (async.Promise[*ModelDefinition], boo
 		return s.parent.findModel(id)
 	}
 	return async.Promise[*ModelDefinition]{}, false
-}
-
-func (s *ResourceSet) findScene(id string) (async.Promise[*SceneDefinition], bool) {
-	if result, ok := s.namedScenes[id]; ok {
-		return result, true
-	}
-	if s.parent != nil {
-		return s.parent.findScene(id)
-	}
-	return async.Promise[*SceneDefinition]{}, false
 }

@@ -1,36 +1,39 @@
 package graphics
 
-import "github.com/mokiat/gomath/sprec"
-
-func newSky() *Sky {
-	return &Sky{}
+type SkyInfo struct {
+	Definition *SkyDefinition
 }
 
-// Sky represents the Scene's background.
+func newSky(scene *Scene, info SkyInfo) *Sky {
+	result := &Sky{
+		scene:      scene,
+		definition: info.Definition,
+		active:     true,
+	}
+	scene.skies.Add(result)
+	return result
+}
+
 type Sky struct {
-	backgroundColor sprec.Vec3
-	skyboxTexture   *CubeTexture
+	scene      *Scene
+	definition *SkyDefinition
+	active     bool
 }
 
-// BackgroundColor returns the color of the background.
-func (s *Sky) BackgroundColor() sprec.Vec3 {
-	return s.backgroundColor
+func (s *Sky) Active() bool {
+	return s.active
 }
 
-// SetBackgroundColor changes the color of the background.
-func (s *Sky) SetBackgroundColor(color sprec.Vec3) {
-	s.backgroundColor = color
+func (s *Sky) SetActive(active bool) {
+	s.active = active
 }
 
-// 	// Skybox returns the cube texture to be used as the background.
-// 	// If one has not been set, this method returns nil.
-func (s *Sky) Skybox() *CubeTexture {
-	return s.skyboxTexture
+func (s *Sky) Delete() {
+	s.scene.skies.Remove(s)
+	s.definition = nil
+	s.scene = nil
 }
 
-// SetSkybox sets a cube texture to be used as the background.
-// If nil is specified, then a texture will not be used and instead
-// the background color will be drawn instead.
-func (s *Sky) SetSkybox(skybox *CubeTexture) {
-	s.skyboxTexture = skybox
+func (s *Sky) Definition() *SkyDefinition {
+	return s.definition
 }

@@ -7,11 +7,12 @@ import (
 	"github.com/mokiat/lacking/game/ecs"
 	"github.com/mokiat/lacking/game/graphics"
 	"github.com/mokiat/lacking/game/physics"
+	"github.com/mokiat/lacking/render"
 )
 
 type EngineOption func(e *Engine)
 
-func WithRegistry(registry asset.Registry) EngineOption {
+func WithRegistry(registry *asset.Registry) EngineOption {
 	return func(e *Engine) {
 		e.registry = registry
 	}
@@ -58,7 +59,7 @@ func NewEngine(opts ...EngineOption) *Engine {
 }
 
 type Engine struct {
-	registry      asset.Registry
+	registry      *asset.Registry
 	ioWorker      Worker
 	gfxWorker     Worker
 	physicsEngine *physics.Engine
@@ -79,7 +80,7 @@ func (e *Engine) Destroy() {
 	// TODO: Release all scenes and all resource sets
 }
 
-func (e *Engine) Registry() asset.Registry {
+func (e *Engine) Registry() *asset.Registry {
 	return e.registry
 }
 
@@ -119,8 +120,7 @@ func (e *Engine) CreateScene() *Scene {
 	physicsScene := e.physicsEngine.CreateScene()
 	gfxScene := e.gfxEngine.CreateScene()
 	ecsScene := e.ecsEngine.CreateScene()
-	resourceSet := e.CreateResourceSet()
-	result := newScene(resourceSet, physicsScene, gfxScene, ecsScene)
+	result := newScene(e, physicsScene, gfxScene, ecsScene)
 	if e.activeScene == nil {
 		e.activeScene = result
 	}
@@ -152,8 +152,8 @@ func (e *Engine) Update() {
 	}
 }
 
-func (e *Engine) Render(viewport graphics.Viewport) {
+func (e *Engine) Render(framebuffer render.Framebuffer, viewport graphics.Viewport) {
 	if e.activeScene != nil {
-		e.activeScene.Render(viewport)
+		e.activeScene.Render(framebuffer, viewport)
 	}
 }

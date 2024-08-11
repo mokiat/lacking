@@ -3,9 +3,72 @@ package game
 import (
 	"math"
 
+	"github.com/mokiat/gog/opt"
 	"github.com/mokiat/gomath/dprec"
 	"github.com/mokiat/lacking/game/hierarchy"
 )
+
+// NodeTransform represents the transformation of a node.
+type NodeTransform struct {
+
+	// Translation, if specified, indicates the translation of the node.
+	Translation opt.T[dprec.Vec3]
+
+	// Rotation, if specified, indicates the rotation of the node.
+	Rotation opt.T[dprec.Quat]
+
+	// Scale, if specified, indicates the scale of the node.
+	Scale opt.T[dprec.Vec3]
+}
+
+// AnimationSource represents a source of animation data.
+type AnimationSource interface {
+
+	// NodeTransform returns the transformation of the node with the
+	// specified name.
+	NodeTransform(name string) NodeTransform
+}
+
+// AnimationBlending represents an animation source that blends two animation
+// sources.
+type AnimationBlending struct {
+	first  AnimationSource
+	second AnimationSource
+	factor float64
+}
+
+// Factor returns the blending factor of the node. A value of 0.0 means
+// that the first source is used, a value of 1.0 means that the second
+// source is used.
+func (n *AnimationBlending) Factor() float64 {
+	return n.factor
+}
+
+// SetFactor sets the blending factor of the node.
+func (n *AnimationBlending) SetFactor(factor float64) {
+	n.factor = dprec.Clamp(factor, 0.0, 1.0)
+}
+
+// NodeTransform returns the transformation of the node with the specified
+// name. The transformation is a blend of the transformations of the two
+// sources of the node.
+func (n *AnimationBlending) NodeTransform(name string) NodeTransform {
+	firstTransform := n.first.NodeTransform(name)
+	secondTransform := n.second.NodeTransform(name)
+
+	switch {
+	case n.factor < 0.000001: // optimization
+		return firstTransform
+	case n.factor > 0.999999: // optimization
+		return secondTransform
+	default:
+		return NodeTransform{
+			Translation: combineLinear(firstTransform.Translation, secondTransform.Translation, n.factor),
+			Rotation:    combineSpherical(firstTransform.Rotation, secondTransform.Rotation, n.factor),
+			Scale:       combineLinear(firstTransform.Scale, secondTransform.Scale, n.factor),
+		}
+	}
+}
 
 type AnimationDefinitionInfo struct {
 	Name      string
@@ -15,8 +78,7 @@ type AnimationDefinitionInfo struct {
 }
 
 type AnimationBindingDefinitionInfo struct {
-	NodeIndex            int
-	NodeName             string //alternative in case of isolated animation
+	NodeName             string
 	TranslationKeyframes KeyframeList[dprec.Vec3]
 	RotationKeyframes    KeyframeList[dprec.Quat]
 	ScaleKeyframes       KeyframeList[dprec.Vec3]
@@ -29,8 +91,12 @@ type AnimationDefinition struct {
 	bindings  []AnimationBindingDefinitionInfo
 }
 
+func (d *AnimationDefinition) Name() string {
+	return d.name
+}
+
 type AnimationInfo struct {
-	Model      *Model
+	Root       *hierarchy.Node
 	Definition *AnimationDefinition
 }
 
@@ -56,24 +122,50 @@ func (a *Animation) Length() float64 {
 	return a.EndTime() - a.StartTime()
 }
 
-func (a *Animation) Apply(timestamp float64) {
-	// FIXME: This does not work for animation blending
-	for _, binding := range a.bindings {
-		if binding.node == nil {
-			continue
-		}
-		if len(binding.translationKeyframes) > 0 {
-			translation := binding.Translation(timestamp)
-			binding.node.SetPosition(translation)
-		}
-		if len(binding.rotationKeyframes) > 0 {
-			rotation := binding.Rotation(timestamp)
-			binding.node.SetRotation(rotation)
-		}
-		if len(binding.scaleKeyframes) > 0 {
-			scale := binding.Scale(timestamp)
-			binding.node.SetScale(scale)
-		}
+func (a *Animation) BindingTransform(index int, timestamp float64) NodeTransform {
+	var result NodeTransform
+	if index < 0 || index >= len(a.bindings) {
+		return result
+	}
+	binding := a.bindings[index]
+	if binding.node == nil {
+		return result
+	}
+	if len(binding.translationKeyframes) > 0 {
+		result.Translation = opt.V(binding.Translation(timestamp))
+	}
+	if len(binding.rotationKeyframes) > 0 {
+		result.Rotation = opt.V(binding.Rotation(timestamp))
+	}
+	if len(binding.scaleKeyframes) > 0 {
+		result.Scale = opt.V(binding.Scale(timestamp))
+	}
+	return result
+}
+
+func combineLinear(first, second opt.T[dprec.Vec3], amount float64) opt.T[dprec.Vec3] {
+	switch {
+	case first.Specified && second.Specified:
+		return opt.V(dprec.Vec3Lerp(first.Value, second.Value, amount))
+	case first.Specified:
+		return first
+	case second.Specified:
+		return second
+	default:
+		return opt.Unspecified[dprec.Vec3]()
+	}
+}
+
+func combineSpherical(first, second opt.T[dprec.Quat], amount float64) opt.T[dprec.Quat] {
+	switch {
+	case first.Specified && second.Specified:
+		return opt.V(dprec.QuatSlerp(first.Value, second.Value, amount))
+	case first.Specified:
+		return first
+	case second.Specified:
+		return second
+	default:
+		return opt.Unspecified[dprec.Quat]()
 	}
 }
 
@@ -188,6 +280,15 @@ func (p *Playback) Advance(amount float64) {
 			p.Pause()
 		}
 	}
+}
+
+func (p *Playback) NodeTransform(name string) NodeTransform {
+	for i, binding := range p.animation.bindings {
+		if binding.node.Name() == name {
+			return p.animation.BindingTransform(i, p.head)
+		}
+	}
+	return NodeTransform{}
 }
 
 func (p *Playback) Seek(head float64) {

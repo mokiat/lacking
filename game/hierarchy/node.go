@@ -2,6 +2,9 @@ package hierarchy
 
 import "github.com/mokiat/gomath/dprec"
 
+// TODO: Make it possible to have static nodes that have a fixed transform
+// that does not change even in case of hierarchy changes.
+
 // Node represents the transformation of an object or part of one in 3D space.
 type Node struct {
 	name string
@@ -94,6 +97,24 @@ func (n *Node) Detach() {
 		n.SetRotation(rotation)
 		n.SetScale(scale)
 	}
+}
+
+// Delete removes this Node from the hierarchy and deletes all of its children.
+//
+// The node can be reused after deletion.
+func (n *Node) Delete() {
+	for child := n.firstChild; child != nil; child = child.rightSibling {
+		child.Delete()
+	}
+	if n.source != nil {
+		n.source.Release()
+		n.source = nil
+	}
+	if n.target != nil {
+		n.target.Release()
+		n.target = nil
+	}
+	n.Detach()
 }
 
 // PrependSibling attaches a Node to the left of the current one.

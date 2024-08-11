@@ -21,11 +21,11 @@ type Queue interface {
 
 	// WriteBuffer writes the provided data to the specified buffer at the
 	// specified offset.
-	WriteBuffer(buffer Buffer, offset int, data []byte)
+	WriteBuffer(buffer Buffer, offset uint32, data []byte)
 
 	// ReadBuffer reads data from the specified buffer at the specified offset
 	// into the provided target slice.
-	ReadBuffer(buffer Buffer, offset int, target []byte)
+	ReadBuffer(buffer Buffer, offset uint32, target []byte)
 
 	// Submit schedules the provided command buffer to be executed on the GPU.
 	//

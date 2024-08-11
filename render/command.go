@@ -28,17 +28,21 @@ type CommandBuffer interface {
 
 	// TextureUnit configures which texture should be used for the
 	// specified texture unit.
-	TextureUnit(index int, texture Texture)
+	TextureUnit(index uint, texture Texture)
+
+	// SamplerUnit configures which sampler should be used for the
+	// specified texture unit.
+	SamplerUnit(index uint, sampler Sampler)
 
 	// UniformBufferUnit configures which buffer should be used for the
 	// specified buffer unit.
-	UniformBufferUnit(index int, buffer Buffer, offset, size int)
+	UniformBufferUnit(index uint, buffer Buffer, offset, size uint32)
 
 	// Draw uses the vertex buffer to draw primitives.
-	Draw(vertexOffset, vertexCount, instanceCount int)
+	Draw(vertexOffset, vertexCount, instanceCount uint32)
 
 	// DrawIndexed uses the index buffer to draw primitives.
-	DrawIndexed(indexOffset, indexCount, instanceCount int)
+	DrawIndexed(indexByteOffset, indexCount, instanceCount uint32)
 
 	// EndRenderPass ends the current render pass.
 	EndRenderPass()

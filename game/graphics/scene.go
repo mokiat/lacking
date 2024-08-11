@@ -1,6 +1,8 @@
 package graphics
 
 import (
+	"time"
+
 	"github.com/mokiat/gblob"
 	"github.com/mokiat/gog/ds"
 	"github.com/mokiat/gog/opt"
@@ -13,11 +15,12 @@ const (
 	maxSceneSize = 32_000.0
 )
 
-func newScene(renderer *sceneRenderer) *Scene {
+func newScene(engine *Engine, renderer *sceneRenderer) *Scene {
 	return &Scene{
+		engine:   engine,
 		renderer: renderer,
 
-		sky: newSky(),
+		skies: ds.NewList[*Sky](1),
 
 		staticMeshOctree: spatial.NewStaticOctree[uint32](spatial.StaticOctreeSettings{
 			Size:                opt.V(maxSceneSize),
@@ -57,9 +60,12 @@ func newScene(renderer *sceneRenderer) *Scene {
 // Scene represents a collection of 3D render entities
 // that comprise a single visual scene.
 type Scene struct {
+	engine   *Engine
 	renderer *sceneRenderer
 
-	sky *Sky
+	time float32
+
+	skies *ds.List[*Sky]
 
 	staticMeshes     []StaticMesh
 	staticMeshOctree *spatial.StaticOctree[uint32]
@@ -82,6 +88,15 @@ type Scene struct {
 	activeCamera *Camera
 }
 
+// Engine returns the graphics engine that owns this scene.
+func (s *Scene) Engine() *Engine {
+	return s.engine
+}
+
+func (s *Scene) Time() float32 {
+	return s.time
+}
+
 // ActiveCamera returns the currently active camera for this scene.
 func (s *Scene) ActiveCamera() *Camera {
 	return s.activeCamera
@@ -92,17 +107,10 @@ func (s *Scene) SetActiveCamera(camera *Camera) {
 	s.activeCamera = camera
 }
 
-// Sky returns this scene's sky object.
-// You can use the Sky object to control the
-// background appearance.
-func (s *Scene) Sky() *Sky {
-	return s.sky
-}
-
 // CreateCamera creates a new camera object to be
 // used with this scene.
 func (s *Scene) CreateCamera() *Camera {
-	result := newCamera(s)
+	result := newCamera()
 	if s.activeCamera == nil {
 		s.activeCamera = result
 	}
@@ -133,6 +141,11 @@ func (s *Scene) CreateDirectionalLight(info DirectionalLightInfo) *DirectionalLi
 	return newDirectionalLight(s, info)
 }
 
+// CreateSky creates a new Sky object to be used within this scene.
+func (s *Scene) CreateSky(info SkyInfo) *Sky {
+	return newSky(s, info)
+}
+
 // CreateStaticMesh creates a new static mesh to be rendered in this scene.
 //
 // Static meshes cannot be removed from a scene but are rendered more
@@ -156,14 +169,6 @@ func (s *Scene) CreateArmature(info ArmatureInfo) *Armature {
 	}
 }
 
-// Render draws this scene to the specified viewport
-// looking through the specified camera.
-func (s *Scene) Render(viewport Viewport) {
-	if s.activeCamera != nil {
-		s.renderer.Render(s.renderer.api.DefaultFramebuffer(), viewport, s, s.activeCamera)
-	}
-}
-
 func (s *Scene) Ray(viewport Viewport, camera *Camera, x, y int) (dprec.Vec3, dprec.Vec3) {
 	return s.renderer.Ray(viewport, camera, x, y)
 }
@@ -172,9 +177,13 @@ func (s *Scene) Point(viewport Viewport, camera *Camera, position dprec.Vec3) dp
 	return s.renderer.Point(viewport, camera, position)
 }
 
+func (s *Scene) Update(elapsedTime time.Duration) {
+	s.time += float32(elapsedTime.Seconds())
+}
+
 // Render draws this scene to the specified viewport
 // looking through the specified camera.
-func (s *Scene) RenderFramebuffer(framebuffer render.Framebuffer, viewport Viewport) {
+func (s *Scene) Render(framebuffer render.Framebuffer, viewport Viewport) {
 	if s.activeCamera != nil {
 		s.renderer.Render(framebuffer, viewport, s, s.activeCamera)
 	}

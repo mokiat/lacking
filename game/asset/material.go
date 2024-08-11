@@ -1,96 +1,89 @@
 package asset
 
-import "github.com/mokiat/gomath/sprec"
+// TextureBinding represents a binding of a texture to a shader.
+type TextureBinding struct {
 
+	// BindingName is the name of the binding in the shader.
+	BindingName string
+
+	// TextureIndex is the index of the texture to be bound.
+	TextureIndex uint32
+
+	// Wrapping specifies the texture wrapping mode.
+	Wrapping WrapMode
+
+	// Filtering specifies the texture filtering mode.
+	Filtering FilterMode
+
+	// Mipmapping specifies whether mipmapping should be applied.
+	Mipmapping bool
+}
+
+// PropertyBinding represents a binding of a uniform property to a shader.
+type PropertyBinding struct {
+
+	// BindingName is the name of the binding in the shader.
+	BindingName string
+
+	// Data is the data to be bound.
+	Data []byte
+}
+
+// MaterialPass represents a pass that is applied during material rendering.
+type MaterialPass struct {
+
+	// Layer controls the render ordering of this pass. Lower values will be
+	// rendered first. Having too many layers can affect performance.
+	Layer int32
+
+	// Culling specifies the culling mode.
+	Culling CullMode
+
+	// FrontFace specifies the front face orientation.
+	FrontFace FaceOrientation
+
+	// DepthTest specifies whether depth testing should be enabled.
+	DepthTest bool
+
+	// DepthWrite specifies whether depth writing should be enabled.
+	DepthWrite bool
+
+	// DepthComparison specifies the depth comparison function.
+	DepthComparison Comparison
+
+	// Blending specifies whether blending should be enabled.
+	Blending bool
+
+	// ShaderIndex is the index of the shader to be used.
+	ShaderIndex uint32
+}
+
+// Material represents a material that can be applied to a mesh.
 type Material struct {
-	Name            string
-	Type            MaterialType
-	BackfaceCulling bool
-	AlphaTesting    bool
-	AlphaThreshold  float32
-	Blending        bool
-	ScalarMask      uint32
-	Scalars         [16]float32
-	Textures        [16]TextureRef
-}
 
-const (
-	MaterialTypePBR MaterialType = iota
-	MaterialTypeAlbedo
-)
+	// Name is the name of the material.
+	Name string
 
-type MaterialType uint8
+	// Textures is a list of textures that will be bound to the material.
+	Textures []TextureBinding
 
-func NewPBRMaterialView(delegate *Material) *PBRMaterialView {
-	return &PBRMaterialView{
-		delegate: delegate,
-	}
-}
+	// Properties is a list of properties that will be passed to the shader.
+	Properties []PropertyBinding
 
-type PBRMaterialView struct {
-	delegate *Material
-}
+	// GeometryPasses specifies a list of geometry passes to be applied.
+	GeometryPasses []MaterialPass
 
-func (v *PBRMaterialView) BaseColor() sprec.Vec4 {
-	return sprec.NewVec4(
-		v.delegate.Scalars[0],
-		v.delegate.Scalars[1],
-		v.delegate.Scalars[2],
-		v.delegate.Scalars[3],
-	)
-}
+	// ShadowPasses specifies a list of shadow passes to be applied.
+	ShadowPasses []MaterialPass
 
-func (v *PBRMaterialView) SetBaseColor(color sprec.Vec4) {
-	v.delegate.Scalars[0] = color.X
-	v.delegate.Scalars[1] = color.Y
-	v.delegate.Scalars[2] = color.Z
-	v.delegate.Scalars[3] = color.W
-}
+	// ForwardPasses specifies a list of forward passes to be applied.
+	ForwardPasses []MaterialPass
 
-func (v *PBRMaterialView) Metallic() float32 {
-	return v.delegate.Scalars[4]
-}
+	// SkyPasses specifies a list of sky passes to be applied,
+	// applicable only to sky materials.
+	SkyPasses []MaterialPass
 
-func (v *PBRMaterialView) SetMetallic(metallic float32) {
-	v.delegate.Scalars[4] = metallic
-}
-
-func (v *PBRMaterialView) Roughness() float32 {
-	return v.delegate.Scalars[5]
-}
-
-func (v *PBRMaterialView) SetRoughness(roughness float32) {
-	v.delegate.Scalars[5] = roughness
-}
-
-func (v *PBRMaterialView) NormalScale() float32 {
-	return v.delegate.Scalars[6]
-}
-
-func (v *PBRMaterialView) SetNormalScale(scale float32) {
-	v.delegate.Scalars[6] = scale
-}
-
-func (v *PBRMaterialView) BaseColorTexture() TextureRef {
-	return v.delegate.Textures[0]
-}
-
-func (v *PBRMaterialView) SetBaseColorTexture(texture TextureRef) {
-	v.delegate.Textures[0] = texture
-}
-
-func (v *PBRMaterialView) MetallicRoughnessTexture() TextureRef {
-	return v.delegate.Textures[1]
-}
-
-func (v *PBRMaterialView) SetMetallicRoughnessTexture(texture TextureRef) {
-	v.delegate.Textures[1] = texture
-}
-
-func (v *PBRMaterialView) NormalTexture() TextureRef {
-	return v.delegate.Textures[2]
-}
-
-func (v *PBRMaterialView) SetNormalTexture(texture TextureRef) {
-	v.delegate.Textures[2] = texture
+	// PostprocessingPasses specifies a list of postprocessing passes to
+	// be applied. Applicable only to postprocessing materials.
+	PostprocessingPasses []MaterialPass
 }

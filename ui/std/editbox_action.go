@@ -3,7 +3,6 @@ package std
 import (
 	"slices"
 
-	"github.com/mokiat/gog"
 	"github.com/mokiat/lacking/ui/state"
 )
 
@@ -24,7 +23,7 @@ func (c *editboxComponent) createActionInsertSegment(column int, segment []rune)
 		if len(segment) > 0 {
 			prefix := c.line[:column]
 			suffix := c.line[column:]
-			c.line = gog.Concat(prefix, segment, suffix)
+			c.line = slices.Concat(prefix, segment, suffix)
 		}
 	}
 }

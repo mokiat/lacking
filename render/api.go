@@ -43,6 +43,10 @@ type API interface {
 	// used to store depth and stencil values together.
 	CreateDepthStencilTexture2D(info DepthStencilTexture2DInfo) Texture
 
+	// CreateSampler creates a new Sampler object based on the provided
+	// SamplerInfo.
+	CreateSampler(info SamplerInfo) Sampler
+
 	// CreateVertexBuffer creates a new Buffer object that can be used
 	// to store vertex data.
 	CreateVertexBuffer(info BufferInfo) Buffer
@@ -71,7 +75,7 @@ type API interface {
 	// specified initial capacity. The buffer will automatically grow
 	// as needed but it is recommended to provide a reasonable initial
 	// capacity to avoid unnecessary allocations.
-	CreateCommandBuffer(initialCapacity int) CommandBuffer
+	CreateCommandBuffer(initialCapacity uint) CommandBuffer
 
 	// Queue can be used to schedule commands to be executed on the GPU.
 	Queue() Queue

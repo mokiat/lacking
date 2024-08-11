@@ -19,6 +19,31 @@ func (s BodyNodeSource) ApplyTo(node *hierarchy.Node) {
 	node.SetAbsoluteMatrix(dprec.TRSMat4(translation, rotation, scale))
 }
 
+func (s BodyNodeSource) Release() {
+	s.Body.Delete()
+}
+
+type AnimationNodeSource struct {
+	Source AnimationSource
+}
+
+func (s AnimationNodeSource) ApplyTo(node *hierarchy.Node) {
+	transform := s.Source.NodeTransform(node.Name())
+	if transform.Translation.Specified {
+		node.SetPosition(transform.Translation.Value)
+	}
+	if transform.Rotation.Specified {
+		node.SetRotation(transform.Rotation.Value)
+	}
+	if transform.Scale.Specified {
+		node.SetScale(transform.Scale.Value)
+	}
+}
+
+func (s AnimationNodeSource) Release() {
+	// Nothing to do
+}
+
 type CameraNodeTarget struct {
 	Camera *graphics.Camera
 }
@@ -27,12 +52,20 @@ func (t CameraNodeTarget) ApplyFrom(node *hierarchy.Node) {
 	t.Camera.SetMatrix(node.AbsoluteMatrix())
 }
 
+func (t CameraNodeTarget) Release() {
+	t.Camera.Delete()
+}
+
 type MeshNodeTarget struct {
 	Mesh *graphics.Mesh
 }
 
 func (t MeshNodeTarget) ApplyFrom(node *hierarchy.Node) {
 	t.Mesh.SetMatrix(node.AbsoluteMatrix())
+}
+
+func (t MeshNodeTarget) Release() {
+	t.Mesh.Delete()
 }
 
 type BoneNodeTarget struct {
@@ -45,6 +78,26 @@ func (t BoneNodeTarget) ApplyFrom(node *hierarchy.Node) {
 	t.Armature.SetBone(t.BoneIndex, dtos.Mat4(matrix))
 }
 
+func (t BoneNodeTarget) Release() {
+	// Nothing to do
+}
+
+type AmbientLightNodeTarget struct {
+	Light *graphics.AmbientLight
+}
+
+func (t AmbientLightNodeTarget) ApplyFrom(node *hierarchy.Node) {
+	// TODO:
+	// matrix := node.AbsoluteMatrix()
+	// translation, rotation, _ := matrix.TRS()
+	// t.Light.SetPosition(translation)
+	// t.Light.SetRotation(rotation)
+}
+
+func (t AmbientLightNodeTarget) Release() {
+	t.Light.Delete()
+}
+
 type PointLightNodeTarget struct {
 	Light *graphics.PointLight
 }
@@ -52,6 +105,10 @@ type PointLightNodeTarget struct {
 func (t PointLightNodeTarget) ApplyFrom(node *hierarchy.Node) {
 	matrix := node.AbsoluteMatrix()
 	t.Light.SetPosition(matrix.Translation())
+}
+
+func (t PointLightNodeTarget) Release() {
+	t.Light.Delete()
 }
 
 type SpotLightNodeTarget struct {
@@ -63,6 +120,10 @@ func (t SpotLightNodeTarget) ApplyFrom(node *hierarchy.Node) {
 	translation, rotation, _ := matrix.TRS()
 	t.Light.SetPosition(translation)
 	t.Light.SetRotation(rotation)
+}
+
+func (t SpotLightNodeTarget) Release() {
+	t.Light.Delete()
 }
 
 type DirectionalLightNodeTarget struct {
@@ -84,4 +145,28 @@ func (t DirectionalLightNodeTarget) ApplyFrom(node *hierarchy.Node) {
 		t.Light.SetPosition(translation)
 		t.Light.SetRotation(rotation)
 	}
+}
+
+func (t DirectionalLightNodeTarget) Release() {
+	t.Light.Delete()
+}
+
+func DirectionalLightFromNode(node *hierarchy.Node) *graphics.DirectionalLight {
+	target, ok := node.Target().(DirectionalLightNodeTarget)
+	if !ok {
+		return nil
+	}
+	return target.Light
+}
+
+type SkyNodeTarget struct {
+	Sky *graphics.Sky
+}
+
+func (t SkyNodeTarget) ApplyFrom(node *hierarchy.Node) {
+	// Do nothing. Skies don't have position.
+}
+
+func (t SkyNodeTarget) Release() {
+	t.Sky.Delete()
 }

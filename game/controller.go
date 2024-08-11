@@ -12,10 +12,11 @@ import (
 	"github.com/mokiat/lacking/util/async"
 )
 
-func NewController(registry asset.Registry, shaders graphics.ShaderCollection) *Controller {
+func NewController(registry *asset.Registry, shaders graphics.ShaderCollection, shaderBuilder graphics.ShaderBuilder) *Controller {
 	return &Controller{
-		registry: registry,
-		shaders:  shaders,
+		registry:      registry,
+		shaders:       shaders,
+		shaderBuilder: shaderBuilder,
 	}
 }
 
@@ -24,8 +25,9 @@ var _ app.Controller = (*Controller)(nil)
 type Controller struct {
 	app.NopController
 
-	registry asset.Registry
-	shaders  graphics.ShaderCollection
+	registry      *asset.Registry
+	shaders       graphics.ShaderCollection
+	shaderBuilder graphics.ShaderBuilder
 
 	gfxEngine     *graphics.Engine
 	ecsEngine     *ecs.Engine
@@ -38,22 +40,26 @@ type Controller struct {
 	viewport graphics.Viewport
 }
 
+func (c *Controller) Registry() *asset.Registry {
+	return c.registry
+}
+
 func (c *Controller) Engine() *Engine {
 	return c.engine
 }
 
 func (c *Controller) OnCreate(window app.Window) {
 	c.window = window
-	c.gfxEngine = graphics.NewEngine(window.RenderAPI(), c.shaders)
+	c.gfxEngine = graphics.NewEngine(window.RenderAPI(), c.shaders, c.shaderBuilder)
 	c.ecsEngine = ecs.NewEngine()
 	c.physicsEngine = physics.NewEngine(16 * time.Millisecond)
 
-	c.ioWorker = async.NewWorker(16)
+	c.ioWorker = async.NewWorker(4)
 	go c.ioWorker.ProcessAll()
 
 	c.engine = NewEngine(
-		WithGFXWorker(c.gfxWorkerAdapter()),
-		WithIOWorker(c.ioWorkerAdapter()),
+		WithGFXWorker(window),
+		WithIOWorker(c.ioWorker),
 		WithRegistry(c.registry),
 		WithGraphics(c.gfxEngine),
 		WithECS(c.ecsEngine),
@@ -71,40 +77,14 @@ func (c *Controller) OnDestroy(window app.Window) {
 }
 
 func (c *Controller) OnFramebufferResize(window app.Window, width, height int) {
-	c.viewport = graphics.NewViewport(0, 0, width, height)
+	c.viewport = graphics.NewViewport(0, 0, uint32(width), uint32(height))
 }
 
 func (c *Controller) OnRender(window app.Window) {
 	defer metric.BeginRegion("game").End()
 
 	c.engine.Update()
-	c.engine.Render(c.viewport)
+	c.engine.Render(window.RenderAPI().DefaultFramebuffer(), c.viewport)
 
 	window.Invalidate() // force redraw
-}
-
-func (c *Controller) schedule(fn func()) {
-	c.window.Schedule(fn)
-}
-
-func (c *Controller) gfxWorkerAdapter() Worker {
-	return WorkerFunc(func(fn func() error) Operation {
-		operation := NewOperation()
-		c.schedule(func() {
-			operation.Complete(fn())
-		})
-		return operation
-	})
-}
-
-func (c *Controller) ioWorkerAdapter() Worker {
-	return WorkerFunc(func(fn func() error) Operation {
-		operation := NewOperation()
-		c.ioWorker.Schedule(func() error {
-			err := fn()
-			operation.Complete(err)
-			return err
-		})
-		return operation
-	})
 }
