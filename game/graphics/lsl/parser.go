@@ -58,7 +58,7 @@ func (p *Parser) ParseShader() (*Shader, error) {
 				return nil, fmt.Errorf("error parsing uniform block: %w", err)
 			}
 			shader.Declarations = append(shader.Declarations, decl)
-		case token.IsSpecificIdentifier("#varying"):
+		case token.IsSpecificIdentifier("varyings"):
 			decl, err := p.ParseVaryingBlock()
 			if err != nil {
 				return nil, fmt.Errorf("error parsing varying block: %w", err)
@@ -297,7 +297,7 @@ func (p *Parser) ParseUniformBlock() (*UniformBlockDeclaration, error) {
 
 func (p *Parser) ParseVaryingBlock() (*VaryingBlockDeclaration, error) {
 	varyingToken := p.nextToken()
-	if !varyingToken.IsSpecificIdentifier("#varying") {
+	if !varyingToken.IsSpecificIdentifier("varyings") {
 		return nil, fmt.Errorf("expected varying keyword")
 	}
 	if err := p.ParseBlockStart(); err != nil {

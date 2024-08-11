@@ -137,13 +137,13 @@ var _ = Describe("Parse", func() {
 	When("varying blocks are present", func() {
 		BeforeEach(func() {
 			inSource = `
-				#varying { // header
+				varyings { // header
 					color vec3, // field 1
 					// two fields
 					intensity float, // field2
 				} // footer
 
-				#varying {
+				varyings {
 					value vec4,
 				}
 			`
@@ -487,12 +487,12 @@ var _ = Describe("Parser", func() {
 		Expect(block).To(Equal(expectedBlock))
 	},
 		Entry("empty",
-			`#varying {
+			`varyings {
 			}`,
 			&lsl.VaryingBlockDeclaration{},
 		),
 		Entry("with fields",
-			`#varying {
+			`varyings {
 				color vec4,
 				intensity float,
 			}`,

@@ -149,6 +149,16 @@ func (s *Shader) FindVaryingBlock() (*VaryingBlockDeclaration, bool) {
 	return nil, false
 }
 
+func (s *Shader) Functions() []*FunctionDeclaration {
+	var functions []*FunctionDeclaration
+	for _, decl := range s.Declarations {
+		if fn, ok := decl.(*FunctionDeclaration); ok {
+			functions = append(functions, fn)
+		}
+	}
+	return functions
+}
+
 func (s *Shader) FindFunction(name string) (*FunctionDeclaration, bool) {
 	for _, decl := range s.Declarations {
 		if fn, ok := decl.(*FunctionDeclaration); ok && fn.Name == name {
