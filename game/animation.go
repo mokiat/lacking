@@ -1,134 +1,140 @@
 package game
 
 import (
-	"math"
-
 	"github.com/mokiat/gog/opt"
 	"github.com/mokiat/gomath/dprec"
-	"github.com/mokiat/lacking/game/hierarchy"
+	"golang.org/x/exp/maps"
 )
 
-// NodeTransform represents the transformation of a node.
-type NodeTransform struct {
-
-	// Translation, if specified, indicates the translation of the node.
-	Translation opt.T[dprec.Vec3]
-
-	// Rotation, if specified, indicates the rotation of the node.
-	Rotation opt.T[dprec.Quat]
-
-	// Scale, if specified, indicates the scale of the node.
-	Scale opt.T[dprec.Vec3]
-}
-
-// AnimationSource represents a source of animation data.
-type AnimationSource interface {
-
-	// NodeTransform returns the transformation of the node with the
-	// specified name.
-	NodeTransform(name string) NodeTransform
-}
-
-// AnimationBlending represents an animation source that blends two animation
-// sources.
-type AnimationBlending struct {
-	first  AnimationSource
-	second AnimationSource
-	factor float64
-}
-
-// Factor returns the blending factor of the node. A value of 0.0 means
-// that the first source is used, a value of 1.0 means that the second
-// source is used.
-func (n *AnimationBlending) Factor() float64 {
-	return n.factor
-}
-
-// SetFactor sets the blending factor of the node.
-func (n *AnimationBlending) SetFactor(factor float64) {
-	n.factor = dprec.Clamp(factor, 0.0, 1.0)
-}
-
-// NodeTransform returns the transformation of the node with the specified
-// name. The transformation is a blend of the transformations of the two
-// sources of the node.
-func (n *AnimationBlending) NodeTransform(name string) NodeTransform {
-	firstTransform := n.first.NodeTransform(name)
-	secondTransform := n.second.NodeTransform(name)
-
-	switch {
-	case n.factor < 0.000001: // optimization
-		return firstTransform
-	case n.factor > 0.999999: // optimization
-		return secondTransform
-	default:
-		return NodeTransform{
-			Translation: combineLinear(firstTransform.Translation, secondTransform.Translation, n.factor),
-			Rotation:    combineSpherical(firstTransform.Rotation, secondTransform.Rotation, n.factor),
-			Scale:       combineLinear(firstTransform.Scale, secondTransform.Scale, n.factor),
-		}
-	}
-}
-
+// AnimationDefinitionInfo contains the information required to define an
+// animation.
 type AnimationDefinitionInfo struct {
-	Name      string
+
+	// Name is the name of the animation.
+	Name string
+
+	// StartTime is the time (in seconds) at which the animation starts.
 	StartTime float64
-	EndTime   float64
-	Bindings  []AnimationBindingDefinitionInfo
+
+	// EndTime is the time (in seconds) at which the animation ends.
+	EndTime float64
+
+	// Loop specifies whether the animation should loop.
+	Loop bool
+
+	// Bindings is a list of node bindings that are affected by the animation.
+	Bindings []AnimationBindingDefinitionInfo
 }
 
+// AnimationBindingDefinitionInfo contains the information required to define
+// an animation node binding.
 type AnimationBindingDefinitionInfo struct {
-	NodeName             string
+
+	// NodeName is the name of the node that is affected by the animation.
+	NodeName string
+
+	// TranslationKeyframes is a list of keyframes that define the translation
+	// of the node.
 	TranslationKeyframes KeyframeList[dprec.Vec3]
-	RotationKeyframes    KeyframeList[dprec.Quat]
-	ScaleKeyframes       KeyframeList[dprec.Vec3]
+
+	// RotationKeyframes is a list of keyframes that define the rotation of the
+	// node.
+	RotationKeyframes KeyframeList[dprec.Quat]
+
+	// ScaleKeyframes is a list of keyframes that define the scale of the node.
+	ScaleKeyframes KeyframeList[dprec.Vec3]
 }
 
+// AnimationDefinition represents a definition of an animation.
 type AnimationDefinition struct {
 	name      string
 	startTime float64
 	endTime   float64
-	bindings  []AnimationBindingDefinitionInfo
+	loop      bool
+	bindings  map[string]animationBinding
 }
 
+// Name returns the name of the animation.
 func (d *AnimationDefinition) Name() string {
 	return d.name
 }
 
+// StartTime returns the time (in seconds) at which the animation starts.
+func (d *AnimationDefinition) StartTime() float64 {
+	return d.startTime
+}
+
+// EndTime returns the time (in seconds) at which the animation ends.
+func (d *AnimationDefinition) EndTime() float64 {
+	return d.endTime
+}
+
+// Loop returns whether the animation should loop.
+func (d *AnimationDefinition) Loop() bool {
+	return d.loop
+}
+
+// NodeNames returns the names of the nodes that are animated by the animation.
+func (d *AnimationDefinition) NodeNames() []string {
+	return maps.Keys(d.bindings)
+}
+
+// AnimationInfo represents an instantiation of an animation instance.
 type AnimationInfo struct {
-	Root       *hierarchy.Node
+
+	// Definition is the definition of the animation.
 	Definition *AnimationDefinition
+
+	// ClipStart, if specified, overrides the start time of the animation.
+	ClipStart opt.T[float64]
+
+	// ClipEnd, if specified, overrides the end time of the animation.
+	ClipEnd opt.T[float64]
+
+	// Loop, if specified, overrides the loop setting of the animation.
+	Loop opt.T[bool]
 }
 
+// Animation represents an instantiation of a keyframe animation.
 type Animation struct {
-	name       string
-	definition *AnimationDefinition
-	bindings   []animationBinding
+	name      string
+	startTime float64
+	endTime   float64
+	loop      bool
+	bindings  map[string]animationBinding
 }
 
+// Name returns the name of the animation.
 func (a *Animation) Name() string {
 	return a.name
 }
 
+// StartTime returns the time (in seconds) at which the animation starts.
 func (a *Animation) StartTime() float64 {
-	return a.definition.startTime
+	return a.startTime
 }
 
+// EndTime returns the time (in seconds) at which the animation ends.
 func (a *Animation) EndTime() float64 {
-	return a.definition.endTime
+	return a.endTime
 }
 
+// Loop returns whether the animation should loop.
+func (a *Animation) Loop() bool {
+	return a.loop
+}
+
+// Length returns the length of the animation in seconds.
 func (a *Animation) Length() float64 {
 	return a.EndTime() - a.StartTime()
 }
 
-func (a *Animation) BindingTransform(index int, timestamp float64) NodeTransform {
+// BindingTransform returns the transformation of the node with the specified
+// name at the specified time position.
+func (a *Animation) BindingTransform(name string, timestamp float64) NodeTransform {
 	var result NodeTransform
-	if index < 0 || index >= len(a.bindings) {
-		return result
-	}
-	binding := a.bindings[index]
-	if binding.node == nil {
+	binding, ok := a.bindings[name]
+	if !ok {
 		return result
 	}
 	if len(binding.translationKeyframes) > 0 {
@@ -143,34 +149,12 @@ func (a *Animation) BindingTransform(index int, timestamp float64) NodeTransform
 	return result
 }
 
-func combineLinear(first, second opt.T[dprec.Vec3], amount float64) opt.T[dprec.Vec3] {
-	switch {
-	case first.Specified && second.Specified:
-		return opt.V(dprec.Vec3Lerp(first.Value, second.Value, amount))
-	case first.Specified:
-		return first
-	case second.Specified:
-		return second
-	default:
-		return opt.Unspecified[dprec.Vec3]()
-	}
-}
-
-func combineSpherical(first, second opt.T[dprec.Quat], amount float64) opt.T[dprec.Quat] {
-	switch {
-	case first.Specified && second.Specified:
-		return opt.V(dprec.QuatSlerp(first.Value, second.Value, amount))
-	case first.Specified:
-		return first
-	case second.Specified:
-		return second
-	default:
-		return opt.Unspecified[dprec.Quat]()
-	}
+// Playback creates a new AnimationPlayback that plays back the animation.
+func (a *Animation) Playback() *AnimationPlayback {
+	return NewAnimationPlayback(a)
 }
 
 type animationBinding struct {
-	node                 *hierarchy.Node
 	translationKeyframes KeyframeList[dprec.Vec3]
 	rotationKeyframes    KeyframeList[dprec.Quat]
 	scaleKeyframes       KeyframeList[dprec.Vec3]
@@ -189,137 +173,4 @@ func (b animationBinding) Rotation(timestamp float64) dprec.Quat {
 func (b animationBinding) Scale(timestamp float64) dprec.Vec3 {
 	left, right, t := b.scaleKeyframes.Keyframe(timestamp)
 	return dprec.Vec3Lerp(left.Value, right.Value, t)
-}
-
-type KeyframeList[T any] []Keyframe[T]
-
-func (l KeyframeList[T]) Keyframe(timestamp float64) (Keyframe[T], Keyframe[T], float64) {
-	leftIndex := 0
-	rightIndex := len(l) - 1
-	for leftIndex < rightIndex-1 {
-		middleIndex := (leftIndex + rightIndex) / 2
-		middle := l[middleIndex]
-		if middle.Timestamp <= timestamp {
-			leftIndex = middleIndex
-		}
-		if middle.Timestamp >= timestamp {
-			rightIndex = middleIndex
-		}
-	}
-	left := l[leftIndex]
-	right := l[rightIndex]
-	if leftIndex == rightIndex {
-		return left, right, 0
-	}
-	t := dprec.Clamp((timestamp-left.Timestamp)/(right.Timestamp-left.Timestamp), 0.0, 1.0)
-	return left, right, t
-}
-
-type Keyframe[T any] struct {
-	Timestamp float64
-	Value     T
-}
-
-type Playback struct {
-	scene     *Scene
-	animation *Animation
-
-	name      string
-	head      float64
-	startTime float64
-	endTime   float64
-	speed     float64
-	playing   bool
-	loop      bool
-}
-
-func (p *Playback) Name() string {
-	return p.name
-}
-
-func (p *Playback) SetName(name string) {
-	p.name = name
-}
-
-func (p *Playback) Play() {
-	p.playing = true
-}
-
-func (p *Playback) Pause() {
-	p.playing = false
-}
-
-func (p *Playback) Stop() {
-	p.Pause()
-	p.head = p.animation.StartTime()
-}
-
-func (p *Playback) Loop() bool {
-	return p.loop
-}
-
-func (p *Playback) SetLoop(loop bool) {
-	p.loop = loop
-}
-
-func (p *Playback) Speed() float64 {
-	return p.speed
-}
-
-func (p *Playback) SetSpeed(speed float64) {
-	p.speed = speed
-}
-
-func (p *Playback) Advance(amount float64) {
-	p.head += amount * p.speed
-	if p.head > p.endTime {
-		if p.loop {
-			p.head = p.startTime + math.Mod(p.head, p.Length())
-		} else {
-			p.head = p.endTime
-			p.Pause()
-		}
-	}
-}
-
-func (p *Playback) NodeTransform(name string) NodeTransform {
-	for i, binding := range p.animation.bindings {
-		if binding.node.Name() == name {
-			return p.animation.BindingTransform(i, p.head)
-		}
-	}
-	return NodeTransform{}
-}
-
-func (p *Playback) Seek(head float64) {
-	p.head = head
-}
-
-func (p *Playback) Head() float64 {
-	return p.head
-}
-
-func (p *Playback) StartTime() float64 {
-	return p.startTime
-}
-
-func (p *Playback) SetStartTime(startTime float64) {
-	p.startTime = startTime
-}
-
-func (p *Playback) EndTime() float64 {
-	return p.endTime
-}
-
-func (p *Playback) SetEndTime(endTime float64) {
-	p.endTime = endTime
-}
-
-func (p *Playback) Length() float64 {
-	return p.endTime - p.startTime
-}
-
-func (p *Playback) Delete() {
-	p.scene.playbacks.Remove(p)
-	p.scene.playbackPool.Restore(p)
 }

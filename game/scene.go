@@ -24,8 +24,7 @@ func newScene(engine *Engine, physicsScene *physics.Scene, gfxScene *graphics.Sc
 		ecsScene:     ecsScene,
 		root:         hierarchy.NewNode(), // TODO: Make this node stationary
 
-		playbackPool: ds.NewPool[Playback](),
-		playbacks:    ds.NewList[*Playback](4),
+		animationTrees: ds.NewList[AnimationSource](0),
 
 		preUpdateSubscriptions:  timestep.NewUpdateSubscriptionSet(),
 		postUpdateSubscriptions: timestep.NewUpdateSubscriptionSet(),
@@ -50,8 +49,7 @@ type Scene struct {
 	ecsScene     *ecs.Scene
 	root         *hierarchy.Node
 
-	playbackPool *ds.Pool[Playback]
-	playbacks    *ds.List[*Playback]
+	animationTrees *ds.List[AnimationSource]
 
 	preUpdateSubscriptions  *timestep.UpdateSubscriptionSet
 	postUpdateSubscriptions *timestep.UpdateSubscriptionSet
@@ -225,6 +223,28 @@ func (s *Scene) CreateDirectionalLight(info DirectionalLightInfo) *hierarchy.Nod
 	return node
 }
 
+// CreateAnimation creates a new animation based on the provided information.
+func (s *Scene) CreateAnimation(info AnimationInfo) *Animation {
+	def := info.Definition
+	return &Animation{
+		name:      def.name,
+		startTime: info.ClipStart.ValueOrDefault(def.startTime),
+		endTime:   info.ClipEnd.ValueOrDefault(def.endTime),
+		loop:      info.Loop.ValueOrDefault(def.loop),
+		bindings:  def.bindings,
+	}
+}
+
+// PlayAnimationTree adds the provided animation tree to the scene.
+func (s *Scene) PlayAnimationTree(tree AnimationSource) {
+	s.animationTrees.Add(tree)
+}
+
+// StopAnimationTree removes the provided animation tree from the scene.
+func (s *Scene) StopAnimationTree(tree AnimationSource) {
+	s.animationTrees.Remove(tree)
+}
+
 // Update advances the scene by the provided time.
 func (s *Scene) Update(elapsedTime time.Duration) {
 	if s.frozen {
@@ -263,37 +283,6 @@ func (s *Scene) Render(framebuffer render.Framebuffer, viewport graphics.Viewpor
 	renderSpan.End()
 }
 
-func (s *Scene) CreateAnimation(info AnimationInfo) *Animation {
-	def := info.Definition
-	bindings := make([]animationBinding, len(def.bindings))
-	for i, bindingDef := range def.bindings {
-		target := info.Root.FindNode(bindingDef.NodeName)
-		if target == nil {
-			logger.Warn("Animation cannot find target node (%q)!", bindingDef.NodeName)
-		}
-		bindings[i] = animationBinding{
-			node:                 target,
-			translationKeyframes: bindingDef.TranslationKeyframes,
-			rotationKeyframes:    bindingDef.RotationKeyframes,
-			scaleKeyframes:       bindingDef.ScaleKeyframes,
-		}
-	}
-	return &Animation{
-		name:       def.name,
-		definition: def,
-		bindings:   bindings,
-	}
-}
-
-// CreateAnimationBlending creates a new animation blending source that can be
-// used to blend two animations together.
-func (s *Scene) CreateAnimationBlending(first, second AnimationSource) *AnimationBlending {
-	return &AnimationBlending{
-		first:  first,
-		second: second,
-	}
-}
-
 // TODO: Return the node instead and have the Model be a target?
 func (s *Scene) CreateModel(info ModelInfo) *Model {
 	modelNode := hierarchy.NewNode()
@@ -325,7 +314,6 @@ func (s *Scene) CreateModel(info ModelInfo) *Model {
 	animations := make([]*Animation, len(definition.animations))
 	for i, animationDef := range definition.animations {
 		animations[i] = s.CreateAnimation(AnimationInfo{
-			Root:       modelNode,
 			Definition: animationDef,
 		})
 	}
@@ -457,28 +445,6 @@ func (s *Scene) CreateModel(info ModelInfo) *Model {
 	}
 }
 
-func (s *Scene) PlayAnimation(animation *Animation) *Playback {
-	result := s.playbackPool.Fetch()
-	result.scene = s
-	result.animation = animation
-	result.head = animation.StartTime()
-	result.startTime = animation.StartTime()
-	result.endTime = animation.EndTime()
-	result.speed = 1.0
-	result.Play()
-	s.playbacks.Add(result)
-	return result
-}
-
-func (s *Scene) FindPlayback(name string) *Playback {
-	for _, playback := range s.playbacks.Unbox() {
-		if playback.name == name {
-			return playback
-		}
-	}
-	return nil
-}
-
 func (s *Scene) updatePhysics(elapsedTime time.Duration) {
 	prePhysicsSpan := metric.BeginRegion("pre-physics")
 	s.prePhysicsSubscriptions.Each(func(callback timestep.UpdateCallback) {
@@ -505,7 +471,7 @@ func (s *Scene) updateAnimations(elapsedTime time.Duration) {
 	preAnimationSpan.End()
 
 	animationSpan := metric.BeginRegion("anim")
-	s.updatePlaybacks(elapsedTime)
+	s.updateAnimationTrees(elapsedTime)
 	animationSpan.End()
 
 	postAnimationSpan := metric.BeginRegion("post-anim")
@@ -534,11 +500,9 @@ func (s *Scene) updateNodes(elapsedTime time.Duration) {
 	postNodeSpan.End()
 }
 
-func (s *Scene) updatePlaybacks(elapsedTime time.Duration) {
-	for _, playback := range s.playbacks.Unbox() {
-		if playback.playing {
-			playback.Advance(elapsedTime.Seconds())
-		}
+func (s *Scene) updateAnimationTrees(elapsedTime time.Duration) {
+	for _, tree := range s.animationTrees.Unbox() {
+		tree.SetPosition(tree.Position() + elapsedTime.Seconds())
 	}
 }
 
