@@ -38,8 +38,8 @@ func (d *ModelDefinition) Animations() []*AnimationDefinition {
 func (d *ModelDefinition) AnimatedNodeNames() []string {
 	result := ds.NewSet[string](0)
 	for _, def := range d.animations {
-		for _, binding := range def.bindings {
-			result.Add(binding.NodeName)
+		for nodeName := range def.bindings {
+			result.Add(nodeName)
 		}
 	}
 	return result.Items()
@@ -189,8 +189,10 @@ func (m *Model) FindAnimation(name string) *Animation {
 func (m *Model) AnimatedNodes() []*hierarchy.Node {
 	result := ds.NewSet[*hierarchy.Node](0)
 	for _, animation := range m.animations {
-		for _, binding := range animation.bindings {
-			result.Add(binding.node)
+		for nodeName := range animation.bindings {
+			if node := m.FindNode(nodeName); node != nil {
+				result.Add(node)
+			}
 		}
 	}
 	return result.Items()
