@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"math"
 	"slices"
-	"time"
 
 	"github.com/mokiat/gblob"
 	"github.com/mokiat/gog/ds"
@@ -20,7 +19,6 @@ import (
 	"github.com/mokiat/lacking/render/ubo"
 	"github.com/mokiat/lacking/util/blob"
 	"github.com/mokiat/lacking/util/spatial"
-	"github.com/x448/float16"
 )
 
 const (
@@ -44,9 +42,6 @@ func newRenderer(api render.API, shaders ShaderCollection, stageData *commonStag
 		shaders: shaders,
 
 		stageData: stageData,
-
-		exposureBufferData: make([]byte, 4*render.SizeF32), // Worst case RGBA32F
-		exposureTarget:     1.0,
 
 		visibleStaticMeshes: spatial.NewVisitorBucket[uint32](2_000),
 		visibleMeshes:       spatial.NewVisitorBucket[*Mesh](2_000),
@@ -89,17 +84,6 @@ type sceneRenderer struct {
 
 	shadowDepthTexture render.Texture
 	shadowFramebuffer  render.Framebuffer
-
-	exposureAlbedoTexture   render.Texture
-	exposureFramebuffer     render.Framebuffer
-	exposureFormat          render.DataFormat
-	exposureProgram         render.Program
-	exposurePipeline        render.Pipeline
-	exposureBufferData      gblob.LittleEndianBlock
-	exposureBuffer          render.Buffer
-	exposureSync            render.Fence
-	exposureTarget          float32
-	exposureUpdateTimestamp time.Time
 
 	ambientLightProgram  render.Program
 	ambientLightPipeline render.Pipeline
@@ -233,48 +217,6 @@ func (r *sceneRenderer) Allocate() {
 	r.shadowFramebuffer = r.api.CreateFramebuffer(render.FramebufferInfo{
 		DepthAttachment: r.shadowDepthTexture,
 	})
-
-	r.exposureAlbedoTexture = r.api.CreateColorTexture2D(render.ColorTexture2DInfo{
-		Width:           1,
-		Height:          1,
-		GenerateMipmaps: false,
-		GammaCorrection: false,
-		Format:          render.DataFormatRGBA16F,
-	})
-	r.exposureFramebuffer = r.api.CreateFramebuffer(render.FramebufferInfo{
-		ColorAttachments: [4]render.Texture{
-			r.exposureAlbedoTexture,
-		},
-	})
-	r.exposureProgram = r.api.CreateProgram(render.ProgramInfo{
-		SourceCode: r.shaders.ExposureSet(),
-		TextureBindings: []render.TextureBinding{
-			render.NewTextureBinding("fbColor0TextureIn", internal.TextureBindingLightingFramebufferColor0),
-		},
-		UniformBindings: []render.UniformBinding{},
-	})
-	r.exposurePipeline = r.api.CreatePipeline(render.PipelineInfo{
-		Program:      r.exposureProgram,
-		VertexArray:  quadShape.VertexArray(),
-		Topology:     quadShape.Topology(),
-		Culling:      render.CullModeBack,
-		FrontFace:    render.FaceOrientationCCW,
-		DepthTest:    false,
-		DepthWrite:   false,
-		StencilTest:  false,
-		ColorWrite:   render.ColorMaskTrue,
-		BlendEnabled: false,
-	})
-	r.exposureBuffer = r.api.CreatePixelTransferBuffer(render.BufferInfo{
-		Dynamic: true,
-		Size:    uint32(len(r.exposureBufferData)),
-	})
-	r.exposureFormat = r.api.DetermineContentFormat(r.exposureFramebuffer)
-	if r.exposureFormat == render.DataFormatUnsupported {
-		// This happens on MacOS on native; fallback to a default format and
-		// hope for the best.
-		r.exposureFormat = render.DataFormatRGBA32F
-	}
 
 	r.ambientLightProgram = r.api.CreateProgram(render.ProgramInfo{
 		SourceCode: r.shaders.AmbientLightSet(),
@@ -451,6 +393,11 @@ func (r *sceneRenderer) Allocate() {
 
 	r.modelUniformBufferData = make([]byte, modelUniformBufferSize)
 
+	exposureProbeStage := newExposureProbeStage(r.api, r.shaders, r.stageData, ExposureProbeStageInput{
+		HDRTexture: func() render.Texture {
+			return r.lightingAlbedoTexture
+		},
+	})
 	bloomStage := newBloomStage(r.api, r.shaders, r.stageData, BloomStageInput{
 		HDRTexture: func() render.Texture {
 			return r.lightingAlbedoTexture
@@ -465,6 +412,7 @@ func (r *sceneRenderer) Allocate() {
 
 	// TODO: Make this configurable and user-defined.
 	r.stages = []Stage{
+		exposureProbeStage,
 		bloomStage,
 		toneMappingStage,
 	}
@@ -483,12 +431,6 @@ func (r *sceneRenderer) Release() {
 
 	defer r.shadowDepthTexture.Release()
 	defer r.shadowFramebuffer.Release()
-
-	defer r.exposureAlbedoTexture.Release()
-	defer r.exposureFramebuffer.Release()
-	defer r.exposureProgram.Release()
-	defer r.exposurePipeline.Release()
-	defer r.exposureBuffer.Release()
 
 	defer r.ambientLightProgram.Release()
 	defer r.ambientLightPipeline.Release()
@@ -637,12 +579,10 @@ func (r *sceneRenderer) Render(framebuffer render.Framebuffer, viewport Viewport
 	r.renderGeometryPass(ctx)
 	r.renderLightingPass(ctx)
 	r.renderForwardPass(ctx)
-	if camera.autoExposureEnabled {
-		r.renderExposureProbePass(ctx)
-	}
 
 	stageCtx := StageContext{
-		Camera: ctx.camera,
+		Camera:          ctx.camera,
+		CameraPlacement: r.cameraPlacement,
 		Viewport: render.Area{
 			X:      ctx.x,
 			Y:      ctx.y,
@@ -666,11 +606,6 @@ func (r *sceneRenderer) Render(framebuffer render.Framebuffer, viewport Viewport
 
 	for _, stage := range r.stages {
 		stage.PostRender()
-	}
-
-	// TODO: Move this to exposure probe stage
-	if camera.autoExposureEnabled && r.exposureSync == nil {
-		r.exposureSync = r.api.Queue().TrackSubmittedWorkDone()
 	}
 }
 
@@ -1014,92 +949,6 @@ func (r *sceneRenderer) renderSky(sky *Sky) {
 			}
 		}
 		commandBuffer.DrawIndexed(pass.IndexByteOffset, pass.IndexCount, 1)
-	}
-}
-
-func (r *sceneRenderer) renderExposureProbePass(ctx renderCtx) {
-	defer metric.BeginRegion("exposure").End()
-
-	if r.exposureSync != nil {
-		switch r.exposureSync.Status() {
-		case render.FenceStatusSuccess:
-			r.api.Queue().ReadBuffer(r.exposureBuffer, 0, r.exposureBufferData)
-			var brightness float32
-			switch r.exposureFormat {
-			case render.DataFormatRGBA16F:
-				brightness = float16.Frombits(r.exposureBufferData.Uint16(0)).Float32()
-			case render.DataFormatRGBA32F:
-				brightness = r.exposureBufferData.Float32(0)
-			}
-			brightness = sprec.Clamp(brightness, 0.001, 1000.0)
-
-			r.exposureTarget = 1.0 / (2 * 3.14 * brightness)
-			if r.exposureTarget > ctx.camera.maxExposure {
-				r.exposureTarget = ctx.camera.maxExposure
-			}
-			if r.exposureTarget < ctx.camera.minExposure {
-				r.exposureTarget = ctx.camera.minExposure
-			}
-			r.exposureSync.Release()
-			r.exposureSync = nil
-
-		case render.FenceStatusNotReady:
-			// wait until next frame
-		}
-	}
-
-	if !r.exposureUpdateTimestamp.IsZero() {
-		elapsedSeconds := float32(time.Since(r.exposureUpdateTimestamp).Seconds())
-		ctx.camera.exposure = sprec.Mix(
-			ctx.camera.exposure,
-			r.exposureTarget,
-			sprec.Clamp(ctx.camera.autoExposureSpeed*elapsedSeconds, 0.0, 1.0),
-		)
-	}
-	r.exposureUpdateTimestamp = time.Now()
-
-	if r.exposureSync == nil {
-		quadShape := r.stageData.QuadShape()
-		commandBuffer := r.stageData.CommandBuffer()
-		commandBuffer.BeginRenderPass(render.RenderPassInfo{
-			Framebuffer: r.exposureFramebuffer,
-			Viewport: render.Area{
-				X:      0,
-				Y:      0,
-				Width:  1,
-				Height: 1,
-			},
-			DepthLoadOp:    render.LoadOperationLoad,
-			DepthStoreOp:   render.StoreOperationDiscard,
-			StencilLoadOp:  render.LoadOperationLoad,
-			StencilStoreOp: render.StoreOperationDiscard,
-			Colors: [4]render.ColorAttachmentInfo{
-				{
-					LoadOp:     render.LoadOperationClear,
-					StoreOp:    render.StoreOperationDiscard,
-					ClearValue: [4]float32{0.0, 0.0, 0.0, 0.0},
-				},
-			},
-		})
-		commandBuffer.BindPipeline(r.exposurePipeline)
-		commandBuffer.TextureUnit(internal.TextureBindingLightingFramebufferColor0, r.lightingAlbedoTexture)
-		commandBuffer.SamplerUnit(internal.TextureBindingLightingFramebufferColor0, r.nearestSampler)
-		commandBuffer.UniformBufferUnit(
-			internal.UniformBufferBindingCamera,
-			r.cameraPlacement.Buffer,
-			r.cameraPlacement.Offset,
-			r.cameraPlacement.Size,
-		)
-		commandBuffer.DrawIndexed(0, quadShape.IndexCount(), 1)
-		commandBuffer.CopyFramebufferToBuffer(render.CopyFramebufferToBufferInfo{
-			Buffer: r.exposureBuffer,
-			X:      0,
-			Y:      0,
-			Width:  1,
-			Height: 1,
-			Format: r.exposureFormat,
-		})
-		commandBuffer.EndRenderPass()
 	}
 }
 

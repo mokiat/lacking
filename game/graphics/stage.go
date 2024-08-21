@@ -1,6 +1,9 @@
 package graphics
 
-import "github.com/mokiat/lacking/render"
+import (
+	"github.com/mokiat/lacking/render"
+	"github.com/mokiat/lacking/render/ubo"
+)
 
 // Stage represents a render stage (e.g. geometry, lighting, post-processing).
 type Stage interface {
@@ -28,6 +31,10 @@ type StageContext struct {
 
 	// Camera is the camera that should be used to render the stage.
 	Camera *Camera
+
+	// CameraPlacement is the uniform buffer segment that contains the camera
+	// data.
+	CameraPlacement ubo.UniformPlacement
 
 	// Viewport is the area of the screen that the stage should render to.
 	// The width and height of the viewport will match the width and height
