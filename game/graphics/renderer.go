@@ -135,7 +135,7 @@ type sceneRenderer struct {
 	modelUniformBufferData gblob.LittleEndianBlock
 	cameraPlacement        ubo.UniformPlacement
 
-	bloomStage       *bloomRenderStage
+	bloomStage       *BloomStage
 	toneMappingStage *ToneMappingStage
 }
 
@@ -452,14 +452,18 @@ func (r *sceneRenderer) Allocate() {
 
 	r.modelUniformBufferData = make([]byte, modelUniformBufferSize)
 
-	r.bloomStage = newBloomRenderStage(r.api, r.shaders, r.stageData)
+	r.bloomStage = newBloomStage(r.api, r.shaders, r.stageData, BloomStageInput{
+		HDRTexture: func() render.Texture {
+			return r.lightingAlbedoTexture
+		},
+	})
 	r.bloomStage.Allocate()
 
 	r.toneMappingStage = newToneMappingStage(r.api, r.shaders, r.stageData, ToneMappingStageInput{
 		HDRTexture: func() render.Texture {
 			return r.lightingAlbedoTexture
 		},
-		BloomTexture: opt.V(StageTextureParameter(r.bloomStage.OutputTexture)),
+		BloomTexture: opt.V(StageTextureParameter(r.bloomStage.BloomTexture)),
 	})
 	r.toneMappingStage.Allocate()
 }
@@ -627,8 +631,21 @@ func (r *sceneRenderer) Render(framebuffer render.Framebuffer, viewport Viewport
 	if camera.autoExposureEnabled {
 		r.renderExposureProbePass(ctx)
 	}
-	r.renderBloomStage()
-	r.renderPostprocessingPass(ctx)
+
+	stageCtx := StageContext{
+		Camera: ctx.camera,
+		Viewport: render.Area{
+			X:      ctx.x,
+			Y:      ctx.y,
+			Width:  ctx.width,
+			Height: ctx.height,
+		},
+		Framebuffer: ctx.framebuffer,
+	}
+	// TODO: Iterate over stages from a slice, and allow that
+	// slice to be user-defined and wired.
+	r.bloomStage.Render(stageCtx)
+	r.toneMappingStage.Render(stageCtx)
 
 	uniformSpan := metric.BeginRegion("upload")
 	uniformBuffer.Upload()
@@ -1071,26 +1088,6 @@ func (r *sceneRenderer) renderExposureProbePass(ctx renderCtx) {
 		})
 		commandBuffer.EndRenderPass()
 	}
-}
-
-func (r *sceneRenderer) renderBloomStage() {
-	defer metric.BeginRegion("bloom").End()
-	r.bloomStage.Run(r.lightingAlbedoTexture)
-}
-
-func (r *sceneRenderer) renderPostprocessingPass(ctx renderCtx) {
-	defer metric.BeginRegion("post").End()
-
-	r.toneMappingStage.Render(StageContext{
-		Camera: ctx.camera,
-		Viewport: render.Area{
-			X:      ctx.x,
-			Y:      ctx.y,
-			Width:  ctx.width,
-			Height: ctx.height,
-		},
-		Framebuffer: ctx.framebuffer,
-	})
 }
 
 func (r *sceneRenderer) queueMeshRenderItems(mesh *Mesh, passType internal.MeshRenderPassType) {

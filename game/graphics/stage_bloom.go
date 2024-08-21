@@ -1,6 +1,7 @@
 package graphics
 
 import (
+	"github.com/mokiat/lacking/debug/metric"
 	"github.com/mokiat/lacking/game/graphics/internal"
 	"github.com/mokiat/lacking/render"
 	"github.com/mokiat/lacking/render/ubo"
@@ -8,26 +9,37 @@ import (
 
 const (
 	bloomDownsampleHDRImageSlot = 0
+	bloomBlurSourceImageSlot    = 0
 
-	bloomBlurSourceImageSlot = 0
+	bloomDefaultBlurIterations = 2
 )
 
-const (
-	blurIterations = 2
-)
+// BloomStageInput is used to configure a BloomStage.
+type BloomStageInput struct {
+	HDRTexture StageTextureParameter
+}
 
-func newBloomRenderStage(api render.API, shaders ShaderCollection, data *commonStageData) *bloomRenderStage {
-	return &bloomRenderStage{
+func newBloomStage(api render.API, shaders ShaderCollection, data *commonStageData, input BloomStageInput) *BloomStage {
+	return &BloomStage{
 		api:     api,
 		shaders: shaders,
 		data:    data,
+
+		inHDRTexture: input.HDRTexture,
+		iterations:   bloomDefaultBlurIterations,
 	}
 }
 
-type bloomRenderStage struct {
+var _ Stage = (*BloomStage)(nil)
+
+// BloomStage is a stage that produces a bloom overlay texture.
+type BloomStage struct {
 	api     render.API
 	shaders ShaderCollection
 	data    *commonStageData
+
+	inHDRTexture StageTextureParameter
+	iterations   int
 
 	framebufferWidth  uint32
 	framebufferHeight uint32
@@ -38,9 +50,6 @@ type bloomRenderStage struct {
 	pongFramebuffer render.Framebuffer
 	pongTexture     render.Texture
 
-	outputTexture render.Texture
-	outputSampler render.Sampler
-
 	downsampleProgram  render.Program
 	downsamplePipeline render.Pipeline
 	downsampleSampler  render.Sampler
@@ -50,7 +59,24 @@ type bloomRenderStage struct {
 	blurSampler  render.Sampler
 }
 
-func (s *bloomRenderStage) Allocate() {
+// Iterations returns the number of blur iterations that are
+// performed on the bloom overlay texture.
+func (s *BloomStage) Iterations() int {
+	return s.iterations
+}
+
+// SetIterations sets the number of blur iterations that should be
+// performed on the bloom overlay texture.
+func (s *BloomStage) SetIterations(iterations int) {
+	s.iterations = iterations
+}
+
+// BloomTexture returns the texture that contains the bloom overlay.
+func (s *BloomStage) BloomTexture() render.Texture {
+	return s.pingTexture
+}
+
+func (s *BloomStage) Allocate() {
 	quadShape := s.data.QuadShape()
 
 	s.allocateTextures(1, 1)
@@ -107,16 +133,9 @@ func (s *bloomRenderStage) Allocate() {
 		Filtering:  render.FilterModeNearest,
 		Mipmapping: false,
 	})
-
-	s.outputTexture = s.pingTexture
-	s.outputSampler = s.api.CreateSampler(render.SamplerInfo{
-		Wrapping:   render.WrapModeClamp,
-		Filtering:  render.FilterModeLinear,
-		Mipmapping: false,
-	})
 }
 
-func (s *bloomRenderStage) Release() {
+func (s *BloomStage) Release() {
 	defer s.releaseTextures()
 
 	defer s.downsampleProgram.Release()
@@ -126,19 +145,22 @@ func (s *bloomRenderStage) Release() {
 	defer s.blurProgram.Release()
 	defer s.blurPipeline.Release()
 	defer s.blurSampler.Release()
-
-	defer s.outputSampler.Release()
 }
 
-func (s *bloomRenderStage) Resize(width, height uint32) {
-	width = max(1, width/2)
-	height = max(1, height/2)
-
+func (s *BloomStage) Resize(width, height uint32) {
 	s.releaseTextures()
-	s.allocateTextures(width, height)
+	s.allocateTextures(
+		max(1, width/2),
+		max(1, height/2),
+	)
 }
 
-func (s *bloomRenderStage) Run(hdrImage render.Texture) {
+func (s *BloomStage) Render(ctx StageContext) {
+	// TODO: Use built-in tracing. It does not actually allocate memory
+	// when tracing is not enabled. Furthermore, the context can be Background
+	// and nesting should still work. The context is used for tasks.
+	defer metric.BeginRegion("bloom").End()
+
 	commandBuffer := s.data.CommandBuffer()
 	uniformBuffer := s.data.UniformBuffer()
 	quadShape := s.data.QuadShape()
@@ -163,14 +185,14 @@ func (s *bloomRenderStage) Run(hdrImage render.Texture) {
 		},
 	})
 	commandBuffer.BindPipeline(s.downsamplePipeline)
-	commandBuffer.TextureUnit(bloomDownsampleHDRImageSlot, hdrImage)
+	commandBuffer.TextureUnit(bloomDownsampleHDRImageSlot, s.inHDRTexture())
 	commandBuffer.SamplerUnit(bloomDownsampleHDRImageSlot, s.downsampleSampler)
 	commandBuffer.DrawIndexed(0, quadShape.IndexCount(), 1)
 	commandBuffer.EndRenderPass()
 
 	// Perform blur passes
 	horizontal := float32(1.0)
-	for range blurIterations * 2 {
+	for range s.iterations * 2 { // times 2 because we do horizontal and vertical passes
 		commandBuffer.BeginRenderPass(render.RenderPassInfo{
 			Framebuffer: s.pongFramebuffer,
 			Viewport: render.Area{
@@ -203,19 +225,9 @@ func (s *bloomRenderStage) Run(hdrImage render.Texture) {
 		s.pingTexture, s.pongTexture = s.pongTexture, s.pingTexture
 		horizontal = 1.0 - horizontal
 	}
-
-	s.outputTexture = s.pingTexture
 }
 
-func (s *bloomRenderStage) OutputTexture() render.Texture {
-	return s.outputTexture
-}
-
-func (s *bloomRenderStage) OutputSampler() render.Sampler {
-	return s.outputSampler
-}
-
-func (s *bloomRenderStage) allocateTextures(width, height uint32) {
+func (s *BloomStage) allocateTextures(width, height uint32) {
 	s.framebufferWidth = width
 	s.framebufferHeight = height
 
@@ -244,11 +256,9 @@ func (s *bloomRenderStage) allocateTextures(width, height uint32) {
 			s.pongTexture,
 		},
 	})
-
-	s.outputTexture = s.pingTexture
 }
 
-func (s *bloomRenderStage) releaseTextures() {
+func (s *BloomStage) releaseTextures() {
 	defer s.pingFramebuffer.Release()
 	defer s.pingTexture.Release()
 

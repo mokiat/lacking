@@ -8,8 +8,6 @@ import (
 	"github.com/mokiat/lacking/render/ubo"
 )
 
-// TODO: Switch renderer to this stage!
-
 type ToneMappingStageInput struct {
 	HDRTexture   StageTextureParameter
 	BloomTexture opt.T[StageTextureParameter]
