@@ -147,12 +147,13 @@ func (s *BloomStage) Release() {
 	defer s.blurSampler.Release()
 }
 
-func (s *BloomStage) Resize(width, height uint32) {
-	s.releaseTextures()
-	s.allocateTextures(
-		max(1, width/2),
-		max(1, height/2),
-	)
+func (s *BloomStage) PreRender(width, height uint32) {
+	targetWidth := max(1, width/2)
+	targetHeight := max(1, height/2)
+	if s.framebufferWidth != targetWidth || s.framebufferHeight != targetHeight {
+		s.releaseTextures()
+		s.allocateTextures(targetWidth, targetHeight)
+	}
 }
 
 func (s *BloomStage) Render(ctx StageContext) {
@@ -225,6 +226,10 @@ func (s *BloomStage) Render(ctx StageContext) {
 		s.pingTexture, s.pongTexture = s.pongTexture, s.pingTexture
 		horizontal = 1.0 - horizontal
 	}
+}
+
+func (s *BloomStage) PostRender() {
+	// Nothing to do here.
 }
 
 func (s *BloomStage) allocateTextures(width, height uint32) {

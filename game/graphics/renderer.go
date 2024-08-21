@@ -135,8 +135,7 @@ type sceneRenderer struct {
 	modelUniformBufferData gblob.LittleEndianBlock
 	cameraPlacement        ubo.UniformPlacement
 
-	bloomStage       *BloomStage
-	toneMappingStage *ToneMappingStage
+	stages []Stage
 }
 
 func (r *sceneRenderer) createFramebuffers(width, height uint32) {
@@ -452,20 +451,27 @@ func (r *sceneRenderer) Allocate() {
 
 	r.modelUniformBufferData = make([]byte, modelUniformBufferSize)
 
-	r.bloomStage = newBloomStage(r.api, r.shaders, r.stageData, BloomStageInput{
+	bloomStage := newBloomStage(r.api, r.shaders, r.stageData, BloomStageInput{
 		HDRTexture: func() render.Texture {
 			return r.lightingAlbedoTexture
 		},
 	})
-	r.bloomStage.Allocate()
+	toneMappingStage := newToneMappingStage(r.api, r.shaders, r.stageData, ToneMappingStageInput{
+		HDRTexture: func() render.Texture {
+			return r.lightingAlbedoTexture
+		},
+		BloomTexture: opt.V(StageTextureParameter(bloomStage.BloomTexture)),
+	})
 
-	r.toneMappingStage = newToneMappingStage(r.api, r.shaders, r.stageData, ToneMappingStageInput{
-		HDRTexture: func() render.Texture {
-			return r.lightingAlbedoTexture
-		},
-		BloomTexture: opt.V(StageTextureParameter(r.bloomStage.BloomTexture)),
-	})
-	r.toneMappingStage.Allocate()
+	// TODO: Make this configurable and user-defined.
+	r.stages = []Stage{
+		bloomStage,
+		toneMappingStage,
+	}
+
+	for _, stage := range r.stages {
+		stage.Allocate()
+	}
 }
 
 func (r *sceneRenderer) Release() {
@@ -501,8 +507,9 @@ func (r *sceneRenderer) Release() {
 	defer r.debugProgram.Release()
 	defer r.debugPipeline.Release()
 
-	defer r.bloomStage.Release()
-	defer r.toneMappingStage.Release()
+	for _, stage := range r.stages {
+		defer stage.Allocate()
+	}
 }
 
 func (r *sceneRenderer) ResetDebugLines() {
@@ -563,7 +570,9 @@ func (r *sceneRenderer) Render(framebuffer render.Framebuffer, viewport Viewport
 	if viewport.Width != r.framebufferWidth || viewport.Height != r.framebufferHeight {
 		r.releaseFramebuffers()
 		r.createFramebuffers(viewport.Width, viewport.Height)
-		r.bloomStage.Resize(viewport.Width, viewport.Height)
+	}
+	for _, stage := range r.stages {
+		stage.PreRender(viewport.Width, viewport.Height)
 	}
 
 	projectionMatrix := r.evaluateProjectionMatrix(camera, viewport.Width, viewport.Height)
@@ -642,10 +651,9 @@ func (r *sceneRenderer) Render(framebuffer render.Framebuffer, viewport Viewport
 		},
 		Framebuffer: ctx.framebuffer,
 	}
-	// TODO: Iterate over stages from a slice, and allow that
-	// slice to be user-defined and wired.
-	r.bloomStage.Render(stageCtx)
-	r.toneMappingStage.Render(stageCtx)
+	for _, stage := range r.stages {
+		stage.Render(stageCtx)
+	}
 
 	uniformSpan := metric.BeginRegion("upload")
 	uniformBuffer.Upload()
@@ -656,6 +664,11 @@ func (r *sceneRenderer) Render(framebuffer render.Framebuffer, viewport Viewport
 	r.api.Queue().Submit(commandBuffer)
 	submitSpan.End()
 
+	for _, stage := range r.stages {
+		stage.PostRender()
+	}
+
+	// TODO: Move this to exposure probe stage
 	if camera.autoExposureEnabled && r.exposureSync == nil {
 		r.exposureSync = r.api.Queue().TrackSubmittedWorkDone()
 	}

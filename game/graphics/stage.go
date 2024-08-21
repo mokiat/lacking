@@ -12,15 +12,15 @@ type Stage interface {
 	// Release is called once in the end to release any graphics resources.
 	Release()
 
-	// Resize is called whenever the screen is resized. The width and height
-	// are in pixels and will never be zero or less.
-	//
-	// The implementation may choose to ignore this call if it does not need
-	// to adjust its resources.
-	Resize(width, height uint32)
+	// PreRender is called before the stage renders its content. The width and
+	// height are in pixels and will never be zero or less.
+	PreRender(width, height uint32)
 
 	// Render is called whenever the stage should render its content.
 	Render(ctx StageContext)
+
+	// PostRender is called after all commands have been queued to the render API.
+	PostRender()
 }
 
 // StageContext represents the context that is passed to a render stage.
@@ -31,7 +31,7 @@ type StageContext struct {
 
 	// Viewport is the area of the screen that the stage should render to.
 	// The width and height of the viewport will match the width and height
-	// that were passed to the last Resize method call.
+	// that were passed to the PreRender method call.
 	Viewport render.Area
 
 	// Framebuffer is the screen framebuffer. A stage would not normally use

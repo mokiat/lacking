@@ -92,7 +92,7 @@ func (s *ToneMappingStage) Release() {
 	defer s.pipeline.Release()
 }
 
-func (s *ToneMappingStage) Resize(width, height uint32) {
+func (s *ToneMappingStage) PreRender(width, height uint32) {
 	// Nothing to do here.
 }
 
@@ -141,4 +141,8 @@ func (s *ToneMappingStage) Render(ctx StageContext) {
 	commandBuffer.DrawIndexed(0, quadShape.IndexCount(), 1)
 
 	commandBuffer.EndRenderPass()
+}
+
+func (s *ToneMappingStage) PostRender() {
+	// Nothing to do here.
 }
