@@ -20,6 +20,9 @@ type commonStageData struct {
 	sphereShape *internal.Shape
 	coneShape   *internal.Shape
 
+	nearestSampler render.Sampler
+	linearSampler  render.Sampler
+
 	commandBuffer render.CommandBuffer
 	uniformBuffer *ubo.UniformBlockBuffer
 }
@@ -30,6 +33,17 @@ func (d *commonStageData) Allocate() {
 	d.sphereShape = internal.CreateSphereShape(d.api)
 	d.coneShape = internal.CreateConeShape(d.api)
 
+	d.nearestSampler = d.api.CreateSampler(render.SamplerInfo{
+		Wrapping:   render.WrapModeClamp,
+		Filtering:  render.FilterModeNearest,
+		Mipmapping: false,
+	})
+	d.linearSampler = d.api.CreateSampler(render.SamplerInfo{
+		Wrapping:   render.WrapModeClamp,
+		Filtering:  render.FilterModeLinear,
+		Mipmapping: false,
+	})
+
 	d.commandBuffer = d.api.CreateCommandBuffer(commandBufferSize)
 	d.uniformBuffer = ubo.NewUniformBlockBuffer(d.api, uniformBufferSize)
 }
@@ -39,6 +53,9 @@ func (d *commonStageData) Release() {
 	defer d.cubeShape.Release()
 	defer d.sphereShape.Release()
 	defer d.coneShape.Release()
+
+	defer d.nearestSampler.Release()
+	defer d.linearSampler.Release()
 
 	defer d.uniformBuffer.Release()
 }
@@ -65,4 +82,12 @@ func (d *commonStageData) SphereShape() *internal.Shape {
 
 func (d *commonStageData) ConeShape() *internal.Shape {
 	return d.coneShape
+}
+
+func (d *commonStageData) NearestSampler() render.Sampler {
+	return d.nearestSampler
+}
+
+func (d *commonStageData) LinearSampler() render.Sampler {
+	return d.linearSampler
 }

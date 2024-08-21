@@ -307,6 +307,12 @@ func (e *Engine) CreateScene() *Scene {
 	return newScene(e, e.renderer)
 }
 
+// CreateToneMappingStage creates a new ToneMappingStage using the specified
+// input object.
+func (e *Engine) CreateToneMappingStage(input ToneMappingStageInput) *ToneMappingStage {
+	return newToneMappingStage(e.api, e.shaders, e.stageData, input)
+}
+
 func (e *Engine) createGeometryPassProgram(programCode render.ProgramCode) render.Program {
 	return e.api.CreateProgram(render.ProgramInfo{
 		SourceCode: programCode,

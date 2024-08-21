@@ -54,8 +54,6 @@ func newRenderer(api render.API, shaders ShaderCollection, stageData *commonStag
 		litStaticMeshes: spatial.NewVisitorBucket[uint32](2_000),
 		litMeshes:       spatial.NewVisitorBucket[*Mesh](2_000),
 
-		bloomStage: newBloomRenderStage(api, shaders, stageData),
-
 		ambientLightBucket: spatial.NewVisitorBucket[*AmbientLight](16),
 
 		pointLightBucket: spatial.NewVisitorBucket[*PointLight](16),
@@ -103,11 +101,6 @@ type sceneRenderer struct {
 	exposureTarget          float32
 	exposureUpdateTimestamp time.Time
 
-	bloomStage *bloomRenderStage
-
-	postprocessingProgram  render.Program
-	postprocessingPipeline render.Pipeline
-
 	ambientLightProgram  render.Program
 	ambientLightPipeline render.Pipeline
 	ambientLightBucket   *spatial.VisitorBucket[*AmbientLight]
@@ -141,6 +134,9 @@ type sceneRenderer struct {
 
 	modelUniformBufferData gblob.LittleEndianBlock
 	cameraPlacement        ubo.UniformPlacement
+
+	bloomStage       *bloomRenderStage
+	toneMappingStage *ToneMappingStage
 }
 
 func (r *sceneRenderer) createFramebuffers(width, height uint32) {
@@ -208,7 +204,6 @@ func (r *sceneRenderer) releaseFramebuffers() {
 
 func (r *sceneRenderer) Allocate() {
 	r.createFramebuffers(800, 600)
-	r.bloomStage.Allocate()
 
 	r.nearestSampler = r.api.CreateSampler(render.SamplerInfo{
 		Wrapping:   render.WrapModeClamp,
@@ -281,33 +276,6 @@ func (r *sceneRenderer) Allocate() {
 		// hope for the best.
 		r.exposureFormat = render.DataFormatRGBA32F
 	}
-
-	r.postprocessingProgram = r.api.CreateProgram(render.ProgramInfo{
-		SourceCode: r.shaders.PostprocessingSet(PostprocessingShaderConfig{
-			ToneMapping: ExponentialToneMapping,
-			Bloom:       true,
-		}),
-		TextureBindings: []render.TextureBinding{
-			render.NewTextureBinding("fbColor0TextureIn", internal.TextureBindingPostprocessFramebufferColor0),
-			render.NewTextureBinding("lackingBloomTexture", internal.TextureBindingPostprocessBloom),
-		},
-		UniformBindings: []render.UniformBinding{
-			render.NewUniformBinding("Postprocess", internal.UniformBufferBindingPostprocess),
-		},
-	})
-	r.postprocessingPipeline = r.api.CreatePipeline(render.PipelineInfo{
-		Program:         r.postprocessingProgram,
-		VertexArray:     quadShape.VertexArray(),
-		Topology:        quadShape.Topology(),
-		Culling:         render.CullModeBack,
-		FrontFace:       render.FaceOrientationCCW,
-		DepthTest:       false,
-		DepthWrite:      false,
-		DepthComparison: render.ComparisonAlways,
-		StencilTest:     false,
-		ColorWrite:      [4]bool{true, true, true, true},
-		BlendEnabled:    false,
-	})
 
 	r.ambientLightProgram = r.api.CreateProgram(render.ProgramInfo{
 		SourceCode: r.shaders.AmbientLightSet(),
@@ -483,12 +451,21 @@ func (r *sceneRenderer) Allocate() {
 	})
 
 	r.modelUniformBufferData = make([]byte, modelUniformBufferSize)
+
+	r.bloomStage = newBloomRenderStage(r.api, r.shaders, r.stageData)
+	r.bloomStage.Allocate()
+
+	r.toneMappingStage = newToneMappingStage(r.api, r.shaders, r.stageData, ToneMappingStageInput{
+		HDRTexture: func() render.Texture {
+			return r.lightingAlbedoTexture
+		},
+		BloomTexture: opt.V(StageTextureParameter(r.bloomStage.OutputTexture)),
+	})
+	r.toneMappingStage.Allocate()
 }
 
 func (r *sceneRenderer) Release() {
 	defer r.releaseFramebuffers()
-
-	defer r.bloomStage.Release()
 
 	defer r.nearestSampler.Release()
 	defer r.linearSampler.Release()
@@ -502,9 +479,6 @@ func (r *sceneRenderer) Release() {
 	defer r.exposureProgram.Release()
 	defer r.exposurePipeline.Release()
 	defer r.exposureBuffer.Release()
-
-	defer r.postprocessingProgram.Release()
-	defer r.postprocessingPipeline.Release()
 
 	defer r.ambientLightProgram.Release()
 	defer r.ambientLightPipeline.Release()
@@ -522,6 +496,9 @@ func (r *sceneRenderer) Release() {
 	defer r.debugVertexArray.Release()
 	defer r.debugProgram.Release()
 	defer r.debugPipeline.Release()
+
+	defer r.bloomStage.Release()
+	defer r.toneMappingStage.Release()
 }
 
 func (r *sceneRenderer) ResetDebugLines() {
@@ -1104,48 +1081,16 @@ func (r *sceneRenderer) renderBloomStage() {
 func (r *sceneRenderer) renderPostprocessingPass(ctx renderCtx) {
 	defer metric.BeginRegion("post").End()
 
-	quadShape := r.stageData.QuadShape()
-
-	uniformBuffer := r.stageData.UniformBuffer()
-	postprocessPlacement := ubo.WriteUniform(uniformBuffer, internal.PostprocessUniform{
-		Exposure: ctx.camera.exposure,
-	})
-
-	commandBuffer := r.stageData.CommandBuffer()
-	commandBuffer.BeginRenderPass(render.RenderPassInfo{
-		Framebuffer: ctx.framebuffer,
+	r.toneMappingStage.Render(StageContext{
+		Camera: ctx.camera,
 		Viewport: render.Area{
 			X:      ctx.x,
 			Y:      ctx.y,
 			Width:  ctx.width,
 			Height: ctx.height,
 		},
-		DepthLoadOp:    render.LoadOperationLoad,
-		DepthStoreOp:   render.StoreOperationDiscard,
-		StencilLoadOp:  render.LoadOperationLoad,
-		StencilStoreOp: render.StoreOperationDiscard,
-		Colors: [4]render.ColorAttachmentInfo{
-			{
-				LoadOp:  render.LoadOperationLoad,
-				StoreOp: render.StoreOperationStore,
-			},
-		},
+		Framebuffer: ctx.framebuffer,
 	})
-
-	commandBuffer.BindPipeline(r.postprocessingPipeline)
-	commandBuffer.TextureUnit(internal.TextureBindingPostprocessFramebufferColor0, r.lightingAlbedoTexture)
-	commandBuffer.SamplerUnit(internal.TextureBindingPostprocessFramebufferColor0, r.nearestSampler)
-	commandBuffer.TextureUnit(internal.TextureBindingPostprocessBloom, r.bloomStage.OutputTexture())
-	commandBuffer.SamplerUnit(internal.TextureBindingPostprocessBloom, r.bloomStage.OutputSampler())
-	commandBuffer.UniformBufferUnit(
-		internal.UniformBufferBindingPostprocess,
-		postprocessPlacement.Buffer,
-		postprocessPlacement.Offset,
-		postprocessPlacement.Size,
-	)
-	commandBuffer.DrawIndexed(0, quadShape.IndexCount(), 1)
-
-	commandBuffer.EndRenderPass()
 }
 
 func (r *sceneRenderer) queueMeshRenderItems(mesh *Mesh, passType internal.MeshRenderPassType) {

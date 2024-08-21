@@ -244,6 +244,8 @@ func (s *bloomRenderStage) allocateTextures(width, height uint32) {
 			s.pongTexture,
 		},
 	})
+
+	s.outputTexture = s.pingTexture
 }
 
 func (s *bloomRenderStage) releaseTextures() {
