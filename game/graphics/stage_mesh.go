@@ -35,7 +35,7 @@ func (s *meshRenderer) DiscardRenderItems() {
 	s.renderItems = s.renderItems[:0]
 }
 
-func (s *meshRenderer) QueueMeshRenderItems(mesh *Mesh, passType internal.MeshRenderPassType) {
+func (s *meshRenderer) QueueMeshRenderItems(ctx StageContext, mesh *Mesh, passType internal.MeshRenderPassType) {
 	if !mesh.active {
 		return
 	}

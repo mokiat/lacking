@@ -3,8 +3,6 @@ package graphics
 import (
 	"cmp"
 	"fmt"
-	"math"
-	"slices"
 
 	"github.com/mokiat/gblob"
 	"github.com/mokiat/gog/opt"
@@ -103,8 +101,6 @@ type sceneRenderer struct {
 
 	litStaticMeshes *spatial.VisitorBucket[uint32]
 	litMeshes       *spatial.VisitorBucket[*Mesh]
-
-	renderItems []renderItem
 
 	meshRenderer *meshRenderer
 
@@ -527,10 +523,6 @@ func (r *sceneRenderer) Render(framebuffer render.Framebuffer, viewport Viewport
 		frustum:        frustum,
 	}
 
-	r.renderShadowPass(ctx)
-	r.renderGeometryPass(ctx)
-	r.renderLightingPass(ctx)
-
 	stageCtx := StageContext{
 		Scene:                    ctx.scene,
 		Camera:                   ctx.camera,
@@ -549,6 +541,11 @@ func (r *sceneRenderer) Render(framebuffer render.Framebuffer, viewport Viewport
 		CommandBuffer: commandBuffer,
 		UniformBuffer: uniformBuffer,
 	}
+
+	r.renderShadowPass(ctx, stageCtx)
+	r.renderGeometryPass(ctx, stageCtx)
+	r.renderLightingPass(ctx)
+
 	for _, stage := range r.stages {
 		stage.Render(stageCtx)
 	}
@@ -606,7 +603,7 @@ func lightOrtho() sprec.Mat4 {
 	return sprec.OrthoMat4(-32, 32, 32, -32, 0, 256)
 }
 
-func (r *sceneRenderer) renderShadowPass(ctx renderCtx) {
+func (r *sceneRenderer) renderShadowPass(ctx renderCtx, stageCtx StageContext) {
 	defer metric.BeginRegion("shadow").End()
 
 	r.directionalLightBucket.Reset()
@@ -638,13 +635,13 @@ func (r *sceneRenderer) renderShadowPass(ctx renderCtx) {
 	r.litStaticMeshes.Reset()
 	ctx.scene.staticMeshOctree.VisitHexahedronRegion(&frustum, r.litStaticMeshes)
 
-	r.renderItems = r.renderItems[:0]
+	r.meshRenderer.DiscardRenderItems()
 	for _, mesh := range r.litMeshes.Items() {
-		r.queueMeshRenderItems(mesh, internal.MeshRenderPassTypeShadow)
+		r.meshRenderer.QueueMeshRenderItems(stageCtx, mesh, internal.MeshRenderPassTypeShadow)
 	}
 	for _, meshIndex := range r.litStaticMeshes.Items() {
 		staticMesh := &ctx.scene.staticMeshes[meshIndex]
-		r.queueStaticMeshRenderItems(ctx, staticMesh, internal.MeshRenderPassTypeShadow)
+		r.meshRenderer.QueueStaticMeshRenderItems(stageCtx, staticMesh, internal.MeshRenderPassTypeShadow)
 	}
 
 	commandBuffer := r.stageData.CommandBuffer()
@@ -671,24 +668,21 @@ func (r *sceneRenderer) renderShadowPass(ctx renderCtx) {
 		Viewport:         sprec.ZeroVec4(), // TODO?
 		Time:             ctx.scene.Time(), // FIXME?
 	})
-
-	meshCtx := renderMeshContext{
-		CameraPlacement: lightCameraPlacement,
-	}
-	r.renderMeshRenderItems(meshCtx, r.renderItems)
+	stageCtx.CameraPlacement = lightCameraPlacement
+	r.meshRenderer.Render(stageCtx)
 	commandBuffer.EndRenderPass()
 }
 
-func (r *sceneRenderer) renderGeometryPass(ctx renderCtx) {
+func (r *sceneRenderer) renderGeometryPass(ctx renderCtx, stageCtx StageContext) {
 	defer metric.BeginRegion("geometry").End()
 
-	r.renderItems = r.renderItems[:0]
+	r.meshRenderer.DiscardRenderItems()
 	for _, mesh := range r.visibleMeshes.Items() {
-		r.queueMeshRenderItems(mesh, internal.MeshRenderPassTypeGeometry)
+		r.meshRenderer.QueueMeshRenderItems(stageCtx, mesh, internal.MeshRenderPassTypeGeometry)
 	}
 	for _, meshIndex := range r.visibleStaticMeshes.Items() {
 		staticMesh := &ctx.scene.staticMeshes[meshIndex]
-		r.queueStaticMeshRenderItems(ctx, staticMesh, internal.MeshRenderPassTypeGeometry)
+		r.meshRenderer.QueueStaticMeshRenderItems(stageCtx, staticMesh, internal.MeshRenderPassTypeGeometry)
 	}
 
 	commandBuffer := r.stageData.CommandBuffer()
@@ -723,10 +717,7 @@ func (r *sceneRenderer) renderGeometryPass(ctx renderCtx) {
 			},
 		},
 	})
-	meshCtx := renderMeshContext{
-		CameraPlacement: r.cameraPlacement,
-	}
-	r.renderMeshRenderItems(meshCtx, r.renderItems)
+	r.meshRenderer.Render(stageCtx)
 	commandBuffer.EndRenderPass()
 }
 
@@ -791,168 +782,6 @@ func (r *sceneRenderer) renderLightingPass(ctx renderCtx) {
 	}
 
 	commandBuffer.EndRenderPass()
-}
-
-func (r *sceneRenderer) queueMeshRenderItems(mesh *Mesh, passType internal.MeshRenderPassType) {
-	if !mesh.active {
-		return
-	}
-	definition := mesh.definition
-	passes := definition.passesByType[passType]
-	for _, pass := range passes {
-		r.renderItems = append(r.renderItems, renderItem{
-			Layer:       pass.Layer,
-			MaterialKey: pass.Key,
-			ArmatureKey: mesh.armature.key(),
-
-			Pipeline:     pass.Pipeline,
-			TextureSet:   pass.TextureSet,
-			UniformSet:   pass.UniformSet,
-			ModelData:    mesh.matrixData,
-			ArmatureData: mesh.armature.uniformData(),
-
-			IndexByteOffset: pass.IndexByteOffset,
-			IndexCount:      pass.IndexCount,
-		})
-	}
-}
-
-func (r *sceneRenderer) queueStaticMeshRenderItems(ctx renderCtx, mesh *StaticMesh, passType internal.MeshRenderPassType) {
-	if !mesh.active {
-		return
-	}
-	distance := dprec.Vec3Diff(mesh.position, ctx.cameraPosition).Length()
-	if distance < mesh.minDistance || mesh.maxDistance < distance {
-		return
-	}
-
-	// TODO: Extract common stuff between mesh and static mesh into a type
-	// that is passed ot this function instead so that it can be reused.
-	definition := mesh.definition
-	passes := definition.passesByType[passType]
-	for _, pass := range passes {
-		r.renderItems = append(r.renderItems, renderItem{
-			Layer:       pass.Layer,
-			MaterialKey: pass.Key,
-			ArmatureKey: math.MaxUint32,
-
-			Pipeline:     pass.Pipeline,
-			TextureSet:   pass.TextureSet,
-			UniformSet:   pass.UniformSet,
-			ModelData:    mesh.matrixData,
-			ArmatureData: nil,
-
-			IndexByteOffset: pass.IndexByteOffset,
-			IndexCount:      pass.IndexCount,
-		})
-	}
-}
-
-func (r *sceneRenderer) renderMeshRenderItems(ctx renderMeshContext, items []renderItem) {
-	const maxBatchSize = modelUniformBufferItemCount
-	var (
-		lastMaterialKey = uint32(math.MaxUint32)
-		lastArmatureKey = uint32(math.MaxUint32)
-
-		batchStart = 0
-		batchEnd   = 0
-	)
-
-	slices.SortFunc(items, compareMeshRenderItems)
-
-	itemCount := len(items)
-	for i, item := range items {
-		materialKey := item.MaterialKey
-		armatureKey := item.ArmatureKey
-
-		isSame := (materialKey == lastMaterialKey) && (armatureKey == lastArmatureKey)
-		if !isSame {
-			if batchStart < batchEnd {
-				r.renderMeshRenderItemBatch(ctx, items[batchStart:batchEnd])
-			}
-			batchStart = batchEnd
-		}
-		batchEnd++
-
-		batchSize := batchEnd - batchStart
-		if (batchSize >= maxBatchSize) || (i == itemCount-1) {
-			r.renderMeshRenderItemBatch(ctx, items[batchStart:batchEnd])
-			batchStart = batchEnd
-		}
-
-		lastMaterialKey = materialKey
-		lastArmatureKey = armatureKey
-	}
-}
-
-func (r *sceneRenderer) renderMeshRenderItemBatch(ctx renderMeshContext, items []renderItem) {
-	template := items[0]
-
-	commandBuffer := r.stageData.CommandBuffer()
-	commandBuffer.BindPipeline(template.Pipeline)
-
-	// Camera data is shared between all items.
-	cameraPlacement := ctx.CameraPlacement
-	commandBuffer.UniformBufferUnit(
-		internal.UniformBufferBindingCamera,
-		cameraPlacement.Buffer,
-		cameraPlacement.Offset,
-		cameraPlacement.Size,
-	)
-
-	// Material data is shared between all items.
-	uniformBuffer := r.stageData.UniformBuffer()
-	if !template.UniformSet.IsEmpty() {
-		materialPlacement := ubo.WriteUniform(uniformBuffer, internal.MaterialUniform{
-			Data: template.UniformSet.Data(),
-		})
-		commandBuffer.UniformBufferUnit(
-			internal.UniformBufferBindingMaterial,
-			materialPlacement.Buffer,
-			materialPlacement.Offset,
-			materialPlacement.Size,
-		)
-	}
-
-	for i := range template.TextureSet.TextureCount() {
-		if texture := template.TextureSet.TextureAt(i); texture != nil {
-			commandBuffer.TextureUnit(uint(i), texture)
-		}
-		if sampler := template.TextureSet.SamplerAt(i); sampler != nil {
-			commandBuffer.SamplerUnit(uint(i), sampler)
-		}
-	}
-
-	// Model data needs to be combined.
-	for i, item := range items {
-		start := i * modelUniformBufferItemSize
-		end := start + modelUniformBufferItemSize
-		copy(r.modelUniformBufferData[start:end], item.ModelData)
-	}
-	modelPlacement := ubo.WriteUniform(uniformBuffer, internal.ModelUniform{
-		ModelMatrices: r.modelUniformBufferData,
-	})
-	commandBuffer.UniformBufferUnit(
-		internal.UniformBufferBindingModel,
-		modelPlacement.Buffer,
-		modelPlacement.Offset,
-		modelPlacement.Size,
-	)
-
-	// Armature data is shared between all items.
-	if template.ArmatureData != nil {
-		armaturePlacement := ubo.WriteUniform(uniformBuffer, internal.ArmatureUniform{
-			BoneMatrices: template.ArmatureData,
-		})
-		commandBuffer.UniformBufferUnit(
-			internal.UniformBufferBindingArmature,
-			armaturePlacement.Buffer,
-			armaturePlacement.Offset,
-			armaturePlacement.Size,
-		)
-	}
-
-	commandBuffer.DrawIndexed(template.IndexByteOffset, template.IndexCount, uint32(len(items)))
 }
 
 func (r *sceneRenderer) renderAmbientLight(light *AmbientLight) {
@@ -1139,10 +968,6 @@ type renderCtx struct {
 	camera         *Camera
 	cameraPosition dprec.Vec3
 	frustum        spatial.HexahedronRegion
-}
-
-type renderMeshContext struct {
-	CameraPlacement ubo.UniformPlacement
 }
 
 // TODO: Rename to meshRenderItem

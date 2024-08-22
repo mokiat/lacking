@@ -254,7 +254,7 @@ func (s *ForwardStage) renderDebug(ctx StageContext) {
 func (s *ForwardStage) renderMeshes(ctx StageContext) {
 	s.meshRenderer.DiscardRenderItems()
 	for _, mesh := range ctx.VisibleMeshes {
-		s.meshRenderer.QueueMeshRenderItems(mesh, internal.MeshRenderPassTypeForward)
+		s.meshRenderer.QueueMeshRenderItems(ctx, mesh, internal.MeshRenderPassTypeForward)
 	}
 	for _, meshIndex := range ctx.VisibleStaticMeshIndices {
 		staticMesh := &ctx.Scene.staticMeshes[meshIndex]
