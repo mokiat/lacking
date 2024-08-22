@@ -7,7 +7,6 @@ import (
 	"slices"
 
 	"github.com/mokiat/gblob"
-	"github.com/mokiat/gog/ds"
 	"github.com/mokiat/gog/opt"
 	"github.com/mokiat/gomath/dprec"
 	"github.com/mokiat/gomath/dtos"
@@ -17,7 +16,6 @@ import (
 	"github.com/mokiat/lacking/game/graphics/internal"
 	"github.com/mokiat/lacking/render"
 	"github.com/mokiat/lacking/render/ubo"
-	"github.com/mokiat/lacking/util/blob"
 	"github.com/mokiat/lacking/util/spatial"
 )
 
@@ -27,11 +25,6 @@ const (
 
 	commandBufferSize = 2 * 1024 * 1024  // 2MB
 	uniformBufferSize = 32 * 1024 * 1024 // 32MB
-
-	// TODO: Move these next to the uniform types
-	modelUniformBufferItemSize  = 64
-	modelUniformBufferItemCount = 256
-	modelUniformBufferSize      = modelUniformBufferItemSize * modelUniformBufferItemCount
 )
 
 var ShowLightView bool
@@ -56,6 +49,8 @@ func newRenderer(api render.API, shaders ShaderCollection, stageData *commonStag
 		spotLightBucket: spatial.NewVisitorBucket[*SpotLight](16),
 
 		directionalLightBucket: spatial.NewVisitorBucket[*DirectionalLight](16),
+
+		debugLines: make([]DebugLine, debugMaxLineCount),
 	}
 }
 
@@ -68,10 +63,12 @@ type sceneRenderer struct {
 	framebufferWidth  uint32
 	framebufferHeight uint32
 
+	// TODO: Use the ones from stageData
 	nearestSampler render.Sampler
 	linearSampler  render.Sampler
 	depthSampler   render.Sampler
 
+	// TODO: Create dedicated Source stages for these.
 	geometryAlbedoTexture render.Texture
 	geometryNormalTexture render.Texture
 	geometryDepthTexture  render.Texture
@@ -79,8 +76,6 @@ type sceneRenderer struct {
 
 	lightingAlbedoTexture render.Texture
 	lightingFramebuffer   render.Framebuffer
-
-	forwardFramebuffer render.Framebuffer
 
 	shadowDepthTexture render.Texture
 	shadowFramebuffer  render.Framebuffer
@@ -101,12 +96,7 @@ type sceneRenderer struct {
 	directionalLightPipeline render.Pipeline
 	directionalLightBucket   *spatial.VisitorBucket[*DirectionalLight]
 
-	debugLines        []debugLine
-	debugVertexData   []byte
-	debugVertexBuffer render.Buffer
-	debugVertexArray  render.VertexArray
-	debugProgram      render.Program
-	debugPipeline     render.Pipeline
+	debugLines []DebugLine
 
 	visibleStaticMeshes *spatial.VisitorBucket[uint32]
 	visibleMeshes       *spatial.VisitorBucket[*Mesh]
@@ -115,6 +105,8 @@ type sceneRenderer struct {
 	litMeshes       *spatial.VisitorBucket[*Mesh]
 
 	renderItems []renderItem
+
+	meshRenderer *meshRenderer
 
 	modelUniformBufferData gblob.LittleEndianBlock
 	cameraPlacement        ubo.UniformPlacement
@@ -164,13 +156,6 @@ func (r *sceneRenderer) createFramebuffers(width, height uint32) {
 			r.lightingAlbedoTexture,
 		},
 	})
-
-	r.forwardFramebuffer = r.api.CreateFramebuffer(render.FramebufferInfo{
-		ColorAttachments: [4]render.Texture{
-			r.lightingAlbedoTexture,
-		},
-		DepthAttachment: r.geometryDepthTexture,
-	})
 }
 
 func (r *sceneRenderer) releaseFramebuffers() {
@@ -181,8 +166,6 @@ func (r *sceneRenderer) releaseFramebuffers() {
 
 	defer r.lightingAlbedoTexture.Release()
 	defer r.lightingFramebuffer.Release()
-
-	defer r.forwardFramebuffer.Release()
 }
 
 func (r *sceneRenderer) Allocate() {
@@ -355,44 +338,18 @@ func (r *sceneRenderer) Allocate() {
 		BlendOpAlpha:                render.BlendOperationAdd,
 	})
 
-	r.debugLines = make([]debugLine, 131072)
-	r.debugVertexData = make([]byte, len(r.debugLines)*4*4*2)
-	r.debugVertexBuffer = r.api.CreateVertexBuffer(render.BufferInfo{
-		Dynamic: true,
-		Data:    r.debugVertexData,
-	})
-	r.debugVertexArray = r.api.CreateVertexArray(render.VertexArrayInfo{
-		Bindings: []render.VertexArrayBinding{
-			render.NewVertexArrayBinding(r.debugVertexBuffer, 4*4),
-		},
-		Attributes: []render.VertexArrayAttribute{
-			render.NewVertexArrayAttribute(0, internal.CoordAttributeIndex, 0, render.VertexAttributeFormatRGB32F),
-			render.NewVertexArrayAttribute(0, internal.ColorAttributeIndex, 3*4, render.VertexAttributeFormatRGB8UN),
-		},
-	})
-	r.debugProgram = r.api.CreateProgram(render.ProgramInfo{
-		SourceCode:      r.shaders.DebugSet(),
-		TextureBindings: []render.TextureBinding{},
-		UniformBindings: []render.UniformBinding{
-			render.NewUniformBinding("Camera", internal.UniformBufferBindingCamera),
-		},
-	})
-	r.debugPipeline = r.api.CreatePipeline(render.PipelineInfo{
-		Program:         r.debugProgram,
-		VertexArray:     r.debugVertexArray,
-		Topology:        render.TopologyLineList,
-		Culling:         render.CullModeNone,
-		FrontFace:       render.FaceOrientationCCW,
-		DepthTest:       true,
-		DepthWrite:      false,
-		DepthComparison: render.ComparisonLessOrEqual,
-		StencilTest:     false,
-		ColorWrite:      render.ColorMaskTrue,
-		BlendEnabled:    false,
-	})
-
 	r.modelUniformBufferData = make([]byte, modelUniformBufferSize)
 
+	r.meshRenderer = newMeshRenderer()
+
+	forwardStage := newForwardStage(r.api, r.shaders, r.stageData, r.meshRenderer, ForwardStageInput{
+		HDRTexture: func() render.Texture {
+			return r.lightingAlbedoTexture
+		},
+		DepthTexture: func() render.Texture {
+			return r.geometryDepthTexture
+		},
+	})
 	exposureProbeStage := newExposureProbeStage(r.api, r.shaders, r.stageData, ExposureProbeStageInput{
 		HDRTexture: func() render.Texture {
 			return r.lightingAlbedoTexture
@@ -412,6 +369,7 @@ func (r *sceneRenderer) Allocate() {
 
 	// TODO: Make this configurable and user-defined.
 	r.stages = []Stage{
+		forwardStage,
 		exposureProbeStage,
 		bloomStage,
 		toneMappingStage,
@@ -444,13 +402,8 @@ func (r *sceneRenderer) Release() {
 	defer r.directionalLightProgram.Release()
 	defer r.directionalLightPipeline.Release()
 
-	defer r.debugVertexBuffer.Release()
-	defer r.debugVertexArray.Release()
-	defer r.debugProgram.Release()
-	defer r.debugPipeline.Release()
-
 	for _, stage := range r.stages {
-		defer stage.Allocate()
+		defer stage.Release()
 	}
 }
 
@@ -458,7 +411,7 @@ func (r *sceneRenderer) ResetDebugLines() {
 	r.debugLines = r.debugLines[:0]
 }
 
-func (r *sceneRenderer) QueueDebugLine(line debugLine) {
+func (r *sceneRenderer) QueueDebugLine(line DebugLine) {
 	if len(r.debugLines) == cap(r.debugLines)-1 {
 		logger.Warn("Debug lines limit reached!")
 	}
@@ -543,24 +496,11 @@ func (r *sceneRenderer) Render(framebuffer render.Framebuffer, viewport Viewport
 		}
 	}
 
-	ctx := renderCtx{
-		framebuffer:    framebuffer,
-		scene:          scene,
-		x:              viewport.X,
-		y:              viewport.Y,
-		width:          viewport.Width,
-		height:         viewport.Height,
-		camera:         camera,
-		cameraPosition: stod.Vec3(cameraMatrix.Translation()),
-		frustum:        frustum,
-		time:           scene.Time(),
-	}
-
 	r.visibleMeshes.Reset()
-	ctx.scene.dynamicMeshSet.VisitHexahedronRegion(&frustum, r.visibleMeshes)
+	scene.dynamicMeshSet.VisitHexahedronRegion(&frustum, r.visibleMeshes)
 
 	r.visibleStaticMeshes.Reset()
-	ctx.scene.staticMeshOctree.VisitHexahedronRegion(&ctx.frustum, r.visibleStaticMeshes)
+	scene.staticMeshOctree.VisitHexahedronRegion(&frustum, r.visibleStaticMeshes)
 
 	r.cameraPlacement = ubo.WriteUniform(uniformBuffer, internal.CameraUniform{
 		ProjectionMatrix: projectionMatrix,
@@ -572,24 +512,42 @@ func (r *sceneRenderer) Render(framebuffer render.Framebuffer, viewport Viewport
 			float32(viewport.Width),
 			float32(viewport.Height),
 		),
-		Time: ctx.time,
+		Time: scene.Time(),
 	})
+
+	ctx := renderCtx{
+		framebuffer:    framebuffer,
+		scene:          scene,
+		x:              viewport.X,
+		y:              viewport.Y,
+		width:          viewport.Width,
+		height:         viewport.Height,
+		camera:         camera,
+		cameraPosition: stod.Vec3(cameraMatrix.Translation()),
+		frustum:        frustum,
+	}
 
 	r.renderShadowPass(ctx)
 	r.renderGeometryPass(ctx)
 	r.renderLightingPass(ctx)
-	r.renderForwardPass(ctx)
 
 	stageCtx := StageContext{
-		Camera:          ctx.camera,
-		CameraPlacement: r.cameraPlacement,
+		Scene:                    ctx.scene,
+		Camera:                   ctx.camera,
+		CameraPosition:           ctx.cameraPosition,
+		CameraPlacement:          r.cameraPlacement,
+		VisibleMeshes:            r.visibleMeshes.Items(),
+		VisibleStaticMeshIndices: r.visibleStaticMeshes.Items(),
+		DebugLines:               r.debugLines,
 		Viewport: render.Area{
 			X:      ctx.x,
 			Y:      ctx.y,
 			Width:  ctx.width,
 			Height: ctx.height,
 		},
-		Framebuffer: ctx.framebuffer,
+		Framebuffer:   ctx.framebuffer,
+		CommandBuffer: commandBuffer,
+		UniformBuffer: uniformBuffer,
 	}
 	for _, stage := range r.stages {
 		stage.Render(stageCtx)
@@ -711,7 +669,7 @@ func (r *sceneRenderer) renderShadowPass(ctx renderCtx) {
 		ViewMatrix:       viewMatrix,
 		CameraMatrix:     lightMatrix,
 		Viewport:         sprec.ZeroVec4(), // TODO?
-		Time:             ctx.time,
+		Time:             ctx.scene.Time(), // FIXME?
 	})
 
 	meshCtx := renderMeshContext{
@@ -833,123 +791,6 @@ func (r *sceneRenderer) renderLightingPass(ctx renderCtx) {
 	}
 
 	commandBuffer.EndRenderPass()
-}
-
-func (r *sceneRenderer) renderForwardPass(ctx renderCtx) {
-	defer metric.BeginRegion("forward").End()
-
-	r.renderItems = r.renderItems[:0]
-	for _, mesh := range r.visibleMeshes.Items() {
-		r.queueMeshRenderItems(mesh, internal.MeshRenderPassTypeForward)
-	}
-	for _, meshIndex := range r.visibleStaticMeshes.Items() {
-		staticMesh := &ctx.scene.staticMeshes[meshIndex]
-		r.queueStaticMeshRenderItems(ctx, staticMesh, internal.MeshRenderPassTypeForward)
-	}
-
-	commandBuffer := r.stageData.CommandBuffer()
-	commandBuffer.BeginRenderPass(render.RenderPassInfo{
-		Framebuffer: r.forwardFramebuffer,
-		Viewport: render.Area{
-			X:      0,
-			Y:      0,
-			Width:  r.framebufferWidth,
-			Height: r.framebufferHeight,
-		},
-		DepthLoadOp:    render.LoadOperationLoad,
-		DepthStoreOp:   render.StoreOperationStore,
-		StencilLoadOp:  render.LoadOperationLoad,
-		StencilStoreOp: render.StoreOperationDiscard,
-		Colors: [4]render.ColorAttachmentInfo{
-			{
-				LoadOp:  render.LoadOperationLoad,
-				StoreOp: render.StoreOperationStore,
-			},
-		},
-	})
-
-	if sky := r.findActiveSky(ctx.scene.skies); sky != nil {
-		r.renderSky(sky)
-	}
-
-	if len(r.debugLines) > 0 {
-		plotter := blob.NewPlotter(r.debugVertexData)
-		for _, line := range r.debugLines {
-			plotter.PlotSPVec3(line.Start)
-			plotter.PlotUint8(uint8(line.Color.X * 255))
-			plotter.PlotUint8(uint8(line.Color.Y * 255))
-			plotter.PlotUint8(uint8(line.Color.Z * 255))
-			plotter.PlotUint8(uint8(255))
-
-			plotter.PlotSPVec3(line.End)
-			plotter.PlotUint8(uint8(line.Color.X * 255))
-			plotter.PlotUint8(uint8(line.Color.Y * 255))
-			plotter.PlotUint8(uint8(line.Color.Z * 255))
-			plotter.PlotUint8(uint8(255))
-		}
-		r.api.Queue().WriteBuffer(r.debugVertexBuffer, 0, r.debugVertexData[:plotter.Offset()])
-		commandBuffer.BindPipeline(r.debugPipeline)
-		commandBuffer.UniformBufferUnit(
-			internal.UniformBufferBindingCamera,
-			r.cameraPlacement.Buffer,
-			r.cameraPlacement.Offset,
-			r.cameraPlacement.Size,
-		)
-		commandBuffer.Draw(0, uint32(len(r.debugLines)*2), 1)
-	}
-
-	// FIXME/TODO: Reusing renderItems and assuming same as geometry pass.
-	// Maybe rename the variable to something dedicated so that mistakes
-	// don't happen if ordering is changed in the future.
-	meshCtx := renderMeshContext{
-		CameraPlacement: r.cameraPlacement,
-	}
-	r.renderMeshRenderItems(meshCtx, r.renderItems)
-	commandBuffer.EndRenderPass()
-}
-
-func (r *sceneRenderer) findActiveSky(skies *ds.List[*Sky]) *Sky {
-	for _, sky := range skies.Unbox() {
-		if sky.Active() {
-			return sky
-		}
-	}
-	return nil
-}
-
-func (r *sceneRenderer) renderSky(sky *Sky) {
-	commandBuffer := r.stageData.CommandBuffer()
-	uniformBuffer := r.stageData.UniformBuffer()
-
-	for _, pass := range sky.definition.renderPasses {
-		commandBuffer.BindPipeline(pass.Pipeline)
-		commandBuffer.UniformBufferUnit(
-			internal.UniformBufferBindingCamera,
-			r.cameraPlacement.Buffer,
-			r.cameraPlacement.Offset,
-			r.cameraPlacement.Size,
-		)
-		if !pass.UniformSet.IsEmpty() {
-			materialData := ubo.WriteUniform(uniformBuffer, internal.MaterialUniform{
-				Data: pass.UniformSet.Data(),
-			})
-			commandBuffer.UniformBufferUnit(
-				internal.UniformBufferBindingMaterial,
-				materialData.Buffer,
-				materialData.Offset,
-				materialData.Size,
-			)
-		}
-		for i := range pass.TextureSet.TextureCount() {
-			if texture := pass.TextureSet.TextureAt(i); texture != nil {
-				commandBuffer.TextureUnit(uint(i), texture)
-			}
-			if sampler := pass.TextureSet.SamplerAt(i); sampler != nil {
-				commandBuffer.SamplerUnit(uint(i), sampler)
-			}
-		}
-		commandBuffer.DrawIndexed(pass.IndexByteOffset, pass.IndexCount, 1)
-	}
 }
 
 func (r *sceneRenderer) queueMeshRenderItems(mesh *Mesh, passType internal.MeshRenderPassType) {
@@ -1298,7 +1139,6 @@ type renderCtx struct {
 	camera         *Camera
 	cameraPosition dprec.Vec3
 	frustum        spatial.HexahedronRegion
-	time           float32
 }
 
 type renderMeshContext struct {

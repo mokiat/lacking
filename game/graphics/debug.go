@@ -15,7 +15,7 @@ func (d *Debug) Reset() {
 }
 
 func (d *Debug) Line(start, end, color dprec.Vec3) {
-	d.renderer.QueueDebugLine(debugLine{
+	d.renderer.QueueDebugLine(DebugLine{
 		Start: dtos.Vec3(start),
 		End:   dtos.Vec3(end),
 		Color: dtos.Vec3(color),
@@ -28,7 +28,7 @@ func (d *Debug) Triangle(p1, p2, p3, color dprec.Vec3) {
 	d.Line(p3, p1, color)
 }
 
-type debugLine struct {
+type DebugLine struct {
 	Start sprec.Vec3
 	End   sprec.Vec3
 	Color sprec.Vec3

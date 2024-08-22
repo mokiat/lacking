@@ -307,6 +307,24 @@ func (e *Engine) CreateScene() *Scene {
 	return newScene(e, e.renderer)
 }
 
+// CreateForwardStage creates a new ForwardStage using the specified input
+// object.
+func (e *Engine) CreateForwardStage(input ForwardStageInput) *ForwardStage {
+	meshRenderer := newMeshRenderer() // FIXME: reuse meshRenderer
+	return newForwardStage(e.api, e.shaders, e.stageData, meshRenderer, input)
+}
+
+// CreateExposureProbeStage creates a new ExposureProbeStage using the specified
+// input object.
+func (e *Engine) CreateExposureProbeStage(input ExposureProbeStageInput) *ExposureProbeStage {
+	return newExposureProbeStage(e.api, e.shaders, e.stageData, input)
+}
+
+// CreateBloomStage creates a new BloomStage using the specified input object.
+func (e *Engine) CreateBloomStage(input BloomStageInput) *BloomStage {
+	return newBloomStage(e.api, e.shaders, e.stageData, input)
+}
+
 // CreateToneMappingStage creates a new ToneMappingStage using the specified
 // input object.
 func (e *Engine) CreateToneMappingStage(input ToneMappingStageInput) *ToneMappingStage {
