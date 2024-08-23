@@ -23,12 +23,12 @@ const (
 	uniformBufferSize = 32 * 1024 * 1024 // 32MB
 )
 
-func newRenderer(api render.API, shaders ShaderCollection, stageData *commonStageData) *sceneRenderer {
+func newRenderer(api render.API, shaders ShaderCollection, stageData *commonStageData, meshRenderer *meshRenderer) *sceneRenderer {
 	return &sceneRenderer{
-		api:     api,
-		shaders: shaders,
-
-		stageData: stageData,
+		api:          api,
+		shaders:      shaders,
+		stageData:    stageData,
+		meshRenderer: meshRenderer,
 
 		visibleStaticMeshes: spatial.NewVisitorBucket[uint32](2_000),
 		visibleMeshes:       spatial.NewVisitorBucket[*Mesh](2_000),
@@ -41,10 +41,10 @@ func newRenderer(api render.API, shaders ShaderCollection, stageData *commonStag
 }
 
 type sceneRenderer struct {
-	api     render.API
-	shaders ShaderCollection
-
-	stageData *commonStageData
+	api          render.API
+	shaders      ShaderCollection
+	stageData    *commonStageData
+	meshRenderer *meshRenderer
 
 	framebufferWidth  uint32
 	framebufferHeight uint32
@@ -53,7 +53,6 @@ type sceneRenderer struct {
 	geometryAlbedoTexture render.Texture
 	geometryNormalTexture render.Texture
 	geometryDepthTexture  render.Texture
-	geometryFramebuffer   render.Framebuffer
 
 	lightingAlbedoTexture render.Texture
 
@@ -67,8 +66,6 @@ type sceneRenderer struct {
 
 	litStaticMeshes *spatial.VisitorBucket[uint32]
 	litMeshes       *spatial.VisitorBucket[*Mesh]
-
-	meshRenderer *meshRenderer
 
 	modelUniformBufferData gblob.LittleEndianBlock
 	cameraPlacement        ubo.UniformPlacement
@@ -98,13 +95,6 @@ func (r *sceneRenderer) createFramebuffers(width, height uint32) {
 		Width:  r.framebufferWidth,
 		Height: r.framebufferHeight,
 	})
-	r.geometryFramebuffer = r.api.CreateFramebuffer(render.FramebufferInfo{
-		ColorAttachments: [4]render.Texture{
-			r.geometryAlbedoTexture,
-			r.geometryNormalTexture,
-		},
-		DepthAttachment: r.geometryDepthTexture,
-	})
 
 	r.lightingAlbedoTexture = r.api.CreateColorTexture2D(render.ColorTexture2DInfo{
 		Width:           r.framebufferWidth,
@@ -119,7 +109,6 @@ func (r *sceneRenderer) releaseFramebuffers() {
 	defer r.geometryAlbedoTexture.Release()
 	defer r.geometryNormalTexture.Release()
 	defer r.geometryDepthTexture.Release()
-	defer r.geometryFramebuffer.Release()
 
 	defer r.lightingAlbedoTexture.Release()
 }
@@ -138,8 +127,17 @@ func (r *sceneRenderer) Allocate() {
 
 	r.modelUniformBufferData = make([]byte, modelUniformBufferSize)
 
-	r.meshRenderer = newMeshRenderer()
-
+	geometryStage := newGeometryStage(r.api, r.meshRenderer, GeometryStageInput{
+		AlbedoMetallicTexture: func() render.Texture {
+			return r.geometryAlbedoTexture
+		},
+		NormalRoughnessTexture: func() render.Texture {
+			return r.geometryNormalTexture
+		},
+		DepthTexture: func() render.Texture {
+			return r.geometryDepthTexture
+		},
+	})
 	lightingStage := newLightingStage(r.api, r.shaders, r.stageData, LightingStageInput{
 		AlbedoMetallicTexture: func() render.Texture {
 			return r.geometryAlbedoTexture
@@ -181,6 +179,7 @@ func (r *sceneRenderer) Allocate() {
 
 	// TODO: Make this configurable and user-defined.
 	r.stages = []Stage{
+		geometryStage,
 		lightingStage,
 		forwardStage,
 		exposureProbeStage,
@@ -292,17 +291,17 @@ func (r *sceneRenderer) Render(framebuffer render.Framebuffer, viewport Viewport
 		Time: scene.Time(),
 	})
 
-	ctx := renderCtx{
-		framebuffer:    framebuffer,
-		scene:          scene,
-		x:              viewport.X,
-		y:              viewport.Y,
-		width:          viewport.Width,
-		height:         viewport.Height,
-		camera:         camera,
-		cameraPosition: stod.Vec3(cameraMatrix.Translation()),
-		frustum:        frustum,
-	}
+	// ctx := renderCtx{
+	// 	framebuffer:    framebuffer,
+	// 	scene:          scene,
+	// 	x:              viewport.X,
+	// 	y:              viewport.Y,
+	// 	width:          viewport.Width,
+	// 	height:         viewport.Height,
+	// 	camera:         camera,
+	// 	cameraPosition: stod.Vec3(cameraMatrix.Translation()),
+	// 	frustum:        frustum,
+	// }
 
 	stageCtx := StageContext{
 		Scene:                    scene,
@@ -320,7 +319,6 @@ func (r *sceneRenderer) Render(framebuffer render.Framebuffer, viewport Viewport
 	}
 
 	// r.renderShadowPass(ctx, stageCtx)
-	r.renderGeometryPass(ctx, stageCtx)
 
 	for _, stage := range r.stages {
 		stage.Render(stageCtx)
@@ -449,65 +447,17 @@ func lightOrtho() sprec.Mat4 {
 // 	commandBuffer.EndRenderPass()
 // }
 
-func (r *sceneRenderer) renderGeometryPass(ctx renderCtx, stageCtx StageContext) {
-	defer metric.BeginRegion("geometry").End()
-
-	r.meshRenderer.DiscardRenderItems()
-	for _, mesh := range r.visibleMeshes.Items() {
-		r.meshRenderer.QueueMeshRenderItems(stageCtx, mesh, internal.MeshRenderPassTypeGeometry)
-	}
-	for _, meshIndex := range r.visibleStaticMeshes.Items() {
-		staticMesh := &ctx.scene.staticMeshes[meshIndex]
-		r.meshRenderer.QueueStaticMeshRenderItems(stageCtx, staticMesh, internal.MeshRenderPassTypeGeometry)
-	}
-
-	commandBuffer := r.stageData.CommandBuffer()
-	commandBuffer.BeginRenderPass(render.RenderPassInfo{
-		Framebuffer: r.geometryFramebuffer,
-		Viewport: render.Area{
-			X:      0,
-			Y:      0,
-			Width:  r.framebufferWidth,
-			Height: r.framebufferHeight,
-		},
-		DepthLoadOp:     render.LoadOperationClear,
-		DepthStoreOp:    render.StoreOperationStore,
-		DepthClearValue: 1.0,
-		StencilLoadOp:   render.LoadOperationLoad,
-		StencilStoreOp:  render.StoreOperationDiscard,
-		Colors: [4]render.ColorAttachmentInfo{
-			{
-				LoadOp:     render.LoadOperationClear,
-				StoreOp:    render.StoreOperationStore,
-				ClearValue: [4]float32{0.0, 0.0, 0.0, 1.0},
-			},
-			{
-				LoadOp:     render.LoadOperationClear,
-				StoreOp:    render.StoreOperationStore,
-				ClearValue: [4]float32{0.0, 0.0, 1.0, 0.0},
-			},
-			{
-				LoadOp:     render.LoadOperationClear,
-				StoreOp:    render.StoreOperationStore,
-				ClearValue: [4]float32{0.0, 0.0, 0.0, 1.0},
-			},
-		},
-	})
-	r.meshRenderer.Render(stageCtx)
-	commandBuffer.EndRenderPass()
-}
-
-type renderCtx struct {
-	framebuffer    render.Framebuffer
-	scene          *Scene
-	x              uint32
-	y              uint32
-	width          uint32
-	height         uint32
-	camera         *Camera
-	cameraPosition dprec.Vec3
-	frustum        spatial.HexahedronRegion
-}
+// type renderCtx struct {
+// 	framebuffer    render.Framebuffer
+// 	scene          *Scene
+// 	x              uint32
+// 	y              uint32
+// 	width          uint32
+// 	height         uint32
+// 	camera         *Camera
+// 	cameraPosition dprec.Vec3
+// 	frustum        spatial.HexahedronRegion
+// }
 
 // TODO: Rename to meshRenderItem
 type renderItem struct {

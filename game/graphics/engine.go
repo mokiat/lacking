@@ -10,15 +10,17 @@ import (
 
 func NewEngine(api render.API, shaders ShaderCollection, shaderBuilder ShaderBuilder) *Engine {
 	stageData := newCommonStageData(api)
-	renderer := newRenderer(api, shaders, stageData)
+	meshRenderer := newMeshRenderer()
+	renderer := newRenderer(api, shaders, stageData, meshRenderer)
 
 	return &Engine{
 		api:           api,
 		shaders:       shaders,
 		shaderBuilder: shaderBuilder,
 
-		stageData: stageData,
-		renderer:  renderer,
+		stageData:    stageData,
+		meshRenderer: meshRenderer,
+		renderer:     renderer,
 
 		debug: &Debug{
 			renderer: renderer,
@@ -32,8 +34,9 @@ type Engine struct {
 	shaders       ShaderCollection
 	shaderBuilder ShaderBuilder
 
-	stageData *commonStageData
-	renderer  *sceneRenderer
+	stageData    *commonStageData
+	meshRenderer *meshRenderer
+	renderer     *sceneRenderer
 
 	debug *Debug
 
@@ -307,11 +310,22 @@ func (e *Engine) CreateScene() *Scene {
 	return newScene(e, e.renderer)
 }
 
+// CreateGeometryStage creates a new GeometryStage using the specified input
+// object.
+func (e *Engine) CreateGeometryStage(input GeometryStageInput) *GeometryStage {
+	return newGeometryStage(e.api, e.meshRenderer, input)
+}
+
+// CreateLightingStage creates a new LightingStage using the specified input
+// object.
+func (e *Engine) CreateLightingStage(input LightingStageInput) *LightingStage {
+	return newLightingStage(e.api, e.shaders, e.stageData, input)
+}
+
 // CreateForwardStage creates a new ForwardStage using the specified input
 // object.
 func (e *Engine) CreateForwardStage(input ForwardStageInput) *ForwardStage {
-	meshRenderer := newMeshRenderer() // FIXME: reuse meshRenderer
-	return newForwardStage(e.api, e.shaders, e.stageData, meshRenderer, input)
+	return newForwardStage(e.api, e.shaders, e.stageData, e.meshRenderer, input)
 }
 
 // CreateExposureProbeStage creates a new ExposureProbeStage using the specified
