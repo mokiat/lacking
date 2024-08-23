@@ -162,9 +162,9 @@ func (s *BloomStage) Render(ctx StageContext) {
 	// and nesting should still work. The context is used for tasks.
 	defer metric.BeginRegion("bloom").End()
 
-	commandBuffer := s.data.CommandBuffer()
-	uniformBuffer := s.data.UniformBuffer()
 	quadShape := s.data.QuadShape()
+	commandBuffer := ctx.CommandBuffer
+	uniformBuffer := ctx.UniformBuffer
 
 	// Perform a downsample into the Ping texture
 	commandBuffer.BeginRenderPass(render.RenderPassInfo{

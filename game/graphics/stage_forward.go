@@ -76,7 +76,7 @@ func (s *ForwardStage) Render(ctx StageContext) {
 	// and nesting should still work. The context is used for tasks.
 	defer metric.BeginRegion("forward").End()
 
-	commandBuffer := s.data.CommandBuffer()
+	commandBuffer := ctx.CommandBuffer
 	commandBuffer.BeginRenderPass(render.RenderPassInfo{
 		Framebuffer: s.framebuffer,
 		Viewport: render.Area{
@@ -175,8 +175,8 @@ func (s *ForwardStage) renderSky(ctx StageContext) {
 		return
 	}
 
-	commandBuffer := s.data.CommandBuffer()
-	uniformBuffer := s.data.UniformBuffer()
+	commandBuffer := ctx.CommandBuffer
+	uniformBuffer := ctx.UniformBuffer
 
 	for _, pass := range sky.definition.renderPasses {
 		commandBuffer.BindPipeline(pass.Pipeline)
@@ -232,7 +232,7 @@ func (s *ForwardStage) renderDebug(ctx StageContext) {
 	vertexData := s.debugVertexData[:plotter.Offset()]
 	s.api.Queue().WriteBuffer(s.debugVertexBuffer, s.debugVertexBufferOffset, vertexData)
 
-	commandBuffer := s.data.CommandBuffer()
+	commandBuffer := ctx.CommandBuffer
 	commandBuffer.BindPipeline(s.debugPipeline)
 	commandBuffer.UniformBufferUnit(
 		internal.UniformBufferBindingCamera,

@@ -155,7 +155,8 @@ func (s *ExposureProbeStage) Render(ctx StageContext) {
 	if s.exposureSync == nil {
 		s.exposureSyncNeeded = true
 		quadShape := s.data.QuadShape()
-		commandBuffer := s.data.CommandBuffer()
+		nearestSampler := s.data.NearestSampler()
+		commandBuffer := ctx.CommandBuffer
 		commandBuffer.BeginRenderPass(render.RenderPassInfo{
 			Framebuffer: s.exposureFramebuffer,
 			Viewport: render.Area{
@@ -178,7 +179,7 @@ func (s *ExposureProbeStage) Render(ctx StageContext) {
 		})
 		commandBuffer.BindPipeline(s.exposurePipeline)
 		commandBuffer.TextureUnit(internal.TextureBindingLightingFramebufferColor0, s.hdrTexture())
-		commandBuffer.SamplerUnit(internal.TextureBindingLightingFramebufferColor0, s.data.NearestSampler())
+		commandBuffer.SamplerUnit(internal.TextureBindingLightingFramebufferColor0, nearestSampler)
 		commandBuffer.UniformBufferUnit(
 			internal.UniformBufferBindingCamera,
 			ctx.CameraPlacement.Buffer,

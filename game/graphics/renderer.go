@@ -1,7 +1,6 @@
 package graphics
 
 import (
-	"cmp"
 	"fmt"
 
 	"github.com/mokiat/gblob"
@@ -49,10 +48,6 @@ type sceneRenderer struct {
 
 	framebufferWidth  uint32
 	framebufferHeight uint32
-
-	// TODO: Use the ones from stageData
-	nearestSampler render.Sampler
-	linearSampler  render.Sampler
 
 	// TODO: Create dedicated Source stages for these.
 	geometryAlbedoTexture render.Texture
@@ -132,17 +127,6 @@ func (r *sceneRenderer) releaseFramebuffers() {
 func (r *sceneRenderer) Allocate() {
 	r.createFramebuffers(800, 600)
 
-	r.nearestSampler = r.api.CreateSampler(render.SamplerInfo{
-		Wrapping:   render.WrapModeClamp,
-		Filtering:  render.FilterModeNearest,
-		Mipmapping: false,
-	})
-	r.linearSampler = r.api.CreateSampler(render.SamplerInfo{
-		Wrapping:   render.WrapModeClamp,
-		Filtering:  render.FilterModeLinear,
-		Mipmapping: false,
-	})
-
 	r.shadowDepthTexture = r.api.CreateDepthTexture2D(render.DepthTexture2DInfo{
 		Width:      shadowMapWidth,
 		Height:     shadowMapHeight,
@@ -211,9 +195,6 @@ func (r *sceneRenderer) Allocate() {
 
 func (r *sceneRenderer) Release() {
 	defer r.releaseFramebuffers()
-
-	defer r.nearestSampler.Release()
-	defer r.linearSampler.Release()
 
 	defer r.shadowDepthTexture.Release()
 	defer r.shadowFramebuffer.Release()
@@ -544,12 +525,4 @@ type renderItem struct {
 
 	IndexByteOffset uint32
 	IndexCount      uint32
-}
-
-func compareMeshRenderItems(a, b renderItem) int {
-	return cmp.Or(
-		cmp.Compare(a.Layer, b.Layer),
-		cmp.Compare(a.MaterialKey, b.MaterialKey),
-		cmp.Compare(a.ArmatureKey, b.ArmatureKey),
-	)
 }

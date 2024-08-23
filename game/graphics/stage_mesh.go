@@ -1,6 +1,7 @@
 package graphics
 
 import (
+	"cmp"
 	"math"
 	"slices"
 
@@ -201,4 +202,12 @@ func (s *meshRenderer) renderMeshRenderItemBatch(ctx StageContext, items []rende
 	}
 
 	commandBuffer.DrawIndexed(template.IndexByteOffset, template.IndexCount, uint32(len(items)))
+}
+
+func compareMeshRenderItems(a, b renderItem) int {
+	return cmp.Or(
+		cmp.Compare(a.Layer, b.Layer),
+		cmp.Compare(a.MaterialKey, b.MaterialKey),
+		cmp.Compare(a.ArmatureKey, b.ArmatureKey),
+	)
 }

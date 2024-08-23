@@ -102,9 +102,12 @@ func (s *ToneMappingStage) Render(ctx StageContext) {
 	// and nesting should still work. The context is used for tasks.
 	defer metric.BeginRegion("tone-mapping").End()
 
-	commandBuffer := s.data.CommandBuffer()
-	uniformBuffer := s.data.UniformBuffer()
 	quadShape := s.data.QuadShape()
+	nearestSampler := s.data.NearestSampler()
+	linearSampler := s.data.LinearSampler()
+
+	commandBuffer := ctx.CommandBuffer
+	uniformBuffer := ctx.UniformBuffer
 
 	postprocessPlacement := ubo.WriteUniform(uniformBuffer, internal.PostprocessUniform{
 		Exposure: ctx.Camera.Exposure(),
@@ -127,10 +130,10 @@ func (s *ToneMappingStage) Render(ctx StageContext) {
 
 	commandBuffer.BindPipeline(s.pipeline)
 	commandBuffer.TextureUnit(internal.TextureBindingPostprocessFramebufferColor0, s.inHDRTexture())
-	commandBuffer.SamplerUnit(internal.TextureBindingPostprocessFramebufferColor0, s.data.NearestSampler())
+	commandBuffer.SamplerUnit(internal.TextureBindingPostprocessFramebufferColor0, nearestSampler)
 	if s.inBloomTexture != nil {
 		commandBuffer.TextureUnit(internal.TextureBindingPostprocessBloom, s.inBloomTexture())
-		commandBuffer.SamplerUnit(internal.TextureBindingPostprocessBloom, s.data.LinearSampler())
+		commandBuffer.SamplerUnit(internal.TextureBindingPostprocessBloom, linearSampler)
 	}
 	commandBuffer.UniformBufferUnit(
 		internal.UniformBufferBindingPostprocess,
