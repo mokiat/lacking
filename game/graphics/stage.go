@@ -4,6 +4,7 @@ import (
 	"github.com/mokiat/gomath/dprec"
 	"github.com/mokiat/lacking/render"
 	"github.com/mokiat/lacking/render/ubo"
+	"github.com/mokiat/lacking/util/spatial"
 )
 
 // Stage represents a render stage (e.g. geometry, lighting, post-processing).
@@ -42,6 +43,9 @@ type StageContext struct {
 	// CameraPlacement is the uniform buffer segment that contains the camera
 	// data.
 	CameraPlacement ubo.UniformPlacement
+
+	// CameraFrustum is the frustum of the camera in world space.
+	CameraFrustum spatial.HexahedronRegion
 
 	// VisibleMeshes is a list of meshes that are visible in the scene.
 	VisibleMeshes []*Mesh

@@ -1,6 +1,7 @@
 package graphics
 
 import (
+	"github.com/mokiat/gog/opt"
 	"github.com/mokiat/lacking/game/graphics/internal"
 	"github.com/mokiat/lacking/render"
 	"github.com/mokiat/lacking/render/ubo"
@@ -22,6 +23,7 @@ type commonStageData struct {
 
 	nearestSampler render.Sampler
 	linearSampler  render.Sampler
+	depthSampler   render.Sampler
 
 	commandBuffer render.CommandBuffer
 	uniformBuffer *ubo.UniformBlockBuffer
@@ -43,6 +45,12 @@ func (d *commonStageData) Allocate() {
 		Filtering:  render.FilterModeLinear,
 		Mipmapping: false,
 	})
+	d.depthSampler = d.api.CreateSampler(render.SamplerInfo{
+		Wrapping:   render.WrapModeClamp,
+		Filtering:  render.FilterModeLinear,
+		Comparison: opt.V(render.ComparisonLess),
+		Mipmapping: false,
+	})
 
 	d.commandBuffer = d.api.CreateCommandBuffer(commandBufferSize)
 	d.uniformBuffer = ubo.NewUniformBlockBuffer(d.api, uniformBufferSize)
@@ -56,6 +64,7 @@ func (d *commonStageData) Release() {
 
 	defer d.nearestSampler.Release()
 	defer d.linearSampler.Release()
+	defer d.depthSampler.Release()
 
 	defer d.uniformBuffer.Release()
 }
@@ -90,4 +99,8 @@ func (d *commonStageData) NearestSampler() render.Sampler {
 
 func (d *commonStageData) LinearSampler() render.Sampler {
 	return d.linearSampler
+}
+
+func (d *commonStageData) DepthSampler() render.Sampler {
+	return d.depthSampler
 }
