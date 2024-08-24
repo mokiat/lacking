@@ -26,11 +26,11 @@ func (w *Worker) Schedule(fn Func) {
 }
 
 func (w *Worker) ProcessCount(count int) bool {
+	w.pipelines.Add(1)
+	defer w.pipelines.Done()
 	if atomic.LoadInt32(&w.running) == 0 {
 		return false
 	}
-	w.pipelines.Add(1)
-	defer w.pipelines.Done()
 
 	for count > 0 {
 		if !w.processNextTask() {
@@ -42,11 +42,11 @@ func (w *Worker) ProcessCount(count int) bool {
 }
 
 func (w *Worker) ProcessDuration(targetDuration time.Duration) bool {
+	w.pipelines.Add(1)
+	defer w.pipelines.Done()
 	if atomic.LoadInt32(&w.running) == 0 {
 		return false
 	}
-	w.pipelines.Add(1)
-	defer w.pipelines.Done()
 
 	startTime := time.Now()
 	for time.Since(startTime) < targetDuration {
@@ -58,11 +58,11 @@ func (w *Worker) ProcessDuration(targetDuration time.Duration) bool {
 }
 
 func (w *Worker) ProcessAll() {
+	w.pipelines.Add(1)
+	defer w.pipelines.Done()
 	if atomic.LoadInt32(&w.running) == 0 {
 		return
 	}
-	w.pipelines.Add(1)
-	defer w.pipelines.Done()
 
 	for task := range w.tasks {
 		task()
@@ -72,10 +72,10 @@ func (w *Worker) ProcessAll() {
 func (w *Worker) Shutdown() {
 	atomic.StoreInt32(&w.running, 0)
 	close(w.tasks)
+	w.pipelines.Wait()
 	for task := range w.tasks {
 		task()
 	}
-	w.pipelines.Wait()
 }
 
 func (w *Worker) processNextTask() bool {
