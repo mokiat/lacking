@@ -82,9 +82,6 @@ func (s *LightingStage) PreRender(width, height uint32) {
 }
 
 func (s *LightingStage) Render(ctx StageContext) {
-	// TODO: Use built-in tracing. It does not actually allocate memory
-	// when tracing is not enabled. Furthermore, the context can be Background
-	// and nesting should still work. The context is used for tasks.
 	defer metric.BeginRegion("lighting").End()
 
 	scene := ctx.Scene

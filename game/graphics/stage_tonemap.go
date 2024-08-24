@@ -97,10 +97,7 @@ func (s *ToneMappingStage) PreRender(width, height uint32) {
 }
 
 func (s *ToneMappingStage) Render(ctx StageContext) {
-	// TODO: Use built-in tracing. It does not actually allocate memory
-	// when tracing is not enabled. Furthermore, the context can be Background
-	// and nesting should still work. The context is used for tasks.
-	defer metric.BeginRegion("tone-mapping").End()
+	defer metric.BeginRegion("tonemap").End()
 
 	quadShape := s.data.QuadShape()
 	nearestSampler := s.data.NearestSampler()

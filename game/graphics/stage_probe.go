@@ -120,9 +120,6 @@ func (s *ExposureProbeStage) Render(ctx StageContext) {
 		return
 	}
 
-	// TODO: Use built-in tracing. It does not actually allocate memory
-	// when tracing is not enabled. Furthermore, the context can be Background
-	// and nesting should still work. The context is used for tasks.
 	defer metric.BeginRegion("exposure").End()
 
 	if s.exposureSync != nil && s.exposureSync.Status() == render.FenceStatusSuccess {
