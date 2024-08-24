@@ -46,16 +46,6 @@ type sceneRenderer struct {
 	stageData    *commonStageData
 	meshRenderer *meshRenderer
 
-	framebufferWidth  uint32
-	framebufferHeight uint32
-
-	// TODO: Create dedicated Source stages for these.
-	geometryAlbedoTexture render.Texture
-	geometryNormalTexture render.Texture
-	geometryDepthTexture  render.Texture
-
-	lightingAlbedoTexture render.Texture
-
 	shadowDepthTexture render.Texture
 	shadowFramebuffer  render.Framebuffer
 
@@ -73,49 +63,7 @@ type sceneRenderer struct {
 	stages []Stage
 }
 
-func (r *sceneRenderer) createFramebuffers(width, height uint32) {
-	r.framebufferWidth = width
-	r.framebufferHeight = height
-
-	r.geometryAlbedoTexture = r.api.CreateColorTexture2D(render.ColorTexture2DInfo{
-		Width:           r.framebufferWidth,
-		Height:          r.framebufferHeight,
-		GenerateMipmaps: false,
-		GammaCorrection: false,
-		Format:          render.DataFormatRGBA8,
-	})
-	r.geometryNormalTexture = r.api.CreateColorTexture2D(render.ColorTexture2DInfo{
-		Width:           r.framebufferWidth,
-		Height:          r.framebufferHeight,
-		GenerateMipmaps: false,
-		GammaCorrection: false,
-		Format:          render.DataFormatRGBA16F,
-	})
-	r.geometryDepthTexture = r.api.CreateDepthTexture2D(render.DepthTexture2DInfo{
-		Width:  r.framebufferWidth,
-		Height: r.framebufferHeight,
-	})
-
-	r.lightingAlbedoTexture = r.api.CreateColorTexture2D(render.ColorTexture2DInfo{
-		Width:           r.framebufferWidth,
-		Height:          r.framebufferHeight,
-		GenerateMipmaps: false,
-		GammaCorrection: false,
-		Format:          render.DataFormatRGBA16F,
-	})
-}
-
-func (r *sceneRenderer) releaseFramebuffers() {
-	defer r.geometryAlbedoTexture.Release()
-	defer r.geometryNormalTexture.Release()
-	defer r.geometryDepthTexture.Release()
-
-	defer r.lightingAlbedoTexture.Release()
-}
-
 func (r *sceneRenderer) Allocate() {
-	r.createFramebuffers(800, 600)
-
 	r.shadowDepthTexture = r.api.CreateDepthTexture2D(render.DepthTexture2DInfo{
 		Width:      shadowMapWidth,
 		Height:     shadowMapHeight,
@@ -127,58 +75,45 @@ func (r *sceneRenderer) Allocate() {
 
 	r.modelUniformBufferData = make([]byte, modelUniformBufferSize)
 
+	depthSourceStage := newDepthSourceStage(r.api)
+	geometrySourceStage := newGeometrySourceStage(r.api)
+	forwardSourceStage := newForwardSourceStage(r.api)
+
+	shadowStage := newShadowStage(ShadowStageInput{
+		// TODO
+	})
 	geometryStage := newGeometryStage(r.api, r.meshRenderer, GeometryStageInput{
-		AlbedoMetallicTexture: func() render.Texture {
-			return r.geometryAlbedoTexture
-		},
-		NormalRoughnessTexture: func() render.Texture {
-			return r.geometryNormalTexture
-		},
-		DepthTexture: func() render.Texture {
-			return r.geometryDepthTexture
-		},
+		AlbedoMetallicTexture:  geometrySourceStage.AlbedoMetallicTexture,
+		NormalRoughnessTexture: geometrySourceStage.NormalRoughnessTexture,
+		DepthTexture:           depthSourceStage.DepthTexture,
 	})
 	lightingStage := newLightingStage(r.api, r.shaders, r.stageData, LightingStageInput{
-		AlbedoMetallicTexture: func() render.Texture {
-			return r.geometryAlbedoTexture
-		},
-		NormalRoughnessTexture: func() render.Texture {
-			return r.geometryNormalTexture
-		},
-		DepthTexture: func() render.Texture {
-			return r.geometryDepthTexture
-		},
-		HDRTexture: func() render.Texture {
-			return r.lightingAlbedoTexture
-		},
+		AlbedoMetallicTexture:  geometrySourceStage.AlbedoMetallicTexture,
+		NormalRoughnessTexture: geometrySourceStage.NormalRoughnessTexture,
+		DepthTexture:           depthSourceStage.DepthTexture,
+		HDRTexture:             forwardSourceStage.HDRTexture,
 	})
 	forwardStage := newForwardStage(r.api, r.shaders, r.stageData, r.meshRenderer, ForwardStageInput{
-		HDRTexture: func() render.Texture {
-			return r.lightingAlbedoTexture
-		},
-		DepthTexture: func() render.Texture {
-			return r.geometryDepthTexture
-		},
+		HDRTexture:   forwardSourceStage.HDRTexture,
+		DepthTexture: depthSourceStage.DepthTexture,
 	})
 	exposureProbeStage := newExposureProbeStage(r.api, r.shaders, r.stageData, ExposureProbeStageInput{
-		HDRTexture: func() render.Texture {
-			return r.lightingAlbedoTexture
-		},
+		HDRTexture: forwardSourceStage.HDRTexture,
 	})
 	bloomStage := newBloomStage(r.api, r.shaders, r.stageData, BloomStageInput{
-		HDRTexture: func() render.Texture {
-			return r.lightingAlbedoTexture
-		},
+		HDRTexture: forwardSourceStage.HDRTexture,
 	})
 	toneMappingStage := newToneMappingStage(r.api, r.shaders, r.stageData, ToneMappingStageInput{
-		HDRTexture: func() render.Texture {
-			return r.lightingAlbedoTexture
-		},
-		BloomTexture: opt.V(StageTextureParameter(bloomStage.BloomTexture)),
+		HDRTexture:   forwardSourceStage.HDRTexture,
+		BloomTexture: opt.V[StageTextureParameter](bloomStage.BloomTexture),
 	})
 
 	// TODO: Make this configurable and user-defined.
 	r.stages = []Stage{
+		depthSourceStage,
+		geometrySourceStage,
+		forwardSourceStage,
+		shadowStage,
 		geometryStage,
 		lightingStage,
 		forwardStage,
@@ -193,8 +128,6 @@ func (r *sceneRenderer) Allocate() {
 }
 
 func (r *sceneRenderer) Release() {
-	defer r.releaseFramebuffers()
-
 	defer r.shadowDepthTexture.Release()
 	defer r.shadowFramebuffer.Release()
 
@@ -258,14 +191,6 @@ func (r *sceneRenderer) Render(framebuffer render.Framebuffer, viewport Viewport
 	uniformBuffer := r.stageData.UniformBuffer()
 	uniformBuffer.Reset()
 
-	if viewport.Width != r.framebufferWidth || viewport.Height != r.framebufferHeight {
-		r.releaseFramebuffers()
-		r.createFramebuffers(viewport.Width, viewport.Height)
-	}
-	for _, stage := range r.stages {
-		stage.PreRender(viewport.Width, viewport.Height)
-	}
-
 	projectionMatrix := r.evaluateProjectionMatrix(camera, viewport.Width, viewport.Height)
 	cameraMatrix := camera.gfxMatrix()
 	viewMatrix := sprec.InverseMat4(cameraMatrix)
@@ -291,17 +216,9 @@ func (r *sceneRenderer) Render(framebuffer render.Framebuffer, viewport Viewport
 		Time: scene.Time(),
 	})
 
-	// ctx := renderCtx{
-	// 	framebuffer:    framebuffer,
-	// 	scene:          scene,
-	// 	x:              viewport.X,
-	// 	y:              viewport.Y,
-	// 	width:          viewport.Width,
-	// 	height:         viewport.Height,
-	// 	camera:         camera,
-	// 	cameraPosition: stod.Vec3(cameraMatrix.Translation()),
-	// 	frustum:        frustum,
-	// }
+	for _, stage := range r.stages {
+		stage.PreRender(viewport.Width, viewport.Height)
+	}
 
 	stageCtx := StageContext{
 		Scene:                    scene,
@@ -317,9 +234,6 @@ func (r *sceneRenderer) Render(framebuffer render.Framebuffer, viewport Viewport
 		CommandBuffer:            commandBuffer,
 		UniformBuffer:            uniformBuffer,
 	}
-
-	// r.renderShadowPass(ctx, stageCtx)
-
 	for _, stage := range r.stages {
 		stage.Render(stageCtx)
 	}

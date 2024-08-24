@@ -310,6 +310,26 @@ func (e *Engine) CreateScene() *Scene {
 	return newScene(e, e.renderer)
 }
 
+// CreateDepthSourceStage creates a new DepthSourceStage.
+func (e *Engine) CreateDepthSourceStage() *DepthSourceStage {
+	return newDepthSourceStage(e.api)
+}
+
+// CreateGeometrySourceStage creates a new GeometrySourceStage.
+func (e *Engine) CreateGeometrySourceStage() *GeometrySourceStage {
+	return newGeometrySourceStage(e.api)
+}
+
+// CreateForwardSourceStage creates a new ForwardSourceStage.
+func (e *Engine) CreateForwardSourceStage() *ForwardSourceStage {
+	return newForwardSourceStage(e.api)
+}
+
+// CreateShadowStage creates a new ShadowStage using the specified input object.
+func (e *Engine) CreateShadowStage(input ShadowStageInput) *ShadowStage {
+	return newShadowStage(input)
+}
+
 // CreateGeometryStage creates a new GeometryStage using the specified input
 // object.
 func (e *Engine) CreateGeometryStage(input GeometryStageInput) *GeometryStage {
