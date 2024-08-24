@@ -9,9 +9,18 @@ import (
 )
 
 func NewEngine(api render.API, shaders ShaderCollection, shaderBuilder ShaderBuilder, opts ...Option) *Engine {
+	cfg := config{
+		stageBuilder: DefaultStageBuilder,
+	}
+	for _, opt := range opts {
+		opt(&cfg)
+	}
+
 	stageData := newCommonStageData(api)
 	meshRenderer := newMeshRenderer()
-	renderer := newRenderer(api, shaders, stageData, meshRenderer)
+	stageProvider := newStageProvider(api, shaders, stageData, meshRenderer)
+	stages := cfg.stageBuilder(stageProvider)
+	renderer := newRenderer(api, stageData, stages)
 
 	return &Engine{
 		api:           api,
@@ -308,61 +317,6 @@ func (e *Engine) CreateMeshDefinition(info MeshDefinitionInfo) *MeshDefinition {
 // within a given scene are isolated within that scene.
 func (e *Engine) CreateScene() *Scene {
 	return newScene(e, e.renderer)
-}
-
-// CreateDepthSourceStage creates a new DepthSourceStage.
-func (e *Engine) CreateDepthSourceStage() *DepthSourceStage {
-	return newDepthSourceStage(e.api)
-}
-
-// CreateGeometrySourceStage creates a new GeometrySourceStage.
-func (e *Engine) CreateGeometrySourceStage() *GeometrySourceStage {
-	return newGeometrySourceStage(e.api)
-}
-
-// CreateForwardSourceStage creates a new ForwardSourceStage.
-func (e *Engine) CreateForwardSourceStage() *ForwardSourceStage {
-	return newForwardSourceStage(e.api)
-}
-
-// CreateShadowStage creates a new ShadowStage using the specified input object.
-func (e *Engine) CreateShadowStage(input ShadowStageInput) *ShadowStage {
-	return newShadowStage(input)
-}
-
-// CreateGeometryStage creates a new GeometryStage using the specified input
-// object.
-func (e *Engine) CreateGeometryStage(input GeometryStageInput) *GeometryStage {
-	return newGeometryStage(e.api, e.meshRenderer, input)
-}
-
-// CreateLightingStage creates a new LightingStage using the specified input
-// object.
-func (e *Engine) CreateLightingStage(input LightingStageInput) *LightingStage {
-	return newLightingStage(e.api, e.shaders, e.stageData, input)
-}
-
-// CreateForwardStage creates a new ForwardStage using the specified input
-// object.
-func (e *Engine) CreateForwardStage(input ForwardStageInput) *ForwardStage {
-	return newForwardStage(e.api, e.shaders, e.stageData, e.meshRenderer, input)
-}
-
-// CreateExposureProbeStage creates a new ExposureProbeStage using the specified
-// input object.
-func (e *Engine) CreateExposureProbeStage(input ExposureProbeStageInput) *ExposureProbeStage {
-	return newExposureProbeStage(e.api, e.shaders, e.stageData, input)
-}
-
-// CreateBloomStage creates a new BloomStage using the specified input object.
-func (e *Engine) CreateBloomStage(input BloomStageInput) *BloomStage {
-	return newBloomStage(e.api, e.shaders, e.stageData, input)
-}
-
-// CreateToneMappingStage creates a new ToneMappingStage using the specified
-// input object.
-func (e *Engine) CreateToneMappingStage(input ToneMappingStageInput) *ToneMappingStage {
-	return newToneMappingStage(e.api, e.shaders, e.stageData, input)
 }
 
 func (e *Engine) createGeometryPassProgram(programCode render.ProgramCode) render.Program {

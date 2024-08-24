@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/mokiat/gblob"
-	"github.com/mokiat/gog/opt"
 	"github.com/mokiat/gomath/dprec"
 	"github.com/mokiat/gomath/sprec"
 	"github.com/mokiat/gomath/stod"
@@ -23,12 +22,11 @@ const (
 	uniformBufferSize = 32 * 1024 * 1024 // 32MB
 )
 
-func newRenderer(api render.API, shaders ShaderCollection, stageData *commonStageData, meshRenderer *meshRenderer) *sceneRenderer {
+func newRenderer(api render.API, stageData *commonStageData, stages []Stage) *sceneRenderer {
 	return &sceneRenderer{
-		api:          api,
-		shaders:      shaders,
-		stageData:    stageData,
-		meshRenderer: meshRenderer,
+		api:       api,
+		stageData: stageData,
+		stages:    stages,
 
 		visibleStaticMeshes: spatial.NewVisitorBucket[uint32](2_000),
 		visibleMeshes:       spatial.NewVisitorBucket[*Mesh](2_000),
@@ -41,10 +39,9 @@ func newRenderer(api render.API, shaders ShaderCollection, stageData *commonStag
 }
 
 type sceneRenderer struct {
-	api          render.API
-	shaders      ShaderCollection
-	stageData    *commonStageData
-	meshRenderer *meshRenderer
+	api       render.API
+	stageData *commonStageData
+	stages    []Stage
 
 	shadowDepthTexture render.Texture
 	shadowFramebuffer  render.Framebuffer
@@ -59,8 +56,6 @@ type sceneRenderer struct {
 
 	modelUniformBufferData gblob.LittleEndianBlock
 	cameraPlacement        ubo.UniformPlacement
-
-	stages []Stage
 }
 
 func (r *sceneRenderer) Allocate() {
@@ -74,53 +69,6 @@ func (r *sceneRenderer) Allocate() {
 	})
 
 	r.modelUniformBufferData = make([]byte, modelUniformBufferSize)
-
-	depthSourceStage := newDepthSourceStage(r.api)
-	geometrySourceStage := newGeometrySourceStage(r.api)
-	forwardSourceStage := newForwardSourceStage(r.api)
-
-	shadowStage := newShadowStage(ShadowStageInput{
-		// TODO
-	})
-	geometryStage := newGeometryStage(r.api, r.meshRenderer, GeometryStageInput{
-		AlbedoMetallicTexture:  geometrySourceStage.AlbedoMetallicTexture,
-		NormalRoughnessTexture: geometrySourceStage.NormalRoughnessTexture,
-		DepthTexture:           depthSourceStage.DepthTexture,
-	})
-	lightingStage := newLightingStage(r.api, r.shaders, r.stageData, LightingStageInput{
-		AlbedoMetallicTexture:  geometrySourceStage.AlbedoMetallicTexture,
-		NormalRoughnessTexture: geometrySourceStage.NormalRoughnessTexture,
-		DepthTexture:           depthSourceStage.DepthTexture,
-		HDRTexture:             forwardSourceStage.HDRTexture,
-	})
-	forwardStage := newForwardStage(r.api, r.shaders, r.stageData, r.meshRenderer, ForwardStageInput{
-		HDRTexture:   forwardSourceStage.HDRTexture,
-		DepthTexture: depthSourceStage.DepthTexture,
-	})
-	exposureProbeStage := newExposureProbeStage(r.api, r.shaders, r.stageData, ExposureProbeStageInput{
-		HDRTexture: forwardSourceStage.HDRTexture,
-	})
-	bloomStage := newBloomStage(r.api, r.shaders, r.stageData, BloomStageInput{
-		HDRTexture: forwardSourceStage.HDRTexture,
-	})
-	toneMappingStage := newToneMappingStage(r.api, r.shaders, r.stageData, ToneMappingStageInput{
-		HDRTexture:   forwardSourceStage.HDRTexture,
-		BloomTexture: opt.V[StageTextureParameter](bloomStage.BloomTexture),
-	})
-
-	// TODO: Make this configurable and user-defined.
-	r.stages = []Stage{
-		depthSourceStage,
-		geometrySourceStage,
-		forwardSourceStage,
-		shadowStage,
-		geometryStage,
-		lightingStage,
-		forwardStage,
-		exposureProbeStage,
-		bloomStage,
-		toneMappingStage,
-	}
 
 	for _, stage := range r.stages {
 		stage.Allocate()
