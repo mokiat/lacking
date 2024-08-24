@@ -8,7 +8,7 @@ import (
 	"github.com/mokiat/lacking/render"
 )
 
-func NewEngine(api render.API, shaders ShaderCollection, shaderBuilder ShaderBuilder) *Engine {
+func NewEngine(api render.API, shaders ShaderCollection, shaderBuilder ShaderBuilder, opts ...Option) *Engine {
 	stageData := newCommonStageData(api)
 	meshRenderer := newMeshRenderer()
 	renderer := newRenderer(api, shaders, stageData, meshRenderer)

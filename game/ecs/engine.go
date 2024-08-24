@@ -1,7 +1,7 @@
 package ecs
 
 // NewEngine creates a new ECS engine.
-func NewEngine() *Engine {
+func NewEngine(opts ...Option) *Engine {
 	return &Engine{}
 }
 
