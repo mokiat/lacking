@@ -22,6 +22,9 @@ type CommandBuffer interface {
 	// specified framebuffer.
 	BeginRenderPass(info RenderPassInfo)
 
+	// SetViewport changes the viewport settings of the render pass.
+	SetViewport(x, y, width, height uint32)
+
 	// BindPipeline configures the pipeline that should be used for the
 	// following draw commands.
 	BindPipeline(pipeline Pipeline)
