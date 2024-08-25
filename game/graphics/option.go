@@ -8,7 +8,7 @@ type Option func(*config)
 // builder function.
 func WithStageBuilder(builder StageBuilderFunc) Option {
 	return func(c *config) {
-		c.stageBuilder = builder
+		c.StageBuilder = builder
 	}
 }
 
@@ -16,7 +16,7 @@ func WithStageBuilder(builder StageBuilderFunc) Option {
 // size for each cascade shadow map. The size needs to be a power of two.
 func WithCascadeShadowMapSize(size int) Option {
 	return func(c *config) {
-		c.cascadeShadowMapSize = size
+		c.CascadeShadowMapSize = size
 	}
 }
 
@@ -29,7 +29,7 @@ func WithCascadeShadowMapSize(size int) Option {
 // future.
 func WithCascadeShadowMapCount(count int) Option {
 	return func(c *config) {
-		c.cascadeShadowMapCount = count
+		c.CascadeShadowMapCount = count
 	}
 }
 
@@ -37,7 +37,7 @@ func WithCascadeShadowMapCount(count int) Option {
 // size for the atlas shadow map. The size needs to be a power of two.
 func WithAtlasShadowMapSize(size int) Option {
 	return func(c *config) {
-		c.atlasShadowMapSize = size
+		c.AtlasShadowMapSize = size
 	}
 }
 
@@ -50,15 +50,15 @@ func WithAtlasShadowMapSize(size int) Option {
 // at the same time at the cost of quality.
 func WithAtlasShadowMapSectors(count int) Option {
 	return func(c *config) {
-		c.atlasShadowMapSectors = count
+		c.AtlasShadowMapSectors = count
 	}
 }
 
 type config struct {
-	stageBuilder StageBuilderFunc
+	StageBuilder StageBuilderFunc
 
-	cascadeShadowMapSize  int
-	cascadeShadowMapCount int
-	atlasShadowMapSize    int
-	atlasShadowMapSectors int
+	CascadeShadowMapSize  int
+	CascadeShadowMapCount int
+	AtlasShadowMapSize    int
+	AtlasShadowMapSectors int
 }

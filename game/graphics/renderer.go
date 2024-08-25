@@ -3,7 +3,6 @@ package graphics
 import (
 	"fmt"
 
-	"github.com/mokiat/gblob"
 	"github.com/mokiat/gomath/dprec"
 	"github.com/mokiat/gomath/sprec"
 	"github.com/mokiat/gomath/stod"
@@ -28,13 +27,13 @@ func newRenderer(api render.API, stageData *commonStageData, stages []Stage) *sc
 		stageData: stageData,
 		stages:    stages,
 
+		debugLines: make([]DebugLine, debugMaxLineCount),
+
 		visibleStaticMeshes: spatial.NewVisitorBucket[uint32](2_000),
 		visibleMeshes:       spatial.NewVisitorBucket[*Mesh](2_000),
 
 		litStaticMeshes: spatial.NewVisitorBucket[uint32](2_000),
 		litMeshes:       spatial.NewVisitorBucket[*Mesh](2_000),
-
-		debugLines: make([]DebugLine, debugMaxLineCount),
 	}
 }
 
@@ -42,9 +41,6 @@ type sceneRenderer struct {
 	api       render.API
 	stageData *commonStageData
 	stages    []Stage
-
-	shadowDepthTexture render.Texture
-	shadowFramebuffer  render.Framebuffer
 
 	debugLines []DebugLine
 
@@ -54,31 +50,16 @@ type sceneRenderer struct {
 	litStaticMeshes *spatial.VisitorBucket[uint32]
 	litMeshes       *spatial.VisitorBucket[*Mesh]
 
-	modelUniformBufferData gblob.LittleEndianBlock
-	cameraPlacement        ubo.UniformPlacement
+	cameraPlacement ubo.UniformPlacement
 }
 
 func (r *sceneRenderer) Allocate() {
-	r.shadowDepthTexture = r.api.CreateDepthTexture2D(render.DepthTexture2DInfo{
-		Width:      shadowMapWidth,
-		Height:     shadowMapHeight,
-		Comparable: true,
-	})
-	r.shadowFramebuffer = r.api.CreateFramebuffer(render.FramebufferInfo{
-		DepthAttachment: r.shadowDepthTexture,
-	})
-
-	r.modelUniformBufferData = make([]byte, modelUniformBufferSize)
-
 	for _, stage := range r.stages {
 		stage.Allocate()
 	}
 }
 
 func (r *sceneRenderer) Release() {
-	defer r.shadowDepthTexture.Release()
-	defer r.shadowFramebuffer.Release()
-
 	for _, stage := range r.stages {
 		defer stage.Release()
 	}

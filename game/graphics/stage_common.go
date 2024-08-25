@@ -7,9 +7,16 @@ import (
 	"github.com/mokiat/lacking/render/ubo"
 )
 
-func newCommonStageData(api render.API) *commonStageData {
+func newCommonStageData(api render.API, cfg *config) *commonStageData {
 	return &commonStageData{
 		api: api,
+
+		cascadeShadowMapSize:  cfg.CascadeShadowMapSize,
+		cascadeShadowMapCount: cfg.CascadeShadowMapCount,
+		cascadeShadowMaps:     make([]internal.CascadeShadowMap, cfg.CascadeShadowMapCount),
+
+		atlasShadowMapSize:    cfg.AtlasShadowMapSize,
+		atlasShadowMapSectors: cfg.AtlasShadowMapSectors,
 	}
 }
 
@@ -27,6 +34,14 @@ type commonStageData struct {
 
 	commandBuffer render.CommandBuffer
 	uniformBuffer *ubo.UniformBlockBuffer
+
+	cascadeShadowMapSize  int
+	cascadeShadowMapCount int
+	cascadeShadowMaps     []internal.CascadeShadowMap
+
+	atlasShadowMapSize    int
+	atlasShadowMapSectors int
+	atlasShadowMap        internal.AtlasShadowMap
 }
 
 func (d *commonStageData) Allocate() {
@@ -54,6 +69,27 @@ func (d *commonStageData) Allocate() {
 
 	d.commandBuffer = d.api.CreateCommandBuffer(commandBufferSize)
 	d.uniformBuffer = ubo.NewUniformBlockBuffer(d.api, uniformBufferSize)
+
+	for i := range d.cascadeShadowMaps {
+		cascadeShadowMap := &d.cascadeShadowMaps[i]
+		cascadeShadowMap.Texture = d.api.CreateDepthTexture2D(render.DepthTexture2DInfo{
+			Width:      uint32(d.cascadeShadowMapSize),
+			Height:     uint32(d.cascadeShadowMapSize),
+			Comparable: true,
+		})
+		cascadeShadowMap.Framebuffer = d.api.CreateFramebuffer(render.FramebufferInfo{
+			DepthAttachment: cascadeShadowMap.Texture,
+		})
+	}
+
+	d.atlasShadowMap.Texture = d.api.CreateDepthTexture2D(render.DepthTexture2DInfo{
+		Width:      uint32(d.atlasShadowMapSize),
+		Height:     uint32(d.atlasShadowMapSize),
+		Comparable: true,
+	})
+	d.atlasShadowMap.Framebuffer = d.api.CreateFramebuffer(render.FramebufferInfo{
+		DepthAttachment: d.atlasShadowMap.Texture,
+	})
 }
 
 func (d *commonStageData) Release() {
@@ -67,6 +103,15 @@ func (d *commonStageData) Release() {
 	defer d.depthSampler.Release()
 
 	defer d.uniformBuffer.Release()
+
+	for i := range d.cascadeShadowMaps {
+		cascadeShadowMap := &d.cascadeShadowMaps[i]
+		defer cascadeShadowMap.Texture.Release()
+		defer cascadeShadowMap.Framebuffer.Release()
+	}
+
+	defer d.atlasShadowMap.Texture.Release()
+	defer d.atlasShadowMap.Framebuffer.Release()
 }
 
 func (d *commonStageData) CommandBuffer() render.CommandBuffer {

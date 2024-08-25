@@ -9,22 +9,22 @@ import (
 )
 
 func NewEngine(api render.API, shaders ShaderCollection, shaderBuilder ShaderBuilder, opts ...Option) *Engine {
-	cfg := config{
-		stageBuilder: DefaultStageBuilder,
+	cfg := &config{
+		StageBuilder: DefaultStageBuilder,
 
-		cascadeShadowMapSize:  2048,
-		cascadeShadowMapCount: 3,
-		atlasShadowMapSize:    2048,
-		atlasShadowMapSectors: 16,
+		CascadeShadowMapSize:  2048,
+		CascadeShadowMapCount: 3,
+		AtlasShadowMapSize:    2048,
+		AtlasShadowMapSectors: 16,
 	}
 	for _, opt := range opts {
-		opt(&cfg)
+		opt(cfg)
 	}
 
-	stageData := newCommonStageData(api)
+	stageData := newCommonStageData(api, cfg)
 	meshRenderer := newMeshRenderer()
 	stageProvider := newStageProvider(api, shaders, stageData, meshRenderer)
-	stages := cfg.stageBuilder(stageProvider)
+	stages := cfg.StageBuilder(stageProvider)
 	renderer := newRenderer(api, stageData, stages)
 
 	return &Engine{
