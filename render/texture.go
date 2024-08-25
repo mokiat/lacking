@@ -10,6 +10,15 @@ type TextureMarker interface {
 type Texture interface {
 	TextureMarker
 	Resource
+
+	// Width returns the width of the texture.
+	Width() uint32
+
+	// Height returns the height of the texture.
+	Height() uint32
+
+	// Depth returns the depth of the texture.
+	Depth() uint32
 }
 
 const (

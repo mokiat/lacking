@@ -60,9 +60,8 @@ func (s *GeometryStage) Render(ctx StageContext) {
 	commandBuffer.BeginRenderPass(render.RenderPassInfo{
 		Framebuffer: s.framebuffer,
 		Viewport: render.Area{
-			// TODO: This should be based on HDR texture size.
-			Width:  ctx.Viewport.Width,
-			Height: ctx.Viewport.Height,
+			Width:  s.albedoMetallicTexture.Width(),
+			Height: s.albedoMetallicTexture.Height(),
 		},
 		DepthLoadOp:     render.LoadOperationClear,
 		DepthStoreOp:    render.StoreOperationStore,

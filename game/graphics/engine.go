@@ -11,6 +11,11 @@ import (
 func NewEngine(api render.API, shaders ShaderCollection, shaderBuilder ShaderBuilder, opts ...Option) *Engine {
 	cfg := config{
 		stageBuilder: DefaultStageBuilder,
+
+		cascadeShadowMapSize:  2048,
+		cascadeShadowMapCount: 3,
+		atlasShadowMapSize:    2048,
+		atlasShadowMapSectors: 16,
 	}
 	for _, opt := range opts {
 		opt(&cfg)
