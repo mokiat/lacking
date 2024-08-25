@@ -170,3 +170,29 @@ func SetRefractionTexture(textureProvider Provider[*mdl.Texture]) Operation {
 		},
 	)
 }
+
+// SetCastShadow configures the cast shadow of the target.
+func SetCastShadow(castShadowProvider Provider[bool]) Operation {
+	return FuncOperation(
+		// apply function
+		func(target any) error {
+			castShadow, err := castShadowProvider.Get()
+			if err != nil {
+				return fmt.Errorf("error getting cast shadow: %w", err)
+			}
+
+			caster, ok := target.(mdl.ShadowCaster)
+			if !ok {
+				return fmt.Errorf("target %T is not a shadow caster", target)
+			}
+			caster.SetCastShadow(castShadow)
+
+			return nil
+		},
+
+		// digest function
+		func() ([]byte, error) {
+			return CreateDigest("set-cast-shadow", castShadowProvider)
+		},
+	)
+}
