@@ -47,6 +47,20 @@ type StageContext struct {
 	// CameraFrustum is the frustum of the camera in world space.
 	CameraFrustum spatial.HexahedronRegion
 
+	// VisibleAmbientLights is a list of ambient lights that are visible in the
+	// scene.
+	VisibleAmbientLights []*AmbientLight
+
+	// VisiblePointLights is a list of point lights that are visible in the scene.
+	VisiblePointLights []*PointLight
+
+	// VisibleSpotLights is a list of spot lights that are visible in the scene.
+	VisibleSpotLights []*SpotLight
+
+	// VisibleDirectionalLights is a list of directional lights that are visible
+	// in the scene.
+	VisibleDirectionalLights []*DirectionalLight
+
 	// VisibleMeshes is a list of meshes that are visible in the scene.
 	VisibleMeshes []*Mesh
 

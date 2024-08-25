@@ -29,11 +29,16 @@ func newRenderer(api render.API, stageData *commonStageData, stages []Stage) *sc
 
 		debugLines: make([]DebugLine, debugMaxLineCount),
 
-		visibleStaticMeshes: spatial.NewVisitorBucket[uint32](2_000),
-		visibleMeshes:       spatial.NewVisitorBucket[*Mesh](2_000),
+		visibleAmbientLights:     spatial.NewVisitorBucket[*AmbientLight](1),
+		visiblePointLights:       spatial.NewVisitorBucket[*PointLight](32),
+		visibleSpotLights:        spatial.NewVisitorBucket[*SpotLight](8),
+		visibleDirectionalLights: spatial.NewVisitorBucket[*DirectionalLight](2),
 
-		litStaticMeshes: spatial.NewVisitorBucket[uint32](2_000),
-		litMeshes:       spatial.NewVisitorBucket[*Mesh](2_000),
+		visibleStaticMeshes: spatial.NewVisitorBucket[uint32](65536),
+		visibleMeshes:       spatial.NewVisitorBucket[*Mesh](1024),
+
+		// litStaticMeshes: spatial.NewVisitorBucket[uint32](2_000),
+		// litMeshes:       spatial.NewVisitorBucket[*Mesh](2_000),
 	}
 }
 
@@ -44,11 +49,16 @@ type sceneRenderer struct {
 
 	debugLines []DebugLine
 
+	visibleAmbientLights     *spatial.VisitorBucket[*AmbientLight]
+	visiblePointLights       *spatial.VisitorBucket[*PointLight]
+	visibleSpotLights        *spatial.VisitorBucket[*SpotLight]
+	visibleDirectionalLights *spatial.VisitorBucket[*DirectionalLight]
+
 	visibleStaticMeshes *spatial.VisitorBucket[uint32]
 	visibleMeshes       *spatial.VisitorBucket[*Mesh]
 
-	litStaticMeshes *spatial.VisitorBucket[uint32]
-	litMeshes       *spatial.VisitorBucket[*Mesh]
+	// litStaticMeshes *spatial.VisitorBucket[uint32]
+	// litMeshes       *spatial.VisitorBucket[*Mesh]
 
 	cameraPlacement ubo.UniformPlacement
 }
@@ -120,17 +130,15 @@ func (r *sceneRenderer) Render(framebuffer render.Framebuffer, viewport Viewport
 	uniformBuffer := r.stageData.UniformBuffer()
 	uniformBuffer.Reset()
 
+	for _, stage := range r.stages {
+		stage.PreRender(viewport.Width, viewport.Height)
+	}
+
 	projectionMatrix := r.evaluateProjectionMatrix(camera, viewport.Width, viewport.Height)
 	cameraMatrix := camera.gfxMatrix()
 	viewMatrix := sprec.InverseMat4(cameraMatrix)
 	projectionViewMatrix := sprec.Mat4Prod(projectionMatrix, viewMatrix)
 	frustum := spatial.ProjectionRegion(stod.Mat4(projectionViewMatrix))
-
-	r.visibleMeshes.Reset()
-	scene.dynamicMeshSet.VisitHexahedronRegion(&frustum, r.visibleMeshes)
-
-	r.visibleStaticMeshes.Reset()
-	scene.staticMeshOctree.VisitHexahedronRegion(&frustum, r.visibleStaticMeshes)
 
 	r.cameraPlacement = ubo.WriteUniform(uniformBuffer, internal.CameraUniform{
 		ProjectionMatrix: projectionMatrix,
@@ -145,9 +153,23 @@ func (r *sceneRenderer) Render(framebuffer render.Framebuffer, viewport Viewport
 		Time: scene.Time(),
 	})
 
-	for _, stage := range r.stages {
-		stage.PreRender(viewport.Width, viewport.Height)
-	}
+	r.visibleAmbientLights.Reset()
+	scene.ambientLightSet.VisitHexahedronRegion(&frustum, r.visibleAmbientLights)
+
+	r.visiblePointLights.Reset()
+	scene.pointLightSet.VisitHexahedronRegion(&frustum, r.visiblePointLights)
+
+	r.visibleSpotLights.Reset()
+	scene.spotLightSet.VisitHexahedronRegion(&frustum, r.visibleSpotLights)
+
+	r.visibleDirectionalLights.Reset()
+	scene.directionalLightSet.VisitHexahedronRegion(&frustum, r.visibleDirectionalLights)
+
+	r.visibleMeshes.Reset()
+	scene.dynamicMeshSet.VisitHexahedronRegion(&frustum, r.visibleMeshes)
+
+	r.visibleStaticMeshes.Reset()
+	scene.staticMeshOctree.VisitHexahedronRegion(&frustum, r.visibleStaticMeshes)
 
 	stageCtx := StageContext{
 		Scene:                    scene,
@@ -155,6 +177,10 @@ func (r *sceneRenderer) Render(framebuffer render.Framebuffer, viewport Viewport
 		CameraPosition:           stod.Vec3(cameraMatrix.Translation()),
 		CameraPlacement:          r.cameraPlacement,
 		CameraFrustum:            frustum,
+		VisibleAmbientLights:     r.visibleAmbientLights.Items(),
+		VisiblePointLights:       r.visiblePointLights.Items(),
+		VisibleSpotLights:        r.visibleSpotLights.Items(),
+		VisibleDirectionalLights: r.visibleDirectionalLights.Items(),
 		VisibleMeshes:            r.visibleMeshes.Items(),
 		VisibleStaticMeshIndices: r.visibleStaticMeshes.Items(),
 		DebugLines:               r.debugLines,

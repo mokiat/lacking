@@ -7,7 +7,6 @@ import (
 	"github.com/mokiat/lacking/game/graphics/internal"
 	"github.com/mokiat/lacking/render"
 	"github.com/mokiat/lacking/render/ubo"
-	"github.com/mokiat/lacking/util/spatial"
 )
 
 // LightingStageInput is the input data for the LightingStage.
@@ -24,11 +23,6 @@ func newLightingStage(api render.API, shaders ShaderCollection, data *commonStag
 		shaders: shaders,
 		data:    data,
 		input:   input,
-
-		ambientLightBucket:     spatial.NewVisitorBucket[*AmbientLight](16),
-		pointLightBucket:       spatial.NewVisitorBucket[*PointLight](16),
-		spotLightBucket:        spatial.NewVisitorBucket[*SpotLight](16),
-		directionalLightBucket: spatial.NewVisitorBucket[*DirectionalLight](16),
 	}
 }
 
@@ -48,19 +42,15 @@ type LightingStage struct {
 
 	ambientLightProgram  render.Program
 	ambientLightPipeline render.Pipeline
-	ambientLightBucket   *spatial.VisitorBucket[*AmbientLight]
 
 	pointLightProgram  render.Program
 	pointLightPipeline render.Pipeline
-	pointLightBucket   *spatial.VisitorBucket[*PointLight]
 
 	spotLightProgram  render.Program
 	spotLightPipeline render.Pipeline
-	spotLightBucket   *spatial.VisitorBucket[*SpotLight]
 
 	directionalLightProgram  render.Program
 	directionalLightPipeline render.Pipeline
-	directionalLightBucket   *spatial.VisitorBucket[*DirectionalLight]
 }
 
 func (s *LightingStage) Allocate() {
@@ -84,23 +74,7 @@ func (s *LightingStage) PreRender(width, height uint32) {
 func (s *LightingStage) Render(ctx StageContext) {
 	defer metric.BeginRegion("lighting").End()
 
-	scene := ctx.Scene
-	frustum := ctx.CameraFrustum
-
-	s.ambientLightBucket.Reset()
-	scene.ambientLightSet.VisitHexahedronRegion(&frustum, s.ambientLightBucket)
-
-	s.pointLightBucket.Reset()
-	scene.pointLightSet.VisitHexahedronRegion(&frustum, s.pointLightBucket)
-
-	s.spotLightBucket.Reset()
-	scene.spotLightSet.VisitHexahedronRegion(&frustum, s.spotLightBucket)
-
-	s.directionalLightBucket.Reset()
-	scene.directionalLightSet.VisitHexahedronRegion(&frustum, s.directionalLightBucket)
-
 	commandBuffer := ctx.CommandBuffer
-
 	commandBuffer.BeginRenderPass(render.RenderPassInfo{
 		Framebuffer: s.framebuffer,
 		Viewport: render.Area{
@@ -120,22 +94,22 @@ func (s *LightingStage) Render(ctx StageContext) {
 		},
 	})
 
-	for _, ambientLight := range s.ambientLightBucket.Items() {
+	for _, ambientLight := range ctx.VisibleAmbientLights {
 		if ambientLight.active {
 			s.renderAmbientLight(ctx, ambientLight)
 		}
 	}
-	for _, pointLight := range s.pointLightBucket.Items() {
+	for _, pointLight := range ctx.VisiblePointLights {
 		if pointLight.active {
 			s.renderPointLight(ctx, pointLight)
 		}
 	}
-	for _, spotLight := range s.spotLightBucket.Items() {
+	for _, spotLight := range ctx.VisibleSpotLights {
 		if spotLight.active {
 			s.renderSpotLight(ctx, spotLight)
 		}
 	}
-	for _, directionalLight := range s.directionalLightBucket.Items() {
+	for _, directionalLight := range ctx.VisibleDirectionalLights {
 		if directionalLight.active {
 			s.renderDirectionalLight(ctx, directionalLight)
 		}
