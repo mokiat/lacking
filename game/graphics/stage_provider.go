@@ -34,8 +34,8 @@ func (p *StageProvider) CreateForwardSourceStage() *ForwardSourceStage {
 }
 
 // CreateShadowStage creates a new ShadowStage using the specified input object.
-func (p *StageProvider) CreateShadowStage(input ShadowStageInput) *ShadowStage {
-	return newShadowStage(input)
+func (p *StageProvider) CreateShadowStage() *ShadowStage {
+	return newShadowStage(p.data, p.meshRenderer)
 }
 
 // CreateGeometryStage creates a new GeometryStage using the specified input

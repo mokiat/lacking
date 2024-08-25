@@ -4,6 +4,7 @@ import (
 	"github.com/mokiat/gomath/dprec"
 	"github.com/mokiat/gomath/dtos"
 	"github.com/mokiat/gomath/sprec"
+	"github.com/mokiat/lacking/game/graphics/internal"
 	"github.com/mokiat/lacking/util/spatial"
 )
 
@@ -29,6 +30,8 @@ func newDirectionalLight(scene *Scene, info DirectionalLightInfo) *DirectionalLi
 	light.emitRange = info.EmitRange
 	light.emitColor = info.EmitColor
 
+	light.castShadow = info.CastShadow
+
 	light.matrix = sprec.IdentityMat4()
 	light.matrixDirty = true
 	return light
@@ -43,6 +46,9 @@ type DirectionalLight struct {
 	rotation  dprec.Quat
 	emitRange float64
 	emitColor dprec.Vec3
+
+	castShadow bool
+	shadowMaps [3]internal.CascadeShadowMap
 
 	matrix      sprec.Mat4
 	matrixDirty bool
@@ -111,6 +117,16 @@ func (l *DirectionalLight) EmitColor() dprec.Vec3 {
 // can be outside the [0.0, 1.0] range for higher intensity.
 func (l *DirectionalLight) SetEmitColor(color dprec.Vec3) {
 	l.emitColor = color
+}
+
+// CastShadow returns whether this light will cast a shadow.
+func (l *DirectionalLight) CastShadow() bool {
+	return l.castShadow
+}
+
+// SetCastShadow changes whether this light will cast a shadow.
+func (l *DirectionalLight) SetCastShadow(castShadow bool) {
+	l.castShadow = castShadow
 }
 
 // Delete removes this light from the scene.

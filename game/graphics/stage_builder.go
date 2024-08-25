@@ -13,9 +13,7 @@ func DefaultStageBuilder(provider *StageProvider) []Stage {
 
 	forwardSourceStage := provider.CreateForwardSourceStage()
 
-	shadowStage := provider.CreateShadowStage(ShadowStageInput{
-		// TODO
-	})
+	shadowStage := provider.CreateShadowStage()
 
 	geometryStage := provider.CreateGeometryStage(GeometryStageInput{
 		AlbedoMetallicTexture:  geometrySourceStage.AlbedoMetallicTexture,

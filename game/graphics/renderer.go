@@ -14,8 +14,8 @@ import (
 )
 
 const (
-	shadowMapWidth  = 2048
-	shadowMapHeight = 2048
+	shadowMapWidth  = 2048 // FIXME: Should not use this. Instead from the texture.
+	shadowMapHeight = 2048 // FIXME: Should not use this. Instead from the texture.
 
 	commandBufferSize = 2 * 1024 * 1024  // 2MB
 	uniformBufferSize = 32 * 1024 * 1024 // 32MB
@@ -36,9 +36,6 @@ func newRenderer(api render.API, stageData *commonStageData, stages []Stage) *sc
 
 		visibleStaticMeshes: spatial.NewVisitorBucket[uint32](65536),
 		visibleMeshes:       spatial.NewVisitorBucket[*Mesh](1024),
-
-		// litStaticMeshes: spatial.NewVisitorBucket[uint32](2_000),
-		// litMeshes:       spatial.NewVisitorBucket[*Mesh](2_000),
 	}
 }
 
@@ -56,11 +53,6 @@ type sceneRenderer struct {
 
 	visibleStaticMeshes *spatial.VisitorBucket[uint32]
 	visibleMeshes       *spatial.VisitorBucket[*Mesh]
-
-	// litStaticMeshes *spatial.VisitorBucket[uint32]
-	// litMeshes       *spatial.VisitorBucket[*Mesh]
-
-	cameraPlacement ubo.UniformPlacement
 }
 
 func (r *sceneRenderer) Allocate() {
@@ -140,7 +132,7 @@ func (r *sceneRenderer) Render(framebuffer render.Framebuffer, viewport Viewport
 	projectionViewMatrix := sprec.Mat4Prod(projectionMatrix, viewMatrix)
 	frustum := spatial.ProjectionRegion(stod.Mat4(projectionViewMatrix))
 
-	r.cameraPlacement = ubo.WriteUniform(uniformBuffer, internal.CameraUniform{
+	cameraPlacement := ubo.WriteUniform(uniformBuffer, internal.CameraUniform{
 		ProjectionMatrix: projectionMatrix,
 		ViewMatrix:       viewMatrix,
 		CameraMatrix:     cameraMatrix,
@@ -175,7 +167,7 @@ func (r *sceneRenderer) Render(framebuffer render.Framebuffer, viewport Viewport
 		Scene:                    scene,
 		Camera:                   camera,
 		CameraPosition:           stod.Vec3(cameraMatrix.Translation()),
-		CameraPlacement:          r.cameraPlacement,
+		CameraPlacement:          cameraPlacement,
 		CameraFrustum:            frustum,
 		VisibleAmbientLights:     r.visibleAmbientLights.Items(),
 		VisiblePointLights:       r.visiblePointLights.Items(),
@@ -243,78 +235,9 @@ func (r *sceneRenderer) evaluateProjectionMatrix(camera *Camera, width, height u
 }
 
 func lightOrtho() sprec.Mat4 {
+	// FIXME: This should depend on the light and cascade.
 	return sprec.OrthoMat4(-32, 32, 32, -32, 0, 256)
 }
-
-// func (r *sceneRenderer) renderShadowPass(ctx renderCtx, stageCtx StageContext) {
-// 	defer metric.BeginRegion("shadow").End()
-
-// 	r.directionalLightBucket.Reset()
-// 	ctx.scene.directionalLightSet.VisitHexahedronRegion(&ctx.frustum, r.directionalLightBucket)
-
-// 	var directionalLight *DirectionalLight
-// 	for _, light := range r.directionalLightBucket.Items() {
-// 		if light.active {
-// 			directionalLight = light
-// 			break
-// 		}
-// 	}
-// 	if directionalLight == nil {
-// 		return
-// 	}
-
-// 	projectionMatrix := lightOrtho()
-// 	lightMatrix := directionalLight.gfxMatrix()
-// 	lightMatrix.M14 = sprec.Floor(lightMatrix.M14*shadowMapWidth) / float32(shadowMapWidth)
-// 	lightMatrix.M24 = sprec.Floor(lightMatrix.M24*shadowMapWidth) / float32(shadowMapWidth)
-// 	lightMatrix.M34 = sprec.Floor(lightMatrix.M34*shadowMapWidth) / float32(shadowMapWidth)
-// 	viewMatrix := sprec.InverseMat4(lightMatrix)
-// 	projectionViewMatrix := sprec.Mat4Prod(projectionMatrix, viewMatrix)
-// 	frustum := spatial.ProjectionRegion(stod.Mat4(projectionViewMatrix))
-
-// 	r.litMeshes.Reset()
-// 	ctx.scene.dynamicMeshSet.VisitHexahedronRegion(&frustum, r.litMeshes)
-
-// 	r.litStaticMeshes.Reset()
-// 	ctx.scene.staticMeshOctree.VisitHexahedronRegion(&frustum, r.litStaticMeshes)
-
-// 	r.meshRenderer.DiscardRenderItems()
-// 	for _, mesh := range r.litMeshes.Items() {
-// 		r.meshRenderer.QueueMeshRenderItems(stageCtx, mesh, internal.MeshRenderPassTypeShadow)
-// 	}
-// 	for _, meshIndex := range r.litStaticMeshes.Items() {
-// 		staticMesh := &ctx.scene.staticMeshes[meshIndex]
-// 		r.meshRenderer.QueueStaticMeshRenderItems(stageCtx, staticMesh, internal.MeshRenderPassTypeShadow)
-// 	}
-
-// 	commandBuffer := r.stageData.CommandBuffer()
-// 	commandBuffer.BeginRenderPass(render.RenderPassInfo{
-// 		Framebuffer: r.shadowFramebuffer,
-// 		Viewport: render.Area{
-// 			X:      0,
-// 			Y:      0,
-// 			Width:  shadowMapWidth,
-// 			Height: shadowMapHeight,
-// 		},
-// 		DepthLoadOp:     render.LoadOperationClear,
-// 		DepthStoreOp:    render.StoreOperationStore,
-// 		DepthClearValue: 1.0,
-// 		StencilLoadOp:   render.LoadOperationLoad,
-// 		StencilStoreOp:  render.StoreOperationDiscard,
-// 	})
-
-// 	uniformBuffer := r.stageData.UniformBuffer()
-// 	lightCameraPlacement := ubo.WriteUniform(uniformBuffer, internal.CameraUniform{
-// 		ProjectionMatrix: projectionMatrix,
-// 		ViewMatrix:       viewMatrix,
-// 		CameraMatrix:     lightMatrix,
-// 		Viewport:         sprec.ZeroVec4(), // TODO?
-// 		Time:             ctx.scene.Time(), // FIXME?
-// 	})
-// 	stageCtx.CameraPlacement = lightCameraPlacement
-// 	r.meshRenderer.Render(stageCtx)
-// 	commandBuffer.EndRenderPass()
-// }
 
 // type renderCtx struct {
 // 	framebuffer    render.Framebuffer

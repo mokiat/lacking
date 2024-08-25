@@ -456,10 +456,10 @@ func (s *LightingStage) renderDirectionalLight(ctx StageContext, light *Directio
 	normalRoughnessTexture := s.input.NormalRoughnessTexture()
 	depthTexture := s.input.DepthTexture()
 	shadowMappingTexture := s.noShadowTexture
-	// TODO!!!
-	// if light.shadowMappingTexture != nil {
-	// 	shadowMappingTexture = light.shadowMappingTexture
-	// }
+	// TODO: Implement proper cascade shadow mapping
+	if light.shadowMaps[0].Texture != nil {
+		shadowMappingTexture = light.shadowMaps[0].Texture
+	}
 
 	projectionMatrix := lightOrtho()
 	lightMatrix := light.gfxMatrix()
