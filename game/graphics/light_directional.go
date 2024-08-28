@@ -31,6 +31,7 @@ func newDirectionalLight(scene *Scene, info DirectionalLightInfo) *DirectionalLi
 	light.emitColor = info.EmitColor
 
 	light.castShadow = info.CastShadow
+	light.cascadePartitions = [2]float64{0.1, 0.5}
 
 	light.matrix = sprec.IdentityMat4()
 	light.matrixDirty = true
@@ -47,8 +48,12 @@ type DirectionalLight struct {
 	emitRange float64
 	emitColor dprec.Vec3
 
-	castShadow bool
-	shadowMaps [3]internal.CascadeShadowMap
+	castShadow        bool
+	cascadePartitions [2]float64
+
+	// TODO: Decide if this should be here. It is consuming
+	// memory even if the light does not cast a shadow.
+	shadowMaps [3]internal.CascadeShadowMapRef
 
 	matrix      sprec.Mat4
 	matrixDirty bool
@@ -127,6 +132,21 @@ func (l *DirectionalLight) CastShadow() bool {
 // SetCastShadow changes whether this light will cast a shadow.
 func (l *DirectionalLight) SetCastShadow(castShadow bool) {
 	l.castShadow = castShadow
+}
+
+// CascadePartitions returns the frustum fractions at which the shadow
+// cascades will be split.
+func (l *DirectionalLight) CascadePartitions() [2]float64 {
+	return l.cascadePartitions
+}
+
+// SetCascadePartitions changes the frustum fractions at which the shadow
+// cascades will be split. The values must be in the (0.0, 1.0) range.
+func (l *DirectionalLight) SetCascadePartitions(partitions [2]float64) {
+	for i := range partitions {
+		partitions[i] = dprec.Clamp(partitions[i], 0.0, 1.0)
+	}
+	l.cascadePartitions = partitions
 }
 
 // Delete removes this light from the scene.

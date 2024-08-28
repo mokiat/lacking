@@ -1,6 +1,8 @@
 package graphics
 
 import (
+	"cmp"
+
 	"github.com/mokiat/gomath/dtos"
 	"github.com/mokiat/gomath/sprec"
 	"github.com/mokiat/lacking/debug/metric"
@@ -192,7 +194,6 @@ func (s *LightingStage) allocatePipelines() {
 		UniformBindings: []render.UniformBinding{
 			render.NewUniformBinding("Camera", internal.UniformBufferBindingCamera),
 			render.NewUniformBinding("Light", internal.UniformBufferBindingLight),
-			render.NewUniformBinding("LightProperties", internal.UniformBufferBindingLightProperties),
 		},
 	})
 	s.pointLightPipeline = s.api.CreatePipeline(render.PipelineInfo{
@@ -226,7 +227,6 @@ func (s *LightingStage) allocatePipelines() {
 		UniformBindings: []render.UniformBinding{
 			render.NewUniformBinding("Camera", internal.UniformBufferBindingCamera),
 			render.NewUniformBinding("Light", internal.UniformBufferBindingLight),
-			render.NewUniformBinding("LightProperties", internal.UniformBufferBindingLightProperties),
 		},
 	})
 	s.spotLightPipeline = s.api.CreatePipeline(render.PipelineInfo{
@@ -256,12 +256,13 @@ func (s *LightingStage) allocatePipelines() {
 			render.NewTextureBinding("fbColor0TextureIn", internal.TextureBindingLightingFramebufferColor0),
 			render.NewTextureBinding("fbColor1TextureIn", internal.TextureBindingLightingFramebufferColor1),
 			render.NewTextureBinding("fbDepthTextureIn", internal.TextureBindingLightingFramebufferDepth),
-			render.NewTextureBinding("fbShadowTextureIn", internal.TextureBindingShadowFramebufferDepth),
+			render.NewTextureBinding("lackingShadowMapNear", internal.TextureBindingLightingShadowMapNear),
+			render.NewTextureBinding("lackingShadowMapMid", internal.TextureBindingLightingShadowMapMid),
+			render.NewTextureBinding("lackingShadowMapFar", internal.TextureBindingLightingShadowMapFar),
 		},
 		UniformBindings: []render.UniformBinding{
 			render.NewUniformBinding("Camera", internal.UniformBufferBindingCamera),
 			render.NewUniformBinding("Light", internal.UniformBufferBindingLight),
-			render.NewUniformBinding("LightProperties", internal.UniformBufferBindingLightProperties),
 		},
 	})
 	s.directionalLightPipeline = s.api.CreatePipeline(render.PipelineInfo{
@@ -343,20 +344,19 @@ func (s *LightingStage) renderPointLight(ctx StageContext, light *PointLight) {
 	normalRoughnessTexture := s.input.NormalRoughnessTexture()
 	depthTexture := s.input.DepthTexture()
 
-	projectionMatrix := sprec.IdentityMat4()
+	// projectionMatrix := sprec.IdentityMat4()
 	lightMatrix := light.gfxMatrix()
-	viewMatrix := sprec.InverseMat4(lightMatrix)
+	// viewMatrix := sprec.InverseMat4(lightMatrix)
 
 	lightPlacement := ubo.WriteUniform(uniformBuffer, internal.LightUniform{
-		ProjectionMatrix: projectionMatrix,
-		ViewMatrix:       viewMatrix,
-		LightMatrix:      lightMatrix,
-	})
-
-	lightPropertiesPlacement := ubo.WriteUniform(uniformBuffer, internal.LightPropertiesUniform{
-		Color:     dtos.Vec3(light.emitColor),
-		Intensity: 1.0,
-		Range:     float32(light.emitRange),
+		ShadowMatrixNear: sprec.IdentityMat4(), // irrelevant
+		ShadowMatrixMid:  sprec.IdentityMat4(), // irrelevant
+		ShadowMatrixFar:  sprec.IdentityMat4(), // irrelevant
+		ShadowCascades:   sprec.ZeroVec4(),     // irrelevant
+		ModelMatrix:      lightMatrix,
+		Color:            dtos.Vec3(light.emitColor),
+		Intensity:        1.0,
+		Range:            float32(light.emitRange),
 	})
 
 	commandBuffer.BindPipeline(s.pointLightPipeline)
@@ -378,12 +378,6 @@ func (s *LightingStage) renderPointLight(ctx StageContext, light *PointLight) {
 		lightPlacement.Offset,
 		lightPlacement.Size,
 	)
-	commandBuffer.UniformBufferUnit(
-		internal.UniformBufferBindingLightProperties,
-		lightPropertiesPlacement.Buffer,
-		lightPropertiesPlacement.Offset,
-		lightPropertiesPlacement.Size,
-	)
 	commandBuffer.DrawIndexed(0, sphereShape.IndexCount(), 1)
 }
 
@@ -398,22 +392,21 @@ func (s *LightingStage) renderSpotLight(ctx StageContext, light *SpotLight) {
 	normalRoughnessTexture := s.input.NormalRoughnessTexture()
 	depthTexture := s.input.DepthTexture()
 
-	projectionMatrix := sprec.IdentityMat4()
+	// projectionMatrix := sprec.IdentityMat4()
 	lightMatrix := light.gfxMatrix()
-	viewMatrix := sprec.InverseMat4(lightMatrix)
+	// viewMatrix := sprec.InverseMat4(lightMatrix)
 
 	lightPlacement := ubo.WriteUniform(uniformBuffer, internal.LightUniform{
-		ProjectionMatrix: projectionMatrix,
-		ViewMatrix:       viewMatrix,
-		LightMatrix:      lightMatrix,
-	})
-
-	lightPropertiesPlacement := ubo.WriteUniform(uniformBuffer, internal.LightPropertiesUniform{
-		Color:      dtos.Vec3(light.emitColor),
-		Intensity:  1.0,
-		Range:      float32(light.emitRange),
-		OuterAngle: float32(light.emitOuterConeAngle.Radians()),
-		InnerAngle: float32(light.emitInnerConeAngle.Radians()),
+		ShadowMatrixNear: sprec.IdentityMat4(), // irrelevant
+		ShadowMatrixMid:  sprec.IdentityMat4(), // irrelevant
+		ShadowMatrixFar:  sprec.IdentityMat4(), // irrelevant
+		ShadowCascades:   sprec.ZeroVec4(),     // irrelevant
+		ModelMatrix:      lightMatrix,
+		Color:            dtos.Vec3(light.emitColor),
+		Intensity:        1.0,
+		Range:            float32(light.emitRange),
+		OuterAngle:       float32(light.emitOuterConeAngle.Radians()),
+		InnerAngle:       float32(light.emitInnerConeAngle.Radians()),
 	})
 
 	commandBuffer.BindPipeline(s.spotLightPipeline)
@@ -435,12 +428,6 @@ func (s *LightingStage) renderSpotLight(ctx StageContext, light *SpotLight) {
 		lightPlacement.Offset,
 		lightPlacement.Size,
 	)
-	commandBuffer.UniformBufferUnit(
-		internal.UniformBufferBindingLightProperties,
-		lightPropertiesPlacement.Buffer,
-		lightPropertiesPlacement.Offset,
-		lightPropertiesPlacement.Size,
-	)
 	commandBuffer.DrawIndexed(0, coneShape.IndexCount(), 1)
 }
 
@@ -455,31 +442,40 @@ func (s *LightingStage) renderDirectionalLight(ctx StageContext, light *Directio
 	albedoMetallicTexture := s.input.AlbedoMetallicTexture()
 	normalRoughnessTexture := s.input.NormalRoughnessTexture()
 	depthTexture := s.input.DepthTexture()
-	shadowMappingTexture := s.noShadowTexture
-	// TODO: Implement proper cascade shadow mapping
-	if light.shadowMaps[0].Texture != nil {
-		shadowMappingTexture = light.shadowMaps[0].Texture
-	}
 
-	projectionMatrix := lightOrtho()
 	lightMatrix := light.gfxMatrix()
 	lightMatrix.M14 = sprec.Floor(lightMatrix.M14*shadowMapWidth) / float32(shadowMapWidth)
 	lightMatrix.M24 = sprec.Floor(lightMatrix.M24*shadowMapWidth) / float32(shadowMapWidth)
 	lightMatrix.M34 = sprec.Floor(lightMatrix.M34*shadowMapWidth) / float32(shadowMapWidth)
 	viewMatrix := sprec.InverseMat4(lightMatrix)
 
+	// TODO: This will be unnecessary when proper cascade shadow mapping is implemented.
+	shadowMatrices := [3]sprec.Mat4{
+		sprec.Mat4Prod(light.shadowMaps[0].ProjectionMatrix, viewMatrix),
+		sprec.Mat4Prod(light.shadowMaps[1].ProjectionMatrix, viewMatrix),
+		sprec.Mat4Prod(light.shadowMaps[2].ProjectionMatrix, viewMatrix),
+	}
+
 	lightPlacement := ubo.WriteUniform(uniformBuffer, internal.LightUniform{
-		ProjectionMatrix: projectionMatrix,
-		ViewMatrix:       viewMatrix,
-		LightMatrix:      lightMatrix,
+		ShadowMatrixNear: shadowMatrices[0],
+		ShadowMatrixMid:  shadowMatrices[1],
+		ShadowMatrixFar:  shadowMatrices[2],
+		ShadowCascades:   sprec.Vec4{
+			// TODO
+		},
+		ModelMatrix: lightMatrix,
+		Color:       dtos.Vec3(light.emitColor),
+		Intensity:   1.0,
 	})
 
-	lightPropertiesPlacement := ubo.WriteUniform(uniformBuffer, internal.LightPropertiesUniform{
-		Color:     dtos.Vec3(light.emitColor),
-		Intensity: 1.0,
-	})
+	shadowMapTextures := [3]render.Texture{
+		cmp.Or(light.shadowMaps[0].Texture, s.noShadowTexture),
+		cmp.Or(light.shadowMaps[1].Texture, s.noShadowTexture),
+		cmp.Or(light.shadowMaps[2].Texture, s.noShadowTexture),
+	}
 
 	// TODO: Use different programs for shadow and non-shadow lights.
+	// TODO: OR rather use a uniform flag which controls this.
 	commandBuffer.BindPipeline(s.directionalLightPipeline)
 	commandBuffer.TextureUnit(internal.TextureBindingLightingFramebufferColor0, albedoMetallicTexture)
 	commandBuffer.SamplerUnit(internal.TextureBindingLightingFramebufferColor0, nearestSampler)
@@ -487,8 +483,12 @@ func (s *LightingStage) renderDirectionalLight(ctx StageContext, light *Directio
 	commandBuffer.SamplerUnit(internal.TextureBindingLightingFramebufferColor1, nearestSampler)
 	commandBuffer.TextureUnit(internal.TextureBindingLightingFramebufferDepth, depthTexture)
 	commandBuffer.SamplerUnit(internal.TextureBindingLightingFramebufferDepth, nearestSampler)
-	commandBuffer.TextureUnit(internal.TextureBindingShadowFramebufferDepth, shadowMappingTexture)
-	commandBuffer.SamplerUnit(internal.TextureBindingShadowFramebufferDepth, depthSampler)
+	commandBuffer.TextureUnit(internal.TextureBindingLightingShadowMapNear, shadowMapTextures[0])
+	commandBuffer.SamplerUnit(internal.TextureBindingLightingShadowMapNear, depthSampler)
+	commandBuffer.TextureUnit(internal.TextureBindingLightingShadowMapMid, shadowMapTextures[1])
+	commandBuffer.SamplerUnit(internal.TextureBindingLightingShadowMapMid, depthSampler)
+	commandBuffer.TextureUnit(internal.TextureBindingLightingShadowMapFar, shadowMapTextures[2])
+	commandBuffer.SamplerUnit(internal.TextureBindingLightingShadowMapFar, depthSampler)
 	commandBuffer.UniformBufferUnit(
 		internal.UniformBufferBindingCamera,
 		ctx.CameraPlacement.Buffer,
@@ -500,12 +500,6 @@ func (s *LightingStage) renderDirectionalLight(ctx StageContext, light *Directio
 		lightPlacement.Buffer,
 		lightPlacement.Offset,
 		lightPlacement.Size,
-	)
-	commandBuffer.UniformBufferUnit(
-		internal.UniformBufferBindingLightProperties,
-		lightPropertiesPlacement.Buffer,
-		lightPropertiesPlacement.Offset,
-		lightPropertiesPlacement.Size,
 	)
 	commandBuffer.DrawIndexed(0, quadShape.IndexCount(), 1)
 }

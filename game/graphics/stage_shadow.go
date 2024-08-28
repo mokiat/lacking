@@ -60,7 +60,7 @@ func (s *ShadowStage) Render(ctx StageContext) {
 		if !light.castShadow {
 			continue
 		}
-		if light.shadowMaps == ([3]internal.CascadeShadowMap{}) {
+		if light.shadowMaps == ([3]internal.CascadeShadowMapRef{}) {
 			continue
 		}
 		s.renderDirectionalLightShadowMaps(ctx, light)
@@ -98,19 +98,32 @@ func (s *ShadowStage) allocateCascadeShadowMaps(ctx StageContext) {
 	cascadeShadowMapIndex := 0
 
 	for _, light := range ctx.VisibleDirectionalLights {
-		light.shadowMaps = [3]internal.CascadeShadowMap{}
+		light.shadowMaps = [3]internal.CascadeShadowMapRef{
+			{
+				ProjectionMatrix: sprec.IdentityMat4(),
+			},
+			{
+				ProjectionMatrix: sprec.IdentityMat4(),
+			},
+			{
+				ProjectionMatrix: sprec.IdentityMat4(),
+			},
+		}
 		if !light.active { // TODO: Move this to VisitorBucket closure with iterator.
 			continue
 		}
 		if !light.castShadow {
 			continue
 		}
-		var shadowMaps [3]internal.CascadeShadowMap
+		var shadowMaps [3]internal.CascadeShadowMapRef
 		for i := range light.shadowMaps {
 			if cascadeShadowMapIndex >= len(s.data.cascadeShadowMaps) {
 				return
 			}
-			shadowMaps[i] = s.data.cascadeShadowMaps[cascadeShadowMapIndex]
+			shadowMaps[i] = internal.CascadeShadowMapRef{
+				CascadeShadowMap: s.data.cascadeShadowMaps[cascadeShadowMapIndex],
+				ProjectionMatrix: lightOrtho(), // FIXME
+			}
 			cascadeShadowMapIndex++
 		}
 		light.shadowMaps = shadowMaps
@@ -118,16 +131,12 @@ func (s *ShadowStage) allocateCascadeShadowMaps(ctx StageContext) {
 }
 
 func (s *ShadowStage) renderDirectionalLightShadowMaps(ctx StageContext, light *DirectionalLight) {
-	for i, shadowMap := range light.shadowMaps {
-		if i > 0 {
-			continue // FIXME: Remove once cascades are implemented.
-		}
-
+	for _, shadowMap := range light.shadowMaps {
 		shadowTexture := shadowMap.Texture
 		shadowTextureWidth := float32(shadowTexture.Width())
 		shadowTextureHeight := float32(shadowTexture.Height())
 
-		projectionMatrix := lightOrtho() // FIXME: Use matrix from cascade
+		projectionMatrix := shadowMap.ProjectionMatrix
 		lightMatrix := light.gfxMatrix()
 		lightMatrix.M14 = sprec.Floor(lightMatrix.M14*shadowTextureWidth) / shadowTextureWidth
 		lightMatrix.M24 = sprec.Floor(lightMatrix.M24*shadowTextureHeight) / shadowTextureHeight

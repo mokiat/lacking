@@ -17,6 +17,7 @@ func newCommonStageData(api render.API, cfg *config) *commonStageData {
 
 		atlasShadowMapSize:    cfg.AtlasShadowMapSize,
 		atlasShadowMapSectors: cfg.AtlasShadowMapSectors,
+		atlasShadowMaps:       make([]internal.AtlasShadowMap, cfg.AtlasShadowMapSectors),
 	}
 }
 
@@ -42,6 +43,7 @@ type commonStageData struct {
 	atlasShadowMapSize    int
 	atlasShadowMapSectors int
 	atlasShadowMap        internal.AtlasShadowMap
+	atlasShadowMaps       []internal.AtlasShadowMap
 }
 
 func (d *commonStageData) Allocate() {
@@ -90,6 +92,13 @@ func (d *commonStageData) Allocate() {
 	d.atlasShadowMap.Framebuffer = d.api.CreateFramebuffer(render.FramebufferInfo{
 		DepthAttachment: d.atlasShadowMap.Texture,
 	})
+	for i := range d.atlasShadowMaps {
+		d.atlasShadowMaps[i] = internal.AtlasShadowMap{
+			Texture:     d.atlasShadowMap.Texture,
+			Framebuffer: d.atlasShadowMap.Framebuffer,
+			// TODO: Viewport
+		}
+	}
 }
 
 func (d *commonStageData) Release() {
