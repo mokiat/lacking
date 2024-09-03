@@ -35,6 +35,10 @@ type API interface {
 	// used to store depth values.
 	CreateDepthTexture2D(info DepthTexture2DInfo) Texture
 
+	// CreateDepthTexture2DArray creates a new 2D array Texture that can
+	// be used to store depth values.
+	CreateDepthTexture2DArray(info DepthTexture2DArrayInfo) Texture
+
 	// CreateStencilTexture2D creates a new 2D Texture that can be
 	// used to store stencil values.
 	CreateStencilTexture2D(info StencilTexture2DInfo) Texture
