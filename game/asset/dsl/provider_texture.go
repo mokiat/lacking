@@ -10,14 +10,16 @@ import (
 // Create2DTexture creates a new 2D texture with the specified format and
 // source image.
 func Create2DTexture(imageProvider Provider[*mdl.Image], opts ...Operation) Provider[*mdl.Texture] {
-	var cfg textureConfig
-	for _, opt := range opts {
-		opt.Apply(&cfg)
-	}
-
 	return OnceProvider(FuncProvider(
 		// get function
 		func() (*mdl.Texture, error) {
+			var cfg textureConfig
+			for _, opt := range opts {
+				if err := opt.Apply(&cfg); err != nil {
+					return nil, fmt.Errorf("failed to configure 2D texture: %w", err)
+				}
+			}
+
 			image, err := imageProvider.Get()
 			if err != nil {
 				return nil, fmt.Errorf("failed to get image: %w", err)
@@ -27,7 +29,7 @@ func Create2DTexture(imageProvider Provider[*mdl.Image], opts ...Operation) Prov
 			texture.SetName(image.Name())
 			texture.SetKind(mdl.TextureKind2D)
 			texture.SetFormat(cfg.format.ValueOrDefault(mdl.TextureFormatRGBA8))
-			texture.SetGenerateMipmaps(true)
+			texture.SetGenerateMipmaps(cfg.mipmapping)
 			texture.Resize(image.Width(), image.Height())
 			texture.SetLayerImage(0, image)
 			return &texture, nil
@@ -43,14 +45,16 @@ func Create2DTexture(imageProvider Provider[*mdl.Image], opts ...Operation) Prov
 // CreateCubeTexture creates a new cube texture with the specified format and
 // source image.
 func CreateCubeTexture(cubeImageProvider Provider[*mdl.CubeImage], opts ...Operation) Provider[*mdl.Texture] {
-	var cfg textureConfig
-	for _, opt := range opts {
-		opt.Apply(&cfg)
-	}
-
 	return OnceProvider(FuncProvider(
 		// get function
 		func() (*mdl.Texture, error) {
+			var cfg textureConfig
+			for _, opt := range opts {
+				if err := opt.Apply(&cfg); err != nil {
+					return nil, fmt.Errorf("failed to configure cube texture: %w", err)
+				}
+			}
+
 			cubeImage, err := cubeImageProvider.Get()
 			if err != nil {
 				return nil, fmt.Errorf("failed to get cube image: %w", err)
@@ -66,6 +70,7 @@ func CreateCubeTexture(cubeImageProvider Provider[*mdl.CubeImage], opts ...Opera
 			var texture mdl.Texture
 			texture.SetKind(mdl.TextureKindCube)
 			texture.SetFormat(cfg.format.ValueOrDefault(mdl.TextureFormatRGBA16F))
+			texture.SetGenerateMipmaps(cfg.mipmapping)
 			texture.Resize(frontImage.Width(), frontImage.Height())
 			texture.SetLayerImage(0, frontImage)
 			texture.SetLayerImage(1, rearImage)
@@ -84,11 +89,20 @@ func CreateCubeTexture(cubeImageProvider Provider[*mdl.CubeImage], opts ...Opera
 }
 
 type textureConfig struct {
-	format opt.T[mdl.TextureFormat]
+	format     opt.T[mdl.TextureFormat]
+	mipmapping bool
 }
 
 func (c *textureConfig) SetFormat(format mdl.TextureFormat) {
 	c.format = opt.V(format)
+}
+
+func (c *textureConfig) Mipmapping() bool {
+	return c.mipmapping
+}
+
+func (c *textureConfig) SetMipmapping(mipmapping bool) {
+	c.mipmapping = mipmapping
 }
 
 var defaultCubeTextureProvider = CreateCubeTexture(defaultCubeImageProvider)

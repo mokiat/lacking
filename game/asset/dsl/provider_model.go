@@ -55,7 +55,7 @@ func OpenGLTFModel(path string, opts ...Operation) Provider[*mdl.Model] {
 			var cfg openGLTFModelConfig
 			for _, opt := range opts {
 				if err := opt.Apply(&cfg); err != nil {
-					return nil, err
+					return nil, fmt.Errorf("failed to configure gltf model: %w", err)
 				}
 			}
 

@@ -130,14 +130,16 @@ func ResizedCubeImage(imageProvider Provider[*mdl.CubeImage], newSizeProvider Pr
 // IrradianceCubeImage creates an irradiance cube image from the provided
 // HDR skybox cube image.
 func IrradianceCubeImage(imageProvider Provider[*mdl.CubeImage], opts ...Operation) Provider[*mdl.CubeImage] {
-	var cfg irradianceConfig
-	for _, opt := range opts {
-		opt.Apply(&cfg)
-	}
-
 	return OnceProvider(FuncProvider(
 		// get function
 		func() (*mdl.CubeImage, error) {
+			var cfg irradianceConfig
+			for _, opt := range opts {
+				if err := opt.Apply(&cfg); err != nil {
+					return nil, fmt.Errorf("failed to configure irradiance cube image: %w", err)
+				}
+			}
+
 			image, err := imageProvider.Get()
 			if err != nil {
 				return nil, fmt.Errorf("error getting image: %w", err)
