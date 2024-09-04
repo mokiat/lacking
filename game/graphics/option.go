@@ -12,53 +12,82 @@ func WithStageBuilder(builder StageBuilderFunc) Option {
 	}
 }
 
-// WithCascadeShadowMapSize configures the graphics engine to use the specified
-// size for each cascade shadow map. The size needs to be a power of two.
-func WithCascadeShadowMapSize(size int) Option {
+// WithDirectionalShadowMapCount configures the graphics engine to use the
+// specified number of directional shadow maps.
+//
+// This value controls the number of directional lights that can have shadows
+// at the same time.
+func WithDirectionalShadowMapCount(count int) Option {
 	return func(c *config) {
-		c.CascadeShadowMapSize = size
+		c.DirectionalShadowMapCount = count
 	}
 }
 
-// WithCascadeShadowMapCount configures the graphics engine to use the specified
-// number of cascade shadow maps.
-//
-// Note: Since cascade shadow maps are used by directional lights that currently
-// have three predefined cascades, the count should be a multiple of three in
-// order to be able to distribute the cascades evenly. This may change in the
-// future.
-func WithCascadeShadowMapCount(count int) Option {
+// WithDirectionalShadowMapSize configures the graphics engine to use the
+// specified size for the directional shadow maps. The size needs to be a power
+// of two.
+func WithDirectionalShadowMapSize(size int) Option {
 	return func(c *config) {
-		c.CascadeShadowMapCount = count
+		c.DirectionalShadowMapSize = size
 	}
 }
 
-// WithAtlasShadowMapSize configures the graphics engine to use the specified
-// size for the atlas shadow map. The size needs to be a power of two.
-func WithAtlasShadowMapSize(size int) Option {
+// WithDirectionalShadowMapCascadeCount configures the maximum number of
+// cascades that the directional shadow maps will have.
+func WithDirectionalShadowMapCascadeCount(count int) Option {
 	return func(c *config) {
-		c.AtlasShadowMapSize = size
+		c.DirectionalShadowMapCascadeCount = count
 	}
 }
 
-// WithAtlasShadowMapSectors configures the graphics engine to use the specified
-// number of sectors in the atlas shadow map.
+// WithSpotShadowMapCount configures the graphics engine to use the specified
+// number of spot light shadow maps.
 //
-// The sectors need to be a power of four (e.g. 1, 4, 16, 64).
-//
-// Making more sectors will result in more lights being able to cast shadows
-// at the same time at the cost of quality.
-func WithAtlasShadowMapSectors(count int) Option {
+// This value controls the number of spot lights that can have shadows at the
+// same time.
+func WithSpotShadowMapCount(count int) Option {
 	return func(c *config) {
-		c.AtlasShadowMapSectors = count
+		c.SpotShadowMapCount = count
+	}
+}
+
+// WithSpotShadowMapSize configures the graphics engine to use the specified
+// size for the spot light shadow maps. The size needs to be a power of two.
+func WithSpotShadowMapSize(size int) Option {
+	return func(c *config) {
+		c.SpotShadowMapSize = size
+	}
+}
+
+// WithPointShadowMapCount configures the graphics engine to use the specified
+// number of point light shadow maps.
+//
+// This value controls the number of point lights that can have shadows at the
+// same time.
+func WithPointShadowMapCount(count int) Option {
+	return func(c *config) {
+		c.PointShadowMapCount = count
+	}
+}
+
+// WithPointShadowMapSize configures the graphics engine to use the specified
+// size for the point light shadow maps. The size needs to be a power of two.
+func WithPointShadowMapSize(size int) Option {
+	return func(c *config) {
+		c.PointShadowMapSize = size
 	}
 }
 
 type config struct {
 	StageBuilder StageBuilderFunc
 
-	CascadeShadowMapSize  int
-	CascadeShadowMapCount int
-	AtlasShadowMapSize    int
-	AtlasShadowMapSectors int
+	DirectionalShadowMapCount        int
+	DirectionalShadowMapSize         int
+	DirectionalShadowMapCascadeCount int
+
+	SpotShadowMapCount int
+	SpotShadowMapSize  int
+
+	PointShadowMapCount int
+	PointShadowMapSize  int
 }

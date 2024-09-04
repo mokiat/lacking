@@ -1,6 +1,7 @@
 package graphics
 
 import (
+	"github.com/mokiat/gog/opt"
 	"github.com/mokiat/lacking/debug/metric"
 	"github.com/mokiat/lacking/game/graphics/internal"
 	"github.com/mokiat/lacking/render"
@@ -241,8 +242,8 @@ func (s *BloomStage) allocateTextures(width, height uint32) {
 		Format:          render.DataFormatRGBA16F,
 	})
 	s.pingFramebuffer = s.api.CreateFramebuffer(render.FramebufferInfo{
-		ColorAttachments: [4]render.Texture{
-			s.pingTexture,
+		ColorAttachments: [4]opt.T[render.TextureAttachment]{
+			opt.V(render.PlainTextureAttachment(s.pingTexture)),
 		},
 	})
 
@@ -254,8 +255,8 @@ func (s *BloomStage) allocateTextures(width, height uint32) {
 		Format:          render.DataFormatRGBA16F,
 	})
 	s.pongFramebuffer = s.api.CreateFramebuffer(render.FramebufferInfo{
-		ColorAttachments: [4]render.Texture{
-			s.pongTexture,
+		ColorAttachments: [4]opt.T[render.TextureAttachment]{
+			opt.V(render.PlainTextureAttachment(s.pongTexture)),
 		},
 	})
 }

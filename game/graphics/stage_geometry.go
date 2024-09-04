@@ -1,6 +1,7 @@
 package graphics
 
 import (
+	"github.com/mokiat/gog/opt"
 	"github.com/mokiat/lacking/debug/metric"
 	"github.com/mokiat/lacking/game/graphics/internal"
 	"github.com/mokiat/lacking/render"
@@ -108,11 +109,11 @@ func (s *GeometryStage) allocateFramebuffer() {
 	s.depthTexture = s.input.DepthTexture()
 
 	s.framebuffer = s.api.CreateFramebuffer(render.FramebufferInfo{
-		ColorAttachments: [4]render.Texture{
-			s.albedoMetallicTexture,
-			s.normalRoughnessTexture,
+		ColorAttachments: [4]opt.T[render.TextureAttachment]{
+			opt.V(render.PlainTextureAttachment(s.albedoMetallicTexture)),
+			opt.V(render.PlainTextureAttachment(s.normalRoughnessTexture)),
 		},
-		DepthAttachment: s.depthTexture,
+		DepthAttachment: opt.V(render.PlainTextureAttachment(s.depthTexture)),
 	})
 }
 

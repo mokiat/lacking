@@ -19,9 +19,7 @@ const (
 	TextureBindingLightingReflectionTexture = 4
 	TextureBindingLightingRefractionTexture = 5
 
-	TextureBindingLightingShadowMapNear = 4
-	TextureBindingLightingShadowMapMid  = 5
-	TextureBindingLightingShadowMapFar  = 6
+	TextureBindingLightingShadowMap = 4
 
 	TextureBindingPostprocessFramebufferColor0 = 0
 	TextureBindingPostprocessBloom             = 1

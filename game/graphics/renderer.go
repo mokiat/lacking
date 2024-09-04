@@ -14,9 +14,6 @@ import (
 )
 
 const (
-	shadowMapWidth  = 2048 // FIXME: Should not use this. Instead from the texture.
-	shadowMapHeight = 2048 // FIXME: Should not use this. Instead from the texture.
-
 	commandBufferSize = 2 * 1024 * 1024  // 2MB
 	uniformBufferSize = 32 * 1024 * 1024 // 32MB
 )
@@ -82,7 +79,7 @@ func (r *sceneRenderer) QueueDebugLine(line DebugLine) {
 }
 
 func (r *sceneRenderer) Ray(viewport Viewport, camera *Camera, x, y int) (dprec.Vec3, dprec.Vec3) {
-	projectionMatrix := stod.Mat4(r.evaluateProjectionMatrix(camera, viewport.Width, viewport.Height))
+	projectionMatrix := stod.Mat4(evaluateProjectionMatrix(camera, viewport.Width, viewport.Height))
 	inverseProjection := dprec.InverseMat4(projectionMatrix)
 
 	cameraMatrix := stod.Mat4(camera.gfxMatrix())
@@ -107,7 +104,7 @@ func (r *sceneRenderer) Ray(viewport Viewport, camera *Camera, x, y int) (dprec.
 
 func (r *sceneRenderer) Point(viewport Viewport, camera *Camera, position dprec.Vec3) dprec.Vec2 {
 	pos := dprec.NewVec4(position.X, position.Y, position.Z, 1.0)
-	projectionMatrix := stod.Mat4(r.evaluateProjectionMatrix(camera, viewport.Width, viewport.Height))
+	projectionMatrix := stod.Mat4(evaluateProjectionMatrix(camera, viewport.Width, viewport.Height))
 	viewMatrix := stod.Mat4(sprec.InverseMat4(camera.gfxMatrix()))
 	ndc := dprec.Mat4Vec4Prod(projectionMatrix, dprec.Mat4Vec4Prod(viewMatrix, pos))
 	if dprec.Abs(ndc.W) < 0.0001 {
@@ -126,7 +123,7 @@ func (r *sceneRenderer) Render(framebuffer render.Framebuffer, viewport Viewport
 		stage.PreRender(viewport.Width, viewport.Height)
 	}
 
-	projectionMatrix := r.evaluateProjectionMatrix(camera, viewport.Width, viewport.Height)
+	projectionMatrix := evaluateProjectionMatrix(camera, viewport.Width, viewport.Height)
 	cameraMatrix := camera.gfxMatrix()
 	viewMatrix := sprec.InverseMat4(cameraMatrix)
 	projectionViewMatrix := sprec.Mat4Prod(projectionMatrix, viewMatrix)
@@ -199,12 +196,12 @@ func (r *sceneRenderer) Render(framebuffer render.Framebuffer, viewport Viewport
 	}
 }
 
-func (r *sceneRenderer) evaluateProjectionMatrix(camera *Camera, width, height uint32) sprec.Mat4 {
+func evaluateProjectionMatrix(camera *Camera, width, height uint32) sprec.Mat4 {
 	var (
 		near    = camera.Near()
 		far     = camera.Far()
-		fWidth  = sprec.Max(1.0, float32(width))
-		fHeight = sprec.Max(1.0, float32(height))
+		fWidth  = max(1.0, float32(width))
+		fHeight = max(1.0, float32(height))
 	)
 
 	switch camera.fovMode {
@@ -233,23 +230,6 @@ func (r *sceneRenderer) evaluateProjectionMatrix(camera *Camera, width, height u
 		panic(fmt.Errorf("unsupported fov mode: %s", camera.fovMode))
 	}
 }
-
-func lightOrtho() sprec.Mat4 {
-	// FIXME: This should depend on the light and cascade.
-	return sprec.OrthoMat4(-32, 32, 32, -32, 0, 256)
-}
-
-// type renderCtx struct {
-// 	framebuffer    render.Framebuffer
-// 	scene          *Scene
-// 	x              uint32
-// 	y              uint32
-// 	width          uint32
-// 	height         uint32
-// 	camera         *Camera
-// 	cameraPosition dprec.Vec3
-// 	frustum        spatial.HexahedronRegion
-// }
 
 // TODO: Rename to meshRenderItem
 type renderItem struct {

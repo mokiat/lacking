@@ -5,24 +5,28 @@ import (
 	"github.com/mokiat/lacking/render"
 )
 
-type CascadeShadowMap struct {
-	Texture     render.Texture
-	Framebuffer render.Framebuffer
+type DirectionalShadowMap struct {
+	ArrayTexture render.Texture
+	Cascades     []DirectionalShadowMapCascade
 }
 
-type CascadeShadowMapRef struct {
-	CascadeShadowMap
+type DirectionalShadowMapCascade struct {
+	Framebuffer      render.Framebuffer
 	ProjectionMatrix sprec.Mat4
+	Near             float32
+	Far              float32
 }
 
-type AtlasShadowMap struct {
+type DirectionalShadowMapRef struct {
+	DirectionalShadowMap
+}
+
+type SpotShadowMap struct {
 	Texture     render.Texture
 	Framebuffer render.Framebuffer
-	// TODO: Viewport?
 }
 
-type AtlasShadowMapRef struct {
-	AtlasShadowMap
-	// TODO: Projection matrix?
-	// TODO: View matrix?
+type PointShadowMap struct {
+	ArrayTexture render.Texture
+	Framebuffers [6]render.Framebuffer
 }

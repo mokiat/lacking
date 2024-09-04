@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/mokiat/gblob"
+	"github.com/mokiat/gog/opt"
 	"github.com/mokiat/gomath/sprec"
 	"github.com/mokiat/lacking/debug/metric"
 	"github.com/mokiat/lacking/game/graphics/internal"
@@ -64,8 +65,8 @@ func (s *ExposureProbeStage) Allocate() {
 		Format:          render.DataFormatRGBA16F,
 	})
 	s.exposureFramebuffer = s.api.CreateFramebuffer(render.FramebufferInfo{
-		ColorAttachments: [4]render.Texture{
-			s.exposureAlbedoTexture,
+		ColorAttachments: [4]opt.T[render.TextureAttachment]{
+			opt.V(render.PlainTextureAttachment(s.exposureAlbedoTexture)),
 		},
 	})
 

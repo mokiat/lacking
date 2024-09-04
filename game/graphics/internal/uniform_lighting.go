@@ -6,12 +6,10 @@ import (
 )
 
 type LightUniform struct {
-	ShadowMatrixNear sprec.Mat4
-	ShadowMatrixMid  sprec.Mat4
-	ShadowMatrixFar  sprec.Mat4
-	ModelMatrix      sprec.Mat4
+	ShadowMatrices [8]sprec.Mat4
+	ModelMatrix    sprec.Mat4
 
-	ShadowCascades sprec.Vec4
+	ShadowCascades [8]sprec.Vec2
 
 	Color     sprec.Vec3
 	Intensity float32
@@ -22,17 +20,18 @@ type LightUniform struct {
 }
 
 func (u LightUniform) Std140Plot(plotter *blob.Plotter) {
-	// mat4
-	plotter.PlotSPMat4(u.ShadowMatrixNear)
-	// mat4
-	plotter.PlotSPMat4(u.ShadowMatrixMid)
-	// mat4
-	plotter.PlotSPMat4(u.ShadowMatrixFar)
+	// 8 x mat4
+	for _, matrix := range u.ShadowMatrices {
+		plotter.PlotSPMat4(matrix)
+	}
 	// mat4
 	plotter.PlotSPMat4(u.ModelMatrix)
 
-	// vec4
-	plotter.PlotSPVec4(u.ShadowCascades)
+	// 8 x vec4
+	for _, cascade := range u.ShadowCascades {
+		plotter.PlotSPVec2(cascade)
+		plotter.Skip(2 * 4)
+	}
 
 	// vec4
 	plotter.PlotSPVec3(u.Color)
@@ -46,5 +45,5 @@ func (u LightUniform) Std140Plot(plotter *blob.Plotter) {
 }
 
 func (u LightUniform) Std140Size() uint32 {
-	return 4*64 + 3*16
+	return 8*64 + 64 + 8*4*4 + 4*4 + 4*4
 }

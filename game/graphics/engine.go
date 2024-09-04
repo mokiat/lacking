@@ -12,10 +12,15 @@ func NewEngine(api render.API, shaders ShaderCollection, shaderBuilder ShaderBui
 	cfg := &config{
 		StageBuilder: DefaultStageBuilder,
 
-		CascadeShadowMapSize:  2048,
-		CascadeShadowMapCount: 3,
-		AtlasShadowMapSize:    2048,
-		AtlasShadowMapSectors: 16,
+		DirectionalShadowMapCount:        1,
+		DirectionalShadowMapSize:         2048,
+		DirectionalShadowMapCascadeCount: 4,
+
+		SpotShadowMapCount: 3,
+		SpotShadowMapSize:  1024,
+
+		PointShadowMapCount: 3,
+		PointShadowMapSize:  1024,
 	}
 	for _, opt := range opts {
 		opt(cfg)
