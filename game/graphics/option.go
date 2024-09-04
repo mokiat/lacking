@@ -34,9 +34,11 @@ func WithDirectionalShadowMapSize(size int) Option {
 
 // WithDirectionalShadowMapCascadeCount configures the maximum number of
 // cascades that the directional shadow maps will have.
+//
+// This value cannot be smaller than 1 and larger than 8 and will be clamped.
 func WithDirectionalShadowMapCascadeCount(count int) Option {
 	return func(c *config) {
-		c.DirectionalShadowMapCascadeCount = count
+		c.DirectionalShadowMapCascadeCount = max(1, min(count, 8))
 	}
 }
 
