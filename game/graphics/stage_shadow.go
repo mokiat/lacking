@@ -122,37 +122,57 @@ func (s *ShadowStage) distributeCascadeShadowMaps(ctx StageContext) {
 
 			cameraModelMatrix := ctx.Camera.gfxMatrix()
 			cameraViewMatrix := sprec.InverseMat4(cameraModelMatrix)
-			cameraInverseProjectionView := sprec.InverseMat4(
-				sprec.Mat4Prod(cameraProjectionMatrix, cameraViewMatrix),
-			)
+			cameraProjectionViewMatrix := sprec.Mat4Prod(cameraProjectionMatrix, cameraViewMatrix)
 
-			frustumCornerPoints4D := [8]sprec.Vec4{
-				sprec.Mat4Vec4Prod(cameraInverseProjectionView, sprec.NewVec4(-1, -1, -1, 1.0)),
-				sprec.Mat4Vec4Prod(cameraInverseProjectionView, sprec.NewVec4(1, -1, -1, 1.0)),
-				sprec.Mat4Vec4Prod(cameraInverseProjectionView, sprec.NewVec4(-1, 1, -1, 1.0)),
-				sprec.Mat4Vec4Prod(cameraInverseProjectionView, sprec.NewVec4(1, 1, -1, 1.0)),
-				sprec.Mat4Vec4Prod(cameraInverseProjectionView, sprec.NewVec4(-1, -1, 1, 1.0)),
-				sprec.Mat4Vec4Prod(cameraInverseProjectionView, sprec.NewVec4(1, -1, 1, 1.0)),
-				sprec.Mat4Vec4Prod(cameraInverseProjectionView, sprec.NewVec4(-1, 1, 1, 1.0)),
-				sprec.Mat4Vec4Prod(cameraInverseProjectionView, sprec.NewVec4(1, 1, 1, 1.0)),
-			}
-			var frustumCornerPoints [8]sprec.Vec3
-			for i, point := range frustumCornerPoints4D {
-				frustumCornerPoints[i] = sprec.Vec3Quot(point.VecXYZ(), point.W)
-			}
+			frustumCornerPoints := calculateFrustumCornerPoints(cameraProjectionViewMatrix)
+			frustumCentralPoint := calculateFrustumCentralPoint(frustumCornerPoints)
+			frustumRadius := sprec.Ceil(calculateFrustumRadius(frustumCentralPoint, frustumCornerPoints))
 
-			// TODO: make these configurable or based on camera frustum
-			shadowNearOverflow := float32(100.0)
+			frustumOffsetX := sprec.Vec3Dot(lightXAxis, frustumCentralPoint)
+			frustumOffsetY := sprec.Vec3Dot(lightYAxis, frustumCentralPoint)
+			frustumOffsetZ := sprec.Vec3Dot(lightZAxis, frustumCentralPoint)
+
+			// TODO: make these configurable or based on visible objects in
+			// view frustum.
+			shadowNearOverflow := float32(200.0)
 			shadowFarOverflow := float32(100.0)
 
-			shadowNear := -(maxDirection(lightZAxis, frustumCornerPoints) + shadowNearOverflow)
-			shadowFar := -(minDirection(lightZAxis, frustumCornerPoints) - shadowFarOverflow)
-			shadowLeft := minDirection(lightXAxis, frustumCornerPoints)
-			shadowRight := maxDirection(lightXAxis, frustumCornerPoints)
-			shadowBottom := minDirection(lightYAxis, frustumCornerPoints)
-			shadowTop := maxDirection(lightYAxis, frustumCornerPoints)
+			shadowNear := -frustumOffsetZ - (frustumRadius + shadowNearOverflow)
+			shadowFar := -frustumOffsetZ + (frustumRadius + shadowFarOverflow)
+			shadowLeft := frustumOffsetX - frustumRadius
+			shadowRight := frustumOffsetX + frustumRadius
+			shadowBottom := frustumOffsetY - frustumRadius
+			shadowTop := frustumOffsetY + frustumRadius
+
 			shadowOrtho := sprec.OrthoMat4(shadowLeft, shadowRight, shadowTop, shadowBottom, shadowNear, shadowFar)
 			shadowMatrix := sprec.Mat4Prod(shadowOrtho, shadowView)
+
+			// NOTE: If this ever has precision problems, consider moving the
+			// anchor point on fixed intervals. If that also fails, consider
+			// using double precision for the error calculation.
+			anchorPointVec4 := sprec.NewVec4(0.0, 0.0, 0.0, 1.0)
+			projectedAnchorPoint4 := sprec.Mat4Vec4Prod(shadowMatrix, anchorPointVec4)
+			projectedAnchorPoint := sprec.Vec3Quot(projectedAnchorPoint4.VecXYZ(), projectedAnchorPoint4.W)
+
+			shadowMapWidth := float32(shadowMap.ArrayTexture.Width())
+			shadowMapHeight := float32(shadowMap.ArrayTexture.Height())
+
+			projectedAnchorPoint.X = (projectedAnchorPoint.X + 1.0) * 0.5 * shadowMapWidth
+			projectedAnchorPoint.Y = (projectedAnchorPoint.Y + 1.0) * 0.5 * shadowMapHeight
+
+			diffX := projectedAnchorPoint.X - sprec.Floor(projectedAnchorPoint.X)
+			diffY := projectedAnchorPoint.Y - sprec.Floor(projectedAnchorPoint.Y)
+
+			errorX := diffX * (shadowRight - shadowLeft) / shadowMapWidth
+			errorY := diffY * (shadowTop - shadowBottom) / shadowMapHeight
+
+			shadowLeft += errorX
+			shadowRight += errorX
+			shadowBottom += errorY
+			shadowTop += errorY
+
+			shadowOrtho = sprec.OrthoMat4(shadowLeft, shadowRight, shadowTop, shadowBottom, shadowNear, shadowFar)
+			shadowMatrix = sprec.Mat4Prod(shadowOrtho, shadowView)
 
 			cascade.Near = cascadeNear
 			cascade.Far = cascadeFar
@@ -232,28 +252,38 @@ func cascadeProjectionMatrix(ctx StageContext, near, far float32) sprec.Mat4 {
 	return cameraProjectionMatrix
 }
 
-func minDirection(direction sprec.Vec3, points [8]sprec.Vec3) float32 {
-	return min(
-		sprec.Vec3Dot(direction, points[0]),
-		sprec.Vec3Dot(direction, points[1]),
-		sprec.Vec3Dot(direction, points[2]),
-		sprec.Vec3Dot(direction, points[3]),
-		sprec.Vec3Dot(direction, points[4]),
-		sprec.Vec3Dot(direction, points[5]),
-		sprec.Vec3Dot(direction, points[6]),
-		sprec.Vec3Dot(direction, points[7]),
-	)
+func calculateFrustumCornerPoints(projectionMatrix sprec.Mat4) [8]sprec.Vec3 {
+	inverseProjectionMatrix := sprec.InverseMat4(projectionMatrix)
+	frustumCornerPoints4D := [8]sprec.Vec4{
+		sprec.Mat4Vec4Prod(inverseProjectionMatrix, sprec.NewVec4(-1, -1, -1, 1.0)),
+		sprec.Mat4Vec4Prod(inverseProjectionMatrix, sprec.NewVec4(1, -1, -1, 1.0)),
+		sprec.Mat4Vec4Prod(inverseProjectionMatrix, sprec.NewVec4(-1, 1, -1, 1.0)),
+		sprec.Mat4Vec4Prod(inverseProjectionMatrix, sprec.NewVec4(1, 1, -1, 1.0)),
+		sprec.Mat4Vec4Prod(inverseProjectionMatrix, sprec.NewVec4(-1, -1, 1, 1.0)),
+		sprec.Mat4Vec4Prod(inverseProjectionMatrix, sprec.NewVec4(1, -1, 1, 1.0)),
+		sprec.Mat4Vec4Prod(inverseProjectionMatrix, sprec.NewVec4(-1, 1, 1, 1.0)),
+		sprec.Mat4Vec4Prod(inverseProjectionMatrix, sprec.NewVec4(1, 1, 1, 1.0)),
+	}
+	var frustumCornerPoints [8]sprec.Vec3
+	for i, point := range frustumCornerPoints4D {
+		frustumCornerPoints[i] = sprec.Vec3Quot(point.VecXYZ(), point.W)
+	}
+	return frustumCornerPoints
 }
 
-func maxDirection(direction sprec.Vec3, points [8]sprec.Vec3) float32 {
-	return max(
-		sprec.Vec3Dot(direction, points[0]),
-		sprec.Vec3Dot(direction, points[1]),
-		sprec.Vec3Dot(direction, points[2]),
-		sprec.Vec3Dot(direction, points[3]),
-		sprec.Vec3Dot(direction, points[4]),
-		sprec.Vec3Dot(direction, points[5]),
-		sprec.Vec3Dot(direction, points[6]),
-		sprec.Vec3Dot(direction, points[7]),
-	)
+func calculateFrustumCentralPoint(cornerPoints [8]sprec.Vec3) sprec.Vec3 {
+	var result sprec.Vec3
+	for _, point := range cornerPoints {
+		result = sprec.Vec3Sum(result, point)
+	}
+	return sprec.Vec3Quot(result, 8.0)
+}
+
+func calculateFrustumRadius(centralPoint sprec.Vec3, cornerPoints [8]sprec.Vec3) float32 {
+	var result float32
+	for _, point := range cornerPoints {
+		distance := sprec.Vec3Diff(point, centralPoint).Length()
+		result = max(result, distance)
+	}
+	return result
 }
