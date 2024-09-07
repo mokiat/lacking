@@ -7,12 +7,13 @@ import (
 	"github.com/mokiat/lacking/util/spatial"
 )
 
+const dirLightRadius = 16000.0
+
 type DirectionalLightInfo struct {
 	Position   dprec.Vec3
 	Rotation   dprec.Quat
 	EmitColor  dprec.Vec3
-	EmitRange  float64
-	CastShadow bool // TODO: Implement shadow casting
+	CastShadow bool
 }
 
 func newDirectionalLight(scene *Scene, info DirectionalLightInfo) *DirectionalLight {
@@ -20,13 +21,12 @@ func newDirectionalLight(scene *Scene, info DirectionalLightInfo) *DirectionalLi
 
 	light.scene = scene
 	light.itemID = scene.directionalLightSet.Insert(
-		info.Position, info.EmitRange, light,
+		info.Position, dirLightRadius, light,
 	)
 
 	light.active = true
 	light.position = info.Position
 	light.rotation = info.Rotation
-	light.emitRange = info.EmitRange
 	light.emitColor = info.EmitColor
 	light.castShadow = info.CastShadow
 
@@ -42,7 +42,6 @@ type DirectionalLight struct {
 	active     bool
 	position   dprec.Vec3
 	rotation   dprec.Quat
-	emitRange  float64
 	emitColor  dprec.Vec3
 	castShadow bool
 
@@ -70,7 +69,7 @@ func (l *DirectionalLight) SetPosition(position dprec.Vec3) {
 	if position != l.position {
 		l.position = position
 		l.scene.directionalLightSet.Update(
-			l.itemID, l.position, l.emitRange,
+			l.itemID, l.position, dirLightRadius,
 		)
 		l.matrixDirty = true
 	}
@@ -86,21 +85,6 @@ func (l *DirectionalLight) SetRotation(rotation dprec.Quat) {
 	if rotation != l.rotation {
 		l.rotation = rotation
 		l.matrixDirty = true
-	}
-}
-
-// EmitRange returns the distance that this light source covers.
-func (l *DirectionalLight) EmitRange() float64 {
-	return l.emitRange
-}
-
-// SetEmitRange changes the distance that this light source covers.
-func (l *DirectionalLight) SetEmitRange(emitRange float64) {
-	if emitRange != l.emitRange {
-		l.emitRange = dprec.Max(0.0, emitRange)
-		l.scene.directionalLightSet.Update(
-			l.itemID, l.position, l.emitRange,
-		)
 	}
 }
 
