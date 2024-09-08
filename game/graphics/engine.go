@@ -8,17 +8,38 @@ import (
 	"github.com/mokiat/lacking/render"
 )
 
-func NewEngine(api render.API, shaders ShaderCollection, shaderBuilder ShaderBuilder) *Engine {
-	stageData := newCommonStageData(api)
-	renderer := newRenderer(api, shaders, stageData)
+func NewEngine(api render.API, shaders ShaderCollection, shaderBuilder ShaderBuilder, opts ...Option) *Engine {
+	cfg := &config{
+		StageBuilder: DefaultStageBuilder,
+
+		DirectionalShadowMapCount:        1,
+		DirectionalShadowMapSize:         2048,
+		DirectionalShadowMapCascadeCount: 4,
+
+		SpotShadowMapCount: 3,
+		SpotShadowMapSize:  1024,
+
+		PointShadowMapCount: 3,
+		PointShadowMapSize:  1024,
+	}
+	for _, opt := range opts {
+		opt(cfg)
+	}
+
+	stageData := newCommonStageData(api, cfg)
+	meshRenderer := newMeshRenderer()
+	stageProvider := newStageProvider(api, shaders, stageData, meshRenderer)
+	stages := cfg.StageBuilder(stageProvider)
+	renderer := newRenderer(api, stageData, stages)
 
 	return &Engine{
 		api:           api,
 		shaders:       shaders,
 		shaderBuilder: shaderBuilder,
 
-		stageData: stageData,
-		renderer:  renderer,
+		stageData:    stageData,
+		meshRenderer: meshRenderer,
+		renderer:     renderer,
 
 		debug: &Debug{
 			renderer: renderer,
@@ -32,8 +53,9 @@ type Engine struct {
 	shaders       ShaderCollection
 	shaderBuilder ShaderBuilder
 
-	stageData *commonStageData
-	renderer  *sceneRenderer
+	stageData    *commonStageData
+	meshRenderer *meshRenderer
+	renderer     *sceneRenderer
 
 	debug *Debug
 

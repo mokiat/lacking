@@ -7,9 +7,15 @@ import (
 )
 
 // NewEngine creates a new physics engine.
-func NewEngine(timestep time.Duration) *Engine {
+func NewEngine(opts ...Option) *Engine {
+	cfg := config{
+		Timestep: 16 * time.Millisecond,
+	}
+	for _, opt := range opts {
+		opt(&cfg)
+	}
 	return &Engine{
-		timestep: timestep,
+		timestep: cfg.Timestep,
 	}
 }
 

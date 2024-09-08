@@ -10,6 +10,7 @@ import (
 	"golang.org/x/image/font/sfnt"
 	"golang.org/x/image/math/fixed"
 
+	"github.com/mokiat/gog/opt"
 	"github.com/mokiat/gomath/sprec"
 	"github.com/mokiat/lacking/render"
 )
@@ -80,10 +81,10 @@ func (f *fontFactory) Init() {
 	})
 
 	f.framebuffer = f.api.CreateFramebuffer(render.FramebufferInfo{
-		ColorAttachments: [4]render.Texture{
-			f.colorTexture,
+		ColorAttachments: [4]opt.T[render.TextureAttachment]{
+			opt.V(render.PlainTextureAttachment(f.colorTexture)),
 		},
-		StencilAttachment: f.stencilTexture,
+		StencilAttachment: opt.V(render.PlainTextureAttachment(f.stencilTexture)),
 	})
 }
 

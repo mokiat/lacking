@@ -6,22 +6,11 @@ import (
 )
 
 type LightUniform struct {
-	ProjectionMatrix sprec.Mat4
-	ViewMatrix       sprec.Mat4
-	LightMatrix      sprec.Mat4
-}
+	ShadowMatrices [8]sprec.Mat4
+	ModelMatrix    sprec.Mat4
 
-func (u LightUniform) Std140Plot(plotter *blob.Plotter) {
-	plotter.PlotSPMat4(u.ProjectionMatrix)
-	plotter.PlotSPMat4(u.ViewMatrix)
-	plotter.PlotSPMat4(u.LightMatrix)
-}
+	ShadowCascades [8]sprec.Vec2
 
-func (u LightUniform) Std140Size() uint32 {
-	return 64 + 64 + 64
-}
-
-type LightPropertiesUniform struct {
 	Color     sprec.Vec3
 	Intensity float32
 
@@ -30,7 +19,20 @@ type LightPropertiesUniform struct {
 	InnerAngle float32
 }
 
-func (u LightPropertiesUniform) Std140Plot(plotter *blob.Plotter) {
+func (u LightUniform) Std140Plot(plotter *blob.Plotter) {
+	// 8 x mat4
+	for _, matrix := range u.ShadowMatrices {
+		plotter.PlotSPMat4(matrix)
+	}
+	// mat4
+	plotter.PlotSPMat4(u.ModelMatrix)
+
+	// 8 x vec4
+	for _, cascade := range u.ShadowCascades {
+		plotter.PlotSPVec2(cascade)
+		plotter.Skip(2 * 4)
+	}
+
 	// vec4
 	plotter.PlotSPVec3(u.Color)
 	plotter.PlotFloat32(u.Intensity)
@@ -42,6 +44,6 @@ func (u LightPropertiesUniform) Std140Plot(plotter *blob.Plotter) {
 	plotter.Skip(4)
 }
 
-func (u LightPropertiesUniform) Std140Size() uint32 {
-	return 16 + 16
+func (u LightUniform) Std140Size() uint32 {
+	return 8*64 + 64 + 8*4*4 + 4*4 + 4*4
 }

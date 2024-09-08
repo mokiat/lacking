@@ -7,12 +7,13 @@ import (
 	"github.com/mokiat/lacking/util/spatial"
 )
 
+const dirLightRadius = 16000.0
+
 type DirectionalLightInfo struct {
 	Position   dprec.Vec3
 	Rotation   dprec.Quat
 	EmitColor  dprec.Vec3
-	EmitRange  float64
-	CastShadow bool // TODO: Implement shadow casting
+	CastShadow bool
 }
 
 func newDirectionalLight(scene *Scene, info DirectionalLightInfo) *DirectionalLight {
@@ -20,14 +21,14 @@ func newDirectionalLight(scene *Scene, info DirectionalLightInfo) *DirectionalLi
 
 	light.scene = scene
 	light.itemID = scene.directionalLightSet.Insert(
-		info.Position, info.EmitRange, light,
+		info.Position, dirLightRadius, light,
 	)
 
 	light.active = true
 	light.position = info.Position
 	light.rotation = info.Rotation
-	light.emitRange = info.EmitRange
 	light.emitColor = info.EmitColor
+	light.castShadow = info.CastShadow
 
 	light.matrix = sprec.IdentityMat4()
 	light.matrixDirty = true
@@ -38,11 +39,11 @@ type DirectionalLight struct {
 	scene  *Scene
 	itemID spatial.DynamicSetItemID
 
-	active    bool
-	position  dprec.Vec3
-	rotation  dprec.Quat
-	emitRange float64
-	emitColor dprec.Vec3
+	active     bool
+	position   dprec.Vec3
+	rotation   dprec.Quat
+	emitColor  dprec.Vec3
+	castShadow bool
 
 	matrix      sprec.Mat4
 	matrixDirty bool
@@ -68,7 +69,7 @@ func (l *DirectionalLight) SetPosition(position dprec.Vec3) {
 	if position != l.position {
 		l.position = position
 		l.scene.directionalLightSet.Update(
-			l.itemID, l.position, l.emitRange,
+			l.itemID, l.position, dirLightRadius,
 		)
 		l.matrixDirty = true
 	}
@@ -87,21 +88,6 @@ func (l *DirectionalLight) SetRotation(rotation dprec.Quat) {
 	}
 }
 
-// EmitRange returns the distance that this light source covers.
-func (l *DirectionalLight) EmitRange() float64 {
-	return l.emitRange
-}
-
-// SetEmitRange changes the distance that this light source covers.
-func (l *DirectionalLight) SetEmitRange(emitRange float64) {
-	if emitRange != l.emitRange {
-		l.emitRange = dprec.Max(0.0, emitRange)
-		l.scene.directionalLightSet.Update(
-			l.itemID, l.position, l.emitRange,
-		)
-	}
-}
-
 // EmitColor returns the linear color of this light.
 func (l *DirectionalLight) EmitColor() dprec.Vec3 {
 	return l.emitColor
@@ -111,6 +97,16 @@ func (l *DirectionalLight) EmitColor() dprec.Vec3 {
 // can be outside the [0.0, 1.0] range for higher intensity.
 func (l *DirectionalLight) SetEmitColor(color dprec.Vec3) {
 	l.emitColor = color
+}
+
+// CastShadow returns whether this light will cast a shadow.
+func (l *DirectionalLight) CastShadow() bool {
+	return l.castShadow
+}
+
+// SetCastShadow changes whether this light will cast a shadow.
+func (l *DirectionalLight) SetCastShadow(castShadow bool) {
+	l.castShadow = castShadow
 }
 
 // Delete removes this light from the scene.

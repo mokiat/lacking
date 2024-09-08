@@ -10,6 +10,15 @@ type TextureMarker interface {
 type Texture interface {
 	TextureMarker
 	Resource
+
+	// Width returns the width of the texture.
+	Width() uint32
+
+	// Height returns the height of the texture.
+	Height() uint32
+
+	// Depth returns the depth of the texture.
+	Depth() uint32
 }
 
 const (
@@ -121,6 +130,23 @@ type DepthTexture2DInfo struct {
 
 	// Height specifies the height of the texture.
 	Height uint32
+
+	// Comparable specifies whether the depth texture should be comparable.
+	Comparable bool
+}
+
+// DepthTexture2DArrayInfo represents the information needed to create a
+// 2D array depth Texture.
+type DepthTexture2DArrayInfo struct {
+
+	// Width specifies the width of the texture.
+	Width uint32
+
+	// Height specifies the height of the texture.
+	Height uint32
+
+	// Layers specifies the number of layers in the texture.
+	Layers uint32
 
 	// Comparable specifies whether the depth texture should be comparable.
 	Comparable bool

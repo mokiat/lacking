@@ -37,6 +37,7 @@ type AmbientLight struct {
 	scene  *Scene
 	itemID spatial.DynamicSetItemID
 
+	position          dprec.Vec3
 	innerRadius       float64
 	outerRadius       float64
 	reflectionTexture render.Texture
@@ -51,6 +52,10 @@ func (l *AmbientLight) Active() bool {
 
 func (l *AmbientLight) SetActive(active bool) {
 	l.active = active
+}
+
+func (l *AmbientLight) Position() dprec.Vec3 {
+	return l.position
 }
 
 func (l *AmbientLight) Delete() {

@@ -1,5 +1,7 @@
 package render
 
+import "github.com/mokiat/gog/opt"
+
 // FramebufferMarker marks a type as being a Framebuffer.
 type FramebufferMarker interface {
 	_isFramebufferType()
@@ -20,19 +22,41 @@ type FramebufferInfo struct {
 
 	// ColorAttachments is the list of color attachments that should be
 	// attached to the Framebuffer.
-	ColorAttachments [4]Texture
+	ColorAttachments [4]opt.T[TextureAttachment]
 
 	// DepthAttachment is the depth attachment that should be attached to
 	// the Framebuffer.
-	DepthAttachment Texture
+	DepthAttachment opt.T[TextureAttachment]
 
 	// StencilAttachment is the stencil attachment that should be attached
 	// to the Framebuffer.
-	StencilAttachment Texture
+	StencilAttachment opt.T[TextureAttachment]
 
 	// DepthStencilAttachment is the depth+stencil attachment that should
 	// be attached to the Framebuffer.
-	DepthStencilAttachment Texture
+	DepthStencilAttachment opt.T[TextureAttachment]
+}
+
+// PlainTextureAttachment creates a TextureAttachment that for the specified
+// texture at the root mipmap layer and depth.
+func PlainTextureAttachment(texture Texture) TextureAttachment {
+	return TextureAttachment{
+		Texture: texture,
+	}
+}
+
+// TextureAttachment represents a framebuffer attachment.
+type TextureAttachment struct {
+
+	// Texture is the texture that should be attached.
+	Texture Texture
+
+	// Depth is the depth of the texture that should be attached, in case of a
+	// texture array or 3D texture.
+	Depth uint32
+
+	// MipmapLayer is the mipmap level of the texture that should be attached.
+	MipmapLayer uint32
 }
 
 // CopyFramebufferToTextureInfo describes the configuration of a copy operation

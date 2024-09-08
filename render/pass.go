@@ -26,6 +26,13 @@ type RenderPassInfo struct {
 	// attachment when DepthLoadOp is LoadOperationClear.
 	DepthClearValue float32
 
+	// DepthBias configures a depth bias to be added to each fragment.
+	DepthBias float32
+
+	// DepthSlopeBias configures a slope-scaled depth bias to be added to each
+	// fragment.
+	DepthSlopeBias float32
+
 	// StencilLoadOp describes how the contents of the stencil attachment should
 	// be loaded.
 	StencilLoadOp LoadOperation

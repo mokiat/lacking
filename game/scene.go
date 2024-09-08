@@ -559,7 +559,6 @@ func (s *Scene) placeDirectionalLight(data placementData, instance directionalLi
 		Position:   dprec.ZeroVec3(),
 		Rotation:   dprec.IdentityQuat(),
 		EmitColor:  instance.emitColor,
-		EmitRange:  25000.0,
 		CastShadow: instance.castShadow,
 	})
 	node.SetTarget(DirectionalLightNodeTarget{

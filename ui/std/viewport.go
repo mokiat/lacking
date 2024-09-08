@@ -161,8 +161,8 @@ func (c *viewportSurface) createFramebuffer(width, height uint32) {
 		Format:          render.DataFormatRGBA8,
 	})
 	c.framebuffer = c.api.CreateFramebuffer(render.FramebufferInfo{
-		ColorAttachments: [4]render.Texture{
-			c.colorTexture,
+		ColorAttachments: [4]opt.T[render.TextureAttachment]{
+			opt.V(render.PlainTextureAttachment(c.colorTexture)),
 		},
 	})
 }

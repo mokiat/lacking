@@ -26,9 +26,10 @@ const (
 	FoVModePixelBased FoVMode = "pixel-based"
 )
 
-func newCamera() *Camera {
+func newCamera(scene *Scene) *Camera {
 	return &Camera{
 		Node:              newNode(),
+		scene:             scene,
 		fov:               sprec.Degrees(120),
 		fovMode:           FoVModeHorizontalPlus,
 		near:              0.1,
@@ -37,6 +38,7 @@ func newCamera() *Camera {
 		minExposure:       0.00001,
 		autoExposureSpeed: 2.0,
 		exposure:          1.0,
+		cascadeDistances:  []float32{16.0, 160.0, 1600.0},
 	}
 }
 
@@ -44,6 +46,7 @@ func newCamera() *Camera {
 type Camera struct {
 	Node
 
+	scene               *Scene
 	fov                 sprec.Angle
 	fovMode             FoVMode
 	aspectRatio         float32
@@ -57,6 +60,7 @@ type Camera struct {
 	maxExposure         float32
 	minExposure         float32
 	exposure            float32
+	cascadeDistances    []float32
 }
 
 // FoV returns the field-of-view angle for this camera.
@@ -196,6 +200,37 @@ func (c *Camera) SetExposure(exposure float32) {
 	c.exposure = exposure
 }
 
+// CascadeDistances returns the distances at which the shadow maps
+// of this camera will be split into cascades.
+func (c *Camera) CascadeDistances() []float32 {
+	return c.cascadeDistances
+}
+
+// SetCascadeDistances changes the distances at which the shadow maps
+// of this camera will be split into cascades.
+func (c *Camera) SetCascadeDistances(distances []float32) {
+	c.cascadeDistances = distances
+}
+
+// CascadeNear returns the near distance of the specified cascade index.
+func (c *Camera) CascadeNear(index int) float32 {
+	if index <= 0 {
+		return c.near
+	}
+	return c.cascadeDistances[index-1]
+}
+
+// CascadeFar returns the far distance of the specified cascade index.
+func (c *Camera) CascadeFar(index int) float32 {
+	if index >= len(c.cascadeDistances) {
+		return c.far
+	}
+	return c.cascadeDistances[index]
+}
+
 // Delete removes this camera from the scene.
 func (c *Camera) Delete() {
+	if c.scene.activeCamera == c {
+		c.scene.SetActiveCamera(nil)
+	}
 }

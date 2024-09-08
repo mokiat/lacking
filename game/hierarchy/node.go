@@ -103,8 +103,11 @@ func (n *Node) Detach() {
 //
 // The node can be reused after deletion.
 func (n *Node) Delete() {
-	for child := n.firstChild; child != nil; child = child.rightSibling {
+	child := n.FirstChild()
+	for child != nil {
+		next := child.RightSibling()
 		child.Delete()
+		child = next
 	}
 	if n.source != nil {
 		n.source.Release()

@@ -213,6 +213,10 @@ func (s *YawPitchCameraSystem) updateGamepad(elapsedSeconds float64, gamepad app
 	deltaTranslation = dprec.Vec3Prod(deltaTranslation, s.translationSpeed*elapsedSeconds)
 	deltaTranslation = dprec.QuatVec3Rotation(yawRotation, deltaTranslation)
 
+	if gamepad.LeftBumper() {
+		deltaTranslation = dprec.Vec3Prod(deltaTranslation, 4.0)
+	}
+
 	nodeComp.Node.SetAbsoluteMatrix(dprec.TRSMat4(
 		dprec.Vec3Sum(oldTranslation, deltaTranslation),
 		dprec.QuatProd(yawRotation, pitchRotation),
