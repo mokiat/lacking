@@ -15,7 +15,7 @@ import (
 	"github.com/mokiat/lacking/game/asset/mdl"
 	"github.com/mokiat/lacking/util/gltfutil"
 	"github.com/qmuntal/gltf"
-	lightspunctual "github.com/qmuntal/gltf/ext/lightspuntual"
+	"github.com/qmuntal/gltf/ext/lightspunctual"
 )
 
 // CreateModel creates a new model with the specified name and operations.
@@ -116,17 +116,17 @@ func BuildModelResource(gltfDoc *gltf.Document, forceCollision bool) (*mdl.Model
 	model := &mdl.Model{}
 
 	// build images
-	imagesFromIndex := make(map[uint32]*mdl.Image)
+	imagesFromIndex := make(map[int]*mdl.Image)
 	for i, gltfImage := range gltfDoc.Images {
 		img, err := openGLTFImage(gltfDoc, gltfImage)
 		if err != nil {
 			return nil, fmt.Errorf("error loading image: %w", err)
 		}
-		imagesFromIndex[uint32(i)] = img
+		imagesFromIndex[i] = img
 	}
 
 	// build textures
-	texturesFromIndex := make(map[uint32]*mdl.Texture)
+	texturesFromIndex := make(map[int]*mdl.Texture)
 	for i, img := range imagesFromIndex {
 		texture := &mdl.Texture{}
 		texture.SetName(img.Name())
@@ -139,7 +139,7 @@ func BuildModelResource(gltfDoc *gltf.Document, forceCollision bool) (*mdl.Model
 	}
 
 	// build samplers
-	samplersFromIndex := make(map[uint32]*mdl.Sampler)
+	samplersFromIndex := make(map[int]*mdl.Sampler)
 	for i, gltfTexture := range gltfDoc.Textures {
 		sampler := &mdl.Sampler{}
 		if gltfTexture.Sampler != nil {
@@ -186,11 +186,11 @@ func BuildModelResource(gltfDoc *gltf.Document, forceCollision bool) (*mdl.Model
 		} else {
 			return nil, fmt.Errorf("texture source not set")
 		}
-		samplersFromIndex[uint32(i)] = sampler
+		samplersFromIndex[i] = sampler
 	}
 
 	// build materials
-	materialFromIndex := make(map[uint32]*mdl.Material)
+	materialFromIndex := make(map[int]*mdl.Material)
 	for i, gltfMaterial := range gltfDoc.Materials {
 		var (
 			color          sprec.Vec4
@@ -199,9 +199,9 @@ func BuildModelResource(gltfDoc *gltf.Document, forceCollision bool) (*mdl.Model
 			normalScale    float32
 			alphaThreshold float32
 
-			colorTextureIndex             *uint32
-			metallicRoughnessTextureIndex *uint32
-			normalTextureIndex            *uint32
+			colorTextureIndex             *int
+			metallicRoughnessTextureIndex *int
+			normalTextureIndex            *int
 		)
 
 		if gltfPBR := gltfMaterial.PBRMetallicRoughness; gltfPBR != nil {
@@ -288,12 +288,12 @@ func BuildModelResource(gltfDoc *gltf.Document, forceCollision bool) (*mdl.Model
 			material.SetSampler("normalSampler", samplersFromIndex[*normalTextureIndex])
 		}
 
-		materialFromIndex[uint32(i)] = material
+		materialFromIndex[i] = material
 	}
 
 	// build mesh definitions
-	meshDefinitionFromIndex := make(map[uint32]*mdl.MeshDefinition)
-	bodyDefinitionFromIndex := make(map[uint32]*mdl.BodyDefinition)
+	meshDefinitionFromIndex := make(map[int]*mdl.MeshDefinition)
+	bodyDefinitionFromIndex := make(map[int]*mdl.BodyDefinition)
 	for i, gltfMesh := range gltfDoc.Meshes {
 		bodyMaterial := mdl.NewBodyMaterial()
 		bodyDefinition := mdl.NewBodyDefinition(bodyMaterial)
@@ -448,17 +448,17 @@ func BuildModelResource(gltfDoc *gltf.Document, forceCollision bool) (*mdl.Model
 
 		meshDefinition.SetName(gltfMesh.Name)
 		meshDefinition.SetGeometry(geometry)
-		meshDefinitionFromIndex[uint32(i)] = meshDefinition
+		meshDefinitionFromIndex[i] = meshDefinition
 
 		if (geometry.Metadata().HasCollision() || forceCollision) && len(bodyDefinition.CollisionMeshes()) > 0 {
-			bodyDefinitionFromIndex[uint32(i)] = bodyDefinition
+			bodyDefinitionFromIndex[i] = bodyDefinition
 		}
 	}
 
 	// prepare armatures
-	armatureFromIndex := make(map[uint32]*mdl.Armature)
+	armatureFromIndex := make(map[int]*mdl.Armature)
 	for i := range gltfDoc.Skins {
-		armatureFromIndex[uint32(i)] = mdl.NewArmature()
+		armatureFromIndex[i] = mdl.NewArmature()
 	}
 
 	createPointLight := func(gltfLight *lightspunctual.Light) *mdl.PointLight {
@@ -544,9 +544,9 @@ func BuildModelResource(gltfDoc *gltf.Document, forceCollision bool) (*mdl.Model
 	}
 
 	// build nodes
-	nodeFromIndex := make(map[uint32]*mdl.Node)
-	var visitNode func(nodeIndex uint32) *mdl.Node
-	visitNode = func(nodeIndex uint32) *mdl.Node {
+	nodeFromIndex := make(map[int]*mdl.Node)
+	var visitNode func(nodeIndex int) *mdl.Node
+	visitNode = func(nodeIndex int) *mdl.Node {
 		gltfNode := gltfDoc.Nodes[nodeIndex]
 
 		node := mdl.NewNode(gltfNode.Name)
@@ -599,7 +599,7 @@ func BuildModelResource(gltfDoc *gltf.Document, forceCollision bool) (*mdl.Model
 
 	// finalize armatures (now that all nodes are available)
 	for i, gltfSkin := range gltfDoc.Skins {
-		armature := armatureFromIndex[uint32(i)]
+		armature := armatureFromIndex[i]
 		for j, gltfJoint := range gltfSkin.Joints {
 			joint := mdl.NewJoint()
 			joint.SetNode(nodeFromIndex[gltfJoint])
@@ -610,7 +610,7 @@ func BuildModelResource(gltfDoc *gltf.Document, forceCollision bool) (*mdl.Model
 
 	// prepare animations
 	for _, gltfAnimation := range gltfDoc.Animations {
-		bindingFromNodeIndex := make(map[uint32]*mdl.AnimationBinding)
+		bindingFromNodeIndex := make(map[int]*mdl.AnimationBinding)
 		animation := &mdl.Animation{}
 		animation.SetName(gltfAnimation.Name)
 		for _, gltfChannel := range gltfAnimation.Channels {

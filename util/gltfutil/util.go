@@ -11,17 +11,17 @@ import (
 	"github.com/qmuntal/gltf"
 )
 
-func RootNodeIndices(doc *gltf.Document) []uint32 {
-	childrenIDs := make(map[uint32]struct{})
+func RootNodeIndices(doc *gltf.Document) []int {
+	childrenIDs := make(map[int]struct{})
 	for _, node := range doc.Nodes {
 		for _, childID := range node.Children {
 			childrenIDs[childID] = struct{}{}
 		}
 	}
-	result := make([]uint32, 0, len(doc.Nodes)-len(childrenIDs))
+	result := make([]int, 0, len(doc.Nodes)-len(childrenIDs))
 	for id := range doc.Nodes {
-		if _, ok := childrenIDs[uint32(id)]; !ok {
-			result = append(result, uint32(id))
+		if _, ok := childrenIDs[id]; !ok {
+			result = append(result, id)
 		}
 	}
 	return result
@@ -285,7 +285,7 @@ func BaseColor(pbr *gltf.PBRMetallicRoughness) sprec.Vec4 {
 	return sprec.NewVec4(float32(factor[0]), float32(factor[1]), float32(factor[2]), float32(factor[3]))
 }
 
-func ColorTextureIndex(doc *gltf.Document, pbr *gltf.PBRMetallicRoughness) *uint32 {
+func ColorTextureIndex(doc *gltf.Document, pbr *gltf.PBRMetallicRoughness) *int {
 	colorTexture := pbr.BaseColorTexture
 	if colorTexture == nil {
 		return nil
@@ -297,7 +297,7 @@ func ColorTextureIndex(doc *gltf.Document, pbr *gltf.PBRMetallicRoughness) *uint
 	return &colorTexture.Index
 }
 
-func MetallicRoughnessTextureIndex(doc *gltf.Document, pbr *gltf.PBRMetallicRoughness) *uint32 {
+func MetallicRoughnessTextureIndex(doc *gltf.Document, pbr *gltf.PBRMetallicRoughness) *int {
 	mrTexture := pbr.MetallicRoughnessTexture
 	if mrTexture == nil {
 		return nil
@@ -309,7 +309,7 @@ func MetallicRoughnessTextureIndex(doc *gltf.Document, pbr *gltf.PBRMetallicRoug
 	return &mrTexture.Index
 }
 
-func NormalTextureIndexScale(doc *gltf.Document, material *gltf.Material) (*uint32, float32) {
+func NormalTextureIndexScale(doc *gltf.Document, material *gltf.Material) (*int, float32) {
 	normalTexture := material.NormalTexture
 	if normalTexture == nil {
 		return nil, 1.0
@@ -474,7 +474,7 @@ func AnimationScales(doc *gltf.Document, sampler *gltf.AnimationSampler) []dprec
 	}
 }
 
-func BufferViewData(doc *gltf.Document, index uint32) gblob.LittleEndianBlock {
+func BufferViewData(doc *gltf.Document, index int) gblob.LittleEndianBlock {
 	bufferView := doc.BufferViews[index]
 	offset := bufferView.ByteOffset
 	count := bufferView.ByteLength
