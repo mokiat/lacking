@@ -69,16 +69,19 @@ func (d *commonStageData) Allocate() {
 	d.coneShape = internal.CreateConeShape(d.api)
 
 	d.nearestSampler = d.api.CreateSampler(render.SamplerInfo{
+		Label:      "Nearest Sampler",
 		Wrapping:   render.WrapModeClamp,
 		Filtering:  render.FilterModeNearest,
 		Mipmapping: false,
 	})
 	d.linearSampler = d.api.CreateSampler(render.SamplerInfo{
+		Label:      "Linear Sampler",
 		Wrapping:   render.WrapModeClamp,
 		Filtering:  render.FilterModeLinear,
 		Mipmapping: false,
 	})
 	d.depthSampler = d.api.CreateSampler(render.SamplerInfo{
+		Label:      "Depth Sampler",
 		Wrapping:   render.WrapModeClamp,
 		Filtering:  render.FilterModeLinear,
 		Comparison: opt.V(render.ComparisonLess),
@@ -90,6 +93,7 @@ func (d *commonStageData) Allocate() {
 
 	gog.Mutate(d.directionalShadowMaps, func(shadowMap *internal.DirectionalShadowMap) {
 		shadowMap.ArrayTexture = d.api.CreateDepthTexture2DArray(render.DepthTexture2DArrayInfo{
+			Label:      "Directional Shadow Map Texture",
 			Width:      uint32(d.directionalShadowMapSize),
 			Height:     uint32(d.directionalShadowMapSize),
 			Layers:     uint32(d.directionalShadowMapCascadeCount),
@@ -98,6 +102,7 @@ func (d *commonStageData) Allocate() {
 		shadowMap.Cascades = make([]internal.DirectionalShadowMapCascade, d.directionalShadowMapCascadeCount)
 		gog.MutateIndex(shadowMap.Cascades, func(j int, cascade *internal.DirectionalShadowMapCascade) {
 			cascade.Framebuffer = d.api.CreateFramebuffer(render.FramebufferInfo{
+				Label: "Directional Shadow Map Framebuffer",
 				DepthAttachment: opt.V(render.TextureAttachment{
 					Texture: shadowMap.ArrayTexture,
 					Depth:   uint32(j),
@@ -108,17 +113,20 @@ func (d *commonStageData) Allocate() {
 
 	gog.Mutate(d.spotShadowMaps, func(shadowMap *internal.SpotShadowMap) {
 		shadowMap.Texture = d.api.CreateDepthTexture2D(render.DepthTexture2DInfo{
+			Label:      "Spot Shadow Map Texture",
 			Width:      uint32(d.spotShadowMapSize),
 			Height:     uint32(d.spotShadowMapSize),
 			Comparable: true,
 		})
 		shadowMap.Framebuffer = d.api.CreateFramebuffer(render.FramebufferInfo{
+			Label:           "Spot Shadow Map Framebuffer",
 			DepthAttachment: opt.V(render.PlainTextureAttachment(shadowMap.Texture)),
 		})
 	})
 
 	gog.Mutate(d.pointShadowMaps, func(shadowMap *internal.PointShadowMap) {
 		shadowMap.ArrayTexture = d.api.CreateDepthTexture2DArray(render.DepthTexture2DArrayInfo{
+			Label:      "Point Shadow Map Texture",
 			Width:      uint32(d.pointShadowMapSize),
 			Height:     uint32(d.pointShadowMapSize),
 			Layers:     6,
@@ -126,6 +134,7 @@ func (d *commonStageData) Allocate() {
 		})
 		for i := range 6 {
 			shadowMap.Framebuffers[i] = d.api.CreateFramebuffer(render.FramebufferInfo{
+				Label: "Point Shadow Map Framebuffer",
 				DepthAttachment: opt.V(render.TextureAttachment{
 					Texture: shadowMap.ArrayTexture,
 					Depth:   uint32(i),

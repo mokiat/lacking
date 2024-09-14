@@ -11,6 +11,9 @@ type FramebufferMarker interface {
 type Framebuffer interface {
 	FramebufferMarker
 	Resource
+
+	// Label returns a human-readable name for the Framebuffer.
+	Label() string
 }
 
 // FramebufferInfo describes the configuration of a Framebuffer.

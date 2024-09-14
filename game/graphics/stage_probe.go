@@ -58,6 +58,7 @@ func (s *ExposureProbeStage) Allocate() {
 	quadShape := s.data.QuadShape()
 
 	s.exposureAlbedoTexture = s.api.CreateColorTexture2D(render.ColorTexture2DInfo{
+		Label:           "Exposure Probe Texture",
 		Width:           1,
 		Height:          1,
 		GenerateMipmaps: false,
@@ -65,12 +66,14 @@ func (s *ExposureProbeStage) Allocate() {
 		Format:          render.DataFormatRGBA16F,
 	})
 	s.exposureFramebuffer = s.api.CreateFramebuffer(render.FramebufferInfo{
+		Label: "Exposure Probe Framebuffer",
 		ColorAttachments: [4]opt.T[render.TextureAttachment]{
 			opt.V(render.PlainTextureAttachment(s.exposureAlbedoTexture)),
 		},
 	})
 
 	s.exposureProgram = s.api.CreateProgram(render.ProgramInfo{
+		Label:      "Exposure Probe Program",
 		SourceCode: s.shaders.ExposureSet(),
 		TextureBindings: []render.TextureBinding{
 			render.NewTextureBinding("fbColor0TextureIn", internal.TextureBindingLightingFramebufferColor0),
@@ -78,6 +81,7 @@ func (s *ExposureProbeStage) Allocate() {
 		UniformBindings: []render.UniformBinding{},
 	})
 	s.exposurePipeline = s.api.CreatePipeline(render.PipelineInfo{
+		Label:        "Exposure Probe Pipeline",
 		Program:      s.exposureProgram,
 		VertexArray:  quadShape.VertexArray(),
 		Topology:     quadShape.Topology(),
@@ -91,6 +95,7 @@ func (s *ExposureProbeStage) Allocate() {
 	})
 
 	s.exposureBuffer = s.api.CreatePixelTransferBuffer(render.BufferInfo{
+		Label:   "Exposure Probe Buffer",
 		Dynamic: true,
 		Size:    uint32(len(s.exposureBufferData)),
 	})

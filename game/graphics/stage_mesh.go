@@ -3,7 +3,7 @@ package graphics
 import (
 	"cmp"
 	"math"
-	"slices"
+	"sort"
 
 	"github.com/mokiat/gblob"
 	"github.com/mokiat/gomath/dprec"
@@ -92,8 +92,20 @@ func (s *meshRenderer) QueueStaticMeshRenderItems(ctx StageContext, mesh *Static
 }
 
 func (s *meshRenderer) Render(ctx StageContext) {
+	s.sortRenderItems(s.renderItems)
 	s.renderMeshRenderItems(ctx, s.renderItems)
 	s.renderItems = s.renderItems[:0]
+}
+
+func (s *meshRenderer) sortRenderItems(items []renderItem) {
+	sort.Slice(items, func(i, j int) bool {
+		a, b := &items[i], &items[j]
+		return cmp.Or(
+			a.Layer < b.Layer,
+			a.MaterialKey < b.MaterialKey,
+			a.ArmatureKey < b.ArmatureKey,
+		)
+	})
 }
 
 func (s *meshRenderer) renderMeshRenderItems(ctx StageContext, items []renderItem) {
@@ -105,8 +117,6 @@ func (s *meshRenderer) renderMeshRenderItems(ctx StageContext, items []renderIte
 		batchStart = 0
 		batchEnd   = 0
 	)
-
-	slices.SortFunc(items, compareMeshRenderItems)
 
 	itemCount := len(items)
 	for i, item := range items {
@@ -202,12 +212,4 @@ func (s *meshRenderer) renderMeshRenderItemBatch(ctx StageContext, items []rende
 	}
 
 	commandBuffer.DrawIndexed(template.IndexByteOffset, template.IndexCount, uint32(len(items)))
-}
-
-func compareMeshRenderItems(a, b renderItem) int {
-	return cmp.Or(
-		cmp.Compare(a.Layer, b.Layer),
-		cmp.Compare(a.MaterialKey, b.MaterialKey),
-		cmp.Compare(a.ArmatureKey, b.ArmatureKey),
-	)
 }

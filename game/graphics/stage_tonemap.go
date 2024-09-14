@@ -60,6 +60,7 @@ func (s *ToneMappingStage) Allocate() {
 	quadShape := s.data.QuadShape()
 
 	s.program = s.api.CreateProgram(render.ProgramInfo{
+		Label: "Tone Mapping Program",
 		SourceCode: s.shaders.PostprocessingSet(PostprocessingShaderConfig{
 			ToneMapping: s.toneMapping,
 			Bloom:       s.inBloomTexture != nil,
@@ -73,6 +74,7 @@ func (s *ToneMappingStage) Allocate() {
 		},
 	})
 	s.pipeline = s.api.CreatePipeline(render.PipelineInfo{
+		Label:           "Tone Mapping Pipeline",
 		Program:         s.program,
 		VertexArray:     quadShape.VertexArray(),
 		Topology:        quadShape.Topology(),

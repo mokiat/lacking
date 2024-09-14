@@ -9,6 +9,9 @@ type ProgramMarker interface {
 type Program interface {
 	ProgramMarker
 	Resource
+
+	// Label returns a human-readable name for the Program.
+	Label() string
 }
 
 // ProgramCodeMarker marks a type as being a ProgramCode.

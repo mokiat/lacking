@@ -49,6 +49,7 @@ func NewUniformBlockBuffer(api render.API, capacity int) *UniformBlockBuffer {
 		api:     api,
 		plotter: blob.NewPlotter(data),
 		buffer: api.CreateUniformBuffer(render.BufferInfo{
+			Label:   "Uniform Block Buffer",
 			Dynamic: true,
 			Size:    uint32(len(data)),
 		}),

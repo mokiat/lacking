@@ -9,10 +9,17 @@ type PipelineMarker interface {
 type Pipeline interface {
 	PipelineMarker
 	Resource
+
+	// Label returns a human-readable name for the Pipeline.
+	Label() string
 }
 
 // PipelineInfo describes the information needed to create a new Pipeline.
 type PipelineInfo struct {
+
+	// Label specifies a human-readable label for the Pipeline. Intended for
+	// debugging and logging purposes only.
+	Label string
 
 	// Program specifies the shading to use.
 	Program Program

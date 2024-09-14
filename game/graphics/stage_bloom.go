@@ -83,12 +83,14 @@ func (s *BloomStage) Allocate() {
 	s.allocateTextures(1, 1)
 
 	s.downsampleProgram = s.api.CreateProgram(render.ProgramInfo{
+		Label:      "Bloom Downsample Program",
 		SourceCode: s.shaders.BloomDownsampleSet(),
 		TextureBindings: []render.TextureBinding{
 			render.NewTextureBinding("lackingSourceImage", bloomDownsampleHDRImageSlot),
 		},
 	})
 	s.downsamplePipeline = s.api.CreatePipeline(render.PipelineInfo{
+		Label:           "Bloom Downsample Pipeline",
 		Program:         s.downsampleProgram,
 		VertexArray:     quadShape.VertexArray(),
 		Topology:        quadShape.Topology(),
@@ -102,12 +104,14 @@ func (s *BloomStage) Allocate() {
 		BlendEnabled:    false,
 	})
 	s.downsampleSampler = s.api.CreateSampler(render.SamplerInfo{
+		Label:      "Bloom Downsample Sampler",
 		Wrapping:   render.WrapModeClamp,
 		Filtering:  render.FilterModeNearest,
 		Mipmapping: false,
 	})
 
 	s.blurProgram = s.api.CreateProgram(render.ProgramInfo{
+		Label:      "Bloom Blur Program",
 		SourceCode: s.shaders.BloomBlurSet(),
 		TextureBindings: []render.TextureBinding{
 			render.NewTextureBinding("lackingSourceImage", bloomBlurSourceImageSlot),
@@ -117,6 +121,7 @@ func (s *BloomStage) Allocate() {
 		},
 	})
 	s.blurPipeline = s.api.CreatePipeline(render.PipelineInfo{
+		Label:           "Bloom Blur Pipeline",
 		Program:         s.blurProgram,
 		VertexArray:     quadShape.VertexArray(),
 		Topology:        quadShape.Topology(),
@@ -235,6 +240,7 @@ func (s *BloomStage) allocateTextures(width, height uint32) {
 	s.framebufferHeight = height
 
 	s.pingTexture = s.api.CreateColorTexture2D(render.ColorTexture2DInfo{
+		Label:           "Bloom Ping Texture",
 		Width:           width,
 		Height:          height,
 		GenerateMipmaps: false,
@@ -242,12 +248,14 @@ func (s *BloomStage) allocateTextures(width, height uint32) {
 		Format:          render.DataFormatRGBA16F,
 	})
 	s.pingFramebuffer = s.api.CreateFramebuffer(render.FramebufferInfo{
+		Label: "Bloom Ping Framebuffer",
 		ColorAttachments: [4]opt.T[render.TextureAttachment]{
 			opt.V(render.PlainTextureAttachment(s.pingTexture)),
 		},
 	})
 
 	s.pongTexture = s.api.CreateColorTexture2D(render.ColorTexture2DInfo{
+		Label:           "Bloom Pong Texture",
 		Width:           width,
 		Height:          height,
 		GenerateMipmaps: false,
@@ -255,6 +263,7 @@ func (s *BloomStage) allocateTextures(width, height uint32) {
 		Format:          render.DataFormatRGBA16F,
 	})
 	s.pongFramebuffer = s.api.CreateFramebuffer(render.FramebufferInfo{
+		Label: "Bloom Pong Framebuffer",
 		ColorAttachments: [4]opt.T[render.TextureAttachment]{
 			opt.V(render.PlainTextureAttachment(s.pongTexture)),
 		},

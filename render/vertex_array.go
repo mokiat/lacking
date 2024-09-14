@@ -9,10 +9,17 @@ type VertexArrayMarker interface {
 type VertexArray interface {
 	VertexArrayMarker
 	Resource
+
+	// Label returns a human-readable name for the VertexArray.
+	Label() string
 }
 
 // VertexArrayInfo represents the information needed to create a VertexArray.
 type VertexArrayInfo struct {
+
+	// Label specifies a human-readable label for the texture. Intended for
+	// debugging and logging purposes only.
+	Label string
 
 	// Bindings specifies the vertex buffers that make up this Vertex Array.
 	Bindings []VertexArrayBinding

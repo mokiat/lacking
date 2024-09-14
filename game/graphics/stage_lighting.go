@@ -127,6 +127,7 @@ func (s *LightingStage) allocateFramebuffer() {
 	s.hdrTexture = s.input.HDRTexture()
 
 	s.framebuffer = s.api.CreateFramebuffer(render.FramebufferInfo{
+		Label: "Lighting Framebuffer",
 		ColorAttachments: [4]opt.T[render.TextureAttachment]{
 			opt.V(render.PlainTextureAttachment(s.hdrTexture)),
 		},
@@ -143,6 +144,7 @@ func (s *LightingStage) allocatePipelines() {
 	coneShape := s.data.ConeShape()
 
 	s.noShadowTexture = s.api.CreateDepthTexture2D(render.DepthTexture2DInfo{
+		Label:      "No Shadow Texture",
 		Width:      1,
 		Height:     1,
 		Comparable: true,
@@ -150,6 +152,7 @@ func (s *LightingStage) allocatePipelines() {
 	})
 
 	s.ambientLightProgram = s.api.CreateProgram(render.ProgramInfo{
+		Label:      "Ambient Light Program",
 		SourceCode: s.shaders.AmbientLightSet(),
 		TextureBindings: []render.TextureBinding{
 			render.NewTextureBinding("fbColor0TextureIn", internal.TextureBindingLightingFramebufferColor0),
@@ -163,6 +166,7 @@ func (s *LightingStage) allocatePipelines() {
 		},
 	})
 	s.ambientLightPipeline = s.api.CreatePipeline(render.PipelineInfo{
+		Label:                       "Ambient Light Pipeline",
 		Program:                     s.ambientLightProgram,
 		VertexArray:                 quadShape.VertexArray(),
 		Topology:                    quadShape.Topology(),
@@ -184,6 +188,7 @@ func (s *LightingStage) allocatePipelines() {
 	})
 
 	s.pointLightProgram = s.api.CreateProgram(render.ProgramInfo{
+		Label:      "Point Light Program",
 		SourceCode: s.shaders.PointLightSet(),
 		TextureBindings: []render.TextureBinding{
 			render.NewTextureBinding("fbColor0TextureIn", internal.TextureBindingLightingFramebufferColor0),
@@ -196,6 +201,7 @@ func (s *LightingStage) allocatePipelines() {
 		},
 	})
 	s.pointLightPipeline = s.api.CreatePipeline(render.PipelineInfo{
+		Label:                       "Point Light Pipeline",
 		Program:                     s.pointLightProgram,
 		VertexArray:                 sphereShape.VertexArray(),
 		Topology:                    sphereShape.Topology(),
@@ -217,6 +223,7 @@ func (s *LightingStage) allocatePipelines() {
 	})
 
 	s.spotLightProgram = s.api.CreateProgram(render.ProgramInfo{
+		Label:      "Spot Light Program",
 		SourceCode: s.shaders.SpotLightSet(),
 		TextureBindings: []render.TextureBinding{
 			render.NewTextureBinding("fbColor0TextureIn", internal.TextureBindingLightingFramebufferColor0),
@@ -229,6 +236,7 @@ func (s *LightingStage) allocatePipelines() {
 		},
 	})
 	s.spotLightPipeline = s.api.CreatePipeline(render.PipelineInfo{
+		Label:                       "Spot Light Pipeline",
 		Program:                     s.spotLightProgram,
 		VertexArray:                 coneShape.VertexArray(),
 		Topology:                    coneShape.Topology(),
@@ -250,6 +258,7 @@ func (s *LightingStage) allocatePipelines() {
 	})
 
 	s.directionalLightProgram = s.api.CreateProgram(render.ProgramInfo{
+		Label:      "Directional Light Program",
 		SourceCode: s.shaders.DirectionalLightSet(),
 		TextureBindings: []render.TextureBinding{
 			render.NewTextureBinding("fbColor0TextureIn", internal.TextureBindingLightingFramebufferColor0),
@@ -263,6 +272,7 @@ func (s *LightingStage) allocatePipelines() {
 		},
 	})
 	s.directionalLightPipeline = s.api.CreatePipeline(render.PipelineInfo{
+		Label:                       "Directional Light Pipeline",
 		Program:                     s.directionalLightProgram,
 		VertexArray:                 quadShape.VertexArray(),
 		Topology:                    quadShape.Topology(),
@@ -342,8 +352,8 @@ func (s *LightingStage) renderPointLight(ctx StageContext, light *PointLight) {
 	depthTexture := s.input.DepthTexture()
 
 	lightPlacement := ubo.WriteUniform(uniformBuffer, internal.LightUniform{
-		ShadowMatrices: [8]sprec.Mat4{}, // irrelevant
-		ShadowCascades: [8]sprec.Vec2{}, // irrelevant
+		ShadowMatrices: [4]sprec.Mat4{}, // irrelevant
+		ShadowCascades: [4]sprec.Vec2{}, // irrelevant
 		ModelMatrix:    light.gfxMatrix(),
 		Color:          dtos.Vec3(light.emitColor),
 		Intensity:      1.0,
@@ -384,8 +394,8 @@ func (s *LightingStage) renderSpotLight(ctx StageContext, light *SpotLight) {
 	depthTexture := s.input.DepthTexture()
 
 	lightPlacement := ubo.WriteUniform(uniformBuffer, internal.LightUniform{
-		ShadowMatrices: [8]sprec.Mat4{}, // irrelevant
-		ShadowCascades: [8]sprec.Vec2{}, // irrelevant
+		ShadowMatrices: [4]sprec.Mat4{}, // irrelevant
+		ShadowCascades: [4]sprec.Vec2{}, // irrelevant
 		ModelMatrix:    light.gfxMatrix(),
 		Color:          dtos.Vec3(light.emitColor),
 		Intensity:      1.0,
@@ -429,9 +439,9 @@ func (s *LightingStage) renderDirectionalLight(ctx StageContext, light *Directio
 	depthTexture := s.input.DepthTexture()
 
 	lightUniform := internal.LightUniform{
-		ShadowMatrices: [8]sprec.Mat4{},
+		ShadowMatrices: [4]sprec.Mat4{},
+		ShadowCascades: [4]sprec.Vec2{},
 		ModelMatrix:    light.gfxMatrix(),
-		ShadowCascades: [8]sprec.Vec2{},
 		Color:          dtos.Vec3(light.emitColor),
 		Intensity:      1.0,
 		Range:          0.0, // irrelevant
