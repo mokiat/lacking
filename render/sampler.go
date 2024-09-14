@@ -11,10 +11,17 @@ type SamplerMarker interface {
 type Sampler interface {
 	SamplerMarker
 	Resource
+
+	// Label returns a human-readable name for the Sampler.
+	Label() string
 }
 
 // SamplerInfo represents the information needed to create a Sampler.
 type SamplerInfo struct {
+
+	// Label specifies a human-readable label for the Sampler. Intended for
+	// debugging and logging purposes only.
+	Label string
 
 	// Wrapping specifies the texture wrapping mode.
 	Wrapping WrapMode

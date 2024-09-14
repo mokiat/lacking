@@ -54,6 +54,7 @@ func (s *DepthSourceStage) PostRender() {
 
 func (s *DepthSourceStage) allocateTextures() {
 	s.depthTexture = s.api.CreateDepthTexture2D(render.DepthTexture2DInfo{
+		Label:  "Depth Source Texture",
 		Width:  s.framebufferWidth,
 		Height: s.framebufferHeight,
 	})

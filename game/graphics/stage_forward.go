@@ -107,6 +107,7 @@ func (s *ForwardStage) allocateFramebuffer() {
 	s.depthTexture = s.input.DepthTexture()
 
 	s.framebuffer = s.api.CreateFramebuffer(render.FramebufferInfo{
+		Label: "Forward Framebuffer",
 		ColorAttachments: [4]opt.T[render.TextureAttachment]{
 			opt.V(render.PlainTextureAttachment(s.hdrTexture)),
 		},
@@ -121,6 +122,7 @@ func (s *ForwardStage) releaseFramebuffer() {
 func (s *ForwardStage) allocateDebug() {
 	s.debugVertexData = make([]byte, debugBufferSize)
 	s.debugVertexBuffer = s.api.CreateVertexBuffer(render.BufferInfo{
+		Label:   "Debug Vertex Buffer",
 		Dynamic: true,
 		Data:    s.debugVertexData,
 	})
@@ -138,6 +140,7 @@ func (s *ForwardStage) allocateDebug() {
 	})
 
 	s.debugProgram = s.api.CreateProgram(render.ProgramInfo{
+		Label:           "Debug Program",
 		SourceCode:      s.shaders.DebugSet(),
 		TextureBindings: []render.TextureBinding{},
 		UniformBindings: []render.UniformBinding{
@@ -145,6 +148,7 @@ func (s *ForwardStage) allocateDebug() {
 		},
 	})
 	s.debugPipeline = s.api.CreatePipeline(render.PipelineInfo{
+		Label:           "Debug Pipeline",
 		Program:         s.debugProgram,
 		VertexArray:     s.debugVertexArray,
 		Topology:        render.TopologyLineList,

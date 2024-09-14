@@ -109,6 +109,7 @@ func (s *GeometryStage) allocateFramebuffer() {
 	s.depthTexture = s.input.DepthTexture()
 
 	s.framebuffer = s.api.CreateFramebuffer(render.FramebufferInfo{
+		Label: "Geometry Framebuffer",
 		ColorAttachments: [4]opt.T[render.TextureAttachment]{
 			opt.V(render.PlainTextureAttachment(s.albedoMetallicTexture)),
 			opt.V(render.PlainTextureAttachment(s.normalRoughnessTexture)),

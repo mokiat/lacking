@@ -11,6 +11,9 @@ type Texture interface {
 	TextureMarker
 	Resource
 
+	// Label returns a human-readable name for the Texture.
+	Label() string
+
 	// Width returns the width of the texture.
 	Width() uint32
 
@@ -59,6 +62,10 @@ func (f DataFormat) String() string {
 // 2D color Texture.
 type ColorTexture2DInfo struct {
 
+	// Label specifies a human-readable label for the texture. Intended for
+	// debugging and logging purposes only.
+	Label string
+
 	// Width specifies the width of the texture.
 	Width uint32
 
@@ -82,6 +89,10 @@ type ColorTexture2DInfo struct {
 // ColorTextureCubeInfo represents the information needed to create a
 // cube color Texture.
 type ColorTextureCubeInfo struct {
+
+	// Label specifies a human-readable label for the texture. Intended for
+	// debugging and logging purposes only.
+	Label string
 
 	// Dimension specifies the width, height and length of the texture.
 	Dimension uint32
@@ -125,6 +136,10 @@ type ColorTextureCubeInfo struct {
 // 2D depth Texture.
 type DepthTexture2DInfo struct {
 
+	// Label specifies a human-readable label for the texture. Intended for
+	// debugging and logging purposes only.
+	Label string
+
 	// Width specifies the width of the texture.
 	Width uint32
 
@@ -138,6 +153,10 @@ type DepthTexture2DInfo struct {
 // DepthTexture2DArrayInfo represents the information needed to create a
 // 2D array depth Texture.
 type DepthTexture2DArrayInfo struct {
+
+	// Label specifies a human-readable label for the texture. Intended for
+	// debugging and logging purposes only.
+	Label string
 
 	// Width specifies the width of the texture.
 	Width uint32
@@ -156,6 +175,10 @@ type DepthTexture2DArrayInfo struct {
 // 2D stencil Texture.
 type StencilTexture2DInfo struct {
 
+	// Label specifies a human-readable label for the texture. Intended for
+	// debugging and logging purposes only.
+	Label string
+
 	// Width specifies the width of the texture.
 	Width uint32
 
@@ -166,6 +189,10 @@ type StencilTexture2DInfo struct {
 // DepthStencilTexture2DInfo represents the information needed to create a
 // 2D depth-stencil Texture.
 type DepthStencilTexture2DInfo struct {
+
+	// Label specifies a human-readable label for the texture. Intended for
+	// debugging and logging purposes only.
+	Label string
 
 	// Width specifies the width of the texture.
 	Width uint32
