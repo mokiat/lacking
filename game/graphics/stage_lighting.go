@@ -352,8 +352,8 @@ func (s *LightingStage) renderPointLight(ctx StageContext, light *PointLight) {
 	depthTexture := s.input.DepthTexture()
 
 	lightPlacement := ubo.WriteUniform(uniformBuffer, internal.LightUniform{
-		ShadowMatrices: [8]sprec.Mat4{}, // irrelevant
-		ShadowCascades: [8]sprec.Vec2{}, // irrelevant
+		ShadowMatrices: [4]sprec.Mat4{}, // irrelevant
+		ShadowCascades: [4]sprec.Vec2{}, // irrelevant
 		ModelMatrix:    light.gfxMatrix(),
 		Color:          dtos.Vec3(light.emitColor),
 		Intensity:      1.0,
@@ -394,8 +394,8 @@ func (s *LightingStage) renderSpotLight(ctx StageContext, light *SpotLight) {
 	depthTexture := s.input.DepthTexture()
 
 	lightPlacement := ubo.WriteUniform(uniformBuffer, internal.LightUniform{
-		ShadowMatrices: [8]sprec.Mat4{}, // irrelevant
-		ShadowCascades: [8]sprec.Vec2{}, // irrelevant
+		ShadowMatrices: [4]sprec.Mat4{}, // irrelevant
+		ShadowCascades: [4]sprec.Vec2{}, // irrelevant
 		ModelMatrix:    light.gfxMatrix(),
 		Color:          dtos.Vec3(light.emitColor),
 		Intensity:      1.0,
@@ -439,9 +439,9 @@ func (s *LightingStage) renderDirectionalLight(ctx StageContext, light *Directio
 	depthTexture := s.input.DepthTexture()
 
 	lightUniform := internal.LightUniform{
-		ShadowMatrices: [8]sprec.Mat4{},
+		ShadowMatrices: [4]sprec.Mat4{},
+		ShadowCascades: [4]sprec.Vec2{},
 		ModelMatrix:    light.gfxMatrix(),
-		ShadowCascades: [8]sprec.Vec2{},
 		Color:          dtos.Vec3(light.emitColor),
 		Intensity:      1.0,
 		Range:          0.0, // irrelevant
