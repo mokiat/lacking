@@ -115,6 +115,10 @@ func (r *sceneRenderer) Point(viewport Viewport, camera *Camera, position dprec.
 }
 
 func (r *sceneRenderer) Render(framebuffer render.Framebuffer, viewport Viewport, scene *Scene, camera *Camera) {
+	if viewport.Width == 0 || viewport.Height == 0 {
+		return
+	}
+
 	commandBuffer := r.stageData.CommandBuffer()
 	uniformBuffer := r.stageData.UniformBuffer()
 	uniformBuffer.Reset()
