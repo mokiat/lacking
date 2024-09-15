@@ -316,18 +316,22 @@ func (w *windowHandler) OnRender() {
 	// when an Element gets disabled.
 	w.checkMouseLeaveEnter(w.oldMousePosition)
 
-	clipBounds := Bounds{
-		Position: NewPosition(0, 0),
-		Size:     w.size,
-	}
-	dirtyRegion := clipBounds // TODO: Handle dirty sub-regions
-
 	currentTime := time.Now()
 	elapsedTime := currentTime.Sub(w.lastRender)
 	if elapsedTime > time.Second {
 		elapsedTime = time.Second
 	}
 	w.lastRender = currentTime
+
+	if w.size.Empty() {
+		return
+	}
+
+	clipBounds := Bounds{
+		Position: NewPosition(0, 0),
+		Size:     w.size,
+	}
+	dirtyRegion := clipBounds // TODO: Handle dirty sub-regions
 
 	w.canvas.onBegin(elapsedTime)
 	w.canvas.SetClipRect(
