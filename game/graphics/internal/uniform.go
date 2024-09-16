@@ -1,11 +1,14 @@
 package internal
 
 const (
-	UniformBufferBindingCamera      = 0
-	UniformBufferBindingModel       = 1
-	UniformBufferBindingMaterial    = 2
-	UniformBufferBindingArmature    = 3
-	UniformBufferBindingLight       = 4
+	// NOTE: The following binding points should not be zero, even if
+	// this is not well documented.
+
+	UniformBufferBindingCamera      = 1
+	UniformBufferBindingModel       = 2
+	UniformBufferBindingMaterial    = 3
+	UniformBufferBindingArmature    = 4
+	UniformBufferBindingLight       = 5
 	UniformBufferBindingPostprocess = 6
 	UniformBufferBindingBloom       = 7
 )
