@@ -13,7 +13,10 @@ const (
 )
 
 const (
-	uniformBufferBindingCamera = iota
+	// NOTE: The following binding points should not be zero, even if
+	// this is not well documented.
+
+	uniformBufferBindingCamera = 1 + iota
 	uniformBufferBindingModel
 	uniformBufferBindingMaterial
 )

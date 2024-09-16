@@ -11,13 +11,6 @@ type UniformType interface {
 	Std140Size() uint32
 }
 
-// UniformBytes returns the byte representation of the specified uniform.
-func UniformBytes[T UniformType](uniform T) []byte {
-	data := make([]byte, uniform.Std140Size())
-	uniform.Std140Plot(blob.NewPlotter(data))
-	return data
-}
-
 // UniformPlacement contains information on the positioning of a uniform
 // within a uniform buffer.
 type UniformPlacement struct {
@@ -33,8 +26,11 @@ type UniformPlacement struct {
 func WriteUniform[T UniformType](blockBuffer *UniformBlockBuffer, uniform T) UniformPlacement {
 	size := uniform.Std140Size()
 	placement := blockBuffer.Placement(size)
+	plotter := placement.Plotter
+	offset := plotter.Offset()
 	uniform.Std140Plot(placement.Plotter)
-	placement.Plotter = nil // prevent writing
+	plotter.Seek(offset + int(placement.Size)) // protection against underwrites
+	placement.Plotter = nil                    // prevent further writing
 	return placement
 }
 
@@ -78,10 +74,12 @@ func (b *UniformBlockBuffer) Reset() {
 // of the specified size.
 func (b *UniformBlockBuffer) Placement(uniformSize uint32) UniformPlacement {
 	b.skipToAlignment()
-	const alignment = 16
-	if unaligned := uniformSize % alignment; unaligned > 0 {
-		uniformSize += alignment - unaligned
+
+	const rowAlignment = 16
+	if unaligned := uniformSize % rowAlignment; unaligned > 0 {
+		uniformSize += rowAlignment - unaligned
 	}
+
 	return UniformPlacement{
 		Buffer:  b.buffer,
 		Plotter: b.plotter,
