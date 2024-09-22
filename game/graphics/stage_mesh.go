@@ -101,10 +101,10 @@ func (s *meshRenderer) sortRenderItems(items []renderItem) {
 	sort.Slice(items, func(i, j int) bool {
 		a, b := &items[i], &items[j]
 		return cmp.Or(
-			a.Layer < b.Layer,
-			a.MaterialKey < b.MaterialKey,
-			a.ArmatureKey < b.ArmatureKey,
-		)
+			cmp.Compare(a.Layer, b.Layer),
+			cmp.Compare(a.MaterialKey, b.MaterialKey),
+			cmp.Compare(a.ArmatureKey, b.ArmatureKey),
+		) == -1
 	})
 }
 
