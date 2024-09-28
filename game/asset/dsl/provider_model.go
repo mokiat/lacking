@@ -495,7 +495,7 @@ func BuildModelResource(gltfDoc *gltf.Document, forceCollision bool) (*mdl.Model
 
 		light := mdl.NewDirectionalLight()
 		light.SetEmitColor(emitColor)
-		light.SetCastShadow(false)
+		light.SetCastShadow(true)
 		return light
 	}
 
