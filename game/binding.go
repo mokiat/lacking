@@ -151,6 +151,22 @@ func (t DirectionalLightNodeTarget) Release() {
 	t.Light.Delete()
 }
 
+func PointLightFromNode(node *hierarchy.Node) *graphics.PointLight {
+	target, ok := node.Target().(PointLightNodeTarget)
+	if !ok {
+		return nil
+	}
+	return target.Light
+}
+
+func SpotLightFromNode(node *hierarchy.Node) *graphics.SpotLight {
+	target, ok := node.Target().(SpotLightNodeTarget)
+	if !ok {
+		return nil
+	}
+	return target.Light
+}
+
 func DirectionalLightFromNode(node *hierarchy.Node) *graphics.DirectionalLight {
 	target, ok := node.Target().(DirectionalLightNodeTarget)
 	if !ok {
