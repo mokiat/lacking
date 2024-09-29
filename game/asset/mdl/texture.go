@@ -45,6 +45,7 @@ type Texture struct {
 	height          int
 	format          TextureFormat
 	generateMipmaps bool
+	isLinear        bool
 	layers          []TextureLayer
 }
 
@@ -81,6 +82,14 @@ func (t *Texture) SetFormat(format TextureFormat) {
 	if len(t.layers) > 0 {
 		panic("setting texture format with layers is not supported yet")
 	}
+}
+
+func (t *Texture) Linear() bool {
+	return t.isLinear
+}
+
+func (t *Texture) SetLinear(isLinear bool) {
+	t.isLinear = isLinear
 }
 
 func (t *Texture) GenerateMipmaps() bool {

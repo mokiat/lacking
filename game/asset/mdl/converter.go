@@ -837,7 +837,7 @@ func (c *Converter) convertTexture(texture *Texture) (uint32, error) {
 	default:
 		return 0, fmt.Errorf("unsupported texture kind %d", texture.Kind())
 	}
-	if isLikelyLinearSpace(texture.format) {
+	if isLikelyLinearSpace(texture.format) || texture.isLinear {
 		flags |= asset.TextureFlagLinearSpace
 	}
 	if texture.generateMipmaps {

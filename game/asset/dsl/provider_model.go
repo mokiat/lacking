@@ -213,6 +213,8 @@ func BuildModelResource(gltfDoc *gltf.Document, forceCollision bool) (*mdl.Model
 			}
 			if texIndex := gltfutil.MetallicRoughnessTextureIndex(gltfDoc, gltfPBR); texIndex != nil {
 				metallicRoughnessTextureIndex = texIndex
+				sampler := samplersFromIndex[*texIndex]
+				sampler.Texture().SetLinear(true)
 			}
 		} else {
 			color = sprec.NewVec4(1.0, 1.0, 1.0, 1.0)
@@ -771,17 +773,26 @@ func createPBRShader(cfg pbrShaderConfig) string {
 
 	if cfg.hasAlphaTesting {
 		sourceCode += `
-				if #color.a < alphaThreshold {
-					discard
-				}
+			if #color.a < alphaThreshold {
+				discard
+			}
 		`
 	}
 
-	sourceCode += `
+	if cfg.hasMetallicRoughnessTexture {
+		sourceCode += `
+			var metallicRoughness vec4 = sample(metallicRoughnessSampler, #vertexUV)
+			#metallic = metallicRoughness.b
+			#roughness = metallicRoughness.g
+		`
+	} else {
+		sourceCode += `
 			#metallic = metallic
 			#roughness = roughness
-		}
-	`
+		`
+	}
+
+	sourceCode += `}`
 
 	return sourceCode
 }
