@@ -227,6 +227,8 @@ func BuildModelResource(gltfDoc *gltf.Document, forceCollision bool) (*mdl.Model
 		if texIndex, texScale := gltfutil.NormalTextureIndexScale(gltfDoc, gltfMaterial); texIndex != nil {
 			normalTextureIndex = texIndex
 			normalScale = texScale
+			sampler := samplersFromIndex[*texIndex]
+			sampler.Texture().SetLinear(true)
 		} else {
 			normalScale = 1.0
 		}
@@ -782,13 +784,20 @@ func createPBRShader(cfg pbrShaderConfig) string {
 	if cfg.hasMetallicRoughnessTexture {
 		sourceCode += `
 			var metallicRoughness vec4 = sample(metallicRoughnessSampler, #vertexUV)
-			#metallic = metallicRoughness.b
-			#roughness = metallicRoughness.g
+			#metallic = metallicRoughness.b * metallic
+			#roughness = metallicRoughness.g * roughness
 		`
 	} else {
 		sourceCode += `
 			#metallic = metallic
 			#roughness = roughness
+		`
+	}
+
+	if cfg.hasNormalTexture {
+		sourceCode += `
+			var lsNormal vec4 = sample(normalSampler, #vertexUV)
+			#normal = mapNormal(lsNormal.xyz, normalScale)
 		`
 	}
 
