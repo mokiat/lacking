@@ -123,7 +123,7 @@ func Tangents(doc *gltf.Document, primitive *gltf.Primitive) ([]sprec.Vec3, erro
 	if accessor.BufferView == nil {
 		return nil, fmt.Errorf("accessor lacks a buffer view")
 	}
-	if accessor.Type != gltf.AccessorVec3 {
+	if accessor.Type != gltf.AccessorVec4 {
 		return nil, fmt.Errorf("unsupported accessor type %d", accessor.Type)
 	}
 	buffer := BufferViewData(doc, *accessor.BufferView)
@@ -133,7 +133,8 @@ func Tangents(doc *gltf.Document, primitive *gltf.Primitive) ([]sprec.Vec3, erro
 	switch accessor.ComponentType {
 	case gltf.ComponentFloat:
 		for i := range result {
-			result[i] = scanner.ScanSPVec3()
+			item := scanner.ScanSPVec4()
+			result[i] = sprec.Vec3Prod(sprec.NewVec3(item.X, item.Y, item.Z), item.W)
 		}
 	default:
 		return nil, fmt.Errorf("unsupported accessor component type %d", accessor.ComponentType)
