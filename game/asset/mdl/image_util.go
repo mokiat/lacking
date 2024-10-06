@@ -141,21 +141,21 @@ func BuildCubeSideFromEquirectangular(side CubeSide, srcImage *Image) *Image {
 	return dstImage
 }
 
-func BuildIrradianceCubeImage(srcImage *CubeImage, sampleCount int) *CubeImage {
+func BuildIrradianceCubeImage(srcImage *CubeImage, sampleCount int, minDot float64) *CubeImage {
 	dstImage := NewCubeImage(srcImage.size)
 	var group sync.WaitGroup
 	for i := range srcImage.sides {
 		group.Add(1)
 		go func() {
 			defer group.Done()
-			projectIrradianceCubeImageSide(srcImage, dstImage, CubeSide(i), sampleCount)
+			projectIrradianceCubeImageSide(srcImage, dstImage, CubeSide(i), sampleCount, minDot)
 		}()
 	}
 	group.Wait()
 	return dstImage
 }
 
-func projectIrradianceCubeImageSide(srcImage, dstImage *CubeImage, side CubeSide, sampleCount int) {
+func projectIrradianceCubeImageSide(srcImage, dstImage *CubeImage, side CubeSide, sampleCount int, minDot float64) {
 	dimension := srcImage.size
 
 	startLat := dprec.Degrees(-90.0)
@@ -195,7 +195,7 @@ func projectIrradianceCubeImageSide(srcImage, dstImage *CubeImage, side CubeSide
 						longitudeCS*latitudeCS,
 						latitudeSN,
 					)
-					if dot := dprec.Vec3Dot(uvw, direction); dot > 0.0 {
+					if dot := dprec.Vec3Dot(uvw, direction); dot > minDot {
 						positiveSamples++
 						srcColor := srcImage.TexelUVW(direction)
 						color.R += srcColor.R * dot

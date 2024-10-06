@@ -66,12 +66,6 @@ type ColorTexture2DInfo struct {
 	// debugging and logging purposes only.
 	Label string
 
-	// Width specifies the width of the texture.
-	Width uint32
-
-	// Height specifies the height of the texture.
-	Height uint32
-
 	// GenerateMipmaps specifies whether mipmaps should be generated.
 	GenerateMipmaps bool
 
@@ -81,6 +75,22 @@ type ColorTexture2DInfo struct {
 
 	// Format specifies the format of the data.
 	Format DataFormat
+
+	// MipmapLayers specifies the data that should be uploaded to the texture.
+	//
+	// If GenerateMipmaps is set to true, the first layer should contain the
+	// base image data and subsequent layers are not required.
+	MipmapLayers []Mipmap2DLayer
+}
+
+// Mipmap2DLayer represents a single layer of a 2D texture.
+type Mipmap2DLayer struct {
+
+	// Width specifies the width of the texture.
+	Width uint32
+
+	// Height specifies the height of the texture.
+	Height uint32
 
 	// Data specifies the data that should be uploaded to the texture.
 	Data []byte
@@ -94,9 +104,6 @@ type ColorTextureCubeInfo struct {
 	// debugging and logging purposes only.
 	Label string
 
-	// Dimension specifies the width, height and length of the texture.
-	Dimension uint32
-
 	// GenerateMipmaps specifies whether mipmaps should be generated.
 	GenerateMipmaps bool
 
@@ -106,6 +113,19 @@ type ColorTextureCubeInfo struct {
 
 	// Format specifies the format of the data.
 	Format DataFormat
+
+	// MipmapLayers specifies the data that should be uploaded to the texture.
+	//
+	// If GenerateMipmaps is set to true, the first layer should contain the
+	// base image data and subsequent layers are not required.
+	MipmapLayers []MipmapCubeLayer
+}
+
+// MipmapCubeLayer represents a single layer of a cube texture.
+type MipmapCubeLayer struct {
+
+	// Dimension specifies the width, height and length of the texture.
+	Dimension uint32
 
 	// FrontSideData specifies the data that should be uploaded to the front
 	// side of the texture.

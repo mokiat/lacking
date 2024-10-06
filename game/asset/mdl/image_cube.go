@@ -61,3 +61,13 @@ func (i *CubeImage) Scale(newSize int) *CubeImage {
 	}
 	return dstImage
 }
+
+func (i *CubeImage) MapTexels(fn func(texel Color) Color) *CubeImage {
+	dstImage := i.Scale(i.size) // copy
+	for _, sideImage := range dstImage.sides {
+		for i := range sideImage.texels {
+			sideImage.texels[i] = fn(sideImage.texels[i])
+		}
+	}
+	return dstImage
+}

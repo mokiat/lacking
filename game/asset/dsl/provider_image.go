@@ -2,6 +2,7 @@ package dsl
 
 import (
 	"fmt"
+	"math"
 	"os"
 
 	"github.com/mokiat/gog/opt"
@@ -146,12 +147,67 @@ func IrradianceCubeImage(imageProvider Provider[*mdl.CubeImage], opts ...Operati
 			}
 
 			sampleCount := cfg.sampleCount.ValueOrDefault(20)
-			return mdl.BuildIrradianceCubeImage(image, sampleCount), nil
+			return mdl.BuildIrradianceCubeImage(image, sampleCount, 0.0), nil
 		},
 
 		// digest function
 		func() ([]byte, error) {
 			return CreateDigest("irradiance-cube-image", imageProvider, opts)
+		},
+	))
+}
+
+// ReflectionCubeImages creates a reflection cube image mipmap set from the
+// provided HDR skybox cube image.
+func ReflectionCubeImages(imageProvider Provider[*mdl.CubeImage], opts ...Operation) Provider[[]*mdl.CubeImage] {
+	return OnceProvider(FuncProvider(
+		// get function
+		func() ([]*mdl.CubeImage, error) {
+			var cfg irradianceConfig
+			for _, opt := range opts {
+				if err := opt.Apply(&cfg); err != nil {
+					return nil, fmt.Errorf("failed to configure irradiance cube image: %w", err)
+				}
+			}
+
+			image, err := imageProvider.Get()
+			if err != nil {
+				return nil, fmt.Errorf("error getting image: %w", err)
+			}
+
+			sampleCount := cfg.sampleCount.ValueOrDefault(20)
+
+			var dimensions []int
+			dimension := image.Side(mdl.CubeSideFront).Width()
+			for dimension > 0 {
+				dimensions = append(dimensions, dimension)
+				dimension /= 2
+			}
+
+			mipmapCount := len(dimensions)
+			result := make([]*mdl.CubeImage, mipmapCount)
+			for i := range mipmapCount {
+				if i == 0 {
+					result[i] = image.MapTexels(func(texel mdl.Color) mdl.Color {
+						return mdl.Color{
+							R: texel.R * math.Pi * 2.0,
+							G: texel.G * math.Pi * 2.0,
+							B: texel.B * math.Pi * 2.0,
+							A: 1.0,
+						}
+					})
+				} else {
+					minDot := 1.0 - (float64(i) / float64(mipmapCount-1))
+					dimension := dimensions[i]
+					result[i] = mdl.BuildIrradianceCubeImage(image.Scale(dimension), sampleCount, minDot)
+				}
+			}
+			return result, nil
+		},
+
+		// digest function
+		func() ([]byte, error) {
+			return CreateDigest("reflection-cube-images", imageProvider, opts)
 		},
 	))
 }

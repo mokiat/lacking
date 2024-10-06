@@ -40,6 +40,7 @@ type commonStageData struct {
 
 	nearestSampler render.Sampler
 	linearSampler  render.Sampler
+	mipmapSampler  render.Sampler
 	depthSampler   render.Sampler
 
 	commandBuffer render.CommandBuffer
@@ -79,6 +80,12 @@ func (d *commonStageData) Allocate() {
 		Wrapping:   render.WrapModeClamp,
 		Filtering:  render.FilterModeLinear,
 		Mipmapping: false,
+	})
+	d.mipmapSampler = d.api.CreateSampler(render.SamplerInfo{
+		Label:      "Mipmap Sampler",
+		Wrapping:   render.WrapModeClamp,
+		Filtering:  render.FilterModeLinear,
+		Mipmapping: true,
 	})
 	d.depthSampler = d.api.CreateSampler(render.SamplerInfo{
 		Label:      "Depth Sampler",
@@ -152,6 +159,7 @@ func (d *commonStageData) Release() {
 
 	defer d.nearestSampler.Release()
 	defer d.linearSampler.Release()
+	defer d.mipmapSampler.Release()
 	defer d.depthSampler.Release()
 
 	defer d.uniformBuffer.Release()
@@ -206,6 +214,10 @@ func (d *commonStageData) NearestSampler() render.Sampler {
 
 func (d *commonStageData) LinearSampler() render.Sampler {
 	return d.linearSampler
+}
+
+func (d *commonStageData) MipmapSampler() render.Sampler {
+	return d.mipmapSampler
 }
 
 func (d *commonStageData) DepthSampler() render.Sampler {

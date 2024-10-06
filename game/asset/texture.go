@@ -40,10 +40,15 @@ func (f TextureFlag) Has(flag TextureFlag) bool {
 }
 
 type Texture struct {
+	Format       TexelFormat
+	Flags        TextureFlag
+	MipmapLayers []MipmapLayer
+}
+
+type MipmapLayer struct {
 	Width  uint32
 	Height uint32
-	Format TexelFormat
-	Flags  TextureFlag
+	Depth  uint32
 	Layers []TextureLayer
 }
 

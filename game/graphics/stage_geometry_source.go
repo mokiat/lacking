@@ -64,19 +64,27 @@ func (s *GeometrySourceStage) PostRender() {
 func (s *GeometrySourceStage) allocateTextures() {
 	s.albedoMetallicTexture = s.api.CreateColorTexture2D(render.ColorTexture2DInfo{
 		Label:           "Geometry Source Albedo Texture",
-		Width:           s.framebufferWidth,
-		Height:          s.framebufferHeight,
 		GenerateMipmaps: false,
 		GammaCorrection: false,
 		Format:          render.DataFormatRGBA8,
+		MipmapLayers: []render.Mipmap2DLayer{
+			{
+				Width:  s.framebufferWidth,
+				Height: s.framebufferHeight,
+			},
+		},
 	})
 	s.normalRoughnessTexture = s.api.CreateColorTexture2D(render.ColorTexture2DInfo{
 		Label:           "Geometry Source Normal Texture",
-		Width:           s.framebufferWidth,
-		Height:          s.framebufferHeight,
 		GenerateMipmaps: false,
 		GammaCorrection: false,
 		Format:          render.DataFormatRGBA16F,
+		MipmapLayers: []render.Mipmap2DLayer{
+			{
+				Width:  s.framebufferWidth,
+				Height: s.framebufferHeight,
+			},
+		},
 	})
 }
 

@@ -87,12 +87,17 @@ func (c *canvasRenderer) onCreate() {
 	c.uniforms = ubo.NewUniformBlockBuffer(c.api, uniformBufferSize)
 
 	c.whiteMask = c.api.CreateColorTexture2D(render.ColorTexture2DInfo{
-		Width:           1,
-		Height:          1,
+		Label:           "White Mask",
 		GenerateMipmaps: false,
 		GammaCorrection: false,
 		Format:          render.DataFormatRGBA8,
-		Data:            []byte{0xFF, 0xFF, 0xFF, 0xFF},
+		MipmapLayers: []render.Mipmap2DLayer{
+			{
+				Width:  1,
+				Height: 1,
+				Data:   []byte{0xFF, 0xFF, 0xFF, 0xFF},
+			},
+		},
 	})
 
 	c.shapeMesh.Allocate(c.api)

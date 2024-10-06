@@ -38,15 +38,75 @@ const (
 
 type TextureKind uint8
 
+func Create2DTexture(width, height, mipmaps int, format TextureFormat) *Texture {
+	mipmapLayers := make([]MipmapLayer, mipmaps)
+	for i := range mipmapLayers {
+		mipWidth := max(1, width>>i)
+		mipHeight := max(1, height>>i)
+		mipTexelSize := textureFormatSize(format)
+		mipmapLayers[i] = MipmapLayer{
+			width:  mipWidth,
+			height: mipHeight,
+			depth:  1,
+			layers: []TextureLayer{
+				{
+					data: make([]byte, mipWidth*mipHeight*mipTexelSize),
+				},
+			},
+		}
+	}
+	return &Texture{
+		kind:         TextureKind2D,
+		format:       format,
+		mipmapLayers: mipmapLayers,
+	}
+}
+
+func CreateCubeTexture(dimension, mipmaps int, format TextureFormat) *Texture {
+	mipmapLayers := make([]MipmapLayer, mipmaps)
+	for i := range mipmapLayers {
+		mipDimension := max(1, dimension>>i)
+		mipTexelSize := textureFormatSize(format)
+		mipmapLayers[i] = MipmapLayer{
+			width:  mipDimension,
+			height: mipDimension,
+			depth:  1,
+			layers: []TextureLayer{
+				{
+					data: make([]byte, mipDimension*mipDimension*mipTexelSize),
+				},
+				{
+					data: make([]byte, mipDimension*mipDimension*mipTexelSize),
+				},
+				{
+					data: make([]byte, mipDimension*mipDimension*mipTexelSize),
+				},
+				{
+					data: make([]byte, mipDimension*mipDimension*mipTexelSize),
+				},
+				{
+					data: make([]byte, mipDimension*mipDimension*mipTexelSize),
+				},
+				{
+					data: make([]byte, mipDimension*mipDimension*mipTexelSize),
+				},
+			},
+		}
+	}
+	return &Texture{
+		kind:         TextureKindCube,
+		format:       format,
+		mipmapLayers: mipmapLayers,
+	}
+}
+
 type Texture struct {
 	name            string
 	kind            TextureKind
-	width           int
-	height          int
 	format          TextureFormat
 	generateMipmaps bool
 	isLinear        bool
-	layers          []TextureLayer
+	mipmapLayers    []MipmapLayer
 }
 
 func (t *Texture) Name() string {
@@ -61,27 +121,8 @@ func (t *Texture) Kind() TextureKind {
 	return t.kind
 }
 
-func (t *Texture) SetKind(kind TextureKind) {
-	t.kind = kind
-}
-
-func (t *Texture) Width() int {
-	return t.width
-}
-
-func (t *Texture) Height() int {
-	return t.height
-}
-
 func (t *Texture) Format() TextureFormat {
 	return t.format
-}
-
-func (t *Texture) SetFormat(format TextureFormat) {
-	t.format = format
-	if len(t.layers) > 0 {
-		panic("setting texture format with layers is not supported yet")
-	}
 }
 
 func (t *Texture) Linear() bool {
@@ -100,53 +141,41 @@ func (t *Texture) SetGenerateMipmaps(generateMipmaps bool) {
 	t.generateMipmaps = generateMipmaps
 }
 
-func (t *Texture) Resize(width, height int) {
-	t.width = width
-	t.height = height
-	if len(t.layers) > 0 {
-		panic("resizing texture with layers is not supported yet")
-	}
-}
-
-func (t *Texture) EnsureLayer(index int) {
-	for index >= len(t.layers) {
-		t.layers = append(t.layers, createTextureLayer(t.width, t.height, t.format))
-	}
-}
-
-func (t *Texture) SetLayerImage(index int, image *Image) {
-	t.EnsureLayer(index)
-
-	if image.width != t.width || image.height != t.height {
-		image = image.Scale(t.width, t.height)
-	}
+func (t *Texture) SetLayerImage(mipmap, index int, image *Image) {
+	mipmapLayer := t.mipmapLayers[mipmap]
 	switch t.format {
 	case TextureFormatRGBA8:
-		copy(t.layers[index].data, image.DataRGBA8())
+		copy(mipmapLayer.layers[index].data, image.DataRGBA8())
 	case TextureFormatRGBA16F:
-		copy(t.layers[index].data, image.DataRGBA16F())
+		copy(mipmapLayer.layers[index].data, image.DataRGBA16F())
 	case TextureFormatRGBA32F:
-		copy(t.layers[index].data, image.DataRGBA32F())
+		copy(mipmapLayer.layers[index].data, image.DataRGBA32F())
 	default:
 		panic(fmt.Errorf("unsupported texture format: %v", t.format))
 	}
 }
 
-func createTextureLayer(width, height int, format TextureFormat) TextureLayer {
-	var texelSize int
-	switch format {
-	case TextureFormatRGBA8:
-		texelSize = 4
-	case TextureFormatRGBA16F:
-		texelSize = 8
-	case TextureFormatRGBA32F:
-		texelSize = 16
-	default:
-		panic(fmt.Errorf("unsupported texture format: %v", format))
-	}
-	return TextureLayer{
-		data: make([]byte, width*height*texelSize),
-	}
+type MipmapLayer struct {
+	width  int
+	height int
+	depth  int
+	layers []TextureLayer
+}
+
+func (l *MipmapLayer) Width() int {
+	return l.width
+}
+
+func (l *MipmapLayer) Height() int {
+	return l.height
+}
+
+func (l *MipmapLayer) Depth() int {
+	return l.depth
+}
+
+func (l *MipmapLayer) Layers() []TextureLayer {
+	return l.layers
 }
 
 type TextureLayer struct {
@@ -155,4 +184,17 @@ type TextureLayer struct {
 
 func (l *TextureLayer) Data() []byte {
 	return l.data
+}
+
+func textureFormatSize(format TextureFormat) int {
+	switch format {
+	case TextureFormatRGBA8:
+		return 4
+	case TextureFormatRGBA16F:
+		return 8
+	case TextureFormatRGBA32F:
+		return 16
+	default:
+		panic(fmt.Errorf("unsupported texture format: %v", format))
+	}
 }

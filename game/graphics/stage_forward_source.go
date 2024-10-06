@@ -57,11 +57,15 @@ func (s *ForwardSourceStage) PostRender() {
 func (s *ForwardSourceStage) allocateTextures() {
 	s.hdrTexture = s.api.CreateColorTexture2D(render.ColorTexture2DInfo{
 		Label:           "Forward Source Texture",
-		Width:           s.framebufferWidth,
-		Height:          s.framebufferHeight,
 		GenerateMipmaps: false,
 		GammaCorrection: false,
 		Format:          render.DataFormatRGBA16F,
+		MipmapLayers: []render.Mipmap2DLayer{
+			{
+				Width:  s.framebufferWidth,
+				Height: s.framebufferHeight,
+			},
+		},
 	})
 }
 

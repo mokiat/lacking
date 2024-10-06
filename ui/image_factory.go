@@ -20,12 +20,16 @@ func (f *imageFactory) CreateImage(img image.Image) *Image {
 	bounds := img.Bounds()
 	size := NewSize(bounds.Dx(), bounds.Dy())
 	texture := f.api.CreateColorTexture2D(render.ColorTexture2DInfo{
-		Width:           uint32(size.Width),
-		Height:          uint32(size.Height),
 		GenerateMipmaps: true,
 		GammaCorrection: false,
 		Format:          render.DataFormatRGBA8,
-		Data:            imgToRGBA8(img),
+		MipmapLayers: []render.Mipmap2DLayer{
+			{
+				Width:  uint32(size.Width),
+				Height: uint32(size.Height),
+				Data:   imgToRGBA8(img),
+			},
+		},
 	})
 	return newImage(texture, size)
 }
