@@ -313,6 +313,7 @@ func (s *LightingStage) renderAmbientLight(ctx StageContext, light *AmbientLight
 
 	nearestSampler := s.data.NearestSampler()
 	linearSampler := s.data.LinearSampler()
+	mipmapSampler := s.data.MipmapSampler()
 
 	albedoMetallicTexture := s.input.AlbedoMetallicTexture()
 	normalRoughnessTexture := s.input.NormalRoughnessTexture()
@@ -328,7 +329,7 @@ func (s *LightingStage) renderAmbientLight(ctx StageContext, light *AmbientLight
 	commandBuffer.TextureUnit(internal.TextureBindingLightingFramebufferDepth, depthTexture)
 	commandBuffer.SamplerUnit(internal.TextureBindingLightingFramebufferDepth, nearestSampler)
 	commandBuffer.TextureUnit(internal.TextureBindingLightingReflectionTexture, light.reflectionTexture)
-	commandBuffer.SamplerUnit(internal.TextureBindingLightingReflectionTexture, linearSampler)
+	commandBuffer.SamplerUnit(internal.TextureBindingLightingReflectionTexture, mipmapSampler)
 	commandBuffer.TextureUnit(internal.TextureBindingLightingRefractionTexture, light.refractionTexture)
 	commandBuffer.SamplerUnit(internal.TextureBindingLightingRefractionTexture, linearSampler)
 	commandBuffer.UniformBufferUnit(

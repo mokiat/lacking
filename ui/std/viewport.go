@@ -154,11 +154,16 @@ func (c *viewportSurface) createFramebuffer(width, height uint32) {
 	c.fbWidth = width
 	c.fbHeight = height
 	c.colorTexture = c.api.CreateColorTexture2D(render.ColorTexture2DInfo{
-		Width:           width,
-		Height:          height,
+		Label:           "Viewport Color Texture",
 		GenerateMipmaps: false,
 		GammaCorrection: false,
 		Format:          render.DataFormatRGBA8,
+		MipmapLayers: []render.Mipmap2DLayer{
+			{
+				Width:  width,
+				Height: height,
+			},
+		},
 	})
 	c.framebuffer = c.api.CreateFramebuffer(render.FramebufferInfo{
 		ColorAttachments: [4]opt.T[render.TextureAttachment]{

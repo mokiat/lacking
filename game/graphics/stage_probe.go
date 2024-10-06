@@ -59,11 +59,15 @@ func (s *ExposureProbeStage) Allocate() {
 
 	s.exposureAlbedoTexture = s.api.CreateColorTexture2D(render.ColorTexture2DInfo{
 		Label:           "Exposure Probe Texture",
-		Width:           1,
-		Height:          1,
 		GenerateMipmaps: false,
 		GammaCorrection: false,
 		Format:          render.DataFormatRGBA16F,
+		MipmapLayers: []render.Mipmap2DLayer{
+			{
+				Width:  1,
+				Height: 1,
+			},
+		},
 	})
 	s.exposureFramebuffer = s.api.CreateFramebuffer(render.FramebufferInfo{
 		Label: "Exposure Probe Framebuffer",

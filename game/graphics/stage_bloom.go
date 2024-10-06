@@ -241,11 +241,15 @@ func (s *BloomStage) allocateTextures(width, height uint32) {
 
 	s.pingTexture = s.api.CreateColorTexture2D(render.ColorTexture2DInfo{
 		Label:           "Bloom Ping Texture",
-		Width:           width,
-		Height:          height,
 		GenerateMipmaps: false,
 		GammaCorrection: false,
 		Format:          render.DataFormatRGBA16F,
+		MipmapLayers: []render.Mipmap2DLayer{
+			{
+				Width:  width,
+				Height: height,
+			},
+		},
 	})
 	s.pingFramebuffer = s.api.CreateFramebuffer(render.FramebufferInfo{
 		Label: "Bloom Ping Framebuffer",
@@ -256,11 +260,15 @@ func (s *BloomStage) allocateTextures(width, height uint32) {
 
 	s.pongTexture = s.api.CreateColorTexture2D(render.ColorTexture2DInfo{
 		Label:           "Bloom Pong Texture",
-		Width:           width,
-		Height:          height,
 		GenerateMipmaps: false,
 		GammaCorrection: false,
 		Format:          render.DataFormatRGBA16F,
+		MipmapLayers: []render.Mipmap2DLayer{
+			{
+				Width:  width,
+				Height: height,
+			},
+		},
 	})
 	s.pongFramebuffer = s.api.CreateFramebuffer(render.FramebufferInfo{
 		Label: "Bloom Pong Framebuffer",

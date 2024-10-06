@@ -62,6 +62,9 @@ type GeometryConstraints struct {
 	// HasNormals specifies whether the mesh has normals.
 	HasNormals bool
 
+	// HasTangents specifies whether the mesh has tangents.
+	HasTangents bool
+
 	// HasTexCoords specifies whether the mesh has texture coordinates.
 	HasTexCoords bool
 
@@ -143,6 +146,7 @@ func (e *Engine) createGeometryProgramCode(shader *lsl.Shader, info internal.Sha
 	return e.shaderBuilder.BuildGeometryCode(GeometryConstraints{
 		HasArmature:     info.MeshHasArmature,
 		HasNormals:      info.MeshHasNormals,
+		HasTangents:     info.MeshHasTangents,
 		HasTexCoords:    info.MeshHasTextureUVs,
 		HasVertexColors: info.MeshHasVertexColors,
 	}, shader)

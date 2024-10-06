@@ -128,13 +128,10 @@ func BuildModelResource(gltfDoc *gltf.Document, forceCollision bool) (*mdl.Model
 	// build textures
 	texturesFromIndex := make(map[int]*mdl.Texture)
 	for i, img := range imagesFromIndex {
-		texture := &mdl.Texture{}
+		texture := mdl.Create2DTexture(img.Width(), img.Height(), 1, mdl.TextureFormatRGBA8)
 		texture.SetName(img.Name())
-		texture.SetKind(mdl.TextureKind2D)
-		texture.SetFormat(mdl.TextureFormatRGBA8)
 		texture.SetGenerateMipmaps(true)
-		texture.Resize(img.Width(), img.Height())
-		texture.SetLayerImage(0, img)
+		texture.SetLayerImage(0, 0, img)
 		texturesFromIndex[i] = texture
 	}
 
@@ -227,6 +224,8 @@ func BuildModelResource(gltfDoc *gltf.Document, forceCollision bool) (*mdl.Model
 		if texIndex, texScale := gltfutil.NormalTextureIndexScale(gltfDoc, gltfMaterial); texIndex != nil {
 			normalTextureIndex = texIndex
 			normalScale = texScale
+			sampler := samplersFromIndex[*texIndex]
+			sampler.Texture().SetLinear(true)
 		} else {
 			normalScale = 1.0
 		}
@@ -782,13 +781,20 @@ func createPBRShader(cfg pbrShaderConfig) string {
 	if cfg.hasMetallicRoughnessTexture {
 		sourceCode += `
 			var metallicRoughness vec4 = sample(metallicRoughnessSampler, #vertexUV)
-			#metallic = metallicRoughness.b
-			#roughness = metallicRoughness.g
+			#metallic = metallicRoughness.b * metallic
+			#roughness = metallicRoughness.g * roughness
 		`
 	} else {
 		sourceCode += `
 			#metallic = metallic
 			#roughness = roughness
+		`
+	}
+
+	if cfg.hasNormalTexture {
+		sourceCode += `
+			var lsNormal vec4 = sample(normalSampler, #vertexUV)
+			#normal = mapNormal(lsNormal.xyz, normalScale)
 		`
 	}
 

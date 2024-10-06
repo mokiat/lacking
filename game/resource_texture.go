@@ -3,6 +3,7 @@ package game
 import (
 	"fmt"
 
+	"github.com/mokiat/gog"
 	"github.com/mokiat/lacking/game/asset"
 	"github.com/mokiat/lacking/render"
 	"github.com/mokiat/lacking/util/async"
@@ -24,12 +25,16 @@ func (s *ResourceSet) allocateTexture2D(assetTexture asset.Texture) async.Promis
 	promise := async.NewPromise[render.Texture]()
 	s.gfxWorker.Schedule(func() {
 		texture := s.renderAPI.CreateColorTexture2D(render.ColorTexture2DInfo{
-			Width:           assetTexture.Width,
-			Height:          assetTexture.Height,
 			GenerateMipmaps: assetTexture.Flags.Has(asset.TextureFlagMipmapping),
 			GammaCorrection: !assetTexture.Flags.Has(asset.TextureFlagLinearSpace),
 			Format:          s.resolveDataFormat(assetTexture.Format),
-			Data:            assetTexture.Layers[0].Data,
+			MipmapLayers: gog.Map(assetTexture.MipmapLayers, func(layer asset.MipmapLayer) render.Mipmap2DLayer {
+				return render.Mipmap2DLayer{
+					Width:  layer.Width,
+					Height: layer.Height,
+					Data:   layer.Layers[0].Data,
+				}
+			}),
 		})
 		promise.Deliver(texture)
 	})
@@ -40,16 +45,20 @@ func (s *ResourceSet) allocateTextureCube(assetTexture asset.Texture) async.Prom
 	promise := async.NewPromise[render.Texture]()
 	s.gfxWorker.Schedule(func() {
 		texture := s.renderAPI.CreateColorTextureCube(render.ColorTextureCubeInfo{
-			Dimension:       assetTexture.Width,
 			GenerateMipmaps: assetTexture.Flags.Has(asset.TextureFlagMipmapping),
 			GammaCorrection: !assetTexture.Flags.Has(asset.TextureFlagLinearSpace),
 			Format:          s.resolveDataFormat(assetTexture.Format),
-			FrontSideData:   assetTexture.Layers[0].Data,
-			BackSideData:    assetTexture.Layers[1].Data,
-			LeftSideData:    assetTexture.Layers[2].Data,
-			RightSideData:   assetTexture.Layers[3].Data,
-			TopSideData:     assetTexture.Layers[4].Data,
-			BottomSideData:  assetTexture.Layers[5].Data,
+			MipmapLayers: gog.Map(assetTexture.MipmapLayers, func(layer asset.MipmapLayer) render.MipmapCubeLayer {
+				return render.MipmapCubeLayer{
+					Dimension:      layer.Width,
+					FrontSideData:  layer.Layers[0].Data,
+					BackSideData:   layer.Layers[1].Data,
+					LeftSideData:   layer.Layers[2].Data,
+					RightSideData:  layer.Layers[3].Data,
+					TopSideData:    layer.Layers[4].Data,
+					BottomSideData: layer.Layers[5].Data,
+				}
+			}),
 		})
 		promise.Deliver(texture)
 	})

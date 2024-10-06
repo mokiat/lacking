@@ -68,11 +68,16 @@ func (f *fontFactory) Init() {
 	}
 
 	f.colorTexture = f.api.CreateColorTexture2D(render.ColorTexture2DInfo{
-		Width:           f.fontImageSize,
-		Height:          f.fontImageSize,
+		Label:           "Font Color Texture",
 		GenerateMipmaps: false,
 		GammaCorrection: false,
 		Format:          render.DataFormatRGBA8,
+		MipmapLayers: []render.Mipmap2DLayer{
+			{
+				Width:  f.fontImageSize,
+				Height: f.fontImageSize,
+			},
+		},
 	})
 
 	f.stencilTexture = f.api.CreateStencilTexture2D(render.StencilTexture2DInfo{
@@ -273,11 +278,16 @@ func (f *fontFactory) CreateFont(font *opentype.Font) (*Font, error) {
 	f.renderer.onEnd()
 
 	resultTexture := f.api.CreateColorTexture2D(render.ColorTexture2DInfo{
-		Width:           f.fontImageSize,
-		Height:          f.fontImageSize,
+		Label:           "Font Output Texture",
 		GenerateMipmaps: true,
 		GammaCorrection: false,
 		Format:          render.DataFormatRGBA8,
+		MipmapLayers: []render.Mipmap2DLayer{
+			{
+				Width:  f.fontImageSize,
+				Height: f.fontImageSize,
+			},
+		},
 	})
 	commandBuffer.CopyFramebufferToTexture(render.CopyFramebufferToTextureInfo{
 		Texture:         resultTexture,

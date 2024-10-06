@@ -844,13 +844,18 @@ func (c *Converter) convertTexture(texture *Texture) (uint32, error) {
 		flags |= asset.TextureFlagMipmapping
 	}
 	assetTexture := asset.Texture{
-		Width:  uint32(texture.Width()),
-		Height: uint32(texture.Height()),
 		Format: texture.Format(),
 		Flags:  flags,
-		Layers: gog.Map(texture.layers, func(layer TextureLayer) asset.TextureLayer {
-			return asset.TextureLayer{
-				Data: layer.Data(),
+		MipmapLayers: gog.Map(texture.mipmapLayers, func(mipLayer MipmapLayer) asset.MipmapLayer {
+			return asset.MipmapLayer{
+				Width:  uint32(mipLayer.Width()),
+				Height: uint32(mipLayer.Height()),
+				Depth:  uint32(mipLayer.Depth()),
+				Layers: gog.Map(mipLayer.Layers(), func(layer TextureLayer) asset.TextureLayer {
+					return asset.TextureLayer{
+						Data: layer.Data(),
+					}
+				}),
 			}
 		}),
 	}
