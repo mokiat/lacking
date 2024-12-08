@@ -1,5 +1,7 @@
 package audio
 
+import "github.com/mokiat/gog/opt"
+
 // PlayInfo specifies conditions for the playback.
 type PlayInfo struct {
 
@@ -7,7 +9,9 @@ type PlayInfo struct {
 	Loop bool
 
 	// Gain indicates the amount of volume, where 1.0 is max and 0.0 is min.
-	Gain float64
+	//
+	// If not specified, the default value is 1.0.
+	Gain opt.T[float64]
 
 	// Pan indicates the sound panning, where -1.0 is left, 0.0 is center, and
 	// 1.0 is right.
