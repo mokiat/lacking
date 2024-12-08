@@ -2,6 +2,7 @@ package game
 
 import (
 	"github.com/mokiat/gog/ds"
+	"github.com/mokiat/gog/opt"
 	"github.com/mokiat/gomath/dprec"
 	"github.com/mokiat/gomath/sprec"
 	"github.com/mokiat/lacking/game/graphics"
@@ -29,6 +30,7 @@ type ModelDefinition struct {
 	directionalLights []directionalLightInstance
 	skyDefinitions    []*graphics.SkyDefinition
 	skies             []skyInstance
+	blobs             []blob
 }
 
 func (d *ModelDefinition) Animations() []*AnimationDefinition {
@@ -49,6 +51,15 @@ func (d *ModelDefinition) FindAnimation(name string) *AnimationDefinition {
 	for _, def := range d.animations {
 		if def.name == name {
 			return def
+		}
+	}
+	return nil
+}
+
+func (m *ModelDefinition) FindBlob(name string) []byte {
+	for _, blob := range m.blobs {
+		if blob.name == name {
+			return blob.data
 		}
 	}
 	return nil
@@ -124,6 +135,11 @@ type skyInstance struct {
 	definitionIndex int
 }
 
+type blob struct {
+	name string
+	data []byte
+}
+
 // ModelInfo contains the information necessary to place a Model
 // instance into a Scene.
 type ModelInfo struct {
@@ -132,18 +148,23 @@ type ModelInfo struct {
 	// confused with the name of the definition.
 	Name string
 
+	// RootNode specifies the name of the root node of the model to use, in which
+	// case a wrapper root node will not be created. The selected root node will
+	// be renamed to Name if it is specified.
+	RootNode opt.T[string]
+
 	// Definition specifies the template from which this instance will
 	// be created.
 	Definition *ModelDefinition
 
 	// Position is used to specify a location for the model instance.
-	Position dprec.Vec3
+	Position opt.T[dprec.Vec3]
 
 	// Rotation is used to specify a rotation for the model instance.
-	Rotation dprec.Quat
+	Rotation opt.T[dprec.Quat]
 
 	// Scale is used to specify a scale for the model instance.
-	Scale dprec.Vec3
+	Scale opt.T[dprec.Vec3]
 
 	// IsDynamic determines whether the model can be repositioned once
 	// placed in the Scene.
@@ -155,7 +176,6 @@ type Model struct {
 	definition *ModelDefinition
 	root       *hierarchy.Node
 
-	nodes         []*hierarchy.Node
 	armatures     []*graphics.Armature
 	animations    []*Animation
 	bodyInstances []physics.Body

@@ -7,6 +7,7 @@ type Model struct {
 
 	nodes      []*Node
 	animations []*Animation
+	blobs      []*Blob
 }
 
 func (s *Model) Name() string {
@@ -52,4 +53,12 @@ func (s *Model) Animations() []*Animation {
 
 func (s *Model) AddAnimation(animation *Animation) {
 	s.animations = append(s.animations, animation)
+}
+
+func (s *Model) Blobs() []*Blob {
+	return s.blobs
+}
+
+func (s *Model) AddBlob(blob *Blob) {
+	s.blobs = append(s.blobs, blob)
 }

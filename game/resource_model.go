@@ -201,6 +201,11 @@ func (s *ResourceSet) convertModel(assetModel asset.Model) (*ModelDefinition, er
 		skies[i] = s.convertSky(i, assetSky)
 	}
 
+	blobs := make([]blob, len(assetModel.Blobs))
+	for i, assetBlob := range assetModel.Blobs {
+		blobs[i] = s.convertBlob(assetBlob)
+	}
+
 	return &ModelDefinition{
 		nodes:             nodes,
 		animations:        animations,
@@ -220,5 +225,6 @@ func (s *ResourceSet) convertModel(assetModel asset.Model) (*ModelDefinition, er
 		directionalLights: directionalLights,
 		skyDefinitions:    skyDefinitions,
 		skies:             skies,
+		blobs:             blobs,
 	}, nil
 }
