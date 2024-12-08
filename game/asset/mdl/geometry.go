@@ -1,6 +1,8 @@
 package mdl
 
 import (
+	"maps"
+
 	"github.com/mokiat/gomath/sprec"
 	"github.com/mokiat/lacking/game/asset"
 )
@@ -143,6 +145,13 @@ func (f *Fragment) Metadata() Metadata {
 
 func (f *Fragment) SetMetadata(metadata Metadata) {
 	f.metadata = metadata
+}
+
+func (f *Fragment) AppendMetadata(metadata Metadata) {
+	if f.metadata == nil {
+		f.metadata = make(Metadata)
+	}
+	maps.Copy(f.metadata, metadata)
 }
 
 func (f *Fragment) Name() string {
