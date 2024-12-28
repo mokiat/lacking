@@ -324,8 +324,10 @@ func (s *Scene) CreateModel(info ModelInfo) *Model {
 	if info.IsDynamic {
 		s.Root().AppendChild(modelNode)
 	}
+
+	// TODO: Move after bodies are created? But maybe only after pos/rot of bodies
+	// is implemented correctly. Right now it does not seem to do anything.
 	modelNode.ApplyFromSource(true)
-	modelNode.ApplyToTarget(true)
 
 	animations := make([]*Animation, len(definition.animations))
 	for i, animationDef := range definition.animations {
@@ -350,6 +352,9 @@ func (s *Scene) CreateModel(info ModelInfo) *Model {
 		armatures[i] = armature
 	}
 
+	// NOTE: This needs to happen after armatures are initialized!
+	modelNode.ApplyToTarget(true)
+
 	// TODO: Track mesh instances?
 	for _, instance := range definition.meshes {
 		if meshNode := nodes[instance.NodeIndex]; meshNode != nil {
@@ -371,6 +376,7 @@ func (s *Scene) CreateModel(info ModelInfo) *Model {
 			} else {
 				s.gfxScene.CreateStaticMesh(graphics.StaticMeshInfo{
 					Definition: meshDefinition,
+					Armature:   armature,
 					Matrix:     meshNode.AbsoluteMatrix(),
 				})
 			}
@@ -385,8 +391,9 @@ func (s *Scene) CreateModel(info ModelInfo) *Model {
 				body := s.physicsScene.CreateBody(physics.BodyInfo{
 					Name:       bodyNode.Name(),
 					Definition: bodyDefinition,
-					Position:   dprec.ZeroVec3(),
-					Rotation:   dprec.IdentityQuat(),
+					// TODO: Initialize from body node matrix?
+					Position: dprec.ZeroVec3(),
+					Rotation: dprec.IdentityQuat(),
 				})
 				bodyNode.SetSource(BodyNodeSource{
 					Body: body,

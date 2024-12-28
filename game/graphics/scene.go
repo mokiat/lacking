@@ -164,6 +164,7 @@ func (s *Scene) CreateMesh(info MeshInfo) *Mesh {
 func (s *Scene) CreateArmature(info ArmatureInfo) *Armature {
 	boneCount := len(info.InverseMatrices)
 	return &Armature{
+		id:                s.engine.pickFreeArmatureID(),
 		inverseMatrices:   info.InverseMatrices,
 		uniformBufferData: make(gblob.LittleEndianBlock, boneCount*64),
 	}

@@ -60,6 +60,7 @@ type Engine struct {
 	debug *Debug
 
 	freeRenderPassKey uint32
+	freeArmatureID    uint32
 }
 
 func (e *Engine) API() render.API {
@@ -543,4 +544,9 @@ func (e *Engine) createSkyPipeline(info internal.SkyPipelineInfo) (render.Pipeli
 func (e *Engine) pickFreeRenderPassKey() uint32 {
 	e.freeRenderPassKey++
 	return e.freeRenderPassKey
+}
+
+func (e *Engine) pickFreeArmatureID() uint32 {
+	e.freeArmatureID++
+	return e.freeArmatureID
 }

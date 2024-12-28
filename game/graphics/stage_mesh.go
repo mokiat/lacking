@@ -2,7 +2,6 @@ package graphics
 
 import (
 	"cmp"
-	"math"
 	"sort"
 
 	"github.com/mokiat/gblob"
@@ -78,13 +77,13 @@ func (s *meshRenderer) QueueStaticMeshRenderItems(ctx StageContext, mesh *Static
 		s.renderItems = append(s.renderItems, renderItem{
 			Layer:       pass.Layer,
 			MaterialKey: pass.Key,
-			ArmatureKey: math.MaxUint32,
+			ArmatureKey: mesh.armature.key(),
 
 			Pipeline:     pass.Pipeline,
 			TextureSet:   pass.TextureSet,
 			UniformSet:   pass.UniformSet,
 			ModelData:    mesh.matrixData,
-			ArmatureData: nil,
+			ArmatureData: mesh.armature.uniformData(),
 
 			IndexByteOffset: pass.IndexByteOffset,
 			IndexCount:      pass.IndexCount,
