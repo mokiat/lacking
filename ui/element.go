@@ -237,6 +237,16 @@ func (e *Element) RemoveChild(child *Element) {
 	e.onBoundsChanged(e.bounds)
 }
 
+// HasAncestor returns whether the specified element is an ancestor to the
+// current element.
+func (e *Element) HasAncestor(ancestor *Element) bool {
+	current := e
+	for current != nil && current != ancestor {
+		current = current.parent
+	}
+	return current == ancestor
+}
+
 // Window returns the ui Window that owns this Element.
 func (e *Element) Window() *Window {
 	return e.window

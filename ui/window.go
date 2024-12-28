@@ -277,6 +277,12 @@ func (w *windowHandler) OnFramebufferResize(size Size) {
 func (w *windowHandler) OnKeyboardEvent(event KeyboardEvent) bool {
 	current := w.focusedElement
 	for current != nil {
+		// TODO: The following check could be handled with mount and unmount
+		// events and handling.
+		if !current.HasAncestor(w.root) {
+			w.DiscardFocus()
+			return false
+		}
 		if current.focusable && current.onKeyboardEvent(event) {
 			return true
 		}
