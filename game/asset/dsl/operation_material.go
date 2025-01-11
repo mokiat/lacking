@@ -111,3 +111,30 @@ func SetShader(shaderProvider Provider[*mdl.Shader]) Operation {
 		},
 	)
 }
+
+// SetCulling creates an operation that sets the culling mode of the target.
+func SetCulling(modeProvider Provider[mdl.CullMode]) Operation {
+	type cullingSetter interface {
+		SetCulling(mdl.CullMode)
+	}
+	return FuncOperation(
+		// apply function
+		func(target any) error {
+			culling, err := modeProvider.Get()
+			if err != nil {
+				return fmt.Errorf("error getting culling mode: %w", err)
+			}
+			setter, ok := target.(cullingSetter)
+			if !ok {
+				return fmt.Errorf("target %T is not a culling setter", target)
+			}
+			setter.SetCulling(culling)
+			return nil
+		},
+
+		// digest function
+		func() ([]byte, error) {
+			return CreateDigest("set-culling", modeProvider)
+		},
+	)
+}
