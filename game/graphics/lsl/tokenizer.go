@@ -21,10 +21,13 @@ func Tokenize(source string) iter.Seq[Token] {
 		tokenizer := NewTokenizer(source)
 		for {
 			token := tokenizer.Next()
-			if token.IsTerminal() {
+			if token.IsEOF() {
 				return
 			}
 			if !yield(token) {
+				return
+			}
+			if token.IsError() {
 				return
 			}
 		}
@@ -42,6 +45,8 @@ func NewTokenizer(source string) *Tokenizer {
 	return &Tokenizer{
 		source: source,
 		offset: offset,
+		line:   1,
+		column: 1,
 	}
 }
 
@@ -54,6 +59,8 @@ func NewTokenizer(source string) *Tokenizer {
 type Tokenizer struct {
 	source string
 	offset int
+	line   uint32
+	column uint32
 }
 
 // Next returns the next token in the source code. If there are no more tokens
@@ -63,6 +70,7 @@ func (t *Tokenizer) Next() Token {
 		return Token{
 			Type:  TokenTypeError,
 			Value: "source code is not a valid UTF-8 string",
+			Pos:   At(1, 1),
 		}
 	}
 	for t.offset < len(t.source) {
@@ -70,7 +78,10 @@ func (t *Tokenizer) Next() Token {
 		case t.nextIsWhitespace():
 			t.scanWhitespace()
 		case t.nextIsNewLine():
-			return t.scanNewLine()
+			result := t.scanNewLine()
+			t.line++
+			t.column = 1
+			return result
 		case t.nextIsComment():
 			return t.scanComment()
 		case t.nextIsIdentifier():
@@ -85,7 +96,17 @@ func (t *Tokenizer) Next() Token {
 	}
 	return Token{
 		Type: TokenTypeEOF,
+		Pos:  At(t.line, t.column),
 	}
+}
+
+func (t *Tokenizer) currentPosition() Position {
+	return At(t.line, t.column)
+}
+
+func (t *Tokenizer) moveTo(offset int) {
+	t.column += uint32(offset - t.offset)
+	t.offset = offset
 }
 
 func (t *Tokenizer) nextIsWhitespace() bool {
@@ -99,7 +120,7 @@ func (t *Tokenizer) scanWhitespace() {
 		if !isWhitespaceChar(ch) {
 			break
 		}
-		t.offset = newOffset
+		t.moveTo(newOffset)
 	}
 }
 
@@ -109,17 +130,19 @@ func (t *Tokenizer) nextIsNewLine() bool {
 }
 
 func (t *Tokenizer) scanNewLine() Token {
+	position := t.currentPosition()
 	start := t.offset
 	for t.offset < len(t.source) {
 		ch, newOffset := t.peekRune(t.offset)
 		if !isNewLineChar(ch) {
 			break
 		}
-		t.offset = newOffset
+		t.moveTo(newOffset)
 	}
 	return Token{
 		Type:  TokenTypeNewLine,
 		Value: t.source[start:t.offset],
+		Pos:   position,
 	}
 }
 
@@ -130,19 +153,23 @@ func (t *Tokenizer) nextIsComment() bool {
 }
 
 func (t *Tokenizer) scanComment() Token {
-	_, t.offset = t.peekRune(t.offset) // Skip first '/'
-	_, t.offset = t.peekRune(t.offset) // Skip second '/'
+	pos := t.currentPosition()
+	_, newOffset := t.peekRune(t.offset) // Skip first '/'
+	t.moveTo(newOffset)
+	_, newOffset = t.peekRune(t.offset) // Skip second '/'
+	t.moveTo(newOffset)
 	start := t.offset
 	for t.offset < len(t.source) {
 		ch, newOffset := t.peekRune(t.offset)
 		if isNewLineChar(ch) {
 			break
 		}
-		t.offset = newOffset
+		t.moveTo(newOffset)
 	}
 	return Token{
 		Type:  TokenTypeComment,
 		Value: strings.TrimSpace(t.source[start:t.offset]),
+		Pos:   pos,
 	}
 }
 
@@ -152,6 +179,7 @@ func (t *Tokenizer) nextIsIdentifier() bool {
 }
 
 func (t *Tokenizer) scanIdentifier() Token {
+	pos := t.currentPosition()
 	start := t.offset
 	charIndex := 0
 	for t.offset < len(t.source) {
@@ -159,12 +187,13 @@ func (t *Tokenizer) scanIdentifier() Token {
 		if !isIdentifierChar(ch, charIndex) {
 			break
 		}
-		t.offset = newOffset
+		t.moveTo(newOffset)
 		charIndex++
 	}
 	return Token{
 		Type:  TokenTypeIdentifier,
 		Value: t.source[start:t.offset],
+		Pos:   pos,
 	}
 }
 
@@ -174,228 +203,276 @@ func (t *Tokenizer) nextIsOperator() bool {
 }
 
 func (t *Tokenizer) scanOperator() Token {
+	pos := t.currentPosition()
 	ch1, ch1Offset := t.peekRune(t.offset)
 	ch2, ch2Offset := t.peekRune(ch1Offset)
 	ch3, ch3Offset := t.peekRune(ch2Offset)
 	switch {
 	case ch1 == '>' && ch2 == '>' && ch3 == '=':
-		t.offset = ch3Offset
+		t.moveTo(ch3Offset)
 		return Token{
 			Type:  TokenTypeOperator,
-			Value: ">>=",
+			Value: AssignmentOperatorShr,
+			Pos:   pos,
 		}
 	case ch1 == '<' && ch2 == '<' && ch3 == '=':
-		t.offset = ch3Offset
+		t.moveTo(ch3Offset)
 		return Token{
 			Type:  TokenTypeOperator,
-			Value: "<<=",
+			Value: AssignmentOperatorShl,
+			Pos:   pos,
+		}
+	case ch1 == ':' && ch2 == '=':
+		t.moveTo(ch2Offset)
+		return Token{
+			Type:  TokenTypeOperator,
+			Value: AssignmentOperatorAuto,
+			Pos:   pos,
 		}
 	case ch1 == '=' && ch2 == '=':
-		t.offset = ch2Offset
+		t.moveTo(ch2Offset)
 		return Token{
 			Type:  TokenTypeOperator,
-			Value: "==",
+			Value: BinaryOperatorEq,
+			Pos:   pos,
 		}
 	case ch1 == '+' && ch2 == '=':
-		t.offset = ch2Offset
+		t.moveTo(ch2Offset)
 		return Token{
 			Type:  TokenTypeOperator,
-			Value: "+=",
+			Value: AssignmentOperatorAdd,
+			Pos:   pos,
 		}
 	case ch1 == '-' && ch2 == '=':
-		t.offset = ch2Offset
+		t.moveTo(ch2Offset)
 		return Token{
 			Type:  TokenTypeOperator,
-			Value: "-=",
+			Value: AssignmentOperatorSub,
+			Pos:   pos,
 		}
 	case ch1 == '*' && ch2 == '=':
-		t.offset = ch2Offset
+		t.moveTo(ch2Offset)
 		return Token{
 			Type:  TokenTypeOperator,
-			Value: "*=",
+			Value: AssignmentOperatorMul,
+			Pos:   pos,
 		}
 	case ch1 == '/' && ch2 == '=':
-		t.offset = ch2Offset
+		t.moveTo(ch2Offset)
 		return Token{
 			Type:  TokenTypeOperator,
-			Value: "/=",
+			Value: AssignmentOperatorDiv,
+			Pos:   pos,
 		}
 	case ch1 == '%' && ch2 == '=':
-		t.offset = ch2Offset
+		t.moveTo(ch2Offset)
 		return Token{
 			Type:  TokenTypeOperator,
-			Value: "%=",
+			Value: AssignmentOperatorMod,
+			Pos:   pos,
 		}
 	case ch1 == '&' && ch2 == '=':
-		t.offset = ch2Offset
+		t.moveTo(ch2Offset)
 		return Token{
 			Type:  TokenTypeOperator,
-			Value: "&=",
+			Value: AssignmentOperatorAnd,
+			Pos:   pos,
 		}
 	case ch1 == '^' && ch2 == '=':
-		t.offset = ch2Offset
+		t.moveTo(ch2Offset)
 		return Token{
 			Type:  TokenTypeOperator,
-			Value: "^=",
+			Value: AssignmentOperatorXor,
+			Pos:   pos,
 		}
 	case ch1 == '|' && ch2 == '=':
-		t.offset = ch2Offset
+		t.moveTo(ch2Offset)
 		return Token{
 			Type:  TokenTypeOperator,
-			Value: "|=",
+			Value: AssignmentOperatorOr,
+			Pos:   pos,
 		}
 	case ch1 == '<' && ch2 == '<':
-		t.offset = ch2Offset
+		t.moveTo(ch2Offset)
 		return Token{
 			Type:  TokenTypeOperator,
-			Value: "<<",
+			Value: BinaryOperatorShl,
+			Pos:   pos,
 		}
 	case ch1 == '>' && ch2 == '>':
-		t.offset = ch2Offset
+		t.moveTo(ch2Offset)
 		return Token{
 			Type:  TokenTypeOperator,
-			Value: ">>",
+			Value: BinaryOperatorShr,
+			Pos:   pos,
 		}
 	case ch1 == '!' && ch2 == '=':
-		t.offset = ch2Offset
+		t.moveTo(ch2Offset)
 		return Token{
 			Type:  TokenTypeOperator,
-			Value: "!=",
+			Value: BinaryOperatorNotEq,
+			Pos:   pos,
 		}
 	case ch1 == '>' && ch2 == '=':
-		t.offset = ch2Offset
+		t.moveTo(ch2Offset)
 		return Token{
 			Type:  TokenTypeOperator,
-			Value: ">=",
+			Value: BinaryOperatorGreaterEq,
+			Pos:   pos,
 		}
 	case ch1 == '<' && ch2 == '=':
-		t.offset = ch2Offset
+		t.moveTo(ch2Offset)
 		return Token{
 			Type:  TokenTypeOperator,
-			Value: "<=",
+			Value: BinaryOperatorLessEq,
+			Pos:   pos,
 		}
 	case ch1 == '&' && ch2 == '&':
-		t.offset = ch2Offset
+		t.moveTo(ch2Offset)
 		return Token{
 			Type:  TokenTypeOperator,
-			Value: "&&",
+			Value: BinaryOperatorAnd,
+			Pos:   pos,
 		}
 	case ch1 == '|' && ch2 == '|':
-		t.offset = ch2Offset
+		t.moveTo(ch2Offset)
 		return Token{
 			Type:  TokenTypeOperator,
-			Value: "||",
+			Value: BinaryOperatorOr,
+			Pos:   pos,
 		}
 	case ch1 == '(':
-		t.offset = ch1Offset
+		t.moveTo(ch1Offset)
 		return Token{
 			Type:  TokenTypeOperator,
 			Value: "(",
+			Pos:   pos,
 		}
 	case ch1 == ')':
-		t.offset = ch1Offset
+		t.moveTo(ch1Offset)
 		return Token{
 			Type:  TokenTypeOperator,
 			Value: ")",
+			Pos:   pos,
 		}
 	case ch1 == ',':
-		t.offset = ch1Offset
+		t.moveTo(ch1Offset)
 		return Token{
 			Type:  TokenTypeOperator,
 			Value: ",",
+			Pos:   pos,
 		}
 	case ch1 == '{':
-		t.offset = ch1Offset
+		t.moveTo(ch1Offset)
 		return Token{
 			Type:  TokenTypeOperator,
 			Value: "{",
+			Pos:   pos,
 		}
 	case ch1 == '}':
-		t.offset = ch1Offset
+		t.moveTo(ch1Offset)
 		return Token{
 			Type:  TokenTypeOperator,
 			Value: "}",
+			Pos:   pos,
 		}
 	case ch1 == '=':
-		t.offset = ch1Offset
+		t.moveTo(ch1Offset)
 		return Token{
 			Type:  TokenTypeOperator,
 			Value: "=",
+			Pos:   pos,
 		}
 	case ch1 == '+':
-		t.offset = ch1Offset
+		t.moveTo(ch1Offset)
 		return Token{
 			Type:  TokenTypeOperator,
 			Value: "+",
+			Pos:   pos,
 		}
 	case ch1 == '-':
-		t.offset = ch1Offset
+		t.moveTo(ch1Offset)
 		return Token{
 			Type:  TokenTypeOperator,
 			Value: "-",
+			Pos:   pos,
 		}
 	case ch1 == '.':
-		t.offset = ch1Offset
+		t.moveTo(ch1Offset)
 		return Token{
 			Type:  TokenTypeOperator,
 			Value: ".",
+			Pos:   pos,
 		}
 	case ch1 == '*':
-		t.offset = ch1Offset
+		t.moveTo(ch1Offset)
 		return Token{
 			Type:  TokenTypeOperator,
 			Value: "*",
+			Pos:   pos,
 		}
 	case ch1 == '/':
-		t.offset = ch1Offset
+		t.moveTo(ch1Offset)
 		return Token{
 			Type:  TokenTypeOperator,
 			Value: "/",
+			Pos:   pos,
 		}
 	case ch1 == '%':
-		t.offset = ch1Offset
+		t.moveTo(ch1Offset)
 		return Token{
 			Type:  TokenTypeOperator,
 			Value: "%",
+			Pos:   pos,
 		}
 	case ch1 == '^':
-		t.offset = ch1Offset
+		t.moveTo(ch1Offset)
 		return Token{
 			Type:  TokenTypeOperator,
 			Value: "^",
+			Pos:   pos,
 		}
 	case ch1 == '|':
-		t.offset = ch1Offset
+		t.moveTo(ch1Offset)
 		return Token{
 			Type:  TokenTypeOperator,
 			Value: "|",
+			Pos:   pos,
 		}
 	case ch1 == '&':
-		t.offset = ch1Offset
+		t.moveTo(ch1Offset)
 		return Token{
 			Type:  TokenTypeOperator,
 			Value: "&",
+			Pos:   pos,
 		}
 	case ch1 == '<':
-		t.offset = ch1Offset
+		t.moveTo(ch1Offset)
 		return Token{
 			Type:  TokenTypeOperator,
 			Value: "<",
+			Pos:   pos,
 		}
 	case ch1 == '>':
-		t.offset = ch1Offset
+		t.moveTo(ch1Offset)
 		return Token{
 			Type:  TokenTypeOperator,
 			Value: ">",
+			Pos:   pos,
 		}
 	case ch1 == '!':
-		t.offset = ch1Offset
+		t.moveTo(ch1Offset)
 		return Token{
 			Type:  TokenTypeOperator,
 			Value: "!",
+			Pos:   pos,
 		}
 	default:
-		return Token{}
+		return Token{
+			Type:  TokenTypeError,
+			Value: "unknown operator",
+			Pos:   pos,
+		}
 	}
 }
 
@@ -405,6 +482,7 @@ func (t *Tokenizer) nextIsNumber() bool {
 }
 
 func (t *Tokenizer) scanNumber() Token {
+	pos := t.currentPosition()
 	start := t.offset
 	charIndex := 0
 	for t.offset < len(t.source) {
@@ -412,24 +490,28 @@ func (t *Tokenizer) scanNumber() Token {
 		if !isNumberChar(ch, charIndex) {
 			break
 		}
-		t.offset = newOffset
+		t.moveTo(newOffset)
 		charIndex++
 	}
 	return Token{
 		Type:  TokenTypeNumber,
 		Value: t.source[start:t.offset],
+		Pos:   pos,
 	}
 }
 
 func (t *Tokenizer) scanUnknown() Token {
+	pos := t.currentPosition()
 	return Token{
-		Type: TokenTypeEOF,
+		Type:  TokenTypeError,
+		Value: "unknown code sequence",
+		Pos:   pos,
 	}
 }
 
 func (t *Tokenizer) peekRune(offset int) (rune, int) {
 	if offset >= len(t.source) {
-		return -1, offset
+		return utf8.RuneError, offset
 	}
 	r, size := utf8.DecodeRuneInString(t.source[offset:])
 	return r, offset + size

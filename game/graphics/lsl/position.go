@@ -1,5 +1,13 @@
 package lsl
 
+// At creates a new Position with the given line and column numbers.
+func At(line, column uint32) Position {
+	return Position{
+		Line:   line,
+		Column: column,
+	}
+}
+
 // Position represents a position of interest in the source code.
 type Position struct {
 
