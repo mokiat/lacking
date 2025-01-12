@@ -1,6 +1,8 @@
 package lsl_test
 
 import (
+	"slices"
+
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
@@ -9,20 +11,16 @@ import (
 
 var _ = Describe("Tokenizer", func() {
 
-	DescribeTable("NextToken", func(inSource string, expectedTokens []lsl.Token) {
-		tokenizer := lsl.NewTokenizer(inSource)
-		var outTokens []lsl.Token
-		for {
-			token := tokenizer.Next()
-			if token.Type == lsl.TokenTypeEOF {
-				break
-			}
-			outTokens = append(outTokens, token)
-		}
+	DescribeTable("Next", func(inSource string, expectedTokens []lsl.Token) {
+		outTokens := slices.Collect(lsl.Tokenize(inSource))
 		Expect(outTokens).To(Equal(expectedTokens))
 	},
-		Entry("empty source",
+		Entry("blank source",
 			``,
+			nil,
+		),
+		Entry("empty source",
+			` \t \r\n`,
 			nil,
 		),
 		Entry("comment",
@@ -38,7 +36,7 @@ var _ = Describe("Tokenizer", func() {
 				{Type: lsl.TokenTypeNewLine, Value: "\n"},
 			},
 		),
-		Entry("uniform block declaration",
+		Entry("block declaration",
 			`
 			uniform {
 			}
@@ -52,21 +50,7 @@ var _ = Describe("Tokenizer", func() {
 				{Type: lsl.TokenTypeNewLine, Value: "\n"},
 			},
 		),
-		Entry("varying block declaration",
-			`
-			varying {
-			}
-			`,
-			[]lsl.Token{
-				{Type: lsl.TokenTypeNewLine, Value: "\n"},
-				{Type: lsl.TokenTypeIdentifier, Value: "varying"},
-				{Type: lsl.TokenTypeOperator, Value: "{"},
-				{Type: lsl.TokenTypeNewLine, Value: "\n"},
-				{Type: lsl.TokenTypeOperator, Value: "}"},
-				{Type: lsl.TokenTypeNewLine, Value: "\n"},
-			},
-		),
-		Entry("uniform/varying block content",
+		Entry("block content declaration",
 			`
 			color vec3
 			intensity float

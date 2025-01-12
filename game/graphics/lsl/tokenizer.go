@@ -1,6 +1,7 @@
 package lsl
 
 import (
+	"iter"
 	"slices"
 	"strings"
 	"unicode"
@@ -11,6 +12,24 @@ import (
 // is not valid UTF-8. This is used to avoid checking for UTF-8 validity in
 // every iteration of the tokenizer.
 const nonUTFOffset = -1
+
+// Tokenize is a helper function that creates a new iterator that yields tokens
+// from the given source code. Internally it creates a new Tokenizer and uses
+// it to generate tokens.
+func Tokenize(source string) iter.Seq[Token] {
+	return func(yield func(Token) bool) {
+		tokenizer := NewTokenizer(source)
+		for {
+			token := tokenizer.Next()
+			if token.IsTerminal() {
+				return
+			}
+			if !yield(token) {
+				return
+			}
+		}
+	}
+}
 
 // NewTokenizer creates a new Tokenizer for the given source code. The source
 // code is expected to be a valid UTF-8 string. If the source code is not a
