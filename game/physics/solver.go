@@ -14,6 +14,7 @@ var (
 	//
 	// This is the `beta` coefficient in the Baumgarte stabilization approach.
 	ImpulseDriftAdjustmentRatio = 0.2
+
 	// NudgeDriftAdjustmentRatio controls the amount by which nudges should
 	// try to correct positional drift.
 	//
