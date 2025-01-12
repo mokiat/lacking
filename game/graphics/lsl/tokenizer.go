@@ -1,4 +1,4 @@
-package internal
+package lsl
 
 import (
 	"strings"

@@ -5,7 +5,6 @@ import (
 	"strconv"
 
 	"github.com/mokiat/gog/ds"
-	"github.com/mokiat/lacking/game/graphics/lsl/internal"
 )
 
 func MustParse(source string) *Shader {
@@ -21,7 +20,7 @@ func Parse(source string) (*Shader, error) {
 }
 
 func NewParser(source string) *Parser {
-	tokenizer := internal.NewTokenizer(source)
+	tokenizer := NewTokenizer(source)
 	return &Parser{
 		tokenizer: tokenizer,
 		token:     tokenizer.Next(),
@@ -29,8 +28,8 @@ func NewParser(source string) *Parser {
 }
 
 type Parser struct {
-	tokenizer *internal.Tokenizer
-	token     internal.Token
+	tokenizer *Tokenizer
+	token     Token
 }
 
 func (p *Parser) ParseShader() (*Shader, error) {
@@ -78,11 +77,11 @@ func (p *Parser) ParseShader() (*Shader, error) {
 	return &shader, nil
 }
 
-func (p *Parser) peekToken() internal.Token {
+func (p *Parser) peekToken() Token {
 	return p.token
 }
 
-func (p *Parser) nextToken() internal.Token {
+func (p *Parser) nextToken() Token {
 	token := p.token
 	p.token = p.tokenizer.Next()
 	return token

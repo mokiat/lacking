@@ -1,9 +1,11 @@
-package internal
+package lsl
 
 import (
 	"slices"
 	"unicode"
 )
+
+// TODO: Make the following private and maybe even get rid of file.
 
 func IsWhitespaceChar(ch rune) bool {
 	return ch == ' ' || ch == '\t'

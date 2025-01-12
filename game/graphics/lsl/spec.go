@@ -1,28 +1,30 @@
-package internal
+package lsl
 
 var (
 	operatorChars = []rune{
 		'{', '}', '=', '(', ')', ',', '-', ';', '+', '*',
-		'/', '%', '!', '<', '>', '&', '|', '^', '.',
+		'/', '%', '!', '<', '>', '&', '|', '^', '.', ':',
 	}
 )
 
 const (
-	AssignmentOperatorEq  = "="
-	AssignmentOperatorAdd = "+="
-	AssignmentOperatorSub = "-="
-	AssignmentOperatorMul = "*="
-	AssignmentOperatorDiv = "/="
-	AssignmentOperatorMod = "%="
-	AssignmentOperatorShl = "<<="
-	AssignmentOperatorShr = ">>="
-	AssignmentOperatorAnd = "&="
-	AssignmentOperatorOr  = "|="
-	AssignmentOperatorXor = "^="
+	AssignmentOperatorEq   = "="
+	AssignmentOperatorAuto = ":="
+	AssignmentOperatorAdd  = "+="
+	AssignmentOperatorSub  = "-="
+	AssignmentOperatorMul  = "*="
+	AssignmentOperatorDiv  = "/="
+	AssignmentOperatorMod  = "%="
+	AssignmentOperatorShl  = "<<="
+	AssignmentOperatorShr  = ">>="
+	AssignmentOperatorAnd  = "&="
+	AssignmentOperatorOr   = "|="
+	AssignmentOperatorXor  = "^="
 )
 
 var assignmentOperators = []string{
 	AssignmentOperatorEq,
+	AssignmentOperatorAuto,
 	AssignmentOperatorAdd,
 	AssignmentOperatorSub,
 	AssignmentOperatorMul,
