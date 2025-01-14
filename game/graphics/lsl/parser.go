@@ -72,6 +72,26 @@ func (p *Parser) ParseComment() error {
 	return nil
 }
 
+// ParseOptionalRemainder consumes the remainder of the line, including any
+// new line or comment tokens. It assumes that anything to follow is
+// non-vital (comments, new lines) and can be ignored.
+func (p *Parser) ParseOptionalRemainder() error {
+	token := p.peekToken()
+	switch {
+	case token.IsEOF():
+		return nil
+	case token.IsNewLine():
+		return p.ParseNewLine()
+	case token.IsComment():
+		return p.ParseComment()
+	default:
+		return &ParseError{
+			Pos:     token.Pos,
+			Message: "expected a comment, new line or end of file",
+		}
+	}
+}
+
 // ParseShader parses the LSL source code and returns a shader AST object.
 // If the source code is invalid, an error is returned.
 func (p *Parser) ParseShader() (*Shader, error) {
@@ -119,20 +139,6 @@ func (p *Parser) ParseShader() (*Shader, error) {
 		token = p.peekToken()
 	}
 	return &shader, nil
-}
-
-func (p *Parser) ParseOptionalRemainder() error {
-	token := p.peekToken()
-	switch {
-	case token.IsEOF():
-		return nil
-	case token.IsNewLine():
-		return p.ParseNewLine()
-	case token.IsComment():
-		return p.ParseComment()
-	default:
-		return fmt.Errorf("expected new line or comment")
-	}
 }
 
 func (p *Parser) ParseBlockStart() error {

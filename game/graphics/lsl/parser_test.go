@@ -357,25 +357,40 @@ var _ = Describe("Parser", func() {
 		Entry("operator",
 			`; // a comment`,
 			&lsl.ParseError{
-				Pos:     lsl.Position{Line: 1, Column: 1},
+				Pos:     at(1, 1),
 				Message: "expected a comment token",
 			},
 		),
 	)
 
-	DescribeTable("ParseOptionalRemainder", func(inSource string) {
+	DescribeTable("ParseOptionalRemainder", func(inSource string, expectedErr error) {
 		parser := lsl.NewParser(inSource)
-		Expect(parser.ParseOptionalRemainder()).To(Succeed())
+		err := parser.ParseOptionalRemainder()
+		if expectedErr == nil {
+			Expect(err).ToNot(HaveOccurred())
+		} else {
+			Expect(err).To(HaveOccurred())
+			Expect(err).To(Equal(expectedErr))
+		}
 	},
 		Entry("empty",
-			``,
+			"",
+			nil,
 		),
 		Entry("new line",
-			`
-			`,
+			"\r\n",
+			nil,
 		),
 		Entry("comment",
-			`// a comment`,
+			"// a comment",
+			nil,
+		),
+		Entry("vital token",
+			"+= 5",
+			&lsl.ParseError{
+				Pos:     at(1, 1),
+				Message: "expected a comment, new line or end of file",
+			},
 		),
 	)
 
