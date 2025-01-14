@@ -394,34 +394,65 @@ var _ = Describe("Parser", func() {
 		),
 	)
 
-	DescribeTable("ParseBlockStart", func(inSource string) {
+	DescribeTable("ParseBlockStart", func(inSource string, expectedErr error) {
 		parser := lsl.NewParser(inSource)
-		Expect(parser.ParseBlockStart()).To(Succeed())
+		err := parser.ParseBlockStart()
+		if expectedErr == nil {
+			Expect(err).ToNot(HaveOccurred())
+		} else {
+			Expect(err).To(HaveOccurred())
+			Expect(err).To(Equal(expectedErr))
+		}
 	},
+		Entry("just opening bracket",
+			"{",
+			nil,
+		),
 		Entry("with new line",
-			`  {
-			`,
+			" \t {\n",
+			nil,
 		),
 		Entry("with comment",
-			`{ // closing bracket
-			`,
+			"{ // closing bracket",
+			nil,
+		),
+		Entry("not opening bracket",
+			"5.0\n",
+			&lsl.ParseError{
+				Pos:     at(1, 1),
+				Message: "expected an opening bracket",
+			},
 		),
 	)
 
-	DescribeTable("ParseBlockEnd", func(inSource string) {
+	DescribeTable("ParseBlockEnd", func(inSource string, expectedErr error) {
 		parser := lsl.NewParser(inSource)
-		Expect(parser.ParseBlockEnd()).To(Succeed())
+		err := parser.ParseBlockEnd()
+		if expectedErr == nil {
+			Expect(err).ToNot(HaveOccurred())
+		} else {
+			Expect(err).To(HaveOccurred())
+			Expect(err).To(Equal(expectedErr))
+		}
 	},
 		Entry("just closing bracket",
-			`}`,
+			"}",
+			nil,
 		),
 		Entry("with new line",
-			`}
-			`,
+			" \t }\n",
+			nil,
 		),
 		Entry("with comment",
-			`} // closing bracket
-			`,
+			"} // closing bracket\n",
+			nil,
+		),
+		Entry("not closing bracket",
+			"5.0\n",
+			&lsl.ParseError{
+				Pos:     at(1, 1),
+				Message: "expected a closing bracket",
+			},
 		),
 	)
 

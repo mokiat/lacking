@@ -92,6 +92,42 @@ func (p *Parser) ParseOptionalRemainder() error {
 	}
 }
 
+// ParseBlockStart parses the opening bracket of a block. It assumes that the
+// next token to follow is an opening bracket token. If the token is not an
+// opening bracket, an error is returned. Whitespace characters up to the
+// opening bracket token are ignored.
+func (p *Parser) ParseBlockStart() error {
+	bracketToken := p.nextToken()
+	if !bracketToken.IsSpecificOperator("{") {
+		return &ParseError{
+			Pos:     bracketToken.Pos,
+			Message: "expected an opening bracket",
+		}
+	}
+	if err := p.ParseOptionalRemainder(); err != nil {
+		return err
+	}
+	return nil
+}
+
+// ParseBlockEnd parses the closing bracket of a block. It assumes that the
+// next token to follow is a closing bracket token. If the token is not a
+// closing bracket, an error is returned. Whitespace characters up to the
+// closing bracket token are ignored.
+func (p *Parser) ParseBlockEnd() error {
+	bracketToken := p.nextToken()
+	if !bracketToken.IsSpecificOperator("}") {
+		return &ParseError{
+			Pos:     bracketToken.Pos,
+			Message: "expected a closing bracket",
+		}
+	}
+	if err := p.ParseOptionalRemainder(); err != nil {
+		return err
+	}
+	return nil
+}
+
 // ParseShader parses the LSL source code and returns a shader AST object.
 // If the source code is invalid, an error is returned.
 func (p *Parser) ParseShader() (*Shader, error) {
@@ -139,28 +175,6 @@ func (p *Parser) ParseShader() (*Shader, error) {
 		token = p.peekToken()
 	}
 	return &shader, nil
-}
-
-func (p *Parser) ParseBlockStart() error {
-	bracketToken := p.nextToken()
-	if !bracketToken.IsSpecificOperator("{") {
-		return fmt.Errorf("expected opening bracket")
-	}
-	if err := p.ParseOptionalRemainder(); err != nil {
-		return fmt.Errorf("error parsing end of line: %w", err)
-	}
-	return nil
-}
-
-func (p *Parser) ParseBlockEnd() error {
-	bracketToken := p.nextToken()
-	if !bracketToken.IsSpecificOperator("}") {
-		return fmt.Errorf("expected closing bracket")
-	}
-	if err := p.ParseOptionalRemainder(); err != nil {
-		return fmt.Errorf("error parsing end of line: %w", err)
-	}
-	return nil
 }
 
 func (p *Parser) ParseNamedParameterList() ([]Field, error) {
