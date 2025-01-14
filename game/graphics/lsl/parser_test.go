@@ -549,38 +549,87 @@ var _ = Describe("Parser", func() {
 		),
 	)
 
-	DescribeTable("ParseUnnamedParameterList", func(inSource string, expectedFields []lsl.Field) {
+	DescribeTable("ParseUnnamedParameterList", func(inSource string, expectedFields []lsl.Field, expectedErr error) {
 		parser := lsl.NewParser(inSource)
 		fields, err := parser.ParseUnnamedParameterList()
-		Expect(err).ToNot(HaveOccurred())
-		Expect(fields).To(Equal(expectedFields))
+		if expectedErr == nil {
+			Expect(err).ToNot(HaveOccurred())
+			Expect(fields).To(Equal(expectedFields))
+		} else {
+			Expect(err).To(HaveOccurred())
+			Expect(err).To(Equal(expectedErr))
+		}
 	},
 		Entry("empty list",
-			``,
+			"",
+			nil,
 			nil,
 		),
 		Entry("single parameter",
-			`vec4`,
+			"vec4",
 			[]lsl.Field{
 				{Type: "vec4"},
 			},
+			nil,
 		),
 		Entry("multiple parameters, single line",
-			`vec4, float`,
+			" \t vec4, \t float \t ",
 			[]lsl.Field{
 				{Type: "vec4"},
 				{Type: "float"},
 			},
+			nil,
 		),
 		Entry("multiple parameters, multiple lines",
 			`
 			vec4, // first param here
 			// there will be a second param
+
 			float,
+
 			`,
 			[]lsl.Field{
 				{Type: "vec4"},
 				{Type: "float"},
+			},
+			nil,
+		),
+		Entry("ending on a non-comma operator",
+			"vec4)",
+			[]lsl.Field{
+				{Type: "vec4"},
+			},
+			nil,
+		),
+		Entry("ending on a comma operator",
+			"vec4,",
+			[]lsl.Field{
+				{Type: "vec4"},
+			},
+			nil,
+		),
+		Entry("ending on a twin-comma operator",
+			"vec4,,",
+			nil,
+			&lsl.ParseError{
+				Pos:     at(1, 6),
+				Message: "unexpected comma",
+			},
+		),
+		Entry("non-identifier type",
+			"5",
+			nil,
+			&lsl.ParseError{
+				Pos:     at(1, 1),
+				Message: "expected a type identifier or end of list",
+			},
+		),
+		Entry("non-comma or operator after type",
+			"vec4 hello",
+			nil,
+			&lsl.ParseError{
+				Pos:     at(1, 6),
+				Message: "expected a comma or end of list",
 			},
 		),
 	)
