@@ -51,6 +51,27 @@ func (p *Parser) ParseNewLine() error {
 	return nil
 }
 
+// ParseComment assumes that the next token to follow is a comment token and
+// consumes it. Whitespace characters up to the comment token are ignored.
+// Anything other will result in an error. If the comment is followed by a
+// new line token, it is also consumed.
+func (p *Parser) ParseComment() error {
+	commentToken := p.nextToken()
+	if !commentToken.IsComment() {
+		return &ParseError{
+			Pos:     commentToken.Pos,
+			Message: "expected a comment token",
+		}
+	}
+	nextToken := p.peekToken()
+	if nextToken.IsNewLine() {
+		if err := p.ParseNewLine(); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // ParseShader parses the LSL source code and returns a shader AST object.
 // If the source code is invalid, an error is returned.
 func (p *Parser) ParseShader() (*Shader, error) {
@@ -98,20 +119,6 @@ func (p *Parser) ParseShader() (*Shader, error) {
 		token = p.peekToken()
 	}
 	return &shader, nil
-}
-
-func (p *Parser) ParseComment() error {
-	commentToken := p.nextToken()
-	if !commentToken.IsComment() {
-		return fmt.Errorf("expected comment token")
-	}
-	nextToken := p.peekToken()
-	if nextToken.IsNewLine() {
-		if err := p.ParseNewLine(); err != nil {
-			return fmt.Errorf("error parsing new line after comment: %w", err)
-		}
-	}
-	return nil
 }
 
 func (p *Parser) ParseOptionalRemainder() error {

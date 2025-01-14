@@ -293,27 +293,28 @@ var _ = Describe("Parser", func() {
 		}
 	}
 
-	DescribeTable("ParseNewLine (valid cases)", func(inSource string) {
-		parser := lsl.NewParser(inSource)
-		Expect(parser.ParseNewLine()).To(Succeed())
-	},
-		Entry("new line",
-			"\n",
-		),
-		Entry("carriage return and new line",
-			"\r\n",
-		),
-		Entry("new line after spacing",
-			"  \t  \n",
-		),
-	)
-
-	DescribeTable("ParseNewLine (error cases)", func(inSource string, expectedErr *lsl.ParseError) {
+	DescribeTable("ParseNewLine", func(inSource string, expectedErr error) {
 		parser := lsl.NewParser(inSource)
 		err := parser.ParseNewLine()
-		Expect(err).To(HaveOccurred())
-		Expect(err).To(Equal(expectedErr))
+		if expectedErr == nil {
+			Expect(err).ToNot(HaveOccurred())
+		} else {
+			Expect(err).To(HaveOccurred())
+			Expect(err).To(Equal(expectedErr))
+		}
 	},
+		Entry("new line",
+			"\n irrelevant",
+			nil,
+		),
+		Entry("carriage return and new line",
+			"\r\n irrelevant",
+			nil,
+		),
+		Entry("new line after spacing",
+			"  \t  \n irrelevant",
+			nil,
+		),
 		Entry("no tokens",
 			"",
 			&lsl.ParseError{
@@ -321,8 +322,8 @@ var _ = Describe("Parser", func() {
 				Message: "expected a new line token",
 			},
 		),
-		Entry("literal",
-			"hello",
+		Entry("identifier",
+			"hello \n",
 			&lsl.ParseError{
 				Pos:     at(1, 1),
 				Message: "expected a new line token",
@@ -330,19 +331,35 @@ var _ = Describe("Parser", func() {
 		),
 	)
 
-	DescribeTable("ParseComment", func(inSource string) {
+	DescribeTable("ParseComment", func(inSource string, expectedErr error) {
 		parser := lsl.NewParser(inSource)
-		Expect(parser.ParseComment()).To(Succeed())
+		err := parser.ParseComment()
+		if expectedErr == nil {
+			Expect(err).ToNot(HaveOccurred())
+		} else {
+			Expect(err).To(HaveOccurred())
+			Expect(err).To(Equal(expectedErr))
+		}
 	},
 		Entry("plain comment",
-			`// a comment`,
+			"// a comment",
+			nil,
 		),
 		Entry("comment after spacing",
-			`// a comment`,
+			" \t // a comment",
+			nil,
 		),
 		Entry("comment with new line",
 			`// some comment
-			`,
+			irrelevant`,
+			nil,
+		),
+		Entry("operator",
+			`; // a comment`,
+			&lsl.ParseError{
+				Pos:     lsl.Position{Line: 1, Column: 1},
+				Message: "expected a comment token",
+			},
 		),
 	)
 
