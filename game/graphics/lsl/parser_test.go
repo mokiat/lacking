@@ -281,17 +281,52 @@ var _ = Describe("Parse", func() {
 
 var _ = Describe("Parser", func() {
 
-	DescribeTable("ParseNewLine", func(inSource string) {
+	at := func(line, column uint32) lsl.Position {
+		if line == 1 {
+			// The first line does not include any tabs in front of it, because
+			// gofmt does not allow to move the backtick character to the beginning.
+			return lsl.At(line, column)
+		} else {
+			// NOTE: Adding 3 characters due to three tabs in front of each line
+			// because of the way the test cases are formatted.
+			return lsl.At(line, column+3)
+		}
+	}
+
+	DescribeTable("ParseNewLine (valid cases)", func(inSource string) {
 		parser := lsl.NewParser(inSource)
 		Expect(parser.ParseNewLine()).To(Succeed())
 	},
 		Entry("new line",
-			`
-			`,
+			"\n",
+		),
+		Entry("carriage return and new line",
+			"\r\n",
 		),
 		Entry("new line after spacing",
-			`  
-			`,
+			"  \t  \n",
+		),
+	)
+
+	DescribeTable("ParseNewLine (error cases)", func(inSource string, expectedErr *lsl.ParseError) {
+		parser := lsl.NewParser(inSource)
+		err := parser.ParseNewLine()
+		Expect(err).To(HaveOccurred())
+		Expect(err).To(Equal(expectedErr))
+	},
+		Entry("no tokens",
+			"",
+			&lsl.ParseError{
+				Pos:     at(1, 1),
+				Message: "expected a new line token",
+			},
+		),
+		Entry("literal",
+			"hello",
+			&lsl.ParseError{
+				Pos:     at(1, 1),
+				Message: "expected a new line token",
+			},
 		),
 	)
 

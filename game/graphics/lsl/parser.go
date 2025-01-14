@@ -7,6 +7,8 @@ import (
 	"github.com/mokiat/gog/ds"
 )
 
+// MuseParse parses the given LSL source code and returns a shader AST object.
+// If the source code is invalid, it will panic.
 func MustParse(source string) *Shader {
 	shader, err := Parse(source)
 	if err != nil {
@@ -15,10 +17,12 @@ func MustParse(source string) *Shader {
 	return shader
 }
 
+// Parse parses the given LSL source code and returns a shader AST object.
 func Parse(source string) (*Shader, error) {
 	return NewParser(source).ParseShader()
 }
 
+// NewParser creates a new LSL parser for the given source code.
 func NewParser(source string) *Parser {
 	tokenizer := NewTokenizer(source)
 	return &Parser{
@@ -27,16 +31,35 @@ func NewParser(source string) *Parser {
 	}
 }
 
+// Parser is responsible for parsing LSL source code into a shader AST object.
 type Parser struct {
 	tokenizer *Tokenizer
 	token     Token
 }
 
+// ParseNewLine assumes that the next token to follow is a new line token and
+// consumes it. Whitespace characters up to the new line token are ignored.
+// Anything other will result in an error.
+func (p *Parser) ParseNewLine() error {
+	token := p.nextToken()
+	if !token.IsNewLine() {
+		return &ParseError{
+			Pos:     token.Pos,
+			Message: "expected a new line token",
+		}
+	}
+	return nil
+}
+
+// ParseShader parses the LSL source code and returns a shader AST object.
+// If the source code is invalid, an error is returned.
 func (p *Parser) ParseShader() (*Shader, error) {
 	var shader Shader
 	token := p.peekToken()
 	for !token.IsEOF() {
 		switch {
+		case token.IsError():
+			return nil, fmt.Errorf("error token: %v", token)
 		case token.IsNewLine():
 			if err := p.ParseNewLine(); err != nil {
 				return nil, fmt.Errorf("error parsing new line: %w", err)
@@ -75,24 +98,6 @@ func (p *Parser) ParseShader() (*Shader, error) {
 		token = p.peekToken()
 	}
 	return &shader, nil
-}
-
-func (p *Parser) peekToken() Token {
-	return p.token
-}
-
-func (p *Parser) nextToken() Token {
-	token := p.token
-	p.token = p.tokenizer.Next()
-	return token
-}
-
-func (p *Parser) ParseNewLine() error {
-	token := p.nextToken()
-	if !token.IsNewLine() {
-		return fmt.Errorf("expected new line")
-	}
-	return nil
 }
 
 func (p *Parser) ParseComment() error {
@@ -844,4 +849,29 @@ func (p *Parser) parseArguments() ([]Expression, error) {
 		token = p.peekToken()
 	}
 	return args, nil
+}
+
+func (p *Parser) peekToken() Token {
+	return p.token
+}
+
+func (p *Parser) nextToken() Token {
+	token := p.token
+	p.token = p.tokenizer.Next()
+	return token
+}
+
+// ParseError is an error that occurs during parsing.
+type ParseError struct {
+
+	// Pos is the position in the source code where the error occurred.
+	Pos Position
+
+	// Message is the error message.
+	Message string
+}
+
+// Error returns the error message.
+func (e *ParseError) Error() string {
+	return fmt.Sprintf("shader code error %s at position %s", e.Message, e.Pos)
 }
