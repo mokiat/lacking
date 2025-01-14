@@ -456,38 +456,95 @@ var _ = Describe("Parser", func() {
 		),
 	)
 
-	DescribeTable("ParseNamedParameterList", func(inSource string, expectedFields []lsl.Field) {
+	DescribeTable("ParseNamedParameterList", func(inSource string, expectedFields []lsl.Field, expectedErr error) {
 		parser := lsl.NewParser(inSource)
 		fields, err := parser.ParseNamedParameterList()
-		Expect(err).ToNot(HaveOccurred())
-		Expect(fields).To(Equal(expectedFields))
+		if expectedErr == nil {
+			Expect(err).ToNot(HaveOccurred())
+			Expect(fields).To(Equal(expectedFields))
+		} else {
+			Expect(err).To(HaveOccurred())
+			Expect(err).To(Equal(expectedErr))
+		}
 	},
 		Entry("empty list",
-			``,
+			"",
+			nil,
 			nil,
 		),
 		Entry("single parameter",
-			`color vec4`,
+			"color vec4",
 			[]lsl.Field{
 				{Name: "color", Type: "vec4"},
 			},
+			nil,
 		),
 		Entry("multiple parameters, single line",
-			`color vec4, intensity float`,
+			" \t color vec4, \t intensity float \t ",
 			[]lsl.Field{
 				{Name: "color", Type: "vec4"},
 				{Name: "intensity", Type: "float"},
 			},
+			nil,
 		),
 		Entry("multiple parameters, multiple lines",
 			`
 			color vec4, // first param here
 			// there will be a second param
+
 			intensity float,
+
 			`,
 			[]lsl.Field{
 				{Name: "color", Type: "vec4"},
 				{Name: "intensity", Type: "float"},
+			},
+			nil,
+		),
+		Entry("ending on a non-comma operator",
+			"color vec4)",
+			[]lsl.Field{
+				{Name: "color", Type: "vec4"},
+			},
+			nil,
+		),
+		Entry("ending on a comma operator",
+			"color vec4,",
+			[]lsl.Field{
+				{Name: "color", Type: "vec4"},
+			},
+			nil,
+		),
+		Entry("ending on a twin-comma operator",
+			"color vec4,,",
+			nil,
+			&lsl.ParseError{
+				Pos:     at(1, 12),
+				Message: "unexpected comma",
+			},
+		),
+		Entry("non-identifier name",
+			"5 vec4",
+			nil,
+			&lsl.ParseError{
+				Pos:     at(1, 1),
+				Message: "expected a name identifier or end of list",
+			},
+		),
+		Entry("non-identifier type",
+			"color 5",
+			nil,
+			&lsl.ParseError{
+				Pos:     at(1, 7),
+				Message: "expected a type identifier",
+			},
+		),
+		Entry("non-comma or operator after type",
+			"color vec4 hello",
+			nil,
+			&lsl.ParseError{
+				Pos:     at(1, 12),
+				Message: "expected a comma or end of list",
 			},
 		),
 	)
