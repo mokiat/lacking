@@ -196,4 +196,8 @@ type Geometry struct {
 	// MaxDistance is the maximum distance to the camera before which the geometry
 	// should be drawn.
 	MaxDistance float64
+
+	// MaxCascade is the maximum shadow cascade that the geometry should be drawn
+	// in. A value of 0 means that the geometry should not cast shadows.
+	MaxCascade uint8
 }

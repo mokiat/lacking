@@ -90,6 +90,10 @@ type StageContext struct {
 	// UniformBuffer is the uniform buffer that the stage should use to set
 	// uniform data.
 	UniformBuffer *ubo.UniformBlockBuffer
+
+	// Cascade is the shadow cascade that the stage should render to.
+	// A value of 0 indicates that this is not a shadow rendering stage.
+	Cascade uint8
 }
 
 // StageTextureParameter is a function that returns a texture that is used as

@@ -21,6 +21,7 @@ func newMesh(scene *Scene, info MeshInfo) *Mesh {
 	mesh.scene = scene
 	mesh.itemID = scene.dynamicMeshSet.Insert(dprec.ZeroVec3(), definition.geometry.boundingSphereRadius, mesh)
 	mesh.definition = definition
+	mesh.maxCascade = definition.geometry.maxCascade
 	mesh.armature = info.Armature
 	mesh.active = true
 	return mesh
@@ -34,6 +35,7 @@ type Mesh struct {
 	itemID     spatial.DynamicSetItemID
 	definition *MeshDefinition
 	armature   *Armature
+	maxCascade uint8
 	active     bool
 }
 
@@ -82,6 +84,7 @@ func createStaticMesh(scene *Scene, info StaticMeshInfo) {
 	staticMesh.position = position
 	staticMesh.minDistance = info.Definition.geometry.minDistance
 	staticMesh.maxDistance = info.Definition.geometry.maxDistance
+	staticMesh.maxCascade = info.Definition.geometry.maxCascade
 	staticMesh.definition = info.Definition
 	staticMesh.matrixData = make([]byte, 16*4)
 	staticMesh.armature = info.Armature
@@ -96,6 +99,7 @@ type StaticMesh struct {
 	position    dprec.Vec3
 	minDistance float64
 	maxDistance float64
+	maxCascade  uint8
 	matrixData  []byte
 	definition  *MeshDefinition
 	armature    *Armature

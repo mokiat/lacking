@@ -640,6 +640,7 @@ func (c *Converter) convertGeometry(geometry *Geometry) (uint32, error) {
 		BoundingSphereRadius: boundingSphereRadius,
 		MinDistance:          geometry.minDistance,
 		MaxDistance:          geometry.maxDistance,
+		MaxCascade:           uint8(geometry.maxCascade),
 	}
 
 	index := uint32(len(c.assetGeometries))

@@ -14,6 +14,7 @@ type MeshGeometryInfo struct {
 	BoundingSphereRadius float64
 	MinDistance          opt.T[float64]
 	MaxDistance          opt.T[float64]
+	MaxCascade           opt.T[uint8]
 }
 
 // MeshGeometryFragmentInfo contains the information needed to represent a
@@ -36,6 +37,7 @@ type MeshGeometry struct {
 	boundingSphereRadius float64
 	minDistance          float64
 	maxDistance          float64
+	maxCascade           uint8
 }
 
 // FragmentCount returns the number of fragments that make up this mesh.

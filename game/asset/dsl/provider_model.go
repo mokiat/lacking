@@ -310,6 +310,9 @@ func BuildModelResource(gltfDoc *gltf.Document, forceCollision bool) (*mdl.Model
 		if maxDistance, ok := metadata.HasMaxDistance(); ok {
 			geometry.SetMaxDistance(maxDistance)
 		}
+		if maxCascade, ok := metadata.HasMaxCascade(); ok {
+			geometry.SetMaxCascade(maxCascade)
+		}
 
 		meshDefinition := &mdl.MeshDefinition{}
 		meshDefinition.SetName(gltfMesh.Name)

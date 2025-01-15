@@ -188,7 +188,7 @@ func (s *ShadowStage) renderDirectionalLightShadowMaps(ctx StageContext, light *
 	}
 
 	cascadeCount := min(len(ctx.Camera.cascadeDistances), len(shadowMap.Cascades))
-	for _, cascade := range shadowMap.Cascades[:cascadeCount] {
+	for i, cascade := range shadowMap.Cascades[:cascadeCount] {
 		frustum := spatial.ProjectionRegion(stod.Mat4(cascade.ProjectionMatrix))
 
 		s.litStaticMeshes.Reset()
@@ -196,6 +196,8 @@ func (s *ShadowStage) renderDirectionalLightShadowMaps(ctx StageContext, light *
 
 		s.litMeshes.Reset()
 		ctx.Scene.dynamicMeshSet.VisitHexahedronRegion(&frustum, s.litMeshes)
+
+		ctx.Cascade = uint8(i + 1)
 
 		s.meshRenderer.DiscardRenderItems()
 		for _, meshIndex := range s.litStaticMeshes.Items() {

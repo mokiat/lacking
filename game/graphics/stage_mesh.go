@@ -40,6 +40,9 @@ func (s *meshRenderer) QueueMeshRenderItems(ctx StageContext, mesh *Mesh, passTy
 	if !mesh.active {
 		return
 	}
+	if ctx.Cascade > mesh.maxCascade {
+		return
+	}
 	definition := mesh.definition
 	passes := definition.passesByType[passType]
 	for _, pass := range passes {
@@ -62,6 +65,9 @@ func (s *meshRenderer) QueueMeshRenderItems(ctx StageContext, mesh *Mesh, passTy
 
 func (s *meshRenderer) QueueStaticMeshRenderItems(ctx StageContext, mesh *StaticMesh, passType internal.MeshRenderPassType) {
 	if !mesh.active {
+		return
+	}
+	if ctx.Cascade > mesh.maxCascade {
 		return
 	}
 	distance := dprec.Vec3Diff(mesh.position, ctx.CameraPosition).Length()

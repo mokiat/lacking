@@ -33,6 +33,7 @@ func NewGeometry() *Geometry {
 	return &Geometry{
 		minDistance: -32000.0,
 		maxDistance: 32000.0,
+		maxCascade:  255,
 	}
 }
 
@@ -45,6 +46,7 @@ type Geometry struct {
 	fragments    []*Fragment
 	minDistance  float64
 	maxDistance  float64
+	maxCascade   int
 }
 
 func (g *Geometry) Metadata() Metadata {
@@ -125,6 +127,14 @@ func (g *Geometry) MaxDistance() float64 {
 
 func (g *Geometry) SetMaxDistance(distance float64) {
 	g.maxDistance = distance
+}
+
+func (g *Geometry) MaxCascade() int {
+	return g.maxCascade
+}
+
+func (g *Geometry) SetMaxCascade(cascade int) {
+	g.maxCascade = min(max(cascade, 0), 255)
 }
 
 func NewFragment() *Fragment {
