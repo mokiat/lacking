@@ -345,17 +345,20 @@ func (p *Parser) ParseShader() (*Shader, error) {
 func (p *Parser) ParseTextureBlock() (*TextureBlockDeclaration, error) {
 	uniformToken := p.nextToken()
 	if !uniformToken.IsSpecificIdentifier("textures") {
-		return nil, fmt.Errorf("expected uniform keyword")
+		return nil, &ParseError{
+			Pos:     uniformToken.Pos,
+			Message: "expected 'textures' keyword",
+		}
 	}
 	if err := p.ParseBlockStart(); err != nil {
-		return nil, fmt.Errorf("error parsing uniform block start: %w", err)
+		return nil, err
 	}
 	fields, err := p.ParseNamedParameterList()
 	if err != nil {
-		return nil, fmt.Errorf("error parsing varying block fields: %w", err)
+		return nil, err
 	}
 	if err := p.ParseBlockEnd(); err != nil {
-		return nil, fmt.Errorf("error parsing uniform block end: %w", err)
+		return nil, err
 	}
 	return &TextureBlockDeclaration{
 		Fields: fields,

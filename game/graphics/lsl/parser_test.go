@@ -634,16 +634,22 @@ var _ = Describe("Parser", func() {
 		),
 	)
 
-	DescribeTable("ParseTextureBlock", func(inSource string, expectedBlock *lsl.TextureBlockDeclaration) {
+	DescribeTable("ParseTextureBlock", func(inSource string, expectedBlock *lsl.TextureBlockDeclaration, expectedErr error) {
 		parser := lsl.NewParser(inSource)
 		block, err := parser.ParseTextureBlock()
-		Expect(err).ToNot(HaveOccurred())
-		Expect(block).To(Equal(expectedBlock))
+		if expectedErr == nil {
+			Expect(err).ToNot(HaveOccurred())
+			Expect(block).To(Equal(expectedBlock))
+		} else {
+			Expect(err).To(HaveOccurred())
+			Expect(err).To(Equal(expectedErr))
+		}
 	},
-		Entry("empty",
+		Entry("empty block",
 			`textures {
 			}`,
 			&lsl.TextureBlockDeclaration{},
+			nil,
 		),
 		Entry("with fields",
 			`textures {
@@ -655,6 +661,40 @@ var _ = Describe("Parser", func() {
 					{Name: "first", Type: "sampler2D"},
 					{Name: "second", Type: "samplerCube"},
 				},
+			},
+			nil,
+		),
+		Entry("with comments and spaces",
+			`textures { // block start
+
+			first 	 sampler2D  	, // first field
+
+			second samplerCube,    // second field
+
+			} // block end`,
+			&lsl.TextureBlockDeclaration{
+				Fields: []lsl.Field{
+					{Name: "first", Type: "sampler2D"},
+					{Name: "second", Type: "samplerCube"},
+				},
+			},
+			nil,
+		),
+		Entry("closing on same line",
+			`textures {}`,
+			nil,
+			&lsl.ParseError{
+				Pos:     at(1, 11),
+				Message: "expected a comment, new line or end of file",
+			},
+		),
+		Entry("other block type",
+			`uniforms {
+			}`,
+			nil,
+			&lsl.ParseError{
+				Pos:     at(1, 1),
+				Message: "expected 'textures' keyword",
 			},
 		),
 	)
