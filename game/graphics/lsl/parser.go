@@ -293,6 +293,54 @@ func (p *Parser) ParseUnnamedParameterList() ([]Field, error) {
 	}
 }
 
+// ParseTextureBlock parses a block containing texture fields.
+func (p *Parser) ParseTextureBlock() (*TextureBlockDeclaration, error) {
+	uniformToken := p.nextToken()
+	if !uniformToken.IsSpecificIdentifier("textures") {
+		return nil, &ParseError{
+			Pos:     uniformToken.Pos,
+			Message: "expected 'textures' keyword",
+		}
+	}
+	if err := p.ParseBlockStart(); err != nil {
+		return nil, err
+	}
+	fields, err := p.ParseNamedParameterList()
+	if err != nil {
+		return nil, err
+	}
+	if err := p.ParseBlockEnd(); err != nil {
+		return nil, err
+	}
+	return &TextureBlockDeclaration{
+		Fields: fields,
+	}, nil
+}
+
+// ParseUniformBlock parses a block containing uniform fields.
+func (p *Parser) ParseUniformBlock() (*UniformBlockDeclaration, error) {
+	uniformToken := p.nextToken()
+	if !uniformToken.IsSpecificIdentifier("uniforms") {
+		return nil, &ParseError{
+			Pos:     uniformToken.Pos,
+			Message: "expected 'uniforms' keyword",
+		}
+	}
+	if err := p.ParseBlockStart(); err != nil {
+		return nil, err
+	}
+	fields, err := p.ParseNamedParameterList()
+	if err != nil {
+		return nil, err
+	}
+	if err := p.ParseBlockEnd(); err != nil {
+		return nil, err
+	}
+	return &UniformBlockDeclaration{
+		Fields: fields,
+	}, nil
+}
+
 // ParseShader parses the LSL source code and returns a shader AST object.
 // If the source code is invalid, an error is returned.
 func (p *Parser) ParseShader() (*Shader, error) {
@@ -340,49 +388,6 @@ func (p *Parser) ParseShader() (*Shader, error) {
 		token = p.peekToken()
 	}
 	return &shader, nil
-}
-
-func (p *Parser) ParseTextureBlock() (*TextureBlockDeclaration, error) {
-	uniformToken := p.nextToken()
-	if !uniformToken.IsSpecificIdentifier("textures") {
-		return nil, &ParseError{
-			Pos:     uniformToken.Pos,
-			Message: "expected 'textures' keyword",
-		}
-	}
-	if err := p.ParseBlockStart(); err != nil {
-		return nil, err
-	}
-	fields, err := p.ParseNamedParameterList()
-	if err != nil {
-		return nil, err
-	}
-	if err := p.ParseBlockEnd(); err != nil {
-		return nil, err
-	}
-	return &TextureBlockDeclaration{
-		Fields: fields,
-	}, nil
-}
-
-func (p *Parser) ParseUniformBlock() (*UniformBlockDeclaration, error) {
-	uniformToken := p.nextToken()
-	if !uniformToken.IsSpecificIdentifier("uniforms") {
-		return nil, fmt.Errorf("expected uniform keyword")
-	}
-	if err := p.ParseBlockStart(); err != nil {
-		return nil, fmt.Errorf("error parsing uniform block start: %w", err)
-	}
-	fields, err := p.ParseNamedParameterList()
-	if err != nil {
-		return nil, fmt.Errorf("error parsing varying block fields: %w", err)
-	}
-	if err := p.ParseBlockEnd(); err != nil {
-		return nil, fmt.Errorf("error parsing uniform block end: %w", err)
-	}
-	return &UniformBlockDeclaration{
-		Fields: fields,
-	}, nil
 }
 
 func (p *Parser) ParseVaryingBlock() (*VaryingBlockDeclaration, error) {

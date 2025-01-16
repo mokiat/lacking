@@ -699,16 +699,22 @@ var _ = Describe("Parser", func() {
 		),
 	)
 
-	DescribeTable("ParseUniformBlock", func(inSource string, expectedBlock *lsl.UniformBlockDeclaration) {
+	DescribeTable("ParseUniformBlock", func(inSource string, expectedBlock *lsl.UniformBlockDeclaration, expectedErr error) {
 		parser := lsl.NewParser(inSource)
 		block, err := parser.ParseUniformBlock()
-		Expect(err).ToNot(HaveOccurred())
-		Expect(block).To(Equal(expectedBlock))
+		if expectedErr == nil {
+			Expect(err).ToNot(HaveOccurred())
+			Expect(block).To(Equal(expectedBlock))
+		} else {
+			Expect(err).To(HaveOccurred())
+			Expect(err).To(Equal(expectedErr))
+		}
 	},
-		Entry("empty",
+		Entry("empty block",
 			`uniforms {
 			}`,
 			&lsl.UniformBlockDeclaration{},
+			nil,
 		),
 		Entry("with fields",
 			`uniforms {
@@ -720,6 +726,40 @@ var _ = Describe("Parser", func() {
 					{Name: "color", Type: "vec4"},
 					{Name: "intensity", Type: "float"},
 				},
+			},
+			nil,
+		),
+		Entry("with comments and spaces",
+			`uniforms { // block start
+
+			color vec4  	, // first field
+
+			intensity float,    // second field
+
+			} // block end`,
+			&lsl.UniformBlockDeclaration{
+				Fields: []lsl.Field{
+					{Name: "color", Type: "vec4"},
+					{Name: "intensity", Type: "float"},
+				},
+			},
+			nil,
+		),
+		Entry("closing on same line",
+			`uniforms {}`,
+			nil,
+			&lsl.ParseError{
+				Pos:     at(1, 11),
+				Message: "expected a comment, new line or end of file",
+			},
+		),
+		Entry("other block type",
+			`textures {
+			}`,
+			nil,
+			&lsl.ParseError{
+				Pos:     at(1, 1),
+				Message: "expected 'uniforms' keyword",
 			},
 		),
 	)
