@@ -1,10 +1,11 @@
 package spatial
 
 import (
+	"slices"
+
 	"github.com/mokiat/gog/ds"
 	"github.com/mokiat/gog/opt"
 	"github.com/mokiat/gomath/dprec"
-	"golang.org/x/exp/slices"
 )
 
 // DynamicOctreeItemID is an identifier used to control the placement of an item
@@ -366,6 +367,7 @@ func (t *DynamicOctree[T]) refresh() {
 }
 
 func (t *DynamicOctree[T]) sortItems() {
+	// TODO: Test if this can be made faster with ref sorting.
 	slices.SortFunc(t.items, compareDynamicOctreeItems[T])
 }
 

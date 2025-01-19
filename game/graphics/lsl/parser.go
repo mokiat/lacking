@@ -5,9 +5,10 @@ import (
 	"strconv"
 
 	"github.com/mokiat/gog/ds"
-	"github.com/mokiat/lacking/game/graphics/lsl/internal"
 )
 
+// MuseParse parses the given LSL source code and returns a shader AST object.
+// If the source code is invalid, it will panic.
 func MustParse(source string) *Shader {
 	shader, err := Parse(source)
 	if err != nil {
@@ -16,28 +17,363 @@ func MustParse(source string) *Shader {
 	return shader
 }
 
+// Parse parses the given LSL source code and returns a shader AST object.
 func Parse(source string) (*Shader, error) {
 	return NewParser(source).ParseShader()
 }
 
+// NewParser creates a new LSL parser for the given source code.
 func NewParser(source string) *Parser {
-	tokenizer := internal.NewTokenizer(source)
+	tokenizer := NewTokenizer(source)
 	return &Parser{
 		tokenizer: tokenizer,
 		token:     tokenizer.Next(),
 	}
 }
 
+// Parser is responsible for parsing LSL source code into a shader AST object.
 type Parser struct {
-	tokenizer *internal.Tokenizer
-	token     internal.Token
+	tokenizer *Tokenizer
+	token     Token
 }
 
+// ParseNewLine assumes that the next token to follow is a new line token and
+// consumes it. Whitespace characters up to the new line token are ignored.
+// Anything other will result in an error.
+func (p *Parser) ParseNewLine() error {
+	token := p.nextToken()
+	if !token.IsNewLine() {
+		return &ParseError{
+			Pos:     token.Pos,
+			Message: "expected a new line token",
+		}
+	}
+	return nil
+}
+
+// ParseComment assumes that the next token to follow is a comment token and
+// consumes it. Whitespace characters up to the comment token are ignored.
+// Anything other will result in an error. If the comment is followed by a
+// new line token, it is also consumed.
+func (p *Parser) ParseComment() error {
+	commentToken := p.nextToken()
+	if !commentToken.IsComment() {
+		return &ParseError{
+			Pos:     commentToken.Pos,
+			Message: "expected a comment token",
+		}
+	}
+	nextToken := p.peekToken()
+	if nextToken.IsNewLine() {
+		if err := p.ParseNewLine(); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// ParseOptionalRemainder consumes the remainder of the line, including any
+// new line or comment tokens. It assumes that anything to follow is
+// non-vital (comments, new lines) and can be ignored.
+func (p *Parser) ParseOptionalRemainder() error {
+	token := p.peekToken()
+	switch {
+	case token.IsError():
+		return &ParseError{
+			Pos:     token.Pos,
+			Message: "tokenization error",
+		}
+	case token.IsEOF():
+		return nil
+	case token.IsNewLine():
+		return p.ParseNewLine()
+	case token.IsComment():
+		return p.ParseComment()
+	default:
+		return &ParseError{
+			Pos:     token.Pos,
+			Message: "expected a comment, new line or end of file",
+		}
+	}
+}
+
+// ParseBlockStart parses the opening bracket of a block. It assumes that the
+// next token to follow is an opening bracket token. If the token is not an
+// opening bracket, an error is returned. Whitespace characters up to the
+// opening bracket token are ignored.
+func (p *Parser) ParseBlockStart() error {
+	bracketToken := p.nextToken()
+	if !bracketToken.IsSpecificOperator("{") {
+		return &ParseError{
+			Pos:     bracketToken.Pos,
+			Message: "expected an opening bracket",
+		}
+	}
+	if err := p.ParseOptionalRemainder(); err != nil {
+		return err
+	}
+	return nil
+}
+
+// ParseBlockEnd parses the closing bracket of a block. It assumes that the
+// next token to follow is a closing bracket token. If the token is not a
+// closing bracket, an error is returned. Whitespace characters up to the
+// closing bracket token are ignored.
+func (p *Parser) ParseBlockEnd() error {
+	bracketToken := p.nextToken()
+	if !bracketToken.IsSpecificOperator("}") {
+		return &ParseError{
+			Pos:     bracketToken.Pos,
+			Message: "expected a closing bracket",
+		}
+	}
+	if err := p.ParseOptionalRemainder(); err != nil {
+		return err
+	}
+	return nil
+}
+
+// ParseNamedParameterList parses a list of field name and type pairs.
+func (p *Parser) ParseNamedParameterList() ([]Field, error) {
+	var params []Field
+
+	for {
+		token := p.peekToken()
+		switch {
+		case token.IsError():
+			return nil, &ParseError{
+				Pos:     token.Pos,
+				Message: "tokenization error",
+			}
+
+		case token.IsEOF():
+			return params, nil
+
+		case token.IsNewLine():
+			if err := p.ParseNewLine(); err != nil {
+				return nil, err
+			}
+
+		case token.IsComment():
+			if err := p.ParseComment(); err != nil {
+				return nil, err
+			}
+
+		case token.IsOperator():
+			if token.IsSpecificOperator(",") {
+				return nil, &ParseError{
+					Pos:     token.Pos,
+					Message: "unexpected comma",
+				}
+			}
+			return params, nil // end it here
+
+		case token.IsIdentifier():
+			nameToken := p.nextToken()
+			if !nameToken.IsIdentifier() {
+				return nil, &ParseError{
+					Pos:     nameToken.Pos,
+					Message: "expected a name identifier",
+				}
+			}
+			typeToken := p.nextToken()
+			if !typeToken.IsIdentifier() {
+				return nil, &ParseError{
+					Pos:     typeToken.Pos,
+					Message: "expected a type identifier",
+				}
+			}
+			params = append(params, Field{
+				Name: nameToken.Value,
+				Type: typeToken.Value,
+			})
+			nextToken := p.peekToken()
+			switch {
+			case nextToken.IsError():
+				return nil, &ParseError{
+					Pos:     nextToken.Pos,
+					Message: "tokenization error",
+				}
+			case nextToken.IsEOF():
+				return params, nil
+			case nextToken.IsOperator():
+				if !nextToken.IsSpecificOperator(",") {
+					return params, nil
+				}
+				p.nextToken() // consume the comma
+			default:
+				return nil, &ParseError{
+					Pos:     nextToken.Pos,
+					Message: "expected a comma or end of list",
+				}
+			}
+
+		default:
+			return nil, &ParseError{
+				Pos:     token.Pos,
+				Message: "expected a name identifier or end of list",
+			}
+		}
+	}
+}
+
+// ParseUnnamedParameterList parses a list of field types.
+func (p *Parser) ParseUnnamedParameterList() ([]Field, error) {
+	var params []Field
+
+	for {
+		token := p.peekToken()
+		switch {
+		case token.IsError():
+			return nil, &ParseError{
+				Pos:     token.Pos,
+				Message: "tokenization error",
+			}
+
+		case token.IsEOF():
+			return params, nil
+
+		case token.IsNewLine():
+			if err := p.ParseNewLine(); err != nil {
+				return nil, err
+			}
+
+		case token.IsComment():
+			if err := p.ParseComment(); err != nil {
+				return nil, err
+			}
+
+		case token.IsOperator():
+			if token.IsSpecificOperator(",") {
+				return nil, &ParseError{
+					Pos:     token.Pos,
+					Message: "unexpected comma",
+				}
+			}
+			return params, nil
+
+		case token.IsIdentifier():
+			typeToken := p.nextToken()
+			if !typeToken.IsIdentifier() {
+				return nil, &ParseError{
+					Pos:     typeToken.Pos,
+					Message: "expected a type identifier",
+				}
+			}
+			params = append(params, Field{
+				Type: typeToken.Value,
+			})
+			nextToken := p.peekToken()
+			switch {
+			case nextToken.IsError():
+				return nil, &ParseError{
+					Pos:     nextToken.Pos,
+					Message: "tokenization error",
+				}
+			case nextToken.IsEOF():
+				return params, nil
+			case nextToken.IsOperator():
+				if !nextToken.IsSpecificOperator(",") {
+					return params, nil
+				}
+				p.nextToken() // consume the comma
+			default:
+				return nil, &ParseError{
+					Pos:     nextToken.Pos,
+					Message: "expected a comma or end of list",
+				}
+			}
+
+		default:
+			return nil, &ParseError{
+				Pos:     token.Pos,
+				Message: "expected a type identifier or end of list",
+			}
+		}
+	}
+}
+
+// ParseTextureBlock parses a block containing texture fields.
+func (p *Parser) ParseTextureBlock() (*TextureBlockDeclaration, error) {
+	uniformToken := p.nextToken()
+	if !uniformToken.IsSpecificIdentifier("textures") {
+		return nil, &ParseError{
+			Pos:     uniformToken.Pos,
+			Message: "expected 'textures' keyword",
+		}
+	}
+	if err := p.ParseBlockStart(); err != nil {
+		return nil, err
+	}
+	fields, err := p.ParseNamedParameterList()
+	if err != nil {
+		return nil, err
+	}
+	if err := p.ParseBlockEnd(); err != nil {
+		return nil, err
+	}
+	return &TextureBlockDeclaration{
+		Fields: fields,
+	}, nil
+}
+
+// ParseUniformBlock parses a block containing uniform fields.
+func (p *Parser) ParseUniformBlock() (*UniformBlockDeclaration, error) {
+	uniformToken := p.nextToken()
+	if !uniformToken.IsSpecificIdentifier("uniforms") {
+		return nil, &ParseError{
+			Pos:     uniformToken.Pos,
+			Message: "expected 'uniforms' keyword",
+		}
+	}
+	if err := p.ParseBlockStart(); err != nil {
+		return nil, err
+	}
+	fields, err := p.ParseNamedParameterList()
+	if err != nil {
+		return nil, err
+	}
+	if err := p.ParseBlockEnd(); err != nil {
+		return nil, err
+	}
+	return &UniformBlockDeclaration{
+		Fields: fields,
+	}, nil
+}
+
+// ParseVaryingBlock parses a block containing varying fields.
+func (p *Parser) ParseVaryingBlock() (*VaryingBlockDeclaration, error) {
+	varyingToken := p.nextToken()
+	if !varyingToken.IsSpecificIdentifier("varyings") {
+		return nil, &ParseError{
+			Pos:     varyingToken.Pos,
+			Message: "expected 'varyings' keyword",
+		}
+	}
+	if err := p.ParseBlockStart(); err != nil {
+		return nil, err
+	}
+	fields, err := p.ParseNamedParameterList()
+	if err != nil {
+		return nil, err
+	}
+	if err := p.ParseBlockEnd(); err != nil {
+		return nil, err
+	}
+	return &VaryingBlockDeclaration{
+		Fields: fields,
+	}, nil
+}
+
+// ParseShader parses the LSL source code and returns a shader AST object.
+// If the source code is invalid, an error is returned.
 func (p *Parser) ParseShader() (*Shader, error) {
 	var shader Shader
 	token := p.peekToken()
 	for !token.IsEOF() {
 		switch {
+		case token.IsError():
+			return nil, fmt.Errorf("error token: %v", token)
 		case token.IsNewLine():
 			if err := p.ParseNewLine(); err != nil {
 				return nil, fmt.Errorf("error parsing new line: %w", err)
@@ -76,243 +412,6 @@ func (p *Parser) ParseShader() (*Shader, error) {
 		token = p.peekToken()
 	}
 	return &shader, nil
-}
-
-func (p *Parser) peekToken() internal.Token {
-	return p.token
-}
-
-func (p *Parser) nextToken() internal.Token {
-	token := p.token
-	p.token = p.tokenizer.Next()
-	return token
-}
-
-func (p *Parser) ParseNewLine() error {
-	token := p.nextToken()
-	if !token.IsNewLine() {
-		return fmt.Errorf("expected new line")
-	}
-	return nil
-}
-
-func (p *Parser) ParseComment() error {
-	commentToken := p.nextToken()
-	if !commentToken.IsComment() {
-		return fmt.Errorf("expected comment token")
-	}
-	nextToken := p.peekToken()
-	if nextToken.IsNewLine() {
-		if err := p.ParseNewLine(); err != nil {
-			return fmt.Errorf("error parsing new line after comment: %w", err)
-		}
-	}
-	return nil
-}
-
-func (p *Parser) ParseOptionalRemainder() error {
-	token := p.peekToken()
-	switch {
-	case token.IsEOF():
-		return nil
-	case token.IsNewLine():
-		return p.ParseNewLine()
-	case token.IsComment():
-		return p.ParseComment()
-	default:
-		return fmt.Errorf("expected new line or comment")
-	}
-}
-
-func (p *Parser) ParseBlockStart() error {
-	bracketToken := p.nextToken()
-	if !bracketToken.IsSpecificOperator("{") {
-		return fmt.Errorf("expected opening bracket")
-	}
-	if err := p.ParseOptionalRemainder(); err != nil {
-		return fmt.Errorf("error parsing end of line: %w", err)
-	}
-	return nil
-}
-
-func (p *Parser) ParseBlockEnd() error {
-	bracketToken := p.nextToken()
-	if !bracketToken.IsSpecificOperator("}") {
-		return fmt.Errorf("expected closing bracket")
-	}
-	if err := p.ParseOptionalRemainder(); err != nil {
-		return fmt.Errorf("error parsing end of line: %w", err)
-	}
-	return nil
-}
-
-func (p *Parser) ParseNamedParameterList() ([]Field, error) {
-	var params []Field
-
-	for {
-		token := p.peekToken()
-		switch {
-		case token.IsEOF():
-			return params, nil
-
-		case token.IsNewLine():
-			if err := p.ParseNewLine(); err != nil {
-				return nil, fmt.Errorf("error parsing new line: %w", err)
-			}
-
-		case token.IsComment():
-			if err := p.ParseComment(); err != nil {
-				return nil, fmt.Errorf("error parsing comment: %w", err)
-			}
-
-		case token.IsIdentifier():
-			nameToken := p.nextToken()
-			if !nameToken.IsIdentifier() {
-				return nil, fmt.Errorf("expected name identifier")
-			}
-			typeToken := p.nextToken()
-			if !typeToken.IsIdentifier() {
-				return nil, fmt.Errorf("expected type identifier")
-			}
-			params = append(params, Field{
-				Name: nameToken.Value,
-				Type: typeToken.Value,
-			})
-			nextToken := p.peekToken()
-			switch {
-			case nextToken.IsEOF():
-				return params, nil
-			case nextToken.IsOperator():
-				if !nextToken.IsSpecificOperator(",") {
-					return params, nil
-				}
-				p.nextToken() // consume the comma
-			default:
-				return nil, fmt.Errorf("unexpected token: %v", nextToken)
-			}
-
-		case token.IsOperator():
-			if token.IsSpecificOperator(",") {
-				return nil, fmt.Errorf("unexpected token comma separator: %v", token)
-			}
-			return params, nil
-
-		default:
-			return nil, fmt.Errorf("unexpected token: %v", token)
-		}
-	}
-}
-
-func (p *Parser) ParseUnnamedParameterList() ([]Field, error) {
-	var params []Field
-
-	for {
-		token := p.peekToken()
-		switch {
-		case token.IsEOF():
-			return params, nil
-
-		case token.IsNewLine():
-			if err := p.ParseNewLine(); err != nil {
-				return nil, fmt.Errorf("error parsing new line: %w", err)
-			}
-
-		case token.IsComment():
-			if err := p.ParseComment(); err != nil {
-				return nil, fmt.Errorf("error parsing comment: %w", err)
-			}
-
-		case token.IsIdentifier():
-			typeToken := p.nextToken()
-			if !typeToken.IsIdentifier() {
-				return nil, fmt.Errorf("expected type identifier")
-			}
-			params = append(params, Field{
-				Type: typeToken.Value,
-			})
-			nextToken := p.peekToken()
-			switch {
-			case nextToken.IsEOF():
-				return params, nil
-			case nextToken.IsOperator():
-				if !nextToken.IsSpecificOperator(",") {
-					return params, nil
-				}
-				p.nextToken() // consume the comma
-			default:
-				return nil, fmt.Errorf("unexpected token: %v", nextToken)
-			}
-
-		case token.IsOperator():
-			if token.IsSpecificOperator(",") {
-				return nil, fmt.Errorf("unexpected token comma separator: %v", token)
-			}
-			return params, nil
-
-		default:
-			return nil, fmt.Errorf("unexpected token: %v", token)
-		}
-	}
-}
-
-func (p *Parser) ParseTextureBlock() (*TextureBlockDeclaration, error) {
-	uniformToken := p.nextToken()
-	if !uniformToken.IsSpecificIdentifier("textures") {
-		return nil, fmt.Errorf("expected uniform keyword")
-	}
-	if err := p.ParseBlockStart(); err != nil {
-		return nil, fmt.Errorf("error parsing uniform block start: %w", err)
-	}
-	fields, err := p.ParseNamedParameterList()
-	if err != nil {
-		return nil, fmt.Errorf("error parsing varying block fields: %w", err)
-	}
-	if err := p.ParseBlockEnd(); err != nil {
-		return nil, fmt.Errorf("error parsing uniform block end: %w", err)
-	}
-	return &TextureBlockDeclaration{
-		Fields: fields,
-	}, nil
-}
-
-func (p *Parser) ParseUniformBlock() (*UniformBlockDeclaration, error) {
-	uniformToken := p.nextToken()
-	if !uniformToken.IsSpecificIdentifier("uniforms") {
-		return nil, fmt.Errorf("expected uniform keyword")
-	}
-	if err := p.ParseBlockStart(); err != nil {
-		return nil, fmt.Errorf("error parsing uniform block start: %w", err)
-	}
-	fields, err := p.ParseNamedParameterList()
-	if err != nil {
-		return nil, fmt.Errorf("error parsing varying block fields: %w", err)
-	}
-	if err := p.ParseBlockEnd(); err != nil {
-		return nil, fmt.Errorf("error parsing uniform block end: %w", err)
-	}
-	return &UniformBlockDeclaration{
-		Fields: fields,
-	}, nil
-}
-
-func (p *Parser) ParseVaryingBlock() (*VaryingBlockDeclaration, error) {
-	varyingToken := p.nextToken()
-	if !varyingToken.IsSpecificIdentifier("varyings") {
-		return nil, fmt.Errorf("expected varying keyword")
-	}
-	if err := p.ParseBlockStart(); err != nil {
-		return nil, fmt.Errorf("error parsing varying block start: %w", err)
-	}
-	fields, err := p.ParseNamedParameterList()
-	if err != nil {
-		return nil, fmt.Errorf("error parsing varying block fields: %w", err)
-	}
-	if err := p.ParseBlockEnd(); err != nil {
-		return nil, fmt.Errorf("error parsing varying block end: %w", err)
-	}
-	return &VaryingBlockDeclaration{
-		Fields: fields,
-	}, nil
 }
 
 func (p *Parser) ParseExpression() (Expression, error) {
@@ -845,4 +944,29 @@ func (p *Parser) parseArguments() ([]Expression, error) {
 		token = p.peekToken()
 	}
 	return args, nil
+}
+
+func (p *Parser) peekToken() Token {
+	return p.token
+}
+
+func (p *Parser) nextToken() Token {
+	token := p.token
+	p.token = p.tokenizer.Next()
+	return token
+}
+
+// ParseError is an error that occurs during parsing.
+type ParseError struct {
+
+	// Pos is the position in the source code where the error occurred.
+	Pos Position
+
+	// Message is the error message.
+	Message string
+}
+
+// Error returns the error message.
+func (e *ParseError) Error() string {
+	return fmt.Sprintf("shader code error %s at position %s", e.Message, e.Pos)
 }

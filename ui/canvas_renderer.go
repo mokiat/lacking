@@ -360,6 +360,7 @@ func (c *canvasRenderer) onEnd() {
 	c.contourMesh.Upload()
 	c.textMesh.Upload()
 	c.uniforms.Upload()
+	c.uniforms.Swap()
 	c.commandBuffer = nil
 }
 

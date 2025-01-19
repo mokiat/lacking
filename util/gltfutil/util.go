@@ -177,7 +177,13 @@ func Color0s(doc *gltf.Document, primitive *gltf.Primitive) ([]sprec.Vec4, error
 	if accessor.BufferView == nil {
 		return nil, fmt.Errorf("accessor lacks a buffer view")
 	}
-	if accessor.Type != gltf.AccessorVec4 {
+	var compCount int
+	switch accessor.Type {
+	case gltf.AccessorVec3:
+		compCount = 3
+	case gltf.AccessorVec4:
+		compCount = 4
+	default:
 		return nil, fmt.Errorf("unsupported accessor type %d", accessor.Type)
 	}
 	buffer := BufferViewData(doc, *accessor.BufferView)
@@ -185,16 +191,84 @@ func Color0s(doc *gltf.Document, primitive *gltf.Primitive) ([]sprec.Vec4, error
 
 	result := make([]sprec.Vec4, accessor.Count)
 	switch accessor.ComponentType {
+	case gltf.ComponentUbyte:
+		for i := range result {
+			var r, g, b, a uint8
+			if compCount > 0 {
+				r = scanner.ScanUint8()
+			} else {
+				r = 0xFF
+			}
+			if compCount > 1 {
+				g = scanner.ScanUint8()
+			} else {
+				g = 0xFF
+			}
+			if compCount > 2 {
+				b = scanner.ScanUint8()
+			} else {
+				b = 0xFF
+			}
+			if compCount > 3 {
+				a = scanner.ScanUint8()
+			} else {
+				a = 0xFF
+			}
+			result[i] = sprec.NewVec4(
+				float32(r)/float32(0xFF),
+				float32(g)/float32(0xFF),
+				float32(b)/float32(0xFF),
+				float32(a)/float32(0xFF),
+			)
+		}
 	case gltf.ComponentFloat:
 		for i := range result {
-			result[i] = scanner.ScanSPVec4()
+			var r, g, b, a float32
+			if compCount > 0 {
+				r = scanner.ScanFloat32()
+			} else {
+				r = 1.0
+			}
+			if compCount > 1 {
+				g = scanner.ScanFloat32()
+			} else {
+				g = 1.0
+			}
+			if compCount > 2 {
+				b = scanner.ScanFloat32()
+			} else {
+				b = 1.0
+			}
+			if compCount > 3 {
+				a = scanner.ScanFloat32()
+			} else {
+				a = 1.0
+			}
+			result[i] = sprec.NewVec4(r, g, b, a)
 		}
 	case gltf.ComponentUshort:
 		for i := range result {
-			r := scanner.ScanUint16()
-			g := scanner.ScanUint16()
-			b := scanner.ScanUint16()
-			a := scanner.ScanUint16()
+			var r, g, b, a uint16
+			if compCount > 0 {
+				r = scanner.ScanUint16()
+			} else {
+				r = 0xFFFF
+			}
+			if compCount > 1 {
+				g = scanner.ScanUint16()
+			} else {
+				g = 0xFFFF
+			}
+			if compCount > 2 {
+				b = scanner.ScanUint16()
+			} else {
+				b = 0xFFFF
+			}
+			if compCount > 3 {
+				a = scanner.ScanUint16()
+			} else {
+				a = 0xFFFF
+			}
 			result[i] = sprec.NewVec4(
 				float32(r)/float32(0xFFFF),
 				float32(g)/float32(0xFFFF),

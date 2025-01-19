@@ -2,10 +2,10 @@ package graphics
 
 import (
 	"cmp"
-	"math"
 	"sort"
 
 	"github.com/mokiat/gblob"
+	"github.com/mokiat/gog/seq"
 	"github.com/mokiat/gomath/dprec"
 	"github.com/mokiat/lacking/game/graphics/internal"
 	"github.com/mokiat/lacking/render/ubo"
@@ -40,6 +40,9 @@ func (s *meshRenderer) QueueMeshRenderItems(ctx StageContext, mesh *Mesh, passTy
 	if !mesh.active {
 		return
 	}
+	if ctx.Cascade > mesh.maxCascade {
+		return
+	}
 	definition := mesh.definition
 	passes := definition.passesByType[passType]
 	for _, pass := range passes {
@@ -64,6 +67,9 @@ func (s *meshRenderer) QueueStaticMeshRenderItems(ctx StageContext, mesh *Static
 	if !mesh.active {
 		return
 	}
+	if ctx.Cascade > mesh.maxCascade {
+		return
+	}
 	distance := dprec.Vec3Diff(mesh.position, ctx.CameraPosition).Length()
 	if distance < mesh.minDistance || mesh.maxDistance < distance {
 		return
@@ -77,13 +83,13 @@ func (s *meshRenderer) QueueStaticMeshRenderItems(ctx StageContext, mesh *Static
 		s.renderItems = append(s.renderItems, renderItem{
 			Layer:       pass.Layer,
 			MaterialKey: pass.Key,
-			ArmatureKey: math.MaxUint32,
+			ArmatureKey: mesh.armature.key(),
 
 			Pipeline:     pass.Pipeline,
 			TextureSet:   pass.TextureSet,
 			UniformSet:   pass.UniformSet,
 			ModelData:    mesh.matrixData,
-			ArmatureData: nil,
+			ArmatureData: mesh.armature.uniformData(),
 
 			IndexByteOffset: pass.IndexByteOffset,
 			IndexCount:      pass.IndexCount,
@@ -109,37 +115,10 @@ func (s *meshRenderer) sortRenderItems(items []renderItem) {
 }
 
 func (s *meshRenderer) renderMeshRenderItems(ctx StageContext, items []renderItem) {
-	const maxBatchSize = modelUniformBufferItemCount
-	var (
-		lastMaterialKey = uint32(math.MaxUint32)
-		lastArmatureKey = uint32(math.MaxUint32)
+	iter := seq.BatchSliceFast(items, itemEqFunc, modelUniformBufferItemCount)
 
-		batchStart = 0
-		batchEnd   = 0
-	)
-
-	itemCount := len(items)
-	for i, item := range items {
-		materialKey := item.MaterialKey
-		armatureKey := item.ArmatureKey
-
-		isSame := (materialKey == lastMaterialKey) && (armatureKey == lastArmatureKey)
-		if !isSame {
-			if batchStart < batchEnd {
-				s.renderMeshRenderItemBatch(ctx, items[batchStart:batchEnd])
-			}
-			batchStart = batchEnd
-		}
-		batchEnd++
-
-		batchSize := batchEnd - batchStart
-		if (batchSize >= maxBatchSize) || (i == itemCount-1) {
-			s.renderMeshRenderItemBatch(ctx, items[batchStart:batchEnd])
-			batchStart = batchEnd
-		}
-
-		lastMaterialKey = materialKey
-		lastArmatureKey = armatureKey
+	for batch := range iter {
+		s.renderMeshRenderItemBatch(ctx, batch)
 	}
 }
 
@@ -212,4 +191,10 @@ func (s *meshRenderer) renderMeshRenderItemBatch(ctx StageContext, items []rende
 	}
 
 	commandBuffer.DrawIndexed(template.IndexByteOffset, template.IndexCount, uint32(len(items)))
+}
+
+func itemEqFunc(items []renderItem, i, j int) bool {
+	a := &items[i]
+	b := &items[j]
+	return a.MaterialKey == b.MaterialKey && a.ArmatureKey == b.ArmatureKey
 }

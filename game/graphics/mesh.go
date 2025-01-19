@@ -21,6 +21,7 @@ func newMesh(scene *Scene, info MeshInfo) *Mesh {
 	mesh.scene = scene
 	mesh.itemID = scene.dynamicMeshSet.Insert(dprec.ZeroVec3(), definition.geometry.boundingSphereRadius, mesh)
 	mesh.definition = definition
+	mesh.maxCascade = definition.geometry.maxCascade
 	mesh.armature = info.Armature
 	mesh.active = true
 	return mesh
@@ -34,6 +35,7 @@ type Mesh struct {
 	itemID     spatial.DynamicSetItemID
 	definition *MeshDefinition
 	armature   *Armature
+	maxCascade uint8
 	active     bool
 }
 
@@ -64,6 +66,7 @@ func (m *Mesh) Delete() {
 
 type StaticMeshInfo struct {
 	Definition *MeshDefinition
+	Armature   *Armature
 	Matrix     dprec.Mat4
 }
 
@@ -81,36 +84,25 @@ func createStaticMesh(scene *Scene, info StaticMeshInfo) {
 	staticMesh.position = position
 	staticMesh.minDistance = info.Definition.geometry.minDistance
 	staticMesh.maxDistance = info.Definition.geometry.maxDistance
+	staticMesh.maxCascade = info.Definition.geometry.maxCascade
 	staticMesh.definition = info.Definition
 	staticMesh.matrixData = make([]byte, 16*4)
+	staticMesh.armature = info.Armature
 	staticMesh.active = true
 
 	matrix := dtos.Mat4(info.Matrix)
 	plotter := blob.NewPlotter(staticMesh.matrixData)
-	plotter.PlotFloat32(matrix.M11)
-	plotter.PlotFloat32(matrix.M21)
-	plotter.PlotFloat32(matrix.M31)
-	plotter.PlotFloat32(matrix.M41)
-	plotter.PlotFloat32(matrix.M12)
-	plotter.PlotFloat32(matrix.M22)
-	plotter.PlotFloat32(matrix.M32)
-	plotter.PlotFloat32(matrix.M42)
-	plotter.PlotFloat32(matrix.M13)
-	plotter.PlotFloat32(matrix.M23)
-	plotter.PlotFloat32(matrix.M33)
-	plotter.PlotFloat32(matrix.M43)
-	plotter.PlotFloat32(matrix.M14)
-	plotter.PlotFloat32(matrix.M24)
-	plotter.PlotFloat32(matrix.M34)
-	plotter.PlotFloat32(matrix.M44)
+	plotter.PlotSPMat4(matrix)
 }
 
 type StaticMesh struct {
 	position    dprec.Vec3
 	minDistance float64
 	maxDistance float64
+	maxCascade  uint8
 	matrixData  []byte
 	definition  *MeshDefinition
+	armature    *Armature
 	active      bool
 }
 

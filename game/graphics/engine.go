@@ -60,6 +60,7 @@ type Engine struct {
 	debug *Debug
 
 	freeRenderPassKey uint32
+	freeArmatureID    uint32
 }
 
 func (e *Engine) API() render.API {
@@ -299,6 +300,7 @@ func (e *Engine) CreateMeshGeometry(info MeshGeometryInfo) *MeshGeometry {
 		boundingSphereRadius: info.BoundingSphereRadius,
 		minDistance:          info.MinDistance.ValueOrDefault(-32000),
 		maxDistance:          info.MaxDistance.ValueOrDefault(32000),
+		maxCascade:           info.MaxCascade.ValueOrDefault(255),
 	}
 }
 
@@ -543,4 +545,9 @@ func (e *Engine) createSkyPipeline(info internal.SkyPipelineInfo) (render.Pipeli
 func (e *Engine) pickFreeRenderPassKey() uint32 {
 	e.freeRenderPassKey++
 	return e.freeRenderPassKey
+}
+
+func (e *Engine) pickFreeArmatureID() uint32 {
+	e.freeArmatureID++
+	return e.freeArmatureID
 }

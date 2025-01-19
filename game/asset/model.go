@@ -70,6 +70,9 @@ type Model struct {
 	// ModelInstances is the instantiation of external scene definitions within
 	// this scene.
 	ModelInstances []ModelInstance
+
+	// Blobls is the collection of binary blobs that are part of the scene.
+	Blobs []Blob
 }
 
 // ModelInstance represents the instantiation of an external scene definition

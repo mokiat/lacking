@@ -310,6 +310,9 @@ func BuildModelResource(gltfDoc *gltf.Document, forceCollision bool) (*mdl.Model
 		if maxDistance, ok := metadata.HasMaxDistance(); ok {
 			geometry.SetMaxDistance(maxDistance)
 		}
+		if maxCascade, ok := metadata.HasMaxCascade(); ok {
+			geometry.SetMaxCascade(maxCascade)
+		}
 
 		meshDefinition := &mdl.MeshDefinition{}
 		meshDefinition.SetName(gltfMesh.Name)
@@ -432,6 +435,7 @@ func BuildModelResource(gltfDoc *gltf.Document, forceCollision bool) (*mdl.Model
 			if gltfPrimitive.Material != nil {
 				gltfMaterial := gltfDoc.Materials[*gltfPrimitive.Material]
 				fragment.SetName(gltfMaterial.Name)
+				fragment.AppendMetadata(gltfutil.Properties(gltfMaterial.Extras))
 				if material, ok := materialFromIndex[*gltfPrimitive.Material]; ok {
 					if !material.Metadata().IsInvisible() {
 						meshDefinition.BindMaterial(gltfMaterial.Name, materialFromIndex[*gltfPrimitive.Material])

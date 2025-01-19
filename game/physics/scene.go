@@ -1,6 +1,7 @@
 package physics
 
 import (
+	"maps"
 	"time"
 
 	"github.com/mokiat/gog/ds"
@@ -13,7 +14,6 @@ import (
 	"github.com/mokiat/lacking/game/physics/solver"
 	"github.com/mokiat/lacking/game/timestep"
 	"github.com/mokiat/lacking/util/spatial"
-	"golang.org/x/exp/maps"
 )
 
 func newScene(engine *Engine, interval time.Duration) *Scene {

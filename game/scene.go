@@ -5,6 +5,7 @@ import (
 
 	"github.com/mokiat/gog/ds"
 	"github.com/mokiat/gomath/dprec"
+	"github.com/mokiat/lacking/debug/log"
 	"github.com/mokiat/lacking/debug/metric"
 	"github.com/mokiat/lacking/game/ecs"
 	"github.com/mokiat/lacking/game/graphics"
@@ -166,9 +167,7 @@ func (s *Scene) CreateNode() *hierarchy.Node {
 // the scene.
 func (s *Scene) CreateAmbientLight(info AmbientLightInfo) *hierarchy.Node {
 	node := s.CreateNode()
-	s.placeAmbientLight(placementData{
-		Nodes: []*hierarchy.Node{node},
-	}, ambientLightInstance{
+	s.placeAmbientLight(node, ambientLightInstance{
 		nodeIndex:         0,
 		reflectionTexture: info.ReflectionTexture,
 		refractionTexture: info.RefractionTexture,
@@ -181,9 +180,7 @@ func (s *Scene) CreateAmbientLight(info AmbientLightInfo) *hierarchy.Node {
 // scene.
 func (s *Scene) CreatePointLight(info PointLightInfo) *hierarchy.Node {
 	node := s.CreateNode()
-	s.placePointLight(placementData{
-		Nodes: []*hierarchy.Node{node},
-	}, pointLightInstance{
+	s.placePointLight(node, pointLightInstance{
 		nodeIndex:    0,
 		emitColor:    info.EmitColor.ValueOrDefault(dprec.NewVec3(10.0, 0.0, 10.0)),
 		emitDistance: info.EmitDistance.ValueOrDefault(20.0),
@@ -196,9 +193,7 @@ func (s *Scene) CreatePointLight(info PointLightInfo) *hierarchy.Node {
 // scene.
 func (s *Scene) CreateSpotLight(info SpotLightInfo) *hierarchy.Node {
 	node := s.CreateNode()
-	s.placeSpotLight(placementData{
-		Nodes: []*hierarchy.Node{node},
-	}, spotLightInstance{
+	s.placeSpotLight(node, spotLightInstance{
 		nodeIndex:      0,
 		emitColor:      info.EmitColor.ValueOrDefault(dprec.NewVec3(10.0, 0.0, 10.0)),
 		emitDistance:   info.EmitDistance.ValueOrDefault(20.0),
@@ -213,9 +208,7 @@ func (s *Scene) CreateSpotLight(info SpotLightInfo) *hierarchy.Node {
 // root of the scene.
 func (s *Scene) CreateDirectionalLight(info DirectionalLightInfo) *hierarchy.Node {
 	node := s.CreateNode()
-	s.placeDirectionalLight(placementData{
-		Nodes: []*hierarchy.Node{node},
-	}, directionalLightInstance{
+	s.placeDirectionalLight(node, directionalLightInstance{
 		nodeIndex:  0,
 		emitColor:  info.EmitColor.ValueOrDefault(dprec.NewVec3(10.0, 0.0, 10.0)),
 		castShadow: info.CastShadow.ValueOrDefault(false),
@@ -286,13 +279,9 @@ func (s *Scene) Render(framebuffer render.Framebuffer, viewport graphics.Viewpor
 // TODO: Return the node instead and have the Model be a target?
 func (s *Scene) CreateModel(info ModelInfo) *Model {
 	modelNode := hierarchy.NewNode()
-	modelNode.SetName(info.Name)
-	modelNode.SetPosition(info.Position)
-	modelNode.SetRotation(info.Rotation)
-	modelNode.SetScale(info.Scale)
 
 	definition := info.Definition
-	nodes := make([]*hierarchy.Node, len(definition.nodes))
+	nodes := make(map[int]*hierarchy.Node, len(definition.nodes))
 	for i, nodeDef := range definition.nodes {
 		node := hierarchy.NewNode()
 		node.SetName(nodeDef.Name)
@@ -310,6 +299,35 @@ func (s *Scene) CreateModel(info ModelInfo) *Model {
 		}
 		parent.AppendChild(nodes[i])
 	}
+	if info.RootNode.Specified {
+		if name := info.RootNode.Value; name != "" {
+			modelNode = modelNode.FindNode(info.RootNode.Value)
+		} else {
+			modelNode = nil
+		}
+		if modelNode == nil {
+			log.Error("Root node %q not found", info.RootNode.Value)
+			modelNode = hierarchy.NewNode()
+		}
+		modelNode.Detach()
+		for i := range definition.nodes {
+			if node := nodes[i]; !node.IsDescendantOf(modelNode) {
+				delete(nodes, i)
+			}
+		}
+	}
+
+	modelNode.SetName(info.Name)
+	modelNode.SetPosition(info.Position.ValueOrDefault(dprec.ZeroVec3()))
+	modelNode.SetRotation(info.Rotation.ValueOrDefault(dprec.IdentityQuat()))
+	modelNode.SetScale(info.Scale.ValueOrDefault(dprec.NewVec3(1.0, 1.0, 1.0)))
+	if info.IsDynamic {
+		s.Root().AppendChild(modelNode)
+	}
+
+	// TODO: Move after bodies are created? But maybe only after pos/rot of bodies
+	// is implemented correctly. Right now it does not seem to do anything.
+	modelNode.ApplyFromSource(true)
 
 	animations := make([]*Animation, len(definition.animations))
 	for i, animationDef := range definition.animations {
@@ -324,122 +342,107 @@ func (s *Scene) CreateModel(info ModelInfo) *Model {
 			InverseMatrices: instance.InverseBindMatrices(),
 		})
 		for j, joint := range instance.Joints {
-			var jointNode *hierarchy.Node
-			if joint.NodeIndex >= 0 {
-				jointNode = nodes[joint.NodeIndex]
-			} else {
-				jointNode = modelNode
+			if jointNode := nodes[joint.NodeIndex]; jointNode != nil {
+				jointNode.SetTarget(BoneNodeTarget{
+					Armature:  armature,
+					BoneIndex: j,
+				})
 			}
-			jointNode.SetTarget(BoneNodeTarget{
-				Armature:  armature,
-				BoneIndex: j,
-			})
 		}
 		armatures[i] = armature
 	}
 
+	// NOTE: This needs to happen after armatures are initialized!
+	modelNode.ApplyToTarget(true)
+
 	// TODO: Track mesh instances?
 	for _, instance := range definition.meshes {
-		var meshNode *hierarchy.Node
-		if instance.NodeIndex >= 0 {
-			meshNode = nodes[instance.NodeIndex]
-		} else {
-			meshNode = modelNode
-		}
-		var armature *graphics.Armature
-		if instance.ArmatureIndex >= 0 {
-			armature = armatures[instance.ArmatureIndex]
-		}
-		meshDefinition := definition.meshDefinitions[instance.DefinitionIndex]
+		if meshNode := nodes[instance.NodeIndex]; meshNode != nil {
+			var armature *graphics.Armature
+			if instance.ArmatureIndex >= 0 {
+				armature = armatures[instance.ArmatureIndex]
+			}
+			meshDefinition := definition.meshDefinitions[instance.DefinitionIndex]
 
-		// TODO: Base this on node flags
-		if info.IsDynamic {
-			mesh := s.gfxScene.CreateMesh(graphics.MeshInfo{
-				Definition: meshDefinition,
-				Armature:   armature,
-			})
-			meshNode.SetTarget(MeshNodeTarget{
-				Mesh: mesh,
-			})
-		} else {
-			s.gfxScene.CreateStaticMesh(graphics.StaticMeshInfo{
-				Definition: meshDefinition,
-				Matrix:     meshNode.AbsoluteMatrix(),
-			})
+			// TODO: Base this on node flags
+			if info.IsDynamic {
+				mesh := s.gfxScene.CreateMesh(graphics.MeshInfo{
+					Definition: meshDefinition,
+					Armature:   armature,
+				})
+				meshNode.SetTarget(MeshNodeTarget{
+					Mesh: mesh,
+				})
+			} else {
+				s.gfxScene.CreateStaticMesh(graphics.StaticMeshInfo{
+					Definition: meshDefinition,
+					Armature:   armature,
+					Matrix:     meshNode.AbsoluteMatrix(),
+				})
+			}
 		}
 	}
 
 	var bodyInstances []physics.Body
 	for _, instance := range definition.bodies {
-		var bodyNode *hierarchy.Node
-		if instance.NodeIndex >= 0 {
-			bodyNode = nodes[instance.NodeIndex]
-		} else {
-			bodyNode = modelNode
-		}
-		bodyDefinition := definition.bodyDefinitions[instance.DefinitionIndex]
-		if info.IsDynamic {
-			body := s.physicsScene.CreateBody(physics.BodyInfo{
-				Name:       bodyNode.Name(),
-				Definition: bodyDefinition,
-				Position:   dprec.ZeroVec3(),
-				Rotation:   dprec.IdentityQuat(),
-			})
-			bodyNode.SetSource(BodyNodeSource{
-				Body: body,
-			})
-			bodyInstances = append(bodyInstances, body)
-		} else {
-			absMatrix := bodyNode.AbsoluteMatrix()
-			transform := collision.TRTransform(absMatrix.Translation(), absMatrix.Rotation())
-			collisionSet := collision.NewSet()
-			collisionSet.Replace(bodyDefinition.CollisionSet(), transform)
-			s.physicsScene.CreateProp(physics.PropInfo{
-				Name:         bodyNode.Name(),
-				CollisionSet: collisionSet,
-			})
+		if bodyNode := nodes[instance.NodeIndex]; bodyNode != nil {
+			bodyDefinition := definition.bodyDefinitions[instance.DefinitionIndex]
+			if info.IsDynamic {
+				body := s.physicsScene.CreateBody(physics.BodyInfo{
+					Name:       bodyNode.Name(),
+					Definition: bodyDefinition,
+					// TODO: Initialize from body node matrix?
+					Position: dprec.ZeroVec3(),
+					Rotation: dprec.IdentityQuat(),
+				})
+				bodyNode.SetSource(BodyNodeSource{
+					Body: body,
+				})
+				bodyInstances = append(bodyInstances, body)
+			} else {
+				absMatrix := bodyNode.AbsoluteMatrix()
+				transform := collision.TRTransform(absMatrix.Translation(), absMatrix.Rotation())
+				collisionSet := collision.NewSet()
+				collisionSet.Replace(bodyDefinition.CollisionSet(), transform)
+				s.physicsScene.CreateProp(physics.PropInfo{
+					Name:         bodyNode.Name(),
+					CollisionSet: collisionSet,
+				})
+			}
 		}
 	}
 
 	for _, instance := range definition.ambientLights {
-		s.placeAmbientLight(placementData{
-			Nodes:    nodes,
-			Textures: definition.textures,
-		}, instance)
+		if node := nodes[instance.nodeIndex]; node != nil {
+			s.placeAmbientLight(node, instance)
+		}
 	}
 	for _, instance := range definition.pointLights {
-		s.placePointLight(placementData{
-			Nodes: nodes,
-		}, instance)
+		if node := nodes[instance.nodeIndex]; node != nil {
+			s.placePointLight(node, instance)
+		}
 	}
 	for _, instance := range definition.spotLights {
-		s.placeSpotLight(placementData{
-			Nodes: nodes,
-		}, instance)
+		if node := nodes[instance.nodeIndex]; node != nil {
+			s.placeSpotLight(node, instance)
+		}
 	}
 	for _, instance := range definition.directionalLights {
-		s.placeDirectionalLight(placementData{
-			Nodes: nodes,
-		}, instance)
+		if node := nodes[instance.nodeIndex]; node != nil {
+			s.placeDirectionalLight(node, instance)
+		}
 	}
 	for _, instance := range definition.skies {
-		s.placeSky(placementData{
-			Nodes:          nodes,
-			SkyDefinitions: definition.skyDefinitions,
-		}, instance)
+		if node := nodes[instance.nodeIndex]; node != nil {
+			definition := definition.skyDefinitions[instance.definitionIndex]
+			s.placeSky(node, definition)
+		}
 	}
-
-	if info.IsDynamic {
-		s.Root().AppendChild(modelNode)
-	}
-	modelNode.ApplyFromSource(true)
-	modelNode.ApplyToTarget(true)
 
 	return &Model{
 		definition:    definition,
 		root:          modelNode,
 		bodyInstances: bodyInstances,
-		nodes:         nodes,
 		armatures:     armatures,
 		animations:    animations,
 	}
@@ -506,8 +509,7 @@ func (s *Scene) updateAnimationTrees(elapsedTime time.Duration) {
 	}
 }
 
-func (s *Scene) placeAmbientLight(data placementData, instance ambientLightInstance) {
-	node := data.Nodes[instance.nodeIndex]
+func (s *Scene) placeAmbientLight(node *hierarchy.Node, instance ambientLightInstance) {
 	light := s.gfxScene.CreateAmbientLight(graphics.AmbientLightInfo{
 		Position:          dprec.ZeroVec3(),
 		InnerRadius:       25000.0,
@@ -522,8 +524,7 @@ func (s *Scene) placeAmbientLight(data placementData, instance ambientLightInsta
 	node.ApplyToTarget(false)
 }
 
-func (s *Scene) placePointLight(data placementData, instance pointLightInstance) {
-	node := data.Nodes[instance.nodeIndex]
+func (s *Scene) placePointLight(node *hierarchy.Node, instance pointLightInstance) {
 	light := s.gfxScene.CreatePointLight(graphics.PointLightInfo{
 		Position:   dprec.ZeroVec3(),
 		EmitColor:  instance.emitColor,
@@ -536,8 +537,7 @@ func (s *Scene) placePointLight(data placementData, instance pointLightInstance)
 	node.ApplyToTarget(false)
 }
 
-func (s *Scene) placeSpotLight(data placementData, instance spotLightInstance) {
-	node := data.Nodes[instance.nodeIndex]
+func (s *Scene) placeSpotLight(node *hierarchy.Node, instance spotLightInstance) {
 	light := s.gfxScene.CreateSpotLight(graphics.SpotLightInfo{
 		Position:           dprec.ZeroVec3(),
 		Rotation:           dprec.IdentityQuat(),
@@ -553,8 +553,7 @@ func (s *Scene) placeSpotLight(data placementData, instance spotLightInstance) {
 	node.ApplyToTarget(false)
 }
 
-func (s *Scene) placeDirectionalLight(data placementData, instance directionalLightInstance) {
-	node := data.Nodes[instance.nodeIndex]
+func (s *Scene) placeDirectionalLight(node *hierarchy.Node, instance directionalLightInstance) {
 	light := s.gfxScene.CreateDirectionalLight(graphics.DirectionalLightInfo{
 		Position:   dprec.ZeroVec3(),
 		Rotation:   dprec.IdentityQuat(),
@@ -567,19 +566,11 @@ func (s *Scene) placeDirectionalLight(data placementData, instance directionalLi
 	node.ApplyToTarget(false)
 }
 
-func (s *Scene) placeSky(data placementData, instance skyInstance) {
-	node := data.Nodes[instance.nodeIndex]
+func (s *Scene) placeSky(node *hierarchy.Node, definition *graphics.SkyDefinition) {
 	sky := s.gfxScene.CreateSky(graphics.SkyInfo{
-		Definition: data.SkyDefinitions[instance.definitionIndex],
+		Definition: definition,
 	})
 	node.SetTarget(SkyNodeTarget{
 		Sky: sky,
 	})
-}
-
-type placementData struct {
-	SkyDefinitions []*graphics.SkyDefinition
-
-	Nodes    []*hierarchy.Node
-	Textures []render.Texture
 }

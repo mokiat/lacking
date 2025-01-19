@@ -1,9 +1,11 @@
 package game
 
 import (
+	"maps"
+	"slices"
+
 	"github.com/mokiat/gog/opt"
 	"github.com/mokiat/gomath/dprec"
-	"golang.org/x/exp/maps"
 )
 
 // AnimationDefinitionInfo contains the information required to define an
@@ -76,7 +78,7 @@ func (d *AnimationDefinition) Loop() bool {
 
 // NodeNames returns the names of the nodes that are animated by the animation.
 func (d *AnimationDefinition) NodeNames() []string {
-	return maps.Keys(d.bindings)
+	return slices.Collect(maps.Keys(d.bindings))
 }
 
 // AnimationInfo represents an instantiation of an animation instance.

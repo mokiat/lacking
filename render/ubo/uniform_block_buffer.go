@@ -44,11 +44,18 @@ func NewUniformBlockBuffer(api render.API, capacity int) *UniformBlockBuffer {
 	return &UniformBlockBuffer{
 		api:     api,
 		plotter: blob.NewPlotter(data),
-		buffer: api.CreateUniformBuffer(render.BufferInfo{
-			Label:   "Uniform Block Buffer",
-			Dynamic: true,
-			Size:    uint32(len(data)),
-		}),
+		buffers: [2]render.Buffer{
+			api.CreateUniformBuffer(render.BufferInfo{
+				Label:   "Uniform Block Buffer (01)",
+				Dynamic: true,
+				Size:    uint32(len(data)),
+			}),
+			api.CreateUniformBuffer(render.BufferInfo{
+				Label:   "Uniform Block Buffer (02)",
+				Dynamic: true,
+				Size:    uint32(len(data)),
+			}),
+		},
 		blockAlignment: api.Limits().UniformBufferOffsetAlignment(),
 	}
 }
@@ -61,7 +68,7 @@ type UniformBlockBuffer struct {
 
 	api            render.API
 	plotter        *blob.Plotter
-	buffer         render.Buffer
+	buffers        [2]render.Buffer
 	blockAlignment int
 }
 
@@ -81,7 +88,7 @@ func (b *UniformBlockBuffer) Placement(uniformSize uint32) UniformPlacement {
 	}
 
 	return UniformPlacement{
-		Buffer:  b.buffer,
+		Buffer:  b.buffers[0],
 		Plotter: b.plotter,
 		Offset:  uint32(b.plotter.Offset()),
 		Size:    uniformSize,
@@ -93,13 +100,17 @@ func (b *UniformBlockBuffer) Placement(uniformSize uint32) UniformPlacement {
 func (b *UniformBlockBuffer) Upload() {
 	b.skipToAlignment()
 	if offset := b.plotter.Offset(); offset > 0 {
-		b.api.Queue().WriteBuffer(b.buffer, 0, b.plotter.Data()[:offset])
+		b.api.Queue().WriteBuffer(b.buffers[0], 0, b.plotter.Data()[:offset])
 	}
 }
 
 // Release releases the resources associated with the uniform block buffer.
 func (b *UniformBlockBuffer) Release() {
-	b.buffer.Release()
+	b.buffers[0].Release()
+}
+
+func (b *UniformBlockBuffer) Swap() {
+	b.buffers[0], b.buffers[1] = b.buffers[1], b.buffers[0]
 }
 
 func (b *UniformBlockBuffer) skipToAlignment() {

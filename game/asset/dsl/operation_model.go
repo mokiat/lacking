@@ -94,6 +94,32 @@ func EditMaterial(name string, opts ...Operation) Operation {
 	)
 }
 
+// AddBlob creates an operation that adds a blob to the target model.
+func AddBlob(blobProvider Provider[*mdl.Blob]) Operation {
+	return FuncOperation(
+		// apply function
+		func(target any) error {
+			blob, err := blobProvider.Get()
+			if err != nil {
+				return fmt.Errorf("error getting blob: %w", err)
+			}
+
+			targetModel, ok := target.(*mdl.Model)
+			if !ok {
+				return fmt.Errorf("target %T is not a model", target)
+			}
+			targetModel.AddBlob(blob)
+
+			return nil
+		},
+
+		// digest function
+		func() ([]byte, error) {
+			return CreateDigest("add-blob", blobProvider)
+		},
+	)
+}
+
 func findMaterial(nodes []*mdl.Node, name string) *mdl.Material {
 	nodes = flattenNodes(nodes)
 	for _, node := range nodes {

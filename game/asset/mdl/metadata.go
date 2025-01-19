@@ -24,6 +24,14 @@ func (m Metadata) HasMaxDistance() (float64, bool) {
 	return m.FloatProperty("max-distance")
 }
 
+func (m Metadata) HasMaxCascade() (int, bool) {
+	value, ok := m.FloatProperty("max-cascade")
+	if !ok {
+		return 0, false
+	}
+	return int(value), true
+}
+
 func (m Metadata) IsSet(key string) bool {
 	if m == nil {
 		return false

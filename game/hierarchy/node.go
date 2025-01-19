@@ -211,6 +211,14 @@ func (n *Node) RemoveChild(child *Node) {
 	child.revision = initialRevision
 }
 
+// Visit traverses the node hierarchy starting from the current node.
+func (n *Node) Visit(callback func(*Node)) {
+	callback(n)
+	for child := n.firstChild; child != nil; child = child.rightSibling {
+		child.Visit(callback)
+	}
+}
+
 // FindNode searches the hierarchy starting from this Node (inclusive) for a
 // Node that has the specified name.
 func (n *Node) FindNode(name string) *Node {
@@ -223,6 +231,19 @@ func (n *Node) FindNode(name string) *Node {
 		}
 	}
 	return nil
+}
+
+// IsDescendantOf returns whether the node is a descendant of the specified
+// ancestor.
+func (n *Node) IsDescendantOf(ancestor *Node) bool {
+	current := n
+	for current != nil {
+		if current == ancestor {
+			return true
+		}
+		current = current.parent
+	}
+	return false
 }
 
 // UseTransformation configures a TransformFunc to be used for calculating

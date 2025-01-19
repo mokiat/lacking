@@ -144,6 +144,14 @@ func (c *Converter) convertModel(s *Model) (asset.Model, error) {
 		assetAnimations[i] = c.convertAnimation(animation)
 	}
 
+	assetBlobs := make([]asset.Blob, len(c.model.blobs))
+	for i, blob := range c.model.blobs {
+		assetBlobs[i] = asset.Blob{
+			Name: blob.Name,
+			Data: blob.Data,
+		}
+	}
+
 	return asset.Model{
 		Nodes:             c.assetNodes,
 		Animations:        assetAnimations,
@@ -162,6 +170,7 @@ func (c *Converter) convertModel(s *Model) (asset.Model, error) {
 		SpotLights:        assetSpotLights,
 		DirectionalLights: assetDirectionalLights,
 		Skies:             assetSkies,
+		Blobs:             assetBlobs,
 	}, nil
 }
 
@@ -631,6 +640,7 @@ func (c *Converter) convertGeometry(geometry *Geometry) (uint32, error) {
 		BoundingSphereRadius: boundingSphereRadius,
 		MinDistance:          geometry.minDistance,
 		MaxDistance:          geometry.maxDistance,
+		MaxCascade:           uint8(geometry.maxCascade),
 	}
 
 	index := uint32(len(c.assetGeometries))

@@ -1,6 +1,8 @@
 package mdl
 
 import (
+	"maps"
+
 	"github.com/mokiat/gomath/sprec"
 	"github.com/mokiat/lacking/game/asset"
 )
@@ -31,6 +33,7 @@ func NewGeometry() *Geometry {
 	return &Geometry{
 		minDistance: -32000.0,
 		maxDistance: 32000.0,
+		maxCascade:  255,
 	}
 }
 
@@ -43,6 +46,7 @@ type Geometry struct {
 	fragments    []*Fragment
 	minDistance  float64
 	maxDistance  float64
+	maxCascade   int
 }
 
 func (g *Geometry) Metadata() Metadata {
@@ -125,6 +129,14 @@ func (g *Geometry) SetMaxDistance(distance float64) {
 	g.maxDistance = distance
 }
 
+func (g *Geometry) MaxCascade() int {
+	return g.maxCascade
+}
+
+func (g *Geometry) SetMaxCascade(cascade int) {
+	g.maxCascade = min(max(cascade, 0), 255)
+}
+
 func NewFragment() *Fragment {
 	return &Fragment{}
 }
@@ -143,6 +155,13 @@ func (f *Fragment) Metadata() Metadata {
 
 func (f *Fragment) SetMetadata(metadata Metadata) {
 	f.metadata = metadata
+}
+
+func (f *Fragment) AppendMetadata(metadata Metadata) {
+	if f.metadata == nil {
+		f.metadata = make(Metadata)
+	}
+	maps.Copy(f.metadata, metadata)
 }
 
 func (f *Fragment) Name() string {

@@ -7,7 +7,6 @@ import (
 	"github.com/mokiat/lacking/game/asset"
 	"github.com/mokiat/lacking/render"
 	"github.com/mokiat/lacking/util/async"
-	"golang.org/x/exp/maps"
 )
 
 // ErrNotFound indicates that a resource was not found.
@@ -95,7 +94,7 @@ func (s *ResourceSet) Delete() {
 			}
 		}()
 	}
-	maps.Clear(s.namedModels)
+	clear(s.namedModels)
 }
 
 func (s *ResourceSet) findModel(id string) (async.Promise[*ModelDefinition], bool) {

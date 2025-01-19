@@ -259,7 +259,7 @@ type Identifier struct {
 
 func (*Identifier) _isExpression() {}
 
-// FieldIDentifier represents a reference to a field of a structure.
+// FieldIdentifier represents a reference to a field of a structure.
 type FieldIdentifier struct {
 	ObjName   string // TODO: Identifier, or maybe even expression?
 	FieldName string // TODO: Identifier

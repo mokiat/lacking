@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"time"
 
-	"golang.org/x/exp/maps"
-
 	"github.com/mokiat/gomath/sprec"
 	"github.com/mokiat/lacking/app"
 )
@@ -277,6 +275,12 @@ func (w *windowHandler) OnFramebufferResize(size Size) {
 func (w *windowHandler) OnKeyboardEvent(event KeyboardEvent) bool {
 	current := w.focusedElement
 	for current != nil {
+		// TODO: The following check could be handled with mount and unmount
+		// events and handling.
+		if !current.HasAncestor(w.root) {
+			w.DiscardFocus()
+			return false
+		}
 		if current.focusable && current.onKeyboardEvent(event) {
 			return true
 		}
@@ -373,7 +377,7 @@ func (w *windowHandler) processFocusChange(element *Element, position Position) 
 
 func (w *windowHandler) checkMouseLeaveEnter(mousePosition Position) {
 	w.oldEnteredElements, w.enteredElements = w.enteredElements, w.oldEnteredElements
-	maps.Clear(w.enteredElements)
+	clear(w.enteredElements)
 
 	w.processMouseLeave(w.root, mousePosition)
 	w.processMouseLeaveInvisible(mousePosition)

@@ -281,165 +281,375 @@ var _ = Describe("Parse", func() {
 
 var _ = Describe("Parser", func() {
 
-	DescribeTable("ParseNewLine", func(inSource string) {
+	at := func(line, column uint32) lsl.Position {
+		if line == 1 {
+			// The first line does not include any tabs in front of it, because
+			// gofmt does not allow to move the backtick character to the beginning.
+			return lsl.At(line, column)
+		} else {
+			// NOTE: Adding 3 characters due to three tabs in front of each line
+			// because of the way the test cases are formatted.
+			return lsl.At(line, column+3)
+		}
+	}
+
+	DescribeTable("ParseNewLine", func(inSource string, expectedErr error) {
 		parser := lsl.NewParser(inSource)
-		Expect(parser.ParseNewLine()).To(Succeed())
+		err := parser.ParseNewLine()
+		if expectedErr == nil {
+			Expect(err).ToNot(HaveOccurred())
+		} else {
+			Expect(err).To(HaveOccurred())
+			Expect(err).To(Equal(expectedErr))
+		}
 	},
 		Entry("new line",
-			`
-			`,
+			"\n irrelevant",
+			nil,
+		),
+		Entry("carriage return and new line",
+			"\r\n irrelevant",
+			nil,
 		),
 		Entry("new line after spacing",
-			`  
-			`,
+			"  \t  \n irrelevant",
+			nil,
+		),
+		Entry("no tokens",
+			"",
+			&lsl.ParseError{
+				Pos:     at(1, 1),
+				Message: "expected a new line token",
+			},
+		),
+		Entry("identifier",
+			"hello \n",
+			&lsl.ParseError{
+				Pos:     at(1, 1),
+				Message: "expected a new line token",
+			},
 		),
 	)
 
-	DescribeTable("ParseComment", func(inSource string) {
+	DescribeTable("ParseComment", func(inSource string, expectedErr error) {
 		parser := lsl.NewParser(inSource)
-		Expect(parser.ParseComment()).To(Succeed())
+		err := parser.ParseComment()
+		if expectedErr == nil {
+			Expect(err).ToNot(HaveOccurred())
+		} else {
+			Expect(err).To(HaveOccurred())
+			Expect(err).To(Equal(expectedErr))
+		}
 	},
 		Entry("plain comment",
-			`// a comment`,
+			"// a comment",
+			nil,
 		),
 		Entry("comment after spacing",
-			`// a comment`,
+			" \t // a comment",
+			nil,
 		),
 		Entry("comment with new line",
 			`// some comment
-			`,
+			irrelevant`,
+			nil,
+		),
+		Entry("operator",
+			`; // a comment`,
+			&lsl.ParseError{
+				Pos:     at(1, 1),
+				Message: "expected a comment token",
+			},
 		),
 	)
 
-	DescribeTable("ParseOptionalRemainder", func(inSource string) {
+	DescribeTable("ParseOptionalRemainder", func(inSource string, expectedErr error) {
 		parser := lsl.NewParser(inSource)
-		Expect(parser.ParseOptionalRemainder()).To(Succeed())
+		err := parser.ParseOptionalRemainder()
+		if expectedErr == nil {
+			Expect(err).ToNot(HaveOccurred())
+		} else {
+			Expect(err).To(HaveOccurred())
+			Expect(err).To(Equal(expectedErr))
+		}
 	},
 		Entry("empty",
-			``,
+			"",
+			nil,
 		),
 		Entry("new line",
-			`
-			`,
+			"\r\n",
+			nil,
 		),
 		Entry("comment",
-			`// a comment`,
+			"// a comment",
+			nil,
+		),
+		Entry("vital token",
+			"+= 5",
+			&lsl.ParseError{
+				Pos:     at(1, 1),
+				Message: "expected a comment, new line or end of file",
+			},
 		),
 	)
 
-	DescribeTable("ParseBlockStart", func(inSource string) {
+	DescribeTable("ParseBlockStart", func(inSource string, expectedErr error) {
 		parser := lsl.NewParser(inSource)
-		Expect(parser.ParseBlockStart()).To(Succeed())
+		err := parser.ParseBlockStart()
+		if expectedErr == nil {
+			Expect(err).ToNot(HaveOccurred())
+		} else {
+			Expect(err).To(HaveOccurred())
+			Expect(err).To(Equal(expectedErr))
+		}
 	},
+		Entry("just opening bracket",
+			"{",
+			nil,
+		),
 		Entry("with new line",
-			`  {
-			`,
+			" \t {\n",
+			nil,
 		),
 		Entry("with comment",
-			`{ // closing bracket
-			`,
+			"{ // closing bracket",
+			nil,
+		),
+		Entry("not opening bracket",
+			"5.0\n",
+			&lsl.ParseError{
+				Pos:     at(1, 1),
+				Message: "expected an opening bracket",
+			},
 		),
 	)
 
-	DescribeTable("ParseBlockEnd", func(inSource string) {
+	DescribeTable("ParseBlockEnd", func(inSource string, expectedErr error) {
 		parser := lsl.NewParser(inSource)
-		Expect(parser.ParseBlockEnd()).To(Succeed())
+		err := parser.ParseBlockEnd()
+		if expectedErr == nil {
+			Expect(err).ToNot(HaveOccurred())
+		} else {
+			Expect(err).To(HaveOccurred())
+			Expect(err).To(Equal(expectedErr))
+		}
 	},
 		Entry("just closing bracket",
-			`}`,
+			"}",
+			nil,
 		),
 		Entry("with new line",
-			`}
-			`,
+			" \t }\n",
+			nil,
 		),
 		Entry("with comment",
-			`} // closing bracket
-			`,
+			"} // closing bracket\n",
+			nil,
+		),
+		Entry("not closing bracket",
+			"5.0\n",
+			&lsl.ParseError{
+				Pos:     at(1, 1),
+				Message: "expected a closing bracket",
+			},
 		),
 	)
 
-	DescribeTable("ParseNamedParameterList", func(inSource string, expectedFields []lsl.Field) {
+	DescribeTable("ParseNamedParameterList", func(inSource string, expectedFields []lsl.Field, expectedErr error) {
 		parser := lsl.NewParser(inSource)
 		fields, err := parser.ParseNamedParameterList()
-		Expect(err).ToNot(HaveOccurred())
-		Expect(fields).To(Equal(expectedFields))
+		if expectedErr == nil {
+			Expect(err).ToNot(HaveOccurred())
+			Expect(fields).To(Equal(expectedFields))
+		} else {
+			Expect(err).To(HaveOccurred())
+			Expect(err).To(Equal(expectedErr))
+		}
 	},
 		Entry("empty list",
-			``,
+			"",
+			nil,
 			nil,
 		),
 		Entry("single parameter",
-			`color vec4`,
+			"color vec4",
 			[]lsl.Field{
 				{Name: "color", Type: "vec4"},
 			},
+			nil,
 		),
 		Entry("multiple parameters, single line",
-			`color vec4, intensity float`,
+			" \t color vec4, \t intensity float \t ",
 			[]lsl.Field{
 				{Name: "color", Type: "vec4"},
 				{Name: "intensity", Type: "float"},
 			},
+			nil,
 		),
 		Entry("multiple parameters, multiple lines",
 			`
 			color vec4, // first param here
 			// there will be a second param
+
 			intensity float,
+
 			`,
 			[]lsl.Field{
 				{Name: "color", Type: "vec4"},
 				{Name: "intensity", Type: "float"},
 			},
+			nil,
+		),
+		Entry("ending on a non-comma operator",
+			"color vec4)",
+			[]lsl.Field{
+				{Name: "color", Type: "vec4"},
+			},
+			nil,
+		),
+		Entry("ending on a comma operator",
+			"color vec4,",
+			[]lsl.Field{
+				{Name: "color", Type: "vec4"},
+			},
+			nil,
+		),
+		Entry("ending on a twin-comma operator",
+			"color vec4,,",
+			nil,
+			&lsl.ParseError{
+				Pos:     at(1, 12),
+				Message: "unexpected comma",
+			},
+		),
+		Entry("non-identifier name",
+			"5 vec4",
+			nil,
+			&lsl.ParseError{
+				Pos:     at(1, 1),
+				Message: "expected a name identifier or end of list",
+			},
+		),
+		Entry("non-identifier type",
+			"color 5",
+			nil,
+			&lsl.ParseError{
+				Pos:     at(1, 7),
+				Message: "expected a type identifier",
+			},
+		),
+		Entry("non-comma or operator after type",
+			"color vec4 hello",
+			nil,
+			&lsl.ParseError{
+				Pos:     at(1, 12),
+				Message: "expected a comma or end of list",
+			},
 		),
 	)
 
-	DescribeTable("ParseUnnamedParameterList", func(inSource string, expectedFields []lsl.Field) {
+	DescribeTable("ParseUnnamedParameterList", func(inSource string, expectedFields []lsl.Field, expectedErr error) {
 		parser := lsl.NewParser(inSource)
 		fields, err := parser.ParseUnnamedParameterList()
-		Expect(err).ToNot(HaveOccurred())
-		Expect(fields).To(Equal(expectedFields))
+		if expectedErr == nil {
+			Expect(err).ToNot(HaveOccurred())
+			Expect(fields).To(Equal(expectedFields))
+		} else {
+			Expect(err).To(HaveOccurred())
+			Expect(err).To(Equal(expectedErr))
+		}
 	},
 		Entry("empty list",
-			``,
+			"",
+			nil,
 			nil,
 		),
 		Entry("single parameter",
-			`vec4`,
+			"vec4",
 			[]lsl.Field{
 				{Type: "vec4"},
 			},
+			nil,
 		),
 		Entry("multiple parameters, single line",
-			`vec4, float`,
+			" \t vec4, \t float \t ",
 			[]lsl.Field{
 				{Type: "vec4"},
 				{Type: "float"},
 			},
+			nil,
 		),
 		Entry("multiple parameters, multiple lines",
 			`
 			vec4, // first param here
 			// there will be a second param
+
 			float,
+
 			`,
 			[]lsl.Field{
 				{Type: "vec4"},
 				{Type: "float"},
 			},
+			nil,
+		),
+		Entry("ending on a non-comma operator",
+			"vec4)",
+			[]lsl.Field{
+				{Type: "vec4"},
+			},
+			nil,
+		),
+		Entry("ending on a comma operator",
+			"vec4,",
+			[]lsl.Field{
+				{Type: "vec4"},
+			},
+			nil,
+		),
+		Entry("ending on a twin-comma operator",
+			"vec4,,",
+			nil,
+			&lsl.ParseError{
+				Pos:     at(1, 6),
+				Message: "unexpected comma",
+			},
+		),
+		Entry("non-identifier type",
+			"5",
+			nil,
+			&lsl.ParseError{
+				Pos:     at(1, 1),
+				Message: "expected a type identifier or end of list",
+			},
+		),
+		Entry("non-comma or operator after type",
+			"vec4 hello",
+			nil,
+			&lsl.ParseError{
+				Pos:     at(1, 6),
+				Message: "expected a comma or end of list",
+			},
 		),
 	)
 
-	DescribeTable("ParseTextureBlock", func(inSource string, expectedBlock *lsl.TextureBlockDeclaration) {
+	DescribeTable("ParseTextureBlock", func(inSource string, expectedBlock *lsl.TextureBlockDeclaration, expectedErr error) {
 		parser := lsl.NewParser(inSource)
 		block, err := parser.ParseTextureBlock()
-		Expect(err).ToNot(HaveOccurred())
-		Expect(block).To(Equal(expectedBlock))
+		if expectedErr == nil {
+			Expect(err).ToNot(HaveOccurred())
+			Expect(block).To(Equal(expectedBlock))
+		} else {
+			Expect(err).To(HaveOccurred())
+			Expect(err).To(Equal(expectedErr))
+		}
 	},
-		Entry("empty",
+		Entry("empty block",
 			`textures {
 			}`,
 			&lsl.TextureBlockDeclaration{},
+			nil,
 		),
 		Entry("with fields",
 			`textures {
@@ -452,19 +662,59 @@ var _ = Describe("Parser", func() {
 					{Name: "second", Type: "samplerCube"},
 				},
 			},
+			nil,
+		),
+		Entry("with comments and spaces",
+			`textures { // block start
+
+			first 	 sampler2D  	, // first field
+
+			second samplerCube,    // second field
+
+			} // block end`,
+			&lsl.TextureBlockDeclaration{
+				Fields: []lsl.Field{
+					{Name: "first", Type: "sampler2D"},
+					{Name: "second", Type: "samplerCube"},
+				},
+			},
+			nil,
+		),
+		Entry("closing on same line",
+			`textures {}`,
+			nil,
+			&lsl.ParseError{
+				Pos:     at(1, 11),
+				Message: "expected a comment, new line or end of file",
+			},
+		),
+		Entry("other block type",
+			`uniforms {
+			}`,
+			nil,
+			&lsl.ParseError{
+				Pos:     at(1, 1),
+				Message: "expected 'textures' keyword",
+			},
 		),
 	)
 
-	DescribeTable("ParseUniformBlock", func(inSource string, expectedBlock *lsl.UniformBlockDeclaration) {
+	DescribeTable("ParseUniformBlock", func(inSource string, expectedBlock *lsl.UniformBlockDeclaration, expectedErr error) {
 		parser := lsl.NewParser(inSource)
 		block, err := parser.ParseUniformBlock()
-		Expect(err).ToNot(HaveOccurred())
-		Expect(block).To(Equal(expectedBlock))
+		if expectedErr == nil {
+			Expect(err).ToNot(HaveOccurred())
+			Expect(block).To(Equal(expectedBlock))
+		} else {
+			Expect(err).To(HaveOccurred())
+			Expect(err).To(Equal(expectedErr))
+		}
 	},
-		Entry("empty",
+		Entry("empty block",
 			`uniforms {
 			}`,
 			&lsl.UniformBlockDeclaration{},
+			nil,
 		),
 		Entry("with fields",
 			`uniforms {
@@ -477,19 +727,59 @@ var _ = Describe("Parser", func() {
 					{Name: "intensity", Type: "float"},
 				},
 			},
+			nil,
+		),
+		Entry("with comments and spaces",
+			`uniforms { // block start
+
+			color vec4  	, // first field
+
+			intensity float,    // second field
+
+			} // block end`,
+			&lsl.UniformBlockDeclaration{
+				Fields: []lsl.Field{
+					{Name: "color", Type: "vec4"},
+					{Name: "intensity", Type: "float"},
+				},
+			},
+			nil,
+		),
+		Entry("closing on same line",
+			`uniforms {}`,
+			nil,
+			&lsl.ParseError{
+				Pos:     at(1, 11),
+				Message: "expected a comment, new line or end of file",
+			},
+		),
+		Entry("other block type",
+			`textures {
+			}`,
+			nil,
+			&lsl.ParseError{
+				Pos:     at(1, 1),
+				Message: "expected 'uniforms' keyword",
+			},
 		),
 	)
 
-	DescribeTable("ParseVaryingBlock", func(inSource string, expectedBlock *lsl.VaryingBlockDeclaration) {
+	DescribeTable("ParseVaryingBlock", func(inSource string, expectedBlock *lsl.VaryingBlockDeclaration, expectedErr error) {
 		parser := lsl.NewParser(inSource)
 		block, err := parser.ParseVaryingBlock()
-		Expect(err).ToNot(HaveOccurred())
-		Expect(block).To(Equal(expectedBlock))
+		if expectedErr == nil {
+			Expect(err).ToNot(HaveOccurred())
+			Expect(block).To(Equal(expectedBlock))
+		} else {
+			Expect(err).To(HaveOccurred())
+			Expect(err).To(Equal(expectedErr))
+		}
 	},
 		Entry("empty",
 			`varyings {
 			}`,
 			&lsl.VaryingBlockDeclaration{},
+			nil,
 		),
 		Entry("with fields",
 			`varyings {
@@ -501,6 +791,40 @@ var _ = Describe("Parser", func() {
 					{Name: "color", Type: "vec4"},
 					{Name: "intensity", Type: "float"},
 				},
+			},
+			nil,
+		),
+		Entry("with comments and spaces",
+			`varyings { // block start
+
+			color vec4  	, // first field
+
+			intensity float,    // second field
+
+			} // block end`,
+			&lsl.VaryingBlockDeclaration{
+				Fields: []lsl.Field{
+					{Name: "color", Type: "vec4"},
+					{Name: "intensity", Type: "float"},
+				},
+			},
+			nil,
+		),
+		Entry("closing on same line",
+			`varyings {}`,
+			nil,
+			&lsl.ParseError{
+				Pos:     at(1, 11),
+				Message: "expected a comment, new line or end of file",
+			},
+		),
+		Entry("other block type",
+			`uniforms {
+			}`,
+			nil,
+			&lsl.ParseError{
+				Pos:     at(1, 1),
+				Message: "expected 'varyings' keyword",
 			},
 		),
 	)

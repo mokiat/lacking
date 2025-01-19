@@ -35,6 +35,7 @@ func (s *ResourceSet) convertMeshGeometry(assetGeometry asset.Geometry) async.Pr
 		BoundingSphereRadius: assetGeometry.BoundingSphereRadius,
 		MinDistance:          opt.V(assetGeometry.MinDistance),
 		MaxDistance:          opt.V(assetGeometry.MaxDistance),
+		MaxCascade:           opt.V(assetGeometry.MaxCascade),
 	}
 
 	promise := async.NewPromise[*graphics.MeshGeometry]()

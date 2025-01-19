@@ -1,9 +1,10 @@
 package spatial
 
 import (
+	"slices"
+
 	"github.com/mokiat/gog/opt"
 	"github.com/mokiat/gomath/dprec"
-	"golang.org/x/exp/slices"
 )
 
 var sizeToDoubleRadius = dprec.Sqrt(3)
@@ -302,6 +303,7 @@ func (t *StaticOctree[T]) visitNodeInHexahedronRegion(nodeIndex int32, region *H
 }
 
 func (t *StaticOctree[T]) refresh() {
+	// TODO: Test if this can be made faster with ref sorting.
 	slices.SortFunc(t.items, compareStaticItems[T])
 
 	lastNode := unspecifiedIndex

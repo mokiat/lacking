@@ -125,6 +125,7 @@ func (s *ClampDirectionOffset) Reset(ctx solver.PairContext) {
 }
 
 func (s *ClampDirectionOffset) ApplyImpulses(ctx solver.PairContext) {
+	// TODO: Should drift be passed to this check?
 	lambda := ctx.JacobianImpulseLambda(s.jacobian, s.drift, s.restitution)
 	if lambda > 0.0 {
 		return // moving away
