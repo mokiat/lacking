@@ -2,7 +2,6 @@ package mdl
 
 import (
 	"github.com/mokiat/lacking/game/asset"
-	"golang.org/x/exp/maps"
 )
 
 const (
@@ -50,9 +49,9 @@ type Material struct {
 }
 
 func (m *Material) Clear() {
-	maps.Clear(m.metadata)
-	maps.Clear(m.samplers)
-	maps.Clear(m.properties)
+	clear(m.metadata)
+	clear(m.samplers)
+	clear(m.properties)
 	m.geometryPasses = nil
 	m.shadowPasses = nil
 	m.forwardPasses = nil

@@ -2,9 +2,9 @@ package mvc
 
 import (
 	"fmt"
+	"slices"
 
 	co "github.com/mokiat/lacking/ui/component"
-	"golang.org/x/exp/slices"
 )
 
 // Event represents an arbitrary notification event.

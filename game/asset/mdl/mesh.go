@@ -1,8 +1,10 @@
 package mdl
 
 import (
+	"maps"
+	"slices"
+
 	"github.com/mokiat/gog"
-	"golang.org/x/exp/maps"
 )
 
 type MeshDefinition struct {
@@ -28,7 +30,7 @@ func (m *MeshDefinition) SetGeometry(geometry *Geometry) {
 }
 
 func (m *MeshDefinition) Materials() []*Material {
-	return gog.Dedupe(maps.Values(m.materialBindings))
+	return gog.Dedupe(slices.Collect(maps.Values(m.materialBindings)))
 }
 
 func (m *MeshDefinition) BindMaterial(name string, material *Material) {

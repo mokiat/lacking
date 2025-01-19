@@ -2,12 +2,11 @@ package spatial
 
 import (
 	"math"
+	"slices"
 
 	"github.com/mokiat/gog/ds"
 	"github.com/mokiat/gog/opt"
 	"github.com/mokiat/gomath/dprec"
-	"golang.org/x/exp/maps"
-	"golang.org/x/exp/slices"
 )
 
 // SweepPruneItemID is an identifier used to control the placement of an item
@@ -171,7 +170,7 @@ func (s *SweepPruneSet[T]) updateMarkers() {
 			marker.Coord = s.items[itemIndex].BoundaryZ(marker.IsStart)
 		}
 	}
-	maps.Clear(s.dirtyItemIDs)
+	clear(s.dirtyItemIDs)
 }
 
 func (s *SweepPruneSet[T]) sortMarkers() {
@@ -181,15 +180,17 @@ func (s *SweepPruneSet[T]) sortMarkers() {
 }
 
 func (s *SweepPruneSet[T]) determineCandidates() {
-	maps.Clear(s.candidates)
+	clear(s.candidates)
 	s.addCandidatesForSeries(s.seriesX)
 	s.addCandidatesForSeries(s.seriesY)
 	s.addCandidatesForSeries(s.seriesZ)
 }
 
 func (s *SweepPruneSet[T]) addCandidatesForSeries(series []sweepPruneMarker) {
-	maps.Clear(s.active)
-	for _, marker := range s.seriesX {
+	clear(s.active)
+	// TODO: There was an issue here where the range was over the seriesX slice
+	// always. Verify if this is correct and if maybe it isn't much better now.
+	for _, marker := range series {
 		if math.IsInf(marker.Coord, 0) {
 			break // we have reached deleted items
 		}

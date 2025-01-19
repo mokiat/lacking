@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"time"
 
-	"golang.org/x/exp/maps"
-
 	"github.com/mokiat/gomath/sprec"
 	"github.com/mokiat/lacking/app"
 )
@@ -379,7 +377,7 @@ func (w *windowHandler) processFocusChange(element *Element, position Position) 
 
 func (w *windowHandler) checkMouseLeaveEnter(mousePosition Position) {
 	w.oldEnteredElements, w.enteredElements = w.enteredElements, w.oldEnteredElements
-	maps.Clear(w.enteredElements)
+	clear(w.enteredElements)
 
 	w.processMouseLeave(w.root, mousePosition)
 	w.processMouseLeaveInvisible(mousePosition)

@@ -13,7 +13,6 @@ require (
 	github.com/onsi/gomega v1.36.2
 	github.com/qmuntal/gltf v0.28.0
 	github.com/x448/float16 v0.8.4
-	golang.org/x/exp v0.0.0-20250106191152-7588d65b2ba8
 	golang.org/x/image v0.23.0
 	golang.org/x/sync v0.10.0
 )
