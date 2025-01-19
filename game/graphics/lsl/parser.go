@@ -341,6 +341,30 @@ func (p *Parser) ParseUniformBlock() (*UniformBlockDeclaration, error) {
 	}, nil
 }
 
+// ParseVaryingBlock parses a block containing varying fields.
+func (p *Parser) ParseVaryingBlock() (*VaryingBlockDeclaration, error) {
+	varyingToken := p.nextToken()
+	if !varyingToken.IsSpecificIdentifier("varyings") {
+		return nil, &ParseError{
+			Pos:     varyingToken.Pos,
+			Message: "expected 'varyings' keyword",
+		}
+	}
+	if err := p.ParseBlockStart(); err != nil {
+		return nil, err
+	}
+	fields, err := p.ParseNamedParameterList()
+	if err != nil {
+		return nil, err
+	}
+	if err := p.ParseBlockEnd(); err != nil {
+		return nil, err
+	}
+	return &VaryingBlockDeclaration{
+		Fields: fields,
+	}, nil
+}
+
 // ParseShader parses the LSL source code and returns a shader AST object.
 // If the source code is invalid, an error is returned.
 func (p *Parser) ParseShader() (*Shader, error) {
@@ -388,26 +412,6 @@ func (p *Parser) ParseShader() (*Shader, error) {
 		token = p.peekToken()
 	}
 	return &shader, nil
-}
-
-func (p *Parser) ParseVaryingBlock() (*VaryingBlockDeclaration, error) {
-	varyingToken := p.nextToken()
-	if !varyingToken.IsSpecificIdentifier("varyings") {
-		return nil, fmt.Errorf("expected varying keyword")
-	}
-	if err := p.ParseBlockStart(); err != nil {
-		return nil, fmt.Errorf("error parsing varying block start: %w", err)
-	}
-	fields, err := p.ParseNamedParameterList()
-	if err != nil {
-		return nil, fmt.Errorf("error parsing varying block fields: %w", err)
-	}
-	if err := p.ParseBlockEnd(); err != nil {
-		return nil, fmt.Errorf("error parsing varying block end: %w", err)
-	}
-	return &VaryingBlockDeclaration{
-		Fields: fields,
-	}, nil
 }
 
 func (p *Parser) ParseExpression() (Expression, error) {

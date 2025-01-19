@@ -764,16 +764,22 @@ var _ = Describe("Parser", func() {
 		),
 	)
 
-	DescribeTable("ParseVaryingBlock", func(inSource string, expectedBlock *lsl.VaryingBlockDeclaration) {
+	DescribeTable("ParseVaryingBlock", func(inSource string, expectedBlock *lsl.VaryingBlockDeclaration, expectedErr error) {
 		parser := lsl.NewParser(inSource)
 		block, err := parser.ParseVaryingBlock()
-		Expect(err).ToNot(HaveOccurred())
-		Expect(block).To(Equal(expectedBlock))
+		if expectedErr == nil {
+			Expect(err).ToNot(HaveOccurred())
+			Expect(block).To(Equal(expectedBlock))
+		} else {
+			Expect(err).To(HaveOccurred())
+			Expect(err).To(Equal(expectedErr))
+		}
 	},
 		Entry("empty",
 			`varyings {
 			}`,
 			&lsl.VaryingBlockDeclaration{},
+			nil,
 		),
 		Entry("with fields",
 			`varyings {
@@ -785,6 +791,40 @@ var _ = Describe("Parser", func() {
 					{Name: "color", Type: "vec4"},
 					{Name: "intensity", Type: "float"},
 				},
+			},
+			nil,
+		),
+		Entry("with comments and spaces",
+			`varyings { // block start
+
+			color vec4  	, // first field
+
+			intensity float,    // second field
+
+			} // block end`,
+			&lsl.VaryingBlockDeclaration{
+				Fields: []lsl.Field{
+					{Name: "color", Type: "vec4"},
+					{Name: "intensity", Type: "float"},
+				},
+			},
+			nil,
+		),
+		Entry("closing on same line",
+			`varyings {}`,
+			nil,
+			&lsl.ParseError{
+				Pos:     at(1, 11),
+				Message: "expected a comment, new line or end of file",
+			},
+		),
+		Entry("other block type",
+			`uniforms {
+			}`,
+			nil,
+			&lsl.ParseError{
+				Pos:     at(1, 1),
+				Message: "expected 'varyings' keyword",
 			},
 		),
 	)
