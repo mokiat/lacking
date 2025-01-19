@@ -198,6 +198,8 @@ func (r *sceneRenderer) Render(framebuffer render.Framebuffer, viewport Viewport
 	for _, stage := range r.stages {
 		stage.PostRender()
 	}
+
+	uniformBuffer.Swap()
 }
 
 func evaluateProjectionMatrix(camera *Camera, width, height uint32) sprec.Mat4 {
