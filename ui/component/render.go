@@ -12,8 +12,8 @@ import "time"
 // The framework ensures that the closure will not be called if the
 // component had been destroyed in the meantime.
 func Schedule(scope Scope, fn func()) {
-	node := scope.Value(componentNodeKey{}).(*componentNode)
 	scope.Context().Schedule(func() {
+		node := scope.Value(componentNodeKey{}).(*componentNode)
 		if node.isValid() {
 			fn()
 		}
@@ -36,7 +36,7 @@ func After(scope Scope, duration time.Duration, fn func()) {
 // component had been destroyed in the meantime. In fact, the closure will
 // stop being called only once the component has been destroyed.
 func Every(scope Scope, interval time.Duration, fn func()) {
-	time.AfterFunc(interval, func() {
+	After(scope, interval, func() {
 		fn()
 		Every(scope, interval, fn)
 	})
