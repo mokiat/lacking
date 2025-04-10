@@ -567,6 +567,7 @@ func (c *codeAreaComponent) linesToText(lines [][]rune) string {
 }
 
 func (c *codeAreaComponent) textToLines(text string) [][]rune {
+	// TODO: Use iterator to avoid double allocation
 	return gog.Map(strings.Split(text, "\n"), func(line string) []rune {
 		return []rune(line)
 	})
