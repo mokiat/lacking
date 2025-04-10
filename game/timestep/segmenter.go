@@ -22,6 +22,10 @@ type Segmenter struct {
 	accumulatedDelta time.Duration
 }
 
+func (t *Segmenter) Reset() {
+	t.accumulatedDelta = 0
+}
+
 // Update should be called with the actual delta time elapsed. The callback
 // function will be called a number of times with fixed delta intervals.
 func (t *Segmenter) Update(delta time.Duration, fixedCallback UpdateCallback, interpCallback InterpCallback) {
