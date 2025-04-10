@@ -1,0 +1,4 @@
+func test() {
+  doFirst()
+  doSecond()
+}

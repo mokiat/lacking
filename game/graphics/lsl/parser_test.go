@@ -280,19 +280,6 @@ var _ = Describe("Parse", func() {
 })
 
 var _ = Describe("Parser", func() {
-
-	at := func(line, column uint32) lsl.Position {
-		if line == 1 {
-			// The first line does not include any tabs in front of it, because
-			// gofmt does not allow to move the backtick character to the beginning.
-			return lsl.At(line, column)
-		} else {
-			// NOTE: Adding 3 characters due to three tabs in front of each line
-			// because of the way the test cases are formatted.
-			return lsl.At(line, column+3)
-		}
-	}
-
 	DescribeTable("ParseNewLine", func(inSource string, expectedErr error) {
 		parser := lsl.NewParser(inSource)
 		err := parser.ParseNewLine()
@@ -304,28 +291,24 @@ var _ = Describe("Parser", func() {
 		}
 	},
 		Entry("new line",
-			"\n irrelevant",
-			nil,
-		),
-		Entry("carriage return and new line",
-			"\r\n irrelevant",
+			openTestFile("parse-new-line", "new-line.lsl"),
 			nil,
 		),
 		Entry("new line after spacing",
-			"  \t  \n irrelevant",
+			openTestFile("parse-new-line", "new-line-after-spacing.lsl"),
 			nil,
 		),
 		Entry("no tokens",
-			"",
+			openTestFile("parse-new-line", "empty.lsl"),
 			&lsl.ParseError{
-				Pos:     at(1, 1),
+				Pos:     lsl.At(1, 1),
 				Message: "expected a new line token",
 			},
 		),
 		Entry("identifier",
-			"hello \n",
+			openTestFile("parse-new-line", "identifier.lsl"),
 			&lsl.ParseError{
-				Pos:     at(1, 1),
+				Pos:     lsl.At(1, 1),
 				Message: "expected a new line token",
 			},
 		),
@@ -342,22 +325,21 @@ var _ = Describe("Parser", func() {
 		}
 	},
 		Entry("plain comment",
-			"// a comment",
+			openTestFile("parse-comment", "plain-comment.lsl"),
 			nil,
 		),
 		Entry("comment after spacing",
-			" \t // a comment",
+			openTestFile("parse-comment", "comment-after-spacing.lsl"),
 			nil,
 		),
 		Entry("comment with new line",
-			`// some comment
-			irrelevant`,
+			openTestFile("parse-comment", "comment-with-new-line.lsl"),
 			nil,
 		),
 		Entry("operator",
-			`; // a comment`,
+			openTestFile("parse-comment", "operator.lsl"),
 			&lsl.ParseError{
-				Pos:     at(1, 1),
+				Pos:     lsl.At(1, 1),
 				Message: "expected a comment token",
 			},
 		),
@@ -374,21 +356,21 @@ var _ = Describe("Parser", func() {
 		}
 	},
 		Entry("empty",
-			"",
+			openTestFile("parse-optional-remainder", "empty.lsl"),
 			nil,
 		),
 		Entry("new line",
-			"\r\n",
+			openTestFile("parse-optional-remainder", "new-line.lsl"),
 			nil,
 		),
 		Entry("comment",
-			"// a comment",
+			openTestFile("parse-optional-remainder", "comment.lsl"),
 			nil,
 		),
 		Entry("vital token",
-			"+= 5",
+			openTestFile("parse-optional-remainder", "vital-token.lsl"),
 			&lsl.ParseError{
-				Pos:     at(1, 1),
+				Pos:     lsl.At(1, 1),
 				Message: "expected a comment, new line or end of file",
 			},
 		),
@@ -404,22 +386,22 @@ var _ = Describe("Parser", func() {
 			Expect(err).To(Equal(expectedErr))
 		}
 	},
-		Entry("just opening bracket",
-			"{",
+		Entry("opening bracket",
+			openTestFile("parse-block-start", "opening-bracket.lsl"),
 			nil,
 		),
 		Entry("with new line",
-			" \t {\n",
+			openTestFile("parse-block-start", "with-new-line.lsl"),
 			nil,
 		),
 		Entry("with comment",
-			"{ // closing bracket",
+			openTestFile("parse-block-start", "with-comment.lsl"),
 			nil,
 		),
 		Entry("not opening bracket",
-			"5.0\n",
+			openTestFile("parse-block-start", "not-opening-bracket.lsl"),
 			&lsl.ParseError{
-				Pos:     at(1, 1),
+				Pos:     lsl.At(1, 1),
 				Message: "expected an opening bracket",
 			},
 		),
@@ -435,22 +417,22 @@ var _ = Describe("Parser", func() {
 			Expect(err).To(Equal(expectedErr))
 		}
 	},
-		Entry("just closing bracket",
-			"}",
+		Entry("closing bracket",
+			openTestFile("parse-block-end", "closing-bracket.lsl"),
 			nil,
 		),
 		Entry("with new line",
-			" \t }\n",
+			openTestFile("parse-block-end", "with-new-line.lsl"),
 			nil,
 		),
 		Entry("with comment",
-			"} // closing bracket\n",
+			openTestFile("parse-block-end", "with-comment.lsl"),
 			nil,
 		),
 		Entry("not closing bracket",
-			"5.0\n",
+			openTestFile("parse-block-end", "not-closing-bracket.lsl"),
 			&lsl.ParseError{
-				Pos:     at(1, 1),
+				Pos:     lsl.At(1, 1),
 				Message: "expected a closing bracket",
 			},
 		),
@@ -468,19 +450,19 @@ var _ = Describe("Parser", func() {
 		}
 	},
 		Entry("empty list",
-			"",
+			openTestFile("parse-named-parameter-list", "empty.lsl"),
 			nil,
 			nil,
 		),
 		Entry("single parameter",
-			"color vec4",
+			openTestFile("parse-named-parameter-list", "single-parameter.lsl"),
 			[]lsl.Field{
 				{Name: "color", Type: "vec4"},
 			},
 			nil,
 		),
 		Entry("multiple parameters, single line",
-			" \t color vec4, \t intensity float \t ",
+			openTestFile("parse-named-parameter-list", "multiple-parameters-single-line.lsl"),
 			[]lsl.Field{
 				{Name: "color", Type: "vec4"},
 				{Name: "intensity", Type: "float"},
@@ -488,13 +470,7 @@ var _ = Describe("Parser", func() {
 			nil,
 		),
 		Entry("multiple parameters, multiple lines",
-			`
-			color vec4, // first param here
-			// there will be a second param
-
-			intensity float,
-
-			`,
+			openTestFile("parse-named-parameter-list", "multiple-parameters-multiple-lines.lsl"),
 			[]lsl.Field{
 				{Name: "color", Type: "vec4"},
 				{Name: "intensity", Type: "float"},
@@ -502,48 +478,48 @@ var _ = Describe("Parser", func() {
 			nil,
 		),
 		Entry("ending on a non-comma operator",
-			"color vec4)",
+			openTestFile("parse-named-parameter-list", "ending-on-non-comma-operator.lsl"),
 			[]lsl.Field{
 				{Name: "color", Type: "vec4"},
 			},
 			nil,
 		),
 		Entry("ending on a comma operator",
-			"color vec4,",
+			openTestFile("parse-named-parameter-list", "ending-on-comma-operator.lsl"),
 			[]lsl.Field{
 				{Name: "color", Type: "vec4"},
 			},
 			nil,
 		),
 		Entry("ending on a twin-comma operator",
-			"color vec4,,",
+			openTestFile("parse-named-parameter-list", "ending-on-twin-comma-operator.lsl"),
 			nil,
 			&lsl.ParseError{
-				Pos:     at(1, 12),
+				Pos:     lsl.At(1, 12),
 				Message: "unexpected comma",
 			},
 		),
 		Entry("non-identifier name",
-			"5 vec4",
+			openTestFile("parse-named-parameter-list", "non-identifier-name.lsl"),
 			nil,
 			&lsl.ParseError{
-				Pos:     at(1, 1),
+				Pos:     lsl.At(1, 1),
 				Message: "expected a name identifier or end of list",
 			},
 		),
 		Entry("non-identifier type",
-			"color 5",
+			openTestFile("parse-named-parameter-list", "non-identifier-type.lsl"),
 			nil,
 			&lsl.ParseError{
-				Pos:     at(1, 7),
+				Pos:     lsl.At(1, 7),
 				Message: "expected a type identifier",
 			},
 		),
 		Entry("non-comma or operator after type",
-			"color vec4 hello",
+			openTestFile("parse-named-parameter-list", "non-comma-or-operator-after-type.lsl"),
 			nil,
 			&lsl.ParseError{
-				Pos:     at(1, 12),
+				Pos:     lsl.At(1, 12),
 				Message: "expected a comma or end of list",
 			},
 		),
@@ -561,19 +537,19 @@ var _ = Describe("Parser", func() {
 		}
 	},
 		Entry("empty list",
-			"",
+			openTestFile("parse-unnamed-parameter-list", "empty.lsl"),
 			nil,
 			nil,
 		),
 		Entry("single parameter",
-			"vec4",
+			openTestFile("parse-unnamed-parameter-list", "single-parameter.lsl"),
 			[]lsl.Field{
 				{Type: "vec4"},
 			},
 			nil,
 		),
 		Entry("multiple parameters, single line",
-			" \t vec4, \t float \t ",
+			openTestFile("parse-unnamed-parameter-list", "multiple-parameters-single-line.lsl"),
 			[]lsl.Field{
 				{Type: "vec4"},
 				{Type: "float"},
@@ -581,13 +557,7 @@ var _ = Describe("Parser", func() {
 			nil,
 		),
 		Entry("multiple parameters, multiple lines",
-			`
-			vec4, // first param here
-			// there will be a second param
-
-			float,
-
-			`,
+			openTestFile("parse-unnamed-parameter-list", "multiple-parameters-multiple-lines.lsl"),
 			[]lsl.Field{
 				{Type: "vec4"},
 				{Type: "float"},
@@ -595,40 +565,40 @@ var _ = Describe("Parser", func() {
 			nil,
 		),
 		Entry("ending on a non-comma operator",
-			"vec4)",
+			openTestFile("parse-unnamed-parameter-list", "ending-on-non-comma-operator.lsl"),
 			[]lsl.Field{
 				{Type: "vec4"},
 			},
 			nil,
 		),
 		Entry("ending on a comma operator",
-			"vec4,",
+			openTestFile("parse-unnamed-parameter-list", "ending-on-comma-operator.lsl"),
 			[]lsl.Field{
 				{Type: "vec4"},
 			},
 			nil,
 		),
 		Entry("ending on a twin-comma operator",
-			"vec4,,",
+			openTestFile("parse-unnamed-parameter-list", "ending-on-twin-comma-operator.lsl"),
 			nil,
 			&lsl.ParseError{
-				Pos:     at(1, 6),
+				Pos:     lsl.At(1, 6),
 				Message: "unexpected comma",
 			},
 		),
 		Entry("non-identifier type",
-			"5",
+			openTestFile("parse-unnamed-parameter-list", "non-identifier-type.lsl"),
 			nil,
 			&lsl.ParseError{
-				Pos:     at(1, 1),
+				Pos:     lsl.At(1, 1),
 				Message: "expected a type identifier or end of list",
 			},
 		),
 		Entry("non-comma or operator after type",
-			"vec4 hello",
+			openTestFile("parse-unnamed-parameter-list", "non-comma-operator-after-type.lsl"),
 			nil,
 			&lsl.ParseError{
-				Pos:     at(1, 6),
+				Pos:     lsl.At(1, 6),
 				Message: "expected a comma or end of list",
 			},
 		),
@@ -646,16 +616,12 @@ var _ = Describe("Parser", func() {
 		}
 	},
 		Entry("empty block",
-			`textures {
-			}`,
+			openTestFile("parse-texture-block", "empty.lsl"),
 			&lsl.TextureBlockDeclaration{},
 			nil,
 		),
 		Entry("with fields",
-			`textures {
-				first sampler2D,
-				second samplerCube,
-			}`,
+			openTestFile("parse-texture-block", "with-fields.lsl"),
 			&lsl.TextureBlockDeclaration{
 				Fields: []lsl.Field{
 					{Name: "first", Type: "sampler2D"},
@@ -665,13 +631,7 @@ var _ = Describe("Parser", func() {
 			nil,
 		),
 		Entry("with comments and spaces",
-			`textures { // block start
-
-			first 	 sampler2D  	, // first field
-
-			second samplerCube,    // second field
-
-			} // block end`,
+			openTestFile("parse-texture-block", "with-comments-and-spaces.lsl"),
 			&lsl.TextureBlockDeclaration{
 				Fields: []lsl.Field{
 					{Name: "first", Type: "sampler2D"},
@@ -681,19 +641,18 @@ var _ = Describe("Parser", func() {
 			nil,
 		),
 		Entry("closing on same line",
-			`textures {}`,
+			openTestFile("parse-texture-block", "closing-on-same-line.lsl"),
 			nil,
 			&lsl.ParseError{
-				Pos:     at(1, 11),
+				Pos:     lsl.At(1, 11),
 				Message: "expected a comment, new line or end of file",
 			},
 		),
 		Entry("other block type",
-			`uniforms {
-			}`,
+			openTestFile("parse-texture-block", "other-block-type.lsl"),
 			nil,
 			&lsl.ParseError{
-				Pos:     at(1, 1),
+				Pos:     lsl.At(1, 1),
 				Message: "expected 'textures' keyword",
 			},
 		),
@@ -711,16 +670,12 @@ var _ = Describe("Parser", func() {
 		}
 	},
 		Entry("empty block",
-			`uniforms {
-			}`,
+			openTestFile("parse-uniform-block", "empty.lsl"),
 			&lsl.UniformBlockDeclaration{},
 			nil,
 		),
 		Entry("with fields",
-			`uniforms {
-				color vec4,
-				intensity float,
-			}`,
+			openTestFile("parse-uniform-block", "with-fields.lsl"),
 			&lsl.UniformBlockDeclaration{
 				Fields: []lsl.Field{
 					{Name: "color", Type: "vec4"},
@@ -730,13 +685,7 @@ var _ = Describe("Parser", func() {
 			nil,
 		),
 		Entry("with comments and spaces",
-			`uniforms { // block start
-
-			color vec4  	, // first field
-
-			intensity float,    // second field
-
-			} // block end`,
+			openTestFile("parse-uniform-block", "with-comments-and-spaces.lsl"),
 			&lsl.UniformBlockDeclaration{
 				Fields: []lsl.Field{
 					{Name: "color", Type: "vec4"},
@@ -746,19 +695,18 @@ var _ = Describe("Parser", func() {
 			nil,
 		),
 		Entry("closing on same line",
-			`uniforms {}`,
+			openTestFile("parse-uniform-block", "closing-on-same-line.lsl"),
 			nil,
 			&lsl.ParseError{
-				Pos:     at(1, 11),
+				Pos:     lsl.At(1, 11),
 				Message: "expected a comment, new line or end of file",
 			},
 		),
 		Entry("other block type",
-			`textures {
-			}`,
+			openTestFile("parse-uniform-block", "other-block-type.lsl"),
 			nil,
 			&lsl.ParseError{
-				Pos:     at(1, 1),
+				Pos:     lsl.At(1, 1),
 				Message: "expected 'uniforms' keyword",
 			},
 		),
@@ -776,16 +724,12 @@ var _ = Describe("Parser", func() {
 		}
 	},
 		Entry("empty",
-			`varyings {
-			}`,
+			openTestFile("parse-varying-block", "empty.lsl"),
 			&lsl.VaryingBlockDeclaration{},
 			nil,
 		),
 		Entry("with fields",
-			`varyings {
-				color vec4,
-				intensity float,
-			}`,
+			openTestFile("parse-varying-block", "with-fields.lsl"),
 			&lsl.VaryingBlockDeclaration{
 				Fields: []lsl.Field{
 					{Name: "color", Type: "vec4"},
@@ -795,13 +739,7 @@ var _ = Describe("Parser", func() {
 			nil,
 		),
 		Entry("with comments and spaces",
-			`varyings { // block start
-
-			color vec4  	, // first field
-
-			intensity float,    // second field
-
-			} // block end`,
+			openTestFile("parse-varying-block", "with-comments-and-spaces.lsl"),
 			&lsl.VaryingBlockDeclaration{
 				Fields: []lsl.Field{
 					{Name: "color", Type: "vec4"},
@@ -811,19 +749,18 @@ var _ = Describe("Parser", func() {
 			nil,
 		),
 		Entry("closing on same line",
-			`varyings {}`,
+			openTestFile("parse-varying-block", "closing-on-same-line.lsl"),
 			nil,
 			&lsl.ParseError{
-				Pos:     at(1, 11),
+				Pos:     lsl.At(1, 11),
 				Message: "expected a comment, new line or end of file",
 			},
 		),
 		Entry("other block type",
-			`uniforms {
-			}`,
+			openTestFile("parse-varying-block", "other-block-type.lsl"),
 			nil,
 			&lsl.ParseError{
-				Pos:     at(1, 1),
+				Pos:     lsl.At(1, 1),
 				Message: "expected 'varyings' keyword",
 			},
 		),
@@ -836,19 +773,19 @@ var _ = Describe("Parser", func() {
 		Expect(exp).To(Equal(expectedExp))
 	},
 		Entry("float literal",
-			`5.3`,
+			openTestFile("parse-expression", "float-literal.lsl"),
 			&lsl.FloatLiteral{
 				Value: 5.3,
 			},
 		),
 		Entry("int literal",
-			`3999`,
+			openTestFile("parse-expression", "int-literal.lsl"),
 			&lsl.IntLiteral{
 				Value: 3999,
 			},
 		),
 		Entry("unary (+) operator",
-			`+10`,
+			openTestFile("parse-expression", "unary-plus-operator.lsl"),
 			&lsl.UnaryExpression{
 				Operator: "+",
 				Operand: &lsl.IntLiteral{
@@ -857,7 +794,7 @@ var _ = Describe("Parser", func() {
 			},
 		),
 		Entry("unary (-) operator",
-			`-10`,
+			openTestFile("parse-expression", "unary-minus-operator.lsl"),
 			&lsl.UnaryExpression{
 				Operator: "-",
 				Operand: &lsl.IntLiteral{
@@ -866,7 +803,7 @@ var _ = Describe("Parser", func() {
 			},
 		),
 		Entry("unary (^) operator",
-			`^10`,
+			openTestFile("parse-expression", "unary-bit-not-operator.lsl"),
 			&lsl.UnaryExpression{
 				Operator: "^",
 				Operand: &lsl.IntLiteral{
@@ -875,7 +812,7 @@ var _ = Describe("Parser", func() {
 			},
 		),
 		Entry("unary (!) operator",
-			`!10`,
+			openTestFile("parse-expression", "unary-not-operator.lsl"),
 			&lsl.UnaryExpression{
 				Operator: "!",
 				Operand: &lsl.IntLiteral{
@@ -884,27 +821,27 @@ var _ = Describe("Parser", func() {
 			},
 		),
 		Entry("identifier",
-			`hello`,
+			openTestFile("parse-expression", "identifier.lsl"),
 			&lsl.Identifier{
 				Name: "hello",
 			},
 		),
 		Entry("field identifier",
-			`hello.world`,
+			openTestFile("parse-expression", "field-identifier.lsl"),
 			&lsl.FieldIdentifier{
 				ObjName:   "hello",
 				FieldName: "world",
 			},
 		),
 		Entry("function call",
-			`rand()`,
+			openTestFile("parse-expression", "function-call.lsl"),
 			&lsl.FunctionCall{
 				Name:      "rand",
 				Arguments: nil,
 			},
 		),
 		Entry("function call with args",
-			`test(200, 1.5)`,
+			openTestFile("parse-expression", "function-call-with-args.lsl"),
 			&lsl.FunctionCall{
 				Name: "test",
 				Arguments: []lsl.Expression{
@@ -914,10 +851,7 @@ var _ = Describe("Parser", func() {
 			},
 		),
 		Entry("function call with args and new lines",
-			`test(
-				200, 
-				1.5,
-			)`,
+			openTestFile("parse-expression", "function-call-with-args-and-new-lines.lsl"),
 			&lsl.FunctionCall{
 				Name: "test",
 				Arguments: []lsl.Expression{
@@ -927,11 +861,7 @@ var _ = Describe("Parser", func() {
 			},
 		),
 		Entry("function call with args and comments",
-			`test( // function
-				200, // first arg
-				// some comment here
-				1.5, // second arg
-			) // end`,
+			openTestFile("parse-expression", "function-call-with-args-and-comments.lsl"),
 			&lsl.FunctionCall{
 				Name: "test",
 				Arguments: []lsl.Expression{
@@ -941,7 +871,7 @@ var _ = Describe("Parser", func() {
 			},
 		),
 		Entry("binary expression (numbers)",
-			`1 + 2.3`,
+			openTestFile("parse-expression", "binary-expression-numbers.lsl"),
 			&lsl.BinaryExpression{
 				Operator: "+",
 				Left:     &lsl.IntLiteral{Value: 1},
@@ -949,7 +879,7 @@ var _ = Describe("Parser", func() {
 			},
 		),
 		Entry("binary expression (identifiers)",
-			`amount + color.x`,
+			openTestFile("parse-expression", "binary-expression-identifiers.lsl"),
 			&lsl.BinaryExpression{
 				Operator: "+",
 				Left:     &lsl.Identifier{Name: "amount"},
@@ -957,7 +887,7 @@ var _ = Describe("Parser", func() {
 			},
 		),
 		Entry("binary expression (functions)",
-			`first() * second()`,
+			openTestFile("parse-expression", "binary-expression-functions.lsl"),
 			&lsl.BinaryExpression{
 				Operator: "*",
 				Left:     &lsl.FunctionCall{Name: "first"},
@@ -965,7 +895,7 @@ var _ = Describe("Parser", func() {
 			},
 		),
 		Entry("complex expression",
-			`5.5 + hello * (13 / 2 - 77)`,
+			openTestFile("parse-expression", "complex-expression.lsl"),
 			&lsl.BinaryExpression{
 				Operator: "+",
 				Left:     &lsl.FloatLiteral{Value: 5.5},
@@ -995,8 +925,7 @@ var _ = Describe("Parser", func() {
 		Expect(decl).To(Equal(expectedDecl))
 	},
 		Entry("simple",
-			`func test() {
-			}`,
+			openTestFile("parse-function", "simple.lsl"),
 			&lsl.FunctionDeclaration{
 				Name:    "test",
 				Inputs:  nil,
@@ -1005,8 +934,7 @@ var _ = Describe("Parser", func() {
 			},
 		),
 		Entry("with inputs",
-			`func test(color vec3, intensity float) {
-			}`,
+			openTestFile("parse-function", "with-inputs.lsl"),
 			&lsl.FunctionDeclaration{
 				Name: "test",
 				Inputs: []lsl.Field{
@@ -1018,14 +946,7 @@ var _ = Describe("Parser", func() {
 			},
 		),
 		Entry("with inputs on new lines",
-			`func test(
-				// color param to follow
-				color vec3,  // color param
-				// intensity param to follow
-				intensity float, // intensity param
-				// all done
-			) {
-			}`,
+			openTestFile("parse-function", "with-inputs-on-new-lines.lsl"),
 			&lsl.FunctionDeclaration{
 				Name: "test",
 				Inputs: []lsl.Field{
@@ -1037,8 +958,7 @@ var _ = Describe("Parser", func() {
 			},
 		),
 		Entry("with single output",
-			`func test() (vec3) {
-			}`,
+			openTestFile("parse-function", "with-simple-output.lsl"),
 			&lsl.FunctionDeclaration{
 				Name:   "test",
 				Inputs: nil,
@@ -1049,8 +969,7 @@ var _ = Describe("Parser", func() {
 			},
 		),
 		Entry("with multiple outputs",
-			`func test() (vec3, float) {
-			}`,
+			openTestFile("parse-function", "with-multiple-outputs.lsl"),
 			&lsl.FunctionDeclaration{
 				Name:   "test",
 				Inputs: nil,
@@ -1062,8 +981,7 @@ var _ = Describe("Parser", func() {
 			},
 		),
 		Entry("with inputs and outputs",
-			`func test(color vec3, intensity float) (vec3, float) {
-			}`,
+			openTestFile("parse-function", "with-inputs-and-outputs.lsl"),
 			&lsl.FunctionDeclaration{
 				Name: "test",
 				Inputs: []lsl.Field{
@@ -1078,9 +996,7 @@ var _ = Describe("Parser", func() {
 			},
 		),
 		Entry("with comment in body",
-			`func test() {
-				// some comment
-			}`,
+			openTestFile("parse-function", "with-comment-in-body.lsl"),
 			&lsl.FunctionDeclaration{
 				Name:    "test",
 				Inputs:  nil,
@@ -1089,10 +1005,7 @@ var _ = Describe("Parser", func() {
 			},
 		),
 		Entry("with function call statements",
-			`func test() {
-				doFirst()
-				doSecond()
-			}`,
+			openTestFile("parse-function", "with-function-call-statements.lsl"),
 			&lsl.FunctionDeclaration{
 				Name:    "test",
 				Inputs:  nil,
@@ -1104,11 +1017,7 @@ var _ = Describe("Parser", func() {
 			},
 		),
 		Entry("with variable declarations",
-			`func test() {
-				var x float = 5.3
-				var y int = 3
-				var z vec3 = vec3(1.0, 0.0, -0.5)
-			}`,
+			openTestFile("parse-function", "with-variable-declarations.lsl"),
 			&lsl.FunctionDeclaration{
 				Name:    "test",
 				Inputs:  nil,
@@ -1142,13 +1051,8 @@ var _ = Describe("Parser", func() {
 				},
 			},
 		),
-
 		Entry("with variable assignments",
-			`func test() {
-				color.x += 5.3
-				color.y *= 3
-				z = vec3(1.0, 0.0, -0.5)
-			}`,
+			openTestFile("parse-function", "with-variable-assignments.lsl"),
 			&lsl.FunctionDeclaration{
 				Name:    "test",
 				Inputs:  nil,
@@ -1182,25 +1086,8 @@ var _ = Describe("Parser", func() {
 				},
 			},
 		),
-
 		Entry("with conditionals",
-			`func test() {
-				if 10 > 5 {
-					doFirst()
-				}
-				if 10 > 20 {
-					doFirst()
-				} else {
-					doSecond()
-				}
-				if 10 > 20 {
-					doFirst()
-				} else if 10 > 5 {
-					doSecond()
-				} else {
-					doThird()
-				}
-			}`,
+			openTestFile("parse-function", "with-conditionals.lsl"),
 			&lsl.FunctionDeclaration{
 				Name:    "test",
 				Inputs:  nil,
@@ -1255,12 +1142,8 @@ var _ = Describe("Parser", func() {
 				},
 			},
 		),
-
 		Entry("with discard",
-			`func test() {
-				discard
-				discard // with comment
-			}`,
+			openTestFile("parse-function", "with-discard.lsl"),
 			&lsl.FunctionDeclaration{
 				Name:    "test",
 				Inputs:  nil,
