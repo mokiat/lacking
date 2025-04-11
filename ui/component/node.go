@@ -1,6 +1,10 @@
 package component
 
-import "github.com/mokiat/lacking/ui"
+import (
+	"log/slog"
+
+	"github.com/mokiat/lacking/ui"
+)
 
 type componentNodeKey struct{}
 
@@ -18,7 +22,9 @@ type componentNode struct {
 
 func createComponentNode(scope Scope, instance Instance) *componentNode {
 	component := instance.component
-	logger.Debug("Creating node (type: %q).", component.TypeName())
+	logger.Debug("Creating node",
+		slog.String("type", component.TypeName()),
+	)
 
 	if instance.scope != nil {
 		scope = instance.scope
@@ -53,7 +59,9 @@ func createComponentNode(scope Scope, instance Instance) *componentNode {
 }
 
 func (node *componentNode) reconcile(instance Instance) {
-	logger.Debug("Updating node (type: %q).", node.instance.component.TypeName())
+	logger.Debug("Updating node",
+		slog.String("type", node.instance.component.TypeName()),
+	)
 
 	component := instance.component
 	if component != node.instance.component {
@@ -103,7 +111,9 @@ func (node *componentNode) reconcile(instance Instance) {
 }
 
 func (node *componentNode) destroy() {
-	logger.Debug("Destroying node (type: %q).", node.instance.component.TypeName())
+	logger.Debug("Destroying node",
+		slog.String("type", node.instance.component.TypeName()),
+	)
 
 	// Start by destroying nested components first.
 	if node.innerNode != nil {

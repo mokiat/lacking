@@ -2,6 +2,7 @@ package graphics
 
 import (
 	"fmt"
+	"log/slog"
 
 	"github.com/mokiat/gomath/dprec"
 	"github.com/mokiat/gomath/sprec"
@@ -70,7 +71,9 @@ func (r *sceneRenderer) ResetDebugLines() {
 
 func (r *sceneRenderer) QueueDebugLine(line DebugLine) {
 	if len(r.debugLines) == cap(r.debugLines)-1 {
-		logger.Warn("Debug lines limit reached!")
+		logger.Warn("Debug lines limit reached",
+			slog.Int("capacity", cap(r.debugLines)),
+		)
 	}
 	if len(r.debugLines) == cap(r.debugLines) {
 		return

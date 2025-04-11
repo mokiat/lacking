@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"log/slog"
 	"os"
 
 	"github.com/mokiat/gog"
@@ -11,7 +12,6 @@ import (
 	"github.com/mokiat/gomath/dprec"
 	"github.com/mokiat/gomath/sprec"
 	"github.com/mokiat/gomath/stod"
-	"github.com/mokiat/lacking/debug/log"
 	"github.com/mokiat/lacking/game/asset/mdl"
 	"github.com/mokiat/lacking/util/gltfutil"
 	"github.com/qmuntal/gltf"
@@ -150,7 +150,9 @@ func BuildModelResource(gltfDoc *gltf.Document, forceCollision bool) (*mdl.Model
 				sampler.SetWrapMode(mdl.WrapModeMirroredRepeat)
 			default:
 				sampler.SetWrapMode(mdl.WrapModeClamp)
-				log.Warn("Unsupported texture wrap mode: %v", gltfSampler.WrapS)
+				logger.Warn("Unsupported texture wrap mode",
+					slog.String("mode", gltfSampler.WrapS.String()),
+				)
 			}
 			switch gltfSampler.MinFilter {
 			case gltf.MinNearest:
@@ -171,7 +173,9 @@ func BuildModelResource(gltfDoc *gltf.Document, forceCollision bool) (*mdl.Model
 				sampler.SetFilterMode(mdl.FilterModeLinear)
 			default:
 				sampler.SetFilterMode(mdl.FilterModeLinear)
-				log.Warn("Unsupported texture min filter mode: %v", gltfSampler.MinFilter)
+				logger.Warn("Unsupported texture min filter mode",
+					slog.String("mode", gltfSampler.MinFilter.String()),
+				)
 			}
 		} else {
 			sampler.SetFilterMode(mdl.FilterModeLinear)
@@ -621,7 +625,7 @@ func BuildModelResource(gltfDoc *gltf.Document, forceCollision bool) (*mdl.Model
 		for _, gltfChannel := range gltfAnimation.Channels {
 			nodeRef := gltfChannel.Target.Node
 			if nodeRef == nil {
-				log.Warn("Channel does not reference a node!")
+				logger.Warn("Channel does not reference a node")
 				continue
 			}
 			samplerRef := gltfChannel.Sampler
@@ -636,7 +640,7 @@ func BuildModelResource(gltfDoc *gltf.Document, forceCollision bool) (*mdl.Model
 
 			gltfSampler := gltfAnimation.Samplers[samplerRef]
 			if gltfSampler.Interpolation != gltf.InterpolationLinear {
-				log.Warn("Unsupported animation interpolation - results may be wrong!")
+				logger.Warn("Unsupported animation interpolation - results may be wrong")
 			}
 
 			timestamps := gltfutil.AnimationKeyframes(gltfDoc, gltfSampler)
@@ -653,7 +657,10 @@ func BuildModelResource(gltfDoc *gltf.Document, forceCollision bool) (*mdl.Model
 			case gltf.TRSTranslation:
 				translations := gltfutil.AnimationTranslations(gltfDoc, gltfSampler)
 				if len(translations) != len(timestamps) {
-					log.Error("Translations do not match number of keyframes")
+					logger.Warn("Translations do not match number of keyframes",
+						slog.Int("translations", len(translations)),
+						slog.Int("keyframes", len(timestamps)),
+					)
 					continue
 				}
 				for i := 0; i < len(timestamps); i++ {
@@ -666,7 +673,10 @@ func BuildModelResource(gltfDoc *gltf.Document, forceCollision bool) (*mdl.Model
 			case gltf.TRSRotation:
 				rotations := gltfutil.AnimationRotations(gltfDoc, gltfSampler)
 				if len(rotations) != len(timestamps) {
-					log.Error("Rotations do not match number of keyframes")
+					logger.Warn("Rotations do not match number of keyframes",
+						slog.Int("rotations", len(rotations)),
+						slog.Int("keyframes", len(timestamps)),
+					)
 					continue
 				}
 				for i := 0; i < len(timestamps); i++ {
@@ -679,7 +689,10 @@ func BuildModelResource(gltfDoc *gltf.Document, forceCollision bool) (*mdl.Model
 			case gltf.TRSScale:
 				scales := gltfutil.AnimationScales(gltfDoc, gltfSampler)
 				if len(scales) != len(timestamps) {
-					log.Error("Scales do not match number of keyframes")
+					logger.Warn("Scales do not match number of keyframes",
+						slog.Int("scales", len(scales)),
+						slog.Int("keyframes", len(timestamps)),
+					)
 					continue
 				}
 				for i := 0; i < len(timestamps); i++ {
@@ -690,7 +703,9 @@ func BuildModelResource(gltfDoc *gltf.Document, forceCollision bool) (*mdl.Model
 				}
 
 			default:
-				log.Warn("Channel has unsupported path: %s", gltfChannel.Target.Path)
+				logger.Warn("Channel has unsupported path",
+					slog.String("path", gltfChannel.Target.Path.String()),
+				)
 			}
 		}
 		model.AddAnimation(animation)
@@ -826,7 +841,7 @@ func gltfNodeHasLight(node *gltf.Node) bool {
 
 func createCollisionMeshes(geometry *mdl.Geometry, fragment *mdl.Fragment) []*mdl.CollisionMesh {
 	if fragment.Topology() != mdl.TopologyTriangleList {
-		log.Warn("Skipping collision mesh due to primitive not being triangles")
+		logger.Warn("Skipping collision mesh due to primitive not being triangles")
 		return nil
 	}
 
@@ -843,7 +858,7 @@ func createCollisionMeshes(geometry *mdl.Geometry, fragment *mdl.Fragment) []*md
 		vecAB := sprec.Vec3Diff(coordB, coordA)
 		vecAC := sprec.Vec3Diff(coordC, coordA)
 		if sprec.Vec3Cross(vecAB, vecAC).Length() < 0.00001 {
-			log.Warn("Skipping degenerate triangle")
+			logger.Warn("Skipping degenerate triangle")
 			continue
 		}
 

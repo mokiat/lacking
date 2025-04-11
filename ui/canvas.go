@@ -14,8 +14,11 @@ const (
 func newCanvas(renderer *canvasRenderer) *Canvas {
 	return &Canvas{
 		canvasRenderer: renderer,
-		commandBuffer:  renderer.api.CreateCommandBuffer(canvasCommandBufferSize),
-		framebuffer:    renderer.api.DefaultFramebuffer(),
+		commandBuffer: renderer.api.CreateCommandBuffer(render.CommandBufferInfo{
+			Label:           "UI Canvas",
+			InitialCapacity: canvasCommandBufferSize,
+		}),
+		framebuffer: renderer.api.DefaultFramebuffer(),
 	}
 }
 

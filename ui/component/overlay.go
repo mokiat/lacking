@@ -36,6 +36,6 @@ func CloseOverlay(scope Scope) {
 	if overlay != nil {
 		overlay.Close()
 	} else {
-		logger.Warn("No overlay in scope!")
+		logger.Warn("No overlay in scope")
 	}
 }

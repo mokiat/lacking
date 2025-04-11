@@ -69,7 +69,7 @@ func (c *applicationComponent) OpenOverlay(scope Scope, instance Instance) *over
 
 func (c *applicationComponent) CloseOverlay(overlay *overlayHandle) {
 	if !c.overlays.Remove(overlay) {
-		logger.Warn("Overlay already closed!")
+		logger.Warn("Overlay already closed")
 	}
 	c.Invalidate()
 }

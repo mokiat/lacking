@@ -2,9 +2,9 @@ package dsl
 
 import (
 	"fmt"
+	"log/slog"
 	"slices"
 
-	"github.com/mokiat/lacking/debug/log"
 	"github.com/mokiat/lacking/game/asset"
 	"github.com/mokiat/lacking/game/asset/mdl"
 	"golang.org/x/sync/errgroup"
@@ -34,7 +34,9 @@ func Run(registry *asset.Registry, modelNames []string) error {
 		}
 
 		g.Go(func() error {
-			log.Info("Model %q - processing", name)
+			logger.Info("Processing model",
+				slog.String("name", name),
+			)
 
 			digest, err := StringDigest(modelProvider)
 			if err != nil {
@@ -42,12 +44,18 @@ func Run(registry *asset.Registry, modelNames []string) error {
 			}
 
 			if resource.SourceDigest() == digest {
-				log.Info("Model %q - up to date", name)
-				log.Info("Model %q - done", name)
+				logger.Info("Model up to date",
+					slog.String("name", name),
+				)
+				logger.Info("Model processed",
+					slog.String("name", name),
+				)
 				return nil
 			}
 
-			log.Info("Model %q - building", name)
+			logger.Info("Building model",
+				slog.String("name", name),
+			)
 			model, err := modelProvider.Get()
 			if err != nil {
 				return fmt.Errorf("error getting model %q: %w", name, err)
@@ -58,7 +66,9 @@ func Run(registry *asset.Registry, modelNames []string) error {
 				return fmt.Errorf("error converting model %q to asset: %w", name, err)
 			}
 
-			log.Info("Model %q - updating", name)
+			logger.Info("Updating model",
+				slog.String("name", name),
+			)
 			if err := resource.SaveContent(modelAsset); err != nil {
 				return fmt.Errorf("error saving resource: %w", err)
 			}
@@ -66,7 +76,9 @@ func Run(registry *asset.Registry, modelNames []string) error {
 				return fmt.Errorf("error setting resource digest: %w", err)
 			}
 
-			log.Info("Model %q - done", name)
+			logger.Info("Model processed",
+				slog.String("name", name),
+			)
 			return nil
 		})
 	}

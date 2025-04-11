@@ -7,11 +7,11 @@ import (
 	"image"
 	"image/png"
 	"io/fs"
+	"log/slog"
 	"slices"
 
 	"github.com/google/uuid"
 	"github.com/mokiat/gog"
-	"github.com/mokiat/lacking/debug/log"
 )
 
 // ErrNotFound indicates that the specified content is not available.
@@ -128,7 +128,9 @@ func (r *Registry) open() error {
 		if len(dto.PreviewData) > 0 {
 			preview, err = png.Decode(bytes.NewReader(dto.PreviewData))
 			if err != nil {
-				log.Warn("Error decoding preview image: %v", err)
+				logger.Warn("Error decoding preview image",
+					slog.String("error", err.Error()),
+				)
 				preview = nil
 			}
 		}
@@ -159,7 +161,9 @@ func (r *Registry) save() error {
 		var previewData bytes.Buffer
 		if res.preview != nil {
 			if err := png.Encode(&previewData, res.preview); err != nil {
-				log.Warn("Error encoding preview image: %v", err)
+				logger.Warn("Error encoding preview image",
+					slog.String("error", err.Error()),
+				)
 				previewData.Reset()
 			}
 		}

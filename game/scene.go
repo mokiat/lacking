@@ -1,11 +1,11 @@
 package game
 
 import (
+	"log/slog"
 	"time"
 
 	"github.com/mokiat/gog/ds"
 	"github.com/mokiat/gomath/dprec"
-	"github.com/mokiat/lacking/debug/log"
 	"github.com/mokiat/lacking/debug/metric"
 	"github.com/mokiat/lacking/game/ecs"
 	"github.com/mokiat/lacking/game/graphics"
@@ -306,7 +306,9 @@ func (s *Scene) CreateModel(info ModelInfo) *Model {
 			modelNode = nil
 		}
 		if modelNode == nil {
-			log.Error("Root node %q not found", info.RootNode.Value)
+			logger.Error("Root node not found",
+				slog.String("name", info.RootNode.Value),
+			)
 			modelNode = hierarchy.NewNode()
 		}
 		modelNode.Detach()

@@ -2,4 +2,4 @@ package gltfutil
 
 import "github.com/mokiat/lacking/debug/log"
 
-var logger = log.Namespace("lacking/util/gltfutil")
+var logger = log.ForNamespace("lacking/util/gltfutil")

@@ -1,8 +1,9 @@
 package graphics
 
 import (
+	"log/slog"
+
 	"github.com/mokiat/gog"
-	"github.com/mokiat/lacking/debug/log"
 	"github.com/mokiat/lacking/game/graphics/internal"
 	"github.com/mokiat/lacking/game/graphics/lsl"
 	"github.com/mokiat/lacking/render"
@@ -92,7 +93,9 @@ func (e *Engine) Debug() *Debug {
 func (e *Engine) CreateShader(info ShaderInfo) *Shader {
 	ast, err := lsl.Parse(info.SourceCode)
 	if err != nil {
-		log.Error("Failed to parse shader: %v", err)
+		logger.Error("Failed to parse shader",
+			slog.String("error", err.Error()),
+		)
 		ast = &lsl.Shader{Declarations: []lsl.Declaration{}}
 	}
 	if !info.SkipValidation {
@@ -112,7 +115,9 @@ func (e *Engine) CreateShader(info ShaderInfo) *Shader {
 			schema = lsl.DefaultSchema()
 		}
 		if err := lsl.Validate(ast, schema); err != nil {
-			log.Error("Failed to validate shader: %v", err)
+			logger.Error("Failed to validate shader",
+				slog.String("error", err.Error()),
+			)
 			ast = &lsl.Shader{Declarations: []lsl.Declaration{}}
 		}
 	}
@@ -310,7 +315,10 @@ func (e *Engine) CreateMeshDefinition(info MeshDefinitionInfo) *MeshDefinition {
 	geometry := info.Geometry
 
 	if len(info.Materials) != len(geometry.fragments) {
-		log.Warn("Number of materials (%d) does not match number of fragments (%d)", len(info.Materials), len(geometry.fragments))
+		logger.Warn("Number of materials does not match number of fragments",
+			slog.Int("materials", len(info.Materials)),
+			slog.Int("fragments", len(geometry.fragments)),
+		)
 	}
 
 	result := &MeshDefinition{

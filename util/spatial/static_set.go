@@ -1,6 +1,8 @@
 package spatial
 
 import (
+	"log/slog"
+
 	"github.com/mokiat/gog/opt"
 	"github.com/mokiat/gomath/dprec"
 )
@@ -42,7 +44,9 @@ type StaticSet[T any] struct {
 // Insert adds an item to this set.
 func (t *StaticSet[T]) Insert(position dprec.Vec3, radius float64, item T) {
 	if len(t.items) == cap(t.items) {
-		logger.Warn("Item slice capacity (%d) reached for static set! Will grow.", len(t.items))
+		logger.Warn("Item slice capacity reached for static set! Will grow.",
+			slog.Int("capacity", len(t.items)),
+		)
 	}
 	t.items = append(t.items, staticSetItem[T]{
 		position: position,

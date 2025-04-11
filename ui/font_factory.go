@@ -100,7 +100,10 @@ func (f *fontFactory) Free() {
 }
 
 func (f *fontFactory) CreateFont(font *opentype.Font) (*Font, error) {
-	commandBuffer := f.api.CreateCommandBuffer(fontCommandBufferSize)
+	commandBuffer := f.api.CreateCommandBuffer(render.CommandBufferInfo{
+		Label:           "UI Font Factory",
+		InitialCapacity: fontCommandBufferSize,
+	})
 
 	commandBuffer.BeginRenderPass(render.RenderPassInfo{
 		Framebuffer: f.framebuffer,

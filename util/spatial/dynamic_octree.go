@@ -1,6 +1,7 @@
 package spatial
 
 import (
+	"log/slog"
 	"slices"
 
 	"github.com/mokiat/gog/ds"
@@ -195,7 +196,9 @@ func (t *DynamicOctree[T]) Insert(position dprec.Vec3, radius float64, value T) 
 		return item.id
 	} else {
 		if len(t.items) == cap(t.items) {
-			logger.Warn("Item slice capacity (%d) reached for dynamic octree! Will grow.", len(t.items))
+			logger.Warn("Item slice capacity reached for dynamic octree! Will grow.",
+				slog.Int("capacity", len(t.items)),
+			)
 		}
 		id := DynamicOctreeItemID(len(t.items))
 		t.idMappings = append(t.idMappings, int32(id))
@@ -308,7 +311,9 @@ func (t *DynamicOctree[T]) pickChildNode(parentNodeIndex int32, position dprec.V
 		return childNodeIndex
 	} else {
 		if len(t.nodes) == cap(t.nodes) {
-			logger.Warn("Node slice capacity (%d) reached for dynamic octree! Will grow.", len(t.nodes))
+			logger.Warn("Node slice capacity  reached for dynamic octree! Will grow.",
+				slog.Int("capacity", len(t.nodes)),
+			)
 		}
 		childNodeIndex := int32(len(t.nodes)) // predict next node index
 		parentNode.children[childIndex] = childNodeIndex

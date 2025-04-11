@@ -100,7 +100,7 @@ func (c *mvcListenerComponent) NotifyCreate(ref co.Renderable, properties co.Pro
 		subscription := eventBus.Subscribe(candidate.OnEvent)
 		c.subscriptions[ref] = subscription
 	} else {
-		logger.Warn("Component instance marked as listener but does not satisfy contract!")
+		logger.Warn("Component instance marked as listener but does not satisfy contract")
 	}
 
 	c.Component.NotifyCreate(ref, properties)
