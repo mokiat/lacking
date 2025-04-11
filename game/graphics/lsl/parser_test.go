@@ -7,278 +7,6 @@ import (
 	"github.com/mokiat/lacking/game/graphics/lsl"
 )
 
-var _ = Describe("Parse", func() {
-	var (
-		inSource  string
-		outShader *lsl.Shader
-		outErr    error
-	)
-
-	JustBeforeEach(func() {
-		outShader, outErr = lsl.Parse(inSource)
-	})
-
-	When("empty shader", func() {
-		BeforeEach(func() {
-			inSource = ``
-		})
-
-		It("produces an empty shader", func() {
-			Expect(outErr).ToNot(HaveOccurred())
-			Expect(outShader).To(Equal(&lsl.Shader{}))
-		})
-	})
-
-	When("comments are present", func() {
-		BeforeEach(func() {
-			inSource = `
-				// This is a comment
-			`
-		})
-
-		It("ignores the comments", func() {
-			Expect(outErr).ToNot(HaveOccurred())
-			Expect(outShader).To(Equal(&lsl.Shader{}))
-		})
-	})
-
-	When("texture blocks are present", func() {
-		BeforeEach(func() {
-			inSource = `
-				textures { // header
-					color sampler2D, // field1
-					// has two fields
-					intensity samplerCube, // field2
-				}
-
-				// comment here
-
-				textures {
-					value sampler2D,
-				}
-			`
-		})
-
-		It("produces a shader with the texture blocks", func() {
-			Expect(outErr).ToNot(HaveOccurred())
-			Expect(outShader).To(Equal(&lsl.Shader{
-				Declarations: []lsl.Declaration{
-					&lsl.TextureBlockDeclaration{
-						Fields: []lsl.Field{
-							{
-								Name: "color",
-								Type: lsl.TypeNameSampler2D,
-							},
-							{
-								Name: "intensity",
-								Type: lsl.TypeNameSamplerCube,
-							},
-						},
-					},
-					&lsl.TextureBlockDeclaration{
-						Fields: []lsl.Field{
-							{
-								Name: "value",
-								Type: lsl.TypeNameSampler2D,
-							},
-						},
-					},
-				},
-			}))
-		})
-	})
-
-	When("uniform blocks are present", func() {
-		BeforeEach(func() {
-			inSource = `
-				uniforms { // header
-					color vec3, // field1
-					// has two fields
-					intensity float, // field2
-				}
-
-				// comment here
-
-				uniforms {
-					value vec4,
-				}
-			`
-		})
-
-		It("produces a shader with the uniform blocks", func() {
-			Expect(outErr).ToNot(HaveOccurred())
-			Expect(outShader).To(Equal(&lsl.Shader{
-				Declarations: []lsl.Declaration{
-					&lsl.UniformBlockDeclaration{
-						Fields: []lsl.Field{
-							{
-								Name: "color",
-								Type: lsl.TypeNameVec3,
-							},
-							{
-								Name: "intensity",
-								Type: lsl.TypeNameFloat,
-							},
-						},
-					},
-					&lsl.UniformBlockDeclaration{
-						Fields: []lsl.Field{
-							{
-								Name: "value",
-								Type: lsl.TypeNameVec4,
-							},
-						},
-					},
-				},
-			}))
-		})
-	})
-
-	When("varying blocks are present", func() {
-		BeforeEach(func() {
-			inSource = `
-				varyings { // header
-					color vec3, // field 1
-					// two fields
-					intensity float, // field2
-				} // footer
-
-				varyings {
-					value vec4,
-				}
-			`
-		})
-
-		It("produces a shader with the varying blocks", func() {
-			Expect(outErr).ToNot(HaveOccurred())
-			Expect(outShader).To(Equal(&lsl.Shader{
-				Declarations: []lsl.Declaration{
-					&lsl.VaryingBlockDeclaration{
-						Fields: []lsl.Field{
-							{
-								Name: "color",
-								Type: lsl.TypeNameVec3,
-							},
-							{
-								Name: "intensity",
-								Type: lsl.TypeNameFloat,
-							},
-						},
-					},
-					&lsl.VaryingBlockDeclaration{
-						Fields: []lsl.Field{
-							{
-								Name: "value",
-								Type: lsl.TypeNameVec4,
-							},
-						},
-					},
-				},
-			}))
-		})
-	})
-
-	When("function declarations are present", func() {
-		BeforeEach(func() {
-			inSource = `
-				func vertex(a vec3, b vec4) (float, vec2) {
-				}
-				
-				func #fragment() {
-				}
-			`
-		})
-
-		It("produces a shader with the function declaration", func() {
-			Expect(outErr).ToNot(HaveOccurred())
-			Expect(outShader).To(Equal(&lsl.Shader{
-				Declarations: []lsl.Declaration{
-					&lsl.FunctionDeclaration{
-						Name: "vertex",
-						Inputs: []lsl.Field{
-							{
-								Name: "a",
-								Type: lsl.TypeNameVec3,
-							},
-							{
-								Name: "b",
-								Type: lsl.TypeNameVec4,
-							},
-						},
-						Outputs: []lsl.Field{
-							{
-								Name: "",
-								Type: lsl.TypeNameFloat,
-							},
-							{
-								Name: "",
-								Type: lsl.TypeNameVec2,
-							},
-						},
-					},
-					&lsl.FunctionDeclaration{
-						Name:    "#fragment",
-						Inputs:  nil,
-						Outputs: nil,
-					},
-				},
-			}))
-		})
-	})
-
-	When("variable declarations are present", func() {
-		BeforeEach(func() {
-			inSource = `
-				func test() { // a test function
-					var color vec3 = vec3(1.0,-0.5, 0.1) // this has assignment
-					// some comment
-					var intensity float // this is just a declaration
-				} // so much for it
-			`
-		})
-
-		It("produces a shader with the variable declarations", func() {
-			Expect(outErr).ToNot(HaveOccurred())
-			Expect(outShader).To(Equal(&lsl.Shader{
-				Declarations: []lsl.Declaration{
-					&lsl.FunctionDeclaration{
-						Name:    "test",
-						Inputs:  nil,
-						Outputs: nil,
-						Body: []lsl.Statement{
-							&lsl.VariableDeclaration{
-								Name: "color",
-								Type: lsl.TypeNameVec3,
-								Assignment: &lsl.FunctionCall{
-									Name: "vec3",
-									Arguments: []lsl.Expression{
-										&lsl.FloatLiteral{
-											Value: 1.0,
-										},
-										&lsl.UnaryExpression{
-											Operator: "-",
-											Operand: &lsl.FloatLiteral{
-												Value: 0.5,
-											},
-										},
-										&lsl.FloatLiteral{
-											Value: 0.1,
-										},
-									},
-								},
-							},
-							&lsl.VariableDeclaration{
-								Name: "intensity",
-								Type: lsl.TypeNameFloat,
-							},
-						},
-					},
-				},
-			}))
-		})
-	})
-})
-
 var _ = Describe("Parser", func() {
 	DescribeTable("ParseNewLine", func(inSource string, expectedErr error) {
 		parser := lsl.NewParser(inSource)
@@ -1151,6 +879,177 @@ var _ = Describe("Parser", func() {
 				Body: []lsl.Statement{
 					&lsl.Discard{},
 					&lsl.Discard{},
+				},
+			},
+		),
+	)
+
+	DescribeTable("ParseShader", func(inSource string, expectedShader *lsl.Shader) {
+		parser := lsl.NewParser(inSource)
+		shader, err := parser.ParseShader()
+		Expect(err).ToNot(HaveOccurred())
+		Expect(shader).To(Equal(expectedShader))
+	},
+		Entry("empty",
+			openTestFile("parse-shader", "empty.lsl"),
+			&lsl.Shader{},
+		),
+		Entry("root comments",
+			openTestFile("parse-shader", "root-comments.lsl"),
+			&lsl.Shader{},
+		),
+		Entry("texture blocks",
+			openTestFile("parse-shader", "texture-blocks.lsl"),
+			&lsl.Shader{
+				Declarations: []lsl.Declaration{
+					&lsl.TextureBlockDeclaration{
+						Fields: []lsl.Field{
+							{
+								Name: "color",
+								Type: lsl.TypeNameSampler2D,
+							},
+							{
+								Name: "intensity",
+								Type: lsl.TypeNameSamplerCube,
+							},
+						},
+					},
+					&lsl.TextureBlockDeclaration{
+						Fields: []lsl.Field{
+							{
+								Name: "value",
+								Type: lsl.TypeNameSampler2D,
+							},
+						},
+					},
+				},
+			},
+		),
+		Entry("uniform blocks",
+			openTestFile("parse-shader", "uniform-blocks.lsl"),
+			&lsl.Shader{
+				Declarations: []lsl.Declaration{
+					&lsl.UniformBlockDeclaration{
+						Fields: []lsl.Field{
+							{
+								Name: "color",
+								Type: lsl.TypeNameVec3,
+							},
+							{
+								Name: "intensity",
+								Type: lsl.TypeNameFloat,
+							},
+						},
+					},
+					&lsl.UniformBlockDeclaration{
+						Fields: []lsl.Field{
+							{
+								Name: "value",
+								Type: lsl.TypeNameVec4,
+							},
+						},
+					},
+				},
+			},
+		),
+		Entry("varying blocks",
+			openTestFile("parse-shader", "varying-blocks.lsl"),
+			&lsl.Shader{
+				Declarations: []lsl.Declaration{
+					&lsl.VaryingBlockDeclaration{
+						Fields: []lsl.Field{
+							{
+								Name: "color",
+								Type: lsl.TypeNameVec3,
+							},
+							{
+								Name: "intensity",
+								Type: lsl.TypeNameFloat,
+							},
+						},
+					},
+					&lsl.VaryingBlockDeclaration{
+						Fields: []lsl.Field{
+							{
+								Name: "value",
+								Type: lsl.TypeNameVec4,
+							},
+						},
+					},
+				},
+			},
+		),
+		Entry("function declarations",
+			openTestFile("parse-shader", "function-declarations.lsl"),
+			&lsl.Shader{
+				Declarations: []lsl.Declaration{
+					&lsl.FunctionDeclaration{
+						Name: "vertex",
+						Inputs: []lsl.Field{
+							{
+								Name: "a",
+								Type: lsl.TypeNameVec3,
+							},
+							{
+								Name: "b",
+								Type: lsl.TypeNameVec4,
+							},
+						},
+						Outputs: []lsl.Field{
+							{
+								Name: "",
+								Type: lsl.TypeNameFloat,
+							},
+							{
+								Name: "",
+								Type: lsl.TypeNameVec2,
+							},
+						},
+					},
+					&lsl.FunctionDeclaration{
+						Name:    "#fragment",
+						Inputs:  nil,
+						Outputs: nil,
+					},
+				},
+			},
+		),
+		Entry("variable declarations",
+			openTestFile("parse-shader", "variable-declarations.lsl"),
+			&lsl.Shader{
+				Declarations: []lsl.Declaration{
+					&lsl.FunctionDeclaration{
+						Name:    "test",
+						Inputs:  nil,
+						Outputs: nil,
+						Body: []lsl.Statement{
+							&lsl.VariableDeclaration{
+								Name: "color",
+								Type: lsl.TypeNameVec3,
+								Assignment: &lsl.FunctionCall{
+									Name: "vec3",
+									Arguments: []lsl.Expression{
+										&lsl.FloatLiteral{
+											Value: 1.0,
+										},
+										&lsl.UnaryExpression{
+											Operator: "-",
+											Operand: &lsl.FloatLiteral{
+												Value: 0.5,
+											},
+										},
+										&lsl.FloatLiteral{
+											Value: 0.1,
+										},
+									},
+								},
+							},
+							&lsl.VariableDeclaration{
+								Name: "intensity",
+								Type: lsl.TypeNameFloat,
+							},
+						},
+					},
 				},
 			},
 		),
