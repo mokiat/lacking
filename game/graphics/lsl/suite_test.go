@@ -14,9 +14,10 @@ func TestLSL(t *testing.T) {
 	RunSpecs(t, "LSL Suite")
 }
 
-func openTestFile(folder, name string) string {
+func openTestFile(segments ...string) string {
 	defer GinkgoRecover()
-	data, err := os.ReadFile(filepath.Join("testdata", folder, name))
+	segments = append([]string{"testdata"}, segments...)
+	data, err := os.ReadFile(filepath.Join(segments...))
 	Expect(err).ToNot(HaveOccurred())
 	return string(data)
 }

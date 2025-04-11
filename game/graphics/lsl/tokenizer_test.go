@@ -23,15 +23,15 @@ var _ = Describe("Tokenizer", func() {
 		Expect(outTokens).To(Equal(expectedTokens))
 	},
 		Entry("blank source",
-			openTestFile("tokenizer-next", "blank.lsl"),
+			openTestFile("tokenizer", "blank.lsl"),
 			nil,
 		),
 		Entry("empty source",
-			openTestFile("tokenizer-next", "empty.lsl"),
+			openTestFile("tokenizer", "empty.lsl"),
 			nil,
 		),
 		Entry("comment",
-			openTestFile("tokenizer-next", "comment.lsl"),
+			openTestFile("tokenizer", "comment.lsl"),
 			[]lsl.Token{
 				token(lsl.TokenTypeNewLine, "\n", lsl.At(1, 1)),
 				token(lsl.TokenTypeComment, "This is a comment", lsl.At(2, 1)),
@@ -41,7 +41,7 @@ var _ = Describe("Tokenizer", func() {
 			},
 		),
 		Entry("block declaration",
-			openTestFile("tokenizer-next", "block-declaration.lsl"),
+			openTestFile("tokenizer", "block-declaration.lsl"),
 			[]lsl.Token{
 				token(lsl.TokenTypeNewLine, "\n", lsl.At(1, 1)),
 				token(lsl.TokenTypeIdentifier, "uniforms", lsl.At(2, 1)),
@@ -57,7 +57,7 @@ var _ = Describe("Tokenizer", func() {
 			},
 		),
 		Entry("block content declaration",
-			openTestFile("tokenizer-next", "block-content-declaration.lsl"),
+			openTestFile("tokenizer", "block-content-declaration.lsl"),
 			[]lsl.Token{
 				token(lsl.TokenTypeNewLine, "\n", lsl.At(1, 1)),
 				token(lsl.TokenTypeIdentifier, "color", lsl.At(2, 1)),
@@ -69,7 +69,7 @@ var _ = Describe("Tokenizer", func() {
 			},
 		),
 		Entry("function declaration",
-			openTestFile("tokenizer-next", "function-declaration.lsl"),
+			openTestFile("tokenizer", "function-declaration.lsl"),
 			[]lsl.Token{
 				token(lsl.TokenTypeNewLine, "\n", lsl.At(1, 1)),
 
@@ -113,7 +113,7 @@ var _ = Describe("Tokenizer", func() {
 			},
 		),
 		Entry("var declaration",
-			openTestFile("tokenizer-next", "var-declaration.lsl"),
+			openTestFile("tokenizer", "var-declaration.lsl"),
 			[]lsl.Token{
 				token(lsl.TokenTypeNewLine, "\n", lsl.At(1, 1)),
 
@@ -139,7 +139,7 @@ var _ = Describe("Tokenizer", func() {
 			},
 		),
 		Entry("field access",
-			openTestFile("tokenizer-next", "field-access.lsl"),
+			openTestFile("tokenizer", "field-access.lsl"),
 			[]lsl.Token{
 				token(lsl.TokenTypeNewLine, "\n", lsl.At(1, 1)),
 
@@ -162,7 +162,7 @@ var _ = Describe("Tokenizer", func() {
 			},
 		),
 		Entry("numeric expression",
-			openTestFile("tokenizer-next", "numeric-expression.lsl"),
+			openTestFile("tokenizer", "numeric-expression.lsl"),
 			[]lsl.Token{
 				token(lsl.TokenTypeNewLine, "\n", lsl.At(1, 1)),
 
@@ -189,7 +189,7 @@ var _ = Describe("Tokenizer", func() {
 			},
 		),
 		Entry("bit-wise expression",
-			openTestFile("tokenizer-next", "bit-wise-expression.lsl"),
+			openTestFile("tokenizer", "bit-wise-expression.lsl"),
 			[]lsl.Token{
 				token(lsl.TokenTypeNewLine, "\n", lsl.At(1, 1)),
 
@@ -218,7 +218,7 @@ var _ = Describe("Tokenizer", func() {
 			},
 		),
 		Entry("boolean expression",
-			openTestFile("tokenizer-next", "boolean-expression.lsl"),
+			openTestFile("tokenizer", "boolean-expression.lsl"),
 			[]lsl.Token{
 				token(lsl.TokenTypeNewLine, "\n", lsl.At(1, 1)),
 
@@ -279,7 +279,7 @@ var _ = Describe("Tokenizer", func() {
 			},
 		),
 		Entry("assignments",
-			openTestFile("tokenizer-next", "assignments.lsl"),
+			openTestFile("tokenizer", "assignments.lsl"),
 			[]lsl.Token{
 				token(lsl.TokenTypeNewLine, "\n", lsl.At(1, 1)),
 
@@ -415,7 +415,7 @@ var _ = Describe("Tokenizer", func() {
 			},
 		),
 		Entry("func invocation",
-			openTestFile("tokenizer-next", "func-invocation.lsl"),
+			openTestFile("tokenizer", "func-invocation.lsl"),
 			[]lsl.Token{
 				token(lsl.TokenTypeNewLine, "\n", lsl.At(1, 1)),
 
