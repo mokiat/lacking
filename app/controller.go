@@ -1,5 +1,9 @@
 package app
 
+import (
+	"slices"
+)
+
 // Controller is a mechanism through which the user code can be
 // notified of changes to the application window.
 //
@@ -97,26 +101,26 @@ type LayeredController struct {
 }
 
 func (c *LayeredController) OnCreate(window Window) {
-	for i := 0; i < len(c.layers); i++ {
-		c.layers[i].OnCreate(window)
+	for _, layer := range c.layers {
+		layer.OnCreate(window)
 	}
 }
 
 func (c *LayeredController) OnResize(window Window, width, height int) {
-	for i := 0; i < len(c.layers); i++ {
-		c.layers[i].OnResize(window, width, height)
+	for _, layer := range c.layers {
+		layer.OnResize(window, width, height)
 	}
 }
 
 func (c *LayeredController) OnFramebufferResize(window Window, width, height int) {
-	for i := 0; i < len(c.layers); i++ {
-		c.layers[i].OnFramebufferResize(window, width, height)
+	for _, layer := range c.layers {
+		layer.OnFramebufferResize(window, width, height)
 	}
 }
 
 func (c *LayeredController) OnKeyboardEvent(window Window, event KeyboardEvent) bool {
-	for i := len(c.layers) - 1; i >= 0; i-- {
-		if c.layers[i].OnKeyboardEvent(window, event) {
+	for _, layer := range slices.Backward(c.layers) {
+		if layer.OnKeyboardEvent(window, event) {
 			return true
 		}
 	}
@@ -124,8 +128,8 @@ func (c *LayeredController) OnKeyboardEvent(window Window, event KeyboardEvent) 
 }
 
 func (c *LayeredController) OnMouseEvent(window Window, event MouseEvent) bool {
-	for i := len(c.layers) - 1; i >= 0; i-- {
-		if c.layers[i].OnMouseEvent(window, event) {
+	for _, layer := range slices.Backward(c.layers) {
+		if layer.OnMouseEvent(window, event) {
 			return true
 		}
 	}
@@ -133,8 +137,8 @@ func (c *LayeredController) OnMouseEvent(window Window, event MouseEvent) bool {
 }
 
 func (c *LayeredController) OnClipboardEvent(window Window, event ClipboardEvent) bool {
-	for i := len(c.layers) - 1; i >= 0; i-- {
-		if c.layers[i].OnClipboardEvent(window, event) {
+	for _, layer := range slices.Backward(c.layers) {
+		if layer.OnClipboardEvent(window, event) {
 			return true
 		}
 	}
@@ -142,14 +146,14 @@ func (c *LayeredController) OnClipboardEvent(window Window, event ClipboardEvent
 }
 
 func (c *LayeredController) OnRender(window Window) {
-	for i := 0; i < len(c.layers); i++ {
-		c.layers[i].OnRender(window)
+	for _, layer := range c.layers {
+		layer.OnRender(window)
 	}
 }
 
 func (c *LayeredController) OnCloseRequested(window Window) bool {
-	for i := len(c.layers) - 1; i >= 0; i-- {
-		if !c.layers[i].OnCloseRequested(window) {
+	for _, layer := range slices.Backward(c.layers) {
+		if !layer.OnCloseRequested(window) {
 			return false
 		}
 	}
@@ -157,7 +161,7 @@ func (c *LayeredController) OnCloseRequested(window Window) bool {
 }
 
 func (c *LayeredController) OnDestroy(window Window) {
-	for i := len(c.layers) - 1; i >= 0; i-- {
-		c.layers[i].OnDestroy(window)
+	for _, layer := range slices.Backward(c.layers) {
+		layer.OnDestroy(window)
 	}
 }

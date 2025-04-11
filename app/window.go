@@ -87,7 +87,7 @@ type Window interface {
 	// AudioAPI provides access to a usable Audio API based on the current
 	// window.
 	//
-	// If the implementation of this API does not support graphics, then this
+	// If the implementation of this API does not support audio, then this
 	// method returns nil.
 	AudioAPI() audio.API
 
