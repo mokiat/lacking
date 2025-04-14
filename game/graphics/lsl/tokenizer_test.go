@@ -136,6 +136,11 @@ var _ = Describe("Tokenizer", func() {
 				token(lsl.TokenTypeOperator, "-", lsl.At(4, 15)),
 				token(lsl.TokenTypeNumber, "1.0", lsl.At(4, 16)),
 				token(lsl.TokenTypeNewLine, "\n", lsl.At(4, 19)),
+
+				token(lsl.TokenTypeIdentifier, "d", lsl.At(5, 1)),
+				token(lsl.TokenTypeOperator, ":=", lsl.At(5, 3)),
+				token(lsl.TokenTypeNumber, "13", lsl.At(5, 6)),
+				token(lsl.TokenTypeNewLine, "\n", lsl.At(5, 8)),
 			},
 		),
 		Entry("field access",
