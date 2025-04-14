@@ -467,6 +467,20 @@ func (t *Tokenizer) scanOperator() Token {
 			Value: "!",
 			Pos:   pos,
 		}
+	case ch1 == '[':
+		t.moveTo(ch1Offset)
+		return Token{
+			Type:  TokenTypeOperator,
+			Value: "[",
+			Pos:   pos,
+		}
+	case ch1 == ']':
+		t.moveTo(ch1Offset)
+		return Token{
+			Type:  TokenTypeOperator,
+			Value: "]",
+			Pos:   pos,
+		}
 	default:
 		return Token{
 			Type:  TokenTypeError,
