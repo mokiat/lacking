@@ -776,6 +776,13 @@ var _ = Describe("Parser", func() {
 							},
 						},
 					},
+					&lsl.VariableDeclaration{
+						Name: "w",
+						Type: "", // auto-assignment
+						Assignment: &lsl.IntLiteral{
+							Value: 15,
+						},
+					},
 				},
 			},
 		),

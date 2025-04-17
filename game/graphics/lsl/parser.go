@@ -717,7 +717,8 @@ func (p *Parser) parseImperativeStatement() (Statement, error) {
 
 	var target Expression
 	nextToken := p.peekToken()
-	if nextToken.IsSpecificOperator(".") {
+	switch {
+	case nextToken.IsSpecificOperator("."):
 		p.nextToken() // consume the dot
 		fieldToken := p.nextToken()
 		if !fieldToken.IsIdentifier() {
@@ -728,7 +729,23 @@ func (p *Parser) parseImperativeStatement() (Statement, error) {
 			FieldName: fieldToken.Value,
 		}
 		nextToken = p.peekToken()
-	} else {
+
+	case nextToken.IsSpecificOperator(":="):
+		p.nextToken() // consume the assignment operator
+		expr, err := p.ParseExpression()
+		if err != nil {
+			return nil, fmt.Errorf("error parsing expression: %w", err)
+		}
+		if err := p.ParseOptionalRemainder(); err != nil {
+			return nil, fmt.Errorf("error parsing end of line: %w", err)
+		}
+		return &VariableDeclaration{
+			Name:       identifierToken.Value,
+			Type:       "", // auto-assignment
+			Assignment: expr,
+		}, nil
+
+	default:
 		target = &Identifier{
 			Name: identifierToken.Value,
 		}
