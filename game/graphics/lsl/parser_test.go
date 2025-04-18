@@ -642,8 +642,33 @@ var _ = Describe("Parser", func() {
 				},
 			},
 		),
-
-		// TODO: Test logical expressions
+		Entry("logical expression",
+			openTestFile("parser", "parse-expression", "logical-expression.lsl"),
+			&lsl.BinaryExpression{
+				Left: &lsl.BinaryExpression{
+					Left: &lsl.BinaryExpression{
+						Left: &lsl.BinaryExpression{
+							Left:     &lsl.FloatLiteral{Value: 5.0},
+							Operator: ">",
+							Right:    &lsl.IntLiteral{Value: 10},
+						},
+						Operator: "||",
+						Right: &lsl.BinaryExpression{
+							Left:     &lsl.Identifier{Name: "b"},
+							Operator: ">=",
+							Right:    &lsl.Identifier{Name: "a"},
+						},
+					},
+					Operator: "&&",
+					Right: &lsl.UnaryExpression{
+						Operator: "!",
+						Operand:  &lsl.Identifier{Name: "c"},
+					},
+				},
+				Operator: "==",
+				Right:    &lsl.Identifier{Name: "d"},
+			},
+		),
 	)
 
 	DescribeTable("ParseFunction", func(inSource string, expectedDecl *lsl.FunctionDeclaration) {
