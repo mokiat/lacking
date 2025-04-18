@@ -756,7 +756,23 @@ var _ = Describe("Parser", func() {
 			nil,
 			&lsl.ParseError{
 				Pos:     lsl.At(1, 1),
-				Message: "expected a beginning of an expression",
+				Message: "expected an expression value",
+			},
+		),
+		Entry("incomplete",
+			openTestFile("parser", "parse-expression", "incomplete.lsl"),
+			nil,
+			&lsl.ParseError{
+				Pos:     lsl.At(1, 4),
+				Message: "expected an expression value",
+			},
+		),
+		Entry("invalid value",
+			openTestFile("parser", "parse-expression", "invalid-value.lsl"),
+			nil,
+			&lsl.ParseError{
+				Pos:     lsl.At(1, 5),
+				Message: "expected an expression value",
 			},
 		),
 	)

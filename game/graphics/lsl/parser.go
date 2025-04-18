@@ -624,7 +624,7 @@ func (p *Parser) parseExpressionValue() (Expression, error) {
 	default:
 		return nil, &ParseError{
 			Pos:     token.Pos,
-			Message: "expected a beginning of an expression",
+			Message: "expected an expression value",
 		}
 	}
 }
