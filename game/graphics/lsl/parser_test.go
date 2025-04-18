@@ -675,6 +675,42 @@ var _ = Describe("Parser", func() {
 				Right:    &lsl.Identifier{Name: "d"},
 			},
 		),
+		Entry("operator precedence",
+			openTestFile("parser", "parse-expression", "operator-precedence.lsl"),
+			&lsl.BinaryExpression{
+				Left: &lsl.BinaryExpression{
+					Left: &lsl.BinaryExpression{
+						Left: &lsl.BinaryExpression{
+							Left: &lsl.BinaryExpression{
+								Left:     &lsl.IntLiteral{Value: 10},
+								Operator: "*",
+								Right: &lsl.BinaryExpression{
+									Left: &lsl.BinaryExpression{
+										Left:     &lsl.IntLiteral{Value: 5},
+										Operator: "+",
+										Right:    &lsl.IntLiteral{Value: 3},
+									},
+									Operator: "-",
+									Right:    &lsl.IntLiteral{Value: 2},
+								},
+							},
+							Operator: "|",
+							Right: &lsl.BinaryExpression{
+								Left:     &lsl.IntLiteral{Value: 7},
+								Operator: "/",
+								Right:    &lsl.IntLiteral{Value: 3},
+							},
+						},
+						Operator: ">=",
+						Right:    &lsl.IntLiteral{Value: 0},
+					},
+					Operator: "&&",
+					Right:    &lsl.BoolLiteral{Value: true},
+				},
+				Operator: "||",
+				Right:    &lsl.BoolLiteral{Value: false},
+			},
+		),
 	)
 
 	DescribeTable("ParseFunction", func(inSource string, expectedDecl *lsl.FunctionDeclaration) {

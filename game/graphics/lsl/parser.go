@@ -365,55 +365,7 @@ func (p *Parser) ParseVaryingBlock() (*VaryingBlockDeclaration, error) {
 	}, nil
 }
 
-// ParseShader parses the LSL source code and returns a shader AST object.
-// If the source code is invalid, an error is returned.
-func (p *Parser) ParseShader() (*Shader, error) {
-	var shader Shader
-	token := p.peekToken()
-	for !token.IsEOF() {
-		switch {
-		case token.IsError():
-			return nil, fmt.Errorf("error token: %v", token)
-		case token.IsNewLine():
-			if err := p.ParseNewLine(); err != nil {
-				return nil, fmt.Errorf("error parsing new line: %w", err)
-			}
-		case token.IsComment():
-			if err := p.ParseComment(); err != nil {
-				return nil, fmt.Errorf("error parsing comment: %w", err)
-			}
-		case token.IsSpecificIdentifier("textures"):
-			decl, err := p.ParseTextureBlock()
-			if err != nil {
-				return nil, fmt.Errorf("error parsing texture block: %w", err)
-			}
-			shader.Declarations = append(shader.Declarations, decl)
-		case token.IsSpecificIdentifier("uniforms"):
-			decl, err := p.ParseUniformBlock()
-			if err != nil {
-				return nil, fmt.Errorf("error parsing uniform block: %w", err)
-			}
-			shader.Declarations = append(shader.Declarations, decl)
-		case token.IsSpecificIdentifier("varyings"):
-			decl, err := p.ParseVaryingBlock()
-			if err != nil {
-				return nil, fmt.Errorf("error parsing varying block: %w", err)
-			}
-			shader.Declarations = append(shader.Declarations, decl)
-		case token.IsSpecificIdentifier("func"):
-			decl, err := p.ParseFunction()
-			if err != nil {
-				return nil, fmt.Errorf("error parsing function: %w", err)
-			}
-			shader.Declarations = append(shader.Declarations, decl)
-		default:
-			return nil, fmt.Errorf("unexpected token: %v", token)
-		}
-		token = p.peekToken()
-	}
-	return &shader, nil
-}
-
+// ParseExpression parses an expression and returns the resulting AST object.
 func (p *Parser) ParseExpression() (Expression, error) {
 	valStack := ds.NewStack[Expression](2)
 	opStack := ds.NewStack[string](1)
@@ -427,16 +379,12 @@ func (p *Parser) ParseExpression() (Expression, error) {
 	nextToken := p.peekToken()
 	for nextToken.IsBinaryOperator() {
 		operatorToken := p.nextToken()
-		if !operatorToken.IsBinaryOperator() {
-			return nil, fmt.Errorf("expected binary operator")
-		}
-
 		operator := operatorToken.Value
-		operatorPrio := operatorPriority(operator)
+		operatorPrec := operatorPrecedence(operator)
 		for !opStack.IsEmpty() {
 			oldOperator := opStack.Peek()
-			oldOperatorPrio := operatorPriority(oldOperator)
-			if oldOperatorPrio <= operatorPrio {
+			oldOperatorPrec := operatorPrecedence(oldOperator)
+			if oldOperatorPrec < operatorPrec {
 				break
 			}
 			opStack.Pop() // pop it
@@ -488,6 +436,55 @@ func (p *Parser) ParseExpression() (Expression, error) {
 		return nil, fmt.Errorf("no value expressions found")
 	}
 	return valStack.Pop(), nil
+}
+
+// ParseShader parses the LSL source code and returns a shader AST object.
+// If the source code is invalid, an error is returned.
+func (p *Parser) ParseShader() (*Shader, error) {
+	var shader Shader
+	token := p.peekToken()
+	for !token.IsEOF() {
+		switch {
+		case token.IsError():
+			return nil, fmt.Errorf("error token: %v", token)
+		case token.IsNewLine():
+			if err := p.ParseNewLine(); err != nil {
+				return nil, fmt.Errorf("error parsing new line: %w", err)
+			}
+		case token.IsComment():
+			if err := p.ParseComment(); err != nil {
+				return nil, fmt.Errorf("error parsing comment: %w", err)
+			}
+		case token.IsSpecificIdentifier("textures"):
+			decl, err := p.ParseTextureBlock()
+			if err != nil {
+				return nil, fmt.Errorf("error parsing texture block: %w", err)
+			}
+			shader.Declarations = append(shader.Declarations, decl)
+		case token.IsSpecificIdentifier("uniforms"):
+			decl, err := p.ParseUniformBlock()
+			if err != nil {
+				return nil, fmt.Errorf("error parsing uniform block: %w", err)
+			}
+			shader.Declarations = append(shader.Declarations, decl)
+		case token.IsSpecificIdentifier("varyings"):
+			decl, err := p.ParseVaryingBlock()
+			if err != nil {
+				return nil, fmt.Errorf("error parsing varying block: %w", err)
+			}
+			shader.Declarations = append(shader.Declarations, decl)
+		case token.IsSpecificIdentifier("func"):
+			decl, err := p.ParseFunction()
+			if err != nil {
+				return nil, fmt.Errorf("error parsing function: %w", err)
+			}
+			shader.Declarations = append(shader.Declarations, decl)
+		default:
+			return nil, fmt.Errorf("unexpected token: %v", token)
+		}
+		token = p.peekToken()
+	}
+	return &shader, nil
 }
 
 func (p *Parser) ParseFunction() (*FunctionDeclaration, error) {
@@ -793,20 +790,6 @@ func (p *Parser) parseImperativeStatement() (Statement, error) {
 
 	default:
 		return nil, fmt.Errorf("unexpected token: %v", nextToken)
-	}
-}
-
-func operatorPriority(operator string) int {
-	// TODO: Add more...
-	switch operator {
-	case "<<", ">>":
-		return 3
-	case "*", "/":
-		return 2
-	case "+", "-":
-		return 1
-	default:
-		return 0
 	}
 }
 

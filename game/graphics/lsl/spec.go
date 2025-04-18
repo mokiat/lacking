@@ -185,3 +185,41 @@ var binaryOperators = []string{
 	BinaryOperatorAnd,
 	BinaryOperatorOr,
 }
+
+// operatorPrecedence returns the precedence group of the given operator.
+// Higher is more important. These are aligned with the Go precedence groups:
+// https://go.dev/ref/spec#Operators
+func operatorPrecedence(operator string) int {
+	switch operator {
+	case
+		BinaryOperatorMul,
+		BinaryOperatorDiv,
+		BinaryOperatorMod,
+		BinaryOperatorShl,
+		BinaryOperatorShr,
+		BinaryOperatorBitAnd:
+		return 5
+	case
+		BinaryOperatorAdd,
+		BinaryOperatorSub,
+		BinaryOperatorBitOr,
+		BinaryOperatorBitXor:
+		return 4
+	case
+		BinaryOperatorEq,
+		BinaryOperatorNotEq,
+		BinaryOperatorLess,
+		BinaryOperatorLessEq,
+		BinaryOperatorGreater,
+		BinaryOperatorGreaterEq:
+		return 3
+	case
+		BinaryOperatorAnd:
+		return 2
+	case
+		BinaryOperatorOr:
+		return 1
+	default:
+		return 10
+	}
+}
