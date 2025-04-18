@@ -7,16 +7,6 @@ import (
 	"github.com/mokiat/gog/ds"
 )
 
-// MuseParse parses the given LSL source code and returns a shader AST object.
-// If the source code is invalid, it will panic.
-func MustParse(source string) *Shader {
-	shader, err := Parse(source)
-	if err != nil {
-		panic(err)
-	}
-	return shader
-}
-
 // Parse parses the given LSL source code and returns a shader AST object.
 func Parse(source string) (*Shader, error) {
 	return NewParser(source).ParseShader()
