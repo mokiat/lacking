@@ -441,15 +441,28 @@ func (p *Parser) ParseExpression() (Expression, error) {
 	return valStack.Pop(), nil
 }
 
-// ParseShader parses the LSL source code and returns a shader AST object.
-// If the source code is invalid, an error is returned.
-func (p *Parser) ParseShader() (*Shader, error) {
-	var shader Shader
+// ParseStatement parses a single imperative statement from the source code.
+func (p *Parser) ParseStatement() (Statement, error) {
 	token := p.peekToken()
-	for !token.IsEOF() {
+	switch {
+	case token.IsSpecificIdentifier("discard"):
+		return p.parseDiscardStatement()
+	case token.IsSpecificIdentifier("var"):
+		return p.parseVariableDeclaration()
+	case token.IsSpecificIdentifier("if"):
+		return p.parseConditionalStatement()
+	case token.IsIdentifier():
+		return p.parseImperativeStatement()
+	default:
+		return nil, fmt.Errorf("unexpected token: %v", token)
+	}
+}
+
+func (p *Parser) ParseStatementList() ([]Statement, error) {
+	var statements []Statement
+	for {
+		token := p.peekToken()
 		switch {
-		case token.IsError():
-			return nil, fmt.Errorf("error token: %v", token)
 		case token.IsNewLine():
 			if err := p.ParseNewLine(); err != nil {
 				return nil, fmt.Errorf("error parsing new line: %w", err)
@@ -458,36 +471,16 @@ func (p *Parser) ParseShader() (*Shader, error) {
 			if err := p.ParseComment(); err != nil {
 				return nil, fmt.Errorf("error parsing comment: %w", err)
 			}
-		case token.IsSpecificIdentifier("textures"):
-			decl, err := p.ParseTextureBlock()
+		case token.IsIdentifier():
+			statement, err := p.ParseStatement()
 			if err != nil {
-				return nil, fmt.Errorf("error parsing texture block: %w", err)
+				return nil, fmt.Errorf("error parsing statement: %w", err)
 			}
-			shader.Declarations = append(shader.Declarations, decl)
-		case token.IsSpecificIdentifier("uniforms"):
-			decl, err := p.ParseUniformBlock()
-			if err != nil {
-				return nil, fmt.Errorf("error parsing uniform block: %w", err)
-			}
-			shader.Declarations = append(shader.Declarations, decl)
-		case token.IsSpecificIdentifier("varyings"):
-			decl, err := p.ParseVaryingBlock()
-			if err != nil {
-				return nil, fmt.Errorf("error parsing varying block: %w", err)
-			}
-			shader.Declarations = append(shader.Declarations, decl)
-		case token.IsSpecificIdentifier("func"):
-			decl, err := p.ParseFunction()
-			if err != nil {
-				return nil, fmt.Errorf("error parsing function: %w", err)
-			}
-			shader.Declarations = append(shader.Declarations, decl)
+			statements = append(statements, statement)
 		default:
-			return nil, fmt.Errorf("unexpected token: %v", token)
+			return statements, nil
 		}
-		token = p.peekToken()
 	}
-	return &shader, nil
 }
 
 func (p *Parser) ParseFunction() (*FunctionDeclaration, error) {
@@ -555,11 +548,15 @@ func (p *Parser) ParseFunction() (*FunctionDeclaration, error) {
 	return &decl, nil
 }
 
-func (p *Parser) ParseStatementList() ([]Statement, error) {
-	var statements []Statement
-	for {
-		token := p.peekToken()
+// ParseShader parses the LSL source code and returns a shader AST object.
+// If the source code is invalid, an error is returned.
+func (p *Parser) ParseShader() (*Shader, error) {
+	var shader Shader
+	token := p.peekToken()
+	for !token.IsEOF() {
 		switch {
+		case token.IsError():
+			return nil, fmt.Errorf("error token: %v", token)
 		case token.IsNewLine():
 			if err := p.ParseNewLine(); err != nil {
 				return nil, fmt.Errorf("error parsing new line: %w", err)
@@ -568,32 +565,36 @@ func (p *Parser) ParseStatementList() ([]Statement, error) {
 			if err := p.ParseComment(); err != nil {
 				return nil, fmt.Errorf("error parsing comment: %w", err)
 			}
-		case token.IsIdentifier():
-			statement, err := p.ParseStatement()
+		case token.IsSpecificIdentifier("textures"):
+			decl, err := p.ParseTextureBlock()
 			if err != nil {
-				return nil, fmt.Errorf("error parsing statement: %w", err)
+				return nil, fmt.Errorf("error parsing texture block: %w", err)
 			}
-			statements = append(statements, statement)
+			shader.Declarations = append(shader.Declarations, decl)
+		case token.IsSpecificIdentifier("uniforms"):
+			decl, err := p.ParseUniformBlock()
+			if err != nil {
+				return nil, fmt.Errorf("error parsing uniform block: %w", err)
+			}
+			shader.Declarations = append(shader.Declarations, decl)
+		case token.IsSpecificIdentifier("varyings"):
+			decl, err := p.ParseVaryingBlock()
+			if err != nil {
+				return nil, fmt.Errorf("error parsing varying block: %w", err)
+			}
+			shader.Declarations = append(shader.Declarations, decl)
+		case token.IsSpecificIdentifier("func"):
+			decl, err := p.ParseFunction()
+			if err != nil {
+				return nil, fmt.Errorf("error parsing function: %w", err)
+			}
+			shader.Declarations = append(shader.Declarations, decl)
 		default:
-			return statements, nil
+			return nil, fmt.Errorf("unexpected token: %v", token)
 		}
+		token = p.peekToken()
 	}
-}
-
-func (p *Parser) ParseStatement() (Statement, error) {
-	token := p.peekToken()
-	switch {
-	case token.IsSpecificIdentifier("var"):
-		return p.parseVariableDeclaration()
-	case token.IsSpecificIdentifier("if"):
-		return p.parseConditionalStatement()
-	case token.IsSpecificIdentifier("discard"):
-		return p.parseDiscardStatement()
-	case token.IsIdentifier():
-		return p.parseImperativeStatement()
-	default:
-		return nil, fmt.Errorf("unexpected token: %v", token)
-	}
+	return &shader, nil
 }
 
 func (p *Parser) parseExpressionValue() (Expression, error) {
@@ -705,7 +706,7 @@ func (p *Parser) parseIdentifierExpression() (Expression, error) {
 		p.nextToken() // consume the opening bracket
 		args, err := p.parseArguments()
 		if err != nil {
-			return nil, fmt.Errorf("error parsing arguments: %w", err)
+			return nil, err
 		}
 		closingToken := p.nextToken()
 		if !closingToken.IsSpecificOperator(")") {
@@ -738,6 +739,20 @@ func (p *Parser) parseIdentifierExpression() (Expression, error) {
 			Name: nameToken.Value,
 		}, nil
 	}
+}
+
+func (p *Parser) parseDiscardStatement() (*Discard, error) {
+	discardToken := p.nextToken()
+	if !discardToken.IsSpecificIdentifier("discard") {
+		return nil, &ParseError{
+			Pos:     discardToken.Pos,
+			Message: "expected discard keyword",
+		}
+	}
+	if err := p.ParseOptionalRemainder(); err != nil {
+		return nil, err
+	}
+	return &Discard{}, nil
 }
 
 func (p *Parser) parseVariableDeclaration() (*VariableDeclaration, error) {
@@ -840,17 +855,6 @@ func (p *Parser) parseConditionalStatement() (*Conditional, error) {
 	}
 
 	return &statement, nil
-}
-
-func (p *Parser) parseDiscardStatement() (*Discard, error) {
-	discardToken := p.nextToken()
-	if !discardToken.IsSpecificIdentifier("discard") {
-		return nil, fmt.Errorf("expected discard keyword")
-	}
-	if err := p.ParseOptionalRemainder(); err != nil {
-		return nil, fmt.Errorf("error parsing end of line: %w", err)
-	}
-	return &Discard{}, nil
 }
 
 func (p *Parser) parseImperativeStatement() (Statement, error) {

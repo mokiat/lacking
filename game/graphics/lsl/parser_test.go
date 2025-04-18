@@ -777,6 +777,25 @@ var _ = Describe("Parser", func() {
 		),
 	)
 
+	DescribeTable("ParseStatement", func(inSource string, expectedStmt lsl.Statement, expectedErr error) {
+		parser := lsl.NewParser(inSource)
+		stmt, err := parser.ParseStatement()
+		if expectedErr == nil {
+			Expect(err).ToNot(HaveOccurred())
+			Expect(stmt).To(Equal(expectedStmt))
+		} else {
+			Expect(err).To(HaveOccurred())
+			Expect(err).To(Equal(expectedErr))
+		}
+	},
+		Entry("discard",
+			openTestFile("parser", "parse-statement", "discard.lsl"),
+			&lsl.Discard{},
+			nil,
+		),
+		// TODO: Add more tests for statements.
+	)
+
 	DescribeTable("ParseFunction", func(inSource string, expectedDecl *lsl.FunctionDeclaration) {
 		parser := lsl.NewParser(inSource)
 		decl, err := parser.ParseFunction()
