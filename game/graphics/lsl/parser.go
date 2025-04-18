@@ -365,14 +365,17 @@ func (p *Parser) ParseVaryingBlock() (*VaryingBlockDeclaration, error) {
 	}, nil
 }
 
-// ParseExpression parses an expression and returns the resulting AST object.
+// ParseExpression uses the Shunting Yard algorithm to parse an expression and
+// return its AST form.
 func (p *Parser) ParseExpression() (Expression, error) {
 	valStack := ds.NewStack[Expression](2)
 	opStack := ds.NewStack[string](1)
 
+	firstExpressionToken := p.peekToken()
+
 	value, err := p.parseExpressionValue()
 	if err != nil {
-		return nil, fmt.Errorf("error parsing value expression: %w", err)
+		return nil, err
 	}
 	valStack.Push(value)
 
@@ -382,18 +385,18 @@ func (p *Parser) ParseExpression() (Expression, error) {
 		operator := operatorToken.Value
 		operatorPrec := operatorPrecedence(operator)
 		for !opStack.IsEmpty() {
-			oldOperator := opStack.Peek()
-			oldOperatorPrec := operatorPrecedence(oldOperator)
-			if oldOperatorPrec < operatorPrec {
+			prevOperator := opStack.Peek()
+			prevOperatorPrec := operatorPrecedence(prevOperator)
+			if prevOperatorPrec < operatorPrec {
 				break
 			}
 			opStack.Pop() // pop it
-			right := valStack.Pop()
-			left := valStack.Pop()
+			rightValue := valStack.Pop()
+			leftValue := valStack.Pop()
 			valStack.Push(&BinaryExpression{
-				Operator: oldOperator,
-				Left:     left,
-				Right:    right,
+				Operator: prevOperator,
+				Left:     leftValue,
+				Right:    rightValue,
 			})
 		}
 		opStack.Push(operator)
@@ -402,17 +405,17 @@ func (p *Parser) ParseExpression() (Expression, error) {
 		switch {
 		case nextToken.IsNewLine():
 			if err := p.ParseNewLine(); err != nil {
-				return nil, fmt.Errorf("error parsing new line: %w", err)
+				return nil, err
 			}
 		case nextToken.IsComment():
 			if err := p.ParseComment(); err != nil {
-				return nil, fmt.Errorf("error parsing comment: %w", err)
+				return nil, err
 			}
 		}
 
 		valueToken, err := p.parseExpressionValue()
 		if err != nil {
-			return nil, fmt.Errorf("error parsing value expression: %w", err)
+			return nil, err
 		}
 		valStack.Push(valueToken)
 
@@ -420,20 +423,30 @@ func (p *Parser) ParseExpression() (Expression, error) {
 	}
 
 	for valStack.Size() > 1 {
-		right := valStack.Pop()
-		left := valStack.Pop()
+		rightValue := valStack.Pop()
+		leftValue := valStack.Pop()
 		if opStack.IsEmpty() {
-			return nil, fmt.Errorf("no operator found for binary expression")
+			// This should not really happen, as long as binary expressions are
+			// properly maintained.
+			return nil, &ParseError{
+				Pos:     firstExpressionToken.Pos,
+				Message: "expression has insufficient operators",
+			}
 		}
 		operator := opStack.Pop()
 		valStack.Push(&BinaryExpression{
-			Left:     left,
 			Operator: operator,
-			Right:    right,
+			Left:     leftValue,
+			Right:    rightValue,
 		})
 	}
 	if valStack.IsEmpty() {
-		return nil, fmt.Errorf("no value expressions found")
+		// This should not really happen, as long as binary expressions are
+		// properly maintained.
+		return nil, &ParseError{
+			Pos:     firstExpressionToken.Pos,
+			Message: "expression is empty or malformed",
+		}
 	}
 	return valStack.Pop(), nil
 }
@@ -590,6 +603,150 @@ func (p *Parser) ParseStatement() (Statement, error) {
 		return p.parseImperativeStatement()
 	default:
 		return nil, fmt.Errorf("unexpected token: %v", token)
+	}
+}
+
+func (p *Parser) parseExpressionValue() (Expression, error) {
+	token := p.peekToken()
+	switch {
+	case token.IsSpecificOperator("("):
+		return p.parseExpressionGroup()
+
+	case token.IsUnaryOperator():
+		return p.parseUnaryExpression()
+
+	case token.IsNumber():
+		return p.parseNumericExpression()
+
+	case token.IsIdentifier():
+		return p.parseIdentifierExpression()
+
+	default:
+		return nil, &ParseError{
+			Pos:     token.Pos,
+			Message: "expected a beginning of an expression",
+		}
+	}
+}
+
+func (p *Parser) parseExpressionGroup() (Expression, error) {
+	openingToken := p.nextToken()
+	if !openingToken.IsSpecificOperator("(") {
+		return nil, &ParseError{
+			Pos:     openingToken.Pos,
+			Message: "expected opening bracket",
+		}
+	}
+	expr, err := p.ParseExpression()
+	if err != nil {
+		return nil, err
+	}
+	closingToken := p.nextToken()
+	if !closingToken.IsSpecificOperator(")") {
+		return nil, &ParseError{
+			Pos:     closingToken.Pos,
+			Message: "expected closing bracket",
+		}
+	}
+	return expr, nil
+}
+
+func (p *Parser) parseUnaryExpression() (Expression, error) {
+	operatorToken := p.nextToken()
+	if !operatorToken.IsUnaryOperator() {
+		return nil, &ParseError{
+			Pos:     operatorToken.Pos,
+			Message: "expected unary operator",
+		}
+	}
+	expr, err := p.parseExpressionValue()
+	if err != nil {
+		return nil, err
+	}
+	return &UnaryExpression{
+		Operator: operatorToken.Value,
+		Operand:  expr,
+	}, nil
+}
+
+func (p *Parser) parseNumericExpression() (Expression, error) {
+	numberToken := p.nextToken()
+	intValue, err := strconv.ParseInt(numberToken.Value, 10, 64)
+	if err == nil {
+		return &IntLiteral{
+			Value: intValue,
+		}, nil
+	}
+	floatValue, err := strconv.ParseFloat(numberToken.Value, 64)
+	if err == nil {
+		return &FloatLiteral{
+			Value: floatValue,
+		}, nil
+	}
+	return nil, &ParseError{
+		Pos:     numberToken.Pos,
+		Message: "expected a number",
+	}
+}
+
+func (p *Parser) parseIdentifierExpression() (Expression, error) {
+	nameToken := p.nextToken()
+	if !nameToken.IsIdentifier() {
+		return nil, &ParseError{
+			Pos:     nameToken.Pos,
+			Message: "expected an identifier",
+		}
+	}
+
+	switch nameToken.Value {
+	case "true":
+		return &BoolLiteral{
+			Value: true,
+		}, nil
+	case "false":
+		return &BoolLiteral{
+			Value: false,
+		}, nil
+	}
+
+	nextToken := p.peekToken()
+	switch {
+	case nextToken.IsSpecificOperator("("):
+		p.nextToken() // consume the opening bracket
+		args, err := p.parseArguments()
+		if err != nil {
+			return nil, fmt.Errorf("error parsing arguments: %w", err)
+		}
+		closingToken := p.nextToken()
+		if !closingToken.IsSpecificOperator(")") {
+			return nil, &ParseError{
+				Pos:     closingToken.Pos,
+				Message: "expected closing bracket",
+			}
+		}
+		return &FunctionCall{
+			Name:      nameToken.Value,
+			Arguments: args,
+		}, nil
+
+	case nextToken.IsSpecificOperator("."):
+		p.nextToken() // consume the dot
+		fieldToken := p.nextToken()
+		if !fieldToken.IsIdentifier() {
+			return nil, &ParseError{
+				Pos:     fieldToken.Pos,
+				Message: "expected an identifier",
+			}
+		}
+		return &FieldIdentifier{
+			ObjName:   nameToken.Value,
+			FieldName: fieldToken.Value,
+		}, nil
+
+	default:
+		return &Identifier{
+			Name: nameToken.Value,
+		}, nil
 	}
 }
 
@@ -790,135 +947,6 @@ func (p *Parser) parseImperativeStatement() (Statement, error) {
 
 	default:
 		return nil, fmt.Errorf("unexpected token: %v", nextToken)
-	}
-}
-
-func (p *Parser) parseExpressionValue() (Expression, error) {
-	token := p.peekToken()
-	switch {
-	case token.IsSpecificOperator("("):
-		return p.parseExpressionGroup()
-
-	case token.IsUnaryOperator():
-		return p.parseUnaryExpression()
-
-	case token.IsNumber():
-		return p.parseNumericExpression()
-
-	case token.IsIdentifier():
-		return p.parseIdentifierExpression()
-
-	default:
-		return nil, fmt.Errorf("unexpected token: %v", token)
-	}
-}
-
-func (p *Parser) parseExpressionGroup() (Expression, error) {
-	openingToken := p.nextToken()
-	if !openingToken.IsSpecificOperator("(") {
-		return nil, fmt.Errorf("expected opening bracket")
-	}
-	expr, err := p.ParseExpression()
-	if err != nil {
-		return nil, fmt.Errorf("error parsing expression: %w", err)
-	}
-	closingToken := p.nextToken()
-	if !closingToken.IsSpecificOperator(")") {
-		return nil, fmt.Errorf("expected closing bracket")
-	}
-	return expr, nil
-}
-
-func (p *Parser) parseUnaryExpression() (Expression, error) {
-	operatorToken := p.nextToken()
-	if !operatorToken.IsUnaryOperator() {
-		return nil, fmt.Errorf("expected unary operator")
-	}
-	expr, err := p.parseExpressionValue()
-	if err != nil {
-		return nil, fmt.Errorf("error parsing value expression: %w", err)
-	}
-	return &UnaryExpression{
-		Operator: operatorToken.Value,
-		Operand:  expr,
-	}, nil
-}
-
-func (p *Parser) parseNumericExpression() (Expression, error) {
-	numberToken := p.nextToken()
-	intValue, err := strconv.ParseInt(numberToken.Value, 10, 64)
-	if err == nil {
-		return &IntLiteral{
-			Value: intValue,
-		}, nil
-	}
-	floatValue, err := strconv.ParseFloat(numberToken.Value, 64)
-	if err == nil {
-		return &FloatLiteral{
-			Value: floatValue,
-		}, nil
-	}
-	return nil, fmt.Errorf("error parsing number: %w", err)
-}
-
-func (p *Parser) parseIdentifierExpression() (Expression, error) {
-	nameToken := p.nextToken()
-	if !nameToken.IsIdentifier() {
-		return nil, fmt.Errorf("expected identifier")
-	}
-
-	switch nameToken.Value {
-	case "true":
-		return &BoolLiteral{
-			Value: true,
-		}, nil
-	case "false":
-		return &BoolLiteral{
-			Value: false,
-		}, nil
-	}
-
-	nextToken := p.peekToken()
-	switch {
-	case nextToken.IsSpecificOperator("("):
-		openingToken := p.nextToken()
-		if !openingToken.IsSpecificOperator("(") {
-			return nil, fmt.Errorf("expected opening bracket")
-		}
-
-		args, err := p.parseArguments()
-		if err != nil {
-			return nil, fmt.Errorf("error parsing arguments: %w", err)
-		}
-
-		closingToken := p.nextToken()
-		if !closingToken.IsSpecificOperator(")") {
-			return nil, fmt.Errorf("expected closing bracket")
-		}
-
-		return &FunctionCall{
-			Name:      nameToken.Value,
-			Arguments: args,
-		}, nil
-
-	case nextToken.IsSpecificOperator("."):
-		dotToken := p.nextToken()
-		if !dotToken.IsOperator() {
-			return nil, fmt.Errorf("expected dot operator")
-		}
-		fieldToken := p.nextToken()
-		if !fieldToken.IsIdentifier() {
-			return nil, fmt.Errorf("expected identifier")
-		}
-		return &FieldIdentifier{
-			ObjName:   nameToken.Value,
-			FieldName: fieldToken.Value,
-		}, nil
-
-	default:
-		return &Identifier{
-			Name: nameToken.Value,
-		}, nil
 	}
 }
 
