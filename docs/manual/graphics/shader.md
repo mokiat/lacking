@@ -70,6 +70,17 @@ The following binary operators can be used inside expressions to combine two sub
 | `&&` | Returns the result of a logical AND operation on the two expressions. Both sides need to be boolean expressions of the same type. |
 | `\|\|` | Returns the result of a logical OR operation on the two expressions. Both sides need to be boolean expressions of the same type. |
 
+The operator precedence is similar to the official Go one and is described in the following table (higher is applied first).
+
+| Precedence | Operator |
+| ---------- | -------- |
+| 5 | `*`, `/`, `%`, `<<`, `>>`, `&` |
+| 4 | `+`, `-`, `\|`, `^` |
+| 3 | `==`, `!=`, `<`, `<=`, `>`, `>=` |
+| 2 | `&&` |
+| 1 | `\|\|` |
+
+Operators with the same precedence associate from left to right (i.e. the operators are applied from left to right).
 
 ## Types
 
