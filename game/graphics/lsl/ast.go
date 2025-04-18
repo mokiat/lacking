@@ -233,6 +233,12 @@ type Discard struct{}
 
 func (*Discard) _isStatement() {}
 
+type BoolLiteral struct {
+	Value bool
+}
+
+func (*BoolLiteral) _isExpression() {}
+
 type IntLiteral struct {
 	Value int64
 }

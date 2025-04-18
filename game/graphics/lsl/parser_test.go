@@ -500,6 +500,12 @@ var _ = Describe("Parser", func() {
 		Expect(err).ToNot(HaveOccurred())
 		Expect(exp).To(Equal(expectedExp))
 	},
+		Entry("bool literal",
+			openTestFile("parser", "parse-expression", "bool-literal.lsl"),
+			&lsl.BoolLiteral{
+				Value: true,
+			},
+		),
 		Entry("float literal",
 			openTestFile("parser", "parse-expression", "float-literal.lsl"),
 			&lsl.FloatLiteral{

@@ -884,6 +884,17 @@ func (p *Parser) parseIdentifierExpression() (Expression, error) {
 		return nil, fmt.Errorf("expected identifier")
 	}
 
+	switch nameToken.Value {
+	case "true":
+		return &BoolLiteral{
+			Value: true,
+		}, nil
+	case "false":
+		return &BoolLiteral{
+			Value: false,
+		}, nil
+	}
+
 	nextToken := p.peekToken()
 	switch {
 	case nextToken.IsSpecificOperator("("):
