@@ -71,6 +71,10 @@ const (
 //
 //	1 + sin(10)
 type Expression interface {
+
+	// GetPos returns the position of the expression in the source code.
+	GetPos() Position
+
 	_isExpression()
 }
 
@@ -78,16 +82,30 @@ type Expression interface {
 //
 // Example:
 //
-//	func hello() {}
+//	func hello() {
+//	}
 type Declaration interface {
+
+	// GetPos returns the position of the declaration in the source code.
+	GetPos() Position
+
 	_isDeclaration()
 }
 
 // Statement represents a code line in a function.
+//
+// Example:
+//
+//	a := 5.0
 type Statement interface {
+
+	// GetPos returns the position of the statement in the source code.
+	GetPos() Position
+
 	_isStatement()
 }
 
+// Shader represents a complete shader program.
 type Shader struct {
 	Declarations []Declaration
 }
@@ -168,127 +186,223 @@ func (s *Shader) FindFunction(name string) (*FunctionDeclaration, bool) {
 	return nil, false
 }
 
+// TextureBlockDeclaration represents a texture block declaration.
 type TextureBlockDeclaration struct {
+	Pos    Position
 	Fields []Field
+}
+
+func (t *TextureBlockDeclaration) GetPos() Position {
+	return t.Pos
 }
 
 func (*TextureBlockDeclaration) _isDeclaration() {}
 
+// UniformBlockDeclaration represents a uniform block declaration.
 type UniformBlockDeclaration struct {
+	Pos    Position
 	Fields []Field
+}
+
+func (u *UniformBlockDeclaration) GetPos() Position {
+	return u.Pos
 }
 
 func (*UniformBlockDeclaration) _isDeclaration() {}
 
+// VaryingBlockDeclaration represents a varying block declaration.
 type VaryingBlockDeclaration struct {
+	Pos    Position
 	Fields []Field
+}
+
+func (v *VaryingBlockDeclaration) GetPos() Position {
+	return v.Pos
 }
 
 func (*VaryingBlockDeclaration) _isDeclaration() {}
 
+// FunctionDeclaration represents a function declaration.
 type FunctionDeclaration struct {
-	Name    string
-	Inputs  []Field
-	Outputs []Field
-	Body    []Statement
+	Pos        Position
+	Name       string
+	Inputs     []Field
+	OutputType string
+	Body       StatementList
+}
+
+func (f *FunctionDeclaration) GetPos() Position {
+	return f.Pos
 }
 
 func (*FunctionDeclaration) _isDeclaration() {}
 
+// StatementList represents a list of statements.
+type StatementList []Statement
+
+func (l StatementList) GetPos() Position {
+	if len(l) == 0 {
+		return At(0, 0)
+	}
+	return l[0].GetPos()
+}
+
+func (StatementList) _isStatement() {}
+
+// VariableDeclaration represents a variable declaration.
 type VariableDeclaration struct {
+	Pos        Position
 	Name       string
 	Type       string
 	Assignment Expression
 }
 
+func (v *VariableDeclaration) GetPos() Position {
+	return v.Pos
+}
+
 func (*VariableDeclaration) _isStatement() {}
 
+// FunctionCall represents a function call.
 type FunctionCall struct {
-	Name      string
+	Owner     Expression
 	Arguments []Expression
+}
+
+func (f *FunctionCall) GetPos() Position {
+	return f.Owner.GetPos()
 }
 
 func (*FunctionCall) _isExpression() {}
 
 func (*FunctionCall) _isStatement() {}
 
+// Assignment represents an assignment statement.
 type Assignment struct {
-	Operator   string
 	Target     Expression
 	Expression Expression
+	Operator   string
+}
+
+func (a *Assignment) GetPos() Position {
+	return a.Target.GetPos()
 }
 
 func (*Assignment) _isStatement() {}
 
 type Conditional struct {
+	Pos       Position
 	Condition Expression
-	Then      []Statement
-	ElseIf    *Conditional
-	Else      []Statement
+	Then      StatementList
+	Else      Statement
+}
+
+func (c *Conditional) GetPos() Position {
+	return c.Pos
 }
 
 func (*Conditional) _isStatement() {}
 
-type Discard struct{}
+// Discard represents a statement that does nothing.
+type Discard struct {
+	Pos Position
+}
+
+func (d *Discard) GetPos() Position {
+	return d.Pos
+}
 
 func (*Discard) _isStatement() {}
 
+// BoolLiteral represents a boolean literal.
 type BoolLiteral struct {
+	Pos   Position
 	Value bool
+}
+
+func (b *BoolLiteral) GetPos() Position {
+	return b.Pos
 }
 
 func (*BoolLiteral) _isExpression() {}
 
+// IntLiteral represents an integer literal.
 type IntLiteral struct {
+	Pos   Position
 	Value int64
+}
+
+func (i *IntLiteral) GetPos() Position {
+	return i.Pos
 }
 
 func (*IntLiteral) _isExpression() {}
 
+// FloatLiteral represents a floating point literal.
 type FloatLiteral struct {
+	Pos   Position
 	Value float64
+}
+
+func (f *FloatLiteral) GetPos() Position {
+	return f.Pos
 }
 
 func (*FloatLiteral) _isExpression() {}
 
-// ExpressionGroup represents a paren enclosed expression.
-type ExpressionGroup struct {
-	Expression Expression
-}
-
-func (*ExpressionGroup) _isExpression() {}
-
 // Identifier represents a reference to a variable or a function.
 type Identifier struct {
+	Pos  Position
 	Name string
+}
+
+func (i *Identifier) GetPos() Position {
+	return i.Pos
 }
 
 func (*Identifier) _isExpression() {}
 
 // FieldIdentifier represents a reference to a field of a structure.
 type FieldIdentifier struct {
-	ObjName   string // TODO: Identifier, or maybe even expression?
-	FieldName string // TODO: Identifier
+	Owner Expression
+	Field Identifier
+}
+
+func (f *FieldIdentifier) GetPos() Position {
+	return f.Owner.GetPos()
 }
 
 func (*FieldIdentifier) _isExpression() {}
 
-type Field struct {
-	Name string
-	Type string
-}
-
+// UnaryExpression represents a unary operation.
 type UnaryExpression struct {
+	Pos      Position
 	Operator string
 	Operand  Expression
 }
 
+func (u *UnaryExpression) GetPos() Position {
+	return u.Pos
+}
+
 func (*UnaryExpression) _isExpression() {}
 
+// BinaryExpression represents a binary operation.
 type BinaryExpression struct {
 	Operator string
 	Left     Expression
 	Right    Expression
 }
 
+func (b *BinaryExpression) GetPos() Position {
+	return b.Left.GetPos()
+}
+
 func (*BinaryExpression) _isExpression() {}
+
+// Field represents a field in a block or in a parameter list.
+type Field struct {
+	Pos  Position
+	Name string
+	Type string
+}

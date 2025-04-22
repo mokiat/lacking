@@ -11,6 +11,16 @@ Comments can be added with `//` anywhere in the file, where the remainder of the
 // An example comment.
 ```
 
+## Literals
+
+Literals are a mechanism to provide constant in-place values to a shader.
+
+| Type | Example | Description |
+| ---- | ------- | ----------- |
+| bool | `true`, `false` | Specifies a boolean value. |
+| int | `13`, `-24` | Specifies a 32bit signed integer value. |
+| float | `-5.3`, `2.4` | Specifies a 32bit floating point value. |
+
 ## Operators
 
 There are a number of operators supported by the LSL language.

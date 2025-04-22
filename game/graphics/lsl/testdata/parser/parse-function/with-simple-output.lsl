@@ -1,2 +1,2 @@
-func test() (vec3) {
+func test() vec3 {
 }

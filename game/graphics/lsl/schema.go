@@ -96,3 +96,33 @@ func SkySchema() Schema {
 func PostprocessSchema() Schema {
 	return DefaultSchema() // TODO
 }
+
+type UsageScope uint8
+
+const (
+	UsageScopeVertexShader UsageScope = 1 << iota
+	UsageScopeFragmentShader
+
+	UsageScopeNone UsageScope = 0
+	UsageScopeAll             = UsageScopeVertexShader | UsageScopeFragmentShader
+)
+
+func BuiltInResolvedType(name string, scope UsageScope) ResolvedType {
+	return ResolvedType{
+		Name:     name,
+		Scope:    scope,
+		ReadOnly: true,
+	}
+}
+
+type ResolvedType struct {
+	Name     string
+	Scope    UsageScope
+	ReadOnly bool
+	NonCopy  bool
+}
+
+type ResolvedFunctionType struct {
+	Name  string
+	Scope UsageScope
+}
