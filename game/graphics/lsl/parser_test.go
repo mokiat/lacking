@@ -20,7 +20,7 @@ var _ = Describe("Parser", func() {
 			Expect(err).To(Equal(expectedErr))
 		}
 	},
-		Entry("empty list",
+		Entry("empty",
 			openTestFile("parser", "parse-field-block", "valid-empty.lsl"),
 			nil,
 			nil,
@@ -770,6 +770,93 @@ var _ = Describe("Parser", func() {
 			&lsl.ParseError{
 				Pos:     lsl.At(1, 5),
 				Message: "expected an expression value",
+			},
+		),
+	)
+
+	DescribeTable("ParseArgumentBlock", func(inSource string, expectedArgs []lsl.Expression, expectedErr error) {
+		parser := lsl.NewParser(inSource)
+		fields, err := parser.ParseArgumentBlock()
+		if expectedErr == nil {
+			Expect(err).ToNot(HaveOccurred())
+			Expect(fields).To(Equal(expectedArgs))
+		} else {
+			Expect(err).To(HaveOccurred())
+			Expect(err).To(Equal(expectedErr))
+		}
+	},
+		Entry("empty",
+			openTestFile("parser", "parse-argument-block", "valid-empty.lsl"),
+			nil,
+			nil,
+		),
+		Entry("single argument",
+			openTestFile("parser", "parse-argument-block", "valid-single-argument.lsl"),
+			[]lsl.Expression{
+				&lsl.IntLiteral{
+					Pos:   lsl.At(1, 2),
+					Value: 10,
+				},
+			},
+			nil,
+		),
+		Entry("multiple arguments",
+			openTestFile("parser", "parse-argument-block", "valid-multiple-arguments.lsl"),
+			[]lsl.Expression{
+				&lsl.IntLiteral{
+					Pos:   lsl.At(1, 2),
+					Value: 10,
+				},
+				&lsl.FloatLiteral{
+					Pos:   lsl.At(1, 5),
+					Value: 5.5,
+				},
+			},
+			nil,
+		),
+		Entry("bloated",
+			openTestFile("parser", "parse-argument-block", "valid-bloated.lsl"),
+			[]lsl.Expression{
+				&lsl.FunctionCall{
+					Owner: &lsl.Identifier{
+						Pos:  lsl.At(2, 3),
+						Name: "vec3",
+					},
+					Arguments: []lsl.Expression{
+						&lsl.FloatLiteral{
+							Pos:   lsl.At(2, 8),
+							Value: 0.0,
+						},
+					},
+				},
+				&lsl.BinaryExpression{
+					Operator: lsl.BinaryOperatorAdd,
+					Left: &lsl.FloatLiteral{
+						Pos:   lsl.At(6, 3),
+						Value: 5.5,
+					},
+					Right: &lsl.FloatLiteral{
+						Pos:   lsl.At(7, 5),
+						Value: 3.3,
+					},
+				},
+			},
+			nil,
+		),
+		Entry("missing opening bracket",
+			openTestFile("parser", "parse-argument-block", "invalid-missing-opening.lsl"),
+			nil,
+			&lsl.ParseError{
+				Pos:     lsl.At(1, 1),
+				Message: "expected an opening bracket",
+			},
+		),
+		Entry("missing closing bracket",
+			openTestFile("parser", "parse-argument-block", "invalid-missing-closing.lsl"),
+			nil,
+			&lsl.ParseError{
+				Pos:     lsl.At(1, 5),
+				Message: "expected a comma or a closing bracket",
 			},
 		),
 	)

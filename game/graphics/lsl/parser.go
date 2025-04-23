@@ -282,8 +282,6 @@ func (p *Parser) ParseExpression() (Expression, error) {
 //
 //	(10.5, ^66, 2+3)
 func (p *Parser) ParseArgumentBlock() ([]Expression, error) {
-	// TODO: WRITE TEST FOR THIS!
-
 	var args []Expression
 
 	openingToken := p.nextToken()
