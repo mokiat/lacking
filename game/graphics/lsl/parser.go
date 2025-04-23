@@ -348,36 +348,45 @@ func (p *Parser) ParseArgumentBlock() ([]Expression, error) {
 func (p *Parser) ParseStatement() (Statement, error) {
 	token := p.peekToken()
 	switch {
-	case token.IsSpecificIdentifier("discard"):
+	case token.IsSpecificIdentifier(KeywordDiscard):
 		return p.parseDiscardStatement()
-	case token.IsSpecificIdentifier("var"):
+	case token.IsSpecificIdentifier(KeywordVar):
 		return p.parseVariableDeclaration()
-	case token.IsSpecificIdentifier("if"):
+	case token.IsSpecificIdentifier(KeywordIf):
 		return p.parseConditionalStatement()
 	case token.IsIdentifier():
 		return p.parseImperativeStatement()
 	default:
-		return nil, fmt.Errorf("unexpected token: %v", token)
+		return nil, &ParseError{
+			Pos:     token.Pos,
+			Message: "expected a statement",
+		}
 	}
 }
 
+// ParseStatementList parses a list of statements from the source code.
 func (p *Parser) ParseStatementList() (StatementList, error) {
 	var statements []Statement
 	for {
 		token := p.peekToken()
 		switch {
+		case token.IsError():
+			return nil, &ParseError{
+				Pos:     token.Pos,
+				Message: fmt.Sprintf("tokenization error: %s", token.Value),
+			}
 		case token.IsNewLine():
 			if err := p.consumeNewLine(); err != nil {
-				return nil, fmt.Errorf("error parsing new line: %w", err)
+				return nil, err
 			}
 		case token.IsComment():
 			if err := p.consumeComment(); err != nil {
-				return nil, fmt.Errorf("error parsing comment: %w", err)
+				return nil, err
 			}
 		case token.IsIdentifier():
 			statement, err := p.ParseStatement()
 			if err != nil {
-				return nil, fmt.Errorf("error parsing statement: %w", err)
+				return nil, err
 			}
 			statements = append(statements, statement)
 		default:

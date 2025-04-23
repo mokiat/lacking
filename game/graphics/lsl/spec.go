@@ -51,6 +51,12 @@ const (
 	// KeywordFalse is the keyword "false". It is used to represent the boolean
 	// literal false.
 	KeywordFalse = "false"
+
+	// KeywordVar is the keyword "var". It is used to declare a variable.
+	KeywordVar = "var"
+
+	// KeywordIf is the keyword "if". It is used to start a conditional statement.
+	KeywordIf = "if"
 )
 
 const (
