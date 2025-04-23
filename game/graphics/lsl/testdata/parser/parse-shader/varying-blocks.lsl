@@ -1,9 +1,9 @@
 varyings { // header
-  color vec3, // field 1
+  color vec3 // field 1
   // two fields
-  intensity float, // field2
+  intensity float // field2
 } // footer
 
 varyings {
-  value vec4,
+  value vec4
 }

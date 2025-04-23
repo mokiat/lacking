@@ -9,6 +9,49 @@ var (
 )
 
 const (
+	// BlockStart is the character that starts a block of code.
+	BlockStart = "{"
+
+	// BlockEnd is the character that ends a block of code.
+	BlockEnd = "}"
+)
+
+const (
+	// GroupStart is the character that starts an expression group or a parameter
+	// list.
+	GroupStart = "("
+
+	// GroupEnd is the character that ends an expression group or a parameter
+	// list.
+	GroupEnd = ")"
+)
+
+const (
+	// KeywordDiscard is the keyword "discard". It is used to stop the execution
+	// of a fragment shader.
+	KeywordDiscard = "discard"
+
+	// KeywordTextures is the keyword "textures". It is used to declare a block of
+	// textures in a shader.
+	KeywordTextures = "textures"
+
+	// KeywordUniforms is the keyword "uniforms". It is used to declare a block of
+	// uniforms in a shader.
+	KeywordUniforms = "uniforms"
+
+	// KeywordVaryings is the keyword "varyings". It is used to declare a block of
+	// variables in a shader that can cross from the vertex shader stage to the
+	// fragment shader stage.
+	KeywordVaryings = "varyings"
+)
+
+const (
+	// SeparatorComma is the character ",". It is used to separate items in a
+	// list.
+	SeparatorComma = ","
+)
+
+const (
 	// AssignmentOperatorEq is the assignment operator "=". It assigns the
 	// value to the variable.
 	AssignmentOperatorEq = "="
