@@ -330,16 +330,24 @@ var _ = Describe("Parser", func() {
 			Expect(err).To(Equal(expectedErr))
 		}
 	},
-		Entry("bool literal",
-			openTestFile("parser", "parse-expression", "bool-literal.lsl"),
+		Entry("bool literal (true)",
+			openTestFile("parser", "parse-expression", "valid-bool-literal-true.lsl"),
 			&lsl.BoolLiteral{
 				Pos:   lsl.At(1, 1),
 				Value: true,
 			},
 			nil,
 		),
+		Entry("bool literal (false)",
+			openTestFile("parser", "parse-expression", "valid-bool-literal-false.lsl"),
+			&lsl.BoolLiteral{
+				Pos:   lsl.At(1, 1),
+				Value: false,
+			},
+			nil,
+		),
 		Entry("float literal",
-			openTestFile("parser", "parse-expression", "float-literal.lsl"),
+			openTestFile("parser", "parse-expression", "valid-float-literal.lsl"),
 			&lsl.FloatLiteral{
 				Pos:   lsl.At(1, 1),
 				Value: 5.3,
@@ -347,7 +355,7 @@ var _ = Describe("Parser", func() {
 			nil,
 		),
 		Entry("int literal",
-			openTestFile("parser", "parse-expression", "int-literal.lsl"),
+			openTestFile("parser", "parse-expression", "valid-int-literal.lsl"),
 			&lsl.IntLiteral{
 				Pos:   lsl.At(1, 1),
 				Value: 3999,
@@ -355,7 +363,7 @@ var _ = Describe("Parser", func() {
 			nil,
 		),
 		Entry("unary (+) operator",
-			openTestFile("parser", "parse-expression", "unary-plus-operator.lsl"),
+			openTestFile("parser", "parse-expression", "valid-unary-plus-operator.lsl"),
 			&lsl.UnaryExpression{
 				Pos:      lsl.At(1, 1),
 				Operator: "+",
@@ -367,7 +375,7 @@ var _ = Describe("Parser", func() {
 			nil,
 		),
 		Entry("unary (-) operator",
-			openTestFile("parser", "parse-expression", "unary-minus-operator.lsl"),
+			openTestFile("parser", "parse-expression", "valid-unary-minus-operator.lsl"),
 			&lsl.UnaryExpression{
 				Pos:      lsl.At(1, 1),
 				Operator: "-",
@@ -379,7 +387,7 @@ var _ = Describe("Parser", func() {
 			nil,
 		),
 		Entry("unary (^) operator",
-			openTestFile("parser", "parse-expression", "unary-bit-not-operator.lsl"),
+			openTestFile("parser", "parse-expression", "valid-unary-bit-not-operator.lsl"),
 			&lsl.UnaryExpression{
 				Pos:      lsl.At(1, 1),
 				Operator: "^",
@@ -391,7 +399,7 @@ var _ = Describe("Parser", func() {
 			nil,
 		),
 		Entry("unary (!) operator",
-			openTestFile("parser", "parse-expression", "unary-not-operator.lsl"),
+			openTestFile("parser", "parse-expression", "valid-unary-not-operator.lsl"),
 			&lsl.UnaryExpression{
 				Pos:      lsl.At(1, 1),
 				Operator: "!",
@@ -403,7 +411,7 @@ var _ = Describe("Parser", func() {
 			nil,
 		),
 		Entry("identifier",
-			openTestFile("parser", "parse-expression", "identifier.lsl"),
+			openTestFile("parser", "parse-expression", "valid-identifier.lsl"),
 			&lsl.Identifier{
 				Pos:  lsl.At(1, 1),
 				Name: "hello",
@@ -411,7 +419,7 @@ var _ = Describe("Parser", func() {
 			nil,
 		),
 		Entry("field identifier",
-			openTestFile("parser", "parse-expression", "field-identifier.lsl"),
+			openTestFile("parser", "parse-expression", "valid-field-identifier.lsl"),
 			&lsl.FieldIdentifier{
 				Owner: &lsl.Identifier{
 					Pos:  lsl.At(1, 1),
@@ -425,7 +433,7 @@ var _ = Describe("Parser", func() {
 			nil,
 		),
 		Entry("nested field identifier",
-			openTestFile("parser", "parse-expression", "nested-field-identifier.lsl"),
+			openTestFile("parser", "parse-expression", "valid-field-identifier-nested.lsl"),
 			&lsl.FieldIdentifier{
 				Owner: &lsl.FieldIdentifier{
 					Owner: &lsl.Identifier{
@@ -445,7 +453,7 @@ var _ = Describe("Parser", func() {
 			nil,
 		),
 		Entry("function call",
-			openTestFile("parser", "parse-expression", "function-call.lsl"),
+			openTestFile("parser", "parse-expression", "valid-function-call.lsl"),
 			&lsl.FunctionCall{
 				Owner: &lsl.Identifier{
 					Pos:  lsl.At(1, 1),
@@ -456,7 +464,7 @@ var _ = Describe("Parser", func() {
 			nil,
 		),
 		Entry("nested function call",
-			openTestFile("parser", "parse-expression", "nested-function-call.lsl"),
+			openTestFile("parser", "parse-expression", "valid-function-call-nested.lsl"),
 			&lsl.FunctionCall{
 				Owner: &lsl.FieldIdentifier{
 					Owner: &lsl.Identifier{
@@ -472,8 +480,8 @@ var _ = Describe("Parser", func() {
 			},
 			nil,
 		),
-		Entry("function call with args",
-			openTestFile("parser", "parse-expression", "function-call-with-args.lsl"),
+		Entry("function call (with args)",
+			openTestFile("parser", "parse-expression", "valid-function-call-with-args.lsl"),
 			&lsl.FunctionCall{
 				Owner: &lsl.Identifier{
 					Pos:  lsl.At(1, 1),
@@ -492,8 +500,8 @@ var _ = Describe("Parser", func() {
 			},
 			nil,
 		),
-		Entry("function call with args and new lines",
-			openTestFile("parser", "parse-expression", "function-call-with-args-and-new-lines.lsl"),
+		Entry("function call (bloated)",
+			openTestFile("parser", "parse-expression", "valid-function-call-bloated.lsl"),
 			&lsl.FunctionCall{
 				Owner: &lsl.Identifier{
 					Pos:  lsl.At(1, 1),
@@ -501,31 +509,11 @@ var _ = Describe("Parser", func() {
 				},
 				Arguments: []lsl.Expression{
 					&lsl.IntLiteral{
-						Pos:   lsl.At(2, 3),
-						Value: 200,
-					},
-					&lsl.FloatLiteral{
 						Pos:   lsl.At(3, 3),
-						Value: 1.5,
-					},
-				},
-			},
-			nil,
-		),
-		Entry("function call with args and comments",
-			openTestFile("parser", "parse-expression", "function-call-with-args-and-comments.lsl"),
-			&lsl.FunctionCall{
-				Owner: &lsl.Identifier{
-					Pos:  lsl.At(1, 1),
-					Name: "test",
-				},
-				Arguments: []lsl.Expression{
-					&lsl.IntLiteral{
-						Pos:   lsl.At(2, 3),
 						Value: 200,
 					},
 					&lsl.FloatLiteral{
-						Pos:   lsl.At(4, 3),
+						Pos:   lsl.At(6, 5),
 						Value: 1.5,
 					},
 				},
@@ -533,7 +521,7 @@ var _ = Describe("Parser", func() {
 			nil,
 		),
 		Entry("binary expression (numbers)",
-			openTestFile("parser", "parse-expression", "binary-expression-numbers.lsl"),
+			openTestFile("parser", "parse-expression", "valid-binary-expression-numbers.lsl"),
 			&lsl.BinaryExpression{
 				Operator: "+",
 				Left: &lsl.IntLiteral{
@@ -548,7 +536,7 @@ var _ = Describe("Parser", func() {
 			nil,
 		),
 		Entry("binary expression (identifiers)",
-			openTestFile("parser", "parse-expression", "binary-expression-identifiers.lsl"),
+			openTestFile("parser", "parse-expression", "valid-binary-expression-identifiers.lsl"),
 			&lsl.BinaryExpression{
 				Operator: "+",
 				Left: &lsl.Identifier{
@@ -569,7 +557,7 @@ var _ = Describe("Parser", func() {
 			nil,
 		),
 		Entry("binary expression (functions)",
-			openTestFile("parser", "parse-expression", "binary-expression-functions.lsl"),
+			openTestFile("parser", "parse-expression", "valid-binary-expression-functions.lsl"),
 			&lsl.BinaryExpression{
 				Operator: "*",
 				Left: &lsl.FunctionCall{
@@ -588,7 +576,7 @@ var _ = Describe("Parser", func() {
 			nil,
 		),
 		Entry("complex expression",
-			openTestFile("parser", "parse-expression", "complex-expression.lsl"),
+			openTestFile("parser", "parse-expression", "valid-complex-expression.lsl"),
 			&lsl.BinaryExpression{
 				Operator: "+",
 				Left: &lsl.FloatLiteral{
@@ -624,7 +612,7 @@ var _ = Describe("Parser", func() {
 			nil,
 		),
 		Entry("logical expression",
-			openTestFile("parser", "parse-expression", "logical-expression.lsl"),
+			openTestFile("parser", "parse-expression", "valid-logical-expression.lsl"),
 			&lsl.BinaryExpression{
 				Left: &lsl.BinaryExpression{
 					Left: &lsl.BinaryExpression{
@@ -671,7 +659,7 @@ var _ = Describe("Parser", func() {
 			nil,
 		),
 		Entry("operator precedence",
-			openTestFile("parser", "parse-expression", "operator-precedence.lsl"),
+			openTestFile("parser", "parse-expression", "valid-operator-precedence.lsl"),
 			&lsl.BinaryExpression{
 				Left: &lsl.BinaryExpression{
 					Left: &lsl.BinaryExpression{
@@ -734,8 +722,8 @@ var _ = Describe("Parser", func() {
 			},
 			nil,
 		),
-		Entry("with comments and spaces",
-			openTestFile("parser", "parse-expression", "with-comments-and-spaces.lsl"),
+		Entry("bloated",
+			openTestFile("parser", "parse-expression", "valid-bloated.lsl"),
 			&lsl.BinaryExpression{
 				Left: &lsl.BinaryExpression{
 					Left: &lsl.UnaryExpression{
@@ -761,7 +749,7 @@ var _ = Describe("Parser", func() {
 			nil,
 		),
 		Entry("starts with binary operator",
-			openTestFile("parser", "parse-expression", "starts-with-binary-operator.lsl"),
+			openTestFile("parser", "parse-expression", "invalid-starts-with-binary-operator.lsl"),
 			nil,
 			&lsl.ParseError{
 				Pos:     lsl.At(1, 1),
@@ -769,7 +757,7 @@ var _ = Describe("Parser", func() {
 			},
 		),
 		Entry("incomplete",
-			openTestFile("parser", "parse-expression", "incomplete.lsl"),
+			openTestFile("parser", "parse-expression", "invalid-incomplete.lsl"),
 			nil,
 			&lsl.ParseError{
 				Pos:     lsl.At(1, 4),
@@ -777,7 +765,7 @@ var _ = Describe("Parser", func() {
 			},
 		),
 		Entry("invalid value",
-			openTestFile("parser", "parse-expression", "invalid-value.lsl"),
+			openTestFile("parser", "parse-expression", "invalid-operator-value.lsl"),
 			nil,
 			&lsl.ParseError{
 				Pos:     lsl.At(1, 5),

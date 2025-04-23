@@ -43,12 +43,26 @@ const (
 	// variables in a shader that can cross from the vertex shader stage to the
 	// fragment shader stage.
 	KeywordVaryings = "varyings"
+
+	// KeywordTrue is the keyword "true". It is used to represent the boolean
+	// literal true.
+	KeywordTrue = "true"
+
+	// KeywordFalse is the keyword "false". It is used to represent the boolean
+	// literal false.
+	KeywordFalse = "false"
 )
 
 const (
 	// SeparatorComma is the character ",". It is used to separate items in a
 	// list.
 	SeparatorComma = ","
+)
+
+const (
+	// AccessOperatorDot is the character ".". It is used to access a member of a
+	// struct variable.
+	AccessOperatorDot = "."
 )
 
 const (
