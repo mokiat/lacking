@@ -64,6 +64,10 @@ const (
 
 	// KeywordIf is the keyword "if". It is used to start a conditional statement.
 	KeywordIf = "if"
+
+	// KeywordElse is the keyword "else". It is used to start an alternative
+	// branch of a conditional statement.
+	KeywordElse = "else"
 )
 
 const (

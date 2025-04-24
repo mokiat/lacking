@@ -1011,6 +1011,100 @@ var _ = Describe("Parser", func() {
 				Message: "expected a type identifier or an assignment operator",
 			},
 		),
+		Entry("if condition (simple)",
+			openTestFile("parser", "parse-statement", "valid-condition-simple.lsl"),
+			&lsl.Conditional{
+				Pos: lsl.At(1, 1),
+				Condition: &lsl.BoolLiteral{
+					Pos:   lsl.At(1, 5),
+					Value: true,
+				},
+				Then: lsl.StatementList{
+					&lsl.Discard{
+						Pos: lsl.At(2, 3),
+					},
+				},
+			},
+			nil,
+		),
+		Entry("if condition (bloated)",
+			openTestFile("parser", "parse-statement", "valid-condition-bloated.lsl"),
+			&lsl.Conditional{
+				Pos: lsl.At(1, 1),
+				Condition: &lsl.BinaryExpression{
+					Operator: lsl.BinaryOperatorGreater,
+					Left: &lsl.Identifier{
+						Pos:  lsl.At(1, 5),
+						Name: "a",
+					},
+					Right: &lsl.IntLiteral{
+						Pos:   lsl.At(1, 9),
+						Value: 5,
+					},
+				},
+				Then: lsl.StatementList{
+					&lsl.FunctionCall{
+						Owner: &lsl.Identifier{
+							Pos:  lsl.At(4, 3),
+							Name: "doFirst",
+						},
+					},
+				},
+				Else: &lsl.Conditional{
+					Pos: lsl.At(6, 11),
+					Condition: &lsl.BinaryExpression{
+						Operator: lsl.BinaryOperatorGreater,
+						Left: &lsl.Identifier{
+							Pos:  lsl.At(6, 16),
+							Name: "b",
+						},
+						Right: &lsl.IntLiteral{
+							Pos:   lsl.At(6, 20),
+							Value: 6,
+						},
+					},
+					Then: lsl.StatementList{
+						&lsl.FunctionCall{
+							Owner: &lsl.Identifier{
+								Pos:  lsl.At(7, 3),
+								Name: "doSecond",
+							},
+						},
+					},
+					Else: &lsl.Conditional{
+						Pos: lsl.At(8, 10),
+						Condition: &lsl.BinaryExpression{
+							Operator: lsl.BinaryOperatorGreater,
+							Left: &lsl.Identifier{
+								Pos:  lsl.At(8, 14),
+								Name: "c",
+							},
+							Right: &lsl.IntLiteral{
+								Pos:   lsl.At(8, 18),
+								Value: 7,
+							},
+						},
+						Then: lsl.StatementList{
+							&lsl.FunctionCall{
+								Owner: &lsl.Identifier{
+									Pos:  lsl.At(9, 5),
+									Name: "doThird",
+								},
+							},
+						},
+						Else: lsl.StatementList{
+							&lsl.FunctionCall{
+								Owner: &lsl.Identifier{
+									Pos:  lsl.At(11, 3),
+									Name: "doFourth",
+								},
+							},
+						},
+					},
+				},
+			},
+			nil,
+		),
 	)
 
 	DescribeTable("ParseFunction", func(inSource string, expectedDecl *lsl.FunctionDeclaration) {

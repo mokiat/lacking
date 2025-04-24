@@ -602,68 +602,6 @@ func (p *Parser) parseFieldDeclaration(opening, closing string) ([]Field, error)
 	return fields, nil
 }
 
-func (p *Parser) parseConditionalStatement() (*Conditional, error) {
-	var statement Conditional
-
-	ifToken := p.nextToken()
-	if !ifToken.IsSpecificIdentifier("if") {
-		return nil, fmt.Errorf("expected if keyword")
-	}
-	statement.Pos = ifToken.Pos
-
-	conditionExpression, err := p.ParseExpression()
-	if err != nil {
-		return nil, fmt.Errorf("error parsing condition expression: %w", err)
-	}
-	statement.Condition = conditionExpression
-
-	if err := p.consumeBlockStart(); err != nil {
-		return nil, fmt.Errorf("error parsing block start: %w", err)
-	}
-
-	thenStatements, err := p.ParseStatementList()
-	if err != nil {
-		return nil, fmt.Errorf("error parsing function body: %w", err)
-	}
-	statement.Then = thenStatements
-
-	bracketToken := p.nextToken()
-	if !bracketToken.IsSpecificOperator("}") {
-		return nil, fmt.Errorf("expected closing bracket")
-	}
-
-	nextToken := p.peekToken()
-	if nextToken.IsSpecificIdentifier("else") {
-		p.nextToken() // consume else token
-		nextToken = p.peekToken()
-		if nextToken.IsSpecificIdentifier("if") {
-			elseIfConditional, err := p.parseConditionalStatement()
-			if err != nil {
-				return nil, fmt.Errorf("error parsing else if conditional: %w", err)
-			}
-			statement.Else = elseIfConditional
-		} else {
-			if err := p.consumeBlockStart(); err != nil {
-				return nil, fmt.Errorf("error parsing block start: %w", err)
-			}
-			elseStatements, err := p.ParseStatementList()
-			if err != nil {
-				return nil, fmt.Errorf("error parsing function body: %w", err)
-			}
-			statement.Else = elseStatements
-			if err := p.consumeBlockEnd(true); err != nil {
-				return nil, fmt.Errorf("error parsing block end: %w", err)
-			}
-		}
-	} else {
-		if err := p.consumeRemainingLine(); err != nil {
-			return nil, fmt.Errorf("error parsing end of line: %w", err)
-		}
-	}
-
-	return &statement, nil
-}
-
 func (p *Parser) parseImperativeStatement() (Statement, error) {
 	identifierToken := p.nextToken()
 	if !identifierToken.IsIdentifier() {
@@ -1205,4 +1143,80 @@ func (p *Parser) parseVariableDeclaration() (*VariableDeclaration, error) {
 	}
 
 	return &decl, nil
+}
+
+// parseConditionalStatement expects the next token to be an if keyword
+// and parses a conditional statement.
+//
+// Example:
+//
+//	if (a > b) {
+//		// then block
+//	} else if (a > c) {
+//		// else if block
+//	} else {
+//		// else block
+//	}
+func (p *Parser) parseConditionalStatement() (*Conditional, error) {
+	var statement Conditional
+
+	ifToken := p.nextToken()
+	if !ifToken.IsSpecificIdentifier(KeywordIf) {
+		return nil, &ParseError{
+			Pos:     ifToken.Pos,
+			Message: fmt.Sprintf("expected %q keyword", KeywordIf),
+		}
+	}
+	statement.Pos = ifToken.Pos
+
+	conditionExpression, err := p.ParseExpression()
+	if err != nil {
+		return nil, err
+	}
+	statement.Condition = conditionExpression
+
+	if err := p.consumeBlockStart(); err != nil {
+		return nil, err
+	}
+
+	thenStatements, err := p.ParseStatementList()
+	if err != nil {
+		return nil, err
+	}
+	statement.Then = thenStatements
+
+	if err := p.consumeBlockEnd(false); err != nil {
+		return nil, err
+	}
+
+	nextToken := p.peekToken()
+	if nextToken.IsSpecificIdentifier(KeywordElse) {
+		p.nextToken() // consume else token
+		nextToken = p.peekToken()
+		if nextToken.IsSpecificIdentifier(KeywordIf) {
+			elseIfConditional, err := p.parseConditionalStatement()
+			if err != nil {
+				return nil, err
+			}
+			statement.Else = elseIfConditional
+		} else {
+			if err := p.consumeBlockStart(); err != nil {
+				return nil, err
+			}
+			elseStatements, err := p.ParseStatementList()
+			if err != nil {
+				return nil, err
+			}
+			statement.Else = elseStatements
+			if err := p.consumeBlockEnd(true); err != nil {
+				return nil, err
+			}
+		}
+	} else {
+		if err := p.consumeRemainingLine(); err != nil {
+			return nil, err
+		}
+	}
+
+	return &statement, nil
 }
