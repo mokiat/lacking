@@ -11,6 +11,8 @@ Comments can be added with `//` anywhere in the file, where the remainder of the
 // An example comment.
 ```
 
+The LSL does not have support for multi-line comments.
+
 ## Literals
 
 Literals are a mechanism to provide constant in-place values to a shader.
@@ -119,6 +121,65 @@ The following table lists the supported built-in types.
 | `mat4` | 4x4 matrix type with sixteen 32 bit floating point components |
 | `sampler2D` | sampler to a 2D texture |
 | `samplerCube` | sampler to a Cube texture |
+
+
+## Textures
+
+Shaders often require textures to read texels off of. Such dependencies to external resources are declared through the `texture` keyword. It works in a similar way to the Go's `var` keyword, except that an initial value cannot be specified.
+
+```
+texture color sampler2D
+texture env samplerCube
+```
+
+or
+
+```
+texture (
+  color sampler2D
+  env samplerCube
+)
+```
+
+Texture fields are globally visible within the shader and are read-only.
+
+## Uniforms
+
+Shaders often require external data so that they can be reused. This is done through the `uniform` keyword. It works in a similar way to the Go's `var` keyword, except that an initial value cannot be specified.
+
+```
+uniform color vec4
+uniform intensity float
+```
+
+or
+
+```
+uniform (
+  color vec4
+  intensity float
+)
+```
+
+Uniform fields are globally visible within the shader and are read-only.
+
+## Varying
+
+Shader code is used in both vertex and fragment stages. Sometimes data needs to be passed from one stage onto the next. This is achieved via the `varying` keyword. It works in a similar way to the Go's `var` keyword, except that an initial value cannot be specified.
+
+```
+varying normal vec3
+```
+
+or
+
+```
+varying (
+  normal vec3
+)
+```
+
+Varying fields are globally visible within the shader and are read-only in the fragment shader stage.
 
 ## Functions
 
