@@ -602,67 +602,6 @@ func (p *Parser) parseFieldDeclaration(opening, closing string) ([]Field, error)
 	return fields, nil
 }
 
-func (p *Parser) parseDiscardStatement() (*Discard, error) {
-	discardToken := p.nextToken()
-	if !discardToken.IsSpecificIdentifier("discard") {
-		return nil, &ParseError{
-			Pos:     discardToken.Pos,
-			Message: "expected discard keyword",
-		}
-	}
-	if err := p.consumeRemainingLine(); err != nil {
-		return nil, err
-	}
-	return &Discard{
-		Pos: discardToken.Pos,
-	}, nil
-}
-
-func (p *Parser) parseVariableDeclaration() (*VariableDeclaration, error) {
-	var decl VariableDeclaration
-
-	varToken := p.nextToken()
-	if !varToken.IsSpecificIdentifier("var") {
-		return nil, fmt.Errorf("expected var keyword")
-	}
-	decl.Pos = varToken.Pos
-
-	nameToken := p.nextToken()
-	if !nameToken.IsIdentifier() {
-		return nil, fmt.Errorf("expected identifier")
-	}
-	decl.Name = nameToken.Value
-
-	// TODO: Handle case where the type is not specified, which is similar
-	// to auto-assignment.
-	typeToken := p.nextToken()
-	if !typeToken.IsIdentifier() {
-		return nil, fmt.Errorf("expected identifier")
-	}
-	decl.Type = typeToken.Value
-
-	nextToken := p.peekToken()
-	if nextToken.IsAssignmentOperator() {
-		assignToken := p.nextToken()
-		if !assignToken.IsOperator() {
-			return nil, fmt.Errorf("expected operator")
-		}
-		expr, err := p.ParseExpression()
-		if err != nil {
-			return nil, fmt.Errorf("error parsing expression: %w", err)
-		}
-		decl.Assignment = expr
-		if err := p.consumeRemainingLine(); err != nil {
-			return nil, fmt.Errorf("error parsing end of line: %w", err)
-		}
-	} else {
-		if err := p.consumeRemainingLine(); err != nil {
-			return nil, fmt.Errorf("error parsing end of line: %w", err)
-		}
-	}
-	return &decl, nil
-}
-
 func (p *Parser) parseConditionalStatement() (*Conditional, error) {
 	var statement Conditional
 
@@ -1179,4 +1118,91 @@ func (p *Parser) parseExpressionValue() (Expression, error) {
 			Message: "expected an expression value",
 		}
 	}
+}
+
+// parseDiscardStatement expects the next token to be a discard keyword
+// and consumes it. It also consumes the remaining line.
+//
+// Example:
+//
+//	discard
+func (p *Parser) parseDiscardStatement() (*Discard, error) {
+	discardToken := p.nextToken()
+	if !discardToken.IsSpecificIdentifier("discard") {
+		return nil, &ParseError{
+			Pos:     discardToken.Pos,
+			Message: "expected discard keyword",
+		}
+	}
+	if err := p.consumeRemainingLine(); err != nil {
+		return nil, err
+	}
+	return &Discard{
+		Pos: discardToken.Pos,
+	}, nil
+}
+
+// parseVariableDeclaration expects the next token to be a var keyword
+// and parses a variable declaration.
+//
+// Example:
+//
+//	var color vec3 = vec3(1.0, 0.0, 0.0)
+func (p *Parser) parseVariableDeclaration() (*VariableDeclaration, error) {
+	var decl VariableDeclaration
+
+	varToken := p.nextToken()
+	if !varToken.IsSpecificIdentifier(KeywordVar) {
+		return nil, &ParseError{
+			Pos:     varToken.Pos,
+			Message: "expected var keyword",
+		}
+	}
+	decl.Pos = varToken.Pos
+
+	nameToken := p.nextToken()
+	if !nameToken.IsIdentifier() {
+		return nil, &ParseError{
+			Pos:     nameToken.Pos,
+			Message: "expected a name identifier",
+		}
+	}
+	decl.Name = nameToken.Value
+
+	nextToken := p.peekToken()
+	switch {
+	case nextToken.IsIdentifier():
+		typeToken := p.nextToken()
+		decl.Type = typeToken.Value
+
+		nextToken = p.peekToken()
+		if nextToken.IsSpecificOperator(AssignmentOperatorEq) {
+			p.nextToken() // consume the assignment operator
+			expr, err := p.ParseExpression()
+			if err != nil {
+				return nil, err
+			}
+			decl.Assignment = expr
+		}
+
+	case nextToken.IsSpecificOperator(AssignmentOperatorEq):
+		p.nextToken() // consume the assignment operator
+		expr, err := p.ParseExpression()
+		if err != nil {
+			return nil, err
+		}
+		decl.Assignment = expr
+
+	default:
+		return nil, &ParseError{
+			Pos:     nextToken.Pos,
+			Message: "expected a type identifier or an assignment operator",
+		}
+	}
+
+	if err := p.consumeRemainingLine(); err != nil {
+		return nil, err
+	}
+
+	return &decl, nil
 }

@@ -948,13 +948,69 @@ var _ = Describe("Parser", func() {
 		}
 	},
 		Entry("discard",
-			openTestFile("parser", "parse-statement", "discard.lsl"),
+			openTestFile("parser", "parse-statement", "valid-discard.lsl"),
 			&lsl.Discard{
 				Pos: lsl.At(1, 1),
 			},
 			nil,
 		),
-		// TODO: Add more tests for statements.
+		Entry("var declaration (simple)",
+			openTestFile("parser", "parse-statement", "valid-var-simple.lsl"),
+			&lsl.VariableDeclaration{
+				Pos:        lsl.At(1, 1),
+				Name:       "color",
+				Type:       "vec4",
+				Assignment: nil,
+			},
+			nil,
+		),
+		Entry("var declaration (expression)",
+			openTestFile("parser", "parse-statement", "valid-var-expression.lsl"),
+			&lsl.VariableDeclaration{
+				Pos:  lsl.At(1, 1),
+				Name: "intensity",
+				Type: "float",
+				Assignment: &lsl.FloatLiteral{
+					Pos:   lsl.At(1, 23),
+					Value: 1.0,
+				},
+			},
+			nil,
+		),
+		Entry("var declaration (expression no type)",
+			openTestFile("parser", "parse-statement", "valid-var-expression-no-type.lsl"),
+			&lsl.VariableDeclaration{
+				Pos:  lsl.At(1, 1),
+				Name: "intensity",
+				Type: "", // auto-assignment
+				Assignment: &lsl.FloatLiteral{
+					Pos:   lsl.At(1, 17),
+					Value: 1.0,
+				},
+			},
+			nil,
+		),
+		Entry("var declaration (auto)",
+			openTestFile("parser", "parse-statement", "valid-var-auto.lsl"),
+			&lsl.VariableDeclaration{
+				Pos:  lsl.At(1, 1),
+				Name: "intensity",
+				Type: "", // auto-assignment
+				Assignment: &lsl.FloatLiteral{
+					Pos:   lsl.At(1, 14),
+					Value: 1.0,
+				},
+			},
+			nil,
+		),
+		Entry("var declaration (no type or expression)",
+			openTestFile("parser", "parse-statement", "invalid-var-no-type-or-expression.lsl"),
+			nil,
+			&lsl.ParseError{
+				Pos:     lsl.At(1, 11),
+				Message: "expected a type identifier or an assignment operator",
+			},
+		),
 	)
 
 	DescribeTable("ParseFunction", func(inSource string, expectedDecl *lsl.FunctionDeclaration) {
