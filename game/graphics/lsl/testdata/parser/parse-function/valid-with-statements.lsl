@@ -7,4 +7,6 @@ func test() {
 
       discard // drop this fragment
   }
+
+  return
 }

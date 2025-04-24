@@ -1173,6 +1173,39 @@ var _ = Describe("Parser", func() {
 			},
 			nil,
 		),
+		Entry("return (empty)",
+			openTestFile("parser", "parse-statement", "valid-return-empty.lsl"),
+			&lsl.Return{
+				Pos:        lsl.At(1, 1),
+				Expression: nil,
+			},
+			nil,
+		),
+		Entry("return (expression)",
+			openTestFile("parser", "parse-statement", "valid-return-expression.lsl"),
+			&lsl.Return{
+				Pos: lsl.At(1, 1),
+				Expression: &lsl.BinaryExpression{
+					Operator: lsl.BinaryOperatorAdd,
+					Left: &lsl.IntLiteral{
+						Pos:   lsl.At(1, 8),
+						Value: 5,
+					},
+					Right: &lsl.BinaryExpression{
+						Operator: lsl.BinaryOperatorMul,
+						Left: &lsl.IntLiteral{
+							Pos:   lsl.At(1, 13),
+							Value: 3,
+						},
+						Right: &lsl.IntLiteral{
+							Pos:   lsl.At(1, 17),
+							Value: 2,
+						},
+					},
+				},
+			},
+			nil,
+		),
 	)
 
 	DescribeTable("ParseFunction", func(inSource string, expectedDecl *lsl.FunctionDeclaration, expectedErr error) {
@@ -1334,6 +1367,10 @@ var _ = Describe("Parser", func() {
 								Pos: lsl.At(8, 7),
 							},
 						},
+					},
+					&lsl.Return{
+						Pos:        lsl.At(11, 3),
+						Expression: nil,
 					},
 				},
 			},

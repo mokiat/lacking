@@ -71,6 +71,10 @@ const (
 	// KeywordElse is the keyword "else". It is used to start an alternative
 	// branch of a conditional statement.
 	KeywordElse = "else"
+
+	// KeywordReturn is the keyword "return". It is used to return a value from a
+	// function.
+	KeywordReturn = "return"
 )
 
 const (

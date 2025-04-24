@@ -393,6 +393,8 @@ func (p *Parser) ParseArgumentBlock() ([]Expression, error) {
 func (p *Parser) ParseStatement() (Statement, error) {
 	token := p.peekToken()
 	switch {
+	case token.IsSpecificIdentifier(KeywordReturn):
+		return p.parseReturnStatement()
 	case token.IsSpecificIdentifier(KeywordDiscard):
 		return p.parseDiscardStatement()
 	case token.IsSpecificIdentifier(KeywordVar):
@@ -1021,6 +1023,58 @@ func (p *Parser) parseExpressionValue() (Expression, error) {
 			Message: "expected an expression value",
 		}
 	}
+}
+
+// parseReturnStatement expects the next token to be a return keyword
+// and consumes it as well as any expression that follows.
+//
+// Example:
+//
+//	return color
+func (p *Parser) parseReturnStatement() (*Return, error) {
+	returnToken := p.nextToken()
+	if !returnToken.IsSpecificIdentifier(KeywordReturn) {
+		return nil, &ParseError{
+			Pos:     returnToken.Pos,
+			Message: fmt.Sprintf("expected %q keyword", KeywordReturn),
+		}
+	}
+
+	var expression Expression
+
+	nextToken := p.peekToken()
+	switch {
+	case nextToken.IsEOF():
+		// Do nothing.
+	case nextToken.IsError():
+		return nil, &ParseError{
+			Pos:     nextToken.Pos,
+			Message: fmt.Sprintf("tokenization error: %s", nextToken.Value),
+		}
+	case nextToken.IsNewLine():
+		if err := p.consumeNewLine(); err != nil {
+			return nil, err
+		}
+	case nextToken.IsComment():
+		if err := p.consumeComment(); err != nil {
+			return nil, err
+		}
+	default:
+		expr, err := p.ParseExpression()
+		if err != nil {
+			return nil, err
+		}
+		expression = expr
+
+		if err := p.consumeRemainingLine(); err != nil {
+			return nil, err
+		}
+	}
+
+	return &Return{
+		Pos:        returnToken.Pos,
+		Expression: expression,
+	}, nil
 }
 
 // parseDiscardStatement expects the next token to be a discard keyword

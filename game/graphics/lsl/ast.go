@@ -303,6 +303,7 @@ func (a *Assignment) GetPos() Position {
 
 func (*Assignment) _isStatement() {}
 
+// Conditional represents a conditional statement.
 type Conditional struct {
 	Pos       Position
 	Condition Expression
@@ -315,6 +316,18 @@ func (c *Conditional) GetPos() Position {
 }
 
 func (*Conditional) _isStatement() {}
+
+// Return represents a return statement.
+type Return struct {
+	Pos        Position
+	Expression Expression
+}
+
+func (r *Return) GetPos() Position {
+	return r.Pos
+}
+
+func (*Return) _isStatement() {}
 
 // Discard represents a statement that does nothing.
 type Discard struct {
