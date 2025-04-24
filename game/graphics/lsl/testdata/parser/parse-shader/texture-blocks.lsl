@@ -1,11 +1,11 @@
-textures { // header
+texture ( // header
   color sampler2D // field1
   // has two fields
   intensity samplerCube // field2
-}
+)
 
 // comment here
 
-textures {
+texture (
   value sampler2D
-}
+)

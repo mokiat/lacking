@@ -1,4 +1,4 @@
-{ // starts here
+( // starts here
 
   color vec4 // a color
 
@@ -6,4 +6,4 @@
 
     intensity float // whatever
 
-}
+)

@@ -1,4 +1,4 @@
-varyings {
+varying (
   color vec4
   intensity float
-}
+)

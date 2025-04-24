@@ -42,23 +42,27 @@ type Parser struct {
 	token     Token
 }
 
-// ParseFieldBlock parses a block containing field declarations such as one
+// ParseFieldGroup parses a block containing field declarations such as one
 // used in textures/uniforms/varyings blocks or struct declarations.
 //
 // Example:
 //
-//	{
+//	(
 //		color vec3
-//	}
-func (p *Parser) ParseFieldBlock() ([]Field, error) {
+//	)
+func (p *Parser) ParseFieldGroup(opening, closing string) ([]Field, error) {
 	var fields []Field
 
-	if err := p.consumeBlockStart(); err != nil {
-		return nil, err
+	openingToken := p.nextToken()
+	if !openingToken.IsSpecificOperator(opening) {
+		return nil, &ParseError{
+			Pos:     openingToken.Pos,
+			Message: "expected an opening bracket",
+		}
 	}
 
 	token := p.peekToken()
-	for !token.IsSpecificOperator(BlockEnd) {
+	for !token.IsSpecificOperator(closing) {
 		switch {
 		case token.IsError():
 			return nil, &ParseError{
@@ -77,22 +81,11 @@ func (p *Parser) ParseFieldBlock() ([]Field, error) {
 			}
 
 		case token.IsIdentifier():
-			nameToken := p.nextToken()
-			typeToken := p.nextToken()
-			if !typeToken.IsIdentifier() {
-				return nil, &ParseError{
-					Pos:     typeToken.Pos,
-					Message: "expected a type identifier",
-				}
-			}
-			fields = append(fields, Field{
-				Pos:  nameToken.Pos,
-				Name: nameToken.Value,
-				Type: typeToken.Value,
-			})
-			if err := p.consumeRemainingLine(); err != nil {
+			field, err := p.parseField()
+			if err != nil {
 				return nil, err
 			}
+			fields = append(fields, field)
 
 		default:
 			return nil, &ParseError{
@@ -103,7 +96,15 @@ func (p *Parser) ParseFieldBlock() ([]Field, error) {
 		token = p.peekToken()
 	}
 
-	if err := p.consumeBlockEnd(true); err != nil {
+	closingToken := p.nextToken()
+	if !closingToken.IsSpecificOperator(closing) {
+		return nil, &ParseError{
+			Pos:     closingToken.Pos,
+			Message: "expected a closing bracket",
+		}
+	}
+
+	if err := p.consumeRemainingLine(); err != nil {
 		return nil, err
 	}
 
@@ -114,18 +115,18 @@ func (p *Parser) ParseFieldBlock() ([]Field, error) {
 //
 // Example:
 //
-//	textures {
+//	texture (
 //		color sampler2D
-//	}
+//	)
 func (p *Parser) ParseTextureBlock() (*TextureBlockDeclaration, error) {
 	uniformToken := p.nextToken()
-	if !uniformToken.IsSpecificIdentifier(KeywordTextures) {
+	if !uniformToken.IsSpecificIdentifier(KeywordTexture) {
 		return nil, &ParseError{
 			Pos:     uniformToken.Pos,
-			Message: fmt.Sprintf("expected %q keyword", KeywordTextures),
+			Message: fmt.Sprintf("expected %q keyword", KeywordTexture),
 		}
 	}
-	fields, err := p.ParseFieldBlock()
+	fields, err := p.parseFieldDeclaration(GroupStart, GroupEnd)
 	if err != nil {
 		return nil, err
 	}
@@ -139,18 +140,18 @@ func (p *Parser) ParseTextureBlock() (*TextureBlockDeclaration, error) {
 //
 // Example:
 //
-//	uniforms {
+//	uniform (
 //		color vec4
-//	}
+//	)
 func (p *Parser) ParseUniformBlock() (*UniformBlockDeclaration, error) {
 	uniformToken := p.nextToken()
-	if !uniformToken.IsSpecificIdentifier(KeywordUniforms) {
+	if !uniformToken.IsSpecificIdentifier(KeywordUniform) {
 		return nil, &ParseError{
 			Pos:     uniformToken.Pos,
-			Message: fmt.Sprintf("expected %q keyword", KeywordUniforms),
+			Message: fmt.Sprintf("expected %q keyword", KeywordUniform),
 		}
 	}
-	fields, err := p.ParseFieldBlock()
+	fields, err := p.parseFieldDeclaration(GroupStart, GroupEnd)
 	if err != nil {
 		return nil, err
 	}
@@ -164,18 +165,18 @@ func (p *Parser) ParseUniformBlock() (*UniformBlockDeclaration, error) {
 //
 // Example:
 //
-//	varyings {
+//	varying (
 //		color vec3
-//	}
+//	)
 func (p *Parser) ParseVaryingBlock() (*VaryingBlockDeclaration, error) {
 	varyingToken := p.nextToken()
-	if !varyingToken.IsSpecificIdentifier(KeywordVaryings) {
+	if !varyingToken.IsSpecificIdentifier(KeywordVarying) {
 		return nil, &ParseError{
 			Pos:     varyingToken.Pos,
-			Message: fmt.Sprintf("expected %q keyword", KeywordVaryings),
+			Message: fmt.Sprintf("expected %q keyword", KeywordVarying),
 		}
 	}
-	fields, err := p.ParseFieldBlock()
+	fields, err := p.parseFieldDeclaration(GroupStart, GroupEnd)
 	if err != nil {
 		return nil, err
 	}
@@ -465,19 +466,19 @@ func (p *Parser) ParseShader() (*Shader, error) {
 			if err := p.consumeComment(); err != nil {
 				return nil, fmt.Errorf("error parsing comment: %w", err)
 			}
-		case token.IsSpecificIdentifier(KeywordTextures):
+		case token.IsSpecificIdentifier(KeywordTexture):
 			decl, err := p.ParseTextureBlock()
 			if err != nil {
 				return nil, fmt.Errorf("error parsing texture block: %w", err)
 			}
 			shader.Declarations = append(shader.Declarations, decl)
-		case token.IsSpecificIdentifier(KeywordUniforms):
+		case token.IsSpecificIdentifier(KeywordUniform):
 			decl, err := p.ParseUniformBlock()
 			if err != nil {
 				return nil, fmt.Errorf("error parsing uniform block: %w", err)
 			}
 			shader.Declarations = append(shader.Declarations, decl)
-		case token.IsSpecificIdentifier(KeywordVaryings):
+		case token.IsSpecificIdentifier(KeywordVarying):
 			decl, err := p.ParseVaryingBlock()
 			if err != nil {
 				return nil, fmt.Errorf("error parsing varying block: %w", err)
@@ -495,6 +496,60 @@ func (p *Parser) ParseShader() (*Shader, error) {
 		token = p.peekToken()
 	}
 	return &shader, nil
+}
+
+func (p *Parser) parseField() (Field, error) {
+	nameToken := p.nextToken()
+	typeToken := p.nextToken()
+	if !typeToken.IsIdentifier() {
+		return Field{}, &ParseError{
+			Pos:     typeToken.Pos,
+			Message: "expected a type identifier",
+		}
+	}
+	if err := p.consumeRemainingLine(); err != nil {
+		return Field{}, err
+	}
+	return Field{
+		Pos:  nameToken.Pos,
+		Name: nameToken.Value,
+		Type: typeToken.Value,
+	}, nil
+}
+
+func (p *Parser) parseFieldDeclaration(opening, closing string) ([]Field, error) {
+	var fields []Field
+
+	nextToken := p.peekToken()
+	switch {
+	case nextToken.IsError():
+		return nil, &ParseError{
+			Pos:     nextToken.Pos,
+			Message: fmt.Sprintf("tokenization error: %s", nextToken.Value),
+		}
+
+	case nextToken.IsSpecificOperator(opening):
+		var err error
+		fields, err = p.ParseFieldGroup(opening, closing)
+		if err != nil {
+			return nil, err
+		}
+
+	case nextToken.IsIdentifier():
+		field, err := p.parseField()
+		if err != nil {
+			return nil, err
+		}
+		fields = []Field{field}
+
+	default:
+		return nil, &ParseError{
+			Pos:     nextToken.Pos,
+			Message: "expected a name identifier or an opening bracket",
+		}
+	}
+
+	return fields, nil
 }
 
 func (p *Parser) parseDiscardStatement() (*Discard, error) {

@@ -1,0 +1,1 @@
+texture color sampler2D

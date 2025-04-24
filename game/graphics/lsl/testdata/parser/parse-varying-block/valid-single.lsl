@@ -1,0 +1,1 @@
+varying color vec4

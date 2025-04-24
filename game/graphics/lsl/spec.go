@@ -31,18 +31,18 @@ const (
 	// of a fragment shader.
 	KeywordDiscard = "discard"
 
-	// KeywordTextures is the keyword "textures". It is used to declare a block of
+	// KeywordTexture is the keyword "texture". It is used to declare a block of
 	// textures in a shader.
-	KeywordTextures = "textures"
+	KeywordTexture = "texture"
 
-	// KeywordUniforms is the keyword "uniforms". It is used to declare a block of
+	// KeywordUniform is the keyword "uniform". It is used to declare a block of
 	// uniforms in a shader.
-	KeywordUniforms = "uniforms"
+	KeywordUniform = "uniform"
 
-	// KeywordVaryings is the keyword "varyings". It is used to declare a block of
+	// KeywordVarying is the keyword "varying". It is used to declare a block of
 	// variables in a shader that can cross from the vertex shader stage to the
 	// fragment shader stage.
-	KeywordVaryings = "varyings"
+	KeywordVarying = "varying"
 
 	// KeywordTrue is the keyword "true". It is used to represent the boolean
 	// literal true.

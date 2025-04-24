@@ -1,2 +1,2 @@
-varyings {
-}
+varying (
+)
