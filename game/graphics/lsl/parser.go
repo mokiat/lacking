@@ -126,7 +126,7 @@ func (p *Parser) ParseTextureBlock() (*TextureBlockDeclaration, error) {
 			Message: fmt.Sprintf("expected %q keyword", KeywordTexture),
 		}
 	}
-	fields, err := p.parseFieldDeclaration(GroupStart, GroupEnd)
+	fields, err := p.parseFieldBlock(GroupStart, GroupEnd)
 	if err != nil {
 		return nil, err
 	}
@@ -151,7 +151,7 @@ func (p *Parser) ParseUniformBlock() (*UniformBlockDeclaration, error) {
 			Message: fmt.Sprintf("expected %q keyword", KeywordUniform),
 		}
 	}
-	fields, err := p.parseFieldDeclaration(GroupStart, GroupEnd)
+	fields, err := p.parseFieldBlock(GroupStart, GroupEnd)
 	if err != nil {
 		return nil, err
 	}
@@ -176,7 +176,7 @@ func (p *Parser) ParseVaryingBlock() (*VaryingBlockDeclaration, error) {
 			Message: fmt.Sprintf("expected %q keyword", KeywordVarying),
 		}
 	}
-	fields, err := p.parseFieldDeclaration(GroupStart, GroupEnd)
+	fields, err := p.parseFieldBlock(GroupStart, GroupEnd)
 	if err != nil {
 		return nil, err
 	}
@@ -218,7 +218,7 @@ func (p *Parser) ParseTypeDeclaration() (Declaration, error) {
 		}
 	}
 
-	fields, err := p.parseFieldDeclaration(BlockStart, BlockEnd)
+	fields, err := p.parseFieldBlock(BlockStart, BlockEnd)
 	if err != nil {
 		return nil, err
 	}
@@ -548,64 +548,12 @@ func (p *Parser) ParseShader() (*Shader, error) {
 	return &shader, nil
 }
 
-func (p *Parser) parseField() (Field, error) {
-	nameToken := p.nextToken()
-	typeToken := p.nextToken()
-	if !typeToken.IsIdentifier() {
-		return Field{}, &ParseError{
-			Pos:     typeToken.Pos,
-			Message: "expected a type identifier",
-		}
-	}
-	if err := p.consumeRemainingLine(); err != nil {
-		return Field{}, err
-	}
-	return Field{
-		Pos:  nameToken.Pos,
-		Name: nameToken.Value,
-		Type: typeToken.Value,
-	}, nil
-}
-
-func (p *Parser) parseFieldDeclaration(opening, closing string) ([]Field, error) {
-	var fields []Field
-
-	nextToken := p.peekToken()
-	switch {
-	case nextToken.IsError():
-		return nil, &ParseError{
-			Pos:     nextToken.Pos,
-			Message: fmt.Sprintf("tokenization error: %s", nextToken.Value),
-		}
-
-	case nextToken.IsSpecificOperator(opening):
-		var err error
-		fields, err = p.ParseFieldGroup(opening, closing)
-		if err != nil {
-			return nil, err
-		}
-
-	case nextToken.IsIdentifier():
-		field, err := p.parseField()
-		if err != nil {
-			return nil, err
-		}
-		fields = []Field{field}
-
-	default:
-		return nil, &ParseError{
-			Pos:     nextToken.Pos,
-			Message: "expected a name identifier or an opening bracket",
-		}
-	}
-
-	return fields, nil
-}
-
+// peekToken returns the next token without consuming it.
 func (p *Parser) peekToken() Token {
 	return p.token
 }
 
+// nextToken returns the next token and consumes it.
 func (p *Parser) nextToken() Token {
 	token := p.token
 	p.token = p.tokenizer.Next()
@@ -700,6 +648,74 @@ func (p *Parser) consumeBlockEnd(consumeRemainder bool) error {
 		}
 	}
 	return nil
+}
+
+// parseField parses a single field declaration.
+//
+// Example:
+//
+//	color vec3
+func (p *Parser) parseField() (Field, error) {
+	nameToken := p.nextToken()
+	typeToken := p.nextToken()
+	if !typeToken.IsIdentifier() {
+		return Field{}, &ParseError{
+			Pos:     typeToken.Pos,
+			Message: "expected a type identifier",
+		}
+	}
+	if err := p.consumeRemainingLine(); err != nil {
+		return Field{}, err
+	}
+	return Field{
+		Pos:  nameToken.Pos,
+		Name: nameToken.Value,
+		Type: typeToken.Value,
+	}, nil
+}
+
+// parseFieldBlock parses a block containing one or more field declarations
+// with a user-defined opening and closing brackets.
+//
+// Example:
+//
+//	o
+//		color vec3
+//		uv vec2
+//	c
+func (p *Parser) parseFieldBlock(opening, closing string) ([]Field, error) {
+	var fields []Field
+
+	nextToken := p.peekToken()
+	switch {
+	case nextToken.IsError():
+		return nil, &ParseError{
+			Pos:     nextToken.Pos,
+			Message: fmt.Sprintf("tokenization error: %s", nextToken.Value),
+		}
+
+	case nextToken.IsSpecificOperator(opening):
+		var err error
+		fields, err = p.ParseFieldGroup(opening, closing)
+		if err != nil {
+			return nil, err
+		}
+
+	case nextToken.IsIdentifier():
+		field, err := p.parseField()
+		if err != nil {
+			return nil, err
+		}
+		fields = []Field{field}
+
+	default:
+		return nil, &ParseError{
+			Pos:     nextToken.Pos,
+			Message: "expected a name identifier or an opening bracket",
+		}
+	}
+
+	return fields, nil
 }
 
 // parseParameterList parses a list of parameter name and type pairs.
@@ -851,6 +867,13 @@ func (p *Parser) parseUnaryExpression() (Expression, error) {
 	}, nil
 }
 
+// parseIdentifierExpression expects that the next token is an identifier
+// and parses the expression that follows it. It also handles field access
+// and function calls.
+//
+// Example:
+//
+//	color.r
 func (p *Parser) parseIdentifierExpression() (Expression, error) {
 	nameToken := p.nextToken()
 	if !nameToken.IsIdentifier() {
@@ -903,6 +926,12 @@ func (p *Parser) parseIdentifierExpression() (Expression, error) {
 	}
 }
 
+// parseExpressionGroup expects the next token to be an opening bracket
+// and parses the expression that follows it.
+//
+// Example:
+//
+//	(a + b)
 func (p *Parser) parseExpressionGroup() (Expression, error) {
 	openingToken := p.nextToken()
 	if !openingToken.IsSpecificOperator(GroupStart) {
@@ -1131,6 +1160,12 @@ func (p *Parser) parseConditionalStatement() (*Conditional, error) {
 	return &statement, nil
 }
 
+// parseImperativeStatement parses an imperative statement, which can be a
+// function call or a variable assignment.
+//
+// Example:
+//
+//	color.r = 1.0
 func (p *Parser) parseImperativeStatement() (Statement, error) {
 	target, err := p.parseIdentifierExpression()
 	if err != nil {
