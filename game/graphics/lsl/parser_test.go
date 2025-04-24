@@ -1175,14 +1175,19 @@ var _ = Describe("Parser", func() {
 		),
 	)
 
-	DescribeTable("ParseFunction", func(inSource string, expectedDecl *lsl.FunctionDeclaration) {
+	DescribeTable("ParseFunction", func(inSource string, expectedDecl *lsl.FunctionDeclaration, expectedErr error) {
 		parser := lsl.NewParser(inSource)
 		decl, err := parser.ParseFunction()
-		Expect(err).ToNot(HaveOccurred())
-		Expect(decl).To(Equal(expectedDecl))
+		if expectedErr == nil {
+			Expect(err).ToNot(HaveOccurred())
+			Expect(decl).To(Equal(expectedDecl))
+		} else {
+			Expect(err).To(HaveOccurred())
+			Expect(err).To(Equal(expectedErr))
+		}
 	},
-		Entry("simple",
-			openTestFile("parser", "parse-function", "simple.lsl"),
+		Entry("empty",
+			openTestFile("parser", "parse-function", "valid-empty.lsl"),
 			&lsl.FunctionDeclaration{
 				Pos:        lsl.At(1, 1),
 				Name:       "test",
@@ -1190,9 +1195,10 @@ var _ = Describe("Parser", func() {
 				OutputType: "",
 				Body:       nil,
 			},
+			nil,
 		),
 		Entry("with inputs",
-			openTestFile("parser", "parse-function", "with-inputs.lsl"),
+			openTestFile("parser", "parse-function", "valid-with-inputs.lsl"),
 			&lsl.FunctionDeclaration{
 				Pos:  lsl.At(1, 1),
 				Name: "test",
@@ -1211,9 +1217,10 @@ var _ = Describe("Parser", func() {
 				OutputType: "",
 				Body:       nil,
 			},
+			nil,
 		),
 		Entry("with inputs on new lines",
-			openTestFile("parser", "parse-function", "with-inputs-on-new-lines.lsl"),
+			openTestFile("parser", "parse-function", "valid-with-inputs-on-new-lines.lsl"),
 			&lsl.FunctionDeclaration{
 				Pos:  lsl.At(1, 1),
 				Name: "test",
@@ -1232,9 +1239,10 @@ var _ = Describe("Parser", func() {
 				OutputType: "",
 				Body:       nil,
 			},
+			nil,
 		),
 		Entry("with single output",
-			openTestFile("parser", "parse-function", "with-simple-output.lsl"),
+			openTestFile("parser", "parse-function", "valid-with-output.lsl"),
 			&lsl.FunctionDeclaration{
 				Pos:        lsl.At(1, 1),
 				Name:       "test",
@@ -1242,9 +1250,10 @@ var _ = Describe("Parser", func() {
 				OutputType: "vec3",
 				Body:       nil,
 			},
+			nil,
 		),
 		Entry("with inputs and output",
-			openTestFile("parser", "parse-function", "with-inputs-and-output.lsl"),
+			openTestFile("parser", "parse-function", "valid-with-inputs-and-output.lsl"),
 			&lsl.FunctionDeclaration{
 				Pos:  lsl.At(1, 1),
 				Name: "test",
@@ -1263,9 +1272,10 @@ var _ = Describe("Parser", func() {
 				OutputType: "vec3",
 				Body:       nil,
 			},
+			nil,
 		),
 		Entry("with comment in body",
-			openTestFile("parser", "parse-function", "with-comment-in-body.lsl"),
+			openTestFile("parser", "parse-function", "valid-with-comment-in-body.lsl"),
 			&lsl.FunctionDeclaration{
 				Pos:        lsl.At(1, 1),
 				Name:       "test",
@@ -1273,304 +1283,61 @@ var _ = Describe("Parser", func() {
 				OutputType: "",
 				Body:       nil,
 			},
+			nil,
 		),
-		Entry("with function call statements",
-			openTestFile("parser", "parse-function", "with-function-call-statements.lsl"),
+		Entry("with statements",
+			openTestFile("parser", "parse-function", "valid-with-statements.lsl"),
 			&lsl.FunctionDeclaration{
 				Pos:        lsl.At(1, 1),
 				Name:       "test",
 				Inputs:     nil,
 				OutputType: "",
 				Body: lsl.StatementList{
-					&lsl.FunctionCall{
-						Owner: &lsl.Identifier{
-							Pos:  lsl.At(2, 3),
-							Name: "doFirst",
-						},
-					},
-					&lsl.FunctionCall{
-						Owner: &lsl.Identifier{
-							Pos:  lsl.At(3, 3),
-							Name: "doSecond",
-						},
-					},
-				},
-			},
-		),
-		Entry("with variable declarations",
-			openTestFile("parser", "parse-function", "with-variable-declarations.lsl"),
-			&lsl.FunctionDeclaration{
-				Pos:        lsl.At(1, 1),
-				Name:       "test",
-				Inputs:     nil,
-				OutputType: "",
-				Body: lsl.StatementList{
-					&lsl.VariableDeclaration{
-						Pos:  lsl.At(2, 3),
-						Name: "x",
-						Type: "float",
-						Assignment: &lsl.FloatLiteral{
-							Pos:   lsl.At(2, 17),
-							Value: 5.3,
-						},
-					},
 					&lsl.VariableDeclaration{
 						Pos:  lsl.At(3, 3),
-						Name: "y",
-						Type: "int",
-						Assignment: &lsl.IntLiteral{
-							Pos:   lsl.At(3, 15),
-							Value: 3,
-						},
-					},
-					&lsl.VariableDeclaration{
-						Pos:  lsl.At(4, 3),
-						Name: "z",
-						Type: "vec3",
-						Assignment: &lsl.FunctionCall{
-							Owner: &lsl.Identifier{
-								Pos:  lsl.At(4, 16),
-								Name: "vec3",
-							},
-							Arguments: []lsl.Expression{
-								&lsl.FloatLiteral{
-									Pos:   lsl.At(4, 21),
-									Value: 1.0,
-								},
-								&lsl.FloatLiteral{
-									Pos:   lsl.At(4, 26),
-									Value: 0.0,
-								},
-								&lsl.UnaryExpression{
-									Pos:      lsl.At(4, 31),
-									Operator: "-",
-									Operand: &lsl.FloatLiteral{
-										Pos:   lsl.At(4, 32),
-										Value: 0.5,
-									},
-								},
-							},
-						},
-					},
-					&lsl.VariableDeclaration{
-						Pos:  lsl.At(5, 3),
-						Name: "w",
+						Name: "alpha",
 						Type: "", // auto-assignment
-						Assignment: &lsl.IntLiteral{
-							Pos:   lsl.At(5, 8),
-							Value: 15,
-						},
-					},
-				},
-			},
-		),
-		Entry("with variable assignments",
-			openTestFile("parser", "parse-function", "with-variable-assignments.lsl"),
-			&lsl.FunctionDeclaration{
-				Pos:        lsl.At(1, 1),
-				Name:       "test",
-				Inputs:     nil,
-				OutputType: "",
-				Body: lsl.StatementList{
-					&lsl.Assignment{
-						Target: &lsl.FieldIdentifier{
-							Owner: &lsl.Identifier{
-								Pos:  lsl.At(2, 3),
-								Name: "color",
+						Assignment: &lsl.FieldIdentifier{
+							Owner: &lsl.FunctionCall{
+								Owner: &lsl.Identifier{
+									Pos:  lsl.At(3, 12),
+									Name: "texture",
+								},
+								Arguments: []lsl.Expression{
+									&lsl.Identifier{
+										Pos:  lsl.At(3, 20),
+										Name: "uv",
+									},
+								},
 							},
 							Field: lsl.Identifier{
-								Pos:  lsl.At(2, 9),
-								Name: "x",
+								Pos:  lsl.At(3, 24),
+								Name: "a",
 							},
-						},
-						Operator: "+=",
-						Expression: &lsl.FloatLiteral{
-							Pos:   lsl.At(2, 14),
-							Value: 5.3,
 						},
 					},
-					&lsl.Assignment{
-						Target: &lsl.FieldIdentifier{
-							Owner: &lsl.Identifier{
-								Pos:  lsl.At(3, 3),
-								Name: "color",
+					&lsl.Conditional{
+						Pos: lsl.At(6, 3),
+						Condition: &lsl.BinaryExpression{
+							Operator: lsl.BinaryOperatorLess,
+							Left: &lsl.Identifier{
+								Pos:  lsl.At(6, 7),
+								Name: "alpha",
 							},
-							Field: lsl.Identifier{
-								Pos:  lsl.At(3, 9),
-								Name: "y",
+							Right: &lsl.FloatLiteral{
+								Pos:   lsl.At(6, 15),
+								Value: 0.5,
 							},
 						},
-						Operator: "*=",
-						Expression: &lsl.IntLiteral{
-							Pos:   lsl.At(3, 14),
-							Value: 3,
-						},
-					},
-					&lsl.Assignment{
-						Target: &lsl.Identifier{
-							Pos:  lsl.At(4, 3),
-							Name: "z",
-						},
-						Operator: "=",
-						Expression: &lsl.FunctionCall{
-							Owner: &lsl.Identifier{
-								Pos:  lsl.At(4, 7),
-								Name: "vec3",
-							},
-							Arguments: []lsl.Expression{
-								&lsl.FloatLiteral{
-									Pos:   lsl.At(4, 12),
-									Value: 1.0,
-								},
-								&lsl.FloatLiteral{
-									Pos:   lsl.At(4, 17),
-									Value: 0.0,
-								},
-								&lsl.UnaryExpression{
-									Pos:      lsl.At(4, 22),
-									Operator: "-",
-									Operand: &lsl.FloatLiteral{
-										Pos:   lsl.At(4, 23),
-										Value: 0.5,
-									},
-								},
+						Then: lsl.StatementList{
+							&lsl.Discard{
+								Pos: lsl.At(8, 7),
 							},
 						},
 					},
 				},
 			},
-		),
-		Entry("with conditionals",
-			openTestFile("parser", "parse-function", "with-conditionals.lsl"),
-			&lsl.FunctionDeclaration{
-				Pos:        lsl.At(1, 1),
-				Name:       "test",
-				Inputs:     nil,
-				OutputType: "",
-				Body: lsl.StatementList{
-					&lsl.Conditional{
-						Pos: lsl.At(2, 3),
-						Condition: &lsl.BinaryExpression{
-							Operator: ">",
-							Left: &lsl.IntLiteral{
-								Pos:   lsl.At(2, 6),
-								Value: 10,
-							},
-							Right: &lsl.IntLiteral{
-								Pos:   lsl.At(2, 11),
-								Value: 5,
-							},
-						},
-						Then: lsl.StatementList{
-							&lsl.FunctionCall{
-								Owner: &lsl.Identifier{
-									Pos:  lsl.At(3, 5),
-									Name: "doFirst",
-								},
-							},
-						},
-					},
-					&lsl.Conditional{
-						Pos: lsl.At(5, 3),
-						Condition: &lsl.BinaryExpression{
-							Operator: ">",
-							Left: &lsl.IntLiteral{
-								Pos:   lsl.At(5, 6),
-								Value: 10,
-							},
-							Right: &lsl.IntLiteral{
-								Pos:   lsl.At(5, 11),
-								Value: 20,
-							},
-						},
-						Then: lsl.StatementList{
-							&lsl.FunctionCall{
-								Owner: &lsl.Identifier{
-									Pos:  lsl.At(6, 5),
-									Name: "doFirst",
-								},
-							},
-						},
-						Else: lsl.StatementList{
-							&lsl.FunctionCall{
-								Owner: &lsl.Identifier{
-									Pos:  lsl.At(8, 5),
-									Name: "doSecond",
-								},
-							},
-						},
-					},
-					&lsl.Conditional{
-						Pos: lsl.At(10, 3),
-						Condition: &lsl.BinaryExpression{
-							Operator: ">",
-							Left: &lsl.IntLiteral{
-								Pos:   lsl.At(10, 6),
-								Value: 10,
-							},
-							Right: &lsl.IntLiteral{
-								Pos:   lsl.At(10, 11),
-								Value: 20,
-							},
-						},
-						Then: lsl.StatementList{
-							&lsl.FunctionCall{
-								Owner: &lsl.Identifier{
-									Pos:  lsl.At(11, 5),
-									Name: "doFirst",
-								},
-							},
-						},
-						Else: &lsl.Conditional{
-							Pos: lsl.At(12, 10),
-							Condition: &lsl.BinaryExpression{
-								Operator: ">",
-								Left: &lsl.IntLiteral{
-									Pos:   lsl.At(12, 13),
-									Value: 10,
-								},
-								Right: &lsl.IntLiteral{
-									Pos:   lsl.At(12, 18),
-									Value: 5,
-								},
-							},
-							Then: lsl.StatementList{
-								&lsl.FunctionCall{
-									Owner: &lsl.Identifier{
-										Pos:  lsl.At(13, 5),
-										Name: "doSecond",
-									},
-								},
-							},
-							Else: lsl.StatementList{
-								&lsl.FunctionCall{
-									Owner: &lsl.Identifier{
-										Pos:  lsl.At(15, 5),
-										Name: "doThird",
-									},
-								},
-							},
-						},
-					},
-				},
-			},
-		),
-		Entry("with discard",
-			openTestFile("parser", "parse-function", "with-discard.lsl"),
-			&lsl.FunctionDeclaration{
-				Pos:        lsl.At(1, 1),
-				Name:       "test",
-				Inputs:     nil,
-				OutputType: "",
-				Body: lsl.StatementList{
-					&lsl.Discard{
-						Pos: lsl.At(2, 3),
-					},
-					&lsl.Discard{
-						Pos: lsl.At(3, 3),
-					},
-				},
-			},
+			nil,
 		),
 	)
 

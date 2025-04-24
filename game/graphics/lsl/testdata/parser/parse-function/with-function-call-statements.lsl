@@ -1,4 +1,0 @@
-func test() {
-  doFirst()
-  doSecond()
-}

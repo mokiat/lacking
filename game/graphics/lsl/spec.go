@@ -59,6 +59,9 @@ const (
 	// type.
 	KeywordStruct = "struct"
 
+	// KeywordFunc is the keyword "func". It is used to declare a new function.
+	KeywordFunc = "func"
+
 	// KeywordVar is the keyword "var". It is used to declare a variable.
 	KeywordVar = "var"
 

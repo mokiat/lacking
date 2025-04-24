@@ -440,35 +440,54 @@ func (p *Parser) ParseStatementList() (StatementList, error) {
 	}
 }
 
+// ParseFunction parses a function declaration.
+//
+// Example:
+//
+//	func myFunction(a int, b float) {
+//		// function body
+//	}
 func (p *Parser) ParseFunction() (*FunctionDeclaration, error) {
 	var decl FunctionDeclaration
 
 	funcToken := p.nextToken()
-	if !funcToken.IsSpecificIdentifier("func") {
-		return nil, fmt.Errorf("expected func keyword")
+	if !funcToken.IsSpecificIdentifier(KeywordFunc) {
+		return nil, &ParseError{
+			Pos:     funcToken.Pos,
+			Message: fmt.Sprintf("expected %q keyword", KeywordFunc),
+		}
 	}
 	decl.Pos = funcToken.Pos
 
 	nameToken := p.nextToken()
 	if !nameToken.IsIdentifier() {
-		return nil, fmt.Errorf("expected function name identifier")
+		return nil, &ParseError{
+			Pos:     nameToken.Pos,
+			Message: "expected a name identifier",
+		}
 	}
 	decl.Name = nameToken.Value
 
-	paramBracketStart := p.nextToken()
-	if !paramBracketStart.IsSpecificOperator("(") {
-		return nil, fmt.Errorf("expected opening bracket")
+	openingToken := p.nextToken()
+	if !openingToken.IsSpecificOperator(GroupStart) {
+		return nil, &ParseError{
+			Pos:     openingToken.Pos,
+			Message: "expected an opening bracket",
+		}
 	}
 
-	inputParams, err := p.parseParameterList()
+	inputs, err := p.parseParameterList()
 	if err != nil {
-		return nil, fmt.Errorf("error parsing input params: %w", err)
+		return nil, err
 	}
-	decl.Inputs = inputParams
+	decl.Inputs = inputs
 
-	paramBracketEnd := p.nextToken()
-	if !paramBracketEnd.IsSpecificOperator(")") {
-		return nil, fmt.Errorf("expected closing bracket")
+	closingToken := p.nextToken()
+	if !closingToken.IsSpecificOperator(GroupEnd) {
+		return nil, &ParseError{
+			Pos:     closingToken.Pos,
+			Message: "expected a closing bracket",
+		}
 	}
 
 	nextToken := p.peekToken()
@@ -478,18 +497,19 @@ func (p *Parser) ParseFunction() (*FunctionDeclaration, error) {
 	}
 
 	if err := p.consumeBlockStart(); err != nil {
-		return nil, fmt.Errorf("error parsing function block start: %w", err)
+		return nil, err
 	}
 
 	statements, err := p.ParseStatementList()
 	if err != nil {
-		return nil, fmt.Errorf("error parsing function body: %w", err)
+		return nil, err
 	}
 	decl.Body = statements
 
 	if err := p.consumeBlockEnd(true); err != nil {
-		return nil, fmt.Errorf("error parsing function footer: %w", err)
+		return nil, err
 	}
+
 	return &decl, nil
 }
 
