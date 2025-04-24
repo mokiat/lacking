@@ -4,6 +4,4 @@ varying ( // header
   intensity float // field2
 ) // footer
 
-varying (
-  value vec4
-)
+varying value vec4

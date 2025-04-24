@@ -521,14 +521,17 @@ func (p *Parser) ParseShader() (*Shader, error) {
 	for !token.IsEOF() {
 		switch {
 		case token.IsError():
-			return nil, fmt.Errorf("error token: %v", token)
+			return nil, &ParseError{
+				Pos:     token.Pos,
+				Message: fmt.Sprintf("tokenization error: %s", token.Value),
+			}
 		case token.IsNewLine():
 			if err := p.consumeNewLine(); err != nil {
-				return nil, fmt.Errorf("error parsing new line: %w", err)
+				return nil, err
 			}
 		case token.IsComment():
 			if err := p.consumeComment(); err != nil {
-				return nil, fmt.Errorf("error parsing comment: %w", err)
+				return nil, err
 			}
 		case token.IsSpecificIdentifier(KeywordType):
 			decl, err := p.ParseTypeDeclaration()
@@ -539,29 +542,32 @@ func (p *Parser) ParseShader() (*Shader, error) {
 		case token.IsSpecificIdentifier(KeywordTexture):
 			decl, err := p.ParseTextureBlock()
 			if err != nil {
-				return nil, fmt.Errorf("error parsing texture block: %w", err)
+				return nil, err
 			}
 			shader.Declarations = append(shader.Declarations, decl)
 		case token.IsSpecificIdentifier(KeywordUniform):
 			decl, err := p.ParseUniformBlock()
 			if err != nil {
-				return nil, fmt.Errorf("error parsing uniform block: %w", err)
+				return nil, err
 			}
 			shader.Declarations = append(shader.Declarations, decl)
 		case token.IsSpecificIdentifier(KeywordVarying):
 			decl, err := p.ParseVaryingBlock()
 			if err != nil {
-				return nil, fmt.Errorf("error parsing varying block: %w", err)
+				return nil, err
 			}
 			shader.Declarations = append(shader.Declarations, decl)
-		case token.IsSpecificIdentifier("func"):
+		case token.IsSpecificIdentifier(KeywordFunc):
 			decl, err := p.ParseFunction()
 			if err != nil {
-				return nil, fmt.Errorf("error parsing function: %w", err)
+				return nil, err
 			}
 			shader.Declarations = append(shader.Declarations, decl)
 		default:
-			return nil, fmt.Errorf("unexpected token: %v", token)
+			return nil, &ParseError{
+				Pos:     token.Pos,
+				Message: "expected a top-level declaration",
+			}
 		}
 		token = p.peekToken()
 	}

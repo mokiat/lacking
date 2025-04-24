@@ -6,6 +6,4 @@ uniform ( // header
 
 // comment here
 
-uniform (
-  value vec4
-)
+uniform value vec4

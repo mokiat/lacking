@@ -6,6 +6,4 @@ texture ( // header
 
 // comment here
 
-texture (
-  value sampler2D
-)
+texture value sampler2D

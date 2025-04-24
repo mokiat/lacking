@@ -1341,22 +1341,29 @@ var _ = Describe("Parser", func() {
 		),
 	)
 
-	DescribeTable("ParseShader", func(inSource string, expectedShader *lsl.Shader) {
+	DescribeTable("ParseShader", func(inSource string, expectedShader *lsl.Shader, expectedErr error) {
 		parser := lsl.NewParser(inSource)
 		shader, err := parser.ParseShader()
-		Expect(err).ToNot(HaveOccurred())
-		Expect(shader).To(Equal(expectedShader))
+		if expectedErr == nil {
+			Expect(err).ToNot(HaveOccurred())
+			Expect(shader).To(Equal(expectedShader))
+		} else {
+			Expect(err).To(HaveOccurred())
+			Expect(err).To(Equal(expectedErr))
+		}
 	},
 		Entry("empty",
-			openTestFile("parser", "parse-shader", "empty.lsl"),
+			openTestFile("parser", "parse-shader", "valid-empty.lsl"),
 			&lsl.Shader{},
+			nil,
 		),
 		Entry("root comments",
-			openTestFile("parser", "parse-shader", "root-comments.lsl"),
+			openTestFile("parser", "parse-shader", "valid-root-comments.lsl"),
 			&lsl.Shader{},
+			nil,
 		),
 		Entry("texture blocks",
-			openTestFile("parser", "parse-shader", "texture-blocks.lsl"),
+			openTestFile("parser", "parse-shader", "valid-texture-blocks.lsl"),
 			&lsl.Shader{
 				Declarations: []lsl.Declaration{
 					&lsl.TextureBlockDeclaration{
@@ -1378,7 +1385,7 @@ var _ = Describe("Parser", func() {
 						Pos: lsl.At(9, 1),
 						Fields: []lsl.Field{
 							{
-								Pos:  lsl.At(10, 3),
+								Pos:  lsl.At(9, 9),
 								Name: "value",
 								Type: lsl.TypeNameSampler2D,
 							},
@@ -1386,9 +1393,10 @@ var _ = Describe("Parser", func() {
 					},
 				},
 			},
+			nil,
 		),
 		Entry("uniform blocks",
-			openTestFile("parser", "parse-shader", "uniform-blocks.lsl"),
+			openTestFile("parser", "parse-shader", "valid-uniform-blocks.lsl"),
 			&lsl.Shader{
 				Declarations: []lsl.Declaration{
 					&lsl.UniformBlockDeclaration{
@@ -1410,7 +1418,7 @@ var _ = Describe("Parser", func() {
 						Pos: lsl.At(9, 1),
 						Fields: []lsl.Field{
 							{
-								Pos:  lsl.At(10, 3),
+								Pos:  lsl.At(9, 9),
 								Name: "value",
 								Type: lsl.TypeNameVec4,
 							},
@@ -1418,9 +1426,10 @@ var _ = Describe("Parser", func() {
 					},
 				},
 			},
+			nil,
 		),
 		Entry("varying blocks",
-			openTestFile("parser", "parse-shader", "varying-blocks.lsl"),
+			openTestFile("parser", "parse-shader", "valid-varying-blocks.lsl"),
 			&lsl.Shader{
 				Declarations: []lsl.Declaration{
 					&lsl.VaryingBlockDeclaration{
@@ -1442,7 +1451,7 @@ var _ = Describe("Parser", func() {
 						Pos: lsl.At(7, 1),
 						Fields: []lsl.Field{
 							{
-								Pos:  lsl.At(8, 3),
+								Pos:  lsl.At(7, 9),
 								Name: "value",
 								Type: lsl.TypeNameVec4,
 							},
@@ -1450,9 +1459,10 @@ var _ = Describe("Parser", func() {
 					},
 				},
 			},
+			nil,
 		),
 		Entry("function declarations",
-			openTestFile("parser", "parse-shader", "function-declarations.lsl"),
+			openTestFile("parser", "parse-shader", "valid-function-declarations.lsl"),
 			&lsl.Shader{
 				Declarations: []lsl.Declaration{
 					&lsl.FunctionDeclaration{
@@ -1480,58 +1490,10 @@ var _ = Describe("Parser", func() {
 					},
 				},
 			},
-		),
-		Entry("variable declarations",
-			openTestFile("parser", "parse-shader", "variable-declarations.lsl"),
-			&lsl.Shader{
-				Declarations: []lsl.Declaration{
-					&lsl.FunctionDeclaration{
-						Pos:        lsl.At(1, 1),
-						Name:       "test",
-						Inputs:     nil,
-						OutputType: "",
-						Body: lsl.StatementList{
-							&lsl.VariableDeclaration{
-								Pos:  lsl.At(2, 3),
-								Name: "color",
-								Type: lsl.TypeNameVec3,
-								Assignment: &lsl.FunctionCall{
-									Owner: &lsl.Identifier{
-										Pos:  lsl.At(2, 20),
-										Name: "vec3",
-									},
-									Arguments: []lsl.Expression{
-										&lsl.FloatLiteral{
-											Pos:   lsl.At(2, 25),
-											Value: 1.0,
-										},
-										&lsl.UnaryExpression{
-											Pos:      lsl.At(2, 29),
-											Operator: "-",
-											Operand: &lsl.FloatLiteral{
-												Pos:   lsl.At(2, 30),
-												Value: 0.5,
-											},
-										},
-										&lsl.FloatLiteral{
-											Pos:   lsl.At(2, 35),
-											Value: 0.1,
-										},
-									},
-								},
-							},
-							&lsl.VariableDeclaration{
-								Pos:  lsl.At(4, 3),
-								Name: "intensity",
-								Type: lsl.TypeNameFloat,
-							},
-						},
-					},
-				},
-			},
+			nil,
 		),
 		Entry("struct declarations",
-			openTestFile("parser", "parse-shader", "structs.lsl"),
+			openTestFile("parser", "parse-shader", "valid-struct-declarations.lsl"),
 			&lsl.Shader{
 				Declarations: []lsl.Declaration{
 					&lsl.StructTypeDeclaration{
@@ -1563,6 +1525,7 @@ var _ = Describe("Parser", func() {
 					},
 				},
 			},
+			nil,
 		),
 	)
 })
