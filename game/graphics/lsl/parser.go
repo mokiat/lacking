@@ -186,6 +186,50 @@ func (p *Parser) ParseVaryingBlock() (*VaryingBlockDeclaration, error) {
 	}, nil
 }
 
+// ParseTypeDeclaration parses a type declaration.
+//
+// Example:
+//
+//	type MyType struct {
+//		color vec3
+//	}
+func (p *Parser) ParseTypeDeclaration() (Declaration, error) {
+	typeToken := p.nextToken()
+	if !typeToken.IsSpecificIdentifier(KeywordType) {
+		return nil, &ParseError{
+			Pos:     typeToken.Pos,
+			Message: fmt.Sprintf("expected %q keyword", KeywordType),
+		}
+	}
+
+	nameToken := p.nextToken()
+	if !nameToken.IsIdentifier() {
+		return nil, &ParseError{
+			Pos:     nameToken.Pos,
+			Message: "expected a name identifier",
+		}
+	}
+
+	structToken := p.nextToken()
+	if !structToken.IsSpecificIdentifier(KeywordStruct) {
+		return nil, &ParseError{
+			Pos:     structToken.Pos,
+			Message: fmt.Sprintf("expected %q keyword", KeywordStruct),
+		}
+	}
+
+	fields, err := p.parseFieldDeclaration(BlockStart, BlockEnd)
+	if err != nil {
+		return nil, err
+	}
+
+	return &StructTypeDeclaration{
+		Pos:    typeToken.Pos,
+		Name:   nameToken.Value,
+		Fields: fields,
+	}, nil
+}
+
 // ParseExpression uses the Shunting Yard algorithm to parse an expression and
 // return its AST form.
 //
@@ -466,6 +510,12 @@ func (p *Parser) ParseShader() (*Shader, error) {
 			if err := p.consumeComment(); err != nil {
 				return nil, fmt.Errorf("error parsing comment: %w", err)
 			}
+		case token.IsSpecificIdentifier(KeywordType):
+			decl, err := p.ParseTypeDeclaration()
+			if err != nil {
+				return nil, err
+			}
+			shader.Declarations = append(shader.Declarations, decl)
 		case token.IsSpecificIdentifier(KeywordTexture):
 			decl, err := p.ParseTextureBlock()
 			if err != nil {

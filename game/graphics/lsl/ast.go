@@ -222,6 +222,19 @@ func (v *VaryingBlockDeclaration) GetPos() Position {
 
 func (*VaryingBlockDeclaration) _isDeclaration() {}
 
+// StructTypeDeclaration represents a structure type declaration.
+type StructTypeDeclaration struct {
+	Pos    Position
+	Name   string
+	Fields []Field
+}
+
+func (s *StructTypeDeclaration) GetPos() Position {
+	return s.Pos
+}
+
+func (*StructTypeDeclaration) _isDeclaration() {}
+
 // FunctionDeclaration represents a function declaration.
 type FunctionDeclaration struct {
 	Pos        Position

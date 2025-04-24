@@ -337,6 +337,63 @@ var _ = Describe("Parser", func() {
 		),
 	)
 
+	DescribeTable("ParseTypeDeclaration", func(inSource string, expectedBlock lsl.Declaration, expectedErr error) {
+		parser := lsl.NewParser(inSource)
+		block, err := parser.ParseTypeDeclaration()
+		if expectedErr == nil {
+			Expect(err).ToNot(HaveOccurred())
+			Expect(block).To(Equal(expectedBlock))
+		} else {
+			Expect(err).To(HaveOccurred())
+			Expect(err).To(Equal(expectedErr))
+		}
+	},
+		Entry("empty struct",
+			openTestFile("parser", "parse-type-declaration", "valid-struct-empty.lsl"),
+			&lsl.StructTypeDeclaration{
+				Pos:    lsl.At(1, 1),
+				Name:   "Example",
+				Fields: nil,
+			},
+			nil,
+		),
+		Entry("simple struct",
+			openTestFile("parser", "parse-type-declaration", "valid-struct-simple.lsl"),
+			&lsl.StructTypeDeclaration{
+				Pos:  lsl.At(1, 1),
+				Name: "Example",
+				Fields: []lsl.Field{
+					{
+						Pos:  lsl.At(2, 3),
+						Name: "color",
+						Type: "vec4",
+					},
+				},
+			},
+			nil,
+		),
+		Entry("bloated struct",
+			openTestFile("parser", "parse-type-declaration", "valid-struct-bloated.lsl"),
+			&lsl.StructTypeDeclaration{
+				Pos:  lsl.At(1, 1),
+				Name: "Example",
+				Fields: []lsl.Field{
+					{
+						Pos:  lsl.At(3, 1),
+						Name: "first",
+						Type: "vec4",
+					},
+					{
+						Pos:  lsl.At(5, 3),
+						Name: "second",
+						Type: "float",
+					},
+				},
+			},
+			nil,
+		),
+	)
+
 	DescribeTable("ParseExpression", func(inSource string, expectedExp lsl.Expression, expectedErr error) {
 		parser := lsl.NewParser(inSource)
 		exp, err := parser.ParseExpression()
@@ -1480,6 +1537,40 @@ var _ = Describe("Parser", func() {
 							},
 							&lsl.VariableDeclaration{
 								Pos:  lsl.At(4, 3),
+								Name: "intensity",
+								Type: lsl.TypeNameFloat,
+							},
+						},
+					},
+				},
+			},
+		),
+		Entry("struct declarations",
+			openTestFile("parser", "parse-shader", "structs.lsl"),
+			&lsl.Shader{
+				Declarations: []lsl.Declaration{
+					&lsl.StructTypeDeclaration{
+						Pos:  lsl.At(2, 1),
+						Name: "Vertex",
+						Fields: []lsl.Field{
+							{
+								Pos:  lsl.At(3, 3),
+								Name: "position",
+								Type: lsl.TypeNameVec3,
+							},
+							{
+								Pos:  lsl.At(4, 3),
+								Name: "color",
+								Type: lsl.TypeNameVec3,
+							},
+						},
+					},
+					&lsl.StructTypeDeclaration{
+						Pos:  lsl.At(7, 1),
+						Name: "Lighting",
+						Fields: []lsl.Field{
+							{
+								Pos:  lsl.At(8, 3),
 								Name: "intensity",
 								Type: lsl.TypeNameFloat,
 							},

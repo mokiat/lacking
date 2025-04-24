@@ -181,6 +181,17 @@ varying (
 
 Varying fields are globally visible within the shader and are read-only in the fragment shader stage.
 
+## Structs
+
+It is possible to define custom struct types.
+
+```
+type Vertex struct {
+  position vec3
+  uv vec2
+}
+```
+
 ## Functions
 
 The following table lists built-in functions.

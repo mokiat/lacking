@@ -52,6 +52,13 @@ const (
 	// literal false.
 	KeywordFalse = "false"
 
+	// KeywordType is the keyword "type". It is used to declare a new type.
+	KeywordType = "type"
+
+	// KeywordStruct is the keyword "struct". It is used to declare a new struct
+	// type.
+	KeywordStruct = "struct"
+
 	// KeywordVar is the keyword "var". It is used to declare a variable.
 	KeywordVar = "var"
 
