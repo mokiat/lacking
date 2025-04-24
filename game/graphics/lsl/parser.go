@@ -602,96 +602,6 @@ func (p *Parser) parseFieldDeclaration(opening, closing string) ([]Field, error)
 	return fields, nil
 }
 
-func (p *Parser) parseImperativeStatement() (Statement, error) {
-	identifierToken := p.nextToken()
-	if !identifierToken.IsIdentifier() {
-		return nil, fmt.Errorf("expected identifier")
-	}
-
-	var target Expression
-	nextToken := p.peekToken()
-	switch {
-	case nextToken.IsSpecificOperator("."):
-		p.nextToken() // consume the dot
-		fieldToken := p.nextToken()
-		if !fieldToken.IsIdentifier() {
-			return nil, fmt.Errorf("expected identifier")
-		}
-		target = &FieldIdentifier{
-			Owner: &Identifier{
-				Pos:  identifierToken.Pos,
-				Name: identifierToken.Value,
-			},
-			Field: Identifier{
-				Pos:  fieldToken.Pos,
-				Name: fieldToken.Value,
-			},
-		}
-		nextToken = p.peekToken()
-
-	case nextToken.IsSpecificOperator(":="):
-		p.nextToken() // consume the assignment operator
-		expr, err := p.ParseExpression()
-		if err != nil {
-			return nil, fmt.Errorf("error parsing expression: %w", err)
-		}
-		if err := p.consumeRemainingLine(); err != nil {
-			return nil, fmt.Errorf("error parsing end of line: %w", err)
-		}
-		return &VariableDeclaration{
-			Pos:        identifierToken.Pos,
-			Name:       identifierToken.Value,
-			Type:       "", // auto-assignment
-			Assignment: expr,
-		}, nil
-
-	default:
-		target = &Identifier{
-			Pos:  identifierToken.Pos,
-			Name: identifierToken.Value,
-		}
-	}
-
-	switch {
-	case nextToken.IsSpecificOperator(GroupStart):
-		args, err := p.ParseArgumentBlock()
-		if err != nil {
-			return nil, err
-		}
-		if err := p.consumeRemainingLine(); err != nil {
-			return nil, fmt.Errorf("error parsing end of line: %w", err)
-		}
-		return &FunctionCall{
-			Owner: &Identifier{
-				Pos:  identifierToken.Pos,
-				Name: identifierToken.Value,
-			},
-			Arguments: args,
-		}, nil
-
-	case nextToken.IsAssignmentOperator():
-		operatorToken := p.nextToken()
-		if !operatorToken.IsAssignmentOperator() {
-			return nil, fmt.Errorf("expected assignment operator")
-		}
-		expr, err := p.ParseExpression()
-		if err != nil {
-			return nil, fmt.Errorf("error parsing expression: %w", err)
-		}
-		if err := p.consumeRemainingLine(); err != nil {
-			return nil, fmt.Errorf("error parsing end of line: %w", err)
-		}
-		return &Assignment{
-			Target:     target,
-			Operator:   operatorToken.Value,
-			Expression: expr,
-		}, nil
-
-	default:
-		return nil, fmt.Errorf("unexpected token: %v", nextToken)
-	}
-}
-
 func (p *Parser) peekToken() Token {
 	return p.token
 }
@@ -1219,4 +1129,81 @@ func (p *Parser) parseConditionalStatement() (*Conditional, error) {
 	}
 
 	return &statement, nil
+}
+
+func (p *Parser) parseImperativeStatement() (Statement, error) {
+	target, err := p.parseIdentifierExpression()
+	if err != nil {
+		return nil, err
+	}
+
+	switch target := target.(type) {
+	case *FunctionCall:
+		if err := p.consumeRemainingLine(); err != nil {
+			return nil, err
+		}
+		return target, nil
+
+	case *Identifier:
+		nextToken := p.peekToken()
+		switch {
+		case nextToken.IsSpecificOperator(AssignmentOperatorAuto):
+			p.nextToken() // consume the assignment operator
+			expr, err := p.ParseExpression()
+			if err != nil {
+				return nil, err
+			}
+			if err := p.consumeRemainingLine(); err != nil {
+				return nil, err
+			}
+			return &VariableDeclaration{
+				Pos:        target.Pos,
+				Name:       target.Name,
+				Type:       "", // auto-assignment
+				Assignment: expr,
+			}, nil
+
+		case nextToken.IsAssignmentOperator():
+			operatorToken := p.nextToken()
+			expr, err := p.ParseExpression()
+			if err != nil {
+				return nil, err
+			}
+			if err := p.consumeRemainingLine(); err != nil {
+				return nil, err
+			}
+			return &Assignment{
+				Target:     target,
+				Expression: expr,
+				Operator:   operatorToken.Value,
+			}, nil
+
+		default:
+			return nil, &ParseError{
+				Pos:     nextToken.Pos,
+				Message: "expected an assignment operator",
+			}
+		}
+
+	default:
+		operatorToken := p.nextToken()
+		if !operatorToken.IsAssignmentOperator() {
+			return nil, &ParseError{
+				Pos:     operatorToken.Pos,
+				Message: "expected an assignment operator",
+			}
+		}
+		expr, err := p.ParseExpression()
+		if err != nil {
+			return nil, err
+		}
+		if err := p.consumeRemainingLine(); err != nil {
+			return nil, err
+		}
+		return &Assignment{
+			Target:     target,
+			Expression: expr,
+			Operator:   operatorToken.Value,
+		}, nil
+	}
 }

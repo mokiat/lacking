@@ -1105,6 +1105,74 @@ var _ = Describe("Parser", func() {
 			},
 			nil,
 		),
+		Entry("assignment",
+			openTestFile("parser", "parse-statement", "valid-assignment.lsl"),
+			&lsl.Assignment{
+				Operator: lsl.AssignmentOperatorAdd,
+				Target: &lsl.Identifier{
+					Pos:  lsl.At(1, 1),
+					Name: "intensity",
+				},
+				Expression: &lsl.FloatLiteral{
+					Pos:   lsl.At(1, 14),
+					Value: 1.0,
+				},
+			},
+			nil,
+		),
+		Entry("assignment (nested)",
+			openTestFile("parser", "parse-statement", "valid-assignment-nested.lsl"),
+			&lsl.Assignment{
+				Operator: lsl.AssignmentOperatorAdd,
+				Target: &lsl.FieldIdentifier{
+					Owner: &lsl.FieldIdentifier{
+						Owner: &lsl.Identifier{
+							Pos:  lsl.At(1, 1),
+							Name: "vertex",
+						},
+						Field: lsl.Identifier{
+							Pos:  lsl.At(1, 8),
+							Name: "color",
+						},
+					},
+					Field: lsl.Identifier{
+						Pos:  lsl.At(1, 14),
+						Name: "r",
+					},
+				},
+				Expression: &lsl.FloatLiteral{
+					Pos:   lsl.At(1, 19),
+					Value: 1.5,
+				},
+			},
+			nil,
+		),
+		Entry("function call",
+			openTestFile("parser", "parse-statement", "valid-function-call-nested.lsl"),
+			&lsl.FunctionCall{
+				Owner: &lsl.FieldIdentifier{
+					Owner: &lsl.Identifier{
+						Pos:  lsl.At(1, 1),
+						Name: "utils",
+					},
+					Field: lsl.Identifier{
+						Pos:  lsl.At(1, 7),
+						Name: "example",
+					},
+				},
+				Arguments: []lsl.Expression{
+					&lsl.FloatLiteral{
+						Pos:   lsl.At(1, 15),
+						Value: 1.0,
+					},
+					&lsl.FloatLiteral{
+						Pos:   lsl.At(1, 20),
+						Value: 5.0,
+					},
+				},
+			},
+			nil,
+		),
 	)
 
 	DescribeTable("ParseFunction", func(inSource string, expectedDecl *lsl.FunctionDeclaration) {
