@@ -120,9 +120,9 @@ var defaultColorSkyShader = func() Provider[*mdl.Shader] {
 			var shader mdl.Shader
 			shader.SetShaderType(mdl.ShaderTypeSky)
 			shader.SetSourceCode(`
-				uniforms {
-					skyColor vec4,
-				}
+				uniform (
+					skyColor vec4
+				)
 		
 				func #fragment() {
 					#color = skyColor
@@ -145,9 +145,9 @@ var defaultTextureSkyShader = func() Provider[*mdl.Shader] {
 			var shader mdl.Shader
 			shader.SetShaderType(mdl.ShaderTypeSky)
 			shader.SetSourceCode(`
-				textures {
-					skyColorSampler samplerCube,
-				}
+				texture (
+					skyColorSampler samplerCube
+				)
 		
 				func #fragment() {
 					#color = sample(skyColorSampler, #direction)

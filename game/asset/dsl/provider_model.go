@@ -750,26 +750,26 @@ func createPBRShader(cfg pbrShaderConfig) string {
 
 	var textureLines string
 	if cfg.hasColorTexture {
-		textureLines += "  colorSampler sampler2D,\n"
+		textureLines += "  colorSampler sampler2D\n"
 	}
 	if cfg.hasMetallicRoughnessTexture {
-		textureLines += "  metallicRoughnessSampler sampler2D,\n"
+		textureLines += "  metallicRoughnessSampler sampler2D\n"
 	}
 	if cfg.hasNormalTexture {
-		textureLines += "  normalSampler sampler2D,\n"
+		textureLines += "  normalSampler sampler2D\n"
 	}
 	if textureLines != "" {
-		sourceCode += "textures {\n" + textureLines + "}\n"
+		sourceCode += "texture (\n" + textureLines + ")\n"
 	}
 
 	sourceCode += `
-		uniforms {
-			color vec4,
-			metallic float,
-			roughness float,
-			normalScale float,
-			alphaThreshold float,
-		}
+		uniform (
+			color vec4
+			metallic float
+			roughness float
+			normalScale float
+			alphaThreshold float
+		)
 	`
 	sourceCode += `
 		func #fragment() {
