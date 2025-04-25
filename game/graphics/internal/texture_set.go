@@ -6,14 +6,14 @@ import (
 )
 
 func NewShaderTextureSet(shader *lsl.Shader) TextureSet {
-	textureBlock, ok := shader.FindTextureBlock()
-	if !ok {
+	textures := shader.Textures()
+	if len(textures) == 0 {
 		return TextureSet{}
 	}
 
 	var names [8]string
-	for i := range min(8, len(textureBlock.Fields)) {
-		names[i] = textureBlock.Fields[i].Name
+	for i := range min(8, len(textures)) {
+		names[i] = textures[i].Name
 	}
 
 	return TextureSet{

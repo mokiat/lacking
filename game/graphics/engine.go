@@ -500,22 +500,20 @@ func (e *Engine) createForwardPassPipeline(info internal.RenderPassPipelineInfo)
 
 func (e *Engine) createSkyProgram(programCode render.ProgramCode, shader *lsl.Shader) render.Program {
 	var textureBindings []render.TextureBinding
-	if textureBlock, ok := shader.FindTextureBlock(); ok {
-		for i := range uint(min(8, len(textureBlock.Fields))) {
-			textureBindings = append(textureBindings, render.NewTextureBinding(textureBlock.Fields[i].Name, i))
-		}
+
+	textures := shader.Textures()
+	for i := range min(8, len(textures)) {
+		textureBindings = append(textureBindings, render.NewTextureBinding(textures[i].Name, uint(i)))
 	}
 
 	var uniformBindings []render.UniformBinding
 	uniformBindings = append(uniformBindings,
 		render.NewUniformBinding("Camera", internal.UniformBufferBindingCamera),
 	)
-	if uniformBlock, ok := shader.FindUniformBlock(); ok {
-		if len(uniformBlock.Fields) > 0 {
-			uniformBindings = append(uniformBindings,
-				render.NewUniformBinding("Material", internal.UniformBufferBindingMaterial),
-			)
-		}
+	if len(shader.Uniforms()) > 0 {
+		uniformBindings = append(uniformBindings,
+			render.NewUniformBinding("Material", internal.UniformBufferBindingMaterial),
+		)
 	}
 
 	return e.api.CreateProgram(render.ProgramInfo{

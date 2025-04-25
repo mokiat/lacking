@@ -41,8 +41,8 @@ type UniformProperty struct {
 }
 
 func NewShaderUniformSet(shader *lsl.Shader) UniformSet {
-	uniformBlock, ok := shader.FindUniformBlock()
-	if !ok {
+	uniforms := shader.Uniforms()
+	if len(uniforms) == 0 {
 		return UniformSet{}
 	}
 
@@ -54,8 +54,8 @@ func NewShaderUniformSet(shader *lsl.Shader) UniformSet {
 	}
 
 	size := uint32(0)
-	properties := make([]UniformProperty, len(uniformBlock.Fields))
-	for i, field := range uniformBlock.Fields {
+	properties := make([]UniformProperty, len(uniforms))
+	for i, field := range uniforms {
 		property := UniformProperty{
 			name: field.Name,
 		}

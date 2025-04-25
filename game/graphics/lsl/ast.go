@@ -110,61 +110,37 @@ type Shader struct {
 	Declarations []Declaration
 }
 
-func (s *Shader) TextureBlocks() []*TextureBlockDeclaration {
-	var blocks []*TextureBlockDeclaration
+// Textures returns all the fields in all texture blocks.
+func (s *Shader) Textures() []Field {
+	var result []Field
 	for _, decl := range s.Declarations {
 		if block, ok := decl.(*TextureBlockDeclaration); ok {
-			blocks = append(blocks, block)
+			result = append(result, block.Fields...)
 		}
 	}
-	return blocks
+	return result
 }
 
-func (s *Shader) FindTextureBlock() (*TextureBlockDeclaration, bool) {
-	for _, decl := range s.Declarations {
-		if block, ok := decl.(*TextureBlockDeclaration); ok {
-			return block, true
-		}
-	}
-	return nil, false
-}
-
-func (s *Shader) UniformBlocks() []*UniformBlockDeclaration {
-	var blocks []*UniformBlockDeclaration
+// Uniforms returns all the fields in all uniform blocks.
+func (s *Shader) Uniforms() []Field {
+	var result []Field
 	for _, decl := range s.Declarations {
 		if block, ok := decl.(*UniformBlockDeclaration); ok {
-			blocks = append(blocks, block)
+			result = append(result, block.Fields...)
 		}
 	}
-	return blocks
+	return result
 }
 
-func (s *Shader) FindUniformBlock() (*UniformBlockDeclaration, bool) {
-	for _, decl := range s.Declarations {
-		if block, ok := decl.(*UniformBlockDeclaration); ok {
-			return block, true
-		}
-	}
-	return nil, false
-}
-
-func (s *Shader) VaryingBlocks() []*VaryingBlockDeclaration {
-	var blocks []*VaryingBlockDeclaration
+// Varyings returns all the fields in all varying blocks.
+func (s *Shader) Varyings() []Field {
+	var result []Field
 	for _, decl := range s.Declarations {
 		if block, ok := decl.(*VaryingBlockDeclaration); ok {
-			blocks = append(blocks, block)
+			result = append(result, block.Fields...)
 		}
 	}
-	return blocks
-}
-
-func (s *Shader) FindVaryingBlock() (*VaryingBlockDeclaration, bool) {
-	for _, decl := range s.Declarations {
-		if block, ok := decl.(*VaryingBlockDeclaration); ok {
-			return block, true
-		}
-	}
-	return nil, false
+	return result
 }
 
 func (s *Shader) Functions() []*FunctionDeclaration {
