@@ -2,9 +2,27 @@ package dsl
 
 import "github.com/mokiat/lacking/game/asset/mdl"
 
-// TODO: Allow the creation of a custom material:
-// func CreateMaterial(name string, opts ...Operation) Provider[*mdl.Material] {
-// }
+// CreateMaterial creates a provider that will create a material with the
+// specified options.
+func CreateMaterial(name string, opts ...Operation) Provider[*mdl.Material] {
+	return OnceProvider(FuncProvider(
+		// get function
+		func() (*mdl.Material, error) {
+			material := mdl.NewMaterial(name)
+			for _, opt := range opts {
+				if err := opt.Apply(material); err != nil {
+					return nil, err
+				}
+			}
+			return material, nil
+		},
+
+		// digest function
+		func() ([]byte, error) {
+			return CreateDigest("create-material", name, opts)
+		},
+	))
+}
 
 // CreateMaterialPass creates a provider that will create a material pass
 // with the specified options.

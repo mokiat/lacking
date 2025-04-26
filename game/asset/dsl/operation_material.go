@@ -85,6 +85,34 @@ func AddForwardPass(passProvider Provider[*mdl.MaterialPass]) Operation {
 	)
 }
 
+// AddSkyPass creates an operation that adds a new forward pass
+// to the target.
+func AddSkyPass(passProvider Provider[*mdl.MaterialPass]) Operation {
+	type passContainer interface {
+		AddSkyPass(*mdl.MaterialPass)
+	}
+	return FuncOperation(
+		// apply function
+		func(target any) error {
+			pass, err := passProvider.Get()
+			if err != nil {
+				return fmt.Errorf("error getting pass: %w", err)
+			}
+			container, ok := target.(passContainer)
+			if !ok {
+				return fmt.Errorf("target %T is not a sky pass container", target)
+			}
+			container.AddSkyPass(pass)
+			return nil
+		},
+
+		// digest function
+		func() ([]byte, error) {
+			return CreateDigest("add-sky-pass", passProvider)
+		},
+	)
+}
+
 // SetShader creates an operation that sets the shader of the target.
 func SetShader(shaderProvider Provider[*mdl.Shader]) Operation {
 	type shaderHolder interface {

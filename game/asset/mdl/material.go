@@ -33,6 +33,20 @@ const (
 
 type Comparison = asset.Comparison
 
+func NewMaterial(name string) *Material {
+	return &Material{
+		name:                 name,
+		metadata:             nil,
+		samplers:             nil,
+		properties:           nil,
+		geometryPasses:       nil,
+		shadowPasses:         nil,
+		forwardPasses:        nil,
+		skyPasses:            nil,
+		postprocessingPasses: nil,
+	}
+}
+
 type Material struct {
 	name string
 
