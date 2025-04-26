@@ -150,7 +150,9 @@ var defaultTextureSkyShader = func() Provider[*mdl.Shader] {
 				)
 		
 				func #fragment() {
-					#color = sample(skyColorSampler, #direction)
+					// Note: We flip the ray direction here because of how OpenGL
+					// handles the cube map texture coordinates.
+					#color = sample(skyColorSampler, -#rayDirectionWS)
 				}
 			`)
 			return &shader, nil
