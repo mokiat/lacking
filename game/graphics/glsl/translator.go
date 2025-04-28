@@ -12,6 +12,9 @@ import (
 var (
 	//go:embed snippet/precision.glsl
 	precisionSnippet string
+
+	//go:embed snippet/camera.glsl
+	cameraSnippet string
 )
 
 func NewTranslator(version string, precisionQualifiers bool) *Translator {
@@ -56,6 +59,9 @@ func (t *Translator) translateVertexCode(shader *lsl.Shader, settings graphics.S
 	if settings.HasArmature {
 		t.writeArmatureAttributes(&builder)
 	}
+	if settings.HasCamera {
+		t.writeCamera(&builder)
+	}
 	if textures := shader.Textures(); len(textures) > 0 {
 		t.writeTextures(&builder, ctx, textures)
 	}
@@ -87,6 +93,9 @@ func (t *Translator) translateFragmentCode(shader *lsl.Shader, settings graphics
 	}
 	if settings.HasOutput3 {
 		t.writeFramebufferOutput(&builder, 3)
+	}
+	if settings.HasCamera {
+		t.writeCamera(&builder)
 	}
 	if textures := shader.Textures(); len(textures) > 0 {
 		t.writeTextures(&builder, ctx, textures)
@@ -136,6 +145,11 @@ func (t *Translator) writeArmatureAttributes(builder *strings.Builder) {
 
 func (t *Translator) writeFramebufferOutput(builder *strings.Builder, index int) {
 	fmt.Fprintf(builder, "layout(location = %d) out vec4 fbOutput%d;\n", index, index)
+}
+
+func (t *Translator) writeCamera(builder *strings.Builder) {
+	builder.WriteString(cameraSnippet)
+	builder.WriteString("\n\n")
 }
 
 func (t *Translator) writeTextures(builder *strings.Builder, ctx *translationContext, textures []lsl.Field) {

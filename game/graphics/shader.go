@@ -10,13 +10,6 @@ import (
 // process.
 type ShaderConstraints struct {
 
-	// LoadGeometryPreset specifies whether the shader should load the geometry
-	// preset.
-	LoadGeometryPreset bool
-
-	// LoadSkyPreset specifies whether the shader should load the sky preset.
-	LoadSkyPreset bool
-
 	// HasOutput0 specifies whether the shader has an output for the first
 	// render target.
 	HasOutput0 bool
@@ -50,6 +43,16 @@ type ShaderConstraints struct {
 
 	// HasArmature specifies whether the mesh has an armature.
 	HasArmature bool
+
+	// HasCamera specifies whether the shader has a camera.
+	HasCamera bool
+
+	// LoadGeometryPreset specifies whether the shader should load the geometry
+	// preset.
+	LoadGeometryPreset bool
+
+	// LoadSkyPreset specifies whether the shader should load the sky preset.
+	LoadSkyPreset bool
 }
 
 // GeometryConstraints contains the constraints imposed on the geometry shader

@@ -129,6 +129,15 @@ var _ = Describe("Translator", func() {
 			openTestFile("translate-410", "framebuffer-output-3.frag.glsl"),
 		),
 
+		Entry("camera",
+			&lsl.Shader{},
+			graphics.ShaderConstraints{
+				HasCamera: true,
+			},
+			openTestFile("translate-410", "camera.vert.glsl"),
+			openTestFile("translate-410", "camera.frag.glsl"),
+		),
+
 		Entry("textures",
 			&lsl.Shader{
 				Declarations: []lsl.Declaration{
