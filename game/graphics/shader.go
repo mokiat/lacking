@@ -88,11 +88,6 @@ type ForwardConstraints struct {
 	HasArmature bool
 }
 
-// SkyConstraints contains the constraints imposed on the sky shader
-// construction process.
-type SkyConstraints struct {
-}
-
 // ShaderBuilder abstracts the process of building a shader program. The
 // implementation of this interface will depend on the rendering backend.
 type ShaderBuilder interface {
