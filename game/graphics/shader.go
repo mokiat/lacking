@@ -44,15 +44,34 @@ type ShaderConstraints struct {
 	// HasArmature specifies whether the mesh has an armature.
 	HasArmature bool
 
-	// HasCamera specifies whether the shader has a camera.
-	HasCamera bool
+	// Preset specifies which preset to load.
+	Preset Preset
 
 	// LoadGeometryPreset specifies whether the shader should load the geometry
 	// preset.
+	// Deprecated: Use Preset instead.
 	LoadGeometryPreset bool
 
 	// LoadSkyPreset specifies whether the shader should load the sky preset.
+	// Deprecated: Use Preset instead.
 	LoadSkyPreset bool
+}
+
+const (
+	// PresetSky specifies that the sky preset should be loaded.
+	PresetSky Preset = iota
+)
+
+// Preset specifies the type of preset to load.
+type Preset uint8
+
+func (p Preset) String() string {
+	switch p {
+	case PresetSky:
+		return "sky"
+	default:
+		return "unknown"
+	}
 }
 
 // GeometryConstraints contains the constraints imposed on the geometry shader
@@ -164,6 +183,7 @@ func (e *Engine) createForwardProgramCode(shader *lsl.Shader, info internal.Shad
 
 func (e *Engine) createProgramCode(shader *lsl.Shader, info internal.ShaderProgramCodeInfo) render.ProgramCode {
 	return e.shaderBuilder.BuildCode(ShaderConstraints{
+		Preset:          PresetSky,
 		LoadSkyPreset:   true,
 		HasOutput0:      true,
 		HasCoords:       info.MeshHasCoords,
