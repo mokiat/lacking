@@ -27,9 +27,13 @@ func (c *translationContext) Pop() {
 	}
 }
 
-func (c *translationContext) RegisterMapping(srcName, dstName string) {
+func (c *translationContext) RegisterIdentifier(srcName, dstName string) {
 	c.names[srcName] = dstName
 	layer := c.stack.Pop()
 	layer = append(layer, srcName)
 	c.stack.Push(layer)
+}
+
+func (c *translationContext) Identifier(srcName string) string {
+	return c.names[srcName]
 }

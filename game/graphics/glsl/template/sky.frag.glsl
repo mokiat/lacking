@@ -11,6 +11,8 @@ smooth in vec3 varyingDirectionWS;
 void main()
 {
   vec4 color = vec4(0.0, 0.0, 0.0, 1.0);
-  // TODO: User code here.
+/*- range $statement := .MainStatements */
+  /* $statement */
+/*- end */
   fbOutput0 = color;
 }

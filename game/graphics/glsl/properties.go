@@ -49,6 +49,10 @@ type VaryingProperty struct {
 	Direction string
 }
 
+type MainProperties struct {
+	MainStatements []string
+}
+
 type SkyProperties struct {
 	VersionProperties
 	AttributeProperties
@@ -56,4 +60,5 @@ type SkyProperties struct {
 	TextureProperties
 	UniformProperties
 	VaryingProperties
+	MainProperties
 }
