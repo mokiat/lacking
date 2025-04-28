@@ -59,6 +59,9 @@ func (t *Translator) translateVertexCode(shader *lsl.Shader, settings graphics.S
 	if textures := shader.Textures(); len(textures) > 0 {
 		t.writeTextures(&builder, ctx, textures)
 	}
+	if uniforms := shader.Uniforms(); len(uniforms) > 0 {
+		t.writeUniforms(&builder, ctx, uniforms)
+	}
 	return builder.String()
 }
 
@@ -72,6 +75,9 @@ func (t *Translator) translateFragmentCode(shader *lsl.Shader, settings graphics
 	}
 	if textures := shader.Textures(); len(textures) > 0 {
 		t.writeTextures(&builder, ctx, textures)
+	}
+	if uniforms := shader.Uniforms(); len(uniforms) > 0 {
+		t.writeUniforms(&builder, ctx, uniforms)
 	}
 	return builder.String()
 }
@@ -121,6 +127,19 @@ func (t *Translator) writeTextures(builder *strings.Builder, ctx *translationCon
 	builder.WriteString("\n")
 }
 
+func (t *Translator) writeUniforms(builder *strings.Builder, ctx *translationContext, uniforms []lsl.Field) {
+	builder.WriteString("layout (std140) uniform Material\n")
+	builder.WriteString("{\n")
+	for i, uniform := range uniforms {
+		srcName := uniform.Name
+		dstName := fmt.Sprintf("uUniform%d", i)
+		dstType := t.translateType(ctx, uniform.Type)
+		ctx.RegisterMapping(srcName, dstName)
+		fmt.Fprintf(builder, "  %s %s;\n", dstType, dstName)
+	}
+	builder.WriteString("};\n\n")
+}
+
 func (t *Translator) translateType(_ *translationContext, srcType string) string {
 	switch srcType {
 	case lsl.TypeNameBool:
@@ -137,6 +156,24 @@ func (t *Translator) translateType(_ *translationContext, srcType string) string
 		return "vec3"
 	case lsl.TypeNameVec4:
 		return "vec4"
+	case lsl.TypeNameBVec2:
+		return "bvec2"
+	case lsl.TypeNameBVec3:
+		return "bvec3"
+	case lsl.TypeNameBVec4:
+		return "bvec4"
+	case lsl.TypeNameIVec2:
+		return "ivec2"
+	case lsl.TypeNameIVec3:
+		return "ivec3"
+	case lsl.TypeNameIVec4:
+		return "ivec4"
+	case lsl.TypeNameUVec2:
+		return "uvec2"
+	case lsl.TypeNameUVec3:
+		return "uvec3"
+	case lsl.TypeNameUVec4:
+		return "uvec4"
 	case lsl.TypeNameMat2:
 		return "mat2"
 	case lsl.TypeNameMat3:

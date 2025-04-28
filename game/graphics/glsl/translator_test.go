@@ -122,5 +122,35 @@ var _ = Describe("Translator", func() {
 			openTestFile("translate-410", "textures.vert.glsl"),
 			openTestFile("translate-410", "textures.frag.glsl"),
 		),
+
+		Entry("uniforms",
+			&lsl.Shader{
+				Declarations: []lsl.Declaration{
+					&lsl.UniformBlockDeclaration{
+						Fields: []lsl.Field{
+							{
+								Name: "first",
+								Type: lsl.TypeNameVec4,
+							},
+							{
+								Name: "second",
+								Type: lsl.TypeNameUVec4,
+							},
+						},
+					},
+					&lsl.UniformBlockDeclaration{
+						Fields: []lsl.Field{
+							{
+								Name: "third",
+								Type: lsl.TypeNameVec2,
+							},
+						},
+					},
+				},
+			},
+			graphics.ShaderConstraints{},
+			openTestFile("translate-410", "uniforms.vert.glsl"),
+			openTestFile("translate-410", "uniforms.frag.glsl"),
+		),
 	)
 })
