@@ -53,7 +53,7 @@ type MainProperties struct {
 	MainStatements []string
 }
 
-type SkyProperties struct {
+type BaseProperties struct {
 	VersionProperties
 	AttributeProperties
 	OutputProperties
@@ -61,4 +61,12 @@ type SkyProperties struct {
 	UniformProperties
 	VaryingProperties
 	MainProperties
+}
+
+type SkyProperties struct {
+	BaseProperties
+}
+
+type ForwardProperties struct {
+	BaseProperties
 }

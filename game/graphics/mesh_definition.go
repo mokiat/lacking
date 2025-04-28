@@ -127,8 +127,21 @@ func (d *MeshDefinition) createMaterialPasses(index int, passType internal.MeshR
 
 	case internal.MeshRenderPassTypeForward:
 		for _, pass := range material.forwardPasses {
-			programCode := d.engine.createForwardProgramCode(pass.Shader, internal.ShaderProgramCodeInfo{
-				ShaderMeshInfo: meshShaderInfo,
+			programCode := d.engine.createProgramCode(pass.Shader, ShaderConstraints{
+				ShaderTypeConstraints: ShaderTypeConstraints{
+					Type: ShaderTypeForward,
+				},
+				ShaderMeshConstraints: ShaderMeshConstraints{ // TODO: Replace the global meshShaderInfo.
+					HasCoords:       meshShaderInfo.MeshHasCoords,
+					HasNormals:      meshShaderInfo.MeshHasNormals,
+					HasTangents:     meshShaderInfo.MeshHasTangents,
+					HasTexCoords:    meshShaderInfo.MeshHasTextureUVs,
+					HasVertexColors: meshShaderInfo.MeshHasVertexColors,
+					HasArmature:     meshShaderInfo.MeshHasArmature,
+				},
+				ShaderOutputConstraints: ShaderOutputConstraints{
+					HasOutput0: true,
+				},
 			})
 			program := d.engine.createForwardPassProgram(programCode)
 			pipeline := d.engine.createForwardPassPipeline(internal.RenderPassPipelineInfo{

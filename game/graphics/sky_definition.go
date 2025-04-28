@@ -50,9 +50,15 @@ func (d *SkyDefinition) Delete() {
 func (d *SkyDefinition) createPipeline() {
 	d.renderPasses = make([]internal.MeshRenderPass, len(d.material.skyPasses))
 	for i, pass := range d.material.skyPasses {
-		programCode := d.engine.createProgramCode(pass.Shader, internal.ShaderProgramCodeInfo{
-			ShaderMeshInfo: internal.ShaderMeshInfo{
-				MeshHasCoords: true,
+		programCode := d.engine.createProgramCode(pass.Shader, ShaderConstraints{
+			ShaderTypeConstraints: ShaderTypeConstraints{
+				Type: ShaderTypeSky,
+			},
+			ShaderMeshConstraints: ShaderMeshConstraints{
+				HasCoords: true,
+			},
+			ShaderOutputConstraints: ShaderOutputConstraints{
+				HasOutput0: true,
 			},
 		})
 		program := d.engine.createSkyProgram(programCode, pass.Shader)

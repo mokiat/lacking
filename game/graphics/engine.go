@@ -98,28 +98,26 @@ func (e *Engine) CreateShader(info ShaderInfo) *Shader {
 		)
 		ast = &lsl.Shader{Declarations: []lsl.Declaration{}}
 	}
-	if !info.SkipValidation {
-		var schema lsl.Schema
-		switch info.ShaderType {
-		case ShaderTypeGeometry:
-			schema = lsl.GeometrySchema()
-		case ShaderTypeShadow:
-			schema = lsl.ShadowSchema()
-		case ShaderTypeForward:
-			schema = lsl.ForwardSchema()
-		case ShaderTypeSky:
-			schema = lsl.SkySchema()
-		case ShaderTypePostprocess:
-			schema = lsl.PostprocessSchema()
-		default:
-			schema = lsl.DefaultSchema()
-		}
-		if err := lsl.Validate(ast, schema); err != nil {
-			logger.Error("Failed to validate shader",
-				slog.String("error", err.Error()),
-			)
-			ast = &lsl.Shader{Declarations: []lsl.Declaration{}}
-		}
+	var schema lsl.Schema
+	switch info.ShaderType {
+	case ShaderTypeGeometry:
+		schema = lsl.GeometrySchema()
+	case ShaderTypeShadow:
+		schema = lsl.ShadowSchema()
+	case ShaderTypeForward:
+		schema = lsl.ForwardSchema()
+	case ShaderTypeSky:
+		schema = lsl.SkySchema()
+	case ShaderTypePostprocess:
+		schema = lsl.PostprocessSchema()
+	default:
+		schema = lsl.DefaultSchema()
+	}
+	if err := lsl.Validate(ast, schema); err != nil {
+		logger.Error("Failed to validate shader",
+			slog.String("error", err.Error()),
+		)
+		ast = &lsl.Shader{Declarations: []lsl.Declaration{}}
 	}
 	return &Shader{
 		ast: ast,

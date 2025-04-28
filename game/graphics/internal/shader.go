@@ -1,7 +1,5 @@
 package internal
 
-import "github.com/mokiat/lacking/render"
-
 type ShaderMeshInfo struct {
 	MeshHasCoords       bool
 	MeshHasNormals      bool
@@ -13,8 +11,4 @@ type ShaderMeshInfo struct {
 
 type ShaderProgramCodeInfo struct {
 	ShaderMeshInfo
-}
-
-type Shader interface {
-	CreateProgramCode(info ShaderProgramCodeInfo) render.ProgramCode
 }

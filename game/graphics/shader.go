@@ -6,25 +6,8 @@ import (
 	"github.com/mokiat/lacking/render"
 )
 
-// ShaderConstraints contains the constraints imposed on the shader construction
-// process.
-type ShaderConstraints struct {
-
-	// HasOutput0 specifies whether the shader has an output for the first
-	// render target.
-	HasOutput0 bool
-
-	// HasOutput1 specifies whether the shader has an output for the second
-	// render target.
-	HasOutput1 bool
-
-	// HasOutput2 specifies whether the shader has an output for the third
-	// render target.
-	HasOutput2 bool
-
-	// HasOutput3 specifies whether the shader has an output for the fourth
-	// render target.
-	HasOutput3 bool
+// ShaderMeshConstraints contains the constraints imposed by the mesh.
+type ShaderMeshConstraints struct {
 
 	// HasCoords specifies whether the mesh has coordinates.
 	HasCoords bool
@@ -43,35 +26,42 @@ type ShaderConstraints struct {
 
 	// HasArmature specifies whether the mesh has an armature.
 	HasArmature bool
-
-	// Preset specifies which preset to load.
-	Preset Preset
-
-	// LoadGeometryPreset specifies whether the shader should load the geometry
-	// preset.
-	// Deprecated: Use Preset instead.
-	LoadGeometryPreset bool
-
-	// LoadSkyPreset specifies whether the shader should load the sky preset.
-	// Deprecated: Use Preset instead.
-	LoadSkyPreset bool
 }
 
-const (
-	// PresetSky specifies that the sky preset should be loaded.
-	PresetSky Preset = iota
-)
+// ShaderOutputConstraints contains the constraints imposed by the designated
+// render target.
+type ShaderOutputConstraints struct {
 
-// Preset specifies the type of preset to load.
-type Preset uint8
+	// HasOutput0 specifies whether the shader has an output for the first
+	// render target.
+	HasOutput0 bool
 
-func (p Preset) String() string {
-	switch p {
-	case PresetSky:
-		return "sky"
-	default:
-		return "unknown"
-	}
+	// HasOutput1 specifies whether the shader has an output for the second
+	// render target.
+	HasOutput1 bool
+
+	// HasOutput2 specifies whether the shader has an output for the third
+	// render target.
+	HasOutput2 bool
+
+	// HasOutput3 specifies whether the shader has an output for the fourth
+	// render target.
+	HasOutput3 bool
+}
+
+// ShaderTypeConstraints contains the constraints imposed by the shader type.
+type ShaderTypeConstraints struct {
+
+	// Type specifies the type of shader.
+	Type ShaderType
+}
+
+// ShaderConstraints contains the constraints imposed on the shader construction
+// process.
+type ShaderConstraints struct {
+	ShaderMeshConstraints
+	ShaderOutputConstraints
+	ShaderTypeConstraints
 }
 
 // GeometryConstraints contains the constraints imposed on the geometry shader
@@ -102,14 +92,6 @@ type ShadowConstraints struct {
 	HasArmature bool
 }
 
-// ForwardConstraints contains the constraints imposed on the forward shader
-// construction process.
-type ForwardConstraints struct {
-
-	// HasArmature specifies whether the mesh has an armature.
-	HasArmature bool
-}
-
 // ShaderBuilder abstracts the process of building a shader program. The
 // implementation of this interface will depend on the rendering backend.
 type ShaderBuilder interface {
@@ -122,9 +104,6 @@ type ShaderBuilder interface {
 
 	// BuildShadowCode creates the program code for a shadow pass.
 	BuildShadowCode(constraints ShadowConstraints, shader *lsl.Shader) render.ProgramCode
-
-	// BuildForwardCode creates the program code for a shadow pass.
-	BuildForwardCode(constraints ForwardConstraints, shader *lsl.Shader) render.ProgramCode
 }
 
 // ShaderInfo contains the information needed to create a custom Shader.
@@ -135,16 +114,7 @@ type ShaderInfo struct {
 
 	// SourceCode is the source code of the shader.
 	SourceCode string
-
-	// SkipValidation specifies whether the engine should skip shader validation.
-	//
-	// This is useful when the shader is known to be valid and the validation
-	// process is not needed.
-	SkipValidation bool
 }
-
-// ShaderType specifies the type of a shader.
-type ShaderType uint8
 
 const (
 	ShaderTypeGeometry ShaderType = iota
@@ -153,6 +123,27 @@ const (
 	ShaderTypeSky
 	ShaderTypePostprocess
 )
+
+// ShaderType specifies the type of a shader.
+type ShaderType uint8
+
+// String returns the string representation of the shader type.
+func (t ShaderType) String() string {
+	switch t {
+	case ShaderTypeGeometry:
+		return "geometry"
+	case ShaderTypeShadow:
+		return "shadow"
+	case ShaderTypeForward:
+		return "forward"
+	case ShaderTypeSky:
+		return "sky"
+	case ShaderTypePostprocess:
+		return "postprocess"
+	default:
+		return "unknown"
+	}
+}
 
 // Shader represents a custom shader program.
 type Shader struct {
@@ -175,24 +166,8 @@ func (e *Engine) createShadowProgramCode(shader *lsl.Shader, info internal.Shade
 	}, shader)
 }
 
-func (e *Engine) createForwardProgramCode(shader *lsl.Shader, info internal.ShaderProgramCodeInfo) render.ProgramCode {
-	return e.shaderBuilder.BuildForwardCode(ForwardConstraints{
-		HasArmature: info.MeshHasArmature,
-	}, shader)
-}
-
-func (e *Engine) createProgramCode(shader *lsl.Shader, info internal.ShaderProgramCodeInfo) render.ProgramCode {
-	return e.shaderBuilder.BuildCode(ShaderConstraints{
-		Preset:          PresetSky,
-		LoadSkyPreset:   true,
-		HasOutput0:      true,
-		HasCoords:       info.MeshHasCoords,
-		HasNormals:      info.MeshHasNormals,
-		HasTangents:     info.MeshHasTangents,
-		HasTexCoords:    info.MeshHasTextureUVs,
-		HasVertexColors: info.MeshHasVertexColors,
-		HasArmature:     info.MeshHasArmature,
-	}, shader)
+func (e *Engine) createProgramCode(shader *lsl.Shader, constraints ShaderConstraints) render.ProgramCode {
+	return e.shaderBuilder.BuildCode(constraints, shader)
 }
 
 ///////////////// OLD CODE FOLLOWS ////////////////////////////

@@ -24,53 +24,20 @@ type Translator struct {
 }
 
 func (t *Translator) Translate(shader *lsl.Shader, settings graphics.ShaderConstraints) ProgramCode {
-	switch settings.Preset {
-	case graphics.PresetSky:
+	switch settings.Type {
+	case graphics.ShaderTypeForward:
+		return ProgramCode{
+			VertexCode:   t.translateForwardVertexCode(shader, settings),
+			FragmentCode: t.translateForwardFragmentCode(shader, settings),
+		}
+	case graphics.ShaderTypeSky:
 		return ProgramCode{
 			VertexCode:   t.translateSkyVertexCode(shader, settings),
 			FragmentCode: t.translateSkyFragmentCode(shader, settings),
 		}
 	default:
-		panic(fmt.Errorf("unsupported shader preset: %s", settings.Preset))
+		panic(fmt.Errorf("unsupported shader preset: %s", settings.Type))
 	}
-}
-
-func (t *Translator) translateSkyVertexCode(shader *lsl.Shader, settings graphics.ShaderConstraints) string {
-	ctx := newTranslationContext()
-
-	var properties SkyProperties
-	properties.VersionProperties = t.buildVersionProperties()
-	properties.AttributeProperties = t.buildAttributeProperties(settings)
-	properties.OutputProperties = t.buildOutputProperties(settings)
-	properties.TextureProperties = t.buildTextureProperties(ctx, shader)
-	properties.UniformProperties = t.buildUniformProperties(ctx, shader)
-	properties.VaryingProperties = t.buildVaryingProperties(ctx, shader, "out")
-	{
-		ctx.Push()
-		properties.MainProperties = t.buildMainProperties(ctx, shader, "#vertex")
-		ctx.Pop()
-	}
-	return construct("sky.vert.glsl", properties)
-}
-
-func (t *Translator) translateSkyFragmentCode(shader *lsl.Shader, settings graphics.ShaderConstraints) string {
-	ctx := newTranslationContext()
-	ctx.RegisterIdentifier("#rayDirectionWS", "varyingDirectionWS")
-
-	var properties SkyProperties
-	properties.VersionProperties = t.buildVersionProperties()
-	properties.AttributeProperties = t.buildAttributeProperties(settings)
-	properties.OutputProperties = t.buildOutputProperties(settings)
-	properties.TextureProperties = t.buildTextureProperties(ctx, shader)
-	properties.UniformProperties = t.buildUniformProperties(ctx, shader)
-	properties.VaryingProperties = t.buildVaryingProperties(ctx, shader, "in")
-	{
-		ctx.Push()
-		ctx.RegisterIdentifier("#color", "color")
-		properties.MainProperties = t.buildMainProperties(ctx, shader, "#fragment")
-		ctx.Pop()
-	}
-	return construct("sky.frag.glsl", properties)
 }
 
 func (t *Translator) buildVersionProperties() VersionProperties {
