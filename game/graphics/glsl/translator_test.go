@@ -93,6 +93,42 @@ var _ = Describe("Translator", func() {
 			openTestFile("translate-410", "empty.frag.glsl"),
 		),
 
+		Entry("framebuffer output 0",
+			&lsl.Shader{},
+			graphics.ShaderConstraints{
+				HasOutput0: true,
+			},
+			openTestFile("translate-410", "empty.vert.glsl"),
+			openTestFile("translate-410", "framebuffer-output-0.frag.glsl"),
+		),
+
+		Entry("framebuffer output 1",
+			&lsl.Shader{},
+			graphics.ShaderConstraints{
+				HasOutput1: true,
+			},
+			openTestFile("translate-410", "empty.vert.glsl"),
+			openTestFile("translate-410", "framebuffer-output-1.frag.glsl"),
+		),
+
+		Entry("framebuffer output 2",
+			&lsl.Shader{},
+			graphics.ShaderConstraints{
+				HasOutput2: true,
+			},
+			openTestFile("translate-410", "empty.vert.glsl"),
+			openTestFile("translate-410", "framebuffer-output-2.frag.glsl"),
+		),
+
+		Entry("framebuffer output 3",
+			&lsl.Shader{},
+			graphics.ShaderConstraints{
+				HasOutput3: true,
+			},
+			openTestFile("translate-410", "empty.vert.glsl"),
+			openTestFile("translate-410", "framebuffer-output-3.frag.glsl"),
+		),
+
 		Entry("textures",
 			&lsl.Shader{
 				Declarations: []lsl.Declaration{

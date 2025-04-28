@@ -76,6 +76,18 @@ func (t *Translator) translateFragmentCode(shader *lsl.Shader, settings graphics
 	if t.hasPrecisionQualifiers {
 		t.writePrecision(&builder)
 	}
+	if settings.HasOutput0 {
+		t.writeFramebufferOutput(&builder, 0)
+	}
+	if settings.HasOutput1 {
+		t.writeFramebufferOutput(&builder, 1)
+	}
+	if settings.HasOutput2 {
+		t.writeFramebufferOutput(&builder, 2)
+	}
+	if settings.HasOutput3 {
+		t.writeFramebufferOutput(&builder, 3)
+	}
 	if textures := shader.Textures(); len(textures) > 0 {
 		t.writeTextures(&builder, ctx, textures)
 	}
@@ -120,6 +132,10 @@ func (t *Translator) writeVertexColorAttribute(builder *strings.Builder) {
 func (t *Translator) writeArmatureAttributes(builder *strings.Builder) {
 	builder.WriteString("layout(location = 5) in vec4 attrWeights;\n")
 	builder.WriteString("layout(location = 6) in uvec4 attrJoints;\n")
+}
+
+func (t *Translator) writeFramebufferOutput(builder *strings.Builder, index int) {
+	fmt.Fprintf(builder, "layout(location = %d) out vec4 fbOutput%d;\n", index, index)
 }
 
 func (t *Translator) writeTextures(builder *strings.Builder, ctx *translationContext, textures []lsl.Field) {
