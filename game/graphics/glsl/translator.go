@@ -62,6 +62,9 @@ func (t *Translator) translateVertexCode(shader *lsl.Shader, settings graphics.S
 	if uniforms := shader.Uniforms(); len(uniforms) > 0 {
 		t.writeUniforms(&builder, ctx, uniforms)
 	}
+	if varyings := shader.Varyings(); len(varyings) > 0 {
+		t.writeVaryings(&builder, ctx, varyings, "out")
+	}
 	return builder.String()
 }
 
@@ -78,6 +81,9 @@ func (t *Translator) translateFragmentCode(shader *lsl.Shader, settings graphics
 	}
 	if uniforms := shader.Uniforms(); len(uniforms) > 0 {
 		t.writeUniforms(&builder, ctx, uniforms)
+	}
+	if varyings := shader.Varyings(); len(varyings) > 0 {
+		t.writeVaryings(&builder, ctx, varyings, "in")
 	}
 	return builder.String()
 }
@@ -138,6 +144,17 @@ func (t *Translator) writeUniforms(builder *strings.Builder, ctx *translationCon
 		fmt.Fprintf(builder, "  %s %s;\n", dstType, dstName)
 	}
 	builder.WriteString("};\n\n")
+}
+
+func (t *Translator) writeVaryings(builder *strings.Builder, ctx *translationContext, varyings []lsl.Field, qualifier string) {
+	for i, varying := range varyings {
+		srcName := varying.Name
+		dstName := fmt.Sprintf("uVarying%d", i)
+		dstType := t.translateType(ctx, varying.Type)
+		ctx.RegisterMapping(srcName, dstName)
+		fmt.Fprintf(builder, "smooth %s %s %s;\n", qualifier, dstType, dstName)
+	}
+	builder.WriteString("\n")
 }
 
 func (t *Translator) translateType(_ *translationContext, srcType string) string {
