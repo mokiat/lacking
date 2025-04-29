@@ -50,6 +50,17 @@ func (t *Translator) Translate(shader *lsl.Shader, settings graphics.ShaderConst
 	}
 }
 
+func (t *Translator) buildBaseProperties(ctx *translationContext, shader *lsl.Shader, constraints graphics.ShaderConstraints, direction string) BaseProperties {
+	return BaseProperties{
+		VersionProperties:   t.buildVersionProperties(),
+		AttributeProperties: t.buildAttributeProperties(constraints),
+		OutputProperties:    t.buildOutputProperties(constraints),
+		TextureProperties:   t.buildTextureProperties(ctx, shader),
+		UniformProperties:   t.buildUniformProperties(ctx, shader),
+		VaryingProperties:   t.buildVaryingProperties(ctx, shader, direction),
+	}
+}
+
 func (t *Translator) buildVersionProperties() VersionProperties {
 	return VersionProperties{
 		Version:        t.version,

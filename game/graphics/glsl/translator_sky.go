@@ -5,16 +5,11 @@ import (
 	"github.com/mokiat/lacking/game/graphics/lsl"
 )
 
-func (t *Translator) translateSkyVertexCode(shader *lsl.Shader, settings graphics.ShaderConstraints) string {
+func (t *Translator) translateSkyVertexCode(shader *lsl.Shader, constraints graphics.ShaderConstraints) string {
 	ctx := newTranslationContext()
 
 	var properties SkyProperties
-	properties.VersionProperties = t.buildVersionProperties()
-	properties.AttributeProperties = t.buildAttributeProperties(settings)
-	properties.OutputProperties = t.buildOutputProperties(settings)
-	properties.TextureProperties = t.buildTextureProperties(ctx, shader)
-	properties.UniformProperties = t.buildUniformProperties(ctx, shader)
-	properties.VaryingProperties = t.buildVaryingProperties(ctx, shader, "out")
+	properties.BaseProperties = t.buildBaseProperties(ctx, shader, constraints, "out")
 	{
 		ctx.Push()
 		properties.MainProperties = t.buildMainProperties(ctx, shader, "#vertex")
@@ -23,17 +18,12 @@ func (t *Translator) translateSkyVertexCode(shader *lsl.Shader, settings graphic
 	return construct("sky.vert.glsl", properties)
 }
 
-func (t *Translator) translateSkyFragmentCode(shader *lsl.Shader, settings graphics.ShaderConstraints) string {
+func (t *Translator) translateSkyFragmentCode(shader *lsl.Shader, constraints graphics.ShaderConstraints) string {
 	ctx := newTranslationContext()
 	ctx.RegisterIdentifier("#rayDirectionWS", "varyingDirectionWS")
 
 	var properties SkyProperties
-	properties.VersionProperties = t.buildVersionProperties()
-	properties.AttributeProperties = t.buildAttributeProperties(settings)
-	properties.OutputProperties = t.buildOutputProperties(settings)
-	properties.TextureProperties = t.buildTextureProperties(ctx, shader)
-	properties.UniformProperties = t.buildUniformProperties(ctx, shader)
-	properties.VaryingProperties = t.buildVaryingProperties(ctx, shader, "in")
+	properties.BaseProperties = t.buildBaseProperties(ctx, shader, constraints, "in")
 	{
 		ctx.Push()
 		ctx.RegisterIdentifier("#color", "color")

@@ -60,21 +60,24 @@ type BaseProperties struct {
 	TextureProperties
 	UniformProperties
 	VaryingProperties
-	MainProperties
 }
 
 type ShadowProperties struct {
 	BaseProperties
+	MainProperties
 }
 
 type GeometryProperties struct {
 	BaseProperties
+	MainProperties
 }
 
 type SkyProperties struct {
 	BaseProperties
+	MainProperties
 }
 
 type ForwardProperties struct {
 	BaseProperties
+	MainProperties
 }
