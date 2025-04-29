@@ -1,7 +1,6 @@
 package graphics
 
 import (
-	"github.com/mokiat/lacking/game/graphics/internal"
 	"github.com/mokiat/lacking/game/graphics/lsl"
 	"github.com/mokiat/lacking/render"
 )
@@ -98,9 +97,6 @@ type ShaderBuilder interface {
 
 	// BuildCode creates the program code for a custom shader.
 	BuildCode(constraints ShaderConstraints, shader *lsl.Shader) render.ProgramCode
-
-	// BuildGeometryCode creates the program code for a geometry pass.
-	BuildGeometryCode(constraints GeometryConstraints, shader *lsl.Shader) render.ProgramCode
 }
 
 // ShaderInfo contains the information needed to create a custom Shader.
@@ -145,17 +141,6 @@ func (t ShaderType) String() string {
 // Shader represents a custom shader program.
 type Shader struct {
 	ast *lsl.Shader
-}
-
-// Deprecated: Rework
-func (e *Engine) createGeometryProgramCode(shader *lsl.Shader, info internal.ShaderProgramCodeInfo) render.ProgramCode {
-	return e.shaderBuilder.BuildGeometryCode(GeometryConstraints{
-		HasArmature:     info.MeshHasArmature,
-		HasNormals:      info.MeshHasNormals,
-		HasTangents:     info.MeshHasTangents,
-		HasTexCoords:    info.MeshHasTextureUVs,
-		HasVertexColors: info.MeshHasVertexColors,
-	}, shader)
 }
 
 ///////////////// OLD CODE FOLLOWS ////////////////////////////

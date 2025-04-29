@@ -63,14 +63,18 @@ type BaseProperties struct {
 	MainProperties
 }
 
+type ShadowProperties struct {
+	BaseProperties
+}
+
+type GeometryProperties struct {
+	BaseProperties
+}
+
 type SkyProperties struct {
 	BaseProperties
 }
 
 type ForwardProperties struct {
-	BaseProperties
-}
-
-type ShadowProperties struct {
 	BaseProperties
 }
