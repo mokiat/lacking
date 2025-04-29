@@ -63,13 +63,13 @@ func (d *MeshDefinition) deleteMaterialPasses(index int, passType internal.MeshR
 }
 
 func (d *MeshDefinition) createMaterialPasses(index int, passType internal.MeshRenderPassType) {
-	meshShaderInfo := internal.ShaderMeshInfo{
-		MeshHasCoords:       d.geometry.vertexFormat.Coord.Specified,
-		MeshHasNormals:      d.geometry.vertexFormat.Normal.Specified,
-		MeshHasTangents:     d.geometry.vertexFormat.Tangent.Specified,
-		MeshHasTextureUVs:   d.geometry.vertexFormat.TexCoord.Specified,
-		MeshHasVertexColors: d.geometry.vertexFormat.Color.Specified,
-		MeshHasArmature:     d.geometry.vertexFormat.Weights.Specified && d.geometry.vertexFormat.Joints.Specified,
+	meshConstraints := ShaderMeshConstraints{
+		HasCoords:       d.geometry.vertexFormat.Coord.Specified,
+		HasNormals:      d.geometry.vertexFormat.Normal.Specified,
+		HasTangents:     d.geometry.vertexFormat.Tangent.Specified,
+		HasTexCoords:    d.geometry.vertexFormat.TexCoord.Specified,
+		HasVertexColors: d.geometry.vertexFormat.Color.Specified,
+		HasArmature:     d.geometry.vertexFormat.Weights.Specified && d.geometry.vertexFormat.Joints.Specified,
 	}
 
 	fragment := d.geometry.fragments[index]
@@ -83,14 +83,7 @@ func (d *MeshDefinition) createMaterialPasses(index int, passType internal.MeshR
 				ShaderTypeConstraints: ShaderTypeConstraints{
 					Type: ShaderTypeGeometry,
 				},
-				ShaderMeshConstraints: ShaderMeshConstraints{ // TODO: Replace the global meshShaderInfo.
-					HasCoords:       meshShaderInfo.MeshHasCoords,
-					HasNormals:      meshShaderInfo.MeshHasNormals,
-					HasTangents:     meshShaderInfo.MeshHasTangents,
-					HasTexCoords:    meshShaderInfo.MeshHasTextureUVs,
-					HasVertexColors: meshShaderInfo.MeshHasVertexColors,
-					HasArmature:     meshShaderInfo.MeshHasArmature,
-				},
+				ShaderMeshConstraints: meshConstraints,
 				ShaderOutputConstraints: ShaderOutputConstraints{
 					HasOutput0: true,
 					HasOutput1: true,
@@ -121,14 +114,7 @@ func (d *MeshDefinition) createMaterialPasses(index int, passType internal.MeshR
 				ShaderTypeConstraints: ShaderTypeConstraints{
 					Type: ShaderTypeShadow,
 				},
-				ShaderMeshConstraints: ShaderMeshConstraints{ // TODO: Replace the global meshShaderInfo.
-					HasCoords:       meshShaderInfo.MeshHasCoords,
-					HasNormals:      meshShaderInfo.MeshHasNormals,
-					HasTangents:     meshShaderInfo.MeshHasTangents,
-					HasTexCoords:    meshShaderInfo.MeshHasTextureUVs,
-					HasVertexColors: meshShaderInfo.MeshHasVertexColors,
-					HasArmature:     meshShaderInfo.MeshHasArmature,
-				},
+				ShaderMeshConstraints:   meshConstraints,
 				ShaderOutputConstraints: ShaderOutputConstraints{}, // no color outputs
 			})
 			program := d.engine.createShadowPassProgram(programCode)
@@ -156,14 +142,7 @@ func (d *MeshDefinition) createMaterialPasses(index int, passType internal.MeshR
 				ShaderTypeConstraints: ShaderTypeConstraints{
 					Type: ShaderTypeForward,
 				},
-				ShaderMeshConstraints: ShaderMeshConstraints{ // TODO: Replace the global meshShaderInfo.
-					HasCoords:       meshShaderInfo.MeshHasCoords,
-					HasNormals:      meshShaderInfo.MeshHasNormals,
-					HasTangents:     meshShaderInfo.MeshHasTangents,
-					HasTexCoords:    meshShaderInfo.MeshHasTextureUVs,
-					HasVertexColors: meshShaderInfo.MeshHasVertexColors,
-					HasArmature:     meshShaderInfo.MeshHasArmature,
-				},
+				ShaderMeshConstraints: meshConstraints,
 				ShaderOutputConstraints: ShaderOutputConstraints{
 					HasOutput0: true,
 				},
