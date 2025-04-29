@@ -1,6 +1,7 @@
 package graphics
 
 import (
+	"fmt"
 	"log/slog"
 
 	"github.com/mokiat/gog"
@@ -341,14 +342,14 @@ func (e *Engine) createGeometryPassProgram(programCode render.ProgramCode) rende
 	return e.api.CreateProgram(render.ProgramInfo{
 		SourceCode: programCode,
 		TextureBindings: []render.TextureBinding{
-			render.NewTextureBinding("lackingTexture0", 0),
-			render.NewTextureBinding("lackingTexture1", 1),
-			render.NewTextureBinding("lackingTexture2", 2),
-			render.NewTextureBinding("lackingTexture3", 3),
-			render.NewTextureBinding("lackingTexture4", 4),
-			render.NewTextureBinding("lackingTexture5", 5),
-			render.NewTextureBinding("lackingTexture6", 6),
-			render.NewTextureBinding("lackingTexture7", 7),
+			render.NewTextureBinding("uTexture0", 0),
+			render.NewTextureBinding("uTexture1", 1),
+			render.NewTextureBinding("uTexture2", 2),
+			render.NewTextureBinding("uTexture3", 3),
+			render.NewTextureBinding("uTexture4", 4),
+			render.NewTextureBinding("uTexture5", 5),
+			render.NewTextureBinding("uTexture6", 6),
+			render.NewTextureBinding("uTexture7", 7),
 		},
 		UniformBindings: []render.UniformBinding{
 			render.NewUniformBinding("Camera", internal.UniformBufferBindingCamera),
@@ -394,14 +395,14 @@ func (e *Engine) createShadowPassProgram(programCode render.ProgramCode) render.
 	return e.api.CreateProgram(render.ProgramInfo{
 		SourceCode: programCode,
 		TextureBindings: []render.TextureBinding{
-			render.NewTextureBinding("lackingTexture0", 0),
-			render.NewTextureBinding("lackingTexture1", 1),
-			render.NewTextureBinding("lackingTexture2", 2),
-			render.NewTextureBinding("lackingTexture3", 3),
-			render.NewTextureBinding("lackingTexture4", 4),
-			render.NewTextureBinding("lackingTexture5", 5),
-			render.NewTextureBinding("lackingTexture6", 6),
-			render.NewTextureBinding("lackingTexture7", 7),
+			render.NewTextureBinding("uTexture0", 0),
+			render.NewTextureBinding("uTexture1", 1),
+			render.NewTextureBinding("uTexture2", 2),
+			render.NewTextureBinding("uTexture3", 3),
+			render.NewTextureBinding("uTexture4", 4),
+			render.NewTextureBinding("uTexture5", 5),
+			render.NewTextureBinding("uTexture6", 6),
+			render.NewTextureBinding("uTexture7", 7),
 		},
 		UniformBindings: []render.UniformBinding{
 			render.NewUniformBinding("Camera", internal.UniformBufferBindingCamera),
@@ -447,14 +448,14 @@ func (e *Engine) createForwardPassProgram(programCode render.ProgramCode) render
 	return e.api.CreateProgram(render.ProgramInfo{
 		SourceCode: programCode,
 		TextureBindings: []render.TextureBinding{
-			render.NewTextureBinding("lackingTexture0", 0),
-			render.NewTextureBinding("lackingTexture1", 1),
-			render.NewTextureBinding("lackingTexture2", 2),
-			render.NewTextureBinding("lackingTexture3", 3),
-			render.NewTextureBinding("lackingTexture4", 4),
-			render.NewTextureBinding("lackingTexture5", 5),
-			render.NewTextureBinding("lackingTexture6", 6),
-			render.NewTextureBinding("lackingTexture7", 7),
+			render.NewTextureBinding("uTexture0", 0),
+			render.NewTextureBinding("uTexture1", 1),
+			render.NewTextureBinding("uTexture2", 2),
+			render.NewTextureBinding("uTexture3", 3),
+			render.NewTextureBinding("uTexture4", 4),
+			render.NewTextureBinding("uTexture5", 5),
+			render.NewTextureBinding("uTexture6", 6),
+			render.NewTextureBinding("uTexture7", 7),
 		},
 		UniformBindings: []render.UniformBinding{
 			render.NewUniformBinding("Camera", internal.UniformBufferBindingCamera),
@@ -498,10 +499,9 @@ func (e *Engine) createForwardPassPipeline(info internal.RenderPassPipelineInfo)
 
 func (e *Engine) createSkyProgram(programCode render.ProgramCode, shader *lsl.Shader) render.Program {
 	var textureBindings []render.TextureBinding
-
-	textures := shader.Textures()
-	for i := range min(8, len(textures)) {
-		textureBindings = append(textureBindings, render.NewTextureBinding(textures[i].Name, uint(i)))
+	for i := range min(8, len(shader.Textures())) {
+		name := fmt.Sprintf("uTexture%d", i)
+		textureBindings = append(textureBindings, render.NewTextureBinding(name, uint(i)))
 	}
 
 	var uniformBindings []render.UniformBinding

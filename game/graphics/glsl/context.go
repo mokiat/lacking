@@ -1,6 +1,10 @@
 package glsl
 
-import "github.com/mokiat/gog/ds"
+import (
+	"fmt"
+
+	"github.com/mokiat/gog/ds"
+)
 
 func newTranslationContext() *translationContext {
 	stack := ds.NewStack[[]string](0)
@@ -12,8 +16,9 @@ func newTranslationContext() *translationContext {
 }
 
 type translationContext struct {
-	names map[string]string
-	stack *ds.Stack[[]string]
+	names     map[string]string
+	stack     *ds.Stack[[]string]
+	freeIndex int
 }
 
 func (c *translationContext) Push() {
@@ -25,6 +30,13 @@ func (c *translationContext) Pop() {
 	for _, name := range layer {
 		delete(c.names, name)
 	}
+}
+
+func (c *translationContext) CreateIdentifier(srcName string) string {
+	c.freeIndex++
+	dstName := fmt.Sprintf("uVar%d", c.freeIndex)
+	c.RegisterIdentifier(srcName, dstName)
+	return dstName
 }
 
 func (c *translationContext) RegisterIdentifier(srcName, dstName string) {

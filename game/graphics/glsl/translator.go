@@ -152,6 +152,8 @@ func (t *Translator) buildStatement(ctx *translationContext, statement lsl.State
 		return t.translateDiscard(ctx, stmt)
 	case *lsl.Assignment:
 		return t.translateAssignment(ctx, stmt)
+	case *lsl.VariableDeclaration:
+		return t.translateVariableDeclaration(ctx, stmt)
 	default:
 		panic(fmt.Errorf("unknown statement type: %T", statement))
 	}
@@ -166,6 +168,17 @@ func (t *Translator) translateAssignment(ctx *translationContext, assignment *ls
 	expression := t.translateExpression(ctx, assignment.Expression)
 	operator := t.translateAssignmentOperator(assignment.Operator)
 	return fmt.Sprintf("%s %s %s;", receiver, operator, expression)
+}
+
+func (t *Translator) translateVariableDeclaration(ctx *translationContext, declaration *lsl.VariableDeclaration) string {
+	varName := ctx.CreateIdentifier(declaration.Name)
+	varType := t.translateType(ctx, declaration.Type)
+	if declaration.Assignment != nil {
+		expression := t.translateExpression(ctx, declaration.Assignment)
+		return fmt.Sprintf("%s %s = %s;", varType, varName, expression)
+	} else {
+		return fmt.Sprintf("%s %s;", varType, varName)
+	}
 }
 
 func (t *Translator) translateExpression(ctx *translationContext, expression lsl.Expression) string {
@@ -253,7 +266,7 @@ func (t *Translator) translateFunctionCallAsIs(ctx *translationContext, name str
 	for i, argument := range arguments {
 		builder.WriteString(t.translateExpression(ctx, argument))
 		if i != lastIndex {
-			builder.WriteString(",")
+			builder.WriteString(", ")
 		}
 	}
 	builder.WriteString(")")
