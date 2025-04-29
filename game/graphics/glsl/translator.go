@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/mokiat/gog"
+	"github.com/mokiat/gog/ds"
 	"github.com/mokiat/lacking/game/graphics"
 	"github.com/mokiat/lacking/game/graphics/lsl"
 )
@@ -139,45 +140,70 @@ func (t *Translator) buildMainProperties(ctx *translationContext, shader *lsl.Sh
 	if !ok {
 		return MainProperties{}
 	}
+	dst := ds.NewList[string](1)
+	for _, statement := range fn.Body {
+		t.translateStatement(ctx, dst, statement)
+	}
 	return MainProperties{
-		MainStatements: gog.Map(fn.Body, func(statement lsl.Statement) string {
-			return t.buildStatement(ctx, statement)
-		}),
+		MainStatements: dst.Unbox(),
 	}
 }
 
-func (t *Translator) buildStatement(ctx *translationContext, statement lsl.Statement) string {
+func (t *Translator) translateStatement(ctx *translationContext, dst *ds.List[string], statement lsl.Statement) {
 	switch stmt := statement.(type) {
 	case *lsl.Discard:
-		return t.translateDiscard(ctx, stmt)
+		t.translateDiscard(ctx, dst, stmt)
 	case *lsl.Assignment:
-		return t.translateAssignment(ctx, stmt)
+		t.translateAssignment(ctx, dst, stmt)
 	case *lsl.VariableDeclaration:
-		return t.translateVariableDeclaration(ctx, stmt)
+		t.translateVariableDeclaration(ctx, dst, stmt)
+	case *lsl.Conditional:
+		t.translateConditional(ctx, dst, stmt, "")
+	case *lsl.FunctionCall:
+		dst.Add(t.translateFunctionCall(ctx, stmt))
 	default:
 		panic(fmt.Errorf("unknown statement type: %T", statement))
 	}
 }
 
-func (t *Translator) translateDiscard(_ *translationContext, _ *lsl.Discard) string {
-	return "discard;"
+func (t *Translator) translateDiscard(_ *translationContext, dst *ds.List[string], _ *lsl.Discard) {
+	dst.Add("discard;")
 }
 
-func (t *Translator) translateAssignment(ctx *translationContext, assignment *lsl.Assignment) string {
+func (t *Translator) translateAssignment(ctx *translationContext, dst *ds.List[string], assignment *lsl.Assignment) {
 	receiver := t.translateExpression(ctx, assignment.Target)
 	expression := t.translateExpression(ctx, assignment.Expression)
 	operator := t.translateAssignmentOperator(assignment.Operator)
-	return fmt.Sprintf("%s %s %s;", receiver, operator, expression)
+	dst.Add(fmt.Sprintf("%s %s %s;", receiver, operator, expression))
 }
 
-func (t *Translator) translateVariableDeclaration(ctx *translationContext, declaration *lsl.VariableDeclaration) string {
+func (t *Translator) translateVariableDeclaration(ctx *translationContext, dst *ds.List[string], declaration *lsl.VariableDeclaration) {
 	varName := ctx.CreateIdentifier(declaration.Name)
 	varType := t.translateType(ctx, declaration.Type)
 	if declaration.Assignment != nil {
 		expression := t.translateExpression(ctx, declaration.Assignment)
-		return fmt.Sprintf("%s %s = %s;", varType, varName, expression)
+		dst.Add(fmt.Sprintf("%s %s = %s;", varType, varName, expression))
 	} else {
-		return fmt.Sprintf("%s %s;", varType, varName)
+		dst.Add(fmt.Sprintf("%s %s;", varType, varName))
+	}
+}
+
+func (t *Translator) translateConditional(ctx *translationContext, dst *ds.List[string], conditional *lsl.Conditional, prefix string) {
+	dst.Add(fmt.Sprintf("%sif (%s) {", prefix, t.translateExpression(ctx, conditional.Condition)))
+	for _, statement := range conditional.Then {
+		t.translateStatement(ctx, dst, statement)
+	}
+	switch elseStmt := conditional.Else.(type) {
+	case *lsl.Conditional:
+		t.translateConditional(ctx, dst, elseStmt, "} else ")
+	case lsl.StatementList:
+		dst.Add("} else {")
+		for _, statement := range elseStmt {
+			t.translateStatement(ctx, dst, statement)
+		}
+		dst.Add("}")
+	default:
+		dst.Add("}")
 	}
 }
 

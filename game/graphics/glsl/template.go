@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"embed"
 	"fmt"
-	"html/template"
 	"io/fs"
+	"text/template"
 )
 
 //go:embed preset/*.glsl snippet/*.glsl
