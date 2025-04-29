@@ -70,3 +70,7 @@ type SkyProperties struct {
 type ForwardProperties struct {
 	BaseProperties
 }
+
+type ShadowProperties struct {
+	BaseProperties
+}

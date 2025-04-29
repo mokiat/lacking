@@ -101,9 +101,6 @@ type ShaderBuilder interface {
 
 	// BuildGeometryCode creates the program code for a geometry pass.
 	BuildGeometryCode(constraints GeometryConstraints, shader *lsl.Shader) render.ProgramCode
-
-	// BuildShadowCode creates the program code for a shadow pass.
-	BuildShadowCode(constraints ShadowConstraints, shader *lsl.Shader) render.ProgramCode
 }
 
 // ShaderInfo contains the information needed to create a custom Shader.
@@ -150,6 +147,7 @@ type Shader struct {
 	ast *lsl.Shader
 }
 
+// Deprecated: Rework
 func (e *Engine) createGeometryProgramCode(shader *lsl.Shader, info internal.ShaderProgramCodeInfo) render.ProgramCode {
 	return e.shaderBuilder.BuildGeometryCode(GeometryConstraints{
 		HasArmature:     info.MeshHasArmature,
@@ -158,16 +156,6 @@ func (e *Engine) createGeometryProgramCode(shader *lsl.Shader, info internal.Sha
 		HasTexCoords:    info.MeshHasTextureUVs,
 		HasVertexColors: info.MeshHasVertexColors,
 	}, shader)
-}
-
-func (e *Engine) createShadowProgramCode(shader *lsl.Shader, info internal.ShaderProgramCodeInfo) render.ProgramCode {
-	return e.shaderBuilder.BuildShadowCode(ShadowConstraints{
-		HasArmature: info.MeshHasArmature,
-	}, shader)
-}
-
-func (e *Engine) createProgramCode(shader *lsl.Shader, constraints ShaderConstraints) render.ProgramCode {
-	return e.shaderBuilder.BuildCode(constraints, shader)
 }
 
 ///////////////// OLD CODE FOLLOWS ////////////////////////////

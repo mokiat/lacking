@@ -546,6 +546,10 @@ func (e *Engine) createSkyPipeline(info internal.SkyPipelineInfo) (render.Pipeli
 	return pipeline, 0, uint32(cubeShape.IndexCount())
 }
 
+func (e *Engine) createProgramCode(shader *lsl.Shader, constraints ShaderConstraints) render.ProgramCode {
+	return e.shaderBuilder.BuildCode(constraints, shader)
+}
+
 func (e *Engine) pickFreeRenderPassKey() uint32 {
 	e.freeRenderPassKey++
 	return e.freeRenderPassKey

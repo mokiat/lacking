@@ -8,7 +8,7 @@ import (
 	"io/fs"
 )
 
-//go:embed template/*.glsl
+//go:embed preset/*.glsl snippet/*.glsl
 var templates embed.FS
 
 type constructFunc func(name string, data any) string
@@ -41,4 +41,7 @@ func shaderDir(name string) fs.FS {
 	return subDir
 }
 
-var construct = load(shaderDir("template"))
+var construct = load(
+	shaderDir("preset"),
+	shaderDir("snippet"),
+)

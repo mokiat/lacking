@@ -25,6 +25,11 @@ type Translator struct {
 
 func (t *Translator) Translate(shader *lsl.Shader, settings graphics.ShaderConstraints) ProgramCode {
 	switch settings.Type {
+	case graphics.ShaderTypeShadow:
+		return ProgramCode{
+			VertexCode:   t.translateShadowVertexCode(shader, settings),
+			FragmentCode: t.translateShadowFragmentCode(shader, settings),
+		}
 	case graphics.ShaderTypeForward:
 		return ProgramCode{
 			VertexCode:   t.translateForwardVertexCode(shader, settings),

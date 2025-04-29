@@ -103,8 +103,21 @@ func (d *MeshDefinition) createMaterialPasses(index int, passType internal.MeshR
 
 	case internal.MeshRenderPassTypeShadow:
 		for _, pass := range material.shadowPasses {
-			programCode := d.engine.createShadowProgramCode(pass.Shader, internal.ShaderProgramCodeInfo{
-				ShaderMeshInfo: meshShaderInfo,
+			programCode := d.engine.createProgramCode(pass.Shader, ShaderConstraints{
+				ShaderTypeConstraints: ShaderTypeConstraints{
+					Type: ShaderTypeShadow,
+				},
+				ShaderMeshConstraints: ShaderMeshConstraints{ // TODO: Replace the global meshShaderInfo.
+					HasCoords:       meshShaderInfo.MeshHasCoords,
+					HasNormals:      meshShaderInfo.MeshHasNormals,
+					HasTangents:     meshShaderInfo.MeshHasTangents,
+					HasTexCoords:    meshShaderInfo.MeshHasTextureUVs,
+					HasVertexColors: meshShaderInfo.MeshHasVertexColors,
+					HasArmature:     meshShaderInfo.MeshHasArmature,
+				},
+				ShaderOutputConstraints: ShaderOutputConstraints{
+					HasOutput0: false,
+				},
 			})
 			program := d.engine.createShadowPassProgram(programCode)
 			pipeline := d.engine.createShadowPassPipeline(internal.RenderPassPipelineInfo{
