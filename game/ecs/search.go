@@ -1,5 +1,10 @@
 package ecs
 
+import (
+	"iter"
+	"slices"
+)
+
 // Having creates a new Query that matches entities
 // with the specified component type.
 func Having(typeID ComponentTypeID) Query {
@@ -37,9 +42,16 @@ type Result struct {
 	offset   int
 }
 
+// Each returns an iterator over the entities in this result set.
+func (r *Result) Each() iter.Seq[*Entity] {
+	return slices.Values(r.entities)
+}
+
 // FetchNext is a helper method that combines HasNext and Next into one single
 // method. It returns whether there is a next Entity and if there is one
 // it will be injected into the specified pointer target.
+//
+// Deprecated: Use Each instead.
 func (r *Result) FetchNext(target **Entity) bool {
 	if !r.HasNext() {
 		return false
