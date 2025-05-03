@@ -825,7 +825,7 @@ func (c *canvasRenderer) fillPath(path *canvasPath, fill Fill) {
 }
 
 func (c *canvasRenderer) strokePath(path *canvasPath) {
-	if len(path.points) == 0 {
+	if len(path.points) <= 1 {
 		return
 	}
 
