@@ -7,6 +7,7 @@ import (
 
 func (t *Translator) translateForwardVertexCode(shader *lsl.Shader, constraints graphics.ShaderConstraints) string {
 	ctx := newTranslationContext()
+	ctx.RegisterIdentifier("#time", "timeIn")
 
 	var properties ForwardProperties
 	properties.BaseProperties = t.buildBaseProperties(ctx, shader, constraints, "out")
@@ -20,6 +21,7 @@ func (t *Translator) translateForwardVertexCode(shader *lsl.Shader, constraints 
 
 func (t *Translator) translateForwardFragmentCode(shader *lsl.Shader, constraints graphics.ShaderConstraints) string {
 	ctx := newTranslationContext()
+	ctx.RegisterIdentifier("#time", "timeIn")
 
 	var properties ForwardProperties
 	properties.BaseProperties = t.buildBaseProperties(ctx, shader, constraints, "in")

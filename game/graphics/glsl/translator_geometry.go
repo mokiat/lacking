@@ -7,6 +7,7 @@ import (
 
 func (t *Translator) translateGeometryVertexCode(shader *lsl.Shader, constraints graphics.ShaderConstraints) string {
 	ctx := newTranslationContext()
+	ctx.RegisterIdentifier("#time", "timeIn")
 
 	var properties GeometryProperties
 	properties.BaseProperties = t.buildBaseProperties(ctx, shader, constraints, "out")
@@ -20,6 +21,7 @@ func (t *Translator) translateGeometryVertexCode(shader *lsl.Shader, constraints
 
 func (t *Translator) translateGeometryFragmentCode(shader *lsl.Shader, constraints graphics.ShaderConstraints) string {
 	ctx := newTranslationContext()
+	ctx.RegisterIdentifier("#time", "timeIn")
 
 	var properties GeometryProperties
 	properties.BaseProperties = t.buildBaseProperties(ctx, shader, constraints, "in")

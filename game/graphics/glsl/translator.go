@@ -463,4 +463,6 @@ var builtInFunctions = map[string]struct{}{
 	"determinant": {},
 	"any":         {},
 	"all":         {},
+	"cos":         {},
+	"sin":         {},
 }
