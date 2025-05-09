@@ -105,3 +105,80 @@ func WaitPromises[T any](promises ...Promise[T]) ([]T, error) {
 	}
 	return results, errors.Join(errs...)
 }
+
+func NewFuncOperation(fn func() error) Operation {
+	result := NewOperation()
+	go func() {
+		if err := fn(); err != nil {
+			result.Fail(err)
+		} else {
+			result.Pass()
+		}
+	}()
+	return result
+}
+
+func NewOperation() Operation {
+	return Operation{
+		promise: NewPromise[struct{}](),
+	}
+}
+
+func NewPassedOperation() Operation {
+	return Operation{
+		NewDeliveredPromise(struct{}{}),
+	}
+}
+
+func NewFailedOperation(err error) Operation {
+	return Operation{
+		promise: NewFailedPromise[struct{}](err),
+	}
+}
+
+type Operation struct {
+	promise Promise[struct{}]
+}
+
+func (o Operation) Pass() {
+	o.promise.Deliver(struct{}{})
+}
+
+func (o Operation) Fail(err error) {
+	o.promise.Fail(err)
+}
+
+func (o Operation) Wait() error {
+	_, err := o.promise.Wait()
+	return err
+}
+
+func (o Operation) OnSuccess(cb func()) Operation {
+	go func() {
+		if err := o.Wait(); err == nil {
+			cb()
+		}
+	}()
+	return o
+}
+
+func (o Operation) OnError(cb func(err error)) Operation {
+	go func() {
+		if err := o.Wait(); err != nil {
+			cb(err)
+		}
+	}()
+	return o
+}
+
+func InjectionPromise[T any](operation Operation, target T) Promise[T] {
+	result := NewPromise[T]()
+	go func() {
+		if err := operation.Wait(); err == nil {
+			result.Deliver(target)
+		} else {
+			result.Fail(err)
+		}
+	}()
+	return result
+}
