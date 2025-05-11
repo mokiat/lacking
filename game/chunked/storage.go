@@ -3,8 +3,11 @@ package chunked
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"io"
-	"path/filepath"
+	"net/http"
+	"os"
+	urlpath "path"
 
 	"github.com/mokiat/lacking/util/ioutil"
 )
@@ -37,7 +40,7 @@ type memStorage struct {
 }
 
 func (s *memStorage) Open(path string) (io.ReadCloser, error) {
-	path = cleanPath(path)
+	path = cleanFilePath(path)
 	buffer, ok := s.objects[path]
 	if !ok {
 		return nil, ErrNotFound
@@ -46,14 +49,14 @@ func (s *memStorage) Open(path string) (io.ReadCloser, error) {
 }
 
 func (s *memStorage) Create(path string) (io.WriteCloser, error) {
-	path = cleanPath(path)
+	path = cleanFilePath(path)
 	buffer := new(bytes.Buffer)
 	s.objects[path] = buffer
 	return ioutil.NopWriteCloser(buffer), nil
 }
 
 func (s *memStorage) Delete(path string) error {
-	path = cleanPath(path)
+	path = cleanFilePath(path)
 	if _, ok := s.objects[path]; !ok {
 		return ErrNotFound
 	}
@@ -61,6 +64,77 @@ func (s *memStorage) Delete(path string) error {
 	return nil
 }
 
-func cleanPath(path string) string {
-	return filepath.Clean(filepath.FromSlash(path))
+// NewFileStorage creates a new storage that uses the file system.
+func NewFileStorage(baseDir string) (Storage, error) {
+	root, err := os.OpenRoot(baseDir)
+	if err != nil {
+		return nil, fmt.Errorf("error opening base dir: %w", err)
+	}
+	return &fileStorage{
+		root: root,
+	}, nil
+}
+
+type fileStorage struct {
+	root *os.Root
+}
+
+func (s *fileStorage) Open(path string) (io.ReadCloser, error) {
+	file, err := s.root.Open(cleanFilePath(path))
+	if errors.Is(err, os.ErrNotExist) {
+		return nil, ErrNotFound
+	}
+	return file, err
+}
+
+func (s *fileStorage) Create(path string) (io.WriteCloser, error) {
+	return s.root.Create(cleanFilePath(path))
+}
+
+func (s *fileStorage) Delete(path string) error {
+	err := s.root.Remove(cleanFilePath(path))
+	if errors.Is(err, os.ErrNotExist) {
+		return ErrNotFound
+	}
+	return err
+}
+
+// NewWebStorage creates a new storage that uses HTTP requests.
+func NewWebStorage(baseURL string) (Storage, error) {
+	return &webStorage{
+		baseURL: baseURL,
+	}, nil
+}
+
+type webStorage struct {
+	baseURL string
+}
+
+func (s *webStorage) Open(path string) (io.ReadCloser, error) {
+	return s.fetch(urlpath.Join(s.baseURL, path))
+}
+
+func (s *webStorage) Create(path string) (io.WriteCloser, error) {
+	return nil, errors.ErrUnsupported
+}
+
+func (s *webStorage) Delete(path string) error {
+	return errors.ErrUnsupported
+}
+
+func (s *webStorage) fetch(url string) (io.ReadCloser, error) {
+	resp, err := http.Get(url)
+	if err != nil {
+		return nil, fmt.Errorf("error performing request: %w", err)
+	}
+	if resp.StatusCode == http.StatusOK {
+		return resp.Body, nil
+	}
+	defer resp.Body.Close()
+	switch resp.StatusCode {
+	case http.StatusNotFound:
+		return nil, ErrNotFound
+	default:
+		return nil, fmt.Errorf("unexpected status code %d", resp.StatusCode)
+	}
 }

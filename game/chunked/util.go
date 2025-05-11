@@ -1,6 +1,14 @@
 package chunked
 
-import "github.com/mokiat/gblob"
+import (
+	"path/filepath"
+
+	"github.com/mokiat/gblob"
+)
+
+func cleanFilePath(path string) string {
+	return filepath.Clean(filepath.FromSlash(path))
+}
 
 type skipReader struct {
 	count int
