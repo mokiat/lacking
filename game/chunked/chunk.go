@@ -23,3 +23,9 @@ type UnknownChunk struct {
 	ID   uuid.UUID
 	Data []byte
 }
+
+type nilChunk struct{}
+
+func (c nilChunk) ChunkID() uuid.UUID {
+	return uuid.Nil
+}

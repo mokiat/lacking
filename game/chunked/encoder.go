@@ -42,6 +42,9 @@ func (e encoder) encodeValue(value reflect.Value) error {
 
 func (e encoder) encodeField(field reflect.Value) error {
 	if field.Kind() == reflect.Pointer {
+		if field.IsNil() {
+			return e.encodeChunk(nilChunk{})
+		}
 		field = field.Elem()
 	}
 	if field.Kind() != reflect.Struct {
@@ -53,6 +56,10 @@ func (e encoder) encodeField(field reflect.Value) error {
 	}
 	chunk := field.Interface().(Chunk)
 
+	return e.encodeChunk(chunk)
+}
+
+func (e encoder) encodeChunk(chunk Chunk) error {
 	size, err := e.measureChunkSize(chunk)
 	if err != nil {
 		return fmt.Errorf("error measuring chunk size: %w", err)

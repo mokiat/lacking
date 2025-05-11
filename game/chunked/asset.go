@@ -7,7 +7,7 @@ import (
 )
 
 func NewAsset(storage Storage, path string) *Asset {
-	path = cleanPath(path)
+	path = cleanFilePath(path)
 	return &Asset{
 		storage: storage,
 		path:    path,
