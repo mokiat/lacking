@@ -54,3 +54,11 @@ func (a *AdjustedAnimation) SetPosition(position float64) {
 func (a *AdjustedAnimation) NodeTransform(name string) NodeTransform {
 	return a.delegate.NodeTransform(name)
 }
+
+// WithAnimationSpeed creates a new adjusted animation source with the
+// specified delegate and playback speed.
+func WithAnimationSpeed(source AnimationSource, speed float64) AnimationSource {
+	result := NewAdjustedAnimation(source)
+	result.SetSpeed(speed)
+	return result
+}
