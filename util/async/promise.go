@@ -171,6 +171,10 @@ func (o Operation) OnError(cb func(err error)) Operation {
 	return o
 }
 
+func (o Operation) IsCompleted() bool {
+	return o.promise.Ready()
+}
+
 func InjectionPromise[T any](operation Operation, target T) Promise[T] {
 	result := NewPromise[T]()
 	go func() {
