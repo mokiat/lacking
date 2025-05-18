@@ -51,7 +51,7 @@ func (c *flamegraphComponent) OnCreate() {
 	c.font = co.OpenFont(c.Scope(), "ui:///roboto-bold.ttf")
 	c.fontSize = 20.0
 
-	data := co.GetOptionalData[FlameGraphData](c.Properties(), FlameGraphData{})
+	data := co.GetOptionalData(c.Properties(), FlameGraphData{})
 	c.interval = data.UpdateInterval
 	c.aggregationRatio = data.AggregationRatio
 	c.path = data.FocusPath
@@ -65,7 +65,7 @@ func (c *flamegraphComponent) OnCreate() {
 }
 
 func (c *flamegraphComponent) OnUpsert() {
-	data := co.GetOptionalData[FlameGraphData](c.Properties(), FlameGraphData{})
+	data := co.GetOptionalData(c.Properties(), FlameGraphData{})
 	c.interval = data.UpdateInterval
 	c.aggregationRatio = data.AggregationRatio
 }
