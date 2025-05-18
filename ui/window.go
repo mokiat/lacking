@@ -467,7 +467,8 @@ func (w *windowHandler) processMouseEvent(element *Element, event MouseEvent) bo
 			if w.processMouseEvent(childElement, translatedEvent) {
 				return true
 			}
-			break // don't allow siblings that are underneath to process event
+			// NOTE: There used to be a break here to prevent elements underneath
+			// from getting the event. It is unclear why that was the case.
 		}
 	}
 
