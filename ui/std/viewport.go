@@ -20,7 +20,8 @@ var Viewport = co.Define(&viewportComponent{})
 
 // ViewportData holds the data for a Viewport component.
 type ViewportData struct {
-	API render.API
+	API         render.API
+	ForceRedraw bool
 }
 
 // ViewportCallbackData holds the callback data for a Viewport component.
@@ -33,7 +34,8 @@ type ViewportCallbackData struct {
 type viewportComponent struct {
 	co.BaseComponent
 
-	surface viewportSurface
+	surface     viewportSurface
+	forceRedraw bool
 
 	fbResizeBlocked bool
 	fbDesiredWidth  uint32
@@ -47,6 +49,7 @@ type viewportComponent struct {
 func (c *viewportComponent) OnCreate() {
 	data := co.GetData[ViewportData](c.Properties())
 	c.surface.api = data.API
+	c.forceRedraw = data.ForceRedraw
 
 	callbackData := co.GetOptionalCallbackData(c.Properties(), ViewportCallbackData{})
 	c.onKeyboardEvent = callbackData.OnKeyboardEvent
@@ -130,6 +133,10 @@ func (c *viewportComponent) OnRender(element *ui.Element, canvas *ui.Canvas) {
 			Rule:  ui.FillRuleSimple,
 			Color: BackgroundColor,
 		})
+	}
+
+	if c.forceRedraw {
+		element.Invalidate()
 	}
 }
 
