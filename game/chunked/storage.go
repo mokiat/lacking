@@ -5,9 +5,12 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
+	"maps"
 	"net/http"
 	"os"
 	urlpath "path"
+	"slices"
 
 	"github.com/mokiat/lacking/util/ioutil"
 )
@@ -17,6 +20,9 @@ var ErrNotFound = errors.New("not found")
 
 // Storage represents a storage interface for assets.
 type Storage interface {
+
+	// List returns all available assets.
+	List() ([]string, error)
 
 	// Open opens a reader for the data of the specified asset.
 	Open(path string) (io.ReadCloser, error)
@@ -37,6 +43,10 @@ func NewMemoryStorage() Storage {
 
 type memStorage struct {
 	objects map[string]*bytes.Buffer
+}
+
+func (s *memStorage) List() ([]string, error) {
+	return slices.Collect(maps.Keys(s.objects)), nil
 }
 
 func (s *memStorage) Open(path string) (io.ReadCloser, error) {
@@ -79,6 +89,20 @@ type fileStorage struct {
 	root *os.Root
 }
 
+func (s *fileStorage) List() ([]string, error) {
+	var result []string
+	err := fs.WalkDir(s.root.FS(), ".", func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return nil
+		}
+		if !d.IsDir() {
+			result = append(result, path)
+		}
+		return nil
+	})
+	return result, err
+}
+
 func (s *fileStorage) Open(path string) (io.ReadCloser, error) {
 	file, err := s.root.Open(cleanFilePath(path))
 	if errors.Is(err, os.ErrNotExist) {
@@ -108,6 +132,10 @@ func NewWebStorage(baseURL string) (Storage, error) {
 
 type webStorage struct {
 	baseURL string
+}
+
+func (s *webStorage) List() ([]string, error) {
+	return nil, errors.ErrUnsupported
 }
 
 func (s *webStorage) Open(path string) (io.ReadCloser, error) {
