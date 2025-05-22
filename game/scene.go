@@ -354,9 +354,6 @@ func (s *Scene) CreateModel(info ModelInfo) *Model {
 		armatures[i] = armature
 	}
 
-	// NOTE: This needs to happen after armatures are initialized!
-	modelNode.ApplyToTarget(true)
-
 	// TODO: Track mesh instances?
 	for _, instance := range definition.meshes {
 		if meshNode := nodes[instance.NodeIndex]; meshNode != nil {
@@ -372,6 +369,7 @@ func (s *Scene) CreateModel(info ModelInfo) *Model {
 					Definition: meshDefinition,
 					Armature:   armature,
 				})
+				mesh.SetMatrix(meshNode.AbsoluteMatrix())
 				meshNode.SetTarget(MeshNodeTarget{
 					Mesh: mesh,
 				})
@@ -440,6 +438,9 @@ func (s *Scene) CreateModel(info ModelInfo) *Model {
 			s.placeSky(node, definition)
 		}
 	}
+
+	// NOTE: This needs to happen after armatures are initialized!
+	modelNode.ApplyToTarget(true)
 
 	return &Model{
 		definition:    definition,
