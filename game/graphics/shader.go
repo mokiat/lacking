@@ -63,34 +63,6 @@ type ShaderConstraints struct {
 	ShaderTypeConstraints
 }
 
-// GeometryConstraints contains the constraints imposed on the geometry shader
-// construction process.
-type GeometryConstraints struct {
-
-	// HasArmature specifies whether the mesh has an armature.
-	HasArmature bool
-
-	// HasNormals specifies whether the mesh has normals.
-	HasNormals bool
-
-	// HasTangents specifies whether the mesh has tangents.
-	HasTangents bool
-
-	// HasTexCoords specifies whether the mesh has texture coordinates.
-	HasTexCoords bool
-
-	// HasVertexColors specifies whether the mesh has vertex colors.
-	HasVertexColors bool
-}
-
-// ShadowConstraints contains the constraints imposed on the shadow shader
-// construction process.
-type ShadowConstraints struct {
-
-	// HasArmature specifies whether the mesh has an armature.
-	HasArmature bool
-}
-
 // ShaderBuilder abstracts the process of building a shader program. The
 // implementation of this interface will depend on the rendering backend.
 type ShaderBuilder interface {
