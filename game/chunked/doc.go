@@ -1,5 +1,5 @@
-// Package asseet provides data transfer objects for the game's asset types.
-package asset
+// Package chunked provides a mechanism to read and write chunked data files.
+package chunked
 
 /*
 Note: Here are some findings when doing benchmark tests for various I/O approaches.

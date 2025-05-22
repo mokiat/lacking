@@ -1,12 +1,14 @@
 package dsl
 
 import (
+	"errors"
 	"fmt"
 	"log/slog"
 	"slices"
 
-	"github.com/mokiat/lacking/game/asset"
+	"github.com/mokiat/lacking/game/asset/gendto"
 	"github.com/mokiat/lacking/game/asset/mdl"
+	"github.com/mokiat/lacking/game/chunked"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -14,74 +16,89 @@ var modelProviders = make(map[string]Provider[*mdl.Model])
 
 // Run runs the DSL algorithm on the provided registry. If modelNames
 // is not empty, only the models with the provided names will be processed.
-func Run(registry *asset.Registry, modelNames []string) error {
+func Run(storage chunked.Storage, pickedPaths []string) error {
 	var g errgroup.Group
 
-	for name, modelProvider := range modelProviders {
-		if len(modelNames) > 0 {
-			if !slices.Contains(modelNames, name) {
+	for path, modelProvider := range modelProviders {
+		if len(pickedPaths) > 0 {
+			if !slices.Contains(pickedPaths, path) {
 				continue // skip this one
 			}
 		}
 
-		resource := registry.ResourceByName(name)
-		if resource == nil {
-			var err error
-			resource, err = registry.CreateResource(name, asset.Model{})
-			if err != nil {
-				return fmt.Errorf("error creating resource: %w", err)
-			}
-		}
+		resource := chunked.NewAsset(storage, path)
 
 		g.Go(func() error {
 			logger.Info("Processing model",
-				slog.String("name", name),
+				slog.String("path", path),
 			)
 
 			digest, err := StringDigest(modelProvider)
 			if err != nil {
-				return fmt.Errorf("error calculating model %q digest: %w", name, err)
+				return fmt.Errorf("error calculating model %q digest: %w", path, err)
 			}
 
-			if resource.SourceDigest() == digest {
+			sourceDigest, err := retrieveSourceDigest(resource)
+			if err != nil {
+				return fmt.Errorf("error retrieving model %q source digest: %w", path, err)
+			}
+
+			if sourceDigest == digest {
 				logger.Info("Model up to date",
-					slog.String("name", name),
+					slog.String("path", path),
 				)
 				logger.Info("Model processed",
-					slog.String("name", name),
+					slog.String("path", path),
 				)
 				return nil
 			}
 
 			logger.Info("Building model",
-				slog.String("name", name),
+				slog.String("path", path),
 			)
 			model, err := modelProvider.Get()
 			if err != nil {
-				return fmt.Errorf("error getting model %q: %w", name, err)
+				return fmt.Errorf("error getting model %q: %w", path, err)
 			}
 
 			modelAsset, err := mdl.NewConverter(model).Convert()
 			if err != nil {
-				return fmt.Errorf("error converting model %q to asset: %w", name, err)
+				return fmt.Errorf("error converting model %q to asset: %w", path, err)
+			}
+			modelAsset.GenChunk = &gendto.GenChunk{
+				Digest: digest,
 			}
 
 			logger.Info("Updating model",
-				slog.String("name", name),
+				slog.String("path", path),
 			)
-			if err := resource.SaveContent(modelAsset); err != nil {
+			if err := resource.Write(modelAsset); err != nil {
 				return fmt.Errorf("error saving resource: %w", err)
-			}
-			if err := resource.SetSourceDigest(digest); err != nil {
-				return fmt.Errorf("error setting resource digest: %w", err)
 			}
 
 			logger.Info("Model processed",
-				slog.String("name", name),
+				slog.String("path", path),
 			)
 			return nil
 		})
 	}
 
 	return g.Wait()
+}
+
+func retrieveSourceDigest(resource *chunked.Asset) (string, error) {
+	type digestHolder struct {
+		*gendto.GenChunk
+	}
+	var holder digestHolder
+	if err := resource.Read(&holder); err != nil {
+		if errors.Is(err, chunked.ErrNotFound) {
+			return "", nil // no digest found
+		}
+		return "", fmt.Errorf("error reading resource: %w", err)
+	}
+	if holder.GenChunk == nil {
+		return "", nil // no digest found
+	}
+	return holder.Digest, nil
 }

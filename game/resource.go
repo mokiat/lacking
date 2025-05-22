@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/mokiat/lacking/game/asset"
+	"github.com/mokiat/lacking/game/chunked"
 	"github.com/mokiat/lacking/render"
 	"github.com/mokiat/lacking/util/async"
 )
@@ -17,7 +17,7 @@ func newResourceSet(parent *ResourceSet, engine *Engine) *ResourceSet {
 		parent: parent,
 
 		engine:    engine,
-		registry:  engine.registry,
+		storage:   engine.Storage(),
 		renderAPI: engine.Graphics().API(),
 
 		ioWorker:  engine.ioWorker,
@@ -32,7 +32,7 @@ type ResourceSet struct {
 	parent *ResourceSet
 
 	engine    *Engine
-	registry  *asset.Registry
+	storage   chunked.Storage
 	renderAPI render.API
 
 	ioWorker  Worker
@@ -54,11 +54,7 @@ func (s *ResourceSet) OpenModelByID(id string) async.Promise[*ModelDefinition] {
 		return result
 	}
 
-	resource := s.registry.ResourceByID(id)
-	if resource == nil {
-		err := fmt.Errorf("%w: resource %q not found", ErrNotFound, id)
-		return async.NewFailedPromise[*ModelDefinition](err)
-	}
+	resource := chunked.NewAsset(s.storage, id)
 
 	result := async.NewPromise[*ModelDefinition]()
 	go func() {
@@ -75,12 +71,7 @@ func (s *ResourceSet) OpenModelByID(id string) async.Promise[*ModelDefinition] {
 
 // OpenModelByName loads a model definition by its name.
 func (s *ResourceSet) OpenModelByName(name string) async.Promise[*ModelDefinition] {
-	resource := s.registry.ResourceByName(name)
-	if resource == nil {
-		err := fmt.Errorf("%w: resource %q not found", ErrNotFound, name)
-		return async.NewFailedPromise[*ModelDefinition](err)
-	}
-	return s.OpenModelByID(resource.ID())
+	return s.OpenModelByID(name)
 }
 
 // Delete schedules all resources managed by this ResourceSet for deletion.

@@ -3,18 +3,19 @@ package game
 import (
 	"time"
 
-	"github.com/mokiat/lacking/game/asset"
+	"github.com/mokiat/lacking/game/chunked"
 	"github.com/mokiat/lacking/game/ecs"
 	"github.com/mokiat/lacking/game/graphics"
 	"github.com/mokiat/lacking/game/physics"
 	"github.com/mokiat/lacking/render"
+	"github.com/mokiat/lacking/util/async"
 )
 
 type EngineOption func(e *Engine)
 
-func WithRegistry(registry *asset.Registry) EngineOption {
+func WithStorage(storage chunked.Storage) EngineOption {
 	return func(e *Engine) {
-		e.registry = registry
+		e.storage = storage
 	}
 }
 
@@ -59,7 +60,7 @@ func NewEngine(opts ...EngineOption) *Engine {
 }
 
 type Engine struct {
-	registry      *asset.Registry
+	storage       chunked.Storage
 	ioWorker      Worker
 	gfxWorker     Worker
 	physicsEngine *physics.Engine
@@ -80,8 +81,8 @@ func (e *Engine) Destroy() {
 	// TODO: Release all scenes and all resource sets
 }
 
-func (e *Engine) Registry() *asset.Registry {
-	return e.registry
+func (e *Engine) Storage() chunked.Storage {
+	return e.storage
 }
 
 func (e *Engine) IOWorker() Worker {

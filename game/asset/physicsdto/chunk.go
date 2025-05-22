@@ -20,3 +20,7 @@ type PhysicsChunk struct {
 	// Bodies is the collection of body instances that are part of the scene.
 	Bodies []Body
 }
+
+func (c PhysicsChunk) ChunkID() uuid.UUID {
+	return physicsChunkID
+}

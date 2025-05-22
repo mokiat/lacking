@@ -152,35 +152,35 @@ func (c *Converter) convertModel(s *Model) (asset.Model, error) {
 	}
 
 	return asset.Model{
-		HierarchyChunk: hierarchydto.HierarchyChunk{
+		HierarchyChunk: &hierarchydto.HierarchyChunk{
 			Nodes: c.assetNodes,
 		},
-		AnimationChunk: animationdto.AnimationChunk{
+		AnimationChunk: &animationdto.AnimationChunk{
 			Animations: assetAnimations,
 		},
-		ShadingChunk: shadingdto.ShadingChunk{
+		ShadingChunk: &shadingdto.ShadingChunk{
 			Shaders:   c.assetShaders,
 			Textures:  c.assetTextures,
 			Materials: c.assetMaterials,
 		},
-		MeshChunk: meshdto.MeshChunk{
+		MeshChunk: &meshdto.MeshChunk{
 			Armatures:       c.assetArmatures,
 			Geometries:      c.assetGeometries,
 			MeshDefinitions: c.assetMeshDefinitions,
 			Meshes:          assetMeshes,
 		},
-		PhysicsChunk: physicsdto.PhysicsChunk{
+		PhysicsChunk: &physicsdto.PhysicsChunk{
 			BodyMaterials:   c.assetBodyMaterials,
 			BodyDefinitions: c.assetBodyDefinitions,
 			Bodies:          assetBodies,
 		},
-		LightingChunk: lightingdto.LightingChunk{
+		LightingChunk: &lightingdto.LightingChunk{
 			AmbientLights:     assetAmbientLights,
 			PointLights:       assetPointLights,
 			SpotLights:        assetSpotLights,
 			DirectionalLights: assetDirectionalLights,
 		},
-		BackgroundChunk: backgrounddto.BackgroundChunk{
+		BackgroundChunk: &backgrounddto.BackgroundChunk{
 			Skies: assetSkies,
 		},
 	}, nil

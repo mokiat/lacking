@@ -4,13 +4,14 @@ import (
 	"fmt"
 
 	"github.com/mokiat/lacking/game/asset"
+	"github.com/mokiat/lacking/game/chunked"
 	"github.com/mokiat/lacking/game/graphics"
 	"github.com/mokiat/lacking/game/physics"
 	"github.com/mokiat/lacking/render"
 	"github.com/mokiat/lacking/util/async"
 )
 
-func (s *ResourceSet) loadModel(resource *asset.Resource) (*ModelDefinition, error) {
+func (s *ResourceSet) loadModel(resource *chunked.Asset) (*ModelDefinition, error) {
 	assetModelPromise := s.openResource(resource)
 	assetModel, err := assetModelPromise.Wait()
 	if err != nil {
@@ -42,11 +43,11 @@ func (s *ResourceSet) freeModel(model *ModelDefinition) {
 	})
 }
 
-func (s *ResourceSet) openResource(resource *asset.Resource) async.Promise[asset.Model] {
+func (s *ResourceSet) openResource(resource *chunked.Asset) async.Promise[asset.Model] {
 	promise := async.NewPromise[asset.Model]()
 	s.ioWorker.Schedule(func() {
-		assetModel, err := resource.OpenContent()
-		if err != nil {
+		var assetModel asset.Model
+		if err := resource.Read(&assetModel); err != nil {
 			promise.Fail(err)
 		} else {
 			promise.Deliver(assetModel)
