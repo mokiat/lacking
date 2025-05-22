@@ -3,12 +3,12 @@ package game
 import (
 	"github.com/mokiat/gog"
 	"github.com/mokiat/gog/opt"
-	"github.com/mokiat/lacking/game/asset"
+	"github.com/mokiat/lacking/game/asset/meshdto"
 	"github.com/mokiat/lacking/game/graphics"
 	"github.com/mokiat/lacking/util/async"
 )
 
-func (s *ResourceSet) convertMeshGeometry(assetGeometry asset.Geometry) async.Promise[*graphics.MeshGeometry] {
+func (s *ResourceSet) convertMeshGeometry(assetGeometry meshdto.Geometry) async.Promise[*graphics.MeshGeometry] {
 	meshFragmentsInfo := make([]graphics.MeshGeometryFragmentInfo, len(assetGeometry.Fragments))
 	for j, assetFragment := range assetGeometry.Fragments {
 		meshFragmentsInfo[j] = graphics.MeshGeometryFragmentInfo{
@@ -20,7 +20,7 @@ func (s *ResourceSet) convertMeshGeometry(assetGeometry asset.Geometry) async.Pr
 	}
 
 	meshGeometryInfo := graphics.MeshGeometryInfo{
-		VertexBuffers: gog.Map(assetGeometry.VertexBuffers, func(buffer asset.VertexBuffer) graphics.MeshGeometryVertexBuffer {
+		VertexBuffers: gog.Map(assetGeometry.VertexBuffers, func(buffer meshdto.VertexBuffer) graphics.MeshGeometryVertexBuffer {
 			return graphics.MeshGeometryVertexBuffer{
 				ByteStride: buffer.Stride,
 				Data:       buffer.Data,
@@ -47,7 +47,7 @@ func (s *ResourceSet) convertMeshGeometry(assetGeometry asset.Geometry) async.Pr
 	return promise
 }
 
-func (s *ResourceSet) convertMeshDefinition(geometris []*graphics.MeshGeometry, materials []*graphics.Material, assetMeshDefinition asset.MeshDefinition) async.Promise[*graphics.MeshDefinition] {
+func (s *ResourceSet) convertMeshDefinition(geometris []*graphics.MeshGeometry, materials []*graphics.Material, assetMeshDefinition meshdto.MeshDefinition) async.Promise[*graphics.MeshDefinition] {
 	geometry := geometris[assetMeshDefinition.GeometryIndex]
 
 	bindingMaterials := make([]*graphics.Material, geometry.FragmentCount())
@@ -69,7 +69,7 @@ func (s *ResourceSet) convertMeshDefinition(geometris []*graphics.MeshGeometry, 
 	return promise
 }
 
-func (s *ResourceSet) convertMeshInstance(assetMesh asset.Mesh) meshInstance {
+func (s *ResourceSet) convertMeshInstance(assetMesh meshdto.Mesh) meshInstance {
 	return meshInstance{
 		NodeIndex:       int(assetMesh.NodeIndex),
 		DefinitionIndex: int(assetMesh.MeshDefinitionIndex),

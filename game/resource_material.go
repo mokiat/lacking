@@ -3,7 +3,7 @@ package game
 import (
 	"github.com/mokiat/gog"
 	"github.com/mokiat/gog/opt"
-	"github.com/mokiat/lacking/game/asset"
+	"github.com/mokiat/lacking/game/asset/shadingdto"
 	"github.com/mokiat/lacking/game/graphics"
 	"github.com/mokiat/lacking/render"
 	"github.com/mokiat/lacking/util/async"
@@ -12,24 +12,24 @@ import (
 func (s *ResourceSet) convertMaterial(
 	shaders []*graphics.Shader,
 	textures []render.Texture,
-	assetMaterial asset.Material,
+	assetMaterial shadingdto.Material,
 ) async.Promise[*graphics.Material] {
 
 	materialInfo := graphics.MaterialInfo{
 		Name: assetMaterial.Name,
-		GeometryPasses: gog.Map(assetMaterial.GeometryPasses, func(pass asset.MaterialPass) graphics.MaterialPassInfo {
+		GeometryPasses: gog.Map(assetMaterial.GeometryPasses, func(pass shadingdto.MaterialPass) graphics.MaterialPassInfo {
 			return s.convertMaterialPass(shaders, pass)
 		}),
-		ShadowPasses: gog.Map(assetMaterial.ShadowPasses, func(pass asset.MaterialPass) graphics.MaterialPassInfo {
+		ShadowPasses: gog.Map(assetMaterial.ShadowPasses, func(pass shadingdto.MaterialPass) graphics.MaterialPassInfo {
 			return s.convertMaterialPass(shaders, pass)
 		}),
-		ForwardPasses: gog.Map(assetMaterial.ForwardPasses, func(pass asset.MaterialPass) graphics.MaterialPassInfo {
+		ForwardPasses: gog.Map(assetMaterial.ForwardPasses, func(pass shadingdto.MaterialPass) graphics.MaterialPassInfo {
 			return s.convertMaterialPass(shaders, pass)
 		}),
-		SkyPasses: gog.Map(assetMaterial.SkyPasses, func(pass asset.MaterialPass) graphics.MaterialPassInfo {
+		SkyPasses: gog.Map(assetMaterial.SkyPasses, func(pass shadingdto.MaterialPass) graphics.MaterialPassInfo {
 			return s.convertMaterialPass(shaders, pass)
 		}),
-		PostprocessingPasses: gog.Map(assetMaterial.PostprocessingPasses, func(pass asset.MaterialPass) graphics.MaterialPassInfo {
+		PostprocessingPasses: gog.Map(assetMaterial.PostprocessingPasses, func(pass shadingdto.MaterialPass) graphics.MaterialPassInfo {
 			return s.convertMaterialPass(shaders, pass)
 		}),
 	}
@@ -58,7 +58,7 @@ func (s *ResourceSet) convertMaterial(
 	return promise
 }
 
-func (s *ResourceSet) convertMaterialPass(shaders []*graphics.Shader, assetPass asset.MaterialPass) graphics.MaterialPassInfo {
+func (s *ResourceSet) convertMaterialPass(shaders []*graphics.Shader, assetPass shadingdto.MaterialPass) graphics.MaterialPassInfo {
 	return graphics.MaterialPassInfo{
 		Layer:           assetPass.Layer,
 		Culling:         opt.V(s.resolveCullMode(assetPass.Culling)),

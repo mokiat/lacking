@@ -1,4 +1,4 @@
-package asset
+package shadingdto
 
 // TextureBinding represents a binding of a texture to a shader.
 type TextureBinding struct {

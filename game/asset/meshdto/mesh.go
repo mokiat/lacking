@@ -1,4 +1,4 @@
-package asset
+package meshdto
 
 const (
 	UnspecifiedArmatureIndex = int32(-1)

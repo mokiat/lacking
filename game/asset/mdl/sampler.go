@@ -1,22 +1,24 @@
 package mdl
 
-import "github.com/mokiat/lacking/game/asset"
-
-const (
-	WrapModeClamp          WrapMode = asset.WrapModeClamp
-	WrapModeRepeat         WrapMode = asset.WrapModeRepeat
-	WrapModeMirroredRepeat WrapMode = asset.WrapModeMirroredRepeat
+import (
+	"github.com/mokiat/lacking/game/asset/shadingdto"
 )
 
-type WrapMode = asset.WrapMode
-
 const (
-	FilterModeNearest     FilterMode = asset.FilterModeNearest
-	FilterModeLinear      FilterMode = asset.FilterModeLinear
-	FilterModeAnisotropic FilterMode = asset.FilterModeAnisotropic
+	WrapModeClamp          WrapMode = shadingdto.WrapModeClamp
+	WrapModeRepeat         WrapMode = shadingdto.WrapModeRepeat
+	WrapModeMirroredRepeat WrapMode = shadingdto.WrapModeMirroredRepeat
 )
 
-type FilterMode = asset.FilterMode
+type WrapMode = shadingdto.WrapMode
+
+const (
+	FilterModeNearest     FilterMode = shadingdto.FilterModeNearest
+	FilterModeLinear      FilterMode = shadingdto.FilterModeLinear
+	FilterModeAnisotropic FilterMode = shadingdto.FilterModeAnisotropic
+)
+
+type FilterMode = shadingdto.FilterMode
 
 type TextureReferrer interface {
 	Texture() *Texture

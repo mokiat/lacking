@@ -1,12 +1,12 @@
 package game
 
 import (
-	"github.com/mokiat/lacking/game/asset"
+	"github.com/mokiat/lacking/game/asset/backgrounddto"
 	"github.com/mokiat/lacking/game/graphics"
 	"github.com/mokiat/lacking/util/async"
 )
 
-func (s *ResourceSet) convertSkyDefinition(materials []*graphics.Material, assetSky asset.Sky) async.Promise[*graphics.SkyDefinition] {
+func (s *ResourceSet) convertSkyDefinition(materials []*graphics.Material, assetSky backgrounddto.Sky) async.Promise[*graphics.SkyDefinition] {
 	skyDefinitionInfo := graphics.SkyDefinitionInfo{
 		Material: materials[assetSky.MaterialIndex],
 	}
@@ -20,7 +20,7 @@ func (s *ResourceSet) convertSkyDefinition(materials []*graphics.Material, asset
 	return promise
 }
 
-func (s *ResourceSet) convertSky(definitionIndex int, assetSky asset.Sky) skyInstance {
+func (s *ResourceSet) convertSky(definitionIndex int, assetSky backgrounddto.Sky) skyInstance {
 	return skyInstance{
 		nodeIndex:       int(assetSky.NodeIndex),
 		definitionIndex: definitionIndex,

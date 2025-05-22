@@ -1,4 +1,4 @@
-package asset
+package physicsdto
 
 import "github.com/mokiat/gomath/dprec"
 

@@ -96,6 +96,23 @@ func (r *Registry) CreateResource(name string, content Model) (*Resource, error)
 	return result, nil
 }
 
+func (r *Registry) CreateResource2(name string, content any) (*Resource, error) {
+	result := &Resource{
+		registry: r,
+		id:       uuid.NewString(),
+		name:     name,
+		preview:  nil,
+	}
+	r.resources = append(r.resources, result)
+	if err := r.save(); err != nil {
+		return nil, fmt.Errorf("failed to save registry: %w", err)
+	}
+	if err := r.writeContent(result.id, content); err != nil {
+		return nil, fmt.Errorf("failed to save content: %w", err)
+	}
+	return result, nil
+}
+
 func (r *Registry) dependenciesOf(targetID string) []fsDependency {
 	return gog.Select(r.dependencies, func(dep fsDependency) bool {
 		return dep.TargetID == targetID
@@ -188,6 +205,32 @@ func (r *Registry) save() error {
 	return nil
 }
 
+func (r *Registry) readContent(id string, target any) error {
+	in, err := r.storage.OpenContentRead(id)
+	if err != nil {
+		return fmt.Errorf("failed to open content file: %w", err)
+	}
+	defer in.Close()
+
+	if err := r.formatter.Decode(in, target); err != nil {
+		return fmt.Errorf("failed to decode content: %w", err)
+	}
+	return nil
+}
+
+func (r *Registry) writeContent(id string, source any) error {
+	out, err := r.storage.OpenContentWrite(id)
+	if err != nil {
+		return fmt.Errorf("failed to create content file: %w", err)
+	}
+	defer out.Close()
+
+	if err := r.formatter.Encode(out, source); err != nil {
+		return fmt.Errorf("failed to encode content: %w", err)
+	}
+	return nil
+}
+
 func (r *Registry) openContent(id string) (Model, error) {
 	in, err := r.storage.OpenContentRead(id)
 	if err != nil {
@@ -203,16 +246,9 @@ func (r *Registry) openContent(id string) (Model, error) {
 }
 
 func (r *Registry) saveContent(id string, content Model) error {
-	newDependencies := gog.Map(content.ModelDefinitions, func(sourceID string) fsDependency {
-		return fsDependency{
-			TargetID: id,
-			SourceID: sourceID,
-		}
-	})
 	r.dependencies = slices.DeleteFunc(r.dependencies, func(dep fsDependency) bool {
 		return dep.TargetID == id
 	})
-	r.dependencies = append(r.dependencies, newDependencies...)
 
 	if err := r.save(); err != nil {
 		return fmt.Errorf("failed to save registry: %w", err)
@@ -304,6 +340,18 @@ func (r *Resource) SourceDigest() string {
 func (r *Resource) SetSourceDigest(digest string) error {
 	r.sourceDigest = digest
 	return r.registry.save()
+}
+
+type Content interface {
+	// TODO: Add conditions
+}
+
+func (r *Resource) ReadContent(target Content) error {
+	return r.registry.readContent(r.id, target)
+}
+
+func (r *Resource) WriteContent(source Content) error {
+	return r.registry.writeContent(r.id, source)
 }
 
 // OpenContent returns the content of the resource.

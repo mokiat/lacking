@@ -2,13 +2,13 @@ package game
 
 import (
 	"github.com/mokiat/gomath/dprec"
-	"github.com/mokiat/lacking/game/asset"
+	"github.com/mokiat/lacking/game/asset/physicsdto"
 	"github.com/mokiat/lacking/game/physics"
 	"github.com/mokiat/lacking/game/physics/collision"
 	"github.com/mokiat/lacking/util/async"
 )
 
-func (s *ResourceSet) convertBodyMaterial(assetBodyMaterial asset.BodyMaterial) async.Promise[*physics.Material] {
+func (s *ResourceSet) convertBodyMaterial(assetBodyMaterial physicsdto.BodyMaterial) async.Promise[*physics.Material] {
 	materialInfo := physics.MaterialInfo{
 		FrictionCoefficient:    assetBodyMaterial.FrictionCoefficient,
 		RestitutionCoefficient: assetBodyMaterial.RestitutionCoefficient,
@@ -22,7 +22,7 @@ func (s *ResourceSet) convertBodyMaterial(assetBodyMaterial asset.BodyMaterial) 
 	return promise
 }
 
-func (s *ResourceSet) convertBodyDefinition(bodyMaterials []*physics.Material, assetBodyDefinition asset.BodyDefinition) async.Promise[*physics.BodyDefinition] {
+func (s *ResourceSet) convertBodyDefinition(bodyMaterials []*physics.Material, assetBodyDefinition physicsdto.BodyDefinition) async.Promise[*physics.BodyDefinition] {
 	material := bodyMaterials[assetBodyDefinition.MaterialIndex]
 
 	bodyDefinitionInfo := physics.BodyDefinitionInfo{
@@ -47,7 +47,7 @@ func (s *ResourceSet) convertBodyDefinition(bodyMaterials []*physics.Material, a
 	return promise
 }
 
-func (s *ResourceSet) convertCollisionSpheres(bodyDef asset.BodyDefinition) []collision.Sphere {
+func (s *ResourceSet) convertCollisionSpheres(bodyDef physicsdto.BodyDefinition) []collision.Sphere {
 	result := make([]collision.Sphere, len(bodyDef.CollisionSpheres))
 	for i, collisionSphereAsset := range bodyDef.CollisionSpheres {
 		result[i] = collision.NewSphere(
@@ -58,7 +58,7 @@ func (s *ResourceSet) convertCollisionSpheres(bodyDef asset.BodyDefinition) []co
 	return result
 }
 
-func (s *ResourceSet) convertCollisionBoxes(bodyDef asset.BodyDefinition) []collision.Box {
+func (s *ResourceSet) convertCollisionBoxes(bodyDef physicsdto.BodyDefinition) []collision.Box {
 	result := make([]collision.Box, len(bodyDef.CollisionBoxes))
 	for i, collisionBoxAsset := range bodyDef.CollisionBoxes {
 		result[i] = collision.NewBox(
@@ -70,7 +70,7 @@ func (s *ResourceSet) convertCollisionBoxes(bodyDef asset.BodyDefinition) []coll
 	return result
 }
 
-func (s *ResourceSet) convertCollisionMeshes(bodyDef asset.BodyDefinition) []collision.Mesh {
+func (s *ResourceSet) convertCollisionMeshes(bodyDef physicsdto.BodyDefinition) []collision.Mesh {
 	result := make([]collision.Mesh, len(bodyDef.CollisionMeshes))
 	for i, collisionMeshAsset := range bodyDef.CollisionMeshes {
 		transform := collision.TRTransform(collisionMeshAsset.Translation, collisionMeshAsset.Rotation)
@@ -88,7 +88,7 @@ func (s *ResourceSet) convertCollisionMeshes(bodyDef asset.BodyDefinition) []col
 	return result
 }
 
-func (s *ResourceSet) convertBody(assetBody asset.Body) bodyInstance {
+func (s *ResourceSet) convertBody(assetBody physicsdto.Body) bodyInstance {
 	return bodyInstance{
 		NodeIndex:       int(assetBody.NodeIndex),
 		DefinitionIndex: int(assetBody.BodyDefinitionIndex),

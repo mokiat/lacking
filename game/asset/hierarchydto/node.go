@@ -1,4 +1,4 @@
-package asset
+package hierarchydto
 
 import "github.com/mokiat/gomath/dprec"
 

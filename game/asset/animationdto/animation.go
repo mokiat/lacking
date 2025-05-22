@@ -1,4 +1,4 @@
-package asset
+package animationdto
 
 import "github.com/mokiat/gomath/dprec"
 

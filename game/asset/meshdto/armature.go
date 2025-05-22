@@ -1,4 +1,4 @@
-package asset
+package meshdto
 
 import "github.com/mokiat/gomath/sprec"
 

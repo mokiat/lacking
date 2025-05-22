@@ -1,4 +1,4 @@
-package asset
+package lightingdto
 
 import "github.com/mokiat/gomath/dprec"
 

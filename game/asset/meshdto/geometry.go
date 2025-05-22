@@ -1,4 +1,4 @@
-package asset
+package meshdto
 
 const (
 	UnspecifiedBufferIndex = int32(-1)

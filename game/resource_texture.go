@@ -4,16 +4,16 @@ import (
 	"fmt"
 
 	"github.com/mokiat/gog"
-	"github.com/mokiat/lacking/game/asset"
+	"github.com/mokiat/lacking/game/asset/shadingdto"
 	"github.com/mokiat/lacking/render"
 	"github.com/mokiat/lacking/util/async"
 )
 
-func (s *ResourceSet) convertTexture(assetTexture asset.Texture) async.Promise[render.Texture] {
+func (s *ResourceSet) convertTexture(assetTexture shadingdto.Texture) async.Promise[render.Texture] {
 	switch {
-	case assetTexture.Flags.Has(asset.TextureFlag2D):
+	case assetTexture.Flags.Has(shadingdto.TextureFlag2D):
 		return s.allocateTexture2D(assetTexture)
-	case assetTexture.Flags.Has(asset.TextureFlagCubeMap):
+	case assetTexture.Flags.Has(shadingdto.TextureFlagCubeMap):
 		return s.allocateTextureCube(assetTexture)
 	default:
 		err := fmt.Errorf("unsupported texture type (flags: %v)", assetTexture.Flags)
@@ -21,14 +21,14 @@ func (s *ResourceSet) convertTexture(assetTexture asset.Texture) async.Promise[r
 	}
 }
 
-func (s *ResourceSet) allocateTexture2D(assetTexture asset.Texture) async.Promise[render.Texture] {
+func (s *ResourceSet) allocateTexture2D(assetTexture shadingdto.Texture) async.Promise[render.Texture] {
 	promise := async.NewPromise[render.Texture]()
 	s.gfxWorker.Schedule(func() {
 		texture := s.renderAPI.CreateColorTexture2D(render.ColorTexture2DInfo{
-			GenerateMipmaps: assetTexture.Flags.Has(asset.TextureFlagMipmapping),
-			GammaCorrection: !assetTexture.Flags.Has(asset.TextureFlagLinearSpace),
+			GenerateMipmaps: assetTexture.Flags.Has(shadingdto.TextureFlagMipmapping),
+			GammaCorrection: !assetTexture.Flags.Has(shadingdto.TextureFlagLinearSpace),
 			Format:          s.resolveDataFormat(assetTexture.Format),
-			MipmapLayers: gog.Map(assetTexture.MipmapLayers, func(layer asset.MipmapLayer) render.Mipmap2DLayer {
+			MipmapLayers: gog.Map(assetTexture.MipmapLayers, func(layer shadingdto.MipmapLayer) render.Mipmap2DLayer {
 				return render.Mipmap2DLayer{
 					Width:  layer.Width,
 					Height: layer.Height,
@@ -41,14 +41,14 @@ func (s *ResourceSet) allocateTexture2D(assetTexture asset.Texture) async.Promis
 	return promise
 }
 
-func (s *ResourceSet) allocateTextureCube(assetTexture asset.Texture) async.Promise[render.Texture] {
+func (s *ResourceSet) allocateTextureCube(assetTexture shadingdto.Texture) async.Promise[render.Texture] {
 	promise := async.NewPromise[render.Texture]()
 	s.gfxWorker.Schedule(func() {
 		texture := s.renderAPI.CreateColorTextureCube(render.ColorTextureCubeInfo{
-			GenerateMipmaps: assetTexture.Flags.Has(asset.TextureFlagMipmapping),
-			GammaCorrection: !assetTexture.Flags.Has(asset.TextureFlagLinearSpace),
+			GenerateMipmaps: assetTexture.Flags.Has(shadingdto.TextureFlagMipmapping),
+			GammaCorrection: !assetTexture.Flags.Has(shadingdto.TextureFlagLinearSpace),
 			Format:          s.resolveDataFormat(assetTexture.Format),
-			MipmapLayers: gog.Map(assetTexture.MipmapLayers, func(layer asset.MipmapLayer) render.MipmapCubeLayer {
+			MipmapLayers: gog.Map(assetTexture.MipmapLayers, func(layer shadingdto.MipmapLayer) render.MipmapCubeLayer {
 				return render.MipmapCubeLayer{
 					Dimension:      layer.Width,
 					FrontSideData:  layer.Layers[0].Data,

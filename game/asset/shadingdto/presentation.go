@@ -1,4 +1,4 @@
-package asset
+package shadingdto
 
 const (
 	// CullModeNone specifies that no culling should be performed.
@@ -18,6 +18,22 @@ const (
 // CullMode specifies the culling mode.
 type CullMode uint8
 
+// String returns the string representation of the CullMode.
+func (m CullMode) String() string {
+	switch m {
+	case CullModeNone:
+		return "none"
+	case CullModeFront:
+		return "front"
+	case CullModeBack:
+		return "back"
+	case CullModeFrontAndBack:
+		return "front-and-back"
+	default:
+		return "unknown"
+	}
+}
+
 const (
 	// FaceOrientationCCW specifies that counter-clockwise primitives are
 	// front-facing.
@@ -29,6 +45,18 @@ const (
 
 // FaceOrientation specifies the front face orientation.
 type FaceOrientation uint8
+
+// String returns the string representation of the FaceOrientation.
+func (m FaceOrientation) String() string {
+	switch m {
+	case FaceOrientationCCW:
+		return "ccw"
+	case FaceOrientationCW:
+		return "cw"
+	default:
+		return "unknown"
+	}
+}
 
 const (
 	// ComparisonNever specifies that the comparison should never pass.
@@ -65,6 +93,30 @@ const (
 // Comparison specifies the comparison function.
 type Comparison uint8
 
+// String returns the string representation of the Comparison.
+func (m Comparison) String() string {
+	switch m {
+	case ComparisonNever:
+		return "never"
+	case ComparisonLess:
+		return "less"
+	case ComparisonEqual:
+		return "equal"
+	case ComparisonLessOrEqual:
+		return "less-or-equal"
+	case ComparisonGreater:
+		return "greater"
+	case ComparisonNotEqual:
+		return "not-equal"
+	case ComparisonGreaterOrEqual:
+		return "greater-or-equal"
+	case ComparisonAlways:
+		return "always"
+	default:
+		return "unknown"
+	}
+}
+
 const (
 	// WrapModeClamp indicates that the texture coordinates should
 	// be clamped to the range [0, 1].
@@ -83,6 +135,20 @@ const (
 // modes.
 type WrapMode uint8
 
+// String returns the string representation of the WrapMode.
+func (m WrapMode) String() string {
+	switch m {
+	case WrapModeClamp:
+		return "clamp"
+	case WrapModeRepeat:
+		return "repeat"
+	case WrapModeMirroredRepeat:
+		return "mirrored-repeat"
+	default:
+		return "unknown"
+	}
+}
+
 const (
 	// FilterModeNearest indicates that the nearest texel should be
 	// used for sampling.
@@ -100,3 +166,17 @@ const (
 // FilterMode is an enumeration of the supported texture filtering
 // modes.
 type FilterMode uint8
+
+// String returns the string representation of the FilterMode.
+func (m FilterMode) String() string {
+	switch m {
+	case FilterModeNearest:
+		return "nearest"
+	case FilterModeLinear:
+		return "linear"
+	case FilterModeAnisotropic:
+		return "anisotropic"
+	default:
+		return "unknown"
+	}
+}

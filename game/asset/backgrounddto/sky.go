@@ -1,4 +1,4 @@
-package asset
+package backgrounddto
 
 // Sky represents the background of the scene.
 type Sky struct {

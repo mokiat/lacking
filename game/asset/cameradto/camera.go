@@ -1,4 +1,4 @@
-package asset
+package cameradto
 
 import "github.com/mokiat/gomath/sprec"
 

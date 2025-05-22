@@ -9,6 +9,13 @@ import (
 	"github.com/mokiat/gomath/dprec"
 	"github.com/mokiat/gomath/sprec"
 	"github.com/mokiat/lacking/game/asset"
+	"github.com/mokiat/lacking/game/asset/animationdto"
+	"github.com/mokiat/lacking/game/asset/backgrounddto"
+	"github.com/mokiat/lacking/game/asset/hierarchydto"
+	"github.com/mokiat/lacking/game/asset/lightingdto"
+	"github.com/mokiat/lacking/game/asset/meshdto"
+	"github.com/mokiat/lacking/game/asset/physicsdto"
+	"github.com/mokiat/lacking/game/asset/shadingdto"
 	"github.com/mokiat/lacking/game/graphics/lsl"
 	"github.com/x448/float16"
 )
@@ -32,31 +39,31 @@ func NewConverter(model *Model) *Converter {
 type Converter struct {
 	model *Model
 
-	assetNodes     []asset.Node
+	assetNodes     []hierarchydto.Node
 	convertedNodes map[*Node]uint32
 
-	assetArmatures     []asset.Armature
+	assetArmatures     []meshdto.Armature
 	convertedArmatures map[*Armature]uint32
 
-	assetShaders     []asset.Shader
+	assetShaders     []shadingdto.Shader
 	convertedShaders map[*Shader]uint32
 
-	assetTextures     []asset.Texture
+	assetTextures     []shadingdto.Texture
 	convertedTextures map[*Texture]uint32
 
-	assetMaterials     []asset.Material
+	assetMaterials     []shadingdto.Material
 	convertedMaterials map[*Material]uint32
 
-	assetGeometries     []asset.Geometry
+	assetGeometries     []meshdto.Geometry
 	convertedGeometries map[*Geometry]uint32
 
-	assetMeshDefinitions     []asset.MeshDefinition
+	assetMeshDefinitions     []meshdto.MeshDefinition
 	convertedMeshDefinitions map[*MeshDefinition]uint32
 
-	assetBodyMaterials     []asset.BodyMaterial
+	assetBodyMaterials     []physicsdto.BodyMaterial
 	convertedBodyMaterials map[*BodyMaterial]uint32
 
-	assetBodyDefinitions     []asset.BodyDefinition
+	assetBodyDefinitions     []physicsdto.BodyDefinition
 	convertedBodyDefinitions map[*BodyDefinition]uint32
 }
 
@@ -66,13 +73,13 @@ func (c *Converter) Convert() (asset.Model, error) {
 
 func (c *Converter) convertModel(s *Model) (asset.Model, error) {
 	var (
-		assetMeshes            []asset.Mesh
-		assetBodies            []asset.Body
-		assetAmbientLights     []asset.AmbientLight
-		assetPointLights       []asset.PointLight
-		assetSpotLights        []asset.SpotLight
-		assetDirectionalLights []asset.DirectionalLight
-		assetSkies             []asset.Sky
+		assetMeshes            []meshdto.Mesh
+		assetBodies            []physicsdto.Body
+		assetAmbientLights     []lightingdto.AmbientLight
+		assetPointLights       []lightingdto.PointLight
+		assetSpotLights        []lightingdto.SpotLight
+		assetDirectionalLights []lightingdto.DirectionalLight
+		assetSkies             []backgrounddto.Sky
 	)
 
 	nodes := s.FlattenNodes()
@@ -86,18 +93,18 @@ func (c *Converter) convertModel(s *Model) (asset.Model, error) {
 	}
 
 	for i, node := range nodes {
-		parentIndex := asset.UnspecifiedNodeIndex
+		parentIndex := hierarchydto.UnspecifiedNodeIndex
 		if pIndex, ok := c.convertedNodes[node.Parent()]; ok {
 			parentIndex = int32(pIndex)
 		}
 
-		c.assetNodes = append(c.assetNodes, asset.Node{
+		c.assetNodes = append(c.assetNodes, hierarchydto.Node{
 			Name:        node.Name(),
 			ParentIndex: parentIndex,
 			Translation: node.Translation(),
 			Rotation:    node.Rotation(),
 			Scale:       node.Scale(),
-			Mask:        asset.NodeMaskNone,
+			Mask:        hierarchydto.NodeMaskNone,
 		})
 
 		switch source := node.source.(type) {
@@ -139,71 +146,76 @@ func (c *Converter) convertModel(s *Model) (asset.Model, error) {
 		}
 	}
 
-	assetAnimations := make([]asset.Animation, len(c.model.animations))
+	assetAnimations := make([]animationdto.Animation, len(c.model.animations))
 	for i, animation := range c.model.animations {
 		assetAnimations[i] = c.convertAnimation(animation)
 	}
 
-	assetBlobs := make([]asset.Blob, len(c.model.blobs))
-	for i, blob := range c.model.blobs {
-		assetBlobs[i] = asset.Blob{
-			Name: blob.Name,
-			Data: blob.Data,
-		}
-	}
-
 	return asset.Model{
-		Nodes:             c.assetNodes,
-		Animations:        assetAnimations,
-		Armatures:         c.assetArmatures,
-		Shaders:           c.assetShaders,
-		Textures:          c.assetTextures,
-		Materials:         c.assetMaterials,
-		Geometries:        c.assetGeometries,
-		MeshDefinitions:   c.assetMeshDefinitions,
-		Meshes:            assetMeshes,
-		BodyMaterials:     c.assetBodyMaterials,
-		BodyDefinitions:   c.assetBodyDefinitions,
-		Bodies:            assetBodies,
-		AmbientLights:     assetAmbientLights,
-		PointLights:       assetPointLights,
-		SpotLights:        assetSpotLights,
-		DirectionalLights: assetDirectionalLights,
-		Skies:             assetSkies,
-		Blobs:             assetBlobs,
+		HierarchyChunk: hierarchydto.HierarchyChunk{
+			Nodes: c.assetNodes,
+		},
+		AnimationChunk: animationdto.AnimationChunk{
+			Animations: assetAnimations,
+		},
+		ShadingChunk: shadingdto.ShadingChunk{
+			Shaders:   c.assetShaders,
+			Textures:  c.assetTextures,
+			Materials: c.assetMaterials,
+		},
+		MeshChunk: meshdto.MeshChunk{
+			Armatures:       c.assetArmatures,
+			Geometries:      c.assetGeometries,
+			MeshDefinitions: c.assetMeshDefinitions,
+			Meshes:          assetMeshes,
+		},
+		PhysicsChunk: physicsdto.PhysicsChunk{
+			BodyMaterials:   c.assetBodyMaterials,
+			BodyDefinitions: c.assetBodyDefinitions,
+			Bodies:          assetBodies,
+		},
+		LightingChunk: lightingdto.LightingChunk{
+			AmbientLights:     assetAmbientLights,
+			PointLights:       assetPointLights,
+			SpotLights:        assetSpotLights,
+			DirectionalLights: assetDirectionalLights,
+		},
+		BackgroundChunk: backgrounddto.BackgroundChunk{
+			Skies: assetSkies,
+		},
 	}, nil
 }
 
-func (c *Converter) convertAnimation(animation *Animation) asset.Animation {
-	assetAnimation := asset.Animation{
+func (c *Converter) convertAnimation(animation *Animation) animationdto.Animation {
+	assetAnimation := animationdto.Animation{
 		Name:      animation.name,
 		StartTime: animation.startTime,
 		EndTime:   animation.endTime,
-		Bindings:  make([]asset.AnimationBinding, len(animation.bindings)),
+		Bindings:  make([]animationdto.AnimationBinding, len(animation.bindings)),
 	}
 	for i, binding := range animation.bindings {
-		translationKeyframes := make([]asset.AnimationKeyframe[dprec.Vec3], len(binding.translationKeyframes))
+		translationKeyframes := make([]animationdto.AnimationKeyframe[dprec.Vec3], len(binding.translationKeyframes))
 		for j, keyframe := range binding.translationKeyframes {
-			translationKeyframes[j] = asset.AnimationKeyframe[dprec.Vec3]{
+			translationKeyframes[j] = animationdto.AnimationKeyframe[dprec.Vec3]{
 				Timestamp: keyframe.Timestamp,
 				Value:     keyframe.Value,
 			}
 		}
-		rotationKeyframes := make([]asset.AnimationKeyframe[dprec.Quat], len(binding.rotationKeyframes))
+		rotationKeyframes := make([]animationdto.AnimationKeyframe[dprec.Quat], len(binding.rotationKeyframes))
 		for j, keyframe := range binding.rotationKeyframes {
-			rotationKeyframes[j] = asset.AnimationKeyframe[dprec.Quat]{
+			rotationKeyframes[j] = animationdto.AnimationKeyframe[dprec.Quat]{
 				Timestamp: keyframe.Timestamp,
 				Value:     keyframe.Value,
 			}
 		}
-		scaleKeyframes := make([]asset.AnimationKeyframe[dprec.Vec3], len(binding.scaleKeyframes))
+		scaleKeyframes := make([]animationdto.AnimationKeyframe[dprec.Vec3], len(binding.scaleKeyframes))
 		for j, keyframe := range binding.scaleKeyframes {
-			scaleKeyframes[j] = asset.AnimationKeyframe[dprec.Vec3]{
+			scaleKeyframes[j] = animationdto.AnimationKeyframe[dprec.Vec3]{
 				Timestamp: keyframe.Timestamp,
 				Value:     keyframe.Value,
 			}
 		}
-		assetAnimation.Bindings[i] = asset.AnimationBinding{
+		assetAnimation.Bindings[i] = animationdto.AnimationBinding{
 			NodeName:             binding.nodeName,
 			TranslationKeyframes: translationKeyframes,
 			RotationKeyframes:    rotationKeyframes,
@@ -213,12 +225,12 @@ func (c *Converter) convertAnimation(animation *Animation) asset.Animation {
 	return assetAnimation
 }
 
-func (c *Converter) convertMaterialPass(pass *MaterialPass) (asset.MaterialPass, error) {
+func (c *Converter) convertMaterialPass(pass *MaterialPass) (shadingdto.MaterialPass, error) {
 	shaderIndex, err := c.convertShader(pass.shader)
 	if err != nil {
-		return asset.MaterialPass{}, fmt.Errorf("error converting shader: %w", err)
+		return shadingdto.MaterialPass{}, fmt.Errorf("error converting shader: %w", err)
 	}
-	return asset.MaterialPass{
+	return shadingdto.MaterialPass{
 		Layer:           int32(pass.layer),
 		Culling:         pass.culling,
 		FrontFace:       pass.frontFace,
@@ -245,15 +257,15 @@ func (c *Converter) convertMaterial(material *Material) (uint32, error) {
 		return 0, fmt.Errorf("error converting properties: %w", err)
 	}
 
-	assetMaterial := asset.Material{
+	assetMaterial := shadingdto.Material{
 		Name:                 material.name,
 		Textures:             textures,
 		Properties:           properties,
-		GeometryPasses:       make([]asset.MaterialPass, len(material.geometryPasses)),
-		ShadowPasses:         make([]asset.MaterialPass, len(material.shadowPasses)),
-		ForwardPasses:        make([]asset.MaterialPass, len(material.forwardPasses)),
-		SkyPasses:            make([]asset.MaterialPass, len(material.skyPasses)),
-		PostprocessingPasses: make([]asset.MaterialPass, len(material.postprocessingPasses)),
+		GeometryPasses:       make([]shadingdto.MaterialPass, len(material.geometryPasses)),
+		ShadowPasses:         make([]shadingdto.MaterialPass, len(material.shadowPasses)),
+		ForwardPasses:        make([]shadingdto.MaterialPass, len(material.forwardPasses)),
+		SkyPasses:            make([]shadingdto.MaterialPass, len(material.skyPasses)),
+		PostprocessingPasses: make([]shadingdto.MaterialPass, len(material.postprocessingPasses)),
 	}
 	for i, pass := range material.geometryPasses {
 		assetPass, err := c.convertMaterialPass(pass)
@@ -302,7 +314,7 @@ func (c *Converter) convertBodyMaterial(material *BodyMaterial) (uint32, error) 
 		return index, nil
 	}
 
-	assetMaterial := asset.BodyMaterial{
+	assetMaterial := physicsdto.BodyMaterial{
 		FrictionCoefficient:    material.frictionCoefficient,
 		RestitutionCoefficient: material.restitutionCoefficient,
 	}
@@ -323,14 +335,14 @@ func (c *Converter) convertBodyDefinition(definition *BodyDefinition) (uint32, e
 		return 0, fmt.Errorf("error converting body material: %w", err)
 	}
 
-	assetDefinition := asset.BodyDefinition{
+	assetDefinition := physicsdto.BodyDefinition{
 		MaterialIndex:     materialIndex,
 		Mass:              definition.mass,
 		MomentOfInertia:   definition.momentOfInertia,
 		DragFactor:        definition.dragFactor,
 		AngularDragFactor: definition.angularDragFactor,
-		CollisionBoxes: gog.Map(definition.collisionBoxes, func(box *CollisionBox) asset.CollisionBox {
-			return asset.CollisionBox{
+		CollisionBoxes: gog.Map(definition.collisionBoxes, func(box *CollisionBox) physicsdto.CollisionBox {
+			return physicsdto.CollisionBox{
 				Translation: box.Translation(),
 				Rotation:    box.Rotation(),
 				Width:       box.Width(),
@@ -338,18 +350,18 @@ func (c *Converter) convertBodyDefinition(definition *BodyDefinition) (uint32, e
 				Length:      box.Length(),
 			}
 		}),
-		CollisionSpheres: gog.Map(definition.collisionSpheres, func(sphere *CollisionSphere) asset.CollisionSphere {
-			return asset.CollisionSphere{
+		CollisionSpheres: gog.Map(definition.collisionSpheres, func(sphere *CollisionSphere) physicsdto.CollisionSphere {
+			return physicsdto.CollisionSphere{
 				Translation: sphere.Translation(),
 				Radius:      sphere.Radius(),
 			}
 		}),
-		CollisionMeshes: gog.Map(definition.collisionMeshes, func(mesh *CollisionMesh) asset.CollisionMesh {
-			return asset.CollisionMesh{
+		CollisionMeshes: gog.Map(definition.collisionMeshes, func(mesh *CollisionMesh) physicsdto.CollisionMesh {
+			return physicsdto.CollisionMesh{
 				Translation: mesh.Translation(),
 				Rotation:    mesh.Rotation(),
-				Triangles: gog.Map(mesh.Triangles(), func(triangle CollisionTriangle) asset.CollisionTriangle {
-					return asset.CollisionTriangle{
+				Triangles: gog.Map(mesh.Triangles(), func(triangle CollisionTriangle) physicsdto.CollisionTriangle {
+					return physicsdto.CollisionTriangle{
 						A: triangle.A,
 						B: triangle.B,
 						C: triangle.C,
@@ -365,33 +377,33 @@ func (c *Converter) convertBodyDefinition(definition *BodyDefinition) (uint32, e
 	return index, nil
 }
 
-func (c *Converter) convertBody(nodeIndex uint32, body *Body) (asset.Body, error) {
+func (c *Converter) convertBody(nodeIndex uint32, body *Body) (physicsdto.Body, error) {
 	bodyDefinitionIndex, err := c.convertBodyDefinition(body.definition)
 	if err != nil {
-		return asset.Body{}, fmt.Errorf("error converting body definition: %w", err)
+		return physicsdto.Body{}, fmt.Errorf("error converting body definition: %w", err)
 	}
-	return asset.Body{
+	return physicsdto.Body{
 		NodeIndex:           nodeIndex,
 		BodyDefinitionIndex: bodyDefinitionIndex,
 	}, nil
 }
 
-func (c *Converter) convertMesh(nodeIndex uint32, mesh *Mesh) (asset.Mesh, error) {
+func (c *Converter) convertMesh(nodeIndex uint32, mesh *Mesh) (meshdto.Mesh, error) {
 	meshDefinitionIndex, err := c.convertMeshDefinition(mesh.definition)
 	if err != nil {
-		return asset.Mesh{}, fmt.Errorf("error converting mesh definition: %w", err)
+		return meshdto.Mesh{}, fmt.Errorf("error converting mesh definition: %w", err)
 	}
 
-	var armatureIndex = asset.UnspecifiedArmatureIndex
+	var armatureIndex = meshdto.UnspecifiedArmatureIndex
 	if mesh.armature != nil {
 		assetArmatureIndex, err := c.convertArmature(mesh.armature)
 		if err != nil {
-			return asset.Mesh{}, fmt.Errorf("error converting armature: %w", err)
+			return meshdto.Mesh{}, fmt.Errorf("error converting armature: %w", err)
 		}
 		armatureIndex = int32(assetArmatureIndex)
 	}
 
-	return asset.Mesh{
+	return meshdto.Mesh{
 		NodeIndex:           nodeIndex,
 		MeshDefinitionIndex: meshDefinitionIndex,
 		ArmatureIndex:       armatureIndex,
@@ -435,7 +447,7 @@ func (c *Converter) convertGeometry(geometry *Geometry) (uint32, error) {
 		coordOffset = stride
 		stride += 3 * sizeFloat
 	} else {
-		coordBufferIndex = asset.UnspecifiedBufferIndex
+		coordBufferIndex = meshdto.UnspecifiedBufferIndex
 	}
 	if layout&VertexFormatNormal != 0 {
 		normalBufferIndex = 0
@@ -443,7 +455,7 @@ func (c *Converter) convertGeometry(geometry *Geometry) (uint32, error) {
 		stride += 3 * sizeHalfFloat
 		stride += sizeHalfFloat // due to alignment requirements
 	} else {
-		normalBufferIndex = asset.UnspecifiedBufferIndex
+		normalBufferIndex = meshdto.UnspecifiedBufferIndex
 	}
 	if layout&VertexFormatTangent != 0 {
 		tangentBufferIndex = 0
@@ -451,35 +463,35 @@ func (c *Converter) convertGeometry(geometry *Geometry) (uint32, error) {
 		stride += 3 * sizeHalfFloat
 		stride += sizeHalfFloat // due to alignment requirements
 	} else {
-		tangentBufferIndex = asset.UnspecifiedBufferIndex
+		tangentBufferIndex = meshdto.UnspecifiedBufferIndex
 	}
 	if layout&VertexFormatTexCoord != 0 {
 		texCoordBufferIndex = 0
 		texCoordOffset = stride
 		stride += 2 * sizeHalfFloat
 	} else {
-		texCoordBufferIndex = asset.UnspecifiedBufferIndex
+		texCoordBufferIndex = meshdto.UnspecifiedBufferIndex
 	}
 	if layout&VertexFormatColor != 0 {
 		colorBufferIndex = 0
 		colorOffset = stride
 		stride += 4 * sizeUnsignedByte
 	} else {
-		colorBufferIndex = asset.UnspecifiedBufferIndex
+		colorBufferIndex = meshdto.UnspecifiedBufferIndex
 	}
 	if layout&VertexFormatWeights != 0 {
 		weightsBufferIndex = 0
 		weightsOffset = stride
 		stride += 4 * sizeUnsignedByte
 	} else {
-		weightsBufferIndex = asset.UnspecifiedBufferIndex
+		weightsBufferIndex = meshdto.UnspecifiedBufferIndex
 	}
 	if layout&VertexFormatJoints != 0 {
 		jointsBufferIndex = 0
 		jointsOffset = stride
 		stride += 4 * sizeUnsignedByte
 	} else {
-		jointsBufferIndex = asset.UnspecifiedBufferIndex
+		jointsBufferIndex = meshdto.UnspecifiedBufferIndex
 	}
 
 	vertexData := gblob.LittleEndianBlock(make([]byte, len(geometry.vertices)*int(stride)))
@@ -550,29 +562,29 @@ func (c *Converter) convertGeometry(geometry *Geometry) (uint32, error) {
 	}
 
 	var (
-		indexLayout asset.IndexLayout
+		indexLayout meshdto.IndexLayout
 		indexData   gblob.LittleEndianBlock
 		indexSize   int
 	)
 	if len(geometry.vertices) >= 0xFFFF {
 		indexSize = sizeUnsignedInt
-		indexLayout = asset.IndexLayoutUint32
+		indexLayout = meshdto.IndexLayoutUint32
 		indexData = gblob.LittleEndianBlock(make([]byte, len(geometry.indices)*sizeUnsignedInt))
 		for i, index := range geometry.indices {
 			indexData.SetUint32(i*sizeUnsignedInt, uint32(index))
 		}
 	} else {
 		indexSize = sizeUnsignedShort
-		indexLayout = asset.IndexLayoutUint16
+		indexLayout = meshdto.IndexLayoutUint16
 		indexData = gblob.LittleEndianBlock(make([]byte, len(geometry.indices)*sizeUnsignedShort))
 		for i, index := range geometry.indices {
 			indexData.SetUint16(i*sizeUnsignedShort, uint16(index))
 		}
 	}
 
-	assetFragments := make([]asset.Fragment, 0, len(geometry.fragments))
+	assetFragments := make([]meshdto.Fragment, 0, len(geometry.fragments))
 	for _, fragment := range geometry.fragments {
-		assetFragments = append(assetFragments, asset.Fragment{
+		assetFragments = append(assetFragments, meshdto.Fragment{
 			Name:            fragment.Name(),
 			Topology:        fragment.topology,
 			IndexByteOffset: uint32(fragment.indexOffset * indexSize),
@@ -588,51 +600,51 @@ func (c *Converter) convertGeometry(geometry *Geometry) (uint32, error) {
 		)
 	}
 
-	assetGeometry := asset.Geometry{
-		VertexBuffers: []asset.VertexBuffer{
+	assetGeometry := meshdto.Geometry{
+		VertexBuffers: []meshdto.VertexBuffer{
 			{
 				Stride: stride,
 				Data:   vertexData,
 			},
 		},
-		VertexLayout: asset.VertexLayout{
-			Coord: asset.VertexAttribute{
+		VertexLayout: meshdto.VertexLayout{
+			Coord: meshdto.VertexAttribute{
 				BufferIndex: coordBufferIndex,
 				ByteOffset:  coordOffset,
-				Format:      asset.VertexAttributeFormatRGB32F,
+				Format:      meshdto.VertexAttributeFormatRGB32F,
 			},
-			Normal: asset.VertexAttribute{
+			Normal: meshdto.VertexAttribute{
 				BufferIndex: normalBufferIndex,
 				ByteOffset:  normalOffset,
-				Format:      asset.VertexAttributeFormatRGB16F,
+				Format:      meshdto.VertexAttributeFormatRGB16F,
 			},
-			Tangent: asset.VertexAttribute{
+			Tangent: meshdto.VertexAttribute{
 				BufferIndex: tangentBufferIndex,
 				ByteOffset:  tangentOffset,
-				Format:      asset.VertexAttributeFormatRGB16F,
+				Format:      meshdto.VertexAttributeFormatRGB16F,
 			},
-			TexCoord: asset.VertexAttribute{
+			TexCoord: meshdto.VertexAttribute{
 				BufferIndex: texCoordBufferIndex,
 				ByteOffset:  texCoordOffset,
-				Format:      asset.VertexAttributeFormatRG16F,
+				Format:      meshdto.VertexAttributeFormatRG16F,
 			},
-			Color: asset.VertexAttribute{
+			Color: meshdto.VertexAttribute{
 				BufferIndex: colorBufferIndex,
 				ByteOffset:  colorOffset,
-				Format:      asset.VertexAttributeFormatRGBA8UN,
+				Format:      meshdto.VertexAttributeFormatRGBA8UN,
 			},
-			Weights: asset.VertexAttribute{
+			Weights: meshdto.VertexAttribute{
 				BufferIndex: weightsBufferIndex,
 				ByteOffset:  weightsOffset,
-				Format:      asset.VertexAttributeFormatRGBA8UN,
+				Format:      meshdto.VertexAttributeFormatRGBA8UN,
 			},
-			Joints: asset.VertexAttribute{
+			Joints: meshdto.VertexAttribute{
 				BufferIndex: jointsBufferIndex,
 				ByteOffset:  jointsOffset,
-				Format:      asset.VertexAttributeFormatRGBA8IU,
+				Format:      meshdto.VertexAttributeFormatRGBA8IU,
 			},
 		},
-		IndexBuffer: asset.IndexBuffer{
+		IndexBuffer: meshdto.IndexBuffer{
 			IndexLayout: indexLayout,
 			Data:        indexData,
 		},
@@ -660,7 +672,7 @@ func (c *Converter) convertMeshDefinition(definition *MeshDefinition) (uint32, e
 	}
 	geometry := c.assetGeometries[geometryIndex]
 
-	var materialBindings []asset.MaterialBinding
+	var materialBindings []meshdto.MaterialBinding
 	for i, fragment := range geometry.Fragments {
 		material, ok := definition.materialBindings[fragment.Name]
 		if !ok {
@@ -670,13 +682,13 @@ func (c *Converter) convertMeshDefinition(definition *MeshDefinition) (uint32, e
 		if err != nil {
 			return 0, fmt.Errorf("error converting material: %w", err)
 		}
-		materialBindings = append(materialBindings, asset.MaterialBinding{
+		materialBindings = append(materialBindings, meshdto.MaterialBinding{
 			FragmentIndex: uint32(i),
 			MaterialIndex: materialIndex,
 		})
 	}
 
-	assetDefinition := asset.MeshDefinition{
+	assetDefinition := meshdto.MeshDefinition{
 		GeometryIndex:    geometryIndex,
 		MaterialBindings: materialBindings,
 	}
@@ -692,9 +704,9 @@ func (c *Converter) convertArmature(armature *Armature) (uint32, error) {
 		return index, nil
 	}
 
-	assetArmature := asset.Armature{
-		Joints: gog.Map(armature.joints, func(joint *Joint) asset.Joint {
-			return asset.Joint{
+	assetArmature := meshdto.Armature{
+		Joints: gog.Map(armature.joints, func(joint *Joint) meshdto.Joint {
+			return meshdto.Joint{
 				NodeIndex:         c.convertedNodes[joint.node],
 				InverseBindMatrix: joint.inverseBindMatrix,
 			}
@@ -707,18 +719,18 @@ func (c *Converter) convertArmature(armature *Armature) (uint32, error) {
 	return index, nil
 }
 
-func (c *Converter) convertAmbientLight(nodeIndex uint32, light *AmbientLight) (asset.AmbientLight, error) {
+func (c *Converter) convertAmbientLight(nodeIndex uint32, light *AmbientLight) (lightingdto.AmbientLight, error) {
 	reflectionTextureIndex, err := c.convertTexture(light.reflectionTexture)
 	if err != nil {
-		return asset.AmbientLight{}, fmt.Errorf("error converting reflection texture: %w", err)
+		return lightingdto.AmbientLight{}, fmt.Errorf("error converting reflection texture: %w", err)
 	}
 
 	refractionTextureIndex, err := c.convertTexture(light.refractionTexture)
 	if err != nil {
-		return asset.AmbientLight{}, fmt.Errorf("error converting refraction texture: %w", err)
+		return lightingdto.AmbientLight{}, fmt.Errorf("error converting refraction texture: %w", err)
 	}
 
-	return asset.AmbientLight{
+	return lightingdto.AmbientLight{
 		NodeIndex:              nodeIndex,
 		ReflectionTextureIndex: reflectionTextureIndex,
 		RefractionTextureIndex: refractionTextureIndex,
@@ -726,8 +738,8 @@ func (c *Converter) convertAmbientLight(nodeIndex uint32, light *AmbientLight) (
 	}, nil
 }
 
-func (c *Converter) convertPointLight(nodeIndex uint32, light *PointLight) asset.PointLight {
-	return asset.PointLight{
+func (c *Converter) convertPointLight(nodeIndex uint32, light *PointLight) lightingdto.PointLight {
+	return lightingdto.PointLight{
 		NodeIndex:    nodeIndex,
 		EmitColor:    light.EmitColor(),
 		EmitDistance: light.EmitDistance(),
@@ -735,8 +747,8 @@ func (c *Converter) convertPointLight(nodeIndex uint32, light *PointLight) asset
 	}
 }
 
-func (c *Converter) convertSpotLight(nodeIndex uint32, light *SpotLight) asset.SpotLight {
-	return asset.SpotLight{
+func (c *Converter) convertSpotLight(nodeIndex uint32, light *SpotLight) lightingdto.SpotLight {
+	return lightingdto.SpotLight{
 		NodeIndex:      nodeIndex,
 		EmitColor:      light.EmitColor(),
 		EmitDistance:   light.EmitDistance(),
@@ -746,21 +758,21 @@ func (c *Converter) convertSpotLight(nodeIndex uint32, light *SpotLight) asset.S
 	}
 }
 
-func (c *Converter) convertDirectionalLight(nodeIndex uint32, light *DirectionalLight) asset.DirectionalLight {
-	return asset.DirectionalLight{
+func (c *Converter) convertDirectionalLight(nodeIndex uint32, light *DirectionalLight) lightingdto.DirectionalLight {
+	return lightingdto.DirectionalLight{
 		NodeIndex:  nodeIndex,
 		EmitColor:  light.EmitColor(),
 		CastShadow: light.CastShadow(),
 	}
 }
 
-func (c *Converter) convertSky(nodeIndex uint32, sky *Sky) (asset.Sky, error) {
+func (c *Converter) convertSky(nodeIndex uint32, sky *Sky) (backgrounddto.Sky, error) {
 	materialIndex, err := c.convertMaterial(sky.material)
 	if err != nil {
-		return asset.Sky{}, fmt.Errorf("error converting material: %w", err)
+		return backgrounddto.Sky{}, fmt.Errorf("error converting material: %w", err)
 	}
 
-	assetSky := asset.Sky{
+	assetSky := backgrounddto.Sky{
 		NodeIndex:     nodeIndex,
 		MaterialIndex: materialIndex,
 	}
@@ -794,7 +806,7 @@ func (c *Converter) convertShader(shader *Shader) (uint32, error) {
 		return 0, fmt.Errorf("error validating shader: %w", err)
 	}
 	shaderIndex := uint32(len(c.assetShaders))
-	assetShader := asset.Shader{
+	assetShader := shadingdto.Shader{
 		ShaderType: shader.ShaderType(),
 		SourceCode: shader.SourceCode(),
 	}
@@ -803,14 +815,14 @@ func (c *Converter) convertShader(shader *Shader) (uint32, error) {
 	return shaderIndex, nil
 }
 
-func (c *Converter) convertSamplers(samplers map[string]*Sampler) ([]asset.TextureBinding, error) {
-	bindings := make([]asset.TextureBinding, 0, len(samplers))
+func (c *Converter) convertSamplers(samplers map[string]*Sampler) ([]shadingdto.TextureBinding, error) {
+	bindings := make([]shadingdto.TextureBinding, 0, len(samplers))
 	for name, sampler := range samplers {
 		textureIndex, err := c.convertTexture(sampler.texture)
 		if err != nil {
 			return nil, fmt.Errorf("error converting texture: %w", err)
 		}
-		bindings = append(bindings, asset.TextureBinding{
+		bindings = append(bindings, shadingdto.TextureBinding{
 			BindingName:  name,
 			TextureIndex: textureIndex,
 			Wrapping:     sampler.wrapMode,
@@ -834,35 +846,35 @@ func (c *Converter) convertTexture(texture *Texture) (uint32, error) {
 		return index, nil
 	}
 
-	var flags asset.TextureFlag
+	var flags shadingdto.TextureFlag
 	switch texture.Kind() {
 	case TextureKind2D:
-		flags = asset.TextureFlag2D
+		flags = shadingdto.TextureFlag2D
 	case TextureKind2DArray:
-		flags = asset.TextureFlag2DArray
+		flags = shadingdto.TextureFlag2DArray
 	case TextureKind3D:
-		flags = asset.TextureFlag3D
+		flags = shadingdto.TextureFlag3D
 	case TextureKindCube:
-		flags = asset.TextureFlagCubeMap
+		flags = shadingdto.TextureFlagCubeMap
 	default:
 		return 0, fmt.Errorf("unsupported texture kind %d", texture.Kind())
 	}
 	if isLikelyLinearSpace(texture.format) || texture.isLinear {
-		flags |= asset.TextureFlagLinearSpace
+		flags |= shadingdto.TextureFlagLinearSpace
 	}
 	if texture.generateMipmaps {
-		flags |= asset.TextureFlagMipmapping
+		flags |= shadingdto.TextureFlagMipmapping
 	}
-	assetTexture := asset.Texture{
+	assetTexture := shadingdto.Texture{
 		Format: texture.Format(),
 		Flags:  flags,
-		MipmapLayers: gog.Map(texture.mipmapLayers, func(mipLayer MipmapLayer) asset.MipmapLayer {
-			return asset.MipmapLayer{
+		MipmapLayers: gog.Map(texture.mipmapLayers, func(mipLayer MipmapLayer) shadingdto.MipmapLayer {
+			return shadingdto.MipmapLayer{
 				Width:  uint32(mipLayer.Width()),
 				Height: uint32(mipLayer.Height()),
 				Depth:  uint32(mipLayer.Depth()),
-				Layers: gog.Map(mipLayer.Layers(), func(layer TextureLayer) asset.TextureLayer {
-					return asset.TextureLayer{
+				Layers: gog.Map(mipLayer.Layers(), func(layer TextureLayer) shadingdto.TextureLayer {
+					return shadingdto.TextureLayer{
 						Data: layer.Data(),
 					}
 				}),
@@ -876,8 +888,8 @@ func (c *Converter) convertTexture(texture *Texture) (uint32, error) {
 	return index, nil
 }
 
-func (c *Converter) convertProperties(properties map[string]interface{}) ([]asset.PropertyBinding, error) {
-	bindings := make([]asset.PropertyBinding, 0, len(properties))
+func (c *Converter) convertProperties(properties map[string]interface{}) ([]shadingdto.PropertyBinding, error) {
+	bindings := make([]shadingdto.PropertyBinding, 0, len(properties))
 	for name, value := range properties {
 		var data gblob.LittleEndianBlock
 		switch value := value.(type) {
@@ -902,7 +914,7 @@ func (c *Converter) convertProperties(properties map[string]interface{}) ([]asse
 		default:
 			return nil, fmt.Errorf("unsupported property type %T", value)
 		}
-		bindings = append(bindings, asset.PropertyBinding{
+		bindings = append(bindings, shadingdto.PropertyBinding{
 			BindingName: name,
 			Data:        data,
 		})

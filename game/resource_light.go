@@ -1,11 +1,11 @@
 package game
 
 import (
-	"github.com/mokiat/lacking/game/asset"
+	"github.com/mokiat/lacking/game/asset/lightingdto"
 	"github.com/mokiat/lacking/render"
 )
 
-func (s *ResourceSet) convertAmbientLight(textures []render.Texture, assetLight asset.AmbientLight) ambientLightInstance {
+func (s *ResourceSet) convertAmbientLight(textures []render.Texture, assetLight lightingdto.AmbientLight) ambientLightInstance {
 	return ambientLightInstance{
 		nodeIndex:         int(assetLight.NodeIndex),
 		reflectionTexture: textures[assetLight.ReflectionTextureIndex],
@@ -14,7 +14,7 @@ func (s *ResourceSet) convertAmbientLight(textures []render.Texture, assetLight 
 	}
 }
 
-func (s *ResourceSet) convertPointLight(assetLight asset.PointLight) pointLightInstance {
+func (s *ResourceSet) convertPointLight(assetLight lightingdto.PointLight) pointLightInstance {
 	return pointLightInstance{
 		nodeIndex:    int(assetLight.NodeIndex),
 		emitColor:    assetLight.EmitColor,
@@ -23,7 +23,7 @@ func (s *ResourceSet) convertPointLight(assetLight asset.PointLight) pointLightI
 	}
 }
 
-func (s *ResourceSet) convertSpotLight(assetLight asset.SpotLight) spotLightInstance {
+func (s *ResourceSet) convertSpotLight(assetLight lightingdto.SpotLight) spotLightInstance {
 	return spotLightInstance{
 		nodeIndex:      int(assetLight.NodeIndex),
 		emitColor:      assetLight.EmitColor,
@@ -34,7 +34,7 @@ func (s *ResourceSet) convertSpotLight(assetLight asset.SpotLight) spotLightInst
 	}
 }
 
-func (s *ResourceSet) convertDirectionalLight(assetLight asset.DirectionalLight) directionalLightInstance {
+func (s *ResourceSet) convertDirectionalLight(assetLight lightingdto.DirectionalLight) directionalLightInstance {
 	return directionalLightInstance{
 		nodeIndex:  int(assetLight.NodeIndex),
 		emitColor:  assetLight.EmitColor,

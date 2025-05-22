@@ -30,7 +30,6 @@ type ModelDefinition struct {
 	directionalLights []directionalLightInstance
 	skyDefinitions    []*graphics.SkyDefinition
 	skies             []skyInstance
-	blobs             []blob
 }
 
 func (d *ModelDefinition) Animations() []*AnimationDefinition {
@@ -51,15 +50,6 @@ func (d *ModelDefinition) FindAnimation(name string) *AnimationDefinition {
 	for _, def := range d.animations {
 		if def.name == name {
 			return def
-		}
-	}
-	return nil
-}
-
-func (m *ModelDefinition) FindBlob(name string) []byte {
-	for _, blob := range m.blobs {
-		if blob.name == name {
-			return blob.data
 		}
 	}
 	return nil
@@ -167,8 +157,7 @@ type ModelInfo struct {
 	Scale opt.T[dprec.Vec3]
 
 	// IsDynamic determines whether the model can be repositioned once
-	// placed in the Scene.
-	// (i.e. whether it should be added to the scene hierarchy)
+	// placed in the Scene - whether it should be added to the scene hierarchy.
 	IsDynamic bool
 }
 
