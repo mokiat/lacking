@@ -11,6 +11,7 @@ import (
 	"github.com/mokiat/lacking/game/asset"
 	"github.com/mokiat/lacking/game/asset/conv/animationconv"
 	"github.com/mokiat/lacking/game/asset/conv/hierarchyconv"
+	"github.com/mokiat/lacking/game/asset/conv/physicsconv"
 	"github.com/mokiat/lacking/game/asset/dto/animationdto"
 	"github.com/mokiat/lacking/game/asset/dto/backgrounddto"
 	"github.com/mokiat/lacking/game/asset/dto/hierarchydto"
@@ -34,8 +35,6 @@ func NewConverter(model *mdl.Model) *Converter {
 		convertedMaterials:       make(map[*mdl.Material]uint32),
 		convertedGeometries:      make(map[*mdl.Geometry]uint32),
 		convertedMeshDefinitions: make(map[*mdl.MeshDefinition]uint32),
-		convertedBodyMaterials:   make(map[*mdl.BodyMaterial]uint32),
-		convertedBodyDefinitions: make(map[*mdl.BodyDefinition]uint32),
 	}
 }
 
@@ -61,12 +60,6 @@ type Converter struct {
 
 	assetMeshDefinitions     []meshdto.MeshDefinition
 	convertedMeshDefinitions map[*mdl.MeshDefinition]uint32
-
-	assetBodyMaterials     []physicsdto.BodyMaterial
-	convertedBodyMaterials map[*mdl.BodyMaterial]uint32
-
-	assetBodyDefinitions     []physicsdto.BodyDefinition
-	convertedBodyDefinitions map[*mdl.BodyDefinition]uint32
 }
 
 func (c *Converter) Convert() (asset.Model, error) {
@@ -76,7 +69,6 @@ func (c *Converter) Convert() (asset.Model, error) {
 func (c *Converter) convertModel(s *mdl.Model) (asset.Model, error) {
 	var (
 		assetMeshes            []meshdto.Mesh
-		assetBodies            []physicsdto.Body
 		assetAmbientLights     []lightingdto.AmbientLight
 		assetPointLights       []lightingdto.PointLight
 		assetSpotLights        []lightingdto.SpotLight
@@ -91,14 +83,6 @@ func (c *Converter) convertModel(s *mdl.Model) (asset.Model, error) {
 	}
 
 	for i, node := range s.NodesIter() {
-		switch source := node.Source().(type) {
-		case *mdl.Body:
-			assetBody, err := c.convertBody(uint32(i), source)
-			if err != nil {
-				return asset.Model{}, fmt.Errorf("error converting body %q: %w", node.Name(), err)
-			}
-			assetBodies = append(assetBodies, assetBody)
-		}
 		switch target := node.Target().(type) {
 		case *mdl.Mesh:
 			assetMesh, err := c.convertMesh(uint32(i), target)
@@ -153,11 +137,7 @@ func (c *Converter) convertModel(s *mdl.Model) (asset.Model, error) {
 			},
 		},
 		PhysicsChunkHolder: physicsdto.PhysicsChunkHolder{
-			PhysicsChunk: &physicsdto.PhysicsChunk{
-				BodyMaterials:   c.assetBodyMaterials,
-				BodyDefinitions: c.assetBodyDefinitions,
-				Bodies:          assetBodies,
-			},
+			PhysicsChunk: physicsconv.CreatePhysicsChunk(c.model),
 		},
 		LightingChunkHolder: lightingdto.LightingChunkHolder{
 			LightingChunk: &lightingdto.LightingChunk{
@@ -257,85 +237,6 @@ func (c *Converter) convertMaterial(material *mdl.Material) (uint32, error) {
 	c.assetMaterials = append(c.assetMaterials, assetMaterial)
 	c.convertedMaterials[material] = index
 	return index, nil
-}
-
-func (c *Converter) convertBodyMaterial(material *mdl.BodyMaterial) (uint32, error) {
-	if index, ok := c.convertedBodyMaterials[material]; ok {
-		return index, nil
-	}
-
-	assetMaterial := physicsdto.BodyMaterial{
-		FrictionCoefficient:    material.FrictionCoefficient(),
-		RestitutionCoefficient: material.RestitutionCoefficient(),
-	}
-
-	index := uint32(len(c.assetBodyMaterials))
-	c.assetBodyMaterials = append(c.assetBodyMaterials, assetMaterial)
-	c.convertedBodyMaterials[material] = index
-	return index, nil
-}
-
-func (c *Converter) convertBodyDefinition(definition *mdl.BodyDefinition) (uint32, error) {
-	if index, ok := c.convertedBodyDefinitions[definition]; ok {
-		return index, nil
-	}
-
-	materialIndex, err := c.convertBodyMaterial(definition.Material())
-	if err != nil {
-		return 0, fmt.Errorf("error converting body material: %w", err)
-	}
-
-	assetDefinition := physicsdto.BodyDefinition{
-		MaterialIndex:     materialIndex,
-		Mass:              definition.Mass(),
-		MomentOfInertia:   definition.MomentOfInertia(),
-		DragFactor:        definition.DragFactor(),
-		AngularDragFactor: definition.AngularDragFactor(),
-		CollisionBoxes: gog.Map(definition.CollisionBoxes(), func(box *mdl.CollisionBox) physicsdto.CollisionBox {
-			return physicsdto.CollisionBox{
-				Translation: box.Translation(),
-				Rotation:    box.Rotation(),
-				Width:       box.Width(),
-				Height:      box.Height(),
-				Length:      box.Length(),
-			}
-		}),
-		CollisionSpheres: gog.Map(definition.CollisionSpheres(), func(sphere *mdl.CollisionSphere) physicsdto.CollisionSphere {
-			return physicsdto.CollisionSphere{
-				Translation: sphere.Translation(),
-				Radius:      sphere.Radius(),
-			}
-		}),
-		CollisionMeshes: gog.Map(definition.CollisionMeshes(), func(mesh *mdl.CollisionMesh) physicsdto.CollisionMesh {
-			return physicsdto.CollisionMesh{
-				Translation: mesh.Translation(),
-				Rotation:    mesh.Rotation(),
-				Triangles: gog.Map(mesh.Triangles(), func(triangle mdl.CollisionTriangle) physicsdto.CollisionTriangle {
-					return physicsdto.CollisionTriangle{
-						A: triangle.A,
-						B: triangle.B,
-						C: triangle.C,
-					}
-				}),
-			}
-		}),
-	}
-
-	index := uint32(len(c.assetBodyDefinitions))
-	c.assetBodyDefinitions = append(c.assetBodyDefinitions, assetDefinition)
-	c.convertedBodyDefinitions[definition] = index
-	return index, nil
-}
-
-func (c *Converter) convertBody(nodeIndex uint32, body *mdl.Body) (physicsdto.Body, error) {
-	bodyDefinitionIndex, err := c.convertBodyDefinition(body.Definition())
-	if err != nil {
-		return physicsdto.Body{}, fmt.Errorf("error converting body definition: %w", err)
-	}
-	return physicsdto.Body{
-		NodeIndex:           nodeIndex,
-		BodyDefinitionIndex: bodyDefinitionIndex,
-	}, nil
 }
 
 func (c *Converter) convertMesh(nodeIndex uint32, mesh *mdl.Mesh) (meshdto.Mesh, error) {
