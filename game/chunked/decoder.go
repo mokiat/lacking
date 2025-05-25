@@ -13,30 +13,50 @@ type decoder struct {
 }
 
 func (d decoder) Decode(target any) error {
-	return d.decodeValue(reflect.ValueOf(target))
+	value := reflect.ValueOf(target)
+	if (value.Kind() == reflect.Pointer) && value.IsNil() {
+		value.Set(reflect.New(value.Type().Elem()))
+	}
+
+	chunkValues := make(map[uuid.UUID]reflect.Value)
+	consumer := d.exploreValue(value, chunkValues)
+	return d.decodeChunks(chunkValues, consumer)
 }
 
-func (d decoder) decodeValue(value reflect.Value) error {
-	if value.Kind() == reflect.Pointer {
-		if value.IsNil() {
-			value.Set(reflect.New(value.Type().Elem()))
-		}
-		value = value.Elem()
-	} else {
-		return fmt.Errorf("expected pointer to struct but got %s", value.Kind())
-	}
+func (d decoder) exploreValue(value reflect.Value, chunkValues map[uuid.UUID]reflect.Value) ChunkConsumer {
+	var consumer ChunkConsumer
 
-	if value.Kind() != reflect.Struct {
-		return fmt.Errorf("expected pointer to struct but got %s", value.Kind())
-	}
-
-	chunkIndices := make(map[uuid.UUID]int)
-	for i := range value.NumField() {
-		if id, ok := d.decodeChunkID(value.Field(i)); ok {
-			chunkIndices[id] = i
+	if value.Type().Implements(chunkConsumerType) {
+		if value.Kind() != reflect.Pointer || !value.IsNil() {
+			consumer = value.Interface().(ChunkConsumer)
 		}
 	}
 
+	if value.Type().Implements(chunkType) {
+		tempValue := value
+		if tempValue.Kind() == reflect.Pointer && tempValue.IsNil() {
+			tempValue = reflect.New(tempValue.Type().Elem())
+		}
+		chunk := tempValue.Interface().(Chunk)
+		chunkValues[chunk.ChunkID()] = value
+	}
+
+	if (value.Kind() == reflect.Pointer) && !value.IsNil() {
+		derefValue := value.Elem()
+		if derefValue.Kind() == reflect.Struct {
+			for i := range derefValue.NumField() {
+				field := derefValue.Field(i)
+				if cons := d.exploreValue(field, chunkValues); cons != nil && consumer == nil {
+					consumer = cons
+				}
+			}
+		}
+	}
+
+	return consumer
+}
+
+func (d decoder) decodeChunks(chunkValues map[uuid.UUID]reflect.Value, consumer ChunkConsumer) error {
 	for {
 		var header chunkHeader
 		if err := d.in.Decode(&header); err != nil {
@@ -46,30 +66,31 @@ func (d decoder) decodeValue(value reflect.Value) error {
 			return nil // EOF chunk reached
 		}
 
-		fieldIndex, ok := chunkIndices[header.ChunkID]
-		if !ok {
-			// TODO: Handle preservation of unknown chunks through an interface API.
-			if err := d.skip(int(header.ChunkSize)); err != nil {
-				return fmt.Errorf("error skipping chunk: %w", err)
+		if value, ok := chunkValues[header.ChunkID]; ok {
+			if (value.Kind() == reflect.Pointer) && value.IsNil() {
+				value.Set(reflect.New(value.Type().Elem()))
 			}
-			continue
+			target := value.Interface()
+			if err := d.in.Decode(target); err != nil {
+				return fmt.Errorf("error decoding field: %w", err)
+			}
+		} else {
+			if consumer != nil {
+				target := &RawChunk{
+					ID:   header.ChunkID,
+					Data: make([]byte, header.ChunkSize),
+				}
+				if err := d.in.Decode(target); err != nil {
+					return fmt.Errorf("error decoding raw chunk: %w", err)
+				}
+				consumer.AddChunk(target)
+			} else {
+				if err := d.skip(int(header.ChunkSize)); err != nil {
+					return fmt.Errorf("error skipping chunk: %w", err)
+				}
+			}
 		}
-
-		if err := d.decodeField(value.Field(fieldIndex)); err != nil {
-			return fmt.Errorf("error decoding chunk: %w", err)
-		}
 	}
-}
-
-func (d decoder) decodeChunkID(field reflect.Value) (uuid.UUID, bool) {
-	if !field.Type().Implements(chunkType) {
-		return uuid.Nil, false
-	}
-	if field.Kind() == reflect.Pointer && field.IsNil() {
-		field = reflect.New(field.Type().Elem())
-	}
-	chunk := field.Interface().(Chunk)
-	return chunk.ChunkID(), true
 }
 
 func (d decoder) skip(size int) error {
@@ -78,17 +99,6 @@ func (d decoder) skip(size int) error {
 	}
 	if err := d.in.Decode(&destination); err != nil {
 		return err
-	}
-	return nil
-}
-
-func (d decoder) decodeField(field reflect.Value) error {
-	if (field.Kind() == reflect.Pointer) && field.IsNil() {
-		field.Set(reflect.New(field.Type().Elem()))
-	}
-	target := field.Interface()
-	if err := d.in.Decode(target); err != nil {
-		return fmt.Errorf("error decoding field: %w", err)
 	}
 	return nil
 }

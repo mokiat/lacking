@@ -77,6 +77,48 @@ var _ = Describe("Asset", func() {
 		Expect(input.PriorityChunk).To(BeNil())
 	})
 
+	It("is possible to decode a struct with chunks into a chunk consumer", func() {
+		output := EncodeModel{
+			IDChunk:       &IDChunk{Name: "test"},
+			LocationChunk: &LocationChunk{X: 1, Y: 2},
+		}
+		Expect(asset.Write(output)).To(Succeed())
+
+		var input chunked.BaseChunkHolder
+		Expect(asset.Read(&input)).To(Succeed())
+		Expect(input.Items).To(HaveLen(2))
+		for _, item := range input.Items {
+			Expect(item).To(BeAssignableToTypeOf(&chunked.RawChunk{}))
+		}
+	})
+
+	It("is possible to go through raw chunks", func() {
+		output := EncodeModel{
+			IDChunk:       &IDChunk{Name: "test"},
+			LocationChunk: &LocationChunk{X: 1, Y: 2},
+		}
+		Expect(asset.Write(output)).To(Succeed())
+
+		type Wrapper struct {
+			chunked.BaseChunkHolder // nested
+		}
+		var input struct {
+			Wrapper // nested further
+		}
+		Expect(asset.Read(&input)).To(Succeed())
+		Expect(input.Items).To(HaveLen(2))
+		for _, item := range input.Items {
+			Expect(item).To(BeAssignableToTypeOf(&chunked.RawChunk{}))
+		}
+
+		Expect(asset.Write(input)).To(Succeed())
+
+		var output2 EncodeModel
+		Expect(asset.Read(&output2)).To(Succeed())
+		Expect(output.IDChunk).To(Equal(&IDChunk{Name: "test"}))
+		Expect(output.LocationChunk).To(Equal(&LocationChunk{X: 1, Y: 2}))
+	})
+
 	It("is possible to encode a non-chunked value", func() {
 		output := "example"
 		Expect(asset.Write(output)).To(Succeed())
@@ -108,7 +150,7 @@ var _ = Describe("Asset", func() {
 		Expect(asset.Write(output)).To(Succeed())
 	})
 
-	PIt("is possible to decode a chunk directly", func() {
+	It("is possible to decode a chunk directly", func() {
 		output := &IDChunk{Name: "test"}
 		Expect(asset.Write(output)).To(Succeed())
 
@@ -116,5 +158,4 @@ var _ = Describe("Asset", func() {
 		Expect(asset.Read(&input)).To(Succeed())
 		Expect(input).To(Equal(IDChunk{Name: "test"}))
 	})
-
 })
