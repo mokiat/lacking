@@ -12,51 +12,53 @@ type encoder struct {
 }
 
 func (e encoder) Encode(source any) error {
-	return e.encodeValue(reflect.ValueOf(source))
+	value := reflect.ValueOf(source)
+	if err := e.encodeValue(value); err != nil {
+		return fmt.Errorf("error encoding source: %w", err)
+	}
+	if err := e.encodeChunk(eofChunk{}); err != nil {
+		return fmt.Errorf("error encoding EOF chunk: %w", err)
+	}
+	return nil
 }
 
 func (e encoder) encodeValue(value reflect.Value) error {
 	if value.Kind() == reflect.Pointer {
+		if value.IsNil() {
+			return nil // skipping nil values
+		}
 		value = value.Elem()
 	}
-	if value.Kind() != reflect.Struct {
-		return fmt.Errorf("expected struct or pointer to struct but got %s", value.Kind())
-	}
 
-	fieldCount := value.NumField()
-	if err := e.out.Encode(uint16(fieldCount)); err != nil {
-		return fmt.Errorf("error writing chunk count: %w", err)
-	}
-
-	for i := range fieldCount {
-		field := value.Field(i)
-		if err := e.encodeField(field); err != nil {
-			return fmt.Errorf("error encoding field %d: %w", i, err)
+	// Check if the value is a ChunkProvider.
+	if value.Type().Implements(chunkProviderType) {
+		provider := value.Interface().(ChunkProvider)
+		for _, chunk := range provider.Chunks() {
+			if err := e.encodeChunk(chunk); err != nil {
+				return fmt.Errorf("error encoding chunk from provider: %w", err)
+			}
 		}
 	}
 
-	// TODO: Handle preservation of unknown chunks through an interface API.
+	// Check if the value itself is a Chunk.
+	if value.Type().Implements(chunkType) {
+		chunk := value.Interface().(Chunk)
+		if err := e.encodeChunk(chunk); err != nil {
+			return fmt.Errorf("error encoding chunk: %w", err)
+		}
+	}
+
+	// Check if the value is a struct.
+	if value.Kind() == reflect.Struct {
+		for i := range value.NumField() {
+			field := value.Field(i)
+			if err := e.encodeValue(field); err != nil {
+				return fmt.Errorf("error encoding field %d: %w", i, err)
+			}
+		}
+	}
 
 	return nil
-}
-
-func (e encoder) encodeField(field reflect.Value) error {
-	if field.Kind() == reflect.Pointer {
-		if field.IsNil() {
-			return e.encodeChunk(nilChunk{})
-		}
-		field = field.Elem()
-	}
-	if field.Kind() != reflect.Struct {
-		return fmt.Errorf("expected struct or pointer to struct but got %s", field.Kind())
-	}
-
-	if !field.Type().Implements(chunkType) {
-		return fmt.Errorf("expected chunk type but got %s", field.Type())
-	}
-	chunk := field.Interface().(Chunk)
-
-	return e.encodeChunk(chunk)
 }
 
 func (e encoder) encodeChunk(chunk Chunk) error {
@@ -65,7 +67,7 @@ func (e encoder) encodeChunk(chunk Chunk) error {
 		return fmt.Errorf("error measuring chunk size: %w", err)
 	}
 
-	header := ChunkHeader{
+	header := chunkHeader{
 		ChunkID:   chunk.ChunkID(),
 		ChunkSize: size,
 	}

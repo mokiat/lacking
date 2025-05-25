@@ -7,25 +7,40 @@ import (
 )
 
 var (
-	chunkType = reflect.TypeFor[Chunk]()
+	chunkType         = reflect.TypeFor[Chunk]()
+	chunkProviderType = reflect.TypeFor[ChunkProvider]()
 )
 
 type Chunk interface {
 	ChunkID() uuid.UUID
 }
 
-type ChunkHeader struct {
+type ChunkProvider interface {
+	Chunks() []Chunk
+}
+
+type ChunkList []Chunk
+
+func (l ChunkList) Chunks() []Chunk {
+	return l
+}
+
+type chunkHeader struct {
 	ChunkID   uuid.UUID
 	ChunkSize uint32
 }
 
-type UnknownChunk struct {
-	ID   uuid.UUID
-	Data []byte
-}
+type eofChunk struct{}
 
-type nilChunk struct{}
-
-func (c nilChunk) ChunkID() uuid.UUID {
+func (c eofChunk) ChunkID() uuid.UUID {
 	return uuid.Nil
 }
+
+// type UnknownChunk struct {
+// 	ID   uuid.UUID
+// 	Data []byte
+// }
+
+// func (c UnknownChunk) ChunkID() uuid.UUID {
+// 	return c.ID
+// }

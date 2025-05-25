@@ -37,15 +37,13 @@ func (d decoder) decodeValue(value reflect.Value) error {
 		}
 	}
 
-	var chunkCount uint16
-	if err := d.in.Decode(&chunkCount); err != nil {
-		return fmt.Errorf("error reading chunk count: %w", err)
-	}
-
-	for range chunkCount {
-		var header ChunkHeader
+	for {
+		var header chunkHeader
 		if err := d.in.Decode(&header); err != nil {
 			return fmt.Errorf("error reading chunk header: %w", err)
+		}
+		if header.ChunkID == uuid.Nil {
+			return nil // EOF chunk reached
 		}
 
 		fieldIndex, ok := chunkIndices[header.ChunkID]
@@ -61,8 +59,6 @@ func (d decoder) decodeValue(value reflect.Value) error {
 			return fmt.Errorf("error decoding chunk: %w", err)
 		}
 	}
-
-	return nil
 }
 
 func (d decoder) decodeChunkID(field reflect.Value) (uuid.UUID, bool) {

@@ -28,35 +28,93 @@ var _ = Describe("Asset", func() {
 		asset = chunked.NewAsset(storage, "example.dat")
 	})
 
-	When("an asset is encoded", func() {
-		BeforeEach(func() {
-			model := EncodeModel{
-				IDChunk:       &IDChunk{Name: "test"},
-				LocationChunk: &LocationChunk{X: 1, Y: 2},
-			}
-			Expect(asset.Write(model)).To(Succeed())
-		})
-
-		It("is possible to decode it into a different model", func() {
-			var model DecodeModel
-			Expect(asset.Read(&model)).To(Succeed())
-			Expect(model.LocationChunk).To(Equal(&LocationChunk{X: 1, Y: 2}))
-			Expect(model.PriorityChunk).To(BeNil())
-		})
+	It("is possible to encode a struct with nil chunks", func() {
+		output := EncodeModel{}
+		Expect(asset.Write(output)).To(Succeed())
 	})
 
-	When("an asset with nil chunks is encoded", func() {
-		BeforeEach(func() {
-			model := EncodeModel{}
-			Expect(asset.Write(model)).To(Succeed())
-		})
+	It("is possible to decode a struct with nil chunks", func() {
+		output := EncodeModel{}
+		Expect(asset.Write(output)).To(Succeed())
 
-		It("produces an empty asset", func() {
-			var model EncodeModel
-			Expect(asset.Read(&model)).To(Succeed())
-			Expect(model.IDChunk).To(BeNil())
-			Expect(model.LocationChunk).To(BeNil())
-		})
+		var input EncodeModel
+		Expect(asset.Read(&input)).To(Succeed())
+		Expect(input.IDChunk).To(BeNil())
+		Expect(input.LocationChunk).To(BeNil())
+	})
+
+	It("is possible to encode a struct with chunks", func() {
+		output := EncodeModel{
+			IDChunk:       &IDChunk{Name: "test"},
+			LocationChunk: &LocationChunk{X: 1, Y: 2},
+		}
+		Expect(asset.Write(output)).To(Succeed())
+	})
+
+	It("is possible to decode a struct with chunks", func() {
+		output := EncodeModel{
+			IDChunk:       &IDChunk{Name: "test"},
+			LocationChunk: &LocationChunk{X: 1, Y: 2},
+		}
+		Expect(asset.Write(output)).To(Succeed())
+
+		var input EncodeModel
+		Expect(asset.Read(&input)).To(Succeed())
+		Expect(input.IDChunk).To(Equal(&IDChunk{Name: "test"}))
+		Expect(input.LocationChunk).To(Equal(&LocationChunk{X: 1, Y: 2}))
+	})
+
+	It("is possible to decode a struct with chunks into a mismatching struct", func() {
+		output := EncodeModel{
+			IDChunk:       &IDChunk{Name: "test"},
+			LocationChunk: &LocationChunk{X: 1, Y: 2},
+		}
+		Expect(asset.Write(output)).To(Succeed())
+
+		var input DecodeModel
+		Expect(asset.Read(&input)).To(Succeed())
+		Expect(input.LocationChunk).To(Equal(&LocationChunk{X: 1, Y: 2}))
+		Expect(input.PriorityChunk).To(BeNil())
+	})
+
+	It("is possible to encode a non-chunked value", func() {
+		output := "example"
+		Expect(asset.Write(output)).To(Succeed())
+	})
+
+	It("is possible to encode a chunk provider", func() {
+		output := chunked.ChunkList{
+			&IDChunk{Name: "test"},
+			&LocationChunk{X: 1, Y: 2},
+		}
+		Expect(asset.Write(output)).To(Succeed())
+	})
+
+	It("is possible to decode a chunk provider into a struct model", func() {
+		output := chunked.ChunkList{
+			&IDChunk{Name: "test"},
+			&LocationChunk{X: 1, Y: 2},
+		}
+		Expect(asset.Write(output)).To(Succeed())
+
+		var input EncodeModel
+		Expect(asset.Read(&input)).To(Succeed())
+		Expect(input.IDChunk).To(Equal(&IDChunk{Name: "test"}))
+		Expect(input.LocationChunk).To(Equal(&LocationChunk{X: 1, Y: 2}))
+	})
+
+	It("is possible to encode a chunk directly", func() {
+		output := &IDChunk{Name: "test"}
+		Expect(asset.Write(output)).To(Succeed())
+	})
+
+	PIt("is possible to decode a chunk directly", func() {
+		output := &IDChunk{Name: "test"}
+		Expect(asset.Write(output)).To(Succeed())
+
+		var input IDChunk
+		Expect(asset.Read(&input)).To(Succeed())
+		Expect(input).To(Equal(IDChunk{Name: "test"}))
 	})
 
 })
