@@ -4,10 +4,15 @@ import "github.com/mokiat/gomath/dprec"
 
 const (
 	UnspecifiedNodeIndex = int32(-1)
+
+	UnspecifiedNodeID = uint32(0xFFFFFFFF)
 )
 
 // Node represents a single node in a model.
 type Node struct {
+
+	// ID is the unique identifier of the node within the file.
+	ID uint32
 
 	// Name is the name of the node.
 	Name string

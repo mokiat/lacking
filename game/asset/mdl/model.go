@@ -3,6 +3,8 @@ package mdl
 import (
 	"iter"
 	"slices"
+
+	"github.com/mokiat/gog/ds"
 )
 
 type Model struct {
@@ -58,6 +60,47 @@ func (s *Model) Animations() []*Animation {
 
 func (s *Model) AddAnimation(animation *Animation) {
 	s.animations = append(s.animations, animation)
+}
+
+func (s *Model) AllPhysicsBodyMaterials() []*BodyMaterial {
+	var result []*BodyMaterial
+	seen := ds.NewSet[*BodyMaterial](0)
+	for _, definition := range s.AllPhysicsBodyDefinitions() {
+		material := definition.Material()
+		if !seen.Contains(material) {
+			result = append(result, material)
+		}
+		seen.Add(material)
+	}
+	return result
+}
+
+func (s *Model) AllPhysicsBodyDefinitions() []*BodyDefinition {
+	var result []*BodyDefinition
+	seen := ds.NewSet[*BodyDefinition](0)
+	for _, placement := range s.AllPhysicsBodyPlacements() {
+		body := placement.Value
+		definition := body.Definition()
+		if !seen.Contains(definition) {
+			result = append(result, definition)
+		}
+		seen.Add(definition)
+	}
+	return result
+}
+
+func (s *Model) AllPhysicsBodyPlacements() []Placed[*Body] {
+	var result []Placed[*Body]
+	for _, node := range s.NodesIter() {
+		switch source := node.Source().(type) {
+		case *Body:
+			result = append(result, Placed[*Body]{
+				Node:  node,
+				Value: source,
+			})
+		}
+	}
+	return result
 }
 
 // TODO: Consider moving this to gog project.

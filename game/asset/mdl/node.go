@@ -8,6 +8,7 @@ import (
 
 func NewNode(name string) *Node {
 	return &Node{
+		id:          freeID.Add(1),
 		name:        name,
 		translation: dprec.ZeroVec3(),
 		rotation:    dprec.IdentityQuat(),
@@ -16,6 +17,7 @@ func NewNode(name string) *Node {
 }
 
 type Node struct {
+	id   uint32
 	name string
 
 	metadata Metadata
@@ -29,6 +31,10 @@ type Node struct {
 
 	parent *Node
 	nodes  []*Node
+}
+
+func (n *Node) ID() uint32 {
+	return n.id
 }
 
 func (n *Node) SetMetadata(metadata Metadata) {

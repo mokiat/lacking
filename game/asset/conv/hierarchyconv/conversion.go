@@ -23,6 +23,7 @@ func CreateHierarchyChunk(src Source) *hierarchydto.HierarchyChunk {
 			parentIndex = int32(pIndex)
 		}
 		dtoNodes[i] = hierarchydto.Node{
+			ID:          node.ID(),
 			Name:        node.Name(),
 			ParentIndex: parentIndex,
 			Translation: node.Translation(),

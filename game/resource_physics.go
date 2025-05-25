@@ -22,8 +22,8 @@ func (s *ResourceSet) convertBodyMaterial(assetBodyMaterial physicsdto.BodyMater
 	return promise
 }
 
-func (s *ResourceSet) convertBodyDefinition(bodyMaterials []*physics.Material, assetBodyDefinition physicsdto.BodyDefinition) async.Promise[*physics.BodyDefinition] {
-	material := bodyMaterials[assetBodyDefinition.MaterialIndex]
+func (s *ResourceSet) convertBodyDefinition(bodyMaterials map[uint32]*physics.Material, assetBodyDefinition physicsdto.BodyDefinition) async.Promise[*physics.BodyDefinition] {
+	material := bodyMaterials[assetBodyDefinition.MaterialID]
 
 	bodyDefinitionInfo := physics.BodyDefinitionInfo{
 		Mass:                   assetBodyDefinition.Mass,
@@ -88,9 +88,11 @@ func (s *ResourceSet) convertCollisionMeshes(bodyDef physicsdto.BodyDefinition) 
 	return result
 }
 
-func (s *ResourceSet) convertBody(assetBody physicsdto.Body) bodyInstance {
+func (s *ResourceSet) convertBody(nodes map[uint32]int, bodyDefinitions map[uint32]int, assetBody physicsdto.Body) bodyInstance {
+	nodeIndex := nodes[assetBody.NodeID]
+	bodyDefinitionIndex := bodyDefinitions[assetBody.BodyDefinitionID]
 	return bodyInstance{
-		NodeIndex:       int(assetBody.NodeIndex),
-		DefinitionIndex: int(assetBody.BodyDefinitionIndex),
+		NodeIndex:       nodeIndex,
+		DefinitionIndex: bodyDefinitionIndex,
 	}
 }

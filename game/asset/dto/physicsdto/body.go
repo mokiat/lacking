@@ -5,19 +5,25 @@ import "github.com/mokiat/gomath/dprec"
 // Body represents a physical body.
 type Body struct {
 
-	// NodeIndex is the index of the node that this body is attached to.
-	NodeIndex uint32
+	// ID is the unique identifier of the body within the file.
+	ID uint32
 
-	// BodyDefinitionIndex is the index of the body definition that this
+	// NodeID is the ID of the node that this body is attached to.
+	NodeID uint32
+
+	// BodyDefinitionID is the ID of the body definition that this
 	// body uses.
-	BodyDefinitionIndex uint32
+	BodyDefinitionID uint32
 }
 
 // BodyDefinition represents the physical properties of a body.
 type BodyDefinition struct {
 
-	// MaterialIndex is the index of the material that this body uses.
-	MaterialIndex uint32
+	// ID is the unique identifier of the body definition within the file.
+	ID uint32
+
+	// MaterialID is the ID of the physics material that this body uses.
+	MaterialID uint32
 
 	// Mass is the mass of the body.
 	Mass float64
@@ -47,6 +53,9 @@ type BodyDefinition struct {
 
 // BodyMaterial represents a physical material.
 type BodyMaterial struct {
+
+	// ID is the unique identifier of the body material within the file.
+	ID uint32
 
 	// FrictionCoefficient is the coefficient of friction of this material.
 	// Lower values mean more slippery surfaces.

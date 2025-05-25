@@ -61,6 +61,10 @@ func (s *ResourceSet) convertModel(assetModel asset.Model) (*ModelDefinition, er
 	for i, assetNode := range assetModel.HierarchyChunk.Nodes {
 		nodes[i] = s.convertNode(assetNode)
 	}
+	nodeIndexByID := make(map[uint32]int, len(assetModel.HierarchyChunk.Nodes))
+	for i, assetNode := range assetModel.HierarchyChunk.Nodes {
+		nodeIndexByID[assetNode.ID] = i
+	}
 
 	animationPromises := make([]async.Promise[*AnimationDefinition], len(assetModel.AnimationChunk.Animations))
 	for i, assetAnimation := range assetModel.AnimationChunk.Animations {
@@ -144,11 +148,15 @@ func (s *ResourceSet) convertModel(assetModel asset.Model) (*ModelDefinition, er
 	if err != nil {
 		return nil, fmt.Errorf("failed to convert body materials: %w", err)
 	}
+	bodyMaterialByID := make(map[uint32]*physics.Material, len(bodyMaterials))
+	for i, assetBodyMaterial := range assetModel.PhysicsChunk.BodyMaterials {
+		bodyMaterialByID[assetBodyMaterial.ID] = bodyMaterials[i]
+	}
 
 	bodyDefinitionPromises := make([]async.Promise[*physics.BodyDefinition], len(assetModel.PhysicsChunk.BodyDefinitions))
 	for i, assetBodyDefinition := range assetModel.PhysicsChunk.BodyDefinitions {
 		bodyDefinitionPromises[i] = s.convertBodyDefinition(
-			bodyMaterials,
+			bodyMaterialByID,
 			assetBodyDefinition,
 		)
 	}
@@ -156,10 +164,14 @@ func (s *ResourceSet) convertModel(assetModel asset.Model) (*ModelDefinition, er
 	if err != nil {
 		return nil, fmt.Errorf("failed to convert body definitions: %w", err)
 	}
+	bodyDefinitionIndexByID := make(map[uint32]int, len(bodyDefinitions))
+	for i, assetBodyDefinition := range assetModel.PhysicsChunk.BodyDefinitions {
+		bodyDefinitionIndexByID[assetBodyDefinition.ID] = i
+	}
 
 	bodies := make([]bodyInstance, len(assetModel.PhysicsChunk.Bodies))
 	for i, assetBody := range assetModel.PhysicsChunk.Bodies {
-		bodies[i] = s.convertBody(assetBody)
+		bodies[i] = s.convertBody(nodeIndexByID, bodyDefinitionIndexByID, assetBody)
 	}
 
 	ambientLights := make([]ambientLightInstance, len(assetModel.LightingChunk.AmbientLights))
