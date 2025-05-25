@@ -8,7 +8,7 @@ import (
 
 	"github.com/mokiat/lacking/game/asset/gendto"
 	"github.com/mokiat/lacking/game/asset/mdl"
-	"github.com/mokiat/lacking/game/chunked"
+	"github.com/mokiat/lacking/storage/chunked"
 	"golang.org/x/sync/errgroup"
 )
 

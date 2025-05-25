@@ -4,10 +4,10 @@ import (
 	"fmt"
 
 	"github.com/mokiat/lacking/game/asset"
-	"github.com/mokiat/lacking/game/chunked"
 	"github.com/mokiat/lacking/game/graphics"
 	"github.com/mokiat/lacking/game/physics"
 	"github.com/mokiat/lacking/render"
+	"github.com/mokiat/lacking/storage/chunked"
 	"github.com/mokiat/lacking/util/async"
 )
 
