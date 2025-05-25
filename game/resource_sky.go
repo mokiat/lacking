@@ -1,7 +1,7 @@
 package game
 
 import (
-	"github.com/mokiat/lacking/game/asset/backgrounddto"
+	"github.com/mokiat/lacking/game/asset/dto/backgrounddto"
 	"github.com/mokiat/lacking/game/graphics"
 	"github.com/mokiat/lacking/util/async"
 )

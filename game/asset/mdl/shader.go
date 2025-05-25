@@ -1,6 +1,6 @@
 package mdl
 
-import "github.com/mokiat/lacking/game/asset/shadingdto"
+import "github.com/mokiat/lacking/game/asset/dto/shadingdto"
 
 type ShaderType = shadingdto.ShaderType
 

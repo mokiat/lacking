@@ -6,7 +6,7 @@ import (
 	"log/slog"
 	"slices"
 
-	"github.com/mokiat/lacking/game/asset/gendto"
+	"github.com/mokiat/lacking/game/asset/dto/gendto"
 	"github.com/mokiat/lacking/game/asset/mdl"
 	"github.com/mokiat/lacking/storage/chunked"
 	"golang.org/x/sync/errgroup"

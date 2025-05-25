@@ -3,7 +3,7 @@ package game
 import (
 	"github.com/mokiat/gog"
 	"github.com/mokiat/gog/opt"
-	"github.com/mokiat/lacking/game/asset/meshdto"
+	"github.com/mokiat/lacking/game/asset/dto/meshdto"
 	"github.com/mokiat/lacking/game/graphics"
 	"github.com/mokiat/lacking/util/async"
 )

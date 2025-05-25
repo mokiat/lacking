@@ -1,7 +1,7 @@
 package game
 
 import (
-	"github.com/mokiat/lacking/game/asset/lightingdto"
+	"github.com/mokiat/lacking/game/asset/dto/lightingdto"
 	"github.com/mokiat/lacking/render"
 )
 

@@ -2,9 +2,9 @@ package game
 
 import (
 	"github.com/mokiat/gomath/dprec"
-	"github.com/mokiat/lacking/game/asset/animationdto"
-	"github.com/mokiat/lacking/game/asset/hierarchydto"
-	"github.com/mokiat/lacking/game/asset/meshdto"
+	"github.com/mokiat/lacking/game/asset/dto/animationdto"
+	"github.com/mokiat/lacking/game/asset/dto/hierarchydto"
+	"github.com/mokiat/lacking/game/asset/dto/meshdto"
 	"github.com/mokiat/lacking/util/async"
 )
 

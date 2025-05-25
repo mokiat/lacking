@@ -4,7 +4,7 @@ import (
 	"maps"
 
 	"github.com/mokiat/gomath/sprec"
-	"github.com/mokiat/lacking/game/asset/meshdto"
+	"github.com/mokiat/lacking/game/asset/dto/meshdto"
 )
 
 type Topology = meshdto.Topology

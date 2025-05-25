@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/mokiat/gog"
-	"github.com/mokiat/lacking/game/asset/shadingdto"
+	"github.com/mokiat/lacking/game/asset/dto/shadingdto"
 	"github.com/mokiat/lacking/render"
 	"github.com/mokiat/lacking/util/async"
 )

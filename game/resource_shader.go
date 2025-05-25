@@ -3,7 +3,7 @@ package game
 import (
 	"fmt"
 
-	"github.com/mokiat/lacking/game/asset/shadingdto"
+	"github.com/mokiat/lacking/game/asset/dto/shadingdto"
 	"github.com/mokiat/lacking/game/graphics"
 	"github.com/mokiat/lacking/util/async"
 )

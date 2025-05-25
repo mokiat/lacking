@@ -1,7 +1,7 @@
 package mdl
 
 import (
-	"github.com/mokiat/lacking/game/asset/shadingdto"
+	"github.com/mokiat/lacking/game/asset/dto/shadingdto"
 )
 
 const (
