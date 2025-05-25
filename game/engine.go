@@ -1,6 +1,7 @@
 package game
 
 import (
+	"errors"
 	"time"
 
 	"github.com/mokiat/lacking/game/ecs"
@@ -166,4 +167,58 @@ func (e *Engine) Render(framebuffer render.Framebuffer, viewport graphics.Viewpo
 	if e.activeScene != nil {
 		e.activeScene.Render(framebuffer, viewport)
 	}
+}
+
+func (e *Engine) RunAsync(cb func(engine *AsyncEngine) error) AsyncOperation {
+	asyncEngine := &AsyncEngine{
+		engine: e,
+	}
+	return newAsyncOperation(asyncEngine, async.NewFuncOperation(func() error {
+		return cb(asyncEngine)
+	}))
+}
+
+// AsyncEngine provides functions that are safe to call from a worker thread.
+// However, these functions MUST not be called from the main thread.
+type AsyncEngine struct {
+	engine *Engine
+}
+
+func (e *AsyncEngine) Sync() *Engine {
+	return e.engine
+}
+
+func (e *AsyncEngine) ScheduleIO(cb func() error) async.Operation {
+	result := async.NewOperation()
+	e.engine.ioWorker.Schedule(func() {
+		if err := cb(); err == nil {
+			result.Pass()
+		} else {
+			result.Fail(err)
+		}
+	})
+	return result
+}
+
+func (e *AsyncEngine) ScheduleMain(cb func(engine *Engine) error) async.Operation {
+	result := async.NewOperation()
+	e.engine.gfxWorker.Schedule(func() {
+		if err := cb(e.engine); err == nil {
+			result.Pass()
+		} else {
+			result.Fail(err)
+		}
+	})
+	return result
+}
+
+func (e *AsyncEngine) ReadResource(path string, target any) async.Operation {
+	return e.ScheduleIO(func() error {
+		asset := chunked.NewAsset(e.engine.storage, path)
+		return asset.Read(target)
+	})
+}
+
+func (e *AsyncEngine) WriteResource(path string, source any) async.Operation {
+	return async.NewFailedOperation(errors.ErrUnsupported)
 }
