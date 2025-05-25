@@ -152,36 +152,50 @@ func (c *Converter) convertModel(s *Model) (asset.Model, error) {
 	}
 
 	return asset.Model{
-		HierarchyChunk: &hierarchydto.HierarchyChunk{
-			Nodes: c.assetNodes,
+		HierarchyChunkHolder: hierarchydto.HierarchyChunkHolder{
+			HierarchyChunk: &hierarchydto.HierarchyChunk{
+				Nodes: c.assetNodes,
+			},
 		},
-		AnimationChunk: &animationdto.AnimationChunk{
-			Animations: assetAnimations,
+		AnimationChunkHolder: animationdto.AnimationChunkHolder{
+			AnimationChunk: &animationdto.AnimationChunk{
+				Animations: assetAnimations,
+			},
 		},
-		ShadingChunk: &shadingdto.ShadingChunk{
-			Shaders:   c.assetShaders,
-			Textures:  c.assetTextures,
-			Materials: c.assetMaterials,
+		ShadingChunkHolder: shadingdto.ShadingChunkHolder{
+			ShadingChunk: &shadingdto.ShadingChunk{
+				Shaders:   c.assetShaders,
+				Textures:  c.assetTextures,
+				Materials: c.assetMaterials,
+			},
 		},
-		MeshChunk: &meshdto.MeshChunk{
-			Armatures:       c.assetArmatures,
-			Geometries:      c.assetGeometries,
-			MeshDefinitions: c.assetMeshDefinitions,
-			Meshes:          assetMeshes,
+		MeshChunkHolder: meshdto.MeshChunkHolder{
+			MeshChunk: &meshdto.MeshChunk{
+				Armatures:       c.assetArmatures,
+				Geometries:      c.assetGeometries,
+				MeshDefinitions: c.assetMeshDefinitions,
+				Meshes:          assetMeshes,
+			},
 		},
-		PhysicsChunk: &physicsdto.PhysicsChunk{
-			BodyMaterials:   c.assetBodyMaterials,
-			BodyDefinitions: c.assetBodyDefinitions,
-			Bodies:          assetBodies,
+		PhysicsChunkHolder: physicsdto.PhysicsChunkHolder{
+			PhysicsChunk: &physicsdto.PhysicsChunk{
+				BodyMaterials:   c.assetBodyMaterials,
+				BodyDefinitions: c.assetBodyDefinitions,
+				Bodies:          assetBodies,
+			},
 		},
-		LightingChunk: &lightingdto.LightingChunk{
-			AmbientLights:     assetAmbientLights,
-			PointLights:       assetPointLights,
-			SpotLights:        assetSpotLights,
-			DirectionalLights: assetDirectionalLights,
+		LightingChunkHolder: lightingdto.LightingChunkHolder{
+			LightingChunk: &lightingdto.LightingChunk{
+				AmbientLights:     assetAmbientLights,
+				PointLights:       assetPointLights,
+				SpotLights:        assetSpotLights,
+				DirectionalLights: assetDirectionalLights,
+			},
 		},
-		BackgroundChunk: &backgrounddto.BackgroundChunk{
-			Skies: assetSkies,
+		BackgroundChunkHolder: backgrounddto.BackgroundChunkHolder{
+			BackgroundChunk: &backgrounddto.BackgroundChunk{
+				Skies: assetSkies,
+			},
 		},
 	}, nil
 }

@@ -1,8 +1,8 @@
 package lightingdto
 
-import "github.com/google/uuid"
-
-var lightingChunkID = uuid.Must(uuid.Parse("fb797d1c-9cc8-42e2-941c-a776d9c561de"))
+type LightingChunkHolder struct {
+	LightingChunk *LightingChunk `chunk:"lacking:lighting"`
+}
 
 type LightingChunk struct {
 	// AmbientLights is the collection of ambient lights that are part of the
@@ -18,8 +18,4 @@ type LightingChunk struct {
 	// DirectionalLights is the collection of directional lights that are part
 	// of the scene.
 	DirectionalLights []DirectionalLight
-}
-
-func (c LightingChunk) ChunkID() uuid.UUID {
-	return lightingChunkID
 }

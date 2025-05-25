@@ -65,7 +65,7 @@ func Run(storage chunked.Storage, pickedPaths []string) error {
 			if err != nil {
 				return fmt.Errorf("error converting model %q to asset: %w", path, err)
 			}
-			modelAsset.GenChunk = &gendto.GenChunk{
+			modelAsset.Gen = &gendto.GenChunk{
 				Digest: digest,
 			}
 

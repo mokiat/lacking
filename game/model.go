@@ -125,11 +125,6 @@ type skyInstance struct {
 	definitionIndex int
 }
 
-type blob struct {
-	name string
-	data []byte
-}
-
 // ModelInfo contains the information necessary to place a Model
 // instance into a Scene.
 type ModelInfo struct {

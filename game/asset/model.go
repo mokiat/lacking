@@ -15,13 +15,13 @@ import (
 // Model represents a virtual world that is composed of various visual
 // and logical elements.
 type Model struct {
-	*gendto.GenChunk
-	*hierarchydto.HierarchyChunk
-	*animationdto.AnimationChunk
-	*shadingdto.ShadingChunk
-	*lightingdto.LightingChunk
-	*meshdto.MeshChunk
-	*physicsdto.PhysicsChunk
-	*cameradto.CameraChunk
-	*backgrounddto.BackgroundChunk
+	gendto.GenChunkHolder
+	hierarchydto.HierarchyChunkHolder
+	animationdto.AnimationChunkHolder
+	shadingdto.ShadingChunkHolder
+	lightingdto.LightingChunkHolder
+	meshdto.MeshChunkHolder
+	physicsdto.PhysicsChunkHolder
+	cameradto.CameraChunkHolder
+	backgrounddto.BackgroundChunkHolder
 }

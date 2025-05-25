@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/google/uuid"
 	"github.com/mokiat/gblob"
 )
 
@@ -14,73 +13,51 @@ type decoder struct {
 
 func (d decoder) Decode(target any) error {
 	value := reflect.ValueOf(target)
-	if (value.Kind() == reflect.Pointer) && value.IsNil() {
-		value.Set(reflect.New(value.Type().Elem()))
-	}
-
-	chunkValues := make(map[uuid.UUID]reflect.Value)
-	consumer := d.exploreValue(value, chunkValues)
-	return d.decodeChunks(chunkValues, consumer)
+	return d.decodeValue(value)
 }
 
-func (d decoder) exploreValue(value reflect.Value, chunkValues map[uuid.UUID]reflect.Value) ChunkConsumer {
-	var consumer ChunkConsumer
-
-	if value.Type().Implements(chunkConsumerType) {
-		if value.Kind() != reflect.Pointer || !value.IsNil() {
-			consumer = value.Interface().(ChunkConsumer)
-		}
+func (d decoder) decodeValue(value reflect.Value) error {
+	if value.Kind() == reflect.Pointer && value.IsNil() {
+		return nil // skipping nil pointers
 	}
 
-	if value.Type().Implements(chunkType) {
-		tempValue := value
-		if tempValue.Kind() == reflect.Pointer && tempValue.IsNil() {
-			tempValue = reflect.New(tempValue.Type().Elem())
-		}
-		chunk := tempValue.Interface().(Chunk)
-		chunkValues[chunk.ChunkID()] = value
-	}
-
-	if (value.Kind() == reflect.Pointer) && !value.IsNil() {
+	chunkPlacements := make(map[string]reflect.Value)
+	if value.Kind() == reflect.Pointer {
 		derefValue := value.Elem()
 		if derefValue.Kind() == reflect.Struct {
-			for i := range derefValue.NumField() {
-				field := derefValue.Field(i)
-				if cons := d.exploreValue(field, chunkValues); cons != nil && consumer == nil {
-					consumer = cons
-				}
-			}
+			d.exploreStruct(derefValue, chunkPlacements)
 		}
 	}
 
-	return consumer
-}
+	var consumer ChunkConsumer
+	if value.Type().Implements(chunkConsumerType) {
+		consumer = value.Interface().(ChunkConsumer)
+	}
 
-func (d decoder) decodeChunks(chunkValues map[uuid.UUID]reflect.Value, consumer ChunkConsumer) error {
 	for {
 		var header chunkHeader
 		if err := d.in.Decode(&header); err != nil {
 			return fmt.Errorf("error reading chunk header: %w", err)
 		}
-		if header.ChunkID == uuid.Nil {
+		if header.ChunkID == "" {
 			return nil // EOF chunk reached
 		}
 
-		if value, ok := chunkValues[header.ChunkID]; ok {
-			if (value.Kind() == reflect.Pointer) && value.IsNil() {
-				value.Set(reflect.New(value.Type().Elem()))
+		if placement, ok := chunkPlacements[header.ChunkID]; ok {
+			if (placement.Kind() == reflect.Pointer) && placement.IsNil() {
+				placement.Set(reflect.New(placement.Type().Elem()))
 			}
-			target := value.Interface()
+			target := placement.Interface()
 			if err := d.in.Decode(target); err != nil {
 				return fmt.Errorf("error decoding field: %w", err)
 			}
 		} else {
 			if consumer != nil {
-				target := &RawChunk{
+				target := RawChunk{
 					ID:   header.ChunkID,
 					Data: make([]byte, header.ChunkSize),
 				}
-				if err := d.in.Decode(target); err != nil {
+				if err := target.Decode(d.in); err != nil {
 					return fmt.Errorf("error decoding raw chunk: %w", err)
 				}
 				consumer.AddChunk(target)
@@ -89,6 +66,19 @@ func (d decoder) decodeChunks(chunkValues map[uuid.UUID]reflect.Value, consumer 
 					return fmt.Errorf("error skipping chunk: %w", err)
 				}
 			}
+		}
+	}
+}
+
+func (d decoder) exploreStruct(value reflect.Value, chunkPlacements map[string]reflect.Value) {
+	for i := range value.NumField() {
+		typeField := value.Type().Field(i)
+		if chunkID, ok := typeField.Tag.Lookup("chunk"); ok {
+			field := value.Field(i)
+			chunkPlacements[chunkID] = field
+		} else if typeField.Type.Kind() == reflect.Struct {
+			field := value.Field(i)
+			d.exploreStruct(field, chunkPlacements)
 		}
 	}
 }
