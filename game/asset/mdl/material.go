@@ -89,6 +89,10 @@ func (m *Material) SetName(name string) {
 	m.name = name
 }
 
+func (m *Material) Samplers() map[string]*Sampler {
+	return m.samplers
+}
+
 func (m *Material) Sampler(name string) *Sampler {
 	if m.samplers == nil {
 		return nil
@@ -101,6 +105,10 @@ func (m *Material) SetSampler(name string, sampler *Sampler) {
 		m.samplers = make(map[string]*Sampler)
 	}
 	m.samplers[name] = sampler
+}
+
+func (m *Material) Properties() map[string]any {
+	return m.properties
 }
 
 func (m *Material) Property(name string) any {
@@ -149,11 +157,11 @@ func (m *Material) AddSkyPass(pass *MaterialPass) {
 	m.skyPasses = append(m.skyPasses, pass)
 }
 
-func (m *Material) PostprocessPasses() []*MaterialPass {
+func (m *Material) PostprocessingPasses() []*MaterialPass {
 	return m.postprocessingPasses
 }
 
-func (m *Material) AddPostprocessPass(pass *MaterialPass) {
+func (m *Material) AddPostprocessingPass(pass *MaterialPass) {
 	m.postprocessingPasses = append(m.postprocessingPasses, pass)
 }
 

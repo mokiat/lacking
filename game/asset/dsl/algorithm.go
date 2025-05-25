@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"slices"
 
+	"github.com/mokiat/lacking/game/asset/conv"
 	"github.com/mokiat/lacking/game/asset/dto/gendto"
 	"github.com/mokiat/lacking/game/asset/mdl"
 	"github.com/mokiat/lacking/storage/chunked"
@@ -61,7 +62,7 @@ func Run(storage chunked.Storage, pickedPaths []string) error {
 				return fmt.Errorf("error getting model %q: %w", path, err)
 			}
 
-			modelAsset, err := mdl.NewConverter(model).Convert()
+			modelAsset, err := conv.NewConverter(model).Convert()
 			if err != nil {
 				return fmt.Errorf("error converting model %q to asset: %w", path, err)
 			}

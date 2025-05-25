@@ -155,6 +155,10 @@ func (t *Texture) SetLayerImage(mipmap, index int, image *Image) {
 	}
 }
 
+func (t *Texture) MipmapLayers() []MipmapLayer {
+	return t.mipmapLayers
+}
+
 type MipmapLayer struct {
 	width  int
 	height int

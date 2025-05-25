@@ -40,6 +40,10 @@ func (m *MeshDefinition) BindMaterial(name string, material *Material) {
 	m.materialBindings[name] = material
 }
 
+func (m *MeshDefinition) MaterialBindings() map[string]*Material {
+	return m.materialBindings
+}
+
 func NewMesh() *Mesh {
 	return &Mesh{}
 }
