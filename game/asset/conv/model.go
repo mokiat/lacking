@@ -9,6 +9,7 @@ import (
 	"github.com/mokiat/gomath/dprec"
 	"github.com/mokiat/gomath/sprec"
 	"github.com/mokiat/lacking/game/asset"
+	"github.com/mokiat/lacking/game/asset/conv/hierarchyconv"
 	"github.com/mokiat/lacking/game/asset/dto/animationdto"
 	"github.com/mokiat/lacking/game/asset/dto/backgrounddto"
 	"github.com/mokiat/lacking/game/asset/dto/hierarchydto"
@@ -40,7 +41,6 @@ func NewConverter(model *mdl.Model) *Converter {
 type Converter struct {
 	model *mdl.Model
 
-	assetNodes     []hierarchydto.Node
 	convertedNodes map[*mdl.Node]uint32
 
 	assetArmatures     []meshdto.Armature
@@ -83,31 +83,13 @@ func (c *Converter) convertModel(s *mdl.Model) (asset.Model, error) {
 		assetSkies             []backgrounddto.Sky
 	)
 
-	nodes := s.FlattenNodes()
-
-	c.assetNodes = nil
-
 	// First nodes pass, so that all nodes are tracked, otherwise
 	// armature resolution will fail.
-	for i, node := range nodes {
+	for i, node := range s.NodesIter() {
 		c.convertedNodes[node] = uint32(i)
 	}
 
-	for i, node := range nodes {
-		parentIndex := hierarchydto.UnspecifiedNodeIndex
-		if pIndex, ok := c.convertedNodes[node.Parent()]; ok {
-			parentIndex = int32(pIndex)
-		}
-
-		c.assetNodes = append(c.assetNodes, hierarchydto.Node{
-			Name:        node.Name(),
-			ParentIndex: parentIndex,
-			Translation: node.Translation(),
-			Rotation:    node.Rotation(),
-			Scale:       node.Scale(),
-			Mask:        hierarchydto.NodeMaskNone,
-		})
-
+	for i, node := range s.NodesIter() {
 		switch source := node.Source().(type) {
 		case *mdl.Body:
 			assetBody, err := c.convertBody(uint32(i), source)
@@ -154,9 +136,7 @@ func (c *Converter) convertModel(s *mdl.Model) (asset.Model, error) {
 
 	return asset.Model{
 		HierarchyChunkHolder: hierarchydto.HierarchyChunkHolder{
-			HierarchyChunk: &hierarchydto.HierarchyChunk{
-				Nodes: c.assetNodes,
-			},
+			HierarchyChunk: hierarchyconv.CreateHierarchyChunk(c.model),
 		},
 		AnimationChunkHolder: animationdto.AnimationChunkHolder{
 			AnimationChunk: &animationdto.AnimationChunk{

@@ -1,6 +1,9 @@
 package mdl
 
-import "slices"
+import (
+	"iter"
+	"slices"
+)
 
 type Model struct {
 	name string
@@ -31,19 +34,22 @@ func (s *Model) RemoveNode(node *Node) {
 	})
 }
 
-func (s *Model) FlattenNodes() []*Node {
-	var nodes []*Node
-	var visit func(*Node)
-	visit = func(n *Node) {
-		nodes = append(nodes, n)
-		for _, child := range n.Nodes() {
-			visit(child)
+func (s *Model) NodesIter() iter.Seq2[int, *Node] {
+	return indexedIter(func(yield func(*Node) bool) {
+		s.yieldNodes(s.nodes, yield)
+	})
+}
+
+func (s *Model) yieldNodes(nodes []*Node, yield func(*Node) bool) bool {
+	for _, node := range nodes {
+		if !yield(node) {
+			return false
+		}
+		if !s.yieldNodes(node.Nodes(), yield) {
+			return false
 		}
 	}
-	for _, node := range s.nodes {
-		visit(node)
-	}
-	return nodes
+	return true
 }
 
 func (s *Model) Animations() []*Animation {
@@ -52,4 +58,17 @@ func (s *Model) Animations() []*Animation {
 
 func (s *Model) AddAnimation(animation *Animation) {
 	s.animations = append(s.animations, animation)
+}
+
+// TODO: Consider moving this to gog project.
+func indexedIter[T any](src iter.Seq[T]) iter.Seq2[int, T] {
+	return func(yield func(int, T) bool) {
+		index := 0
+		for item := range src {
+			if !yield(index, item) {
+				return
+			}
+			index++
+		}
+	}
 }
