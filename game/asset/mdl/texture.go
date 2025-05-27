@@ -56,7 +56,7 @@ func Create2DTexture(width, height, mipmaps int, format TextureFormat) *Texture 
 		}
 	}
 	return &Texture{
-		id:           freeID.Add(1),
+		Object:       NewObject(),
 		kind:         TextureKind2D,
 		format:       format,
 		mipmapLayers: mipmapLayers,
@@ -95,7 +95,7 @@ func CreateCubeTexture(dimension, mipmaps int, format TextureFormat) *Texture {
 		}
 	}
 	return &Texture{
-		id:           freeID.Add(1),
+		Object:       NewObject(),
 		kind:         TextureKindCube,
 		format:       format,
 		mipmapLayers: mipmapLayers,
@@ -103,17 +103,13 @@ func CreateCubeTexture(dimension, mipmaps int, format TextureFormat) *Texture {
 }
 
 type Texture struct {
-	id              uint32
+	*Object
 	name            string
 	kind            TextureKind
 	format          TextureFormat
 	generateMipmaps bool
 	isLinear        bool
 	mipmapLayers    []MipmapLayer
-}
-
-func (t *Texture) ID() uint32 {
-	return t.id
 }
 
 func (t *Texture) Name() string {

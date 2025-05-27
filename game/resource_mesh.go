@@ -47,8 +47,8 @@ func (s *ResourceSet) convertMeshGeometry(assetGeometry meshdto.Geometry) async.
 	return promise
 }
 
-func (s *ResourceSet) convertMeshDefinition(geometris []*graphics.MeshGeometry, materials map[uint32]*graphics.Material, assetMeshDefinition meshdto.MeshDefinition) async.Promise[*graphics.MeshDefinition] {
-	geometry := geometris[assetMeshDefinition.GeometryIndex]
+func (s *ResourceSet) convertMeshDefinition(geometris map[uint32]*graphics.MeshGeometry, materials map[uint32]*graphics.Material, assetMeshDefinition meshdto.MeshDefinition) async.Promise[*graphics.MeshDefinition] {
+	geometry := geometris[assetMeshDefinition.GeometryID]
 
 	bindingMaterials := make([]*graphics.Material, geometry.FragmentCount())
 	for _, assetBinding := range assetMeshDefinition.MaterialBindings {
@@ -69,10 +69,14 @@ func (s *ResourceSet) convertMeshDefinition(geometris []*graphics.MeshGeometry, 
 	return promise
 }
 
-func (s *ResourceSet) convertMeshInstance(assetMesh meshdto.Mesh) meshInstance {
+func (s *ResourceSet) convertMeshInstance(nodeIndices, armatureIndices, meshDefinitionIndices map[uint32]int, assetMesh meshdto.Mesh) meshInstance {
+	armatureIndex, ok := armatureIndices[assetMesh.ArmatureID]
+	if !ok {
+		armatureIndex = -1 // No armature associated with this mesh
+	}
 	return meshInstance{
-		NodeIndex:       int(assetMesh.NodeIndex),
-		DefinitionIndex: int(assetMesh.MeshDefinitionIndex),
-		ArmatureIndex:   int(assetMesh.ArmatureIndex),
+		NodeIndex:       nodeIndices[assetMesh.NodeID],
+		DefinitionIndex: meshDefinitionIndices[assetMesh.MeshDefinitionID],
+		ArmatureIndex:   armatureIndex,
 	}
 }

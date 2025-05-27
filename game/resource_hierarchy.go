@@ -63,11 +63,11 @@ func (s *ResourceSet) convertAnimation(assetAnimation animationdto.Animation) as
 	return promise
 }
 
-func (s *ResourceSet) convertArmature(assetArmature meshdto.Armature) armatureDefinition {
+func (s *ResourceSet) convertArmature(nodes map[uint32]int, assetArmature meshdto.Armature) armatureDefinition {
 	joints := make([]armatureJoint, len(assetArmature.Joints))
 	for j, assetJoint := range assetArmature.Joints {
 		joints[j] = armatureJoint{
-			NodeIndex:         int(assetJoint.NodeIndex),
+			NodeIndex:         nodes[assetJoint.NodeID],
 			InverseBindMatrix: assetJoint.InverseBindMatrix,
 		}
 	}

@@ -77,7 +77,14 @@ func (s *ResourceSet) convertModel(assetModel asset.Model) (*ModelDefinition, er
 
 	armatures := make([]armatureDefinition, len(assetModel.MeshChunk.Armatures))
 	for i, assetArmature := range assetModel.MeshChunk.Armatures {
-		armatures[i] = s.convertArmature(assetArmature)
+		armatures[i] = s.convertArmature(
+			nodeIndexByID,
+			assetArmature,
+		)
+	}
+	armatureIndexByID := make(map[uint32]int, len(assetModel.MeshChunk.Armatures))
+	for i, assetArmature := range assetModel.MeshChunk.Armatures {
+		armatureIndexByID[assetArmature.ID] = i
 	}
 
 	// TODO: Convert cameras
@@ -133,11 +140,15 @@ func (s *ResourceSet) convertModel(assetModel asset.Model) (*ModelDefinition, er
 	if err != nil {
 		return nil, fmt.Errorf("failed to convert mesh geometries: %w", err)
 	}
+	meshGeometryByID := make(map[uint32]*graphics.MeshGeometry, len(assetModel.MeshChunk.Geometries))
+	for i, assetGeometry := range assetModel.MeshChunk.Geometries {
+		meshGeometryByID[assetGeometry.ID] = meshGeometries[i]
+	}
 
 	meshDefinitionPromises := make([]async.Promise[*graphics.MeshDefinition], len(assetModel.MeshChunk.MeshDefinitions))
 	for i, assetMeshDefinition := range assetModel.MeshChunk.MeshDefinitions {
 		meshDefinitionPromises[i] = s.convertMeshDefinition(
-			meshGeometries,
+			meshGeometryByID,
 			materialByID,
 			assetMeshDefinition,
 		)
@@ -146,10 +157,19 @@ func (s *ResourceSet) convertModel(assetModel asset.Model) (*ModelDefinition, er
 	if err != nil {
 		return nil, fmt.Errorf("failed to convert mesh definitions: %w", err)
 	}
+	meshDefinitionIndexByID := make(map[uint32]int, len(assetModel.MeshChunk.MeshDefinitions))
+	for i, assetMeshDefinition := range assetModel.MeshChunk.MeshDefinitions {
+		meshDefinitionIndexByID[assetMeshDefinition.ID] = i
+	}
 
 	meshes := make([]meshInstance, len(assetModel.MeshChunk.Meshes))
 	for i, assetMesh := range assetModel.MeshChunk.Meshes {
-		meshes[i] = s.convertMeshInstance(assetMesh)
+		meshes[i] = s.convertMeshInstance(
+			nodeIndexByID,
+			armatureIndexByID,
+			meshDefinitionIndexByID,
+			assetMesh,
+		)
 	}
 
 	bodyMaterialPromises := make([]async.Promise[*physics.Material], len(assetModel.PhysicsChunk.BodyMaterials))

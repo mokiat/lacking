@@ -50,7 +50,7 @@ func CreateColorSkyMaterial(colorProvider Provider[dprec.Vec4]) Provider[*mdl.Ma
 				return nil, fmt.Errorf("error getting color: %w", err)
 			}
 
-			var pass mdl.MaterialPass
+			pass := mdl.NewMaterialPass()
 			pass.SetLayer(0)
 			pass.SetCulling(mdl.CullModeNone)
 			pass.SetFrontFace(mdl.FaceOrientationCW)
@@ -61,7 +61,7 @@ func CreateColorSkyMaterial(colorProvider Provider[dprec.Vec4]) Provider[*mdl.Ma
 			pass.SetShader(shader)
 
 			material := mdl.NewMaterial("ColorSkyMaterial")
-			material.AddSkyPass(&pass)
+			material.AddSkyPass(pass)
 			material.SetProperty("skyColor", dtos.Vec4(color))
 			return material, nil
 		},

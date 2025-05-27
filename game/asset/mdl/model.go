@@ -7,7 +7,14 @@ import (
 	"github.com/mokiat/gog"
 )
 
+func NewModel() *Model {
+	return &Model{
+		Object: NewObject(),
+	}
+}
+
 type Model struct {
+	*Object
 	name string
 
 	nodes      []*Node
@@ -155,6 +162,35 @@ func (s *Model) AllDirectionalLightPlacements() []Placed[*DirectionalLight] {
 		}
 	}
 	return result
+}
+
+func (s *Model) AllArmatures() []*Armature {
+	var result []*Armature
+	for _, placement := range s.AllMeshPlacements() {
+		mesh := placement.Value
+		if armature := mesh.Armature(); armature != nil {
+			result = append(result, armature)
+		}
+	}
+	return gog.Dedupe(result)
+}
+
+func (s *Model) AllGeometries() []*Geometry {
+	var result []*Geometry
+	for _, definition := range s.AllMeshDefinitions() {
+		result = append(result, definition.Geometry())
+	}
+	return gog.Dedupe(result)
+}
+
+func (s *Model) AllMeshDefinitions() []*MeshDefinition {
+	var result []*MeshDefinition
+	for _, placement := range s.AllMeshPlacements() {
+		mesh := placement.Value
+		definition := mesh.Definition()
+		result = append(result, definition)
+	}
+	return gog.Dedupe(result)
 }
 
 func (s *Model) AllMeshPlacements() []Placed[*Mesh] {

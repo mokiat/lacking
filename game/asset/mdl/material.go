@@ -35,7 +35,7 @@ type Comparison = shadingdto.Comparison
 
 func NewMaterial(name string) *Material {
 	return &Material{
-		id:                   freeID.Add(1),
+		Object:               NewObject(),
 		name:                 name,
 		metadata:             nil,
 		samplers:             nil,
@@ -49,7 +49,7 @@ func NewMaterial(name string) *Material {
 }
 
 type Material struct {
-	id   uint32
+	*Object
 	name string
 
 	metadata Metadata
@@ -62,10 +62,6 @@ type Material struct {
 	forwardPasses        []*MaterialPass
 	skyPasses            []*MaterialPass
 	postprocessingPasses []*MaterialPass
-}
-
-func (m *Material) ID() uint32 {
-	return m.id
 }
 
 func (m *Material) Clear() {

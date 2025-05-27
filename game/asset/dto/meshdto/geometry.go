@@ -172,6 +172,9 @@ type Fragment struct {
 // to render a mesh.
 type Geometry struct {
 
+	// ID is the unique identifier of the geometry within the file.
+	ID uint32
+
 	// VertexBuffers is the collection of buffers that contain the vertex data.
 	VertexBuffers []VertexBuffer
 

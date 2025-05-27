@@ -31,6 +31,7 @@ const (
 
 func NewGeometry() *Geometry {
 	return &Geometry{
+		Object:      NewObject(),
 		minDistance: -32000.0,
 		maxDistance: 32000.0,
 		maxCascade:  255,
@@ -38,6 +39,7 @@ func NewGeometry() *Geometry {
 }
 
 type Geometry struct {
+	*Object
 	name         string
 	metadata     Metadata
 	vertexFormat VertexFormat

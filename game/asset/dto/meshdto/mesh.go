@@ -2,6 +2,8 @@ package meshdto
 
 const (
 	UnspecifiedArmatureIndex = int32(-1)
+
+	UnspecifiedArmatureID = uint32(0xFFFFFFFF)
 )
 
 // MaterialBinding represents the binding of a material to a geometry fragment.
@@ -18,8 +20,11 @@ type MaterialBinding struct {
 // definition by adding material bindings.
 type MeshDefinition struct {
 
-	// GeometryIndex is the index of the geometry that is used by this mesh.
-	GeometryIndex uint32
+	// ID is the unique identifier of the mesh definition within the file.
+	ID uint32
+
+	// GeometryID is the ID of the geometry that is used by this mesh.
+	GeometryID uint32
 
 	// MaterialBindings is the collection of material bindings that are used by
 	// this mesh.
@@ -29,16 +34,19 @@ type MeshDefinition struct {
 // Mesh represents an instance of a mesh definition.
 type Mesh struct {
 
-	// NodeIndex is the index of the node that is used by this mesh.
-	NodeIndex uint32
+	// ID is the unique identifier of the mesh within the file.
+	ID uint32
 
-	// MeshDefinitionIndex is the index of the mesh definition that is used by
+	// NodeID is the ID of the node that is used by this mesh.
+	NodeID uint32
+
+	// MeshDefinitionID is the ID of the mesh definition that is used by
 	// this mesh.
-	MeshDefinitionIndex uint32
+	MeshDefinitionID uint32
 
-	// ArmatureIndex is the index of the armature that is used by this mesh.
+	// ArmatureID is the ID of the armature that is used by this mesh.
 	//
 	// If the mesh does not use an armature, this value is set to
-	// UnspecifiedArmatureIndex.
-	ArmatureIndex int32
+	// UnspecifiedArmatureID.
+	ArmatureID uint32
 }

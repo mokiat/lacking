@@ -27,14 +27,14 @@ func CreateModel(name string, operations ...Operation) Provider[*mdl.Model] {
 	modelProviders[name] = OnceProvider(FuncProvider(
 		// get function
 		func() (*mdl.Model, error) {
-			var model mdl.Model
+			model := mdl.NewModel()
 			model.SetName(name)
 			for _, operation := range operations {
-				if err := operation.Apply(&model); err != nil {
+				if err := operation.Apply(model); err != nil {
 					return nil, err
 				}
 			}
-			return &model, nil
+			return model, nil
 		},
 
 		// digest function
@@ -113,7 +113,7 @@ func parseGLTFResource(in io.Reader, forceCollision bool) (*mdl.Model, error) {
 }
 
 func BuildModelResource(gltfDoc *gltf.Document, forceCollision bool) (*mdl.Model, error) {
-	model := &mdl.Model{}
+	model := mdl.NewModel()
 
 	// build images
 	imagesFromIndex := make(map[int]*mdl.Image)
@@ -317,7 +317,7 @@ func BuildModelResource(gltfDoc *gltf.Document, forceCollision bool) (*mdl.Model
 			geometry.SetMaxCascade(maxCascade)
 		}
 
-		meshDefinition := &mdl.MeshDefinition{}
+		meshDefinition := mdl.NewMeshDefinition()
 		meshDefinition.SetName(gltfMesh.Name)
 		meshDefinition.SetGeometry(geometry)
 
@@ -619,7 +619,7 @@ func BuildModelResource(gltfDoc *gltf.Document, forceCollision bool) (*mdl.Model
 	// prepare animations
 	for _, gltfAnimation := range gltfDoc.Animations {
 		bindingFromNodeIndex := make(map[int]*mdl.AnimationBinding)
-		animation := &mdl.Animation{}
+		animation := mdl.NewAnimation()
 		animation.SetName(gltfAnimation.Name)
 		for _, gltfChannel := range gltfAnimation.Channels {
 			nodeRef := gltfChannel.Target.Node
@@ -631,8 +631,7 @@ func BuildModelResource(gltfDoc *gltf.Document, forceCollision bool) (*mdl.Model
 
 			binding := bindingFromNodeIndex[*nodeRef]
 			if binding == nil {
-				binding = &mdl.AnimationBinding{}
-				binding.SetNodeName(nodeFromIndex[*nodeRef].Name())
+				binding = mdl.NewAnimationBinding(nodeFromIndex[*nodeRef].Name())
 				animation.AddBinding(binding)
 				bindingFromNodeIndex[*nodeRef] = binding
 			}

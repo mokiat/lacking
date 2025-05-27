@@ -4,20 +4,16 @@ import "github.com/mokiat/gomath/dprec"
 
 func NewBodyMaterial() *BodyMaterial {
 	return &BodyMaterial{
-		id:                     freeID.Add(1),
+		Object:                 NewObject(),
 		frictionCoefficient:    1.0,
 		restitutionCoefficient: 0.5,
 	}
 }
 
 type BodyMaterial struct {
-	id                     uint32
+	*Object
 	frictionCoefficient    float64
 	restitutionCoefficient float64
-}
-
-func (m *BodyMaterial) ID() uint32 {
-	return m.id
 }
 
 func (m *BodyMaterial) FrictionCoefficient() float64 {
@@ -38,13 +34,13 @@ func (m *BodyMaterial) SetRestitutionCoefficient(value float64) {
 
 func NewBodyDefinition(material *BodyMaterial) *BodyDefinition {
 	return &BodyDefinition{
-		id:       freeID.Add(1),
+		Object:   NewObject(),
 		material: material,
 	}
 }
 
 type BodyDefinition struct {
-	id                uint32
+	*Object
 	material          *BodyMaterial
 	mass              float64
 	momentOfInertia   dprec.Mat3
@@ -53,10 +49,6 @@ type BodyDefinition struct {
 	collisionBoxes    []*CollisionBox
 	collisionSpheres  []*CollisionSphere
 	collisionMeshes   []*CollisionMesh
-}
-
-func (d *BodyDefinition) ID() uint32 {
-	return d.id
 }
 
 func (d *BodyDefinition) Material() *BodyMaterial {
@@ -258,18 +250,14 @@ type CollisionTriangle struct {
 
 func NewBody(definition *BodyDefinition) *Body {
 	return &Body{
-		id:         freeID.Add(1),
+		Object:     NewObject(),
 		definition: definition,
 	}
 }
 
 type Body struct {
-	id         uint32
+	*Object
 	definition *BodyDefinition
-}
-
-func (b *Body) ID() uint32 {
-	return b.id
 }
 
 func (b *Body) Definition() *BodyDefinition {
