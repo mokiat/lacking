@@ -5,7 +5,6 @@ import (
 	"slices"
 
 	"github.com/mokiat/gog"
-	"github.com/mokiat/gog/ds"
 )
 
 type Model struct {
@@ -75,7 +74,8 @@ func (s *Model) AllShaders() []*Shader {
 
 func (s *Model) AllTextures() []*Texture {
 	var result []*Texture
-	for _, light := range s.AllAmbientLights() {
+	for _, placement := range s.AllAmbientLightPlacements() {
+		light := placement.Value
 		result = append(result, light.ReflectionTexture())
 		result = append(result, light.RefractionTexture())
 	}
@@ -89,37 +89,41 @@ func (s *Model) AllTextures() []*Texture {
 
 func (s *Model) AllMaterials() []*Material {
 	var result []*Material
-	for _, mesh := range s.AllMeshes() {
+	for _, placement := range s.AllMeshPlacements() {
+		mesh := placement.Value
 		definition := mesh.Definition()
 		result = append(result, definition.Materials()...)
 	}
-	for _, sky := range s.AllSkies() {
+	for _, placement := range s.AllSkyPlacements() {
+		sky := placement.Value
 		result = append(result, sky.Material())
 	}
 	return gog.Dedupe(result)
 }
 
-func (s *Model) AllAmbientLights() []*AmbientLight {
-	var result []*AmbientLight
+func (s *Model) AllAmbientLightPlacements() []Placed[*AmbientLight] {
+	var result []Placed[*AmbientLight]
 	for _, node := range s.NodesIter() {
 		switch source := node.Target().(type) {
 		case *AmbientLight:
-			result = append(result, source)
+			result = append(result, Placed[*AmbientLight]{
+				Node:  node,
+				Value: source,
+			})
 		}
 	}
-	return gog.Dedupe(result)
+	return result
 }
 
-func (s *Model) AllMeshes() []*Mesh {
-	var result []*Mesh
-	seen := ds.NewSet[*Mesh](0)
+func (s *Model) AllMeshPlacements() []Placed[*Mesh] {
+	var result []Placed[*Mesh]
 	for _, node := range s.NodesIter() {
 		switch source := node.Target().(type) {
 		case *Mesh:
-			if !seen.Contains(source) {
-				result = append(result, source)
-			}
-			seen.Add(source)
+			result = append(result, Placed[*Mesh]{
+				Node:  node,
+				Value: source,
+			})
 		}
 	}
 	return result
@@ -127,29 +131,21 @@ func (s *Model) AllMeshes() []*Mesh {
 
 func (s *Model) AllPhysicsBodyMaterials() []*BodyMaterial {
 	var result []*BodyMaterial
-	seen := ds.NewSet[*BodyMaterial](0)
 	for _, definition := range s.AllPhysicsBodyDefinitions() {
 		material := definition.Material()
-		if !seen.Contains(material) {
-			result = append(result, material)
-		}
-		seen.Add(material)
+		result = append(result, material)
 	}
-	return result
+	return gog.Dedupe(result)
 }
 
 func (s *Model) AllPhysicsBodyDefinitions() []*BodyDefinition {
 	var result []*BodyDefinition
-	seen := ds.NewSet[*BodyDefinition](0)
 	for _, placement := range s.AllPhysicsBodyPlacements() {
 		body := placement.Value
 		definition := body.Definition()
-		if !seen.Contains(definition) {
-			result = append(result, definition)
-		}
-		seen.Add(definition)
+		result = append(result, definition)
 	}
-	return result
+	return gog.Dedupe(result)
 }
 
 func (s *Model) AllPhysicsBodyPlacements() []Placed[*Body] {
@@ -166,16 +162,15 @@ func (s *Model) AllPhysicsBodyPlacements() []Placed[*Body] {
 	return result
 }
 
-func (s *Model) AllSkies() []*Sky {
-	var result []*Sky
-	seen := ds.NewSet[*Sky](0)
+func (s *Model) AllSkyPlacements() []Placed[*Sky] {
+	var result []Placed[*Sky]
 	for _, node := range s.NodesIter() {
 		switch source := node.Target().(type) {
 		case *Sky:
-			if !seen.Contains(source) {
-				result = append(result, source)
-			}
-			seen.Add(source)
+			result = append(result, Placed[*Sky]{
+				Node:  node,
+				Value: source,
+			})
 		}
 	}
 	return result
