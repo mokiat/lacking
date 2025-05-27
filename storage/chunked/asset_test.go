@@ -4,7 +4,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
-	"github.com/mokiat/lacking/game/chunked"
+	"github.com/mokiat/lacking/storage/chunked"
 )
 
 var _ = Describe("Asset", func() {

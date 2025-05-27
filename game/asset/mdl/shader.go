@@ -14,13 +14,19 @@ const (
 
 func NewShader(shaderType ShaderType) *Shader {
 	return &Shader{
+		id:         freeID.Add(1),
 		shaderType: shaderType,
 	}
 }
 
 type Shader struct {
+	id         uint32
 	shaderType ShaderType
 	sourceCode string
+}
+
+func (s *Shader) ID() uint32 {
+	return s.id
 }
 
 func (s *Shader) SourceCode() string {

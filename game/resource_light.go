@@ -5,11 +5,11 @@ import (
 	"github.com/mokiat/lacking/render"
 )
 
-func (s *ResourceSet) convertAmbientLight(textures []render.Texture, assetLight lightingdto.AmbientLight) ambientLightInstance {
+func (s *ResourceSet) convertAmbientLight(textures map[uint32]render.Texture, assetLight lightingdto.AmbientLight) ambientLightInstance {
 	return ambientLightInstance{
 		nodeIndex:         int(assetLight.NodeIndex),
-		reflectionTexture: textures[assetLight.ReflectionTextureIndex],
-		refractionTexture: textures[assetLight.RefractionTextureIndex],
+		reflectionTexture: textures[assetLight.ReflectionTextureID],
+		refractionTexture: textures[assetLight.RefractionTextureID],
 		castShadow:        assetLight.CastShadow,
 	}
 }

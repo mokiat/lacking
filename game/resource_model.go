@@ -90,6 +90,10 @@ func (s *ResourceSet) convertModel(assetModel asset.Model) (*ModelDefinition, er
 	if err != nil {
 		return nil, fmt.Errorf("failed to convert shaders: %w", err)
 	}
+	shaderByID := make(map[uint32]*graphics.Shader, len(assetModel.ShadingChunk.Shaders))
+	for i, assetShader := range assetModel.ShadingChunk.Shaders {
+		shaderByID[assetShader.ID] = shaders[i]
+	}
 
 	texturePromises := make([]async.Promise[render.Texture], len(assetModel.ShadingChunk.Textures))
 	for i, assetTexture := range assetModel.ShadingChunk.Textures {
@@ -99,18 +103,26 @@ func (s *ResourceSet) convertModel(assetModel asset.Model) (*ModelDefinition, er
 	if err != nil {
 		return nil, fmt.Errorf("failed to convert textures: %w", err)
 	}
+	textureByID := make(map[uint32]render.Texture, len(assetModel.ShadingChunk.Textures))
+	for i, assetTexture := range assetModel.ShadingChunk.Textures {
+		textureByID[assetTexture.ID] = textures[i]
+	}
 
 	materialPromises := make([]async.Promise[*graphics.Material], len(assetModel.ShadingChunk.Materials))
 	for i, assetMaterial := range assetModel.ShadingChunk.Materials {
 		materialPromises[i] = s.convertMaterial(
-			shaders,
-			textures,
+			shaderByID,
+			textureByID,
 			assetMaterial,
 		)
 	}
 	materials, err := async.WaitPromises(materialPromises...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to convert materials: %w", err)
+	}
+	materialByID := make(map[uint32]*graphics.Material, len(assetModel.ShadingChunk.Materials))
+	for i, assetMaterial := range assetModel.ShadingChunk.Materials {
+		materialByID[assetMaterial.ID] = materials[i]
 	}
 
 	meshGeometryPromises := make([]async.Promise[*graphics.MeshGeometry], len(assetModel.MeshChunk.Geometries))
@@ -126,7 +138,7 @@ func (s *ResourceSet) convertModel(assetModel asset.Model) (*ModelDefinition, er
 	for i, assetMeshDefinition := range assetModel.MeshChunk.MeshDefinitions {
 		meshDefinitionPromises[i] = s.convertMeshDefinition(
 			meshGeometries,
-			materials,
+			materialByID,
 			assetMeshDefinition,
 		)
 	}
@@ -177,7 +189,7 @@ func (s *ResourceSet) convertModel(assetModel asset.Model) (*ModelDefinition, er
 	ambientLights := make([]ambientLightInstance, len(assetModel.LightingChunk.AmbientLights))
 	for i, assetAmbientLight := range assetModel.LightingChunk.AmbientLights {
 		ambientLights[i] = s.convertAmbientLight(
-			textures,
+			textureByID,
 			assetAmbientLight,
 		)
 	}
@@ -200,7 +212,7 @@ func (s *ResourceSet) convertModel(assetModel asset.Model) (*ModelDefinition, er
 	skyDefinitionPromises := make([]async.Promise[*graphics.SkyDefinition], len(assetModel.BackgroundChunk.Skies))
 	for i, assetSky := range assetModel.BackgroundChunk.Skies {
 		skyDefinitionPromises[i] = s.convertSkyDefinition(
-			materials,
+			materialByID,
 			assetSky,
 		)
 	}

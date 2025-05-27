@@ -138,7 +138,7 @@ func BuildModelResource(gltfDoc *gltf.Document, forceCollision bool) (*mdl.Model
 	// build samplers
 	samplersFromIndex := make(map[int]*mdl.Sampler)
 	for i, gltfTexture := range gltfDoc.Textures {
-		sampler := &mdl.Sampler{}
+		sampler := mdl.NewSampler()
 		if gltfTexture.Sampler != nil {
 			gltfSampler := gltfDoc.Samplers[*gltfTexture.Sampler]
 			switch gltfSampler.WrapS {
@@ -273,8 +273,7 @@ func BuildModelResource(gltfDoc *gltf.Document, forceCollision bool) (*mdl.Model
 		shadowPass.SetBlending(false) // if gltfMaterial.AlphaMode == gltf.AlphaBlend, use forward pass somehow
 		shadowPass.SetShader(shadowShader)
 
-		material := &mdl.Material{}
-		material.SetName(gltfMaterial.Name)
+		material := mdl.NewMaterial(gltfMaterial.Name)
 		material.SetMetadata(gltfutil.Properties(gltfMaterial.Extras))
 		material.AddGeometryPass(geometryPass)
 		material.AddShadowPass(shadowPass)

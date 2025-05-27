@@ -88,6 +88,10 @@ func (b *BaseMipmappable) SetMipmapping(mipmapping bool) {
 	b.mipmapping = mipmapping
 }
 
+func NewSampler() *Sampler {
+	return &Sampler{}
+}
+
 type Sampler struct {
 	BaseTextureReferrer
 	BaseWrappable

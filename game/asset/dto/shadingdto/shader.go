@@ -3,6 +3,9 @@ package shadingdto
 // Shader represents a shader program that can be used to render a mesh.
 type Shader struct {
 
+	// ID is the unique identifier of the shader within the file.
+	ID uint32
+
 	// ShaderType specifies the type of the shader.
 	ShaderType ShaderType
 

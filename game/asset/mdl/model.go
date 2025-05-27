@@ -4,6 +4,7 @@ import (
 	"iter"
 	"slices"
 
+	"github.com/mokiat/gog"
 	"github.com/mokiat/gog/ds"
 )
 
@@ -62,6 +63,68 @@ func (s *Model) AddAnimation(animation *Animation) {
 	s.animations = append(s.animations, animation)
 }
 
+func (s *Model) AllShaders() []*Shader {
+	var result []*Shader
+	for _, material := range s.AllMaterials() {
+		for _, pass := range material.AllPasses() {
+			result = append(result, pass.Shader())
+		}
+	}
+	return gog.Dedupe(result)
+}
+
+func (s *Model) AllTextures() []*Texture {
+	var result []*Texture
+	for _, light := range s.AllAmbientLights() {
+		result = append(result, light.ReflectionTexture())
+		result = append(result, light.RefractionTexture())
+	}
+	for _, material := range s.AllMaterials() {
+		for _, sampler := range material.Samplers() {
+			result = append(result, sampler.Texture())
+		}
+	}
+	return gog.Dedupe(result)
+}
+
+func (s *Model) AllMaterials() []*Material {
+	var result []*Material
+	for _, mesh := range s.AllMeshes() {
+		definition := mesh.Definition()
+		result = append(result, definition.Materials()...)
+	}
+	for _, sky := range s.AllSkies() {
+		result = append(result, sky.Material())
+	}
+	return gog.Dedupe(result)
+}
+
+func (s *Model) AllAmbientLights() []*AmbientLight {
+	var result []*AmbientLight
+	for _, node := range s.NodesIter() {
+		switch source := node.Target().(type) {
+		case *AmbientLight:
+			result = append(result, source)
+		}
+	}
+	return gog.Dedupe(result)
+}
+
+func (s *Model) AllMeshes() []*Mesh {
+	var result []*Mesh
+	seen := ds.NewSet[*Mesh](0)
+	for _, node := range s.NodesIter() {
+		switch source := node.Target().(type) {
+		case *Mesh:
+			if !seen.Contains(source) {
+				result = append(result, source)
+			}
+			seen.Add(source)
+		}
+	}
+	return result
+}
+
 func (s *Model) AllPhysicsBodyMaterials() []*BodyMaterial {
 	var result []*BodyMaterial
 	seen := ds.NewSet[*BodyMaterial](0)
@@ -98,6 +161,21 @@ func (s *Model) AllPhysicsBodyPlacements() []Placed[*Body] {
 				Node:  node,
 				Value: source,
 			})
+		}
+	}
+	return result
+}
+
+func (s *Model) AllSkies() []*Sky {
+	var result []*Sky
+	seen := ds.NewSet[*Sky](0)
+	for _, node := range s.NodesIter() {
+		switch source := node.Target().(type) {
+		case *Sky:
+			if !seen.Contains(source) {
+				result = append(result, source)
+			}
+			seen.Add(source)
 		}
 	}
 	return result

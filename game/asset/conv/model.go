@@ -2,16 +2,15 @@ package conv
 
 import (
 	"fmt"
-	"slices"
 
 	"github.com/mokiat/gblob"
 	"github.com/mokiat/gog"
 	"github.com/mokiat/gomath/dprec"
-	"github.com/mokiat/gomath/sprec"
 	"github.com/mokiat/lacking/game/asset"
 	"github.com/mokiat/lacking/game/asset/conv/animationconv"
 	"github.com/mokiat/lacking/game/asset/conv/hierarchyconv"
 	"github.com/mokiat/lacking/game/asset/conv/physicsconv"
+	"github.com/mokiat/lacking/game/asset/conv/shadingconv"
 	"github.com/mokiat/lacking/game/asset/dto/animationdto"
 	"github.com/mokiat/lacking/game/asset/dto/backgrounddto"
 	"github.com/mokiat/lacking/game/asset/dto/hierarchydto"
@@ -20,7 +19,6 @@ import (
 	"github.com/mokiat/lacking/game/asset/dto/physicsdto"
 	"github.com/mokiat/lacking/game/asset/dto/shadingdto"
 	"github.com/mokiat/lacking/game/asset/mdl"
-	"github.com/mokiat/lacking/game/graphics/lsl"
 	"github.com/x448/float16"
 )
 
@@ -30,9 +28,6 @@ func NewConverter(model *mdl.Model) *Converter {
 
 		convertedNodes:           make(map[*mdl.Node]uint32),
 		convertedArmatures:       make(map[*mdl.Armature]uint32),
-		convertedShaders:         make(map[*mdl.Shader]uint32),
-		convertedTextures:        make(map[*mdl.Texture]uint32),
-		convertedMaterials:       make(map[*mdl.Material]uint32),
 		convertedGeometries:      make(map[*mdl.Geometry]uint32),
 		convertedMeshDefinitions: make(map[*mdl.MeshDefinition]uint32),
 	}
@@ -45,15 +40,6 @@ type Converter struct {
 
 	assetArmatures     []meshdto.Armature
 	convertedArmatures map[*mdl.Armature]uint32
-
-	assetShaders     []shadingdto.Shader
-	convertedShaders map[*mdl.Shader]uint32
-
-	assetTextures     []shadingdto.Texture
-	convertedTextures map[*mdl.Texture]uint32
-
-	assetMaterials     []shadingdto.Material
-	convertedMaterials map[*mdl.Material]uint32
 
 	assetGeometries     []meshdto.Geometry
 	convertedGeometries map[*mdl.Geometry]uint32
@@ -122,11 +108,7 @@ func (c *Converter) convertModel(s *mdl.Model) (asset.Model, error) {
 			AnimationChunk: animationconv.CreateAnimationChunk(c.model),
 		},
 		ShadingChunkHolder: shadingdto.ShadingChunkHolder{
-			ShadingChunk: &shadingdto.ShadingChunk{
-				Shaders:   c.assetShaders,
-				Textures:  c.assetTextures,
-				Materials: c.assetMaterials,
-			},
+			ShadingChunk: gog.Must(shadingconv.CreateShadingChunk(c.model)),
 		},
 		MeshChunkHolder: meshdto.MeshChunkHolder{
 			MeshChunk: &meshdto.MeshChunk{
@@ -153,90 +135,6 @@ func (c *Converter) convertModel(s *mdl.Model) (asset.Model, error) {
 			},
 		},
 	}, nil
-}
-
-func (c *Converter) convertMaterialPass(pass *mdl.MaterialPass) (shadingdto.MaterialPass, error) {
-	shaderIndex, err := c.convertShader(pass.Shader())
-	if err != nil {
-		return shadingdto.MaterialPass{}, fmt.Errorf("error converting shader: %w", err)
-	}
-	return shadingdto.MaterialPass{
-		Layer:           int32(pass.Layer()),
-		Culling:         pass.Culling(),
-		FrontFace:       pass.FrontFace(),
-		DepthTest:       pass.DepthTest(),
-		DepthWrite:      pass.DepthWrite(),
-		DepthComparison: pass.DepthComparison(),
-		Blending:        pass.Blending(),
-		ShaderIndex:     shaderIndex,
-	}, nil
-}
-
-func (c *Converter) convertMaterial(material *mdl.Material) (uint32, error) {
-	if index, ok := c.convertedMaterials[material]; ok {
-		return index, nil
-	}
-
-	textures, err := c.convertSamplers(material.Samplers())
-	if err != nil {
-		return 0, fmt.Errorf("error converting samplers: %w", err)
-	}
-
-	properties, err := c.convertProperties(material.Properties())
-	if err != nil {
-		return 0, fmt.Errorf("error converting properties: %w", err)
-	}
-
-	assetMaterial := shadingdto.Material{
-		Name:                 material.Name(),
-		Textures:             textures,
-		Properties:           properties,
-		GeometryPasses:       make([]shadingdto.MaterialPass, len(material.GeometryPasses())),
-		ShadowPasses:         make([]shadingdto.MaterialPass, len(material.ShadowPasses())),
-		ForwardPasses:        make([]shadingdto.MaterialPass, len(material.ForwardPasses())),
-		SkyPasses:            make([]shadingdto.MaterialPass, len(material.SkyPasses())),
-		PostprocessingPasses: make([]shadingdto.MaterialPass, len(material.PostprocessingPasses())),
-	}
-	for i, pass := range material.GeometryPasses() {
-		assetPass, err := c.convertMaterialPass(pass)
-		if err != nil {
-			return 0, fmt.Errorf("error converting material pass: %w", err)
-		}
-		assetMaterial.GeometryPasses[i] = assetPass
-	}
-	for i, pass := range material.ShadowPasses() {
-		assetPass, err := c.convertMaterialPass(pass)
-		if err != nil {
-			return 0, fmt.Errorf("error converting material pass: %w", err)
-		}
-		assetMaterial.ShadowPasses[i] = assetPass
-	}
-	for i, pass := range material.ForwardPasses() {
-		assetPass, err := c.convertMaterialPass(pass)
-		if err != nil {
-			return 0, fmt.Errorf("error converting material pass: %w", err)
-		}
-		assetMaterial.ForwardPasses[i] = assetPass
-	}
-	for i, pass := range material.SkyPasses() {
-		assetPass, err := c.convertMaterialPass(pass)
-		if err != nil {
-			return 0, fmt.Errorf("error converting material pass: %w", err)
-		}
-		assetMaterial.SkyPasses[i] = assetPass
-	}
-	for i, pass := range material.PostprocessingPasses() {
-		assetPass, err := c.convertMaterialPass(pass)
-		if err != nil {
-			return 0, fmt.Errorf("error converting material pass: %w", err)
-		}
-		assetMaterial.PostprocessingPasses[i] = assetPass
-	}
-
-	index := uint32(len(c.assetMaterials))
-	c.assetMaterials = append(c.assetMaterials, assetMaterial)
-	c.convertedMaterials[material] = index
-	return index, nil
 }
 
 func (c *Converter) convertMesh(nodeIndex uint32, mesh *mdl.Mesh) (meshdto.Mesh, error) {
@@ -529,13 +427,9 @@ func (c *Converter) convertMeshDefinition(definition *mdl.MeshDefinition) (uint3
 		if !ok {
 			continue // likely invisible fragment.
 		}
-		materialIndex, err := c.convertMaterial(material)
-		if err != nil {
-			return 0, fmt.Errorf("error converting material: %w", err)
-		}
 		materialBindings = append(materialBindings, meshdto.MaterialBinding{
 			FragmentIndex: uint32(i),
-			MaterialIndex: materialIndex,
+			MaterialID:    material.ID(),
 		})
 	}
 
@@ -571,21 +465,11 @@ func (c *Converter) convertArmature(armature *mdl.Armature) (uint32, error) {
 }
 
 func (c *Converter) convertAmbientLight(nodeIndex uint32, light *mdl.AmbientLight) (lightingdto.AmbientLight, error) {
-	reflectionTextureIndex, err := c.convertTexture(light.ReflectionTexture())
-	if err != nil {
-		return lightingdto.AmbientLight{}, fmt.Errorf("error converting reflection texture: %w", err)
-	}
-
-	refractionTextureIndex, err := c.convertTexture(light.RefractionTexture())
-	if err != nil {
-		return lightingdto.AmbientLight{}, fmt.Errorf("error converting refraction texture: %w", err)
-	}
-
 	return lightingdto.AmbientLight{
-		NodeIndex:              nodeIndex,
-		ReflectionTextureIndex: reflectionTextureIndex,
-		RefractionTextureIndex: refractionTextureIndex,
-		CastShadow:             light.CastShadow(),
+		NodeIndex:           nodeIndex,
+		ReflectionTextureID: light.ReflectionTexture().ID(),
+		RefractionTextureID: light.RefractionTexture().ID(),
+		CastShadow:          light.CastShadow(),
 	}, nil
 }
 
@@ -618,157 +502,8 @@ func (c *Converter) convertDirectionalLight(nodeIndex uint32, light *mdl.Directi
 }
 
 func (c *Converter) convertSky(nodeIndex uint32, sky *mdl.Sky) (backgrounddto.Sky, error) {
-	materialIndex, err := c.convertMaterial(sky.Material())
-	if err != nil {
-		return backgrounddto.Sky{}, fmt.Errorf("error converting material: %w", err)
-	}
-
-	assetSky := backgrounddto.Sky{
-		NodeIndex:     nodeIndex,
-		MaterialIndex: materialIndex,
-	}
-	return assetSky, nil
-}
-
-func (c *Converter) convertShader(shader *mdl.Shader) (uint32, error) {
-	if index, ok := c.convertedShaders[shader]; ok {
-		return index, nil
-	}
-	ast, err := lsl.Parse(shader.SourceCode())
-	if err != nil {
-		return 0, fmt.Errorf("error parsing shader: %w", err)
-	}
-	var schema lsl.Schema
-	switch shader.ShaderType() {
-	case mdl.ShaderTypeGeometry:
-		schema = lsl.GeometrySchema()
-	case mdl.ShaderTypeShadow:
-		schema = lsl.ShadowSchema()
-	case mdl.ShaderTypeForward:
-		schema = lsl.ForwardSchema()
-	case mdl.ShaderTypeSky:
-		schema = lsl.SkySchema()
-	case mdl.ShaderTypePostprocess:
-		schema = lsl.PostprocessSchema()
-	default:
-		schema = lsl.DefaultSchema()
-	}
-	if err := lsl.Validate(ast, schema); err != nil {
-		return 0, fmt.Errorf("error validating shader: %w", err)
-	}
-	shaderIndex := uint32(len(c.assetShaders))
-	assetShader := shadingdto.Shader{
-		ShaderType: shader.ShaderType(),
-		SourceCode: shader.SourceCode(),
-	}
-	c.convertedShaders[shader] = shaderIndex
-	c.assetShaders = append(c.assetShaders, assetShader)
-	return shaderIndex, nil
-}
-
-func (c *Converter) convertSamplers(samplers map[string]*mdl.Sampler) ([]shadingdto.TextureBinding, error) {
-	bindings := make([]shadingdto.TextureBinding, 0, len(samplers))
-	for name, sampler := range samplers {
-		textureIndex, err := c.convertTexture(sampler.Texture())
-		if err != nil {
-			return nil, fmt.Errorf("error converting texture: %w", err)
-		}
-		bindings = append(bindings, shadingdto.TextureBinding{
-			BindingName:  name,
-			TextureIndex: textureIndex,
-			Wrapping:     sampler.WrapMode(),
-			Filtering:    sampler.FilterMode(),
-			Mipmapping:   sampler.Mipmapping(),
-		})
-	}
-	return bindings, nil
-}
-
-func isLikelyLinearSpace(format mdl.TextureFormat) bool {
-	linearFormats := []mdl.TextureFormat{
-		mdl.TextureFormatRGBA16F,
-		mdl.TextureFormatRGBA32F,
-	}
-	return slices.Contains(linearFormats, format)
-}
-
-func (c *Converter) convertTexture(texture *mdl.Texture) (uint32, error) {
-	if index, ok := c.convertedTextures[texture]; ok {
-		return index, nil
-	}
-
-	var flags shadingdto.TextureFlag
-	switch texture.Kind() {
-	case mdl.TextureKind2D:
-		flags = shadingdto.TextureFlag2D
-	case mdl.TextureKind2DArray:
-		flags = shadingdto.TextureFlag2DArray
-	case mdl.TextureKind3D:
-		flags = shadingdto.TextureFlag3D
-	case mdl.TextureKindCube:
-		flags = shadingdto.TextureFlagCubeMap
-	default:
-		return 0, fmt.Errorf("unsupported texture kind %d", texture.Kind())
-	}
-	if isLikelyLinearSpace(texture.Format()) || texture.Linear() {
-		flags |= shadingdto.TextureFlagLinearSpace
-	}
-	if texture.GenerateMipmaps() {
-		flags |= shadingdto.TextureFlagMipmapping
-	}
-	assetTexture := shadingdto.Texture{
-		Format: texture.Format(),
-		Flags:  flags,
-		MipmapLayers: gog.Map(texture.MipmapLayers(), func(mipLayer mdl.MipmapLayer) shadingdto.MipmapLayer {
-			return shadingdto.MipmapLayer{
-				Width:  uint32(mipLayer.Width()),
-				Height: uint32(mipLayer.Height()),
-				Depth:  uint32(mipLayer.Depth()),
-				Layers: gog.Map(mipLayer.Layers(), func(layer mdl.TextureLayer) shadingdto.TextureLayer {
-					return shadingdto.TextureLayer{
-						Data: layer.Data(),
-					}
-				}),
-			}
-		}),
-	}
-
-	index := uint32(len(c.assetTextures))
-	c.assetTextures = append(c.assetTextures, assetTexture)
-	c.convertedTextures[texture] = index
-	return index, nil
-}
-
-func (c *Converter) convertProperties(properties map[string]interface{}) ([]shadingdto.PropertyBinding, error) {
-	bindings := make([]shadingdto.PropertyBinding, 0, len(properties))
-	for name, value := range properties {
-		var data gblob.LittleEndianBlock
-		switch value := value.(type) {
-		case float32:
-			data = make(gblob.LittleEndianBlock, 4)
-			data.SetFloat32(0, value)
-		case sprec.Vec2:
-			data = make(gblob.LittleEndianBlock, 8)
-			data.SetFloat32(0, value.X)
-			data.SetFloat32(4, value.Y)
-		case sprec.Vec3:
-			data = make(gblob.LittleEndianBlock, 12)
-			data.SetFloat32(0, value.X)
-			data.SetFloat32(4, value.Y)
-			data.SetFloat32(8, value.Z)
-		case sprec.Vec4:
-			data = make(gblob.LittleEndianBlock, 16)
-			data.SetFloat32(0, value.X)
-			data.SetFloat32(4, value.Y)
-			data.SetFloat32(8, value.Z)
-			data.SetFloat32(12, value.W)
-		default:
-			return nil, fmt.Errorf("unsupported property type %T", value)
-		}
-		bindings = append(bindings, shadingdto.PropertyBinding{
-			BindingName: name,
-			Data:        data,
-		})
-	}
-	return bindings, nil
+	return backgrounddto.Sky{
+		NodeIndex:  nodeIndex,
+		MaterialID: sky.Material().ID(),
+	}, nil
 }

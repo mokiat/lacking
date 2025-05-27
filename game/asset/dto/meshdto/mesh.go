@@ -10,8 +10,8 @@ type MaterialBinding struct {
 	// FragmentIndex is the index of the fragment that is bound to the material.
 	FragmentIndex uint32
 
-	// MaterialIndex is the index of the material that is bound to the fragment.
-	MaterialIndex uint32
+	// MaterialID is the ID of the material that is bound to the fragment.
+	MaterialID uint32
 }
 
 // MeshDefinition represents the definition of a mesh. It extends the Geometry

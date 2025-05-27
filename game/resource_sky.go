@@ -6,9 +6,9 @@ import (
 	"github.com/mokiat/lacking/util/async"
 )
 
-func (s *ResourceSet) convertSkyDefinition(materials []*graphics.Material, assetSky backgrounddto.Sky) async.Promise[*graphics.SkyDefinition] {
+func (s *ResourceSet) convertSkyDefinition(materials map[uint32]*graphics.Material, assetSky backgrounddto.Sky) async.Promise[*graphics.SkyDefinition] {
 	skyDefinitionInfo := graphics.SkyDefinitionInfo{
-		Material: materials[assetSky.MaterialIndex],
+		Material: materials[assetSky.MaterialID],
 	}
 
 	promise := async.NewPromise[*graphics.SkyDefinition]()

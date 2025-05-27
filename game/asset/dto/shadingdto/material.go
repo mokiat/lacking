@@ -6,8 +6,8 @@ type TextureBinding struct {
 	// BindingName is the name of the binding in the shader.
 	BindingName string
 
-	// TextureIndex is the index of the texture to be bound.
-	TextureIndex uint32
+	// TextureID is the ID of the texture to be bound.
+	TextureID uint32
 
 	// Wrapping specifies the texture wrapping mode.
 	Wrapping WrapMode
@@ -54,12 +54,15 @@ type MaterialPass struct {
 	// Blending specifies whether blending should be enabled.
 	Blending bool
 
-	// ShaderIndex is the index of the shader to be used.
-	ShaderIndex uint32
+	// ShaderID is the ID of the shader to be used.
+	ShaderID uint32
 }
 
 // Material represents a material that can be applied to a mesh.
 type Material struct {
+
+	// ID is the unique identifier of the material within the file.
+	ID uint32
 
 	// Name is the name of the material.
 	Name string

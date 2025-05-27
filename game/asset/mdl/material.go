@@ -35,6 +35,7 @@ type Comparison = shadingdto.Comparison
 
 func NewMaterial(name string) *Material {
 	return &Material{
+		id:                   freeID.Add(1),
 		name:                 name,
 		metadata:             nil,
 		samplers:             nil,
@@ -48,6 +49,7 @@ func NewMaterial(name string) *Material {
 }
 
 type Material struct {
+	id   uint32
 	name string
 
 	metadata Metadata
@@ -60,6 +62,10 @@ type Material struct {
 	forwardPasses        []*MaterialPass
 	skyPasses            []*MaterialPass
 	postprocessingPasses []*MaterialPass
+}
+
+func (m *Material) ID() uint32 {
+	return m.id
 }
 
 func (m *Material) Clear() {
@@ -163,6 +169,16 @@ func (m *Material) PostprocessingPasses() []*MaterialPass {
 
 func (m *Material) AddPostprocessingPass(pass *MaterialPass) {
 	m.postprocessingPasses = append(m.postprocessingPasses, pass)
+}
+
+func (m *Material) AllPasses() []*MaterialPass {
+	var result []*MaterialPass
+	result = append(result, m.geometryPasses...)
+	result = append(result, m.shadowPasses...)
+	result = append(result, m.forwardPasses...)
+	result = append(result, m.skyPasses...)
+	result = append(result, m.postprocessingPasses...)
+	return result
 }
 
 func NewMaterialPass() *MaterialPass {

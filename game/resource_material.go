@@ -10,8 +10,8 @@ import (
 )
 
 func (s *ResourceSet) convertMaterial(
-	shaders []*graphics.Shader,
-	textures []render.Texture,
+	shaders map[uint32]*graphics.Shader,
+	textures map[uint32]render.Texture,
 	assetMaterial shadingdto.Material,
 ) async.Promise[*graphics.Material] {
 
@@ -39,7 +39,7 @@ func (s *ResourceSet) convertMaterial(
 		gfxEngine := s.engine.Graphics()
 		material := gfxEngine.CreateMaterial(materialInfo)
 		for _, binding := range assetMaterial.Textures {
-			texture := textures[binding.TextureIndex]
+			texture := textures[binding.TextureID]
 			material.SetTexture(binding.BindingName, texture)
 		}
 		for _, binding := range assetMaterial.Textures {
@@ -58,7 +58,7 @@ func (s *ResourceSet) convertMaterial(
 	return promise
 }
 
-func (s *ResourceSet) convertMaterialPass(shaders []*graphics.Shader, assetPass shadingdto.MaterialPass) graphics.MaterialPassInfo {
+func (s *ResourceSet) convertMaterialPass(shaders map[uint32]*graphics.Shader, assetPass shadingdto.MaterialPass) graphics.MaterialPassInfo {
 	return graphics.MaterialPassInfo{
 		Layer:           assetPass.Layer,
 		Culling:         opt.V(s.resolveCullMode(assetPass.Culling)),
@@ -67,6 +67,6 @@ func (s *ResourceSet) convertMaterialPass(shaders []*graphics.Shader, assetPass 
 		DepthWrite:      opt.V(assetPass.DepthWrite),
 		DepthComparison: opt.V(s.resolveComparison(assetPass.DepthComparison)),
 		Blending:        opt.V(assetPass.Blending),
-		Shader:          shaders[assetPass.ShaderIndex],
+		Shader:          shaders[assetPass.ShaderID],
 	}
 }

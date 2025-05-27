@@ -9,13 +9,13 @@ type AmbientLight struct {
 	// NodeIndex is the index of the node that is associated with the light.
 	NodeIndex uint32
 
-	// ReflectionTextureIndex is the index of the cube texture that is used
+	// ReflectionTextureID is the ID of the cube texture that is used
 	// for reflection mapping.
-	ReflectionTextureIndex uint32
+	ReflectionTextureID uint32
 
-	// RefractionTextureIndex is the index of the cube texture that is used
+	// RefractionTextureID is the ID of the cube texture that is used
 	// for refraction mapping.
-	RefractionTextureIndex uint32
+	RefractionTextureID uint32
 
 	// CastShadow specifies whether a SSAO-type technique should be applied.
 	CastShadow bool

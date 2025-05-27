@@ -40,6 +40,9 @@ func (f TextureFlag) Has(flag TextureFlag) bool {
 }
 
 type Texture struct {
+	// ID is the unique identifier of the texture within the file.
+	ID uint32
+
 	Format       TexelFormat
 	Flags        TextureFlag
 	MipmapLayers []MipmapLayer
