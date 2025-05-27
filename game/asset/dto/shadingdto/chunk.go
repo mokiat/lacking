@@ -1,5 +1,7 @@
 package shadingdto
 
+var ShadingChunkID = "lacking:shading"
+
 type ShadingChunkHolder struct {
 	ShadingChunk *ShadingChunk `chunk:"lacking:shading"`
 }

@@ -1,5 +1,7 @@
 package meshdto
 
+var MeshChunkID = "lacking:mesh"
+
 type MeshChunkHolder struct {
 	MeshChunk *MeshChunk `chunk:"lacking:mesh"`
 }

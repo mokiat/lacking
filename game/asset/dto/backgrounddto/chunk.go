@@ -1,5 +1,7 @@
 package backgrounddto
 
+var BackgroundChunkID = "lacking:background"
+
 type BackgroundChunkHolder struct {
 	BackgroundChunk *BackgroundChunk `chunk:"lacking:background"`
 }

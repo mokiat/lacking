@@ -1,5 +1,7 @@
 package lightingdto
 
+var LightingChunkID = "lacking:lighting"
+
 type LightingChunkHolder struct {
 	LightingChunk *LightingChunk `chunk:"lacking:lighting"`
 }

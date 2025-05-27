@@ -1,5 +1,7 @@
 package cameradto
 
+var CameraChunkID = "lacking:camera"
+
 type CameraChunkHolder struct {
 	Camera *CameraChunk `chunk:"lacking:camera"`
 }

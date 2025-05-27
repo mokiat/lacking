@@ -1,5 +1,7 @@
 package physicsdto
 
+var PhysicsChunkID = "lacking:physics"
+
 type PhysicsChunkHolder struct {
 	PhysicsChunk *PhysicsChunk `chunk:"lacking:physics"`
 }

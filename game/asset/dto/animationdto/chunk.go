@@ -1,5 +1,7 @@
 package animationdto
 
+const AnimationChunkID = "lacking:animation"
+
 type AnimationChunkHolder struct {
 	AnimationChunk *AnimationChunk `chunk:"lacking:animation"`
 }
