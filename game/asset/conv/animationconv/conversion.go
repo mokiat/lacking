@@ -14,6 +14,7 @@ func CreateAnimationChunk(src Source) *animationdto.AnimationChunk {
 	dtoAnimations := make([]animationdto.Animation, len(src.Animations()))
 	for i, animation := range src.Animations() {
 		dtoAnimation := animationdto.Animation{
+			ID:        animation.ID(),
 			Name:      animation.Name(),
 			StartTime: animation.StartTime(),
 			EndTime:   animation.EndTime(),

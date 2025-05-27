@@ -57,13 +57,14 @@ func (s *ResourceSet) openResource(resource *chunked.Asset) async.Promise[asset.
 }
 
 func (s *ResourceSet) convertModel(assetModel asset.Model) (*ModelDefinition, error) {
-	nodes := make([]nodeDefinition, len(assetModel.HierarchyChunk.Nodes))
-	for i, assetNode := range assetModel.HierarchyChunk.Nodes {
-		nodes[i] = s.convertNode(assetNode)
-	}
 	nodeIndexByID := make(map[uint32]int, len(assetModel.HierarchyChunk.Nodes))
 	for i, assetNode := range assetModel.HierarchyChunk.Nodes {
 		nodeIndexByID[assetNode.ID] = i
+	}
+
+	nodes := make([]nodeDefinition, len(assetModel.HierarchyChunk.Nodes))
+	for i, assetNode := range assetModel.HierarchyChunk.Nodes {
+		nodes[i] = s.convertNode(nodeIndexByID, assetNode)
 	}
 
 	animationPromises := make([]async.Promise[*AnimationDefinition], len(assetModel.AnimationChunk.Animations))

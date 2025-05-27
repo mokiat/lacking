@@ -6,6 +6,9 @@ import "github.com/mokiat/gomath/dprec"
 // from all points in space.
 type AmbientLight struct {
 
+	// ID is the unique identifier of the light within the file.
+	ID uint32
+
 	// NodeID is the ID of the node that is associated with the light.
 	NodeID uint32
 
@@ -25,6 +28,9 @@ type AmbientLight struct {
 // from a single point in space.
 type PointLight struct {
 
+	// ID is the unique identifier of the light within the file.
+	ID uint32
+
 	// NodeID is the ID of the node that is associated with the light.
 	NodeID uint32
 
@@ -41,6 +47,9 @@ type PointLight struct {
 // SpotLight represents a light source that emits light in a single, conical
 // direction.
 type SpotLight struct {
+
+	// ID is the unique identifier of the light within the file.
+	ID uint32
 
 	// NodeID is the ID of the node that is associated with the light.
 	NodeID uint32
@@ -65,6 +74,9 @@ type SpotLight struct {
 // DirectionalLight represents a light source that emits light in a single
 // direction from infinitely away in space.
 type DirectionalLight struct {
+
+	// ID is the unique identifier of the light within the file.
+	ID uint32
 
 	// NodeID is the ID of the node that is associated with the light.
 	NodeID uint32

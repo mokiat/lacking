@@ -15,6 +15,7 @@ func CreateBackgroundChunk(src Source) (*backgrounddto.BackgroundChunk, error) {
 	for i, placement := range allSkyPlacements {
 		sky := placement.Value
 		dtoSkies[i] = backgrounddto.Sky{
+			ID:         sky.ID(),
 			NodeID:     placement.Node.ID(),
 			MaterialID: sky.Material().ID(),
 		}

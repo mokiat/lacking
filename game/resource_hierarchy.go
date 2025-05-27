@@ -8,9 +8,13 @@ import (
 	"github.com/mokiat/lacking/util/async"
 )
 
-func (s *ResourceSet) convertNode(assetNode hierarchydto.Node) nodeDefinition {
+func (s *ResourceSet) convertNode(nodeIndexByID map[uint32]int, assetNode hierarchydto.Node) nodeDefinition {
+	parentIndex, ok := nodeIndexByID[assetNode.ParentID]
+	if !ok {
+		parentIndex = -1 // Unspecified parent index
+	}
 	return nodeDefinition{
-		ParentIndex: int(assetNode.ParentIndex),
+		ParentIndex: parentIndex,
 		Name:        assetNode.Name,
 		Position:    assetNode.Translation,
 		Rotation:    assetNode.Rotation,

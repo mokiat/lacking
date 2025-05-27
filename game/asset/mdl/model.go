@@ -43,6 +43,14 @@ func (s *Model) RemoveNode(node *Node) {
 	})
 }
 
+func (s *Model) AllNodes() []*Node {
+	var result []*Node
+	for _, node := range s.NodesIter() {
+		result = append(result, node)
+	}
+	return result
+}
+
 func (s *Model) NodesIter() iter.Seq2[int, *Node] {
 	return indexedIter(func(yield func(*Node) bool) {
 		s.yieldNodes(s.nodes, yield)

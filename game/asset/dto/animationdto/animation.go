@@ -11,6 +11,9 @@ import "github.com/mokiat/gomath/dprec"
 // applied to a scene to animate it.
 type Animation struct {
 
+	// ID is the unique identifier of the animation within the file.
+	ID uint32
+
 	// Name identifies this animation.
 	Name string
 

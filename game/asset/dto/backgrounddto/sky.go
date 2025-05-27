@@ -3,6 +3,9 @@ package backgrounddto
 // Sky represents the background of the scene.
 type Sky struct {
 
+	// ID is the unique identifier of the sky within the file.
+	ID uint32
+
 	// NodeID is the ID of the node that the sky is attached to.
 	NodeID uint32
 

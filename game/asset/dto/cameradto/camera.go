@@ -15,6 +15,9 @@ type FoVMode uint8
 // Camera represents a camera that is part of a model.
 type Camera struct {
 
+	// ID is the unique identifier of the camera within the file.
+	ID uint32
+
 	// NodeIndex is the index of the node that is used by this camera.
 	NodeIndex uint32
 

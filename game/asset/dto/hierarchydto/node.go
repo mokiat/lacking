@@ -3,8 +3,8 @@ package hierarchydto
 import "github.com/mokiat/gomath/dprec"
 
 const (
-	UnspecifiedNodeIndex = int32(-1)
-
+	// UnspecifiedNodeID is the ID that is used to indicate that no node is
+	// specified.
 	UnspecifiedNodeID = uint32(0xFFFFFFFF)
 )
 
@@ -14,14 +14,14 @@ type Node struct {
 	// ID is the unique identifier of the node within the file.
 	ID uint32
 
-	// Name is the name of the node.
-	Name string
-
-	// ParentIndex is the index of the parent node.
+	// ParentID is the ID of the parent node.
 	//
 	// If the node does not have a parent, this value is set to
-	// UnspecifiedNodeIndex.
-	ParentIndex int32
+	// UnspecifiedNodeID.
+	ParentID uint32
+
+	// Name is the name of the node.
+	Name string
 
 	// Translation is the translation of the node.
 	Translation dprec.Vec3

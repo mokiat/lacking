@@ -47,6 +47,7 @@ func CreateLightingChunk(src Source) *lightingdto.LightingChunk {
 
 func convertAmbientLight(node *mdl.Node, light *mdl.AmbientLight) lightingdto.AmbientLight {
 	return lightingdto.AmbientLight{
+		ID:                  light.ID(),
 		NodeID:              node.ID(),
 		ReflectionTextureID: light.ReflectionTexture().ID(),
 		RefractionTextureID: light.RefractionTexture().ID(),
@@ -56,6 +57,7 @@ func convertAmbientLight(node *mdl.Node, light *mdl.AmbientLight) lightingdto.Am
 
 func convertPointLight(node *mdl.Node, light *mdl.PointLight) lightingdto.PointLight {
 	return lightingdto.PointLight{
+		ID:           light.ID(),
 		NodeID:       node.ID(),
 		EmitColor:    light.EmitColor(),
 		EmitDistance: light.EmitDistance(),
@@ -65,6 +67,7 @@ func convertPointLight(node *mdl.Node, light *mdl.PointLight) lightingdto.PointL
 
 func convertSpotLight(node *mdl.Node, light *mdl.SpotLight) lightingdto.SpotLight {
 	return lightingdto.SpotLight{
+		ID:             light.ID(),
 		NodeID:         node.ID(),
 		EmitColor:      light.EmitColor(),
 		EmitDistance:   light.EmitDistance(),
@@ -76,6 +79,7 @@ func convertSpotLight(node *mdl.Node, light *mdl.SpotLight) lightingdto.SpotLigh
 
 func convertDirectionalLight(node *mdl.Node, light *mdl.DirectionalLight) lightingdto.DirectionalLight {
 	return lightingdto.DirectionalLight{
+		ID:         light.ID(),
 		NodeID:     node.ID(),
 		EmitColor:  light.EmitColor(),
 		CastShadow: light.CastShadow(),
