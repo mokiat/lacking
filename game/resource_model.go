@@ -189,6 +189,7 @@ func (s *ResourceSet) convertModel(assetModel asset.Model) (*ModelDefinition, er
 	ambientLights := make([]ambientLightInstance, len(assetModel.LightingChunk.AmbientLights))
 	for i, assetAmbientLight := range assetModel.LightingChunk.AmbientLights {
 		ambientLights[i] = s.convertAmbientLight(
+			nodeIndexByID,
 			textureByID,
 			assetAmbientLight,
 		)
@@ -196,17 +197,26 @@ func (s *ResourceSet) convertModel(assetModel asset.Model) (*ModelDefinition, er
 
 	pointLights := make([]pointLightInstance, len(assetModel.LightingChunk.PointLights))
 	for i, assetPointLight := range assetModel.LightingChunk.PointLights {
-		pointLights[i] = s.convertPointLight(assetPointLight)
+		pointLights[i] = s.convertPointLight(
+			nodeIndexByID,
+			assetPointLight,
+		)
 	}
 
 	spotLights := make([]spotLightInstance, len(assetModel.LightingChunk.SpotLights))
 	for i, assetSpotLight := range assetModel.LightingChunk.SpotLights {
-		spotLights[i] = s.convertSpotLight(assetSpotLight)
+		spotLights[i] = s.convertSpotLight(
+			nodeIndexByID,
+			assetSpotLight,
+		)
 	}
 
 	directionalLights := make([]directionalLightInstance, len(assetModel.LightingChunk.DirectionalLights))
 	for i, assetDirectionalLight := range assetModel.LightingChunk.DirectionalLights {
-		directionalLights[i] = s.convertDirectionalLight(assetDirectionalLight)
+		directionalLights[i] = s.convertDirectionalLight(
+			nodeIndexByID,
+			assetDirectionalLight,
+		)
 	}
 
 	skyDefinitionPromises := make([]async.Promise[*graphics.SkyDefinition], len(assetModel.BackgroundChunk.Skies))

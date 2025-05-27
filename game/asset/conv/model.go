@@ -10,10 +10,12 @@ import (
 	"github.com/mokiat/lacking/game/asset/conv/animationconv"
 	"github.com/mokiat/lacking/game/asset/conv/backgroundconv"
 	"github.com/mokiat/lacking/game/asset/conv/hierarchyconv"
+	"github.com/mokiat/lacking/game/asset/conv/lightingconv"
 	"github.com/mokiat/lacking/game/asset/conv/physicsconv"
 	"github.com/mokiat/lacking/game/asset/conv/shadingconv"
 	"github.com/mokiat/lacking/game/asset/dto/animationdto"
 	"github.com/mokiat/lacking/game/asset/dto/backgrounddto"
+	"github.com/mokiat/lacking/game/asset/dto/cameradto"
 	"github.com/mokiat/lacking/game/asset/dto/hierarchydto"
 	"github.com/mokiat/lacking/game/asset/dto/lightingdto"
 	"github.com/mokiat/lacking/game/asset/dto/meshdto"
@@ -55,11 +57,7 @@ func (c *Converter) Convert() (asset.Model, error) {
 
 func (c *Converter) convertModel(s *mdl.Model) (asset.Model, error) {
 	var (
-		assetMeshes            []meshdto.Mesh
-		assetAmbientLights     []lightingdto.AmbientLight
-		assetPointLights       []lightingdto.PointLight
-		assetSpotLights        []lightingdto.SpotLight
-		assetDirectionalLights []lightingdto.DirectionalLight
+		assetMeshes []meshdto.Mesh
 	)
 
 	// First nodes pass, so that all nodes are tracked, otherwise
@@ -76,21 +74,6 @@ func (c *Converter) convertModel(s *mdl.Model) (asset.Model, error) {
 				return asset.Model{}, fmt.Errorf("error converting mesh %q: %w", node.Name(), err)
 			}
 			assetMeshes = append(assetMeshes, assetMesh)
-		case *mdl.AmbientLight:
-			ambientLightAsset, err := c.convertAmbientLight(uint32(i), target)
-			if err != nil {
-				return asset.Model{}, fmt.Errorf("error converting ambient light %q: %w", node.Name(), err)
-			}
-			assetAmbientLights = append(assetAmbientLights, ambientLightAsset)
-		case *mdl.PointLight:
-			pointLightAsset := c.convertPointLight(uint32(i), target)
-			assetPointLights = append(assetPointLights, pointLightAsset)
-		case *mdl.SpotLight:
-			spotLightAsset := c.convertSpotLight(uint32(i), target)
-			assetSpotLights = append(assetSpotLights, spotLightAsset)
-		case *mdl.DirectionalLight:
-			directionalLightAsset := c.convertDirectionalLight(uint32(i), target)
-			assetDirectionalLights = append(assetDirectionalLights, directionalLightAsset)
 		}
 	}
 
@@ -104,6 +87,9 @@ func (c *Converter) convertModel(s *mdl.Model) (asset.Model, error) {
 		ShadingChunkHolder: shadingdto.ShadingChunkHolder{
 			ShadingChunk: gog.Must(shadingconv.CreateShadingChunk(c.model)),
 		},
+		LightingChunkHolder: lightingdto.LightingChunkHolder{
+			LightingChunk: lightingconv.CreateLightingChunk(c.model),
+		},
 		MeshChunkHolder: meshdto.MeshChunkHolder{
 			MeshChunk: &meshdto.MeshChunk{
 				Armatures:       c.assetArmatures,
@@ -115,13 +101,8 @@ func (c *Converter) convertModel(s *mdl.Model) (asset.Model, error) {
 		PhysicsChunkHolder: physicsdto.PhysicsChunkHolder{
 			PhysicsChunk: physicsconv.CreatePhysicsChunk(c.model),
 		},
-		LightingChunkHolder: lightingdto.LightingChunkHolder{
-			LightingChunk: &lightingdto.LightingChunk{
-				AmbientLights:     assetAmbientLights,
-				PointLights:       assetPointLights,
-				SpotLights:        assetSpotLights,
-				DirectionalLights: assetDirectionalLights,
-			},
+		CameraChunkHolder: cameradto.CameraChunkHolder{
+			Camera: nil, // TODO: Implement camera conversion.
 		},
 		BackgroundChunkHolder: backgrounddto.BackgroundChunkHolder{
 			BackgroundChunk: gog.Must(backgroundconv.CreateBackgroundChunk(c.model)),
@@ -454,41 +435,4 @@ func (c *Converter) convertArmature(armature *mdl.Armature) (uint32, error) {
 	c.assetArmatures = append(c.assetArmatures, assetArmature)
 	c.convertedArmatures[armature] = index
 	return index, nil
-}
-
-func (c *Converter) convertAmbientLight(nodeIndex uint32, light *mdl.AmbientLight) (lightingdto.AmbientLight, error) {
-	return lightingdto.AmbientLight{
-		NodeIndex:           nodeIndex,
-		ReflectionTextureID: light.ReflectionTexture().ID(),
-		RefractionTextureID: light.RefractionTexture().ID(),
-		CastShadow:          light.CastShadow(),
-	}, nil
-}
-
-func (c *Converter) convertPointLight(nodeIndex uint32, light *mdl.PointLight) lightingdto.PointLight {
-	return lightingdto.PointLight{
-		NodeIndex:    nodeIndex,
-		EmitColor:    light.EmitColor(),
-		EmitDistance: light.EmitDistance(),
-		CastShadow:   light.CastShadow(),
-	}
-}
-
-func (c *Converter) convertSpotLight(nodeIndex uint32, light *mdl.SpotLight) lightingdto.SpotLight {
-	return lightingdto.SpotLight{
-		NodeIndex:      nodeIndex,
-		EmitColor:      light.EmitColor(),
-		EmitDistance:   light.EmitDistance(),
-		EmitAngleOuter: light.EmitAngleOuter(),
-		EmitAngleInner: light.EmitAngleInner(),
-		CastShadow:     light.CastShadow(),
-	}
-}
-
-func (c *Converter) convertDirectionalLight(nodeIndex uint32, light *mdl.DirectionalLight) lightingdto.DirectionalLight {
-	return lightingdto.DirectionalLight{
-		NodeIndex:  nodeIndex,
-		EmitColor:  light.EmitColor(),
-		CastShadow: light.CastShadow(),
-	}
 }

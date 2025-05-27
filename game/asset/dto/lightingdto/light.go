@@ -6,8 +6,8 @@ import "github.com/mokiat/gomath/dprec"
 // from all points in space.
 type AmbientLight struct {
 
-	// NodeIndex is the index of the node that is associated with the light.
-	NodeIndex uint32
+	// NodeID is the ID of the node that is associated with the light.
+	NodeID uint32
 
 	// ReflectionTextureID is the ID of the cube texture that is used
 	// for reflection mapping.
@@ -25,8 +25,8 @@ type AmbientLight struct {
 // from a single point in space.
 type PointLight struct {
 
-	// NodeIndex is the index of the node that is associated with the light.
-	NodeIndex uint32
+	// NodeID is the ID of the node that is associated with the light.
+	NodeID uint32
 
 	// EmitColor is the linear color of the light that is emitted.
 	EmitColor dprec.Vec3
@@ -42,8 +42,8 @@ type PointLight struct {
 // direction.
 type SpotLight struct {
 
-	// NodeIndex is the index of the node that is associated with the light.
-	NodeIndex uint32
+	// NodeID is the ID of the node that is associated with the light.
+	NodeID uint32
 
 	// EmitColor is the linear color of the light that is emitted.
 	EmitColor dprec.Vec3
@@ -66,8 +66,8 @@ type SpotLight struct {
 // direction from infinitely away in space.
 type DirectionalLight struct {
 
-	// NodeIndex is the index of the node that is associated with the light.
-	NodeIndex uint32
+	// NodeID is the ID of the node that is associated with the light.
+	NodeID uint32
 
 	// EmitColor is the linear color of the light that is emitted.
 	EmitColor dprec.Vec3

@@ -5,27 +5,30 @@ import (
 	"github.com/mokiat/lacking/render"
 )
 
-func (s *ResourceSet) convertAmbientLight(textures map[uint32]render.Texture, assetLight lightingdto.AmbientLight) ambientLightInstance {
+func (s *ResourceSet) convertAmbientLight(nodes map[uint32]int, textures map[uint32]render.Texture, assetLight lightingdto.AmbientLight) ambientLightInstance {
+	nodeIndex := nodes[assetLight.NodeID]
 	return ambientLightInstance{
-		nodeIndex:         int(assetLight.NodeIndex),
+		nodeIndex:         nodeIndex,
 		reflectionTexture: textures[assetLight.ReflectionTextureID],
 		refractionTexture: textures[assetLight.RefractionTextureID],
 		castShadow:        assetLight.CastShadow,
 	}
 }
 
-func (s *ResourceSet) convertPointLight(assetLight lightingdto.PointLight) pointLightInstance {
+func (s *ResourceSet) convertPointLight(nodes map[uint32]int, assetLight lightingdto.PointLight) pointLightInstance {
+	nodeIndex := nodes[assetLight.NodeID]
 	return pointLightInstance{
-		nodeIndex:    int(assetLight.NodeIndex),
+		nodeIndex:    nodeIndex,
 		emitColor:    assetLight.EmitColor,
 		emitDistance: assetLight.EmitDistance,
 		castShadow:   assetLight.CastShadow,
 	}
 }
 
-func (s *ResourceSet) convertSpotLight(assetLight lightingdto.SpotLight) spotLightInstance {
+func (s *ResourceSet) convertSpotLight(nodes map[uint32]int, assetLight lightingdto.SpotLight) spotLightInstance {
+	nodeIndex := nodes[assetLight.NodeID]
 	return spotLightInstance{
-		nodeIndex:      int(assetLight.NodeIndex),
+		nodeIndex:      nodeIndex,
 		emitColor:      assetLight.EmitColor,
 		emitDistance:   assetLight.EmitDistance,
 		emitAngleOuter: assetLight.EmitAngleOuter,
@@ -34,9 +37,10 @@ func (s *ResourceSet) convertSpotLight(assetLight lightingdto.SpotLight) spotLig
 	}
 }
 
-func (s *ResourceSet) convertDirectionalLight(assetLight lightingdto.DirectionalLight) directionalLightInstance {
+func (s *ResourceSet) convertDirectionalLight(nodes map[uint32]int, assetLight lightingdto.DirectionalLight) directionalLightInstance {
+	nodeIndex := nodes[assetLight.NodeID]
 	return directionalLightInstance{
-		nodeIndex:  int(assetLight.NodeIndex),
+		nodeIndex:  nodeIndex,
 		emitColor:  assetLight.EmitColor,
 		castShadow: assetLight.CastShadow,
 	}

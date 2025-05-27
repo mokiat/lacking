@@ -115,6 +115,48 @@ func (s *Model) AllAmbientLightPlacements() []Placed[*AmbientLight] {
 	return result
 }
 
+func (s *Model) AllPointLightPlacements() []Placed[*PointLight] {
+	var result []Placed[*PointLight]
+	for _, node := range s.NodesIter() {
+		switch source := node.Target().(type) {
+		case *PointLight:
+			result = append(result, Placed[*PointLight]{
+				Node:  node,
+				Value: source,
+			})
+		}
+	}
+	return result
+}
+
+func (s *Model) AllSpotLightPlacements() []Placed[*SpotLight] {
+	var result []Placed[*SpotLight]
+	for _, node := range s.NodesIter() {
+		switch source := node.Target().(type) {
+		case *SpotLight:
+			result = append(result, Placed[*SpotLight]{
+				Node:  node,
+				Value: source,
+			})
+		}
+	}
+	return result
+}
+
+func (s *Model) AllDirectionalLightPlacements() []Placed[*DirectionalLight] {
+	var result []Placed[*DirectionalLight]
+	for _, node := range s.NodesIter() {
+		switch source := node.Target().(type) {
+		case *DirectionalLight:
+			result = append(result, Placed[*DirectionalLight]{
+				Node:  node,
+				Value: source,
+			})
+		}
+	}
+	return result
+}
+
 func (s *Model) AllMeshPlacements() []Placed[*Mesh] {
 	var result []Placed[*Mesh]
 	for _, node := range s.NodesIter() {
