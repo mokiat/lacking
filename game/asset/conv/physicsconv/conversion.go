@@ -12,7 +12,7 @@ type Source interface {
 	AllPhysicsBodyPlacements() []mdl.Placed[*mdl.Body]
 }
 
-func CreatePhysicsChunk(src Source) *physicsdto.PhysicsChunk {
+func CreatePhysicsChunk(src Source) (*physicsdto.PhysicsChunk, error) {
 	allMaterials := src.AllPhysicsBodyMaterials()
 	dtoBodyMaterials := make([]physicsdto.BodyMaterial, len(allMaterials))
 	for i, material := range allMaterials {
@@ -36,7 +36,7 @@ func CreatePhysicsChunk(src Source) *physicsdto.PhysicsChunk {
 		BodyMaterials:   dtoBodyMaterials,
 		BodyDefinitions: dtoBodyDefinitions,
 		Bodies:          dtoBodies,
-	}
+	}, nil
 }
 
 func convertBodyMaterial(material *mdl.BodyMaterial) physicsdto.BodyMaterial {

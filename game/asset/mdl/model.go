@@ -21,7 +21,12 @@ type Model struct {
 	animations []*Animation
 }
 
+// Deprecated: Use Path instead.
 func (s *Model) Name() string {
+	return s.name
+}
+
+func (s *Model) Path() string {
 	return s.name
 }
 

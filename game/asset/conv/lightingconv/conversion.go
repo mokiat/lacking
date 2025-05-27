@@ -12,7 +12,7 @@ type Source interface {
 	AllDirectionalLightPlacements() []mdl.Placed[*mdl.DirectionalLight]
 }
 
-func CreateLightingChunk(src Source) *lightingdto.LightingChunk {
+func CreateLightingChunk(src Source) (*lightingdto.LightingChunk, error) {
 	allAmbientLightPlacements := src.AllAmbientLightPlacements()
 	dtoAmbientLights := make([]lightingdto.AmbientLight, len(allAmbientLightPlacements))
 	for i, placement := range allAmbientLightPlacements {
@@ -42,7 +42,7 @@ func CreateLightingChunk(src Source) *lightingdto.LightingChunk {
 		PointLights:       dtoPointLights,
 		SpotLights:        dtoSpotLights,
 		DirectionalLights: dtoDirectionalLights,
-	}
+	}, nil
 }
 
 func convertAmbientLight(node *mdl.Node, light *mdl.AmbientLight) lightingdto.AmbientLight {

@@ -10,7 +10,7 @@ type Source interface {
 	Animations() []*mdl.Animation
 }
 
-func CreateAnimationChunk(src Source) *animationdto.AnimationChunk {
+func CreateAnimationChunk(src Source) (*animationdto.AnimationChunk, error) {
 	dtoAnimations := make([]animationdto.Animation, len(src.Animations()))
 	for i, animation := range src.Animations() {
 		dtoAnimation := animationdto.Animation{
@@ -53,5 +53,5 @@ func CreateAnimationChunk(src Source) *animationdto.AnimationChunk {
 	}
 	return &animationdto.AnimationChunk{
 		Animations: dtoAnimations,
-	}
+	}, nil
 }

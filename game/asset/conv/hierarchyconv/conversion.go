@@ -9,7 +9,7 @@ type Source interface {
 	AllNodes() []*mdl.Node
 }
 
-func CreateHierarchyChunk(src Source) *hierarchydto.HierarchyChunk {
+func CreateHierarchyChunk(src Source) (*hierarchydto.HierarchyChunk, error) {
 	allNodes := src.AllNodes()
 	dtoNodes := make([]hierarchydto.Node, len(allNodes))
 	for i, node := range allNodes {
@@ -29,5 +29,5 @@ func CreateHierarchyChunk(src Source) *hierarchydto.HierarchyChunk {
 	}
 	return &hierarchydto.HierarchyChunk{
 		Nodes: dtoNodes,
-	}
+	}, nil
 }
