@@ -223,7 +223,7 @@ func (s *ResourceSet) convertModel(assetModel asset.Model) (*ModelDefinition, er
 
 	skies := make([]skyInstance, len(assetModel.BackgroundChunk.Skies))
 	for i, assetSky := range assetModel.BackgroundChunk.Skies {
-		skies[i] = s.convertSky(i, assetSky)
+		skies[i] = s.convertSky(nodeIndexByID, i, assetSky)
 	}
 
 	return &ModelDefinition{

@@ -8,6 +8,7 @@ import (
 	"github.com/mokiat/gomath/dprec"
 	"github.com/mokiat/lacking/game/asset"
 	"github.com/mokiat/lacking/game/asset/conv/animationconv"
+	"github.com/mokiat/lacking/game/asset/conv/backgroundconv"
 	"github.com/mokiat/lacking/game/asset/conv/hierarchyconv"
 	"github.com/mokiat/lacking/game/asset/conv/physicsconv"
 	"github.com/mokiat/lacking/game/asset/conv/shadingconv"
@@ -59,7 +60,6 @@ func (c *Converter) convertModel(s *mdl.Model) (asset.Model, error) {
 		assetPointLights       []lightingdto.PointLight
 		assetSpotLights        []lightingdto.SpotLight
 		assetDirectionalLights []lightingdto.DirectionalLight
-		assetSkies             []backgrounddto.Sky
 	)
 
 	// First nodes pass, so that all nodes are tracked, otherwise
@@ -91,12 +91,6 @@ func (c *Converter) convertModel(s *mdl.Model) (asset.Model, error) {
 		case *mdl.DirectionalLight:
 			directionalLightAsset := c.convertDirectionalLight(uint32(i), target)
 			assetDirectionalLights = append(assetDirectionalLights, directionalLightAsset)
-		case *mdl.Sky:
-			assetSky, err := c.convertSky(uint32(i), target)
-			if err != nil {
-				return asset.Model{}, fmt.Errorf("error converting sky %q: %w", node.Name(), err)
-			}
-			assetSkies = append(assetSkies, assetSky)
 		}
 	}
 
@@ -130,9 +124,7 @@ func (c *Converter) convertModel(s *mdl.Model) (asset.Model, error) {
 			},
 		},
 		BackgroundChunkHolder: backgrounddto.BackgroundChunkHolder{
-			BackgroundChunk: &backgrounddto.BackgroundChunk{
-				Skies: assetSkies,
-			},
+			BackgroundChunk: gog.Must(backgroundconv.CreateBackgroundChunk(c.model)),
 		},
 	}, nil
 }
@@ -499,11 +491,4 @@ func (c *Converter) convertDirectionalLight(nodeIndex uint32, light *mdl.Directi
 		EmitColor:  light.EmitColor(),
 		CastShadow: light.CastShadow(),
 	}
-}
-
-func (c *Converter) convertSky(nodeIndex uint32, sky *mdl.Sky) (backgrounddto.Sky, error) {
-	return backgrounddto.Sky{
-		NodeIndex:  nodeIndex,
-		MaterialID: sky.Material().ID(),
-	}, nil
 }
