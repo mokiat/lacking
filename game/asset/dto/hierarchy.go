@@ -1,4 +1,4 @@
-package hierarchydto
+package dto
 
 import "github.com/mokiat/gomath/dprec"
 
@@ -7,6 +7,16 @@ const (
 	// specified.
 	UnspecifiedNodeID = uint32(0xFFFFFFFF)
 )
+
+var HierarchyChunkID = "lacking:hierarchy"
+
+type HierarchyChunkHolder struct {
+	HierarchyChunk *HierarchyChunk `chunk:"lacking:hierarchy"`
+}
+
+type HierarchyChunk struct {
+	Nodes []Node
+}
 
 // Node represents a single node in a model.
 type Node struct {

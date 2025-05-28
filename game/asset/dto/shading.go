@@ -1,4 +1,4 @@
-package shadingdto
+package dto
 
 var ShadingChunkID = "lacking:shading"
 

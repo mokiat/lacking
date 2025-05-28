@@ -1,15 +1,15 @@
 package mdl
 
-import "github.com/mokiat/lacking/game/asset/dto/shadingdto"
+import "github.com/mokiat/lacking/game/asset/dto"
 
-type ShaderType = shadingdto.ShaderType
+type ShaderType = dto.ShaderType
 
 const (
-	ShaderTypeGeometry    ShaderType = shadingdto.ShaderTypeGeometry
-	ShaderTypeShadow      ShaderType = shadingdto.ShaderTypeShadow
-	ShaderTypeForward     ShaderType = shadingdto.ShaderTypeForward
-	ShaderTypeSky         ShaderType = shadingdto.ShaderTypeSky
-	ShaderTypePostprocess ShaderType = shadingdto.ShaderTypePostprocess
+	ShaderTypeGeometry    ShaderType = dto.ShaderTypeGeometry
+	ShaderTypeShadow      ShaderType = dto.ShaderTypeShadow
+	ShaderTypeForward     ShaderType = dto.ShaderTypeForward
+	ShaderTypeSky         ShaderType = dto.ShaderTypeSky
+	ShaderTypePostprocess ShaderType = dto.ShaderTypePostprocess
 )
 
 func NewShader(shaderType ShaderType) *Shader {

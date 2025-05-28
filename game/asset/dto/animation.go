@@ -1,4 +1,4 @@
-package animationdto
+package dto
 
 import "github.com/mokiat/gomath/dprec"
 
@@ -6,6 +6,17 @@ import "github.com/mokiat/gomath/dprec"
 // that are not just on nodes.
 // Maybe have a set of keyframe types and some path mechanism
 // to target a node or a property on the content of a node.
+
+const AnimationChunkID = "lacking:animation"
+
+type AnimationChunkHolder struct {
+	AnimationChunk *AnimationChunk `chunk:"lacking:animation"`
+}
+
+type AnimationChunk struct {
+	// Animations is the collection of animations that are part of the scene.
+	Animations []Animation
+}
 
 // Animation represents a sequence of keyframes that can be
 // applied to a scene to animate it.

@@ -1,4 +1,4 @@
-package shadingdto
+package dto
 
 // Shader represents a shader program that can be used to render a mesh.
 type Shader struct {

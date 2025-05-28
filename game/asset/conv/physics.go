@@ -3,7 +3,7 @@ package conv
 import (
 	"github.com/mokiat/gog"
 	"github.com/mokiat/gog/ds"
-	"github.com/mokiat/lacking/game/asset/dto/physicsdto"
+	"github.com/mokiat/lacking/game/asset/dto"
 	"github.com/mokiat/lacking/game/asset/mdl"
 	"github.com/mokiat/lacking/storage/chunked"
 )
@@ -29,55 +29,55 @@ func (c *PhysicsConverter) Convert(target *ds.List[chunked.Chunk], asset any) er
 	if err != nil {
 		return err
 	}
-	target.Add(chunked.FromValue(physicsdto.PhysicsChunkID, chunk))
+	target.Add(chunked.FromValue(dto.PhysicsChunkID, chunk))
 	return nil
 }
 
-func (c *PhysicsConverter) CreatePhysicsChunk(src PhysicsSource) (*physicsdto.PhysicsChunk, error) {
+func (c *PhysicsConverter) CreatePhysicsChunk(src PhysicsSource) (*dto.PhysicsChunk, error) {
 	allMaterials := src.AllPhysicsBodyMaterials()
-	dtoBodyMaterials := make([]physicsdto.BodyMaterial, len(allMaterials))
+	dtoBodyMaterials := make([]dto.BodyMaterial, len(allMaterials))
 	for i, material := range allMaterials {
 		dtoBodyMaterials[i] = c.convertBodyMaterial(material)
 	}
 
 	allDefinitions := src.AllPhysicsBodyDefinitions()
-	dtoBodyDefinitions := make([]physicsdto.BodyDefinition, len(allDefinitions))
+	dtoBodyDefinitions := make([]dto.BodyDefinition, len(allDefinitions))
 	for i, definition := range allDefinitions {
 		dtoBodyDefinitions[i] = c.convertBodyDefinition(definition)
 	}
 
 	allBodyPlacements := src.AllPhysicsBodyPlacements()
-	dtoBodies := make([]physicsdto.Body, len(allBodyPlacements))
+	dtoBodies := make([]dto.Body, len(allBodyPlacements))
 	for i, placement := range allBodyPlacements {
 		body := placement.Value
 		dtoBodies[i] = c.convertBody(placement.Node, body)
 	}
 
-	return &physicsdto.PhysicsChunk{
+	return &dto.PhysicsChunk{
 		BodyMaterials:   dtoBodyMaterials,
 		BodyDefinitions: dtoBodyDefinitions,
 		Bodies:          dtoBodies,
 	}, nil
 }
 
-func (c *PhysicsConverter) convertBodyMaterial(material *mdl.BodyMaterial) physicsdto.BodyMaterial {
-	return physicsdto.BodyMaterial{
+func (c *PhysicsConverter) convertBodyMaterial(material *mdl.BodyMaterial) dto.BodyMaterial {
+	return dto.BodyMaterial{
 		ID:                     material.ID(),
 		FrictionCoefficient:    material.FrictionCoefficient(),
 		RestitutionCoefficient: material.RestitutionCoefficient(),
 	}
 }
 
-func (c *PhysicsConverter) convertBodyDefinition(definition *mdl.BodyDefinition) physicsdto.BodyDefinition {
-	return physicsdto.BodyDefinition{
+func (c *PhysicsConverter) convertBodyDefinition(definition *mdl.BodyDefinition) dto.BodyDefinition {
+	return dto.BodyDefinition{
 		ID:                definition.ID(),
 		MaterialID:        definition.Material().ID(),
 		Mass:              definition.Mass(),
 		MomentOfInertia:   definition.MomentOfInertia(),
 		DragFactor:        definition.DragFactor(),
 		AngularDragFactor: definition.AngularDragFactor(),
-		CollisionBoxes: gog.Map(definition.CollisionBoxes(), func(box *mdl.CollisionBox) physicsdto.CollisionBox {
-			return physicsdto.CollisionBox{
+		CollisionBoxes: gog.Map(definition.CollisionBoxes(), func(box *mdl.CollisionBox) dto.CollisionBox {
+			return dto.CollisionBox{
 				Translation: box.Translation(),
 				Rotation:    box.Rotation(),
 				Width:       box.Width(),
@@ -85,18 +85,18 @@ func (c *PhysicsConverter) convertBodyDefinition(definition *mdl.BodyDefinition)
 				Length:      box.Length(),
 			}
 		}),
-		CollisionSpheres: gog.Map(definition.CollisionSpheres(), func(sphere *mdl.CollisionSphere) physicsdto.CollisionSphere {
-			return physicsdto.CollisionSphere{
+		CollisionSpheres: gog.Map(definition.CollisionSpheres(), func(sphere *mdl.CollisionSphere) dto.CollisionSphere {
+			return dto.CollisionSphere{
 				Translation: sphere.Translation(),
 				Radius:      sphere.Radius(),
 			}
 		}),
-		CollisionMeshes: gog.Map(definition.CollisionMeshes(), func(mesh *mdl.CollisionMesh) physicsdto.CollisionMesh {
-			return physicsdto.CollisionMesh{
+		CollisionMeshes: gog.Map(definition.CollisionMeshes(), func(mesh *mdl.CollisionMesh) dto.CollisionMesh {
+			return dto.CollisionMesh{
 				Translation: mesh.Translation(),
 				Rotation:    mesh.Rotation(),
-				Triangles: gog.Map(mesh.Triangles(), func(triangle mdl.CollisionTriangle) physicsdto.CollisionTriangle {
-					return physicsdto.CollisionTriangle{
+				Triangles: gog.Map(mesh.Triangles(), func(triangle mdl.CollisionTriangle) dto.CollisionTriangle {
+					return dto.CollisionTriangle{
 						A: triangle.A,
 						B: triangle.B,
 						C: triangle.C,
@@ -107,8 +107,8 @@ func (c *PhysicsConverter) convertBodyDefinition(definition *mdl.BodyDefinition)
 	}
 }
 
-func (c *PhysicsConverter) convertBody(node *mdl.Node, body *mdl.Body) physicsdto.Body {
-	return physicsdto.Body{
+func (c *PhysicsConverter) convertBody(node *mdl.Node, body *mdl.Body) dto.Body {
+	return dto.Body{
 		ID:               body.ID(),
 		NodeID:           node.ID(),
 		BodyDefinitionID: body.Definition().ID(),

@@ -1,24 +1,22 @@
 package mdl
 
-import (
-	"github.com/mokiat/lacking/game/asset/dto/shadingdto"
-)
+import "github.com/mokiat/lacking/game/asset/dto"
 
 const (
-	WrapModeClamp          WrapMode = shadingdto.WrapModeClamp
-	WrapModeRepeat         WrapMode = shadingdto.WrapModeRepeat
-	WrapModeMirroredRepeat WrapMode = shadingdto.WrapModeMirroredRepeat
+	WrapModeClamp          WrapMode = dto.WrapModeClamp
+	WrapModeRepeat         WrapMode = dto.WrapModeRepeat
+	WrapModeMirroredRepeat WrapMode = dto.WrapModeMirroredRepeat
 )
 
-type WrapMode = shadingdto.WrapMode
+type WrapMode = dto.WrapMode
 
 const (
-	FilterModeNearest     FilterMode = shadingdto.FilterModeNearest
-	FilterModeLinear      FilterMode = shadingdto.FilterModeLinear
-	FilterModeAnisotropic FilterMode = shadingdto.FilterModeAnisotropic
+	FilterModeNearest     FilterMode = dto.FilterModeNearest
+	FilterModeLinear      FilterMode = dto.FilterModeLinear
+	FilterModeAnisotropic FilterMode = dto.FilterModeAnisotropic
 )
 
-type FilterMode = shadingdto.FilterMode
+type FilterMode = dto.FilterMode
 
 type TextureReferrer interface {
 	Texture() *Texture

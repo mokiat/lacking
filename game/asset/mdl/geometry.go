@@ -4,17 +4,17 @@ import (
 	"maps"
 
 	"github.com/mokiat/gomath/sprec"
-	"github.com/mokiat/lacking/game/asset/dto/meshdto"
+	"github.com/mokiat/lacking/game/asset/dto"
 )
 
-type Topology = meshdto.Topology
+type Topology = dto.Topology
 
 const (
-	TopologyPoints        Topology = meshdto.TopologyPoints
-	TopologyLineList      Topology = meshdto.TopologyLineList
-	TopologyLineStrip     Topology = meshdto.TopologyLineStrip
-	TopologyTriangleList  Topology = meshdto.TopologyTriangleList
-	TopologyTriangleStrip Topology = meshdto.TopologyTriangleStrip
+	TopologyPoints        Topology = dto.TopologyPoints
+	TopologyLineList      Topology = dto.TopologyLineList
+	TopologyLineStrip     Topology = dto.TopologyLineStrip
+	TopologyTriangleList  Topology = dto.TopologyTriangleList
+	TopologyTriangleStrip Topology = dto.TopologyTriangleStrip
 )
 
 type VertexFormat uint8

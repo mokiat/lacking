@@ -1,4 +1,4 @@
-package meshdto
+package dto
 
 const (
 	UnspecifiedBufferIndex = int32(-1)

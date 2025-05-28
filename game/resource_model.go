@@ -3,7 +3,7 @@ package game
 import (
 	"fmt"
 
-	"github.com/mokiat/lacking/game/asset"
+	"github.com/mokiat/lacking/game/asset/dto"
 	"github.com/mokiat/lacking/game/graphics"
 	"github.com/mokiat/lacking/game/physics"
 	"github.com/mokiat/lacking/render"
@@ -43,10 +43,10 @@ func (s *ResourceSet) freeModel(model *ModelDefinition) {
 	})
 }
 
-func (s *ResourceSet) openResource(resource *chunked.Asset) async.Promise[asset.Model] {
-	promise := async.NewPromise[asset.Model]()
+func (s *ResourceSet) openResource(resource *chunked.Asset) async.Promise[dto.Model] {
+	promise := async.NewPromise[dto.Model]()
 	s.ioWorker.Schedule(func() {
-		var assetModel asset.Model
+		var assetModel dto.Model
 		if err := resource.Read(&assetModel); err != nil {
 			promise.Fail(err)
 		} else {
@@ -56,7 +56,7 @@ func (s *ResourceSet) openResource(resource *chunked.Asset) async.Promise[asset.
 	return promise
 }
 
-func (s *ResourceSet) convertModel(assetModel asset.Model) (*ModelDefinition, error) {
+func (s *ResourceSet) convertModel(assetModel dto.Model) (*ModelDefinition, error) {
 	nodeIndexByID := make(map[uint32]int, len(assetModel.HierarchyChunk.Nodes))
 	for i, assetNode := range assetModel.HierarchyChunk.Nodes {
 		nodeIndexByID[assetNode.ID] = i

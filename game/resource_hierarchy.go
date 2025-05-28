@@ -2,13 +2,11 @@ package game
 
 import (
 	"github.com/mokiat/gomath/dprec"
-	"github.com/mokiat/lacking/game/asset/dto/animationdto"
-	"github.com/mokiat/lacking/game/asset/dto/hierarchydto"
-	"github.com/mokiat/lacking/game/asset/dto/meshdto"
+	"github.com/mokiat/lacking/game/asset/dto"
 	"github.com/mokiat/lacking/util/async"
 )
 
-func (s *ResourceSet) convertNode(nodeIndexByID map[uint32]int, assetNode hierarchydto.Node) nodeDefinition {
+func (s *ResourceSet) convertNode(nodeIndexByID map[uint32]int, assetNode dto.Node) nodeDefinition {
 	parentIndex, ok := nodeIndexByID[assetNode.ParentID]
 	if !ok {
 		parentIndex = -1 // Unspecified parent index
@@ -22,7 +20,7 @@ func (s *ResourceSet) convertNode(nodeIndexByID map[uint32]int, assetNode hierar
 	}
 }
 
-func (s *ResourceSet) convertAnimation(assetAnimation animationdto.Animation) async.Promise[*AnimationDefinition] {
+func (s *ResourceSet) convertAnimation(assetAnimation dto.Animation) async.Promise[*AnimationDefinition] {
 	bindings := make([]AnimationBindingDefinitionInfo, len(assetAnimation.Bindings))
 	for j, assetBinding := range assetAnimation.Bindings {
 		translationKeyframes := make([]Keyframe[dprec.Vec3], len(assetBinding.TranslationKeyframes))
@@ -65,17 +63,4 @@ func (s *ResourceSet) convertAnimation(assetAnimation animationdto.Animation) as
 		promise.Deliver(animation)
 	})
 	return promise
-}
-
-func (s *ResourceSet) convertArmature(nodes map[uint32]int, assetArmature meshdto.Armature) armatureDefinition {
-	joints := make([]armatureJoint, len(assetArmature.Joints))
-	for j, assetJoint := range assetArmature.Joints {
-		joints[j] = armatureJoint{
-			NodeIndex:         nodes[assetJoint.NodeID],
-			InverseBindMatrix: assetJoint.InverseBindMatrix,
-		}
-	}
-	return armatureDefinition{
-		Joints: joints,
-	}
 }

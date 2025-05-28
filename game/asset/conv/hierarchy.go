@@ -2,7 +2,7 @@ package conv
 
 import (
 	"github.com/mokiat/gog/ds"
-	"github.com/mokiat/lacking/game/asset/dto/hierarchydto"
+	"github.com/mokiat/lacking/game/asset/dto"
 	"github.com/mokiat/lacking/game/asset/mdl"
 	"github.com/mokiat/lacking/storage/chunked"
 )
@@ -26,29 +26,29 @@ func (c *HierarchyConverter) Convert(target *ds.List[chunked.Chunk], asset any) 
 	if err != nil {
 		return err
 	}
-	target.Add(chunked.FromValue(hierarchydto.HierarchyChunkID, chunk))
+	target.Add(chunked.FromValue(dto.HierarchyChunkID, chunk))
 	return nil
 }
 
-func (c *HierarchyConverter) CreateHierarchyChunk(src HierarchySource) (*hierarchydto.HierarchyChunk, error) {
+func (c *HierarchyConverter) CreateHierarchyChunk(src HierarchySource) (*dto.HierarchyChunk, error) {
 	allNodes := src.AllNodes()
-	dtoNodes := make([]hierarchydto.Node, len(allNodes))
+	dtoNodes := make([]dto.Node, len(allNodes))
 	for i, node := range allNodes {
-		parentID := hierarchydto.UnspecifiedNodeID
+		parentID := dto.UnspecifiedNodeID
 		if parent := node.Parent(); parent != nil {
 			parentID = parent.ID()
 		}
-		dtoNodes[i] = hierarchydto.Node{
+		dtoNodes[i] = dto.Node{
 			ID:          node.ID(),
 			ParentID:    parentID,
 			Name:        node.Name(),
 			Translation: node.Translation(),
 			Rotation:    node.Rotation(),
 			Scale:       node.Scale(),
-			Mask:        hierarchydto.NodeMaskNone,
+			Mask:        dto.NodeMaskNone,
 		}
 	}
-	return &hierarchydto.HierarchyChunk{
+	return &dto.HierarchyChunk{
 		Nodes: dtoNodes,
 	}, nil
 }

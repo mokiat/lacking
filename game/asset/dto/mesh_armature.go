@@ -1,4 +1,4 @@
-package meshdto
+package dto
 
 import "github.com/mokiat/gomath/sprec"
 

@@ -3,12 +3,12 @@ package game
 import (
 	"fmt"
 
-	"github.com/mokiat/lacking/game/asset/dto/shadingdto"
+	"github.com/mokiat/lacking/game/asset/dto"
 	"github.com/mokiat/lacking/game/graphics"
 	"github.com/mokiat/lacking/util/async"
 )
 
-func (s *ResourceSet) convertShader(assetShader shadingdto.Shader) async.Promise[*graphics.Shader] {
+func (s *ResourceSet) convertShader(assetShader dto.Shader) async.Promise[*graphics.Shader] {
 	promise := async.NewPromise[*graphics.Shader]()
 	s.gfxWorker.Schedule(func() {
 		gfxEngine := s.engine.Graphics()
@@ -21,17 +21,17 @@ func (s *ResourceSet) convertShader(assetShader shadingdto.Shader) async.Promise
 	return promise
 }
 
-func (s *ResourceSet) resolveShaderType(assetType shadingdto.ShaderType) graphics.ShaderType {
+func (s *ResourceSet) resolveShaderType(assetType dto.ShaderType) graphics.ShaderType {
 	switch assetType {
-	case shadingdto.ShaderTypeGeometry:
+	case dto.ShaderTypeGeometry:
 		return graphics.ShaderTypeGeometry
-	case shadingdto.ShaderTypeShadow:
+	case dto.ShaderTypeShadow:
 		return graphics.ShaderTypeShadow
-	case shadingdto.ShaderTypeForward:
+	case dto.ShaderTypeForward:
 		return graphics.ShaderTypeForward
-	case shadingdto.ShaderTypeSky:
+	case dto.ShaderTypeSky:
 		return graphics.ShaderTypeSky
-	case shadingdto.ShaderTypePostprocess:
+	case dto.ShaderTypePostprocess:
 		return graphics.ShaderTypePostprocess
 	default:
 		panic(fmt.Errorf("unsupported shader type: %d", assetType))

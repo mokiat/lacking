@@ -3,31 +3,31 @@ package mdl
 import (
 	"fmt"
 
-	"github.com/mokiat/lacking/game/asset/dto/shadingdto"
+	"github.com/mokiat/lacking/game/asset/dto"
 )
 
 const (
-	TextureFormatR8       TextureFormat = shadingdto.TexelFormatR8
-	TextureFormatR16      TextureFormat = shadingdto.TexelFormatR16
-	TextureFormatR16F     TextureFormat = shadingdto.TexelFormatR16F
-	TextureFormatR32F     TextureFormat = shadingdto.TexelFormatR32F
-	TextureFormatRG8      TextureFormat = shadingdto.TexelFormatRG8
-	TextureFormatRG16     TextureFormat = shadingdto.TexelFormatRG16
-	TextureFormatRG16F    TextureFormat = shadingdto.TexelFormatRG16F
-	TextureFormatRG32F    TextureFormat = shadingdto.TexelFormatRG32F
-	TextureFormatRGB8     TextureFormat = shadingdto.TexelFormatRGB8
-	TextureFormatRGB16    TextureFormat = shadingdto.TexelFormatRGB16
-	TextureFormatRGB16F   TextureFormat = shadingdto.TexelFormatRGB16F
-	TextureFormatRGB32F   TextureFormat = shadingdto.TexelFormatRGB32F
-	TextureFormatRGBA8    TextureFormat = shadingdto.TexelFormatRGBA8
-	TextureFormatRGBA16   TextureFormat = shadingdto.TexelFormatRGBA16
-	TextureFormatRGBA16F  TextureFormat = shadingdto.TexelFormatRGBA16F
-	TextureFormatRGBA32F  TextureFormat = shadingdto.TexelFormatRGBA32F
-	TextureFormatDepth16F TextureFormat = shadingdto.TexelFormatDepth16F
-	TextureFormatDepth32F TextureFormat = shadingdto.TexelFormatDepth32F
+	TextureFormatR8       TextureFormat = dto.TexelFormatR8
+	TextureFormatR16      TextureFormat = dto.TexelFormatR16
+	TextureFormatR16F     TextureFormat = dto.TexelFormatR16F
+	TextureFormatR32F     TextureFormat = dto.TexelFormatR32F
+	TextureFormatRG8      TextureFormat = dto.TexelFormatRG8
+	TextureFormatRG16     TextureFormat = dto.TexelFormatRG16
+	TextureFormatRG16F    TextureFormat = dto.TexelFormatRG16F
+	TextureFormatRG32F    TextureFormat = dto.TexelFormatRG32F
+	TextureFormatRGB8     TextureFormat = dto.TexelFormatRGB8
+	TextureFormatRGB16    TextureFormat = dto.TexelFormatRGB16
+	TextureFormatRGB16F   TextureFormat = dto.TexelFormatRGB16F
+	TextureFormatRGB32F   TextureFormat = dto.TexelFormatRGB32F
+	TextureFormatRGBA8    TextureFormat = dto.TexelFormatRGBA8
+	TextureFormatRGBA16   TextureFormat = dto.TexelFormatRGBA16
+	TextureFormatRGBA16F  TextureFormat = dto.TexelFormatRGBA16F
+	TextureFormatRGBA32F  TextureFormat = dto.TexelFormatRGBA32F
+	TextureFormatDepth16F TextureFormat = dto.TexelFormatDepth16F
+	TextureFormatDepth32F TextureFormat = dto.TexelFormatDepth32F
 )
 
-type TextureFormat = shadingdto.TexelFormat
+type TextureFormat = dto.TexelFormat
 
 const (
 	TextureKind2D TextureKind = iota

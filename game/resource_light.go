@@ -1,11 +1,11 @@
 package game
 
 import (
-	"github.com/mokiat/lacking/game/asset/dto/lightingdto"
+	"github.com/mokiat/lacking/game/asset/dto"
 	"github.com/mokiat/lacking/render"
 )
 
-func (s *ResourceSet) convertAmbientLight(nodes map[uint32]int, textures map[uint32]render.Texture, assetLight lightingdto.AmbientLight) ambientLightInstance {
+func (s *ResourceSet) convertAmbientLight(nodes map[uint32]int, textures map[uint32]render.Texture, assetLight dto.AmbientLight) ambientLightInstance {
 	nodeIndex := nodes[assetLight.NodeID]
 	return ambientLightInstance{
 		nodeIndex:         nodeIndex,
@@ -15,7 +15,7 @@ func (s *ResourceSet) convertAmbientLight(nodes map[uint32]int, textures map[uin
 	}
 }
 
-func (s *ResourceSet) convertPointLight(nodes map[uint32]int, assetLight lightingdto.PointLight) pointLightInstance {
+func (s *ResourceSet) convertPointLight(nodes map[uint32]int, assetLight dto.PointLight) pointLightInstance {
 	nodeIndex := nodes[assetLight.NodeID]
 	return pointLightInstance{
 		nodeIndex:    nodeIndex,
@@ -25,7 +25,7 @@ func (s *ResourceSet) convertPointLight(nodes map[uint32]int, assetLight lightin
 	}
 }
 
-func (s *ResourceSet) convertSpotLight(nodes map[uint32]int, assetLight lightingdto.SpotLight) spotLightInstance {
+func (s *ResourceSet) convertSpotLight(nodes map[uint32]int, assetLight dto.SpotLight) spotLightInstance {
 	nodeIndex := nodes[assetLight.NodeID]
 	return spotLightInstance{
 		nodeIndex:      nodeIndex,
@@ -37,7 +37,7 @@ func (s *ResourceSet) convertSpotLight(nodes map[uint32]int, assetLight lighting
 	}
 }
 
-func (s *ResourceSet) convertDirectionalLight(nodes map[uint32]int, assetLight lightingdto.DirectionalLight) directionalLightInstance {
+func (s *ResourceSet) convertDirectionalLight(nodes map[uint32]int, assetLight dto.DirectionalLight) directionalLightInstance {
 	nodeIndex := nodes[assetLight.NodeID]
 	return directionalLightInstance{
 		nodeIndex:  nodeIndex,

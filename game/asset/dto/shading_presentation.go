@@ -1,4 +1,4 @@
-package shadingdto
+package dto
 
 const (
 	// CullModeNone specifies that no culling should be performed.

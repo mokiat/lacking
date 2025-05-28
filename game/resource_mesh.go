@@ -3,12 +3,25 @@ package game
 import (
 	"github.com/mokiat/gog"
 	"github.com/mokiat/gog/opt"
-	"github.com/mokiat/lacking/game/asset/dto/meshdto"
+	"github.com/mokiat/lacking/game/asset/dto"
 	"github.com/mokiat/lacking/game/graphics"
 	"github.com/mokiat/lacking/util/async"
 )
 
-func (s *ResourceSet) convertMeshGeometry(assetGeometry meshdto.Geometry) async.Promise[*graphics.MeshGeometry] {
+func (s *ResourceSet) convertArmature(nodes map[uint32]int, assetArmature dto.Armature) armatureDefinition {
+	joints := make([]armatureJoint, len(assetArmature.Joints))
+	for j, assetJoint := range assetArmature.Joints {
+		joints[j] = armatureJoint{
+			NodeIndex:         nodes[assetJoint.NodeID],
+			InverseBindMatrix: assetJoint.InverseBindMatrix,
+		}
+	}
+	return armatureDefinition{
+		Joints: joints,
+	}
+}
+
+func (s *ResourceSet) convertMeshGeometry(assetGeometry dto.Geometry) async.Promise[*graphics.MeshGeometry] {
 	meshFragmentsInfo := make([]graphics.MeshGeometryFragmentInfo, len(assetGeometry.Fragments))
 	for j, assetFragment := range assetGeometry.Fragments {
 		meshFragmentsInfo[j] = graphics.MeshGeometryFragmentInfo{
@@ -20,7 +33,7 @@ func (s *ResourceSet) convertMeshGeometry(assetGeometry meshdto.Geometry) async.
 	}
 
 	meshGeometryInfo := graphics.MeshGeometryInfo{
-		VertexBuffers: gog.Map(assetGeometry.VertexBuffers, func(buffer meshdto.VertexBuffer) graphics.MeshGeometryVertexBuffer {
+		VertexBuffers: gog.Map(assetGeometry.VertexBuffers, func(buffer dto.VertexBuffer) graphics.MeshGeometryVertexBuffer {
 			return graphics.MeshGeometryVertexBuffer{
 				ByteStride: buffer.Stride,
 				Data:       buffer.Data,
@@ -47,7 +60,7 @@ func (s *ResourceSet) convertMeshGeometry(assetGeometry meshdto.Geometry) async.
 	return promise
 }
 
-func (s *ResourceSet) convertMeshDefinition(geometris map[uint32]*graphics.MeshGeometry, materials map[uint32]*graphics.Material, assetMeshDefinition meshdto.MeshDefinition) async.Promise[*graphics.MeshDefinition] {
+func (s *ResourceSet) convertMeshDefinition(geometris map[uint32]*graphics.MeshGeometry, materials map[uint32]*graphics.Material, assetMeshDefinition dto.MeshDefinition) async.Promise[*graphics.MeshDefinition] {
 	geometry := geometris[assetMeshDefinition.GeometryID]
 
 	bindingMaterials := make([]*graphics.Material, geometry.FragmentCount())
@@ -69,7 +82,7 @@ func (s *ResourceSet) convertMeshDefinition(geometris map[uint32]*graphics.MeshG
 	return promise
 }
 
-func (s *ResourceSet) convertMeshInstance(nodeIndices, armatureIndices, meshDefinitionIndices map[uint32]int, assetMesh meshdto.Mesh) meshInstance {
+func (s *ResourceSet) convertMeshInstance(nodeIndices, armatureIndices, meshDefinitionIndices map[uint32]int, assetMesh dto.Mesh) meshInstance {
 	armatureIndex, ok := armatureIndices[assetMesh.ArmatureID]
 	if !ok {
 		armatureIndex = -1 // No armature associated with this mesh

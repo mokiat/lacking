@@ -1,37 +1,35 @@
 package mdl
 
-import (
-	"github.com/mokiat/lacking/game/asset/dto/shadingdto"
-)
+import "github.com/mokiat/lacking/game/asset/dto"
 
 const (
-	CullModeNone         CullMode = shadingdto.CullModeNone
-	CullModeFront        CullMode = shadingdto.CullModeFront
-	CullModeBack         CullMode = shadingdto.CullModeBack
-	CullModeFrontAndBack CullMode = shadingdto.CullModeFrontAndBack
+	CullModeNone         CullMode = dto.CullModeNone
+	CullModeFront        CullMode = dto.CullModeFront
+	CullModeBack         CullMode = dto.CullModeBack
+	CullModeFrontAndBack CullMode = dto.CullModeFrontAndBack
 )
 
-type CullMode = shadingdto.CullMode
+type CullMode = dto.CullMode
 
 const (
-	FaceOrientationCCW FaceOrientation = shadingdto.FaceOrientationCCW
-	FaceOrientationCW  FaceOrientation = shadingdto.FaceOrientationCW
+	FaceOrientationCCW FaceOrientation = dto.FaceOrientationCCW
+	FaceOrientationCW  FaceOrientation = dto.FaceOrientationCW
 )
 
-type FaceOrientation = shadingdto.FaceOrientation
+type FaceOrientation = dto.FaceOrientation
 
 const (
-	ComparisonNever          Comparison = shadingdto.ComparisonNever
-	ComparisonLess           Comparison = shadingdto.ComparisonLess
-	ComparisonEqual          Comparison = shadingdto.ComparisonEqual
-	ComparisonLessOrEqual    Comparison = shadingdto.ComparisonLessOrEqual
-	ComparisonGreater        Comparison = shadingdto.ComparisonGreater
-	ComparisonNotEqual       Comparison = shadingdto.ComparisonNotEqual
-	ComparisonGreaterOrEqual Comparison = shadingdto.ComparisonGreaterOrEqual
-	ComparisonAlways         Comparison = shadingdto.ComparisonAlways
+	ComparisonNever          Comparison = dto.ComparisonNever
+	ComparisonLess           Comparison = dto.ComparisonLess
+	ComparisonEqual          Comparison = dto.ComparisonEqual
+	ComparisonLessOrEqual    Comparison = dto.ComparisonLessOrEqual
+	ComparisonGreater        Comparison = dto.ComparisonGreater
+	ComparisonNotEqual       Comparison = dto.ComparisonNotEqual
+	ComparisonGreaterOrEqual Comparison = dto.ComparisonGreaterOrEqual
+	ComparisonAlways         Comparison = dto.ComparisonAlways
 )
 
-type Comparison = shadingdto.Comparison
+type Comparison = dto.Comparison
 
 func NewMaterial(name string) *Material {
 	return &Material{

@@ -7,7 +7,7 @@ import (
 	"github.com/mokiat/gog"
 	"github.com/mokiat/gog/ds"
 	"github.com/mokiat/gomath/dprec"
-	"github.com/mokiat/lacking/game/asset/dto/meshdto"
+	"github.com/mokiat/lacking/game/asset/dto"
 	"github.com/mokiat/lacking/game/asset/mdl"
 	"github.com/mokiat/lacking/storage/chunked"
 	"github.com/x448/float16"
@@ -35,13 +35,13 @@ func (c *MeshConverter) Convert(target *ds.List[chunked.Chunk], asset any) error
 	if err != nil {
 		return err
 	}
-	target.Add(chunked.FromValue(meshdto.MeshChunkID, chunk))
+	target.Add(chunked.FromValue(dto.MeshChunkID, chunk))
 	return nil
 }
 
-func (c *MeshConverter) CreateMeshChunk(src MeshSource) (*meshdto.MeshChunk, error) {
+func (c *MeshConverter) CreateMeshChunk(src MeshSource) (*dto.MeshChunk, error) {
 	allArmatures := src.AllArmatures()
-	dtoArmatures := make([]meshdto.Armature, len(allArmatures))
+	dtoArmatures := make([]dto.Armature, len(allArmatures))
 	for i, armature := range allArmatures {
 		var err error
 		dtoArmatures[i], err = c.convertArmature(armature)
@@ -51,7 +51,7 @@ func (c *MeshConverter) CreateMeshChunk(src MeshSource) (*meshdto.MeshChunk, err
 	}
 
 	allGeometries := src.AllGeometries()
-	dtoGeometries := make([]meshdto.Geometry, len(allGeometries))
+	dtoGeometries := make([]dto.Geometry, len(allGeometries))
 	for i, geometry := range allGeometries {
 		var err error
 		dtoGeometries[i], err = c.convertGeometry(geometry)
@@ -61,7 +61,7 @@ func (c *MeshConverter) CreateMeshChunk(src MeshSource) (*meshdto.MeshChunk, err
 	}
 
 	allMeshDefinitions := src.AllMeshDefinitions()
-	dtoMeshDefinitions := make([]meshdto.MeshDefinition, len(allMeshDefinitions))
+	dtoMeshDefinitions := make([]dto.MeshDefinition, len(allMeshDefinitions))
 	for i, definition := range allMeshDefinitions {
 		var err error
 		dtoMeshDefinitions[i], err = c.convertMeshDefinition(definition)
@@ -71,7 +71,7 @@ func (c *MeshConverter) CreateMeshChunk(src MeshSource) (*meshdto.MeshChunk, err
 	}
 
 	allMeshPlacements := src.AllMeshPlacements()
-	dtoMeshes := make([]meshdto.Mesh, len(allMeshPlacements))
+	dtoMeshes := make([]dto.Mesh, len(allMeshPlacements))
 	for i, placement := range allMeshPlacements {
 		var err error
 		dtoMeshes[i], err = c.convertMesh(placement.Node, placement.Value)
@@ -80,7 +80,7 @@ func (c *MeshConverter) CreateMeshChunk(src MeshSource) (*meshdto.MeshChunk, err
 		}
 	}
 
-	return &meshdto.MeshChunk{
+	return &dto.MeshChunk{
 		Armatures:       dtoArmatures,
 		Geometries:      dtoGeometries,
 		MeshDefinitions: dtoMeshDefinitions,
@@ -88,11 +88,11 @@ func (c *MeshConverter) CreateMeshChunk(src MeshSource) (*meshdto.MeshChunk, err
 	}, nil
 }
 
-func (c *MeshConverter) convertArmature(armature *mdl.Armature) (meshdto.Armature, error) {
-	return meshdto.Armature{
+func (c *MeshConverter) convertArmature(armature *mdl.Armature) (dto.Armature, error) {
+	return dto.Armature{
 		ID: armature.ID(),
-		Joints: gog.Map(armature.Joints(), func(joint *mdl.Joint) meshdto.Joint {
-			return meshdto.Joint{
+		Joints: gog.Map(armature.Joints(), func(joint *mdl.Joint) dto.Joint {
+			return dto.Joint{
 				NodeID:            joint.Node().ID(),
 				InverseBindMatrix: joint.InverseBindMatrix(),
 			}
@@ -100,7 +100,7 @@ func (c *MeshConverter) convertArmature(armature *mdl.Armature) (meshdto.Armatur
 	}, nil
 }
 
-func (c *MeshConverter) convertGeometry(geometry *mdl.Geometry) (meshdto.Geometry, error) {
+func (c *MeshConverter) convertGeometry(geometry *mdl.Geometry) (dto.Geometry, error) {
 	const (
 		sizeUnsignedByte  = 1
 		sizeUnsignedShort = 2
@@ -133,7 +133,7 @@ func (c *MeshConverter) convertGeometry(geometry *mdl.Geometry) (meshdto.Geometr
 		coordOffset = stride
 		stride += 3 * sizeFloat
 	} else {
-		coordBufferIndex = meshdto.UnspecifiedBufferIndex
+		coordBufferIndex = dto.UnspecifiedBufferIndex
 	}
 	if layout&mdl.VertexFormatNormal != 0 {
 		normalBufferIndex = 0
@@ -141,7 +141,7 @@ func (c *MeshConverter) convertGeometry(geometry *mdl.Geometry) (meshdto.Geometr
 		stride += 3 * sizeHalfFloat
 		stride += sizeHalfFloat // due to alignment requirements
 	} else {
-		normalBufferIndex = meshdto.UnspecifiedBufferIndex
+		normalBufferIndex = dto.UnspecifiedBufferIndex
 	}
 	if layout&mdl.VertexFormatTangent != 0 {
 		tangentBufferIndex = 0
@@ -149,35 +149,35 @@ func (c *MeshConverter) convertGeometry(geometry *mdl.Geometry) (meshdto.Geometr
 		stride += 3 * sizeHalfFloat
 		stride += sizeHalfFloat // due to alignment requirements
 	} else {
-		tangentBufferIndex = meshdto.UnspecifiedBufferIndex
+		tangentBufferIndex = dto.UnspecifiedBufferIndex
 	}
 	if layout&mdl.VertexFormatTexCoord != 0 {
 		texCoordBufferIndex = 0
 		texCoordOffset = stride
 		stride += 2 * sizeHalfFloat
 	} else {
-		texCoordBufferIndex = meshdto.UnspecifiedBufferIndex
+		texCoordBufferIndex = dto.UnspecifiedBufferIndex
 	}
 	if layout&mdl.VertexFormatColor != 0 {
 		colorBufferIndex = 0
 		colorOffset = stride
 		stride += 4 * sizeUnsignedByte
 	} else {
-		colorBufferIndex = meshdto.UnspecifiedBufferIndex
+		colorBufferIndex = dto.UnspecifiedBufferIndex
 	}
 	if layout&mdl.VertexFormatWeights != 0 {
 		weightsBufferIndex = 0
 		weightsOffset = stride
 		stride += 4 * sizeUnsignedByte
 	} else {
-		weightsBufferIndex = meshdto.UnspecifiedBufferIndex
+		weightsBufferIndex = dto.UnspecifiedBufferIndex
 	}
 	if layout&mdl.VertexFormatJoints != 0 {
 		jointsBufferIndex = 0
 		jointsOffset = stride
 		stride += 4 * sizeUnsignedByte
 	} else {
-		jointsBufferIndex = meshdto.UnspecifiedBufferIndex
+		jointsBufferIndex = dto.UnspecifiedBufferIndex
 	}
 
 	vertexData := gblob.LittleEndianBlock(make([]byte, len(geometry.Vertices())*int(stride)))
@@ -248,29 +248,29 @@ func (c *MeshConverter) convertGeometry(geometry *mdl.Geometry) (meshdto.Geometr
 	}
 
 	var (
-		indexLayout meshdto.IndexLayout
+		indexLayout dto.IndexLayout
 		indexData   gblob.LittleEndianBlock
 		indexSize   int
 	)
 	if len(geometry.Vertices()) >= 0xFFFF {
 		indexSize = sizeUnsignedInt
-		indexLayout = meshdto.IndexLayoutUint32
+		indexLayout = dto.IndexLayoutUint32
 		indexData = gblob.LittleEndianBlock(make([]byte, len(geometry.Indices())*sizeUnsignedInt))
 		for i, index := range geometry.Indices() {
 			indexData.SetUint32(i*sizeUnsignedInt, uint32(index))
 		}
 	} else {
 		indexSize = sizeUnsignedShort
-		indexLayout = meshdto.IndexLayoutUint16
+		indexLayout = dto.IndexLayoutUint16
 		indexData = gblob.LittleEndianBlock(make([]byte, len(geometry.Indices())*sizeUnsignedShort))
 		for i, index := range geometry.Indices() {
 			indexData.SetUint16(i*sizeUnsignedShort, uint16(index))
 		}
 	}
 
-	assetFragments := make([]meshdto.Fragment, 0, len(geometry.Fragments()))
+	assetFragments := make([]dto.Fragment, 0, len(geometry.Fragments()))
 	for _, fragment := range geometry.Fragments() {
-		assetFragments = append(assetFragments, meshdto.Fragment{
+		assetFragments = append(assetFragments, dto.Fragment{
 			Name:            fragment.Name(),
 			Topology:        fragment.Topology(),
 			IndexByteOffset: uint32(fragment.IndexOffset() * indexSize),
@@ -286,52 +286,52 @@ func (c *MeshConverter) convertGeometry(geometry *mdl.Geometry) (meshdto.Geometr
 		)
 	}
 
-	return meshdto.Geometry{
+	return dto.Geometry{
 		ID: geometry.ID(),
-		VertexBuffers: []meshdto.VertexBuffer{
+		VertexBuffers: []dto.VertexBuffer{
 			{
 				Stride: stride,
 				Data:   vertexData,
 			},
 		},
-		VertexLayout: meshdto.VertexLayout{
-			Coord: meshdto.VertexAttribute{
+		VertexLayout: dto.VertexLayout{
+			Coord: dto.VertexAttribute{
 				BufferIndex: coordBufferIndex,
 				ByteOffset:  coordOffset,
-				Format:      meshdto.VertexAttributeFormatRGB32F,
+				Format:      dto.VertexAttributeFormatRGB32F,
 			},
-			Normal: meshdto.VertexAttribute{
+			Normal: dto.VertexAttribute{
 				BufferIndex: normalBufferIndex,
 				ByteOffset:  normalOffset,
-				Format:      meshdto.VertexAttributeFormatRGB16F,
+				Format:      dto.VertexAttributeFormatRGB16F,
 			},
-			Tangent: meshdto.VertexAttribute{
+			Tangent: dto.VertexAttribute{
 				BufferIndex: tangentBufferIndex,
 				ByteOffset:  tangentOffset,
-				Format:      meshdto.VertexAttributeFormatRGB16F,
+				Format:      dto.VertexAttributeFormatRGB16F,
 			},
-			TexCoord: meshdto.VertexAttribute{
+			TexCoord: dto.VertexAttribute{
 				BufferIndex: texCoordBufferIndex,
 				ByteOffset:  texCoordOffset,
-				Format:      meshdto.VertexAttributeFormatRG16F,
+				Format:      dto.VertexAttributeFormatRG16F,
 			},
-			Color: meshdto.VertexAttribute{
+			Color: dto.VertexAttribute{
 				BufferIndex: colorBufferIndex,
 				ByteOffset:  colorOffset,
-				Format:      meshdto.VertexAttributeFormatRGBA8UN,
+				Format:      dto.VertexAttributeFormatRGBA8UN,
 			},
-			Weights: meshdto.VertexAttribute{
+			Weights: dto.VertexAttribute{
 				BufferIndex: weightsBufferIndex,
 				ByteOffset:  weightsOffset,
-				Format:      meshdto.VertexAttributeFormatRGBA8UN,
+				Format:      dto.VertexAttributeFormatRGBA8UN,
 			},
-			Joints: meshdto.VertexAttribute{
+			Joints: dto.VertexAttribute{
 				BufferIndex: jointsBufferIndex,
 				ByteOffset:  jointsOffset,
-				Format:      meshdto.VertexAttributeFormatRGBA8IU,
+				Format:      dto.VertexAttributeFormatRGBA8IU,
 			},
 		},
-		IndexBuffer: meshdto.IndexBuffer{
+		IndexBuffer: dto.IndexBuffer{
 			IndexLayout: indexLayout,
 			Data:        indexData,
 		},
@@ -343,34 +343,34 @@ func (c *MeshConverter) convertGeometry(geometry *mdl.Geometry) (meshdto.Geometr
 	}, nil
 }
 
-func (c *MeshConverter) convertMeshDefinition(definition *mdl.MeshDefinition) (meshdto.MeshDefinition, error) {
+func (c *MeshConverter) convertMeshDefinition(definition *mdl.MeshDefinition) (dto.MeshDefinition, error) {
 	geometry := definition.Geometry()
 
-	var materialBindings []meshdto.MaterialBinding
+	var materialBindings []dto.MaterialBinding
 	for i, fragment := range geometry.Fragments() {
 		material, ok := definition.MaterialBindings()[fragment.Name()]
 		if !ok {
 			continue // likely invisible fragment.
 		}
-		materialBindings = append(materialBindings, meshdto.MaterialBinding{
+		materialBindings = append(materialBindings, dto.MaterialBinding{
 			FragmentIndex: uint32(i),
 			MaterialID:    material.ID(),
 		})
 	}
 
-	return meshdto.MeshDefinition{
+	return dto.MeshDefinition{
 		ID:               definition.ID(),
 		GeometryID:       geometry.ID(),
 		MaterialBindings: materialBindings,
 	}, nil
 }
 
-func (c *MeshConverter) convertMesh(node *mdl.Node, mesh *mdl.Mesh) (meshdto.Mesh, error) {
-	armatureID := meshdto.UnspecifiedArmatureID
+func (c *MeshConverter) convertMesh(node *mdl.Node, mesh *mdl.Mesh) (dto.Mesh, error) {
+	armatureID := dto.UnspecifiedArmatureID
 	if armature := mesh.Armature(); armature != nil {
 		armatureID = armature.ID()
 	}
-	return meshdto.Mesh{
+	return dto.Mesh{
 		ID:               mesh.ID(),
 		NodeID:           node.ID(),
 		MeshDefinitionID: mesh.Definition().ID(),

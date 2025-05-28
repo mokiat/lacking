@@ -1,4 +1,4 @@
-package shadingdto
+package dto
 
 const (
 	TexelFormatR8 TexelFormat = iota
