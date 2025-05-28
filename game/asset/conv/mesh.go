@@ -1,29 +1,50 @@
-package meshconv
+package conv
 
 import (
 	"fmt"
 
 	"github.com/mokiat/gblob"
 	"github.com/mokiat/gog"
+	"github.com/mokiat/gog/ds"
 	"github.com/mokiat/gomath/dprec"
 	"github.com/mokiat/lacking/game/asset/dto/meshdto"
 	"github.com/mokiat/lacking/game/asset/mdl"
+	"github.com/mokiat/lacking/storage/chunked"
 	"github.com/x448/float16"
 )
 
-type Source interface {
+type MeshSource interface {
 	AllArmatures() []*mdl.Armature
 	AllGeometries() []*mdl.Geometry
 	AllMeshDefinitions() []*mdl.MeshDefinition
 	AllMeshPlacements() []mdl.Placed[*mdl.Mesh]
 }
 
-func CreateMeshChunk(src Source) (*meshdto.MeshChunk, error) {
+func NewMeshConverter() *MeshConverter {
+	return &MeshConverter{}
+}
+
+type MeshConverter struct{}
+
+func (c *MeshConverter) Convert(target *ds.List[chunked.Chunk], asset any) error {
+	src, ok := asset.(MeshSource)
+	if !ok {
+		return nil
+	}
+	chunk, err := c.CreateMeshChunk(src)
+	if err != nil {
+		return err
+	}
+	target.Add(chunked.FromValue(meshdto.MeshChunkID, chunk))
+	return nil
+}
+
+func (c *MeshConverter) CreateMeshChunk(src MeshSource) (*meshdto.MeshChunk, error) {
 	allArmatures := src.AllArmatures()
 	dtoArmatures := make([]meshdto.Armature, len(allArmatures))
 	for i, armature := range allArmatures {
 		var err error
-		dtoArmatures[i], err = convertArmature(armature)
+		dtoArmatures[i], err = c.convertArmature(armature)
 		if err != nil {
 			return nil, fmt.Errorf("error converting armature: %w", err)
 		}
@@ -33,7 +54,7 @@ func CreateMeshChunk(src Source) (*meshdto.MeshChunk, error) {
 	dtoGeometries := make([]meshdto.Geometry, len(allGeometries))
 	for i, geometry := range allGeometries {
 		var err error
-		dtoGeometries[i], err = convertGeometry(geometry)
+		dtoGeometries[i], err = c.convertGeometry(geometry)
 		if err != nil {
 			return nil, fmt.Errorf("error converting geometry: %w", err)
 		}
@@ -43,7 +64,7 @@ func CreateMeshChunk(src Source) (*meshdto.MeshChunk, error) {
 	dtoMeshDefinitions := make([]meshdto.MeshDefinition, len(allMeshDefinitions))
 	for i, definition := range allMeshDefinitions {
 		var err error
-		dtoMeshDefinitions[i], err = convertMeshDefinition(definition)
+		dtoMeshDefinitions[i], err = c.convertMeshDefinition(definition)
 		if err != nil {
 			return nil, fmt.Errorf("error converting mesh definition: %w", err)
 		}
@@ -53,7 +74,7 @@ func CreateMeshChunk(src Source) (*meshdto.MeshChunk, error) {
 	dtoMeshes := make([]meshdto.Mesh, len(allMeshPlacements))
 	for i, placement := range allMeshPlacements {
 		var err error
-		dtoMeshes[i], err = convertMesh(placement.Node, placement.Value)
+		dtoMeshes[i], err = c.convertMesh(placement.Node, placement.Value)
 		if err != nil {
 			return nil, fmt.Errorf("error converting mesh: %w", err)
 		}
@@ -67,7 +88,7 @@ func CreateMeshChunk(src Source) (*meshdto.MeshChunk, error) {
 	}, nil
 }
 
-func convertArmature(armature *mdl.Armature) (meshdto.Armature, error) {
+func (c *MeshConverter) convertArmature(armature *mdl.Armature) (meshdto.Armature, error) {
 	return meshdto.Armature{
 		ID: armature.ID(),
 		Joints: gog.Map(armature.Joints(), func(joint *mdl.Joint) meshdto.Joint {
@@ -79,7 +100,7 @@ func convertArmature(armature *mdl.Armature) (meshdto.Armature, error) {
 	}, nil
 }
 
-func convertGeometry(geometry *mdl.Geometry) (meshdto.Geometry, error) {
+func (c *MeshConverter) convertGeometry(geometry *mdl.Geometry) (meshdto.Geometry, error) {
 	const (
 		sizeUnsignedByte  = 1
 		sizeUnsignedShort = 2
@@ -322,7 +343,7 @@ func convertGeometry(geometry *mdl.Geometry) (meshdto.Geometry, error) {
 	}, nil
 }
 
-func convertMeshDefinition(definition *mdl.MeshDefinition) (meshdto.MeshDefinition, error) {
+func (c *MeshConverter) convertMeshDefinition(definition *mdl.MeshDefinition) (meshdto.MeshDefinition, error) {
 	geometry := definition.Geometry()
 
 	var materialBindings []meshdto.MaterialBinding
@@ -344,7 +365,7 @@ func convertMeshDefinition(definition *mdl.MeshDefinition) (meshdto.MeshDefiniti
 	}, nil
 }
 
-func convertMesh(node *mdl.Node, mesh *mdl.Mesh) (meshdto.Mesh, error) {
+func (c *MeshConverter) convertMesh(node *mdl.Node, mesh *mdl.Mesh) (meshdto.Mesh, error) {
 	armatureID := meshdto.UnspecifiedArmatureID
 	if armature := mesh.Armature(); armature != nil {
 		armatureID = armature.ID()

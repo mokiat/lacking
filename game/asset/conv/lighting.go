@@ -1,40 +1,61 @@
-package lightingconv
+package conv
 
 import (
+	"github.com/mokiat/gog/ds"
 	"github.com/mokiat/lacking/game/asset/dto/lightingdto"
 	"github.com/mokiat/lacking/game/asset/mdl"
+	"github.com/mokiat/lacking/storage/chunked"
 )
 
-type Source interface {
+type LightingSource interface {
 	AllAmbientLightPlacements() []mdl.Placed[*mdl.AmbientLight]
 	AllPointLightPlacements() []mdl.Placed[*mdl.PointLight]
 	AllSpotLightPlacements() []mdl.Placed[*mdl.SpotLight]
 	AllDirectionalLightPlacements() []mdl.Placed[*mdl.DirectionalLight]
 }
 
-func CreateLightingChunk(src Source) (*lightingdto.LightingChunk, error) {
+func NewLightingConverter() *LightingConverter {
+	return &LightingConverter{}
+}
+
+type LightingConverter struct{}
+
+func (c *LightingConverter) Convert(target *ds.List[chunked.Chunk], asset any) error {
+	src, ok := asset.(LightingSource)
+	if !ok {
+		return nil
+	}
+	chunk, err := c.CreateLightingChunk(src)
+	if err != nil {
+		return err
+	}
+	target.Add(chunked.FromValue(lightingdto.LightingChunkID, chunk))
+	return nil
+}
+
+func (c *LightingConverter) CreateLightingChunk(src LightingSource) (*lightingdto.LightingChunk, error) {
 	allAmbientLightPlacements := src.AllAmbientLightPlacements()
 	dtoAmbientLights := make([]lightingdto.AmbientLight, len(allAmbientLightPlacements))
 	for i, placement := range allAmbientLightPlacements {
-		dtoAmbientLights[i] = convertAmbientLight(placement.Node, placement.Value)
+		dtoAmbientLights[i] = c.convertAmbientLight(placement.Node, placement.Value)
 	}
 
 	allPointLightPlacements := src.AllPointLightPlacements()
 	dtoPointLights := make([]lightingdto.PointLight, len(allPointLightPlacements))
 	for i, placement := range allPointLightPlacements {
-		dtoPointLights[i] = convertPointLight(placement.Node, placement.Value)
+		dtoPointLights[i] = c.convertPointLight(placement.Node, placement.Value)
 	}
 
 	allSpotLightPlacements := src.AllSpotLightPlacements()
 	dtoSpotLights := make([]lightingdto.SpotLight, len(allSpotLightPlacements))
 	for i, placement := range allSpotLightPlacements {
-		dtoSpotLights[i] = convertSpotLight(placement.Node, placement.Value)
+		dtoSpotLights[i] = c.convertSpotLight(placement.Node, placement.Value)
 	}
 
 	allDirectionalLightPlacements := src.AllDirectionalLightPlacements()
 	dtoDirectionalLights := make([]lightingdto.DirectionalLight, len(allDirectionalLightPlacements))
 	for i, placement := range allDirectionalLightPlacements {
-		dtoDirectionalLights[i] = convertDirectionalLight(placement.Node, placement.Value)
+		dtoDirectionalLights[i] = c.convertDirectionalLight(placement.Node, placement.Value)
 	}
 
 	return &lightingdto.LightingChunk{
@@ -45,7 +66,7 @@ func CreateLightingChunk(src Source) (*lightingdto.LightingChunk, error) {
 	}, nil
 }
 
-func convertAmbientLight(node *mdl.Node, light *mdl.AmbientLight) lightingdto.AmbientLight {
+func (c *LightingConverter) convertAmbientLight(node *mdl.Node, light *mdl.AmbientLight) lightingdto.AmbientLight {
 	return lightingdto.AmbientLight{
 		ID:                  light.ID(),
 		NodeID:              node.ID(),
@@ -55,7 +76,7 @@ func convertAmbientLight(node *mdl.Node, light *mdl.AmbientLight) lightingdto.Am
 	}
 }
 
-func convertPointLight(node *mdl.Node, light *mdl.PointLight) lightingdto.PointLight {
+func (c *LightingConverter) convertPointLight(node *mdl.Node, light *mdl.PointLight) lightingdto.PointLight {
 	return lightingdto.PointLight{
 		ID:           light.ID(),
 		NodeID:       node.ID(),
@@ -65,7 +86,7 @@ func convertPointLight(node *mdl.Node, light *mdl.PointLight) lightingdto.PointL
 	}
 }
 
-func convertSpotLight(node *mdl.Node, light *mdl.SpotLight) lightingdto.SpotLight {
+func (c *LightingConverter) convertSpotLight(node *mdl.Node, light *mdl.SpotLight) lightingdto.SpotLight {
 	return lightingdto.SpotLight{
 		ID:             light.ID(),
 		NodeID:         node.ID(),
@@ -77,7 +98,7 @@ func convertSpotLight(node *mdl.Node, light *mdl.SpotLight) lightingdto.SpotLigh
 	}
 }
 
-func convertDirectionalLight(node *mdl.Node, light *mdl.DirectionalLight) lightingdto.DirectionalLight {
+func (c *LightingConverter) convertDirectionalLight(node *mdl.Node, light *mdl.DirectionalLight) lightingdto.DirectionalLight {
 	return lightingdto.DirectionalLight{
 		ID:         light.ID(),
 		NodeID:     node.ID(),

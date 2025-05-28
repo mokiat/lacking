@@ -33,6 +33,10 @@ type Node struct {
 	nodes  []*Node
 }
 
+func (n *Node) Metadata() Metadata {
+	return n.metadata
+}
+
 func (n *Node) SetMetadata(metadata Metadata) {
 	n.metadata = metadata
 }

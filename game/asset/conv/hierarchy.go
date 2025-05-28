@@ -1,15 +1,36 @@
-package hierarchyconv
+package conv
 
 import (
+	"github.com/mokiat/gog/ds"
 	"github.com/mokiat/lacking/game/asset/dto/hierarchydto"
 	"github.com/mokiat/lacking/game/asset/mdl"
+	"github.com/mokiat/lacking/storage/chunked"
 )
 
-type Source interface {
+type HierarchySource interface {
 	AllNodes() []*mdl.Node
 }
 
-func CreateHierarchyChunk(src Source) (*hierarchydto.HierarchyChunk, error) {
+func NewHierarchyConverter() *HierarchyConverter {
+	return &HierarchyConverter{}
+}
+
+type HierarchyConverter struct{}
+
+func (c *HierarchyConverter) Convert(target *ds.List[chunked.Chunk], asset any) error {
+	src, ok := asset.(HierarchySource)
+	if !ok {
+		return nil
+	}
+	chunk, err := c.CreateHierarchyChunk(src)
+	if err != nil {
+		return err
+	}
+	target.Add(chunked.FromValue(hierarchydto.HierarchyChunkID, chunk))
+	return nil
+}
+
+func (c *HierarchyConverter) CreateHierarchyChunk(src HierarchySource) (*hierarchydto.HierarchyChunk, error) {
 	allNodes := src.AllNodes()
 	dtoNodes := make([]hierarchydto.Node, len(allNodes))
 	for i, node := range allNodes {

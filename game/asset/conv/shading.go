@@ -1,4 +1,4 @@
-package shadingconv
+package conv
 
 import (
 	"fmt"
@@ -6,24 +6,45 @@ import (
 
 	"github.com/mokiat/gblob"
 	"github.com/mokiat/gog"
+	"github.com/mokiat/gog/ds"
 	"github.com/mokiat/gomath/sprec"
 	"github.com/mokiat/lacking/game/asset/dto/shadingdto"
 	"github.com/mokiat/lacking/game/asset/mdl"
 	"github.com/mokiat/lacking/game/graphics/lsl"
+	"github.com/mokiat/lacking/storage/chunked"
 )
 
-type Source interface {
+type ShadingSource interface {
 	AllShaders() []*mdl.Shader
 	AllTextures() []*mdl.Texture
 	AllMaterials() []*mdl.Material
 }
 
-func CreateShadingChunk(src Source) (*shadingdto.ShadingChunk, error) {
+func NewShadingConverter() *ShadingConverter {
+	return &ShadingConverter{}
+}
+
+type ShadingConverter struct{}
+
+func (c *ShadingConverter) Convert(target *ds.List[chunked.Chunk], asset any) error {
+	src, ok := asset.(ShadingSource)
+	if !ok {
+		return nil
+	}
+	chunk, err := c.CreateShadingChunk(src)
+	if err != nil {
+		return err
+	}
+	target.Add(chunked.FromValue(shadingdto.ShadingChunkID, chunk))
+	return nil
+}
+
+func (c *ShadingConverter) CreateShadingChunk(src ShadingSource) (*shadingdto.ShadingChunk, error) {
 	allShaders := src.AllShaders()
 	dtoShaders := make([]shadingdto.Shader, len(allShaders))
 	for i, shader := range allShaders {
 		var err error
-		dtoShaders[i], err = convertShader(shader)
+		dtoShaders[i], err = c.convertShader(shader)
 		if err != nil {
 			return nil, fmt.Errorf("error converting shader: %w", err)
 		}
@@ -33,7 +54,7 @@ func CreateShadingChunk(src Source) (*shadingdto.ShadingChunk, error) {
 	dtoTextures := make([]shadingdto.Texture, len(allTextures))
 	for i, texture := range allTextures {
 		var err error
-		dtoTextures[i], err = convertTexture(texture)
+		dtoTextures[i], err = c.convertTexture(texture)
 		if err != nil {
 			return nil, fmt.Errorf("error converting texture: %w", err)
 		}
@@ -43,7 +64,7 @@ func CreateShadingChunk(src Source) (*shadingdto.ShadingChunk, error) {
 	dtoMaterials := make([]shadingdto.Material, len(allMaterials))
 	for i, material := range allMaterials {
 		var err error
-		dtoMaterials[i], err = convertMaterial(material)
+		dtoMaterials[i], err = c.convertMaterial(material)
 		if err != nil {
 			return nil, fmt.Errorf("error converting material: %w", err)
 		}
@@ -56,7 +77,7 @@ func CreateShadingChunk(src Source) (*shadingdto.ShadingChunk, error) {
 	}, nil
 }
 
-func convertShader(shader *mdl.Shader) (shadingdto.Shader, error) {
+func (c *ShadingConverter) convertShader(shader *mdl.Shader) (shadingdto.Shader, error) {
 	ast, err := lsl.Parse(shader.SourceCode())
 	if err != nil {
 		return shadingdto.Shader{}, fmt.Errorf("error parsing shader: %w", err)
@@ -86,7 +107,7 @@ func convertShader(shader *mdl.Shader) (shadingdto.Shader, error) {
 	}, nil
 }
 
-func convertTexture(texture *mdl.Texture) (shadingdto.Texture, error) {
+func (c *ShadingConverter) convertTexture(texture *mdl.Texture) (shadingdto.Texture, error) {
 	var flags shadingdto.TextureFlag
 	switch texture.Kind() {
 	case mdl.TextureKind2D:
@@ -100,7 +121,7 @@ func convertTexture(texture *mdl.Texture) (shadingdto.Texture, error) {
 	default:
 		return shadingdto.Texture{}, fmt.Errorf("unsupported texture kind %d", texture.Kind())
 	}
-	if isLikelyLinearSpace(texture.Format()) || texture.Linear() {
+	if c.isLikelyLinearSpace(texture.Format()) || texture.Linear() {
 		flags |= shadingdto.TextureFlagLinearSpace
 	}
 	if texture.GenerateMipmaps() {
@@ -125,7 +146,7 @@ func convertTexture(texture *mdl.Texture) (shadingdto.Texture, error) {
 	}, nil
 }
 
-func isLikelyLinearSpace(format mdl.TextureFormat) bool {
+func (c *ShadingConverter) isLikelyLinearSpace(format mdl.TextureFormat) bool {
 	linearFormats := []mdl.TextureFormat{
 		mdl.TextureFormatRGBA16F,
 		mdl.TextureFormatRGBA32F,
@@ -133,13 +154,13 @@ func isLikelyLinearSpace(format mdl.TextureFormat) bool {
 	return slices.Contains(linearFormats, format)
 }
 
-func convertMaterial(material *mdl.Material) (shadingdto.Material, error) {
-	textures, err := convertSamplers(material.Samplers())
+func (c *ShadingConverter) convertMaterial(material *mdl.Material) (shadingdto.Material, error) {
+	textures, err := c.convertSamplers(material.Samplers())
 	if err != nil {
 		return shadingdto.Material{}, fmt.Errorf("error converting samplers: %w", err)
 	}
 
-	properties, err := convertProperties(material.Properties())
+	properties, err := c.convertProperties(material.Properties())
 	if err != nil {
 		return shadingdto.Material{}, fmt.Errorf("error converting properties: %w", err)
 	}
@@ -156,35 +177,35 @@ func convertMaterial(material *mdl.Material) (shadingdto.Material, error) {
 		PostprocessingPasses: make([]shadingdto.MaterialPass, len(material.PostprocessingPasses())),
 	}
 	for i, pass := range material.GeometryPasses() {
-		dtoPass, err := convertMaterialPass(pass)
+		dtoPass, err := c.convertMaterialPass(pass)
 		if err != nil {
 			return shadingdto.Material{}, fmt.Errorf("error converting material pass: %w", err)
 		}
 		dtoMaterial.GeometryPasses[i] = dtoPass
 	}
 	for i, pass := range material.ShadowPasses() {
-		dtoPass, err := convertMaterialPass(pass)
+		dtoPass, err := c.convertMaterialPass(pass)
 		if err != nil {
 			return shadingdto.Material{}, fmt.Errorf("error converting material pass: %w", err)
 		}
 		dtoMaterial.ShadowPasses[i] = dtoPass
 	}
 	for i, pass := range material.ForwardPasses() {
-		dtoPass, err := convertMaterialPass(pass)
+		dtoPass, err := c.convertMaterialPass(pass)
 		if err != nil {
 			return shadingdto.Material{}, fmt.Errorf("error converting material pass: %w", err)
 		}
 		dtoMaterial.ForwardPasses[i] = dtoPass
 	}
 	for i, pass := range material.SkyPasses() {
-		dtoPass, err := convertMaterialPass(pass)
+		dtoPass, err := c.convertMaterialPass(pass)
 		if err != nil {
 			return shadingdto.Material{}, fmt.Errorf("error converting material pass: %w", err)
 		}
 		dtoMaterial.SkyPasses[i] = dtoPass
 	}
 	for i, pass := range material.PostprocessingPasses() {
-		dtoPass, err := convertMaterialPass(pass)
+		dtoPass, err := c.convertMaterialPass(pass)
 		if err != nil {
 			return shadingdto.Material{}, fmt.Errorf("error converting material pass: %w", err)
 		}
@@ -194,7 +215,7 @@ func convertMaterial(material *mdl.Material) (shadingdto.Material, error) {
 	return dtoMaterial, nil
 }
 
-func convertSamplers(samplers map[string]*mdl.Sampler) ([]shadingdto.TextureBinding, error) {
+func (c *ShadingConverter) convertSamplers(samplers map[string]*mdl.Sampler) ([]shadingdto.TextureBinding, error) {
 	bindings := make([]shadingdto.TextureBinding, 0, len(samplers))
 	for name, sampler := range samplers {
 		bindings = append(bindings, shadingdto.TextureBinding{
@@ -208,7 +229,7 @@ func convertSamplers(samplers map[string]*mdl.Sampler) ([]shadingdto.TextureBind
 	return bindings, nil
 }
 
-func convertProperties(properties map[string]interface{}) ([]shadingdto.PropertyBinding, error) {
+func (c *ShadingConverter) convertProperties(properties map[string]interface{}) ([]shadingdto.PropertyBinding, error) {
 	bindings := make([]shadingdto.PropertyBinding, 0, len(properties))
 	for name, value := range properties {
 		var data gblob.LittleEndianBlock
@@ -242,7 +263,7 @@ func convertProperties(properties map[string]interface{}) ([]shadingdto.Property
 	return bindings, nil
 }
 
-func convertMaterialPass(pass *mdl.MaterialPass) (shadingdto.MaterialPass, error) {
+func (c *ShadingConverter) convertMaterialPass(pass *mdl.MaterialPass) (shadingdto.MaterialPass, error) {
 	return shadingdto.MaterialPass{
 		Layer:           int32(pass.Layer()),
 		Culling:         pass.Culling(),

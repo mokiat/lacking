@@ -1,16 +1,37 @@
-package animationconv
+package conv
 
 import (
+	"github.com/mokiat/gog/ds"
 	"github.com/mokiat/gomath/dprec"
 	"github.com/mokiat/lacking/game/asset/dto/animationdto"
 	"github.com/mokiat/lacking/game/asset/mdl"
+	"github.com/mokiat/lacking/storage/chunked"
 )
 
-type Source interface {
+type AnimationSource interface {
 	Animations() []*mdl.Animation
 }
 
-func CreateAnimationChunk(src Source) (*animationdto.AnimationChunk, error) {
+func NewAnimationConverter() *AnimationConverter {
+	return &AnimationConverter{}
+}
+
+type AnimationConverter struct{}
+
+func (c *AnimationConverter) Convert(target *ds.List[chunked.Chunk], asset any) error {
+	src, ok := asset.(AnimationSource)
+	if !ok {
+		return nil
+	}
+	chunk, err := c.CreateAnimationChunk(src)
+	if err != nil {
+		return err
+	}
+	target.Add(chunked.FromValue(animationdto.AnimationChunkID, chunk))
+	return nil
+}
+
+func (c *AnimationConverter) CreateAnimationChunk(src AnimationSource) (*animationdto.AnimationChunk, error) {
 	dtoAnimations := make([]animationdto.Animation, len(src.Animations()))
 	for i, animation := range src.Animations() {
 		dtoAnimation := animationdto.Animation{

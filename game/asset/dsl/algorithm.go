@@ -7,13 +7,11 @@ import (
 	"runtime"
 	"time"
 
+	"github.com/mokiat/gog/ds"
 	"github.com/mokiat/gog/filter"
-	"github.com/mokiat/lacking/game/asset/dto/gendto"
 	"github.com/mokiat/lacking/storage/chunked"
 	"golang.org/x/sync/errgroup"
 )
-
-var resourceProviders = make(map[string]Provider[Resource])
 
 // Run runs the DSL algorithm on the provided registry. If modelNames
 // is not empty, only the models with the provided names will be processed.
@@ -36,7 +34,7 @@ func Run(storage chunked.Storage, pathFilter filter.Func[string]) error {
 	return g.Wait()
 }
 
-func processAsset(storage chunked.Storage, path string, provider Provider[Resource]) error {
+func processAsset(storage chunked.Storage, path string, provider Provider[any]) error {
 	startTime := time.Now()
 
 	digest, err := StringDigest(provider)
@@ -58,8 +56,8 @@ func processAsset(storage chunked.Storage, path string, provider Provider[Resour
 		return nil
 	}
 
-	var chunks chunked.ChunkList
-	chunks = append(chunks, chunked.FromValue(gendto.GenChunkID, &gendto.GenChunk{
+	chunkList := ds.NewList[chunked.Chunk](1)
+	chunkList.Add(chunked.FromValue(genChunkID, &genChunk{
 		Digest: digest,
 	}))
 
@@ -67,33 +65,27 @@ func processAsset(storage chunked.Storage, path string, provider Provider[Resour
 	if err != nil {
 		return fmt.Errorf("provider failed to produce asset: %w", err)
 	}
-
-	var appliedConverters []string
-	for name, converter := range Converters() {
-		if converter.CanConvert(resource) {
-			chunk, err := converter.Convert(resource)
-			if err != nil {
-				return fmt.Errorf("converter %q error: %w", name, err)
-			}
-			chunks = append(chunks, chunk)
-			appliedConverters = append(appliedConverters, name)
+	for _, converter := range registeredConverters {
+		if err := converter.Convert(chunkList, resource); err != nil {
+			return fmt.Errorf("converter %T failed to convert resource: %w", converter, err)
 		}
 	}
 
+	chunks := chunked.ChunkList(chunkList.Unbox())
 	if err := asset.Write(chunks); err != nil {
 		return fmt.Errorf("error writing chunks: %w", err)
 	}
 
 	logger.Info("Asset updated",
 		slog.String("path", path),
-		slog.Int("converters", len(appliedConverters)),
+		slog.Int("chunks", len(chunks)),
 		slog.String("duration", time.Since(startTime).String()),
 	)
 	return nil
 }
 
 func retrieveSourceDigest(asset *chunked.Asset) (string, error) {
-	var holder gendto.GenChunkHolder
+	var holder genChunkHolder
 	if err := asset.Read(&holder); err != nil {
 		if errors.Is(err, chunked.ErrNotFound) {
 			return "", nil // no digest found
