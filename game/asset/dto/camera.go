@@ -2,13 +2,7 @@ package dto
 
 import "github.com/mokiat/gomath/sprec"
 
-const (
-	FoVModeFoVModeHorizontalPlus FoVMode = iota
-
-	FoVModeFoVModeVertialMinus
-)
-
-var CameraChunkID = "lacking:camera"
+const CameraChunkID = "lacking:camera"
 
 type CameraChunkHolder struct {
 	Camera *CameraChunk `chunk:"lacking:camera"`
@@ -18,6 +12,12 @@ type CameraChunk struct {
 	// Cameras is the collection of cameras that are part of the scene.
 	Cameras []Camera
 }
+
+const (
+	FoVModeFoVModeHorizontalPlus FoVMode = iota
+
+	FoVModeFoVModeVertialMinus
+)
 
 // FoVMode determines how the camera field of view is calculated
 // in the horizontal and vertical directions.

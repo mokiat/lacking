@@ -2,7 +2,7 @@ package dto
 
 import "github.com/mokiat/gomath/dprec"
 
-var LightingChunkID = "lacking:lighting"
+const LightingChunkID = "lacking:lighting"
 
 type LightingChunkHolder struct {
 	LightingChunk *LightingChunk `chunk:"lacking:lighting"`

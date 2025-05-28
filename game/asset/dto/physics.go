@@ -2,7 +2,7 @@ package dto
 
 import "github.com/mokiat/gomath/dprec"
 
-var PhysicsChunkID = "lacking:physics"
+const PhysicsChunkID = "lacking:physics"
 
 type PhysicsChunkHolder struct {
 	PhysicsChunk *PhysicsChunk `chunk:"lacking:physics"`

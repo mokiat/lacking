@@ -1,6 +1,6 @@
 package dto
 
-var MeshChunkID = "lacking:mesh"
+const MeshChunkID = "lacking:mesh"
 
 type MeshChunkHolder struct {
 	MeshChunk *MeshChunk `chunk:"lacking:mesh"`

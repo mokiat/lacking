@@ -1,6 +1,6 @@
 package dto
 
-var ShadingChunkID = "lacking:shading"
+const ShadingChunkID = "lacking:shading"
 
 type ShadingChunkHolder struct {
 	ShadingChunk *ShadingChunk `chunk:"lacking:shading"`

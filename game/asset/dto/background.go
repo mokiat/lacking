@@ -1,6 +1,6 @@
 package dto
 
-var BackgroundChunkID = "lacking:background"
+const BackgroundChunkID = "lacking:background"
 
 type BackgroundChunkHolder struct {
 	BackgroundChunk *BackgroundChunk `chunk:"lacking:background"`

@@ -2,13 +2,7 @@ package dto
 
 import "github.com/mokiat/gomath/dprec"
 
-const (
-	// UnspecifiedNodeID is the ID that is used to indicate that no node is
-	// specified.
-	UnspecifiedNodeID = uint32(0xFFFFFFFF)
-)
-
-var HierarchyChunkID = "lacking:hierarchy"
+const HierarchyChunkID = "lacking:hierarchy"
 
 type HierarchyChunkHolder struct {
 	HierarchyChunk *HierarchyChunk `chunk:"lacking:hierarchy"`
@@ -17,6 +11,12 @@ type HierarchyChunkHolder struct {
 type HierarchyChunk struct {
 	Nodes []Node
 }
+
+const (
+	// UnspecifiedNodeID is the ID that is used to indicate that no node is
+	// specified.
+	UnspecifiedNodeID = uint32(0xFFFFFFFF)
+)
 
 // Node represents a single node in a model.
 type Node struct {
