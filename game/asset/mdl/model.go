@@ -15,23 +15,9 @@ func NewModel() *Model {
 
 type Model struct {
 	*Object
-	name string
 
 	nodes      []*Node
 	animations []*Animation
-}
-
-// Deprecated: Use Path instead.
-func (s *Model) Name() string {
-	return s.name
-}
-
-func (s *Model) Path() string {
-	return s.name
-}
-
-func (s *Model) SetName(name string) {
-	s.name = name
 }
 
 func (s *Model) Nodes() []*Node {

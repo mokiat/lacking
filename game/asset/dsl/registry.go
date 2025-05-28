@@ -10,11 +10,7 @@ import (
 
 // Resource represents a generic asset that can be converted by a Converter
 // to a chunked format.
-type Resource interface {
-
-	// Path returns the path of the resource.
-	Path() string
-}
+type Resource any
 
 // Converter is an interface for converting a Resource into a chunked format.
 type Converter interface {

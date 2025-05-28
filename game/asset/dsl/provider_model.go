@@ -19,16 +19,11 @@ import (
 )
 
 // CreateModel creates a new model with the specified name and operations.
-func CreateModel(name string, operations ...Operation) Provider[*mdl.Model] {
-	if _, ok := modelProviders[name]; ok {
-		panic(fmt.Sprintf("provider for model %q already exists", name))
-	}
-
-	modelProviders[name] = OnceProvider(FuncProvider(
+func CreateModel(operations ...Operation) Provider[*mdl.Model] {
+	return OnceProvider(FuncProvider(
 		// get function
 		func() (*mdl.Model, error) {
 			model := mdl.NewModel()
-			model.SetName(name)
 			for _, operation := range operations {
 				if err := operation.Apply(model); err != nil {
 					return nil, err
@@ -39,11 +34,9 @@ func CreateModel(name string, operations ...Operation) Provider[*mdl.Model] {
 
 		// digest function
 		func() ([]byte, error) {
-			return CreateDigest("create-model", name, operations)
+			return CreateDigest("create-model", operations)
 		},
 	))
-
-	return modelProviders[name]
 }
 
 // OpenGLTFModel creates a new model provider that loads a model from the

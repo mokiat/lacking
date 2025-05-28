@@ -9,12 +9,11 @@ import (
 
 	"github.com/mokiat/gog/filter"
 	"github.com/mokiat/lacking/game/asset/dto/gendto"
-	"github.com/mokiat/lacking/game/asset/mdl"
 	"github.com/mokiat/lacking/storage/chunked"
 	"golang.org/x/sync/errgroup"
 )
 
-var modelProviders = make(map[string]Provider[*mdl.Model])
+var resourceProviders = make(map[string]Provider[Resource])
 
 // Run runs the DSL algorithm on the provided registry. If modelNames
 // is not empty, only the models with the provided names will be processed.
@@ -22,7 +21,7 @@ func Run(storage chunked.Storage, pathFilter filter.Func[string]) error {
 	var g errgroup.Group
 	g.SetLimit(runtime.NumCPU())
 
-	for path, modelProvider := range modelProviders {
+	for path, modelProvider := range resourceProviders {
 		if !pathFilter(path) {
 			continue // skip this one
 		}
@@ -37,7 +36,7 @@ func Run(storage chunked.Storage, pathFilter filter.Func[string]) error {
 	return g.Wait()
 }
 
-func processAsset(storage chunked.Storage, path string, provider Provider[*mdl.Model]) error {
+func processAsset(storage chunked.Storage, path string, provider Provider[Resource]) error {
 	startTime := time.Now()
 
 	digest, err := StringDigest(provider)
@@ -45,8 +44,8 @@ func processAsset(storage chunked.Storage, path string, provider Provider[*mdl.M
 		return fmt.Errorf("error calculating new digest: %w", err)
 	}
 
-	resource := chunked.NewAsset(storage, path)
-	sourceDigest, err := retrieveSourceDigest(resource)
+	asset := chunked.NewAsset(storage, path)
+	sourceDigest, err := retrieveSourceDigest(asset)
 	if err != nil {
 		return fmt.Errorf("error retrieving old digest: %w", err)
 	}
@@ -59,20 +58,20 @@ func processAsset(storage chunked.Storage, path string, provider Provider[*mdl.M
 		return nil
 	}
 
-	model, err := provider.Get()
-	if err != nil {
-		return fmt.Errorf("provider failed to produce asset: %w", err)
-	}
-
 	var chunks chunked.ChunkList
 	chunks = append(chunks, chunked.FromValue(gendto.GenChunkID, &gendto.GenChunk{
 		Digest: digest,
 	}))
 
+	resource, err := provider.Get()
+	if err != nil {
+		return fmt.Errorf("provider failed to produce asset: %w", err)
+	}
+
 	var appliedConverters []string
 	for name, converter := range Converters() {
-		if converter.CanConvert(model) {
-			chunk, err := converter.Convert(model)
+		if converter.CanConvert(resource) {
+			chunk, err := converter.Convert(resource)
 			if err != nil {
 				return fmt.Errorf("converter %q error: %w", name, err)
 			}
@@ -81,7 +80,7 @@ func processAsset(storage chunked.Storage, path string, provider Provider[*mdl.M
 		}
 	}
 
-	if err := resource.Write(chunks); err != nil {
+	if err := asset.Write(chunks); err != nil {
 		return fmt.Errorf("error writing chunks: %w", err)
 	}
 
@@ -93,13 +92,13 @@ func processAsset(storage chunked.Storage, path string, provider Provider[*mdl.M
 	return nil
 }
 
-func retrieveSourceDigest(resource *chunked.Asset) (string, error) {
+func retrieveSourceDigest(asset *chunked.Asset) (string, error) {
 	var holder gendto.GenChunkHolder
-	if err := resource.Read(&holder); err != nil {
+	if err := asset.Read(&holder); err != nil {
 		if errors.Is(err, chunked.ErrNotFound) {
 			return "", nil // no digest found
 		}
-		return "", fmt.Errorf("error reading resource: %w", err)
+		return "", fmt.Errorf("error reading asset: %w", err)
 	}
 	if holder.Gen == nil {
 		return "", nil // no digest found
