@@ -239,12 +239,22 @@ func (s *Scene) PlaceSpotLight(node *hierarchy.Node, info SpotLightInfo) {
 // root of the scene.
 func (s *Scene) CreateDirectionalLight(info DirectionalLightInfo) *hierarchy.Node {
 	node := s.CreateNode()
-	s.placeDirectionalLight(node, directionalLightInstance{
-		nodeIndex:  0,
-		emitColor:  info.EmitColor.ValueOrDefault(dprec.NewVec3(10.0, 0.0, 10.0)),
-		castShadow: info.CastShadow.ValueOrDefault(false),
-	})
+	s.PlaceDirectionalLight(node, info)
 	return node
+}
+
+// PlaceDirectionalLight places a directional light on the provided node.
+func (s *Scene) PlaceDirectionalLight(node *hierarchy.Node, info DirectionalLightInfo) {
+	light := s.gfxScene.CreateDirectionalLight(graphics.DirectionalLightInfo{
+		Position:   dprec.ZeroVec3(),
+		Rotation:   dprec.IdentityQuat(),
+		EmitColor:  info.EmitColor.ValueOrDefault(dprec.NewVec3(10.0, 0.0, 10.0)),
+		CastShadow: info.CastShadow.ValueOrDefault(false),
+	})
+	node.SetTarget(DirectionalLightNodeTarget{
+		Light: light,
+	})
+	node.ApplyToTarget(false)
 }
 
 // CreateAnimation creates a new animation based on the provided information.
@@ -479,7 +489,11 @@ func (s *Scene) CreateModel(info ModelInfo) *Model {
 	}
 	for _, instance := range definition.directionalLights {
 		if node := nodes[instance.nodeIndex]; node != nil {
-			s.placeDirectionalLight(node, instance)
+			info := DirectionalLightInfo{
+				EmitColor:  opt.V(instance.emitColor),
+				CastShadow: opt.V(instance.castShadow),
+			}
+			s.PlaceDirectionalLight(node, info)
 		}
 	}
 	for _, instance := range definition.skies {
@@ -560,19 +574,6 @@ func (s *Scene) updateAnimationTrees(elapsedTime time.Duration) {
 	for _, tree := range s.animationTrees.Unbox() {
 		tree.SetPosition(tree.Position() + elapsedTime.Seconds())
 	}
-}
-
-func (s *Scene) placeDirectionalLight(node *hierarchy.Node, instance directionalLightInstance) {
-	light := s.gfxScene.CreateDirectionalLight(graphics.DirectionalLightInfo{
-		Position:   dprec.ZeroVec3(),
-		Rotation:   dprec.IdentityQuat(),
-		EmitColor:  instance.emitColor,
-		CastShadow: instance.castShadow,
-	})
-	node.SetTarget(DirectionalLightNodeTarget{
-		Light: light,
-	})
-	node.ApplyToTarget(false)
 }
 
 func (s *Scene) placeSky(node *hierarchy.Node, definition *graphics.SkyDefinition) {
