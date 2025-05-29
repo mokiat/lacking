@@ -92,3 +92,10 @@ func (s *ResourceSet) findModel(path string) (async.Promise[*ModelDefinition], b
 	}
 	return async.Promise[*ModelDefinition]{}, false
 }
+
+// AssetLoader represents an async loading process in the scope of a given
+// ResourceSet.
+type AssetLoader struct {
+	resourceSet *ResourceSet
+	engine      *Engine
+}

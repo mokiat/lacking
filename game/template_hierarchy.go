@@ -5,6 +5,7 @@ import (
 
 	"github.com/mokiat/gog/opt"
 	"github.com/mokiat/gomath/dprec"
+	"github.com/mokiat/lacking/game/asset/dto"
 	"github.com/mokiat/lacking/game/hierarchy"
 )
 
@@ -21,7 +22,27 @@ type HierarchyNodeTemplate struct {
 	Scale    dprec.Vec3
 }
 
-type HierarchyInstanceInfo struct {
+func (s *AssetLoader) ResolveHierarchyTemplate(chunk *dto.HierarchyChunk) *HierarchyTemplate {
+	if chunk == nil {
+		return &HierarchyTemplate{}
+	}
+	nodes := make([]HierarchyNodeTemplate, len(chunk.Nodes))
+	for i, assetNode := range chunk.Nodes {
+		nodes[i] = HierarchyNodeTemplate{
+			ID:       assetNode.ID,
+			ParentID: assetNode.ParentID,
+			Name:     assetNode.Name,
+			Position: assetNode.Translation,
+			Rotation: assetNode.Rotation,
+			Scale:    assetNode.Scale,
+		}
+	}
+	return &HierarchyTemplate{
+		Nodes: nodes,
+	}
+}
+
+type HierarchyInfo struct {
 	Template      *HierarchyTemplate
 	Name          opt.T[string]
 	Position      opt.T[dprec.Vec3]
@@ -31,12 +52,12 @@ type HierarchyInstanceInfo struct {
 	AttachToScene opt.T[bool]
 }
 
-type HierarchyInstance struct {
+type Hierarchy struct {
 	RootNode *hierarchy.Node
 	Nodes    IdentifiableList[*hierarchy.Node]
 }
 
-func (s *Scene) InstantiateHierarchy(info HierarchyInstanceInfo) HierarchyInstance {
+func (s *Scene) InstantiateHierarchy(info HierarchyInfo) *Hierarchy {
 	template := info.Template
 
 	nodes := make(map[uint32]*hierarchy.Node, len(template.Nodes))
@@ -101,7 +122,7 @@ func (s *Scene) InstantiateHierarchy(info HierarchyInstanceInfo) HierarchyInstan
 		})
 	}
 
-	return HierarchyInstance{
+	return &Hierarchy{
 		RootNode: rootNode,
 		Nodes:    nodeList,
 	}

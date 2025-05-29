@@ -2,6 +2,8 @@ package game
 
 import (
 	"github.com/mokiat/gog/opt"
+	"github.com/mokiat/gomath/dprec"
+	"github.com/mokiat/lacking/game/asset/dto"
 )
 
 // AnimationTemplate represents a template for an animation, likely
@@ -73,6 +75,59 @@ type AnimationSetTemplate struct {
 
 	// Animations is a list of animation templates that are part of this set.
 	Animations []AnimationTemplate
+}
+
+func (s *AssetLoader) ResolveAnimationSetTemplate(chunk *dto.AnimationChunk) *AnimationSetTemplate {
+	if chunk == nil {
+		return &AnimationSetTemplate{}
+	}
+	animations := make([]AnimationTemplate, len(chunk.Animations))
+	for i, assetAnimation := range chunk.Animations {
+		animations[i] = s.ResolveAnimationTemplate(assetAnimation)
+	}
+	return &AnimationSetTemplate{
+		Animations: animations,
+	}
+}
+
+func (s *AssetLoader) ResolveAnimationTemplate(assetAnimation dto.Animation) AnimationTemplate {
+	bindings := make(map[string]AnimationKeyframeSet, len(assetAnimation.Bindings))
+	for _, assetBinding := range assetAnimation.Bindings {
+		translationKeyframes := make([]Keyframe[dprec.Vec3], len(assetBinding.TranslationKeyframes))
+		for k, keyframe := range assetBinding.TranslationKeyframes {
+			translationKeyframes[k] = Keyframe[dprec.Vec3]{
+				Timestamp: keyframe.Timestamp,
+				Value:     keyframe.Value,
+			}
+		}
+		rotationKeyframes := make([]Keyframe[dprec.Quat], len(assetBinding.RotationKeyframes))
+		for k, keyframe := range assetBinding.RotationKeyframes {
+			rotationKeyframes[k] = Keyframe[dprec.Quat]{
+				Timestamp: keyframe.Timestamp,
+				Value:     keyframe.Value,
+			}
+		}
+		scaleKeyframes := make([]Keyframe[dprec.Vec3], len(assetBinding.ScaleKeyframes))
+		for k, keyframe := range assetBinding.ScaleKeyframes {
+			scaleKeyframes[k] = Keyframe[dprec.Vec3]{
+				Timestamp: keyframe.Timestamp,
+				Value:     keyframe.Value,
+			}
+		}
+		bindings[assetBinding.NodeName] = AnimationKeyframeSet{
+			TranslationKeyframes: translationKeyframes,
+			RotationKeyframes:    rotationKeyframes,
+			ScaleKeyframes:       scaleKeyframes,
+		}
+	}
+	return AnimationTemplate{
+		ID:        assetAnimation.ID,
+		Name:      assetAnimation.Name,
+		StartTime: assetAnimation.StartTime,
+		EndTime:   assetAnimation.EndTime,
+		Loop:      assetAnimation.Loop,
+		Bindings:  bindings,
+	}
 }
 
 // AnimationSetInfo contains information needed to instantiate an

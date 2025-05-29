@@ -57,25 +57,14 @@ func (s *ResourceSet) openResource(resource *chunked.Asset) async.Promise[dto.Mo
 }
 
 func (s *ResourceSet) convertModel(assetModel dto.Model) (*ModelDefinition, error) {
-	// TODO: Isolate into separate function based only on hierarchy chunk.
-	hierarchy := &HierarchyTemplate{
-		Nodes: make([]HierarchyNodeTemplate, len(assetModel.HierarchyChunk.Nodes)),
-	}
-	for i, assetNode := range assetModel.HierarchyChunk.Nodes {
-		hierarchy.Nodes[i] = s.convertHierarchyNode(assetNode)
+	// TODO: Figure out how to better get this working and extensible.
+	loader := &AssetLoader{
+		resourceSet: s,
+		engine:      s.engine,
 	}
 
-	animationPromises := make([]async.Promise[AnimationTemplate], len(assetModel.AnimationChunk.Animations))
-	for i, assetAnimation := range assetModel.AnimationChunk.Animations {
-		animationPromises[i] = s.convertAnimation(assetAnimation)
-	}
-	animations, err := async.WaitPromises(animationPromises...)
-	if err != nil {
-		return nil, fmt.Errorf("failed to convert animations: %w", err)
-	}
-	animationSet := &AnimationSetTemplate{
-		Animations: animations,
-	}
+	hierarchy := loader.ResolveHierarchyTemplate(assetModel.HierarchyChunk)
+	animationSet := loader.ResolveAnimationSetTemplate(assetModel.AnimationChunk)
 
 	armatures := make([]armatureDefinition, len(assetModel.MeshChunk.Armatures))
 	for i, assetArmature := range assetModel.MeshChunk.Armatures {
