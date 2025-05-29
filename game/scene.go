@@ -214,15 +214,25 @@ func (s *Scene) PlacePointLight(node *hierarchy.Node, info PointLightInfo) {
 // scene.
 func (s *Scene) CreateSpotLight(info SpotLightInfo) *hierarchy.Node {
 	node := s.CreateNode()
-	s.placeSpotLight(node, spotLightInstance{
-		nodeIndex:      0,
-		emitColor:      info.EmitColor.ValueOrDefault(dprec.NewVec3(10.0, 0.0, 10.0)),
-		emitDistance:   info.EmitDistance.ValueOrDefault(20.0),
-		emitAngleOuter: info.EmitOuterConeAngle.ValueOrDefault(dprec.Degrees(60)),
-		emitAngleInner: info.EmitInnerConeAngle.ValueOrDefault(dprec.Degrees(30)),
-		castShadow:     info.CastShadow.ValueOrDefault(false),
-	})
+	s.PlaceSpotLight(node, info)
 	return node
+}
+
+// PlaceSpotLight places a spot light on the provided node.
+func (s *Scene) PlaceSpotLight(node *hierarchy.Node, info SpotLightInfo) {
+	light := s.gfxScene.CreateSpotLight(graphics.SpotLightInfo{
+		Position:           dprec.ZeroVec3(),
+		Rotation:           dprec.IdentityQuat(),
+		EmitColor:          info.EmitColor.ValueOrDefault(dprec.NewVec3(10.0, 0.0, 10.0)),
+		EmitRange:          info.EmitDistance.ValueOrDefault(20.0),
+		EmitOuterConeAngle: info.EmitOuterConeAngle.ValueOrDefault(dprec.Degrees(60)),
+		EmitInnerConeAngle: info.EmitInnerConeAngle.ValueOrDefault(dprec.Degrees(30)),
+		CastShadow:         info.CastShadow.ValueOrDefault(false),
+	})
+	node.SetTarget(SpotLightNodeTarget{
+		Light: light,
+	})
+	node.ApplyToTarget(false)
 }
 
 // CreateDirectionalLight creates a new directional light and appends it to the
@@ -457,7 +467,14 @@ func (s *Scene) CreateModel(info ModelInfo) *Model {
 	}
 	for _, instance := range definition.spotLights {
 		if node := nodes[instance.nodeIndex]; node != nil {
-			s.placeSpotLight(node, instance)
+			info := SpotLightInfo{
+				EmitColor:          opt.V(instance.emitColor),
+				EmitDistance:       opt.V(instance.emitDistance),
+				EmitOuterConeAngle: opt.V(instance.emitAngleOuter),
+				EmitInnerConeAngle: opt.V(instance.emitAngleInner),
+				CastShadow:         opt.V(instance.castShadow),
+			}
+			s.PlaceSpotLight(node, info)
 		}
 	}
 	for _, instance := range definition.directionalLights {
@@ -543,22 +560,6 @@ func (s *Scene) updateAnimationTrees(elapsedTime time.Duration) {
 	for _, tree := range s.animationTrees.Unbox() {
 		tree.SetPosition(tree.Position() + elapsedTime.Seconds())
 	}
-}
-
-func (s *Scene) placeSpotLight(node *hierarchy.Node, instance spotLightInstance) {
-	light := s.gfxScene.CreateSpotLight(graphics.SpotLightInfo{
-		Position:           dprec.ZeroVec3(),
-		Rotation:           dprec.IdentityQuat(),
-		EmitColor:          instance.emitColor,
-		EmitRange:          instance.emitDistance,
-		EmitOuterConeAngle: instance.emitAngleOuter,
-		EmitInnerConeAngle: instance.emitAngleInner,
-		CastShadow:         instance.castShadow,
-	})
-	node.SetTarget(SpotLightNodeTarget{
-		Light: light,
-	})
-	node.ApplyToTarget(false)
 }
 
 func (s *Scene) placeDirectionalLight(node *hierarchy.Node, instance directionalLightInstance) {
