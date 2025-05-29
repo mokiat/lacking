@@ -57,14 +57,12 @@ func (s *ResourceSet) openResource(resource *chunked.Asset) async.Promise[dto.Mo
 }
 
 func (s *ResourceSet) convertModel(assetModel dto.Model) (*ModelDefinition, error) {
-	nodeIndexByID := make(map[uint32]int, len(assetModel.HierarchyChunk.Nodes))
-	for i, assetNode := range assetModel.HierarchyChunk.Nodes {
-		nodeIndexByID[assetNode.ID] = i
+	// TODO: Isolate into separate function based only on hierarchy chunk.
+	hierarchy := &HierarchyTemplate{
+		Nodes: make([]HierarchyNodeTemplate, len(assetModel.HierarchyChunk.Nodes)),
 	}
-
-	nodes := make([]nodeDefinition, len(assetModel.HierarchyChunk.Nodes))
 	for i, assetNode := range assetModel.HierarchyChunk.Nodes {
-		nodes[i] = s.convertNode(nodeIndexByID, assetNode)
+		hierarchy.Nodes[i] = s.convertHierarchyNode(assetNode)
 	}
 
 	animationPromises := make([]async.Promise[*AnimationDefinition], len(assetModel.AnimationChunk.Animations))
@@ -78,10 +76,7 @@ func (s *ResourceSet) convertModel(assetModel dto.Model) (*ModelDefinition, erro
 
 	armatures := make([]armatureDefinition, len(assetModel.MeshChunk.Armatures))
 	for i, assetArmature := range assetModel.MeshChunk.Armatures {
-		armatures[i] = s.convertArmature(
-			nodeIndexByID,
-			assetArmature,
-		)
+		armatures[i] = s.convertArmature(assetArmature)
 	}
 	armatureIndexByID := make(map[uint32]int, len(assetModel.MeshChunk.Armatures))
 	for i, assetArmature := range assetModel.MeshChunk.Armatures {
@@ -166,7 +161,6 @@ func (s *ResourceSet) convertModel(assetModel dto.Model) (*ModelDefinition, erro
 	meshes := make([]meshInstance, len(assetModel.MeshChunk.Meshes))
 	for i, assetMesh := range assetModel.MeshChunk.Meshes {
 		meshes[i] = s.convertMeshInstance(
-			nodeIndexByID,
 			armatureIndexByID,
 			meshDefinitionIndexByID,
 			assetMesh,
@@ -204,39 +198,27 @@ func (s *ResourceSet) convertModel(assetModel dto.Model) (*ModelDefinition, erro
 
 	bodies := make([]bodyInstance, len(assetModel.PhysicsChunk.Bodies))
 	for i, assetBody := range assetModel.PhysicsChunk.Bodies {
-		bodies[i] = s.convertBody(nodeIndexByID, bodyDefinitionIndexByID, assetBody)
+		bodies[i] = s.convertBody(bodyDefinitionIndexByID, assetBody)
 	}
 
 	ambientLights := make([]ambientLightInstance, len(assetModel.LightingChunk.AmbientLights))
 	for i, assetAmbientLight := range assetModel.LightingChunk.AmbientLights {
-		ambientLights[i] = s.convertAmbientLight(
-			nodeIndexByID,
-			assetAmbientLight,
-		)
+		ambientLights[i] = s.convertAmbientLight(assetAmbientLight)
 	}
 
 	pointLights := make([]pointLightInstance, len(assetModel.LightingChunk.PointLights))
 	for i, assetPointLight := range assetModel.LightingChunk.PointLights {
-		pointLights[i] = s.convertPointLight(
-			nodeIndexByID,
-			assetPointLight,
-		)
+		pointLights[i] = s.convertPointLight(assetPointLight)
 	}
 
 	spotLights := make([]spotLightInstance, len(assetModel.LightingChunk.SpotLights))
 	for i, assetSpotLight := range assetModel.LightingChunk.SpotLights {
-		spotLights[i] = s.convertSpotLight(
-			nodeIndexByID,
-			assetSpotLight,
-		)
+		spotLights[i] = s.convertSpotLight(assetSpotLight)
 	}
 
 	directionalLights := make([]directionalLightInstance, len(assetModel.LightingChunk.DirectionalLights))
 	for i, assetDirectionalLight := range assetModel.LightingChunk.DirectionalLights {
-		directionalLights[i] = s.convertDirectionalLight(
-			nodeIndexByID,
-			assetDirectionalLight,
-		)
+		directionalLights[i] = s.convertDirectionalLight(assetDirectionalLight)
 	}
 
 	skyDefinitionPromises := make([]async.Promise[*graphics.SkyDefinition], len(assetModel.BackgroundChunk.Skies))
@@ -253,11 +235,11 @@ func (s *ResourceSet) convertModel(assetModel dto.Model) (*ModelDefinition, erro
 
 	skies := make([]skyInstance, len(assetModel.BackgroundChunk.Skies))
 	for i, assetSky := range assetModel.BackgroundChunk.Skies {
-		skies[i] = s.convertSky(nodeIndexByID, i, assetSky)
+		skies[i] = s.convertSky(i, assetSky)
 	}
 
 	return &ModelDefinition{
-		nodes:             nodes,
+		hierarchy:         hierarchy,
 		animations:        animations,
 		armatures:         armatures,
 		shaders:           shaders,

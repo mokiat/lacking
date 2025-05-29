@@ -20,10 +20,9 @@ func (s *ResourceSet) convertSkyDefinition(materials map[uint32]*graphics.Materi
 	return promise
 }
 
-func (s *ResourceSet) convertSky(nodes map[uint32]int, definitionIndex int, assetSky dto.Sky) skyInstance {
-	nodeIndex := nodes[assetSky.NodeID]
+func (s *ResourceSet) convertSky(definitionIndex int, assetSky dto.Sky) skyInstance {
 	return skyInstance{
-		nodeIndex:       nodeIndex,
+		nodeID:          assetSky.NodeID,
 		definitionIndex: definitionIndex,
 	}
 }

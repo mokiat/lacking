@@ -1,7 +1,6 @@
 package game
 
 import (
-	"log/slog"
 	"time"
 
 	"github.com/mokiat/gog/ds"
@@ -319,54 +318,21 @@ func (s *Scene) Render(framebuffer render.Framebuffer, viewport graphics.Viewpor
 
 // TODO: Return the node instead and have the Model be a target?
 func (s *Scene) CreateModel(info ModelInfo) *Model {
-	modelNode := hierarchy.NewNode()
+	hierarchyInfo := HierarchyInstanceInfo{
+		Template:      info.Definition.hierarchy,
+		Name:          opt.V(info.Name),
+		Position:      info.Position,
+		Rotation:      info.Rotation,
+		Scale:         info.Scale,
+		SubTreeNode:   info.RootNode,
+		AttachToScene: opt.V(info.IsDynamic),
+	}
+
+	hierarchyInstance := s.InstantiateHierarchy(hierarchyInfo)
+	modelNode := hierarchyInstance.RootNode
+	nodes := hierarchyInstance.Nodes
 
 	definition := info.Definition
-	nodes := make(map[int]*hierarchy.Node, len(definition.nodes))
-	for i, nodeDef := range definition.nodes {
-		node := hierarchy.NewNode()
-		node.SetName(nodeDef.Name)
-		node.SetPosition(nodeDef.Position)
-		node.SetRotation(nodeDef.Rotation)
-		node.SetScale(nodeDef.Scale)
-		nodes[i] = node
-	}
-	for i, nodeDef := range definition.nodes {
-		var parent *hierarchy.Node
-		if nodeDef.ParentIndex >= 0 {
-			parent = nodes[nodeDef.ParentIndex]
-		} else {
-			parent = modelNode
-		}
-		parent.AppendChild(nodes[i])
-	}
-	if info.RootNode.Specified {
-		if name := info.RootNode.Value; name != "" {
-			modelNode = modelNode.FindNode(info.RootNode.Value)
-		} else {
-			modelNode = nil
-		}
-		if modelNode == nil {
-			logger.Error("Root node not found",
-				slog.String("name", info.RootNode.Value),
-			)
-			modelNode = hierarchy.NewNode()
-		}
-		modelNode.Detach()
-		for i := range definition.nodes {
-			if node := nodes[i]; !node.IsDescendantOf(modelNode) {
-				delete(nodes, i)
-			}
-		}
-	}
-
-	modelNode.SetName(info.Name)
-	modelNode.SetPosition(info.Position.ValueOrDefault(dprec.ZeroVec3()))
-	modelNode.SetRotation(info.Rotation.ValueOrDefault(dprec.IdentityQuat()))
-	modelNode.SetScale(info.Scale.ValueOrDefault(dprec.NewVec3(1.0, 1.0, 1.0)))
-	if info.IsDynamic {
-		s.Root().AppendChild(modelNode)
-	}
 
 	// TODO: Move after bodies are created? But maybe only after pos/rot of bodies
 	// is implemented correctly. Right now it does not seem to do anything.
@@ -385,7 +351,7 @@ func (s *Scene) CreateModel(info ModelInfo) *Model {
 			InverseMatrices: instance.InverseBindMatrices(),
 		})
 		for j, joint := range instance.Joints {
-			if jointNode := nodes[joint.NodeIndex]; jointNode != nil {
+			if jointNode, ok := nodes.FindByID(joint.NodeID); ok {
 				jointNode.SetTarget(BoneNodeTarget{
 					Armature:  armature,
 					BoneIndex: j,
@@ -397,7 +363,7 @@ func (s *Scene) CreateModel(info ModelInfo) *Model {
 
 	// TODO: Track mesh instances?
 	for _, instance := range definition.meshes {
-		if meshNode := nodes[instance.NodeIndex]; meshNode != nil {
+		if meshNode, ok := nodes.FindByID(instance.NodeID); ok {
 			var armature *graphics.Armature
 			if instance.ArmatureIndex >= 0 {
 				armature = armatures[instance.ArmatureIndex]
@@ -426,7 +392,7 @@ func (s *Scene) CreateModel(info ModelInfo) *Model {
 
 	var bodyInstances []physics.Body
 	for _, instance := range definition.bodies {
-		if bodyNode := nodes[instance.NodeIndex]; bodyNode != nil {
+		if bodyNode, ok := nodes.FindByID(instance.NodeID); ok {
 			bodyDefinition := definition.bodyDefinitions[instance.DefinitionIndex]
 			if info.IsDynamic {
 				body := s.physicsScene.CreateBody(physics.BodyInfo{
@@ -454,7 +420,7 @@ func (s *Scene) CreateModel(info ModelInfo) *Model {
 	}
 
 	for _, instance := range definition.ambientLights {
-		if node := nodes[instance.nodeIndex]; node != nil {
+		if node, ok := nodes.FindByID(instance.nodeID); ok {
 			info := AmbientLightInfo{
 				ReflectionTexture: definition.textures[instance.reflectionTextureID],
 				RefractionTexture: definition.textures[instance.refractionTextureID],
@@ -466,7 +432,7 @@ func (s *Scene) CreateModel(info ModelInfo) *Model {
 		}
 	}
 	for _, instance := range definition.pointLights {
-		if node := nodes[instance.nodeIndex]; node != nil {
+		if node, ok := nodes.FindByID(instance.nodeID); ok {
 			info := PointLightInfo{
 				EmitColor:    opt.V(instance.emitColor),
 				EmitDistance: opt.V(instance.emitDistance),
@@ -476,7 +442,7 @@ func (s *Scene) CreateModel(info ModelInfo) *Model {
 		}
 	}
 	for _, instance := range definition.spotLights {
-		if node := nodes[instance.nodeIndex]; node != nil {
+		if node, ok := nodes.FindByID(instance.nodeID); ok {
 			info := SpotLightInfo{
 				EmitColor:          opt.V(instance.emitColor),
 				EmitDistance:       opt.V(instance.emitDistance),
@@ -488,7 +454,7 @@ func (s *Scene) CreateModel(info ModelInfo) *Model {
 		}
 	}
 	for _, instance := range definition.directionalLights {
-		if node := nodes[instance.nodeIndex]; node != nil {
+		if node, ok := nodes.FindByID(instance.nodeID); ok {
 			info := DirectionalLightInfo{
 				EmitColor:  opt.V(instance.emitColor),
 				CastShadow: opt.V(instance.castShadow),
@@ -497,7 +463,7 @@ func (s *Scene) CreateModel(info ModelInfo) *Model {
 		}
 	}
 	for _, instance := range definition.skies {
-		if node := nodes[instance.nodeIndex]; node != nil {
+		if node, ok := nodes.FindByID(instance.nodeID); ok {
 			definition := definition.skyDefinitions[instance.definitionIndex]
 			s.placeSky(node, definition)
 		}

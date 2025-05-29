@@ -4,30 +4,27 @@ import (
 	"github.com/mokiat/lacking/game/asset/dto"
 )
 
-func (s *ResourceSet) convertAmbientLight(nodes map[uint32]int, assetLight dto.AmbientLight) ambientLightInstance {
-	nodeIndex := nodes[assetLight.NodeID]
+func (s *ResourceSet) convertAmbientLight(assetLight dto.AmbientLight) ambientLightInstance {
 	return ambientLightInstance{
-		nodeIndex:           nodeIndex,
+		nodeID:              assetLight.NodeID,
 		reflectionTextureID: assetLight.ReflectionTextureID,
 		refractionTextureID: assetLight.RefractionTextureID,
 		castShadow:          assetLight.CastShadow,
 	}
 }
 
-func (s *ResourceSet) convertPointLight(nodes map[uint32]int, assetLight dto.PointLight) pointLightInstance {
-	nodeIndex := nodes[assetLight.NodeID]
+func (s *ResourceSet) convertPointLight(assetLight dto.PointLight) pointLightInstance {
 	return pointLightInstance{
-		nodeIndex:    nodeIndex,
+		nodeID:       assetLight.NodeID,
 		emitColor:    assetLight.EmitColor,
 		emitDistance: assetLight.EmitDistance,
 		castShadow:   assetLight.CastShadow,
 	}
 }
 
-func (s *ResourceSet) convertSpotLight(nodes map[uint32]int, assetLight dto.SpotLight) spotLightInstance {
-	nodeIndex := nodes[assetLight.NodeID]
+func (s *ResourceSet) convertSpotLight(assetLight dto.SpotLight) spotLightInstance {
 	return spotLightInstance{
-		nodeIndex:      nodeIndex,
+		nodeID:         assetLight.NodeID,
 		emitColor:      assetLight.EmitColor,
 		emitDistance:   assetLight.EmitDistance,
 		emitAngleOuter: assetLight.EmitAngleOuter,
@@ -36,10 +33,9 @@ func (s *ResourceSet) convertSpotLight(nodes map[uint32]int, assetLight dto.Spot
 	}
 }
 
-func (s *ResourceSet) convertDirectionalLight(nodes map[uint32]int, assetLight dto.DirectionalLight) directionalLightInstance {
-	nodeIndex := nodes[assetLight.NodeID]
+func (s *ResourceSet) convertDirectionalLight(assetLight dto.DirectionalLight) directionalLightInstance {
 	return directionalLightInstance{
-		nodeIndex:  nodeIndex,
+		nodeID:     assetLight.NodeID,
 		emitColor:  assetLight.EmitColor,
 		castShadow: assetLight.CastShadow,
 	}

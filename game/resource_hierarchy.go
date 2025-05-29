@@ -6,17 +6,14 @@ import (
 	"github.com/mokiat/lacking/util/async"
 )
 
-func (s *ResourceSet) convertNode(nodeIndexByID map[uint32]int, assetNode dto.Node) nodeDefinition {
-	parentIndex, ok := nodeIndexByID[assetNode.ParentID]
-	if !ok {
-		parentIndex = -1 // Unspecified parent index
-	}
-	return nodeDefinition{
-		ParentIndex: parentIndex,
-		Name:        assetNode.Name,
-		Position:    assetNode.Translation,
-		Rotation:    assetNode.Rotation,
-		Scale:       assetNode.Scale,
+func (s *ResourceSet) convertHierarchyNode(assetNode dto.Node) HierarchyNodeTemplate {
+	return HierarchyNodeTemplate{
+		ID:       assetNode.ID,
+		ParentID: assetNode.ParentID,
+		Name:     assetNode.Name,
+		Position: assetNode.Translation,
+		Rotation: assetNode.Rotation,
+		Scale:    assetNode.Scale,
 	}
 }
 

@@ -8,11 +8,11 @@ import (
 	"github.com/mokiat/lacking/util/async"
 )
 
-func (s *ResourceSet) convertArmature(nodes map[uint32]int, assetArmature dto.Armature) armatureDefinition {
+func (s *ResourceSet) convertArmature(assetArmature dto.Armature) armatureDefinition {
 	joints := make([]armatureJoint, len(assetArmature.Joints))
 	for j, assetJoint := range assetArmature.Joints {
 		joints[j] = armatureJoint{
-			NodeIndex:         nodes[assetJoint.NodeID],
+			NodeID:            assetJoint.NodeID,
 			InverseBindMatrix: assetJoint.InverseBindMatrix,
 		}
 	}
@@ -82,13 +82,13 @@ func (s *ResourceSet) convertMeshDefinition(geometris map[uint32]*graphics.MeshG
 	return promise
 }
 
-func (s *ResourceSet) convertMeshInstance(nodeIndices, armatureIndices, meshDefinitionIndices map[uint32]int, assetMesh dto.Mesh) meshInstance {
+func (s *ResourceSet) convertMeshInstance(armatureIndices, meshDefinitionIndices map[uint32]int, assetMesh dto.Mesh) meshInstance {
 	armatureIndex, ok := armatureIndices[assetMesh.ArmatureID]
 	if !ok {
 		armatureIndex = -1 // No armature associated with this mesh
 	}
 	return meshInstance{
-		NodeIndex:       nodeIndices[assetMesh.NodeID],
+		NodeID:          assetMesh.NodeID,
 		DefinitionIndex: meshDefinitionIndices[assetMesh.MeshDefinitionID],
 		ArmatureIndex:   armatureIndex,
 	}

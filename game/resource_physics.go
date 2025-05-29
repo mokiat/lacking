@@ -88,11 +88,10 @@ func (s *ResourceSet) convertCollisionMeshes(bodyDef dto.BodyDefinition) []colli
 	return result
 }
 
-func (s *ResourceSet) convertBody(nodes map[uint32]int, bodyDefinitions map[uint32]int, assetBody dto.Body) bodyInstance {
-	nodeIndex := nodes[assetBody.NodeID]
+func (s *ResourceSet) convertBody(bodyDefinitions map[uint32]int, assetBody dto.Body) bodyInstance {
 	bodyDefinitionIndex := bodyDefinitions[assetBody.BodyDefinitionID]
 	return bodyInstance{
-		NodeIndex:       nodeIndex,
+		NodeID:          assetBody.NodeID,
 		DefinitionIndex: bodyDefinitionIndex,
 	}
 }

@@ -12,7 +12,7 @@ import (
 )
 
 type ModelDefinition struct {
-	nodes             []nodeDefinition
+	hierarchy         *HierarchyTemplate
 	animations        []*AnimationDefinition
 	armatures         []armatureDefinition
 	shaders           []*graphics.Shader
@@ -55,14 +55,6 @@ func (d *ModelDefinition) FindAnimation(name string) *AnimationDefinition {
 	return nil
 }
 
-type nodeDefinition struct {
-	ParentIndex int
-	Name        string
-	Position    dprec.Vec3
-	Rotation    dprec.Quat
-	Scale       dprec.Vec3
-}
-
 type armatureDefinition struct {
 	Joints []armatureJoint
 }
@@ -76,37 +68,37 @@ func (d armatureDefinition) InverseBindMatrices() []sprec.Mat4 {
 }
 
 type armatureJoint struct {
-	NodeIndex         int
+	NodeID            uint32
 	InverseBindMatrix sprec.Mat4
 }
 
 type meshInstance struct {
-	NodeIndex       int
+	NodeID          uint32
 	DefinitionIndex int
 	ArmatureIndex   int
 }
 
 type bodyInstance struct {
-	NodeIndex       int
+	NodeID          uint32
 	DefinitionIndex int
 }
 
 type ambientLightInstance struct {
-	nodeIndex           int
+	nodeID              uint32
 	reflectionTextureID uint32
 	refractionTextureID uint32
 	castShadow          bool
 }
 
 type pointLightInstance struct {
-	nodeIndex    int
+	nodeID       uint32
 	emitColor    dprec.Vec3
 	emitDistance float64
 	castShadow   bool
 }
 
 type spotLightInstance struct {
-	nodeIndex      int
+	nodeID         uint32
 	emitColor      dprec.Vec3
 	emitDistance   float64
 	emitAngleOuter dprec.Angle
@@ -115,13 +107,13 @@ type spotLightInstance struct {
 }
 
 type directionalLightInstance struct {
-	nodeIndex  int
+	nodeID     uint32
 	emitColor  dprec.Vec3
 	castShadow bool
 }
 
 type skyInstance struct {
-	nodeIndex       int
+	nodeID          uint32
 	definitionIndex int
 }
 
