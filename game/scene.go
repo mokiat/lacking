@@ -192,13 +192,22 @@ func (s *Scene) PlaceAmbientLight(node *hierarchy.Node, info AmbientLightInfo) {
 // scene.
 func (s *Scene) CreatePointLight(info PointLightInfo) *hierarchy.Node {
 	node := s.CreateNode()
-	s.placePointLight(node, pointLightInstance{
-		nodeIndex:    0,
-		emitColor:    info.EmitColor.ValueOrDefault(dprec.NewVec3(10.0, 0.0, 10.0)),
-		emitDistance: info.EmitDistance.ValueOrDefault(20.0),
-		castShadow:   info.CastShadow.ValueOrDefault(false),
-	})
+	s.PlacePointLight(node, info)
 	return node
+}
+
+// PlacePointLight places a point light on the provided node.
+func (s *Scene) PlacePointLight(node *hierarchy.Node, info PointLightInfo) {
+	light := s.gfxScene.CreatePointLight(graphics.PointLightInfo{
+		Position:   dprec.ZeroVec3(),
+		EmitColor:  info.EmitColor.ValueOrDefault(dprec.NewVec3(10.0, 0.0, 10.0)),
+		EmitRange:  info.EmitDistance.ValueOrDefault(20.0),
+		CastShadow: info.CastShadow.ValueOrDefault(false),
+	})
+	node.SetTarget(PointLightNodeTarget{
+		Light: light,
+	})
+	node.ApplyToTarget(false)
 }
 
 // CreateSpotLight creates a new spot light and appends it to the root of the
@@ -438,7 +447,12 @@ func (s *Scene) CreateModel(info ModelInfo) *Model {
 	}
 	for _, instance := range definition.pointLights {
 		if node := nodes[instance.nodeIndex]; node != nil {
-			s.placePointLight(node, instance)
+			info := PointLightInfo{
+				EmitColor:    opt.V(instance.emitColor),
+				EmitDistance: opt.V(instance.emitDistance),
+				CastShadow:   opt.V(instance.castShadow),
+			}
+			s.PlacePointLight(node, info)
 		}
 	}
 	for _, instance := range definition.spotLights {
@@ -529,19 +543,6 @@ func (s *Scene) updateAnimationTrees(elapsedTime time.Duration) {
 	for _, tree := range s.animationTrees.Unbox() {
 		tree.SetPosition(tree.Position() + elapsedTime.Seconds())
 	}
-}
-
-func (s *Scene) placePointLight(node *hierarchy.Node, instance pointLightInstance) {
-	light := s.gfxScene.CreatePointLight(graphics.PointLightInfo{
-		Position:   dprec.ZeroVec3(),
-		EmitColor:  instance.emitColor,
-		EmitRange:  instance.emitDistance,
-		CastShadow: instance.castShadow,
-	})
-	node.SetTarget(PointLightNodeTarget{
-		Light: light,
-	})
-	node.ApplyToTarget(false)
 }
 
 func (s *Scene) placeSpotLight(node *hierarchy.Node, instance spotLightInstance) {
