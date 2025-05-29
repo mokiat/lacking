@@ -48,30 +48,25 @@ func (s *ResourceSet) CreateResourceSet() *ResourceSet {
 	return newResourceSet(s, s.engine)
 }
 
-// OpenModelByID loads a model definition by its ID.
-func (s *ResourceSet) OpenModelByID(id string) async.Promise[*ModelDefinition] {
-	if result, ok := s.findModel(id); ok {
+// OpenModel loads a model definition by its path.
+func (s *ResourceSet) OpenModel(path string) async.Promise[*ModelDefinition] {
+	if result, ok := s.findModel(path); ok {
 		return result
 	}
 
-	resource := chunked.NewAsset(s.storage, id)
+	resource := chunked.NewAsset(s.storage, path)
 
 	result := async.NewPromise[*ModelDefinition]()
 	go func() {
 		model, err := s.loadModel(resource)
 		if err != nil {
-			result.Fail(fmt.Errorf("error loading model %q: %w", id, err))
+			result.Fail(fmt.Errorf("error loading model %q: %w", path, err))
 		} else {
 			result.Deliver(model)
 		}
 	}()
-	s.namedModels[id] = result
+	s.namedModels[path] = result
 	return result
-}
-
-// OpenModelByName loads a model definition by its name.
-func (s *ResourceSet) OpenModelByName(name string) async.Promise[*ModelDefinition] {
-	return s.OpenModelByID(name)
 }
 
 // Delete schedules all resources managed by this ResourceSet for deletion.
@@ -88,12 +83,12 @@ func (s *ResourceSet) Delete() {
 	clear(s.namedModels)
 }
 
-func (s *ResourceSet) findModel(id string) (async.Promise[*ModelDefinition], bool) {
-	if result, ok := s.namedModels[id]; ok {
+func (s *ResourceSet) findModel(path string) (async.Promise[*ModelDefinition], bool) {
+	if result, ok := s.namedModels[path]; ok {
 		return result, true
 	}
 	if s.parent != nil {
-		return s.parent.findModel(id)
+		return s.parent.findModel(path)
 	}
 	return async.Promise[*ModelDefinition]{}, false
 }

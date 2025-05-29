@@ -16,7 +16,7 @@ type ModelDefinition struct {
 	animations        []*AnimationDefinition
 	armatures         []armatureDefinition
 	shaders           []*graphics.Shader
-	textures          []render.Texture
+	textures          map[uint32]render.Texture
 	materials         []*graphics.Material
 	meshGeometries    []*graphics.MeshGeometry
 	meshDefinitions   []*graphics.MeshDefinition
@@ -92,10 +92,10 @@ type bodyInstance struct {
 }
 
 type ambientLightInstance struct {
-	nodeIndex         int
-	reflectionTexture render.Texture
-	refractionTexture render.Texture
-	castShadow        bool
+	nodeIndex           int
+	reflectionTextureID uint32
+	refractionTextureID uint32
+	castShadow          bool
 }
 
 type pointLightInstance struct {

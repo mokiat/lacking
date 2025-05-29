@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/mokiat/gog/ds"
+	"github.com/mokiat/gog/opt"
 	"github.com/mokiat/gomath/dprec"
 	"github.com/mokiat/lacking/debug/metric"
 	"github.com/mokiat/lacking/game/ecs"
@@ -167,13 +168,24 @@ func (s *Scene) CreateNode() *hierarchy.Node {
 // the scene.
 func (s *Scene) CreateAmbientLight(info AmbientLightInfo) *hierarchy.Node {
 	node := s.CreateNode()
-	s.placeAmbientLight(node, ambientLightInstance{
-		nodeIndex:         0,
-		reflectionTexture: info.ReflectionTexture,
-		refractionTexture: info.RefractionTexture,
-		castShadow:        info.CastShadow.ValueOrDefault(false),
-	})
+	s.PlaceAmbientLight(node, info)
 	return node
+}
+
+// PlaceAmbientLight places an ambient light on the provided node.
+func (s *Scene) PlaceAmbientLight(node *hierarchy.Node, info AmbientLightInfo) {
+	light := s.gfxScene.CreateAmbientLight(graphics.AmbientLightInfo{
+		Position:          dprec.ZeroVec3(),
+		InnerRadius:       25000.0,
+		OuterRadius:       25000.0,
+		ReflectionTexture: info.ReflectionTexture,
+		RefractionTexture: info.RefractionTexture,
+		CastShadow:        info.CastShadow.ValueOrDefault(false),
+	})
+	node.SetTarget(AmbientLightNodeTarget{
+		Light: light,
+	})
+	node.ApplyToTarget(false)
 }
 
 // CreatePointLight creates a new point light and appends it to the root of the
@@ -414,7 +426,14 @@ func (s *Scene) CreateModel(info ModelInfo) *Model {
 
 	for _, instance := range definition.ambientLights {
 		if node := nodes[instance.nodeIndex]; node != nil {
-			s.placeAmbientLight(node, instance)
+			info := AmbientLightInfo{
+				ReflectionTexture: definition.textures[instance.reflectionTextureID],
+				RefractionTexture: definition.textures[instance.refractionTextureID],
+				OuterRadius:       opt.Unspecified[float64](),
+				InnerRadius:       opt.Unspecified[float64](),
+				CastShadow:        opt.V(instance.castShadow),
+			}
+			s.PlaceAmbientLight(node, info)
 		}
 	}
 	for _, instance := range definition.pointLights {
@@ -510,21 +529,6 @@ func (s *Scene) updateAnimationTrees(elapsedTime time.Duration) {
 	for _, tree := range s.animationTrees.Unbox() {
 		tree.SetPosition(tree.Position() + elapsedTime.Seconds())
 	}
-}
-
-func (s *Scene) placeAmbientLight(node *hierarchy.Node, instance ambientLightInstance) {
-	light := s.gfxScene.CreateAmbientLight(graphics.AmbientLightInfo{
-		Position:          dprec.ZeroVec3(),
-		InnerRadius:       25000.0,
-		OuterRadius:       25000.0,
-		ReflectionTexture: instance.reflectionTexture,
-		RefractionTexture: instance.refractionTexture,
-		CastShadow:        instance.castShadow,
-	})
-	node.SetTarget(AmbientLightNodeTarget{
-		Light: light,
-	})
-	node.ApplyToTarget(false)
 }
 
 func (s *Scene) placePointLight(node *hierarchy.Node, instance pointLightInstance) {

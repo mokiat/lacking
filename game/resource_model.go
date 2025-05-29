@@ -211,7 +211,6 @@ func (s *ResourceSet) convertModel(assetModel dto.Model) (*ModelDefinition, erro
 	for i, assetAmbientLight := range assetModel.LightingChunk.AmbientLights {
 		ambientLights[i] = s.convertAmbientLight(
 			nodeIndexByID,
-			textureByID,
 			assetAmbientLight,
 		)
 	}
@@ -262,7 +261,7 @@ func (s *ResourceSet) convertModel(assetModel dto.Model) (*ModelDefinition, erro
 		animations:        animations,
 		armatures:         armatures,
 		shaders:           shaders,
-		textures:          textures,
+		textures:          textureByID,
 		materials:         materials,
 		meshGeometries:    meshGeometries,
 		meshDefinitions:   meshDefinitions,
