@@ -3,6 +3,7 @@ package game
 import (
 	"time"
 
+	"github.com/mokiat/gog"
 	"github.com/mokiat/gog/ds"
 	"github.com/mokiat/gog/opt"
 	"github.com/mokiat/gomath/dprec"
@@ -256,18 +257,6 @@ func (s *Scene) PlaceDirectionalLight(node *hierarchy.Node, info DirectionalLigh
 	node.ApplyToTarget(false)
 }
 
-// CreateAnimation creates a new animation based on the provided information.
-func (s *Scene) CreateAnimation(info AnimationInfo) *Animation {
-	def := info.Definition
-	return &Animation{
-		name:      def.name,
-		startTime: info.ClipStart.ValueOrDefault(def.startTime),
-		endTime:   info.ClipEnd.ValueOrDefault(def.endTime),
-		loop:      info.Loop.ValueOrDefault(def.loop),
-		bindings:  def.bindings,
-	}
-}
-
 // PlayAnimationTree adds the provided animation tree to the scene.
 func (s *Scene) PlayAnimationTree(tree AnimationSource) {
 	s.animationTrees.Add(tree)
@@ -338,12 +327,14 @@ func (s *Scene) CreateModel(info ModelInfo) *Model {
 	// is implemented correctly. Right now it does not seem to do anything.
 	modelNode.ApplyFromSource(true)
 
-	animations := make([]*Animation, len(definition.animations))
-	for i, animationDef := range definition.animations {
-		animations[i] = s.CreateAnimation(AnimationInfo{
-			Definition: animationDef,
-		})
+	animationSetInfo := AnimationSetInfo{
+		Template: definition.animationSet,
 	}
+	animationSetInstance := s.InstantiateAnimationSet(animationSetInfo)
+
+	animations := gog.Map(animationSetInstance.Animations, func(item Identifiable[*Animation]) *Animation {
+		return item.Value
+	})
 
 	armatures := make([]*graphics.Armature, len(definition.armatures))
 	for i, instance := range definition.armatures {

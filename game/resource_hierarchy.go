@@ -17,9 +17,9 @@ func (s *ResourceSet) convertHierarchyNode(assetNode dto.Node) HierarchyNodeTemp
 	}
 }
 
-func (s *ResourceSet) convertAnimation(assetAnimation dto.Animation) async.Promise[*AnimationDefinition] {
-	bindings := make([]AnimationBindingDefinitionInfo, len(assetAnimation.Bindings))
-	for j, assetBinding := range assetAnimation.Bindings {
+func (s *ResourceSet) convertAnimation(assetAnimation dto.Animation) async.Promise[AnimationTemplate] {
+	bindings := make(map[string]AnimationKeyframeSet, len(assetAnimation.Bindings))
+	for _, assetBinding := range assetAnimation.Bindings {
 		translationKeyframes := make([]Keyframe[dprec.Vec3], len(assetBinding.TranslationKeyframes))
 		for k, keyframe := range assetBinding.TranslationKeyframes {
 			translationKeyframes[k] = Keyframe[dprec.Vec3]{
@@ -41,23 +41,23 @@ func (s *ResourceSet) convertAnimation(assetAnimation dto.Animation) async.Promi
 				Value:     keyframe.Value,
 			}
 		}
-		bindings[j] = AnimationBindingDefinitionInfo{
-			NodeName:             assetBinding.NodeName,
+		bindings[assetBinding.NodeName] = AnimationKeyframeSet{
 			TranslationKeyframes: translationKeyframes,
 			RotationKeyframes:    rotationKeyframes,
 			ScaleKeyframes:       scaleKeyframes,
 		}
 	}
 
-	promise := async.NewPromise[*AnimationDefinition]()
+	promise := async.NewPromise[AnimationTemplate]()
 	s.gfxWorker.Schedule(func() {
-		animation := s.engine.CreateAnimationDefinition(AnimationDefinitionInfo{
+		promise.Deliver(AnimationTemplate{
+			ID:        assetAnimation.ID,
 			Name:      assetAnimation.Name,
 			StartTime: assetAnimation.StartTime,
 			EndTime:   assetAnimation.EndTime,
+			Loop:      assetAnimation.Loop,
 			Bindings:  bindings,
 		})
-		promise.Deliver(animation)
 	})
 	return promise
 }

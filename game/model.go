@@ -13,7 +13,7 @@ import (
 
 type ModelDefinition struct {
 	hierarchy         *HierarchyTemplate
-	animations        []*AnimationDefinition
+	animationSet      *AnimationSetTemplate
 	armatures         []armatureDefinition
 	shaders           []*graphics.Shader
 	textures          map[uint32]render.Texture
@@ -30,29 +30,6 @@ type ModelDefinition struct {
 	directionalLights []directionalLightInstance
 	skyDefinitions    []*graphics.SkyDefinition
 	skies             []skyInstance
-}
-
-func (d *ModelDefinition) Animations() []*AnimationDefinition {
-	return d.animations
-}
-
-func (d *ModelDefinition) AnimatedNodeNames() []string {
-	result := ds.NewSet[string](0)
-	for _, def := range d.animations {
-		for nodeName := range def.bindings {
-			result.Add(nodeName)
-		}
-	}
-	return result.Items()
-}
-
-func (d *ModelDefinition) FindAnimation(name string) *AnimationDefinition {
-	for _, def := range d.animations {
-		if def.name == name {
-			return def
-		}
-	}
-	return nil
 }
 
 type armatureDefinition struct {

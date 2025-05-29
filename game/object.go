@@ -8,6 +8,11 @@ import (
 
 const UnspecifiedID = uint32(0xFFFFFFFF)
 
+// Identifiable is a generic type that holds an ID and a value of type T.
+//
+// It is used to represent objects loaded from an asset file. The ID is not
+// globally unique and should be used in the scope of other objects from
+// the same asset file.
 type Identifiable[T any] struct {
 	ID    uint32
 	Value T

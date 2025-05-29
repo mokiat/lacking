@@ -129,24 +129,6 @@ func (e *Engine) CreateScene() *Scene {
 	return result
 }
 
-func (e *Engine) CreateAnimationDefinition(info AnimationDefinitionInfo) *AnimationDefinition {
-	bindings := make(map[string]animationBinding, len(info.Bindings))
-	for _, bindingInfo := range info.Bindings {
-		bindings[bindingInfo.NodeName] = animationBinding{
-			translationKeyframes: bindingInfo.TranslationKeyframes,
-			rotationKeyframes:    bindingInfo.RotationKeyframes,
-			scaleKeyframes:       bindingInfo.ScaleKeyframes,
-		}
-	}
-	return &AnimationDefinition{
-		name:      info.Name,
-		startTime: info.StartTime,
-		endTime:   info.EndTime,
-		loop:      info.Loop,
-		bindings:  bindings,
-	}
-}
-
 func (e *Engine) ResetDeltaTime() {
 	e.lastTick = time.Now()
 }

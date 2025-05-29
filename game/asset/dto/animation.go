@@ -34,6 +34,9 @@ type Animation struct {
 	// EndTime is the timestamp in seconds at which this animation ends.
 	EndTime float64
 
+	// Loop specifies whether this animation should loop.
+	Loop bool
+
 	// Bindings is a list of keyframes that are applied to the scene.
 	Bindings []AnimationBinding
 }

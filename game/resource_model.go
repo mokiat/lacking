@@ -65,13 +65,16 @@ func (s *ResourceSet) convertModel(assetModel dto.Model) (*ModelDefinition, erro
 		hierarchy.Nodes[i] = s.convertHierarchyNode(assetNode)
 	}
 
-	animationPromises := make([]async.Promise[*AnimationDefinition], len(assetModel.AnimationChunk.Animations))
+	animationPromises := make([]async.Promise[AnimationTemplate], len(assetModel.AnimationChunk.Animations))
 	for i, assetAnimation := range assetModel.AnimationChunk.Animations {
 		animationPromises[i] = s.convertAnimation(assetAnimation)
 	}
 	animations, err := async.WaitPromises(animationPromises...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to convert animations: %w", err)
+	}
+	animationSet := &AnimationSetTemplate{
+		Animations: animations,
 	}
 
 	armatures := make([]armatureDefinition, len(assetModel.MeshChunk.Armatures))
@@ -240,7 +243,7 @@ func (s *ResourceSet) convertModel(assetModel dto.Model) (*ModelDefinition, erro
 
 	return &ModelDefinition{
 		hierarchy:         hierarchy,
-		animations:        animations,
+		animationSet:      animationSet,
 		armatures:         armatures,
 		shaders:           shaders,
 		textures:          textureByID,
