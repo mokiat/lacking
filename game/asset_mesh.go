@@ -185,6 +185,67 @@ func (l *AssetLoader) ResolveMeshDefinitions(assetDefinitions []dto.MeshDefiniti
 	return definitions, group.Wait()
 }
 
+type MeshTemplate struct {
+	NodeID       uint32
+	DefinitionID uint32
+	ArmatureID   uint32
+}
+
+func (l *AssetLoader) ResolveMeshTemplate(assetMesh dto.Mesh) (Identifiable[MeshTemplate], error) {
+	return Identifiable[MeshTemplate]{
+		ID: assetMesh.ID,
+		Value: MeshTemplate{
+			NodeID:       assetMesh.NodeID,
+			DefinitionID: assetMesh.MeshDefinitionID,
+			ArmatureID:   assetMesh.ArmatureID,
+		},
+	}, nil
+}
+
+func (l *AssetLoader) ResolveMeshTemplates(assetMeshes []dto.Mesh) (IdentifiableList[MeshTemplate], error) {
+	templates := make(IdentifiableList[MeshTemplate], len(assetMeshes))
+	for i, assetMesh := range assetMeshes {
+		template, err := l.ResolveMeshTemplate(assetMesh)
+		if err != nil {
+			return nil, err
+		}
+		templates[i] = template
+	}
+	return templates, nil
+}
+
+func (s *Scene) InstantiateMeshTemplateStatic(template MeshTemplate, nodes IdentifiableList[*hierarchy.Node], definitions IdentifiableList[*graphics.MeshDefinition], armatures IdentifiableList[*graphics.Armature]) {
+	node := nodes.GetByID(template.NodeID)
+	meshDefinition := definitions.GetByID(template.DefinitionID)
+	var armature *graphics.Armature
+	if template.ArmatureID != UnspecifiedID {
+		armature = armatures.GetByID(template.ArmatureID)
+	}
+	s.gfxScene.CreateStaticMesh(graphics.StaticMeshInfo{
+		Definition: meshDefinition,
+		Armature:   armature,
+		Matrix:     node.AbsoluteMatrix(),
+	})
+}
+
+func (s *Scene) InstantiateMeshTemplateDynamic(template MeshTemplate, nodes IdentifiableList[*hierarchy.Node], definitions IdentifiableList[*graphics.MeshDefinition], armatures IdentifiableList[*graphics.Armature]) *graphics.Mesh {
+	node := nodes.GetByID(template.NodeID)
+	meshDefinition := definitions.GetByID(template.DefinitionID)
+	var armature *graphics.Armature
+	if template.ArmatureID != UnspecifiedID {
+		armature = armatures.GetByID(template.ArmatureID)
+	}
+	mesh := s.gfxScene.CreateMesh(graphics.MeshInfo{
+		Definition: meshDefinition,
+		Armature:   armature,
+	})
+	mesh.SetMatrix(node.AbsoluteMatrix())
+	node.SetTarget(MeshNodeTarget{
+		Mesh: mesh,
+	})
+	return mesh
+}
+
 func (l *AssetLoader) resolveTopology(primitive dto.Topology) render.Topology {
 	switch primitive {
 	case dto.TopologyPoints:

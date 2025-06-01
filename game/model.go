@@ -24,22 +24,15 @@ type ModelDefinition struct {
 	meshGeometries  IdentifiableList[*graphics.MeshGeometry]
 	meshDefinitions IdentifiableList[*graphics.MeshDefinition]
 
-	meshes []meshInstance
-
 	nodes             IdentifiableList[NodeTemplate]
 	bodies            IdentifiableList[BodyTemplate]
 	armatures         IdentifiableList[ArmatureTemplate]
+	meshes            IdentifiableList[MeshTemplate]
 	ambientLights     IdentifiableList[AmbientLightTemplate]
 	pointLights       IdentifiableList[PointLightTemplate]
 	spotLights        IdentifiableList[SpotLightTemplate]
 	directionalLights IdentifiableList[DirectionalLightTemplate]
 	skyTemplates      IdentifiableList[SkyTemplate]
-}
-
-type meshInstance struct {
-	NodeID       uint32
-	DefinitionID uint32
-	ArmatureID   uint32
 }
 
 // ModelInfo contains the information necessary to place a Model
@@ -70,6 +63,8 @@ type ModelInfo struct {
 
 	// IsDynamic determines whether the model can be repositioned once
 	// placed in the Scene - whether it should be added to the scene hierarchy.
+	//
+	// TODO: Base this on individual node flags.
 	IsDynamic bool
 }
 

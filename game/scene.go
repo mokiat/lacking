@@ -229,10 +229,7 @@ func (s *Scene) CreateModel(info ModelInfo) *Model {
 	definition := info.Definition
 	textures := definition.textures
 	recordings := definition.recordings
-
-	// TODO: Move after bodies are created? But maybe only after pos/rot of bodies
-	// is implemented correctly. Right now it does not seem to do anything.
-	modelNode.ApplyFromSource(true)
+	meshDefinitions := definition.meshDefinitions
 
 	armatures := make(IdentifiableList[*graphics.Armature], 0, len(definition.armatures))
 	for id, template := range definition.armatures.Iter() {
@@ -243,31 +240,12 @@ func (s *Scene) CreateModel(info ModelInfo) *Model {
 		})
 	}
 
-	// TODO: Track mesh instances?
-	for _, instance := range definition.meshes {
-		if meshNode, ok := nodes.FindByID(instance.NodeID); ok {
-			var armature *graphics.Armature
-			if instance.ArmatureID != UnspecifiedID {
-				armature = armatures.GetByID(instance.ArmatureID)
-			}
-			meshDefinition := definition.meshDefinitions.GetByID(instance.DefinitionID)
-
-			// TODO: Base this on node flags
+	for template := range definition.meshes.Values() {
+		if nodes.HasID(template.NodeID) {
 			if info.IsDynamic {
-				mesh := s.gfxScene.CreateMesh(graphics.MeshInfo{
-					Definition: meshDefinition,
-					Armature:   armature,
-				})
-				mesh.SetMatrix(meshNode.AbsoluteMatrix())
-				meshNode.SetTarget(MeshNodeTarget{
-					Mesh: mesh,
-				})
+				s.InstantiateMeshTemplateDynamic(template, nodes, meshDefinitions, armatures)
 			} else {
-				s.gfxScene.CreateStaticMesh(graphics.StaticMeshInfo{
-					Definition: meshDefinition,
-					Armature:   armature,
-					Matrix:     meshNode.AbsoluteMatrix(),
-				})
+				s.InstantiateMeshTemplateStatic(template, nodes, meshDefinitions, armatures)
 			}
 		}
 	}
@@ -308,7 +286,7 @@ func (s *Scene) CreateModel(info ModelInfo) *Model {
 		}
 	}
 
-	// NOTE: This needs to happen after armatures are initialized!
+	modelNode.ApplyFromSource(true)
 	modelNode.ApplyToTarget(true)
 
 	return &Model{

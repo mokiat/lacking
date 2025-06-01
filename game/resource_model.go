@@ -101,11 +101,6 @@ func (s *ResourceSet) convertModel(asyncEngine *AsyncEngine, assetModel dto.Mode
 		return nil, fmt.Errorf("failed to resolve mesh definitions: %w", err)
 	}
 
-	meshes := make([]meshInstance, len(assetModel.MeshChunk.Meshes))
-	for i, assetMesh := range assetModel.MeshChunk.Meshes {
-		meshes[i] = s.convertMeshInstance(assetMesh)
-	}
-
 	nodes, err := loader.ResolveNodeTemplates(assetModel.HierarchyChunk.Nodes)
 	if err != nil {
 		return nil, fmt.Errorf("failed to resolve node templates: %w", err)
@@ -119,6 +114,11 @@ func (s *ResourceSet) convertModel(asyncEngine *AsyncEngine, assetModel dto.Mode
 	armatures, err := loader.ResolveArmatureTemplates(assetModel.MeshChunk.Armatures)
 	if err != nil {
 		return nil, fmt.Errorf("failed to resolve armature templates: %w", err)
+	}
+
+	meshes, err := loader.ResolveMeshTemplates(assetModel.MeshChunk.Meshes)
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve mesh templates: %w", err)
 	}
 
 	ambientLights, err := loader.ResolveAmbientLightTemplates(assetModel.LightingChunk.AmbientLights)
