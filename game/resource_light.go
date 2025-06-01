@@ -32,11 +32,3 @@ func (s *ResourceSet) convertSpotLight(assetLight dto.SpotLight) spotLightInstan
 		castShadow:     assetLight.CastShadow,
 	}
 }
-
-func (s *ResourceSet) convertDirectionalLight(assetLight dto.DirectionalLight) directionalLightInstance {
-	return directionalLightInstance{
-		nodeID:     assetLight.NodeID,
-		emitColor:  assetLight.EmitColor,
-		castShadow: assetLight.CastShadow,
-	}
-}

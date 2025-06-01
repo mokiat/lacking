@@ -53,18 +53,18 @@ func (s *ResourceSet) OpenModel(path string) async.Promise[*ModelDefinition] {
 	if result, ok := s.findModel(path); ok {
 		return result
 	}
-
 	resource := chunked.NewAsset(s.storage, path)
 
 	result := async.NewPromise[*ModelDefinition]()
-	go func() {
-		model, err := s.loadModel(resource)
+	s.engine.RunAsync(func(asyncEngine *AsyncEngine) error {
+		model, err := s.loadModel(asyncEngine, resource)
 		if err != nil {
 			result.Fail(fmt.Errorf("error loading model %q: %w", path, err))
 		} else {
 			result.Deliver(model)
 		}
-	}()
+		return err
+	})
 	s.namedModels[path] = result
 	return result
 }
@@ -97,5 +97,13 @@ func (s *ResourceSet) findModel(path string) (async.Promise[*ModelDefinition], b
 // ResourceSet.
 type AssetLoader struct {
 	resourceSet *ResourceSet
-	engine      *Engine
+	asyncEngine *AsyncEngine
+}
+
+func (l *AssetLoader) ScheduleIO(cb func() error) async.Operation {
+	return l.asyncEngine.ScheduleIO(cb)
+}
+
+func (l *AssetLoader) ScheduleMain(cb func(engine *Engine) error) async.Operation {
+	return l.asyncEngine.ScheduleMain(cb)
 }

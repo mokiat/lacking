@@ -11,19 +11,20 @@ import (
 	"github.com/mokiat/lacking/util/async"
 )
 
-func (s *ResourceSet) loadModel(resource *chunked.Asset) (*ModelDefinition, error) {
+func (s *ResourceSet) loadModel(asyncEngine *AsyncEngine, resource *chunked.Asset) (*ModelDefinition, error) {
 	assetModelPromise := s.openResource(resource)
 	assetModel, err := assetModelPromise.Wait()
 	if err != nil {
 		return nil, fmt.Errorf("failed to read asset: %w", err)
 	}
-	return s.convertModel(assetModel)
+	return s.convertModel(asyncEngine, assetModel)
 }
 
 func (s *ResourceSet) freeModel(model *ModelDefinition) {
 	s.gfxWorker.Schedule(func() {
-		for _, skyDefinition := range model.skyDefinitions {
-			skyDefinition.Delete()
+		for skyTemplate := range model.skyTemplates.Values() {
+			definition := skyTemplate.Definition
+			definition.Delete()
 		}
 	})
 	s.gfxWorker.Schedule(func() {
@@ -56,11 +57,11 @@ func (s *ResourceSet) openResource(resource *chunked.Asset) async.Promise[dto.Mo
 	return promise
 }
 
-func (s *ResourceSet) convertModel(assetModel dto.Model) (*ModelDefinition, error) {
+func (s *ResourceSet) convertModel(asyncEngine *AsyncEngine, assetModel dto.Model) (*ModelDefinition, error) {
 	// TODO: Figure out how to better get this working and extensible.
 	loader := &AssetLoader{
 		resourceSet: s,
-		engine:      s.engine,
+		asyncEngine: asyncEngine,
 	}
 
 	hierarchy := loader.ResolveHierarchyTemplate(assetModel.HierarchyChunk)
@@ -115,6 +116,14 @@ func (s *ResourceSet) convertModel(assetModel dto.Model) (*ModelDefinition, erro
 	if err != nil {
 		return nil, fmt.Errorf("failed to convert materials: %w", err)
 	}
+	identifiableMaterials := make(IdentifiableList[*graphics.Material], len(assetModel.ShadingChunk.Materials))
+	for i, assetMaterial := range assetModel.ShadingChunk.Materials {
+		identifiableMaterials[i] = Identifiable[*graphics.Material]{
+			ID:    assetMaterial.ID,
+			Value: materials[i],
+		}
+	}
+
 	materialByID := make(map[uint32]*graphics.Material, len(assetModel.ShadingChunk.Materials))
 	for i, assetMaterial := range assetModel.ShadingChunk.Materials {
 		materialByID[assetMaterial.ID] = materials[i]
@@ -208,26 +217,14 @@ func (s *ResourceSet) convertModel(assetModel dto.Model) (*ModelDefinition, erro
 		spotLights[i] = s.convertSpotLight(assetSpotLight)
 	}
 
-	directionalLights := make([]directionalLightInstance, len(assetModel.LightingChunk.DirectionalLights))
-	for i, assetDirectionalLight := range assetModel.LightingChunk.DirectionalLights {
-		directionalLights[i] = s.convertDirectionalLight(assetDirectionalLight)
-	}
-
-	skyDefinitionPromises := make([]async.Promise[*graphics.SkyDefinition], len(assetModel.BackgroundChunk.Skies))
-	for i, assetSky := range assetModel.BackgroundChunk.Skies {
-		skyDefinitionPromises[i] = s.convertSkyDefinition(
-			materialByID,
-			assetSky,
-		)
-	}
-	skyDefinitions, err := async.WaitPromises(skyDefinitionPromises...)
+	directionalLights, err := loader.ResolveDirectionalLightTemplates(assetModel.LightingChunk.DirectionalLights)
 	if err != nil {
-		return nil, fmt.Errorf("failed to convert sky definitions: %w", err)
+		return nil, fmt.Errorf("failed to resolve directional light templates: %w", err)
 	}
 
-	skies := make([]skyInstance, len(assetModel.BackgroundChunk.Skies))
-	for i, assetSky := range assetModel.BackgroundChunk.Skies {
-		skies[i] = s.convertSky(i, assetSky)
+	skyTemplates, err := loader.ResolveSkyTemplates(assetModel.BackgroundChunk.Skies, identifiableMaterials)
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve sky templates: %w", err)
 	}
 
 	return &ModelDefinition{
@@ -247,7 +244,6 @@ func (s *ResourceSet) convertModel(assetModel dto.Model) (*ModelDefinition, erro
 		pointLights:       pointLights,
 		spotLights:        spotLights,
 		directionalLights: directionalLights,
-		skyDefinitions:    skyDefinitions,
-		skies:             skies,
+		skyTemplates:      skyTemplates,
 	}, nil
 }

@@ -12,24 +12,24 @@ import (
 )
 
 type ModelDefinition struct {
-	hierarchy         *HierarchyTemplate
-	animationSet      *AnimationSetTemplate
-	armatures         []armatureDefinition
-	shaders           []*graphics.Shader
-	textures          map[uint32]render.Texture
-	materials         []*graphics.Material
-	meshGeometries    []*graphics.MeshGeometry
-	meshDefinitions   []*graphics.MeshDefinition
-	meshes            []meshInstance
-	bodyMaterials     []*physics.Material
-	bodyDefinitions   []*physics.BodyDefinition
-	bodies            []bodyInstance
-	ambientLights     []ambientLightInstance
-	pointLights       []pointLightInstance
-	spotLights        []spotLightInstance
-	directionalLights []directionalLightInstance
-	skyDefinitions    []*graphics.SkyDefinition
-	skies             []skyInstance
+	hierarchy       *HierarchyTemplate
+	animationSet    *AnimationSetTemplate
+	armatures       []armatureDefinition
+	shaders         []*graphics.Shader
+	textures        map[uint32]render.Texture
+	materials       []*graphics.Material
+	meshGeometries  []*graphics.MeshGeometry
+	meshDefinitions []*graphics.MeshDefinition
+	meshes          []meshInstance
+	bodyMaterials   []*physics.Material
+	bodyDefinitions []*physics.BodyDefinition
+	bodies          []bodyInstance
+	ambientLights   []ambientLightInstance
+	pointLights     []pointLightInstance
+	spotLights      []spotLightInstance
+
+	directionalLights IdentifiableList[DirectionalLightTemplate]
+	skyTemplates      IdentifiableList[SkyTemplate]
 }
 
 type armatureDefinition struct {
@@ -81,17 +81,6 @@ type spotLightInstance struct {
 	emitAngleOuter dprec.Angle
 	emitAngleInner dprec.Angle
 	castShadow     bool
-}
-
-type directionalLightInstance struct {
-	nodeID     uint32
-	emitColor  dprec.Vec3
-	castShadow bool
-}
-
-type skyInstance struct {
-	nodeID          uint32
-	definitionIndex int
 }
 
 // ModelInfo contains the information necessary to place a Model

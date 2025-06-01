@@ -151,7 +151,7 @@ func (e *Engine) Render(framebuffer render.Framebuffer, viewport graphics.Viewpo
 	}
 }
 
-func (e *Engine) RunAsync(cb func(engine *AsyncEngine) error) AsyncOperation {
+func (e *Engine) RunAsync(cb func(asyncEngine *AsyncEngine) error) AsyncOperation {
 	asyncEngine := &AsyncEngine{
 		engine: e,
 	}

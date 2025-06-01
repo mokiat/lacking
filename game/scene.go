@@ -164,99 +164,6 @@ func (s *Scene) CreateNode() *hierarchy.Node {
 	return result
 }
 
-// CreateAmbientLight creates a new ambient light and appends it to the root of
-// the scene.
-func (s *Scene) CreateAmbientLight(info AmbientLightInfo) *hierarchy.Node {
-	node := s.CreateNode()
-	s.PlaceAmbientLight(node, info)
-	return node
-}
-
-// PlaceAmbientLight places an ambient light on the provided node.
-func (s *Scene) PlaceAmbientLight(node *hierarchy.Node, info AmbientLightInfo) {
-	light := s.gfxScene.CreateAmbientLight(graphics.AmbientLightInfo{
-		Position:          dprec.ZeroVec3(),
-		InnerRadius:       25000.0,
-		OuterRadius:       25000.0,
-		ReflectionTexture: info.ReflectionTexture,
-		RefractionTexture: info.RefractionTexture,
-		CastShadow:        info.CastShadow.ValueOrDefault(false),
-	})
-	node.SetTarget(AmbientLightNodeTarget{
-		Light: light,
-	})
-	node.ApplyToTarget(false)
-}
-
-// CreatePointLight creates a new point light and appends it to the root of the
-// scene.
-func (s *Scene) CreatePointLight(info PointLightInfo) *hierarchy.Node {
-	node := s.CreateNode()
-	s.PlacePointLight(node, info)
-	return node
-}
-
-// PlacePointLight places a point light on the provided node.
-func (s *Scene) PlacePointLight(node *hierarchy.Node, info PointLightInfo) {
-	light := s.gfxScene.CreatePointLight(graphics.PointLightInfo{
-		Position:   dprec.ZeroVec3(),
-		EmitColor:  info.EmitColor.ValueOrDefault(dprec.NewVec3(10.0, 0.0, 10.0)),
-		EmitRange:  info.EmitDistance.ValueOrDefault(20.0),
-		CastShadow: info.CastShadow.ValueOrDefault(false),
-	})
-	node.SetTarget(PointLightNodeTarget{
-		Light: light,
-	})
-	node.ApplyToTarget(false)
-}
-
-// CreateSpotLight creates a new spot light and appends it to the root of the
-// scene.
-func (s *Scene) CreateSpotLight(info SpotLightInfo) *hierarchy.Node {
-	node := s.CreateNode()
-	s.PlaceSpotLight(node, info)
-	return node
-}
-
-// PlaceSpotLight places a spot light on the provided node.
-func (s *Scene) PlaceSpotLight(node *hierarchy.Node, info SpotLightInfo) {
-	light := s.gfxScene.CreateSpotLight(graphics.SpotLightInfo{
-		Position:           dprec.ZeroVec3(),
-		Rotation:           dprec.IdentityQuat(),
-		EmitColor:          info.EmitColor.ValueOrDefault(dprec.NewVec3(10.0, 0.0, 10.0)),
-		EmitRange:          info.EmitDistance.ValueOrDefault(20.0),
-		EmitOuterConeAngle: info.EmitOuterConeAngle.ValueOrDefault(dprec.Degrees(60)),
-		EmitInnerConeAngle: info.EmitInnerConeAngle.ValueOrDefault(dprec.Degrees(30)),
-		CastShadow:         info.CastShadow.ValueOrDefault(false),
-	})
-	node.SetTarget(SpotLightNodeTarget{
-		Light: light,
-	})
-	node.ApplyToTarget(false)
-}
-
-// CreateDirectionalLight creates a new directional light and appends it to the
-// root of the scene.
-func (s *Scene) CreateDirectionalLight(info DirectionalLightInfo) *hierarchy.Node {
-	node := s.CreateNode()
-	s.PlaceDirectionalLight(node, info)
-	return node
-}
-
-// PlaceDirectionalLight places a directional light on the provided node.
-func (s *Scene) PlaceDirectionalLight(node *hierarchy.Node, info DirectionalLightInfo) {
-	light := s.gfxScene.CreateDirectionalLight(graphics.DirectionalLightInfo{
-		Position:   dprec.ZeroVec3(),
-		Rotation:   dprec.IdentityQuat(),
-		EmitColor:  info.EmitColor.ValueOrDefault(dprec.NewVec3(10.0, 0.0, 10.0)),
-		CastShadow: info.CastShadow.ValueOrDefault(false),
-	})
-	node.SetTarget(DirectionalLightNodeTarget{
-		Light: light,
-	})
-	node.ApplyToTarget(false)
-}
-
 // PlayAnimationTree adds the provided animation tree to the scene.
 func (s *Scene) PlayAnimationTree(tree AnimationSource) {
 	s.animationTrees.Add(tree)
@@ -444,20 +351,12 @@ func (s *Scene) CreateModel(info ModelInfo) *Model {
 			s.PlaceSpotLight(node, info)
 		}
 	}
-	for _, instance := range definition.directionalLights {
-		if node, ok := nodes.FindByID(instance.nodeID); ok {
-			info := DirectionalLightInfo{
-				EmitColor:  opt.V(instance.emitColor),
-				CastShadow: opt.V(instance.castShadow),
-			}
-			s.PlaceDirectionalLight(node, info)
-		}
+
+	for template := range definition.directionalLights.Values() {
+		s.InstantiateDirectionalLightTemplate(template, nodes)
 	}
-	for _, instance := range definition.skies {
-		if node, ok := nodes.FindByID(instance.nodeID); ok {
-			definition := definition.skyDefinitions[instance.definitionIndex]
-			s.placeSky(node, definition)
-		}
+	for template := range definition.skyTemplates.Values() {
+		s.InstantiateSkyTemplate(template, nodes)
 	}
 
 	// NOTE: This needs to happen after armatures are initialized!
@@ -531,13 +430,4 @@ func (s *Scene) updateAnimationTrees(elapsedTime time.Duration) {
 	for _, tree := range s.animationTrees.Unbox() {
 		tree.SetPosition(tree.Position() + elapsedTime.Seconds())
 	}
-}
-
-func (s *Scene) placeSky(node *hierarchy.Node, definition *graphics.SkyDefinition) {
-	sky := s.gfxScene.CreateSky(graphics.SkyInfo{
-		Definition: definition,
-	})
-	node.SetTarget(SkyNodeTarget{
-		Sky: sky,
-	})
 }
