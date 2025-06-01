@@ -14,19 +14,22 @@ import (
 func (l *AssetLoader) ResolveShader(assetShader dto.Shader) (Identifiable[*graphics.Shader], error) {
 	var shader *graphics.Shader
 
-	err := l.ScheduleMain(func(engine *Engine) error {
+	allocateShader := func(engine *Engine) error {
 		gfxEngine := engine.Graphics()
 		shader = gfxEngine.CreateShader(graphics.ShaderInfo{
 			ShaderType: l.resolveShaderType(assetShader.ShaderType),
 			SourceCode: assetShader.SourceCode,
 		})
 		return nil
-	}).Wait()
+	}
+	if err := l.ScheduleMain(allocateShader).Wait(); err != nil {
+		return Identifiable[*graphics.Shader]{}, err
+	}
 
 	return Identifiable[*graphics.Shader]{
 		ID:    assetShader.ID,
 		Value: shader,
-	}, err
+	}, nil
 }
 
 func (l *AssetLoader) ResolveShaders(assetShaders []dto.Shader) (IdentifiableList[*graphics.Shader], error) {
@@ -56,7 +59,7 @@ func (l *AssetLoader) ResolveTexture(assetTexture dto.Texture) (Identifiable[ren
 func (l *AssetLoader) ResolveTexture2D(assetTexture dto.Texture) (Identifiable[render.Texture], error) {
 	var texture render.Texture
 
-	l.ScheduleMain(func(engine *Engine) error {
+	allocateTexture := func(engine *Engine) error {
 		renderAPI := engine.Graphics().API()
 		texture = renderAPI.CreateColorTexture2D(render.ColorTexture2DInfo{
 			GenerateMipmaps: assetTexture.Flags.Has(dto.TextureFlagMipmapping),
@@ -71,7 +74,10 @@ func (l *AssetLoader) ResolveTexture2D(assetTexture dto.Texture) (Identifiable[r
 			}),
 		})
 		return nil
-	}).Wait()
+	}
+	if err := l.ScheduleMain(allocateTexture).Wait(); err != nil {
+		return Identifiable[render.Texture]{}, err
+	}
 
 	return Identifiable[render.Texture]{
 		ID:    assetTexture.ID,
@@ -82,7 +88,7 @@ func (l *AssetLoader) ResolveTexture2D(assetTexture dto.Texture) (Identifiable[r
 func (l *AssetLoader) ResolveTextureCube(assetTexture dto.Texture) (Identifiable[render.Texture], error) {
 	var texture render.Texture
 
-	l.ScheduleMain(func(engine *Engine) error {
+	allocateTexture := func(engine *Engine) error {
 		renderAPI := engine.Graphics().API()
 		texture = renderAPI.CreateColorTextureCube(render.ColorTextureCubeInfo{
 			GenerateMipmaps: assetTexture.Flags.Has(dto.TextureFlagMipmapping),
@@ -101,7 +107,10 @@ func (l *AssetLoader) ResolveTextureCube(assetTexture dto.Texture) (Identifiable
 			}),
 		})
 		return nil
-	}).Wait()
+	}
+	if err := l.ScheduleMain(allocateTexture).Wait(); err != nil {
+		return Identifiable[render.Texture]{}, err
+	}
 
 	return Identifiable[render.Texture]{
 		ID:    assetTexture.ID,

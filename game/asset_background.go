@@ -19,15 +19,21 @@ func (l *AssetLoader) ResolveSkyTemplate(assetSky dto.Sky, materials Identifiabl
 	if !ok {
 		return Identifiable[SkyTemplate]{}, fmt.Errorf("sky material with ID %d not found", assetSky.MaterialID)
 	}
+
 	skyDefinitionInfo := graphics.SkyDefinitionInfo{
 		Material: material,
 	}
+
 	var skyDefinition *graphics.SkyDefinition
-	l.ScheduleMain(func(engine *Engine) error {
+	allocateDefinition := func(engine *Engine) error {
 		gfxEngine := engine.Graphics()
 		skyDefinition = gfxEngine.CreateSkyDefinition(skyDefinitionInfo)
 		return nil
-	}).Wait()
+	}
+	if err := l.ScheduleMain(allocateDefinition).Wait(); err != nil {
+		return Identifiable[SkyTemplate]{}, err
+	}
+
 	return Identifiable[SkyTemplate]{
 		ID: assetSky.ID,
 		Value: SkyTemplate{

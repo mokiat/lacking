@@ -167,10 +167,7 @@ func (l *AssetLoader) ResolvePhysicsBodyTemplates(assetBodies []dto.Body, bodyDe
 }
 
 func (s *Scene) InstantiatePhysicsBodyTemplateStatic(template BodyTemplate, nodes IdentifiableList[*hierarchy.Node]) {
-	node, ok := nodes.FindByID(template.NodeID)
-	if !ok {
-		return
-	}
+	node := nodes.GetByID(template.NodeID)
 	absMatrix := node.AbsoluteMatrix()
 	transform := collision.TRTransform(absMatrix.Translation(), absMatrix.Rotation())
 	collisionSet := collision.NewSet()
