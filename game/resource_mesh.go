@@ -60,12 +60,12 @@ func (s *ResourceSet) convertMeshGeometry(assetGeometry dto.Geometry) async.Prom
 	return promise
 }
 
-func (s *ResourceSet) convertMeshDefinition(geometris map[uint32]*graphics.MeshGeometry, materials map[uint32]*graphics.Material, assetMeshDefinition dto.MeshDefinition) async.Promise[*graphics.MeshDefinition] {
+func (s *ResourceSet) convertMeshDefinition(geometris map[uint32]*graphics.MeshGeometry, materials IdentifiableList[*graphics.Material], assetMeshDefinition dto.MeshDefinition) async.Promise[*graphics.MeshDefinition] {
 	geometry := geometris[assetMeshDefinition.GeometryID]
 
 	bindingMaterials := make([]*graphics.Material, geometry.FragmentCount())
 	for _, assetBinding := range assetMeshDefinition.MaterialBindings {
-		bindingMaterials[assetBinding.FragmentIndex] = materials[assetBinding.MaterialID]
+		bindingMaterials[assetBinding.FragmentIndex] = materials.GetByID(assetBinding.MaterialID)
 	}
 
 	meshDefinitionInfo := graphics.MeshDefinitionInfo{

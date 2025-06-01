@@ -73,6 +73,16 @@ func (s *ResourceSet) convertModel(asyncEngine *AsyncEngine, assetModel dto.Mode
 		return nil, fmt.Errorf("failed to resolve shaders: %w", err)
 	}
 
+	textures, err := loader.ResolveTextures(assetModel.ShadingChunk.Textures)
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve textures: %w", err)
+	}
+
+	materials, err := loader.ResolveMaterials(assetModel.ShadingChunk.Materials, shaders, textures)
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve materials: %w", err)
+	}
+
 	armatures := make([]armatureDefinition, len(assetModel.MeshChunk.Armatures))
 	for i, assetArmature := range assetModel.MeshChunk.Armatures {
 		armatures[i] = s.convertArmature(assetArmature)
@@ -83,36 +93,6 @@ func (s *ResourceSet) convertModel(asyncEngine *AsyncEngine, assetModel dto.Mode
 	}
 
 	// TODO: Convert cameras
-
-	textures, err := loader.ResolveTextures(assetModel.ShadingChunk.Textures)
-	if err != nil {
-		return nil, fmt.Errorf("failed to resolve textures: %w", err)
-	}
-
-	materialPromises := make([]async.Promise[*graphics.Material], len(assetModel.ShadingChunk.Materials))
-	for i, assetMaterial := range assetModel.ShadingChunk.Materials {
-		materialPromises[i] = s.convertMaterial(
-			shaders,
-			textures,
-			assetMaterial,
-		)
-	}
-	materials, err := async.WaitPromises(materialPromises...)
-	if err != nil {
-		return nil, fmt.Errorf("failed to convert materials: %w", err)
-	}
-	identifiableMaterials := make(IdentifiableList[*graphics.Material], len(assetModel.ShadingChunk.Materials))
-	for i, assetMaterial := range assetModel.ShadingChunk.Materials {
-		identifiableMaterials[i] = Identifiable[*graphics.Material]{
-			ID:    assetMaterial.ID,
-			Value: materials[i],
-		}
-	}
-
-	materialByID := make(map[uint32]*graphics.Material, len(assetModel.ShadingChunk.Materials))
-	for i, assetMaterial := range assetModel.ShadingChunk.Materials {
-		materialByID[assetMaterial.ID] = materials[i]
-	}
 
 	meshGeometryPromises := make([]async.Promise[*graphics.MeshGeometry], len(assetModel.MeshChunk.Geometries))
 	for i, assetGeometry := range assetModel.MeshChunk.Geometries {
@@ -131,7 +111,7 @@ func (s *ResourceSet) convertModel(asyncEngine *AsyncEngine, assetModel dto.Mode
 	for i, assetMeshDefinition := range assetModel.MeshChunk.MeshDefinitions {
 		meshDefinitionPromises[i] = s.convertMeshDefinition(
 			meshGeometryByID,
-			materialByID,
+			materials,
 			assetMeshDefinition,
 		)
 	}
@@ -212,7 +192,7 @@ func (s *ResourceSet) convertModel(asyncEngine *AsyncEngine, assetModel dto.Mode
 		return nil, fmt.Errorf("failed to resolve directional light templates: %w", err)
 	}
 
-	skyTemplates, err := loader.ResolveSkyTemplates(assetModel.BackgroundChunk.Skies, identifiableMaterials)
+	skyTemplates, err := loader.ResolveSkyTemplates(assetModel.BackgroundChunk.Skies, materials)
 	if err != nil {
 		return nil, fmt.Errorf("failed to resolve sky templates: %w", err)
 	}
@@ -221,9 +201,9 @@ func (s *ResourceSet) convertModel(asyncEngine *AsyncEngine, assetModel dto.Mode
 		recordings: recordings,
 		shaders:    shaders,
 		textures:   textures,
+		materials:  materials,
 
 		armatures:       armatures,
-		materials:       materials,
 		meshGeometries:  meshGeometries,
 		meshDefinitions: meshDefinitions,
 		meshes:          meshes,
