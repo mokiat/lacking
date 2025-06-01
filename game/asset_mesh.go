@@ -136,6 +136,55 @@ func (l *AssetLoader) ResolveMeshGeometries(assetGeometries []dto.Geometry) (Ide
 	return geometries, group.Wait()
 }
 
+func (l *AssetLoader) ResolveMeshDefinition(assetDefinition dto.MeshDefinition, geometries IdentifiableList[*graphics.MeshGeometry], materials IdentifiableList[*graphics.Material]) (Identifiable[*graphics.MeshDefinition], error) {
+	geometry, ok := geometries.FindByID(assetDefinition.GeometryID)
+	if !ok {
+		return Identifiable[*graphics.MeshDefinition]{}, fmt.Errorf("mesh geometry with ID %d not found", assetDefinition.GeometryID)
+	}
+
+	bindingMaterials := make([]*graphics.Material, geometry.FragmentCount())
+	for _, assetBinding := range assetDefinition.MaterialBindings {
+		material, ok := materials.FindByID(assetBinding.MaterialID)
+		if !ok {
+			return Identifiable[*graphics.MeshDefinition]{}, fmt.Errorf("material with ID %d not found", assetBinding.MaterialID)
+		}
+		bindingMaterials[assetBinding.FragmentIndex] = material
+	}
+
+	meshDefinitionInfo := graphics.MeshDefinitionInfo{
+		Geometry:  geometry,
+		Materials: bindingMaterials,
+	}
+
+	var meshDefinition *graphics.MeshDefinition
+	allocateDefinition := func(engine *Engine) error {
+		gfxEngine := engine.Graphics()
+		meshDefinition = gfxEngine.CreateMeshDefinition(meshDefinitionInfo)
+		return nil
+	}
+	if err := l.ScheduleMain(allocateDefinition).Wait(); err != nil {
+		return Identifiable[*graphics.MeshDefinition]{}, err
+	}
+
+	return Identifiable[*graphics.MeshDefinition]{
+		ID:    assetDefinition.ID,
+		Value: meshDefinition,
+	}, nil
+}
+
+func (l *AssetLoader) ResolveMeshDefinitions(assetDefinitions []dto.MeshDefinition, geometries IdentifiableList[*graphics.MeshGeometry], materials IdentifiableList[*graphics.Material]) (IdentifiableList[*graphics.MeshDefinition], error) {
+	definitions := make(IdentifiableList[*graphics.MeshDefinition], len(assetDefinitions))
+	var group errgroup.Group
+	for i, assetDefinition := range assetDefinitions {
+		group.Go(func() error {
+			definition, err := l.ResolveMeshDefinition(assetDefinition, geometries, materials)
+			definitions[i] = definition
+			return err
+		})
+	}
+	return definitions, group.Wait()
+}
+
 func (l *AssetLoader) resolveTopology(primitive dto.Topology) render.Topology {
 	switch primitive {
 	case dto.TopologyPoints:

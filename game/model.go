@@ -22,9 +22,9 @@ type ModelDefinition struct {
 	bodyMaterials   IdentifiableList[*physics.Material]
 	bodyDefinitions IdentifiableList[*physics.BodyDefinition]
 	meshGeometries  IdentifiableList[*graphics.MeshGeometry]
+	meshDefinitions IdentifiableList[*graphics.MeshDefinition]
 
-	meshDefinitions []*graphics.MeshDefinition
-	meshes          []meshInstance
+	meshes []meshInstance
 
 	nodes             IdentifiableList[NodeTemplate]
 	bodies            IdentifiableList[BodyTemplate]
@@ -37,9 +37,9 @@ type ModelDefinition struct {
 }
 
 type meshInstance struct {
-	NodeID          uint32
-	DefinitionIndex int
-	ArmatureID      uint32
+	NodeID       uint32
+	DefinitionID uint32
+	ArmatureID   uint32
 }
 
 // ModelInfo contains the information necessary to place a Model

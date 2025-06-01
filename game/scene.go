@@ -250,7 +250,7 @@ func (s *Scene) CreateModel(info ModelInfo) *Model {
 			if instance.ArmatureID != UnspecifiedID {
 				armature = armatures.GetByID(instance.ArmatureID)
 			}
-			meshDefinition := definition.meshDefinitions[instance.DefinitionIndex]
+			meshDefinition := definition.meshDefinitions.GetByID(instance.DefinitionID)
 
 			// TODO: Base this on node flags
 			if info.IsDynamic {

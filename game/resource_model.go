@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/mokiat/lacking/game/asset/dto"
-	"github.com/mokiat/lacking/game/graphics"
 	"github.com/mokiat/lacking/storage/chunked"
 	"github.com/mokiat/lacking/util/async"
 )
@@ -26,7 +25,7 @@ func (s *ResourceSet) freeModel(model *ModelDefinition) {
 		}
 	})
 	s.gfxWorker.Schedule(func() {
-		for _, meshDefinition := range model.meshDefinitions {
+		for meshDefinition := range model.meshDefinitions.Values() {
 			meshDefinition.Delete()
 		}
 	})
@@ -97,31 +96,14 @@ func (s *ResourceSet) convertModel(asyncEngine *AsyncEngine, assetModel dto.Mode
 		return nil, fmt.Errorf("failed to resolve mesh geometries: %w", err)
 	}
 
-	// TODO: Convert cameras
-
-	meshDefinitionPromises := make([]async.Promise[*graphics.MeshDefinition], len(assetModel.MeshChunk.MeshDefinitions))
-	for i, assetMeshDefinition := range assetModel.MeshChunk.MeshDefinitions {
-		meshDefinitionPromises[i] = s.convertMeshDefinition(
-			meshGeometries,
-			materials,
-			assetMeshDefinition,
-		)
-	}
-	meshDefinitions, err := async.WaitPromises(meshDefinitionPromises...)
+	meshDefinitions, err := loader.ResolveMeshDefinitions(assetModel.MeshChunk.MeshDefinitions, meshGeometries, materials)
 	if err != nil {
-		return nil, fmt.Errorf("failed to convert mesh definitions: %w", err)
-	}
-	meshDefinitionIndexByID := make(map[uint32]int, len(assetModel.MeshChunk.MeshDefinitions))
-	for i, assetMeshDefinition := range assetModel.MeshChunk.MeshDefinitions {
-		meshDefinitionIndexByID[assetMeshDefinition.ID] = i
+		return nil, fmt.Errorf("failed to resolve mesh definitions: %w", err)
 	}
 
 	meshes := make([]meshInstance, len(assetModel.MeshChunk.Meshes))
 	for i, assetMesh := range assetModel.MeshChunk.Meshes {
-		meshes[i] = s.convertMeshInstance(
-			meshDefinitionIndexByID,
-			assetMesh,
-		)
+		meshes[i] = s.convertMeshInstance(assetMesh)
 	}
 
 	nodes, err := loader.ResolveNodeTemplates(assetModel.HierarchyChunk.Nodes)
@@ -159,6 +141,8 @@ func (s *ResourceSet) convertModel(asyncEngine *AsyncEngine, assetModel dto.Mode
 		return nil, fmt.Errorf("failed to resolve directional light templates: %w", err)
 	}
 
+	// TODO: Convert cameras
+
 	skyTemplates, err := loader.ResolveSkyTemplates(assetModel.BackgroundChunk.Skies, materials)
 	if err != nil {
 		return nil, fmt.Errorf("failed to resolve sky templates: %w", err)
@@ -172,9 +156,9 @@ func (s *ResourceSet) convertModel(asyncEngine *AsyncEngine, assetModel dto.Mode
 		bodyMaterials:   bodyMaterials,
 		bodyDefinitions: bodyDefinitions,
 		meshGeometries:  meshGeometries,
-
 		meshDefinitions: meshDefinitions,
-		meshes:          meshes,
+
+		meshes: meshes,
 
 		nodes:             nodes,
 		bodies:            bodies,
