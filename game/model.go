@@ -14,9 +14,9 @@ import (
 
 type ModelDefinition struct {
 	recordings IdentifiableList[*animation.Recording]
+	shaders    IdentifiableList[*graphics.Shader]
 
 	armatures       []armatureDefinition
-	shaders         []*graphics.Shader
 	textures        IdentifiableList[render.Texture]
 	materials       []*graphics.Material
 	meshGeometries  []*graphics.MeshGeometry

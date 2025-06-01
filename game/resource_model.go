@@ -69,6 +69,11 @@ func (s *ResourceSet) convertModel(asyncEngine *AsyncEngine, assetModel dto.Mode
 		return nil, fmt.Errorf("failed to resolve animation recordings: %w", err)
 	}
 
+	shaders, err := loader.ResolveShaders(assetModel.ShadingChunk.Shaders)
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve shaders: %w", err)
+	}
+
 	armatures := make([]armatureDefinition, len(assetModel.MeshChunk.Armatures))
 	for i, assetArmature := range assetModel.MeshChunk.Armatures {
 		armatures[i] = s.convertArmature(assetArmature)
@@ -79,19 +84,6 @@ func (s *ResourceSet) convertModel(asyncEngine *AsyncEngine, assetModel dto.Mode
 	}
 
 	// TODO: Convert cameras
-
-	shaderPromises := make([]async.Promise[*graphics.Shader], len(assetModel.ShadingChunk.Shaders))
-	for i, assetShader := range assetModel.ShadingChunk.Shaders {
-		shaderPromises[i] = s.convertShader(assetShader)
-	}
-	shaders, err := async.WaitPromises(shaderPromises...)
-	if err != nil {
-		return nil, fmt.Errorf("failed to convert shaders: %w", err)
-	}
-	shaderByID := make(map[uint32]*graphics.Shader, len(assetModel.ShadingChunk.Shaders))
-	for i, assetShader := range assetModel.ShadingChunk.Shaders {
-		shaderByID[assetShader.ID] = shaders[i]
-	}
 
 	texturePromises := make([]async.Promise[render.Texture], len(assetModel.ShadingChunk.Textures))
 	for i, assetTexture := range assetModel.ShadingChunk.Textures {
@@ -116,7 +108,7 @@ func (s *ResourceSet) convertModel(asyncEngine *AsyncEngine, assetModel dto.Mode
 	materialPromises := make([]async.Promise[*graphics.Material], len(assetModel.ShadingChunk.Materials))
 	for i, assetMaterial := range assetModel.ShadingChunk.Materials {
 		materialPromises[i] = s.convertMaterial(
-			shaderByID,
+			shaders,
 			textureByID,
 			assetMaterial,
 		)
@@ -242,9 +234,10 @@ func (s *ResourceSet) convertModel(asyncEngine *AsyncEngine, assetModel dto.Mode
 	}
 
 	return &ModelDefinition{
-		recordings:      recordings,
+		recordings: recordings,
+		shaders:    shaders,
+
 		armatures:       armatures,
-		shaders:         shaders,
 		textures:        identifiableTextures,
 		materials:       materials,
 		meshGeometries:  meshGeometries,

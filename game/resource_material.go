@@ -10,7 +10,7 @@ import (
 )
 
 func (s *ResourceSet) convertMaterial(
-	shaders map[uint32]*graphics.Shader,
+	shaders IdentifiableList[*graphics.Shader],
 	textures map[uint32]render.Texture,
 	assetMaterial dto.Material,
 ) async.Promise[*graphics.Material] {
@@ -58,7 +58,7 @@ func (s *ResourceSet) convertMaterial(
 	return promise
 }
 
-func (s *ResourceSet) convertMaterialPass(shaders map[uint32]*graphics.Shader, assetPass dto.MaterialPass) graphics.MaterialPassInfo {
+func (s *ResourceSet) convertMaterialPass(shaders IdentifiableList[*graphics.Shader], assetPass dto.MaterialPass) graphics.MaterialPassInfo {
 	return graphics.MaterialPassInfo{
 		Layer:           assetPass.Layer,
 		Culling:         opt.V(s.resolveCullMode(assetPass.Culling)),
@@ -67,6 +67,6 @@ func (s *ResourceSet) convertMaterialPass(shaders map[uint32]*graphics.Shader, a
 		DepthWrite:      opt.V(assetPass.DepthWrite),
 		DepthComparison: opt.V(s.resolveComparison(assetPass.DepthComparison)),
 		Blending:        opt.V(assetPass.Blending),
-		Shader:          shaders[assetPass.ShaderID],
+		Shader:          shaders.GetByID(assetPass.ShaderID),
 	}
 }
