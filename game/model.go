@@ -27,9 +27,9 @@ type ModelDefinition struct {
 	meshGeometries  []*graphics.MeshGeometry
 	meshDefinitions []*graphics.MeshDefinition
 	meshes          []meshInstance
-	bodies          []bodyInstance
 
 	nodes             IdentifiableList[NodeTemplate]
+	bodies            IdentifiableList[BodyTemplate]
 	ambientLights     IdentifiableList[AmbientLightTemplate]
 	pointLights       IdentifiableList[PointLightTemplate]
 	spotLights        IdentifiableList[SpotLightTemplate]
@@ -58,11 +58,6 @@ type meshInstance struct {
 	NodeID          uint32
 	DefinitionIndex int
 	ArmatureIndex   int
-}
-
-type bodyInstance struct {
-	NodeID     uint32
-	Definition *physics.BodyDefinition
 }
 
 // ModelInfo contains the information necessary to place a Model
@@ -100,9 +95,8 @@ type Model struct {
 	definition *ModelDefinition
 	root       *hierarchy.Node
 
-	armatures     []*graphics.Armature
-	recordings    []*animation.Recording
-	bodyInstances []physics.Body
+	armatures  []*graphics.Armature
+	recordings []*animation.Recording
 }
 
 func (m *Model) Root() *hierarchy.Node {
@@ -111,10 +105,6 @@ func (m *Model) Root() *hierarchy.Node {
 
 func (m *Model) FindNode(name string) *hierarchy.Node {
 	return m.root.FindNode(name)
-}
-
-func (m *Model) BodyInstances() []physics.Body {
-	return m.bodyInstances
 }
 
 func (m *Model) Recordings() []*animation.Recording {

@@ -142,14 +142,14 @@ func (s *ResourceSet) convertModel(asyncEngine *AsyncEngine, assetModel dto.Mode
 		)
 	}
 
-	bodies := make([]bodyInstance, len(assetModel.PhysicsChunk.Bodies))
-	for i, assetBody := range assetModel.PhysicsChunk.Bodies {
-		bodies[i] = s.convertBody(bodyDefinitions, assetBody)
-	}
-
 	nodes, err := loader.ResolveNodeTemplates(assetModel.HierarchyChunk.Nodes)
 	if err != nil {
 		return nil, fmt.Errorf("failed to resolve node templates: %w", err)
+	}
+
+	bodies, err := loader.ResolvePhysicsBodyTemplates(assetModel.PhysicsChunk.Bodies, bodyDefinitions)
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve physics body templates: %w", err)
 	}
 
 	ambientLights, err := loader.ResolveAmbientLightTemplates(assetModel.LightingChunk.AmbientLights)

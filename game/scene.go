@@ -5,14 +5,12 @@ import (
 
 	"github.com/mokiat/gog/ds"
 	"github.com/mokiat/gog/opt"
-	"github.com/mokiat/gomath/dprec"
 	"github.com/mokiat/lacking/debug/metric"
 	"github.com/mokiat/lacking/game/animation"
 	"github.com/mokiat/lacking/game/ecs"
 	"github.com/mokiat/lacking/game/graphics"
 	"github.com/mokiat/lacking/game/hierarchy"
 	"github.com/mokiat/lacking/game/physics"
-	"github.com/mokiat/lacking/game/physics/collision"
 	"github.com/mokiat/lacking/game/timestep"
 	"github.com/mokiat/lacking/render"
 )
@@ -281,48 +279,40 @@ func (s *Scene) CreateModel(info ModelInfo) *Model {
 		}
 	}
 
-	var bodyInstances []physics.Body
-	for _, instance := range definition.bodies {
-		if bodyNode, ok := nodes.FindByID(instance.NodeID); ok {
+	for template := range definition.bodies.Values() {
+		if nodes.HasID(template.NodeID) {
 			if info.IsDynamic {
-				body := s.physicsScene.CreateBody(physics.BodyInfo{
-					Name:       bodyNode.Name(),
-					Definition: instance.Definition,
-					// TODO: Initialize from body node matrix?
-					Position: dprec.ZeroVec3(),
-					Rotation: dprec.IdentityQuat(),
-				})
-				bodyNode.SetSource(BodyNodeSource{
-					Body: body,
-				})
-				bodyInstances = append(bodyInstances, body)
+				s.InstantiatePhysicsBodyTemplateDynamic(template, nodes)
 			} else {
-				absMatrix := bodyNode.AbsoluteMatrix()
-				transform := collision.TRTransform(absMatrix.Translation(), absMatrix.Rotation())
-				collisionSet := collision.NewSet()
-				collisionSet.Replace(instance.Definition.CollisionSet(), transform)
-				s.physicsScene.CreateProp(physics.PropInfo{
-					Name:         bodyNode.Name(),
-					CollisionSet: collisionSet,
-				})
+				s.InstantiatePhysicsBodyTemplateStatic(template, nodes)
 			}
 		}
 	}
 
 	for template := range definition.ambientLights.Values() {
-		s.InstantiateAmbientLightTemplate(template, nodes, textures)
+		if nodes.HasID(template.NodeID) {
+			s.InstantiateAmbientLightTemplate(template, nodes, textures)
+		}
 	}
 	for template := range definition.pointLights.Values() {
-		s.InstantiatePointLightTemplate(template, nodes)
+		if nodes.HasID(template.NodeID) {
+			s.InstantiatePointLightTemplate(template, nodes)
+		}
 	}
 	for template := range definition.spotLights.Values() {
-		s.InstantiateSpotLightTemplate(template, nodes)
+		if nodes.HasID(template.NodeID) {
+			s.InstantiateSpotLightTemplate(template, nodes)
+		}
 	}
 	for template := range definition.directionalLights.Values() {
-		s.InstantiateDirectionalLightTemplate(template, nodes)
+		if nodes.HasID(template.NodeID) {
+			s.InstantiateDirectionalLightTemplate(template, nodes)
+		}
 	}
 	for template := range definition.skyTemplates.Values() {
-		s.InstantiateSkyTemplate(template, nodes)
+		if nodes.HasID(template.NodeID) {
+			s.InstantiateSkyTemplate(template, nodes)
+		}
 	}
 
 	// NOTE: This needs to happen after armatures are initialized!
@@ -332,9 +322,8 @@ func (s *Scene) CreateModel(info ModelInfo) *Model {
 		definition: definition,
 		root:       modelNode,
 
-		recordings:    recordings.ValuesList(),
-		bodyInstances: bodyInstances,
-		armatures:     armatures,
+		recordings: recordings.ValuesList(),
+		armatures:  armatures,
 	}
 }
 

@@ -51,10 +51,7 @@ func (l *AssetLoader) ResolveSkyTemplates(assetSkies []dto.Sky, materials Identi
 }
 
 func (s *Scene) InstantiateSkyTemplate(template SkyTemplate, nodes IdentifiableList[*hierarchy.Node]) *graphics.Sky {
-	node, ok := nodes.FindByID(template.NodeID)
-	if !ok {
-		return nil
-	}
+	node := nodes.GetByID(template.NodeID)
 	return s.PlaceSky(node, SkyInfo{
 		Definition: template.Definition,
 	})

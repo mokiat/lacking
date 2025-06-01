@@ -5,6 +5,7 @@ import (
 
 	"github.com/mokiat/gomath/dprec"
 	"github.com/mokiat/lacking/game/asset/dto"
+	"github.com/mokiat/lacking/game/hierarchy"
 	"github.com/mokiat/lacking/game/physics"
 	"github.com/mokiat/lacking/game/physics/collision"
 	"golang.org/x/sync/errgroup"
@@ -132,4 +133,65 @@ func (l *AssetLoader) resolveCollisionMeshes(bodyDef dto.BodyDefinition) []colli
 		result[i] = collision.NewMesh(triangles)
 	}
 	return result
+}
+
+type BodyTemplate struct {
+	NodeID     uint32
+	Definition *physics.BodyDefinition
+}
+
+func (l *AssetLoader) ResolvePhysicsBodyTemplate(assetBody dto.Body, bodyDefinitions IdentifiableList[*physics.BodyDefinition]) (Identifiable[BodyTemplate], error) {
+	bodyDefinition, ok := bodyDefinitions.FindByID(assetBody.BodyDefinitionID)
+	if !ok {
+		return Identifiable[BodyTemplate]{}, fmt.Errorf("body definition with ID %d not found", assetBody.BodyDefinitionID)
+	}
+	return Identifiable[BodyTemplate]{
+		ID: assetBody.ID,
+		Value: BodyTemplate{
+			NodeID:     assetBody.NodeID,
+			Definition: bodyDefinition,
+		},
+	}, nil
+}
+
+func (l *AssetLoader) ResolvePhysicsBodyTemplates(assetBodies []dto.Body, bodyDefinitions IdentifiableList[*physics.BodyDefinition]) (IdentifiableList[BodyTemplate], error) {
+	bodyTemplates := make(IdentifiableList[BodyTemplate], len(assetBodies))
+	for i, assetBody := range assetBodies {
+		template, err := l.ResolvePhysicsBodyTemplate(assetBody, bodyDefinitions)
+		if err != nil {
+			return IdentifiableList[BodyTemplate]{}, err
+		}
+		bodyTemplates[i] = template
+	}
+	return bodyTemplates, nil
+}
+
+func (s *Scene) InstantiatePhysicsBodyTemplateStatic(template BodyTemplate, nodes IdentifiableList[*hierarchy.Node]) {
+	node, ok := nodes.FindByID(template.NodeID)
+	if !ok {
+		return
+	}
+	absMatrix := node.AbsoluteMatrix()
+	transform := collision.TRTransform(absMatrix.Translation(), absMatrix.Rotation())
+	collisionSet := collision.NewSet()
+	collisionSet.Replace(template.Definition.CollisionSet(), transform)
+	s.physicsScene.CreateProp(physics.PropInfo{
+		Name:         node.Name(),
+		CollisionSet: collisionSet,
+	})
+}
+
+func (s *Scene) InstantiatePhysicsBodyTemplateDynamic(template BodyTemplate, nodes IdentifiableList[*hierarchy.Node]) physics.Body {
+	node := nodes.GetByID(template.NodeID)
+	translation, rotation, _ := node.AbsoluteMatrix().TRS()
+	body := s.physicsScene.CreateBody(physics.BodyInfo{
+		Name:       node.Name(),
+		Definition: template.Definition,
+		Position:   translation,
+		Rotation:   rotation,
+	})
+	node.SetSource(BodyNodeSource{
+		Body: body,
+	})
+	return body
 }

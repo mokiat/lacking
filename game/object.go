@@ -49,6 +49,15 @@ func (l IdentifiableList[T]) ValuesList() []T {
 	return result
 }
 
+func (l IdentifiableList[T]) HasID(id uint32) bool {
+	for _, item := range l {
+		if item.ID == id {
+			return true
+		}
+	}
+	return false
+}
+
 func (l IdentifiableList[T]) FindByID(id uint32) (T, bool) {
 	for _, item := range l {
 		if item.ID == id {

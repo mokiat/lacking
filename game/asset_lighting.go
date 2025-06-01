@@ -41,18 +41,9 @@ func (l *AssetLoader) ResolveAmbientLightTemplates(assetLights []dto.AmbientLigh
 }
 
 func (s *Scene) InstantiateAmbientLightTemplate(template AmbientLightTemplate, nodes IdentifiableList[*hierarchy.Node], textures IdentifiableList[render.Texture]) *graphics.AmbientLight {
-	node, ok := nodes.FindByID(template.NodeID)
-	if !ok {
-		return nil
-	}
-	reflectionTexture, ok := textures.FindByID(template.ReflectionTextureID)
-	if !ok {
-		return nil
-	}
-	refractionTexture, ok := textures.FindByID(template.RefractionTextureID)
-	if !ok {
-		return nil
-	}
+	node := nodes.GetByID(template.NodeID)
+	reflectionTexture := textures.GetByID(template.ReflectionTextureID)
+	refractionTexture := textures.GetByID(template.RefractionTextureID)
 	info := AmbientLightInfo{
 		ReflectionTexture: reflectionTexture,
 		RefractionTexture: refractionTexture,
@@ -95,10 +86,7 @@ func (l *AssetLoader) ResolvePointLightTemplates(assetLights []dto.PointLight) (
 }
 
 func (s *Scene) InstantiatePointLightTemplate(template PointLightTemplate, nodes IdentifiableList[*hierarchy.Node]) *graphics.PointLight {
-	node, ok := nodes.FindByID(template.NodeID)
-	if !ok {
-		return nil
-	}
+	node := nodes.GetByID(template.NodeID)
 	info := PointLightInfo{
 		EmitColor:    opt.V(template.EmitColor),
 		EmitDistance: opt.V(template.EmitDistance),
@@ -143,10 +131,7 @@ func (l *AssetLoader) ResolveSpotLightTemplates(assetLights []dto.SpotLight) (Id
 }
 
 func (s *Scene) InstantiateSpotLightTemplate(template SpotLightTemplate, nodes IdentifiableList[*hierarchy.Node]) *graphics.SpotLight {
-	node, ok := nodes.FindByID(template.NodeID)
-	if !ok {
-		return nil
-	}
+	node := nodes.GetByID(template.NodeID)
 	info := SpotLightInfo{
 		EmitColor:          opt.V(template.EmitColor),
 		EmitDistance:       opt.V(template.EmitDistance),
@@ -187,10 +172,7 @@ func (l *AssetLoader) ResolveDirectionalLightTemplates(assetLights []dto.Directi
 }
 
 func (s *Scene) InstantiateDirectionalLightTemplate(template DirectionalLightTemplate, nodes IdentifiableList[*hierarchy.Node]) *graphics.DirectionalLight {
-	node, ok := nodes.FindByID(template.NodeID)
-	if !ok {
-		return nil
-	}
+	node := nodes.GetByID(template.NodeID)
 	info := DirectionalLightInfo{
 		EmitColor:  opt.V(template.EmitColor),
 		CastShadow: opt.V(template.CastShadow),
