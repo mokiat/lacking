@@ -6,7 +6,6 @@ import (
 	"github.com/mokiat/lacking/game/asset/dto"
 	"github.com/mokiat/lacking/game/graphics"
 	"github.com/mokiat/lacking/game/physics"
-	"github.com/mokiat/lacking/render"
 	"github.com/mokiat/lacking/storage/chunked"
 	"github.com/mokiat/lacking/util/async"
 )
@@ -85,31 +84,16 @@ func (s *ResourceSet) convertModel(asyncEngine *AsyncEngine, assetModel dto.Mode
 
 	// TODO: Convert cameras
 
-	texturePromises := make([]async.Promise[render.Texture], len(assetModel.ShadingChunk.Textures))
-	for i, assetTexture := range assetModel.ShadingChunk.Textures {
-		texturePromises[i] = s.convertTexture(assetTexture)
-	}
-	textures, err := async.WaitPromises(texturePromises...)
+	textures, err := loader.ResolveTextures(assetModel.ShadingChunk.Textures)
 	if err != nil {
-		return nil, fmt.Errorf("failed to convert textures: %w", err)
-	}
-	textureByID := make(map[uint32]render.Texture, len(assetModel.ShadingChunk.Textures))
-	for i, assetTexture := range assetModel.ShadingChunk.Textures {
-		textureByID[assetTexture.ID] = textures[i]
-	}
-	identifiableTextures := make(IdentifiableList[render.Texture], len(assetModel.ShadingChunk.Textures))
-	for i, assetTexture := range assetModel.ShadingChunk.Textures {
-		identifiableTextures[i] = Identifiable[render.Texture]{
-			ID:    assetTexture.ID,
-			Value: textures[i],
-		}
+		return nil, fmt.Errorf("failed to resolve textures: %w", err)
 	}
 
 	materialPromises := make([]async.Promise[*graphics.Material], len(assetModel.ShadingChunk.Materials))
 	for i, assetMaterial := range assetModel.ShadingChunk.Materials {
 		materialPromises[i] = s.convertMaterial(
 			shaders,
-			textureByID,
+			textures,
 			assetMaterial,
 		)
 	}
@@ -236,9 +220,9 @@ func (s *ResourceSet) convertModel(asyncEngine *AsyncEngine, assetModel dto.Mode
 	return &ModelDefinition{
 		recordings: recordings,
 		shaders:    shaders,
+		textures:   textures,
 
 		armatures:       armatures,
-		textures:        identifiableTextures,
 		materials:       materials,
 		meshGeometries:  meshGeometries,
 		meshDefinitions: meshDefinitions,

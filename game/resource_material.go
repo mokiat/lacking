@@ -11,7 +11,7 @@ import (
 
 func (s *ResourceSet) convertMaterial(
 	shaders IdentifiableList[*graphics.Shader],
-	textures map[uint32]render.Texture,
+	textures IdentifiableList[render.Texture],
 	assetMaterial dto.Material,
 ) async.Promise[*graphics.Material] {
 
@@ -39,7 +39,7 @@ func (s *ResourceSet) convertMaterial(
 		gfxEngine := s.engine.Graphics()
 		material := gfxEngine.CreateMaterial(materialInfo)
 		for _, binding := range assetMaterial.Textures {
-			texture := textures[binding.TextureID]
+			texture := textures.GetByID(binding.TextureID)
 			material.SetTexture(binding.BindingName, texture)
 		}
 		for _, binding := range assetMaterial.Textures {

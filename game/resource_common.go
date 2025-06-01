@@ -35,19 +35,6 @@ func (*ResourceSet) resolveFiltering(filter dto.FilterMode) render.FilterMode {
 	}
 }
 
-func (*ResourceSet) resolveDataFormat(format dto.TexelFormat) render.DataFormat {
-	switch format {
-	case dto.TexelFormatRGBA8:
-		return render.DataFormatRGBA8
-	case dto.TexelFormatRGBA16F:
-		return render.DataFormatRGBA16F
-	case dto.TexelFormatRGBA32F:
-		return render.DataFormatRGBA32F
-	default:
-		panic(fmt.Errorf("unknown format: %v", format))
-	}
-}
-
 func (*ResourceSet) resolveCullMode(mode dto.CullMode) render.CullMode {
 	switch mode {
 	case dto.CullModeNone:
