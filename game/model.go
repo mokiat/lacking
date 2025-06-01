@@ -16,16 +16,16 @@ type ModelDefinition struct {
 	// TODO: Make these public so that extending definitions can
 	// add their own resources?
 
-	recordings IdentifiableList[*animation.Recording]
-	shaders    IdentifiableList[*graphics.Shader]
-	textures   IdentifiableList[render.Texture]
-	materials  IdentifiableList[*graphics.Material]
+	recordings    IdentifiableList[*animation.Recording]
+	shaders       IdentifiableList[*graphics.Shader]
+	textures      IdentifiableList[render.Texture]
+	materials     IdentifiableList[*graphics.Material]
+	bodyMaterials IdentifiableList[*physics.Material]
 
 	armatures       []armatureDefinition
 	meshGeometries  []*graphics.MeshGeometry
 	meshDefinitions []*graphics.MeshDefinition
 	meshes          []meshInstance
-	bodyMaterials   []*physics.Material
 	bodyDefinitions []*physics.BodyDefinition
 	bodies          []bodyInstance
 

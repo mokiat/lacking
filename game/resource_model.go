@@ -83,6 +83,11 @@ func (s *ResourceSet) convertModel(asyncEngine *AsyncEngine, assetModel dto.Mode
 		return nil, fmt.Errorf("failed to resolve materials: %w", err)
 	}
 
+	bodyMaterials, err := loader.ResolvePhysicsMaterials(assetModel.PhysicsChunk.BodyMaterials)
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve body materials: %w", err)
+	}
+
 	armatures := make([]armatureDefinition, len(assetModel.MeshChunk.Armatures))
 	for i, assetArmature := range assetModel.MeshChunk.Armatures {
 		armatures[i] = s.convertArmature(assetArmature)
@@ -133,23 +138,10 @@ func (s *ResourceSet) convertModel(asyncEngine *AsyncEngine, assetModel dto.Mode
 		)
 	}
 
-	bodyMaterialPromises := make([]async.Promise[*physics.Material], len(assetModel.PhysicsChunk.BodyMaterials))
-	for i, assetBodyMaterial := range assetModel.PhysicsChunk.BodyMaterials {
-		bodyMaterialPromises[i] = s.convertBodyMaterial(assetBodyMaterial)
-	}
-	bodyMaterials, err := async.WaitPromises(bodyMaterialPromises...)
-	if err != nil {
-		return nil, fmt.Errorf("failed to convert body materials: %w", err)
-	}
-	bodyMaterialByID := make(map[uint32]*physics.Material, len(bodyMaterials))
-	for i, assetBodyMaterial := range assetModel.PhysicsChunk.BodyMaterials {
-		bodyMaterialByID[assetBodyMaterial.ID] = bodyMaterials[i]
-	}
-
 	bodyDefinitionPromises := make([]async.Promise[*physics.BodyDefinition], len(assetModel.PhysicsChunk.BodyDefinitions))
 	for i, assetBodyDefinition := range assetModel.PhysicsChunk.BodyDefinitions {
 		bodyDefinitionPromises[i] = s.convertBodyDefinition(
-			bodyMaterialByID,
+			bodyMaterials,
 			assetBodyDefinition,
 		)
 	}
@@ -198,16 +190,16 @@ func (s *ResourceSet) convertModel(asyncEngine *AsyncEngine, assetModel dto.Mode
 	}
 
 	return &ModelDefinition{
-		recordings: recordings,
-		shaders:    shaders,
-		textures:   textures,
-		materials:  materials,
+		recordings:    recordings,
+		shaders:       shaders,
+		textures:      textures,
+		materials:     materials,
+		bodyMaterials: bodyMaterials,
 
 		armatures:       armatures,
 		meshGeometries:  meshGeometries,
 		meshDefinitions: meshDefinitions,
 		meshes:          meshes,
-		bodyMaterials:   bodyMaterials,
 		bodyDefinitions: bodyDefinitions,
 		bodies:          bodies,
 

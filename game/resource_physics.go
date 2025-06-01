@@ -8,22 +8,8 @@ import (
 	"github.com/mokiat/lacking/util/async"
 )
 
-func (s *ResourceSet) convertBodyMaterial(assetBodyMaterial dto.BodyMaterial) async.Promise[*physics.Material] {
-	materialInfo := physics.MaterialInfo{
-		FrictionCoefficient:    assetBodyMaterial.FrictionCoefficient,
-		RestitutionCoefficient: assetBodyMaterial.RestitutionCoefficient,
-	}
-	promise := async.NewPromise[*physics.Material]()
-	s.gfxWorker.Schedule(func() {
-		physicsEngine := s.engine.Physics()
-		material := physicsEngine.CreateMaterial(materialInfo)
-		promise.Deliver(material)
-	})
-	return promise
-}
-
-func (s *ResourceSet) convertBodyDefinition(bodyMaterials map[uint32]*physics.Material, assetBodyDefinition dto.BodyDefinition) async.Promise[*physics.BodyDefinition] {
-	material := bodyMaterials[assetBodyDefinition.MaterialID]
+func (s *ResourceSet) convertBodyDefinition(bodyMaterials IdentifiableList[*physics.Material], assetBodyDefinition dto.BodyDefinition) async.Promise[*physics.BodyDefinition] {
+	material := bodyMaterials.GetByID(assetBodyDefinition.MaterialID)
 
 	bodyDefinitionInfo := physics.BodyDefinitionInfo{
 		Mass:                   assetBodyDefinition.Mass,
