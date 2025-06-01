@@ -92,15 +92,6 @@ func (s *ResourceSet) convertModel(asyncEngine *AsyncEngine, assetModel dto.Mode
 		return nil, fmt.Errorf("failed to resolve body definitions: %w", err)
 	}
 
-	armatures := make([]armatureDefinition, len(assetModel.MeshChunk.Armatures))
-	for i, assetArmature := range assetModel.MeshChunk.Armatures {
-		armatures[i] = s.convertArmature(assetArmature)
-	}
-	armatureIndexByID := make(map[uint32]int, len(assetModel.MeshChunk.Armatures))
-	for i, assetArmature := range assetModel.MeshChunk.Armatures {
-		armatureIndexByID[assetArmature.ID] = i
-	}
-
 	// TODO: Convert cameras
 
 	meshGeometryPromises := make([]async.Promise[*graphics.MeshGeometry], len(assetModel.MeshChunk.Geometries))
@@ -136,7 +127,6 @@ func (s *ResourceSet) convertModel(asyncEngine *AsyncEngine, assetModel dto.Mode
 	meshes := make([]meshInstance, len(assetModel.MeshChunk.Meshes))
 	for i, assetMesh := range assetModel.MeshChunk.Meshes {
 		meshes[i] = s.convertMeshInstance(
-			armatureIndexByID,
 			meshDefinitionIndexByID,
 			assetMesh,
 		)
@@ -150,6 +140,11 @@ func (s *ResourceSet) convertModel(asyncEngine *AsyncEngine, assetModel dto.Mode
 	bodies, err := loader.ResolvePhysicsBodyTemplates(assetModel.PhysicsChunk.Bodies, bodyDefinitions)
 	if err != nil {
 		return nil, fmt.Errorf("failed to resolve physics body templates: %w", err)
+	}
+
+	armatures, err := loader.ResolveArmatureTemplates(assetModel.MeshChunk.Armatures)
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve armature templates: %w", err)
 	}
 
 	ambientLights, err := loader.ResolveAmbientLightTemplates(assetModel.LightingChunk.AmbientLights)
@@ -178,20 +173,20 @@ func (s *ResourceSet) convertModel(asyncEngine *AsyncEngine, assetModel dto.Mode
 	}
 
 	return &ModelDefinition{
-		recordings:    recordings,
-		shaders:       shaders,
-		textures:      textures,
-		materials:     materials,
-		bodyMaterials: bodyMaterials,
+		recordings:      recordings,
+		shaders:         shaders,
+		textures:        textures,
+		materials:       materials,
+		bodyMaterials:   bodyMaterials,
+		bodyDefinitions: bodyDefinitions,
 
-		armatures:       armatures,
 		meshGeometries:  meshGeometries,
 		meshDefinitions: meshDefinitions,
 		meshes:          meshes,
-		bodyDefinitions: bodyDefinitions,
-		bodies:          bodies,
 
 		nodes:             nodes,
+		bodies:            bodies,
+		armatures:         armatures,
 		ambientLights:     ambientLights,
 		pointLights:       pointLights,
 		spotLights:        spotLights,

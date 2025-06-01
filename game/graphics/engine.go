@@ -3,6 +3,7 @@ package graphics
 import (
 	"fmt"
 	"log/slog"
+	"slices"
 
 	"github.com/mokiat/gog"
 	"github.com/mokiat/lacking/game/graphics/internal"
@@ -199,6 +200,14 @@ func (e *Engine) CreateMaterial(info MaterialInfo) *Material {
 		shadowPasses:   shadowPasses,
 		forwardPasses:  forwardPasses,
 		skyPasses:      skyPasses,
+	}
+}
+
+// CreateArmatureDefinition creates a new ArmatureDefinition using the specified
+// info object.
+func (e *Engine) CreateArmatureDefinition(info ArmatureDefinitionInfo) *ArmatureDefinition {
+	return &ArmatureDefinition{
+		inverseBindMatrices: slices.Clone(info.InverseBindMatrices),
 	}
 }
 

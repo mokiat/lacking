@@ -234,28 +234,21 @@ func (s *Scene) CreateModel(info ModelInfo) *Model {
 	// is implemented correctly. Right now it does not seem to do anything.
 	modelNode.ApplyFromSource(true)
 
-	armatures := make([]*graphics.Armature, len(definition.armatures))
-	for i, instance := range definition.armatures {
-		armature := s.gfxScene.CreateArmature(graphics.ArmatureInfo{
-			InverseMatrices: instance.InverseBindMatrices(),
+	armatures := make(IdentifiableList[*graphics.Armature], 0, len(definition.armatures))
+	for id, template := range definition.armatures.Iter() {
+		armature := s.InstantiateArmatureTemplate(template, nodes)
+		armatures = append(armatures, Identifiable[*graphics.Armature]{
+			ID:    id,
+			Value: armature,
 		})
-		for j, joint := range instance.Joints {
-			if jointNode, ok := nodes.FindByID(joint.NodeID); ok {
-				jointNode.SetTarget(BoneNodeTarget{
-					Armature:  armature,
-					BoneIndex: j,
-				})
-			}
-		}
-		armatures[i] = armature
 	}
 
 	// TODO: Track mesh instances?
 	for _, instance := range definition.meshes {
 		if meshNode, ok := nodes.FindByID(instance.NodeID); ok {
 			var armature *graphics.Armature
-			if instance.ArmatureIndex >= 0 {
-				armature = armatures[instance.ArmatureIndex]
+			if instance.ArmatureID != UnspecifiedID {
+				armature = armatures.GetByID(instance.ArmatureID)
 			}
 			meshDefinition := definition.meshDefinitions[instance.DefinitionIndex]
 
@@ -323,7 +316,7 @@ func (s *Scene) CreateModel(info ModelInfo) *Model {
 		root:       modelNode,
 
 		recordings: recordings.ValuesList(),
-		armatures:  armatures,
+		armatures:  armatures.ValuesList(),
 	}
 }
 

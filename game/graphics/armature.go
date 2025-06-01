@@ -8,8 +8,16 @@ import (
 	"github.com/mokiat/lacking/util/blob"
 )
 
+type ArmatureDefinitionInfo struct {
+	InverseBindMatrices []sprec.Mat4
+}
+
+type ArmatureDefinition struct {
+	inverseBindMatrices []sprec.Mat4
+}
+
 type ArmatureInfo struct {
-	InverseMatrices []sprec.Mat4
+	Definition *ArmatureDefinition
 }
 
 type Armature struct {

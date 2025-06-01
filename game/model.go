@@ -4,7 +4,6 @@ import (
 	"github.com/mokiat/gog/ds"
 	"github.com/mokiat/gog/opt"
 	"github.com/mokiat/gomath/dprec"
-	"github.com/mokiat/gomath/sprec"
 	"github.com/mokiat/lacking/game/animation"
 	"github.com/mokiat/lacking/game/graphics"
 	"github.com/mokiat/lacking/game/hierarchy"
@@ -23,13 +22,13 @@ type ModelDefinition struct {
 	bodyMaterials   IdentifiableList[*physics.Material]
 	bodyDefinitions IdentifiableList[*physics.BodyDefinition]
 
-	armatures       []armatureDefinition
 	meshGeometries  []*graphics.MeshGeometry
 	meshDefinitions []*graphics.MeshDefinition
 	meshes          []meshInstance
 
 	nodes             IdentifiableList[NodeTemplate]
 	bodies            IdentifiableList[BodyTemplate]
+	armatures         IdentifiableList[ArmatureTemplate]
 	ambientLights     IdentifiableList[AmbientLightTemplate]
 	pointLights       IdentifiableList[PointLightTemplate]
 	spotLights        IdentifiableList[SpotLightTemplate]
@@ -37,27 +36,10 @@ type ModelDefinition struct {
 	skyTemplates      IdentifiableList[SkyTemplate]
 }
 
-type armatureDefinition struct {
-	Joints []armatureJoint
-}
-
-func (d armatureDefinition) InverseBindMatrices() []sprec.Mat4 {
-	result := make([]sprec.Mat4, len(d.Joints))
-	for i, joint := range d.Joints {
-		result[i] = joint.InverseBindMatrix
-	}
-	return result
-}
-
-type armatureJoint struct {
-	NodeID            uint32
-	InverseBindMatrix sprec.Mat4
-}
-
 type meshInstance struct {
 	NodeID          uint32
 	DefinitionIndex int
-	ArmatureIndex   int
+	ArmatureID      uint32
 }
 
 // ModelInfo contains the information necessary to place a Model

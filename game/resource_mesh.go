@@ -8,19 +8,6 @@ import (
 	"github.com/mokiat/lacking/util/async"
 )
 
-func (s *ResourceSet) convertArmature(assetArmature dto.Armature) armatureDefinition {
-	joints := make([]armatureJoint, len(assetArmature.Joints))
-	for j, assetJoint := range assetArmature.Joints {
-		joints[j] = armatureJoint{
-			NodeID:            assetJoint.NodeID,
-			InverseBindMatrix: assetJoint.InverseBindMatrix,
-		}
-	}
-	return armatureDefinition{
-		Joints: joints,
-	}
-}
-
 func (s *ResourceSet) convertMeshGeometry(assetGeometry dto.Geometry) async.Promise[*graphics.MeshGeometry] {
 	meshFragmentsInfo := make([]graphics.MeshGeometryFragmentInfo, len(assetGeometry.Fragments))
 	for j, assetFragment := range assetGeometry.Fragments {
@@ -82,14 +69,10 @@ func (s *ResourceSet) convertMeshDefinition(geometris map[uint32]*graphics.MeshG
 	return promise
 }
 
-func (s *ResourceSet) convertMeshInstance(armatureIndices, meshDefinitionIndices map[uint32]int, assetMesh dto.Mesh) meshInstance {
-	armatureIndex, ok := armatureIndices[assetMesh.ArmatureID]
-	if !ok {
-		armatureIndex = -1 // No armature associated with this mesh
-	}
+func (s *ResourceSet) convertMeshInstance(meshDefinitionIndices map[uint32]int, assetMesh dto.Mesh) meshInstance {
 	return meshInstance{
 		NodeID:          assetMesh.NodeID,
 		DefinitionIndex: meshDefinitionIndices[assetMesh.MeshDefinitionID],
-		ArmatureIndex:   armatureIndex,
+		ArmatureID:      assetMesh.ArmatureID,
 	}
 }
