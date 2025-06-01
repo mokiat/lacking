@@ -38,7 +38,7 @@ func (s *ResourceSet) freeModel(model *ModelDefinition) {
 		}
 	})
 	s.gfxWorker.Schedule(func() {
-		for _, texture := range model.textures {
+		for texture := range model.textures.Values() {
 			texture.Release()
 		}
 	})
@@ -102,6 +102,13 @@ func (s *ResourceSet) convertModel(asyncEngine *AsyncEngine, assetModel dto.Mode
 	textureByID := make(map[uint32]render.Texture, len(assetModel.ShadingChunk.Textures))
 	for i, assetTexture := range assetModel.ShadingChunk.Textures {
 		textureByID[assetTexture.ID] = textures[i]
+	}
+	identifiableTextures := make(IdentifiableList[render.Texture], len(assetModel.ShadingChunk.Textures))
+	for i, assetTexture := range assetModel.ShadingChunk.Textures {
+		identifiableTextures[i] = Identifiable[render.Texture]{
+			ID:    assetTexture.ID,
+			Value: textures[i],
+		}
 	}
 
 	materialPromises := make([]async.Promise[*graphics.Material], len(assetModel.ShadingChunk.Materials))
@@ -202,19 +209,19 @@ func (s *ResourceSet) convertModel(asyncEngine *AsyncEngine, assetModel dto.Mode
 		bodies[i] = s.convertBody(bodyDefinitionIndexByID, assetBody)
 	}
 
-	ambientLights := make([]ambientLightInstance, len(assetModel.LightingChunk.AmbientLights))
-	for i, assetAmbientLight := range assetModel.LightingChunk.AmbientLights {
-		ambientLights[i] = s.convertAmbientLight(assetAmbientLight)
+	ambientLights, err := loader.ResolveAmbientLightTemplates(assetModel.LightingChunk.AmbientLights)
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve ambient light templates: %w", err)
 	}
 
-	pointLights := make([]pointLightInstance, len(assetModel.LightingChunk.PointLights))
-	for i, assetPointLight := range assetModel.LightingChunk.PointLights {
-		pointLights[i] = s.convertPointLight(assetPointLight)
+	pointLights, err := loader.ResolvePointLightTemplates(assetModel.LightingChunk.PointLights)
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve point light templates: %w", err)
 	}
 
-	spotLights := make([]spotLightInstance, len(assetModel.LightingChunk.SpotLights))
-	for i, assetSpotLight := range assetModel.LightingChunk.SpotLights {
-		spotLights[i] = s.convertSpotLight(assetSpotLight)
+	spotLights, err := loader.ResolveSpotLightTemplates(assetModel.LightingChunk.SpotLights)
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve spot light templates: %w", err)
 	}
 
 	directionalLights, err := loader.ResolveDirectionalLightTemplates(assetModel.LightingChunk.DirectionalLights)
@@ -232,7 +239,7 @@ func (s *ResourceSet) convertModel(asyncEngine *AsyncEngine, assetModel dto.Mode
 		animationSet:      animationSet,
 		armatures:         armatures,
 		shaders:           shaders,
-		textures:          textureByID,
+		textures:          identifiableTextures,
 		materials:         materials,
 		meshGeometries:    meshGeometries,
 		meshDefinitions:   meshDefinitions,

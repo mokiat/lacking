@@ -16,7 +16,7 @@ type ModelDefinition struct {
 	animationSet    *AnimationSetTemplate
 	armatures       []armatureDefinition
 	shaders         []*graphics.Shader
-	textures        map[uint32]render.Texture
+	textures        IdentifiableList[render.Texture]
 	materials       []*graphics.Material
 	meshGeometries  []*graphics.MeshGeometry
 	meshDefinitions []*graphics.MeshDefinition
@@ -24,10 +24,10 @@ type ModelDefinition struct {
 	bodyMaterials   []*physics.Material
 	bodyDefinitions []*physics.BodyDefinition
 	bodies          []bodyInstance
-	ambientLights   []ambientLightInstance
-	pointLights     []pointLightInstance
-	spotLights      []spotLightInstance
 
+	ambientLights     IdentifiableList[AmbientLightTemplate]
+	pointLights       IdentifiableList[PointLightTemplate]
+	spotLights        IdentifiableList[SpotLightTemplate]
 	directionalLights IdentifiableList[DirectionalLightTemplate]
 	skyTemplates      IdentifiableList[SkyTemplate]
 }
@@ -58,29 +58,6 @@ type meshInstance struct {
 type bodyInstance struct {
 	NodeID          uint32
 	DefinitionIndex int
-}
-
-type ambientLightInstance struct {
-	nodeID              uint32
-	reflectionTextureID uint32
-	refractionTextureID uint32
-	castShadow          bool
-}
-
-type pointLightInstance struct {
-	nodeID       uint32
-	emitColor    dprec.Vec3
-	emitDistance float64
-	castShadow   bool
-}
-
-type spotLightInstance struct {
-	nodeID         uint32
-	emitColor      dprec.Vec3
-	emitDistance   float64
-	emitAngleOuter dprec.Angle
-	emitAngleInner dprec.Angle
-	castShadow     bool
 }
 
 // ModelInfo contains the information necessary to place a Model

@@ -27,7 +27,7 @@ func (s *Scene) CreateAmbientLight(info AmbientLightInfo) *hierarchy.Node {
 }
 
 // PlaceAmbientLight places an ambient light on the provided node.
-func (s *Scene) PlaceAmbientLight(node *hierarchy.Node, info AmbientLightInfo) {
+func (s *Scene) PlaceAmbientLight(node *hierarchy.Node, info AmbientLightInfo) *graphics.AmbientLight {
 	light := s.gfxScene.CreateAmbientLight(graphics.AmbientLightInfo{
 		Position:          dprec.ZeroVec3(),
 		InnerRadius:       25000.0,
@@ -40,6 +40,7 @@ func (s *Scene) PlaceAmbientLight(node *hierarchy.Node, info AmbientLightInfo) {
 		Light: light,
 	})
 	node.ApplyToTarget(false)
+	return light
 }
 
 // PointLightInfo contains the information required to create a point light.
@@ -58,7 +59,7 @@ func (s *Scene) CreatePointLight(info PointLightInfo) *hierarchy.Node {
 }
 
 // PlacePointLight places a point light on the provided node.
-func (s *Scene) PlacePointLight(node *hierarchy.Node, info PointLightInfo) {
+func (s *Scene) PlacePointLight(node *hierarchy.Node, info PointLightInfo) *graphics.PointLight {
 	light := s.gfxScene.CreatePointLight(graphics.PointLightInfo{
 		Position:   dprec.ZeroVec3(),
 		EmitColor:  info.EmitColor.ValueOrDefault(dprec.NewVec3(10.0, 0.0, 10.0)),
@@ -69,6 +70,7 @@ func (s *Scene) PlacePointLight(node *hierarchy.Node, info PointLightInfo) {
 		Light: light,
 	})
 	node.ApplyToTarget(false)
+	return light
 }
 
 // SpotLightInfo contains the information required to create a spot light.
@@ -89,7 +91,7 @@ func (s *Scene) CreateSpotLight(info SpotLightInfo) *hierarchy.Node {
 }
 
 // PlaceSpotLight places a spot light on the provided node.
-func (s *Scene) PlaceSpotLight(node *hierarchy.Node, info SpotLightInfo) {
+func (s *Scene) PlaceSpotLight(node *hierarchy.Node, info SpotLightInfo) *graphics.SpotLight {
 	light := s.gfxScene.CreateSpotLight(graphics.SpotLightInfo{
 		Position:           dprec.ZeroVec3(),
 		Rotation:           dprec.IdentityQuat(),
@@ -103,6 +105,7 @@ func (s *Scene) PlaceSpotLight(node *hierarchy.Node, info SpotLightInfo) {
 		Light: light,
 	})
 	node.ApplyToTarget(false)
+	return light
 }
 
 // DirectionalLightInfo contains the information required to create a

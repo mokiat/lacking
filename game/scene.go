@@ -229,6 +229,7 @@ func (s *Scene) CreateModel(info ModelInfo) *Model {
 	nodes := hierarchyInstance.Nodes
 
 	definition := info.Definition
+	textures := definition.textures
 
 	// TODO: Move after bodies are created? But maybe only after pos/rot of bodies
 	// is implemented correctly. Right now it does not seem to do anything.
@@ -317,41 +318,16 @@ func (s *Scene) CreateModel(info ModelInfo) *Model {
 		}
 	}
 
-	for _, instance := range definition.ambientLights {
-		if node, ok := nodes.FindByID(instance.nodeID); ok {
-			info := AmbientLightInfo{
-				ReflectionTexture: definition.textures[instance.reflectionTextureID],
-				RefractionTexture: definition.textures[instance.refractionTextureID],
-				OuterRadius:       opt.Unspecified[float64](),
-				InnerRadius:       opt.Unspecified[float64](),
-				CastShadow:        opt.V(instance.castShadow),
-			}
-			s.PlaceAmbientLight(node, info)
-		}
-	}
-	for _, instance := range definition.pointLights {
-		if node, ok := nodes.FindByID(instance.nodeID); ok {
-			info := PointLightInfo{
-				EmitColor:    opt.V(instance.emitColor),
-				EmitDistance: opt.V(instance.emitDistance),
-				CastShadow:   opt.V(instance.castShadow),
-			}
-			s.PlacePointLight(node, info)
-		}
-	}
-	for _, instance := range definition.spotLights {
-		if node, ok := nodes.FindByID(instance.nodeID); ok {
-			info := SpotLightInfo{
-				EmitColor:          opt.V(instance.emitColor),
-				EmitDistance:       opt.V(instance.emitDistance),
-				EmitOuterConeAngle: opt.V(instance.emitAngleOuter),
-				EmitInnerConeAngle: opt.V(instance.emitAngleInner),
-				CastShadow:         opt.V(instance.castShadow),
-			}
-			s.PlaceSpotLight(node, info)
-		}
+	for template := range definition.ambientLights.Values() {
+		s.InstantiateAmbientLightTemplate(template, nodes, textures)
 	}
 
+	for template := range definition.pointLights.Values() {
+		s.InstantiatePointLightTemplate(template, nodes)
+	}
+	for template := range definition.spotLights.Values() {
+		s.InstantiateSpotLightTemplate(template, nodes)
+	}
 	for template := range definition.directionalLights.Values() {
 		s.InstantiateDirectionalLightTemplate(template, nodes)
 	}
