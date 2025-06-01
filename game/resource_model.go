@@ -5,7 +5,6 @@ import (
 
 	"github.com/mokiat/lacking/game/asset/dto"
 	"github.com/mokiat/lacking/game/graphics"
-	"github.com/mokiat/lacking/game/physics"
 	"github.com/mokiat/lacking/storage/chunked"
 	"github.com/mokiat/lacking/util/async"
 )
@@ -88,6 +87,11 @@ func (s *ResourceSet) convertModel(asyncEngine *AsyncEngine, assetModel dto.Mode
 		return nil, fmt.Errorf("failed to resolve body materials: %w", err)
 	}
 
+	bodyDefinitions, err := loader.ResolvePhysicsBodyDefinitions(assetModel.PhysicsChunk.BodyDefinitions, bodyMaterials)
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve body definitions: %w", err)
+	}
+
 	armatures := make([]armatureDefinition, len(assetModel.MeshChunk.Armatures))
 	for i, assetArmature := range assetModel.MeshChunk.Armatures {
 		armatures[i] = s.convertArmature(assetArmature)
@@ -138,25 +142,9 @@ func (s *ResourceSet) convertModel(asyncEngine *AsyncEngine, assetModel dto.Mode
 		)
 	}
 
-	bodyDefinitionPromises := make([]async.Promise[*physics.BodyDefinition], len(assetModel.PhysicsChunk.BodyDefinitions))
-	for i, assetBodyDefinition := range assetModel.PhysicsChunk.BodyDefinitions {
-		bodyDefinitionPromises[i] = s.convertBodyDefinition(
-			bodyMaterials,
-			assetBodyDefinition,
-		)
-	}
-	bodyDefinitions, err := async.WaitPromises(bodyDefinitionPromises...)
-	if err != nil {
-		return nil, fmt.Errorf("failed to convert body definitions: %w", err)
-	}
-	bodyDefinitionIndexByID := make(map[uint32]int, len(bodyDefinitions))
-	for i, assetBodyDefinition := range assetModel.PhysicsChunk.BodyDefinitions {
-		bodyDefinitionIndexByID[assetBodyDefinition.ID] = i
-	}
-
 	bodies := make([]bodyInstance, len(assetModel.PhysicsChunk.Bodies))
 	for i, assetBody := range assetModel.PhysicsChunk.Bodies {
-		bodies[i] = s.convertBody(bodyDefinitionIndexByID, assetBody)
+		bodies[i] = s.convertBody(bodyDefinitions, assetBody)
 	}
 
 	nodes, err := loader.ResolveNodeTemplates(assetModel.HierarchyChunk.Nodes)

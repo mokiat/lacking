@@ -1,8 +1,12 @@
 package game
 
 import (
+	"fmt"
+
+	"github.com/mokiat/gomath/dprec"
 	"github.com/mokiat/lacking/game/asset/dto"
 	"github.com/mokiat/lacking/game/physics"
+	"github.com/mokiat/lacking/game/physics/collision"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -39,4 +43,93 @@ func (l *AssetLoader) ResolvePhysicsMaterials(assetMaterials []dto.BodyMaterial)
 		})
 	}
 	return materials, group.Wait()
+}
+
+func (l *AssetLoader) ResolvePhysicsBodyDefinition(assetBodyDefinition dto.BodyDefinition, materials IdentifiableList[*physics.Material]) (Identifiable[*physics.BodyDefinition], error) {
+	material, ok := materials.FindByID(assetBodyDefinition.MaterialID)
+	if !ok {
+		return Identifiable[*physics.BodyDefinition]{}, fmt.Errorf("physics material with ID %d not found", assetBodyDefinition.MaterialID)
+	}
+
+	bodyDefinitionInfo := physics.BodyDefinitionInfo{
+		Mass:                   assetBodyDefinition.Mass,
+		MomentOfInertia:        assetBodyDefinition.MomentOfInertia,
+		FrictionCoefficient:    material.FrictionCoefficient(),
+		RestitutionCoefficient: material.RestitutionCoefficient(),
+		DragFactor:             assetBodyDefinition.DragFactor,
+		AngularDragFactor:      assetBodyDefinition.AngularDragFactor,
+		AerodynamicShapes:      nil, // TODO
+		CollisionSpheres:       l.resolveCollisionSpheres(assetBodyDefinition),
+		CollisionBoxes:         l.resolveCollisionBoxes(assetBodyDefinition),
+		CollisionMeshes:        l.resolveCollisionMeshes(assetBodyDefinition),
+	}
+
+	var bodyDefinition *physics.BodyDefinition
+	allocateDefinition := func(engine *Engine) error {
+		physicsEngine := engine.Physics()
+		bodyDefinition = physicsEngine.CreateBodyDefinition(bodyDefinitionInfo)
+		return nil
+	}
+	if err := l.ScheduleMain(allocateDefinition).Wait(); err != nil {
+		return Identifiable[*physics.BodyDefinition]{}, err
+	}
+
+	return Identifiable[*physics.BodyDefinition]{
+		ID:    assetBodyDefinition.ID,
+		Value: bodyDefinition,
+	}, nil
+}
+
+func (l *AssetLoader) ResolvePhysicsBodyDefinitions(assetBodyDefinitions []dto.BodyDefinition, materials IdentifiableList[*physics.Material]) (IdentifiableList[*physics.BodyDefinition], error) {
+	bodyDefinitions := make(IdentifiableList[*physics.BodyDefinition], len(assetBodyDefinitions))
+	var group errgroup.Group
+	for i, assetBodyDefinition := range assetBodyDefinitions {
+		group.Go(func() error {
+			bodyDefinition, err := l.ResolvePhysicsBodyDefinition(assetBodyDefinition, materials)
+			bodyDefinitions[i] = bodyDefinition
+			return err
+		})
+	}
+	return bodyDefinitions, group.Wait()
+}
+
+func (l *AssetLoader) resolveCollisionSpheres(bodyDef dto.BodyDefinition) []collision.Sphere {
+	result := make([]collision.Sphere, len(bodyDef.CollisionSpheres))
+	for i, collisionSphereAsset := range bodyDef.CollisionSpheres {
+		result[i] = collision.NewSphere(
+			collisionSphereAsset.Translation,
+			collisionSphereAsset.Radius,
+		)
+	}
+	return result
+}
+
+func (l *AssetLoader) resolveCollisionBoxes(bodyDef dto.BodyDefinition) []collision.Box {
+	result := make([]collision.Box, len(bodyDef.CollisionBoxes))
+	for i, collisionBoxAsset := range bodyDef.CollisionBoxes {
+		result[i] = collision.NewBox(
+			collisionBoxAsset.Translation,
+			collisionBoxAsset.Rotation,
+			dprec.NewVec3(collisionBoxAsset.Width, collisionBoxAsset.Height, collisionBoxAsset.Length),
+		)
+	}
+	return result
+}
+
+func (l *AssetLoader) resolveCollisionMeshes(bodyDef dto.BodyDefinition) []collision.Mesh {
+	result := make([]collision.Mesh, len(bodyDef.CollisionMeshes))
+	for i, collisionMeshAsset := range bodyDef.CollisionMeshes {
+		transform := collision.TRTransform(collisionMeshAsset.Translation, collisionMeshAsset.Rotation)
+		triangles := make([]collision.Triangle, len(collisionMeshAsset.Triangles))
+		for j, triangleAsset := range collisionMeshAsset.Triangles {
+			template := collision.NewTriangle(
+				triangleAsset.A,
+				triangleAsset.B,
+				triangleAsset.C,
+			)
+			triangles[j].Replace(template, transform)
+		}
+		result[i] = collision.NewMesh(triangles)
+	}
+	return result
 }

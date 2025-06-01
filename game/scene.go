@@ -284,11 +284,10 @@ func (s *Scene) CreateModel(info ModelInfo) *Model {
 	var bodyInstances []physics.Body
 	for _, instance := range definition.bodies {
 		if bodyNode, ok := nodes.FindByID(instance.NodeID); ok {
-			bodyDefinition := definition.bodyDefinitions[instance.DefinitionIndex]
 			if info.IsDynamic {
 				body := s.physicsScene.CreateBody(physics.BodyInfo{
 					Name:       bodyNode.Name(),
-					Definition: bodyDefinition,
+					Definition: instance.Definition,
 					// TODO: Initialize from body node matrix?
 					Position: dprec.ZeroVec3(),
 					Rotation: dprec.IdentityQuat(),
@@ -301,7 +300,7 @@ func (s *Scene) CreateModel(info ModelInfo) *Model {
 				absMatrix := bodyNode.AbsoluteMatrix()
 				transform := collision.TRTransform(absMatrix.Translation(), absMatrix.Rotation())
 				collisionSet := collision.NewSet()
-				collisionSet.Replace(bodyDefinition.CollisionSet(), transform)
+				collisionSet.Replace(instance.Definition.CollisionSet(), transform)
 				s.physicsScene.CreateProp(physics.PropInfo{
 					Name:         bodyNode.Name(),
 					CollisionSet: collisionSet,
