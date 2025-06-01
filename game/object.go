@@ -41,6 +41,14 @@ func (l IdentifiableList[T]) Values() iter.Seq[T] {
 	}
 }
 
+func (l IdentifiableList[T]) ValuesList() []T {
+	result := make([]T, len(l))
+	for i, entry := range l {
+		result[i] = entry.Value
+	}
+	return result
+}
+
 func (l IdentifiableList[T]) FindByID(id uint32) (T, bool) {
 	for _, item := range l {
 		if item.ID == id {

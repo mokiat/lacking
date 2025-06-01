@@ -5,6 +5,7 @@ import (
 	"github.com/mokiat/gog/opt"
 	"github.com/mokiat/gomath/dprec"
 	"github.com/mokiat/gomath/sprec"
+	"github.com/mokiat/lacking/game/animation"
 	"github.com/mokiat/lacking/game/graphics"
 	"github.com/mokiat/lacking/game/hierarchy"
 	"github.com/mokiat/lacking/game/physics"
@@ -12,8 +13,10 @@ import (
 )
 
 type ModelDefinition struct {
-	hierarchy       *HierarchyTemplate
-	animationSet    *AnimationSetTemplate
+	hierarchy *HierarchyTemplate
+
+	recordings IdentifiableList[*animation.Recording]
+
 	armatures       []armatureDefinition
 	shaders         []*graphics.Shader
 	textures        IdentifiableList[render.Texture]
@@ -96,7 +99,7 @@ type Model struct {
 	root       *hierarchy.Node
 
 	armatures     []*graphics.Armature
-	animations    []*Animation
+	recordings    []*animation.Recording
 	bodyInstances []physics.Body
 }
 
@@ -112,13 +115,13 @@ func (m *Model) BodyInstances() []physics.Body {
 	return m.bodyInstances
 }
 
-func (m *Model) Animations() []*Animation {
-	return m.animations
+func (m *Model) Recordings() []*animation.Recording {
+	return m.recordings
 }
 
-func (m *Model) FindAnimation(name string) *Animation {
-	for _, animation := range m.animations {
-		if animation.name == name {
+func (m *Model) FindRecording(name string) *animation.Recording {
+	for _, animation := range m.recordings {
+		if animation.Name() == name {
 			return animation
 		}
 	}
@@ -127,8 +130,8 @@ func (m *Model) FindAnimation(name string) *Animation {
 
 func (m *Model) AnimatedNodes() []*hierarchy.Node {
 	result := ds.NewSet[*hierarchy.Node](0)
-	for _, animation := range m.animations {
-		for nodeName := range animation.bindings {
+	for _, animation := range m.recordings {
+		for nodeName := range animation.BoundNodes() {
 			if node := m.FindNode(nodeName); node != nil {
 				result.Add(node)
 			}
@@ -137,7 +140,7 @@ func (m *Model) AnimatedNodes() []*hierarchy.Node {
 	return result.Items()
 }
 
-func (m *Model) BindAnimationSource(source AnimationSource) {
+func (m *Model) BindAnimationSource(source animation.Source) {
 	for _, node := range m.AnimatedNodes() {
 		node.SetSource(AnimationNodeSource{
 			Source: source,

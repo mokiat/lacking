@@ -65,7 +65,11 @@ func (s *ResourceSet) convertModel(asyncEngine *AsyncEngine, assetModel dto.Mode
 	}
 
 	hierarchy := loader.ResolveHierarchyTemplate(assetModel.HierarchyChunk)
-	animationSet := loader.ResolveAnimationSetTemplate(assetModel.AnimationChunk)
+
+	recordings, err := loader.ResolveAnimationRecordings(assetModel.AnimationChunk.Animations)
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve animation recordings: %w", err)
+	}
 
 	armatures := make([]armatureDefinition, len(assetModel.MeshChunk.Armatures))
 	for i, assetArmature := range assetModel.MeshChunk.Armatures {
@@ -236,7 +240,7 @@ func (s *ResourceSet) convertModel(asyncEngine *AsyncEngine, assetModel dto.Mode
 
 	return &ModelDefinition{
 		hierarchy:         hierarchy,
-		animationSet:      animationSet,
+		recordings:        recordings,
 		armatures:         armatures,
 		shaders:           shaders,
 		textures:          identifiableTextures,

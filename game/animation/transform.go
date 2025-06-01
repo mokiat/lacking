@@ -1,4 +1,4 @@
-package game
+package animation
 
 import (
 	"github.com/mokiat/gog/opt"
@@ -27,23 +27,6 @@ func BlendNodeTransforms(first, second NodeTransform, factor float64) NodeTransf
 		Rotation:    combineSpherical(first.Rotation, second.Rotation, factor),
 		Scale:       combineLinear(first.Scale, second.Scale, factor),
 	}
-}
-
-// AnimationSource represents a source of animation data.
-type AnimationSource interface {
-
-	// Length returns the length of the animation in seconds.
-	Length() float64
-
-	// Position returns the current position of the animation in seconds.
-	Position() float64
-
-	// SetPosition sets the current position of the animation in seconds.
-	SetPosition(position float64)
-
-	// NodeTransform returns the transformation of the node with the
-	// specified name at the current time position.
-	NodeTransform(name string) NodeTransform
 }
 
 func combineLinear(first, second opt.T[dprec.Vec3], amount float64) opt.T[dprec.Vec3] {

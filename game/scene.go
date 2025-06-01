@@ -3,11 +3,11 @@ package game
 import (
 	"time"
 
-	"github.com/mokiat/gog"
 	"github.com/mokiat/gog/ds"
 	"github.com/mokiat/gog/opt"
 	"github.com/mokiat/gomath/dprec"
 	"github.com/mokiat/lacking/debug/metric"
+	"github.com/mokiat/lacking/game/animation"
 	"github.com/mokiat/lacking/game/ecs"
 	"github.com/mokiat/lacking/game/graphics"
 	"github.com/mokiat/lacking/game/hierarchy"
@@ -26,7 +26,7 @@ func newScene(engine *Engine, physicsScene *physics.Scene, gfxScene *graphics.Sc
 		ecsScene:     ecsScene,
 		root:         hierarchy.NewNode(), // TODO: Make this node stationary
 
-		animationTrees: ds.NewList[AnimationSource](0),
+		animationTrees: ds.NewList[animation.Source](0),
 
 		preUpdateSubscriptions:  timestep.NewUpdateSubscriptionSet(),
 		postUpdateSubscriptions: timestep.NewUpdateSubscriptionSet(),
@@ -51,7 +51,7 @@ type Scene struct {
 	ecsScene     *ecs.Scene
 	root         *hierarchy.Node
 
-	animationTrees *ds.List[AnimationSource]
+	animationTrees *ds.List[animation.Source]
 
 	preUpdateSubscriptions  *timestep.UpdateSubscriptionSet
 	postUpdateSubscriptions *timestep.UpdateSubscriptionSet
@@ -165,12 +165,12 @@ func (s *Scene) CreateNode() *hierarchy.Node {
 }
 
 // PlayAnimationTree adds the provided animation tree to the scene.
-func (s *Scene) PlayAnimationTree(tree AnimationSource) {
+func (s *Scene) PlayAnimationTree(tree animation.Source) {
 	s.animationTrees.Add(tree)
 }
 
 // StopAnimationTree removes the provided animation tree from the scene.
-func (s *Scene) StopAnimationTree(tree AnimationSource) {
+func (s *Scene) StopAnimationTree(tree animation.Source) {
 	s.animationTrees.Remove(tree)
 }
 
@@ -230,19 +230,11 @@ func (s *Scene) CreateModel(info ModelInfo) *Model {
 
 	definition := info.Definition
 	textures := definition.textures
+	recordings := definition.recordings
 
 	// TODO: Move after bodies are created? But maybe only after pos/rot of bodies
 	// is implemented correctly. Right now it does not seem to do anything.
 	modelNode.ApplyFromSource(true)
-
-	animationSetInfo := AnimationSetInfo{
-		Template: definition.animationSet,
-	}
-	animationSetInstance := s.InstantiateAnimationSet(animationSetInfo)
-
-	animations := gog.Map(animationSetInstance.Animations, func(item Identifiable[*Animation]) *Animation {
-		return item.Value
-	})
 
 	armatures := make([]*graphics.Armature, len(definition.armatures))
 	for i, instance := range definition.armatures {
@@ -321,7 +313,6 @@ func (s *Scene) CreateModel(info ModelInfo) *Model {
 	for template := range definition.ambientLights.Values() {
 		s.InstantiateAmbientLightTemplate(template, nodes, textures)
 	}
-
 	for template := range definition.pointLights.Values() {
 		s.InstantiatePointLightTemplate(template, nodes)
 	}
@@ -339,11 +330,12 @@ func (s *Scene) CreateModel(info ModelInfo) *Model {
 	modelNode.ApplyToTarget(true)
 
 	return &Model{
-		definition:    definition,
-		root:          modelNode,
+		definition: definition,
+		root:       modelNode,
+
+		recordings:    recordings.ValuesList(),
 		bodyInstances: bodyInstances,
 		armatures:     armatures,
-		animations:    animations,
 	}
 }
 

@@ -603,6 +603,42 @@ func (s *Scene) applyNudges(elapsedSeconds float64) {
 	}
 }
 
+func (s *Scene) CheckLineCollision(line collision.Line) opt.T[collision.Intersection] {
+	mid := dprec.Vec3Quot(dprec.Vec3Sum(line.A(), line.B()), 2.0)
+	length := dprec.Vec3Diff(line.A(), line.B()).Length()
+
+	region := spatial.CuboidRegion(
+		mid,
+		dprec.NewVec3(length, length, length),
+	)
+
+	s.collisionSet.Reset()
+
+	s.propOctree.VisitHexahedronRegion(&region, spatial.VisitorFunc[uint32](func(propIndex uint32) {
+		prop := &s.props[propIndex]
+		if _, _, intersects := collision.LineWithSphereIntersectionPoints(line, prop.collisionSet.BoundingSphere()); !intersects {
+			return
+		}
+		for _, mesh := range prop.collisionSet.Meshes() {
+			if _, _, intersects := collision.LineWithSphereIntersectionPoints(line, mesh.BoundingSphere()); !intersects {
+				continue
+			}
+			collision.CheckIntersectionLineWithMesh(line, mesh, false, s.collisionSet)
+		}
+	}))
+
+	var bestIntersection opt.T[collision.Intersection]
+	var bestDistance = 100000.0
+	for _, intersection := range s.collisionSet.Intersections() {
+		distance := dprec.Vec3Diff(intersection.FirstContact, line.A()).Length()
+		if !bestIntersection.Specified || distance < bestDistance {
+			bestIntersection = opt.V(intersection)
+			bestDistance = distance
+		}
+	}
+	return bestIntersection
+}
+
 func (s *Scene) detectCollisions() {
 	defer metric.BeginRegion("collision").End()
 

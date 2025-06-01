@@ -3,6 +3,7 @@ package game
 import (
 	"github.com/mokiat/gomath/dprec"
 	"github.com/mokiat/gomath/dtos"
+	"github.com/mokiat/lacking/game/animation"
 	"github.com/mokiat/lacking/game/graphics"
 	"github.com/mokiat/lacking/game/hierarchy"
 	"github.com/mokiat/lacking/game/physics"
@@ -24,7 +25,7 @@ func (s BodyNodeSource) Release() {
 }
 
 type AnimationNodeSource struct {
-	Source AnimationSource
+	Source animation.Source
 }
 
 func (s AnimationNodeSource) ApplyTo(node *hierarchy.Node) {
