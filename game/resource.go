@@ -23,7 +23,7 @@ func newResourceSet(parent *ResourceSet, engine *Engine) *ResourceSet {
 		ioWorker:  engine.ioWorker,
 		gfxWorker: engine.gfxWorker,
 
-		namedModels: make(map[string]async.Promise[*ModelDefinition]),
+		namedModels: make(map[string]async.Promise[*ModelTemplate]),
 	}
 }
 
@@ -38,7 +38,7 @@ type ResourceSet struct {
 	ioWorker  Worker
 	gfxWorker Worker
 
-	namedModels map[string]async.Promise[*ModelDefinition]
+	namedModels map[string]async.Promise[*ModelTemplate]
 }
 
 // CreateResourceSet creates a new ResourceSet that inherits resources from
@@ -49,13 +49,13 @@ func (s *ResourceSet) CreateResourceSet() *ResourceSet {
 }
 
 // OpenModel loads a model definition by its path.
-func (s *ResourceSet) OpenModel(path string) async.Promise[*ModelDefinition] {
+func (s *ResourceSet) OpenModel(path string) async.Promise[*ModelTemplate] {
 	if result, ok := s.findModel(path); ok {
 		return result
 	}
 	resource := chunked.NewAsset(s.storage, path)
 
-	result := async.NewPromise[*ModelDefinition]()
+	result := async.NewPromise[*ModelTemplate]()
 	s.engine.RunAsync(func(asyncEngine *AsyncEngine) error {
 		model, err := s.loadModel(asyncEngine, resource)
 		if err != nil {
@@ -83,14 +83,14 @@ func (s *ResourceSet) Delete() {
 	clear(s.namedModels)
 }
 
-func (s *ResourceSet) findModel(path string) (async.Promise[*ModelDefinition], bool) {
+func (s *ResourceSet) findModel(path string) (async.Promise[*ModelTemplate], bool) {
 	if result, ok := s.namedModels[path]; ok {
 		return result, true
 	}
 	if s.parent != nil {
 		return s.parent.findModel(path)
 	}
-	return async.Promise[*ModelDefinition]{}, false
+	return async.Promise[*ModelTemplate]{}, false
 }
 
 // AssetLoader represents an async loading process in the scope of a given

@@ -4,7 +4,6 @@ import (
 	"time"
 
 	"github.com/mokiat/gog/ds"
-	"github.com/mokiat/gog/opt"
 	"github.com/mokiat/lacking/debug/metric"
 	"github.com/mokiat/lacking/game/animation"
 	"github.com/mokiat/lacking/game/ecs"
@@ -208,94 +207,6 @@ func (s *Scene) Render(framebuffer render.Framebuffer, viewport graphics.Viewpor
 	renderSpan := metric.BeginRegion("render")
 	s.gfxScene.Render(framebuffer, viewport)
 	renderSpan.End()
-}
-
-// TODO: Return the node instead and have the Model be a target?
-func (s *Scene) CreateModel(info ModelInfo) *Model {
-	hierarchyInfo := HierarchyInfo{
-		NodeTemplates: info.Definition.nodes,
-		Name:          opt.V(info.Name),
-		Position:      info.Position,
-		Rotation:      info.Rotation,
-		Scale:         info.Scale,
-		SubTreeNode:   info.RootNode,
-		AttachToScene: opt.V(info.IsDynamic),
-	}
-
-	hierarchyInstance := s.InstantiateHierarchy(hierarchyInfo)
-	modelNode := hierarchyInstance.RootNode
-	nodes := hierarchyInstance.Nodes
-
-	definition := info.Definition
-	textures := definition.textures
-	recordings := definition.recordings
-	meshDefinitions := definition.meshDefinitions
-
-	armatures := make(IdentifiableList[*graphics.Armature], 0, len(definition.armatures))
-	for id, template := range definition.armatures.Iter() {
-		armature := s.InstantiateArmatureTemplate(template, nodes)
-		armatures = append(armatures, Identifiable[*graphics.Armature]{
-			ID:    id,
-			Value: armature,
-		})
-	}
-
-	for template := range definition.meshes.Values() {
-		if nodes.HasID(template.NodeID) {
-			if info.IsDynamic {
-				s.InstantiateMeshTemplateDynamic(template, nodes, meshDefinitions, armatures)
-			} else {
-				s.InstantiateMeshTemplateStatic(template, nodes, meshDefinitions, armatures)
-			}
-		}
-	}
-
-	for template := range definition.bodies.Values() {
-		if nodes.HasID(template.NodeID) {
-			if info.IsDynamic {
-				s.InstantiatePhysicsBodyTemplateDynamic(template, nodes)
-			} else {
-				s.InstantiatePhysicsBodyTemplateStatic(template, nodes)
-			}
-		}
-	}
-
-	for template := range definition.ambientLights.Values() {
-		if nodes.HasID(template.NodeID) {
-			s.InstantiateAmbientLightTemplate(template, nodes, textures)
-		}
-	}
-	for template := range definition.pointLights.Values() {
-		if nodes.HasID(template.NodeID) {
-			s.InstantiatePointLightTemplate(template, nodes)
-		}
-	}
-	for template := range definition.spotLights.Values() {
-		if nodes.HasID(template.NodeID) {
-			s.InstantiateSpotLightTemplate(template, nodes)
-		}
-	}
-	for template := range definition.directionalLights.Values() {
-		if nodes.HasID(template.NodeID) {
-			s.InstantiateDirectionalLightTemplate(template, nodes)
-		}
-	}
-	for template := range definition.skyTemplates.Values() {
-		if nodes.HasID(template.NodeID) {
-			s.InstantiateSkyTemplate(template, nodes)
-		}
-	}
-
-	modelNode.ApplyFromSource(true)
-	modelNode.ApplyToTarget(true)
-
-	return &Model{
-		definition: definition,
-		root:       modelNode,
-
-		recordings: recordings.ValuesList(),
-		armatures:  armatures.ValuesList(),
-	}
 }
 
 func (s *Scene) updatePhysics(elapsedTime time.Duration) {
