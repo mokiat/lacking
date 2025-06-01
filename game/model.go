@@ -13,8 +13,6 @@ import (
 )
 
 type ModelDefinition struct {
-	hierarchy *HierarchyTemplate
-
 	recordings IdentifiableList[*animation.Recording]
 
 	armatures       []armatureDefinition
@@ -28,6 +26,7 @@ type ModelDefinition struct {
 	bodyDefinitions []*physics.BodyDefinition
 	bodies          []bodyInstance
 
+	nodes             IdentifiableList[NodeTemplate]
 	ambientLights     IdentifiableList[AmbientLightTemplate]
 	pointLights       IdentifiableList[PointLightTemplate]
 	spotLights        IdentifiableList[SpotLightTemplate]

@@ -64,8 +64,6 @@ func (s *ResourceSet) convertModel(asyncEngine *AsyncEngine, assetModel dto.Mode
 		asyncEngine: asyncEngine,
 	}
 
-	hierarchy := loader.ResolveHierarchyTemplate(assetModel.HierarchyChunk)
-
 	recordings, err := loader.ResolveAnimationRecordings(assetModel.AnimationChunk.Animations)
 	if err != nil {
 		return nil, fmt.Errorf("failed to resolve animation recordings: %w", err)
@@ -213,6 +211,11 @@ func (s *ResourceSet) convertModel(asyncEngine *AsyncEngine, assetModel dto.Mode
 		bodies[i] = s.convertBody(bodyDefinitionIndexByID, assetBody)
 	}
 
+	nodes, err := loader.ResolveNodeTemplates(assetModel.HierarchyChunk.Nodes)
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve node templates: %w", err)
+	}
+
 	ambientLights, err := loader.ResolveAmbientLightTemplates(assetModel.LightingChunk.AmbientLights)
 	if err != nil {
 		return nil, fmt.Errorf("failed to resolve ambient light templates: %w", err)
@@ -239,18 +242,19 @@ func (s *ResourceSet) convertModel(asyncEngine *AsyncEngine, assetModel dto.Mode
 	}
 
 	return &ModelDefinition{
-		hierarchy:         hierarchy,
-		recordings:        recordings,
-		armatures:         armatures,
-		shaders:           shaders,
-		textures:          identifiableTextures,
-		materials:         materials,
-		meshGeometries:    meshGeometries,
-		meshDefinitions:   meshDefinitions,
-		meshes:            meshes,
-		bodyMaterials:     bodyMaterials,
-		bodyDefinitions:   bodyDefinitions,
-		bodies:            bodies,
+		recordings:      recordings,
+		armatures:       armatures,
+		shaders:         shaders,
+		textures:        identifiableTextures,
+		materials:       materials,
+		meshGeometries:  meshGeometries,
+		meshDefinitions: meshDefinitions,
+		meshes:          meshes,
+		bodyMaterials:   bodyMaterials,
+		bodyDefinitions: bodyDefinitions,
+		bodies:          bodies,
+
+		nodes:             nodes,
 		ambientLights:     ambientLights,
 		pointLights:       pointLights,
 		spotLights:        spotLights,

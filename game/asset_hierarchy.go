@@ -9,12 +9,7 @@ import (
 	"github.com/mokiat/lacking/game/hierarchy"
 )
 
-type HierarchyTemplate struct {
-	Nodes []HierarchyNodeTemplate
-}
-
-type HierarchyNodeTemplate struct {
-	ID       uint32
+type NodeTemplate struct {
 	ParentID uint32
 	Name     string
 	Position dprec.Vec3
@@ -22,28 +17,33 @@ type HierarchyNodeTemplate struct {
 	Scale    dprec.Vec3
 }
 
-func (s *AssetLoader) ResolveHierarchyTemplate(chunk *dto.HierarchyChunk) *HierarchyTemplate {
-	if chunk == nil {
-		return &HierarchyTemplate{}
-	}
-	nodes := make([]HierarchyNodeTemplate, len(chunk.Nodes))
-	for i, assetNode := range chunk.Nodes {
-		nodes[i] = HierarchyNodeTemplate{
-			ID:       assetNode.ID,
+func (l *AssetLoader) ResolveNodeTemplate(assetNode dto.Node) (Identifiable[NodeTemplate], error) {
+	return Identifiable[NodeTemplate]{
+		ID: assetNode.ID,
+		Value: NodeTemplate{
 			ParentID: assetNode.ParentID,
 			Name:     assetNode.Name,
 			Position: assetNode.Translation,
 			Rotation: assetNode.Rotation,
 			Scale:    assetNode.Scale,
+		},
+	}, nil
+}
+
+func (l *AssetLoader) ResolveNodeTemplates(assetNodes []dto.Node) (IdentifiableList[NodeTemplate], error) {
+	templates := make(IdentifiableList[NodeTemplate], len(assetNodes))
+	for i, assetNode := range assetNodes {
+		template, err := l.ResolveNodeTemplate(assetNode)
+		if err != nil {
+			return nil, err
 		}
+		templates[i] = template
 	}
-	return &HierarchyTemplate{
-		Nodes: nodes,
-	}
+	return templates, nil
 }
 
 type HierarchyInfo struct {
-	Template      *HierarchyTemplate
+	NodeTemplates IdentifiableList[NodeTemplate]
 	Name          opt.T[string]
 	Position      opt.T[dprec.Vec3]
 	Rotation      opt.T[dprec.Quat]
@@ -58,27 +58,25 @@ type Hierarchy struct {
 }
 
 func (s *Scene) InstantiateHierarchy(info HierarchyInfo) *Hierarchy {
-	template := info.Template
-
-	nodes := make(map[uint32]*hierarchy.Node, len(template.Nodes))
-	for _, nodeDef := range template.Nodes {
+	nodes := make(map[uint32]*hierarchy.Node, len(info.NodeTemplates))
+	for nodeID, nodeTemplate := range info.NodeTemplates.Iter() {
 		node := hierarchy.NewNode()
-		node.SetName(nodeDef.Name)
-		node.SetPosition(nodeDef.Position)
-		node.SetRotation(nodeDef.Rotation)
-		node.SetScale(nodeDef.Scale)
-		nodes[nodeDef.ID] = node
+		node.SetName(nodeTemplate.Name)
+		node.SetPosition(nodeTemplate.Position)
+		node.SetRotation(nodeTemplate.Rotation)
+		node.SetScale(nodeTemplate.Scale)
+		nodes[nodeID] = node
 	}
 
 	rootNode := hierarchy.NewNode()
-	for _, nodeDef := range template.Nodes {
+	for nodeID, nodeTemplate := range info.NodeTemplates.Iter() {
 		var parent *hierarchy.Node
-		if nodeDef.ParentID != UnspecifiedID {
-			parent = nodes[nodeDef.ParentID]
+		if nodeTemplate.ParentID != UnspecifiedID {
+			parent = nodes[nodeTemplate.ParentID]
 		} else {
 			parent = rootNode
 		}
-		parent.AppendChild(nodes[nodeDef.ID])
+		parent.AppendChild(nodes[nodeID])
 	}
 
 	if info.SubTreeNode.Specified {

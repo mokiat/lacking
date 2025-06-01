@@ -215,7 +215,7 @@ func (s *Scene) Render(framebuffer render.Framebuffer, viewport graphics.Viewpor
 // TODO: Return the node instead and have the Model be a target?
 func (s *Scene) CreateModel(info ModelInfo) *Model {
 	hierarchyInfo := HierarchyInfo{
-		Template:      info.Definition.hierarchy,
+		NodeTemplates: info.Definition.nodes,
 		Name:          opt.V(info.Name),
 		Position:      info.Position,
 		Rotation:      info.Rotation,

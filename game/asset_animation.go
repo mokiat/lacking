@@ -6,7 +6,7 @@ import (
 	"github.com/mokiat/lacking/game/asset/dto"
 )
 
-func (s *AssetLoader) ResolveAnimationRecording(assetAnimation dto.Animation) (Identifiable[*animation.Recording], error) {
+func (l *AssetLoader) ResolveAnimationRecording(assetAnimation dto.Animation) (Identifiable[*animation.Recording], error) {
 	recording := animation.NewRecording()
 	recording.SetName(assetAnimation.Name)
 	recording.SetStartTime(assetAnimation.StartTime)
@@ -47,10 +47,10 @@ func (s *AssetLoader) ResolveAnimationRecording(assetAnimation dto.Animation) (I
 	}, nil
 }
 
-func (s *AssetLoader) ResolveAnimationRecordings(assetAnimations []dto.Animation) (IdentifiableList[*animation.Recording], error) {
+func (l *AssetLoader) ResolveAnimationRecordings(assetAnimations []dto.Animation) (IdentifiableList[*animation.Recording], error) {
 	recordings := make(IdentifiableList[*animation.Recording], len(assetAnimations))
 	for i, assetAnimation := range assetAnimations {
-		recording, err := s.ResolveAnimationRecording(assetAnimation)
+		recording, err := l.ResolveAnimationRecording(assetAnimation)
 		if err != nil {
 			return nil, err
 		}
