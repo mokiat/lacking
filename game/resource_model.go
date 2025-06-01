@@ -31,7 +31,7 @@ func (s *ResourceSet) freeModel(model *ModelDefinition) {
 		}
 	})
 	s.gfxWorker.Schedule(func() {
-		for _, meshGeometry := range model.meshGeometries {
+		for meshGeometry := range model.meshGeometries.Values() {
 			meshGeometry.Delete()
 		}
 	})
@@ -92,25 +92,17 @@ func (s *ResourceSet) convertModel(asyncEngine *AsyncEngine, assetModel dto.Mode
 		return nil, fmt.Errorf("failed to resolve body definitions: %w", err)
 	}
 
-	// TODO: Convert cameras
-
-	meshGeometryPromises := make([]async.Promise[*graphics.MeshGeometry], len(assetModel.MeshChunk.Geometries))
-	for i, assetGeometry := range assetModel.MeshChunk.Geometries {
-		meshGeometryPromises[i] = s.convertMeshGeometry(assetGeometry)
-	}
-	meshGeometries, err := async.WaitPromises(meshGeometryPromises...)
+	meshGeometries, err := loader.ResolveMeshGeometries(assetModel.MeshChunk.Geometries)
 	if err != nil {
-		return nil, fmt.Errorf("failed to convert mesh geometries: %w", err)
+		return nil, fmt.Errorf("failed to resolve mesh geometries: %w", err)
 	}
-	meshGeometryByID := make(map[uint32]*graphics.MeshGeometry, len(assetModel.MeshChunk.Geometries))
-	for i, assetGeometry := range assetModel.MeshChunk.Geometries {
-		meshGeometryByID[assetGeometry.ID] = meshGeometries[i]
-	}
+
+	// TODO: Convert cameras
 
 	meshDefinitionPromises := make([]async.Promise[*graphics.MeshDefinition], len(assetModel.MeshChunk.MeshDefinitions))
 	for i, assetMeshDefinition := range assetModel.MeshChunk.MeshDefinitions {
 		meshDefinitionPromises[i] = s.convertMeshDefinition(
-			meshGeometryByID,
+			meshGeometries,
 			materials,
 			assetMeshDefinition,
 		)
@@ -179,8 +171,8 @@ func (s *ResourceSet) convertModel(asyncEngine *AsyncEngine, assetModel dto.Mode
 		materials:       materials,
 		bodyMaterials:   bodyMaterials,
 		bodyDefinitions: bodyDefinitions,
-
 		meshGeometries:  meshGeometries,
+
 		meshDefinitions: meshDefinitions,
 		meshes:          meshes,
 

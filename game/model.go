@@ -21,8 +21,8 @@ type ModelDefinition struct {
 	materials       IdentifiableList[*graphics.Material]
 	bodyMaterials   IdentifiableList[*physics.Material]
 	bodyDefinitions IdentifiableList[*physics.BodyDefinition]
+	meshGeometries  IdentifiableList[*graphics.MeshGeometry]
 
-	meshGeometries  []*graphics.MeshGeometry
 	meshDefinitions []*graphics.MeshDefinition
 	meshes          []meshInstance
 
