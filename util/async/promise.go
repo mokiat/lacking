@@ -1,6 +1,9 @@
 package async
 
-import "errors"
+import (
+	"cmp"
+	"errors"
+)
 
 func NewDeliveredPromise[T any](value T) Promise[T] {
 	result := NewPromise[T]()
@@ -185,4 +188,33 @@ func InjectionPromise[T any](operation Operation, target T) Promise[T] {
 		}
 	}()
 	return result
+}
+
+func WaitOperations(operations ...Operation) error {
+	var err error
+	for _, operation := range operations {
+		err = cmp.Or(err, operation.Wait())
+	}
+	return err
+}
+
+func JoinOperations(operations ...Operation) Operation {
+	return NewFuncOperation(func() error {
+		var err error
+		for _, operation := range operations {
+			err = cmp.Or(err, operation.Wait())
+		}
+		return err
+	})
+}
+
+func Sequential(actions ...func() Operation) Operation {
+	return NewFuncOperation(func() error {
+		for _, action := range actions {
+			if err := action().Wait(); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
 }

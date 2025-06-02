@@ -11,19 +11,22 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
-func (l *AssetLoader) ResolvePhysicsMaterial(assetMaterial dto.BodyMaterial) (Identifiable[*physics.Material], error) {
+// LoadPhysicsMaterial loads a physics material from the given asset data.
+//
+// This is a blocking operation and should be called from a worker thread.
+func LoadPhysicsMaterial(loader *AssetLoader, assetMaterial dto.BodyMaterial) (Identifiable[*physics.Material], error) {
 	materialInfo := physics.MaterialInfo{
 		FrictionCoefficient:    assetMaterial.FrictionCoefficient,
 		RestitutionCoefficient: assetMaterial.RestitutionCoefficient,
 	}
 
 	var material *physics.Material
-	allocateMaterial := func(engine *Engine) error {
-		physicsEngine := engine.Physics()
+	allocateMaterial := func() error {
+		physicsEngine := loader.Engine().Physics()
 		material = physicsEngine.CreateMaterial(materialInfo)
 		return nil
 	}
-	if err := l.ScheduleMain(allocateMaterial).Wait(); err != nil {
+	if err := loader.ScheduleMain(allocateMaterial).Wait(); err != nil {
 		return Identifiable[*physics.Material]{}, err
 	}
 
@@ -33,12 +36,16 @@ func (l *AssetLoader) ResolvePhysicsMaterial(assetMaterial dto.BodyMaterial) (Id
 	}, nil
 }
 
-func (l *AssetLoader) ResolvePhysicsMaterials(assetMaterials []dto.BodyMaterial) (IdentifiableList[*physics.Material], error) {
+// LoadPhysicsMaterials loads a list of physics materials from the given asset
+// materials.
+//
+// This is a blocking operation and should be called from a worker thread.
+func LoadPhysicsMaterials(loader *AssetLoader, assetMaterials []dto.BodyMaterial) (IdentifiableList[*physics.Material], error) {
 	materials := make(IdentifiableList[*physics.Material], len(assetMaterials))
 	var group errgroup.Group
 	for i, assetMaterial := range assetMaterials {
 		group.Go(func() error {
-			material, err := l.ResolvePhysicsMaterial(assetMaterial)
+			material, err := LoadPhysicsMaterial(loader, assetMaterial)
 			materials[i] = material
 			return err
 		})
@@ -46,7 +53,32 @@ func (l *AssetLoader) ResolvePhysicsMaterials(assetMaterials []dto.BodyMaterial)
 	return materials, group.Wait()
 }
 
-func (l *AssetLoader) ResolvePhysicsBodyDefinition(assetBodyDefinition dto.BodyDefinition, materials IdentifiableList[*physics.Material]) (Identifiable[*physics.BodyDefinition], error) {
+// UnloadPhysicsMaterial unloads a physics material from the asset loader.
+//
+// This is a blocking operation and should be called from a worker thread.
+func UnloadPhysicsMaterial(loader *AssetLoader, idMaterial Identifiable[*physics.Material]) error {
+	// At the time being this is a no-op.
+	return nil
+}
+
+// UnloadPhysicsMaterials unloads a list of physics materials from the asset
+// loader.
+//
+// This is a blocking operation and should be called from a worker thread.
+func UnloadPhysicsMaterials(loader *AssetLoader, idMaterials IdentifiableList[*physics.Material]) error {
+	for _, idMaterial := range idMaterials {
+		if err := UnloadPhysicsMaterial(loader, idMaterial); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// LoadPhysicsBodyDefinition loads a physics body definition from the given
+// asset data.
+//
+// This is a blocking operation and should be called from a worker thread.
+func LoadPhysicsBodyDefinition(loader *AssetLoader, assetBodyDefinition dto.BodyDefinition, materials IdentifiableList[*physics.Material]) (Identifiable[*physics.BodyDefinition], error) {
 	material, ok := materials.FindByID(assetBodyDefinition.MaterialID)
 	if !ok {
 		return Identifiable[*physics.BodyDefinition]{}, fmt.Errorf("physics material with ID %d not found", assetBodyDefinition.MaterialID)
@@ -60,18 +92,18 @@ func (l *AssetLoader) ResolvePhysicsBodyDefinition(assetBodyDefinition dto.BodyD
 		DragFactor:             assetBodyDefinition.DragFactor,
 		AngularDragFactor:      assetBodyDefinition.AngularDragFactor,
 		AerodynamicShapes:      nil, // TODO
-		CollisionSpheres:       l.resolveCollisionSpheres(assetBodyDefinition),
-		CollisionBoxes:         l.resolveCollisionBoxes(assetBodyDefinition),
-		CollisionMeshes:        l.resolveCollisionMeshes(assetBodyDefinition),
+		CollisionSpheres:       resolveCollisionSpheres(assetBodyDefinition),
+		CollisionBoxes:         resolveCollisionBoxes(assetBodyDefinition),
+		CollisionMeshes:        resolveCollisionMeshes(assetBodyDefinition),
 	}
 
 	var bodyDefinition *physics.BodyDefinition
-	allocateDefinition := func(engine *Engine) error {
-		physicsEngine := engine.Physics()
+	allocateDefinition := func() error {
+		physicsEngine := loader.Engine().Physics()
 		bodyDefinition = physicsEngine.CreateBodyDefinition(bodyDefinitionInfo)
 		return nil
 	}
-	if err := l.ScheduleMain(allocateDefinition).Wait(); err != nil {
+	if err := loader.ScheduleMain(allocateDefinition).Wait(); err != nil {
 		return Identifiable[*physics.BodyDefinition]{}, err
 	}
 
@@ -81,12 +113,16 @@ func (l *AssetLoader) ResolvePhysicsBodyDefinition(assetBodyDefinition dto.BodyD
 	}, nil
 }
 
-func (l *AssetLoader) ResolvePhysicsBodyDefinitions(assetBodyDefinitions []dto.BodyDefinition, materials IdentifiableList[*physics.Material]) (IdentifiableList[*physics.BodyDefinition], error) {
+// LoadPhysicsBodyDefinitions loads a list of physics body definitions from the
+// given asset body definitions.
+//
+// This is a blocking operation and should be called from a worker thread.
+func LoadPhysicsBodyDefinitions(loader *AssetLoader, assetBodyDefinitions []dto.BodyDefinition, materials IdentifiableList[*physics.Material]) (IdentifiableList[*physics.BodyDefinition], error) {
 	bodyDefinitions := make(IdentifiableList[*physics.BodyDefinition], len(assetBodyDefinitions))
 	var group errgroup.Group
 	for i, assetBodyDefinition := range assetBodyDefinitions {
 		group.Go(func() error {
-			bodyDefinition, err := l.ResolvePhysicsBodyDefinition(assetBodyDefinition, materials)
+			bodyDefinition, err := LoadPhysicsBodyDefinition(loader, assetBodyDefinition, materials)
 			bodyDefinitions[i] = bodyDefinition
 			return err
 		})
@@ -94,7 +130,29 @@ func (l *AssetLoader) ResolvePhysicsBodyDefinitions(assetBodyDefinitions []dto.B
 	return bodyDefinitions, group.Wait()
 }
 
-func (l *AssetLoader) resolveCollisionSpheres(bodyDef dto.BodyDefinition) []collision.Sphere {
+// UnloadPhysicsBodyDefinition unloads a physics body definition from the asset
+// loader.
+//
+// This is a blocking operation and should be called from a worker thread.
+func UnloadPhysicsBodyDefinition(loader *AssetLoader, idBodyDefinition Identifiable[*physics.BodyDefinition]) error {
+	// At the time being this is a no-op.
+	return nil
+}
+
+// UnloadPhysicsBodyDefinitions unloads a list of physics body definitions from
+// the asset loader.
+//
+// This is a blocking operation and should be called from a worker thread.
+func UnloadPhysicsBodyDefinitions(loader *AssetLoader, idBodyDefinitions IdentifiableList[*physics.BodyDefinition]) error {
+	for _, idBodyDefinition := range idBodyDefinitions {
+		if err := UnloadPhysicsBodyDefinition(loader, idBodyDefinition); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func resolveCollisionSpheres(bodyDef dto.BodyDefinition) []collision.Sphere {
 	result := make([]collision.Sphere, len(bodyDef.CollisionSpheres))
 	for i, collisionSphereAsset := range bodyDef.CollisionSpheres {
 		result[i] = collision.NewSphere(
@@ -105,7 +163,7 @@ func (l *AssetLoader) resolveCollisionSpheres(bodyDef dto.BodyDefinition) []coll
 	return result
 }
 
-func (l *AssetLoader) resolveCollisionBoxes(bodyDef dto.BodyDefinition) []collision.Box {
+func resolveCollisionBoxes(bodyDef dto.BodyDefinition) []collision.Box {
 	result := make([]collision.Box, len(bodyDef.CollisionBoxes))
 	for i, collisionBoxAsset := range bodyDef.CollisionBoxes {
 		result[i] = collision.NewBox(
@@ -117,7 +175,7 @@ func (l *AssetLoader) resolveCollisionBoxes(bodyDef dto.BodyDefinition) []collis
 	return result
 }
 
-func (l *AssetLoader) resolveCollisionMeshes(bodyDef dto.BodyDefinition) []collision.Mesh {
+func resolveCollisionMeshes(bodyDef dto.BodyDefinition) []collision.Mesh {
 	result := make([]collision.Mesh, len(bodyDef.CollisionMeshes))
 	for i, collisionMeshAsset := range bodyDef.CollisionMeshes {
 		transform := collision.TRTransform(collisionMeshAsset.Translation, collisionMeshAsset.Rotation)
@@ -135,12 +193,18 @@ func (l *AssetLoader) resolveCollisionMeshes(bodyDef dto.BodyDefinition) []colli
 	return result
 }
 
+// BodyTemplate represents a template for physics body that can be
+// instantiated in a scene.
 type BodyTemplate struct {
 	NodeID     uint32
 	Definition *physics.BodyDefinition
 }
 
-func (l *AssetLoader) ResolvePhysicsBodyTemplate(assetBody dto.Body, bodyDefinitions IdentifiableList[*physics.BodyDefinition]) (Identifiable[BodyTemplate], error) {
+// LoadPhysicsBodyTemplate resolves a physics body template from the given asset
+// data.
+//
+// This is a blocking operation and should be called from a worker thread.
+func LoadPhysicsBodyTemplate(loader *AssetLoader, assetBody dto.Body, bodyDefinitions IdentifiableList[*physics.BodyDefinition]) (Identifiable[BodyTemplate], error) {
 	bodyDefinition, ok := bodyDefinitions.FindByID(assetBody.BodyDefinitionID)
 	if !ok {
 		return Identifiable[BodyTemplate]{}, fmt.Errorf("body definition with ID %d not found", assetBody.BodyDefinitionID)
@@ -154,10 +218,14 @@ func (l *AssetLoader) ResolvePhysicsBodyTemplate(assetBody dto.Body, bodyDefinit
 	}, nil
 }
 
-func (l *AssetLoader) ResolvePhysicsBodyTemplates(assetBodies []dto.Body, bodyDefinitions IdentifiableList[*physics.BodyDefinition]) (IdentifiableList[BodyTemplate], error) {
+// LoadPhysicsBodyTemplates resolves a list of physics body templates from the
+// given asset bodies.
+//
+// This is a blocking operation and should be called from a worker thread.
+func LoadPhysicsBodyTemplates(loader *AssetLoader, assetBodies []dto.Body, bodyDefinitions IdentifiableList[*physics.BodyDefinition]) (IdentifiableList[BodyTemplate], error) {
 	bodyTemplates := make(IdentifiableList[BodyTemplate], len(assetBodies))
 	for i, assetBody := range assetBodies {
-		template, err := l.ResolvePhysicsBodyTemplate(assetBody, bodyDefinitions)
+		template, err := LoadPhysicsBodyTemplate(loader, assetBody, bodyDefinitions)
 		if err != nil {
 			return IdentifiableList[BodyTemplate]{}, err
 		}
@@ -166,22 +234,52 @@ func (l *AssetLoader) ResolvePhysicsBodyTemplates(assetBodies []dto.Body, bodyDe
 	return bodyTemplates, nil
 }
 
-func (s *Scene) InstantiatePhysicsBodyTemplateStatic(template BodyTemplate, nodes IdentifiableList[*hierarchy.Node]) {
+// UnloadPhysicsBodyTemplate unloads a physics body template from the asset
+// loader.
+//
+// This is a blocking operation and should be called from a worker thread.
+func UnloadPhysicsBodyTemplate(loader *AssetLoader, idBody Identifiable[BodyTemplate]) error {
+	// At the time being this is a no-op.
+	return nil
+}
+
+// UnloadPhysicsBodyTemplates unloads a list of physics body templates from the
+// asset loader.
+//
+// This is a blocking operation and should be called from a worker thread.
+func UnloadPhysicsBodyTemplates(loader *AssetLoader, idBodies IdentifiableList[BodyTemplate]) error {
+	for _, idBody := range idBodies {
+		if err := UnloadPhysicsBodyTemplate(loader, idBody); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// InstantiatePhysicsBodyTemplateStatic creates a static physics body in the
+// given scene from the provided body template.
+//
+// This operation needs to be called from the main thread.
+func InstantiatePhysicsBodyTemplateStatic(scene *Scene, template BodyTemplate, nodes IdentifiableList[*hierarchy.Node]) {
 	node := nodes.GetByID(template.NodeID)
 	absMatrix := node.AbsoluteMatrix()
 	transform := collision.TRTransform(absMatrix.Translation(), absMatrix.Rotation())
 	collisionSet := collision.NewSet()
 	collisionSet.Replace(template.Definition.CollisionSet(), transform)
-	s.physicsScene.CreateProp(physics.PropInfo{
+	scene.physicsScene.CreateProp(physics.PropInfo{
 		Name:         node.Name(),
 		CollisionSet: collisionSet,
 	})
 }
 
-func (s *Scene) InstantiatePhysicsBodyTemplateDynamic(template BodyTemplate, nodes IdentifiableList[*hierarchy.Node]) physics.Body {
+// InstantiatePhysicsBodyTemplateDynamic creates a dynamic physics body in the
+// given scene from the provided body template and returns it.
+//
+// This operation needs to be called from the main thread.
+func InstantiatePhysicsBodyTemplateDynamic(scene *Scene, template BodyTemplate, nodes IdentifiableList[*hierarchy.Node]) physics.Body {
 	node := nodes.GetByID(template.NodeID)
 	translation, rotation, _ := node.AbsoluteMatrix().TRS()
-	body := s.physicsScene.CreateBody(physics.BodyInfo{
+	body := scene.physicsScene.CreateBody(physics.BodyInfo{
 		Name:       node.Name(),
 		Definition: template.Definition,
 		Position:   translation,

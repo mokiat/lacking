@@ -6,7 +6,10 @@ import (
 	"github.com/mokiat/lacking/game/asset/dto"
 )
 
-func (l *AssetLoader) ResolveAnimationRecording(assetAnimation dto.Animation) (Identifiable[*animation.Recording], error) {
+// LoadAnimationRecording loads an animation recording from the given asset.
+//
+// This is a blocking operation and should be called from a worker thread.
+func LoadAnimationRecording(loader *AssetLoader, assetAnimation dto.Animation) (Identifiable[*animation.Recording], error) {
 	recording := animation.NewRecording()
 	recording.SetName(assetAnimation.Name)
 	recording.SetStartTime(assetAnimation.StartTime)
@@ -47,14 +50,38 @@ func (l *AssetLoader) ResolveAnimationRecording(assetAnimation dto.Animation) (I
 	}, nil
 }
 
-func (l *AssetLoader) ResolveAnimationRecordings(assetAnimations []dto.Animation) (IdentifiableList[*animation.Recording], error) {
+// LoadAnimationRecordings loads a list of animation recordings from the given
+// asset animations.
+//
+// This is a blocking operation and should be called from a worker thread.
+func LoadAnimationRecordings(loader *AssetLoader, assetAnimations []dto.Animation) (IdentifiableList[*animation.Recording], error) {
 	recordings := make(IdentifiableList[*animation.Recording], len(assetAnimations))
 	for i, assetAnimation := range assetAnimations {
-		recording, err := l.ResolveAnimationRecording(assetAnimation)
+		recording, err := LoadAnimationRecording(loader, assetAnimation)
 		if err != nil {
 			return nil, err
 		}
 		recordings[i] = recording
 	}
 	return recordings, nil
+}
+
+// UnloadRecording unloads the given animation recording.
+//
+// This is a blocking operation and should be called from a worker thread.
+func UnloadRecording(loader *AssetLoader, idRecording Identifiable[*animation.Recording]) error {
+	// At the time being this is a no-op.
+	return nil
+}
+
+// UnloadRecordings unloads a list of animation recordings.
+//
+// This is a blocking operation and should be called from a worker thread.
+func UnloadRecordings(loader *AssetLoader, idRecordings IdentifiableList[*animation.Recording]) error {
+	for _, idRecording := range idRecordings {
+		if err := UnloadRecording(loader, idRecording); err != nil {
+			return err
+		}
+	}
+	return nil
 }

@@ -1,6 +1,7 @@
 package game
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/mokiat/gog/ds"
@@ -14,6 +15,8 @@ import (
 	"github.com/mokiat/lacking/render"
 )
 
+// ModelTemplate represents a template for a model that can be instantiated
+// in a Scene.
 type ModelTemplate struct {
 	Recordings      IdentifiableList[*animation.Recording]
 	Shaders         IdentifiableList[*graphics.Shader]
@@ -35,90 +38,93 @@ type ModelTemplate struct {
 	SkyTemplates      IdentifiableList[SkyTemplate]
 }
 
-func (l *AssetLoader) ResolveModelTemplate(assetModel dto.Model) (*ModelTemplate, error) {
-	recordings, err := l.ResolveAnimationRecordings(assetModel.AnimationChunk.Animations)
+// LoadModelTemplate resolves a model template from the given asset data.
+//
+// This is a blocking operation and should be called from a worker thread.
+func LoadModelTemplate(loader *AssetLoader, assetModel dto.Model) (*ModelTemplate, error) {
+	recordings, err := LoadAnimationRecordings(loader, assetModel.AnimationChunk.Animations)
 	if err != nil {
 		return nil, fmt.Errorf("failed to resolve animation recordings: %w", err)
 	}
 
-	shaders, err := l.ResolveShaders(assetModel.ShadingChunk.Shaders)
+	shaders, err := LoadShaders(loader, assetModel.ShadingChunk.Shaders)
 	if err != nil {
 		return nil, fmt.Errorf("failed to resolve shaders: %w", err)
 	}
 
-	textures, err := l.ResolveTextures(assetModel.ShadingChunk.Textures)
+	textures, err := LoadTextures(loader, assetModel.ShadingChunk.Textures)
 	if err != nil {
 		return nil, fmt.Errorf("failed to resolve textures: %w", err)
 	}
 
-	materials, err := l.ResolveMaterials(assetModel.ShadingChunk.Materials, shaders, textures)
+	materials, err := LoadMaterials(loader, assetModel.ShadingChunk.Materials, shaders, textures)
 	if err != nil {
 		return nil, fmt.Errorf("failed to resolve materials: %w", err)
 	}
 
-	bodyMaterials, err := l.ResolvePhysicsMaterials(assetModel.PhysicsChunk.BodyMaterials)
+	bodyMaterials, err := LoadPhysicsMaterials(loader, assetModel.PhysicsChunk.BodyMaterials)
 	if err != nil {
 		return nil, fmt.Errorf("failed to resolve body materials: %w", err)
 	}
 
-	bodyDefinitions, err := l.ResolvePhysicsBodyDefinitions(assetModel.PhysicsChunk.BodyDefinitions, bodyMaterials)
+	bodyDefinitions, err := LoadPhysicsBodyDefinitions(loader, assetModel.PhysicsChunk.BodyDefinitions, bodyMaterials)
 	if err != nil {
 		return nil, fmt.Errorf("failed to resolve body definitions: %w", err)
 	}
 
-	meshGeometries, err := l.ResolveMeshGeometries(assetModel.MeshChunk.Geometries)
+	meshGeometries, err := LoadMeshGeometries(loader, assetModel.MeshChunk.Geometries)
 	if err != nil {
 		return nil, fmt.Errorf("failed to resolve mesh geometries: %w", err)
 	}
 
-	meshDefinitions, err := l.ResolveMeshDefinitions(assetModel.MeshChunk.MeshDefinitions, meshGeometries, materials)
+	meshDefinitions, err := LoadMeshDefinitions(loader, assetModel.MeshChunk.MeshDefinitions, meshGeometries, materials)
 	if err != nil {
 		return nil, fmt.Errorf("failed to resolve mesh definitions: %w", err)
 	}
 
-	nodes, err := l.ResolveNodeTemplates(assetModel.HierarchyChunk.Nodes)
+	nodes, err := LoadNodeTemplates(loader, assetModel.HierarchyChunk.Nodes)
 	if err != nil {
 		return nil, fmt.Errorf("failed to resolve node templates: %w", err)
 	}
 
-	bodies, err := l.ResolvePhysicsBodyTemplates(assetModel.PhysicsChunk.Bodies, bodyDefinitions)
+	bodies, err := LoadPhysicsBodyTemplates(loader, assetModel.PhysicsChunk.Bodies, bodyDefinitions)
 	if err != nil {
 		return nil, fmt.Errorf("failed to resolve physics body templates: %w", err)
 	}
 
-	armatures, err := l.ResolveArmatureTemplates(assetModel.MeshChunk.Armatures)
+	armatures, err := LoadArmatureTemplates(loader, assetModel.MeshChunk.Armatures)
 	if err != nil {
 		return nil, fmt.Errorf("failed to resolve armature templates: %w", err)
 	}
 
-	meshes, err := l.ResolveMeshTemplates(assetModel.MeshChunk.Meshes)
+	meshes, err := LoadMeshTemplates(loader, assetModel.MeshChunk.Meshes)
 	if err != nil {
 		return nil, fmt.Errorf("failed to resolve mesh templates: %w", err)
 	}
 
-	ambientLights, err := l.ResolveAmbientLightTemplates(assetModel.LightingChunk.AmbientLights)
+	ambientLights, err := LoadAmbientLightTemplates(loader, assetModel.LightingChunk.AmbientLights)
 	if err != nil {
 		return nil, fmt.Errorf("failed to resolve ambient light templates: %w", err)
 	}
 
-	pointLights, err := l.ResolvePointLightTemplates(assetModel.LightingChunk.PointLights)
+	pointLights, err := LoadPointLightTemplates(loader, assetModel.LightingChunk.PointLights)
 	if err != nil {
 		return nil, fmt.Errorf("failed to resolve point light templates: %w", err)
 	}
 
-	spotLights, err := l.ResolveSpotLightTemplates(assetModel.LightingChunk.SpotLights)
+	spotLights, err := LoadSpotLightTemplates(loader, assetModel.LightingChunk.SpotLights)
 	if err != nil {
 		return nil, fmt.Errorf("failed to resolve spot light templates: %w", err)
 	}
 
-	directionalLights, err := l.ResolveDirectionalLightTemplates(assetModel.LightingChunk.DirectionalLights)
+	directionalLights, err := LoadDirectionalLightTemplates(loader, assetModel.LightingChunk.DirectionalLights)
 	if err != nil {
 		return nil, fmt.Errorf("failed to resolve directional light templates: %w", err)
 	}
 
 	// TODO: Convert cameras
 
-	skyTemplates, err := l.ResolveSkyTemplates(assetModel.BackgroundChunk.Skies, materials)
+	skyTemplates, err := LoadSkyTemplates(loader, assetModel.BackgroundChunk.Skies, materials)
 	if err != nil {
 		return nil, fmt.Errorf("failed to resolve sky templates: %w", err)
 	}
@@ -143,6 +149,32 @@ func (l *AssetLoader) ResolveModelTemplate(assetModel dto.Model) (*ModelTemplate
 		DirectionalLights: directionalLights,
 		SkyTemplates:      skyTemplates,
 	}, nil
+}
+
+// UnloadModelTemplate unloads the given model template from the asset loader.
+//
+// This is a blocking operation and should be called from a worker thread.
+func UnloadModelTemplate(loader *AssetLoader, template *ModelTemplate) error {
+	return errors.Join(
+		UnloadRecordings(loader, template.Recordings),
+		UnloadShaders(loader, template.Shaders),
+		UnloadTextures(loader, template.Textures),
+		UnloadMaterials(loader, template.Materials),
+		UnloadPhysicsMaterials(loader, template.BodyMaterials),
+		UnloadPhysicsBodyDefinitions(loader, template.BodyDefinitions),
+		UnloadMeshGeometries(loader, template.MeshGeometries),
+		UnloadMeshDefinitions(loader, template.MeshDefinitions),
+
+		UnloadNodeTemplates(loader, template.Nodes),
+		UnloadPhysicsBodyTemplates(loader, template.Bodies),
+		UnloadArmatureTemplates(loader, template.Armatures),
+		UnloadMeshTemplates(loader, template.Meshes),
+		UnloadAmbientLightTemplates(loader, template.AmbientLights),
+		UnloadPointLightTemplates(loader, template.PointLights),
+		UnloadSpotLightTemplates(loader, template.SpotLights),
+		UnloadDirectionalLightTemplates(loader, template.DirectionalLights),
+		UnloadSkyTemplates(loader, template.SkyTemplates),
+	)
 }
 
 // ModelInfo contains the information necessary to place a Model
@@ -227,7 +259,9 @@ func (m *Model) BindAnimationSource(source animation.Source) {
 	}
 }
 
-func (s *Scene) InstantiateModel(info ModelInfo) *Model {
+// InstantiateModel instantiates a model in the given scene based on the
+// provided info.
+func InstantiateModel(scene *Scene, info ModelInfo) *Model {
 	hierarchyInfo := HierarchyInfo{
 		NodeTemplates: info.Template.Nodes,
 		Name:          info.Name,
@@ -238,7 +272,7 @@ func (s *Scene) InstantiateModel(info ModelInfo) *Model {
 		AttachToScene: opt.V(info.IsDynamic),
 	}
 
-	hierarchyInstance := s.InstantiateHierarchy(hierarchyInfo)
+	hierarchyInstance := InstantiateHierarchy(scene, hierarchyInfo)
 	modelNode := hierarchyInstance.RootNode
 	nodes := hierarchyInstance.Nodes
 
@@ -250,16 +284,16 @@ func (s *Scene) InstantiateModel(info ModelInfo) *Model {
 	for template := range definition.Bodies.Values() {
 		if nodes.HasID(template.NodeID) {
 			if info.IsDynamic {
-				s.InstantiatePhysicsBodyTemplateDynamic(template, nodes)
+				InstantiatePhysicsBodyTemplateDynamic(scene, template, nodes)
 			} else {
-				s.InstantiatePhysicsBodyTemplateStatic(template, nodes)
+				InstantiatePhysicsBodyTemplateStatic(scene, template, nodes)
 			}
 		}
 	}
 
 	armatures := make(IdentifiableList[*graphics.Armature], 0, len(definition.Armatures))
 	for id, template := range definition.Armatures.Iter() {
-		armature := s.InstantiateArmatureTemplate(template, nodes)
+		armature := InstantiateArmatureTemplate(scene, template, nodes)
 		armatures = append(armatures, Identifiable[*graphics.Armature]{
 			ID:    id,
 			Value: armature,
@@ -269,36 +303,36 @@ func (s *Scene) InstantiateModel(info ModelInfo) *Model {
 	for template := range definition.Meshes.Values() {
 		if nodes.HasID(template.NodeID) {
 			if info.IsDynamic {
-				s.InstantiateMeshTemplateDynamic(template, nodes, meshDefinitions, armatures)
+				InstantiateMeshTemplateDynamic(scene, template, nodes, meshDefinitions, armatures)
 			} else {
-				s.InstantiateMeshTemplateStatic(template, nodes, meshDefinitions, armatures)
+				InstantiateMeshTemplateStatic(scene, template, nodes, meshDefinitions, armatures)
 			}
 		}
 	}
 
 	for template := range definition.AmbientLights.Values() {
 		if nodes.HasID(template.NodeID) {
-			s.InstantiateAmbientLightTemplate(template, nodes, textures)
+			InstantiateAmbientLightTemplate(scene, template, nodes, textures)
 		}
 	}
 	for template := range definition.PointLights.Values() {
 		if nodes.HasID(template.NodeID) {
-			s.InstantiatePointLightTemplate(template, nodes)
+			InstantiatePointLightTemplate(scene, template, nodes)
 		}
 	}
 	for template := range definition.SpotLights.Values() {
 		if nodes.HasID(template.NodeID) {
-			s.InstantiateSpotLightTemplate(template, nodes)
+			InstantiateSpotLightTemplate(scene, template, nodes)
 		}
 	}
 	for template := range definition.DirectionalLights.Values() {
 		if nodes.HasID(template.NodeID) {
-			s.InstantiateDirectionalLightTemplate(template, nodes)
+			InstantiateDirectionalLightTemplate(scene, template, nodes)
 		}
 	}
 	for template := range definition.SkyTemplates.Values() {
 		if nodes.HasID(template.NodeID) {
-			s.InstantiateSkyTemplate(template, nodes)
+			InstantiateSkyTemplate(scene, template, nodes)
 		}
 	}
 
@@ -309,4 +343,8 @@ func (s *Scene) InstantiateModel(info ModelInfo) *Model {
 		root:       modelNode,
 		recordings: recordings.ValuesList(),
 	}
+}
+
+func (s *Scene) InstantiateModel(info ModelInfo) *Model {
+	return InstantiateModel(s, info)
 }

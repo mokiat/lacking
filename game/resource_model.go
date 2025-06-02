@@ -2,59 +2,42 @@ package game
 
 import (
 	"fmt"
+	"reflect"
 
+	"github.com/mokiat/gog"
 	"github.com/mokiat/lacking/game/asset/dto"
 	"github.com/mokiat/lacking/storage/chunked"
-	"github.com/mokiat/lacking/util/async"
 )
 
-func (s *ResourceSet) loadModel(asyncEngine *AsyncEngine, resource *chunked.Asset) (*ModelTemplate, error) {
-	assetModelPromise := s.openResource(resource)
-	assetModel, err := assetModelPromise.Wait()
-	if err != nil {
+func newModelResourceLoader() ResourceLoader[any] {
+	return GenericResourceLoader(&modelResourceLoader{
+		resourceType: reflect.TypeOf(gog.Zero[*ModelTemplate]()),
+	})
+}
+
+type modelResourceLoader struct {
+	resourceType reflect.Type
+}
+
+func (l *modelResourceLoader) ApplicableType() reflect.Type {
+	return l.resourceType
+}
+
+func (l *modelResourceLoader) LoadResource(loader *AssetLoader, asset *chunked.Asset) (*ModelTemplate, error) {
+	var dtoModel dto.Model
+	if err := asset.Read(&dtoModel); err != nil {
 		return nil, fmt.Errorf("failed to read asset: %w", err)
 	}
-
-	loader := &AssetLoader{
-		resourceSet: s,
-		asyncEngine: asyncEngine,
+	model, err := LoadModelTemplate(loader, dtoModel)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load model template: %w", err)
 	}
-	return loader.ResolveModelTemplate(assetModel)
+	return model, nil
 }
 
-func (s *ResourceSet) freeModel(model *ModelTemplate) {
-	s.gfxWorker.Schedule(func() {
-		for skyTemplate := range model.SkyTemplates.Values() {
-			definition := skyTemplate.Definition
-			definition.Delete()
-		}
-	})
-	s.gfxWorker.Schedule(func() {
-		for meshDefinition := range model.MeshDefinitions.Values() {
-			meshDefinition.Delete()
-		}
-	})
-	s.gfxWorker.Schedule(func() {
-		for meshGeometry := range model.MeshGeometries.Values() {
-			meshGeometry.Delete()
-		}
-	})
-	s.gfxWorker.Schedule(func() {
-		for texture := range model.Textures.Values() {
-			texture.Release()
-		}
-	})
-}
-
-func (s *ResourceSet) openResource(resource *chunked.Asset) async.Promise[dto.Model] {
-	promise := async.NewPromise[dto.Model]()
-	s.ioWorker.Schedule(func() {
-		var assetModel dto.Model
-		if err := resource.Read(&assetModel); err != nil {
-			promise.Fail(err)
-		} else {
-			promise.Deliver(assetModel)
-		}
-	})
-	return promise
+func (l *modelResourceLoader) UnloadResource(loader *AssetLoader, resource *ModelTemplate) error {
+	if err := UnloadModelTemplate(loader, resource); err != nil {
+		return fmt.Errorf("failed to unload model template: %w", err)
+	}
+	return nil
 }

@@ -74,6 +74,11 @@ func (s *Scene) Delete() {
 	s.engine = nil
 }
 
+// Engine returns the engine associated with the scene.
+func (s *Scene) Engine() *Engine {
+	return s.engine
+}
+
 // SubscribePreUpdate adds a callback to be executed before the scene updates.
 func (s *Scene) SubscribePreUpdate(callback timestep.UpdateCallback) *timestep.UpdateSubscription {
 	return s.preUpdateSubscriptions.Subscribe(callback)

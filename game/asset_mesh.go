@@ -13,12 +13,17 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
+// ArmatureTemplate represents a template for an armature that can be
+// instantiated in a scene.
 type ArmatureTemplate struct {
 	Definition   *graphics.ArmatureDefinition
 	NodeBindings []uint32
 }
 
-func (l *AssetLoader) ResolveArmatureTemplate(assetArmature dto.Armature) (Identifiable[ArmatureTemplate], error) {
+// LoadArmatureTemplate resolves an armature template from the given asset data.
+//
+// This is a blocking operation and should be called from a worker thread.
+func LoadArmatureTemplate(loader *AssetLoader, assetArmature dto.Armature) (Identifiable[ArmatureTemplate], error) {
 	info := graphics.ArmatureDefinitionInfo{
 		InverseBindMatrices: make([]sprec.Mat4, len(assetArmature.Joints)),
 	}
@@ -26,12 +31,12 @@ func (l *AssetLoader) ResolveArmatureTemplate(assetArmature dto.Armature) (Ident
 		info.InverseBindMatrices[i] = assetJoint.InverseBindMatrix
 	}
 	var armatureDefinition *graphics.ArmatureDefinition
-	allocateDefinition := func(engine *Engine) error {
-		gfxEngine := engine.Graphics()
+	allocateDefinition := func() error {
+		gfxEngine := loader.Engine().Graphics()
 		armatureDefinition = gfxEngine.CreateArmatureDefinition(info)
 		return nil
 	}
-	if err := l.ScheduleMain(allocateDefinition).Wait(); err != nil {
+	if err := loader.ScheduleMain(allocateDefinition).Wait(); err != nil {
 		return Identifiable[ArmatureTemplate]{}, err
 	}
 
@@ -49,12 +54,16 @@ func (l *AssetLoader) ResolveArmatureTemplate(assetArmature dto.Armature) (Ident
 	}, nil
 }
 
-func (l *AssetLoader) ResolveArmatureTemplates(assetArmatures []dto.Armature) (IdentifiableList[ArmatureTemplate], error) {
+// LoadArmatureTemplates resolves a list of armature templates from the given
+// asset armatures.
+//
+// This is a blocking operation and should be called from a worker thread.
+func LoadArmatureTemplates(loader *AssetLoader, assetArmatures []dto.Armature) (IdentifiableList[ArmatureTemplate], error) {
 	templates := make(IdentifiableList[ArmatureTemplate], len(assetArmatures))
 	var group errgroup.Group
 	for i, assetArmature := range assetArmatures {
 		group.Go(func() error {
-			template, err := l.ResolveArmatureTemplate(assetArmature)
+			template, err := LoadArmatureTemplate(loader, assetArmature)
 			templates[i] = template
 			return err
 		})
@@ -62,8 +71,32 @@ func (l *AssetLoader) ResolveArmatureTemplates(assetArmatures []dto.Armature) (I
 	return templates, group.Wait()
 }
 
-func (s *Scene) InstantiateArmatureTemplate(template ArmatureTemplate, nodes IdentifiableList[*hierarchy.Node]) *graphics.Armature {
-	armature := s.gfxScene.CreateArmature(graphics.ArmatureInfo{
+// UnloadArmatureTemplate unloads an armature template from the engine.
+//
+// This is a blocking operation and should be called from a worker thread.
+func UnloadArmatureTemplate(loader *AssetLoader, idTemplate Identifiable[ArmatureTemplate]) error {
+	// At the time being this is a no-op.
+	return nil
+}
+
+// UnloadArmatureTemplates unloads a list of armature templates from the engine.
+//
+// This is a blocking operation and should be called from a worker thread.
+func UnloadArmatureTemplates(loader *AssetLoader, idTemplates IdentifiableList[ArmatureTemplate]) error {
+	for _, idTemplate := range idTemplates {
+		if err := UnloadArmatureTemplate(loader, idTemplate); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// InstantiateArmatureTemplate creates an armature in the given scene from the
+// provided armature template.
+//
+// This operation needs to be called from the main thread.
+func InstantiateArmatureTemplate(scene *Scene, template ArmatureTemplate, nodes IdentifiableList[*hierarchy.Node]) *graphics.Armature {
+	armature := scene.gfxScene.CreateArmature(graphics.ArmatureInfo{
 		Definition: template.Definition,
 	})
 	for j, nodeID := range template.NodeBindings {
@@ -77,12 +110,15 @@ func (s *Scene) InstantiateArmatureTemplate(template ArmatureTemplate, nodes Ide
 	return armature
 }
 
-func (l *AssetLoader) ResolveMeshGeomety(assetGeometry dto.Geometry) (Identifiable[*graphics.MeshGeometry], error) {
+// LoadMeshGeomety resolves a mesh geometry from the given asset data.
+//
+// This is a blocking operation and should be called from a worker thread.
+func LoadMeshGeomety(loader *AssetLoader, assetGeometry dto.Geometry) (Identifiable[*graphics.MeshGeometry], error) {
 	meshFragmentsInfo := make([]graphics.MeshGeometryFragmentInfo, len(assetGeometry.Fragments))
 	for j, assetFragment := range assetGeometry.Fragments {
 		meshFragmentsInfo[j] = graphics.MeshGeometryFragmentInfo{
 			Name:            assetFragment.Name,
-			Topology:        l.resolveTopology(assetFragment.Topology),
+			Topology:        resolveTopology(assetFragment.Topology),
 			IndexByteOffset: assetFragment.IndexByteOffset,
 			IndexCount:      assetFragment.IndexCount,
 		}
@@ -95,10 +131,10 @@ func (l *AssetLoader) ResolveMeshGeomety(assetGeometry dto.Geometry) (Identifiab
 				Data:       buffer.Data,
 			}
 		}),
-		VertexFormat: l.resolveVertexFormat(assetGeometry.VertexLayout),
+		VertexFormat: resolveVertexFormat(assetGeometry.VertexLayout),
 		IndexBuffer: graphics.MeshGeometryIndexBuffer{
 			Data:   assetGeometry.IndexBuffer.Data,
-			Format: l.resolveIndexFormat(assetGeometry.IndexBuffer.IndexLayout),
+			Format: resolveIndexFormat(assetGeometry.IndexBuffer.IndexLayout),
 		},
 		Fragments:            meshFragmentsInfo,
 		BoundingSphereRadius: assetGeometry.BoundingSphereRadius,
@@ -108,12 +144,12 @@ func (l *AssetLoader) ResolveMeshGeomety(assetGeometry dto.Geometry) (Identifiab
 	}
 
 	var meshGeometry *graphics.MeshGeometry
-	allocateGeometry := func(engine *Engine) error {
-		gfxEngine := engine.Graphics()
+	allocateGeometry := func() error {
+		gfxEngine := loader.Engine().Graphics()
 		meshGeometry = gfxEngine.CreateMeshGeometry(meshGeometryInfo)
 		return nil
 	}
-	if err := l.ScheduleMain(allocateGeometry).Wait(); err != nil {
+	if err := loader.ScheduleMain(allocateGeometry).Wait(); err != nil {
 		return Identifiable[*graphics.MeshGeometry]{}, err
 	}
 
@@ -123,12 +159,16 @@ func (l *AssetLoader) ResolveMeshGeomety(assetGeometry dto.Geometry) (Identifiab
 	}, nil
 }
 
-func (l *AssetLoader) ResolveMeshGeometries(assetGeometries []dto.Geometry) (IdentifiableList[*graphics.MeshGeometry], error) {
+// LoadMeshGeometries resolves a list of mesh geometries from the given asset
+// geometries.
+//
+// This is a blocking operation and should be called from a worker thread.
+func LoadMeshGeometries(loader *AssetLoader, assetGeometries []dto.Geometry) (IdentifiableList[*graphics.MeshGeometry], error) {
 	geometries := make(IdentifiableList[*graphics.MeshGeometry], len(assetGeometries))
 	var group errgroup.Group
 	for i, assetGeometry := range assetGeometries {
 		group.Go(func() error {
-			geometry, err := l.ResolveMeshGeomety(assetGeometry)
+			geometry, err := LoadMeshGeomety(loader, assetGeometry)
 			geometries[i] = geometry
 			return err
 		})
@@ -136,7 +176,35 @@ func (l *AssetLoader) ResolveMeshGeometries(assetGeometries []dto.Geometry) (Ide
 	return geometries, group.Wait()
 }
 
-func (l *AssetLoader) ResolveMeshDefinition(assetDefinition dto.MeshDefinition, geometries IdentifiableList[*graphics.MeshGeometry], materials IdentifiableList[*graphics.Material]) (Identifiable[*graphics.MeshDefinition], error) {
+// UnloadMeshGeometry unloads a mesh geometry from the asset loader.
+//
+// This is a blocking operation and should be called from a worker thread.
+func UnloadMeshGeometry(loader *AssetLoader, idGeometry Identifiable[*graphics.MeshGeometry]) error {
+	geometry := idGeometry.Value
+	return loader.ScheduleMain(func() error {
+		geometry.Delete()
+		return nil
+	}).Wait()
+}
+
+// UnloadMeshGeometries unloads a list of mesh geometries from the asset loader.
+//
+// This is a blocking operation and should be called from a worker thread.
+func UnloadMeshGeometries(loader *AssetLoader, idGeometries IdentifiableList[*graphics.MeshGeometry]) error {
+	var group errgroup.Group
+	for _, idGeometry := range idGeometries {
+		group.Go(func() error {
+			return UnloadMeshGeometry(loader, idGeometry)
+		})
+	}
+	return group.Wait()
+}
+
+// LoadMeshDefinition resolves a mesh definition from the given asset data,
+// using the provided geometries and materials.
+//
+// This is a blocking operation and should be called from a worker thread.
+func LoadMeshDefinition(loader *AssetLoader, assetDefinition dto.MeshDefinition, geometries IdentifiableList[*graphics.MeshGeometry], materials IdentifiableList[*graphics.Material]) (Identifiable[*graphics.MeshDefinition], error) {
 	geometry, ok := geometries.FindByID(assetDefinition.GeometryID)
 	if !ok {
 		return Identifiable[*graphics.MeshDefinition]{}, fmt.Errorf("mesh geometry with ID %d not found", assetDefinition.GeometryID)
@@ -157,12 +225,12 @@ func (l *AssetLoader) ResolveMeshDefinition(assetDefinition dto.MeshDefinition, 
 	}
 
 	var meshDefinition *graphics.MeshDefinition
-	allocateDefinition := func(engine *Engine) error {
-		gfxEngine := engine.Graphics()
+	allocateDefinition := func() error {
+		gfxEngine := loader.Engine().Graphics()
 		meshDefinition = gfxEngine.CreateMeshDefinition(meshDefinitionInfo)
 		return nil
 	}
-	if err := l.ScheduleMain(allocateDefinition).Wait(); err != nil {
+	if err := loader.ScheduleMain(allocateDefinition).Wait(); err != nil {
 		return Identifiable[*graphics.MeshDefinition]{}, err
 	}
 
@@ -172,12 +240,16 @@ func (l *AssetLoader) ResolveMeshDefinition(assetDefinition dto.MeshDefinition, 
 	}, nil
 }
 
-func (l *AssetLoader) ResolveMeshDefinitions(assetDefinitions []dto.MeshDefinition, geometries IdentifiableList[*graphics.MeshGeometry], materials IdentifiableList[*graphics.Material]) (IdentifiableList[*graphics.MeshDefinition], error) {
+// LoadMeshDefinitions resolves a list of mesh definitions from the given
+// asset definitions, using the provided geometries and materials.
+//
+// This is a blocking operation and should be called from a worker thread.
+func LoadMeshDefinitions(loader *AssetLoader, assetDefinitions []dto.MeshDefinition, geometries IdentifiableList[*graphics.MeshGeometry], materials IdentifiableList[*graphics.Material]) (IdentifiableList[*graphics.MeshDefinition], error) {
 	definitions := make(IdentifiableList[*graphics.MeshDefinition], len(assetDefinitions))
 	var group errgroup.Group
 	for i, assetDefinition := range assetDefinitions {
 		group.Go(func() error {
-			definition, err := l.ResolveMeshDefinition(assetDefinition, geometries, materials)
+			definition, err := LoadMeshDefinition(loader, assetDefinition, geometries, materials)
 			definitions[i] = definition
 			return err
 		})
@@ -185,13 +257,43 @@ func (l *AssetLoader) ResolveMeshDefinitions(assetDefinitions []dto.MeshDefiniti
 	return definitions, group.Wait()
 }
 
+// UnloadMeshDefinition unloads a mesh definition from the asset loader.
+//
+// This is a blocking operation and should be called from a worker thread.
+func UnloadMeshDefinition(loader *AssetLoader, idDefinition Identifiable[*graphics.MeshDefinition]) error {
+	definition := idDefinition.Value
+	return loader.ScheduleMain(func() error {
+		definition.Delete()
+		return nil
+	}).Wait()
+}
+
+// UnloadMeshDefinitions unloads a list of mesh definitions from the asset
+// loader.
+//
+// This is a blocking operation and should be called from a worker thread.
+func UnloadMeshDefinitions(loader *AssetLoader, idDefinitions IdentifiableList[*graphics.MeshDefinition]) error {
+	var group errgroup.Group
+	for _, idDefinition := range idDefinitions {
+		group.Go(func() error {
+			return UnloadMeshDefinition(loader, idDefinition)
+		})
+	}
+	return group.Wait()
+}
+
+// MeshTemplate represents a template for a mesh that can be instantiated in a
+// scene.
 type MeshTemplate struct {
 	NodeID       uint32
 	DefinitionID uint32
 	ArmatureID   uint32
 }
 
-func (l *AssetLoader) ResolveMeshTemplate(assetMesh dto.Mesh) (Identifiable[MeshTemplate], error) {
+// LoadMeshTemplate resolves a mesh template from the given asset data.
+//
+// This is a blocking operation and should be called from a worker thread.
+func LoadMeshTemplate(loader *AssetLoader, assetMesh dto.Mesh) (Identifiable[MeshTemplate], error) {
 	return Identifiable[MeshTemplate]{
 		ID: assetMesh.ID,
 		Value: MeshTemplate{
@@ -202,10 +304,14 @@ func (l *AssetLoader) ResolveMeshTemplate(assetMesh dto.Mesh) (Identifiable[Mesh
 	}, nil
 }
 
-func (l *AssetLoader) ResolveMeshTemplates(assetMeshes []dto.Mesh) (IdentifiableList[MeshTemplate], error) {
+// LoadMeshTemplates resolves a list of mesh templates from the given asset
+// meshes.
+//
+// This is a blocking operation and should be called from a worker thread.
+func LoadMeshTemplates(loader *AssetLoader, assetMeshes []dto.Mesh) (IdentifiableList[MeshTemplate], error) {
 	templates := make(IdentifiableList[MeshTemplate], len(assetMeshes))
 	for i, assetMesh := range assetMeshes {
-		template, err := l.ResolveMeshTemplate(assetMesh)
+		template, err := LoadMeshTemplate(loader, assetMesh)
 		if err != nil {
 			return nil, err
 		}
@@ -214,28 +320,56 @@ func (l *AssetLoader) ResolveMeshTemplates(assetMeshes []dto.Mesh) (Identifiable
 	return templates, nil
 }
 
-func (s *Scene) InstantiateMeshTemplateStatic(template MeshTemplate, nodes IdentifiableList[*hierarchy.Node], definitions IdentifiableList[*graphics.MeshDefinition], armatures IdentifiableList[*graphics.Armature]) {
+// UnloadMeshTemplate unloads a mesh template from the asset loader.
+//
+// This is a blocking operation and should be called from a worker thread.
+func UnloadMeshTemplate(loader *AssetLoader, idTemplate Identifiable[MeshTemplate]) error {
+	// At the time being this is a no-op.
+	return nil
+}
+
+// UnloadMeshTemplates unloads a list of mesh templates from the asset loader.
+//
+// This is a blocking operation and should be called from a worker thread.
+func UnloadMeshTemplates(loader *AssetLoader, idTemplates IdentifiableList[MeshTemplate]) error {
+	for _, idTemplate := range idTemplates {
+		if err := UnloadMeshTemplate(loader, idTemplate); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// InstantiateMeshTemplateStatic creates a static mesh in the given scene from
+// the provided mesh template.
+//
+// This operation needs to be called from the main thread.
+func InstantiateMeshTemplateStatic(scene *Scene, template MeshTemplate, nodes IdentifiableList[*hierarchy.Node], definitions IdentifiableList[*graphics.MeshDefinition], armatures IdentifiableList[*graphics.Armature]) {
 	node := nodes.GetByID(template.NodeID)
 	meshDefinition := definitions.GetByID(template.DefinitionID)
 	var armature *graphics.Armature
 	if template.ArmatureID != UnspecifiedID {
 		armature = armatures.GetByID(template.ArmatureID)
 	}
-	s.gfxScene.CreateStaticMesh(graphics.StaticMeshInfo{
+	scene.gfxScene.CreateStaticMesh(graphics.StaticMeshInfo{
 		Definition: meshDefinition,
 		Armature:   armature,
 		Matrix:     node.AbsoluteMatrix(),
 	})
 }
 
-func (s *Scene) InstantiateMeshTemplateDynamic(template MeshTemplate, nodes IdentifiableList[*hierarchy.Node], definitions IdentifiableList[*graphics.MeshDefinition], armatures IdentifiableList[*graphics.Armature]) *graphics.Mesh {
+// InstantiateMeshTemplateDynamic creates a dynamic mesh in the given scene
+// from the provided mesh template.
+//
+// This operation needs to be called from the main thread.
+func InstantiateMeshTemplateDynamic(scene *Scene, template MeshTemplate, nodes IdentifiableList[*hierarchy.Node], definitions IdentifiableList[*graphics.MeshDefinition], armatures IdentifiableList[*graphics.Armature]) *graphics.Mesh {
 	node := nodes.GetByID(template.NodeID)
 	meshDefinition := definitions.GetByID(template.DefinitionID)
 	var armature *graphics.Armature
 	if template.ArmatureID != UnspecifiedID {
 		armature = armatures.GetByID(template.ArmatureID)
 	}
-	mesh := s.gfxScene.CreateMesh(graphics.MeshInfo{
+	mesh := scene.gfxScene.CreateMesh(graphics.MeshInfo{
 		Definition: meshDefinition,
 		Armature:   armature,
 	})
@@ -246,7 +380,7 @@ func (s *Scene) InstantiateMeshTemplateDynamic(template MeshTemplate, nodes Iden
 	return mesh
 }
 
-func (l *AssetLoader) resolveTopology(primitive dto.Topology) render.Topology {
+func resolveTopology(primitive dto.Topology) render.Topology {
 	switch primitive {
 	case dto.TopologyPoints:
 		return render.TopologyPoints
@@ -263,61 +397,61 @@ func (l *AssetLoader) resolveTopology(primitive dto.Topology) render.Topology {
 	}
 }
 
-func (l *AssetLoader) resolveVertexFormat(layout dto.VertexLayout) graphics.MeshGeometryVertexFormat {
+func resolveVertexFormat(layout dto.VertexLayout) graphics.MeshGeometryVertexFormat {
 	var result graphics.MeshGeometryVertexFormat
 	if attrib := layout.Coord; attrib.BufferIndex != dto.UnspecifiedBufferIndex {
 		result.Coord = opt.V(graphics.MeshGeometryVertexAttribute{
 			BufferIndex: uint32(attrib.BufferIndex),
 			ByteOffset:  attrib.ByteOffset,
-			Format:      l.resolveVertexAttributeFormat(attrib.Format),
+			Format:      resolveVertexAttributeFormat(attrib.Format),
 		})
 	}
 	if attrib := layout.Normal; attrib.BufferIndex != dto.UnspecifiedBufferIndex {
 		result.Normal = opt.V(graphics.MeshGeometryVertexAttribute{
 			BufferIndex: uint32(attrib.BufferIndex),
 			ByteOffset:  attrib.ByteOffset,
-			Format:      l.resolveVertexAttributeFormat(attrib.Format),
+			Format:      resolveVertexAttributeFormat(attrib.Format),
 		})
 	}
 	if attrib := layout.Tangent; attrib.BufferIndex != dto.UnspecifiedBufferIndex {
 		result.Tangent = opt.V(graphics.MeshGeometryVertexAttribute{
 			BufferIndex: uint32(attrib.BufferIndex),
 			ByteOffset:  attrib.ByteOffset,
-			Format:      l.resolveVertexAttributeFormat(attrib.Format),
+			Format:      resolveVertexAttributeFormat(attrib.Format),
 		})
 	}
 	if attrib := layout.TexCoord; attrib.BufferIndex != dto.UnspecifiedBufferIndex {
 		result.TexCoord = opt.V(graphics.MeshGeometryVertexAttribute{
 			BufferIndex: uint32(attrib.BufferIndex),
 			ByteOffset:  attrib.ByteOffset,
-			Format:      l.resolveVertexAttributeFormat(attrib.Format),
+			Format:      resolveVertexAttributeFormat(attrib.Format),
 		})
 	}
 	if attrib := layout.Color; attrib.BufferIndex != dto.UnspecifiedBufferIndex {
 		result.Color = opt.V(graphics.MeshGeometryVertexAttribute{
 			BufferIndex: uint32(attrib.BufferIndex),
 			ByteOffset:  attrib.ByteOffset,
-			Format:      l.resolveVertexAttributeFormat(attrib.Format),
+			Format:      resolveVertexAttributeFormat(attrib.Format),
 		})
 	}
 	if attrib := layout.Weights; attrib.BufferIndex != dto.UnspecifiedBufferIndex {
 		result.Weights = opt.V(graphics.MeshGeometryVertexAttribute{
 			BufferIndex: uint32(attrib.BufferIndex),
 			ByteOffset:  attrib.ByteOffset,
-			Format:      l.resolveVertexAttributeFormat(attrib.Format),
+			Format:      resolveVertexAttributeFormat(attrib.Format),
 		})
 	}
 	if attrib := layout.Joints; attrib.BufferIndex != dto.UnspecifiedBufferIndex {
 		result.Joints = opt.V(graphics.MeshGeometryVertexAttribute{
 			BufferIndex: uint32(attrib.BufferIndex),
 			ByteOffset:  attrib.ByteOffset,
-			Format:      l.resolveVertexAttributeFormat(attrib.Format),
+			Format:      resolveVertexAttributeFormat(attrib.Format),
 		})
 	}
 	return result
 }
 
-func (l *AssetLoader) resolveVertexAttributeFormat(format dto.VertexAttributeFormat) render.VertexAttributeFormat {
+func resolveVertexAttributeFormat(format dto.VertexAttributeFormat) render.VertexAttributeFormat {
 	switch format {
 	case dto.VertexAttributeFormatRGBA32F:
 		return render.VertexAttributeFormatRGBA32F
@@ -423,7 +557,7 @@ func (l *AssetLoader) resolveVertexAttributeFormat(format dto.VertexAttributeFor
 	}
 }
 
-func (l *AssetLoader) resolveIndexFormat(layout dto.IndexLayout) render.IndexFormat {
+func resolveIndexFormat(layout dto.IndexLayout) render.IndexFormat {
 	switch layout {
 	case dto.IndexLayoutUint16:
 		return render.IndexFormatUnsignedU16

@@ -9,6 +9,7 @@ import (
 	"github.com/mokiat/lacking/game/hierarchy"
 )
 
+// NodeTemplate represents a template for a node in the scene hierarchy.
 type NodeTemplate struct {
 	ParentID uint32
 	Name     string
@@ -17,7 +18,10 @@ type NodeTemplate struct {
 	Scale    dprec.Vec3
 }
 
-func (l *AssetLoader) ResolveNodeTemplate(assetNode dto.Node) (Identifiable[NodeTemplate], error) {
+// LoadNodeTemplate resolves a node template from the given asset data.
+//
+// This is a blocking operation and should be called from a worker thread.
+func LoadNodeTemplate(loader *AssetLoader, assetNode dto.Node) (Identifiable[NodeTemplate], error) {
 	return Identifiable[NodeTemplate]{
 		ID: assetNode.ID,
 		Value: NodeTemplate{
@@ -30,10 +34,14 @@ func (l *AssetLoader) ResolveNodeTemplate(assetNode dto.Node) (Identifiable[Node
 	}, nil
 }
 
-func (l *AssetLoader) ResolveNodeTemplates(assetNodes []dto.Node) (IdentifiableList[NodeTemplate], error) {
+// LoadNodeTemplates resolves a list of node templates from the given asset
+// nodes.
+//
+// This is a blocking operation and should be called from a worker thread.
+func LoadNodeTemplates(loader *AssetLoader, assetNodes []dto.Node) (IdentifiableList[NodeTemplate], error) {
 	templates := make(IdentifiableList[NodeTemplate], len(assetNodes))
 	for i, assetNode := range assetNodes {
-		template, err := l.ResolveNodeTemplate(assetNode)
+		template, err := LoadNodeTemplate(loader, assetNode)
 		if err != nil {
 			return nil, err
 		}
@@ -42,6 +50,28 @@ func (l *AssetLoader) ResolveNodeTemplates(assetNodes []dto.Node) (IdentifiableL
 	return templates, nil
 }
 
+// UnloadNodeTemplate unloads a node template from the asset loader.
+//
+// This is a blocking operation and should be called from a worker thread.
+func UnloadNodeTemplate(loader *AssetLoader, idNode Identifiable[NodeTemplate]) error {
+	// At the time being this is a no-op.
+	return nil
+}
+
+// UnloadNodeTemplates unloads a list of node templates from the asset loader.
+//
+// This is a blocking operation and should be called from a worker thread.
+func UnloadNodeTemplates(loader *AssetLoader, idNodes IdentifiableList[NodeTemplate]) error {
+	for _, idNode := range idNodes {
+		if err := UnloadNodeTemplate(loader, idNode); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// HierarchyInfo contains information about a hierarchy to be instantiated in
+// a scene.
 type HierarchyInfo struct {
 	NodeTemplates IdentifiableList[NodeTemplate]
 	Name          opt.T[string]
@@ -52,12 +82,16 @@ type HierarchyInfo struct {
 	AttachToScene opt.T[bool]
 }
 
+// Hierarchy represents a scene hierarchy that has been instantiated from a
+// HierarchyInfo.
 type Hierarchy struct {
 	RootNode *hierarchy.Node
 	Nodes    IdentifiableList[*hierarchy.Node]
 }
 
-func (s *Scene) InstantiateHierarchy(info HierarchyInfo) *Hierarchy {
+// InstantiateHierarchy instantiates a hierarchy in the given scene based on
+// the provided info.
+func InstantiateHierarchy(scene *Scene, info HierarchyInfo) *Hierarchy {
 	nodes := make(map[uint32]*hierarchy.Node, len(info.NodeTemplates))
 	for nodeID, nodeTemplate := range info.NodeTemplates.Iter() {
 		node := hierarchy.NewNode()
@@ -96,7 +130,7 @@ func (s *Scene) InstantiateHierarchy(info HierarchyInfo) *Hierarchy {
 	}
 
 	if info.AttachToScene.ValueOrDefault(false) {
-		s.Root().AppendChild(rootNode)
+		scene.Root().AppendChild(rootNode)
 	}
 
 	if info.Name.Specified {

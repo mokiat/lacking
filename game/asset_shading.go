@@ -11,18 +11,21 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
-func (l *AssetLoader) ResolveShader(assetShader dto.Shader) (Identifiable[*graphics.Shader], error) {
+// LoadShader resolves a shader from the given asset data.
+//
+// This is a blocking operation and should be called from a worker thread.
+func LoadShader(loader *AssetLoader, assetShader dto.Shader) (Identifiable[*graphics.Shader], error) {
 	var shader *graphics.Shader
 
-	allocateShader := func(engine *Engine) error {
-		gfxEngine := engine.Graphics()
+	allocateShader := func() error {
+		gfxEngine := loader.Engine().Graphics()
 		shader = gfxEngine.CreateShader(graphics.ShaderInfo{
-			ShaderType: l.resolveShaderType(assetShader.ShaderType),
+			ShaderType: resolveShaderType(assetShader.ShaderType),
 			SourceCode: assetShader.SourceCode,
 		})
 		return nil
 	}
-	if err := l.ScheduleMain(allocateShader).Wait(); err != nil {
+	if err := loader.ScheduleMain(allocateShader).Wait(); err != nil {
 		return Identifiable[*graphics.Shader]{}, err
 	}
 
@@ -32,12 +35,15 @@ func (l *AssetLoader) ResolveShader(assetShader dto.Shader) (Identifiable[*graph
 	}, nil
 }
 
-func (l *AssetLoader) ResolveShaders(assetShaders []dto.Shader) (IdentifiableList[*graphics.Shader], error) {
+// LoadShaders resolves a list of shaders from the given asset shaders.
+//
+// This is a blocking operation and should be called from a worker thread.
+func LoadShaders(loader *AssetLoader, assetShaders []dto.Shader) (IdentifiableList[*graphics.Shader], error) {
 	shaders := make(IdentifiableList[*graphics.Shader], len(assetShaders))
 	var group errgroup.Group
 	for i, assetShader := range assetShaders {
 		group.Go(func() error {
-			shader, err := l.ResolveShader(assetShader)
+			shader, err := LoadShader(loader, assetShader)
 			shaders[i] = shader
 			return err
 		})
@@ -45,26 +51,52 @@ func (l *AssetLoader) ResolveShaders(assetShaders []dto.Shader) (IdentifiableLis
 	return shaders, group.Wait()
 }
 
-func (l *AssetLoader) ResolveTexture(assetTexture dto.Texture) (Identifiable[render.Texture], error) {
+// UnloadShader unloads a shader from the asset loader.
+//
+// This is a blocking operation and should be called from a worker thread.
+func UnloadShader(loader *AssetLoader, idShader Identifiable[*graphics.Shader]) error {
+	// At the time being this is a no-op.
+	return nil
+}
+
+// UnloadShaders unloads a list of shaders from the asset loader.
+//
+// This is a blocking operation and should be called from a worker thread.
+func UnloadShaders(loader *AssetLoader, idShaders IdentifiableList[*graphics.Shader]) error {
+	for _, idShader := range idShaders {
+		if err := UnloadShader(loader, idShader); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// LoadTexture resolves a texture from the given asset data.
+//
+// This is a blocking operation and should be called from a worker thread.
+func LoadTexture(loader *AssetLoader, assetTexture dto.Texture) (Identifiable[render.Texture], error) {
 	switch {
 	case assetTexture.Flags.Has(dto.TextureFlag2D):
-		return l.ResolveTexture2D(assetTexture)
+		return LoadTexture2D(loader, assetTexture)
 	case assetTexture.Flags.Has(dto.TextureFlagCubeMap):
-		return l.ResolveTextureCube(assetTexture)
+		return LoadTextureCube(loader, assetTexture)
 	default:
 		return Identifiable[render.Texture]{}, fmt.Errorf("unsupported texture type (flags: %v)", assetTexture.Flags)
 	}
 }
 
-func (l *AssetLoader) ResolveTexture2D(assetTexture dto.Texture) (Identifiable[render.Texture], error) {
+// LoadTexture2D resolves a 2D texture from the given asset data.
+//
+// This is a blocking operation and should be called from a worker thread.
+func LoadTexture2D(loader *AssetLoader, assetTexture dto.Texture) (Identifiable[render.Texture], error) {
 	var texture render.Texture
 
-	allocateTexture := func(engine *Engine) error {
-		renderAPI := engine.Graphics().API()
+	allocateTexture := func() error {
+		renderAPI := loader.Engine().Graphics().API()
 		texture = renderAPI.CreateColorTexture2D(render.ColorTexture2DInfo{
 			GenerateMipmaps: assetTexture.Flags.Has(dto.TextureFlagMipmapping),
 			GammaCorrection: !assetTexture.Flags.Has(dto.TextureFlagLinearSpace),
-			Format:          l.resolveDataFormat(assetTexture.Format),
+			Format:          resolveDataFormat(assetTexture.Format),
 			MipmapLayers: gog.Map(assetTexture.MipmapLayers, func(layer dto.MipmapLayer) render.Mipmap2DLayer {
 				return render.Mipmap2DLayer{
 					Width:  layer.Width,
@@ -75,7 +107,7 @@ func (l *AssetLoader) ResolveTexture2D(assetTexture dto.Texture) (Identifiable[r
 		})
 		return nil
 	}
-	if err := l.ScheduleMain(allocateTexture).Wait(); err != nil {
+	if err := loader.ScheduleMain(allocateTexture).Wait(); err != nil {
 		return Identifiable[render.Texture]{}, err
 	}
 
@@ -85,15 +117,18 @@ func (l *AssetLoader) ResolveTexture2D(assetTexture dto.Texture) (Identifiable[r
 	}, nil
 }
 
-func (l *AssetLoader) ResolveTextureCube(assetTexture dto.Texture) (Identifiable[render.Texture], error) {
+// LoadTextureCube resolves a cube map texture from the given asset data.
+//
+// This is a blocking operation and should be called from a worker thread.
+func LoadTextureCube(loader *AssetLoader, assetTexture dto.Texture) (Identifiable[render.Texture], error) {
 	var texture render.Texture
 
-	allocateTexture := func(engine *Engine) error {
-		renderAPI := engine.Graphics().API()
+	allocateTexture := func() error {
+		renderAPI := loader.Engine().Graphics().API()
 		texture = renderAPI.CreateColorTextureCube(render.ColorTextureCubeInfo{
 			GenerateMipmaps: assetTexture.Flags.Has(dto.TextureFlagMipmapping),
 			GammaCorrection: !assetTexture.Flags.Has(dto.TextureFlagLinearSpace),
-			Format:          l.resolveDataFormat(assetTexture.Format),
+			Format:          resolveDataFormat(assetTexture.Format),
 			MipmapLayers: gog.Map(assetTexture.MipmapLayers, func(layer dto.MipmapLayer) render.MipmapCubeLayer {
 				return render.MipmapCubeLayer{
 					Dimension:      layer.Width,
@@ -108,7 +143,7 @@ func (l *AssetLoader) ResolveTextureCube(assetTexture dto.Texture) (Identifiable
 		})
 		return nil
 	}
-	if err := l.ScheduleMain(allocateTexture).Wait(); err != nil {
+	if err := loader.ScheduleMain(allocateTexture).Wait(); err != nil {
 		return Identifiable[render.Texture]{}, err
 	}
 
@@ -118,12 +153,15 @@ func (l *AssetLoader) ResolveTextureCube(assetTexture dto.Texture) (Identifiable
 	}, nil
 }
 
-func (l *AssetLoader) ResolveTextures(assetTextures []dto.Texture) (IdentifiableList[render.Texture], error) {
+// LoadTextures resolves a list of textures from the given asset textures.
+//
+// This is a blocking operation and should be called from a worker thread.
+func LoadTextures(loader *AssetLoader, assetTextures []dto.Texture) (IdentifiableList[render.Texture], error) {
 	textures := make(IdentifiableList[render.Texture], len(assetTextures))
 	var group errgroup.Group
 	for i, assetTexture := range assetTextures {
 		group.Go(func() error {
-			texture, err := l.ResolveTexture(assetTexture)
+			texture, err := LoadTexture(loader, assetTexture)
 			textures[i] = texture
 			return err
 		})
@@ -131,24 +169,51 @@ func (l *AssetLoader) ResolveTextures(assetTextures []dto.Texture) (Identifiable
 	return textures, group.Wait()
 }
 
-func (l *AssetLoader) ResolveMaterial(assetMaterial dto.Material, shaders IdentifiableList[*graphics.Shader], textures IdentifiableList[render.Texture]) (Identifiable[*graphics.Material], error) {
-	geometryPasses, err := l.ResolveMaterialPasses(assetMaterial.GeometryPasses, shaders)
+// UnloadTexture unloads a texture from the asset loader.
+//
+// This is a blocking operation and should be called from a worker thread.
+func UnloadTexture(loader *AssetLoader, idTexture Identifiable[render.Texture]) error {
+	texture := idTexture.Value
+	return loader.ScheduleMain(func() error {
+		texture.Release()
+		return nil
+	}).Wait()
+}
+
+// UnloadTextures unloads a list of textures from the asset loader.
+//
+// This is a blocking operation and should be called from a worker thread.
+func UnloadTextures(loader *AssetLoader, idTextures IdentifiableList[render.Texture]) error {
+	var group errgroup.Group
+	for _, idTexture := range idTextures {
+		group.Go(func() error {
+			return UnloadTexture(loader, idTexture)
+		})
+	}
+	return group.Wait()
+}
+
+// LoadMaterial resolves a material from the given asset data.
+//
+// This is a blocking operation and should be called from a worker thread.
+func LoadMaterial(loader *AssetLoader, assetMaterial dto.Material, shaders IdentifiableList[*graphics.Shader], textures IdentifiableList[render.Texture]) (Identifiable[*graphics.Material], error) {
+	geometryPasses, err := LoadMaterialPasses(loader, assetMaterial.GeometryPasses, shaders)
 	if err != nil {
 		return Identifiable[*graphics.Material]{}, fmt.Errorf("failed to convert geometry passes: %w", err)
 	}
-	shadowPasses, err := l.ResolveMaterialPasses(assetMaterial.ShadowPasses, shaders)
+	shadowPasses, err := LoadMaterialPasses(loader, assetMaterial.ShadowPasses, shaders)
 	if err != nil {
 		return Identifiable[*graphics.Material]{}, fmt.Errorf("failed to convert shadow passes: %w", err)
 	}
-	forwardPasses, err := l.ResolveMaterialPasses(assetMaterial.ForwardPasses, shaders)
+	forwardPasses, err := LoadMaterialPasses(loader, assetMaterial.ForwardPasses, shaders)
 	if err != nil {
 		return Identifiable[*graphics.Material]{}, fmt.Errorf("failed to convert forward passes: %w", err)
 	}
-	skyPasses, err := l.ResolveMaterialPasses(assetMaterial.SkyPasses, shaders)
+	skyPasses, err := LoadMaterialPasses(loader, assetMaterial.SkyPasses, shaders)
 	if err != nil {
 		return Identifiable[*graphics.Material]{}, fmt.Errorf("failed to convert sky passes: %w", err)
 	}
-	postprocessingPasses, err := l.ResolveMaterialPasses(assetMaterial.PostprocessingPasses, shaders)
+	postprocessingPasses, err := LoadMaterialPasses(loader, assetMaterial.PostprocessingPasses, shaders)
 	if err != nil {
 		return Identifiable[*graphics.Material]{}, fmt.Errorf("failed to convert postprocessing passes: %w", err)
 	}
@@ -162,8 +227,8 @@ func (l *AssetLoader) ResolveMaterial(assetMaterial dto.Material, shaders Identi
 	}
 
 	var material *graphics.Material
-	allocateMaterial := func(engine *Engine) error {
-		gfxEngine := engine.Graphics()
+	allocateMaterial := func() error {
+		gfxEngine := loader.Engine().Graphics()
 		renderAPI := gfxEngine.API()
 		material = gfxEngine.CreateMaterial(materialInfo)
 		for _, binding := range assetMaterial.Textures {
@@ -175,8 +240,8 @@ func (l *AssetLoader) ResolveMaterial(assetMaterial dto.Material, shaders Identi
 		}
 		for _, binding := range assetMaterial.Textures {
 			sampler := renderAPI.CreateSampler(render.SamplerInfo{
-				Wrapping:   l.resolveWrapMode(binding.Wrapping),
-				Filtering:  l.resolveFiltering(binding.Filtering),
+				Wrapping:   resolveWrapMode(binding.Wrapping),
+				Filtering:  resolveFiltering(binding.Filtering),
 				Mipmapping: binding.Mipmapping,
 			})
 			material.SetSampler(binding.BindingName, sampler)
@@ -186,7 +251,7 @@ func (l *AssetLoader) ResolveMaterial(assetMaterial dto.Material, shaders Identi
 		}
 		return nil
 	}
-	if err := l.ScheduleMain(allocateMaterial).Wait(); err != nil {
+	if err := loader.ScheduleMain(allocateMaterial).Wait(); err != nil {
 		return Identifiable[*graphics.Material]{}, err
 	}
 
@@ -196,27 +261,34 @@ func (l *AssetLoader) ResolveMaterial(assetMaterial dto.Material, shaders Identi
 	}, nil
 }
 
-func (l *AssetLoader) ResolveMaterialPass(assetPass dto.MaterialPass, shaders IdentifiableList[*graphics.Shader]) (graphics.MaterialPassInfo, error) {
+// LoadMaterialPass resolves a material pass from the given asset data.
+//
+// This is a blocking operation and should be called from a worker thread.
+func LoadMaterialPass(loader *AssetLoader, assetPass dto.MaterialPass, shaders IdentifiableList[*graphics.Shader]) (graphics.MaterialPassInfo, error) {
 	shader, ok := shaders.FindByID(assetPass.ShaderID)
 	if !ok {
 		return graphics.MaterialPassInfo{}, fmt.Errorf("shader with ID %d not found", assetPass.ShaderID)
 	}
 	return graphics.MaterialPassInfo{
 		Layer:           assetPass.Layer,
-		Culling:         opt.V(l.resolveCullMode(assetPass.Culling)),
-		FrontFace:       opt.V(l.resolveFaceOrientation(assetPass.FrontFace)),
+		Culling:         opt.V(resolveCullMode(assetPass.Culling)),
+		FrontFace:       opt.V(resolveFaceOrientation(assetPass.FrontFace)),
 		DepthTest:       opt.V(assetPass.DepthTest),
 		DepthWrite:      opt.V(assetPass.DepthWrite),
-		DepthComparison: opt.V(l.resolveComparison(assetPass.DepthComparison)),
+		DepthComparison: opt.V(resolveComparison(assetPass.DepthComparison)),
 		Blending:        opt.V(assetPass.Blending),
 		Shader:          shader,
 	}, nil
 }
 
-func (l *AssetLoader) ResolveMaterialPasses(assetPasses []dto.MaterialPass, shaders IdentifiableList[*graphics.Shader]) ([]graphics.MaterialPassInfo, error) {
+// LoadMaterialPasses resolves a list of material passes from the given asset
+// data.
+//
+// This is a blocking operation and should be called from a worker thread.
+func LoadMaterialPasses(loader *AssetLoader, assetPasses []dto.MaterialPass, shaders IdentifiableList[*graphics.Shader]) ([]graphics.MaterialPassInfo, error) {
 	result := make([]graphics.MaterialPassInfo, len(assetPasses))
 	for i, assetPass := range assetPasses {
-		passInfo, err := l.ResolveMaterialPass(assetPass, shaders)
+		passInfo, err := LoadMaterialPass(loader, assetPass, shaders)
 		if err != nil {
 			return nil, err
 		}
@@ -225,12 +297,16 @@ func (l *AssetLoader) ResolveMaterialPasses(assetPasses []dto.MaterialPass, shad
 	return result, nil
 }
 
-func (l *AssetLoader) ResolveMaterials(assetMaterials []dto.Material, shaders IdentifiableList[*graphics.Shader], textures IdentifiableList[render.Texture]) (IdentifiableList[*graphics.Material], error) {
+// LoadMaterials resolves a list of materials from the given asset
+// materials.
+//
+// This is a blocking operation and should be called from a worker thread.
+func LoadMaterials(loader *AssetLoader, assetMaterials []dto.Material, shaders IdentifiableList[*graphics.Shader], textures IdentifiableList[render.Texture]) (IdentifiableList[*graphics.Material], error) {
 	materials := make(IdentifiableList[*graphics.Material], len(assetMaterials))
 	var group errgroup.Group
 	for i, assetMaterial := range assetMaterials {
 		group.Go(func() error {
-			material, err := l.ResolveMaterial(assetMaterial, shaders, textures)
+			material, err := LoadMaterial(loader, assetMaterial, shaders, textures)
 			materials[i] = material
 			return err
 		})
@@ -238,7 +314,27 @@ func (l *AssetLoader) ResolveMaterials(assetMaterials []dto.Material, shaders Id
 	return materials, group.Wait()
 }
 
-func (l *AssetLoader) resolveShaderType(assetType dto.ShaderType) graphics.ShaderType {
+// UnloadMaterial unloads a material from the asset loader.
+//
+// This is a blocking operation and should be called from a worker thread.
+func UnloadMaterial(loader *AssetLoader, idMaterial Identifiable[*graphics.Material]) error {
+	// At the time being this is a no-op.
+	return nil
+}
+
+// UnloadMaterials unloads a list of materials from the asset loader.
+//
+// This is a blocking operation and should be called from a worker thread.
+func UnloadMaterials(loader *AssetLoader, idMaterials IdentifiableList[*graphics.Material]) error {
+	for _, idMaterial := range idMaterials {
+		if err := UnloadMaterial(loader, idMaterial); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func resolveShaderType(assetType dto.ShaderType) graphics.ShaderType {
 	switch assetType {
 	case dto.ShaderTypeGeometry:
 		return graphics.ShaderTypeGeometry
@@ -255,7 +351,7 @@ func (l *AssetLoader) resolveShaderType(assetType dto.ShaderType) graphics.Shade
 	}
 }
 
-func (l *AssetLoader) resolveDataFormat(format dto.TexelFormat) render.DataFormat {
+func resolveDataFormat(format dto.TexelFormat) render.DataFormat {
 	switch format {
 	case dto.TexelFormatRGBA8:
 		return render.DataFormatRGBA8
@@ -268,7 +364,7 @@ func (l *AssetLoader) resolveDataFormat(format dto.TexelFormat) render.DataForma
 	}
 }
 
-func (l *AssetLoader) resolveWrapMode(wrap dto.WrapMode) render.WrapMode {
+func resolveWrapMode(wrap dto.WrapMode) render.WrapMode {
 	switch wrap {
 	case dto.WrapModeClamp:
 		return render.WrapModeClamp
@@ -281,7 +377,7 @@ func (l *AssetLoader) resolveWrapMode(wrap dto.WrapMode) render.WrapMode {
 	}
 }
 
-func (l *AssetLoader) resolveFiltering(filter dto.FilterMode) render.FilterMode {
+func resolveFiltering(filter dto.FilterMode) render.FilterMode {
 	switch filter {
 	case dto.FilterModeNearest:
 		return render.FilterModeNearest
@@ -294,7 +390,7 @@ func (l *AssetLoader) resolveFiltering(filter dto.FilterMode) render.FilterMode 
 	}
 }
 
-func (l *AssetLoader) resolveCullMode(mode dto.CullMode) render.CullMode {
+func resolveCullMode(mode dto.CullMode) render.CullMode {
 	switch mode {
 	case dto.CullModeNone:
 		return render.CullModeNone
@@ -309,7 +405,7 @@ func (l *AssetLoader) resolveCullMode(mode dto.CullMode) render.CullMode {
 	}
 }
 
-func (l *AssetLoader) resolveFaceOrientation(orientation dto.FaceOrientation) render.FaceOrientation {
+func resolveFaceOrientation(orientation dto.FaceOrientation) render.FaceOrientation {
 	switch orientation {
 	case dto.FaceOrientationCCW:
 		return render.FaceOrientationCCW
@@ -320,7 +416,7 @@ func (l *AssetLoader) resolveFaceOrientation(orientation dto.FaceOrientation) re
 	}
 }
 
-func (l *AssetLoader) resolveComparison(comparison dto.Comparison) render.Comparison {
+func resolveComparison(comparison dto.Comparison) render.Comparison {
 	switch comparison {
 	case dto.ComparisonNever:
 		return render.ComparisonNever

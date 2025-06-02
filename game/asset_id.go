@@ -7,6 +7,8 @@ import (
 	"github.com/mokiat/gog"
 )
 
+// UnspecifiedID is a special ID value that indicates that a reference to an
+// object is not specified.
 const UnspecifiedID = uint32(0xFFFFFFFF)
 
 // Identifiable is a generic type that holds an ID and a value of type T.
@@ -19,8 +21,12 @@ type Identifiable[T any] struct {
 	Value T
 }
 
+// IdentifiableList is a slice of Identifiable[T] that provides additional
+// methods for iterating and accessing the values by their IDs.
 type IdentifiableList[T any] []Identifiable[T]
 
+// Iter returns an iterator that yields pairs of ID and value for each
+// entry in the list.
 func (l IdentifiableList[T]) Iter() iter.Seq2[uint32, T] {
 	return func(yield func(uint32, T) bool) {
 		for _, entry := range l {
@@ -31,6 +37,8 @@ func (l IdentifiableList[T]) Iter() iter.Seq2[uint32, T] {
 	}
 }
 
+// Values returns an iterator that yields only the values of type T for each
+// entry in the list.
 func (l IdentifiableList[T]) Values() iter.Seq[T] {
 	return func(yield func(T) bool) {
 		for _, entry := range l {
@@ -41,6 +49,7 @@ func (l IdentifiableList[T]) Values() iter.Seq[T] {
 	}
 }
 
+// ValuesList returns a slice of values of type T for each entry in the list.
 func (l IdentifiableList[T]) ValuesList() []T {
 	result := make([]T, len(l))
 	for i, entry := range l {
@@ -49,6 +58,7 @@ func (l IdentifiableList[T]) ValuesList() []T {
 	return result
 }
 
+// HasID checks if the list contains an entry with the specified ID.
 func (l IdentifiableList[T]) HasID(id uint32) bool {
 	for _, item := range l {
 		if item.ID == id {
@@ -58,6 +68,8 @@ func (l IdentifiableList[T]) HasID(id uint32) bool {
 	return false
 }
 
+// FindByID searches for an entry with the specified ID and returns its value
+// and a boolean indicating whether the entry was found.
 func (l IdentifiableList[T]) FindByID(id uint32) (T, bool) {
 	for _, item := range l {
 		if item.ID == id {
@@ -67,6 +79,8 @@ func (l IdentifiableList[T]) FindByID(id uint32) (T, bool) {
 	return gog.Zero[T](), false
 }
 
+// GetByID searches for an entry with the specified ID and returns its value.
+// If the entry is not found, it panics.
 func (l IdentifiableList[T]) GetByID(id uint32) T {
 	for _, item := range l {
 		if item.ID == id {

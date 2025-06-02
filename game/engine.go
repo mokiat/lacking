@@ -1,7 +1,6 @@
 package game
 
 import (
-	"errors"
 	"time"
 
 	"github.com/mokiat/lacking/game/ecs"
@@ -57,6 +56,8 @@ func NewEngine(opts ...EngineOption) *Engine {
 	for _, opt := range opts {
 		opt(result)
 	}
+	result.registry = newResourceRegistry(result, result.storage)
+	result.registry.RegisterResourceLoader(newModelResourceLoader())
 	return result
 }
 
@@ -67,6 +68,8 @@ type Engine struct {
 	physicsEngine *physics.Engine
 	gfxEngine     *graphics.Engine
 	ecsEngine     *ecs.Engine
+
+	registry *resourceRegistry
 
 	activeScene *Scene
 	lastTick    time.Time
@@ -114,8 +117,18 @@ func (e *Engine) SetActiveScene(scene *Scene) {
 	e.activeScene = scene
 }
 
+// CreateResourceSet creates a new ResourceSet that can be used to manage
+// resources together.
 func (e *Engine) CreateResourceSet() *ResourceSet {
-	return newResourceSet(nil, e)
+	return newResourceSet(e, e.registry)
+}
+
+func (e *Engine) RegisterResourceLoader(resourceLoader ResourceLoader[any]) {
+	e.registry.RegisterResourceLoader(resourceLoader)
+}
+
+func (e *Engine) UnregisterResourceLoader(resourceLoader ResourceLoader[any]) {
+	e.registry.UnregisterResourceLoader(resourceLoader)
 }
 
 func (e *Engine) CreateScene() *Scene {
@@ -131,6 +144,30 @@ func (e *Engine) CreateScene() *Scene {
 
 func (e *Engine) ResetDeltaTime() {
 	e.lastTick = time.Now()
+}
+
+func (e *Engine) ScheduleIO(cb func() error) async.Operation {
+	result := async.NewOperation()
+	e.ioWorker.Schedule(func() {
+		if err := cb(); err == nil {
+			result.Pass()
+		} else {
+			result.Fail(err)
+		}
+	})
+	return result
+}
+
+func (e *Engine) ScheduleMain(cb func() error) async.Operation {
+	result := async.NewOperation()
+	e.gfxWorker.Schedule(func() {
+		if err := cb(); err == nil {
+			result.Pass()
+		} else {
+			result.Fail(err)
+		}
+	})
+	return result
 }
 
 func (e *Engine) Update() {
@@ -149,58 +186,4 @@ func (e *Engine) Render(framebuffer render.Framebuffer, viewport graphics.Viewpo
 	if e.activeScene != nil {
 		e.activeScene.Render(framebuffer, viewport)
 	}
-}
-
-func (e *Engine) RunAsync(cb func(asyncEngine *AsyncEngine) error) AsyncOperation {
-	asyncEngine := &AsyncEngine{
-		engine: e,
-	}
-	return newAsyncOperation(asyncEngine, async.NewFuncOperation(func() error {
-		return cb(asyncEngine)
-	}))
-}
-
-// AsyncEngine provides functions that are safe to call from a worker thread.
-// However, these functions MUST not be called from the main thread.
-type AsyncEngine struct {
-	engine *Engine
-}
-
-func (e *AsyncEngine) Sync() *Engine {
-	return e.engine
-}
-
-func (e *AsyncEngine) ScheduleIO(cb func() error) async.Operation {
-	result := async.NewOperation()
-	e.engine.ioWorker.Schedule(func() {
-		if err := cb(); err == nil {
-			result.Pass()
-		} else {
-			result.Fail(err)
-		}
-	})
-	return result
-}
-
-func (e *AsyncEngine) ScheduleMain(cb func(engine *Engine) error) async.Operation {
-	result := async.NewOperation()
-	e.engine.gfxWorker.Schedule(func() {
-		if err := cb(e.engine); err == nil {
-			result.Pass()
-		} else {
-			result.Fail(err)
-		}
-	})
-	return result
-}
-
-func (e *AsyncEngine) ReadResource(path string, target any) async.Operation {
-	return e.ScheduleIO(func() error {
-		asset := chunked.NewAsset(e.engine.storage, path)
-		return asset.Read(target)
-	})
-}
-
-func (e *AsyncEngine) WriteResource(path string, source any) async.Operation {
-	return async.NewFailedOperation(errors.ErrUnsupported)
 }
