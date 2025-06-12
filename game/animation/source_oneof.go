@@ -30,11 +30,17 @@ func (s *OneOfSource) PickAnimation(name string) {
 
 // Length returns the length of the currently active animation.
 func (s *OneOfSource) Length() float64 {
+	if s.activeAnimation == nil {
+		return 1.0
+	}
 	return s.activeAnimation.Length()
 }
 
 // Position returns the current position of the currently active animation.
 func (s *OneOfSource) Position() float64 {
+	if s.activeAnimation == nil {
+		return 0.0
+	}
 	return s.activeAnimation.Position()
 }
 
@@ -43,11 +49,16 @@ func (s *OneOfSource) Position() float64 {
 // It can be useful to set the position to zero when changing to a non-looping
 // animation so that it starts from the beginning.
 func (s *OneOfSource) SetPosition(position float64) {
-	s.activeAnimation.SetPosition(position)
+	if s.activeAnimation != nil {
+		s.activeAnimation.SetPosition(position)
+	}
 }
 
 // NodeTransform returns the transform of the specified node in the currently
 // active animation.
 func (s *OneOfSource) NodeTransform(name string) NodeTransform {
+	if s.activeAnimation == nil {
+		return NodeTransform{}
+	}
 	return s.activeAnimation.NodeTransform(name)
 }
