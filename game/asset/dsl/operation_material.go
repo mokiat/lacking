@@ -166,3 +166,84 @@ func SetCulling(modeProvider Provider[mdl.CullMode]) Operation {
 		},
 	)
 }
+
+// SetBlending creates an operation that sets the blending mode of the target.
+func SetBlending(modeProvider Provider[bool]) Operation {
+	type blendingSetter interface {
+		SetBlending(bool)
+	}
+	return FuncOperation(
+		// apply function
+		func(target any) error {
+			blending, err := modeProvider.Get()
+			if err != nil {
+				return fmt.Errorf("error getting blending mode: %w", err)
+			}
+			setter, ok := target.(blendingSetter)
+			if !ok {
+				return fmt.Errorf("target %T is not a blending setter", target)
+			}
+			setter.SetBlending(blending)
+			return nil
+		},
+
+		// digest function
+		func() ([]byte, error) {
+			return CreateDigest("set-blending", modeProvider)
+		},
+	)
+}
+
+// SetLayer creates an operation that sets the layer of the target.
+func SetLayer(modeProvider Provider[int]) Operation {
+	type layerSetter interface {
+		SetLayer(int)
+	}
+	return FuncOperation(
+		// apply function
+		func(target any) error {
+			layer, err := modeProvider.Get()
+			if err != nil {
+				return fmt.Errorf("error getting layer value: %w", err)
+			}
+			setter, ok := target.(layerSetter)
+			if !ok {
+				return fmt.Errorf("target %T is not a layer setter", target)
+			}
+			setter.SetLayer(layer)
+			return nil
+		},
+
+		// digest function
+		func() ([]byte, error) {
+			return CreateDigest("set-layer", modeProvider)
+		},
+	)
+}
+
+// SetDepthWrite creates an operation that sets the depth write of the target.
+func SetDepthWrite(modeProvider Provider[bool]) Operation {
+	type depthWriteSetter interface {
+		SetDepthWrite(bool)
+	}
+	return FuncOperation(
+		// apply function
+		func(target any) error {
+			writeValue, err := modeProvider.Get()
+			if err != nil {
+				return fmt.Errorf("error getting write value: %w", err)
+			}
+			setter, ok := target.(depthWriteSetter)
+			if !ok {
+				return fmt.Errorf("target %T is not a depth write setter", target)
+			}
+			setter.SetDepthWrite(writeValue)
+			return nil
+		},
+
+		// digest function
+		func() ([]byte, error) {
+			return CreateDigest("set-depth-write", modeProvider)
+		},
+	)
+}

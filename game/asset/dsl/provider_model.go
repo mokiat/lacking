@@ -438,7 +438,7 @@ func BuildModelResource(gltfDoc *gltf.Document, forceCollision bool) (*mdl.Model
 					}
 				}
 			} else {
-				return nil, fmt.Errorf("missing material for primitive")
+				return nil, fmt.Errorf("missing material for primitive of mesh %q", gltfMesh.Name)
 			}
 			geometry.AddFragment(fragment)
 
