@@ -212,12 +212,17 @@ type ModelInfo struct {
 // Model represents an instance of a ModelTemplate in a Scene.
 type Model struct {
 	root       *hierarchy.Node
+	nodes      IdentifiableList[*hierarchy.Node]
 	recordings []*animation.Recording
 }
 
 // Root returns the root node of the model hierarchy.
 func (m *Model) Root() *hierarchy.Node {
 	return m.root
+}
+
+func (m *Model) Nodes() IdentifiableList[*hierarchy.Node] {
+	return m.nodes
 }
 
 // FindNode is a convenience method that searches for a node
@@ -341,6 +346,7 @@ func InstantiateModel(scene *Scene, info ModelInfo) *Model {
 
 	return &Model{
 		root:       modelNode,
+		nodes:      nodes,
 		recordings: recordings.ValuesList(),
 	}
 }
