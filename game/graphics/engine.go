@@ -497,7 +497,7 @@ func (e *Engine) createForwardPassPipeline(info internal.RenderPassPipelineInfo)
 
 		BlendEnabled:                info.PassDefinition.Blending, // default: false
 		BlendColor:                  [4]float32{0.0, 0.0, 0.0, 0.0},
-		BlendSourceColorFactor:      render.BlendFactorOne,
+		BlendSourceColorFactor:      render.BlendFactorSourceAlpha,
 		BlendSourceAlphaFactor:      render.BlendFactorOne,
 		BlendDestinationColorFactor: render.BlendFactorOne,
 		BlendDestinationAlphaFactor: render.BlendFactorZero,

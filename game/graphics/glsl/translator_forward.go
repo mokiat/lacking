@@ -13,6 +13,7 @@ func (t *Translator) translateForwardVertexCode(shader *lsl.Shader, constraints 
 	properties.BaseProperties = t.buildBaseProperties(ctx, shader, constraints, "out")
 	{
 		ctx.Push()
+		ctx.RegisterIdentifier("#vertexUV", "tex_coord")
 		properties.MainProperties = t.buildMainProperties(ctx, shader, "#vertex")
 		ctx.Pop()
 	}
