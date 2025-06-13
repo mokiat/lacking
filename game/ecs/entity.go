@@ -40,6 +40,7 @@ func (e *Entity) DeleteComponent(typeID ComponentTypeID) {
 
 // Delete removes this entity from the scene.
 func (e *Entity) Delete() {
+	e.scene.notifyDelete(e)
 	for i := range e.components {
 		e.components[i] = nil
 	}

@@ -1,7 +1,11 @@
 package ecs
 
+import "github.com/mokiat/lacking/util/observer"
+
 func newScene() *Scene {
-	scene := &Scene{}
+	scene := &Scene{
+		deleteSubscriptions: observer.NewSubscriptionSet[DeleteCallback](),
+	}
 	resultCache := make([]*Result, 0, 3)
 	for i := range resultCache {
 		resultCache[i] = newResult(scene)
@@ -17,6 +21,14 @@ type Scene struct {
 	cachedEntity *Entity
 
 	resultCache []*Result
+
+	deleteSubscriptions *observer.SubscriptionSet[DeleteCallback]
+}
+
+// SubscribeDelete adds a callback to be executed before an entity is fully
+// deleted.
+func (s *Scene) SubscribeDelete(callback DeleteCallback) *DeleteSubscription {
+	return s.deleteSubscriptions.Subscribe(callback)
 }
 
 // CreateEntity creates a new ECS entity in this
@@ -60,6 +72,12 @@ func (s *Scene) Delete() {
 	s.firstEntity = nil
 	s.lastEntity = nil
 	s.cachedEntity = nil
+}
+
+func (s *Scene) notifyDelete(entity *Entity) {
+	for callback := range s.deleteSubscriptions.CallbacksIter() {
+		callback(entity)
+	}
 }
 
 func (s *Scene) attachEntity(entity *Entity) {

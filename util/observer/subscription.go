@@ -1,6 +1,9 @@
 package observer
 
-import "slices"
+import (
+	"iter"
+	"slices"
+)
 
 // NewSubscriptionSet creates a new SubscriptionSet.
 func NewSubscriptionSet[T any]() *SubscriptionSet[T] {
@@ -26,6 +29,17 @@ func (s *SubscriptionSet[T]) Subscribe(callback T) *Subscription[T] {
 func (s *SubscriptionSet[T]) Unsubscribe(subscription *Subscription[T]) {
 	if index := slices.Index(s.subscriptions, subscription); index >= 0 {
 		s.subscriptions = slices.Delete(s.subscriptions, index, index+1)
+	}
+}
+
+// CallbacksIter returns an iterator over all subscription callbacks.
+func (s *SubscriptionSet[T]) CallbacksIter() iter.Seq[T] {
+	return func(yield func(T) bool) {
+		for _, subscription := range s.subscriptions {
+			if !yield(subscription.callback) {
+				return
+			}
+		}
 	}
 }
 
