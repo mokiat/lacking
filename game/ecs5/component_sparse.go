@@ -8,13 +8,13 @@ import (
 // storage as needed.
 //
 // This implementation is more memory-friendly but this comes at a performance
-// cost. It should be used only for component types that are rarely attached
-// to entities.
+// cost. It should be used only for component types that are occasionally
+// attached to an entity.
 func NewSparseComponentSet[T any](scene *Scene) *SparseComponentSet[T] {
 	result := &SparseComponentSet[T]{
 		mask:    scene.newComponentType(),
-		list:    mem.NewSparseList[T](64),
-		mapping: make(map[uint32]mem.SparseID),
+		list:    mem.NewSparseList[T](1024),
+		mapping: make([]mem.SparseID, scene.MaxEntityCount()),
 	}
 	scene.SubscribeDelete(result.Unset)
 	return result
@@ -25,25 +25,29 @@ var _ ComponentSet[any] = (*SparseComponentSet[any])(nil)
 type SparseComponentSet[T any] struct {
 	mask    componentMask
 	list    *mem.SparseList[T]
-	mapping map[uint32]mem.SparseID
+	mapping []mem.SparseID
 }
 
 func (s *SparseComponentSet[T]) Set(entity Entity, value T) {
 	scene := entity.scene
 	scene.assignComponent(entity, s.mask)
 
-	id, ref := s.list.New()
-	*ref = value
-	s.mapping[entity.index] = id
+	if id := s.mapping[entity.index]; s.list.Has(id) {
+		ref := s.list.Get(id)
+		*ref = value
+	} else {
+		id, ref := s.list.New()
+		*ref = value
+		s.mapping[entity.index] = id
+	}
 }
 
 func (s *SparseComponentSet[T]) Unset(entity Entity) {
 	scene := entity.scene
 	scene.removeComponent(entity, s.mask)
 
-	if id, ok := s.mapping[entity.index]; ok {
-		s.list.Delete(id)
-	}
+	id := s.mapping[entity.index]
+	s.list.Delete(id)
 }
 
 func (s *SparseComponentSet[T]) Ref(entity Entity) *T {
@@ -52,10 +56,7 @@ func (s *SparseComponentSet[T]) Ref(entity Entity) *T {
 		return nil
 	}
 
-	id, ok := s.mapping[entity.index]
-	if !ok {
-		return nil
-	}
+	id := s.mapping[entity.index]
 	return s.list.Get(id)
 }
 

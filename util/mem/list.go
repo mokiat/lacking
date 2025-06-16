@@ -43,6 +43,9 @@ func (l *SparseList[T]) New() (SparseID, *T) {
 }
 
 func (l *SparseList[T]) Get(id SparseID) *T {
+	if id.revision == 0 {
+		return nil
+	}
 	itemID := sparseItemID{
 		blockIndex:  id.blockIndex,
 		blockOffset: id.blockOffset,
@@ -52,6 +55,18 @@ func (l *SparseList[T]) Get(id SparseID) *T {
 		return nil
 	}
 	return &item.value
+}
+
+func (l SparseList[T]) Has(id SparseID) bool {
+	if id.revision == 0 {
+		return false
+	}
+	itemID := sparseItemID{
+		blockIndex:  id.blockIndex,
+		blockOffset: id.blockOffset,
+	}
+	item := l.itemRef(itemID)
+	return item.inUse && (item.revision == id.revision)
 }
 
 func (l *SparseList[T]) Iter() iter.Seq2[SparseID, *T] {
@@ -80,11 +95,17 @@ func (l *SparseList[T]) Iter() iter.Seq2[SparseID, *T] {
 }
 
 func (l *SparseList[T]) Delete(id SparseID) {
+	if id.revision == 0 {
+		return
+	}
 	itemID := sparseItemID{
 		blockIndex:  id.blockIndex,
 		blockOffset: id.blockOffset,
 	}
 	item := l.itemRef(itemID)
+	if !item.inUse || (item.revision != id.revision) {
+		return
+	}
 	item.value = gog.Zero[T]()
 	item.revision++
 	item.inUse = false
