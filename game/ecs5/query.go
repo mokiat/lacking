@@ -12,7 +12,7 @@ import (
 // a certain component.
 func HasComponent[T any](set ComponentSet[T]) Condition {
 	return Condition{
-		positiveMask:      set.getMask(),
+		positiveMask:      set.Mask(),
 		negativeMask:      componentMask(0),
 		isPendingDeletion: opt.Unspecified[bool](),
 	}
@@ -23,7 +23,7 @@ func HasComponent[T any](set ComponentSet[T]) Condition {
 func LacksComponent[T any](set ComponentSet[T]) Condition {
 	return Condition{
 		positiveMask:      componentMask(0),
-		negativeMask:      set.getMask(),
+		negativeMask:      set.Mask(),
 		isPendingDeletion: opt.Unspecified[bool](),
 	}
 }

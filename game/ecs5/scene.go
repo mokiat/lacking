@@ -10,32 +10,39 @@ import (
 const defaultMaxEntityCount = 1024 * 1024
 
 func newScene(maxEntityCount int) *Scene {
-	freeEntityIndices := ds.NewStack[uint32](maxEntityCount)
+	freeHandleIndices := ds.NewStack[uint32](maxEntityCount)
 	for i := range seq.Range(maxEntityCount-1, 0) {
-		freeEntityIndices.Push(uint32(i))
+		freeHandleIndices.Push(uint32(i))
 	}
 
 	return &Scene{
 		deleteSubscriptions: observer.NewSubscriptionSet[DeleteCallback](),
-		maxEntityCount:      maxEntityCount,
-		entityMask:          newBitmask(),
-		freeEntityIndices:   freeEntityIndices,
-		handles:             make([]entityHandle, maxEntityCount),
-		freeRevision:        uint32(1),
-		results:             mem.NewSparseAllocator[Result](),
+
+		maxEntityCount:    maxEntityCount,
+		entityMask:        newBitmask(),
+		freeHandleIndices: freeHandleIndices,
+		handles:           make([]entityHandle, maxEntityCount),
+
+		freeRevision:       uint32(1),
+		freeComponentIndex: uint64(0),
+
+		results: mem.NewSparseAllocator[Result](),
 	}
 }
 
 // Scene represents a collection of ECS entities.
 type Scene struct {
 	deleteSubscriptions *observer.SubscriptionSet[DeleteCallback]
-	maxEntityCount      int
-	entityMask          *bitmask
-	freeEntityIndices   *ds.Stack[uint32]
-	handles             []entityHandle
-	freeRevision        uint32
-	freeComponentIndex  uint64
-	results             *mem.SparseAllocator[Result]
+
+	maxEntityCount    int
+	entityMask        *bitmask
+	freeHandleIndices *ds.Stack[uint32]
+	handles           []entityHandle
+
+	freeRevision       uint32
+	freeComponentIndex uint64
+
+	results *mem.SparseAllocator[Result]
 }
 
 // MaxEntityCount returns the maximum number of entities that can be managed
@@ -54,7 +61,7 @@ func (s *Scene) SubscribeDelete(callback DeleteCallback) *DeleteSubscription {
 // CreateEntity creates a new entity in this scene.
 func (s *Scene) CreateEntity() Entity {
 	s.freeRevision++
-	index := s.freeEntityIndices.Pop()
+	index := s.freeHandleIndices.Pop()
 	s.entityMask.Set(index, true)
 	s.handles[index] = entityHandle{
 		components:        componentMask(0),
@@ -117,7 +124,7 @@ func (s *Scene) Purge() {
 				revision: handle.revision,
 			})
 			s.entityMask.Set(entityIndex, false)
-			s.freeEntityIndices.Push(entityIndex)
+			s.freeHandleIndices.Push(entityIndex)
 		}
 	}
 }
@@ -132,6 +139,30 @@ func (s *Scene) newComponentType() componentMask {
 	result := componentMask(1 << s.freeComponentIndex)
 	s.freeComponentIndex++
 	return result
+}
+
+func (s *Scene) assignComponent(entity Entity, mask componentMask) {
+	handle := &s.handles[entity.index]
+	if handle.revision != entity.revision {
+		panic("cannot add component to deleted entity")
+	}
+	handle.components |= mask
+}
+
+func (s *Scene) removeComponent(entity Entity, mask componentMask) {
+	handle := &s.handles[entity.index]
+	if handle.revision != entity.revision {
+		panic("cannot remove component from deleted entity")
+	}
+	handle.components &= ^mask
+}
+
+func (s *Scene) hasComponent(entity Entity, mask componentMask) bool {
+	handle := &s.handles[entity.index]
+	if handle.revision != entity.revision {
+		panic("cannot reference component of deleted entity")
+	}
+	return (handle.components & mask) == mask
 }
 
 func (s *Scene) notifyDelete(entity Entity) {

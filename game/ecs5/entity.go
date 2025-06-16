@@ -2,19 +2,24 @@ package ecs5
 
 import "iter"
 
-// Entity represents a game entity. It can represent a number
-// of things depending on the components that are attached
-// to it.
+// Entity represents an ECS entity. It an abstract handle to which a number
+// of components can be attached and removed.
 type Entity struct {
 	scene    *Scene
 	index    uint32
 	revision uint32
 }
 
+// Exists returns whether this entity is still present in the Scene.
 func (e Entity) Exists() bool {
 	return e.scene.HasEntity(e)
 }
 
+// Delete marks this entity for deletion.
+//
+// Once the scene has been Purged, this handle will become invalid and Exists
+// will start returning false. In the meantime, it will still be returned
+// from queries, unless explicitly requested not to.
 func (e Entity) Delete() {
 	e.scene.DeleteEntity(e)
 }

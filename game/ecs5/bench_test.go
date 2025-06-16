@@ -4,139 +4,36 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/mokiat/lacking/game/ecs"
 	"github.com/mokiat/lacking/game/ecs5"
 )
 
-var NameComponentID = ecs.NewComponentTypeID()
-
-type NameComponent interface {
-	SetName(string)
-	Name() string
-}
-
-type BaseNameComponent struct {
+type NameComponent struct {
 	name string
 }
 
-func (*BaseNameComponent) TypeID() ecs.ComponentTypeID {
-	return NameComponentID
-}
-
-func (c *BaseNameComponent) SetName(name string) {
+func (c *NameComponent) SetName(name string) {
 	c.name = name
 }
 
-func (c *BaseNameComponent) Name() string {
+func (c *NameComponent) Name() string {
 	return c.name
 }
 
-var AgeComponentID = ecs.NewComponentTypeID()
-
-type AgeComponent interface {
-	SetAge(int)
-	Age() int
-}
-
-type BaseAgeComponent struct {
+type AgeComponent struct {
 	age int
 }
 
-func (*BaseAgeComponent) TypeID() ecs.ComponentTypeID {
-	return AgeComponentID
-}
-
-func (c *BaseAgeComponent) SetAge(age int) {
+func (c *AgeComponent) SetAge(age int) {
 	c.age = age
 }
 
-func (c *BaseAgeComponent) Age() int {
+func (c *AgeComponent) Age() int {
 	return c.age
 }
 
 const entityCount = 1024 * 1024
 
-func BenchmarkRawQuery(b *testing.B) {
-	type primary struct {
-		BaseNameComponent
-		BaseAgeComponent
-	}
-
-	primarySet := make([]primary, entityCount/2)
-	for i := range entityCount / 2 {
-		obj := &primarySet[i]
-		obj.SetName(strconv.Itoa(i))
-		obj.SetAge(i)
-	}
-
-	for b.Loop() {
-		for i := range primarySet {
-			obj := &primarySet[i]
-			obj.SetName("test")
-			obj.SetAge(i)
-		}
-	}
-}
-
-// func BenchmarkOriginalSetUnset(b *testing.B) {
-// 	engine := ecs.NewEngine()
-// 	scene := engine.CreateScene()
-
-// 	entities := make([]*ecs.Entity, entityCount)
-// 	for i := range entityCount {
-// 		entities[i] = scene.CreateEntity()
-// 	}
-
-// 	for b.Loop() {
-// 		for i := range entityCount {
-// 			ecs.AttachComponent(entities[i], &BaseAgeComponent{
-// 				age: i,
-// 			})
-// 		}
-// 		for i := range entityCount {
-// 			entities[i].DeleteComponent(AgeComponentID)
-// 		}
-// 	}
-// }
-
-func BenchmarkOriginalQuery(b *testing.B) {
-	engine := ecs.NewEngine()
-	scene := engine.CreateScene()
-
-	for i := range entityCount {
-		entity := scene.CreateEntity()
-		ecs.AttachComponent(entity, &BaseNameComponent{
-			name: strconv.Itoa(i),
-		})
-		if i%2 == 0 {
-			ecs.AttachComponent(entity, &BaseAgeComponent{
-				age: i,
-			})
-		}
-	}
-
-	scene.Find(ecs.Having(NameComponentID)).Close() // prepare cache
-
-	type FakeType struct {
-		*BaseNameComponent
-		*BaseAgeComponent
-	}
-
-	for b.Loop() {
-		result := scene.Find(ecs.Having(NameComponentID).And(AgeComponentID))
-		result.Each(func(entity *ecs.Entity) {
-			var obj FakeType
-			ecs.FetchComponent(entity, &obj.BaseNameComponent)
-			ecs.FetchComponent(entity, &obj.BaseAgeComponent)
-
-			obj.SetName("test")
-			obj.SetAge(37)
-		})
-		result.Close()
-	}
-}
-
-// func BenchmarkBoilerplateSetUnset(b *testing.B) {
+// func BenchmarkSetUnset(b *testing.B) {
 // 	engine := ecs5.NewEngine()
 // 	scene := engine.CreateScene()
 
@@ -160,20 +57,20 @@ func BenchmarkOriginalQuery(b *testing.B) {
 // 	}
 // }
 
-func BenchmarkBoilerplateQuery(b *testing.B) {
+func BenchmarkQueryDense(b *testing.B) {
 	engine := ecs5.NewEngine()
 	scene := engine.CreateScene()
 
-	nameComponents := ecs5.NewDenseComponentSet[BaseNameComponent](scene)
-	ageComponents := ecs5.NewDenseComponentSet[BaseAgeComponent](scene)
+	nameComponents := ecs5.NewDenseComponentSet[NameComponent](scene)
+	ageComponents := ecs5.NewDenseComponentSet[AgeComponent](scene)
 
 	for i := range entityCount {
 		entity := scene.CreateEntity()
-		nameComponents.Set(entity, BaseNameComponent{
+		nameComponents.Set(entity, NameComponent{
 			name: strconv.Itoa(i),
 		})
 		if i%2 == 0 {
-			ageComponents.Set(entity, BaseAgeComponent{
+			ageComponents.Set(entity, AgeComponent{
 				age: i,
 			})
 		}
@@ -182,8 +79,8 @@ func BenchmarkBoilerplateQuery(b *testing.B) {
 	scene.Query().Release() // prepare cache
 
 	type FakeType struct {
-		*BaseNameComponent
-		*BaseAgeComponent
+		*NameComponent
+		*AgeComponent
 	}
 
 	for b.Loop() {
@@ -193,8 +90,51 @@ func BenchmarkBoilerplateQuery(b *testing.B) {
 		)
 		result.Each(func(entity ecs5.Entity) {
 			obj := FakeType{
-				BaseNameComponent: nameComponents.Ref(entity),
-				BaseAgeComponent:  ageComponents.Ref(entity),
+				NameComponent: nameComponents.Ref(entity),
+				AgeComponent:  ageComponents.Ref(entity),
+			}
+			obj.SetName("test")
+			obj.SetAge(37)
+		})
+		result.Release()
+	}
+}
+
+func BenchmarkQuerySparse(b *testing.B) {
+	engine := ecs5.NewEngine()
+	scene := engine.CreateScene()
+
+	nameComponents := ecs5.NewSparseComponentSet[NameComponent](scene)
+	ageComponents := ecs5.NewSparseComponentSet[AgeComponent](scene)
+
+	for i := range entityCount {
+		entity := scene.CreateEntity()
+		nameComponents.Set(entity, NameComponent{
+			name: strconv.Itoa(i),
+		})
+		if i%2 == 0 {
+			ageComponents.Set(entity, AgeComponent{
+				age: i,
+			})
+		}
+	}
+
+	scene.Query().Release() // prepare cache
+
+	type FakeType struct {
+		*NameComponent
+		*AgeComponent
+	}
+
+	for b.Loop() {
+		result := scene.Query(
+			ecs5.HasComponent(nameComponents),
+			ecs5.HasComponent(ageComponents),
+		)
+		result.Each(func(entity ecs5.Entity) {
+			obj := FakeType{
+				NameComponent: nameComponents.Ref(entity),
+				AgeComponent:  ageComponents.Ref(entity),
 			}
 			obj.SetName("test")
 			obj.SetAge(37)
