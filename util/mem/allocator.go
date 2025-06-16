@@ -43,7 +43,6 @@ func (a *SparseAllocator[T]) Allocate() *T {
 }
 
 func (a *SparseAllocator[T]) Release(ref *T) {
-	*ref = gog.Zero[T]() // avoid memory leaks
 	a.pool.Push(ref)
 }
 
@@ -77,7 +76,6 @@ func (a *StaticAllocator[T]) Allocate() *T {
 }
 
 func (a *StaticAllocator[T]) Release(ref *T) {
-	*ref = gog.Zero[T]() // avoid memory leaks
 	a.pool.Push(ref)
 }
 
@@ -110,6 +108,5 @@ func (a *BatchAllocator[T]) Allocate() *T {
 }
 
 func (a *BatchAllocator[T]) Release(ref *T) {
-	*ref = gog.Zero[T]() // avoid memory leaks
 	a.pool.Push(ref)
 }
