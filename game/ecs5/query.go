@@ -2,10 +2,8 @@ package ecs5
 
 import (
 	"iter"
-	"slices"
 
 	"github.com/mokiat/gog/opt"
-	"github.com/mokiat/lacking/util/mem"
 )
 
 // HasComponent returns a query condition that requires an entity to have
@@ -82,29 +80,43 @@ func (c *Condition) isSatisfied(handle *entityHandle) bool {
 // Make sure to call Release once you are done with it so that
 // it can be reused in future searches.
 type Result struct {
-	allocator *mem.SparseAllocator[Result]
-
-	// TODO: Maybe use a bitmask and scene ref instead. It will
-	// take less memory but will be slower, so benchmark this first.
-	entities []Entity
+	scene      *Scene
+	entityMask *bitmask
 }
 
 // Each invokes the callback function for each entity in this result set.
 //
 // While less elegant than Iter, it does not incur unnecessary allocations.
 func (r *Result) Each(cb func(Entity)) {
-	for _, entity := range r.entities {
-		cb(entity)
+	for entityIndex := range r.entityMask.ActiveIter() {
+		handle := r.scene.handles[entityIndex]
+		cb(Entity{
+			scene:    r.scene,
+			index:    entityIndex,
+			revision: handle.revision,
+		})
 	}
 }
 
 // Iter returns an iterator over the entities in this result set.
 func (r *Result) Iter() iter.Seq[Entity] {
-	return slices.Values(r.entities)
+	return func(yield func(Entity) bool) {
+		for entityIndex := range r.entityMask.ActiveIter() {
+			handle := r.scene.handles[entityIndex]
+			entity := Entity{
+				scene:    r.scene,
+				index:    entityIndex,
+				revision: handle.revision,
+			}
+			if !yield(entity) {
+				return
+			}
+		}
+	}
 }
 
 // Release frees resources allocated for this result.
 func (r *Result) Release() {
-	r.allocator.Release(r)
-	r.allocator = nil
+	r.scene.results.Release(r)
+	r.scene = nil
 }

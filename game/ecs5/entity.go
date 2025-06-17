@@ -38,6 +38,12 @@ type bitmask struct {
 	values [16384]uint64
 }
 
+func (m *bitmask) Clear() {
+	for i := range m.values {
+		m.values[i] = 0x00
+	}
+}
+
 func (m *bitmask) Get(index uint32) bool {
 	bucket := index / 64
 	offset := index % 64

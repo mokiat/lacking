@@ -98,15 +98,15 @@ func (s *Scene) Query(conditions ...Condition) *Result {
 		queryCondition.apply(condition)
 	}
 	result := s.results.Allocate()
-	result.allocator = s.results
-	result.entities = result.entities[:0]
+	result.scene = s
+	if result.entityMask == nil {
+		result.entityMask = newBitmask()
+	} else {
+		result.entityMask.Clear()
+	}
 	for entityIndex := range s.entityMask.ActiveIter() {
 		if handle := &s.handles[entityIndex]; queryCondition.isSatisfied(handle) {
-			result.entities = append(result.entities, Entity{
-				scene:    s,
-				index:    entityIndex,
-				revision: handle.revision,
-			})
+			result.entityMask.Set(entityIndex, true)
 		}
 	}
 	return result
