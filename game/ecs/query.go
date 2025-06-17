@@ -1,4 +1,4 @@
-package ecs5
+package ecs
 
 import (
 	"iter"

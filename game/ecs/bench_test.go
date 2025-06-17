@@ -1,10 +1,10 @@
-package ecs5_test
+package ecs_test
 
 import (
 	"strconv"
 	"testing"
 
-	"github.com/mokiat/lacking/game/ecs5"
+	"github.com/mokiat/lacking/game/ecs"
 )
 
 type NameComponent struct {
@@ -32,11 +32,11 @@ func (c *AgeComponent) Age() int {
 }
 
 func BenchmarkQueryDense(b *testing.B) {
-	engine := ecs5.NewEngine()
+	engine := ecs.NewEngine()
 	scene := engine.CreateScene()
 
-	nameComponents := ecs5.NewDenseComponentSet[NameComponent](scene)
-	ageComponents := ecs5.NewDenseComponentSet[AgeComponent](scene)
+	nameComponents := ecs.NewDenseComponentSet[NameComponent](scene)
+	ageComponents := ecs.NewDenseComponentSet[AgeComponent](scene)
 
 	for i := range scene.MaxEntityCount() {
 		entity := scene.CreateEntity()
@@ -59,10 +59,10 @@ func BenchmarkQueryDense(b *testing.B) {
 
 	for b.Loop() {
 		result := scene.Query(
-			ecs5.HasComponent(nameComponents),
-			ecs5.HasComponent(ageComponents),
+			ecs.HasComponent(nameComponents),
+			ecs.HasComponent(ageComponents),
 		)
-		result.Each(func(entity ecs5.Entity) {
+		result.Each(func(entity ecs.Entity) {
 			obj := FakeType{
 				NameComponent: nameComponents.Ref(entity),
 				AgeComponent:  ageComponents.Ref(entity),
@@ -75,11 +75,11 @@ func BenchmarkQueryDense(b *testing.B) {
 }
 
 func BenchmarkQuerySparse(b *testing.B) {
-	engine := ecs5.NewEngine()
+	engine := ecs.NewEngine()
 	scene := engine.CreateScene()
 
-	nameComponents := ecs5.NewSparseComponentSet[NameComponent](scene)
-	ageComponents := ecs5.NewSparseComponentSet[AgeComponent](scene)
+	nameComponents := ecs.NewSparseComponentSet[NameComponent](scene)
+	ageComponents := ecs.NewSparseComponentSet[AgeComponent](scene)
 
 	for i := range scene.MaxEntityCount() {
 		entity := scene.CreateEntity()
@@ -102,10 +102,10 @@ func BenchmarkQuerySparse(b *testing.B) {
 
 	for b.Loop() {
 		result := scene.Query(
-			ecs5.HasComponent(nameComponents),
-			ecs5.HasComponent(ageComponents),
+			ecs.HasComponent(nameComponents),
+			ecs.HasComponent(ageComponents),
 		)
-		result.Each(func(entity ecs5.Entity) {
+		result.Each(func(entity ecs.Entity) {
 			obj := FakeType{
 				NameComponent: nameComponents.Ref(entity),
 				AgeComponent:  ageComponents.Ref(entity),
@@ -118,11 +118,11 @@ func BenchmarkQuerySparse(b *testing.B) {
 }
 
 func BenchmarkQueryTiny(b *testing.B) {
-	engine := ecs5.NewEngine()
+	engine := ecs.NewEngine()
 	scene := engine.CreateScene()
 
-	nameComponents := ecs5.NewTinyComponentSet[NameComponent](scene)
-	ageComponents := ecs5.NewTinyComponentSet[AgeComponent](scene)
+	nameComponents := ecs.NewTinyComponentSet[NameComponent](scene)
+	ageComponents := ecs.NewTinyComponentSet[AgeComponent](scene)
 
 	for i := range scene.MaxEntityCount() {
 		entity := scene.CreateEntity()
@@ -145,10 +145,10 @@ func BenchmarkQueryTiny(b *testing.B) {
 
 	for b.Loop() {
 		result := scene.Query(
-			ecs5.HasComponent(nameComponents),
-			ecs5.HasComponent(ageComponents),
+			ecs.HasComponent(nameComponents),
+			ecs.HasComponent(ageComponents),
 		)
-		result.Each(func(entity ecs5.Entity) {
+		result.Each(func(entity ecs.Entity) {
 			obj := FakeType{
 				NameComponent: nameComponents.Ref(entity),
 				AgeComponent:  ageComponents.Ref(entity),

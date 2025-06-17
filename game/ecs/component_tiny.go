@@ -1,4 +1,4 @@
-package ecs5
+package ecs
 
 import (
 	"github.com/mokiat/lacking/util/mem"
