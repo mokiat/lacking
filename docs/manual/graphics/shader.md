@@ -194,9 +194,106 @@ type Vertex struct {
 
 ## Functions
 
-The following table lists built-in functions.
+The following table lists constructor built-in functions.
 
-| Name | Variants | Description |
-| ---- | -------- | ----------- |
-| `sin(float)` | `sin(vec2)`, `sin(vec3)`, `sin(vec4)` | Returns the sine of a value |
-| `cos(float)` | `cos(vec2)`, `cos(vec3)`, `cos(vec4)` | Returns the cosine of a value |
+| Name | Scope | Description |
+| ---- | ----- | ----------- |
+| `bool(v int) bool` | unbounded | Converts an integer into a boolean. |
+| `bool(v uint) bool` | unbounded | Converts an unsigned integer into a boolean. |
+| `bool(v float) bool` | unbounded | Converts a float into a boolean. |
+| `int(v bool) int` | unbounded | Converts a boolean into an integer. |
+| `int(v uint) int` | unbounded | Converts an unsigned integer into an integer. |
+| `int(v float) int` | unbounded | Converts a float into an integer. |
+| `uint(v bool) uint` | unbounded | Converts a boolean into an unsigned integer. |
+| `uint(v int) uint` | unbounded | Converts an integer into an unsigned integer. |
+| `uint(v float) uint` | unbounded | Converts a float into an unsigned integer. |
+| `float(v bool) float` | unbounded | Converts a boolean into a float. |
+| `float(v int) float` | unbounded | Converts an integer into a float. |
+| `float(v uint) float` | unbounded | Converst an unsigned integer into a float. |
+| `vec2(v float) vec2` | unbounded | Returns a `vec2` with all components equal to the value `v`. |
+| `vec2(x, y float) vec2` | unbounded | Returns a `vec2` with the components set to `x` and `y` respectively. |
+| `vec3(v float) vec3` | unbounded | Returns a `vec3` with all components equal to the value `v`. |
+| `vec3(x, y, z float) vec3` | unbounded | Returns a `vec3` with the components set to `x`, `y`, and `z` respectively. |
+| `vec3(a vec2, z float) vec3` | unbounded | Returns a `vec3` with the components set to `a.x`, `a.y`, and `z` respectively. |
+| `vec3(x float, a vec2) vec3` | unbounded | Returns a `vec3` with the components set to `x`, `a.x`, and `a.y` respectively. |
+| `vec4(v float) vec4` | unbounded | Returns a `vec4` with all components equal to the value `v`. |
+| `vec4(x, y, z, w float) vec4` | unbounded | Returns a `vec4` with the components set to `x`, `y`, `z`, and `w` respectively. |
+| `vec4(a vec2, z, w float) vec4` | unbounded | Returns a `vec4` with the components set to `a.x`, `a.y`, `z`, and `w` respectively. |
+| `vec4(x float, a vec2, w float) vec4` | unbounded | Returns a `vec4` with the components set to `x`, `a.x`, `a.y`, and `w` respectively. |
+| `vec4(x, y float, a vec2) vec4` | unbounded | Returns a `vec4` with the components set to `x`, `y`, `a.x`, and `a.y` respectively. |
+| `vec4(a vec3, w float) vec4` | unbounded | Returns a `vec4` with the components set to `a.x`, `a.y`, `a.z`, and `w` respectively. |
+| `vec4(x float, a vec3) vec4` | unbounded | Returns a `vec4` with the components set to `x`, `a.x`, `a.y`, and `a.z` respectively. |
+| `bvec2(v bool) bvec2` | unbounded | Returns a `bvec2` with all components equal to the value `v`. |
+| `bvec2(x, y bool) bvec2` | unbounded | Returns a `bvec2` with the components set to `x` and `y` respectively. |
+| `bvec3(v bool) bvec3` | unbounded | Returns a `bvec3` with all components equal to the value `v`. |
+| `bvec3(x, y, z bool) bvec3` | unbounded | Returns a `bvec3` with the components set to `x`, `y`, and `z` respectively. |
+| `bvec3(a bvec2, z bool) bvec3` | unbounded | Returns a `bvec3` with the components set to `a.x`, `a.y`, and `z` respectively. |
+| `bvec3(x bool, a bvec2) bvec3` | unbounded | Returns a `bvec3` with the components set to `x`, `a.x`, and `a.y` respectively. |
+| `bvec4(v bool) bvec4` | unbounded | Returns a `bvec4` with all components equal to the value `v`. |
+| `bvec4(x, y, z, w bool) bvec4` | unbounded | Returns a `bvec4` with the components set to `x`, `y`, `z`, and `w` respectively. |
+| `bvec4(a bvec2, z, w bool) bvec4` | unbounded | Returns a `bvec4` with the components set to `a.x`, `a.y`, `z`, and `w` respectively. |
+| `bvec4(x bool, a bvec2, w bool) bvec4` | unbounded | Returns a `bvec4` with the components set to `x`, `a.x`, `a.y`, and `w` respectively. |
+| `bvec4(x, y bool, a bvec2) bvec4` | unbounded | Returns a `bvec4` with the components set to `x`, `y`, `a.x`, and `a.y` respectively. |
+| `bvec4(a bvec3, w bool) bvec4` | unbounded | Returns a `bvec4` with the components set to `a.x`, `a.y`, `a.z`, and `w` respectively. |
+| `bvec4(x bool, a bvec3) bvec4` | unbounded | Returns a `bvec4` with the components set to `x`, `a.x`, `a.y`, and `a.z` respectively. |
+| `ivec2(v int) ivec2` | unbounded | Returns a `ivec2` with all components equal to the value `v`. |
+| `ivec2(x, y int) ivec2` | unbounded | Returns a `ivec2` with the components set to `x` and `y` respectively. |
+| `ivec3(v int) ivec3` | unbounded | Returns a `ivec3` with all components equal to the value `v`. |
+| `ivec3(x, y, z int) ivec3` | unbounded | Returns a `ivec3` with the components set to `x`, `y`, and `z` respectively. |
+| `ivec3(a ivec2, z int) ivec3` | unbounded | Returns a `ivec3` with the components set to `a.x`, `a.y`, and `z` respectively. |
+| `ivec3(x int, a ivec2) ivec3` | unbounded | Returns a `ivec3` with the components set to `x`, `a.x`, and `a.y` respectively. |
+| `ivec4(v int) ivec4` | unbounded | Returns a `ivec4` with all components equal to the value `v`. |
+| `ivec4(x, y, z, w int) ivec4` | unbounded | Returns a `ivec4` with the components set to `x`, `y`, `z`, and `w` respectively. |
+| `ivec4(a ivec2, z, w int) ivec4` | unbounded | Returns a `ivec4` with the components set to `a.x`, `a.y`, `z`, and `w` respectively. |
+| `ivec4(x int, a ivec2, w int) ivec4` | unbounded | Returns a `ivec4` with the components set to `x`, `a.x`, `a.y`, and `w` respectively. |
+| `ivec4(x, y int, a ivec2) ivec4` | unbounded | Returns a `ivec4` with the components set to `x`, `y`, `a.x`, and `a.y` respectively. |
+| `ivec4(a ivec3, w int) ivec4` | unbounded | Returns a `ivec4` with the components set to `a.x`, `a.y`, `a.z`, and `w` respectively. |
+| `ivec4(x int, a ivec3) ivec4` | unbounded | Returns a `ivec4` with the components set to `x`, `a.x`, `a.y`, and `a.z` respectively. |
+| `uvec2(v uint) uvec2` | unbounded | Returns a `uvec2` with all components equal to the value `v`. |
+| `uvec2(x, y uint) uvec2` | unbounded | Returns a `uvec2` with the components set to `x` and `y` respectively. |
+| `uvec3(v uint) uvec3` | unbounded | Returns a `uvec3` with all components equal to the value `v`. |
+| `uvec3(x, y, z uint) uvec3` | unbounded | Returns a `uvec3` with the components set to `x`, `y`, and `z` respectively. |
+| `uvec3(a uvec2, z uint) uvec3` | unbounded | Returns a `uvec3` with the components set to `a.x`, `a.y`, and `z` respectively. |
+| `uvec3(x uint, a uvec2) uvec3` | unbounded | Returns a `uvec3` with the components set to `x`, `a.x`, and `a.y` respectively. |
+| `uvec4(v uint) uvec4` | unbounded | Returns a `uvec4` with all components equal to the value `v`. |
+| `uvec4(x, y, z, w uint) uvec4` | unbounded | Returns a `uvec4` with the components set to `x`, `y`, `z`, and `w` respectively. |
+| `uvec4(a uvec2, z, w uint) uvec4` | unbounded | Returns a `uvec4` with the components set to `a.x`, `a.y`, `z`, and `w` respectively. |
+| `uvec4(x uint, a uvec2, w uint) uvec4` | unbounded | Returns a `uvec4` with the components set to `x`, `a.x`, `a.y`, and `w` respectively. |
+| `uvec4(x, y uint, a uvec2) uvec4` | unbounded | Returns a `uvec4` with the components set to `x`, `y`, `a.x`, and `a.y` respectively. |
+| `uvec4(a uvec3, w uint) uvec4` | unbounded | Returns a `uvec4` with the components set to `a.x`, `a.y`, `a.z`, and `w` respectively. |
+| `uvec4(x uint, a uvec3) uvec4` | unbounded | Returns a `uvec4` with the components set to `x`, `a.x`, `a.y`, and `a.z` respectively. |
+| `mat2(x, y vec2) mat2` | unbounded | Returns a `mat2` with columns `x` and `y` in order. |
+| `mat3(x, y, z vec3) mat3` | unbounded | Returns a `mat3` with columns `x`, `y` and `z` in order. |
+| `mat4(x, y, z, w vec4) mat4` | unbounded | Returns a `mat4` with columns `x`, `y`, `z` and `w` in order. |
+
+
+The following table lists general math built-in functions.
+
+| Name | Scope | Description |
+| ---- | ----- | ----------- |
+| `abs(v T) T` | unbounded | Returns the absolute value of the parameter. |
+| `sign(v T) T` | unbounded | Returns `1` when positive, `0` when zero, and `-1` when negative. |
+| `floor(v T) T` | unbounded | Returns the nearest whole number less than or equal to the parameter. |
+| `trunc(v T) T` | unbounded | Returns the nearest whole number for which the absolute value is less or equal to the absolute value of the parameter. |
+| `round(v T) T` | unbounded | Rounds the value to the nearest whole number. |
+| `ceil(v T) T` | unbounded | Returns the nearest whole number greater than or equal to the parameter. |
+| `fract(v T) T` | unbounded | In essence, returns `x - floor(x)`. |
+| `min(a, b T) T` | unbounded | Returns the minimum of the two values. |
+| `max(a, b T) T` | unbounded | Returns the maximum of the two values. |
+| `clamp(v, lower, upper T) T` | unbounded | In essence, returns `max(lower, min(v, upper))`. |
+| `mix(a, b, z T) T` | unbounded | Returns the linear interpolation between `a` and `b`. In essence, it calculates `a * (1-z) + b * z`. |
+| `smoothstep(a, b, z T) T` | unbounded | Returns the Hermite interpolation between `a` and `b`. |
+| `length(v T) S` | unbounded | Returns the length of the vector. |
+| `distance(a, b T) S` | unbounded | Returns the distance between two vectors. In essence, it returns `length(b - a)`. |
+| `dot(a, b T) S` | unbounded | Returns the dot product of two vectors. |
+| `cross(a, b T) T` | unbounded | Returns the cross product of two vectors. |
+| `normalize(v T) T` | unbounded | Resizes a vector to the unit length. |
+| `faceforward(v, i, n T)` | unbounded | Returns the vector `v` oriented to point away from the surface as dictated by in normal vector `n` and the incident vector `i` (which visually "points" towards the surface). |
+| `reflect(i, n T) T` | unbounded | Reflects the incident vector `i` (which visually "points" towards the surface) according to the normal vector `n`. |
+| `refract(i, n T, e S) T` | unbounded | Refracts the incident vector `i` (which visually "points" towards the surface) according to the normal vector `n` and the ratio of refraction `e`. |
+| `transpose(m T) T` | unbounded | Returns the transpose of the matrix `m`. As only square matrices are supported right now, the returned type is always the same. |
+| `determinant(m T) K` | unbounded | Returns the determinant of the matrix `m`. |
+| `any(v T) bool` | unbounded | Returns `true` if any of the components of `v` are `true`. |
+| `all(v T) bool` | unbounded | Returns `true` if all of the components of `v` are `true`. |
+| `cos(v T) T` | unbounded | Returns the cosine of the parameter `v`. |
+| `sin(v T) T` | unbounded | Returns the sine of the parameter `v`. |

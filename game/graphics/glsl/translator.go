@@ -271,10 +271,79 @@ func (t *Translator) translateBinaryExpression(ctx *translationContext, expressi
 
 func (t *Translator) translateFunctionCall(ctx *translationContext, call *lsl.FunctionCall) string {
 	identifier := call.Owner.(*lsl.Identifier)
-	if _, ok := builtInFunctions[identifier.Name]; ok {
-		return t.translateFunctionCallAsIs(ctx, identifier.Name, call.Arguments)
-	}
 	switch identifier.Name {
+	case "bool":
+		return t.translateFunctionCallAsIs(ctx, identifier.Name, call.Arguments)
+	case "int":
+		return t.translateFunctionCallAsIs(ctx, identifier.Name, call.Arguments)
+	case "uint":
+		return t.translateFunctionCallAsIs(ctx, identifier.Name, call.Arguments)
+	case "float":
+		return t.translateFunctionCallAsIs(ctx, identifier.Name, call.Arguments)
+	case "vec2":
+		return t.translateFunctionCallAsIs(ctx, identifier.Name, call.Arguments)
+	case "vec3":
+		return t.translateFunctionCallAsIs(ctx, identifier.Name, call.Arguments)
+	case "vec4":
+		return t.translateFunctionCallAsIs(ctx, identifier.Name, call.Arguments)
+	case "mat2":
+		return t.translateFunctionCallAsIs(ctx, identifier.Name, call.Arguments)
+	case "mat3":
+		return t.translateFunctionCallAsIs(ctx, identifier.Name, call.Arguments)
+	case "mat4":
+		return t.translateFunctionCallAsIs(ctx, identifier.Name, call.Arguments)
+
+	case "abs":
+		return t.translateFunctionCallAsIs(ctx, identifier.Name, call.Arguments)
+	case "sign":
+		return t.translateFunctionCallAsIs(ctx, identifier.Name, call.Arguments)
+	case "floor":
+		return t.translateFunctionCallAsIs(ctx, identifier.Name, call.Arguments)
+	case "trunc":
+		return t.translateFunctionCallAsIs(ctx, identifier.Name, call.Arguments)
+	case "round":
+		return t.translateFunctionCallAsIs(ctx, identifier.Name, call.Arguments)
+	case "ceil":
+		return t.translateFunctionCallAsIs(ctx, identifier.Name, call.Arguments)
+	case "fract":
+		return t.translateFunctionCallAsIs(ctx, identifier.Name, call.Arguments)
+	case "min":
+		return t.translateFunctionCallAsIs(ctx, identifier.Name, call.Arguments)
+	case "max":
+		return t.translateFunctionCallAsIs(ctx, identifier.Name, call.Arguments)
+	case "clamp":
+		return t.translateFunctionCallAsIs(ctx, identifier.Name, call.Arguments)
+	case "mix":
+		return t.translateFunctionCallAsIs(ctx, identifier.Name, call.Arguments)
+	case "smoothstep":
+		return t.translateFunctionCallAsIs(ctx, identifier.Name, call.Arguments)
+	case "length":
+		return t.translateFunctionCallAsIs(ctx, identifier.Name, call.Arguments)
+	case "distance":
+		return t.translateFunctionCallAsIs(ctx, identifier.Name, call.Arguments)
+	case "dot":
+		return t.translateFunctionCallAsIs(ctx, identifier.Name, call.Arguments)
+	case "cross":
+		return t.translateFunctionCallAsIs(ctx, identifier.Name, call.Arguments)
+	case "normalize":
+		return t.translateFunctionCallAsIs(ctx, identifier.Name, call.Arguments)
+	case "faceforward":
+		return t.translateFunctionCallAsIs(ctx, identifier.Name, call.Arguments)
+	case "reflect":
+		return t.translateFunctionCallAsIs(ctx, identifier.Name, call.Arguments)
+	case "refract":
+		return t.translateFunctionCallAsIs(ctx, identifier.Name, call.Arguments)
+	case "transpose":
+		return t.translateFunctionCallAsIs(ctx, identifier.Name, call.Arguments)
+	case "determinant":
+		return t.translateFunctionCallAsIs(ctx, identifier.Name, call.Arguments)
+	case "any":
+		return t.translateFunctionCallAsIs(ctx, identifier.Name, call.Arguments)
+	case "cos":
+		return t.translateFunctionCallAsIs(ctx, identifier.Name, call.Arguments)
+	case "sin":
+		return t.translateFunctionCallAsIs(ctx, identifier.Name, call.Arguments)
+
 	case "sample":
 		return t.translateFunctionCallAsIs(ctx, "texture", call.Arguments)
 	case "mapNormal":
@@ -435,34 +504,4 @@ func (t *Translator) translateType(_ *translationContext, srcType string) string
 	default:
 		panic(fmt.Errorf("unknown type name: %s", srcType))
 	}
-}
-
-var builtInFunctions = map[string]struct{}{
-	// general functions
-	"abs":         {},
-	"sign":        {},
-	"floor":       {},
-	"trunc":       {},
-	"round":       {},
-	"ceil":        {},
-	"fract":       {},
-	"min":         {},
-	"max":         {},
-	"clamp":       {},
-	"mix":         {},
-	"smoothstep":  {},
-	"length":      {},
-	"distance":    {},
-	"dot":         {},
-	"cross":       {},
-	"normalize":   {},
-	"faceforward": {},
-	"reflect":     {},
-	"refract":     {},
-	"transpose":   {},
-	"determinant": {},
-	"any":         {},
-	"all":         {},
-	"cos":         {},
-	"sin":         {},
 }
