@@ -297,3 +297,31 @@ The following table lists general math built-in functions.
 | `all(v T) bool` | unbounded | Returns `true` if all of the components of `v` are `true`. |
 | `cos(v T) T` | unbounded | Returns the cosine of the parameter `v`. |
 | `sin(v T) T` | unbounded | Returns the sine of the parameter `v`. |
+
+The following table lists LSL helper functions.
+
+| Name | Scope | Description |
+| ---- | ----- | ----------- |
+| `billboard(model, camera mat4) mat4` | unbounded | Takes a model and camera matrices and calculates and returns a new model matrix that will transform the model so that it is always aligned towards the camera. |
+| `billboardX(model, camera mat4) mat4` | unbounded | Takes a model and camera matrices and calculates and returns a new model matrix that will transform the model so that its X axis matches the world X axis and the remaining axes are aligned with the camera's. |
+| `billboardY(model, camera mat4) mat4` | unbounded | Takes a model and camera matrices and calculates and returns a new model matrix that will transform the model so that its Y axis matches the world Y axis and the remaining axes are aligned with the camera's. |
+| `billboardZ(model, camera mat4) mat4` | unbounded | Takes a model and camera matrices and calculates and returns a new model matrix that will transform the model so that its Z axis matches the world Z axis and the remaining axes are aligned with the camera's. |
+
+## Predefined Variables
+
+Following are variables that are pre-defined for some of the render stages.
+
+| Name | Type | Mode | Scope | Description |
+| ---- | ---- | ---- | ----- | ----------- |
+| `#vertexCoord` | `vec4` | ReadOnly | `#vertex` (shadow, geometry, forward) | Contains the position of the vertex in local space. Value is `vec4(0.0, 0.0, 0.0, 1.0)` if the mesh does not contain vertex coords. |
+| `#vertexNormal` | `vec3` | ReadOnly | `#vertex` (shadow, geometry, forward) | Contains the normal of the vertex in local space. Value is `vec3(0.0, 0.0, 1.0)` if the mesh does not contain vertex normals. |
+| `#vertexTangent` | `vec3` | ReadOnly | `#vertex` (shadow, geometry, forward) | Contains the tangent of the vertex in local space. Value is `vec3(1.0, 0.0, 0.0)` if the mesh does not contain vertex tangents. |
+| `#vertexUV` | `vec2` | ReadOnly | `#vertex` (shadow, geometry, forward) | Contains the texture coordinates of the vertex. Value is `vec2(0.0, 0.0)` if the mesh does not contain vertex texture coords. |
+| `#vertexColor` | `vec4` | ReadOnly | `#vertex` (shadow, geometry, forward) | Contains the color of the vertex. Value is `vec4(1.0, 1.0, 1.0, 1.0)` if the mesh does not contain vertex coloring. |
+| `#modelMatrix` | `mat4` | ReadOnly | `#vertex` (shadow, geometry, forward) | Contains the model transformation matrix for the rendered object. |
+| `#cameraMatrix` | `mat4` | ReadOnly | `#vertex`, `#fragment` (shadow, geometry, forward, sky) | Contains the camera transformation matrix. NOTE: Not to be confused with `#viewMatrix`, which is often the desired one. |
+| `#viewMatrix` | `mat4` | ReadOnly | `#vertex`, `#fragment` (shadow, geometry, forward, sky) | Contains the view transformation matrix. It is equal to the inverse of the `#cameraMatrix` but is already pre-calculated. |
+| `#projectionMatrix` | `mat4` | `#vertex`, `#fragment` (shadow, geometry, forward, sky) | Contains the projection matrix. |
+| `#viewport` | `vec4` | `#vertex`, `#fragment` (shadow, geometry, forward, sky) | The `x` and `y` fields contain the positioning of the viewport and `z` and `w` contain the size of the viewport. |
+| `#position` | `vec4` | ReadWrite | `#vertex` (shadow, geometry, forward) | Contains the output position of the vertex from a vertex shader. |
+| `#color` | `vec4` | ReadWrite | `#fragment` (geometry, forward, sky) | Specifies the color to be placed on the screen. Default value is `vec4(0.0, 0.0, 0.0, 1.0)`. |

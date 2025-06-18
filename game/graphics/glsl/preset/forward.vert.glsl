@@ -6,6 +6,7 @@
 /* template "textures.glsl" . */
 /* template "uniforms.glsl" . */
 /* template "varyings.glsl" . */
+/* template "public.vert.glsl" . */
 
 void main()
 {
@@ -43,10 +44,13 @@ void main()
   /*- else */
   mat4 model_matrix = modelMatrixIn[gl_InstanceID];
   /*- end */
-
+  vec4 position = vec4(0.0);
+  /*- if .MainStatements */
   /*- range $statement := .MainStatements */
     /* $statement */
   /*- end */
-
-  gl_Position = projectionMatrixIn * (viewMatrixIn * (model_matrix * coord_ls));
+  /*- else */
+  position = projectionMatrixIn * (viewMatrixIn * (model_matrix * coord_ls));
+  /*- end */
+  gl_Position = position;
 }

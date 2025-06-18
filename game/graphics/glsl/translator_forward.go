@@ -7,13 +7,27 @@ import (
 
 func (t *Translator) translateForwardVertexCode(shader *lsl.Shader, constraints graphics.ShaderConstraints) string {
 	ctx := newTranslationContext()
-	ctx.RegisterIdentifier("#time", "timeIn")
 
 	var properties ForwardProperties
 	properties.BaseProperties = t.buildBaseProperties(ctx, shader, constraints, "out")
 	{
 		ctx.Push()
+		ctx.RegisterIdentifier("#time", "timeIn")
+
+		ctx.RegisterIdentifier("#vertexCoord", "coord_ls")
+		ctx.RegisterIdentifier("#vertexNormal", "normal_ls")
+		ctx.RegisterIdentifier("#vertexTangent", "tangent_ls")
 		ctx.RegisterIdentifier("#vertexUV", "tex_coord")
+		ctx.RegisterIdentifier("#vertexColor", "color")
+
+		ctx.RegisterIdentifier("#modelMatrix", "model_matrix")
+		ctx.RegisterIdentifier("#cameraMatrix", "cameraMatrixIn")
+		ctx.RegisterIdentifier("#viewMatrix", "viewMatrixIn")
+		ctx.RegisterIdentifier("#projectionMatrix", "projectionMatrixIn")
+		ctx.RegisterIdentifier("#viewport", "viewportIn")
+
+		ctx.RegisterIdentifier("#position", "position")
+
 		properties.MainProperties = t.buildMainProperties(ctx, shader, "#vertex")
 		ctx.Pop()
 	}
@@ -22,12 +36,12 @@ func (t *Translator) translateForwardVertexCode(shader *lsl.Shader, constraints 
 
 func (t *Translator) translateForwardFragmentCode(shader *lsl.Shader, constraints graphics.ShaderConstraints) string {
 	ctx := newTranslationContext()
-	ctx.RegisterIdentifier("#time", "timeIn")
 
 	var properties ForwardProperties
 	properties.BaseProperties = t.buildBaseProperties(ctx, shader, constraints, "in")
 	{
 		ctx.Push()
+		ctx.RegisterIdentifier("#time", "timeIn")
 		ctx.RegisterIdentifier("#color", "color")
 		properties.MainProperties = t.buildMainProperties(ctx, shader, "#fragment")
 		ctx.Pop()

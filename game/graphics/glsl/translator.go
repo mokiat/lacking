@@ -344,6 +344,15 @@ func (t *Translator) translateFunctionCall(ctx *translationContext, call *lsl.Fu
 	case "sin":
 		return t.translateFunctionCallAsIs(ctx, identifier.Name, call.Arguments)
 
+	case "billboard":
+		return t.translateFunctionCallAsIs(ctx, identifier.Name, call.Arguments)
+	case "billboardX":
+		return t.translateFunctionCallAsIs(ctx, identifier.Name, call.Arguments)
+	case "billboardY":
+		return t.translateFunctionCallAsIs(ctx, identifier.Name, call.Arguments)
+	case "billboardZ":
+		return t.translateFunctionCallAsIs(ctx, identifier.Name, call.Arguments)
+	// TODO: Document the following functions.
 	case "sample":
 		return t.translateFunctionCallAsIs(ctx, "texture", call.Arguments)
 	case "mapNormal":

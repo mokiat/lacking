@@ -6,6 +6,7 @@
 /* template "textures.glsl" . */
 /* template "uniforms.glsl" . */
 /* template "varyings.glsl" . */
+/* template "public.vert.glsl" . */
 
 smooth out vec3 normalInOut;
 smooth out vec3 tangentInOut;
