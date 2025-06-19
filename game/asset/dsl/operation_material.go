@@ -29,6 +29,34 @@ func Clear() Operation {
 	)
 }
 
+// AddShadowPass creates an operation that adds a new shadow pass
+// to the target.
+func AddShadowPass(passProvider Provider[*mdl.MaterialPass]) Operation {
+	type passContainer interface {
+		AddShadowPass(*mdl.MaterialPass)
+	}
+	return FuncOperation(
+		// apply function
+		func(target any) error {
+			pass, err := passProvider.Get()
+			if err != nil {
+				return fmt.Errorf("error getting pass: %w", err)
+			}
+			container, ok := target.(passContainer)
+			if !ok {
+				return fmt.Errorf("target %T is not a shadow pass container", target)
+			}
+			container.AddShadowPass(pass)
+			return nil
+		},
+
+		// digest function
+		func() ([]byte, error) {
+			return CreateDigest("add-shadow-pass", passProvider)
+		},
+	)
+}
+
 // AddGeometryPass creates an operation that adds a new geometry pass
 // to the target.
 func AddGeometryPass(passProvider Provider[*mdl.MaterialPass]) Operation {

@@ -6,10 +6,36 @@
 /* template "textures.glsl" . */
 /* template "uniforms.glsl" . */
 /* template "varyings.glsl" . */
+/* template "public.glsl" . */
 /* template "public.vert.glsl" . */
 
 void main()
 {
+  /*- if .HasAttributeCoord */
+  vec4 coord_ls = attrCoord;
+  /*- else */
+  vec4 coord_ls = vec4(0.0, 0.0, 0.0, 1.0);
+  /*- end */
+  /*- if .HasAttributeNormal */
+  vec3 normal_ls = attrNormal;
+  /*- else */
+  vec3 normal_ls = vec3(0.0, 0.0, 1.0);
+  /*- end */
+  /*- if .HasAttributeTangent */
+  vec3 tangent_ls = attrTangent;
+  /*- else */
+  vec3 tangent_ls = vec3(1.0, 0.0, 0.0);
+  /*- end */
+  /*- if .HasAttributeTexCoord */
+  vec2 tex_coord = attrTexCoord;
+  /*- else */
+  vec2 tex_coord = vec2(0.0, 0.0);
+  /*- end */
+  /*- if .HasAttributeColor */
+  vec4 color = attrColor;
+  /*- else */
+  vec4 color = vec4(1.0);
+  /*- end */
   /*- if .HasAttributeArmature */
   mat4 model_matrix =
     boneMatrixIn[attrJoints.x] * attrWeights.x + 
@@ -19,6 +45,13 @@ void main()
   /*- else */
   mat4 model_matrix = modelMatrixIn[gl_InstanceID];
   /*- end */
-
-  gl_Position = projectionMatrixIn * (viewMatrixIn * (model_matrix * attrCoord));
+  vec4 position = vec4(0.0, 0.0, 0.0, 1.0);
+  /*- if .MainStatements */
+  /*- range $statement := .MainStatements */
+    /* $statement */
+  /*- end */
+  /*- else */
+  position = projectionMatrixIn * (viewMatrixIn * (model_matrix * coord_ls));
+  /*- end */
+  gl_Position = position;
 }

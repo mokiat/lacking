@@ -6,6 +6,7 @@ import (
 	"io"
 	"log/slog"
 	"os"
+	"strings"
 
 	"github.com/mokiat/gog"
 	"github.com/mokiat/gog/ds"
@@ -737,80 +738,53 @@ type pbrShaderConfig struct {
 }
 
 func createPBRShader(cfg pbrShaderConfig) string {
-	var sourceCode string
+	var builder strings.Builder
 
-	var textureLines string
 	if cfg.hasColorTexture {
-		textureLines += "  colorSampler sampler2D\n"
+		builder.WriteString("texture colorSampler sampler2D\n")
 	}
 	if cfg.hasMetallicRoughnessTexture {
-		textureLines += "  metallicRoughnessSampler sampler2D\n"
+		builder.WriteString("texture metallicRoughnessSampler sampler2D\n")
 	}
 	if cfg.hasNormalTexture {
-		textureLines += "  normalSampler sampler2D\n"
-	}
-	if textureLines != "" {
-		sourceCode += "texture (\n" + textureLines + ")\n"
+		builder.WriteString("texture normalSampler sampler2D\n")
 	}
 
-	sourceCode += `
-		uniform (
-			color vec4
-			metallic float
-			roughness float
-			normalScale float
-			alphaThreshold float
-		)
-	`
-	sourceCode += `
-		func #fragment() {
-	`
+	builder.WriteString("uniform color vec4\n")
+	builder.WriteString("uniform metallic float\n")
+	builder.WriteString("uniform roughness float\n")
+	builder.WriteString("uniform normalScale float\n")
+	builder.WriteString("uniform alphaThreshold float\n")
 
+	builder.WriteString("func #fragment() {\n")
+	builder.WriteString("  #color = color * #varyingColor\n")
 	if cfg.hasColorTexture {
-		sourceCode += `
-			#color = sample(colorSampler, #vertexUV)
-		`
-	} else {
-		sourceCode += `
-			#color = color
-		`
+		builder.WriteString("  #color *= sample(colorSampler, #varyingUV)\n")
 	}
-
-	sourceCode += `
-		#color *= #vertexColor
-	`
-
 	if cfg.hasAlphaTesting {
-		sourceCode += `
-			if #color.a < alphaThreshold {
-				discard
-			}
-		`
+		builder.WriteString("  if #color.a < alphaThreshold {\n")
+		builder.WriteString("    discard\n")
+		builder.WriteString("  }\n")
 	}
-
-	if cfg.hasMetallicRoughnessTexture {
-		sourceCode += `
-			var metallicRoughness vec4 = sample(metallicRoughnessSampler, #vertexUV)
-			#metallic = metallicRoughness.b * metallic
-			#roughness = metallicRoughness.g * roughness
-		`
-	} else {
-		sourceCode += `
-			#metallic = metallic
-			#roughness = roughness
-		`
-	}
-
 	if cfg.hasNormalTexture {
-		sourceCode += `
-			var lsNormal vec4 = sample(normalSampler, #vertexUV)
-			#normal = mapNormal(lsNormal.xyz, normalScale)
-		`
+		builder.WriteString("  var surfaceNormal vec3 = normalize(#varyingNormal)\n")
+		builder.WriteString("  var surfaceTangent vec3 = normalize(#varyingTangent)\n")
+		builder.WriteString("  var normalTexel vec3 = sample(normalSampler, #varyingUV).xyz\n")
+		builder.WriteString("  var normal vec3 = normalFromTexel(normalTexel, normalScale)\n")
+		builder.WriteString("  #normal = vectorToSurface(normal, surfaceNormal, surfaceTangent)\n")
+	} else {
+		builder.WriteString("  #normal = normalize(#varyingNormal)\n")
 	}
+	builder.WriteString("  #roughness = roughness\n")
+	builder.WriteString("  #metallic = metallic\n")
+	if cfg.hasMetallicRoughnessTexture {
+		builder.WriteString("  var metallicRoughness vec4 = sample(metallicRoughnessSampler, #varyingUV)\n")
+		builder.WriteString("  #roughness *= metallicRoughness.g\n")
+		builder.WriteString("  #metallic *= metallicRoughness.b\n")
+	}
+	builder.WriteString("}\n")
 
-	sourceCode += `}`
-
-	return sourceCode
+	return builder.String()
 }
 
 func gltfNodeHasMesh(node *gltf.Node) bool {

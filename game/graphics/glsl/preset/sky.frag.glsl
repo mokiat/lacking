@@ -5,6 +5,8 @@
 /* template "textures.glsl" . */
 /* template "uniforms.glsl" . */
 /* template "varyings.glsl" . */
+/* template "public.glsl" . */
+/* template "public.frag.glsl" . */
 
 smooth in vec3 varyingDirectionWS;
 

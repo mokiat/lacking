@@ -6,6 +6,7 @@
 /* template "textures.glsl" . */
 /* template "uniforms.glsl" . */
 /* template "varyings.glsl" . */
+/* template "public.glsl" . */
 /* template "public.vert.glsl" . */
 
 smooth out vec3 normalInOut;
@@ -40,7 +41,6 @@ void main()
   /*- else */
   vec4 color = vec4(1.0);
   /*- end */
-  
   /*- if .HasAttributeArmature */
   mat4 model_matrix =
     boneMatrixIn[attrJoints.x] * attrWeights.x + 
@@ -50,12 +50,20 @@ void main()
   /*- else */
   mat4 model_matrix = modelMatrixIn[gl_InstanceID];
   /*- end */
-
-  mat3 model_rot_matrix = inverse(transpose(mat3(model_matrix)));
-
-  normalInOut = model_rot_matrix * normal_ls;
-  tangentInOut = model_rot_matrix * tangent_ls;
+  vec4 position = vec4(0.0, 0.0, 0.0, 1.0);
   texCoordInOut = tex_coord;
   colorInOut = color;
-  gl_Position = projectionMatrixIn * (viewMatrixIn * (model_matrix * coord_ls));
+  /*- if .MainStatements */
+  normalInOut = normal_ls;
+  tangentInOut = tangent_ls;
+  /*- range $statement := .MainStatements */
+    /* $statement */
+  /*- end */
+  /*- else */
+  mat3 model_rot_matrix = inverse(transpose(mat3(model_matrix)));
+  position = projectionMatrixIn * (viewMatrixIn * (model_matrix * coord_ls));
+  normalInOut = model_rot_matrix * normal_ls;
+  tangentInOut = model_rot_matrix * tangent_ls;
+  /*- end */
+  gl_Position = position;
 }

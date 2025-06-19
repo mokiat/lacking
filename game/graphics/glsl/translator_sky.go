@@ -20,13 +20,21 @@ func (t *Translator) translateSkyVertexCode(shader *lsl.Shader, constraints grap
 
 func (t *Translator) translateSkyFragmentCode(shader *lsl.Shader, constraints graphics.ShaderConstraints) string {
 	ctx := newTranslationContext()
-	ctx.RegisterIdentifier("#rayDirectionWS", "varyingDirectionWS")
 
 	var properties SkyProperties
 	properties.BaseProperties = t.buildBaseProperties(ctx, shader, constraints, "in")
 	{
 		ctx.Push()
+		// input
+		ctx.RegisterIdentifier("#direction", "varyingDirectionWS")
+		// camera
+		ctx.RegisterIdentifier("#cameraMatrix", "cameraMatrixIn")
+		ctx.RegisterIdentifier("#viewMatrix", "viewMatrixIn")
+		ctx.RegisterIdentifier("#projectionMatrix", "projectionMatrixIn")
+		ctx.RegisterIdentifier("#viewport", "viewportIn")
+		// output
 		ctx.RegisterIdentifier("#color", "color")
+
 		properties.MainProperties = t.buildMainProperties(ctx, shader, "#fragment")
 		ctx.Pop()
 	}

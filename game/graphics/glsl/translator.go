@@ -344,6 +344,15 @@ func (t *Translator) translateFunctionCall(ctx *translationContext, call *lsl.Fu
 	case "sin":
 		return t.translateFunctionCallAsIs(ctx, identifier.Name, call.Arguments)
 
+	case "sample":
+		return t.translateFunctionCallAsIs(ctx, "texture", call.Arguments)
+
+	case "extractRotation":
+		return t.translateFunctionCallAsIs(ctx, identifier.Name, call.Arguments)
+	case "normalFromTexel":
+		return t.translateFunctionCallAsIs(ctx, identifier.Name, call.Arguments)
+	case "vectorToSurface":
+		return t.translateFunctionCallAsIs(ctx, identifier.Name, call.Arguments)
 	case "billboard":
 		return t.translateFunctionCallAsIs(ctx, identifier.Name, call.Arguments)
 	case "billboardX":
@@ -351,11 +360,6 @@ func (t *Translator) translateFunctionCall(ctx *translationContext, call *lsl.Fu
 	case "billboardY":
 		return t.translateFunctionCallAsIs(ctx, identifier.Name, call.Arguments)
 	case "billboardZ":
-		return t.translateFunctionCallAsIs(ctx, identifier.Name, call.Arguments)
-	// TODO: Document the following functions.
-	case "sample":
-		return t.translateFunctionCallAsIs(ctx, "texture", call.Arguments)
-	case "mapNormal":
 		return t.translateFunctionCallAsIs(ctx, identifier.Name, call.Arguments)
 	default:
 		panic(fmt.Errorf("unknown function %q", identifier.Name))
