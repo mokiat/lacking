@@ -263,7 +263,9 @@ The following table lists constructor built-in functions.
 | `uvec4(a uvec3, w uint) uvec4` | unbounded | Returns a `uvec4` with the components set to `a.x`, `a.y`, `a.z`, and `w` respectively. |
 | `uvec4(x uint, a uvec3) uvec4` | unbounded | Returns a `uvec4` with the components set to `x`, `a.x`, `a.y`, and `a.z` respectively. |
 | `mat2(x, y vec2) mat2` | unbounded | Returns a `mat2` with columns `x` and `y` in order. |
+| `mat2(m mat3) mat2` | unbounded | Returns a `mat2` using the upper left portion of the provided matrix. |
 | `mat3(x, y, z vec3) mat3` | unbounded | Returns a `mat3` with columns `x`, `y` and `z` in order. |
+| `mat3(m mat4) mat3` | unbounded | Returns a `mat3` using the upper left portion of the provided matrix. |
 | `mat4(x, y, z, w vec4) mat4` | unbounded | Returns a `mat4` with columns `x`, `y`, `z` and `w` in order. |
 
 
@@ -298,10 +300,20 @@ The following table lists general math built-in functions.
 | `cos(v T) T` | unbounded | Returns the cosine of the parameter `v`. |
 | `sin(v T) T` | unbounded | Returns the sine of the parameter `v`. |
 
+The following table lists general texture built-in functions.
+
+| Name | Scope | Description |
+| ---- | ----- | ----------- |
+| `sample(s sampler2D, uv vec2) vec4` | unbounded | Samples the specified 2D sampler and returns the value at position `uv`. |
+| `sample(s samplerCube, uv vec3) vec4` | unbounded | Samples the specified Cube sampler and returns the value at position `uv`. |
+
 The following table lists LSL helper functions.
 
 | Name | Scope | Description |
 | ---- | ----- | ----------- |
+| `extractRotation(matrix mat4) mat3` | unbounded | Extracts the rotation matrix from a general 3D transformation matrix. |
+| `normalFromTexel(texel vec3, scale float) vec3` | unbounded | Converts a texel value from a texture into a normal, scaled as specified. |
+| `vectorToSurface(vector, normal, tangent vec3) vec3` | unbounded | Transforms the specified `vector` according to the coordinate space defined by `normal` and `tangent`. This is usually used in normal mapping to transform a normal from local space into face orientation space. |
 | `billboard(model, camera mat4) mat4` | unbounded | Takes a model and camera matrices and calculates and returns a new model matrix that will transform the model so that it is always aligned towards the camera. |
 | `billboardX(model, camera mat4) mat4` | unbounded | Takes a model and camera matrices and calculates and returns a new model matrix that will transform the model so that its X axis matches the world X axis and the remaining axes are aligned with the camera's. |
 | `billboardY(model, camera mat4) mat4` | unbounded | Takes a model and camera matrices and calculates and returns a new model matrix that will transform the model so that its Y axis matches the world Y axis and the remaining axes are aligned with the camera's. |
@@ -321,7 +333,15 @@ Following are variables that are pre-defined for some of the render stages.
 | `#modelMatrix` | `mat4` | ReadOnly | `#vertex` (shadow, geometry, forward) | Contains the model transformation matrix for the rendered object. |
 | `#cameraMatrix` | `mat4` | ReadOnly | `#vertex`, `#fragment` (shadow, geometry, forward, sky) | Contains the camera transformation matrix. NOTE: Not to be confused with `#viewMatrix`, which is often the desired one. |
 | `#viewMatrix` | `mat4` | ReadOnly | `#vertex`, `#fragment` (shadow, geometry, forward, sky) | Contains the view transformation matrix. It is equal to the inverse of the `#cameraMatrix` but is already pre-calculated. |
-| `#projectionMatrix` | `mat4` | `#vertex`, `#fragment` (shadow, geometry, forward, sky) | Contains the projection matrix. |
-| `#viewport` | `vec4` | `#vertex`, `#fragment` (shadow, geometry, forward, sky) | The `x` and `y` fields contain the positioning of the viewport and `z` and `w` contain the size of the viewport. |
+| `#projectionMatrix` | `mat4` | ReadOnly | `#vertex`, `#fragment` (shadow, geometry, forward, sky) | Contains the projection matrix. |
+| `#viewport` | `vec4` | ReadOnly | `#vertex`, `#fragment` (shadow, geometry, forward, sky) | The `x` and `y` fields contain the positioning of the viewport and `z` and `w` contain the size of the viewport. |
 | `#position` | `vec4` | ReadWrite | `#vertex` (shadow, geometry, forward) | Contains the output position of the vertex from a vertex shader. |
 | `#color` | `vec4` | ReadWrite | `#fragment` (geometry, forward, sky) | Specifies the color to be placed on the screen. Default value is `vec4(0.0, 0.0, 0.0, 1.0)`. |
+| `#normal` | `vec3` | ReadWrite | `#fragment` (geometry) | Contains the output normal of a texel from a geometry fragment shader. |
+| `#metallic` | `float` | ReadWrite | `#fragment` (geometry) | Contains the output metallic value of a texel from a geometry fragment shader. |
+| `#roughness` | `float` | ReadWrite | `#fragment` (geometry) | Contains the output roughness value of a texel from a geometry fragment shader. |
+| `#varyingNormal` | `vec3` | ReadWrite | `#vertex`, `#fragment` (geometry) | A varying variable used to transfer a normal value between shader stages in a geometry shader. If a `#vertex` function is not specified, this value is automatically filled. **NOTE:** Make sure to normalize before usage due to interpolation. |
+| `#varyingTangent` | `vec3` | ReadWrite | `#vertex`, `#fragment` (geometry) | A varying variable used to transfer a tangent value between shader stages in a geometry shader. If a `#vertex` function is not specified, this value is automatically filled. **NOTE:** Make sure to normalize before usage due to interpolation. |
+| `#varyingUV` | `vec2` | ReadWrite | `#vertex`, `#fragment` (geometry) | A varying variable used to transfer a texture coordinate value between shader stages in a geometry shader. If a `#vertex` function is not specified, this value is automatically filled. |
+| `#varyingColor` | `vec4` | ReadWrite | `#vertex`, `#fragment` (geometry) | A varying variable used to transfer a color value between shader stages in a geometry shader. If a `#vertex` function is not specified, this value is automatically filled. |
+| `#direction` | `vec3` | ReadOnly | `#fragment` (sky) | Contains the world space direction of the ray that is being rendered. |
