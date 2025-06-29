@@ -3,6 +3,7 @@ package graphics
 import (
 	"fmt"
 	"log/slog"
+	"time"
 
 	"github.com/mokiat/gomath/dprec"
 	"github.com/mokiat/gomath/sprec"
@@ -146,7 +147,7 @@ func (r *sceneRenderer) Render(framebuffer render.Framebuffer, viewport Viewport
 			float32(viewport.Width),
 			float32(viewport.Height),
 		),
-		Time: scene.Time(),
+		Time: float32((scene.gameTime % time.Hour).Seconds()),
 	})
 
 	r.visibleAmbientLights.Reset()
@@ -253,6 +254,7 @@ type renderItem struct {
 
 	ModelData    []byte
 	ArmatureData []byte
+	SpawnTime    float32
 
 	IndexByteOffset uint32
 	IndexCount      uint32

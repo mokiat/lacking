@@ -2,6 +2,7 @@
 /* template "attributes.glsl" . */
 /* template "camera.glsl" . */
 /* template "model.glsl" . */
+/* template "timing.glsl" . */
 /* template "armature.glsl" . */
 /* template "textures.glsl" . */
 /* template "uniforms.glsl" . */
@@ -9,8 +10,11 @@
 /* template "public.glsl" . */
 /* template "public.vert.glsl" . */
 
+smooth out float spawnTimeInOut;
+
 void main()
 {
+  spawnTimeInOut = timingIn[gl_InstanceID].x;
   /*- if .HasAttributeCoord */
   vec4 coord_ls = attrCoord;
   /*- else */

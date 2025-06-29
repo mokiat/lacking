@@ -7,6 +7,7 @@ import (
 	"github.com/mokiat/gblob"
 	"github.com/mokiat/gog/seq"
 	"github.com/mokiat/gomath/dprec"
+	"github.com/mokiat/gomath/sprec"
 	"github.com/mokiat/lacking/game/graphics/internal"
 	"github.com/mokiat/lacking/render/ubo"
 )
@@ -18,18 +19,24 @@ const (
 	modelUniformBufferItemSize  = 64
 	modelUniformBufferItemCount = 256
 	modelUniformBufferSize      = modelUniformBufferItemSize * modelUniformBufferItemCount
+
+	timingUniformBufferItemSize  = 16
+	timingUniformBufferItemCount = 256
+	timingUniformBufferSize      = timingUniformBufferItemSize * timingUniformBufferItemCount
 )
 
 func newMeshRenderer() *meshRenderer {
 	return &meshRenderer{
-		renderItems:            make([]renderItem, 0, initialRenderItemCount),
-		modelUniformBufferData: make(gblob.LittleEndianBlock, modelUniformBufferSize),
+		renderItems:             make([]renderItem, 0, initialRenderItemCount),
+		modelUniformBufferData:  make(gblob.LittleEndianBlock, modelUniformBufferSize),
+		timingUniformBufferdata: make(gblob.LittleEndianBlock, timingUniformBufferSize),
 	}
 }
 
 type meshRenderer struct {
-	renderItems            []renderItem
-	modelUniformBufferData gblob.LittleEndianBlock
+	renderItems             []renderItem
+	modelUniformBufferData  gblob.LittleEndianBlock
+	timingUniformBufferdata gblob.LittleEndianBlock
 }
 
 func (s *meshRenderer) DiscardRenderItems() {
@@ -43,6 +50,7 @@ func (s *meshRenderer) QueueMeshRenderItems(ctx StageContext, mesh *Mesh, passTy
 	if ctx.Cascade > mesh.maxCascade {
 		return
 	}
+	gameTime := ctx.Scene.gameTime
 	definition := mesh.definition
 	passes := definition.passesByType[passType]
 	for _, pass := range passes {
@@ -51,11 +59,13 @@ func (s *meshRenderer) QueueMeshRenderItems(ctx StageContext, mesh *Mesh, passTy
 			MaterialKey: pass.Key,
 			ArmatureKey: mesh.armature.key(),
 
-			Pipeline:     pass.Pipeline,
-			TextureSet:   pass.TextureSet,
-			UniformSet:   pass.UniformSet,
+			Pipeline:   pass.Pipeline,
+			TextureSet: pass.TextureSet,
+			UniformSet: pass.UniformSet,
+
 			ModelData:    mesh.matrixData,
 			ArmatureData: mesh.armature.uniformData(),
+			SpawnTime:    float32((gameTime - mesh.spawnTime).Seconds()),
 
 			IndexByteOffset: pass.IndexByteOffset,
 			IndexCount:      pass.IndexCount,
@@ -175,6 +185,22 @@ func (s *meshRenderer) renderMeshRenderItemBatch(ctx StageContext, items []rende
 		modelPlacement.Buffer,
 		modelPlacement.Offset,
 		modelPlacement.Size,
+	)
+
+	var timingVectors [256]sprec.Vec4
+	for i, item := range items {
+		timingVectors[i] = sprec.Vec4{
+			X: item.SpawnTime,
+		}
+	}
+	timingPlacement := ubo.WriteUniform(uniformBuffer, internal.TimingUniform{
+		Vectors: timingVectors,
+	})
+	commandBuffer.UniformBufferUnit(
+		internal.UniformBufferBindingTiming,
+		timingPlacement.Buffer,
+		timingPlacement.Offset,
+		timingPlacement.Size,
 	)
 
 	// Armature data is shared between all items.

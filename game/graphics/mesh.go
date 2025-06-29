@@ -2,6 +2,7 @@ package graphics
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/mokiat/gomath/dprec"
 	"github.com/mokiat/gomath/dtos"
@@ -23,6 +24,7 @@ func newMesh(scene *Scene, info MeshInfo) *Mesh {
 	mesh.definition = definition
 	mesh.maxCascade = definition.geometry.maxCascade
 	mesh.armature = info.Armature
+	mesh.spawnTime = scene.gameTime
 	mesh.active = true
 	return mesh
 }
@@ -36,6 +38,7 @@ type Mesh struct {
 	definition *MeshDefinition
 	armature   *Armature
 	maxCascade uint8
+	spawnTime  time.Duration
 	active     bool
 }
 
@@ -44,6 +47,7 @@ func (m *Mesh) Active() bool {
 }
 
 func (m *Mesh) SetActive(active bool) {
+	m.spawnTime = m.scene.gameTime
 	m.active = active
 }
 

@@ -363,6 +363,7 @@ func (e *Engine) createGeometryPassProgram(programCode render.ProgramCode) rende
 		UniformBindings: []render.UniformBinding{
 			render.NewUniformBinding("Camera", internal.UniformBufferBindingCamera),
 			render.NewUniformBinding("Model", internal.UniformBufferBindingModel),
+			render.NewUniformBinding("Timing", internal.UniformBufferBindingTiming),
 			render.NewUniformBinding("Material", internal.UniformBufferBindingMaterial),
 			render.NewUniformBinding("Armature", internal.UniformBufferBindingArmature),
 		},
@@ -416,6 +417,7 @@ func (e *Engine) createShadowPassProgram(programCode render.ProgramCode) render.
 		UniformBindings: []render.UniformBinding{
 			render.NewUniformBinding("Camera", internal.UniformBufferBindingCamera),
 			render.NewUniformBinding("Model", internal.UniformBufferBindingModel),
+			render.NewUniformBinding("Timing", internal.UniformBufferBindingTiming),
 			render.NewUniformBinding("Material", internal.UniformBufferBindingMaterial),
 			render.NewUniformBinding("Armature", internal.UniformBufferBindingArmature),
 		},
@@ -469,6 +471,7 @@ func (e *Engine) createForwardPassProgram(programCode render.ProgramCode) render
 		UniformBindings: []render.UniformBinding{
 			render.NewUniformBinding("Camera", internal.UniformBufferBindingCamera),
 			render.NewUniformBinding("Model", internal.UniformBufferBindingModel),
+			render.NewUniformBinding("Timing", internal.UniformBufferBindingTiming),
 			render.NewUniformBinding("Material", internal.UniformBufferBindingMaterial),
 			render.NewUniformBinding("Armature", internal.UniformBufferBindingArmature),
 		},
@@ -495,11 +498,12 @@ func (e *Engine) createForwardPassPipeline(info internal.RenderPassPipelineInfo)
 
 		ColorWrite: render.ColorMaskTrue,
 
-		BlendEnabled:                info.PassDefinition.Blending, // default: false
-		BlendColor:                  [4]float32{0.0, 0.0, 0.0, 0.0},
-		BlendSourceColorFactor:      render.BlendFactorSourceAlpha,
-		BlendSourceAlphaFactor:      render.BlendFactorOne,
-		BlendDestinationColorFactor: render.BlendFactorOne,
+		BlendEnabled:           info.PassDefinition.Blending, // default: false
+		BlendColor:             [4]float32{0.0, 0.0, 0.0, 0.0},
+		BlendSourceColorFactor: render.BlendFactorSourceAlpha,
+		BlendSourceAlphaFactor: render.BlendFactorOne,
+		// BlendDestinationColorFactor: render.BlendFactorOne,
+		BlendDestinationColorFactor: render.BlendFactorOneMinusSourceAlpha, // TODO: Make configurable, so that additive blending (e.g. like with the lighting) is possible as well.
 		BlendDestinationAlphaFactor: render.BlendFactorZero,
 		BlendOpColor:                render.BlendOperationAdd,
 		BlendOpAlpha:                render.BlendOperationAdd,

@@ -63,7 +63,7 @@ type Scene struct {
 	engine   *Engine
 	renderer *sceneRenderer
 
-	time float32
+	gameTime time.Duration
 
 	skies *ds.List[*Sky]
 
@@ -91,10 +91,6 @@ type Scene struct {
 // Engine returns the graphics engine that owns this scene.
 func (s *Scene) Engine() *Engine {
 	return s.engine
-}
-
-func (s *Scene) Time() float32 {
-	return s.time
 }
 
 // ActiveCamera returns the currently active camera for this scene.
@@ -180,7 +176,7 @@ func (s *Scene) Point(viewport Viewport, camera *Camera, position dprec.Vec3) dp
 }
 
 func (s *Scene) Update(elapsedTime time.Duration) {
-	s.time += float32(elapsedTime.Seconds())
+	s.gameTime += elapsedTime
 }
 
 // Render draws this scene to the specified viewport

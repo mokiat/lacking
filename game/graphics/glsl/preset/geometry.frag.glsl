@@ -2,12 +2,14 @@
 /* template "precision.glsl" . */
 /* template "outputs.glsl" . */
 /* template "camera.glsl" . */
+/* template "timing.glsl" . */
 /* template "textures.glsl" . */
 /* template "uniforms.glsl" . */
 /* template "varyings.glsl" . */
 /* template "public.glsl" . */
 /* template "public.frag.glsl" . */
 
+smooth in float spawnTimeInOut;
 smooth in vec3 normalInOut;
 smooth in vec3 tangentInOut;
 smooth in vec2 texCoordInOut;

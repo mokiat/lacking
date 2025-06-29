@@ -3,6 +3,7 @@ package graphics
 import (
 	"cmp"
 	"slices"
+	"time"
 
 	"github.com/mokiat/gog"
 	"github.com/mokiat/gomath/dprec"
@@ -231,7 +232,7 @@ func (s *ShadowStage) renderDirectionalLightShadowMaps(ctx StageContext, light *
 			ViewMatrix:       sprec.IdentityMat4(), // irrelevant
 			CameraMatrix:     sprec.IdentityMat4(), // irrelevant
 			Viewport:         sprec.ZeroVec4(),     // TODO?
-			Time:             ctx.Scene.Time(),     // FIXME?
+			Time:             float32((ctx.Scene.gameTime % time.Hour).Seconds()),
 		})
 		ctx.CameraPlacement = lightCameraPlacement // FIXME: DIRTY HACK; Use own meshRenderer context
 		s.meshRenderer.Render(ctx)

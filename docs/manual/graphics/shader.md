@@ -297,6 +297,7 @@ The following table lists general math built-in functions.
 | `determinant(m T) K` | unbounded | Returns the determinant of the matrix `m`. |
 | `any(v T) bool` | unbounded | Returns `true` if any of the components of `v` are `true`. |
 | `all(v T) bool` | unbounded | Returns `true` if all of the components of `v` are `true`. |
+| `atan2(y, x T) T` | unbounded | Returns the atan2 of the parameters `y` over `x`. |
 | `cos(v T) T` | unbounded | Returns the cosine of the parameter `v`. |
 | `sin(v T) T` | unbounded | Returns the sine of the parameter `v`. |
 
@@ -325,6 +326,8 @@ Following are variables that are pre-defined for some of the render stages.
 
 | Name | Type | Mode | Scope | Description |
 | ---- | ---- | ---- | ----- | ----------- |
+| `#time` | `float32` | ReadOnly | `#vertex`, `#fragment` (shadow, geometry, forward, sky) | The time in seconds since the scene was created. |
+| `#spawnTime` | `float32` | ReadOnly | `#vertex`, `#fragment` (shadow, geometry, forward) | The time in seconds since the mesh was created. |
 | `#vertexCoord` | `vec4` | ReadOnly | `#vertex` (shadow, geometry, forward) | Contains the position of the vertex in local space. Value is `vec4(0.0, 0.0, 0.0, 1.0)` if the mesh does not contain vertex coords. |
 | `#vertexNormal` | `vec3` | ReadOnly | `#vertex` (shadow, geometry, forward) | Contains the normal of the vertex in local space. Value is `vec3(0.0, 0.0, 1.0)` if the mesh does not contain vertex normals. |
 | `#vertexTangent` | `vec3` | ReadOnly | `#vertex` (shadow, geometry, forward) | Contains the tangent of the vertex in local space. Value is `vec3(1.0, 0.0, 0.0)` if the mesh does not contain vertex tangents. |

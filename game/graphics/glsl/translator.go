@@ -339,9 +339,13 @@ func (t *Translator) translateFunctionCall(ctx *translationContext, call *lsl.Fu
 		return t.translateFunctionCallAsIs(ctx, identifier.Name, call.Arguments)
 	case "any":
 		return t.translateFunctionCallAsIs(ctx, identifier.Name, call.Arguments)
+	case "atan2":
+		return t.translateFunctionCallAsIs(ctx, "atan", call.Arguments)
 	case "cos":
 		return t.translateFunctionCallAsIs(ctx, identifier.Name, call.Arguments)
 	case "sin":
+		return t.translateFunctionCallAsIs(ctx, identifier.Name, call.Arguments)
+	case "pow":
 		return t.translateFunctionCallAsIs(ctx, identifier.Name, call.Arguments)
 
 	case "sample":
