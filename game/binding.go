@@ -9,6 +9,14 @@ import (
 	"github.com/mokiat/lacking/game/physics"
 )
 
+// BodyFromNode returns the body that is a source for this node.
+//
+// This function panics if the node does not have a physics body as source.
+func BodyFromNode(node *hierarchy.Node) physics.Body {
+	source := node.Source().(BodyNodeSource)
+	return source.Body
+}
+
 type BodyNodeSource struct {
 	Body physics.Body
 }
@@ -55,6 +63,14 @@ func (t CameraNodeTarget) ApplyFrom(node *hierarchy.Node) {
 
 func (t CameraNodeTarget) Release() {
 	t.Camera.Delete()
+}
+
+// MeshFromNode returns the mesh that is a target for this node.
+//
+// This function panics if the node does not have a graphics mesh as target.
+func MeshFromNode(node *hierarchy.Node) *graphics.Mesh {
+	target := node.Target().(MeshNodeTarget)
+	return target.Mesh
 }
 
 type MeshNodeTarget struct {

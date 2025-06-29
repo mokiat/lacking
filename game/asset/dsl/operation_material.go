@@ -275,3 +275,30 @@ func SetDepthWrite(modeProvider Provider[bool]) Operation {
 		},
 	)
 }
+
+// SetDepthTest creates an operation that sets the depth test of the target.
+func SetDepthTest(modeProvider Provider[bool]) Operation {
+	type depthTestSetter interface {
+		SetDepthTest(bool)
+	}
+	return FuncOperation(
+		// apply function
+		func(target any) error {
+			testValue, err := modeProvider.Get()
+			if err != nil {
+				return fmt.Errorf("error getting test value: %w", err)
+			}
+			setter, ok := target.(depthTestSetter)
+			if !ok {
+				return fmt.Errorf("target %T is not a depth test setter", target)
+			}
+			setter.SetDepthTest(testValue)
+			return nil
+		},
+
+		// digest function
+		func() ([]byte, error) {
+			return CreateDigest("set-depth-test", modeProvider)
+		},
+	)
+}
