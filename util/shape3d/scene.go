@@ -133,6 +133,14 @@ func (s *Scene[T]) RemoveObject(objID ObjectID) {
 	object.spatialID = opt.Unspecified[spatial.DynamicOctreeItemID]()
 }
 
+func (s *Scene[T]) GetUserData(objID ObjectID) T {
+	object := s.objects.Get(objID.internalID)
+	if object == nil {
+		panic("object id is invalid")
+	}
+	return object.userData
+}
+
 // IsValidObject returns whether an object with the specified id exists.
 func (s *Scene[T]) IsValidObject(objID ObjectID) bool {
 	return s.objects.Has(objID.internalID)
@@ -179,8 +187,46 @@ func (s *Scene[T]) IsValidSphere(sphereID SphereID) bool {
 	return s.spheres.Has(sphereID.internalID)
 }
 
-func (s *Scene[T]) CheckSphereIntersection(sphere Sphere) opt.T[Intersection] {
-	panic("TODO")
+func (s *Scene[T]) CheckSphereIntersection(sphere Sphere) opt.T[ObjectIntersection] {
+	checkRegion := spatial.CuboidRegion(
+		sphere.Position,
+		dprec.NewVec3(sphere.Radius*2.0, sphere.Radius*2.0, sphere.Radius*2.0),
+	)
+
+	var result WorstObjectIntersection
+	s.objectTree.VisitHexahedronRegion(&checkRegion, spatial.VisitorFunc[mem.SparseID](func(objID mem.SparseID) {
+		object := s.objects.Get(objID)
+		if intersection, ok := s.checkIntersectionSphereWithObject(sphere, object).Unwrap(); ok {
+			result.AddIntersection(intersection)
+		}
+	}))
+	return result.Intersection()
+}
+
+func (s *Scene[T]) checkIntersectionSphereWithObject(sphere Sphere, object *Object[T]) opt.T[ObjectIntersection] {
+	var result BestIntersection
+	s.eachObjectSphere(object, func(_ mem.SparseID, shape *SphereShape) {
+		// TODO: Track this inside the Shape object
+		testSphere := Sphere{
+			Position: object.transform.Apply(shape.template.Position),
+			Radius:   shape.template.Radius,
+		}
+		if intersection, ok := CheckIntersectionSphereWithSphere(sphere, testSphere).Unwrap(); ok {
+			result.AddIntersection(intersection)
+		}
+	})
+
+	intersection, ok := result.Intersection().Unwrap()
+	if !ok {
+		return opt.Unspecified[ObjectIntersection]()
+	}
+	return opt.V(ObjectIntersection{
+		FirstObjectID: NilObjectID(),
+		SecondObjectID: ObjectID{
+			internalID: object.id,
+		},
+		Intersection: intersection,
+	})
 }
 
 func (s *Scene[T]) attachObjectSphere(object *Object[T], shape *SphereShape) {
