@@ -7,10 +7,18 @@ import (
 	"github.com/mokiat/gog/ds"
 )
 
+func NilSparseID() SparseID {
+	return SparseID{}
+}
+
 type SparseID struct {
 	blockIndex  uint32
 	blockOffset uint16
 	revision    uint16
+}
+
+func (i SparseID) IsNil() bool {
+	return i.revision == 0
 }
 
 func NewSparseList[T any](blockSize uint16) *SparseList[T] {
