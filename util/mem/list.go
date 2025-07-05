@@ -87,6 +87,27 @@ func (l SparseList[T]) Has(id SparseID) bool {
 	return item.inUse && (item.revision == id.revision)
 }
 
+func (l *SparseList[T]) Each(cb func(SparseID, *T)) {
+	for blockIndex := range l.blocks {
+		for blockOffset := range l.blockSize {
+			itemID := sparseItemID{
+				blockIndex:  uint32(blockIndex),
+				blockOffset: uint16(blockOffset),
+			}
+			item := l.itemRef(itemID)
+			if !item.inUse {
+				continue
+			}
+			id := SparseID{
+				blockIndex:  uint32(blockIndex),
+				blockOffset: uint16(blockOffset),
+				revision:    item.revision,
+			}
+			cb(id, &item.value)
+		}
+	}
+}
+
 func (l *SparseList[T]) Iter() iter.Seq2[SparseID, *T] {
 	return func(yield func(SparseID, *T) bool) {
 		for blockIndex := range l.blocks {

@@ -15,10 +15,10 @@ type ObjectInfo[T any] struct {
 	Position opt.T[dprec.Vec3]
 	Rotation opt.T[dprec.Quat]
 
-	Static      bool
-	SourceGroup uint64
 	SourceMask  opt.T[uint32]
 	TargetMask  opt.T[uint32]
+	RejectGroup uint32
+	Static      bool
 
 	UserData T
 
@@ -43,17 +43,15 @@ type Object[T any] struct {
 
 	transform Transform
 
-	static      bool
-	sourceGroup uint64
 	sourceMask  uint32
 	targetMask  uint32
+	rejectGroup uint32
 
-	firstSphereID mem.SparseID
-	firstBoxID    mem.SparseID
-	firstMeshID   mem.SparseID
-
-	spatialID      opt.T[spatial.DynamicOctreeItemID]
+	spatialID      spatial.DynamicOctreeItemID
+	firstShapeID   mem.SparseID
 	boundingSphere Sphere
+
+	static bool
 
 	userData T
 }

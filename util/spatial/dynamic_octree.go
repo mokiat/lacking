@@ -9,6 +9,9 @@ import (
 	"github.com/mokiat/gomath/dprec"
 )
 
+// InvalidDynamicOctreeItemID can be used to mark a reference as invalid.
+const InvalidDynamicOctreeItemID = DynamicOctreeItemID(0xFFFFFFFF)
+
 // DynamicOctreeItemID is an identifier used to control the placement of an item
 // into a dynamic octree.
 type DynamicOctreeItemID uint32
@@ -244,6 +247,10 @@ func (t *DynamicOctree[T]) VisitHexahedronRegion(region *HexahedronRegion, visit
 	t.itemCountRejected = 0
 	t.refresh()
 	t.visitNodeInHexahedronRegion(0, region, visitor)
+}
+
+func (t *DynamicOctree[T]) GC() {
+	t.refresh()
 }
 
 func (t *DynamicOctree[T]) pickNodeForItem(position dprec.Vec3, radius float64) int32 {

@@ -9,6 +9,10 @@ type IntersectionCollection interface {
 	AddIntersection(intersection Intersection)
 }
 
+type ObjectIntersectionCollection interface {
+	AddIntersection(intersection ObjectIntersection)
+}
+
 // Intersection represents the intersection of two shapes.
 type Intersection struct {
 
@@ -96,8 +100,8 @@ func (i *WorstIntersection) AddIntersection(intersection Intersection) {
 
 // Intersection returns the worst observed intersection and a flag whether
 // there was actually any intersection observed.
-func (i *WorstIntersection) Intersection() opt.T[Intersection] {
-	return i.intersection
+func (i *WorstIntersection) Intersection() (Intersection, bool) {
+	return i.intersection.Value, i.intersection.Specified
 }
 
 // BestIntersection is an implementation of IntersectionCollection that keeps
@@ -135,13 +139,13 @@ type ObjectIntersection struct {
 	//
 	// This ID is equal to NilObjectID() if the check was not performed with
 	// a scene object.
-	FirstObjectID ObjectID
+	FirstObjectID ObjectID // TODO: Rename to SourceObjectID
 
 	// SecondObjectID contains the ID of the second involved object.
 	//
 	// This ID is equal to NilObjectID() if the check was not performed with
 	// a scene object.
-	SecondObjectID ObjectID
+	SecondObjectID ObjectID // TODO: Rename to TargetObjectID
 
 	Intersection
 }
@@ -180,4 +184,38 @@ func addIntersection(collection IntersectionCollection, flipped bool, intersecti
 	} else {
 		collection.AddIntersection(intersection)
 	}
+}
+
+// NewIntersectionBucket creates a new IntersectionBucket instance with
+// the specified initial capacity.
+func NewIntersectionBucket(initialCapacity int) *ObjectIntersectionBucket {
+	return &ObjectIntersectionBucket{
+		intersections: make([]ObjectIntersection, 0, initialCapacity),
+	}
+}
+
+type ObjectIntersectionBucket struct {
+	intersections []ObjectIntersection
+}
+
+// Reset clears the buffer of this result set so that it can be reused.
+func (b *ObjectIntersectionBucket) Reset() {
+	b.intersections = b.intersections[:0]
+}
+
+// Add adds a new Intersection to this set.
+func (b *ObjectIntersectionBucket) AddIntersection(intersection ObjectIntersection) {
+	b.intersections = append(b.intersections, intersection)
+}
+
+// IsEmpty returns whether no intersections were found.
+func (b *ObjectIntersectionBucket) IsEmpty() bool {
+	return len(b.intersections) == 0
+}
+
+// Intersections returns a slice of all intersections that have been observed.
+//
+// NOTE: The slice must not be modified or cached as it will be reused.
+func (s *ObjectIntersectionBucket) Intersections() []ObjectIntersection {
+	return s.intersections
 }

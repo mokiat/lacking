@@ -41,29 +41,3 @@ func CheckSphereSphereIntersection(source, target Sphere) (Intersection, bool) {
 		Depth:        overlap,
 	}, true
 }
-
-func checkSphereSphereIntersectionSolver(source, target *sphereSolver) (Intersection, bool) {
-	sourcePosition := source.position
-	sourceRadius := source.radius
-
-	targetPosition := target.position
-	targetRadius := target.radius
-
-	deltaPosition := dprec.Vec3Diff(targetPosition, sourcePosition)
-	distance := deltaPosition.Length()
-
-	overlap := (sourceRadius + targetRadius) - distance
-	if overlap <= 0.0 {
-		return Intersection{}, false
-	}
-
-	targetNormal := dprec.Vec3Quot(deltaPosition, -distance) // unit vector
-	return Intersection{
-		TargetContact: dprec.Vec3Sum(
-			targetPosition,
-			dprec.Vec3Prod(targetNormal, targetRadius),
-		),
-		TargetNormal: targetNormal,
-		Depth:        overlap,
-	}, true
-}

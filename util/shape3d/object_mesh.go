@@ -1,7 +1,8 @@
 package shape3d
 
 import (
-	"github.com/mokiat/gomath/dprec"
+	"slices"
+
 	"github.com/mokiat/lacking/util/mem"
 )
 
@@ -14,23 +15,42 @@ func (i MeshID) IsNil() bool {
 }
 
 type MeshShape struct {
-	id         mem.SparseID
-	objectID   mem.SparseID
-	nextMeshID mem.SparseID
-	template   Mesh
+	template Mesh
+	bs       Sphere
+	solver   meshSolver
 }
 
-func (s *MeshShape) Init(id mem.SparseID, template Mesh) {
-	s.id = id
+func (s *MeshShape) Init(template Mesh, transform Transform) {
 	s.template = template
+	s.bs = template.BoundingSphere()
+	s.solver.wsTriangles = slices.Clone(template.Triangles)
+	s.solver.Update(template, s.bs, transform)
+}
+
+func (s *MeshShape) SetTransform(transform Transform) {
+	s.solver.Update(s.template, s.bs, transform)
 }
 
 func (s *MeshShape) BoundingSphere() Sphere {
-	if true {
-		panic("TODO")
+	return s.bs
+}
+
+type meshSolver struct {
+	wsBoundingSphere Sphere
+	wsTriangles      []Triangle
+}
+
+func (s *meshSolver) Update(template Mesh, meshBS Sphere, transform Transform) {
+	s.wsBoundingSphere = Sphere{
+		Position: transform.Apply(meshBS.Position),
+		Radius:   meshBS.Radius,
 	}
-	return Sphere{ // FIXME: This is not correct,
-		Position: dprec.ZeroVec3(),
-		Radius:   1.0,
+	for i := range s.wsTriangles {
+		srcTriangle := &template.Triangles[i]
+		s.wsTriangles[i] = Triangle{
+			A: transform.Apply(srcTriangle.A),
+			B: transform.Apply(srcTriangle.B),
+			C: transform.Apply(srcTriangle.C),
+		}
 	}
 }

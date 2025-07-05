@@ -14,15 +14,15 @@ func (i BoxID) IsNil() bool {
 }
 
 type BoxShape struct {
-	id        mem.SparseID
-	objectID  mem.SparseID
-	nextBoxID mem.SparseID
-	template  Box
+	template Box
 }
 
-func (s *BoxShape) Init(id mem.SparseID, template Box) {
-	s.id = id
+func (s *BoxShape) Init(template Box, transform Transform) {
 	s.template = template
+}
+
+func (s *BoxShape) SetTransform(transform Transform) {
+	// s.solver.Update(s.template, transform)
 }
 
 func (s *BoxShape) BoundingSphere() Sphere {
