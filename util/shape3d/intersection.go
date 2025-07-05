@@ -5,25 +5,71 @@ import (
 	"github.com/mokiat/gomath/dprec"
 )
 
+type IntersectionCollection interface {
+	AddIntersection(intersection Intersection)
+}
+
 // Intersection represents the intersection of two shapes.
 type Intersection struct {
 
-	// FirstContact returns the point of contact on the first shape.
-	FirstContact dprec.Vec3
+	// TargetContact contains the point on the target shape where the
+	// intersection first occurred.
+	TargetContact dprec.Vec3
 
-	// FirstDisplaceNormal returns the normal along which the second shape
-	// needs to be moved in order to separate the two shapes the fastest.
-	FirstDisplaceNormal dprec.Vec3
-
-	// SecondContact returns the point of contact on the second shape.
-	SecondContact dprec.Vec3
-
-	// SecondDisplaceNormal returns the normal along which the first shape
-	// needs to be moved in order to separate the two shapes the fastest.
-	SecondDisplaceNormal dprec.Vec3
+	// TargetNormal contains the best direction in which the source shape
+	// must be translated to avoid the intersection.
+	TargetNormal dprec.Vec3
 
 	// Depth returns the amount of penetration between the two shapes.
 	Depth float64
+}
+
+func (i *Intersection) EvalSourceContact() dprec.Vec3 {
+	return dprec.Vec3Sum(i.TargetContact, dprec.Vec3Prod(i.TargetNormal, -i.Depth))
+}
+
+func (i *Intersection) EvalSourceNormal() dprec.Vec3 {
+	return dprec.InverseVec3(i.TargetNormal)
+}
+
+func (i *Intersection) Flipped() Intersection {
+	return Intersection{
+		TargetContact: i.EvalSourceContact(),
+		TargetNormal:  i.EvalSourceNormal(),
+		Depth:         i.Depth,
+	}
+}
+
+type OptIntersection opt.T[Intersection]
+
+func (i *OptIntersection) AddIntersection(intersection Intersection) {
+	*i = OptIntersection(opt.V(intersection))
+}
+
+func (i *OptIntersection) Intersection() opt.T[Intersection] {
+	return opt.T[Intersection](*i)
+}
+
+// LastIntersection is an implementation of IntersectionCollection that keeps
+// track of the last observed intersection.
+type LastIntersection struct {
+	intersection opt.T[Intersection]
+}
+
+// Reset clears any observed intersection.
+func (i *LastIntersection) Reset() {
+	i.intersection = opt.Unspecified[Intersection]()
+}
+
+// AddIntersection tracks the specified intersection.
+func (i *LastIntersection) AddIntersection(intersection Intersection) {
+	i.intersection = opt.V(intersection)
+}
+
+// Intersection returns the last observed intersection and a flag whether
+// there was actually any intersection observed.
+func (i *LastIntersection) Intersection() opt.T[Intersection] {
+	return i.intersection
 }
 
 // WorstIntersection is an implementation of IntersectionCollection that keeps
@@ -126,4 +172,12 @@ func (i *WorstObjectIntersection) AddIntersection(intersection ObjectIntersectio
 // there was actually any intersection observed.
 func (i *WorstObjectIntersection) Intersection() opt.T[ObjectIntersection] {
 	return i.intersection
+}
+
+func addIntersection(collection IntersectionCollection, flipped bool, intersection Intersection) {
+	if flipped {
+		collection.AddIntersection(intersection.Flipped())
+	} else {
+		collection.AddIntersection(intersection)
+	}
 }

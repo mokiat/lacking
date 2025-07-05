@@ -211,7 +211,7 @@ func (s *Scene[T]) checkIntersectionSphereWithObject(sphere Sphere, object *Obje
 			Position: object.transform.Apply(shape.template.Position),
 			Radius:   shape.template.Radius,
 		}
-		if intersection, ok := CheckIntersectionSphereWithSphere(sphere, testSphere).Unwrap(); ok {
+		if intersection, ok := CheckSphereSphereIntersection(sphere, testSphere); ok {
 			result.AddIntersection(intersection)
 		}
 	})

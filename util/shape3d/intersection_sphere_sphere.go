@@ -1,41 +1,43 @@
 package shape3d
 
 import (
-	"github.com/mokiat/gog/opt"
 	"github.com/mokiat/gomath/dprec"
 )
 
-// CheckIntersectionSphereWithSphere checks if a Sphere shape intersects with
+// IsSphereSphereIntersection checks if the source sphere intersects with
+// the target sphere.
+//
+// Only a bool result is returned and no collision points or separation
+// normals are evaluated.
+func IsSphereSphereIntersection(source, target Sphere) bool {
+	sqrDistance := dprec.Vec3Diff(source.Position, target.Position).Length()
+	return sqrDistance <= (source.Radius + target.Radius)
+}
+
+// CheckSphereSphereIntersection checks if a Sphere shape intersects with
 // another Sphere shape.
-func CheckIntersectionSphereWithSphere(first, second Sphere) opt.T[Intersection] {
-	firstPosition := first.Position
-	firstRadius := first.Radius
+func CheckSphereSphereIntersection(source, target Sphere) (Intersection, bool) {
+	sourcePosition := source.Position
+	sourceRadius := source.Radius
 
-	secondPosition := second.Position
-	secondRadius := second.Radius
+	targetPosition := target.Position
+	targetRadius := target.Radius
 
-	deltaPosition := dprec.Vec3Diff(secondPosition, firstPosition)
+	deltaPosition := dprec.Vec3Diff(targetPosition, sourcePosition)
 	distance := deltaPosition.Length()
 
-	overlap := (firstRadius + secondRadius) - distance
+	overlap := (sourceRadius + targetRadius) - distance
 	if overlap <= 0.0 {
-		return opt.Unspecified[Intersection]()
+		return Intersection{}, false
 	}
 
-	secondDisplaceNormal := dprec.Vec3Quot(deltaPosition, distance) // unit vec
-	firstDisplaceNormal := dprec.InverseVec3(secondDisplaceNormal)
-
-	return opt.V(Intersection{
-		Depth: overlap,
-		FirstContact: dprec.Vec3Sum(
-			firstPosition,
-			dprec.Vec3Prod(secondDisplaceNormal, firstRadius),
+	targetNormal := dprec.Vec3Quot(deltaPosition, -distance) // unit vector
+	return Intersection{
+		TargetContact: dprec.Vec3Sum(
+			targetPosition,
+			dprec.Vec3Prod(targetNormal, targetRadius),
 		),
-		FirstDisplaceNormal: firstDisplaceNormal,
-		SecondContact: dprec.Vec3Sum(
-			secondPosition,
-			dprec.Vec3Prod(firstDisplaceNormal, secondRadius),
-		),
-		SecondDisplaceNormal: secondDisplaceNormal,
-	})
+		TargetNormal: targetNormal,
+		Depth:        overlap,
+	}, true
 }

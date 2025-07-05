@@ -1,6 +1,8 @@
 package shape3d
 
-import "github.com/mokiat/gomath/dprec"
+import (
+	"github.com/mokiat/gomath/dprec"
+)
 
 func NewSphere(position dprec.Vec3, radius float64) Sphere {
 	return Sphere{
