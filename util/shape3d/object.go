@@ -15,6 +15,7 @@ type ObjectInfo[T any] struct {
 	Position opt.T[dprec.Vec3]
 	Rotation opt.T[dprec.Quat]
 
+	Static      bool
 	SourceGroup uint64
 	SourceMask  opt.T[uint32]
 	TargetMask  opt.T[uint32]
@@ -42,6 +43,7 @@ type Object[T any] struct {
 
 	transform Transform
 
+	static      bool
 	sourceGroup uint64
 	sourceMask  uint32
 	targetMask  uint32
@@ -56,7 +58,14 @@ type Object[T any] struct {
 	userData T
 }
 
+func (o *Object[T]) ObjectID() ObjectID {
+	return ObjectID{
+		internalID: o.id,
+	}
+}
+
 func (o *Object[T]) TransformedBoundingSphere() Sphere {
+	// TODO: Maybe cache this?
 	return Sphere{
 		Position: o.transform.Apply(o.boundingSphere.Position),
 		Radius:   o.boundingSphere.Radius,

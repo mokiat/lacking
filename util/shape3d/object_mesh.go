@@ -20,7 +20,12 @@ type MeshShape struct {
 	template   Mesh
 }
 
-func (s MeshShape) BoundingSphere() Sphere {
+func (s *MeshShape) Init(id mem.SparseID, template Mesh) {
+	s.id = id
+	s.template = template
+}
+
+func (s *MeshShape) BoundingSphere() Sphere {
 	if true {
 		panic("TODO")
 	}

@@ -1,6 +1,8 @@
 package shape3d
 
 import (
+	"iter"
+
 	"github.com/mokiat/gog/opt"
 	"github.com/mokiat/gomath/dprec"
 	"github.com/mokiat/lacking/util/mem"
@@ -45,6 +47,7 @@ func (s *Scene[T]) CreateObject(info ObjectInfo[T]) ObjectID {
 			Rotation:    info.Rotation.ValueOrDefault(dprec.IdentityQuat()),
 		},
 
+		static:      info.Static,
 		sourceGroup: info.SourceGroup,
 		sourceMask:  info.SourceMask.ValueOrDefault(0b1),
 		targetMask:  info.TargetMask.ValueOrDefault(0b1),
@@ -85,9 +88,6 @@ func (s *Scene[T]) DeleteObject(objID ObjectID) {
 	s.eachObjectSphere(object, func(sphereID mem.SparseID, _ *SphereShape) {
 		s.spheres.Delete(sphereID)
 	})
-	// s.eachObjectCylinder(object, func(cylinderID mem.SparseID, _ *CylinderShape) {
-	// 	s.cylinders.Delete(cylinderID)
-	// })
 	s.eachObjectBox(object, func(boxID mem.SparseID, _ *BoxShape) {
 		s.boxes.Delete(boxID)
 	})
@@ -223,7 +223,61 @@ func (s *Scene[T]) IsValidBox(boxID BoxID) bool {
 	return s.boxes.Has(boxID.internalID)
 }
 
-func (s *Scene[T]) CheckSphereIntersection(sphere Sphere) opt.T[ObjectIntersection] {
+// AttachMesh creates a mesh shape and attaches it to the object
+// to be used for intersection tests. The position and rotation of the mesh is
+// relative to the object's transform.
+func (s *Scene[T]) AttachMesh(objID ObjectID, template Mesh) MeshID {
+	object := s.objects.Get(objID.internalID)
+	if object == nil {
+		panic("object id is invalid")
+	}
+
+	id, meshShape := s.meshes.New()
+	meshShape.Init(id, template)
+
+	s.attachObjectMesh(object, meshShape)
+	s.updateObjectBoundary(object)
+
+	return MeshID{
+		internalID: id,
+	}
+}
+
+// DeleteMesh deletes a mesh shape from an object. The object is not
+// deleted and continues to exist in the scene.
+func (s *Scene[T]) DeleteMesh(meshID MeshID) {
+	mesh := s.meshes.Get(meshID.internalID)
+	if mesh == nil {
+		panic("mesh id is invalid")
+	}
+	object := s.objects.Get(mesh.objectID)
+
+	s.detachObjectMesh(object, mesh)
+	s.updateObjectBoundary(object)
+
+	s.meshes.Delete(meshID.internalID)
+}
+
+// IsValidMesh returns whether a mesh with the specified id exists.
+func (s *Scene[T]) IsValidMesh(meshID MeshID) bool {
+	return s.meshes.Has(meshID.internalID)
+}
+
+// FindIntersections returns an iterator over all of the intersections
+// in this scene.
+func (s *Scene[T]) FindIntersections() iter.Seq[ObjectIntersection] {
+	return func(yield func(ObjectIntersection) bool) {
+		for _, srcObject := range s.objects.Iter() {
+			for intersection := range s.findObjectIntersections(srcObject) {
+				if !yield(intersection) {
+					return
+				}
+			}
+		}
+	}
+}
+
+func (s *Scene[T]) CheckSphereIntersection(sphere Sphere) (ObjectIntersection, bool) {
 	checkRegion := spatial.CuboidRegion(
 		sphere.Position,
 		dprec.NewVec3(sphere.Radius*2.0, sphere.Radius*2.0, sphere.Radius*2.0),
@@ -313,6 +367,29 @@ func (s *Scene[T]) detachObjectBox(object *Object[T], shape *BoxShape) {
 	}
 }
 
+func (s *Scene[T]) attachObjectMesh(object *Object[T], shape *MeshShape) {
+	shape.objectID = object.id
+	shape.nextMeshID = object.firstMeshID
+	object.firstMeshID = shape.id
+}
+
+func (s *Scene[T]) detachObjectMesh(object *Object[T], shape *MeshShape) {
+	shapeID := shape.id
+	if object.firstMeshID == shapeID {
+		object.firstMeshID = shape.nextMeshID
+	} else {
+		childID := object.firstMeshID
+		for !childID.IsNil() {
+			child := s.meshes.Get(childID)
+			if child.nextMeshID == shapeID {
+				child.nextMeshID = shape.nextMeshID
+				break
+			}
+			childID = child.nextMeshID
+		}
+	}
+}
+
 func (s *Scene[T]) eachObjectSphere(object *Object[T], cb func(mem.SparseID, *SphereShape)) {
 	sphereID := object.firstSphereID
 	for !sphereID.IsNil() {
@@ -388,4 +465,56 @@ func (s *Scene[T]) invalidateObjectSpatialPlacement(object *Object[T]) {
 		bs := object.TransformedBoundingSphere()
 		s.objectTree.Update(spatialID, bs.Position, bs.Radius)
 	}
+}
+
+func (s *Scene[T]) findObjectIntersections(srcObject *Object[T]) iter.Seq[ObjectIntersection] {
+	return func(yield func(ObjectIntersection) bool) {
+		if srcObject.static {
+			return
+		}
+
+		bs := srcObject.TransformedBoundingSphere()
+		region := spatial.CuboidRegion(
+			bs.Position,
+			dprec.NewVec3(bs.Radius*2.0, bs.Radius*2.0, bs.Radius*2.0),
+		)
+
+		s.objectTree.VisitHexahedronRegion(&region, spatial.VisitorFunc[mem.SparseID](func(tgtID mem.SparseID) {
+			tgtObject := s.objects.Get(tgtID)
+			if !tgtObject.static && (tgtID.IsBefore(srcObject.id)) {
+				return
+			}
+			if srcObject.sourceGroup == tgtObject.sourceGroup {
+				return
+			}
+			// TODO: Add layer checks
+
+			if intersection, ok := s.checkObjectObjectIntersection(srcObject, tgtObject); ok {
+				if !yield(intersection) {
+					return
+				}
+			}
+		}))
+	}
+}
+
+func (s *Scene[T]) checkObjectObjectIntersection(source, target *Object[T]) (ObjectIntersection, bool) {
+	var worstIntersection WorstObjectIntersection
+	s.eachObjectSphere(source, func(_ mem.SparseID, sourceSphere *SphereShape) {
+		s.eachObjectSphere(target, func(_ mem.SparseID, targetSphere *SphereShape) {
+			if intersection, ok := s.checkSphereSphereIntersection(sourceSphere, targetSphere); ok {
+				worstIntersection.AddIntersection(ObjectIntersection{
+					FirstObjectID:  source.ObjectID(),
+					SecondObjectID: target.ObjectID(),
+					Intersection:   intersection,
+				})
+			}
+		})
+	})
+	return worstIntersection.Intersection()
+}
+
+// TODO: Detach from scene.
+func (s *Scene[T]) checkSphereSphereIntersection(source, target *SphereShape) (Intersection, bool) {
+	panic("TODO")
 }

@@ -21,6 +21,16 @@ func (i SparseID) IsNil() bool {
 	return i.revision == 0
 }
 
+func (i SparseID) IsBefore(other SparseID) bool {
+	if i.blockIndex < other.blockIndex {
+		return true
+	}
+	if i.blockIndex > other.blockIndex {
+		return false
+	}
+	return i.blockOffset < other.blockOffset
+}
+
 func NewSparseList[T any](blockSize uint16) *SparseList[T] {
 	return &SparseList[T]{
 		freeIDs:   ds.NewStack[sparseItemID](0),

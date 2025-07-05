@@ -170,8 +170,8 @@ func (i *WorstObjectIntersection) AddIntersection(intersection ObjectIntersectio
 
 // Intersection returns the worst observed intersection and a flag whether
 // there was actually any intersection observed.
-func (i *WorstObjectIntersection) Intersection() opt.T[ObjectIntersection] {
-	return i.intersection
+func (i *WorstObjectIntersection) Intersection() (ObjectIntersection, bool) {
+	return i.intersection.Value, i.intersection.Specified
 }
 
 func addIntersection(collection IntersectionCollection, flipped bool, intersection Intersection) {
