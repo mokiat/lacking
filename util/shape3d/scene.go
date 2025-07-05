@@ -20,7 +20,7 @@ func NewScene[T any]() *Scene[T] {
 
 		spheres: mem.NewSparseList[SphereShape](64), // TODO: Configurable.
 		boxes:   mem.NewSparseList[BoxShape](64),    // TODO: Configurable.
-		// meshes:    mem.NewSparseList[MeshShape](64),     // TODO: Configurable.
+		meshes:  mem.NewSparseList[MeshShape](64),   // TODO: Configurable.
 	}
 }
 
@@ -30,7 +30,7 @@ type Scene[T any] struct {
 
 	spheres *mem.SparseList[SphereShape]
 	boxes   *mem.SparseList[BoxShape]
-	// meshes    *mem.SparseList[MeshShape]
+	meshes  *mem.SparseList[MeshShape]
 }
 
 // CreateObject creates a new object.
@@ -91,9 +91,9 @@ func (s *Scene[T]) DeleteObject(objID ObjectID) {
 	s.eachObjectBox(object, func(boxID mem.SparseID, _ *BoxShape) {
 		s.boxes.Delete(boxID)
 	})
-	// s.eachObjectMesh(object, func(meshID mem.SparseID, _ *MeshShape) {
-	// 	s.meshes.Delete(meshID)
-	// })
+	s.eachObjectMesh(object, func(meshID mem.SparseID, _ *MeshShape) {
+		s.meshes.Delete(meshID)
+	})
 }
 
 // InsertObject adds the object to the scene, making it visible to other
@@ -252,6 +252,7 @@ func (s *Scene[T]) checkIntersectionSphereWithObject(sphere Sphere, object *Obje
 		}
 	})
 	// TODO: Do this for boxes as well.
+	// TODO: Do this for meshes as well.
 
 	intersection, ok := result.Intersection().Unwrap()
 	if !ok {
@@ -332,15 +333,15 @@ func (s *Scene[T]) eachObjectBox(object *Object[T], cb func(mem.SparseID, *BoxSh
 	}
 }
 
-// func (s *Scene[T]) eachObjectMesh(object *Object[T], cb func(mem.SparseID, *MeshShape)) {
-// 	meshID := object.firstMeshID
-// 	for !meshID.IsNil() {
-// 		mesh := s.meshes.Get(meshID)
-// 		nextMeshID := mesh.nextMeshID // track to allow deletion
-// 		cb(meshID, mesh)
-// 		meshID = nextMeshID
-// 	}
-// }
+func (s *Scene[T]) eachObjectMesh(object *Object[T], cb func(mem.SparseID, *MeshShape)) {
+	meshID := object.firstMeshID
+	for !meshID.IsNil() {
+		mesh := s.meshes.Get(meshID)
+		nextMeshID := mesh.nextMeshID // track to allow deletion
+		cb(meshID, mesh)
+		meshID = nextMeshID
+	}
+}
 
 func (s *Scene[T]) eachObjectShapeBoundingSphere(object *Object[T], cb func(Sphere)) {
 	s.eachObjectSphere(object, func(_ mem.SparseID, shape *SphereShape) {
@@ -349,7 +350,9 @@ func (s *Scene[T]) eachObjectShapeBoundingSphere(object *Object[T], cb func(Sphe
 	s.eachObjectBox(object, func(_ mem.SparseID, shape *BoxShape) {
 		cb(shape.BoundingSphere())
 	})
-	// TODO: add other shapes here...
+	s.eachObjectMesh(object, func(_ mem.SparseID, shape *MeshShape) {
+		cb(shape.BoundingSphere())
+	})
 }
 
 func (s *Scene[T]) updateObjectBoundary(object *Object[T]) {
