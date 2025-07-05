@@ -46,10 +46,9 @@ type Object[T any] struct {
 	sourceMask  uint32
 	targetMask  uint32
 
-	firstSphereID   mem.SparseID
-	firstCylinderID mem.SparseID
-	firstBoxID      mem.SparseID
-	firstMeshID     mem.SparseID
+	firstSphereID mem.SparseID
+	firstBoxID    mem.SparseID
+	firstMeshID   mem.SparseID
 
 	spatialID      opt.T[spatial.DynamicOctreeItemID]
 	boundingSphere Sphere

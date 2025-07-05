@@ -19,8 +19,7 @@ func NewScene[T any]() *Scene[T] {
 		}),
 
 		spheres: mem.NewSparseList[SphereShape](64), // TODO: Configurable.
-		// cylinders: mem.NewSparseList[CylinderShape](64), // TODO: Configurable.
-		// boxes:     mem.NewSparseList[BoxShape](64),      // TODO: Configurable.
+		boxes:   mem.NewSparseList[BoxShape](64),    // TODO: Configurable.
 		// meshes:    mem.NewSparseList[MeshShape](64),     // TODO: Configurable.
 	}
 }
@@ -30,8 +29,7 @@ type Scene[T any] struct {
 	objectTree *spatial.DynamicOctree[mem.SparseID]
 
 	spheres *mem.SparseList[SphereShape]
-	// cylinders *mem.SparseList[CylinderShape]
-	// boxes     *mem.SparseList[BoxShape]
+	boxes   *mem.SparseList[BoxShape]
 	// meshes    *mem.SparseList[MeshShape]
 }
 
@@ -51,10 +49,9 @@ func (s *Scene[T]) CreateObject(info ObjectInfo[T]) ObjectID {
 		sourceMask:  info.SourceMask.ValueOrDefault(0b1),
 		targetMask:  info.TargetMask.ValueOrDefault(0b1),
 
-		firstSphereID:   mem.NilSparseID(),
-		firstCylinderID: mem.NilSparseID(),
-		firstBoxID:      mem.NilSparseID(),
-		firstMeshID:     mem.NilSparseID(),
+		firstSphereID: mem.NilSparseID(),
+		firstBoxID:    mem.NilSparseID(),
+		firstMeshID:   mem.NilSparseID(),
 
 		spatialID:      opt.Unspecified[spatial.DynamicOctreeItemID](),
 		boundingSphere: Sphere{},
@@ -91,9 +88,9 @@ func (s *Scene[T]) DeleteObject(objID ObjectID) {
 	// s.eachObjectCylinder(object, func(cylinderID mem.SparseID, _ *CylinderShape) {
 	// 	s.cylinders.Delete(cylinderID)
 	// })
-	// s.eachObjectBox(object, func(boxID mem.SparseID, _ *BoxShape) {
-	// 	s.boxes.Delete(boxID)
-	// })
+	s.eachObjectBox(object, func(boxID mem.SparseID, _ *BoxShape) {
+		s.boxes.Delete(boxID)
+	})
 	// s.eachObjectMesh(object, func(meshID mem.SparseID, _ *MeshShape) {
 	// 	s.meshes.Delete(meshID)
 	// })
@@ -178,13 +175,52 @@ func (s *Scene[T]) DeleteSphere(sphereID SphereID) {
 	s.detachObjectSphere(object, sphere)
 	s.updateObjectBoundary(object)
 
-	// TODO: Update the object size in the octree.
 	s.spheres.Delete(sphereID.internalID)
 }
 
 // IsValidSphere returns whether a sphere with the specified id exists.
 func (s *Scene[T]) IsValidSphere(sphereID SphereID) bool {
 	return s.spheres.Has(sphereID.internalID)
+}
+
+// AttachBox creates a box shape and attaches it to the object
+// to be used for intersection tests. The position and rotation of the box is
+// relative to the object's transform.
+func (s *Scene[T]) AttachBox(objID ObjectID, template Box) BoxID {
+	object := s.objects.Get(objID.internalID)
+	if object == nil {
+		panic("object id is invalid")
+	}
+
+	id, boxShape := s.boxes.New()
+	boxShape.Init(id, template)
+
+	s.attachObjectBox(object, boxShape)
+	s.updateObjectBoundary(object)
+
+	return BoxID{
+		internalID: id,
+	}
+}
+
+// DeleteBox deletes a box shape from an object. The object is not
+// deleted and continues to exist in the scene.
+func (s *Scene[T]) DeleteBox(boxID BoxID) {
+	box := s.boxes.Get(boxID.internalID)
+	if box == nil {
+		panic("box id is invalid")
+	}
+	object := s.objects.Get(box.objectID)
+
+	s.detachObjectBox(object, box)
+	s.updateObjectBoundary(object)
+
+	s.boxes.Delete(boxID.internalID)
+}
+
+// IsValidBox returns whether a box with the specified id exists.
+func (s *Scene[T]) IsValidBox(boxID BoxID) bool {
+	return s.boxes.Has(boxID.internalID)
 }
 
 func (s *Scene[T]) CheckSphereIntersection(sphere Sphere) opt.T[ObjectIntersection] {
@@ -215,6 +251,7 @@ func (s *Scene[T]) checkIntersectionSphereWithObject(sphere Sphere, object *Obje
 			result.AddIntersection(intersection)
 		}
 	})
+	// TODO: Do this for boxes as well.
 
 	intersection, ok := result.Intersection().Unwrap()
 	if !ok {
@@ -252,6 +289,29 @@ func (s *Scene[T]) detachObjectSphere(object *Object[T], shape *SphereShape) {
 	}
 }
 
+func (s *Scene[T]) attachObjectBox(object *Object[T], shape *BoxShape) {
+	shape.objectID = object.id
+	shape.nextBoxID = object.firstBoxID
+	object.firstBoxID = shape.id
+}
+
+func (s *Scene[T]) detachObjectBox(object *Object[T], shape *BoxShape) {
+	shapeID := shape.id
+	if object.firstBoxID == shapeID {
+		object.firstBoxID = shape.nextBoxID
+	} else {
+		childID := object.firstBoxID
+		for !childID.IsNil() {
+			child := s.boxes.Get(childID)
+			if child.nextBoxID == shapeID {
+				child.nextBoxID = shape.nextBoxID
+				break
+			}
+			childID = child.nextBoxID
+		}
+	}
+}
+
 func (s *Scene[T]) eachObjectSphere(object *Object[T], cb func(mem.SparseID, *SphereShape)) {
 	sphereID := object.firstSphereID
 	for !sphereID.IsNil() {
@@ -262,25 +322,15 @@ func (s *Scene[T]) eachObjectSphere(object *Object[T], cb func(mem.SparseID, *Sp
 	}
 }
 
-// func (s *Scene[T]) eachObjectCylinder(object *Object[T], cb func(mem.SparseID, *CylinderShape)) {
-// 	cylinderID := object.firstCylinderID
-// 	for !cylinderID.IsNil() {
-// 		cylinder := s.cylinders.Get(cylinderID)
-// 		nextCylinderID := cylinder.nextCylinderID // track to allow deletion
-// 		cb(cylinderID, cylinder)
-// 		cylinderID = nextCylinderID
-// 	}
-// }
-
-// func (s *Scene[T]) eachObjectBox(object *Object[T], cb func(mem.SparseID, *BoxShape)) {
-// 	boxID := object.firstBoxID
-// 	for !boxID.IsNil() {
-// 		box := s.boxes.Get(boxID)
-// 		nextBoxID := box.nextBoxID // track to allow deletion
-// 		cb(boxID, box)
-// 		boxID = nextBoxID
-// 	}
-// }
+func (s *Scene[T]) eachObjectBox(object *Object[T], cb func(mem.SparseID, *BoxShape)) {
+	boxID := object.firstBoxID
+	for !boxID.IsNil() {
+		box := s.boxes.Get(boxID)
+		nextBoxID := box.nextBoxID // track to allow deletion
+		cb(boxID, box)
+		boxID = nextBoxID
+	}
+}
 
 // func (s *Scene[T]) eachObjectMesh(object *Object[T], cb func(mem.SparseID, *MeshShape)) {
 // 	meshID := object.firstMeshID
@@ -294,6 +344,9 @@ func (s *Scene[T]) eachObjectSphere(object *Object[T], cb func(mem.SparseID, *Sp
 
 func (s *Scene[T]) eachObjectShapeBoundingSphere(object *Object[T], cb func(Sphere)) {
 	s.eachObjectSphere(object, func(_ mem.SparseID, shape *SphereShape) {
+		cb(shape.BoundingSphere())
+	})
+	s.eachObjectBox(object, func(_ mem.SparseID, shape *BoxShape) {
 		cb(shape.BoundingSphere())
 	})
 	// TODO: add other shapes here...
