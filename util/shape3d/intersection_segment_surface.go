@@ -26,7 +26,7 @@ func IsSegmentSurfaceIntersection(segment Segment, surface Surface) bool {
 	return heightA+heightB >= millimeter
 }
 
-// IsSegmentSurfaceIntersection checks whether the specified segment intersects
+// CheckSegmentSurfaceIntersection checks whether the specified segment intersects
 // the specified surface and returns the intersection point.
 //
 // This implementation assumes that the surface has backface culling. Hence, a
