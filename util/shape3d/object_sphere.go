@@ -1,30 +1,34 @@
 package shape3d
 
+type SphereInfo struct {
+	ShapeInfo
+	Sphere Sphere
+}
+
 type SphereShape struct {
-	template Sphere
-	solver   sphereSolver
+	Shape
+	sphereSolver
 }
 
-func (s *SphereShape) Init(template Sphere, transform Transform) {
-	s.template = template
-	s.solver.Update(template, transform)
-}
-
-func (s *SphereShape) SetTransform(transform Transform) {
-	s.solver.Update(s.template, transform)
-}
-
-func (s *SphereShape) BoundingSphere() Sphere {
-	return s.template
+func newSphereSolver(template Sphere) sphereSolver {
+	return sphereSolver{
+		template: template,
+		wsSphere: template,
+	}
 }
 
 type sphereSolver struct {
+	template Sphere
 	wsSphere Sphere
 }
 
-func (s *sphereSolver) Update(template Sphere, transform Transform) {
+func (s *sphereSolver) Update(transform Transform) {
 	s.wsSphere = Sphere{
-		Position: transform.Apply(template.Position),
-		Radius:   template.Radius,
+		Position: transform.Apply(s.template.Position),
+		Radius:   s.template.Radius,
 	}
+}
+
+func (s *sphereSolver) BoundingSphere() Sphere {
+	return s.wsSphere
 }

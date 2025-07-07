@@ -72,8 +72,8 @@ func (i *LastIntersection) AddIntersection(intersection Intersection) {
 
 // Intersection returns the last observed intersection and a flag whether
 // there was actually any intersection observed.
-func (i *LastIntersection) Intersection() opt.T[Intersection] {
-	return i.intersection
+func (i *LastIntersection) Intersection() (Intersection, bool) {
+	return i.intersection.Value, i.intersection.Specified
 }
 
 // WorstIntersection is an implementation of IntersectionCollection that keeps
@@ -128,8 +128,8 @@ func (i *BestIntersection) AddIntersection(intersection Intersection) {
 
 // Intersection returns the best observed intersection and a flag whether
 // there was actually any intersection observed.
-func (i *BestIntersection) Intersection() opt.T[Intersection] {
-	return i.intersection
+func (i *BestIntersection) Intersection() (Intersection, bool) {
+	return i.intersection.Value, i.intersection.Specified
 }
 
 // ObjectIntersection represents the intersectio of two objects.

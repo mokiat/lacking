@@ -1,28 +1,51 @@
 package shape3d
 
-import "github.com/mokiat/lacking/util/mem"
+import (
+	"github.com/mokiat/gog/opt"
+	"github.com/mokiat/lacking/util/spatial"
+)
 
-type ShapeID struct {
-	internalID mem.SparseID
+type ShapeID shapeRef
+
+type ShapeInfo struct {
+	RejectGroup uint32
+	SourceMask  opt.T[uint32]
+	TargetMask  opt.T[uint32]
 }
 
-func (i ShapeID) IsNil() bool {
-	return i == (ShapeID{})
-}
+type Shape struct { // TODO: make private
+	objectIndex uint32
+	nextShape   shapeRef
 
-type objectShape struct {
-	id          mem.SparseID
-	objectID    mem.SparseID
-	nextShapeID mem.SparseID
+	spatialID spatial.DynamicOctreeItemID
+	static    bool
 
-	actualID mem.SparseID
-	kind     shapeKind
+	rejectGroup uint32
+	sourceMask  uint32
+	targetMask  uint32
 }
 
 const (
-	shapeKindSphere shapeKind = iota
+	shapeKindNone shapeKind = iota
+	shapeKindSphere
 	shapeKindBox
 	shapeKindMesh
 )
 
 type shapeKind uint8
+
+const invalidShapeRef = shapeRef(0) // has none shape kind
+
+func newShapeRef(kind shapeKind, index uint32) shapeRef {
+	return shapeRef((index << 4) | (uint32(kind) & 0b1111))
+}
+
+type shapeRef uint32
+
+func (r shapeRef) Index() uint32 {
+	return uint32(r) >> 4
+}
+
+func (r shapeRef) Kind() shapeKind {
+	return shapeKind(r & 0b1111)
+}

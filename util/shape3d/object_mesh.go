@@ -2,55 +2,54 @@ package shape3d
 
 import (
 	"slices"
-
-	"github.com/mokiat/lacking/util/mem"
 )
 
-type MeshID struct {
-	internalID mem.SparseID
-}
-
-func (i MeshID) IsNil() bool {
-	return i == (MeshID{})
+type MeshInfo struct {
+	ShapeInfo
+	Mesh Mesh
 }
 
 type MeshShape struct {
-	template Mesh
-	bs       Sphere
-	solver   meshSolver
+	Shape
+	meshSolver
 }
 
-func (s *MeshShape) Init(template Mesh, transform Transform) {
-	s.template = template
-	s.bs = template.BoundingSphere()
-	s.solver.wsTriangles = slices.Clone(template.Triangles)
-	s.solver.Update(template, s.bs, transform)
-}
+func newMeshSolver(template Mesh) meshSolver {
+	bs := template.BoundingSphere()
+	return meshSolver{
+		template:               template,
+		templateBoundingSohere: bs,
 
-func (s *MeshShape) SetTransform(transform Transform) {
-	s.solver.Update(s.template, s.bs, transform)
-}
-
-func (s *MeshShape) BoundingSphere() Sphere {
-	return s.bs
+		wsMesh: Mesh{
+			Triangles: slices.Clone(template.Triangles),
+		},
+		wsBoundingSphere: bs,
+	}
 }
 
 type meshSolver struct {
+	template               Mesh
+	templateBoundingSohere Sphere
+
+	wsMesh           Mesh
 	wsBoundingSphere Sphere
-	wsTriangles      []Triangle
 }
 
-func (s *meshSolver) Update(template Mesh, meshBS Sphere, transform Transform) {
-	s.wsBoundingSphere = Sphere{
-		Position: transform.Apply(meshBS.Position),
-		Radius:   meshBS.Radius,
-	}
-	for i := range s.wsTriangles {
-		srcTriangle := &template.Triangles[i]
-		s.wsTriangles[i] = Triangle{
+func (s *meshSolver) Update(transform Transform) {
+	for i := range s.wsMesh.Triangles {
+		srcTriangle := &s.template.Triangles[i]
+		s.wsMesh.Triangles[i] = Triangle{
 			A: transform.Apply(srcTriangle.A),
 			B: transform.Apply(srcTriangle.B),
 			C: transform.Apply(srcTriangle.C),
 		}
 	}
+	s.wsBoundingSphere = Sphere{
+		Position: transform.Apply(s.templateBoundingSohere.Position),
+		Radius:   s.templateBoundingSohere.Radius,
+	}
+}
+
+func (s *meshSolver) BoundingSphere() Sphere {
+	return s.wsBoundingSphere
 }

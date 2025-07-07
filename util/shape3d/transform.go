@@ -12,3 +12,15 @@ type Transform struct {
 func (t *Transform) Apply(v dprec.Vec3) dprec.Vec3 {
 	return dprec.Vec3Sum(t.Translation, dprec.QuatVec3Rotation(t.Rotation, v))
 }
+
+// ChainedTransform returns the Transform that is the result of combining
+// two Transforms together.
+func ChainedTransform(parent, child Transform) Transform {
+	return Transform{
+		Translation: dprec.Vec3Sum(
+			parent.Translation,
+			dprec.QuatVec3Rotation(parent.Rotation, child.Translation),
+		),
+		Rotation: dprec.QuatProd(parent.Rotation, child.Rotation),
+	}
+}
