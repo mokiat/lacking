@@ -484,20 +484,9 @@ type CubeArea struct {
 
 // Intersects checks whether the area intersects another area.
 func (a CubeArea) Intersects(other CubeArea) bool {
-	return ((a.x - a.r) <= (other.x + other.r)) &&
-		((a.x + a.r) >= (other.x - other.r)) &&
-		((a.y - a.r) <= (other.y + other.r)) &&
-		((a.y + a.r) >= (other.y - other.r)) &&
-		((a.z - a.r) <= (other.z + other.r)) &&
-		((a.z + a.r) >= (other.z - other.r))
-}
-
-// Contains checks whether the area fully contains another area.
-func (a CubeArea) Contains(other CubeArea) bool {
-	return ((a.x - a.r) <= (other.x - other.r)) &&
-		((a.x + a.r) >= (other.x + other.r)) &&
-		((a.y - a.r) <= (other.y - other.r)) &&
-		((a.y + a.r) >= (other.y + other.r)) &&
-		((a.z - a.r) <= (other.z - other.r)) &&
-		((a.z + a.r) >= (other.z + other.r))
+	dX := a.x - other.x
+	dY := a.y - other.y
+	dZ := a.z - other.z
+	sR := a.r + other.r
+	return (dX <= sR) && (dX >= -sR) && (dY <= sR) && (dY >= -sR) && (dZ <= sR) && (dZ >= -sR)
 }
