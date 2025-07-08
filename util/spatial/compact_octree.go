@@ -512,22 +512,22 @@ func mergeCompactAABBs(first compactAABB, second compactAABB) compactAABB {
 
 func compactAABBFromCube(area CubeArea) compactAABB {
 	return compactAABB{
-		minX: area.x - area.r,
-		maxX: area.x + area.r,
-		minY: area.y - area.r,
-		maxY: area.y + area.r,
-		minZ: area.z - area.r,
-		maxZ: area.z + area.r,
+		minX: float32(area.x - area.r),
+		maxX: float32(area.x + area.r),
+		minY: float32(area.y - area.r),
+		maxY: float32(area.y + area.r),
+		minZ: float32(area.z - area.r),
+		maxZ: float32(area.z + area.r),
 	}
 }
 
 type compactAABB struct {
-	minX float64
-	maxX float64
-	minY float64
-	maxY float64
-	minZ float64
-	maxZ float64
+	minX float32
+	maxX float32
+	minY float32
+	maxY float32
+	minZ float32
+	maxZ float32
 }
 
 func (box compactAABB) intersects(other compactAABB) bool {
