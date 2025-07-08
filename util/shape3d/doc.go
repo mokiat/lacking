@@ -19,7 +19,7 @@ the duffcopy problem. However, the in the collection case there is only a slight
 performance boost.
 
 EDIT: Using (Intersection, bool) is actually faster than opt.T and is very close
-to the collection approach.
+to the 32bit approach.
 
 ---
 

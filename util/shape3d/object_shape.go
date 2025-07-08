@@ -25,6 +25,19 @@ type Shape struct { // TODO: make private
 	targetMask  uint32
 }
 
+func shapesCanIntersect(a, b *Shape) bool {
+	if a.objectIndex == b.objectIndex {
+		return false
+	}
+	if a.rejectGroup != 0 && (a.rejectGroup == b.rejectGroup) {
+		return false
+	}
+	if ((a.sourceMask & b.targetMask) == 0) && ((a.targetMask & b.sourceMask) == 0) {
+		return false
+	}
+	return true
+}
+
 const (
 	shapeKindNone shapeKind = iota
 	shapeKindSphere
