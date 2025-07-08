@@ -17,7 +17,7 @@ type Shape struct { // TODO: make private
 	objectIndex uint32
 	nextShape   shapeRef
 
-	spatialID spatial.DynamicOctreeItemID
+	spatialID spatial.CompactOctreeItemID
 	static    bool
 
 	rejectGroup uint32
