@@ -170,8 +170,8 @@ func (t *CubeOctree[T]) Insert(area CubeArea, value T) CubeOctreeItemID {
 		return item.id
 	} else {
 		if len(t.items) == cap(t.items) {
-			logger.Warn("Growing item capacity for cube octree.",
-				slog.Int("capacity", len(t.items)),
+			logger.Warn("Will grow item capacity for cube octree.",
+				slog.Int("current", len(t.items)),
 			)
 		}
 		id := CubeOctreeItemID(len(t.items))
@@ -299,8 +299,8 @@ func (t *CubeOctree[T]) pickChildNode(parentNodeIndex int32, area CubeArea) int3
 		return childNodeIndex
 	} else {
 		if len(t.nodes) == cap(t.nodes) {
-			logger.Warn("Will grow node slice capacity for cube octree.",
-				slog.Int("capacity", len(t.nodes)),
+			logger.Warn("Will grow node capacity for cube octree.",
+				slog.Int("current", len(t.nodes)),
 			)
 		}
 		childNodeIndex := int32(len(t.nodes)) // predict next node index
