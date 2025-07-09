@@ -3,11 +3,12 @@ package game
 import (
 	"fmt"
 
+	"github.com/mokiat/gog"
 	"github.com/mokiat/gomath/dprec"
 	"github.com/mokiat/lacking/game/asset/dto"
 	"github.com/mokiat/lacking/game/hierarchy"
 	"github.com/mokiat/lacking/game/physics"
-	"github.com/mokiat/lacking/game/physics/collision"
+	"github.com/mokiat/lacking/util/shape3d"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -152,10 +153,10 @@ func UnloadPhysicsBodyDefinitions(loader *AssetLoader, idBodyDefinitions Identif
 	return nil
 }
 
-func resolveCollisionSpheres(bodyDef dto.BodyDefinition) []collision.Sphere {
-	result := make([]collision.Sphere, len(bodyDef.CollisionSpheres))
+func resolveCollisionSpheres(bodyDef dto.BodyDefinition) []shape3d.Sphere {
+	result := make([]shape3d.Sphere, len(bodyDef.CollisionSpheres))
 	for i, collisionSphereAsset := range bodyDef.CollisionSpheres {
-		result[i] = collision.NewSphere(
+		result[i] = shape3d.NewSphere(
 			collisionSphereAsset.Translation,
 			collisionSphereAsset.Radius,
 		)
@@ -163,10 +164,10 @@ func resolveCollisionSpheres(bodyDef dto.BodyDefinition) []collision.Sphere {
 	return result
 }
 
-func resolveCollisionBoxes(bodyDef dto.BodyDefinition) []collision.Box {
-	result := make([]collision.Box, len(bodyDef.CollisionBoxes))
+func resolveCollisionBoxes(bodyDef dto.BodyDefinition) []shape3d.Box {
+	result := make([]shape3d.Box, len(bodyDef.CollisionBoxes))
 	for i, collisionBoxAsset := range bodyDef.CollisionBoxes {
-		result[i] = collision.NewBox(
+		result[i] = shape3d.NewBox(
 			collisionBoxAsset.Translation,
 			collisionBoxAsset.Rotation,
 			dprec.NewVec3(collisionBoxAsset.Width, collisionBoxAsset.Height, collisionBoxAsset.Length),
@@ -175,20 +176,19 @@ func resolveCollisionBoxes(bodyDef dto.BodyDefinition) []collision.Box {
 	return result
 }
 
-func resolveCollisionMeshes(bodyDef dto.BodyDefinition) []collision.Mesh {
-	result := make([]collision.Mesh, len(bodyDef.CollisionMeshes))
+func resolveCollisionMeshes(bodyDef dto.BodyDefinition) []shape3d.Mesh {
+	result := make([]shape3d.Mesh, len(bodyDef.CollisionMeshes))
 	for i, collisionMeshAsset := range bodyDef.CollisionMeshes {
-		transform := collision.TRTransform(collisionMeshAsset.Translation, collisionMeshAsset.Rotation)
-		triangles := make([]collision.Triangle, len(collisionMeshAsset.Triangles))
+		transform := shape3d.TRTransform(collisionMeshAsset.Translation, collisionMeshAsset.Rotation)
+		triangles := make([]shape3d.Triangle, len(collisionMeshAsset.Triangles))
 		for j, triangleAsset := range collisionMeshAsset.Triangles {
-			template := collision.NewTriangle(
-				triangleAsset.A,
-				triangleAsset.B,
-				triangleAsset.C,
+			triangles[j] = shape3d.NewTriangle(
+				transform.Apply(triangleAsset.A),
+				transform.Apply(triangleAsset.B),
+				transform.Apply(triangleAsset.C),
 			)
-			triangles[j].Replace(template, transform)
 		}
-		result[i] = collision.NewMesh(triangles)
+		result[i] = shape3d.NewMesh(triangles)
 	}
 	return result
 }
@@ -263,12 +263,19 @@ func UnloadPhysicsBodyTemplates(loader *AssetLoader, idBodies IdentifiableList[B
 func InstantiatePhysicsBodyTemplateStatic(scene *Scene, template BodyTemplate, nodes IdentifiableList[*hierarchy.Node]) {
 	node := nodes.GetByID(template.NodeID)
 	absMatrix := node.AbsoluteMatrix()
-	transform := collision.TRTransform(absMatrix.Translation(), absMatrix.Rotation())
-	collisionSet := collision.NewSet()
-	collisionSet.Replace(template.Definition.CollisionSet(), transform)
+	transform := shape3d.TRTransform(absMatrix.Translation(), absMatrix.Rotation())
+
 	scene.physicsScene.CreateProp(physics.PropInfo{
-		Name:         node.Name(),
-		CollisionSet: collisionSet,
+		Name: node.Name(),
+		CollisionSpheres: gog.Map(template.Definition.CollisionSpheres(), func(sphere shape3d.Sphere) shape3d.Sphere {
+			return shape3d.TransformedSphere(sphere, transform)
+		}),
+		CollisionBoxes: gog.Map(template.Definition.CollisionBoxes(), func(box shape3d.Box) shape3d.Box {
+			return shape3d.TransformedBox(box, transform)
+		}),
+		CollisionMeshes: gog.Map(template.Definition.CollisionMeshes(), func(mesh shape3d.Mesh) shape3d.Mesh {
+			return shape3d.TransformedMesh(mesh, transform)
+		}),
 	})
 }
 

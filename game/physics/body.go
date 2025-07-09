@@ -1,10 +1,8 @@
 package physics
 
 import (
-	"github.com/mokiat/gog"
 	"github.com/mokiat/gog/opt"
 	"github.com/mokiat/gomath/dprec"
-	"github.com/mokiat/lacking/game/physics/collision"
 	"github.com/mokiat/lacking/game/physics/solver"
 	"github.com/mokiat/lacking/util/shape3d"
 )
@@ -19,9 +17,9 @@ type BodyDefinitionInfo struct {
 	DragFactor             float64
 	AngularDragFactor      float64
 	CollisionGroup         int
-	CollisionSpheres       []collision.Sphere
-	CollisionBoxes         []collision.Box
-	CollisionMeshes        []collision.Mesh
+	CollisionSpheres       []shape3d.Sphere
+	CollisionBoxes         []shape3d.Box
+	CollisionMeshes        []shape3d.Mesh
 	AerodynamicShapes      []AerodynamicShape
 }
 
@@ -33,12 +31,22 @@ type BodyDefinition struct {
 	dragFactor             float64
 	angularDragFactor      float64
 	collisionGroup         int
-	collisionSet           collision.Set
+	collisionSpheres       []shape3d.Sphere
+	collisionBoxes         []shape3d.Box
+	collisionMeshes        []shape3d.Mesh
 	aerodynamicShapes      []AerodynamicShape
 }
 
-func (d *BodyDefinition) CollisionSet() collision.Set {
-	return d.collisionSet
+func (d *BodyDefinition) CollisionSpheres() []shape3d.Sphere {
+	return d.collisionSpheres
+}
+
+func (d *BodyDefinition) CollisionBoxes() []shape3d.Box {
+	return d.collisionBoxes
+}
+
+func (d *BodyDefinition) CollisionMeshes() []shape3d.Mesh {
+	return d.collisionMeshes
 }
 
 type BodyInfo struct {
@@ -397,45 +405,28 @@ func createBody(scene *Scene, info BodyInfo) Body {
 			isProp: false,
 		},
 	})
-	for _, sphere := range info.Definition.collisionSet.Spheres() {
+	for _, sphere := range info.Definition.collisionSpheres {
 		scene.shapeScene.AttachSphere(objectID, shape3d.SphereInfo{
 			ShapeInfo: shape3d.ShapeInfo{
 				RejectGroup: uint32(info.Definition.collisionGroup),
 			},
-			Sphere: shape3d.Sphere{
-				Position: sphere.Position(),
-				Radius:   sphere.Radius(),
-			},
+			Sphere: sphere,
 		})
 	}
-	for _, box := range info.Definition.collisionSet.Boxes() {
+	for _, box := range info.Definition.collisionBoxes {
 		scene.shapeScene.AttachBox(objectID, shape3d.BoxInfo{
 			ShapeInfo: shape3d.ShapeInfo{
 				RejectGroup: uint32(info.Definition.collisionGroup),
 			},
-			Box: shape3d.Box{
-				Position:   box.Position(),
-				Rotation:   box.Rotation(),
-				HalfWidth:  box.HalfWidth(),
-				HalfHeight: box.HalfHeight(),
-				HalfLength: box.HalfLength(),
-			},
+			Box: box,
 		})
 	}
-	for _, mesh := range info.Definition.collisionSet.Meshes() {
+	for _, mesh := range info.Definition.collisionMeshes {
 		scene.shapeScene.AttachMesh(objectID, shape3d.MeshInfo{
 			ShapeInfo: shape3d.ShapeInfo{
 				RejectGroup: uint32(info.Definition.collisionGroup),
 			},
-			Mesh: shape3d.Mesh{
-				Triangles: gog.Map(mesh.Triangles(), func(triangle collision.Triangle) shape3d.Triangle {
-					return shape3d.Triangle{
-						A: triangle.A(),
-						B: triangle.B(),
-						C: triangle.C(),
-					}
-				}),
-			},
+			Mesh: mesh,
 		})
 	}
 

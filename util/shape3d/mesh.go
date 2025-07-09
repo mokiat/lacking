@@ -1,10 +1,25 @@
 package shape3d
 
-import "github.com/mokiat/gomath/dprec"
+import (
+	"github.com/mokiat/gog"
+	"github.com/mokiat/gomath/dprec"
+)
 
 func NewMesh(triangles []Triangle) Mesh {
 	return Mesh{
 		Triangles: triangles,
+	}
+}
+
+func TransformedMesh(source Mesh, transform Transform) Mesh {
+	return Mesh{
+		Triangles: gog.Map(source.Triangles, func(triangle Triangle) Triangle {
+			return Triangle{
+				A: transform.Apply(triangle.A),
+				B: transform.Apply(triangle.B),
+				C: transform.Apply(triangle.C),
+			}
+		}),
 	}
 }
 

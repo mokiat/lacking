@@ -4,12 +4,10 @@ import (
 	"maps"
 	"time"
 
-	"github.com/mokiat/gog"
 	"github.com/mokiat/gog/ds"
 	"github.com/mokiat/gog/opt"
 	"github.com/mokiat/gomath/dprec"
 	"github.com/mokiat/lacking/debug/metric"
-	"github.com/mokiat/lacking/game/physics/collision"
 	"github.com/mokiat/lacking/game/physics/constraint"
 	"github.com/mokiat/lacking/game/physics/medium"
 	"github.com/mokiat/lacking/game/physics/solver"
@@ -266,47 +264,30 @@ func (s *Scene) CreateProp(info PropInfo) {
 	propIndex := uint32(len(s.props))
 
 	objectID := s.shapeScene.CreateObject(shape3d.ObjectInfo[internalRef]{
-		Position: opt.Unspecified[dprec.Vec3](),
-		Rotation: opt.Unspecified[dprec.Quat](),
+		Position: info.Position,
+		Rotation: info.Rotation,
 		Static:   true,
 		UserData: internalRef{
 			index:  propIndex,
 			isProp: true,
 		},
 	})
-	for _, sphere := range info.CollisionSet.Spheres() {
+	for _, sphere := range info.CollisionSpheres {
 		s.shapeScene.AttachSphere(objectID, shape3d.SphereInfo{
 			ShapeInfo: shape3d.ShapeInfo{},
-			Sphere: shape3d.Sphere{
-				Position: sphere.Position(),
-				Radius:   sphere.Radius(),
-			},
+			Sphere:    sphere,
 		})
 	}
-	for _, box := range info.CollisionSet.Boxes() {
+	for _, box := range info.CollisionBoxes {
 		s.shapeScene.AttachBox(objectID, shape3d.BoxInfo{
 			ShapeInfo: shape3d.ShapeInfo{},
-			Box: shape3d.Box{
-				Position:   box.Position(),
-				Rotation:   box.Rotation(),
-				HalfWidth:  box.HalfWidth(),
-				HalfHeight: box.HalfHeight(),
-				HalfLength: box.HalfLength(),
-			},
+			Box:       box,
 		})
 	}
-	for _, mesh := range info.CollisionSet.Meshes() {
+	for _, mesh := range info.CollisionMeshes {
 		s.shapeScene.AttachMesh(objectID, shape3d.MeshInfo{
 			ShapeInfo: shape3d.ShapeInfo{},
-			Mesh: shape3d.Mesh{
-				Triangles: gog.Map(mesh.Triangles(), func(triangle collision.Triangle) shape3d.Triangle {
-					return shape3d.Triangle{
-						A: triangle.A(),
-						B: triangle.B(),
-						C: triangle.C(),
-					}
-				}),
-			},
+			Mesh:      mesh,
 		})
 	}
 
