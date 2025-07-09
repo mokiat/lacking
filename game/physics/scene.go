@@ -4,6 +4,7 @@ import (
 	"maps"
 	"time"
 
+	"github.com/mokiat/gog"
 	"github.com/mokiat/gog/ds"
 	"github.com/mokiat/gog/opt"
 	"github.com/mokiat/gomath/dprec"
@@ -13,12 +14,19 @@ import (
 	"github.com/mokiat/lacking/game/physics/medium"
 	"github.com/mokiat/lacking/game/physics/solver"
 	"github.com/mokiat/lacking/game/timestep"
-	"github.com/mokiat/lacking/util/spatial"
+	"github.com/mokiat/lacking/util/shape3d"
 )
 
 func newScene(engine *Engine, interval time.Duration) *Scene {
 	return &Scene{
 		engine: engine,
+
+		shapeScene: shape3d.NewScene[internalRef](shape3d.SceneInfo{
+			Size:                opt.V(16384.0),
+			MaxDepth:            opt.V[int32](12),
+			InitialNodeCapacity: opt.V[int32](1024),
+			InitialItemCapacity: opt.V[int32](1024),
+		}),
 
 		preUpdateSubscriptions:   NewUpdateSubscriptionSet(),
 		postUpdateSubscriptions:  NewUpdateSubscriptionSet(),
@@ -37,25 +45,11 @@ func newScene(engine *Engine, interval time.Duration) *Scene {
 		mediumSolver: medium.NewStaticAirMedium(),
 
 		props: make([]propState, 0, 1024),
-		propOctree: spatial.NewStaticOctree[uint32](spatial.StaticOctreeSettings{
-			Size:                opt.V(32000.0),
-			MaxDepth:            opt.V(int32(15)),
-			BiasRatio:           opt.V(2.0),
-			InitialNodeCapacity: opt.V(int32(4 * 1024)),
-			InitialItemCapacity: opt.V(int32(8 * 1024)),
-		}),
 
 		freeBodyIndices:            ds.NewStack[uint32](16),
 		bodies:                     make([]bodyState, 0, 64),
 		bodyAccelerationTargets:    make([]solver.AccelerationTarget, 0, 64),
 		bodyConstraintPlaceholders: make([]solver.Placeholder, 0, 64),
-		bodyOctree: spatial.NewDynamicOctree[uint32](spatial.DynamicOctreeSettings{
-			Size:                opt.V(32000.0),
-			MaxDepth:            opt.V(int32(15)),
-			BiasRatio:           opt.V(2.0),
-			InitialNodeCapacity: opt.V(int32(4 * 1024)),
-			InitialItemCapacity: opt.V(int32(8 * 1024)),
-		}),
 
 		// bodyAccelerators   []any // TOOD
 		// areaAccelerators   []any // TODO
@@ -71,7 +65,7 @@ func newScene(engine *Engine, interval time.Duration) *Scene {
 		freeSBConstraintIndices: ds.NewStack[uint32](16),
 		freeDBConstraintIndices: ds.NewStack[uint32](16),
 
-		collisionSet: collision.NewIntersectionBucket(128),
+		collisionSet: shape3d.NewIntersectionBucket(128),
 
 		oldSBCollisions: make(map[sbCollisionPair]struct{}, 32),
 		newSBCollisions: make(map[sbCollisionPair]struct{}, 32),
@@ -86,6 +80,8 @@ func newScene(engine *Engine, interval time.Duration) *Scene {
 // bodies managed by other scene objects.
 type Scene struct {
 	engine *Engine
+
+	shapeScene *shape3d.Scene[internalRef]
 
 	preUpdateSubscriptions   *UpdateSubscriptionSet
 	postUpdateSubscriptions  *UpdateSubscriptionSet
@@ -103,14 +99,12 @@ type Scene struct {
 
 	mediumSolver solver.Medium
 
-	props      []propState
-	propOctree *spatial.StaticOctree[uint32]
+	props []propState
 
 	bodies                     []bodyState
 	bodyAccelerationTargets    []solver.AccelerationTarget
 	bodyConstraintPlaceholders []solver.Placeholder
 	freeBodyIndices            *ds.Stack[uint32]
-	bodyOctree                 *spatial.DynamicOctree[uint32]
 
 	// bodyAccelerators   []any // TOOD
 	freeBodyAcceleratorIndices *ds.Stack[uint32]
@@ -133,7 +127,7 @@ type Scene struct {
 	dbCollisionConstraints []DBConstraint
 	dbCollisionSolvers     []constraint.PairCollision
 
-	collisionSet *collision.IntersectionBucket
+	collisionSet *shape3d.ObjectIntersectionBucket
 
 	oldSBCollisions map[sbCollisionPair]struct{}
 	newSBCollisions map[sbCollisionPair]struct{}
@@ -150,13 +144,11 @@ func (s *Scene) Delete() {
 	s.engine = nil
 
 	s.props = nil
-	s.propOctree = nil
 
 	s.freeBodyIndices = nil
 	s.bodies = nil
 	s.bodyAccelerationTargets = nil
 	s.bodyConstraintPlaceholders = nil
-	s.bodyOctree = nil
 
 	s.globalAccelerators = nil
 	s.freeBodyAcceleratorIndices = nil
@@ -271,17 +263,58 @@ func (s *Scene) CreateGlobalAccelerator(logic solver.Acceleration) GlobalAcceler
 func (s *Scene) CreateProp(info PropInfo) {
 	// TODO: createProp(s, info)
 
-	bs := info.CollisionSet.BoundingSphere()
-	position := bs.Position()
-	radius := bs.Radius()
-
 	propIndex := uint32(len(s.props))
-	s.props = append(s.props, propState{
-		reference:    newIndexReference(propIndex, s.nextRevision()),
-		name:         info.Name,
-		collisionSet: info.CollisionSet,
+
+	objectID := s.shapeScene.CreateObject(shape3d.ObjectInfo[internalRef]{
+		Position: opt.Unspecified[dprec.Vec3](),
+		Rotation: opt.Unspecified[dprec.Quat](),
+		Static:   true,
+		UserData: internalRef{
+			index:  propIndex,
+			isProp: true,
+		},
 	})
-	s.propOctree.Insert(position, radius, propIndex)
+	for _, sphere := range info.CollisionSet.Spheres() {
+		s.shapeScene.AttachSphere(objectID, shape3d.SphereInfo{
+			ShapeInfo: shape3d.ShapeInfo{},
+			Sphere: shape3d.Sphere{
+				Position: sphere.Position(),
+				Radius:   sphere.Radius(),
+			},
+		})
+	}
+	for _, box := range info.CollisionSet.Boxes() {
+		s.shapeScene.AttachBox(objectID, shape3d.BoxInfo{
+			ShapeInfo: shape3d.ShapeInfo{},
+			Box: shape3d.Box{
+				Position:   box.Position(),
+				Rotation:   box.Rotation(),
+				HalfWidth:  box.HalfWidth(),
+				HalfHeight: box.HalfHeight(),
+				HalfLength: box.HalfLength(),
+			},
+		})
+	}
+	for _, mesh := range info.CollisionSet.Meshes() {
+		s.shapeScene.AttachMesh(objectID, shape3d.MeshInfo{
+			ShapeInfo: shape3d.ShapeInfo{},
+			Mesh: shape3d.Mesh{
+				Triangles: gog.Map(mesh.Triangles(), func(triangle collision.Triangle) shape3d.Triangle {
+					return shape3d.Triangle{
+						A: triangle.A(),
+						B: triangle.B(),
+						C: triangle.C(),
+					}
+				}),
+			},
+		})
+	}
+
+	s.props = append(s.props, propState{
+		reference: newIndexReference(propIndex, s.nextRevision()),
+		objectID:  objectID,
+		name:      info.Name,
+	})
 }
 
 // CreateBody creates a new physics body and places
@@ -324,25 +357,25 @@ func (s *Scene) Each(cb func(b Body)) {
 	})
 }
 
-func (s *Scene) Nearby(body Body, distance float64, cb func(b Body)) {
-	state := s.resolveBodyState(body.reference)
-	if state == nil {
-		return
-	}
-	region := spatial.CuboidRegion(
-		state.position,
-		dprec.NewVec3(distance, distance, distance),
-	)
-	s.bodyOctree.VisitHexahedronRegion(&region, spatial.VisitorFunc[uint32](func(candidate uint32) {
-		candidateState := &s.bodies[candidate]
-		if candidateState != state {
-			cb(Body{
-				scene:     s,
-				reference: candidateState.reference,
-			})
-		}
-	}))
-}
+// func (s *Scene) Nearby(body Body, distance float64, cb func(b Body)) {
+// 	state := s.resolveBodyState(body.reference)
+// 	if state == nil {
+// 		return
+// 	}
+// 	region := spatial.CuboidRegion(
+// 		state.position,
+// 		dprec.NewVec3(distance, distance, distance),
+// 	)
+// 	s.bodyOctree.VisitHexahedronRegion(&region, spatial.VisitorFunc[uint32](func(candidate uint32) {
+// 		candidateState := &s.bodies[candidate]
+// 		if candidateState != state {
+// 			cb(Body{
+// 				scene:     s,
+// 				reference: candidateState.reference,
+// 			})
+// 		}
+// 	}))
+// }
 
 func (s *Scene) runSimulation(elapsedSeconds float64) {
 	s.resetOldPositions()
@@ -543,9 +576,10 @@ func (s *Scene) applyMotion(elapsedSeconds float64) {
 		deltaRotation := dprec.Vec3Prod(body.angularVelocity, elapsedSeconds)
 		body.VectorRotate(deltaRotation)
 
-		// FIXME
-		s.bodyOctree.Update(body.itemID, body.position, body.bsRadius)
-		body.InvalidateCollisionShapes(s)
+		s.shapeScene.SetObjectTransform(body.objectID, shape3d.Transform{
+			Translation: body.position,
+			Rotation:    body.rotation,
+		})
 	})
 }
 
@@ -603,48 +637,44 @@ func (s *Scene) applyNudges(elapsedSeconds float64) {
 	}
 }
 
-func (s *Scene) CheckLineCollision(line collision.Line) opt.T[collision.Intersection] {
-	mid := dprec.Vec3Quot(dprec.Vec3Sum(line.A(), line.B()), 2.0)
-	length := dprec.Vec3Diff(line.A(), line.B()).Length()
+// func (s *Scene) CheckLineCollision(line collision.Line) opt.T[collision.Intersection] {
+// 	mid := dprec.Vec3Quot(dprec.Vec3Sum(line.A(), line.B()), 2.0)
+// 	length := dprec.Vec3Diff(line.A(), line.B()).Length()
 
-	region := spatial.CuboidRegion(
-		mid,
-		dprec.NewVec3(length, length, length),
-	)
+// 	region := spatial.CuboidRegion(
+// 		mid,
+// 		dprec.NewVec3(length, length, length),
+// 	)
 
-	s.collisionSet.Reset()
+// 	s.collisionSet.Reset()
 
-	s.propOctree.VisitHexahedronRegion(&region, spatial.VisitorFunc[uint32](func(propIndex uint32) {
-		prop := &s.props[propIndex]
-		if _, _, intersects := collision.LineWithSphereIntersectionPoints(line, prop.collisionSet.BoundingSphere()); !intersects {
-			return
-		}
-		for _, mesh := range prop.collisionSet.Meshes() {
-			if _, _, intersects := collision.LineWithSphereIntersectionPoints(line, mesh.BoundingSphere()); !intersects {
-				continue
-			}
-			collision.CheckIntersectionLineWithMesh(line, mesh, false, s.collisionSet)
-		}
-	}))
+// 	s.propOctree.VisitHexahedronRegion(&region, spatial.VisitorFunc[uint32](func(propIndex uint32) {
+// 		prop := &s.props[propIndex]
+// 		if _, _, intersects := collision.LineWithSphereIntersectionPoints(line, prop.collisionSet.BoundingSphere()); !intersects {
+// 			return
+// 		}
+// 		for _, mesh := range prop.collisionSet.Meshes() {
+// 			if _, _, intersects := collision.LineWithSphereIntersectionPoints(line, mesh.BoundingSphere()); !intersects {
+// 				continue
+// 			}
+// 			collision.CheckIntersectionLineWithMesh(line, mesh, false, s.collisionSet)
+// 		}
+// 	}))
 
-	var bestIntersection opt.T[collision.Intersection]
-	var bestDistance = 100000.0
-	for _, intersection := range s.collisionSet.Intersections() {
-		distance := dprec.Vec3Diff(intersection.FirstContact, line.A()).Length()
-		if !bestIntersection.Specified || distance < bestDistance {
-			bestIntersection = opt.V(intersection)
-			bestDistance = distance
-		}
-	}
-	return bestIntersection
-}
+// 	var bestIntersection opt.T[collision.Intersection]
+// 	var bestDistance = 100000.0
+// 	for _, intersection := range s.collisionSet.Intersections() {
+// 		distance := dprec.Vec3Diff(intersection.FirstContact, line.A()).Length()
+// 		if !bestIntersection.Specified || distance < bestDistance {
+// 			bestIntersection = opt.V(intersection)
+// 			bestDistance = distance
+// 		}
+// 	}
+// 	return bestIntersection
+// }
 
 func (s *Scene) detectCollisions() {
 	defer metric.BeginRegion("collision").End()
-
-	s.eachBodyState(func(_ int, body *bodyState) {
-		body.InvalidateCollisionShapes(s)
-	})
 
 	for _, constraint := range s.sbCollisionConstraints {
 		constraint.Delete()
@@ -658,33 +688,89 @@ func (s *Scene) detectCollisions() {
 	s.dbCollisionConstraints = s.dbCollisionConstraints[:0]
 	s.dbCollisionSolvers = s.dbCollisionSolvers[:0]
 
-	s.eachBodyState(func(_ int, primary *bodyState) {
-		if primary.collisionSet.IsEmpty() {
-			return
+	s.collisionSet.Reset()
+	s.shapeScene.CollectIntersections(s.collisionSet)
+	for _, intersection := range s.collisionSet.Intersections() {
+		primaryRef := s.shapeScene.GetObjectUserData(intersection.FirstObjectID)
+		secondaryRef := s.shapeScene.GetObjectUserData(intersection.SecondObjectID)
+		if primaryRef.isProp && secondaryRef.isProp {
+			continue
 		}
-		region := spatial.CuboidRegion(
-			primary.position,
-			dprec.NewVec3(primary.bsRadius*2.0, primary.bsRadius*2.0, primary.bsRadius*2.0),
-		)
+		if primaryRef.isProp && !secondaryRef.isProp {
+			primaryRef, secondaryRef = secondaryRef, primaryRef
+			intersection = shape3d.ObjectIntersection{
+				FirstObjectID:  intersection.SecondObjectID,
+				SecondObjectID: intersection.FirstObjectID,
+				Intersection:   intersection.Intersection.Flipped(),
+			}
+		}
 
-		s.propOctree.VisitHexahedronRegion(&region, spatial.VisitorFunc[uint32](func(propIndex uint32) {
-			s.checkCollisionBodyWithProp(primary, &s.props[propIndex])
-		}))
+		if secondaryRef.isProp {
+			primary := s.bodies[primaryRef.index]
+			secondary := s.props[secondaryRef.index]
 
-		s.bodyOctree.VisitHexahedronRegion(&region, spatial.VisitorFunc[uint32](func(secondaryIndex uint32) {
-			secondary := &s.bodies[secondaryIndex]
-			if secondary.reference.Index <= primary.reference.Index {
-				return // secondary is the same or was already a primary
+			solver := s.allocateGroundCollisionSolver()
+			solver.Init(constraint.CollisionState{
+				BodyNormal:                 intersection.EvalSourceNormal(),
+				BodyPoint:                  intersection.EvalSourceContact(),
+				BodyFrictionCoefficient:    primary.frictionCoefficient,
+				BodyRestitutionCoefficient: primary.restitutionCoefficient,
+
+				PropFrictionCoefficient:    1.0, // TODO: Take from prop or shape material
+				PropRestitutionCoefficient: 0.5, // TODO: Take from prop or shape material
+
+				Depth: intersection.Depth,
+			})
+
+			pair := sbCollisionPair{
+				BodyRef: primary.reference,
+				PropRef: secondary.reference,
 			}
-			if secondary.collisionSet.IsEmpty() {
-				return
+			s.newSBCollisions[pair] = struct{}{}
+
+			primaryBody := Body{
+				scene:     s,
+				reference: primary.reference,
 			}
-			if (primary.collisionGroup == secondary.collisionGroup) && (primary.collisionGroup != 0) {
-				return
+			s.sbCollisionConstraints = append(s.sbCollisionConstraints, s.CreateSingleBodyConstraint(primaryBody, solver))
+		} else {
+			primary := s.bodies[primaryRef.index]
+			secondary := s.bodies[secondaryRef.index]
+
+			solver := s.allocateDualCollisionSolver()
+			solver.Init(constraint.PairCollisionState{
+				// TODO: Figure out why source and target are flipped here...
+
+				PrimaryNormal:                 intersection.TargetNormal,
+				PrimaryPoint:                  intersection.TargetContact,
+				PrimaryFrictionCoefficient:    primary.frictionCoefficient,
+				PrimaryRestitutionCoefficient: primary.restitutionCoefficient,
+
+				SecondaryNormal:                 intersection.EvalSourceNormal(),
+				SecondaryPoint:                  intersection.EvalSourceContact(),
+				SecondaryFrictionCoefficient:    secondary.frictionCoefficient,
+				SecondaryRestitutionCoefficient: secondary.restitutionCoefficient,
+
+				Depth: intersection.Depth,
+			})
+
+			pair := dbCollisionPair{
+				PrimaryRef:   primary.reference,
+				SecondaryRef: secondary.reference,
 			}
-			s.checkCollisionTwoBodies(primary, secondary)
-		}))
-	})
+			s.newDBCollisions[pair] = struct{}{}
+
+			primaryBody := Body{
+				scene:     s,
+				reference: primary.reference,
+			}
+			secondaryBody := Body{
+				scene:     s,
+				reference: secondary.reference,
+			}
+			s.dbCollisionConstraints = append(s.dbCollisionConstraints, s.CreateDoubleBodyConstraint(primaryBody, secondaryBody, solver))
+		}
+	}
 }
 
 func (s *Scene) allocateGroundCollisionSolver() *constraint.Collision {
@@ -705,73 +791,73 @@ func (s *Scene) allocateDualCollisionSolver() *constraint.PairCollision {
 	return &s.dbCollisionSolvers[len(s.dbCollisionSolvers)-1]
 }
 
-func (s *Scene) checkCollisionBodyWithProp(primary *bodyState, prop *propState) {
-	s.collisionSet.Reset()
-	collision.CheckIntersectionSetWithSet(primary.collisionSet, prop.collisionSet, s.collisionSet)
-	for _, intersection := range s.collisionSet.Intersections() {
-		solver := s.allocateGroundCollisionSolver()
-		solver.Init(constraint.CollisionState{
-			BodyNormal:                 intersection.FirstDisplaceNormal,
-			BodyPoint:                  intersection.FirstContact,
-			BodyFrictionCoefficient:    primary.frictionCoefficient,
-			BodyRestitutionCoefficient: primary.restitutionCoefficient,
+// func (s *Scene) checkCollisionBodyWithProp(primary *bodyState, prop *propState) {
+// 	s.collisionSet.Reset()
+// 	collision.CheckIntersectionSetWithSet(primary.collisionSet, prop.collisionSet, s.collisionSet)
+// 	for _, intersection := range s.collisionSet.Intersections() {
+// 		solver := s.allocateGroundCollisionSolver()
+// 		solver.Init(constraint.CollisionState{
+// 			BodyNormal:                 intersection.FirstDisplaceNormal,
+// 			BodyPoint:                  intersection.FirstContact,
+// 			BodyFrictionCoefficient:    primary.frictionCoefficient,
+// 			BodyRestitutionCoefficient: primary.restitutionCoefficient,
 
-			PropFrictionCoefficient:    1.0, // TODO: Take from prop or shape material
-			PropRestitutionCoefficient: 0.5, // TODO: Take from prop or shape material
+// 			PropFrictionCoefficient:    1.0, // TODO: Take from prop or shape material
+// 			PropRestitutionCoefficient: 0.5, // TODO: Take from prop or shape material
 
-			Depth: intersection.Depth,
-		})
+// 			Depth: intersection.Depth,
+// 		})
 
-		pair := sbCollisionPair{
-			BodyRef: primary.reference,
-			PropRef: prop.reference,
-		}
-		s.newSBCollisions[pair] = struct{}{}
+// 		pair := sbCollisionPair{
+// 			BodyRef: primary.reference,
+// 			PropRef: prop.reference,
+// 		}
+// 		s.newSBCollisions[pair] = struct{}{}
 
-		primaryBody := Body{
-			scene:     s,
-			reference: primary.reference,
-		}
-		s.sbCollisionConstraints = append(s.sbCollisionConstraints, s.CreateSingleBodyConstraint(primaryBody, solver))
-	}
-}
+// 		primaryBody := Body{
+// 			scene:     s,
+// 			reference: primary.reference,
+// 		}
+// 		s.sbCollisionConstraints = append(s.sbCollisionConstraints, s.CreateSingleBodyConstraint(primaryBody, solver))
+// 	}
+// }
 
-func (s *Scene) checkCollisionTwoBodies(primary, secondary *bodyState) {
-	s.collisionSet.Reset()
-	collision.CheckIntersectionSetWithSet(primary.collisionSet, secondary.collisionSet, s.collisionSet)
-	for _, intersection := range s.collisionSet.Intersections() {
-		solver := s.allocateDualCollisionSolver()
-		solver.Init(constraint.PairCollisionState{
-			PrimaryNormal:                 intersection.FirstDisplaceNormal,
-			PrimaryPoint:                  intersection.FirstContact,
-			PrimaryFrictionCoefficient:    primary.frictionCoefficient,
-			PrimaryRestitutionCoefficient: primary.restitutionCoefficient,
+// func (s *Scene) checkCollisionTwoBodies(primary, secondary *bodyState) {
+// 	s.collisionSet.Reset()
+// 	collision.CheckIntersectionSetWithSet(primary.collisionSet, secondary.collisionSet, s.collisionSet)
+// 	for _, intersection := range s.collisionSet.Intersections() {
+// 		solver := s.allocateDualCollisionSolver()
+// 		solver.Init(constraint.PairCollisionState{
+// 			PrimaryNormal:                 intersection.FirstDisplaceNormal,
+// 			PrimaryPoint:                  intersection.FirstContact,
+// 			PrimaryFrictionCoefficient:    primary.frictionCoefficient,
+// 			PrimaryRestitutionCoefficient: primary.restitutionCoefficient,
 
-			SecondaryNormal:                 intersection.SecondDisplaceNormal,
-			SecondaryPoint:                  intersection.SecondContact,
-			SecondaryFrictionCoefficient:    secondary.frictionCoefficient,
-			SecondaryRestitutionCoefficient: secondary.restitutionCoefficient,
+// 			SecondaryNormal:                 intersection.SecondDisplaceNormal,
+// 			SecondaryPoint:                  intersection.SecondContact,
+// 			SecondaryFrictionCoefficient:    secondary.frictionCoefficient,
+// 			SecondaryRestitutionCoefficient: secondary.restitutionCoefficient,
 
-			Depth: intersection.Depth,
-		})
+// 			Depth: intersection.Depth,
+// 		})
 
-		pair := dbCollisionPair{
-			PrimaryRef:   primary.reference,
-			SecondaryRef: secondary.reference,
-		}
-		s.newDBCollisions[pair] = struct{}{}
+// 		pair := dbCollisionPair{
+// 			PrimaryRef:   primary.reference,
+// 			SecondaryRef: secondary.reference,
+// 		}
+// 		s.newDBCollisions[pair] = struct{}{}
 
-		primaryBody := Body{
-			scene:     s,
-			reference: primary.reference,
-		}
-		secondaryBody := Body{
-			scene:     s,
-			reference: secondary.reference,
-		}
-		s.dbCollisionConstraints = append(s.dbCollisionConstraints, s.CreateDoubleBodyConstraint(primaryBody, secondaryBody, solver))
-	}
-}
+// 		primaryBody := Body{
+// 			scene:     s,
+// 			reference: primary.reference,
+// 		}
+// 		secondaryBody := Body{
+// 			scene:     s,
+// 			reference: secondary.reference,
+// 		}
+// 		s.dbCollisionConstraints = append(s.dbCollisionConstraints, s.CreateDoubleBodyConstraint(primaryBody, secondaryBody, solver))
+// 	}
+// }
 
 func (s *Scene) nextRevision() uint32 {
 	s.freeRevision++
@@ -785,6 +871,7 @@ func (s *Scene) onTickInterval(elapsedTime time.Duration) {
 	s.notifySingleBodyCollisions()
 	s.notifyDoubleBodyCollisions()
 	s.notifyPostUpdate()
+	s.shapeScene.GC()
 }
 
 func (s *Scene) onTickLerp(alpha float64) {
@@ -925,7 +1012,14 @@ func (s *Scene) deinitPlaceholder(placeholder *solver.Placeholder, body *bodySta
 	body.position = placeholder.Position()
 	body.rotation = placeholder.Rotation()
 
-	// FIXME
-	s.bodyOctree.Update(body.itemID, body.position, body.bsRadius)
-	body.InvalidateCollisionShapes(s)
+	s.shapeScene.SetObjectTransform(body.objectID, shape3d.Transform{
+		Translation: body.position,
+		Rotation:    body.rotation,
+	})
+}
+
+// TODO: Fixme!
+type internalRef struct {
+	index  uint32
+	isProp bool
 }

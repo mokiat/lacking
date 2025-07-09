@@ -2,6 +2,7 @@ package physics
 
 import (
 	"github.com/mokiat/lacking/game/physics/collision"
+	"github.com/mokiat/lacking/util/shape3d"
 )
 
 type PropInfo struct {
@@ -18,7 +19,7 @@ func (p Prop) Name() string {
 }
 
 type propState struct {
-	reference    indexReference
-	name         string
-	collisionSet collision.Set
+	reference indexReference
+	objectID  shape3d.ObjectID
+	name      string
 }

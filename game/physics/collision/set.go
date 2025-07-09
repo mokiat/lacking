@@ -32,6 +32,7 @@ func NewSet(opts ...SetOption) Set {
 	for _, opt := range opts {
 		opt(&result)
 	}
+
 	center := result.calculateCenter()
 	radius := result.calculateRadius(center)
 	result.bs = NewSphere(center, radius)

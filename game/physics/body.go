@@ -1,10 +1,12 @@
 package physics
 
 import (
+	"github.com/mokiat/gog"
+	"github.com/mokiat/gog/opt"
 	"github.com/mokiat/gomath/dprec"
 	"github.com/mokiat/lacking/game/physics/collision"
 	"github.com/mokiat/lacking/game/physics/solver"
-	"github.com/mokiat/lacking/util/spatial"
+	"github.com/mokiat/lacking/util/shape3d"
 )
 
 var invalidBodyState = &bodyState{}
@@ -216,26 +218,26 @@ func (b Body) SetAngularVelocity(angularVelocity dprec.Vec3) {
 	state.angularVelocity = angularVelocity
 }
 
-// CollisionGroup returns the collision group for this body. Two bodies
-// with the same collision group are not checked for collisions.
-func (b Body) CollisionGroup() int {
-	state := b.state()
-	return state.collisionGroup
-}
+// // CollisionGroup returns the collision group for this body. Two bodies
+// // with the same collision group are not checked for collisions.
+// func (b Body) CollisionGroup() int {
+// 	state := b.state()
+// 	return state.collisionGroup
+// }
 
-// SetCollisionGroup changes the collision group for this body.
-//
-// A value of 0 disables the collision group.
-func (b Body) SetCollisionGroup(group int) {
-	state := b.state()
-	state.collisionGroup = group
-}
+// // SetCollisionGroup changes the collision group for this body.
+// //
+// // A value of 0 disables the collision group.
+// func (b Body) SetCollisionGroup(group int) {
+// 	state := b.state()
+// 	state.collisionGroup = group
+// }
 
-// CollisionSet contains the collision shapes for this body.
-func (b Body) CollisionSet() collision.Set {
-	state := b.state()
-	return state.collisionSet
-}
+// // CollisionSet contains the collision shapes for this body.
+// func (b Body) CollisionSet() collision.Set {
+// 	state := b.state()
+// 	return state.collisionSet
+// }
 
 // // AerodynamicShapes returns a slice of shapes that
 // // dictate how this body is affected by relative air
@@ -300,10 +302,10 @@ func (b Body) state() *bodyState {
 type bodyState struct {
 	reference indexReference
 
+	objectID shape3d.ObjectID
+
 	name       string
 	definition *BodyDefinition
-
-	itemID spatial.DynamicOctreeItemID
 
 	mass            float64
 	momentOfInertia dprec.Mat3
@@ -332,24 +334,12 @@ type bodyState struct {
 	velocity        dprec.Vec3
 	angularVelocity dprec.Vec3
 
-	bsRadius          float64
-	collisionGroup    int
-	collisionSet      collision.Set
+	// bsRadius          float64
 	aerodynamicShapes []AerodynamicShape
 }
 
 func (s bodyState) IsActive() bool {
 	return s.reference.IsValid()
-}
-
-func (b *bodyState) InvalidateCollisionShapes(scene *Scene) {
-	transform := collision.TRTransform(b.position, b.rotation)
-	b.collisionSet.Replace(b.definition.collisionSet, transform)
-
-	bs := b.collisionSet.BoundingSphere()
-	delta := dprec.Vec3Diff(bs.Position(), b.position)
-	b.bsRadius = delta.Length() + bs.Radius()
-	scene.bodyOctree.Update(b.itemID, b.position, b.bsRadius)
 }
 
 func (b *bodyState) AddVelocity(amount dprec.Vec3) {
@@ -398,16 +388,65 @@ func createBody(scene *Scene, info BodyInfo) Body {
 		freeIndex = scene.freeBodyIndices.Pop()
 	}
 
+	objectID := scene.shapeScene.CreateObject(shape3d.ObjectInfo[internalRef]{
+		Position: opt.V(info.Position),
+		Rotation: opt.V(info.Rotation),
+		Static:   false,
+		UserData: internalRef{
+			index:  freeIndex,
+			isProp: false,
+		},
+	})
+	for _, sphere := range info.Definition.collisionSet.Spheres() {
+		scene.shapeScene.AttachSphere(objectID, shape3d.SphereInfo{
+			ShapeInfo: shape3d.ShapeInfo{
+				RejectGroup: uint32(info.Definition.collisionGroup),
+			},
+			Sphere: shape3d.Sphere{
+				Position: sphere.Position(),
+				Radius:   sphere.Radius(),
+			},
+		})
+	}
+	for _, box := range info.Definition.collisionSet.Boxes() {
+		scene.shapeScene.AttachBox(objectID, shape3d.BoxInfo{
+			ShapeInfo: shape3d.ShapeInfo{
+				RejectGroup: uint32(info.Definition.collisionGroup),
+			},
+			Box: shape3d.Box{
+				Position:   box.Position(),
+				Rotation:   box.Rotation(),
+				HalfWidth:  box.HalfWidth(),
+				HalfHeight: box.HalfHeight(),
+				HalfLength: box.HalfLength(),
+			},
+		})
+	}
+	for _, mesh := range info.Definition.collisionSet.Meshes() {
+		scene.shapeScene.AttachMesh(objectID, shape3d.MeshInfo{
+			ShapeInfo: shape3d.ShapeInfo{
+				RejectGroup: uint32(info.Definition.collisionGroup),
+			},
+			Mesh: shape3d.Mesh{
+				Triangles: gog.Map(mesh.Triangles(), func(triangle collision.Triangle) shape3d.Triangle {
+					return shape3d.Triangle{
+						A: triangle.A(),
+						B: triangle.B(),
+						C: triangle.C(),
+					}
+				}),
+			},
+		})
+	}
+
 	reference := newIndexReference(freeIndex, scene.nextRevision())
 	body := bodyState{
 		reference: reference,
 
+		objectID: objectID,
+
 		name:       info.Name,
 		definition: info.Definition,
-
-		itemID: scene.bodyOctree.Insert(
-			info.Position, 1.0, freeIndex,
-		),
 
 		mass:            info.Definition.mass,
 		momentOfInertia: info.Definition.momentOfInertia,
@@ -421,14 +460,8 @@ func createBody(scene *Scene, info BodyInfo) Body {
 		position: info.Position,
 		rotation: info.Rotation,
 
-		collisionGroup:    info.Definition.collisionGroup,
 		aerodynamicShapes: info.Definition.aerodynamicShapes,
 	}
-
-	// FIXME
-	scene.bodyOctree.Update(body.itemID, body.position, body.bsRadius)
-	body.InvalidateCollisionShapes(scene)
-
 	scene.bodies[freeIndex] = body
 
 	return Body{
@@ -441,10 +474,9 @@ func deleteBody(scene *Scene, reference indexReference) {
 	index := reference.Index
 	state := &scene.bodies[index]
 	if state.reference == reference {
-		scene.bodyOctree.Remove(state.itemID)
+		scene.shapeScene.DeleteObject(state.objectID)
 		state.reference = newIndexReference(index, 0)
 		state.definition = nil
-		state.collisionSet = collision.NewSet()
 		state.aerodynamicShapes = nil
 		scene.freeBodyIndices.Push(index)
 	}
