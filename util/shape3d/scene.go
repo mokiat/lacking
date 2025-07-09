@@ -477,7 +477,7 @@ func (s *Scene[T]) collectSphereBoxIntersections(pairs []indexPair, collection O
 		if pair != lastPair {
 			srcSphere := &s.spheres[pair.srcIndex()]
 			tgtBox := &s.boxes[pair.tgtIndex()]
-			if intersection, ok := s.checkSphereBoxIntersection(&srcSphere.sphereSolver, &tgtBox.boxSolver, false); ok {
+			if intersection, ok := s.checkSphereBoxIntersection(&srcSphere.sphereSolver, &tgtBox.boxSolver); ok {
 				collection.AddIntersection(ObjectIntersection{
 					FirstObjectID:  ObjectID(srcSphere.objectIndex),
 					SecondObjectID: ObjectID(tgtBox.objectIndex),
@@ -496,7 +496,7 @@ func (s *Scene[T]) collectSphereMeshIntersections(pairs []indexPair, collection 
 		if pair != lastPair {
 			srcSphere := &s.spheres[pair.srcIndex()]
 			tgtMesh := &s.meshes[pair.tgtIndex()]
-			if intersection, ok := s.checkSphereMeshIntersection(&srcSphere.sphereSolver, &tgtMesh.meshSolver, false); ok {
+			if intersection, ok := s.checkSphereMeshIntersection(&srcSphere.sphereSolver, &tgtMesh.meshSolver); ok {
 				collection.AddIntersection(ObjectIntersection{
 					FirstObjectID:  ObjectID(srcSphere.objectIndex),
 					SecondObjectID: ObjectID(tgtMesh.objectIndex),
@@ -515,7 +515,7 @@ func (s *Scene[T]) collectBoxMeshIntersections(pairs []indexPair, collection Obj
 		if pair != lastPair {
 			srcBox := &s.boxes[pair.srcIndex()]
 			tgtMesh := &s.meshes[pair.tgtIndex()]
-			if intersection, ok := s.checkBoxMeshIntersection(&srcBox.boxSolver, &tgtMesh.meshSolver, false); ok {
+			if intersection, ok := s.checkBoxMeshIntersection(&srcBox.boxSolver, &tgtMesh.meshSolver); ok {
 				collection.AddIntersection(ObjectIntersection{
 					FirstObjectID:  ObjectID(srcBox.objectIndex),
 					SecondObjectID: ObjectID(tgtMesh.objectIndex),
@@ -553,18 +553,14 @@ func (s *Scene[T]) checkSphereSphereIntersection(source, target *sphereSolver) (
 	return CheckSphereSphereIntersection(source.wsSphere, target.wsSphere)
 }
 
-func (s *Scene[T]) checkSphereBoxIntersection(source *sphereSolver, target *boxSolver, flip bool) (Intersection, bool) {
+func (s *Scene[T]) checkSphereBoxIntersection(source *sphereSolver, target *boxSolver) (Intersection, bool) {
 	if !IsSphereSphereIntersection(source.wsSphere, target.wsBoundingSphere) {
 		return Intersection{}, false
 	}
-	var lastIntersection LastIntersection
-	if intersection, ok := CheckSphereBoxIntersection(source.wsSphere, target.wsBox); ok {
-		addIntersection(&lastIntersection, flip, intersection)
-	}
-	return lastIntersection.Intersection()
+	return CheckSphereBoxIntersection(source.wsSphere, target.wsBox)
 }
 
-func (s *Scene[T]) checkSphereMeshIntersection(source *sphereSolver, target *meshSolver, flip bool) (Intersection, bool) {
+func (s *Scene[T]) checkSphereMeshIntersection(source *sphereSolver, target *meshSolver) (Intersection, bool) {
 	if !IsSphereSphereIntersection(source.wsSphere, target.wsBoundingSphere) {
 		return Intersection{}, false
 	}
@@ -575,21 +571,17 @@ func (s *Scene[T]) checkSphereMeshIntersection(source *sphereSolver, target *mes
 			continue
 		}
 		if intersection, ok := CheckSphereTriangleIntersection(wsSphere, wsTriangle); ok {
-			addIntersection(&worstIntersection, flip, intersection)
+			worstIntersection.AddIntersection(intersection)
 		}
 	}
 	return worstIntersection.Intersection()
 }
 
-func (s *Scene[T]) checkBoxMeshIntersection(source *boxSolver, target *meshSolver, flip bool) (Intersection, bool) {
+func (s *Scene[T]) checkBoxMeshIntersection(source *boxSolver, target *meshSolver) (Intersection, bool) {
 	if !IsSphereSphereIntersection(source.wsBoundingSphere, target.wsBoundingSphere) {
 		return Intersection{}, false
 	}
-	var lastIntersection LastIntersection
-	if intersection, ok := CheckBoxMeshIntersection(source.wsBox, target.wsMesh); ok {
-		addIntersection(&lastIntersection, flip, intersection)
-	}
-	return lastIntersection.Intersection()
+	return CheckBoxMeshIntersection(source.wsBox, target.wsMesh)
 }
 
 func createArea(bs Sphere) spatial.CubeArea {
