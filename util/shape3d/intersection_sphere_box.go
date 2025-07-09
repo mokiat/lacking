@@ -371,7 +371,7 @@ func CheckSphereBoxIntersection(sphere Sphere, box Box) (Intersection, bool) {
 
 	return Intersection{
 		TargetContact: boxContact,
-		TargetNormal:  boxDisplaceNormal,
+		TargetNormal:  dprec.InverseVec3(boxDisplaceNormal),
 		Depth:         depth,
 	}, true
 }
