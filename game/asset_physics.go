@@ -3,7 +3,7 @@ package game
 import (
 	"fmt"
 
-	"github.com/mokiat/gog"
+	"github.com/mokiat/gog/opt"
 	"github.com/mokiat/gomath/dprec"
 	"github.com/mokiat/lacking/game/asset/dto"
 	"github.com/mokiat/lacking/game/hierarchy"
@@ -263,19 +263,13 @@ func UnloadPhysicsBodyTemplates(loader *AssetLoader, idBodies IdentifiableList[B
 func InstantiatePhysicsBodyTemplateStatic(scene *Scene, template BodyTemplate, nodes IdentifiableList[*hierarchy.Node]) {
 	node := nodes.GetByID(template.NodeID)
 	absMatrix := node.AbsoluteMatrix()
-	transform := shape3d.TRTransform(absMatrix.Translation(), absMatrix.Rotation())
-
 	scene.physicsScene.CreateProp(physics.PropInfo{
-		Name: node.Name(),
-		CollisionSpheres: gog.Map(template.Definition.CollisionSpheres(), func(sphere shape3d.Sphere) shape3d.Sphere {
-			return shape3d.TransformedSphere(sphere, transform)
-		}),
-		CollisionBoxes: gog.Map(template.Definition.CollisionBoxes(), func(box shape3d.Box) shape3d.Box {
-			return shape3d.TransformedBox(box, transform)
-		}),
-		CollisionMeshes: gog.Map(template.Definition.CollisionMeshes(), func(mesh shape3d.Mesh) shape3d.Mesh {
-			return shape3d.TransformedMesh(mesh, transform)
-		}),
+		Name:             node.Name(),
+		Position:         opt.V(absMatrix.Translation()),
+		Rotation:         opt.V(absMatrix.Rotation()),
+		CollisionSpheres: template.Definition.CollisionSpheres(),
+		CollisionBoxes:   template.Definition.CollisionBoxes(),
+		CollisionMeshes:  template.Definition.CollisionMeshes(),
 	})
 }
 

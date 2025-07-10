@@ -525,7 +525,7 @@ func (s *Scene[T]) eachDynamicMesh(cb func(uint32, *MeshShape)) {
 }
 
 func (s *Scene[T]) collectSphereSphereIntersections(pairs []indexPair, collection ObjectIntersectionCollection) {
-	var lastPair indexPair
+	lastPair := invalidIndexPair
 	slices.Sort(pairs)
 	for _, pair := range pairs {
 		if pair != lastPair {
@@ -544,7 +544,7 @@ func (s *Scene[T]) collectSphereSphereIntersections(pairs []indexPair, collectio
 }
 
 func (s *Scene[T]) collectSphereBoxIntersections(pairs []indexPair, collection ObjectIntersectionCollection) {
-	var lastPair indexPair
+	lastPair := invalidIndexPair
 	slices.Sort(pairs)
 	for _, pair := range pairs {
 		if pair != lastPair {
@@ -563,7 +563,7 @@ func (s *Scene[T]) collectSphereBoxIntersections(pairs []indexPair, collection O
 }
 
 func (s *Scene[T]) collectSphereMeshIntersections(pairs []indexPair, collection ObjectIntersectionCollection) {
-	var lastPair indexPair
+	lastPair := invalidIndexPair
 	slices.Sort(pairs)
 	for _, pair := range pairs {
 		if pair != lastPair {
@@ -582,7 +582,7 @@ func (s *Scene[T]) collectSphereMeshIntersections(pairs []indexPair, collection 
 }
 
 func (s *Scene[T]) collectBoxMeshIntersections(pairs []indexPair, collection ObjectIntersectionCollection) {
-	var lastPair indexPair
+	lastPair := invalidIndexPair
 	slices.Sort(pairs)
 	for _, pair := range pairs {
 		if pair != lastPair {
@@ -654,6 +654,8 @@ func createArea(bs Sphere) spatial.CubeArea {
 func newIndexPair(source, target uint32) indexPair {
 	return indexPair((uint64(source) << 32) | uint64(target))
 }
+
+const invalidIndexPair = indexPair(0xFFFFFFFFFFFFFFFF)
 
 type indexPair uint64
 
