@@ -152,7 +152,7 @@ func CheckSphereTriangleIntersection(sphere Sphere, triangle Triangle) (Intersec
 
 	return Intersection{
 		TargetContact: dprec.Vec3Diff(spherePosition, dprec.Vec3Prod(sphereDisplaceNormal, sphereRadius-depth)),
-		TargetNormal:  dprec.InverseVec3(sphereDisplaceNormal),
+		TargetNormal:  sphereDisplaceNormal,
 		Depth:         depth,
 	}, true
 }

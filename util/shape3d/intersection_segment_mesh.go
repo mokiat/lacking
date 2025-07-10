@@ -6,11 +6,11 @@ package shape3d
 // here and instead an intersection point (one closest to segment start) should
 // be returned.
 func CheckSegmentMeshIntersection(segment Segment, mesh Mesh) (Intersection, bool) {
-	var worseIntersection WorstIntersection
+	var collection WorstIntersection
 	for _, triangle := range mesh.Triangles {
 		if intersection, ok := CheckSegmentTriangleIntersection(segment, triangle); ok {
-			worseIntersection.AddIntersection(intersection)
+			collection.AddIntersection(intersection)
 		}
 	}
-	return worseIntersection.Intersection()
+	return collection.Intersection()
 }

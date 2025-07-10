@@ -637,17 +637,7 @@ func (s *Scene[T]) checkSphereMeshIntersection(source *sphereSolver, target *mes
 	if !IsSphereSphereIntersection(source.wsSphere, target.wsBoundingSphere) {
 		return Intersection{}, false
 	}
-	var worstIntersection WorstIntersection
-	wsSphere := source.wsSphere
-	for _, wsTriangle := range target.wsMesh.Triangles {
-		if !IsSphereSphereIntersection(wsSphere, wsTriangle.BoundingSphere()) {
-			continue
-		}
-		if intersection, ok := CheckSphereTriangleIntersection(wsSphere, wsTriangle); ok {
-			worstIntersection.AddIntersection(intersection)
-		}
-	}
-	return worstIntersection.Intersection()
+	return CheckSphereMeshIntersection(source.wsSphere, target.wsMesh)
 }
 
 func (s *Scene[T]) checkBoxMeshIntersection(source *boxSolver, target *meshSolver) (Intersection, bool) {

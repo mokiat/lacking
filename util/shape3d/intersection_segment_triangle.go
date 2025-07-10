@@ -31,7 +31,7 @@ func CheckSegmentTriangleIntersection(segment Segment, triangle Triangle) (Inter
 
 	return Intersection{
 		TargetContact: projectedPoint,
-		TargetNormal:  dprec.InverseVec3(normal),
+		TargetNormal:  normal,
 		Depth:         -heightB,
 	}, true
 }

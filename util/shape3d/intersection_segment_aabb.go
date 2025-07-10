@@ -2,7 +2,7 @@ package shape3d
 
 import "github.com/mokiat/gomath/dprec"
 
-func IsSegmentAABBIntersection(segment Segment, aabb AABB, inner bool) bool {
+func IsSegmentAABBIntersection(segment Segment, aabb AABB) bool {
 	dir := dprec.Vec3Diff(segment.B, segment.A)
 
 	tLowX := (aabb.MinX - segment.A.X) / dir.X
@@ -23,6 +23,5 @@ func IsSegmentAABBIntersection(segment Segment, aabb AABB, inner bool) bool {
 	tClose := max(tCloseX, tCloseY, tCloseZ)
 	tFar := min(tFarX, tFarY, tFarZ)
 
-	return tClose <= tFar &&
-		((tClose >= 0 && tClose <= 1.0) || (inner && tFar >= 0 && tFar <= 1.0))
+	return tClose <= tFar && (tClose >= 0 && tClose <= 1.0)
 }
