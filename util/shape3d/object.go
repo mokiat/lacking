@@ -5,6 +5,12 @@ import (
 	"github.com/mokiat/gomath/dprec"
 )
 
+const invalidObjectIndex = uint32(0xFFFFFFFF)
+
+const InvalidObjectID = ObjectID(invalidObjectIndex)
+
+type ObjectID uint32
+
 type ObjectInfo[T any] struct {
 	Position opt.T[dprec.Vec3]
 	Rotation opt.T[dprec.Quat]
@@ -16,8 +22,6 @@ type ObjectInfo[T any] struct {
 
 	UserData T
 }
-
-type ObjectID uint32
 
 type SizeTest = Object[struct{}] // TODO: DELETE ME
 
