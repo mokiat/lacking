@@ -10,11 +10,11 @@ import "github.com/mokiat/gomath/dprec"
 // "positive" side will not produce an intersection.
 func IsSegmentCircleIntersection(segment Segment, circle Circle) bool {
 	surface := NewSurface(circle.Position, circle.Normal)
-	point, ok := CheckSegmentSurfaceIntersection(segment, surface)
+	intersection, ok := CheckSegmentSurfaceIntersection(segment, surface)
 	if !ok {
 		return false
 	}
-	distanceSqr := dprec.Vec3Diff(point, circle.Position).SqrLength()
+	distanceSqr := dprec.Vec3Diff(intersection.TargetContact, circle.Position).SqrLength()
 	return distanceSqr <= dprec.Sqr(circle.Radius)
 }
 
@@ -26,15 +26,15 @@ func IsSegmentCircleIntersection(segment Segment, circle Circle) bool {
 // "positive" side will not produce an intersection.
 //
 // A standard Intersection result is not meaningful here.
-func CheckSegmentCircleIntersection(segment Segment, circle Circle) (dprec.Vec3, bool) {
+func CheckSegmentCircleIntersection(segment Segment, circle Circle) (Intersection, bool) {
 	surface := NewSurface(circle.Position, circle.Normal)
-	point, ok := CheckSegmentSurfaceIntersection(segment, surface)
+	intersection, ok := CheckSegmentSurfaceIntersection(segment, surface)
 	if !ok {
-		return dprec.Vec3{}, false
+		return Intersection{}, false
 	}
-	distanceSqr := dprec.Vec3Diff(point, circle.Position).SqrLength()
+	distanceSqr := dprec.Vec3Diff(intersection.TargetContact, circle.Position).SqrLength()
 	if distanceSqr > dprec.Sqr(circle.Radius) {
-		return dprec.Vec3{}, false
+		return Intersection{}, false
 	}
-	return point, true
+	return intersection, true
 }
