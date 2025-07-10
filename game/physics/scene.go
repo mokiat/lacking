@@ -338,6 +338,21 @@ func (s *Scene) Each(cb func(b Body)) {
 	})
 }
 
+func (s *Scene) CheckSegmentIntersection(segment shape3d.Segment, mask uint32) (Body, bool) {
+	intersection, ok := s.shapeScene.CheckSegmentIntersection(segment, mask)
+	if !ok {
+		return Body{}, false
+	}
+	ref := s.shapeScene.GetObjectUserData(intersection.SecondObjectID)
+	if ref.isProp {
+		return Body{}, false // FIXME: This should handle props as well.
+	}
+	return Body{
+		scene:     s,
+		reference: s.bodies[ref.index].reference,
+	}, true
+}
+
 // func (s *Scene) Nearby(body Body, distance float64, cb func(b Body)) {
 // 	state := s.resolveBodyState(body.reference)
 // 	if state == nil {

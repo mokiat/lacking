@@ -6,6 +6,9 @@ import (
 
 	"github.com/mokiat/gog/ds"
 	"github.com/mokiat/gog/opt"
+	"github.com/mokiat/gomath/dprec"
+	"github.com/mokiat/gomath/dtos"
+	"github.com/mokiat/gomath/sprec"
 )
 
 // InvalidCompactOctreeItemID can be used to mark a reference as invalid.
@@ -216,6 +219,22 @@ func (t *CompactOctree[T]) VisitArea(area CubeArea, visitor Visitor[T]) {
 	t.visitNodeInAABB(0, &box, visitor)
 }
 
+// VisitSegment finds all items that are inside or intersect the specified
+// segment.
+// It calls the specified visitor for each item found.
+func (t *CompactOctree[T]) VisitSegment(a, b dprec.Vec3, visitor Visitor[T]) {
+	t.nodeCountAccepted = 0
+	t.nodeCountRejected = 0
+	t.itemCountAccepted = 0
+	t.itemCountRejected = 0
+	t.refresh()
+	segment := compactSegment{
+		a: dtos.Vec3(a),
+		b: dtos.Vec3(b),
+	}
+	t.visitNodeInSegment(0, segment, visitor)
+}
+
 // GC runs cleanup and optimization logic. You should call this at least once
 // per frame.
 func (t *CompactOctree[T]) GC() {
@@ -338,6 +357,29 @@ func (t *CompactOctree[T]) visitNodeInAABB(nodeIndex int32, box *compactAABB, vi
 		for _, childNodeIndex := range node.children {
 			if childNodeIndex != unspecifiedIndex {
 				t.visitNodeInAABB(childNodeIndex, box, visitor)
+			}
+		}
+	} else {
+		t.nodeCountRejected++
+	}
+}
+
+func (t *CompactOctree[T]) visitNodeInSegment(nodeIndex int32, segment compactSegment, visitor Visitor[T]) {
+	node := &t.nodes[nodeIndex]
+	if isCompactSegmentAABBIntersection(segment, node.box, true) {
+		t.nodeCountAccepted++
+		for itemIndex := node.itemStart; itemIndex < node.itemEnd; itemIndex++ {
+			item := &t.items[itemIndex]
+			if isCompactSegmentAABBIntersection(segment, item.box, true) {
+				visitor.Visit(item.value)
+				t.itemCountAccepted++
+			} else {
+				t.itemCountRejected++
+			}
+		}
+		for _, childNodeIndex := range node.children {
+			if childNodeIndex != unspecifiedIndex {
+				t.visitNodeInSegment(childNodeIndex, segment, visitor)
 			}
 		}
 	} else {
@@ -534,4 +576,36 @@ func (box compactAABB) intersects(other compactAABB) bool {
 	return (box.minX <= other.maxX) && (box.maxX >= other.minX) &&
 		(box.minY <= other.maxY) && (box.maxY >= other.minY) &&
 		(box.minZ <= other.maxZ) && (box.maxZ >= other.minZ)
+}
+
+type compactSegment struct {
+	a sprec.Vec3
+	b sprec.Vec3
+}
+
+func isCompactSegmentAABBIntersection(segment compactSegment, aabb compactAABB, inner bool) bool {
+	delta := sprec.Vec3Diff(segment.b, segment.a)
+	length := delta.Length()
+	dir := sprec.Vec3Quot(delta, length)
+
+	tLowX := (aabb.minX - segment.a.X) / dir.X
+	tLowY := (aabb.minY - segment.a.Y) / dir.Y
+	tLowZ := (aabb.minZ - segment.a.Z) / dir.Z
+
+	tHighX := (aabb.maxX - segment.a.X) / dir.X
+	tHighY := (aabb.maxY - segment.a.Y) / dir.Y
+	tHighZ := (aabb.maxZ - segment.a.Z) / dir.Z
+
+	tCloseX := min(tLowX, tHighX)
+	tCloseY := min(tLowY, tHighY)
+	tCloseZ := min(tLowZ, tHighZ)
+	tClose := max(tCloseX, tCloseY, tCloseZ)
+
+	tFarX := max(tLowX, tHighX)
+	tFarY := max(tLowY, tHighY)
+	tFarZ := max(tLowZ, tHighZ)
+	tFar := min(tFarX, tFarY, tFarZ)
+
+	return tClose <= tFar &&
+		((tClose >= 0 && tClose <= length) || (inner && tFar >= 0 && tFar <= length))
 }

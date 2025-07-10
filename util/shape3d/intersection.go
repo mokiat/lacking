@@ -150,6 +150,34 @@ type ObjectIntersection struct {
 	Intersection
 }
 
+// BestObjectIntersection is an implementation of IntersectionCollection that
+// keeps track of the best (smallest depth) observed intersection.
+type BestObjectIntersection struct {
+	intersection opt.T[ObjectIntersection]
+}
+
+// Reset clears any observed intersection.
+func (i *BestObjectIntersection) Reset() {
+	i.intersection = opt.Unspecified[ObjectIntersection]()
+}
+
+// AddIntersection tracks the specified intersection.
+func (i *BestObjectIntersection) AddIntersection(intersection ObjectIntersection) {
+	if i.intersection.Specified {
+		if intersection.Depth < i.intersection.Value.Depth {
+			i.intersection.Value = intersection
+		}
+	} else {
+		i.intersection = opt.V(intersection)
+	}
+}
+
+// Intersection returns the worst observed intersection and a flag whether
+// there was actually any intersection observed.
+func (i *BestObjectIntersection) Intersection() (ObjectIntersection, bool) {
+	return i.intersection.Value, i.intersection.Specified
+}
+
 // WorstObjectIntersection is an implementation of IntersectionCollection that keeps
 // track of the worst (largest depth) observed intersection.
 type WorstObjectIntersection struct {
@@ -176,14 +204,6 @@ func (i *WorstObjectIntersection) AddIntersection(intersection ObjectIntersectio
 // there was actually any intersection observed.
 func (i *WorstObjectIntersection) Intersection() (ObjectIntersection, bool) {
 	return i.intersection.Value, i.intersection.Specified
-}
-
-func addIntersection(collection IntersectionCollection, flipped bool, intersection Intersection) {
-	if flipped {
-		collection.AddIntersection(intersection.Flipped())
-	} else {
-		collection.AddIntersection(intersection)
-	}
 }
 
 // NewIntersectionBucket creates a new IntersectionBucket instance with
@@ -218,4 +238,12 @@ func (b *ObjectIntersectionBucket) IsEmpty() bool {
 // NOTE: The slice must not be modified or cached as it will be reused.
 func (s *ObjectIntersectionBucket) Intersections() []ObjectIntersection {
 	return s.intersections
+}
+
+func addIntersection(collection IntersectionCollection, flipped bool, intersection Intersection) {
+	if flipped {
+		collection.AddIntersection(intersection.Flipped())
+	} else {
+		collection.AddIntersection(intersection)
+	}
 }
