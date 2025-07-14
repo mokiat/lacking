@@ -200,6 +200,7 @@ func (s *Scene) Update(elapsedTime time.Duration) {
 	})
 	postUpdateSpan.End()
 
+	s.ecsScene.Purge()
 	s.gfxScene.Update(elapsedTime)
 }
 
