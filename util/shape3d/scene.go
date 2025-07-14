@@ -403,8 +403,8 @@ func (s *Scene[T]) CheckSegmentIntersection(segment Segment, mask uint32) (Objec
 		}
 	}))
 	slices.Sort(s.checks)
-	for _, sphereIndex := range s.checks {
-		sphere := &s.spheres[sphereIndex]
+	for _, checkPair := range s.checks {
+		sphere := &s.spheres[checkPair.tgtIndex()]
 		if intersection, ok := CheckSegmentSphereIntersection(segment, sphere.wsSphere); ok {
 			collection.AddIntersection(ObjectIntersection{
 				FirstObjectID:  InvalidObjectID,
@@ -423,8 +423,8 @@ func (s *Scene[T]) CheckSegmentIntersection(segment Segment, mask uint32) (Objec
 		}
 	}))
 	slices.Sort(s.checks)
-	for _, boxIndex := range s.checks {
-		box := &s.boxes[boxIndex]
+	for _, checkPair := range s.checks {
+		box := &s.boxes[checkPair.tgtIndex()]
 		if intersection, ok := CheckSegmentBoxIntersection(segment, box.wsBox); ok {
 			collection.AddIntersection(ObjectIntersection{
 				FirstObjectID:  InvalidObjectID,
@@ -443,8 +443,8 @@ func (s *Scene[T]) CheckSegmentIntersection(segment Segment, mask uint32) (Objec
 		}
 	}))
 	slices.Sort(s.checks)
-	for _, meshIndex := range s.checks {
-		mesh := &s.meshes[meshIndex]
+	for _, checkPair := range s.checks {
+		mesh := &s.meshes[checkPair.tgtIndex()]
 		if intersection, ok := CheckSegmentMeshIntersection(segment, mesh.wsMesh); ok {
 			collection.AddIntersection(ObjectIntersection{
 				FirstObjectID:  InvalidObjectID,

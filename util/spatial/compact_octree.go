@@ -366,11 +366,11 @@ func (t *CompactOctree[T]) visitNodeInAABB(nodeIndex int32, box *compactAABB, vi
 
 func (t *CompactOctree[T]) visitNodeInSegment(nodeIndex int32, segment compactSegment, visitor Visitor[T]) {
 	node := &t.nodes[nodeIndex]
-	if isCompactSegmentAABBIntersection(segment, node.box, true) {
+	if isCompactSegmentAABBIntersection(segment, node.box) {
 		t.nodeCountAccepted++
 		for itemIndex := node.itemStart; itemIndex < node.itemEnd; itemIndex++ {
 			item := &t.items[itemIndex]
-			if isCompactSegmentAABBIntersection(segment, item.box, true) {
+			if isCompactSegmentAABBIntersection(segment, item.box) {
 				visitor.Visit(item.value)
 				t.itemCountAccepted++
 			} else {
@@ -583,18 +583,16 @@ type compactSegment struct {
 	b sprec.Vec3
 }
 
-func isCompactSegmentAABBIntersection(segment compactSegment, aabb compactAABB, inner bool) bool {
+func isCompactSegmentAABBIntersection(segment compactSegment, aabb compactAABB) bool {
 	delta := sprec.Vec3Diff(segment.b, segment.a)
-	length := delta.Length()
-	dir := sprec.Vec3Quot(delta, length)
 
-	tLowX := (aabb.minX - segment.a.X) / dir.X
-	tLowY := (aabb.minY - segment.a.Y) / dir.Y
-	tLowZ := (aabb.minZ - segment.a.Z) / dir.Z
+	tLowX := (aabb.minX - segment.a.X) / delta.X
+	tLowY := (aabb.minY - segment.a.Y) / delta.Y
+	tLowZ := (aabb.minZ - segment.a.Z) / delta.Z
 
-	tHighX := (aabb.maxX - segment.a.X) / dir.X
-	tHighY := (aabb.maxY - segment.a.Y) / dir.Y
-	tHighZ := (aabb.maxZ - segment.a.Z) / dir.Z
+	tHighX := (aabb.maxX - segment.a.X) / delta.X
+	tHighY := (aabb.maxY - segment.a.Y) / delta.Y
+	tHighZ := (aabb.maxZ - segment.a.Z) / delta.Z
 
 	tCloseX := min(tLowX, tHighX)
 	tCloseY := min(tLowY, tHighY)
@@ -606,6 +604,5 @@ func isCompactSegmentAABBIntersection(segment compactSegment, aabb compactAABB, 
 	tFarZ := max(tLowZ, tHighZ)
 	tFar := min(tFarX, tFarY, tFarZ)
 
-	return tClose <= tFar &&
-		((tClose >= 0 && tClose <= length) || (inner && tFar >= 0 && tFar <= length))
+	return tClose <= tFar && tClose <= 1.0 && tFar >= 0.0
 }
