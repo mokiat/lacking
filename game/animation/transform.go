@@ -29,6 +29,24 @@ func BlendNodeTransforms(first, second NodeTransform, factor float64) NodeTransf
 	}
 }
 
+// AddNodeTransforms combines two transforms into a single one.
+func AddNodeTransforms(first, second NodeTransform) NodeTransform {
+	return NodeTransform{
+		Translation: addLinear(first.Translation, second.Translation),
+		Rotation:    addSpherical(first.Rotation, second.Rotation),
+		Scale:       addLinear(first.Scale, second.Scale),
+	}
+}
+
+// DiffNodeTransforms combines two transforms into a single one.
+func DiffNodeTransforms(second, first NodeTransform) NodeTransform {
+	return NodeTransform{
+		Translation: diffLinear(second.Translation, first.Translation),
+		Rotation:    diffSpherical(second.Rotation, first.Rotation),
+		Scale:       diffLinear(second.Scale, first.Scale),
+	}
+}
+
 func combineLinear(first, second opt.T[dprec.Vec3], amount float64) opt.T[dprec.Vec3] {
 	switch {
 	case first.Specified && second.Specified:
@@ -50,6 +68,42 @@ func combineSpherical(first, second opt.T[dprec.Quat], amount float64) opt.T[dpr
 		return first
 	case second.Specified:
 		return second
+	default:
+		return opt.Unspecified[dprec.Quat]()
+	}
+}
+
+func addLinear(first, second opt.T[dprec.Vec3]) opt.T[dprec.Vec3] {
+	switch {
+	case first.Specified && second.Specified:
+		return opt.V(dprec.Vec3Sum(first.Value, second.Value))
+	default:
+		return opt.Unspecified[dprec.Vec3]()
+	}
+}
+
+func addSpherical(first, second opt.T[dprec.Quat]) opt.T[dprec.Quat] {
+	switch {
+	case first.Specified && second.Specified:
+		return opt.V(dprec.QuatProd(second.Value, first.Value))
+	default:
+		return opt.Unspecified[dprec.Quat]()
+	}
+}
+
+func diffLinear(second, first opt.T[dprec.Vec3]) opt.T[dprec.Vec3] {
+	switch {
+	case first.Specified && second.Specified:
+		return opt.V(dprec.Vec3Diff(second.Value, first.Value))
+	default:
+		return opt.Unspecified[dprec.Vec3]()
+	}
+}
+
+func diffSpherical(second, first opt.T[dprec.Quat]) opt.T[dprec.Quat] {
+	switch {
+	case first.Specified && second.Specified:
+		return opt.V(dprec.QuatDiff(second.Value, first.Value, true))
 	default:
 		return opt.Unspecified[dprec.Quat]()
 	}

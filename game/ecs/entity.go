@@ -12,7 +12,7 @@ type Entity struct {
 
 // Exists returns whether this entity is still present in the Scene.
 func (e Entity) Exists() bool {
-	return e.scene.HasEntity(e)
+	return e.scene != nil && e.scene.HasEntity(e)
 }
 
 // Delete marks this entity for deletion.
