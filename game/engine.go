@@ -131,11 +131,8 @@ func (e *Engine) UnregisterResourceLoader(resourceLoader ResourceLoader[any]) {
 	e.registry.UnregisterResourceLoader(resourceLoader)
 }
 
-func (e *Engine) CreateScene() *Scene {
-	physicsScene := e.physicsEngine.CreateScene()
-	gfxScene := e.gfxEngine.CreateScene()
-	ecsScene := e.ecsEngine.CreateScene()
-	result := newScene(e, physicsScene, gfxScene, ecsScene)
+func (e *Engine) CreateScene(info SceneInfo) *Scene {
+	result := newScene(e, info)
 	if e.activeScene == nil {
 		e.activeScene = result
 	}

@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/mokiat/gog/ds"
+	"github.com/mokiat/gog/opt"
 	"github.com/mokiat/lacking/debug/metric"
 	"github.com/mokiat/lacking/game/animation"
 	"github.com/mokiat/lacking/game/ecs"
@@ -14,13 +15,53 @@ import (
 	"github.com/mokiat/lacking/render"
 )
 
-func newScene(engine *Engine, physicsScene *physics.Scene, gfxScene *graphics.Scene, ecsScene *ecs.Scene) *Scene {
+// SceneInfo specifies details regarding the scene to be created.
+type SceneInfo struct {
+
+	// IncludeECS indicates whether an ECS sub-scene would be required.
+	//
+	// Defaults to `true`.
+	IncludeECS opt.T[bool]
+
+	// IncludePhysics indicates whether a Physics sub-scene would be required.
+	//
+	// Defaults to `true`.
+	IncludePhysics opt.T[bool]
+
+	// IncludeGraphics indicates whether a Graphics sub-scene would be required.
+	//
+	// Defaults to `true`.
+	IncludeGraphics opt.T[bool]
+}
+
+func newScene(engine *Engine, info SceneInfo) *Scene {
+	var (
+		includeECS      = info.IncludeECS.ValueOrDefault(true)
+		includePhysics  = info.IncludePhysics.ValueOrDefault(true)
+		includeGraphics = info.IncludeGraphics.ValueOrDefault(true)
+	)
+
+	var ecsScene *ecs.Scene
+	if ecsEngine := engine.ECS(); ecsEngine != nil && includeECS {
+		ecsScene = ecsEngine.CreateScene()
+	}
+
+	var physicsScene *physics.Scene
+	if physicsEngine := engine.Physics(); physicsEngine != nil && includePhysics {
+		physicsScene = physicsEngine.CreateScene()
+	}
+
+	var gfxScene *graphics.Scene
+	if gfxEngine := engine.Graphics(); gfxEngine != nil && includeGraphics {
+		gfxScene = gfxEngine.CreateScene()
+	}
+
 	return &Scene{
 		engine: engine,
 
+		ecsScene:     ecsScene,
 		physicsScene: physicsScene,
 		gfxScene:     gfxScene,
-		ecsScene:     ecsScene,
 		root:         hierarchy.NewNode(), // TODO: Make this node stationary
 
 		animationTrees: ds.NewList[animation.Source](0),
@@ -43,9 +84,9 @@ func newScene(engine *Engine, physicsScene *physics.Scene, gfxScene *graphics.Sc
 type Scene struct {
 	engine *Engine
 
+	ecsScene     *ecs.Scene
 	physicsScene *physics.Scene
 	gfxScene     *graphics.Scene
-	ecsScene     *ecs.Scene
 	root         *hierarchy.Node
 
 	animationTrees *ds.List[animation.Source]
@@ -67,9 +108,15 @@ type Scene struct {
 
 // Delete removes all resources associated with the scene.
 func (s *Scene) Delete() {
-	defer s.physicsScene.Delete()
-	defer s.gfxScene.Delete()
-	defer s.ecsScene.Delete()
+	if s.ecsScene != nil {
+		defer s.ecsScene.Delete()
+	}
+	if s.physicsScene != nil {
+		defer s.physicsScene.Delete()
+	}
+	if s.gfxScene != nil {
+		defer s.gfxScene.Delete()
+	}
 	s.engine.SetActiveScene(nil)
 	s.engine = nil
 }
@@ -77,6 +124,27 @@ func (s *Scene) Delete() {
 // Engine returns the engine associated with the scene.
 func (s *Scene) Engine() *Engine {
 	return s.engine
+}
+
+// ECS returns the ECS sub-scene associated with this scene.
+//
+// Returns `nil` if this scene does not have ECS enabled.
+func (s *Scene) ECS() *ecs.Scene {
+	return s.ecsScene
+}
+
+// Physics returns the Physics sub-scene associated with this scene.
+//
+// Returns `nil` if this scene does not have Physics enabled.
+func (s *Scene) Physics() *physics.Scene {
+	return s.physicsScene
+}
+
+// Graphics returns the Graphics sub-scene associated with the scene.
+//
+// Returns `nil` if this scene does not have Graphics enabled.
+func (s *Scene) Graphics() *graphics.Scene {
+	return s.gfxScene
 }
 
 // SubscribePreUpdate adds a callback to be executed before the scene updates.
@@ -139,21 +207,6 @@ func (s *Scene) Unfreeze() {
 	s.frozen = false
 }
 
-// Physics returns the physics scene associated with the scene.
-func (s *Scene) Physics() *physics.Scene {
-	return s.physicsScene
-}
-
-// Graphics returns the graphics scene associated with the scene.
-func (s *Scene) Graphics() *graphics.Scene {
-	return s.gfxScene
-}
-
-// ECS returns the ECS scene associated with the scene.
-func (s *Scene) ECS() *ecs.Scene {
-	return s.ecsScene
-}
-
 // Root returns the root node of the scene.
 func (s *Scene) Root() *hierarchy.Node {
 	return s.root
@@ -200,19 +253,28 @@ func (s *Scene) Update(elapsedTime time.Duration) {
 	})
 	postUpdateSpan.End()
 
-	s.ecsScene.Purge()
-	s.gfxScene.Update(elapsedTime)
+	if s.ecsScene != nil {
+		s.ecsScene.Purge()
+	}
+	if s.gfxScene != nil {
+		s.gfxScene.Update(elapsedTime)
+	}
 }
 
 // Render draws the scene to the provided viewport.
 func (s *Scene) Render(framebuffer render.Framebuffer, viewport graphics.Viewport) {
-	stageSpan := metric.BeginRegion("stage")
+	// NOTE: This needs to be here right now because camera systems operate
+	// between ApplyFromSource and ApplyToTarget, hence this can't be moved
+	// to main Update loop quite yet.
+	nodeSpan := metric.BeginRegion("node-apply")
 	s.root.ApplyToTarget(true)
-	stageSpan.End()
+	nodeSpan.End()
 
-	renderSpan := metric.BeginRegion("render")
-	s.gfxScene.Render(framebuffer, viewport)
-	renderSpan.End()
+	if s.gfxScene != nil {
+		renderSpan := metric.BeginRegion("render")
+		s.gfxScene.Render(framebuffer, viewport)
+		renderSpan.End()
+	}
 }
 
 func (s *Scene) updatePhysics(elapsedTime time.Duration) {
@@ -223,7 +285,9 @@ func (s *Scene) updatePhysics(elapsedTime time.Duration) {
 	prePhysicsSpan.End()
 
 	physicsSpan := metric.BeginRegion("physics")
-	s.physicsScene.Update(elapsedTime)
+	if s.physicsScene != nil {
+		s.physicsScene.Update(elapsedTime)
+	}
 	physicsSpan.End()
 
 	postPhysicsSpan := metric.BeginRegion("post-physics")
@@ -259,7 +323,7 @@ func (s *Scene) updateNodes(elapsedTime time.Duration) {
 	})
 	preNodeSpan.End()
 
-	nodeSpan := metric.BeginRegion("node")
+	nodeSpan := metric.BeginRegion("node-fetch")
 	s.root.ApplyFromSource(true)
 	nodeSpan.End()
 
