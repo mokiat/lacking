@@ -341,7 +341,7 @@ func InstantiateModel(scene *Scene, info ModelInfo) *Model {
 		}
 	}
 
-	modelNode.ApplyFromSource(true)
+	modelNode.ApplyFromSource(1.0, true)
 	modelNode.ApplyToTarget(true)
 
 	return &Model{

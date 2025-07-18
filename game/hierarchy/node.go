@@ -367,13 +367,13 @@ func (n *Node) SetTarget(target NodeTarget) {
 
 // ApplyFromSource requests that this node be updated based on its source.
 // If recursive is specified, the same is applied down the hierarchy as well.
-func (n *Node) ApplyFromSource(recursive bool) {
+func (n *Node) ApplyFromSource(fraction float64, recursive bool) {
 	if n.source != nil {
-		n.source.ApplyTo(n)
+		n.source.ApplyTo(n, fraction)
 	}
 	if recursive {
 		for child := n.firstChild; child != nil; child = child.rightSibling {
-			child.ApplyFromSource(recursive)
+			child.ApplyFromSource(fraction, recursive)
 		}
 	}
 }

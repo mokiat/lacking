@@ -1,27 +1,17 @@
 package physics
 
-import (
-	"time"
-)
-
 // NewEngine creates a new physics engine.
 func NewEngine(opts ...Option) *Engine {
-	cfg := config{
-		Timestep: 16 * time.Millisecond,
-	}
+	cfg := config{}
 	for _, opt := range opts {
 		opt(&cfg)
 	}
-	return &Engine{
-		timestep: cfg.Timestep,
-	}
+	return &Engine{}
 }
 
 // Engine is the entrypoint to working with a
 // physics simulation.
-type Engine struct {
-	timestep time.Duration
-}
+type Engine struct{}
 
 // CreateMaterial creates a new Material that can be used to describe an
 // object's behavior.
@@ -54,5 +44,5 @@ func (e *Engine) CreateBodyDefinition(info BodyDefinitionInfo) *BodyDefinition {
 // the simulation for it to run at maximum stepSeconds
 // intervals.
 func (e *Engine) CreateScene() *Scene {
-	return newScene(e, e.timestep)
+	return newScene(e)
 }

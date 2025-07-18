@@ -11,11 +11,10 @@ import (
 	"github.com/mokiat/lacking/game/physics/constraint"
 	"github.com/mokiat/lacking/game/physics/medium"
 	"github.com/mokiat/lacking/game/physics/solver"
-	"github.com/mokiat/lacking/game/timestep"
 	"github.com/mokiat/lacking/util/shape3d"
 )
 
-func newScene(engine *Engine, interval time.Duration) *Scene {
+func newScene(engine *Engine) *Scene {
 	return &Scene{
 		engine: engine,
 
@@ -26,14 +25,10 @@ func newScene(engine *Engine, interval time.Duration) *Scene {
 			InitialItemCapacity: opt.V[int32](1024),
 		}),
 
-		preUpdateSubscriptions:   NewUpdateSubscriptionSet(),
-		postUpdateSubscriptions:  NewUpdateSubscriptionSet(),
 		sbCollisionSubscriptions: NewSingleBodyCollisionSubscriptionSet(),
 		dbCollisionSubscriptions: NewDoubleBodyCollisionSubscriptionSet(),
 
-		timeSegmenter: timestep.NewSegmenter(interval),
-		interval:      interval,
-		timeSpeed:     1.0,
+		timeSpeed: 1.0,
 
 		maxLinearAcceleration:  200.0,
 		maxAngularAcceleration: 200.0,
@@ -81,14 +76,10 @@ type Scene struct {
 
 	shapeScene *shape3d.Scene[internalRef]
 
-	preUpdateSubscriptions   *UpdateSubscriptionSet
-	postUpdateSubscriptions  *UpdateSubscriptionSet
 	sbCollisionSubscriptions *SingleBodyCollisionSubscriptionSet
 	dbCollisionSubscriptions *DoubleBodyCollisionSubscriptionSet
 
-	timeSegmenter *timestep.Segmenter
-	interval      time.Duration
-	timeSpeed     float64
+	timeSpeed float64
 
 	maxLinearAcceleration  float64
 	maxAngularAcceleration float64
@@ -177,18 +168,6 @@ func (s *Scene) Delete() {
 // Engine returns the physics Engine that owns this Scene.
 func (s *Scene) Engine() *Engine {
 	return s.engine
-}
-
-// SubscribePreUpdate registers a callback that is invoked before each physics
-// iteration.
-func (s *Scene) SubscribePreUpdate(callback UpdateCallback) *UpdateSubscription {
-	return s.preUpdateSubscriptions.Subscribe(callback)
-}
-
-// SubscribePostUpdate registers a callback that is invoked after each physics
-// iteration.
-func (s *Scene) SubscribePostUpdate(callback UpdateCallback) *UpdateSubscription {
-	return s.postUpdateSubscriptions.Subscribe(callback)
 }
 
 // SubscribeSingleBodyCollision registers a callback that is invoked when a body
@@ -323,10 +302,14 @@ func (s *Scene) CreateDoubleBodyConstraint(primary, secondary Body, logic solver
 	return createDBConstraint(s, logic, primary, secondary)
 }
 
-// Update runs a number of physics iterations until the specified duration has
-// been reached or surpassed (yes physics can get ahead).
+// Update runs a single physics iteration. This method should be called with
+// fixed elapsed times, otherwise the physics may break.
 func (s *Scene) Update(elapsedTime time.Duration) {
-	s.timeSegmenter.Update(elapsedTime, s.onTickInterval, s.onTickLerp)
+	elapsedSeconds := elapsedTime.Seconds()
+	s.runSimulation(elapsedSeconds * s.timeSpeed)
+	s.notifySingleBodyCollisions()
+	s.notifyDoubleBodyCollisions()
+	s.shapeScene.GC()
 }
 
 func (s *Scene) Each(cb func(b Body)) {
@@ -822,35 +805,6 @@ func (s *Scene) allocateDualCollisionSolver() *constraint.PairCollision {
 func (s *Scene) nextRevision() uint32 {
 	s.freeRevision++
 	return s.freeRevision
-}
-
-func (s *Scene) onTickInterval(elapsedTime time.Duration) {
-	elapsedSeconds := elapsedTime.Seconds()
-	s.notifyPreUpdate()
-	s.runSimulation(elapsedSeconds * s.timeSpeed)
-	s.notifySingleBodyCollisions()
-	s.notifyDoubleBodyCollisions()
-	s.notifyPostUpdate()
-	s.shapeScene.GC()
-}
-
-func (s *Scene) onTickLerp(alpha float64) {
-	s.eachBodyState(func(_ int, body *bodyState) {
-		body.intermediatePosition = dprec.Vec3Lerp(body.oldPosition, body.position, alpha)
-		body.intermediateRotation = dprec.QuatSlerp(body.oldRotation, body.rotation, alpha)
-	})
-}
-
-func (s *Scene) notifyPreUpdate() {
-	s.preUpdateSubscriptions.Each(func(callback UpdateCallback) {
-		callback(s.interval)
-	})
-}
-
-func (s *Scene) notifyPostUpdate() {
-	s.postUpdateSubscriptions.Each(func(callback UpdateCallback) {
-		callback(s.interval)
-	})
 }
 
 func (s *Scene) notifySingleBodyCollisions() {

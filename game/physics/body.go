@@ -146,8 +146,13 @@ func (b Body) SetMomentOfInertia(inertia dprec.Mat3) {
 // 	b.angularDragFactor = factor
 // }
 
-// Position returns the body's position in world
-// space.
+// PreviousPosition returns the body's old position in world space.
+func (b Body) PreviousPosition() dprec.Vec3 {
+	state := b.state()
+	return state.oldPosition
+}
+
+// Position returns the body's position in world space.
 func (b Body) Position() dprec.Vec3 {
 	state := b.state()
 	return state.position
@@ -157,47 +162,30 @@ func (b Body) Position() dprec.Vec3 {
 func (b Body) SetPosition(position dprec.Vec3) {
 	state := b.state()
 	state.position = position
-	state.intermediatePosition = position
+	state.oldPosition = position
 
-	// TODO
-	// b.scene.bodyOctree.Update(state.itemID, state.position, state.bsRadius)
-	// TODO: Do this only on demand.
-	// b.invalidateCollisionShapes()
+	// FIXME: Invalidate shape placement!
 }
 
-// IntermediatePosition returns the position of the Body as would
-// be seen by the current frame.
-//
-// NOTE: The physics engine can advance past the current frame,
-// which is the reason for this method.
-func (b Body) IntermediatePosition() dprec.Vec3 {
+// PreviousRotation returns the old quaternion rotation of this body.
+func (b Body) PreviousRotation() dprec.Quat {
 	state := b.state()
-	return state.intermediatePosition
+	return state.oldRotation
 }
 
-// Rotation returns the quaternion rotation
-// of this body.
+// Rotation returns the quaternion rotation of this body.
 func (b Body) Rotation() dprec.Quat {
 	state := b.state()
 	return state.rotation
 }
 
-// SetRotation changes the quaterntion rotation
-// of this body.
+// SetRotation changes the quaterntion rotation of this body.
 func (b Body) SetRotation(rotation dprec.Quat) {
 	state := b.state()
 	state.rotation = rotation
-	state.intermediateRotation = rotation
-}
+	state.oldRotation = rotation
 
-// IntermediateRotation returns the rotation of the Body as would
-// be seen by the current frame.
-//
-// Note: The physics engine can advance past the current frame,
-// which is the reason for this method.
-func (b Body) IntermediateRotation() dprec.Quat {
-	state := b.state()
-	return state.intermediateRotation
+	// FIXME: Invalidate shape placement!
 }
 
 // Velocity returns the velocity of this body.
@@ -336,13 +324,9 @@ type bodyState struct {
 	position dprec.Vec3
 	rotation dprec.Quat
 
-	intermediatePosition dprec.Vec3
-	intermediateRotation dprec.Quat
-
 	velocity        dprec.Vec3
 	angularVelocity dprec.Vec3
 
-	// bsRadius          float64
 	aerodynamicShapes []AerodynamicShape
 }
 

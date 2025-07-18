@@ -21,11 +21,17 @@ type BodyNodeSource struct {
 	Body physics.Body
 }
 
-func (s BodyNodeSource) ApplyTo(node *hierarchy.Node) {
-	translation := s.Body.IntermediatePosition()
-	rotation := s.Body.IntermediateRotation()
-	scale := dprec.NewVec3(1.0, 1.0, 1.0)
-	node.SetAbsoluteMatrix(dprec.TRSMat4(translation, rotation, scale))
+func (s BodyNodeSource) ApplyTo(node *hierarchy.Node, fraction float64) {
+	previousTranslation := s.Body.PreviousPosition()
+	currentTranslation := s.Body.Position()
+	previousRotation := s.Body.PreviousRotation()
+	currentRotation := s.Body.Rotation()
+
+	node.SetAbsoluteMatrix(dprec.TRSMat4(
+		dprec.Vec3Lerp(previousTranslation, currentTranslation, fraction),
+		dprec.QuatSlerp(previousRotation, currentRotation, fraction),
+		dprec.NewVec3(1.0, 1.0, 1.0),
+	))
 }
 
 func (s BodyNodeSource) Release() {
@@ -36,7 +42,7 @@ type AnimationNodeSource struct {
 	Source animation.Source
 }
 
-func (s AnimationNodeSource) ApplyTo(node *hierarchy.Node) {
+func (s AnimationNodeSource) ApplyTo(node *hierarchy.Node, _ float64) {
 	transform := s.Source.NodeTransform(node.Name())
 	if transform.Translation.Specified {
 		node.SetPosition(transform.Translation.Value)

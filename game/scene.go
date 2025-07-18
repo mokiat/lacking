@@ -32,6 +32,9 @@ type SceneInfo struct {
 	//
 	// Defaults to `true`.
 	IncludeGraphics opt.T[bool]
+
+	// FixedTimestep determines the duration of a single fixed-step tick.
+	FixedTimestep opt.T[time.Duration]
 }
 
 func newScene(engine *Engine, info SceneInfo) *Scene {
@@ -56,27 +59,26 @@ func newScene(engine *Engine, info SceneInfo) *Scene {
 		gfxScene = gfxEngine.CreateScene()
 	}
 
+	fixedTimestep := info.FixedTimestep.ValueOrDefault(16 * time.Millisecond)
+
 	return &Scene{
 		engine: engine,
 
 		ecsScene:     ecsScene,
 		physicsScene: physicsScene,
 		gfxScene:     gfxScene,
-		root:         hierarchy.NewNode(), // TODO: Make this node stationary
 
+		fixedTimestep: fixedTimestep,
+		timeSegmenter: timestep.NewSegmenter(fixedTimestep),
+
+		root:           hierarchy.NewNode(), // TODO: Make this node stationary
 		animationTrees: ds.NewList[animation.Source](0),
 
-		preUpdateSubscriptions:  timestep.NewUpdateSubscriptionSet(),
-		postUpdateSubscriptions: timestep.NewUpdateSubscriptionSet(),
+		fixedUpdateSubscriptions:   timestep.NewUpdateSubscriptionSet(),
+		interpolationSubscriptions: timestep.NewInterpolationSubscriptionSet(),
+		updateSubscriptions:        timestep.NewUpdateSubscriptionSet(),
 
-		prePhysicsSubscriptions:  timestep.NewUpdateSubscriptionSet(),
-		postPhysicsSubscriptions: timestep.NewUpdateSubscriptionSet(),
-
-		preAnimationSubscriptions:  timestep.NewUpdateSubscriptionSet(),
-		postAnimationSubscriptions: timestep.NewUpdateSubscriptionSet(),
-
-		preNodeSubscriptions:  timestep.NewUpdateSubscriptionSet(),
-		postNodeSubscriptions: timestep.NewUpdateSubscriptionSet(),
+		frozen: false,
 	}
 }
 
@@ -87,21 +89,16 @@ type Scene struct {
 	ecsScene     *ecs.Scene
 	physicsScene *physics.Scene
 	gfxScene     *graphics.Scene
-	root         *hierarchy.Node
 
+	fixedTimestep time.Duration
+	timeSegmenter *timestep.Segmenter
+
+	root           *hierarchy.Node
 	animationTrees *ds.List[animation.Source]
 
-	preUpdateSubscriptions  *timestep.UpdateSubscriptionSet
-	postUpdateSubscriptions *timestep.UpdateSubscriptionSet
-
-	prePhysicsSubscriptions  *timestep.UpdateSubscriptionSet
-	postPhysicsSubscriptions *timestep.UpdateSubscriptionSet
-
-	preAnimationSubscriptions  *timestep.UpdateSubscriptionSet
-	postAnimationSubscriptions *timestep.UpdateSubscriptionSet
-
-	preNodeSubscriptions  *timestep.UpdateSubscriptionSet
-	postNodeSubscriptions *timestep.UpdateSubscriptionSet
+	fixedUpdateSubscriptions   *timestep.UpdateSubscriptionSet
+	interpolationSubscriptions *timestep.InterpolationSubscriptionSet
+	updateSubscriptions        *timestep.UpdateSubscriptionSet
 
 	frozen bool
 }
@@ -147,48 +144,22 @@ func (s *Scene) Graphics() *graphics.Scene {
 	return s.gfxScene
 }
 
-// SubscribePreUpdate adds a callback to be executed before the scene updates.
-func (s *Scene) SubscribePreUpdate(callback timestep.UpdateCallback) *timestep.UpdateSubscription {
-	return s.preUpdateSubscriptions.Subscribe(callback)
+// SubscribeFixedUpdate adds a callback to be executed after each fixed time
+// update.
+func (s *Scene) SubscribeFixedUpdate(callback timestep.UpdateCallback) *timestep.UpdateSubscription {
+	return s.fixedUpdateSubscriptions.Subscribe(callback)
 }
 
-// SubscribePostUpdate adds a callback to be executed after the scene updates.
-func (s *Scene) SubscribePostUpdate(callback timestep.UpdateCallback) *timestep.UpdateSubscription {
-	return s.postUpdateSubscriptions.Subscribe(callback)
+// SubscribeInterpolation adds a callback to be executed after a series of
+// fixed time updates are performed and interpolation is to be performed.
+func (s *Scene) SubscribeInterpolation(callback timestep.InterpolationCallback) *timestep.InterpolationSubscription {
+	return s.interpolationSubscriptions.Subscribe(callback)
 }
 
-// SubscribePrePhysics adds a callback to be executed before the physics scene
-// updates.
-func (s *Scene) SubscribePrePhysics(callback timestep.UpdateCallback) *timestep.UpdateSubscription {
-	return s.prePhysicsSubscriptions.Subscribe(callback)
-}
-
-// SubscribePostPhysics adds a callback to be executed after the physics scene
-// updates.
-func (s *Scene) SubscribePostPhysics(callback timestep.UpdateCallback) *timestep.UpdateSubscription {
-	return s.postPhysicsSubscriptions.Subscribe(callback)
-}
-
-// SubscribePreAnimation adds a callback to be executed before the animations
-// are updated.
-func (s *Scene) SubscribePreAnimation(callback timestep.UpdateCallback) *timestep.UpdateSubscription {
-	return s.preAnimationSubscriptions.Subscribe(callback)
-}
-
-// SubscribePostAnimation adds a callback to be executed after the animations
-// are updated.
-func (s *Scene) SubscribePostAnimation(callback timestep.UpdateCallback) *timestep.UpdateSubscription {
-	return s.postAnimationSubscriptions.Subscribe(callback)
-}
-
-// SubscribePreNode adds a callback to be executed before the nodes are updated.
-func (s *Scene) SubscribePreNode(callback timestep.UpdateCallback) *timestep.UpdateSubscription {
-	return s.preNodeSubscriptions.Subscribe(callback)
-}
-
-// SubscribePostNode adds a callback to be executed after the nodes are updated.
-func (s *Scene) SubscribePostNode(callback timestep.UpdateCallback) *timestep.UpdateSubscription {
-	return s.postNodeSubscriptions.Subscribe(callback)
+// SubscribeUpdate adds a callback to be executed after each dynamic time
+// update.
+func (s *Scene) SubscribeUpdate(callback timestep.UpdateCallback) *timestep.UpdateSubscription {
+	return s.updateSubscriptions.Subscribe(callback)
 }
 
 // IsFrozen returns whether the scene is currently frozen. A frozen scene
@@ -231,31 +202,61 @@ func (s *Scene) StopAnimationTree(tree animation.Source) {
 
 // Update advances the scene by the provided time.
 func (s *Scene) Update(elapsedTime time.Duration) {
-	if s.frozen {
-		return
+	if !s.frozen {
+		s.timeSegmenter.Update(elapsedTime, s.doFixedUpdate, s.doInterpolationUpdate)
+		s.doUpdate(elapsedTime)
 	}
+}
 
-	preUpdateSpan := metric.BeginRegion("pre-update")
-	s.preUpdateSubscriptions.Each(func(callback timestep.UpdateCallback) {
+func (s *Scene) doFixedUpdate(elapsedTime time.Duration) {
+	physicsSpan := metric.BeginRegion("physics")
+	if s.physicsScene != nil {
+		s.physicsScene.Update(elapsedTime)
+	}
+	physicsSpan.End()
+
+	callbackSpan := metric.BeginRegion("fixed-cb")
+	s.fixedUpdateSubscriptions.Each(func(callback timestep.UpdateCallback) {
 		callback(elapsedTime)
 	})
-	preUpdateSpan.End()
-
-	updateSpan := metric.BeginRegion("update")
-	s.updatePhysics(elapsedTime)
-	s.updateAnimations(elapsedTime)
-	s.updateNodes(elapsedTime)
-	updateSpan.End()
-
-	postUpdateSpan := metric.BeginRegion("post-update")
-	s.postUpdateSubscriptions.Each(func(callback timestep.UpdateCallback) {
-		callback(elapsedTime)
-	})
-	postUpdateSpan.End()
+	callbackSpan.End()
 
 	if s.ecsScene != nil {
 		s.ecsScene.Purge()
 	}
+}
+
+func (s *Scene) doInterpolationUpdate(fraction float64) {
+	nodeSpan := metric.BeginRegion("node-fetch")
+	s.root.ApplyFromSource(fraction, true)
+	nodeSpan.End()
+
+	callbackSpan := metric.BeginRegion("interp-cb")
+	s.interpolationSubscriptions.Each(func(callback timestep.InterpolationCallback) {
+		callback(fraction)
+	})
+	callbackSpan.End()
+}
+
+func (s *Scene) doUpdate(elapsedTime time.Duration) {
+	animationSpan := metric.BeginRegion("anim")
+	s.updateAnimationTrees(elapsedTime)
+	animationSpan.End()
+
+	callbackSpan := metric.BeginRegion("update-cb")
+	s.updateSubscriptions.Each(func(callback timestep.UpdateCallback) {
+		callback(elapsedTime)
+	})
+	callbackSpan.End()
+
+	nodeSpan := metric.BeginRegion("node-apply")
+	s.root.ApplyToTarget(true)
+	nodeSpan.End()
+
+	if s.ecsScene != nil {
+		s.ecsScene.Purge()
+	}
+
 	if s.gfxScene != nil {
 		s.gfxScene.Update(elapsedTime)
 	}
@@ -263,75 +264,11 @@ func (s *Scene) Update(elapsedTime time.Duration) {
 
 // Render draws the scene to the provided viewport.
 func (s *Scene) Render(framebuffer render.Framebuffer, viewport graphics.Viewport) {
-	// NOTE: This needs to be here right now because camera systems operate
-	// between ApplyFromSource and ApplyToTarget, hence this can't be moved
-	// to main Update loop quite yet.
-	nodeSpan := metric.BeginRegion("node-apply")
-	s.root.ApplyToTarget(true)
-	nodeSpan.End()
-
 	if s.gfxScene != nil {
 		renderSpan := metric.BeginRegion("render")
 		s.gfxScene.Render(framebuffer, viewport)
 		renderSpan.End()
 	}
-}
-
-func (s *Scene) updatePhysics(elapsedTime time.Duration) {
-	prePhysicsSpan := metric.BeginRegion("pre-physics")
-	s.prePhysicsSubscriptions.Each(func(callback timestep.UpdateCallback) {
-		callback(elapsedTime)
-	})
-	prePhysicsSpan.End()
-
-	physicsSpan := metric.BeginRegion("physics")
-	if s.physicsScene != nil {
-		s.physicsScene.Update(elapsedTime)
-	}
-	physicsSpan.End()
-
-	postPhysicsSpan := metric.BeginRegion("post-physics")
-	s.postPhysicsSubscriptions.Each(func(callback timestep.UpdateCallback) {
-		callback(elapsedTime)
-	})
-	postPhysicsSpan.End()
-}
-
-func (s *Scene) updateAnimations(elapsedTime time.Duration) {
-	preAnimationSpan := metric.BeginRegion("pre-anim")
-	s.preAnimationSubscriptions.Each(func(callback timestep.UpdateCallback) {
-		callback(elapsedTime)
-	})
-	preAnimationSpan.End()
-
-	animationSpan := metric.BeginRegion("anim")
-	s.updateAnimationTrees(elapsedTime)
-	animationSpan.End()
-
-	postAnimationSpan := metric.BeginRegion("post-anim")
-	s.postAnimationSubscriptions.Each(func(callback timestep.UpdateCallback) {
-		callback(elapsedTime)
-	})
-	postAnimationSpan.End()
-
-}
-
-func (s *Scene) updateNodes(elapsedTime time.Duration) {
-	preNodeSpan := metric.BeginRegion("pre-node")
-	s.preNodeSubscriptions.Each(func(callback timestep.UpdateCallback) {
-		callback(elapsedTime)
-	})
-	preNodeSpan.End()
-
-	nodeSpan := metric.BeginRegion("node-fetch")
-	s.root.ApplyFromSource(true)
-	nodeSpan.End()
-
-	postNodeSpan := metric.BeginRegion("post-node")
-	s.postNodeSubscriptions.Each(func(callback timestep.UpdateCallback) {
-		callback(elapsedTime)
-	})
-	postNodeSpan.End()
 }
 
 func (s *Scene) updateAnimationTrees(elapsedTime time.Duration) {

@@ -19,3 +19,18 @@ type UpdateSubscriptionSet = observer.SubscriptionSet[UpdateCallback]
 func NewUpdateSubscriptionSet() *UpdateSubscriptionSet {
 	return observer.NewSubscriptionSet[UpdateCallback]()
 }
+
+// InterpolationCallback is a mechanism to receive interpolation events.
+type InterpolationCallback func(fraction float64)
+
+// InterpolationSubscription represents a notification subscription for
+// interpolations.
+type InterpolationSubscription = observer.Subscription[InterpolationCallback]
+
+// InterpolationSubscriptionSet represents a set of interpolation subscriptions.
+type InterpolationSubscriptionSet = observer.SubscriptionSet[InterpolationCallback]
+
+// NewInterpolationSubscriptionSet creates a new InterpolationSubscriptionSet.
+func NewInterpolationSubscriptionSet() *InterpolationSubscriptionSet {
+	return observer.NewSubscriptionSet[InterpolationCallback]()
+}

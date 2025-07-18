@@ -5,7 +5,7 @@ package hierarchy
 type NodeSource interface {
 
 	// ApplyTo requests that any transform be applied to the specified node.
-	ApplyTo(node *Node)
+	ApplyTo(node *Node, fraction float64)
 
 	// Release indicates that the node has been deleted and the source can be
 	// deleted.
