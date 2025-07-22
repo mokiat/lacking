@@ -172,10 +172,17 @@ func (s *meshRenderer) renderMeshRenderItemBatch(ctx StageContext, items []rende
 	}
 
 	// Model data needs to be combined.
-	for i, item := range items {
+	var timingVectors [256]sprec.Vec4
+	for i := range items {
+		item := &items[i]
+
 		start := i * modelUniformBufferItemSize
 		end := start + modelUniformBufferItemSize
 		copy(s.modelUniformBufferData[start:end], item.ModelData)
+
+		timingVectors[i] = sprec.Vec4{
+			X: item.SpawnTime,
+		}
 	}
 	modelPlacement := ubo.WriteUniform(uniformBuffer, internal.ModelUniform{
 		ModelMatrices: s.modelUniformBufferData,
@@ -186,13 +193,6 @@ func (s *meshRenderer) renderMeshRenderItemBatch(ctx StageContext, items []rende
 		modelPlacement.Offset,
 		modelPlacement.Size,
 	)
-
-	var timingVectors [256]sprec.Vec4
-	for i, item := range items {
-		timingVectors[i] = sprec.Vec4{
-			X: item.SpawnTime,
-		}
-	}
 	timingPlacement := ubo.WriteUniform(uniformBuffer, internal.TimingUniform{
 		Vectors: timingVectors,
 	})
