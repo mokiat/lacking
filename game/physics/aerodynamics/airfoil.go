@@ -42,24 +42,9 @@ func (s *AirfoilSolver) Force(windSpeed dprec.Vec3, density float64) dprec.Vec3 
 	}
 
 	area := s.width * s.length
-
-	// windDir := dprec.Vec3Quot(windSpeed, windSpeedLng)
-
 	windX := dprec.Vec3Dot(windSpeed, dprec.BasisXVec3())
 	windY := dprec.Vec3Dot(windSpeed, dprec.BasisYVec3())
 	windZ := dprec.Vec3Dot(windSpeed, dprec.BasisZVec3())
-
-	// totalPlanarWind := dprec.Abs(windX) + dprec.Abs(windZ)
-	// if totalPlanarWind < 0.01 {
-	// 	// Wind is hitting the wing perpendicularly. Evaluate only drag using
-	// 	// colinear direction.
-
-	// 	panic("TODO")
-
-	// 	// dragCoef :=
-
-	// }
-
 	planarWindDir := dprec.UnitVec3(dprec.NewVec3(windX, 0.0, windZ))
 
 	var result dprec.Vec3
@@ -75,41 +60,16 @@ func (s *AirfoilSolver) Force(windSpeed dprec.Vec3, density float64) dprec.Vec3 
 		liftDir := dprec.UnitVec3(dprec.Vec3Cross(dprec.BasisXVec3(), dprec.NewVec3(0.0, windY, windZ)))
 		result = dprec.Vec3Sum(result, dprec.Vec3Prod(liftDir, liftForce))
 
-		// dragCoef := dragCoefficient(angleOfAttack)
+		dragCoef := dragCoefficient(angleOfAttack)
+		dragForce := 0.5 * density * area * dprec.Sqr(effWindVelocity) * dragCoef
+		dragDir := dprec.UnitVec3(dprec.NewVec3(0.0, windY, windZ))
+		result = dprec.Vec3Sum(result, dprec.Vec3Prod(dragDir, dragForce))
 	}
 
-	// directWind := dprec.Vec3Projection(windSpeed, dprec.BasisXVec3())
-	// if directWindLng := directWind.Length(); directWindLng > 0.01 {
-	// 	directWindDir := dprec.Vec3Quot(directWind, directWindLng)
-	// 	angle := dprec.Atan2(directWindDir.Y, -directWindDir.Z)
-	// 	liftCoef := liftCoefficient(angle)
-	// 	liftForce := 0.5 * density * area * (cs * windSpeed.SqrLength()) * liftCoef
-
-	// }
+	// TODO: Add lateral component
 
 	// lateral
 	// lateralAmount := dprec.Abs(dprec.Vec3Dot(planarWindDir, dprec.BasisXVec3()))
-
-	// area := s.width * s.length
-	// // DRAG
-	// dragX := s.length * s.height * dprec.Vec3Dot(windSpeed, dprec.BasisXVec3())
-	// dragY := s.width * s.length * dprec.Vec3Dot(windSpeed, dprec.BasisYVec3())
-	// dragZ := s.width * s.height * dprec.Vec3Dot(windSpeed, dprec.BasisZVec3())
-	// result := dprec.Vec3Prod(dprec.NewVec3(dragX, dragY, dragZ), windSpeed.Length()*density*s.dragCoefficient/2.0)
-
-	// // LIFT
-	// liftVelocity := -dprec.Vec3Dot(windSpeed, dprec.BasisZVec3())
-	// if liftVelocity > 0 {
-	// 	stallSN := dprec.Sin(dprec.Degrees(40))
-	// 	sn := dprec.Vec3Dot(dprec.UnitVec3(windSpeed), dprec.BasisYVec3())
-	// 	if dprec.Abs(sn) < stallSN {
-	// 		result = dprec.Vec3Sum(result, dprec.NewVec3(
-	// 			0.0,
-	// 			sn*density*s.liftCoefficient*liftVelocity*liftVelocity*s.width*s.length,
-	// 			0.0,
-	// 		))
-	// 	}
-	// }
 
 	return result
 }
