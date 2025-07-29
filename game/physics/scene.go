@@ -440,12 +440,14 @@ func (s *Scene) applyAerodynamicAccelerations() {
 
 		bodyTransform := NewTransform(body.position, body.rotation)
 		for _, aerodynamicShape := range body.aerodynamicShapes {
+			// TODO: Take shape velocity into account. This also means that wings should be
+			// split into two, to benefit from that.
+
 			aerodynamicShape = aerodynamicShape.Transformed(bodyTransform)
 			relativeSpeed := dprec.QuatVec3Rotation(dprec.InverseQuat(aerodynamicShape.Rotation()), deltaVelocity)
 
 			force := aerodynamicShape.solver.Force(relativeSpeed, mediumDensity)
 			absoluteForce := dprec.QuatVec3Rotation(aerodynamicShape.Rotation(), force)
-			// target.ApplyForce(absoluteForce) // TODO: Apply at offset
 
 			offset := dprec.Vec3Diff(aerodynamicShape.Position(), bodyTransform.Position())
 			target.ApplyOffsetForce(offset, absoluteForce)
