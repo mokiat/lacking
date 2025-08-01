@@ -31,7 +31,7 @@ func NewBlend1DSource(entries ...Blend1DEntry) *Blend1DSource {
 	return &Blend1DSource{
 		entries:   entries,
 		coord:     0.0,
-		pairBlend: NewPairBlendSource(entries[0].Source, entries[1].Source),
+		pairBlend: NewPairBlendSource(entries[0].Source, entries[0].Source),
 		position:  0.0,
 	}
 }
