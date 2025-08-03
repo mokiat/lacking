@@ -72,7 +72,7 @@ func newScene(engine *Engine, info SceneInfo) *Scene {
 		timeSegmenter: timestep.NewSegmenter(fixedTimestep),
 
 		root:           hierarchy.NewNode(), // TODO: Make this node stationary
-		animationTrees: ds.NewList[animation.Source](0),
+		animationTrees: ds.NewList[animation.Node](0),
 
 		fixedUpdateSubscriptions:   timestep.NewUpdateSubscriptionSet(),
 		interpolationSubscriptions: timestep.NewInterpolationSubscriptionSet(),
@@ -94,7 +94,7 @@ type Scene struct {
 	timeSegmenter *timestep.Segmenter
 
 	root           *hierarchy.Node
-	animationTrees *ds.List[animation.Source]
+	animationTrees *ds.List[animation.Node]
 
 	fixedUpdateSubscriptions   *timestep.UpdateSubscriptionSet
 	interpolationSubscriptions *timestep.InterpolationSubscriptionSet
@@ -191,12 +191,12 @@ func (s *Scene) CreateNode() *hierarchy.Node {
 }
 
 // PlayAnimationTree adds the provided animation tree to the scene.
-func (s *Scene) PlayAnimationTree(tree animation.Source) {
+func (s *Scene) PlayAnimationTree(tree animation.Node) {
 	s.animationTrees.Add(tree)
 }
 
 // StopAnimationTree removes the provided animation tree from the scene.
-func (s *Scene) StopAnimationTree(tree animation.Source) {
+func (s *Scene) StopAnimationTree(tree animation.Node) {
 	s.animationTrees.Remove(tree)
 }
 
@@ -214,6 +214,10 @@ func (s *Scene) doFixedUpdate(elapsedTime time.Duration) {
 		s.physicsScene.Update(elapsedTime)
 	}
 	physicsSpan.End()
+
+	animationSpan := metric.BeginRegion("anim")
+	s.updateAnimationTrees(elapsedTime)
+	animationSpan.End()
 
 	callbackSpan := metric.BeginRegion("fixed-cb")
 	s.fixedUpdateSubscriptions.Each(func(callback timestep.UpdateCallback) {
@@ -239,10 +243,6 @@ func (s *Scene) doInterpolationUpdate(fraction float64) {
 }
 
 func (s *Scene) doUpdate(elapsedTime time.Duration) {
-	animationSpan := metric.BeginRegion("anim")
-	s.updateAnimationTrees(elapsedTime)
-	animationSpan.End()
-
 	callbackSpan := metric.BeginRegion("update-cb")
 	s.updateSubscriptions.Each(func(callback timestep.UpdateCallback) {
 		callback(elapsedTime)
@@ -273,6 +273,11 @@ func (s *Scene) Render(framebuffer render.Framebuffer, viewport graphics.Viewpor
 
 func (s *Scene) updateAnimationTrees(elapsedTime time.Duration) {
 	for _, tree := range s.animationTrees.Unbox() {
-		tree.SetPosition(tree.Position() + elapsedTime.Seconds())
+		tree.Reset()
+	}
+	elapsedSeconds := elapsedTime.Seconds()
+	for _, tree := range s.animationTrees.Unbox() {
+		rate := tree.Rate()
+		animation.AdvanceNode(tree, rate*elapsedSeconds)
 	}
 }

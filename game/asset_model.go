@@ -247,7 +247,7 @@ func (m *Model) FindRecording(name string) *animation.Recording {
 func (m *Model) AnimatedNodes() []*hierarchy.Node {
 	result := ds.NewSet[*hierarchy.Node](0)
 	for _, animation := range m.recordings {
-		for nodeName := range animation.BoundNodes() {
+		for nodeName := range animation.BoundNodesIter() {
 			if node := m.FindNode(nodeName); node != nil {
 				result.Add(node)
 			}
@@ -256,10 +256,10 @@ func (m *Model) AnimatedNodes() []*hierarchy.Node {
 	return result.Items()
 }
 
-func (m *Model) BindAnimationSource(source animation.Source) {
+func (m *Model) BindAnimation(animationNode animation.Node) {
 	for _, node := range m.AnimatedNodes() {
 		node.SetSource(AnimationNodeSource{
-			Source: source,
+			Node: animationNode,
 		})
 	}
 }

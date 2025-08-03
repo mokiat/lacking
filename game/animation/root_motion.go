@@ -1,86 +1,30 @@
 package animation
 
-import (
-	"math"
+import "github.com/mokiat/gomath/dprec"
 
-	"github.com/mokiat/gog/opt"
-	"github.com/mokiat/gomath/dprec"
-)
-
-func NewRootMotion(source Source, bone string) *RootMotion {
+// NewRootMotion creates a new RootMotion instance that is controlled by the
+// specified root bone.
+func NewRootMotion(node Node, bone string) *RootMotion {
 	return &RootMotion{
-		source: source,
-		bone:   bone,
+		node: node,
+		bone: bone,
 	}
 }
 
+// RootMotion allows for the extraction of relative animation transformations
+// from a root bone in order to move a character.
 type RootMotion struct {
-	source Source
-	bone   string
+	node Node
+	bone string
 }
 
-func (m *RootMotion) GetDeltaTransform(from, to float64) NodeTransform {
-	// FIXME: This is an ugly approach to this.
-	oldPosition := m.source.Position()
-	defer m.source.SetPosition(oldPosition)
-
-	resultMatrix := dprec.IdentityMat4()
-
-	length := m.source.Length()
-	modFrom := math.Mod(from, length)
-	modTo := math.Mod(to, length)
-
-	fromMatrix := m.getMatrixAt(modFrom)
-
-	for (modTo < modFrom) && (to > from) {
-		toMatrix := m.getMatrixAt(length - 0.00001) // prevent mod down to zero
-
-		deltaMatrix := dprec.Mat4Prod(
-			toMatrix,
-			dprec.InverseMat4(fromMatrix),
-		)
-
-		resultMatrix = dprec.Mat4Prod(
-			deltaMatrix,
-			resultMatrix,
-		)
-
-		fromMatrix = m.getMatrixAt(0.0)
-
-		to -= length
-	}
-
-	toMatrix := m.getMatrixAt(modTo)
-
-	deltaMatrix := dprec.Mat4Prod(
-		toMatrix,
-		dprec.InverseMat4(fromMatrix),
-	)
-
-	resultMatrix = dprec.Mat4Prod(
-		deltaMatrix,
-		resultMatrix,
-	)
-
-	t, r, s := resultMatrix.TRS()
-	return NodeTransform{
-		Translation: opt.V(t),
-		Rotation:    opt.V(r),
-		Scale:       opt.V(s),
-	}
-}
-
-func (m *RootMotion) getMatrixAt(t float64) dprec.Mat4 {
-	// FIXME: This is an ugly approach to this.
-	oldPosition := m.source.Position()
-	defer m.source.SetPosition(oldPosition)
-
-	m.source.SetPosition(t)
-	transform := m.source.NodeTransform(m.bone)
-
+// DeltaTransform returns the transformation that occurred during the last
+// animation tick for the root bone.
+func (m *RootMotion) DeltaTransform() dprec.Mat4 {
+	deltaTransform := m.node.BoneTransformDelta(m.bone)
 	return dprec.TRSMat4(
-		transform.Translation.ValueOrDefault(dprec.ZeroVec3()),
-		transform.Rotation.ValueOrDefault(dprec.IdentityQuat()),
-		transform.Scale.ValueOrDefault(dprec.NewVec3(1.0, 1.0, 1.0)),
+		deltaTransform.Translation.ValueOrDefault(dprec.ZeroVec3()),
+		deltaTransform.Rotation.ValueOrDefault(dprec.IdentityQuat()),
+		deltaTransform.Scale.ValueOrDefault(dprec.NewVec3(1.0, 1.0, 1.0)),
 	)
 }

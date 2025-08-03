@@ -18,6 +18,22 @@ type NodeTransform struct {
 	Scale opt.T[dprec.Vec3]
 }
 
+// InverseNodeTransform returns the inverse of a node transform.
+func InverseNodeTransform(transform NodeTransform) NodeTransform {
+	var result NodeTransform
+	if transform.Translation.Specified {
+		result.Translation = opt.V(dprec.InverseVec3(transform.Translation.Value))
+	}
+	if transform.Rotation.Specified {
+		result.Rotation = opt.V(dprec.InverseQuat(transform.Rotation.Value))
+	}
+	if transform.Scale.Specified {
+		scale := transform.Scale.Value
+		result.Scale = opt.V(dprec.NewVec3(1.0/scale.X, 1.0/scale.Y, 1.0/scale.Z))
+	}
+	return result
+}
+
 // BlendNodeTransforms blends two node transformations using the specified
 // factor. A factor of 0.0 means that the first transformation is used, a
 // factor of 1.0 means that the second transformation is used.
