@@ -277,7 +277,6 @@ func (s *Scene) updateAnimationTrees(elapsedTime time.Duration) {
 	}
 	elapsedSeconds := elapsedTime.Seconds()
 	for _, tree := range s.animationTrees.Unbox() {
-		rate := tree.Rate()
-		animation.AdvanceNode(tree, rate*elapsedSeconds)
+		tree.Advance(elapsedSeconds, 1.0)
 	}
 }

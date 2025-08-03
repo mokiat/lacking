@@ -190,7 +190,7 @@ func (r *Recording) adjustTimestamp(timestamp float64) float64 {
 			timestamp += length
 		}
 	} else {
-		timestamp = dprec.Clamp(timestamp, 0.0, length)
+		timestamp = dprec.Clamp(timestamp, 0.0, length-0.00001)
 	}
 	return r.StartTime() + timestamp
 }

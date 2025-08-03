@@ -13,11 +13,12 @@ func NewBlendPairNode(first, second Node) *BlendPairNode {
 		panic("the nodes need to be different")
 	}
 	return &BlendPairNode{
-		first:        first,
-		second:       second,
-		progress:     0.0,
-		factor:       0.0,
-		synchronized: true,
+		first:              first,
+		second:             second,
+		progress:           0.0,
+		factor:             0.0,
+		firstSynchronized:  true,
+		secondSynchronized: true,
 	}
 }
 
@@ -27,31 +28,38 @@ var _ Node = (*BlendPairNode)(nil)
 // animation nodes. The blending factor is determined by the factor
 // field of the node.
 type BlendPairNode struct {
-	first        Node
-	second       Node
-	progress     float64
-	factor       float64
-	synchronized bool
+	first              Node
+	second             Node
+	progress           float64
+	factor             float64
+	firstSynchronized  bool
+	secondSynchronized bool
 }
 
-// First returns the first blend node.
-func (s *BlendPairNode) First() Node {
-	return s.first
+// FirstSynchronized returns whether the the first blend node will be
+// synchronized with the tree hierarchy.
+func (s *BlendPairNode) FirstSynchronized() bool {
+	return s.firstSynchronized
 }
 
-// Second returns the second blend node.
-func (s *BlendPairNode) Second() Node {
-	return s.second
+// SetFirstSynchronized sets whether the first blend node should be
+// synchronized with the tree hierarchy.
+func (s *BlendPairNode) SetFirstSynchronized(synchronized bool) *BlendPairNode {
+	s.firstSynchronized = synchronized
+	return s
 }
 
-// Synchronized returns whether the two blend nodes should be synchronized.
-func (s *BlendPairNode) Synchronized() bool {
-	return s.synchronized
+// SecondSynchronized returns whether the the second blend node will be
+// synchronized with the tree hierarchy.
+func (s *BlendPairNode) SecondSynchronized() bool {
+	return s.secondSynchronized
 }
 
-// SetSynchronized sets whether the two blend nodes should be synchronized.
-func (s *BlendPairNode) SetSynchronized(synchronized bool) {
-	s.synchronized = synchronized
+// SetSecondSynchronized sets whether the second blend node should be
+// synchronized with the tree hierarchy.
+func (s *BlendPairNode) SetSecondSynchronized(synchronized bool) *BlendPairNode {
+	s.secondSynchronized = synchronized
+	return s
 }
 
 // Factor returns the blending factor of the node. A value of 0.0 means
@@ -63,59 +71,77 @@ func (s *BlendPairNode) Factor() float64 {
 
 // SetFactor sets the blending factor of the node. The value is clamped
 // to the range [0.0, 1.0].
-func (s *BlendPairNode) SetFactor(factor float64) {
+func (s *BlendPairNode) SetFactor(factor float64) *BlendPairNode {
 	s.factor = dprec.Clamp(factor, 0.0, 1.0)
-}
-
-// Rate returns the fraction of the animation length that advances each
-// second.
-func (s *BlendPairNode) Rate() float64 {
-	if s.synchronized {
-		firstRate := s.first.Rate()
-		secondRate := s.second.Rate()
-		// NOTE: The rates are flipped in the denominator on purpose. This is how
-		// the math ends up if you derive this from lengths.
-		return firstRate * secondRate / dprec.Mix(secondRate, firstRate, s.factor)
-	} else {
-		return s.first.Rate()
-	}
+	return s
 }
 
 // Reset clears any update delta information, so that new interpolations can
 // be tracked.
 func (s *BlendPairNode) Reset() {
-	// Normalize.
-	s.SetProgress(s.progress)
-	// Reset stored delta
+	_, fraction := math.Modf(s.progress)
+	s.Seek(fraction)
+
 	s.first.Reset()
 	s.second.Reset()
 }
 
-// Progress returns the current fraction of the animation that has
-// advanced since the start.
-//
-// This value will always be in the range [0.0..1.0).
-func (s *BlendPairNode) Progress() float64 {
-	_, fraction := math.Modf(s.progress)
-	if fraction < 0.0 {
-		fraction += 1.0
+// Rate returns the fraction of the animation length that advances each
+// second.
+func (s *BlendPairNode) Rate() float64 {
+	switch {
+	case s.firstSynchronized && s.secondSynchronized:
+		firstRate := s.first.Rate()
+		secondRate := s.second.Rate()
+		// NOTE: The rates are flipped in the denominator on purpose. This is how
+		// the math ends up if you derive this from length blending.
+		return firstRate * secondRate / dprec.Mix(secondRate, firstRate, s.factor)
+	case s.firstSynchronized:
+		return s.first.Rate()
+	case s.secondSynchronized:
+		return s.second.Rate()
+	default:
+		return 1.0
 	}
-	return fraction
 }
 
-// SetProgress changes the current position of the animation to the
-// specified fraction.
+// Seek relocates the animation to the specified position (fractional).
 //
-// It is possible to set this value above 1.0, and in fact is necessary
-// during update, so that it can handle loops and interpolation correctly,
-// as setting the value directly to the wrapped-around value might indicate
-// a reverse animation or a fractional animation.
-//
-// Internally, once applied, the progress will be normalized to [0.0..1.0).
-func (s *BlendPairNode) SetProgress(fraction float64) {
+// NOTE: This resets the animation and accumulated delta is lost.
+func (s *BlendPairNode) Seek(fraction float64) {
 	s.progress = fraction
-	s.first.SetProgress(fraction)
-	s.second.SetProgress(fraction)
+
+	if s.firstSynchronized {
+		s.first.Seek(s.progress)
+	}
+
+	if s.secondSynchronized {
+		s.second.Seek(s.progress)
+	}
+}
+
+// Advance moves the animation forward by the specified delta seconds.
+//
+// The synchronizationRate determines the amount of scaling on the seconds
+// that should be applied in order to be correctly synchronized with sibling
+// and parent nodes in case of synchronization.
+func (s *BlendPairNode) Advance(seconds, synchronizationRate float64) {
+	rate := s.Rate()
+	s.progress += rate * seconds * synchronizationRate
+
+	if s.firstSynchronized {
+		adjustedRate := rate / s.first.Rate()
+		s.first.Advance(seconds, synchronizationRate*adjustedRate)
+	} else {
+		s.first.Advance(seconds, 1.0) // drop syncrhonization
+	}
+
+	if s.secondSynchronized {
+		adjustedRate := rate / s.second.Rate()
+		s.second.Advance(seconds, synchronizationRate*adjustedRate)
+	} else {
+		s.second.Advance(seconds, 1.0) // drop synchronization
+	}
 }
 
 // BoneTransform returns the transformation of the specified bone. Keep in
@@ -123,44 +149,23 @@ func (s *BlendPairNode) SetProgress(fraction float64) {
 // this is called from within a dynamic update handler, the
 // BoneTransformInterpolation method should be used instead.
 func (s *BlendPairNode) BoneTransform(bone string) NodeTransform {
-	switch {
-	case s.factor < 0.000001: // optimization
-		return s.first.BoneTransform(bone)
-	case s.factor > 0.999999: // optimization
-		return s.second.BoneTransform(bone)
-	default:
-		firstTransform := s.first.BoneTransform(bone)
-		secondTransform := s.second.BoneTransform(bone)
-		return BlendNodeTransforms(firstTransform, secondTransform, s.factor)
-	}
+	firstTransform := s.first.BoneTransform(bone)
+	secondTransform := s.second.BoneTransform(bone)
+	return BlendNodeTransforms(firstTransform, secondTransform, s.factor)
 }
 
 // BoneTransformDelta returns the transformation that was applied to the
 // specified bone since the last reset.
 func (s *BlendPairNode) BoneTransformDelta(bone string) NodeTransform {
-	switch {
-	case s.factor < 0.000001: // quick solution
-		return s.first.BoneTransformDelta(bone)
-	case s.factor > 0.999999: // quick solution
-		return s.second.BoneTransformDelta(bone)
-	default:
-		firstTransform := s.first.BoneTransformDelta(bone)
-		secondTransform := s.second.BoneTransformDelta(bone)
-		return BlendNodeTransforms(firstTransform, secondTransform, s.factor)
-	}
+	firstTransform := s.first.BoneTransformDelta(bone)
+	secondTransform := s.second.BoneTransformDelta(bone)
+	return BlendNodeTransforms(firstTransform, secondTransform, s.factor)
 }
 
 // BoneTransformInterpolation returns the transformation of the specified bone
 // at the specified interpolation fraction.
 func (s *BlendPairNode) BoneTransformInterpolation(bone string, fraction float64) NodeTransform {
-	switch {
-	case s.factor < 0.000001: // optimization
-		return s.first.BoneTransformInterpolation(bone, fraction)
-	case s.factor > 0.999999: // optimization
-		return s.second.BoneTransformInterpolation(bone, fraction)
-	default:
-		firstTransform := s.first.BoneTransformInterpolation(bone, fraction)
-		secondTransform := s.second.BoneTransformInterpolation(bone, fraction)
-		return BlendNodeTransforms(firstTransform, secondTransform, s.factor)
-	}
+	firstTransform := s.first.BoneTransformInterpolation(bone, fraction)
+	secondTransform := s.second.BoneTransformInterpolation(bone, fraction)
+	return BlendNodeTransforms(firstTransform, secondTransform, s.factor)
 }

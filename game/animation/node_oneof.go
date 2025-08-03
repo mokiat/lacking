@@ -21,63 +21,57 @@ type OneOfNode struct {
 }
 
 // ActiveAnimation returns the underlying node that is currently being used.
-func (s *OneOfNode) ActiveAnimation() Node {
-	return s.activeAnimation
+func (n *OneOfNode) ActiveAnimation() Node {
+	return n.activeAnimation
 }
 
 // PickAnimation changes to the specified animation.
 //
 // The reset flag controls whether the new animation should start from the
 // beginning.
-func (s *OneOfNode) PickAnimation(name string, reset bool) {
-	s.activeAnimationName = name
-	s.activeAnimation = s.animations[name]
-	if reset && (s.activeAnimation != nil) {
-		s.activeAnimation.SetProgress(0.0)
-		s.activeAnimation.Reset()
+func (n *OneOfNode) PickAnimation(name string, reset bool) {
+	n.activeAnimationName = name
+	n.activeAnimation = n.animations[name]
+	if reset && (n.activeAnimation != nil) {
+		n.activeAnimation.Seek(0.0)
+		n.activeAnimation.Reset()
+	}
+}
+
+// Reset clears any update delta information, so that new interpolations can
+// be tracked.
+func (n *OneOfNode) Reset() {
+	for _, node := range n.animations {
+		node.Reset()
 	}
 }
 
 // Rate returns the fraction of the animation length that advances each
 // second.
-func (s *OneOfNode) Rate() float64 {
-	if s.activeAnimation == nil {
+func (n *OneOfNode) Rate() float64 {
+	if n.activeAnimation == nil {
 		return 1.0
 	}
-	return s.activeAnimation.Rate()
+	return n.activeAnimation.Rate()
 }
 
-// Reset clears any update delta information, so that new interpolations can
-// be tracked.
-func (s *OneOfNode) Reset() {
-	for _, node := range s.animations {
-		node.Reset()
+// Seek relocates the animation to the specified position (fractional).
+//
+// NOTE: This resets the animation and accumulated delta is lost.
+func (n *OneOfNode) Seek(fraction float64) {
+	if n.activeAnimation != nil {
+		n.activeAnimation.Seek(fraction)
 	}
 }
 
-// Progress returns the current fraction of the animation that has
-// advanced since the start.
+// Advance moves the animation forward by the specified delta seconds.
 //
-// This value will always be in the range [0.0..1.0).
-func (s *OneOfNode) Progress() float64 {
-	if s.activeAnimation == nil {
-		return 0.0
-	}
-	return s.activeAnimation.Progress()
-}
-
-// SetProgress changes the current position of the animation to the
-// specified fraction.
-//
-// It is possible to set this value above 1.0, and in fact is necessary
-// during update, so that it can handle loops and interpolation correctly,
-// as setting the value directly to the wrapped-around value might indicate
-// a reverse animation or a fractional animation.
-//
-// Internally, once applied, the progress will be normalized to [0.0..1.0).
-func (s *OneOfNode) SetProgress(fraction float64) {
-	if s.activeAnimation != nil {
-		s.activeAnimation.SetProgress(fraction)
+// The synchronizationRate determines the amount of scaling on the seconds
+// that should be applied in order to be correctly synchronized with sibling
+// and parent nodes in case of synchronization.
+func (n *OneOfNode) Advance(seconds, synchronizationRate float64) {
+	if n.activeAnimation != nil {
+		n.activeAnimation.Advance(seconds, synchronizationRate)
 	}
 }
 
@@ -85,27 +79,27 @@ func (s *OneOfNode) SetProgress(fraction float64) {
 // mind that this is after a fixed interval update has been applied. If
 // this is called from within a dynamic update handler, the
 // BoneTransformInterpolation method should be used instead.
-func (s *OneOfNode) BoneTransform(bone string) NodeTransform {
-	if s.activeAnimation == nil {
+func (n *OneOfNode) BoneTransform(bone string) NodeTransform {
+	if n.activeAnimation == nil {
 		return NodeTransform{}
 	}
-	return s.activeAnimation.BoneTransform(bone)
+	return n.activeAnimation.BoneTransform(bone)
 }
 
 // BoneTransformDelta returns the transformation that was applied to the
 // specified bone since the last reset.
-func (s *OneOfNode) BoneTransformDelta(bone string) NodeTransform {
-	if s.activeAnimation == nil {
+func (n *OneOfNode) BoneTransformDelta(bone string) NodeTransform {
+	if n.activeAnimation == nil {
 		return NodeTransform{}
 	}
-	return s.activeAnimation.BoneTransformDelta(bone)
+	return n.activeAnimation.BoneTransformDelta(bone)
 }
 
 // BoneTransformInterpolation returns the transformation of the specified bone
 // at the specified interpolation fraction.
-func (s *OneOfNode) BoneTransformInterpolation(bone string, fraction float64) NodeTransform {
-	if s.activeAnimation == nil {
+func (n *OneOfNode) BoneTransformInterpolation(bone string, fraction float64) NodeTransform {
+	if n.activeAnimation == nil {
 		return NodeTransform{}
 	}
-	return s.activeAnimation.BoneTransformInterpolation(bone, fraction)
+	return n.activeAnimation.BoneTransformInterpolation(bone, fraction)
 }
