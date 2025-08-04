@@ -5,6 +5,7 @@ import (
 	"slices"
 
 	"github.com/mokiat/gog"
+	"github.com/mokiat/gog/seq"
 )
 
 func NewModel() *Model {
@@ -43,7 +44,7 @@ func (s *Model) AllNodes() []*Node {
 }
 
 func (s *Model) NodesIter() iter.Seq2[int, *Node] {
-	return indexedIter(func(yield func(*Node) bool) {
+	return seq.Indexed(func(yield func(*Node) bool) {
 		s.yieldNodes(s.nodes, yield)
 	})
 }
@@ -251,17 +252,4 @@ func (s *Model) AllSkyPlacements() []Placed[*Sky] {
 		}
 	}
 	return result
-}
-
-// TODO: Consider moving this to gog project.
-func indexedIter[T any](src iter.Seq[T]) iter.Seq2[int, T] {
-	return func(yield func(int, T) bool) {
-		index := 0
-		for item := range src {
-			if !yield(index, item) {
-				return
-			}
-			index++
-		}
-	}
 }
