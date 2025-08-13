@@ -55,11 +55,11 @@ func AddNodeTransforms(first, second NodeTransform) NodeTransform {
 }
 
 // DiffNodeTransforms combines two transforms into a single one.
-func DiffNodeTransforms(second, first NodeTransform) NodeTransform {
+func DiffNodeTransforms(first, second NodeTransform) NodeTransform {
 	return NodeTransform{
-		Translation: diffLinear(second.Translation, first.Translation),
-		Rotation:    diffSpherical(second.Rotation, first.Rotation),
-		Scale:       diffLinear(second.Scale, first.Scale),
+		Translation: diffLinear(first.Translation, second.Translation),
+		Rotation:    diffSpherical(first.Rotation, second.Rotation),
+		Scale:       diffLinear(first.Scale, second.Scale),
 	}
 }
 
@@ -107,19 +107,19 @@ func addSpherical(first, second opt.T[dprec.Quat]) opt.T[dprec.Quat] {
 	}
 }
 
-func diffLinear(second, first opt.T[dprec.Vec3]) opt.T[dprec.Vec3] {
+func diffLinear(first, second opt.T[dprec.Vec3]) opt.T[dprec.Vec3] {
 	switch {
 	case first.Specified && second.Specified:
-		return opt.V(dprec.Vec3Diff(second.Value, first.Value))
+		return opt.V(dprec.Vec3Diff(first.Value, second.Value))
 	default:
 		return opt.Unspecified[dprec.Vec3]()
 	}
 }
 
-func diffSpherical(second, first opt.T[dprec.Quat]) opt.T[dprec.Quat] {
+func diffSpherical(first, second opt.T[dprec.Quat]) opt.T[dprec.Quat] {
 	switch {
 	case first.Specified && second.Specified:
-		return opt.V(dprec.QuatDiff(second.Value, first.Value, true))
+		return opt.V(dprec.QuatDiff(first.Value, second.Value, true))
 	default:
 		return opt.Unspecified[dprec.Quat]()
 	}

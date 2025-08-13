@@ -106,6 +106,12 @@ func (r *Recording) Playback() *PlaybackNode {
 	return NewPlaybackNode(r)
 }
 
+// Pose returns a new animation node that represents a fixed pose from the
+// recording.
+func (r *Recording) Pose(timestamp float64) *PoseNode {
+	return NewPoseNode(r, timestamp)
+}
+
 // Length returns the length of the recording in seconds.
 func (r *Recording) Length() float64 {
 	return max(0.0, r.EndTime()-r.StartTime())
