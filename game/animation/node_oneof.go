@@ -12,8 +12,6 @@ func NewOneOfNode[T comparable](animations map[T]Node) *OneOfNode[T] {
 	}
 }
 
-var _ Node = (*OneOfNode[struct{}])(nil)
-
 // OneOfNode is an animation node that plays one specific animation
 // from a set of animations. The active animation can be changed at any time.
 type OneOfNode[T comparable] struct {
@@ -22,21 +20,22 @@ type OneOfNode[T comparable] struct {
 	activeAnimation    Node
 }
 
-// ActiveAnimation returns the underlying node that is currently being used.
-func (n *OneOfNode[T]) ActiveAnimation() Node {
-	return n.activeAnimation
+var _ Node = (*OneOfNode[struct{}])(nil)
+
+// ActiveAnimation returns the animation key that is playing.
+func (n *OneOfNode[T]) ActiveAnimation() T {
+	return n.activeAnimationKey
 }
 
 // PickAnimation changes to the specified animation.
 //
-// The reset flag controls whether the new animation should start from the
+// The rewind flag controls whether the new animation should start from the
 // beginning.
-func (n *OneOfNode[T]) PickAnimation(key T, reset bool) {
+func (n *OneOfNode[T]) PickAnimation(key T, rewind bool) {
 	n.activeAnimationKey = key
 	n.activeAnimation = n.animations[key]
-	if reset && (n.activeAnimation != nil) {
-		n.activeAnimation.Seek(0.0)
-		n.activeAnimation.Reset()
+	if rewind && (n.activeAnimation != nil) {
+		n.activeAnimation.SetFraction(0.0)
 	}
 }
 
@@ -57,12 +56,23 @@ func (n *OneOfNode[T]) Rate() float64 {
 	return n.activeAnimation.Rate()
 }
 
-// Seek relocates the animation to the specified position (fractional).
+// Fraction returns the amount of animation that has elapsed. In case of
+// looping, the value will wrap around.
+//
+// The returned value is in the range [0.0..1.0).
+func (n *OneOfNode[T]) Fraction() float64 {
+	if n.activeAnimation != nil {
+		return n.activeAnimation.Fraction()
+	}
+	return 0.0
+}
+
+// SetFraction relocates the animation to the specified fractional position.
 //
 // NOTE: This resets the animation and accumulated delta is lost.
-func (n *OneOfNode[T]) Seek(fraction float64) {
+func (n *OneOfNode[T]) SetFraction(fraction float64) {
 	if n.activeAnimation != nil {
-		n.activeAnimation.Seek(fraction)
+		n.activeAnimation.SetFraction(fraction)
 	}
 }
 

@@ -1,8 +1,6 @@
 package animation
 
 import (
-	"math"
-
 	"github.com/mokiat/gomath/dprec"
 )
 
@@ -22,8 +20,6 @@ func NewBlendPairNode(first, second Node) *BlendPairNode {
 	}
 }
 
-var _ Node = (*BlendPairNode)(nil)
-
 // BlendPairNode represents an animation node that blends two child
 // animation nodes. The blending factor is determined by the factor
 // field of the node.
@@ -35,6 +31,8 @@ type BlendPairNode struct {
 	firstSynchronized  bool
 	secondSynchronized bool
 }
+
+var _ Node = (*BlendPairNode)(nil)
 
 // FirstSynchronized returns whether the the first blend node will be
 // synchronized with the tree hierarchy.
@@ -79,8 +77,7 @@ func (n *BlendPairNode) SetFactor(factor float64) *BlendPairNode {
 // Reset clears any update delta information, so that new interpolations can
 // be tracked.
 func (n *BlendPairNode) Reset() {
-	_, fraction := math.Modf(n.progress)
-	n.Seek(fraction)
+	n.SetFraction(n.Fraction())
 
 	n.first.Reset()
 	n.second.Reset()
@@ -105,18 +102,26 @@ func (n *BlendPairNode) Rate() float64 {
 	}
 }
 
-// Seek relocates the animation to the specified position (fractional).
+// Fraction returns the amount of animation that has elapsed. In case of
+// looping, the value will wrap around.
+//
+// The returned value is in the range [0.0..1.0).
+func (n *BlendPairNode) Fraction() float64 {
+	return wrapFraction(n.progress)
+}
+
+// SetFraction relocates the animation to the specified fractional position.
 //
 // NOTE: This resets the animation and accumulated delta is lost.
-func (n *BlendPairNode) Seek(fraction float64) {
+func (n *BlendPairNode) SetFraction(fraction float64) {
 	n.progress = fraction
 
 	if n.firstSynchronized {
-		n.first.Seek(n.progress)
+		n.first.SetFraction(n.progress)
 	}
 
 	if n.secondSynchronized {
-		n.second.Seek(n.progress)
+		n.second.SetFraction(n.progress)
 	}
 }
 
@@ -128,6 +133,7 @@ func (n *BlendPairNode) Seek(fraction float64) {
 func (n *BlendPairNode) Advance(seconds, synchronizationRate float64) {
 	rate := n.Rate()
 	n.progress += rate * seconds * synchronizationRate
+	n.progress = wrapFraction(n.progress)
 
 	if n.firstSynchronized {
 		adjustedRate := rate / n.first.Rate()

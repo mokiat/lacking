@@ -2,7 +2,6 @@ package animation
 
 import (
 	"cmp"
-	"math"
 	"slices"
 
 	"github.com/mokiat/gomath/dprec"
@@ -27,8 +26,6 @@ func NewBlend1DNode(entries ...Blend1DEntry) *Blend1DNode {
 	return result
 }
 
-var _ Node = (*Blend1DNode)(nil)
-
 // Blend1DNode is an animation source that blends between the two closest
 // animations positioned on a 1D line.
 //
@@ -43,67 +40,76 @@ type Blend1DNode struct {
 	factor float64
 }
 
+var _ Node = (*Blend1DNode)(nil)
+
 // Coord returns the blending coord.
-func (s *Blend1DNode) Coord() float64 {
-	return s.coord
+func (n *Blend1DNode) Coord() float64 {
+	return n.coord
 }
 
 // SetCoord changes the blending coord.
-func (s *Blend1DNode) SetCoord(coord float64) {
-	s.coord = coord
+func (n *Blend1DNode) SetCoord(coord float64) {
+	n.coord = coord
 
-	lowerEntry := s.entries[0]
-	for _, entry := range s.entries {
+	lowerEntry := n.entries[0]
+	for _, entry := range n.entries {
 		if entry.Coord > coord {
 			break
 		}
 		lowerEntry = entry
 	}
-	s.lower = lowerEntry.Node
+	n.lower = lowerEntry.Node
 
-	upperEntry := s.entries[len(s.entries)-1]
-	for _, entry := range slices.Backward(s.entries) {
+	upperEntry := n.entries[len(n.entries)-1]
+	for _, entry := range slices.Backward(n.entries) {
 		if entry.Coord < coord {
 			break
 		}
 		upperEntry = entry
 	}
-	s.upper = upperEntry.Node
+	n.upper = upperEntry.Node
 
-	s.factor = 0.0
+	n.factor = 0.0
 	if lowerEntry != upperEntry {
-		s.factor = (coord - lowerEntry.Coord) / (upperEntry.Coord - lowerEntry.Coord)
+		n.factor = (coord - lowerEntry.Coord) / (upperEntry.Coord - lowerEntry.Coord)
 	}
 }
 
 // Reset clears any update delta information, so that new interpolations can
 // be tracked.
-func (s *Blend1DNode) Reset() {
-	_, fraction := math.Modf(s.progress)
-	s.Seek(fraction)
+func (n *Blend1DNode) Reset() {
+	n.SetFraction(n.Fraction())
 
-	for _, entry := range s.entries {
+	for _, entry := range n.entries {
 		entry.Node.Reset()
 	}
 }
 
 // Rate returns the fraction of the animation length that advances each
 // second.
-func (s *Blend1DNode) Rate() float64 {
-	lowerRate := s.lower.Rate()
-	upperRate := s.upper.Rate()
+func (n *Blend1DNode) Rate() float64 {
+	lowerRate := n.lower.Rate()
+	upperRate := n.upper.Rate()
 	// NOTE: The rates are flipped in the denominator on purpose. This is how
 	// the math ends up if you derive this from lengths.
-	return lowerRate * upperRate / dprec.Mix(upperRate, lowerRate, s.factor)
+	return lowerRate * upperRate / dprec.Mix(upperRate, lowerRate, n.factor)
 }
 
-// Seek relocates the animation to the specified position (fractional).
+// Fraction returns the amount of animation that has elapsed. In case of
+// looping, the value will wrap around.
+//
+// The returned value is in the range [0.0..1.0).
+func (n *Blend1DNode) Fraction() float64 {
+	return wrapFraction(n.progress)
+}
+
+// SetFraction relocates the animation to the specified fractional position.
 //
 // NOTE: This resets the animation and accumulated delta is lost.
-func (s *Blend1DNode) Seek(fraction float64) {
-	s.progress = fraction
-	for _, entry := range s.entries {
-		entry.Node.Seek(s.progress)
+func (n *Blend1DNode) SetFraction(fraction float64) {
+	n.progress = fraction
+	for _, entry := range n.entries {
+		entry.Node.SetFraction(n.progress)
 	}
 }
 
@@ -112,11 +118,12 @@ func (s *Blend1DNode) Seek(fraction float64) {
 // The synchronizationRate determines the amount of scaling on the seconds
 // that should be applied in order to be correctly synchronized with sibling
 // and parent nodes in case of synchronization.
-func (s *Blend1DNode) Advance(seconds, synchronizationRate float64) {
-	rate := s.Rate()
-	s.progress += rate * seconds * synchronizationRate
+func (n *Blend1DNode) Advance(seconds, synchronizationRate float64) {
+	rate := n.Rate()
+	n.progress += rate * seconds * synchronizationRate
+	n.progress = wrapFraction(n.progress)
 
-	for _, entry := range s.entries {
+	for _, entry := range n.entries {
 		node := entry.Node
 		adjustedRate := rate / node.Rate()
 		node.Advance(seconds, synchronizationRate*adjustedRate)
@@ -127,26 +134,26 @@ func (s *Blend1DNode) Advance(seconds, synchronizationRate float64) {
 // mind that this is after a fixed interval update has been applied. If
 // this is called from within a dynamic update handler, the
 // BoneTransformInterpolation method should be used instead.
-func (s *Blend1DNode) BoneTransform(bone string) NodeTransform {
-	lowerTransform := s.lower.BoneTransform(bone)
-	upperTransform := s.upper.BoneTransform(bone)
-	return BlendNodeTransforms(lowerTransform, upperTransform, s.factor)
+func (n *Blend1DNode) BoneTransform(bone string) NodeTransform {
+	lowerTransform := n.lower.BoneTransform(bone)
+	upperTransform := n.upper.BoneTransform(bone)
+	return BlendNodeTransforms(lowerTransform, upperTransform, n.factor)
 }
 
 // BoneTransformDelta returns the transformation that was applied to the
 // specified bone since the last reset.
-func (s *Blend1DNode) BoneTransformDelta(bone string) NodeTransform {
-	lowerTransform := s.lower.BoneTransformDelta(bone)
-	upperTransform := s.upper.BoneTransformDelta(bone)
-	return BlendNodeTransforms(lowerTransform, upperTransform, s.factor)
+func (n *Blend1DNode) BoneTransformDelta(bone string) NodeTransform {
+	lowerTransform := n.lower.BoneTransformDelta(bone)
+	upperTransform := n.upper.BoneTransformDelta(bone)
+	return BlendNodeTransforms(lowerTransform, upperTransform, n.factor)
 }
 
 // BoneTransformInterpolation returns the transformation of the specified bone
 // at the specified interpolation fraction.
-func (s *Blend1DNode) BoneTransformInterpolation(bone string, fraction float64) NodeTransform {
-	lowerTransform := s.lower.BoneTransformInterpolation(bone, fraction)
-	upperTransform := s.upper.BoneTransformInterpolation(bone, fraction)
-	return BlendNodeTransforms(lowerTransform, upperTransform, s.factor)
+func (n *Blend1DNode) BoneTransformInterpolation(bone string, fraction float64) NodeTransform {
+	lowerTransform := n.lower.BoneTransformInterpolation(bone, fraction)
+	upperTransform := n.upper.BoneTransformInterpolation(bone, fraction)
+	return BlendNodeTransforms(lowerTransform, upperTransform, n.factor)
 }
 
 // NewBlend1DEntry creates a new Blend1DEntry.

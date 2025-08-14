@@ -15,7 +15,6 @@ func NewRecording() *Recording {
 		name:      "",
 		startTime: 0.0,
 		endTime:   1.0,
-		loop:      false,
 		bindings:  make(map[string]KeyframeSet),
 	}
 }
@@ -27,7 +26,6 @@ type Recording struct {
 	name      string
 	startTime float64
 	endTime   float64
-	loop      bool
 	bindings  map[string]KeyframeSet
 }
 
@@ -64,17 +62,6 @@ func (r *Recording) SetEndTime(endTime float64) *Recording {
 	return r
 }
 
-// Loop returns whether the recording should be looped.
-func (r *Recording) Loop() bool {
-	return r.loop
-}
-
-// SetLoop sets whether the recording should be looped.
-func (r *Recording) SetLoop(loop bool) *Recording {
-	r.loop = loop
-	return r
-}
-
 // Binding returns the keyframes for the node with the specified name.
 func (r *Recording) Binding(name string) (KeyframeSet, bool) {
 	if binding, ok := r.bindings[name]; ok {
@@ -102,14 +89,14 @@ func (r *Recording) BoundNodesIter() iter.Seq[string] {
 }
 
 // Playback creates a new animtion node that plays back the animation.
-func (r *Recording) Playback() *PlaybackNode {
-	return NewPlaybackNode(r)
+func (r *Recording) Playback(loop bool) *PlaybackNode {
+	return NewPlaybackNode(r, loop)
 }
 
 // Pose returns a new animation node that represents a fixed pose from the
 // recording.
-func (r *Recording) Pose(timestamp float64) *PoseNode {
-	return NewPoseNode(r, timestamp)
+func (r *Recording) Pose(timestamp, length float64) *PoseNode {
+	return NewPoseNode(r, timestamp, length)
 }
 
 // Length returns the length of the recording in seconds.
@@ -190,13 +177,9 @@ func (r *Recording) BoneTransformAt(bone string, timestamp float64) NodeTransfor
 
 func (r *Recording) adjustTimestamp(timestamp float64) float64 {
 	length := r.Length()
-	if r.loop {
-		timestamp = dprec.Mod(timestamp, length)
-		if timestamp < 0.0 {
-			timestamp += length
-		}
-	} else {
-		timestamp = dprec.Clamp(timestamp, 0.0, length-0.00001)
+	timestamp = dprec.Mod(timestamp, length)
+	if timestamp < 0.0 {
+		timestamp += length
 	}
 	return r.StartTime() + timestamp
 }

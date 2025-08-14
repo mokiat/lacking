@@ -1,5 +1,6 @@
 package animation
 
+// NewAddNode creates a new node that returns the sum of two animations.
 func NewAddNode(primary, secondary Node) *AddNode {
 	return &AddNode{
 		primary:   primary,
@@ -7,10 +8,13 @@ func NewAddNode(primary, secondary Node) *AddNode {
 	}
 }
 
+// AddNode returns the sum of two animations.
 type AddNode struct {
 	primary   Node
 	secondary Node
 }
+
+var _ Node = (*AddNode)(nil)
 
 // Reset clears any update delta information, so that new interpolations can
 // be tracked.
@@ -22,15 +26,23 @@ func (n *AddNode) Reset() {
 // Rate returns the fraction of the animation length that advances each
 // second.
 func (n *AddNode) Rate() float64 {
-	return 1.0
+	return 1.0 // TODO: Figure this out.
 }
 
-// Seek relocates the animation to the specified position (fractional).
+// Fraction returns the amount of animation that has elapsed. In case of
+// looping, the value will wrap around.
+//
+// The returned value is in the range [0.0..1.0).
+func (n *AddNode) Fraction() float64 {
+	return n.primary.Fraction() // TODO: Figure this out
+}
+
+// SetFraction relocates the animation to the specified fractional position.
 //
 // NOTE: This resets the animation and accumulated delta is lost.
-func (n *AddNode) Seek(fraction float64) {
-	n.primary.Seek(fraction)
-	n.secondary.Seek(fraction)
+func (n *AddNode) SetFraction(fraction float64) {
+	n.primary.SetFraction(fraction)
+	n.secondary.SetFraction(fraction)
 }
 
 // Advance moves the animation forward by the specified delta seconds.

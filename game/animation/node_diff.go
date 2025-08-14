@@ -1,5 +1,6 @@
 package animation
 
+// NewDiffNode creates a node that returns the difference between two nodes.
 func NewDiffNode(primary, secondary Node) *DiffNode {
 	return &DiffNode{
 		primary:   primary,
@@ -7,10 +8,13 @@ func NewDiffNode(primary, secondary Node) *DiffNode {
 	}
 }
 
+// DiffNode returns the difference between two animations.
 type DiffNode struct {
 	primary   Node
 	secondary Node
 }
+
+var _ Node = (*DiffNode)(nil)
 
 // Reset clears any update delta information, so that new interpolations can
 // be tracked.
@@ -22,15 +26,24 @@ func (n *DiffNode) Reset() {
 // Rate returns the fraction of the animation length that advances each
 // second.
 func (n *DiffNode) Rate() float64 {
-	return 1.0
+	return 1.0 // TODO: Figure this out!
 }
 
-// Seek relocates the animation to the specified position (fractional).
+// Fraction returns the amount of animation that has elapsed. In case of
+// looping, the value will wrap around.
+//
+// The returned value is in the range [0.0..1.0).
+func (n *DiffNode) Fraction() float64 {
+	return n.primary.Fraction() // TODO: Figure this out.
+}
+
+// SetFraction relocates the animation to the specified fractional position.
 //
 // NOTE: This resets the animation and accumulated delta is lost.
-func (n *DiffNode) Seek(fraction float64) {
-	n.primary.Seek(fraction)
-	n.secondary.Seek(fraction)
+func (n *DiffNode) SetFraction(fraction float64) {
+	n.primary.SetFraction(fraction)
+	n.secondary.SetFraction(fraction)
+
 }
 
 // Advance moves the animation forward by the specified delta seconds.

@@ -11,14 +11,14 @@ func NewMaskNode(delegate Node, selection filter.Func[string]) *MaskNode {
 	}
 }
 
-var _ Node = (*MaskNode)(nil)
-
 // MaskNode is an animation source that picks specific bones
 // from another animation source.
 type MaskNode struct {
 	delegate  Node
 	selection filter.Func[string]
 }
+
+var _ Node = (*MaskNode)(nil)
 
 // Reset clears any update delta information, so that new interpolations can
 // be tracked.
@@ -32,11 +32,19 @@ func (n *MaskNode) Rate() float64 {
 	return n.delegate.Rate()
 }
 
-// Seek relocates the animation to the specified position (fractional).
+// Fraction returns the amount of animation that has elapsed. In case of
+// looping, the value will wrap around.
+//
+// The returned value is in the range [0.0..1.0).
+func (n *MaskNode) Fraction() float64 {
+	return n.delegate.Fraction()
+}
+
+// SetFraction relocates the animation to the specified fractional position.
 //
 // NOTE: This resets the animation and accumulated delta is lost.
-func (n *MaskNode) Seek(fraction float64) {
-	n.delegate.Seek(fraction)
+func (n *MaskNode) SetFraction(fraction float64) {
+	n.delegate.SetFraction(fraction)
 }
 
 // Advance moves the animation forward by the specified delta seconds.

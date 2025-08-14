@@ -9,14 +9,14 @@ func NewTempoNode(delegate Node) *TempoNode {
 	}
 }
 
-var _ Node = (*TempoNode)(nil)
-
 // TempoNode is a decorator for an animation source that allows
 // adjusting the playback speed.
 type TempoNode struct {
 	delegate Node
 	speed    float64
 }
+
+var _ Node = (*TempoNode)(nil)
 
 // Speed returns the current playback speed of the animation.
 // A value of 1.0 means that the animation is played at normal speed.
@@ -42,11 +42,19 @@ func (n *TempoNode) Rate() float64 {
 	return n.delegate.Rate() * n.speed
 }
 
-// Seek relocates the animation to the specified position (fractional).
+// Fraction returns the amount of animation that has elapsed. In case of
+// looping, the value will wrap around.
+//
+// The returned value is in the range [0.0..1.0).
+func (n *TempoNode) Fraction() float64 {
+	return n.delegate.Fraction()
+}
+
+// SetFraction relocates the animation to the specified fractional position.
 //
 // NOTE: This resets the animation and accumulated delta is lost.
-func (n *TempoNode) Seek(fraction float64) {
-	n.delegate.Seek(fraction)
+func (n *TempoNode) SetFraction(fraction float64) {
+	n.delegate.SetFraction(fraction)
 }
 
 // Advance moves the animation forward by the specified delta seconds.

@@ -14,7 +14,6 @@ func LoadAnimationRecording(loader *AssetLoader, assetAnimation dto.Animation) (
 	recording.SetName(assetAnimation.Name)
 	recording.SetStartTime(assetAnimation.StartTime)
 	recording.SetEndTime(assetAnimation.EndTime)
-	recording.SetLoop(assetAnimation.Loop)
 
 	for _, assetBinding := range assetAnimation.Bindings {
 		translationKeyframes := make([]animation.Keyframe[dprec.Vec3], len(assetBinding.TranslationKeyframes))

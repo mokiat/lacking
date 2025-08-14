@@ -1,5 +1,16 @@
 package animation
 
+import (
+	"math"
+
+	"github.com/mokiat/gomath/dprec"
+)
+
+const (
+	minFraction = 0.0
+	maxFraction = 0.999999999
+)
+
 // Node represents an animation logic.
 type Node interface {
 
@@ -11,10 +22,16 @@ type Node interface {
 	// second (fraction per second).
 	Rate() float64
 
-	// Seek relocates the animation to the specified position (fractional).
+	// Fraction returns the amount of animation that has elapsed. In case of
+	// looping, the value will wrap around.
+	//
+	// The returned value is in the range [0.0..1.0).
+	Fraction() float64
+
+	// SetFraction relocates the animation to the specified fractional position.
 	//
 	// NOTE: This resets the animation and accumulated delta is lost.
-	Seek(fraction float64)
+	SetFraction(fraction float64)
 
 	// Advance moves the animation forward by the specified delta seconds.
 	//
@@ -36,4 +53,16 @@ type Node interface {
 	// BoneTransformInterpolation returns the transformation of the specified bone
 	// at the specified interpolation fraction.
 	BoneTransformInterpolation(bone string, fraction float64) NodeTransform
+}
+
+func wrapFraction(fraction float64) float64 {
+	_, fraction = math.Modf(fraction)
+	if fraction < 0.0 {
+		fraction += 1.0
+	}
+	return clampFraction(fraction)
+}
+
+func clampFraction(fraction float64) float64 {
+	return dprec.Clamp(fraction, minFraction, maxFraction)
 }
