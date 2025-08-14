@@ -1,30 +1,9 @@
 package animation
 
-import "github.com/mokiat/gog/opt"
-
-// GraphNodeTransition represents a transition in a GraphNode.
-type GraphNodeTransition struct {
-	// FadeInFraction determines the amount of time (in fraction of the total
-	// animation) that it takes to fade into the transition animation (if there
-	// is one).
-	FadeInFraction float64
-
-	// FadeOutFraction determines the amount of time (in fraction of the total
-	// animation) that it takes to fade out of the transition animation (if there
-	// is one).
-	FadeOutFraction float64
-
-	// Duration optionally specifies a custom duration for the transition in
-	// case that a transition animation is not specified.
-	//
-	// Defaults to 1.0 (one second).
-	Duration opt.T[float64]
-
-	// Animation optionally specifies an animation to be blended on top of the
-	// blending from the start state to the end state. If this is not specified
-	// then Duration is used to determine the length of the transition.
-	Animation opt.T[Node]
-}
+import (
+	"github.com/mokiat/gog/opt"
+	"github.com/mokiat/gomath/dprec"
+)
 
 // NewGraphNode creates a new transition graph animation node.
 func NewGraphNode[T comparable]() *GraphNode[T] {
@@ -43,6 +22,7 @@ type GraphNode[T comparable] struct {
 	fromState          T
 	toState            T
 	transitionFraction float64
+	progress           float64
 }
 
 var _ Node = (*GraphNode[struct{}])(nil)
@@ -76,13 +56,22 @@ func (n *GraphNode[T]) TransitionTo(to T) {
 		to:   to,
 	}]
 	if !ok {
-		panic("unknown transition")
+		panic("unknown transition") // TODO: Just jump to target state.
 	}
 	if transitionAnimation, ok := transition.Animation.Unwrap(); ok {
 		transitionAnimation.SetFraction(0.0)
 	}
 	n.toState = to
 	n.transitionFraction = 0.0
+}
+
+// TransitionFraction returns the amount (fraction) of transition that has
+// occurred so far. Returns 1.0 if not in transition.
+func (n *GraphNode[T]) TransitionFraction() float64 {
+	if n.fromState == n.toState {
+		return 1.0
+	}
+	return n.transitionFraction
 }
 
 // IsTransitioned returns whether the graph has transitioned to a stable state.
@@ -93,13 +82,29 @@ func (n *GraphNode[T]) IsTransitioned() bool {
 // Reset clears any update delta information, so that new interpolations can
 // be tracked.
 func (n *GraphNode[T]) Reset() {
-	// TODO: Implement
+	n.SetFraction(n.Fraction())
+
+	for _, animation := range n.animations {
+		animation.Reset()
+	}
+
+	for _, transition := range n.transitions {
+		if animation, ok := transition.Animation.Unwrap(); ok {
+			animation.Reset()
+		}
+	}
 }
 
 // Rate returns the fraction of the animation length that advances each
 // second (fraction per second).
 func (n *GraphNode[T]) Rate() float64 {
-	return 1.0 // TODO: Implement
+	fromNode := n.animations[n.fromState]
+	toNode := n.animations[n.toState]
+	fromRate := fromNode.Rate()
+	toRate := toNode.Rate()
+	// NOTE: The rates are flipped in the denominator on purpose. This is how
+	// the math ends up if you derive this from lengths.
+	return fromRate * toRate / dprec.Mix(toRate, fromRate, n.transitionFraction)
 }
 
 // Fraction returns the amount of animation that has elapsed. In case of
@@ -107,14 +112,18 @@ func (n *GraphNode[T]) Rate() float64 {
 //
 // The returned value is in the range [0.0..1.0).
 func (n *GraphNode[T]) Fraction() float64 {
-	return 0.0 // TODO: Implement
+	return wrapFraction(n.progress)
 }
 
 // SetFraction relocates the animation to the specified fractional position.
 //
 // NOTE: This resets the animation and accumulated delta is lost.
 func (n *GraphNode[T]) SetFraction(fraction float64) {
-	// TODO: Implement
+	n.progress = wrapFraction(fraction)
+
+	for _, animation := range n.animations {
+		animation.SetFraction(n.progress)
+	}
 }
 
 // Advance moves the animation forward by the specified delta seconds.
@@ -123,7 +132,35 @@ func (n *GraphNode[T]) SetFraction(fraction float64) {
 // that should be applied in order to be correctly synchronized with sibling
 // and parent nodes in case of synchronization.
 func (n *GraphNode[T]) Advance(seconds, synchronizationRate float64) {
-	// TODO: Implement
+	rate := n.Rate()
+	n.progress += rate * seconds * synchronizationRate
+	n.progress = wrapFraction(n.progress)
+
+	for _, animation := range n.animations {
+		adjustedRate := rate / animation.Rate()
+		animation.Advance(seconds, synchronizationRate*adjustedRate)
+	}
+
+	var transitionRate float64
+	if n.fromState != n.toState {
+		transition := n.transitions[graphStatePair[T]{
+			from: n.fromState,
+			to:   n.toState,
+		}]
+
+		if animation, ok := transition.Animation.Unwrap(); ok {
+			animation.Advance(seconds, 1.0) // don't synchronize transition
+			transitionRate = animation.Rate()
+		} else {
+			transitionRate = 1.0 / transition.Duration.ValueOrDefault(1.0)
+		}
+
+		n.transitionFraction += transitionRate * seconds
+		if n.transitionFraction > 1.0 {
+			n.fromState = n.toState // complete transition
+		}
+		n.transitionFraction = dprec.Clamp(n.transitionFraction, 0.0, 1.0)
+	}
 }
 
 // BoneTransform returns the transformation of the specified bone. Keep in
@@ -131,22 +168,106 @@ func (n *GraphNode[T]) Advance(seconds, synchronizationRate float64) {
 // this is called from within a dynamic update handler, the
 // BoneTransformInterpolation method should be used instead.
 func (n *GraphNode[T]) BoneTransform(bone string) NodeTransform {
-	return NodeTransform{} // TODO: Implement
+	fromNode := n.animations[n.fromState]
+	toNode := n.animations[n.toState]
+	fromTransform := fromNode.BoneTransform(bone)
+	toTransform := toNode.BoneTransform(bone)
+
+	result := BlendNodeTransforms(fromTransform, toTransform, n.transitionFraction)
+	if transition, ok := n.animatedTransition(); ok {
+		transitionNode := transition.Animation.Value
+		transitionTransform := transitionNode.BoneTransform(bone)
+		blendFactor := transition.blendFactor(n.transitionFraction)
+		result = BlendNodeTransforms(result, transitionTransform, blendFactor)
+	}
+	return result
 }
 
 // BoneTransformDelta returns the transformation that was applied to the
 // specified bone since the last reset.
 func (n *GraphNode[T]) BoneTransformDelta(bone string) NodeTransform {
-	return NodeTransform{}
+	fromNode := n.animations[n.fromState]
+	toNode := n.animations[n.toState]
+	fromTransform := fromNode.BoneTransformDelta(bone)
+	toTransform := toNode.BoneTransformDelta(bone)
+
+	result := BlendNodeTransforms(fromTransform, toTransform, n.transitionFraction)
+	if transition, ok := n.animatedTransition(); ok {
+		transitionNode := transition.Animation.Value
+		transitionTransform := transitionNode.BoneTransformDelta(bone)
+		blendFactor := transition.blendFactor(n.transitionFraction)
+		result = BlendNodeTransforms(result, transitionTransform, blendFactor)
+	}
+	return result
 }
 
 // BoneTransformInterpolation returns the transformation of the specified bone
 // at the specified interpolation fraction.
 func (n *GraphNode[T]) BoneTransformInterpolation(bone string, fraction float64) NodeTransform {
-	return NodeTransform{}
+	fromNode := n.animations[n.fromState]
+	toNode := n.animations[n.toState]
+	fromTransform := fromNode.BoneTransformInterpolation(bone, fraction)
+	toTransform := toNode.BoneTransformInterpolation(bone, fraction)
+
+	result := BlendNodeTransforms(fromTransform, toTransform, n.transitionFraction)
+	if transition, ok := n.animatedTransition(); ok {
+		transitionNode := transition.Animation.Value
+		transitionTransform := transitionNode.BoneTransformInterpolation(bone, fraction)
+		blendFactor := transition.blendFactor(n.transitionFraction)
+		result = BlendNodeTransforms(result, transitionTransform, blendFactor)
+	}
+	return result
+}
+
+func (n *GraphNode[T]) animatedTransition() (GraphNodeTransition, bool) {
+	transition, ok := n.transitions[graphStatePair[T]{
+		from: n.fromState,
+		to:   n.toState,
+	}]
+	if !ok {
+		return GraphNodeTransition{}, false
+	}
+	if !transition.Animation.Specified {
+		return GraphNodeTransition{}, false
+	}
+	return transition, true
 }
 
 type graphStatePair[T comparable] struct {
 	from T
 	to   T
+}
+
+// GraphNodeTransition represents a transition in a GraphNode.
+type GraphNodeTransition struct {
+	// FadeInFraction determines the amount of time (in fraction of the total
+	// animation) that it takes to fade into the transition animation (if there
+	// is one).
+	FadeInFraction float64
+
+	// FadeOutFraction determines the amount of time (in fraction of the total
+	// animation) that it takes to fade out of the transition animation (if there
+	// is one).
+	FadeOutFraction float64
+
+	// Duration optionally specifies a custom duration for the transition in
+	// case that a transition animation is not specified.
+	//
+	// Defaults to 1.0 (one second).
+	Duration opt.T[float64]
+
+	// Animation optionally specifies an animation to be blended on top of the
+	// blending from the start state to the end state. If this is not specified
+	// then Duration is used to determine the length of the transition.
+	Animation opt.T[Node]
+}
+
+func (t GraphNodeTransition) blendFactor(transitionFraction float64) float64 {
+	if transitionFraction < t.FadeInFraction {
+		return transitionFraction / t.FadeInFraction
+	}
+	if transitionFraction > 1.0-t.FadeOutFraction {
+		return (1.0 - transitionFraction) / t.FadeOutFraction
+	}
+	return 1.0
 }
