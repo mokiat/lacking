@@ -93,6 +93,10 @@ func addLinear(first, second opt.T[dprec.Vec3]) opt.T[dprec.Vec3] {
 	switch {
 	case first.Specified && second.Specified:
 		return opt.V(dprec.Vec3Sum(first.Value, second.Value))
+	case first.Specified:
+		return opt.V(first.Value)
+	case second.Specified:
+		return opt.V(second.Value)
 	default:
 		return opt.Unspecified[dprec.Vec3]()
 	}
@@ -102,6 +106,10 @@ func addSpherical(first, second opt.T[dprec.Quat]) opt.T[dprec.Quat] {
 	switch {
 	case first.Specified && second.Specified:
 		return opt.V(dprec.QuatProd(second.Value, first.Value))
+	case first.Specified:
+		return opt.V(first.Value)
+	case second.Specified:
+		return opt.V(second.Value)
 	default:
 		return opt.Unspecified[dprec.Quat]()
 	}

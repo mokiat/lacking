@@ -50,29 +50,7 @@ func (n *Blend1DNode) Coord() float64 {
 // SetCoord changes the blending coord.
 func (n *Blend1DNode) SetCoord(coord float64) {
 	n.coord = coord
-
-	lowerEntry := n.entries[0]
-	for _, entry := range n.entries {
-		if entry.Coord > coord {
-			break
-		}
-		lowerEntry = entry
-	}
-	n.lower = lowerEntry.Node
-
-	upperEntry := n.entries[len(n.entries)-1]
-	for _, entry := range slices.Backward(n.entries) {
-		if entry.Coord < coord {
-			break
-		}
-		upperEntry = entry
-	}
-	n.upper = upperEntry.Node
-
-	n.factor = 0.0
-	if lowerEntry != upperEntry {
-		n.factor = (coord - lowerEntry.Coord) / (upperEntry.Coord - lowerEntry.Coord)
-	}
+	n.lower, n.upper, n.factor = n.resolveCoord(coord)
 }
 
 // Reset clears any update delta information, so that new interpolations can
@@ -154,6 +132,31 @@ func (n *Blend1DNode) BoneTransformInterpolation(bone string, fraction float64) 
 	lowerTransform := n.lower.BoneTransformInterpolation(bone, fraction)
 	upperTransform := n.upper.BoneTransformInterpolation(bone, fraction)
 	return BlendNodeTransforms(lowerTransform, upperTransform, n.factor)
+}
+
+func (n *Blend1DNode) resolveCoord(coord float64) (Node, Node, float64) {
+	lowerEntry := n.entries[0]
+	for _, entry := range n.entries {
+		if entry.Coord > coord {
+			break
+		}
+		lowerEntry = entry
+	}
+
+	upperEntry := n.entries[len(n.entries)-1]
+	for _, entry := range slices.Backward(n.entries) {
+		if entry.Coord < coord {
+			break
+		}
+		upperEntry = entry
+	}
+
+	factor := 0.0
+	if lowerEntry != upperEntry {
+		factor = (coord - lowerEntry.Coord) / (upperEntry.Coord - lowerEntry.Coord)
+	}
+
+	return lowerEntry.Node, upperEntry.Node, factor
 }
 
 // NewBlend1DEntry creates a new Blend1DEntry.
