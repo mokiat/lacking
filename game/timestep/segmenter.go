@@ -37,8 +37,12 @@ func (t *Segmenter) Update(delta time.Duration, fixedCallback UpdateCallback, in
 		fixedCallback(t.interval)
 		t.accumulatedDelta -= t.interval
 	}
-	if (interpCallback != nil) && (t.accumulatedDelta < 0) {
-		excessTime := t.accumulatedDelta + t.interval
-		interpCallback(excessTime.Seconds() / t.interval.Seconds())
+	if interpCallback != nil {
+		if t.accumulatedDelta < 0 {
+			excessTime := t.accumulatedDelta + t.interval
+			interpCallback(excessTime.Seconds() / t.interval.Seconds())
+		} else {
+			interpCallback(1.0)
+		}
 	}
 }
