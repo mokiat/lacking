@@ -31,7 +31,7 @@ func (d decoder) decodeValue(value reflect.Value) error {
 
 	var consumer ChunkConsumer
 	if value.Type().Implements(chunkConsumerType) {
-		consumer = value.Interface().(ChunkConsumer)
+		consumer, _ = reflect.TypeAssert[ChunkConsumer](value)
 	}
 
 	for {

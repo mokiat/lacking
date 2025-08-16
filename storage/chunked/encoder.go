@@ -33,7 +33,7 @@ func (e encoder) encodeValue(value reflect.Value) error {
 
 	// Check if the value is a ChunkProvider.
 	if value.Type().Implements(chunkProviderType) {
-		provider := value.Interface().(ChunkProvider)
+		provider, _ := reflect.TypeAssert[ChunkProvider](value)
 		for _, chunk := range provider.Chunks() {
 			if err := e.encodeChunk(chunk); err != nil {
 				return fmt.Errorf("error encoding chunk: %w", err)

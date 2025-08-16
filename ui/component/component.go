@@ -89,7 +89,8 @@ func (d *componentDefinition) TypeName() string {
 }
 
 func (d *componentDefinition) Allocate(scope Scope, invalidate InvalidateFunc) Renderable {
-	ref := reflect.New(d.reflType).Interface().(Renderable)
+	value := reflect.New(d.reflType)
+	ref, _ := reflect.TypeAssert[Renderable](value)
 	ref.setScope(scope)
 	ref.setInvalidate(invalidate)
 	return ref
