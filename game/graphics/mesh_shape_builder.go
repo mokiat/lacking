@@ -104,13 +104,13 @@ func (mb WireframeShapeBuilder) Circle(position sprec.Vec3, rotation sprec.Quat,
 	defer mb.meshBuilder.Transform(sprec.IdentityMat4())
 
 	vertexStart := mb.meshBuilder.VertexOffset()
-	for i := 0; i < segments; i++ {
+	for i := range segments {
 		angle := sprec.Degrees(360.0 * (float32(i) / float32(segments)))
 		mb.meshBuilder.Vertex().Coord(sprec.Cos(angle), sprec.Sin(angle), 0.0)
 	}
 
 	indexStart := mb.meshBuilder.IndexOffset()
-	for i := uint32(0); i < uint32(segments); i++ {
+	for i := range uint32(segments) {
 		a := vertexStart + i
 		b := vertexStart + ((i + 1) % uint32(segments))
 		mb.meshBuilder.IndexLine(a, b)
@@ -131,13 +131,13 @@ func (mb WireframeShapeBuilder) Arc(position sprec.Vec3, rotation sprec.Quat, ra
 	delta := to - from
 
 	vertexStart := mb.meshBuilder.VertexOffset()
-	for i := 0; i < segments; i++ {
+	for i := range segments {
 		angle := from + sprec.Degrees(delta.Degrees()*(float32(i)/float32(segments-1)))
 		mb.meshBuilder.Vertex().Coord(sprec.Cos(angle), sprec.Sin(angle), 0.0)
 	}
 
 	indexStart := mb.meshBuilder.IndexOffset()
-	for i := uint32(0); i < uint32(segments)-1; i++ {
+	for i := range uint32(segments) - 1 {
 		a := vertexStart + i
 		b := vertexStart + i + 1
 		mb.meshBuilder.IndexLine(a, b)
@@ -212,32 +212,32 @@ func (mb SolidShapeBuilder) Cylinder(position sprec.Vec3, rotation sprec.Quat, r
 	vertexStart := mb.meshBuilder.VertexOffset()
 	mb.meshBuilder.Vertex().Coord(0.0, 1.0, 0.0)  // 0. top center
 	mb.meshBuilder.Vertex().Coord(0.0, -1.0, 0.0) // 1. bottom center
-	for i := 0; i < segments; i++ {               // top circle from 2 to 2+segments-1
+	for i := range segments {                     // top circle from 2 to 2+segments-1
 		angle := sprec.Degrees(360.0 * (float32(i) / float32(segments)))
 		mb.meshBuilder.Vertex().Coord(sprec.Cos(angle), 1.0, sprec.Sin(angle))
 	}
-	for i := 0; i < segments; i++ { // bottom circle from 2+segments to 2+segments*2-1
+	for i := range segments { // bottom circle from 2+segments to 2+segments*2-1
 		angle := sprec.Degrees(360.0 * (float32(i) / float32(segments)))
 		mb.meshBuilder.Vertex().Coord(sprec.Cos(angle), -1.0, sprec.Sin(angle))
 	}
 
 	indexStart := mb.meshBuilder.IndexOffset()
 	// top circle
-	for i := uint32(0); i < uint32(segments); i++ {
+	for i := range uint32(segments) {
 		a := vertexStart + 0 // center
 		b := vertexStart + 2 + i
 		c := vertexStart + 2 + ((i + 1) % uint32(segments))
 		mb.meshBuilder.IndexTriangle(a, c, b)
 	}
 	// bottom circle
-	for i := uint32(0); i < uint32(segments); i++ {
+	for i := range uint32(segments) {
 		a := vertexStart + 1 // center
 		b := vertexStart + 2 + uint32(segments) + i
 		c := vertexStart + 2 + uint32(segments) + ((i + 1) % uint32(segments))
 		mb.meshBuilder.IndexTriangle(a, b, c)
 	}
 	// side
-	for i := uint32(0); i < uint32(segments); i++ {
+	for i := range uint32(segments) {
 		a := vertexStart + 2 + i
 		b := vertexStart + 2 + ((i + 1) % uint32(segments))
 		c := vertexStart + 2 + uint32(segments) + i
@@ -265,21 +265,21 @@ func (mb SolidShapeBuilder) Cone(position sprec.Vec3, rotation sprec.Quat, radiu
 	vertexStart := mb.meshBuilder.VertexOffset()
 	mb.meshBuilder.Vertex().Coord(0.0, 1.0, 0.0)  // 0. top center
 	mb.meshBuilder.Vertex().Coord(0.0, -1.0, 0.0) // 1. bottom center
-	for i := 0; i < segments; i++ {               // bottom circle from 2 to 2+segments-1
+	for i := range segments {                     // bottom circle from 2 to 2+segments-1
 		angle := sprec.Degrees(360.0 * (float32(i) / float32(segments)))
 		mb.meshBuilder.Vertex().Coord(sprec.Cos(angle), -1.0, sprec.Sin(angle))
 	}
 
 	indexStart := mb.meshBuilder.IndexOffset()
 	// bottom circle
-	for i := uint32(0); i < uint32(segments); i++ {
+	for i := range uint32(segments) {
 		a := vertexStart + 1 // center
 		b := vertexStart + 2 + i
 		c := vertexStart + 2 + ((i + 1) % uint32(segments))
 		mb.meshBuilder.IndexTriangle(a, b, c)
 	}
 	// side
-	for i := uint32(0); i < uint32(segments); i++ {
+	for i := range uint32(segments) {
 		a := vertexStart + 0
 		b := vertexStart + 2 + i
 		c := vertexStart + 2 + ((i + 1) % uint32(segments))
@@ -309,7 +309,7 @@ func (mb SolidShapeBuilder) Sphere(position sprec.Vec3, radius float32, segments
 	vertexStart := mb.meshBuilder.VertexOffset()
 	mb.meshBuilder.Vertex().Coord(0.0, 1.0, 0.0)  // 0. top center
 	mb.meshBuilder.Vertex().Coord(0.0, -1.0, 0.0) // 1. bottom center
-	for x := 0; x < hAngleCount; x++ {
+	for x := range hAngleCount {
 		hAngle := sprec.Degrees(360.0 * (float32(x) / float32(hAngleCount)))
 		hCos := sprec.Cos(hAngle)
 		hSin := sprec.Sin(hAngle)
@@ -322,7 +322,7 @@ func (mb SolidShapeBuilder) Sphere(position sprec.Vec3, radius float32, segments
 	}
 
 	indexStart := mb.meshBuilder.IndexOffset()
-	for x := 0; x < hAngleCount; x++ {
+	for x := range hAngleCount {
 		left := x % hAngleCount
 		right := (x + 1) % hAngleCount
 		leftOffset := uint32(left * (vAngleCount - 2))

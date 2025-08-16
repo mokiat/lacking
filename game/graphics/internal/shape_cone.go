@@ -20,7 +20,7 @@ func CreateConeShape(api render.API) *Shape {
 	vertexData := make([]byte, vertexCount*vertexSize)
 	vertexPlotter := blob.NewPlotter(vertexData)
 	vertexPlotter.PlotSPVec3(sprec.NewVec3(0.0, 1.0, 0.0)) // top
-	for s := 0; s < slices; s++ {
+	for s := range slices {
 		angle := sprec.Radians(2 * sprec.Pi * (float32(s) / float32(slices)))
 		cs := sprec.Cos(angle)
 		sn := sprec.Sin(angle)
