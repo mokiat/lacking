@@ -87,7 +87,7 @@ func (s *valueScope) Context() *ui.Context {
 	return s.parent.Context()
 }
 
-func (s *valueScope) Value(key interface{}) interface{} {
+func (s *valueScope) Value(key any) any {
 	if s.key == key {
 		return s.value
 	}
@@ -117,7 +117,7 @@ func (s *contextScope) Context() *ui.Context {
 	return s.ctx
 }
 
-func (s *contextScope) Value(key interface{}) interface{} {
+func (s *contextScope) Value(key any) any {
 	if s.parent == nil {
 		return nil
 	}

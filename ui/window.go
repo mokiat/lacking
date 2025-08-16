@@ -321,10 +321,7 @@ func (w *windowHandler) OnRender() {
 	w.checkMouseLeaveEnter(w.oldMousePosition)
 
 	currentTime := time.Now()
-	elapsedTime := currentTime.Sub(w.lastRender)
-	if elapsedTime > time.Second {
-		elapsedTime = time.Second
-	}
+	elapsedTime := max(0, min(time.Second, currentTime.Sub(w.lastRender)))
 	w.lastRender = currentTime
 
 	if w.size.Empty() {

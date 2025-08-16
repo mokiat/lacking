@@ -39,7 +39,7 @@ type MouseEvent struct {
 	Modifiers KeyModifierSet
 
 	// Payload contains the data that was dropped.
-	Payload interface{}
+	Payload any
 }
 
 // Position is a helper function that returns the position of the event

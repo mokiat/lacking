@@ -3,7 +3,7 @@ package ui
 // Essence represents the behavior that is attached to an Element.
 // For example, the actual value behind the interface could be a
 // specific UI control and/or a handler.
-type Essence interface{}
+type Essence any
 
 // ElementResizeHandler is a type of ElementHandler that can be
 // used to receive events when an Element has been resized.

@@ -93,14 +93,14 @@ func New(component Component, setupFn func()) Instance {
 // Your data should be comparable in order to enable optimizations
 // done by the framework. If you'd like to pass functions, in case of
 // callbacks, they can be passed through the callback data.
-func WithData(data interface{}) {
+func WithData(data any) {
 	instanceCtx.instance.setData(data)
 }
 
 // XWithData is a helper function that resembles WithData but does nothing.
 // This allows one to experiment during development without having to comment
 // out large sections of code and deal with compilation issues.
-func XWithData(data interface{}) {}
+func XWithData(data any) {}
 
 // WithLayoutData specifies the layout data to be passed to the
 // component during instantiation.
@@ -111,7 +111,7 @@ func XWithData(data interface{}) {}
 //
 // Your layout data should be comparable in order to enable optimizations
 // done by the framework.
-func WithLayoutData(layoutData interface{}) {
+func WithLayoutData(layoutData any) {
 	instanceCtx.instance.setLayoutData(layoutData)
 }
 
@@ -119,7 +119,7 @@ func WithLayoutData(layoutData interface{}) {
 // but does nothing.
 // This allows one to experiment during development without having to comment
 // out large sections of code and deal with compilation issues.
-func XWithLayoutData(layoutData interface{}) {}
+func XWithLayoutData(layoutData any) {}
 
 // WithCallbackData specifies the callback data to be passed to the
 // component during instantiation.
@@ -130,7 +130,7 @@ func XWithLayoutData(layoutData interface{}) {}
 // As callback data is expected to be a struct of function fields,
 // they are not comparable in Go and as such cannot follow the
 // lifecycle of data or layout data.
-func WithCallbackData(callbackData interface{}) {
+func WithCallbackData(callbackData any) {
 	instanceCtx.instance.setCallbackData(callbackData)
 }
 
@@ -138,7 +138,7 @@ func WithCallbackData(callbackData interface{}) {
 // but does nothing.
 // This allows one to experiment during development without having to comment
 // out large sections of code and deal with compilation issues.
-func XWithCallbackData(callbackData interface{}) {}
+func XWithCallbackData(callbackData any) {}
 
 // WithScope attaches a custom Scope to this component. Any child components
 // will inherit the Scope unless overridden by another call to WithScope.
