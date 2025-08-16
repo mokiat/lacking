@@ -655,7 +655,7 @@ func BuildModelResource(gltfDoc *gltf.Document, forceCollision bool) (*mdl.Model
 					)
 					continue
 				}
-				for i := 0; i < len(timestamps); i++ {
+				for i := range len(timestamps) {
 					binding.AddTranslationKeyframe(mdl.TranslationKeyframe{
 						Timestamp: timestamps[i],
 						Value:     translations[i],
@@ -671,7 +671,7 @@ func BuildModelResource(gltfDoc *gltf.Document, forceCollision bool) (*mdl.Model
 					)
 					continue
 				}
-				for i := 0; i < len(timestamps); i++ {
+				for i := range len(timestamps) {
 					binding.AddRotationKeyframe(mdl.RotationKeyframe{
 						Timestamp: timestamps[i],
 						Value:     rotations[i],
@@ -687,7 +687,7 @@ func BuildModelResource(gltfDoc *gltf.Document, forceCollision bool) (*mdl.Model
 					)
 					continue
 				}
-				for i := 0; i < len(timestamps); i++ {
+				for i := range len(timestamps) {
 					binding.AddScaleKeyframe(mdl.ScaleKeyframe{
 						Timestamp: timestamps[i],
 						Value:     scales[i],

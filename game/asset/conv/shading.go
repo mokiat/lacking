@@ -229,7 +229,7 @@ func (c *ShadingConverter) convertSamplers(samplers map[string]*mdl.Sampler) ([]
 	return bindings, nil
 }
 
-func (c *ShadingConverter) convertProperties(properties map[string]interface{}) ([]dto.PropertyBinding, error) {
+func (c *ShadingConverter) convertProperties(properties map[string]any) ([]dto.PropertyBinding, error) {
 	bindings := make([]dto.PropertyBinding, 0, len(properties))
 	for name, value := range properties {
 		var data gblob.LittleEndianBlock
