@@ -87,11 +87,10 @@ type Result struct {
 // Each invokes the callback function for each entity in this result set.
 //
 // While less elegant than Iter, it does not incur unnecessary allocations.
-func (r *Result) Each(cb func(Entity)) {
+func (r *Result) Each(cb func(EntityID)) {
 	for entityIndex := range r.entityMask.ActiveIter() {
 		handle := r.scene.handles[entityIndex]
-		cb(Entity{
-			scene:    r.scene,
+		cb(EntityID{
 			index:    entityIndex,
 			revision: handle.revision,
 		})
@@ -99,16 +98,15 @@ func (r *Result) Each(cb func(Entity)) {
 }
 
 // Iter returns an iterator over the entities in this result set.
-func (r *Result) Iter() iter.Seq[Entity] {
-	return func(yield func(Entity) bool) {
+func (r *Result) Iter() iter.Seq[EntityID] {
+	return func(yield func(EntityID) bool) {
 		for entityIndex := range r.entityMask.ActiveIter() {
 			handle := r.scene.handles[entityIndex]
-			entity := Entity{
-				scene:    r.scene,
+			entityID := EntityID{
 				index:    entityIndex,
 				revision: handle.revision,
 			}
-			if !yield(entity) {
+			if !yield(entityID) {
 				return
 			}
 		}

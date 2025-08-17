@@ -62,7 +62,7 @@ func BenchmarkQueryDense(b *testing.B) {
 			ecs.HasComponent(nameComponents),
 			ecs.HasComponent(ageComponents),
 		)
-		result.Each(func(entity ecs.Entity) {
+		result.Each(func(entity ecs.EntityID) {
 			obj := FakeType{
 				NameComponent: nameComponents.Ref(entity),
 				AgeComponent:  ageComponents.Ref(entity),
@@ -105,7 +105,7 @@ func BenchmarkQuerySparse(b *testing.B) {
 			ecs.HasComponent(nameComponents),
 			ecs.HasComponent(ageComponents),
 		)
-		result.Each(func(entity ecs.Entity) {
+		result.Each(func(entity ecs.EntityID) {
 			obj := FakeType{
 				NameComponent: nameComponents.Ref(entity),
 				AgeComponent:  ageComponents.Ref(entity),
@@ -148,7 +148,7 @@ func BenchmarkQueryTiny(b *testing.B) {
 			ecs.HasComponent(nameComponents),
 			ecs.HasComponent(ageComponents),
 		)
-		result.Each(func(entity ecs.Entity) {
+		result.Each(func(entity ecs.EntityID) {
 			obj := FakeType{
 				NameComponent: nameComponents.Ref(entity),
 				AgeComponent:  ageComponents.Ref(entity),

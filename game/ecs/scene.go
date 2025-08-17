@@ -59,7 +59,7 @@ func (s *Scene) SubscribeDelete(callback DeleteCallback) *DeleteSubscription {
 }
 
 // CreateEntity creates a new entity in this scene.
-func (s *Scene) CreateEntity() Entity {
+func (s *Scene) CreateEntity() EntityID {
 	s.freeRevision++
 	index := s.freeHandleIndices.Pop()
 	s.entityMask.Set(index, true)
@@ -68,8 +68,7 @@ func (s *Scene) CreateEntity() Entity {
 		revision:          s.freeRevision,
 		isPendingDeletion: false,
 	}
-	return Entity{
-		scene:    s,
+	return EntityID{
 		index:    index,
 		revision: s.freeRevision,
 	}
@@ -77,15 +76,15 @@ func (s *Scene) CreateEntity() Entity {
 
 // HasEntity returns whether the specified entity is still valid and
 // part of this scene (i.e. it has not been marked for deletion and purged).
-func (s *Scene) HasEntity(entity Entity) bool {
-	handle := &s.handles[entity.index]
-	return handle.revision == entity.revision
+func (s *Scene) HasEntity(entityID EntityID) bool {
+	handle := &s.handles[entityID.index]
+	return handle.revision == entityID.revision
 }
 
 // DeleteEntity marks an entity for deletion.
-func (s *Scene) DeleteEntity(entity Entity) {
-	handle := &s.handles[entity.index]
-	if handle.revision != entity.revision {
+func (s *Scene) DeleteEntity(entityID EntityID) {
+	handle := &s.handles[entityID.index]
+	if handle.revision != entityID.revision {
 		return
 	}
 	handle.isPendingDeletion = true
@@ -118,8 +117,7 @@ func (s *Scene) Query(conditions ...Condition) *Result {
 func (s *Scene) Purge() {
 	for entityIndex := range s.entityMask.ActiveIter() {
 		if handle := &s.handles[entityIndex]; handle.isPendingDeletion {
-			s.notifyDelete(Entity{
-				scene:    s,
+			s.notifyDelete(EntityID{
 				index:    entityIndex,
 				revision: handle.revision,
 			})
@@ -141,32 +139,32 @@ func (s *Scene) newComponentType() componentMask {
 	return result
 }
 
-func (s *Scene) assignComponent(entity Entity, mask componentMask) {
-	handle := &s.handles[entity.index]
-	if handle.revision != entity.revision {
+func (s *Scene) assignComponent(entityID EntityID, mask componentMask) {
+	handle := &s.handles[entityID.index]
+	if handle.revision != entityID.revision {
 		panic("cannot add component to deleted entity")
 	}
 	handle.components |= mask
 }
 
-func (s *Scene) removeComponent(entity Entity, mask componentMask) {
-	handle := &s.handles[entity.index]
-	if handle.revision != entity.revision {
+func (s *Scene) removeComponent(entityID EntityID, mask componentMask) {
+	handle := &s.handles[entityID.index]
+	if handle.revision != entityID.revision {
 		panic("cannot remove component from deleted entity")
 	}
 	handle.components &= ^mask
 }
 
-func (s *Scene) hasComponent(entity Entity, mask componentMask) bool {
-	handle := &s.handles[entity.index]
-	if handle.revision != entity.revision {
+func (s *Scene) hasComponent(entityID EntityID, mask componentMask) bool {
+	handle := &s.handles[entityID.index]
+	if handle.revision != entityID.revision {
 		panic("cannot reference component of deleted entity")
 	}
 	return (handle.components & mask) == mask
 }
 
-func (s *Scene) notifyDelete(entity Entity) {
+func (s *Scene) notifyDelete(entityID EntityID) {
 	for callback := range s.deleteSubscriptions.CallbacksIter() {
-		callback(entity)
+		callback(entityID)
 	}
 }

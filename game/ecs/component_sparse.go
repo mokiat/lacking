@@ -12,6 +12,7 @@ import (
 // attached to an entity.
 func NewSparseComponentSet[T any](scene *Scene) *SparseComponentSet[T] {
 	result := &SparseComponentSet[T]{
+		scene:   scene,
 		mask:    scene.newComponentType(),
 		list:    mem.NewSparseList[T](1024),
 		mapping: make([]mem.SparseID, scene.MaxEntityCount()),
@@ -23,40 +24,38 @@ func NewSparseComponentSet[T any](scene *Scene) *SparseComponentSet[T] {
 var _ ComponentSet[any] = (*SparseComponentSet[any])(nil)
 
 type SparseComponentSet[T any] struct {
+	scene   *Scene
 	mask    componentMask
 	list    *mem.SparseList[T]
 	mapping []mem.SparseID
 }
 
-func (s *SparseComponentSet[T]) Set(entity Entity, value T) {
-	scene := entity.scene
-	scene.assignComponent(entity, s.mask)
+func (s *SparseComponentSet[T]) Set(entityID EntityID, value T) {
+	s.scene.assignComponent(entityID, s.mask)
 
-	if id := s.mapping[entity.index]; s.list.Has(id) {
+	if id := s.mapping[entityID.index]; s.list.Has(id) {
 		ref := s.list.Get(id)
 		*ref = value
 	} else {
 		id, ref := s.list.New()
 		*ref = value
-		s.mapping[entity.index] = id
+		s.mapping[entityID.index] = id
 	}
 }
 
-func (s *SparseComponentSet[T]) Unset(entity Entity) {
-	scene := entity.scene
-	scene.removeComponent(entity, s.mask)
+func (s *SparseComponentSet[T]) Unset(entityID EntityID) {
+	s.scene.removeComponent(entityID, s.mask)
 
-	id := s.mapping[entity.index]
+	id := s.mapping[entityID.index]
 	s.list.Delete(id)
 }
 
-func (s *SparseComponentSet[T]) Ref(entity Entity) *T {
-	scene := entity.scene
-	if !scene.hasComponent(entity, s.mask) {
+func (s *SparseComponentSet[T]) Ref(entityID EntityID) *T {
+	if !s.scene.hasComponent(entityID, s.mask) {
 		return nil
 	}
 
-	id := s.mapping[entity.index]
+	id := s.mapping[entityID.index]
 	return s.list.Get(id)
 }
 

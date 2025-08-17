@@ -2,26 +2,11 @@ package ecs
 
 import "iter"
 
-// Entity represents an ECS entity. It an abstract handle to which a number
-// of components can be attached and removed.
-type Entity struct {
-	scene    *Scene
+// EntityID represents a handle to an ECS entity. The handle may be invalid
+// if the entity has since been deleted.
+type EntityID struct {
 	index    uint32
 	revision uint32
-}
-
-// Exists returns whether this entity is still present in the Scene.
-func (e Entity) Exists() bool {
-	return e.scene != nil && e.scene.HasEntity(e)
-}
-
-// Delete marks this entity for deletion.
-//
-// Once the scene has been Purged, this handle will become invalid and Exists
-// will start returning false. In the meantime, it will still be returned
-// from queries, unless explicitly requested not to.
-func (e Entity) Delete() {
-	e.scene.DeleteEntity(e)
 }
 
 type entityHandle struct {

@@ -12,6 +12,7 @@ import (
 // ever attached to an entity.
 func NewTinyComponentSet[T any](scene *Scene) *TinyComponentSet[T] {
 	result := &TinyComponentSet[T]{
+		scene:   scene,
 		mask:    scene.newComponentType(),
 		list:    mem.NewSparseList[T](16),
 		mapping: make(map[uint32]mem.SparseID),
@@ -23,44 +24,42 @@ func NewTinyComponentSet[T any](scene *Scene) *TinyComponentSet[T] {
 var _ ComponentSet[any] = (*TinyComponentSet[any])(nil)
 
 type TinyComponentSet[T any] struct {
+	scene   *Scene
 	mask    componentMask
 	list    *mem.SparseList[T]
 	mapping map[uint32]mem.SparseID
 }
 
-func (s *TinyComponentSet[T]) Set(entity Entity, value T) {
-	s.Unset(entity)
+func (s *TinyComponentSet[T]) Set(entityID EntityID, value T) {
+	s.Unset(entityID)
 
-	scene := entity.scene
-	scene.assignComponent(entity, s.mask)
+	s.scene.assignComponent(entityID, s.mask)
 
-	if id, ok := s.mapping[entity.index]; ok {
+	if id, ok := s.mapping[entityID.index]; ok {
 		ref := s.list.Get(id)
 		*ref = value
 	} else {
 		id, ref := s.list.New()
 		*ref = value
-		s.mapping[entity.index] = id
+		s.mapping[entityID.index] = id
 	}
 }
 
-func (s *TinyComponentSet[T]) Unset(entity Entity) {
-	scene := entity.scene
-	scene.removeComponent(entity, s.mask)
+func (s *TinyComponentSet[T]) Unset(entityID EntityID) {
+	s.scene.removeComponent(entityID, s.mask)
 
-	if id, ok := s.mapping[entity.index]; ok {
+	if id, ok := s.mapping[entityID.index]; ok {
 		s.list.Delete(id)
-		delete(s.mapping, entity.index)
+		delete(s.mapping, entityID.index)
 	}
 }
 
-func (s *TinyComponentSet[T]) Ref(entity Entity) *T {
-	scene := entity.scene
-	if !scene.hasComponent(entity, s.mask) {
+func (s *TinyComponentSet[T]) Ref(entityID EntityID) *T {
+	if !s.scene.hasComponent(entityID, s.mask) {
 		return nil
 	}
 
-	id, ok := s.mapping[entity.index]
+	id, ok := s.mapping[entityID.index]
 	if !ok {
 		return nil
 	}

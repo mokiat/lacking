@@ -12,6 +12,7 @@ import (
 // common and are likely to be attached to the majority of entities.
 func NewDenseComponentSet[T any](scene *Scene) *DenseComponentSet[T] {
 	return &DenseComponentSet[T]{
+		scene:      scene,
 		mask:       scene.newComponentType(),
 		components: make([]T, scene.MaxEntityCount()),
 	}
@@ -20,31 +21,29 @@ func NewDenseComponentSet[T any](scene *Scene) *DenseComponentSet[T] {
 var _ ComponentSet[any] = (*DenseComponentSet[any])(nil)
 
 type DenseComponentSet[T any] struct {
+	scene      *Scene
 	mask       componentMask
 	components []T
 }
 
-func (s *DenseComponentSet[T]) Set(entity Entity, value T) {
-	scene := entity.scene
-	scene.assignComponent(entity, s.mask)
+func (s *DenseComponentSet[T]) Set(entityID EntityID, value T) {
+	s.scene.assignComponent(entityID, s.mask)
 
-	s.components[entity.index] = value
+	s.components[entityID.index] = value
 }
 
-func (s *DenseComponentSet[T]) Unset(entity Entity) {
-	scene := entity.scene
-	scene.removeComponent(entity, s.mask)
+func (s *DenseComponentSet[T]) Unset(entityID EntityID) {
+	s.scene.removeComponent(entityID, s.mask)
 
-	s.components[entity.index] = gog.Zero[T]()
+	s.components[entityID.index] = gog.Zero[T]()
 }
 
-func (s *DenseComponentSet[T]) Ref(entity Entity) *T {
-	scene := entity.scene
-	if !scene.hasComponent(entity, s.mask) {
+func (s *DenseComponentSet[T]) Ref(entityID EntityID) *T {
+	if !s.scene.hasComponent(entityID, s.mask) {
 		return nil
 	}
 
-	return &s.components[entity.index]
+	return &s.components[entityID.index]
 }
 
 func (s *DenseComponentSet[T]) Mask() componentMask {
