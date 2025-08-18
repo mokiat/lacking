@@ -109,10 +109,14 @@ func (n *BlendPairNode) SetFraction(fraction float64) {
 
 	if n.firstSynchronized {
 		n.first.SetFraction(n.progress)
+	} else {
+		n.first.SetFraction(n.first.Fraction())
 	}
 
 	if n.secondSynchronized {
 		n.second.SetFraction(n.progress)
+	} else {
+		n.second.SetFraction(n.second.Fraction())
 	}
 }
 
