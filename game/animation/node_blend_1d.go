@@ -53,16 +53,6 @@ func (n *Blend1DNode) SetCoord(coord float64) {
 	n.lower, n.upper, n.factor = n.resolveCoord(coord)
 }
 
-// Reset clears any update delta information, so that new interpolations can
-// be tracked.
-func (n *Blend1DNode) Reset() {
-	n.SetFraction(n.Fraction())
-
-	for _, entry := range n.entries {
-		entry.Node.Reset()
-	}
-}
-
 // Rate returns the fraction of the animation length that advances each
 // second.
 func (n *Blend1DNode) Rate() float64 {
@@ -118,19 +108,11 @@ func (n *Blend1DNode) BoneTransform(bone string) NodeTransform {
 	return BlendNodeTransforms(lowerTransform, upperTransform, n.factor)
 }
 
-// BoneTransformDelta returns the transformation that was applied to the
-// specified bone since the last reset.
-func (n *Blend1DNode) BoneTransformDelta(bone string) NodeTransform {
-	lowerTransform := n.lower.BoneTransformDelta(bone)
-	upperTransform := n.upper.BoneTransformDelta(bone)
-	return BlendNodeTransforms(lowerTransform, upperTransform, n.factor)
-}
-
-// BoneTransformInterpolation returns the transformation of the specified bone
-// at the specified interpolation fraction.
-func (n *Blend1DNode) BoneTransformInterpolation(bone string, fraction float64) NodeTransform {
-	lowerTransform := n.lower.BoneTransformInterpolation(bone, fraction)
-	upperTransform := n.upper.BoneTransformInterpolation(bone, fraction)
+// BoneDeltaTransform returns the transformation that the bone will experience
+// throughout the next delta interval. This is used for root motion.
+func (n *Blend1DNode) BoneDeltaTransform(bone string, delta float64) NodeTransform {
+	lowerTransform := n.lower.BoneDeltaTransform(bone, delta)
+	upperTransform := n.upper.BoneDeltaTransform(bone, delta)
 	return BlendNodeTransforms(lowerTransform, upperTransform, n.factor)
 }
 

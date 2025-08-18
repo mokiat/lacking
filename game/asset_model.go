@@ -256,12 +256,21 @@ func (m *Model) AnimatedNodes() []*hierarchy.Node {
 	return result.Items()
 }
 
-func (m *Model) BindAnimation(animationNode animation.Node) {
-	for _, node := range m.AnimatedNodes() {
+func (m *Model) BindAnimation(root animation.Node) *animation.Player {
+	animatedNodes := m.AnimatedNodes()
+
+	boneNames := make([]string, len(animatedNodes))
+	for i, node := range animatedNodes {
+		boneNames[i] = node.Name()
+	}
+
+	player := animation.NewPlayer(root, boneNames)
+	for _, node := range animatedNodes {
 		node.SetSource(AnimationNodeSource{
-			Node: animationNode,
+			Player: player,
 		})
 	}
+	return player
 }
 
 // InstantiateModel instantiates a model in the given scene based on the

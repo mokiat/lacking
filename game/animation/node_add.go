@@ -16,13 +16,6 @@ type AddNode struct {
 
 var _ Node = (*AddNode)(nil)
 
-// Reset clears any update delta information, so that new interpolations can
-// be tracked.
-func (n *AddNode) Reset() {
-	n.primary.Reset()
-	n.secondary.Reset()
-}
-
 // Rate returns the fraction of the animation length that advances each
 // second.
 func (n *AddNode) Rate() float64 {
@@ -61,22 +54,14 @@ func (n *AddNode) Advance(seconds, synchronizationRate float64) {
 // BoneTransformInterpolation method should be used instead.
 func (n *AddNode) BoneTransform(bone string) NodeTransform {
 	firstTransform := n.primary.BoneTransform(bone)
-	secondTransform := n.primary.BoneTransform(bone)
+	secondTransform := n.secondary.BoneTransform(bone)
 	return AddNodeTransforms(firstTransform, secondTransform)
 }
 
-// BoneTransformDelta returns the transformation that was applied to the
-// specified bone since the last reset.
-func (n *AddNode) BoneTransformDelta(bone string) NodeTransform {
-	firstTransform := n.primary.BoneTransformDelta(bone)
-	secondTransform := n.secondary.BoneTransformDelta(bone)
-	return AddNodeTransforms(firstTransform, secondTransform)
-}
-
-// BoneTransformInterpolation returns the transformation of the specified bone
-// at the specified interpolation fraction.
-func (n *AddNode) BoneTransformInterpolation(bone string, fraction float64) NodeTransform {
-	firstTransform := n.primary.BoneTransformInterpolation(bone, fraction)
-	secondTransform := n.secondary.BoneTransformInterpolation(bone, fraction)
+// BoneDeltaTransform returns the transformation that the bone will experience
+// throughout the next delta interval. This is used for root motion.
+func (n *AddNode) BoneDeltaTransform(bone string, delta float64) NodeTransform {
+	firstTransform := n.primary.BoneDeltaTransform(bone, delta)
+	secondTransform := n.secondary.BoneDeltaTransform(bone, delta)
 	return AddNodeTransforms(firstTransform, secondTransform)
 }

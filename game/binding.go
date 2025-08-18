@@ -39,11 +39,11 @@ func (s BodyNodeSource) Release() {
 }
 
 type AnimationNodeSource struct {
-	Node animation.Node
+	Player *animation.Player
 }
 
 func (s AnimationNodeSource) ApplyTo(node *hierarchy.Node, fraction float64) {
-	transform := s.Node.BoneTransformInterpolation(node.Name(), fraction)
+	transform := s.Player.BoneTransform(node.Name(), fraction)
 	if transform.Translation.Specified {
 		node.SetPosition(transform.Translation.Value)
 	}

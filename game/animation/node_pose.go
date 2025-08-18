@@ -54,14 +54,8 @@ func (n *PoseNode) BoneTransform(bone string) NodeTransform {
 	return n.source.BoneTransformAt(bone, n.timestamp)
 }
 
-// BoneTransformDelta returns the transformation that was applied to the
-// specified bone since the last reset.
-func (n *PoseNode) BoneTransformDelta(bone string) NodeTransform {
+// BoneDeltaTransform returns the transformation that the bone will experience
+// throughout the next delta interval. This is used for root motion.
+func (n *PoseNode) BoneDeltaTransform(bone string, delta float64) NodeTransform {
 	return NodeTransform{}
-}
-
-// BoneTransformInterpolation returns the transformation of the specified bone
-// at the specified interpolation fraction.
-func (n *PoseNode) BoneTransformInterpolation(bone string, fraction float64) NodeTransform {
-	return n.source.BoneTransformAt(bone, n.timestamp)
 }

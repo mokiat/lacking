@@ -16,13 +16,6 @@ type DiffNode struct {
 
 var _ Node = (*DiffNode)(nil)
 
-// Reset clears any update delta information, so that new interpolations can
-// be tracked.
-func (n *DiffNode) Reset() {
-	n.primary.Reset()
-	n.secondary.Reset()
-}
-
 // Rate returns the fraction of the animation length that advances each
 // second.
 func (n *DiffNode) Rate() float64 {
@@ -66,18 +59,10 @@ func (n *DiffNode) BoneTransform(bone string) NodeTransform {
 	return DiffNodeTransforms(firstTransform, secondTransform)
 }
 
-// BoneTransformDelta returns the transformation that was applied to the
-// specified bone since the last reset.
-func (n *DiffNode) BoneTransformDelta(bone string) NodeTransform {
-	firstTransform := n.primary.BoneTransformDelta(bone)
-	secondTransform := n.secondary.BoneTransformDelta(bone)
-	return DiffNodeTransforms(firstTransform, secondTransform)
-}
-
-// BoneTransformInterpolation returns the transformation of the specified bone
-// at the specified interpolation fraction.
-func (n *DiffNode) BoneTransformInterpolation(bone string, fraction float64) NodeTransform {
-	firstTransform := n.primary.BoneTransformInterpolation(bone, fraction)
-	secondTransform := n.secondary.BoneTransformInterpolation(bone, fraction)
+// BoneDeltaTransform returns the transformation that the bone will experience
+// throughout the next delta interval. This is used for root motion.
+func (n *DiffNode) BoneDeltaTransform(bone string, delta float64) NodeTransform {
+	firstTransform := n.primary.BoneDeltaTransform(bone, delta)
+	secondTransform := n.primary.BoneDeltaTransform(bone, delta)
 	return DiffNodeTransforms(firstTransform, secondTransform)
 }

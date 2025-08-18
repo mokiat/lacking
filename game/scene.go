@@ -68,11 +68,10 @@ func newScene(engine *Engine, info SceneInfo) *Scene {
 		physicsScene: physicsScene,
 		gfxScene:     gfxScene,
 
-		fixedTimestep: fixedTimestep,
 		timeSegmenter: timestep.NewSegmenter(fixedTimestep),
 
 		root:           hierarchy.NewNode(), // TODO: Make this node stationary
-		animationTrees: ds.NewList[animation.Node](0),
+		animationTrees: ds.NewList[*animation.Player](0),
 
 		fixedUpdateSubscriptions:   timestep.NewUpdateSubscriptionSet(),
 		interpolationSubscriptions: timestep.NewInterpolationSubscriptionSet(),
@@ -90,11 +89,10 @@ type Scene struct {
 	physicsScene *physics.Scene
 	gfxScene     *graphics.Scene
 
-	fixedTimestep time.Duration
 	timeSegmenter *timestep.Segmenter
 
 	root           *hierarchy.Node
-	animationTrees *ds.List[animation.Node]
+	animationTrees *ds.List[*animation.Player]
 
 	fixedUpdateSubscriptions   *timestep.UpdateSubscriptionSet
 	interpolationSubscriptions *timestep.InterpolationSubscriptionSet
@@ -190,14 +188,14 @@ func (s *Scene) CreateNode() *hierarchy.Node {
 	return result
 }
 
-// PlayAnimationTree adds the provided animation tree to the scene.
-func (s *Scene) PlayAnimationTree(tree animation.Node) {
-	s.animationTrees.Add(tree)
+// PlayAnimation adds the provided animation player to the scene.
+func (s *Scene) PlayAnimation(player *animation.Player) {
+	s.animationTrees.Add(player)
 }
 
-// StopAnimationTree removes the provided animation tree from the scene.
-func (s *Scene) StopAnimationTree(tree animation.Node) {
-	s.animationTrees.Remove(tree)
+// StopAnimationTree removes the provided animation player from the scene.
+func (s *Scene) StopAnimation(player *animation.Player) {
+	s.animationTrees.Remove(player)
 }
 
 // Update advances the scene by the provided time.
@@ -208,6 +206,15 @@ func (s *Scene) Update(elapsedTime time.Duration) {
 	}
 }
 
+// Render draws the scene to the provided viewport.
+func (s *Scene) Render(framebuffer render.Framebuffer, viewport graphics.Viewport) {
+	if s.gfxScene != nil {
+		renderSpan := metric.BeginRegion("render")
+		s.gfxScene.Render(framebuffer, viewport)
+		renderSpan.End()
+	}
+}
+
 func (s *Scene) doFixedUpdate(elapsedTime time.Duration) {
 	physicsSpan := metric.BeginRegion("physics")
 	if s.physicsScene != nil {
@@ -215,15 +222,15 @@ func (s *Scene) doFixedUpdate(elapsedTime time.Duration) {
 	}
 	physicsSpan.End()
 
-	animationSpan := metric.BeginRegion("anim")
-	s.updateAnimationTrees(elapsedTime)
-	animationSpan.End()
-
 	callbackSpan := metric.BeginRegion("fixed-cb")
 	s.fixedUpdateSubscriptions.Each(func(callback timestep.UpdateCallback) {
 		callback(elapsedTime)
 	})
 	callbackSpan.End()
+
+	animationSpan := metric.BeginRegion("anim")
+	s.updateAnimationTrees(elapsedTime)
+	animationSpan.End()
 
 	if s.ecsScene != nil {
 		s.ecsScene.Purge()
@@ -262,21 +269,8 @@ func (s *Scene) doUpdate(elapsedTime time.Duration) {
 	}
 }
 
-// Render draws the scene to the provided viewport.
-func (s *Scene) Render(framebuffer render.Framebuffer, viewport graphics.Viewport) {
-	if s.gfxScene != nil {
-		renderSpan := metric.BeginRegion("render")
-		s.gfxScene.Render(framebuffer, viewport)
-		renderSpan.End()
-	}
-}
-
 func (s *Scene) updateAnimationTrees(elapsedTime time.Duration) {
-	for _, tree := range s.animationTrees.Unbox() {
-		tree.Reset()
-	}
-	elapsedSeconds := elapsedTime.Seconds()
-	for _, tree := range s.animationTrees.Unbox() {
-		tree.Advance(elapsedSeconds, 1.0)
+	for _, player := range s.animationTrees.Unbox() {
+		player.Update(elapsedTime)
 	}
 }

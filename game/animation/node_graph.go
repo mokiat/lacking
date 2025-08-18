@@ -29,6 +29,7 @@ var _ Node = (*GraphNode[struct{}])(nil)
 
 // AddState registers a new animation state.
 func (n *GraphNode[T]) AddState(state T, animation Node) {
+	// TODO: Allow synchronization configuration.
 	n.animations[state] = animation
 }
 
@@ -37,6 +38,7 @@ func (n *GraphNode[T]) SetState(state T) {
 	n.fromState = state
 	n.toState = state
 	n.transitionFraction = 1.0
+	n.SetFraction(0.0)
 }
 
 // AddTransition registers a new state transition.
@@ -77,22 +79,6 @@ func (n *GraphNode[T]) TransitionFraction() float64 {
 // IsTransitioned returns whether the graph has transitioned to a stable state.
 func (n *GraphNode[T]) IsTransitioned() bool {
 	return n.fromState == n.toState
-}
-
-// Reset clears any update delta information, so that new interpolations can
-// be tracked.
-func (n *GraphNode[T]) Reset() {
-	n.SetFraction(n.Fraction())
-
-	for _, animation := range n.animations {
-		animation.Reset()
-	}
-
-	for _, transition := range n.transitions {
-		if animation, ok := transition.Animation.Unwrap(); ok {
-			animation.Reset()
-		}
-	}
 }
 
 // Rate returns the fraction of the animation length that advances each
@@ -183,40 +169,14 @@ func (n *GraphNode[T]) BoneTransform(bone string) NodeTransform {
 	return result
 }
 
-// BoneTransformDelta returns the transformation that was applied to the
-// specified bone since the last reset.
-func (n *GraphNode[T]) BoneTransformDelta(bone string) NodeTransform {
+// BoneDeltaTransform returns the transformation that the bone will experience
+// throughout the next delta interval. This is used for root motion.
+func (n *GraphNode[T]) BoneDeltaTransform(bone string, delta float64) NodeTransform {
 	fromNode := n.animations[n.fromState]
 	toNode := n.animations[n.toState]
-	fromTransform := fromNode.BoneTransformDelta(bone)
-	toTransform := toNode.BoneTransformDelta(bone)
-
-	result := BlendNodeTransforms(fromTransform, toTransform, n.transitionFraction)
-	if transition, ok := n.animatedTransition(); ok {
-		transitionNode := transition.Animation.Value
-		transitionTransform := transitionNode.BoneTransformDelta(bone)
-		blendFactor := transition.blendFactor(n.transitionFraction)
-		result = BlendNodeTransforms(result, transitionTransform, blendFactor)
-	}
-	return result
-}
-
-// BoneTransformInterpolation returns the transformation of the specified bone
-// at the specified interpolation fraction.
-func (n *GraphNode[T]) BoneTransformInterpolation(bone string, fraction float64) NodeTransform {
-	fromNode := n.animations[n.fromState]
-	toNode := n.animations[n.toState]
-	fromTransform := fromNode.BoneTransformInterpolation(bone, fraction)
-	toTransform := toNode.BoneTransformInterpolation(bone, fraction)
-
-	result := BlendNodeTransforms(fromTransform, toTransform, n.transitionFraction)
-	if transition, ok := n.animatedTransition(); ok {
-		transitionNode := transition.Animation.Value
-		transitionTransform := transitionNode.BoneTransformInterpolation(bone, fraction)
-		blendFactor := transition.blendFactor(n.transitionFraction)
-		result = BlendNodeTransforms(result, transitionTransform, blendFactor)
-	}
-	return result
+	fromTransform := fromNode.BoneDeltaTransform(bone, delta)
+	toTransform := toNode.BoneDeltaTransform(bone, delta)
+	return BlendNodeTransforms(fromTransform, toTransform, n.transitionFraction)
 }
 
 func (n *GraphNode[T]) animatedTransition() (GraphNodeTransition, bool) {

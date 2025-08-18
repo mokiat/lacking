@@ -37,12 +37,6 @@ func (n *OnceNode) Active() bool {
 	return n.active
 }
 
-// Reset clears any update delta information, so that new interpolations can
-// be tracked.
-func (n *OnceNode) Reset() {
-	n.delegate.Reset()
-}
-
 // Rate returns the fraction of the animation length that advances each
 // second.
 func (n *OnceNode) Rate() float64 {
@@ -90,20 +84,11 @@ func (n *OnceNode) BoneTransform(bone string) NodeTransform {
 	return n.delegate.BoneTransform(bone)
 }
 
-// BoneTransformDelta returns the transformation that was applied to the
-// specified bone since the last reset.
-func (n *OnceNode) BoneTransformDelta(bone string) NodeTransform {
+// BoneDeltaTransform returns the transformation that the bone will experience
+// throughout the next delta interval. This is used for root motion.
+func (n *OnceNode) BoneDeltaTransform(bone string, delta float64) NodeTransform {
 	if !n.active {
 		return NodeTransform{}
 	}
-	return n.delegate.BoneTransformDelta(bone)
-}
-
-// BoneTransformInterpolation returns the transformation of the specified bone
-// at the specified interpolation fraction.
-func (n *OnceNode) BoneTransformInterpolation(bone string, fraction float64) NodeTransform {
-	if !n.active {
-		return NodeTransform{}
-	}
-	return n.delegate.BoneTransformInterpolation(bone, fraction)
+	return n.delegate.BoneDeltaTransform(bone, delta)
 }

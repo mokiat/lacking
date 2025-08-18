@@ -30,12 +30,6 @@ func (n *TempoNode) SetSpeed(speed float64) *TempoNode {
 	return n
 }
 
-// Reset clears any update delta information, so that new interpolations can
-// be tracked.
-func (n *TempoNode) Reset() {
-	n.delegate.Reset()
-}
-
 // Rate returns the fraction of the animation length that advances each
 // second.
 func (n *TempoNode) Rate() float64 {
@@ -74,16 +68,10 @@ func (n *TempoNode) BoneTransform(bone string) NodeTransform {
 	return n.delegate.BoneTransform(bone)
 }
 
-// BoneTransformDelta returns the transformation that was applied to the
-// specified bone since the last reset.
-func (n *TempoNode) BoneTransformDelta(bone string) NodeTransform {
-	return n.delegate.BoneTransformDelta(bone)
-}
-
-// BoneTransformInterpolation returns the transformation of the specified bone
-// at the specified interpolation fraction.
-func (n *TempoNode) BoneTransformInterpolation(bone string, fraction float64) NodeTransform {
-	return n.delegate.BoneTransformInterpolation(bone, fraction)
+// BoneDeltaTransform returns the transformation that the bone will experience
+// throughout the next delta interval. This is used for root motion.
+func (n *TempoNode) BoneDeltaTransform(bone string, delta float64) NodeTransform {
+	return n.delegate.BoneDeltaTransform(bone, delta*n.speed)
 }
 
 // WithSpeed creates a new node that adjusts the speed of the underlying node.

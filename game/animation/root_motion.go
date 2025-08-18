@@ -20,8 +20,8 @@ type RootMotion struct {
 
 // DeltaTransform returns the transformation that occurred during the last
 // animation tick for the root bone.
-func (m *RootMotion) DeltaTransform() dprec.Mat4 {
-	deltaTransform := m.node.BoneTransformDelta(m.bone)
+func (m *RootMotion) DeltaTransform(delta float64) dprec.Mat4 {
+	deltaTransform := m.node.BoneDeltaTransform(m.bone, delta)
 	return dprec.TRSMat4(
 		deltaTransform.Translation.ValueOrDefault(dprec.ZeroVec3()),
 		deltaTransform.Rotation.ValueOrDefault(dprec.IdentityQuat()),

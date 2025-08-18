@@ -20,12 +20,6 @@ type MaskNode struct {
 
 var _ Node = (*MaskNode)(nil)
 
-// Reset clears any update delta information, so that new interpolations can
-// be tracked.
-func (n *MaskNode) Reset() {
-	n.delegate.Reset()
-}
-
 // Rate returns the fraction of the animation length that advances each
 // second.
 func (n *MaskNode) Rate() float64 {
@@ -67,20 +61,11 @@ func (n *MaskNode) BoneTransform(bone string) NodeTransform {
 	return n.delegate.BoneTransform(bone)
 }
 
-// BoneTransformDelta returns the transformation that was applied to the
-// specified bone since the last reset.
-func (n *MaskNode) BoneTransformDelta(bone string) NodeTransform {
+// BoneDeltaTransform returns the transformation that the bone will experience
+// throughout the next delta interval. This is used for root motion.
+func (n *MaskNode) BoneDeltaTransform(bone string, delta float64) NodeTransform {
 	if !n.selection(bone) {
 		return NodeTransform{}
 	}
-	return n.delegate.BoneTransformDelta(bone)
-}
-
-// BoneTransformInterpolation returns the transformation of the specified bone
-// at the specified interpolation fraction.
-func (n *MaskNode) BoneTransformInterpolation(bone string, fraction float64) NodeTransform {
-	if !n.selection(bone) {
-		return NodeTransform{}
-	}
-	return n.delegate.BoneTransformInterpolation(bone, fraction)
+	return n.delegate.BoneDeltaTransform(bone, delta)
 }

@@ -14,10 +14,6 @@ const (
 // Node represents an animation logic.
 type Node interface {
 
-	// Reset clears any update delta information, so that new interpolations can
-	// be tracked.
-	Reset()
-
 	// Rate returns the fraction of the animation length that advances each
 	// second (fraction per second).
 	Rate() float64
@@ -46,13 +42,9 @@ type Node interface {
 	// BoneTransformInterpolation method should be used instead.
 	BoneTransform(bone string) NodeTransform
 
-	// BoneTransformDelta returns the transformation that was applied to the
-	// specified bone since the last reset.
-	BoneTransformDelta(bone string) NodeTransform
-
-	// BoneTransformInterpolation returns the transformation of the specified bone
-	// at the specified interpolation fraction.
-	BoneTransformInterpolation(bone string, fraction float64) NodeTransform
+	// BoneDeltaTransform returns the transformation that the bone will experience
+	// throughout the next delta interval. This is used for root motion.
+	BoneDeltaTransform(bone string, delta float64) NodeTransform
 }
 
 func wrapFraction(fraction float64) float64 {
