@@ -8,7 +8,7 @@ require (
 	github.com/mokiat/gblob v0.5.0
 	github.com/mokiat/goexr v0.1.0
 	github.com/mokiat/gog v0.19.0
-	github.com/mokiat/gomath v0.14.0
+	github.com/mokiat/gomath v0.14.1
 	github.com/onsi/ginkgo/v2 v2.23.4
 	github.com/onsi/gomega v1.38.0
 	github.com/qmuntal/gltf v0.28.0
