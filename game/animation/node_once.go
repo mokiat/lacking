@@ -6,10 +6,9 @@ import "github.com/mokiat/gomath/dprec"
 // per user request.
 func NewOnceNode(primary, overlay Node) *OnceNode {
 	return &OnceNode{
-		primary:  primary,
-		overlay:  overlay,
-		progress: 0.0,
-		active:   false,
+		primary: primary,
+		overlay: overlay,
+		active:  false,
 	}
 }
 
@@ -17,10 +16,9 @@ func NewOnceNode(primary, overlay Node) *OnceNode {
 type OnceNode struct {
 	primary         Node
 	overlay         Node
-	progress        float64
+	remaining       float64
 	fadeInFraction  float64
 	fadeOutFraction float64
-	synchronized    bool
 	active          bool
 }
 
@@ -52,7 +50,7 @@ func (n *OnceNode) SetFadeOutFraction(fraction float64) {
 
 // Trigger rewinds and activates the animation to be played once.
 func (n *OnceNode) Trigger() *OnceNode {
-	n.progress = 0.0
+	n.remaining = 1.0
 	n.overlay.SetFraction(0.0)
 	n.active = true
 	return n
@@ -74,17 +72,16 @@ func (n *OnceNode) Rate() float64 {
 //
 // The returned value is in the range [0.0..1.0).
 func (n *OnceNode) Fraction() float64 {
-	return clampFraction(n.progress)
+	return n.primary.Fraction()
 }
 
 // SetFraction relocates the animation to the specified fractional position.
 //
 // NOTE: This resets the animation and accumulated delta is lost.
 func (n *OnceNode) SetFraction(fraction float64) {
-	n.progress = clampFraction(fraction)
-	n.primary.SetFraction(n.progress)
+	n.primary.SetFraction(fraction)
 	if n.overlay.IsSynchronized() {
-		n.overlay.SetFraction(n.progress)
+		n.overlay.SetFraction(n.primary.Fraction())
 	}
 }
 
@@ -94,9 +91,6 @@ func (n *OnceNode) SetFraction(fraction float64) {
 // that should be applied in order to be correctly synchronized with sibling
 // and parent nodes in case of synchronization.
 func (n *OnceNode) Advance(seconds, synchronizationRate float64) {
-	// NOTE: Not clamping the progress here on purpose so that it can reach 1.0.
-	n.progress = n.Fraction() + n.Rate()*seconds*synchronizationRate
-
 	if n.primary.IsSynchronized() {
 		n.primary.Advance(seconds, synchronizationRate)
 	} else {
@@ -106,19 +100,24 @@ func (n *OnceNode) Advance(seconds, synchronizationRate float64) {
 	if n.overlay.IsSynchronized() {
 		adjustedRate := n.primary.Rate() / n.overlay.Rate()
 		n.overlay.Advance(seconds, synchronizationRate*adjustedRate)
+		n.remaining -= seconds * synchronizationRate * adjustedRate
 	} else {
 		n.overlay.Advance(seconds, 1.0)
+		n.remaining -= seconds
+	}
+	if n.remaining < 0.0 {
+		n.active = false
 	}
 }
 
 // IsSynchronized returns whether the node should be synchronized.
 func (n *OnceNode) IsSynchronized() bool {
-	return n.synchronized
+	return n.primary.IsSynchronized()
 }
 
 // SetSynchronized configures whether the node should be synchronized.
 func (n *OnceNode) SetSynchronized(synchronized bool) {
-	n.synchronized = synchronized
+	n.primary.SetSynchronized(synchronized)
 }
 
 // Synchronize is called each frame to allow a node to synchronized its
@@ -128,13 +127,11 @@ func (n *OnceNode) SetSynchronized(synchronized bool) {
 // the current or any child node is synchronized or not.
 func (n *OnceNode) Synchronize() {
 	n.primary.Synchronize()
-	if n.primary.IsSynchronized() {
-		n.primary.SetFraction(n.progress)
+
+	if n.overlay.IsSynchronized() {
+		n.overlay.SetFraction(n.primary.Fraction())
 	}
 	n.overlay.Synchronize()
-	if n.overlay.IsSynchronized() {
-		n.overlay.SetFraction(n.progress)
-	}
 }
 
 // BoneTransform returns the transformation of the specified bone. Keep in
@@ -147,7 +144,7 @@ func (n *OnceNode) BoneTransform(bone string) NodeTransform {
 		return primaryTransform
 	}
 	overlayTransform := n.overlay.BoneTransform(bone)
-	return BlendNodeTransforms(primaryTransform, overlayTransform, n.blendFactor(n.progress))
+	return BlendNodeTransforms(primaryTransform, overlayTransform, n.blendFactor(1.0-n.remaining))
 }
 
 // BoneDeltaTransform returns the transformation that the bone will experience
@@ -158,7 +155,7 @@ func (n *OnceNode) BoneDeltaTransform(bone string, delta float64) NodeTransform 
 		return primaryTransform
 	}
 	overlayTransform := n.overlay.BoneDeltaTransform(bone, delta)
-	return BlendNodeTransforms(primaryTransform, overlayTransform, n.blendFactor(n.progress))
+	return BlendNodeTransforms(primaryTransform, overlayTransform, n.blendFactor(1.0-n.remaining))
 }
 
 func (n *OnceNode) blendFactor(transitionFraction float64) float64 {
