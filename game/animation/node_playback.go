@@ -15,6 +15,7 @@ func NewPlaybackNode(source Source, loop bool) *PlaybackNode {
 type PlaybackNode struct {
 	source           Source
 	currentTimestamp float64
+	synchronized     bool
 	loop             bool
 }
 
@@ -67,6 +68,23 @@ func (n *PlaybackNode) Advance(seconds, synchronizationRate float64) {
 		n.currentTimestamp = fraction * n.source.Length()
 	}
 }
+
+// IsSynchronized returns whether the node should be synchronized.
+func (n *PlaybackNode) IsSynchronized() bool {
+	return n.synchronized
+}
+
+// SetSynchronized configures whether the node should be synchronized.
+func (n *PlaybackNode) SetSynchronized(synchronized bool) {
+	n.synchronized = synchronized
+}
+
+// Synchronize is called each frame to allow a node to synchronized its
+// children (depending on their setting).
+//
+// This will be called (and should be called on children) regardless if
+// the current or any child node is synchronized or not.
+func (n *PlaybackNode) Synchronize() {}
 
 // BoneTransform returns the transformation of the specified bone. Keep in
 // mind that this is after a fixed interval update has been applied. If

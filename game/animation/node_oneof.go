@@ -18,6 +18,7 @@ type OneOfNode[T comparable] struct {
 	animations         map[T]Node
 	activeAnimationKey T
 	activeAnimation    Node
+	synchronized       bool
 }
 
 var _ Node = (*OneOfNode[struct{}])(nil)
@@ -63,8 +64,8 @@ func (n *OneOfNode[T]) Fraction() float64 {
 //
 // NOTE: This resets the animation and accumulated delta is lost.
 func (n *OneOfNode[T]) SetFraction(fraction float64) {
-	if n.activeAnimation != nil {
-		n.activeAnimation.SetFraction(fraction)
+	for _, node := range n.animations {
+		node.SetFraction(fraction)
 	}
 }
 
@@ -75,7 +76,32 @@ func (n *OneOfNode[T]) SetFraction(fraction float64) {
 // and parent nodes in case of synchronization.
 func (n *OneOfNode[T]) Advance(seconds, synchronizationRate float64) {
 	if n.activeAnimation != nil {
-		n.activeAnimation.Advance(seconds, synchronizationRate)
+		if n.activeAnimation.IsSynchronized() {
+			n.activeAnimation.Advance(seconds, synchronizationRate)
+		} else {
+			n.activeAnimation.Advance(seconds, 1.0)
+		}
+	}
+}
+
+// IsSynchronized returns whether the node should be synchronized.
+func (n *OneOfNode[T]) IsSynchronized() bool {
+	return n.synchronized
+}
+
+// SetSynchronized configures whether the node should be synchronized.
+func (n *OneOfNode[T]) SetSynchronized(synchronized bool) {
+	n.synchronized = synchronized
+}
+
+// Synchronize is called each frame to allow a node to synchronized its
+// children (depending on their setting).
+//
+// This will be called (and should be called on children) regardless if
+// the current or any child node is synchronized or not.
+func (n *OneOfNode[T]) Synchronize() {
+	for _, node := range n.animations {
+		node.Synchronize()
 	}
 }
 

@@ -3,14 +3,10 @@ package animation
 import (
 	"cmp"
 	"slices"
-
-	"github.com/mokiat/gomath/dprec"
 )
 
 // NewBlend1DNode creates an animation node that can blend between
 // multiple animations placed on a 1D line.
-//
-// NOTE: All animations are synchronized.
 func NewBlend1DNode(entries ...Blend1DEntry) *Blend1DNode {
 	if len(entries) == 0 {
 		panic("at least one animation is required")
@@ -22,7 +18,7 @@ func NewBlend1DNode(entries ...Blend1DEntry) *Blend1DNode {
 		entries:  entries,
 		progress: 0.0,
 	}
-	result.SetCoord(0.0)
+	result.SetBlendCoord(0.0)
 	return result
 }
 
@@ -31,36 +27,34 @@ func NewBlend1DNode(entries ...Blend1DEntry) *Blend1DNode {
 //
 // NOTE: All animations are considered to loop and are synchronized.
 type Blend1DNode struct {
-	entries  []Blend1DEntry
-	progress float64
-	coord    float64
+	entries    []Blend1DEntry
+	progress   float64
+	blendCoord float64
 
 	lower  Node
 	upper  Node
 	factor float64
+
+	synchronized bool
 }
 
 var _ Node = (*Blend1DNode)(nil)
 
-// Coord returns the blending coord.
-func (n *Blend1DNode) Coord() float64 {
-	return n.coord
+// BlendCoord returns the blending coord.
+func (n *Blend1DNode) BlendCoord() float64 {
+	return n.blendCoord
 }
 
-// SetCoord changes the blending coord.
-func (n *Blend1DNode) SetCoord(coord float64) {
-	n.coord = coord
-	n.lower, n.upper, n.factor = n.resolveCoord(coord)
+// SetBlendCoord changes the blending coord.
+func (n *Blend1DNode) SetBlendCoord(blendCoord float64) {
+	n.blendCoord = blendCoord
+	n.lower, n.upper, n.factor = n.resolveCoord(blendCoord)
 }
 
 // Rate returns the fraction of the animation length that advances each
 // second.
 func (n *Blend1DNode) Rate() float64 {
-	lowerRate := n.lower.Rate()
-	upperRate := n.upper.Rate()
-	// NOTE: The rates are flipped in the denominator on purpose. This is how
-	// the math ends up if you derive this from lengths.
-	return lowerRate * upperRate / dprec.Mix(upperRate, lowerRate, n.factor)
+	return blendRates(n.lower, n.upper, n.factor)
 }
 
 // Fraction returns the amount of animation that has elapsed. In case of
@@ -75,9 +69,12 @@ func (n *Blend1DNode) Fraction() float64 {
 //
 // NOTE: This resets the animation and accumulated delta is lost.
 func (n *Blend1DNode) SetFraction(fraction float64) {
-	n.progress = fraction
+	n.progress = wrapFraction(fraction)
 	for _, entry := range n.entries {
-		entry.Node.SetFraction(n.progress)
+		node := entry.Node
+		if node.IsSynchronized() {
+			node.SetFraction(n.progress)
+		}
 	}
 }
 
@@ -93,8 +90,37 @@ func (n *Blend1DNode) Advance(seconds, synchronizationRate float64) {
 
 	for _, entry := range n.entries {
 		node := entry.Node
-		adjustedRate := rate / node.Rate()
-		node.Advance(seconds, synchronizationRate*adjustedRate)
+		if node.IsSynchronized() {
+			adjustedRate := rate / node.Rate()
+			node.Advance(seconds, synchronizationRate*adjustedRate)
+		} else {
+			node.Advance(seconds, 1.0)
+		}
+	}
+}
+
+// IsSynchronized returns whether the node should be synchronized.
+func (n *Blend1DNode) IsSynchronized() bool {
+	return n.synchronized
+}
+
+// SetSynchronized configures whether the node should be synchronized.
+func (n *Blend1DNode) SetSynchronized(synchronized bool) {
+	n.synchronized = synchronized
+}
+
+// Synchronize is called each frame to allow a node to synchronized its
+// children (depending on their setting).
+//
+// This will be called (and should be called on children) regardless if
+// the current or any child node is synchronized or not.
+func (n *Blend1DNode) Synchronize() {
+	for _, entry := range n.entries {
+		node := entry.Node
+		if node.IsSynchronized() {
+			node.SetFraction(n.progress)
+		}
+		node.Synchronize()
 	}
 }
 

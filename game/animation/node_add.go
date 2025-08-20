@@ -1,17 +1,19 @@
 package animation
 
 // NewAddNode creates a new node that returns the sum of two animations.
-func NewAddNode(primary, secondary Node) *AddNode {
+func NewAddNode(primary, overlay Node) *AddNode {
 	return &AddNode{
-		primary:   primary,
-		secondary: secondary,
+		primary: primary,
+		overlay: overlay,
 	}
 }
 
 // AddNode returns the sum of two animations.
 type AddNode struct {
-	primary   Node
-	secondary Node
+	primary Node
+	overlay Node
+
+	synchronized bool
 }
 
 var _ Node = (*AddNode)(nil)
@@ -19,7 +21,7 @@ var _ Node = (*AddNode)(nil)
 // Rate returns the fraction of the animation length that advances each
 // second.
 func (n *AddNode) Rate() float64 {
-	return 1.0 // TODO: Figure this out.
+	return n.primary.Rate()
 }
 
 // Fraction returns the amount of animation that has elapsed. In case of
@@ -27,7 +29,7 @@ func (n *AddNode) Rate() float64 {
 //
 // The returned value is in the range [0.0..1.0).
 func (n *AddNode) Fraction() float64 {
-	return n.primary.Fraction() // TODO: Figure this out
+	return n.primary.Fraction()
 }
 
 // SetFraction relocates the animation to the specified fractional position.
@@ -35,7 +37,9 @@ func (n *AddNode) Fraction() float64 {
 // NOTE: This resets the animation and accumulated delta is lost.
 func (n *AddNode) SetFraction(fraction float64) {
 	n.primary.SetFraction(fraction)
-	n.secondary.SetFraction(fraction)
+	if n.overlay.IsSynchronized() {
+		n.overlay.SetFraction(fraction)
+	}
 }
 
 // Advance moves the animation forward by the specified delta seconds.
@@ -44,8 +48,37 @@ func (n *AddNode) SetFraction(fraction float64) {
 // that should be applied in order to be correctly synchronized with sibling
 // and parent nodes in case of synchronization.
 func (n *AddNode) Advance(seconds, synchronizationRate float64) {
-	n.primary.Advance(seconds, synchronizationRate)
-	n.secondary.Advance(seconds, synchronizationRate)
+	if n.primary.IsSynchronized() {
+		n.primary.Advance(seconds, synchronizationRate)
+	} else {
+		n.primary.Advance(seconds, 1.0)
+	}
+	if n.overlay.IsSynchronized() {
+		adjustedRate := n.primary.Rate() / n.overlay.Rate()
+		n.overlay.Advance(seconds, synchronizationRate*adjustedRate)
+	} else {
+		n.overlay.Advance(seconds, 1.0)
+	}
+}
+
+// IsSynchronized returns whether the node should be synchronized.
+func (n *AddNode) IsSynchronized() bool {
+	return n.synchronized
+}
+
+// SetSynchronized configures whether the node should be synchronized.
+func (n *AddNode) SetSynchronized(synchronized bool) {
+	n.synchronized = synchronized
+}
+
+// Synchronize is called each frame to allow a node to synchronized its
+// children (depending on their setting).
+//
+// This will be called (and should be called on children) regardless if
+// the current or any child node is synchronized or not.
+func (n *AddNode) Synchronize() {
+	n.primary.Synchronize()
+	n.overlay.Synchronize()
 }
 
 // BoneTransform returns the transformation of the specified bone. Keep in
@@ -54,7 +87,7 @@ func (n *AddNode) Advance(seconds, synchronizationRate float64) {
 // BoneTransformInterpolation method should be used instead.
 func (n *AddNode) BoneTransform(bone string) NodeTransform {
 	firstTransform := n.primary.BoneTransform(bone)
-	secondTransform := n.secondary.BoneTransform(bone)
+	secondTransform := n.overlay.BoneTransform(bone)
 	return AddNodeTransforms(firstTransform, secondTransform)
 }
 
@@ -62,6 +95,6 @@ func (n *AddNode) BoneTransform(bone string) NodeTransform {
 // throughout the next delta interval. This is used for root motion.
 func (n *AddNode) BoneDeltaTransform(bone string, delta float64) NodeTransform {
 	firstTransform := n.primary.BoneDeltaTransform(bone, delta)
-	secondTransform := n.secondary.BoneDeltaTransform(bone, delta)
+	secondTransform := n.overlay.BoneDeltaTransform(bone, delta)
 	return AddNodeTransforms(firstTransform, secondTransform)
 }

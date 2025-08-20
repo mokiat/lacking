@@ -46,6 +46,23 @@ func (n *ManualPoseNode) SetFraction(fraction float64) {}
 // and parent nodes in case of synchronization.
 func (n *ManualPoseNode) Advance(seconds, synchronizationRate float64) {}
 
+// IsSynchronized returns whether the node should be synchronized.
+func (n *ManualPoseNode) IsSynchronized() bool {
+	return false
+}
+
+// SetSynchronized configures whether the node should be synchronized.
+func (n *ManualPoseNode) SetSynchronized(synchronized bool) {
+	panic("manual pose node cannot be synchronized")
+}
+
+// Synchronize is called each frame to allow a node to synchronized its
+// children (depending on their setting).
+//
+// This will be called (and should be called on children) regardless if
+// the current or any child node is synchronized or not.
+func (n *ManualPoseNode) Synchronize() {}
+
 // BoneTransform returns the transformation of the specified bone. Keep in
 // mind that this is after a fixed interval update has been applied. If
 // this is called from within a dynamic update handler, the

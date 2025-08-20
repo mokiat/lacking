@@ -36,6 +36,19 @@ type Node interface {
 	// and parent nodes in case of synchronization.
 	Advance(seconds, synchronizationRate float64)
 
+	// IsSynchronized returns whether the node should be synchronized.
+	IsSynchronized() bool
+
+	// SetSynchronized configures whether the node should be synchronized.
+	SetSynchronized(synchronized bool)
+
+	// Synchronize is called each frame to allow a node to synchronized its
+	// children (depending on their setting).
+	//
+	// This will be called (and should be called on children) regardless if
+	// the current or any child node is synchronized or not.
+	Synchronize()
+
 	// BoneTransform returns the transformation of the specified bone. Keep in
 	// mind that this is after a fixed interval update has been applied. If
 	// this is called from within a dynamic update handler, the
@@ -45,6 +58,13 @@ type Node interface {
 	// BoneDeltaTransform returns the transformation that the bone will experience
 	// throughout the next delta interval. This is used for root motion.
 	BoneDeltaTransform(bone string, delta float64) NodeTransform
+}
+
+// Synchronized is a helper function that configures a node to be
+// synchronized and returns it. This is useful during node tree construction.
+func Synchronized[T Node](node T) T {
+	node.SetSynchronized(true)
+	return node
 }
 
 func wrapFraction(fraction float64) float64 {
@@ -57,4 +77,21 @@ func wrapFraction(fraction float64) float64 {
 
 func clampFraction(fraction float64) float64 {
 	return dprec.Clamp(fraction, minFraction, maxFraction)
+}
+
+func blendRates(lower, upper Node, factor float64) float64 {
+	switch {
+	case lower.IsSynchronized() && upper.IsSynchronized():
+		lowerRate := lower.Rate()
+		upperRate := upper.Rate()
+		// NOTE: The rates are flipped in the denominator on purpose. This is how
+		// the math ends up if you derive this from lengths.
+		return lowerRate * upperRate / dprec.Mix(upperRate, lowerRate, factor)
+	case lower.IsSynchronized():
+		return lower.Rate()
+	case upper.IsSynchronized():
+		return upper.Rate()
+	default:
+		return 1.0
+	}
 }

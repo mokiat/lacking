@@ -23,6 +23,7 @@ type GraphNode[T comparable] struct {
 	toState            T
 	transitionFraction float64
 	progress           float64
+	synchronized       bool
 }
 
 var _ Node = (*GraphNode[struct{}])(nil)
@@ -86,11 +87,7 @@ func (n *GraphNode[T]) IsTransitioned() bool {
 func (n *GraphNode[T]) Rate() float64 {
 	fromNode := n.animations[n.fromState]
 	toNode := n.animations[n.toState]
-	fromRate := fromNode.Rate()
-	toRate := toNode.Rate()
-	// NOTE: The rates are flipped in the denominator on purpose. This is how
-	// the math ends up if you derive this from lengths.
-	return fromRate * toRate / dprec.Mix(toRate, fromRate, n.transitionFraction)
+	return blendRates(fromNode, toNode, n.transitionFraction)
 }
 
 // Fraction returns the amount of animation that has elapsed. In case of
@@ -108,7 +105,9 @@ func (n *GraphNode[T]) SetFraction(fraction float64) {
 	n.progress = wrapFraction(fraction)
 
 	for _, animation := range n.animations {
-		animation.SetFraction(n.progress)
+		if animation.IsSynchronized() {
+			animation.SetFraction(n.progress)
+		}
 	}
 }
 
@@ -123,8 +122,12 @@ func (n *GraphNode[T]) Advance(seconds, synchronizationRate float64) {
 	n.progress = wrapFraction(n.progress)
 
 	for _, animation := range n.animations {
-		adjustedRate := rate / animation.Rate()
-		animation.Advance(seconds, synchronizationRate*adjustedRate)
+		if animation.IsSynchronized() {
+			adjustedRate := rate / animation.Rate()
+			animation.Advance(seconds, synchronizationRate*adjustedRate)
+		} else {
+			animation.Advance(seconds, 1.0)
+		}
 	}
 
 	var transitionRate float64
@@ -134,18 +137,54 @@ func (n *GraphNode[T]) Advance(seconds, synchronizationRate float64) {
 			to:   n.toState,
 		}]
 
+		transitionRate = 1.0 / transition.Duration.ValueOrDefault(1.0)
 		if animation, ok := transition.Animation.Unwrap(); ok {
-			animation.Advance(seconds, 1.0) // don't synchronize transition
-			transitionRate = animation.Rate()
-		} else {
-			transitionRate = 1.0 / transition.Duration.ValueOrDefault(1.0)
+			if animation.IsSynchronized() {
+				adjustedRate := rate / animation.Rate()
+				animation.Advance(seconds, synchronizationRate*adjustedRate)
+			} else {
+				transitionRate = animation.Rate()
+				animation.Advance(seconds, 1.0)
+			}
 		}
 
 		n.transitionFraction += transitionRate * seconds
-		if n.transitionFraction > 1.0 {
+		if n.transitionFraction >= 1.0 {
 			n.fromState = n.toState // complete transition
 		}
 		n.transitionFraction = dprec.Clamp(n.transitionFraction, 0.0, 1.0)
+	}
+}
+
+// IsSynchronized returns whether the node should be synchronized.
+func (n *GraphNode[T]) IsSynchronized() bool {
+	return n.synchronized
+}
+
+// SetSynchronized configures whether the node should be synchronized.
+func (n *GraphNode[T]) SetSynchronized(synchronized bool) {
+	n.synchronized = synchronized
+}
+
+// Synchronize is called each frame to allow a node to synchronized its
+// children (depending on their setting).
+//
+// This will be called (and should be called on children) regardless if
+// the current or any child node is synchronized or not.
+func (n *GraphNode[T]) Synchronize() {
+	for _, animation := range n.animations {
+		if animation.IsSynchronized() {
+			animation.SetFraction(n.progress)
+		}
+		animation.Synchronize()
+	}
+	for _, transition := range n.transitions {
+		if animation, ok := transition.Animation.Unwrap(); ok {
+			if animation.IsSynchronized() {
+				animation.SetFraction(n.progress)
+			}
+			animation.Synchronize()
+		}
 	}
 }
 

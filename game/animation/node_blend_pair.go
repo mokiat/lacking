@@ -11,12 +11,10 @@ func NewBlendPairNode(first, second Node) *BlendPairNode {
 		panic("the nodes need to be different")
 	}
 	return &BlendPairNode{
-		first:              first,
-		second:             second,
-		progress:           0.0,
-		factor:             0.0,
-		firstSynchronized:  true,
-		secondSynchronized: true,
+		first:       first,
+		second:      second,
+		progress:    0.0,
+		blendFactor: 0.0,
 	}
 }
 
@@ -24,73 +22,33 @@ func NewBlendPairNode(first, second Node) *BlendPairNode {
 // animation nodes. The blending factor is determined by the factor
 // field of the node.
 type BlendPairNode struct {
-	first              Node
-	second             Node
-	progress           float64
-	factor             float64
-	firstSynchronized  bool
-	secondSynchronized bool
+	first        Node
+	second       Node
+	progress     float64
+	blendFactor  float64
+	synchronized bool
 }
 
 var _ Node = (*BlendPairNode)(nil)
 
-// FirstSynchronized returns whether the the first blend node will be
-// synchronized with the tree hierarchy.
-func (n *BlendPairNode) FirstSynchronized() bool {
-	return n.firstSynchronized
-}
-
-// SetFirstSynchronized sets whether the first blend node should be
-// synchronized with the tree hierarchy.
-func (n *BlendPairNode) SetFirstSynchronized(synchronized bool) *BlendPairNode {
-	n.firstSynchronized = synchronized
-	return n
-}
-
-// SecondSynchronized returns whether the the second blend node will be
-// synchronized with the tree hierarchy.
-func (n *BlendPairNode) SecondSynchronized() bool {
-	return n.secondSynchronized
-}
-
-// SetSecondSynchronized sets whether the second blend node should be
-// synchronized with the tree hierarchy.
-func (n *BlendPairNode) SetSecondSynchronized(synchronized bool) *BlendPairNode {
-	n.secondSynchronized = synchronized
-	return n
-}
-
-// Factor returns the blending factor of the node. A value of 0.0 means
+// BlendFactor returns the blending factor of the node. A value of 0.0 means
 // that the first blend node is used, a value of 1.0 means that the second
 // blend node is used. The value is clamped to the range [0.0, 1.0].
-func (n *BlendPairNode) Factor() float64 {
-	return n.factor
+func (n *BlendPairNode) BlendFactor() float64 {
+	return n.blendFactor
 }
 
-// SetFactor sets the blending factor of the node. The value is clamped
+// SetBlendFactor sets the blending factor of the node. The value is clamped
 // to the range [0.0, 1.0].
-func (n *BlendPairNode) SetFactor(factor float64) *BlendPairNode {
-	n.factor = dprec.Clamp(factor, 0.0, 1.0)
+func (n *BlendPairNode) SetBlendFactor(factor float64) *BlendPairNode {
+	n.blendFactor = dprec.Clamp(factor, 0.0, 1.0)
 	return n
 }
 
 // Rate returns the fraction of the animation length that advances each
 // second.
 func (n *BlendPairNode) Rate() float64 {
-	switch {
-	case n.firstSynchronized && n.secondSynchronized:
-		firstRate := n.first.Rate()
-		secondRate := n.second.Rate()
-		// NOTE: The rates are flipped in the denominator on purpose. This is how
-		// the math ends up if you derive this from length blending.
-		return firstRate * secondRate / dprec.Mix(secondRate, firstRate, n.factor)
-	case n.firstSynchronized:
-		return n.first.Rate()
-	case n.secondSynchronized:
-		return n.second.Rate()
-	default:
-		return 1.0
-	}
+	return blendRates(n.first, n.second, n.blendFactor)
 }
 
 // Fraction returns the amount of animation that has elapsed. In case of
@@ -105,18 +63,14 @@ func (n *BlendPairNode) Fraction() float64 {
 //
 // NOTE: This resets the animation and accumulated delta is lost.
 func (n *BlendPairNode) SetFraction(fraction float64) {
-	n.progress = fraction
+	n.progress = wrapFraction(fraction)
 
-	if n.firstSynchronized {
+	if n.first.IsSynchronized() {
 		n.first.SetFraction(n.progress)
-	} else {
-		n.first.SetFraction(n.first.Fraction())
 	}
 
-	if n.secondSynchronized {
+	if n.second.IsSynchronized() {
 		n.second.SetFraction(n.progress)
-	} else {
-		n.second.SetFraction(n.second.Fraction())
 	}
 }
 
@@ -130,19 +84,45 @@ func (n *BlendPairNode) Advance(seconds, synchronizationRate float64) {
 	n.progress += rate * seconds * synchronizationRate
 	n.progress = wrapFraction(n.progress)
 
-	if n.firstSynchronized {
+	if n.first.IsSynchronized() {
 		adjustedRate := rate / n.first.Rate()
 		n.first.Advance(seconds, synchronizationRate*adjustedRate)
 	} else {
-		n.first.Advance(seconds, 1.0) // drop syncrhonization
+		n.first.Advance(seconds, 1.0)
 	}
 
-	if n.secondSynchronized {
+	if n.second.IsSynchronized() {
 		adjustedRate := rate / n.second.Rate()
 		n.second.Advance(seconds, synchronizationRate*adjustedRate)
 	} else {
-		n.second.Advance(seconds, 1.0) // drop synchronization
+		n.second.Advance(seconds, 1.0)
 	}
+}
+
+// IsSynchronized returns whether the node should be synchronized.
+func (n *BlendPairNode) IsSynchronized() bool {
+	return n.synchronized
+}
+
+// SetSynchronized configures whether the node should be synchronized.
+func (n *BlendPairNode) SetSynchronized(synchronized bool) {
+	n.synchronized = synchronized
+}
+
+// Synchronize is called each frame to allow a node to synchronized its
+// children (depending on their setting).
+//
+// This will be called (and should be called on children) regardless if
+// the current or any child node is synchronized or not.
+func (n *BlendPairNode) Synchronize() {
+	if n.first.IsSynchronized() {
+		n.first.SetFraction(n.progress)
+	}
+	n.first.Synchronize()
+	if n.second.IsSynchronized() {
+		n.second.SetFraction(n.progress)
+	}
+	n.second.Synchronize()
 }
 
 // BoneTransform returns the transformation of the specified bone. Keep in
@@ -152,7 +132,7 @@ func (n *BlendPairNode) Advance(seconds, synchronizationRate float64) {
 func (n *BlendPairNode) BoneTransform(bone string) NodeTransform {
 	firstTransform := n.first.BoneTransform(bone)
 	secondTransform := n.second.BoneTransform(bone)
-	return BlendNodeTransforms(firstTransform, secondTransform, n.factor)
+	return BlendNodeTransforms(firstTransform, secondTransform, n.blendFactor)
 }
 
 // BoneDeltaTransform returns the transformation that the bone will experience
@@ -160,5 +140,5 @@ func (n *BlendPairNode) BoneTransform(bone string) NodeTransform {
 func (n *BlendPairNode) BoneDeltaTransform(bone string, delta float64) NodeTransform {
 	firstTransform := n.first.BoneDeltaTransform(bone, delta)
 	secondTransform := n.second.BoneDeltaTransform(bone, delta)
-	return BlendNodeTransforms(firstTransform, secondTransform, n.factor)
+	return BlendNodeTransforms(firstTransform, secondTransform, n.blendFactor)
 }

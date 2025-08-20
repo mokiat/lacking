@@ -63,6 +63,16 @@ func DiffNodeTransforms(first, second NodeTransform) NodeTransform {
 	}
 }
 
+// FirstNodeTransform combines two transforms into a single one
+// by using the first transform that has a value.
+func FirstNodeTransform(first, second NodeTransform) NodeTransform {
+	return NodeTransform{
+		Translation: firstLinear(first.Translation, second.Translation),
+		Rotation:    firstSpherical(first.Rotation, second.Rotation),
+		Scale:       firstLinear(first.Scale, second.Scale),
+	}
+}
+
 func combineLinear(first, second opt.T[dprec.Vec3], amount float64) opt.T[dprec.Vec3] {
 	switch {
 	case first.Specified && second.Specified:
@@ -128,6 +138,28 @@ func diffSpherical(first, second opt.T[dprec.Quat]) opt.T[dprec.Quat] {
 	switch {
 	case first.Specified && second.Specified:
 		return opt.V(dprec.QuatDiff(first.Value, second.Value, true))
+	default:
+		return opt.Unspecified[dprec.Quat]()
+	}
+}
+
+func firstLinear(first, second opt.T[dprec.Vec3]) opt.T[dprec.Vec3] {
+	switch {
+	case first.Specified:
+		return opt.V(first.Value)
+	case second.Specified:
+		return opt.V(second.Value)
+	default:
+		return opt.Unspecified[dprec.Vec3]()
+	}
+}
+
+func firstSpherical(first, second opt.T[dprec.Quat]) opt.T[dprec.Quat] {
+	switch {
+	case first.Specified:
+		return opt.V(first.Value)
+	case second.Specified:
+		return opt.V(second.Value)
 	default:
 		return opt.Unspecified[dprec.Quat]()
 	}

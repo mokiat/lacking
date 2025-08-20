@@ -50,6 +50,25 @@ func (n *MaskNode) Advance(seconds, synchronizationRate float64) {
 	n.delegate.Advance(seconds, synchronizationRate)
 }
 
+// IsSynchronized returns whether the node should be synchronized.
+func (n *MaskNode) IsSynchronized() bool {
+	return n.delegate.IsSynchronized()
+}
+
+// SetSynchronized configures whether the node should be synchronized.
+func (n *MaskNode) SetSynchronized(synchronized bool) {
+	n.delegate.SetSynchronized(synchronized)
+}
+
+// Synchronize is called each frame to allow a node to synchronized its
+// children (depending on their setting).
+//
+// This will be called (and should be called on children) regardless if
+// the current or any child node is synchronized or not.
+func (n *MaskNode) Synchronize() {
+	n.delegate.Synchronize()
+}
+
 // BoneTransform returns the transformation of the specified bone. Keep in
 // mind that this is after a fixed interval update has been applied. If
 // this is called from within a dynamic update handler, the

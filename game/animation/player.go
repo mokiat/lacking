@@ -24,9 +24,10 @@ type Player struct {
 }
 
 func (p *Player) Update(elapsedTime time.Duration) {
+	clear(p.previousTransforms)
 	maps.Copy(p.previousTransforms, p.currentTransforms)
 
-	p.root.SetFraction(p.root.Fraction()) // force synchronization
+	p.root.Synchronize()
 	p.root.Advance(elapsedTime.Seconds(), 1.0)
 
 	for _, name := range p.boneNames {
