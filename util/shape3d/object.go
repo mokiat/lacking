@@ -12,7 +12,7 @@ const InvalidObjectID = ObjectID(invalidObjectIndex)
 type ObjectID uint32
 
 // ObjectInfo contains the information needed to create an object in a scene.
-type ObjectInfo[T any] struct {
+type ObjectInfo[O any] struct {
 
 	// Position optionally specifies a position where the object should be
 	// placed.
@@ -30,14 +30,14 @@ type ObjectInfo[T any] struct {
 	Static bool
 
 	// UserData allows one to attach custom user data to an object.
-	UserData T
+	UserData O
 }
 
-type sceneObject[T any] struct {
+type sceneObject[O any] struct {
 	transform  Transform
 	firstShape shapeRef
 	flags      objectFlags
-	userData   T
+	userData   O
 }
 
 func (o *sceneObject[T]) isStatic() bool {

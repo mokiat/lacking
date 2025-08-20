@@ -5,17 +5,17 @@ import (
 )
 
 // BoxInfo contains the information needed to create a box shape.
-type BoxInfo struct {
+type BoxInfo[S any] struct {
 
 	// ShapeInfo contains general shape information.
-	ShapeInfo
+	ShapeInfo[S]
 
 	// Box contains the box information.
 	Box Box
 }
 
-type sceneBoxShape struct {
-	sceneShape
+type sceneBoxShape[S any] struct {
+	sceneShape[S]
 	boxSolver
 }
 

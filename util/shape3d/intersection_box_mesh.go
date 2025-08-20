@@ -23,7 +23,7 @@ func CheckBoxMeshIntersection(box Box, mesh Mesh) (Intersection, bool) {
 	p7 := dprec.Vec3Sum(dprec.Vec3Sum(dprec.Vec3Sum(boxPosition, maxX), maxZ), minY)
 	p8 := dprec.Vec3Sum(dprec.Vec3Sum(dprec.Vec3Sum(boxPosition, maxX), minZ), minY)
 
-	var bestIntersection BestIntersection
+	var bestIntersection NearestIntersection
 	for _, triangle := range mesh.Triangles {
 		if intersection, ok := CheckSegmentTriangleIntersection(NewSegment(p1, p2), triangle); ok {
 			bestIntersection.AddIntersection(intersection)

@@ -1,17 +1,17 @@
 package shape3d
 
 // SphereInfo contains the information needed to create a sphere shape.
-type SphereInfo struct {
+type SphereInfo[S any] struct {
 
 	// ShapeInfo contains general shape information.
-	ShapeInfo
+	ShapeInfo[S]
 
 	// Sphere contains the sphere information.
 	Sphere Sphere
 }
 
-type sceneSphereShape struct {
-	sceneShape
+type sceneSphereShape[S any] struct {
+	sceneShape[S]
 	sphereSolver
 }
 

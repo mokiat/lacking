@@ -5,12 +5,12 @@ import (
 	"github.com/mokiat/gomath/dprec"
 )
 
+// IntersectionCollection represents a data structure that can hold
+// one or more intersections.
 type IntersectionCollection interface {
-	AddIntersection(intersection Intersection)
-}
 
-type ObjectIntersectionCollection interface {
-	AddIntersection(intersection ObjectIntersection)
+	// AddIntersection adds an intersection to the collection.
+	AddIntersection(intersection Intersection)
 }
 
 // Intersection represents the intersection of two shapes.
@@ -28,30 +28,25 @@ type Intersection struct {
 	Depth float64
 }
 
+// EvalSourceContact calculates the contact point on the source shape.
 func (i *Intersection) EvalSourceContact() dprec.Vec3 {
 	return dprec.Vec3Sum(i.TargetContact, dprec.Vec3Prod(i.TargetNormal, -i.Depth))
 }
 
+// EvalSourceNormal calculates the normal on the source shape along which
+// the target shape needs to be repositioned to resolve the intersection.
 func (i *Intersection) EvalSourceNormal() dprec.Vec3 {
 	return dprec.InverseVec3(i.TargetNormal)
 }
 
+// Flipped returns a flipped (source and target swapped) version of this
+// intersection.
 func (i *Intersection) Flipped() Intersection {
 	return Intersection{
 		TargetContact: i.EvalSourceContact(),
 		TargetNormal:  i.EvalSourceNormal(),
 		Depth:         i.Depth,
 	}
-}
-
-type OptIntersection opt.T[Intersection]
-
-func (i *OptIntersection) AddIntersection(intersection Intersection) {
-	*i = OptIntersection(opt.V(intersection))
-}
-
-func (i *OptIntersection) Intersection() opt.T[Intersection] {
-	return opt.T[Intersection](*i)
 }
 
 // LastIntersection is an implementation of IntersectionCollection that keeps
@@ -76,47 +71,19 @@ func (i *LastIntersection) Intersection() (Intersection, bool) {
 	return i.intersection.Value, i.intersection.Specified
 }
 
-// WorstIntersection is an implementation of IntersectionCollection that keeps
-// track of the worst (largest depth) observed intersection.
-type WorstIntersection struct {
+// NearestIntersection is an implementation of IntersectionCollection that keeps
+// track of the nearest (smallest depth) observed intersection.
+type NearestIntersection struct {
 	intersection opt.T[Intersection]
 }
 
 // Reset clears any observed intersection.
-func (i *WorstIntersection) Reset() {
+func (i *NearestIntersection) Reset() {
 	i.intersection = opt.Unspecified[Intersection]()
 }
 
 // AddIntersection tracks the specified intersection.
-func (i *WorstIntersection) AddIntersection(intersection Intersection) {
-	if i.intersection.Specified {
-		if intersection.Depth > i.intersection.Value.Depth {
-			i.intersection.Value = intersection
-		}
-	} else {
-		i.intersection = opt.V(intersection)
-	}
-}
-
-// Intersection returns the worst observed intersection and a flag whether
-// there was actually any intersection observed.
-func (i *WorstIntersection) Intersection() (Intersection, bool) {
-	return i.intersection.Value, i.intersection.Specified
-}
-
-// BestIntersection is an implementation of IntersectionCollection that keeps
-// track of the best (smallest depth) observed intersection.
-type BestIntersection struct {
-	intersection opt.T[Intersection]
-}
-
-// Reset clears any observed intersection.
-func (i *BestIntersection) Reset() {
-	i.intersection = opt.Unspecified[Intersection]()
-}
-
-// AddIntersection tracks the specified intersection.
-func (i *BestIntersection) AddIntersection(intersection Intersection) {
+func (i *NearestIntersection) AddIntersection(intersection Intersection) {
 	if i.intersection.Specified {
 		if intersection.Depth < i.intersection.Value.Depth {
 			i.intersection.Value = intersection
@@ -128,6 +95,34 @@ func (i *BestIntersection) AddIntersection(intersection Intersection) {
 
 // Intersection returns the best observed intersection and a flag whether
 // there was actually any intersection observed.
-func (i *BestIntersection) Intersection() (Intersection, bool) {
+func (i *NearestIntersection) Intersection() (Intersection, bool) {
+	return i.intersection.Value, i.intersection.Specified
+}
+
+// FarthestIntersection is an implementation of IntersectionCollection that
+// keeps track of the farthest (largest depth) observed intersection.
+type FarthestIntersection struct {
+	intersection opt.T[Intersection]
+}
+
+// Reset clears any observed intersection.
+func (i *FarthestIntersection) Reset() {
+	i.intersection = opt.Unspecified[Intersection]()
+}
+
+// AddIntersection tracks the specified intersection.
+func (i *FarthestIntersection) AddIntersection(intersection Intersection) {
+	if i.intersection.Specified {
+		if intersection.Depth > i.intersection.Value.Depth {
+			i.intersection.Value = intersection
+		}
+	} else {
+		i.intersection = opt.V(intersection)
+	}
+}
+
+// Intersection returns the worst observed intersection and a flag whether
+// there was actually any intersection observed.
+func (i *FarthestIntersection) Intersection() (Intersection, bool) {
 	return i.intersection.Value, i.intersection.Specified
 }

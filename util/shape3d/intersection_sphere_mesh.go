@@ -1,7 +1,7 @@
 package shape3d
 
 func CheckSphereMeshIntersection(sphere Sphere, mesh Mesh) (Intersection, bool) {
-	var collection WorstIntersection
+	var collection FarthestIntersection
 	for _, triangle := range mesh.Triangles {
 		if !IsSphereSphereIntersection(sphere, triangle.BoundingSphere()) {
 			continue

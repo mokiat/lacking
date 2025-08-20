@@ -18,7 +18,7 @@ func newScene(engine *Engine) *Scene {
 	return &Scene{
 		engine: engine,
 
-		shapeScene: shape3d.NewScene[internalRef](shape3d.SceneInfo{
+		shapeScene: shape3d.NewScene[internalRef, struct{}](shape3d.SceneInfo{
 			Size:                opt.V(16384.0),
 			MaxDepth:            opt.V[int32](12),
 			InitialNodeCapacity: opt.V[int32](1024),
@@ -74,7 +74,7 @@ func newScene(engine *Engine) *Scene {
 type Scene struct {
 	engine *Engine
 
-	shapeScene *shape3d.Scene[internalRef]
+	shapeScene *shape3d.Scene[internalRef, struct{}]
 
 	sbCollisionSubscriptions *SingleBodyCollisionSubscriptionSet
 	dbCollisionSubscriptions *DoubleBodyCollisionSubscriptionSet
@@ -252,20 +252,20 @@ func (s *Scene) CreateProp(info PropInfo) {
 		},
 	})
 	for _, sphere := range info.CollisionSpheres {
-		s.shapeScene.AttachSphere(objectID, shape3d.SphereInfo{
-			ShapeInfo: shape3d.ShapeInfo{},
+		s.shapeScene.AttachSphere(objectID, shape3d.SphereInfo[struct{}]{
+			ShapeInfo: shape3d.ShapeInfo[struct{}]{},
 			Sphere:    sphere,
 		})
 	}
 	for _, box := range info.CollisionBoxes {
-		s.shapeScene.AttachBox(objectID, shape3d.BoxInfo{
-			ShapeInfo: shape3d.ShapeInfo{},
+		s.shapeScene.AttachBox(objectID, shape3d.BoxInfo[struct{}]{
+			ShapeInfo: shape3d.ShapeInfo[struct{}]{},
 			Box:       box,
 		})
 	}
 	for _, mesh := range info.CollisionMeshes {
-		s.shapeScene.AttachMesh(objectID, shape3d.MeshInfo{
-			ShapeInfo: shape3d.ShapeInfo{},
+		s.shapeScene.AttachMesh(objectID, shape3d.MeshInfo[struct{}]{
+			ShapeInfo: shape3d.ShapeInfo[struct{}]{},
 			Mesh:      mesh,
 		})
 	}
@@ -326,7 +326,7 @@ func (s *Scene) CheckSegmentIntersection(segment shape3d.Segment, mask uint32) (
 	if !ok {
 		return Body{}, false
 	}
-	ref := s.shapeScene.GetObjectUserData(intersection.SecondObjectID)
+	ref := s.shapeScene.GetObjectUserData(intersection.TargetObjectID)
 	if ref.isProp {
 		return Body{}, false // FIXME: This should handle props as well.
 	}
@@ -639,18 +639,14 @@ func (s *Scene) detectCollisions() {
 	s.collisionSet.Reset()
 	s.shapeScene.CollectIntersections(s.collisionSet)
 	for _, intersection := range s.collisionSet.Intersections() {
-		primaryRef := s.shapeScene.GetObjectUserData(intersection.FirstObjectID)
-		secondaryRef := s.shapeScene.GetObjectUserData(intersection.SecondObjectID)
+		primaryRef := s.shapeScene.GetObjectUserData(intersection.SourceObjectID)
+		secondaryRef := s.shapeScene.GetObjectUserData(intersection.TargetObjectID)
 		if primaryRef.isProp && secondaryRef.isProp {
 			continue
 		}
 		if primaryRef.isProp && !secondaryRef.isProp {
 			primaryRef, secondaryRef = secondaryRef, primaryRef
-			intersection = shape3d.ObjectIntersection{
-				FirstObjectID:  intersection.SecondObjectID,
-				SecondObjectID: intersection.FirstObjectID,
-				Intersection:   intersection.Intersection.Flipped(),
-			}
+			intersection = intersection.Flipped()
 		}
 
 		if secondaryRef.isProp {

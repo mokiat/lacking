@@ -390,24 +390,24 @@ func createBody(scene *Scene, info BodyInfo) Body {
 		},
 	})
 	for _, sphere := range info.Definition.collisionSpheres {
-		scene.shapeScene.AttachSphere(objectID, shape3d.SphereInfo{
-			ShapeInfo: shape3d.ShapeInfo{
+		scene.shapeScene.AttachSphere(objectID, shape3d.SphereInfo[struct{}]{
+			ShapeInfo: shape3d.ShapeInfo[struct{}]{
 				RejectGroup: uint32(info.Definition.collisionGroup),
 			},
 			Sphere: sphere,
 		})
 	}
 	for _, box := range info.Definition.collisionBoxes {
-		scene.shapeScene.AttachBox(objectID, shape3d.BoxInfo{
-			ShapeInfo: shape3d.ShapeInfo{
+		scene.shapeScene.AttachBox(objectID, shape3d.BoxInfo[struct{}]{
+			ShapeInfo: shape3d.ShapeInfo[struct{}]{
 				RejectGroup: uint32(info.Definition.collisionGroup),
 			},
 			Box: box,
 		})
 	}
 	for _, mesh := range info.Definition.collisionMeshes {
-		scene.shapeScene.AttachMesh(objectID, shape3d.MeshInfo{
-			ShapeInfo: shape3d.ShapeInfo{
+		scene.shapeScene.AttachMesh(objectID, shape3d.MeshInfo[struct{}]{
+			ShapeInfo: shape3d.ShapeInfo[struct{}]{
 				RejectGroup: uint32(info.Definition.collisionGroup),
 			},
 			Mesh: mesh,

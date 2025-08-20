@@ -3,17 +3,17 @@ package shape3d
 import "slices"
 
 // MeshInfo contains the information needed to create a mesh shape.
-type MeshInfo struct {
+type MeshInfo[S any] struct {
 
 	// ShapeInfo contains general shape information.
-	ShapeInfo
+	ShapeInfo[S]
 
 	// Mesh contains the mesh information.
 	Mesh Mesh
 }
 
-type sceneMeshShape struct {
-	sceneShape
+type sceneMeshShape[S any] struct {
+	sceneShape[S]
 	meshSolver
 }
 

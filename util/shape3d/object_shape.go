@@ -12,13 +12,23 @@ const InvalidShapeID = ShapeID(invalidShapeRef)
 type ShapeID shapeRef
 
 // ShapeInfo contains information needed to create a new shape in the scene.
-type ShapeInfo struct {
+type ShapeInfo[S any] struct {
+
+	// RejectGroup becomes active if a value larger than zero is specified.
+	// Shapes that share the same reject group are not checked for intersection.
 	RejectGroup uint32
-	SourceMask  opt.T[uint32]
-	TargetMask  opt.T[uint32]
+
+	// SourceMask specifies the layers in which this shape is positioned.
+	SourceMask opt.T[uint32]
+
+	// TargetMask specifies the layers with which this shape can intersect.
+	TargetMask opt.T[uint32]
+
+	// UserData allows one to attach custom user data to a shape.
+	UserData S
 }
 
-type sceneShape struct {
+type sceneShape[S any] struct {
 	objectIndex uint32
 	nextShape   shapeRef
 
@@ -28,9 +38,11 @@ type sceneShape struct {
 	rejectGroup uint32
 	sourceMask  uint32
 	targetMask  uint32
+
+	userData S
 }
 
-func shapesCanIntersect(a, b *sceneShape) bool {
+func shapesCanIntersect[S any](a, b *sceneShape[S]) bool {
 	if a.objectIndex == b.objectIndex {
 		return false
 	}

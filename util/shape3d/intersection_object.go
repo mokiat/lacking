@@ -2,37 +2,71 @@ package shape3d
 
 import "github.com/mokiat/gog/opt"
 
+// ObjectIntersectionCollection represents a data structure that can hold
+// one or more object intersections.
+type ObjectIntersectionCollection interface {
+
+	// AddIntersection adds an intersection to the collection.
+	AddIntersection(intersection ObjectIntersection)
+}
+
 // ObjectIntersection represents the intersectio of two objects.
 type ObjectIntersection struct {
 
 	// SourceObjectID contains the ID of the first involved object.
 	//
-	// This ID is equal to NilObjectID() if the check was not performed with
+	// This ID is equal to InvalidObjectID if the check was not performed with
 	// a scene object.
 	SourceObjectID ObjectID
 
+	// SourceShapeID contains the ID of the shape from the first involved object.
+	//
+	// This ID is equal to InvalidShapeID if the check was not performed with
+	// a scene object.
+	SourceShapeID ShapeID
+
 	// TargetObjectID contains the ID of the second involved object.
 	//
-	// This ID is equal to NilObjectID() if the check was not performed with
+	// This ID is equal to InvalidObjectID if the check was not performed with
 	// a scene object.
 	TargetObjectID ObjectID
 
+	// TargetShapeID contains the ID of the shape from the second involved object.
+	//
+	// This ID is equal to InvalidShapeID if the check was not performed with
+	// a scene object.
+	TargetShapeID ShapeID
+
+	// Intersection holds the underlying raw shape intersection.
 	Intersection
 }
 
-// BestObjectIntersection is an implementation of IntersectionCollection that
-// keeps track of the best (smallest depth) observed intersection.
-type BestObjectIntersection struct {
+// Flipped returns a flipped (source and target swapped) version of this
+// intersection.
+func (i *ObjectIntersection) Flipped() ObjectIntersection {
+	return ObjectIntersection{
+		SourceObjectID: i.TargetObjectID,
+		SourceShapeID:  i.TargetShapeID,
+		TargetObjectID: i.SourceObjectID,
+		TargetShapeID:  i.SourceShapeID,
+		Intersection:   i.Intersection.Flipped(),
+	}
+}
+
+// NearestObjectIntersection is an implementation of
+// ObjectIntersectionCollection that keeps track of the nearest (smallest depth)
+// observed intersection.
+type NearestObjectIntersection struct {
 	intersection opt.T[ObjectIntersection]
 }
 
 // Reset clears any observed intersection.
-func (i *BestObjectIntersection) Reset() {
+func (i *NearestObjectIntersection) Reset() {
 	i.intersection = opt.Unspecified[ObjectIntersection]()
 }
 
 // AddIntersection tracks the specified intersection.
-func (i *BestObjectIntersection) AddIntersection(intersection ObjectIntersection) {
+func (i *NearestObjectIntersection) AddIntersection(intersection ObjectIntersection) {
 	if i.intersection.Specified {
 		if intersection.Depth < i.intersection.Value.Depth {
 			i.intersection.Value = intersection
@@ -44,23 +78,24 @@ func (i *BestObjectIntersection) AddIntersection(intersection ObjectIntersection
 
 // Intersection returns the worst observed intersection and a flag whether
 // there was actually any intersection observed.
-func (i *BestObjectIntersection) Intersection() (ObjectIntersection, bool) {
+func (i *NearestObjectIntersection) Intersection() (ObjectIntersection, bool) {
 	return i.intersection.Value, i.intersection.Specified
 }
 
-// WorstObjectIntersection is an implementation of IntersectionCollection that keeps
-// track of the worst (largest depth) observed intersection.
-type WorstObjectIntersection struct {
+// FarthestObjectIntersection is an implementation of
+// ObjectIntersectionCollection that keeps track of the farthest (largest depth)
+// observed intersection.
+type FarthestObjectIntersection struct {
 	intersection opt.T[ObjectIntersection]
 }
 
 // Reset clears any observed intersection.
-func (i *WorstObjectIntersection) Reset() {
+func (i *FarthestObjectIntersection) Reset() {
 	i.intersection = opt.Unspecified[ObjectIntersection]()
 }
 
 // AddIntersection tracks the specified intersection.
-func (i *WorstObjectIntersection) AddIntersection(intersection ObjectIntersection) {
+func (i *FarthestObjectIntersection) AddIntersection(intersection ObjectIntersection) {
 	if i.intersection.Specified {
 		if intersection.Depth > i.intersection.Value.Depth {
 			i.intersection.Value = intersection
@@ -72,7 +107,7 @@ func (i *WorstObjectIntersection) AddIntersection(intersection ObjectIntersectio
 
 // Intersection returns the worst observed intersection and a flag whether
 // there was actually any intersection observed.
-func (i *WorstObjectIntersection) Intersection() (ObjectIntersection, bool) {
+func (i *FarthestObjectIntersection) Intersection() (ObjectIntersection, bool) {
 	return i.intersection.Value, i.intersection.Specified
 }
 
@@ -84,6 +119,7 @@ func NewIntersectionBucket(initialCapacity int) *ObjectIntersectionBucket {
 	}
 }
 
+// ObjectIntersectionBucket is a container for object intersections.
 type ObjectIntersectionBucket struct {
 	intersections []ObjectIntersection
 }
@@ -108,12 +144,4 @@ func (b *ObjectIntersectionBucket) IsEmpty() bool {
 // NOTE: The slice must not be modified or cached as it will be reused.
 func (s *ObjectIntersectionBucket) Intersections() []ObjectIntersection {
 	return s.intersections
-}
-
-func addIntersection(collection IntersectionCollection, flipped bool, intersection Intersection) {
-	if flipped {
-		collection.AddIntersection(intersection.Flipped())
-	} else {
-		collection.AddIntersection(intersection)
-	}
 }
