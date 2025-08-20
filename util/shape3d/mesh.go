@@ -5,12 +5,17 @@ import (
 	"github.com/mokiat/gomath/dprec"
 )
 
+// NewMesh creates a mesh from the specified triangles.
+//
+// NOTE: The mesh becomes the owner of the triangle slice.
 func NewMesh(triangles []Triangle) Mesh {
 	return Mesh{
 		Triangles: triangles,
 	}
 }
 
+// TransformedMesh creates a new mesh from the specified source mesh by
+// applying the specified transformation.
 func TransformedMesh(source Mesh, transform Transform) Mesh {
 	return Mesh{
 		Triangles: gog.Map(source.Triangles, func(triangle Triangle) Triangle {
@@ -23,7 +28,10 @@ func TransformedMesh(source Mesh, transform Transform) Mesh {
 	}
 }
 
+// Mesh represents a mesh shape that is comprised of triangles.
 type Mesh struct {
+
+	// Triangles contains all the triangles that make up the mesh.
 	Triangles []Triangle
 }
 

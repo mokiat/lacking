@@ -1,24 +1,27 @@
 package shape3d
 
-import (
-	"slices"
-)
+import "slices"
 
+// MeshInfo contains the information needed to create a mesh shape.
 type MeshInfo struct {
+
+	// ShapeInfo contains general shape information.
 	ShapeInfo
+
+	// Mesh contains the mesh information.
 	Mesh Mesh
 }
 
-type MeshShape struct {
-	Shape
+type sceneMeshShape struct {
+	sceneShape
 	meshSolver
 }
 
 func newMeshSolver(template Mesh) meshSolver {
 	bs := template.BoundingSphere()
 	return meshSolver{
-		template:               template,
-		templateBoundingSohere: bs,
+		lsMesh:           template,
+		lsBoundingSohere: bs,
 
 		wsMesh: Mesh{
 			Triangles: slices.Clone(template.Triangles),
@@ -28,16 +31,16 @@ func newMeshSolver(template Mesh) meshSolver {
 }
 
 type meshSolver struct {
-	template               Mesh
-	templateBoundingSohere Sphere
+	lsMesh           Mesh
+	lsBoundingSohere Sphere
 
 	wsMesh           Mesh
 	wsBoundingSphere Sphere
 }
 
-func (s *meshSolver) Update(transform Transform) {
+func (s *meshSolver) update(transform Transform) {
 	for i := range s.wsMesh.Triangles {
-		srcTriangle := &s.template.Triangles[i]
+		srcTriangle := &s.lsMesh.Triangles[i]
 		s.wsMesh.Triangles[i] = Triangle{
 			A: transform.Apply(srcTriangle.A),
 			B: transform.Apply(srcTriangle.B),
@@ -45,11 +48,11 @@ func (s *meshSolver) Update(transform Transform) {
 		}
 	}
 	s.wsBoundingSphere = Sphere{
-		Position: transform.Apply(s.templateBoundingSohere.Position),
-		Radius:   s.templateBoundingSohere.Radius,
+		Position: transform.Apply(s.lsBoundingSohere.Position),
+		Radius:   s.lsBoundingSohere.Radius,
 	}
 }
 
-func (s *meshSolver) BoundingSphere() Sphere {
+func (s *meshSolver) boundingSphere() Sphere {
 	return s.wsBoundingSphere
 }

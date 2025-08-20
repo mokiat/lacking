@@ -5,44 +5,46 @@ import (
 	"github.com/mokiat/gomath/dprec"
 )
 
-const invalidObjectIndex = uint32(0xFFFFFFFF)
-
+// InvalidObjectID indicates an object that can never be part of the scene.
 const InvalidObjectID = ObjectID(invalidObjectIndex)
 
+// ObjectID is a reference to an object in the scene.
 type ObjectID uint32
 
+// ObjectInfo contains the information needed to create an object in a scene.
 type ObjectInfo[T any] struct {
+
+	// Position optionally specifies a position where the object should be
+	// placed.
+	//
+	// Defaults to the origin.
 	Position opt.T[dprec.Vec3]
+
+	// Rotation optionally specifies a rotation of the object.
+	//
+	// Defaults to the identity rotation.
 	Rotation opt.T[dprec.Quat]
 
-	// SourceMask  opt.T[uint32]
-	// TargetMask  opt.T[uint32]
-	// RejectGroup uint32
+	// Static marks the object as static. Static objects are not checked for
+	// intersections with other static objects.
 	Static bool
 
+	// UserData allows one to attach custom user data to an object.
 	UserData T
 }
 
-type SizeTest = Object[struct{}] // TODO: DELETE ME
-
-type Object[T any] struct {
+type sceneObject[T any] struct {
 	transform  Transform
 	firstShape shapeRef
 	flags      objectFlags
 	userData   T
 }
 
-func (o *Object[T]) IsStatic() bool {
+func (o *sceneObject[T]) isStatic() bool {
 	return o.flags&objectFlagsStatic != 0
 }
 
-// func (o *Object[T]) TransformedBoundingSphere() Sphere {
-// 	// TODO: Maybe cache this?
-// 	return Sphere{
-// 		Position: o.transform.Apply(o.boundingSphere.Position),
-// 		Radius:   o.boundingSphere.Radius,
-// 	}
-// }
+const invalidObjectIndex = uint32(0xFFFFFFFF)
 
 type objectFlags uint32
 

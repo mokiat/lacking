@@ -13,8 +13,14 @@ func NewTriangle(a, b, c dprec.Vec3) Triangle {
 
 // Triangle represents a tringle in 3D space.
 type Triangle struct {
+
+	// A is the first vertex of the triangle.
 	A dprec.Vec3
+
+	// B is the second vertex of the triangle.
 	B dprec.Vec3
+
+	// C is the third vertex of the triangle.
 	C dprec.Vec3
 }
 

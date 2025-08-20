@@ -49,8 +49,12 @@ func ChainedTransform(parent, child Transform) Transform {
 
 // Transform represents a shape transformation.
 type Transform struct {
+
+	// Translation specifies the translation that the transformation applies.
 	Translation dprec.Vec3
-	Rotation    dprec.Quat
+
+	// Rotation specifies the rotation that the transformation applies.
+	Rotation dprec.Quat
 }
 
 // Apply returns the transformation of the specified vector.

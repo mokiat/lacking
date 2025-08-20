@@ -4,20 +4,25 @@ import (
 	"github.com/mokiat/gomath/dprec"
 )
 
+// BoxInfo contains the information needed to create a box shape.
 type BoxInfo struct {
+
+	// ShapeInfo contains general shape information.
 	ShapeInfo
+
+	// Box contains the box information.
 	Box Box
 }
 
-type BoxShape struct {
-	Shape
+type sceneBoxShape struct {
+	sceneShape
 	boxSolver
 }
 
 func newBoxSolver(template Box) boxSolver {
 	return boxSolver{
-		template: template,
-		boundingSphere: Sphere{
+		lsBox: template,
+		lsBoundingSphere: Sphere{
 			Position: template.Position,
 			Radius: dprec.Sqrt(
 				dprec.Sqr(template.HalfWidth) + dprec.Sqr(template.HalfHeight) + dprec.Sqr(template.HalfLength),
@@ -27,31 +32,31 @@ func newBoxSolver(template Box) boxSolver {
 }
 
 type boxSolver struct {
-	template       Box
-	boundingSphere Sphere
+	lsBox            Box
+	lsBoundingSphere Sphere
 
 	wsBox            Box
 	wsBoundingSphere Sphere
 }
 
-func (s *boxSolver) Update(transform Transform) {
+func (s *boxSolver) update(transform Transform) {
 	wsTransform := ChainedTransform(transform, Transform{
-		Translation: s.template.Position,
-		Rotation:    s.template.Rotation,
+		Translation: s.lsBox.Position,
+		Rotation:    s.lsBox.Rotation,
 	})
 	s.wsBox = Box{
 		Position:   wsTransform.Translation,
 		Rotation:   wsTransform.Rotation,
-		HalfWidth:  s.template.HalfWidth,
-		HalfHeight: s.template.HalfHeight,
-		HalfLength: s.template.HalfLength,
+		HalfWidth:  s.lsBox.HalfWidth,
+		HalfHeight: s.lsBox.HalfHeight,
+		HalfLength: s.lsBox.HalfLength,
 	}
 	s.wsBoundingSphere = Sphere{
-		Position: transform.Apply(s.boundingSphere.Position),
-		Radius:   s.boundingSphere.Radius,
+		Position: transform.Apply(s.lsBoundingSphere.Position),
+		Radius:   s.lsBoundingSphere.Radius,
 	}
 }
 
-func (s *boxSolver) BoundingSphere() Sphere {
+func (s *boxSolver) boundingSphere() Sphere {
 	return s.wsBoundingSphere
 }

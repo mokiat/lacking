@@ -5,15 +5,20 @@ import (
 	"github.com/mokiat/lacking/util/spatial"
 )
 
+// InvalidShapeID indicates a shape that can never be part of the scene.
+const InvalidShapeID = ShapeID(invalidShapeRef)
+
+// ShapeID is a reference to a shape in the scene.
 type ShapeID shapeRef
 
+// ShapeInfo contains information needed to create a new shape in the scene.
 type ShapeInfo struct {
 	RejectGroup uint32
 	SourceMask  opt.T[uint32]
 	TargetMask  opt.T[uint32]
 }
 
-type Shape struct { // TODO: make private
+type sceneShape struct {
 	objectIndex uint32
 	nextShape   shapeRef
 
@@ -25,7 +30,7 @@ type Shape struct { // TODO: make private
 	targetMask  uint32
 }
 
-func shapesCanIntersect(a, b *Shape) bool {
+func shapesCanIntersect(a, b *sceneShape) bool {
 	if a.objectIndex == b.objectIndex {
 		return false
 	}
@@ -55,10 +60,10 @@ func newShapeRef(kind shapeKind, index uint32) shapeRef {
 
 type shapeRef uint32
 
-func (r shapeRef) Index() uint32 {
+func (r shapeRef) index() uint32 {
 	return uint32(r) >> 4
 }
 
-func (r shapeRef) Kind() shapeKind {
+func (r shapeRef) kind() shapeKind {
 	return shapeKind(r & 0b1111)
 }

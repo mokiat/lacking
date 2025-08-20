@@ -46,10 +46,10 @@ func NewScene[T any](info SceneInfo) *Scene[T] {
 		freeBoxIndices:    ds.NewStack[uint32](256), // ~ 1 KiB
 		freeMeshIndices:   ds.NewStack[uint32](256), // ~ 1 KiB
 
-		objects: make([]Object[T], 0, 128),
-		spheres: make([]SphereShape, 0, 128),
-		boxes:   make([]BoxShape, 0, 128),
-		meshes:  make([]MeshShape, 0, 128),
+		objects: make([]sceneObject[T], 0, 128),
+		spheres: make([]sceneSphereShape, 0, 128),
+		boxes:   make([]sceneBoxShape, 0, 128),
+		meshes:  make([]sceneMeshShape, 0, 128),
 
 		sphereTree: spatial.NewCompactOctree[uint32](cubeOctreeSettings),
 		boxTree:    spatial.NewCompactOctree[uint32](cubeOctreeSettings),
@@ -66,10 +66,10 @@ type Scene[T any] struct {
 	freeBoxIndices    *ds.Stack[uint32]
 	freeMeshIndices   *ds.Stack[uint32]
 
-	objects []Object[T]
-	spheres []SphereShape
-	boxes   []BoxShape
-	meshes  []MeshShape
+	objects []sceneObject[T]
+	spheres []sceneSphereShape
+	boxes   []sceneBoxShape
+	meshes  []sceneMeshShape
 
 	sphereTree *spatial.CompactOctree[uint32]
 	boxTree    *spatial.CompactOctree[uint32]
@@ -92,7 +92,7 @@ func (s *Scene[T]) CreateObject(info ObjectInfo[T]) ObjectID {
 
 	if s.freeObjectIndices.IsEmpty() {
 		index := len(s.objects)
-		s.objects = append(s.objects, Object[T]{
+		s.objects = append(s.objects, sceneObject[T]{
 			transform:  transform,
 			firstShape: invalidShapeRef,
 			flags:      flags,
@@ -101,7 +101,7 @@ func (s *Scene[T]) CreateObject(info ObjectInfo[T]) ObjectID {
 		return ObjectID(index)
 	} else {
 		index := s.freeObjectIndices.Pop()
-		s.objects[index] = Object[T]{
+		s.objects[index] = sceneObject[T]{
 			transform:  transform,
 			firstShape: invalidShapeRef,
 			flags:      flags,
@@ -145,20 +145,20 @@ func (s *Scene[T]) SetObjectTransform(objID ObjectID, transform Transform) {
 	object.transform = transform
 	s.eachObjectShape(object, shapeKindSphere, func(index uint32) {
 		sphere := &s.spheres[index]
-		sphere.Update(transform)
-		bs := sphere.BoundingSphere()
+		sphere.update(transform)
+		bs := sphere.boundingSphere()
 		s.sphereTree.Update(sphere.spatialID, spatial.CubeAreaFromSphere(bs.Position, bs.Radius))
 	})
 	s.eachObjectShape(object, shapeKindBox, func(index uint32) {
 		box := &s.boxes[index]
-		box.Update(transform)
-		bs := box.BoundingSphere()
+		box.update(transform)
+		bs := box.boundingSphere()
 		s.boxTree.Update(box.spatialID, spatial.CubeAreaFromSphere(bs.Position, bs.Radius))
 	})
 	s.eachObjectShape(object, shapeKindMesh, func(index uint32) {
 		mesh := &s.meshes[index]
-		mesh.Update(transform)
-		bs := mesh.BoundingSphere()
+		mesh.update(transform)
+		bs := mesh.boundingSphere()
 		s.meshTree.Update(mesh.spatialID, spatial.CubeAreaFromSphere(bs.Position, bs.Radius))
 	})
 }
@@ -169,7 +169,7 @@ func (s *Scene[T]) AttachSphere(objID ObjectID, info SphereInfo) ShapeID {
 	var index uint32
 	if s.freeSphereIndices.IsEmpty() {
 		index = uint32(len(s.spheres))
-		s.spheres = append(s.spheres, SphereShape{})
+		s.spheres = append(s.spheres, sceneSphereShape{})
 	} else {
 		index = s.freeSphereIndices.Pop()
 	}
@@ -178,18 +178,18 @@ func (s *Scene[T]) AttachSphere(objID ObjectID, info SphereInfo) ShapeID {
 	object := &s.objects[objID]
 
 	solver := newSphereSolver(info.Sphere)
-	solver.Update(object.transform)
+	solver.update(object.transform)
 
-	bs := solver.BoundingSphere()
+	bs := solver.boundingSphere()
 	spatialID := s.sphereTree.Insert(spatial.CubeAreaFromSphere(bs.Position, bs.Radius), index)
 
 	sphereShape := &s.spheres[index]
-	*sphereShape = SphereShape{
-		Shape: Shape{
+	*sphereShape = sceneSphereShape{
+		sceneShape: sceneShape{
 			objectIndex: uint32(objID),
 			nextShape:   object.firstShape,
 			spatialID:   spatialID,
-			static:      object.IsStatic(),
+			static:      object.isStatic(),
 			rejectGroup: info.RejectGroup,
 			sourceMask:  info.SourceMask.ValueOrDefault(0b1),
 			targetMask:  info.TargetMask.ValueOrDefault(0b1),
@@ -207,7 +207,7 @@ func (s *Scene[T]) AttachBox(objID ObjectID, info BoxInfo) ShapeID {
 	var index uint32
 	if s.freeBoxIndices.IsEmpty() {
 		index = uint32(len(s.boxes))
-		s.boxes = append(s.boxes, BoxShape{})
+		s.boxes = append(s.boxes, sceneBoxShape{})
 	} else {
 		index = s.freeBoxIndices.Pop()
 	}
@@ -216,18 +216,18 @@ func (s *Scene[T]) AttachBox(objID ObjectID, info BoxInfo) ShapeID {
 	object := &s.objects[objID]
 
 	solver := newBoxSolver(info.Box)
-	solver.Update(object.transform)
+	solver.update(object.transform)
 
-	bs := solver.BoundingSphere()
+	bs := solver.boundingSphere()
 	spatialID := s.boxTree.Insert(spatial.CubeAreaFromSphere(bs.Position, bs.Radius), index)
 
 	boxShape := &s.boxes[index]
-	*boxShape = BoxShape{
-		Shape: Shape{
+	*boxShape = sceneBoxShape{
+		sceneShape: sceneShape{
 			objectIndex: uint32(objID),
 			nextShape:   object.firstShape,
 			spatialID:   spatialID,
-			static:      object.IsStatic(),
+			static:      object.isStatic(),
 			rejectGroup: info.RejectGroup,
 			sourceMask:  info.SourceMask.ValueOrDefault(0b1),
 			targetMask:  info.TargetMask.ValueOrDefault(0b1),
@@ -245,7 +245,7 @@ func (s *Scene[T]) AttachMesh(objID ObjectID, info MeshInfo) ShapeID {
 	var index uint32
 	if s.freeMeshIndices.IsEmpty() {
 		index = uint32(len(s.meshes))
-		s.meshes = append(s.meshes, MeshShape{})
+		s.meshes = append(s.meshes, sceneMeshShape{})
 	} else {
 		index = s.freeMeshIndices.Pop()
 	}
@@ -254,18 +254,18 @@ func (s *Scene[T]) AttachMesh(objID ObjectID, info MeshInfo) ShapeID {
 	object := &s.objects[objID]
 
 	solver := newMeshSolver(info.Mesh)
-	solver.Update(object.transform)
+	solver.update(object.transform)
 
-	bs := solver.BoundingSphere()
+	bs := solver.boundingSphere()
 	spatialID := s.meshTree.Insert(spatial.CubeAreaFromSphere(bs.Position, bs.Radius), index)
 
 	meshShape := &s.meshes[index]
-	*meshShape = MeshShape{
-		Shape: Shape{
+	*meshShape = sceneMeshShape{
+		sceneShape: sceneShape{
 			objectIndex: uint32(objID),
 			nextShape:   object.firstShape,
 			spatialID:   spatialID,
-			static:      object.IsStatic(),
+			static:      object.isStatic(),
 			rejectGroup: info.RejectGroup,
 			sourceMask:  info.SourceMask.ValueOrDefault(0b1),
 			targetMask:  info.TargetMask.ValueOrDefault(0b1),
@@ -306,11 +306,11 @@ func (s *Scene[T]) DeleteShape(shapeID ShapeID) {
 func (s *Scene[T]) CollectIntersections(collection ObjectIntersectionCollection) {
 	// Sphere vs Sphere intersections.
 	s.checks = s.checks[:0]
-	s.eachDynamicSphere(func(srcIndex uint32, srcSphere *SphereShape) {
-		area := createArea(srcSphere.BoundingSphere())
+	s.eachDynamicSphere(func(srcIndex uint32, srcSphere *sceneSphereShape) {
+		area := createArea(srcSphere.boundingSphere())
 		s.sphereTree.VisitArea(area, spatial.VisitorFunc[uint32](func(tgtIndex uint32) {
 			tgtSphere := &s.spheres[tgtIndex]
-			if (srcIndex < tgtIndex) && shapesCanIntersect(&srcSphere.Shape, &tgtSphere.Shape) {
+			if (srcIndex < tgtIndex) && shapesCanIntersect(&srcSphere.sceneShape, &tgtSphere.sceneShape) {
 				s.checks = append(s.checks, newIndexPair(srcIndex, tgtIndex))
 			}
 		}))
@@ -319,20 +319,20 @@ func (s *Scene[T]) CollectIntersections(collection ObjectIntersectionCollection)
 
 	// Sphere vs Box intersections.
 	s.checks = s.checks[:0]
-	s.eachDynamicSphere(func(srcIndex uint32, srcSphere *SphereShape) {
-		area := createArea(srcSphere.BoundingSphere())
+	s.eachDynamicSphere(func(srcIndex uint32, srcSphere *sceneSphereShape) {
+		area := createArea(srcSphere.boundingSphere())
 		s.boxTree.VisitArea(area, spatial.VisitorFunc[uint32](func(tgtIndex uint32) {
 			tgtBox := &s.boxes[tgtIndex]
-			if shapesCanIntersect(&srcSphere.Shape, &tgtBox.Shape) {
+			if shapesCanIntersect(&srcSphere.sceneShape, &tgtBox.sceneShape) {
 				s.checks = append(s.checks, newIndexPair(srcIndex, tgtIndex))
 			}
 		}))
 	})
-	s.eachDynamicBox(func(srcIndex uint32, srcBox *BoxShape) {
-		area := createArea(srcBox.BoundingSphere())
+	s.eachDynamicBox(func(srcIndex uint32, srcBox *sceneBoxShape) {
+		area := createArea(srcBox.boundingSphere())
 		s.sphereTree.VisitArea(area, spatial.VisitorFunc[uint32](func(tgtIndex uint32) {
 			tgtSphere := &s.spheres[tgtIndex]
-			if shapesCanIntersect(&tgtSphere.Shape, &srcBox.Shape) {
+			if shapesCanIntersect(&tgtSphere.sceneShape, &srcBox.sceneShape) {
 				s.checks = append(s.checks, newIndexPair(tgtIndex, srcIndex)) // flipped
 			}
 		}))
@@ -341,20 +341,20 @@ func (s *Scene[T]) CollectIntersections(collection ObjectIntersectionCollection)
 
 	// Sphere vs Mesh intersections.
 	s.checks = s.checks[:0]
-	s.eachDynamicSphere(func(srcIndex uint32, srcSphere *SphereShape) {
-		area := createArea(srcSphere.BoundingSphere())
+	s.eachDynamicSphere(func(srcIndex uint32, srcSphere *sceneSphereShape) {
+		area := createArea(srcSphere.boundingSphere())
 		s.meshTree.VisitArea(area, spatial.VisitorFunc[uint32](func(tgtIndex uint32) {
 			tgtMesh := &s.meshes[tgtIndex]
-			if shapesCanIntersect(&srcSphere.Shape, &tgtMesh.Shape) {
+			if shapesCanIntersect(&srcSphere.sceneShape, &tgtMesh.sceneShape) {
 				s.checks = append(s.checks, newIndexPair(srcIndex, tgtIndex))
 			}
 		}))
 	})
-	s.eachDynamicMesh(func(srcIndex uint32, srcMesh *MeshShape) {
-		area := createArea(srcMesh.BoundingSphere())
+	s.eachDynamicMesh(func(srcIndex uint32, srcMesh *sceneMeshShape) {
+		area := createArea(srcMesh.boundingSphere())
 		s.sphereTree.VisitArea(area, spatial.VisitorFunc[uint32](func(tgtIndex uint32) {
 			tgtSphere := &s.spheres[tgtIndex]
-			if shapesCanIntersect(&tgtSphere.Shape, &srcMesh.Shape) {
+			if shapesCanIntersect(&tgtSphere.sceneShape, &srcMesh.sceneShape) {
 				s.checks = append(s.checks, newIndexPair(tgtIndex, srcIndex)) // flipped
 			}
 		}))
@@ -363,20 +363,20 @@ func (s *Scene[T]) CollectIntersections(collection ObjectIntersectionCollection)
 
 	// Box vs Mesh intersections.
 	s.checks = s.checks[:0]
-	s.eachDynamicBox(func(srcIndex uint32, srcBox *BoxShape) {
-		area := createArea(srcBox.BoundingSphere())
+	s.eachDynamicBox(func(srcIndex uint32, srcBox *sceneBoxShape) {
+		area := createArea(srcBox.boundingSphere())
 		s.meshTree.VisitArea(area, spatial.VisitorFunc[uint32](func(tgtIndex uint32) {
 			tgtMesh := &s.meshes[tgtIndex]
-			if shapesCanIntersect(&srcBox.Shape, &tgtMesh.Shape) {
+			if shapesCanIntersect(&srcBox.sceneShape, &tgtMesh.sceneShape) {
 				s.checks = append(s.checks, newIndexPair(srcIndex, tgtIndex))
 			}
 		}))
 	})
-	s.eachDynamicMesh(func(srcIndex uint32, srcMesh *MeshShape) {
-		area := createArea(srcMesh.BoundingSphere())
+	s.eachDynamicMesh(func(srcIndex uint32, srcMesh *sceneMeshShape) {
+		area := createArea(srcMesh.boundingSphere())
 		s.boxTree.VisitArea(area, spatial.VisitorFunc[uint32](func(tgtIndex uint32) {
 			tgtBox := &s.boxes[tgtIndex]
-			if shapesCanIntersect(&tgtBox.Shape, &srcMesh.Shape) {
+			if shapesCanIntersect(&tgtBox.sceneShape, &srcMesh.sceneShape) {
 				s.checks = append(s.checks, newIndexPair(tgtIndex, srcIndex)) // flipped
 			}
 		}))
@@ -387,7 +387,7 @@ func (s *Scene[T]) CollectIntersections(collection ObjectIntersectionCollection)
 // CheckSegmentIntersection returns the first intersection of the segment
 // with the scene.
 func (s *Scene[T]) CheckSegmentIntersection(segment Segment, mask uint32) (ObjectIntersection, bool) {
-	srcShape := Shape{
+	srcShape := sceneShape{
 		objectIndex: invalidObjectIndex,
 		targetMask:  mask,
 	}
@@ -398,7 +398,7 @@ func (s *Scene[T]) CheckSegmentIntersection(segment Segment, mask uint32) (Objec
 	s.checks = s.checks[:0]
 	s.sphereTree.VisitSegment(segment.A, segment.B, spatial.VisitorFunc[uint32](func(tgtIndex uint32) {
 		tgtSphere := &s.spheres[tgtIndex]
-		if shapesCanIntersect(&srcShape, &tgtSphere.Shape) {
+		if shapesCanIntersect(&srcShape, &tgtSphere.sceneShape) {
 			s.checks = append(s.checks, newIndexPair(0, tgtIndex))
 		}
 	}))
@@ -407,8 +407,8 @@ func (s *Scene[T]) CheckSegmentIntersection(segment Segment, mask uint32) (Objec
 		sphere := &s.spheres[checkPair.tgtIndex()]
 		if intersection, ok := CheckSegmentSphereIntersection(segment, sphere.wsSphere); ok {
 			collection.AddIntersection(ObjectIntersection{
-				FirstObjectID:  InvalidObjectID,
-				SecondObjectID: ObjectID(sphere.objectIndex),
+				SourceObjectID: InvalidObjectID,
+				TargetObjectID: ObjectID(sphere.objectIndex),
 				Intersection:   intersection,
 			})
 		}
@@ -418,7 +418,7 @@ func (s *Scene[T]) CheckSegmentIntersection(segment Segment, mask uint32) (Objec
 	s.checks = s.checks[:0]
 	s.boxTree.VisitSegment(segment.A, segment.B, spatial.VisitorFunc[uint32](func(tgtIndex uint32) {
 		tgtBox := &s.boxes[tgtIndex]
-		if shapesCanIntersect(&srcShape, &tgtBox.Shape) {
+		if shapesCanIntersect(&srcShape, &tgtBox.sceneShape) {
 			s.checks = append(s.checks, newIndexPair(0, tgtIndex))
 		}
 	}))
@@ -427,8 +427,8 @@ func (s *Scene[T]) CheckSegmentIntersection(segment Segment, mask uint32) (Objec
 		box := &s.boxes[checkPair.tgtIndex()]
 		if intersection, ok := CheckSegmentBoxIntersection(segment, box.wsBox); ok {
 			collection.AddIntersection(ObjectIntersection{
-				FirstObjectID:  InvalidObjectID,
-				SecondObjectID: ObjectID(box.objectIndex),
+				SourceObjectID: InvalidObjectID,
+				TargetObjectID: ObjectID(box.objectIndex),
 				Intersection:   intersection,
 			})
 		}
@@ -438,7 +438,7 @@ func (s *Scene[T]) CheckSegmentIntersection(segment Segment, mask uint32) (Objec
 	s.checks = s.checks[:0]
 	s.meshTree.VisitSegment(segment.A, segment.B, spatial.VisitorFunc[uint32](func(tgtIndex uint32) {
 		tgtMesh := &s.meshes[tgtIndex]
-		if shapesCanIntersect(&srcShape, &tgtMesh.Shape) {
+		if shapesCanIntersect(&srcShape, &tgtMesh.sceneShape) {
 			s.checks = append(s.checks, newIndexPair(0, tgtIndex))
 		}
 	}))
@@ -447,8 +447,8 @@ func (s *Scene[T]) CheckSegmentIntersection(segment Segment, mask uint32) (Objec
 		mesh := &s.meshes[checkPair.tgtIndex()]
 		if intersection, ok := CheckSegmentMeshIntersection(segment, mesh.wsMesh); ok {
 			collection.AddIntersection(ObjectIntersection{
-				FirstObjectID:  InvalidObjectID,
-				SecondObjectID: ObjectID(mesh.objectIndex),
+				SourceObjectID: InvalidObjectID,
+				TargetObjectID: ObjectID(mesh.objectIndex),
 				Intersection:   intersection,
 			})
 		}
@@ -465,36 +465,36 @@ func (s *Scene[T]) GC() {
 	s.meshTree.GC()
 }
 
-func (s *Scene[T]) getShape(ref shapeRef) *Shape {
-	switch ref.Kind() {
+func (s *Scene[T]) getShape(ref shapeRef) *sceneShape {
+	switch ref.kind() {
 	case shapeKindSphere:
-		sphere := &s.spheres[ref.Index()]
-		return &sphere.Shape
+		sphere := &s.spheres[ref.index()]
+		return &sphere.sceneShape
 	case shapeKindBox:
-		box := &s.boxes[ref.Index()]
-		return &box.Shape
+		box := &s.boxes[ref.index()]
+		return &box.sceneShape
 	case shapeKindMesh:
-		mesh := &s.meshes[ref.Index()]
-		return &mesh.Shape
+		mesh := &s.meshes[ref.index()]
+		return &mesh.sceneShape
 	default:
 		panic("unknown shape reference")
 	}
 }
 
 func (s *Scene[T]) freeShape(ref shapeRef) {
-	switch ref.Kind() {
+	switch ref.kind() {
 	case shapeKindSphere:
-		s.freeSphereIndices.Push(ref.Index())
+		s.freeSphereIndices.Push(ref.index())
 	case shapeKindBox:
-		s.freeBoxIndices.Push(ref.Index())
+		s.freeBoxIndices.Push(ref.index())
 	case shapeKindMesh:
-		s.freeMeshIndices.Push(ref.Index())
+		s.freeMeshIndices.Push(ref.index())
 	default:
 		panic("unknown shape reference")
 	}
 }
 
-func (s *Scene[T]) eachDynamicSphere(cb func(uint32, *SphereShape)) {
+func (s *Scene[T]) eachDynamicSphere(cb func(uint32, *sceneSphereShape)) {
 	for index := range uint32(len(s.spheres)) {
 		shape := &s.spheres[index]
 		if shape.static || (shape.spatialID == spatial.InvalidCompactOctreeItemID) {
@@ -504,7 +504,7 @@ func (s *Scene[T]) eachDynamicSphere(cb func(uint32, *SphereShape)) {
 	}
 }
 
-func (s *Scene[T]) eachDynamicBox(cb func(uint32, *BoxShape)) {
+func (s *Scene[T]) eachDynamicBox(cb func(uint32, *sceneBoxShape)) {
 	for index := range uint32(len(s.boxes)) {
 		shape := &s.boxes[index]
 		if shape.static || (shape.spatialID == spatial.InvalidCompactOctreeItemID) {
@@ -514,7 +514,7 @@ func (s *Scene[T]) eachDynamicBox(cb func(uint32, *BoxShape)) {
 	}
 }
 
-func (s *Scene[T]) eachDynamicMesh(cb func(uint32, *MeshShape)) {
+func (s *Scene[T]) eachDynamicMesh(cb func(uint32, *sceneMeshShape)) {
 	for index := range uint32(len(s.meshes)) {
 		shape := &s.meshes[index]
 		if shape.static || (shape.spatialID == spatial.InvalidCompactOctreeItemID) {
@@ -533,8 +533,8 @@ func (s *Scene[T]) collectSphereSphereIntersections(pairs []indexPair, collectio
 			tgtSphere := &s.spheres[pair.tgtIndex()]
 			if intersection, ok := s.checkSphereSphereIntersection(&srcSphere.sphereSolver, &tgtSphere.sphereSolver); ok {
 				collection.AddIntersection(ObjectIntersection{
-					FirstObjectID:  ObjectID(srcSphere.objectIndex),
-					SecondObjectID: ObjectID(tgtSphere.objectIndex),
+					SourceObjectID: ObjectID(srcSphere.objectIndex),
+					TargetObjectID: ObjectID(tgtSphere.objectIndex),
 					Intersection:   intersection,
 				})
 			}
@@ -552,8 +552,8 @@ func (s *Scene[T]) collectSphereBoxIntersections(pairs []indexPair, collection O
 			tgtBox := &s.boxes[pair.tgtIndex()]
 			if intersection, ok := s.checkSphereBoxIntersection(&srcSphere.sphereSolver, &tgtBox.boxSolver); ok {
 				collection.AddIntersection(ObjectIntersection{
-					FirstObjectID:  ObjectID(srcSphere.objectIndex),
-					SecondObjectID: ObjectID(tgtBox.objectIndex),
+					SourceObjectID: ObjectID(srcSphere.objectIndex),
+					TargetObjectID: ObjectID(tgtBox.objectIndex),
 					Intersection:   intersection,
 				})
 			}
@@ -571,8 +571,8 @@ func (s *Scene[T]) collectSphereMeshIntersections(pairs []indexPair, collection 
 			tgtMesh := &s.meshes[pair.tgtIndex()]
 			if intersection, ok := s.checkSphereMeshIntersection(&srcSphere.sphereSolver, &tgtMesh.meshSolver); ok {
 				collection.AddIntersection(ObjectIntersection{
-					FirstObjectID:  ObjectID(srcSphere.objectIndex),
-					SecondObjectID: ObjectID(tgtMesh.objectIndex),
+					SourceObjectID: ObjectID(srcSphere.objectIndex),
+					TargetObjectID: ObjectID(tgtMesh.objectIndex),
 					Intersection:   intersection,
 				})
 			}
@@ -590,8 +590,8 @@ func (s *Scene[T]) collectBoxMeshIntersections(pairs []indexPair, collection Obj
 			tgtMesh := &s.meshes[pair.tgtIndex()]
 			if intersection, ok := s.checkBoxMeshIntersection(&srcBox.boxSolver, &tgtMesh.meshSolver); ok {
 				collection.AddIntersection(ObjectIntersection{
-					FirstObjectID:  ObjectID(srcBox.objectIndex),
-					SecondObjectID: ObjectID(tgtMesh.objectIndex),
+					SourceObjectID: ObjectID(srcBox.objectIndex),
+					TargetObjectID: ObjectID(tgtMesh.objectIndex),
 					Intersection:   intersection,
 				})
 			}
@@ -600,7 +600,7 @@ func (s *Scene[T]) collectBoxMeshIntersections(pairs []indexPair, collection Obj
 	}
 }
 
-func (s *Scene[T]) deleteObjectShapes(object *Object[T]) {
+func (s *Scene[T]) deleteObjectShapes(object *sceneObject[T]) {
 	ref := object.firstShape
 	for ref != invalidShapeRef {
 		shape := s.getShape(ref)
@@ -610,13 +610,13 @@ func (s *Scene[T]) deleteObjectShapes(object *Object[T]) {
 	}
 }
 
-func (s *Scene[T]) eachObjectShape(object *Object[T], kind shapeKind, cb func(uint32)) {
+func (s *Scene[T]) eachObjectShape(object *sceneObject[T], kind shapeKind, cb func(uint32)) {
 	ref := object.firstShape
 	for ref != invalidShapeRef {
 		shape := s.getShape(ref)
 		nextRef := shape.nextShape
-		if ref.Kind() == kind {
-			cb(ref.Index())
+		if ref.kind() == kind {
+			cb(ref.index())
 		}
 		ref = nextRef
 	}

@@ -2,6 +2,10 @@ package shape3d
 
 import "github.com/mokiat/gomath/dprec"
 
+// NewBox creates a new box with the specified position, rotation and size.
+//
+// NOTE: That the size is the full size of the box. Internally it will be
+// converted to half sizes.
 func NewBox(position dprec.Vec3, rotation dprec.Quat, size dprec.Vec3) Box {
 	return Box{
 		Position:   position,
@@ -12,6 +16,8 @@ func NewBox(position dprec.Vec3, rotation dprec.Quat, size dprec.Vec3) Box {
 	}
 }
 
+// TransformedBox creates a new box from the specified source box by applying
+// the specified transformation.
 func TransformedBox(source Box, transform Transform) Box {
 	boxTransform := ChainedTransform(transform, Transform{
 		Translation: source.Position,
@@ -26,10 +32,21 @@ func TransformedBox(source Box, transform Transform) Box {
 	}
 }
 
+// Box represents a cuboid shape.
 type Box struct {
-	Position   dprec.Vec3
-	Rotation   dprec.Quat
-	HalfWidth  float64
+
+	// Position holds the position of the box.
+	Position dprec.Vec3
+
+	// Rotation holds the rotation of the box.
+	Rotation dprec.Quat
+
+	// HalfWidth holds the half-width of the bx.
+	HalfWidth float64
+
+	// HalfHeight holds the half-height of the box.
 	HalfHeight float64
+
+	// HalfLength holds the half-length of the box.
 	HalfLength float64
 }
