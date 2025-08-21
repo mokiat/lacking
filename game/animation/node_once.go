@@ -100,10 +100,10 @@ func (n *OnceNode) Advance(seconds, synchronizationRate float64) {
 	if n.overlay.IsSynchronized() {
 		adjustedRate := n.primary.Rate() / n.overlay.Rate()
 		n.overlay.Advance(seconds, synchronizationRate*adjustedRate)
-		n.remaining -= seconds * synchronizationRate * adjustedRate
+		n.remaining -= seconds * synchronizationRate * adjustedRate * n.overlay.Rate()
 	} else {
 		n.overlay.Advance(seconds, 1.0)
-		n.remaining -= seconds
+		n.remaining -= seconds * n.overlay.Rate()
 	}
 	if n.remaining < 0.0 {
 		n.active = false
