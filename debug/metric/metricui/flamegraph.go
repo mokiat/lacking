@@ -97,7 +97,7 @@ func (c *flamegraphComponent) renderSpan(canvas *ui.Canvas, span metric.Span, ra
 	canvas.ClipRect(position, size)
 	canvas.Translate(position)
 
-	fillColor := ui.MixColors(ui.Navy(), ui.Red(), ratio/2.0)
+	fillColor := ui.MixColors(ui.Navy(), ui.Maroon(), ratio)
 	canvas.Reset()
 	canvas.SetStrokeColor(ui.Gray())
 	canvas.SetStrokeSizeSeparate(1.0, 0.0)
