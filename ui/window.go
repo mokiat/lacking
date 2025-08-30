@@ -335,11 +335,9 @@ func (w *windowHandler) OnRender() {
 	dirtyRegion := clipBounds // TODO: Handle dirty sub-regions
 
 	w.canvas.onBegin(elapsedTime)
-	w.canvas.SetClipRect(
-		0.0,
-		float32(w.size.Width),
-		0.0,
-		float32(w.size.Height),
+	w.canvas.ClipRect(
+		sprec.ZeroVec2(),
+		sprec.NewVec2(float32(w.size.Width), float32(w.size.Height)),
 	)
 	w.renderElement(w.root, w.canvas, clipBounds, dirtyRegion)
 	w.canvas.onEnd()
@@ -492,20 +490,28 @@ func (w *Window) renderElement(element *Element, canvas *Canvas, clipBounds, dir
 		float32(element.bounds.X),
 		float32(element.bounds.Y),
 	))
-	canvas.SetClipRect(
-		float32(elementClipBounds.X),
-		float32(elementClipBounds.X+elementClipBounds.Width),
-		float32(elementClipBounds.Y),
-		float32(elementClipBounds.Y+elementClipBounds.Height),
+	canvas.ClipRect(
+		sprec.NewVec2(
+			float32(elementClipBounds.X),
+			float32(elementClipBounds.Y),
+		),
+		sprec.NewVec2(
+			float32(elementClipBounds.Width),
+			float32(elementClipBounds.Height),
+		),
 	)
 	element.onRender(canvas)
 	if contentBounds := element.ContentBounds(); !contentBounds.Empty() {
 		contentClipBounds := contentBounds.Intersect(elementClipBounds)
-		canvas.SetClipRect(
-			float32(contentClipBounds.X),
-			float32(contentClipBounds.X+contentClipBounds.Width),
-			float32(contentClipBounds.Y),
-			float32(contentClipBounds.Y+contentClipBounds.Height),
+		canvas.ClipRect(
+			sprec.NewVec2(
+				float32(contentClipBounds.X),
+				float32(contentClipBounds.Y),
+			),
+			sprec.NewVec2(
+				float32(contentClipBounds.Width),
+				float32(contentClipBounds.Height),
+			),
 		)
 		for child := element.firstChild; child != nil; child = child.rightSibling {
 			w.renderElement(

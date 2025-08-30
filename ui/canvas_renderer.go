@@ -352,7 +352,10 @@ func (c *canvasRenderer) onBegin(commandBuffer render.CommandBuffer, size Size) 
 	c.modelIsDirty = true
 	c.currentLayer = c.topLayer
 	c.SetTransform(sprec.IdentityMat4())
-	c.SetClipRect(0, float32(size.Width), 0, float32(size.Height))
+	c.ClipRect(
+		sprec.ZeroVec2(),
+		sprec.NewVec2(float32(size.Width), float32(size.Height)),
+	)
 }
 
 func (c *canvasRenderer) onEnd() {
@@ -450,28 +453,6 @@ func (c *canvasRenderer) ClipRect(position, size sprec.Vec2) {
 			-1.0, 0.0, 0.0, position.X+size.X,
 			0.0, 1.0, 0.0, -position.Y,
 			0.0, -1.0, 0.0, position.Y+size.Y,
-		),
-		sprec.InverseMat4(c.currentLayer.Transform),
-	)
-	c.modelIsDirty = true
-}
-
-// SetClipRect creates a clipping rectangle region. This clipping mechanism
-// is slighly faster than using Clip with a Path and is used by the UI framework
-// for clipping Element contents.
-//
-// Note: This clipping model does not nest, hence you can escape the boundaries
-// of your Element depending on the provided values. In most cases, the Clip
-// method should be used instead.
-//
-// Deprecated: Use ClipRect instead
-func (c *canvasRenderer) SetClipRect(left, right, top, bottom float32) {
-	c.currentLayer.ClipTransform = sprec.Mat4Prod(
-		sprec.NewMat4(
-			1.0, 0.0, 0.0, -left,
-			-1.0, 0.0, 0.0, right,
-			0.0, 1.0, 0.0, -top,
-			0.0, -1.0, 0.0, bottom,
 		),
 		sprec.InverseMat4(c.currentLayer.Transform),
 	)

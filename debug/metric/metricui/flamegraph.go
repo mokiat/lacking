@@ -61,7 +61,7 @@ func (c *flamegraphComponent) OnCreate() {
 		}
 	}
 
-	co.After(c.Scope(), c.interval, c.onRefresh)
+	co.Every(c.Scope(), c.interval, c.onRefresh)
 }
 
 func (c *flamegraphComponent) OnUpsert() {
@@ -164,8 +164,6 @@ func (c *flamegraphComponent) onRefresh() {
 		Width:  flamegraphIdealWidth,
 		Height: treeDepth * flamegraphRowHeigth,
 	})
-
-	co.After(c.Scope(), c.interval, c.onRefresh)
 }
 
 func (c *flamegraphComponent) spanTreeDepth(node metric.Span) int {
