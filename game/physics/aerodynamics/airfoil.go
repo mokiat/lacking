@@ -74,7 +74,7 @@ func (s *AirfoilSolver) Force(windSpeed dprec.Vec3, density float64) dprec.Vec3 
 		effWindVelocity := windSpeedLng * lateralAmount
 		angleOfAttack := dprec.Atan2(windY, dprec.Abs(windX)) // keep symmetric
 
-		coef := s.localLiftCoefficient(angleOfAttack)
+		coef := s.localLiftCoefficient(angleOfAttack) / 2.0 // reduce lateral coefficient
 		force := 0.5 * density * area * dprec.Sqr(effWindVelocity) * coef
 		result = dprec.Vec3Sum(result, dprec.Vec3Prod(dprec.BasisYVec3(), force))
 	}
