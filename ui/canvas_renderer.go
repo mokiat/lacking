@@ -359,6 +359,9 @@ func (c *canvasRenderer) onBegin(commandBuffer render.CommandBuffer, size Size) 
 }
 
 func (c *canvasRenderer) onEnd() {
+	if c.currentLayer != c.topLayer {
+		panic("mismatching push and pop statements")
+	}
 	c.shapeMesh.Upload()
 	c.contourMesh.Upload()
 	c.textMesh.Upload()
