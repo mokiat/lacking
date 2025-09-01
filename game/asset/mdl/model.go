@@ -111,11 +111,10 @@ func (s *Model) AllMaterials() []*Material {
 func (s *Model) AllAmbientLightPlacements() []Placed[*AmbientLight] {
 	var result []Placed[*AmbientLight]
 	for _, node := range s.NodesIter() {
-		switch source := node.Target().(type) {
-		case *AmbientLight:
+		for light := range NodeAttachmentsOfType[*AmbientLight](node) {
 			result = append(result, Placed[*AmbientLight]{
 				Node:  node,
-				Value: source,
+				Value: light,
 			})
 		}
 	}
@@ -125,11 +124,10 @@ func (s *Model) AllAmbientLightPlacements() []Placed[*AmbientLight] {
 func (s *Model) AllPointLightPlacements() []Placed[*PointLight] {
 	var result []Placed[*PointLight]
 	for _, node := range s.NodesIter() {
-		switch source := node.Target().(type) {
-		case *PointLight:
+		for light := range NodeAttachmentsOfType[*PointLight](node) {
 			result = append(result, Placed[*PointLight]{
 				Node:  node,
-				Value: source,
+				Value: light,
 			})
 		}
 	}
@@ -139,11 +137,10 @@ func (s *Model) AllPointLightPlacements() []Placed[*PointLight] {
 func (s *Model) AllSpotLightPlacements() []Placed[*SpotLight] {
 	var result []Placed[*SpotLight]
 	for _, node := range s.NodesIter() {
-		switch source := node.Target().(type) {
-		case *SpotLight:
+		for light := range NodeAttachmentsOfType[*SpotLight](node) {
 			result = append(result, Placed[*SpotLight]{
 				Node:  node,
-				Value: source,
+				Value: light,
 			})
 		}
 	}
@@ -153,11 +150,10 @@ func (s *Model) AllSpotLightPlacements() []Placed[*SpotLight] {
 func (s *Model) AllDirectionalLightPlacements() []Placed[*DirectionalLight] {
 	var result []Placed[*DirectionalLight]
 	for _, node := range s.NodesIter() {
-		switch source := node.Target().(type) {
-		case *DirectionalLight:
+		for light := range NodeAttachmentsOfType[*DirectionalLight](node) {
 			result = append(result, Placed[*DirectionalLight]{
 				Node:  node,
-				Value: source,
+				Value: light,
 			})
 		}
 	}
@@ -196,11 +192,10 @@ func (s *Model) AllMeshDefinitions() []*MeshDefinition {
 func (s *Model) AllMeshPlacements() []Placed[*Mesh] {
 	var result []Placed[*Mesh]
 	for _, node := range s.NodesIter() {
-		switch source := node.Target().(type) {
-		case *Mesh:
+		for mesh := range NodeAttachmentsOfType[*Mesh](node) {
 			result = append(result, Placed[*Mesh]{
 				Node:  node,
-				Value: source,
+				Value: mesh,
 			})
 		}
 	}
@@ -229,11 +224,10 @@ func (s *Model) AllPhysicsBodyDefinitions() []*BodyDefinition {
 func (s *Model) AllPhysicsBodyPlacements() []Placed[*Body] {
 	var result []Placed[*Body]
 	for _, node := range s.NodesIter() {
-		switch source := node.Source().(type) {
-		case *Body:
+		for body := range NodeAttachmentsOfType[*Body](node) {
 			result = append(result, Placed[*Body]{
 				Node:  node,
-				Value: source,
+				Value: body,
 			})
 		}
 	}
@@ -243,11 +237,10 @@ func (s *Model) AllPhysicsBodyPlacements() []Placed[*Body] {
 func (s *Model) AllSkyPlacements() []Placed[*Sky] {
 	var result []Placed[*Sky]
 	for _, node := range s.NodesIter() {
-		switch source := node.Target().(type) {
-		case *Sky:
+		for sky := range NodeAttachmentsOfType[*Sky](node) {
 			result = append(result, Placed[*Sky]{
 				Node:  node,
-				Value: source,
+				Value: sky,
 			})
 		}
 	}

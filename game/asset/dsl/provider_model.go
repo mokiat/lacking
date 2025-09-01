@@ -556,12 +556,12 @@ func BuildModelResource(gltfDoc *gltf.Document, forceCollision bool) (*mdl.Model
 
 		switch {
 		case gltfNodeHasMesh(gltfNode):
-			node.SetTarget(createMesh(gltfNode))
+			node.AddAttachment(createMesh(gltfNode))
 			if body := createBody(gltfNode); body != nil {
-				node.SetSource(body)
+				node.AddAttachment(body)
 			}
 		case gltfNodeHasLight(gltfNode):
-			node.SetTarget(createLight(gltfNode))
+			node.AddAttachment(createLight(gltfNode))
 		}
 
 		if gltfNode.MatrixOrDefault() != gltf.DefaultMatrix {

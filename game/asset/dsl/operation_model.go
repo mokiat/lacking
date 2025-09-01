@@ -97,7 +97,7 @@ func EditMaterial(name string, opts ...Operation) Operation {
 func findMaterial(nodes []*mdl.Node, name string) *mdl.Material {
 	nodes = flattenNodes(nodes)
 	for _, node := range nodes {
-		if mesh, ok := node.Target().(*mdl.Mesh); ok {
+		for mesh := range mdl.NodeAttachmentsOfType[*mdl.Mesh](node) {
 			materials := mesh.Definition().Materials()
 			for _, material := range materials {
 				if material.Name() == name {
