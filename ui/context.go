@@ -22,6 +22,8 @@ func newContext(parent *Context, window *Window, resMan *resourceManager) *Conte
 
 		adhocFontCollections: nil,
 		namedFontCollections: make(map[string]*FontCollection),
+
+		namedSounds: make(map[string]*Sound),
 	}
 }
 
@@ -39,6 +41,8 @@ type Context struct {
 
 	adhocFontCollections []*FontCollection
 	namedFontCollections map[string]*FontCollection
+
+	namedSounds map[string]*Sound
 }
 
 // Window returns the Window that this Context is a part of.
@@ -197,6 +201,26 @@ func (c *Context) GetFont(family, subFamily string) (*Font, bool) {
 	return nil, false
 }
 
+// OpenSound opens the Sound at the specified URI location.
+//
+// The URI is interpreted according to the used ResourceLocator.
+//
+// The Sound will be destroyed once this Context is destroyed.
+func (c *Context) OpenSound(uri string) (*Sound, error) {
+	if result, ok := c.findSound(uri); ok {
+		return result, nil
+	}
+	logger.Debug("Opening named sound",
+		slog.String("uri", uri),
+	)
+	result, err := c.resMan.OpenSound(uri)
+	if err != nil {
+		return nil, err
+	}
+	c.namedSounds[uri] = result
+	return result, nil
+}
+
 // Destroy releases all resources held by this Context.
 func (c *Context) Destroy() {
 	logger.Debug("Destroying context")
@@ -269,6 +293,16 @@ func (c *Context) findFontCollection(uri string) (*FontCollection, bool) {
 	}
 	if c.parent != nil {
 		return c.parent.findFontCollection(uri)
+	}
+	return nil, false
+}
+
+func (c *Context) findSound(uri string) (*Sound, bool) {
+	if result, ok := c.namedSounds[uri]; ok {
+		return result, true
+	}
+	if c.parent != nil {
+		return c.parent.findSound(uri)
 	}
 	return nil, false
 }

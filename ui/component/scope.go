@@ -263,3 +263,20 @@ func GetFont(scope Scope, family, style string) *ui.Font {
 	}
 	return font
 }
+
+// OpenSound uses the ui.Context from the specified scope to load the sound at
+// the specified uri location.
+//
+// If the sound cannot be loaded for some reason, this function logs an error
+// and returns nil.
+func OpenSound(scope Scope, uri string) *ui.Sound {
+	sound, err := scope.Context().OpenSound(uri)
+	if err != nil {
+		logger.Error("Error opening named sound",
+			slog.String("uri", uri),
+			slog.String("error", err.Error()),
+		)
+		return nil // TODO: Return no-op value.
+	}
+	return sound
+}

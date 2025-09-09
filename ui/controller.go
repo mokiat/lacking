@@ -54,7 +54,7 @@ func (c *Controller) OnCreate(appWindow app.Window) {
 	c.fntFact = newFontFactory(appWindow.RenderAPI(), renderer)
 
 	imgFact := newImageFactory(appWindow.RenderAPI())
-	c.resMan = newResourceManager(c.locator, imgFact, c.fntFact)
+	c.resMan = newResourceManager(c.locator, appWindow.AudioAPI(), imgFact, c.fntFact)
 
 	c.canvas.onCreate()
 	c.fntFact.Init()
