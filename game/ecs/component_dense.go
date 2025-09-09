@@ -11,11 +11,13 @@ import (
 // memory intensive and should be used only for components that are very
 // common and are likely to be attached to the majority of entities.
 func NewDenseComponentSet[T any](scene *Scene) *DenseComponentSet[T] {
-	return &DenseComponentSet[T]{
+	result := &DenseComponentSet[T]{
 		scene:      scene,
 		mask:       scene.newComponentType(),
 		components: make([]T, scene.MaxEntityCount()),
 	}
+	scene.purgeSubscriptions.Subscribe(result.Unset)
+	return result
 }
 
 var _ ComponentSet[any] = (*DenseComponentSet[any])(nil)

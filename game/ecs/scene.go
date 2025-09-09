@@ -17,6 +17,7 @@ func newScene(maxEntityCount int) *Scene {
 
 	return &Scene{
 		deleteSubscriptions: observer.NewSubscriptionSet[DeleteCallback](),
+		purgeSubscriptions:  observer.NewSubscriptionSet[DeleteCallback](),
 
 		maxEntityCount:    maxEntityCount,
 		entityMask:        newBitmask(),
@@ -33,6 +34,7 @@ func newScene(maxEntityCount int) *Scene {
 // Scene represents a collection of ECS entities.
 type Scene struct {
 	deleteSubscriptions *observer.SubscriptionSet[DeleteCallback]
+	purgeSubscriptions  *observer.SubscriptionSet[DeleteCallback]
 
 	maxEntityCount    int
 	entityMask        *bitmask
@@ -165,6 +167,9 @@ func (s *Scene) hasComponent(entityID EntityID, mask componentMask) bool {
 
 func (s *Scene) notifyDelete(entityID EntityID) {
 	for callback := range s.deleteSubscriptions.CallbacksIter() {
+		callback(entityID)
+	}
+	for callback := range s.purgeSubscriptions.CallbacksIter() {
 		callback(entityID)
 	}
 }

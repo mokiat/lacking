@@ -17,7 +17,7 @@ func NewTinyComponentSet[T any](scene *Scene) *TinyComponentSet[T] {
 		list:    mem.NewSparseList[T](16),
 		mapping: make(map[uint32]mem.SparseID),
 	}
-	scene.SubscribeDelete(result.Unset)
+	scene.purgeSubscriptions.Subscribe(result.Unset)
 	return result
 }
 

@@ -17,7 +17,7 @@ func NewSparseComponentSet[T any](scene *Scene) *SparseComponentSet[T] {
 		list:    mem.NewSparseList[T](1024),
 		mapping: make([]mem.SparseID, scene.MaxEntityCount()),
 	}
-	scene.SubscribeDelete(result.Unset)
+	scene.purgeSubscriptions.Subscribe(result.Unset)
 	return result
 }
 
