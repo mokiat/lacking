@@ -506,13 +506,20 @@ func (s *Scene[O, S]) getShape(ref shapeRef) *sceneShape[S] {
 }
 
 func (s *Scene[O, S]) freeShape(ref shapeRef) {
+	index := ref.index()
 	switch ref.kind() {
 	case shapeKindSphere:
-		s.freeSphereIndices.Push(ref.index())
+		sphere := &s.spheres[index]
+		s.sphereTree.Remove(sphere.spatialID)
+		s.freeSphereIndices.Push(index)
 	case shapeKindBox:
-		s.freeBoxIndices.Push(ref.index())
+		box := &s.boxes[index]
+		s.boxTree.Remove(box.spatialID)
+		s.freeBoxIndices.Push(index)
 	case shapeKindMesh:
-		s.freeMeshIndices.Push(ref.index())
+		mesh := &s.meshes[index]
+		s.meshTree.Remove(mesh.spatialID)
+		s.freeMeshIndices.Push(index)
 	default:
 		panic("unknown shape reference")
 	}
