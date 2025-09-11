@@ -167,6 +167,12 @@ func (w *Window) GrantFocus(element *Element) {
 	w.Invalidate()
 }
 
+// FocusedElement returns the currently focused Element or nil
+// if no Element is focused.
+func (w *Window) FocusedElement() *Element {
+	return w.focusedElement
+}
+
 // BubbleFocus releases focus from the current element and tries to find
 // a parent that is focusable in order to grant it focus.
 func (w *Window) BubbleFocus() {
@@ -274,13 +280,16 @@ func (w *windowHandler) OnFramebufferResize(size Size) {
 
 func (w *windowHandler) OnKeyboardEvent(event KeyboardEvent) bool {
 	current := w.focusedElement
+	if current == nil {
+		return false
+	}
+	// TODO: The following check could be handled with mount and unmount
+	// events and handling.
+	if !current.HasAncestor(w.root) {
+		w.DiscardFocus()
+		return false
+	}
 	for current != nil {
-		// TODO: The following check could be handled with mount and unmount
-		// events and handling.
-		if !current.HasAncestor(w.root) {
-			w.DiscardFocus()
-			return false
-		}
 		if current.focusable && current.onKeyboardEvent(event) {
 			return true
 		}
