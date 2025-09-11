@@ -38,6 +38,15 @@ type ModelTemplate struct {
 	SkyTemplates      IdentifiableList[SkyTemplate]
 }
 
+func (t *ModelTemplate) FindRecording(name string) *animation.Recording {
+	for _, recording := range t.Recordings.Iter() {
+		if recording.Name() == name {
+			return recording
+		}
+	}
+	return nil
+}
+
 // LoadModelTemplate resolves a model template from the given asset data.
 //
 // This is a blocking operation and should be called from a worker thread.
@@ -258,6 +267,27 @@ func (m *Model) AnimatedNodes() []*hierarchy.Node {
 
 func (m *Model) BindAnimation(root animation.Node) *animation.Player {
 	animatedNodes := m.AnimatedNodes()
+
+	boneNames := make([]string, len(animatedNodes))
+	for i, node := range animatedNodes {
+		boneNames[i] = node.Name()
+	}
+
+	player := animation.NewPlayer(root, boneNames)
+	for _, node := range animatedNodes {
+		node.SetSource(AnimationNodeSource{
+			Player: player,
+		})
+	}
+	return player
+}
+
+func (m *Model) BindAnimationSubtree(nodeName string, root animation.Node) *animation.Player {
+	var animatedNodes []*hierarchy.Node
+	subtreeNode := m.FindNode(nodeName)
+	hierarchy.EachNode(subtreeNode, func(node *hierarchy.Node) {
+		animatedNodes = append(animatedNodes, node)
+	})
 
 	boneNames := make([]string, len(animatedNodes))
 	for i, node := range animatedNodes {

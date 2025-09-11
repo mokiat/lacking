@@ -62,6 +62,30 @@ func ForceCollision() Operation {
 	)
 }
 
+// OnlyAnimations creates an operation that forces the target to include only
+// animations.
+func OnlyAnimations() Operation {
+	type animationConfigurable interface {
+		SetOnlyAnimations(bool)
+	}
+	return FuncOperation(
+		// apply function
+		func(target any) error {
+			configurable, ok := target.(animationConfigurable)
+			if !ok {
+				return fmt.Errorf("target %T is not configurable for animation", target)
+			}
+			configurable.SetOnlyAnimations(true)
+			return nil
+		},
+
+		// digest function
+		func() ([]byte, error) {
+			return CreateDigest("only-animations")
+		},
+	)
+}
+
 // EditMaterial creates an operation that edits the material with the
 // provided name in the target node holder.
 func EditMaterial(name string, opts ...Operation) Operation {

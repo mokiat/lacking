@@ -59,7 +59,7 @@ func OpenGLTFModel(path string, opts ...Operation) Provider[*mdl.Model] {
 			}
 			defer file.Close()
 
-			model, err := parseGLTFResource(file, cfg.forceCollision)
+			model, err := parseGLTFResource(file, cfg.forceCollision, cfg.onlyAnimations)
 			if err != nil {
 				return nil, fmt.Errorf("failed to parse gltf model: %w", err)
 			}
@@ -79,10 +79,15 @@ func OpenGLTFModel(path string, opts ...Operation) Provider[*mdl.Model] {
 
 type openGLTFModelConfig struct {
 	forceCollision bool
+	onlyAnimations bool
 }
 
 func (c *openGLTFModelConfig) SetForceCollision(value bool) {
 	c.forceCollision = value
+}
+
+func (c *openGLTFModelConfig) SetOnlyAnimations(value bool) {
+	c.onlyAnimations = value
 }
 
 // NOTE: glTF allows a sub-mesh to use totally different
@@ -98,369 +103,381 @@ func (c *openGLTFModelConfig) SetForceCollision(value bool) {
 // mesh partitioning, we would be getting rid of the unnecessary
 // partitioning.
 
-func parseGLTFResource(in io.Reader, forceCollision bool) (*mdl.Model, error) {
+func parseGLTFResource(in io.Reader, forceCollision, onlyAnimations bool) (*mdl.Model, error) {
 	gltfDoc := new(gltf.Document)
 	if err := gltf.NewDecoder(in).Decode(gltfDoc); err != nil {
 		return nil, fmt.Errorf("failed to parse gltf model: %w", err)
 	}
-	return BuildModelResource(gltfDoc, forceCollision)
+	return BuildModelResource(gltfDoc, forceCollision, onlyAnimations)
 }
 
-func BuildModelResource(gltfDoc *gltf.Document, forceCollision bool) (*mdl.Model, error) {
+func BuildModelResource(gltfDoc *gltf.Document, forceCollision, onlyAnimations bool) (*mdl.Model, error) {
 	model := mdl.NewModel()
 
 	// build images
 	imagesFromIndex := make(map[int]*mdl.Image)
-	for i, gltfImage := range gltfDoc.Images {
-		img, err := openGLTFImage(gltfDoc, gltfImage)
-		if err != nil {
-			return nil, fmt.Errorf("error loading image: %w", err)
+	if !onlyAnimations {
+		for i, gltfImage := range gltfDoc.Images {
+			img, err := openGLTFImage(gltfDoc, gltfImage)
+			if err != nil {
+				return nil, fmt.Errorf("error loading image: %w", err)
+			}
+			imagesFromIndex[i] = img
 		}
-		imagesFromIndex[i] = img
 	}
 
 	// build textures
 	texturesFromIndex := make(map[int]*mdl.Texture)
-	for i, img := range imagesFromIndex {
-		texture := mdl.Create2DTexture(img.Width(), img.Height(), 1, mdl.TextureFormatRGBA8)
-		texture.SetName(img.Name())
-		texture.SetGenerateMipmaps(true)
-		texture.SetLayerImage(0, 0, img)
-		texturesFromIndex[i] = texture
+	if !onlyAnimations {
+		for i, img := range imagesFromIndex {
+			texture := mdl.Create2DTexture(img.Width(), img.Height(), 1, mdl.TextureFormatRGBA8)
+			texture.SetName(img.Name())
+			texture.SetGenerateMipmaps(true)
+			texture.SetLayerImage(0, 0, img)
+			texturesFromIndex[i] = texture
+		}
 	}
 
 	// build samplers
 	samplersFromIndex := make(map[int]*mdl.Sampler)
-	for i, gltfTexture := range gltfDoc.Textures {
-		sampler := mdl.NewSampler()
-		if gltfTexture.Sampler != nil {
-			gltfSampler := gltfDoc.Samplers[*gltfTexture.Sampler]
-			switch gltfSampler.WrapS {
-			case gltf.WrapRepeat:
+	if !onlyAnimations {
+		for i, gltfTexture := range gltfDoc.Textures {
+			sampler := mdl.NewSampler()
+			if gltfTexture.Sampler != nil {
+				gltfSampler := gltfDoc.Samplers[*gltfTexture.Sampler]
+				switch gltfSampler.WrapS {
+				case gltf.WrapRepeat:
+					sampler.SetWrapMode(mdl.WrapModeRepeat)
+				case gltf.WrapClampToEdge:
+					sampler.SetWrapMode(mdl.WrapModeClamp)
+				case gltf.WrapMirroredRepeat:
+					sampler.SetWrapMode(mdl.WrapModeMirroredRepeat)
+				default:
+					sampler.SetWrapMode(mdl.WrapModeClamp)
+					logger.Warn("Unsupported texture wrap mode",
+						slog.String("mode", gltfSampler.WrapS.String()),
+					)
+				}
+				switch gltfSampler.MinFilter {
+				case gltf.MinNearest:
+					sampler.SetFilterMode(mdl.FilterModeNearest)
+				case gltf.MinLinear:
+					sampler.SetFilterMode(mdl.FilterModeLinear)
+				case gltf.MinNearestMipMapNearest:
+					sampler.SetMipmapping(true)
+					sampler.SetFilterMode(mdl.FilterModeNearest)
+				case gltf.MinLinearMipMapNearest:
+					sampler.SetMipmapping(true)
+					sampler.SetFilterMode(mdl.FilterModeLinear)
+				case gltf.MinNearestMipMapLinear:
+					sampler.SetMipmapping(true)
+					sampler.SetFilterMode(mdl.FilterModeNearest)
+				case gltf.MinLinearMipMapLinear:
+					sampler.SetMipmapping(true)
+					sampler.SetFilterMode(mdl.FilterModeLinear)
+				default:
+					sampler.SetFilterMode(mdl.FilterModeLinear)
+					logger.Warn("Unsupported texture min filter mode",
+						slog.String("mode", gltfSampler.MinFilter.String()),
+					)
+				}
+			} else {
+				sampler.SetFilterMode(mdl.FilterModeLinear)
 				sampler.SetWrapMode(mdl.WrapModeRepeat)
-			case gltf.WrapClampToEdge:
-				sampler.SetWrapMode(mdl.WrapModeClamp)
-			case gltf.WrapMirroredRepeat:
-				sampler.SetWrapMode(mdl.WrapModeMirroredRepeat)
-			default:
-				sampler.SetWrapMode(mdl.WrapModeClamp)
-				logger.Warn("Unsupported texture wrap mode",
-					slog.String("mode", gltfSampler.WrapS.String()),
-				)
+				sampler.SetMipmapping(true)
 			}
-			switch gltfSampler.MinFilter {
-			case gltf.MinNearest:
-				sampler.SetFilterMode(mdl.FilterModeNearest)
-			case gltf.MinLinear:
-				sampler.SetFilterMode(mdl.FilterModeLinear)
-			case gltf.MinNearestMipMapNearest:
-				sampler.SetMipmapping(true)
-				sampler.SetFilterMode(mdl.FilterModeNearest)
-			case gltf.MinLinearMipMapNearest:
-				sampler.SetMipmapping(true)
-				sampler.SetFilterMode(mdl.FilterModeLinear)
-			case gltf.MinNearestMipMapLinear:
-				sampler.SetMipmapping(true)
-				sampler.SetFilterMode(mdl.FilterModeNearest)
-			case gltf.MinLinearMipMapLinear:
-				sampler.SetMipmapping(true)
-				sampler.SetFilterMode(mdl.FilterModeLinear)
-			default:
-				sampler.SetFilterMode(mdl.FilterModeLinear)
-				logger.Warn("Unsupported texture min filter mode",
-					slog.String("mode", gltfSampler.MinFilter.String()),
-				)
+			if gltfTexture.Source != nil {
+				sampler.SetTexture(texturesFromIndex[*gltfTexture.Source])
+			} else {
+				return nil, fmt.Errorf("texture source not set")
 			}
-		} else {
-			sampler.SetFilterMode(mdl.FilterModeLinear)
-			sampler.SetWrapMode(mdl.WrapModeRepeat)
-			sampler.SetMipmapping(true)
+			samplersFromIndex[i] = sampler
 		}
-		if gltfTexture.Source != nil {
-			sampler.SetTexture(texturesFromIndex[*gltfTexture.Source])
-		} else {
-			return nil, fmt.Errorf("texture source not set")
-		}
-		samplersFromIndex[i] = sampler
 	}
 
 	// build materials
 	materialFromIndex := make(map[int]*mdl.Material)
-	for i, gltfMaterial := range gltfDoc.Materials {
-		var (
-			color          sprec.Vec4
-			metallic       float32
-			roughness      float32
-			normalScale    float32
-			alphaThreshold float32
+	if !onlyAnimations {
+		for i, gltfMaterial := range gltfDoc.Materials {
+			var (
+				color          sprec.Vec4
+				metallic       float32
+				roughness      float32
+				normalScale    float32
+				alphaThreshold float32
 
-			colorTextureIndex             *int
-			metallicRoughnessTextureIndex *int
-			normalTextureIndex            *int
-		)
+				colorTextureIndex             *int
+				metallicRoughnessTextureIndex *int
+				normalTextureIndex            *int
+			)
 
-		if gltfPBR := gltfMaterial.PBRMetallicRoughness; gltfPBR != nil {
-			color = gltfutil.BaseColor(gltfPBR)
-			metallic = float32(gltfPBR.MetallicFactorOrDefault())
-			roughness = float32(gltfPBR.RoughnessFactorOrDefault())
-			if texIndex := gltfutil.ColorTextureIndex(gltfDoc, gltfPBR); texIndex != nil {
-				colorTextureIndex = texIndex
+			if gltfPBR := gltfMaterial.PBRMetallicRoughness; gltfPBR != nil {
+				color = gltfutil.BaseColor(gltfPBR)
+				metallic = float32(gltfPBR.MetallicFactorOrDefault())
+				roughness = float32(gltfPBR.RoughnessFactorOrDefault())
+				if texIndex := gltfutil.ColorTextureIndex(gltfDoc, gltfPBR); texIndex != nil {
+					colorTextureIndex = texIndex
+				}
+				if texIndex := gltfutil.MetallicRoughnessTextureIndex(gltfDoc, gltfPBR); texIndex != nil {
+					metallicRoughnessTextureIndex = texIndex
+					sampler := samplersFromIndex[*texIndex]
+					sampler.Texture().SetLinear(true)
+				}
+			} else {
+				color = sprec.NewVec4(1.0, 1.0, 1.0, 1.0)
+				metallic = 1.0
+				roughness = 1.0
 			}
-			if texIndex := gltfutil.MetallicRoughnessTextureIndex(gltfDoc, gltfPBR); texIndex != nil {
-				metallicRoughnessTextureIndex = texIndex
+
+			alphaThreshold = float32(gltfMaterial.AlphaCutoffOrDefault())
+
+			if texIndex, texScale := gltfutil.NormalTextureIndexScale(gltfDoc, gltfMaterial); texIndex != nil {
+				normalTextureIndex = texIndex
+				normalScale = texScale
 				sampler := samplersFromIndex[*texIndex]
 				sampler.Texture().SetLinear(true)
+			} else {
+				normalScale = 1.0
 			}
-		} else {
-			color = sprec.NewVec4(1.0, 1.0, 1.0, 1.0)
-			metallic = 1.0
-			roughness = 1.0
+
+			geometryShader := mdl.NewShader(mdl.ShaderTypeGeometry)
+			geometryShader.SetSourceCode(createPBRShader(pbrShaderConfig{
+				hasColorTexture:             colorTextureIndex != nil,
+				hasMetallicRoughnessTexture: metallicRoughnessTextureIndex != nil,
+				hasNormalTexture:            normalTextureIndex != nil,
+				hasAlphaTesting:             gltfMaterial.AlphaMode == gltf.AlphaMask,
+			}))
+
+			geometryPass := mdl.NewMaterialPass()
+			geometryPass.SetLayer(0)
+			if gltfMaterial.DoubleSided {
+				geometryPass.SetCulling(mdl.CullModeNone)
+			} else {
+				geometryPass.SetCulling(mdl.CullModeBack)
+			}
+			geometryPass.SetFrontFace(mdl.FaceOrientationCCW)
+			geometryPass.SetDepthTest(true)
+			geometryPass.SetDepthWrite(true)
+			geometryPass.SetDepthComparison(mdl.ComparisonLessOrEqual)
+			geometryPass.SetBlending(false) // if gltfMaterial.AlphaMode == gltf.AlphaBlend, use forward pass somehow
+			geometryPass.SetShader(geometryShader)
+
+			shadowShader := mdl.NewShader(mdl.ShaderTypeGeometry)
+			shadowShader.SetSourceCode(``)
+
+			shadowPass := mdl.NewMaterialPass()
+			shadowPass.SetLayer(0)
+			if gltfMaterial.DoubleSided {
+				shadowPass.SetCulling(mdl.CullModeNone)
+			} else {
+				shadowPass.SetCulling(mdl.CullModeBack)
+			}
+			shadowPass.SetFrontFace(mdl.FaceOrientationCCW)
+			shadowPass.SetDepthTest(true)
+			shadowPass.SetDepthWrite(true)
+			shadowPass.SetDepthComparison(mdl.ComparisonLessOrEqual)
+			shadowPass.SetBlending(false) // if gltfMaterial.AlphaMode == gltf.AlphaBlend, use forward pass somehow
+			shadowPass.SetShader(shadowShader)
+
+			material := mdl.NewMaterial(gltfMaterial.Name)
+			material.SetMetadata(gltfutil.Properties(gltfMaterial.Extras))
+			material.AddGeometryPass(geometryPass)
+			material.AddShadowPass(shadowPass)
+			material.SetProperty("color", color)
+			material.SetProperty("metallic", metallic)
+			material.SetProperty("roughness", roughness)
+			material.SetProperty("normalScale", normalScale)
+			material.SetProperty("alphaThreshold", alphaThreshold)
+			if colorTextureIndex != nil {
+				material.SetSampler("colorSampler", samplersFromIndex[*colorTextureIndex])
+			}
+			if metallicRoughnessTextureIndex != nil {
+				material.SetSampler("metallicRoughnessSampler", samplersFromIndex[*metallicRoughnessTextureIndex])
+			}
+			if normalTextureIndex != nil {
+				material.SetSampler("normalSampler", samplersFromIndex[*normalTextureIndex])
+			}
+
+			materialFromIndex[i] = material
 		}
-
-		alphaThreshold = float32(gltfMaterial.AlphaCutoffOrDefault())
-
-		if texIndex, texScale := gltfutil.NormalTextureIndexScale(gltfDoc, gltfMaterial); texIndex != nil {
-			normalTextureIndex = texIndex
-			normalScale = texScale
-			sampler := samplersFromIndex[*texIndex]
-			sampler.Texture().SetLinear(true)
-		} else {
-			normalScale = 1.0
-		}
-
-		geometryShader := mdl.NewShader(mdl.ShaderTypeGeometry)
-		geometryShader.SetSourceCode(createPBRShader(pbrShaderConfig{
-			hasColorTexture:             colorTextureIndex != nil,
-			hasMetallicRoughnessTexture: metallicRoughnessTextureIndex != nil,
-			hasNormalTexture:            normalTextureIndex != nil,
-			hasAlphaTesting:             gltfMaterial.AlphaMode == gltf.AlphaMask,
-		}))
-
-		geometryPass := mdl.NewMaterialPass()
-		geometryPass.SetLayer(0)
-		if gltfMaterial.DoubleSided {
-			geometryPass.SetCulling(mdl.CullModeNone)
-		} else {
-			geometryPass.SetCulling(mdl.CullModeBack)
-		}
-		geometryPass.SetFrontFace(mdl.FaceOrientationCCW)
-		geometryPass.SetDepthTest(true)
-		geometryPass.SetDepthWrite(true)
-		geometryPass.SetDepthComparison(mdl.ComparisonLessOrEqual)
-		geometryPass.SetBlending(false) // if gltfMaterial.AlphaMode == gltf.AlphaBlend, use forward pass somehow
-		geometryPass.SetShader(geometryShader)
-
-		shadowShader := mdl.NewShader(mdl.ShaderTypeGeometry)
-		shadowShader.SetSourceCode(``)
-
-		shadowPass := mdl.NewMaterialPass()
-		shadowPass.SetLayer(0)
-		if gltfMaterial.DoubleSided {
-			shadowPass.SetCulling(mdl.CullModeNone)
-		} else {
-			shadowPass.SetCulling(mdl.CullModeBack)
-		}
-		shadowPass.SetFrontFace(mdl.FaceOrientationCCW)
-		shadowPass.SetDepthTest(true)
-		shadowPass.SetDepthWrite(true)
-		shadowPass.SetDepthComparison(mdl.ComparisonLessOrEqual)
-		shadowPass.SetBlending(false) // if gltfMaterial.AlphaMode == gltf.AlphaBlend, use forward pass somehow
-		shadowPass.SetShader(shadowShader)
-
-		material := mdl.NewMaterial(gltfMaterial.Name)
-		material.SetMetadata(gltfutil.Properties(gltfMaterial.Extras))
-		material.AddGeometryPass(geometryPass)
-		material.AddShadowPass(shadowPass)
-		material.SetProperty("color", color)
-		material.SetProperty("metallic", metallic)
-		material.SetProperty("roughness", roughness)
-		material.SetProperty("normalScale", normalScale)
-		material.SetProperty("alphaThreshold", alphaThreshold)
-		if colorTextureIndex != nil {
-			material.SetSampler("colorSampler", samplersFromIndex[*colorTextureIndex])
-		}
-		if metallicRoughnessTextureIndex != nil {
-			material.SetSampler("metallicRoughnessSampler", samplersFromIndex[*metallicRoughnessTextureIndex])
-		}
-		if normalTextureIndex != nil {
-			material.SetSampler("normalSampler", samplersFromIndex[*normalTextureIndex])
-		}
-
-		materialFromIndex[i] = material
 	}
 
 	// build mesh definitions
 	meshDefinitionFromIndex := make(map[int]*mdl.MeshDefinition)
 	bodyDefinitionFromIndex := make(map[int]*mdl.BodyDefinition)
-	for i, gltfMesh := range gltfDoc.Meshes {
-		bodyMaterial := mdl.NewBodyMaterial()
-		bodyDefinition := mdl.NewBodyDefinition(bodyMaterial)
+	if !onlyAnimations {
+		for i, gltfMesh := range gltfDoc.Meshes {
+			bodyMaterial := mdl.NewBodyMaterial()
+			bodyDefinition := mdl.NewBodyDefinition(bodyMaterial)
 
-		metadata := mdl.Metadata(gltfutil.Properties(gltfMesh.Extras))
+			metadata := mdl.Metadata(gltfutil.Properties(gltfMesh.Extras))
 
-		geometry := mdl.NewGeometry()
-		geometry.SetName(gltfMesh.Name)
-		geometry.SetMetadata(metadata)
-		if minDistance, ok := metadata.HasMinDistance(); ok {
-			geometry.SetMinDistance(minDistance)
-		}
-		if maxDistance, ok := metadata.HasMaxDistance(); ok {
-			geometry.SetMaxDistance(maxDistance)
-		}
-		if maxCascade, ok := metadata.HasMaxCascade(); ok {
-			geometry.SetMaxCascade(maxCascade)
-		}
-
-		meshDefinition := mdl.NewMeshDefinition()
-		meshDefinition.SetName(gltfMesh.Name)
-		meshDefinition.SetGeometry(geometry)
-
-		indexFromVertex := make(map[mdl.Vertex]int)
-
-		for _, gltfPrimitive := range gltfMesh.Primitives {
-			indexOffset := geometry.IndexOffset() // this needs to happen first
-
-			gltfIndices, err := gltfutil.Indices(gltfDoc, gltfPrimitive)
-			if err != nil {
-				return nil, fmt.Errorf("error reading indices: %w", err)
+			geometry := mdl.NewGeometry()
+			geometry.SetName(gltfMesh.Name)
+			geometry.SetMetadata(metadata)
+			if minDistance, ok := metadata.HasMinDistance(); ok {
+				geometry.SetMinDistance(minDistance)
 			}
-			gltfCoords, err := gltfutil.Coords(gltfDoc, gltfPrimitive)
-			if err != nil {
-				return nil, fmt.Errorf("error reading coords: %w", err)
+			if maxDistance, ok := metadata.HasMaxDistance(); ok {
+				geometry.SetMaxDistance(maxDistance)
 			}
-			gltfNormals, err := gltfutil.Normals(gltfDoc, gltfPrimitive)
-			if err != nil {
-				return nil, fmt.Errorf("error reading normals: %w", err)
-			}
-			gltfTangents, err := gltfutil.Tangents(gltfDoc, gltfPrimitive)
-			if err != nil {
-				return nil, fmt.Errorf("error reading tangents: %w", err)
-			}
-			gltfTexCoords, err := gltfutil.TexCoord0s(gltfDoc, gltfPrimitive)
-			if err != nil {
-				return nil, fmt.Errorf("error reading tex coords: %w", err)
-			}
-			gltfColors, err := gltfutil.Color0s(gltfDoc, gltfPrimitive)
-			if err != nil {
-				return nil, fmt.Errorf("error reading colors: %w", err)
-			}
-			gltfWeights, err := gltfutil.Weight0s(gltfDoc, gltfPrimitive)
-			if err != nil {
-				return nil, fmt.Errorf("error reading weights: %w", err)
-			}
-			gltfJoints, err := gltfutil.Joint0s(gltfDoc, gltfPrimitive)
-			if err != nil {
-				return nil, fmt.Errorf("error reading joints: %w", err)
+			if maxCascade, ok := metadata.HasMaxCascade(); ok {
+				geometry.SetMaxCascade(maxCascade)
 			}
 
-			geometryFormat := geometry.Format()
-			if gltfCoords != nil {
-				geometryFormat |= mdl.VertexFormatCoord
-			}
-			if gltfNormals != nil {
-				geometryFormat |= mdl.VertexFormatNormal
-			}
-			if gltfTangents != nil {
-				geometryFormat |= mdl.VertexFormatTangent
-			}
-			if gltfTexCoords != nil {
-				geometryFormat |= mdl.VertexFormatTexCoord
-			}
-			if gltfColors != nil {
-				geometryFormat |= mdl.VertexFormatColor
-			}
-			if gltfWeights != nil {
-				geometryFormat |= mdl.VertexFormatWeights
-			}
-			if gltfJoints != nil {
-				geometryFormat |= mdl.VertexFormatJoints
-			}
-			geometry.SetFormat(geometryFormat)
+			meshDefinition := mdl.NewMeshDefinition()
+			meshDefinition.SetName(gltfMesh.Name)
+			meshDefinition.SetGeometry(geometry)
 
-			for _, gltfIndex := range gltfIndices {
-				var vertex mdl.Vertex
+			indexFromVertex := make(map[mdl.Vertex]int)
+
+			for _, gltfPrimitive := range gltfMesh.Primitives {
+				indexOffset := geometry.IndexOffset() // this needs to happen first
+
+				gltfIndices, err := gltfutil.Indices(gltfDoc, gltfPrimitive)
+				if err != nil {
+					return nil, fmt.Errorf("error reading indices: %w", err)
+				}
+				gltfCoords, err := gltfutil.Coords(gltfDoc, gltfPrimitive)
+				if err != nil {
+					return nil, fmt.Errorf("error reading coords: %w", err)
+				}
+				gltfNormals, err := gltfutil.Normals(gltfDoc, gltfPrimitive)
+				if err != nil {
+					return nil, fmt.Errorf("error reading normals: %w", err)
+				}
+				gltfTangents, err := gltfutil.Tangents(gltfDoc, gltfPrimitive)
+				if err != nil {
+					return nil, fmt.Errorf("error reading tangents: %w", err)
+				}
+				gltfTexCoords, err := gltfutil.TexCoord0s(gltfDoc, gltfPrimitive)
+				if err != nil {
+					return nil, fmt.Errorf("error reading tex coords: %w", err)
+				}
+				gltfColors, err := gltfutil.Color0s(gltfDoc, gltfPrimitive)
+				if err != nil {
+					return nil, fmt.Errorf("error reading colors: %w", err)
+				}
+				gltfWeights, err := gltfutil.Weight0s(gltfDoc, gltfPrimitive)
+				if err != nil {
+					return nil, fmt.Errorf("error reading weights: %w", err)
+				}
+				gltfJoints, err := gltfutil.Joint0s(gltfDoc, gltfPrimitive)
+				if err != nil {
+					return nil, fmt.Errorf("error reading joints: %w", err)
+				}
+
+				geometryFormat := geometry.Format()
 				if gltfCoords != nil {
-					vertex.Coord = gltfCoords[gltfIndex]
+					geometryFormat |= mdl.VertexFormatCoord
 				}
 				if gltfNormals != nil {
-					vertex.Normal = gltfNormals[gltfIndex]
+					geometryFormat |= mdl.VertexFormatNormal
 				}
 				if gltfTangents != nil {
-					vertex.Tangent = gltfTangents[gltfIndex]
+					geometryFormat |= mdl.VertexFormatTangent
 				}
 				if gltfTexCoords != nil {
-					vertex.TexCoord = gltfTexCoords[gltfIndex]
+					geometryFormat |= mdl.VertexFormatTexCoord
 				}
 				if gltfColors != nil {
-					vertex.Color = gltfColors[gltfIndex]
+					geometryFormat |= mdl.VertexFormatColor
 				}
 				if gltfWeights != nil {
-					vertex.Weights = gltfWeights[gltfIndex]
+					geometryFormat |= mdl.VertexFormatWeights
 				}
 				if gltfJoints != nil {
-					vertex.Joints = gltfJoints[gltfIndex]
+					geometryFormat |= mdl.VertexFormatJoints
 				}
+				geometry.SetFormat(geometryFormat)
 
-				if index, ok := indexFromVertex[vertex]; ok {
-					geometry.AddIndex(index)
-				} else {
-					index = geometry.VertexOffset()
-					geometry.AddVertex(vertex)
-					geometry.AddIndex(index)
-					indexFromVertex[vertex] = index
-				}
-			}
+				for _, gltfIndex := range gltfIndices {
+					var vertex mdl.Vertex
+					if gltfCoords != nil {
+						vertex.Coord = gltfCoords[gltfIndex]
+					}
+					if gltfNormals != nil {
+						vertex.Normal = gltfNormals[gltfIndex]
+					}
+					if gltfTangents != nil {
+						vertex.Tangent = gltfTangents[gltfIndex]
+					}
+					if gltfTexCoords != nil {
+						vertex.TexCoord = gltfTexCoords[gltfIndex]
+					}
+					if gltfColors != nil {
+						vertex.Color = gltfColors[gltfIndex]
+					}
+					if gltfWeights != nil {
+						vertex.Weights = gltfWeights[gltfIndex]
+					}
+					if gltfJoints != nil {
+						vertex.Joints = gltfJoints[gltfIndex]
+					}
 
-			fragment := mdl.NewFragment()
-			fragment.SetMetadata(gltfutil.Properties(gltfPrimitive.Extras))
-			fragment.SetIndexOffset(indexOffset)
-			fragment.SetIndexCount(len(gltfIndices))
-			switch gltfPrimitive.Mode {
-			case gltf.PrimitivePoints:
-				fragment.SetTopology(mdl.TopologyPoints)
-			case gltf.PrimitiveLines:
-				fragment.SetTopology(mdl.TopologyLineList)
-			case gltf.PrimitiveLineStrip:
-				fragment.SetTopology(mdl.TopologyLineStrip)
-			case gltf.PrimitiveTriangles:
-				fragment.SetTopology(mdl.TopologyTriangleList)
-			case gltf.PrimitiveTriangleStrip:
-				fragment.SetTopology(mdl.TopologyTriangleStrip)
-			default:
-				return nil, fmt.Errorf("unsupported primitive mode %d", gltfPrimitive.Mode)
-			}
-			if gltfPrimitive.Material != nil {
-				gltfMaterial := gltfDoc.Materials[*gltfPrimitive.Material]
-				fragment.SetName(gltfMaterial.Name)
-				fragment.AppendMetadata(gltfutil.Properties(gltfMaterial.Extras))
-				if material, ok := materialFromIndex[*gltfPrimitive.Material]; ok {
-					if !material.Metadata().IsInvisible() {
-						meshDefinition.BindMaterial(gltfMaterial.Name, materialFromIndex[*gltfPrimitive.Material])
+					if index, ok := indexFromVertex[vertex]; ok {
+						geometry.AddIndex(index)
+					} else {
+						index = geometry.VertexOffset()
+						geometry.AddVertex(vertex)
+						geometry.AddIndex(index)
+						indexFromVertex[vertex] = index
 					}
 				}
-			} else {
-				return nil, fmt.Errorf("missing material for primitive of mesh %q", gltfMesh.Name)
+
+				fragment := mdl.NewFragment()
+				fragment.SetMetadata(gltfutil.Properties(gltfPrimitive.Extras))
+				fragment.SetIndexOffset(indexOffset)
+				fragment.SetIndexCount(len(gltfIndices))
+				switch gltfPrimitive.Mode {
+				case gltf.PrimitivePoints:
+					fragment.SetTopology(mdl.TopologyPoints)
+				case gltf.PrimitiveLines:
+					fragment.SetTopology(mdl.TopologyLineList)
+				case gltf.PrimitiveLineStrip:
+					fragment.SetTopology(mdl.TopologyLineStrip)
+				case gltf.PrimitiveTriangles:
+					fragment.SetTopology(mdl.TopologyTriangleList)
+				case gltf.PrimitiveTriangleStrip:
+					fragment.SetTopology(mdl.TopologyTriangleStrip)
+				default:
+					return nil, fmt.Errorf("unsupported primitive mode %d", gltfPrimitive.Mode)
+				}
+				if gltfPrimitive.Material != nil {
+					gltfMaterial := gltfDoc.Materials[*gltfPrimitive.Material]
+					fragment.SetName(gltfMaterial.Name)
+					fragment.AppendMetadata(gltfutil.Properties(gltfMaterial.Extras))
+					if material, ok := materialFromIndex[*gltfPrimitive.Material]; ok {
+						if !material.Metadata().IsInvisible() {
+							meshDefinition.BindMaterial(gltfMaterial.Name, materialFromIndex[*gltfPrimitive.Material])
+						}
+					}
+				} else {
+					return nil, fmt.Errorf("missing material for primitive of mesh %q", gltfMesh.Name)
+				}
+				geometry.AddFragment(fragment)
+
+				if (geometry.Metadata().HasCollision() || forceCollision) && !fragment.Metadata().HasSkipCollision() {
+					bodyDefinition.AddCollisionMeshes(createCollisionMeshes(geometry, fragment))
+				}
 			}
-			geometry.AddFragment(fragment)
 
-			if (geometry.Metadata().HasCollision() || forceCollision) && !fragment.Metadata().HasSkipCollision() {
-				bodyDefinition.AddCollisionMeshes(createCollisionMeshes(geometry, fragment))
+			meshDefinition.SetName(gltfMesh.Name)
+			meshDefinition.SetGeometry(geometry)
+			meshDefinitionFromIndex[i] = meshDefinition
+
+			if (geometry.Metadata().HasCollision() || forceCollision) && len(bodyDefinition.CollisionMeshes()) > 0 {
+				bodyDefinitionFromIndex[i] = bodyDefinition
 			}
-		}
-
-		meshDefinition.SetName(gltfMesh.Name)
-		meshDefinition.SetGeometry(geometry)
-		meshDefinitionFromIndex[i] = meshDefinition
-
-		if (geometry.Metadata().HasCollision() || forceCollision) && len(bodyDefinition.CollisionMeshes()) > 0 {
-			bodyDefinitionFromIndex[i] = bodyDefinition
 		}
 	}
 
 	// prepare armatures
 	armatureFromIndex := make(map[int]*mdl.Armature)
-	for i := range gltfDoc.Skins {
-		armatureFromIndex[i] = mdl.NewArmature()
+	if !onlyAnimations {
+		for i := range gltfDoc.Skins {
+			armatureFromIndex[i] = mdl.NewArmature()
+		}
 	}
 
 	createPointLight := func(gltfLight *lightspunctual.Light) *mdl.PointLight {
@@ -595,18 +612,22 @@ func BuildModelResource(gltfDoc *gltf.Document, forceCollision bool) (*mdl.Model
 		}
 		return node
 	}
-	for _, nodeIndex := range gltfutil.RootNodeIndices(gltfDoc) {
-		model.AddNode(visitNode(nodeIndex))
+	if !onlyAnimations {
+		for _, nodeIndex := range gltfutil.RootNodeIndices(gltfDoc) {
+			model.AddNode(visitNode(nodeIndex))
+		}
 	}
 
 	// finalize armatures (now that all nodes are available)
-	for i, gltfSkin := range gltfDoc.Skins {
-		armature := armatureFromIndex[i]
-		for j, gltfJoint := range gltfSkin.Joints {
-			joint := mdl.NewJoint()
-			joint.SetNode(nodeFromIndex[gltfJoint])
-			joint.SetInverseBindMatrix(gltfutil.InverseBindMatrix(gltfDoc, gltfSkin, j))
-			armature.AddJoint(joint)
+	if !onlyAnimations {
+		for i, gltfSkin := range gltfDoc.Skins {
+			armature := armatureFromIndex[i]
+			for j, gltfJoint := range gltfSkin.Joints {
+				joint := mdl.NewJoint()
+				joint.SetNode(nodeFromIndex[gltfJoint])
+				joint.SetInverseBindMatrix(gltfutil.InverseBindMatrix(gltfDoc, gltfSkin, j))
+				armature.AddJoint(joint)
+			}
 		}
 	}
 
@@ -625,7 +646,8 @@ func BuildModelResource(gltfDoc *gltf.Document, forceCollision bool) (*mdl.Model
 
 			binding := bindingFromNodeIndex[*nodeRef]
 			if binding == nil {
-				binding = mdl.NewAnimationBinding(nodeFromIndex[*nodeRef].Name())
+				nodeName := gltfDoc.Nodes[*nodeRef].Name
+				binding = mdl.NewAnimationBinding(nodeName)
 				animation.AddBinding(binding)
 				bindingFromNodeIndex[*nodeRef] = binding
 			}
