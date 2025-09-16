@@ -30,9 +30,9 @@ const (
 var EditBox = co.Define[*editboxComponent]()
 
 type EditBoxData struct {
-	ReadOnly bool
-	Text     string
-	Focused  bool
+	ReadOnly      bool
+	Text          string
+	CreateFocused bool
 }
 
 type EditBoxCallbackData struct {
@@ -59,12 +59,12 @@ type editboxComponent struct {
 	cursorColumn   int
 	selectorColumn int
 
-	isFocused  bool
-	isReadOnly bool
-	line       []rune
-	onChange   func(string)
-	onSubmit   func(string)
-	onReject   func()
+	isCreatedFocused bool
+	isReadOnly       bool
+	line             []rune
+	onChange         func(string)
+	onSubmit         func(string)
+	onReject         func()
 
 	textWidth  int
 	textHeight int
@@ -87,7 +87,7 @@ func (c *editboxComponent) OnCreate() {
 	c.selectorColumn = 0
 
 	data := co.GetData[EditBoxData](c.Properties())
-	c.isFocused = data.Focused
+	c.isCreatedFocused = data.CreateFocused
 	c.isReadOnly = data.ReadOnly
 	c.line = []rune(data.Text)
 	c.refreshTextSize()
@@ -126,9 +126,9 @@ func (c *editboxComponent) Render() co.Instance {
 	return co.New(Element, func() {
 		co.WithLayoutData(c.Properties().LayoutData())
 		co.WithData(ElementData{
-			Essence:      c,
-			CanAutoFocus: opt.V(true),
-			Focused:      opt.V(c.isFocused),
+			Essence:       c,
+			CanAutoFocus:  opt.V(true),
+			CreateFocused: c.isCreatedFocused,
 			IdealSize: opt.V(ui.Size{
 				Width:  c.textWidth + textPadding,
 				Height: c.textHeight,

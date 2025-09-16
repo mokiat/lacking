@@ -263,6 +263,8 @@ func (w *windowHandler) OnFramebufferResize(size Size) {
 }
 
 func (w *windowHandler) OnKeyboardEvent(event KeyboardEvent) bool {
+	w.validateFocus()
+
 	current := w.focusedElement
 	for current != nil {
 		if current.onKeyboardEvent(event) {
@@ -274,6 +276,8 @@ func (w *windowHandler) OnKeyboardEvent(event KeyboardEvent) bool {
 }
 
 func (w *windowHandler) OnMouseEvent(event MouseEvent) bool {
+	w.validateFocus()
+
 	w.checkMouseLeaveEnter(event.Position())
 	w.oldMousePosition = event.Position()
 
@@ -302,6 +306,8 @@ func (w *windowHandler) OnClipboardEvent(event ClipboardEvent) bool {
 }
 
 func (w *windowHandler) OnRender() {
+	w.validateFocus()
+
 	// Check that mouse is still in the same Element. This can change
 	// when an Element gets disabled.
 	w.checkMouseLeaveEnter(w.oldMousePosition)
@@ -334,6 +340,13 @@ func (w *windowHandler) OnCloseRequested() bool {
 		return w.closeInterceptor()
 	}
 	return true
+}
+
+func (w *windowHandler) validateFocus() {
+	current := w.focusedElement
+	if current != nil && !current.HasAncestor(w.root) {
+		w.DiscardFocus()
+	}
 }
 
 func (w *windowHandler) processFocusChange(element *Element, position Position) {

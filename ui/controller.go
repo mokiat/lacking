@@ -48,13 +48,16 @@ type Controller struct {
 }
 
 func (c *Controller) OnCreate(appWindow app.Window) {
-	renderer := newCanvasRenderer(appWindow.RenderAPI(), c.shaders)
+	renderAPI := appWindow.RenderAPI()
+	audioAPI := appWindow.AudioAPI()
+
+	renderer := newCanvasRenderer(renderAPI, c.shaders)
 
 	c.canvas = newCanvas(renderer)
-	c.fntFact = newFontFactory(appWindow.RenderAPI(), renderer)
+	c.fntFact = newFontFactory(renderAPI, renderer)
 
-	imgFact := newImageFactory(appWindow.RenderAPI())
-	c.resMan = newResourceManager(c.locator, appWindow.AudioAPI(), imgFact, c.fntFact)
+	imgFact := newImageFactory(renderAPI)
+	c.resMan = newResourceManager(c.locator, audioAPI, imgFact, c.fntFact)
 
 	c.canvas.onCreate()
 	c.fntFact.Init()

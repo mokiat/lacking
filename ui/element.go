@@ -66,7 +66,8 @@ func newElement(window *Window) *Element {
 // It need not necessarily be a control and could just be
 // an intermediate element used to group Controls.
 type Element struct {
-	id string
+	id   string
+	name string
 
 	parent       *Element
 	firstChild   *Element
@@ -90,6 +91,7 @@ type Element struct {
 }
 
 // ID returns the ID of this Element.
+//
 // If an ID was not specified, then an emptry string is returned.
 func (e *Element) ID() string {
 	return e.id
@@ -98,6 +100,21 @@ func (e *Element) ID() string {
 // SetID changes the ID of this Element.
 func (e *Element) SetID(id string) {
 	e.id = id
+}
+
+// Name returns the name of this Element.
+//
+// If a name was not specified, then an emptry string is returned.
+func (e *Element) Name() string {
+	return e.name
+}
+
+// SetName changes the name of this Element.
+//
+// The name is not required to be unique as is usually used for debugging
+// purposes.
+func (e *Element) SetName(name string) {
+	e.name = name
 }
 
 // Parent returns the parent Element in the hierarchy. If this is
@@ -137,11 +154,6 @@ func (e *Element) RightSibling() *Element {
 // Detach removes this Element from the hierarchy but does not
 // release any resources.
 func (e *Element) Detach() {
-	if focusedElement := e.window.FocusedElement(); focusedElement != nil {
-		if focusedElement.HasAncestor(e) {
-			e.window.GrantFocus(e.parent)
-		}
-	}
 	if e.parent != nil {
 		e.parent.RemoveChild(e)
 	}
@@ -406,13 +418,12 @@ func (e *Element) SetEnabled(enabled bool) {
 // HierarchyEnabled checks whether this Element and all parent Elements
 // are enabled.
 func (e *Element) HierarchyEnabled() bool {
-	if !e.enabled {
-		return false
+	for el := e; el != nil; el = el.parent {
+		if !el.enabled {
+			return false
+		}
 	}
-	if e.parent == nil {
-		return true
-	}
-	return e.parent.HierarchyEnabled()
+	return true
 }
 
 // Visible returns whether this Element should be
@@ -430,20 +441,18 @@ func (e *Element) SetVisible(visible bool) {
 	if visible != e.visible {
 		e.visible = visible
 		e.Invalidate()
-		// TODO: Also update parent's layout
 	}
 }
 
 // HierarchyVisible checks whether this Element and all parent Elements
 // are visible.
 func (e *Element) HierarchyVisible() bool {
-	if !e.visible {
-		return false
+	for el := e; el != nil; el = el.parent {
+		if !el.visible {
+			return false
+		}
 	}
-	if e.parent == nil {
-		return true
-	}
-	return e.parent.HierarchyVisible()
+	return true
 }
 
 // CanAutoFocus returns whether this Element can be automatically gain
@@ -475,8 +484,10 @@ func (e *Element) IsFocused() bool {
 	return e.window.IsElementFocused(e)
 }
 
-// GrantFocus grants focus to this Element.
-func (e *Element) GrantFocus() {
+// Focus grants focus to this Element. This happens regardless of
+// the CanAutoFocus setting on this Element and the CanAutoUnfocus
+// setting on the currently focused Element.
+func (e *Element) Focus() {
 	e.window.GrantFocus(e)
 }
 

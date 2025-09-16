@@ -75,6 +75,7 @@ func (c *elementComponent) OnCreate() {
 func (c *elementComponent) OnUpsert() {
 	data := GetOptionalData(c.Properties(), elementDefaultData)
 	element := c.Element()
+	element.SetName(c.Name())
 	element.SetEssence(data.Essence)
 	if data.Enabled.Specified {
 		element.SetEnabled(data.Enabled.Value)
@@ -100,7 +101,7 @@ func (c *elementComponent) OnUpsert() {
 	if focused, ok := data.Focused.Unwrap(); ok {
 		switch {
 		case focused && !element.IsFocused():
-			element.GrantFocus()
+			element.Focus()
 		case !focused && element.IsFocused():
 			element.Window().DiscardFocus()
 		}
