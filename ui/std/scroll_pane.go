@@ -26,7 +26,7 @@ var scrollPaneDefaultData = ScrollPaneData{}
 
 // ScrollPane is a container component that provides scrolling functionality
 // in order to accommodate all children.
-var ScrollPane = co.Define(&scrollPaneComponent{})
+var ScrollPane = co.Define[*scrollPaneComponent]()
 
 type scrollPaneComponent struct {
 	co.BaseComponent
@@ -134,10 +134,10 @@ func (c *scrollPaneComponent) OnMouseEvent(element *ui.Element, event ui.MouseEv
 func (c *scrollPaneComponent) Render() co.Instance {
 	return co.New(co.Element, func() {
 		co.WithData(co.ElementData{
-			Focusable: opt.V(true),
-			Focused:   opt.V(c.isFocused),
-			Essence:   c,
-			Layout:    c,
+			CanAutoFocus: opt.V(true),
+			Focused:      opt.V(c.isFocused),
+			Essence:      c,
+			Layout:       c,
 		})
 		co.WithLayoutData(c.Properties().LayoutData())
 		co.WithChildren(c.Properties().Children())

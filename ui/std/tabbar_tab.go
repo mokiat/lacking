@@ -34,7 +34,7 @@ type TabbarTabCallbackData struct {
 	OnClose OnActionFunc
 }
 
-var TabbarTab = co.Define(&tabbarTabComponent{})
+var TabbarTab = co.Define[*tabbarTabComponent]()
 
 type tabbarTabComponent struct {
 	co.BaseComponent

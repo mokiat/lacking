@@ -161,32 +161,16 @@ func (w *Window) IsElementFocused(element *Element) bool {
 	return w.focusedElement == element
 }
 
-// GrantFocus grants the focus to the specified Element.
-func (w *Window) GrantFocus(element *Element) {
-	w.focusedElement = element
-	w.Invalidate()
-}
-
 // FocusedElement returns the currently focused Element or nil
 // if no Element is focused.
 func (w *Window) FocusedElement() *Element {
 	return w.focusedElement
 }
 
-// BubbleFocus releases focus from the current element and tries to find
-// a parent that is focusable in order to grant it focus.
-func (w *Window) BubbleFocus() {
-	if w.focusedElement == nil {
-		return
-	}
-	current := w.focusedElement.parent
-	for current != nil {
-		if current.focusable {
-			w.focusedElement = current
-			return
-		}
-		current = current.parent
-	}
+// GrantFocus grants the focus to the specified Element.
+func (w *Window) GrantFocus(element *Element) {
+	w.focusedElement = element
+	w.Invalidate()
 }
 
 // DiscardFocus removes the focus from any Element.
@@ -280,17 +264,8 @@ func (w *windowHandler) OnFramebufferResize(size Size) {
 
 func (w *windowHandler) OnKeyboardEvent(event KeyboardEvent) bool {
 	current := w.focusedElement
-	if current == nil {
-		return false
-	}
-	// TODO: The following check could be handled with mount and unmount
-	// events and handling.
-	if !current.HasAncestor(w.root) {
-		w.DiscardFocus()
-		return false
-	}
 	for current != nil {
-		if current.focusable && current.onKeyboardEvent(event) {
+		if current.onKeyboardEvent(event) {
 			return true
 		}
 		current = current.parent
@@ -304,7 +279,9 @@ func (w *windowHandler) OnMouseEvent(event MouseEvent) bool {
 
 	if event.Action == MouseActionDown {
 		oldFocusedElement := w.focusedElement
-		w.processFocusChange(w.root, event.Position())
+		if oldFocusedElement == nil || oldFocusedElement.canAutoUnfocus {
+			w.processFocusChange(w.root, event.Position())
+		}
 		if w.focusedElement != oldFocusedElement {
 			w.Invalidate()
 		}
@@ -316,7 +293,7 @@ func (w *windowHandler) OnMouseEvent(event MouseEvent) bool {
 func (w *windowHandler) OnClipboardEvent(event ClipboardEvent) bool {
 	current := w.focusedElement
 	for current != nil {
-		if current.focusable && current.onClipboardEvent(event) {
+		if current.onClipboardEvent(event) {
 			return true
 		}
 		current = current.parent
@@ -369,7 +346,7 @@ func (w *windowHandler) processFocusChange(element *Element, position Position) 
 		return
 	}
 
-	if element.focusable {
+	if element.canAutoFocus {
 		w.focusedElement = element
 	}
 

@@ -27,7 +27,7 @@ const (
 	editboxChangeAccumulationDuration = time.Second
 )
 
-var EditBox = co.Define(&editboxComponent{})
+var EditBox = co.Define[*editboxComponent]()
 
 type EditBoxData struct {
 	ReadOnly bool
@@ -126,9 +126,9 @@ func (c *editboxComponent) Render() co.Instance {
 	return co.New(Element, func() {
 		co.WithLayoutData(c.Properties().LayoutData())
 		co.WithData(ElementData{
-			Essence:   c,
-			Focusable: opt.V(true),
-			Focused:   opt.V(c.isFocused),
+			Essence:      c,
+			CanAutoFocus: opt.V(true),
+			Focused:      opt.V(c.isFocused),
 			IdealSize: opt.V(ui.Size{
 				Width:  c.textWidth + textPadding,
 				Height: c.textHeight,

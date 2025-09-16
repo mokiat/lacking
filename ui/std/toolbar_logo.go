@@ -28,7 +28,7 @@ var toolbarLogoDefaultData = ToolbarLogoData{
 
 // ToolbarLogo is used to display a logo on the Toolbar. Usually this would be
 // the first item in a Toolbar.
-var ToolbarLogo = co.Define(&toolbarLogoComponent{})
+var ToolbarLogo = co.Define[*toolbarLogoComponent]()
 
 type toolbarLogoComponent struct {
 	co.BaseComponent

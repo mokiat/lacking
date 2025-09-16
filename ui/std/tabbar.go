@@ -13,7 +13,7 @@ var (
 	TabbarSidePadding = 5
 )
 
-var Tabbar = co.Define(&tabbarComponent{})
+var Tabbar = co.Define[*tabbarComponent]()
 
 type tabbarComponent struct {
 	co.BaseComponent

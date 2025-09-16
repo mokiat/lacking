@@ -54,10 +54,11 @@ type ElementClipboardHandler interface {
 
 func newElement(window *Window) *Element {
 	return &Element{
-		window:    window,
-		enabled:   true,
-		visible:   true,
-		focusable: false,
+		window:         window,
+		enabled:        true,
+		visible:        true,
+		canAutoFocus:   false,
+		canAutoUnfocus: true,
 	}
 }
 
@@ -76,9 +77,10 @@ type Element struct {
 	window  *Window
 	essence Essence
 
-	enabled   bool
-	visible   bool
-	focusable bool
+	enabled        bool
+	visible        bool
+	canAutoFocus   bool
+	canAutoUnfocus bool
 
 	padding      Spacing
 	bounds       Bounds
@@ -135,6 +137,11 @@ func (e *Element) RightSibling() *Element {
 // Detach removes this Element from the hierarchy but does not
 // release any resources.
 func (e *Element) Detach() {
+	if focusedElement := e.window.FocusedElement(); focusedElement != nil {
+		if focusedElement.HasAncestor(e) {
+			e.window.GrantFocus(e.parent)
+		}
+	}
 	if e.parent != nil {
 		e.parent.RemoveChild(e)
 	}
@@ -439,18 +446,28 @@ func (e *Element) HierarchyVisible() bool {
 	return e.parent.HierarchyVisible()
 }
 
-// Focusable returns whether this Element can receive keyboard
-// events. When an element if focusable and a mouse down event
-// is received, it becomes the focused element and will begin
-// to receive keyboard events.
-func (e *Element) Focusable() bool {
-	return e.focusable
+// CanAutoFocus returns whether this Element can be automatically gain
+// focus when clicked on.
+func (e *Element) CanAutoFocus() bool {
+	return e.canAutoFocus
 }
 
-// SetFocusable controls whether this Element should receive
-// keyboard events.
-func (e *Element) SetFocusable(focusable bool) {
-	e.focusable = focusable
+// SetCanAutoFocus controls whether this Element can automatically
+// gain focus when clicked on.
+func (e *Element) SetCanAutoFocus(canAutoFocus bool) {
+	e.canAutoFocus = canAutoFocus
+}
+
+// CanAutoUnfocus returns whether this Element can automatically lose
+// focus when another Element is clicked on.
+func (e *Element) CanAutoUnfocus() bool {
+	return e.canAutoUnfocus
+}
+
+// SetCanAutoUnfocus controls whether this Element can automatically
+// lose focus when another Element is clicked on.
+func (e *Element) SetCanAutoUnfocus(canAutoUnfocus bool) {
+	e.canAutoUnfocus = canAutoUnfocus
 }
 
 // IsFocused returns whether this Element is currently focused.
@@ -458,12 +475,14 @@ func (e *Element) IsFocused() bool {
 	return e.window.IsElementFocused(e)
 }
 
+// GrantFocus grants focus to this Element.
+func (e *Element) GrantFocus() {
+	e.window.GrantFocus(e)
+}
+
 // Destroy removes this Element from the hierarchy, as well
 // as any child Elements and releases all allocated resources.
 func (e *Element) Destroy() {
-	if e.window != nil && e.IsFocused() {
-		e.window.BubbleFocus()
-	}
 	e.Detach()
 }
 

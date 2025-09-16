@@ -12,12 +12,14 @@ type Overlay interface {
 // in the specified instance.
 func OpenOverlay(scope Scope, instance Instance) Overlay {
 	app := TypedValue[*applicationComponent](scope)
+	return app.openOverlay(instance)
+}
 
-	overlayScope := instance.scope
-	if overlayScope == nil {
-		overlayScope = scope
-	}
-	return app.OpenOverlay(overlayScope, instance)
+// CloseOverlay closes the Overlay associated with the specified scope.
+func CloseOverlay(scope Scope) {
+	app := TypedValue[*applicationComponent](scope)
+	overlay := TypedValue[*overlayHandle](scope)
+	app.closeOverlay(overlay)
 }
 
 var _ Overlay = (*overlayHandle)(nil)
@@ -28,14 +30,5 @@ type overlayHandle struct {
 }
 
 func (o *overlayHandle) Close() {
-	o.app.CloseOverlay(o)
-}
-
-func CloseOverlay(scope Scope) {
-	overlay := TypedValue[*overlayHandle](scope)
-	if overlay != nil {
-		overlay.Close()
-	} else {
-		logger.Warn("No overlay in scope")
-	}
+	o.app.closeOverlay(o)
 }

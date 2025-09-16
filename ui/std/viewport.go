@@ -16,7 +16,7 @@ var (
 
 // Viewport represents a component that uses low-level API calls to render
 // an external scene, unlike other components that rely on the Canvas API.
-var Viewport = co.Define(&viewportComponent{})
+var Viewport = co.Define[*viewportComponent]()
 
 // ViewportData holds the data for a Viewport component.
 type ViewportData struct {
@@ -81,9 +81,9 @@ func (c *viewportComponent) Render() co.Instance {
 	return co.New(co.Element, func() {
 		co.WithLayoutData(c.Properties().LayoutData())
 		co.WithData(co.ElementData{
-			Essence:   c,
-			Focusable: opt.V(true),
-			Focused:   opt.V(true),
+			Essence:       c,
+			CanAutoFocus:  opt.V(true),
+			CreateFocused: true,
 		})
 		co.WithChildren(c.Properties().Children())
 	})

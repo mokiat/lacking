@@ -34,7 +34,7 @@ var accordionDefaultCallbackData = AccordionCallbackData{
 	OnToggle: func(bool) {},
 }
 
-var Accordion = co.Define(&accordionComponent{})
+var Accordion = co.Define[*accordionComponent]()
 
 type accordionComponent struct {
 	co.BaseComponent

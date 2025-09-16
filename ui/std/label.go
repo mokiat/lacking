@@ -23,7 +23,7 @@ type LabelData struct {
 var labelDefaultData = LabelData{}
 
 // Label represents a component that visualizes a text string.
-var Label = co.Define(&labelComponent{})
+var Label = co.Define[*labelComponent]()
 
 type labelComponent struct {
 	co.BaseComponent

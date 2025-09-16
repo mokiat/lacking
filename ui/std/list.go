@@ -12,7 +12,7 @@ var (
 
 // List represents a container that holds a sequence of ListItem
 // components in a vertical orientation.
-var List = co.Define(&listComponent{})
+var List = co.Define[*listComponent]()
 
 type listComponent struct {
 	co.BaseComponent

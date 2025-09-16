@@ -22,7 +22,7 @@ const (
 
 // FlameGraph is a component that displays a flamegraph of the
 // recorded metric data.
-var FlameGraph = co.Define(&flamegraphComponent{})
+var FlameGraph = co.Define[*flamegraphComponent]()
 
 // FlameGraphData is the data that can be provided to the FlameGraph
 // component.
@@ -37,8 +37,6 @@ type flamegraphComponent struct {
 
 	font     *ui.Font
 	fontSize float32
-
-	element *ui.Element
 
 	interval         time.Duration
 	aggregationRatio float64
@@ -74,8 +72,7 @@ func (c *flamegraphComponent) Render() co.Instance {
 	return co.New(std.Element, func() {
 		co.WithLayoutData(c.Properties().LayoutData())
 		co.WithData(std.ElementData{
-			Reference: &c.element,
-			Essence:   c,
+			Essence: c,
 			IdealSize: opt.V(ui.Size{
 				Width:  flamegraphIdealWidth,
 				Height: flamegraphRowHeigth,
@@ -160,7 +157,7 @@ func (c *flamegraphComponent) onRefresh() {
 	c.updateTree(&c.tree, &tree, iterations)
 
 	treeDepth := c.spanTreeDepth(tree)
-	c.element.SetIdealSize(ui.Size{
+	c.Element().SetIdealSize(ui.Size{
 		Width:  flamegraphIdealWidth,
 		Height: treeDepth * flamegraphRowHeigth,
 	})

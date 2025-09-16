@@ -33,5 +33,8 @@ func (l *wrappedLocator) ReadResource(uri string) (io.ReadCloser, error) {
 		}
 		return dir.Open(strings.TrimPrefix(uri, matScheme))
 	}
+	if l.delegate == nil {
+		return nil, fs.ErrNotExist
+	}
 	return l.delegate.ReadResource(uri)
 }
