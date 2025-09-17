@@ -50,6 +50,10 @@ type WindowHandler interface {
 	// has been registered.
 	OnMouseEvent(event MouseEvent) bool
 
+	// OnGamepadEvent is called whenever a native gamepad event
+	// has been registered.
+	OnGamepadEvent(event GamepadEvent) bool
+
 	// OnClipboardEvent is called whenever a clipboard paste operation
 	// is being performed.
 	OnClipboardEvent(event ClipboardEvent) bool
@@ -292,6 +296,19 @@ func (w *windowHandler) OnMouseEvent(event MouseEvent) bool {
 	}
 
 	return w.processMouseEvent(w.root, event)
+}
+
+func (w *windowHandler) OnGamepadEvent(event GamepadEvent) bool {
+	w.validateFocus()
+
+	current := w.focusedElement
+	for current != nil {
+		if current.onGamepadEvent(event) {
+			return true
+		}
+		current = current.parent
+	}
+	return false
 }
 
 func (w *windowHandler) OnClipboardEvent(event ClipboardEvent) bool {

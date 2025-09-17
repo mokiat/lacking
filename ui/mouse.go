@@ -77,24 +77,7 @@ type MouseAction int
 
 // String returns a string representation of this event type.
 func (a MouseAction) String() string {
-	switch a {
-	case MouseActionDown:
-		return "DOWN"
-	case MouseActionUp:
-		return "UP"
-	case MouseActionMove:
-		return "MOVE"
-	case MouseActionEnter:
-		return "ENTER"
-	case MouseActionLeave:
-		return "LEAVE"
-	case MouseActionDrop:
-		return "DROP"
-	case MouseActionScroll:
-		return "SCROLL"
-	default:
-		return "UNKNOWN"
-	}
+	return app.MouseAction(a).String()
 }
 
 const (
@@ -108,16 +91,7 @@ type MouseButton int
 
 // String returns a string representation of this button.
 func (b MouseButton) String() string {
-	switch b {
-	case MouseButtonLeft:
-		return "LEFT"
-	case MouseButtonMiddle:
-		return "MIDDLE"
-	case MouseButtonRight:
-		return "RIGHT"
-	default:
-		return "UNKNOWN"
-	}
+	return app.MouseButton(b).String()
 }
 
 // FilepathPayload is a type of Payload that occurs when files

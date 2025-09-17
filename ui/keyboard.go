@@ -49,18 +49,7 @@ type KeyboardAction int
 
 // String returns a string representation of this event type,
 func (a KeyboardAction) String() string {
-	switch a {
-	case KeyboardActionDown:
-		return "DOWN"
-	case KeyboardActionUp:
-		return "UP"
-	case KeyboardActionRepeat:
-		return "REPEAT"
-	case KeyboardActionType:
-		return "TYPE"
-	default:
-		return "UNKNOWN"
-	}
+	return app.KeyboardAction(a).String()
 }
 
 const (
@@ -172,17 +161,17 @@ type KeyModifier int
 func (m KeyModifier) String() string {
 	switch m {
 	case KeyModifierControl:
-		return "CONTROL"
+		return "Control"
 	case KeyModifierShift:
-		return "SHIFT"
+		return "Shift"
 	case KeyModifierAlt:
-		return "ALT"
+		return "Alt"
 	case KeyModifierCapsLock:
-		return "CAPS"
+		return "Caps"
 	case KeyModifierSuper:
-		return "SUPER"
+		return "Super"
 	default:
-		return "UNKNOWN"
+		return "Unknown"
 	}
 }
 

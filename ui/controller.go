@@ -84,6 +84,18 @@ func (c *Controller) OnKeyboardEvent(window app.Window, event app.KeyboardEvent)
 	})
 }
 
+func (c *Controller) OnGamepadEvent(window app.Window, event app.GamepadEvent) bool {
+	return c.uiWindowHandler.OnGamepadEvent(GamepadEvent{
+		Index:   event.Index,
+		Gamepad: event.Gamepad,
+		Action:  GamepadAction(event.Action),
+		Button:  GamepadButton(event.Button),
+		Stick:   GamepadStick(event.Stick),
+		X:       event.X,
+		Y:       event.Y,
+	})
+}
+
 func (c *Controller) OnMouseEvent(window app.Window, event app.MouseEvent) bool {
 	return c.uiWindowHandler.OnMouseEvent(MouseEvent{
 		Index:     event.Index,

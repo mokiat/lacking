@@ -37,6 +37,12 @@ type Controller interface {
 	// not be propagated to other potential receivers, otherwise return false.
 	OnMouseEvent(window Window, event MouseEvent) bool
 
+	// OnGamepadEvent is called whenever a gamepad event has occurred.
+	//
+	// Return true to indicate that the event has been consumed and should
+	// not be propagated to other potential receivers, otherwise return false.
+	OnGamepadEvent(window Window, event GamepadEvent) bool
+
 	// OnClipboardEvent is called whenever the clipboard content has been
 	// requested and the underlying window has managed to retrieve it.
 	OnClipboardEvent(window Window, event ClipboardEvent) bool
@@ -74,6 +80,8 @@ func (NopController) OnFramebufferResize(window Window, width, height int) {}
 func (NopController) OnKeyboardEvent(window Window, event KeyboardEvent) bool { return false }
 
 func (NopController) OnMouseEvent(window Window, event MouseEvent) bool { return false }
+
+func (NopController) OnGamepadEvent(window Window, event GamepadEvent) bool { return false }
 
 func (NopController) OnClipboardEvent(window Window, event ClipboardEvent) bool { return false }
 
@@ -130,6 +138,15 @@ func (c *LayeredController) OnKeyboardEvent(window Window, event KeyboardEvent) 
 func (c *LayeredController) OnMouseEvent(window Window, event MouseEvent) bool {
 	for _, layer := range slices.Backward(c.layers) {
 		if layer.OnMouseEvent(window, event) {
+			return true
+		}
+	}
+	return false
+}
+
+func (c *LayeredController) OnGamepadEvent(window Window, event GamepadEvent) bool {
+	for _, layer := range slices.Backward(c.layers) {
+		if layer.OnGamepadEvent(window, event) {
 			return true
 		}
 	}

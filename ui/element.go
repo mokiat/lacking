@@ -25,6 +25,13 @@ type ElementMouseHandler interface {
 	OnMouseEvent(element *Element, event MouseEvent) bool
 }
 
+// ElementGamepadHandler is a type of EventHandler that can be
+// used to receive events when an element is focused and gamepad
+// actions are performed.
+type ElementGamepadHandler interface {
+	OnGamepadEvent(element *Element, event GamepadEvent) bool
+}
+
 // ElementRenderHandler is a type of ElementHandler that can be
 // used to receive events when a given Element is being
 // rendered and to perform a custom rendering for the Element.
@@ -523,6 +530,13 @@ func (e *Element) onKeyboardEvent(event KeyboardEvent) bool {
 func (e *Element) onMouseEvent(event MouseEvent) bool {
 	if mouseHandler, ok := e.essence.(ElementMouseHandler); ok {
 		return mouseHandler.OnMouseEvent(e, event)
+	}
+	return false
+}
+
+func (e *Element) onGamepadEvent(event GamepadEvent) bool {
+	if mouseHandler, ok := e.essence.(ElementGamepadHandler); ok {
+		return mouseHandler.OnGamepadEvent(e, event)
 	}
 	return false
 }
