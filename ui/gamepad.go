@@ -1,6 +1,10 @@
 package ui
 
-import "github.com/mokiat/lacking/app"
+import (
+	"fmt"
+
+	"github.com/mokiat/lacking/app"
+)
 
 // GamepadEvent is used to propagate events related to gamepad
 // actions.
@@ -27,6 +31,18 @@ type GamepadEvent struct {
 
 	// Y specifies the vertical position of the stick.
 	Y float64
+}
+
+// String returns a string representation of this event.
+func (s GamepadEvent) String() string {
+	return fmt.Sprintf("(%d,%s,%s,%s,(%f,%f))",
+		s.Index,
+		s.Action,
+		s.Button,
+		s.Stick,
+		s.X,
+		s.Y,
+	)
 }
 
 const (
