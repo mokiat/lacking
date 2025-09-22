@@ -166,6 +166,30 @@ const (
 	// GamepadButtonBack indicates the left button of the center cluster.
 	GamepadButtonBack
 
+	// GamepadButtonLeftStickUp indicates the up direction on the left stick.
+	GamepadButtonLeftStickUp
+
+	// GamepadButtonLeftStickDown indicates the down direction on the left stick.
+	GamepadButtonLeftStickDown
+
+	// GamepadButtonLeftStickLeft indicates the left direction on the left stick.
+	GamepadButtonLeftStickLeft
+
+	// GamepadButtonLeftStickRight indicates the right direction on the left stick.
+	GamepadButtonLeftStickRight
+
+	// GamepadButtonRightStickUp indicates the up direction on the right stick.
+	GamepadButtonRightStickUp
+
+	// GamepadButtonRightStickDown indicates the down direction on the right stick.
+	GamepadButtonRightStickDown
+
+	// GamepadButtonRightStickLeft indicates the left direction on the right stick.
+	GamepadButtonRightStickLeft
+
+	// GamepadButtonRightStickRight indicates the right direction on the right stick.
+	GamepadButtonRightStickRight
+
 	// GamepadButtonCount is the total number of gamepad buttons enums.
 	GamepadButtonCount
 )
@@ -209,6 +233,22 @@ func (b GamepadButton) String() string {
 		return "Forward"
 	case GamepadButtonBack:
 		return "Back"
+	case GamepadButtonLeftStickUp:
+		return "LeftStickUp"
+	case GamepadButtonLeftStickDown:
+		return "LeftStickDown"
+	case GamepadButtonLeftStickLeft:
+		return "LeftStickLeft"
+	case GamepadButtonLeftStickRight:
+		return "LeftStickRight"
+	case GamepadButtonRightStickUp:
+		return "RightStickUp"
+	case GamepadButtonRightStickDown:
+		return "RightStickDown"
+	case GamepadButtonRightStickLeft:
+		return "RightStickLeft"
+	case GamepadButtonRightStickRight:
+		return "RightStickRight"
 	default:
 		return "Unknown"
 	}
