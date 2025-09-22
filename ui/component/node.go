@@ -23,9 +23,12 @@ type componentNode struct {
 func createComponentNode(element *ui.Element, parentScope Scope, instance Instance) *componentNode {
 	component := instance.component
 	logger.Debug("Creating node",
+		slog.String("id", instance.id),
 		slog.String("name", instance.name),
 		slog.String("type", component.TypeName()),
 	)
+
+	element.SetID(instance.id)
 
 	node := &componentNode{
 		name:        instance.name,
@@ -62,6 +65,8 @@ func (node *componentNode) reconcile(instance Instance) {
 		slog.String("name", node.name),
 		slog.String("type", node.instance.component.TypeName()),
 	)
+
+	node.element.SetID(instance.id)
 
 	component := instance.component
 	if component != node.instance.component {

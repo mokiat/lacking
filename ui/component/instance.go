@@ -3,6 +3,7 @@ package component
 // Instance represents the instantiation of a given Component chain.
 type Instance struct {
 	key           string
+	id            string
 	name          string
 	component     Component
 	scopeModifier ScopeModifier
@@ -18,6 +19,10 @@ func (i Instance) Key() string {
 // Properties returns the properties assigned to this instance.
 func (i *Instance) Properties() Properties {
 	return i.properties
+}
+
+func (i *Instance) setID(id string) {
+	i.id = id
 }
 
 func (i *Instance) setName(name string) {
@@ -87,11 +92,26 @@ func New(component Component, setupFn func()) Instance {
 	return instanceCtx.instance
 }
 
+// WithID assigns an ID to the element of the component instance.
+func WithID(id string) {
+	instanceCtx.instance.setID(id)
+}
+
+// XWithID is a helper function that resembles WithID but does nothing.
+// This allows one to experiment during development without having to comment
+// out large sections of code and deal with compilation issues.
+func XWithID(id string) {}
+
 // WithName assigns a name to the component instance. This is useful
 // for debugging purposes.
 func WithName(name string) {
 	instanceCtx.instance.setName(name)
 }
+
+// XWithName is a helper function that resembles WithName but does nothing.
+// This allows one to experiment during development without having to comment
+// out large sections of code and deal with compilation issues.
+func XWithName(name string) {}
 
 // WithScopeValue modifies the scope to be passed to the component instance
 // by assigning the specified value to the specified key.
