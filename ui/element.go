@@ -520,56 +520,96 @@ func (e *Element) onBoundsChanged(bounds Bounds) {
 	e.Invalidate()
 }
 
-func (e *Element) onKeyboardEvent(event KeyboardEvent) bool {
+// OnKeyboardEvent passes the event to the Element's essence, if it
+// implements the ElementKeyboardHandler interface.
+func (e *Element) OnKeyboardEvent(event KeyboardEvent) bool {
+	if e == nil {
+		return false
+	}
 	if keyboardHandler, ok := e.essence.(ElementKeyboardHandler); ok {
 		return keyboardHandler.OnKeyboardEvent(e, event)
 	}
 	return false
 }
 
-func (e *Element) onMouseEvent(event MouseEvent) bool {
+// OnMouseEvent passes the event to the Element's essence, if it
+// implements the ElementMouseHandler interface.
+func (e *Element) OnMouseEvent(event MouseEvent) bool {
+	if e == nil {
+		return false
+	}
 	if mouseHandler, ok := e.essence.(ElementMouseHandler); ok {
 		return mouseHandler.OnMouseEvent(e, event)
 	}
 	return false
 }
 
-func (e *Element) onGamepadEvent(event GamepadEvent) bool {
+// OnGamepadEvent passes the event to the Element's essence, if it
+// implements the ElementGamepadHandler interface.
+func (e *Element) OnGamepadEvent(event GamepadEvent) bool {
+	if e == nil {
+		return false
+	}
 	if mouseHandler, ok := e.essence.(ElementGamepadHandler); ok {
 		return mouseHandler.OnGamepadEvent(e, event)
 	}
 	return false
 }
 
-func (e *Element) onClipboardEvent(event ClipboardEvent) bool {
+// OnClipboardEvent passes the event to the Element's essence, if it
+// implements the ElementClipboardHandler interface.
+func (e *Element) OnClipboardEvent(event ClipboardEvent) bool {
+	if e == nil {
+		return false
+	}
 	if keyboardHandler, ok := e.essence.(ElementClipboardHandler); ok {
 		return keyboardHandler.OnClipboardEvent(e, event)
 	}
 	return false
 }
 
-func (e *Element) onSave() bool {
-	if historyHandler, ok := e.essence.(ElementStateHandler); ok {
-		return historyHandler.OnSave(e)
+// OnSave passes the save request to the Element's essence, if it
+// implements the ElementStateHandler interface.
+func (e *Element) OnSave() bool {
+	if e == nil {
+		return false
+	}
+	if stateHandler, ok := e.essence.(ElementStateHandler); ok {
+		return stateHandler.OnSave(e)
 	}
 	return false
 }
 
-func (e *Element) onUndo() bool {
+// OnUndo passes the undo request to the Element's essence, if it
+// implements the ElementHistoryHandler interface.
+func (e *Element) OnUndo() bool {
+	if e == nil {
+		return false
+	}
 	if historyHandler, ok := e.essence.(ElementHistoryHandler); ok {
 		return historyHandler.OnUndo(e)
 	}
 	return false
 }
 
-func (e *Element) onRedo() bool {
+// OnRedo passes the redo request to the Element's essence, if it
+// implements the ElementHistoryHandler interface.
+func (e *Element) OnRedo() bool {
+	if e == nil {
+		return false
+	}
 	if historyHandler, ok := e.essence.(ElementHistoryHandler); ok {
 		return historyHandler.OnRedo(e)
 	}
 	return false
 }
 
-func (e *Element) onRender(canvas *Canvas) {
+// OnRender invokes the rendering logic of the Element's essence, if it
+// implements the ElementRenderHandler interface.
+func (e *Element) OnRender(canvas *Canvas) {
+	if e == nil {
+		return
+	}
 	if renderHandler, ok := e.essence.(ElementRenderHandler); ok {
 		renderHandler.OnRender(e, canvas)
 	}

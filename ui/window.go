@@ -186,7 +186,7 @@ func (w *Window) DiscardFocus() {
 func (w *Window) Save() bool {
 	currentElement := w.focusedElement
 	for currentElement != nil {
-		if currentElement.onSave() {
+		if currentElement.OnSave() {
 			return true
 		}
 		currentElement = currentElement.parent
@@ -197,7 +197,7 @@ func (w *Window) Save() bool {
 func (w *Window) Undo() bool {
 	currentElement := w.focusedElement
 	for currentElement != nil {
-		if currentElement.onUndo() {
+		if currentElement.OnUndo() {
 			return true
 		}
 		currentElement = currentElement.parent
@@ -208,7 +208,7 @@ func (w *Window) Undo() bool {
 func (w *Window) Redo() bool {
 	currentElement := w.focusedElement
 	for currentElement != nil {
-		if currentElement.onRedo() {
+		if currentElement.OnRedo() {
 			return true
 		}
 		currentElement = currentElement.parent
@@ -222,7 +222,7 @@ func (w *Window) Cut() bool {
 	}
 	currentElement := w.focusedElement
 	for currentElement != nil {
-		if currentElement.onClipboardEvent(event) {
+		if currentElement.OnClipboardEvent(event) {
 			return true
 		}
 		currentElement = currentElement.parent
@@ -236,7 +236,7 @@ func (w *Window) Copy() bool {
 	}
 	currentElement := w.focusedElement
 	for currentElement != nil {
-		if currentElement.onClipboardEvent(event) {
+		if currentElement.OnClipboardEvent(event) {
 			return true
 		}
 		currentElement = currentElement.parent
@@ -271,7 +271,7 @@ func (w *windowHandler) OnKeyboardEvent(event KeyboardEvent) bool {
 
 	current := w.focusedElement
 	for current != nil {
-		if current.onKeyboardEvent(event) {
+		if current.OnKeyboardEvent(event) {
 			return true
 		}
 		current = current.parent
@@ -303,7 +303,7 @@ func (w *windowHandler) OnGamepadEvent(event GamepadEvent) bool {
 
 	current := w.focusedElement
 	for current != nil {
-		if current.onGamepadEvent(event) {
+		if current.OnGamepadEvent(event) {
 			return true
 		}
 		current = current.parent
@@ -314,7 +314,7 @@ func (w *windowHandler) OnGamepadEvent(event GamepadEvent) bool {
 func (w *windowHandler) OnClipboardEvent(event ClipboardEvent) bool {
 	current := w.focusedElement
 	for current != nil {
-		if current.onClipboardEvent(event) {
+		if current.OnClipboardEvent(event) {
 			return true
 		}
 		current = current.parent
@@ -410,7 +410,7 @@ func (w *windowHandler) processMouseLeave(element *Element, mousePosition Positi
 	bounds := element.Bounds()
 	relativeMousePosition := mousePosition.Translate(bounds.Position.Inverse())
 	if !bounds.Contains(mousePosition) || !element.enabled {
-		element.onMouseEvent(MouseEvent{
+		element.OnMouseEvent(MouseEvent{
 			Action: MouseActionLeave,
 			X:      relativeMousePosition.X,
 			Y:      relativeMousePosition.Y,
@@ -427,7 +427,7 @@ func (w *windowHandler) processMouseLeaveInvisible(mousePosition Position) {
 		if !element.visible {
 			bounds := element.AbsoluteBounds()
 			relativeMousePosition := mousePosition.Translate(bounds.Position.Inverse())
-			element.onMouseEvent(MouseEvent{
+			element.OnMouseEvent(MouseEvent{
 				Action: MouseActionLeave,
 				X:      relativeMousePosition.X,
 				Y:      relativeMousePosition.Y,
@@ -450,7 +450,7 @@ func (w *windowHandler) processMouseEnter(element *Element, mousePosition Positi
 
 	relativeMousePosition := mousePosition.Translate(bounds.Position.Inverse())
 	if _, ok := w.oldEnteredElements[element]; !ok {
-		element.onMouseEvent(MouseEvent{
+		element.OnMouseEvent(MouseEvent{
 			Action: MouseActionEnter,
 			X:      relativeMousePosition.X,
 			Y:      relativeMousePosition.Y,
@@ -484,7 +484,7 @@ func (w *windowHandler) processMouseEvent(element *Element, event MouseEvent) bo
 	}
 
 	// Let the current element handle the event.
-	return element.onMouseEvent(event)
+	return element.OnMouseEvent(event)
 }
 
 func (w *Window) renderElement(element *Element, canvas *Canvas, clipBounds, dirtyRegion Bounds) {
@@ -516,7 +516,7 @@ func (w *Window) renderElement(element *Element, canvas *Canvas, clipBounds, dir
 			float32(elementClipBounds.Height),
 		),
 	)
-	element.onRender(canvas)
+	element.OnRender(canvas)
 	if contentBounds := element.ContentBounds(); !contentBounds.Empty() {
 		contentClipBounds := contentBounds.Intersect(elementClipBounds)
 		canvas.ClipRect(
