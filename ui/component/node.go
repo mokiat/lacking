@@ -28,7 +28,9 @@ func createComponentNode(element *ui.Element, parentScope Scope, instance Instan
 		slog.String("type", component.TypeName()),
 	)
 
-	element.SetID(instance.id)
+	if instance.id != "" {
+		element.SetID(instance.id)
+	}
 
 	node := &componentNode{
 		name:        instance.name,
@@ -66,7 +68,9 @@ func (node *componentNode) reconcile(instance Instance) {
 		slog.String("type", node.instance.component.TypeName()),
 	)
 
-	node.element.SetID(instance.id)
+	if instance.id != "" {
+		node.element.SetID(instance.id)
+	}
 
 	component := instance.component
 	if component != node.instance.component {
