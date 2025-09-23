@@ -21,7 +21,7 @@ var (
 	// gamepad button events after the initial delay.
 	//
 	// This value can be changed from the UI thread.
-	GamepadRepeatInterval = 200 * time.Millisecond
+	GamepadRepeatInterval = 100 * time.Millisecond
 )
 
 // GamepadEvent represents an event related to a gamepad action.
