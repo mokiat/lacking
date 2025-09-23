@@ -1,5 +1,7 @@
 package ui
 
+import "iter"
+
 // Essence represents the behavior that is attached to an Element.
 // For example, the actual value behind the interface could be a
 // specific UI control and/or a handler.
@@ -613,4 +615,61 @@ func (e *Element) OnRender(canvas *Canvas) {
 	if renderHandler, ok := e.essence.(ElementRenderHandler); ok {
 		renderHandler.OnRender(e, canvas)
 	}
+}
+
+// ElementByID looks through the Element hierarchy tree for an Element
+// with the specified ID. If a matching element is not found, nil is returned.
+func ElementByID(root *Element, id string) *Element {
+	element, found := FindElementByID(root, id)
+	if !found {
+		return nil
+	}
+	return element
+}
+
+// FindElementByID looks through the Element hierarchy tree for an Element
+// with the specified ID.
+func FindElementByID(root *Element, id string) (*Element, bool) {
+	return dfsElementByID(root, id)
+}
+
+func dfsElementByID(current *Element, id string) (*Element, bool) {
+	if current == nil {
+		return nil, false
+	}
+	if current.id == id {
+		return current, true
+	}
+	for child := current.firstChild; child != nil; child = child.rightSibling {
+		if result, found := dfsElementByID(child, id); found {
+			return result, true
+		}
+	}
+	return nil, false
+}
+
+// AllElements returns an iterator that traverses all elements in the
+// hierarchy starting from the specified element.
+//
+// Disabled and invisible elements, as well as their descendants, are not
+// included in the iteration.
+func AllElements(current *Element) iter.Seq[*Element] {
+	return func(yield func(*Element) bool) {
+		_ = yieldElements(current, yield)
+	}
+}
+
+func yieldElements(current *Element, yield func(*Element) bool) bool {
+	if !current.Enabled() || !current.Visible() {
+		return true
+	}
+	if !yield(current) {
+		return false
+	}
+	for child := current.firstChild; child != nil; child = child.rightSibling {
+		if !yieldElements(child, yield) {
+			return false
+		}
+	}
+	return true
 }
