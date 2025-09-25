@@ -481,6 +481,89 @@ func (s *Scene[O, S]) CheckSegmentIntersection(segment Segment, mask uint32) (Ob
 	return collection.Intersection()
 }
 
+// CheckSphereIntersection returns the first intersection of the sphere
+// with the scene.
+func (s *Scene[O, S]) CheckSphereIntersection(srcSphere Sphere, mask uint32) (ObjectIntersection, bool) {
+	srcShape := sceneShape[S]{
+		objectIndex: invalidObjectIndex,
+		targetMask:  mask,
+	}
+	area := createArea(srcSphere)
+
+	var collection NearestObjectIntersection
+
+	// Sphere vs Sphere
+	s.checks = s.checks[:0]
+	s.sphereTree.VisitArea(area, spatial.VisitorFunc[uint32](func(tgtIndex uint32) {
+		tgtSphere := &s.spheres[tgtIndex]
+		if shapesCanIntersect(&srcShape, &tgtSphere.sceneShape) {
+			s.checks = append(s.checks, newIndexPair(0, tgtIndex))
+		}
+	}))
+	slices.Sort(s.checks)
+	for _, checkPair := range s.checks {
+		tgtSphereIndex := checkPair.tgtIndex()
+		tgtSphere := &s.spheres[tgtSphereIndex]
+		if intersection, ok := CheckSphereSphereIntersection(srcSphere, tgtSphere.wsSphere); ok {
+			collection.AddIntersection(ObjectIntersection{
+				SourceObjectID: InvalidObjectID,
+				SourceShapeID:  InvalidShapeID,
+				TargetObjectID: ObjectID(tgtSphere.objectIndex),
+				TargetShapeID:  ShapeID(newShapeRef(shapeKindSphere, tgtSphereIndex)),
+				Intersection:   intersection,
+			})
+		}
+	}
+
+	// Sphere vs Box
+	s.checks = s.checks[:0]
+	s.boxTree.VisitArea(area, spatial.VisitorFunc[uint32](func(tgtIndex uint32) {
+		tgtBox := &s.boxes[tgtIndex]
+		if shapesCanIntersect(&srcShape, &tgtBox.sceneShape) {
+			s.checks = append(s.checks, newIndexPair(0, tgtIndex))
+		}
+	}))
+	slices.Sort(s.checks)
+	for _, checkPair := range s.checks {
+		tgtBoxIndex := checkPair.tgtIndex()
+		tgtBox := &s.boxes[tgtBoxIndex]
+		if intersection, ok := CheckSphereBoxIntersection(srcSphere, tgtBox.wsBox); ok {
+			collection.AddIntersection(ObjectIntersection{
+				SourceObjectID: InvalidObjectID,
+				SourceShapeID:  InvalidShapeID,
+				TargetObjectID: ObjectID(tgtBox.objectIndex),
+				TargetShapeID:  ShapeID(newShapeRef(shapeKindBox, tgtBoxIndex)),
+				Intersection:   intersection,
+			})
+		}
+	}
+
+	// Sphere vs Mesh
+	s.checks = s.checks[:0]
+	s.meshTree.VisitArea(area, spatial.VisitorFunc[uint32](func(tgtIndex uint32) {
+		tgtMesh := &s.meshes[tgtIndex]
+		if shapesCanIntersect(&srcShape, &tgtMesh.sceneShape) {
+			s.checks = append(s.checks, newIndexPair(0, tgtIndex))
+		}
+	}))
+	slices.Sort(s.checks)
+	for _, checkPair := range s.checks {
+		tgtMeshIndex := checkPair.tgtIndex()
+		tgtMesh := &s.meshes[tgtMeshIndex]
+		if intersection, ok := CheckSphereMeshIntersection(srcSphere, tgtMesh.wsMesh); ok {
+			collection.AddIntersection(ObjectIntersection{
+				SourceObjectID: InvalidObjectID,
+				SourceShapeID:  InvalidShapeID,
+				TargetObjectID: ObjectID(tgtMesh.objectIndex),
+				TargetShapeID:  ShapeID(newShapeRef(shapeKindMesh, tgtMeshIndex)),
+				Intersection:   intersection,
+			})
+		}
+	}
+
+	return collection.Intersection()
+}
+
 // GC cleans up internal data and allows for memory reuse. This should be
 // called once per frame.
 func (s *Scene[O, S]) GC() {
