@@ -28,18 +28,20 @@ type GraphNode[T comparable] struct {
 
 var _ Node = (*GraphNode[struct{}])(nil)
 
+// SourceState returns the current source state of the graph.
+func (n *GraphNode[T]) SourceState() T {
+	return n.fromState
+}
+
+// TargetState returns the current target state of the graph.
+func (n *GraphNode[T]) TargetState() T {
+	return n.toState
+}
+
 // AddState registers a new animation state.
 func (n *GraphNode[T]) AddState(state T, animation Node) {
 	// TODO: Allow synchronization configuration.
 	n.animations[state] = animation
-}
-
-// SetState jumps to a specific state and cancels any transitions.
-func (n *GraphNode[T]) SetState(state T) {
-	n.fromState = state
-	n.toState = state
-	n.transitionFraction = 1.0
-	n.SetFraction(0.0)
 }
 
 // AddTransition registers a new state transition.
@@ -49,6 +51,14 @@ func (n *GraphNode[T]) AddTransition(from, to T, transition GraphNodeTransition)
 		to:   to,
 	}
 	n.transitions[pair] = transition
+}
+
+// JumpToState jumps to a specific state and cancels any transitions.
+func (n *GraphNode[T]) JumpToState(state T) {
+	n.fromState = state
+	n.toState = state
+	n.transitionFraction = 1.0
+	n.SetFraction(0.0)
 }
 
 // TransitionTo triggers a new transition. Calling this while there is an
