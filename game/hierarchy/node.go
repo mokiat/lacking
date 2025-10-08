@@ -56,13 +56,17 @@ func NewNode() *Node {
 }
 
 func (n *Node) ResetDelta() {
+	// Reset children first so that a call to AbsoluteMatrix on any child
+	// will return the correct previous absolute matrix.
+	for child := n.firstChild; child != nil; child = child.rightSibling {
+		child.ResetDelta()
+	}
+
+	// Store current state as previous state.
 	n.previousPosition = n.position
 	n.previousRotation = n.rotation
 	n.previousScale = n.scale
 	n.previousAbsMatrix = n.AbsoluteMatrix()
-	for child := n.firstChild; child != nil; child = child.rightSibling {
-		child.ResetDelta()
-	}
 }
 
 // Name returns this Node's name.

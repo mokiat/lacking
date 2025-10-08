@@ -267,35 +267,21 @@ func (m *Model) AnimatedNodes() []*hierarchy.Node {
 
 func (m *Model) BindAnimation(root animation.Node) *animation.Player {
 	animatedNodes := m.AnimatedNodes()
-
-	boneNames := make([]string, len(animatedNodes))
-	for i, node := range animatedNodes {
-		boneNames[i] = node.Name()
-	}
-
-	player := animation.NewPlayer(root, boneNames)
-	for _, node := range animatedNodes {
-		node.SetSource(AnimationNodeSource{
-			Player: player,
-		})
-	}
-	return player
+	return m.bindAnimationNodes(root, animatedNodes)
 }
 
-func (m *Model) BindAnimationSubtree(nodeName string, root animation.Node) *animation.Player {
+func (m *Model) BindAnimationSubtree(root animation.Node, nodeName string) *animation.Player {
 	var animatedNodes []*hierarchy.Node
 	subtreeNode := m.FindNode(nodeName)
 	hierarchy.EachNode(subtreeNode, func(node *hierarchy.Node) {
 		animatedNodes = append(animatedNodes, node)
 	})
+	return m.bindAnimationNodes(root, animatedNodes)
+}
 
-	boneNames := make([]string, len(animatedNodes))
-	for i, node := range animatedNodes {
-		boneNames[i] = node.Name()
-	}
-
-	player := animation.NewPlayer(root, boneNames)
-	for _, node := range animatedNodes {
+func (m *Model) bindAnimationNodes(root animation.Node, nodes []*hierarchy.Node) *animation.Player {
+	player := animation.NewPlayer(root)
+	for _, node := range nodes {
 		node.SetSource(AnimationNodeSource{
 			Player: player,
 		})
