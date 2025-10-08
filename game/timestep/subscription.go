@@ -6,6 +6,21 @@ import (
 	"github.com/mokiat/lacking/util/observer"
 )
 
+// StepCallback is called before fixed time steps are made to inform of the
+// number of steps pending.
+type StepCallback func(steps float64)
+
+// StepSubscription represents a notification subscription for steps.
+type StepSubscription = observer.Subscription[StepCallback]
+
+// StepSubscriptionSet represents a set of step subscriptions.
+type StepSubscriptionSet = observer.SubscriptionSet[StepCallback]
+
+// NewStepSubscriptionSet creates a new StepSubscriptionSet.
+func NewStepSubscriptionSet() *StepSubscriptionSet {
+	return observer.NewSubscriptionSet[StepCallback]()
+}
+
 // UpdateCallback is a mechanism to receive delta time increments.
 type UpdateCallback func(elapsedTime time.Duration)
 

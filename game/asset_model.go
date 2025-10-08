@@ -380,7 +380,8 @@ func InstantiateModel(scene *Scene, info ModelInfo) *Model {
 		}
 	}
 
-	modelNode.ApplyFromSource(1.0, true)
+	modelNode.ResetDelta()
+	modelNode.ApplyFromSource(true)
 	modelNode.ApplyToTarget(true)
 
 	return &Model{

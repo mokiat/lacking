@@ -21,15 +21,13 @@ type BodyNodeSource struct {
 	Body physics.Body
 }
 
-func (s BodyNodeSource) ApplyTo(node *hierarchy.Node, fraction float64) {
-	previousTranslation := s.Body.PreviousPosition()
+func (s BodyNodeSource) ApplyTo(node *hierarchy.Node) {
 	currentTranslation := s.Body.Position()
-	previousRotation := s.Body.PreviousRotation()
 	currentRotation := s.Body.Rotation()
 
 	node.SetAbsoluteMatrix(dprec.TRSMat4(
-		dprec.Vec3Lerp(previousTranslation, currentTranslation, fraction),
-		dprec.QuatSlerp(previousRotation, currentRotation, fraction),
+		currentTranslation,
+		currentRotation,
 		dprec.NewVec3(1.0, 1.0, 1.0),
 	))
 }
@@ -42,8 +40,8 @@ type AnimationNodeSource struct {
 	Player *animation.Player
 }
 
-func (s AnimationNodeSource) ApplyTo(node *hierarchy.Node, fraction float64) {
-	transform := s.Player.BoneTransform(node.Name(), fraction)
+func (s AnimationNodeSource) ApplyTo(node *hierarchy.Node) {
+	transform := s.Player.BoneTransform(node.Name())
 	if transform.Translation.Specified {
 		node.SetPosition(transform.Translation.Value)
 	}
@@ -64,7 +62,7 @@ type CameraNodeTarget struct {
 }
 
 func (t CameraNodeTarget) ApplyFrom(node *hierarchy.Node) {
-	t.Camera.SetMatrix(node.AbsoluteMatrix())
+	t.Camera.SetMatrix(node.InterpolatedAbsoluteMatrix())
 }
 
 func (t CameraNodeTarget) Release() {
@@ -84,7 +82,11 @@ type MeshNodeTarget struct {
 }
 
 func (t MeshNodeTarget) ApplyFrom(node *hierarchy.Node) {
-	t.Mesh.SetMatrix(node.AbsoluteMatrix())
+	t.Mesh.SetMatrix(node.InterpolatedAbsoluteMatrix())
+}
+
+func (t MeshNodeTarget) SetActive(active bool) {
+	t.Mesh.SetActive(active)
 }
 
 func (t MeshNodeTarget) Release() {
@@ -97,7 +99,7 @@ type BoneNodeTarget struct {
 }
 
 func (t BoneNodeTarget) ApplyFrom(node *hierarchy.Node) {
-	matrix := node.AbsoluteMatrix()
+	matrix := node.InterpolatedAbsoluteMatrix()
 	t.Armature.SetBone(t.BoneIndex, dtos.Mat4(matrix))
 }
 
@@ -117,6 +119,10 @@ func (t AmbientLightNodeTarget) ApplyFrom(node *hierarchy.Node) {
 	// t.Light.SetRotation(rotation)
 }
 
+func (t AmbientLightNodeTarget) SetActive(active bool) {
+	t.Light.SetActive(active)
+}
+
 func (t AmbientLightNodeTarget) Release() {
 	t.Light.Delete()
 }
@@ -126,8 +132,12 @@ type PointLightNodeTarget struct {
 }
 
 func (t PointLightNodeTarget) ApplyFrom(node *hierarchy.Node) {
-	matrix := node.AbsoluteMatrix()
+	matrix := node.InterpolatedAbsoluteMatrix()
 	t.Light.SetPosition(matrix.Translation())
+}
+
+func (t PointLightNodeTarget) SetActive(active bool) {
+	t.Light.SetActive(active)
 }
 
 func (t PointLightNodeTarget) Release() {
@@ -139,10 +149,14 @@ type SpotLightNodeTarget struct {
 }
 
 func (t SpotLightNodeTarget) ApplyFrom(node *hierarchy.Node) {
-	matrix := node.AbsoluteMatrix()
+	matrix := node.InterpolatedAbsoluteMatrix()
 	translation, rotation, _ := matrix.TRS()
 	t.Light.SetPosition(translation)
 	t.Light.SetRotation(rotation)
+}
+
+func (t SpotLightNodeTarget) SetActive(active bool) {
+	t.Light.SetActive(active)
 }
 
 func (t SpotLightNodeTarget) Release() {
@@ -150,24 +164,18 @@ func (t SpotLightNodeTarget) Release() {
 }
 
 type DirectionalLightNodeTarget struct {
-	Light                 *graphics.DirectionalLight
-	UseOnlyParentPosition bool
+	Light *graphics.DirectionalLight
 }
 
 func (t DirectionalLightNodeTarget) ApplyFrom(node *hierarchy.Node) {
-	if t.UseOnlyParentPosition {
-		matrix := node.BaseAbsoluteMatrix()
-		t.Light.SetPosition(dprec.Vec3Sum(
-			matrix.Translation(),
-			node.Position(),
-		))
-		t.Light.SetRotation(node.Rotation())
-	} else {
-		matrix := node.AbsoluteMatrix()
-		translation, rotation, _ := matrix.TRS()
-		t.Light.SetPosition(translation)
-		t.Light.SetRotation(rotation)
-	}
+	matrix := node.InterpolatedAbsoluteMatrix()
+	translation, rotation, _ := matrix.TRS()
+	t.Light.SetPosition(translation)
+	t.Light.SetRotation(rotation)
+}
+
+func (t DirectionalLightNodeTarget) SetActive(active bool) {
+	t.Light.SetActive(active)
 }
 
 func (t DirectionalLightNodeTarget) Release() {

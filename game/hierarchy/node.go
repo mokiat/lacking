@@ -15,9 +15,16 @@ type Node struct {
 	leftSibling  *Node
 	rightSibling *Node
 
-	position dprec.Vec3
-	rotation dprec.Quat
-	scale    dprec.Vec3
+	previousPosition  dprec.Vec3
+	previousRotation  dprec.Quat
+	previousScale     dprec.Vec3
+	previousAbsMatrix dprec.Mat4
+	fraction          float64
+
+	position  dprec.Vec3
+	rotation  dprec.Quat
+	scale     dprec.Vec3
+	absMatrix dprec.Mat4
 
 	transform TransformFunc
 	source    NodeSource
@@ -27,8 +34,7 @@ type Node struct {
 	// matrix cached for this Node is up to date. It borrows ideas from Lamport
 	// timestamps used in distributed systems. The matrix is considered up to date
 	// if the revision is larger than the parent's revision.
-	revision  int32
-	absMatrix dprec.Mat4
+	revision int32
 }
 
 // NewNode creates a new detached Node instance.
@@ -36,11 +42,26 @@ func NewNode() *Node {
 	return &Node{
 		revision: initialRevision,
 
+		previousPosition:  dprec.ZeroVec3(),
+		previousRotation:  dprec.IdentityQuat(),
+		previousScale:     dprec.NewVec3(1.0, 1.0, 1.0),
+		previousAbsMatrix: dprec.IdentityMat4(),
+
 		position: dprec.ZeroVec3(),
 		rotation: dprec.IdentityQuat(),
 		scale:    dprec.NewVec3(1.0, 1.0, 1.0),
 
 		transform: DefaultTransformFunc,
+	}
+}
+
+func (n *Node) ResetDelta() {
+	n.previousPosition = n.position
+	n.previousRotation = n.rotation
+	n.previousScale = n.scale
+	n.previousAbsMatrix = n.AbsoluteMatrix()
+	for child := n.firstChild; child != nil; child = child.rightSibling {
+		child.ResetDelta()
 	}
 }
 
@@ -330,6 +351,15 @@ func (n *Node) AbsoluteMatrix() dprec.Mat4 {
 	return n.absMatrix
 }
 
+func (n *Node) InterpolatedAbsoluteMatrix() dprec.Mat4 {
+	prevTranslation, prevRotation, prevScale := n.previousAbsMatrix.TRS()
+	currTranslation, currRotation, currScale := n.AbsoluteMatrix().TRS()
+	interpTranslation := dprec.Vec3Lerp(prevTranslation, currTranslation, n.fraction)
+	interpRotation := dprec.QuatSlerp(prevRotation, currRotation, n.fraction)
+	interpScale := dprec.Vec3Lerp(prevScale, currScale, n.fraction)
+	return dprec.TRSMat4(interpTranslation, interpRotation, interpScale)
+}
+
 // SetAbsoluteMatrix changes the relative position, rotation and scale
 // of this node based on the specified absolute transformation matrix.
 func (n *Node) SetAbsoluteMatrix(matrix dprec.Mat4) {
@@ -365,15 +395,19 @@ func (n *Node) SetTarget(target NodeTarget) {
 	n.target = target
 }
 
+func (n *Node) SetInterpolation(fraction float64) {
+	n.fraction = fraction
+}
+
 // ApplyFromSource requests that this node be updated based on its source.
 // If recursive is specified, the same is applied down the hierarchy as well.
-func (n *Node) ApplyFromSource(fraction float64, recursive bool) {
+func (n *Node) ApplyFromSource(recursive bool) {
 	if n.source != nil {
-		n.source.ApplyTo(n, fraction)
+		n.source.ApplyTo(n)
 	}
 	if recursive {
 		for child := n.firstChild; child != nil; child = child.rightSibling {
-			child.ApplyFromSource(fraction, recursive)
+			child.ApplyFromSource(recursive)
 		}
 	}
 }

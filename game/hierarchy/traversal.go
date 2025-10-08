@@ -7,3 +7,18 @@ func EachNode(root *Node, cb func(*Node)) {
 		EachNode(child, cb)
 	}
 }
+
+// SetActive controls the active state of a node and all its children.
+func SetActive(root *Node, active bool) {
+	type activable interface {
+		SetActive(bool)
+	}
+	EachNode(root, func(n *Node) {
+		if act, ok := n.source.(activable); ok {
+			act.SetActive(active)
+		}
+		if act, ok := n.target.(activable); ok {
+			act.SetActive(active)
+		}
+	})
+}

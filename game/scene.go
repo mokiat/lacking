@@ -73,6 +73,7 @@ func newScene(engine *Engine, info SceneInfo) *Scene {
 		root:           hierarchy.NewNode(), // TODO: Make this node stationary
 		animationTrees: ds.NewList[*animation.Player](0),
 
+		stepUpdateSubscriptions:    timestep.NewStepSubscriptionSet(),
 		fixedUpdateSubscriptions:   timestep.NewUpdateSubscriptionSet(),
 		interpolationSubscriptions: timestep.NewInterpolationSubscriptionSet(),
 		updateSubscriptions:        timestep.NewUpdateSubscriptionSet(),
@@ -94,6 +95,7 @@ type Scene struct {
 	root           *hierarchy.Node
 	animationTrees *ds.List[*animation.Player]
 
+	stepUpdateSubscriptions    *timestep.StepSubscriptionSet
 	fixedUpdateSubscriptions   *timestep.UpdateSubscriptionSet
 	interpolationSubscriptions *timestep.InterpolationSubscriptionSet
 	updateSubscriptions        *timestep.UpdateSubscriptionSet
@@ -140,6 +142,11 @@ func (s *Scene) Physics() *physics.Scene {
 // Returns `nil` if this scene does not have Graphics enabled.
 func (s *Scene) Graphics() *graphics.Scene {
 	return s.gfxScene
+}
+
+// SubscribeStepUpdate adds a callback to be executed before fixed time updates
+func (s *Scene) SubscribeStepUpdate(callback timestep.StepCallback) *timestep.StepSubscription {
+	return s.stepUpdateSubscriptions.Subscribe(callback)
 }
 
 // SubscribeFixedUpdate adds a callback to be executed after each fixed time
@@ -201,7 +208,10 @@ func (s *Scene) StopAnimation(player *animation.Player) {
 // Update advances the scene by the provided time.
 func (s *Scene) Update(elapsedTime time.Duration) {
 	if !s.frozen {
-		s.timeSegmenter.Update(elapsedTime, s.doFixedUpdate, s.doInterpolationUpdate)
+		s.timeSegmenter.SetStepCallback(s.doStepUpdate)
+		s.timeSegmenter.SetFixedCallback(s.doFixedUpdate)
+		s.timeSegmenter.SetInterpCallback(s.doInterpolationUpdate)
+		s.timeSegmenter.Update(elapsedTime)
 		s.doUpdate(elapsedTime)
 	}
 }
@@ -215,7 +225,19 @@ func (s *Scene) Render(framebuffer render.Framebuffer, viewport graphics.Viewpor
 	}
 }
 
+func (s *Scene) doStepUpdate(steps float64) {
+	callbackSpan := metric.BeginRegion("step-cb")
+	s.stepUpdateSubscriptions.Each(func(callback timestep.StepCallback) {
+		callback(steps)
+	})
+	callbackSpan.End()
+}
+
 func (s *Scene) doFixedUpdate(elapsedTime time.Duration) {
+	resetSpan := metric.BeginRegion("node-res")
+	s.root.ResetDelta()
+	resetSpan.End()
+
 	physicsSpan := metric.BeginRegion("physics")
 	if s.physicsScene != nil {
 		s.physicsScene.Update(elapsedTime)
@@ -228,6 +250,10 @@ func (s *Scene) doFixedUpdate(elapsedTime time.Duration) {
 	})
 	callbackSpan.End()
 
+	nodeSpan := metric.BeginRegion("node-fetch")
+	s.root.ApplyFromSource(true)
+	nodeSpan.End()
+
 	animationSpan := metric.BeginRegion("anim")
 	s.updateAnimationTrees(elapsedTime)
 	animationSpan.End()
@@ -238,9 +264,7 @@ func (s *Scene) doFixedUpdate(elapsedTime time.Duration) {
 }
 
 func (s *Scene) doInterpolationUpdate(fraction float64) {
-	nodeSpan := metric.BeginRegion("node-fetch")
-	s.root.ApplyFromSource(fraction, true)
-	nodeSpan.End()
+	s.root.SetInterpolation(fraction)
 
 	callbackSpan := metric.BeginRegion("interp-cb")
 	s.interpolationSubscriptions.Each(func(callback timestep.InterpolationCallback) {
