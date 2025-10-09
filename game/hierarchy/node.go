@@ -2,447 +2,319 @@ package hierarchy
 
 import "github.com/mokiat/gomath/dprec"
 
-// TODO: Make it possible to have static nodes that have a fixed transform
-// that does not change even in case of hierarchy changes.
+// initialTimestamp is a value indicating that the node is uninitialized.
+//
+// The library uses an approach that borrows ideas from Lamport timestamps used
+// in distributed systems. The state's absolute matrix is considered up to date
+// if the revision is larger than the parent's revision.
+const initialTimestamp int32 = -1
 
-// Node represents the transformation of an object or part of one in 3D space.
-type Node struct {
-	name string
-
-	parent       *Node
-	firstChild   *Node
-	lastChild    *Node
-	leftSibling  *Node
-	rightSibling *Node
-
-	previousPosition  dprec.Vec3
-	previousRotation  dprec.Quat
-	previousScale     dprec.Vec3
-	previousAbsMatrix dprec.Mat4
-	fraction          float64
-
-	position  dprec.Vec3
-	rotation  dprec.Quat
-	scale     dprec.Vec3
-	absMatrix dprec.Mat4
-
-	transform TransformFunc
-	source    NodeSource
-	target    NodeTarget
-
-	// revision is a mechanism through which it is determined if the absolute
-	// matrix cached for this Node is up to date. It borrows ideas from Lamport
-	// timestamps used in distributed systems. The matrix is considered up to date
-	// if the revision is larger than the parent's revision.
-	revision int32
+// NodeID represents a unique identifier for a node in the scene.
+type NodeID struct {
+	index    int32
+	revision uint32
 }
 
-// NewNode creates a new detached Node instance.
-func NewNode() *Node {
-	return &Node{
-		revision: initialRevision,
+// IsNil returns whether the NodeID is nil.
+func (id NodeID) IsNil() bool {
+	return id == NilNodeID
+}
 
-		previousPosition:  dprec.ZeroVec3(),
-		previousRotation:  dprec.IdentityQuat(),
-		previousScale:     dprec.NewVec3(1.0, 1.0, 1.0),
-		previousAbsMatrix: dprec.IdentityMat4(),
+// NilNodeID is a sentinel value representing a nil NodeID.
+var NilNodeID = NodeID{0, 0}
 
-		position: dprec.ZeroVec3(),
-		rotation: dprec.IdentityQuat(),
-		scale:    dprec.NewVec3(1.0, 1.0, 1.0),
+type node struct {
+	index    int32
+	revision uint32
+	name     string
 
-		transform: DefaultTransformFunc,
+	isIndependent bool
+	isVisible     bool
+	transformFunc TransformFunc
+	timestamp     int32
+
+	parentIndex       int32
+	firstChildIndex   int32
+	lastChildIndex    int32
+	leftSiblingIndex  int32
+	rightSiblingIndex int32
+
+	previousState nodeState
+	currentState  nodeState
+}
+
+func (n *node) initialize(index int32, revision uint32) {
+	n.index = index
+	n.revision = revision
+	n.name = ""
+
+	n.isIndependent = false
+	n.isVisible = true
+	n.transformFunc = DefaultTransformFunc
+	n.timestamp = initialTimestamp
+
+	n.parentIndex = -1
+	n.firstChildIndex = -1
+	n.lastChildIndex = -1
+	n.leftSiblingIndex = -1
+	n.rightSiblingIndex = -1
+
+	n.previousState.initialize()
+	n.currentState.initialize()
+}
+
+func (n *node) getID() NodeID {
+	return NodeID{
+		index:    n.index,
+		revision: n.revision,
 	}
 }
 
-func (n *Node) ResetDelta() {
-	// Reset children first so that a call to AbsoluteMatrix on any child
-	// will return the correct previous absolute matrix.
-	for child := n.firstChild; child != nil; child = child.rightSibling {
-		child.ResetDelta()
+func (n *node) prependSibling(scene *Scene, sibling *node) {
+	sibling.leftSiblingIndex = n.leftSiblingIndex
+	if n.leftSiblingIndex != -1 {
+		leftSibling := &scene.nodes[n.leftSiblingIndex]
+		leftSibling.rightSiblingIndex = sibling.index
 	}
 
-	// Store current state as previous state.
-	n.previousPosition = n.position
-	n.previousRotation = n.rotation
-	n.previousScale = n.scale
-	n.previousAbsMatrix = n.AbsoluteMatrix()
+	sibling.rightSiblingIndex = n.index
+	n.leftSiblingIndex = sibling.index
+
+	if n.parentIndex != -1 && sibling.leftSiblingIndex == -1 {
+		parent := &scene.nodes[n.parentIndex]
+		parent.firstChildIndex = sibling.index
+	}
+
+	sibling.timestamp = initialTimestamp
 }
 
-// Name returns this Node's name.
-func (n *Node) Name() string {
+func (n *node) appendSibling(scene *Scene, sibling *node) {
+	sibling.rightSiblingIndex = n.rightSiblingIndex
+	if n.rightSiblingIndex != -1 {
+		rightSibling := &scene.nodes[n.rightSiblingIndex]
+		rightSibling.leftSiblingIndex = sibling.index
+	}
+
+	sibling.leftSiblingIndex = n.index
+	n.rightSiblingIndex = sibling.index
+
+	if n.parentIndex != -1 && sibling.rightSiblingIndex == -1 {
+		parent := &scene.nodes[n.parentIndex]
+		parent.lastChildIndex = sibling.index
+	}
+
+	sibling.timestamp = initialTimestamp
+}
+
+func (n *node) prependChild(scene *Scene, child *node) {
+	child.parentIndex = n.index
+
+	child.leftSiblingIndex = -1
+	child.rightSiblingIndex = n.firstChildIndex
+	if n.firstChildIndex != -1 {
+		firstChild := &scene.nodes[n.firstChildIndex]
+		firstChild.leftSiblingIndex = child.index
+	}
+	n.firstChildIndex = child.index
+
+	if n.lastChildIndex == -1 {
+		n.lastChildIndex = child.index
+	}
+
+	child.timestamp = initialTimestamp
+}
+
+func (n *node) appendChild(scene *Scene, child *node) {
+	child.parentIndex = n.index
+
+	child.leftSiblingIndex = n.lastChildIndex
+	child.rightSiblingIndex = -1
+	if n.lastChildIndex != -1 {
+		lastChild := &scene.nodes[n.lastChildIndex]
+		lastChild.rightSiblingIndex = child.index
+	}
+	n.lastChildIndex = child.index
+
+	if n.firstChildIndex == -1 {
+		n.firstChildIndex = child.index
+	}
+
+	child.timestamp = initialTimestamp
+}
+
+func (n *node) detach(scene *Scene) {
+	if n.parentIndex == -1 {
+		return // no-op
+	}
+
+	if n.leftSiblingIndex != -1 {
+		leftSibling := &scene.nodes[n.leftSiblingIndex]
+		leftSibling.rightSiblingIndex = n.rightSiblingIndex
+	}
+	if n.rightSiblingIndex != -1 {
+		rightSibling := &scene.nodes[n.rightSiblingIndex]
+		rightSibling.leftSiblingIndex = n.leftSiblingIndex
+	}
+	parent := &scene.nodes[n.parentIndex]
+	if parent.firstChildIndex == n.index {
+		parent.firstChildIndex = n.rightSiblingIndex
+	}
+	if parent.lastChildIndex == n.index {
+		parent.lastChildIndex = n.leftSiblingIndex
+	}
+	n.parentIndex = -1
+	n.leftSiblingIndex = -1
+	n.rightSiblingIndex = -1
+	n.timestamp = initialTimestamp
+}
+
+func (n *node) reconstructTransforms(scene *Scene) {
+	previousAbsMatrix := n.previousState.absMatrix // should not have been modified
+	previousTranslation, previousRotation, previousScale := previousAbsMatrix.TRS()
+	n.previousState.translation = previousTranslation
+	n.previousState.rotation = previousRotation
+	n.previousState.scale = previousScale
+
+	currentAbsMatrix := n.currentState.absMatrix // should not have been modified
+	currentTranslation, currentRotation, currentScale := currentAbsMatrix.TRS()
+	n.currentState.translation = currentTranslation
+	n.currentState.rotation = currentRotation
+	n.currentState.scale = currentScale
+	n.timestamp = scene.nextTimestamp()
+}
+
+func (n *node) resetDelta(scene *Scene, recursive bool) {
+	n.ensureNotStale(scene)
+	n.previousState = n.currentState
+
+	if recursive {
+		for childIndex := n.firstChildIndex; childIndex != -1; {
+			child := &scene.nodes[childIndex]
+			child.resetDelta(scene, recursive)
+			childIndex = child.rightSiblingIndex
+		}
+	}
+}
+
+func (n *node) getName(_ *Scene) string {
 	return n.name
 }
 
-// SetName changes this Node's name.
-func (n *Node) SetName(name string) {
+func (n *node) setName(_ *Scene, name string) {
 	n.name = name
 }
 
-// Parent returns the parent Node in the hierarchy. If this is the top-most
-// Node then nil is returned.
-func (n *Node) Parent() *Node {
-	return n.parent
+func (n *node) getIsIndependent(_ *Scene) bool {
+	return n.isIndependent
 }
 
-// FirstChild returns the first (left-most) child Node of this Node. If this
-// Node does not have any children then this method returns nil.
-func (n *Node) FirstChild() *Node {
-	return n.firstChild
+func (n *node) setIsIndependent(_ *Scene, independent bool) {
+	n.isIndependent = independent
+	n.timestamp = initialTimestamp
 }
 
-// LastChild returns the last (right-most) child Node of this Node. If this
-// Node does not have any children then this method returns nil.
-func (n *Node) LastChild() *Node {
-	return n.lastChild
+func (n *node) getIsVisible(_ *Scene) bool {
+	return n.isVisible
 }
 
-// LeftSibling returns the left sibling Node of this Node. If this Node is the
-// left-most child of its parent or does not have a parent then this method
-// returns nil.
-func (n *Node) LeftSibling() *Node {
-	return n.leftSibling
+func (n *node) setIsVisible(_ *Scene, visible bool) {
+	n.isVisible = visible
 }
 
-// RightSibling returns the right sibling Node of this Node. If this Node is
-// the right-most child of its parent or does not have a parent then this
-// method returns nil.
-func (n *Node) RightSibling() *Node {
-	return n.rightSibling
+func (n *node) getTransform(_ *Scene) TransformFunc {
+	return n.transformFunc
 }
 
-// Detach removes this Node from the hierarchy.
-func (n *Node) Detach() {
-	if n.parent != nil {
-		absMatrix := n.AbsoluteMatrix()
-		n.parent.RemoveChild(n)
-		translation, rotation, scale := absMatrix.TRS()
-		// TODO: SetMatrix
-		n.SetPosition(translation)
-		n.SetRotation(rotation)
-		n.SetScale(scale)
-	}
-}
-
-// Delete removes this Node from the hierarchy and deletes all of its children.
-//
-// The node can be reused after deletion.
-func (n *Node) Delete() {
-	child := n.FirstChild()
-	for child != nil {
-		next := child.RightSibling()
-		child.Delete()
-		child = next
-	}
-	if n.source != nil {
-		n.source.Release()
-		n.source = nil
-	}
-	if n.target != nil {
-		n.target.Release()
-		n.target = nil
-	}
-	n.Detach()
-}
-
-// PrependSibling attaches a Node to the left of the current one.
-func (n *Node) PrependSibling(sibling *Node) {
-	sibling.Detach()
-	sibling.leftSibling = n.leftSibling
-	if n.leftSibling != nil {
-		n.leftSibling.rightSibling = sibling
-	}
-	sibling.rightSibling = n
-	n.leftSibling = sibling
-	if n.parent != nil && sibling.leftSibling == nil {
-		n.parent.firstChild = sibling
-	}
-	sibling.revision = initialRevision
-}
-
-// AppendSibling attaches a Node to the right of the current one.
-func (n *Node) AppendSibling(sibling *Node) {
-	sibling.Detach()
-	sibling.rightSibling = n.rightSibling
-	if n.rightSibling != nil {
-		n.rightSibling.leftSibling = sibling
-	}
-	sibling.leftSibling = n
-	n.rightSibling = sibling
-	if n.parent != nil && sibling.rightSibling == nil {
-		n.parent.lastChild = sibling
-	}
-	sibling.revision = initialRevision
-}
-
-// PrependChild adds the specified Node as the left-most child of this Node.
-// If the preprended Node already has a parent, it is first detached from that
-// parent.
-func (n *Node) PrependChild(child *Node) {
-	child.Detach()
-	child.parent = n
-	child.leftSibling = nil
-	child.rightSibling = n.firstChild
-	if n.firstChild != nil {
-		n.firstChild.leftSibling = child
-	}
-	n.firstChild = child
-	if n.lastChild == nil {
-		n.lastChild = child
-	}
-	child.revision = initialRevision
-}
-
-// AppendChild adds the specified Node as the right-most child of this Node.
-// If the appended Node already has a parent, it is first detached from that
-// parent.
-func (n *Node) AppendChild(child *Node) {
-	child.Detach()
-	child.parent = n
-	child.leftSibling = n.lastChild
-	child.rightSibling = nil
-	if n.firstChild == nil {
-		n.firstChild = child
-	}
-	if n.lastChild != nil {
-		n.lastChild.rightSibling = child
-	}
-	n.lastChild = child
-	child.revision = initialRevision
-}
-
-// RemoveChild removes the specified Node from the list of children held by
-// this Node. If the specified Node is not a child of this Node, then nothing
-// happens.
-func (n *Node) RemoveChild(child *Node) {
-	if child.parent != n {
-		return
-	}
-	if child.leftSibling != nil {
-		child.leftSibling.rightSibling = child.rightSibling
-	}
-	if child.rightSibling != nil {
-		child.rightSibling.leftSibling = child.leftSibling
-	}
-	if n.firstChild == child {
-		n.firstChild = child.rightSibling
-	}
-	if n.lastChild == child {
-		n.lastChild = child.leftSibling
-	}
-	child.parent = nil
-	child.leftSibling = nil
-	child.rightSibling = nil
-	child.revision = initialRevision
-}
-
-// Visit traverses the node hierarchy starting from the current node.
-func (n *Node) Visit(callback func(*Node)) {
-	callback(n)
-	for child := n.firstChild; child != nil; child = child.rightSibling {
-		child.Visit(callback)
-	}
-}
-
-// FindNode searches the hierarchy starting from this Node (inclusive) for a
-// Node that has the specified name.
-func (n *Node) FindNode(name string) *Node {
-	if n.name == name {
-		return n
-	}
-	for child := n.firstChild; child != nil; child = child.rightSibling {
-		if result := child.FindNode(name); result != nil {
-			return result
-		}
-	}
-	return nil
-}
-
-// IsDescendantOf returns whether the node is a descendant of the specified
-// ancestor.
-func (n *Node) IsDescendantOf(ancestor *Node) bool {
-	current := n
-	for current != nil {
-		if current == ancestor {
-			return true
-		}
-		current = current.parent
-	}
-	return false
-}
-
-// UseTransformation configures a TransformFunc to be used for calculating
-// the absolute matrix of this node. Pass nil to restore the default behavior.
-func (n *Node) UseTransformation(transform TransformFunc) {
-	if transform != nil {
-		n.transform = transform
+func (n *node) setTransform(_ *Scene, transformFunc TransformFunc) {
+	if transformFunc == nil {
+		n.transformFunc = DefaultTransformFunc
 	} else {
-		n.transform = DefaultTransformFunc
+		n.transformFunc = transformFunc
 	}
+	n.timestamp = initialTimestamp
 }
 
-// Position returns this Node's relative position to the parent.
-func (n *Node) Position() dprec.Vec3 {
-	return n.position
+func (n *node) getPosition(_ *Scene) dprec.Vec3 {
+	return n.currentState.translation
 }
 
-// SetPosition changes this Node's relative position to the parent.
-func (n *Node) SetPosition(position dprec.Vec3) {
-	if position != n.position {
-		n.position = position
-		n.revision = initialRevision
-	}
+func (n *node) setPosition(_ *Scene, position dprec.Vec3) {
+	n.currentState.translation = position
+	n.timestamp = initialTimestamp
 }
 
-// Rotation returns this Node's rotation relative to the parent.
-func (n *Node) Rotation() dprec.Quat {
-	return n.rotation
+func (n *node) getRotation(_ *Scene) dprec.Quat {
+	return n.currentState.rotation
 }
 
-// SetRotation changes this Node's rotation relative to the parent.
-func (n *Node) SetRotation(rotation dprec.Quat) {
-	if rotation != n.rotation {
-		n.rotation = dprec.UnitQuat(rotation)
-		n.revision = initialRevision
-	}
+func (n *node) setRotation(_ *Scene, rotation dprec.Quat) {
+	n.currentState.rotation = rotation
+	n.timestamp = initialTimestamp
 }
 
-// Scale returns this Node's scale relative to the parent.
-func (n *Node) Scale() dprec.Vec3 {
-	return n.scale
+func (n *node) getScale(_ *Scene) dprec.Vec3 {
+	return n.currentState.scale
 }
 
-// SetScale changes this Node's scale relative to the parent.
-func (n *Node) SetScale(scale dprec.Vec3) {
-	if scale != n.scale {
-		n.scale = scale
-		n.revision = initialRevision
-	}
+func (n *node) setScale(_ *Scene, scale dprec.Vec3) {
+	n.currentState.scale = scale
+	n.timestamp = initialTimestamp
 }
 
-// Matrix returns the matrix transformation of this Node relative to the
-// parent.
-func (n *Node) Matrix() dprec.Mat4 {
-	return dprec.TRSMat4(n.position, n.rotation, n.scale)
+func (n *node) getMatrix(_ *Scene) dprec.Mat4 {
+	return dprec.TRSMat4(
+		n.currentState.translation,
+		n.currentState.rotation,
+		n.currentState.scale,
+	)
 }
 
-// SetMatrix changes this node's relative transformation th the specified
-// matrix.
-func (n *Node) SetMatrix(matrix dprec.Mat4) {
+func (n *node) setMatrix(_ *Scene, matrix dprec.Mat4) {
 	translation, rotation, scale := matrix.TRS()
-	n.SetPosition(translation)
-	n.SetRotation(rotation)
-	n.SetScale(scale)
+	n.currentState.translation = translation
+	n.currentState.rotation = rotation
+	n.currentState.scale = scale
+	n.timestamp = initialTimestamp
 }
 
-// BaseAbsoluteMatrix returns the absolute matrix of the parent, if there is
-// one, otherwise the identity matrix.
-func (n *Node) BaseAbsoluteMatrix() dprec.Mat4 {
-	if n.parent == nil {
-		return dprec.IdentityMat4()
-	}
-	return n.parent.AbsoluteMatrix()
+func (n *node) getAbsoluteMatrix(scene *Scene) dprec.Mat4 {
+	n.ensureNotStale(scene)
+	return n.currentState.absMatrix
 }
 
-// AbsoluteMatrix returns the matrix transformation of this Node relative
-// to the root coordinate system.
-func (n *Node) AbsoluteMatrix() dprec.Mat4 {
-	if !n.isStaleHierarchy() {
-		return n.absMatrix
-	}
-	n.absMatrix = n.transform(n)
-	n.revision = nextRevision() // make sure to call this last
-	return n.absMatrix
+func (n *node) getPreviousAbsoluteTRS(_ *Scene) (dprec.Vec3, dprec.Quat, dprec.Vec3) {
+	return n.previousState.absMatrix.TRS()
 }
 
-func (n *Node) InterpolatedAbsoluteMatrix() dprec.Mat4 {
-	prevTranslation, prevRotation, prevScale := n.previousAbsMatrix.TRS()
-	currTranslation, currRotation, currScale := n.AbsoluteMatrix().TRS()
-	interpTranslation := dprec.Vec3Lerp(prevTranslation, currTranslation, n.fraction)
-	interpRotation := dprec.QuatSlerp(prevRotation, currRotation, n.fraction)
-	interpScale := dprec.Vec3Lerp(prevScale, currScale, n.fraction)
-	return dprec.TRSMat4(interpTranslation, interpRotation, interpScale)
+func (n *node) getCurrentAbsoluteTRS(scene *Scene) (dprec.Vec3, dprec.Quat, dprec.Vec3) {
+	n.ensureNotStale(scene)
+	return n.currentState.absMatrix.TRS()
 }
 
-// SetAbsoluteMatrix changes the relative position, rotation and scale
-// of this node based on the specified absolute transformation matrix.
-func (n *Node) SetAbsoluteMatrix(matrix dprec.Mat4) {
-	if n.parent == nil {
-		n.SetMatrix(matrix)
-	} else {
-		parentMatrix := n.parent.AbsoluteMatrix()
-		relativeMatrix := dprec.Mat4Prod(
-			dprec.InverseMat4(parentMatrix),
-			matrix,
-		)
-		n.SetMatrix(relativeMatrix)
-	}
-}
-
-// Source returns the transformation input for this node.
-func (n *Node) Source() NodeSource {
-	return n.source
-}
-
-// SetSource changes the transformation input for this node.
-func (n *Node) SetSource(source NodeSource) {
-	n.source = source
-}
-
-// Target returns the transformation output for this node.
-func (n *Node) Target() NodeTarget {
-	return n.target
-}
-
-// SetTarget changes the transformation output for this node.
-func (n *Node) SetTarget(target NodeTarget) {
-	n.target = target
-}
-
-func (n *Node) SetInterpolation(fraction float64) {
-	n.fraction = fraction
-}
-
-// ApplyFromSource requests that this node be updated based on its source.
-// If recursive is specified, the same is applied down the hierarchy as well.
-func (n *Node) ApplyFromSource(recursive bool) {
-	if n.source != nil {
-		n.source.ApplyTo(n)
-	}
-	if recursive {
-		for child := n.firstChild; child != nil; child = child.rightSibling {
-			child.ApplyFromSource(recursive)
+func (n *node) ensureNotStale(scene *Scene) {
+	if n.isStale(scene) {
+		if n.isIndependent {
+			n.currentState.absMatrix = n.getMatrix(scene)
+		} else {
+			n.currentState.absMatrix = n.transformFunc(scene, NodeID{
+				index:    n.index,
+				revision: n.revision,
+			})
 		}
+		n.timestamp = scene.nextTimestamp() // make sure to do last
 	}
 }
 
-// ApplyToTarget requests that this node be applied to its target.
-// If recursive is specified, the same is applied down the hierarchy as well.
-func (n *Node) ApplyToTarget(recursive bool) {
-	if n.target != nil {
-		n.target.ApplyFrom(n)
+func (n *node) isStale(scene *Scene) bool {
+	if n.timestamp == initialTimestamp {
+		return true // default revision is always stale
 	}
-	if recursive {
-		for child := n.firstChild; child != nil; child = child.rightSibling {
-			child.ApplyToTarget(recursive)
-		}
+	if n.isIndependent || n.parentIndex == -1 {
+		return false // no parent and not default revision
 	}
-}
-
-func (n *Node) isStaleHierarchy() bool {
-	if n.revision == initialRevision {
-		// Default revision is considered stale.
-		return true
+	parent := &scene.nodes[n.parentIndex]
+	if n.timestamp <= parent.timestamp {
+		return true // parent changed since last update
 	}
-	if n.parent == nil {
-		// No parent and not at initial revision means it is not stale.
-		return false
-	}
-	if n.revision <= n.parent.revision {
-		// The parent is ahead so this node is stale.
-		return true
-	}
-	// This node appears to be fine with relation to its parent but
-	// it is unclear if the parent is up to date.
-	return n.parent.isStaleHierarchy()
+	return parent.isStale(scene)
 }

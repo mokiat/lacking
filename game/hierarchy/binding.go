@@ -1,25 +1,92 @@
 package hierarchy
 
-// NodeSource represents an abstraction that is able to apply its transform
-// to a node.
-type NodeSource interface {
+const (
+	initialBindingCapacity = 64
+)
 
-	// ApplyTo requests that any transform be applied to the specified node.
-	ApplyTo(node *Node)
+// Binding represents a relationship between a target and a node in the scene.
+type Binding[T BindingTarget] interface {
 
-	// Release indicates that the node has been deleted and the source can be
-	// deleted.
-	Release()
+	// OnTargetToNode is called when the target's state should be applied to the
+	// node.
+	OnTargetToNode(*Scene, T, NodeID)
+
+	// OnNodeToTarget is called when the node's state should be applied to the
+	// target.
+	OnNodeToTarget(*Scene, NodeID, T, float64)
+
+	// OnStaleBinding is called when the node is deleted and the binding
+	// is determined to be no longer valid.
+	OnStaleBinding(*Scene, T)
 }
 
-// NodeTarget represents an abstraction that is able to modify its transform
-// based on a node's positioning.
-type NodeTarget interface {
+// BindingTarget represents a type that can be used as a target in a binding.
+type BindingTarget interface {
+	comparable
+}
 
-	// ApplyFrom requests that the node's transform be applied to the receiver.
-	ApplyFrom(node *Node)
+// NewBindingSet represents a set of bindings for a specific target type.
+func NewBindingSet[T BindingTarget](scene *Scene, binding Binding[T]) *BindingSet[T] {
+	result := &BindingSet[T]{
+		scene:     scene,
+		binding:   binding,
+		relations: make(map[NodeID]T, initialBindingCapacity),
+	}
+	scene.SubscribeNodeDelete(func(s *Scene, id NodeID) {
+		if target, ok := result.Unbind(id); ok {
+			binding.OnStaleBinding(s, target)
+		}
+	})
+	return result
+}
 
-	// Release indicates that the node has been deleted and the target can be
-	// deleted.
-	Release()
+// BindingSet represents a set of bindings for a specific target type.
+type BindingSet[T BindingTarget] struct {
+	scene     *Scene
+	binding   Binding[T]
+	relations map[NodeID]T
+}
+
+// Bind binds the target to the node with the given ID.
+func (s *BindingSet[T]) Bind(id NodeID, target T) {
+	if s.scene.IsValidNode(id) {
+		s.relations[id] = target
+	}
+}
+
+// Unbind unbinds the target from its node.
+func (s *BindingSet[T]) Unbind(id NodeID) (T, bool) {
+	target, exists := s.relations[id]
+	if exists {
+		delete(s.relations, id)
+	}
+	return target, exists
+}
+
+// ApplyTargetToNode applies the state of the targets to their nodes.
+func (s *BindingSet[T]) ApplyTargetToNode() {
+	for id, target := range s.relations {
+		if s.scene.IsValidNode(id) {
+			s.binding.OnTargetToNode(s.scene, target, id)
+		}
+	}
+}
+
+// ApplyNodeToTarget applies the state of the nodes to their targets.
+func (s *BindingSet[T]) ApplyNodeToTarget(fraction float64) {
+	for id, target := range s.relations {
+		if s.scene.IsValidNode(id) {
+			s.binding.OnNodeToTarget(s.scene, id, target, fraction)
+		}
+	}
+}
+
+// DeleteStale removes bindings to nodes that are no longer valid.
+func (s *BindingSet[T]) DeleteStale() {
+	for id, target := range s.relations {
+		if !s.scene.IsValidNode(id) {
+			delete(s.relations, id)
+			s.binding.OnStaleBinding(s.scene, target)
+		}
+	}
 }
