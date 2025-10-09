@@ -9,211 +9,273 @@ import (
 	"github.com/mokiat/lacking/game/physics"
 )
 
-// BodyFromNode returns the body that is a source for this node.
-//
-// This function panics if the node does not have a physics body as source.
-func BodyFromNode(node *hierarchy.Node) physics.Body {
-	source := node.Source().(BodyNodeSource)
-	return source.Body
+// GenericBindingSet represents any hierarchy binding set, regardless of the
+// target type.
+type GenericBindingSet interface {
+	ApplyTargetToNode(id hierarchy.NodeID)
+	ApplyTargetsToNodes()
+	ApplyNodeToTarget(id hierarchy.NodeID, fraction float64)
+	ApplyNodesToTargets(fraction float64)
+	DeleteStale()
 }
 
-type BodyNodeSource struct {
-	Body physics.Body
+// NewAnimationBinding creates a new binding for animations.
+func NewAnimationBinding() hierarchy.Binding[*animation.Player] {
+	return &animationBinding{}
 }
 
-func (s BodyNodeSource) ApplyTo(node *hierarchy.Node) {
-	currentTranslation := s.Body.Position()
-	currentRotation := s.Body.Rotation()
+type animationBinding struct{}
 
-	node.SetAbsoluteMatrix(dprec.TRSMat4(
+var _ hierarchy.Binding[*animation.Player] = (*animationBinding)(nil)
+
+func (b *animationBinding) OnTargetToNode(scene *hierarchy.Scene, player *animation.Player, id hierarchy.NodeID) {
+	name := scene.NodeName(id)
+	transform := player.BoneTransform(name)
+	if transform.Translation.Specified {
+		scene.SetNodePosition(id, transform.Translation.Value)
+	}
+	if transform.Rotation.Specified {
+		scene.SetNodeRotation(id, transform.Rotation.Value)
+	}
+	if transform.Scale.Specified {
+		scene.SetNodeScale(id, transform.Scale.Value)
+	}
+}
+
+func (b *animationBinding) OnNodeToTarget(scene *hierarchy.Scene, id hierarchy.NodeID, player *animation.Player, fraction float64) {
+	// Animation is not a target. Nothing to do.
+}
+
+func (b *animationBinding) OnStaleBinding(scene *hierarchy.Scene, player *animation.Player) {
+	// Nothing to do.
+}
+
+// NewBodyBinding creates a new binding for physics bodies.
+func NewBodyBinding() hierarchy.Binding[physics.Body] {
+	return &bodyBinding{}
+}
+
+type bodyBinding struct{}
+
+var _ hierarchy.Binding[physics.Body] = (*bodyBinding)(nil)
+
+func (b *bodyBinding) OnTargetToNode(scene *hierarchy.Scene, body physics.Body, id hierarchy.NodeID) {
+	currentTranslation := body.Position()
+	currentRotation := body.Rotation()
+
+	scene.SetNodeAbsoluteMatrix(id, dprec.TRSMat4(
 		currentTranslation,
 		currentRotation,
 		dprec.NewVec3(1.0, 1.0, 1.0),
 	))
 }
 
-func (s BodyNodeSource) Release() {
-	s.Body.Delete()
+func (b *bodyBinding) OnNodeToTarget(scene *hierarchy.Scene, id hierarchy.NodeID, body physics.Body, fraction float64) {
+	// Body is not a target. Nothing to do.
 }
 
-type AnimationNodeSource struct {
-	Player *animation.Player
+func (b *bodyBinding) OnStaleBinding(scene *hierarchy.Scene, body physics.Body) {
+	body.Delete()
 }
 
-func (s AnimationNodeSource) ApplyTo(node *hierarchy.Node) {
-	transform := s.Player.BoneTransform(node.Name())
-	if transform.Translation.Specified {
-		node.SetPosition(transform.Translation.Value)
-	}
-	if transform.Rotation.Specified {
-		node.SetRotation(transform.Rotation.Value)
-	}
-	if transform.Scale.Specified {
-		node.SetScale(transform.Scale.Value)
-	}
+// NewSkyBinding creates a new binding for skies.
+func NewSkyBinding() hierarchy.Binding[*graphics.Sky] {
+	return &skyBinding{}
 }
 
-func (s AnimationNodeSource) Release() {
-	// Nothing to do
+type skyBinding struct{}
+
+var _ hierarchy.Binding[*graphics.Sky] = (*skyBinding)(nil)
+
+func (b *skyBinding) OnTargetToNode(*hierarchy.Scene, *graphics.Sky, hierarchy.NodeID) {
+	// Sky is not a source. Nothing to do.
 }
 
-type CameraNodeTarget struct {
-	Camera *graphics.Camera
+func (b *skyBinding) OnNodeToTarget(scene *hierarchy.Scene, id hierarchy.NodeID, sky *graphics.Sky, fraction float64) {
+	active := scene.IsNodeVisible(id)
+
+	sky.SetActive(active)
 }
 
-func (t CameraNodeTarget) ApplyFrom(node *hierarchy.Node) {
-	t.Camera.SetMatrix(node.InterpolatedAbsoluteMatrix())
+func (b *skyBinding) OnStaleBinding(_ *hierarchy.Scene, sky *graphics.Sky) {
+	sky.Delete()
 }
 
-func (t CameraNodeTarget) Release() {
-	t.Camera.Delete()
+// NewAmbientLightBinding creates a new binding for ambient lights.
+func NewAmbientLightBinding() hierarchy.Binding[*graphics.AmbientLight] {
+	return &ambientLightBinding{}
 }
 
-// MeshFromNode returns the mesh that is a target for this node.
-//
-// This function panics if the node does not have a graphics mesh as target.
-func MeshFromNode(node *hierarchy.Node) *graphics.Mesh {
-	target := node.Target().(MeshNodeTarget)
-	return target.Mesh
+type ambientLightBinding struct{}
+
+var _ hierarchy.Binding[*graphics.AmbientLight] = (*ambientLightBinding)(nil)
+
+func (b *ambientLightBinding) OnTargetToNode(scene *hierarchy.Scene, light *graphics.AmbientLight, id hierarchy.NodeID) {
+	// Ambient light is not a source. Nothing to do.
 }
 
-type MeshNodeTarget struct {
-	Mesh *graphics.Mesh
+func (b *ambientLightBinding) OnNodeToTarget(scene *hierarchy.Scene, id hierarchy.NodeID, light *graphics.AmbientLight, fraction float64) {
+	matrix := scene.NodeInterpolatedAbsoluteMatrix(id, fraction)
+	visible := scene.IsNodeVisible(id)
+
+	light.SetPosition(matrix.Translation())
+	light.SetActive(visible)
 }
 
-func (t MeshNodeTarget) ApplyFrom(node *hierarchy.Node) {
-	t.Mesh.SetMatrix(node.InterpolatedAbsoluteMatrix())
+func (b *ambientLightBinding) OnStaleBinding(scene *hierarchy.Scene, light *graphics.AmbientLight) {
+	light.Delete()
 }
 
-func (t MeshNodeTarget) SetActive(active bool) {
-	t.Mesh.SetActive(active)
+// NewPointLightBinding creates a new binding for point lights.
+func NewPointLightBinding() hierarchy.Binding[*graphics.PointLight] {
+	return &pointLightBinding{}
 }
 
-func (t MeshNodeTarget) Release() {
-	t.Mesh.Delete()
+type pointLightBinding struct{}
+
+var _ hierarchy.Binding[*graphics.PointLight] = (*pointLightBinding)(nil)
+
+func (b *pointLightBinding) OnTargetToNode(scene *hierarchy.Scene, light *graphics.PointLight, id hierarchy.NodeID) {
+	// Point light is not a source. Nothing to do.
 }
 
-type BoneNodeTarget struct {
+func (b *pointLightBinding) OnNodeToTarget(scene *hierarchy.Scene, id hierarchy.NodeID, light *graphics.PointLight, fraction float64) {
+	matrix := scene.NodeInterpolatedAbsoluteMatrix(id, fraction)
+	visible := scene.IsNodeVisible(id)
+
+	light.SetPosition(matrix.Translation())
+	light.SetActive(visible)
+}
+
+func (b *pointLightBinding) OnStaleBinding(scene *hierarchy.Scene, light *graphics.PointLight) {
+	light.Delete()
+}
+
+// NewSpotLightBinding creates a new binding for spot lights.
+func NewSpotLightBinding() hierarchy.Binding[*graphics.SpotLight] {
+	return &spotLightBinding{}
+}
+
+type spotLightBinding struct{}
+
+var _ hierarchy.Binding[*graphics.SpotLight] = (*spotLightBinding)(nil)
+
+func (b *spotLightBinding) OnTargetToNode(scene *hierarchy.Scene, light *graphics.SpotLight, id hierarchy.NodeID) {
+	// Spot light is not a source. Nothing to do.
+}
+
+func (b *spotLightBinding) OnNodeToTarget(scene *hierarchy.Scene, id hierarchy.NodeID, light *graphics.SpotLight, fraction float64) {
+	matrix := scene.NodeInterpolatedAbsoluteMatrix(id, fraction)
+	visible := scene.IsNodeVisible(id)
+
+	translation, rotation, _ := matrix.TRS()
+	light.SetPosition(translation)
+	light.SetRotation(rotation)
+	light.SetActive(visible)
+}
+
+func (b *spotLightBinding) OnStaleBinding(scene *hierarchy.Scene, light *graphics.SpotLight) {
+	light.Delete()
+}
+
+// NewDirectionalLightBinding creates a new binding for directional lights.
+func NewDirectionalLightBinding() hierarchy.Binding[*graphics.DirectionalLight] {
+	return &directionalLightBinding{}
+}
+
+type directionalLightBinding struct{}
+
+var _ hierarchy.Binding[*graphics.DirectionalLight] = (*directionalLightBinding)(nil)
+
+func (b *directionalLightBinding) OnTargetToNode(scene *hierarchy.Scene, light *graphics.DirectionalLight, id hierarchy.NodeID) {
+	// Directional light is not a source. Nothing to do.
+}
+
+func (b *directionalLightBinding) OnNodeToTarget(scene *hierarchy.Scene, id hierarchy.NodeID, light *graphics.DirectionalLight, fraction float64) {
+	matrix := scene.NodeInterpolatedAbsoluteMatrix(id, fraction)
+	visible := scene.IsNodeVisible(id)
+
+	translation, rotation, _ := matrix.TRS()
+	light.SetPosition(translation)
+	light.SetRotation(rotation)
+	light.SetActive(visible)
+}
+
+func (b *directionalLightBinding) OnStaleBinding(scene *hierarchy.Scene, light *graphics.DirectionalLight) {
+	light.Delete()
+}
+
+// NewMeshBinding creates a new binding for meshes.
+func NewMeshBinding() hierarchy.Binding[*graphics.Mesh] {
+	return &meshBinding{}
+}
+
+type meshBinding struct{}
+
+var _ hierarchy.Binding[*graphics.Mesh] = (*meshBinding)(nil)
+
+func (b *meshBinding) OnTargetToNode(scene *hierarchy.Scene, mesh *graphics.Mesh, id hierarchy.NodeID) {
+	// Mesh is not a source. Nothing to do.
+}
+
+func (b *meshBinding) OnNodeToTarget(scene *hierarchy.Scene, id hierarchy.NodeID, mesh *graphics.Mesh, fraction float64) {
+	matrix := scene.NodeInterpolatedAbsoluteMatrix(id, fraction)
+	visible := scene.IsNodeVisible(id)
+
+	mesh.SetMatrix(matrix)
+	mesh.SetActive(visible)
+}
+
+func (b *meshBinding) OnStaleBinding(scene *hierarchy.Scene, mesh *graphics.Mesh) {
+	mesh.Delete()
+}
+
+// BoneTarget is a placeholder type for armature bone bindings.
+type BoneTarget struct {
 	Armature  *graphics.Armature
 	BoneIndex int
 }
 
-func (t BoneNodeTarget) ApplyFrom(node *hierarchy.Node) {
-	matrix := node.InterpolatedAbsoluteMatrix()
-	t.Armature.SetBone(t.BoneIndex, dtos.Mat4(matrix))
+// NewBoneBinding creates a new binding for armature bones.
+func NewBoneBinding() hierarchy.Binding[BoneTarget] {
+	return &boneBinding{}
 }
 
-func (t BoneNodeTarget) Release() {
-	// Nothing to do
+type boneBinding struct{}
+
+var _ hierarchy.Binding[BoneTarget] = (*boneBinding)(nil)
+
+func (b *boneBinding) OnTargetToNode(scene *hierarchy.Scene, target BoneTarget, id hierarchy.NodeID) {
+	// Bone is not a source. Nothing to do.
 }
 
-type AmbientLightNodeTarget struct {
-	Light *graphics.AmbientLight
+func (b *boneBinding) OnNodeToTarget(scene *hierarchy.Scene, id hierarchy.NodeID, target BoneTarget, fraction float64) {
+	matrix := scene.NodeInterpolatedAbsoluteMatrix(id, fraction)
+	target.Armature.SetBone(target.BoneIndex, dtos.Mat4(matrix))
 }
 
-func (t AmbientLightNodeTarget) ApplyFrom(node *hierarchy.Node) {
-	// TODO:
-	// matrix := node.AbsoluteMatrix()
-	// translation, rotation, _ := matrix.TRS()
-	// t.Light.SetPosition(translation)
-	// t.Light.SetRotation(rotation)
+func (b *boneBinding) OnStaleBinding(scene *hierarchy.Scene, target BoneTarget) {
+	// Nothing to do.
 }
 
-func (t AmbientLightNodeTarget) SetActive(active bool) {
-	t.Light.SetActive(active)
+// NewCameraBinding creates a new binding for cameras.
+func NewCameraBinding() hierarchy.Binding[*graphics.Camera] {
+	return &cameraBinding{}
 }
 
-func (t AmbientLightNodeTarget) Release() {
-	t.Light.Delete()
+type cameraBinding struct{}
+
+var _ hierarchy.Binding[*graphics.Camera] = (*cameraBinding)(nil)
+
+func (b *cameraBinding) OnTargetToNode(scene *hierarchy.Scene, camera *graphics.Camera, id hierarchy.NodeID) {
+	// Camera is not a source. Nothing to do.
 }
 
-type PointLightNodeTarget struct {
-	Light *graphics.PointLight
+func (b *cameraBinding) OnNodeToTarget(scene *hierarchy.Scene, id hierarchy.NodeID, camera *graphics.Camera, fraction float64) {
+	matrix := scene.NodeInterpolatedAbsoluteMatrix(id, fraction)
+	camera.SetMatrix(matrix)
 }
 
-func (t PointLightNodeTarget) ApplyFrom(node *hierarchy.Node) {
-	matrix := node.InterpolatedAbsoluteMatrix()
-	t.Light.SetPosition(matrix.Translation())
-}
-
-func (t PointLightNodeTarget) SetActive(active bool) {
-	t.Light.SetActive(active)
-}
-
-func (t PointLightNodeTarget) Release() {
-	t.Light.Delete()
-}
-
-type SpotLightNodeTarget struct {
-	Light *graphics.SpotLight
-}
-
-func (t SpotLightNodeTarget) ApplyFrom(node *hierarchy.Node) {
-	matrix := node.InterpolatedAbsoluteMatrix()
-	translation, rotation, _ := matrix.TRS()
-	t.Light.SetPosition(translation)
-	t.Light.SetRotation(rotation)
-}
-
-func (t SpotLightNodeTarget) SetActive(active bool) {
-	t.Light.SetActive(active)
-}
-
-func (t SpotLightNodeTarget) Release() {
-	t.Light.Delete()
-}
-
-type DirectionalLightNodeTarget struct {
-	Light *graphics.DirectionalLight
-}
-
-func (t DirectionalLightNodeTarget) ApplyFrom(node *hierarchy.Node) {
-	matrix := node.InterpolatedAbsoluteMatrix()
-	translation, rotation, _ := matrix.TRS()
-	t.Light.SetPosition(translation)
-	t.Light.SetRotation(rotation)
-}
-
-func (t DirectionalLightNodeTarget) SetActive(active bool) {
-	t.Light.SetActive(active)
-}
-
-func (t DirectionalLightNodeTarget) Release() {
-	t.Light.Delete()
-}
-
-func PointLightFromNode(node *hierarchy.Node) *graphics.PointLight {
-	target, ok := node.Target().(PointLightNodeTarget)
-	if !ok {
-		return nil
-	}
-	return target.Light
-}
-
-func SpotLightFromNode(node *hierarchy.Node) *graphics.SpotLight {
-	target, ok := node.Target().(SpotLightNodeTarget)
-	if !ok {
-		return nil
-	}
-	return target.Light
-}
-
-func DirectionalLightFromNode(node *hierarchy.Node) *graphics.DirectionalLight {
-	target, ok := node.Target().(DirectionalLightNodeTarget)
-	if !ok {
-		return nil
-	}
-	return target.Light
-}
-
-type SkyNodeTarget struct {
-	Sky *graphics.Sky
-}
-
-func (t SkyNodeTarget) ApplyFrom(node *hierarchy.Node) {
-	// Do nothing. Skies don't have position.
-}
-
-func (t SkyNodeTarget) Release() {
-	t.Sky.Delete()
+func (b *cameraBinding) OnStaleBinding(scene *hierarchy.Scene, camera *graphics.Camera) {
+	camera.Delete()
 }

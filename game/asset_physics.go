@@ -260,11 +260,12 @@ func UnloadPhysicsBodyTemplates(loader *AssetLoader, idBodies IdentifiableList[B
 // given scene from the provided body template.
 //
 // This operation needs to be called from the main thread.
-func InstantiatePhysicsBodyTemplateStatic(scene *Scene, template BodyTemplate, nodes IdentifiableList[*hierarchy.Node]) {
+func InstantiatePhysicsBodyTemplateStatic(scene *Scene, template BodyTemplate, nodes IdentifiableList[hierarchy.NodeID]) {
 	node := nodes.GetByID(template.NodeID)
-	absMatrix := node.AbsoluteMatrix()
+	absMatrix := scene.Hierarchy().NodeAbsoluteMatrix(node)
+	nodeName := scene.Hierarchy().NodeName(node)
 	scene.physicsScene.CreateProp(physics.PropInfo{
-		Name:             node.Name(),
+		Name:             nodeName,
 		Position:         opt.V(absMatrix.Translation()),
 		Rotation:         opt.V(absMatrix.Rotation()),
 		CollisionSpheres: template.Definition.CollisionSpheres(),
@@ -277,17 +278,17 @@ func InstantiatePhysicsBodyTemplateStatic(scene *Scene, template BodyTemplate, n
 // given scene from the provided body template and returns it.
 //
 // This operation needs to be called from the main thread.
-func InstantiatePhysicsBodyTemplateDynamic(scene *Scene, template BodyTemplate, nodes IdentifiableList[*hierarchy.Node]) physics.Body {
+func InstantiatePhysicsBodyTemplateDynamic(scene *Scene, template BodyTemplate, nodes IdentifiableList[hierarchy.NodeID]) physics.Body {
 	node := nodes.GetByID(template.NodeID)
-	translation, rotation, _ := node.AbsoluteMatrix().TRS()
+	absMatrix := scene.Hierarchy().NodeAbsoluteMatrix(node)
+	nodeName := scene.Hierarchy().NodeName(node)
+	translation, rotation, _ := absMatrix.TRS()
 	body := scene.physicsScene.CreateBody(physics.BodyInfo{
-		Name:       node.Name(),
+		Name:       nodeName,
 		Definition: template.Definition,
 		Position:   translation,
 		Rotation:   rotation,
 	})
-	node.SetSource(BodyNodeSource{
-		Body: body,
-	})
+	scene.bodyBindingSet.Bind(node, body)
 	return body
 }

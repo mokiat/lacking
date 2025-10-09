@@ -95,13 +95,13 @@ func UnloadArmatureTemplates(loader *AssetLoader, idTemplates IdentifiableList[A
 // provided armature template.
 //
 // This operation needs to be called from the main thread.
-func InstantiateArmatureTemplate(scene *Scene, template ArmatureTemplate, nodes IdentifiableList[*hierarchy.Node]) *graphics.Armature {
+func InstantiateArmatureTemplate(scene *Scene, template ArmatureTemplate, nodes IdentifiableList[hierarchy.NodeID]) *graphics.Armature {
 	armature := scene.gfxScene.CreateArmature(graphics.ArmatureInfo{
 		Definition: template.Definition,
 	})
 	for j, nodeID := range template.NodeBindings {
 		if jointNode, ok := nodes.FindByID(nodeID); ok {
-			jointNode.SetTarget(BoneNodeTarget{
+			scene.boneBindingSet.Bind(jointNode, BoneTarget{
 				Armature:  armature,
 				BoneIndex: j,
 			})
@@ -344,17 +344,18 @@ func UnloadMeshTemplates(loader *AssetLoader, idTemplates IdentifiableList[MeshT
 // the provided mesh template.
 //
 // This operation needs to be called from the main thread.
-func InstantiateMeshTemplateStatic(scene *Scene, template MeshTemplate, nodes IdentifiableList[*hierarchy.Node], definitions IdentifiableList[*graphics.MeshDefinition], armatures IdentifiableList[*graphics.Armature]) {
+func InstantiateMeshTemplateStatic(scene *Scene, template MeshTemplate, nodes IdentifiableList[hierarchy.NodeID], definitions IdentifiableList[*graphics.MeshDefinition], armatures IdentifiableList[*graphics.Armature]) {
 	node := nodes.GetByID(template.NodeID)
 	meshDefinition := definitions.GetByID(template.DefinitionID)
 	var armature *graphics.Armature
 	if template.ArmatureID != UnspecifiedID {
 		armature = armatures.GetByID(template.ArmatureID)
 	}
-	scene.gfxScene.CreateStaticMesh(graphics.StaticMeshInfo{
+	absoluteMatrix := scene.Hierarchy().NodeAbsoluteMatrix(node)
+	scene.Graphics().CreateStaticMesh(graphics.StaticMeshInfo{
 		Definition: meshDefinition,
 		Armature:   armature,
-		Matrix:     node.AbsoluteMatrix(),
+		Matrix:     absoluteMatrix,
 	})
 }
 
@@ -362,7 +363,7 @@ func InstantiateMeshTemplateStatic(scene *Scene, template MeshTemplate, nodes Id
 // from the provided mesh template.
 //
 // This operation needs to be called from the main thread.
-func InstantiateMeshTemplateDynamic(scene *Scene, template MeshTemplate, nodes IdentifiableList[*hierarchy.Node], definitions IdentifiableList[*graphics.MeshDefinition], armatures IdentifiableList[*graphics.Armature]) *graphics.Mesh {
+func InstantiateMeshTemplateDynamic(scene *Scene, template MeshTemplate, nodes IdentifiableList[hierarchy.NodeID], definitions IdentifiableList[*graphics.MeshDefinition], armatures IdentifiableList[*graphics.Armature]) *graphics.Mesh {
 	node := nodes.GetByID(template.NodeID)
 	meshDefinition := definitions.GetByID(template.DefinitionID)
 	var armature *graphics.Armature
@@ -373,10 +374,9 @@ func InstantiateMeshTemplateDynamic(scene *Scene, template MeshTemplate, nodes I
 		Definition: meshDefinition,
 		Armature:   armature,
 	})
-	mesh.SetMatrix(node.AbsoluteMatrix())
-	node.SetTarget(MeshNodeTarget{
-		Mesh: mesh,
-	})
+	absoluteMatrix := scene.Hierarchy().NodeAbsoluteMatrix(node)
+	mesh.SetMatrix(absoluteMatrix)
+	scene.meshBindingSet.Bind(node, mesh)
 	return mesh
 }
 

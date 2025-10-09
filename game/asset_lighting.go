@@ -75,7 +75,7 @@ func UnloadAmbientLightTemplates(loader *AssetLoader, idLights IdentifiableList[
 // on the provided template.
 //
 // This operation needs to be called from the main thread.
-func InstantiateAmbientLightTemplate(scene *Scene, template AmbientLightTemplate, nodes IdentifiableList[*hierarchy.Node], textures IdentifiableList[render.Texture]) *graphics.AmbientLight {
+func InstantiateAmbientLightTemplate(scene *Scene, template AmbientLightTemplate, nodes IdentifiableList[hierarchy.NodeID], textures IdentifiableList[render.Texture]) *graphics.AmbientLight {
 	node := nodes.GetByID(template.NodeID)
 	reflectionTexture := textures.GetByID(template.ReflectionTextureID)
 	refractionTexture := textures.GetByID(template.RefractionTextureID)
@@ -155,7 +155,7 @@ func UnloadPointLightTemplates(loader *AssetLoader, idLights IdentifiableList[Po
 // the provided template.
 //
 // This operation needs to be called from the main thread.
-func InstantiatePointLightTemplate(scene *Scene, template PointLightTemplate, nodes IdentifiableList[*hierarchy.Node]) *graphics.PointLight {
+func InstantiatePointLightTemplate(scene *Scene, template PointLightTemplate, nodes IdentifiableList[hierarchy.NodeID]) *graphics.PointLight {
 	node := nodes.GetByID(template.NodeID)
 	info := PointLightInfo{
 		EmitColor:    opt.V(template.EmitColor),
@@ -233,7 +233,7 @@ func UnloadSpotLightTemplates(loader *AssetLoader, idLights IdentifiableList[Spo
 // provided template.
 //
 // This operation needs to be called from the main thread.
-func InstantiateSpotLightTemplate(scene *Scene, template SpotLightTemplate, nodes IdentifiableList[*hierarchy.Node]) *graphics.SpotLight {
+func InstantiateSpotLightTemplate(scene *Scene, template SpotLightTemplate, nodes IdentifiableList[hierarchy.NodeID]) *graphics.SpotLight {
 	node := nodes.GetByID(template.NodeID)
 	info := SpotLightInfo{
 		EmitColor:          opt.V(template.EmitColor),
@@ -310,7 +310,7 @@ func UnloadDirectionalLightTemplates(loader *AssetLoader, idLights IdentifiableL
 // based on the provided template.
 //
 // This operation needs to be called from the main thread.
-func InstantiateDirectionalLightTemplate(scene *Scene, template DirectionalLightTemplate, nodes IdentifiableList[*hierarchy.Node]) *graphics.DirectionalLight {
+func InstantiateDirectionalLightTemplate(scene *Scene, template DirectionalLightTemplate, nodes IdentifiableList[hierarchy.NodeID]) *graphics.DirectionalLight {
 	node := nodes.GetByID(template.NodeID)
 	info := DirectionalLightInfo{
 		EmitColor:  opt.V(template.EmitColor),

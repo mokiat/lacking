@@ -90,7 +90,7 @@ func UnloadSkyTemplates(loader *AssetLoader, idSkies IdentifiableList[SkyTemplat
 // InstantiateSkyTemplate instantiates a sky template in the given scene.
 //
 // This operation needs to be called from the main thread.
-func InstantiateSkyTemplate(scene *Scene, template SkyTemplate, nodes IdentifiableList[*hierarchy.Node]) *graphics.Sky {
+func InstantiateSkyTemplate(scene *Scene, template SkyTemplate, nodes IdentifiableList[hierarchy.NodeID]) *graphics.Sky {
 	node := nodes.GetByID(template.NodeID)
 	return scene.PlaceSky(node, SkyInfo{
 		Definition: template.Definition,

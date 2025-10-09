@@ -11,12 +11,10 @@ type SkyInfo struct {
 }
 
 // PlaceSky places a sky on the provided node using the provided definition.
-func (s *Scene) PlaceSky(node *hierarchy.Node, info SkyInfo) *graphics.Sky {
+func (s *Scene) PlaceSky(node hierarchy.NodeID, info SkyInfo) *graphics.Sky {
 	sky := s.gfxScene.CreateSky(graphics.SkyInfo{
 		Definition: info.Definition,
 	})
-	node.SetTarget(SkyNodeTarget{
-		Sky: sky,
-	})
+	s.skyBindingSet.Bind(node, sky)
 	return sky
 }

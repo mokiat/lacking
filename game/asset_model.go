@@ -220,24 +220,25 @@ type ModelInfo struct {
 
 // Model represents an instance of a ModelTemplate in a Scene.
 type Model struct {
-	root       *hierarchy.Node
-	nodes      IdentifiableList[*hierarchy.Node]
+	scene      *Scene
+	root       hierarchy.NodeID
+	nodes      IdentifiableList[hierarchy.NodeID]
 	recordings []*animation.Recording
 }
 
 // Root returns the root node of the model hierarchy.
-func (m *Model) Root() *hierarchy.Node {
+func (m *Model) Root() hierarchy.NodeID {
 	return m.root
 }
 
-func (m *Model) Nodes() IdentifiableList[*hierarchy.Node] {
+func (m *Model) Nodes() IdentifiableList[hierarchy.NodeID] {
 	return m.nodes
 }
 
 // FindNode is a convenience method that searches for a node
 // by its name in the model hierarchy.
-func (m *Model) FindNode(name string) *hierarchy.Node {
-	return m.root.FindNode(name)
+func (m *Model) FindNode(name string) hierarchy.NodeID {
+	return m.scene.Hierarchy().FindSubtreeNode(m.root, name)
 }
 
 func (m *Model) Recordings() []*animation.Recording {
@@ -253,12 +254,12 @@ func (m *Model) FindRecording(name string) *animation.Recording {
 	return nil
 }
 
-func (m *Model) AnimatedNodes() []*hierarchy.Node {
-	result := ds.NewSet[*hierarchy.Node](0)
+func (m *Model) AnimatedNodes() []hierarchy.NodeID {
+	result := ds.NewSet[hierarchy.NodeID](0)
 	for _, animation := range m.recordings {
 		for nodeName := range animation.BoundNodesIter() {
-			if node := m.FindNode(nodeName); node != nil {
-				result.Add(node)
+			if nodeID := m.FindNode(nodeName); !nodeID.IsNil() {
+				result.Add(nodeID)
 			}
 		}
 	}
@@ -271,20 +272,18 @@ func (m *Model) BindAnimation(root animation.Node) *animation.Player {
 }
 
 func (m *Model) BindAnimationSubtree(root animation.Node, nodeName string) *animation.Player {
-	var animatedNodes []*hierarchy.Node
-	subtreeNode := m.FindNode(nodeName)
-	hierarchy.EachNode(subtreeNode, func(node *hierarchy.Node) {
-		animatedNodes = append(animatedNodes, node)
-	})
-	return m.bindAnimationNodes(root, animatedNodes)
+	subtreeNodeID := m.FindNode(nodeName)
+	var animatedNodeIDs []hierarchy.NodeID
+	for nodeID := range m.scene.Hierarchy().SubtreeIter(subtreeNodeID) {
+		animatedNodeIDs = append(animatedNodeIDs, nodeID)
+	}
+	return m.bindAnimationNodes(root, animatedNodeIDs)
 }
 
-func (m *Model) bindAnimationNodes(root animation.Node, nodes []*hierarchy.Node) *animation.Player {
+func (m *Model) bindAnimationNodes(root animation.Node, nodeIDs []hierarchy.NodeID) *animation.Player {
 	player := animation.NewPlayer(root)
-	for _, node := range nodes {
-		node.SetSource(AnimationNodeSource{
-			Player: player,
-		})
+	for _, nodeID := range nodeIDs {
+		m.scene.animationBindingSet.Bind(nodeID, player)
 	}
 	return player
 }
@@ -299,7 +298,6 @@ func InstantiateModel(scene *Scene, info ModelInfo) *Model {
 		Rotation:      info.Rotation,
 		Scale:         info.Scale,
 		SubTreeNode:   info.SubTreeNode,
-		AttachToScene: opt.V(info.IsDynamic),
 	}
 
 	hierarchyInstance := InstantiateHierarchy(scene, hierarchyInfo)
@@ -366,11 +364,15 @@ func InstantiateModel(scene *Scene, info ModelInfo) *Model {
 		}
 	}
 
-	modelNode.ResetDelta()
-	modelNode.ApplyFromSource(true)
-	modelNode.ApplyToTarget(true)
+	scene.Hierarchy().ResetNodeDelta(modelNode, true)
+	for _, bindingSet := range scene.sourceBindingSets.Unbox() {
+		for nodeID := range nodes.Values() {
+			bindingSet.ApplyTargetToNode(nodeID)
+		}
+	}
 
 	return &Model{
+		scene:      scene,
 		root:       modelNode,
 		nodes:      nodes,
 		recordings: recordings.ValuesList(),

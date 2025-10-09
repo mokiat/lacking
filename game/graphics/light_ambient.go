@@ -54,6 +54,11 @@ func (l *AmbientLight) SetActive(active bool) {
 	l.active = active
 }
 
+func (l *AmbientLight) SetPosition(position dprec.Vec3) {
+	l.position = position
+	l.scene.ambientLightSet.Update(l.itemID, position, l.outerRadius)
+}
+
 func (l *AmbientLight) Position() dprec.Vec3 {
 	return l.position
 }

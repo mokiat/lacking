@@ -63,8 +63,15 @@ func (s *BindingSet[T]) Unbind(id NodeID) (T, bool) {
 	return target, exists
 }
 
-// ApplyTargetToNode applies the state of the targets to their nodes.
-func (s *BindingSet[T]) ApplyTargetToNode() {
+// ApplyTargetToNode applies the state of the target to its node.
+func (s *BindingSet[T]) ApplyTargetToNode(id NodeID) {
+	if target, ok := s.relations[id]; ok {
+		s.binding.OnTargetToNode(s.scene, target, id)
+	}
+}
+
+// ApplyTargetsToNodes applies the state of the targets to their nodes.
+func (s *BindingSet[T]) ApplyTargetsToNodes() {
 	for id, target := range s.relations {
 		if s.scene.IsValidNode(id) {
 			s.binding.OnTargetToNode(s.scene, target, id)
@@ -72,8 +79,15 @@ func (s *BindingSet[T]) ApplyTargetToNode() {
 	}
 }
 
-// ApplyNodeToTarget applies the state of the nodes to their targets.
-func (s *BindingSet[T]) ApplyNodeToTarget(fraction float64) {
+// ApplyNodeToTarget applies the state of the node to its target.
+func (s *BindingSet[T]) ApplyNodeToTarget(id NodeID, fraction float64) {
+	if target, ok := s.relations[id]; ok {
+		s.binding.OnNodeToTarget(s.scene, id, target, fraction)
+	}
+}
+
+// ApplyNodesToTargets applies the state of the nodes to their targets.
+func (s *BindingSet[T]) ApplyNodesToTargets(fraction float64) {
 	for id, target := range s.relations {
 		if s.scene.IsValidNode(id) {
 			s.binding.OnNodeToTarget(s.scene, id, target, fraction)

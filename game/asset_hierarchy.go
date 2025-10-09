@@ -79,76 +79,73 @@ type HierarchyInfo struct {
 	Rotation      opt.T[dprec.Quat]
 	Scale         opt.T[dprec.Vec3]
 	SubTreeNode   opt.T[string]
-	AttachToScene opt.T[bool]
 }
 
 // Hierarchy represents a scene hierarchy that has been instantiated from a
 // HierarchyInfo.
 type Hierarchy struct {
-	RootNode *hierarchy.Node
-	Nodes    IdentifiableList[*hierarchy.Node]
+	RootNode hierarchy.NodeID
+	Nodes    IdentifiableList[hierarchy.NodeID]
 }
 
 // InstantiateHierarchy instantiates a hierarchy in the given scene based on
 // the provided info.
 func InstantiateHierarchy(scene *Scene, info HierarchyInfo) *Hierarchy {
-	nodes := make(map[uint32]*hierarchy.Node, len(info.NodeTemplates))
+	nodes := make(map[uint32]hierarchy.NodeID, len(info.NodeTemplates))
 	for nodeID, nodeTemplate := range info.NodeTemplates.Iter() {
-		node := hierarchy.NewNode()
-		node.SetName(nodeTemplate.Name)
-		node.SetPosition(nodeTemplate.Position)
-		node.SetRotation(nodeTemplate.Rotation)
-		node.SetScale(nodeTemplate.Scale)
+		node := scene.Hierarchy().CreateNode()
+		scene.Hierarchy().SetNodeName(node, nodeTemplate.Name)
+		scene.Hierarchy().SetNodePosition(node, nodeTemplate.Position)
+		scene.Hierarchy().SetNodeRotation(node, nodeTemplate.Rotation)
+		scene.Hierarchy().SetNodeScale(node, nodeTemplate.Scale)
+		scene.Hierarchy().ResetNodeDelta(node, false)
 		nodes[nodeID] = node
 	}
 
-	rootNode := hierarchy.NewNode()
+	rootNode := scene.Hierarchy().CreateNode()
 	for nodeID, nodeTemplate := range info.NodeTemplates.Iter() {
-		var parent *hierarchy.Node
+		var parent hierarchy.NodeID
 		if nodeTemplate.ParentID != UnspecifiedID {
 			parent = nodes[nodeTemplate.ParentID]
 		} else {
 			parent = rootNode
 		}
-		parent.AppendChild(nodes[nodeID])
+		scene.Hierarchy().AppendChild(parent, nodes[nodeID], false)
 	}
 
 	if info.SubTreeNode.Specified {
-		subTreeNode := rootNode.FindNode(info.SubTreeNode.Value)
-		if subTreeNode == nil {
+		subTreeNode := scene.Hierarchy().FindSubtreeNode(rootNode, info.SubTreeNode.Value)
+		if subTreeNode.IsNil() {
 			logger.Error("Root node not found", slog.String("name", info.SubTreeNode.Value))
-			subTreeNode = hierarchy.NewNode()
+			subTreeNode = scene.Hierarchy().CreateNode()
 		}
-		subTreeNode.Detach()
+		scene.Hierarchy().DetachNode(subTreeNode, false)
 		for id, node := range nodes {
-			if !node.IsDescendantOf(subTreeNode) {
-				node.Delete()
+			if !scene.Hierarchy().IsNodeChain(subTreeNode, node) {
+				scene.Hierarchy().DeleteNode(node)
 				delete(nodes, id)
 			}
 		}
 		rootNode = subTreeNode
 	}
 
-	if info.AttachToScene.ValueOrDefault(false) {
-		scene.Root().AppendChild(rootNode)
-	}
-
 	if info.Name.Specified {
-		rootNode.SetName(info.Name.Value)
+		scene.Hierarchy().SetNodeName(rootNode, info.Name.Value)
 	}
 	if info.Position.Specified {
-		rootNode.SetPosition(info.Position.Value)
+		scene.Hierarchy().SetNodePosition(rootNode, info.Position.Value)
 	}
 	if info.Rotation.Specified {
-		rootNode.SetRotation(info.Rotation.Value)
+		scene.Hierarchy().SetNodeRotation(rootNode, info.Rotation.Value)
 	}
 	if info.Scale.Specified {
-		rootNode.SetScale(info.Scale.Value)
+		scene.Hierarchy().SetNodeScale(rootNode, info.Scale.Value)
 	}
+	scene.Hierarchy().ResetNodeDelta(rootNode, true)
 
-	nodeList := make(IdentifiableList[*hierarchy.Node], 0, len(nodes))
+	nodeList := make(IdentifiableList[hierarchy.NodeID], 0, len(nodes))
 	for id, node := range nodes {
-		nodeList = append(nodeList, Identifiable[*hierarchy.Node]{
+		nodeList = append(nodeList, Identifiable[hierarchy.NodeID]{
 			ID:    id,
 			Value: node,
 		})
