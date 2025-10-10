@@ -77,11 +77,14 @@ func (s *BindingSet[T]) ApplyTargetToNode(id NodeID) {
 
 // ApplyTargetsToNodes applies the state of the targets to their nodes.
 func (s *BindingSet[T]) ApplyTargetsToNodes() {
-	for id, target := range s.relations {
-		if s.scene.IsValidNode(id) {
+	// Source nodes need to be applied from root down in case the target wants
+	// to modify the absolute matrix directly, as is the case with physics bodies.
+	s.scene.Visit(func(id NodeID) bool {
+		if target, ok := s.relations[id]; ok {
 			s.binding.OnTargetToNode(s.scene, target, id)
 		}
-	}
+		return true
+	})
 }
 
 // ApplyNodeToTarget applies the state of the node to its target.

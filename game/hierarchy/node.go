@@ -28,6 +28,7 @@ type node struct {
 	revision uint32
 	name     string
 
+	isDeleted     bool
 	isIndependent bool
 	isVisible     bool
 	transformFunc TransformFunc
@@ -48,6 +49,7 @@ func (n *node) initialize(index int32, revision uint32) {
 	n.revision = revision
 	n.name = ""
 
+	n.isDeleted = false
 	n.isIndependent = false
 	n.isVisible = true
 	n.transformFunc = DefaultTransformFunc

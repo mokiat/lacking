@@ -479,6 +479,21 @@ func (s *Scene) NodeInterpolatedAbsoluteMatrix(id NodeID, fraction float64) dpre
 	)
 }
 
+// Visit traverses the all the nodes in a depth-first manner, invoking the
+// specified callback for each node in the scene.
+func (s *Scene) Visit(callback func(NodeID) bool) {
+	for _, node := range s.nodes {
+		if node.isDeleted {
+			continue
+		}
+		if node.parentIndex == -1 {
+			if !s.yieldSubtree(node.index, callback) {
+				return
+			}
+		}
+	}
+}
+
 // VisitSubtree traverses the subtree rooted at the node with the specified ID,
 // invoking the specified callback for each node in the subtree.
 func (s *Scene) VisitSubtree(rootID NodeID, callback func(NodeID) bool) {
@@ -564,5 +579,6 @@ func (s *Scene) freeNode(index int32) {
 
 	node.detach(s)
 	node.revision++
+	node.isDeleted = true
 	s.freeNodeIndices.Push(index)
 }
