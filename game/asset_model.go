@@ -368,6 +368,7 @@ func InstantiateModel(scene *Scene, info ModelInfo) *Model {
 	for _, bindingSet := range scene.sourceBindingSets.Unbox() {
 		for nodeID := range nodes.Values() {
 			bindingSet.ApplyTargetToNode(nodeID)
+			bindingSet.ApplyNodeToTarget(nodeID, 1.0)
 		}
 	}
 

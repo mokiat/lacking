@@ -47,8 +47,10 @@ func (m *Mesh) Active() bool {
 }
 
 func (m *Mesh) SetActive(active bool) {
-	m.spawnTime = m.scene.gameTime
-	m.active = active
+	if active != m.active {
+		m.spawnTime = m.scene.gameTime
+		m.active = active
+	}
 }
 
 func (m *Mesh) SetMatrix(matrix dprec.Mat4) {
