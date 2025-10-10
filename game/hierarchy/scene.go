@@ -7,6 +7,7 @@ import (
 	"github.com/mokiat/gomath/dprec"
 )
 
+// NewScene creates a new scene with the specified initial capacity for nodes.
 func NewScene(initialCapacity int) *Scene {
 	return &Scene{
 		deleteSubscriptions: NewDeleteSubscriptionSet(),
@@ -30,6 +31,14 @@ type Scene struct {
 // SubscribeNodeDelete subscribes to node deletion events.
 func (s *Scene) SubscribeNodeDelete(callback DeleteCallback) *DeleteSubscription {
 	return s.deleteSubscriptions.Subscribe(callback)
+}
+
+// Wrap creates a Node wrapper for the specified NodeID.
+func (s *Scene) Wrap(id NodeID) Node {
+	return Node{
+		scene: s,
+		id:    id,
+	}
 }
 
 // CreateNode creates a new node in the scene and returns its ID.
@@ -96,6 +105,34 @@ func (s *Scene) SetNodeVisible(id NodeID, visible bool) {
 	node.setIsVisible(s, visible)
 }
 
+// IsNodeIndependent returns whether the node with the specified ID is marked as
+// independent (i.e. not affected by parent transformations).
+func (s *Scene) IsNodeIndependent(id NodeID) bool {
+	node := s.fetchNode(id)
+	return node.getIsIndependent(s)
+}
+
+// SetNodeIndependent sets whether the node with the specified ID is marked as
+// independent (i.e. not affected by parent transformations).
+func (s *Scene) SetNodeIndependent(id NodeID, independent bool) {
+	node := s.fetchNode(id)
+	node.setIsIndependent(s, independent)
+}
+
+// NodeTransformFunc returns the custom transformation function of the node with
+// the specified ID.
+func (s *Scene) NodeTransformFunc(id NodeID) TransformFunc {
+	node := s.fetchNode(id)
+	return node.getTransform(s)
+}
+
+// SetNodeTransformFunc sets the custom transformation function of the node with
+// the specified ID.
+func (s *Scene) SetNodeTransformFunc(id NodeID, transformFunc TransformFunc) {
+	node := s.fetchNode(id)
+	node.setTransform(s, transformFunc)
+}
+
 // NodeHasParent returns whether the node with the specified ID has a parent.
 func (s *Scene) NodeHasParent(id NodeID) bool {
 	node := s.fetchNode(id)
@@ -109,10 +146,7 @@ func (s *Scene) NodeParent(id NodeID) NodeID {
 		return NilNodeID
 	}
 	parent := &s.nodes[node.parentIndex]
-	return NodeID{
-		index:    node.parentIndex,
-		revision: parent.revision,
-	}
+	return parent.getID()
 }
 
 // NodeFirstChild returns the ID of the first child of the node with the
@@ -123,10 +157,7 @@ func (s *Scene) NodeFirstChild(id NodeID) NodeID {
 		return NilNodeID
 	}
 	child := &s.nodes[node.firstChildIndex]
-	return NodeID{
-		index:    node.firstChildIndex,
-		revision: child.revision,
-	}
+	return child.getID()
 }
 
 // NodeLastChild returns the ID of the last child of the node with the
@@ -137,10 +168,7 @@ func (s *Scene) NodeLastChild(id NodeID) NodeID {
 		return NilNodeID
 	}
 	child := &s.nodes[node.lastChildIndex]
-	return NodeID{
-		index:    node.lastChildIndex,
-		revision: child.revision,
-	}
+	return child.getID()
 }
 
 // NodeLeftSibling returns the ID of the left sibling of the node with the
@@ -151,10 +179,18 @@ func (s *Scene) NodeLeftSibling(id NodeID) NodeID {
 		return NilNodeID
 	}
 	sibling := &s.nodes[node.leftSiblingIndex]
-	return NodeID{
-		index:    node.leftSiblingIndex,
-		revision: sibling.revision,
+	return sibling.getID()
+}
+
+// NodeRightSibling returns the ID of the right sibling of the node with the
+// specified ID.
+func (s *Scene) NodeRightSibling(id NodeID) NodeID {
+	node := s.fetchNode(id)
+	if node.rightSiblingIndex == -1 {
+		return NilNodeID
 	}
+	sibling := &s.nodes[node.rightSiblingIndex]
+	return sibling.getID()
 }
 
 // ResetDelta resets the delta state of all nodes in the scene.
@@ -264,9 +300,9 @@ func (s *Scene) AppendNodeSibling(currentID, siblingID NodeID, preserveWorldTran
 	}
 }
 
-// PrependChild attaches the node with the specified childID as the first child
-// of the node with the specified parentID.
-func (s *Scene) PrependChild(parentID, childID NodeID, preserveWorldTransform bool) {
+// PrependNodeChild attaches the node with the specified childID as the first
+// child of the node with the specified parentID.
+func (s *Scene) PrependNodeChild(parentID, childID NodeID, preserveWorldTransform bool) {
 	parentNode := s.fetchNode(parentID)
 	childNode := s.fetchNode(childID)
 	if preserveWorldTransform {
@@ -279,9 +315,9 @@ func (s *Scene) PrependChild(parentID, childID NodeID, preserveWorldTransform bo
 	}
 }
 
-// AppendChild attaches the node with the specified childID as the last child
-// of the node with the specified parentID.
-func (s *Scene) AppendChild(parentID, childID NodeID, preserveWorldTransform bool) {
+// AppendNodeChild attaches the node with the specified childID as the last
+// child of the node with the specified parentID.
+func (s *Scene) AppendNodeChild(parentID, childID NodeID, preserveWorldTransform bool) {
 	parentNode := s.fetchNode(parentID)
 	childNode := s.fetchNode(childID)
 	if preserveWorldTransform {
@@ -304,34 +340,6 @@ func (s *Scene) DetachNode(id NodeID, preserveWorldTransform bool) {
 	if preserveWorldTransform {
 		node.reconstructTransforms(s)
 	}
-}
-
-// IsNodeIndependent returns whether the node with the specified ID is marked as
-// independent (i.e. not affected by parent transformations).
-func (s *Scene) IsNodeIndependent(id NodeID) bool {
-	node := s.fetchNode(id)
-	return node.getIsIndependent(s)
-}
-
-// SetNodeIndependent sets whether the node with the specified ID is marked as
-// independent (i.e. not affected by parent transformations).
-func (s *Scene) SetNodeIndependent(id NodeID, independent bool) {
-	node := s.fetchNode(id)
-	node.setIsIndependent(s, independent)
-}
-
-// NodeTransform returns the custom transformation function of the node with
-// the specified ID.
-func (s *Scene) NodeTransform(id NodeID) TransformFunc {
-	node := s.fetchNode(id)
-	return node.getTransform(s)
-}
-
-// SetNodeTransform sets the custom transformation function of the node with
-// the specified ID.
-func (s *Scene) SetNodeTransform(id NodeID, transformFunc TransformFunc) {
-	node := s.fetchNode(id)
-	node.setTransform(s, transformFunc)
 }
 
 // NodePosition returns the local position of the node with the specified ID.

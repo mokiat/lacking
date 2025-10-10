@@ -71,7 +71,7 @@ func newScene(engine *Engine, info SceneInfo) *Scene {
 	animationBindingSet := hierarchy.NewBindingSet(hierarchyScene, NewAnimationBinding())
 	bodyBindingSet := hierarchy.NewBindingSet(hierarchyScene, NewBodyBinding())
 
-	sourceBindingSets := ds.NewList[GenericBindingSet](16)
+	sourceBindingSets := ds.NewList[GenericBindingSet](4)
 	sourceBindingSets.Add(animationBindingSet)
 	sourceBindingSets.Add(bodyBindingSet)
 
@@ -104,6 +104,7 @@ func newScene(engine *Engine, info SceneInfo) *Scene {
 		gfxScene:       gfxScene,
 
 		animationBindingSet: animationBindingSet,
+		bodyBindingSet:      bodyBindingSet,
 
 		skyBindingSet:              skyBindingSet,
 		ambientLightBindingSet:     ambientLightBindingSet,
@@ -238,6 +239,11 @@ func (s *Scene) SubscribeUpdate(callback timestep.UpdateCallback) *timestep.Upda
 // AnimationBindingSet returns the binding set that binds animation players
 func (s *Scene) AnimationBindingSet() *hierarchy.BindingSet[*animation.Player] {
 	return s.animationBindingSet
+}
+
+// BodyBindingSet returns the binding set that binds physics bodies.
+func (s *Scene) BodyBindingSet() *hierarchy.BindingSet[physics.Body] {
+	return s.bodyBindingSet
 }
 
 // SkyBindingSet returns the binding set that binds sky objects.

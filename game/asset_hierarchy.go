@@ -110,7 +110,7 @@ func InstantiateHierarchy(scene *Scene, info HierarchyInfo) *Hierarchy {
 		} else {
 			parent = rootNode
 		}
-		scene.Hierarchy().AppendChild(parent, nodes[nodeID], false)
+		scene.Hierarchy().AppendNodeChild(parent, nodes[nodeID], false)
 	}
 
 	if info.SubTreeNode.Specified {

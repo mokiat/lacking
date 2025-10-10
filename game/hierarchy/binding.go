@@ -63,6 +63,11 @@ func (s *BindingSet[T]) Unbind(id NodeID) (T, bool) {
 	return target, exists
 }
 
+// Get returns the target bound to the node with the given ID.
+func (s *BindingSet[T]) Get(id NodeID) T {
+	return s.relations[id]
+}
+
 // ApplyTargetToNode applies the state of the target to its node.
 func (s *BindingSet[T]) ApplyTargetToNode(id NodeID) {
 	if target, ok := s.relations[id]; ok {
