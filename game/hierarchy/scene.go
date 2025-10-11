@@ -10,7 +10,10 @@ import (
 // NewScene creates a new scene with the specified initial capacity for nodes.
 func NewScene(initialCapacity int) *Scene {
 	return &Scene{
-		deleteSubscriptions: NewDeleteSubscriptionSet(),
+		sourceSubscriptions:        NewSourceSubscriptionSet(),
+		targetSubscriptions:        NewTargetSubscriptionSet(),
+		interpolationSubscriptions: NewInterpolationSubscriptionSet(),
+		deleteSubscriptions:        NewDeleteSubscriptionSet(),
 
 		nodes:           make([]node, 0, initialCapacity),
 		freeNodeIndices: ds.NewStack[int32](initialCapacity),
@@ -20,12 +23,30 @@ func NewScene(initialCapacity int) *Scene {
 }
 
 type Scene struct {
-	deleteSubscriptions *DeleteSubscriptionSet
+	sourceSubscriptions        *SourceSubscriptionSet
+	targetSubscriptions        *TargetSubscriptionSet
+	interpolationSubscriptions *InterpolationSubscriptionSet
+	deleteSubscriptions        *DeleteSubscriptionSet
 
 	nodes           []node
 	freeNodeIndices *ds.Stack[int32]
 	freeRevision    uint32
 	freeTimestamp   int32
+}
+
+// SubscribeSourceApply subscribes to events for source applications.
+func (s *Scene) SubscribeSourceApply(callback SourceCallback) *SourceSubscription {
+	return s.sourceSubscriptions.Subscribe(callback)
+}
+
+// SubscribeTargetApply subscribes to events for target applications.
+func (s *Scene) SubscribeTargetApply(callback TargetCallback) *TargetSubscription {
+	return s.targetSubscriptions.Subscribe(callback)
+}
+
+// SubscribeInterpolationApply subscribes to events for interpolation applications.
+func (s *Scene) SubscribeInterpolationApply(callback InterpolationCallback) *InterpolationSubscription {
+	return s.interpolationSubscriptions.Subscribe(callback)
 }
 
 // SubscribeNodeDelete subscribes to node deletion events.
@@ -481,23 +502,27 @@ func (s *Scene) NodeInterpolatedAbsoluteMatrix(id NodeID, fraction float64) dpre
 
 // Visit traverses the all the nodes in a depth-first manner, invoking the
 // specified callback for each node in the scene.
-func (s *Scene) Visit(callback func(NodeID) bool) {
-	for _, node := range s.nodes {
-		if node.isDeleted {
-			continue
+func (s *Scene) Visit(callback func(NodeID) bool) bool {
+	for rootID := range s.RootNodesIter() {
+		if !s.VisitSubtree(rootID, callback) {
+			return false
 		}
-		if node.parentIndex == -1 {
-			if !s.yieldSubtree(node.index, callback) {
-				return
-			}
-		}
+	}
+	return true
+}
+
+// NodesIter returns an iterator that traverses all the nodes in a depth-first
+// manner.
+func (s *Scene) NodesIter() iter.Seq[NodeID] {
+	return func(yield func(NodeID) bool) {
+		s.Visit(yield)
 	}
 }
 
 // VisitSubtree traverses the subtree rooted at the node with the specified ID,
 // invoking the specified callback for each node in the subtree.
-func (s *Scene) VisitSubtree(rootID NodeID, callback func(NodeID) bool) {
-	_ = s.yieldSubtree(rootID.index, callback)
+func (s *Scene) VisitSubtree(rootID NodeID, callback func(NodeID) bool) bool {
+	return s.yieldSubtree(rootID.index, callback)
 }
 
 // SubtreeIter returns an iterator that traverses the subtree rooted at the node
@@ -506,6 +531,93 @@ func (s *Scene) SubtreeIter(rootID NodeID) iter.Seq[NodeID] {
 	return func(yield func(NodeID) bool) {
 		_ = s.yieldSubtree(rootID.index, yield)
 	}
+}
+
+// RootNodesIter returns an iterator that traverses all root nodes in the scene.
+func (s *Scene) RootNodesIter() iter.Seq[NodeID] {
+	return func(yield func(NodeID) bool) {
+		for i := range s.nodes {
+			node := &s.nodes[i]
+			if node.isDeleted || node.parentIndex != -1 {
+				continue
+			}
+			if !yield(node.getID()) {
+				return
+			}
+		}
+	}
+}
+
+// ApplySourcesToNodes applies the state of the sources to their nodes.
+func (s *Scene) ApplySourcesToNodes() {
+	for nodeID := range s.RootNodesIter() {
+		s.ApplySourceToTarget(nodeID, true)
+	}
+}
+
+// ApplySourceToTarget applies the state of the source to its target.
+//
+// If recursive is true, the state is applied to all descendant nodes as well.
+func (s *Scene) ApplySourceToTarget(rootID NodeID, recursive bool) {
+	if !recursive {
+		s.sourceSubscriptions.Each(func(callback SourceCallback) {
+			callback(s, rootID)
+		})
+		return
+	}
+	s.VisitSubtree(rootID, func(id NodeID) bool {
+		s.ApplySourceToTarget(id, false)
+		return true
+	})
+}
+
+// ApplyNodesToTargets applies the state of all nodes to their targets.
+func (s *Scene) ApplyNodesToTargets() {
+	for id := range s.NodesIter() {
+		s.ApplyNodeToTarget(id, false)
+	}
+}
+
+// ApplyNodeToTarget applies the state of the node with the specified ID to its
+// target.
+//
+// If recursive is true, the state is applied to all descendant nodes as well.
+func (s *Scene) ApplyNodeToTarget(id NodeID, recursive bool) {
+	if !recursive {
+		s.targetSubscriptions.Each(func(callback TargetCallback) {
+			callback(s, id)
+		})
+		return
+	}
+	s.VisitSubtree(id, func(subID NodeID) bool {
+		s.ApplyNodeToTarget(subID, false)
+		return true
+	})
+}
+
+// ApplyNodesToInterpolations applies the state of all nodes to their
+// interpolation targets.
+func (s *Scene) ApplyNodesToInterpolations(fraction float64) {
+	for id := range s.NodesIter() {
+		s.ApplyNodeToInterpolation(id, fraction, false)
+	}
+}
+
+// ApplyNodeToInterpolation applies the state of the node with the specified ID
+// to its interpolation target.
+//
+// If recursive is true, the state is applied to all descendant nodes as well.
+func (s *Scene) ApplyNodeToInterpolation(id NodeID, fraction float64, recursive bool) {
+	if !recursive {
+		s.interpolationSubscriptions.Each(func(callback InterpolationCallback) {
+			callback(s, id, fraction)
+		})
+		return
+	}
+	s.VisitSubtree(id, func(subID NodeID) bool {
+		s.ApplyNodeToInterpolation(subID, fraction, false)
+		return true
+	})
 }
 
 func (s *Scene) yieldSubtree(index int32, callback func(NodeID) bool) bool {

@@ -365,12 +365,9 @@ func InstantiateModel(scene *Scene, info ModelInfo) *Model {
 	}
 
 	scene.Hierarchy().ResetNodeDelta(modelNode, true)
-	for _, bindingSet := range scene.sourceBindingSets.Unbox() {
-		for nodeID := range nodes.Values() {
-			bindingSet.ApplyTargetToNode(nodeID)
-			bindingSet.ApplyNodeToTarget(nodeID, 1.0)
-		}
-	}
+	scene.Hierarchy().ApplySourceToTarget(modelNode, true)
+	scene.Hierarchy().ApplyNodeToTarget(modelNode, true)
+	scene.Hierarchy().ApplyNodeToInterpolation(modelNode, 1.0, true)
 
 	return &Model{
 		scene:      scene,
