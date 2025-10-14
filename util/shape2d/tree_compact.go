@@ -232,29 +232,25 @@ func (t *CompactTree[T]) Remove(id CompactTreeItemID) {
 	t.freeItemIDs.Push(id)
 }
 
+// QuerySegment finds all items that intersect the specified segment. Each
+// found item is passed to the specified yield function. The order in which
+// items are passed is undefined and might change between invocations.
+func (t *CompactTree[T]) QuerySegment(segment CompactQuerySegment, yield VisitorFunc[T]) {
+	t.resetVisitStats()
+	t.refresh()
+	t.visitNodeInSegment(0, segment, yield)
+}
+
 // VisitArea finds all items that are inside or intersect the specified area.
 // It calls the specified visitor for each item found.
 //
 // TODO: Consider using a yield func instead. This should make iterator
 // implementations easier.
-func (t *CompactTree[T]) VisitArea(area SquareArea, visitor Visitor[T]) {
+func (t *CompactTree[T]) QueryArea(area SquareArea, yield VisitorFunc[T]) {
 	t.resetVisitStats()
 	t.refresh()
 	box := compactAABBFromSquare(area)
-	t.visitNodeInAABB(0, &box, visitor)
-}
-
-// VisitSegment finds all items that are inside or intersect the specified
-// segment.
-// It calls the specified visitor for each item found.
-func (t *CompactTree[T]) VisitSegment(a, b dprec.Vec2, visitor Visitor[T]) {
-	t.resetVisitStats()
-	t.refresh()
-	segment := compactSegment{
-		a: dtos.Vec2(a),
-		b: dtos.Vec2(b),
-	}
-	t.visitNodeInSegment(0, segment, visitor)
+	t.visitNodeInAABB(0, &box, yield)
 }
 
 // GC runs cleanup and optimization logic. You should call this at least once
@@ -482,14 +478,16 @@ func (t *CompactTree[T]) updateAABB(nodeIndex int32) compactAABB {
 	return result
 }
 
-func (t *CompactTree[T]) visitNodeInAABB(nodeIndex int32, box *compactAABB, visitor Visitor[T]) {
+func (t *CompactTree[T]) visitNodeInAABB(nodeIndex int32, box *compactAABB, yield VisitorFunc[T]) {
 	node := &t.nodes[nodeIndex]
 	if box.intersects(node.box) {
 		t.nodeCountAccepted++
 		for itemIndex := node.itemStart; itemIndex < node.itemEnd; itemIndex++ {
 			item := &t.items[itemIndex]
 			if box.intersects(item.box) {
-				visitor.Visit(item.value)
+				if !yield(item.value) {
+					return
+				}
 				t.itemCountAccepted++
 			} else {
 				t.itemCountRejected++
@@ -497,7 +495,7 @@ func (t *CompactTree[T]) visitNodeInAABB(nodeIndex int32, box *compactAABB, visi
 		}
 		for _, childNodeIndex := range node.children {
 			if childNodeIndex != unspecifiedIndex {
-				t.visitNodeInAABB(childNodeIndex, box, visitor)
+				t.visitNodeInAABB(childNodeIndex, box, yield)
 			}
 		}
 	} else {
@@ -505,14 +503,16 @@ func (t *CompactTree[T]) visitNodeInAABB(nodeIndex int32, box *compactAABB, visi
 	}
 }
 
-func (t *CompactTree[T]) visitNodeInSegment(nodeIndex int32, segment compactSegment, visitor Visitor[T]) {
+func (t *CompactTree[T]) visitNodeInSegment(nodeIndex int32, segment CompactQuerySegment, yield VisitorFunc[T]) {
 	node := &t.nodes[nodeIndex]
 	if isCompactSegmentAABBIntersection(segment, node.box) {
 		t.nodeCountAccepted++
 		for itemIndex := node.itemStart; itemIndex < node.itemEnd; itemIndex++ {
 			item := &t.items[itemIndex]
 			if isCompactSegmentAABBIntersection(segment, item.box) {
-				visitor.Visit(item.value)
+				if !yield(item.value) {
+					return
+				}
 				t.itemCountAccepted++
 			} else {
 				t.itemCountRejected++
@@ -520,12 +520,27 @@ func (t *CompactTree[T]) visitNodeInSegment(nodeIndex int32, segment compactSegm
 		}
 		for _, childNodeIndex := range node.children {
 			if childNodeIndex != unspecifiedIndex {
-				t.visitNodeInSegment(childNodeIndex, segment, visitor)
+				t.visitNodeInSegment(childNodeIndex, segment, yield)
 			}
 		}
 	} else {
 		t.nodeCountRejected++
 	}
+}
+
+// NewCompactQuerySegment creates a new CompactQuerySegment instance from the
+// specified endpoints.
+func NewCompactQuerySegment(a, b dprec.Vec2) CompactQuerySegment {
+	return CompactQuerySegment{
+		a: dtos.Vec2(a),
+		b: dtos.Vec2(b),
+	}
+}
+
+// CompactQuerySegment represents a line segment used for querying the tree.
+type CompactQuerySegment struct {
+	a sprec.Vec2
+	b sprec.Vec2
 }
 
 const unspecifiedIndex = int32(-1)
@@ -590,13 +605,8 @@ func (box compactAABB) intersects(other compactAABB) bool {
 		(box.maxY >= other.minY)
 }
 
-type compactSegment struct {
-	a sprec.Vec2
-	b sprec.Vec2
-}
-
 // TODO: Test if passing references is faster.
-func isCompactSegmentAABBIntersection(segment compactSegment, aabb compactAABB) bool {
+func isCompactSegmentAABBIntersection(segment CompactQuerySegment, aabb compactAABB) bool {
 	delta := sprec.Vec2Diff(segment.b, segment.a)
 
 	tLowX := (aabb.minX - segment.a.X) / delta.X
@@ -660,57 +670,4 @@ func (a SquareArea) Intersects(other SquareArea) bool {
 	dY := a.y - other.y
 	sR := a.r + other.r
 	return (dX <= sR) && (dX >= -sR) && (dY <= sR) && (dY >= -sR)
-}
-
-// Visitor represents a callback mechanism to pass items back to the client.
-type Visitor[T any] interface {
-	// Visit is called for each observed item.
-	Visit(item T)
-}
-
-// VisitorFunc is an implementation of Visitor that passes each observed
-// item to the wrapped function.
-type VisitorFunc[T any] func(item T)
-
-// Visit calls the wrapped function.
-func (f VisitorFunc[T]) Visit(item T) {
-	f(item)
-}
-
-// NewVisitorBucket creates a new VisitorBucket instance with the specified
-// initial capacity, which is only used to preallocate memory. It is allowed
-// to exceed the initial capacity.
-func NewVisitorBucket[T any](initCapacity int) *VisitorBucket[T] {
-	return &VisitorBucket[T]{
-		items: make([]T, 0, initCapacity),
-	}
-}
-
-// VisitorBucket is an implementation of Visitor that stores observed items
-// into a buffer for faster and more cache-friendly iteration afterwards.
-type VisitorBucket[T any] struct {
-	items []T
-}
-
-// Reset rewinds the item buffer.
-func (r *VisitorBucket[T]) Reset() {
-	r.items = r.items[:0]
-}
-
-// Visit records the passed item into the buffer.
-func (r *VisitorBucket[T]) Visit(item T) {
-	r.items = append(r.items, item)
-}
-
-// Each calls the provided closure function for each item in the buffer.
-func (r *VisitorBucket[T]) Each(cb func(item T)) {
-	for _, item := range r.items {
-		cb(item)
-	}
-}
-
-// Items returns the items stored in the buffer. The returned slice is valid
-// only until the Reset function is called.
-func (r *VisitorBucket[T]) Items() []T {
-	return r.items
 }

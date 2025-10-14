@@ -67,26 +67,31 @@ var _ = Describe("CompactTree", func() {
 		It("is possible to segment-search for items", func() {
 			from := dprec.NewVec2(1.0, 1.0)
 			to := dprec.NewVec2(127.0, 127.0)
+			segment := shape2d.NewCompactQuerySegment(from, to)
 			var found []string
-			tree.VisitSegment(from, to, shape2d.VisitorFunc[string](func(item string) {
+			tree.QuerySegment(segment, func(item string) bool {
 				found = append(found, item)
-			}))
+				return true
+			})
 			Expect(found).To(ConsistOf("First", "Second"))
 		})
 
 		It("is possible to area-search for items", func() {
 			area := shape2d.SquareAreaFromCircle(dprec.NewVec2(64.0, 64.0), 63.0)
 			var found []string
-			tree.VisitArea(area, shape2d.VisitorFunc[string](func(item string) {
+			tree.QueryArea(area, func(item string) bool {
 				found = append(found, item)
-			}))
+				return true
+			})
 			Expect(found).To(ConsistOf("First", "Second"))
 		})
 
 		When("items are searched", func() {
 			BeforeEach(func() {
 				area := shape2d.SquareAreaFromCircle(dprec.NewVec2(64.0, 64.0), 63.0)
-				tree.VisitArea(area, shape2d.VisitorFunc[string](func(item string) {}))
+				tree.QueryArea(area, func(item string) bool {
+					return true
+				})
 			})
 
 			It("returns the correct visit stats", func() {
@@ -119,19 +124,22 @@ var _ = Describe("CompactTree", func() {
 			It("is reflected in segment-search for items", func() {
 				from := dprec.NewVec2(1.0, 1.0)
 				to := dprec.NewVec2(127.0, 127.0)
+				segment := shape2d.NewCompactQuerySegment(from, to)
 				var found []string
-				tree.VisitSegment(from, to, shape2d.VisitorFunc[string](func(item string) {
+				tree.QuerySegment(segment, func(item string) bool {
 					found = append(found, item)
-				}))
+					return true
+				})
 				Expect(found).To(ConsistOf("First"))
 			})
 
 			It("is reflected in area-search for items", func() {
 				area := shape2d.SquareAreaFromCircle(dprec.NewVec2(64.0, 64.0), 63.0)
 				var found []string
-				tree.VisitArea(area, shape2d.VisitorFunc[string](func(item string) {
+				tree.QueryArea(area, func(item string) bool {
 					found = append(found, item)
-				}))
+					return true
+				})
 				Expect(found).To(ConsistOf("First"))
 			})
 		})
@@ -163,19 +171,22 @@ var _ = Describe("CompactTree", func() {
 			It("is reflected in segment-search for items", func() {
 				from := dprec.NewVec2(1.0, 1.0)
 				to := dprec.NewVec2(127.0, 127.0)
+				segment := shape2d.NewCompactQuerySegment(from, to)
 				var found []string
-				tree.VisitSegment(from, to, shape2d.VisitorFunc[string](func(item string) {
+				tree.QuerySegment(segment, func(item string) bool {
 					found = append(found, item)
-				}))
+					return true
+				})
 				Expect(found).To(ConsistOf("First"))
 			})
 
 			It("is reflected in area-search for items", func() {
 				area := shape2d.SquareAreaFromCircle(dprec.NewVec2(64.0, 64.0), 63.0)
 				var found []string
-				tree.VisitArea(area, shape2d.VisitorFunc[string](func(item string) {
+				tree.QueryArea(area, func(item string) bool {
 					found = append(found, item)
-				}))
+					return true
+				})
 				Expect(found).To(ConsistOf("First"))
 			})
 		})
