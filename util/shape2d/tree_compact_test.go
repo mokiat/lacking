@@ -63,5 +63,20 @@ var _ = Describe("CompactTree", func() {
 				0, 1, 2,
 			}))
 		})
+
+		When("an item is removed", func() {
+			BeforeEach(func() {
+				tree.Remove(secondItemID)
+			})
+
+			It("has the correct state", func() {
+				state := tree.Stats()
+				Expect(state.NodeCount).To(Equal(uint32(4)))
+				Expect(state.ItemCount).To(Equal(uint32(2)))
+				Expect(state.ItemCountPerDepth).To(Equal([]uint32{
+					0, 1, 1,
+				}))
+			})
+		})
 	})
 })

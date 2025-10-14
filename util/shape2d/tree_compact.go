@@ -38,9 +38,6 @@ type CompactTreeStats struct {
 // performed on a CompactTree.
 type CompactTreeVisitStats struct {
 
-	// NodeCount is the total number of nodes in the octree.
-	NodeCount uint32
-
 	// NodeCountVisited is the number of nodes that were visited during the last
 	// visit operation.
 	NodeCountVisited uint32
@@ -52,9 +49,6 @@ type CompactTreeVisitStats struct {
 	// NodeCountRejected is the number of nodes that were determined irrelevant
 	// during the last visit operation.
 	NodeCountRejected uint32
-
-	// ItemCount is the total number of items in the octree.
-	ItemCount uint32
 
 	// ItemCountVisited is the number of items that were visited during the last
 	// visit operation.
@@ -170,8 +164,8 @@ func (t *CompactTree[T]) Stats() CompactTreeStats {
 		itemCountPerDepth[i] = t.itemsAtDepth(0, 1, i+1)
 	}
 	return CompactTreeStats{
-		NodeCount:         uint32(len(t.nodes)),
-		ItemCount:         uint32(len(t.items)),
+		NodeCount:         t.activeNodeCount(),
+		ItemCount:         t.activeItemCount(),
 		ItemCountPerDepth: itemCountPerDepth,
 	}
 }
@@ -180,11 +174,9 @@ func (t *CompactTree[T]) Stats() CompactTreeStats {
 // this octree.
 func (t *CompactTree[T]) VisitStats() CompactTreeVisitStats {
 	return CompactTreeVisitStats{
-		NodeCount:         uint32(len(t.nodes) - t.freeNodeIndices.Size()),
 		NodeCountVisited:  t.nodeCountAccepted + t.nodeCountRejected,
 		NodeCountAccepted: t.nodeCountAccepted,
 		NodeCountRejected: t.nodeCountRejected,
-		ItemCount:         uint32(len(t.items) - t.freeItemIndices.Size()),
 		ItemCountVisited:  t.itemCountAccepted + t.itemCountRejected,
 		ItemCountAccepted: t.itemCountAccepted,
 		ItemCountRejected: t.itemCountRejected,
@@ -274,6 +266,14 @@ func (t *CompactTree[T]) resetVisitStats() {
 	t.nodeCountRejected = 0
 	t.itemCountAccepted = 0
 	t.itemCountRejected = 0
+}
+
+func (t *CompactTree[T]) activeNodeCount() uint32 {
+	return uint32(len(t.nodes) - t.freeNodeIndices.Size())
+}
+
+func (t *CompactTree[T]) activeItemCount() uint32 {
+	return uint32(len(t.items) - t.freeItemIndices.Size())
 }
 
 func (t *CompactTree[T]) itemsAtDepth(nodeIndex int32, currentDepth, depth uint32) uint32 {
