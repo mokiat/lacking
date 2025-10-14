@@ -77,6 +77,16 @@ var _ = Describe("CompactTree", func() {
 					0, 1, 1,
 				}))
 			})
+
+			It("does not return an active item id on new insert", func() {
+				tree.GC() // forces internal reordering of items (white box testing)
+				secondItemID = tree.Insert(
+					shape2d.SquareAreaFromCircle(dprec.NewVec2(48.0, 48.0), 2.0),
+					"Second",
+				)
+				Expect(secondItemID).ToNot(Equal(firstItemID))
+				Expect(secondItemID).ToNot(Equal(thirdItemID))
+			})
 		})
 	})
 })

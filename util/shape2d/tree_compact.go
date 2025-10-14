@@ -124,7 +124,7 @@ func NewCompactTree[T any](settings CompactTreeSettings) *CompactTree[T] {
 		nodes:           nodes,
 		items:           make([]compactTreeItem[T], 0, initialItemCapacity),
 		freeNodeIndices: ds.NewStack[int32](32),
-		freeItemIndices: ds.NewStack[int32](32),
+		freeItemIDs:     ds.NewStack[CompactTreeItemID](32),
 		idMappings:      make([]int32, 0, initialItemCapacity),
 		maxDepth:        maxDepth,
 
@@ -144,7 +144,7 @@ type CompactTree[T any] struct {
 	nodes           []compactTreeNode
 	items           []compactTreeItem[T]
 	freeNodeIndices *ds.Stack[int32]
-	freeItemIndices *ds.Stack[int32]
+	freeItemIDs     *ds.Stack[CompactTreeItemID]
 	idMappings      []int32
 	maxDepth        uint32
 
@@ -187,8 +187,9 @@ func (t *CompactTree[T]) VisitStats() CompactTreeVisitStats {
 // specified radius into account.
 func (t *CompactTree[T]) Insert(area SquareArea, value T) CompactTreeItemID {
 	t.isDirty = true
-	if !t.freeItemIndices.IsEmpty() {
-		itemIndex := t.freeItemIndices.Pop()
+	if !t.freeItemIDs.IsEmpty() {
+		id := t.freeItemIDs.Pop()
+		itemIndex := t.idMappings[id]
 		item := &t.items[itemIndex]
 		item.box = compactAABBFromSquare(area)
 		item.value = value
@@ -226,8 +227,11 @@ func (t *CompactTree[T]) Remove(id CompactTreeItemID) {
 	t.isDirty = true
 	itemIndex := t.idMappings[id]
 	item := &t.items[itemIndex]
+	if item.node == unspecifiedIndex {
+		panic("cannot remove item twice")
+	}
 	item.node = unspecifiedIndex
-	t.freeItemIndices.Push(itemIndex) // FIXME: During GC/sorting won't this index become invalid? Shouldn't it be freeItemIDs?
+	t.freeItemIDs.Push(id)
 }
 
 // VisitArea finds all items that are inside or intersect the specified area.
@@ -273,7 +277,7 @@ func (t *CompactTree[T]) activeNodeCount() uint32 {
 }
 
 func (t *CompactTree[T]) activeItemCount() uint32 {
-	return uint32(len(t.items) - t.freeItemIndices.Size())
+	return uint32(len(t.items) - t.freeItemIDs.Size())
 }
 
 func (t *CompactTree[T]) itemsAtDepth(nodeIndex int32, currentDepth, depth uint32) uint32 {
