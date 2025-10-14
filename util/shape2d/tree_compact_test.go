@@ -64,6 +64,78 @@ var _ = Describe("CompactTree", func() {
 			}))
 		})
 
+		It("is possible to segment-search for items", func() {
+			from := dprec.NewVec2(1.0, 1.0)
+			to := dprec.NewVec2(127.0, 127.0)
+			var found []string
+			tree.VisitSegment(from, to, shape2d.VisitorFunc[string](func(item string) {
+				found = append(found, item)
+			}))
+			Expect(found).To(ConsistOf("First", "Second"))
+		})
+
+		It("is possible to area-search for items", func() {
+			area := shape2d.SquareAreaFromCircle(dprec.NewVec2(64.0, 64.0), 63.0)
+			var found []string
+			tree.VisitArea(area, shape2d.VisitorFunc[string](func(item string) {
+				found = append(found, item)
+			}))
+			Expect(found).To(ConsistOf("First", "Second"))
+		})
+
+		When("items are searched", func() {
+			BeforeEach(func() {
+				area := shape2d.SquareAreaFromCircle(dprec.NewVec2(64.0, 64.0), 63.0)
+				tree.VisitArea(area, shape2d.VisitorFunc[string](func(item string) {}))
+			})
+
+			It("returns the correct visit stats", func() {
+				stats := tree.VisitStats()
+				Expect(stats.NodeCountVisited).To(Equal(uint32(5)))
+				Expect(stats.NodeCountAccepted).To(Equal(uint32(4)))
+				Expect(stats.NodeCountRejected).To(Equal(uint32(1)))
+				Expect(stats.ItemCountVisited).To(Equal(uint32(2)))
+				Expect(stats.ItemCountAccepted).To(Equal(uint32(2)))
+				Expect(stats.ItemCountRejected).To(Equal(uint32(0)))
+			})
+		})
+
+		When("an item is updated", func() {
+			BeforeEach(func() {
+				tree.Update(secondItemID,
+					shape2d.SquareAreaFromCircle(dprec.NewVec2(-48.0, 48.0), 2.0),
+				)
+			})
+
+			It("has the correct state", func() {
+				state := tree.Stats()
+				Expect(state.NodeCount).To(Equal(uint32(6)))
+				Expect(state.ItemCount).To(Equal(uint32(3)))
+				Expect(state.ItemCountPerDepth).To(Equal([]uint32{
+					0, 1, 2,
+				}))
+			})
+
+			It("is reflected in segment-search for items", func() {
+				from := dprec.NewVec2(1.0, 1.0)
+				to := dprec.NewVec2(127.0, 127.0)
+				var found []string
+				tree.VisitSegment(from, to, shape2d.VisitorFunc[string](func(item string) {
+					found = append(found, item)
+				}))
+				Expect(found).To(ConsistOf("First"))
+			})
+
+			It("is reflected in area-search for items", func() {
+				area := shape2d.SquareAreaFromCircle(dprec.NewVec2(64.0, 64.0), 63.0)
+				var found []string
+				tree.VisitArea(area, shape2d.VisitorFunc[string](func(item string) {
+					found = append(found, item)
+				}))
+				Expect(found).To(ConsistOf("First"))
+			})
+		})
+
 		When("an item is removed", func() {
 			BeforeEach(func() {
 				tree.Remove(secondItemID)
@@ -86,6 +158,25 @@ var _ = Describe("CompactTree", func() {
 				)
 				Expect(secondItemID).ToNot(Equal(firstItemID))
 				Expect(secondItemID).ToNot(Equal(thirdItemID))
+			})
+
+			It("is reflected in segment-search for items", func() {
+				from := dprec.NewVec2(1.0, 1.0)
+				to := dprec.NewVec2(127.0, 127.0)
+				var found []string
+				tree.VisitSegment(from, to, shape2d.VisitorFunc[string](func(item string) {
+					found = append(found, item)
+				}))
+				Expect(found).To(ConsistOf("First"))
+			})
+
+			It("is reflected in area-search for items", func() {
+				area := shape2d.SquareAreaFromCircle(dprec.NewVec2(64.0, 64.0), 63.0)
+				var found []string
+				tree.VisitArea(area, shape2d.VisitorFunc[string](func(item string) {
+					found = append(found, item)
+				}))
+				Expect(found).To(ConsistOf("First"))
 			})
 		})
 	})
