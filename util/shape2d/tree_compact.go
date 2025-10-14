@@ -235,21 +235,20 @@ func (t *CompactTree[T]) Remove(id CompactTreeItemID) {
 // QuerySegment finds all items that intersect the specified segment. Each
 // found item is passed to the specified yield function. The order in which
 // items are passed is undefined and might change between invocations.
-func (t *CompactTree[T]) QuerySegment(segment CompactQuerySegment, yield VisitorFunc[T]) {
+func (t *CompactTree[T]) QuerySegment(querySegment CompactQuerySegment, yield VisitorFunc[T]) {
 	t.resetVisitStats()
 	t.refresh()
-	t.visitNodeInSegment(0, segment, yield)
+	t.visitNodeInSegment(0, querySegment, yield)
 }
 
-// VisitArea finds all items that are inside or intersect the specified area.
-// It calls the specified visitor for each item found.
-//
-// TODO: Consider using a yield func instead. This should make iterator
-// implementations easier.
-func (t *CompactTree[T]) QueryArea(area SquareArea, yield VisitorFunc[T]) {
+// QueryAABB finds all items that are inside or intersect the specified
+// axis-aligned bounding box. Each found item is passed to the specified yield
+// function. The order in which items are passed is undefined and might change
+// between invocations.
+func (t *CompactTree[T]) QueryAABB(queryBox CompactQueryAABB, yield VisitorFunc[T]) {
 	t.resetVisitStats()
 	t.refresh()
-	box := compactAABBFromSquare(area)
+	box := compactAABB(queryBox)
 	t.visitNodeInAABB(0, &box, yield)
 }
 
@@ -362,8 +361,8 @@ func (t *CompactTree[T]) pickChildNode(parentNodeIndex int32, area SquareArea) i
 		}
 		childNodeIndex := int32(len(t.nodes)) // predict next node index
 		parentNode.children[childIndex] = childNodeIndex
-		// NOTE: Do NOT use parentNode after this append as the ref might be towards
-		// an old slice.
+		// Do NOT use "parentNode" after this append as the ref might be towards
+		// an old slice!
 		t.nodes = append(t.nodes, compactTreeNode{
 			parent:    parentNodeIndex,
 			children:  emptyCompactTreeNodeChildren,
@@ -543,6 +542,37 @@ type CompactQuerySegment struct {
 	b sprec.Vec2
 }
 
+// NewCompactQueryAABB creates a new CompactQueryAABB instance from the
+// specified bounds.
+func NewCompactQueryAABB(minX, maxX, minY, maxY float64) CompactQueryAABB {
+	return CompactQueryAABB{
+		minX: float32(minX),
+		maxX: float32(maxX),
+		minY: float32(minY),
+		maxY: float32(maxY),
+	}
+}
+
+// NewCompactQueryAABBFromCircle creates a new CompactQueryAABB that wraps a
+// circle.
+func NewCompactQueryAABBFromCircle(position dprec.Vec2, radius float64) CompactQueryAABB {
+	return CompactQueryAABB{
+		minX: float32(position.X - radius),
+		maxX: float32(position.X + radius),
+		minY: float32(position.Y - radius),
+		maxY: float32(position.Y + radius),
+	}
+}
+
+// CompactQueryAABB represents an axis-aligned bounding box used for querying
+// the tree.
+type CompactQueryAABB struct {
+	minX float32
+	maxX float32
+	minY float32
+	maxY float32
+}
+
 const unspecifiedIndex = int32(-1)
 
 var emptyCompactTreeNodeChildren = [4]int32{
@@ -625,9 +655,6 @@ func isCompactSegmentAABBIntersection(segment CompactQuerySegment, aabb compactA
 
 	return tClose <= tFar && tClose <= 1.0 && tFar >= 0.0
 }
-
-// TODO: Make it work for arbitrary axis-aligned rectangles instead of
-// cube.
 
 func emptyCompactAABB() compactAABB {
 	const large = 128000.0

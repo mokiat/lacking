@@ -77,9 +77,9 @@ var _ = Describe("CompactTree", func() {
 		})
 
 		It("is possible to area-search for items", func() {
-			area := shape2d.SquareAreaFromCircle(dprec.NewVec2(64.0, 64.0), 63.0)
+			area := shape2d.NewCompactQueryAABBFromCircle(dprec.NewVec2(64.0, 64.0), 63.0)
 			var found []string
-			tree.QueryArea(area, func(item string) bool {
+			tree.QueryAABB(area, func(item string) bool {
 				found = append(found, item)
 				return true
 			})
@@ -88,8 +88,8 @@ var _ = Describe("CompactTree", func() {
 
 		When("items are searched", func() {
 			BeforeEach(func() {
-				area := shape2d.SquareAreaFromCircle(dprec.NewVec2(64.0, 64.0), 63.0)
-				tree.QueryArea(area, func(item string) bool {
+				area := shape2d.NewCompactQueryAABBFromCircle(dprec.NewVec2(64.0, 64.0), 63.0)
+				tree.QueryAABB(area, func(item string) bool {
 					return true
 				})
 			})
@@ -134,9 +134,9 @@ var _ = Describe("CompactTree", func() {
 			})
 
 			It("is reflected in area-search for items", func() {
-				area := shape2d.SquareAreaFromCircle(dprec.NewVec2(64.0, 64.0), 63.0)
+				area := shape2d.NewCompactQueryAABBFromCircle(dprec.NewVec2(64.0, 64.0), 63.0)
 				var found []string
-				tree.QueryArea(area, func(item string) bool {
+				tree.QueryAABB(area, func(item string) bool {
 					found = append(found, item)
 					return true
 				})
@@ -181,9 +181,9 @@ var _ = Describe("CompactTree", func() {
 			})
 
 			It("is reflected in area-search for items", func() {
-				area := shape2d.SquareAreaFromCircle(dprec.NewVec2(64.0, 64.0), 63.0)
+				area := shape2d.NewCompactQueryAABBFromCircle(dprec.NewVec2(64.0, 64.0), 63.0)
 				var found []string
-				tree.QueryArea(area, func(item string) bool {
+				tree.QueryAABB(area, func(item string) bool {
 					found = append(found, item)
 					return true
 				})
