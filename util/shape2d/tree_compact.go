@@ -114,11 +114,8 @@ func NewCompactTree[T any](settings CompactTreeSettings) *CompactTree[T] {
 
 	nodes := make([]compactTreeNode, 0, initialNodeCapacity)
 	nodes = append(nodes, compactTreeNode{
-		parent: unspecifiedIndex,
-		children: [4]int32{
-			unspecifiedIndex, unspecifiedIndex,
-			unspecifiedIndex, unspecifiedIndex,
-		},
+		parent:    unspecifiedIndex,
+		children:  emptyCompactTreeNodeChildren,
 		itemStart: 0,
 		itemEnd:   0,
 		looseArea: SquareArea{
@@ -354,10 +351,7 @@ func (t *CompactTree[T]) pickChildNode(parentNodeIndex int32, area SquareArea) i
 		parentNode.children[childIndex] = childNodeIndex
 		childNode := &t.nodes[childNodeIndex]
 		childNode.parent = parentNodeIndex
-		childNode.children = [4]int32{
-			unspecifiedIndex, unspecifiedIndex,
-			unspecifiedIndex, unspecifiedIndex,
-		}
+		childNode.children = emptyCompactTreeNodeChildren
 		childNode.looseArea = childLooseArea
 		childNode.itemStart = 0
 		childNode.itemEnd = 0
@@ -373,11 +367,8 @@ func (t *CompactTree[T]) pickChildNode(parentNodeIndex int32, area SquareArea) i
 		// NOTE: Do NOT use parentNode after this append as the ref might be towards
 		// an old slice.
 		t.nodes = append(t.nodes, compactTreeNode{
-			parent: parentNodeIndex,
-			children: [4]int32{ // TODO: Initialize from a ready constant array?
-				unspecifiedIndex, unspecifiedIndex,
-				unspecifiedIndex, unspecifiedIndex,
-			},
+			parent:    parentNodeIndex,
+			children:  emptyCompactTreeNodeChildren,
 			looseArea: childLooseArea,
 			itemStart: 0,
 			itemEnd:   0,
@@ -543,6 +534,10 @@ func (t *CompactTree[T]) visitNodeInSegment(nodeIndex int32, segment compactSegm
 
 const unspecifiedIndex = int32(-1)
 
+var emptyCompactTreeNodeChildren = [4]int32{
+	unspecifiedIndex, unspecifiedIndex, unspecifiedIndex, unspecifiedIndex,
+}
+
 type compactTreeNode struct {
 	parent    int32
 	children  [4]int32
@@ -553,7 +548,10 @@ type compactTreeNode struct {
 }
 
 func (n *compactTreeNode) isEmpty() bool {
-	// TODO: Check if empty array compare is faster.
+	// TODO: Check if emptyCompactTreeNodeChildren compare is faster.
+	// if n.children != emptyCompactTreeNodeChildren {
+	// 	return false
+	// }
 	for _, childIndex := range n.children {
 		if childIndex != unspecifiedIndex {
 			return false
