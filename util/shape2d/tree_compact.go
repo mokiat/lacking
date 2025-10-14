@@ -117,7 +117,7 @@ func NewCompactTree[T any](settings CompactTreeSettings) *CompactTree[T] {
 			y: 0.0,
 			r: size, // using size here since a loose cube has twice the radius
 		},
-		box: compactAABB{}, // TODO: Initialize with invalid one.
+		box: emptyCompactAABB(),
 	})
 
 	return &CompactTree[T]{
@@ -464,13 +464,7 @@ func (t *CompactTree[T]) updateAABB(nodeIndex int32) compactAABB {
 	// The AABB is created flipped so that the first box to be merged will
 	// override this completely. Also, even if it is not overridden, it will
 	// not match anything in this initial form.
-	const large = 128000.0
-	result := compactAABB{ // TODO: Extract as constructor function.
-		minX: large,
-		maxX: -large,
-		minY: large,
-		maxY: -large,
-	}
+	result := emptyCompactAABB()
 
 	for _, childIndex := range node.children {
 		if childIndex != unspecifiedIndex {
@@ -624,6 +618,16 @@ func isCompactSegmentAABBIntersection(segment compactSegment, aabb compactAABB) 
 
 // TODO: Make it work for arbitrary axis-aligned rectangles instead of
 // cube.
+
+func emptyCompactAABB() compactAABB {
+	const large = 128000.0
+	return compactAABB{
+		minX: large,
+		maxX: -large,
+		minY: large,
+		maxY: -large,
+	}
+}
 
 func compactAABBFromSquare(area SquareArea) compactAABB {
 	return compactAABB{
