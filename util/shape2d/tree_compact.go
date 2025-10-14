@@ -387,7 +387,6 @@ func (t *CompactTree[T]) refresh() {
 }
 
 func (t *CompactTree[T]) sortItems() {
-	// TODO: Test if this can be made faster with ref sorting.
 	slices.SortFunc(t.items, compareCompactTreeItems[T])
 }
 
@@ -614,16 +613,7 @@ type compactTreeNode struct {
 }
 
 func (n *compactTreeNode) isEmpty() bool {
-	// TODO: Check if emptyCompactTreeNodeChildren compare is faster.
-	// if n.children != emptyCompactTreeNodeChildren {
-	// 	return false
-	// }
-	for _, childIndex := range n.children {
-		if childIndex != unspecifiedIndex {
-			return false
-		}
-	}
-	return n.itemStart >= n.itemEnd
+	return (n.children == emptyCompactTreeNodeChildren) && (n.itemStart >= n.itemEnd)
 }
 
 type compactTreeItem[T any] struct {
