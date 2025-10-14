@@ -30,8 +30,8 @@ type CompactTreeStats struct {
 	// ItemCount is the total number of items in the octree.
 	ItemCount uint32
 
-	// ItemsCountPerDepth contains the number of items at each depth level.
-	ItemsCountPerDepth []uint32
+	// ItemCountPerDepth contains the number of items at each depth level.
+	ItemCountPerDepth []uint32
 }
 
 // CompactTreeVisitStats represents statistics on the last visit operation
@@ -167,15 +167,15 @@ type CompactTree[T any] struct {
 
 // Stats returns statistics on the current state of this octree.
 func (t *CompactTree[T]) Stats() CompactTreeStats {
-	// TODO: What about depth = 0? Is maxDepth+1 needed in this case?
-	itemCountPerDepth := make([]uint32, t.maxDepth+1)
-	for i := uint32(1); i <= t.maxDepth; i++ {
-		itemCountPerDepth[i] = t.itemsAtDepth(0, 1, i)
+	t.refresh() // this is necessary
+	itemCountPerDepth := make([]uint32, t.maxDepth)
+	for i := range uint32(t.maxDepth) {
+		itemCountPerDepth[i] = t.itemsAtDepth(0, 1, i+1)
 	}
 	return CompactTreeStats{
-		NodeCount:          uint32(len(t.nodes)),
-		ItemCount:          uint32(len(t.items)),
-		ItemsCountPerDepth: itemCountPerDepth,
+		NodeCount:         uint32(len(t.nodes)),
+		ItemCount:         uint32(len(t.items)),
+		ItemCountPerDepth: itemCountPerDepth,
 	}
 }
 
