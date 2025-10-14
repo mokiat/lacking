@@ -112,10 +112,10 @@ func NewCompactTree[T any](settings CompactTreeSettings) *CompactTree[T] {
 		children:  emptyCompactTreeNodeChildren,
 		itemStart: 0,
 		itemEnd:   0,
-		looseArea: SquareArea{
+		looseArea: CompactQuad{
 			x: 0.0,
 			y: 0.0,
-			r: size, // using size here since a loose cube has twice the radius
+			r: float32(size), // using size here since a loose cube has twice the radius
 		},
 		box: emptyCompactAABB(),
 	})
@@ -182,16 +182,17 @@ func (t *CompactTree[T]) VisitStats() CompactTreeVisitStats {
 	}
 }
 
-// Insert adds an item, which occupies the specified area, to this tree.
-func (t *CompactTree[T]) Insert(area SquareArea, value T) CompactTreeItemID {
+// Insert adds an item, which occupies the specified quad area, to this
+// tree.
+func (t *CompactTree[T]) Insert(quad CompactQuad, value T) CompactTreeItemID {
 	t.isDirty = true
 	if !t.freeItemIDs.IsEmpty() {
 		id := t.freeItemIDs.Pop()
 		itemIndex := t.idMappings[id]
 		item := &t.items[itemIndex]
-		item.box = compactAABBFromSquare(area)
+		item.box = compactAABBFromQuad(quad)
 		item.value = value
-		item.node = t.pickNodeForItem(area)
+		item.node = t.pickNodeForItem(quad)
 		return item.id
 	} else {
 		if len(t.items) == cap(t.items) {
@@ -203,8 +204,8 @@ func (t *CompactTree[T]) Insert(area SquareArea, value T) CompactTreeItemID {
 		t.idMappings = append(t.idMappings, int32(id))
 		t.items = append(t.items, compactTreeItem[T]{
 			id:    id,
-			node:  t.pickNodeForItem(area),
-			box:   compactAABBFromSquare(area),
+			node:  t.pickNodeForItem(quad),
+			box:   compactAABBFromQuad(quad),
 			value: value,
 		})
 		return id
@@ -212,12 +213,12 @@ func (t *CompactTree[T]) Insert(area SquareArea, value T) CompactTreeItemID {
 }
 
 // Update repositions the item with the specified id to the new area.
-func (t *CompactTree[T]) Update(id CompactTreeItemID, area SquareArea) {
+func (t *CompactTree[T]) Update(id CompactTreeItemID, quad CompactQuad) {
 	t.isDirty = true
 	itemIndex := t.idMappings[id]
 	item := &t.items[itemIndex]
-	item.box = compactAABBFromSquare(area)
-	item.node = t.pickNodeForItem(area)
+	item.box = compactAABBFromQuad(quad)
+	item.node = t.pickNodeForItem(quad)
 }
 
 // Remove removes the item with the specified id from this tree.
@@ -288,7 +289,7 @@ func (t *CompactTree[T]) itemsAtDepth(nodeIndex int32, currentDepth, depth uint3
 	return result
 }
 
-func (t *CompactTree[T]) pickNodeForItem(area SquareArea) int32 {
+func (t *CompactTree[T]) pickNodeForItem(quad CompactQuad) int32 {
 	bestNodeIndex := unspecifiedIndex
 	currentNodeIndex := int32(0)
 	var depth uint32
@@ -298,19 +299,19 @@ func (t *CompactTree[T]) pickNodeForItem(area SquareArea) int32 {
 		if depth >= t.maxDepth {
 			break
 		}
-		currentNodeIndex = t.pickChildNode(currentNodeIndex, area)
+		currentNodeIndex = t.pickChildNode(currentNodeIndex, quad)
 	}
 	return bestNodeIndex
 }
 
-func (t *CompactTree[T]) pickChildNode(parentNodeIndex int32, area SquareArea) int32 {
+func (t *CompactTree[T]) pickChildNode(parentNodeIndex int32, quad CompactQuad) int32 {
 	parentNode := &t.nodes[parentNodeIndex]
 	parentLooseArea := parentNode.looseArea
 
 	// Make sure that it can fit inside a child. The requirement is that
 	// the radius must be smaller than the loose margin of the child.
 	childLooseRadius := parentLooseArea.r / 2.0
-	if area.r > (childLooseRadius / 2.0) { // div by 2 to convert to margin
+	if quad.r > (childLooseRadius / 2.0) { // div by 2 to convert to margin
 		return unspecifiedIndex
 	}
 
@@ -321,13 +322,13 @@ func (t *CompactTree[T]) pickChildNode(parentNodeIndex int32, area SquareArea) i
 		childY     = parentLooseArea.y
 	)
 	childOffset := parentLooseArea.r / 4.0
-	if area.x < parentLooseArea.x {
+	if quad.x < parentLooseArea.x {
 		childX -= childOffset
 	} else {
 		childIndex += 1
 		childX += childOffset
 	}
-	if area.y < parentLooseArea.y {
+	if quad.y < parentLooseArea.y {
 		childY -= childOffset
 	} else {
 		childIndex += 2
@@ -338,7 +339,7 @@ func (t *CompactTree[T]) pickChildNode(parentNodeIndex int32, area SquareArea) i
 		return parentNode.children[childIndex]
 	}
 
-	childLooseArea := SquareArea{
+	childLooseArea := CompactQuad{
 		x: childX,
 		y: childY,
 		r: childLooseRadius,
@@ -403,7 +404,6 @@ func (t *CompactTree[T]) evaluateItemOffsets() {
 	lastNode := unspecifiedIndex
 	itemIndex := uint32(0)
 	itemCount := uint32(len(t.items))
-	// TODO: Can't this be done with a plain for loop?
 	for itemIndex < itemCount {
 		item := &t.items[itemIndex]
 		if item.node != lastNode {
@@ -573,6 +573,32 @@ type CompactQueryAABB struct {
 	maxY float32
 }
 
+// NewCompactQuad creates a new CompactQuad instance from the specified
+// position and size.
+func NewCompactQuad(x, y, size float64) CompactQuad {
+	return CompactQuad{
+		x: float32(x),
+		y: float32(y),
+		r: float32(size / 2.0),
+	}
+}
+
+// NewCompactQuadFromCircle creates a new CompactQuad that wraps a circle.
+func NewCompactQuadFromCircle(position dprec.Vec2, radius float64) CompactQuad {
+	return CompactQuad{
+		x: float32(position.X),
+		y: float32(position.Y),
+		r: float32(radius),
+	}
+}
+
+// CompactQuad represents a square area used for inserting items into the tree.
+type CompactQuad struct {
+	x float32
+	y float32
+	r float32
+}
+
 const unspecifiedIndex = int32(-1)
 
 var emptyCompactTreeNodeChildren = [4]int32{
@@ -582,7 +608,7 @@ var emptyCompactTreeNodeChildren = [4]int32{
 type compactTreeNode struct {
 	parent    int32
 	children  [4]int32
-	looseArea SquareArea
+	looseArea CompactQuad
 	box       compactAABB
 	itemStart uint32
 	itemEnd   uint32
@@ -612,12 +638,31 @@ func compareCompactTreeItems[T any](a, b compactTreeItem[T]) int {
 	return int(a.node - b.node)
 }
 
+func emptyCompactAABB() compactAABB {
+	const large = 128000.0
+	return compactAABB{
+		minX: large,
+		maxX: -large,
+		minY: large,
+		maxY: -large,
+	}
+}
+
 func mergeCompactAABBs(first compactAABB, second compactAABB) compactAABB {
 	return compactAABB{
 		minX: min(first.minX, second.minX),
 		maxX: max(first.maxX, second.maxX),
 		minY: min(first.minY, second.minY),
 		maxY: max(first.maxY, second.maxY),
+	}
+}
+
+func compactAABBFromQuad(area CompactQuad) compactAABB {
+	return compactAABB{
+		minX: area.x - area.r,
+		maxX: area.x + area.r,
+		minY: area.y - area.r,
+		maxY: area.y + area.r,
 	}
 }
 
@@ -654,47 +699,4 @@ func isCompactSegmentAABBIntersection(segment CompactQuerySegment, aabb compactA
 	tFar := min(tFarX, tFarY)
 
 	return tClose <= tFar && tClose <= 1.0 && tFar >= 0.0
-}
-
-func emptyCompactAABB() compactAABB {
-	const large = 128000.0
-	return compactAABB{
-		minX: large,
-		maxX: -large,
-		minY: large,
-		maxY: -large,
-	}
-}
-
-func compactAABBFromSquare(area SquareArea) compactAABB {
-	return compactAABB{
-		minX: float32(area.x - area.r),
-		maxX: float32(area.x + area.r),
-		minY: float32(area.y - area.r),
-		maxY: float32(area.y + area.r),
-	}
-}
-
-// SquareAreaFromCircle creates a SquareArea that wraps a circle.
-func SquareAreaFromCircle(position dprec.Vec2, radius float64) SquareArea {
-	return SquareArea{
-		x: position.X,
-		y: position.Y,
-		r: radius,
-	}
-}
-
-// SquareArea represents an area in the shape of a square.
-type SquareArea struct {
-	x float64
-	y float64
-	r float64
-}
-
-// Intersects checks whether the area intersects another area.
-func (a SquareArea) Intersects(other SquareArea) bool {
-	dX := a.x - other.x
-	dY := a.y - other.y
-	sR := a.r + other.r
-	return (dX <= sR) && (dX >= -sR) && (dY <= sR) && (dY >= -sR)
 }

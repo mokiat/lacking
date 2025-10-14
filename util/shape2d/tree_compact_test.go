@@ -36,15 +36,15 @@ var _ = Describe("CompactTree", func() {
 
 		BeforeEach(func() {
 			firstItemID = tree.Insert(
-				shape2d.SquareAreaFromCircle(dprec.NewVec2(16.0, 16.0), 2.0),
+				shape2d.NewCompactQuadFromCircle(dprec.NewVec2(16.0, 16.0), 2.0),
 				"First",
 			)
 			secondItemID = tree.Insert(
-				shape2d.SquareAreaFromCircle(dprec.NewVec2(48.0, 48.0), 2.0),
+				shape2d.NewCompactQuadFromCircle(dprec.NewVec2(48.0, 48.0), 2.0),
 				"Second",
 			)
 			thirdItemID = tree.Insert(
-				shape2d.SquareAreaFromCircle(dprec.NewVec2(-16.0, -48.0), 32.0),
+				shape2d.NewCompactQuadFromCircle(dprec.NewVec2(-16.0, -48.0), 32.0),
 				"Third",
 			)
 		})
@@ -108,7 +108,7 @@ var _ = Describe("CompactTree", func() {
 		When("an item is updated", func() {
 			BeforeEach(func() {
 				tree.Update(secondItemID,
-					shape2d.SquareAreaFromCircle(dprec.NewVec2(-48.0, 48.0), 2.0),
+					shape2d.NewCompactQuadFromCircle(dprec.NewVec2(-48.0, 48.0), 2.0),
 				)
 			})
 
@@ -161,7 +161,7 @@ var _ = Describe("CompactTree", func() {
 			It("does not return an active item id on new insert", func() {
 				tree.GC() // forces internal reordering of items (white box testing)
 				secondItemID = tree.Insert(
-					shape2d.SquareAreaFromCircle(dprec.NewVec2(48.0, 48.0), 2.0),
+					shape2d.NewCompactQuadFromCircle(dprec.NewVec2(48.0, 48.0), 2.0),
 					"Second",
 				)
 				Expect(secondItemID).ToNot(Equal(firstItemID))
