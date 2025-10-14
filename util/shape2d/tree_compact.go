@@ -112,7 +112,7 @@ func NewCompactTree[T any](settings CompactTreeSettings) *CompactTree[T] {
 		children:  emptyCompactTreeNodeChildren,
 		itemStart: 0,
 		itemEnd:   0,
-		looseArea: CompactQuad{
+		looseArea: compactQuad{
 			x: 0.0,
 			y: 0.0,
 			r: float32(size), // using size here since a loose cube has twice the radius
@@ -239,7 +239,7 @@ func (t *CompactTree[T]) Remove(id CompactTreeItemID) {
 func (t *CompactTree[T]) QuerySegment(querySegment CompactQuerySegment, yield VisitorFunc[T]) {
 	t.resetVisitStats()
 	t.refresh()
-	t.visitNodeInSegment(0, querySegment, yield)
+	t.visitNodeInSegment(0, &querySegment, yield)
 }
 
 // QueryAABB finds all items that are inside or intersect the specified
@@ -249,8 +249,7 @@ func (t *CompactTree[T]) QuerySegment(querySegment CompactQuerySegment, yield Vi
 func (t *CompactTree[T]) QueryAABB(queryBox CompactQueryAABB, yield VisitorFunc[T]) {
 	t.resetVisitStats()
 	t.refresh()
-	box := compactAABB(queryBox)
-	t.visitNodeInAABB(0, &box, yield)
+	t.visitNodeInAABB(0, &queryBox, yield)
 }
 
 // GC runs cleanup and optimization logic. You should call this at least once
@@ -339,7 +338,7 @@ func (t *CompactTree[T]) pickChildNode(parentNodeIndex int32, quad CompactQuad) 
 		return parentNode.children[childIndex]
 	}
 
-	childLooseArea := CompactQuad{
+	childLooseArea := compactQuad{
 		x: childX,
 		y: childY,
 		r: childLooseRadius,
@@ -477,13 +476,13 @@ func (t *CompactTree[T]) updateAABB(nodeIndex int32) compactAABB {
 	return result
 }
 
-func (t *CompactTree[T]) visitNodeInAABB(nodeIndex int32, box *compactAABB, yield VisitorFunc[T]) {
+func (t *CompactTree[T]) visitNodeInAABB(nodeIndex int32, box *CompactQueryAABB, yield VisitorFunc[T]) {
 	node := &t.nodes[nodeIndex]
-	if box.intersects(node.box) {
+	if node.box.intersectsAABB(box) {
 		t.nodeCountAccepted++
 		for itemIndex := node.itemStart; itemIndex < node.itemEnd; itemIndex++ {
 			item := &t.items[itemIndex]
-			if box.intersects(item.box) {
+			if item.box.intersectsAABB(box) {
 				if !yield(item.value) {
 					return
 				}
@@ -502,13 +501,13 @@ func (t *CompactTree[T]) visitNodeInAABB(nodeIndex int32, box *compactAABB, yiel
 	}
 }
 
-func (t *CompactTree[T]) visitNodeInSegment(nodeIndex int32, segment CompactQuerySegment, yield VisitorFunc[T]) {
+func (t *CompactTree[T]) visitNodeInSegment(nodeIndex int32, segment *CompactQuerySegment, yield VisitorFunc[T]) {
 	node := &t.nodes[nodeIndex]
-	if isCompactSegmentAABBIntersection(segment, node.box) {
+	if node.box.intersectsSegment(segment) {
 		t.nodeCountAccepted++
 		for itemIndex := node.itemStart; itemIndex < node.itemEnd; itemIndex++ {
 			item := &t.items[itemIndex]
-			if isCompactSegmentAABBIntersection(segment, item.box) {
+			if item.box.intersectsSegment(segment) {
 				if !yield(item.value) {
 					return
 				}
@@ -608,7 +607,7 @@ var emptyCompactTreeNodeChildren = [4]int32{
 type compactTreeNode struct {
 	parent    int32
 	children  [4]int32
-	looseArea CompactQuad
+	looseArea compactQuad
 	box       compactAABB
 	itemStart uint32
 	itemEnd   uint32
@@ -673,22 +672,14 @@ type compactAABB struct {
 	maxY float32
 }
 
-func (box compactAABB) intersects(other compactAABB) bool {
-	return (box.minX <= other.maxX) &&
-		(box.maxX >= other.minX) &&
-		(box.minY <= other.maxY) &&
-		(box.maxY >= other.minY)
-}
-
-// TODO: Test if passing references is faster.
-func isCompactSegmentAABBIntersection(segment CompactQuerySegment, aabb compactAABB) bool {
+func (box *compactAABB) intersectsSegment(segment *CompactQuerySegment) bool {
 	delta := sprec.Vec2Diff(segment.b, segment.a)
 
-	tLowX := (aabb.minX - segment.a.X) / delta.X
-	tLowY := (aabb.minY - segment.a.Y) / delta.Y
+	tLowX := (box.minX - segment.a.X) / delta.X
+	tLowY := (box.minY - segment.a.Y) / delta.Y
 
-	tHighX := (aabb.maxX - segment.a.X) / delta.X
-	tHighY := (aabb.maxY - segment.a.Y) / delta.Y
+	tHighX := (box.maxX - segment.a.X) / delta.X
+	tHighY := (box.maxY - segment.a.Y) / delta.Y
 
 	tCloseX := min(tLowX, tHighX)
 	tCloseY := min(tLowY, tHighY)
@@ -699,4 +690,17 @@ func isCompactSegmentAABBIntersection(segment CompactQuerySegment, aabb compactA
 	tFar := min(tFarX, tFarY)
 
 	return tClose <= tFar && tClose <= 1.0 && tFar >= 0.0
+}
+
+func (box *compactAABB) intersectsAABB(other *CompactQueryAABB) bool {
+	return (box.minX <= other.maxX) &&
+		(box.maxX >= other.minX) &&
+		(box.minY <= other.maxY) &&
+		(box.maxY >= other.minY)
+}
+
+type compactQuad struct {
+	x float32
+	y float32
+	r float32
 }
