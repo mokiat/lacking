@@ -18,16 +18,16 @@ import (
 const InvalidCompactTreeItemID = CompactTreeItemID(0xFFFFFFFF)
 
 // CompactTreeItemID is an identifier used to control the placement of an item
-// into a compact octree.
+// into a compact tree.
 type CompactTreeItemID uint32
 
 // CompactTreeStats represents the current state of a CompactTree.
 type CompactTreeStats struct {
 
-	// NodeCount is the total number of nodes in the octree.
+	// NodeCount is the total number of nodes in the tree.
 	NodeCount uint32
 
-	// ItemCount is the total number of items in the octree.
+	// ItemCount is the total number of items in the tree.
 	ItemCount uint32
 
 	// ItemCountPerDepth contains the number of items at each depth level.
@@ -66,27 +66,27 @@ type CompactTreeVisitStats struct {
 // CompactTreeSettings contains the settings for a CompactTree.
 type CompactTreeSettings struct {
 
-	// Size specifies the dimension (side to side) of the octree node.
+	// Size specifies the dimension (side to side) of the tree node.
 	//
 	// If not specified, a default size of 4096 is used.
 	//
 	// Inserting an item outside these bounds has undefined behavior.
 	Size opt.T[float64]
 
-	// MaxDepth controls the maximum depth that the octree can reach.
+	// MaxDepth controls the maximum depth that the tree can reach.
 	//
 	// If not specified, a default max depth of 8 is used.
 	MaxDepth opt.T[uint32]
 
 	// InitialNodeCapacity is a hint as to the number of nodes that will be
 	// needed to place all items. Usually one would find that number empirically.
-	// This allows the octree to preallocate memory and avoid dynamic allocations.
+	// This allows the tree to preallocate memory and avoid dynamic allocations.
 	//
 	// By default the initial capacity is 4096.
 	InitialNodeCapacity opt.T[uint32]
 
 	// InitialItemCapacity is a hint as to the likely upper bound of items that
-	// will be inserted into the octree. This allows the octree to preallocate
+	// will be inserted into the tree. This allows the tree to preallocate
 	// memory and avoid dynamic allocations during insertion.
 	//
 	// By default the initial capacity is 1024.
@@ -137,9 +137,8 @@ func NewCompactTree[T any](settings CompactTreeSettings) *CompactTree[T] {
 	}
 }
 
-// CompactTree is a spatial structure that uses a loose octree implementation
-// with shrinking bounding box to enable the fast search of items within a
-// search region.
+// CompactTree is a spatial structure that uses a loose quadtree implementation
+// with shrinking bounding box to enable the fast searching of items.
 type CompactTree[T any] struct {
 	nodes           []compactTreeNode
 	items           []compactTreeItem[T]
@@ -156,7 +155,7 @@ type CompactTree[T any] struct {
 	isDirty bool
 }
 
-// Stats returns statistics on the current state of this octree.
+// Stats returns statistics on the current state of this tree.
 func (t *CompactTree[T]) Stats() CompactTreeStats {
 	t.refresh() // this is necessary
 	itemCountPerDepth := make([]uint32, t.maxDepth)
@@ -171,7 +170,7 @@ func (t *CompactTree[T]) Stats() CompactTreeStats {
 }
 
 // VisitStats returns statistics information on the last executed search in
-// this octree.
+// this tree.
 func (t *CompactTree[T]) VisitStats() CompactTreeVisitStats {
 	return CompactTreeVisitStats{
 		NodeCountVisited:  t.nodeCountAccepted + t.nodeCountRejected,
@@ -183,8 +182,7 @@ func (t *CompactTree[T]) VisitStats() CompactTreeVisitStats {
 	}
 }
 
-// Insert adds an item to this octree at the specified position and taking the
-// specified radius into account.
+// Insert adds an item, which occupies the specified area, to this tree.
 func (t *CompactTree[T]) Insert(area SquareArea, value T) CompactTreeItemID {
 	t.isDirty = true
 	if !t.freeItemIDs.IsEmpty() {
@@ -222,7 +220,7 @@ func (t *CompactTree[T]) Update(id CompactTreeItemID, area SquareArea) {
 	item.node = t.pickNodeForItem(area)
 }
 
-// Remove removes the item with the specified id from this data structure.
+// Remove removes the item with the specified id from this tree.
 func (t *CompactTree[T]) Remove(id CompactTreeItemID) {
 	t.isDirty = true
 	itemIndex := t.idMappings[id]
@@ -362,7 +360,7 @@ func (t *CompactTree[T]) pickChildNode(parentNodeIndex int32, area SquareArea) i
 		return childNodeIndex
 	} else {
 		if len(t.nodes) == cap(t.nodes) {
-			logger.Warn("Will grow node capacity for compact octree.",
+			logger.Warn("Will grow node capacity for compact tree.",
 				slog.Int("current", len(t.nodes)),
 			)
 		}
