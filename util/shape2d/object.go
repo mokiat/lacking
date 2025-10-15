@@ -1,4 +1,4 @@
-package shape3d
+package shape2d
 
 import (
 	"github.com/mokiat/gog/opt"
@@ -18,12 +18,12 @@ type ObjectInfo[O any] struct {
 	// placed.
 	//
 	// Defaults to the origin.
-	Position opt.T[dprec.Vec3]
+	Position opt.T[dprec.Vec2]
 
 	// Rotation optionally specifies a rotation of the object.
 	//
 	// Defaults to the identity rotation.
-	Rotation opt.T[dprec.Quat]
+	Rotation opt.T[dprec.Angle]
 
 	// Static marks the object as static. Static objects are not checked for
 	// intersections with other static objects.

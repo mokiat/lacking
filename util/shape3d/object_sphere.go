@@ -28,10 +28,7 @@ type sphereSolver struct {
 }
 
 func (s *sphereSolver) update(transform Transform) {
-	s.wsSphere = Sphere{
-		Position: transform.Apply(s.lsSphere.Position),
-		Radius:   s.lsSphere.Radius,
-	}
+	s.wsSphere = TransformedSphere(s.lsSphere, transform)
 }
 
 func (s *sphereSolver) boundingSphere() Sphere {

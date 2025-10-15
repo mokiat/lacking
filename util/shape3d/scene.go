@@ -32,12 +32,7 @@ type SceneInfo struct {
 
 // NewScene creates a new scene.
 func NewScene[O, S any](info SceneInfo) *Scene[O, S] {
-	cubeOctreeSettings := CompactTreeSettings{
-		Size:                info.Size,
-		MaxDepth:            info.MaxDepth,
-		InitialNodeCapacity: info.InitialNodeCapacity,
-		InitialItemCapacity: info.InitialItemCapacity,
-	}
+	cubeOctreeSettings := CompactTreeSettings(info)
 
 	return &Scene[O, S]{
 		freeObjectIndices: ds.NewStack[uint32](256), // ~ 1 KiB

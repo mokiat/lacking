@@ -53,7 +53,7 @@ func (m *Mesh) BoundingSphere() Sphere {
 	for _, triangle := range m.Triangles {
 		triangleBS := triangle.BoundingSphere()
 		distance := dprec.Vec3Diff(triangleBS.Position, center)
-		radius = dprec.Max(radius, triangleBS.Radius+distance.Length())
+		radius = max(radius, triangleBS.Radius+distance.Length())
 	}
 
 	return NewSphere(center, radius)

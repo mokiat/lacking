@@ -19,3 +19,20 @@ type Segment struct {
 	// B is the end of the segment.
 	B dprec.Vec2
 }
+
+// Length returns the length of the segment.
+func (s *Segment) Length() float64 {
+	return dprec.Vec2Diff(s.B, s.A).Length()
+}
+
+// Center returns the center point of the segment.
+func (s *Segment) Center() dprec.Vec2 {
+	return dprec.Vec2Prod(dprec.Vec2Sum(s.A, s.B), 0.5)
+}
+
+// BoundingCircle returns a Circle that encompasses this segment.
+func (s *Segment) BoundingCircle() Circle {
+	center := s.Center()
+	length := s.Length()
+	return NewCircle(center, length*0.5)
+}

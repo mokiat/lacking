@@ -1,4 +1,4 @@
-package shape3d
+package shape2d
 
 import (
 	"fmt"
@@ -58,9 +58,9 @@ func shapesCanIntersect[S any](a, b *sceneShape[S]) bool {
 
 const (
 	shapeKindNone shapeKind = iota
-	shapeKindSphere
-	shapeKindBox
-	shapeKindMesh
+	shapeKindCircle
+	shapeKindRectangle
+	shapeKindPolygon
 )
 
 type shapeKind uint8
@@ -69,12 +69,12 @@ func (k shapeKind) String() string {
 	switch k {
 	case shapeKindNone:
 		return "None"
-	case shapeKindSphere:
-		return "Sphere"
-	case shapeKindBox:
-		return "Box"
-	case shapeKindMesh:
-		return "Mesh"
+	case shapeKindCircle:
+		return "Circle"
+	case shapeKindRectangle:
+		return "Rectangle"
+	case shapeKindPolygon:
+		return "Polygon"
 	default:
 		return "Unknown"
 	}

@@ -40,17 +40,7 @@ type boxSolver struct {
 }
 
 func (s *boxSolver) update(transform Transform) {
-	wsTransform := ChainedTransform(transform, Transform{
-		Translation: s.lsBox.Position,
-		Rotation:    s.lsBox.Rotation,
-	})
-	s.wsBox = Box{
-		Position:   wsTransform.Translation,
-		Rotation:   wsTransform.Rotation,
-		HalfWidth:  s.lsBox.HalfWidth,
-		HalfHeight: s.lsBox.HalfHeight,
-		HalfLength: s.lsBox.HalfLength,
-	}
+	s.wsBox = TransformedBox(s.lsBox, transform)
 	s.wsBoundingSphere = Sphere{
 		Position: transform.Apply(s.lsBoundingSphere.Position),
 		Radius:   s.lsBoundingSphere.Radius,
