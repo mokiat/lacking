@@ -4,7 +4,7 @@ import "github.com/mokiat/gomath/dprec"
 
 // NewBox creates a new box with the specified position, rotation and size.
 //
-// NOTE: That the size is the full size of the box. Internally it will be
+// The size is the full size of the box. Internally it will be
 // converted to half sizes.
 func NewBox(position dprec.Vec3, rotation dprec.Quat, size dprec.Vec3) Box {
 	return Box{
