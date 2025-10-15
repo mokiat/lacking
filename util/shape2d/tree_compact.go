@@ -553,12 +553,12 @@ func NewCompactQueryAABB(minX, maxX, minY, maxY float64) CompactQueryAABB {
 
 // NewCompactQueryAABBFromCircle creates a new CompactQueryAABB that wraps a
 // circle.
-func NewCompactQueryAABBFromCircle(position dprec.Vec2, radius float64) CompactQueryAABB {
+func NewCompactQueryAABBFromCircle(circle Circle) CompactQueryAABB {
 	return CompactQueryAABB{
-		minX: float32(position.X - radius),
-		maxX: float32(position.X + radius),
-		minY: float32(position.Y - radius),
-		maxY: float32(position.Y + radius),
+		minX: float32(circle.Position.X - circle.Radius),
+		maxX: float32(circle.Position.X + circle.Radius),
+		minY: float32(circle.Position.Y - circle.Radius),
+		maxY: float32(circle.Position.Y + circle.Radius),
 	}
 }
 

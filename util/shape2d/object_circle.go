@@ -15,6 +15,13 @@ type sceneCircleShape[S any] struct {
 	circleSolver
 }
 
+func newCircleSolver(template Circle) circleSolver {
+	return circleSolver{
+		lsCircle: template,
+		wsCircle: template,
+	}
+}
+
 type circleSolver struct {
 	lsCircle Circle
 	wsCircle Circle

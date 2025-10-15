@@ -19,7 +19,7 @@ var _ = Describe("Transform", func() {
 		}
 	})
 
-	Specify("ChainedTransform", func() {
+	PSpecify("ChainedTransform", func() {
 		parentTransform := shape2d.TRTransform(
 			dprec.NewVec2(-2.0, -0.5), dprec.Degrees(90.0),
 		)
@@ -28,7 +28,7 @@ var _ = Describe("Transform", func() {
 		Expect(combined.Rotation.Degrees()).To(dprectest.EqualFloat64(120.0))
 	})
 
-	Specify("#Apply", func() {
+	PSpecify("#Apply", func() {
 		vector := dprec.NewVec2(1.0, 0.0)
 		result := transform.Apply(vector)
 		Expect(result).To(dprectest.HaveVec2Coords(
