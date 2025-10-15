@@ -105,12 +105,10 @@ func (s *Scene[O, S]) CreateObject(info ObjectInfo[O]) ObjectID {
 	}
 }
 
-// DeleteObject deletes an object. If the object was inserted into the
-// scene, it is first removed.
+// DeleteObject deletes an object.
 func (s *Scene[O, S]) DeleteObject(objID ObjectID) {
 	object := &s.objects[objID]
 	s.deleteObjectShapes(object)
-	object.firstShape = invalidShapeRef
 	object.userData = gog.Zero[O]() // in case of pointer
 	s.freeObjectIndices.Push(uint32(objID))
 }
@@ -310,8 +308,7 @@ func (s *Scene[O, S]) DeleteShape(shapeID ShapeID) {
 	s.freeShape(ref)
 }
 
-// FindIntersections returns an iterator over all of the intersections
-// in this scene.
+// CollectIntersections yields intersections found in this scene.
 func (s *Scene[O, S]) CollectIntersections(collection ObjectIntersectionCollection) {
 	// Sphere vs Sphere intersections.
 	s.checks = s.checks[:0]
@@ -601,15 +598,27 @@ func (s *Scene[O, S]) freeShape(ref shapeRef) {
 	switch ref.kind() {
 	case shapeKindSphere:
 		sphere := &s.spheres[index]
-		s.sphereTree.Remove(sphere.spatialID) // TODO: Should the ID be set to invalid?
+		s.sphereTree.Remove(sphere.spatialID)
+		sphere.spatialID = InvalidCompactTreeItemID
+		sphere.userData = gog.Zero[S]() // in case of pointer
+		sphere.nextShape = invalidShapeRef
+		sphere.sphereSolver = newSphereSolver(Sphere{})
 		s.freeSphereIndices.Push(index)
 	case shapeKindBox:
 		box := &s.boxes[index]
-		s.boxTree.Remove(box.spatialID) // TODO: Should the ID be set to invalid?
+		s.boxTree.Remove(box.spatialID)
+		box.spatialID = InvalidCompactTreeItemID
+		box.userData = gog.Zero[S]() // in case of pointer
+		box.nextShape = invalidShapeRef
+		box.boxSolver = newBoxSolver(Box{})
 		s.freeBoxIndices.Push(index)
 	case shapeKindMesh:
 		mesh := &s.meshes[index]
-		s.meshTree.Remove(mesh.spatialID) // TODO: Should the ID be set to invalid?
+		s.meshTree.Remove(mesh.spatialID)
+		mesh.spatialID = InvalidCompactTreeItemID
+		mesh.userData = gog.Zero[S]() // in case of pointer
+		mesh.nextShape = invalidShapeRef
+		mesh.meshSolver = newMeshSolver(Mesh{})
 		s.freeMeshIndices.Push(index)
 	default:
 		panic("unknown shape reference")
@@ -746,6 +755,7 @@ func (s *Scene[O, S]) deleteObjectShapes(object *sceneObject[O]) {
 		s.freeShape(ref)
 		ref = nextRef
 	}
+	object.firstShape = invalidShapeRef
 }
 
 func (s *Scene[O, S]) eachObjectShape(object *sceneObject[O], kind shapeKind, cb func(uint32)) {
@@ -789,11 +799,11 @@ func createArea(bs Sphere) CompactQueryAABB {
 	return NewCompactQueryAABBFromSphere(bs.Position, bs.Radius)
 }
 
+const invalidIndexPair = indexPair(0xFFFFFFFFFFFFFFFF)
+
 func newIndexPair(source, target uint32) indexPair {
 	return indexPair((uint64(source) << 32) | uint64(target))
 }
-
-const invalidIndexPair = indexPair(0xFFFFFFFFFFFFFFFF)
 
 type indexPair uint64
 
