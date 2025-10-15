@@ -20,9 +20,9 @@ func newScene(engine *Engine) *Scene {
 
 		shapeScene: shape3d.NewScene[internalRef, struct{}](shape3d.SceneInfo{
 			Size:                opt.V(16384.0),
-			MaxDepth:            opt.V[int32](12),
-			InitialNodeCapacity: opt.V[int32](1024),
-			InitialItemCapacity: opt.V[int32](1024),
+			MaxDepth:            opt.V[uint32](12),
+			InitialNodeCapacity: opt.V[uint32](1024),
+			InitialItemCapacity: opt.V[uint32](1024),
 		}),
 
 		sbCollisionSubscriptions: NewSingleBodyCollisionSubscriptionSet(),

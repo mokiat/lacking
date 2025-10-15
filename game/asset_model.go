@@ -283,7 +283,7 @@ func (m *Model) BindAnimationSubtree(root animation.Node, nodeName string) *anim
 func (m *Model) bindAnimationNodes(root animation.Node, nodeIDs []hierarchy.NodeID) *animation.Player {
 	player := animation.NewPlayer(root)
 	for _, nodeID := range nodeIDs {
-		m.scene.animationBindingSet.Bind(nodeID, player)
+		m.scene.armatureBindingSet.Bind(nodeID, player)
 	}
 	return player
 }

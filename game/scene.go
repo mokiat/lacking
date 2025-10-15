@@ -68,7 +68,7 @@ func newScene(engine *Engine, info SceneInfo) *Scene {
 	fixedTimestep := info.FixedTimestep.ValueOrDefault(16 * time.Millisecond)
 
 	// source binding sets
-	animationBindingSet := hierarchy.NewSourceBindingSet(hierarchyScene, NewAnimationBinding())
+	armatureBindingSet := hierarchy.NewSourceBindingSet(hierarchyScene, NewAnimationBinding())
 	bodyBindingSet := hierarchy.NewSourceBindingSet(hierarchyScene, NewBodyBinding())
 	// target binding sets
 	skyBindingSet := hierarchy.NewInterpolationBindingSet(hierarchyScene, NewSkyBinding())
@@ -88,8 +88,8 @@ func newScene(engine *Engine, info SceneInfo) *Scene {
 		physicsScene:   physicsScene,
 		gfxScene:       gfxScene,
 
-		animationBindingSet: animationBindingSet,
-		bodyBindingSet:      bodyBindingSet,
+		armatureBindingSet: armatureBindingSet,
+		bodyBindingSet:     bodyBindingSet,
 
 		skyBindingSet:              skyBindingSet,
 		ambientLightBindingSet:     ambientLightBindingSet,
@@ -123,8 +123,8 @@ type Scene struct {
 	gfxScene       *graphics.Scene
 
 	// source binding sets
-	animationBindingSet *hierarchy.SourceBindingSet[*animation.Player]
-	bodyBindingSet      *hierarchy.SourceBindingSet[physics.Body]
+	armatureBindingSet *hierarchy.SourceBindingSet[*animation.Player]
+	bodyBindingSet     *hierarchy.SourceBindingSet[physics.Body]
 	// target binding sets
 	skyBindingSet              *hierarchy.InterpolationBindingSet[*graphics.Sky]
 	ambientLightBindingSet     *hierarchy.InterpolationBindingSet[*graphics.AmbientLight]
@@ -216,9 +216,10 @@ func (s *Scene) SubscribeUpdate(callback timestep.UpdateCallback) *timestep.Upda
 	return s.updateSubscriptions.Subscribe(callback)
 }
 
-// AnimationBindingSet returns the binding set that binds animation players
-func (s *Scene) AnimationBindingSet() *hierarchy.SourceBindingSet[*animation.Player] {
-	return s.animationBindingSet
+// ArmatureBindingSet returns the binding set that binds animation players
+// to armatures.
+func (s *Scene) ArmatureBindingSet() *hierarchy.SourceBindingSet[*animation.Player] {
+	return s.armatureBindingSet
 }
 
 // BodyBindingSet returns the binding set that binds physics bodies.

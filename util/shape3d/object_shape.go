@@ -2,7 +2,6 @@ package shape3d
 
 import (
 	"github.com/mokiat/gog/opt"
-	"github.com/mokiat/lacking/util/spatial"
 )
 
 // InvalidShapeID indicates a shape that can never be part of the scene.
@@ -32,7 +31,7 @@ type sceneShape[S any] struct {
 	objectIndex uint32
 	nextShape   shapeRef
 
-	spatialID spatial.CompactOctreeItemID
+	spatialID CompactTreeItemID
 	static    bool
 
 	rejectGroup uint32
