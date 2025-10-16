@@ -45,11 +45,9 @@ func NewScene[O, S any](info SceneInfo) *Scene[O, S] {
 		boxes:   make([]sceneBoxShape[S], 0, 128),
 		meshes:  make([]sceneMeshShape[S], 0, 128),
 
-		sphereTree: NewCompactTree[uint32](cubeOctreeSettings),
-		boxTree:    NewCompactTree[uint32](cubeOctreeSettings),
-		meshTree:   NewCompactTree[uint32](cubeOctreeSettings),
+		tree: NewCompactTree[shapeRef](cubeOctreeSettings),
 
-		checks: make([]indexPair, 0, 1024),
+		checks: make([]shapeRefPair, 0, 1024),
 	}
 }
 
@@ -65,11 +63,15 @@ type Scene[T, S any] struct {
 	boxes   []sceneBoxShape[S]
 	meshes  []sceneMeshShape[S]
 
-	sphereTree *CompactTree[uint32]
-	boxTree    *CompactTree[uint32]
-	meshTree   *CompactTree[uint32]
+	tree *CompactTree[shapeRef]
 
-	checks []indexPair
+	tempShape   sceneShape[S]
+	tempSegment Segment
+	tempSphere  sphereSolver
+	tempBox     boxSolver
+	tempMesh    meshSolver
+
+	checks []shapeRefPair
 }
 
 // CreateObject creates a new object.
@@ -139,19 +141,19 @@ func (s *Scene[O, S]) SetObjectTransform(objID ObjectID, transform Transform) {
 		sphere := &s.spheres[index]
 		sphere.update(transform)
 		bs := sphere.boundingSphere()
-		s.sphereTree.Update(sphere.spatialID, NewCompactCubeFromSphere(bs.Position, bs.Radius))
+		s.tree.Update(sphere.spatialID, NewCompactCubeFromSphere(bs))
 	})
 	s.eachObjectShape(object, shapeKindBox, func(index uint32) {
 		box := &s.boxes[index]
 		box.update(transform)
 		bs := box.boundingSphere()
-		s.boxTree.Update(box.spatialID, NewCompactCubeFromSphere(bs.Position, bs.Radius))
+		s.tree.Update(box.spatialID, NewCompactCubeFromSphere(bs))
 	})
 	s.eachObjectShape(object, shapeKindMesh, func(index uint32) {
 		mesh := &s.meshes[index]
 		mesh.update(transform)
 		bs := mesh.boundingSphere()
-		s.meshTree.Update(mesh.spatialID, NewCompactCubeFromSphere(bs.Position, bs.Radius))
+		s.tree.Update(mesh.spatialID, NewCompactCubeFromSphere(bs))
 	})
 }
 
@@ -173,7 +175,7 @@ func (s *Scene[O, S]) AttachSphere(objID ObjectID, info SphereInfo[S]) ShapeID {
 	solver.update(object.transform)
 
 	bs := solver.boundingSphere()
-	spatialID := s.sphereTree.Insert(NewCompactCubeFromSphere(bs.Position, bs.Radius), index)
+	spatialID := s.tree.Insert(NewCompactCubeFromSphere(bs), ref)
 
 	sphereShape := &s.spheres[index]
 	*sphereShape = sceneSphereShape[S]{
@@ -212,7 +214,7 @@ func (s *Scene[O, S]) AttachBox(objID ObjectID, info BoxInfo[S]) ShapeID {
 	solver.update(object.transform)
 
 	bs := solver.boundingSphere()
-	spatialID := s.boxTree.Insert(NewCompactCubeFromSphere(bs.Position, bs.Radius), index)
+	spatialID := s.tree.Insert(NewCompactCubeFromSphere(bs), ref)
 
 	boxShape := &s.boxes[index]
 	*boxShape = sceneBoxShape[S]{
@@ -251,7 +253,7 @@ func (s *Scene[O, S]) AttachMesh(objID ObjectID, info MeshInfo[S]) ShapeID {
 	solver.update(object.transform)
 
 	bs := solver.boundingSphere()
-	spatialID := s.meshTree.Insert(NewCompactCubeFromSphere(bs.Position, bs.Radius), index)
+	spatialID := s.tree.Insert(NewCompactCubeFromSphere(bs), ref)
 
 	meshShape := &s.meshes[index]
 	*meshShape = sceneMeshShape[S]{
@@ -310,274 +312,99 @@ func (s *Scene[O, S]) DeleteShape(shapeID ShapeID) {
 
 // CollectIntersections yields intersections found in this scene.
 func (s *Scene[O, S]) CollectIntersections(collection ObjectIntersectionCollection) {
-	// Sphere vs Sphere intersections.
 	s.checks = s.checks[:0]
-	s.eachDynamicSphere(func(srcIndex uint32, srcSphere *sceneSphereShape[S]) {
-		area := createArea(srcSphere.boundingSphere())
-		s.sphereTree.QueryAABB(area, func(tgtIndex uint32) bool {
-			tgtSphere := &s.spheres[tgtIndex]
-			if (srcIndex < tgtIndex) && shapesCanIntersect(&srcSphere.sceneShape, &tgtSphere.sceneShape) {
-				s.checks = append(s.checks, newIndexPair(srcIndex, tgtIndex))
-			}
-			return true
-		})
-	})
-	s.collectSphereSphereIntersections(s.checks, collection)
 
-	// Sphere vs Box intersections.
-	s.checks = s.checks[:0]
 	s.eachDynamicSphere(func(srcIndex uint32, srcSphere *sceneSphereShape[S]) {
-		area := createArea(srcSphere.boundingSphere())
-		s.boxTree.QueryAABB(area, func(tgtIndex uint32) bool {
-			tgtBox := &s.boxes[tgtIndex]
-			if shapesCanIntersect(&srcSphere.sceneShape, &tgtBox.sceneShape) {
-				s.checks = append(s.checks, newIndexPair(srcIndex, tgtIndex))
-			}
+		queryAABB := NewCompactQueryAABBFromSphere(srcSphere.boundingSphere())
+		s.tree.QueryAABB(queryAABB, func(tgtRef shapeRef) bool {
+			s.checks = append(s.checks, newShapeRefPair(newShapeRef(shapeKindSphere, srcIndex), tgtRef))
 			return true
 		})
 	})
+
 	s.eachDynamicBox(func(srcIndex uint32, srcBox *sceneBoxShape[S]) {
-		area := createArea(srcBox.boundingSphere())
-		s.sphereTree.QueryAABB(area, func(tgtIndex uint32) bool {
-			tgtSphere := &s.spheres[tgtIndex]
-			if shapesCanIntersect(&tgtSphere.sceneShape, &srcBox.sceneShape) {
-				s.checks = append(s.checks, newIndexPair(tgtIndex, srcIndex)) // flipped
-			}
+		queryAABB := NewCompactQueryAABBFromSphere(srcBox.boundingSphere())
+		s.tree.QueryAABB(queryAABB, func(tgtRef shapeRef) bool {
+			s.checks = append(s.checks, newShapeRefPair(newShapeRef(shapeKindBox, srcIndex), tgtRef))
 			return true
 		})
 	})
-	s.collectSphereBoxIntersections(s.checks, collection)
 
-	// Sphere vs Mesh intersections.
-	s.checks = s.checks[:0]
-	s.eachDynamicSphere(func(srcIndex uint32, srcSphere *sceneSphereShape[S]) {
-		area := createArea(srcSphere.boundingSphere())
-		s.meshTree.QueryAABB(area, func(tgtIndex uint32) bool {
-			tgtMesh := &s.meshes[tgtIndex]
-			if shapesCanIntersect(&srcSphere.sceneShape, &tgtMesh.sceneShape) {
-				s.checks = append(s.checks, newIndexPair(srcIndex, tgtIndex))
-			}
-			return true
-		})
-	})
 	s.eachDynamicMesh(func(srcIndex uint32, srcMesh *sceneMeshShape[S]) {
-		area := createArea(srcMesh.boundingSphere())
-		s.sphereTree.QueryAABB(area, func(tgtIndex uint32) bool {
-			tgtSphere := &s.spheres[tgtIndex]
-			if shapesCanIntersect(&tgtSphere.sceneShape, &srcMesh.sceneShape) {
-				s.checks = append(s.checks, newIndexPair(tgtIndex, srcIndex)) // flipped
-			}
+		queryAABB := NewCompactQueryAABBFromSphere(srcMesh.boundingSphere())
+		s.tree.QueryAABB(queryAABB, func(tgtRef shapeRef) bool {
+			s.checks = append(s.checks, newShapeRefPair(newShapeRef(shapeKindMesh, srcIndex), tgtRef))
 			return true
 		})
 	})
-	s.collectSphereMeshIntersections(s.checks, collection)
 
-	// Box vs Mesh intersections.
-	s.checks = s.checks[:0]
-	s.eachDynamicBox(func(srcIndex uint32, srcBox *sceneBoxShape[S]) {
-		area := createArea(srcBox.boundingSphere())
-		s.meshTree.QueryAABB(area, func(tgtIndex uint32) bool {
-			tgtMesh := &s.meshes[tgtIndex]
-			if shapesCanIntersect(&srcBox.sceneShape, &tgtMesh.sceneShape) {
-				s.checks = append(s.checks, newIndexPair(srcIndex, tgtIndex))
-			}
-			return true
-		})
-	})
-	s.eachDynamicMesh(func(srcIndex uint32, srcMesh *sceneMeshShape[S]) {
-		area := createArea(srcMesh.boundingSphere())
-		s.boxTree.QueryAABB(area, func(tgtIndex uint32) bool {
-			tgtBox := &s.boxes[tgtIndex]
-			if shapesCanIntersect(&tgtBox.sceneShape, &srcMesh.sceneShape) {
-				s.checks = append(s.checks, newIndexPair(tgtIndex, srcIndex)) // flipped
-			}
-			return true
-		})
-	})
-	s.collectBoxMeshIntersections(s.checks, collection)
+	s.collectIntersections(collection)
 }
 
 // CheckSegmentIntersection returns the first intersection of the segment
 // with the scene.
 func (s *Scene[O, S]) CheckSegmentIntersection(segment Segment, mask uint32) (ObjectIntersection, bool) {
-	querySegment := NewCompactQuerySegment(segment.A, segment.B)
-	srcShape := sceneShape[S]{
+	var collection NearestObjectIntersection
+	s.CollectSegmentIntersections(segment, mask, &collection)
+	return collection.Intersection()
+}
+
+// CollectSegmentIntersections collects all intersections of the segment
+// with objects in the scene.
+func (s *Scene[O, S]) CollectSegmentIntersections(segment Segment, mask uint32, collection ObjectIntersectionCollection) {
+	s.tempShape = sceneShape[S]{
 		objectIndex: invalidObjectIndex,
 		targetMask:  mask,
 	}
+	s.tempSegment = segment
+	srcRef := newTempShapeRef(shapeKindSegment)
 
+	s.checks = s.checks[:0]
+	querySegment := NewCompactQuerySegment(segment.A, segment.B)
+	s.tree.QuerySegment(querySegment, func(tgtRef shapeRef) bool {
+		s.checks = append(s.checks, newShapeRefPair(srcRef, tgtRef))
+		return true
+	})
+	s.collectIntersections(collection)
+}
+
+// CheckSphereIntersection returns the first intersection of the sphere
+// with the scene.
+func (s *Scene[O, S]) CheckSphereIntersection(sphere Sphere, mask uint32) (ObjectIntersection, bool) {
 	var collection NearestObjectIntersection
-
-	// Segment vs Sphere
-	s.checks = s.checks[:0]
-	s.sphereTree.QuerySegment(querySegment, func(tgtIndex uint32) bool {
-		tgtSphere := &s.spheres[tgtIndex]
-		if shapesCanIntersect(&srcShape, &tgtSphere.sceneShape) {
-			s.checks = append(s.checks, newIndexPair(0, tgtIndex))
-		}
-		return true
-	})
-	slices.Sort(s.checks)
-	for _, checkPair := range s.checks {
-		sphereIndex := checkPair.tgtIndex()
-		sphere := &s.spheres[sphereIndex]
-		if intersection, ok := CheckSegmentSphereIntersection(segment, sphere.wsSphere); ok {
-			collection.AddIntersection(ObjectIntersection{
-				SourceObjectID: InvalidObjectID,
-				SourceShapeID:  InvalidShapeID,
-				TargetObjectID: ObjectID(sphere.objectIndex),
-				TargetShapeID:  ShapeID(newShapeRef(shapeKindSphere, sphereIndex)),
-				Intersection:   intersection,
-			})
-		}
-	}
-
-	// Segment vs Box
-	s.checks = s.checks[:0]
-	s.boxTree.QuerySegment(querySegment, func(tgtIndex uint32) bool {
-		tgtBox := &s.boxes[tgtIndex]
-		if shapesCanIntersect(&srcShape, &tgtBox.sceneShape) {
-			s.checks = append(s.checks, newIndexPair(0, tgtIndex))
-		}
-		return true
-	})
-	slices.Sort(s.checks)
-	for _, checkPair := range s.checks {
-		boxIndex := checkPair.tgtIndex()
-		box := &s.boxes[boxIndex]
-		if intersection, ok := CheckSegmentBoxIntersection(segment, box.wsBox); ok {
-			collection.AddIntersection(ObjectIntersection{
-				SourceObjectID: InvalidObjectID,
-				SourceShapeID:  InvalidShapeID,
-				TargetObjectID: ObjectID(box.objectIndex),
-				TargetShapeID:  ShapeID(newShapeRef(shapeKindBox, boxIndex)),
-				Intersection:   intersection,
-			})
-		}
-	}
-
-	// Segment vs Mesh
-	s.checks = s.checks[:0]
-	s.meshTree.QuerySegment(querySegment, func(tgtIndex uint32) bool {
-		tgtMesh := &s.meshes[tgtIndex]
-		if shapesCanIntersect(&srcShape, &tgtMesh.sceneShape) {
-			s.checks = append(s.checks, newIndexPair(0, tgtIndex))
-		}
-		return true
-	})
-	slices.Sort(s.checks)
-	for _, checkPair := range s.checks {
-		meshIndex := checkPair.tgtIndex()
-		mesh := &s.meshes[meshIndex]
-		if intersection, ok := CheckSegmentMeshIntersection(segment, mesh.wsMesh); ok {
-			collection.AddIntersection(ObjectIntersection{
-				SourceObjectID: InvalidObjectID,
-				SourceShapeID:  InvalidShapeID,
-				TargetObjectID: ObjectID(mesh.objectIndex),
-				TargetShapeID:  ShapeID(newShapeRef(shapeKindMesh, meshIndex)),
-				Intersection:   intersection,
-			})
-		}
-	}
-
+	s.CollectSphereIntersections(sphere, mask, &collection)
 	return collection.Intersection()
 }
 
 // CheckSphereIntersection returns the first intersection of the sphere
 // with the scene.
-func (s *Scene[O, S]) CheckSphereIntersection(srcSphere Sphere, mask uint32) (ObjectIntersection, bool) {
-	srcShape := sceneShape[S]{
+func (s *Scene[O, S]) CollectSphereIntersections(srcSphere Sphere, mask uint32, collection ObjectIntersectionCollection) {
+	s.tempShape = sceneShape[S]{
 		objectIndex: invalidObjectIndex,
 		targetMask:  mask,
 	}
-	area := createArea(srcSphere)
+	s.tempSphere = newSphereSolver(srcSphere)
+	srcRef := newTempShapeRef(shapeKindSegment)
 
-	var collection NearestObjectIntersection
-
-	// Sphere vs Sphere
 	s.checks = s.checks[:0]
-	s.sphereTree.QueryAABB(area, func(tgtIndex uint32) bool {
-		tgtSphere := &s.spheres[tgtIndex]
-		if shapesCanIntersect(&srcShape, &tgtSphere.sceneShape) {
-			s.checks = append(s.checks, newIndexPair(0, tgtIndex))
-		}
+	queryAABB := NewCompactQueryAABBFromSphere(srcSphere)
+	s.tree.QueryAABB(queryAABB, func(tgtRef shapeRef) bool {
+		s.checks = append(s.checks, newShapeRefPair(srcRef, tgtRef))
 		return true
 	})
-	slices.Sort(s.checks)
-	for _, checkPair := range s.checks {
-		tgtSphereIndex := checkPair.tgtIndex()
-		tgtSphere := &s.spheres[tgtSphereIndex]
-		if intersection, ok := CheckSphereSphereIntersection(srcSphere, tgtSphere.wsSphere); ok {
-			collection.AddIntersection(ObjectIntersection{
-				SourceObjectID: InvalidObjectID,
-				SourceShapeID:  InvalidShapeID,
-				TargetObjectID: ObjectID(tgtSphere.objectIndex),
-				TargetShapeID:  ShapeID(newShapeRef(shapeKindSphere, tgtSphereIndex)),
-				Intersection:   intersection,
-			})
-		}
-	}
-
-	// Sphere vs Box
-	s.checks = s.checks[:0]
-	s.boxTree.QueryAABB(area, func(tgtIndex uint32) bool {
-		tgtBox := &s.boxes[tgtIndex]
-		if shapesCanIntersect(&srcShape, &tgtBox.sceneShape) {
-			s.checks = append(s.checks, newIndexPair(0, tgtIndex))
-		}
-		return true
-	})
-	slices.Sort(s.checks)
-	for _, checkPair := range s.checks {
-		tgtBoxIndex := checkPair.tgtIndex()
-		tgtBox := &s.boxes[tgtBoxIndex]
-		if intersection, ok := CheckSphereBoxIntersection(srcSphere, tgtBox.wsBox); ok {
-			collection.AddIntersection(ObjectIntersection{
-				SourceObjectID: InvalidObjectID,
-				SourceShapeID:  InvalidShapeID,
-				TargetObjectID: ObjectID(tgtBox.objectIndex),
-				TargetShapeID:  ShapeID(newShapeRef(shapeKindBox, tgtBoxIndex)),
-				Intersection:   intersection,
-			})
-		}
-	}
-
-	// Sphere vs Mesh
-	s.checks = s.checks[:0]
-	s.meshTree.QueryAABB(area, func(tgtIndex uint32) bool {
-		tgtMesh := &s.meshes[tgtIndex]
-		if shapesCanIntersect(&srcShape, &tgtMesh.sceneShape) {
-			s.checks = append(s.checks, newIndexPair(0, tgtIndex))
-		}
-		return true
-	})
-	slices.Sort(s.checks)
-	for _, checkPair := range s.checks {
-		tgtMeshIndex := checkPair.tgtIndex()
-		tgtMesh := &s.meshes[tgtMeshIndex]
-		if intersection, ok := CheckSphereMeshIntersection(srcSphere, tgtMesh.wsMesh); ok {
-			collection.AddIntersection(ObjectIntersection{
-				SourceObjectID: InvalidObjectID,
-				SourceShapeID:  InvalidShapeID,
-				TargetObjectID: ObjectID(tgtMesh.objectIndex),
-				TargetShapeID:  ShapeID(newShapeRef(shapeKindMesh, tgtMeshIndex)),
-				Intersection:   intersection,
-			})
-		}
-	}
-
-	return collection.Intersection()
+	s.collectIntersections(collection)
 }
 
 // GC cleans up internal data and allows for memory reuse. This should be
 // called once per frame.
 func (s *Scene[O, S]) GC() {
-	s.sphereTree.GC()
-	s.boxTree.GC()
-	s.meshTree.GC()
+	s.tree.GC()
 }
 
 func (s *Scene[O, S]) getShape(ref shapeRef) *sceneShape[S] {
+	if ref.isTemporary() {
+		return &s.tempShape
+	}
 	switch ref.kind() {
 	case shapeKindSphere:
 		sphere := &s.spheres[ref.index()]
@@ -598,7 +425,7 @@ func (s *Scene[O, S]) freeShape(ref shapeRef) {
 	switch ref.kind() {
 	case shapeKindSphere:
 		sphere := &s.spheres[index]
-		s.sphereTree.Remove(sphere.spatialID)
+		s.tree.Remove(sphere.spatialID)
 		sphere.spatialID = InvalidCompactTreeItemID
 		sphere.userData = gog.Zero[S]() // in case of pointer
 		sphere.nextShape = invalidShapeRef
@@ -606,7 +433,7 @@ func (s *Scene[O, S]) freeShape(ref shapeRef) {
 		s.freeSphereIndices.Push(index)
 	case shapeKindBox:
 		box := &s.boxes[index]
-		s.boxTree.Remove(box.spatialID)
+		s.tree.Remove(box.spatialID)
 		box.spatialID = InvalidCompactTreeItemID
 		box.userData = gog.Zero[S]() // in case of pointer
 		box.nextShape = invalidShapeRef
@@ -614,7 +441,7 @@ func (s *Scene[O, S]) freeShape(ref shapeRef) {
 		s.freeBoxIndices.Push(index)
 	case shapeKindMesh:
 		mesh := &s.meshes[index]
-		s.meshTree.Remove(mesh.spatialID)
+		s.tree.Remove(mesh.spatialID)
 		mesh.spatialID = InvalidCompactTreeItemID
 		mesh.userData = gog.Zero[S]() // in case of pointer
 		mesh.nextShape = invalidShapeRef
@@ -655,98 +482,6 @@ func (s *Scene[O, S]) eachDynamicMesh(cb func(uint32, *sceneMeshShape[S])) {
 	}
 }
 
-func (s *Scene[O, S]) collectSphereSphereIntersections(pairs []indexPair, collection ObjectIntersectionCollection) {
-	lastPair := invalidIndexPair
-	slices.Sort(pairs)
-	for _, pair := range pairs {
-		if pair != lastPair {
-			srcSphereIndex := pair.srcIndex()
-			srcSphere := &s.spheres[srcSphereIndex]
-			tgtSphereIndex := pair.tgtIndex()
-			tgtSphere := &s.spheres[tgtSphereIndex]
-			if intersection, ok := s.checkSphereSphereIntersection(&srcSphere.sphereSolver, &tgtSphere.sphereSolver); ok {
-				collection.AddIntersection(ObjectIntersection{
-					SourceObjectID: ObjectID(srcSphere.objectIndex),
-					SourceShapeID:  ShapeID(newShapeRef(shapeKindSphere, srcSphereIndex)),
-					TargetObjectID: ObjectID(tgtSphere.objectIndex),
-					TargetShapeID:  ShapeID(newShapeRef(shapeKindSphere, tgtSphereIndex)),
-					Intersection:   intersection,
-				})
-			}
-		}
-		lastPair = pair
-	}
-}
-
-func (s *Scene[O, S]) collectSphereBoxIntersections(pairs []indexPair, collection ObjectIntersectionCollection) {
-	lastPair := invalidIndexPair
-	slices.Sort(pairs)
-	for _, pair := range pairs {
-		if pair != lastPair {
-			srcSphereIndex := pair.srcIndex()
-			srcSphere := &s.spheres[srcSphereIndex]
-			tgtBoxIndex := pair.tgtIndex()
-			tgtBox := &s.boxes[tgtBoxIndex]
-			if intersection, ok := s.checkSphereBoxIntersection(&srcSphere.sphereSolver, &tgtBox.boxSolver); ok {
-				collection.AddIntersection(ObjectIntersection{
-					SourceObjectID: ObjectID(srcSphere.objectIndex),
-					SourceShapeID:  ShapeID(newShapeRef(shapeKindSphere, srcSphereIndex)),
-					TargetObjectID: ObjectID(tgtBox.objectIndex),
-					TargetShapeID:  ShapeID(newShapeRef(shapeKindBox, tgtBoxIndex)),
-					Intersection:   intersection,
-				})
-			}
-		}
-		lastPair = pair
-	}
-}
-
-func (s *Scene[O, S]) collectSphereMeshIntersections(pairs []indexPair, collection ObjectIntersectionCollection) {
-	lastPair := invalidIndexPair
-	slices.Sort(pairs)
-	for _, pair := range pairs {
-		if pair != lastPair {
-			srcSphereIndex := pair.srcIndex()
-			srcSphere := &s.spheres[srcSphereIndex]
-			tgtMeshIndex := pair.tgtIndex()
-			tgtMesh := &s.meshes[tgtMeshIndex]
-			if intersection, ok := s.checkSphereMeshIntersection(&srcSphere.sphereSolver, &tgtMesh.meshSolver); ok {
-				collection.AddIntersection(ObjectIntersection{
-					SourceObjectID: ObjectID(srcSphere.objectIndex),
-					SourceShapeID:  ShapeID(newShapeRef(shapeKindSphere, srcSphereIndex)),
-					TargetObjectID: ObjectID(tgtMesh.objectIndex),
-					TargetShapeID:  ShapeID(newShapeRef(shapeKindMesh, tgtMeshIndex)),
-					Intersection:   intersection,
-				})
-			}
-		}
-		lastPair = pair
-	}
-}
-
-func (s *Scene[O, S]) collectBoxMeshIntersections(pairs []indexPair, collection ObjectIntersectionCollection) {
-	lastPair := invalidIndexPair
-	slices.Sort(pairs)
-	for _, pair := range pairs {
-		if pair != lastPair {
-			srcBoxIndex := pair.srcIndex()
-			srcBox := &s.boxes[srcBoxIndex]
-			tgtMeshIndex := pair.tgtIndex()
-			tgtMesh := &s.meshes[tgtMeshIndex]
-			if intersection, ok := s.checkBoxMeshIntersection(&srcBox.boxSolver, &tgtMesh.meshSolver); ok {
-				collection.AddIntersection(ObjectIntersection{
-					SourceObjectID: ObjectID(srcBox.objectIndex),
-					SourceShapeID:  ShapeID(newShapeRef(shapeKindBox, srcBoxIndex)),
-					TargetObjectID: ObjectID(tgtMesh.objectIndex),
-					TargetShapeID:  ShapeID(newShapeRef(shapeKindMesh, tgtMeshIndex)),
-					Intersection:   intersection,
-				})
-			}
-		}
-		lastPair = pair
-	}
-}
-
 func (s *Scene[O, S]) deleteObjectShapes(object *sceneObject[O]) {
 	ref := object.firstShape
 	for ref != invalidShapeRef {
@@ -768,6 +503,294 @@ func (s *Scene[O, S]) eachObjectShape(object *sceneObject[O], kind shapeKind, cb
 		}
 		ref = nextRef
 	}
+}
+
+func (s *Scene[O, S]) collectIntersections(collection ObjectIntersectionCollection) {
+	slices.Sort(s.checks)
+
+	index := 0
+	for index < len(s.checks) {
+		refPair := s.checks[index]
+
+		srcRef := refPair.source()
+		srcIndex := srcRef.index()
+		srcKind := srcRef.kind()
+
+		tgtRef := refPair.target()
+		tgtIndex := tgtRef.index()
+		tgtKind := tgtRef.kind()
+		if (srcKind == tgtKind) && (srcIndex >= tgtIndex) {
+			index++
+			continue // prevent self-intersection and double checks
+		}
+
+		srcShape := s.getShape(srcRef)
+		tgtShape := s.getShape(tgtRef)
+		if !shapesCanIntersect(srcShape, tgtShape) {
+			index++
+			continue // shapes have mismatching rules
+		}
+
+		switch {
+		case srcKind == shapeKindSegment && tgtKind == shapeKindSphere:
+			index = s.collectSegmentSphereIntersections(index, false, collection)
+		case srcKind == shapeKindSphere && tgtKind == shapeKindSegment:
+			index = s.collectSegmentSphereIntersections(index, true, collection)
+		case srcKind == shapeKindSegment && tgtKind == shapeKindBox:
+			index = s.collectSegmentBoxIntersections(index, false, collection)
+		case srcKind == shapeKindBox && tgtKind == shapeKindSegment:
+			index = s.collectSegmentBoxIntersections(index, true, collection)
+		case srcKind == shapeKindSegment && tgtKind == shapeKindMesh:
+			index = s.collectSegmentMeshIntersections(index, false, collection)
+		case srcKind == shapeKindMesh && tgtKind == shapeKindSegment:
+			index = s.collectSegmentMeshIntersections(index, true, collection)
+		case srcKind == shapeKindSphere && tgtKind == shapeKindSphere:
+			index = s.collectSphereSphereIntersections(index, false, collection)
+		case srcKind == shapeKindSphere && tgtKind == shapeKindBox:
+			index = s.collectSphereBoxIntersections(index, false, collection)
+		case srcKind == shapeKindBox && tgtKind == shapeKindSphere:
+			index = s.collectSphereBoxIntersections(index, true, collection)
+		case srcKind == shapeKindSphere && tgtKind == shapeKindMesh:
+			index = s.collectSphereMeshIntersections(index, false, collection)
+		case srcKind == shapeKindMesh && tgtKind == shapeKindSphere:
+			index = s.collectSphereMeshIntersections(index, true, collection)
+		case srcKind == shapeKindBox && tgtKind == shapeKindMesh:
+			index = s.collectBoxMeshIntersections(index, false, collection)
+		case srcKind == shapeKindMesh && tgtKind == shapeKindBox:
+			index = s.collectBoxMeshIntersections(index, true, collection)
+		default:
+			index++
+		}
+	}
+}
+
+func (s *Scene[O, S]) collectSegmentSphereIntersections(index int, flipped bool, collection ObjectIntersectionCollection) int {
+	return s.consumeSameKindRefPairs(index, flipped, func(refPair shapeRefPair) {
+		srcRef := refPair.source()
+		tgtRef := refPair.target()
+
+		srcShape, srcSegment := s.getSegmentSolver(srcRef)
+		tgtShape, tgtSolver := s.getSphereSolver(tgtRef)
+
+		if intersection, ok := CheckSegmentSphereIntersection(srcSegment, tgtSolver.wsSphere); ok {
+			intersection := ObjectIntersection{
+				SourceObjectID: wrapObjectID(srcShape),
+				SourceShapeID:  wrapShapeID[S](tgtRef),
+				TargetObjectID: wrapObjectID(tgtShape),
+				TargetShapeID:  wrapShapeID[S](tgtRef),
+				Intersection:   intersection,
+			}
+			if flipped {
+				collection.AddIntersection(intersection.Flipped())
+			} else {
+				collection.AddIntersection(intersection)
+			}
+		}
+	})
+}
+
+func (s *Scene[O, S]) collectSegmentBoxIntersections(index int, flipped bool, collection ObjectIntersectionCollection) int {
+	return s.consumeSameKindRefPairs(index, flipped, func(refPair shapeRefPair) {
+		srcRef := refPair.source()
+		tgtRef := refPair.target()
+
+		srcShape, srcSegment := s.getSegmentSolver(srcRef)
+		tgtShape, tgtSolver := s.getBoxSolver(tgtRef)
+
+		// TODO: Use internal method that first checks segment->box intersection?
+		if intersection, ok := CheckSegmentBoxIntersection(srcSegment, tgtSolver.wsBox); ok {
+			intersection := ObjectIntersection{
+				SourceObjectID: wrapObjectID(srcShape),
+				SourceShapeID:  wrapShapeID[S](tgtRef),
+				TargetObjectID: wrapObjectID(tgtShape),
+				TargetShapeID:  wrapShapeID[S](tgtRef),
+				Intersection:   intersection,
+			}
+			if flipped {
+				collection.AddIntersection(intersection.Flipped())
+			} else {
+				collection.AddIntersection(intersection)
+			}
+		}
+	})
+}
+
+func (s *Scene[O, S]) collectSegmentMeshIntersections(index int, flipped bool, collection ObjectIntersectionCollection) int {
+	return s.consumeSameKindRefPairs(index, flipped, func(refPair shapeRefPair) {
+		srcRef := refPair.source()
+		tgtRef := refPair.target()
+
+		srcShape, srcSegment := s.getSegmentSolver(srcRef)
+		tgtShape, tgtSolver := s.getMeshSolver(tgtRef)
+
+		// TODO: Use internal method that first checks segment->sphere intersection?
+		if intersection, ok := CheckSegmentMeshIntersection(srcSegment, tgtSolver.wsMesh); ok {
+			intersection := ObjectIntersection{
+				SourceObjectID: wrapObjectID(srcShape),
+				SourceShapeID:  wrapShapeID[S](tgtRef),
+				TargetObjectID: wrapObjectID(tgtShape),
+				TargetShapeID:  wrapShapeID[S](tgtRef),
+				Intersection:   intersection,
+			}
+			if flipped {
+				collection.AddIntersection(intersection.Flipped())
+			} else {
+				collection.AddIntersection(intersection)
+			}
+		}
+	})
+}
+
+func (s *Scene[O, S]) collectSphereSphereIntersections(index int, flipped bool, collection ObjectIntersectionCollection) int {
+	return s.consumeSameKindRefPairs(index, flipped, func(refPair shapeRefPair) {
+		srcRef := refPair.source()
+		tgtRef := refPair.target()
+
+		srcShape, srcSolver := s.getSphereSolver(srcRef)
+		tgtShape, tgtSolver := s.getSphereSolver(tgtRef)
+
+		if intersection, ok := s.checkSphereSphereIntersection(srcSolver, tgtSolver); ok {
+			intersection := ObjectIntersection{
+				SourceObjectID: wrapObjectID(srcShape),
+				SourceShapeID:  wrapShapeID[S](tgtRef),
+				TargetObjectID: wrapObjectID(tgtShape),
+				TargetShapeID:  wrapShapeID[S](tgtRef),
+				Intersection:   intersection,
+			}
+			if flipped {
+				collection.AddIntersection(intersection.Flipped())
+			} else {
+				collection.AddIntersection(intersection)
+			}
+		}
+	})
+}
+
+func (s *Scene[O, S]) collectSphereBoxIntersections(index int, flipped bool, collection ObjectIntersectionCollection) int {
+	return s.consumeSameKindRefPairs(index, flipped, func(refPair shapeRefPair) {
+		srcRef := refPair.source()
+		tgtRef := refPair.target()
+
+		srcShape, srcSolver := s.getSphereSolver(srcRef)
+		tgtShape, tgtSolver := s.getBoxSolver(tgtRef)
+
+		if intersection, ok := s.checkSphereBoxIntersection(srcSolver, tgtSolver); ok {
+			intersection := ObjectIntersection{
+				SourceObjectID: wrapObjectID(srcShape),
+				SourceShapeID:  wrapShapeID[S](tgtRef),
+				TargetObjectID: wrapObjectID(tgtShape),
+				TargetShapeID:  wrapShapeID[S](tgtRef),
+				Intersection:   intersection,
+			}
+			if flipped {
+				collection.AddIntersection(intersection.Flipped())
+			} else {
+				collection.AddIntersection(intersection)
+			}
+		}
+	})
+}
+
+func (s *Scene[O, S]) collectSphereMeshIntersections(index int, flipped bool, collection ObjectIntersectionCollection) int {
+	return s.consumeSameKindRefPairs(index, flipped, func(refPair shapeRefPair) {
+		srcRef := refPair.source()
+		tgtRef := refPair.target()
+
+		srcShape, srcSolver := s.getSphereSolver(srcRef)
+		tgtShape, tgtSolver := s.getMeshSolver(tgtRef)
+
+		if intersection, ok := s.checkSphereMeshIntersection(srcSolver, tgtSolver); ok {
+			intersection := ObjectIntersection{
+				SourceObjectID: wrapObjectID(srcShape),
+				SourceShapeID:  wrapShapeID[S](tgtRef),
+				TargetObjectID: wrapObjectID(tgtShape),
+				TargetShapeID:  wrapShapeID[S](tgtRef),
+				Intersection:   intersection,
+			}
+			if flipped {
+				collection.AddIntersection(intersection.Flipped())
+			} else {
+				collection.AddIntersection(intersection)
+			}
+		}
+	})
+}
+
+func (s *Scene[O, S]) collectBoxMeshIntersections(index int, flipped bool, collection ObjectIntersectionCollection) int {
+	return s.consumeSameKindRefPairs(index, flipped, func(refPair shapeRefPair) {
+		srcRef := refPair.source()
+		tgtRef := refPair.target()
+
+		srcShape, srcSolver := s.getBoxSolver(srcRef)
+		tgtShape, tgtSolver := s.getMeshSolver(tgtRef)
+
+		if intersection, ok := s.checkBoxMeshIntersection(srcSolver, tgtSolver); ok {
+			intersection := ObjectIntersection{
+				SourceObjectID: wrapObjectID(srcShape),
+				SourceShapeID:  wrapShapeID[S](tgtRef),
+				TargetObjectID: wrapObjectID(tgtShape),
+				TargetShapeID:  wrapShapeID[S](tgtRef),
+				Intersection:   intersection,
+			}
+			if flipped {
+				collection.AddIntersection(intersection.Flipped())
+			} else {
+				collection.AddIntersection(intersection)
+			}
+		}
+	})
+}
+
+func (s *Scene[O, S]) getSegmentSolver(ref shapeRef) (*sceneShape[S], Segment) {
+	if !ref.isTemporary() {
+		panic("expected temporary shape reference")
+	}
+	return &s.tempShape, s.tempSegment
+}
+
+func (s *Scene[O, S]) getSphereSolver(ref shapeRef) (*sceneShape[S], *sphereSolver) {
+	if ref.isTemporary() {
+		return &s.tempShape, &s.tempSphere
+	}
+	sphere := &s.spheres[ref.index()]
+	return &sphere.sceneShape, &sphere.sphereSolver
+}
+
+func (s *Scene[O, S]) getBoxSolver(ref shapeRef) (*sceneShape[S], *boxSolver) {
+	if ref.isTemporary() {
+		return &s.tempShape, &s.tempBox
+	}
+	box := &s.boxes[ref.index()]
+	return &box.sceneShape, &box.boxSolver
+}
+
+func (s *Scene[O, S]) getMeshSolver(ref shapeRef) (*sceneShape[S], *meshSolver) {
+	if ref.isTemporary() {
+		return &s.tempShape, &s.tempMesh
+	}
+	mesh := &s.meshes[ref.index()]
+	return &mesh.sceneShape, &mesh.meshSolver
+}
+
+func (s *Scene[O, S]) consumeSameKindRefPairs(index int, flipped bool, cb func(refPair shapeRefPair)) int {
+	refPair := s.checks[index]
+	previousSrcKind := refPair.source().kind()
+	previousTgtKind := refPair.target().kind()
+	for index < len(s.checks) {
+		refPair := s.checks[index]
+		srcKind := refPair.source().kind()
+		tgtKind := refPair.target().kind()
+		if srcKind != previousSrcKind || tgtKind != previousTgtKind {
+			break
+		}
+		if flipped {
+			cb(refPair.flipped())
+		} else {
+			cb(refPair)
+		}
+		index++
+	}
+	return index
 }
 
 func (s *Scene[O, S]) checkSphereSphereIntersection(source, target *sphereSolver) (Intersection, bool) {
@@ -795,22 +818,13 @@ func (s *Scene[O, S]) checkBoxMeshIntersection(source *boxSolver, target *meshSo
 	return CheckBoxMeshIntersection(source.wsBox, target.wsMesh)
 }
 
-func createArea(bs Sphere) CompactQueryAABB {
-	return NewCompactQueryAABBFromSphere(bs.Position, bs.Radius)
+func wrapObjectID[S any](shape *sceneShape[S]) ObjectID {
+	return ObjectID(shape.objectIndex)
 }
 
-const invalidIndexPair = indexPair(0xFFFFFFFFFFFFFFFF)
-
-func newIndexPair(source, target uint32) indexPair {
-	return indexPair((uint64(source) << 32) | uint64(target))
-}
-
-type indexPair uint64
-
-func (p indexPair) srcIndex() uint32 {
-	return uint32(p >> 32)
-}
-
-func (p indexPair) tgtIndex() uint32 {
-	return uint32(p & 0xFFFFFFFF)
+func wrapShapeID[S any](ref shapeRef) ShapeID {
+	if ref.isTemporary() {
+		return InvalidShapeID
+	}
+	return ShapeID(ref)
 }
