@@ -601,14 +601,14 @@ func NewCompactQueryAABB(minX, maxX, minY, maxY, minZ, maxZ float64) CompactQuer
 
 // NewCompactQueryAABBFromSphere creates a new CompactQueryAABB that wraps a
 // sphere.
-func NewCompactQueryAABBFromSphere(position dprec.Vec3, radius float64) CompactQueryAABB {
+func NewCompactQueryAABBFromSphere(sphere Sphere) CompactQueryAABB {
 	return CompactQueryAABB{
-		minX: float32(position.X - radius),
-		maxX: float32(position.X + radius),
-		minY: float32(position.Y - radius),
-		maxY: float32(position.Y + radius),
-		minZ: float32(position.Z - radius),
-		maxZ: float32(position.Z + radius),
+		minX: float32(sphere.Position.X - sphere.Radius),
+		maxX: float32(sphere.Position.X + sphere.Radius),
+		minY: float32(sphere.Position.Y - sphere.Radius),
+		maxY: float32(sphere.Position.Y + sphere.Radius),
+		minZ: float32(sphere.Position.Z - sphere.Radius),
+		maxZ: float32(sphere.Position.Z + sphere.Radius),
 	}
 }
 
@@ -635,12 +635,12 @@ func NewCompactCube(x, y, z, size float64) CompactCube {
 }
 
 // NewCompactCubeFromSphere creates a new CompactCube that wraps a sphere.
-func NewCompactCubeFromSphere(position dprec.Vec3, radius float64) CompactCube {
+func NewCompactCubeFromSphere(sphere Sphere) CompactCube {
 	return CompactCube{
-		x: float32(position.X),
-		y: float32(position.Y),
-		z: float32(position.Z),
-		r: float32(radius),
+		x: float32(sphere.Position.X),
+		y: float32(sphere.Position.Y),
+		z: float32(sphere.Position.Z),
+		r: float32(sphere.Radius),
 	}
 }
 

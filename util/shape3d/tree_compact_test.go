@@ -36,15 +36,20 @@ var _ = Describe("CompactTree", func() {
 
 		BeforeEach(func() {
 			firstItemID = tree.Insert(
-				shape3d.NewCompactCubeFromSphere(dprec.NewVec3(16.0, 16.0, 16.0), 2.0),
+				shape3d.NewCompactCubeFromSphere(
+					shape3d.NewSphere(dprec.NewVec3(16.0, 16.0, 16.0), 2.0),
+				),
 				"First",
 			)
 			secondItemID = tree.Insert(
-				shape3d.NewCompactCubeFromSphere(dprec.NewVec3(48.0, 48.0, 48.0), 2.0),
+				shape3d.NewCompactCubeFromSphere(
+					shape3d.NewSphere(dprec.NewVec3(48.0, 48.0, 48.0), 2.0)),
 				"Second",
 			)
 			thirdItemID = tree.Insert(
-				shape3d.NewCompactCubeFromSphere(dprec.NewVec3(-16.0, -48.0, -16.0), 32.0),
+				shape3d.NewCompactCubeFromSphere(
+					shape3d.NewSphere(dprec.NewVec3(-16.0, -48.0, -16.0), 32.0),
+				),
 				"Third",
 			)
 		})
@@ -77,7 +82,9 @@ var _ = Describe("CompactTree", func() {
 		})
 
 		It("is possible to area-search for items", func() {
-			area := shape3d.NewCompactQueryAABBFromSphere(dprec.NewVec3(64.0, 64.0, 64.0), 63.0)
+			area := shape3d.NewCompactQueryAABBFromSphere(
+				shape3d.NewSphere(dprec.NewVec3(64.0, 64.0, 64.0), 63.0),
+			)
 			var found []string
 			tree.QueryAABB(area, func(item string) bool {
 				found = append(found, item)
@@ -88,7 +95,9 @@ var _ = Describe("CompactTree", func() {
 
 		When("items are searched", func() {
 			BeforeEach(func() {
-				area := shape3d.NewCompactQueryAABBFromSphere(dprec.NewVec3(64.0, 64.0, 64.0), 63.0)
+				area := shape3d.NewCompactQueryAABBFromSphere(
+					shape3d.NewSphere(dprec.NewVec3(64.0, 64.0, 64.0), 63.0),
+				)
 				tree.QueryAABB(area, func(item string) bool {
 					return true
 				})
@@ -108,7 +117,9 @@ var _ = Describe("CompactTree", func() {
 		When("an item is updated", func() {
 			BeforeEach(func() {
 				tree.Update(secondItemID,
-					shape3d.NewCompactCubeFromSphere(dprec.NewVec3(-48.0, 48.0, -48.0), 2.0),
+					shape3d.NewCompactCubeFromSphere(
+						shape3d.NewSphere(dprec.NewVec3(-48.0, 48.0, -48.0), 2.0),
+					),
 				)
 			})
 
@@ -134,7 +145,9 @@ var _ = Describe("CompactTree", func() {
 			})
 
 			It("is reflected in area-search for items", func() {
-				area := shape3d.NewCompactQueryAABBFromSphere(dprec.NewVec3(64.0, 64.0, 64.0), 63.0)
+				area := shape3d.NewCompactQueryAABBFromSphere(
+					shape3d.NewSphere(dprec.NewVec3(64.0, 64.0, 64.0), 63.0),
+				)
 				var found []string
 				tree.QueryAABB(area, func(item string) bool {
 					found = append(found, item)
@@ -161,7 +174,9 @@ var _ = Describe("CompactTree", func() {
 			It("does not return an active item id on new insert", func() {
 				tree.GC() // forces internal reordering of items (white box testing)
 				secondItemID = tree.Insert(
-					shape3d.NewCompactCubeFromSphere(dprec.NewVec3(48.0, 48.0, 48.0), 2.0),
+					shape3d.NewCompactCubeFromSphere(
+						shape3d.NewSphere(dprec.NewVec3(48.0, 48.0, 48.0), 2.0),
+					),
 					"Second",
 				)
 				Expect(secondItemID).ToNot(Equal(firstItemID))
@@ -181,7 +196,9 @@ var _ = Describe("CompactTree", func() {
 			})
 
 			It("is reflected in area-search for items", func() {
-				area := shape3d.NewCompactQueryAABBFromSphere(dprec.NewVec3(64.0, 64.0, 64.0), 63.0)
+				area := shape3d.NewCompactQueryAABBFromSphere(
+					shape3d.NewSphere(dprec.NewVec3(64.0, 64.0, 64.0), 63.0),
+				)
 				var found []string
 				tree.QueryAABB(area, func(item string) bool {
 					found = append(found, item)
