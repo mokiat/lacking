@@ -2,7 +2,6 @@ package shape3d
 
 import (
 	"log/slog"
-	"slices"
 
 	"github.com/mokiat/gog/ds"
 	"github.com/mokiat/gog/opt"
@@ -186,16 +185,11 @@ func (t *CompactTree[T]) VisitStats() CompactTreeVisitStats {
 // Insert adds an item, which occupies the specified cube area, to this
 // tree.
 func (t *CompactTree[T]) Insert(cube CompactCube, value T) CompactTreeItemID {
-	t.isDirty = true
-	if !t.freeItemIDs.IsEmpty() {
-		id := t.freeItemIDs.Pop()
-		itemIndex := t.idMappings[id]
-		item := &t.items[itemIndex]
-		item.box = compactAABBFromCube(cube)
-		item.value = value
-		item.node = t.pickNodeForItem(cube)
-		return item.id
-	} else {
+	node := t.pickNodeForItem(cube)
+	box := compactAABBFromCube(cube)
+	t.markNodeDirty(node)
+
+	if t.freeItemIDs.IsEmpty() {
 		if len(t.items) == cap(t.items) {
 			logger.Warn("Will grow item capacity for compact tree.",
 				slog.Int("current", len(t.items)),
@@ -205,31 +199,40 @@ func (t *CompactTree[T]) Insert(cube CompactCube, value T) CompactTreeItemID {
 		t.idMappings = append(t.idMappings, int32(id))
 		t.items = append(t.items, compactTreeItem[T]{
 			id:    id,
-			node:  t.pickNodeForItem(cube),
-			box:   compactAABBFromCube(cube),
+			node:  node,
+			box:   box,
 			value: value,
 		})
 		return id
+	} else {
+		id := t.freeItemIDs.Pop()
+		itemIndex := t.idMappings[id]
+		item := &t.items[itemIndex]
+		item.box = box
+		item.value = value
+		item.node = node
+		return item.id
 	}
 }
 
 // Update repositions the item with the specified id to the new area.
 func (t *CompactTree[T]) Update(id CompactTreeItemID, cube CompactCube) {
-	t.isDirty = true
 	itemIndex := t.idMappings[id]
 	item := &t.items[itemIndex]
 	item.box = compactAABBFromCube(cube)
+	t.markNodeDirty(item.node) // previous node
 	item.node = t.pickNodeForItem(cube)
+	t.markNodeDirty(item.node) // new node
 }
 
 // Remove removes the item with the specified id from this tree.
 func (t *CompactTree[T]) Remove(id CompactTreeItemID) {
-	t.isDirty = true
 	itemIndex := t.idMappings[id]
 	item := &t.items[itemIndex]
 	if item.node == unspecifiedIndex {
 		panic("cannot remove item twice")
 	}
+	t.markNodeDirty(item.node)
 	item.node = unspecifiedIndex
 	t.freeItemIDs.Push(id)
 }
@@ -272,6 +275,12 @@ func (t *CompactTree[T]) activeNodeCount() uint32 {
 
 func (t *CompactTree[T]) activeItemCount() uint32 {
 	return uint32(len(t.items) - t.freeItemIDs.Size())
+}
+
+func (t *CompactTree[T]) markNodeDirty(nodeIndex int32) {
+	t.isDirty = true
+	node := &t.nodes[nodeIndex]
+	node.isDirty = true
 }
 
 func (t *CompactTree[T]) itemsAtDepth(nodeIndex int32, currentDepth, depth uint32) uint32 {
@@ -352,17 +361,7 @@ func (t *CompactTree[T]) pickChildNode(parentNodeIndex int32, cube CompactCube) 
 		z: childZ,
 		r: childLooseRadius,
 	}
-	if !t.freeNodeIndices.IsEmpty() {
-		childNodeIndex := t.freeNodeIndices.Pop()
-		parentNode.children[childIndex] = childNodeIndex
-		childNode := &t.nodes[childNodeIndex]
-		childNode.parent = parentNodeIndex
-		childNode.children = emptyCompactTreeNodeChildren
-		childNode.looseArea = childLooseArea
-		childNode.itemStart = 0
-		childNode.itemEnd = 0
-		return childNodeIndex
-	} else {
+	if t.freeNodeIndices.IsEmpty() {
 		if len(t.nodes) == cap(t.nodes) {
 			logger.Warn("Will grow node capacity for compact tree.",
 				slog.Int("current", len(t.nodes)),
@@ -380,14 +379,22 @@ func (t *CompactTree[T]) pickChildNode(parentNodeIndex int32, cube CompactCube) 
 			itemEnd:   0,
 		})
 		return childNodeIndex
+	} else {
+		childNodeIndex := t.freeNodeIndices.Pop()
+		parentNode.children[childIndex] = childNodeIndex
+		childNode := &t.nodes[childNodeIndex]
+		childNode.parent = parentNodeIndex
+		childNode.children = emptyCompactTreeNodeChildren
+		childNode.looseArea = childLooseArea
+		childNode.itemStart = 0
+		childNode.itemEnd = 0
+		return childNodeIndex
 	}
 }
 
 func (t *CompactTree[T]) refresh() {
 	if t.isDirty {
-		t.sortItems()
-		t.eraseItemOffsets()
-		t.evaluateItemOffsets()
+		t.groupItems()
 		t.updateIDMappings()
 		t.gcNodes()
 		t.updateAABB(0)
@@ -395,35 +402,49 @@ func (t *CompactTree[T]) refresh() {
 	}
 }
 
-func (t *CompactTree[T]) sortItems() {
-	slices.SortFunc(t.items, compareCompactTreeItems[T])
-}
-
-func (t *CompactTree[T]) eraseItemOffsets() {
+func (t *CompactTree[T]) groupItems() {
 	for i := range t.nodes {
 		node := &t.nodes[i]
 		node.itemStart = 0
 		node.itemEnd = 0
+		node.sortEnd = 0
+	}
+	for i := range t.items {
+		item := &t.items[i]
+		if item.node != unspecifiedIndex {
+			node := &t.nodes[item.node]
+			node.itemEnd++ // use as counter for now
+		}
+	}
+	offset := uint32(0)
+	for i := range t.nodes {
+		node := &t.nodes[i]
+		node.itemStart += offset
+		node.itemEnd += offset
+		node.sortEnd = node.itemStart
+		offset = node.itemEnd
+	}
+	countActiveItems := uint32(offset)
+	for i := uint32(0); i < countActiveItems; {
+		item := &t.items[i]
+		if item.node == unspecifiedIndex {
+			t.swapItems(i, offset)
+			offset++
+			continue
+		}
+		node := &t.nodes[item.node]
+		if i >= node.itemStart && i < node.sortEnd {
+			i++ // item is in the right place
+			continue
+		}
+		t.swapItems(i, node.sortEnd)
+		node.sortEnd++
 	}
 }
 
-func (t *CompactTree[T]) evaluateItemOffsets() {
-	lastNode := unspecifiedIndex
-	itemIndex := uint32(0)
-	itemCount := uint32(len(t.items))
-	for itemIndex < itemCount {
-		item := &t.items[itemIndex]
-		if item.node != lastNode {
-			if lastNode != unspecifiedIndex {
-				t.nodes[lastNode].itemEnd = itemIndex
-			}
-			t.nodes[item.node].itemStart = itemIndex
-		}
-		lastNode = item.node
-		itemIndex++
-	}
-	if lastNode != unspecifiedIndex {
-		t.nodes[lastNode].itemEnd = itemIndex
+func (t *CompactTree[T]) swapItems(i, j uint32) {
+	if i != j {
+		t.items[i], t.items[j] = t.items[j], t.items[i]
 	}
 }
 
@@ -460,28 +481,44 @@ func (t *CompactTree[T]) gcNode(nodeIndex int32) {
 	t.gcNode(parentNodeIndex)
 }
 
-func (t *CompactTree[T]) updateAABB(nodeIndex int32) compactAABB {
+func (t *CompactTree[T]) updateAABB(nodeIndex int32) bool {
 	node := &t.nodes[nodeIndex]
 
-	// The AABB is created flipped so that the first box to be merged will
-	// override this completely. Also, even if it is not overridden, it will
-	// not match anything in this initial form.
-	result := emptyCompactAABB()
-
+	var wereChildrenDirty bool
 	for _, childIndex := range node.children {
 		if childIndex != unspecifiedIndex {
-			childBox := t.updateAABB(childIndex)
-			result = mergeCompactAABBs(result, childBox)
+			if t.updateAABB(childIndex) {
+				wereChildrenDirty = true
+			}
 		}
 	}
 
+	if !node.isDirty && !wereChildrenDirty {
+		return false
+	}
+
+	// One potential optimization is to split the box cache into two parts:
+	// - one for the items boxes
+	// - one for overall (current)
+	// Depending on node.isDirty the overall box can be recomputed from the
+	// cached items boxes. This would avoid recomputing the items boxes every
+	// time.
+
+	result := emptyCompactAABB()
+	for _, childIndex := range node.children {
+		if childIndex != unspecifiedIndex {
+			child := &t.nodes[childIndex]
+			result = mergeCompactAABBs(result, child.box)
+		}
+	}
 	for itemIndex := node.itemStart; itemIndex < node.itemEnd; itemIndex++ {
 		item := &t.items[itemIndex]
 		result = mergeCompactAABBs(result, item.box)
 	}
-
 	node.box = result
-	return result
+	node.isDirty = false
+
+	return true
 }
 
 func (t *CompactTree[T]) visitNodeInAABB(nodeIndex int32, box *CompactQueryAABB, yield VisitorFunc[T]) {
@@ -629,6 +666,8 @@ type compactTreeNode struct {
 	box       compactAABB
 	itemStart uint32
 	itemEnd   uint32
+	sortEnd   uint32
+	isDirty   bool
 }
 
 func (n *compactTreeNode) isEmpty() bool {
@@ -640,10 +679,6 @@ type compactTreeItem[T any] struct {
 	node  int32
 	box   compactAABB
 	value T
-}
-
-func compareCompactTreeItems[T any](a, b compactTreeItem[T]) int {
-	return int(a.node - b.node)
 }
 
 func emptyCompactAABB() compactAABB {
