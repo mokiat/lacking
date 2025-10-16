@@ -45,7 +45,8 @@ func NewScene[O, S any](info SceneInfo) *Scene[O, S] {
 		boxes:   make([]sceneBoxShape[S], 0, 128),
 		meshes:  make([]sceneMeshShape[S], 0, 128),
 
-		tree: NewCompactTree[shapeRef](cubeOctreeSettings),
+		staticTree:  NewCompactTree[shapeRef](cubeOctreeSettings),
+		dynamicTree: NewCompactTree[shapeRef](cubeOctreeSettings),
 
 		checks: make([]shapeRefPair, 0, 1024),
 	}
@@ -63,7 +64,8 @@ type Scene[T, S any] struct {
 	boxes   []sceneBoxShape[S]
 	meshes  []sceneMeshShape[S]
 
-	tree *CompactTree[shapeRef]
+	staticTree  *CompactTree[shapeRef]
+	dynamicTree *CompactTree[shapeRef]
 
 	tempShape   sceneShape[S]
 	tempSegment Segment
@@ -141,19 +143,31 @@ func (s *Scene[O, S]) SetObjectTransform(objID ObjectID, transform Transform) {
 		sphere := &s.spheres[index]
 		sphere.update(transform)
 		bs := sphere.boundingSphere()
-		s.tree.Update(sphere.spatialID, NewCompactCubeFromSphere(bs))
+		if sphere.static {
+			s.staticTree.Update(sphere.spatialID, NewCompactCubeFromSphere(bs))
+		} else {
+			s.dynamicTree.Update(sphere.spatialID, NewCompactCubeFromSphere(bs))
+		}
 	})
 	s.eachObjectShape(object, shapeKindBox, func(index uint32) {
 		box := &s.boxes[index]
 		box.update(transform)
 		bs := box.boundingSphere()
-		s.tree.Update(box.spatialID, NewCompactCubeFromSphere(bs))
+		if box.static {
+			s.staticTree.Update(box.spatialID, NewCompactCubeFromSphere(bs))
+		} else {
+			s.dynamicTree.Update(box.spatialID, NewCompactCubeFromSphere(bs))
+		}
 	})
 	s.eachObjectShape(object, shapeKindMesh, func(index uint32) {
 		mesh := &s.meshes[index]
 		mesh.update(transform)
 		bs := mesh.boundingSphere()
-		s.tree.Update(mesh.spatialID, NewCompactCubeFromSphere(bs))
+		if mesh.static {
+			s.staticTree.Update(mesh.spatialID, NewCompactCubeFromSphere(bs))
+		} else {
+			s.dynamicTree.Update(mesh.spatialID, NewCompactCubeFromSphere(bs))
+		}
 	})
 }
 
@@ -175,10 +189,14 @@ func (s *Scene[O, S]) AttachSphere(objID ObjectID, info SphereInfo[S]) ShapeID {
 	solver.update(object.transform)
 
 	bs := solver.boundingSphere()
-	spatialID := s.tree.Insert(NewCompactCubeFromSphere(bs), ref)
+	var spatialID CompactTreeItemID
+	if object.isStatic() {
+		spatialID = s.staticTree.Insert(NewCompactCubeFromSphere(bs), ref)
+	} else {
+		spatialID = s.dynamicTree.Insert(NewCompactCubeFromSphere(bs), ref)
+	}
 
-	sphereShape := &s.spheres[index]
-	*sphereShape = sceneSphereShape[S]{
+	s.spheres[index] = sceneSphereShape[S]{
 		sceneShape: sceneShape[S]{
 			objectIndex: uint32(objID),
 			nextShape:   object.firstShape,
@@ -191,8 +209,8 @@ func (s *Scene[O, S]) AttachSphere(objID ObjectID, info SphereInfo[S]) ShapeID {
 		},
 		sphereSolver: solver,
 	}
-
 	object.firstShape = ref
+
 	return ShapeID(ref)
 }
 
@@ -214,10 +232,14 @@ func (s *Scene[O, S]) AttachBox(objID ObjectID, info BoxInfo[S]) ShapeID {
 	solver.update(object.transform)
 
 	bs := solver.boundingSphere()
-	spatialID := s.tree.Insert(NewCompactCubeFromSphere(bs), ref)
+	var spatialID CompactTreeItemID
+	if object.isStatic() {
+		spatialID = s.staticTree.Insert(NewCompactCubeFromSphere(bs), ref)
+	} else {
+		spatialID = s.dynamicTree.Insert(NewCompactCubeFromSphere(bs), ref)
+	}
 
-	boxShape := &s.boxes[index]
-	*boxShape = sceneBoxShape[S]{
+	s.boxes[index] = sceneBoxShape[S]{
 		sceneShape: sceneShape[S]{
 			objectIndex: uint32(objID),
 			nextShape:   object.firstShape,
@@ -230,8 +252,8 @@ func (s *Scene[O, S]) AttachBox(objID ObjectID, info BoxInfo[S]) ShapeID {
 		},
 		boxSolver: solver,
 	}
-
 	object.firstShape = ref
+
 	return ShapeID(ref)
 }
 
@@ -253,10 +275,14 @@ func (s *Scene[O, S]) AttachMesh(objID ObjectID, info MeshInfo[S]) ShapeID {
 	solver.update(object.transform)
 
 	bs := solver.boundingSphere()
-	spatialID := s.tree.Insert(NewCompactCubeFromSphere(bs), ref)
+	var spatialID CompactTreeItemID
+	if object.isStatic() {
+		spatialID = s.staticTree.Insert(NewCompactCubeFromSphere(bs), ref)
+	} else {
+		spatialID = s.dynamicTree.Insert(NewCompactCubeFromSphere(bs), ref)
+	}
 
-	meshShape := &s.meshes[index]
-	*meshShape = sceneMeshShape[S]{
+	s.meshes[index] = sceneMeshShape[S]{
 		sceneShape: sceneShape[S]{
 			objectIndex: uint32(objID),
 			nextShape:   object.firstShape,
@@ -269,8 +295,8 @@ func (s *Scene[O, S]) AttachMesh(objID ObjectID, info MeshInfo[S]) ShapeID {
 		},
 		meshSolver: solver,
 	}
-
 	object.firstShape = ref
+
 	return ShapeID(ref)
 }
 
@@ -316,7 +342,11 @@ func (s *Scene[O, S]) CollectIntersections(collection ObjectIntersectionCollecti
 
 	s.eachDynamicSphere(func(srcIndex uint32, srcSphere *sceneSphereShape[S]) {
 		queryAABB := NewCompactQueryAABBFromSphere(srcSphere.boundingSphere())
-		s.tree.QueryAABB(queryAABB, func(tgtRef shapeRef) bool {
+		s.dynamicTree.QueryAABB(queryAABB, func(tgtRef shapeRef) bool {
+			s.checks = append(s.checks, newShapeRefPair(newShapeRef(shapeKindSphere, srcIndex), tgtRef))
+			return true
+		})
+		s.staticTree.QueryAABB(queryAABB, func(tgtRef shapeRef) bool {
 			s.checks = append(s.checks, newShapeRefPair(newShapeRef(shapeKindSphere, srcIndex), tgtRef))
 			return true
 		})
@@ -324,7 +354,11 @@ func (s *Scene[O, S]) CollectIntersections(collection ObjectIntersectionCollecti
 
 	s.eachDynamicBox(func(srcIndex uint32, srcBox *sceneBoxShape[S]) {
 		queryAABB := NewCompactQueryAABBFromSphere(srcBox.boundingSphere())
-		s.tree.QueryAABB(queryAABB, func(tgtRef shapeRef) bool {
+		s.dynamicTree.QueryAABB(queryAABB, func(tgtRef shapeRef) bool {
+			s.checks = append(s.checks, newShapeRefPair(newShapeRef(shapeKindBox, srcIndex), tgtRef))
+			return true
+		})
+		s.staticTree.QueryAABB(queryAABB, func(tgtRef shapeRef) bool {
 			s.checks = append(s.checks, newShapeRefPair(newShapeRef(shapeKindBox, srcIndex), tgtRef))
 			return true
 		})
@@ -332,7 +366,11 @@ func (s *Scene[O, S]) CollectIntersections(collection ObjectIntersectionCollecti
 
 	s.eachDynamicMesh(func(srcIndex uint32, srcMesh *sceneMeshShape[S]) {
 		queryAABB := NewCompactQueryAABBFromSphere(srcMesh.boundingSphere())
-		s.tree.QueryAABB(queryAABB, func(tgtRef shapeRef) bool {
+		s.dynamicTree.QueryAABB(queryAABB, func(tgtRef shapeRef) bool {
+			s.checks = append(s.checks, newShapeRefPair(newShapeRef(shapeKindMesh, srcIndex), tgtRef))
+			return true
+		})
+		s.staticTree.QueryAABB(queryAABB, func(tgtRef shapeRef) bool {
 			s.checks = append(s.checks, newShapeRefPair(newShapeRef(shapeKindMesh, srcIndex), tgtRef))
 			return true
 		})
@@ -355,13 +393,18 @@ func (s *Scene[O, S]) CollectSegmentIntersections(segment Segment, mask uint32, 
 	s.tempShape = sceneShape[S]{
 		objectIndex: invalidObjectIndex,
 		targetMask:  mask,
+		static:      true, // important, otherwise double-check prevention will kick in
 	}
 	s.tempSegment = segment
 	srcRef := newTempShapeRef(shapeKindSegment)
 
 	s.checks = s.checks[:0]
 	querySegment := NewCompactQuerySegment(segment.A, segment.B)
-	s.tree.QuerySegment(querySegment, func(tgtRef shapeRef) bool {
+	s.dynamicTree.QuerySegment(querySegment, func(tgtRef shapeRef) bool {
+		s.checks = append(s.checks, newShapeRefPair(srcRef, tgtRef))
+		return true
+	})
+	s.staticTree.QuerySegment(querySegment, func(tgtRef shapeRef) bool {
 		s.checks = append(s.checks, newShapeRefPair(srcRef, tgtRef))
 		return true
 	})
@@ -382,13 +425,18 @@ func (s *Scene[O, S]) CollectSphereIntersections(srcSphere Sphere, mask uint32, 
 	s.tempShape = sceneShape[S]{
 		objectIndex: invalidObjectIndex,
 		targetMask:  mask,
+		static:      true, // important, otherwise double-check prevention will kick in
 	}
 	s.tempSphere = newSphereSolver(srcSphere)
-	srcRef := newTempShapeRef(shapeKindSegment)
+	srcRef := newTempShapeRef(shapeKindSphere)
 
 	s.checks = s.checks[:0]
 	queryAABB := NewCompactQueryAABBFromSphere(srcSphere)
-	s.tree.QueryAABB(queryAABB, func(tgtRef shapeRef) bool {
+	s.dynamicTree.QueryAABB(queryAABB, func(tgtRef shapeRef) bool {
+		s.checks = append(s.checks, newShapeRefPair(srcRef, tgtRef))
+		return true
+	})
+	s.staticTree.QueryAABB(queryAABB, func(tgtRef shapeRef) bool {
 		s.checks = append(s.checks, newShapeRefPair(srcRef, tgtRef))
 		return true
 	})
@@ -398,7 +446,8 @@ func (s *Scene[O, S]) CollectSphereIntersections(srcSphere Sphere, mask uint32, 
 // GC cleans up internal data and allows for memory reuse. This should be
 // called once per frame.
 func (s *Scene[O, S]) GC() {
-	s.tree.GC()
+	s.staticTree.GC()
+	s.dynamicTree.GC()
 }
 
 func (s *Scene[O, S]) getShape(ref shapeRef) *sceneShape[S] {
@@ -425,7 +474,11 @@ func (s *Scene[O, S]) freeShape(ref shapeRef) {
 	switch ref.kind() {
 	case shapeKindSphere:
 		sphere := &s.spheres[index]
-		s.tree.Remove(sphere.spatialID)
+		if sphere.static {
+			s.staticTree.Remove(sphere.spatialID)
+		} else {
+			s.dynamicTree.Remove(sphere.spatialID)
+		}
 		sphere.spatialID = InvalidCompactTreeItemID
 		sphere.userData = gog.Zero[S]() // in case of pointer
 		sphere.nextShape = invalidShapeRef
@@ -433,7 +486,11 @@ func (s *Scene[O, S]) freeShape(ref shapeRef) {
 		s.freeSphereIndices.Push(index)
 	case shapeKindBox:
 		box := &s.boxes[index]
-		s.tree.Remove(box.spatialID)
+		if box.static {
+			s.staticTree.Remove(box.spatialID)
+		} else {
+			s.dynamicTree.Remove(box.spatialID)
+		}
 		box.spatialID = InvalidCompactTreeItemID
 		box.userData = gog.Zero[S]() // in case of pointer
 		box.nextShape = invalidShapeRef
@@ -441,7 +498,11 @@ func (s *Scene[O, S]) freeShape(ref shapeRef) {
 		s.freeBoxIndices.Push(index)
 	case shapeKindMesh:
 		mesh := &s.meshes[index]
-		s.tree.Remove(mesh.spatialID)
+		if mesh.static {
+			s.staticTree.Remove(mesh.spatialID)
+		} else {
+			s.dynamicTree.Remove(mesh.spatialID)
+		}
 		mesh.spatialID = InvalidCompactTreeItemID
 		mesh.userData = gog.Zero[S]() // in case of pointer
 		mesh.nextShape = invalidShapeRef
@@ -513,22 +574,16 @@ func (s *Scene[O, S]) collectIntersections(collection ObjectIntersectionCollecti
 		refPair := s.checks[index]
 
 		srcRef := refPair.source()
-		srcIndex := srcRef.index()
 		srcKind := srcRef.kind()
 
 		tgtRef := refPair.target()
-		tgtIndex := tgtRef.index()
 		tgtKind := tgtRef.kind()
-		if (srcKind == tgtKind) && (srcIndex >= tgtIndex) {
-			index++
-			continue // prevent self-intersection and double checks
-		}
 
 		srcShape := s.getShape(srcRef)
 		tgtShape := s.getShape(tgtRef)
 		if !shapesCanIntersect(srcShape, tgtShape) {
 			index++
-			continue // shapes have mismatching rules
+			continue
 		}
 
 		switch {

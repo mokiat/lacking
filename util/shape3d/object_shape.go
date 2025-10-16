@@ -47,6 +47,9 @@ func shapesCanIntersect[S any](a, b *sceneShape[S]) bool {
 	if a.objectIndex == b.objectIndex {
 		return false
 	}
+	if !a.static && !b.static && a.objectIndex >= b.objectIndex {
+		return false // prevent double checks for dynamic shapes
+	}
 	if a.rejectGroup != 0 && (a.rejectGroup == b.rejectGroup) {
 		return false
 	}
