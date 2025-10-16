@@ -619,11 +619,11 @@ func NewCompactQuad(x, y, size float64) CompactQuad {
 }
 
 // NewCompactQuadFromCircle creates a new CompactQuad that wraps a circle.
-func NewCompactQuadFromCircle(position dprec.Vec2, radius float64) CompactQuad {
+func NewCompactQuadFromCircle(circle Circle) CompactQuad {
 	return CompactQuad{
-		x: float32(position.X),
-		y: float32(position.Y),
-		r: float32(radius),
+		x: float32(circle.Position.X),
+		y: float32(circle.Position.Y),
+		r: float32(circle.Radius),
 	}
 }
 
