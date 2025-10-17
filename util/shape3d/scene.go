@@ -630,7 +630,7 @@ func (s *Scene[O, S]) collectSegmentSphereIntersections(index int, flipped bool,
 		if intersection, ok := s.checkSegmentSphereIntersection(srcSegment, tgtSolver); ok {
 			intersection := ObjectIntersection{
 				SourceObjectID: wrapObjectID(srcShape),
-				SourceShapeID:  wrapShapeID[S](tgtRef),
+				SourceShapeID:  wrapShapeID[S](srcRef),
 				TargetObjectID: wrapObjectID(tgtShape),
 				TargetShapeID:  wrapShapeID[S](tgtRef),
 				Intersection:   intersection,
@@ -655,7 +655,7 @@ func (s *Scene[O, S]) collectSegmentBoxIntersections(index int, flipped bool, co
 		if intersection, ok := s.checkSegmentBoxIntersection(srcSegment, tgtSolver); ok {
 			intersection := ObjectIntersection{
 				SourceObjectID: wrapObjectID(srcShape),
-				SourceShapeID:  wrapShapeID[S](tgtRef),
+				SourceShapeID:  wrapShapeID[S](srcRef),
 				TargetObjectID: wrapObjectID(tgtShape),
 				TargetShapeID:  wrapShapeID[S](tgtRef),
 				Intersection:   intersection,
@@ -680,7 +680,7 @@ func (s *Scene[O, S]) collectSegmentMeshIntersections(index int, flipped bool, c
 		if intersection, ok := s.checkSegmentMeshIntersection(srcSegment, tgtSolver); ok {
 			intersection := ObjectIntersection{
 				SourceObjectID: wrapObjectID(srcShape),
-				SourceShapeID:  wrapShapeID[S](tgtRef),
+				SourceShapeID:  wrapShapeID[S](srcRef),
 				TargetObjectID: wrapObjectID(tgtShape),
 				TargetShapeID:  wrapShapeID[S](tgtRef),
 				Intersection:   intersection,
@@ -705,7 +705,7 @@ func (s *Scene[O, S]) collectSphereSphereIntersections(index int, flipped bool, 
 		if intersection, ok := s.checkSphereSphereIntersection(srcSolver, tgtSolver); ok {
 			intersection := ObjectIntersection{
 				SourceObjectID: wrapObjectID(srcShape),
-				SourceShapeID:  wrapShapeID[S](tgtRef),
+				SourceShapeID:  wrapShapeID[S](srcRef),
 				TargetObjectID: wrapObjectID(tgtShape),
 				TargetShapeID:  wrapShapeID[S](tgtRef),
 				Intersection:   intersection,
@@ -730,7 +730,7 @@ func (s *Scene[O, S]) collectSphereBoxIntersections(index int, flipped bool, col
 		if intersection, ok := s.checkSphereBoxIntersection(srcSolver, tgtSolver); ok {
 			intersection := ObjectIntersection{
 				SourceObjectID: wrapObjectID(srcShape),
-				SourceShapeID:  wrapShapeID[S](tgtRef),
+				SourceShapeID:  wrapShapeID[S](srcRef),
 				TargetObjectID: wrapObjectID(tgtShape),
 				TargetShapeID:  wrapShapeID[S](tgtRef),
 				Intersection:   intersection,
@@ -755,7 +755,7 @@ func (s *Scene[O, S]) collectSphereMeshIntersections(index int, flipped bool, co
 		if intersection, ok := s.checkSphereMeshIntersection(srcSolver, tgtSolver); ok {
 			intersection := ObjectIntersection{
 				SourceObjectID: wrapObjectID(srcShape),
-				SourceShapeID:  wrapShapeID[S](tgtRef),
+				SourceShapeID:  wrapShapeID[S](srcRef),
 				TargetObjectID: wrapObjectID(tgtShape),
 				TargetShapeID:  wrapShapeID[S](tgtRef),
 				Intersection:   intersection,
@@ -780,7 +780,7 @@ func (s *Scene[O, S]) collectBoxMeshIntersections(index int, flipped bool, colle
 		if intersection, ok := s.checkBoxMeshIntersection(srcSolver, tgtSolver); ok {
 			intersection := ObjectIntersection{
 				SourceObjectID: wrapObjectID(srcShape),
-				SourceShapeID:  wrapShapeID[S](tgtRef),
+				SourceShapeID:  wrapShapeID[S](srcRef),
 				TargetObjectID: wrapObjectID(tgtShape),
 				TargetShapeID:  wrapShapeID[S](tgtRef),
 				Intersection:   intersection,
@@ -851,14 +851,14 @@ func (s *Scene[O, S]) checkSegmentSphereIntersection(source Segment, target *sph
 }
 
 func (s *Scene[O, S]) checkSegmentBoxIntersection(source Segment, target *boxSolver) (Intersection, bool) {
-	if !IsSegmentSphereIntersection(source, target.wsBoundingSphere) {
+	if !IsSegmentSphereOverlap(source, target.wsBoundingSphere) {
 		return Intersection{}, false
 	}
 	return CheckSegmentBoxIntersection(source, target.wsBox)
 }
 
 func (s *Scene[O, S]) checkSegmentMeshIntersection(source Segment, target *meshSolver) (Intersection, bool) {
-	if !IsSegmentSphereIntersection(source, target.wsBoundingSphere) {
+	if !IsSegmentSphereOverlap(source, target.wsBoundingSphere) {
 		return Intersection{}, false
 	}
 	return CheckSegmentMeshIntersection(source, target.wsMesh)

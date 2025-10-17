@@ -19,3 +19,11 @@ type Segment struct {
 	// B is the end of the segment.
 	B dprec.Vec3
 }
+
+// Flipped returns a new segment with the start and end points swapped.
+func (s Segment) Flipped() Segment {
+	return Segment{
+		A: s.B,
+		B: s.A,
+	}
+}

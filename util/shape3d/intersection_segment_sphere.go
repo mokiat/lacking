@@ -28,6 +28,29 @@ func IsSegmentSphereIntersection(segment Segment, sphere Sphere) bool {
 	return t >= 0.0 && t <= 1.0
 }
 
+// IsSegmentSphereOverlap checks if the specified segment overlaps in
+// any way the specified sphere, including being contained by the sphere.
+func IsSegmentSphereOverlap(segment Segment, sphere Sphere) bool {
+	// Solving using parametrization of the segment, resulting in a quadratic
+	// equation.
+	delta := dprec.Vec3Diff(segment.B, segment.A)
+	offset := dprec.Vec3Diff(segment.A, sphere.Position)
+
+	// Using SqrLength in place of dot product with self.
+	a := delta.SqrLength()
+	b := 2.0 * dprec.Vec3Dot(delta, offset)
+	c := offset.SqrLength() - dprec.Sqr(sphere.Radius)
+
+	discriminant := dprec.Sqr(b) - 4.0*a*c
+	if discriminant < 0.0 {
+		return false
+	}
+
+	t1 := (-b - dprec.Sqrt(discriminant)) / (2.0 * a)
+	t2 := (-b + dprec.Sqrt(discriminant)) / (2.0 * a)
+	return t1 < 1.0 && t2 > 0.0
+}
+
 // CheckSegmentSphereIntersection checks if the specified segment intersects
 // the specified sphere and returns the intersection point.
 //
