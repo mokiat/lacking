@@ -4,34 +4,51 @@ import "github.com/mokiat/gomath/dprec"
 
 // CheckSegmentTriangleIntersection checks if a line segment shape intersects
 // with a triangle shape.
+//
+// This function assumes that the triangle has backface culling.
 func CheckSegmentTriangleIntersection(segment Segment, triangle Triangle) (Intersection, bool) {
-	normal := triangle.Normal()
-	pointA := segment.A
-	pointB := segment.B
+	// Using the Möller–Trumbore intersection algorithm.
 
-	heightA := dprec.Vec3Dot(normal, dprec.Vec3Diff(pointA, triangle.A))
-	heightB := dprec.Vec3Dot(normal, dprec.Vec3Diff(pointB, triangle.A))
+	vecAB := dprec.Vec3Diff(triangle.B, triangle.A)
+	vecAC := dprec.Vec3Diff(triangle.C, triangle.A)
 
-	if (heightA > 0.0 && heightB > 0.0) || (heightA < 0.0 && heightB < 0.0) {
+	dir := dprec.Vec3Diff(segment.B, segment.A)
+	crossDirVecAC := dprec.Vec3Cross(dir, vecAC)
+
+	det := dprec.Vec3Dot(vecAB, crossDirVecAC)
+	if det < 0.00001 { // backface culling
 		return Intersection{}, false
 	}
-	if heightA < 0.0 {
-		pointA, pointB = pointB, pointA
-		heightA, heightB = heightB, heightA
-	}
 
-	projectedPoint := dprec.Vec3Sum(
-		dprec.Vec3Prod(pointA, -heightB/(heightA-heightB)),
-		dprec.Vec3Prod(pointB, heightA/(heightA-heightB)),
-	)
+	offset := dprec.Vec3Diff(segment.A, triangle.A)
 
-	if !triangle.ContainsPoint(projectedPoint) {
+	u := dprec.Vec3Dot(offset, crossDirVecAC)
+	if u < 0.0 || u > det {
 		return Intersection{}, false
 	}
+
+	crossOffsetVecAB := dprec.Vec3Cross(offset, vecAB)
+
+	v := dprec.Vec3Dot(dir, crossOffsetVecAB)
+	if v < 0.0 || (u+v) > det {
+		return Intersection{}, false
+	}
+
+	t := dprec.Vec3Dot(vecAC, crossOffsetVecAB)
+	if t < 0.0 || t > det {
+		return Intersection{}, false
+	}
+
+	intersectionPoint := dprec.Vec3Sum(segment.A, dprec.Vec3Prod(dir, t/det))
+
+	normal := dprec.ResizedVec3(dprec.Vec3Cross(vecAB, vecAC), 1.0)
 
 	return Intersection{
-		TargetContact: projectedPoint,
+		TargetContact: intersectionPoint,
 		TargetNormal:  normal,
-		Depth:         -heightB,
+		Depth: -dprec.Vec3Dot(
+			dprec.Vec3Diff(segment.B, intersectionPoint),
+			normal,
+		),
 	}, true
 }
