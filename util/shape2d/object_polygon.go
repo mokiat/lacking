@@ -23,7 +23,7 @@ func newPolygonSolver(template Polygon) polygonSolver {
 		lsPolygon:        template,
 		lsBoundingCircle: bc,
 
-		wsPolygon:        NewPolygon(slices.Clone(template.Segments)),
+		wsPolygon:        NewPolygon(slices.Clone(template.Edges)),
 		wsBoundingCircle: bc,
 	}
 }
@@ -37,9 +37,9 @@ type polygonSolver struct {
 }
 
 func (s *polygonSolver) update(transform Transform) {
-	for i := range s.wsPolygon.Segments {
-		s.wsPolygon.Segments[i] = TransformedSegment(
-			s.lsPolygon.Segments[i],
+	for i := range s.wsPolygon.Edges {
+		s.wsPolygon.Edges[i] = TransformedEdge(
+			s.lsPolygon.Edges[i],
 			transform,
 		)
 	}

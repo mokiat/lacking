@@ -54,3 +54,19 @@ func (r *Rectangle) BoundingCircle() Circle {
 		Radius:   dprec.Sqrt(r.HalfWidth*r.HalfWidth + r.HalfHeight*r.HalfHeight),
 	}
 }
+
+// Vertices returns the four vertices of the rectangle in counter-clockwise
+// order starting from the top-left vertex.
+func (r *Rectangle) Vertices() [4]dprec.Vec2 {
+	topLeft := dprec.NewVec2(-r.HalfWidth, r.HalfHeight)
+	bottomLeft := dprec.NewVec2(-r.HalfWidth, -r.HalfHeight)
+	bottomRight := dprec.NewVec2(r.HalfWidth, -r.HalfHeight)
+	topRight := dprec.NewVec2(r.HalfWidth, r.HalfHeight)
+	transform := TRTransform(r.Position, r.Rotation)
+	return [4]dprec.Vec2{
+		transform.Apply(topLeft),
+		transform.Apply(bottomLeft),
+		transform.Apply(bottomRight),
+		transform.Apply(topRight),
+	}
+}
