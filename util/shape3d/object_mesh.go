@@ -23,9 +23,7 @@ func newMeshSolver(template Mesh) meshSolver {
 		lsMesh:           template,
 		lsBoundingSphere: bs,
 
-		wsMesh: Mesh{
-			Triangles: slices.Clone(template.Triangles),
-		},
+		wsMesh:           NewMesh(slices.Clone(template.Triangles)),
 		wsBoundingSphere: bs,
 	}
 }
@@ -40,12 +38,10 @@ type meshSolver struct {
 
 func (s *meshSolver) update(transform Transform) {
 	for i := range s.wsMesh.Triangles {
-		srcTriangle := &s.lsMesh.Triangles[i]
-		s.wsMesh.Triangles[i] = Triangle{
-			A: transform.Apply(srcTriangle.A),
-			B: transform.Apply(srcTriangle.B),
-			C: transform.Apply(srcTriangle.C),
-		}
+		s.wsMesh.Triangles[i] = TransformedTriangle(
+			s.lsMesh.Triangles[i],
+			transform,
+		)
 	}
 	s.wsBoundingSphere = TransformedSphere(s.lsBoundingSphere, transform)
 }

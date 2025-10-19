@@ -11,6 +11,16 @@ func NewTriangle(a, b, c dprec.Vec3) Triangle {
 	}
 }
 
+// TransformedTriangle creates a new triangle from the specified source
+// triangle by applying the specified transformation.
+func TransformedTriangle(source Triangle, transform Transform) Triangle {
+	return Triangle{
+		A: transform.Apply(source.A),
+		B: transform.Apply(source.B),
+		C: transform.Apply(source.C),
+	}
+}
+
 // Triangle represents a tringle in 3D space.
 type Triangle struct {
 

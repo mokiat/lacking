@@ -341,37 +341,40 @@ func (s *Scene[O, S]) CollectIntersections(collection ObjectIntersectionCollecti
 	s.checks = s.checks[:0]
 
 	s.eachDynamicSphere(func(srcIndex uint32, srcSphere *sceneSphereShape[S]) {
+		srcRef := newShapeRef(shapeKindSphere, srcIndex)
 		queryAABB := NewCompactQueryAABBFromSphere(srcSphere.boundingSphere())
 		s.dynamicTree.QueryAABB(queryAABB, func(tgtRef shapeRef) bool {
-			s.checks = append(s.checks, newShapeRefPair(newShapeRef(shapeKindSphere, srcIndex), tgtRef))
+			s.checks = append(s.checks, newShapeRefPair(srcRef, tgtRef))
 			return true
 		})
 		s.staticTree.QueryAABB(queryAABB, func(tgtRef shapeRef) bool {
-			s.checks = append(s.checks, newShapeRefPair(newShapeRef(shapeKindSphere, srcIndex), tgtRef))
+			s.checks = append(s.checks, newShapeRefPair(srcRef, tgtRef))
 			return true
 		})
 	})
 
 	s.eachDynamicBox(func(srcIndex uint32, srcBox *sceneBoxShape[S]) {
+		srcRef := newShapeRef(shapeKindBox, srcIndex)
 		queryAABB := NewCompactQueryAABBFromSphere(srcBox.boundingSphere())
 		s.dynamicTree.QueryAABB(queryAABB, func(tgtRef shapeRef) bool {
-			s.checks = append(s.checks, newShapeRefPair(newShapeRef(shapeKindBox, srcIndex), tgtRef))
+			s.checks = append(s.checks, newShapeRefPair(srcRef, tgtRef))
 			return true
 		})
 		s.staticTree.QueryAABB(queryAABB, func(tgtRef shapeRef) bool {
-			s.checks = append(s.checks, newShapeRefPair(newShapeRef(shapeKindBox, srcIndex), tgtRef))
+			s.checks = append(s.checks, newShapeRefPair(srcRef, tgtRef))
 			return true
 		})
 	})
 
 	s.eachDynamicMesh(func(srcIndex uint32, srcMesh *sceneMeshShape[S]) {
+		srcRef := newShapeRef(shapeKindMesh, srcIndex)
 		queryAABB := NewCompactQueryAABBFromSphere(srcMesh.boundingSphere())
 		s.dynamicTree.QueryAABB(queryAABB, func(tgtRef shapeRef) bool {
-			s.checks = append(s.checks, newShapeRefPair(newShapeRef(shapeKindMesh, srcIndex), tgtRef))
+			s.checks = append(s.checks, newShapeRefPair(srcRef, tgtRef))
 			return true
 		})
 		s.staticTree.QueryAABB(queryAABB, func(tgtRef shapeRef) bool {
-			s.checks = append(s.checks, newShapeRefPair(newShapeRef(shapeKindMesh, srcIndex), tgtRef))
+			s.checks = append(s.checks, newShapeRefPair(srcRef, tgtRef))
 			return true
 		})
 	})
@@ -382,7 +385,7 @@ func (s *Scene[O, S]) CollectIntersections(collection ObjectIntersectionCollecti
 // CheckSegmentIntersection returns the first intersection of the segment
 // with the scene.
 func (s *Scene[O, S]) CheckSegmentIntersection(segment Segment, mask uint32) (ObjectIntersection, bool) {
-	var collection NearestObjectIntersection
+	var collection LargestObjectIntersection
 	s.CollectSegmentIntersections(segment, mask, &collection)
 	return collection.Intersection()
 }
@@ -414,24 +417,88 @@ func (s *Scene[O, S]) CollectSegmentIntersections(segment Segment, mask uint32, 
 // CheckSphereIntersection returns the first intersection of the sphere
 // with the scene.
 func (s *Scene[O, S]) CheckSphereIntersection(sphere Sphere, mask uint32) (ObjectIntersection, bool) {
-	var collection NearestObjectIntersection
+	var collection LargestObjectIntersection
 	s.CollectSphereIntersections(sphere, mask, &collection)
 	return collection.Intersection()
 }
 
 // CheckSphereIntersection returns the first intersection of the sphere
 // with the scene.
-func (s *Scene[O, S]) CollectSphereIntersections(srcSphere Sphere, mask uint32, collection ObjectIntersectionCollection) {
+func (s *Scene[O, S]) CollectSphereIntersections(sphere Sphere, mask uint32, collection ObjectIntersectionCollection) {
 	s.tempShape = sceneShape[S]{
 		objectIndex: invalidObjectIndex,
 		targetMask:  mask,
 		static:      true, // important, otherwise double-check prevention will kick in
 	}
-	s.tempSphere = newSphereSolver(srcSphere)
+	s.tempSphere = newSphereSolver(sphere)
 	srcRef := newTempShapeRef(shapeKindSphere)
 
 	s.checks = s.checks[:0]
-	queryAABB := NewCompactQueryAABBFromSphere(srcSphere)
+	queryAABB := NewCompactQueryAABBFromSphere(sphere)
+	s.dynamicTree.QueryAABB(queryAABB, func(tgtRef shapeRef) bool {
+		s.checks = append(s.checks, newShapeRefPair(srcRef, tgtRef))
+		return true
+	})
+	s.staticTree.QueryAABB(queryAABB, func(tgtRef shapeRef) bool {
+		s.checks = append(s.checks, newShapeRefPair(srcRef, tgtRef))
+		return true
+	})
+	s.collectIntersections(collection)
+}
+
+// CheckBoxIntersection returns the first intersection of the box
+// with the scene.
+func (s *Scene[O, S]) CheckBoxIntersection(box Box, mask uint32) (ObjectIntersection, bool) {
+	var collection LargestObjectIntersection
+	s.CollectBoxIntersections(box, mask, &collection)
+	return collection.Intersection()
+}
+
+// CollectBoxIntersections collects all intersections of the box
+// with objects in the scene.
+func (s *Scene[O, S]) CollectBoxIntersections(box Box, mask uint32, collection ObjectIntersectionCollection) {
+	s.tempShape = sceneShape[S]{
+		objectIndex: invalidObjectIndex,
+		targetMask:  mask,
+		static:      true, // important, otherwise double-check prevention will kick in
+	}
+	s.tempBox = newBoxSolver(box)
+	srcRef := newTempShapeRef(shapeKindBox)
+
+	s.checks = s.checks[:0]
+	queryAABB := NewCompactQueryAABBFromSphere(box.BoundingSphere())
+	s.dynamicTree.QueryAABB(queryAABB, func(tgtRef shapeRef) bool {
+		s.checks = append(s.checks, newShapeRefPair(srcRef, tgtRef))
+		return true
+	})
+	s.staticTree.QueryAABB(queryAABB, func(tgtRef shapeRef) bool {
+		s.checks = append(s.checks, newShapeRefPair(srcRef, tgtRef))
+		return true
+	})
+	s.collectIntersections(collection)
+}
+
+// CheckMeshIntersection returns the first intersection of the mesh
+// with the scene.
+func (s *Scene[O, S]) CheckMeshIntersection(mesh Mesh, mask uint32) (ObjectIntersection, bool) {
+	var collection LargestObjectIntersection
+	s.CollectMeshIntersections(mesh, mask, &collection)
+	return collection.Intersection()
+}
+
+// CollectMeshIntersections collects all intersections of the mesh
+// with objects in the scene.
+func (s *Scene[O, S]) CollectMeshIntersections(mesh Mesh, mask uint32, collection ObjectIntersectionCollection) {
+	s.tempShape = sceneShape[S]{
+		objectIndex: invalidObjectIndex,
+		targetMask:  mask,
+		static:      true, // important, otherwise double-check prevention will kick in
+	}
+	s.tempMesh = newMeshSolver(mesh)
+	srcRef := newTempShapeRef(shapeKindMesh)
+
+	s.checks = s.checks[:0]
+	queryAABB := NewCompactQueryAABBFromSphere(mesh.BoundingSphere())
 	s.dynamicTree.QueryAABB(queryAABB, func(tgtRef shapeRef) bool {
 		s.checks = append(s.checks, newShapeRefPair(srcRef, tgtRef))
 		return true

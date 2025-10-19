@@ -46,3 +46,11 @@ type Rectangle struct {
 	// HalfHeight holds the half-height of the rectangle.
 	HalfHeight float64
 }
+
+// BoundingCircle returns the bounding circle of the rectangle.
+func (r *Rectangle) BoundingCircle() Circle {
+	return Circle{
+		Position: r.Position,
+		Radius:   dprec.Sqrt(r.HalfWidth*r.HalfWidth + r.HalfHeight*r.HalfHeight),
+	}
+}

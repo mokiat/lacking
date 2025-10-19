@@ -76,8 +76,11 @@ type Scene[T, S any] struct {
 	staticTree  *CompactTree[shapeRef]
 	dynamicTree *CompactTree[shapeRef]
 
-	tempShape   sceneShape[S]
-	tempSegment Segment
+	tempShape     sceneShape[S]
+	tempSegment   Segment
+	tempCircle    Circle
+	tempRectangle Rectangle
+	tempPolygon   Polygon
 
 	checks []shapeRefPair
 }
@@ -344,112 +347,172 @@ func (s *Scene[O, S]) DeleteShape(shapeID ShapeID) {
 
 // CollectIntersections yields intersections found in this scene.
 func (s *Scene[O, S]) CollectIntersections(collection ObjectIntersectionCollection) {
-	// TODO: Continue implementing from here...
+	s.checks = s.checks[:0]
 
-	// 	// Circle vs Circle intersections.
-	// 	s.checks = s.checks[:0]
-	// 	s.eachDynamicCircle(func(srcIndex uint32, srcCircle *sceneCircleShape[S]) {
-	// 		area := NewCompactQueryAABBFromCircle(srcCircle.boundingCircle())
-	// 		s.circleTree.QueryAABB(area, func(tgtIndex uint32) bool {
-	// 			tgtCircle := &s.circles[tgtIndex]
-	// 			if (srcIndex < tgtIndex) && shapesCanIntersect(&srcCircle.sceneShape, &tgtCircle.sceneShape) {
-	// 				s.checks = append(s.checks, newIndexPair(srcIndex, tgtIndex))
-	// 			}
-	// 			return true
-	// 		})
-	// 	})
-	// 	s.collectCircleCircleIntersections(s.checks, collection)
+	s.eachDynamicCircle(func(srcIndex uint32, srcCircle *sceneCircleShape[S]) {
+		srcRef := newShapeRef(shapeKindCircle, srcIndex)
+		queryAABB := NewCompactQueryAABBFromCircle(srcCircle.boundingCircle())
+		s.dynamicTree.QueryAABB(queryAABB, func(tgtRef shapeRef) bool {
+			s.checks = append(s.checks, newShapeRefPair(srcRef, tgtRef))
+			return true
+		})
+		s.staticTree.QueryAABB(queryAABB, func(tgtRef shapeRef) bool {
+			s.checks = append(s.checks, newShapeRefPair(srcRef, tgtRef))
+			return true
+		})
+	})
 
-	// 	// Circle vs Rectangle intersections.
-	// 	s.checks = s.checks[:0]
-	// 	s.eachDynamicCircle(func(srcIndex uint32, srcCircle *sceneCircleShape[S]) {
-	// 		area := NewCompactQueryAABBFromCircle(srcCircle.boundingCircle())
-	// 		s.rectangleTree.QueryAABB(area, func(tgtIndex uint32) bool {
-	// 			tgtRectangle := &s.rectangles[tgtIndex]
-	// 			if shapesCanIntersect(&srcCircle.sceneShape, &tgtRectangle.sceneShape) {
-	// 				s.checks = append(s.checks, newIndexPair(srcIndex, tgtIndex))
-	// 			}
-	// 			return true
-	// 		})
-	// 	})
-	// 	s.eachDynamicRectangle(func(srcIndex uint32, srcRectangle *sceneRectangleShape[S]) {
-	// 		area := NewCompactQueryAABBFromCircle(srcRectangle.boundingCircle())
-	// 		s.circleTree.QueryAABB(area, func(tgtIndex uint32) bool {
-	// 			tgtCircle := &s.circles[tgtIndex]
-	// 			if shapesCanIntersect(&tgtCircle.sceneShape, &srcRectangle.sceneShape) {
-	// 				s.checks = append(s.checks, newIndexPair(tgtIndex, srcIndex)) // flipped
-	// 			}
-	// 			return true
-	// 		})
-	// 	})
-	// 	s.collectCircleRectangleIntersections(s.checks, collection)
+	s.eachDynamicRectangle(func(srcIndex uint32, srcRectangle *sceneRectangleShape[S]) {
+		srcRef := newShapeRef(shapeKindRectangle, srcIndex)
+		queryAABB := NewCompactQueryAABBFromCircle(srcRectangle.boundingCircle())
+		s.dynamicTree.QueryAABB(queryAABB, func(tgtRef shapeRef) bool {
+			s.checks = append(s.checks, newShapeRefPair(srcRef, tgtRef))
+			return true
+		})
+		s.staticTree.QueryAABB(queryAABB, func(tgtRef shapeRef) bool {
+			s.checks = append(s.checks, newShapeRefPair(srcRef, tgtRef))
+			return true
+		})
+	})
 
-	// 	// Circle vs Polygon intersections.
-	// 	s.checks = s.checks[:0]
-	// 	s.eachDynamicCircle(func(srcIndex uint32, srcCircle *sceneCircleShape[S]) {
-	// 		area := NewCompactQueryAABBFromCircle(srcCircle.boundingCircle())
-	// 		s.polygonTree.QueryAABB(area, func(tgtIndex uint32) bool {
-	// 			tgtPolygon := &s.polygons[tgtIndex]
-	// 			if shapesCanIntersect(&srcCircle.sceneShape, &tgtPolygon.sceneShape) {
-	// 				s.checks = append(s.checks, newIndexPair(srcIndex, tgtIndex))
-	// 			}
-	// 			return true
-	// 		})
-	// 	})
-	// 	s.eachDynamicPolygon(func(srcIndex uint32, srcMesh *scenePolygonShape[S]) {
-	// 		area := NewCompactQueryAABBFromCircle(srcMesh.boundingCircle())
-	// 		s.circleTree.QueryAABB(area, func(tgtIndex uint32) bool {
-	// 			tgtCircle := &s.circles[tgtIndex]
-	// 			if shapesCanIntersect(&tgtCircle.sceneShape, &srcMesh.sceneShape) {
-	// 				s.checks = append(s.checks, newIndexPair(tgtIndex, srcIndex)) // flipped
-	// 			}
-	// 			return true
-	// 		})
-	// 	})
-	// 	s.collectCirclePolygonIntersections(s.checks, collection)
+	s.eachDynamicPolygon(func(srcIndex uint32, srcPolygon *scenePolygonShape[S]) {
+		srcRef := newShapeRef(shapeKindPolygon, srcIndex)
+		queryAABB := NewCompactQueryAABBFromCircle(srcPolygon.boundingCircle())
+		s.dynamicTree.QueryAABB(queryAABB, func(tgtRef shapeRef) bool {
+			s.checks = append(s.checks, newShapeRefPair(srcRef, tgtRef))
+			return true
+		})
+		s.staticTree.QueryAABB(queryAABB, func(tgtRef shapeRef) bool {
+			s.checks = append(s.checks, newShapeRefPair(srcRef, tgtRef))
+			return true
+		})
+	})
 
-	// // Rectangle vs Polygon intersections.
-	// s.checks = s.checks[:0]
-	//
-	//	s.eachDynamicRectangle(func(srcIndex uint32, srcRectangle *sceneRectangleShape[S]) {
-	//		area := NewCompactQueryAABBFromCircle(srcRectangle.boundingCircle())
-	//		s.polygonTree.QueryAABB(area, func(tgtIndex uint32) bool {
-	//			tgtPolygon := &s.polygons[tgtIndex]
-	//			if shapesCanIntersect(&srcRectangle.sceneShape, &tgtPolygon.sceneShape) {
-	//				s.checks = append(s.checks, newIndexPair(srcIndex, tgtIndex))
-	//			}
-	//			return true
-	//		})
-	//	})
-	//
-	//	s.eachDynamicPolygon(func(srcIndex uint32, srcPolygon *scenePolygonShape[S]) {
-	//		area := NewCompactQueryAABBFromCircle(srcPolygon.boundingCircle())
-	//		s.rectangleTree.QueryAABB(area, func(tgtIndex uint32) bool {
-	//			tgtRectangle := &s.rectangles[tgtIndex]
-	//			if shapesCanIntersect(&tgtRectangle.sceneShape, &srcPolygon.sceneShape) {
-	//				s.checks = append(s.checks, newIndexPair(tgtIndex, srcIndex)) // flipped
-	//			}
-	//			return true
-	//		})
-	//	})
-	//
-	// s.collectRectanglePolygonIntersections(s.checks, collection)
+	s.collectIntersections(collection)
+}
+
+// CheckSegmentIntersection returns the first intersection of the segment
+// with the scene.
+func (s *Scene[O, S]) CheckSegmentIntersection(segment Segment, mask uint32) (ObjectIntersection, bool) {
+	var collection LargestObjectIntersection
+	s.CollectSegmentIntersections(segment, mask, &collection)
+	return collection.Intersection()
 }
 
 // CollectSegmentIntersections collects all intersections of the segment
 // with objects in the scene.
 func (s *Scene[O, S]) CollectSegmentIntersections(segment Segment, mask uint32, collection ObjectIntersectionCollection) {
-	querySegment := NewCompactQuerySegment(segment.A, segment.B)
-
 	s.tempShape = sceneShape[S]{
 		objectIndex: invalidObjectIndex,
 		targetMask:  mask,
+		static:      true, // important, otherwise double-check prevention will kick in
 	}
 	s.tempSegment = segment
 	srcRef := newTempShapeRef(shapeKindSegment)
 
 	s.checks = s.checks[:0]
+	querySegment := NewCompactQuerySegment(segment.A, segment.B)
 	s.dynamicTree.QuerySegment(querySegment, func(tgtRef shapeRef) bool {
+		s.checks = append(s.checks, newShapeRefPair(srcRef, tgtRef))
+		return true
+	})
+	s.staticTree.QuerySegment(querySegment, func(tgtRef shapeRef) bool {
+		s.checks = append(s.checks, newShapeRefPair(srcRef, tgtRef))
+		return true
+	})
+	s.collectIntersections(collection)
+}
+
+// CheckCircleIntersection returns the first intersection of the circle
+// with the scene.
+func (s *Scene[O, S]) CheckCircleIntersection(circle Circle, mask uint32) (ObjectIntersection, bool) {
+	var collection LargestObjectIntersection
+	s.CollectCircleIntersections(circle, mask, &collection)
+	return collection.Intersection()
+}
+
+// CollectCircleIntersections collects all intersections of the circle
+// with objects in the scene.
+func (s *Scene[O, S]) CollectCircleIntersections(circle Circle, mask uint32, collection ObjectIntersectionCollection) {
+	s.tempShape = sceneShape[S]{
+		objectIndex: invalidObjectIndex,
+		targetMask:  mask,
+		static:      true, // important, otherwise double-check prevention will kick in
+	}
+	s.tempCircle = circle
+	srcRef := newTempShapeRef(shapeKindCircle)
+
+	s.checks = s.checks[:0]
+	queryAABB := NewCompactQueryAABBFromCircle(circle)
+	s.dynamicTree.QueryAABB(queryAABB, func(tgtRef shapeRef) bool {
+		s.checks = append(s.checks, newShapeRefPair(srcRef, tgtRef))
+		return true
+	})
+	s.staticTree.QueryAABB(queryAABB, func(tgtRef shapeRef) bool {
+		s.checks = append(s.checks, newShapeRefPair(srcRef, tgtRef))
+		return true
+	})
+	s.collectIntersections(collection)
+}
+
+// CheckRectangleIntersection returns the first intersection of the rectangle
+// with the scene.
+func (s *Scene[O, S]) CheckRectangleIntersection(rectangle Rectangle, mask uint32) (ObjectIntersection, bool) {
+	var collection LargestObjectIntersection
+	s.CollectRectangleIntersections(rectangle, mask, &collection)
+	return collection.Intersection()
+}
+
+// CollectRectangleIntersections collects all intersections of the rectangle
+// with objects in the scene.
+func (s *Scene[O, S]) CollectRectangleIntersections(rectangle Rectangle, mask uint32, collection ObjectIntersectionCollection) {
+	s.tempShape = sceneShape[S]{
+		objectIndex: invalidObjectIndex,
+		targetMask:  mask,
+		static:      true, // important, otherwise double-check prevention will kick in
+	}
+	s.tempRectangle = rectangle
+	srcRef := newTempShapeRef(shapeKindRectangle)
+
+	s.checks = s.checks[:0]
+	queryAABB := NewCompactQueryAABBFromCircle(rectangle.BoundingCircle())
+	s.dynamicTree.QueryAABB(queryAABB, func(tgtRef shapeRef) bool {
+		s.checks = append(s.checks, newShapeRefPair(srcRef, tgtRef))
+		return true
+	})
+	s.staticTree.QueryAABB(queryAABB, func(tgtRef shapeRef) bool {
+		s.checks = append(s.checks, newShapeRefPair(srcRef, tgtRef))
+		return true
+	})
+	s.collectIntersections(collection)
+}
+
+// CheckPolygonIntersection returns the first intersection of the polygon
+// with the scene.
+func (s *Scene[O, S]) CheckPolygonIntersection(polygon Polygon, mask uint32) (ObjectIntersection, bool) {
+	var collection LargestObjectIntersection
+	s.CollectPolygonIntersections(polygon, mask, &collection)
+	return collection.Intersection()
+}
+
+// CollectPolygonIntersections collects all intersections of the polygon
+// with objects in the scene.
+func (s *Scene[O, S]) CollectPolygonIntersections(polygon Polygon, mask uint32, collection ObjectIntersectionCollection) {
+	s.tempShape = sceneShape[S]{
+		objectIndex: invalidObjectIndex,
+		targetMask:  mask,
+		static:      true, // important, otherwise double-check prevention will kick in
+	}
+	s.tempPolygon = polygon
+	srcRef := newTempShapeRef(shapeKindPolygon)
+
+	s.checks = s.checks[:0]
+	queryAABB := NewCompactQueryAABBFromCircle(polygon.BoundingCircle())
+	s.dynamicTree.QueryAABB(queryAABB, func(tgtRef shapeRef) bool {
+		s.checks = append(s.checks, newShapeRefPair(srcRef, tgtRef))
+		return true
+	})
+	s.staticTree.QueryAABB(queryAABB, func(tgtRef shapeRef) bool {
 		s.checks = append(s.checks, newShapeRefPair(srcRef, tgtRef))
 		return true
 	})
@@ -459,7 +522,124 @@ func (s *Scene[O, S]) CollectSegmentIntersections(segment Segment, mask uint32, 
 // GC cleans up internal data and allows for memory reuse. This should be
 // called once per frame.
 func (s *Scene[O, S]) GC() {
+	s.staticTree.GC()
 	s.dynamicTree.GC()
+}
+
+func (s *Scene[O, S]) getShape(ref shapeRef) *sceneShape[S] {
+	if ref.isTemporary() {
+		return &s.tempShape
+	}
+	switch ref.kind() {
+	case shapeKindCircle:
+		circle := &s.circles[ref.index()]
+		return &circle.sceneShape
+	case shapeKindRectangle:
+		rectangle := &s.rectangles[ref.index()]
+		return &rectangle.sceneShape
+	case shapeKindPolygon:
+		polygon := &s.polygons[ref.index()]
+		return &polygon.sceneShape
+	default:
+		panic("unknown shape reference")
+	}
+}
+
+func (s *Scene[O, S]) freeShape(ref shapeRef) {
+	index := ref.index()
+	switch ref.kind() {
+	case shapeKindCircle:
+		circle := &s.circles[index]
+		if circle.static {
+			s.staticTree.Remove(circle.spatialID)
+		} else {
+			s.dynamicTree.Remove(circle.spatialID)
+		}
+		circle.spatialID = InvalidCompactTreeItemID
+		circle.userData = gog.Zero[S]() // in case of pointer
+		circle.nextShape = invalidShapeRef
+		circle.circleSolver = newCircleSolver(Circle{})
+		s.freeCircleIndices.Push(index)
+	case shapeKindRectangle:
+		rectangle := &s.rectangles[index]
+		if rectangle.static {
+			s.staticTree.Remove(rectangle.spatialID)
+		} else {
+			s.dynamicTree.Remove(rectangle.spatialID)
+		}
+		rectangle.spatialID = InvalidCompactTreeItemID
+		rectangle.userData = gog.Zero[S]() // in case of pointer
+		rectangle.nextShape = invalidShapeRef
+		rectangle.rectangleSolver = newRectangleSolver(Rectangle{})
+		s.freeRectangleIndices.Push(index)
+	case shapeKindPolygon:
+		polygon := &s.polygons[index]
+		if polygon.static {
+			s.staticTree.Remove(polygon.spatialID)
+		} else {
+			s.dynamicTree.Remove(polygon.spatialID)
+		}
+		polygon.spatialID = InvalidCompactTreeItemID
+		polygon.userData = gog.Zero[S]() // in case of pointer
+		polygon.nextShape = invalidShapeRef
+		polygon.polygonSolver = newPolygonSolver(Polygon{})
+		s.freePolygonIndices.Push(index)
+	default:
+		panic("unknown shape reference")
+	}
+}
+
+func (s *Scene[O, S]) eachDynamicCircle(cb func(uint32, *sceneCircleShape[S])) {
+	for index := range uint32(len(s.circles)) {
+		shape := &s.circles[index]
+		if shape.static || (shape.spatialID == InvalidCompactTreeItemID) {
+			continue
+		}
+		cb(index, shape)
+	}
+}
+
+func (s *Scene[O, S]) eachDynamicRectangle(cb func(uint32, *sceneRectangleShape[S])) {
+	for index := range uint32(len(s.rectangles)) {
+		shape := &s.rectangles[index]
+		if shape.static || (shape.spatialID == InvalidCompactTreeItemID) {
+			continue
+		}
+		cb(index, shape)
+	}
+}
+
+func (s *Scene[O, S]) eachDynamicPolygon(cb func(uint32, *scenePolygonShape[S])) {
+	for index := range uint32(len(s.polygons)) {
+		shape := &s.polygons[index]
+		if shape.static || (shape.spatialID == InvalidCompactTreeItemID) {
+			continue
+		}
+		cb(index, shape)
+	}
+}
+
+func (s *Scene[O, S]) deleteObjectShapes(object *sceneObject[O]) {
+	ref := object.firstShape
+	for ref != invalidShapeRef {
+		shape := s.getShape(ref)
+		nextRef := shape.nextShape
+		s.freeShape(ref)
+		ref = nextRef
+	}
+	object.firstShape = invalidShapeRef
+}
+
+func (s *Scene[O, S]) eachObjectShape(object *sceneObject[O], kind shapeKind, cb func(uint32)) {
+	ref := object.firstShape
+	for ref != invalidShapeRef {
+		shape := s.getShape(ref)
+		nextRef := shape.nextShape
+		if ref.kind() == kind {
+			cb(ref.index())
+		}
+		ref = nextRef
+	}
 }
 
 func (s *Scene[O, S]) collectIntersections(collection ObjectIntersectionCollection) {
@@ -470,22 +650,16 @@ func (s *Scene[O, S]) collectIntersections(collection ObjectIntersectionCollecti
 		refPair := s.checks[index]
 
 		srcRef := refPair.source()
-		srcIndex := srcRef.index()
 		srcKind := srcRef.kind()
 
 		tgtRef := refPair.target()
-		tgtIndex := tgtRef.index()
 		tgtKind := tgtRef.kind()
-		if (srcKind == tgtKind) && (srcIndex >= tgtIndex) {
-			index++
-			continue // prevent self-intersection and double checks
-		}
 
 		srcShape := s.getShape(srcRef)
 		tgtShape := s.getShape(tgtRef)
 		if !shapesCanIntersect(srcShape, tgtShape) {
 			index++
-			continue // shapes have mismatching rules
+			continue
 		}
 
 		switch {
@@ -608,199 +782,3 @@ func (s *Scene[O, S]) consumeSameKindRefPairs(index int, flipped bool, cb func(r
 	}
 	return index
 }
-
-func (s *Scene[O, S]) deleteObjectShapes(object *sceneObject[O]) {
-	ref := object.firstShape
-	for ref != invalidShapeRef {
-		shape := s.getShape(ref)
-		nextRef := shape.nextShape
-		s.freeShape(ref)
-		ref = nextRef
-	}
-	object.firstShape = invalidShapeRef
-}
-
-func (s *Scene[O, S]) getShape(ref shapeRef) *sceneShape[S] {
-	if ref.isTemporary() {
-		return &s.tempShape
-	}
-	switch ref.kind() {
-	case shapeKindCircle:
-		circle := &s.circles[ref.index()]
-		return &circle.sceneShape
-	case shapeKindRectangle:
-		rectangle := &s.rectangles[ref.index()]
-		return &rectangle.sceneShape
-	case shapeKindPolygon:
-		polygon := &s.polygons[ref.index()]
-		return &polygon.sceneShape
-	default:
-		panic("unknown shape reference")
-	}
-}
-
-func (s *Scene[O, S]) freeShape(ref shapeRef) {
-	index := ref.index()
-	switch ref.kind() {
-	case shapeKindCircle:
-		circle := &s.circles[index]
-		s.dynamicTree.Remove(circle.spatialID)
-		circle.spatialID = InvalidCompactTreeItemID
-		circle.userData = gog.Zero[S]() // in case of pointer
-		circle.nextShape = invalidShapeRef
-		circle.circleSolver = newCircleSolver(Circle{})
-		s.freeCircleIndices.Push(index)
-	case shapeKindRectangle:
-		rectangle := &s.rectangles[index]
-		s.dynamicTree.Remove(rectangle.spatialID)
-		rectangle.spatialID = InvalidCompactTreeItemID
-		rectangle.userData = gog.Zero[S]() // in case of pointer
-		rectangle.nextShape = invalidShapeRef
-		rectangle.rectangleSolver = newRectangleSolver(Rectangle{})
-		s.freeRectangleIndices.Push(index)
-	case shapeKindPolygon:
-		polygon := &s.polygons[index]
-		s.dynamicTree.Remove(polygon.spatialID)
-		polygon.spatialID = InvalidCompactTreeItemID
-		polygon.userData = gog.Zero[S]() // in case of pointer
-		polygon.nextShape = invalidShapeRef
-		polygon.polygonSolver = newPolygonSolver(Polygon{})
-		s.freePolygonIndices.Push(index)
-	default:
-		panic("unknown shape reference")
-	}
-}
-
-func (s *Scene[O, S]) eachObjectShape(object *sceneObject[O], kind shapeKind, cb func(uint32)) {
-	ref := object.firstShape
-	for ref != invalidShapeRef {
-		shape := s.getShape(ref)
-		nextRef := shape.nextShape
-		if ref.kind() == kind {
-			cb(ref.index())
-		}
-		ref = nextRef
-	}
-}
-
-func (s *Scene[O, S]) eachDynamicCircle(cb func(uint32, *sceneCircleShape[S])) {
-	for index := range uint32(len(s.circles)) {
-		shape := &s.circles[index]
-		if shape.static || (shape.spatialID == InvalidCompactTreeItemID) {
-			continue
-		}
-		cb(index, shape)
-	}
-}
-
-func (s *Scene[O, S]) eachDynamicRectangle(cb func(uint32, *sceneRectangleShape[S])) {
-	for index := range uint32(len(s.rectangles)) {
-		shape := &s.rectangles[index]
-		if shape.static || (shape.spatialID == InvalidCompactTreeItemID) {
-			continue
-		}
-		cb(index, shape)
-	}
-}
-
-func (s *Scene[O, S]) eachDynamicPolygon(cb func(uint32, *scenePolygonShape[S])) {
-	for index := range uint32(len(s.polygons)) {
-		shape := &s.polygons[index]
-		if shape.static || (shape.spatialID == InvalidCompactTreeItemID) {
-			continue
-		}
-		cb(index, shape)
-	}
-}
-
-// func (s *Scene[O, S]) collectCircleCircleIntersections(pairs []indexPair, collection ObjectIntersectionCollection) {
-// 	// lastPair := invalidIndexPair
-// 	// slices.Sort(pairs)
-// 	// for _, pair := range pairs {
-// 	// 	if pair != lastPair {
-// 	// 		srcSphereIndex := pair.srcIndex()
-// 	// 		srcSphere := &s.spheres[srcSphereIndex]
-// 	// 		tgtSphereIndex := pair.tgtIndex()
-// 	// 		tgtSphere := &s.spheres[tgtSphereIndex]
-// 	// 		if intersection, ok := s.checkSphereSphereIntersection(&srcSphere.sphereSolver, &tgtSphere.sphereSolver); ok {
-// 	// 			collection.AddIntersection(ObjectIntersection{
-// 	// 				SourceObjectID: ObjectID(srcSphere.objectIndex),
-// 	// 				SourceShapeID:  ShapeID(newShapeRef(shapeKindSphere, srcSphereIndex)),
-// 	// 				TargetObjectID: ObjectID(tgtSphere.objectIndex),
-// 	// 				TargetShapeID:  ShapeID(newShapeRef(shapeKindSphere, tgtSphereIndex)),
-// 	// 				Intersection:   intersection,
-// 	// 			})
-// 	// 		}
-// 	// 	}
-// 	// 	lastPair = pair
-// 	// }
-// }
-
-// func (s *Scene[O, S]) collectCircleRectangleIntersections(pairs []indexPair, collection ObjectIntersectionCollection) {
-// 	// lastPair := invalidIndexPair
-// 	// slices.Sort(pairs)
-// 	// for _, pair := range pairs {
-// 	// 	if pair != lastPair {
-// 	// 		srcSphereIndex := pair.srcIndex()
-// 	// 		srcSphere := &s.spheres[srcSphereIndex]
-// 	// 		tgtBoxIndex := pair.tgtIndex()
-// 	// 		tgtBox := &s.boxes[tgtBoxIndex]
-// 	// 		if intersection, ok := s.checkSphereBoxIntersection(&srcSphere.sphereSolver, &tgtBox.boxSolver); ok {
-// 	// 			collection.AddIntersection(ObjectIntersection{
-// 	// 				SourceObjectID: ObjectID(srcSphere.objectIndex),
-// 	// 				SourceShapeID:  ShapeID(newShapeRef(shapeKindSphere, srcSphereIndex)),
-// 	// 				TargetObjectID: ObjectID(tgtBox.objectIndex),
-// 	// 				TargetShapeID:  ShapeID(newShapeRef(shapeKindBox, tgtBoxIndex)),
-// 	// 				Intersection:   intersection,
-// 	// 			})
-// 	// 		}
-// 	// 	}
-// 	// 	lastPair = pair
-// 	// }
-// }
-
-// func (s *Scene[O, S]) collectCirclePolygonIntersections(pairs []indexPair, collection ObjectIntersectionCollection) {
-// 	// lastPair := invalidIndexPair
-// 	// slices.Sort(pairs)
-// 	// for _, pair := range pairs {
-// 	// 	if pair != lastPair {
-// 	// 		srcSphereIndex := pair.srcIndex()
-// 	// 		srcSphere := &s.spheres[srcSphereIndex]
-// 	// 		tgtMeshIndex := pair.tgtIndex()
-// 	// 		tgtMesh := &s.meshes[tgtMeshIndex]
-// 	// 		if intersection, ok := s.checkSphereMeshIntersection(&srcSphere.sphereSolver, &tgtMesh.meshSolver); ok {
-// 	// 			collection.AddIntersection(ObjectIntersection{
-// 	// 				SourceObjectID: ObjectID(srcSphere.objectIndex),
-// 	// 				SourceShapeID:  ShapeID(newShapeRef(shapeKindSphere, srcSphereIndex)),
-// 	// 				TargetObjectID: ObjectID(tgtMesh.objectIndex),
-// 	// 				TargetShapeID:  ShapeID(newShapeRef(shapeKindMesh, tgtMeshIndex)),
-// 	// 				Intersection:   intersection,
-// 	// 			})
-// 	// 		}
-// 	// 	}
-// 	// 	lastPair = pair
-// 	// }
-// }
-
-//	func (s *Scene[O, S]) collectRectanglePolygonIntersections(pairs []indexPair, collection ObjectIntersectionCollection) {
-//		// lastPair := invalidIndexPair
-//		// slices.Sort(pairs)
-//		// for _, pair := range pairs {
-//		// 	if pair != lastPair {
-//		// 		srcBoxIndex := pair.srcIndex()
-//		// 		srcBox := &s.boxes[srcBoxIndex]
-//		// 		tgtMeshIndex := pair.tgtIndex()
-//		// 		tgtMesh := &s.meshes[tgtMeshIndex]
-//		// 		if intersection, ok := s.checkBoxMeshIntersection(&srcBox.boxSolver, &tgtMesh.meshSolver); ok {
-//		// 			collection.AddIntersection(ObjectIntersection{
-//		// 				SourceObjectID: ObjectID(srcBox.objectIndex),
-//		// 				SourceShapeID:  ShapeID(newShapeRef(shapeKindBox, srcBoxIndex)),
-//		// 				TargetObjectID: ObjectID(tgtMesh.objectIndex),
-//		// 				TargetShapeID:  ShapeID(newShapeRef(shapeKindMesh, tgtMeshIndex)),
-//		// 				Intersection:   intersection,
-//		// 			})
-//		// 		}
-//		// 	}
-//		// 	lastPair = pair
-//		// }
-//	}

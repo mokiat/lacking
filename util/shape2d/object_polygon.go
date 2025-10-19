@@ -23,9 +23,7 @@ func newPolygonSolver(template Polygon) polygonSolver {
 		lsPolygon:        template,
 		lsBoundingCircle: bc,
 
-		wsPolygon: Polygon{
-			Segments: slices.Clone(template.Segments),
-		},
+		wsPolygon:        NewPolygon(slices.Clone(template.Segments)),
 		wsBoundingCircle: bc,
 	}
 }
@@ -40,11 +38,10 @@ type polygonSolver struct {
 
 func (s *polygonSolver) update(transform Transform) {
 	for i := range s.wsPolygon.Segments {
-		srcSegment := &s.lsPolygon.Segments[i]
-		s.wsPolygon.Segments[i] = Segment{
-			A: transform.Apply(srcSegment.A),
-			B: transform.Apply(srcSegment.B),
-		}
+		s.wsPolygon.Segments[i] = TransformedSegment(
+			s.lsPolygon.Segments[i],
+			transform,
+		)
 	}
 	s.wsBoundingCircle = TransformedCircle(s.lsBoundingCircle, transform)
 }

@@ -141,7 +141,7 @@ func BenchmarkSceneSegment(b *testing.B) {
 		}
 	}
 
-	var collection shape2d.NearestObjectIntersection
+	var collection shape2d.SmallestObjectIntersection
 	for b.Loop() {
 		for range 1024 {
 			segment := shape2d.NewSegment(

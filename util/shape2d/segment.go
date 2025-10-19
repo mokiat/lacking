@@ -10,6 +10,15 @@ func NewSegment(a, b dprec.Vec2) Segment {
 	}
 }
 
+// TransformedSegment creates a new segment from the specified source
+// segment by applying the specified transformation.
+func TransformedSegment(source Segment, transform Transform) Segment {
+	return Segment{
+		A: transform.Apply(source.A),
+		B: transform.Apply(source.B),
+	}
+}
+
 // Segment represents a line segment with fixed start and end points.
 type Segment struct {
 

@@ -53,20 +53,20 @@ func (i *ObjectIntersection) Flipped() ObjectIntersection {
 	}
 }
 
-// NearestObjectIntersection is an implementation of
+// SmallestObjectIntersection is an implementation of
 // ObjectIntersectionCollection that keeps track of the nearest (smallest depth)
 // observed intersection.
-type NearestObjectIntersection struct {
+type SmallestObjectIntersection struct {
 	intersection opt.T[ObjectIntersection]
 }
 
 // Reset clears any observed intersection.
-func (i *NearestObjectIntersection) Reset() {
+func (i *SmallestObjectIntersection) Reset() {
 	i.intersection = opt.Unspecified[ObjectIntersection]()
 }
 
 // AddIntersection tracks the specified intersection.
-func (i *NearestObjectIntersection) AddIntersection(intersection ObjectIntersection) {
+func (i *SmallestObjectIntersection) AddIntersection(intersection ObjectIntersection) {
 	if i.intersection.Specified {
 		if intersection.Depth < i.intersection.Value.Depth {
 			i.intersection.Value = intersection
@@ -78,24 +78,24 @@ func (i *NearestObjectIntersection) AddIntersection(intersection ObjectIntersect
 
 // Intersection returns the worst observed intersection and a flag whether
 // there was actually any intersection observed.
-func (i *NearestObjectIntersection) Intersection() (ObjectIntersection, bool) {
+func (i *SmallestObjectIntersection) Intersection() (ObjectIntersection, bool) {
 	return i.intersection.Value, i.intersection.Specified
 }
 
-// FarthestObjectIntersection is an implementation of
+// LargestObjectIntersection is an implementation of
 // ObjectIntersectionCollection that keeps track of the farthest (largest depth)
 // observed intersection.
-type FarthestObjectIntersection struct {
+type LargestObjectIntersection struct {
 	intersection opt.T[ObjectIntersection]
 }
 
 // Reset clears any observed intersection.
-func (i *FarthestObjectIntersection) Reset() {
+func (i *LargestObjectIntersection) Reset() {
 	i.intersection = opt.Unspecified[ObjectIntersection]()
 }
 
 // AddIntersection tracks the specified intersection.
-func (i *FarthestObjectIntersection) AddIntersection(intersection ObjectIntersection) {
+func (i *LargestObjectIntersection) AddIntersection(intersection ObjectIntersection) {
 	if i.intersection.Specified {
 		if intersection.Depth > i.intersection.Value.Depth {
 			i.intersection.Value = intersection
@@ -107,7 +107,7 @@ func (i *FarthestObjectIntersection) AddIntersection(intersection ObjectIntersec
 
 // Intersection returns the worst observed intersection and a flag whether
 // there was actually any intersection observed.
-func (i *FarthestObjectIntersection) Intersection() (ObjectIntersection, bool) {
+func (i *LargestObjectIntersection) Intersection() (ObjectIntersection, bool) {
 	return i.intersection.Value, i.intersection.Specified
 }
 

@@ -50,3 +50,13 @@ type Box struct {
 	// HalfLength holds the half-length of the box.
 	HalfLength float64
 }
+
+// BoundingSphere returns the bounding sphere of the box.
+func (b *Box) BoundingSphere() Sphere {
+	return Sphere{
+		Position: b.Position,
+		Radius: dprec.Sqrt(
+			b.HalfWidth*b.HalfWidth + b.HalfHeight*b.HalfHeight + b.HalfLength*b.HalfLength,
+		),
+	}
+}

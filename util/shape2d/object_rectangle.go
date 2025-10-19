@@ -1,7 +1,5 @@
 package shape2d
 
-import "github.com/mokiat/gomath/dprec"
-
 // RectangleInfo contains the information needed to create a rectangle shape.
 type RectangleInfo[S any] struct {
 
@@ -19,13 +17,8 @@ type sceneRectangleShape[S any] struct {
 
 func newRectangleSolver(template Rectangle) rectangleSolver {
 	return rectangleSolver{
-		lsRectangle: template,
-		lsBoundingCircle: Circle{
-			Position: template.Position,
-			Radius: dprec.Sqrt(
-				dprec.Sqr(template.HalfWidth) + dprec.Sqr(template.HalfHeight),
-			),
-		},
+		lsRectangle:      template,
+		lsBoundingCircle: template.BoundingCircle(),
 	}
 }
 
@@ -39,10 +32,7 @@ type rectangleSolver struct {
 
 func (s *rectangleSolver) update(transform Transform) {
 	s.wsRectangle = TransformedRectangle(s.lsRectangle, transform)
-	s.wsBoundingCircle = Circle{
-		Position: transform.Apply(s.lsBoundingCircle.Position),
-		Radius:   s.lsBoundingCircle.Radius,
-	}
+	s.wsBoundingCircle = TransformedCircle(s.lsBoundingCircle, transform)
 }
 
 func (s *rectangleSolver) boundingCircle() Circle {

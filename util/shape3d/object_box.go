@@ -1,9 +1,5 @@
 package shape3d
 
-import (
-	"github.com/mokiat/gomath/dprec"
-)
-
 // BoxInfo contains the information needed to create a box shape.
 type BoxInfo[S any] struct {
 
@@ -21,13 +17,8 @@ type sceneBoxShape[S any] struct {
 
 func newBoxSolver(template Box) boxSolver {
 	return boxSolver{
-		lsBox: template,
-		lsBoundingSphere: Sphere{
-			Position: template.Position,
-			Radius: dprec.Sqrt(
-				dprec.Sqr(template.HalfWidth) + dprec.Sqr(template.HalfHeight) + dprec.Sqr(template.HalfLength),
-			),
-		},
+		lsBox:            template,
+		lsBoundingSphere: template.BoundingSphere(),
 	}
 }
 
@@ -41,10 +32,7 @@ type boxSolver struct {
 
 func (s *boxSolver) update(transform Transform) {
 	s.wsBox = TransformedBox(s.lsBox, transform)
-	s.wsBoundingSphere = Sphere{
-		Position: transform.Apply(s.lsBoundingSphere.Position),
-		Radius:   s.lsBoundingSphere.Radius,
-	}
+	s.wsBoundingSphere = TransformedSphere(s.lsBoundingSphere, transform)
 }
 
 func (s *boxSolver) boundingSphere() Sphere {
