@@ -47,6 +47,9 @@ func shapesCanIntersect[S any](a, b *sceneShape[S]) bool {
 	if a.objectIndex == b.objectIndex {
 		return false
 	}
+	if !a.static && !b.static && a.objectIndex >= b.objectIndex {
+		return false // prevent double checks for dynamic shapes
+	}
 	if a.rejectGroup != 0 && (a.rejectGroup == b.rejectGroup) {
 		return false
 	}
@@ -58,6 +61,7 @@ func shapesCanIntersect[S any](a, b *sceneShape[S]) bool {
 
 const (
 	shapeKindNone shapeKind = iota
+	shapeKindSegment
 	shapeKindCircle
 	shapeKindRectangle
 	shapeKindPolygon
@@ -69,6 +73,8 @@ func (k shapeKind) String() string {
 	switch k {
 	case shapeKindNone:
 		return "None"
+	case shapeKindSegment:
+		return "Segment"
 	case shapeKindCircle:
 		return "Circle"
 	case shapeKindRectangle:
@@ -82,8 +88,14 @@ func (k shapeKind) String() string {
 
 const invalidShapeRef = shapeRef(0) // has none shape kind
 
+const tempShapeIndex = uint32(0xFFFFFFE) // reserved index for temporary shapes
+
 func newShapeRef(kind shapeKind, index uint32) shapeRef {
 	return shapeRef((index << 4) | (uint32(kind) & 0b1111))
+}
+
+func newTempShapeRef(kind shapeKind) shapeRef {
+	return newShapeRef(kind, tempShapeIndex)
 }
 
 type shapeRef uint32
@@ -98,4 +110,26 @@ func (r shapeRef) index() uint32 {
 
 func (r shapeRef) kind() shapeKind {
 	return shapeKind(r & 0b1111)
+}
+
+func (r shapeRef) isTemporary() bool {
+	return r.index() == tempShapeIndex
+}
+
+func newShapeRefPair(source, target shapeRef) shapeRefPair {
+	return shapeRefPair(uint64(source)<<32 | uint64(target))
+}
+
+type shapeRefPair uint64
+
+func (p shapeRefPair) flipped() shapeRefPair {
+	return newShapeRefPair(p.target(), p.source())
+}
+
+func (p shapeRefPair) source() shapeRef {
+	return shapeRef(uint32(p >> 32))
+}
+
+func (p shapeRefPair) target() shapeRef {
+	return shapeRef(uint32(p & 0xFFFFFFFF))
 }
