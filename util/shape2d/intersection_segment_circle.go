@@ -2,7 +2,28 @@ package shape2d
 
 import "github.com/mokiat/gomath/dprec"
 
-// TODO: Write test for this!
+// IsSegmentCircleOverlap checks if the specified segment overlaps in
+// any way the specified circle, including being contained by the circle.
+func IsSegmentCircleOverlap(segment Segment, circle Circle) bool {
+	// Solving using parametrization of the segment, resulting in a quadratic
+	// equation.
+	delta := dprec.Vec2Diff(segment.B, segment.A)
+	offset := dprec.Vec2Diff(segment.A, circle.Position)
+
+	// Using SqrLength in place of dot product with self.
+	a := delta.SqrLength()
+	b := 2.0 * dprec.Vec2Dot(delta, offset)
+	c := offset.SqrLength() - dprec.Sqr(circle.Radius)
+
+	discriminant := dprec.Sqr(b) - 4.0*a*c
+	if discriminant < 0.0 {
+		return false
+	}
+
+	t1 := (-b - dprec.Sqrt(discriminant)) / (2.0 * a)
+	t2 := (-b + dprec.Sqrt(discriminant)) / (2.0 * a)
+	return t1 < 1.0 && t2 > 0.0
+}
 
 // CheckSegmentCircleIntersection checks if the specified segment intersects
 // the specified circle and returns the intersection point.

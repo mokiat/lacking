@@ -78,9 +78,9 @@ type Scene[T, S any] struct {
 
 	tempShape     sceneShape[S]
 	tempSegment   Segment
-	tempCircle    Circle
-	tempRectangle Rectangle
-	tempPolygon   Polygon
+	tempCircle    circleSolver
+	tempRectangle rectangleSolver
+	tempPolygon   polygonSolver
 
 	checks []shapeRefPair
 }
@@ -439,7 +439,7 @@ func (s *Scene[O, S]) CollectCircleIntersections(circle Circle, mask uint32, col
 		targetMask:  mask,
 		static:      true, // important, otherwise double-check prevention will kick in
 	}
-	s.tempCircle = circle
+	s.tempCircle = newCircleSolver(circle)
 	srcRef := newTempShapeRef(shapeKindCircle)
 
 	s.checks = s.checks[:0]
@@ -471,7 +471,7 @@ func (s *Scene[O, S]) CollectRectangleIntersections(rectangle Rectangle, mask ui
 		targetMask:  mask,
 		static:      true, // important, otherwise double-check prevention will kick in
 	}
-	s.tempRectangle = rectangle
+	s.tempRectangle = newRectangleSolver(rectangle)
 	srcRef := newTempShapeRef(shapeKindRectangle)
 
 	s.checks = s.checks[:0]
@@ -503,7 +503,7 @@ func (s *Scene[O, S]) CollectPolygonIntersections(polygon Polygon, mask uint32, 
 		targetMask:  mask,
 		static:      true, // important, otherwise double-check prevention will kick in
 	}
-	s.tempPolygon = polygon
+	s.tempPolygon = newPolygonSolver(polygon)
 	srcRef := newTempShapeRef(shapeKindPolygon)
 
 	s.checks = s.checks[:0]
@@ -684,19 +684,17 @@ func (s *Scene[O, S]) collectIntersections(collection ObjectIntersectionCollecti
 func (s *Scene[O, S]) collectSegmentCircleIntersections(index int, flipped bool, collection ObjectIntersectionCollection) int {
 	return s.consumeSameKindRefPairs(index, flipped, func(refPair shapeRefPair) {
 		srcRef := refPair.source()
-		if !srcRef.isTemporary() {
-			panic("expected temporary source shape reference")
-		}
 		tgtRef := refPair.target()
-		tgtCircleIndex := tgtRef.index()
-		tgtCircle := s.circles[tgtCircleIndex]
 
-		if intersection, ok := CheckSegmentCircleIntersection(s.tempSegment, tgtCircle.wsCircle); ok {
+		srcShape, srcSegment := s.getSegmentSolver(srcRef)
+		tgtShape, tgtSolver := s.getCircleSolver(tgtRef)
+
+		if intersection, ok := s.checkSegmentCircleIntersection(srcSegment, tgtSolver); ok {
 			intersection := ObjectIntersection{
-				SourceObjectID: InvalidObjectID,
-				SourceShapeID:  InvalidShapeID,
-				TargetObjectID: ObjectID(tgtCircle.objectIndex),
-				TargetShapeID:  ShapeID(newShapeRef(shapeKindCircle, tgtCircleIndex)),
+				SourceObjectID: wrapObjectID(srcShape),
+				SourceShapeID:  wrapShapeID[S](srcRef),
+				TargetObjectID: wrapObjectID(tgtShape),
+				TargetShapeID:  wrapShapeID[S](tgtRef),
 				Intersection:   intersection,
 			}
 			if flipped {
@@ -711,19 +709,17 @@ func (s *Scene[O, S]) collectSegmentCircleIntersections(index int, flipped bool,
 func (s *Scene[O, S]) collectSegmentRectangleIntersections(index int, flipped bool, collection ObjectIntersectionCollection) int {
 	return s.consumeSameKindRefPairs(index, flipped, func(refPair shapeRefPair) {
 		srcRef := refPair.source()
-		if !srcRef.isTemporary() {
-			panic("expected temporary source shape reference")
-		}
 		tgtRef := refPair.target()
-		tgtRectangleIndex := tgtRef.index()
-		tgtRectangle := s.rectangles[tgtRectangleIndex]
 
-		if intersection, ok := CheckSegmentRectangleIntersection(s.tempSegment, tgtRectangle.wsRectangle); ok {
+		srcShape, srcSegment := s.getSegmentSolver(srcRef)
+		tgtShape, tgtSolver := s.getRectangleSolver(tgtRef)
+
+		if intersection, ok := s.checkSegmentRectangleIntersection(srcSegment, tgtSolver); ok {
 			intersection := ObjectIntersection{
-				SourceObjectID: InvalidObjectID,
-				SourceShapeID:  InvalidShapeID,
-				TargetObjectID: ObjectID(tgtRectangle.objectIndex),
-				TargetShapeID:  ShapeID(newShapeRef(shapeKindRectangle, tgtRectangleIndex)),
+				SourceObjectID: wrapObjectID(srcShape),
+				SourceShapeID:  wrapShapeID[S](srcRef),
+				TargetObjectID: wrapObjectID(tgtShape),
+				TargetShapeID:  wrapShapeID[S](tgtRef),
 				Intersection:   intersection,
 			}
 			if flipped {
@@ -738,19 +734,17 @@ func (s *Scene[O, S]) collectSegmentRectangleIntersections(index int, flipped bo
 func (s *Scene[O, S]) collectSegmentPolygonIntersections(index int, flipped bool, collection ObjectIntersectionCollection) int {
 	return s.consumeSameKindRefPairs(index, flipped, func(refPair shapeRefPair) {
 		srcRef := refPair.source()
-		if !srcRef.isTemporary() {
-			panic("expected temporary source shape reference")
-		}
 		tgtRef := refPair.target()
-		tgtPolygonIndex := tgtRef.index()
-		tgtPolygon := s.polygons[tgtPolygonIndex]
 
-		if intersection, ok := CheckSegmentPolygonIntersection(s.tempSegment, tgtPolygon.wsPolygon); ok {
+		srcShape, srcSegment := s.getSegmentSolver(srcRef)
+		tgtShape, tgtSolver := s.getPolygonSolver(tgtRef)
+
+		if intersection, ok := s.checkSegmentPolygonIntersection(srcSegment, tgtSolver); ok {
 			intersection := ObjectIntersection{
-				SourceObjectID: InvalidObjectID,
-				SourceShapeID:  InvalidShapeID,
-				TargetObjectID: ObjectID(tgtPolygon.objectIndex),
-				TargetShapeID:  ShapeID(newShapeRef(shapeKindPolygon, tgtPolygonIndex)),
+				SourceObjectID: wrapObjectID(srcShape),
+				SourceShapeID:  wrapShapeID[S](srcRef),
+				TargetObjectID: wrapObjectID(tgtShape),
+				TargetShapeID:  wrapShapeID[S](tgtRef),
 				Intersection:   intersection,
 			}
 			if flipped {
@@ -760,6 +754,37 @@ func (s *Scene[O, S]) collectSegmentPolygonIntersections(index int, flipped bool
 			}
 		}
 	})
+}
+
+func (s *Scene[O, S]) getSegmentSolver(ref shapeRef) (*sceneShape[S], Segment) {
+	if !ref.isTemporary() {
+		panic("expected temporary shape reference")
+	}
+	return &s.tempShape, s.tempSegment
+}
+
+func (s *Scene[O, S]) getCircleSolver(ref shapeRef) (*sceneShape[S], *circleSolver) {
+	if ref.isTemporary() {
+		return &s.tempShape, &s.tempCircle
+	}
+	circle := &s.circles[ref.index()]
+	return &circle.sceneShape, &circle.circleSolver
+}
+
+func (s *Scene[O, S]) getRectangleSolver(ref shapeRef) (*sceneShape[S], *rectangleSolver) {
+	if ref.isTemporary() {
+		return &s.tempShape, &s.tempRectangle
+	}
+	rectangle := &s.rectangles[ref.index()]
+	return &rectangle.sceneShape, &rectangle.rectangleSolver
+}
+
+func (s *Scene[O, S]) getPolygonSolver(ref shapeRef) (*sceneShape[S], *polygonSolver) {
+	if ref.isTemporary() {
+		return &s.tempShape, &s.tempPolygon
+	}
+	polygon := &s.polygons[ref.index()]
+	return &polygon.sceneShape, &polygon.polygonSolver
 }
 
 func (s *Scene[O, S]) consumeSameKindRefPairs(index int, flipped bool, cb func(refPair shapeRefPair)) int {
@@ -781,4 +806,33 @@ func (s *Scene[O, S]) consumeSameKindRefPairs(index int, flipped bool, cb func(r
 		index++
 	}
 	return index
+}
+
+func (s *Scene[O, S]) checkSegmentCircleIntersection(source Segment, target *circleSolver) (Intersection, bool) {
+	return CheckSegmentCircleIntersection(source, target.wsCircle)
+}
+
+func (s *Scene[O, S]) checkSegmentRectangleIntersection(source Segment, target *rectangleSolver) (Intersection, bool) {
+	if !IsSegmentCircleOverlap(source, target.wsBoundingCircle) {
+		return Intersection{}, false
+	}
+	return CheckSegmentRectangleIntersection(source, target.wsRectangle)
+}
+
+func (s *Scene[O, S]) checkSegmentPolygonIntersection(source Segment, target *polygonSolver) (Intersection, bool) {
+	if !IsSegmentCircleOverlap(source, target.wsBoundingCircle) {
+		return Intersection{}, false
+	}
+	return CheckSegmentPolygonIntersection(source, target.wsPolygon)
+}
+
+func wrapObjectID[S any](shape *sceneShape[S]) ObjectID {
+	return ObjectID(shape.objectIndex)
+}
+
+func wrapShapeID[S any](ref shapeRef) ShapeID {
+	if ref.isTemporary() {
+		return InvalidShapeID
+	}
+	return ShapeID(ref)
 }
