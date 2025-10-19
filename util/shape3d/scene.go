@@ -667,7 +667,7 @@ func (s *Scene[O, S]) collectIntersections(collection ObjectIntersectionCollecti
 		case srcKind == shapeKindMesh && tgtKind == shapeKindSegment:
 			index = s.collectSegmentMeshIntersections(index, true, collection)
 		case srcKind == shapeKindSphere && tgtKind == shapeKindSphere:
-			index = s.collectSphereSphereIntersections(index, false, collection)
+			index = s.collectSphereSphereIntersections(index, collection)
 		case srcKind == shapeKindSphere && tgtKind == shapeKindBox:
 			index = s.collectSphereBoxIntersections(index, false, collection)
 		case srcKind == shapeKindBox && tgtKind == shapeKindSphere:
@@ -761,8 +761,8 @@ func (s *Scene[O, S]) collectSegmentMeshIntersections(index int, flipped bool, c
 	})
 }
 
-func (s *Scene[O, S]) collectSphereSphereIntersections(index int, flipped bool, collection ObjectIntersectionCollection) int {
-	return s.consumeSameKindRefPairs(index, flipped, func(refPair shapeRefPair) {
+func (s *Scene[O, S]) collectSphereSphereIntersections(index int, collection ObjectIntersectionCollection) int {
+	return s.consumeSameKindRefPairs(index, false, func(refPair shapeRefPair) {
 		srcRef := refPair.source()
 		tgtRef := refPair.target()
 
@@ -770,18 +770,13 @@ func (s *Scene[O, S]) collectSphereSphereIntersections(index int, flipped bool, 
 		tgtShape, tgtSolver := s.getSphereSolver(tgtRef)
 
 		if intersection, ok := s.checkSphereSphereIntersection(srcSolver, tgtSolver); ok {
-			intersection := ObjectIntersection{
+			collection.AddIntersection(ObjectIntersection{
 				SourceObjectID: wrapObjectID(srcShape),
 				SourceShapeID:  wrapShapeID[S](srcRef),
 				TargetObjectID: wrapObjectID(tgtShape),
 				TargetShapeID:  wrapShapeID[S](tgtRef),
 				Intersection:   intersection,
-			}
-			if flipped {
-				collection.AddIntersection(intersection.Flipped())
-			} else {
-				collection.AddIntersection(intersection)
-			}
+			})
 		}
 	})
 }

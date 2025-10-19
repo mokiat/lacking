@@ -10,8 +10,8 @@ import (
 // Only a bool result is returned and no collision points or separation
 // normals are evaluated.
 func IsSphereSphereIntersection(source, target Sphere) bool {
-	sqrDistance := dprec.Vec3Diff(source.Position, target.Position).Length()
-	return sqrDistance <= (source.Radius + target.Radius)
+	distance := dprec.Vec3Diff(source.Position, target.Position).Length()
+	return distance <= (source.Radius + target.Radius)
 }
 
 // CheckSphereSphereIntersection checks if a Sphere shape intersects with

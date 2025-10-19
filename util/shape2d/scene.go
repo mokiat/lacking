@@ -675,6 +675,20 @@ func (s *Scene[O, S]) collectIntersections(collection ObjectIntersectionCollecti
 			index = s.collectSegmentPolygonIntersections(index, false, collection)
 		case srcKind == shapeKindPolygon && tgtKind == shapeKindSegment:
 			index = s.collectSegmentPolygonIntersections(index, true, collection)
+		case srcKind == shapeKindCircle && tgtKind == shapeKindCircle:
+			index = s.collectCircleCircleIntersections(index, collection)
+		case srcKind == shapeKindCircle && tgtKind == shapeKindRectangle:
+			index = s.collectCircleRectangleIntersections(index, false, collection)
+		case srcKind == shapeKindRectangle && tgtKind == shapeKindCircle:
+			index = s.collectCircleRectangleIntersections(index, true, collection)
+		case srcKind == shapeKindCircle && tgtKind == shapeKindPolygon:
+			index = s.collectCirclePolygonIntersections(index, false, collection)
+		case srcKind == shapeKindPolygon && tgtKind == shapeKindCircle:
+			index = s.collectCirclePolygonIntersections(index, true, collection)
+		case srcKind == shapeKindRectangle && tgtKind == shapeKindPolygon:
+			index = s.collectRectanglePolygonIntersections(index, false, collection)
+		case srcKind == shapeKindPolygon && tgtKind == shapeKindRectangle:
+			index = s.collectRectanglePolygonIntersections(index, true, collection)
 		default:
 			index++
 		}
@@ -740,6 +754,101 @@ func (s *Scene[O, S]) collectSegmentPolygonIntersections(index int, flipped bool
 		tgtShape, tgtSolver := s.getPolygonSolver(tgtRef)
 
 		if intersection, ok := s.checkSegmentPolygonIntersection(srcSegment, tgtSolver); ok {
+			intersection := ObjectIntersection{
+				SourceObjectID: wrapObjectID(srcShape),
+				SourceShapeID:  wrapShapeID[S](srcRef),
+				TargetObjectID: wrapObjectID(tgtShape),
+				TargetShapeID:  wrapShapeID[S](tgtRef),
+				Intersection:   intersection,
+			}
+			if flipped {
+				collection.AddIntersection(intersection.Flipped())
+			} else {
+				collection.AddIntersection(intersection)
+			}
+		}
+	})
+}
+
+func (s *Scene[O, S]) collectCircleCircleIntersections(index int, collection ObjectIntersectionCollection) int {
+	return s.consumeSameKindRefPairs(index, false, func(refPair shapeRefPair) {
+		srcRef := refPair.source()
+		tgtRef := refPair.target()
+
+		srcShape, srcSolver := s.getCircleSolver(srcRef)
+		tgtShape, tgtSolver := s.getCircleSolver(tgtRef)
+
+		if intersection, ok := s.checkCircleCircleIntersection(srcSolver, tgtSolver); ok {
+			collection.AddIntersection(ObjectIntersection{
+				SourceObjectID: wrapObjectID(srcShape),
+				SourceShapeID:  wrapShapeID[S](srcRef),
+				TargetObjectID: wrapObjectID(tgtShape),
+				TargetShapeID:  wrapShapeID[S](tgtRef),
+				Intersection:   intersection,
+			})
+		}
+	})
+}
+
+func (s *Scene[O, S]) collectCircleRectangleIntersections(index int, flipped bool, collection ObjectIntersectionCollection) int {
+	return s.consumeSameKindRefPairs(index, flipped, func(refPair shapeRefPair) {
+		srcRef := refPair.source()
+		tgtRef := refPair.target()
+
+		srcShape, srcSolver := s.getCircleSolver(srcRef)
+		tgtShape, tgtSolver := s.getRectangleSolver(tgtRef)
+
+		if intersection, ok := s.checkCircleRectangleIntersection(srcSolver, tgtSolver); ok {
+			intersection := ObjectIntersection{
+				SourceObjectID: wrapObjectID(srcShape),
+				SourceShapeID:  wrapShapeID[S](srcRef),
+				TargetObjectID: wrapObjectID(tgtShape),
+				TargetShapeID:  wrapShapeID[S](tgtRef),
+				Intersection:   intersection,
+			}
+			if flipped {
+				collection.AddIntersection(intersection.Flipped())
+			} else {
+				collection.AddIntersection(intersection)
+			}
+		}
+	})
+}
+
+func (s *Scene[O, S]) collectCirclePolygonIntersections(index int, flipped bool, collection ObjectIntersectionCollection) int {
+	return s.consumeSameKindRefPairs(index, flipped, func(refPair shapeRefPair) {
+		srcRef := refPair.source()
+		tgtRef := refPair.target()
+
+		srcShape, srcSolver := s.getCircleSolver(srcRef)
+		tgtShape, tgtSolver := s.getPolygonSolver(tgtRef)
+
+		if intersection, ok := s.checkCirclePolygonIntersection(srcSolver, tgtSolver); ok {
+			intersection := ObjectIntersection{
+				SourceObjectID: wrapObjectID(srcShape),
+				SourceShapeID:  wrapShapeID[S](srcRef),
+				TargetObjectID: wrapObjectID(tgtShape),
+				TargetShapeID:  wrapShapeID[S](tgtRef),
+				Intersection:   intersection,
+			}
+			if flipped {
+				collection.AddIntersection(intersection.Flipped())
+			} else {
+				collection.AddIntersection(intersection)
+			}
+		}
+	})
+}
+
+func (s *Scene[O, S]) collectRectanglePolygonIntersections(index int, flipped bool, collection ObjectIntersectionCollection) int {
+	return s.consumeSameKindRefPairs(index, flipped, func(refPair shapeRefPair) {
+		srcRef := refPair.source()
+		tgtRef := refPair.target()
+
+		srcShape, srcSolver := s.getRectangleSolver(srcRef)
+		tgtShape, tgtSolver := s.getPolygonSolver(tgtRef)
+
+		if intersection, ok := s.checkRectanglePolygonIntersection(srcSolver, tgtSolver); ok {
 			intersection := ObjectIntersection{
 				SourceObjectID: wrapObjectID(srcShape),
 				SourceShapeID:  wrapShapeID[S](srcRef),
@@ -824,6 +933,31 @@ func (s *Scene[O, S]) checkSegmentPolygonIntersection(source Segment, target *po
 		return Intersection{}, false
 	}
 	return CheckSegmentPolygonIntersection(source, target.wsPolygon)
+}
+
+func (s *Scene[O, S]) checkCircleCircleIntersection(source, target *circleSolver) (Intersection, bool) {
+	return CheckCircleCircleIntersection(source.wsCircle, target.wsCircle)
+}
+
+func (s *Scene[O, S]) checkCircleRectangleIntersection(source *circleSolver, target *rectangleSolver) (Intersection, bool) {
+	if !IsCircleCircleIntersection(source.wsCircle, target.wsBoundingCircle) {
+		return Intersection{}, false
+	}
+	return CheckCircleRectangleIntersection(source.wsCircle, target.wsRectangle)
+}
+
+func (s *Scene[O, S]) checkCirclePolygonIntersection(source *circleSolver, target *polygonSolver) (Intersection, bool) {
+	if !IsCircleCircleIntersection(source.wsCircle, target.wsBoundingCircle) {
+		return Intersection{}, false
+	}
+	return CheckCirclePolygonIntersection(source.wsCircle, target.wsPolygon)
+}
+
+func (s *Scene[O, S]) checkRectanglePolygonIntersection(source *rectangleSolver, target *polygonSolver) (Intersection, bool) {
+	if !IsCircleCircleIntersection(source.wsBoundingCircle, target.wsBoundingCircle) {
+		return Intersection{}, false
+	}
+	return CheckRectanglePolygonIntersection(source.wsRectangle, target.wsPolygon)
 }
 
 func wrapObjectID[S any](shape *sceneShape[S]) ObjectID {
