@@ -23,18 +23,11 @@ func CheckSphereBoxIntersection(sphere Sphere, box Box) (Intersection, bool) {
 	distanceZ := dprec.Vec3Dot(boxAxisZ, deltaPosition)
 
 	distanceRight := distanceX - boxHalfWidth
-	distanceLeft := -(2.0*boxHalfWidth + distanceRight)
+	distanceLeft := -distanceX - boxHalfWidth
 	distanceTop := distanceY - boxHalfHeight
-	distanceBottom := -(2.0*boxHalfHeight + distanceTop)
+	distanceBottom := -distanceY - boxHalfHeight
 	distanceFront := distanceZ - boxHalfLength
-	distanceBack := -(2.0*boxHalfLength + distanceFront)
-
-	var (
-		isIntersection    bool
-		depth             float64
-		boxContact        dprec.Vec3
-		boxDisplaceNormal dprec.Vec3
-	)
+	distanceBack := -distanceZ - boxHalfLength
 
 	const (
 		maskLeft   = 0b100000
@@ -63,6 +56,14 @@ func CheckSphereBoxIntersection(sphere Sphere, box Box) (Intersection, bool) {
 	if distanceFront > 0 {
 		mask |= maskFront
 	}
+
+	var (
+		isIntersection    bool
+		depth             float64
+		boxContact        dprec.Vec3
+		boxDisplaceNormal dprec.Vec3
+	)
+
 	switch mask {
 	case maskLeft:
 		if depth = sphereRadius - distanceLeft; depth > 0 {
@@ -322,7 +323,7 @@ func CheckSphereBoxIntersection(sphere Sphere, box Box) (Intersection, bool) {
 			boxDisplaceNormal = dprec.Vec3Quot(dprec.Vec3Diff(boxContact, spherePosition), distance)
 		}
 
-	default:
+	default: // inside box
 		// Note: This branch is unlikely to occur so no need to be extremely optimal.
 		isIntersection = true
 		var (
