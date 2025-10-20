@@ -53,13 +53,18 @@ func CheckSegmentCircleIntersection(segment Segment, circle Circle) (Intersectio
 	}
 
 	intersectionPoint := dprec.Vec2Lerp(segment.A, segment.B, t)
+	normal := dprec.Vec2Quot(
+		dprec.Vec2Diff(intersectionPoint, circle.Position),
+		circle.Radius,
+	)
+	depth := dprec.Vec2Dot(
+		dprec.Vec2Diff(intersectionPoint, segment.B),
+		normal,
+	)
 
 	return Intersection{
 		TargetContact: intersectionPoint,
-		TargetNormal: dprec.Vec2Quot(
-			dprec.Vec2Diff(intersectionPoint, circle.Position),
-			circle.Radius,
-		),
-		Depth: dprec.Vec2Diff(intersectionPoint, segment.B).Length(),
+		TargetNormal:  normal,
+		Depth:         depth,
 	}, true
 }

@@ -79,13 +79,18 @@ func CheckSegmentSphereIntersection(segment Segment, sphere Sphere) (Intersectio
 	}
 
 	intersectionPoint := dprec.Vec3Lerp(segment.A, segment.B, t)
+	normal := dprec.Vec3Quot(
+		dprec.Vec3Diff(intersectionPoint, sphere.Position),
+		sphere.Radius,
+	)
+	depth := dprec.Vec3Dot(
+		dprec.Vec3Diff(intersectionPoint, segment.B),
+		normal,
+	)
 
 	return Intersection{
 		TargetContact: intersectionPoint,
-		TargetNormal: dprec.Vec3Quot(
-			dprec.Vec3Diff(intersectionPoint, sphere.Position),
-			sphere.Radius,
-		),
-		Depth: dprec.Vec3Diff(intersectionPoint, segment.B).Length(),
+		TargetNormal:  normal,
+		Depth:         depth,
 	}, true
 }
