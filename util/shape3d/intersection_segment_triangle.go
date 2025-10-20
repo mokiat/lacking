@@ -46,8 +46,8 @@ func CheckSegmentTriangleIntersection(segment Segment, triangle Triangle) (Inter
 	return Intersection{
 		TargetContact: intersectionPoint,
 		TargetNormal:  normal,
-		Depth: -dprec.Vec3Dot(
-			dprec.Vec3Diff(segment.B, intersectionPoint),
+		Depth: dprec.Vec3Dot(
+			dprec.Vec3Diff(intersectionPoint, segment.B),
 			normal,
 		),
 	}, true
