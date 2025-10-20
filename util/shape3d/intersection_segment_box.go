@@ -74,10 +74,14 @@ func CheckSegmentBoxIntersection(segment Segment, box Box) (Intersection, bool) 
 	}
 
 	intersectionPoint := dprec.Vec3Lerp(segment.A, segment.B, tClose)
+	depth := dprec.Vec3Dot(
+		dprec.Vec3Diff(intersectionPoint, segment.B),
+		normal,
+	)
 
 	return Intersection{
 		TargetContact: intersectionPoint,
 		TargetNormal:  normal,
-		Depth:         dprec.Vec3Diff(intersectionPoint, segment.B).Length(),
+		Depth:         depth,
 	}, true
 }

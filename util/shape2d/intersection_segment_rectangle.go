@@ -6,8 +6,6 @@ import (
 	"github.com/mokiat/gomath/dprec"
 )
 
-// TODO: Write test for this!
-
 // CheckSegmentRectangleIntersection checks if the specified segment intersects
 // the specified rectangle and returns the intersection information.
 //
@@ -63,10 +61,14 @@ func CheckSegmentRectangleIntersection(segment Segment, box Rectangle) (Intersec
 	}
 
 	intersectionPoint := dprec.Vec2Lerp(segment.A, segment.B, tClose)
+	depth := dprec.Vec2Dot(
+		dprec.Vec2Diff(intersectionPoint, segment.B),
+		normal,
+	)
 
 	return Intersection{
 		TargetContact: intersectionPoint,
 		TargetNormal:  normal,
-		Depth:         dprec.Vec2Diff(intersectionPoint, segment.B).Length(),
+		Depth:         depth,
 	}, true
 }
