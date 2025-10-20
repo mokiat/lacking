@@ -20,9 +20,24 @@ func CheckCircleRectangleIntersection(circle Circle, rectangle Rectangle) (Inter
 	distanceY := dprec.Vec2Dot(deltaPosition, rectangleAxisY)
 
 	distanceRight := distanceX - rectangleHalfWidth
+	if distanceRight > circleRadius {
+		return Intersection{}, false
+	}
+
 	distanceLeft := -distanceX - rectangleHalfWidth
+	if distanceLeft > circleRadius {
+		return Intersection{}, false
+	}
+
 	distanceTop := distanceY - rectangleHalfHeight
+	if distanceTop > circleRadius {
+		return Intersection{}, false
+	}
+
 	distanceBottom := -distanceY - rectangleHalfHeight
+	if distanceBottom > circleRadius {
+		return Intersection{}, false
+	}
 
 	const (
 		maskLeft   = 0b1000
@@ -53,32 +68,28 @@ func CheckCircleRectangleIntersection(circle Circle, rectangle Rectangle) (Inter
 
 	switch mask {
 	case maskLeft:
-		if depth = circleRadius - distanceLeft; depth > 0 {
-			isIntersection = true
-			targetNormal = dprec.InverseVec2(rectangleAxisX)
-			targetContact = dprec.Vec2Sum(circlePosition, dprec.Vec2Prod(targetNormal, depth-circleRadius))
-		}
+		isIntersection = true
+		depth = circleRadius - distanceLeft
+		targetNormal = dprec.InverseVec2(rectangleAxisX)
+		targetContact = dprec.Vec2Sum(circlePosition, dprec.Vec2Prod(targetNormal, -distanceLeft))
 
 	case maskRight:
-		if depth = circleRadius - distanceRight; depth > 0 {
-			isIntersection = true
-			targetNormal = rectangleAxisX
-			targetContact = dprec.Vec2Sum(circlePosition, dprec.Vec2Prod(targetNormal, depth-circleRadius))
-		}
+		isIntersection = true
+		depth = circleRadius - distanceRight
+		targetNormal = rectangleAxisX
+		targetContact = dprec.Vec2Sum(circlePosition, dprec.Vec2Prod(targetNormal, -distanceRight))
 
 	case maskBottom:
-		if depth = circleRadius - distanceBottom; depth > 0 {
-			isIntersection = true
-			targetNormal = dprec.InverseVec2(rectangleAxisY)
-			targetContact = dprec.Vec2Sum(circlePosition, dprec.Vec2Prod(targetNormal, depth-circleRadius))
-		}
+		isIntersection = true
+		depth = circleRadius - distanceBottom
+		targetNormal = dprec.InverseVec2(rectangleAxisY)
+		targetContact = dprec.Vec2Sum(circlePosition, dprec.Vec2Prod(targetNormal, -distanceBottom))
 
 	case maskTop:
-		if depth = circleRadius - distanceTop; depth > 0 {
-			isIntersection = true
-			targetNormal = rectangleAxisY
-			targetContact = dprec.Vec2Sum(circlePosition, dprec.Vec2Prod(targetNormal, depth-circleRadius))
-		}
+		isIntersection = true
+		depth = circleRadius - distanceTop
+		targetNormal = rectangleAxisY
+		targetContact = dprec.Vec2Sum(circlePosition, dprec.Vec2Prod(targetNormal, -distanceTop))
 
 	case maskLeft | maskBottom:
 		sqrDistance := distanceLeft*distanceLeft + distanceBottom*distanceBottom
