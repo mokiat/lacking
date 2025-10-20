@@ -54,7 +54,7 @@ func (i *ObjectIntersection) Flipped() ObjectIntersection {
 }
 
 // SmallestObjectIntersection is an implementation of
-// ObjectIntersectionCollection that keeps track of the nearest (smallest depth)
+// ObjectIntersectionCollection that keeps track of the farthest (smallest depth)
 // observed intersection.
 type SmallestObjectIntersection struct {
 	intersection opt.T[ObjectIntersection]
@@ -83,7 +83,7 @@ func (i *SmallestObjectIntersection) Intersection() (ObjectIntersection, bool) {
 }
 
 // LargestObjectIntersection is an implementation of
-// ObjectIntersectionCollection that keeps track of the farthest (largest depth)
+// ObjectIntersectionCollection that keeps track of the closest (largest depth)
 // observed intersection.
 type LargestObjectIntersection struct {
 	intersection opt.T[ObjectIntersection]

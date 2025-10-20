@@ -1,36 +1,38 @@
 package shape2d
 
-// TODO: Write test for this!
+import "github.com/mokiat/gomath/dprec"
 
 // CheckSegmentEdgeIntersection checks if a segment intersects a polygon edge.
 func CheckSegmentEdgeIntersection(segment Segment, edge Edge) (Intersection, bool) {
-	// det := (primary.B.X-primary.A.X)*(secondary.B.Y-secondary.A.Y) -
-	// 	(primary.B.Y-primary.A.Y)*(secondary.B.X-secondary.A.X)
-	// if dprec.Abs(det) < 0.0001 { // parallel
-	// 	return Intersection{}, false
-	// }
+	vecAC := dprec.Vec2Diff(segment.A, edge.A)    // offset
+	vecAB := dprec.Vec2Diff(edge.B, edge.A)       // edge
+	vecDC := dprec.Vec2Diff(segment.A, segment.B) // inverse segment
 
-	// t := ((primary.A.Y-secondary.A.Y)*(secondary.B.X-secondary.A.X) -
-	// 	(primary.A.X-secondary.A.X)*(secondary.B.Y-secondary.A.Y)) / det
-	// if t < 0.0 || t > 1.0 {
-	// 	return Intersection{}, false
-	// }
+	det := dprec.Vec2Cross(vecDC, vecAB)
+	if det < 0.00001 {
+		return Intersection{}, false
+	}
 
-	// u := -((primary.B.X-primary.A.X)*(primary.A.Y-secondary.A.Y) -
-	// 	(primary.B.Y-primary.A.Y)*(primary.A.X-secondary.A.X)) / det
-	// if u < 0.0 || u > 1.0 {
-	// 	return Intersection{}, false
-	// }
+	detU := dprec.Vec2Cross(vecDC, vecAC)
+	if detU < 0.0 || detU > det {
+		return Intersection{}, false
+	}
 
-	// intersectionPoint := dprec.Vec2Lerp(primary.A, primary.B, t)
-	// normal := dprec.NormalVec2(dprec.Vec2Diff(secondary.B, secondary.A))
+	detV := dprec.Vec2Cross(vecAC, vecAB)
+	if detV < 0.0 || detV > det {
+		return Intersection{}, false
+	}
 
-	// return Intersection{
-	// 	TargetContact: intersectionPoint,
-	// 	TargetNormal:  normal,
-	// 	Depth:         dprec.Vec2Diff(intersectionPoint, primary.B).Length(),
-	// }, true
+	contactPoint := dprec.Vec2Lerp(segment.A, segment.B, detV/det)
+	normal := edge.Normal()
+	depth := dprec.Vec2Dot(
+		dprec.Vec2Diff(contactPoint, segment.B),
+		normal,
+	)
 
-	// TODO: Implement
-	return Intersection{}, false
+	return Intersection{
+		TargetContact: contactPoint,
+		TargetNormal:  normal,
+		Depth:         depth,
+	}, true
 }

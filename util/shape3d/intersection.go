@@ -71,19 +71,19 @@ func (i *LastIntersection) Intersection() (Intersection, bool) {
 	return i.intersection.Value, i.intersection.Specified
 }
 
-// NearestIntersection is an implementation of IntersectionCollection that keeps
-// track of the nearest (smallest depth) observed intersection.
-type NearestIntersection struct {
+// SmallestIntersection is an implementation of IntersectionCollection that keeps
+// track of the farthest (smallest depth) observed intersection.
+type SmallestIntersection struct {
 	intersection opt.T[Intersection]
 }
 
 // Reset clears any observed intersection.
-func (i *NearestIntersection) Reset() {
+func (i *SmallestIntersection) Reset() {
 	i.intersection = opt.Unspecified[Intersection]()
 }
 
 // AddIntersection tracks the specified intersection.
-func (i *NearestIntersection) AddIntersection(intersection Intersection) {
+func (i *SmallestIntersection) AddIntersection(intersection Intersection) {
 	if i.intersection.Specified {
 		if intersection.Depth < i.intersection.Value.Depth {
 			i.intersection.Value = intersection
@@ -95,23 +95,23 @@ func (i *NearestIntersection) AddIntersection(intersection Intersection) {
 
 // Intersection returns the best observed intersection and a flag whether
 // there was actually any intersection observed.
-func (i *NearestIntersection) Intersection() (Intersection, bool) {
+func (i *SmallestIntersection) Intersection() (Intersection, bool) {
 	return i.intersection.Value, i.intersection.Specified
 }
 
-// FarthestIntersection is an implementation of IntersectionCollection that
-// keeps track of the farthest (largest depth) observed intersection.
-type FarthestIntersection struct {
+// LargestIntersection is an implementation of IntersectionCollection that
+// keeps track of the closest (largest depth) observed intersection.
+type LargestIntersection struct {
 	intersection opt.T[Intersection]
 }
 
 // Reset clears any observed intersection.
-func (i *FarthestIntersection) Reset() {
+func (i *LargestIntersection) Reset() {
 	i.intersection = opt.Unspecified[Intersection]()
 }
 
 // AddIntersection tracks the specified intersection.
-func (i *FarthestIntersection) AddIntersection(intersection Intersection) {
+func (i *LargestIntersection) AddIntersection(intersection Intersection) {
 	if i.intersection.Specified {
 		if intersection.Depth > i.intersection.Value.Depth {
 			i.intersection.Value = intersection
@@ -123,6 +123,6 @@ func (i *FarthestIntersection) AddIntersection(intersection Intersection) {
 
 // Intersection returns the worst observed intersection and a flag whether
 // there was actually any intersection observed.
-func (i *FarthestIntersection) Intersection() (Intersection, bool) {
+func (i *LargestIntersection) Intersection() (Intersection, bool) {
 	return i.intersection.Value, i.intersection.Specified
 }
