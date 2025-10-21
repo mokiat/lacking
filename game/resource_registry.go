@@ -41,7 +41,7 @@ func (r *resourceRegistry) UnregisterResourceLoader(resourceLoader ResourceLoade
 
 func (r *resourceRegistry) LoadResource(resourceSet *ResourceSet, path string, target any) async.Operation {
 	reflValue := reflect.ValueOf(target)
-	if reflValue.Kind() != reflect.Ptr || reflValue.IsNil() {
+	if reflValue.Kind() != reflect.Pointer || reflValue.IsNil() {
 		return async.NewFailedOperation(fmt.Errorf("target must be a non-nil pointer, got %T", target))
 	}
 	reflValue = reflValue.Elem()
