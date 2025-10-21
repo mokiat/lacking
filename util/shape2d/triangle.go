@@ -56,10 +56,17 @@ func (t Triangle) LengthCA() float64 {
 // IsCCW checks if the vertices of the triangle are ordered in a
 // counter-clockwise manner.
 func (t Triangle) IsCCW() bool {
+	return t.SignedArea() > 0.0
+}
+
+// SignedArea computes and returns the signed area of the triangle. If the
+// triangle is oriented counter-clockwise, the area is positive; otherwise, it
+// is negative.
+func (t Triangle) SignedArea() float64 {
 	vecAB := dprec.Vec2Diff(t.B, t.A)
 	vecAC := dprec.Vec2Diff(t.C, t.A)
 	cross := dprec.Vec2Cross(vecAB, vecAC)
-	return cross > 0.0
+	return cross / 2.0
 }
 
 // ContainsPoint checks if the given point p lies within the triangle t.
