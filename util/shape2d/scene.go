@@ -40,8 +40,8 @@ type SceneSettings struct {
 }
 
 // NewScene creates a new scene.
-func NewScene[O, S any](info SceneSettings) *Scene[O, S] {
-	cubeOctreeSettings := CompactTreeSettings(info)
+func NewScene[O, S any](settings SceneSettings) *Scene[O, S] {
+	cubeOctreeSettings := CompactTreeSettings(settings)
 
 	return &Scene[O, S]{
 		freeObjectIndices:    ds.NewStack[uint32](256), // ~ 1 KiB

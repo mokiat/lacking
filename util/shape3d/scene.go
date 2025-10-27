@@ -9,8 +9,8 @@ import (
 	"github.com/mokiat/gomath/dprec"
 )
 
-// SceneInfo contains information needed to create an optimal scene.
-type SceneInfo struct {
+// SceneSettings contains information needed to create an optimal scene.
+type SceneSettings struct {
 
 	// Size specifies the dimension (from side to side) of the scene.
 	// Inserting an item outside these bounds has undefined behavior.
@@ -31,8 +31,8 @@ type SceneInfo struct {
 }
 
 // NewScene creates a new scene.
-func NewScene[O, S any](info SceneInfo) *Scene[O, S] {
-	cubeOctreeSettings := CompactTreeSettings(info)
+func NewScene[O, S any](settings SceneSettings) *Scene[O, S] {
+	cubeOctreeSettings := CompactTreeSettings(settings)
 
 	return &Scene[O, S]{
 		freeObjectIndices: ds.NewStack[uint32](256), // ~ 1 KiB
