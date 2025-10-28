@@ -322,7 +322,9 @@ func (s *Scene) Each(cb func(b Body)) {
 }
 
 func (s *Scene) CheckSegmentIntersection(segment shape3d.Segment, mask uint32) (Body, bool) {
-	intersection, ok := s.shapeScene.CheckSegmentIntersection(segment, mask)
+	intersection, ok := s.shapeScene.CheckSegmentIntersection(segment, shape3d.Filter{
+		Mask: opt.V(mask),
+	})
 	if !ok {
 		return Body{}, false
 	}

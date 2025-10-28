@@ -43,6 +43,21 @@ type sceneShape[S any] struct {
 	userData S
 }
 
+func (s *sceneShape[S]) matchesFilter(filter Filter) bool {
+	if s.static && filter.SkipStatic {
+		return false
+	}
+	if !s.static && filter.SkipDynamic {
+		return false
+	}
+	if mask, ok := filter.Mask.Unwrap(); ok {
+		if (s.sourceMask & mask) == 0 {
+			return false
+		}
+	}
+	return true
+}
+
 func shapesCanIntersect[S any](a, b *sceneShape[S]) bool {
 	if a.objectIndex == b.objectIndex {
 		return false
