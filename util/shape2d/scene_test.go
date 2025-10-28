@@ -67,7 +67,7 @@ var _ = Describe("Scene", func() {
 			dprec.NewVec2(14.0, 20.0),
 			dprec.NewVec2(26.0, 20.0),
 		)
-		scene.CollectSegmentIntersections(segment, 0xFFFFFFFF, &bucket)
+		scene.CollectSegmentIntersections(segment, shape2d.Filter{}, &bucket)
 		intersections := bucket.Intersections()
 		Expect(intersections).To(HaveLen(1))
 		intersection := intersections[0]
@@ -81,7 +81,7 @@ var _ = Describe("Scene", func() {
 			dprec.NewVec2(-20.0, -47.0),
 			dprec.NewVec2(-8.0, -47.0),
 		)
-		scene.CollectSegmentIntersections(segment, 0xFFFFFFFF, &bucket)
+		scene.CollectSegmentIntersections(segment, shape2d.Filter{}, &bucket)
 		intersections := bucket.Intersections()
 		Expect(intersections).To(HaveLen(1))
 		intersection := intersections[0]

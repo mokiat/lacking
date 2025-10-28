@@ -1,6 +1,7 @@
 package shape2d
 
 import (
+	"iter"
 	"slices"
 
 	"github.com/mokiat/gog"
@@ -345,6 +346,72 @@ func (s *Scene[O, S]) DeleteShape(shapeID ShapeID) {
 	s.freeShape(ref)
 }
 
+// CircleIter returns an iterator over all circle shapes in the scene that match
+// the given filter.
+func (s *Scene[O, S]) CircleIter(filter Filter) iter.Seq[Circle] {
+	return func(yield func(Circle) bool) {
+		s.EachCircle(filter, yield)
+	}
+}
+
+// EachCircle iterates over all circle shapes in the scene that match the given
+// filter and yields them to the provided callback.
+func (s *Scene[O, S]) EachCircle(filter Filter, yield func(Circle) bool) {
+	for index := range uint32(len(s.circles)) {
+		shape := &s.circles[index]
+		if !shape.matchesFilter(filter) {
+			continue
+		}
+		if !yield(shape.circleSolver.wsCircle) {
+			return
+		}
+	}
+}
+
+// RectangleIter returns an iterator over all rectangle shapes in the scene that
+// match the given filter.
+func (s *Scene[O, S]) RectangleIter(filter Filter) iter.Seq[Rectangle] {
+	return func(yield func(Rectangle) bool) {
+		s.EachRectangle(filter, yield)
+	}
+}
+
+// EachRectangle iterates over all rectangle shapes in the scene that match the
+// given filter and yields them to the provided callback.
+func (s *Scene[O, S]) EachRectangle(filter Filter, yield func(Rectangle) bool) {
+	for index := range uint32(len(s.rectangles)) {
+		shape := &s.rectangles[index]
+		if !shape.matchesFilter(filter) {
+			continue
+		}
+		if !yield(shape.rectangleSolver.wsRectangle) {
+			return
+		}
+	}
+}
+
+// PolygonIter returns an iterator over all polygon shapes in the scene that
+// match the given filter.
+func (s *Scene[O, S]) PolygonIter(filter Filter) iter.Seq[Polygon] {
+	return func(yield func(Polygon) bool) {
+		s.EachPolygon(filter, yield)
+	}
+}
+
+// EachPolygon iterates over all polygon shapes in the scene that match the
+// given filter and yields them to the provided callback.
+func (s *Scene[O, S]) EachPolygon(filter Filter, yield func(Polygon) bool) {
+	for index := range uint32(len(s.polygons)) {
+		shape := &s.polygons[index]
+		if !shape.matchesFilter(filter) {
+			continue
+		}
+		if !yield(shape.polygonSolver.wsPolygon) {
+			return
+		}
+	}
+}
+
 // CollectIntersections yields intersections found in this scene.
 func (s *Scene[O, S]) CollectIntersections(collection ObjectIntersectionCollection) {
 	s.checks = s.checks[:0]
@@ -393,18 +460,18 @@ func (s *Scene[O, S]) CollectIntersections(collection ObjectIntersectionCollecti
 
 // CheckSegmentIntersection returns the first intersection of the segment
 // with the scene.
-func (s *Scene[O, S]) CheckSegmentIntersection(segment Segment, mask uint32) (ObjectIntersection, bool) {
+func (s *Scene[O, S]) CheckSegmentIntersection(segment Segment, filter Filter) (ObjectIntersection, bool) {
 	var collection LargestObjectIntersection
-	s.CollectSegmentIntersections(segment, mask, &collection)
+	s.CollectSegmentIntersections(segment, filter, &collection)
 	return collection.Intersection()
 }
 
 // CollectSegmentIntersections collects all intersections of the segment
 // with objects in the scene.
-func (s *Scene[O, S]) CollectSegmentIntersections(segment Segment, mask uint32, collection ObjectIntersectionCollection) {
+func (s *Scene[O, S]) CollectSegmentIntersections(segment Segment, filter Filter, collection ObjectIntersectionCollection) {
 	s.tempShape = sceneShape[S]{
 		objectIndex: invalidObjectIndex,
-		targetMask:  mask,
+		targetMask:  filter.Mask.ValueOrDefault(0xFFFFFFFF),
 		static:      true, // important, otherwise double-check prevention will kick in
 	}
 	s.tempSegment = segment
@@ -412,31 +479,35 @@ func (s *Scene[O, S]) CollectSegmentIntersections(segment Segment, mask uint32, 
 
 	s.checks = s.checks[:0]
 	querySegment := NewCompactQuerySegment(segment.A, segment.B)
-	s.dynamicTree.QuerySegment(querySegment, func(tgtRef shapeRef) bool {
-		s.checks = append(s.checks, newShapeRefPair(srcRef, tgtRef))
-		return true
-	})
-	s.staticTree.QuerySegment(querySegment, func(tgtRef shapeRef) bool {
-		s.checks = append(s.checks, newShapeRefPair(srcRef, tgtRef))
-		return true
-	})
+	if !filter.SkipDynamic {
+		s.dynamicTree.QuerySegment(querySegment, func(tgtRef shapeRef) bool {
+			s.checks = append(s.checks, newShapeRefPair(srcRef, tgtRef))
+			return true
+		})
+	}
+	if !filter.SkipStatic {
+		s.staticTree.QuerySegment(querySegment, func(tgtRef shapeRef) bool {
+			s.checks = append(s.checks, newShapeRefPair(srcRef, tgtRef))
+			return true
+		})
+	}
 	s.collectIntersections(collection)
 }
 
 // CheckCircleIntersection returns the first intersection of the circle
 // with the scene.
-func (s *Scene[O, S]) CheckCircleIntersection(circle Circle, mask uint32) (ObjectIntersection, bool) {
+func (s *Scene[O, S]) CheckCircleIntersection(circle Circle, filter Filter) (ObjectIntersection, bool) {
 	var collection LargestObjectIntersection
-	s.CollectCircleIntersections(circle, mask, &collection)
+	s.CollectCircleIntersections(circle, filter, &collection)
 	return collection.Intersection()
 }
 
 // CollectCircleIntersections collects all intersections of the circle
 // with objects in the scene.
-func (s *Scene[O, S]) CollectCircleIntersections(circle Circle, mask uint32, collection ObjectIntersectionCollection) {
+func (s *Scene[O, S]) CollectCircleIntersections(circle Circle, filter Filter, collection ObjectIntersectionCollection) {
 	s.tempShape = sceneShape[S]{
 		objectIndex: invalidObjectIndex,
-		targetMask:  mask,
+		targetMask:  filter.Mask.ValueOrDefault(0xFFFFFFFF),
 		static:      true, // important, otherwise double-check prevention will kick in
 	}
 	s.tempCircle = newCircleSolver(circle)
@@ -444,31 +515,35 @@ func (s *Scene[O, S]) CollectCircleIntersections(circle Circle, mask uint32, col
 
 	s.checks = s.checks[:0]
 	queryAABB := NewCompactQueryAABBFromCircle(circle)
-	s.dynamicTree.QueryAABB(queryAABB, func(tgtRef shapeRef) bool {
-		s.checks = append(s.checks, newShapeRefPair(srcRef, tgtRef))
-		return true
-	})
-	s.staticTree.QueryAABB(queryAABB, func(tgtRef shapeRef) bool {
-		s.checks = append(s.checks, newShapeRefPair(srcRef, tgtRef))
-		return true
-	})
+	if !filter.SkipDynamic {
+		s.dynamicTree.QueryAABB(queryAABB, func(tgtRef shapeRef) bool {
+			s.checks = append(s.checks, newShapeRefPair(srcRef, tgtRef))
+			return true
+		})
+	}
+	if !filter.SkipStatic {
+		s.staticTree.QueryAABB(queryAABB, func(tgtRef shapeRef) bool {
+			s.checks = append(s.checks, newShapeRefPair(srcRef, tgtRef))
+			return true
+		})
+	}
 	s.collectIntersections(collection)
 }
 
 // CheckRectangleIntersection returns the first intersection of the rectangle
 // with the scene.
-func (s *Scene[O, S]) CheckRectangleIntersection(rectangle Rectangle, mask uint32) (ObjectIntersection, bool) {
+func (s *Scene[O, S]) CheckRectangleIntersection(rectangle Rectangle, filter Filter) (ObjectIntersection, bool) {
 	var collection LargestObjectIntersection
-	s.CollectRectangleIntersections(rectangle, mask, &collection)
+	s.CollectRectangleIntersections(rectangle, filter, &collection)
 	return collection.Intersection()
 }
 
 // CollectRectangleIntersections collects all intersections of the rectangle
 // with objects in the scene.
-func (s *Scene[O, S]) CollectRectangleIntersections(rectangle Rectangle, mask uint32, collection ObjectIntersectionCollection) {
+func (s *Scene[O, S]) CollectRectangleIntersections(rectangle Rectangle, filter Filter, collection ObjectIntersectionCollection) {
 	s.tempShape = sceneShape[S]{
 		objectIndex: invalidObjectIndex,
-		targetMask:  mask,
+		targetMask:  filter.Mask.ValueOrDefault(0xFFFFFFFF),
 		static:      true, // important, otherwise double-check prevention will kick in
 	}
 	s.tempRectangle = newRectangleSolver(rectangle)
@@ -476,31 +551,35 @@ func (s *Scene[O, S]) CollectRectangleIntersections(rectangle Rectangle, mask ui
 
 	s.checks = s.checks[:0]
 	queryAABB := NewCompactQueryAABBFromCircle(rectangle.BoundingCircle())
-	s.dynamicTree.QueryAABB(queryAABB, func(tgtRef shapeRef) bool {
-		s.checks = append(s.checks, newShapeRefPair(srcRef, tgtRef))
-		return true
-	})
-	s.staticTree.QueryAABB(queryAABB, func(tgtRef shapeRef) bool {
-		s.checks = append(s.checks, newShapeRefPair(srcRef, tgtRef))
-		return true
-	})
+	if !filter.SkipDynamic {
+		s.dynamicTree.QueryAABB(queryAABB, func(tgtRef shapeRef) bool {
+			s.checks = append(s.checks, newShapeRefPair(srcRef, tgtRef))
+			return true
+		})
+	}
+	if !filter.SkipStatic {
+		s.staticTree.QueryAABB(queryAABB, func(tgtRef shapeRef) bool {
+			s.checks = append(s.checks, newShapeRefPair(srcRef, tgtRef))
+			return true
+		})
+	}
 	s.collectIntersections(collection)
 }
 
 // CheckPolygonIntersection returns the first intersection of the polygon
 // with the scene.
-func (s *Scene[O, S]) CheckPolygonIntersection(polygon Polygon, mask uint32) (ObjectIntersection, bool) {
+func (s *Scene[O, S]) CheckPolygonIntersection(polygon Polygon, filter Filter) (ObjectIntersection, bool) {
 	var collection LargestObjectIntersection
-	s.CollectPolygonIntersections(polygon, mask, &collection)
+	s.CollectPolygonIntersections(polygon, filter, &collection)
 	return collection.Intersection()
 }
 
 // CollectPolygonIntersections collects all intersections of the polygon
 // with objects in the scene.
-func (s *Scene[O, S]) CollectPolygonIntersections(polygon Polygon, mask uint32, collection ObjectIntersectionCollection) {
+func (s *Scene[O, S]) CollectPolygonIntersections(polygon Polygon, filter Filter, collection ObjectIntersectionCollection) {
 	s.tempShape = sceneShape[S]{
 		objectIndex: invalidObjectIndex,
-		targetMask:  mask,
+		targetMask:  filter.Mask.ValueOrDefault(0xFFFFFFFF),
 		static:      true, // important, otherwise double-check prevention will kick in
 	}
 	s.tempPolygon = newPolygonSolver(polygon)
@@ -508,14 +587,18 @@ func (s *Scene[O, S]) CollectPolygonIntersections(polygon Polygon, mask uint32, 
 
 	s.checks = s.checks[:0]
 	queryAABB := NewCompactQueryAABBFromCircle(polygon.BoundingCircle())
-	s.dynamicTree.QueryAABB(queryAABB, func(tgtRef shapeRef) bool {
-		s.checks = append(s.checks, newShapeRefPair(srcRef, tgtRef))
-		return true
-	})
-	s.staticTree.QueryAABB(queryAABB, func(tgtRef shapeRef) bool {
-		s.checks = append(s.checks, newShapeRefPair(srcRef, tgtRef))
-		return true
-	})
+	if !filter.SkipDynamic {
+		s.dynamicTree.QueryAABB(queryAABB, func(tgtRef shapeRef) bool {
+			s.checks = append(s.checks, newShapeRefPair(srcRef, tgtRef))
+			return true
+		})
+	}
+	if !filter.SkipStatic {
+		s.staticTree.QueryAABB(queryAABB, func(tgtRef shapeRef) bool {
+			s.checks = append(s.checks, newShapeRefPair(srcRef, tgtRef))
+			return true
+		})
+	}
 	s.collectIntersections(collection)
 }
 
