@@ -14,7 +14,7 @@ smooth out float spawnTimeInOut;
 
 void main()
 {
-  spawnTimeInOut = timingIn[gl_InstanceID].x;
+  spawnTimeInOut = timeIn - timingIn[gl_InstanceID].x;
   /*- if .HasAttributeCoord */
   vec4 coord_ls = attrCoord;
   /*- else */

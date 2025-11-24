@@ -258,7 +258,7 @@ type renderItem struct {
 
 	ModelData    []byte
 	ArmatureData []byte
-	SpawnTime    float32
+	InstanceData [4 * 4]byte
 
 	IndexByteOffset uint32
 	IndexCount      uint32

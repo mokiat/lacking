@@ -7,7 +7,6 @@ import (
 	"github.com/mokiat/gblob"
 	"github.com/mokiat/gog/seq"
 	"github.com/mokiat/gomath/dprec"
-	"github.com/mokiat/gomath/sprec"
 	"github.com/mokiat/lacking/game/graphics/internal"
 	"github.com/mokiat/lacking/render/ubo"
 )
@@ -16,27 +15,27 @@ const (
 	initialRenderItemCount = 32 * 1024
 
 	// TODO: Move these next to the uniform types
-	modelUniformBufferItemSize  = 64
+	modelUniformBufferItemSize  = 64 // 1x mat4
 	modelUniformBufferItemCount = 256
 	modelUniformBufferSize      = modelUniformBufferItemSize * modelUniformBufferItemCount
 
-	timingUniformBufferItemSize  = 16
-	timingUniformBufferItemCount = 256
-	timingUniformBufferSize      = timingUniformBufferItemSize * timingUniformBufferItemCount
+	instanceUniformBufferItemSize  = 16 // 1x vec4
+	instanceUniformBufferItemCount = 256
+	instanceUniformBufferSize      = instanceUniformBufferItemSize * instanceUniformBufferItemCount
 )
 
 func newMeshRenderer() *meshRenderer {
 	return &meshRenderer{
-		renderItems:             make([]renderItem, 0, initialRenderItemCount),
-		modelUniformBufferData:  make(gblob.LittleEndianBlock, modelUniformBufferSize),
-		timingUniformBufferdata: make(gblob.LittleEndianBlock, timingUniformBufferSize),
+		renderItems:               make([]renderItem, 0, initialRenderItemCount),
+		modelUniformBufferData:    make(gblob.LittleEndianBlock, modelUniformBufferSize),
+		instanceUniformBufferData: make(gblob.LittleEndianBlock, instanceUniformBufferSize),
 	}
 }
 
 type meshRenderer struct {
-	renderItems             []renderItem
-	modelUniformBufferData  gblob.LittleEndianBlock
-	timingUniformBufferdata gblob.LittleEndianBlock
+	renderItems               []renderItem
+	modelUniformBufferData    gblob.LittleEndianBlock
+	instanceUniformBufferData gblob.LittleEndianBlock
 }
 
 func (s *meshRenderer) DiscardRenderItems() {
@@ -50,7 +49,6 @@ func (s *meshRenderer) QueueMeshRenderItems(ctx StageContext, mesh *Mesh, passTy
 	if ctx.Cascade > mesh.maxCascade {
 		return
 	}
-	gameTime := ctx.Scene.gameTime
 	definition := mesh.definition
 	passes := definition.passesByType[passType]
 	for _, pass := range passes {
@@ -65,7 +63,7 @@ func (s *meshRenderer) QueueMeshRenderItems(ctx StageContext, mesh *Mesh, passTy
 
 			ModelData:    mesh.matrixData,
 			ArmatureData: mesh.armature.uniformData(),
-			SpawnTime:    float32((gameTime - mesh.spawnTime).Seconds()),
+			InstanceData: mesh.instanceData,
 
 			IndexByteOffset: pass.IndexByteOffset,
 			IndexCount:      pass.IndexCount,
@@ -100,6 +98,7 @@ func (s *meshRenderer) QueueStaticMeshRenderItems(ctx StageContext, mesh *Static
 			UniformSet:   pass.UniformSet,
 			ModelData:    mesh.matrixData,
 			ArmatureData: mesh.armature.uniformData(),
+			InstanceData: mesh.instanceData,
 
 			IndexByteOffset: pass.IndexByteOffset,
 			IndexCount:      pass.IndexCount,
@@ -172,17 +171,16 @@ func (s *meshRenderer) renderMeshRenderItemBatch(ctx StageContext, items []rende
 	}
 
 	// Model data needs to be combined.
-	var timingVectors [256]sprec.Vec4
 	for i := range items {
 		item := &items[i]
 
-		start := i * modelUniformBufferItemSize
-		end := start + modelUniformBufferItemSize
-		copy(s.modelUniformBufferData[start:end], item.ModelData)
+		modelStart := i * modelUniformBufferItemSize
+		modelEnd := modelStart + modelUniformBufferItemSize
+		copy(s.modelUniformBufferData[modelStart:modelEnd], item.ModelData)
 
-		timingVectors[i] = sprec.Vec4{
-			X: item.SpawnTime,
-		}
+		instanceStart := i * instanceUniformBufferItemSize
+		instanceEnd := instanceStart + instanceUniformBufferItemSize
+		copy(s.instanceUniformBufferData[instanceStart:instanceEnd], item.InstanceData[:])
 	}
 	modelPlacement := ubo.WriteUniform(uniformBuffer, internal.ModelUniform{
 		ModelMatrices: s.modelUniformBufferData,
@@ -193,14 +191,14 @@ func (s *meshRenderer) renderMeshRenderItemBatch(ctx StageContext, items []rende
 		modelPlacement.Offset,
 		modelPlacement.Size,
 	)
-	timingPlacement := ubo.WriteUniform(uniformBuffer, internal.TimingUniform{
-		Vectors: timingVectors,
+	instancePlacement := ubo.WriteUniform(uniformBuffer, internal.InstanceUniform{
+		InstanceBlocks: s.instanceUniformBufferData,
 	})
 	commandBuffer.UniformBufferUnit(
 		internal.UniformBufferBindingTiming,
-		timingPlacement.Buffer,
-		timingPlacement.Offset,
-		timingPlacement.Size,
+		instancePlacement.Buffer,
+		instancePlacement.Offset,
+		instancePlacement.Size,
 	)
 
 	// Armature data is shared between all items.
