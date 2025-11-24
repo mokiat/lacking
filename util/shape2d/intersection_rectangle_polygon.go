@@ -35,6 +35,21 @@ func CheckRectanglePolygonIntersection(rectangle Rectangle, polygon Polygon) (In
 		if intersection, ok := CheckSegmentEdgeIntersection(NewSegment(p4, p1), edge); ok {
 			bestIntersection.AddIntersection(intersection)
 		}
+
+		// since segment intersections are unidirectional, check the opposite direction as well
+
+		if intersection, ok := CheckSegmentEdgeIntersection(NewSegment(p2, p1), edge); ok {
+			bestIntersection.AddIntersection(intersection)
+		}
+		if intersection, ok := CheckSegmentEdgeIntersection(NewSegment(p3, p2), edge); ok {
+			bestIntersection.AddIntersection(intersection)
+		}
+		if intersection, ok := CheckSegmentEdgeIntersection(NewSegment(p4, p3), edge); ok {
+			bestIntersection.AddIntersection(intersection)
+		}
+		if intersection, ok := CheckSegmentEdgeIntersection(NewSegment(p1, p4), edge); ok {
+			bestIntersection.AddIntersection(intersection)
+		}
 	}
 	return bestIntersection.Intersection()
 }

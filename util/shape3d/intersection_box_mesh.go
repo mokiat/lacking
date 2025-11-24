@@ -63,6 +63,47 @@ func CheckBoxMeshIntersection(box Box, mesh Mesh) (Intersection, bool) {
 		if intersection, ok := CheckSegmentTriangleIntersection(NewSegment(p4, p8), triangle); ok {
 			bestIntersection.AddIntersection(intersection)
 		}
+
+		// since segment intersections are unidirectional, check the opposite direction as well
+
+		if intersection, ok := CheckSegmentTriangleIntersection(NewSegment(p2, p1), triangle); ok {
+			bestIntersection.AddIntersection(intersection)
+		}
+		if intersection, ok := CheckSegmentTriangleIntersection(NewSegment(p3, p2), triangle); ok {
+			bestIntersection.AddIntersection(intersection)
+		}
+		if intersection, ok := CheckSegmentTriangleIntersection(NewSegment(p4, p3), triangle); ok {
+			bestIntersection.AddIntersection(intersection)
+		}
+		if intersection, ok := CheckSegmentTriangleIntersection(NewSegment(p1, p4), triangle); ok {
+			bestIntersection.AddIntersection(intersection)
+		}
+
+		if intersection, ok := CheckSegmentTriangleIntersection(NewSegment(p6, p5), triangle); ok {
+			bestIntersection.AddIntersection(intersection)
+		}
+		if intersection, ok := CheckSegmentTriangleIntersection(NewSegment(p7, p6), triangle); ok {
+			bestIntersection.AddIntersection(intersection)
+		}
+		if intersection, ok := CheckSegmentTriangleIntersection(NewSegment(p8, p7), triangle); ok {
+			bestIntersection.AddIntersection(intersection)
+		}
+		if intersection, ok := CheckSegmentTriangleIntersection(NewSegment(p5, p8), triangle); ok {
+			bestIntersection.AddIntersection(intersection)
+		}
+
+		if intersection, ok := CheckSegmentTriangleIntersection(NewSegment(p5, p1), triangle); ok {
+			bestIntersection.AddIntersection(intersection)
+		}
+		if intersection, ok := CheckSegmentTriangleIntersection(NewSegment(p6, p2), triangle); ok {
+			bestIntersection.AddIntersection(intersection)
+		}
+		if intersection, ok := CheckSegmentTriangleIntersection(NewSegment(p7, p3), triangle); ok {
+			bestIntersection.AddIntersection(intersection)
+		}
+		if intersection, ok := CheckSegmentTriangleIntersection(NewSegment(p8, p4), triangle); ok {
+			bestIntersection.AddIntersection(intersection)
+		}
 	}
 	return bestIntersection.Intersection()
 }
