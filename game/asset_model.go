@@ -216,6 +216,13 @@ type ModelInfo struct {
 	//
 	// TODO: Base this on individual node flags.
 	IsDynamic bool
+
+	// DiscardHierarchy will remove the model's hierarchy from the scene
+	// after instantiation, leaving only the graphical and physical
+	// representations.
+	//
+	// This is applicable only for static models.
+	DiscardHierarchy bool
 }
 
 // Model represents an instance of a ModelTemplate in a Scene.
@@ -368,6 +375,17 @@ func InstantiateModel(scene *Scene, info ModelInfo) *Model {
 	scene.Hierarchy().ApplySourceToTarget(modelNode, true)
 	scene.Hierarchy().ApplyNodeToTarget(modelNode, true)
 	scene.Hierarchy().ApplyNodeToInterpolation(modelNode, 1.0, true)
+
+	if !info.IsDynamic && info.DiscardHierarchy {
+		for node := range nodes.Values() {
+			scene.AmbientLightBindingSet().Unbind(node, false)
+			scene.PointLightBindingSet().Unbind(node, false)
+			scene.SpotLightBindingSet().Unbind(node, false)
+			scene.DirectionalLightBindingSet().Unbind(node, false)
+			scene.SkyBindingSet().Unbind(node, false)
+		}
+		scene.Hierarchy().DeleteNode(modelNode)
+	}
 
 	return &Model{
 		scene:      scene,
