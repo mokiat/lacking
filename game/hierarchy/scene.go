@@ -83,7 +83,8 @@ func (s *Scene) CreateNode() NodeID {
 	}
 }
 
-// DeleteNode deletes the node with the specified ID from the scene.
+// DeleteNode deletes the node with the specified ID, as well as any children,
+// from the scene.
 func (s *Scene) DeleteNode(id NodeID) {
 	if !s.IsValidNode(id) {
 		return

@@ -52,6 +52,7 @@ func (s *BindingSet[T]) Unbind(id NodeID, notify bool) (T, bool) {
 	if !exists {
 		return gog.Zero[T](), false
 	}
+	delete(s.relations, id)
 	if notify {
 		s.binding.OnStaleBinding(s.scene, target)
 	}
