@@ -2,6 +2,7 @@ package gltfutil
 
 import (
 	"fmt"
+	"log/slog"
 
 	"github.com/mokiat/gblob"
 	"github.com/mokiat/gomath/dprec"
@@ -366,7 +367,7 @@ func ColorTextureIndex(doc *gltf.Document, pbr *gltf.PBRMetallicRoughness) *int 
 		return nil
 	}
 	if colorTexture.TexCoord != 0 {
-		logger.Warn("Unsupported color texture: tex coord layer unsupported!")
+		logger.Warn("Unsupported color texture: tex coord layer unsupported")
 		return nil
 	}
 	return &colorTexture.Index
@@ -378,7 +379,7 @@ func MetallicRoughnessTextureIndex(doc *gltf.Document, pbr *gltf.PBRMetallicRoug
 		return nil
 	}
 	if mrTexture.TexCoord != 0 {
-		logger.Warn("Unsupported metallic-roughness texture: tex coord layer unsupported!")
+		logger.Warn("Unsupported metallic-roughness texture: tex coord layer unsupported")
 		return nil
 	}
 	return &mrTexture.Index
@@ -390,7 +391,7 @@ func NormalTextureIndexScale(doc *gltf.Document, material *gltf.Material) (*int,
 		return nil, 1.0
 	}
 	if normalTexture.TexCoord > 0 {
-		logger.Warn("Unsupported normal texture: tex coord layer unsupported!")
+		logger.Warn("Unsupported normal texture: tex coord layer unsupported")
 		return nil, 1.0
 	}
 	return normalTexture.Index, float32(normalTexture.ScaleOrDefault())
@@ -398,19 +399,21 @@ func NormalTextureIndexScale(doc *gltf.Document, material *gltf.Material) (*int,
 
 func InverseBindMatrix(doc *gltf.Document, skin *gltf.Skin, index int) sprec.Mat4 {
 	if skin.InverseBindMatrices == nil {
-		logger.Warn("Skin lacks inverse bind matrices!")
+		logger.Warn("Skin lacks inverse bind matrices")
 		return sprec.IdentityMat4()
 	}
 
 	accessor := doc.Accessors[*skin.InverseBindMatrices]
 	if accessor.BufferView == nil {
-		logger.Warn("Accessor lacks a buffer view!")
+		logger.Warn("Accessor lacks a buffer view")
 		return sprec.IdentityMat4()
 	}
 
 	buffer := BufferViewData(doc, *accessor.BufferView)
 	if accessor.Type != gltf.AccessorMat4 {
-		logger.Error("Unsupported joints accessor type (%d)!", accessor.Type)
+		logger.Error("Unsupported joints accessor type",
+			slog.String("type", accessor.Type.String()),
+		)
 		return sprec.IdentityMat4()
 	}
 	switch accessor.ComponentType {
@@ -435,7 +438,9 @@ func InverseBindMatrix(doc *gltf.Document, skin *gltf.Skin, index int) sprec.Mat
 		}
 		return sprec.ColumnMajorArrayToMat4(array)
 	default:
-		logger.Error("Unsupported joints accessor component type (%d)!", accessor.ComponentType)
+		logger.Error("Unsupported joints accessor component type",
+			slog.String("type", accessor.ComponentType.String()),
+		)
 		return sprec.IdentityMat4()
 	}
 }
@@ -443,12 +448,14 @@ func InverseBindMatrix(doc *gltf.Document, skin *gltf.Skin, index int) sprec.Mat
 func AnimationKeyframes(doc *gltf.Document, sampler *gltf.AnimationSampler) []float64 {
 	accessor := doc.Accessors[sampler.Input]
 	if accessor.BufferView == nil {
-		logger.Warn("Accessor lacks a buffer view!")
+		logger.Warn("Accessor lacks a buffer view")
 		return nil
 	}
 	buffer := BufferViewData(doc, *accessor.BufferView)
 	if accessor.Type != gltf.AccessorScalar {
-		logger.Error("Unsupported sampler input accessor type (%d)!", accessor.Type)
+		logger.Error("Unsupported sampler input accessor type",
+			slog.String("type", accessor.Type.String()),
+		)
 		return nil
 	}
 	switch accessor.ComponentType {
@@ -459,7 +466,9 @@ func AnimationKeyframes(doc *gltf.Document, sampler *gltf.AnimationSampler) []fl
 		}
 		return result
 	default:
-		logger.Error("Unsupported sampler input accessor component type (%d)!", accessor.ComponentType)
+		logger.Error("Unsupported sampler input accessor component type",
+			slog.String("type", accessor.ComponentType.String()),
+		)
 		return nil
 	}
 }
@@ -467,12 +476,14 @@ func AnimationKeyframes(doc *gltf.Document, sampler *gltf.AnimationSampler) []fl
 func AnimationTranslations(doc *gltf.Document, sampler *gltf.AnimationSampler) []dprec.Vec3 {
 	accessor := doc.Accessors[sampler.Output]
 	if accessor.BufferView == nil {
-		logger.Warn("Accessor lacks a buffer view!")
+		logger.Warn("Accessor lacks a buffer view")
 		return nil
 	}
 	buffer := BufferViewData(doc, *accessor.BufferView)
 	if accessor.Type != gltf.AccessorVec3 {
-		logger.Error("Unsupported sampler output accessor type (%d)!", accessor.Type)
+		logger.Error("Unsupported sampler output accessor type",
+			slog.String("type", accessor.Type.String()),
+		)
 		return nil
 	}
 	switch accessor.ComponentType {
@@ -487,7 +498,9 @@ func AnimationTranslations(doc *gltf.Document, sampler *gltf.AnimationSampler) [
 		}
 		return result
 	default:
-		logger.Error("Unsupported sampler output accessor component type (%d)!", accessor.ComponentType)
+		logger.Error("Unsupported sampler output accessor component type",
+			slog.String("type", accessor.ComponentType.String()),
+		)
 		return nil
 	}
 }
@@ -495,12 +508,14 @@ func AnimationTranslations(doc *gltf.Document, sampler *gltf.AnimationSampler) [
 func AnimationRotations(doc *gltf.Document, sampler *gltf.AnimationSampler) []dprec.Quat {
 	accessor := doc.Accessors[sampler.Output]
 	if accessor.BufferView == nil {
-		logger.Warn("Accessor lacks a buffer view!")
+		logger.Warn("Accessor lacks a buffer view")
 		return nil
 	}
 	buffer := BufferViewData(doc, *accessor.BufferView)
 	if accessor.Type != gltf.AccessorVec4 {
-		logger.Error("Unsupported sampler output accessor type (%d)!", accessor.Type)
+		logger.Error("Unsupported sampler output accessor type",
+			slog.String("type", accessor.Type.String()),
+		)
 		return nil
 	}
 	switch accessor.ComponentType {
@@ -516,7 +531,9 @@ func AnimationRotations(doc *gltf.Document, sampler *gltf.AnimationSampler) []dp
 		}
 		return result
 	default:
-		logger.Error("Unsupported sampler output accessor component type (%d)!", accessor.ComponentType)
+		logger.Error("Unsupported sampler output accessor component type",
+			slog.String("type", accessor.ComponentType.String()),
+		)
 		return nil
 	}
 }
@@ -524,12 +541,14 @@ func AnimationRotations(doc *gltf.Document, sampler *gltf.AnimationSampler) []dp
 func AnimationScales(doc *gltf.Document, sampler *gltf.AnimationSampler) []dprec.Vec3 {
 	accessor := doc.Accessors[sampler.Output]
 	if accessor.BufferView == nil {
-		logger.Warn("Accessor lacks a buffer view!")
+		logger.Warn("Accessor lacks a buffer view")
 		return nil
 	}
 	buffer := BufferViewData(doc, *accessor.BufferView)
 	if accessor.Type != gltf.AccessorVec3 {
-		logger.Error("Unsupported sampler output accessor type (%d)!", accessor.Type)
+		logger.Error("Unsupported sampler output accessor type",
+			slog.String("type", accessor.Type.String()),
+		)
 		return nil
 	}
 	switch accessor.ComponentType {
@@ -544,7 +563,9 @@ func AnimationScales(doc *gltf.Document, sampler *gltf.AnimationSampler) []dprec
 		}
 		return result
 	default:
-		logger.Error("Unsupported sampler output accessor component type (%d)!", accessor.ComponentType)
+		logger.Error("Unsupported sampler output accessor component type",
+			slog.String("type", accessor.ComponentType.String()),
+		)
 		return nil
 	}
 }

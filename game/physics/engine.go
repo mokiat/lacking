@@ -1,29 +1,17 @@
 package physics
 
-import (
-	"time"
-
-	"github.com/mokiat/lacking/game/physics/collision"
-)
-
 // NewEngine creates a new physics engine.
 func NewEngine(opts ...Option) *Engine {
-	cfg := config{
-		Timestep: 16 * time.Millisecond,
-	}
+	cfg := config{}
 	for _, opt := range opts {
 		opt(&cfg)
 	}
-	return &Engine{
-		timestep: cfg.Timestep,
-	}
+	return &Engine{}
 }
 
 // Engine is the entrypoint to working with a
 // physics simulation.
-type Engine struct {
-	timestep time.Duration
-}
+type Engine struct{}
 
 // CreateMaterial creates a new Material that can be used to describe an
 // object's behavior.
@@ -45,12 +33,10 @@ func (e *Engine) CreateBodyDefinition(info BodyDefinitionInfo) *BodyDefinition {
 		dragFactor:             info.DragFactor,
 		angularDragFactor:      info.AngularDragFactor,
 		collisionGroup:         info.CollisionGroup,
-		collisionSet: collision.NewSet(
-			collision.WithSpheres(info.CollisionSpheres),
-			collision.WithBoxes(info.CollisionBoxes),
-			collision.WithMeshes(info.CollisionMeshes),
-		),
-		aerodynamicShapes: info.AerodynamicShapes,
+		collisionSpheres:       info.CollisionSpheres,
+		collisionBoxes:         info.CollisionBoxes,
+		collisionMeshes:        info.CollisionMeshes,
+		aerodynamicShapes:      info.AerodynamicShapes,
 	}
 }
 
@@ -58,5 +44,5 @@ func (e *Engine) CreateBodyDefinition(info BodyDefinitionInfo) *BodyDefinition {
 // the simulation for it to run at maximum stepSeconds
 // intervals.
 func (e *Engine) CreateScene() *Scene {
-	return newScene(e, e.timestep)
+	return newScene(e)
 }

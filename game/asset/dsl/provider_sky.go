@@ -50,7 +50,7 @@ func CreateColorSkyMaterial(colorProvider Provider[dprec.Vec4]) Provider[*mdl.Ma
 				return nil, fmt.Errorf("error getting color: %w", err)
 			}
 
-			var pass mdl.MaterialPass
+			pass := mdl.NewMaterialPass()
 			pass.SetLayer(0)
 			pass.SetCulling(mdl.CullModeNone)
 			pass.SetFrontFace(mdl.FaceOrientationCW)
@@ -60,11 +60,10 @@ func CreateColorSkyMaterial(colorProvider Provider[dprec.Vec4]) Provider[*mdl.Ma
 			pass.SetBlending(false)
 			pass.SetShader(shader)
 
-			var material mdl.Material
-			material.SetName("ColorSkyMaterial")
-			material.AddSkyPass(&pass)
+			material := mdl.NewMaterial("ColorSkyMaterial")
+			material.AddSkyPass(pass)
 			material.SetProperty("skyColor", dtos.Vec4(color))
-			return &material, nil
+			return material, nil
 		},
 
 		// digest function
@@ -89,7 +88,7 @@ func CreateTextureSkyMaterial(samplerProvider Provider[*mdl.Sampler]) Provider[*
 				return nil, fmt.Errorf("error getting sampler: %w", err)
 			}
 
-			var pass mdl.MaterialPass
+			pass := mdl.NewMaterialPass()
 			pass.SetLayer(0)
 			pass.SetCulling(mdl.CullModeNone)
 			pass.SetFrontFace(mdl.FaceOrientationCW)
@@ -99,11 +98,10 @@ func CreateTextureSkyMaterial(samplerProvider Provider[*mdl.Sampler]) Provider[*
 			pass.SetBlending(false)
 			pass.SetShader(shader)
 
-			var material mdl.Material
-			material.SetName("ColorSkyMaterial")
-			material.AddSkyPass(&pass)
+			material := mdl.NewMaterial("ColorSkyMaterial")
+			material.AddSkyPass(pass)
 			material.SetSampler("skyColorSampler", sampler)
-			return &material, nil
+			return material, nil
 		},
 
 		// digest function
@@ -117,18 +115,17 @@ var defaultColorSkyShader = func() Provider[*mdl.Shader] {
 	return OnceProvider(FuncProvider(
 		// get function
 		func() (*mdl.Shader, error) {
-			var shader mdl.Shader
-			shader.SetShaderType(mdl.ShaderTypeSky)
+			shader := mdl.NewShader(mdl.ShaderTypeSky)
 			shader.SetSourceCode(`
-				uniforms {
-					skyColor vec4,
-				}
+				uniform (
+					skyColor vec4
+				)
 		
 				func #fragment() {
 					#color = skyColor
 				}
 			`)
-			return &shader, nil
+			return shader, nil
 		},
 
 		// digest function
@@ -142,18 +139,19 @@ var defaultTextureSkyShader = func() Provider[*mdl.Shader] {
 	return OnceProvider(FuncProvider(
 		// get function
 		func() (*mdl.Shader, error) {
-			var shader mdl.Shader
-			shader.SetShaderType(mdl.ShaderTypeSky)
+			shader := mdl.NewShader(mdl.ShaderTypeSky)
 			shader.SetSourceCode(`
-				textures {
-					skyColorSampler samplerCube,
-				}
+				texture (
+					skyColorSampler samplerCube
+				)
 		
 				func #fragment() {
-					#color = sample(skyColorSampler, #direction)
+					// Note: We flip the ray direction here because of how OpenGL
+					// handles the cube map texture coordinates.
+					#color = sample(skyColorSampler, -#direction)
 				}
 			`)
-			return &shader, nil
+			return shader, nil
 		},
 
 		// digest function

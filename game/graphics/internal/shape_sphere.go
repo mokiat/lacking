@@ -23,7 +23,7 @@ func CreateSphereShape(api render.API) *Shape {
 	vertexPlotter := blob.NewPlotter(vertexData)
 	vertexPlotter.PlotSPVec3(sprec.NewVec3(0.0, 1.0, 0.0))  // top
 	vertexPlotter.PlotSPVec3(sprec.NewVec3(0.0, -1.0, 0.0)) // bottom
-	for hs := 0; hs < horizontalSliceCount; hs++ {
+	for hs := range horizontalSliceCount {
 		hAngle := sprec.Radians(2 * sprec.Pi * (float32(-hs) / float32(horizontalSliceCount)))
 		hCos := sprec.Cos(hAngle)
 		hSin := sprec.Sin(hAngle)
@@ -37,7 +37,7 @@ func CreateSphereShape(api render.API) *Shape {
 
 	indexData := make([]byte, indexCount*indexSize)
 	indexPlotter := blob.NewPlotter(indexData)
-	for x := 0; x < horizontalSliceCount; x++ {
+	for x := range horizontalSliceCount {
 		left := x % horizontalSliceCount
 		right := (x + 1) % horizontalSliceCount
 		leftOffset := left * slices
@@ -50,7 +50,7 @@ func CreateSphereShape(api render.API) *Shape {
 		indexPlotter.PlotUint16(upperLeft)
 		indexPlotter.PlotUint16(upperRight)
 
-		for y := 0; y < slices-1; y++ {
+		for range slices - 1 {
 			lowerLeft := upperLeft + 1
 			lowerRight := upperRight + 1
 

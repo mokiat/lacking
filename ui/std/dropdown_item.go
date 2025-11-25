@@ -20,7 +20,7 @@ type dropdownItemCallbackData struct {
 	OnSelected OnActionFunc
 }
 
-var dropdownItem = co.Define(&dropdownItemComponent{})
+var dropdownItem = co.Define[*dropdownItemComponent]()
 
 type dropdownItemComponent struct {
 	co.BaseComponent

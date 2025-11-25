@@ -107,4 +107,9 @@ func (t *AccelerationTarget) ApplyTorque(torque dprec.Vec3) {
 	t.AddAngularAcceleration(dprec.Mat3Vec3Prod(dprec.InverseMat3(t.momentOfInertia), torque))
 }
 
+func (t *AccelerationTarget) ApplyOffsetForce(offset, force dprec.Vec3) {
+	t.ApplyForce(force)
+	t.ApplyTorque(dprec.Vec3Cross(offset, force))
+}
+
 // TODO: Apply offset force

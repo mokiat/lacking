@@ -1,0 +1,1 @@
+uniform color vec4

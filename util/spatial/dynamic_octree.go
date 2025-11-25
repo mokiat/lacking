@@ -1,12 +1,16 @@
 package spatial
 
 import (
+	"log/slog"
 	"slices"
 
 	"github.com/mokiat/gog/ds"
 	"github.com/mokiat/gog/opt"
 	"github.com/mokiat/gomath/dprec"
 )
+
+// InvalidDynamicOctreeItemID can be used to mark a reference as invalid.
+const InvalidDynamicOctreeItemID = DynamicOctreeItemID(0xFFFFFFFF)
 
 // DynamicOctreeItemID is an identifier used to control the placement of an item
 // into a dynamic octree.
@@ -105,8 +109,8 @@ func NewDynamicOctree[T any](settings DynamicOctreeSettings) *DynamicOctree[T] {
 		}
 	}
 
-	nodes := make([]dynamicOctreeNode[T], 0, initialNodeCapacity)
-	nodes = append(nodes, dynamicOctreeNode[T]{
+	nodes := make([]dynamicOctreeNode, 0, initialNodeCapacity)
+	nodes = append(nodes, dynamicOctreeNode{
 		parent: unspecifiedIndex,
 		children: [8]int32{
 			unspecifiedIndex, unspecifiedIndex, unspecifiedIndex, unspecifiedIndex,
@@ -136,7 +140,7 @@ func NewDynamicOctree[T any](settings DynamicOctreeSettings) *DynamicOctree[T] {
 // DynamicOctree is a spatial structure that uses a loose octree implementation
 // with biased placement to enable the fast search of items within a region.
 type DynamicOctree[T any] struct {
-	nodes           []dynamicOctreeNode[T]
+	nodes           []dynamicOctreeNode
 	items           []dynamicOctreeItem[T]
 	freeNodeIndices *ds.Stack[int32]
 	freeItemIndices *ds.Stack[int32]
@@ -195,7 +199,9 @@ func (t *DynamicOctree[T]) Insert(position dprec.Vec3, radius float64, value T) 
 		return item.id
 	} else {
 		if len(t.items) == cap(t.items) {
-			logger.Warn("Item slice capacity (%d) reached for dynamic octree! Will grow.", len(t.items))
+			logger.Warn("Item slice capacity reached for dynamic octree! Will grow.",
+				slog.Int("capacity", len(t.items)),
+			)
 		}
 		id := DynamicOctreeItemID(len(t.items))
 		t.idMappings = append(t.idMappings, int32(id))
@@ -241,6 +247,10 @@ func (t *DynamicOctree[T]) VisitHexahedronRegion(region *HexahedronRegion, visit
 	t.itemCountRejected = 0
 	t.refresh()
 	t.visitNodeInHexahedronRegion(0, region, visitor)
+}
+
+func (t *DynamicOctree[T]) GC() {
+	t.refresh()
 }
 
 func (t *DynamicOctree[T]) pickNodeForItem(position dprec.Vec3, radius float64) int32 {
@@ -301,6 +311,12 @@ func (t *DynamicOctree[T]) pickChildNode(parentNodeIndex int32, position dprec.V
 		parentNode.children[childIndex] = childNodeIndex
 		childNode := &t.nodes[childNodeIndex]
 		childNode.parent = parentNodeIndex
+		childNode.children = [8]int32{
+			unspecifiedIndex, unspecifiedIndex, unspecifiedIndex, unspecifiedIndex,
+			unspecifiedIndex, unspecifiedIndex, unspecifiedIndex, unspecifiedIndex,
+		}
+		childNode.itemStart = 0
+		childNode.itemEnd = 0
 		childNode.x = childX
 		childNode.y = childY
 		childNode.z = childZ
@@ -308,13 +324,15 @@ func (t *DynamicOctree[T]) pickChildNode(parentNodeIndex int32, position dprec.V
 		return childNodeIndex
 	} else {
 		if len(t.nodes) == cap(t.nodes) {
-			logger.Warn("Node slice capacity (%d) reached for dynamic octree! Will grow.", len(t.nodes))
+			logger.Warn("Node slice capacity reached for dynamic octree! Will grow.",
+				slog.Int("capacity", len(t.nodes)),
+			)
 		}
 		childNodeIndex := int32(len(t.nodes)) // predict next node index
 		parentNode.children[childIndex] = childNodeIndex
 		// NOTE: DO NOT use parentNode after this append as the ref might be towards
 		// an old slice.
-		t.nodes = append(t.nodes, dynamicOctreeNode[T]{
+		t.nodes = append(t.nodes, dynamicOctreeNode{
 			parent:    parentNodeIndex,
 			itemStart: unspecifiedIndex,
 			itemEnd:   unspecifiedIndex,
@@ -451,7 +469,7 @@ func compareDynamicOctreeItems[T any](a, b dynamicOctreeItem[T]) int {
 	return int(a.node - b.node)
 }
 
-type dynamicOctreeNode[T any] struct {
+type dynamicOctreeNode struct {
 	parent    int32
 	children  [8]int32
 	itemStart int32
@@ -463,7 +481,7 @@ type dynamicOctreeNode[T any] struct {
 	s float64
 }
 
-func (n *dynamicOctreeNode[T]) isEmpty() bool {
+func (n *dynamicOctreeNode) isEmpty() bool {
 	for _, childIndex := range n.children {
 		if childIndex != unspecifiedIndex {
 			return false
@@ -472,7 +490,7 @@ func (n *dynamicOctreeNode[T]) isEmpty() bool {
 	return n.itemStart >= n.itemEnd
 }
 
-func (n *dynamicOctreeNode[T]) isInsideHexahedronRegion(region *HexahedronRegion) bool {
+func (n *dynamicOctreeNode) isInsideHexahedronRegion(region *HexahedronRegion) bool {
 	position := dprec.NewVec3(n.x, n.y, n.z)
 	radius := n.s * sizeToDoubleRadius
 	return region[0].ContainsSphere(position, radius) &&

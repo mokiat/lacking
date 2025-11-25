@@ -1,24 +1,26 @@
 package mdl
 
-import "github.com/mokiat/lacking/game/asset"
+import "github.com/mokiat/lacking/game/asset/dto"
 
-type ShaderType = asset.ShaderType
+type ShaderType = dto.ShaderType
 
 const (
-	ShaderTypeGeometry    ShaderType = asset.ShaderTypeGeometry
-	ShaderTypeShadow      ShaderType = asset.ShaderTypeShadow
-	ShaderTypeForward     ShaderType = asset.ShaderTypeForward
-	ShaderTypeSky         ShaderType = asset.ShaderTypeSky
-	ShaderTypePostprocess ShaderType = asset.ShaderTypePostprocess
+	ShaderTypeGeometry    ShaderType = dto.ShaderTypeGeometry
+	ShaderTypeShadow      ShaderType = dto.ShaderTypeShadow
+	ShaderTypeForward     ShaderType = dto.ShaderTypeForward
+	ShaderTypeSky         ShaderType = dto.ShaderTypeSky
+	ShaderTypePostprocess ShaderType = dto.ShaderTypePostprocess
 )
 
 func NewShader(shaderType ShaderType) *Shader {
 	return &Shader{
+		Object:     NewObject(),
 		shaderType: shaderType,
 	}
 }
 
 type Shader struct {
+	*Object
 	shaderType ShaderType
 	sourceCode string
 }

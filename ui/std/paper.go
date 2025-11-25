@@ -23,7 +23,7 @@ var paperDefaultData = PaperData{
 }
 
 // Paper represents an outlined container.
-var Paper = co.Define(&paperComponent{})
+var Paper = co.Define[*paperComponent]()
 
 type paperComponent struct {
 	co.BaseComponent

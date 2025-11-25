@@ -7,7 +7,7 @@ import (
 	"github.com/mokiat/lacking/ui/layout"
 )
 
-var Modal = co.Define(&modalComponent{})
+var Modal = co.Define[*modalComponent]()
 
 type modalComponent struct {
 	co.BaseComponent
@@ -16,10 +16,10 @@ type modalComponent struct {
 func (c *modalComponent) Render() co.Instance {
 	return co.New(Element, func() {
 		co.WithData(ElementData{
-			Essence:   c,
-			Layout:    layout.Fill(),
-			Focusable: opt.V(true),
-			Focused:   opt.V(true),
+			Essence:       c,
+			Layout:        layout.Fill(),
+			CanAutoFocus:  opt.V(true),
+			CreateFocused: true,
 		})
 
 		co.WithChild("shading", co.New(Container, func() {

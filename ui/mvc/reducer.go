@@ -1,6 +1,9 @@
 package mvc
 
 import (
+	"log/slog"
+	"reflect"
+
 	co "github.com/mokiat/lacking/ui/component"
 )
 
@@ -30,14 +33,16 @@ func (f ReducerFunc) Reduce(action Action) bool {
 // Dispatch propagates the specified Action through the chain of Reducers
 // registered on the specified Scope.
 func Dispatch(scope co.Scope, action Action) {
-	registration := co.GetScopeValue[*reducerRegistration](scope, reducerRegistrationKey{})
+	registration := co.Value[*reducerRegistration](scope, reducerRegistrationKey{})
 	for registration != nil {
 		if registration.reducer.Reduce(action) {
 			return
 		}
 		registration = registration.parent
 	}
-	logger.Warn("No reducer found that can process action (type: %T)!", action)
+	logger.Warn("No reducer found that can process action",
+		slog.String("type", reflect.TypeOf(action).String()),
+	)
 }
 
 // UseReducer extends the specified Scope with the specified Reducer. Dispatch
@@ -48,7 +53,7 @@ func Dispatch(scope co.Scope, action Action) {
 // NOTE: Make sure to attach the returned Scope to any child components in the
 // hierarchy, otherwise they would not have access to the Reducer.
 func UseReducer(scope co.Scope, reducer Reducer) co.Scope {
-	parentRegistration := co.GetScopeValue[*reducerRegistration](scope, reducerRegistrationKey{})
+	parentRegistration := co.Value[*reducerRegistration](scope, reducerRegistrationKey{})
 	registration := &reducerRegistration{
 		parent:  parentRegistration,
 		reducer: reducer,

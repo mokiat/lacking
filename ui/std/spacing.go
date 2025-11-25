@@ -17,7 +17,7 @@ var spacingDefaultData = SpacingData{
 
 // Spacing represents an invisible component that requests that a specific
 // amount of visual space be reserved for it.
-var Spacing = co.Define(&spacingComponent{})
+var Spacing = co.Define[*spacingComponent]()
 
 type spacingComponent struct {
 	co.BaseComponent

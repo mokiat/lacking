@@ -45,7 +45,7 @@ func (b Bounds) Grow(size Size) Bounds {
 }
 
 // Shrink returns a new Bounds that has a size that is
-//smaller by the given amount compared to these Bounds.
+// smaller by the given amount compared to these Bounds.
 func (b Bounds) Shrink(size Size) Bounds {
 	return Bounds{
 		Position: b.Position,
@@ -66,12 +66,12 @@ func (b Bounds) Resize(width, height int) Bounds {
 // of the specified Bounds and these Bounds.
 func (b Bounds) Intersect(other Bounds) Bounds {
 	position := NewPosition(
-		maxInt(b.X, other.X),
-		maxInt(b.Y, other.Y),
+		max(b.X, other.X),
+		max(b.Y, other.Y),
 	)
 	size := NewSize(
-		minInt(b.X+b.Width, other.X+other.Width)-position.X,
-		minInt(b.Y+b.Height, other.Y+other.Height)-position.Y,
+		min(b.X+b.Width, other.X+other.Width)-position.X,
+		min(b.Y+b.Height, other.Y+other.Height)-position.Y,
 	)
 	return Bounds{
 		Position: position,

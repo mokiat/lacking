@@ -7,7 +7,15 @@ import (
 	"github.com/mokiat/gog"
 )
 
+func NewMeshDefinition() *MeshDefinition {
+	return &MeshDefinition{
+		Object:           NewObject(),
+		materialBindings: make(map[string]*Material),
+	}
+}
+
 type MeshDefinition struct {
+	*Object
 	name             string
 	geometry         *Geometry
 	materialBindings map[string]*Material
@@ -34,17 +42,21 @@ func (m *MeshDefinition) Materials() []*Material {
 }
 
 func (m *MeshDefinition) BindMaterial(name string, material *Material) {
-	if m.materialBindings == nil {
-		m.materialBindings = make(map[string]*Material)
-	}
 	m.materialBindings[name] = material
 }
 
+func (m *MeshDefinition) MaterialBindings() map[string]*Material {
+	return m.materialBindings
+}
+
 func NewMesh() *Mesh {
-	return &Mesh{}
+	return &Mesh{
+		Object: NewObject(),
+	}
 }
 
 type Mesh struct {
+	*Object
 	definition *MeshDefinition
 	armature   *Armature
 }

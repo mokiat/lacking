@@ -16,7 +16,7 @@ const (
 	CheckboxUncheckedIconFile = "ui:///unchecked.png"
 )
 
-var Checkbox = co.Define(&checkboxComponent{})
+var Checkbox = co.Define[*checkboxComponent]()
 
 type CheckboxData struct {
 	Checked bool

@@ -1,39 +1,53 @@
 package mdl
 
-import (
-	"github.com/mokiat/lacking/game/asset"
-)
+import "github.com/mokiat/lacking/game/asset/dto"
 
 const (
-	CullModeNone         CullMode = asset.CullModeNone
-	CullModeFront        CullMode = asset.CullModeFront
-	CullModeBack         CullMode = asset.CullModeBack
-	CullModeFrontAndBack CullMode = asset.CullModeFrontAndBack
+	CullModeNone         CullMode = dto.CullModeNone
+	CullModeFront        CullMode = dto.CullModeFront
+	CullModeBack         CullMode = dto.CullModeBack
+	CullModeFrontAndBack CullMode = dto.CullModeFrontAndBack
 )
 
-type CullMode = asset.CullMode
+type CullMode = dto.CullMode
 
 const (
-	FaceOrientationCCW FaceOrientation = asset.FaceOrientationCCW
-	FaceOrientationCW  FaceOrientation = asset.FaceOrientationCW
+	FaceOrientationCCW FaceOrientation = dto.FaceOrientationCCW
+	FaceOrientationCW  FaceOrientation = dto.FaceOrientationCW
 )
 
-type FaceOrientation = asset.FaceOrientation
+type FaceOrientation = dto.FaceOrientation
 
 const (
-	ComparisonNever          Comparison = asset.ComparisonNever
-	ComparisonLess           Comparison = asset.ComparisonLess
-	ComparisonEqual          Comparison = asset.ComparisonEqual
-	ComparisonLessOrEqual    Comparison = asset.ComparisonLessOrEqual
-	ComparisonGreater        Comparison = asset.ComparisonGreater
-	ComparisonNotEqual       Comparison = asset.ComparisonNotEqual
-	ComparisonGreaterOrEqual Comparison = asset.ComparisonGreaterOrEqual
-	ComparisonAlways         Comparison = asset.ComparisonAlways
+	ComparisonNever          Comparison = dto.ComparisonNever
+	ComparisonLess           Comparison = dto.ComparisonLess
+	ComparisonEqual          Comparison = dto.ComparisonEqual
+	ComparisonLessOrEqual    Comparison = dto.ComparisonLessOrEqual
+	ComparisonGreater        Comparison = dto.ComparisonGreater
+	ComparisonNotEqual       Comparison = dto.ComparisonNotEqual
+	ComparisonGreaterOrEqual Comparison = dto.ComparisonGreaterOrEqual
+	ComparisonAlways         Comparison = dto.ComparisonAlways
 )
 
-type Comparison = asset.Comparison
+type Comparison = dto.Comparison
+
+func NewMaterial(name string) *Material {
+	return &Material{
+		Object:               NewObject(),
+		name:                 name,
+		metadata:             nil,
+		samplers:             nil,
+		properties:           nil,
+		geometryPasses:       nil,
+		shadowPasses:         nil,
+		forwardPasses:        nil,
+		skyPasses:            nil,
+		postprocessingPasses: nil,
+	}
+}
 
 type Material struct {
+	*Object
 	name string
 
 	metadata Metadata
@@ -75,6 +89,10 @@ func (m *Material) SetName(name string) {
 	m.name = name
 }
 
+func (m *Material) Samplers() map[string]*Sampler {
+	return m.samplers
+}
+
 func (m *Material) Sampler(name string) *Sampler {
 	if m.samplers == nil {
 		return nil
@@ -87,6 +105,10 @@ func (m *Material) SetSampler(name string, sampler *Sampler) {
 		m.samplers = make(map[string]*Sampler)
 	}
 	m.samplers[name] = sampler
+}
+
+func (m *Material) Properties() map[string]any {
+	return m.properties
 }
 
 func (m *Material) Property(name string) any {
@@ -135,12 +157,22 @@ func (m *Material) AddSkyPass(pass *MaterialPass) {
 	m.skyPasses = append(m.skyPasses, pass)
 }
 
-func (m *Material) PostprocessPasses() []*MaterialPass {
+func (m *Material) PostprocessingPasses() []*MaterialPass {
 	return m.postprocessingPasses
 }
 
-func (m *Material) AddPostprocessPass(pass *MaterialPass) {
+func (m *Material) AddPostprocessingPass(pass *MaterialPass) {
 	m.postprocessingPasses = append(m.postprocessingPasses, pass)
+}
+
+func (m *Material) AllPasses() []*MaterialPass {
+	var result []*MaterialPass
+	result = append(result, m.geometryPasses...)
+	result = append(result, m.shadowPasses...)
+	result = append(result, m.forwardPasses...)
+	result = append(result, m.skyPasses...)
+	result = append(result, m.postprocessingPasses...)
+	return result
 }
 
 func NewMaterialPass() *MaterialPass {

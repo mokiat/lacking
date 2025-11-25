@@ -16,11 +16,12 @@ var (
 
 // Viewport represents a component that uses low-level API calls to render
 // an external scene, unlike other components that rely on the Canvas API.
-var Viewport = co.Define(&viewportComponent{})
+var Viewport = co.Define[*viewportComponent]()
 
 // ViewportData holds the data for a Viewport component.
 type ViewportData struct {
-	API render.API
+	API         render.API
+	ForceRedraw bool
 }
 
 // ViewportCallbackData holds the callback data for a Viewport component.
@@ -33,7 +34,8 @@ type ViewportCallbackData struct {
 type viewportComponent struct {
 	co.BaseComponent
 
-	surface viewportSurface
+	surface     viewportSurface
+	forceRedraw bool
 
 	fbResizeBlocked bool
 	fbDesiredWidth  uint32
@@ -47,6 +49,7 @@ type viewportComponent struct {
 func (c *viewportComponent) OnCreate() {
 	data := co.GetData[ViewportData](c.Properties())
 	c.surface.api = data.API
+	c.forceRedraw = data.ForceRedraw
 
 	callbackData := co.GetOptionalCallbackData(c.Properties(), ViewportCallbackData{})
 	c.onKeyboardEvent = callbackData.OnKeyboardEvent
@@ -78,9 +81,9 @@ func (c *viewportComponent) Render() co.Instance {
 	return co.New(co.Element, func() {
 		co.WithLayoutData(c.Properties().LayoutData())
 		co.WithData(co.ElementData{
-			Essence:   c,
-			Focusable: opt.V(true),
-			Focused:   opt.V(true),
+			Essence:       c,
+			CanAutoFocus:  opt.V(true),
+			CreateFocused: true,
 		})
 		co.WithChildren(c.Properties().Children())
 	})
@@ -130,6 +133,10 @@ func (c *viewportComponent) OnRender(element *ui.Element, canvas *ui.Canvas) {
 			Rule:  ui.FillRuleSimple,
 			Color: BackgroundColor,
 		})
+	}
+
+	if c.forceRedraw {
+		element.Invalidate()
 	}
 }
 

@@ -17,7 +17,7 @@ var switchDefaultData = SwitchData{}
 
 // Switch is a container that can switch between different views depending
 // on the specified SwitchData.
-var Switch = co.Define(&switchComponent{})
+var Switch = co.Define[*switchComponent]()
 
 type switchComponent struct {
 	co.BaseComponent

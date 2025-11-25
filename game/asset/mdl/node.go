@@ -1,6 +1,7 @@
 package mdl
 
 import (
+	"iter"
 	"slices"
 
 	"github.com/mokiat/gomath/dprec"
@@ -8,6 +9,7 @@ import (
 
 func NewNode(name string) *Node {
 	return &Node{
+		Object:      NewObject(),
 		name:        name,
 		translation: dprec.ZeroVec3(),
 		rotation:    dprec.IdentityQuat(),
@@ -16,12 +18,12 @@ func NewNode(name string) *Node {
 }
 
 type Node struct {
+	*Object
 	name string
 
 	metadata Metadata
 
-	source any
-	target any
+	attachments []any
 
 	translation dprec.Vec3
 	rotation    dprec.Quat
@@ -31,24 +33,30 @@ type Node struct {
 	nodes  []*Node
 }
 
+func (n *Node) Metadata() Metadata {
+	return n.metadata
+}
+
 func (n *Node) SetMetadata(metadata Metadata) {
 	n.metadata = metadata
 }
 
-func (n *Node) Source() any {
-	return n.source
+func (n *Node) Attachments() []any {
+	return n.attachments
 }
 
-func (n *Node) SetSource(source any) {
-	n.source = source
+func (n *Node) ClearAttachments() {
+	n.attachments = nil
 }
 
-func (n *Node) Target() any {
-	return n.target
+func (n *Node) AddAttachment(attachment any) {
+	n.attachments = append(n.attachments, attachment)
 }
 
-func (n *Node) SetTarget(target any) {
-	n.target = target
+func (n *Node) RemoveAttachment(attachment any) {
+	n.attachments = slices.DeleteFunc(n.attachments, func(candidate any) bool {
+		return candidate == attachment
+	})
 }
 
 func (n *Node) Name() string {
@@ -107,4 +115,16 @@ func (n *Node) RemoveNode(node *Node) {
 	n.nodes = slices.DeleteFunc(n.nodes, func(candidate *Node) bool {
 		return candidate == node
 	})
+}
+
+func NodeAttachmentsOfType[T any](node *Node) iter.Seq[T] {
+	return func(yield func(T) bool) {
+		for _, attachment := range node.attachments {
+			if value, ok := attachment.(T); ok {
+				if !yield(value) {
+					return
+				}
+			}
+		}
+	}
 }

@@ -15,21 +15,27 @@ const (
 	initialRenderItemCount = 32 * 1024
 
 	// TODO: Move these next to the uniform types
-	modelUniformBufferItemSize  = 64
+	modelUniformBufferItemSize  = 64 // 1x mat4
 	modelUniformBufferItemCount = 256
 	modelUniformBufferSize      = modelUniformBufferItemSize * modelUniformBufferItemCount
+
+	instanceUniformBufferItemSize  = 16 // 1x vec4
+	instanceUniformBufferItemCount = 256
+	instanceUniformBufferSize      = instanceUniformBufferItemSize * instanceUniformBufferItemCount
 )
 
 func newMeshRenderer() *meshRenderer {
 	return &meshRenderer{
-		renderItems:            make([]renderItem, 0, initialRenderItemCount),
-		modelUniformBufferData: make(gblob.LittleEndianBlock, modelUniformBufferSize),
+		renderItems:               make([]renderItem, 0, initialRenderItemCount),
+		modelUniformBufferData:    make(gblob.LittleEndianBlock, modelUniformBufferSize),
+		instanceUniformBufferData: make(gblob.LittleEndianBlock, instanceUniformBufferSize),
 	}
 }
 
 type meshRenderer struct {
-	renderItems            []renderItem
-	modelUniformBufferData gblob.LittleEndianBlock
+	renderItems               []renderItem
+	modelUniformBufferData    gblob.LittleEndianBlock
+	instanceUniformBufferData gblob.LittleEndianBlock
 }
 
 func (s *meshRenderer) DiscardRenderItems() {
@@ -51,11 +57,13 @@ func (s *meshRenderer) QueueMeshRenderItems(ctx StageContext, mesh *Mesh, passTy
 			MaterialKey: pass.Key,
 			ArmatureKey: mesh.armature.key(),
 
-			Pipeline:     pass.Pipeline,
-			TextureSet:   pass.TextureSet,
-			UniformSet:   pass.UniformSet,
+			Pipeline:   pass.Pipeline,
+			TextureSet: pass.TextureSet,
+			UniformSet: pass.UniformSet,
+
 			ModelData:    mesh.matrixData,
 			ArmatureData: mesh.armature.uniformData(),
+			InstanceData: mesh.instanceData,
 
 			IndexByteOffset: pass.IndexByteOffset,
 			IndexCount:      pass.IndexCount,
@@ -90,6 +98,7 @@ func (s *meshRenderer) QueueStaticMeshRenderItems(ctx StageContext, mesh *Static
 			UniformSet:   pass.UniformSet,
 			ModelData:    mesh.matrixData,
 			ArmatureData: mesh.armature.uniformData(),
+			InstanceData: mesh.instanceData,
 
 			IndexByteOffset: pass.IndexByteOffset,
 			IndexCount:      pass.IndexCount,
@@ -162,10 +171,16 @@ func (s *meshRenderer) renderMeshRenderItemBatch(ctx StageContext, items []rende
 	}
 
 	// Model data needs to be combined.
-	for i, item := range items {
-		start := i * modelUniformBufferItemSize
-		end := start + modelUniformBufferItemSize
-		copy(s.modelUniformBufferData[start:end], item.ModelData)
+	for i := range items {
+		item := &items[i]
+
+		modelStart := i * modelUniformBufferItemSize
+		modelEnd := modelStart + modelUniformBufferItemSize
+		copy(s.modelUniformBufferData[modelStart:modelEnd], item.ModelData)
+
+		instanceStart := i * instanceUniformBufferItemSize
+		instanceEnd := instanceStart + instanceUniformBufferItemSize
+		copy(s.instanceUniformBufferData[instanceStart:instanceEnd], item.InstanceData[:])
 	}
 	modelPlacement := ubo.WriteUniform(uniformBuffer, internal.ModelUniform{
 		ModelMatrices: s.modelUniformBufferData,
@@ -175,6 +190,15 @@ func (s *meshRenderer) renderMeshRenderItemBatch(ctx StageContext, items []rende
 		modelPlacement.Buffer,
 		modelPlacement.Offset,
 		modelPlacement.Size,
+	)
+	instancePlacement := ubo.WriteUniform(uniformBuffer, internal.InstanceUniform{
+		InstanceBlocks: s.instanceUniformBufferData,
+	})
+	commandBuffer.UniformBufferUnit(
+		internal.UniformBufferBindingTiming,
+		instancePlacement.Buffer,
+		instancePlacement.Offset,
+		instancePlacement.Size,
 	)
 
 	// Armature data is shared between all items.

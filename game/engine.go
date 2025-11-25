@@ -3,18 +3,19 @@ package game
 import (
 	"time"
 
-	"github.com/mokiat/lacking/game/asset"
 	"github.com/mokiat/lacking/game/ecs"
 	"github.com/mokiat/lacking/game/graphics"
 	"github.com/mokiat/lacking/game/physics"
 	"github.com/mokiat/lacking/render"
+	"github.com/mokiat/lacking/storage/chunked"
+	"github.com/mokiat/lacking/util/async"
 )
 
 type EngineOption func(e *Engine)
 
-func WithRegistry(registry *asset.Registry) EngineOption {
+func WithStorage(storage chunked.Storage) EngineOption {
 	return func(e *Engine) {
-		e.registry = registry
+		e.storage = storage
 	}
 }
 
@@ -55,16 +56,20 @@ func NewEngine(opts ...EngineOption) *Engine {
 	for _, opt := range opts {
 		opt(result)
 	}
+	result.registry = newResourceRegistry(result, result.storage)
+	result.registry.RegisterResourceLoader(newModelResourceLoader())
 	return result
 }
 
 type Engine struct {
-	registry      *asset.Registry
+	storage       chunked.Storage
 	ioWorker      Worker
 	gfxWorker     Worker
 	physicsEngine *physics.Engine
 	gfxEngine     *graphics.Engine
 	ecsEngine     *ecs.Engine
+
+	registry *resourceRegistry
 
 	activeScene *Scene
 	lastTick    time.Time
@@ -80,8 +85,8 @@ func (e *Engine) Destroy() {
 	// TODO: Release all scenes and all resource sets
 }
 
-func (e *Engine) Registry() *asset.Registry {
-	return e.registry
+func (e *Engine) Storage() chunked.Storage {
+	return e.storage
 }
 
 func (e *Engine) IOWorker() Worker {
@@ -112,41 +117,54 @@ func (e *Engine) SetActiveScene(scene *Scene) {
 	e.activeScene = scene
 }
 
+// CreateResourceSet creates a new ResourceSet that can be used to manage
+// resources together.
 func (e *Engine) CreateResourceSet() *ResourceSet {
-	return newResourceSet(nil, e)
+	return newResourceSet(e, e.registry)
 }
 
-func (e *Engine) CreateScene() *Scene {
-	physicsScene := e.physicsEngine.CreateScene()
-	gfxScene := e.gfxEngine.CreateScene()
-	ecsScene := e.ecsEngine.CreateScene()
-	result := newScene(e, physicsScene, gfxScene, ecsScene)
+func (e *Engine) RegisterResourceLoader(resourceLoader ResourceLoader[any]) {
+	e.registry.RegisterResourceLoader(resourceLoader)
+}
+
+func (e *Engine) UnregisterResourceLoader(resourceLoader ResourceLoader[any]) {
+	e.registry.UnregisterResourceLoader(resourceLoader)
+}
+
+func (e *Engine) CreateScene(info SceneInfo) *Scene {
+	result := newScene(e, info)
 	if e.activeScene == nil {
 		e.activeScene = result
 	}
 	return result
 }
 
-func (e *Engine) CreateAnimationDefinition(info AnimationDefinitionInfo) *AnimationDefinition {
-	bindings := make(map[string]animationBinding, len(info.Bindings))
-	for _, bindingInfo := range info.Bindings {
-		bindings[bindingInfo.NodeName] = animationBinding{
-			translationKeyframes: bindingInfo.TranslationKeyframes,
-			rotationKeyframes:    bindingInfo.RotationKeyframes,
-			scaleKeyframes:       bindingInfo.ScaleKeyframes,
-		}
-	}
-	return &AnimationDefinition{
-		name:      info.Name,
-		startTime: info.StartTime,
-		endTime:   info.EndTime,
-		loop:      info.Loop,
-		bindings:  bindings,
-	}
-}
-
 func (e *Engine) ResetDeltaTime() {
 	e.lastTick = time.Now()
+}
+
+func (e *Engine) ScheduleIO(cb func() error) async.Operation {
+	result := async.NewOperation()
+	e.ioWorker.Schedule(func() {
+		if err := cb(); err == nil {
+			result.Pass()
+		} else {
+			result.Fail(err)
+		}
+	})
+	return result
+}
+
+func (e *Engine) ScheduleMain(cb func() error) async.Operation {
+	result := async.NewOperation()
+	e.gfxWorker.Schedule(func() {
+		if err := cb(); err == nil {
+			result.Pass()
+		} else {
+			result.Fail(err)
+		}
+	})
+	return result
 }
 
 func (e *Engine) Update() {

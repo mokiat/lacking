@@ -1,75 +1,99 @@
 package dsl
 
 import (
+	"errors"
 	"fmt"
-	"slices"
+	"log/slog"
+	"runtime"
+	"time"
 
-	"github.com/mokiat/lacking/debug/log"
-	"github.com/mokiat/lacking/game/asset"
-	"github.com/mokiat/lacking/game/asset/mdl"
+	"github.com/mokiat/gog/ds"
+	"github.com/mokiat/gog/filter"
+	"github.com/mokiat/lacking/storage/chunked"
 	"golang.org/x/sync/errgroup"
 )
 
-var modelProviders = make(map[string]Provider[*mdl.Model])
-
 // Run runs the DSL algorithm on the provided registry. If modelNames
 // is not empty, only the models with the provided names will be processed.
-func Run(registry *asset.Registry, modelNames []string) error {
+func Run(storage chunked.Storage, pathFilter filter.Func[string]) error {
 	var g errgroup.Group
+	g.SetLimit(runtime.NumCPU())
 
-	for name, modelProvider := range modelProviders {
-		if len(modelNames) > 0 {
-			if !slices.Contains(modelNames, name) {
-				continue // skip this one
-			}
+	for path, modelProvider := range resourceProviders {
+		if !pathFilter(path) {
+			continue // skip this one
 		}
-
-		resource := registry.ResourceByName(name)
-		if resource == nil {
-			var err error
-			resource, err = registry.CreateResource(name, asset.Model{})
-			if err != nil {
-				return fmt.Errorf("error creating resource: %w", err)
-			}
-		}
-
 		g.Go(func() error {
-			log.Info("Model %q - processing", name)
-
-			digest, err := StringDigest(modelProvider)
-			if err != nil {
-				return fmt.Errorf("error calculating model %q digest: %w", name, err)
+			if err := processAsset(storage, path, modelProvider); err != nil {
+				return fmt.Errorf("error processing asset %q: %w", path, err)
 			}
-
-			if resource.SourceDigest() == digest {
-				log.Info("Model %q - up to date", name)
-				log.Info("Model %q - done", name)
-				return nil
-			}
-
-			log.Info("Model %q - building", name)
-			model, err := modelProvider.Get()
-			if err != nil {
-				return fmt.Errorf("error getting model %q: %w", name, err)
-			}
-
-			modelAsset, err := mdl.NewConverter(model).Convert()
-			if err != nil {
-				return fmt.Errorf("error converting model %q to asset: %w", name, err)
-			}
-
-			log.Info("Model %q - updating", name)
-			if err := resource.SaveContent(modelAsset); err != nil {
-				return fmt.Errorf("error saving resource: %w", err)
-			}
-			if err := resource.SetSourceDigest(digest); err != nil {
-				return fmt.Errorf("error setting resource digest: %w", err)
-			}
-
-			log.Info("Model %q - done", name)
 			return nil
 		})
 	}
 
 	return g.Wait()
+}
+
+func processAsset(storage chunked.Storage, path string, provider Provider[any]) error {
+	startTime := time.Now()
+
+	digest, err := StringDigest(provider)
+	if err != nil {
+		return fmt.Errorf("error calculating new digest: %w", err)
+	}
+
+	asset := chunked.NewAsset(storage, path)
+	sourceDigest, err := retrieveSourceDigest(asset)
+	if err != nil {
+		return fmt.Errorf("error retrieving old digest: %w", err)
+	}
+
+	if sourceDigest == digest {
+		logger.Info("Asset skipped",
+			slog.String("path", path),
+			slog.String("duration", time.Since(startTime).String()),
+		)
+		return nil
+	}
+
+	chunkList := ds.NewList[chunked.Chunk](1)
+	chunkList.Add(chunked.FromValue(genChunkID, &genChunk{
+		Digest: digest,
+	}))
+
+	resource, err := provider.Get()
+	if err != nil {
+		return fmt.Errorf("provider failed to produce asset: %w", err)
+	}
+	for _, converter := range registeredConverters {
+		if err := converter.Convert(chunkList, resource); err != nil {
+			return fmt.Errorf("converter %T failed to convert resource: %w", converter, err)
+		}
+	}
+
+	chunks := chunked.ChunkList(chunkList.Unbox())
+	if err := asset.Write(chunks); err != nil {
+		return fmt.Errorf("error writing chunks: %w", err)
+	}
+
+	logger.Info("Asset updated",
+		slog.String("path", path),
+		slog.Int("chunks", len(chunks)),
+		slog.String("duration", time.Since(startTime).String()),
+	)
+	return nil
+}
+
+func retrieveSourceDigest(asset *chunked.Asset) (string, error) {
+	var holder genChunkHolder
+	if err := asset.Read(&holder); err != nil {
+		if errors.Is(err, chunked.ErrNotFound) {
+			return "", nil // no digest found
+		}
+		return "", fmt.Errorf("error reading asset: %w", err)
+	}
+	if holder.Gen == nil {
+		return "", nil // no digest found
+	}
+	return holder.Gen.Digest, nil
 }

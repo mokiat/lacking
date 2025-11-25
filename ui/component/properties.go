@@ -3,25 +3,25 @@ package component
 // Properties is a holder for all user-specified data necessary to render a
 // component.
 type Properties struct {
-	data         interface{}
-	layoutData   interface{}
-	callbackData interface{}
+	data         any
+	layoutData   any
+	callbackData any
 	children     []Instance
 }
 
 // Data returns the configuration data needed to render the component.
-func (p Properties) Data() interface{} {
+func (p Properties) Data() any {
 	return p.data
 }
 
 // LayoutData returns the layout data needed to layout the component.
-func (p Properties) LayoutData() interface{} {
+func (p Properties) LayoutData() any {
 	return p.layoutData
 }
 
 // CallbackData returns the callback data that can be used by the component
 // to notify its owner regarding key events.
-func (p Properties) CallbackData() interface{} {
+func (p Properties) CallbackData() any {
 	return p.callbackData
 }
 

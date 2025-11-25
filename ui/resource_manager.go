@@ -8,22 +8,25 @@ import (
 	_ "image/jpeg"
 	_ "image/png"
 
+	"github.com/mokiat/lacking/audio"
 	"github.com/mokiat/lacking/util/resource"
 	"golang.org/x/image/font/opentype"
 )
 
-func newResourceManager(locator resource.ReadLocator, imgFact *imageFactory, fntFact *fontFactory) *resourceManager {
+func newResourceManager(locator resource.ReadLocator, audioAPI audio.API, imgFact *imageFactory, fntFact *fontFactory) *resourceManager {
 	return &resourceManager{
-		locator: locator,
-		imgFact: imgFact,
-		fntFact: fntFact,
+		locator:  locator,
+		imgFact:  imgFact,
+		fntFact:  fntFact,
+		audioAPI: audioAPI,
 	}
 }
 
 type resourceManager struct {
-	locator resource.ReadLocator
-	imgFact *imageFactory
-	fntFact *fontFactory
+	locator  resource.ReadLocator
+	imgFact  *imageFactory
+	fntFact  *fontFactory
+	audioAPI audio.API
 }
 
 func (m *resourceManager) CreateImage(img image.Image) *Image {
@@ -100,4 +103,23 @@ func (m *resourceManager) OpenFontCollection(uri string) (*FontCollection, error
 		return nil, fmt.Errorf("error parsing font collection: %w", err)
 	}
 	return m.CreateFontCollection(otCollection)
+}
+
+func (m *resourceManager) OpenSound(uri string) (*Sound, error) {
+	in, err := m.locator.ReadResource(uri)
+	if err != nil {
+		return nil, fmt.Errorf("error opening resource: %w", err)
+	}
+	defer in.Close()
+
+	data, err := io.ReadAll(in)
+	if err != nil {
+		return nil, fmt.Errorf("error reading resource: %w", err)
+	}
+
+	media := m.audioAPI.CreateMedia(audio.MediaInfo{
+		Data:     data,
+		DataType: audio.MediaDataTypeAuto,
+	})
+	return newSound(m.audioAPI, media), nil
 }

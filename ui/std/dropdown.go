@@ -38,7 +38,7 @@ var dropdownDefaultCallbackData = DropdownCallbackData{
 	OnItemSelected: func(key any) {},
 }
 
-var Dropdown = co.Define(&dropdownComponent{})
+var Dropdown = co.Define[*dropdownComponent]()
 
 type dropdownComponent struct {
 	co.BaseComponent

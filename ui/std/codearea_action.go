@@ -3,7 +3,6 @@ package std
 import (
 	"slices"
 
-	"github.com/mokiat/gog"
 	"github.com/mokiat/lacking/ui/state"
 )
 
@@ -27,7 +26,7 @@ func (c *codeAreaComponent) createActionInsertSegment(row, column int, segment [
 			line := c.lines[row]
 			prefix := line[:column]
 			suffix := line[column:]
-			c.lines[row] = gog.Concat(prefix, segment, suffix)
+			c.lines[row] = slices.Concat(prefix, segment, suffix)
 		}
 	}
 }

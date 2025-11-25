@@ -2,7 +2,10 @@ package graphics
 
 import (
 	"fmt"
+	"log/slog"
+	"time"
 
+	"github.com/mokiat/gog/opt"
 	"github.com/mokiat/gomath/dprec"
 	"github.com/mokiat/gomath/sprec"
 	"github.com/mokiat/gomath/stod"
@@ -70,7 +73,9 @@ func (r *sceneRenderer) ResetDebugLines() {
 
 func (r *sceneRenderer) QueueDebugLine(line DebugLine) {
 	if len(r.debugLines) == cap(r.debugLines)-1 {
-		logger.Warn("Debug lines limit reached!")
+		logger.Warn("Debug lines limit reached",
+			slog.Int("capacity", cap(r.debugLines)),
+		)
 	}
 	if len(r.debugLines) == cap(r.debugLines) {
 		return
@@ -102,16 +107,19 @@ func (r *sceneRenderer) Ray(viewport Viewport, camera *Camera, x, y int) (dprec.
 	return a.VecXYZ(), b.VecXYZ()
 }
 
-func (r *sceneRenderer) Point(viewport Viewport, camera *Camera, position dprec.Vec3) dprec.Vec2 {
+func (r *sceneRenderer) Point(viewport Viewport, camera *Camera, position dprec.Vec3) opt.T[dprec.Vec2] {
 	pos := dprec.NewVec4(position.X, position.Y, position.Z, 1.0)
 	projectionMatrix := stod.Mat4(evaluateProjectionMatrix(camera, viewport.Width, viewport.Height))
 	viewMatrix := stod.Mat4(sprec.InverseMat4(camera.gfxMatrix()))
 	ndc := dprec.Mat4Vec4Prod(projectionMatrix, dprec.Mat4Vec4Prod(viewMatrix, pos))
 	if dprec.Abs(ndc.W) < 0.0001 {
-		return dprec.ZeroVec2()
+		return opt.Unspecified[dprec.Vec2]()
+	}
+	if ndc.Z > ndc.W || ndc.Z < -ndc.W {
+		return opt.Unspecified[dprec.Vec2]()
 	}
 	clip := dprec.Vec4Quot(ndc, ndc.W)
-	return dprec.NewVec2((clip.X+1.0)*float64(viewport.Width)/2.0, (1.0-clip.Y)*float64(viewport.Height)/2.0)
+	return opt.V(dprec.NewVec2((clip.X+1.0)*float64(viewport.Width)/2.0, (1.0-clip.Y)*float64(viewport.Height)/2.0))
 }
 
 func (r *sceneRenderer) Render(framebuffer render.Framebuffer, viewport Viewport, scene *Scene, camera *Camera) {
@@ -143,7 +151,7 @@ func (r *sceneRenderer) Render(framebuffer render.Framebuffer, viewport Viewport
 			float32(viewport.Width),
 			float32(viewport.Height),
 		),
-		Time: scene.Time(),
+		Time: float32((scene.gameTime % time.Hour).Seconds()),
 	})
 
 	r.visibleAmbientLights.Reset()
@@ -250,6 +258,7 @@ type renderItem struct {
 
 	ModelData    []byte
 	ArmatureData []byte
+	InstanceData [4 * 4]byte
 
 	IndexByteOffset uint32
 	IndexCount      uint32

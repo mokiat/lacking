@@ -1,0 +1,36 @@
+package shape3d
+
+// SphereInfo contains the information needed to create a sphere shape.
+type SphereInfo[S any] struct {
+
+	// ShapeInfo contains general shape information.
+	ShapeInfo[S]
+
+	// Sphere contains the sphere information.
+	Sphere Sphere
+}
+
+type sceneSphereShape[S any] struct {
+	sceneShape[S]
+	sphereSolver
+}
+
+func newSphereSolver(template Sphere) sphereSolver {
+	return sphereSolver{
+		lsSphere: template,
+		wsSphere: template,
+	}
+}
+
+type sphereSolver struct {
+	lsSphere Sphere
+	wsSphere Sphere
+}
+
+func (s *sphereSolver) update(transform Transform) {
+	s.wsSphere = TransformedSphere(s.lsSphere, transform)
+}
+
+func (s *sphereSolver) boundingSphere() Sphere {
+	return s.wsSphere
+}

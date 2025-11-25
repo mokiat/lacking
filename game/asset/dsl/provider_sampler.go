@@ -16,17 +16,17 @@ func CreateSampler(textureProvider Provider[*mdl.Texture], operations ...Operati
 				return nil, fmt.Errorf("error getting texture: %w", err)
 			}
 
-			var sampler mdl.Sampler
+			sampler := mdl.NewSampler()
 			sampler.SetWrapMode(mdl.WrapModeClamp)
 			sampler.SetFilterMode(mdl.FilterModeNearest)
 			sampler.SetMipmapping(false)
 			sampler.SetTexture(texture)
 			for _, op := range operations {
-				if err := op.Apply(&sampler); err != nil {
+				if err := op.Apply(sampler); err != nil {
 					return nil, err
 				}
 			}
-			return &sampler, nil
+			return sampler, nil
 		},
 
 		// digest function

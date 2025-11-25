@@ -7,14 +7,19 @@ import (
 	"github.com/mokiat/gog/ds"
 )
 
-// MuseParse parses the given LSL source code and returns a shader AST object.
-// If the source code is invalid, it will panic.
-func MustParse(source string) *Shader {
-	shader, err := Parse(source)
-	if err != nil {
-		panic(err)
-	}
-	return shader
+// ParseError is an error that occurs during parsing.
+type ParseError struct {
+
+	// Pos is the position in the source code where the error occurred.
+	Pos Position
+
+	// Message is the error message.
+	Message string
+}
+
+// Error returns the error message.
+func (e *ParseError) Error() string {
+	return fmt.Sprintf("shader source code error %q at position %s", e.Message, e.Pos)
 }
 
 // Parse parses the given LSL source code and returns a shader AST object.
@@ -37,10 +42,554 @@ type Parser struct {
 	token     Token
 }
 
-// ParseNewLine assumes that the next token to follow is a new line token and
-// consumes it. Whitespace characters up to the new line token are ignored.
-// Anything other will result in an error.
-func (p *Parser) ParseNewLine() error {
+// ParseFieldGroup parses a block containing field declarations such as one
+// used in textures/uniforms/varyings blocks or struct declarations.
+//
+// Example:
+//
+//	(
+//		color vec3
+//	)
+func (p *Parser) ParseFieldGroup(opening, closing string) ([]Field, error) {
+	var fields []Field
+
+	openingToken := p.nextToken()
+	if !openingToken.IsSpecificOperator(opening) {
+		return nil, &ParseError{
+			Pos:     openingToken.Pos,
+			Message: "expected an opening bracket",
+		}
+	}
+
+	token := p.peekToken()
+	for !token.IsSpecificOperator(closing) {
+		switch {
+		case token.IsError():
+			return nil, &ParseError{
+				Pos:     token.Pos,
+				Message: fmt.Sprintf("tokenization error: %s", token.Value),
+			}
+
+		case token.IsNewLine():
+			if err := p.consumeNewLine(); err != nil {
+				return nil, err
+			}
+
+		case token.IsComment():
+			if err := p.consumeComment(); err != nil {
+				return nil, err
+			}
+
+		case token.IsIdentifier():
+			field, err := p.parseField()
+			if err != nil {
+				return nil, err
+			}
+			fields = append(fields, field)
+
+		default:
+			return nil, &ParseError{
+				Pos:     token.Pos,
+				Message: "expected a name identifier or end of list",
+			}
+		}
+		token = p.peekToken()
+	}
+
+	closingToken := p.nextToken()
+	if !closingToken.IsSpecificOperator(closing) {
+		return nil, &ParseError{
+			Pos:     closingToken.Pos,
+			Message: "expected a closing bracket",
+		}
+	}
+
+	if err := p.consumeRemainingLine(); err != nil {
+		return nil, err
+	}
+
+	return fields, nil
+}
+
+// ParseTextureBlock parses a block containing texture fields.
+//
+// Example:
+//
+//	texture (
+//		color sampler2D
+//	)
+func (p *Parser) ParseTextureBlock() (*TextureBlockDeclaration, error) {
+	uniformToken := p.nextToken()
+	if !uniformToken.IsSpecificIdentifier(KeywordTexture) {
+		return nil, &ParseError{
+			Pos:     uniformToken.Pos,
+			Message: fmt.Sprintf("expected %q keyword", KeywordTexture),
+		}
+	}
+	fields, err := p.parseFieldBlock(GroupStart, GroupEnd)
+	if err != nil {
+		return nil, err
+	}
+	return &TextureBlockDeclaration{
+		Pos:    uniformToken.Pos,
+		Fields: fields,
+	}, nil
+}
+
+// ParseUniformBlock parses a block containing uniform fields.
+//
+// Example:
+//
+//	uniform (
+//		color vec4
+//	)
+func (p *Parser) ParseUniformBlock() (*UniformBlockDeclaration, error) {
+	uniformToken := p.nextToken()
+	if !uniformToken.IsSpecificIdentifier(KeywordUniform) {
+		return nil, &ParseError{
+			Pos:     uniformToken.Pos,
+			Message: fmt.Sprintf("expected %q keyword", KeywordUniform),
+		}
+	}
+	fields, err := p.parseFieldBlock(GroupStart, GroupEnd)
+	if err != nil {
+		return nil, err
+	}
+	return &UniformBlockDeclaration{
+		Pos:    uniformToken.Pos,
+		Fields: fields,
+	}, nil
+}
+
+// ParseVaryingBlock parses a block containing varying fields.
+//
+// Example:
+//
+//	varying (
+//		color vec3
+//	)
+func (p *Parser) ParseVaryingBlock() (*VaryingBlockDeclaration, error) {
+	varyingToken := p.nextToken()
+	if !varyingToken.IsSpecificIdentifier(KeywordVarying) {
+		return nil, &ParseError{
+			Pos:     varyingToken.Pos,
+			Message: fmt.Sprintf("expected %q keyword", KeywordVarying),
+		}
+	}
+	fields, err := p.parseFieldBlock(GroupStart, GroupEnd)
+	if err != nil {
+		return nil, err
+	}
+	return &VaryingBlockDeclaration{
+		Pos:    varyingToken.Pos,
+		Fields: fields,
+	}, nil
+}
+
+// ParseTypeDeclaration parses a type declaration.
+//
+// Example:
+//
+//	type MyType struct {
+//		color vec3
+//	}
+func (p *Parser) ParseTypeDeclaration() (Declaration, error) {
+	typeToken := p.nextToken()
+	if !typeToken.IsSpecificIdentifier(KeywordType) {
+		return nil, &ParseError{
+			Pos:     typeToken.Pos,
+			Message: fmt.Sprintf("expected %q keyword", KeywordType),
+		}
+	}
+
+	nameToken := p.nextToken()
+	if !nameToken.IsIdentifier() {
+		return nil, &ParseError{
+			Pos:     nameToken.Pos,
+			Message: "expected a name identifier",
+		}
+	}
+
+	structToken := p.nextToken()
+	if !structToken.IsSpecificIdentifier(KeywordStruct) {
+		return nil, &ParseError{
+			Pos:     structToken.Pos,
+			Message: fmt.Sprintf("expected %q keyword", KeywordStruct),
+		}
+	}
+
+	fields, err := p.parseFieldBlock(BlockStart, BlockEnd)
+	if err != nil {
+		return nil, err
+	}
+
+	return &StructTypeDeclaration{
+		Pos:    typeToken.Pos,
+		Name:   nameToken.Value,
+		Fields: fields,
+	}, nil
+}
+
+// ParseExpression uses the Shunting Yard algorithm to parse an expression and
+// return its AST form.
+//
+// Example:
+//
+//	1 + 2 * 3
+func (p *Parser) ParseExpression() (Expression, error) {
+	valStack := ds.NewStack[Expression](2)
+	opStack := ds.NewStack[string](1)
+
+	firstExpressionToken := p.peekToken()
+
+	value, err := p.parseExpressionValue()
+	if err != nil {
+		return nil, err
+	}
+	valStack.Push(value)
+
+	nextToken := p.peekToken()
+	for nextToken.IsBinaryOperator() {
+		operatorToken := p.nextToken()
+		operator := operatorToken.Value
+		operatorPrec := operatorPrecedence(operator)
+		for !opStack.IsEmpty() {
+			prevOperator := opStack.Peek()
+			prevOperatorPrec := operatorPrecedence(prevOperator)
+			if prevOperatorPrec < operatorPrec {
+				break
+			}
+			opStack.Pop() // pop it
+			rightValue := valStack.Pop()
+			leftValue := valStack.Pop()
+			valStack.Push(&BinaryExpression{
+				Operator: prevOperator,
+				Left:     leftValue,
+				Right:    rightValue,
+			})
+		}
+		opStack.Push(operator)
+
+		nextToken = p.peekToken()
+		switch {
+		case nextToken.IsNewLine():
+			if err := p.consumeNewLine(); err != nil {
+				return nil, err
+			}
+		case nextToken.IsComment():
+			if err := p.consumeComment(); err != nil {
+				return nil, err
+			}
+		}
+
+		valueToken, err := p.parseExpressionValue()
+		if err != nil {
+			return nil, err
+		}
+		valStack.Push(valueToken)
+
+		nextToken = p.peekToken()
+	}
+
+	for valStack.Size() > 1 {
+		rightValue := valStack.Pop()
+		leftValue := valStack.Pop()
+		if opStack.IsEmpty() {
+			// This should not really happen, as long as binary expressions are
+			// properly maintained.
+			return nil, &ParseError{
+				Pos:     firstExpressionToken.Pos,
+				Message: "expression has insufficient operators",
+			}
+		}
+		operator := opStack.Pop()
+		valStack.Push(&BinaryExpression{
+			Operator: operator,
+			Left:     leftValue,
+			Right:    rightValue,
+		})
+	}
+	if valStack.IsEmpty() {
+		// This should not really happen, as long as binary expressions are
+		// properly maintained.
+		return nil, &ParseError{
+			Pos:     firstExpressionToken.Pos,
+			Message: "expression is empty or malformed",
+		}
+	}
+	return valStack.Pop(), nil
+}
+
+// ParseArgumentBlock parses a block containing argument declarations such as
+// one used in function invocations.
+//
+// Example:
+//
+//	(10.5, ^66, 2+3)
+func (p *Parser) ParseArgumentBlock() ([]Expression, error) {
+	var args []Expression
+
+	openingToken := p.nextToken()
+	if !openingToken.IsSpecificOperator(GroupStart) {
+		return nil, &ParseError{
+			Pos:     openingToken.Pos,
+			Message: "expected an opening bracket",
+		}
+	}
+
+	token := p.peekToken()
+	for !token.IsSpecificOperator(GroupEnd) {
+		switch {
+		case token.IsError():
+			return nil, &ParseError{
+				Pos:     token.Pos,
+				Message: fmt.Sprintf("tokenization error: %s", token.Value),
+			}
+
+		case token.IsNewLine():
+			if err := p.consumeNewLine(); err != nil {
+				return nil, err
+			}
+
+		case token.IsComment():
+			if err := p.consumeComment(); err != nil {
+				return nil, err
+			}
+
+		default:
+			arg, err := p.ParseExpression()
+			if err != nil {
+				return nil, err
+			}
+			args = append(args, arg)
+
+			nextToken := p.peekToken()
+			switch {
+			case nextToken.IsSpecificOperator(SeparatorComma):
+				p.nextToken()
+			case nextToken.IsSpecificOperator(GroupEnd):
+				// Do nothing.
+			default:
+				return nil, &ParseError{
+					Pos:     nextToken.Pos,
+					Message: "expected a comma or a closing bracket",
+				}
+			}
+		}
+		token = p.peekToken()
+	}
+
+	closingToken := p.nextToken()
+	if !closingToken.IsSpecificOperator(GroupEnd) {
+		return nil, &ParseError{
+			Pos:     closingToken.Pos,
+			Message: "expected a closing bracket",
+		}
+	}
+	return args, nil
+}
+
+// ParseStatement parses a single imperative statement from the source code.
+func (p *Parser) ParseStatement() (Statement, error) {
+	token := p.peekToken()
+	switch {
+	case token.IsSpecificIdentifier(KeywordReturn):
+		return p.parseReturnStatement()
+	case token.IsSpecificIdentifier(KeywordDiscard):
+		return p.parseDiscardStatement()
+	case token.IsSpecificIdentifier(KeywordVar):
+		return p.parseVariableDeclaration()
+	case token.IsSpecificIdentifier(KeywordIf):
+		return p.parseConditionalStatement()
+	case token.IsIdentifier():
+		return p.parseImperativeStatement()
+	default:
+		return nil, &ParseError{
+			Pos:     token.Pos,
+			Message: "expected a statement",
+		}
+	}
+}
+
+// ParseStatementList parses a list of statements from the source code.
+func (p *Parser) ParseStatementList() (StatementList, error) {
+	var statements []Statement
+	for {
+		token := p.peekToken()
+		switch {
+		case token.IsError():
+			return nil, &ParseError{
+				Pos:     token.Pos,
+				Message: fmt.Sprintf("tokenization error: %s", token.Value),
+			}
+		case token.IsNewLine():
+			if err := p.consumeNewLine(); err != nil {
+				return nil, err
+			}
+		case token.IsComment():
+			if err := p.consumeComment(); err != nil {
+				return nil, err
+			}
+		case token.IsIdentifier():
+			statement, err := p.ParseStatement()
+			if err != nil {
+				return nil, err
+			}
+			statements = append(statements, statement)
+		default:
+			return statements, nil
+		}
+	}
+}
+
+// ParseFunction parses a function declaration.
+//
+// Example:
+//
+//	func myFunction(a int, b float) {
+//		// function body
+//	}
+func (p *Parser) ParseFunction() (*FunctionDeclaration, error) {
+	var decl FunctionDeclaration
+
+	funcToken := p.nextToken()
+	if !funcToken.IsSpecificIdentifier(KeywordFunc) {
+		return nil, &ParseError{
+			Pos:     funcToken.Pos,
+			Message: fmt.Sprintf("expected %q keyword", KeywordFunc),
+		}
+	}
+	decl.Pos = funcToken.Pos
+
+	nameToken := p.nextToken()
+	if !nameToken.IsIdentifier() {
+		return nil, &ParseError{
+			Pos:     nameToken.Pos,
+			Message: "expected a name identifier",
+		}
+	}
+	decl.Name = nameToken.Value
+
+	openingToken := p.nextToken()
+	if !openingToken.IsSpecificOperator(GroupStart) {
+		return nil, &ParseError{
+			Pos:     openingToken.Pos,
+			Message: "expected an opening bracket",
+		}
+	}
+
+	inputs, err := p.parseParameterList()
+	if err != nil {
+		return nil, err
+	}
+	decl.Inputs = inputs
+
+	closingToken := p.nextToken()
+	if !closingToken.IsSpecificOperator(GroupEnd) {
+		return nil, &ParseError{
+			Pos:     closingToken.Pos,
+			Message: "expected a closing bracket",
+		}
+	}
+
+	nextToken := p.peekToken()
+	if nextToken.IsIdentifier() {
+		outputTypeToken := p.nextToken()
+		decl.OutputType = outputTypeToken.Value
+	}
+
+	if err := p.consumeBlockStart(); err != nil {
+		return nil, err
+	}
+
+	statements, err := p.ParseStatementList()
+	if err != nil {
+		return nil, err
+	}
+	decl.Body = statements
+
+	if err := p.consumeBlockEnd(true); err != nil {
+		return nil, err
+	}
+
+	return &decl, nil
+}
+
+// ParseShader parses the LSL source code and returns a shader AST object.
+// If the source code is invalid, an error is returned.
+func (p *Parser) ParseShader() (*Shader, error) {
+	var shader Shader
+	token := p.peekToken()
+	for !token.IsEOF() {
+		switch {
+		case token.IsError():
+			return nil, &ParseError{
+				Pos:     token.Pos,
+				Message: fmt.Sprintf("tokenization error: %s", token.Value),
+			}
+		case token.IsNewLine():
+			if err := p.consumeNewLine(); err != nil {
+				return nil, err
+			}
+		case token.IsComment():
+			if err := p.consumeComment(); err != nil {
+				return nil, err
+			}
+		case token.IsSpecificIdentifier(KeywordType):
+			decl, err := p.ParseTypeDeclaration()
+			if err != nil {
+				return nil, err
+			}
+			shader.Declarations = append(shader.Declarations, decl)
+		case token.IsSpecificIdentifier(KeywordTexture):
+			decl, err := p.ParseTextureBlock()
+			if err != nil {
+				return nil, err
+			}
+			shader.Declarations = append(shader.Declarations, decl)
+		case token.IsSpecificIdentifier(KeywordUniform):
+			decl, err := p.ParseUniformBlock()
+			if err != nil {
+				return nil, err
+			}
+			shader.Declarations = append(shader.Declarations, decl)
+		case token.IsSpecificIdentifier(KeywordVarying):
+			decl, err := p.ParseVaryingBlock()
+			if err != nil {
+				return nil, err
+			}
+			shader.Declarations = append(shader.Declarations, decl)
+		case token.IsSpecificIdentifier(KeywordFunc):
+			decl, err := p.ParseFunction()
+			if err != nil {
+				return nil, err
+			}
+			shader.Declarations = append(shader.Declarations, decl)
+		default:
+			return nil, &ParseError{
+				Pos:     token.Pos,
+				Message: "expected a top-level declaration",
+			}
+		}
+		token = p.peekToken()
+	}
+	return &shader, nil
+}
+
+// peekToken returns the next token without consuming it.
+func (p *Parser) peekToken() Token {
+	return p.token
+}
+
+// nextToken returns the next token and consumes it.
+func (p *Parser) nextToken() Token {
+	token := p.token
+	p.token = p.tokenizer.Next()
+	return token
+}
+
+// consumeNewLine expects that a new line token follows and consumes it.
+func (p *Parser) consumeNewLine() error {
 	token := p.nextToken()
 	if !token.IsNewLine() {
 		return &ParseError{
@@ -51,11 +600,9 @@ func (p *Parser) ParseNewLine() error {
 	return nil
 }
 
-// ParseComment assumes that the next token to follow is a comment token and
-// consumes it. Whitespace characters up to the comment token are ignored.
-// Anything other will result in an error. If the comment is followed by a
-// new line token, it is also consumed.
-func (p *Parser) ParseComment() error {
+// consumeComment expects that a comment token follows and consumes it together
+// with a new line token if it follows.
+func (p *Parser) consumeComment() error {
 	commentToken := p.nextToken()
 	if !commentToken.IsComment() {
 		return &ParseError{
@@ -65,30 +612,30 @@ func (p *Parser) ParseComment() error {
 	}
 	nextToken := p.peekToken()
 	if nextToken.IsNewLine() {
-		if err := p.ParseNewLine(); err != nil {
+		if err := p.consumeNewLine(); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-// ParseOptionalRemainder consumes the remainder of the line, including any
-// new line or comment tokens. It assumes that anything to follow is
+// consumeRemainingLine consumes the remainder of the line, including any
+// new line or comment tokens. It expects that anything to follow is
 // non-vital (comments, new lines) and can be ignored.
-func (p *Parser) ParseOptionalRemainder() error {
+func (p *Parser) consumeRemainingLine() error {
 	token := p.peekToken()
 	switch {
 	case token.IsError():
 		return &ParseError{
 			Pos:     token.Pos,
-			Message: "tokenization error",
+			Message: fmt.Sprintf("tokenization error: %s", token.Value),
 		}
 	case token.IsEOF():
 		return nil
 	case token.IsNewLine():
-		return p.ParseNewLine()
+		return p.consumeNewLine()
 	case token.IsComment():
-		return p.ParseComment()
+		return p.consumeComment()
 	default:
 		return &ParseError{
 			Pos:     token.Pos,
@@ -97,44 +644,110 @@ func (p *Parser) ParseOptionalRemainder() error {
 	}
 }
 
-// ParseBlockStart parses the opening bracket of a block. It assumes that the
-// next token to follow is an opening bracket token. If the token is not an
-// opening bracket, an error is returned. Whitespace characters up to the
-// opening bracket token are ignored.
-func (p *Parser) ParseBlockStart() error {
+// consumeBlockStart expects the next token to follow to be an opening bracket
+// and consumes it. It also consumes the remaining line.
+func (p *Parser) consumeBlockStart() error {
 	bracketToken := p.nextToken()
-	if !bracketToken.IsSpecificOperator("{") {
+	if !bracketToken.IsSpecificOperator(BlockStart) {
 		return &ParseError{
 			Pos:     bracketToken.Pos,
 			Message: "expected an opening bracket",
 		}
 	}
-	if err := p.ParseOptionalRemainder(); err != nil {
+	if err := p.consumeRemainingLine(); err != nil {
 		return err
 	}
 	return nil
 }
 
-// ParseBlockEnd parses the closing bracket of a block. It assumes that the
-// next token to follow is a closing bracket token. If the token is not a
-// closing bracket, an error is returned. Whitespace characters up to the
-// closing bracket token are ignored.
-func (p *Parser) ParseBlockEnd() error {
+// consumeBlockEnd expects the next token to follow to be a closing bracket
+// and consumes it. It consumes the remaining line depending if requested.
+func (p *Parser) consumeBlockEnd(consumeRemainder bool) error {
 	bracketToken := p.nextToken()
-	if !bracketToken.IsSpecificOperator("}") {
+	if !bracketToken.IsSpecificOperator(BlockEnd) {
 		return &ParseError{
 			Pos:     bracketToken.Pos,
 			Message: "expected a closing bracket",
 		}
 	}
-	if err := p.ParseOptionalRemainder(); err != nil {
-		return err
+	if consumeRemainder {
+		if err := p.consumeRemainingLine(); err != nil {
+			return err
+		}
 	}
 	return nil
 }
 
-// ParseNamedParameterList parses a list of field name and type pairs.
-func (p *Parser) ParseNamedParameterList() ([]Field, error) {
+// parseField parses a single field declaration.
+//
+// Example:
+//
+//	color vec3
+func (p *Parser) parseField() (Field, error) {
+	nameToken := p.nextToken()
+	typeToken := p.nextToken()
+	if !typeToken.IsIdentifier() {
+		return Field{}, &ParseError{
+			Pos:     typeToken.Pos,
+			Message: "expected a type identifier",
+		}
+	}
+	if err := p.consumeRemainingLine(); err != nil {
+		return Field{}, err
+	}
+	return Field{
+		Pos:  nameToken.Pos,
+		Name: nameToken.Value,
+		Type: typeToken.Value,
+	}, nil
+}
+
+// parseFieldBlock parses a block containing one or more field declarations
+// with a user-defined opening and closing brackets.
+//
+// Example:
+//
+//	o
+//		color vec3
+//		uv vec2
+//	c
+func (p *Parser) parseFieldBlock(opening, closing string) ([]Field, error) {
+	var fields []Field
+
+	nextToken := p.peekToken()
+	switch {
+	case nextToken.IsError():
+		return nil, &ParseError{
+			Pos:     nextToken.Pos,
+			Message: fmt.Sprintf("tokenization error: %s", nextToken.Value),
+		}
+
+	case nextToken.IsSpecificOperator(opening):
+		var err error
+		fields, err = p.ParseFieldGroup(opening, closing)
+		if err != nil {
+			return nil, err
+		}
+
+	case nextToken.IsIdentifier():
+		field, err := p.parseField()
+		if err != nil {
+			return nil, err
+		}
+		fields = []Field{field}
+
+	default:
+		return nil, &ParseError{
+			Pos:     nextToken.Pos,
+			Message: "expected a name identifier or an opening bracket",
+		}
+	}
+
+	return fields, nil
+}
+
+// parseParameterList parses a list of parameter name and type pairs.
+func (p *Parser) parseParameterList() ([]Field, error) {
 	var params []Field
 
 	for {
@@ -143,24 +756,24 @@ func (p *Parser) ParseNamedParameterList() ([]Field, error) {
 		case token.IsError():
 			return nil, &ParseError{
 				Pos:     token.Pos,
-				Message: "tokenization error",
+				Message: fmt.Sprintf("tokenization error: %s", token.Value),
 			}
 
 		case token.IsEOF():
 			return params, nil
 
 		case token.IsNewLine():
-			if err := p.ParseNewLine(); err != nil {
+			if err := p.consumeNewLine(); err != nil {
 				return nil, err
 			}
 
 		case token.IsComment():
-			if err := p.ParseComment(); err != nil {
+			if err := p.consumeComment(); err != nil {
 				return nil, err
 			}
 
 		case token.IsOperator():
-			if token.IsSpecificOperator(",") {
+			if token.IsSpecificOperator(SeparatorComma) {
 				return nil, &ParseError{
 					Pos:     token.Pos,
 					Message: "unexpected comma",
@@ -184,6 +797,7 @@ func (p *Parser) ParseNamedParameterList() ([]Field, error) {
 				}
 			}
 			params = append(params, Field{
+				Pos:  nameToken.Pos,
 				Name: nameToken.Value,
 				Type: typeToken.Value,
 			})
@@ -197,7 +811,7 @@ func (p *Parser) ParseNamedParameterList() ([]Field, error) {
 			case nextToken.IsEOF():
 				return params, nil
 			case nextToken.IsOperator():
-				if !nextToken.IsSpecificOperator(",") {
+				if !nextToken.IsSpecificOperator(SeparatorComma) {
 					return params, nil
 				}
 				p.nextToken() // consume the comma
@@ -217,586 +831,167 @@ func (p *Parser) ParseNamedParameterList() ([]Field, error) {
 	}
 }
 
-// ParseUnnamedParameterList parses a list of field types.
-func (p *Parser) ParseUnnamedParameterList() ([]Field, error) {
-	var params []Field
-
-	for {
-		token := p.peekToken()
-		switch {
-		case token.IsError():
-			return nil, &ParseError{
-				Pos:     token.Pos,
-				Message: "tokenization error",
-			}
-
-		case token.IsEOF():
-			return params, nil
-
-		case token.IsNewLine():
-			if err := p.ParseNewLine(); err != nil {
-				return nil, err
-			}
-
-		case token.IsComment():
-			if err := p.ParseComment(); err != nil {
-				return nil, err
-			}
-
-		case token.IsOperator():
-			if token.IsSpecificOperator(",") {
-				return nil, &ParseError{
-					Pos:     token.Pos,
-					Message: "unexpected comma",
-				}
-			}
-			return params, nil
-
-		case token.IsIdentifier():
-			typeToken := p.nextToken()
-			if !typeToken.IsIdentifier() {
-				return nil, &ParseError{
-					Pos:     typeToken.Pos,
-					Message: "expected a type identifier",
-				}
-			}
-			params = append(params, Field{
-				Type: typeToken.Value,
-			})
-			nextToken := p.peekToken()
-			switch {
-			case nextToken.IsError():
-				return nil, &ParseError{
-					Pos:     nextToken.Pos,
-					Message: "tokenization error",
-				}
-			case nextToken.IsEOF():
-				return params, nil
-			case nextToken.IsOperator():
-				if !nextToken.IsSpecificOperator(",") {
-					return params, nil
-				}
-				p.nextToken() // consume the comma
-			default:
-				return nil, &ParseError{
-					Pos:     nextToken.Pos,
-					Message: "expected a comma or end of list",
-				}
-			}
-
-		default:
-			return nil, &ParseError{
-				Pos:     token.Pos,
-				Message: "expected a type identifier or end of list",
-			}
+// parseNumericExpression expects that the next token is a non-negative
+// number of type int or float.
+//
+// Example:
+//
+//	15.3
+func (p *Parser) parseNumericExpression() (Expression, error) {
+	numberToken := p.nextToken()
+	if !numberToken.IsNumber() {
+		return nil, &ParseError{
+			Pos:     numberToken.Pos,
+			Message: "expected a number token",
 		}
+	}
+
+	intValue, err := strconv.ParseInt(numberToken.Value, 10, 64)
+	if err == nil {
+		return &IntLiteral{
+			Pos:   numberToken.Pos,
+			Value: intValue,
+		}, nil
+	}
+
+	floatValue, err := strconv.ParseFloat(numberToken.Value, 64)
+	if err == nil {
+		return &FloatLiteral{
+			Pos:   numberToken.Pos,
+			Value: floatValue,
+		}, nil
+	}
+
+	return nil, &ParseError{
+		Pos:     numberToken.Pos,
+		Message: "expected a valid number",
 	}
 }
 
-// ParseTextureBlock parses a block containing texture fields.
-func (p *Parser) ParseTextureBlock() (*TextureBlockDeclaration, error) {
-	uniformToken := p.nextToken()
-	if !uniformToken.IsSpecificIdentifier("textures") {
+// parseUnaryExpression expects that the next token is a unary operator
+// and parses the expression that follows it.
+//
+// Example:
+//
+//	^35
+func (p *Parser) parseUnaryExpression() (Expression, error) {
+	operatorToken := p.nextToken()
+	if !operatorToken.IsUnaryOperator() {
 		return nil, &ParseError{
-			Pos:     uniformToken.Pos,
-			Message: "expected 'textures' keyword",
+			Pos:     operatorToken.Pos,
+			Message: "expected a unary operator",
 		}
 	}
-	if err := p.ParseBlockStart(); err != nil {
-		return nil, err
-	}
-	fields, err := p.ParseNamedParameterList()
+
+	expr, err := p.parseExpressionValue()
 	if err != nil {
 		return nil, err
 	}
-	if err := p.ParseBlockEnd(); err != nil {
-		return nil, err
-	}
-	return &TextureBlockDeclaration{
-		Fields: fields,
+
+	return &UnaryExpression{
+		Pos:      operatorToken.Pos,
+		Operator: operatorToken.Value,
+		Operand:  expr,
 	}, nil
 }
 
-// ParseUniformBlock parses a block containing uniform fields.
-func (p *Parser) ParseUniformBlock() (*UniformBlockDeclaration, error) {
-	uniformToken := p.nextToken()
-	if !uniformToken.IsSpecificIdentifier("uniforms") {
-		return nil, &ParseError{
-			Pos:     uniformToken.Pos,
-			Message: "expected 'uniforms' keyword",
-		}
-	}
-	if err := p.ParseBlockStart(); err != nil {
-		return nil, err
-	}
-	fields, err := p.ParseNamedParameterList()
-	if err != nil {
-		return nil, err
-	}
-	if err := p.ParseBlockEnd(); err != nil {
-		return nil, err
-	}
-	return &UniformBlockDeclaration{
-		Fields: fields,
-	}, nil
-}
-
-// ParseVaryingBlock parses a block containing varying fields.
-func (p *Parser) ParseVaryingBlock() (*VaryingBlockDeclaration, error) {
-	varyingToken := p.nextToken()
-	if !varyingToken.IsSpecificIdentifier("varyings") {
-		return nil, &ParseError{
-			Pos:     varyingToken.Pos,
-			Message: "expected 'varyings' keyword",
-		}
-	}
-	if err := p.ParseBlockStart(); err != nil {
-		return nil, err
-	}
-	fields, err := p.ParseNamedParameterList()
-	if err != nil {
-		return nil, err
-	}
-	if err := p.ParseBlockEnd(); err != nil {
-		return nil, err
-	}
-	return &VaryingBlockDeclaration{
-		Fields: fields,
-	}, nil
-}
-
-// ParseShader parses the LSL source code and returns a shader AST object.
-// If the source code is invalid, an error is returned.
-func (p *Parser) ParseShader() (*Shader, error) {
-	var shader Shader
-	token := p.peekToken()
-	for !token.IsEOF() {
-		switch {
-		case token.IsError():
-			return nil, fmt.Errorf("error token: %v", token)
-		case token.IsNewLine():
-			if err := p.ParseNewLine(); err != nil {
-				return nil, fmt.Errorf("error parsing new line: %w", err)
-			}
-		case token.IsComment():
-			if err := p.ParseComment(); err != nil {
-				return nil, fmt.Errorf("error parsing comment: %w", err)
-			}
-		case token.IsSpecificIdentifier("textures"):
-			decl, err := p.ParseTextureBlock()
-			if err != nil {
-				return nil, fmt.Errorf("error parsing texture block: %w", err)
-			}
-			shader.Declarations = append(shader.Declarations, decl)
-		case token.IsSpecificIdentifier("uniforms"):
-			decl, err := p.ParseUniformBlock()
-			if err != nil {
-				return nil, fmt.Errorf("error parsing uniform block: %w", err)
-			}
-			shader.Declarations = append(shader.Declarations, decl)
-		case token.IsSpecificIdentifier("varyings"):
-			decl, err := p.ParseVaryingBlock()
-			if err != nil {
-				return nil, fmt.Errorf("error parsing varying block: %w", err)
-			}
-			shader.Declarations = append(shader.Declarations, decl)
-		case token.IsSpecificIdentifier("func"):
-			decl, err := p.ParseFunction()
-			if err != nil {
-				return nil, fmt.Errorf("error parsing function: %w", err)
-			}
-			shader.Declarations = append(shader.Declarations, decl)
-		default:
-			return nil, fmt.Errorf("unexpected token: %v", token)
-		}
-		token = p.peekToken()
-	}
-	return &shader, nil
-}
-
-func (p *Parser) ParseExpression() (Expression, error) {
-	valStack := ds.NewStack[Expression](2)
-	opStack := ds.NewStack[string](1)
-
-	value, err := p.parseExpressionValue()
-	if err != nil {
-		return nil, fmt.Errorf("error parsing value expression: %w", err)
-	}
-	valStack.Push(value)
-
-	nextToken := p.peekToken()
-	for nextToken.IsBinaryOperator() {
-		operatorToken := p.nextToken()
-		if !operatorToken.IsBinaryOperator() {
-			return nil, fmt.Errorf("expected binary operator")
-		}
-
-		operator := operatorToken.Value
-		operatorPrio := operatorPriority(operator)
-		for !opStack.IsEmpty() {
-			oldOperator := opStack.Peek()
-			oldOperatorPrio := operatorPriority(oldOperator)
-			if oldOperatorPrio <= operatorPrio {
-				break
-			}
-			opStack.Pop() // pop it
-			right := valStack.Pop()
-			left := valStack.Pop()
-			valStack.Push(&BinaryExpression{
-				Operator: oldOperator,
-				Left:     left,
-				Right:    right,
-			})
-		}
-		opStack.Push(operator)
-
-		nextToken = p.peekToken()
-		switch {
-		case nextToken.IsNewLine():
-			if err := p.ParseNewLine(); err != nil {
-				return nil, fmt.Errorf("error parsing new line: %w", err)
-			}
-		case nextToken.IsComment():
-			if err := p.ParseComment(); err != nil {
-				return nil, fmt.Errorf("error parsing comment: %w", err)
-			}
-		}
-
-		valueToken, err := p.parseExpressionValue()
-		if err != nil {
-			return nil, fmt.Errorf("error parsing value expression: %w", err)
-		}
-		valStack.Push(valueToken)
-
-		nextToken = p.peekToken()
-	}
-
-	for valStack.Size() > 1 {
-		right := valStack.Pop()
-		left := valStack.Pop()
-		if opStack.IsEmpty() {
-			return nil, fmt.Errorf("no operator found for binary expression")
-		}
-		operator := opStack.Pop()
-		valStack.Push(&BinaryExpression{
-			Left:     left,
-			Operator: operator,
-			Right:    right,
-		})
-	}
-	if valStack.IsEmpty() {
-		return nil, fmt.Errorf("no value expressions found")
-	}
-	return valStack.Pop(), nil
-}
-
-func (p *Parser) ParseFunction() (*FunctionDeclaration, error) {
-	var decl FunctionDeclaration
-
-	funcToken := p.nextToken()
-	if !funcToken.IsSpecificIdentifier("func") {
-		return nil, fmt.Errorf("expected func keyword")
-	}
-
+// parseIdentifierExpression expects that the next token is an identifier
+// and parses the expression that follows it. It also handles field access
+// and function calls.
+//
+// Example:
+//
+//	color.r
+func (p *Parser) parseIdentifierExpression() (Expression, error) {
 	nameToken := p.nextToken()
 	if !nameToken.IsIdentifier() {
-		return nil, fmt.Errorf("expected function name identifier")
-	}
-	decl.Name = nameToken.Value
-
-	paramBracketStart := p.nextToken()
-	if !paramBracketStart.IsSpecificOperator("(") {
-		return nil, fmt.Errorf("expected opening bracket")
-	}
-
-	inputParams, err := p.ParseNamedParameterList()
-	if err != nil {
-		return nil, fmt.Errorf("error parsing input params: %w", err)
-	}
-	decl.Inputs = inputParams
-
-	paramBracketEnd := p.nextToken()
-	if !paramBracketEnd.IsSpecificOperator(")") {
-		return nil, fmt.Errorf("expected closing bracket")
-	}
-
-	nextToken := p.peekToken()
-	if nextToken.IsSpecificOperator("(") {
-		resultBracketStart := p.nextToken()
-		if !resultBracketStart.IsSpecificOperator("(") {
-			return nil, fmt.Errorf("expected opening bracket")
-		}
-
-		outputParams, err := p.ParseUnnamedParameterList()
-		if err != nil {
-			return nil, fmt.Errorf("error parsing output params: %w", err)
-		}
-		decl.Outputs = outputParams
-
-		resultBracketEnd := p.nextToken()
-		if !resultBracketEnd.IsSpecificOperator(")") {
-			return nil, fmt.Errorf("expected closing bracket")
+		return nil, &ParseError{
+			Pos:     nameToken.Pos,
+			Message: "expected an identifier",
 		}
 	}
 
-	if err := p.ParseBlockStart(); err != nil {
-		return nil, fmt.Errorf("error parsing function block start: %w", err)
+	var result Expression
+	result = &Identifier{
+		Pos:  nameToken.Pos,
+		Name: nameToken.Value,
 	}
 
-	statements, err := p.ParseStatementList()
-	if err != nil {
-		return nil, fmt.Errorf("error parsing function body: %w", err)
-	}
-	decl.Body = statements
-
-	if err := p.ParseBlockEnd(); err != nil {
-		return nil, fmt.Errorf("error parsing function footer: %w", err)
-	}
-	return &decl, nil
-}
-
-func (p *Parser) ParseStatementList() ([]Statement, error) {
-	var statements []Statement
 	for {
-		token := p.peekToken()
+		nextToken := p.peekToken()
+
 		switch {
-		case token.IsNewLine():
-			if err := p.ParseNewLine(); err != nil {
-				return nil, fmt.Errorf("error parsing new line: %w", err)
+		case nextToken.IsSpecificOperator(AccessOperatorDot):
+			p.nextToken() // consume the dot
+			fieldToken := p.nextToken()
+			if !fieldToken.IsIdentifier() {
+				return nil, &ParseError{
+					Pos:     fieldToken.Pos,
+					Message: "expected an identifier",
+				}
 			}
-		case token.IsComment():
-			if err := p.ParseComment(); err != nil {
-				return nil, fmt.Errorf("error parsing comment: %w", err)
+			result = &FieldIdentifier{
+				Owner: result,
+				Field: Identifier{
+					Pos:  fieldToken.Pos,
+					Name: fieldToken.Value,
+				},
 			}
-		case token.IsIdentifier():
-			statement, err := p.ParseStatement()
+
+		case nextToken.IsSpecificOperator(GroupStart):
+			args, err := p.ParseArgumentBlock()
 			if err != nil {
-				return nil, fmt.Errorf("error parsing statement: %w", err)
+				return nil, err
 			}
-			statements = append(statements, statement)
+			result = &FunctionCall{
+				Owner:     result,
+				Arguments: args,
+			}
+
 		default:
-			return statements, nil
+			return result, nil
 		}
 	}
 }
 
-func (p *Parser) ParseStatement() (Statement, error) {
-	token := p.peekToken()
-	switch {
-	case token.IsSpecificIdentifier("var"):
-		return p.parseVariableDeclaration()
-	case token.IsSpecificIdentifier("if"):
-		return p.parseConditionalStatement()
-	case token.IsSpecificIdentifier("discard"):
-		return p.parseDiscardStatement()
-	case token.IsIdentifier():
-		return p.parseImperativeStatement()
-	default:
-		return nil, fmt.Errorf("unexpected token: %v", token)
-	}
-}
-
-func (p *Parser) parseVariableDeclaration() (*VariableDeclaration, error) {
-	var decl VariableDeclaration
-	varToken := p.nextToken()
-	if !varToken.IsSpecificIdentifier("var") {
-		return nil, fmt.Errorf("expected var keyword")
-	}
-	nameToken := p.nextToken()
-	if !nameToken.IsIdentifier() {
-		return nil, fmt.Errorf("expected identifier")
-	}
-	decl.Name = nameToken.Value
-	typeToken := p.nextToken()
-	if !typeToken.IsIdentifier() {
-		return nil, fmt.Errorf("expected identifier")
-	}
-	decl.Type = typeToken.Value
-
-	nextToken := p.peekToken()
-	if nextToken.IsAssignmentOperator() {
-		assignToken := p.nextToken()
-		if !assignToken.IsOperator() {
-			return nil, fmt.Errorf("expected operator")
-		}
-		expr, err := p.ParseExpression()
-		if err != nil {
-			return nil, fmt.Errorf("error parsing expression: %w", err)
-		}
-		decl.Assignment = expr
-		if err := p.ParseOptionalRemainder(); err != nil {
-			return nil, fmt.Errorf("error parsing end of line: %w", err)
-		}
-	} else {
-		if err := p.ParseOptionalRemainder(); err != nil {
-			return nil, fmt.Errorf("error parsing end of line: %w", err)
+// parseExpressionGroup expects the next token to be an opening bracket
+// and parses the expression that follows it.
+//
+// Example:
+//
+//	(a + b)
+func (p *Parser) parseExpressionGroup() (Expression, error) {
+	openingToken := p.nextToken()
+	if !openingToken.IsSpecificOperator(GroupStart) {
+		return nil, &ParseError{
+			Pos:     openingToken.Pos,
+			Message: "expected an opening bracket",
 		}
 	}
-	return &decl, nil
-}
-
-func (p *Parser) parseConditionalStatement() (*Conditional, error) {
-	var statement Conditional
-
-	ifToken := p.nextToken()
-	if !ifToken.IsSpecificIdentifier("if") {
-		return nil, fmt.Errorf("expected if keyword")
-	}
-
-	conditionExpression, err := p.ParseExpression()
+	expr, err := p.ParseExpression()
 	if err != nil {
-		return nil, fmt.Errorf("error parsing condition expression: %w", err)
+		return nil, err
 	}
-	statement.Condition = conditionExpression
-
-	if err := p.ParseBlockStart(); err != nil {
-		return nil, fmt.Errorf("error parsing block start: %w", err)
-	}
-
-	thenStatements, err := p.ParseStatementList()
-	if err != nil {
-		return nil, fmt.Errorf("error parsing function body: %w", err)
-	}
-	statement.Then = thenStatements
-
-	bracketToken := p.nextToken()
-	if !bracketToken.IsSpecificOperator("}") {
-		return nil, fmt.Errorf("expected closing bracket")
-	}
-
-	nextToken := p.peekToken()
-	if nextToken.IsSpecificIdentifier("else") {
-		_ = p.nextToken() // consume else token
-		nextToken = p.peekToken()
-		if nextToken.IsSpecificIdentifier("if") {
-			elseIfConditional, err := p.parseConditionalStatement()
-			if err != nil {
-				return nil, fmt.Errorf("error parsing else if conditional: %w", err)
-			}
-			statement.ElseIf = elseIfConditional
-		} else {
-			if err := p.ParseBlockStart(); err != nil {
-				return nil, fmt.Errorf("error parsing block start: %w", err)
-			}
-
-			elseStatements, err := p.ParseStatementList()
-			if err != nil {
-				return nil, fmt.Errorf("error parsing function body: %w", err)
-			}
-			statement.Else = elseStatements
-
-			if err := p.ParseBlockEnd(); err != nil {
-				return nil, fmt.Errorf("error parsing block end: %w", err)
-			}
-		}
-	} else {
-		if err := p.ParseOptionalRemainder(); err != nil {
-			return nil, fmt.Errorf("error parsing end of line: %w", err)
+	closingToken := p.nextToken()
+	if !closingToken.IsSpecificOperator(GroupEnd) {
+		return nil, &ParseError{
+			Pos:     closingToken.Pos,
+			Message: "expected a closing bracket",
 		}
 	}
-
-	return &statement, nil
-}
-
-func (p *Parser) parseDiscardStatement() (*Discard, error) {
-	discardToken := p.nextToken()
-	if !discardToken.IsSpecificIdentifier("discard") {
-		return nil, fmt.Errorf("expected discard keyword")
-	}
-	if err := p.ParseOptionalRemainder(); err != nil {
-		return nil, fmt.Errorf("error parsing end of line: %w", err)
-	}
-	return &Discard{}, nil
-}
-
-func (p *Parser) parseImperativeStatement() (Statement, error) {
-	identifierToken := p.nextToken()
-	if !identifierToken.IsIdentifier() {
-		return nil, fmt.Errorf("expected identifier")
-	}
-
-	var target Expression
-	nextToken := p.peekToken()
-	if nextToken.IsSpecificOperator(".") {
-		p.nextToken() // consume the dot
-		fieldToken := p.nextToken()
-		if !fieldToken.IsIdentifier() {
-			return nil, fmt.Errorf("expected identifier")
-		}
-		target = &FieldIdentifier{
-			ObjName:   identifierToken.Value,
-			FieldName: fieldToken.Value,
-		}
-		nextToken = p.peekToken()
-	} else {
-		target = &Identifier{
-			Name: identifierToken.Value,
-		}
-	}
-
-	switch {
-	case nextToken.IsSpecificOperator("("):
-		openingToken := p.nextToken()
-		if !openingToken.IsSpecificOperator("(") {
-			return nil, fmt.Errorf("expected opening bracket")
-		}
-		fields, err := p.parseArguments()
-		if err != nil {
-			return nil, fmt.Errorf("error parsing arguments: %w", err)
-		}
-		closingToken := p.nextToken()
-		if !closingToken.IsSpecificOperator(")") {
-			return nil, fmt.Errorf("expected closing bracket")
-		}
-		if err := p.ParseOptionalRemainder(); err != nil {
-			return nil, fmt.Errorf("error parsing end of line: %w", err)
-		}
-		return &FunctionCall{
-			Name:      identifierToken.Value,
-			Arguments: fields,
-		}, nil
-
-	case nextToken.IsAssignmentOperator():
-		operatorToken := p.nextToken()
-		if !operatorToken.IsAssignmentOperator() {
-			return nil, fmt.Errorf("expected assignment operator")
-		}
-		expr, err := p.ParseExpression()
-		if err != nil {
-			return nil, fmt.Errorf("error parsing expression: %w", err)
-		}
-		if err := p.ParseOptionalRemainder(); err != nil {
-			return nil, fmt.Errorf("error parsing end of line: %w", err)
-		}
-		return &Assignment{
-			Target:     target,
-			Operator:   operatorToken.Value,
-			Expression: expr,
-		}, nil
-
-	default:
-		return nil, fmt.Errorf("unexpected token: %v", nextToken)
-	}
-}
-
-func operatorPriority(operator string) int {
-	// TODO: Add more...
-	switch operator {
-	case "<<", ">>":
-		return 3
-	case "*", "/":
-		return 2
-	case "+", "-":
-		return 1
-	default:
-		return 0
-	}
+	return expr, nil
 }
 
 func (p *Parser) parseExpressionValue() (Expression, error) {
 	token := p.peekToken()
 	switch {
-	case token.IsSpecificOperator("("):
+	case token.IsError():
+		return nil, &ParseError{
+			Pos:     token.Pos,
+			Message: fmt.Sprintf("tokenization error: %s", token.Value),
+		}
+
+	case token.IsSpecificOperator(GroupStart):
 		return p.parseExpressionGroup()
 
 	case token.IsUnaryOperator():
@@ -805,168 +1000,325 @@ func (p *Parser) parseExpressionValue() (Expression, error) {
 	case token.IsNumber():
 		return p.parseNumericExpression()
 
+	case token.IsSpecificIdentifier(KeywordTrue):
+		nameToken := p.nextToken()
+		return &BoolLiteral{
+			Pos:   nameToken.Pos,
+			Value: true,
+		}, nil
+
+	case token.IsSpecificIdentifier(KeywordFalse):
+		nameToken := p.nextToken()
+		return &BoolLiteral{
+			Pos:   nameToken.Pos,
+			Value: false,
+		}, nil
+
 	case token.IsIdentifier():
 		return p.parseIdentifierExpression()
 
 	default:
-		return nil, fmt.Errorf("unexpected token: %v", token)
+		return nil, &ParseError{
+			Pos:     token.Pos,
+			Message: "expected an expression value",
+		}
 	}
 }
 
-func (p *Parser) parseExpressionGroup() (Expression, error) {
-	openingToken := p.nextToken()
-	if !openingToken.IsSpecificOperator("(") {
-		return nil, fmt.Errorf("expected opening bracket")
+// parseReturnStatement expects the next token to be a return keyword
+// and consumes it as well as any expression that follows.
+//
+// Example:
+//
+//	return color
+func (p *Parser) parseReturnStatement() (*Return, error) {
+	returnToken := p.nextToken()
+	if !returnToken.IsSpecificIdentifier(KeywordReturn) {
+		return nil, &ParseError{
+			Pos:     returnToken.Pos,
+			Message: fmt.Sprintf("expected %q keyword", KeywordReturn),
+		}
 	}
-	expr, err := p.ParseExpression()
-	if err != nil {
-		return nil, fmt.Errorf("error parsing expression: %w", err)
-	}
-	closingToken := p.nextToken()
-	if !closingToken.IsSpecificOperator(")") {
-		return nil, fmt.Errorf("expected closing bracket")
-	}
-	return expr, nil
-}
 
-func (p *Parser) parseUnaryExpression() (Expression, error) {
-	operatorToken := p.nextToken()
-	if !operatorToken.IsUnaryOperator() {
-		return nil, fmt.Errorf("expected unary operator")
-	}
-	expr, err := p.parseExpressionValue()
-	if err != nil {
-		return nil, fmt.Errorf("error parsing value expression: %w", err)
-	}
-	return &UnaryExpression{
-		Operator: operatorToken.Value,
-		Operand:  expr,
-	}, nil
-}
-
-func (p *Parser) parseNumericExpression() (Expression, error) {
-	numberToken := p.nextToken()
-	intValue, err := strconv.ParseInt(numberToken.Value, 10, 64)
-	if err == nil {
-		return &IntLiteral{
-			Value: intValue,
-		}, nil
-	}
-	floatValue, err := strconv.ParseFloat(numberToken.Value, 64)
-	if err == nil {
-		return &FloatLiteral{
-			Value: floatValue,
-		}, nil
-	}
-	return nil, fmt.Errorf("error parsing number: %w", err)
-}
-
-func (p *Parser) parseIdentifierExpression() (Expression, error) {
-	nameToken := p.nextToken()
-	if !nameToken.IsIdentifier() {
-		return nil, fmt.Errorf("expected identifier")
-	}
+	var expression Expression
 
 	nextToken := p.peekToken()
 	switch {
-	case nextToken.IsSpecificOperator("("):
-		openingToken := p.nextToken()
-		if !openingToken.IsSpecificOperator("(") {
-			return nil, fmt.Errorf("expected opening bracket")
+	case nextToken.IsEOF():
+		// Do nothing.
+	case nextToken.IsError():
+		return nil, &ParseError{
+			Pos:     nextToken.Pos,
+			Message: fmt.Sprintf("tokenization error: %s", nextToken.Value),
 		}
-
-		args, err := p.parseArguments()
+	case nextToken.IsNewLine():
+		if err := p.consumeNewLine(); err != nil {
+			return nil, err
+		}
+	case nextToken.IsComment():
+		if err := p.consumeComment(); err != nil {
+			return nil, err
+		}
+	default:
+		expr, err := p.ParseExpression()
 		if err != nil {
-			return nil, fmt.Errorf("error parsing arguments: %w", err)
+			return nil, err
+		}
+		expression = expr
+
+		if err := p.consumeRemainingLine(); err != nil {
+			return nil, err
+		}
+	}
+
+	return &Return{
+		Pos:        returnToken.Pos,
+		Expression: expression,
+	}, nil
+}
+
+// parseDiscardStatement expects the next token to be a discard keyword
+// and consumes it. It also consumes the remaining line.
+//
+// Example:
+//
+//	discard
+func (p *Parser) parseDiscardStatement() (*Discard, error) {
+	discardToken := p.nextToken()
+	if !discardToken.IsSpecificIdentifier("discard") {
+		return nil, &ParseError{
+			Pos:     discardToken.Pos,
+			Message: "expected discard keyword",
+		}
+	}
+	if err := p.consumeRemainingLine(); err != nil {
+		return nil, err
+	}
+	return &Discard{
+		Pos: discardToken.Pos,
+	}, nil
+}
+
+// parseVariableDeclaration expects the next token to be a var keyword
+// and parses a variable declaration.
+//
+// Example:
+//
+//	var color vec3 = vec3(1.0, 0.0, 0.0)
+func (p *Parser) parseVariableDeclaration() (*VariableDeclaration, error) {
+	var decl VariableDeclaration
+
+	varToken := p.nextToken()
+	if !varToken.IsSpecificIdentifier(KeywordVar) {
+		return nil, &ParseError{
+			Pos:     varToken.Pos,
+			Message: "expected var keyword",
+		}
+	}
+	decl.Pos = varToken.Pos
+
+	nameToken := p.nextToken()
+	if !nameToken.IsIdentifier() {
+		return nil, &ParseError{
+			Pos:     nameToken.Pos,
+			Message: "expected a name identifier",
+		}
+	}
+	decl.Name = nameToken.Value
+
+	nextToken := p.peekToken()
+	switch {
+	case nextToken.IsIdentifier():
+		typeToken := p.nextToken()
+		decl.Type = typeToken.Value
+
+		nextToken = p.peekToken()
+		if nextToken.IsSpecificOperator(AssignmentOperatorEq) {
+			p.nextToken() // consume the assignment operator
+			expr, err := p.ParseExpression()
+			if err != nil {
+				return nil, err
+			}
+			decl.Assignment = expr
 		}
 
-		closingToken := p.nextToken()
-		if !closingToken.IsSpecificOperator(")") {
-			return nil, fmt.Errorf("expected closing bracket")
+	case nextToken.IsSpecificOperator(AssignmentOperatorEq):
+		p.nextToken() // consume the assignment operator
+		expr, err := p.ParseExpression()
+		if err != nil {
+			return nil, err
 		}
-
-		return &FunctionCall{
-			Name:      nameToken.Value,
-			Arguments: args,
-		}, nil
-
-	case nextToken.IsSpecificOperator("."):
-		dotToken := p.nextToken()
-		if !dotToken.IsOperator() {
-			return nil, fmt.Errorf("expected dot operator")
-		}
-		fieldToken := p.nextToken()
-		if !fieldToken.IsIdentifier() {
-			return nil, fmt.Errorf("expected identifier")
-		}
-		return &FieldIdentifier{
-			ObjName:   nameToken.Value,
-			FieldName: fieldToken.Value,
-		}, nil
+		decl.Assignment = expr
 
 	default:
-		return &Identifier{
-			Name: nameToken.Value,
-		}, nil
+		return nil, &ParseError{
+			Pos:     nextToken.Pos,
+			Message: "expected a type identifier or an assignment operator",
+		}
 	}
+
+	if err := p.consumeRemainingLine(); err != nil {
+		return nil, err
+	}
+
+	return &decl, nil
 }
 
-func (p *Parser) parseArguments() ([]Expression, error) {
-	var args []Expression
-	token := p.peekToken()
-	for !token.IsSpecificOperator(")") {
-		switch {
-		case token.IsNewLine():
-			if err := p.ParseNewLine(); err != nil {
-				return nil, fmt.Errorf("error parsing new line: %w", err)
-			}
-		case token.IsComment():
-			if err := p.ParseComment(); err != nil {
-				return nil, fmt.Errorf("error parsing comment: %w", err)
-			}
-		default:
-			arg, err := p.ParseExpression()
-			if err != nil {
-				return nil, fmt.Errorf("error parsing expression: %w", err)
-			}
-			args = append(args, arg)
+// parseConditionalStatement expects the next token to be an if keyword
+// and parses a conditional statement.
+//
+// Example:
+//
+//	if (a > b) {
+//		// then block
+//	} else if (a > c) {
+//		// else if block
+//	} else {
+//		// else block
+//	}
+func (p *Parser) parseConditionalStatement() (*Conditional, error) {
+	var statement Conditional
 
-			nextToken := p.peekToken()
-			switch {
-			case nextToken.IsSpecificOperator(","):
-				p.nextToken()
-			case nextToken.IsSpecificOperator(")"):
-				// Do nothing
-			default:
-				return nil, fmt.Errorf("unexpected token: %v", nextToken)
+	ifToken := p.nextToken()
+	if !ifToken.IsSpecificIdentifier(KeywordIf) {
+		return nil, &ParseError{
+			Pos:     ifToken.Pos,
+			Message: fmt.Sprintf("expected %q keyword", KeywordIf),
+		}
+	}
+	statement.Pos = ifToken.Pos
+
+	conditionExpression, err := p.ParseExpression()
+	if err != nil {
+		return nil, err
+	}
+	statement.Condition = conditionExpression
+
+	if err := p.consumeBlockStart(); err != nil {
+		return nil, err
+	}
+
+	thenStatements, err := p.ParseStatementList()
+	if err != nil {
+		return nil, err
+	}
+	statement.Then = thenStatements
+
+	if err := p.consumeBlockEnd(false); err != nil {
+		return nil, err
+	}
+
+	nextToken := p.peekToken()
+	if nextToken.IsSpecificIdentifier(KeywordElse) {
+		p.nextToken() // consume else token
+		nextToken = p.peekToken()
+		if nextToken.IsSpecificIdentifier(KeywordIf) {
+			elseIfConditional, err := p.parseConditionalStatement()
+			if err != nil {
+				return nil, err
+			}
+			statement.Else = elseIfConditional
+		} else {
+			if err := p.consumeBlockStart(); err != nil {
+				return nil, err
+			}
+			elseStatements, err := p.ParseStatementList()
+			if err != nil {
+				return nil, err
+			}
+			statement.Else = elseStatements
+			if err := p.consumeBlockEnd(true); err != nil {
+				return nil, err
 			}
 		}
-		token = p.peekToken()
+	} else {
+		if err := p.consumeRemainingLine(); err != nil {
+			return nil, err
+		}
 	}
-	return args, nil
+
+	return &statement, nil
 }
 
-func (p *Parser) peekToken() Token {
-	return p.token
-}
+// parseImperativeStatement parses an imperative statement, which can be a
+// function call or a variable assignment.
+//
+// Example:
+//
+//	color.r = 1.0
+func (p *Parser) parseImperativeStatement() (Statement, error) {
+	target, err := p.parseIdentifierExpression()
+	if err != nil {
+		return nil, err
+	}
 
-func (p *Parser) nextToken() Token {
-	token := p.token
-	p.token = p.tokenizer.Next()
-	return token
-}
+	switch target := target.(type) {
+	case *FunctionCall:
+		if err := p.consumeRemainingLine(); err != nil {
+			return nil, err
+		}
+		return target, nil
 
-// ParseError is an error that occurs during parsing.
-type ParseError struct {
+	case *Identifier:
+		nextToken := p.peekToken()
+		switch {
+		case nextToken.IsSpecificOperator(AssignmentOperatorAuto):
+			p.nextToken() // consume the assignment operator
+			expr, err := p.ParseExpression()
+			if err != nil {
+				return nil, err
+			}
+			if err := p.consumeRemainingLine(); err != nil {
+				return nil, err
+			}
+			return &VariableDeclaration{
+				Pos:        target.Pos,
+				Name:       target.Name,
+				Type:       "", // auto-assignment
+				Assignment: expr,
+			}, nil
 
-	// Pos is the position in the source code where the error occurred.
-	Pos Position
+		case nextToken.IsAssignmentOperator():
+			operatorToken := p.nextToken()
+			expr, err := p.ParseExpression()
+			if err != nil {
+				return nil, err
+			}
+			if err := p.consumeRemainingLine(); err != nil {
+				return nil, err
+			}
+			return &Assignment{
+				Target:     target,
+				Expression: expr,
+				Operator:   operatorToken.Value,
+			}, nil
 
-	// Message is the error message.
-	Message string
-}
+		default:
+			return nil, &ParseError{
+				Pos:     nextToken.Pos,
+				Message: "expected an assignment operator",
+			}
+		}
 
-// Error returns the error message.
-func (e *ParseError) Error() string {
-	return fmt.Sprintf("shader code error %s at position %s", e.Message, e.Pos)
+	default:
+		operatorToken := p.nextToken()
+		if !operatorToken.IsAssignmentOperator() {
+			return nil, &ParseError{
+				Pos:     operatorToken.Pos,
+				Message: "expected an assignment operator",
+			}
+		}
+		expr, err := p.ParseExpression()
+		if err != nil {
+			return nil, err
+		}
+		if err := p.consumeRemainingLine(); err != nil {
+			return nil, err
+		}
+		return &Assignment{
+			Target:     target,
+			Expression: expr,
+			Operator:   operatorToken.Value,
+		}, nil
+	}
 }

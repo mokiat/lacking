@@ -3,10 +3,13 @@ package mdl
 import "github.com/mokiat/gomath/sprec"
 
 func NewArmature() *Armature {
-	return &Armature{}
+	return &Armature{
+		Object: NewObject(),
+	}
 }
 
 type Armature struct {
+	*Object
 	joints []*Joint
 }
 

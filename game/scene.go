@@ -4,40 +4,112 @@ import (
 	"time"
 
 	"github.com/mokiat/gog/ds"
-	"github.com/mokiat/gomath/dprec"
-	"github.com/mokiat/lacking/debug/log"
+	"github.com/mokiat/gog/opt"
 	"github.com/mokiat/lacking/debug/metric"
+	"github.com/mokiat/lacking/game/animation"
 	"github.com/mokiat/lacking/game/ecs"
 	"github.com/mokiat/lacking/game/graphics"
 	"github.com/mokiat/lacking/game/hierarchy"
 	"github.com/mokiat/lacking/game/physics"
-	"github.com/mokiat/lacking/game/physics/collision"
 	"github.com/mokiat/lacking/game/timestep"
 	"github.com/mokiat/lacking/render"
 )
 
-func newScene(engine *Engine, physicsScene *physics.Scene, gfxScene *graphics.Scene, ecsScene *ecs.Scene) *Scene {
+// SceneInfo specifies details regarding the scene to be created.
+type SceneInfo struct {
+
+	// IncludeECS indicates whether an ECS sub-scene would be required.
+	//
+	// Defaults to `true`.
+	IncludeECS opt.T[bool]
+
+	// IncludePhysics indicates whether a Physics sub-scene would be required.
+	//
+	// Defaults to `true`.
+	IncludePhysics opt.T[bool]
+
+	// IncludeGraphics indicates whether a Graphics sub-scene would be required.
+	//
+	// Defaults to `true`.
+	IncludeGraphics opt.T[bool]
+
+	// FixedTimestep determines the duration of a single fixed-step tick.
+	FixedTimestep opt.T[time.Duration]
+}
+
+func newScene(engine *Engine, info SceneInfo) *Scene {
+	var (
+		includeHierarchy = true
+		includeECS       = info.IncludeECS.ValueOrDefault(true)
+		includePhysics   = info.IncludePhysics.ValueOrDefault(true)
+		includeGraphics  = info.IncludeGraphics.ValueOrDefault(true)
+	)
+
+	var hierarchyScene *hierarchy.Scene
+	if includeHierarchy {
+		hierarchyScene = hierarchy.NewScene(1024)
+	}
+
+	var ecsScene *ecs.Scene
+	if ecsEngine := engine.ECS(); ecsEngine != nil && includeECS {
+		ecsScene = ecsEngine.CreateScene()
+	}
+
+	var physicsScene *physics.Scene
+	if physicsEngine := engine.Physics(); physicsEngine != nil && includePhysics {
+		physicsScene = physicsEngine.CreateScene()
+	}
+
+	var gfxScene *graphics.Scene
+	if gfxEngine := engine.Graphics(); gfxEngine != nil && includeGraphics {
+		gfxScene = gfxEngine.CreateScene()
+	}
+
+	fixedTimestep := info.FixedTimestep.ValueOrDefault(16 * time.Millisecond)
+
+	// source binding sets
+	armatureBindingSet := hierarchy.NewSourceBindingSet(hierarchyScene, NewAnimationBinding())
+	bodyBindingSet := hierarchy.NewSourceBindingSet(hierarchyScene, NewBodyBinding())
+	// target binding sets
+	skyBindingSet := hierarchy.NewInterpolationBindingSet(hierarchyScene, NewSkyBinding())
+	ambientLightBindingSet := hierarchy.NewInterpolationBindingSet(hierarchyScene, NewAmbientLightBinding())
+	pointLightBindingSet := hierarchy.NewInterpolationBindingSet(hierarchyScene, NewPointLightBinding())
+	spotLightBindingSet := hierarchy.NewInterpolationBindingSet(hierarchyScene, NewSpotLightBinding())
+	directionalLightBindingSet := hierarchy.NewInterpolationBindingSet(hierarchyScene, NewDirectionalLightBinding())
+	meshBindingSet := hierarchy.NewInterpolationBindingSet(hierarchyScene, NewMeshBinding())
+	boneBindingSet := hierarchy.NewInterpolationBindingSet(hierarchyScene, NewBoneBinding())
+	cameraBindingSet := hierarchy.NewInterpolationBindingSet(hierarchyScene, NewCameraBinding())
+
 	return &Scene{
 		engine: engine,
 
-		physicsScene: physicsScene,
-		gfxScene:     gfxScene,
-		ecsScene:     ecsScene,
-		root:         hierarchy.NewNode(), // TODO: Make this node stationary
+		hierarchyScene: hierarchyScene,
+		ecsScene:       ecsScene,
+		physicsScene:   physicsScene,
+		gfxScene:       gfxScene,
 
-		animationTrees: ds.NewList[AnimationSource](0),
+		armatureBindingSet: armatureBindingSet,
+		bodyBindingSet:     bodyBindingSet,
 
-		preUpdateSubscriptions:  timestep.NewUpdateSubscriptionSet(),
-		postUpdateSubscriptions: timestep.NewUpdateSubscriptionSet(),
+		skyBindingSet:              skyBindingSet,
+		ambientLightBindingSet:     ambientLightBindingSet,
+		pointLightBindingSet:       pointLightBindingSet,
+		spotLightBindingSet:        spotLightBindingSet,
+		directionalLightBindingSet: directionalLightBindingSet,
+		meshBindingSet:             meshBindingSet,
+		boneBindingSet:             boneBindingSet,
+		cameraBindingSet:           cameraBindingSet,
 
-		prePhysicsSubscriptions:  timestep.NewUpdateSubscriptionSet(),
-		postPhysicsSubscriptions: timestep.NewUpdateSubscriptionSet(),
+		timeSegmenter: timestep.NewSegmenter(fixedTimestep),
 
-		preAnimationSubscriptions:  timestep.NewUpdateSubscriptionSet(),
-		postAnimationSubscriptions: timestep.NewUpdateSubscriptionSet(),
+		animationTrees: ds.NewList[*animation.Player](0),
 
-		preNodeSubscriptions:  timestep.NewUpdateSubscriptionSet(),
-		postNodeSubscriptions: timestep.NewUpdateSubscriptionSet(),
+		stepUpdateSubscriptions:    timestep.NewStepSubscriptionSet(),
+		fixedUpdateSubscriptions:   timestep.NewUpdateSubscriptionSet(),
+		interpolationSubscriptions: timestep.NewInterpolationSubscriptionSet(),
+		updateSubscriptions:        timestep.NewUpdateSubscriptionSet(),
+
+		frozen: false,
 	}
 }
 
@@ -45,79 +117,155 @@ func newScene(engine *Engine, physicsScene *physics.Scene, gfxScene *graphics.Sc
 type Scene struct {
 	engine *Engine
 
-	physicsScene *physics.Scene
-	gfxScene     *graphics.Scene
-	ecsScene     *ecs.Scene
-	root         *hierarchy.Node
+	hierarchyScene *hierarchy.Scene
+	ecsScene       *ecs.Scene
+	physicsScene   *physics.Scene
+	gfxScene       *graphics.Scene
 
-	animationTrees *ds.List[AnimationSource]
+	// source binding sets
+	armatureBindingSet *hierarchy.SourceBindingSet[*animation.Player]
+	bodyBindingSet     *hierarchy.SourceBindingSet[physics.Body]
+	// target binding sets
+	skyBindingSet              *hierarchy.InterpolationBindingSet[*graphics.Sky]
+	ambientLightBindingSet     *hierarchy.InterpolationBindingSet[*graphics.AmbientLight]
+	pointLightBindingSet       *hierarchy.InterpolationBindingSet[*graphics.PointLight]
+	spotLightBindingSet        *hierarchy.InterpolationBindingSet[*graphics.SpotLight]
+	directionalLightBindingSet *hierarchy.InterpolationBindingSet[*graphics.DirectionalLight]
+	meshBindingSet             *hierarchy.InterpolationBindingSet[*graphics.Mesh]
+	boneBindingSet             *hierarchy.InterpolationBindingSet[BoneTarget]
+	cameraBindingSet           *hierarchy.InterpolationBindingSet[*graphics.Camera]
 
-	preUpdateSubscriptions  *timestep.UpdateSubscriptionSet
-	postUpdateSubscriptions *timestep.UpdateSubscriptionSet
+	timeSegmenter *timestep.Segmenter
 
-	prePhysicsSubscriptions  *timestep.UpdateSubscriptionSet
-	postPhysicsSubscriptions *timestep.UpdateSubscriptionSet
+	animationTrees *ds.List[*animation.Player]
 
-	preAnimationSubscriptions  *timestep.UpdateSubscriptionSet
-	postAnimationSubscriptions *timestep.UpdateSubscriptionSet
-
-	preNodeSubscriptions  *timestep.UpdateSubscriptionSet
-	postNodeSubscriptions *timestep.UpdateSubscriptionSet
+	stepUpdateSubscriptions    *timestep.StepSubscriptionSet
+	fixedUpdateSubscriptions   *timestep.UpdateSubscriptionSet
+	interpolationSubscriptions *timestep.InterpolationSubscriptionSet
+	updateSubscriptions        *timestep.UpdateSubscriptionSet
 
 	frozen bool
 }
 
 // Delete removes all resources associated with the scene.
 func (s *Scene) Delete() {
-	defer s.physicsScene.Delete()
-	defer s.gfxScene.Delete()
-	defer s.ecsScene.Delete()
+	if s.ecsScene != nil {
+		defer s.ecsScene.Delete()
+	}
+	if s.physicsScene != nil {
+		defer s.physicsScene.Delete()
+	}
+	if s.gfxScene != nil {
+		defer s.gfxScene.Delete()
+	}
 	s.engine.SetActiveScene(nil)
 	s.engine = nil
 }
 
-// SubscribePreUpdate adds a callback to be executed before the scene updates.
-func (s *Scene) SubscribePreUpdate(callback timestep.UpdateCallback) *timestep.UpdateSubscription {
-	return s.preUpdateSubscriptions.Subscribe(callback)
+// Engine returns the engine associated with the scene.
+func (s *Scene) Engine() *Engine {
+	return s.engine
 }
 
-// SubscribePostUpdate adds a callback to be executed after the scene updates.
-func (s *Scene) SubscribePostUpdate(callback timestep.UpdateCallback) *timestep.UpdateSubscription {
-	return s.postUpdateSubscriptions.Subscribe(callback)
+// Hierarchy returns the Hierarchy sub-scene associated with this scene.
+func (s *Scene) Hierarchy() *hierarchy.Scene {
+	return s.hierarchyScene
 }
 
-// SubscribePrePhysics adds a callback to be executed before the physics scene
-// updates.
-func (s *Scene) SubscribePrePhysics(callback timestep.UpdateCallback) *timestep.UpdateSubscription {
-	return s.prePhysicsSubscriptions.Subscribe(callback)
+// ECS returns the ECS sub-scene associated with this scene.
+//
+// Returns `nil` if this scene does not have ECS enabled.
+func (s *Scene) ECS() *ecs.Scene {
+	return s.ecsScene
 }
 
-// SubscribePostPhysics adds a callback to be executed after the physics scene
-// updates.
-func (s *Scene) SubscribePostPhysics(callback timestep.UpdateCallback) *timestep.UpdateSubscription {
-	return s.postPhysicsSubscriptions.Subscribe(callback)
+// Physics returns the Physics sub-scene associated with this scene.
+//
+// Returns `nil` if this scene does not have Physics enabled.
+func (s *Scene) Physics() *physics.Scene {
+	return s.physicsScene
 }
 
-// SubscribePreAnimation adds a callback to be executed before the animations
-// are updated.
-func (s *Scene) SubscribePreAnimation(callback timestep.UpdateCallback) *timestep.UpdateSubscription {
-	return s.preAnimationSubscriptions.Subscribe(callback)
+// Graphics returns the Graphics sub-scene associated with the scene.
+//
+// Returns `nil` if this scene does not have Graphics enabled.
+func (s *Scene) Graphics() *graphics.Scene {
+	return s.gfxScene
 }
 
-// SubscribePostAnimation adds a callback to be executed after the animations
-// are updated.
-func (s *Scene) SubscribePostAnimation(callback timestep.UpdateCallback) *timestep.UpdateSubscription {
-	return s.postAnimationSubscriptions.Subscribe(callback)
+// SubscribeStepUpdate adds a callback to be executed before fixed time updates
+func (s *Scene) SubscribeStepUpdate(callback timestep.StepCallback) *timestep.StepSubscription {
+	return s.stepUpdateSubscriptions.Subscribe(callback)
 }
 
-// SubscribePreNode adds a callback to be executed before the nodes are updated.
-func (s *Scene) SubscribePreNode(callback timestep.UpdateCallback) *timestep.UpdateSubscription {
-	return s.preNodeSubscriptions.Subscribe(callback)
+// SubscribeFixedUpdate adds a callback to be executed after each fixed time
+// update.
+func (s *Scene) SubscribeFixedUpdate(callback timestep.UpdateCallback) *timestep.UpdateSubscription {
+	return s.fixedUpdateSubscriptions.Subscribe(callback)
 }
 
-// SubscribePostNode adds a callback to be executed after the nodes are updated.
-func (s *Scene) SubscribePostNode(callback timestep.UpdateCallback) *timestep.UpdateSubscription {
-	return s.postNodeSubscriptions.Subscribe(callback)
+// SubscribeInterpolation adds a callback to be executed after a series of
+// fixed time updates are performed and interpolation is to be performed.
+func (s *Scene) SubscribeInterpolation(callback timestep.InterpolationCallback) *timestep.InterpolationSubscription {
+	return s.interpolationSubscriptions.Subscribe(callback)
+}
+
+// SubscribeUpdate adds a callback to be executed after each dynamic time
+// update.
+func (s *Scene) SubscribeUpdate(callback timestep.UpdateCallback) *timestep.UpdateSubscription {
+	return s.updateSubscriptions.Subscribe(callback)
+}
+
+// ArmatureBindingSet returns the binding set that binds animation players
+// to armatures.
+func (s *Scene) ArmatureBindingSet() *hierarchy.SourceBindingSet[*animation.Player] {
+	return s.armatureBindingSet
+}
+
+// BodyBindingSet returns the binding set that binds physics bodies.
+func (s *Scene) BodyBindingSet() *hierarchy.SourceBindingSet[physics.Body] {
+	return s.bodyBindingSet
+}
+
+// SkyBindingSet returns the binding set that binds sky objects.
+func (s *Scene) SkyBindingSet() *hierarchy.InterpolationBindingSet[*graphics.Sky] {
+	return s.skyBindingSet
+}
+
+// AmbientLightBindingSet returns the binding set that binds ambient light objects.
+func (s *Scene) AmbientLightBindingSet() *hierarchy.InterpolationBindingSet[*graphics.AmbientLight] {
+	return s.ambientLightBindingSet
+}
+
+// PointLightBindingSet returns the binding set that binds point light objects.
+func (s *Scene) PointLightBindingSet() *hierarchy.InterpolationBindingSet[*graphics.PointLight] {
+	return s.pointLightBindingSet
+}
+
+// SpotLightBindingSet returns the binding set that binds spot light objects.
+func (s *Scene) SpotLightBindingSet() *hierarchy.InterpolationBindingSet[*graphics.SpotLight] {
+	return s.spotLightBindingSet
+}
+
+// DirectionalLightBindingSet returns the binding set that binds directional
+// light objects.
+func (s *Scene) DirectionalLightBindingSet() *hierarchy.InterpolationBindingSet[*graphics.DirectionalLight] {
+	return s.directionalLightBindingSet
+}
+
+// MeshBindingSet returns the binding set that binds mesh objects.
+func (s *Scene) MeshBindingSet() *hierarchy.InterpolationBindingSet[*graphics.Mesh] {
+	return s.meshBindingSet
+}
+
+// BoneBindingSet returns the binding set that binds bone target objects.
+func (s *Scene) BoneBindingSet() *hierarchy.InterpolationBindingSet[BoneTarget] {
+	return s.boneBindingSet
+}
+
+// CameraBindingSet returns the binding set that binds camera objects.
+func (s *Scene) CameraBindingSet() *hierarchy.InterpolationBindingSet[*graphics.Camera] {
+	return s.cameraBindingSet
 }
 
 // IsFrozen returns whether the scene is currently frozen. A frozen scene
@@ -136,441 +284,108 @@ func (s *Scene) Unfreeze() {
 	s.frozen = false
 }
 
-// Physics returns the physics scene associated with the scene.
-func (s *Scene) Physics() *physics.Scene {
-	return s.physicsScene
+// PlayAnimation adds the provided animation player to the scene.
+func (s *Scene) PlayAnimation(player *animation.Player) {
+	s.animationTrees.Add(player)
 }
 
-// Graphics returns the graphics scene associated with the scene.
-func (s *Scene) Graphics() *graphics.Scene {
-	return s.gfxScene
-}
-
-// ECS returns the ECS scene associated with the scene.
-func (s *Scene) ECS() *ecs.Scene {
-	return s.ecsScene
-}
-
-// Root returns the root node of the scene.
-func (s *Scene) Root() *hierarchy.Node {
-	return s.root
-}
-
-// CreateNode creates a new node and appends it to the root of the scene.
-func (s *Scene) CreateNode() *hierarchy.Node {
-	result := hierarchy.NewNode()
-	s.root.AppendChild(result)
-	return result
-}
-
-// CreateAmbientLight creates a new ambient light and appends it to the root of
-// the scene.
-func (s *Scene) CreateAmbientLight(info AmbientLightInfo) *hierarchy.Node {
-	node := s.CreateNode()
-	s.placeAmbientLight(node, ambientLightInstance{
-		nodeIndex:         0,
-		reflectionTexture: info.ReflectionTexture,
-		refractionTexture: info.RefractionTexture,
-		castShadow:        info.CastShadow.ValueOrDefault(false),
-	})
-	return node
-}
-
-// CreatePointLight creates a new point light and appends it to the root of the
-// scene.
-func (s *Scene) CreatePointLight(info PointLightInfo) *hierarchy.Node {
-	node := s.CreateNode()
-	s.placePointLight(node, pointLightInstance{
-		nodeIndex:    0,
-		emitColor:    info.EmitColor.ValueOrDefault(dprec.NewVec3(10.0, 0.0, 10.0)),
-		emitDistance: info.EmitDistance.ValueOrDefault(20.0),
-		castShadow:   info.CastShadow.ValueOrDefault(false),
-	})
-	return node
-}
-
-// CreateSpotLight creates a new spot light and appends it to the root of the
-// scene.
-func (s *Scene) CreateSpotLight(info SpotLightInfo) *hierarchy.Node {
-	node := s.CreateNode()
-	s.placeSpotLight(node, spotLightInstance{
-		nodeIndex:      0,
-		emitColor:      info.EmitColor.ValueOrDefault(dprec.NewVec3(10.0, 0.0, 10.0)),
-		emitDistance:   info.EmitDistance.ValueOrDefault(20.0),
-		emitAngleOuter: info.EmitOuterConeAngle.ValueOrDefault(dprec.Degrees(60)),
-		emitAngleInner: info.EmitInnerConeAngle.ValueOrDefault(dprec.Degrees(30)),
-		castShadow:     info.CastShadow.ValueOrDefault(false),
-	})
-	return node
-}
-
-// CreateDirectionalLight creates a new directional light and appends it to the
-// root of the scene.
-func (s *Scene) CreateDirectionalLight(info DirectionalLightInfo) *hierarchy.Node {
-	node := s.CreateNode()
-	s.placeDirectionalLight(node, directionalLightInstance{
-		nodeIndex:  0,
-		emitColor:  info.EmitColor.ValueOrDefault(dprec.NewVec3(10.0, 0.0, 10.0)),
-		castShadow: info.CastShadow.ValueOrDefault(false),
-	})
-	return node
-}
-
-// CreateAnimation creates a new animation based on the provided information.
-func (s *Scene) CreateAnimation(info AnimationInfo) *Animation {
-	def := info.Definition
-	return &Animation{
-		name:      def.name,
-		startTime: info.ClipStart.ValueOrDefault(def.startTime),
-		endTime:   info.ClipEnd.ValueOrDefault(def.endTime),
-		loop:      info.Loop.ValueOrDefault(def.loop),
-		bindings:  def.bindings,
-	}
-}
-
-// PlayAnimationTree adds the provided animation tree to the scene.
-func (s *Scene) PlayAnimationTree(tree AnimationSource) {
-	s.animationTrees.Add(tree)
-}
-
-// StopAnimationTree removes the provided animation tree from the scene.
-func (s *Scene) StopAnimationTree(tree AnimationSource) {
-	s.animationTrees.Remove(tree)
+// StopAnimationTree removes the provided animation player from the scene.
+func (s *Scene) StopAnimation(player *animation.Player) {
+	s.animationTrees.Remove(player)
 }
 
 // Update advances the scene by the provided time.
 func (s *Scene) Update(elapsedTime time.Duration) {
-	if s.frozen {
-		return
+	if !s.frozen {
+		s.timeSegmenter.SetStepCallback(s.doStepUpdate)
+		s.timeSegmenter.SetFixedCallback(s.doFixedUpdate)
+		s.timeSegmenter.SetInterpCallback(s.doInterpolationUpdate)
+		s.timeSegmenter.Update(elapsedTime)
+		s.doUpdate(elapsedTime)
 	}
-
-	preUpdateSpan := metric.BeginRegion("pre-update")
-	s.preUpdateSubscriptions.Each(func(callback timestep.UpdateCallback) {
-		callback(elapsedTime)
-	})
-	preUpdateSpan.End()
-
-	updateSpan := metric.BeginRegion("update")
-	s.updatePhysics(elapsedTime)
-	s.updateAnimations(elapsedTime)
-	s.updateNodes(elapsedTime)
-	updateSpan.End()
-
-	postUpdateSpan := metric.BeginRegion("post-update")
-	s.postUpdateSubscriptions.Each(func(callback timestep.UpdateCallback) {
-		callback(elapsedTime)
-	})
-	postUpdateSpan.End()
-
-	s.gfxScene.Update(elapsedTime)
 }
 
 // Render draws the scene to the provided viewport.
 func (s *Scene) Render(framebuffer render.Framebuffer, viewport graphics.Viewport) {
-	stageSpan := metric.BeginRegion("stage")
-	s.root.ApplyToTarget(true)
-	stageSpan.End()
-
-	renderSpan := metric.BeginRegion("render")
-	s.gfxScene.Render(framebuffer, viewport)
-	renderSpan.End()
-}
-
-// TODO: Return the node instead and have the Model be a target?
-func (s *Scene) CreateModel(info ModelInfo) *Model {
-	modelNode := hierarchy.NewNode()
-
-	definition := info.Definition
-	nodes := make(map[int]*hierarchy.Node, len(definition.nodes))
-	for i, nodeDef := range definition.nodes {
-		node := hierarchy.NewNode()
-		node.SetName(nodeDef.Name)
-		node.SetPosition(nodeDef.Position)
-		node.SetRotation(nodeDef.Rotation)
-		node.SetScale(nodeDef.Scale)
-		nodes[i] = node
-	}
-	for i, nodeDef := range definition.nodes {
-		var parent *hierarchy.Node
-		if nodeDef.ParentIndex >= 0 {
-			parent = nodes[nodeDef.ParentIndex]
-		} else {
-			parent = modelNode
-		}
-		parent.AppendChild(nodes[i])
-	}
-	if info.RootNode.Specified {
-		if name := info.RootNode.Value; name != "" {
-			modelNode = modelNode.FindNode(info.RootNode.Value)
-		} else {
-			modelNode = nil
-		}
-		if modelNode == nil {
-			log.Error("Root node %q not found", info.RootNode.Value)
-			modelNode = hierarchy.NewNode()
-		}
-		modelNode.Detach()
-		for i := range definition.nodes {
-			if node := nodes[i]; !node.IsDescendantOf(modelNode) {
-				delete(nodes, i)
-			}
-		}
-	}
-
-	modelNode.SetName(info.Name)
-	modelNode.SetPosition(info.Position.ValueOrDefault(dprec.ZeroVec3()))
-	modelNode.SetRotation(info.Rotation.ValueOrDefault(dprec.IdentityQuat()))
-	modelNode.SetScale(info.Scale.ValueOrDefault(dprec.NewVec3(1.0, 1.0, 1.0)))
-	if info.IsDynamic {
-		s.Root().AppendChild(modelNode)
-	}
-
-	// TODO: Move after bodies are created? But maybe only after pos/rot of bodies
-	// is implemented correctly. Right now it does not seem to do anything.
-	modelNode.ApplyFromSource(true)
-
-	animations := make([]*Animation, len(definition.animations))
-	for i, animationDef := range definition.animations {
-		animations[i] = s.CreateAnimation(AnimationInfo{
-			Definition: animationDef,
-		})
-	}
-
-	armatures := make([]*graphics.Armature, len(definition.armatures))
-	for i, instance := range definition.armatures {
-		armature := s.gfxScene.CreateArmature(graphics.ArmatureInfo{
-			InverseMatrices: instance.InverseBindMatrices(),
-		})
-		for j, joint := range instance.Joints {
-			if jointNode := nodes[joint.NodeIndex]; jointNode != nil {
-				jointNode.SetTarget(BoneNodeTarget{
-					Armature:  armature,
-					BoneIndex: j,
-				})
-			}
-		}
-		armatures[i] = armature
-	}
-
-	// NOTE: This needs to happen after armatures are initialized!
-	modelNode.ApplyToTarget(true)
-
-	// TODO: Track mesh instances?
-	for _, instance := range definition.meshes {
-		if meshNode := nodes[instance.NodeIndex]; meshNode != nil {
-			var armature *graphics.Armature
-			if instance.ArmatureIndex >= 0 {
-				armature = armatures[instance.ArmatureIndex]
-			}
-			meshDefinition := definition.meshDefinitions[instance.DefinitionIndex]
-
-			// TODO: Base this on node flags
-			if info.IsDynamic {
-				mesh := s.gfxScene.CreateMesh(graphics.MeshInfo{
-					Definition: meshDefinition,
-					Armature:   armature,
-				})
-				meshNode.SetTarget(MeshNodeTarget{
-					Mesh: mesh,
-				})
-			} else {
-				s.gfxScene.CreateStaticMesh(graphics.StaticMeshInfo{
-					Definition: meshDefinition,
-					Armature:   armature,
-					Matrix:     meshNode.AbsoluteMatrix(),
-				})
-			}
-		}
-	}
-
-	var bodyInstances []physics.Body
-	for _, instance := range definition.bodies {
-		if bodyNode := nodes[instance.NodeIndex]; bodyNode != nil {
-			bodyDefinition := definition.bodyDefinitions[instance.DefinitionIndex]
-			if info.IsDynamic {
-				body := s.physicsScene.CreateBody(physics.BodyInfo{
-					Name:       bodyNode.Name(),
-					Definition: bodyDefinition,
-					// TODO: Initialize from body node matrix?
-					Position: dprec.ZeroVec3(),
-					Rotation: dprec.IdentityQuat(),
-				})
-				bodyNode.SetSource(BodyNodeSource{
-					Body: body,
-				})
-				bodyInstances = append(bodyInstances, body)
-			} else {
-				absMatrix := bodyNode.AbsoluteMatrix()
-				transform := collision.TRTransform(absMatrix.Translation(), absMatrix.Rotation())
-				collisionSet := collision.NewSet()
-				collisionSet.Replace(bodyDefinition.CollisionSet(), transform)
-				s.physicsScene.CreateProp(physics.PropInfo{
-					Name:         bodyNode.Name(),
-					CollisionSet: collisionSet,
-				})
-			}
-		}
-	}
-
-	for _, instance := range definition.ambientLights {
-		if node := nodes[instance.nodeIndex]; node != nil {
-			s.placeAmbientLight(node, instance)
-		}
-	}
-	for _, instance := range definition.pointLights {
-		if node := nodes[instance.nodeIndex]; node != nil {
-			s.placePointLight(node, instance)
-		}
-	}
-	for _, instance := range definition.spotLights {
-		if node := nodes[instance.nodeIndex]; node != nil {
-			s.placeSpotLight(node, instance)
-		}
-	}
-	for _, instance := range definition.directionalLights {
-		if node := nodes[instance.nodeIndex]; node != nil {
-			s.placeDirectionalLight(node, instance)
-		}
-	}
-	for _, instance := range definition.skies {
-		if node := nodes[instance.nodeIndex]; node != nil {
-			definition := definition.skyDefinitions[instance.definitionIndex]
-			s.placeSky(node, definition)
-		}
-	}
-
-	return &Model{
-		definition:    definition,
-		root:          modelNode,
-		bodyInstances: bodyInstances,
-		armatures:     armatures,
-		animations:    animations,
+	if s.gfxScene != nil {
+		renderSpan := metric.BeginRegion("render")
+		s.gfxScene.Render(framebuffer, viewport)
+		renderSpan.End()
 	}
 }
 
-func (s *Scene) updatePhysics(elapsedTime time.Duration) {
-	prePhysicsSpan := metric.BeginRegion("pre-physics")
-	s.prePhysicsSubscriptions.Each(func(callback timestep.UpdateCallback) {
-		callback(elapsedTime)
+func (s *Scene) doStepUpdate(steps float64) {
+	callbackSpan := metric.BeginRegion("step-cb")
+	s.stepUpdateSubscriptions.Each(func(callback timestep.StepCallback) {
+		callback(steps)
 	})
-	prePhysicsSpan.End()
+	callbackSpan.End()
+}
+
+func (s *Scene) doFixedUpdate(elapsedTime time.Duration) {
+	resetSpan := metric.BeginRegion("node-fixed")
+	s.hierarchyScene.ResetDelta()
+	resetSpan.End()
 
 	physicsSpan := metric.BeginRegion("physics")
-	s.physicsScene.Update(elapsedTime)
+	if s.physicsScene != nil {
+		s.physicsScene.Update(elapsedTime)
+	}
 	physicsSpan.End()
 
-	postPhysicsSpan := metric.BeginRegion("post-physics")
-	s.postPhysicsSubscriptions.Each(func(callback timestep.UpdateCallback) {
+	callbackSpan := metric.BeginRegion("fixed-cb")
+	s.fixedUpdateSubscriptions.Each(func(callback timestep.UpdateCallback) {
 		callback(elapsedTime)
 	})
-	postPhysicsSpan.End()
-}
+	callbackSpan.End()
 
-func (s *Scene) updateAnimations(elapsedTime time.Duration) {
-	preAnimationSpan := metric.BeginRegion("pre-anim")
-	s.preAnimationSubscriptions.Each(func(callback timestep.UpdateCallback) {
-		callback(elapsedTime)
-	})
-	preAnimationSpan.End()
+	nodeSpan := metric.BeginRegion("node-source")
+	s.hierarchyScene.ApplySourcesToNodes()
+	nodeSpan.End()
 
 	animationSpan := metric.BeginRegion("anim")
 	s.updateAnimationTrees(elapsedTime)
 	animationSpan.End()
 
-	postAnimationSpan := metric.BeginRegion("post-anim")
-	s.postAnimationSubscriptions.Each(func(callback timestep.UpdateCallback) {
-		callback(elapsedTime)
-	})
-	postAnimationSpan.End()
-
-}
-
-func (s *Scene) updateNodes(elapsedTime time.Duration) {
-	preNodeSpan := metric.BeginRegion("pre-node")
-	s.preNodeSubscriptions.Each(func(callback timestep.UpdateCallback) {
-		callback(elapsedTime)
-	})
-	preNodeSpan.End()
-
-	nodeSpan := metric.BeginRegion("node")
-	s.root.ApplyFromSource(true)
+	nodeSpan = metric.BeginRegion("node-target")
+	s.hierarchyScene.ApplyNodesToTargets()
 	nodeSpan.End()
 
-	postNodeSpan := metric.BeginRegion("post-node")
-	s.postNodeSubscriptions.Each(func(callback timestep.UpdateCallback) {
-		callback(elapsedTime)
-	})
-	postNodeSpan.End()
-}
-
-func (s *Scene) updateAnimationTrees(elapsedTime time.Duration) {
-	for _, tree := range s.animationTrees.Unbox() {
-		tree.SetPosition(tree.Position() + elapsedTime.Seconds())
+	if s.ecsScene != nil {
+		s.ecsScene.Purge()
 	}
 }
 
-func (s *Scene) placeAmbientLight(node *hierarchy.Node, instance ambientLightInstance) {
-	light := s.gfxScene.CreateAmbientLight(graphics.AmbientLightInfo{
-		Position:          dprec.ZeroVec3(),
-		InnerRadius:       25000.0,
-		OuterRadius:       25000.0,
-		ReflectionTexture: instance.reflectionTexture,
-		RefractionTexture: instance.refractionTexture,
-		CastShadow:        instance.castShadow,
+func (s *Scene) doInterpolationUpdate(fraction float64) {
+	nodeSpan := metric.BeginRegion("node-interp")
+	s.hierarchyScene.ApplyNodesToInterpolations(fraction)
+	nodeSpan.End()
+
+	callbackSpan := metric.BeginRegion("interp-cb")
+	s.interpolationSubscriptions.Each(func(callback timestep.InterpolationCallback) {
+		callback(fraction)
 	})
-	node.SetTarget(AmbientLightNodeTarget{
-		Light: light,
-	})
-	node.ApplyToTarget(false)
+	callbackSpan.End()
 }
 
-func (s *Scene) placePointLight(node *hierarchy.Node, instance pointLightInstance) {
-	light := s.gfxScene.CreatePointLight(graphics.PointLightInfo{
-		Position:   dprec.ZeroVec3(),
-		EmitColor:  instance.emitColor,
-		EmitRange:  instance.emitDistance,
-		CastShadow: instance.castShadow,
+func (s *Scene) doUpdate(elapsedTime time.Duration) {
+	callbackSpan := metric.BeginRegion("update-cb")
+	s.updateSubscriptions.Each(func(callback timestep.UpdateCallback) {
+		callback(elapsedTime)
 	})
-	node.SetTarget(PointLightNodeTarget{
-		Light: light,
-	})
-	node.ApplyToTarget(false)
+	callbackSpan.End()
+
+	if s.ecsScene != nil {
+		s.ecsScene.Purge()
+	}
+
+	if s.gfxScene != nil {
+		s.gfxScene.Update(elapsedTime)
+	}
 }
 
-func (s *Scene) placeSpotLight(node *hierarchy.Node, instance spotLightInstance) {
-	light := s.gfxScene.CreateSpotLight(graphics.SpotLightInfo{
-		Position:           dprec.ZeroVec3(),
-		Rotation:           dprec.IdentityQuat(),
-		EmitColor:          instance.emitColor,
-		EmitRange:          instance.emitDistance,
-		EmitOuterConeAngle: instance.emitAngleOuter,
-		EmitInnerConeAngle: instance.emitAngleInner,
-		CastShadow:         instance.castShadow,
-	})
-	node.SetTarget(SpotLightNodeTarget{
-		Light: light,
-	})
-	node.ApplyToTarget(false)
-}
-
-func (s *Scene) placeDirectionalLight(node *hierarchy.Node, instance directionalLightInstance) {
-	light := s.gfxScene.CreateDirectionalLight(graphics.DirectionalLightInfo{
-		Position:   dprec.ZeroVec3(),
-		Rotation:   dprec.IdentityQuat(),
-		EmitColor:  instance.emitColor,
-		CastShadow: instance.castShadow,
-	})
-	node.SetTarget(DirectionalLightNodeTarget{
-		Light: light,
-	})
-	node.ApplyToTarget(false)
-}
-
-func (s *Scene) placeSky(node *hierarchy.Node, definition *graphics.SkyDefinition) {
-	sky := s.gfxScene.CreateSky(graphics.SkyInfo{
-		Definition: definition,
-	})
-	node.SetTarget(SkyNodeTarget{
-		Sky: sky,
-	})
+func (s *Scene) updateAnimationTrees(elapsedTime time.Duration) {
+	for _, player := range s.animationTrees.Unbox() {
+		player.Update(elapsedTime)
+	}
 }

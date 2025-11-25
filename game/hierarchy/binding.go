@@ -1,25 +1,66 @@
 package hierarchy
 
-// NodeSource represents an abstraction that is able to apply its transform
-// to a node.
-type NodeSource interface {
+import "github.com/mokiat/gog"
 
-	// ApplyTo requests that any transform be applied to the specified node.
-	ApplyTo(node *Node)
+const (
+	initialBindingCapacity = 64
+)
 
-	// Release indicates that the node has been deleted and the source can be
-	// deleted.
-	Release()
+// BindingObject represents a type that can be bound to a node.
+type BindingObject interface {
+	comparable
 }
 
-// NodeTarget represents an abstraction that is able to modify its transform
-// based on a node's positioning.
-type NodeTarget interface {
+// Binding represents a relationship between an object and a node.
+type Binding[T BindingObject] interface {
 
-	// ApplyFrom requests that the node's transform be applied to the receiver.
-	ApplyFrom(node *Node)
+	// OnStaleBinding is called when the node is deleted and the binding
+	// is determined to no longer be valid.
+	OnStaleBinding(*Scene, T)
+}
 
-	// Release indicates that the node has been deleted and the target can be
-	// deleted.
-	Release()
+// NewManualBindingSet creates a binding set that only tracks deletions.
+func NewBindingSet[T BindingObject](scene *Scene, binding Binding[T]) *BindingSet[T] {
+	result := &BindingSet[T]{
+		scene:     scene,
+		binding:   binding,
+		relations: make(map[NodeID]T, initialBindingCapacity),
+	}
+	scene.SubscribeNodeDelete(func(s *Scene, id NodeID) {
+		result.Unbind(id, true)
+	})
+	return result
+}
+
+// BindingSet represents a set of bindings for a specific object type.
+type BindingSet[T BindingObject] struct {
+	scene     *Scene
+	binding   Binding[T]
+	relations map[NodeID]T
+}
+
+// Bind binds the object to the node with the given ID.
+func (s *BindingSet[T]) Bind(id NodeID, obj T) {
+	if s.scene.IsValidNode(id) {
+		s.relations[id] = obj
+	}
+}
+
+// Unbind unbinds the object from its node.
+func (s *BindingSet[T]) Unbind(id NodeID, notify bool) (T, bool) {
+	target, exists := s.relations[id]
+	if !exists {
+		return gog.Zero[T](), false
+	}
+	delete(s.relations, id)
+	if notify {
+		s.binding.OnStaleBinding(s.scene, target)
+	}
+	return target, true
+}
+
+// Get returns the object bound to the node with the given ID. If one is
+// not found, the zero value is returned.
+func (s *BindingSet[T]) Get(id NodeID) T {
+	return s.relations[id]
 }

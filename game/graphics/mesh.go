@@ -2,7 +2,9 @@ package graphics
 
 import (
 	"fmt"
+	"time"
 
+	"github.com/mokiat/gblob"
 	"github.com/mokiat/gomath/dprec"
 	"github.com/mokiat/gomath/dtos"
 	"github.com/mokiat/lacking/util/blob"
@@ -24,6 +26,7 @@ func newMesh(scene *Scene, info MeshInfo) *Mesh {
 	mesh.maxCascade = definition.geometry.maxCascade
 	mesh.armature = info.Armature
 	mesh.active = true
+	mesh.setSpawnTime(scene.gameTime)
 	return mesh
 }
 
@@ -31,12 +34,13 @@ func newMesh(scene *Scene, info MeshInfo) *Mesh {
 type Mesh struct {
 	Node
 
-	scene      *Scene
-	itemID     spatial.DynamicSetItemID
-	definition *MeshDefinition
-	armature   *Armature
-	maxCascade uint8
-	active     bool
+	scene        *Scene
+	itemID       spatial.DynamicSetItemID
+	definition   *MeshDefinition
+	armature     *Armature
+	maxCascade   uint8
+	instanceData [4 * 4]byte // 1x vec4
+	active       bool
 }
 
 func (m *Mesh) Active() bool {
@@ -44,7 +48,10 @@ func (m *Mesh) Active() bool {
 }
 
 func (m *Mesh) SetActive(active bool) {
-	m.active = active
+	if active != m.active {
+		m.setSpawnTime(m.scene.gameTime)
+		m.active = active
+	}
 }
 
 func (m *Mesh) SetMatrix(matrix dprec.Mat4) {
@@ -52,6 +59,11 @@ func (m *Mesh) SetMatrix(matrix dprec.Mat4) {
 	position := matrix.Translation()
 	radius := m.definition.geometry.boundingSphereRadius
 	m.scene.dynamicMeshSet.Update(m.itemID, position, radius)
+}
+
+func (m *Mesh) setSpawnTime(spawnTime time.Duration) {
+	block := gblob.LittleEndianBlock(m.instanceData[:])
+	block.SetFloat32(0*4, float32(spawnTime.Seconds()))
 }
 
 // Delete removes this mesh from the scene.
@@ -81,6 +93,7 @@ func createStaticMesh(scene *Scene, info StaticMeshInfo) {
 	scene.staticMeshOctree.Insert(position, radius, meshIndex)
 
 	staticMesh := &scene.staticMeshes[meshIndex]
+	staticMesh.scene = scene
 	staticMesh.position = position
 	staticMesh.minDistance = info.Definition.geometry.minDistance
 	staticMesh.maxDistance = info.Definition.geometry.maxDistance
@@ -89,6 +102,7 @@ func createStaticMesh(scene *Scene, info StaticMeshInfo) {
 	staticMesh.matrixData = make([]byte, 16*4)
 	staticMesh.armature = info.Armature
 	staticMesh.active = true
+	staticMesh.setSpawnTime(scene.gameTime)
 
 	matrix := dtos.Mat4(info.Matrix)
 	plotter := blob.NewPlotter(staticMesh.matrixData)
@@ -96,14 +110,16 @@ func createStaticMesh(scene *Scene, info StaticMeshInfo) {
 }
 
 type StaticMesh struct {
-	position    dprec.Vec3
-	minDistance float64
-	maxDistance float64
-	maxCascade  uint8
-	matrixData  []byte
-	definition  *MeshDefinition
-	armature    *Armature
-	active      bool
+	scene        *Scene
+	position     dprec.Vec3
+	minDistance  float64
+	maxDistance  float64
+	maxCascade   uint8
+	matrixData   []byte
+	definition   *MeshDefinition
+	armature     *Armature
+	instanceData [4 * 4]byte // 1x vec4
+	active       bool
 }
 
 func (m *StaticMesh) Active() bool {
@@ -111,5 +127,13 @@ func (m *StaticMesh) Active() bool {
 }
 
 func (m *StaticMesh) SetActive(active bool) {
-	m.active = active
+	if active != m.active {
+		m.setSpawnTime(m.scene.gameTime)
+		m.active = active
+	}
+}
+
+func (m *StaticMesh) setSpawnTime(spawnTime time.Duration) {
+	block := gblob.LittleEndianBlock(m.instanceData[:])
+	block.SetFloat32(0*4, float32(spawnTime.Seconds()))
 }

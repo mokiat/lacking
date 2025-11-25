@@ -84,11 +84,13 @@ func (b *BaseShadowCaster) SetCastShadow(castShadow bool) {
 }
 
 func NewAmbientLight() *AmbientLight {
-	return &AmbientLight{}
-
+	return &AmbientLight{
+		Object: NewObject(),
+	}
 }
 
 type AmbientLight struct {
+	*Object
 	BaseShadowCaster
 	reflectionTexture *Texture
 	refractionTexture *Texture
@@ -111,22 +113,26 @@ func (l *AmbientLight) SetRefractionTexture(texture *Texture) {
 }
 
 func NewPointLight() *PointLight {
-	return &PointLight{}
-
+	return &PointLight{
+		Object: NewObject(),
+	}
 }
 
 type PointLight struct {
+	*Object
 	BaseColorEmitter
 	BaseDistanceEmitter
 	BaseShadowCaster
 }
 
 func NewSpotLight() *SpotLight {
-	return &SpotLight{}
-
+	return &SpotLight{
+		Object: NewObject(),
+	}
 }
 
 type SpotLight struct {
+	*Object
 	BaseColorEmitter
 	BaseDistanceEmitter
 	BaseConeEmitter
@@ -134,11 +140,13 @@ type SpotLight struct {
 }
 
 func NewDirectionalLight() *DirectionalLight {
-	return &DirectionalLight{}
-
+	return &DirectionalLight{
+		Object: NewObject(),
+	}
 }
 
 type DirectionalLight struct {
+	*Object
 	BaseColorEmitter
 	BaseShadowCaster
 }

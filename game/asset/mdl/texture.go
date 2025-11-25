@@ -3,31 +3,31 @@ package mdl
 import (
 	"fmt"
 
-	"github.com/mokiat/lacking/game/asset"
+	"github.com/mokiat/lacking/game/asset/dto"
 )
 
 const (
-	TextureFormatR8       TextureFormat = asset.TexelFormatR8
-	TextureFormatR16      TextureFormat = asset.TexelFormatR16
-	TextureFormatR16F     TextureFormat = asset.TexelFormatR16F
-	TextureFormatR32F     TextureFormat = asset.TexelFormatR32F
-	TextureFormatRG8      TextureFormat = asset.TexelFormatRG8
-	TextureFormatRG16     TextureFormat = asset.TexelFormatRG16
-	TextureFormatRG16F    TextureFormat = asset.TexelFormatRG16F
-	TextureFormatRG32F    TextureFormat = asset.TexelFormatRG32F
-	TextureFormatRGB8     TextureFormat = asset.TexelFormatRGB8
-	TextureFormatRGB16    TextureFormat = asset.TexelFormatRGB16
-	TextureFormatRGB16F   TextureFormat = asset.TexelFormatRGB16F
-	TextureFormatRGB32F   TextureFormat = asset.TexelFormatRGB32F
-	TextureFormatRGBA8    TextureFormat = asset.TexelFormatRGBA8
-	TextureFormatRGBA16   TextureFormat = asset.TexelFormatRGBA16
-	TextureFormatRGBA16F  TextureFormat = asset.TexelFormatRGBA16F
-	TextureFormatRGBA32F  TextureFormat = asset.TexelFormatRGBA32F
-	TextureFormatDepth16F TextureFormat = asset.TexelFormatDepth16F
-	TextureFormatDepth32F TextureFormat = asset.TexelFormatDepth32F
+	TextureFormatR8       TextureFormat = dto.TexelFormatR8
+	TextureFormatR16      TextureFormat = dto.TexelFormatR16
+	TextureFormatR16F     TextureFormat = dto.TexelFormatR16F
+	TextureFormatR32F     TextureFormat = dto.TexelFormatR32F
+	TextureFormatRG8      TextureFormat = dto.TexelFormatRG8
+	TextureFormatRG16     TextureFormat = dto.TexelFormatRG16
+	TextureFormatRG16F    TextureFormat = dto.TexelFormatRG16F
+	TextureFormatRG32F    TextureFormat = dto.TexelFormatRG32F
+	TextureFormatRGB8     TextureFormat = dto.TexelFormatRGB8
+	TextureFormatRGB16    TextureFormat = dto.TexelFormatRGB16
+	TextureFormatRGB16F   TextureFormat = dto.TexelFormatRGB16F
+	TextureFormatRGB32F   TextureFormat = dto.TexelFormatRGB32F
+	TextureFormatRGBA8    TextureFormat = dto.TexelFormatRGBA8
+	TextureFormatRGBA16   TextureFormat = dto.TexelFormatRGBA16
+	TextureFormatRGBA16F  TextureFormat = dto.TexelFormatRGBA16F
+	TextureFormatRGBA32F  TextureFormat = dto.TexelFormatRGBA32F
+	TextureFormatDepth16F TextureFormat = dto.TexelFormatDepth16F
+	TextureFormatDepth32F TextureFormat = dto.TexelFormatDepth32F
 )
 
-type TextureFormat = asset.TexelFormat
+type TextureFormat = dto.TexelFormat
 
 const (
 	TextureKind2D TextureKind = iota
@@ -56,6 +56,7 @@ func Create2DTexture(width, height, mipmaps int, format TextureFormat) *Texture 
 		}
 	}
 	return &Texture{
+		Object:       NewObject(),
 		kind:         TextureKind2D,
 		format:       format,
 		mipmapLayers: mipmapLayers,
@@ -94,6 +95,7 @@ func CreateCubeTexture(dimension, mipmaps int, format TextureFormat) *Texture {
 		}
 	}
 	return &Texture{
+		Object:       NewObject(),
 		kind:         TextureKindCube,
 		format:       format,
 		mipmapLayers: mipmapLayers,
@@ -101,6 +103,7 @@ func CreateCubeTexture(dimension, mipmaps int, format TextureFormat) *Texture {
 }
 
 type Texture struct {
+	*Object
 	name            string
 	kind            TextureKind
 	format          TextureFormat
@@ -153,6 +156,10 @@ func (t *Texture) SetLayerImage(mipmap, index int, image *Image) {
 	default:
 		panic(fmt.Errorf("unsupported texture format: %v", t.format))
 	}
+}
+
+func (t *Texture) MipmapLayers() []MipmapLayer {
+	return t.mipmapLayers
 }
 
 type MipmapLayer struct {

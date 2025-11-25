@@ -4,12 +4,14 @@ import "github.com/mokiat/gomath/dprec"
 
 func NewBodyMaterial() *BodyMaterial {
 	return &BodyMaterial{
+		Object:                 NewObject(),
 		frictionCoefficient:    1.0,
 		restitutionCoefficient: 0.5,
 	}
 }
 
 type BodyMaterial struct {
+	*Object
 	frictionCoefficient    float64
 	restitutionCoefficient float64
 }
@@ -32,11 +34,13 @@ func (m *BodyMaterial) SetRestitutionCoefficient(value float64) {
 
 func NewBodyDefinition(material *BodyMaterial) *BodyDefinition {
 	return &BodyDefinition{
+		Object:   NewObject(),
 		material: material,
 	}
 }
 
 type BodyDefinition struct {
+	*Object
 	material          *BodyMaterial
 	mass              float64
 	momentOfInertia   dprec.Mat3
@@ -246,14 +250,21 @@ type CollisionTriangle struct {
 
 func NewBody(definition *BodyDefinition) *Body {
 	return &Body{
+		Object:     NewObject(),
 		definition: definition,
 	}
 }
 
 type Body struct {
+	*Object
 	definition *BodyDefinition
 }
 
 func (b *Body) Definition() *BodyDefinition {
 	return b.definition
+}
+
+type Placed[T any] struct {
+	Node  *Node
+	Value T
 }

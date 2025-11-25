@@ -1,54 +1,72 @@
 package ecs
 
-// Entity represents a game entity. It can be a number
-// of things depending on the components that are attached
-// to it.
-type Entity struct {
-	scene *Scene
-	prev  *Entity
-	next  *Entity
+import "iter"
 
-	components    [64]interface{}
-	componentMask uint64
+// NilEntityID represents an invalid entity handle.
+var NilEntityID = EntityID{}
+
+// EntityID represents a handle to an ECS entity. The handle may be invalid
+// if the entity has since been deleted.
+type EntityID struct {
+	index    uint32
+	revision uint32
 }
 
-// HasComponent returns whether this Entity has a component of the
-// specified type attached.
-func (e *Entity) HasComponent(typeID ComponentTypeID) bool {
-	return e.components[typeID] != nil
+type entityHandle struct {
+	components        componentMask
+	revision          uint32
+	isPendingDeletion bool
 }
 
-// Component returns the component with the specified type
-// that is attached to this entity or nil if there is none.
-func (e *Entity) Component(typeID ComponentTypeID) interface{} {
-	return e.components[typeID]
+func newBitmask() *bitmask {
+	return new(bitmask)
 }
 
-// SetComponent attaches a component of the specified type
-// to this entity.
-func (e *Entity) SetComponent(typeID ComponentTypeID, value interface{}) {
-	e.components[typeID] = value
-	e.componentMask |= typeID.mask()
+type bitmask struct {
+	values [16384]uint64
 }
 
-// DeleteComponent removes the component with the specified
-// type from this entity.
-func (e *Entity) DeleteComponent(typeID ComponentTypeID) {
-	e.components[typeID] = nil
-	e.componentMask &= ^typeID.mask()
-}
-
-// Delete removes this entity from the scene.
-func (e *Entity) Delete() {
-	for i := range e.components {
-		e.components[i] = nil
+func (m *bitmask) Clear() {
+	for i := range m.values {
+		m.values[i] = 0x00
 	}
-	e.componentMask = 0x00
-	e.scene.detachEntity(e)
-	e.scene.cacheEntity(e)
-	e.scene = nil
 }
 
-func (e *Entity) matches(query Query) bool {
-	return uint64(query)&uint64(e.componentMask) == uint64(query)
+func (m *bitmask) Get(index uint32) bool {
+	bucket := index / 64
+	offset := index % 64
+	query := uint64(1 << offset)
+	return (m.values[bucket] & query) != 0
+}
+
+func (m *bitmask) Set(index uint32, active bool) {
+	bucket := index / 64
+	offset := index % 64
+	query := uint64(1 << offset)
+	if active {
+		m.values[bucket] |= query
+	} else {
+		m.values[bucket] &= ^query
+	}
+}
+
+func (m *bitmask) ActiveIter() iter.Seq[uint32] {
+	return func(yield func(uint32) bool) {
+		var index uint32
+		for _, group := range m.values {
+			if group == 0 { // skip whole group
+				index += 64
+				continue
+			}
+			for offset := range 64 {
+				query := uint64(1 << offset)
+				if (group & query) != 0 {
+					if !yield(index) {
+						return
+					}
+				}
+				index++
+			}
+		}
+	}
 }

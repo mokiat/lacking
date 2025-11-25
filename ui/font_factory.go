@@ -100,7 +100,10 @@ func (f *fontFactory) Free() {
 }
 
 func (f *fontFactory) CreateFont(font *opentype.Font) (*Font, error) {
-	commandBuffer := f.api.CreateCommandBuffer(fontCommandBufferSize)
+	commandBuffer := f.api.CreateCommandBuffer(render.CommandBufferInfo{
+		Label:           "UI Font Factory",
+		InitialCapacity: fontCommandBufferSize,
+	})
 
 	commandBuffer.BeginRenderPass(render.RenderPassInfo{
 		Framebuffer: f.framebuffer,
@@ -186,9 +189,9 @@ func (f *fontFactory) CreateFont(font *opentype.Font) (*Font, error) {
 		}
 
 		f.renderer.Push()
-		f.renderer.SetClipRect(
-			cellStartX, cellEndX,
-			cellStartY, cellEndY,
+		f.renderer.ClipRect(
+			sprec.NewVec2(cellStartX, cellStartY),
+			sprec.NewVec2(cellEndX-cellStartX, cellEndY-cellStartY),
 		)
 		f.renderer.SetTransform(sprec.Mat4MultiProd(
 			sprec.TranslationMat4(boxPosition.X, boxPosition.Y, 0.0),

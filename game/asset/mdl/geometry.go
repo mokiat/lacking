@@ -4,17 +4,17 @@ import (
 	"maps"
 
 	"github.com/mokiat/gomath/sprec"
-	"github.com/mokiat/lacking/game/asset"
+	"github.com/mokiat/lacking/game/asset/dto"
 )
 
-type Topology = asset.Topology
+type Topology = dto.Topology
 
 const (
-	TopologyPoints        Topology = asset.TopologyPoints
-	TopologyLineList      Topology = asset.TopologyLineList
-	TopologyLineStrip     Topology = asset.TopologyLineStrip
-	TopologyTriangleList  Topology = asset.TopologyTriangleList
-	TopologyTriangleStrip Topology = asset.TopologyTriangleStrip
+	TopologyPoints        Topology = dto.TopologyPoints
+	TopologyLineList      Topology = dto.TopologyLineList
+	TopologyLineStrip     Topology = dto.TopologyLineStrip
+	TopologyTriangleList  Topology = dto.TopologyTriangleList
+	TopologyTriangleStrip Topology = dto.TopologyTriangleStrip
 )
 
 type VertexFormat uint8
@@ -31,6 +31,7 @@ const (
 
 func NewGeometry() *Geometry {
 	return &Geometry{
+		Object:      NewObject(),
 		minDistance: -32000.0,
 		maxDistance: 32000.0,
 		maxCascade:  255,
@@ -38,6 +39,7 @@ func NewGeometry() *Geometry {
 }
 
 type Geometry struct {
+	*Object
 	name         string
 	metadata     Metadata
 	vertexFormat VertexFormat

@@ -1,9 +1,11 @@
 package ui
 
+import "iter"
+
 // Essence represents the behavior that is attached to an Element.
 // For example, the actual value behind the interface could be a
 // specific UI control and/or a handler.
-type Essence interface{}
+type Essence any
 
 // ElementResizeHandler is a type of ElementHandler that can be
 // used to receive events when an Element has been resized.
@@ -23,6 +25,13 @@ type ElementKeyboardHandler interface {
 // a given Element.
 type ElementMouseHandler interface {
 	OnMouseEvent(element *Element, event MouseEvent) bool
+}
+
+// ElementGamepadHandler is a type of EventHandler that can be
+// used to receive events when an element is focused and gamepad
+// actions are performed.
+type ElementGamepadHandler interface {
+	OnGamepadEvent(element *Element, event GamepadEvent) bool
 }
 
 // ElementRenderHandler is a type of ElementHandler that can be
@@ -54,10 +63,11 @@ type ElementClipboardHandler interface {
 
 func newElement(window *Window) *Element {
 	return &Element{
-		window:    window,
-		enabled:   true,
-		visible:   true,
-		focusable: false,
+		window:         window,
+		enabled:        true,
+		visible:        true,
+		canAutoFocus:   false,
+		canAutoUnfocus: true,
 	}
 }
 
@@ -65,7 +75,8 @@ func newElement(window *Window) *Element {
 // It need not necessarily be a control and could just be
 // an intermediate element used to group Controls.
 type Element struct {
-	id string
+	id   string
+	name string
 
 	parent       *Element
 	firstChild   *Element
@@ -76,9 +87,10 @@ type Element struct {
 	window  *Window
 	essence Essence
 
-	enabled   bool
-	visible   bool
-	focusable bool
+	enabled        bool
+	visible        bool
+	canAutoFocus   bool
+	canAutoUnfocus bool
 
 	padding      Spacing
 	bounds       Bounds
@@ -88,6 +100,7 @@ type Element struct {
 }
 
 // ID returns the ID of this Element.
+//
 // If an ID was not specified, then an emptry string is returned.
 func (e *Element) ID() string {
 	return e.id
@@ -96,6 +109,21 @@ func (e *Element) ID() string {
 // SetID changes the ID of this Element.
 func (e *Element) SetID(id string) {
 	e.id = id
+}
+
+// Name returns the name of this Element.
+//
+// If a name was not specified, then an emptry string is returned.
+func (e *Element) Name() string {
+	return e.name
+}
+
+// SetName changes the name of this Element.
+//
+// The name is not required to be unique as is usually used for debugging
+// purposes.
+func (e *Element) SetName(name string) {
+	e.name = name
 }
 
 // Parent returns the parent Element in the hierarchy. If this is
@@ -399,13 +427,12 @@ func (e *Element) SetEnabled(enabled bool) {
 // HierarchyEnabled checks whether this Element and all parent Elements
 // are enabled.
 func (e *Element) HierarchyEnabled() bool {
-	if !e.enabled {
-		return false
+	for el := e; el != nil; el = el.parent {
+		if !el.enabled {
+			return false
+		}
 	}
-	if e.parent == nil {
-		return true
-	}
-	return e.parent.HierarchyEnabled()
+	return true
 }
 
 // Visible returns whether this Element should be
@@ -423,34 +450,42 @@ func (e *Element) SetVisible(visible bool) {
 	if visible != e.visible {
 		e.visible = visible
 		e.Invalidate()
-		// TODO: Also update parent's layout
 	}
 }
 
 // HierarchyVisible checks whether this Element and all parent Elements
 // are visible.
 func (e *Element) HierarchyVisible() bool {
-	if !e.visible {
-		return false
+	for el := e; el != nil; el = el.parent {
+		if !el.visible {
+			return false
+		}
 	}
-	if e.parent == nil {
-		return true
-	}
-	return e.parent.HierarchyVisible()
+	return true
 }
 
-// Focusable returns whether this Element can receive keyboard
-// events. When an element if focusable and a mouse down event
-// is received, it becomes the focused element and will begin
-// to receive keyboard events.
-func (e *Element) Focusable() bool {
-	return e.focusable
+// CanAutoFocus returns whether this Element can be automatically gain
+// focus when clicked on.
+func (e *Element) CanAutoFocus() bool {
+	return e.canAutoFocus
 }
 
-// SetFocusable controls whether this Element should receive
-// keyboard events.
-func (e *Element) SetFocusable(focusable bool) {
-	e.focusable = focusable
+// SetCanAutoFocus controls whether this Element can automatically
+// gain focus when clicked on.
+func (e *Element) SetCanAutoFocus(canAutoFocus bool) {
+	e.canAutoFocus = canAutoFocus
+}
+
+// CanAutoUnfocus returns whether this Element can automatically lose
+// focus when another Element is clicked on.
+func (e *Element) CanAutoUnfocus() bool {
+	return e.canAutoUnfocus
+}
+
+// SetCanAutoUnfocus controls whether this Element can automatically
+// lose focus when another Element is clicked on.
+func (e *Element) SetCanAutoUnfocus(canAutoUnfocus bool) {
+	e.canAutoUnfocus = canAutoUnfocus
 }
 
 // IsFocused returns whether this Element is currently focused.
@@ -458,12 +493,16 @@ func (e *Element) IsFocused() bool {
 	return e.window.IsElementFocused(e)
 }
 
+// Focus grants focus to this Element. This happens regardless of
+// the CanAutoFocus setting on this Element and the CanAutoUnfocus
+// setting on the currently focused Element.
+func (e *Element) Focus() {
+	e.window.GrantFocus(e)
+}
+
 // Destroy removes this Element from the hierarchy, as well
 // as any child Elements and releases all allocated resources.
 func (e *Element) Destroy() {
-	if e.window != nil && e.IsFocused() {
-		e.window.BubbleFocus()
-	}
 	e.Detach()
 }
 
@@ -483,50 +522,154 @@ func (e *Element) onBoundsChanged(bounds Bounds) {
 	e.Invalidate()
 }
 
-func (e *Element) onKeyboardEvent(event KeyboardEvent) bool {
+// OnKeyboardEvent passes the event to the Element's essence, if it
+// implements the ElementKeyboardHandler interface.
+func (e *Element) OnKeyboardEvent(event KeyboardEvent) bool {
+	if e == nil {
+		return false
+	}
 	if keyboardHandler, ok := e.essence.(ElementKeyboardHandler); ok {
 		return keyboardHandler.OnKeyboardEvent(e, event)
 	}
 	return false
 }
 
-func (e *Element) onMouseEvent(event MouseEvent) bool {
+// OnMouseEvent passes the event to the Element's essence, if it
+// implements the ElementMouseHandler interface.
+func (e *Element) OnMouseEvent(event MouseEvent) bool {
+	if e == nil {
+		return false
+	}
 	if mouseHandler, ok := e.essence.(ElementMouseHandler); ok {
 		return mouseHandler.OnMouseEvent(e, event)
 	}
 	return false
 }
 
-func (e *Element) onClipboardEvent(event ClipboardEvent) bool {
+// OnGamepadEvent passes the event to the Element's essence, if it
+// implements the ElementGamepadHandler interface.
+func (e *Element) OnGamepadEvent(event GamepadEvent) bool {
+	if e == nil {
+		return false
+	}
+	if mouseHandler, ok := e.essence.(ElementGamepadHandler); ok {
+		return mouseHandler.OnGamepadEvent(e, event)
+	}
+	return false
+}
+
+// OnClipboardEvent passes the event to the Element's essence, if it
+// implements the ElementClipboardHandler interface.
+func (e *Element) OnClipboardEvent(event ClipboardEvent) bool {
+	if e == nil {
+		return false
+	}
 	if keyboardHandler, ok := e.essence.(ElementClipboardHandler); ok {
 		return keyboardHandler.OnClipboardEvent(e, event)
 	}
 	return false
 }
 
-func (e *Element) onSave() bool {
-	if historyHandler, ok := e.essence.(ElementStateHandler); ok {
-		return historyHandler.OnSave(e)
+// OnSave passes the save request to the Element's essence, if it
+// implements the ElementStateHandler interface.
+func (e *Element) OnSave() bool {
+	if e == nil {
+		return false
+	}
+	if stateHandler, ok := e.essence.(ElementStateHandler); ok {
+		return stateHandler.OnSave(e)
 	}
 	return false
 }
 
-func (e *Element) onUndo() bool {
+// OnUndo passes the undo request to the Element's essence, if it
+// implements the ElementHistoryHandler interface.
+func (e *Element) OnUndo() bool {
+	if e == nil {
+		return false
+	}
 	if historyHandler, ok := e.essence.(ElementHistoryHandler); ok {
 		return historyHandler.OnUndo(e)
 	}
 	return false
 }
 
-func (e *Element) onRedo() bool {
+// OnRedo passes the redo request to the Element's essence, if it
+// implements the ElementHistoryHandler interface.
+func (e *Element) OnRedo() bool {
+	if e == nil {
+		return false
+	}
 	if historyHandler, ok := e.essence.(ElementHistoryHandler); ok {
 		return historyHandler.OnRedo(e)
 	}
 	return false
 }
 
-func (e *Element) onRender(canvas *Canvas) {
+// OnRender invokes the rendering logic of the Element's essence, if it
+// implements the ElementRenderHandler interface.
+func (e *Element) OnRender(canvas *Canvas) {
+	if e == nil {
+		return
+	}
 	if renderHandler, ok := e.essence.(ElementRenderHandler); ok {
 		renderHandler.OnRender(e, canvas)
 	}
+}
+
+// ElementByID looks through the Element hierarchy tree for an Element
+// with the specified ID. If a matching element is not found, nil is returned.
+func ElementByID(root *Element, id string) *Element {
+	element, found := FindElementByID(root, id)
+	if !found {
+		return nil
+	}
+	return element
+}
+
+// FindElementByID looks through the Element hierarchy tree for an Element
+// with the specified ID.
+func FindElementByID(root *Element, id string) (*Element, bool) {
+	return dfsElementByID(root, id)
+}
+
+func dfsElementByID(current *Element, id string) (*Element, bool) {
+	if current == nil {
+		return nil, false
+	}
+	if current.id == id {
+		return current, true
+	}
+	for child := current.firstChild; child != nil; child = child.rightSibling {
+		if result, found := dfsElementByID(child, id); found {
+			return result, true
+		}
+	}
+	return nil, false
+}
+
+// AllElements returns an iterator that traverses all elements in the
+// hierarchy starting from the specified element.
+//
+// Disabled and invisible elements, as well as their descendants, are not
+// included in the iteration.
+func AllElements(current *Element) iter.Seq[*Element] {
+	return func(yield func(*Element) bool) {
+		_ = yieldElements(current, yield)
+	}
+}
+
+func yieldElements(current *Element, yield func(*Element) bool) bool {
+	if !current.Enabled() || !current.Visible() {
+		return true
+	}
+	if !yield(current) {
+		return false
+	}
+	for child := current.firstChild; child != nil; child = child.rightSibling {
+		if !yieldElements(child, yield) {
+			return false
+		}
+	}
+	return true
 }

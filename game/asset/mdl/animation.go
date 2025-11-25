@@ -2,7 +2,14 @@ package mdl
 
 import "github.com/mokiat/gomath/dprec"
 
+func NewAnimation() *Animation {
+	return &Animation{
+		Object: NewObject(),
+	}
+}
+
 type Animation struct {
+	*Object
 	name      string
 	startTime float64
 	endTime   float64
@@ -39,6 +46,12 @@ func (a *Animation) Bindings() []*AnimationBinding {
 
 func (a *Animation) AddBinding(binding *AnimationBinding) {
 	a.bindings = append(a.bindings, binding)
+}
+
+func NewAnimationBinding(nodeName string) *AnimationBinding {
+	return &AnimationBinding{
+		nodeName: nodeName,
+	}
 }
 
 type AnimationBinding struct {

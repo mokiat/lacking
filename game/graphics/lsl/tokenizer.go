@@ -132,17 +132,31 @@ func (t *Tokenizer) nextIsNewLine() bool {
 func (t *Tokenizer) scanNewLine() Token {
 	position := t.currentPosition()
 	start := t.offset
-	for t.offset < len(t.source) {
-		ch, newOffset := t.peekRune(t.offset)
-		if !isNewLineChar(ch) {
-			break
+
+	ch1, _ := t.peekRune(t.offset)
+	ch2, _ := t.peekRune(t.offset + 1)
+
+	switch {
+	case ch1 == '\r' && ch2 == '\n':
+		t.moveTo(t.offset + 2)
+		return Token{
+			Type:  TokenTypeNewLine,
+			Value: t.source[start:t.offset],
+			Pos:   position,
 		}
-		t.moveTo(newOffset)
-	}
-	return Token{
-		Type:  TokenTypeNewLine,
-		Value: t.source[start:t.offset],
-		Pos:   position,
+	case ch1 == '\n':
+		t.moveTo(t.offset + 1)
+		return Token{
+			Type:  TokenTypeNewLine,
+			Value: t.source[start:t.offset],
+			Pos:   position,
+		}
+	default:
+		return Token{
+			Pos:   position,
+			Type:  TokenTypeError,
+			Value: "expected a newline sequence",
+		}
 	}
 }
 
@@ -465,6 +479,20 @@ func (t *Tokenizer) scanOperator() Token {
 		return Token{
 			Type:  TokenTypeOperator,
 			Value: "!",
+			Pos:   pos,
+		}
+	case ch1 == '[':
+		t.moveTo(ch1Offset)
+		return Token{
+			Type:  TokenTypeOperator,
+			Value: "[",
+			Pos:   pos,
+		}
+	case ch1 == ']':
+		t.moveTo(ch1Offset)
+		return Token{
+			Type:  TokenTypeOperator,
+			Value: "]",
 			Pos:   pos,
 		}
 	default:

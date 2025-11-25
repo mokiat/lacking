@@ -14,8 +14,11 @@ const (
 func newCanvas(renderer *canvasRenderer) *Canvas {
 	return &Canvas{
 		canvasRenderer: renderer,
-		commandBuffer:  renderer.api.CreateCommandBuffer(canvasCommandBufferSize),
-		framebuffer:    renderer.api.DefaultFramebuffer(),
+		commandBuffer: renderer.api.CreateCommandBuffer(render.CommandBufferInfo{
+			Label:           "UI Canvas",
+			InitialCapacity: canvasCommandBufferSize,
+		}),
+		framebuffer: renderer.api.DefaultFramebuffer(),
 	}
 }
 
@@ -40,6 +43,19 @@ type Canvas struct {
 // incorrect since a non-dirty element could be omitted during some frames.
 func (c *Canvas) ElapsedTime() time.Duration {
 	return c.deltaTime
+}
+
+// ImageSize is a helper function that returns the size of an image as
+// float values. A nil image results in an empty size.
+func (c *Canvas) ImageSize(img *Image) sprec.Vec2 {
+	if img == nil {
+		return sprec.Vec2{}
+	}
+	size := img.Size()
+	return sprec.Vec2{
+		X: float32(size.Width),
+		Y: float32(size.Height),
+	}
 }
 
 // DrawBounds returns the bounds to be used for drawing for the specified

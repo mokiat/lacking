@@ -63,7 +63,7 @@ type Scene struct {
 	engine   *Engine
 	renderer *sceneRenderer
 
-	time float32
+	gameTime time.Duration
 
 	skies *ds.List[*Sky]
 
@@ -91,10 +91,6 @@ type Scene struct {
 // Engine returns the graphics engine that owns this scene.
 func (s *Scene) Engine() *Engine {
 	return s.engine
-}
-
-func (s *Scene) Time() float32 {
-	return s.time
 }
 
 // ActiveCamera returns the currently active camera for this scene.
@@ -162,10 +158,11 @@ func (s *Scene) CreateMesh(info MeshInfo) *Mesh {
 
 // CreateArmature creates an armature to be used with meshes.
 func (s *Scene) CreateArmature(info ArmatureInfo) *Armature {
-	boneCount := len(info.InverseMatrices)
+	definition := info.Definition
+	boneCount := len(definition.inverseBindMatrices)
 	return &Armature{
 		id:                s.engine.pickFreeArmatureID(),
-		inverseMatrices:   info.InverseMatrices,
+		inverseMatrices:   definition.inverseBindMatrices,
 		uniformBufferData: make(gblob.LittleEndianBlock, boneCount*64),
 	}
 }
@@ -174,12 +171,12 @@ func (s *Scene) Ray(viewport Viewport, camera *Camera, x, y int) (dprec.Vec3, dp
 	return s.renderer.Ray(viewport, camera, x, y)
 }
 
-func (s *Scene) Point(viewport Viewport, camera *Camera, position dprec.Vec3) dprec.Vec2 {
+func (s *Scene) Point(viewport Viewport, camera *Camera, position dprec.Vec3) opt.T[dprec.Vec2] {
 	return s.renderer.Point(viewport, camera, position)
 }
 
 func (s *Scene) Update(elapsedTime time.Duration) {
-	s.time += float32(elapsedTime.Seconds())
+	s.gameTime += elapsedTime
 }
 
 // Render draws this scene to the specified viewport

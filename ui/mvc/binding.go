@@ -3,10 +3,9 @@ package mvc
 import (
 	"fmt"
 
+	"github.com/mokiat/lacking/ui"
 	co "github.com/mokiat/lacking/ui/component"
 )
-
-type mvcScopeKey struct{}
 
 func Wrap(delegate co.Component) co.Component {
 	return &mvcComponent{
@@ -28,28 +27,29 @@ func (c *mvcComponent) TypeName() string {
 	return fmt.Sprintf("mvc(%s)", c.Component.TypeName())
 }
 
-func (c *mvcComponent) Allocate(scope co.Scope, invalidate co.InvalidateFunc) co.Renderable {
-	scope = co.ValueScope(scope, mvcScopeKey{}, c)
-	return c.Component.Allocate(scope, invalidate)
+func (c *mvcComponent) Allocate(element *ui.Element, invalidate co.InvalidateFunc) co.Renderable {
+	return c.Component.Allocate(element, invalidate)
 }
 
-func (c *mvcComponent) NotifyCreate(ref co.Renderable, properties co.Properties) {
+func (c *mvcComponent) HandleCreate(ref co.Renderable, scope co.Scope, properties co.Properties) {
 	c.activeRef = ref
-	c.Component.NotifyCreate(ref, properties)
+	scope = co.TypedValueScope(scope, c)
+	c.Component.HandleCreate(ref, scope, properties)
 	c.replaceSubscriptions(ref)
 	c.activeRef = nil
 }
 
-func (c *mvcComponent) NotifyUpdate(ref co.Renderable, properties co.Properties) {
+func (c *mvcComponent) HandleUpdate(ref co.Renderable, scope co.Scope, properties co.Properties) {
 	c.activeRef = ref
-	c.Component.NotifyUpdate(ref, properties)
+	scope = co.TypedValueScope(scope, c)
+	c.Component.HandleUpdate(ref, scope, properties)
 	c.replaceSubscriptions(ref)
 	c.activeRef = nil
 }
 
-func (c *mvcComponent) NotifyDelete(ref co.Renderable) {
+func (c *mvcComponent) HandleDelete(ref co.Renderable) {
 	c.deleteSubscriptions(ref)
-	c.Component.NotifyDelete(ref)
+	c.Component.HandleDelete(ref)
 }
 
 func (c *mvcComponent) addPendingSubscription(subscription Subscription) {
@@ -78,9 +78,8 @@ func (c *mvcComponent) deleteSubscriptions(ref co.Renderable) {
 // eventually re-rendered.
 // Deprecated: Use EventBus
 func UseBinding(scope co.Scope, obs Observable, fltrs ...ChangeFilter) {
-	scopeValue := scope.Value(mvcScopeKey{})
-	mvcComp, ok := scopeValue.(*mvcComponent)
-	if !ok {
+	mvcComp := co.TypedValue[*mvcComponent](scope)
+	if mvcComp == nil {
 		panic("component not wrapped with mvc")
 	}
 	if mvcComp.activeRef == nil {
@@ -96,9 +95,8 @@ func UseBinding(scope co.Scope, obs Observable, fltrs ...ChangeFilter) {
 // invalidated and eventually re-rendered.
 // Deprecated: Use EventBus
 func BindProperty[T any](scope co.Scope, prop *Property[T]) {
-	scopeValue := scope.Value(mvcScopeKey{})
-	mvcComp, ok := scopeValue.(*mvcComponent)
-	if !ok {
+	mvcComp := co.TypedValue[*mvcComponent](scope)
+	if mvcComp == nil {
 		panic("component not wrapped with mvc")
 	}
 	if mvcComp.activeRef == nil {

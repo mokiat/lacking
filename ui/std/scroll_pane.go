@@ -17,23 +17,23 @@ type ScrollPaneData struct {
 	// DisableVertical stops the pane from scrolling vertically.
 	DisableVertical bool
 
-	// Focused specifies whether this scroll pane should automatically get
+	// CreateFocused specifies whether this scroll pane should automatically get
 	// the focus.
-	Focused bool
+	CreateFocused bool
 }
 
 var scrollPaneDefaultData = ScrollPaneData{}
 
 // ScrollPane is a container component that provides scrolling functionality
 // in order to accommodate all children.
-var ScrollPane = co.Define(&scrollPaneComponent{})
+var ScrollPane = co.Define[*scrollPaneComponent]()
 
 type scrollPaneComponent struct {
 	co.BaseComponent
 
 	canScrollHorizontally bool
 	canScrollVertically   bool
-	isFocused             bool
+	isCreatedFocused      bool
 
 	offsetX    float32
 	offsetY    float32
@@ -45,7 +45,7 @@ func (c *scrollPaneComponent) OnUpsert() {
 	data := co.GetOptionalData(c.Properties(), scrollPaneDefaultData)
 	c.canScrollHorizontally = !data.DisableHorizontal
 	c.canScrollVertically = !data.DisableVertical
-	c.isFocused = data.Focused
+	c.isCreatedFocused = data.CreateFocused
 }
 
 func (c *scrollPaneComponent) Apply(element *ui.Element) {
@@ -134,10 +134,10 @@ func (c *scrollPaneComponent) OnMouseEvent(element *ui.Element, event ui.MouseEv
 func (c *scrollPaneComponent) Render() co.Instance {
 	return co.New(co.Element, func() {
 		co.WithData(co.ElementData{
-			Focusable: opt.V(true),
-			Focused:   opt.V(c.isFocused),
-			Essence:   c,
-			Layout:    c,
+			CanAutoFocus:  opt.V(true),
+			CreateFocused: c.isCreatedFocused,
+			Essence:       c,
+			Layout:        c,
 		})
 		co.WithLayoutData(c.Properties().LayoutData())
 		co.WithChildren(c.Properties().Children())

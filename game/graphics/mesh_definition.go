@@ -63,13 +63,13 @@ func (d *MeshDefinition) deleteMaterialPasses(index int, passType internal.MeshR
 }
 
 func (d *MeshDefinition) createMaterialPasses(index int, passType internal.MeshRenderPassType) {
-	meshShaderInfo := internal.ShaderMeshInfo{
-		MeshHasCoords:       d.geometry.vertexFormat.Coord.Specified,
-		MeshHasNormals:      d.geometry.vertexFormat.Normal.Specified,
-		MeshHasTangents:     d.geometry.vertexFormat.Tangent.Specified,
-		MeshHasTextureUVs:   d.geometry.vertexFormat.TexCoord.Specified,
-		MeshHasVertexColors: d.geometry.vertexFormat.Color.Specified,
-		MeshHasArmature:     d.geometry.vertexFormat.Weights.Specified && d.geometry.vertexFormat.Joints.Specified,
+	meshConstraints := ShaderMeshConstraints{
+		HasCoords:       d.geometry.vertexFormat.Coord.Specified,
+		HasNormals:      d.geometry.vertexFormat.Normal.Specified,
+		HasTangents:     d.geometry.vertexFormat.Tangent.Specified,
+		HasTexCoords:    d.geometry.vertexFormat.TexCoord.Specified,
+		HasVertexColors: d.geometry.vertexFormat.Color.Specified,
+		HasArmature:     d.geometry.vertexFormat.Weights.Specified && d.geometry.vertexFormat.Joints.Specified,
 	}
 
 	fragment := d.geometry.fragments[index]
@@ -79,8 +79,15 @@ func (d *MeshDefinition) createMaterialPasses(index int, passType internal.MeshR
 	switch passType {
 	case internal.MeshRenderPassTypeGeometry:
 		for _, pass := range material.geometryPasses {
-			programCode := d.engine.createGeometryProgramCode(pass.Shader, internal.ShaderProgramCodeInfo{
-				ShaderMeshInfo: meshShaderInfo,
+			programCode := d.engine.createProgramCode(pass.Shader, ShaderConstraints{
+				ShaderTypeConstraints: ShaderTypeConstraints{
+					Type: ShaderTypeGeometry,
+				},
+				ShaderMeshConstraints: meshConstraints,
+				ShaderOutputConstraints: ShaderOutputConstraints{
+					HasOutput0: true,
+					HasOutput1: true,
+				},
 			})
 			program := d.engine.createGeometryPassProgram(programCode)
 			pipeline := d.engine.createGeometryPassPipeline(internal.RenderPassPipelineInfo{
@@ -103,8 +110,12 @@ func (d *MeshDefinition) createMaterialPasses(index int, passType internal.MeshR
 
 	case internal.MeshRenderPassTypeShadow:
 		for _, pass := range material.shadowPasses {
-			programCode := d.engine.createShadowProgramCode(pass.Shader, internal.ShaderProgramCodeInfo{
-				ShaderMeshInfo: meshShaderInfo,
+			programCode := d.engine.createProgramCode(pass.Shader, ShaderConstraints{
+				ShaderTypeConstraints: ShaderTypeConstraints{
+					Type: ShaderTypeShadow,
+				},
+				ShaderMeshConstraints:   meshConstraints,
+				ShaderOutputConstraints: ShaderOutputConstraints{}, // no color outputs
 			})
 			program := d.engine.createShadowPassProgram(programCode)
 			pipeline := d.engine.createShadowPassPipeline(internal.RenderPassPipelineInfo{
@@ -127,8 +138,14 @@ func (d *MeshDefinition) createMaterialPasses(index int, passType internal.MeshR
 
 	case internal.MeshRenderPassTypeForward:
 		for _, pass := range material.forwardPasses {
-			programCode := d.engine.createForwardProgramCode(pass.Shader, internal.ShaderProgramCodeInfo{
-				ShaderMeshInfo: meshShaderInfo,
+			programCode := d.engine.createProgramCode(pass.Shader, ShaderConstraints{
+				ShaderTypeConstraints: ShaderTypeConstraints{
+					Type: ShaderTypeForward,
+				},
+				ShaderMeshConstraints: meshConstraints,
+				ShaderOutputConstraints: ShaderOutputConstraints{
+					HasOutput0: true,
+				},
 			})
 			program := d.engine.createForwardPassProgram(programCode)
 			pipeline := d.engine.createForwardPassPipeline(internal.RenderPassPipelineInfo{

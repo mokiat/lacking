@@ -145,11 +145,9 @@ func BuildIrradianceCubeImage(srcImage *CubeImage, sampleCount int, minDot float
 	dstImage := NewCubeImage(srcImage.size)
 	var group sync.WaitGroup
 	for i := range srcImage.sides {
-		group.Add(1)
-		go func() {
-			defer group.Done()
+		group.Go(func() {
 			projectIrradianceCubeImageSide(srcImage, dstImage, CubeSide(i), sampleCount, minDot)
-		}()
+		})
 	}
 	group.Wait()
 	return dstImage

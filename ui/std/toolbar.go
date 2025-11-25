@@ -36,7 +36,7 @@ var toolbarDefaultData = ToolbarData{
 
 // Toolbar represents a container that holds key controls (mostly buttons)
 // in a horizontal fashion.
-var Toolbar = co.Define(&toolbarComponent{})
+var Toolbar = co.Define[*toolbarComponent]()
 
 type toolbarComponent struct {
 	co.BaseComponent

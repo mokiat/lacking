@@ -1,22 +1,22 @@
 package mdl
 
-import "github.com/mokiat/lacking/game/asset"
+import "github.com/mokiat/lacking/game/asset/dto"
 
 const (
-	WrapModeClamp          WrapMode = asset.WrapModeClamp
-	WrapModeRepeat         WrapMode = asset.WrapModeRepeat
-	WrapModeMirroredRepeat WrapMode = asset.WrapModeMirroredRepeat
+	WrapModeClamp          WrapMode = dto.WrapModeClamp
+	WrapModeRepeat         WrapMode = dto.WrapModeRepeat
+	WrapModeMirroredRepeat WrapMode = dto.WrapModeMirroredRepeat
 )
 
-type WrapMode = asset.WrapMode
+type WrapMode = dto.WrapMode
 
 const (
-	FilterModeNearest     FilterMode = asset.FilterModeNearest
-	FilterModeLinear      FilterMode = asset.FilterModeLinear
-	FilterModeAnisotropic FilterMode = asset.FilterModeAnisotropic
+	FilterModeNearest     FilterMode = dto.FilterModeNearest
+	FilterModeLinear      FilterMode = dto.FilterModeLinear
+	FilterModeAnisotropic FilterMode = dto.FilterModeAnisotropic
 )
 
-type FilterMode = asset.FilterMode
+type FilterMode = dto.FilterMode
 
 type TextureReferrer interface {
 	Texture() *Texture
@@ -86,7 +86,14 @@ func (b *BaseMipmappable) SetMipmapping(mipmapping bool) {
 	b.mipmapping = mipmapping
 }
 
+func NewSampler() *Sampler {
+	return &Sampler{
+		Object: NewObject(),
+	}
+}
+
 type Sampler struct {
+	*Object
 	BaseTextureReferrer
 	BaseWrappable
 	BaseFilterable

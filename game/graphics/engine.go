@@ -1,8 +1,11 @@
 package graphics
 
 import (
+	"fmt"
+	"log/slog"
+	"slices"
+
 	"github.com/mokiat/gog"
-	"github.com/mokiat/lacking/debug/log"
 	"github.com/mokiat/lacking/game/graphics/internal"
 	"github.com/mokiat/lacking/game/graphics/lsl"
 	"github.com/mokiat/lacking/render"
@@ -92,29 +95,31 @@ func (e *Engine) Debug() *Debug {
 func (e *Engine) CreateShader(info ShaderInfo) *Shader {
 	ast, err := lsl.Parse(info.SourceCode)
 	if err != nil {
-		log.Error("Failed to parse shader: %v", err)
+		logger.Error("Failed to parse shader",
+			slog.String("error", err.Error()),
+		)
 		ast = &lsl.Shader{Declarations: []lsl.Declaration{}}
 	}
-	if !info.SkipValidation {
-		var schema lsl.Schema
-		switch info.ShaderType {
-		case ShaderTypeGeometry:
-			schema = lsl.GeometrySchema()
-		case ShaderTypeShadow:
-			schema = lsl.ShadowSchema()
-		case ShaderTypeForward:
-			schema = lsl.ForwardSchema()
-		case ShaderTypeSky:
-			schema = lsl.SkySchema()
-		case ShaderTypePostprocess:
-			schema = lsl.PostprocessSchema()
-		default:
-			schema = lsl.DefaultSchema()
-		}
-		if err := lsl.Validate(ast, schema); err != nil {
-			log.Error("Failed to validate shader: %v", err)
-			ast = &lsl.Shader{Declarations: []lsl.Declaration{}}
-		}
+	var schema lsl.Schema
+	switch info.ShaderType {
+	case ShaderTypeGeometry:
+		schema = lsl.GeometrySchema()
+	case ShaderTypeShadow:
+		schema = lsl.ShadowSchema()
+	case ShaderTypeForward:
+		schema = lsl.ForwardSchema()
+	case ShaderTypeSky:
+		schema = lsl.SkySchema()
+	case ShaderTypePostprocess:
+		schema = lsl.PostprocessSchema()
+	default:
+		schema = lsl.DefaultSchema()
+	}
+	if err := lsl.Validate(ast, schema); err != nil {
+		logger.Error("Failed to validate shader",
+			slog.String("error", err.Error()),
+		)
+		ast = &lsl.Shader{Declarations: []lsl.Declaration{}}
 	}
 	return &Shader{
 		ast: ast,
@@ -195,6 +200,14 @@ func (e *Engine) CreateMaterial(info MaterialInfo) *Material {
 		shadowPasses:   shadowPasses,
 		forwardPasses:  forwardPasses,
 		skyPasses:      skyPasses,
+	}
+}
+
+// CreateArmatureDefinition creates a new ArmatureDefinition using the specified
+// info object.
+func (e *Engine) CreateArmatureDefinition(info ArmatureDefinitionInfo) *ArmatureDefinition {
+	return &ArmatureDefinition{
+		inverseBindMatrices: slices.Clone(info.InverseBindMatrices),
 	}
 }
 
@@ -310,7 +323,10 @@ func (e *Engine) CreateMeshDefinition(info MeshDefinitionInfo) *MeshDefinition {
 	geometry := info.Geometry
 
 	if len(info.Materials) != len(geometry.fragments) {
-		log.Warn("Number of materials (%d) does not match number of fragments (%d)", len(info.Materials), len(geometry.fragments))
+		logger.Warn("Number of materials does not match number of fragments",
+			slog.Int("materials", len(info.Materials)),
+			slog.Int("fragments", len(geometry.fragments)),
+		)
 	}
 
 	result := &MeshDefinition{
@@ -335,18 +351,19 @@ func (e *Engine) createGeometryPassProgram(programCode render.ProgramCode) rende
 	return e.api.CreateProgram(render.ProgramInfo{
 		SourceCode: programCode,
 		TextureBindings: []render.TextureBinding{
-			render.NewTextureBinding("lackingTexture0", 0),
-			render.NewTextureBinding("lackingTexture1", 1),
-			render.NewTextureBinding("lackingTexture2", 2),
-			render.NewTextureBinding("lackingTexture3", 3),
-			render.NewTextureBinding("lackingTexture4", 4),
-			render.NewTextureBinding("lackingTexture5", 5),
-			render.NewTextureBinding("lackingTexture6", 6),
-			render.NewTextureBinding("lackingTexture7", 7),
+			render.NewTextureBinding("uTexture0", 0),
+			render.NewTextureBinding("uTexture1", 1),
+			render.NewTextureBinding("uTexture2", 2),
+			render.NewTextureBinding("uTexture3", 3),
+			render.NewTextureBinding("uTexture4", 4),
+			render.NewTextureBinding("uTexture5", 5),
+			render.NewTextureBinding("uTexture6", 6),
+			render.NewTextureBinding("uTexture7", 7),
 		},
 		UniformBindings: []render.UniformBinding{
 			render.NewUniformBinding("Camera", internal.UniformBufferBindingCamera),
 			render.NewUniformBinding("Model", internal.UniformBufferBindingModel),
+			render.NewUniformBinding("Timing", internal.UniformBufferBindingTiming),
 			render.NewUniformBinding("Material", internal.UniformBufferBindingMaterial),
 			render.NewUniformBinding("Armature", internal.UniformBufferBindingArmature),
 		},
@@ -388,18 +405,19 @@ func (e *Engine) createShadowPassProgram(programCode render.ProgramCode) render.
 	return e.api.CreateProgram(render.ProgramInfo{
 		SourceCode: programCode,
 		TextureBindings: []render.TextureBinding{
-			render.NewTextureBinding("lackingTexture0", 0),
-			render.NewTextureBinding("lackingTexture1", 1),
-			render.NewTextureBinding("lackingTexture2", 2),
-			render.NewTextureBinding("lackingTexture3", 3),
-			render.NewTextureBinding("lackingTexture4", 4),
-			render.NewTextureBinding("lackingTexture5", 5),
-			render.NewTextureBinding("lackingTexture6", 6),
-			render.NewTextureBinding("lackingTexture7", 7),
+			render.NewTextureBinding("uTexture0", 0),
+			render.NewTextureBinding("uTexture1", 1),
+			render.NewTextureBinding("uTexture2", 2),
+			render.NewTextureBinding("uTexture3", 3),
+			render.NewTextureBinding("uTexture4", 4),
+			render.NewTextureBinding("uTexture5", 5),
+			render.NewTextureBinding("uTexture6", 6),
+			render.NewTextureBinding("uTexture7", 7),
 		},
 		UniformBindings: []render.UniformBinding{
 			render.NewUniformBinding("Camera", internal.UniformBufferBindingCamera),
 			render.NewUniformBinding("Model", internal.UniformBufferBindingModel),
+			render.NewUniformBinding("Timing", internal.UniformBufferBindingTiming),
 			render.NewUniformBinding("Material", internal.UniformBufferBindingMaterial),
 			render.NewUniformBinding("Armature", internal.UniformBufferBindingArmature),
 		},
@@ -441,18 +459,19 @@ func (e *Engine) createForwardPassProgram(programCode render.ProgramCode) render
 	return e.api.CreateProgram(render.ProgramInfo{
 		SourceCode: programCode,
 		TextureBindings: []render.TextureBinding{
-			render.NewTextureBinding("lackingTexture0", 0),
-			render.NewTextureBinding("lackingTexture1", 1),
-			render.NewTextureBinding("lackingTexture2", 2),
-			render.NewTextureBinding("lackingTexture3", 3),
-			render.NewTextureBinding("lackingTexture4", 4),
-			render.NewTextureBinding("lackingTexture5", 5),
-			render.NewTextureBinding("lackingTexture6", 6),
-			render.NewTextureBinding("lackingTexture7", 7),
+			render.NewTextureBinding("uTexture0", 0),
+			render.NewTextureBinding("uTexture1", 1),
+			render.NewTextureBinding("uTexture2", 2),
+			render.NewTextureBinding("uTexture3", 3),
+			render.NewTextureBinding("uTexture4", 4),
+			render.NewTextureBinding("uTexture5", 5),
+			render.NewTextureBinding("uTexture6", 6),
+			render.NewTextureBinding("uTexture7", 7),
 		},
 		UniformBindings: []render.UniformBinding{
 			render.NewUniformBinding("Camera", internal.UniformBufferBindingCamera),
 			render.NewUniformBinding("Model", internal.UniformBufferBindingModel),
+			render.NewUniformBinding("Timing", internal.UniformBufferBindingTiming),
 			render.NewUniformBinding("Material", internal.UniformBufferBindingMaterial),
 			render.NewUniformBinding("Armature", internal.UniformBufferBindingArmature),
 		},
@@ -479,11 +498,12 @@ func (e *Engine) createForwardPassPipeline(info internal.RenderPassPipelineInfo)
 
 		ColorWrite: render.ColorMaskTrue,
 
-		BlendEnabled:                info.PassDefinition.Blending, // default: false
-		BlendColor:                  [4]float32{0.0, 0.0, 0.0, 0.0},
-		BlendSourceColorFactor:      render.BlendFactorOne,
-		BlendSourceAlphaFactor:      render.BlendFactorOne,
-		BlendDestinationColorFactor: render.BlendFactorOne,
+		BlendEnabled:           info.PassDefinition.Blending, // default: false
+		BlendColor:             [4]float32{0.0, 0.0, 0.0, 0.0},
+		BlendSourceColorFactor: render.BlendFactorSourceAlpha,
+		BlendSourceAlphaFactor: render.BlendFactorOne,
+		// BlendDestinationColorFactor: render.BlendFactorOne,
+		BlendDestinationColorFactor: render.BlendFactorOneMinusSourceAlpha, // TODO: Make configurable, so that additive blending (e.g. like with the lighting) is possible as well.
 		BlendDestinationAlphaFactor: render.BlendFactorZero,
 		BlendOpColor:                render.BlendOperationAdd,
 		BlendOpAlpha:                render.BlendOperationAdd,
@@ -492,22 +512,19 @@ func (e *Engine) createForwardPassPipeline(info internal.RenderPassPipelineInfo)
 
 func (e *Engine) createSkyProgram(programCode render.ProgramCode, shader *lsl.Shader) render.Program {
 	var textureBindings []render.TextureBinding
-	if textureBlock, ok := shader.FindTextureBlock(); ok {
-		for i := range uint(min(8, len(textureBlock.Fields))) {
-			textureBindings = append(textureBindings, render.NewTextureBinding(textureBlock.Fields[i].Name, i))
-		}
+	for i := range min(8, len(shader.Textures())) {
+		name := fmt.Sprintf("uTexture%d", i)
+		textureBindings = append(textureBindings, render.NewTextureBinding(name, uint(i)))
 	}
 
 	var uniformBindings []render.UniformBinding
 	uniformBindings = append(uniformBindings,
 		render.NewUniformBinding("Camera", internal.UniformBufferBindingCamera),
 	)
-	if uniformBlock, ok := shader.FindUniformBlock(); ok {
-		if len(uniformBlock.Fields) > 0 {
-			uniformBindings = append(uniformBindings,
-				render.NewUniformBinding("Material", internal.UniformBufferBindingMaterial),
-			)
-		}
+	if len(shader.Uniforms()) > 0 {
+		uniformBindings = append(uniformBindings,
+			render.NewUniformBinding("Material", internal.UniformBufferBindingMaterial),
+		)
 	}
 
 	return e.api.CreateProgram(render.ProgramInfo{
@@ -540,6 +557,10 @@ func (e *Engine) createSkyPipeline(info internal.SkyPipelineInfo) (render.Pipeli
 		BlendColor:                  [4]float32{0.0, 0.0, 0.0, 0.0},
 	})
 	return pipeline, 0, uint32(cubeShape.IndexCount())
+}
+
+func (e *Engine) createProgramCode(shader *lsl.Shader, constraints ShaderConstraints) render.ProgramCode {
+	return e.shaderBuilder.BuildCode(constraints, shader)
 }
 
 func (e *Engine) pickFreeRenderPassKey() uint32 {

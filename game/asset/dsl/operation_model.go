@@ -62,6 +62,30 @@ func ForceCollision() Operation {
 	)
 }
 
+// OnlyAnimations creates an operation that forces the target to include only
+// animations.
+func OnlyAnimations() Operation {
+	type animationConfigurable interface {
+		SetOnlyAnimations(bool)
+	}
+	return FuncOperation(
+		// apply function
+		func(target any) error {
+			configurable, ok := target.(animationConfigurable)
+			if !ok {
+				return fmt.Errorf("target %T is not configurable for animation", target)
+			}
+			configurable.SetOnlyAnimations(true)
+			return nil
+		},
+
+		// digest function
+		func() ([]byte, error) {
+			return CreateDigest("only-animations")
+		},
+	)
+}
+
 // EditMaterial creates an operation that edits the material with the
 // provided name in the target node holder.
 func EditMaterial(name string, opts ...Operation) Operation {
@@ -94,36 +118,10 @@ func EditMaterial(name string, opts ...Operation) Operation {
 	)
 }
 
-// AddBlob creates an operation that adds a blob to the target model.
-func AddBlob(blobProvider Provider[*mdl.Blob]) Operation {
-	return FuncOperation(
-		// apply function
-		func(target any) error {
-			blob, err := blobProvider.Get()
-			if err != nil {
-				return fmt.Errorf("error getting blob: %w", err)
-			}
-
-			targetModel, ok := target.(*mdl.Model)
-			if !ok {
-				return fmt.Errorf("target %T is not a model", target)
-			}
-			targetModel.AddBlob(blob)
-
-			return nil
-		},
-
-		// digest function
-		func() ([]byte, error) {
-			return CreateDigest("add-blob", blobProvider)
-		},
-	)
-}
-
 func findMaterial(nodes []*mdl.Node, name string) *mdl.Material {
 	nodes = flattenNodes(nodes)
 	for _, node := range nodes {
-		if mesh, ok := node.Target().(*mdl.Mesh); ok {
+		for mesh := range mdl.NodeAttachmentsOfType[*mdl.Mesh](node) {
 			materials := mesh.Definition().Materials()
 			for _, material := range materials {
 				if material.Name() == name {

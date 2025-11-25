@@ -73,6 +73,14 @@ func (s *eventBusSubscription) Delete() {
 	s.eventBus.Unsubscribe(s)
 }
 
+// ListenerInterface component instances that want to listen to events
+// must implement this interface.
+type ListenerInstance interface {
+	OnEvent(event Event)
+}
+
+// EventListener wraps a component and ensures that instances of it will be
+// subscribed to the EventBus found in the Scope.
 func EventListener(delegate co.Component) co.Component {
 	return &mvcListenerComponent{
 		Component:     delegate,
@@ -90,26 +98,21 @@ func (c *mvcListenerComponent) TypeName() string {
 	return fmt.Sprintf("mvc-listener(%s)", c.Component.TypeName())
 }
 
-func (c *mvcListenerComponent) NotifyCreate(ref co.Renderable, properties co.Properties) {
-	candidate, ok := ref.(interface {
-		Scope() co.Scope
-		OnEvent(event Event)
-	})
-	if ok {
-		eventBus := co.TypedValue[*EventBus](candidate.Scope())
+func (c *mvcListenerComponent) HandleCreate(ref co.Renderable, scope co.Scope, properties co.Properties) {
+	if candidate, ok := ref.(ListenerInstance); ok {
+		eventBus := co.TypedValue[*EventBus](scope)
 		subscription := eventBus.Subscribe(candidate.OnEvent)
 		c.subscriptions[ref] = subscription
 	} else {
-		logger.Warn("Component instance marked as listener but does not satisfy contract!")
+		logger.Error("Component instance marked as listener but does not satisfy contract")
 	}
-
-	c.Component.NotifyCreate(ref, properties)
+	c.Component.HandleCreate(ref, scope, properties)
 }
 
-func (c *mvcListenerComponent) NotifyDelete(ref co.Renderable) {
-	c.Component.NotifyDelete(ref)
-
+func (c *mvcListenerComponent) HandleDelete(ref co.Renderable) {
+	c.Component.HandleDelete(ref)
 	if subscription, ok := c.subscriptions[ref]; ok {
+		delete(c.subscriptions, ref)
 		subscription.Delete()
 	}
 }

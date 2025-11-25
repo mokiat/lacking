@@ -50,6 +50,10 @@ type WindowHandler interface {
 	// has been registered.
 	OnMouseEvent(event MouseEvent) bool
 
+	// OnGamepadEvent is called whenever a native gamepad event
+	// has been registered.
+	OnGamepadEvent(event GamepadEvent) bool
+
 	// OnClipboardEvent is called whenever a clipboard paste operation
 	// is being performed.
 	OnClipboardEvent(event ClipboardEvent) bool
@@ -161,26 +165,16 @@ func (w *Window) IsElementFocused(element *Element) bool {
 	return w.focusedElement == element
 }
 
+// FocusedElement returns the currently focused Element or nil
+// if no Element is focused.
+func (w *Window) FocusedElement() *Element {
+	return w.focusedElement
+}
+
 // GrantFocus grants the focus to the specified Element.
 func (w *Window) GrantFocus(element *Element) {
 	w.focusedElement = element
 	w.Invalidate()
-}
-
-// BubbleFocus releases focus from the current element and tries to find
-// a parent that is focusable in order to grant it focus.
-func (w *Window) BubbleFocus() {
-	if w.focusedElement == nil {
-		return
-	}
-	current := w.focusedElement.parent
-	for current != nil {
-		if current.focusable {
-			w.focusedElement = current
-			return
-		}
-		current = current.parent
-	}
 }
 
 // DiscardFocus removes the focus from any Element.
@@ -192,7 +186,7 @@ func (w *Window) DiscardFocus() {
 func (w *Window) Save() bool {
 	currentElement := w.focusedElement
 	for currentElement != nil {
-		if currentElement.onSave() {
+		if currentElement.OnSave() {
 			return true
 		}
 		currentElement = currentElement.parent
@@ -203,7 +197,7 @@ func (w *Window) Save() bool {
 func (w *Window) Undo() bool {
 	currentElement := w.focusedElement
 	for currentElement != nil {
-		if currentElement.onUndo() {
+		if currentElement.OnUndo() {
 			return true
 		}
 		currentElement = currentElement.parent
@@ -214,7 +208,7 @@ func (w *Window) Undo() bool {
 func (w *Window) Redo() bool {
 	currentElement := w.focusedElement
 	for currentElement != nil {
-		if currentElement.onRedo() {
+		if currentElement.OnRedo() {
 			return true
 		}
 		currentElement = currentElement.parent
@@ -228,7 +222,7 @@ func (w *Window) Cut() bool {
 	}
 	currentElement := w.focusedElement
 	for currentElement != nil {
-		if currentElement.onClipboardEvent(event) {
+		if currentElement.OnClipboardEvent(event) {
 			return true
 		}
 		currentElement = currentElement.parent
@@ -242,7 +236,7 @@ func (w *Window) Copy() bool {
 	}
 	currentElement := w.focusedElement
 	for currentElement != nil {
-		if currentElement.onClipboardEvent(event) {
+		if currentElement.OnClipboardEvent(event) {
 			return true
 		}
 		currentElement = currentElement.parent
@@ -273,15 +267,11 @@ func (w *windowHandler) OnFramebufferResize(size Size) {
 }
 
 func (w *windowHandler) OnKeyboardEvent(event KeyboardEvent) bool {
+	w.validateFocus()
+
 	current := w.focusedElement
 	for current != nil {
-		// TODO: The following check could be handled with mount and unmount
-		// events and handling.
-		if !current.HasAncestor(w.root) {
-			w.DiscardFocus()
-			return false
-		}
-		if current.focusable && current.onKeyboardEvent(event) {
+		if current.OnKeyboardEvent(event) {
 			return true
 		}
 		current = current.parent
@@ -290,12 +280,16 @@ func (w *windowHandler) OnKeyboardEvent(event KeyboardEvent) bool {
 }
 
 func (w *windowHandler) OnMouseEvent(event MouseEvent) bool {
+	w.validateFocus()
+
 	w.checkMouseLeaveEnter(event.Position())
 	w.oldMousePosition = event.Position()
 
 	if event.Action == MouseActionDown {
 		oldFocusedElement := w.focusedElement
-		w.processFocusChange(w.root, event.Position())
+		if oldFocusedElement == nil || oldFocusedElement.canAutoUnfocus {
+			w.processFocusChange(w.root, event.Position())
+		}
 		if w.focusedElement != oldFocusedElement {
 			w.Invalidate()
 		}
@@ -304,10 +298,23 @@ func (w *windowHandler) OnMouseEvent(event MouseEvent) bool {
 	return w.processMouseEvent(w.root, event)
 }
 
+func (w *windowHandler) OnGamepadEvent(event GamepadEvent) bool {
+	w.validateFocus()
+
+	current := w.focusedElement
+	for current != nil {
+		if current.OnGamepadEvent(event) {
+			return true
+		}
+		current = current.parent
+	}
+	return false
+}
+
 func (w *windowHandler) OnClipboardEvent(event ClipboardEvent) bool {
 	current := w.focusedElement
 	for current != nil {
-		if current.focusable && current.onClipboardEvent(event) {
+		if current.OnClipboardEvent(event) {
 			return true
 		}
 		current = current.parent
@@ -316,15 +323,14 @@ func (w *windowHandler) OnClipboardEvent(event ClipboardEvent) bool {
 }
 
 func (w *windowHandler) OnRender() {
+	w.validateFocus()
+
 	// Check that mouse is still in the same Element. This can change
 	// when an Element gets disabled.
 	w.checkMouseLeaveEnter(w.oldMousePosition)
 
 	currentTime := time.Now()
-	elapsedTime := currentTime.Sub(w.lastRender)
-	if elapsedTime > time.Second {
-		elapsedTime = time.Second
-	}
+	elapsedTime := max(0, min(time.Second, currentTime.Sub(w.lastRender)))
 	w.lastRender = currentTime
 
 	if w.size.Empty() {
@@ -338,11 +344,9 @@ func (w *windowHandler) OnRender() {
 	dirtyRegion := clipBounds // TODO: Handle dirty sub-regions
 
 	w.canvas.onBegin(elapsedTime)
-	w.canvas.SetClipRect(
-		0.0,
-		float32(w.size.Width),
-		0.0,
-		float32(w.size.Height),
+	w.canvas.ClipRect(
+		sprec.ZeroVec2(),
+		sprec.NewVec2(float32(w.size.Width), float32(w.size.Height)),
 	)
 	w.renderElement(w.root, w.canvas, clipBounds, dirtyRegion)
 	w.canvas.onEnd()
@@ -355,6 +359,13 @@ func (w *windowHandler) OnCloseRequested() bool {
 	return true
 }
 
+func (w *windowHandler) validateFocus() {
+	current := w.focusedElement
+	if current != nil && !current.HasAncestor(w.root) {
+		w.DiscardFocus()
+	}
+}
+
 func (w *windowHandler) processFocusChange(element *Element, position Position) {
 	if !element.enabled || !element.visible {
 		return
@@ -365,7 +376,7 @@ func (w *windowHandler) processFocusChange(element *Element, position Position) 
 		return
 	}
 
-	if element.focusable {
+	if element.canAutoFocus {
 		w.focusedElement = element
 	}
 
@@ -399,7 +410,7 @@ func (w *windowHandler) processMouseLeave(element *Element, mousePosition Positi
 	bounds := element.Bounds()
 	relativeMousePosition := mousePosition.Translate(bounds.Position.Inverse())
 	if !bounds.Contains(mousePosition) || !element.enabled {
-		element.onMouseEvent(MouseEvent{
+		element.OnMouseEvent(MouseEvent{
 			Action: MouseActionLeave,
 			X:      relativeMousePosition.X,
 			Y:      relativeMousePosition.Y,
@@ -416,7 +427,7 @@ func (w *windowHandler) processMouseLeaveInvisible(mousePosition Position) {
 		if !element.visible {
 			bounds := element.AbsoluteBounds()
 			relativeMousePosition := mousePosition.Translate(bounds.Position.Inverse())
-			element.onMouseEvent(MouseEvent{
+			element.OnMouseEvent(MouseEvent{
 				Action: MouseActionLeave,
 				X:      relativeMousePosition.X,
 				Y:      relativeMousePosition.Y,
@@ -439,7 +450,7 @@ func (w *windowHandler) processMouseEnter(element *Element, mousePosition Positi
 
 	relativeMousePosition := mousePosition.Translate(bounds.Position.Inverse())
 	if _, ok := w.oldEnteredElements[element]; !ok {
-		element.onMouseEvent(MouseEvent{
+		element.OnMouseEvent(MouseEvent{
 			Action: MouseActionEnter,
 			X:      relativeMousePosition.X,
 			Y:      relativeMousePosition.Y,
@@ -467,12 +478,13 @@ func (w *windowHandler) processMouseEvent(element *Element, event MouseEvent) bo
 			if w.processMouseEvent(childElement, translatedEvent) {
 				return true
 			}
-			break // don't allow siblings that are underneath to process event
+			// NOTE: There used to be a break here to prevent elements underneath
+			// from getting the event. It is unclear why that was the case.
 		}
 	}
 
 	// Let the current element handle the event.
-	return element.onMouseEvent(event)
+	return element.OnMouseEvent(event)
 }
 
 func (w *Window) renderElement(element *Element, canvas *Canvas, clipBounds, dirtyRegion Bounds) {
@@ -494,20 +506,28 @@ func (w *Window) renderElement(element *Element, canvas *Canvas, clipBounds, dir
 		float32(element.bounds.X),
 		float32(element.bounds.Y),
 	))
-	canvas.SetClipRect(
-		float32(elementClipBounds.X),
-		float32(elementClipBounds.X+elementClipBounds.Width),
-		float32(elementClipBounds.Y),
-		float32(elementClipBounds.Y+elementClipBounds.Height),
+	canvas.ClipRect(
+		sprec.NewVec2(
+			float32(elementClipBounds.X),
+			float32(elementClipBounds.Y),
+		),
+		sprec.NewVec2(
+			float32(elementClipBounds.Width),
+			float32(elementClipBounds.Height),
+		),
 	)
-	element.onRender(canvas)
+	element.OnRender(canvas)
 	if contentBounds := element.ContentBounds(); !contentBounds.Empty() {
 		contentClipBounds := contentBounds.Intersect(elementClipBounds)
-		canvas.SetClipRect(
-			float32(contentClipBounds.X),
-			float32(contentClipBounds.X+contentClipBounds.Width),
-			float32(contentClipBounds.Y),
-			float32(contentClipBounds.Y+contentClipBounds.Height),
+		canvas.ClipRect(
+			sprec.NewVec2(
+				float32(contentClipBounds.X),
+				float32(contentClipBounds.Y),
+			),
+			sprec.NewVec2(
+				float32(contentClipBounds.Width),
+				float32(contentClipBounds.Height),
+			),
 		)
 		for child := element.firstChild; child != nil; child = child.rightSibling {
 			w.renderElement(

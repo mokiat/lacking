@@ -1,10 +1,13 @@
 package mdl
 
 func NewSky() *Sky {
-	return &Sky{}
+	return &Sky{
+		Object: NewObject(),
+	}
 }
 
 type Sky struct {
+	*Object
 	material *Material
 }
 

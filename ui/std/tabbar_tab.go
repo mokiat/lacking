@@ -25,9 +25,8 @@ type TabbarTabData struct {
 	Icon     *ui.Image
 	Text     string
 	Selected bool
+	Static   bool
 }
-
-var tabbarTabDefaultData = TabbarTabData{}
 
 // TabbarTabCallbackData holds the callback data for a TabbarTab component.
 type TabbarTabCallbackData struct {
@@ -35,12 +34,7 @@ type TabbarTabCallbackData struct {
 	OnClose OnActionFunc
 }
 
-var tabbarTabDefaultCallbackData = TabbarTabCallbackData{
-	OnClick: func() {},
-	OnClose: func() {},
-}
-
-var TabbarTab = co.Define(&tabbarTabComponent{})
+var TabbarTab = co.Define[*tabbarTabComponent]()
 
 type tabbarTabComponent struct {
 	co.BaseComponent
@@ -48,17 +42,26 @@ type tabbarTabComponent struct {
 	main  tabbarTabMainComponent
 	close tabbarTabCloseComponent
 
+	static bool
+
 	icon *ui.Image
 	text string
 }
 
 func (c *tabbarTabComponent) OnUpsert() {
-	data := co.GetOptionalData(c.Properties(), tabbarTabDefaultData)
+	data := co.GetOptionalData(c.Properties(), TabbarTabData{})
 	c.icon = data.Icon
 	c.text = data.Text
+	c.static = data.Static
 	c.main.isSelected = data.Selected
 
-	callbackData := co.GetOptionalCallbackData(c.Properties(), tabbarTabDefaultCallbackData)
+	callbackData := co.GetOptionalCallbackData(c.Properties(), TabbarTabCallbackData{})
+	if callbackData.OnClick == nil {
+		callbackData.OnClick = func() {}
+	}
+	if callbackData.OnClose == nil {
+		callbackData.OnClose = func() {}
+	}
 	c.main.SetOnClickFunc(callbackData.OnClick)
 	c.close.SetOnClickFunc(callbackData.OnClose)
 }
@@ -108,7 +111,7 @@ func (c *tabbarTabComponent) Render() co.Instance {
 			}))
 		}
 
-		if c.main.isSelected {
+		if c.main.isSelected && !c.static {
 			co.WithChild("close", co.New(Element, func() {
 				co.WithData(ElementData{
 					Essence: &c.close,

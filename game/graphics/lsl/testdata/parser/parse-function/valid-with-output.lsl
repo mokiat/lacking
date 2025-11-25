@@ -1,0 +1,2 @@
+func test() vec3 {
+}

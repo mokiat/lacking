@@ -1,37 +1,12 @@
 package graphics
 
 import (
-	"github.com/mokiat/lacking/game/graphics/internal"
 	"github.com/mokiat/lacking/game/graphics/lsl"
 	"github.com/mokiat/lacking/render"
 )
 
-// ShaderConstraints contains the constraints imposed on the shader construction
-// process.
-type ShaderConstraints struct {
-
-	// LoadGeometryPreset specifies whether the shader should load the geometry
-	// preset.
-	LoadGeometryPreset bool
-
-	// LoadSkyPreset specifies whether the shader should load the sky preset.
-	LoadSkyPreset bool
-
-	// HasOutput0 specifies whether the shader has an output for the first
-	// render target.
-	HasOutput0 bool
-
-	// HasOutput1 specifies whether the shader has an output for the second
-	// render target.
-	HasOutput1 bool
-
-	// HasOutput2 specifies whether the shader has an output for the third
-	// render target.
-	HasOutput2 bool
-
-	// HasOutput3 specifies whether the shader has an output for the fourth
-	// render target.
-	HasOutput3 bool
+// ShaderMeshConstraints contains the constraints imposed by the mesh.
+type ShaderMeshConstraints struct {
 
 	// HasCoords specifies whether the mesh has coordinates.
 	HasCoords bool
@@ -52,45 +27,40 @@ type ShaderConstraints struct {
 	HasArmature bool
 }
 
-// GeometryConstraints contains the constraints imposed on the geometry shader
-// construction process.
-type GeometryConstraints struct {
+// ShaderOutputConstraints contains the constraints imposed by the designated
+// render target.
+type ShaderOutputConstraints struct {
 
-	// HasArmature specifies whether the mesh has an armature.
-	HasArmature bool
+	// HasOutput0 specifies whether the shader has an output for the first
+	// render target.
+	HasOutput0 bool
 
-	// HasNormals specifies whether the mesh has normals.
-	HasNormals bool
+	// HasOutput1 specifies whether the shader has an output for the second
+	// render target.
+	HasOutput1 bool
 
-	// HasTangents specifies whether the mesh has tangents.
-	HasTangents bool
+	// HasOutput2 specifies whether the shader has an output for the third
+	// render target.
+	HasOutput2 bool
 
-	// HasTexCoords specifies whether the mesh has texture coordinates.
-	HasTexCoords bool
-
-	// HasVertexColors specifies whether the mesh has vertex colors.
-	HasVertexColors bool
+	// HasOutput3 specifies whether the shader has an output for the fourth
+	// render target.
+	HasOutput3 bool
 }
 
-// ShadowConstraints contains the constraints imposed on the shadow shader
-// construction process.
-type ShadowConstraints struct {
+// ShaderTypeConstraints contains the constraints imposed by the shader type.
+type ShaderTypeConstraints struct {
 
-	// HasArmature specifies whether the mesh has an armature.
-	HasArmature bool
+	// Type specifies the type of shader.
+	Type ShaderType
 }
 
-// ForwardConstraints contains the constraints imposed on the forward shader
-// construction process.
-type ForwardConstraints struct {
-
-	// HasArmature specifies whether the mesh has an armature.
-	HasArmature bool
-}
-
-// SkyConstraints contains the constraints imposed on the sky shader
-// construction process.
-type SkyConstraints struct {
+// ShaderConstraints contains the constraints imposed on the shader construction
+// process.
+type ShaderConstraints struct {
+	ShaderMeshConstraints
+	ShaderOutputConstraints
+	ShaderTypeConstraints
 }
 
 // ShaderBuilder abstracts the process of building a shader program. The
@@ -99,15 +69,6 @@ type ShaderBuilder interface {
 
 	// BuildCode creates the program code for a custom shader.
 	BuildCode(constraints ShaderConstraints, shader *lsl.Shader) render.ProgramCode
-
-	// BuildGeometryCode creates the program code for a geometry pass.
-	BuildGeometryCode(constraints GeometryConstraints, shader *lsl.Shader) render.ProgramCode
-
-	// BuildShadowCode creates the program code for a shadow pass.
-	BuildShadowCode(constraints ShadowConstraints, shader *lsl.Shader) render.ProgramCode
-
-	// BuildForwardCode creates the program code for a shadow pass.
-	BuildForwardCode(constraints ForwardConstraints, shader *lsl.Shader) render.ProgramCode
 }
 
 // ShaderInfo contains the information needed to create a custom Shader.
@@ -118,16 +79,7 @@ type ShaderInfo struct {
 
 	// SourceCode is the source code of the shader.
 	SourceCode string
-
-	// SkipValidation specifies whether the engine should skip shader validation.
-	//
-	// This is useful when the shader is known to be valid and the validation
-	// process is not needed.
-	SkipValidation bool
 }
-
-// ShaderType specifies the type of a shader.
-type ShaderType uint8
 
 const (
 	ShaderTypeGeometry ShaderType = iota
@@ -137,44 +89,30 @@ const (
 	ShaderTypePostprocess
 )
 
+// ShaderType specifies the type of a shader.
+type ShaderType uint8
+
+// String returns the string representation of the shader type.
+func (t ShaderType) String() string {
+	switch t {
+	case ShaderTypeGeometry:
+		return "geometry"
+	case ShaderTypeShadow:
+		return "shadow"
+	case ShaderTypeForward:
+		return "forward"
+	case ShaderTypeSky:
+		return "sky"
+	case ShaderTypePostprocess:
+		return "postprocess"
+	default:
+		return "unknown"
+	}
+}
+
 // Shader represents a custom shader program.
 type Shader struct {
 	ast *lsl.Shader
-}
-
-func (e *Engine) createGeometryProgramCode(shader *lsl.Shader, info internal.ShaderProgramCodeInfo) render.ProgramCode {
-	return e.shaderBuilder.BuildGeometryCode(GeometryConstraints{
-		HasArmature:     info.MeshHasArmature,
-		HasNormals:      info.MeshHasNormals,
-		HasTangents:     info.MeshHasTangents,
-		HasTexCoords:    info.MeshHasTextureUVs,
-		HasVertexColors: info.MeshHasVertexColors,
-	}, shader)
-}
-
-func (e *Engine) createShadowProgramCode(shader *lsl.Shader, info internal.ShaderProgramCodeInfo) render.ProgramCode {
-	return e.shaderBuilder.BuildShadowCode(ShadowConstraints{
-		HasArmature: info.MeshHasArmature,
-	}, shader)
-}
-
-func (e *Engine) createForwardProgramCode(shader *lsl.Shader, info internal.ShaderProgramCodeInfo) render.ProgramCode {
-	return e.shaderBuilder.BuildForwardCode(ForwardConstraints{
-		HasArmature: info.MeshHasArmature,
-	}, shader)
-}
-
-func (e *Engine) createProgramCode(shader *lsl.Shader, info internal.ShaderProgramCodeInfo) render.ProgramCode {
-	return e.shaderBuilder.BuildCode(ShaderConstraints{
-		LoadSkyPreset:   true,
-		HasOutput0:      true,
-		HasCoords:       info.MeshHasCoords,
-		HasNormals:      info.MeshHasNormals,
-		HasTangents:     info.MeshHasTangents,
-		HasTexCoords:    info.MeshHasTextureUVs,
-		HasVertexColors: info.MeshHasVertexColors,
-		HasArmature:     info.MeshHasArmature,
-	}, shader)
 }
 
 ///////////////// OLD CODE FOLLOWS ////////////////////////////

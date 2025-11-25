@@ -49,7 +49,7 @@ type PictureData struct {
 
 var pictureDefaultData = PictureData{}
 
-var Picture = co.Define(&pictureComponent{})
+var Picture = co.Define[*pictureComponent]()
 
 type pictureComponent struct {
 	co.BaseComponent

@@ -10,6 +10,9 @@ type CommandBufferMarker interface {
 type CommandBuffer interface {
 	CommandBufferMarker
 
+	// Label returns a human-readable name for the command buffer.
+	Label() string
+
 	// CopyFramebufferToBuffer copies the contents of the current framebuffer
 	// to the specified buffer.
 	CopyFramebufferToBuffer(info CopyFramebufferToBufferInfo)
@@ -49,4 +52,16 @@ type CommandBuffer interface {
 
 	// EndRenderPass ends the current render pass.
 	EndRenderPass()
+}
+
+// CommandBufferInfo describes the information needed to create a
+// CommandBuffer.
+type CommandBufferInfo struct {
+
+	// InitialCapacity specifies the initial capacity of the command buffer
+	// in bytes.
+	InitialCapacity uint
+
+	// Label is a human-readable name for the command buffer.
+	Label string
 }

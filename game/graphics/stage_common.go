@@ -95,7 +95,10 @@ func (d *commonStageData) Allocate() {
 		Mipmapping: false,
 	})
 
-	d.commandBuffer = d.api.CreateCommandBuffer(commandBufferSize)
+	d.commandBuffer = d.api.CreateCommandBuffer(render.CommandBufferInfo{
+		Label:           "Game Graphics",
+		InitialCapacity: commandBufferSize,
+	})
 	d.uniformBuffer = ubo.NewUniformBlockBuffer(d.api, uniformBufferSize)
 
 	gog.Mutate(d.directionalShadowMaps, func(shadowMap *internal.DirectionalShadowMap) {

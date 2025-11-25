@@ -48,13 +48,16 @@ type Controller struct {
 }
 
 func (c *Controller) OnCreate(appWindow app.Window) {
-	renderer := newCanvasRenderer(appWindow.RenderAPI(), c.shaders)
+	renderAPI := appWindow.RenderAPI()
+	audioAPI := appWindow.AudioAPI()
+
+	renderer := newCanvasRenderer(renderAPI, c.shaders)
 
 	c.canvas = newCanvas(renderer)
-	c.fntFact = newFontFactory(appWindow.RenderAPI(), renderer)
+	c.fntFact = newFontFactory(renderAPI, renderer)
 
-	imgFact := newImageFactory(appWindow.RenderAPI())
-	c.resMan = newResourceManager(c.locator, imgFact, c.fntFact)
+	imgFact := newImageFactory(renderAPI)
+	c.resMan = newResourceManager(c.locator, audioAPI, imgFact, c.fntFact)
 
 	c.canvas.onCreate()
 	c.fntFact.Init()
@@ -78,6 +81,18 @@ func (c *Controller) OnKeyboardEvent(window app.Window, event app.KeyboardEvent)
 		Code:      KeyCode(event.Code),
 		Rune:      event.Character,
 		Modifiers: c.buildModifierSet(),
+	})
+}
+
+func (c *Controller) OnGamepadEvent(window app.Window, event app.GamepadEvent) bool {
+	return c.uiWindowHandler.OnGamepadEvent(GamepadEvent{
+		Index:   event.Index,
+		Gamepad: event.Gamepad,
+		Action:  GamepadAction(event.Action),
+		Button:  GamepadButton(event.Button),
+		Stick:   GamepadStick(event.Stick),
+		X:       event.X,
+		Y:       event.Y,
 	})
 }
 

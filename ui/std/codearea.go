@@ -32,7 +32,7 @@ const (
 	codeAreaChangeAccumulationDuration = time.Second
 )
 
-var CodeArea = co.Define(&codeAreaComponent{})
+var CodeArea = co.Define[*codeAreaComponent]()
 
 type CodeAreaData struct {
 	ReadOnly bool
@@ -125,8 +125,8 @@ func (c *codeAreaComponent) Render() co.Instance {
 	return co.New(Element, func() {
 		co.WithLayoutData(c.Properties().LayoutData())
 		co.WithData(ElementData{
-			Essence:   c,
-			Focusable: opt.V(true),
+			Essence:      c,
+			CanAutoFocus: opt.V(true),
 			IdealSize: opt.V(ui.Size{
 				Width:  c.textWidth + c.rulerWidth,
 				Height: c.textHeight,
@@ -567,6 +567,7 @@ func (c *codeAreaComponent) linesToText(lines [][]rune) string {
 }
 
 func (c *codeAreaComponent) textToLines(text string) [][]rune {
+	// TODO: Use iterator to avoid double allocation
 	return gog.Map(strings.Split(text, "\n"), func(line string) []rune {
 		return []rune(line)
 	})

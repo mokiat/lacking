@@ -4,7 +4,89 @@ var (
 	operatorChars = []rune{
 		'{', '}', '=', '(', ')', ',', '-', ';', '+', '*',
 		'/', '%', '!', '<', '>', '&', '|', '^', '.', ':',
+		'[', ']',
 	}
+)
+
+const (
+	// BlockStart is the character that starts a block of code.
+	BlockStart = "{"
+
+	// BlockEnd is the character that ends a block of code.
+	BlockEnd = "}"
+)
+
+const (
+	// GroupStart is the character that starts an expression group or a parameter
+	// list.
+	GroupStart = "("
+
+	// GroupEnd is the character that ends an expression group or a parameter
+	// list.
+	GroupEnd = ")"
+)
+
+const (
+	// KeywordDiscard is the keyword "discard". It is used to stop the execution
+	// of a fragment shader.
+	KeywordDiscard = "discard"
+
+	// KeywordTexture is the keyword "texture". It is used to declare a block of
+	// textures in a shader.
+	KeywordTexture = "texture"
+
+	// KeywordUniform is the keyword "uniform". It is used to declare a block of
+	// uniforms in a shader.
+	KeywordUniform = "uniform"
+
+	// KeywordVarying is the keyword "varying". It is used to declare a block of
+	// variables in a shader that can cross from the vertex shader stage to the
+	// fragment shader stage.
+	KeywordVarying = "varying"
+
+	// KeywordTrue is the keyword "true". It is used to represent the boolean
+	// literal true.
+	KeywordTrue = "true"
+
+	// KeywordFalse is the keyword "false". It is used to represent the boolean
+	// literal false.
+	KeywordFalse = "false"
+
+	// KeywordType is the keyword "type". It is used to declare a new type.
+	KeywordType = "type"
+
+	// KeywordStruct is the keyword "struct". It is used to declare a new struct
+	// type.
+	KeywordStruct = "struct"
+
+	// KeywordFunc is the keyword "func". It is used to declare a new function.
+	KeywordFunc = "func"
+
+	// KeywordVar is the keyword "var". It is used to declare a variable.
+	KeywordVar = "var"
+
+	// KeywordIf is the keyword "if". It is used to start a conditional statement.
+	KeywordIf = "if"
+
+	// KeywordElse is the keyword "else". It is used to start an alternative
+	// branch of a conditional statement.
+	KeywordElse = "else"
+
+	// KeywordReturn is the keyword "return". It is used to return a value from a
+	// function.
+	KeywordReturn = "return"
+)
+
+const (
+	// SeparatorComma is the character ",". It is used to separate items in a
+	// list.
+	SeparatorComma = ","
+)
+
+const (
+	// AccessOperatorDot is the character ".". It is used to access a member of a
+	// struct variable.
+	AccessOperatorDot = "."
 )
 
 const (
@@ -183,4 +265,42 @@ var binaryOperators = []string{
 	BinaryOperatorBitXor,
 	BinaryOperatorAnd,
 	BinaryOperatorOr,
+}
+
+// operatorPrecedence returns the precedence group of the given operator.
+// Higher is more important. These are aligned with the Go precedence groups:
+// https://go.dev/ref/spec#Operators
+func operatorPrecedence(operator string) int {
+	switch operator {
+	case
+		BinaryOperatorMul,
+		BinaryOperatorDiv,
+		BinaryOperatorMod,
+		BinaryOperatorShl,
+		BinaryOperatorShr,
+		BinaryOperatorBitAnd:
+		return 5
+	case
+		BinaryOperatorAdd,
+		BinaryOperatorSub,
+		BinaryOperatorBitOr,
+		BinaryOperatorBitXor:
+		return 4
+	case
+		BinaryOperatorEq,
+		BinaryOperatorNotEq,
+		BinaryOperatorLess,
+		BinaryOperatorLessEq,
+		BinaryOperatorGreater,
+		BinaryOperatorGreaterEq:
+		return 3
+	case
+		BinaryOperatorAnd:
+		return 2
+	case
+		BinaryOperatorOr:
+		return 1
+	default:
+		return 10
+	}
 }

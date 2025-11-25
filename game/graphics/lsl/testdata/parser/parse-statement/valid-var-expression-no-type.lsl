@@ -1,0 +1,1 @@
+var intensity = 1.0

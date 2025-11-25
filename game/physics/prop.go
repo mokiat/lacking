@@ -1,12 +1,18 @@
 package physics
 
 import (
-	"github.com/mokiat/lacking/game/physics/collision"
+	"github.com/mokiat/gog/opt"
+	"github.com/mokiat/gomath/dprec"
+	"github.com/mokiat/lacking/util/shape3d"
 )
 
 type PropInfo struct {
-	Name         string
-	CollisionSet collision.Set
+	Name             string
+	Position         opt.T[dprec.Vec3]
+	Rotation         opt.T[dprec.Quat]
+	CollisionSpheres []shape3d.Sphere
+	CollisionBoxes   []shape3d.Box
+	CollisionMeshes  []shape3d.Mesh
 }
 
 type Prop struct {
@@ -18,7 +24,7 @@ func (p Prop) Name() string {
 }
 
 type propState struct {
-	reference    indexReference
-	name         string
-	collisionSet collision.Set
+	reference indexReference
+	objectID  shape3d.ObjectID
+	name      string
 }

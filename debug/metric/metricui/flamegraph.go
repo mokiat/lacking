@@ -22,7 +22,7 @@ const (
 
 // FlameGraph is a component that displays a flamegraph of the
 // recorded metric data.
-var FlameGraph = co.Define(&flamegraphComponent{})
+var FlameGraph = co.Define[*flamegraphComponent]()
 
 // FlameGraphData is the data that can be provided to the FlameGraph
 // component.
@@ -38,8 +38,6 @@ type flamegraphComponent struct {
 	font     *ui.Font
 	fontSize float32
 
-	element *ui.Element
-
 	interval         time.Duration
 	aggregationRatio float64
 	path             []string
@@ -51,7 +49,7 @@ func (c *flamegraphComponent) OnCreate() {
 	c.font = co.OpenFont(c.Scope(), "ui:///roboto-bold.ttf")
 	c.fontSize = 20.0
 
-	data := co.GetOptionalData[FlameGraphData](c.Properties(), FlameGraphData{})
+	data := co.GetOptionalData(c.Properties(), FlameGraphData{})
 	c.interval = data.UpdateInterval
 	c.aggregationRatio = data.AggregationRatio
 	c.path = data.FocusPath
@@ -61,11 +59,11 @@ func (c *flamegraphComponent) OnCreate() {
 		}
 	}
 
-	co.After(c.Scope(), c.interval, c.onRefresh)
+	co.Every(c.Scope(), c.interval, c.onRefresh)
 }
 
 func (c *flamegraphComponent) OnUpsert() {
-	data := co.GetOptionalData[FlameGraphData](c.Properties(), FlameGraphData{})
+	data := co.GetOptionalData(c.Properties(), FlameGraphData{})
 	c.interval = data.UpdateInterval
 	c.aggregationRatio = data.AggregationRatio
 }
@@ -74,8 +72,7 @@ func (c *flamegraphComponent) Render() co.Instance {
 	return co.New(std.Element, func() {
 		co.WithLayoutData(c.Properties().LayoutData())
 		co.WithData(std.ElementData{
-			Reference: &c.element,
-			Essence:   c,
+			Essence: c,
 			IdealSize: opt.V(ui.Size{
 				Width:  flamegraphIdealWidth,
 				Height: flamegraphRowHeigth,
@@ -97,7 +94,7 @@ func (c *flamegraphComponent) renderSpan(canvas *ui.Canvas, span metric.Span, ra
 	canvas.ClipRect(position, size)
 	canvas.Translate(position)
 
-	fillColor := ui.MixColors(ui.Navy(), ui.Red(), ratio/2.0)
+	fillColor := ui.MixColors(ui.Navy(), ui.Maroon(), ratio)
 	canvas.Reset()
 	canvas.SetStrokeColor(ui.Gray())
 	canvas.SetStrokeSizeSeparate(1.0, 0.0)
@@ -160,12 +157,10 @@ func (c *flamegraphComponent) onRefresh() {
 	c.updateTree(&c.tree, &tree, iterations)
 
 	treeDepth := c.spanTreeDepth(tree)
-	c.element.SetIdealSize(ui.Size{
+	c.Element().SetIdealSize(ui.Size{
 		Width:  flamegraphIdealWidth,
 		Height: treeDepth * flamegraphRowHeigth,
 	})
-
-	co.After(c.Scope(), c.interval, c.onRefresh)
 }
 
 func (c *flamegraphComponent) spanTreeDepth(node metric.Span) int {

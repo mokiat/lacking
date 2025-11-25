@@ -1,0 +1,1 @@
+var intensity float = 1.0

@@ -7,629 +7,89 @@ import (
 	"github.com/mokiat/lacking/game/graphics/lsl"
 )
 
-var _ = Describe("Parse", func() {
-	var (
-		inSource  string
-		outShader *lsl.Shader
-		outErr    error
-	)
-
-	JustBeforeEach(func() {
-		outShader, outErr = lsl.Parse(inSource)
-	})
-
-	When("empty shader", func() {
-		BeforeEach(func() {
-			inSource = ``
-		})
-
-		It("produces an empty shader", func() {
-			Expect(outErr).ToNot(HaveOccurred())
-			Expect(outShader).To(Equal(&lsl.Shader{}))
-		})
-	})
-
-	When("comments are present", func() {
-		BeforeEach(func() {
-			inSource = `
-				// This is a comment
-			`
-		})
-
-		It("ignores the comments", func() {
-			Expect(outErr).ToNot(HaveOccurred())
-			Expect(outShader).To(Equal(&lsl.Shader{}))
-		})
-	})
-
-	When("texture blocks are present", func() {
-		BeforeEach(func() {
-			inSource = `
-				textures { // header
-					color sampler2D, // field1
-					// has two fields
-					intensity samplerCube, // field2
-				}
-
-				// comment here
-
-				textures {
-					value sampler2D,
-				}
-			`
-		})
-
-		It("produces a shader with the texture blocks", func() {
-			Expect(outErr).ToNot(HaveOccurred())
-			Expect(outShader).To(Equal(&lsl.Shader{
-				Declarations: []lsl.Declaration{
-					&lsl.TextureBlockDeclaration{
-						Fields: []lsl.Field{
-							{
-								Name: "color",
-								Type: lsl.TypeNameSampler2D,
-							},
-							{
-								Name: "intensity",
-								Type: lsl.TypeNameSamplerCube,
-							},
-						},
-					},
-					&lsl.TextureBlockDeclaration{
-						Fields: []lsl.Field{
-							{
-								Name: "value",
-								Type: lsl.TypeNameSampler2D,
-							},
-						},
-					},
-				},
-			}))
-		})
-	})
-
-	When("uniform blocks are present", func() {
-		BeforeEach(func() {
-			inSource = `
-				uniforms { // header
-					color vec3, // field1
-					// has two fields
-					intensity float, // field2
-				}
-
-				// comment here
-
-				uniforms {
-					value vec4,
-				}
-			`
-		})
-
-		It("produces a shader with the uniform blocks", func() {
-			Expect(outErr).ToNot(HaveOccurred())
-			Expect(outShader).To(Equal(&lsl.Shader{
-				Declarations: []lsl.Declaration{
-					&lsl.UniformBlockDeclaration{
-						Fields: []lsl.Field{
-							{
-								Name: "color",
-								Type: lsl.TypeNameVec3,
-							},
-							{
-								Name: "intensity",
-								Type: lsl.TypeNameFloat,
-							},
-						},
-					},
-					&lsl.UniformBlockDeclaration{
-						Fields: []lsl.Field{
-							{
-								Name: "value",
-								Type: lsl.TypeNameVec4,
-							},
-						},
-					},
-				},
-			}))
-		})
-	})
-
-	When("varying blocks are present", func() {
-		BeforeEach(func() {
-			inSource = `
-				varyings { // header
-					color vec3, // field 1
-					// two fields
-					intensity float, // field2
-				} // footer
-
-				varyings {
-					value vec4,
-				}
-			`
-		})
-
-		It("produces a shader with the varying blocks", func() {
-			Expect(outErr).ToNot(HaveOccurred())
-			Expect(outShader).To(Equal(&lsl.Shader{
-				Declarations: []lsl.Declaration{
-					&lsl.VaryingBlockDeclaration{
-						Fields: []lsl.Field{
-							{
-								Name: "color",
-								Type: lsl.TypeNameVec3,
-							},
-							{
-								Name: "intensity",
-								Type: lsl.TypeNameFloat,
-							},
-						},
-					},
-					&lsl.VaryingBlockDeclaration{
-						Fields: []lsl.Field{
-							{
-								Name: "value",
-								Type: lsl.TypeNameVec4,
-							},
-						},
-					},
-				},
-			}))
-		})
-	})
-
-	When("function declarations are present", func() {
-		BeforeEach(func() {
-			inSource = `
-				func vertex(a vec3, b vec4) (float, vec2) {
-				}
-				
-				func #fragment() {
-				}
-			`
-		})
-
-		It("produces a shader with the function declaration", func() {
-			Expect(outErr).ToNot(HaveOccurred())
-			Expect(outShader).To(Equal(&lsl.Shader{
-				Declarations: []lsl.Declaration{
-					&lsl.FunctionDeclaration{
-						Name: "vertex",
-						Inputs: []lsl.Field{
-							{
-								Name: "a",
-								Type: lsl.TypeNameVec3,
-							},
-							{
-								Name: "b",
-								Type: lsl.TypeNameVec4,
-							},
-						},
-						Outputs: []lsl.Field{
-							{
-								Name: "",
-								Type: lsl.TypeNameFloat,
-							},
-							{
-								Name: "",
-								Type: lsl.TypeNameVec2,
-							},
-						},
-					},
-					&lsl.FunctionDeclaration{
-						Name:    "#fragment",
-						Inputs:  nil,
-						Outputs: nil,
-					},
-				},
-			}))
-		})
-	})
-
-	When("variable declarations are present", func() {
-		BeforeEach(func() {
-			inSource = `
-				func test() { // a test function
-					var color vec3 = vec3(1.0,-0.5, 0.1) // this has assignment
-					// some comment
-					var intensity float // this is just a declaration
-				} // so much for it
-			`
-		})
-
-		It("produces a shader with the variable declarations", func() {
-			Expect(outErr).ToNot(HaveOccurred())
-			Expect(outShader).To(Equal(&lsl.Shader{
-				Declarations: []lsl.Declaration{
-					&lsl.FunctionDeclaration{
-						Name:    "test",
-						Inputs:  nil,
-						Outputs: nil,
-						Body: []lsl.Statement{
-							&lsl.VariableDeclaration{
-								Name: "color",
-								Type: lsl.TypeNameVec3,
-								Assignment: &lsl.FunctionCall{
-									Name: "vec3",
-									Arguments: []lsl.Expression{
-										&lsl.FloatLiteral{
-											Value: 1.0,
-										},
-										&lsl.UnaryExpression{
-											Operator: "-",
-											Operand: &lsl.FloatLiteral{
-												Value: 0.5,
-											},
-										},
-										&lsl.FloatLiteral{
-											Value: 0.1,
-										},
-									},
-								},
-							},
-							&lsl.VariableDeclaration{
-								Name: "intensity",
-								Type: lsl.TypeNameFloat,
-							},
-						},
-					},
-				},
-			}))
-		})
-	})
-})
-
 var _ = Describe("Parser", func() {
 
-	at := func(line, column uint32) lsl.Position {
-		if line == 1 {
-			// The first line does not include any tabs in front of it, because
-			// gofmt does not allow to move the backtick character to the beginning.
-			return lsl.At(line, column)
-		} else {
-			// NOTE: Adding 3 characters due to three tabs in front of each line
-			// because of the way the test cases are formatted.
-			return lsl.At(line, column+3)
-		}
-	}
-
-	DescribeTable("ParseNewLine", func(inSource string, expectedErr error) {
+	DescribeTable("ParseFieldGroup", func(inSource string, expectedFields []lsl.Field, expectedErr error) {
 		parser := lsl.NewParser(inSource)
-		err := parser.ParseNewLine()
+		fields, err := parser.ParseFieldGroup(lsl.GroupStart, lsl.GroupEnd)
 		if expectedErr == nil {
 			Expect(err).ToNot(HaveOccurred())
-		} else {
-			Expect(err).To(HaveOccurred())
-			Expect(err).To(Equal(expectedErr))
-		}
-	},
-		Entry("new line",
-			"\n irrelevant",
-			nil,
-		),
-		Entry("carriage return and new line",
-			"\r\n irrelevant",
-			nil,
-		),
-		Entry("new line after spacing",
-			"  \t  \n irrelevant",
-			nil,
-		),
-		Entry("no tokens",
-			"",
-			&lsl.ParseError{
-				Pos:     at(1, 1),
-				Message: "expected a new line token",
-			},
-		),
-		Entry("identifier",
-			"hello \n",
-			&lsl.ParseError{
-				Pos:     at(1, 1),
-				Message: "expected a new line token",
-			},
-		),
-	)
-
-	DescribeTable("ParseComment", func(inSource string, expectedErr error) {
-		parser := lsl.NewParser(inSource)
-		err := parser.ParseComment()
-		if expectedErr == nil {
-			Expect(err).ToNot(HaveOccurred())
-		} else {
-			Expect(err).To(HaveOccurred())
-			Expect(err).To(Equal(expectedErr))
-		}
-	},
-		Entry("plain comment",
-			"// a comment",
-			nil,
-		),
-		Entry("comment after spacing",
-			" \t // a comment",
-			nil,
-		),
-		Entry("comment with new line",
-			`// some comment
-			irrelevant`,
-			nil,
-		),
-		Entry("operator",
-			`; // a comment`,
-			&lsl.ParseError{
-				Pos:     at(1, 1),
-				Message: "expected a comment token",
-			},
-		),
-	)
-
-	DescribeTable("ParseOptionalRemainder", func(inSource string, expectedErr error) {
-		parser := lsl.NewParser(inSource)
-		err := parser.ParseOptionalRemainder()
-		if expectedErr == nil {
-			Expect(err).ToNot(HaveOccurred())
+			Expect(fields).To(Equal(expectedFields))
 		} else {
 			Expect(err).To(HaveOccurred())
 			Expect(err).To(Equal(expectedErr))
 		}
 	},
 		Entry("empty",
-			"",
+			openTestFile("parser", "parse-field-group", "valid-empty.lsl"),
+			nil,
 			nil,
 		),
-		Entry("new line",
-			"\r\n",
+		Entry("single field",
+			openTestFile("parser", "parse-field-group", "valid-single-field.lsl"),
+			[]lsl.Field{
+				{
+					Pos:  lsl.At(2, 3),
+					Name: "color",
+					Type: "vec4",
+				},
+			},
 			nil,
 		),
-		Entry("comment",
-			"// a comment",
+		Entry("multiple fields",
+			openTestFile("parser", "parse-field-group", "valid-multiple-fields.lsl"),
+			[]lsl.Field{
+				{
+					Pos:  lsl.At(2, 3),
+					Name: "color",
+					Type: "vec4",
+				},
+				{
+					Pos:  lsl.At(3, 3),
+					Name: "intensity",
+					Type: "float",
+				},
+			},
 			nil,
 		),
-		Entry("vital token",
-			"+= 5",
+		Entry("bloated",
+			openTestFile("parser", "parse-field-group", "valid-bloated.lsl"),
+			[]lsl.Field{
+				{
+					Pos:  lsl.At(3, 3),
+					Name: "color",
+					Type: "vec4",
+				},
+				{
+					Pos:  lsl.At(7, 5),
+					Name: "intensity",
+					Type: "float",
+				},
+			},
+			nil,
+		),
+		Entry("ending on a comma",
+			openTestFile("parser", "parse-field-group", "invalid-ending-on-comma.lsl"),
+			nil,
 			&lsl.ParseError{
-				Pos:     at(1, 1),
+				Pos:     lsl.At(2, 13),
 				Message: "expected a comment, new line or end of file",
 			},
 		),
-	)
-
-	DescribeTable("ParseBlockStart", func(inSource string, expectedErr error) {
-		parser := lsl.NewParser(inSource)
-		err := parser.ParseBlockStart()
-		if expectedErr == nil {
-			Expect(err).ToNot(HaveOccurred())
-		} else {
-			Expect(err).To(HaveOccurred())
-			Expect(err).To(Equal(expectedErr))
-		}
-	},
-		Entry("just opening bracket",
-			"{",
-			nil,
-		),
-		Entry("with new line",
-			" \t {\n",
-			nil,
-		),
-		Entry("with comment",
-			"{ // closing bracket",
-			nil,
-		),
-		Entry("not opening bracket",
-			"5.0\n",
-			&lsl.ParseError{
-				Pos:     at(1, 1),
-				Message: "expected an opening bracket",
-			},
-		),
-	)
-
-	DescribeTable("ParseBlockEnd", func(inSource string, expectedErr error) {
-		parser := lsl.NewParser(inSource)
-		err := parser.ParseBlockEnd()
-		if expectedErr == nil {
-			Expect(err).ToNot(HaveOccurred())
-		} else {
-			Expect(err).To(HaveOccurred())
-			Expect(err).To(Equal(expectedErr))
-		}
-	},
-		Entry("just closing bracket",
-			"}",
-			nil,
-		),
-		Entry("with new line",
-			" \t }\n",
-			nil,
-		),
-		Entry("with comment",
-			"} // closing bracket\n",
-			nil,
-		),
-		Entry("not closing bracket",
-			"5.0\n",
-			&lsl.ParseError{
-				Pos:     at(1, 1),
-				Message: "expected a closing bracket",
-			},
-		),
-	)
-
-	DescribeTable("ParseNamedParameterList", func(inSource string, expectedFields []lsl.Field, expectedErr error) {
-		parser := lsl.NewParser(inSource)
-		fields, err := parser.ParseNamedParameterList()
-		if expectedErr == nil {
-			Expect(err).ToNot(HaveOccurred())
-			Expect(fields).To(Equal(expectedFields))
-		} else {
-			Expect(err).To(HaveOccurred())
-			Expect(err).To(Equal(expectedErr))
-		}
-	},
-		Entry("empty list",
-			"",
-			nil,
-			nil,
-		),
-		Entry("single parameter",
-			"color vec4",
-			[]lsl.Field{
-				{Name: "color", Type: "vec4"},
-			},
-			nil,
-		),
-		Entry("multiple parameters, single line",
-			" \t color vec4, \t intensity float \t ",
-			[]lsl.Field{
-				{Name: "color", Type: "vec4"},
-				{Name: "intensity", Type: "float"},
-			},
-			nil,
-		),
-		Entry("multiple parameters, multiple lines",
-			`
-			color vec4, // first param here
-			// there will be a second param
-
-			intensity float,
-
-			`,
-			[]lsl.Field{
-				{Name: "color", Type: "vec4"},
-				{Name: "intensity", Type: "float"},
-			},
-			nil,
-		),
-		Entry("ending on a non-comma operator",
-			"color vec4)",
-			[]lsl.Field{
-				{Name: "color", Type: "vec4"},
-			},
-			nil,
-		),
-		Entry("ending on a comma operator",
-			"color vec4,",
-			[]lsl.Field{
-				{Name: "color", Type: "vec4"},
-			},
-			nil,
-		),
-		Entry("ending on a twin-comma operator",
-			"color vec4,,",
-			nil,
-			&lsl.ParseError{
-				Pos:     at(1, 12),
-				Message: "unexpected comma",
-			},
-		),
 		Entry("non-identifier name",
-			"5 vec4",
+			openTestFile("parser", "parse-field-group", "invalid-non-identifier-name.lsl"),
 			nil,
 			&lsl.ParseError{
-				Pos:     at(1, 1),
+				Pos:     lsl.At(2, 3),
 				Message: "expected a name identifier or end of list",
 			},
 		),
 		Entry("non-identifier type",
-			"color 5",
+			openTestFile("parser", "parse-field-group", "invalid-non-identifier-type.lsl"),
 			nil,
 			&lsl.ParseError{
-				Pos:     at(1, 7),
+				Pos:     lsl.At(2, 9),
 				Message: "expected a type identifier",
-			},
-		),
-		Entry("non-comma or operator after type",
-			"color vec4 hello",
-			nil,
-			&lsl.ParseError{
-				Pos:     at(1, 12),
-				Message: "expected a comma or end of list",
-			},
-		),
-	)
-
-	DescribeTable("ParseUnnamedParameterList", func(inSource string, expectedFields []lsl.Field, expectedErr error) {
-		parser := lsl.NewParser(inSource)
-		fields, err := parser.ParseUnnamedParameterList()
-		if expectedErr == nil {
-			Expect(err).ToNot(HaveOccurred())
-			Expect(fields).To(Equal(expectedFields))
-		} else {
-			Expect(err).To(HaveOccurred())
-			Expect(err).To(Equal(expectedErr))
-		}
-	},
-		Entry("empty list",
-			"",
-			nil,
-			nil,
-		),
-		Entry("single parameter",
-			"vec4",
-			[]lsl.Field{
-				{Type: "vec4"},
-			},
-			nil,
-		),
-		Entry("multiple parameters, single line",
-			" \t vec4, \t float \t ",
-			[]lsl.Field{
-				{Type: "vec4"},
-				{Type: "float"},
-			},
-			nil,
-		),
-		Entry("multiple parameters, multiple lines",
-			`
-			vec4, // first param here
-			// there will be a second param
-
-			float,
-
-			`,
-			[]lsl.Field{
-				{Type: "vec4"},
-				{Type: "float"},
-			},
-			nil,
-		),
-		Entry("ending on a non-comma operator",
-			"vec4)",
-			[]lsl.Field{
-				{Type: "vec4"},
-			},
-			nil,
-		),
-		Entry("ending on a comma operator",
-			"vec4,",
-			[]lsl.Field{
-				{Type: "vec4"},
-			},
-			nil,
-		),
-		Entry("ending on a twin-comma operator",
-			"vec4,,",
-			nil,
-			&lsl.ParseError{
-				Pos:     at(1, 6),
-				Message: "unexpected comma",
-			},
-		),
-		Entry("non-identifier type",
-			"5",
-			nil,
-			&lsl.ParseError{
-				Pos:     at(1, 1),
-				Message: "expected a type identifier or end of list",
-			},
-		),
-		Entry("non-comma or operator after type",
-			"vec4 hello",
-			nil,
-			&lsl.ParseError{
-				Pos:     at(1, 6),
-				Message: "expected a comma or end of list",
 			},
 		),
 	)
@@ -645,56 +105,72 @@ var _ = Describe("Parser", func() {
 			Expect(err).To(Equal(expectedErr))
 		}
 	},
-		Entry("empty block",
-			`textures {
-			}`,
-			&lsl.TextureBlockDeclaration{},
+		Entry("empty",
+			openTestFile("parser", "parse-texture-block", "valid-empty.lsl"),
+			&lsl.TextureBlockDeclaration{
+				Pos:    lsl.At(1, 1),
+				Fields: nil,
+			},
 			nil,
 		),
-		Entry("with fields",
-			`textures {
-				first sampler2D,
-				second samplerCube,
-			}`,
+		Entry("single",
+			openTestFile("parser", "parse-texture-block", "valid-single.lsl"),
 			&lsl.TextureBlockDeclaration{
+				Pos: lsl.At(1, 1),
 				Fields: []lsl.Field{
-					{Name: "first", Type: "sampler2D"},
-					{Name: "second", Type: "samplerCube"},
+					{
+						Pos:  lsl.At(1, 9),
+						Name: "color",
+						Type: "sampler2D",
+					},
 				},
 			},
 			nil,
 		),
-		Entry("with comments and spaces",
-			`textures { // block start
-
-			first 	 sampler2D  	, // first field
-
-			second samplerCube,    // second field
-
-			} // block end`,
+		Entry("compact",
+			openTestFile("parser", "parse-texture-block", "valid-compact.lsl"),
 			&lsl.TextureBlockDeclaration{
+				Pos: lsl.At(1, 1),
 				Fields: []lsl.Field{
-					{Name: "first", Type: "sampler2D"},
-					{Name: "second", Type: "samplerCube"},
+					{
+						Pos:  lsl.At(2, 3),
+						Name: "first",
+						Type: "sampler2D",
+					},
+					{
+						Pos:  lsl.At(3, 3),
+						Name: "second",
+						Type: "samplerCube",
+					},
 				},
 			},
 			nil,
 		),
-		Entry("closing on same line",
-			`textures {}`,
-			nil,
-			&lsl.ParseError{
-				Pos:     at(1, 11),
-				Message: "expected a comment, new line or end of file",
+		Entry("bloated",
+			openTestFile("parser", "parse-texture-block", "valid-bloated.lsl"),
+			&lsl.TextureBlockDeclaration{
+				Pos: lsl.At(1, 1),
+				Fields: []lsl.Field{
+					{
+						Pos:  lsl.At(3, 1),
+						Name: "first",
+						Type: "sampler2D",
+					},
+					{
+						Pos:  lsl.At(5, 3),
+						Name: "second",
+						Type: "samplerCube",
+					},
+				},
 			},
+			nil,
 		),
 		Entry("other block type",
-			`uniforms {
-			}`,
+			openTestFile("parser", "parse-texture-block", "invalid-other-block-type.lsl"),
 			nil,
 			&lsl.ParseError{
-				Pos:     at(1, 1),
-				Message: "expected 'textures' keyword",
+				Pos:     lsl.At(1, 1),
+				Message: "expected \"texture\" keyword",
 			},
 		),
 	)
@@ -710,56 +186,72 @@ var _ = Describe("Parser", func() {
 			Expect(err).To(Equal(expectedErr))
 		}
 	},
-		Entry("empty block",
-			`uniforms {
-			}`,
-			&lsl.UniformBlockDeclaration{},
+		Entry("empty",
+			openTestFile("parser", "parse-uniform-block", "valid-empty.lsl"),
+			&lsl.UniformBlockDeclaration{
+				Pos:    lsl.At(1, 1),
+				Fields: nil,
+			},
 			nil,
 		),
-		Entry("with fields",
-			`uniforms {
-				color vec4,
-				intensity float,
-			}`,
+		Entry("single",
+			openTestFile("parser", "parse-uniform-block", "valid-single.lsl"),
 			&lsl.UniformBlockDeclaration{
+				Pos: lsl.At(1, 1),
 				Fields: []lsl.Field{
-					{Name: "color", Type: "vec4"},
-					{Name: "intensity", Type: "float"},
+					{
+						Pos:  lsl.At(1, 9),
+						Name: "color",
+						Type: "vec4",
+					},
 				},
 			},
 			nil,
 		),
-		Entry("with comments and spaces",
-			`uniforms { // block start
-
-			color vec4  	, // first field
-
-			intensity float,    // second field
-
-			} // block end`,
+		Entry("compact",
+			openTestFile("parser", "parse-uniform-block", "valid-compact.lsl"),
 			&lsl.UniformBlockDeclaration{
+				Pos: lsl.At(1, 1),
 				Fields: []lsl.Field{
-					{Name: "color", Type: "vec4"},
-					{Name: "intensity", Type: "float"},
+					{
+						Pos:  lsl.At(2, 3),
+						Name: "color",
+						Type: "vec4",
+					},
+					{
+						Pos:  lsl.At(3, 3),
+						Name: "intensity",
+						Type: "float",
+					},
 				},
 			},
 			nil,
 		),
-		Entry("closing on same line",
-			`uniforms {}`,
-			nil,
-			&lsl.ParseError{
-				Pos:     at(1, 11),
-				Message: "expected a comment, new line or end of file",
+		Entry("bloated",
+			openTestFile("parser", "parse-uniform-block", "valid-bloated.lsl"),
+			&lsl.UniformBlockDeclaration{
+				Pos: lsl.At(1, 1),
+				Fields: []lsl.Field{
+					{
+						Pos:  lsl.At(3, 1),
+						Name: "color",
+						Type: "vec4",
+					},
+					{
+						Pos:  lsl.At(5, 3),
+						Name: "intensity",
+						Type: "float",
+					},
+				},
 			},
+			nil,
 		),
 		Entry("other block type",
-			`textures {
-			}`,
+			openTestFile("parser", "parse-uniform-block", "invalid-other-block-type.lsl"),
 			nil,
 			&lsl.ParseError{
-				Pos:     at(1, 1),
-				Message: "expected 'uniforms' keyword",
+				Pos:     lsl.At(1, 1),
+				Message: "expected \"uniform\" keyword",
 			},
 		),
 	)
@@ -776,500 +268,1301 @@ var _ = Describe("Parser", func() {
 		}
 	},
 		Entry("empty",
-			`varyings {
-			}`,
-			&lsl.VaryingBlockDeclaration{},
+			openTestFile("parser", "parse-varying-block", "valid-empty.lsl"),
+			&lsl.VaryingBlockDeclaration{
+				Pos:    lsl.At(1, 1),
+				Fields: nil,
+			},
 			nil,
 		),
-		Entry("with fields",
-			`varyings {
-				color vec4,
-				intensity float,
-			}`,
+		Entry("single",
+			openTestFile("parser", "parse-varying-block", "valid-single.lsl"),
 			&lsl.VaryingBlockDeclaration{
+				Pos: lsl.At(1, 1),
 				Fields: []lsl.Field{
-					{Name: "color", Type: "vec4"},
-					{Name: "intensity", Type: "float"},
+					{
+						Pos:  lsl.At(1, 9),
+						Name: "color",
+						Type: "vec4",
+					},
 				},
 			},
 			nil,
 		),
-		Entry("with comments and spaces",
-			`varyings { // block start
-
-			color vec4  	, // first field
-
-			intensity float,    // second field
-
-			} // block end`,
+		Entry("compact",
+			openTestFile("parser", "parse-varying-block", "valid-compact.lsl"),
 			&lsl.VaryingBlockDeclaration{
+				Pos: lsl.At(1, 1),
 				Fields: []lsl.Field{
-					{Name: "color", Type: "vec4"},
-					{Name: "intensity", Type: "float"},
+					{
+						Pos:  lsl.At(2, 3),
+						Name: "color",
+						Type: "vec4",
+					},
+					{
+						Pos:  lsl.At(3, 3),
+						Name: "intensity",
+						Type: "float",
+					},
 				},
 			},
 			nil,
 		),
-		Entry("closing on same line",
-			`varyings {}`,
-			nil,
-			&lsl.ParseError{
-				Pos:     at(1, 11),
-				Message: "expected a comment, new line or end of file",
+		Entry("bloated",
+			openTestFile("parser", "parse-varying-block", "valid-bloated.lsl"),
+			&lsl.VaryingBlockDeclaration{
+				Pos: lsl.At(1, 1),
+				Fields: []lsl.Field{
+					{
+						Pos:  lsl.At(3, 1),
+						Name: "color",
+						Type: "vec4",
+					},
+					{
+						Pos:  lsl.At(5, 3),
+						Name: "intensity",
+						Type: "float",
+					},
+				},
 			},
+			nil,
 		),
 		Entry("other block type",
-			`uniforms {
-			}`,
+			openTestFile("parser", "parse-varying-block", "invalid-other-block-type.lsl"),
 			nil,
 			&lsl.ParseError{
-				Pos:     at(1, 1),
-				Message: "expected 'varyings' keyword",
+				Pos:     lsl.At(1, 1),
+				Message: "expected \"varying\" keyword",
 			},
 		),
 	)
 
-	DescribeTable("ParseExpression", func(inSource string, expectedExp lsl.Expression) {
+	DescribeTable("ParseTypeDeclaration", func(inSource string, expectedBlock lsl.Declaration, expectedErr error) {
+		parser := lsl.NewParser(inSource)
+		block, err := parser.ParseTypeDeclaration()
+		if expectedErr == nil {
+			Expect(err).ToNot(HaveOccurred())
+			Expect(block).To(Equal(expectedBlock))
+		} else {
+			Expect(err).To(HaveOccurred())
+			Expect(err).To(Equal(expectedErr))
+		}
+	},
+		Entry("empty struct",
+			openTestFile("parser", "parse-type-declaration", "valid-struct-empty.lsl"),
+			&lsl.StructTypeDeclaration{
+				Pos:    lsl.At(1, 1),
+				Name:   "Example",
+				Fields: nil,
+			},
+			nil,
+		),
+		Entry("simple struct",
+			openTestFile("parser", "parse-type-declaration", "valid-struct-simple.lsl"),
+			&lsl.StructTypeDeclaration{
+				Pos:  lsl.At(1, 1),
+				Name: "Example",
+				Fields: []lsl.Field{
+					{
+						Pos:  lsl.At(2, 3),
+						Name: "color",
+						Type: "vec4",
+					},
+				},
+			},
+			nil,
+		),
+		Entry("bloated struct",
+			openTestFile("parser", "parse-type-declaration", "valid-struct-bloated.lsl"),
+			&lsl.StructTypeDeclaration{
+				Pos:  lsl.At(1, 1),
+				Name: "Example",
+				Fields: []lsl.Field{
+					{
+						Pos:  lsl.At(3, 1),
+						Name: "first",
+						Type: "vec4",
+					},
+					{
+						Pos:  lsl.At(5, 3),
+						Name: "second",
+						Type: "float",
+					},
+				},
+			},
+			nil,
+		),
+	)
+
+	DescribeTable("ParseExpression", func(inSource string, expectedExp lsl.Expression, expectedErr error) {
 		parser := lsl.NewParser(inSource)
 		exp, err := parser.ParseExpression()
-		Expect(err).ToNot(HaveOccurred())
-		Expect(exp).To(Equal(expectedExp))
+		if expectedErr == nil {
+			Expect(err).ToNot(HaveOccurred())
+			Expect(exp).To(Equal(expectedExp))
+		} else {
+			Expect(err).To(HaveOccurred())
+			Expect(err).To(Equal(expectedErr))
+		}
 	},
+		Entry("bool literal (true)",
+			openTestFile("parser", "parse-expression", "valid-bool-literal-true.lsl"),
+			&lsl.BoolLiteral{
+				Pos:   lsl.At(1, 1),
+				Value: true,
+			},
+			nil,
+		),
+		Entry("bool literal (false)",
+			openTestFile("parser", "parse-expression", "valid-bool-literal-false.lsl"),
+			&lsl.BoolLiteral{
+				Pos:   lsl.At(1, 1),
+				Value: false,
+			},
+			nil,
+		),
 		Entry("float literal",
-			`5.3`,
+			openTestFile("parser", "parse-expression", "valid-float-literal.lsl"),
 			&lsl.FloatLiteral{
+				Pos:   lsl.At(1, 1),
 				Value: 5.3,
 			},
+			nil,
 		),
 		Entry("int literal",
-			`3999`,
+			openTestFile("parser", "parse-expression", "valid-int-literal.lsl"),
 			&lsl.IntLiteral{
+				Pos:   lsl.At(1, 1),
 				Value: 3999,
 			},
+			nil,
 		),
 		Entry("unary (+) operator",
-			`+10`,
+			openTestFile("parser", "parse-expression", "valid-unary-plus-operator.lsl"),
 			&lsl.UnaryExpression{
+				Pos:      lsl.At(1, 1),
 				Operator: "+",
 				Operand: &lsl.IntLiteral{
+					Pos:   lsl.At(1, 2),
 					Value: 10,
 				},
 			},
+			nil,
 		),
 		Entry("unary (-) operator",
-			`-10`,
+			openTestFile("parser", "parse-expression", "valid-unary-minus-operator.lsl"),
 			&lsl.UnaryExpression{
+				Pos:      lsl.At(1, 1),
 				Operator: "-",
 				Operand: &lsl.IntLiteral{
+					Pos:   lsl.At(1, 2),
 					Value: 10,
 				},
 			},
+			nil,
 		),
 		Entry("unary (^) operator",
-			`^10`,
+			openTestFile("parser", "parse-expression", "valid-unary-bit-not-operator.lsl"),
 			&lsl.UnaryExpression{
+				Pos:      lsl.At(1, 1),
 				Operator: "^",
 				Operand: &lsl.IntLiteral{
+					Pos:   lsl.At(1, 2),
 					Value: 10,
 				},
 			},
+			nil,
 		),
 		Entry("unary (!) operator",
-			`!10`,
+			openTestFile("parser", "parse-expression", "valid-unary-not-operator.lsl"),
 			&lsl.UnaryExpression{
+				Pos:      lsl.At(1, 1),
 				Operator: "!",
 				Operand: &lsl.IntLiteral{
+					Pos:   lsl.At(1, 2),
 					Value: 10,
 				},
 			},
+			nil,
 		),
 		Entry("identifier",
-			`hello`,
+			openTestFile("parser", "parse-expression", "valid-identifier.lsl"),
 			&lsl.Identifier{
+				Pos:  lsl.At(1, 1),
 				Name: "hello",
 			},
+			nil,
 		),
 		Entry("field identifier",
-			`hello.world`,
+			openTestFile("parser", "parse-expression", "valid-field-identifier.lsl"),
 			&lsl.FieldIdentifier{
-				ObjName:   "hello",
-				FieldName: "world",
+				Owner: &lsl.Identifier{
+					Pos:  lsl.At(1, 1),
+					Name: "hello",
+				},
+				Field: lsl.Identifier{
+					Pos:  lsl.At(1, 7),
+					Name: "world",
+				},
 			},
+			nil,
+		),
+		Entry("nested field identifier",
+			openTestFile("parser", "parse-expression", "valid-field-identifier-nested.lsl"),
+			&lsl.FieldIdentifier{
+				Owner: &lsl.FieldIdentifier{
+					Owner: &lsl.Identifier{
+						Pos:  lsl.At(1, 1),
+						Name: "first",
+					},
+					Field: lsl.Identifier{
+						Pos:  lsl.At(1, 7),
+						Name: "second",
+					},
+				},
+				Field: lsl.Identifier{
+					Pos:  lsl.At(1, 14),
+					Name: "third",
+				},
+			},
+			nil,
 		),
 		Entry("function call",
-			`rand()`,
+			openTestFile("parser", "parse-expression", "valid-function-call.lsl"),
 			&lsl.FunctionCall{
-				Name:      "rand",
+				Owner: &lsl.Identifier{
+					Pos:  lsl.At(1, 1),
+					Name: "rand",
+				},
 				Arguments: nil,
 			},
+			nil,
 		),
-		Entry("function call with args",
-			`test(200, 1.5)`,
+		Entry("nested function call",
+			openTestFile("parser", "parse-expression", "valid-function-call-nested.lsl"),
 			&lsl.FunctionCall{
-				Name: "test",
+				Owner: &lsl.FieldIdentifier{
+					Owner: &lsl.Identifier{
+						Pos:  lsl.At(1, 1),
+						Name: "first",
+					},
+					Field: lsl.Identifier{
+						Pos:  lsl.At(1, 7),
+						Name: "second",
+					},
+				},
+				Arguments: nil,
+			},
+			nil,
+		),
+		Entry("function call (with args)",
+			openTestFile("parser", "parse-expression", "valid-function-call-with-args.lsl"),
+			&lsl.FunctionCall{
+				Owner: &lsl.Identifier{
+					Pos:  lsl.At(1, 1),
+					Name: "test",
+				},
 				Arguments: []lsl.Expression{
-					&lsl.IntLiteral{Value: 200},
-					&lsl.FloatLiteral{Value: 1.5},
+					&lsl.IntLiteral{
+						Pos:   lsl.At(1, 6),
+						Value: 200,
+					},
+					&lsl.FloatLiteral{
+						Pos:   lsl.At(1, 11),
+						Value: 1.5,
+					},
 				},
 			},
+			nil,
 		),
-		Entry("function call with args and new lines",
-			`test(
-				200, 
-				1.5,
-			)`,
+		Entry("function call (bloated)",
+			openTestFile("parser", "parse-expression", "valid-function-call-bloated.lsl"),
 			&lsl.FunctionCall{
-				Name: "test",
+				Owner: &lsl.Identifier{
+					Pos:  lsl.At(1, 1),
+					Name: "test",
+				},
 				Arguments: []lsl.Expression{
-					&lsl.IntLiteral{Value: 200},
-					&lsl.FloatLiteral{Value: 1.5},
+					&lsl.IntLiteral{
+						Pos:   lsl.At(3, 3),
+						Value: 200,
+					},
+					&lsl.FloatLiteral{
+						Pos:   lsl.At(6, 5),
+						Value: 1.5,
+					},
 				},
 			},
-		),
-		Entry("function call with args and comments",
-			`test( // function
-				200, // first arg
-				// some comment here
-				1.5, // second arg
-			) // end`,
-			&lsl.FunctionCall{
-				Name: "test",
-				Arguments: []lsl.Expression{
-					&lsl.IntLiteral{Value: 200},
-					&lsl.FloatLiteral{Value: 1.5},
-				},
-			},
+			nil,
 		),
 		Entry("binary expression (numbers)",
-			`1 + 2.3`,
+			openTestFile("parser", "parse-expression", "valid-binary-expression-numbers.lsl"),
 			&lsl.BinaryExpression{
 				Operator: "+",
-				Left:     &lsl.IntLiteral{Value: 1},
-				Right:    &lsl.FloatLiteral{Value: 2.3},
+				Left: &lsl.IntLiteral{
+					Pos:   lsl.At(1, 1),
+					Value: 1,
+				},
+				Right: &lsl.FloatLiteral{
+					Pos:   lsl.At(1, 5),
+					Value: 2.3,
+				},
 			},
+			nil,
 		),
 		Entry("binary expression (identifiers)",
-			`amount + color.x`,
+			openTestFile("parser", "parse-expression", "valid-binary-expression-identifiers.lsl"),
 			&lsl.BinaryExpression{
 				Operator: "+",
-				Left:     &lsl.Identifier{Name: "amount"},
-				Right:    &lsl.FieldIdentifier{ObjName: "color", FieldName: "x"},
+				Left: &lsl.Identifier{
+					Pos:  lsl.At(1, 1),
+					Name: "amount",
+				},
+				Right: &lsl.FieldIdentifier{
+					Owner: &lsl.Identifier{
+						Pos:  lsl.At(1, 10),
+						Name: "color",
+					},
+					Field: lsl.Identifier{
+						Pos:  lsl.At(1, 16),
+						Name: "x",
+					},
+				},
 			},
+			nil,
 		),
 		Entry("binary expression (functions)",
-			`first() * second()`,
+			openTestFile("parser", "parse-expression", "valid-binary-expression-functions.lsl"),
 			&lsl.BinaryExpression{
 				Operator: "*",
-				Left:     &lsl.FunctionCall{Name: "first"},
-				Right:    &lsl.FunctionCall{Name: "second"},
+				Left: &lsl.FunctionCall{
+					Owner: &lsl.Identifier{
+						Pos:  lsl.At(1, 1),
+						Name: "first",
+					},
+				},
+				Right: &lsl.FunctionCall{
+					Owner: &lsl.Identifier{
+						Pos:  lsl.At(1, 11),
+						Name: "second",
+					},
+				},
 			},
+			nil,
 		),
 		Entry("complex expression",
-			`5.5 + hello * (13 / 2 - 77)`,
+			openTestFile("parser", "parse-expression", "valid-complex-expression.lsl"),
 			&lsl.BinaryExpression{
 				Operator: "+",
-				Left:     &lsl.FloatLiteral{Value: 5.5},
+				Left: &lsl.FloatLiteral{
+					Pos:   lsl.At(1, 1),
+					Value: 5.5,
+				},
 				Right: &lsl.BinaryExpression{
 					Operator: "*",
-					Left:     &lsl.Identifier{Name: "hello"},
+					Left: &lsl.Identifier{
+						Pos:  lsl.At(1, 7),
+						Name: "hello",
+					},
 					Right: &lsl.BinaryExpression{
 						Operator: "-",
 						Left: &lsl.BinaryExpression{
 							Operator: "/",
-							Left:     &lsl.IntLiteral{Value: 13},
-							Right:    &lsl.IntLiteral{Value: 2},
+							Left: &lsl.IntLiteral{
+								Pos:   lsl.At(1, 16),
+								Value: 13,
+							},
+							Right: &lsl.IntLiteral{
+								Pos:   lsl.At(1, 21),
+								Value: 2,
+							},
 						},
-						Right: &lsl.IntLiteral{Value: 77},
+						Right: &lsl.IntLiteral{
+							Pos:   lsl.At(1, 25),
+							Value: 77,
+						},
 					},
 				},
 			},
+			nil,
 		),
-
-		// TODO: Test logical expressions
+		Entry("logical expression",
+			openTestFile("parser", "parse-expression", "valid-logical-expression.lsl"),
+			&lsl.BinaryExpression{
+				Left: &lsl.BinaryExpression{
+					Left: &lsl.BinaryExpression{
+						Left: &lsl.BinaryExpression{
+							Left: &lsl.FloatLiteral{
+								Pos:   lsl.At(1, 4),
+								Value: 5.0,
+							},
+							Operator: ">",
+							Right: &lsl.IntLiteral{
+								Pos:   lsl.At(1, 10),
+								Value: 10,
+							},
+						},
+						Operator: "||",
+						Right: &lsl.BinaryExpression{
+							Left: &lsl.Identifier{
+								Pos:  lsl.At(1, 18),
+								Name: "b",
+							},
+							Operator: ">=",
+							Right: &lsl.Identifier{
+								Pos:  lsl.At(1, 23),
+								Name: "a",
+							},
+						},
+					},
+					Operator: "&&",
+					Right: &lsl.UnaryExpression{
+						Pos:      lsl.At(1, 30),
+						Operator: "!",
+						Operand: &lsl.Identifier{
+							Pos:  lsl.At(1, 31),
+							Name: "c",
+						},
+					},
+				},
+				Operator: "==",
+				Right: &lsl.Identifier{
+					Pos:  lsl.At(1, 37),
+					Name: "d",
+				},
+			},
+			nil,
+		),
+		Entry("operator precedence",
+			openTestFile("parser", "parse-expression", "valid-operator-precedence.lsl"),
+			&lsl.BinaryExpression{
+				Left: &lsl.BinaryExpression{
+					Left: &lsl.BinaryExpression{
+						Left: &lsl.BinaryExpression{
+							Left: &lsl.BinaryExpression{
+								Left: &lsl.IntLiteral{
+									Pos:   lsl.At(1, 1),
+									Value: 10,
+								},
+								Operator: "*",
+								Right: &lsl.BinaryExpression{
+									Left: &lsl.BinaryExpression{
+										Left: &lsl.IntLiteral{
+											Pos:   lsl.At(1, 7),
+											Value: 5,
+										},
+										Operator: "+",
+										Right: &lsl.IntLiteral{
+											Pos:   lsl.At(1, 11),
+											Value: 3,
+										},
+									},
+									Operator: "-",
+									Right: &lsl.IntLiteral{
+										Pos:   lsl.At(1, 15),
+										Value: 2,
+									},
+								},
+							},
+							Operator: "|",
+							Right: &lsl.BinaryExpression{
+								Left: &lsl.IntLiteral{
+									Pos:   lsl.At(1, 20),
+									Value: 7,
+								},
+								Operator: "/",
+								Right: &lsl.IntLiteral{
+									Pos:   lsl.At(1, 24),
+									Value: 3,
+								},
+							},
+						},
+						Operator: ">=",
+						Right: &lsl.IntLiteral{
+							Pos:   lsl.At(1, 29),
+							Value: 0,
+						},
+					},
+					Operator: "&&",
+					Right: &lsl.BoolLiteral{
+						Pos:   lsl.At(1, 34),
+						Value: true,
+					},
+				},
+				Operator: "||",
+				Right: &lsl.BoolLiteral{
+					Pos:   lsl.At(1, 42),
+					Value: false,
+				},
+			},
+			nil,
+		),
+		Entry("bloated",
+			openTestFile("parser", "parse-expression", "valid-bloated.lsl"),
+			&lsl.BinaryExpression{
+				Left: &lsl.BinaryExpression{
+					Left: &lsl.UnaryExpression{
+						Pos:      lsl.At(1, 5),
+						Operator: "^",
+						Operand: &lsl.Identifier{
+							Pos:  lsl.At(1, 6),
+							Name: "a",
+						},
+					},
+					Operator: ">=",
+					Right: &lsl.IntLiteral{
+						Pos:   lsl.At(1, 13),
+						Value: 10,
+					},
+				},
+				Operator: "&&",
+				Right: &lsl.BoolLiteral{
+					Pos:   lsl.At(2, 4),
+					Value: true,
+				},
+			},
+			nil,
+		),
+		Entry("starts with binary operator",
+			openTestFile("parser", "parse-expression", "invalid-starts-with-binary-operator.lsl"),
+			nil,
+			&lsl.ParseError{
+				Pos:     lsl.At(1, 1),
+				Message: "expected an expression value",
+			},
+		),
+		Entry("incomplete",
+			openTestFile("parser", "parse-expression", "invalid-incomplete.lsl"),
+			nil,
+			&lsl.ParseError{
+				Pos:     lsl.At(1, 4),
+				Message: "expected an expression value",
+			},
+		),
+		Entry("invalid value",
+			openTestFile("parser", "parse-expression", "invalid-operator-value.lsl"),
+			nil,
+			&lsl.ParseError{
+				Pos:     lsl.At(1, 5),
+				Message: "expected an expression value",
+			},
+		),
 	)
 
-	DescribeTable("ParseFunction", func(inSource string, expectedDecl *lsl.FunctionDeclaration) {
+	DescribeTable("ParseArgumentBlock", func(inSource string, expectedArgs []lsl.Expression, expectedErr error) {
+		parser := lsl.NewParser(inSource)
+		fields, err := parser.ParseArgumentBlock()
+		if expectedErr == nil {
+			Expect(err).ToNot(HaveOccurred())
+			Expect(fields).To(Equal(expectedArgs))
+		} else {
+			Expect(err).To(HaveOccurred())
+			Expect(err).To(Equal(expectedErr))
+		}
+	},
+		Entry("empty",
+			openTestFile("parser", "parse-argument-block", "valid-empty.lsl"),
+			nil,
+			nil,
+		),
+		Entry("single argument",
+			openTestFile("parser", "parse-argument-block", "valid-single-argument.lsl"),
+			[]lsl.Expression{
+				&lsl.IntLiteral{
+					Pos:   lsl.At(1, 2),
+					Value: 10,
+				},
+			},
+			nil,
+		),
+		Entry("multiple arguments",
+			openTestFile("parser", "parse-argument-block", "valid-multiple-arguments.lsl"),
+			[]lsl.Expression{
+				&lsl.IntLiteral{
+					Pos:   lsl.At(1, 2),
+					Value: 10,
+				},
+				&lsl.FloatLiteral{
+					Pos:   lsl.At(1, 5),
+					Value: 5.5,
+				},
+			},
+			nil,
+		),
+		Entry("bloated",
+			openTestFile("parser", "parse-argument-block", "valid-bloated.lsl"),
+			[]lsl.Expression{
+				&lsl.FunctionCall{
+					Owner: &lsl.Identifier{
+						Pos:  lsl.At(2, 3),
+						Name: "vec3",
+					},
+					Arguments: []lsl.Expression{
+						&lsl.FloatLiteral{
+							Pos:   lsl.At(2, 8),
+							Value: 0.0,
+						},
+					},
+				},
+				&lsl.BinaryExpression{
+					Operator: lsl.BinaryOperatorAdd,
+					Left: &lsl.FloatLiteral{
+						Pos:   lsl.At(6, 3),
+						Value: 5.5,
+					},
+					Right: &lsl.FloatLiteral{
+						Pos:   lsl.At(7, 5),
+						Value: 3.3,
+					},
+				},
+			},
+			nil,
+		),
+		Entry("missing opening bracket",
+			openTestFile("parser", "parse-argument-block", "invalid-missing-opening.lsl"),
+			nil,
+			&lsl.ParseError{
+				Pos:     lsl.At(1, 1),
+				Message: "expected an opening bracket",
+			},
+		),
+		Entry("missing closing bracket",
+			openTestFile("parser", "parse-argument-block", "invalid-missing-closing.lsl"),
+			nil,
+			&lsl.ParseError{
+				Pos:     lsl.At(1, 5),
+				Message: "expected a comma or a closing bracket",
+			},
+		),
+	)
+
+	DescribeTable("ParseStatement", func(inSource string, expectedStmt lsl.Statement, expectedErr error) {
+		parser := lsl.NewParser(inSource)
+		stmt, err := parser.ParseStatement()
+		if expectedErr == nil {
+			Expect(err).ToNot(HaveOccurred())
+			Expect(stmt).To(Equal(expectedStmt))
+		} else {
+			Expect(err).To(HaveOccurred())
+			Expect(err).To(Equal(expectedErr))
+		}
+	},
+		Entry("discard",
+			openTestFile("parser", "parse-statement", "valid-discard.lsl"),
+			&lsl.Discard{
+				Pos: lsl.At(1, 1),
+			},
+			nil,
+		),
+		Entry("var declaration (simple)",
+			openTestFile("parser", "parse-statement", "valid-var-simple.lsl"),
+			&lsl.VariableDeclaration{
+				Pos:        lsl.At(1, 1),
+				Name:       "color",
+				Type:       "vec4",
+				Assignment: nil,
+			},
+			nil,
+		),
+		Entry("var declaration (expression)",
+			openTestFile("parser", "parse-statement", "valid-var-expression.lsl"),
+			&lsl.VariableDeclaration{
+				Pos:  lsl.At(1, 1),
+				Name: "intensity",
+				Type: "float",
+				Assignment: &lsl.FloatLiteral{
+					Pos:   lsl.At(1, 23),
+					Value: 1.0,
+				},
+			},
+			nil,
+		),
+		Entry("var declaration (expression no type)",
+			openTestFile("parser", "parse-statement", "valid-var-expression-no-type.lsl"),
+			&lsl.VariableDeclaration{
+				Pos:  lsl.At(1, 1),
+				Name: "intensity",
+				Type: "", // auto-assignment
+				Assignment: &lsl.FloatLiteral{
+					Pos:   lsl.At(1, 17),
+					Value: 1.0,
+				},
+			},
+			nil,
+		),
+		Entry("var declaration (auto)",
+			openTestFile("parser", "parse-statement", "valid-var-auto.lsl"),
+			&lsl.VariableDeclaration{
+				Pos:  lsl.At(1, 1),
+				Name: "intensity",
+				Type: "", // auto-assignment
+				Assignment: &lsl.FloatLiteral{
+					Pos:   lsl.At(1, 14),
+					Value: 1.0,
+				},
+			},
+			nil,
+		),
+		Entry("var declaration (no type or expression)",
+			openTestFile("parser", "parse-statement", "invalid-var-no-type-or-expression.lsl"),
+			nil,
+			&lsl.ParseError{
+				Pos:     lsl.At(1, 11),
+				Message: "expected a type identifier or an assignment operator",
+			},
+		),
+		Entry("if condition (simple)",
+			openTestFile("parser", "parse-statement", "valid-condition-simple.lsl"),
+			&lsl.Conditional{
+				Pos: lsl.At(1, 1),
+				Condition: &lsl.BoolLiteral{
+					Pos:   lsl.At(1, 5),
+					Value: true,
+				},
+				Then: lsl.StatementList{
+					&lsl.Discard{
+						Pos: lsl.At(2, 3),
+					},
+				},
+			},
+			nil,
+		),
+		Entry("if condition (bloated)",
+			openTestFile("parser", "parse-statement", "valid-condition-bloated.lsl"),
+			&lsl.Conditional{
+				Pos: lsl.At(1, 1),
+				Condition: &lsl.BinaryExpression{
+					Operator: lsl.BinaryOperatorGreater,
+					Left: &lsl.Identifier{
+						Pos:  lsl.At(1, 5),
+						Name: "a",
+					},
+					Right: &lsl.IntLiteral{
+						Pos:   lsl.At(1, 9),
+						Value: 5,
+					},
+				},
+				Then: lsl.StatementList{
+					&lsl.FunctionCall{
+						Owner: &lsl.Identifier{
+							Pos:  lsl.At(4, 3),
+							Name: "doFirst",
+						},
+					},
+				},
+				Else: &lsl.Conditional{
+					Pos: lsl.At(6, 11),
+					Condition: &lsl.BinaryExpression{
+						Operator: lsl.BinaryOperatorGreater,
+						Left: &lsl.Identifier{
+							Pos:  lsl.At(6, 16),
+							Name: "b",
+						},
+						Right: &lsl.IntLiteral{
+							Pos:   lsl.At(6, 20),
+							Value: 6,
+						},
+					},
+					Then: lsl.StatementList{
+						&lsl.FunctionCall{
+							Owner: &lsl.Identifier{
+								Pos:  lsl.At(7, 3),
+								Name: "doSecond",
+							},
+						},
+					},
+					Else: &lsl.Conditional{
+						Pos: lsl.At(8, 10),
+						Condition: &lsl.BinaryExpression{
+							Operator: lsl.BinaryOperatorGreater,
+							Left: &lsl.Identifier{
+								Pos:  lsl.At(8, 14),
+								Name: "c",
+							},
+							Right: &lsl.IntLiteral{
+								Pos:   lsl.At(8, 18),
+								Value: 7,
+							},
+						},
+						Then: lsl.StatementList{
+							&lsl.FunctionCall{
+								Owner: &lsl.Identifier{
+									Pos:  lsl.At(9, 5),
+									Name: "doThird",
+								},
+							},
+						},
+						Else: lsl.StatementList{
+							&lsl.FunctionCall{
+								Owner: &lsl.Identifier{
+									Pos:  lsl.At(11, 3),
+									Name: "doFourth",
+								},
+							},
+						},
+					},
+				},
+			},
+			nil,
+		),
+		Entry("assignment",
+			openTestFile("parser", "parse-statement", "valid-assignment.lsl"),
+			&lsl.Assignment{
+				Operator: lsl.AssignmentOperatorAdd,
+				Target: &lsl.Identifier{
+					Pos:  lsl.At(1, 1),
+					Name: "intensity",
+				},
+				Expression: &lsl.FloatLiteral{
+					Pos:   lsl.At(1, 14),
+					Value: 1.0,
+				},
+			},
+			nil,
+		),
+		Entry("assignment (nested)",
+			openTestFile("parser", "parse-statement", "valid-assignment-nested.lsl"),
+			&lsl.Assignment{
+				Operator: lsl.AssignmentOperatorAdd,
+				Target: &lsl.FieldIdentifier{
+					Owner: &lsl.FieldIdentifier{
+						Owner: &lsl.Identifier{
+							Pos:  lsl.At(1, 1),
+							Name: "vertex",
+						},
+						Field: lsl.Identifier{
+							Pos:  lsl.At(1, 8),
+							Name: "color",
+						},
+					},
+					Field: lsl.Identifier{
+						Pos:  lsl.At(1, 14),
+						Name: "r",
+					},
+				},
+				Expression: &lsl.FloatLiteral{
+					Pos:   lsl.At(1, 19),
+					Value: 1.5,
+				},
+			},
+			nil,
+		),
+		Entry("function call",
+			openTestFile("parser", "parse-statement", "valid-function-call-nested.lsl"),
+			&lsl.FunctionCall{
+				Owner: &lsl.FieldIdentifier{
+					Owner: &lsl.Identifier{
+						Pos:  lsl.At(1, 1),
+						Name: "utils",
+					},
+					Field: lsl.Identifier{
+						Pos:  lsl.At(1, 7),
+						Name: "example",
+					},
+				},
+				Arguments: []lsl.Expression{
+					&lsl.FloatLiteral{
+						Pos:   lsl.At(1, 15),
+						Value: 1.0,
+					},
+					&lsl.FloatLiteral{
+						Pos:   lsl.At(1, 20),
+						Value: 5.0,
+					},
+				},
+			},
+			nil,
+		),
+		Entry("return (empty)",
+			openTestFile("parser", "parse-statement", "valid-return-empty.lsl"),
+			&lsl.Return{
+				Pos:        lsl.At(1, 1),
+				Expression: nil,
+			},
+			nil,
+		),
+		Entry("return (expression)",
+			openTestFile("parser", "parse-statement", "valid-return-expression.lsl"),
+			&lsl.Return{
+				Pos: lsl.At(1, 1),
+				Expression: &lsl.BinaryExpression{
+					Operator: lsl.BinaryOperatorAdd,
+					Left: &lsl.IntLiteral{
+						Pos:   lsl.At(1, 8),
+						Value: 5,
+					},
+					Right: &lsl.BinaryExpression{
+						Operator: lsl.BinaryOperatorMul,
+						Left: &lsl.IntLiteral{
+							Pos:   lsl.At(1, 13),
+							Value: 3,
+						},
+						Right: &lsl.IntLiteral{
+							Pos:   lsl.At(1, 17),
+							Value: 2,
+						},
+					},
+				},
+			},
+			nil,
+		),
+	)
+
+	DescribeTable("ParseFunction", func(inSource string, expectedDecl *lsl.FunctionDeclaration, expectedErr error) {
 		parser := lsl.NewParser(inSource)
 		decl, err := parser.ParseFunction()
-		Expect(err).ToNot(HaveOccurred())
-		Expect(decl).To(Equal(expectedDecl))
+		if expectedErr == nil {
+			Expect(err).ToNot(HaveOccurred())
+			Expect(decl).To(Equal(expectedDecl))
+		} else {
+			Expect(err).To(HaveOccurred())
+			Expect(err).To(Equal(expectedErr))
+		}
 	},
-		Entry("simple",
-			`func test() {
-			}`,
+		Entry("empty",
+			openTestFile("parser", "parse-function", "valid-empty.lsl"),
 			&lsl.FunctionDeclaration{
-				Name:    "test",
-				Inputs:  nil,
-				Outputs: nil,
-				Body:    nil,
+				Pos:        lsl.At(1, 1),
+				Name:       "test",
+				Inputs:     nil,
+				OutputType: "",
+				Body:       nil,
 			},
+			nil,
 		),
 		Entry("with inputs",
-			`func test(color vec3, intensity float) {
-			}`,
+			openTestFile("parser", "parse-function", "valid-with-inputs.lsl"),
 			&lsl.FunctionDeclaration{
+				Pos:  lsl.At(1, 1),
 				Name: "test",
 				Inputs: []lsl.Field{
-					{Name: "color", Type: "vec3"},
-					{Name: "intensity", Type: "float"},
+					{
+						Pos:  lsl.At(1, 11),
+						Name: "color",
+						Type: "vec3",
+					},
+					{
+						Pos:  lsl.At(1, 23),
+						Name: "intensity",
+						Type: "float",
+					},
 				},
-				Outputs: nil,
-				Body:    nil,
+				OutputType: "",
+				Body:       nil,
 			},
+			nil,
 		),
 		Entry("with inputs on new lines",
-			`func test(
-				// color param to follow
-				color vec3,  // color param
-				// intensity param to follow
-				intensity float, // intensity param
-				// all done
-			) {
-			}`,
+			openTestFile("parser", "parse-function", "valid-with-inputs-on-new-lines.lsl"),
 			&lsl.FunctionDeclaration{
+				Pos:  lsl.At(1, 1),
 				Name: "test",
 				Inputs: []lsl.Field{
-					{Name: "color", Type: "vec3"},
-					{Name: "intensity", Type: "float"},
+					{
+						Pos:  lsl.At(3, 3),
+						Name: "color",
+						Type: "vec3",
+					},
+					{
+						Pos:  lsl.At(5, 3),
+						Name: "intensity",
+						Type: "float",
+					},
 				},
-				Outputs: nil,
-				Body:    nil,
+				OutputType: "",
+				Body:       nil,
 			},
+			nil,
 		),
 		Entry("with single output",
-			`func test() (vec3) {
-			}`,
+			openTestFile("parser", "parse-function", "valid-with-output.lsl"),
 			&lsl.FunctionDeclaration{
-				Name:   "test",
-				Inputs: nil,
-				Outputs: []lsl.Field{
-					{Type: "vec3"},
-				},
-				Body: nil,
+				Pos:        lsl.At(1, 1),
+				Name:       "test",
+				Inputs:     nil,
+				OutputType: "vec3",
+				Body:       nil,
 			},
+			nil,
 		),
-		Entry("with multiple outputs",
-			`func test() (vec3, float) {
-			}`,
+		Entry("with inputs and output",
+			openTestFile("parser", "parse-function", "valid-with-inputs-and-output.lsl"),
 			&lsl.FunctionDeclaration{
-				Name:   "test",
-				Inputs: nil,
-				Outputs: []lsl.Field{
-					{Type: "vec3"},
-					{Type: "float"},
-				},
-				Body: nil,
-			},
-		),
-		Entry("with inputs and outputs",
-			`func test(color vec3, intensity float) (vec3, float) {
-			}`,
-			&lsl.FunctionDeclaration{
+				Pos:  lsl.At(1, 1),
 				Name: "test",
 				Inputs: []lsl.Field{
-					{Name: "color", Type: "vec3"},
-					{Name: "intensity", Type: "float"},
+					{
+						Pos:  lsl.At(1, 11),
+						Name: "color",
+						Type: "vec3",
+					},
+					{
+						Pos:  lsl.At(1, 23),
+						Name: "intensity",
+						Type: "float",
+					},
 				},
-				Outputs: []lsl.Field{
-					{Type: "vec3"},
-					{Type: "float"},
-				},
-				Body: nil,
+				OutputType: "vec3",
+				Body:       nil,
 			},
+			nil,
 		),
 		Entry("with comment in body",
-			`func test() {
-				// some comment
-			}`,
+			openTestFile("parser", "parse-function", "valid-with-comment-in-body.lsl"),
 			&lsl.FunctionDeclaration{
-				Name:    "test",
-				Inputs:  nil,
-				Outputs: nil,
-				Body:    nil,
+				Pos:        lsl.At(1, 1),
+				Name:       "test",
+				Inputs:     nil,
+				OutputType: "",
+				Body:       nil,
 			},
+			nil,
 		),
-		Entry("with function call statements",
-			`func test() {
-				doFirst()
-				doSecond()
-			}`,
+		Entry("with statements",
+			openTestFile("parser", "parse-function", "valid-with-statements.lsl"),
 			&lsl.FunctionDeclaration{
-				Name:    "test",
-				Inputs:  nil,
-				Outputs: nil,
-				Body: []lsl.Statement{
-					&lsl.FunctionCall{Name: "doFirst"},
-					&lsl.FunctionCall{Name: "doSecond"},
-				},
-			},
-		),
-		Entry("with variable declarations",
-			`func test() {
-				var x float = 5.3
-				var y int = 3
-				var z vec3 = vec3(1.0, 0.0, -0.5)
-			}`,
-			&lsl.FunctionDeclaration{
-				Name:    "test",
-				Inputs:  nil,
-				Outputs: nil,
-				Body: []lsl.Statement{
+				Pos:        lsl.At(1, 1),
+				Name:       "test",
+				Inputs:     nil,
+				OutputType: "",
+				Body: lsl.StatementList{
 					&lsl.VariableDeclaration{
-						Name:       "x",
-						Type:       "float",
-						Assignment: &lsl.FloatLiteral{Value: 5.3},
-					},
-					&lsl.VariableDeclaration{
-						Name:       "y",
-						Type:       "int",
-						Assignment: &lsl.IntLiteral{Value: 3},
-					},
-					&lsl.VariableDeclaration{
-						Name: "z",
-						Type: "vec3",
-						Assignment: &lsl.FunctionCall{
-							Name: "vec3",
-							Arguments: []lsl.Expression{
-								&lsl.FloatLiteral{Value: 1.0},
-								&lsl.FloatLiteral{Value: 0.0},
-								&lsl.UnaryExpression{
-									Operator: "-",
-									Operand:  &lsl.FloatLiteral{Value: 0.5},
+						Pos:  lsl.At(3, 3),
+						Name: "alpha",
+						Type: "", // auto-assignment
+						Assignment: &lsl.FieldIdentifier{
+							Owner: &lsl.FunctionCall{
+								Owner: &lsl.Identifier{
+									Pos:  lsl.At(3, 12),
+									Name: "texture",
+								},
+								Arguments: []lsl.Expression{
+									&lsl.Identifier{
+										Pos:  lsl.At(3, 20),
+										Name: "uv",
+									},
 								},
 							},
-						},
-					},
-				},
-			},
-		),
-
-		Entry("with variable assignments",
-			`func test() {
-				color.x += 5.3
-				color.y *= 3
-				z = vec3(1.0, 0.0, -0.5)
-			}`,
-			&lsl.FunctionDeclaration{
-				Name:    "test",
-				Inputs:  nil,
-				Outputs: nil,
-				Body: []lsl.Statement{
-					&lsl.Assignment{
-						Target:     &lsl.FieldIdentifier{ObjName: "color", FieldName: "x"},
-						Operator:   "+=",
-						Expression: &lsl.FloatLiteral{Value: 5.3},
-					},
-					&lsl.Assignment{
-						Target:     &lsl.FieldIdentifier{ObjName: "color", FieldName: "y"},
-						Operator:   "*=",
-						Expression: &lsl.IntLiteral{Value: 3},
-					},
-					&lsl.Assignment{
-						Target:   &lsl.Identifier{Name: "z"},
-						Operator: "=",
-						Expression: &lsl.FunctionCall{
-							Name: "vec3",
-							Arguments: []lsl.Expression{
-								&lsl.FloatLiteral{Value: 1.0},
-								&lsl.FloatLiteral{Value: 0.0},
-								&lsl.UnaryExpression{
-									Operator: "-",
-									Operand:  &lsl.FloatLiteral{Value: 0.5},
-								},
+							Field: lsl.Identifier{
+								Pos:  lsl.At(3, 24),
+								Name: "a",
 							},
-						},
-					},
-				},
-			},
-		),
-
-		Entry("with conditionals",
-			`func test() {
-				if 10 > 5 {
-					doFirst()
-				}
-				if 10 > 20 {
-					doFirst()
-				} else {
-					doSecond()
-				}
-				if 10 > 20 {
-					doFirst()
-				} else if 10 > 5 {
-					doSecond()
-				} else {
-					doThird()
-				}
-			}`,
-			&lsl.FunctionDeclaration{
-				Name:    "test",
-				Inputs:  nil,
-				Outputs: nil,
-				Body: []lsl.Statement{
-					&lsl.Conditional{
-						Condition: &lsl.BinaryExpression{
-							Operator: ">",
-							Left:     &lsl.IntLiteral{Value: 10},
-							Right:    &lsl.IntLiteral{Value: 5},
-						},
-						Then: []lsl.Statement{
-							&lsl.FunctionCall{Name: "doFirst"},
 						},
 					},
 					&lsl.Conditional{
+						Pos: lsl.At(6, 3),
 						Condition: &lsl.BinaryExpression{
-							Operator: ">",
-							Left:     &lsl.IntLiteral{Value: 10},
-							Right:    &lsl.IntLiteral{Value: 20},
+							Operator: lsl.BinaryOperatorLess,
+							Left: &lsl.Identifier{
+								Pos:  lsl.At(6, 7),
+								Name: "alpha",
+							},
+							Right: &lsl.FloatLiteral{
+								Pos:   lsl.At(6, 15),
+								Value: 0.5,
+							},
 						},
-						Then: []lsl.Statement{
-							&lsl.FunctionCall{Name: "doFirst"},
-						},
-						Else: []lsl.Statement{
-							&lsl.FunctionCall{Name: "doSecond"},
+						Then: lsl.StatementList{
+							&lsl.Discard{
+								Pos: lsl.At(8, 7),
+							},
 						},
 					},
-					&lsl.Conditional{
-						Condition: &lsl.BinaryExpression{
-							Operator: ">",
-							Left:     &lsl.IntLiteral{Value: 10},
-							Right:    &lsl.IntLiteral{Value: 20},
-						},
-						Then: []lsl.Statement{
-							&lsl.FunctionCall{Name: "doFirst"},
-						},
-						ElseIf: &lsl.Conditional{
-							Condition: &lsl.BinaryExpression{
-								Operator: ">",
-								Left:     &lsl.IntLiteral{Value: 10},
-								Right:    &lsl.IntLiteral{Value: 5},
-							},
-							Then: []lsl.Statement{
-								&lsl.FunctionCall{Name: "doSecond"},
-							},
-							Else: []lsl.Statement{
-								&lsl.FunctionCall{Name: "doThird"},
-							},
-						},
+					&lsl.Return{
+						Pos:        lsl.At(11, 3),
+						Expression: nil,
 					},
 				},
 			},
+			nil,
 		),
+	)
 
-		Entry("with discard",
-			`func test() {
-				discard
-				discard // with comment
-			}`,
-			&lsl.FunctionDeclaration{
-				Name:    "test",
-				Inputs:  nil,
-				Outputs: nil,
-				Body: []lsl.Statement{
-					&lsl.Discard{},
-					&lsl.Discard{},
+	DescribeTable("ParseShader", func(inSource string, expectedShader *lsl.Shader, expectedErr error) {
+		parser := lsl.NewParser(inSource)
+		shader, err := parser.ParseShader()
+		if expectedErr == nil {
+			Expect(err).ToNot(HaveOccurred())
+			Expect(shader).To(Equal(expectedShader))
+		} else {
+			Expect(err).To(HaveOccurred())
+			Expect(err).To(Equal(expectedErr))
+		}
+	},
+		Entry("empty",
+			openTestFile("parser", "parse-shader", "valid-empty.lsl"),
+			&lsl.Shader{},
+			nil,
+		),
+		Entry("root comments",
+			openTestFile("parser", "parse-shader", "valid-root-comments.lsl"),
+			&lsl.Shader{},
+			nil,
+		),
+		Entry("texture blocks",
+			openTestFile("parser", "parse-shader", "valid-texture-blocks.lsl"),
+			&lsl.Shader{
+				Declarations: []lsl.Declaration{
+					&lsl.TextureBlockDeclaration{
+						Pos: lsl.At(1, 1),
+						Fields: []lsl.Field{
+							{
+								Pos:  lsl.At(2, 3),
+								Name: "color",
+								Type: lsl.TypeNameSampler2D,
+							},
+							{
+								Pos:  lsl.At(4, 3),
+								Name: "intensity",
+								Type: lsl.TypeNameSamplerCube,
+							},
+						},
+					},
+					&lsl.TextureBlockDeclaration{
+						Pos: lsl.At(9, 1),
+						Fields: []lsl.Field{
+							{
+								Pos:  lsl.At(9, 9),
+								Name: "value",
+								Type: lsl.TypeNameSampler2D,
+							},
+						},
+					},
 				},
 			},
+			nil,
+		),
+		Entry("uniform blocks",
+			openTestFile("parser", "parse-shader", "valid-uniform-blocks.lsl"),
+			&lsl.Shader{
+				Declarations: []lsl.Declaration{
+					&lsl.UniformBlockDeclaration{
+						Pos: lsl.At(1, 1),
+						Fields: []lsl.Field{
+							{
+								Pos:  lsl.At(2, 3),
+								Name: "color",
+								Type: lsl.TypeNameVec3,
+							},
+							{
+								Pos:  lsl.At(4, 3),
+								Name: "intensity",
+								Type: lsl.TypeNameFloat,
+							},
+						},
+					},
+					&lsl.UniformBlockDeclaration{
+						Pos: lsl.At(9, 1),
+						Fields: []lsl.Field{
+							{
+								Pos:  lsl.At(9, 9),
+								Name: "value",
+								Type: lsl.TypeNameVec4,
+							},
+						},
+					},
+				},
+			},
+			nil,
+		),
+		Entry("varying blocks",
+			openTestFile("parser", "parse-shader", "valid-varying-blocks.lsl"),
+			&lsl.Shader{
+				Declarations: []lsl.Declaration{
+					&lsl.VaryingBlockDeclaration{
+						Pos: lsl.At(1, 1),
+						Fields: []lsl.Field{
+							{
+								Pos:  lsl.At(2, 3),
+								Name: "color",
+								Type: lsl.TypeNameVec3,
+							},
+							{
+								Pos:  lsl.At(4, 3),
+								Name: "intensity",
+								Type: lsl.TypeNameFloat,
+							},
+						},
+					},
+					&lsl.VaryingBlockDeclaration{
+						Pos: lsl.At(7, 1),
+						Fields: []lsl.Field{
+							{
+								Pos:  lsl.At(7, 9),
+								Name: "value",
+								Type: lsl.TypeNameVec4,
+							},
+						},
+					},
+				},
+			},
+			nil,
+		),
+		Entry("function declarations",
+			openTestFile("parser", "parse-shader", "valid-function-declarations.lsl"),
+			&lsl.Shader{
+				Declarations: []lsl.Declaration{
+					&lsl.FunctionDeclaration{
+						Pos:  lsl.At(1, 1),
+						Name: "vertex",
+						Inputs: []lsl.Field{
+							{
+								Pos:  lsl.At(1, 13),
+								Name: "a",
+								Type: lsl.TypeNameVec3,
+							},
+							{
+								Pos:  lsl.At(1, 21),
+								Name: "b",
+								Type: lsl.TypeNameVec4,
+							},
+						},
+						OutputType: lsl.TypeNameFloat,
+					},
+					&lsl.FunctionDeclaration{
+						Pos:        lsl.At(4, 1),
+						Name:       "#fragment",
+						Inputs:     nil,
+						OutputType: "",
+					},
+				},
+			},
+			nil,
+		),
+		Entry("struct declarations",
+			openTestFile("parser", "parse-shader", "valid-struct-declarations.lsl"),
+			&lsl.Shader{
+				Declarations: []lsl.Declaration{
+					&lsl.StructTypeDeclaration{
+						Pos:  lsl.At(2, 1),
+						Name: "Vertex",
+						Fields: []lsl.Field{
+							{
+								Pos:  lsl.At(3, 3),
+								Name: "position",
+								Type: lsl.TypeNameVec3,
+							},
+							{
+								Pos:  lsl.At(4, 3),
+								Name: "color",
+								Type: lsl.TypeNameVec3,
+							},
+						},
+					},
+					&lsl.StructTypeDeclaration{
+						Pos:  lsl.At(7, 1),
+						Name: "Lighting",
+						Fields: []lsl.Field{
+							{
+								Pos:  lsl.At(8, 3),
+								Name: "intensity",
+								Type: lsl.TypeNameFloat,
+							},
+						},
+					},
+				},
+			},
+			nil,
 		),
 	)
 })

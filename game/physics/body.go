@@ -1,10 +1,10 @@
 package physics
 
 import (
+	"github.com/mokiat/gog/opt"
 	"github.com/mokiat/gomath/dprec"
-	"github.com/mokiat/lacking/game/physics/collision"
 	"github.com/mokiat/lacking/game/physics/solver"
-	"github.com/mokiat/lacking/util/spatial"
+	"github.com/mokiat/lacking/util/shape3d"
 )
 
 var invalidBodyState = &bodyState{}
@@ -17,9 +17,9 @@ type BodyDefinitionInfo struct {
 	DragFactor             float64
 	AngularDragFactor      float64
 	CollisionGroup         int
-	CollisionSpheres       []collision.Sphere
-	CollisionBoxes         []collision.Box
-	CollisionMeshes        []collision.Mesh
+	CollisionSpheres       []shape3d.Sphere
+	CollisionBoxes         []shape3d.Box
+	CollisionMeshes        []shape3d.Mesh
 	AerodynamicShapes      []AerodynamicShape
 }
 
@@ -31,12 +31,22 @@ type BodyDefinition struct {
 	dragFactor             float64
 	angularDragFactor      float64
 	collisionGroup         int
-	collisionSet           collision.Set
+	collisionSpheres       []shape3d.Sphere
+	collisionBoxes         []shape3d.Box
+	collisionMeshes        []shape3d.Mesh
 	aerodynamicShapes      []AerodynamicShape
 }
 
-func (d *BodyDefinition) CollisionSet() collision.Set {
-	return d.collisionSet
+func (d *BodyDefinition) CollisionSpheres() []shape3d.Sphere {
+	return d.collisionSpheres
+}
+
+func (d *BodyDefinition) CollisionBoxes() []shape3d.Box {
+	return d.collisionBoxes
+}
+
+func (d *BodyDefinition) CollisionMeshes() []shape3d.Mesh {
+	return d.collisionMeshes
 }
 
 type BodyInfo struct {
@@ -136,8 +146,13 @@ func (b Body) SetMomentOfInertia(inertia dprec.Mat3) {
 // 	b.angularDragFactor = factor
 // }
 
-// Position returns the body's position in world
-// space.
+// PreviousPosition returns the body's old position in world space.
+func (b Body) PreviousPosition() dprec.Vec3 {
+	state := b.state()
+	return state.oldPosition
+}
+
+// Position returns the body's position in world space.
 func (b Body) Position() dprec.Vec3 {
 	state := b.state()
 	return state.position
@@ -147,47 +162,30 @@ func (b Body) Position() dprec.Vec3 {
 func (b Body) SetPosition(position dprec.Vec3) {
 	state := b.state()
 	state.position = position
-	state.intermediatePosition = position
+	state.oldPosition = position
 
-	// TODO
-	// b.scene.bodyOctree.Update(state.itemID, state.position, state.bsRadius)
-	// TODO: Do this only on demand.
-	// b.invalidateCollisionShapes()
+	// FIXME: Invalidate shape placement!
 }
 
-// IntermediatePosition returns the position of the Body as would
-// be seen by the current frame.
-//
-// NOTE: The physics engine can advance past the current frame,
-// which is the reason for this method.
-func (b Body) IntermediatePosition() dprec.Vec3 {
+// PreviousRotation returns the old quaternion rotation of this body.
+func (b Body) PreviousRotation() dprec.Quat {
 	state := b.state()
-	return state.intermediatePosition
+	return state.oldRotation
 }
 
-// Rotation returns the quaternion rotation
-// of this body.
+// Rotation returns the quaternion rotation of this body.
 func (b Body) Rotation() dprec.Quat {
 	state := b.state()
 	return state.rotation
 }
 
-// SetRotation changes the quaterntion rotation
-// of this body.
+// SetRotation changes the quaterntion rotation of this body.
 func (b Body) SetRotation(rotation dprec.Quat) {
 	state := b.state()
 	state.rotation = rotation
-	state.intermediateRotation = rotation
-}
+	state.oldRotation = rotation
 
-// IntermediateRotation returns the rotation of the Body as would
-// be seen by the current frame.
-//
-// Note: The physics engine can advance past the current frame,
-// which is the reason for this method.
-func (b Body) IntermediateRotation() dprec.Quat {
-	state := b.state()
-	return state.intermediateRotation
+	// FIXME: Invalidate shape placement!
 }
 
 // Velocity returns the velocity of this body.
@@ -216,26 +214,26 @@ func (b Body) SetAngularVelocity(angularVelocity dprec.Vec3) {
 	state.angularVelocity = angularVelocity
 }
 
-// CollisionGroup returns the collision group for this body. Two bodies
-// with the same collision group are not checked for collisions.
-func (b Body) CollisionGroup() int {
-	state := b.state()
-	return state.collisionGroup
-}
+// // CollisionGroup returns the collision group for this body. Two bodies
+// // with the same collision group are not checked for collisions.
+// func (b Body) CollisionGroup() int {
+// 	state := b.state()
+// 	return state.collisionGroup
+// }
 
-// SetCollisionGroup changes the collision group for this body.
-//
-// A value of 0 disables the collision group.
-func (b Body) SetCollisionGroup(group int) {
-	state := b.state()
-	state.collisionGroup = group
-}
+// // SetCollisionGroup changes the collision group for this body.
+// //
+// // A value of 0 disables the collision group.
+// func (b Body) SetCollisionGroup(group int) {
+// 	state := b.state()
+// 	state.collisionGroup = group
+// }
 
-// CollisionSet contains the collision shapes for this body.
-func (b Body) CollisionSet() collision.Set {
-	state := b.state()
-	return state.collisionSet
-}
+// // CollisionSet contains the collision shapes for this body.
+// func (b Body) CollisionSet() collision.Set {
+// 	state := b.state()
+// 	return state.collisionSet
+// }
 
 // // AerodynamicShapes returns a slice of shapes that
 // // dictate how this body is affected by relative air
@@ -300,10 +298,10 @@ func (b Body) state() *bodyState {
 type bodyState struct {
 	reference indexReference
 
+	objectID shape3d.ObjectID
+
 	name       string
 	definition *BodyDefinition
-
-	itemID spatial.DynamicOctreeItemID
 
 	mass            float64
 	momentOfInertia dprec.Mat3
@@ -326,30 +324,14 @@ type bodyState struct {
 	position dprec.Vec3
 	rotation dprec.Quat
 
-	intermediatePosition dprec.Vec3
-	intermediateRotation dprec.Quat
-
 	velocity        dprec.Vec3
 	angularVelocity dprec.Vec3
 
-	bsRadius          float64
-	collisionGroup    int
-	collisionSet      collision.Set
 	aerodynamicShapes []AerodynamicShape
 }
 
 func (s bodyState) IsActive() bool {
 	return s.reference.IsValid()
-}
-
-func (b *bodyState) InvalidateCollisionShapes(scene *Scene) {
-	transform := collision.TRTransform(b.position, b.rotation)
-	b.collisionSet.Replace(b.definition.collisionSet, transform)
-
-	bs := b.collisionSet.BoundingSphere()
-	delta := dprec.Vec3Diff(bs.Position(), b.position)
-	b.bsRadius = delta.Length() + bs.Radius()
-	scene.bodyOctree.Update(b.itemID, b.position, b.bsRadius)
 }
 
 func (b *bodyState) AddVelocity(amount dprec.Vec3) {
@@ -398,16 +380,48 @@ func createBody(scene *Scene, info BodyInfo) Body {
 		freeIndex = scene.freeBodyIndices.Pop()
 	}
 
+	objectID := scene.shapeScene.CreateObject(shape3d.ObjectInfo[internalRef]{
+		Position: opt.V(info.Position),
+		Rotation: opt.V(info.Rotation),
+		Static:   false,
+		UserData: internalRef{
+			index:  freeIndex,
+			isProp: false,
+		},
+	})
+	for _, sphere := range info.Definition.collisionSpheres {
+		scene.shapeScene.AttachSphere(objectID, shape3d.SphereInfo[struct{}]{
+			ShapeInfo: shape3d.ShapeInfo[struct{}]{
+				RejectGroup: uint32(info.Definition.collisionGroup),
+			},
+			Sphere: sphere,
+		})
+	}
+	for _, box := range info.Definition.collisionBoxes {
+		scene.shapeScene.AttachBox(objectID, shape3d.BoxInfo[struct{}]{
+			ShapeInfo: shape3d.ShapeInfo[struct{}]{
+				RejectGroup: uint32(info.Definition.collisionGroup),
+			},
+			Box: box,
+		})
+	}
+	for _, mesh := range info.Definition.collisionMeshes {
+		scene.shapeScene.AttachMesh(objectID, shape3d.MeshInfo[struct{}]{
+			ShapeInfo: shape3d.ShapeInfo[struct{}]{
+				RejectGroup: uint32(info.Definition.collisionGroup),
+			},
+			Mesh: mesh,
+		})
+	}
+
 	reference := newIndexReference(freeIndex, scene.nextRevision())
 	body := bodyState{
 		reference: reference,
 
+		objectID: objectID,
+
 		name:       info.Name,
 		definition: info.Definition,
-
-		itemID: scene.bodyOctree.Insert(
-			info.Position, 1.0, freeIndex,
-		),
 
 		mass:            info.Definition.mass,
 		momentOfInertia: info.Definition.momentOfInertia,
@@ -421,14 +435,8 @@ func createBody(scene *Scene, info BodyInfo) Body {
 		position: info.Position,
 		rotation: info.Rotation,
 
-		collisionGroup:    info.Definition.collisionGroup,
 		aerodynamicShapes: info.Definition.aerodynamicShapes,
 	}
-
-	// FIXME
-	scene.bodyOctree.Update(body.itemID, body.position, body.bsRadius)
-	body.InvalidateCollisionShapes(scene)
-
 	scene.bodies[freeIndex] = body
 
 	return Body{
@@ -441,10 +449,9 @@ func deleteBody(scene *Scene, reference indexReference) {
 	index := reference.Index
 	state := &scene.bodies[index]
 	if state.reference == reference {
-		scene.bodyOctree.Remove(state.itemID)
+		scene.shapeScene.DeleteObject(state.objectID)
 		state.reference = newIndexReference(index, 0)
 		state.definition = nil
-		state.collisionSet = collision.NewSet()
 		state.aerodynamicShapes = nil
 		scene.freeBodyIndices.Push(index)
 	}

@@ -84,21 +84,21 @@ type MouseAction int
 func (a MouseAction) String() string {
 	switch a {
 	case MouseActionDown:
-		return "DOWN"
+		return "Down"
 	case MouseActionUp:
-		return "UP"
+		return "Up"
 	case MouseActionMove:
-		return "MOVE"
+		return "Move"
 	case MouseActionEnter:
-		return "ENTER"
+		return "Enter"
 	case MouseActionLeave:
-		return "LEAVE"
+		return "Leave"
 	case MouseActionDrop:
-		return "DROP"
+		return "Drop"
 	case MouseActionScroll:
-		return "SCROLL"
+		return "Scroll"
 	default:
-		return "UNKNOWN"
+		return "Unknown"
 	}
 }
 
@@ -120,13 +120,13 @@ type MouseButton int
 func (b MouseButton) String() string {
 	switch b {
 	case MouseButtonLeft:
-		return "LEFT"
+		return "Left"
 	case MouseButtonMiddle:
-		return "MIDDLE"
+		return "Middle"
 	case MouseButtonRight:
-		return "RIGHT"
+		return "Right"
 	default:
-		return "UNKNOWN"
+		return "Unknown"
 	}
 }
 

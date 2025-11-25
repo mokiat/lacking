@@ -3,10 +3,10 @@ package game
 import (
 	"github.com/mokiat/lacking/app"
 	"github.com/mokiat/lacking/debug/metric"
-	"github.com/mokiat/lacking/game/asset"
 	"github.com/mokiat/lacking/game/ecs"
 	"github.com/mokiat/lacking/game/graphics"
 	"github.com/mokiat/lacking/game/physics"
+	"github.com/mokiat/lacking/storage/chunked"
 	"github.com/mokiat/lacking/util/async"
 )
 
@@ -15,9 +15,9 @@ import (
 // to load and manage assets. The provided shader collection will be used
 // to render the game. The provided shader builder will be used to create
 // new shaders when needed.
-func NewController(registry *asset.Registry, shaders graphics.ShaderCollection, shaderBuilder graphics.ShaderBuilder) *Controller {
+func NewController(storage chunked.Storage, shaders graphics.ShaderCollection, shaderBuilder graphics.ShaderBuilder) *Controller {
 	return &Controller{
-		registry:      registry,
+		storage:       storage,
 		shaders:       shaders,
 		shaderBuilder: shaderBuilder,
 	}
@@ -31,7 +31,7 @@ var _ app.Controller = (*Controller)(nil)
 type Controller struct {
 	app.NopController
 
-	registry      *asset.Registry
+	storage       chunked.Storage
 	shaders       graphics.ShaderCollection
 	shaderBuilder graphics.ShaderBuilder
 
@@ -51,9 +51,9 @@ type Controller struct {
 	viewport graphics.Viewport
 }
 
-// Registry returns the asset registry to be used by the game.
-func (c *Controller) Registry() *asset.Registry {
-	return c.registry
+// Storage returns the storage to be used by the game.
+func (c *Controller) Storage() chunked.Storage {
+	return c.storage
 }
 
 // UseGraphicsOptions allows to specify options that will be used
@@ -97,7 +97,7 @@ func (c *Controller) OnCreate(window app.Window) {
 	c.engine = NewEngine(
 		WithGFXWorker(window),
 		WithIOWorker(c.ioWorker),
-		WithRegistry(c.registry),
+		WithStorage(c.storage),
 		WithGraphics(c.gfxEngine),
 		WithECS(c.ecsEngine),
 		WithPhysics(c.physicsEngine),

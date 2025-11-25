@@ -120,6 +120,34 @@ func CreateCubeMipmapTexture(cubeImagesProvider Provider[[]*mdl.CubeImage], opts
 	))
 }
 
+func GetTexture(modelProvider Provider[*mdl.Model], name string) Provider[*mdl.Texture] {
+	return OnceProvider(FuncProvider(
+		// get function
+		func() (*mdl.Texture, error) {
+			model, err := modelProvider.Get()
+			if err != nil {
+				return nil, fmt.Errorf("error getting model from provider: %w", err)
+			}
+			var texture *mdl.Texture
+			for _, candidate := range model.AllTextures() {
+				if candidate.Name() == name {
+					texture = candidate
+					break
+				}
+			}
+			if texture == nil {
+				return nil, fmt.Errorf("could not find texture with name %q", name)
+			}
+			return texture, nil
+		},
+
+		// digest function
+		func() ([]byte, error) {
+			return CreateDigest("get-texture", modelProvider, name)
+		},
+	))
+}
+
 type textureConfig struct {
 	format     opt.T[mdl.TextureFormat]
 	mipmapping bool
