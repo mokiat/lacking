@@ -5,7 +5,7 @@ import (
 )
 
 // TODO: Revisit this!
-func CheckSphereTriangleIntersection(sphere Sphere, triangle Triangle) (Intersection, bool) {
+func CheckSphereTriangleIntersection(sphere Sphere, triangle Triangle, yield IntersectionYieldFunc) {
 	spherePosition := sphere.Position
 	sphereRadius := sphere.Radius
 	triangleA := triangle.A
@@ -17,7 +17,7 @@ func CheckSphereTriangleIntersection(sphere Sphere, triangle Triangle) (Intersec
 	sphereOffset := dprec.Vec3Diff(spherePosition, triangleCenter)
 	height := dprec.Vec3Dot(triangleNormal, sphereOffset)
 	if height > sphereRadius || height < 0 {
-		return Intersection{}, false
+		return
 	}
 
 	vecAB := dprec.Vec3Diff(triangleB, triangleA)
@@ -146,13 +146,12 @@ func CheckSphereTriangleIntersection(sphere Sphere, triangle Triangle) (Intersec
 		sphereDisplaceNormal = triangleNormal
 	}
 
-	if !isIntersection {
-		return Intersection{}, false
+	if isIntersection {
+		yield(Intersection{
+			TargetContact: dprec.Vec3Diff(spherePosition, dprec.Vec3Prod(sphereDisplaceNormal, sphereRadius-depth)),
+			TargetNormal:  sphereDisplaceNormal,
+			Depth:         depth,
+		})
 	}
 
-	return Intersection{
-		TargetContact: dprec.Vec3Diff(spherePosition, dprec.Vec3Prod(sphereDisplaceNormal, sphereRadius-depth)),
-		TargetNormal:  sphereDisplaceNormal,
-		Depth:         depth,
-	}, true
 }

@@ -4,7 +4,7 @@ import "github.com/mokiat/gomath/dprec"
 
 // CheckSphereBoxIntersection checks if the specified sphere intersects with
 // the specified box.
-func CheckSphereBoxIntersection(sphere Sphere, box Box) (Intersection, bool) {
+func CheckSphereBoxIntersection(sphere Sphere, box Box, yield IntersectionYieldFunc) {
 	spherePosition := sphere.Position
 	sphereRadius := sphere.Radius
 
@@ -24,32 +24,32 @@ func CheckSphereBoxIntersection(sphere Sphere, box Box) (Intersection, bool) {
 
 	distanceRight := distanceX - boxHalfWidth
 	if distanceRight > sphereRadius {
-		return Intersection{}, false
+		return
 	}
 
 	distanceLeft := -distanceX - boxHalfWidth
 	if distanceLeft > sphereRadius {
-		return Intersection{}, false
+		return
 	}
 
 	distanceTop := distanceY - boxHalfHeight
 	if distanceTop > sphereRadius {
-		return Intersection{}, false
+		return
 	}
 
 	distanceBottom := -distanceY - boxHalfHeight
 	if distanceBottom > sphereRadius {
-		return Intersection{}, false
+		return
 	}
 
 	distanceFront := distanceZ - boxHalfLength
 	if distanceFront > sphereRadius {
-		return Intersection{}, false
+		return
 	}
 
 	distanceBack := -distanceZ - boxHalfLength
 	if distanceBack > sphereRadius {
-		return Intersection{}, false
+		return
 	}
 
 	const (
@@ -383,13 +383,11 @@ func CheckSphereBoxIntersection(sphere Sphere, box Box) (Intersection, bool) {
 		boxContact = dprec.Vec3Sum(spherePosition, dprec.Vec3Prod(boxDisplaceNormal, sphereRadius-depth))
 	}
 
-	if !isIntersection {
-		return Intersection{}, false
+	if isIntersection {
+		yield(Intersection{
+			TargetContact: boxContact,
+			TargetNormal:  dprec.InverseVec3(boxDisplaceNormal),
+			Depth:         depth,
+		})
 	}
-
-	return Intersection{
-		TargetContact: boxContact,
-		TargetNormal:  dprec.InverseVec3(boxDisplaceNormal),
-		Depth:         depth,
-	}, true
 }

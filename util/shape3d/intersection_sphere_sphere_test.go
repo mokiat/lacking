@@ -55,7 +55,7 @@ func BenchmarkSphereSphere(b *testing.B) {
 
 	for b.Loop() {
 		for _, sphere := range spheres {
-			shape3d.CheckSphereSphereIntersection(sphere, testSphere)
+			shape3d.CheckSphereSphereIntersection(sphere, testSphere, func(shape3d.Intersection) {})
 		}
 	}
 }

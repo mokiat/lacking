@@ -1,14 +1,14 @@
 package shape3d
 
-func CheckSphereMeshIntersection(sphere Sphere, mesh Mesh) (Intersection, bool) {
+func CheckSphereMeshIntersection(sphere Sphere, mesh Mesh, yield IntersectionYieldFunc) {
 	var collection LargestIntersection
 	for _, triangle := range mesh.Triangles {
 		if !IsSphereSphereIntersection(sphere, triangle.BoundingSphere()) {
 			continue
 		}
-		if intersection, ok := CheckSphereTriangleIntersection(sphere, triangle); ok {
-			collection.AddIntersection(intersection)
-		}
+		CheckSphereTriangleIntersection(sphere, triangle, collection.AddIntersection)
 	}
-	return collection.Intersection()
+	if intersection, ok := collection.Intersection(); ok {
+		yield(intersection)
+	}
 }

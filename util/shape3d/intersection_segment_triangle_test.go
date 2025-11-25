@@ -21,7 +21,9 @@ var _ = Describe("IntersectionSegmentTriangle", func() {
 			dprec.NewVec3(-1.5, 0.0, 1.0),
 			dprec.NewVec3(1.5, 0.0, 1.0),
 		)
-		intersection, ok := shape3d.CheckSegmentTriangleIntersection(segment, triangle)
+		var collection shape3d.SmallestIntersection
+		shape3d.CheckSegmentTriangleIntersection(segment, triangle, collection.AddIntersection)
+		intersection, ok := collection.Intersection()
 		Expect(ok).To(BeTrue())
 		Expect(intersection.TargetContact).To(dprectest.HaveVec3Coords(0.0, 0.0, 0.0))
 		Expect(intersection.TargetNormal).To(dprectest.HaveVec3Coords(0.0, 1.0, 0.0))
@@ -38,7 +40,9 @@ var _ = Describe("IntersectionSegmentTriangle", func() {
 			dprec.NewVec3(0.0, -1.0, -1.0),
 			dprec.NewVec3(0.0, -1.0, 1.0),
 		)
-		intersection, ok := shape3d.CheckSegmentTriangleIntersection(segment, triangle)
+		var collection shape3d.SmallestIntersection
+		shape3d.CheckSegmentTriangleIntersection(segment, triangle, collection.AddIntersection)
+		intersection, ok := collection.Intersection()
 		Expect(ok).To(BeTrue())
 		Expect(intersection.TargetContact).To(dprectest.HaveVec3Coords(0.0, 0.5, 0.0))
 		Expect(intersection.TargetNormal).To(dprectest.HaveVec3Coords(-1.0, 0.0, 0.0))
@@ -55,7 +59,9 @@ var _ = Describe("IntersectionSegmentTriangle", func() {
 			dprec.NewVec3(-1.5, 0.0, 1.0),
 			dprec.NewVec3(1.5, 0.0, 1.0),
 		)
-		_, ok := shape3d.CheckSegmentTriangleIntersection(segment, triangle)
+		var collection shape3d.SmallestIntersection
+		shape3d.CheckSegmentTriangleIntersection(segment, triangle, collection.AddIntersection)
+		_, ok := collection.Intersection()
 		Expect(ok).To(BeFalse())
 	})
 

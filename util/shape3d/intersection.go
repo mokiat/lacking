@@ -5,6 +5,10 @@ import (
 	"github.com/mokiat/gomath/dprec"
 )
 
+// IntersectionYieldFunc is a function type that can be used to yield
+// intersections as they are found.
+type IntersectionYieldFunc func(intersection Intersection)
+
 // IntersectionCollection represents a data structure that can hold
 // one or more intersections.
 type IntersectionCollection interface {

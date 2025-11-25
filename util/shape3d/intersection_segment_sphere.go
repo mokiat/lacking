@@ -57,7 +57,7 @@ func IsSegmentSphereOverlap(segment Segment, sphere Sphere) bool {
 // This implementation assumes that the sphere has backface culling. Hence, a
 // segment starting from inside the sphere will not produce an intersection.
 // For such cases you can flip the segment to get the intersection going out.
-func CheckSegmentSphereIntersection(segment Segment, sphere Sphere) (Intersection, bool) {
+func CheckSegmentSphereIntersection(segment Segment, sphere Sphere, yield IntersectionYieldFunc) {
 	// Solving using parametrization of the segment, resulting in a quadratic
 	// equation.
 	delta := dprec.Vec3Diff(segment.B, segment.A)
@@ -70,12 +70,12 @@ func CheckSegmentSphereIntersection(segment Segment, sphere Sphere) (Intersectio
 
 	discriminant := dprec.Sqr(b) - 4.0*a*c
 	if discriminant < 0.0 {
-		return Intersection{}, false
+		return
 	}
 
 	t := (-b - dprec.Sqrt(discriminant)) / (2.0 * a)
 	if t < 0.0 || t > 1.0 {
-		return Intersection{}, false
+		return
 	}
 
 	intersectionPoint := dprec.Vec3Lerp(segment.A, segment.B, t)
@@ -88,9 +88,9 @@ func CheckSegmentSphereIntersection(segment Segment, sphere Sphere) (Intersectio
 		normal,
 	)
 
-	return Intersection{
+	yield(Intersection{
 		TargetContact: intersectionPoint,
 		TargetNormal:  normal,
 		Depth:         depth,
-	}, true
+	})
 }

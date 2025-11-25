@@ -16,7 +16,7 @@ func IsSphereSphereIntersection(source, target Sphere) bool {
 
 // CheckSphereSphereIntersection checks if a Sphere shape intersects with
 // another Sphere shape.
-func CheckSphereSphereIntersection(source, target Sphere) (Intersection, bool) {
+func CheckSphereSphereIntersection(source, target Sphere, yield IntersectionYieldFunc) {
 	sourcePosition := source.Position
 	sourceRadius := source.Radius
 
@@ -28,16 +28,16 @@ func CheckSphereSphereIntersection(source, target Sphere) (Intersection, bool) {
 
 	overlap := (sourceRadius + targetRadius) - distance
 	if overlap <= 0.0 {
-		return Intersection{}, false
+		return
 	}
 
 	targetNormal := dprec.Vec3Quot(deltaPosition, -distance) // unit vector
-	return Intersection{
+	yield(Intersection{
 		TargetContact: dprec.Vec3Sum(
 			targetPosition,
 			dprec.Vec3Prod(targetNormal, targetRadius),
 		),
 		TargetNormal: targetNormal,
 		Depth:        overlap,
-	}, true
+	})
 }

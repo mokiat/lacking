@@ -11,7 +11,7 @@ import (
 //
 // This implementation uses the slab method adapted for oriented boxes.
 // It returns the closest intersection point along the segment.
-func CheckSegmentBoxIntersection(segment Segment, box Box) (Intersection, bool) {
+func CheckSegmentBoxIntersection(segment Segment, box Box, yield IntersectionYieldFunc) {
 	delta := dprec.Vec3Diff(segment.B, segment.A)
 	relativeStart := dprec.Vec3Diff(segment.A, box.Position)
 
@@ -70,7 +70,7 @@ func CheckSegmentBoxIntersection(segment Segment, box Box) (Intersection, bool) 
 	}
 
 	if (tClose > tFar) || (tClose < 0.0) || (tClose > 1.0) {
-		return Intersection{}, false
+		return
 	}
 
 	intersectionPoint := dprec.Vec3Lerp(segment.A, segment.B, tClose)
@@ -79,9 +79,9 @@ func CheckSegmentBoxIntersection(segment Segment, box Box) (Intersection, bool) 
 		normal,
 	)
 
-	return Intersection{
+	yield(Intersection{
 		TargetContact: intersectionPoint,
 		TargetNormal:  normal,
 		Depth:         depth,
-	}, true
+	})
 }

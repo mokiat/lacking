@@ -777,8 +777,8 @@ func (s *Scene[O, S]) collectSegmentSphereIntersections(index int, flipped bool,
 		srcShape, srcSegment := s.getSegmentSolver(srcRef)
 		tgtShape, tgtSolver := s.getSphereSolver(tgtRef)
 
-		if intersection, ok := s.checkSegmentSphereIntersection(srcSegment, tgtSolver); ok {
-			intersection := ObjectIntersection{
+		s.checkSegmentSphereIntersection(srcSegment, tgtSolver, func(intersection Intersection) {
+			objIntersection := ObjectIntersection{
 				SourceObjectID: wrapObjectID(srcShape),
 				SourceShapeID:  wrapShapeID[S](srcRef),
 				TargetObjectID: wrapObjectID(tgtShape),
@@ -786,11 +786,11 @@ func (s *Scene[O, S]) collectSegmentSphereIntersections(index int, flipped bool,
 				Intersection:   intersection,
 			}
 			if flipped {
-				collection.AddIntersection(intersection.Flipped())
+				collection.AddIntersection(objIntersection.Flipped())
 			} else {
-				collection.AddIntersection(intersection)
+				collection.AddIntersection(objIntersection)
 			}
-		}
+		})
 	})
 }
 
@@ -802,8 +802,8 @@ func (s *Scene[O, S]) collectSegmentBoxIntersections(index int, flipped bool, co
 		srcShape, srcSegment := s.getSegmentSolver(srcRef)
 		tgtShape, tgtSolver := s.getBoxSolver(tgtRef)
 
-		if intersection, ok := s.checkSegmentBoxIntersection(srcSegment, tgtSolver); ok {
-			intersection := ObjectIntersection{
+		s.checkSegmentBoxIntersection(srcSegment, tgtSolver, func(intersection Intersection) {
+			objIntersection := ObjectIntersection{
 				SourceObjectID: wrapObjectID(srcShape),
 				SourceShapeID:  wrapShapeID[S](srcRef),
 				TargetObjectID: wrapObjectID(tgtShape),
@@ -811,11 +811,11 @@ func (s *Scene[O, S]) collectSegmentBoxIntersections(index int, flipped bool, co
 				Intersection:   intersection,
 			}
 			if flipped {
-				collection.AddIntersection(intersection.Flipped())
+				collection.AddIntersection(objIntersection.Flipped())
 			} else {
-				collection.AddIntersection(intersection)
+				collection.AddIntersection(objIntersection)
 			}
-		}
+		})
 	})
 }
 
@@ -827,8 +827,8 @@ func (s *Scene[O, S]) collectSegmentMeshIntersections(index int, flipped bool, c
 		srcShape, srcSegment := s.getSegmentSolver(srcRef)
 		tgtShape, tgtSolver := s.getMeshSolver(tgtRef)
 
-		if intersection, ok := s.checkSegmentMeshIntersection(srcSegment, tgtSolver); ok {
-			intersection := ObjectIntersection{
+		s.checkSegmentMeshIntersection(srcSegment, tgtSolver, func(intersection Intersection) {
+			objIntersection := ObjectIntersection{
 				SourceObjectID: wrapObjectID(srcShape),
 				SourceShapeID:  wrapShapeID[S](srcRef),
 				TargetObjectID: wrapObjectID(tgtShape),
@@ -836,11 +836,11 @@ func (s *Scene[O, S]) collectSegmentMeshIntersections(index int, flipped bool, c
 				Intersection:   intersection,
 			}
 			if flipped {
-				collection.AddIntersection(intersection.Flipped())
+				collection.AddIntersection(objIntersection.Flipped())
 			} else {
-				collection.AddIntersection(intersection)
+				collection.AddIntersection(objIntersection)
 			}
-		}
+		})
 	})
 }
 
@@ -852,7 +852,7 @@ func (s *Scene[O, S]) collectSphereSphereIntersections(index int, collection Obj
 		srcShape, srcSolver := s.getSphereSolver(srcRef)
 		tgtShape, tgtSolver := s.getSphereSolver(tgtRef)
 
-		if intersection, ok := s.checkSphereSphereIntersection(srcSolver, tgtSolver); ok {
+		s.checkSphereSphereIntersection(srcSolver, tgtSolver, func(intersection Intersection) {
 			collection.AddIntersection(ObjectIntersection{
 				SourceObjectID: wrapObjectID(srcShape),
 				SourceShapeID:  wrapShapeID[S](srcRef),
@@ -860,7 +860,7 @@ func (s *Scene[O, S]) collectSphereSphereIntersections(index int, collection Obj
 				TargetShapeID:  wrapShapeID[S](tgtRef),
 				Intersection:   intersection,
 			})
-		}
+		})
 	})
 }
 
@@ -872,8 +872,8 @@ func (s *Scene[O, S]) collectSphereBoxIntersections(index int, flipped bool, col
 		srcShape, srcSolver := s.getSphereSolver(srcRef)
 		tgtShape, tgtSolver := s.getBoxSolver(tgtRef)
 
-		if intersection, ok := s.checkSphereBoxIntersection(srcSolver, tgtSolver); ok {
-			intersection := ObjectIntersection{
+		s.checkSphereBoxIntersection(srcSolver, tgtSolver, func(intersection Intersection) {
+			objIntersection := ObjectIntersection{
 				SourceObjectID: wrapObjectID(srcShape),
 				SourceShapeID:  wrapShapeID[S](srcRef),
 				TargetObjectID: wrapObjectID(tgtShape),
@@ -881,11 +881,11 @@ func (s *Scene[O, S]) collectSphereBoxIntersections(index int, flipped bool, col
 				Intersection:   intersection,
 			}
 			if flipped {
-				collection.AddIntersection(intersection.Flipped())
+				collection.AddIntersection(objIntersection.Flipped())
 			} else {
-				collection.AddIntersection(intersection)
+				collection.AddIntersection(objIntersection)
 			}
-		}
+		})
 	})
 }
 
@@ -897,8 +897,8 @@ func (s *Scene[O, S]) collectSphereMeshIntersections(index int, flipped bool, co
 		srcShape, srcSolver := s.getSphereSolver(srcRef)
 		tgtShape, tgtSolver := s.getMeshSolver(tgtRef)
 
-		if intersection, ok := s.checkSphereMeshIntersection(srcSolver, tgtSolver); ok {
-			intersection := ObjectIntersection{
+		s.checkSphereMeshIntersection(srcSolver, tgtSolver, func(intersection Intersection) {
+			objIntersection := ObjectIntersection{
 				SourceObjectID: wrapObjectID(srcShape),
 				SourceShapeID:  wrapShapeID[S](srcRef),
 				TargetObjectID: wrapObjectID(tgtShape),
@@ -906,11 +906,11 @@ func (s *Scene[O, S]) collectSphereMeshIntersections(index int, flipped bool, co
 				Intersection:   intersection,
 			}
 			if flipped {
-				collection.AddIntersection(intersection.Flipped())
+				collection.AddIntersection(objIntersection.Flipped())
 			} else {
-				collection.AddIntersection(intersection)
+				collection.AddIntersection(objIntersection)
 			}
-		}
+		})
 	})
 }
 
@@ -922,8 +922,8 @@ func (s *Scene[O, S]) collectBoxMeshIntersections(index int, flipped bool, colle
 		srcShape, srcSolver := s.getBoxSolver(srcRef)
 		tgtShape, tgtSolver := s.getMeshSolver(tgtRef)
 
-		if intersection, ok := s.checkBoxMeshIntersection(srcSolver, tgtSolver); ok {
-			intersection := ObjectIntersection{
+		s.checkBoxMeshIntersection(srcSolver, tgtSolver, func(intersection Intersection) {
+			objIntersection := ObjectIntersection{
 				SourceObjectID: wrapObjectID(srcShape),
 				SourceShapeID:  wrapShapeID[S](srcRef),
 				TargetObjectID: wrapObjectID(tgtShape),
@@ -931,11 +931,11 @@ func (s *Scene[O, S]) collectBoxMeshIntersections(index int, flipped bool, colle
 				Intersection:   intersection,
 			}
 			if flipped {
-				collection.AddIntersection(intersection.Flipped())
+				collection.AddIntersection(objIntersection.Flipped())
 			} else {
-				collection.AddIntersection(intersection)
+				collection.AddIntersection(objIntersection)
 			}
-		}
+		})
 	})
 }
 
@@ -991,47 +991,47 @@ func (s *Scene[O, S]) consumeSameKindRefPairs(index int, flipped bool, cb func(r
 	return index
 }
 
-func (s *Scene[O, S]) checkSegmentSphereIntersection(source Segment, target *sphereSolver) (Intersection, bool) {
-	return CheckSegmentSphereIntersection(source, target.wsSphere)
+func (s *Scene[O, S]) checkSegmentSphereIntersection(source Segment, target *sphereSolver, yield IntersectionYieldFunc) {
+	CheckSegmentSphereIntersection(source, target.wsSphere, yield)
 }
 
-func (s *Scene[O, S]) checkSegmentBoxIntersection(source Segment, target *boxSolver) (Intersection, bool) {
+func (s *Scene[O, S]) checkSegmentBoxIntersection(source Segment, target *boxSolver, yield IntersectionYieldFunc) {
 	if !IsSegmentSphereOverlap(source, target.wsBoundingSphere) {
-		return Intersection{}, false
+		return
 	}
-	return CheckSegmentBoxIntersection(source, target.wsBox)
+	CheckSegmentBoxIntersection(source, target.wsBox, yield)
 }
 
-func (s *Scene[O, S]) checkSegmentMeshIntersection(source Segment, target *meshSolver) (Intersection, bool) {
+func (s *Scene[O, S]) checkSegmentMeshIntersection(source Segment, target *meshSolver, yield IntersectionYieldFunc) {
 	if !IsSegmentSphereOverlap(source, target.wsBoundingSphere) {
-		return Intersection{}, false
+		return
 	}
-	return CheckSegmentMeshIntersection(source, target.wsMesh)
+	CheckSegmentMeshIntersection(source, target.wsMesh, yield)
 }
 
-func (s *Scene[O, S]) checkSphereSphereIntersection(source, target *sphereSolver) (Intersection, bool) {
-	return CheckSphereSphereIntersection(source.wsSphere, target.wsSphere)
+func (s *Scene[O, S]) checkSphereSphereIntersection(source, target *sphereSolver, yield IntersectionYieldFunc) {
+	CheckSphereSphereIntersection(source.wsSphere, target.wsSphere, yield)
 }
 
-func (s *Scene[O, S]) checkSphereBoxIntersection(source *sphereSolver, target *boxSolver) (Intersection, bool) {
+func (s *Scene[O, S]) checkSphereBoxIntersection(source *sphereSolver, target *boxSolver, yield IntersectionYieldFunc) {
 	if !IsSphereSphereIntersection(source.wsSphere, target.wsBoundingSphere) {
-		return Intersection{}, false
+		return
 	}
-	return CheckSphereBoxIntersection(source.wsSphere, target.wsBox)
+	CheckSphereBoxIntersection(source.wsSphere, target.wsBox, yield)
 }
 
-func (s *Scene[O, S]) checkSphereMeshIntersection(source *sphereSolver, target *meshSolver) (Intersection, bool) {
+func (s *Scene[O, S]) checkSphereMeshIntersection(source *sphereSolver, target *meshSolver, yield IntersectionYieldFunc) {
 	if !IsSphereSphereIntersection(source.wsSphere, target.wsBoundingSphere) {
-		return Intersection{}, false
+		return
 	}
-	return CheckSphereMeshIntersection(source.wsSphere, target.wsMesh)
+	CheckSphereMeshIntersection(source.wsSphere, target.wsMesh, yield)
 }
 
-func (s *Scene[O, S]) checkBoxMeshIntersection(source *boxSolver, target *meshSolver) (Intersection, bool) {
+func (s *Scene[O, S]) checkBoxMeshIntersection(source *boxSolver, target *meshSolver, yield IntersectionYieldFunc) {
 	if !IsSphereSphereIntersection(source.wsBoundingSphere, target.wsBoundingSphere) {
-		return Intersection{}, false
+		return
 	}
-	return CheckBoxMeshIntersection(source.wsBox, target.wsMesh)
+	CheckBoxMeshIntersection(source.wsBox, target.wsMesh, yield)
 }
 
 func wrapObjectID[S any](shape *sceneShape[S]) ObjectID {

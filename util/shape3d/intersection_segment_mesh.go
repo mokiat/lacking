@@ -5,12 +5,8 @@ package shape3d
 // TODO: Rework this. Just like with sphere an Intersection is not meaningful
 // here and instead an intersection point (one closest to segment start) should
 // be returned.
-func CheckSegmentMeshIntersection(segment Segment, mesh Mesh) (Intersection, bool) {
-	var collection LargestIntersection
+func CheckSegmentMeshIntersection(segment Segment, mesh Mesh, yield IntersectionYieldFunc) {
 	for _, triangle := range mesh.Triangles {
-		if intersection, ok := CheckSegmentTriangleIntersection(segment, triangle); ok {
-			collection.AddIntersection(intersection)
-		}
+		CheckSegmentTriangleIntersection(segment, triangle, yield)
 	}
-	return collection.Intersection()
 }

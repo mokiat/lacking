@@ -6,7 +6,7 @@ import "github.com/mokiat/gomath/dprec"
 // with a triangle shape.
 //
 // This function assumes that the triangle has backface culling.
-func CheckSegmentTriangleIntersection(segment Segment, triangle Triangle) (Intersection, bool) {
+func CheckSegmentTriangleIntersection(segment Segment, triangle Triangle, yield IntersectionYieldFunc) {
 	// Using the Möller–Trumbore intersection algorithm.
 
 	vecAB := dprec.Vec3Diff(triangle.B, triangle.A)
@@ -17,38 +17,38 @@ func CheckSegmentTriangleIntersection(segment Segment, triangle Triangle) (Inter
 
 	det := dprec.Vec3Dot(vecAB, crossDirVecAC)
 	if det < 0.00001 { // backface culling
-		return Intersection{}, false
+		return
 	}
 
 	offset := dprec.Vec3Diff(segment.A, triangle.A)
 
 	u := dprec.Vec3Dot(offset, crossDirVecAC)
 	if u < 0.0 || u > det {
-		return Intersection{}, false
+		return
 	}
 
 	crossOffsetVecAB := dprec.Vec3Cross(offset, vecAB)
 
 	v := dprec.Vec3Dot(dir, crossOffsetVecAB)
 	if v < 0.0 || (u+v) > det {
-		return Intersection{}, false
+		return
 	}
 
 	t := dprec.Vec3Dot(vecAC, crossOffsetVecAB)
 	if t < 0.0 || t > det {
-		return Intersection{}, false
+		return
 	}
 
 	intersectionPoint := dprec.Vec3Sum(segment.A, dprec.Vec3Prod(dir, t/det))
 
 	normal := dprec.ResizedVec3(dprec.Vec3Cross(vecAB, vecAC), 1.0)
 
-	return Intersection{
+	yield(Intersection{
 		TargetContact: intersectionPoint,
 		TargetNormal:  normal,
 		Depth: dprec.Vec3Dot(
 			dprec.Vec3Diff(intersectionPoint, segment.B),
 			normal,
 		),
-	}, true
+	})
 }
