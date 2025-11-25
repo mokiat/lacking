@@ -4,7 +4,7 @@ import "github.com/mokiat/gomath/dprec"
 
 // CheckCircleRectangleIntersection checks if a circle shape intersects with
 // a rectangle shape.
-func CheckCircleRectangleIntersection(circle Circle, rectangle Rectangle) (Intersection, bool) {
+func CheckCircleRectangleIntersection(circle Circle, rectangle Rectangle, yield IntersectionYieldFunc) {
 	circlePosition := circle.Position
 	circleRadius := circle.Radius
 
@@ -21,22 +21,22 @@ func CheckCircleRectangleIntersection(circle Circle, rectangle Rectangle) (Inter
 
 	distanceRight := distanceX - rectangleHalfWidth
 	if distanceRight > circleRadius {
-		return Intersection{}, false
+		return
 	}
 
 	distanceLeft := -distanceX - rectangleHalfWidth
 	if distanceLeft > circleRadius {
-		return Intersection{}, false
+		return
 	}
 
 	distanceTop := distanceY - rectangleHalfHeight
 	if distanceTop > circleRadius {
-		return Intersection{}, false
+		return
 	}
 
 	distanceBottom := -distanceY - rectangleHalfHeight
 	if distanceBottom > circleRadius {
-		return Intersection{}, false
+		return
 	}
 
 	const (
@@ -165,13 +165,11 @@ func CheckCircleRectangleIntersection(circle Circle, rectangle Rectangle) (Inter
 		targetContact = dprec.Vec2Sum(circlePosition, dprec.Vec2Prod(targetNormal, depth-circleRadius))
 	}
 
-	if !isIntersection {
-		return Intersection{}, false
+	if isIntersection {
+		yield(Intersection{
+			TargetContact: targetContact,
+			TargetNormal:  targetNormal,
+			Depth:         depth,
+		})
 	}
-
-	return Intersection{
-		TargetContact: targetContact,
-		TargetNormal:  targetNormal,
-		Depth:         depth,
-	}, true
 }

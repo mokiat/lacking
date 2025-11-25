@@ -31,7 +31,7 @@ func IsSegmentCircleOverlap(segment Segment, circle Circle) bool {
 // This implementation assumes that the circle has backface culling. Hence, a
 // segment starting from inside the circle will not produce an intersection.
 // For such cases you can flip the segment to get the intersection going out.
-func CheckSegmentCircleIntersection(segment Segment, circle Circle) (Intersection, bool) {
+func CheckSegmentCircleIntersection(segment Segment, circle Circle, yield IntersectionYieldFunc) {
 	// Solving using parametrization of the segment, resulting in a quadratic
 	// equation.
 	delta := dprec.Vec2Diff(segment.B, segment.A)
@@ -44,12 +44,12 @@ func CheckSegmentCircleIntersection(segment Segment, circle Circle) (Intersectio
 
 	discriminant := dprec.Sqr(b) - 4.0*a*c
 	if discriminant < 0.0 {
-		return Intersection{}, false
+		return
 	}
 
 	t := (-b - dprec.Sqrt(discriminant)) / (2.0 * a)
 	if t < 0.0 || t > 1.0 {
-		return Intersection{}, false
+		return
 	}
 
 	intersectionPoint := dprec.Vec2Lerp(segment.A, segment.B, t)
@@ -62,9 +62,9 @@ func CheckSegmentCircleIntersection(segment Segment, circle Circle) (Intersectio
 		normal,
 	)
 
-	return Intersection{
+	yield(Intersection{
 		TargetContact: intersectionPoint,
 		TargetNormal:  normal,
 		Depth:         depth,
-	}, true
+	})
 }

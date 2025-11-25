@@ -4,7 +4,7 @@ import "github.com/mokiat/gomath/dprec"
 
 // CheckRectanglePolygonIntersection checks if a Rectangle shape intersects
 // with a Polygon shape.
-func CheckRectanglePolygonIntersection(rectangle Rectangle, polygon Polygon) (Intersection, bool) {
+func CheckRectanglePolygonIntersection(rectangle Rectangle, polygon Polygon, yield IntersectionYieldFunc) {
 	rectanglePosition := rectangle.Position
 	rectangleRotation := rectangle.Rotation
 
@@ -21,35 +21,17 @@ func CheckRectanglePolygonIntersection(rectangle Rectangle, polygon Polygon) (In
 	p3 := dprec.Vec2Sum(dprec.Vec2Sum(rectanglePosition, maxX), minY)
 	p4 := dprec.Vec2Sum(dprec.Vec2Sum(rectanglePosition, maxX), maxY)
 
-	var bestIntersection SmallestIntersection
 	for _, edge := range polygon.Edges {
-		if intersection, ok := CheckSegmentEdgeIntersection(NewSegment(p1, p2), edge); ok {
-			bestIntersection.AddIntersection(intersection)
-		}
-		if intersection, ok := CheckSegmentEdgeIntersection(NewSegment(p2, p3), edge); ok {
-			bestIntersection.AddIntersection(intersection)
-		}
-		if intersection, ok := CheckSegmentEdgeIntersection(NewSegment(p3, p4), edge); ok {
-			bestIntersection.AddIntersection(intersection)
-		}
-		if intersection, ok := CheckSegmentEdgeIntersection(NewSegment(p4, p1), edge); ok {
-			bestIntersection.AddIntersection(intersection)
-		}
+		CheckSegmentEdgeIntersection(NewSegment(p1, p2), edge, yield)
+		CheckSegmentEdgeIntersection(NewSegment(p2, p3), edge, yield)
+		CheckSegmentEdgeIntersection(NewSegment(p3, p4), edge, yield)
+		CheckSegmentEdgeIntersection(NewSegment(p4, p1), edge, yield)
 
 		// since segment intersections are unidirectional, check the opposite direction as well
 
-		if intersection, ok := CheckSegmentEdgeIntersection(NewSegment(p2, p1), edge); ok {
-			bestIntersection.AddIntersection(intersection)
-		}
-		if intersection, ok := CheckSegmentEdgeIntersection(NewSegment(p3, p2), edge); ok {
-			bestIntersection.AddIntersection(intersection)
-		}
-		if intersection, ok := CheckSegmentEdgeIntersection(NewSegment(p4, p3), edge); ok {
-			bestIntersection.AddIntersection(intersection)
-		}
-		if intersection, ok := CheckSegmentEdgeIntersection(NewSegment(p1, p4), edge); ok {
-			bestIntersection.AddIntersection(intersection)
-		}
+		CheckSegmentEdgeIntersection(NewSegment(p2, p1), edge, yield)
+		CheckSegmentEdgeIntersection(NewSegment(p3, p2), edge, yield)
+		CheckSegmentEdgeIntersection(NewSegment(p4, p3), edge, yield)
+		CheckSegmentEdgeIntersection(NewSegment(p1, p4), edge, yield)
 	}
-	return bestIntersection.Intersection()
 }

@@ -4,7 +4,7 @@ import "github.com/mokiat/gomath/dprec"
 
 // CheckCircleEdgeIntersection checks for intersection between a circle and an
 // edge. The orientation of the edge matters.
-func CheckCircleEdgeIntersection(circle Circle, edge Edge) (Intersection, bool) {
+func CheckCircleEdgeIntersection(circle Circle, edge Edge, yield IntersectionYieldFunc) {
 	vecAB := dprec.Vec2Diff(edge.B, edge.A)
 	vecAC := dprec.Vec2Diff(circle.Position, edge.A)
 	vecBC := dprec.Vec2Diff(circle.Position, edge.B)
@@ -12,7 +12,7 @@ func CheckCircleEdgeIntersection(circle Circle, edge Edge) (Intersection, bool) 
 	normal := edge.Normal()
 	height := dprec.Vec2Dot(normal, vecAC)
 	if height > circle.Radius || height <= 0.0 {
-		return Intersection{}, false
+		return
 	}
 
 	u := dprec.Vec2Dot(vecAC, vecAB) / vecAB.SqrLength()
@@ -20,35 +20,35 @@ func CheckCircleEdgeIntersection(circle Circle, edge Edge) (Intersection, bool) 
 	case u < 0.0:
 		sqrDistance := vecAC.SqrLength()
 		if sqrDistance > circle.Radius*circle.Radius {
-			return Intersection{}, false
+			return
 		}
 		distance := dprec.Sqrt(sqrDistance)
 		normal := dprec.Vec2Quot(vecAC, distance)
-		return Intersection{
+		yield(Intersection{
 			TargetContact: edge.A,
 			TargetNormal:  normal,
 			Depth:         circle.Radius - distance,
-		}, true
+		})
 
 	case u > 1.0:
 		sqrDistance := vecBC.SqrLength()
 		if sqrDistance > circle.Radius*circle.Radius {
-			return Intersection{}, false
+			return
 		}
 		distance := dprec.Sqrt(sqrDistance)
 		normal := dprec.Vec2Quot(vecBC, distance)
-		return Intersection{
+		yield(Intersection{
 			TargetContact: edge.B,
 			TargetNormal:  normal,
 			Depth:         circle.Radius - distance,
-		}, true
+		})
 
 	default:
 		projection := dprec.Vec2Lerp(edge.A, edge.B, u)
-		return Intersection{
+		yield(Intersection{
 			TargetContact: projection,
 			TargetNormal:  normal,
 			Depth:         circle.Radius - height,
-		}, true
+		})
 	}
 }

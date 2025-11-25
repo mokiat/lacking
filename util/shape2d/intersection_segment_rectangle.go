@@ -11,7 +11,7 @@ import (
 //
 // This implementation uses the slab method adapted for oriented rectangles.
 // It returns the closest intersection point along the segment.
-func CheckSegmentRectangleIntersection(segment Segment, box Rectangle) (Intersection, bool) {
+func CheckSegmentRectangleIntersection(segment Segment, box Rectangle, yield IntersectionYieldFunc) {
 	delta := dprec.Vec2Diff(segment.B, segment.A)
 	relativeStart := dprec.Vec2Diff(segment.A, box.Position)
 
@@ -57,7 +57,7 @@ func CheckSegmentRectangleIntersection(segment Segment, box Rectangle) (Intersec
 	}
 
 	if (tClose > tFar) || (tClose < 0.0) || (tClose > 1.0) {
-		return Intersection{}, false
+		return
 	}
 
 	intersectionPoint := dprec.Vec2Lerp(segment.A, segment.B, tClose)
@@ -66,9 +66,9 @@ func CheckSegmentRectangleIntersection(segment Segment, box Rectangle) (Intersec
 		normal,
 	)
 
-	return Intersection{
+	yield(Intersection{
 		TargetContact: intersectionPoint,
 		TargetNormal:  normal,
 		Depth:         depth,
-	}, true
+	})
 }

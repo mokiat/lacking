@@ -14,7 +14,7 @@ func IsCircleCircleIntersection(source, target Circle) bool {
 
 // CheckCircleCircleIntersection checks if a Circle shape intersects with
 // another Circle shape.
-func CheckCircleCircleIntersection(source, target Circle) (Intersection, bool) {
+func CheckCircleCircleIntersection(source, target Circle, yield IntersectionYieldFunc) {
 	sourcePosition := source.Position
 	sourceRadius := source.Radius
 
@@ -26,16 +26,16 @@ func CheckCircleCircleIntersection(source, target Circle) (Intersection, bool) {
 
 	overlap := (sourceRadius + targetRadius) - distance
 	if overlap <= 0.0 {
-		return Intersection{}, false
+		return
 	}
 
 	targetNormal := dprec.Vec2Quot(deltaPosition, -distance) // unit vector
-	return Intersection{
+	yield(Intersection{
 		TargetContact: dprec.Vec2Sum(
 			targetPosition,
 			dprec.Vec2Prod(targetNormal, targetRadius),
 		),
 		TargetNormal: targetNormal,
 		Depth:        overlap,
-	}, true
+	})
 }
