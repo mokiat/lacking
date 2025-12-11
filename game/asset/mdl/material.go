@@ -182,7 +182,7 @@ func NewMaterialPass() *MaterialPass {
 		frontFace:       FaceOrientationCCW,
 		depthTest:       true,
 		depthWrite:      true,
-		depthComparison: ComparisonLess,
+		depthComparison: ComparisonLessOrEqual,
 		blending:        false,
 	}
 }
