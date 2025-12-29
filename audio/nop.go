@@ -17,6 +17,30 @@ func (a *nopAPI) Play(media Media, info PlayInfo) Playback {
 	return &nopPlayback{}
 }
 
+func (a *nopAPI) CreatePlayback(media Media, loop bool) PlaybackNode {
+	return nil
+}
+
+func (a *nopAPI) CreateOscillator() OscillatorNode {
+	return nil
+}
+
+func (a *nopAPI) CreateGain() GainNode {
+	return nil
+}
+
+func (a *nopAPI) CreatePan() PanNode {
+	return nil
+}
+
+func (a *nopAPI) Connect(source, target Node) {}
+
+func (a *nopAPI) Disconnect(source, target Node) {}
+
+func (a *nopAPI) Output() Node {
+	return nil
+}
+
 type nopMedia struct{}
 
 func (m *nopMedia) Length() time.Duration {
