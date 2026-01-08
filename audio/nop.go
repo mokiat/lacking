@@ -33,6 +33,8 @@ func (a *nopAPI) CreatePan() PanNode {
 	return nil
 }
 
+func (a *nopAPI) Chain(nodes ...Node) {}
+
 func (a *nopAPI) Connect(source, target Node) {}
 
 func (a *nopAPI) Disconnect(source, target Node) {}

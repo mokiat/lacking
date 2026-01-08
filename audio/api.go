@@ -23,6 +23,11 @@ type API interface {
 	// CreatePan creates a new pan node.
 	CreatePan() PanNode
 
+	// Chain connects the specified nodes in sequence. This is a convenience
+	// function that uses the Connect method of the API. Beware that it may
+	// incur allocations due to variadic parameters.
+	Chain(nodes ...Node)
+
 	// Connect connects the source node to the target node.
 	Connect(source, target Node)
 
