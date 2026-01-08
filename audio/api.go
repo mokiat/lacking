@@ -11,17 +11,20 @@ type API interface {
 	// TODO: REMOVE THIS!!!!
 	Play(media Media, info PlayInfo) Playback
 
-	// CreatePlayback creates a new playback node for the specified media.
-	CreatePlayback(media Media, loop bool) PlaybackNode
+	// CreatePlaybackNode creates a new playback node for the specified media.
+	CreatePlaybackNode(media Media, loop bool) PlaybackNode
 
-	// CreateOscillator creates a new oscillator node.
-	CreateOscillator() OscillatorNode
+	// CreateOscillatorNode creates a new oscillator node.
+	CreateOscillatorNode() OscillatorNode
 
-	// CreateGain creates a new gain node.
-	CreateGain() GainNode
+	// CreateGainNode creates a new gain node.
+	CreateGainNode() GainNode
 
 	// CreatePan creates a new pan node.
-	CreatePan() PanNode
+	CreatePanNode() PanNode
+
+	// CreateSpatialNode creates a new spatial audio node.
+	CreateSpatialNode() SpatialNode
 
 	// Chain connects the specified nodes in sequence. This is a convenience
 	// function that uses the Connect method of the API. Beware that it may
@@ -33,6 +36,9 @@ type API interface {
 
 	// Disconnect disconnects the source node from the target node.
 	Disconnect(source, target Node)
+
+	// SpatialListener returns the spatial listener used for 3D audio.
+	SpatialListener() SpatialListener
 
 	// Output returns the output audio node.
 	Output() Node

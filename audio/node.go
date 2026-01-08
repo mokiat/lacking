@@ -1,5 +1,7 @@
 package audio
 
+import "github.com/mokiat/gomath/sprec"
+
 // Node represents a node in a chain of audio elements. Each node produces
 // audio data which can be synthesized, processed, or played back.
 type Node any
@@ -62,4 +64,15 @@ type PanNode interface {
 	// SetPan sets the pan value, where -1.0 is full left, 0.0 is center, and
 	// 1.0 is full right.
 	SetPan(pan float32)
+}
+
+// SpatialNode represents an audio node that provides spatial audio effects.
+type SpatialNode interface {
+	UserNode
+
+	// Position returns the 3D position of the audio source.
+	Position() sprec.Vec3
+
+	// SetPosition sets the 3D position of the audio source.
+	SetPosition(position sprec.Vec3)
 }
