@@ -35,7 +35,7 @@ func (p *funcProvider[T]) Digest() ([]byte, error) {
 // OnceProvider creates a provider that caches the result of the delegate
 // provider.
 func OnceProvider[T any](delegate Provider[T]) Provider[T] {
-	return FuncProvider[T](
+	return FuncProvider(
 		sync.OnceValues(func() (T, error) {
 			return delegate.Get()
 		}),

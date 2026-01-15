@@ -9,11 +9,11 @@ import (
 	_ "image/png"
 
 	"github.com/mokiat/lacking/audio"
-	"github.com/mokiat/lacking/util/resource"
+	"github.com/mokiat/lacking/resource"
 	"golang.org/x/image/font/opentype"
 )
 
-func newResourceManager(locator resource.ReadLocator, audioAPI audio.API, imgFact *imageFactory, fntFact *fontFactory) *resourceManager {
+func newResourceManager(locator resource.Locator, audioAPI audio.API, imgFact *imageFactory, fntFact *fontFactory) *resourceManager {
 	return &resourceManager{
 		locator:  locator,
 		imgFact:  imgFact,
@@ -23,7 +23,7 @@ func newResourceManager(locator resource.ReadLocator, audioAPI audio.API, imgFac
 }
 
 type resourceManager struct {
-	locator  resource.ReadLocator
+	locator  resource.Locator
 	imgFact  *imageFactory
 	fntFact  *fontFactory
 	audioAPI audio.API
@@ -34,7 +34,7 @@ func (m *resourceManager) CreateImage(img image.Image) *Image {
 }
 
 func (m *resourceManager) OpenImage(uri string) (*Image, error) {
-	in, err := m.locator.ReadResource(uri)
+	in, err := m.locator.Open(uri)
 	if err != nil {
 		return nil, fmt.Errorf("error opening resource: %w", err)
 	}
@@ -52,7 +52,7 @@ func (m *resourceManager) CreateFont(otFont *opentype.Font) (*Font, error) {
 }
 
 func (m *resourceManager) OpenFont(uri string) (*Font, error) {
-	in, err := m.locator.ReadResource(uri)
+	in, err := m.locator.Open(uri)
 	if err != nil {
 		return nil, fmt.Errorf("error opening resource: %w", err)
 	}
@@ -87,7 +87,7 @@ func (m *resourceManager) CreateFontCollection(collection *opentype.Collection) 
 }
 
 func (m *resourceManager) OpenFontCollection(uri string) (*FontCollection, error) {
-	in, err := m.locator.ReadResource(uri)
+	in, err := m.locator.Open(uri)
 	if err != nil {
 		return nil, fmt.Errorf("error opening resource: %w", err)
 	}
@@ -106,7 +106,7 @@ func (m *resourceManager) OpenFontCollection(uri string) (*FontCollection, error
 }
 
 func (m *resourceManager) OpenSound(uri string) (*Sound, error) {
-	in, err := m.locator.ReadResource(uri)
+	in, err := m.locator.Open(uri)
 	if err != nil {
 		return nil, fmt.Errorf("error opening resource: %w", err)
 	}

@@ -3,7 +3,7 @@ package ui
 import (
 	"github.com/mokiat/lacking/app"
 	"github.com/mokiat/lacking/debug/metric"
-	"github.com/mokiat/lacking/util/resource"
+	"github.com/mokiat/lacking/resource"
 )
 
 // InitFunc can be used to initialize the Window with the
@@ -12,7 +12,7 @@ type InitFunc func(window *Window)
 
 // NewController creates a new app.Controller that integrates
 // with the ui package to render a user interface.
-func NewController(locator resource.ReadLocator, shaders ShaderCollection, initFn InitFunc) *Controller {
+func NewController(locator resource.Locator, shaders ShaderCollection, initFn InitFunc) *Controller {
 	return &Controller{
 		locator: locator,
 		shaders: shaders,
@@ -25,7 +25,7 @@ var _ app.Controller = (*Controller)(nil)
 type Controller struct {
 	app.NopController
 
-	locator resource.ReadLocator
+	locator resource.Locator
 	shaders ShaderCollection
 
 	canvas  *Canvas

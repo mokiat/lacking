@@ -4,19 +4,20 @@ import (
 	"fmt"
 
 	"github.com/mokiat/gblob"
+	"github.com/mokiat/lacking/resource"
 )
 
-func NewAsset(storage Storage, path string) *Asset {
+func NewAsset(store resource.Store, path string) *Asset {
 	path = cleanFilePath(path)
 	return &Asset{
-		storage: storage,
-		path:    path,
+		store: store,
+		path:  path,
 	}
 }
 
 type Asset struct {
-	storage Storage
-	path    string
+	store resource.Store
+	path  string
 }
 
 func (a *Asset) Path() string {
@@ -24,7 +25,7 @@ func (a *Asset) Path() string {
 }
 
 func (a *Asset) Read(target any) error {
-	in, err := a.storage.Open(a.path)
+	in, err := a.store.Open(a.path)
 	if err != nil {
 		return fmt.Errorf("error opening asset file: %w", err)
 	}
@@ -41,7 +42,7 @@ func (a *Asset) Read(target any) error {
 }
 
 func (a *Asset) Write(source any) error {
-	out, err := a.storage.Create(a.path)
+	out, err := a.store.Create(a.path)
 	if err != nil {
 		return fmt.Errorf("error creating asset file: %w", err)
 	}

@@ -4,6 +4,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
+	"github.com/mokiat/lacking/resource"
 	"github.com/mokiat/lacking/storage/chunked"
 )
 
@@ -23,13 +24,13 @@ var _ = Describe("Asset", func() {
 	}
 
 	var (
-		storage chunked.Storage
-		asset   *chunked.Asset
+		store resource.Store
+		asset *chunked.Asset
 	)
 
 	BeforeEach(func() {
-		storage = chunked.NewMemoryStorage()
-		asset = chunked.NewAsset(storage, "example.dat")
+		store = resource.NewMemStore()
+		asset = chunked.NewAsset(store, "example.dat")
 	})
 
 	It("is possible to encode a struct with nil chunks", func() {
