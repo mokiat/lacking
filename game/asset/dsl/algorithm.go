@@ -21,6 +21,18 @@ func Run(store resource.Store, pathFilter filter.Func[string]) error {
 	var g errgroup.Group
 	g.SetLimit(runtime.NumCPU())
 
+	for path, rawProvider := range rawResourceProviders {
+		if !pathFilter(path) {
+			continue // skip this one
+		}
+		g.Go(func() error {
+			if err := processRawAsset(store, path, rawProvider); err != nil {
+				return fmt.Errorf("error processing asset %q: %w", path, err)
+			}
+			return nil
+		})
+	}
+
 	for path, modelProvider := range resourceProviders {
 		if !pathFilter(path) {
 			continue // skip this one
@@ -82,6 +94,56 @@ func processAsset(store resource.Store, path string, provider Provider[any]) err
 	logger.Info("Asset updated",
 		slog.String("path", path),
 		slog.Int("chunks", len(chunks)),
+		slog.String("duration", time.Since(startTime).String()),
+	)
+	return nil
+}
+
+func processRawAsset(store resource.Store, path string, provider Provider[io.ReadCloser]) error {
+	startTime := time.Now()
+
+	currentSourceDigest, err := StringDigest(provider)
+	if err != nil {
+		return fmt.Errorf("error calculating new digest: %w", err)
+	}
+
+	previousSourceDigest, err := openSourceDigest(store, path)
+	if err != nil {
+		return fmt.Errorf("error retrieving old digest: %w", err)
+	}
+
+	if previousSourceDigest == currentSourceDigest {
+		logger.Info("Asset skipped",
+			slog.String("path", path),
+			slog.String("duration", time.Since(startTime).String()),
+		)
+		return nil
+	}
+
+	in, err := provider.Get()
+	if err != nil {
+		return fmt.Errorf("provider failed to produce asset: %w", err)
+	}
+	defer in.Close()
+
+	out, err := store.Create(path)
+	if err != nil {
+		return fmt.Errorf("error creating asset file: %w", err)
+	}
+	defer out.Close()
+
+	size, err := io.Copy(out, in)
+	if err != nil {
+		return fmt.Errorf("error copying raw asset data: %w", err)
+	}
+
+	if err := saveSourceDigest(store, path, currentSourceDigest); err != nil {
+		return fmt.Errorf("error saving source digest: %w", err)
+	}
+
+	logger.Info("Asset updated",
+		slog.String("path", path),
+		slog.Int("size", int(size)),
 		slog.String("duration", time.Since(startTime).String()),
 	)
 	return nil
