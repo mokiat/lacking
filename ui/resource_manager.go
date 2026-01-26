@@ -117,7 +117,7 @@ func (m *resourceManager) OpenSound(uri string) (*Sound, error) {
 		return nil, fmt.Errorf("error reading resource: %w", err)
 	}
 
-	media := m.audioAPI.CreateMedia(audio.MediaInfo{
+	media := m.audioAPI.ParseMedia(audio.MediaInfo{
 		Data:     data,
 		DataType: audio.MediaDataTypeAuto,
 	})
