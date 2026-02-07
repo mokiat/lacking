@@ -24,11 +24,11 @@ func (a *nopAPI) SampleRate() int {
 }
 
 func (a *nopAPI) CreateMedia(samples []Sample) Media {
-	return &nopMedia{}
+	return NewNopMedia()
 }
 
 func (a *nopAPI) ParseMedia(info MediaInfo) Media {
-	return &nopMedia{}
+	return NewNopMedia()
 }
 
 func (a *nopAPI) Output() Node {
@@ -91,6 +91,10 @@ func (a *nopAPI) Disconnect(source, target Node) {}
 
 func (a *nopAPI) Play(media Media, info PlayInfo) Playback {
 	return &nopPlayback{}
+}
+
+func NewNopMedia() Media {
+	return &nopMedia{}
 }
 
 type nopMedia struct{}
