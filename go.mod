@@ -1,6 +1,6 @@
 module github.com/mokiat/lacking
 
-go 1.25
+go 1.25.0
 
 require (
 	github.com/google/uuid v1.6.0
@@ -13,8 +13,8 @@ require (
 	github.com/onsi/gomega v1.38.2
 	github.com/qmuntal/gltf v0.28.0
 	github.com/x448/float16 v0.8.4
-	golang.org/x/image v0.33.0
-	golang.org/x/sync v0.18.0
+	golang.org/x/image v0.38.0
+	golang.org/x/sync v0.20.0
 )
 
 require (
@@ -28,11 +28,11 @@ require (
 	github.com/rogpeppe/go-internal v1.14.1 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
 	golang.org/x/exp/typeparams v0.0.0-20251113190631-e25ba8c21ef6 // indirect
-	golang.org/x/mod v0.30.0 // indirect
-	golang.org/x/net v0.47.0 // indirect
-	golang.org/x/sys v0.38.0 // indirect
-	golang.org/x/text v0.31.0 // indirect
-	golang.org/x/tools v0.39.0 // indirect
+	golang.org/x/mod v0.33.0 // indirect
+	golang.org/x/net v0.50.0 // indirect
+	golang.org/x/sys v0.41.0 // indirect
+	golang.org/x/text v0.35.0 // indirect
+	golang.org/x/tools v0.42.0 // indirect
 	golang.org/x/tools/go/expect v0.1.1-deprecated // indirect
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
 	honnef.co/go/tools v0.6.1 // indirect
