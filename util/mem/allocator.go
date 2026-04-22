@@ -37,7 +37,7 @@ func NewSparseAllocator[T any]() *SparseAllocator[T] {
 
 func (a *SparseAllocator[T]) Allocate() *T {
 	if a.pool.IsEmpty() {
-		return gog.PtrOf(gog.Zero[T]())
+		return new(gog.Zero[T]())
 	}
 	return a.pool.Pop()
 }

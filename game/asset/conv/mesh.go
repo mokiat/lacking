@@ -6,7 +6,6 @@ import (
 	"github.com/mokiat/gblob"
 	"github.com/mokiat/gog"
 	"github.com/mokiat/gog/ds"
-	"github.com/mokiat/gomath/dprec"
 	"github.com/mokiat/lacking/game/asset/dto"
 	"github.com/mokiat/lacking/game/asset/mdl"
 	"github.com/mokiat/lacking/storage/chunked"
@@ -280,7 +279,7 @@ func (c *MeshConverter) convertGeometry(geometry *mdl.Geometry) (dto.Geometry, e
 
 	var boundingSphereRadius float64
 	for _, vertex := range geometry.Vertices() {
-		boundingSphereRadius = dprec.Max(
+		boundingSphereRadius = max(
 			boundingSphereRadius,
 			float64(vertex.Coord.Length()),
 		)

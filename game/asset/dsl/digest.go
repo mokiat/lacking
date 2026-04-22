@@ -98,23 +98,23 @@ func writeValue(out io.Writer, value any) error {
 	case time.Time:
 		io.WriteString(out, value.Format(time.RFC3339))
 	case sprec.Vec2:
-		io.WriteString(out, value.GoString())
+		io.WriteString(out, value.String())
 	case sprec.Vec3:
-		io.WriteString(out, value.GoString())
+		io.WriteString(out, value.String())
 	case sprec.Vec4:
-		io.WriteString(out, value.GoString())
+		io.WriteString(out, value.String())
 	case sprec.Quat:
-		io.WriteString(out, value.GoString())
+		io.WriteString(out, value.String())
 	case sprec.Angle:
 		io.WriteString(out, fmt.Sprintf("%f", value))
 	case dprec.Vec2:
-		io.WriteString(out, value.GoString())
+		io.WriteString(out, value.String())
 	case dprec.Vec3:
-		io.WriteString(out, value.GoString())
+		io.WriteString(out, value.String())
 	case dprec.Vec4:
-		io.WriteString(out, value.GoString())
+		io.WriteString(out, value.String())
 	case dprec.Quat:
-		io.WriteString(out, value.GoString())
+		io.WriteString(out, value.String())
 	case dprec.Angle:
 		io.WriteString(out, fmt.Sprintf("%f", value))
 	case Digestable:
