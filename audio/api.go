@@ -26,6 +26,8 @@ type API interface {
 	SpatialListener() SpatialListener
 
 	// CreatePlaybackNode creates a new playback node for the specified media.
+	//
+	// It is safe to delete the media after creating the playback node.
 	CreatePlaybackNode(media Media, loop bool) PlaybackNode
 
 	// CreateOscillatorNode creates a new oscillator node.
