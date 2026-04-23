@@ -126,7 +126,9 @@ func (l *nopListener) SetRotation(rotation sprec.Quat) {
 	l.rotation = rotation
 }
 
-type nopUserNode struct{}
+type nopUserNode struct {
+	Node // marker interface
+}
 
 func (n *nopUserNode) Delete() {}
 

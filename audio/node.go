@@ -4,7 +4,9 @@ import "github.com/mokiat/gomath/sprec"
 
 // Node represents a node in a chain of audio elements. Each node produces
 // audio data which can be synthesized, processed, or played back.
-type Node any
+type Node interface {
+	_isAudioNode() // marker method
+}
 
 // UserNode represents an audio node that requires explicit resource management.
 type UserNode interface {
