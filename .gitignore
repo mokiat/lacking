@@ -3,3 +3,7 @@
 
 # Visual Studio Code
 .vscode/
+
+# PProf
+cpu.pprof
+mem.pprof
