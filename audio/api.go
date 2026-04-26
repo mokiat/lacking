@@ -1,6 +1,8 @@
 package audio
 
 // API provides access to a low-level audio manipulation and playback.
+//
+// All functions in this API need to be called from the main thread.
 type API interface {
 
 	// SampleRate returns the audio sample rate used by the API (i.e. how
