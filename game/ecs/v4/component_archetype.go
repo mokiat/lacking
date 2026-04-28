@@ -8,17 +8,12 @@ type componentArchetype struct {
 	components map[typeIndex]componentChain
 }
 
-type componentChain interface{}
-
-type specificComponentChain[T any] struct {
-	storage *specificComponentStorage[T]
-
-	chunks    [][]T
-	chunkSize uint32
+func (a *componentArchetype) allocateOffset() uint32 {
+	offset := a.size
+	a.size++
+	return offset
 }
 
-func (c *specificComponentChain[T]) getRef(offset uint32) *T {
-	chunkIndex := offset / c.chunkSize
-	indexInChunk := offset % c.chunkSize
-	return &c.chunks[chunkIndex][indexInChunk]
+func (a *componentArchetype) releaseOffset(offset uint32) {
+	panic("not implemented")
 }

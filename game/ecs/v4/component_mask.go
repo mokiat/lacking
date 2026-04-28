@@ -1,5 +1,7 @@
 package ecs
 
+import "iter"
+
 type typeIndex uint32
 
 type componentMask [8]uint64
@@ -66,4 +68,16 @@ func (m *componentMask) containsMask(other componentMask) bool {
 		}
 	}
 	return true
+}
+
+func (m *componentMask) typeIndicesIter() iter.Seq[typeIndex] {
+	return func(yield func(typeIndex) bool) {
+		for i := range uint32(512) {
+			if m.containsType(typeIndex(i)) {
+				if !yield(typeIndex(i)) {
+					return
+				}
+			}
+		}
+	}
 }

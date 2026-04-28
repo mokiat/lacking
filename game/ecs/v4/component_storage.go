@@ -14,6 +14,13 @@ import (
 // between multiple scenes.
 type ComponentStorage interface {
 	reflectType() reflect.Type
+	createChain() componentChain
+
+	borrowChunk() uint32
+	returnChunk(offset uint32)
+
+	copyItem(dstChunk, dstOffset, srcChunk, srcOffset uint32)
+	// refItem(dstChunk, dstOffset uint32) any // TODO: In generic API
 }
 
 // NewComponentStorage creates a new component storage for components of type T.
@@ -31,6 +38,14 @@ type specificComponentStorage[T any] struct {
 
 func (s *specificComponentStorage[T]) reflectType() reflect.Type {
 	panic("not implemented")
+}
+
+func (s *specificComponentStorage[T]) createChain() componentChain {
+	return &specificComponentChain[T]{
+		storage:   s,
+		chunks:    nil,
+		chunkSize: 128,
+	}
 }
 
 func getTypeIndex[T any](scene *Scene) typeIndex {

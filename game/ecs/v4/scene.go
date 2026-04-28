@@ -1,6 +1,7 @@
 package ecs
 
 import (
+	"iter"
 	"reflect"
 
 	"github.com/mokiat/gog/ds"
@@ -15,7 +16,8 @@ func NewScene() *Scene {
 		freeEntityIndices: ds.EmptyStack[int32](),
 		entities:          nil,
 
-		archetypes: make(map[componentMask]*componentArchetype),
+		archetypePool: nil,
+		archetypes:    make(map[componentMask]*componentArchetype),
 	}
 }
 
@@ -29,7 +31,8 @@ type Scene struct {
 	freeEntityIndices *ds.Stack[int32]
 	entities          []entityDescriptor
 
-	archetypes map[componentMask]*componentArchetype
+	archetypePool *ds.Pool[componentArchetype]
+	archetypes    map[componentMask]*componentArchetype
 
 	isEditing bool
 }
@@ -167,7 +170,14 @@ func (s *Scene) EditEntity(id EntityID, fn func(*EditOperation)) {
 // condition and invokes the callback for each of them with a ReadOperation
 // that can be used to read the components of the entity.
 func (s *Scene) QueryEntities(condition Condition, cb func(EntityID, *ReadOperation)) {
-	// panic("not implemented")
+	panic("not implemented")
+}
+
+// QueryEntities queries the scene for entities satisfying the specified
+// condition and invokes the callback for each of them with a ReadOperation
+// that can be used to read the components of the entity.
+func (s *Scene) QueryEntitiesIter(condition Condition) iter.Seq2[EntityID, *ReadOperation] {
+	panic("not implemented")
 }
 
 // SubscribeStartsSatisfying registers a callback that will be called whenever
@@ -219,7 +229,23 @@ func (s *Scene) getEntityDescriptor(id EntityID) (*entityDescriptor, bool) {
 }
 
 func (s *Scene) enterArchetype(mask componentMask) (*componentArchetype, uint32) {
-	panic("not implemented")
+	archetype, ok := s.archetypes[mask]
+	if !ok {
+		archetype = s.archetypePool.Fetch()
+		s.archetypes[mask] = archetype
+		if archetype.components == nil {
+			archetype.components = make(map[typeIndex]componentChain)
+		}
+	}
+
+	archetype.mask = mask
+	for tIndex := range mask.typeIndicesIter() {
+		storage := s.storages[tIndex]
+		archetype.components[tIndex] = storage.createChain()
+	}
+
+	offset := archetype.allocateOffset()
+	return archetype, offset
 }
 
 func (s *Scene) leaveArchetype(archetype *componentArchetype, offset uint32) {
