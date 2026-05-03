@@ -6,84 +6,47 @@ import (
 	"github.com/mokiat/lacking/game/ecs/v5"
 )
 
-// import (
-// 	"math"
-// 	"reflect"
-// 	"testing"
+// go test -test.fullpath=true -cpuprofile=cpu.pprof -memprofile=mem.pprof -benchmem -run=^$ -bench ^BenchmarkCheckEntity$ github.com/mokiat/lacking/game/ecs/v5 -count=1
 
-// 	"github.com/mokiat/lacking/game/ecs/v4"
-// )
+func BenchmarkCheckEntity(b *testing.B) {
+	type Position struct {
+		X, Y float64
+	}
+	type Name struct {
+		Value string
+	}
+	type Age struct {
+		Value int
+	}
 
-// type Position struct {
-// 	Name string
-// 	X, Y int
-// 	Data [128]byte
-// }
-
-// var PositionType = ecs.RegisterType[Position]()
-// var stringType = ecs.RegisterType[string]()
-// var intType = ecs.RegisterType[int]()
-
-// func BenchmarkReflectTypeOf(b *testing.B) {
-// 	for b.Loop() {
-// 		t := reflect.TypeFor[Position]()
-// 		if t == nil {
-// 			b.Fatal("unexpected nil type")
-// 		}
-// 	}
-// }
-
-func BenchmarkAPI(b *testing.B) {
 	scope := ecs.NewScope()
+	positionType := ecs.RegisterType[Position](scope)
+	nameType := ecs.RegisterType[Name](scope)
+	ageType := ecs.RegisterType[Age](scope)
 
-	_ = scope
+	scene := ecs.NewScene()
 
-	// 	scene := ecs.NewScene()
+	id := scene.CreateEntity()
+	scene.EditEntity(id, func(op *ecs.EditOperation) {
+		ecs.AddComponent(op, positionType, Position{
+			X: 1.0,
+			Y: 2.0,
+		})
+		ecs.AddComponent(op, nameType, Name{
+			Value: "Alice",
+		})
+	})
 
-	// 	ecs.SubscribeComponentAdd(scene, PositionType, func(entity ecs.EntityID, component *Position) {
-
-	// 	})
-
-	// 	ecs.T[Position](scene).AddComponent(ecs.NilEntityID, Position{})
-	// 	ecs.T[Position](scene).SubscribeAdd()
-
-	// 	PositionType.ForScene(scene).AddComponent(ecs.NilEntityID, Position{})
-	// 	PositionType.ForScene(scene).RemoveComponent(ecs.NilEntityID)
-
-	// 	scene.EditEntity(ecs.NilEntityID, func(edit EditOperation) {
-	// 		ecs.AddComponent(edit, PositionType, Position{})
-	// 	})
-
-	// 	ecs.EditEntity(scene, ecs.NilEntityID,
-	// 		PositionType.Add(),
-	// 	)
-
-	// 	ecs.EditEntity(scene, ecs.NilEntityID,
-	// 		ecs.AddComponent(PositionType, Position{}),
-	// 		ecs.AddComponent(intType, 13),
-	// 		ecs.RemoveComponent(stringType),
-	// 	)
-
-	// 	ecs.AddComponent(scene, ecs.NilEntityID, PositionType, Position{})
-	// 	ecs.RemoveComponent[Position](scene, ecs.NilEntityID)
-
-	// 	ecs.ReadEntity(scene, ecs.NilEntityID,
-	// 		PositionType.Into(&Position{}),
-	// 		stringType.Into(new(string)),
-	// 		intType.Into(new(int)),
-	// 	)
-	// 	position := PositionType.Get(scene, ecs.NilEntityID)
-
-	// 	retrieval := scene.ReadEntity()
-	// 	position := ecs.GetComponent[Position](scene, ecs.NilEntityID)
-	// 	ecs.ForType[Position](scene).GetComponent(ecs.NilEntityID)
-
-	//	for b.Loop() {
-	//		t := reflect.TypeFor[Position]()
-	//		if t == nil {
-	//			b.Fatal("unexpected nil type")
-	//		}
-	//	}
+	for b.Loop() {
+		ok := scene.CheckEntity(id, ecs.Conditions(
+			ecs.HasComponent(positionType),
+			ecs.HasComponent(nameType),
+			ecs.LacksComponent(ageType),
+		))
+		if !ok {
+			b.Fatal("unexpected failed check")
+		}
+	}
 }
 
 // func BenchmarkAddComponents(b *testing.B) {
