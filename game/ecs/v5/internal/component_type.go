@@ -121,7 +121,7 @@ func (m *TypeMask) EachType(f func(TypeID)) {
 	}
 }
 
-// TypeIndexLookup is a mapping from component type IDs to their corresponding
+// TypeLookup is a mapping from component type IDs to their corresponding
 // indices in an external array (e.g. the components array in a component
 // archetype).
-type TypeIndexLookup [MaxComponentTypes]uint8
+type TypeLookup [MaxComponentTypes]uint8

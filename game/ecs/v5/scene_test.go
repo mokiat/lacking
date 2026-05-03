@@ -29,12 +29,9 @@ var _ = Describe("Scene", func() {
 	BeforeEach(func() {
 		scope = ecs.NewScope()
 		positionType = ecs.RegisterType[Position](scope)
-		_ = positionType // TODO: REMOVE
 		ageType = ecs.RegisterType[Age](scope)
-		_ = ageType // TODO: REMOVE
 		nameType = ecs.RegisterType[Name](scope)
-		_ = nameType // TODO: REMOVE
-		scene = ecs.NewScene()
+		scene = ecs.NewScene(scope)
 	})
 
 	Specify("can create entity", func() {

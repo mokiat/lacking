@@ -1,6 +1,12 @@
 package ecs
 
-import "reflect"
+import (
+	"reflect"
+
+	"github.com/mokiat/lacking/game/ecs/v5/internal"
+)
+
+const maxTypes = internal.MaxComponentTypes
 
 // MaxComponentTypes returns the maximum number of component types that can be
 // registered within a scope.
@@ -16,6 +22,11 @@ func NewScope() *Scope {
 // Scope represents a scope for component type registration.
 type Scope struct {
 	registeredTypes map[reflect.Type]BaseComponentType
+	componentTypes  [MaxComponentTypes]BaseComponentType
+}
+
+func (s *Scope) getComponentTypeByID(id typeID) BaseComponentType {
+	return s.componentTypes[id]
 }
 
 // RegisterType register the specified Go structure as a component type within
@@ -38,6 +49,7 @@ func RegisterType[T any](scope *Scope) *ComponentType[T] {
 	tIndex := typeID(len(scope.registeredTypes))
 	result := newComponentType[T](tIndex)
 	scope.registeredTypes[reflectType] = result
+	scope.componentTypes[tIndex] = result
 
 	return result
 }

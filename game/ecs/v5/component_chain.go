@@ -1,8 +1,8 @@
 package ecs
 
 type componentChain interface {
-	// allocateOffset() uint32
-	// releaseOffset(offset uint32)
+	allocateCell() storagePosition
+	releaseCell(cell storagePosition)
 }
 
 type specificComponentChain[T any] struct {
@@ -16,4 +16,12 @@ func (c *specificComponentChain[T]) getRef(offset uint32) *T {
 		chunkOffset: offset % chunkSize,
 	}
 	return c.compType.refValue(pos)
+}
+
+func (c *specificComponentChain[T]) allocateCell() storagePosition {
+	panic("not implemented")
+}
+
+func (c *specificComponentChain[T]) releaseCell(cell storagePosition) {
+	panic("not implemented")
 }

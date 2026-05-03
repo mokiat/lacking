@@ -23,8 +23,7 @@ func BenchmarkCheckEntity(b *testing.B) {
 	positionType := ecs.RegisterType[Position](scope)
 	nameType := ecs.RegisterType[Name](scope)
 	ageType := ecs.RegisterType[Age](scope)
-
-	scene := ecs.NewScene()
+	scene := ecs.NewScene(scope)
 
 	id := scene.CreateEntity()
 	scene.EditEntity(id, func(op *ecs.EditOperation) {

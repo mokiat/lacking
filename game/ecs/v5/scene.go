@@ -2,16 +2,19 @@ package ecs
 
 import (
 	"github.com/mokiat/gog/ds"
+	"github.com/mokiat/lacking/game/ecs/v5/internal"
 )
 
 // NewScene creates and initializes a new scene.
-func NewScene() *Scene {
+func NewScene(scope *Scope) *Scene {
 	return &Scene{
+		scope: scope,
+
 		freeEntityIndices: ds.EmptyStack[int32](),
 		entities:          nil,
 
-		archetypePool: ds.EmptyStack[*componentArchetype](),
-		archetypes:    make(map[componentMask]*componentArchetype),
+		archetypePool: ds.EmptyStack[*internal.Archetype](),
+		archetypes:    make(map[internal.TypeMask]*componentArchetype),
 	}
 }
 
@@ -19,11 +22,13 @@ func NewScene() *Scene {
 // methods for creating, deleting, and querying entities, as well as subscribing
 // to entity events.
 type Scene struct {
+	scope *Scope
+
 	freeEntityIndices *ds.Stack[int32]
 	entities          []entityDescriptor
 
-	archetypePool *ds.Stack[*componentArchetype]
-	archetypes    map[componentMask]*componentArchetype
+	archetypePool *ds.Stack[*internal.Archetype]
+	archetypes    map[internal.TypeMask]*componentArchetype
 
 	inOperationBlock bool
 }
@@ -35,7 +40,7 @@ func (s *Scene) CreateEntity() EntityID {
 	index := s.allocateEntityIndex()
 	desc := &s.entities[index]
 	desc.revision++
-	desc.archetype, desc.archetypeOffset = s.borrowArchetypeSlot(emptyComponentMask())
+	desc.archetype, desc.archetypeRow = s.borrowArchetypeRow(internal.EmptyTypeMask())
 
 	return EntityID{
 		index:    index,
@@ -56,10 +61,10 @@ func (s *Scene) DeleteEntity(entityID EntityID) {
 		panic("entity does not exist")
 	}
 
-	s.releaseArchetypeSlot(desc.archetype, desc.archetypeOffset)
+	s.releaseArchetypeRow(desc.archetype, desc.archetypeRow)
 	desc.revision++
 	desc.archetype = nil
-	desc.archetypeOffset = 0
+	desc.archetypeRow = 0
 
 	s.releaseEntityIndex(entityID.index)
 }
@@ -86,7 +91,7 @@ func (s *Scene) CheckEntity(id EntityID, condition Condition) bool {
 	}
 	archetype := desc.archetype
 
-	return condition.isSatisfiedBy(archetype.mask)
+	return condition.isSatisfiedBy(archetype.TypeMask())
 }
 
 // ReadEntity allows reading the components of an entity.
@@ -125,15 +130,28 @@ func (s *Scene) EditEntity(id EntityID, fn EditOperationFunc) {
 		panic("entity does not exist")
 	}
 
-	oldMask := desc.archetype.mask
+	oldMask := desc.archetype.TypeMask()
 
 	change := EditOperation{
 		scene: s,
 		mask:  oldMask,
 	}
+
+	oldMask.eachTypeID(func(id typeID) bool {
+		chain := desc.archetype.getChain(id)
+		change.placeholders[id] = chain.allocateCell()
+		return true
+	})
+
 	s.inOperationBlock = true
 	fn(&change)
 	s.inOperationBlock = false
+
+	oldMask.eachTypeID(func(id typeID) bool {
+		chain := desc.archetype.getChain(id)
+		chain.releaseCell(change.placeholders[id])
+		return true
+	})
 
 	newMask := change.mask
 
@@ -142,11 +160,11 @@ func (s *Scene) EditEntity(id EntityID, fn EditOperationFunc) {
 	}
 
 	oldArchetype := desc.archetype
-	oldOffset := desc.archetypeOffset
+	oldArchetypeRow := desc.archetypeRow
 
-	desc.archetype, desc.archetypeOffset = s.borrowArchetypeSlot(newMask)
+	desc.archetype, desc.archetypeRow = s.borrowArchetypeRow(newMask)
 	// 	// TODO: relocate entity
-	s.releaseArchetypeSlot(oldArchetype, oldOffset)
+	s.releaseArchetypeRow(oldArchetype, oldArchetypeRow)
 
 	// 	// TODO: call subscribers.
 	// 	// TODO: Abort this process if a subscriber made changes to the entity
@@ -214,25 +232,30 @@ func (s *Scene) getEntityDescriptor(id EntityID) (*entityDescriptor, bool) {
 	return desc, true
 }
 
-func (s *Scene) borrowArchetypeSlot(mask componentMask) (*componentArchetype, uint32) {
+func (s *Scene) borrowArchetypeRow(mask internal.TypeMask) (*internal.Archetype, internal.ArchetypeRow) {
 	archetype, ok := s.archetypes[mask]
+
 	if !ok {
 		archetype = s.allocateArchetype()
-		s.archetypes[mask] = archetype
-
 		archetype.mask = mask
-		// for tIndex := range mask.typeIndicesIter() {
-		// 	storage := s.storages[tIndex]
-		// 	archetype.components[tIndex] = storage.createChain()
-		// }
+		archetype.mask.eachTypeID(func(id typeID) bool {
+			compType := s.scope.getComponentTypeByID(id)
+			archetype.lookup[id] = int16(len(archetype.components))
+			archetype.components = append(archetype.components, compType.createChain())
+			return true
+		})
+		s.archetypes[mask] = archetype
 	}
 
 	offset := archetype.allocateOffset()
 	return archetype, offset
 }
 
-func (s *Scene) releaseArchetypeSlot(archetype *componentArchetype, offset uint32) {
-	// panic("not implemented")
+func (s *Scene) releaseArchetypeRow(archetype *internal.Archetype, row internal.ArchetypeRow) {
+	archetype.releaseOffset(offset)
+	if archetype.isEmpty() {
+		s.releaseArchetype(archetype)
+	}
 }
 
 func (s *Scene) allocateArchetype() *componentArchetype {
@@ -245,6 +268,8 @@ func (s *Scene) allocateArchetype() *componentArchetype {
 }
 
 func (s *Scene) releaseArchetype(archetype *componentArchetype) {
+	// TODO: Return all chunks first!
+
 	archetype.reset()
 	s.archetypePool.Push(archetype)
 }

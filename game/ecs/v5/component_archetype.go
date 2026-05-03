@@ -20,6 +20,15 @@ func (a *componentArchetype) reset() {
 	// a.components = a.components[:0]
 }
 
+func (a *componentArchetype) isEmpty() bool {
+	return a.size == 0
+}
+
+func (a *componentArchetype) getChain(id typeID) componentChain {
+	index := a.lookup[id]
+	return a.components[index]
+}
+
 func (a *componentArchetype) allocateOffset() uint32 {
 	// offset := a.size
 	// a.size++
@@ -32,8 +41,6 @@ func (a *componentArchetype) releaseOffset(offset uint32) {
 }
 
 func getChain[T any](archetype *componentArchetype, compType *ComponentType[T]) *specificComponentChain[T] {
-	id := compType.id()
-	index := archetype.lookup[id]
-	anyChain := archetype.components[index]
+	anyChain := archetype.getChain(compType.id())
 	return anyChain.(*specificComponentChain[T])
 }
