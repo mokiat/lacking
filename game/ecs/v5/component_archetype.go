@@ -4,8 +4,8 @@ type componentArchetype struct {
 	mask componentMask
 	size uint32
 
-	// lookup     componentLookup
-	// components []componentChain
+	lookup     componentLookup
+	components []componentChain
 }
 
 func (a *componentArchetype) reset() {
@@ -29,4 +29,11 @@ func (a *componentArchetype) allocateOffset() uint32 {
 
 func (a *componentArchetype) releaseOffset(offset uint32) {
 	panic("not implemented")
+}
+
+func getChain[T any](archetype *componentArchetype, compType *ComponentType[T]) *specificComponentChain[T] {
+	id := compType.id()
+	index := archetype.lookup[id]
+	anyChain := archetype.components[index]
+	return anyChain.(*specificComponentChain[T])
 }

@@ -46,28 +46,27 @@ type ReadOperation struct {
 	archetypeOffset uint32
 }
 
-// // GetComponent retrieves the component of type T from the entity being read
-// // and returns a reference to it.
-// //
-// // If you request a component that the entity does not have, nil is returned.
-// func GetComponent[T any](op *ReadOperation) *T {
-// 	tIndex := getTypeIndex[T](op.scene)
+// GetComponent retrieves the component of type T from the entity being read
+// and returns a reference to it.
+//
+// If a component that the entity does not have is requested, nil is returned.
+func GetComponent[T any](op *ReadOperation, compType *ComponentType[T]) *T {
+	id := compType.id()
 
-// 	mask := op.archetype.mask
-// 	if !mask.containsType(tIndex) {
-// 		return nil
-// 	}
+	mask := op.archetype.mask
+	if !mask.containsType(id) {
+		return nil
+	}
 
-// 	anyChain := op.archetype.components[tIndex]
-// 	chain := anyChain.(*specificComponentChain[T])
-// 	return chain.getRef(op.archetypeOffset)
-// }
+	chain := getChain(op.archetype, compType)
+	return chain.getRef(op.archetypeOffset)
+}
 
-// // InjectComponent retrieves the component of type T from the entity being read
-// // and injects it into the provided target pointer.
-// //
-// // If you request a component that the entity does not have, the target will be
-// // set to nil.
-// func InjectComponent[T any](op *ReadOperation, target **T) {
-// 	*target = GetComponent[T](op)
-// }
+// InjectComponent retrieves the component of type T from the entity being read
+// and injects it into the provided target pointer.
+//
+// If you request a component that the entity does not have, the target will be
+// set to nil.
+func InjectComponent[T any](op *ReadOperation, compType *ComponentType[T], target **T) {
+	*target = GetComponent(op, compType)
+}

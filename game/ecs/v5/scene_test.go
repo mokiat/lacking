@@ -155,34 +155,63 @@ var _ = Describe("Scene", func() {
 			))
 			Expect(ok).To(BeFalse())
 		})
+
+		When("a component is removed", func() {
+			BeforeEach(func() {
+				scene.EditEntity(id, func(op *ecs.EditOperation) {
+					ecs.RemoveComponent(op, positionType)
+				})
+			})
+
+			Specify("the entity no longer satisfies conditions requiring that component", func() {
+				ok := scene.CheckEntity(id, ecs.HasComponent(positionType))
+				Expect(ok).To(BeFalse())
+
+				ok = scene.CheckEntity(id, ecs.Conditions(
+					ecs.HasComponent(positionType),
+					ecs.HasComponent(nameType),
+				))
+				Expect(ok).To(BeFalse())
+			})
+		})
+
+		When("the entity is deleted", func() {
+			BeforeEach(func() {
+				scene.DeleteEntity(id)
+			})
+
+			Specify("the entity no longer satisfies any conditions", func() {
+				ok := scene.CheckEntity(id, ecs.HasComponent(positionType))
+				Expect(ok).To(BeFalse())
+
+				ok = scene.CheckEntity(id, ecs.HasComponent(nameType))
+				Expect(ok).To(BeFalse())
+
+				ok = scene.CheckEntity(id, ecs.HasComponent(ageType))
+				Expect(ok).To(BeFalse())
+			})
+		})
+
+		Specify("can read components", func() {
+			var (
+				pos  *Position
+				name *Name
+				age  *Age
+			)
+			scene.ReadEntity(id, func(op *ecs.ReadOperation) {
+				pos = ecs.GetComponent(op, positionType)
+				name = ecs.GetComponent(op, nameType)
+				age = ecs.GetComponent(op, ageType)
+			})
+
+			Expect(pos).ToNot(BeNil())
+			Expect(*pos).To(Equal(Position{X: 1, Y: 2}))
+
+			Expect(name).ToNot(BeNil())
+			Expect(*name).To(Equal(Name{Value: "Alice"}))
+
+			Expect(age).To(BeNil())
+		})
 	})
-
-	// Describe("CreateEntity", func() {
-
-	// 	It("should create a unique entity", func() {
-	// 		id1 := scene.CreateEntity()
-	// 		Expect(id1).ToNot(Equal(ecs.NilEntityID))
-
-	// 		id2 := scene.CreateEntity()
-	// 		Expect(id2).ToNot(Equal(ecs.NilEntityID))
-
-	// 		Expect(id2).ToNot(Equal(id1))
-	// 	})
-
-	// })
-
-	// Describe("HasEntity", func() {
-
-	// 	It("should return true for existing entities", func() {
-	// 		id := scene.CreateEntity()
-	// 		Expect(scene.HasEntity(id)).To(BeTrue())
-	// 	})
-
-	// 	It("should return false for non-existing entities", func() {
-	// 		Expect(scene.HasEntity(ecs.NilEntityID)).To(BeFalse())
-	// 		Expect(scene.HasEntity(ecs.EntityID{index: 999})).To(BeFalse())
-	// 	})
-
-	// })
 
 })
