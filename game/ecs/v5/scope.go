@@ -35,7 +35,7 @@ func RegisterType[T any](scope *Scope) *ComponentType[T] {
 		panic("component type already registered in this scope")
 	}
 
-	tIndex := typeIndex(len(scope.registeredTypes))
+	tIndex := typeID(len(scope.registeredTypes))
 	result := newComponentType[T](tIndex)
 	scope.registeredTypes[reflectType] = result
 
