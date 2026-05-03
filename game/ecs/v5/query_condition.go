@@ -1,28 +1,28 @@
 package ecs
 
+import "github.com/mokiat/lacking/game/ecs/v5/internal"
+
 // Condition represents a query condition.
 type Condition struct {
-	positiveMask componentMask
-	negativeMask componentMask
+	positiveMask internal.TypeMask
+	negativeMask internal.TypeMask
 }
 
 // HasComponent returns a condition that requires an entity to have
 // a certain component.
-func HasComponent[T any](compType *ComponentType[T]) Condition {
-	id := compType.id()
+func HasComponent[T any](compType ComponentType[T]) Condition {
 	return Condition{
-		positiveMask: componentMaskFromType(id),
-		negativeMask: emptyComponentMask(),
+		positiveMask: internal.TypeMaskFromType(compType.id),
+		negativeMask: internal.EmptyTypeMask(),
 	}
 }
 
 // LacksComponent returns a query condition that requires an entity to not
 // have a certain component.
-func LacksComponent[T any](compType *ComponentType[T]) Condition {
-	id := compType.id()
+func LacksComponent[T any](compType ComponentType[T]) Condition {
 	return Condition{
-		positiveMask: emptyComponentMask(),
-		negativeMask: componentMaskFromType(id),
+		positiveMask: internal.EmptyTypeMask(),
+		negativeMask: internal.TypeMaskFromType(compType.id),
 	}
 }
 
@@ -34,9 +34,9 @@ func LacksComponent[T any](compType *ComponentType[T]) Condition {
 func Conditions(conditions ...Condition) Condition {
 	var result Condition
 	for _, condition := range conditions {
-		result.merge(condition)
+		result.combine(condition)
 	}
-	if result.positiveMask.intersectsMask(result.negativeMask) {
+	if result.positiveMask.Intersects(result.negativeMask) {
 		panic("contradictory conditions")
 	}
 	return result
@@ -47,15 +47,15 @@ func Conditions(conditions ...Condition) Condition {
 //
 // This is supported only for positive conditions (i.e. using HasComponent).
 func (c Condition) Exclusive() Condition {
-	c.negativeMask = c.positiveMask.inverted()
+	c.negativeMask = c.positiveMask.Inverted()
 	return c
 }
 
-func (c *Condition) merge(other Condition) {
-	c.positiveMask.addMask(other.positiveMask)
-	c.negativeMask.addMask(other.negativeMask)
+func (c *Condition) combine(other Condition) {
+	c.positiveMask.Combine(other.positiveMask)
+	c.negativeMask.Combine(other.negativeMask)
 }
 
-func (c *Condition) isSatisfiedBy(mask componentMask) bool {
-	return mask.containsMask(c.positiveMask) && !mask.intersectsMask(c.negativeMask)
+func (c *Condition) isSatisfiedBy(mask internal.TypeMask) bool {
+	return mask.Contains(c.positiveMask) && !mask.Intersects(c.negativeMask)
 }
