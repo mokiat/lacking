@@ -10,21 +10,25 @@ type EditOperation struct {
 	placeholders [MaxComponentTypes]storagePosition
 }
 
+// EditOperationFunc is used to perform edits on an entity's components within
+// an EditEntity callback.
+type EditOperationFunc func(op *EditOperation)
+
 // AddComponent adds a component of type T with the provided value to the entity
 // being edited.
-func AddComponent[T any](op *EditOperation, compType ComponentType[T], value T) {
+func AddComponent[T any](op *EditOperation, compType *ComponentType[T], value T) {
 	id := compType.id()
 	if op.mask.containsType(id) {
 		panic("entity already has component of this type")
 	}
 	op.mask.addType(id)
 
-	placeholder := op.placeholders[id]
-	compType.setValue(placeholder, value)
+	// placeholder := op.placeholders[id]
+	// compType.setValue(placeholder, value)
 }
 
 // RemoveComponent removes the component of type T from the entity being edited.
-func RemoveComponent[T any](op *EditOperation, compType ComponentType[T]) {
+func RemoveComponent[T any](op *EditOperation, compType *ComponentType[T]) {
 	id := compType.id()
 	if !op.mask.containsType(id) {
 		panic("entity does not have component of this type")

@@ -77,6 +77,45 @@ var _ = Describe("Scene", func() {
 		Expect(scene.HasEntity(id2)).To(BeTrue())
 	})
 
+	Specify("can add components to entity", func() {
+		id := scene.CreateEntity()
+
+		pos := Position{X: 1, Y: 2}
+		name := Name{Value: "Alice"}
+
+		scene.EditEntity(id, func(op *ecs.EditOperation) {
+			ecs.AddComponent(op, positionType, pos)
+			ecs.AddComponent(op, nameType, name)
+		})
+	})
+
+	When("having an entity with components", func() {
+		var id ecs.EntityID
+
+		BeforeEach(func() {
+			id = scene.CreateEntity()
+
+			pos := Position{X: 1, Y: 2}
+			name := Name{Value: "Alice"}
+
+			scene.EditEntity(id, func(op *ecs.EditOperation) {
+				ecs.AddComponent(op, positionType, pos)
+				ecs.AddComponent(op, nameType, name)
+			})
+		})
+
+		Specify("can check whether it satisfies a positive condition", func() {
+			ok := scene.CheckEntity(id, ecs.HasComponent(positionType))
+			Expect(ok).To(BeTrue())
+
+			ok = scene.CheckEntity(id, ecs.HasComponent(nameType))
+			Expect(ok).To(BeTrue())
+
+			ok = scene.CheckEntity(id, ecs.HasComponent(ageType))
+			Expect(ok).To(BeFalse())
+		})
+	})
+
 	// Describe("CreateEntity", func() {
 
 	// 	It("should create a unique entity", func() {

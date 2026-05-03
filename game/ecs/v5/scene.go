@@ -7,9 +7,6 @@ import (
 // NewScene creates and initializes a new scene.
 func NewScene() *Scene {
 	return &Scene{
-		// storageMapping: make(map[reflect.Type]typeID),
-		// storages:       nil,
-
 		freeEntityIndices: ds.EmptyStack[int32](),
 		entities:          nil,
 
@@ -22,9 +19,6 @@ func NewScene() *Scene {
 // methods for creating, deleting, and querying entities, as well as subscribing
 // to entity events.
 type Scene struct {
-	// storageMapping map[reflect.Type]typeID
-	// storages       []ComponentStorage
-
 	freeEntityIndices *ds.Stack[int32]
 	entities          []entityDescriptor
 
@@ -33,19 +27,6 @@ type Scene struct {
 
 	inOperationBlock bool
 }
-
-// // RegisterStorage registers a component storage, enabling the scene to manage
-// // components of the corresponding type.
-// func (s *Scene) RegisterStorage(storage ComponentStorage) {
-// 	s.verifyNotEditing()
-
-// 	reflectType := storage.reflectType()
-// 	if _, ok := s.storageMapping[reflectType]; ok {
-// 		panic("storage for this component type already registered")
-// 	}
-// 	s.storageMapping[reflectType] = typeID(len(s.storages))
-// 	s.storages = append(s.storages, storage)
-// }
 
 // CreateEntity creates a new empty entity in the scene and returns its ID.
 func (s *Scene) CreateEntity() EntityID {
@@ -91,22 +72,22 @@ func (s *Scene) HasEntity(entityID EntityID) bool {
 	return ok
 }
 
-// // CheckEntity returns whether the specified entity satisfies the specified
-// // condition.
-// //
-// // This method does allow for invalid or deleted entity IDs to be passed in,
-// // and will simply return false for them.
-// func (s *Scene) CheckEntity(id EntityID, condition Condition) bool {
-// 	s.verifyNotEditing()
+// CheckEntity returns whether the specified entity satisfies the specified
+// condition.
+//
+// This method does allow for invalid or deleted entity IDs to be passed in,
+// and will simply return false for them.
+func (s *Scene) CheckEntity(id EntityID, condition Condition) bool {
+	s.verifyOutsideOperation()
 
-// 	desc, ok := s.getEntityDescriptor(id)
-// 	if !ok {
-// 		return false
-// 	}
-// 	archetype := desc.archetype
+	desc, ok := s.getEntityDescriptor(id)
+	if !ok {
+		return false
+	}
+	archetype := desc.archetype
 
-// 	return condition.isSatisfiedBy(archetype.mask)
-// }
+	return condition.isSatisfiedBy(archetype.mask)
+}
 
 // ReadEntity allows reading the components of an entity.
 //
@@ -136,7 +117,7 @@ func (s *Scene) ReadEntity(entity EntityID, fn func(*ReadOperation)) {
 // to specify the changes to be applied to the entity. Trying to remove a
 // component and adding it back in the same edit and vice versa is not
 // supported and has undefined behavior.
-func (s *Scene) EditEntity(id EntityID, fn func(*EditOperation)) {
+func (s *Scene) EditEntity(id EntityID, fn EditOperationFunc) {
 	s.verifyOutsideOperation()
 
 	desc, ok := s.getEntityDescriptor(id)
@@ -144,23 +125,25 @@ func (s *Scene) EditEntity(id EntityID, fn func(*EditOperation)) {
 		panic("entity does not exist")
 	}
 
-	archetype := desc.archetype
-	oldMask := archetype.mask
+	_ = desc // TODO: REMOVE
+
+	// archetype := desc.archetype
+	// oldMask := archetype.mask
 
 	change := EditOperation{
 		scene: s,
-		mask:  oldMask,
+		// mask:  oldMask,
 	}
-	s.inOperationBlock = true // TODO: Either rename to something else or split into different "is<Something>" flags
+	s.inOperationBlock = true
 	fn(&change)
 	s.inOperationBlock = false
 
-	newMask := change.mask
-	if newMask != oldMask {
-		// TODO: relocate entity
-		// TODO: call subscribers.
-		// TODO: Abort this process if a subscriber made changes to the entity
-	}
+	// newMask := change.mask
+	// if newMask != oldMask {
+	// 	// TODO: relocate entity
+	// 	// TODO: call subscribers.
+	// 	// TODO: Abort this process if a subscriber made changes to the entity
+	// }
 }
 
 // // QueryEntities queries the scene for entities satisfying the specified
