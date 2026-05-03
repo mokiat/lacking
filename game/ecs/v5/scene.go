@@ -10,7 +10,7 @@ func NewScene() *Scene {
 		freeEntityIndices: ds.EmptyStack[int32](),
 		entities:          nil,
 
-		archetypePool: nil,
+		archetypePool: ds.EmptyStack[*componentArchetype](),
 		archetypes:    make(map[componentMask]*componentArchetype),
 	}
 }
@@ -22,7 +22,7 @@ type Scene struct {
 	freeEntityIndices *ds.Stack[int32]
 	entities          []entityDescriptor
 
-	archetypePool *ds.Pool[componentArchetype]
+	archetypePool *ds.Stack[*componentArchetype]
 	archetypes    map[componentMask]*componentArchetype
 
 	inOperationBlock bool
@@ -35,7 +35,7 @@ func (s *Scene) CreateEntity() EntityID {
 	index := s.allocateEntityIndex()
 	desc := &s.entities[index]
 	desc.revision++
-	desc.archetype, desc.archetypeOffset = s.enterArchetype(emptyComponentMask())
+	desc.archetype, desc.archetypeOffset = s.borrowArchetypeSlot(emptyComponentMask())
 
 	return EntityID{
 		index:    index,
@@ -56,7 +56,7 @@ func (s *Scene) DeleteEntity(entityID EntityID) {
 		panic("entity does not exist")
 	}
 
-	s.leaveArchetype(desc.archetype, desc.archetypeOffset)
+	s.releaseArchetypeSlot(desc.archetype, desc.archetypeOffset)
 	desc.revision++
 	desc.archetype = nil
 	desc.archetypeOffset = 0
@@ -125,25 +125,31 @@ func (s *Scene) EditEntity(id EntityID, fn EditOperationFunc) {
 		panic("entity does not exist")
 	}
 
-	_ = desc // TODO: REMOVE
-
-	// archetype := desc.archetype
-	// oldMask := archetype.mask
+	oldMask := desc.archetype.mask
 
 	change := EditOperation{
 		scene: s,
-		// mask:  oldMask,
+		mask:  oldMask,
 	}
 	s.inOperationBlock = true
 	fn(&change)
 	s.inOperationBlock = false
 
-	// newMask := change.mask
-	// if newMask != oldMask {
+	newMask := change.mask
+
+	if newMask == oldMask {
+		return // no changes to apply
+	}
+
+	oldArchetype := desc.archetype
+	oldOffset := desc.archetypeOffset
+
+	desc.archetype, desc.archetypeOffset = s.borrowArchetypeSlot(newMask)
 	// 	// TODO: relocate entity
+	s.releaseArchetypeSlot(oldArchetype, oldOffset)
+
 	// 	// TODO: call subscribers.
 	// 	// TODO: Abort this process if a subscriber made changes to the entity
-	// }
 }
 
 // // QueryEntities queries the scene for entities satisfying the specified
@@ -208,29 +214,37 @@ func (s *Scene) getEntityDescriptor(id EntityID) (*entityDescriptor, bool) {
 	return desc, true
 }
 
-func (s *Scene) enterArchetype(mask componentMask) (*componentArchetype, uint32) {
-	// archetype, ok := s.archetypes[mask]
-	// if !ok {
-	// 	archetype = s.archetypePool.Fetch()
-	// 	s.archetypes[mask] = archetype
-	// 	if archetype.components == nil {
-	// 		archetype.components = make(map[typeID]componentChain)
-	// 	}
-	// }
+func (s *Scene) borrowArchetypeSlot(mask componentMask) (*componentArchetype, uint32) {
+	archetype, ok := s.archetypes[mask]
+	if !ok {
+		archetype = s.allocateArchetype()
+		s.archetypes[mask] = archetype
 
-	// archetype.mask = mask
-	// for tIndex := range mask.typeIndicesIter() {
-	// 	storage := s.storages[tIndex]
-	// 	archetype.components[tIndex] = storage.createChain()
-	// }
+		archetype.mask = mask
+		// for tIndex := range mask.typeIndicesIter() {
+		// 	storage := s.storages[tIndex]
+		// 	archetype.components[tIndex] = storage.createChain()
+		// }
+	}
 
-	// offset := archetype.allocateOffset()
-	// return archetype, offset
-
-	// panic("not implemented")
-	return nil, 0
+	offset := archetype.allocateOffset()
+	return archetype, offset
 }
 
-func (s *Scene) leaveArchetype(archetype *componentArchetype, offset uint32) {
+func (s *Scene) releaseArchetypeSlot(archetype *componentArchetype, offset uint32) {
 	// panic("not implemented")
+}
+
+func (s *Scene) allocateArchetype() *componentArchetype {
+	if !s.archetypePool.IsEmpty() {
+		return s.archetypePool.Pop()
+	}
+	result := new(componentArchetype)
+	result.reset()
+	return result
+}
+
+func (s *Scene) releaseArchetype(archetype *componentArchetype) {
+	archetype.reset()
+	s.archetypePool.Push(archetype)
 }

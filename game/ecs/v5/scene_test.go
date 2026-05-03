@@ -114,6 +114,47 @@ var _ = Describe("Scene", func() {
 			ok = scene.CheckEntity(id, ecs.HasComponent(ageType))
 			Expect(ok).To(BeFalse())
 		})
+
+		Specify("can check whether it satisfies a negative condition", func() {
+			ok := scene.CheckEntity(id, ecs.LacksComponent(positionType))
+			Expect(ok).To(BeFalse())
+
+			ok = scene.CheckEntity(id, ecs.LacksComponent(nameType))
+			Expect(ok).To(BeFalse())
+
+			ok = scene.CheckEntity(id, ecs.LacksComponent(ageType))
+			Expect(ok).To(BeTrue())
+		})
+
+		Specify("can check whether it satisfies a composite condition", func() {
+			ok := scene.CheckEntity(id, ecs.Conditions(
+				ecs.HasComponent(positionType),
+				ecs.HasComponent(nameType),
+				ecs.LacksComponent(ageType),
+			))
+			Expect(ok).To(BeTrue())
+
+			ok = scene.CheckEntity(id, ecs.Conditions(
+				ecs.LacksComponent(positionType),
+				ecs.HasComponent(nameType),
+				ecs.LacksComponent(ageType),
+			))
+			Expect(ok).To(BeFalse())
+
+			ok = scene.CheckEntity(id, ecs.Conditions(
+				ecs.HasComponent(positionType),
+				ecs.LacksComponent(nameType),
+				ecs.LacksComponent(ageType),
+			))
+			Expect(ok).To(BeFalse())
+
+			ok = scene.CheckEntity(id, ecs.Conditions(
+				ecs.HasComponent(positionType),
+				ecs.HasComponent(nameType),
+				ecs.HasComponent(ageType),
+			))
+			Expect(ok).To(BeFalse())
+		})
 	})
 
 	// Describe("CreateEntity", func() {

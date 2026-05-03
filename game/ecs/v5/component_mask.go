@@ -38,6 +38,14 @@ func (m *componentMask) removeType(tIndex typeID) {
 	m[index] &^= mask
 }
 
+func (m *componentMask) inverted() componentMask {
+	var result componentMask
+	for i := range m {
+		result[i] = ^m[i]
+	}
+	return result
+}
+
 func (m *componentMask) containsType(tIndex typeID) bool {
 	index := int(tIndex / 64)
 	mask := uint64(1 << (tIndex % 64))
