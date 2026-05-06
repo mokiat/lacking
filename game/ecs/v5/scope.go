@@ -36,7 +36,7 @@ func (s *Scope) getComponentTypeByID(id typeID) BaseComponentType {
 //
 // This function should be called from a global variable initializer, and
 // is not safe for concurrent use.
-func RegisterType[T any](scope *Scope) *ComponentType[T] {
+func RegisterType[T any](scope *Scope) ComponentType[T] {
 	if len(scope.registeredTypes) >= MaxComponentTypes {
 		panic("too many component types registered in this scope")
 	}

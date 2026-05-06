@@ -10,11 +10,11 @@ func NewScene(scope *Scope) *Scene {
 	return &Scene{
 		scope: scope,
 
-		freeEntityIndices: ds.EmptyStack[int32](),
+		freeEntityIndices: ds.EmptyStack[uint32](),
 		entities:          nil,
 
 		archetypePool: ds.EmptyStack[*internal.Archetype](),
-		archetypes:    make(map[internal.TypeMask]*componentArchetype),
+		archetypes:    make(map[internal.TypeMask]*internal.Archetype),
 	}
 }
 
@@ -24,27 +24,26 @@ func NewScene(scope *Scope) *Scene {
 type Scene struct {
 	scope *Scope
 
-	freeEntityIndices *ds.Stack[int32]
-	entities          []entityDescriptor
+	freeEntityIndices *ds.Stack[uint32]
+	entities          []internal.Entity
 
 	archetypePool *ds.Stack[*internal.Archetype]
-	archetypes    map[internal.TypeMask]*componentArchetype
+	archetypes    map[internal.TypeMask]*internal.Archetype
 
 	inOperationBlock bool
 }
 
 // CreateEntity creates a new empty entity in the scene and returns its ID.
-func (s *Scene) CreateEntity() EntityID {
+func (s *Scene) CreateEntity() ID {
 	s.verifyOutsideOperation()
 
 	index := s.allocateEntityIndex()
 	desc := &s.entities[index]
-	desc.revision++
-	desc.archetype, desc.archetypeRow = s.borrowArchetypeRow(internal.EmptyTypeMask())
+	desc.Revive(s.borrowArchetypeRow(internal.EmptyTypeMask()))
 
-	return EntityID{
+	return ID{
 		index:    index,
-		revision: desc.revision,
+		revision: desc.Revision(),
 	}
 }
 
@@ -53,7 +52,7 @@ func (s *Scene) CreateEntity() EntityID {
 //
 // Any references to components previously held by the entity must not be used
 // after this call.
-func (s *Scene) DeleteEntity(entityID EntityID) {
+func (s *Scene) DeleteEntity(entityID ID) {
 	s.verifyOutsideOperation()
 
 	desc, ok := s.getEntityDescriptor(entityID)
@@ -61,16 +60,12 @@ func (s *Scene) DeleteEntity(entityID EntityID) {
 		panic("entity does not exist")
 	}
 
-	s.releaseArchetypeRow(desc.archetype, desc.archetypeRow)
-	desc.revision++
-	desc.archetype = nil
-	desc.archetypeRow = 0
-
+	s.releaseArchetypeRow(desc.Destroy())
 	s.releaseEntityIndex(entityID.index)
 }
 
 // HasEntity returns whether the scene contains the specified entity.
-func (s *Scene) HasEntity(entityID EntityID) bool {
+func (s *Scene) HasEntity(entityID ID) bool {
 	s.verifyOutsideOperation()
 
 	_, ok := s.getEntityDescriptor(entityID)
@@ -82,14 +77,14 @@ func (s *Scene) HasEntity(entityID EntityID) bool {
 //
 // This method does allow for invalid or deleted entity IDs to be passed in,
 // and will simply return false for them.
-func (s *Scene) CheckEntity(id EntityID, condition Condition) bool {
+func (s *Scene) CheckEntity(id ID, condition Condition) bool {
 	s.verifyOutsideOperation()
 
 	desc, ok := s.getEntityDescriptor(id)
 	if !ok {
 		return false
 	}
-	archetype := desc.archetype
+	archetype := desc.Archetype()
 
 	return condition.isSatisfiedBy(archetype.TypeMask())
 }
@@ -98,7 +93,7 @@ func (s *Scene) CheckEntity(id EntityID, condition Condition) bool {
 //
 // The provided callback will be called with a ReadOperation that can be used
 // to specify the components to be read from the entity.
-func (s *Scene) ReadEntity(entity EntityID, fn func(*ReadOperation)) {
+func (s *Scene) ReadEntity(entity ID, fn func(*ReadOperation)) {
 	s.verifyOutsideOperation()
 
 	desc, ok := s.getEntityDescriptor(entity)
@@ -107,9 +102,8 @@ func (s *Scene) ReadEntity(entity EntityID, fn func(*ReadOperation)) {
 	}
 
 	op := ReadOperation{
-		scene:           s,
-		archetype:       desc.archetype,
-		archetypeOffset: desc.archetypeOffset,
+		mask:      desc.Archetype().TypeMask(),
+		positions: desc.PlacementMap(),
 	}
 	s.inOperationBlock = true
 	fn(&op)
@@ -122,7 +116,7 @@ func (s *Scene) ReadEntity(entity EntityID, fn func(*ReadOperation)) {
 // to specify the changes to be applied to the entity. Trying to remove a
 // component and adding it back in the same edit and vice versa is not
 // supported and has undefined behavior.
-func (s *Scene) EditEntity(id EntityID, fn EditOperationFunc) {
+func (s *Scene) EditEntity(id ID, fn EditOperationFunc) {
 	s.verifyOutsideOperation()
 
 	desc, ok := s.getEntityDescriptor(id)
@@ -130,28 +124,15 @@ func (s *Scene) EditEntity(id EntityID, fn EditOperationFunc) {
 		panic("entity does not exist")
 	}
 
-	oldMask := desc.archetype.TypeMask()
+	oldMask := desc.Archetype().TypeMask()
 
 	change := EditOperation{
-		scene: s,
-		mask:  oldMask,
+		mask: oldMask,
 	}
-
-	oldMask.eachTypeID(func(id typeID) bool {
-		chain := desc.archetype.getChain(id)
-		change.placeholders[id] = chain.allocateCell()
-		return true
-	})
 
 	s.inOperationBlock = true
 	fn(&change)
 	s.inOperationBlock = false
-
-	oldMask.eachTypeID(func(id typeID) bool {
-		chain := desc.archetype.getChain(id)
-		chain.releaseCell(change.placeholders[id])
-		return true
-	})
 
 	newMask := change.mask
 
@@ -159,11 +140,24 @@ func (s *Scene) EditEntity(id EntityID, fn EditOperationFunc) {
 		return // no changes to apply
 	}
 
-	oldArchetype := desc.archetype
-	oldArchetypeRow := desc.archetypeRow
+	oldArchetype := desc.Archetype()
+	oldArchetypeRow := desc.ArchetypeRow()
 
-	desc.archetype, desc.archetypeRow = s.borrowArchetypeRow(newMask)
-	// 	// TODO: relocate entity
+	newArchetype, newArchetypeRow := s.borrowArchetypeRow(newMask)
+
+	oldPlacements := desc.PlacementMap()
+	desc.Relocate(newArchetype, newArchetypeRow)
+	newPlacements := desc.PlacementMap()
+
+	newMask.EachType(func(id internal.TypeID) {
+		storage := s.scope.componentTypes[id].BaseStorage()
+		if oldMask.HasType(id) {
+			storage.CopyValue(newPlacements[id], oldPlacements[id])
+		} else {
+			storage.ApplyTempValue(newPlacements[id])
+		}
+	})
+
 	s.releaseArchetypeRow(oldArchetype, oldArchetypeRow)
 
 	// 	// TODO: call subscribers.
@@ -206,27 +200,27 @@ func (s *Scene) verifyOutsideOperation() {
 	}
 }
 
-func (s *Scene) allocateEntityIndex() int32 {
-	var index int32
+func (s *Scene) allocateEntityIndex() uint32 {
+	var index uint32
 	if s.freeEntityIndices.IsEmpty() {
-		index = int32(len(s.entities))
-		s.entities = append(s.entities, entityDescriptor{})
+		index = uint32(len(s.entities))
+		s.entities = append(s.entities, internal.Entity{})
 	} else {
 		index = s.freeEntityIndices.Pop()
 	}
 	return index
 }
 
-func (s *Scene) releaseEntityIndex(index int32) {
+func (s *Scene) releaseEntityIndex(index uint32) {
 	s.freeEntityIndices.Push(index)
 }
 
-func (s *Scene) getEntityDescriptor(id EntityID) (*entityDescriptor, bool) {
-	if id == NilEntityID {
+func (s *Scene) getEntityDescriptor(id ID) (*internal.Entity, bool) {
+	if id == NilID {
 		return nil, false
 	}
 	desc := &s.entities[id.index]
-	if desc.revision != id.revision {
+	if !desc.HasRevision(id.revision) {
 		return nil, false
 	}
 	return desc, true
@@ -258,16 +252,16 @@ func (s *Scene) releaseArchetypeRow(archetype *internal.Archetype, row internal.
 	}
 }
 
-func (s *Scene) allocateArchetype() *componentArchetype {
+func (s *Scene) allocateArchetype() *internal.Archetype {
 	if !s.archetypePool.IsEmpty() {
 		return s.archetypePool.Pop()
 	}
-	result := new(componentArchetype)
+	result := new(internal.Archetype)
 	result.reset()
 	return result
 }
 
-func (s *Scene) releaseArchetype(archetype *componentArchetype) {
+func (s *Scene) releaseArchetype(archetype *internal.Archetype) {
 	// TODO: Return all chunks first!
 
 	archetype.reset()

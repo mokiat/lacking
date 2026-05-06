@@ -20,9 +20,9 @@ var _ = Describe("Scene", func() {
 
 	var (
 		scope        *ecs.Scope
-		positionType *ecs.ComponentType[Position]
-		ageType      *ecs.ComponentType[Age]
-		nameType     *ecs.ComponentType[Name]
+		positionType ecs.ComponentType[Position]
+		ageType      ecs.ComponentType[Age]
+		nameType     ecs.ComponentType[Name]
 		scene        *ecs.Scene
 	)
 
@@ -36,15 +36,15 @@ var _ = Describe("Scene", func() {
 
 	Specify("can create entity", func() {
 		id := scene.CreateEntity()
-		Expect(id).ToNot(Equal(ecs.NilEntityID))
+		Expect(id).ToNot(Equal(ecs.NilID))
 	})
 
 	Specify("entities have unique IDs", func() {
 		id1 := scene.CreateEntity()
-		Expect(id1).ToNot(Equal(ecs.NilEntityID))
+		Expect(id1).ToNot(Equal(ecs.NilID))
 
 		id2 := scene.CreateEntity()
-		Expect(id2).ToNot(Equal(ecs.NilEntityID))
+		Expect(id2).ToNot(Equal(ecs.NilID))
 
 		Expect(id2).ToNot(Equal(id1))
 	})
@@ -53,7 +53,7 @@ var _ = Describe("Scene", func() {
 		id := scene.CreateEntity()
 		Expect(scene.HasEntity(id)).To(BeTrue())
 
-		Expect(scene.HasEntity(ecs.NilEntityID)).To(BeFalse())
+		Expect(scene.HasEntity(ecs.NilID)).To(BeFalse())
 	})
 
 	Specify("can delete entity", func() {
@@ -87,7 +87,7 @@ var _ = Describe("Scene", func() {
 	})
 
 	When("having an entity with components", func() {
-		var id ecs.EntityID
+		var id ecs.ID
 
 		BeforeEach(func() {
 			id = scene.CreateEntity()
