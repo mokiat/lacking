@@ -7,7 +7,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-func TestV5(t *testing.T) {
+func TestECS(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "V5 Suite")
+	RunSpecs(t, "ECS Suite")
 }

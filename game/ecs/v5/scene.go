@@ -8,7 +8,7 @@ import (
 // NewScene creates and initializes a new scene.
 func NewScene(scope *Scope) *Scene {
 	return &Scene{
-		scope: scope,
+		registry: scope.registry,
 
 		freeEntityIndices: ds.EmptyStack[uint32](),
 		entities:          nil,
@@ -22,7 +22,7 @@ func NewScene(scope *Scope) *Scene {
 // methods for creating, deleting, and querying entities, as well as subscribing
 // to entity events.
 type Scene struct {
-	scope *Scope
+	registry *internal.Registry
 
 	freeEntityIndices *ds.Stack[uint32]
 	entities          []internal.Entity
@@ -150,7 +150,7 @@ func (s *Scene) EditEntity(id ID, fn EditOperationFunc) {
 	newPlacements := desc.PlacementMap()
 
 	newMask.EachType(func(id internal.TypeID) {
-		storage := s.scope.componentTypes[id].BaseStorage()
+		storage := s.registry.Storage(id)
 		if oldMask.HasType(id) {
 			storage.CopyValue(newPlacements[id], oldPlacements[id])
 		} else {
@@ -241,13 +241,13 @@ func (s *Scene) borrowArchetypeRow(mask internal.TypeMask) (*internal.Archetype,
 		s.archetypes[mask] = archetype
 	}
 
-	offset := archetype.allocateOffset()
-	return archetype, offset
+	row := archetype.AllocateRow()
+	return archetype, row
 }
 
 func (s *Scene) releaseArchetypeRow(archetype *internal.Archetype, row internal.ArchetypeRow) {
-	archetype.releaseOffset(offset)
-	if archetype.isEmpty() {
+	archetype.ReleaseRow(row)
+	if archetype.IsEmpty() {
 		s.releaseArchetype(archetype)
 	}
 }
@@ -256,14 +256,11 @@ func (s *Scene) allocateArchetype() *internal.Archetype {
 	if !s.archetypePool.IsEmpty() {
 		return s.archetypePool.Pop()
 	}
-	result := new(internal.Archetype)
-	result.reset()
-	return result
+	return internal.NewArchetype()
 }
 
 func (s *Scene) releaseArchetype(archetype *internal.Archetype) {
 	// TODO: Return all chunks first!
-
-	archetype.reset()
+	archetype.Destroy()
 	s.archetypePool.Push(archetype)
 }

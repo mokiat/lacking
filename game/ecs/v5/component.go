@@ -3,20 +3,22 @@ package ecs
 import (
 	"reflect"
 
+	"github.com/mokiat/gog/ds"
 	"github.com/mokiat/lacking/game/ecs/v5/internal"
 )
 
 // NewScope creates a new scope for component type registration.
 func NewScope() *Scope {
 	return &Scope{
-		registeredTypes: make(map[reflect.Type]BaseComponentType),
+		registeredTypes: ds.EmptySet[reflect.Type](),
+		registry:        internal.NewRegistry(),
 	}
 }
 
 // Scope represents a scope for component type registration.
 type Scope struct {
-	registeredTypes map[reflect.Type]BaseComponentType
-	componentTypes  [internal.MaxComponentTypes]BaseComponentType
+	registeredTypes *ds.Set[reflect.Type]
+	registry        *internal.Registry
 }
 
 // Type register the specified Go structure as a component type within
@@ -27,24 +29,27 @@ type Scope struct {
 // This function should be called from a global variable initializer, and
 // is not safe for concurrent use.
 func Type[T any](scope *Scope) ComponentType[T] {
-	if len(scope.registeredTypes) >= internal.MaxComponentTypes {
+	initialCount := scope.registeredTypes.Size()
+
+	if initialCount >= internal.MaxComponentTypes {
 		panic("too many component types registered in this scope")
 	}
 
 	reflectType := reflect.TypeFor[T]()
-	if _, ok := scope.registeredTypes[reflectType]; ok {
+	if scope.registeredTypes.Contains(reflectType) {
 		panic("component type already registered in this scope")
 	}
+	scope.registeredTypes.Add(reflectType)
 
-	result := ComponentType[T]{
-		id:      internal.TypeID(len(scope.registeredTypes)),
-		storage: internal.NewComponentStorage[T](),
+	id := internal.TypeID(initialCount)
+
+	storage := internal.NewComponentStorage[T]()
+	scope.registry.SetStorage(id, storage)
+
+	return ComponentType[T]{
+		id:      id,
+		storage: storage,
 	}
-
-	scope.registeredTypes[reflectType] = result
-	scope.componentTypes[result.id] = result
-
-	return result
 }
 
 // BaseComponentType represents a component type in the ECS. It is used to

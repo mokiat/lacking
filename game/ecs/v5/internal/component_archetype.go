@@ -15,9 +15,41 @@ type Archetype struct {
 	components []BaseColumn
 }
 
+func (a *Archetype) Revive() {
+	a.mask = EmptyTypeMask()
+	a.size = 0
+}
+
+func (a *Archetype) Destroy() {
+	// TODO: Release columns first?
+	a.mask = EmptyTypeMask()
+	a.size = 0
+	a.lookup = TypeLookup{}
+	clear(a.components)
+	a.components = a.components[:0]
+}
+
 // TypeMask returns the type mask associated with the archetype.
 func (a *Archetype) TypeMask() TypeMask {
 	return a.mask
+}
+
+// IsEmpty returns whether the archetype has no entities.
+func (a *Archetype) IsEmpty() bool {
+	return a.size == 0
+}
+
+func (a *Archetype) AllocateRow() ArchetypeRow {
+	row := a.size
+	a.size++
+	// TODO: Allocate chunks if needed.
+	return ArchetypeRow(row)
+}
+
+func (a *Archetype) ReleaseRow(row ArchetypeRow) {
+	// TODO: Check if archetype is frozen. If it is, then just mark
+	// the row for deletion in a stack. Otherwise, just perform a swap with
+	// the last row and decrease the size.
 }
 
 // PlacementMap returns a mapping from component type identifiers to storage
@@ -36,29 +68,6 @@ func (a *Archetype) PlacementMap(row ArchetypeRow) TypePlacementMap {
 	}
 	return result
 }
-
-// func (a *componentArchetype) reset() {
-// 	a.mask = emptyComponentMask()
-// 	a.size = 0
-
-// 	// for i := range a.lookup {
-// 	// 	a.lookup[i] = -1
-// 	// }
-// 	// // TODO: Pool component chains as well?
-// 	// clear(a.components)
-// 	// a.components = a.components[:0]
-// }
-
-// func (a *componentArchetype) allocateOffset() uint32 {
-// 	// offset := a.size
-// 	// a.size++
-// 	// return offset
-// 	return 0
-// }
-
-// func (a *componentArchetype) releaseOffset(offset uint32) {
-// 	panic("not implemented")
-// }
 
 // ArchetypeRow represents a single row in an archetype, which corresponds to a
 // single entity's worth of component data.
