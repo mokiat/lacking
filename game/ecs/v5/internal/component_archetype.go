@@ -1,32 +1,43 @@
 package internal
 
 // NewArchetype creates a new Archetype.
-func NewArchetype() *Archetype {
-	return &Archetype{}
+func NewArchetype(registry *Registry) *Archetype {
+	return &Archetype{
+		registry: registry,
+	}
 }
 
 // Archetype represents a unique combination of component types. It is used to
 // group entities that have the same set of component types together for
 // efficient storage and querying.
 type Archetype struct {
-	mask       TypeMask
-	size       uint32
-	lookup     TypeLookup
-	components []BaseColumn
+	registry *Registry
+	mask     TypeMask
+	size     uint32
+	lookup   TypeLookup
+	columns  []BaseColumn
 }
 
-func (a *Archetype) Revive() {
-	a.mask = EmptyTypeMask()
+func (a *Archetype) Revive(mask TypeMask) {
+	a.mask = mask
 	a.size = 0
+
+	mask.EachType(func(id TypeID) {
+		storage := a.registry.Storage(id)
+		a.lookup[id] = uint8(len(a.columns))
+		a.columns = append(a.columns, storage.CreateColumn())
+	})
 }
 
 func (a *Archetype) Destroy() {
-	// TODO: Release columns first?
 	a.mask = EmptyTypeMask()
 	a.size = 0
 	a.lookup = TypeLookup{}
-	clear(a.components)
-	a.components = a.components[:0]
+	for i := range a.columns {
+		a.columns[i].Destroy()
+		a.columns[i] = nil
+	}
+	a.columns = a.columns[:0]
 }
 
 // TypeMask returns the type mask associated with the archetype.
@@ -55,17 +66,11 @@ func (a *Archetype) ReleaseRow(row ArchetypeRow) {
 // PlacementMap returns a mapping from component type identifiers to storage
 // positions for the archetype and row.
 func (a *Archetype) PlacementMap(row ArchetypeRow) TypePlacementMap {
-	offset := uint32(row) % chunkSize
-	chunkIndex := uint32(row) / chunkSize
-
 	var result TypePlacementMap
 	a.mask.EachType(func(id TypeID) {
-		column := a.components[a.lookup[id]]
-		result[id].ChunkIndex = uint32(row) / chunkSize
+		column := a.columns[a.lookup[id]]
+		result[id] = column.StoragePosition(row)
 	})
-	for i := range result {
-		result[i].Offset = offset
-	}
 	return result
 }
 

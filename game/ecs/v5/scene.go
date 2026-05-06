@@ -231,13 +231,7 @@ func (s *Scene) borrowArchetypeRow(mask internal.TypeMask) (*internal.Archetype,
 
 	if !ok {
 		archetype = s.allocateArchetype()
-		archetype.mask = mask
-		archetype.mask.eachTypeID(func(id typeID) bool {
-			compType := s.scope.getComponentTypeByID(id)
-			archetype.lookup[id] = int16(len(archetype.components))
-			archetype.components = append(archetype.components, compType.createChain())
-			return true
-		})
+		archetype.Revive(mask)
 		s.archetypes[mask] = archetype
 	}
 
@@ -256,11 +250,10 @@ func (s *Scene) allocateArchetype() *internal.Archetype {
 	if !s.archetypePool.IsEmpty() {
 		return s.archetypePool.Pop()
 	}
-	return internal.NewArchetype()
+	return internal.NewArchetype(s.registry)
 }
 
 func (s *Scene) releaseArchetype(archetype *internal.Archetype) {
-	// TODO: Return all chunks first!
 	archetype.Destroy()
 	s.archetypePool.Push(archetype)
 }

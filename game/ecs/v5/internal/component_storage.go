@@ -5,6 +5,9 @@ const chunkSize = 64
 // BaseComponentStorage represents a base interface for component storage.
 type BaseComponentStorage interface {
 
+	// CreateColumn creates a new column for storing component values.
+	CreateColumn() BaseColumn
+
 	// CopyValue copies the component value from the source storage position to
 	// the destination storage position.
 	CopyValue(dst, src StoragePosition)
@@ -26,6 +29,11 @@ type ComponentStorage[T any] struct {
 }
 
 var _ BaseComponentStorage = (*ComponentStorage[struct{}])(nil)
+
+// CreateColumn creates a new column for storing component values.
+func (s *ComponentStorage[T]) CreateColumn() BaseColumn {
+	return newColumn(s)
+}
 
 // GetValue returns the component value at the specified storage position.
 func (s *ComponentStorage[T]) GetValue(pos StoragePosition) T {
