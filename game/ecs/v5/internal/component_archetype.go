@@ -65,6 +65,18 @@ func (a *Archetype) AllocateRow() ArchetypeRow {
 }
 
 func (a *Archetype) ReleaseRow(row ArchetypeRow) {
+	lastRow := ArchetypeRow(a.size - 1)
+	if row != lastRow {
+		// TODO: The entity's archetype row should be adjusted...
+		for _, column := range a.columns {
+			lastRowPos := column.StoragePosition(lastRow)
+			rowPos := column.StoragePosition(row)
+			column.Storage().CopyValue(rowPos, lastRowPos)
+			column.Shrink()
+		}
+	}
+	a.size--
+
 	// TODO: Check if archetype is frozen. If it is, then just mark
 	// the row for deletion in a stack. Otherwise, just perform a swap with
 	// the last row and decrease the size.
