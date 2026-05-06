@@ -18,6 +18,8 @@ type Archetype struct {
 	columns  []BaseColumn
 }
 
+// Revive initializes the archetype with the specified type mask. It sets up the
+// necessary columns for the component types included in the mask.
 func (a *Archetype) Revive(mask TypeMask) {
 	a.mask = mask
 	a.size = 0
@@ -29,6 +31,9 @@ func (a *Archetype) Revive(mask TypeMask) {
 	})
 }
 
+// Destroy cleans up the archetype and releases any resources it holds.
+// It should be called when the archetype is no longer needed, such as when it
+// is being returned to the archetype pool.
 func (a *Archetype) Destroy() {
 	a.mask = EmptyTypeMask()
 	a.size = 0
@@ -53,7 +58,9 @@ func (a *Archetype) IsEmpty() bool {
 func (a *Archetype) AllocateRow() ArchetypeRow {
 	row := a.size
 	a.size++
-	// TODO: Allocate chunks if needed.
+	for _, column := range a.columns {
+		column.Grow()
+	}
 	return ArchetypeRow(row)
 }
 

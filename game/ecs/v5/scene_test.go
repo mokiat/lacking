@@ -17,13 +17,19 @@ var _ = Describe("Scene", func() {
 	type Name struct {
 		Value string
 	}
+	type Identification struct {
+		ID uint32
+	}
+	type Unused struct{} // a tag component
 
 	var (
-		scope        *ecs.Scope
-		positionType ecs.ComponentType[Position]
-		ageType      ecs.ComponentType[Age]
-		nameType     ecs.ComponentType[Name]
-		scene        *ecs.Scene
+		scope              *ecs.Scope
+		positionType       ecs.ComponentType[Position]
+		ageType            ecs.ComponentType[Age]
+		nameType           ecs.ComponentType[Name]
+		identificationType ecs.ComponentType[Identification]
+		unusedType         ecs.ComponentType[Unused]
+		scene              *ecs.Scene
 	)
 
 	BeforeEach(func() {
@@ -31,6 +37,10 @@ var _ = Describe("Scene", func() {
 		positionType = ecs.Type[Position](scope)
 		ageType = ecs.Type[Age](scope)
 		nameType = ecs.Type[Name](scope)
+		identificationType = ecs.Type[Identification](scope)
+		_ = identificationType // TODO: REMOVE
+		unusedType = ecs.Type[Unused](scope)
+		_ = unusedType // TODO: REMOVE
 		scene = ecs.NewScene(scope)
 	})
 

@@ -1,5 +1,7 @@
 package internal
 
+import "github.com/mokiat/gog/ds"
+
 const chunkSize = 64
 
 // BaseComponentStorage represents a base interface for component storage.
@@ -7,6 +9,14 @@ type BaseComponentStorage interface {
 
 	// CreateColumn creates a new column for storing component values.
 	CreateColumn() BaseColumn
+
+	// AllocateChunk allocates a new chunk for storing component values and
+	// returns the index of the allocated chunk.
+	AllocateChunk() uint32
+
+	// ReleaseChunk releases the chunk at the specified index, making it
+	// available for future allocations.
+	ReleaseChunk(chunkIndex uint32)
 
 	// CopyValue copies the component value from the source storage position to
 	// the destination storage position.
@@ -19,13 +29,16 @@ type BaseComponentStorage interface {
 
 // NewComponentStorage creates a new component storage for components of type T.
 func NewComponentStorage[T any]() *ComponentStorage[T] {
-	return &ComponentStorage[T]{}
+	return &ComponentStorage[T]{
+		freeChunks: ds.EmptyStack[uint32](),
+	}
 }
 
 // ComponentStorage is a storage for components of a specific type T.
 type ComponentStorage[T any] struct {
-	chunks    [][chunkSize]T // TODO: Maybe array of "Chunk" types.
-	tempValue T
+	freeChunks *ds.Stack[uint32]
+	chunks     []*[chunkSize]T
+	tempValue  T
 }
 
 var _ BaseComponentStorage = (*ComponentStorage[struct{}])(nil)
@@ -33,6 +46,23 @@ var _ BaseComponentStorage = (*ComponentStorage[struct{}])(nil)
 // CreateColumn creates a new column for storing component values.
 func (s *ComponentStorage[T]) CreateColumn() BaseColumn {
 	return newColumn(s)
+}
+
+// AllocateChunk allocates a new chunk for storing component values and
+// returns the index of the allocated chunk.
+func (s *ComponentStorage[T]) AllocateChunk() uint32 {
+	if s.freeChunks.IsEmpty() {
+		chunkIndex := uint32(len(s.chunks))
+		s.chunks = append(s.chunks, new([chunkSize]T))
+		return chunkIndex
+	}
+	return s.freeChunks.Pop()
+}
+
+// ReleaseChunk releases the chunk at the specified index, making it
+// available for future allocations.
+func (s *ComponentStorage[T]) ReleaseChunk(chunkIndex uint32) {
+	s.freeChunks.Push(chunkIndex)
 }
 
 // GetValue returns the component value at the specified storage position.
