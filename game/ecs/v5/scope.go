@@ -2,11 +2,7 @@ package ecs
 
 import (
 	"reflect"
-
-	"github.com/mokiat/lacking/game/ecs/v5/internal"
 )
-
-const maxTypes = internal.MaxComponentTypes
 
 // MaxComponentTypes returns the maximum number of component types that can be
 // registered within a scope.

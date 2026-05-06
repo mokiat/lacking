@@ -37,6 +37,29 @@ func (a *Archetype) PlacementMap(row ArchetypeRow) TypePlacementMap {
 	return result
 }
 
+// func (a *componentArchetype) reset() {
+// 	a.mask = emptyComponentMask()
+// 	a.size = 0
+
+// 	// for i := range a.lookup {
+// 	// 	a.lookup[i] = -1
+// 	// }
+// 	// // TODO: Pool component chains as well?
+// 	// clear(a.components)
+// 	// a.components = a.components[:0]
+// }
+
+// func (a *componentArchetype) allocateOffset() uint32 {
+// 	// offset := a.size
+// 	// a.size++
+// 	// return offset
+// 	return 0
+// }
+
+// func (a *componentArchetype) releaseOffset(offset uint32) {
+// 	panic("not implemented")
+// }
+
 // ArchetypeRow represents a single row in an archetype, which corresponds to a
 // single entity's worth of component data.
 type ArchetypeRow uint32
