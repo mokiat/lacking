@@ -14,11 +14,15 @@ type BaseComponentStorage interface {
 	ApplyTempValue(pos StoragePosition)
 }
 
+// NewComponentStorage creates a new component storage for components of type T.
+func NewComponentStorage[T any]() *ComponentStorage[T] {
+	return &ComponentStorage[T]{}
+}
+
 // ComponentStorage is a storage for components of a specific type T.
 type ComponentStorage[T any] struct {
+	chunks    [][chunkSize]T // TODO: Maybe array of "Chunk" types.
 	tempValue T
-
-	chunks [][chunkSize]T // TODO: Maybe array of "Chunk" types.
 }
 
 var _ BaseComponentStorage = (*ComponentStorage[struct{}])(nil)

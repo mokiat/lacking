@@ -28,9 +28,9 @@ var _ = Describe("Scene", func() {
 
 	BeforeEach(func() {
 		scope = ecs.NewScope()
-		positionType = ecs.RegisterType[Position](scope)
-		ageType = ecs.RegisterType[Age](scope)
-		nameType = ecs.RegisterType[Name](scope)
+		positionType = ecs.Type[Position](scope)
+		ageType = ecs.Type[Age](scope)
+		nameType = ecs.Type[Name](scope)
 		scene = ecs.NewScene(scope)
 	})
 
