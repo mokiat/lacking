@@ -24,7 +24,7 @@ type BaseComponentStorage interface {
 
 	// ApplyTempValue applies the temporary value to the component at the
 	// specified storage position.
-	ApplyTempValue(pos StoragePosition)
+	ApplyTempValue(dst StoragePosition)
 }
 
 // NewComponentStorage creates a new component storage for components of type T.

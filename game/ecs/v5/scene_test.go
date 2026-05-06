@@ -9,7 +9,7 @@ import (
 
 var _ = Describe("Scene", func() {
 	type Position struct {
-		X, Y float64
+		X, Y int
 	}
 	type Age struct {
 		Value int

@@ -125,6 +125,8 @@ func (s *Scene) EditEntity(id ID, fn EditOperationFunc) {
 	}
 
 	oldMask := desc.Archetype().TypeMask()
+	oldArchetype := desc.Archetype()
+	oldArchetypeRow := desc.ArchetypeRow()
 
 	change := EditOperation{
 		mask: oldMask,
@@ -135,13 +137,9 @@ func (s *Scene) EditEntity(id ID, fn EditOperationFunc) {
 	s.inOperationBlock = false
 
 	newMask := change.mask
-
 	if newMask == oldMask {
 		return // no changes to apply
 	}
-
-	oldArchetype := desc.Archetype()
-	oldArchetypeRow := desc.ArchetypeRow()
 
 	newArchetype, newArchetypeRow := s.borrowArchetypeRow(newMask)
 
@@ -228,11 +226,8 @@ func (s *Scene) getEntityDescriptor(id ID) (*internal.Entity, bool) {
 
 func (s *Scene) borrowArchetypeRow(mask internal.TypeMask) (*internal.Archetype, internal.ArchetypeRow) {
 	archetype, ok := s.archetypes[mask]
-
 	if !ok {
-		archetype = s.allocateArchetype()
-		archetype.Revive(mask)
-		s.archetypes[mask] = archetype
+		archetype = s.allocateArchetype(mask)
 	}
 
 	row := archetype.AllocateRow()
@@ -241,19 +236,32 @@ func (s *Scene) borrowArchetypeRow(mask internal.TypeMask) (*internal.Archetype,
 
 func (s *Scene) releaseArchetypeRow(archetype *internal.Archetype, row internal.ArchetypeRow) {
 	archetype.ReleaseRow(row)
+
 	if archetype.IsEmpty() {
 		s.releaseArchetype(archetype)
 	}
 }
 
-func (s *Scene) allocateArchetype() *internal.Archetype {
-	if !s.archetypePool.IsEmpty() {
-		return s.archetypePool.Pop()
+func (s *Scene) allocateArchetype(mask internal.TypeMask) *internal.Archetype {
+	var result *internal.Archetype
+	if s.archetypePool.IsEmpty() {
+		result = internal.NewArchetype(s.registry)
+	} else {
+		result = s.archetypePool.Pop()
 	}
-	return internal.NewArchetype(s.registry)
+
+	result.Revive(mask)
+
+	s.archetypes[mask] = result
+
+	return result
 }
 
 func (s *Scene) releaseArchetype(archetype *internal.Archetype) {
+	mask := archetype.TypeMask()
+	delete(s.archetypes, mask)
+
 	archetype.Destroy()
+
 	s.archetypePool.Push(archetype)
 }

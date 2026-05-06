@@ -37,5 +37,5 @@ func (c *Column[T]) StoragePosition(row ArchetypeRow) StoragePosition {
 }
 
 func (c *Column[T]) Destroy() {
-	// TODO
+	// TODO: Release chunks back to the storage's free chunk pool.
 }
