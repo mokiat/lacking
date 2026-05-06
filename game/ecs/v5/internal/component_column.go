@@ -27,6 +27,7 @@ func (c *Column[T]) Grow() {
 	if chunkIndex >= uint32(len(c.chunkRefs)) {
 		c.chunkRefs = append(c.chunkRefs, c.storage.AllocateChunk())
 	}
+	c.size++
 }
 
 func (c *Column[T]) StoragePosition(row ArchetypeRow) StoragePosition {
