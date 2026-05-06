@@ -9,17 +9,17 @@ func NewRegistry() *Registry {
 // registering and retrieving component storages based on component type
 // identifiers.
 type Registry struct {
-	storages [MaxComponentTypes]BaseComponentStorage
+	storages [MaxComponentTypes]BaseStorage
 }
 
 // Storage returns the component storage associated with the specified component
 // type.
-func (r *Registry) Storage(id TypeID) BaseComponentStorage {
+func (r *Registry) Storage(id TypeID) BaseStorage {
 	return r.storages[id]
 }
 
 // Storage returns the component storage associated with the specified component
 // type.
-func (r *Registry) SetStorage(id TypeID, storage BaseComponentStorage) {
+func (r *Registry) SetStorage(id TypeID, storage BaseStorage) {
 	r.storages[id] = storage
 }

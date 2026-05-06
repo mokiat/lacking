@@ -2,14 +2,14 @@ package internal
 
 type Entity struct {
 	archetype    *Archetype
-	archetypeRow ArchetypeRow
+	archetypeRow Row
 	revision     uint32
 }
 
 // Revive revives the entity with the specified archetype and archetype row.
 // This method is used to reuse entity slots in the scene when entities are
 // deleted and recreated.
-func (e *Entity) Revive(archetype *Archetype, archetypeRow ArchetypeRow) {
+func (e *Entity) Revive(archetype *Archetype, archetypeRow Row) {
 	e.archetype = archetype
 	e.archetypeRow = archetypeRow
 	e.revision++
@@ -17,7 +17,7 @@ func (e *Entity) Revive(archetype *Archetype, archetypeRow ArchetypeRow) {
 
 // Destroy destroys the entity and returns the archetype and archetype row that
 // were associated with the entity before it was destroyed.
-func (e *Entity) Destroy() (*Archetype, ArchetypeRow) {
+func (e *Entity) Destroy() (*Archetype, Row) {
 	archetype := e.archetype
 	archetypeRow := e.archetypeRow
 
@@ -46,18 +46,12 @@ func (e *Entity) Archetype() *Archetype {
 }
 
 // ArchetypeRow returns the archetype row associated with the entity.
-func (e *Entity) ArchetypeRow() ArchetypeRow {
+func (e *Entity) ArchetypeRow() Row {
 	return e.archetypeRow
 }
 
-// Relocate changes the archetype and archetype row associated with the entity.
-func (e *Entity) Relocate(archetype *Archetype, archetypeRow ArchetypeRow) {
+// Assign changes the archetype and archetype row associated with the entity.
+func (e *Entity) Assign(archetype *Archetype, archetypeRow Row) {
 	e.archetype = archetype
 	e.archetypeRow = archetypeRow
-}
-
-// PlacementMap returns a mapping from component type identifiers to storage
-// positions for the entity's archetype and archetype row.
-func (e *Entity) PlacementMap() TypePlacementMap {
-	return e.archetype.PlacementMap(e.archetypeRow)
 }

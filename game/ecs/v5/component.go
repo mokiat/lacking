@@ -43,7 +43,7 @@ func Type[T any](scope *Scope) ComponentType[T] {
 
 	id := internal.TypeID(initialCount)
 
-	storage := internal.NewComponentStorage[T]()
+	storage := internal.NewStorage[T]()
 	scope.registry.SetStorage(id, storage)
 
 	return ComponentType[T]{
@@ -58,20 +58,20 @@ type BaseComponentType interface {
 
 	// BaseStorage returns the component storage associated with the component
 	// type.
-	BaseStorage() internal.BaseComponentStorage
+	BaseStorage() internal.BaseStorage
 }
 
 // ComponentType represents a component type in the ECS. It is used to
 // identify component types and to manage component storage.
 type ComponentType[T any] struct {
 	id      internal.TypeID
-	storage *internal.ComponentStorage[T]
+	storage *internal.Storage[T]
 }
 
 var _ BaseComponentType = (*ComponentType[any])(nil)
 
 // BaseStorage returns the component storage associated with the component
 // type.
-func (t ComponentType[T]) BaseStorage() internal.BaseComponentStorage {
+func (t ComponentType[T]) BaseStorage() internal.BaseStorage {
 	return t.storage
 }

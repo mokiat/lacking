@@ -101,9 +101,18 @@ func (s *Scene) ReadEntity(entity ID, fn func(*ReadOperation)) {
 		panic("entity does not exist")
 	}
 
+	mask := desc.Archetype().TypeMask()
+	row := desc.ArchetypeRow()
+
+	var columns [internal.MaxComponentTypes]internal.BaseColumn
+	mask.EachType(func(id internal.TypeID) {
+		columns[id] = desc.Archetype().Column(id)
+	})
+
 	op := ReadOperation{
-		mask:      desc.Archetype().TypeMask(),
-		positions: desc.PlacementMap(),
+		mask:    mask,
+		row:     row,
+		columns: columns,
 	}
 	s.inOperationBlock = true
 	fn(&op)
@@ -126,7 +135,7 @@ func (s *Scene) EditEntity(id ID, fn EditOperationFunc) {
 
 	oldMask := desc.Archetype().TypeMask()
 	oldArchetype := desc.Archetype()
-	oldArchetypeRow := desc.ArchetypeRow()
+	oldRow := desc.ArchetypeRow()
 
 	change := EditOperation{
 		mask: oldMask,
@@ -141,22 +150,21 @@ func (s *Scene) EditEntity(id ID, fn EditOperationFunc) {
 		return // no changes to apply
 	}
 
-	newArchetype, newArchetypeRow := s.borrowArchetypeRow(newMask)
-
-	oldPlacements := desc.PlacementMap()
-	desc.Relocate(newArchetype, newArchetypeRow)
-	newPlacements := desc.PlacementMap()
+	newArchetype, newRow := s.borrowArchetypeRow(newMask)
 
 	newMask.EachType(func(id internal.TypeID) {
-		storage := s.registry.Storage(id)
+		newColumn := newArchetype.Column(id)
 		if oldMask.HasType(id) {
-			storage.CopyValue(newPlacements[id], oldPlacements[id])
+			oldColumn := oldArchetype.Column(id)
+			newColumn.CopyFromColumn(newRow, oldColumn, oldRow)
 		} else {
-			storage.ApplyTempValue(newPlacements[id])
+			newColumn.CopyFromStorage(newRow)
 		}
 	})
 
-	s.releaseArchetypeRow(oldArchetype, oldArchetypeRow)
+	s.releaseArchetypeRow(oldArchetype, oldRow)
+
+	desc.Assign(newArchetype, newRow)
 
 	// 	// TODO: call subscribers.
 	// 	// TODO: Abort this process if a subscriber made changes to the entity
@@ -224,18 +232,23 @@ func (s *Scene) getEntityDescriptor(id ID) (*internal.Entity, bool) {
 	return desc, true
 }
 
-func (s *Scene) borrowArchetypeRow(mask internal.TypeMask) (*internal.Archetype, internal.ArchetypeRow) {
+func (s *Scene) borrowArchetypeRow(mask internal.TypeMask) (*internal.Archetype, internal.Row) {
 	archetype, ok := s.archetypes[mask]
 	if !ok {
 		archetype = s.allocateArchetype(mask)
 	}
 
-	row := archetype.AllocateRow()
+	row := archetype.Grow()
 	return archetype, row
 }
 
-func (s *Scene) releaseArchetypeRow(archetype *internal.Archetype, row internal.ArchetypeRow) {
-	archetype.ReleaseRow(row)
+func (s *Scene) releaseArchetypeRow(archetype *internal.Archetype, row internal.Row) {
+	lastRow := archetype.LastRow()
+	if row != lastRow {
+		panic("TODO: Swap entities!") // TODO: This requires that archetypes keep track of entities as well.
+	}
+
+	archetype.Shrink()
 
 	if archetype.IsEmpty() {
 		s.releaseArchetype(archetype)
