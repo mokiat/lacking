@@ -41,7 +41,7 @@ func RemoveComponent[T any](op *EditOperation, compType ComponentType[T]) {
 type ReadOperation struct {
 	mask    internal.TypeMask
 	row     internal.Row
-	columns [internal.MaxComponentTypes]internal.BaseColumn
+	columns [internal.MaxComponentTypes]internal.AnyColumn
 }
 
 // GetComponent retrieves the component of type T from the entity being read

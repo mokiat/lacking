@@ -1,18 +1,18 @@
 package internal
 
 type Entity struct {
+	revision     uint32
 	archetype    *Archetype
 	archetypeRow Row
-	revision     uint32
 }
 
 // Revive revives the entity with the specified archetype and archetype row.
 // This method is used to reuse entity slots in the scene when entities are
 // deleted and recreated.
 func (e *Entity) Revive(archetype *Archetype, archetypeRow Row) {
+	e.revision++
 	e.archetype = archetype
 	e.archetypeRow = archetypeRow
-	e.revision++
 }
 
 // Destroy destroys the entity and returns the archetype and archetype row that

@@ -58,7 +58,7 @@ type BaseComponentType interface {
 
 	// BaseStorage returns the component storage associated with the component
 	// type.
-	BaseStorage() internal.BaseStorage
+	BaseStorage() internal.AnyStorage
 }
 
 // ComponentType represents a component type in the ECS. It is used to
@@ -72,6 +72,6 @@ var _ BaseComponentType = (*ComponentType[any])(nil)
 
 // BaseStorage returns the component storage associated with the component
 // type.
-func (t ComponentType[T]) BaseStorage() internal.BaseStorage {
+func (t ComponentType[T]) BaseStorage() internal.AnyStorage {
 	return t.storage
 }

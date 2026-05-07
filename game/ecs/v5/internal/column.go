@@ -1,26 +1,9 @@
 package internal
 
-import (
-	"math"
-
-	"github.com/mokiat/gog"
-)
-
-// BaseColumn represents a base interface for a column in the component storage.
+// AnyColumn represents a base interface for a column in the component storage.
 // A column is responsible for managing the storage of component values for a
 // specific component type across multiple entities.
-type BaseColumn interface {
-
-	// BaseStorage returns the underlying storage associated with this column.
-	BaseStorage() BaseStorage
-
-	// SizeType returns the size type of the column, which indicates the maximum
-	// number of component values that the column can hold.
-	SizeType() ColumnSizeType
-
-	// CanGrow returns whether the column can grow to accommodate more component
-	// values. This is determined by the column's size type and current size.
-	CanGrow() bool
+type AnyColumn interface {
 
 	// Grow appends an additional row to the column. A zero value is placed.
 	Grow()
@@ -38,143 +21,105 @@ type BaseColumn interface {
 
 	// CopyFromColumn copies the component values from the source column and row to
 	// the destination row.
-	CopyFromColumn(dst Row, srcColumn BaseColumn, src Row)
+	CopyFromColumn(dst Row, srcColumn AnyColumn, src Row)
 
-	// Release releases any resources associated with the column.
+	// Release releases any resources associated with the column, such as
+	// allocated chunks.
 	Release()
 }
 
-// NewColumn creates a new column for storing values of type T.
-func NewColumn[T any](storage *Storage[T], sizeType ColumnSizeType) *Column[T] {
+// NewColumn creates a new column for storing component values of type T using
+// the provided storage.
+func NewColumn[T any](storage *Storage[T]) *Column[T] {
 	return &Column[T]{
-		storage:  storage,
-		sizeType: sizeType,
+		storage: storage,
+		chunks:  nil,
 	}
 }
 
 // Column is a column in the component storage for a specific component type T.
 // It manages the storage of component values for multiple entities, using
 // chunks to efficiently allocate memory.
+//
+// NOTE: A huge benefit of using chunks is that they are immutable during
+// growth, which means that references to existing chunks are not invalidated,
+// unlike using a single slice and appending to it.
 type Column[T any] struct {
-	storage  *Storage[T]
-	sizeType ColumnSizeType
-	values   []T
+	storage *Storage[T]
+	chunks  []DataChunk[T]
+	size    uint32
 }
 
-var _ BaseColumn = (*Column[struct{}])(nil)
-
-// BaseStorage returns the underlying storage associated with this column.
-func (c *Column[T]) BaseStorage() BaseStorage {
-	return c.storage
-}
-
-// Storage returns the storage associated with this column.
-func (c *Column[T]) Storage() *Storage[T] {
-	return c.storage
-}
-
-// SizeType returns the size type of the column, which indicates the maximum
-// number of component values that the column can hold.
-func (c *Column[T]) SizeType() ColumnSizeType {
-	return c.sizeType
-}
-
-// CanGrow returns whether the column can grow to accommodate more component
-// values. This is determined by the column's size type and current size.
-func (c *Column[T]) CanGrow() bool {
-	return len(c.values) < c.sizeType.MaxSize()
-}
+var _ AnyColumn = (*Column[struct{}])(nil)
 
 // Grow appends an additional row to the column. A zero value is placed.
 func (c *Column[T]) Grow() {
-	c.values = append(c.values, gog.Zero[T]())
+	if c.size%chunkSize == 0 {
+		c.chunks = append(c.chunks, c.storage.allocateChunk())
+	}
+	c.size++
 }
 
 // Shrink removes the last row of the column. The value is lost.
 func (c *Column[T]) Shrink() {
-	c.values = c.values[:len(c.values)-1]
+	c.size--
+	if c.size%chunkSize == 0 {
+		lastChunkIndex := len(c.chunks) - 1
+		c.storage.releaseChunk(c.chunks[lastChunkIndex])
+		c.chunks = c.chunks[:lastChunkIndex]
+	}
 }
 
 // Copy copies the component values from the source row to the destination
 // row.
 func (c *Column[T]) Copy(dst, src Row) {
-	c.values[dst] = c.values[src]
+	if dst != src {
+		c.SetValue(dst, c.Value(src))
+	}
 }
 
 // CopyFromStorage copies the temporary value from the storage into the
 // cell at the specified row.
 func (c *Column[T]) CopyFromStorage(dst Row) {
-	c.values[dst] = c.storage.TempValue()
+	c.SetValue(dst, c.storage.TempValue())
 }
 
 // CopyFromColumn copies the component values from the source column and row to
 // the destination row.
-func (c *Column[T]) CopyFromColumn(dst Row, srcColumn BaseColumn, src Row) {
+func (c *Column[T]) CopyFromColumn(dst Row, srcColumn AnyColumn, src Row) {
 	srcCol := srcColumn.(*Column[T])
-	c.values[dst] = srcCol.values[src]
+	c.SetValue(dst, srcCol.Value(src))
 }
 
 // Value returns the value at the specified row in the column.
 func (c *Column[T]) Value(row Row) T {
-	return c.values[row]
+	chunkIndex := row / chunkSize
+	cellIndex := row % chunkSize
+	return c.chunks[chunkIndex][cellIndex]
 }
 
 // SetValue sets the value at the specified row in the column.
 func (c *Column[T]) SetValue(row Row, value T) {
-	c.values[row] = value
+	chunkIndex := row / chunkSize
+	cellIndex := row % chunkSize
+	c.chunks[chunkIndex][cellIndex] = value
 }
 
 // RefValue returns a reference to the value at the specified row in the column.
 func (c *Column[T]) RefValue(row Row) *T {
-	return &c.values[row]
+	chunkIndex := row / chunkSize
+	cellIndex := row % chunkSize
+	return &c.chunks[chunkIndex][cellIndex]
 }
 
 // Destroy releases any resources associated with the column, such as
 // allocated chunks, and resets the column to an empty state.
 func (c *Column[T]) Release() {
-	c.values = c.values[:0]
-	c.storage.ReleaseColumn(c)
-}
-
-const (
-	// ColumnSizeTypeSmall represents a column that can hold up to 2 component
-	// values.
-	ColumnSizeTypeSmall ColumnSizeType = iota
-
-	// ColumnSizeTypeMedium represents a column that can hold up to 8 component
-	// values.
-	ColumnSizeTypeMedium
-
-	// ColumnSizeTypeLarge represents a column that can hold up to 64 component
-	// values.
-	ColumnSizeTypeLarge
-
-	// ColumnSizeTypeUnbounded represents a column that can hold an unlimited
-	// number of component values, up to the maximum uint32 value.
-	ColumnSizeTypeUnbounded
-
-	// ColumnSizeTypeCount is the total number of column size types defined.
-	//
-	// NOTE: This is not a valid enum value!
-	ColumnSizeTypeCount
-)
-
-// ColumnSizeType describes the size capabilities of a column.
-type ColumnSizeType uint8
-
-// MaxSize returns the maximum number of component values that a column of this
-// size type can hold.
-func (t ColumnSizeType) MaxSize() int {
-	switch t {
-	case ColumnSizeTypeSmall:
-		return 2
-	case ColumnSizeTypeMedium:
-		return 8
-	case ColumnSizeTypeLarge:
-		return 64
-	case ColumnSizeTypeUnbounded:
-		return math.MaxUint32
-	default:
-		panic("invalid column size type")
+	for _, chunk := range c.chunks {
+		c.storage.releaseChunk(chunk)
 	}
+	c.chunks = c.chunks[:0]
+	c.size = 0
+
+	c.storage.releaseColumn(c)
 }

@@ -30,6 +30,8 @@ type Scene struct {
 	archetypePool *ds.Stack[*internal.Archetype]
 	archetypes    map[internal.TypeMask]*internal.Archetype
 
+	editOperation    EditOperation
+	readOperation    ReadOperation
 	inOperationBlock bool
 }
 
@@ -104,18 +106,18 @@ func (s *Scene) ReadEntity(entity ID, fn func(*ReadOperation)) {
 	mask := desc.Archetype().TypeMask()
 	row := desc.ArchetypeRow()
 
-	var columns [internal.MaxComponentTypes]internal.BaseColumn
+	var columns [internal.MaxComponentTypes]internal.AnyColumn
 	mask.EachType(func(id internal.TypeID) {
-		columns[id] = desc.Archetype().Column(id)
+		columns[id] = desc.Archetype().ComponentColumn(id)
 	})
 
-	op := ReadOperation{
+	s.readOperation = ReadOperation{
 		mask:    mask,
 		row:     row,
 		columns: columns,
 	}
 	s.inOperationBlock = true
-	fn(&op)
+	fn(&s.readOperation)
 	s.inOperationBlock = false
 }
 
@@ -137,25 +139,25 @@ func (s *Scene) EditEntity(id ID, fn EditOperationFunc) {
 	oldArchetype := desc.Archetype()
 	oldRow := desc.ArchetypeRow()
 
-	change := EditOperation{
+	s.editOperation = EditOperation{
 		mask: oldMask,
 	}
-
 	s.inOperationBlock = true
-	fn(&change)
+	fn(&s.editOperation)
 	s.inOperationBlock = false
 
-	newMask := change.mask
+	newMask := s.editOperation.mask
 	if newMask == oldMask {
 		return // no changes to apply
 	}
 
 	newArchetype, newRow := s.borrowArchetypeRow(newMask)
 
+	newArchetype.IDColumn().SetValue(newRow, id.index)
 	newMask.EachType(func(id internal.TypeID) {
-		newColumn := newArchetype.Column(id)
+		newColumn := newArchetype.ComponentColumn(id)
 		if oldMask.HasType(id) {
-			oldColumn := oldArchetype.Column(id)
+			oldColumn := oldArchetype.ComponentColumn(id)
 			newColumn.CopyFromColumn(newRow, oldColumn, oldRow)
 		} else {
 			newColumn.CopyFromStorage(newRow)
@@ -245,7 +247,10 @@ func (s *Scene) borrowArchetypeRow(mask internal.TypeMask) (*internal.Archetype,
 func (s *Scene) releaseArchetypeRow(archetype *internal.Archetype, row internal.Row) {
 	lastRow := archetype.LastRow()
 	if row != lastRow {
-		panic("TODO: Swap entities!") // TODO: This requires that archetypes keep track of entities as well.
+		lastRowID := archetype.IDColumn().Value(lastRow)
+		lastRowDesc := &s.entities[lastRowID]
+		lastRowDesc.Assign(archetype, row)
+		archetype.CopyRow(row, lastRow)
 	}
 
 	archetype.Shrink()

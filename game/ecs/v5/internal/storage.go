@@ -1,52 +1,46 @@
 package internal
 
-import "github.com/mokiat/gog/ds"
+import (
+	"github.com/mokiat/gog/ds"
+)
 
-// BaseStorage represents a base interface for storage, which is responsible for
+// AnyStorage represents a base interface for storage, which is responsible for
 // allocating and managing columns for component storage.
-type BaseStorage interface {
+type AnyStorage interface {
 
-	// AllocateColumn allocates a new column for storing component values and
+	// NewAnyColumn allocates a new column for storing component values and
 	// returns the allocated column.
-	//
-	// Make sure to call Release on the column when done with it.
-	AllocateColumn(sizeType ColumnSizeType) BaseColumn
+	NewAnyColumn() AnyColumn
 }
 
 // NewStorage creates a new storage for columns of type T.
 func NewStorage[T any]() *Storage[T] {
-	var columnPools [ColumnSizeTypeCount]*ds.Stack[*Column[T]]
-	for i := range ColumnSizeTypeCount {
-		columnPools[i] = ds.EmptyStack[*Column[T]]()
-	}
 	return &Storage[T]{
-		columnPools: columnPools,
+		chunks:  ds.EmptyStack[DataChunk[T]](),
+		columns: ds.EmptyStack[*Column[T]](),
 	}
 }
 
 // Storage acts as a memory manager for columns by allocating and releasing
 // columns and pooling them.
 type Storage[T any] struct {
-	columnPools [ColumnSizeTypeCount]*ds.Stack[*Column[T]]
-	tempValue   T
+	chunks    *ds.Stack[DataChunk[T]]
+	columns   *ds.Stack[*Column[T]]
+	tempValue T
 }
 
-var _ BaseStorage = (*Storage[struct{}])(nil)
+var _ AnyStorage = (*Storage[struct{}])(nil)
 
-// AllocateColumn allocates a new column for storing component values and
+// NewAnyColumn allocates a new column for storing component values and
 // returns the allocated column.
-func (s *Storage[T]) AllocateColumn(sizeType ColumnSizeType) BaseColumn {
-	if pool := s.columnPools[sizeType]; !pool.IsEmpty() {
-		return pool.Pop()
-	}
-	return NewColumn[T](s, sizeType)
+func (s *Storage[T]) NewAnyColumn() AnyColumn {
+	return s.allocateColumn()
 }
 
-// ReleaseColumn releases the specified column, making it available for
-// future allocations.
-func (s *Storage[T]) ReleaseColumn(column *Column[T]) {
-	sizeType := column.SizeType()
-	s.columnPools[sizeType].Push(column)
+// NewColumn allocates a new column for storing component values of type T and
+// returns the allocated column.
+func (s *Storage[T]) NewColumn() *Column[T] {
+	return s.allocateColumn()
 }
 
 // TempValue returns the temporary value stored in the storage.
@@ -57,4 +51,27 @@ func (s *Storage[T]) TempValue() T {
 // SetTempValue sets the temporary value in the storage.
 func (s *Storage[T]) SetTempValue(value T) {
 	s.tempValue = value
+}
+
+func (s *Storage[T]) allocateColumn() *Column[T] {
+	if s.columns.IsEmpty() {
+		return NewColumn(s)
+	}
+	return s.columns.Pop()
+}
+
+func (s *Storage[T]) releaseColumn(column *Column[T]) {
+	s.columns.Push(column)
+}
+
+func (s *Storage[T]) allocateChunk() DataChunk[T] {
+	if s.chunks.IsEmpty() {
+		return new([chunkSize]T)
+	} else {
+		return s.chunks.Pop()
+	}
+}
+
+func (s *Storage[T]) releaseChunk(chunk DataChunk[T]) {
+	s.chunks.Push(chunk)
 }
