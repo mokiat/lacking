@@ -43,7 +43,8 @@ func (s *Scene) CreateEntity() ID {
 
 	index := s.allocateEntityIndex()
 	desc := &s.entities[index]
-	desc.Revive(s.borrowArchetypeRow(internal.EmptyTypeMask()))
+	desc.Revive(index)
+	desc.Assign(s.borrowArchetypeRow(internal.EmptyTypeMask()))
 
 	return ID{
 		index:    index,
@@ -154,7 +155,6 @@ func (s *Scene) EditEntity(id ID, fn EditOperationFunc) {
 
 	newArchetype, newRow := s.borrowArchetypeRow(newMask)
 
-	newArchetype.IDColumn().SetValue(newRow, internal.NewID(id.index, id.revision))
 	newMask.EachType(func(id internal.TypeID) {
 		newColumn := newArchetype.ComponentColumn(id)
 		if oldMask.HasType(id) {
@@ -177,6 +177,10 @@ func (s *Scene) EditEntity(id ID, fn EditOperationFunc) {
 // condition and invokes the callback for each of them with a ReadOperation
 // that can be used to read the components of the entity.
 func (s *Scene) QueryEntities(condition Condition, yield func(ID, *ReadOperation) bool) {
+	// TODO: If nested queries are supported, this method needs to be able to
+	// fetch read operations from a pool.
+	readOperation := &s.readOperation
+
 	for mask, archetype := range s.archetypes {
 		if !condition.isSatisfiedBy(mask) {
 			continue
@@ -186,31 +190,27 @@ func (s *Scene) QueryEntities(condition Condition, yield func(ID, *ReadOperation
 
 		columns, lookup := archetype.ComponentColumns()
 
-		row := internal.Row(0)
-		for uint32(row) < archetype.Size() {
-			id := fromInternalID(archetype.IDColumn().Value(row))
-			if id == NilID {
+		readOperation.mask = mask
+		readOperation.componentLookup = lookup
+		readOperation.componentColumns = columns
+
+		for row := internal.Row(0); uint32(row) < archetype.Size(); row++ {
+			intID := archetype.IDColumn().Value(row)
+			if intID == internal.NilID {
 				continue
 			}
 
-			s.readOperation = ReadOperation{
-				mask:             mask,
-				row:              row,
-				componentLookup:  lookup,
-				componentColumns: columns,
-			}
+			readOperation.row = row
+
 			s.inOperationBlock = true
-			if !yield(id, &s.readOperation) {
+			if !yield(fromInternalID(intID), &s.readOperation) {
 				s.inOperationBlock = false
 				return
 			}
 			s.inOperationBlock = false
-
-			row++
 		}
 
 		// TODO: Unfreeze archetype.
-
 	}
 }
 

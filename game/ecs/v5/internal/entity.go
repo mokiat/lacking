@@ -1,6 +1,7 @@
 package internal
 
 type Entity struct {
+	index        uint32
 	revision     uint32
 	archetype    *Archetype
 	archetypeRow Row
@@ -9,10 +10,9 @@ type Entity struct {
 // Revive revives the entity with the specified archetype and archetype row.
 // This method is used to reuse entity slots in the scene when entities are
 // deleted and recreated.
-func (e *Entity) Revive(archetype *Archetype, archetypeRow Row) {
+func (e *Entity) Revive(index uint32) {
+	e.index = index
 	e.revision++
-	e.archetype = archetype
-	e.archetypeRow = archetypeRow
 }
 
 // Destroy destroys the entity and returns the archetype and archetype row that
@@ -51,7 +51,8 @@ func (e *Entity) ArchetypeRow() Row {
 }
 
 // Assign changes the archetype and archetype row associated with the entity.
-func (e *Entity) Assign(archetype *Archetype, archetypeRow Row) {
+func (e *Entity) Assign(archetype *Archetype, row Row) {
 	e.archetype = archetype
-	e.archetypeRow = archetypeRow
+	e.archetypeRow = row
+	archetype.IDColumn().SetValue(row, NewID(e.index, e.revision))
 }
