@@ -39,9 +39,11 @@ func RemoveComponent[T any](op *EditOperation, compType ComponentType[T]) {
 // Instances of this type should not be created directly nor kept around but
 // instead should only be used within the scope of a ReadEntity callback.
 type ReadOperation struct {
-	mask    internal.TypeMask
-	row     internal.Row
-	columns [internal.MaxComponentTypes]internal.AnyColumn
+	mask internal.TypeMask
+	row  internal.Row
+
+	componentLookup  internal.TypeLookup
+	componentColumns []internal.AnyColumn
 }
 
 // GetComponent retrieves the component of type T from the entity being read
@@ -53,7 +55,8 @@ func GetComponent[T any](op *ReadOperation, compType ComponentType[T]) *T {
 		return nil
 	}
 
-	column := op.columns[compType.id].(*internal.Column[T])
+	anyColumn := op.componentColumns[op.componentLookup[compType.id]]
+	column := anyColumn.(*internal.Column[T])
 	return column.RefValue(op.row)
 }
 

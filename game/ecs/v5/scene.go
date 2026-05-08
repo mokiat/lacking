@@ -105,18 +105,17 @@ func (s *Scene) ReadEntity(entity ID, fn func(*ReadOperation)) {
 		panic("entity does not exist")
 	}
 
-	mask := desc.Archetype().TypeMask()
+	archetype := desc.Archetype()
+	mask := archetype.TypeMask()
 	row := desc.ArchetypeRow()
 
-	var columns [internal.MaxComponentTypes]internal.AnyColumn
-	mask.EachType(func(id internal.TypeID) {
-		columns[id] = desc.Archetype().ComponentColumn(id)
-	})
+	columns, lookup := archetype.ComponentColumns()
 
 	s.readOperation = ReadOperation{
-		mask:    mask,
-		row:     row,
-		columns: columns,
+		mask:             mask,
+		row:              row,
+		componentLookup:  lookup,
+		componentColumns: columns,
 	}
 	s.inOperationBlock = true
 	fn(&s.readOperation)
@@ -185,10 +184,7 @@ func (s *Scene) QueryEntities(condition Condition, yield func(ID, *ReadOperation
 
 		// TODO: Freeze archetype.
 
-		var columns [internal.MaxComponentTypes]internal.AnyColumn
-		mask.EachType(func(id internal.TypeID) {
-			columns[id] = archetype.ComponentColumn(id)
-		})
+		columns, lookup := archetype.ComponentColumns()
 
 		row := internal.Row(0)
 		for uint32(row) < archetype.Size() {
@@ -196,10 +192,12 @@ func (s *Scene) QueryEntities(condition Condition, yield func(ID, *ReadOperation
 			if id == NilID {
 				continue
 			}
+
 			s.readOperation = ReadOperation{
-				mask:    mask,
-				row:     row,
-				columns: columns,
+				mask:             mask,
+				row:              row,
+				componentLookup:  lookup,
+				componentColumns: columns,
 			}
 			s.inOperationBlock = true
 			if !yield(id, &s.readOperation) {

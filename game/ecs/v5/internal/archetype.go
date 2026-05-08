@@ -80,6 +80,13 @@ func (a *Archetype) ComponentColumn(id TypeID) AnyColumn {
 	return a.componentColumns[a.componentLookup[id]]
 }
 
+// ComponentColumns returns the columns associated with the component types in
+// the archetype, along with a lookup that maps component type IDs to their
+// corresponding column indices.
+func (a *Archetype) ComponentColumns() ([]AnyColumn, TypeLookup) {
+	return a.componentColumns, a.componentLookup
+}
+
 // LastRow returns the index of the last row in the table represented by the
 // archetype.
 //
