@@ -9,6 +9,12 @@ import (
 
 // NewScene creates and initializes a new scene.
 func NewScene(scope *Scope) *Scene {
+	const initialReadOperations = 2
+	readOperations := ds.PreallocatedStack[*ReadOperation](initialReadOperations)
+	for range initialReadOperations {
+		readOperations.Push(new(ReadOperation))
+	}
+
 	return &Scene{
 		registry: scope.registry,
 
@@ -17,6 +23,8 @@ func NewScene(scope *Scope) *Scene {
 
 		archetypePool: ds.EmptyStack[*internal.Archetype](),
 		archetypes:    make(map[internal.TypeMask]*internal.Archetype),
+
+		readOperations: readOperations,
 	}
 }
 
@@ -32,14 +40,16 @@ type Scene struct {
 	archetypePool *ds.Stack[*internal.Archetype]
 	archetypes    map[internal.TypeMask]*internal.Archetype
 
+	readOperations   *ds.Stack[*ReadOperation]
 	editOperation    EditOperation
-	readOperation    ReadOperation
+	queryNesting     uint8
 	inOperationBlock bool
 }
 
 // CreateEntity creates a new empty entity in the scene and returns its ID.
 func (s *Scene) CreateEntity() ID {
 	s.verifyOutsideOperation()
+	s.verifyOutsideQuery()
 
 	index := s.allocateEntityIndex()
 	desc := &s.entities[index]
@@ -59,6 +69,7 @@ func (s *Scene) CreateEntity() ID {
 // after this call.
 func (s *Scene) DeleteEntity(entityID ID) {
 	s.verifyOutsideOperation()
+	s.verifyOutsideQuery()
 
 	desc, ok := s.getEntityDescriptor(entityID)
 	if !ok {
@@ -109,17 +120,17 @@ func (s *Scene) ReadEntity(entity ID, fn func(*ReadOperation)) {
 	archetype := desc.Archetype()
 	mask := archetype.TypeMask()
 	row := desc.ArchetypeRow()
-
 	columns, lookup := archetype.ComponentColumns()
 
-	s.readOperation = ReadOperation{
-		mask:             mask,
-		row:              row,
-		componentLookup:  lookup,
-		componentColumns: columns,
-	}
+	readOperation := s.allocateReadOperation()
+	defer s.releaseReadOperation(readOperation)
+	readOperation.mask = mask
+	readOperation.componentLookup = lookup
+	readOperation.componentColumns = columns
+	readOperation.row = row
+
 	s.inOperationBlock = true
-	fn(&s.readOperation)
+	fn(readOperation)
 	s.inOperationBlock = false
 }
 
@@ -131,6 +142,7 @@ func (s *Scene) ReadEntity(entity ID, fn func(*ReadOperation)) {
 // supported and has undefined behavior.
 func (s *Scene) EditEntity(id ID, fn EditOperationFunc) {
 	s.verifyOutsideOperation()
+	s.verifyOutsideQuery()
 
 	desc, ok := s.getEntityDescriptor(id)
 	if !ok {
@@ -177,16 +189,20 @@ func (s *Scene) EditEntity(id ID, fn EditOperationFunc) {
 // condition and invokes the callback for each of them with a ReadOperation
 // that can be used to read the components of the entity.
 func (s *Scene) QueryEntities(condition Condition, yield func(ID, *ReadOperation) bool) {
-	// TODO: If nested queries are supported, this method needs to be able to
-	// fetch read operations from a pool.
-	readOperation := &s.readOperation
+	s.verifyOutsideOperation()
+
+	s.queryNesting++
+	defer func() {
+		s.queryNesting--
+	}()
+
+	readOperation := s.allocateReadOperation()
+	defer s.releaseReadOperation(readOperation)
 
 	for mask, archetype := range s.archetypes {
 		if !condition.isSatisfiedBy(mask) {
 			continue
 		}
-
-		// TODO: Freeze archetype.
 
 		columns, lookup := archetype.ComponentColumns()
 
@@ -195,22 +211,12 @@ func (s *Scene) QueryEntities(condition Condition, yield func(ID, *ReadOperation
 		readOperation.componentColumns = columns
 
 		for row := internal.Row(0); uint32(row) < archetype.Size(); row++ {
-			intID := archetype.IDColumn().Value(row)
-			if intID == internal.NilID {
-				continue
-			}
-
 			readOperation.row = row
-
-			s.inOperationBlock = true
-			if !yield(fromInternalID(intID), &s.readOperation) {
-				s.inOperationBlock = false
+			intID := archetype.IDColumn().Value(row)
+			if !yield(fromInternalID(intID), readOperation) {
 				return
 			}
-			s.inOperationBlock = false
 		}
-
-		// TODO: Unfreeze archetype.
 	}
 }
 
@@ -242,6 +248,12 @@ func (s *Scene) QueryEntitiesIter(condition Condition) iter.Seq2[ID, *ReadOperat
 func (s *Scene) verifyOutsideOperation() {
 	if s.inOperationBlock {
 		panic("cannot call this method from inside an operation block")
+	}
+}
+
+func (s *Scene) verifyOutsideQuery() {
+	if s.queryNesting > 0 {
+		panic("cannot call this method during queries")
 	}
 }
 
@@ -321,4 +333,15 @@ func (s *Scene) releaseArchetype(archetype *internal.Archetype) {
 	archetype.Destroy()
 
 	s.archetypePool.Push(archetype)
+}
+
+func (s *Scene) allocateReadOperation() *ReadOperation {
+	if s.readOperations.IsEmpty() {
+		return &ReadOperation{}
+	}
+	return s.readOperations.Pop()
+}
+
+func (s *Scene) releaseReadOperation(op *ReadOperation) {
+	s.readOperations.Push(op)
 }

@@ -302,6 +302,59 @@ var _ = Describe("Scene", func() {
 			}
 			Expect(found).To(ConsistOf(entityPosName, entityNameOnly))
 		})
+
+		Specify("nested query returns correct results", func() {
+			pairs := make(map[ecs.ID][]ecs.ID)
+			scene.QueryEntities(ecs.HasComponent(positionType), func(outerID ecs.ID, _ *ecs.ReadOperation) bool {
+				scene.QueryEntities(ecs.HasComponent(nameType), func(innerID ecs.ID, _ *ecs.ReadOperation) bool {
+					pairs[outerID] = append(pairs[outerID], innerID)
+					return true
+				})
+				return true
+			})
+			Expect(pairs[entityPosName]).To(ConsistOf(entityPosName, entityNameOnly))
+			Expect(pairs[entityPosAge]).To(ConsistOf(entityPosName, entityNameOnly))
+		})
+
+		Specify("nested query does not corrupt outer read operation", func() {
+			scene.QueryEntities(ecs.HasComponent(positionType), func(outerID ecs.ID, outerOp *ecs.ReadOperation) bool {
+				outerPos := ecs.GetComponent(outerOp, positionType)
+
+				scene.QueryEntities(ecs.HasComponent(positionType), func(_ ecs.ID, _ *ecs.ReadOperation) bool {
+					return true
+				})
+
+				Expect(ecs.GetComponent(outerOp, positionType)).To(Equal(outerPos))
+				return true
+			})
+		})
+
+		Specify("editing an entity during a query panics", func() {
+			Expect(func() {
+				scene.QueryEntities(ecs.HasComponent(positionType), func(id ecs.ID, _ *ecs.ReadOperation) bool {
+					scene.EditEntity(id, func(_ *ecs.EditOperation) {})
+					return true
+				})
+			}).To(Panic())
+		})
+
+		Specify("creating an entity during a query panics", func() {
+			Expect(func() {
+				scene.QueryEntities(ecs.HasComponent(positionType), func(_ ecs.ID, _ *ecs.ReadOperation) bool {
+					scene.CreateEntity()
+					return true
+				})
+			}).To(Panic())
+		})
+
+		Specify("deleting an entity during a query panics", func() {
+			Expect(func() {
+				scene.QueryEntities(ecs.HasComponent(positionType), func(id ecs.ID, _ *ecs.ReadOperation) bool {
+					scene.DeleteEntity(id)
+					return true
+				})
+			}).To(Panic())
+		})
 	})
 
 })
