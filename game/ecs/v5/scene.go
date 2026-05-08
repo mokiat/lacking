@@ -1,6 +1,8 @@
 package ecs
 
 import (
+	"iter"
+
 	"github.com/mokiat/gog/ds"
 	"github.com/mokiat/lacking/game/ecs/v5/internal"
 )
@@ -153,7 +155,7 @@ func (s *Scene) EditEntity(id ID, fn EditOperationFunc) {
 
 	newArchetype, newRow := s.borrowArchetypeRow(newMask)
 
-	newArchetype.IDColumn().SetValue(newRow, id.index)
+	newArchetype.IDColumn().SetValue(newRow, internal.NewID(id.index, id.revision))
 	newMask.EachType(func(id internal.TypeID) {
 		newColumn := newArchetype.ComponentColumn(id)
 		if oldMask.HasType(id) {
@@ -172,19 +174,56 @@ func (s *Scene) EditEntity(id ID, fn EditOperationFunc) {
 	// 	// TODO: Abort this process if a subscriber made changes to the entity
 }
 
-// // QueryEntities queries the scene for entities satisfying the specified
-// // condition and invokes the callback for each of them with a ReadOperation
-// // that can be used to read the components of the entity.
-// func (s *Scene) QueryEntities(condition Condition, cb func(EntityID, *ReadOperation)) {
-// 	panic("not implemented")
-// }
+// QueryEntities queries the scene for entities satisfying the specified
+// condition and invokes the callback for each of them with a ReadOperation
+// that can be used to read the components of the entity.
+func (s *Scene) QueryEntities(condition Condition, yield func(ID, *ReadOperation) bool) {
+	for mask, archetype := range s.archetypes {
+		if !condition.isSatisfiedBy(mask) {
+			continue
+		}
 
-// // QueryEntities queries the scene for entities satisfying the specified
-// // condition and invokes the callback for each of them with a ReadOperation
-// // that can be used to read the components of the entity.
-// func (s *Scene) QueryEntitiesIter(condition Condition) iter.Seq2[EntityID, *ReadOperation] {
-// 	panic("not implemented")
-// }
+		// TODO: Freeze archetype.
+
+		var columns [internal.MaxComponentTypes]internal.AnyColumn
+		mask.EachType(func(id internal.TypeID) {
+			columns[id] = archetype.ComponentColumn(id)
+		})
+
+		row := internal.Row(0)
+		for uint32(row) < archetype.Size() {
+			id := fromInternalID(archetype.IDColumn().Value(row))
+			if id == NilID {
+				continue
+			}
+			s.readOperation = ReadOperation{
+				mask:    mask,
+				row:     row,
+				columns: columns,
+			}
+			s.inOperationBlock = true
+			if !yield(id, &s.readOperation) {
+				s.inOperationBlock = false
+				return
+			}
+			s.inOperationBlock = false
+
+			row++
+		}
+
+		// TODO: Unfreeze archetype.
+
+	}
+}
+
+// QueryEntities queries the scene for entities satisfying the specified
+// condition and invokes the callback for each of them with a ReadOperation
+// that can be used to read the components of the entity.
+func (s *Scene) QueryEntitiesIter(condition Condition) iter.Seq2[ID, *ReadOperation] {
+	return func(yield func(ID, *ReadOperation) bool) {
+		s.QueryEntities(condition, yield)
+	}
+}
 
 // // SubscribeStartsSatisfying registers a callback that will be called whenever
 // // an entity starts satisfying the specified condition. The callback will be
@@ -248,8 +287,10 @@ func (s *Scene) releaseArchetypeRow(archetype *internal.Archetype, row internal.
 	lastRow := archetype.LastRow()
 	if row != lastRow {
 		lastRowID := archetype.IDColumn().Value(lastRow)
-		lastRowDesc := &s.entities[lastRowID]
-		lastRowDesc.Assign(archetype, row)
+		if lastRowID != internal.NilID {
+			lastRowDesc := &s.entities[lastRowID.Index]
+			lastRowDesc.Assign(archetype, row)
+		}
 		archetype.CopyRow(row, lastRow)
 	}
 

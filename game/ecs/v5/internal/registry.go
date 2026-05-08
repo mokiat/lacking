@@ -3,7 +3,7 @@ package internal
 // NewRegistry creates and initializes a new registry.
 func NewRegistry() *Registry {
 	return &Registry{
-		idStorage: NewStorage[uint32](),
+		idStorage: NewStorage[ID](),
 	}
 }
 
@@ -11,12 +11,12 @@ func NewRegistry() *Registry {
 // registering and retrieving component storages based on component type
 // identifiers.
 type Registry struct {
-	idStorage *Storage[uint32]
+	idStorage *Storage[ID]
 	storages  [MaxComponentTypes]AnyStorage
 }
 
 // IDStorage returns the storage used for storing ID values.
-func (r *Registry) IDStorage() *Storage[uint32] {
+func (r *Registry) IDStorage() *Storage[ID] {
 	return r.idStorage
 }
 

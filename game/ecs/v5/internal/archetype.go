@@ -15,7 +15,7 @@ type Archetype struct {
 	mask     TypeMask
 	size     uint32
 
-	idColumn         *Column[uint32]
+	idColumn         *Column[ID]
 	componentColumns []AnyColumn
 	componentLookup  TypeLookup
 }
@@ -32,8 +32,8 @@ func (a *Archetype) Revive(mask TypeMask) {
 		a.componentColumns = append(a.componentColumns, storage.NewAnyColumn())
 	})
 
-	entityIndexStorage := a.registry.IDStorage()
-	a.idColumn = entityIndexStorage.NewColumn()
+	entityIDStorage := a.registry.IDStorage()
+	a.idColumn = entityIDStorage.NewColumn()
 }
 
 // Destroy cleans up the archetype and releases any resources it holds.
@@ -59,13 +59,18 @@ func (a *Archetype) TypeMask() TypeMask {
 	return a.mask
 }
 
+// Size returns the number of entities currently stored in the archetype.
+func (a *Archetype) Size() uint32 {
+	return a.size
+}
+
 // IsEmpty returns whether the archetype has no entities.
 func (a *Archetype) IsEmpty() bool {
 	return a.size == 0
 }
 
 // IDColumn returns the column that stores the entity IDs for the archetype.
-func (a *Archetype) IDColumn() *Column[uint32] {
+func (a *Archetype) IDColumn() *Column[ID] {
 	return a.idColumn
 }
 

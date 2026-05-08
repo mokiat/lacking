@@ -40,7 +40,6 @@ var _ = Describe("Scene", func() {
 		identificationType = ecs.Type[Identification](scope)
 		_ = identificationType // TODO: REMOVE
 		unusedType = ecs.Type[Unused](scope)
-		_ = unusedType // TODO: REMOVE
 		scene = ecs.NewScene(scope)
 	})
 
@@ -199,7 +198,7 @@ var _ = Describe("Scene", func() {
 			})
 		})
 
-		Specify("can read components", func() {
+		Specify("can read components from entity", func() {
 			var (
 				pos  *Position
 				name *Name
@@ -218,6 +217,90 @@ var _ = Describe("Scene", func() {
 			Expect(*name).To(Equal(Name{Value: "Alice"}))
 
 			Expect(age).To(BeNil())
+		})
+	})
+
+	When("having multiple entities with various component combinations", func() {
+		var (
+			entityPosName  ecs.ID
+			entityPosAge   ecs.ID
+			entityNameOnly ecs.ID
+		)
+
+		BeforeEach(func() {
+			entityPosName = scene.CreateEntity()
+			scene.EditEntity(entityPosName, func(op *ecs.EditOperation) {
+				ecs.AddComponent(op, positionType, Position{X: 1, Y: 2})
+				ecs.AddComponent(op, nameType, Name{Value: "Alice"})
+			})
+
+			entityPosAge = scene.CreateEntity()
+			scene.EditEntity(entityPosAge, func(op *ecs.EditOperation) {
+				ecs.AddComponent(op, positionType, Position{X: 3, Y: 4})
+				ecs.AddComponent(op, ageType, Age{Value: 30})
+			})
+
+			entityNameOnly = scene.CreateEntity()
+			scene.EditEntity(entityNameOnly, func(op *ecs.EditOperation) {
+				ecs.AddComponent(op, nameType, Name{Value: "Bob"})
+			})
+		})
+
+		Specify("querying by a single condition returns all matching entities", func() {
+			var found []ecs.ID
+			scene.QueryEntities(ecs.HasComponent(positionType), func(id ecs.ID, _ *ecs.ReadOperation) bool {
+				found = append(found, id)
+				return true
+			})
+			Expect(found).To(ConsistOf(entityPosName, entityPosAge))
+		})
+
+		Specify("querying returns correct component values for each entity", func() {
+			positions := make(map[ecs.ID]Position)
+			scene.QueryEntities(ecs.HasComponent(positionType), func(id ecs.ID, op *ecs.ReadOperation) bool {
+				positions[id] = *ecs.GetComponent(op, positionType)
+				return true
+			})
+			Expect(positions[entityPosName]).To(Equal(Position{X: 1, Y: 2}))
+			Expect(positions[entityPosAge]).To(Equal(Position{X: 3, Y: 4}))
+		})
+
+		Specify("querying with a composite condition filters correctly", func() {
+			var found []ecs.ID
+			scene.QueryEntities(ecs.Conditions(
+				ecs.HasComponent(positionType),
+				ecs.LacksComponent(ageType),
+			), func(id ecs.ID, _ *ecs.ReadOperation) bool {
+				found = append(found, id)
+				return true
+			})
+			Expect(found).To(ConsistOf(entityPosName))
+		})
+
+		Specify("querying with no matching entities yields nothing", func() {
+			var found []ecs.ID
+			scene.QueryEntities(ecs.HasComponent(unusedType), func(id ecs.ID, _ *ecs.ReadOperation) bool {
+				found = append(found, id)
+				return true
+			})
+			Expect(found).To(BeEmpty())
+		})
+
+		Specify("query can be stopped early by returning false", func() {
+			count := 0
+			scene.QueryEntities(ecs.HasComponent(positionType), func(_ ecs.ID, _ *ecs.ReadOperation) bool {
+				count++
+				return false
+			})
+			Expect(count).To(Equal(1))
+		})
+
+		Specify("querying via iterator returns all matching entities", func() {
+			var found []ecs.ID
+			for id := range scene.QueryEntitiesIter(ecs.HasComponent(nameType)) {
+				found = append(found, id)
+			}
+			Expect(found).To(ConsistOf(entityPosName, entityNameOnly))
 		})
 	})
 

@@ -1,5 +1,7 @@
 package ecs
 
+import "github.com/mokiat/lacking/game/ecs/v5/internal"
+
 // NilID represents an invalid entity handle.
 var NilID = ID{}
 
@@ -10,4 +12,11 @@ var NilID = ID{}
 type ID struct {
 	index    uint32
 	revision uint32
+}
+
+func fromInternalID(internalID internal.ID) ID {
+	return ID{
+		index:    internalID.Index,
+		revision: internalID.Revision,
+	}
 }
