@@ -357,4 +357,388 @@ var _ = Describe("Scene", func() {
 		})
 	})
 
+	When("subscribing to entity enter events", func() {
+		var entered []ecs.ID
+
+		BeforeEach(func() {
+			entered = nil
+		})
+
+		When("condition is HasComponent", func() {
+			BeforeEach(func() {
+				scene.SubscribeEnter(ecs.HasComponent(positionType), func(id ecs.ID) {
+					entered = append(entered, id)
+				})
+			})
+
+			Specify("does not fire when entity is created with no components", func() {
+				scene.CreateEntity()
+				Expect(entered).To(BeEmpty())
+			})
+
+			Specify("fires when entity gains the required component", func() {
+				id := scene.CreateEntity()
+				scene.EditEntity(id, func(op *ecs.EditOperation) {
+					ecs.AddComponent(op, positionType, Position{X: 1, Y: 2})
+				})
+				Expect(entered).To(ConsistOf(id))
+			})
+
+			Specify("does not fire again when another component is added while condition remains satisfied", func() {
+				id := scene.CreateEntity()
+				scene.EditEntity(id, func(op *ecs.EditOperation) {
+					ecs.AddComponent(op, positionType, Position{X: 1, Y: 2})
+				})
+				entered = nil
+
+				scene.EditEntity(id, func(op *ecs.EditOperation) {
+					ecs.AddComponent(op, ageType, Age{Value: 30})
+				})
+				Expect(entered).To(BeEmpty())
+			})
+
+			Specify("fires again after entity re-gains the component", func() {
+				id := scene.CreateEntity()
+				scene.EditEntity(id, func(op *ecs.EditOperation) {
+					ecs.AddComponent(op, positionType, Position{X: 1, Y: 2})
+				})
+				scene.EditEntity(id, func(op *ecs.EditOperation) {
+					ecs.RemoveComponent(op, positionType)
+				})
+				entered = nil
+
+				scene.EditEntity(id, func(op *ecs.EditOperation) {
+					ecs.AddComponent(op, positionType, Position{X: 3, Y: 4})
+				})
+				Expect(entered).To(ConsistOf(id))
+			})
+
+			Specify("does not fire when entity is deleted", func() {
+				id := scene.CreateEntity()
+				scene.EditEntity(id, func(op *ecs.EditOperation) {
+					ecs.AddComponent(op, positionType, Position{X: 1, Y: 2})
+				})
+				entered = nil
+
+				scene.DeleteEntity(id)
+				Expect(entered).To(BeEmpty())
+			})
+
+			Specify("all subscribers receive the notification", func() {
+				var secondEntered []ecs.ID
+				scene.SubscribeEnter(ecs.HasComponent(positionType), func(id ecs.ID) {
+					secondEntered = append(secondEntered, id)
+				})
+
+				id := scene.CreateEntity()
+				scene.EditEntity(id, func(op *ecs.EditOperation) {
+					ecs.AddComponent(op, positionType, Position{X: 1, Y: 2})
+				})
+				Expect(entered).To(ConsistOf(id))
+				Expect(secondEntered).To(ConsistOf(id))
+			})
+
+			Specify("stops firing after subscription is deleted", func() {
+				sub := scene.SubscribeEnter(ecs.HasComponent(ageType), func(id ecs.ID) {
+					entered = append(entered, id)
+				})
+				sub.Delete()
+
+				id := scene.CreateEntity()
+				scene.EditEntity(id, func(op *ecs.EditOperation) {
+					ecs.AddComponent(op, ageType, Age{Value: 25})
+				})
+				Expect(entered).To(BeEmpty())
+			})
+
+			Specify("fires for a composite condition only when all components are present", func() {
+				var compositeEntered []ecs.ID
+				scene.SubscribeEnter(ecs.Conditions(
+					ecs.HasComponent(positionType),
+					ecs.HasComponent(nameType),
+				), func(id ecs.ID) {
+					compositeEntered = append(compositeEntered, id)
+				})
+
+				id := scene.CreateEntity()
+				scene.EditEntity(id, func(op *ecs.EditOperation) {
+					ecs.AddComponent(op, positionType, Position{X: 1, Y: 2})
+				})
+				Expect(compositeEntered).To(BeEmpty())
+
+				scene.EditEntity(id, func(op *ecs.EditOperation) {
+					ecs.AddComponent(op, nameType, Name{Value: "Alice"})
+				})
+				Expect(compositeEntered).To(ConsistOf(id))
+			})
+		})
+
+		When("condition is LacksComponent", func() {
+			BeforeEach(func() {
+				scene.SubscribeEnter(ecs.LacksComponent(positionType), func(id ecs.ID) {
+					entered = append(entered, id)
+				})
+			})
+
+			Specify("fires when entity is created (starts without the excluded component)", func() {
+				id := scene.CreateEntity()
+				Expect(entered).To(ConsistOf(id))
+			})
+
+			Specify("does not fire again when unrelated component is added", func() {
+				id := scene.CreateEntity()
+				entered = nil
+
+				scene.EditEntity(id, func(op *ecs.EditOperation) {
+					ecs.AddComponent(op, ageType, Age{Value: 30})
+				})
+				Expect(entered).To(BeEmpty())
+			})
+
+			Specify("fires again when entity re-loses the excluded component", func() {
+				id := scene.CreateEntity()
+				entered = nil
+				scene.EditEntity(id, func(op *ecs.EditOperation) {
+					ecs.AddComponent(op, positionType, Position{X: 1, Y: 2})
+				})
+				Expect(entered).To(BeEmpty())
+
+				scene.EditEntity(id, func(op *ecs.EditOperation) {
+					ecs.RemoveComponent(op, positionType)
+				})
+				Expect(entered).To(ConsistOf(id))
+			})
+		})
+	})
+
+	When("subscribing to entity exit events", func() {
+		var exited []ecs.ID
+
+		BeforeEach(func() {
+			exited = nil
+		})
+
+		When("condition is HasComponent", func() {
+			BeforeEach(func() {
+				scene.SubscribeExit(ecs.HasComponent(positionType), func(id ecs.ID) {
+					exited = append(exited, id)
+				})
+			})
+
+			Specify("does not fire when entity without the component is created", func() {
+				scene.CreateEntity()
+				Expect(exited).To(BeEmpty())
+			})
+
+			Specify("fires when entity loses the required component", func() {
+				id := scene.CreateEntity()
+				scene.EditEntity(id, func(op *ecs.EditOperation) {
+					ecs.AddComponent(op, positionType, Position{X: 1, Y: 2})
+				})
+				Expect(exited).To(BeEmpty())
+
+				scene.EditEntity(id, func(op *ecs.EditOperation) {
+					ecs.RemoveComponent(op, positionType)
+				})
+				Expect(exited).To(ConsistOf(id))
+			})
+
+			Specify("fires when entity with the component is deleted", func() {
+				id := scene.CreateEntity()
+				scene.EditEntity(id, func(op *ecs.EditOperation) {
+					ecs.AddComponent(op, positionType, Position{X: 1, Y: 2})
+				})
+				Expect(exited).To(BeEmpty())
+
+				scene.DeleteEntity(id)
+				Expect(exited).To(ConsistOf(id))
+			})
+
+			Specify("does not fire when entity without the component is deleted", func() {
+				id := scene.CreateEntity()
+				scene.DeleteEntity(id)
+				Expect(exited).To(BeEmpty())
+			})
+
+			Specify("does not fire when an unrelated component is removed", func() {
+				id := scene.CreateEntity()
+				scene.EditEntity(id, func(op *ecs.EditOperation) {
+					ecs.AddComponent(op, positionType, Position{X: 1, Y: 2})
+					ecs.AddComponent(op, ageType, Age{Value: 30})
+				})
+				exited = nil
+
+				scene.EditEntity(id, func(op *ecs.EditOperation) {
+					ecs.RemoveComponent(op, ageType)
+				})
+				Expect(exited).To(BeEmpty())
+			})
+
+			Specify("stops firing after subscription is deleted", func() {
+				sub := scene.SubscribeExit(ecs.HasComponent(ageType), func(id ecs.ID) {
+					exited = append(exited, id)
+				})
+				sub.Delete()
+
+				id := scene.CreateEntity()
+				scene.EditEntity(id, func(op *ecs.EditOperation) {
+					ecs.AddComponent(op, ageType, Age{Value: 25})
+				})
+				scene.DeleteEntity(id)
+				Expect(exited).To(BeEmpty())
+			})
+		})
+
+		When("condition is LacksComponent", func() {
+			BeforeEach(func() {
+				scene.SubscribeExit(ecs.LacksComponent(positionType), func(id ecs.ID) {
+					exited = append(exited, id)
+				})
+			})
+
+			Specify("fires when entity gains the excluded component", func() {
+				id := scene.CreateEntity()
+				Expect(exited).To(BeEmpty())
+
+				scene.EditEntity(id, func(op *ecs.EditOperation) {
+					ecs.AddComponent(op, positionType, Position{X: 1, Y: 2})
+				})
+				Expect(exited).To(ConsistOf(id))
+			})
+
+			Specify("does not fire when a component-less entity is deleted", func() {
+				// LacksComponent(pos) is satisfied by the empty archetype, and deletion
+				// dispatches exit with EmptyTypeMask as the "new" mask — so the condition
+				// remains satisfied and exit does not fire.
+				id := scene.CreateEntity()
+				Expect(exited).To(BeEmpty())
+				scene.DeleteEntity(id)
+				Expect(exited).To(BeEmpty())
+			})
+		})
+	})
+
+	When("performing mutations from within notification handlers", func() {
+		Specify("entity created in enter notification is accessible after the triggering operation", func() {
+			var createdID ecs.ID
+			scene.SubscribeEnter(ecs.HasComponent(positionType), func(_ ecs.ID) {
+				createdID = scene.CreateEntity()
+			})
+
+			id := scene.CreateEntity()
+			scene.EditEntity(id, func(op *ecs.EditOperation) {
+				ecs.AddComponent(op, positionType, Position{X: 1, Y: 2})
+			})
+
+			Expect(createdID).ToNot(Equal(ecs.NilID))
+			Expect(scene.HasEntity(createdID)).To(BeTrue())
+		})
+
+		Specify("entity created in notification fires its own enter notifications", func() {
+			var lacksPositionEntered []ecs.ID
+			scene.SubscribeEnter(ecs.LacksComponent(positionType), func(id ecs.ID) {
+				lacksPositionEntered = append(lacksPositionEntered, id)
+			})
+
+			var createdID ecs.ID
+			scene.SubscribeEnter(ecs.HasComponent(positionType), func(_ ecs.ID) {
+				createdID = scene.CreateEntity()
+			})
+
+			triggerID := scene.CreateEntity()
+			lacksPositionEntered = nil // reset: clear notification from triggerID's own creation
+			scene.EditEntity(triggerID, func(op *ecs.EditOperation) {
+				ecs.AddComponent(op, positionType, Position{X: 1, Y: 2})
+			})
+
+			// createdID is created (deferred) after HasPosition enter fires;
+			// its own LacksPosition enter should fire in the same processQueue run.
+			Expect(lacksPositionEntered).To(ConsistOf(createdID))
+		})
+
+		Specify("entity edited in enter notification is updated after the triggering operation", func() {
+			targetID := scene.CreateEntity()
+
+			scene.SubscribeEnter(ecs.HasComponent(positionType), func(_ ecs.ID) {
+				scene.EditEntity(targetID, func(op *ecs.EditOperation) {
+					ecs.AddComponent(op, ageType, Age{Value: 42})
+				})
+			})
+
+			triggerID := scene.CreateEntity()
+			scene.EditEntity(triggerID, func(op *ecs.EditOperation) {
+				ecs.AddComponent(op, positionType, Position{X: 1, Y: 2})
+			})
+
+			Expect(scene.CheckEntity(targetID, ecs.HasComponent(ageType))).To(BeTrue())
+		})
+
+		Specify("edit in notification fires its own enter notifications", func() {
+			var ageEntered []ecs.ID
+			scene.SubscribeEnter(ecs.HasComponent(ageType), func(id ecs.ID) {
+				ageEntered = append(ageEntered, id)
+			})
+
+			targetID := scene.CreateEntity()
+
+			scene.SubscribeEnter(ecs.HasComponent(positionType), func(_ ecs.ID) {
+				scene.EditEntity(targetID, func(op *ecs.EditOperation) {
+					ecs.AddComponent(op, ageType, Age{Value: 99})
+				})
+			})
+
+			triggerID := scene.CreateEntity()
+			scene.EditEntity(triggerID, func(op *ecs.EditOperation) {
+				ecs.AddComponent(op, positionType, Position{X: 1, Y: 2})
+			})
+
+			Expect(ageEntered).To(ConsistOf(targetID))
+		})
+
+		Specify("entity deleted in exit notification is removed after the triggering operation", func() {
+			sideEffectID := scene.CreateEntity()
+			scene.EditEntity(sideEffectID, func(op *ecs.EditOperation) {
+				ecs.AddComponent(op, positionType, Position{X: 3, Y: 4})
+			})
+
+			scene.SubscribeExit(ecs.HasComponent(positionType), func(id ecs.ID) {
+				if id != sideEffectID {
+					scene.DeleteEntity(sideEffectID)
+				}
+			})
+
+			triggerID := scene.CreateEntity()
+			scene.EditEntity(triggerID, func(op *ecs.EditOperation) {
+				ecs.AddComponent(op, positionType, Position{X: 1, Y: 2})
+			})
+			scene.DeleteEntity(triggerID)
+
+			Expect(scene.HasEntity(sideEffectID)).To(BeFalse())
+		})
+
+		Specify("delete in notification fires its own exit notifications", func() {
+			var posExited []ecs.ID
+			scene.SubscribeExit(ecs.HasComponent(positionType), func(id ecs.ID) {
+				posExited = append(posExited, id)
+			})
+
+			targetID := scene.CreateEntity()
+			scene.EditEntity(targetID, func(op *ecs.EditOperation) {
+				ecs.AddComponent(op, positionType, Position{X: 3, Y: 4})
+			})
+			posExited = nil // reset
+
+			scene.SubscribeEnter(ecs.HasComponent(ageType), func(_ ecs.ID) {
+				scene.DeleteEntity(targetID)
+			})
+
+			triggerID := scene.CreateEntity()
+			scene.EditEntity(triggerID, func(op *ecs.EditOperation) {
+				ecs.AddComponent(op, ageType, Age{Value: 10})
+			})
+
+			Expect(posExited).To(ConsistOf(targetID))
+		})
+	})
+
 })

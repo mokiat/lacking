@@ -96,7 +96,7 @@ func (s *Scene) CreateEntity() ID {
 	internal.WriteToBuffer(s.commandBuffer, internal.CommandHeader{
 		CommandType: internal.CommandTypeCreateEntity,
 	})
-	internal.WriteToBuffer(s.commandBuffer, internal.DeleteEntityCommand{
+	internal.WriteToBuffer(s.commandBuffer, internal.CreateEntityCommand{
 		EntityID: desc.ID(),
 	})
 
