@@ -6,15 +6,20 @@ type CommandHeader struct {
 
 const (
 	CommandTypeNone CommandType = iota
-	CommandTypeEditEntityBegin
-	CommandTypeEditEntityEnd
+	CommandTypeEndOfSequence
+	CommandTypeEditEntity
+	CommandTypeDeleteEntity
 	CommandTypeAddComponent
 	CommandTypeRemoveComponent
 )
 
 type CommandType uint32
 
-type EditEntityBeginCommand struct {
+type EditEntityCommand struct {
+	EntityID ID
+}
+
+type DeleteEntityCommand struct {
 	EntityID ID
 }
 

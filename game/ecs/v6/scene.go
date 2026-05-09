@@ -5,6 +5,7 @@ import (
 	"iter"
 
 	"github.com/mokiat/gog/ds"
+	"github.com/mokiat/gog/opt"
 	"github.com/mokiat/lacking/game/ecs/v6/internal"
 	"github.com/mokiat/lacking/util/observer"
 )
@@ -106,31 +107,27 @@ func (s *Scene) CreateEntity() ID {
 //
 // Any references to components previously held by the entity must not be used
 // after this call.
-func (s *Scene) DeleteEntity(entityID ID) {
+func (s *Scene) DeleteEntity(id ID) {
 	s.verifyOutsideOperation()
 	s.verifyOutsideQuery()
 
-	// TODO: Use a command buffer!
+	internal.WriteToBuffer(s.commandBuffer, internal.CommandHeader{
+		CommandType: internal.CommandTypeDeleteEntity,
+	})
+	internal.WriteToBuffer(s.commandBuffer, internal.DeleteEntityCommand{
+		EntityID: internal.NewID(id.index, id.revision),
+	})
 
-	desc, ok := s.getEntityDescriptor(entityID)
-	if !ok {
-		panic("entity does not exist")
+	if !s.isProcessingQueue {
+		s.processQueue()
 	}
-
-	// TODO: Notify subscribers!
-	// TODO: Move entity to the empty archetype.
-
-	// s.relocateEntity(entityID, desc, internal.EmptyTypeMask()) // trigger exit subscriptions
-
-	s.releaseArchetypeRow(desc.Destroy())
-	s.releaseEntityIndex(entityID.index)
 }
 
 // HasEntity returns whether the scene contains the specified entity.
-func (s *Scene) HasEntity(entityID ID) bool {
+func (s *Scene) HasEntity(id ID) bool {
 	s.verifyOutsideOperation()
 
-	_, ok := s.getEntityDescriptor(entityID)
+	_, ok := s.getEntityDescriptor(id)
 	return ok
 }
 
@@ -155,10 +152,10 @@ func (s *Scene) CheckEntity(id ID, condition Condition) bool {
 //
 // The provided callback will be called with a ReadOperation that can be used
 // to specify the components to be read from the entity.
-func (s *Scene) ReadEntity(entity ID, fn func(*ReadOperation)) {
+func (s *Scene) ReadEntity(id ID, fn func(*ReadOperation)) {
 	s.verifyOutsideOperation()
 
-	desc, ok := s.getEntityDescriptor(entity)
+	desc, ok := s.getEntityDescriptor(id)
 	if !ok {
 		panic("entity does not exist")
 	}
@@ -191,9 +188,9 @@ func (s *Scene) EditEntity(id ID, fn EditOperationFunc) {
 	s.verifyOutsideQuery()
 
 	internal.WriteToBuffer(s.commandBuffer, internal.CommandHeader{
-		CommandType: internal.CommandTypeEditEntityBegin,
+		CommandType: internal.CommandTypeEditEntity,
 	})
-	internal.WriteToBuffer(s.commandBuffer, internal.EditEntityBeginCommand{
+	internal.WriteToBuffer(s.commandBuffer, internal.EditEntityCommand{
 		EntityID: internal.NewID(id.index, id.revision),
 	})
 
@@ -206,7 +203,7 @@ func (s *Scene) EditEntity(id ID, fn EditOperationFunc) {
 	s.inOperationBlock = false
 
 	internal.WriteToBuffer(s.commandBuffer, internal.CommandHeader{
-		CommandType: internal.CommandTypeEditEntityEnd,
+		CommandType: internal.CommandTypeEndOfSequence,
 	})
 
 	if !s.isProcessingQueue {
@@ -359,22 +356,6 @@ func (s *Scene) releaseReadOperation(op *ReadOperation) {
 	s.readOperations.Push(op)
 }
 
-func (s *Scene) dispatchEditChanges(id ID, oldMask, newMask internal.TypeMask) {
-	for subscription := range s.exitSubscriptions.CallbacksIter() {
-		condition := subscription.condition
-		if condition.isSatisfiedBy(oldMask) && !condition.isSatisfiedBy(newMask) {
-			subscription.callback(id)
-		}
-	}
-
-	for subscription := range s.enterSubscriptions.CallbacksIter() {
-		condition := subscription.condition
-		if !condition.isSatisfiedBy(oldMask) && condition.isSatisfiedBy(newMask) {
-			subscription.callback(id)
-		}
-	}
-}
-
 func (s *Scene) processQueue() {
 	if s.isProcessingQueue {
 		return
@@ -387,9 +368,12 @@ func (s *Scene) processQueue() {
 	for s.commandBuffer.HasMoreData() {
 		header := internal.ReadFromBuffer[internal.CommandHeader](s.commandBuffer)
 		switch header.CommandType {
-		case internal.CommandTypeEditEntityBegin:
-			cmd := internal.ReadFromBuffer[internal.EditEntityBeginCommand](s.commandBuffer)
-			s.processEditEntityBeginCommand(cmd)
+		case internal.CommandTypeEditEntity:
+			cmd := internal.ReadFromBuffer[internal.EditEntityCommand](s.commandBuffer)
+			s.processEditEntityCommand(cmd)
+		case internal.CommandTypeDeleteEntity:
+			cmd := internal.ReadFromBuffer[internal.DeleteEntityCommand](s.commandBuffer)
+			s.processDeleteEntityCommand(cmd)
 		default:
 			panic(fmt.Errorf("unexpected command type %v in scene command buffer", header.CommandType))
 		}
@@ -399,7 +383,7 @@ func (s *Scene) processQueue() {
 	s.dataBuffer.Reset()
 }
 
-func (s *Scene) processEditEntityBeginCommand(cmd internal.EditEntityBeginCommand) {
+func (s *Scene) processEditEntityCommand(cmd internal.EditEntityCommand) {
 	id := fromInternalID(cmd.EntityID)
 
 	desc, ok := s.getEntityDescriptor(id)
@@ -433,7 +417,7 @@ commandLoop:
 			}
 			newMask.RemoveType(cmd.TypeID)
 
-		case internal.CommandTypeEditEntityEnd:
+		case internal.CommandTypeEndOfSequence:
 			break commandLoop
 
 		default:
@@ -444,11 +428,13 @@ commandLoop:
 	if oldMask == newMask {
 		return
 	}
+
+	s.dispatchExitEvent(id, oldMask, newMask)
+
 	oldArchetype := desc.Archetype()
 	oldRow := desc.ArchetypeRow()
 
 	newArchetype, newRow := s.borrowArchetypeRow(newMask)
-
 	newMask.EachType(func(id internal.TypeID) {
 		newColumn := newArchetype.ComponentColumn(id)
 		if oldMask.HasType(id) {
@@ -458,10 +444,51 @@ commandLoop:
 			newColumn.CopyFromBuffer(newRow, s.dataBuffer, bufferOffsets[id])
 		}
 	})
-
 	s.releaseArchetypeRow(oldArchetype, oldRow)
 
 	desc.Assign(newArchetype, newRow)
 
-	s.dispatchEditChanges(id, oldMask, newMask)
+	s.dispatchEnterEvent(id, opt.V(oldMask), newMask)
+}
+
+func (s *Scene) processDeleteEntityCommand(cmd internal.DeleteEntityCommand) {
+	id := fromInternalID(cmd.EntityID)
+
+	desc, ok := s.getEntityDescriptor(id)
+	if !ok {
+		panic(fmt.Errorf("entity with ID %v does not exist", id))
+	}
+
+	oldMask := desc.Archetype().TypeMask()
+
+	s.dispatchExitEvent(id, oldMask, internal.EmptyTypeMask())
+
+	s.releaseArchetypeRow(desc.Destroy())
+	s.releaseEntityIndex(id.index)
+}
+
+func (s *Scene) dispatchExitEvent(id ID, oldMask, newMask internal.TypeMask) {
+	for subscription := range s.exitSubscriptions.CallbacksIter() {
+		condition := subscription.condition
+		if !condition.isSatisfiedBy(oldMask) {
+			continue
+		}
+		if condition.isSatisfiedBy(newMask) {
+			continue
+		}
+		subscription.callback(id)
+	}
+}
+
+func (s *Scene) dispatchEnterEvent(id ID, oldMask opt.T[internal.TypeMask], newMask internal.TypeMask) {
+	for subscription := range s.enterSubscriptions.CallbacksIter() {
+		condition := subscription.condition
+		if oldMask.Specified && condition.isSatisfiedBy(oldMask.Value) {
+			continue
+		}
+		if !condition.isSatisfiedBy(newMask) {
+			continue
+		}
+		subscription.callback(id)
+	}
 }
