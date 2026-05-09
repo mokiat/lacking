@@ -89,17 +89,22 @@ func (s *Scene) CreateEntity() ID {
 	s.verifyOutsideOperation()
 	s.verifyOutsideQuery()
 
-	// TODO: Use a command buffer!
-
 	index := s.allocateEntityIndex()
 	desc := &s.entities[index]
 	desc.Revive(index)
-	desc.Assign(s.borrowArchetypeRow(internal.EmptyTypeMask()))
 
-	return ID{
-		index:    index,
-		revision: desc.Revision(),
+	internal.WriteToBuffer(s.commandBuffer, internal.CommandHeader{
+		CommandType: internal.CommandTypeCreateEntity,
+	})
+	internal.WriteToBuffer(s.commandBuffer, internal.DeleteEntityCommand{
+		EntityID: desc.ID(),
+	})
+
+	if !s.isProcessingQueue {
+		s.processQueue()
 	}
+
+	return fromInternalID(desc.ID())
 }
 
 // DeleteEntity deletes the entity from the scene. The entity is first stripped
@@ -368,12 +373,19 @@ func (s *Scene) processQueue() {
 	for s.commandBuffer.HasMoreData() {
 		header := internal.ReadFromBuffer[internal.CommandHeader](s.commandBuffer)
 		switch header.CommandType {
+
+		case internal.CommandTypeCreateEntity:
+			cmd := internal.ReadFromBuffer[internal.CreateEntityCommand](s.commandBuffer)
+			s.processCreateEntityCommand(cmd)
+
 		case internal.CommandTypeEditEntity:
 			cmd := internal.ReadFromBuffer[internal.EditEntityCommand](s.commandBuffer)
 			s.processEditEntityCommand(cmd)
+
 		case internal.CommandTypeDeleteEntity:
 			cmd := internal.ReadFromBuffer[internal.DeleteEntityCommand](s.commandBuffer)
 			s.processDeleteEntityCommand(cmd)
+
 		default:
 			panic(fmt.Errorf("unexpected command type %v in scene command buffer", header.CommandType))
 		}
@@ -381,6 +393,22 @@ func (s *Scene) processQueue() {
 
 	s.commandBuffer.Reset()
 	s.dataBuffer.Reset()
+}
+
+func (s *Scene) processCreateEntityCommand(cmd internal.CreateEntityCommand) {
+	id := fromInternalID(cmd.EntityID)
+
+	desc, ok := s.getEntityDescriptor(id)
+	if !ok {
+		panic(fmt.Errorf("entity with ID %v does not exist", id))
+	}
+
+	oldMask := opt.Unspecified[internal.TypeMask]() // from limbo
+	newMask := internal.EmptyTypeMask()             // empty archetype
+
+	desc.Assign(s.borrowArchetypeRow(newMask))
+
+	s.dispatchEnterEvent(id, oldMask, newMask)
 }
 
 func (s *Scene) processEditEntityCommand(cmd internal.EditEntityCommand) {

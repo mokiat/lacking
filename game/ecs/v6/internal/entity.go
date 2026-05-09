@@ -7,6 +7,11 @@ type Entity struct {
 	archetypeRow Row
 }
 
+// ID returns the ID of the entity.
+func (e *Entity) ID() ID {
+	return NewID(e.index, e.revision)
+}
+
 // Revive revives the entity with the specified archetype and archetype row.
 // This method is used to reuse entity slots in the scene when entities are
 // deleted and recreated.
