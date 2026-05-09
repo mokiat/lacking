@@ -30,8 +30,7 @@ func NewScene(scope *Scope) *Scene {
 		archetypePool: ds.EmptyStack[*internal.Archetype](),
 		archetypes:    make(map[internal.TypeMask]*internal.Archetype),
 
-		commandBuffer: internal.NewBuffer(1024),      // 1KB initial capacity
-		dataBuffer:    internal.NewBuffer(32 * 1024), // 32KB initial capacity
+		commandBuffer: internal.NewBuffer(1024), // 1KB initial capacity
 
 		readOperations: readOperations,
 	}
@@ -53,13 +52,12 @@ type Scene struct {
 	archetypes    map[internal.TypeMask]*internal.Archetype
 
 	commandBuffer *internal.Buffer
-	dataBuffer    *internal.Buffer
 
 	readOperations    *ds.Stack[*ReadOperation]
 	editOperation     EditOperation
-	queryNesting      uint8
+	queryNesting      uint32
 	inOperationBlock  bool
-	isProcessingQueue bool
+	inQueueProcessing bool
 }
 
 // SubscribeEnter registers a callback that will be called whenever
@@ -100,7 +98,7 @@ func (s *Scene) CreateEntity() ID {
 		EntityID: desc.ID(),
 	})
 
-	if !s.isProcessingQueue {
+	if !s.inQueueProcessing {
 		s.processQueue()
 	}
 
@@ -123,7 +121,7 @@ func (s *Scene) DeleteEntity(id ID) {
 		EntityID: internal.NewID(id.index, id.revision),
 	})
 
-	if !s.isProcessingQueue {
+	if !s.inQueueProcessing {
 		s.processQueue()
 	}
 }
@@ -201,7 +199,6 @@ func (s *Scene) EditEntity(id ID, fn EditOperationFunc) {
 
 	s.editOperation = EditOperation{
 		commandBuffer: s.commandBuffer,
-		dataBuffer:    s.dataBuffer,
 	}
 	s.inOperationBlock = true
 	fn(&s.editOperation)
@@ -211,7 +208,7 @@ func (s *Scene) EditEntity(id ID, fn EditOperationFunc) {
 		CommandType: internal.CommandTypeEndOfSequence,
 	})
 
-	if !s.isProcessingQueue {
+	if !s.inQueueProcessing {
 		s.processQueue()
 	}
 }
@@ -362,12 +359,12 @@ func (s *Scene) releaseReadOperation(op *ReadOperation) {
 }
 
 func (s *Scene) processQueue() {
-	if s.isProcessingQueue {
+	if s.inQueueProcessing {
 		return
 	}
-	s.isProcessingQueue = true
+	s.inQueueProcessing = true
 	defer func() {
-		s.isProcessingQueue = false
+		s.inQueueProcessing = false
 	}()
 
 	for s.commandBuffer.HasMoreData() {
@@ -392,7 +389,7 @@ func (s *Scene) processQueue() {
 	}
 
 	s.commandBuffer.Reset()
-	s.dataBuffer.Reset()
+	s.registry.ResetStorageBuffers()
 }
 
 func (s *Scene) processCreateEntityCommand(cmd internal.CreateEntityCommand) {
@@ -469,7 +466,7 @@ commandLoop:
 			oldColumn := oldArchetype.ComponentColumn(id)
 			newColumn.CopyFromColumn(newRow, oldColumn, oldRow)
 		} else {
-			newColumn.CopyFromBuffer(newRow, s.dataBuffer, bufferOffsets[id])
+			newColumn.CopyFromBuffer(newRow, bufferOffsets[id])
 		}
 	})
 	s.releaseArchetypeRow(oldArchetype, oldRow)

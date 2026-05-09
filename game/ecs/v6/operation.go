@@ -8,7 +8,6 @@ import "github.com/mokiat/lacking/game/ecs/v6/internal"
 // instead should only be used within the scope of an EditEntity callback.
 type EditOperation struct {
 	commandBuffer *internal.Buffer
-	dataBuffer    *internal.Buffer
 }
 
 // EditOperationFunc is used to perform edits on an entity's components within
@@ -18,7 +17,7 @@ type EditOperationFunc func(op *EditOperation)
 // AddComponent adds a component of type T with the provided value to the entity
 // being edited.
 func AddComponent[T any](op *EditOperation, compType ComponentType[T], value T) {
-	dataOffset := internal.WriteToBuffer(op.dataBuffer, value)
+	dataOffset := compType.storage.WriteBuffer(value)
 
 	internal.WriteToBuffer(op.commandBuffer, internal.CommandHeader{
 		CommandType: internal.CommandTypeAddComponent,

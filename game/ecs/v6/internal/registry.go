@@ -31,3 +31,13 @@ func (r *Registry) Storage(id TypeID) AnyStorage {
 func (r *Registry) SetStorage(id TypeID, storage AnyStorage) {
 	r.storages[id] = storage
 }
+
+// ResetStorageBuffers resets the internal buffers of all component storages in
+// the registry.
+func (r *Registry) ResetStorageBuffers() {
+	for _, storage := range r.storages {
+		if storage != nil {
+			storage.ResetBuffer()
+		}
+	}
+}

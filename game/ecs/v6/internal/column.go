@@ -17,7 +17,7 @@ type AnyColumn interface {
 
 	// CopyFromBuffer copies a value from the buffer into the cell at the
 	// specified row.
-	CopyFromBuffer(dst Row, buffer *Buffer, offset uint32)
+	CopyFromBuffer(dst Row, offset uint32)
 
 	// CopyFromColumn copies the component values from the source column and row to
 	// the destination row.
@@ -80,9 +80,8 @@ func (c *Column[T]) Copy(dst, src Row) {
 
 // CopyFromBuffer copies a value from the buffer into the cell at the
 // specified row.
-func (c *Column[T]) CopyFromBuffer(dst Row, buffer *Buffer, offset uint32) {
-	value := ReadFromBufferOffset[T](buffer, offset)
-	c.SetValue(dst, value)
+func (c *Column[T]) CopyFromBuffer(dst Row, offset uint32) {
+	c.SetValue(dst, c.storage.ReadBuffer(offset))
 }
 
 // CopyFromColumn copies the component values from the source column and row to
