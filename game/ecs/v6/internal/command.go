@@ -22,6 +22,7 @@ type CreateEntityCommand struct {
 
 type EditEntityCommand struct {
 	EntityID ID
+	StageRow Row
 }
 
 type DeleteEntityCommand struct {
@@ -29,8 +30,7 @@ type DeleteEntityCommand struct {
 }
 
 type AddComponentCommand struct {
-	DataOffset uint32
-	TypeID     TypeID
+	TypeID TypeID
 }
 
 type RemoveComponentCommand struct {

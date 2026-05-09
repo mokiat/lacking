@@ -31,6 +31,7 @@ func NewScene(scope *Scope) *Scene {
 		archetypes:    make(map[internal.TypeMask]*internal.Archetype),
 
 		commandBuffer: internal.NewBuffer(1024), // 1KB initial capacity
+		stager:        internal.NewStager(scope.registry),
 
 		readOperations: readOperations,
 	}
@@ -52,12 +53,24 @@ type Scene struct {
 	archetypes    map[internal.TypeMask]*internal.Archetype
 
 	commandBuffer *internal.Buffer
+	stager        *internal.Stager
 
 	readOperations    *ds.Stack[*ReadOperation]
 	editOperation     EditOperation
 	queryNesting      uint32
 	inOperationBlock  bool
 	inQueueProcessing bool
+}
+
+// Destroy destroys the scene and releases all associated resources. After
+// calling this method, the scene must not be used anymore.
+func (s *Scene) Destroy() {
+	s.enterSubscriptions.Clear()
+	s.exitSubscriptions.Clear()
+	for _, archetype := range s.archetypes {
+		archetype.Destroy()
+	}
+	s.stager.Destroy()
 }
 
 // SubscribeEnter registers a callback that will be called whenever
@@ -190,15 +203,20 @@ func (s *Scene) EditEntity(id ID, fn EditOperationFunc) {
 	s.verifyOutsideOperation()
 	s.verifyOutsideQuery()
 
+	stageRow := s.stager.Grow()
+
 	internal.WriteToBuffer(s.commandBuffer, internal.CommandHeader{
 		CommandType: internal.CommandTypeEditEntity,
 	})
 	internal.WriteToBuffer(s.commandBuffer, internal.EditEntityCommand{
 		EntityID: internal.NewID(id.index, id.revision),
+		StageRow: stageRow,
 	})
 
 	s.editOperation = EditOperation{
+		stager:        s.stager,
 		commandBuffer: s.commandBuffer,
+		stageRow:      stageRow,
 	}
 	s.inOperationBlock = true
 	fn(&s.editOperation)
@@ -389,7 +407,7 @@ func (s *Scene) processQueue() {
 	}
 
 	s.commandBuffer.Reset()
-	s.registry.ResetStorageBuffers()
+	s.stager.Clear()
 }
 
 func (s *Scene) processCreateEntityCommand(cmd internal.CreateEntityCommand) {
@@ -419,8 +437,6 @@ func (s *Scene) processEditEntityCommand(cmd internal.EditEntityCommand) {
 	oldMask := desc.Archetype().TypeMask()
 	newMask := oldMask
 
-	var bufferOffsets [internal.MaxComponentTypes]uint32
-
 commandLoop:
 	for s.commandBuffer.HasMoreData() {
 		header := internal.ReadFromBuffer[internal.CommandHeader](s.commandBuffer)
@@ -432,8 +448,6 @@ commandLoop:
 				panic(fmt.Errorf("cannot add component of type %v that the entity already has", cmd.TypeID))
 			}
 			newMask.AddType(cmd.TypeID)
-
-			bufferOffsets[cmd.TypeID] = cmd.DataOffset
 
 		case internal.CommandTypeRemoveComponent:
 			cmd := internal.ReadFromBuffer[internal.RemoveComponentCommand](s.commandBuffer)
@@ -466,7 +480,8 @@ commandLoop:
 			oldColumn := oldArchetype.ComponentColumn(id)
 			newColumn.CopyFromColumn(newRow, oldColumn, oldRow)
 		} else {
-			newColumn.CopyFromBuffer(newRow, bufferOffsets[id])
+			stageColumn := s.stager.ComponentColumn(id)
+			newColumn.CopyFromColumn(newRow, stageColumn, cmd.StageRow)
 		}
 	})
 	s.releaseArchetypeRow(oldArchetype, oldRow)

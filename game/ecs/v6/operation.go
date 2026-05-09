@@ -7,7 +7,9 @@ import "github.com/mokiat/lacking/game/ecs/v6/internal"
 // Instances of this type should not be created directly nor kept around, but
 // instead should only be used within the scope of an EditEntity callback.
 type EditOperation struct {
+	stager        *internal.Stager
 	commandBuffer *internal.Buffer
+	stageRow      internal.Row
 }
 
 // EditOperationFunc is used to perform edits on an entity's components within
@@ -17,14 +19,15 @@ type EditOperationFunc func(op *EditOperation)
 // AddComponent adds a component of type T with the provided value to the entity
 // being edited.
 func AddComponent[T any](op *EditOperation, compType ComponentType[T], value T) {
-	dataOffset := compType.storage.WriteBuffer(value)
+	anyColumn := op.stager.ComponentColumn(compType.id)
+	column := anyColumn.(*internal.Column[T])
+	column.SetValue(op.stageRow, value)
 
 	internal.WriteToBuffer(op.commandBuffer, internal.CommandHeader{
 		CommandType: internal.CommandTypeAddComponent,
 	})
 	internal.WriteToBuffer(op.commandBuffer, internal.AddComponentCommand{
-		DataOffset: uint32(dataOffset),
-		TypeID:     compType.id,
+		TypeID: compType.id,
 	})
 }
 
