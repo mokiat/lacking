@@ -25,7 +25,7 @@ func BenchmarkCheckEntity(b *testing.B) {
 	ageType := ecs.Type[Age](scope)
 	scene := ecs.NewScene(scope)
 
-	id := scene.CreateEntity()
+	id := scene.CreateEntity(nil)
 	scene.EditEntity(id, func(op *ecs.EditOperation) {
 		ecs.AddComponent(op, positionType, Position{
 			X: 1.0,
@@ -65,7 +65,7 @@ func BenchmarkEditEntity(b *testing.B) {
 	ageType := ecs.Type[Age](scope)
 	scene := ecs.NewScene(scope)
 
-	id := scene.CreateEntity()
+	id := scene.CreateEntity(nil)
 	scene.EditEntity(id, func(op *ecs.EditOperation) {
 		ecs.AddComponent(op, positionType, Position{
 			X: 1.0,
@@ -104,7 +104,7 @@ func BenchmarkQueryEntities(b *testing.B) {
 	scene := ecs.NewScene(scope)
 
 	for range entityCount {
-		id := scene.CreateEntity()
+		id := scene.CreateEntity(nil)
 		scene.EditEntity(id, func(op *ecs.EditOperation) {
 			ecs.AddComponent(op, positionType, Position{X: 1.0, Y: 2.0})
 			ecs.AddComponent(op, velocityType, Velocity{X: 0.5, Y: 0.5})
@@ -150,7 +150,7 @@ func BenchmarkQueryEntitiesMultiArchetype(b *testing.B) {
 	scene := ecs.NewScene(scope)
 
 	for i := range entityCount {
-		id := scene.CreateEntity()
+		id := scene.CreateEntity(nil)
 		scene.EditEntity(id, func(op *ecs.EditOperation) {
 			ecs.AddComponent(op, positionType, Position{X: 1.0, Y: 2.0})
 			ecs.AddComponent(op, velocityType, Velocity{X: 0.5, Y: 0.5})

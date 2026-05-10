@@ -19,6 +19,7 @@ type CommandType uint32
 
 type CreateEntityCommand struct {
 	EntityID ID
+	StageRow Row
 }
 
 type EditEntityCommand struct {
