@@ -8,6 +8,9 @@ import (
 )
 
 // NewScope creates a new scope for component type registration.
+//
+// One a scope is used by a scene, it cannot be used to register more component
+// types, and trying to do so will lead to a panic.
 func NewScope() *Scope {
 	return &Scope{
 		registeredTypes: ds.EmptySet[reflect.Type](),
@@ -19,6 +22,11 @@ func NewScope() *Scope {
 type Scope struct {
 	registeredTypes *ds.Set[reflect.Type]
 	registry        *internal.Registry
+	inUse           bool
+}
+
+func (s *Scope) markInUse() {
+	s.inUse = true
 }
 
 // Type register the specified Go structure as a component type within
@@ -29,6 +37,10 @@ type Scope struct {
 // This function should be called from a global variable initializer, and
 // is not safe for concurrent use.
 func Type[T any](scope *Scope) ComponentType[T] {
+	if scope.inUse {
+		panic("cannot register component type in a scope that is already in use")
+	}
+
 	initialCount := scope.registeredTypes.Size()
 
 	if initialCount >= internal.MaxComponentTypes {

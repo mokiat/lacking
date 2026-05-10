@@ -12,6 +12,8 @@ import (
 
 // NewScene creates and initializes a new scene.
 func NewScene(scope *Scope) *Scene {
+	scope.markInUse()
+
 	const initialReadOperations = 2
 	readOperations := ds.PreallocatedStack[*ReadOperation](initialReadOperations)
 	for range initialReadOperations {
