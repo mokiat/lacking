@@ -24,7 +24,7 @@ nav:
         - Terminology: development/physics/theory/terminology.md
         - Equations: development/physics/theory/equations.md
         - Effective Mass: development/physics/theory/effective-mass.md
-        - Moment of Inertia: development/physics/theory/moment-of-intertia.md
+        - Moment of Inertia: development/physics/theory/moment-of-inertia.md
       - Derivations:
         - Impulse: development/physics/derivations/impulse-derivation.md
         - Effective Mass: development/physics/derivations/effective-mass-derivation.md

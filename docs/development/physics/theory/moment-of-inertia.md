@@ -1,4 +1,4 @@
-# Moment of Intertia
+# Moment of Inertia
 
 While mass represents the reluctance of an object to change its linear velocity, moment of inertia represents the reluctance of an object to change its angular momentum.
 However, while having a lot of things in common, mass is much easier to reason about, whereas moment of inertia induces some strange properties on the motion of an object.
@@ -46,7 +46,7 @@ A key thing to note here is that unlike the force equation, where the mass is a 
 
 > NOTE: This last bit was hard for me to understand or create a mental image of. In the following text I will try to create a mostly intuitive explanation as to why the equation for torque is so complicated.
 
-## The Intertia Tensor
+## The Inertia Tensor
 
 We should first explore the Inertia Tensor $I$. As mentioned, it is a 3x3 matrix that is defined as follows.
 
@@ -127,7 +127,7 @@ We have an object comprised of two particles ($p_1$ and $p_2$), connected by a z
 
 Before diving into the moment inertia tensor and the equations from above, let us try to use high-school physics to evaluate what forces will act on the particles and if there is any torque actually induced.
 
-If we look at point $p_1$, we can see that it is spinning with tangental velocity magninute of $x \omega$ (again, using high-school physics/math), which in our case is $2 \omega$.
+If we look at point $p_1$, we can see that it is spinning with tangential velocity magnitude of $x \omega$ (again, using high-school physics/math), which in our case is $2 \omega$.
 
 Since there are no external forces (there is no angular acceleration on the object), the only force that the particle experiences is the one by the rod that is keeping it attached to the object. The opposite (but equal) force is actually the fictitious [Centrifugal force](https://en.wikipedia.org/wiki/Centrifugal_force).
 

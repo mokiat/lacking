@@ -2,7 +2,7 @@
 
 The following articles and videos are a good place to start.
 
-## Moment of Intertia
+## Moment of Inertia
 
 - [What is a tensor](https://www.physlink.com/education/askexperts/ae168.cfm)
 - [Inertia Tensor](http://www.kwon3d.com/theory/moi/iten.html)

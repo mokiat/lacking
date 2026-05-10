@@ -2,7 +2,7 @@
 
 ![Logo](images/logo.png)
 
-Lacking is a game engine, or rather framework, written in Go. Unlike other engines that have an Editor UI through which a game is developed in a scripting language, with lacking one makes use of Go's lightning fast compilation times to develop in Go directly with their faviourite IDE and tools.
+Lacking is a game engine, or rather framework, written in Go. Unlike other engines that have an Editor UI through which a game is developed in a scripting language, with lacking one makes use of Go's lightning fast compilation times to develop in Go directly with their favourite IDE and tools.
 
 What lacking provides is mechanisms to parse images and 3D model files, to load and render them, and apply physics and another effects on top. All of this is done through DSL or API calls.
 

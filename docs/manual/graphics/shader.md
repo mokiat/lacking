@@ -209,7 +209,7 @@ The following table lists constructor built-in functions.
 | `uint(v float) uint` | unbounded | Converts a float into an unsigned integer. |
 | `float(v bool) float` | unbounded | Converts a boolean into a float. |
 | `float(v int) float` | unbounded | Converts an integer into a float. |
-| `float(v uint) float` | unbounded | Converst an unsigned integer into a float. |
+| `float(v uint) float` | unbounded | Converts an unsigned integer into a float. |
 | `vec2(v float) vec2` | unbounded | Returns a `vec2` with all components equal to the value `v`. |
 | `vec2(x, y float) vec2` | unbounded | Returns a `vec2` with the components set to `x` and `y` respectively. |
 | `vec3(v float) vec3` | unbounded | Returns a `vec3` with all components equal to the value `v`. |
