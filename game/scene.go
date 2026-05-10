@@ -15,6 +15,9 @@ import (
 	"github.com/mokiat/lacking/render"
 )
 
+// ECSScope is the default scope used for all ECS scenes in the game.
+var ECSScope = ecs.NewScope()
+
 // SceneInfo specifies details regarding the scene to be created.
 type SceneInfo struct {
 
@@ -32,6 +35,11 @@ type SceneInfo struct {
 	//
 	// Defaults to `true`.
 	IncludeGraphics opt.T[bool]
+
+	// ECSScope specifies the scope to be used for the ECS sub-scene of the scene.
+	//
+	// Defaults to the global `ECSScope`.
+	ECSScope opt.T[*ecs.Scope]
 
 	// FixedTimestep determines the duration of a single fixed-step tick.
 	FixedTimestep opt.T[time.Duration]
@@ -51,8 +59,8 @@ func newScene(engine *Engine, info SceneInfo) *Scene {
 	}
 
 	var ecsScene *ecs.Scene
-	if ecsEngine := engine.ECS(); ecsEngine != nil && includeECS {
-		ecsScene = ecsEngine.CreateScene()
+	if includeECS {
+		ecsScene = ecs.NewScene(info.ECSScope.ValueOrDefault(ECSScope))
 	}
 
 	var physicsScene *physics.Scene
@@ -350,10 +358,6 @@ func (s *Scene) doFixedUpdate(elapsedTime time.Duration) {
 	nodeSpan = metric.BeginRegion("node-target")
 	s.hierarchyScene.ApplyNodesToTargets()
 	nodeSpan.End()
-
-	if s.ecsScene != nil {
-		s.ecsScene.Purge()
-	}
 }
 
 func (s *Scene) doInterpolationUpdate(fraction float64) {
@@ -374,10 +378,6 @@ func (s *Scene) doUpdate(elapsedTime time.Duration) {
 		callback(elapsedTime)
 	})
 	callbackSpan.End()
-
-	if s.ecsScene != nil {
-		s.ecsScene.Purge()
-	}
 
 	if s.gfxScene != nil {
 		s.gfxScene.Update(elapsedTime)
