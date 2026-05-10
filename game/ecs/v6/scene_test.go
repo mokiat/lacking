@@ -397,31 +397,71 @@ var _ = Describe("Scene", func() {
 			})
 		})
 
-		Specify("editing an entity during a query panics", func() {
-			Expect(func() {
-				scene.QueryEntities(ecs.HasComponent(positionType), func(id ecs.ID, _ *ecs.ReadOperation) bool {
-					scene.EditEntity(id, func(_ *ecs.EditOperation) {})
-					return true
+		Specify("editing an entity during a query is deferred until after the query", func() {
+			var positionsDuringQuery []Position
+			scene.QueryEntities(ecs.HasComponent(positionType), func(id ecs.ID, op *ecs.ReadOperation) bool {
+				positionsDuringQuery = append(positionsDuringQuery, *ecs.GetComponent(op, positionType))
+				scene.EditEntity(id, func(editOp *ecs.EditOperation) {
+					ecs.ReplaceComponent(editOp, positionType, Position{X: 99, Y: 99})
 				})
-			}).To(Panic())
+				return true
+			})
+			Expect(positionsDuringQuery).To(ConsistOf(Position{X: 1, Y: 2}, Position{X: 3, Y: 4}))
+
+			var positionsAfterQuery []Position
+			scene.QueryEntities(ecs.HasComponent(positionType), func(_ ecs.ID, op *ecs.ReadOperation) bool {
+				positionsAfterQuery = append(positionsAfterQuery, *ecs.GetComponent(op, positionType))
+				return true
+			})
+			Expect(positionsAfterQuery).To(ConsistOf(Position{X: 99, Y: 99}, Position{X: 99, Y: 99}))
 		})
 
-		Specify("creating an entity during a query panics", func() {
-			Expect(func() {
-				scene.QueryEntities(ecs.HasComponent(positionType), func(_ ecs.ID, _ *ecs.ReadOperation) bool {
-					scene.CreateEntity(nil)
-					return true
-				})
-			}).To(Panic())
+		Specify("creating an entity during a query is deferred until after the query", func() {
+			var createdID ecs.ID
+			visitCount := 0
+			scene.QueryEntities(ecs.HasComponent(positionType), func(_ ecs.ID, _ *ecs.ReadOperation) bool {
+				visitCount++
+				if createdID == ecs.NilID {
+					createdID = scene.CreateEntity(func(op *ecs.EditOperation) {
+						ecs.AddComponent(op, positionType, Position{X: 99, Y: 99})
+					})
+				}
+				return true
+			})
+			Expect(visitCount).To(Equal(2))
+			Expect(scene.HasEntity(createdID)).To(BeTrue())
+			Expect(scene.CheckEntity(createdID, ecs.HasComponent(positionType))).To(BeTrue())
 		})
 
-		Specify("deleting an entity during a query panics", func() {
-			Expect(func() {
-				scene.QueryEntities(ecs.HasComponent(positionType), func(id ecs.ID, _ *ecs.ReadOperation) bool {
+		Specify("deleting an entity during a query is deferred until after the query", func() {
+			var deletedID ecs.ID
+			visitCount := 0
+			scene.QueryEntities(ecs.HasComponent(positionType), func(id ecs.ID, _ *ecs.ReadOperation) bool {
+				visitCount++
+				if deletedID == ecs.NilID {
+					deletedID = id
 					scene.DeleteEntity(id)
+				}
+				return true
+			})
+			Expect(visitCount).To(Equal(2))
+			Expect(scene.HasEntity(deletedID)).To(BeFalse())
+		})
+
+		Specify("deferred mutations from a nested query are applied after the outer query", func() {
+			scene.QueryEntities(ecs.HasComponent(positionType), func(_ ecs.ID, _ *ecs.ReadOperation) bool {
+				scene.QueryEntities(ecs.HasComponent(nameType), func(id ecs.ID, _ *ecs.ReadOperation) bool {
+					scene.EditEntity(id, func(op *ecs.EditOperation) {
+						ecs.AddComponent(op, ageType, Age{Value: 99})
+					})
 					return true
 				})
-			}).To(Panic())
+				Expect(scene.CheckEntity(entityPosName, ecs.HasComponent(ageType))).To(BeFalse())
+				Expect(scene.CheckEntity(entityNameOnly, ecs.HasComponent(ageType))).To(BeFalse())
+				return false // stop after one outer iteration to avoid duplicate add
+			})
+			Expect(scene.CheckEntity(entityPosName, ecs.HasComponent(ageType))).To(BeTrue())
+			Expect(scene.CheckEntity(entityNameOnly, ecs.HasComponent(ageType))).To(BeTrue())
 		})
 	})
 

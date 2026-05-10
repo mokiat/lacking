@@ -66,7 +66,7 @@ type Scene struct {
 
 	readOperations    *ds.Stack[*ReadOperation]
 	editOperations    *ds.Stack[*EditOperation]
-	queryNesting      uint32
+	queryDepth        uint32
 	inOperationBlock  bool
 	inQueueProcessing bool
 }
@@ -112,7 +112,6 @@ func (s *Scene) SubscribeExit(condition Condition, callback EntityCallback) *Ent
 // components.
 func (s *Scene) CreateEntity(fn EditOperationFunc) ID {
 	s.verifyOutsideOperation()
-	s.verifyOutsideQuery()
 
 	index := s.allocateEntityIndex()
 	desc := &s.entities[index]
@@ -158,7 +157,6 @@ func (s *Scene) CreateEntity(fn EditOperationFunc) ID {
 // after this call.
 func (s *Scene) DeleteEntity(id ID) {
 	s.verifyOutsideOperation()
-	s.verifyOutsideQuery()
 
 	internal.WriteToBuffer(s.commandBuffer, internal.CommandHeader{
 		CommandType: internal.CommandTypeDeleteEntity,
@@ -236,7 +234,6 @@ func (s *Scene) ReadEntity(id ID, fn func(*ReadOperation)) {
 // will be applied, and the intermediate ones will be ignored.
 func (s *Scene) EditEntity(id ID, fn EditOperationFunc) {
 	s.verifyOutsideOperation()
-	s.verifyOutsideQuery()
 
 	stageRow := s.stager.Grow()
 
@@ -273,14 +270,12 @@ func (s *Scene) EditEntity(id ID, fn EditOperationFunc) {
 func (s *Scene) QueryEntities(condition Condition, yield func(ID, *ReadOperation) bool) {
 	s.verifyOutsideOperation()
 
-	s.queryNesting++
-	defer func() {
-		s.queryNesting--
-	}()
+	s.queryDepth++
 
 	readOperation := s.allocateReadOperation()
 	defer s.releaseReadOperation(readOperation)
 
+iteration:
 	for mask, archetype := range s.archetypes {
 		if !condition.isSatisfiedBy(mask) {
 			continue
@@ -296,10 +291,13 @@ func (s *Scene) QueryEntities(condition Condition, yield func(ID, *ReadOperation
 			readOperation.row = row
 			intID := archetype.IDColumn().Value(row)
 			if !yield(fromInternalID(intID), readOperation) {
-				return
+				break iteration
 			}
 		}
 	}
+
+	s.queryDepth--
+	s.processQueue()
 }
 
 // QueryEntities queries the scene for entities satisfying the specified
@@ -314,12 +312,6 @@ func (s *Scene) QueryEntitiesIter(condition Condition) iter.Seq2[ID, *ReadOperat
 func (s *Scene) verifyOutsideOperation() {
 	if s.inOperationBlock {
 		panic("cannot call this method from inside an operation block")
-	}
-}
-
-func (s *Scene) verifyOutsideQuery() {
-	if s.queryNesting > 0 {
-		panic("cannot call this method during queries")
 	}
 }
 
@@ -424,7 +416,7 @@ func (s *Scene) releaseEditOperation(op *EditOperation) {
 }
 
 func (s *Scene) processQueue() {
-	if s.inQueueProcessing {
+	if s.inQueueProcessing || s.queryDepth > 0 {
 		return
 	}
 	s.inQueueProcessing = true
