@@ -10,7 +10,9 @@ import (
 	"github.com/mokiat/lacking/util/observer"
 )
 
-// NewScene creates and initializes a new scene.
+// NewScene creates a [Scene] backed by the component types registered
+// in scope. A scene owns its own archetype storage and entity table and
+// does not share data with other scenes.
 func NewScene(scope *Scope) *Scene {
 	scope.markInUse()
 
@@ -46,9 +48,10 @@ func NewScene(scope *Scope) *Scene {
 	}
 }
 
-// Scene represents a collection of entities and their components. It provides
-// methods for creating, deleting, and querying entities, as well as subscribing
-// to entity events.
+// Scene is the central ECS container. It stores entities and their
+// components in archetype-grouped tables and provides methods for
+// creating, deleting, reading, editing, and querying entities, as well
+// as subscribing to structural change events.
 type Scene struct {
 	registry *internal.Registry
 
@@ -71,8 +74,8 @@ type Scene struct {
 	inQueueProcessing bool
 }
 
-// Destroy destroys the scene and releases all associated resources. After
-// calling this method, the scene must not be used anymore.
+// Destroy releases all resources held by the scene. The scene must not
+// be used after this call.
 func (s *Scene) Destroy() {
 	s.enterSubscriptions.Clear()
 	s.exitSubscriptions.Clear()
@@ -82,10 +85,10 @@ func (s *Scene) Destroy() {
 	s.stager.Destroy()
 }
 
-// SubscribeEnter registers a callback that will be called whenever
-// an entity starts satisfying the specified condition. The callback will be
-// called with the ID of the entity that started satisfying the condition.
-// The returned subscription can be used to unsubscribe the callback.
+// SubscribeEnter registers a callback that fires whenever an entity
+// transitions into satisfying condition. The callback receives the ID
+// of the entity that triggered the transition. Call Delete on the
+// returned [EntitySubscription] to unsubscribe.
 func (s *Scene) SubscribeEnter(condition Condition, callback EntityCallback) *EntitySubscription {
 	return s.enterSubscriptions.Subscribe(ConditionalCallback{
 		condition: condition,
@@ -93,10 +96,10 @@ func (s *Scene) SubscribeEnter(condition Condition, callback EntityCallback) *En
 	})
 }
 
-// SubscribeExit registers a callback that will be called whenever
-// an entity stops satisfying the specified condition. The callback will be
-// called with the ID of the entity that stopped satisfying the condition.
-// The returned subscription can be used to unsubscribe the callback.
+// SubscribeExit registers a callback that fires whenever an entity
+// transitions out of satisfying condition. The callback receives the ID
+// of the entity that triggered the transition. Call Delete on the
+// returned [EntitySubscription] to unsubscribe.
 func (s *Scene) SubscribeExit(condition Condition, callback EntityCallback) *EntitySubscription {
 	return s.exitSubscriptions.Subscribe(ConditionalCallback{
 		condition: condition,
@@ -104,12 +107,12 @@ func (s *Scene) SubscribeExit(condition Condition, callback EntityCallback) *Ent
 	})
 }
 
-// CreateEntity creates a new empty entity in the scene and returns its ID.
+// CreateEntity allocates a new entity and returns its [ID]. If fn is
+// not nil, fn is called with an [EditOperation] so that initial
+// components can be added before the entity is committed to the scene.
 //
-// Optionally, a callback can be provided that will be called with an
-// EditOperation that can be used to specify the initial components of the
-// entity. If no callback is provided, the entity will be created without any
-// components.
+// CreateEntity may be called during a query; the creation is deferred
+// until the query completes.
 func (s *Scene) CreateEntity(fn EditOperationFunc) ID {
 	s.verifyOutsideOperation()
 
@@ -150,11 +153,12 @@ func (s *Scene) CreateEntity(fn EditOperationFunc) ID {
 	return fromInternalID(desc.ID())
 }
 
-// DeleteEntity deletes the entity from the scene. The entity is first stripped
-// of all its components and then marked as invalid.
+// DeleteEntity removes the entity and all its components from the
+// scene. Any component pointers previously obtained for this entity
+// must not be used after this call.
 //
-// Any references to components previously held by the entity must not be used
-// after this call.
+// DeleteEntity may be called during a query; the deletion is deferred
+// until the query completes.
 func (s *Scene) DeleteEntity(id ID) {
 	s.verifyOutsideOperation()
 
@@ -168,7 +172,7 @@ func (s *Scene) DeleteEntity(id ID) {
 	s.processQueue()
 }
 
-// HasEntity returns whether the scene contains the specified entity.
+// HasEntity reports whether id refers to a live entity in the scene.
 func (s *Scene) HasEntity(id ID) bool {
 	s.verifyOutsideOperation()
 
@@ -176,11 +180,8 @@ func (s *Scene) HasEntity(id ID) bool {
 	return ok
 }
 
-// CheckEntity returns whether the specified entity satisfies the specified
-// condition.
-//
-// This method does allow for invalid or deleted entity IDs to be passed in,
-// and will simply return false for them.
+// CheckEntity reports whether the entity identified by id satisfies
+// condition. Returns false for invalid or deleted IDs.
 func (s *Scene) CheckEntity(id ID, condition Condition) bool {
 	s.verifyOutsideOperation()
 
@@ -193,10 +194,11 @@ func (s *Scene) CheckEntity(id ID, condition Condition) bool {
 	return condition.isSatisfiedBy(archetype.TypeMask())
 }
 
-// ReadEntity allows reading the components of an entity.
+// ReadEntity calls fn with a [ReadOperation] scoped to the entity
+// identified by id. Use [GetComponent] or [InjectComponent] inside fn
+// to retrieve component values.
 //
-// The provided callback will be called with a ReadOperation that can be used
-// to specify the components to be read from the entity.
+// Panics if the entity does not exist.
 func (s *Scene) ReadEntity(id ID, fn func(*ReadOperation)) {
 	s.verifyOutsideOperation()
 
@@ -222,16 +224,18 @@ func (s *Scene) ReadEntity(id ID, fn func(*ReadOperation)) {
 	s.inOperationBlock = false
 }
 
-// EditEntity allows editing the components of an entity.
+// EditEntity calls fn with an [EditOperation] for the entity identified
+// by id. Use [AddComponent], [RemoveComponent], and [ReplaceComponent]
+// inside fn to stage structural or value changes.
 //
-// The provided callback will be called with an EditOperation that can be used
-// to specify the changes to be applied to the entity.
+// Panics if a component is added that the entity already has, or one is
+// removed or replaced that the entity does not have, as determined by
+// the virtual component state after each prior operation in the same
+// edit. When multiple operations target the same component type, only
+// the last one takes effect.
 //
-// Trying to add a component that the entity already has or remove a component
-// that the entity does not have will result in a panic.
-//
-// If multiple changes are made to the same component type, only the last one
-// will be applied, and the intermediate ones will be ignored.
+// EditEntity may be called during a query; the edit is deferred until
+// the query completes.
 func (s *Scene) EditEntity(id ID, fn EditOperationFunc) {
 	s.verifyOutsideOperation()
 
@@ -264,9 +268,13 @@ func (s *Scene) EditEntity(id ID, fn EditOperationFunc) {
 	s.processQueue()
 }
 
-// QueryEntities queries the scene for entities satisfying the specified
-// condition and invokes the callback for each of them with a ReadOperation
-// that can be used to read the components of the entity.
+// QueryEntities calls yield for every entity that satisfies condition,
+// passing a [ReadOperation] through which its components can be read.
+// Returning false from yield stops the iteration early.
+//
+// Mutations made during the query via [Scene.EditEntity],
+// [Scene.CreateEntity], or [Scene.DeleteEntity] are deferred and
+// applied after iteration completes.
 func (s *Scene) QueryEntities(condition Condition, yield func(ID, *ReadOperation) bool) {
 	s.verifyOutsideOperation()
 
@@ -300,9 +308,9 @@ iteration:
 	s.processQueue()
 }
 
-// QueryEntities queries the scene for entities satisfying the specified
-// condition and invokes the callback for each of them with a ReadOperation
-// that can be used to read the components of the entity.
+// QueryEntitiesIter returns a range iterator over entities that satisfy
+// condition. It is equivalent to [Scene.QueryEntities] and carries the
+// same deferred-mutation semantics.
 func (s *Scene) QueryEntitiesIter(condition Condition) iter.Seq2[ID, *ReadOperation] {
 	return func(yield func(ID, *ReadOperation) bool) {
 		s.QueryEntities(condition, yield)

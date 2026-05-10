@@ -7,10 +7,10 @@ import (
 	"github.com/mokiat/lacking/game/ecs/v6/internal"
 )
 
-// NewScope creates a new scope for component type registration.
+// NewScope creates a new component type registry.
 //
-// One a scope is used by a scene, it cannot be used to register more component
-// types, and trying to do so will lead to a panic.
+// Once a scope is passed to [NewScene] it is locked; attempting to
+// register additional component types afterwards will panic.
 func NewScope() *Scope {
 	return &Scope{
 		registeredTypes: ds.EmptySet[reflect.Type](),
@@ -18,7 +18,8 @@ func NewScope() *Scope {
 	}
 }
 
-// Scope represents a scope for component type registration.
+// Scope holds the component type registry shared by a set of scenes.
+// Create one with [NewScope] and register component types with [Type].
 type Scope struct {
 	registeredTypes *ds.Set[reflect.Type]
 	registry        *internal.Registry
@@ -29,13 +30,12 @@ func (s *Scope) markInUse() {
 	s.inUse = true
 }
 
-// Type register the specified Go structure as a component type within
-// the specified scope and returns its unique identifier. The identifier is used
-// to refer to the component type in various API calls. It also acts as a
-// storage for the component's data.
+// Type registers the Go type T as a component type within scope and
+// returns a [ComponentType] descriptor. The descriptor is used in API
+// calls such as [AddComponent], [RemoveComponent], and [GetComponent].
 //
-// This function should be called from a global variable initializer, and
-// is not safe for concurrent use.
+// Call this function once per type, typically from a package-level var
+// initializer. It is not safe for concurrent use.
 func Type[T any](scope *Scope) ComponentType[T] {
 	if scope.inUse {
 		panic("cannot register component type in a scope that is already in use")
@@ -64,17 +64,19 @@ func Type[T any](scope *Scope) ComponentType[T] {
 	}
 }
 
-// BaseComponentType represents a component type in the ECS. It is used to
-// identify component types and to manage component storage.
+// BaseComponentType is the non-generic interface implemented by every
+// [ComponentType] value. It provides access to the underlying storage
+// without requiring the type parameter.
 type BaseComponentType interface {
 
-	// BaseStorage returns the component storage associated with the component
-	// type.
+	// BaseStorage returns the type-erased component storage.
 	BaseStorage() internal.AnyStorage
 }
 
-// ComponentType represents a component type in the ECS. It is used to
-// identify component types and to manage component storage.
+// ComponentType is the typed descriptor for a component of type T.
+// Obtain one by calling [Type] and pass it to API functions such as
+// [AddComponent], [GetComponent], and condition helpers like
+// [HasComponent].
 type ComponentType[T any] struct {
 	id      internal.TypeID
 	storage *internal.Storage[T]
@@ -82,8 +84,7 @@ type ComponentType[T any] struct {
 
 var _ BaseComponentType = (*ComponentType[any])(nil)
 
-// BaseStorage returns the component storage associated with the component
-// type.
+// BaseStorage returns the type-erased component storage.
 func (t ComponentType[T]) BaseStorage() internal.AnyStorage {
 	return t.storage
 }

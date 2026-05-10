@@ -2,13 +2,14 @@ package ecs
 
 import "github.com/mokiat/lacking/game/ecs/v6/internal"
 
-// NilID represents an invalid entity handle.
+// NilID is the zero value of [ID] and represents an invalid entity handle.
 var NilID = ID{}
 
-// ID represents a handle to an ECS entity. The handle may be invalid
-// if the entity has since been deleted.
+// ID is a versioned handle to an entity. It remains valid until the
+// entity is deleted. After deletion, the ID compares unequal to any
+// new entity that reuses the same internal slot.
 //
-// Store this type by value, as it is small and copyable.
+// ID is small and should be stored and passed by value.
 type ID struct {
 	index    uint32
 	revision uint32

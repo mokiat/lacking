@@ -2,25 +2,28 @@ package ecs
 
 import "github.com/mokiat/lacking/game/ecs/v6/internal"
 
-// EditOperation represents a change to be applied to an entity's components.
+// EditOperation is the write handle passed to [Scene.EditEntity] and
+// [Scene.CreateEntity] callbacks. Use [AddComponent], [RemoveComponent],
+// and [ReplaceComponent] to stage component changes.
 //
-// Instances of this type should not be created directly nor kept around, but
-// instead should only be used within the scope of an EditEntity callback.
+// Do not create instances directly or retain the pointer beyond the
+// callback scope.
 type EditOperation struct {
 	stager        *internal.Stager
 	commandBuffer *internal.Buffer
 	stageRow      internal.Row
 }
 
-// EditOperationFunc is used to perform edits on an entity's components within
-// an EditEntity callback.
+// EditOperationFunc is the callback signature accepted by
+// [Scene.EditEntity] and [Scene.CreateEntity].
 type EditOperationFunc func(op *EditOperation)
 
-// AddComponent adds a component of type T with the provided value to the entity
-// being edited.
+// AddComponent stages the addition of a component of type T with the
+// given value to the entity being edited.
 //
-// The entity must not already have a component of the specified type, otherwise
-// the call will lead to a panic.
+// Panics at commit time if the entity already has a component of type T
+// (as determined by the virtual state after prior operations in the same
+// edit).
 func AddComponent[T any](op *EditOperation, compType ComponentType[T], value T) {
 	anyColumn := op.stager.ComponentColumn(compType.id)
 	column := anyColumn.(*internal.Column[T])
@@ -34,10 +37,12 @@ func AddComponent[T any](op *EditOperation, compType ComponentType[T], value T) 
 	})
 }
 
-// RemoveComponent removes the component of type T from the entity being edited.
+// RemoveComponent stages the removal of the component of type T from
+// the entity being edited.
 //
-// The entity must already have a component of the specified type, otherwise the
-// call will lead to a panic.
+// Panics at commit time if the entity does not have a component of
+// type T (as determined by the virtual state after prior operations in
+// the same edit).
 func RemoveComponent[T any](op *EditOperation, compType ComponentType[T]) {
 	internal.WriteToBuffer(op.commandBuffer, internal.CommandHeader{
 		CommandType: internal.CommandTypeRemoveComponent,
@@ -47,11 +52,13 @@ func RemoveComponent[T any](op *EditOperation, compType ComponentType[T]) {
 	})
 }
 
-// ReplaceComponent replaces the component of type T on the entity being edited
-// with the provided value.
+// ReplaceComponent stages a value update for the component of type T on
+// the entity being edited. Unlike [RemoveComponent] followed by
+// [AddComponent], this does not change the entity's archetype.
 //
-// The entity must already have a component of the specified type, otherwise the
-// call will lead to a panic.
+// Panics at commit time if the entity does not have a component of
+// type T (as determined by the virtual state after prior operations in
+// the same edit).
 func ReplaceComponent[T any](op *EditOperation, compType ComponentType[T], value T) {
 	anyColumn := op.stager.ComponentColumn(compType.id)
 	column := anyColumn.(*internal.Column[T])
@@ -65,10 +72,12 @@ func ReplaceComponent[T any](op *EditOperation, compType ComponentType[T], value
 	})
 }
 
-// ReadOperation represents a request to read components of an entity.
+// ReadOperation is the read handle passed to [Scene.ReadEntity] and
+// [Scene.QueryEntities] callbacks. Use [GetComponent] or
+// [InjectComponent] to retrieve component values.
 //
-// Instances of this type should not be created directly nor kept around but
-// instead should only be used within the scope of a ReadEntity callback.
+// Do not create instances directly or retain the pointer beyond the
+// callback scope.
 type ReadOperation struct {
 	mask internal.TypeMask
 	row  internal.Row
@@ -77,10 +86,9 @@ type ReadOperation struct {
 	componentColumns []internal.AnyColumn
 }
 
-// GetComponent retrieves the component of type T from the entity being read
-// and returns a reference to it.
-//
-// If a component that the entity does not have is requested, nil is returned.
+// GetComponent returns a pointer to the component of type T for the
+// entity currently being read, or nil if the entity does not have the
+// component.
 func GetComponent[T any](op *ReadOperation, compType ComponentType[T]) *T {
 	if !op.mask.HasType(compType.id) {
 		return nil
@@ -91,11 +99,9 @@ func GetComponent[T any](op *ReadOperation, compType ComponentType[T]) *T {
 	return column.RefValue(op.row)
 }
 
-// InjectComponent retrieves the component of type T from the entity being read
-// and injects it into the provided target pointer.
-//
-// If you request a component that the entity does not have, the target will be
-// set to nil.
+// InjectComponent sets *target to the component of type T for the
+// entity currently being read, or nil if the entity does not have the
+// component. It is a convenience wrapper around [GetComponent].
 func InjectComponent[T any](op *ReadOperation, compType ComponentType[T], target **T) {
 	*target = GetComponent(op, compType)
 }
