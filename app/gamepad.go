@@ -39,10 +39,12 @@ type GamepadEvent struct {
 	// Action indicates the action performed with the gamepad.
 	Action GamepadAction
 
-	// Button specifies the button for which the event is applicable.
+	// Button specifies the button for which an event occurred. This is only
+	// applicable for button events.
 	Button GamepadButton
 
-	// Stick specifies the stick for which the event is applicable.
+	// Stick specifies the stick for which an event occurred. This is only
+	// applicable for stick move events.
 	Stick GamepadStick
 
 	// X specifies the horizontal position of the stick.
