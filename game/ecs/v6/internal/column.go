@@ -17,10 +17,6 @@ type AnyColumn interface {
 	// Copy copies the component values from the source row to the destination
 	// row.
 	Copy(dst, src Row)
-
-	// Release releases any resources associated with the column, such as
-	// allocated chunks.
-	Release()
 }
 
 // ColumnID represents a unique identifier for a column in the component
@@ -114,5 +110,5 @@ func (c *Column[T]) Release() {
 	c.chunks = c.chunks[:0]
 	c.size = 0
 
-	c.storage.releaseColumn(c)
+	c.storage.releaseColumnID(c.id)
 }

@@ -8,9 +8,13 @@ import (
 // allocating and managing columns for component storage.
 type AnyStorage interface {
 
-	// NewAnyColumn allocates a new column for storing component values and
+	// AllocateColumn allocates a new column for storing component values and
 	// returns the allocated column.
-	NewAnyColumn() AnyColumn
+	AllocateColumn() ColumnID
+
+	// ReleaseColumn reclaims the column with the specified ID, making it
+	// available for future allocations.
+	ReleaseColumn(id ColumnID)
 
 	// CopyCell copies the component value from the source column and row to the
 	// destination column and row.
@@ -23,10 +27,6 @@ type AnyStorage interface {
 	// ShrinkColumn shrinks the column with the specified ID by removing the last
 	// row from it.
 	ShrinkColumn(id ColumnID)
-
-	// ReclaimColumn reclaims the column with the specified ID, making it
-	// available for future allocations.
-	ReclaimColumn(id ColumnID)
 }
 
 // NewStorage creates a new storage for columns of type T.
@@ -49,16 +49,24 @@ type Storage[T any] struct {
 
 var _ AnyStorage = (*Storage[struct{}])(nil)
 
-// NewAnyColumn allocates a new column for storing component values and
+// AllocateColumn allocates a new column for storing component values and
 // returns the allocated column.
-func (s *Storage[T]) NewAnyColumn() AnyColumn {
-	return s.allocateColumn()
+func (s *Storage[T]) AllocateColumn() ColumnID {
+	return s.allocateColumnID()
+}
+
+// ReleaseColumn reclaims the column with the specified ID, making it
+// available for future allocations.
+func (s *Storage[T]) ReleaseColumn(id ColumnID) {
+	column := s.Column(id)
+	column.Release()
 }
 
 // NewColumn allocates a new column for storing component values of type T and
 // returns the allocated column.
 func (s *Storage[T]) NewColumn() *Column[T] {
-	return s.allocateColumn()
+	id := s.allocateColumnID()
+	return s.columns[id]
 }
 
 // Column returns the column with the specified ID from the storage.
@@ -88,27 +96,18 @@ func (s *Storage[T]) ShrinkColumn(id ColumnID) {
 	column.Shrink()
 }
 
-// ReclaimColumn reclaims the column with the specified ID, making it
-// available for future allocations.
-func (s *Storage[T]) ReclaimColumn(id ColumnID) {
-	column := s.columns[id]
-	column.Release()
-}
-
-func (s *Storage[T]) allocateColumn() *Column[T] {
+func (s *Storage[T]) allocateColumnID() ColumnID {
 	if s.freeColumns.IsEmpty() {
-		id := uint32(len(s.columns))
+		id := ColumnID(len(s.columns))
 		column := NewColumn(s, ColumnID(id))
 		s.columns = append(s.columns, column)
-		return column
+		return id
 	}
-
-	id := s.freeColumns.Pop()
-	return s.columns[id]
+	return s.freeColumns.Pop()
 }
 
-func (s *Storage[T]) releaseColumn(column *Column[T]) {
-	s.freeColumns.Push(column.ID())
+func (s *Storage[T]) releaseColumnID(columnID ColumnID) {
+	s.freeColumns.Push(columnID)
 }
 
 func (s *Storage[T]) allocateChunk() DataChunk[T] {

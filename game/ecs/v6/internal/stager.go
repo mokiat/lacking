@@ -12,11 +12,11 @@ func NewStager(registry *Registry) *Stager {
 			continue
 		}
 
-		column := storage.NewAnyColumn()
-		column.Grow()
+		columnID := storage.AllocateColumn()
+		storage.GrowColumn(columnID)
 
 		componentLookup[typeID] = uint8(len(componentColumnIDs))
-		componentColumnIDs = append(componentColumnIDs, column.ID())
+		componentColumnIDs = append(componentColumnIDs, columnID)
 		mask.AddType(TypeID(typeID))
 	}
 
@@ -62,6 +62,6 @@ func (s *Stager) ComponentColumnID(id TypeID) ColumnID {
 func (s *Stager) Destroy() {
 	s.mask.EachType(func(id TypeID) {
 		columnID := s.componentColumnIDs[s.componentLookup[id]]
-		s.registry.Storage(id).ReclaimColumn(columnID)
+		s.registry.Storage(id).ReleaseColumn(columnID)
 	})
 }

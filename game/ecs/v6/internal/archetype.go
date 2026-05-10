@@ -29,7 +29,7 @@ func (a *Archetype) Revive(mask TypeMask) {
 	mask.EachType(func(id TypeID) {
 		storage := a.registry.Storage(id)
 		a.componentLookup[id] = uint8(len(a.componentColumnIDs))
-		a.componentColumnIDs = append(a.componentColumnIDs, storage.NewAnyColumn().ID())
+		a.componentColumnIDs = append(a.componentColumnIDs, storage.AllocateColumn())
 	})
 
 	entityIDStorage := a.registry.IDStorage()
@@ -43,7 +43,7 @@ func (a *Archetype) Destroy() {
 	a.mask.EachType(func(id TypeID) {
 		storage := a.registry.Storage(id)
 		columnID := a.componentColumnIDs[a.componentLookup[id]]
-		storage.ReclaimColumn(columnID)
+		storage.ReleaseColumn(columnID)
 	})
 	a.componentLookup = TypeLookup{}
 	a.componentColumnIDs = a.componentColumnIDs[:0]
