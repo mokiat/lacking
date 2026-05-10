@@ -64,15 +64,6 @@ func Type[T any](scope *Scope) ComponentType[T] {
 	}
 }
 
-// BaseComponentType is the non-generic interface implemented by every
-// [ComponentType] value. It provides access to the underlying storage
-// without requiring the type parameter.
-type BaseComponentType interface {
-
-	// BaseStorage returns the type-erased component storage.
-	BaseStorage() internal.AnyStorage
-}
-
 // ComponentType is the typed descriptor for a component of type T.
 // Obtain one by calling [Type] and pass it to API functions such as
 // [AddComponent], [GetComponent], and condition helpers like
@@ -80,11 +71,4 @@ type BaseComponentType interface {
 type ComponentType[T any] struct {
 	id      internal.TypeID
 	storage *internal.Storage[T]
-}
-
-var _ BaseComponentType = (*ComponentType[any])(nil)
-
-// BaseStorage returns the type-erased component storage.
-func (t ComponentType[T]) BaseStorage() internal.AnyStorage {
-	return t.storage
 }

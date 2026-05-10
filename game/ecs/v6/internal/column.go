@@ -1,24 +1,5 @@
 package internal
 
-// AnyColumn represents a base interface for a column in the component storage.
-// A column is responsible for managing the storage of component values for a
-// specific component type across multiple entities.
-type AnyColumn interface {
-
-	// ID returns the unique identifier of the column in the component storage.
-	ID() ColumnID
-
-	// Grow appends an additional row to the column. A zero value is placed.
-	Grow()
-
-	// Shrink removes the last row of the column. The value is lost.
-	Shrink()
-
-	// Copy copies the component values from the source row to the destination
-	// row.
-	Copy(dst, src Row)
-}
-
 // ColumnID represents a unique identifier for a column in the component
 // storage.
 type ColumnID uint32
@@ -46,8 +27,6 @@ type Column[T any] struct {
 	chunks  []DataChunk[T]
 	size    uint32
 }
-
-var _ AnyColumn = (*Column[struct{}])(nil)
 
 // ID returns the unique identifier of the column in the component storage.
 func (c *Column[T]) ID() ColumnID {
