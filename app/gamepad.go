@@ -9,6 +9,8 @@ var (
 	// GamepadMinEventInterval is the minimum interval between
 	// gamepad event processing. This is to ensure that even if there are no
 	// native events, the gamepad will still produce events.
+	//
+	// This value can be changed from the UI thread.
 	GamepadMinEventInterval = 30 * time.Millisecond
 
 	// GamepadRepeatDelay is the initial delay before a held down
@@ -348,10 +350,10 @@ type Gamepad interface {
 	// on the right stick.
 	RightStickButton() bool
 
-	// LeftTrigger returns the left trigger button.
+	// LeftTrigger returns the analog value of the left trigger.
 	LeftTrigger() float64
 
-	// RightTrigger returns the right trigger button.
+	// RightTrigger returns the analog value of the right trigger.
 	RightTrigger() float64
 
 	// LeftBumper returns the left bumper button.
@@ -384,10 +386,10 @@ type Gamepad interface {
 	// ActionRightButton returns the right button of the right cluster.
 	ActionRightButton() bool
 
-	// ForwardButton represents the right button of the center cluster.
+	// ForwardButton returns the right button of the center cluster.
 	ForwardButton() bool
 
-	// BackButton represents the left button of the center cluster.
+	// BackButton returns the left button of the center cluster.
 	BackButton() bool
 
 	// Pulse causes the Gamepad controller to vibrate with the specified
