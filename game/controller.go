@@ -3,7 +3,6 @@ package game
 import (
 	"github.com/mokiat/lacking/app"
 	"github.com/mokiat/lacking/debug/metric"
-	"github.com/mokiat/lacking/game/ecs"
 	"github.com/mokiat/lacking/game/graphics"
 	"github.com/mokiat/lacking/game/physics"
 	"github.com/mokiat/lacking/resource"
@@ -38,9 +37,6 @@ type Controller struct {
 	gfxOptions []graphics.Option
 	gfxEngine  *graphics.Engine
 
-	ecsOptions []ecs.Option
-	ecsEngine  *ecs.Engine
-
 	physicsOptions []physics.Option
 	physicsEngine  *physics.Engine
 
@@ -63,13 +59,6 @@ func (c *Controller) UseGraphicsOptions(opts ...graphics.Option) {
 	c.gfxOptions = opts
 }
 
-// UseECSOptions allows to specify options that will be used
-// when initializing the ECS engine. This method should be
-// called before the controller is initialized by the app framework.
-func (c *Controller) UseECSOptions(opts ...ecs.Option) {
-	c.ecsOptions = opts
-}
-
 // UsePhysicsOptions allows to specify options that will be used
 // when initializing the physics engine. This method should be
 // called before the controller is initialized by the app framework.
@@ -88,7 +77,6 @@ func (c *Controller) Engine() *Engine {
 func (c *Controller) OnCreate(window app.Window) {
 	c.window = window
 	c.gfxEngine = graphics.NewEngine(window.RenderAPI(), c.shaders, c.shaderBuilder, c.gfxOptions...)
-	c.ecsEngine = ecs.NewEngine(c.ecsOptions...)
 	c.physicsEngine = physics.NewEngine(c.physicsOptions...)
 
 	c.ioWorker = async.NewWorker(4)
@@ -99,7 +87,6 @@ func (c *Controller) OnCreate(window app.Window) {
 		WithIOWorker(c.ioWorker),
 		WithStore(c.store),
 		WithGraphics(c.gfxEngine),
-		WithECS(c.ecsEngine),
 		WithPhysics(c.physicsEngine),
 	)
 	c.engine.Create()

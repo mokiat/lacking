@@ -1,6 +1,6 @@
 package ecs
 
-import "github.com/mokiat/lacking/game/ecs/v6/internal"
+import "github.com/mokiat/lacking/game/ecs/internal"
 
 // Condition is a predicate over an entity's component set. Conditions
 // are constructed with [HasComponent], [LacksComponent], and

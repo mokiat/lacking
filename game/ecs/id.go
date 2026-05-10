@@ -1,6 +1,6 @@
 package ecs
 
-import "github.com/mokiat/lacking/game/ecs/v6/internal"
+import "github.com/mokiat/lacking/game/ecs/internal"
 
 // NilID is the zero value of [ID] and represents an invalid entity handle.
 var NilID = ID{}

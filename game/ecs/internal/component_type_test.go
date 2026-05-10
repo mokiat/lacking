@@ -5,7 +5,7 @@ import (
 	. "github.com/onsi/gomega"
 
 	"github.com/mokiat/gog"
-	"github.com/mokiat/lacking/game/ecs/v6/internal"
+	"github.com/mokiat/lacking/game/ecs/internal"
 )
 
 var _ = Describe("TypeMask", func() {

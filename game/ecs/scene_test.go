@@ -4,7 +4,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
-	"github.com/mokiat/lacking/game/ecs/v6"
+	"github.com/mokiat/lacking/game/ecs"
 )
 
 var _ = Describe("Scene", func() {

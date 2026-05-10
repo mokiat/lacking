@@ -3,7 +3,6 @@ package game
 import (
 	"time"
 
-	"github.com/mokiat/lacking/game/ecs"
 	"github.com/mokiat/lacking/game/graphics"
 	"github.com/mokiat/lacking/game/physics"
 	"github.com/mokiat/lacking/render"
@@ -43,12 +42,6 @@ func WithGraphics(gfxEngine *graphics.Engine) EngineOption {
 	}
 }
 
-func WithECS(ecsEngine *ecs.Engine) EngineOption {
-	return func(e *Engine) {
-		e.ecsEngine = ecsEngine
-	}
-}
-
 func NewEngine(opts ...EngineOption) *Engine {
 	result := &Engine{
 		lastTick: time.Now(),
@@ -67,7 +60,6 @@ type Engine struct {
 	gfxWorker     Worker
 	physicsEngine *physics.Engine
 	gfxEngine     *graphics.Engine
-	ecsEngine     *ecs.Engine
 
 	registry *resourceRegistry
 
@@ -103,10 +95,6 @@ func (e *Engine) Physics() *physics.Engine {
 
 func (e *Engine) Graphics() *graphics.Engine {
 	return e.gfxEngine
-}
-
-func (e *Engine) ECS() *ecs.Engine {
-	return e.ecsEngine
 }
 
 func (e *Engine) ActiveScene() *Scene {

@@ -1,6 +1,6 @@
 package ecs
 
-import "github.com/mokiat/lacking/game/ecs/v6/internal"
+import "github.com/mokiat/lacking/game/ecs/internal"
 
 // EditOperation is the write handle passed to [Scene.EditEntity] and
 // [Scene.CreateEntity] callbacks. Use [AddComponent], [RemoveComponent],
