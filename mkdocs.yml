@@ -3,6 +3,34 @@ site_url: http://mokiat.com/lacking
 repo_url: https://github.com/mokiat/lacking/
 theme:
   name: material
+nav:
+  - Home: index.md
+  - Getting Started: getting-started.md
+  - Examples: examples.md
+  - Manual:
+    - Application: manual/application/index.md
+    - ECS: manual/ecs/index.md
+    - Game: manual/game/index.md
+    - Graphics:
+      - Shader: manual/graphics/shader.md
+    - Rendering: manual/rendering/index.md
+    - User Interface: manual/user-interface/index.md
+  - Development:
+    - Physics:
+      - Overview: development/physics/index.md
+      - References: development/physics/references.md
+      - Theory:
+        - Principles: development/physics/theory/principles.md
+        - Terminology: development/physics/theory/terminology.md
+        - Equations: development/physics/theory/equations.md
+        - Effective Mass: development/physics/theory/effective-mass.md
+        - Moment of Inertia: development/physics/theory/moment-of-intertia.md
+      - Derivations:
+        - Impulse: development/physics/derivations/impulse-derivation.md
+        - Effective Mass: development/physics/derivations/effective-mass-derivation.md
+    - Math:
+      - Vectors: development/math/vectors.md
+      - Derivatives: development/math/derivatives.md
 markdown_extensions:
   - pymdownx.arithmatex:
       generic: true
