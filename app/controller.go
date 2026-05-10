@@ -104,6 +104,13 @@ var _ (Controller) = (*LayeredController)(nil)
 // LayeredController is an implementation of Controller that invokes
 // the specified controller layers in an order emulating multiple overlays
 // of a window.
+//
+// Lifecycle methods (OnCreate, OnResize, OnFramebufferResize, OnRender) are
+// called in forward order (first layer first). OnDestroy is called in reverse
+// order so that layers are torn down in the opposite order to their creation.
+// Event methods (OnKeyboardEvent, OnMouseEvent, OnGamepadEvent,
+// OnClipboardEvent, OnCloseRequested) are called in reverse order so that the
+// top-most layer gets first opportunity to consume the event.
 type LayeredController struct {
 	layers []Controller
 }

@@ -266,12 +266,12 @@ const (
 	// GamepadStickRight indicates the right stick.
 	GamepadStickRight
 
-	// GamepadStickLeftTrigger indicates the left trigger. Only the Y value
-	// is applicable.
+	// GamepadStickLeftTrigger indicates the left trigger.
+	// Only the Y stick value is applicable and is within the range [0.0, 1.0].
 	GamepadStickLeftTrigger
 
-	// GamepadStickRightTrigger indicates the right trigger. Only the Y value
-	// is applicable.
+	// GamepadStickRightTrigger indicates the right trigger.
+	// Only the Y stick value is applicable and is within the range [0.0, 1.0].
 	GamepadStickRightTrigger
 
 	// GamepadStickCount is the total number of gamepad stick enums.
@@ -393,7 +393,8 @@ type Gamepad interface {
 	BackButton() bool
 
 	// Pulse causes the Gamepad controller to vibrate with the specified
-	// intensity (0.0 to 1.0) for the specified duration.
+	// intensity for the specified duration. The intensity should be within the
+	// range [0.0, 1.0] - a value outside that range will be clamped.
 	//
 	// If the device does not have haptic feedback or if this API implementation
 	// does not support it then this method does nothing.
