@@ -28,7 +28,7 @@ var (
 type GamepadEvent struct {
 
 	// Index indicates which gamepad triggered the event. By default
-	// the index for a the primary gamepad is 0.
+	// the index for the primary gamepad is 0.
 	Index int
 
 	// Gamepad is a reference to the gamepad that triggered the event.
@@ -90,7 +90,7 @@ const (
 // GamepadAction is used to specify the type of gamepad action that occurred.
 type GamepadAction int
 
-// String returns a string representation of this event type,
+// String returns a string representation of this event type.
 func (s GamepadAction) String() string {
 	switch s {
 	case GamepadActionNone:
@@ -297,7 +297,7 @@ func (s GamepadStick) String() string {
 	}
 }
 
-// Gamepad represents a gamepad type joystick. Only input devides that can
+// Gamepad represents a gamepad-type joystick. Only input devices that can
 // be mapped according to standard layout will work and have any axis
 // and button output.
 type Gamepad interface {
@@ -341,7 +341,7 @@ type Gamepad interface {
 	// RightStickX returns the horizontal axis of the right stick.
 	RightStickX() float64
 
-	// RightStickY returns the horizontal axis of the right stick.
+	// RightStickY returns the vertical axis of the right stick.
 	RightStickY() float64
 
 	// RightStickButton returns the button represented by pressing
@@ -372,7 +372,7 @@ type Gamepad interface {
 	// DpadRightButton returns the right button of the left cluster.
 	DpadRightButton() bool
 
-	// ActionTopButton returns the up button of the right cluster.
+	// ActionUpButton returns the up button of the right cluster.
 	ActionUpButton() bool
 
 	// ActionDownButton returns the down button of the right cluster.

@@ -41,7 +41,7 @@ type Window interface {
 	// This API supports up to 4 connected devices.
 	Gamepads() [4]Gamepad
 
-	// Schedule queues a function to be called on the main thread
+	// Schedule queues a function to be called on the UI thread
 	// when possible. There are no guarantees that it will necessarily
 	// be on the next frame iteration.
 	Schedule(fn func())
@@ -59,7 +59,7 @@ type Window interface {
 
 	// CursorVisible returns whether a cursor is to be displayed on the
 	// screen. This is determined based on the visibility and lock settings
-	// of the cursor
+	// of the cursor.
 	CursorVisible() bool
 
 	// SetCursorVisible changes whether a cursor is displayed on the

@@ -6,7 +6,7 @@ import "fmt"
 type MouseEvent struct {
 
 	// Index indicates which mouse triggered the event. By default
-	// the index for a the primary mouse is 0.
+	// the index for the primary mouse is 0.
 	//
 	// This is applicable for devices with multiple pointers
 	// (mobile) or in case a second mouse is emulated

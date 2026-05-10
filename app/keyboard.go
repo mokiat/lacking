@@ -12,7 +12,7 @@ type KeyboardEvent struct {
 	Code KeyCode
 
 	// Character returns the character that was typed in case
-	// of an KeyboardActionType event.
+	// of a KeyboardActionType event.
 	Character rune
 }
 
@@ -47,7 +47,7 @@ const (
 // KeyboardAction is used to specify the type of keyboard action that occurred.
 type KeyboardAction int
 
-// String returns a string representation of this event type,
+// String returns a string representation of this event type.
 func (a KeyboardAction) String() string {
 	switch a {
 	case KeyboardActionDown:
