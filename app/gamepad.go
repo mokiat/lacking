@@ -210,6 +210,7 @@ const (
 	GamepadButtonCount
 )
 
+// String returns a string representation of this button.
 func (b GamepadButton) String() string {
 	switch b {
 	case GamepadButtonNone:

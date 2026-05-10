@@ -45,6 +45,9 @@ type Controller interface {
 
 	// OnClipboardEvent is called whenever the clipboard content has been
 	// requested and the underlying window has managed to retrieve it.
+	//
+	// Return true to indicate that the event has been consumed and should
+	// not be propagated to other potential receivers, otherwise return false.
 	OnClipboardEvent(window Window, event ClipboardEvent) bool
 
 	// OnRender is called whenever the window would like to be redrawn.
