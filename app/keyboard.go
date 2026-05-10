@@ -29,8 +29,11 @@ func (e KeyboardEvent) String() string {
 type KeyboardAction int
 
 const (
+	// KeyboardActionNone indicates that no keyboard action is taking place.
+	KeyboardActionNone KeyboardAction = iota
+
 	// KeyboardActionDown indicates that a keyboard key was pressed.
-	KeyboardActionDown KeyboardAction = 1 + iota
+	KeyboardActionDown
 
 	// KeyboardActionUp indicates that a keyboard key was released.
 	KeyboardActionUp
@@ -45,11 +48,17 @@ const (
 	// might be the result of modifiers or special keys that would be hard
 	// to reconstruct from just the key code.
 	KeyboardActionType
+
+	// KeyboardActionCount is a sentinel value representing the total number of
+	// keyboard action enums.
+	KeyboardActionCount
 )
 
 // String returns a string representation of this event type.
 func (a KeyboardAction) String() string {
 	switch a {
+	case KeyboardActionNone:
+		return "NONE"
 	case KeyboardActionDown:
 		return "DOWN"
 	case KeyboardActionUp:
@@ -67,8 +76,10 @@ func (a KeyboardAction) String() string {
 type KeyCode int
 
 const (
+	// KeyCodeNone indicates that no key is associated with the event.
+	KeyCodeNone KeyCode = iota
 	// KeyCodeEscape indicates the Escape key.
-	KeyCodeEscape KeyCode = 1 + iota
+	KeyCodeEscape
 	// KeyCodeEnter indicates the Enter key.
 	KeyCodeEnter
 	// KeyCodeSpace indicates the Space key.
@@ -233,11 +244,17 @@ const (
 	KeyCodeF11
 	// KeyCodeF12 indicates the F12 function key.
 	KeyCodeF12
+
+	// KeyCodeCount is a sentinel value representing the total number of
+	// key code enums.
+	KeyCodeCount
 )
 
 // String returns a string representation of this key code.
 func (c KeyCode) String() string {
 	switch c {
+	case KeyCodeNone:
+		return "NONE"
 	case KeyCodeEscape:
 		return "ESCAPE"
 	case KeyCodeEnter:
@@ -249,21 +266,21 @@ func (c KeyCode) String() string {
 	case KeyCodeCaps:
 		return "CAPS"
 	case KeyCodeLeftShift:
-		return "LSHIFT"
+		return "LEFT_SHIFT"
 	case KeyCodeRightShift:
-		return "RSHIFT"
+		return "RIGHT_SHIFT"
 	case KeyCodeLeftControl:
-		return "LCTRL"
+		return "LEFT_CTRL"
 	case KeyCodeRightControl:
-		return "RCTRL"
+		return "RIGHT_CTRL"
 	case KeyCodeLeftAlt:
-		return "LALT"
+		return "LEFT_ALT"
 	case KeyCodeRightAlt:
-		return "RALT"
+		return "RIGHT_ALT"
 	case KeyCodeLeftSuper:
-		return "LSUPER"
+		return "LEFT_SUPER"
 	case KeyCodeRightSuper:
-		return "RSUPER"
+		return "RIGHT_SUPER"
 	case KeyCodeBackspace:
 		return "BACKSPACE"
 	case KeyCodeInsert:
@@ -275,9 +292,9 @@ func (c KeyCode) String() string {
 	case KeyCodeEnd:
 		return "END"
 	case KeyCodePageUp:
-		return "PGUP"
+		return "PAGE_UP"
 	case KeyCodePageDown:
-		return "PGDOWN"
+		return "PAGE_DOWN"
 	case KeyCodeArrowLeft:
 		return "LEFT"
 	case KeyCodeArrowRight:

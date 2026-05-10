@@ -90,27 +90,31 @@ const (
 
 	// GamepadActionStickMove indicates that a gamepad stick or trigger was moved.
 	GamepadActionStickMove
+
+	// GamepadActionCount is a sentinel value representing the total number of
+	// gamepad action enums.
+	GamepadActionCount
 )
 
 // String returns a string representation of this event type.
 func (s GamepadAction) String() string {
 	switch s {
 	case GamepadActionNone:
-		return "None"
+		return "NONE"
 	case GamepadActionConnected:
-		return "Connected"
+		return "CONNECTED"
 	case GamepadActionDisconnected:
-		return "Disconnected"
+		return "DISCONNECTED"
 	case GamepadActionButtonDown:
-		return "ButtonDown"
+		return "BUTTON_DOWN"
 	case GamepadActionButtonUp:
-		return "ButtonUp"
+		return "BUTTON_UP"
 	case GamepadActionButtonRepeat:
-		return "ButtonRepeat"
+		return "BUTTON_REPEAT"
 	case GamepadActionStickMove:
-		return "StickMove"
+		return "STICK_MOVE"
 	default:
-		return "Unknown"
+		return "UNKNOWN"
 	}
 }
 
@@ -180,79 +184,84 @@ const (
 	// GamepadButtonLeftStickLeft indicates the left direction on the left stick.
 	GamepadButtonLeftStickLeft
 
-	// GamepadButtonLeftStickRight indicates the right direction on the left stick.
+	// GamepadButtonLeftStickRight indicates the right direction on the left
+	// stick.
 	GamepadButtonLeftStickRight
 
 	// GamepadButtonRightStickUp indicates the up direction on the right stick.
 	GamepadButtonRightStickUp
 
-	// GamepadButtonRightStickDown indicates the down direction on the right stick.
+	// GamepadButtonRightStickDown indicates the down direction on the right
+	// stick.
 	GamepadButtonRightStickDown
 
-	// GamepadButtonRightStickLeft indicates the left direction on the right stick.
+	// GamepadButtonRightStickLeft indicates the left direction on the right
+	// stick.
 	GamepadButtonRightStickLeft
 
-	// GamepadButtonRightStickRight indicates the right direction on the right stick.
+	// GamepadButtonRightStickRight indicates the right direction on the right
+	// stick.
 	GamepadButtonRightStickRight
 
-	// GamepadButtonCount is the total number of gamepad buttons enums.
+	// GamepadButtonCount is a sentinel value representing the total number of
+	// gamepad button enums.
 	GamepadButtonCount
 )
 
 func (b GamepadButton) String() string {
 	switch b {
 	case GamepadButtonNone:
-		return "None"
+		return "NONE"
 	case GamepadButtonLeftStick:
-		return "LeftStick"
+		return "LEFT_STICK"
 	case GamepadButtonRightStick:
-		return "RightStick"
+		return "RIGHT_STICK"
 	case GamepadButtonLeftTrigger:
-		return "LeftTrigger"
+		return "LEFT_TRIGGER"
 	case GamepadButtonRightTrigger:
-		return "RightTrigger"
+		return "RIGHT_TRIGGER"
 	case GamepadButtonLeftBumper:
-		return "LeftBumper"
+		return "LEFT_BUMPER"
 	case GamepadButtonRightBumper:
-		return "RightBumper"
+		return "RIGHT_BUMPER"
 	case GamepadButtonDpadUp:
-		return "DpadUp"
+		return "DPAD_UP"
 	case GamepadButtonDpadDown:
-		return "DpadDown"
+		return "DPAD_DOWN"
 	case GamepadButtonDpadLeft:
-		return "DpadLeft"
+		return "DPAD_LEFT"
 	case GamepadButtonDpadRight:
-		return "DpadRight"
+		return "DPAD_RIGHT"
 	case GamepadButtonActionUp:
-		return "ActionUp"
+		return "ACTION_UP"
 	case GamepadButtonActionDown:
-		return "ActionDown"
+		return "ACTION_DOWN"
 	case GamepadButtonActionLeft:
-		return "ActionLeft"
+		return "ACTION_LEFT"
 	case GamepadButtonActionRight:
-		return "ActionRight"
+		return "ACTION_RIGHT"
 	case GamepadButtonForward:
-		return "Forward"
+		return "FORWARD"
 	case GamepadButtonBack:
-		return "Back"
+		return "BACK"
 	case GamepadButtonLeftStickUp:
-		return "LeftStickUp"
+		return "LEFT_STICK_UP"
 	case GamepadButtonLeftStickDown:
-		return "LeftStickDown"
+		return "LEFT_STICK_DOWN"
 	case GamepadButtonLeftStickLeft:
-		return "LeftStickLeft"
+		return "LEFT_STICK_LEFT"
 	case GamepadButtonLeftStickRight:
-		return "LeftStickRight"
+		return "LEFT_STICK_RIGHT"
 	case GamepadButtonRightStickUp:
-		return "RightStickUp"
+		return "RIGHT_STICK_UP"
 	case GamepadButtonRightStickDown:
-		return "RightStickDown"
+		return "RIGHT_STICK_DOWN"
 	case GamepadButtonRightStickLeft:
-		return "RightStickLeft"
+		return "RIGHT_STICK_LEFT"
 	case GamepadButtonRightStickRight:
-		return "RightStickRight"
+		return "RIGHT_STICK_RIGHT"
 	default:
-		return "Unknown"
+		return "UNKNOWN"
 	}
 }
 
@@ -277,7 +286,8 @@ const (
 	// Only the Y stick value is applicable and is within the range [0.0, 1.0].
 	GamepadStickRightTrigger
 
-	// GamepadStickCount is the total number of gamepad stick enums.
+	// GamepadStickCount is a sentinel value representing the total number of
+	// gamepad stick enums.
 	GamepadStickCount
 )
 
@@ -285,17 +295,17 @@ const (
 func (s GamepadStick) String() string {
 	switch s {
 	case GamepadStickNone:
-		return "None"
+		return "NONE"
 	case GamepadStickLeft:
-		return "Left"
+		return "LEFT"
 	case GamepadStickRight:
-		return "Right"
+		return "RIGHT"
 	case GamepadStickLeftTrigger:
-		return "LeftTrigger"
+		return "LEFT_TRIGGER"
 	case GamepadStickRightTrigger:
-		return "RightTrigger"
+		return "RIGHT_TRIGGER"
 	default:
-		return "Unknown"
+		return "UNKNOWN"
 	}
 }
 
