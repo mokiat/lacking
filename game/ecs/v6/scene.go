@@ -195,10 +195,14 @@ func (s *Scene) ReadEntity(id ID, fn func(*ReadOperation)) {
 
 // EditEntity allows editing the components of an entity.
 //
-// The provided callback will be called with an EntityChange that can be used
-// to specify the changes to be applied to the entity. Trying to remove a
-// component and adding it back in the same edit and vice versa is not
-// supported and has undefined behavior.
+// The provided callback will be called with an EditOperation that can be used
+// to specify the changes to be applied to the entity.
+//
+// Trying to add a component that the entity already has or remove a component
+// that the entity does not have will result in a panic.
+//
+// If multiple changes are made to the same component type, only the last one
+// will be applied, and the intermediate ones will be ignored.
 func (s *Scene) EditEntity(id ID, fn EditOperationFunc) {
 	s.verifyOutsideOperation()
 	s.verifyOutsideQuery()
@@ -436,6 +440,7 @@ func (s *Scene) processEditEntityCommand(cmd internal.EditEntityCommand) {
 
 	oldMask := desc.Archetype().TypeMask()
 	newMask := oldMask
+	changes := internal.EmptyTypeMask()
 
 commandLoop:
 	for s.commandBuffer.HasMoreData() {
@@ -448,6 +453,7 @@ commandLoop:
 				panic(fmt.Errorf("cannot add component of type %v that the entity already has", cmd.TypeID))
 			}
 			newMask.AddType(cmd.TypeID)
+			changes.AddType(cmd.TypeID)
 
 		case internal.CommandTypeRemoveComponent:
 			cmd := internal.ReadFromBuffer[internal.RemoveComponentCommand](s.commandBuffer)
@@ -455,6 +461,14 @@ commandLoop:
 				panic(fmt.Errorf("cannot remove component of type %v that the entity does not have", cmd.TypeID))
 			}
 			newMask.RemoveType(cmd.TypeID)
+			changes.RemoveType(cmd.TypeID)
+
+		case internal.CommandTypeReplaceComponent:
+			cmd := internal.ReadFromBuffer[internal.ReplaceComponentCommand](s.commandBuffer)
+			if !newMask.HasType(cmd.TypeID) {
+				panic(fmt.Errorf("cannot replace component of type %v that the entity does not have", cmd.TypeID))
+			}
+			changes.AddType(cmd.TypeID)
 
 		case internal.CommandTypeEndOfSequence:
 			break commandLoop
@@ -464,31 +478,35 @@ commandLoop:
 		}
 	}
 
-	if oldMask == newMask {
-		return
-	}
+	if oldMask != newMask {
+		s.dispatchExitEvent(id, oldMask, newMask)
 
-	s.dispatchExitEvent(id, oldMask, newMask)
+		oldArchetype := desc.Archetype()
+		oldRow := desc.ArchetypeRow()
 
-	oldArchetype := desc.Archetype()
-	oldRow := desc.ArchetypeRow()
+		newArchetype, newRow := s.borrowArchetypeRow(newMask)
+		newMask.EachType(func(id internal.TypeID) {
+			newColumn := newArchetype.ComponentColumn(id)
+			if changes.HasType(id) {
+				stageColumn := s.stager.ComponentColumn(id)
+				newColumn.CopyFromColumn(newRow, stageColumn, cmd.StageRow)
+			} else {
+				oldColumn := oldArchetype.ComponentColumn(id)
+				newColumn.CopyFromColumn(newRow, oldColumn, oldRow)
+			}
+		})
+		s.releaseArchetypeRow(oldArchetype, oldRow)
 
-	newArchetype, newRow := s.borrowArchetypeRow(newMask)
-	newMask.EachType(func(id internal.TypeID) {
-		newColumn := newArchetype.ComponentColumn(id)
-		if oldMask.HasType(id) {
-			oldColumn := oldArchetype.ComponentColumn(id)
-			newColumn.CopyFromColumn(newRow, oldColumn, oldRow)
-		} else {
+		desc.Assign(newArchetype, newRow)
+
+		s.dispatchEnterEvent(id, opt.V(oldMask), newMask)
+	} else {
+		changes.EachType(func(id internal.TypeID) {
+			newColumn := desc.Archetype().ComponentColumn(id)
 			stageColumn := s.stager.ComponentColumn(id)
-			newColumn.CopyFromColumn(newRow, stageColumn, cmd.StageRow)
-		}
-	})
-	s.releaseArchetypeRow(oldArchetype, oldRow)
-
-	desc.Assign(newArchetype, newRow)
-
-	s.dispatchEnterEvent(id, opt.V(oldMask), newMask)
+			newColumn.CopyFromColumn(desc.ArchetypeRow(), stageColumn, cmd.StageRow)
+		})
+	}
 }
 
 func (s *Scene) processDeleteEntityCommand(cmd internal.DeleteEntityCommand) {

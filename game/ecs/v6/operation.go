@@ -18,6 +18,9 @@ type EditOperationFunc func(op *EditOperation)
 
 // AddComponent adds a component of type T with the provided value to the entity
 // being edited.
+//
+// The entity must not already have a component of the specified type, otherwise
+// the call will lead to a panic.
 func AddComponent[T any](op *EditOperation, compType ComponentType[T], value T) {
 	anyColumn := op.stager.ComponentColumn(compType.id)
 	column := anyColumn.(*internal.Column[T])
@@ -32,11 +35,32 @@ func AddComponent[T any](op *EditOperation, compType ComponentType[T], value T) 
 }
 
 // RemoveComponent removes the component of type T from the entity being edited.
+//
+// The entity must already have a component of the specified type, otherwise the
+// call will lead to a panic.
 func RemoveComponent[T any](op *EditOperation, compType ComponentType[T]) {
 	internal.WriteToBuffer(op.commandBuffer, internal.CommandHeader{
 		CommandType: internal.CommandTypeRemoveComponent,
 	})
 	internal.WriteToBuffer(op.commandBuffer, internal.RemoveComponentCommand{
+		TypeID: compType.id,
+	})
+}
+
+// ReplaceComponent replaces the component of type T on the entity being edited
+// with the provided value.
+//
+// The entity must already have a component of the specified type, otherwise the
+// call will lead to a panic.
+func ReplaceComponent[T any](op *EditOperation, compType ComponentType[T], value T) {
+	anyColumn := op.stager.ComponentColumn(compType.id)
+	column := anyColumn.(*internal.Column[T])
+	column.SetValue(op.stageRow, value)
+
+	internal.WriteToBuffer(op.commandBuffer, internal.CommandHeader{
+		CommandType: internal.CommandTypeReplaceComponent,
+	})
+	internal.WriteToBuffer(op.commandBuffer, internal.ReplaceComponentCommand{
 		TypeID: compType.id,
 	})
 }

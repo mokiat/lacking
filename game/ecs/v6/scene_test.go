@@ -218,6 +218,42 @@ var _ = Describe("Scene", func() {
 
 			Expect(age).To(BeNil())
 		})
+
+		Specify("can replace a component value", func() {
+			scene.EditEntity(id, func(op *ecs.EditOperation) {
+				ecs.ReplaceComponent(op, positionType, Position{X: 10, Y: 20})
+			})
+
+			var pos *Position
+			scene.ReadEntity(id, func(op *ecs.ReadOperation) {
+				pos = ecs.GetComponent(op, positionType)
+			})
+			Expect(*pos).To(Equal(Position{X: 10, Y: 20}))
+		})
+
+		Specify("can remove and re-add a component in the same edit, updating its value", func() {
+			scene.EditEntity(id, func(op *ecs.EditOperation) {
+				ecs.RemoveComponent(op, positionType)
+				ecs.AddComponent(op, positionType, Position{X: 10, Y: 20})
+			})
+
+			Expect(scene.CheckEntity(id, ecs.HasComponent(positionType))).To(BeTrue())
+
+			var pos *Position
+			scene.ReadEntity(id, func(op *ecs.ReadOperation) {
+				pos = ecs.GetComponent(op, positionType)
+			})
+			Expect(*pos).To(Equal(Position{X: 10, Y: 20}))
+		})
+
+		Specify("adding and removing the same component in the same edit is a no-op", func() {
+			scene.EditEntity(id, func(op *ecs.EditOperation) {
+				ecs.AddComponent(op, ageType, Age{Value: 42})
+				ecs.RemoveComponent(op, ageType)
+			})
+
+			Expect(scene.CheckEntity(id, ecs.HasComponent(ageType))).To(BeFalse())
+		})
 	})
 
 	When("having multiple entities with various component combinations", func() {
@@ -471,6 +507,33 @@ var _ = Describe("Scene", func() {
 				})
 				Expect(compositeEntered).To(ConsistOf(id))
 			})
+
+			Specify("does not fire when a component is replaced in place", func() {
+				id := scene.CreateEntity()
+				scene.EditEntity(id, func(op *ecs.EditOperation) {
+					ecs.AddComponent(op, positionType, Position{X: 1, Y: 2})
+				})
+				entered = nil
+
+				scene.EditEntity(id, func(op *ecs.EditOperation) {
+					ecs.ReplaceComponent(op, positionType, Position{X: 3, Y: 4})
+				})
+				Expect(entered).To(BeEmpty())
+			})
+
+			Specify("does not fire when a component is removed and re-added in the same edit", func() {
+				id := scene.CreateEntity()
+				scene.EditEntity(id, func(op *ecs.EditOperation) {
+					ecs.AddComponent(op, positionType, Position{X: 1, Y: 2})
+				})
+				entered = nil
+
+				scene.EditEntity(id, func(op *ecs.EditOperation) {
+					ecs.RemoveComponent(op, positionType)
+					ecs.AddComponent(op, positionType, Position{X: 3, Y: 4})
+				})
+				Expect(entered).To(BeEmpty())
+			})
 		})
 
 		When("condition is LacksComponent", func() {
@@ -585,6 +648,33 @@ var _ = Describe("Scene", func() {
 					ecs.AddComponent(op, ageType, Age{Value: 25})
 				})
 				scene.DeleteEntity(id)
+				Expect(exited).To(BeEmpty())
+			})
+
+			Specify("does not fire when a component is replaced in place", func() {
+				id := scene.CreateEntity()
+				scene.EditEntity(id, func(op *ecs.EditOperation) {
+					ecs.AddComponent(op, positionType, Position{X: 1, Y: 2})
+				})
+				Expect(exited).To(BeEmpty())
+
+				scene.EditEntity(id, func(op *ecs.EditOperation) {
+					ecs.ReplaceComponent(op, positionType, Position{X: 3, Y: 4})
+				})
+				Expect(exited).To(BeEmpty())
+			})
+
+			Specify("does not fire when a component is removed and re-added in the same edit", func() {
+				id := scene.CreateEntity()
+				scene.EditEntity(id, func(op *ecs.EditOperation) {
+					ecs.AddComponent(op, positionType, Position{X: 1, Y: 2})
+				})
+				Expect(exited).To(BeEmpty())
+
+				scene.EditEntity(id, func(op *ecs.EditOperation) {
+					ecs.RemoveComponent(op, positionType)
+					ecs.AddComponent(op, positionType, Position{X: 3, Y: 4})
+				})
 				Expect(exited).To(BeEmpty())
 			})
 		})
