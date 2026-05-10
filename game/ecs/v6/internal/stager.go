@@ -2,23 +2,28 @@ package internal
 
 func NewStager(registry *Registry) *Stager {
 	var (
-		columnIDs [MaxComponentTypes]ColumnID
-		mask      TypeMask
+		componentColumnIDs []ColumnID
+		componentLookup    TypeLookup
+		mask               TypeMask
 	)
 
 	for typeID, storage := range registry.storages {
 		if storage == nil {
 			continue
 		}
+
 		column := storage.NewAnyColumn()
 		column.Grow()
-		columnIDs[typeID] = column.ID()
+
+		componentLookup[typeID] = uint8(len(componentColumnIDs))
+		componentColumnIDs = append(componentColumnIDs, column.ID())
 		mask.AddType(TypeID(typeID))
 	}
 
 	return &Stager{
 		registry:           registry,
-		componentColumnIDs: columnIDs,
+		componentColumnIDs: componentColumnIDs,
+		componentLookup:    componentLookup,
 		mask:               mask,
 		capacity:           1,
 		size:               0,
@@ -27,7 +32,8 @@ func NewStager(registry *Registry) *Stager {
 
 type Stager struct {
 	registry           *Registry
-	componentColumnIDs [MaxComponentTypes]ColumnID
+	componentColumnIDs []ColumnID
+	componentLookup    TypeLookup
 	mask               TypeMask
 	capacity           uint32
 	size               uint32
@@ -42,7 +48,7 @@ func (s *Stager) Grow() Row {
 	if s.size > s.capacity {
 		s.capacity++
 		s.mask.EachType(func(id TypeID) {
-			columnID := s.componentColumnIDs[id]
+			columnID := s.componentColumnIDs[s.componentLookup[id]]
 			s.registry.Storage(id).GrowColumn(columnID)
 		})
 	}
@@ -55,7 +61,7 @@ func (s *Stager) ComponentColumnID(id TypeID) ColumnID {
 
 func (s *Stager) Destroy() {
 	s.mask.EachType(func(id TypeID) {
-		columnID := s.componentColumnIDs[id]
+		columnID := s.componentColumnIDs[s.componentLookup[id]]
 		s.registry.Storage(id).ReclaimColumn(columnID)
 	})
 }
