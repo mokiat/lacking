@@ -70,6 +70,7 @@ type Scene struct {
 	readOperations    *ds.Stack[*ReadOperation]
 	editOperations    *ds.Stack[*EditOperation]
 	queryDepth        uint32
+	freezeDepth       uint32
 	inOperationBlock  bool
 	inQueueProcessing bool
 }
@@ -105,6 +106,42 @@ func (s *Scene) SubscribeExit(condition Condition, callback EntityCallback) *Ent
 		condition: condition,
 		callback:  callback,
 	})
+}
+
+// Freeze increments the scene's freeze depth, preventing mutations from
+// being committed. While the scene is frozen, calls to [Scene.CreateEntity],
+// [Scene.DeleteEntity], and [Scene.EditEntity] are still accepted but their
+// effects — archetype rearrangement and subscription dispatch — are deferred
+// until the freeze depth returns to zero.
+//
+// The primary use case is retaining component pointers obtained via
+// [GetComponent] outside of a [Scene.ReadEntity] callback. Pointers remain
+// stable for as long as the scene is frozen.
+//
+// Freeze calls may be nested; each must be paired with exactly one
+// [Scene.Unfreeze] call.
+//
+// Note: entities created while the scene is frozen are not yet committed.
+// Their IDs are valid for [Scene.HasEntity], [Scene.DeleteEntity], and
+// [Scene.EditEntity], but calling [Scene.ReadEntity] or [Scene.CheckEntity]
+// on them before [Scene.Unfreeze] panics.
+func (s *Scene) Freeze() {
+	s.freezeDepth++
+}
+
+// Unfreeze decrements the scene's freeze depth. When it reaches zero, all
+// mutations buffered since the last [Scene.Freeze] are committed. Any
+// component pointers retained during the freeze must not be used after this
+// call, as the underlying storage may be rearranged during commit.
+//
+// Panics if called without a prior matching [Scene.Freeze].
+func (s *Scene) Unfreeze() {
+	if s.freezeDepth == 0 {
+		panic("unbalanced Unfreeze call")
+	}
+	s.freezeDepth--
+
+	s.processQueue()
 }
 
 // CreateEntity allocates a new entity and returns its [ID]. If fn is
@@ -190,6 +227,9 @@ func (s *Scene) CheckEntity(id ID, condition Condition) bool {
 		return false
 	}
 	archetype := desc.Archetype()
+	if archetype == nil {
+		panic("cannot read entity that is being deferred for creation")
+	}
 
 	return condition.isSatisfiedBy(archetype.TypeMask())
 }
@@ -208,6 +248,10 @@ func (s *Scene) ReadEntity(id ID, fn func(*ReadOperation)) {
 	}
 
 	archetype := desc.Archetype()
+	if archetype == nil {
+		panic("cannot read entity that is being deferred for creation")
+	}
+
 	mask := archetype.TypeMask()
 	row := desc.ArchetypeRow()
 	columnIDs, lookup := archetype.ComponentColumnIDs()
@@ -424,7 +468,7 @@ func (s *Scene) releaseEditOperation(op *EditOperation) {
 }
 
 func (s *Scene) processQueue() {
-	if s.inQueueProcessing || s.queryDepth > 0 {
+	if s.inQueueProcessing || s.freezeDepth > 0 || s.queryDepth > 0 {
 		return
 	}
 	s.inQueueProcessing = true

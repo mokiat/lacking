@@ -780,6 +780,139 @@ var _ = Describe("Scene", func() {
 		})
 	})
 
+	When("using Freeze and Unfreeze", func() {
+		var id ecs.ID
+
+		BeforeEach(func() {
+			id = scene.CreateEntity(func(op *ecs.EditOperation) {
+				ecs.AddComponent(op, positionType, Position{X: 1, Y: 2})
+				ecs.AddComponent(op, nameType, Name{Value: "Alice"})
+			})
+		})
+
+		Specify("component pointer obtained via ReadEntity remains valid while frozen", func() {
+			var pos *Position
+			scene.Freeze()
+			scene.ReadEntity(id, func(op *ecs.ReadOperation) {
+				pos = ecs.GetComponent(op, positionType)
+			})
+			// AddComponent would normally move the entity to a new archetype,
+			// invalidating pos, but Freeze keeps the mutation buffered.
+			scene.EditEntity(id, func(op *ecs.EditOperation) {
+				ecs.AddComponent(op, ageType, Age{Value: 42})
+			})
+			Expect(*pos).To(Equal(Position{X: 1, Y: 2}))
+			scene.Unfreeze()
+		})
+
+		Specify("structural mutations are deferred while frozen and committed on Unfreeze", func() {
+			scene.Freeze()
+			scene.EditEntity(id, func(op *ecs.EditOperation) {
+				ecs.AddComponent(op, ageType, Age{Value: 42})
+			})
+			Expect(scene.CheckEntity(id, ecs.HasComponent(ageType))).To(BeFalse())
+
+			scene.Unfreeze()
+			Expect(scene.CheckEntity(id, ecs.HasComponent(ageType))).To(BeTrue())
+		})
+
+		Specify("DeleteEntity is deferred while frozen and applied on Unfreeze", func() {
+			scene.Freeze()
+			scene.DeleteEntity(id)
+			Expect(scene.HasEntity(id)).To(BeTrue())
+
+			scene.Unfreeze()
+			Expect(scene.HasEntity(id)).To(BeFalse())
+		})
+
+		Specify("enter subscriptions fire after Unfreeze, not during mutation", func() {
+			var entered []ecs.ID
+			scene.SubscribeEnter(ecs.HasComponent(ageType), func(id ecs.ID) {
+				entered = append(entered, id)
+			})
+
+			scene.Freeze()
+			scene.EditEntity(id, func(op *ecs.EditOperation) {
+				ecs.AddComponent(op, ageType, Age{Value: 42})
+			})
+			Expect(entered).To(BeEmpty())
+
+			scene.Unfreeze()
+			Expect(entered).To(ConsistOf(id))
+		})
+
+		Specify("exit subscriptions fire after Unfreeze, not during mutation", func() {
+			var exited []ecs.ID
+			scene.SubscribeExit(ecs.HasComponent(positionType), func(id ecs.ID) {
+				exited = append(exited, id)
+			})
+
+			scene.Freeze()
+			scene.EditEntity(id, func(op *ecs.EditOperation) {
+				ecs.RemoveComponent(op, positionType)
+			})
+			Expect(exited).To(BeEmpty())
+
+			scene.Unfreeze()
+			Expect(exited).To(ConsistOf(id))
+		})
+
+		Specify("nested Freeze calls require a matching number of Unfreeze calls before mutations commit", func() {
+			scene.Freeze()
+			scene.Freeze()
+			scene.EditEntity(id, func(op *ecs.EditOperation) {
+				ecs.AddComponent(op, ageType, Age{Value: 42})
+			})
+
+			scene.Unfreeze()
+			Expect(scene.CheckEntity(id, ecs.HasComponent(ageType))).To(BeFalse())
+
+			scene.Unfreeze()
+			Expect(scene.CheckEntity(id, ecs.HasComponent(ageType))).To(BeTrue())
+		})
+
+		Specify("Unfreeze panics if called without a matching Freeze", func() {
+			Expect(func() { scene.Unfreeze() }).To(Panic())
+		})
+
+		When("CreateEntity is called while frozen", func() {
+			var frozenID ecs.ID
+
+			BeforeEach(func() {
+				scene.Freeze()
+				frozenID = scene.CreateEntity(func(op *ecs.EditOperation) {
+					ecs.AddComponent(op, positionType, Position{X: 7, Y: 8})
+				})
+			})
+
+			Specify("HasEntity returns true for the deferred entity", func() {
+				Expect(scene.HasEntity(frozenID)).To(BeTrue())
+			})
+
+			Specify("CheckEntity panics for the deferred entity", func() {
+				Expect(func() {
+					scene.CheckEntity(frozenID, ecs.HasComponent(positionType))
+				}).To(Panic())
+			})
+
+			Specify("ReadEntity panics for the deferred entity", func() {
+				Expect(func() {
+					scene.ReadEntity(frozenID, func(_ *ecs.ReadOperation) {})
+				}).To(Panic())
+			})
+
+			Specify("entity is fully committed after Unfreeze", func() {
+				scene.Unfreeze()
+				Expect(scene.CheckEntity(frozenID, ecs.HasComponent(positionType))).To(BeTrue())
+				var pos *Position
+				scene.ReadEntity(frozenID, func(op *ecs.ReadOperation) {
+					pos = ecs.GetComponent(op, positionType)
+				})
+				Expect(*pos).To(Equal(Position{X: 7, Y: 8}))
+			})
+		})
+	})
+
 	When("performing mutations from within notification handlers", func() {
 		Specify("entity created in enter notification is accessible after the triggering operation", func() {
 			var createdID ecs.ID

@@ -285,6 +285,61 @@ scene.QueryEntities(ecs.HasComponent(HealthType), func(id ecs.ID, op *ecs.ReadOp
 })
 ```
 
+## Retaining Component Pointers with Freeze and Unfreeze
+
+`GetComponent` returns a pointer directly into the scene's component storage. Within a `ReadEntity` or `QueryEntities` callback the pointer is always valid, but retaining it past the callback is only safe while no structural mutations (add or remove component, delete entity) are committed, since those operations may move the entity to a different archetype and invalidate the pointer.
+
+`Freeze` and `Unfreeze` provide a bracket for exactly this use case. While the scene is frozen, all structural mutations are accepted and buffered but not applied. When `Unfreeze` is called the buffer is flushed. Any pointers retained during the freeze must be released before calling `Unfreeze`.
+
+```go
+scene.Freeze()
+
+var pos *Position
+scene.ReadEntity(id, func(op *ecs.ReadOperation) {
+    pos = ecs.GetComponent(op, positionType)
+})
+
+// pos is safe to use here; any mutations are deferred.
+doSomethingWith(pos)
+
+scene.Unfreeze() // buffered mutations are committed; do not use pos after this
+```
+
+`Freeze` calls may be nested. Each call increments an internal depth counter; mutations are committed only when the depth returns to zero. Every `Freeze` must be paired with exactly one `Unfreeze` — an unbalanced `Unfreeze` panics.
+
+```go
+scene.Freeze() // depth → 1
+scene.Freeze() // depth → 2
+
+// ... retain pointers, do work ...
+
+scene.Unfreeze() // depth → 1, mutations still deferred
+scene.Unfreeze() // depth → 0, mutations committed
+```
+
+### Creating Entities While Frozen
+
+`CreateEntity`, `DeleteEntity`, and `EditEntity` can all be called while the scene is frozen — their effects are simply deferred. However, entities created while frozen are not yet committed to any archetype. Their IDs are valid for `HasEntity`, `DeleteEntity`, and `EditEntity`, but calling `ReadEntity` or `CheckEntity` on them before `Unfreeze` panics.
+
+```go
+scene.Freeze()
+id := scene.CreateEntity(func(op *ecs.EditOperation) {
+    ecs.AddComponent(op, positionType, Position{X: 1, Y: 2})
+})
+
+scene.HasEntity(id)   // true
+scene.CheckEntity(id, ecs.HasComponent(positionType)) // panics — not yet committed
+scene.ReadEntity(id, ...)                             // panics — not yet committed
+
+scene.Unfreeze()
+
+scene.CheckEntity(id, ecs.HasComponent(positionType)) // true — now committed
+```
+
+### Subscription Dispatch While Frozen
+
+Enter and exit subscription callbacks are part of the commit process. They are not fired during a buffered mutation — they fire when `Unfreeze` (or the end of a query) triggers the flush.
+
 ## Systems
 
 This package does not define a system interface or a scheduler. System ordering, execution, and lifecycle management are the responsibility of the consuming application.
@@ -294,7 +349,7 @@ This package does not define a system interface or a scheduler. System ordering,
 The following features are not currently provided by this ECS implementation:
 
 - **No change detection.** There is no built-in mechanism to query only entities whose component data changed since the last frame. Systems must iterate all matching entities unconditionally.
-- **No parallel queries.** The scene is not thread-safe. All operations on a scene must occur from a single goroutine.
+- **No parallel queries.** The scene is not thread-safe. All operations on a scene must occur from a single goroutine. `Freeze`/`Unfreeze` do not change this — they defer commits, not concurrent access.
 - **No system scheduler.** Ordering and parallelism are entirely up to the application.
 - **No entity relations.** Modelling parent–child or other entity-to-entity relationships requires external bookkeeping (the `game/hierarchy` package may be used for scene-node hierarchies).
 - **No prefabs or entity templates.** There is no built-in way to stamp out entities from a template; construction helpers must be written by the application.
