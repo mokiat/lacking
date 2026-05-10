@@ -25,8 +25,8 @@ type EditOperationFunc func(op *EditOperation)
 // (as determined by the virtual state after prior operations in the same
 // edit).
 func AddComponent[T any](op *EditOperation, compType ComponentType[T], value T) {
-	anyColumn := op.stager.ComponentColumn(compType.id)
-	column := anyColumn.(*internal.Column[T])
+	columnID := op.stager.ComponentColumnID(compType.id)
+	column := compType.storage.Column(columnID)
 	column.SetValue(op.stageRow, value)
 
 	internal.WriteToBuffer(op.commandBuffer, internal.CommandHeader{
@@ -60,8 +60,8 @@ func RemoveComponent[T any](op *EditOperation, compType ComponentType[T]) {
 // type T (as determined by the virtual state after prior operations in
 // the same edit).
 func ReplaceComponent[T any](op *EditOperation, compType ComponentType[T], value T) {
-	anyColumn := op.stager.ComponentColumn(compType.id)
-	column := anyColumn.(*internal.Column[T])
+	columnID := op.stager.ComponentColumnID(compType.id)
+	column := compType.storage.Column(columnID)
 	column.SetValue(op.stageRow, value)
 
 	internal.WriteToBuffer(op.commandBuffer, internal.CommandHeader{
@@ -82,8 +82,8 @@ type ReadOperation struct {
 	mask internal.TypeMask
 	row  internal.Row
 
-	componentLookup  internal.TypeLookup
-	componentColumns []internal.AnyColumn
+	componentLookup    internal.TypeLookup
+	componentColumnIDs []internal.ColumnID
 }
 
 // GetComponent returns a pointer to the component of type T for the
@@ -94,8 +94,8 @@ func GetComponent[T any](op *ReadOperation, compType ComponentType[T]) *T {
 		return nil
 	}
 
-	anyColumn := op.componentColumns[op.componentLookup[compType.id]]
-	column := anyColumn.(*internal.Column[T])
+	columnID := op.componentColumnIDs[op.componentLookup[compType.id]]
+	column := compType.storage.Column(columnID)
 	return column.RefValue(op.row)
 }
 

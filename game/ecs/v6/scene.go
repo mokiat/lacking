@@ -210,13 +210,13 @@ func (s *Scene) ReadEntity(id ID, fn func(*ReadOperation)) {
 	archetype := desc.Archetype()
 	mask := archetype.TypeMask()
 	row := desc.ArchetypeRow()
-	columns, lookup := archetype.ComponentColumns()
+	columnIDs, lookup := archetype.ComponentColumnIDs()
 
 	readOperation := s.allocateReadOperation()
 	defer s.releaseReadOperation(readOperation)
 	readOperation.mask = mask
 	readOperation.componentLookup = lookup
-	readOperation.componentColumns = columns
+	readOperation.componentColumnIDs = columnIDs
 	readOperation.row = row
 
 	s.inOperationBlock = true
@@ -289,11 +289,11 @@ iteration:
 			continue
 		}
 
-		columns, lookup := archetype.ComponentColumns()
+		columnIDs, lookup := archetype.ComponentColumnIDs()
 
 		readOperation.mask = mask
 		readOperation.componentLookup = lookup
-		readOperation.componentColumns = columns
+		readOperation.componentColumnIDs = columnIDs
 
 		for row := internal.Row(0); uint32(row) < archetype.Size(); row++ {
 			readOperation.row = row
@@ -470,9 +470,10 @@ func (s *Scene) processCreateEntityCommand(cmd internal.CreateEntityCommand) {
 
 	archetype, row := s.borrowArchetypeRow(newMask)
 	changes.EachType(func(id internal.TypeID) {
-		newColumn := archetype.ComponentColumn(id)
-		stageColumn := s.stager.ComponentColumn(id)
-		newColumn.CopyFromColumn(row, stageColumn, cmd.StageRow)
+		storage := s.registry.Storage(id)
+		newColumnID := archetype.ComponentColumnID(id)
+		stageColumnID := s.stager.ComponentColumnID(id)
+		storage.CopyCell(newColumnID, row, stageColumnID, cmd.StageRow)
 	})
 
 	desc.Assign(archetype, row)
@@ -499,13 +500,14 @@ func (s *Scene) processEditEntityCommand(cmd internal.EditEntityCommand) {
 
 		newArchetype, newRow := s.borrowArchetypeRow(newMask)
 		newMask.EachType(func(id internal.TypeID) {
-			newColumn := newArchetype.ComponentColumn(id)
+			storage := s.registry.Storage(id)
+			newColumnID := newArchetype.ComponentColumnID(id)
 			if changes.HasType(id) {
-				stageColumn := s.stager.ComponentColumn(id)
-				newColumn.CopyFromColumn(newRow, stageColumn, cmd.StageRow)
+				stageColumnID := s.stager.ComponentColumnID(id)
+				storage.CopyCell(newColumnID, newRow, stageColumnID, cmd.StageRow)
 			} else {
-				oldColumn := oldArchetype.ComponentColumn(id)
-				newColumn.CopyFromColumn(newRow, oldColumn, oldRow)
+				oldColumnID := oldArchetype.ComponentColumnID(id)
+				storage.CopyCell(newColumnID, newRow, oldColumnID, oldRow)
 			}
 		})
 		s.releaseArchetypeRow(oldArchetype, oldRow)
@@ -518,9 +520,10 @@ func (s *Scene) processEditEntityCommand(cmd internal.EditEntityCommand) {
 		row := desc.ArchetypeRow()
 
 		changes.EachType(func(id internal.TypeID) {
-			newColumn := archetype.ComponentColumn(id)
-			stageColumn := s.stager.ComponentColumn(id)
-			newColumn.CopyFromColumn(row, stageColumn, cmd.StageRow)
+			storage := s.registry.Storage(id)
+			newColumnID := archetype.ComponentColumnID(id)
+			stageColumnID := s.stager.ComponentColumnID(id)
+			storage.CopyCell(newColumnID, row, stageColumnID, cmd.StageRow)
 		})
 	}
 }

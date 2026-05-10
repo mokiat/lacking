@@ -5,6 +5,9 @@ package internal
 // specific component type across multiple entities.
 type AnyColumn interface {
 
+	// ID returns the unique identifier of the column in the component storage.
+	ID() ColumnID
+
 	// Grow appends an additional row to the column. A zero value is placed.
 	Grow()
 
@@ -15,20 +18,21 @@ type AnyColumn interface {
 	// row.
 	Copy(dst, src Row)
 
-	// CopyFromColumn copies the component values from the source column and row to
-	// the destination row.
-	CopyFromColumn(dst Row, srcColumn AnyColumn, src Row)
-
 	// Release releases any resources associated with the column, such as
 	// allocated chunks.
 	Release()
 }
 
+// ColumnID represents a unique identifier for a column in the component
+// storage.
+type ColumnID uint32
+
 // NewColumn creates a new column for storing component values of type T using
 // the provided storage.
-func NewColumn[T any](storage *Storage[T]) *Column[T] {
+func NewColumn[T any](storage *Storage[T], id ColumnID) *Column[T] {
 	return &Column[T]{
 		storage: storage,
+		id:      id,
 		chunks:  nil,
 	}
 }
@@ -42,11 +46,17 @@ func NewColumn[T any](storage *Storage[T]) *Column[T] {
 // unlike using a single slice and appending to it.
 type Column[T any] struct {
 	storage *Storage[T]
+	id      ColumnID
 	chunks  []DataChunk[T]
 	size    uint32
 }
 
 var _ AnyColumn = (*Column[struct{}])(nil)
+
+// ID returns the unique identifier of the column in the component storage.
+func (c *Column[T]) ID() ColumnID {
+	return c.id
+}
 
 // Grow appends an additional row to the column. A zero value is placed.
 func (c *Column[T]) Grow() {
@@ -72,13 +82,6 @@ func (c *Column[T]) Copy(dst, src Row) {
 	if dst != src {
 		c.SetValue(dst, c.Value(src))
 	}
-}
-
-// CopyFromColumn copies the component values from the source column and row to
-// the destination row.
-func (c *Column[T]) CopyFromColumn(dst Row, srcColumn AnyColumn, src Row) {
-	srcCol := srcColumn.(*Column[T])
-	c.SetValue(dst, srcCol.Value(src))
 }
 
 // Value returns the value at the specified row in the column.

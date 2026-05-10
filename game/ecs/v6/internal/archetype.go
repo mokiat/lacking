@@ -15,9 +15,9 @@ type Archetype struct {
 	mask     TypeMask
 	size     uint32
 
-	idColumn         *Column[ID]
-	componentColumns []AnyColumn
-	componentLookup  TypeLookup
+	idColumn           *Column[ID]
+	componentColumnIDs []ColumnID
+	componentLookup    TypeLookup
 }
 
 // Revive initializes the archetype with the specified type mask. It sets up the
@@ -28,8 +28,8 @@ func (a *Archetype) Revive(mask TypeMask) {
 
 	mask.EachType(func(id TypeID) {
 		storage := a.registry.Storage(id)
-		a.componentLookup[id] = uint8(len(a.componentColumns))
-		a.componentColumns = append(a.componentColumns, storage.NewAnyColumn())
+		a.componentLookup[id] = uint8(len(a.componentColumnIDs))
+		a.componentColumnIDs = append(a.componentColumnIDs, storage.NewAnyColumn().ID())
 	})
 
 	entityIDStorage := a.registry.IDStorage()
@@ -40,18 +40,19 @@ func (a *Archetype) Revive(mask TypeMask) {
 // It should be called when the archetype is no longer needed, such as when it
 // is being returned to the archetype pool.
 func (a *Archetype) Destroy() {
-	a.mask = EmptyTypeMask()
-	a.size = 0
-
+	a.mask.EachType(func(id TypeID) {
+		storage := a.registry.Storage(id)
+		columnID := a.componentColumnIDs[a.componentLookup[id]]
+		storage.ReclaimColumn(columnID)
+	})
 	a.componentLookup = TypeLookup{}
-	for i := range a.componentColumns {
-		a.componentColumns[i].Release()
-		a.componentColumns[i] = nil
-	}
-	a.componentColumns = a.componentColumns[:0]
+	a.componentColumnIDs = a.componentColumnIDs[:0]
 
 	a.idColumn.Release()
 	a.idColumn = nil
+
+	a.mask = EmptyTypeMask()
+	a.size = 0
 }
 
 // TypeMask returns the type mask associated with the archetype.
@@ -74,17 +75,17 @@ func (a *Archetype) IDColumn() *Column[ID] {
 	return a.idColumn
 }
 
-// ComponentColumn returns the column associated with the specified component
-// type ID.
-func (a *Archetype) ComponentColumn(id TypeID) AnyColumn {
-	return a.componentColumns[a.componentLookup[id]]
+// ComponentColumnID returns the ID of the column associated with the specified
+// component type ID.
+func (a *Archetype) ComponentColumnID(id TypeID) ColumnID {
+	return a.componentColumnIDs[a.componentLookup[id]]
 }
 
-// ComponentColumns returns the columns associated with the component types in
+// ComponentColumnIDs returns the columns associated with the component types in
 // the archetype, along with a lookup that maps component type IDs to their
 // corresponding column indices.
-func (a *Archetype) ComponentColumns() ([]AnyColumn, TypeLookup) {
-	return a.componentColumns, a.componentLookup
+func (a *Archetype) ComponentColumnIDs() ([]ColumnID, TypeLookup) {
+	return a.componentColumnIDs, a.componentLookup
 }
 
 // LastRow returns the index of the last row in the table represented by the
@@ -98,9 +99,11 @@ func (a *Archetype) LastRow() Row {
 // Grow appends a new row to the table represented by the archetype.
 func (a *Archetype) Grow() Row {
 	a.size++
-	for _, column := range a.componentColumns {
-		column.Grow()
-	}
+	a.mask.EachType(func(id TypeID) {
+		storage := a.registry.Storage(id)
+		columnID := a.componentColumnIDs[a.componentLookup[id]]
+		storage.GrowColumn(columnID)
+	})
 	a.idColumn.Grow()
 	return Row(a.size - 1)
 }
@@ -108,15 +111,21 @@ func (a *Archetype) Grow() Row {
 // Shrink removes the last row from the table represented by the archetype.
 func (a *Archetype) Shrink() {
 	a.size--
-	for _, column := range a.componentColumns {
-		column.Shrink()
-	}
+	a.mask.EachType(func(id TypeID) {
+		storage := a.registry.Storage(id)
+		columnID := a.componentColumnIDs[a.componentLookup[id]]
+		storage.ShrinkColumn(columnID)
+	})
 	a.idColumn.Shrink()
 }
 
+// CopyRow copies the component values from the source row to the destination
+// row in the table represented by the archetype.
 func (a *Archetype) CopyRow(dst, src Row) {
-	for _, column := range a.componentColumns {
-		column.Copy(dst, src)
-	}
+	a.mask.EachType(func(id TypeID) {
+		storage := a.registry.Storage(id)
+		columnID := a.componentColumnIDs[a.componentLookup[id]]
+		storage.CopyCell(columnID, dst, columnID, src)
+	})
 	a.idColumn.Copy(dst, src)
 }
