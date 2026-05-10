@@ -9,7 +9,7 @@ import (
 type AnyStorage interface {
 
 	// AllocateColumn allocates a new column for storing component values and
-	// returns the allocated column.
+	// returns the ID of the allocated column.
 	AllocateColumn() ColumnID
 
 	// ReleaseColumn reclaims the column with the specified ID, making it
@@ -50,7 +50,7 @@ type Storage[T any] struct {
 var _ AnyStorage = (*Storage[struct{}])(nil)
 
 // AllocateColumn allocates a new column for storing component values and
-// returns the allocated column.
+// returns the ID of the allocated column.
 func (s *Storage[T]) AllocateColumn() ColumnID {
 	return s.allocateColumnID()
 }

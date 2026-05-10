@@ -26,8 +26,7 @@ func (r *Registry) Storage(id TypeID) AnyStorage {
 	return r.storages[id]
 }
 
-// Storage returns the component storage associated with the specified component
-// type.
+// SetStorage registers the component storage for the specified component type.
 func (r *Registry) SetStorage(id TypeID, storage AnyStorage) {
 	r.storages[id] = storage
 }

@@ -80,7 +80,7 @@ func (c *Column[T]) RefValue(row Row) *T {
 	return &c.chunks[chunkIndex][cellIndex]
 }
 
-// Destroy releases any resources associated with the column, such as
+// Release releases any resources associated with the column, such as
 // allocated chunks, and resets the column to an empty state.
 func (c *Column[T]) Release() {
 	for _, chunk := range c.chunks {

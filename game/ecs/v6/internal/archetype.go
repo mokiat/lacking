@@ -81,9 +81,9 @@ func (a *Archetype) ComponentColumnID(id TypeID) ColumnID {
 	return a.componentColumnIDs[a.componentLookup[id]]
 }
 
-// ComponentColumnIDs returns the columns associated with the component types in
-// the archetype, along with a lookup that maps component type IDs to their
-// corresponding column indices.
+// ComponentColumnIDs returns the column IDs for the component types in the
+// archetype, along with a lookup that maps component type IDs to their
+// corresponding indices in the returned slice.
 func (a *Archetype) ComponentColumnIDs() ([]ColumnID, TypeLookup) {
 	return a.componentColumnIDs, a.componentLookup
 }
