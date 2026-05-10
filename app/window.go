@@ -66,6 +66,10 @@ type Window interface {
 	// screen.
 	SetCursorVisible(visible bool)
 
+	// CursorLocked returns whether the cursor is trapped within the
+	// boundaries of the window.
+	CursorLocked() bool
+
 	// SetCursorLocked traps the cursor within the boundaries of the window
 	// and reports relative motion events. This method also hides the cursor.
 	SetCursorLocked(locked bool)
