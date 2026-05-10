@@ -20,6 +20,12 @@ func NewScene(scope *Scope) *Scene {
 		readOperations.Push(new(ReadOperation))
 	}
 
+	const initialEditOperations = 1
+	editOperations := ds.PreallocatedStack[*EditOperation](initialEditOperations)
+	for range initialEditOperations {
+		editOperations.Push(new(EditOperation))
+	}
+
 	return &Scene{
 		registry: scope.registry,
 
@@ -36,6 +42,7 @@ func NewScene(scope *Scope) *Scene {
 		stager:        internal.NewStager(scope.registry),
 
 		readOperations: readOperations,
+		editOperations: editOperations,
 	}
 }
 
@@ -58,7 +65,7 @@ type Scene struct {
 	stager        *internal.Stager
 
 	readOperations    *ds.Stack[*ReadOperation]
-	editOperation     EditOperation
+	editOperations    *ds.Stack[*EditOperation]
 	queryNesting      uint32
 	inOperationBlock  bool
 	inQueueProcessing bool
@@ -219,13 +226,16 @@ func (s *Scene) EditEntity(id ID, fn EditOperationFunc) {
 		StageRow: stageRow,
 	})
 
-	s.editOperation = EditOperation{
+	editOperation := s.allocateEditOperation()
+	defer s.releaseEditOperation(editOperation)
+
+	*editOperation = EditOperation{
 		stager:        s.stager,
 		commandBuffer: s.commandBuffer,
 		stageRow:      stageRow,
 	}
 	s.inOperationBlock = true
-	fn(&s.editOperation)
+	fn(editOperation)
 	s.inOperationBlock = false
 
 	internal.WriteToBuffer(s.commandBuffer, internal.CommandHeader{
@@ -380,6 +390,17 @@ func (s *Scene) allocateReadOperation() *ReadOperation {
 
 func (s *Scene) releaseReadOperation(op *ReadOperation) {
 	s.readOperations.Push(op)
+}
+
+func (s *Scene) allocateEditOperation() *EditOperation {
+	if s.editOperations.IsEmpty() {
+		return &EditOperation{}
+	}
+	return s.editOperations.Pop()
+}
+
+func (s *Scene) releaseEditOperation(op *EditOperation) {
+	s.editOperations.Push(op)
 }
 
 func (s *Scene) processQueue() {
