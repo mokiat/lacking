@@ -64,6 +64,9 @@ func (s GamepadEvent) String() string {
 	)
 }
 
+// GamepadAction is used to specify the type of gamepad action that occurred.
+type GamepadAction int
+
 const (
 	// GamepadActionNone indicates that no action occurred. This is an unlikely
 	// value but allows for more custom event situations.
@@ -89,9 +92,6 @@ const (
 	GamepadActionStickMove
 )
 
-// GamepadAction is used to specify the type of gamepad action that occurred.
-type GamepadAction int
-
 // String returns a string representation of this event type.
 func (s GamepadAction) String() string {
 	switch s {
@@ -113,6 +113,9 @@ func (s GamepadAction) String() string {
 		return "Unknown"
 	}
 }
+
+// GamepadButton represents the gamepad button.
+type GamepadButton int
 
 const (
 	// GamepadButtonNone indicates that no button is associated with the event.
@@ -196,9 +199,6 @@ const (
 	GamepadButtonCount
 )
 
-// GamepadButton represents the gamepad button.
-type GamepadButton int
-
 func (b GamepadButton) String() string {
 	switch b {
 	case GamepadButtonNone:
@@ -256,6 +256,9 @@ func (b GamepadButton) String() string {
 	}
 }
 
+// GamepadStick is used to specify a particular stick on the gamepad.
+type GamepadStick int
+
 const (
 	// GamepadStickNone indicates that no axis is associated with the event.
 	GamepadStickNone GamepadStick = iota
@@ -277,9 +280,6 @@ const (
 	// GamepadStickCount is the total number of gamepad stick enums.
 	GamepadStickCount
 )
-
-// GamepadStick is used to specify a particular stick on the gamepad.
-type GamepadStick int
 
 // String returns a string representation of this stick.
 func (s GamepadStick) String() string {

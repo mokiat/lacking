@@ -48,6 +48,9 @@ func (e MouseEvent) String() string {
 	)
 }
 
+// MouseAction represents the type of action performed with the mouse.
+type MouseAction int
+
 const (
 	// MouseActionDown indicates that a mouse button was pressed down.
 	MouseActionDown MouseAction = 1 + iota
@@ -77,9 +80,6 @@ const (
 	MouseActionScroll
 )
 
-// MouseAction represents the type of action performed with the mouse.
-type MouseAction int
-
 // String returns a string representation of this event type.
 func (a MouseAction) String() string {
 	switch a {
@@ -102,6 +102,9 @@ func (a MouseAction) String() string {
 	}
 }
 
+// MouseButton represents the mouse button.
+type MouseButton int
+
 const (
 	// MouseButtonLeft specifies the left mouse button.
 	MouseButtonLeft MouseButton = 1 + iota
@@ -112,9 +115,6 @@ const (
 	// MouseButtonRight specifies the right mouse button.
 	MouseButtonRight
 )
-
-// MouseButton represents the mouse button.
-type MouseButton int
 
 // String returns a string representation of this button.
 func (b MouseButton) String() string {

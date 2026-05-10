@@ -25,6 +25,9 @@ func (e KeyboardEvent) String() string {
 	)
 }
 
+// KeyboardAction is used to specify the type of keyboard action that occurred.
+type KeyboardAction int
+
 const (
 	// KeyboardActionDown indicates that a keyboard key was pressed.
 	KeyboardActionDown KeyboardAction = 1 + iota
@@ -44,9 +47,6 @@ const (
 	KeyboardActionType
 )
 
-// KeyboardAction is used to specify the type of keyboard action that occurred.
-type KeyboardAction int
-
 // String returns a string representation of this event type.
 func (a KeyboardAction) String() string {
 	switch a {
@@ -62,6 +62,9 @@ func (a KeyboardAction) String() string {
 		return "UNKNOWN"
 	}
 }
+
+// KeyCode represents a keyboard key.
+type KeyCode int
 
 const (
 	// KeyCodeEscape indicates the Escape key.
@@ -231,9 +234,6 @@ const (
 	// KeyCodeF12 indicates the F12 function key.
 	KeyCodeF12
 )
-
-// KeyCode represents a keyboard key.
-type KeyCode int
 
 // String returns a string representation of this key code.
 func (c KeyCode) String() string {
