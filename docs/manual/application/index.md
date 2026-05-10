@@ -11,11 +11,11 @@ The API is described in the [api](https://pkg.go.dev/github.com/mokiat/lacking/a
 - The similarly named [app](https://pkg.go.dev/github.com/mokiat/lacking-native/app) package in [lacking-native](https://github.com/mokiat/lacking-native) provides a Desktop implementation (at the time of writing based on GLFW).
 - The similarly named [app](https://pkg.go.dev/github.com/mokiat/lacking-js/app) package in [lacking-js](https://github.com/mokiat/lacking-js) provides a Web implementation.
 
-> By having an abstract API, one benefit is that the underlying implementation can be swapped. In fact, there were successful ports to the API to SDL2 but due to complexities in building so and dll files, it was rolled back in favour of GLFW.
+> By having an abstract API, the underlying implementation can be swapped. There were successful ports to SDL2, but due to complexities in building `.so` and `.dll` files, it was rolled back in favour of GLFW.
 
-In its core, a developer need only implement the `Controller` interface, in order to get keyboard, mouse, etc. events and be able to make changes to the window object itself.
+At its core, a developer needs only to implement the `Controller` interface in order to receive keyboard, mouse, and gamepad events and make changes to the window object itself.
 
-Following is a simple code for starting an app:
+The following is a minimal example for starting an app:
 
 ```go
 package main
@@ -41,8 +41,8 @@ type CustomController struct {
 }
 ```
 
+The `CustomController` above is the implementation of the `Controller` interface. It composes the `app.NopController` type, which provides no-op implementations for all methods of the interface. This allows one to override only the relevant methods.
+
 ![Window](./images/example-window.png)
 
-The `CustomController` in this case is the implementation of the `Controller` interface. It composes the `app.NopController` type, which provides no-op implementations for all methods of the interface. This allows one to override only relevant methods.
-
-In a usual project, the built-in `game.Controller` and `ui.Controller` implementations would be used instead and developers would then use higher-order APIs.
+In a typical project, the built-in `game.Controller` and `ui.Controller` implementations would be used instead, with developers interacting through higher-level APIs.

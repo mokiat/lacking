@@ -4,15 +4,15 @@ title: Overview
 
 # User Interface
 
-The user interface API of lacking is comprised of multiple layers that are more commonly seen in standard desktop or web UI, instead of gaming. This has some historical reasons but the idea was also to have something that can be used for app/tool development as well.
+The user interface API of Lacking comprises multiple layers more commonly seen in standard desktop or web UI than in game engines. This makes it suitable for app and tool development, not just games.
 
 ## Element API
 
 The core layer of the API represents the user interface in a similar way to web pages. A window is comprised of a number of nested Elements that each can have custom rendering behavior and input event handling.
 
-The way Elements are created is imperative, which can be more optimal and reduce memory usage but requires more boilerplate and manual work to coordinate, especially when certain UI elements need to disappear and/or be replaced with something else.
+Element creation is imperative, which can be more efficient and reduce memory usage, but requires more boilerplate and manual coordination — especially when elements need to be dynamically added or removed.
 
-Following is a rough idea how this can be used.
+The following shows how this might be used.
 
 ```go
 // initUI function can be passed to the UI controller bootstrap function.
@@ -30,7 +30,7 @@ func initUI(window *ui.Window) {
 }
 ```
 
-A container component can then be implemented as follows.
+A container component can be implemented as follows.
 
 ```go
 import (
@@ -89,7 +89,7 @@ func (c *Container) OnRender(element *ui.Element, canvas *ui.Canvas) {
 }
 ```
 
-And a label can be implemented as follows.
+A label can be implemented as follows.
 
 ```go
 import (
@@ -166,12 +166,11 @@ func (l *Label) updateIdealSize() {
 
 ## Component API
 
-Using the Element API as shown above it is perfectly possible to construct a complete app UI but has some downsides especially when having to deal with dynamically adding and removing children.
+While the Element API is sufficient for building a complete UI, it has downsides — particularly when elements need to be dynamically added or removed.
 
-As such, the lacking framework includes a higher-level API that is declarative in nature. It is heavily inspired by frameworks like React, Vue, Svelte and similar.
+As such, the Lacking framework includes a higher-level API that is declarative in nature. It is heavily inspired by frameworks like React, Vue, Svelte, and similar frameworks.
 
-Building a UI page like in the Element example would look as follows.
-
+Rewriting the example above using the Component API would look as follows.
 
 ```go
 // initUI function can be passed to the UI controller bootstrap function.
@@ -199,15 +198,14 @@ func (c *appComponent) Render() co.Instance {
 				VerticalCenter:   opt.V(0),
 			})
 			co.WithData(LabelData{
-				Font: co.OpenFont(c.Scope(), "ui:///roboto-bold.ttf"),
-				FontSize: opt.V(float32(24.0)),
+				Font:      co.OpenFont(c.Scope(), "ui:///roboto-bold.ttf"),
+				FontSize:  opt.V(float32(24.0)),
 				FontColor: opt.V(ui.White()),
-				Text: "First Button",
+				Text:      "Hello World",
 			})
 		}))
 	})
 }
-
 ```
 
 A container component can be implemented as follows.
@@ -225,10 +223,9 @@ type containerComponent struct {
 	backgroundColor ui.Color
 }
 
-
 func (c *containerComponent) OnUpsert() {
 	data := co.GetData[ContainerData](c.Properties())
-  c.layout = data.Layout
+	c.layout = data.Layout
 	if data.BackgroundColor.Specified {
 		c.backgroundColor = data.BackgroundColor.Value
 	} else {
@@ -247,7 +244,6 @@ func (c *containerComponent) Render() co.Instance {
 	})
 }
 
-
 func (c *containerComponent) OnRender(element *ui.Element, canvas *ui.Canvas) {
 	drawBounds := canvas.DrawBounds(element, false)
 	if !c.backgroundColor.Transparent() {
@@ -260,4 +256,4 @@ func (c *containerComponent) OnRender(element *ui.Element, canvas *ui.Canvas) {
 }
 ```
 
-The lacking framework includes a package [std](https://pkg.go.dev/github.com/mokiat/lacking/ui/std) (short for standard) that includes some basic component implementations. While not too pretty and unlikely to be used in a game, they can be useful when creating a tool or getting started with the component API.
+The Lacking framework includes a package [std](https://pkg.go.dev/github.com/mokiat/lacking/ui/std) (short for standard) that includes some basic component implementations. While not too pretty and unlikely to be used in a game, they can be useful when creating a tool or getting started with the component API.
