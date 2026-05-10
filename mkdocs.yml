@@ -5,9 +5,9 @@ theme:
   name: material
 nav:
   - Home: index.md
-  - Getting Started: getting-started.md
   - Examples: examples.md
-  - Manual:
+  - Getting Started: getting-started.md
+  - User's Guide:
     - Application: manual/application/index.md
     - ECS: manual/ecs/index.md
     - Game: manual/game/index.md
@@ -15,7 +15,7 @@ nav:
       - Shader: manual/graphics/shader.md
     - Rendering: manual/rendering/index.md
     - User Interface: manual/user-interface/index.md
-  - Development:
+  - Internals:
     - Physics:
       - Overview: development/physics/index.md
       - References: development/physics/references.md
@@ -34,6 +34,7 @@ nav:
 markdown_extensions:
   - pymdownx.arithmatex:
       generic: true
+  - pymdownx.superfences:
 extra_javascript:
   - https://polyfill.io/v3/polyfill.min.js?features=es6
   - https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js

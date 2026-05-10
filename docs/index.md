@@ -8,9 +8,9 @@ What lacking provides is mechanisms to parse images and 3D model files, to load 
 
 While there is something like an Editor, its purpose is currently for previewing a scene only.
 
-**WARNING** The [lacking](https://github.com/mokiat/lacking) repository is a solo hobby project of mine and is still in the prototyping phase. I am iterating fast and making breaking changes. Use at your discretion.
+**NOTE:** The [lacking](https://github.com/mokiat/lacking) repository is a solo hobby project of mine and is still in the prototyping phase. I am iterating fast and making breaking changes. Use at your discretion.
 
 ## Next steps
 
-* Check the [Getting Started](./getting-started.md) page on how to set up your own Hello World project.
+* See the [Getting Started](./getting-started.md) page on how to set up your own Hello World project.
 * Check the [Examples](./examples.md) page on games and apps that have been implemented using Lacking.
