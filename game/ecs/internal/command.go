@@ -10,9 +10,8 @@ const (
 	CommandTypeCreateEntity
 	CommandTypeEditEntity
 	CommandTypeDeleteEntity
-	CommandTypeAddComponent
-	CommandTypeRemoveComponent
-	CommandTypeReplaceComponent
+	CommandTypeSetComponent
+	CommandTypeUnsetComponent
 )
 
 type CommandType uint32
@@ -31,14 +30,10 @@ type DeleteEntityCommand struct {
 	EntityID ID
 }
 
-type AddComponentCommand struct {
+type SetComponentCommand struct {
 	TypeID TypeID
 }
 
-type RemoveComponentCommand struct {
-	TypeID TypeID
-}
-
-type ReplaceComponentCommand struct {
+type UnsetComponentCommand struct {
 	TypeID TypeID
 }

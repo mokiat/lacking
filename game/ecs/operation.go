@@ -3,8 +3,8 @@ package ecs
 import "github.com/mokiat/lacking/game/ecs/internal"
 
 // EditOperation is the write handle passed to [Scene.EditEntity] and
-// [Scene.CreateEntity] callbacks. Use [AddComponent], [RemoveComponent],
-// and [ReplaceComponent] to stage component changes.
+// [Scene.CreateEntity] callbacks. Use [SetComponent] and [UnsetComponent]
+// to stage component changes.
 //
 // Do not create instances directly or retain the pointer beyond the
 // callback scope.
@@ -18,56 +18,30 @@ type EditOperation struct {
 // [Scene.EditEntity] and [Scene.CreateEntity].
 type EditOperationFunc func(op *EditOperation)
 
-// AddComponent stages the addition of a component of type T with the
-// given value to the entity being edited.
-//
-// Panics at commit time if the entity already has a component of type T
-// (as determined by the virtual state after prior operations in the same
-// edit).
-func AddComponent[T any](op *EditOperation, compType ComponentType[T], value T) {
+// SetComponent stages the addition of a component of type T with the
+// given value to the entity being edited. If the entity already has a component
+// of type T, it is replaced with the new value.
+func SetComponent[T any](op *EditOperation, compType ComponentType[T], value T) {
 	columnID := op.stager.ComponentColumnID(compType.id)
 	column := compType.storage.Column(columnID)
 	column.SetValue(op.stageRow, value)
 
 	internal.WriteToBuffer(op.commandBuffer, internal.CommandHeader{
-		CommandType: internal.CommandTypeAddComponent,
+		CommandType: internal.CommandTypeSetComponent,
 	})
-	internal.WriteToBuffer(op.commandBuffer, internal.AddComponentCommand{
+	internal.WriteToBuffer(op.commandBuffer, internal.SetComponentCommand{
 		TypeID: compType.id,
 	})
 }
 
-// RemoveComponent stages the removal of the component of type T from
-// the entity being edited.
-//
-// Panics at commit time if the entity does not have a component of
-// type T (as determined by the virtual state after prior operations in
-// the same edit).
-func RemoveComponent[T any](op *EditOperation, compType ComponentType[T]) {
+// UnsetComponent stages the removal of the component of type T from
+// the entity being edited. If the entity does not have a component of type T,
+// this is a no-op.
+func UnsetComponent[T any](op *EditOperation, compType ComponentType[T]) {
 	internal.WriteToBuffer(op.commandBuffer, internal.CommandHeader{
-		CommandType: internal.CommandTypeRemoveComponent,
+		CommandType: internal.CommandTypeUnsetComponent,
 	})
-	internal.WriteToBuffer(op.commandBuffer, internal.RemoveComponentCommand{
-		TypeID: compType.id,
-	})
-}
-
-// ReplaceComponent stages a value update for the component of type T on
-// the entity being edited. Unlike [RemoveComponent] followed by
-// [AddComponent], this does not change the entity's archetype.
-//
-// Panics at commit time if the entity does not have a component of
-// type T (as determined by the virtual state after prior operations in
-// the same edit).
-func ReplaceComponent[T any](op *EditOperation, compType ComponentType[T], value T) {
-	columnID := op.stager.ComponentColumnID(compType.id)
-	column := compType.storage.Column(columnID)
-	column.SetValue(op.stageRow, value)
-
-	internal.WriteToBuffer(op.commandBuffer, internal.CommandHeader{
-		CommandType: internal.CommandTypeReplaceComponent,
-	})
-	internal.WriteToBuffer(op.commandBuffer, internal.ReplaceComponentCommand{
+	internal.WriteToBuffer(op.commandBuffer, internal.UnsetComponentCommand{
 		TypeID: compType.id,
 	})
 }

@@ -269,14 +269,14 @@ func (s *Scene) ReadEntity(id ID, fn func(*ReadOperation)) {
 }
 
 // EditEntity calls fn with an [EditOperation] for the entity identified
-// by id. Use [AddComponent], [RemoveComponent], and [ReplaceComponent]
-// inside fn to stage structural or value changes.
+// by id. Use [SetComponent] and [UnsetComponent] inside fn to stage
+// structural or value changes.
 //
-// Panics if a component is added that the entity already has, or one is
-// removed or replaced that the entity does not have, as determined by
-// the virtual component state after each prior operation in the same
-// edit. When multiple operations target the same component type, only
-// the last one takes effect.
+// [SetComponent] adds the component if the entity does not yet have one
+// of that type, or replaces its value if it does. [UnsetComponent]
+// removes the component, or is a no-op if the entity does not have one.
+// When multiple operations target the same component type, only the last
+// one takes effect.
 //
 // EditEntity may be called during a query; the edit is deferred until
 // the query completes.
@@ -580,28 +580,15 @@ commandLoop:
 		header := internal.ReadFromBuffer[internal.CommandHeader](s.commandBuffer)
 		switch header.CommandType {
 
-		case internal.CommandTypeAddComponent:
-			cmd := internal.ReadFromBuffer[internal.AddComponentCommand](s.commandBuffer)
-			if mask.HasType(cmd.TypeID) {
-				panic(fmt.Errorf("cannot add component of type %v that the entity already has", cmd.TypeID))
-			}
+		case internal.CommandTypeSetComponent:
+			cmd := internal.ReadFromBuffer[internal.SetComponentCommand](s.commandBuffer)
 			mask.AddType(cmd.TypeID)
 			changes.AddType(cmd.TypeID)
 
-		case internal.CommandTypeRemoveComponent:
-			cmd := internal.ReadFromBuffer[internal.RemoveComponentCommand](s.commandBuffer)
-			if !mask.HasType(cmd.TypeID) {
-				panic(fmt.Errorf("cannot remove component of type %v that the entity does not have", cmd.TypeID))
-			}
+		case internal.CommandTypeUnsetComponent:
+			cmd := internal.ReadFromBuffer[internal.UnsetComponentCommand](s.commandBuffer)
 			mask.RemoveType(cmd.TypeID)
 			changes.RemoveType(cmd.TypeID)
-
-		case internal.CommandTypeReplaceComponent:
-			cmd := internal.ReadFromBuffer[internal.ReplaceComponentCommand](s.commandBuffer)
-			if !mask.HasType(cmd.TypeID) {
-				panic(fmt.Errorf("cannot replace component of type %v that the entity does not have", cmd.TypeID))
-			}
-			changes.AddType(cmd.TypeID)
 
 		case internal.CommandTypeEndOfSequence:
 			break commandLoop

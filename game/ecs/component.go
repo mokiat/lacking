@@ -32,7 +32,7 @@ func (s *Scope) markInUse() {
 
 // Type registers the Go type T as a component type within scope and
 // returns a [ComponentType] descriptor. The descriptor is used in API
-// calls such as [AddComponent], [RemoveComponent], and [GetComponent].
+// calls such as [SetComponent], [UnsetComponent], and [GetComponent].
 //
 // Call this function once per type, typically from a package-level var
 // initializer. It is not safe for concurrent use.
@@ -66,7 +66,7 @@ func Type[T any](scope *Scope) ComponentType[T] {
 
 // ComponentType is the typed descriptor for a component of type T.
 // Obtain one by calling [Type] and pass it to API functions such as
-// [AddComponent], [GetComponent], and condition helpers like
+// [SetComponent], [GetComponent], and condition helpers like
 // [HasComponent].
 type ComponentType[T any] struct {
 	id      internal.TypeID

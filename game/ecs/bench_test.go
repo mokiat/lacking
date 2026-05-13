@@ -25,11 +25,11 @@ func BenchmarkCheckEntity(b *testing.B) {
 
 	id := scene.CreateEntity(nil)
 	scene.EditEntity(id, func(op *ecs.EditOperation) {
-		ecs.AddComponent(op, positionType, Position{
+		ecs.SetComponent(op, positionType, Position{
 			X: 1.0,
 			Y: 2.0,
 		})
-		ecs.AddComponent(op, nameType, Name{
+		ecs.SetComponent(op, nameType, Name{
 			Value: "Alice",
 		})
 	})
@@ -65,23 +65,23 @@ func BenchmarkEditEntity(b *testing.B) {
 
 	id := scene.CreateEntity(nil)
 	scene.EditEntity(id, func(op *ecs.EditOperation) {
-		ecs.AddComponent(op, positionType, Position{
+		ecs.SetComponent(op, positionType, Position{
 			X: 1.0,
 			Y: 2.0,
 		})
-		ecs.AddComponent(op, ageType, Age{
+		ecs.SetComponent(op, ageType, Age{
 			Value: 30,
 		})
 	})
 
 	for b.Loop() {
 		scene.EditEntity(id, func(op *ecs.EditOperation) {
-			ecs.AddComponent(op, nameType, Name{
+			ecs.SetComponent(op, nameType, Name{
 				Value: "Alice",
 			})
 		})
 		scene.EditEntity(id, func(op *ecs.EditOperation) {
-			ecs.RemoveComponent(op, nameType)
+			ecs.UnsetComponent(op, nameType)
 		})
 	}
 }
@@ -104,8 +104,8 @@ func BenchmarkQueryEntities(b *testing.B) {
 	for range entityCount {
 		id := scene.CreateEntity(nil)
 		scene.EditEntity(id, func(op *ecs.EditOperation) {
-			ecs.AddComponent(op, positionType, Position{X: 1.0, Y: 2.0})
-			ecs.AddComponent(op, velocityType, Velocity{X: 0.5, Y: 0.5})
+			ecs.SetComponent(op, positionType, Position{X: 1.0, Y: 2.0})
+			ecs.SetComponent(op, velocityType, Velocity{X: 0.5, Y: 0.5})
 		})
 	}
 
@@ -150,10 +150,10 @@ func BenchmarkQueryEntitiesMultiArchetype(b *testing.B) {
 	for i := range entityCount {
 		id := scene.CreateEntity(nil)
 		scene.EditEntity(id, func(op *ecs.EditOperation) {
-			ecs.AddComponent(op, positionType, Position{X: 1.0, Y: 2.0})
-			ecs.AddComponent(op, velocityType, Velocity{X: 0.5, Y: 0.5})
+			ecs.SetComponent(op, positionType, Position{X: 1.0, Y: 2.0})
+			ecs.SetComponent(op, velocityType, Velocity{X: 0.5, Y: 0.5})
 			if i%2 == 0 {
-				ecs.AddComponent(op, tagType, Tag{})
+				ecs.SetComponent(op, tagType, Tag{})
 			}
 		})
 	}

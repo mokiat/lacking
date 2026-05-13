@@ -66,8 +66,8 @@ Call `scene.Delete()` when the scene is no longer needed to release all resource
 
 ```go
 id := scene.CreateEntity(func(op *ecs.EditOperation) {
-    ecs.AddComponent(op, PositionType, Position{X: 1, Y: 0, Z: 0})
-    ecs.AddComponent(op, VelocityType, Velocity{X: 0, Y: 0, Z: 5})
+    ecs.SetComponent(op, PositionType, Position{X: 1, Y: 0, Z: 0})
+    ecs.SetComponent(op, VelocityType, Velocity{X: 0, Y: 0, Z: 5})
 })
 ```
 
@@ -154,25 +154,24 @@ for id, op := range scene.QueryEntitiesIter(movingEntities) {
 
 ### Editing a Single Entity
 
-`EditEntity` calls the provided function with an `EditOperation` for the entity. Three operations are available:
+`EditEntity` calls the provided function with an `EditOperation` for the entity. Two operations are available:
 
 | Function | Effect |
 |---|---|
-| `AddComponent` | Adds a new component. Panics if the entity already has one of that type. |
-| `RemoveComponent` | Removes an existing component. Panics if the entity does not have one. |
-| `ReplaceComponent` | Updates the value of an existing component without changing the entity's component set. |
+| `SetComponent` | Adds the component if the entity does not yet have one of that type, or replaces its value if it does. |
+| `UnsetComponent` | Removes the component. No-op if the entity does not have one of that type. |
 
 ```go
 scene.EditEntity(id, func(op *ecs.EditOperation) {
-    ecs.AddComponent(op, HealthType, Health{Current: 100, Max: 100})
+    ecs.SetComponent(op, HealthType, Health{Current: 100, Max: 100})
 })
 
 scene.EditEntity(id, func(op *ecs.EditOperation) {
-    ecs.ReplaceComponent(op, VelocityType, Velocity{X: 0, Y: 10, Z: 0})
+    ecs.SetComponent(op, VelocityType, Velocity{X: 0, Y: 10, Z: 0})
 })
 
 scene.EditEntity(id, func(op *ecs.EditOperation) {
-    ecs.RemoveComponent(op, VelocityType)
+    ecs.UnsetComponent(op, VelocityType)
 })
 ```
 
@@ -180,12 +179,12 @@ Multiple operations can be staged in a single `EditEntity` call:
 
 ```go
 scene.EditEntity(id, func(op *ecs.EditOperation) {
-    ecs.RemoveComponent(op, VelocityType)
-    ecs.AddComponent(op, HealthType, Health{Current: 50, Max: 100})
+    ecs.UnsetComponent(op, VelocityType)
+    ecs.SetComponent(op, HealthType, Health{Current: 50, Max: 100})
 })
 ```
 
-> `ReplaceComponent` is more efficient than a remove-then-add sequence when only the value needs to change, because it does not move the entity to a different archetype.
+> When multiple `SetComponent` or `UnsetComponent` calls target the same component type within one `EditEntity`, only the last one takes effect. Calling `SetComponent` on a component the entity already has is an in-place value update that does not move the entity to a different archetype.
 
 ## Conditions
 
@@ -324,7 +323,7 @@ scene.Unfreeze() // depth → 0, mutations committed
 ```go
 scene.Freeze()
 id := scene.CreateEntity(func(op *ecs.EditOperation) {
-    ecs.AddComponent(op, positionType, Position{X: 1, Y: 2})
+    ecs.SetComponent(op, positionType, Position{X: 1, Y: 2})
 })
 
 scene.HasEntity(id)   // true
