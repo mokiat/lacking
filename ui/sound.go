@@ -5,13 +5,13 @@ import (
 	"github.com/mokiat/lacking/audio"
 )
 
-var globalAudioGain = 1.0
+var globalAudioGain = float32(1.0)
 
-func GlobalAudioGain() float64 {
+func GlobalAudioGain() float32 {
 	return globalAudioGain
 }
 
-func SetGlobalAudioGain(gain float64) {
+func SetGlobalAudioGain(gain float32) {
 	globalAudioGain = gain
 }
 
@@ -27,7 +27,7 @@ type Sound struct {
 	media audio.Media
 }
 
-func (s *Sound) Play(gain float64) {
+func (s *Sound) Play(gain float32) {
 	if s == nil {
 		return
 	}

@@ -11,11 +11,11 @@ type PlayInfo struct {
 	// Gain indicates the amount of volume, where 1.0 is max and 0.0 is min.
 	//
 	// If not specified, the default value is 1.0.
-	Gain opt.T[float64]
+	Gain opt.T[float32]
 
 	// Pan indicates the sound panning, where -1.0 is left, 0.0 is center, and
 	// 1.0 is right.
-	Pan float64
+	Pan float32
 }
 
 // Playback represents the audio playback of a media file.
