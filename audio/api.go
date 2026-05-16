@@ -2,7 +2,7 @@ package audio
 
 // API provides access to a low-level audio manipulation and playback.
 //
-// All functions in this API need to be called from the main thread.
+// All methods must be called from the UI thread.
 type API interface {
 
 	// SampleRate returns the audio sample rate used by the API (i.e. how
@@ -59,17 +59,20 @@ type API interface {
 	// CreateCompressorNode creates a new compressor node.
 	CreateCompressorNode() CompressorNode
 
-	// CreateConnectorNode creates a new connector node. It is a no-op node that
-	// can be used to connect other nodes together without affecting the audio
-	// signal.
+	// CreateConnectorNode creates a new connector node. It is a pass-through
+	// node that forwards its input signal unchanged, useful as a named
+	// connection point in a larger node graph.
 	CreateConnectorNode() ConnectorNode
 
 	// Chain connects the specified nodes in sequence. This is a convenience
-	// function that uses the Connect method of the API. Beware that it may
-	// incur allocations due to variadic parameters.
+	// function that uses [API.Connect]. Beware that it may incur allocations
+	// due to variadic parameters.
 	Chain(nodes ...Node)
 
 	// Connect connects the source node to the target node.
+	//
+	// The audio signal from the source node will be added to the audio
+	// signal from any other nodes that are already connected to the target node.
 	Connect(source, target Node)
 
 	// Disconnect disconnects the source node from the target node.

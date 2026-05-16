@@ -2,6 +2,58 @@ package audio
 
 import "github.com/mokiat/gomath/sprec"
 
+const (
+	// DefaultFrequency is the default frequency for OscillatorNode.
+	DefaultFrequency = 440.0
+
+	// DefaultGain is the default gain factor for GainNode, representing no
+	// change to the audio signal.
+	DefaultGain = 1.0
+
+	// DefaultPan is the default pan value for PanNode, representing a
+	// centered audio signal.
+	DefaultPan = 0.0
+
+	// DefaultCutoffFrequency is the default cutoff frequency for HighPassNode
+	// and LowPassNode.
+	DefaultCutoffFrequency = 350.0
+
+	// DefaultDelay is the default delay time for DelayNode, representing no
+	// delay.
+	DefaultDelay = 0.0
+
+	// DefaultRoomSize is the default room size for ReverbNode, representing a
+	// small room.
+	DefaultRoomSize = 0.3
+
+	// DefaultDamping is the default damping factor for ReverbNode, representing
+	// a moderate amount of damping.
+	DefaultDamping = 0.5
+
+	// DefaultDry is the default dry level for ReverbNode, representing the
+	// original signal at full gain.
+	DefaultDry = 1.0
+
+	// DefaultWet is the default wet level for ReverbNode, representing the
+	// reverberated signal at half gain.
+	DefaultWet = 0.5
+
+	// DefaultAttack is the default attack time for CompressorNode.
+	DefaultAttack = 0.003
+
+	// DefaultRelease is the default release time for CompressorNode.
+	DefaultRelease = 0.25
+
+	// DefaultRatio is the default compression ratio for CompressorNode.
+	DefaultRatio = 12.0
+
+	// DefaultKnee is the default knee width for CompressorNode.
+	DefaultKnee = 30.0
+
+	// DefaultThreshold is the default threshold level for CompressorNode.
+	DefaultThreshold = -24.0
+)
+
 // Node represents a node in a chain of audio elements. Each node produces
 // audio data which can be synthesized, processed, or played back.
 type Node interface {
@@ -32,12 +84,11 @@ type PlaybackNode interface {
 	// Stop stops the playback of the audio.
 	Stop()
 
-	// Resume resumes the playback of the audio.
+	// Resume resumes a paused playback from where it was paused.
 	//
-	// If the playback is already playing, this method has no effect.
-	//
-	// If the playback is stopped, this method has the same effect as Start with
-	// an offset of 0.
+	// If the playback is already playing, this method has no effect. If the
+	// playback is stopped rather than paused, this method starts from the
+	// beginning (equivalent to Start(0)).
 	Resume()
 
 	// Pause pauses the playback of the audio.
@@ -74,6 +125,8 @@ type OscillatorNode interface {
 	UserNode
 
 	// Frequency returns the frequency of the oscillator in Hertz.
+	//
+	// Default value is 440.0 Hz (A4 note).
 	Frequency() float32
 
 	// SetFrequency sets the frequency of the oscillator in Hertz.
@@ -86,9 +139,16 @@ type GainNode interface {
 	UserNode
 
 	// Gain returns the gain factor applied to the audio signal.
+	//
+	// A value of 1.0 means no change, 0.0 is silence, and values greater than
+	// 1.0 amplify the signal.
+	//
+	// Default value is 1.0.
 	Gain() float32
 
 	// SetGain sets the gain factor applied to the audio signal.
+	//
+	// The value must be non-negative.
 	SetGain(gain float32)
 }
 
@@ -99,6 +159,8 @@ type PanNode interface {
 
 	// Pan returns the pan value, where -1.0 is full left, 0.0 is center, and
 	// 1.0 is full right.
+	//
+	// Default value is 0.0 (center).
 	Pan() float32
 
 	// SetPan sets the pan value, where -1.0 is full left, 0.0 is center, and
@@ -107,6 +169,8 @@ type PanNode interface {
 }
 
 // SpatialNode represents an audio node that provides spatial audio effects.
+// Implementations must apply inverse distance attenuation relative to the
+// [SpatialListener] returned by [API.SpatialListener].
 type SpatialNode interface {
 	UserNode
 
@@ -124,6 +188,8 @@ type HighPassNode interface {
 
 	// CutoffFrequency returns the cutoff frequency of the high-pass filter in
 	// Hertz.
+	//
+	// Default value is 350.0 Hz.
 	CutoffFrequency() float32
 
 	// SetCutoffFrequency sets the cutoff frequency of the high-pass filter in
@@ -138,6 +204,8 @@ type LowPassNode interface {
 
 	// CutoffFrequency returns the cutoff frequency of the low-pass filter in
 	// Hertz.
+	//
+	// Default value is 350.0 Hz.
 	CutoffFrequency() float32
 
 	// SetCutoffFrequency sets the cutoff frequency of the low-pass filter in
@@ -151,6 +219,8 @@ type DelayNode interface {
 	UserNode
 
 	// DelayTime returns the delay time in seconds.
+	//
+	// Default value is 0.0 seconds (no delay).
 	DelayTime() float32
 
 	// SetDelayTime sets the delay time in seconds.
@@ -166,10 +236,47 @@ type ReverbNode interface {
 	UserNode
 
 	// RoomSize returns the size of the virtual room for the reverb effect.
+	//
+	// The value is in the range [0.0, 1.0]. Default value is 0.3.
 	RoomSize() float32
 
 	// SetRoomSize sets the size of the virtual room for the reverb effect.
+	//
+	// The value will be clamped to the range [0.0, 1.0].
 	SetRoomSize(size float32)
+
+	// Damping returns the damping factor of the reverb effect.
+	//
+	// Higher values cause high frequencies to decay faster, simulating
+	// absorptive surfaces.
+	//
+	// Default value is 0.5.
+	Damping() float32
+
+	// SetDamping sets the damping factor of the reverb effect.
+	//
+	// The value will be clamped to the range [0.0, 1.0].
+	SetDamping(damping float32)
+
+	// Dry returns the dry level of the reverb effect.
+	//
+	// Default value is 1.0.
+	Dry() float32
+
+	// SetDry sets the dry level of the reverb effect.
+	//
+	// The value will be clamped to the range [0.0, 1.0].
+	SetDry(dry float32)
+
+	// Wet returns the wet level of the reverb effect.
+	//
+	// Default value is 0.5.
+	Wet() float32
+
+	// SetWet sets the wet level of the reverb effect.
+	//
+	// The value will be clamped to the range [0.0, 1.0].
+	SetWet(wet float32)
 }
 
 // CompressorNode represents an audio node that applies dynamic range

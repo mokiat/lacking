@@ -12,11 +12,13 @@ func NewNopAPI() API {
 		listener: &nopListener{
 			rotation: sprec.IdentityQuat(),
 		},
+		output: &nopNode{},
 	}
 }
 
 type nopAPI struct {
 	listener *nopListener
+	output   *nopNode
 }
 
 func (a *nopAPI) SampleRate() int {
@@ -32,7 +34,7 @@ func (a *nopAPI) ParseMedia(info MediaInfo) Media {
 }
 
 func (a *nopAPI) Output() Node {
-	return nil
+	return a.output
 }
 
 func (a *nopAPI) SpatialListener() SpatialListener {
@@ -44,15 +46,21 @@ func (a *nopAPI) CreatePlaybackNode(media Media, loop bool) PlaybackNode {
 }
 
 func (a *nopAPI) CreateOscillatorNode() OscillatorNode {
-	return &nopOscillatorNode{}
+	return &nopOscillatorNode{
+		frequency: DefaultFrequency,
+	}
 }
 
 func (a *nopAPI) CreateGainNode() GainNode {
-	return &nopGainNode{}
+	return &nopGainNode{
+		gain: DefaultGain,
+	}
 }
 
 func (a *nopAPI) CreatePanNode() PanNode {
-	return &nopPanNode{}
+	return &nopPanNode{
+		pan: DefaultPan,
+	}
 }
 
 func (a *nopAPI) CreateSpatialNode() SpatialNode {
@@ -60,23 +68,40 @@ func (a *nopAPI) CreateSpatialNode() SpatialNode {
 }
 
 func (a *nopAPI) CreateHighPassNode() HighPassNode {
-	return &nopHighPassNode{}
+	return &nopHighPassNode{
+		cutoffFrequency: DefaultCutoffFrequency,
+	}
 }
 
 func (a *nopAPI) CreateLowPassNode() LowPassNode {
-	return &nopLowPassNode{}
+	return &nopLowPassNode{
+		cutoffFrequency: DefaultCutoffFrequency,
+	}
 }
 
 func (a *nopAPI) CreateDelayNode() DelayNode {
-	return &nopDelayNode{}
+	return &nopDelayNode{
+		delayTime: DefaultDelay,
+	}
 }
 
 func (a *nopAPI) CreateReverbNode() ReverbNode {
-	return &nopReverbNode{}
+	return &nopReverbNode{
+		roomSize: DefaultRoomSize,
+		damping:  DefaultDamping,
+		dry:      DefaultDry,
+		wet:      DefaultWet,
+	}
 }
 
 func (a *nopAPI) CreateCompressorNode() CompressorNode {
-	return &nopCompressorNode{}
+	return &nopCompressorNode{
+		attack:    DefaultAttack,
+		release:   DefaultRelease,
+		ratio:     DefaultRatio,
+		knee:      DefaultKnee,
+		threshold: DefaultThreshold,
+	}
 }
 
 func (a *nopAPI) CreateConnectorNode() ConnectorNode {
@@ -124,6 +149,10 @@ func (l *nopListener) Rotation() sprec.Quat {
 
 func (l *nopListener) SetRotation(rotation sprec.Quat) {
 	l.rotation = rotation
+}
+
+type nopNode struct {
+	Node // marker interface
 }
 
 type nopUserNode struct {
@@ -269,6 +298,9 @@ func (n *nopDelayNode) SetDelayTime(delayTime float32) {
 type nopReverbNode struct {
 	nopUserNode
 	roomSize float32
+	damping  float32
+	dry      float32
+	wet      float32
 }
 
 func (n *nopReverbNode) RoomSize() float32 {
@@ -277,6 +309,30 @@ func (n *nopReverbNode) RoomSize() float32 {
 
 func (n *nopReverbNode) SetRoomSize(roomSize float32) {
 	n.roomSize = roomSize
+}
+
+func (n *nopReverbNode) Damping() float32 {
+	return n.damping
+}
+
+func (n *nopReverbNode) SetDamping(damping float32) {
+	n.damping = damping
+}
+
+func (n *nopReverbNode) Dry() float32 {
+	return n.dry
+}
+
+func (n *nopReverbNode) SetDry(dry float32) {
+	n.dry = dry
+}
+
+func (n *nopReverbNode) Wet() float32 {
+	return n.wet
+}
+
+func (n *nopReverbNode) SetWet(wet float32) {
+	n.wet = wet
 }
 
 type nopCompressorNode struct {
