@@ -9,6 +9,7 @@ nav:
   - Getting Started: getting-started.md
   - User's Guide:
     - Application: manual/application/index.md
+    - Audio: manual/audio/index.md
     - ECS: manual/ecs/index.md
     - Game: manual/game/index.md
     - Graphics:
