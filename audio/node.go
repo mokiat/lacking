@@ -177,10 +177,54 @@ type ReverbNode interface {
 type CompressorNode interface {
 	UserNode
 
+	// Attack returns the attack time in seconds.
+	//
+	// Default value is 0.003 seconds.
+	Attack() float32
+
+	// SetAttack sets the attack time in seconds.
+	//
+	// The value will be clamped to the range [0.0, 1.0].
+	SetAttack(attack float32)
+
+	// Release returns the release time in seconds.
+	//
+	// Default value is 0.25 seconds.
+	Release() float32
+
+	// SetRelease sets the release time in seconds.
+	//
+	// The value will be clamped to the range [0.0, 1.0].
+	SetRelease(release float32)
+
+	// Ratio returns the compression ratio.
+	//
+	// Default value is 12.0.
+	Ratio() float32
+
+	// SetRatio sets the compression ratio.
+	//
+	// The value will be clamped to the range [1.0, 20.0].
+	SetRatio(ratio float32)
+
+	// Knee returns the knee width in decibels.
+	//
+	// Default value is 30.0 dB.
+	Knee() float32
+
+	// SetKnee sets the knee width in decibels.
+	//
+	// The value will be clamped to the range [0.0, 40.0].
+	SetKnee(knee float32)
+
 	// Threshold returns the threshold level in decibels.
+	//
+	// Default value is -24.0 dB.
 	Threshold() float32
 
 	// SetThreshold sets the threshold level in decibels.
+	//
+	// The value will be clamped to the range [-100.0, 0.0].
 	SetThreshold(threshold float32)
 }
 

@@ -281,7 +281,43 @@ func (n *nopReverbNode) SetRoomSize(roomSize float32) {
 
 type nopCompressorNode struct {
 	nopUserNode
+	attack    float32
+	release   float32
+	ratio     float32
+	knee      float32
 	threshold float32
+}
+
+func (n *nopCompressorNode) Attack() float32 {
+	return n.attack
+}
+
+func (n *nopCompressorNode) SetAttack(attack float32) {
+	n.attack = attack
+}
+
+func (n *nopCompressorNode) Release() float32 {
+	return n.release
+}
+
+func (n *nopCompressorNode) SetRelease(release float32) {
+	n.release = release
+}
+
+func (n *nopCompressorNode) Ratio() float32 {
+	return n.ratio
+}
+
+func (n *nopCompressorNode) SetRatio(ratio float32) {
+	n.ratio = ratio
+}
+
+func (n *nopCompressorNode) Knee() float32 {
+	return n.knee
+}
+
+func (n *nopCompressorNode) SetKnee(knee float32) {
+	n.knee = knee
 }
 
 func (n *nopCompressorNode) Threshold() float32 {
