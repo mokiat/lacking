@@ -37,6 +37,9 @@ func Resample(samples []Sample, fromRate int, toRate int) []Sample {
 	if newLength <= 0 {
 		return nil
 	}
+	if newLength == 1 {
+		return []Sample{samples[0]}
+	}
 
 	result := make([]Sample, newLength)
 	step := float64(oldLength-1) / float64(newLength-1)
