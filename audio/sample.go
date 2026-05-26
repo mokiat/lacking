@@ -22,6 +22,12 @@ func SampleCount(seconds float32, sampleRate int) int {
 	return int(float32(sampleRate) * seconds)
 }
 
+// Seconds calculates the duration in seconds for a given number of samples
+// and sample rate.
+func Seconds(sampleCount, sampleRate int) float32 {
+	return float32(sampleCount) / float32(sampleRate)
+}
+
 // Resample resamples the given audio samples from one sample rate to another.
 func Resample(samples []Sample, fromRate int, toRate int) []Sample {
 	if (fromRate == toRate) || (len(samples) == 0) {
