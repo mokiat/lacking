@@ -335,8 +335,10 @@ type CompressorNode interface {
 	SetThreshold(threshold float32)
 }
 
-// ConnectorNode represents a no-op audio node that can be used to connect
-// other nodes together without affecting the audio signal.
+// ConnectorNode represents a pass-through audio node that forwards its input
+// signal unchanged. It is useful as a named connection point in a larger node
+// graph, allowing portions of the graph to be rewired without touching every
+// connected source.
 type ConnectorNode interface {
 	UserNode
 }

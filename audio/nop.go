@@ -114,6 +114,7 @@ func (a *nopAPI) Play(media Media, info PlayInfo) Playback {
 	return &nopPlayback{}
 }
 
+// NewNopMedia returns a Media that does nothing.
 func NewNopMedia() Media {
 	return &nopMedia{}
 }

@@ -11,10 +11,11 @@ import (
 // returns a slice of audio frames.
 type DecodeFunc func(io.Reader) (MediaData, error)
 
-// Decode decodes an audio that has been encoded in a registered format.
+// Decode decodes audio data encoded in a registered format.
 //
-// If the format of the audio data cannot be determined, [errors.ErrUnsupported]
-// is returned.
+// It returns the decoded [MediaData], the name of the detected format (as
+// registered via [RegisterFormat]), and any error encountered. If the format
+// cannot be determined, [errors.ErrUnsupported] is returned.
 func Decode(r io.Reader) (MediaData, string, error) {
 	in := bufio.NewReader(r)
 
