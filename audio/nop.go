@@ -25,11 +25,7 @@ func (a *nopAPI) SampleRate() int {
 	return 44100
 }
 
-func (a *nopAPI) CreateMedia(samples []Sample) Media {
-	return NewNopMedia()
-}
-
-func (a *nopAPI) ParseMedia(info MediaInfo) Media {
+func (a *nopAPI) CreateMedia(data MediaData) Media {
 	return NewNopMedia()
 }
 

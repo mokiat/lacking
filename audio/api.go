@@ -9,17 +9,14 @@ type API interface {
 	// many samples there are in a single second).
 	SampleRate() int
 
-	// CreateMedia creates a new Media object from the specified samples. This
-	// function assumes that the samples match the API's sample rate.
+	// CreateMedia creates a new Media object from the specified frames.
+	//
+	// If the provided frames are not in the sample rate of the API, they will be
+	// resampled to match the API's sample rate.
 	//
 	// Keep in mind that the implementation may keep a reference to the provided
-	// samples slice, so it should not be modified after being passed to this
-	// method.
-	CreateMedia(samples []Sample) Media
-
-	// ParseMedia creates a new Media object based on the specified raw data info
-	// by parsing it according to its format.
-	ParseMedia(info MediaInfo) Media
+	// data, so it should not be modified after being passed to this method.
+	CreateMedia(data MediaData) Media
 
 	// Output returns the output audio node.
 	Output() Node

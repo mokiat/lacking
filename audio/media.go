@@ -2,29 +2,14 @@ package audio
 
 import "time"
 
-// MediaDataType indicates the type of media data contained in a data block.
-type MediaDataType int8
+// MediaData represents the raw audio data and its associated metadata.
+type MediaData struct {
 
-const (
-	// MediaDataTypeAuto indicates that the media data type should be
-	// automatically detected based on the data.
-	MediaDataTypeAuto MediaDataType = iota
+	// Frames contains the decoded audio frames.
+	Frames []Frame
 
-	// MediaDataTypeWAV indicates that the media data is in WAV format.
-	MediaDataTypeWAV
-
-	// MediaDataTypeMP3 indicates that the media data is in MP3 format.
-	MediaDataTypeMP3
-)
-
-// MediaInfo contains the necessary information to create a Media.
-type MediaInfo struct {
-
-	// Data is the raw media data.
-	Data []byte
-
-	// DataType indicates the type of media data.
-	DataType MediaDataType
+	// SampleRate is the sample rate of the audio data.
+	SampleRate int
 }
 
 // Media represents a playable audio sequence.

@@ -3,12 +3,13 @@ package ui
 import (
 	"fmt"
 	"image"
-	"io"
-
 	_ "image/jpeg"
 	_ "image/png"
+	"io"
 
 	"github.com/mokiat/lacking/audio"
+	_ "github.com/mokiat/lacking/audio/mp3"
+	_ "github.com/mokiat/lacking/audio/wav"
 	"github.com/mokiat/lacking/resource"
 	"golang.org/x/image/font/opentype"
 )
@@ -105,6 +106,11 @@ func (m *resourceManager) OpenFontCollection(uri string) (*FontCollection, error
 	return m.CreateFontCollection(otCollection)
 }
 
+func (m *resourceManager) CreateSound(data audio.MediaData) *Sound {
+	media := m.audioAPI.CreateMedia(data)
+	return newSound(m.audioAPI, media)
+}
+
 func (m *resourceManager) OpenSound(uri string) (*Sound, error) {
 	in, err := m.locator.Open(uri)
 	if err != nil {
@@ -112,14 +118,9 @@ func (m *resourceManager) OpenSound(uri string) (*Sound, error) {
 	}
 	defer in.Close()
 
-	data, err := io.ReadAll(in)
+	data, _, err := audio.Decode(in)
 	if err != nil {
-		return nil, fmt.Errorf("error reading resource: %w", err)
+		return nil, fmt.Errorf("error decoding audio: %w", err)
 	}
-
-	media := m.audioAPI.ParseMedia(audio.MediaInfo{
-		Data:     data,
-		DataType: audio.MediaDataTypeAuto,
-	})
-	return newSound(m.audioAPI, media), nil
+	return m.CreateSound(data), nil
 }
