@@ -10,8 +10,7 @@ import (
 
 func init() {
 	magics := []string{
-		"RIFF", // RIFF header
-		"WAVE", // WAVE header
+		"RIFF",
 	}
 	audio.RegisterFormat("wav", magics, Decode)
 }
@@ -33,23 +32,24 @@ func Decode(in io.Reader) (audio.MediaData, error) {
 
 	length := flBuffer.NumFrames()
 	frames := make([]audio.Frame, length)
-	if buffer.Format.NumChannels == 1 {
-		for i := range length {
-			value := flBuffer.Data[i]
-			frames[i] = audio.Frame{
-				Left:  value,
-				Right: value,
+	if buffer.Format.NumChannels > 0 {
+		if buffer.Format.NumChannels == 1 {
+			for i := range length {
+				value := flBuffer.Data[i]
+				frames[i] = audio.Frame{
+					Left:  value,
+					Right: value,
+				}
 			}
-		}
-	}
-	if buffer.Format.NumChannels > 1 {
-		offset := 0
-		for i := range length {
-			frames[i] = audio.Frame{
-				Left:  flBuffer.Data[offset+0],
-				Right: flBuffer.Data[offset+1],
+		} else {
+			offset := 0
+			for i := range length {
+				frames[i] = audio.Frame{
+					Left:  flBuffer.Data[offset+0],
+					Right: flBuffer.Data[offset+1],
+				}
+				offset += buffer.Format.NumChannels
 			}
-			offset += buffer.Format.NumChannels
 		}
 	}
 

@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"bytes"
 	"errors"
-	"fmt"
 	"io"
 )
 
@@ -35,10 +34,7 @@ func findDecoder(r *bufio.Reader) (DecodeFunc, string, error) {
 	for _, f := range registeredFormats {
 		count := len(f.magic)
 		actualMagic, err := r.Peek(count)
-		if err != nil {
-			return nil, "", fmt.Errorf("error peeking magic prefix: %w", err)
-		}
-		if bytes.Equal(f.magic, actualMagic) {
+		if err == nil && bytes.Equal(f.magic, actualMagic) {
 			return f.decode, f.name, nil
 		}
 	}

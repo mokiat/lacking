@@ -27,7 +27,7 @@ type API interface {
 	// CreatePlaybackNode creates a new playback node for the specified media.
 	//
 	// It is safe to delete the media after creating the playback node.
-	CreatePlaybackNode(media Media, loop bool) PlaybackNode
+	CreatePlaybackNode(media Media) PlaybackNode
 
 	// CreateOscillatorNode creates a new oscillator node.
 	CreateOscillatorNode() OscillatorNode
@@ -35,7 +35,7 @@ type API interface {
 	// CreateGainNode creates a new gain node.
 	CreateGainNode() GainNode
 
-	// CreatePan creates a new pan node.
+	// CreatePanNode creates a new pan node.
 	CreatePanNode() PanNode
 
 	// CreateSpatialNode creates a new spatial audio node.
@@ -77,6 +77,7 @@ type API interface {
 
 	// Play plays the specified media as soon as possible.
 	//
-	// TODO: REMOVE THIS!!!!
+	// Deprecated: Use [API.CreatePlaybackNode] and [PlaybackNode.Play] instead
+	// for more control over playback.
 	Play(media Media, info PlayInfo) Playback
 }

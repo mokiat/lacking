@@ -11,7 +11,7 @@ import (
 
 func init() {
 	magics := []string{
-		"ID3", // ID3v2
+		"ID3",
 	}
 	audio.RegisterFormat("mp3", magics, Decode)
 }

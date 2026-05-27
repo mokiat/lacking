@@ -37,7 +37,7 @@ func (a *nopAPI) SpatialListener() SpatialListener {
 	return a.listener
 }
 
-func (a *nopAPI) CreatePlaybackNode(media Media, loop bool) PlaybackNode {
+func (a *nopAPI) CreatePlaybackNode(media Media) PlaybackNode {
 	return &nopPlaybackNode{}
 }
 
@@ -121,7 +121,7 @@ func NewNopMedia() Media {
 type nopMedia struct{}
 
 func (m *nopMedia) Length() time.Duration {
-	return time.Millisecond
+	return 0
 }
 
 func (m *nopMedia) Delete() {}
