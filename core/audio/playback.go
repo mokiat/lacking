@@ -44,6 +44,14 @@ type Playback interface {
 	// Playing returns true if the media is currently playing, false otherwise.
 	Playing() bool
 
+	// Gain returns the current gain of the playback.
+	//
+	// Default value is 1.0, which means no change in volume.
+	Gain() float32
+
+	// SetGain sets the gain of the playback.
+	SetGain(gain float32)
+
 	// PlaybackRate returns the current playback rate of the media.
 	PlaybackRate() float32
 
@@ -57,6 +65,14 @@ type Playback interface {
 	// HighPassFilter returns the high-pass filter applied to this playback, if any. If no high-pass filter is applied,
 	// this method returns nil.
 	HighPassFilter() FrequencyFilter
+
+	// SetOnFinished sets a callback function that will be called when the media finishes playing naturally,
+	// i.e. when it reaches the end and is not set to loop. It will not be called if playback is stopped
+	// via Stop() or paused via Pause(), nor on each loop iteration.
+	//
+	// If looping is disabled (via SetLooping) while the media is playing, and the media subsequently
+	// reaches its end, the callback will be called.
+	SetOnFinished(onFinished func())
 
 	// Release releases any resources associated with this playback instance. After calling this method, the playback
 	// should not be used anymore.
@@ -72,6 +88,9 @@ type SpatialPlayback interface {
 
 // PlaybackSettings represents the settings for creating a playback instance.
 type PlaybackSettings struct {
+
+	// FireAndForget indicates whether the playback should automatically release its resources after it finishes playing.
+	FireAndForget bool
 
 	// UseLowPassFilter indicates whether a low-pass filter should be applied to the playback.
 	UseLowPassFilter bool

@@ -21,6 +21,12 @@ type Bus interface {
 	// If the bus was not created with compression enabled, this will return nil.
 	Compression() Compression
 
+	// Pause pauses all sound sources attached to the bus. If the bus is already paused, this method has no effect.
+	Pause()
+
+	// Resume resumes all sound sources attached to the bus if they were paused. If the bus is not paused, this method has no effect.
+	Resume()
+
 	// Release releases any resources associated with the bus.
 	//
 	// All attached sound sources will be stopped.
