@@ -5,8 +5,17 @@ package audio
 // All methods must be called from the UI thread.
 type API interface {
 
+	// CreateMedia creates a new media object from the provided media data.
+	CreateMedia(data MediaData) Media
+
 	// CreateBus creates a new flat audio bus.
 	CreateBus(settings BusSettings) Bus
+
+	// CreatePlayback creates a new playback instance for the given media on the specified bus.
+	CreatePlayback(bus Bus, media Media, settings PlaybackSettings) Playback
+
+	// CreateSpatialPlayback creates a new spatial playback instance for the given media on the specified bus.
+	CreateSpatialPlayback(bus Bus, media Media, settings PlaybackSettings) SpatialPlayback
 
 	// MasterBus returns the master bus for the audio system.
 	MasterBus() MasterBus

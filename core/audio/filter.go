@@ -100,3 +100,15 @@ type Compression interface {
 	// The value will be clamped to the range [-100.0, 0.0].
 	SetThreshold(threshold float32)
 }
+
+// FrequencyFilter represents a simple frequency filter.
+type FrequencyFilter interface {
+
+	// Frequency returns the cutoff frequency of the filter in hertz.
+	Frequency() float32
+
+	// SetFrequency sets the cutoff frequency of the filter in hertz.
+	//
+	// The value must be positive.
+	SetFrequency(frequency float32)
+}
