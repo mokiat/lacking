@@ -14,12 +14,12 @@ func GainToDB(gain float32) float32 {
 
 // SampleCount calculates the number of samples for a given duration in seconds
 // given the used sample rate.
-func SampleCount(seconds float32, sampleRate int) int {
-	return int(float64(sampleRate) * float64(seconds))
+func SampleCount(seconds float64, sampleRate int) int {
+	return int(float64(sampleRate) * seconds)
 }
 
 // Seconds calculates the duration in seconds for a given number of samples
 // and sample rate.
-func Seconds(sampleCount, sampleRate int) float32 {
-	return float32(sampleCount) / float32(sampleRate)
+func Seconds(sampleCount, sampleRate int) float64 {
+	return float64(sampleCount) / float64(sampleRate)
 }
