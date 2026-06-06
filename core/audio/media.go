@@ -14,7 +14,7 @@ type MediaData struct {
 type Media interface {
 
 	// Length returns the duration of the media in seconds.
-	Length() float32
+	Length() float64
 
 	// Release releases any resources associated with the media. After calling this method,
 	// the media should not be used anymore.

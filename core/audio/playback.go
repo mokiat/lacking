@@ -4,11 +4,12 @@ package audio
 // the media.
 type Playback interface {
 
-	// Start begins playback of the media. If the media is already playing, this method has no effect.
+	// Start begins playback of the media. If the media is already playing, it is repositioned to the specified time
+	// offset and continues playing from there.
 	//
 	// The at parameter specifies the starting point in seconds from the beginning of the media. If at is negative or
 	// greater than the length of the media, it will be clamped to the valid range.
-	Start(at float32)
+	Start(at float64)
 
 	// Stop halts playback of the media. If the media is not playing, this method has no effect.
 	Stop()
@@ -28,18 +29,18 @@ type Playback interface {
 	// LoopStart returns the starting point in seconds from the beginning of the media where looping should occur.
 	//
 	// Default value is 0.0 seconds.
-	LoopStart() float32
+	LoopStart() float64
 
 	// SetLoopStart sets the starting point in seconds from the beginning of the media where looping should occur.
-	SetLoopStart(loopStart float32)
+	SetLoopStart(loopStart float64)
 
 	// LoopEnd returns the ending point in seconds from the beginning of the media where looping should occur.
 	//
 	// Default value is the length of the media.
-	LoopEnd() float32
+	LoopEnd() float64
 
 	// SetLoopEnd sets the ending point in seconds from the beginning of the media where looping should occur.
-	SetLoopEnd(loopEnd float32)
+	SetLoopEnd(loopEnd float64)
 
 	// Playing returns true if the media is currently playing, false otherwise.
 	Playing() bool
@@ -88,9 +89,6 @@ type SpatialPlayback interface {
 
 // PlaybackSettings represents the settings for creating a playback instance.
 type PlaybackSettings struct {
-
-	// FireAndForget indicates whether the playback should automatically release its resources after it finishes playing.
-	FireAndForget bool
 
 	// UseLowPassFilter indicates whether a low-pass filter should be applied to the playback.
 	UseLowPassFilter bool
