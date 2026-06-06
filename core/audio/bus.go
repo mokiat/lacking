@@ -11,15 +11,15 @@ type Bus interface {
 	// SetGain sets the gain of the bus.
 	SetGain(gain float32)
 
-	// Reverb returns the reverb controls of the bus.
-	//
-	// If the bus was not created with reverb enabled, this will return nil.
-	Reverb() Reverb
-
 	// Compression returns the compression controls of the bus.
 	//
 	// If the bus was not created with compression enabled, this will return nil.
 	Compression() Compression
+
+	// Reverb returns the reverb controls of the bus.
+	//
+	// If the bus was not created with reverb enabled, this will return nil.
+	Reverb() Reverb
 
 	// Pause pauses all sound sources attached to the bus. If the bus is already paused, this method has no effect.
 	Pause()
