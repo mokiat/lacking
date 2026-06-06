@@ -16,12 +16,6 @@ type SpatialListener interface {
 
 	// SetRotation sets the orientation of the listener as a quaternion.
 	SetRotation(rotation sprec.Quat)
-
-	// Velocity returns the velocity of the listener in 3D space in meters per second.
-	Velocity() sprec.Vec3
-
-	// SetVelocity sets the velocity of the listener in 3D space in meters per second.
-	SetVelocity(velocity sprec.Vec3)
 }
 
 // SpatialEmitter represents an emitter in 3D space for spatial audio.
@@ -38,12 +32,6 @@ type SpatialEmitter interface {
 
 	// SetRotation sets the orientation of the emitter as a quaternion.
 	SetRotation(rotation sprec.Quat)
-
-	// Velocity returns the velocity of the emitter in 3D space in meters per second.
-	Velocity() sprec.Vec3
-
-	// SetVelocity sets the velocity of the emitter in 3D space in meters per second.
-	SetVelocity(velocity sprec.Vec3)
 
 	// InnerConeAngle returns the inner cone angle of the emitter.
 	InnerConeAngle() sprec.Angle

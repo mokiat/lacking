@@ -44,6 +44,12 @@ type Playback interface {
 	// Playing returns true if the media is currently playing, false otherwise.
 	Playing() bool
 
+	// PlaybackRate returns the current playback rate of the media.
+	PlaybackRate() float32
+
+	// SetPlaybackRate sets the playback rate of the media.
+	SetPlaybackRate(rate float32)
+
 	// Gain returns the current gain of the playback.
 	//
 	// Default value is 1.0, which means no change in volume.
@@ -51,12 +57,6 @@ type Playback interface {
 
 	// SetGain sets the gain of the playback.
 	SetGain(gain float32)
-
-	// PlaybackRate returns the current playback rate of the media.
-	PlaybackRate() float32
-
-	// SetPlaybackRate sets the playback rate of the media.
-	SetPlaybackRate(rate float32)
 
 	// LowPassFilter returns the low-pass filter applied to this playback, if any. If no low-pass filter is applied,
 	// this method returns nil.
