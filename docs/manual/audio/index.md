@@ -4,7 +4,7 @@ title: Overview
 
 # Audio
 
-The `audio` package defines a low-level, node-graph-based audio API. It is the audio equivalent of the `render` package: an abstract interface that is implemented separately for each platform (native desktop, web). Game code is not expected to use this API directly — a higher-level audio API will be provided for that purpose.
+The `core/audio` package defines a mid-level, bus-based audio API. It is the audio equivalent of the `render` package: an abstract interface implemented separately for each platform (native desktop, web). Game code is not expected to use this API directly — a higher-level audio API is provided for that purpose — but there are cases where working directly with these primitives is necessary.
 
 The API is obtained from the application window:
 
@@ -16,184 +16,126 @@ api := window.AudioAPI()
 
 | Concept | Description |
 |---|---|
-| **API** | Entry point. Creates media and nodes, exposes the output node and spatial listener. |
-| **Media** | A decoded audio clip loaded into memory. Acts as a data source for `PlaybackNode`. |
-| **Sample** | A single stereo audio sample consisting of left and right channel values. |
-| **Node** | An element in the audio graph that produces or processes a signal. |
-| **UserNode** | A node that owns resources and must be explicitly deleted when no longer needed. |
-| **Output** | The terminal sink node of the graph. Signals connected to it are sent to the speakers. |
-| **SpatialListener** | Represents the listener's position and orientation in 3D space for spatial audio. |
+| **API** | Entry point. Creates media, buses, and playback instances. Exposes the master bus and spatial listener. |
+| **MediaData** | Raw decoded audio frames together with the sample rate. |
+| **Media** | A decoded audio clip loaded into the audio system. Acts as a data source for playback instances. |
+| **Frame** | A single stereo audio frame consisting of left and right channel values. |
+| **MasterBus** | The overall output sink. Controls master gain and compression. |
+| **Bus** | A named group of sound sources with collective gain, reverb, compression, and pause/resume control. |
+| **Playback** | A single playing instance of a `Media` on a `Bus`. Controls start/stop/pause and per-playback properties. |
+| **SpatialPlayback** | A `Playback` that is also positioned and oriented in 3D space. |
+| **SpatialListener** | The listener's position and orientation in 3D space for spatial audio. |
 
 ## Media
 
-`Media` represents a decoded audio clip held in memory. It is created from raw PCM samples or from an encoded file (WAV, MP3):
+`Media` represents a decoded audio clip held in the audio system. It is created from a `MediaData` value, which holds raw PCM frames and a sample rate:
 
 ```go
-// From raw PCM samples (must match the API's sample rate).
-media := api.CreateMedia(samples)
+// Decode from an encoded file (WAV, MP3, or any registered format).
+data, _, err := audio.Decode(r)
+if err != nil {
+    // handle error
+}
 
-// From encoded file bytes.
-media := api.ParseMedia(audio.MediaInfo{
-    Data:     fileBytes,
-    DataType: audio.MediaDataTypeWAV, // or MediaDataTypeMP3, MediaDataTypeAuto
-})
+// Resample if necessary (e.g. if the audio system requires a specific rate).
+// data.Frames = audio.Resample(data.Frames, data.SampleRate, targetRate)
+
+media := api.CreateMedia(data)
 
 // Release when no longer needed.
-defer media.Delete()
+defer media.Release()
 ```
 
-It is safe to delete a `Media` after using it to create a `PlaybackNode` — the node retains its own reference to the underlying data.
+It is safe to release a `Media` after using it to create playback instances — existing playback is not affected.
 
-### Sample Rate
+`media.Length()` returns the duration of the clip in seconds.
 
-The API operates at a fixed sample rate, available via `api.SampleRate()`. Raw samples passed to `CreateMedia` must already be at this rate. The `Resample` utility can be used to convert:
+### Frames and Sample Rate
+
+Audio data is represented as a slice of `Frame` values, each holding a left and right channel sample:
 
 ```go
-resampled := audio.Resample(samples, originalRate, api.SampleRate())
+type Frame struct {
+    Left  float32
+    Right float32
+}
 ```
 
-`SampleCount` calculates how many samples correspond to a given duration:
+The `Resample` utility converts frames between sample rates:
 
 ```go
-count := audio.SampleCount(2.5, api.SampleRate()) // samples for 2.5 seconds
+resampled := audio.Resample(frames, originalRate, targetRate)
 ```
 
-## Node Graph
-
-Audio flows through a directed graph of nodes. Sources generate signals, processing nodes transform them, and everything ultimately connects to the output node. When multiple sources are connected to the same target their signals are mixed additively.
+`SampleCount` and `Seconds` convert between frame counts and durations:
 
 ```go
-output := api.Output()
-
-// Connect source directly to output.
-api.Connect(source, output)
-
-// Or use Chain for a linear sequence.
-api.Chain(source, gainNode, reverbNode, output)
-
-// Disconnect when done.
-api.Disconnect(source, output)
+count := audio.SampleCount(2.5, sampleRate) // frames for 2.5 seconds
+dur   := audio.Seconds(count, sampleRate)   // back to seconds
 ```
 
-All nodes that are no longer needed must be deleted to avoid resource leaks:
+### Decoding Audio Files
+
+`audio.Decode` auto-detects the format by magic-byte prefix and decodes the data:
 
 ```go
-gainNode.Delete()
+data, format, err := audio.Decode(r) // format is e.g. "mp3" or "wav"
 ```
 
-## Node Types
-
-The following node types are available:
-
-| Node | Factory | Purpose |
-|---|---|---|
-| `PlaybackNode` | `CreatePlaybackNode` | Plays back a `Media` clip. |
-| `OscillatorNode` | `CreateOscillatorNode` | Generates a periodic waveform. |
-| `GainNode` | `CreateGainNode` | Scales the signal amplitude. |
-| `PanNode` | `CreatePanNode` | Pans the signal between left and right channels. |
-| `SpatialNode` | `CreateSpatialNode` | Applies 3D positional audio effects. |
-| `HighPassNode` | `CreateHighPassNode` | Removes frequencies below a cutoff. |
-| `LowPassNode` | `CreateLowPassNode` | Removes frequencies above a cutoff. |
-| `DelayNode` | `CreateDelayNode` | Adds a time delay to the signal. |
-| `ReverbNode` | `CreateReverbNode` | Applies a room reverb effect. |
-| `CompressorNode` | `CreateCompressorNode` | Applies dynamic range compression. |
-| `ConnectorNode` | `CreateConnectorNode` | Pass-through node useful as a named connection point. |
-
-### PlaybackNode
-
-Plays back a `Media` clip. Created with an initial loop setting:
+Format decoders self-register via package `init`. Import the sub-packages to enable them:
 
 ```go
-node := api.CreatePlaybackNode(media, false)
-defer node.Delete()
-
-api.Connect(node, api.Output())
-
-node.Start(0)   // start from the beginning
-node.Pause()    // pause; resumes from the same position
-node.Resume()   // resume from where it was paused
-node.Stop()     // stop and reset position
+import (
+    _ "github.com/mokiat/lacking/core/audio/mp3"
+    _ "github.com/mokiat/lacking/core/audio/wav"
+)
 ```
 
-Loop playback can be configured after creation, including a sub-range of the clip:
+Custom decoders can be added with `audio.RegisterDecoder`.
+
+## Master Bus
+
+`MasterBus` is the global output sink. It controls the overall gain and provides access to global compression:
 
 ```go
-node.SetLoop(true)
-node.SetLoopStart(1.0) // loop from 1.0 s
-node.SetLoopEnd(4.5)   // to 4.5 s
+master := api.MasterBus()
+master.SetGain(0.8)
+
+comp := master.Compression()
+comp.SetThreshold(-18.0)
+comp.SetRatio(4.0)
 ```
 
-### OscillatorNode
+## Buses
 
-Generates a continuous periodic waveform at a configurable frequency. Default frequency is 440 Hz (A4).
+A `Bus` groups a set of sound sources for collective control. Create one with `CreateBus`, optionally enabling reverb and/or compression:
 
 ```go
-node := api.CreateOscillatorNode()
-defer node.Delete()
-
-node.SetFrequency(220.0) // A3
-api.Connect(node, api.Output())
+musicBus := api.CreateBus(audio.BusSettings{})
+sfxBus   := api.CreateBus(audio.BusSettings{UseCompression: true})
+envBus   := api.CreateBus(audio.BusSettings{UseReverb: true, UseCompression: true})
+defer musicBus.Release()
+defer sfxBus.Release()
+defer envBus.Release()
 ```
 
-### GainNode
+Releasing a bus stops all playback attached to it.
 
-Scales the signal amplitude. A gain of `1.0` is unity (no change); `0.0` is silence; values above `1.0` amplify. Default is `1.0`.
+### Bus Controls
 
 ```go
-gain := api.CreateGainNode()
-defer gain.Delete()
+bus.SetGain(0.5)  // half volume for everything on this bus
 
-gain.SetGain(0.5) // half volume
-api.Chain(source, gain, api.Output())
+// Pause/resume all sources on the bus at once.
+bus.Pause()
+bus.Resume()
 ```
 
-The `DBToGain` and `GainToDB` utilities convert between decibels and linear gain:
+`bus.Compression()` and `bus.Reverb()` return `nil` if the bus was not created with those effects enabled.
 
-```go
-gain.SetGain(audio.DBToGain(-6.0)) // -6 dB
-```
+### Reverb
 
-### PanNode
-
-Distributes the signal between left and right channels. The range is `[-1.0, 1.0]` where `-1.0` is full left, `0.0` is center, and `1.0` is full right. Default is `0.0`.
-
-```go
-pan := api.CreatePanNode()
-defer pan.Delete()
-
-pan.SetPan(-0.5) // slightly left
-api.Chain(source, pan, api.Output())
-```
-
-### Filter Nodes
-
-`HighPassNode` and `LowPassNode` each expose a single `CutoffFrequency` parameter (in Hz). Default cutoff is 350 Hz for both.
-
-```go
-hp := api.CreateHighPassNode()
-defer hp.Delete()
-hp.SetCutoffFrequency(80.0) // remove rumble below 80 Hz
-
-lp := api.CreateLowPassNode()
-defer lp.Delete()
-lp.SetCutoffFrequency(8000.0) // remove hiss above 8 kHz
-```
-
-### DelayNode
-
-Adds a time delay to the signal. Default delay is `0.0` seconds. Implementations must support at least 1 second of delay.
-
-```go
-delay := api.CreateDelayNode()
-defer delay.Delete()
-
-delay.SetDelayTime(0.3) // 300 ms
-api.Chain(source, delay, api.Output())
-```
-
-### ReverbNode
-
-Applies a reverb effect with configurable room characteristics and dry/wet mix.
+Configure room characteristics on buses created with `UseReverb: true`:
 
 | Parameter | Default | Range | Description |
 |---|---|---|---|
@@ -203,58 +145,129 @@ Applies a reverb effect with configurable room characteristics and dry/wet mix.
 | `Wet` | 0.5 | [0.0, 1.0] | Level of the reverberated signal. |
 
 ```go
-reverb := api.CreateReverbNode()
-defer reverb.Delete()
-
+reverb := bus.Reverb()
 reverb.SetRoomSize(0.8)
 reverb.SetDamping(0.3)
 reverb.SetWet(0.4)
-
-api.Chain(source, reverb, api.Output())
 ```
 
-### CompressorNode
+### Compression
 
-Applies dynamic range compression, attenuating signals that exceed a threshold.
+Available on both `Bus` (when `UseCompression: true`) and `MasterBus`:
 
 | Parameter | Default | Range | Description |
 |---|---|---|---|
 | `Threshold` | -24.0 dB | [-100.0, 0.0] | Level above which compression is applied. |
 | `Ratio` | 12.0 | [1.0, 20.0] | Compression ratio (input dB : output dB above threshold). |
 | `Knee` | 30.0 dB | [0.0, 40.0] | Width of the soft-knee transition around the threshold. |
-| `Attack` | 0.003 s | [0.0, 1.0] | Time for compression to engage after the threshold is exceeded. |
-| `Release` | 0.25 s | [0.0, 1.0] | Time for compression to disengage after the signal drops below the threshold. |
+| `Attack` | 0.003 s | [0.0, 1.0] | Time for compression to engage. |
+| `Release` | 0.25 s | [0.0, 1.0] | Time for compression to disengage. |
 
 ```go
-comp := api.CreateCompressorNode()
-defer comp.Delete()
-
+comp := bus.Compression()
 comp.SetThreshold(-18.0)
 comp.SetRatio(4.0)
-api.Chain(source, comp, api.Output())
 ```
+
+## Playback
+
+A `Playback` is a single instance of a `Media` playing on a `Bus`. Create one with `CreatePlayback`:
+
+```go
+playback := api.CreatePlayback(bus, media, audio.PlaybackSettings{})
+defer playback.Release()
+
+playback.Start(0)    // start from the beginning
+playback.Pause()     // pause; position is preserved
+playback.Resume()    // resume from paused position
+playback.Stop()      // stop and reset position
+```
+
+`playback.Playing()` reports whether the playback is currently active.
+
+### Loop Control
+
+```go
+playback.SetLooping(true)
+playback.SetLoopStart(1.0) // loop from 1.0 s
+playback.SetLoopEnd(4.5)   // to 4.5 s
+```
+
+### Per-Playback Controls
+
+```go
+playback.SetGain(0.7)          // individual volume
+playback.SetPlaybackRate(1.5)  // 1.5× speed; pitch shifts accordingly
+```
+
+`DBToGain` and `GainToDB` convert between decibels and linear gain:
+
+```go
+playback.SetGain(audio.DBToGain(-6.0)) // -6 dB
+```
+
+### Completion Callback
+
+```go
+playback.SetOnFinished(func() {
+    // called when the media plays through naturally (not on Stop or Pause,
+    // and not on each loop iteration)
+})
+```
+
+### Per-Playback Filters
+
+Low-pass and high-pass filters can be enabled at creation time:
+
+```go
+playback := api.CreatePlayback(bus, media, audio.PlaybackSettings{
+    UseLowPassFilter:  true,
+    UseHighPassFilter: true,
+})
+
+playback.LowPassFilter().SetFrequency(8000.0)  // remove hiss above 8 kHz
+playback.HighPassFilter().SetFrequency(80.0)   // remove rumble below 80 Hz
+```
+
+`LowPassFilter()` and `HighPassFilter()` return `nil` if the respective filter was not enabled at creation.
 
 ## Spatial Audio
 
-`SpatialNode` wraps a signal source and applies 3D positional effects relative to the `SpatialListener`. The attenuation model is inverse distance: `gain = 1.0 / max(1.0, distance)`.
+`CreateSpatialPlayback` returns a `SpatialPlayback`, which combines `Playback` with `SpatialEmitter`. The sound source is positioned in 3D space and attenuated relative to the `SpatialListener`.
 
 ```go
-// Configure the listener (typically updated each frame to match the camera).
+// Update the listener each frame to match the camera.
 listener := api.SpatialListener()
 listener.SetPosition(cameraPosition)
 listener.SetRotation(cameraRotation)
 
-// Place a sound source in the world.
-spatial := api.CreateSpatialNode()
-defer spatial.Delete()
+// Create a positioned sound source.
+spatial := api.CreateSpatialPlayback(bus, media, audio.PlaybackSettings{})
+defer spatial.Release()
 
 spatial.SetPosition(sprec.Vec3{X: 10, Y: 0, Z: -5})
-api.Chain(playbackNode, spatial, api.Output())
+spatial.Start(0)
 ```
+
+### Directional Emission (Cone)
+
+By default a spatial source emits equally in all directions (`OuterConeAngle` = 360°). Narrowing the cone makes the source directional:
+
+```go
+spatial.SetInnerConeAngle(sprec.Degrees(30)) // full gain within 30°
+spatial.SetOuterConeAngle(sprec.Degrees(90)) // fade to outer gain by 90°
+spatial.SetOuterConeGain(0.0)                // silent outside the outer cone
+```
+
+| Property | Default | Description |
+|---|---|---|
+| `InnerConeAngle` | — | Within this angle the emitter plays at full gain. |
+| `OuterConeAngle` | 360° | Beyond this angle the gain is `OuterConeGain`. Between inner and outer the gain is linearly interpolated. |
+| `OuterConeGain` | 0.0 | Gain applied when the listener is outside the outer cone. |
 
 ## No-op Implementation
 
-`NewNopAPI` returns a fully functional but silent implementation. All node factories return working objects that store and return their configured values; no audio is produced. This is useful for headless environments and tests:
+`NewNopAPI` returns a fully functional but silent implementation. All methods work correctly and return valid objects; no audio is produced. Useful for headless environments and tests:
 
 ```go
 api := audio.NewNopAPI()
