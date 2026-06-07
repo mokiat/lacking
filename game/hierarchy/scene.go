@@ -120,6 +120,22 @@ func (s *Scene) IsNodeVisible(id NodeID) bool {
 	return node.getIsVisible(s)
 }
 
+// IsNodeVisibleRecursive returns whether the node with the specified ID is
+// marked as visible, as well as all parent nodes.
+func (s *Scene) IsNodeVisibleRecursive(id NodeID) bool {
+	node := s.fetchNode(id)
+	if !node.getIsVisible(s) {
+		return false
+	}
+	for node.parentIndex != -1 {
+		node = &s.nodes[node.parentIndex]
+		if !node.getIsVisible(s) {
+			return false
+		}
+	}
+	return true
+}
+
 // SetNodeVisible sets whether the node with the specified ID is marked as
 // visible.
 func (s *Scene) SetNodeVisible(id NodeID, visible bool) {

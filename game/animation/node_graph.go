@@ -1,6 +1,8 @@
 package animation
 
 import (
+	"fmt"
+
 	"github.com/mokiat/gog/opt"
 	"github.com/mokiat/gomath/dprec"
 )
@@ -53,26 +55,38 @@ func (n *GraphNode[T]) AddTransition(from, to T, transition GraphNodeTransition)
 	n.transitions[pair] = transition
 }
 
-// JumpToState jumps to a specific state and cancels any transitions.
-func (n *GraphNode[T]) JumpToState(state T) {
+// JumpTo jumps to a specific state and cancels any transitions.
+func (n *GraphNode[T]) JumpTo(state T, rewind bool) {
 	n.fromState = state
 	n.toState = state
 	n.transitionFraction = 1.0
 	n.SetFraction(0.0)
+	if rewind {
+		n.animations[state].SetFraction(0.0)
+	}
 }
 
 // TransitionTo triggers a new transition. Calling this while there is an
 // ongoing transition has undefined behavior.
 func (n *GraphNode[T]) TransitionTo(to T) {
+	if n.fromState == to {
+		return // already in the desired state
+	}
+	if n.toState == to {
+		return // already transitioning to state
+	}
 	transition, ok := n.transitions[graphStatePair[T]{
 		from: n.fromState,
 		to:   to,
 	}]
 	if !ok {
-		panic("unknown transition") // TODO: Just jump to target state.
+		panic(fmt.Errorf("unknown transition %v -> %v", n.fromState, to)) // TODO: Just jump to target state.
 	}
 	if transitionAnimation, ok := transition.Animation.Unwrap(); ok {
 		transitionAnimation.SetFraction(0.0)
+	}
+	if transition.Rewind {
+		n.animations[to].SetFraction(0.0)
 	}
 	n.toState = to
 	n.transitionFraction = 0.0
@@ -249,6 +263,11 @@ type graphStatePair[T comparable] struct {
 
 // GraphNodeTransition represents a transition in a GraphNode.
 type GraphNodeTransition struct {
+
+	// Rewind indicates whether the target state's animation should be rewound
+	// to the beginning when the transition starts.
+	Rewind bool
+
 	// FadeInFraction determines the amount of time (in fraction of the total
 	// animation) that it takes to fade into the transition animation (if there
 	// is one).

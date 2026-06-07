@@ -74,7 +74,7 @@ func NewSkyBinding() hierarchy.InterpolationBinding[*graphics.Sky] {
 type skyBinding struct{}
 
 func (b *skyBinding) OnNodeToInterpolation(scene *hierarchy.Scene, id hierarchy.NodeID, sky *graphics.Sky, fraction float64) {
-	active := scene.IsNodeVisible(id)
+	active := scene.IsNodeVisibleRecursive(id)
 
 	sky.SetActive(active)
 }
@@ -92,7 +92,7 @@ type ambientLightBinding struct{}
 
 func (b *ambientLightBinding) OnNodeToInterpolation(scene *hierarchy.Scene, id hierarchy.NodeID, light *graphics.AmbientLight, fraction float64) {
 	matrix := scene.NodeInterpolatedAbsoluteMatrix(id, fraction)
-	visible := scene.IsNodeVisible(id)
+	visible := scene.IsNodeVisibleRecursive(id)
 
 	light.SetPosition(matrix.Translation())
 	light.SetActive(visible)
@@ -111,7 +111,7 @@ type pointLightBinding struct{}
 
 func (b *pointLightBinding) OnNodeToInterpolation(scene *hierarchy.Scene, id hierarchy.NodeID, light *graphics.PointLight, fraction float64) {
 	matrix := scene.NodeInterpolatedAbsoluteMatrix(id, fraction)
-	visible := scene.IsNodeVisible(id)
+	visible := scene.IsNodeVisibleRecursive(id)
 
 	light.SetPosition(matrix.Translation())
 	light.SetActive(visible)
@@ -130,7 +130,7 @@ type spotLightBinding struct{}
 
 func (b *spotLightBinding) OnNodeToInterpolation(scene *hierarchy.Scene, id hierarchy.NodeID, light *graphics.SpotLight, fraction float64) {
 	matrix := scene.NodeInterpolatedAbsoluteMatrix(id, fraction)
-	visible := scene.IsNodeVisible(id)
+	visible := scene.IsNodeVisibleRecursive(id)
 
 	translation, rotation, _ := matrix.TRS()
 	light.SetPosition(translation)
@@ -151,7 +151,7 @@ type directionalLightBinding struct{}
 
 func (b *directionalLightBinding) OnNodeToInterpolation(scene *hierarchy.Scene, id hierarchy.NodeID, light *graphics.DirectionalLight, fraction float64) {
 	matrix := scene.NodeInterpolatedAbsoluteMatrix(id, fraction)
-	visible := scene.IsNodeVisible(id)
+	visible := scene.IsNodeVisibleRecursive(id)
 
 	translation, rotation, _ := matrix.TRS()
 	light.SetPosition(translation)
@@ -172,7 +172,7 @@ type meshBinding struct{}
 
 func (b *meshBinding) OnNodeToInterpolation(scene *hierarchy.Scene, id hierarchy.NodeID, mesh *graphics.Mesh, fraction float64) {
 	matrix := scene.NodeInterpolatedAbsoluteMatrix(id, fraction)
-	visible := scene.IsNodeVisible(id)
+	visible := scene.IsNodeVisibleRecursive(id)
 
 	mesh.SetMatrix(matrix)
 	mesh.SetActive(visible)

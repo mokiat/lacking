@@ -85,7 +85,7 @@ type StaticMeshInfo struct {
 func createStaticMesh(scene *Scene, info StaticMeshInfo) {
 	position := info.Matrix.Translation()
 	scale := info.Matrix.Scale()
-	maxScale := dprec.Max(scale.X, dprec.Max(scale.Y, scale.Z))
+	maxScale := max(scale.X, scale.Y, scale.Z)
 	radius := info.Definition.geometry.boundingSphereRadius * maxScale
 
 	meshIndex := uint32(len(scene.staticMeshes))

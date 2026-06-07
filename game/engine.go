@@ -3,19 +3,18 @@ package game
 import (
 	"time"
 
-	"github.com/mokiat/lacking/game/ecs"
 	"github.com/mokiat/lacking/game/graphics"
 	"github.com/mokiat/lacking/game/physics"
 	"github.com/mokiat/lacking/render"
-	"github.com/mokiat/lacking/storage/chunked"
+	"github.com/mokiat/lacking/resource"
 	"github.com/mokiat/lacking/util/async"
 )
 
 type EngineOption func(e *Engine)
 
-func WithStorage(storage chunked.Storage) EngineOption {
+func WithStore(registry resource.Store) EngineOption {
 	return func(e *Engine) {
-		e.storage = storage
+		e.store = registry
 	}
 }
 
@@ -43,12 +42,6 @@ func WithGraphics(gfxEngine *graphics.Engine) EngineOption {
 	}
 }
 
-func WithECS(ecsEngine *ecs.Engine) EngineOption {
-	return func(e *Engine) {
-		e.ecsEngine = ecsEngine
-	}
-}
-
 func NewEngine(opts ...EngineOption) *Engine {
 	result := &Engine{
 		lastTick: time.Now(),
@@ -56,18 +49,17 @@ func NewEngine(opts ...EngineOption) *Engine {
 	for _, opt := range opts {
 		opt(result)
 	}
-	result.registry = newResourceRegistry(result, result.storage)
+	result.registry = newResourceRegistry(result, result.store)
 	result.registry.RegisterResourceLoader(newModelResourceLoader())
 	return result
 }
 
 type Engine struct {
-	storage       chunked.Storage
+	store         resource.Store
 	ioWorker      Worker
 	gfxWorker     Worker
 	physicsEngine *physics.Engine
 	gfxEngine     *graphics.Engine
-	ecsEngine     *ecs.Engine
 
 	registry *resourceRegistry
 
@@ -85,8 +77,8 @@ func (e *Engine) Destroy() {
 	// TODO: Release all scenes and all resource sets
 }
 
-func (e *Engine) Storage() chunked.Storage {
-	return e.storage
+func (e *Engine) Storage() resource.Store {
+	return e.store
 }
 
 func (e *Engine) IOWorker() Worker {
@@ -103,10 +95,6 @@ func (e *Engine) Physics() *physics.Engine {
 
 func (e *Engine) Graphics() *graphics.Engine {
 	return e.gfxEngine
-}
-
-func (e *Engine) ECS() *ecs.Engine {
-	return e.ecsEngine
 }
 
 func (e *Engine) ActiveScene() *Scene {

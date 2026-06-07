@@ -35,7 +35,7 @@ More broadly, it performs the following sequence of steps.
 1. Applies forces to all dynamic objects.
 1. Derives the new velocities of all dynamic objects based on the accumulated accelerations.
 1. Applies correction impulses to all dynamic objects that have constraints on them.
-1. Derives the new positions of all dynamic objects based on the evaluated velocitiess
+1. Derives the new positions of all dynamic objects based on the evaluated velocities
 1. Applies correction nudges to all dynamic objects that have constraints on them.
 1. Detects collisions and creates temporary collision constraints.
 

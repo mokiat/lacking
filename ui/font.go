@@ -115,7 +115,7 @@ func (f *Font) TextSize(text string, fontSize float32) sprec.Vec2 {
 			continue
 		}
 		if ch == '\n' {
-			result.X = sprec.Max(result.X, currentWidth)
+			result.X = max(result.X, currentWidth)
 			result.Y += f.lineHeight
 			currentWidth = 0.0
 			lastGlyph = nil
@@ -129,7 +129,7 @@ func (f *Font) TextSize(text string, fontSize float32) sprec.Vec2 {
 			lastGlyph = glyph
 		}
 	}
-	result.X = sprec.Max(result.X, currentWidth)
+	result.X = max(result.X, currentWidth)
 	return sprec.Vec2Prod(result, fontSize)
 }
 

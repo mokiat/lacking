@@ -1,161 +1,182 @@
 package ecs_test
 
 import (
-	"strconv"
 	"testing"
 
 	"github.com/mokiat/lacking/game/ecs"
 )
 
-type NameComponent struct {
-	name string
-}
-
-func (c *NameComponent) SetName(name string) {
-	c.name = name
-}
-
-func (c *NameComponent) Name() string {
-	return c.name
-}
-
-type AgeComponent struct {
-	age int
-}
-
-func (c *AgeComponent) SetAge(age int) {
-	c.age = age
-}
-
-func (c *AgeComponent) Age() int {
-	return c.age
-}
-
-func BenchmarkQueryDense(b *testing.B) {
-	engine := ecs.NewEngine()
-	scene := engine.CreateScene()
-
-	nameComponents := ecs.NewDenseComponentSet[NameComponent](scene)
-	ageComponents := ecs.NewDenseComponentSet[AgeComponent](scene)
-
-	for i := range scene.MaxEntityCount() {
-		entity := scene.CreateEntity()
-		nameComponents.Set(entity, NameComponent{
-			name: strconv.Itoa(i),
-		})
-		if i%2 == 0 {
-			ageComponents.Set(entity, AgeComponent{
-				age: i,
-			})
-		}
+func BenchmarkCheckEntity(b *testing.B) {
+	type Position struct {
+		X, Y float64
+	}
+	type Name struct {
+		Value string
+	}
+	type Age struct {
+		Value int
 	}
 
-	scene.Query().Release() // prepare cache
+	scope := ecs.NewScope()
+	positionType := ecs.Type[Position](scope)
+	nameType := ecs.Type[Name](scope)
+	ageType := ecs.Type[Age](scope)
+	scene := ecs.NewScene(scope)
 
-	type FakeType struct {
-		*NameComponent
-		*AgeComponent
+	id := scene.CreateEntity(nil)
+	scene.EditEntity(id, func(op *ecs.EditOperation) {
+		ecs.SetComponent(op, positionType, Position{
+			X: 1.0,
+			Y: 2.0,
+		})
+		ecs.SetComponent(op, nameType, Name{
+			Value: "Alice",
+		})
+	})
+
+	for b.Loop() {
+		ok := scene.CheckEntity(id, ecs.Conditions(
+			ecs.HasComponent(positionType),
+			ecs.HasComponent(nameType),
+			ecs.LacksComponent(ageType),
+		))
+		if !ok {
+			b.Fatal("unexpected failed check")
+		}
+	}
+}
+
+func BenchmarkEditEntity(b *testing.B) {
+	type Position struct {
+		X, Y float64
+	}
+	type Name struct {
+		Value string
+	}
+	type Age struct {
+		Value int
+	}
+
+	scope := ecs.NewScope()
+	positionType := ecs.Type[Position](scope)
+	nameType := ecs.Type[Name](scope)
+	ageType := ecs.Type[Age](scope)
+	scene := ecs.NewScene(scope)
+
+	id := scene.CreateEntity(nil)
+	scene.EditEntity(id, func(op *ecs.EditOperation) {
+		ecs.SetComponent(op, positionType, Position{
+			X: 1.0,
+			Y: 2.0,
+		})
+		ecs.SetComponent(op, ageType, Age{
+			Value: 30,
+		})
+	})
+
+	for b.Loop() {
+		scene.EditEntity(id, func(op *ecs.EditOperation) {
+			ecs.SetComponent(op, nameType, Name{
+				Value: "Alice",
+			})
+		})
+		scene.EditEntity(id, func(op *ecs.EditOperation) {
+			ecs.UnsetComponent(op, nameType)
+		})
+	}
+}
+
+func BenchmarkQueryEntities(b *testing.B) {
+	type Position struct {
+		X, Y float64
+	}
+	type Velocity struct {
+		X, Y float64
+	}
+
+	const entityCount = 1000
+
+	scope := ecs.NewScope()
+	positionType := ecs.Type[Position](scope)
+	velocityType := ecs.Type[Velocity](scope)
+	scene := ecs.NewScene(scope)
+
+	for range entityCount {
+		id := scene.CreateEntity(nil)
+		scene.EditEntity(id, func(op *ecs.EditOperation) {
+			ecs.SetComponent(op, positionType, Position{X: 1.0, Y: 2.0})
+			ecs.SetComponent(op, velocityType, Velocity{X: 0.5, Y: 0.5})
+		})
 	}
 
 	for b.Loop() {
-		result := scene.Query(
-			ecs.HasComponent(nameComponents),
-			ecs.HasComponent(ageComponents),
+		count := 0
+		scene.QueryEntities(
+			ecs.Conditions(
+				ecs.HasComponent(positionType),
+			),
+			func(_ ecs.ID, op *ecs.ReadOperation) bool {
+				pos := ecs.GetComponent(op, positionType)
+				vel := ecs.GetComponent(op, velocityType)
+				pos.X += vel.X
+				pos.Y += vel.Y
+				count++
+				return true
+			},
 		)
-		result.Each(func(entity ecs.EntityID) {
-			obj := FakeType{
-				NameComponent: nameComponents.Ref(entity),
-				AgeComponent:  ageComponents.Ref(entity),
-			}
-			obj.SetName("test")
-			obj.SetAge(37)
-		})
-		result.Release()
+		if count != entityCount {
+			b.Fatalf("unexpected entity count: got %d, want %d", count, entityCount)
+		}
 	}
 }
 
-func BenchmarkQuerySparse(b *testing.B) {
-	engine := ecs.NewEngine()
-	scene := engine.CreateScene()
-
-	nameComponents := ecs.NewSparseComponentSet[NameComponent](scene)
-	ageComponents := ecs.NewSparseComponentSet[AgeComponent](scene)
-
-	for i := range scene.MaxEntityCount() {
-		entity := scene.CreateEntity()
-		nameComponents.Set(entity, NameComponent{
-			name: strconv.Itoa(i),
-		})
-		if i%2 == 0 {
-			ageComponents.Set(entity, AgeComponent{
-				age: i,
-			})
-		}
+func BenchmarkQueryEntitiesMultiArchetype(b *testing.B) {
+	type Position struct {
+		X, Y float64
 	}
+	type Velocity struct {
+		X, Y float64
+	}
+	type Tag struct{}
 
-	scene.Query().Release() // prepare cache
+	const entityCount = 1000
 
-	type FakeType struct {
-		*NameComponent
-		*AgeComponent
+	scope := ecs.NewScope()
+	positionType := ecs.Type[Position](scope)
+	velocityType := ecs.Type[Velocity](scope)
+	tagType := ecs.Type[Tag](scope)
+	scene := ecs.NewScene(scope)
+
+	for i := range entityCount {
+		id := scene.CreateEntity(nil)
+		scene.EditEntity(id, func(op *ecs.EditOperation) {
+			ecs.SetComponent(op, positionType, Position{X: 1.0, Y: 2.0})
+			ecs.SetComponent(op, velocityType, Velocity{X: 0.5, Y: 0.5})
+			if i%2 == 0 {
+				ecs.SetComponent(op, tagType, Tag{})
+			}
+		})
 	}
 
 	for b.Loop() {
-		result := scene.Query(
-			ecs.HasComponent(nameComponents),
-			ecs.HasComponent(ageComponents),
+		count := 0
+		scene.QueryEntities(
+			ecs.Conditions(
+				ecs.HasComponent(positionType),
+				ecs.HasComponent(velocityType),
+				ecs.HasComponent(tagType),
+			),
+			func(_ ecs.ID, op *ecs.ReadOperation) bool {
+				pos := ecs.GetComponent(op, positionType)
+				vel := ecs.GetComponent(op, velocityType)
+				pos.X += vel.X
+				pos.Y += vel.Y
+				count++
+				return true
+			},
 		)
-		result.Each(func(entity ecs.EntityID) {
-			obj := FakeType{
-				NameComponent: nameComponents.Ref(entity),
-				AgeComponent:  ageComponents.Ref(entity),
-			}
-			obj.SetName("test")
-			obj.SetAge(37)
-		})
-		result.Release()
-	}
-}
-
-func BenchmarkQueryTiny(b *testing.B) {
-	engine := ecs.NewEngine()
-	scene := engine.CreateScene()
-
-	nameComponents := ecs.NewTinyComponentSet[NameComponent](scene)
-	ageComponents := ecs.NewTinyComponentSet[AgeComponent](scene)
-
-	for i := range scene.MaxEntityCount() {
-		entity := scene.CreateEntity()
-		nameComponents.Set(entity, NameComponent{
-			name: strconv.Itoa(i),
-		})
-		if i%2 == 0 {
-			ageComponents.Set(entity, AgeComponent{
-				age: i,
-			})
+		if count != entityCount/2 {
+			b.Fatalf("unexpected entity count: got %d, want %d", count, entityCount/2)
 		}
-	}
-
-	scene.Query().Release() // prepare cache
-
-	type FakeType struct {
-		*NameComponent
-		*AgeComponent
-	}
-
-	for b.Loop() {
-		result := scene.Query(
-			ecs.HasComponent(nameComponents),
-			ecs.HasComponent(ageComponents),
-		)
-		result.Each(func(entity ecs.EntityID) {
-			obj := FakeType{
-				NameComponent: nameComponents.Ref(entity),
-				AgeComponent:  ageComponents.Ref(entity),
-			}
-			obj.SetName("test")
-			obj.SetAge(37)
-		})
-		result.Release()
 	}
 }

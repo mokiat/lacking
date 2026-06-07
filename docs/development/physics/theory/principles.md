@@ -2,7 +2,7 @@
 
 Following are some physics principles that are useful to keep in mind.
 
-## Tangental velocity
+## Tangential velocity
 
 The velocity that a point $p$ on an object experiences is equal to the sum of the velocity of the object and the angular velocity times the radius.
 
@@ -10,9 +10,9 @@ $$
 v_t = v + \omega r
 $$
 
-## Tangental Acceleration
+## Tangential Acceleration
 
-From the tangental velocity, we can derive the tangental acceleration of an offset point to be as follows:
+From the tangential velocity, we can derive the tangential acceleration of an offset point to be as follows:
 
 $$
 a_t = a + \alpha r
@@ -26,7 +26,7 @@ This is probably not so unknown nowadays, as drones demonstrate this principle v
 
 ## Offset force
 
-If a force is applied to an object at a point away from the center of mass, both a force at the center of mass and a torque are applied to the object. What is interesting here is that the magnitute of the force is the same as would be if the force were applied at the center of mass.
+If a force is applied to an object at a point away from the center of mass, both a force at the center of mass and a torque are applied to the object. What is interesting here is that the magnitude of the force is the same as would be if the force were applied at the center of mass.
 
 That is, given an object with a center of mass $\vec{p_{cm}}$ and a force $\vec{F}$ that is applied at point $\vec{p}$, the resulting force and torque arise.
 

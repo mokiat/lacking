@@ -45,6 +45,9 @@ type Controller interface {
 
 	// OnClipboardEvent is called whenever the clipboard content has been
 	// requested and the underlying window has managed to retrieve it.
+	//
+	// Return true to indicate that the event has been consumed and should
+	// not be propagated to other potential receivers, otherwise return false.
 	OnClipboardEvent(window Window, event ClipboardEvent) bool
 
 	// OnRender is called whenever the window would like to be redrawn.
@@ -104,6 +107,13 @@ var _ (Controller) = (*LayeredController)(nil)
 // LayeredController is an implementation of Controller that invokes
 // the specified controller layers in an order emulating multiple overlays
 // of a window.
+//
+// Lifecycle methods (OnCreate, OnResize, OnFramebufferResize, OnRender) are
+// called in forward order (first layer first). OnDestroy is called in reverse
+// order so that layers are torn down in the opposite order to their creation.
+// Event methods (OnKeyboardEvent, OnMouseEvent, OnGamepadEvent,
+// OnClipboardEvent, OnCloseRequested) are called in reverse order so that the
+// top-most layer gets first opportunity to consume the event.
 type LayeredController struct {
 	layers []Controller
 }

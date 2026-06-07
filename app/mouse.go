@@ -6,7 +6,7 @@ import "fmt"
 type MouseEvent struct {
 
 	// Index indicates which mouse triggered the event. By default
-	// the index for a the primary mouse is 0.
+	// the index for the primary mouse is 0.
 	//
 	// This is applicable for devices with multiple pointers
 	// (mobile) or in case a second mouse is emulated
@@ -48,9 +48,15 @@ func (e MouseEvent) String() string {
 	)
 }
 
+// MouseAction represents the type of action performed with the mouse.
+type MouseAction int
+
 const (
+	// MouseActionNone indicates that no mouse action occurred.
+	MouseActionNone MouseAction = iota
+
 	// MouseActionDown indicates that a mouse button was pressed down.
-	MouseActionDown MouseAction = 1 + iota
+	MouseActionDown
 
 	// MouseActionUp indicates that a mouse button was released.
 	MouseActionUp
@@ -75,58 +81,70 @@ const (
 	// The ScrollX and ScrollY values of the event indicate the offset in
 	// abstract units (comparable to pixels in magnitude).
 	MouseActionScroll
-)
 
-// MouseAction represents the type of action performed with the mouse.
-type MouseAction int
+	// MouseActionCount is a sentinel value representing the total number of
+	// mouse action enums.
+	MouseActionCount
+)
 
 // String returns a string representation of this event type.
 func (a MouseAction) String() string {
 	switch a {
+	case MouseActionNone:
+		return "NONE"
 	case MouseActionDown:
-		return "Down"
+		return "DOWN"
 	case MouseActionUp:
-		return "Up"
+		return "UP"
 	case MouseActionMove:
-		return "Move"
+		return "MOVE"
 	case MouseActionEnter:
-		return "Enter"
+		return "ENTER"
 	case MouseActionLeave:
-		return "Leave"
+		return "LEAVE"
 	case MouseActionDrop:
-		return "Drop"
+		return "DROP"
 	case MouseActionScroll:
-		return "Scroll"
+		return "SCROLL"
 	default:
-		return "Unknown"
+		return "UNKNOWN"
 	}
 }
 
+// MouseButton represents the mouse button.
+type MouseButton int
+
 const (
+	// MouseButtonNone indicates that no mouse button is involved.
+	MouseButtonNone MouseButton = iota
+
 	// MouseButtonLeft specifies the left mouse button.
-	MouseButtonLeft MouseButton = 1 + iota
+	MouseButtonLeft
 
 	// MouseButtonMiddle specifies the middle mouse button.
 	MouseButtonMiddle
 
 	// MouseButtonRight specifies the right mouse button.
 	MouseButtonRight
-)
 
-// MouseButton represents the mouse button.
-type MouseButton int
+	// MouseButtonCount is a sentinel value representing the total number of
+	// mouse button enums.
+	MouseButtonCount
+)
 
 // String returns a string representation of this button.
 func (b MouseButton) String() string {
 	switch b {
+	case MouseButtonNone:
+		return "NONE"
 	case MouseButtonLeft:
-		return "Left"
+		return "LEFT"
 	case MouseButtonMiddle:
-		return "Middle"
+		return "MIDDLE"
 	case MouseButtonRight:
-		return "Right"
+		return "RIGHT"
 	default:
-		return "Unknown"
+		return "UNKNOWN"
 	}
 }
 

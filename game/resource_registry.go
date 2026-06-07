@@ -6,14 +6,15 @@ import (
 	"reflect"
 	"sync"
 
+	"github.com/mokiat/lacking/resource"
 	"github.com/mokiat/lacking/storage/chunked"
 	"github.com/mokiat/lacking/util/async"
 )
 
-func newResourceRegistry(engine *Engine, storage chunked.Storage) *resourceRegistry {
+func newResourceRegistry(engine *Engine, store resource.Store) *resourceRegistry {
 	return &resourceRegistry{
-		engine:  engine,
-		storage: storage,
+		engine: engine,
+		store:  store,
 
 		resourceLoaders: make(map[reflect.Type]ResourceLoader[any]),
 		resources:       make(map[string]*resourceHandle),
@@ -21,8 +22,8 @@ func newResourceRegistry(engine *Engine, storage chunked.Storage) *resourceRegis
 }
 
 type resourceRegistry struct {
-	engine  *Engine
-	storage chunked.Storage
+	engine *Engine
+	store  resource.Store
 
 	mu              sync.Mutex
 	resourceLoaders map[reflect.Type]ResourceLoader[any]
@@ -65,7 +66,7 @@ func (r *resourceRegistry) LoadResource(resourceSet *ResourceSet, path string, t
 			promise:        promise,
 			refCount:       1,
 		}
-		asset := chunked.NewAsset(r.storage, path)
+		asset := chunked.NewAsset(r.store, path)
 		go func() {
 			assetLoader := &AssetLoader{
 				engine:      r.engine,

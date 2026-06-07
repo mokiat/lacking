@@ -43,7 +43,7 @@ Following is a list of assignment operators that can be used to assign a value t
 | `<<=` | Shifts the variable to the left by the value number of bits. |
 | `>>=` | Shifts the variable to the right by the value number of bits. |
 | `&=` | Assigns the bitwise AND operation on the variable and the value to the variable. |
-| `│=` | Assigns the bitwise OR operation on the variable and the value to the variable. |
+| <code>&#124;=</code> | Assigns the bitwise OR operation on the variable and the value to the variable. |
 | `^=` | Assigns the bitwise XOR operation on the variable and the value to the variable. |
 
 ### Unary Operators
@@ -77,20 +77,20 @@ The following binary operators can be used inside expressions to combine two sub
 | `<=` | Returns a boolean value indicating whether the first expression is smaller than or equal to the second expression. Both sides need to be expressions of the same type and be ordered. |
 | `>=` | Returns a boolean value indicating whether the second expression is smaller than or equal to the first expression. Both sides need to be expressions of the same type and be ordered. |
 | `&` | Returns the result of a bitwise AND operation on the two expressions. Both sides need to be integer expressions of the same type. |
-| `│` | Returns the result of a bitwise OR operation on the two expressions. Both sides need to be integer expressions of the same type. |
+| <code>&#124;</code> | Returns the result of a bitwise OR operation on the two expressions. Both sides need to be integer expressions of the same type. |
 | `^` | Returns the result of a bitwise XOR operation on the two expressions. Both sides need to be integer expressions of the same type. |
 | `&&` | Returns the result of a logical AND operation on the two expressions. Both sides need to be boolean expressions of the same type. |
-| `││` | Returns the result of a logical OR operation on the two expressions. Both sides need to be boolean expressions of the same type. |
+| <code>&#124;&#124;</code> | Returns the result of a logical OR operation on the two expressions. Both sides need to be boolean expressions of the same type. |
 
 The operator precedence is similar to the official Go one and is described in the following table (higher is applied first).
 
 | Precedence | Operator |
 | ---------- | -------- |
 | 5 | `*`, `/`, `%`, `<<`, `>>`, `&` |
-| 4 | `+`, `-`, `│`, `^` |
+| 4 | `+`, `-`, <code>&#124;</code>, `^` |
 | 3 | `==`, `!=`, `<`, `<=`, `>`, `>=` |
 | 2 | `&&` |
-| 1 | `││` |
+| 1 | <code>&#124;&#124;</code> |
 
 Operators with the same precedence associate from left to right (i.e. the operators are applied from left to right).
 
@@ -209,7 +209,7 @@ The following table lists constructor built-in functions.
 | `uint(v float) uint` | unbounded | Converts a float into an unsigned integer. |
 | `float(v bool) float` | unbounded | Converts a boolean into a float. |
 | `float(v int) float` | unbounded | Converts an integer into a float. |
-| `float(v uint) float` | unbounded | Converst an unsigned integer into a float. |
+| `float(v uint) float` | unbounded | Converts an unsigned integer into a float. |
 | `vec2(v float) vec2` | unbounded | Returns a `vec2` with all components equal to the value `v`. |
 | `vec2(x, y float) vec2` | unbounded | Returns a `vec2` with the components set to `x` and `y` respectively. |
 | `vec3(v float) vec3` | unbounded | Returns a `vec3` with all components equal to the value `v`. |

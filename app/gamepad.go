@@ -9,6 +9,8 @@ var (
 	// GamepadMinEventInterval is the minimum interval between
 	// gamepad event processing. This is to ensure that even if there are no
 	// native events, the gamepad will still produce events.
+	//
+	// This value can be changed from the UI thread.
 	GamepadMinEventInterval = 30 * time.Millisecond
 
 	// GamepadRepeatDelay is the initial delay before a held down
@@ -28,7 +30,7 @@ var (
 type GamepadEvent struct {
 
 	// Index indicates which gamepad triggered the event. By default
-	// the index for a the primary gamepad is 0.
+	// the index for the primary gamepad is 0.
 	Index int
 
 	// Gamepad is a reference to the gamepad that triggered the event.
@@ -37,10 +39,12 @@ type GamepadEvent struct {
 	// Action indicates the action performed with the gamepad.
 	Action GamepadAction
 
-	// Button specifies the button for which the event is applicable.
+	// Button specifies the button for which an event occurred. This is only
+	// applicable for button events.
 	Button GamepadButton
 
-	// Stick specifies the stick for which the event is applicable.
+	// Stick specifies the stick for which an event occurred. This is only
+	// applicable for stick move events.
 	Stick GamepadStick
 
 	// X specifies the horizontal position of the stick.
@@ -61,6 +65,9 @@ func (s GamepadEvent) String() string {
 		s.Y,
 	)
 }
+
+// GamepadAction is used to specify the type of gamepad action that occurred.
+type GamepadAction int
 
 const (
 	// GamepadActionNone indicates that no action occurred. This is an unlikely
@@ -85,32 +92,36 @@ const (
 
 	// GamepadActionStickMove indicates that a gamepad stick or trigger was moved.
 	GamepadActionStickMove
+
+	// GamepadActionCount is a sentinel value representing the total number of
+	// gamepad action enums.
+	GamepadActionCount
 )
 
-// GamepadAction is used to specify the type of gamepad action that occurred.
-type GamepadAction int
-
-// String returns a string representation of this event type,
+// String returns a string representation of this event type.
 func (s GamepadAction) String() string {
 	switch s {
 	case GamepadActionNone:
-		return "None"
+		return "NONE"
 	case GamepadActionConnected:
-		return "Connected"
+		return "CONNECTED"
 	case GamepadActionDisconnected:
-		return "Disconnected"
+		return "DISCONNECTED"
 	case GamepadActionButtonDown:
-		return "ButtonDown"
+		return "BUTTON_DOWN"
 	case GamepadActionButtonUp:
-		return "ButtonUp"
+		return "BUTTON_UP"
 	case GamepadActionButtonRepeat:
-		return "ButtonRepeat"
+		return "BUTTON_REPEAT"
 	case GamepadActionStickMove:
-		return "StickMove"
+		return "STICK_MOVE"
 	default:
-		return "Unknown"
+		return "UNKNOWN"
 	}
 }
+
+// GamepadButton represents the gamepad button.
+type GamepadButton int
 
 const (
 	// GamepadButtonNone indicates that no button is associated with the event.
@@ -175,84 +186,90 @@ const (
 	// GamepadButtonLeftStickLeft indicates the left direction on the left stick.
 	GamepadButtonLeftStickLeft
 
-	// GamepadButtonLeftStickRight indicates the right direction on the left stick.
+	// GamepadButtonLeftStickRight indicates the right direction on the left
+	// stick.
 	GamepadButtonLeftStickRight
 
 	// GamepadButtonRightStickUp indicates the up direction on the right stick.
 	GamepadButtonRightStickUp
 
-	// GamepadButtonRightStickDown indicates the down direction on the right stick.
+	// GamepadButtonRightStickDown indicates the down direction on the right
+	// stick.
 	GamepadButtonRightStickDown
 
-	// GamepadButtonRightStickLeft indicates the left direction on the right stick.
+	// GamepadButtonRightStickLeft indicates the left direction on the right
+	// stick.
 	GamepadButtonRightStickLeft
 
-	// GamepadButtonRightStickRight indicates the right direction on the right stick.
+	// GamepadButtonRightStickRight indicates the right direction on the right
+	// stick.
 	GamepadButtonRightStickRight
 
-	// GamepadButtonCount is the total number of gamepad buttons enums.
+	// GamepadButtonCount is a sentinel value representing the total number of
+	// gamepad button enums.
 	GamepadButtonCount
 )
 
-// GamepadButton represents the gamepad button.
-type GamepadButton int
-
+// String returns a string representation of this button.
 func (b GamepadButton) String() string {
 	switch b {
 	case GamepadButtonNone:
-		return "None"
+		return "NONE"
 	case GamepadButtonLeftStick:
-		return "LeftStick"
+		return "LEFT_STICK"
 	case GamepadButtonRightStick:
-		return "RightStick"
+		return "RIGHT_STICK"
 	case GamepadButtonLeftTrigger:
-		return "LeftTrigger"
+		return "LEFT_TRIGGER"
 	case GamepadButtonRightTrigger:
-		return "RightTrigger"
+		return "RIGHT_TRIGGER"
 	case GamepadButtonLeftBumper:
-		return "LeftBumper"
+		return "LEFT_BUMPER"
 	case GamepadButtonRightBumper:
-		return "RightBumper"
+		return "RIGHT_BUMPER"
 	case GamepadButtonDpadUp:
-		return "DpadUp"
+		return "DPAD_UP"
 	case GamepadButtonDpadDown:
-		return "DpadDown"
+		return "DPAD_DOWN"
 	case GamepadButtonDpadLeft:
-		return "DpadLeft"
+		return "DPAD_LEFT"
 	case GamepadButtonDpadRight:
-		return "DpadRight"
+		return "DPAD_RIGHT"
 	case GamepadButtonActionUp:
-		return "ActionUp"
+		return "ACTION_UP"
 	case GamepadButtonActionDown:
-		return "ActionDown"
+		return "ACTION_DOWN"
 	case GamepadButtonActionLeft:
-		return "ActionLeft"
+		return "ACTION_LEFT"
 	case GamepadButtonActionRight:
-		return "ActionRight"
+		return "ACTION_RIGHT"
 	case GamepadButtonForward:
-		return "Forward"
+		return "FORWARD"
 	case GamepadButtonBack:
-		return "Back"
+		return "BACK"
 	case GamepadButtonLeftStickUp:
-		return "LeftStickUp"
+		return "LEFT_STICK_UP"
 	case GamepadButtonLeftStickDown:
-		return "LeftStickDown"
+		return "LEFT_STICK_DOWN"
 	case GamepadButtonLeftStickLeft:
-		return "LeftStickLeft"
+		return "LEFT_STICK_LEFT"
 	case GamepadButtonLeftStickRight:
-		return "LeftStickRight"
+		return "LEFT_STICK_RIGHT"
 	case GamepadButtonRightStickUp:
-		return "RightStickUp"
+		return "RIGHT_STICK_UP"
 	case GamepadButtonRightStickDown:
-		return "RightStickDown"
+		return "RIGHT_STICK_DOWN"
 	case GamepadButtonRightStickLeft:
-		return "RightStickLeft"
+		return "RIGHT_STICK_LEFT"
 	case GamepadButtonRightStickRight:
-		return "RightStickRight"
+		return "RIGHT_STICK_RIGHT"
 	default:
-		return "Unknown"
+		return "UNKNOWN"
 	}
 }
+
+// GamepadStick is used to specify a particular stick on the gamepad.
+type GamepadStick int
 
 const (
 	// GamepadStickNone indicates that no axis is associated with the event.
@@ -264,40 +281,38 @@ const (
 	// GamepadStickRight indicates the right stick.
 	GamepadStickRight
 
-	// GamepadStickLeftTrigger indicates the left trigger. Only the Y value
-	// is applicable.
+	// GamepadStickLeftTrigger indicates the left trigger.
+	// Only the Y stick value is applicable and is within the range [0.0, 1.0].
 	GamepadStickLeftTrigger
 
-	// GamepadStickRightTrigger indicates the right trigger. Only the Y value
-	// is applicable.
+	// GamepadStickRightTrigger indicates the right trigger.
+	// Only the Y stick value is applicable and is within the range [0.0, 1.0].
 	GamepadStickRightTrigger
 
-	// GamepadStickCount is the total number of gamepad stick enums.
+	// GamepadStickCount is a sentinel value representing the total number of
+	// gamepad stick enums.
 	GamepadStickCount
 )
-
-// GamepadStick is used to specify a particular stick on the gamepad.
-type GamepadStick int
 
 // String returns a string representation of this stick.
 func (s GamepadStick) String() string {
 	switch s {
 	case GamepadStickNone:
-		return "None"
+		return "NONE"
 	case GamepadStickLeft:
-		return "Left"
+		return "LEFT"
 	case GamepadStickRight:
-		return "Right"
+		return "RIGHT"
 	case GamepadStickLeftTrigger:
-		return "LeftTrigger"
+		return "LEFT_TRIGGER"
 	case GamepadStickRightTrigger:
-		return "RightTrigger"
+		return "RIGHT_TRIGGER"
 	default:
-		return "Unknown"
+		return "UNKNOWN"
 	}
 }
 
-// Gamepad represents a gamepad type joystick. Only input devides that can
+// Gamepad represents a gamepad-type joystick. Only input devices that can
 // be mapped according to standard layout will work and have any axis
 // and button output.
 type Gamepad interface {
@@ -341,17 +356,17 @@ type Gamepad interface {
 	// RightStickX returns the horizontal axis of the right stick.
 	RightStickX() float64
 
-	// RightStickY returns the horizontal axis of the right stick.
+	// RightStickY returns the vertical axis of the right stick.
 	RightStickY() float64
 
 	// RightStickButton returns the button represented by pressing
 	// on the right stick.
 	RightStickButton() bool
 
-	// LeftTrigger returns the left trigger button.
+	// LeftTrigger returns the analog value of the left trigger.
 	LeftTrigger() float64
 
-	// RightTrigger returns the right trigger button.
+	// RightTrigger returns the analog value of the right trigger.
 	RightTrigger() float64
 
 	// LeftBumper returns the left bumper button.
@@ -372,7 +387,7 @@ type Gamepad interface {
 	// DpadRightButton returns the right button of the left cluster.
 	DpadRightButton() bool
 
-	// ActionTopButton returns the up button of the right cluster.
+	// ActionUpButton returns the up button of the right cluster.
 	ActionUpButton() bool
 
 	// ActionDownButton returns the down button of the right cluster.
@@ -384,14 +399,15 @@ type Gamepad interface {
 	// ActionRightButton returns the right button of the right cluster.
 	ActionRightButton() bool
 
-	// ForwardButton represents the right button of the center cluster.
+	// ForwardButton returns the right button of the center cluster.
 	ForwardButton() bool
 
-	// BackButton represents the left button of the center cluster.
+	// BackButton returns the left button of the center cluster.
 	BackButton() bool
 
 	// Pulse causes the Gamepad controller to vibrate with the specified
-	// intensity (0.0 to 1.0) for the specified duration.
+	// intensity for the specified duration. The intensity should be within the
+	// range [0.0, 1.0] - a value outside that range will be clamped.
 	//
 	// If the device does not have haptic feedback or if this API implementation
 	// does not support it then this method does nothing.

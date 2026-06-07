@@ -22,7 +22,7 @@ const (
 )
 
 // OS represents the operating system that runs the application
-// regarless if native or via an intermediary like a browser.
+// regardless if native or via an intermediary like a browser.
 type OS string
 
 const (

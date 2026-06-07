@@ -104,7 +104,7 @@ func (l *SpotLight) EmitRange() float64 {
 // SetEmitRange changes the distance that this light source covers.
 func (l *SpotLight) SetEmitRange(emitRange float64) {
 	if emitRange != l.emitRange {
-		l.emitRange = dprec.Max(0.0, emitRange)
+		l.emitRange = max(0.0, emitRange)
 		l.scene.spotLightSet.Update(
 			l.itemID, l.position, l.emitRange,
 		)

@@ -14,7 +14,7 @@ $$
 \vec{a} \cdot \vec{b} = |a||b|\cos{\alpha}
 $$
 
-The dot product is very useful in determining if two vectors are perpendicular or whether they point in the same direction. A value of $0$ indicates that they are perpendicular. A positive value indicates that they point in the same half-space direction. A negataive value indicates that they point in opposite half-space directions.
+The dot product is very useful in determining if two vectors are perpendicular or whether they point in the same direction. A value of $0$ indicates that they are perpendicular. A positive value indicates that they point in the same half-space direction. A negative value indicates that they point in opposite half-space directions.
 
 Furthermore, if one of the vectors is unit (has length of one), it returns the length of the other vector's component that is along the first vector's direction. This can be used to measure the distance of a point to a plane if we have the normal of the plane and an arbitrary point on it.
 
