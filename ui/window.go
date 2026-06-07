@@ -11,9 +11,12 @@ import (
 // newWindow creates a new Window instance that integrates
 // with the specified app.Window.
 func newWindow(appWindow app.Window, canvas *Canvas, resMan *resourceManager) (*Window, WindowHandler) {
+	audioAPI := appWindow.AudioAPI()
+
 	window := &Window{
 		Window:             appWindow,
 		canvas:             canvas,
+		mixer:              newMixer(audioAPI),
 		oldEnteredElements: make(map[*Element]struct{}),
 		enteredElements:    make(map[*Element]struct{}),
 		lastRender:         time.Now(),
@@ -73,6 +76,7 @@ type Window struct {
 	app.Window
 	context *Context
 	canvas  *Canvas
+	mixer   *Mixer
 
 	size           Size
 	root           *Element
@@ -105,6 +109,12 @@ func (w *Window) SetSize(size Size) {
 // will not be released until this Window is closed.
 func (w *Window) Context() *Context {
 	return w.context
+}
+
+// Mixer returns the audio Mixer associated with this Window, which can be used
+// to play sounds and manage audio volume.
+func (w *Window) Mixer() *Mixer {
+	return w.mixer
 }
 
 // Root returns the Element that represents this Window.

@@ -7,9 +7,9 @@ import (
 	_ "image/png"
 	"io"
 
-	"github.com/mokiat/lacking/audio"
-	_ "github.com/mokiat/lacking/audio/mp3"
-	_ "github.com/mokiat/lacking/audio/wav"
+	"github.com/mokiat/lacking/core/audio"
+	_ "github.com/mokiat/lacking/core/audio/mp3"
+	_ "github.com/mokiat/lacking/core/audio/wav"
 	"github.com/mokiat/lacking/resource"
 	"golang.org/x/image/font/opentype"
 )
@@ -108,7 +108,7 @@ func (m *resourceManager) OpenFontCollection(uri string) (*FontCollection, error
 
 func (m *resourceManager) CreateSound(data audio.MediaData) *Sound {
 	media := m.audioAPI.CreateMedia(data)
-	return newSound(m.audioAPI, media)
+	return newSound(media)
 }
 
 func (m *resourceManager) OpenSound(uri string) (*Sound, error) {

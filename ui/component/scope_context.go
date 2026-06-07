@@ -126,6 +126,13 @@ func OpenSound(scope Scope, uri string) *ui.Sound {
 	return sound
 }
 
+// PlaySound uses the ui.Context from the specified scope to play the provided
+// sound.
+func PlaySound(scope Scope, sound *ui.Sound) {
+	window := scope.Context().Window()
+	window.Mixer().PlaySound(sound)
+}
+
 // ContextScope returns a new Scope that extends the specified parent scope
 // but uses a different ui.Context. This can be used to have sections of the
 // UI use a dedicated resource set.
