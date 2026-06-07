@@ -8,6 +8,10 @@ import (
 	"github.com/mokiat/lacking/core/audio"
 )
 
+func init() {
+	audio.RegisterDecoder("wav", "RIFF", Decode)
+}
+
 // Decode decodes WAV data from the provided reader and returns the decoded
 // audio frames.
 func Decode(in io.Reader) (audio.MediaData, error) {

@@ -9,6 +9,8 @@ type Bus interface {
 	Gain() float32
 
 	// SetGain sets the gain of the bus.
+	//
+	// The value must be non-negative.
 	SetGain(gain float32)
 
 	// Compression returns the compression controls of the bus.

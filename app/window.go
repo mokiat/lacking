@@ -1,7 +1,7 @@
 package app
 
 import (
-	"github.com/mokiat/lacking/audio"
+	"github.com/mokiat/lacking/core/audio"
 	"github.com/mokiat/lacking/render"
 )
 

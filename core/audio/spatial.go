@@ -34,6 +34,9 @@ type SpatialEmitter interface {
 	SetRotation(rotation sprec.Quat)
 
 	// InnerConeAngle returns the inner cone angle of the emitter.
+	//
+	// Within this cone the emitter plays at full gain. Between the inner and
+	// outer cone the gain is linearly interpolated toward [OuterConeGain].
 	InnerConeAngle() sprec.Angle
 
 	// SetInnerConeAngle sets the inner cone angle of the emitter.

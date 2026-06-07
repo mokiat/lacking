@@ -46,9 +46,14 @@ type Playback interface {
 	Playing() bool
 
 	// PlaybackRate returns the current playback rate of the media.
+	//
+	// A value of 1.0 represents normal speed. Default value is 1.0.
 	PlaybackRate() float32
 
 	// SetPlaybackRate sets the playback rate of the media.
+	//
+	// A value of 1.0 represents normal speed; values above 1.0 play faster
+	// and values below 1.0 play slower. The value must be positive.
 	SetPlaybackRate(rate float32)
 
 	// Gain returns the current gain of the playback.
@@ -57,6 +62,8 @@ type Playback interface {
 	Gain() float32
 
 	// SetGain sets the gain of the playback.
+	//
+	// The value must be non-negative.
 	SetGain(gain float32)
 
 	// LowPassFilter returns the low-pass filter applied to this playback, if any. If no low-pass filter is applied,

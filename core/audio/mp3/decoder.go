@@ -9,6 +9,10 @@ import (
 	"github.com/mokiat/lacking/core/audio"
 )
 
+func init() {
+	audio.RegisterDecoder("mp3", "ID3", Decode)
+}
+
 // Decode decodes MP3 data from the provided reader and returns the decoded
 // audio frames.
 func Decode(in io.Reader) (audio.MediaData, error) {
