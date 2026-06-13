@@ -3,10 +3,10 @@ package game
 import (
 	"time"
 
+	"github.com/mokiat/lacking/core/resource"
 	"github.com/mokiat/lacking/game/graphics"
 	"github.com/mokiat/lacking/game/physics"
 	"github.com/mokiat/lacking/render"
-	"github.com/mokiat/lacking/resource"
 	"github.com/mokiat/lacking/util/async"
 )
 

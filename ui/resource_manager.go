@@ -10,7 +10,7 @@ import (
 	"github.com/mokiat/lacking/core/audio"
 	_ "github.com/mokiat/lacking/core/audio/mp3"
 	_ "github.com/mokiat/lacking/core/audio/wav"
-	"github.com/mokiat/lacking/resource"
+	"github.com/mokiat/lacking/core/resource"
 	"golang.org/x/image/font/opentype"
 )
 
