@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/mokiat/gblob"
-	"github.com/mokiat/lacking/resource"
+	"github.com/mokiat/lacking/core/resource"
 )
 
 func NewAsset(store resource.Store, path string) *Asset {

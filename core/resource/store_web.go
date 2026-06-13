@@ -5,14 +5,14 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	urlpath "path"
+	"strings"
 )
 
 // NewWebStore creates a new Store that uses HTTP requests.
-func NewWebStore(baseURL string) (Store, error) {
+func NewWebStore(baseURL string) Store {
 	return &webStore{
 		baseURL: baseURL,
-	}, nil
+	}
 }
 
 type webStore struct {
@@ -26,7 +26,8 @@ func (s *webStore) Create(path string) (io.WriteCloser, error) {
 }
 
 func (s *webStore) Open(path string) (io.ReadCloser, error) {
-	return s.fetch(urlpath.Join(s.baseURL, path))
+	baseURL := strings.TrimSuffix(s.baseURL, "/")
+	return s.fetch(fmt.Sprintf("%s/%s", baseURL, path))
 }
 
 func (s *webStore) List() ([]string, error) {

@@ -6,21 +6,21 @@ import (
 	"strings"
 )
 
-// ErrNotFound indicates that the specified content is not available.
+// ErrNotFound indicates that the requested resource was not found.
 var ErrNotFound = errors.New("not found")
 
-// Locator represents a logic by which resources can be opened for reading
-// based off of a path.
+// Locator provides read-only access to resources by path.
 type Locator interface {
 
 	// Open opens the resource at the specified path for reading.
+	//
+	// If the resource does not exist, an ErrNotFound error is returned.
 	Open(path string) (io.ReadCloser, error)
 }
 
 // LocatorFunc is a function type that implements the Locator interface.
 type LocatorFunc func(path string) (io.ReadCloser, error)
 
-// Open opens the resource at the specified path for reading.
 func (f LocatorFunc) Open(path string) (io.ReadCloser, error) {
 	return f(path)
 }

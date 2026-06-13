@@ -41,7 +41,7 @@ func (s *fileStore) List() ([]string, error) {
 	var result []string
 	err := fs.WalkDir(s.root.FS(), ".", func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
-			return nil
+			return err
 		}
 		if !d.IsDir() {
 			result = append(result, path)

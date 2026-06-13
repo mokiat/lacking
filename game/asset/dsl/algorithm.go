@@ -10,7 +10,7 @@ import (
 
 	"github.com/mokiat/gog/ds"
 	"github.com/mokiat/gog/filter"
-	"github.com/mokiat/lacking/resource"
+	"github.com/mokiat/lacking/core/resource"
 	"github.com/mokiat/lacking/storage/chunked"
 	"golang.org/x/sync/errgroup"
 )

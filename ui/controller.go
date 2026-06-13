@@ -2,8 +2,8 @@ package ui
 
 import (
 	"github.com/mokiat/lacking/app"
+	"github.com/mokiat/lacking/core/resource"
 	"github.com/mokiat/lacking/debug/metric"
-	"github.com/mokiat/lacking/resource"
 )
 
 // InitFunc can be used to initialize the Window with the
