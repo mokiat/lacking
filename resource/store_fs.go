@@ -6,7 +6,7 @@ import (
 	"io/fs"
 )
 
-// NewFSStore creates a new Store that uses HTTP requests.
+// NewFSStore creates a new Store that uses an abstract filesystem.
 func NewFSStore(fileSystem fs.FS) Store {
 	return &fsStore{
 		fileSystem: fileSystem,
