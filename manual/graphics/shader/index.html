@@ -1,0 +1,2189 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+        <link rel="canonical" href="http://mokiat.com/lacking/manual/graphics/shader/">
+      
+      
+        <link rel="prev" href="../../game/">
+      
+      
+        <link rel="next" href="../../rendering/">
+      
+      <link rel="icon" href="../../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.4.2, mkdocs-material-9.0.6">
+    
+    
+      
+        <title>Shader - Lacking</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../../assets/stylesheets/main.558e4712.min.css">
+      
+        
+        <link rel="stylesheet" href="../../../assets/stylesheets/palette.2505c338.min.css">
+      
+      
+
+    
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../../..",location),__md_hash=e=>[...e].reduce((e,_)=>(e<<5)-e+_.charCodeAt(0),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="" data-md-color-accent="">
+  
+    
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#shader" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../../.." title="Lacking" class="md-header__button md-logo" aria-label="Lacking" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3V6m0 5h18v2H3v-2m0 5h18v2H3v-2Z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Lacking
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Shader
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+    
+      <label class="md-header__button md-icon" for="__search">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5Z"/></svg>
+      </label>
+      <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5Z"/></svg>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12Z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41Z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/mokiat/lacking/" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81z"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../.." title="Lacking" class="md-nav__button md-logo" aria-label="Lacking" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
+
+    </a>
+    Lacking
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/mokiat/lacking/" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81z"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+      
+
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../.." class="md-nav__link">
+        Home
+      </a>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../examples/" class="md-nav__link">
+        Examples
+      </a>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../getting-started/" class="md-nav__link">
+        Getting Started
+      </a>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+    
+  
+  
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " data-md-toggle="__nav_4" type="checkbox" id="__nav_4" checked>
+      
+      
+      
+        <label class="md-nav__link" for="__nav_4" tabindex="0" aria-expanded="true">
+          User's Guide
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="User's Guide" data-md-level="1">
+        <label class="md-nav__title" for="__nav_4">
+          <span class="md-nav__icon md-icon"></span>
+          User's Guide
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../application/" class="md-nav__link">
+        Application
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../audio/" class="md-nav__link">
+        Audio
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ecs/" class="md-nav__link">
+        ECS
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../game/" class="md-nav__link">
+        Game
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+    
+  
+  
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " data-md-toggle="__nav_4_5" type="checkbox" id="__nav_4_5" checked>
+      
+      
+      
+        <label class="md-nav__link" for="__nav_4_5" tabindex="0" aria-expanded="true">
+          Graphics
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="Graphics" data-md-level="2">
+        <label class="md-nav__title" for="__nav_4_5">
+          <span class="md-nav__icon md-icon"></span>
+          Graphics
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+    
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" data-md-toggle="toc" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          Shader
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        Shader
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#comments" class="md-nav__link">
+    Comments
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#literals" class="md-nav__link">
+    Literals
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#operators" class="md-nav__link">
+    Operators
+  </a>
+  
+    <nav class="md-nav" aria-label="Operators">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#assignment-operators" class="md-nav__link">
+    Assignment Operators
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#unary-operators" class="md-nav__link">
+    Unary Operators
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#binary-operators" class="md-nav__link">
+    Binary Operators
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#types" class="md-nav__link">
+    Types
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#textures" class="md-nav__link">
+    Textures
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#uniforms" class="md-nav__link">
+    Uniforms
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#varying" class="md-nav__link">
+    Varying
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#structs" class="md-nav__link">
+    Structs
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#functions" class="md-nav__link">
+    Functions
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#predefined-variables" class="md-nav__link">
+    Predefined Variables
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../rendering/" class="md-nav__link">
+        Rendering
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user-interface/" class="md-nav__link">
+        User Interface
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " data-md-toggle="__nav_5" type="checkbox" id="__nav_5" >
+      
+      
+      
+        <label class="md-nav__link" for="__nav_5" tabindex="0" aria-expanded="false">
+          Internals
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="Internals" data-md-level="1">
+        <label class="md-nav__title" for="__nav_5">
+          <span class="md-nav__icon md-icon"></span>
+          Internals
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " data-md-toggle="__nav_5_1" type="checkbox" id="__nav_5_1" >
+      
+      
+      
+        <label class="md-nav__link" for="__nav_5_1" tabindex="0" aria-expanded="false">
+          Physics
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="Physics" data-md-level="2">
+        <label class="md-nav__title" for="__nav_5_1">
+          <span class="md-nav__icon md-icon"></span>
+          Physics
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../development/physics/" class="md-nav__link">
+        Overview
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../development/physics/references/" class="md-nav__link">
+        References
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " data-md-toggle="__nav_5_1_3" type="checkbox" id="__nav_5_1_3" >
+      
+      
+      
+        <label class="md-nav__link" for="__nav_5_1_3" tabindex="0" aria-expanded="false">
+          Theory
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="Theory" data-md-level="3">
+        <label class="md-nav__title" for="__nav_5_1_3">
+          <span class="md-nav__icon md-icon"></span>
+          Theory
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../development/physics/theory/principles/" class="md-nav__link">
+        Principles
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../development/physics/theory/terminology/" class="md-nav__link">
+        Terminology
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../development/physics/theory/equations/" class="md-nav__link">
+        Equations
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../development/physics/theory/effective-mass/" class="md-nav__link">
+        Effective Mass
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../development/physics/theory/moment-of-inertia/" class="md-nav__link">
+        Moment of Inertia
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " data-md-toggle="__nav_5_1_4" type="checkbox" id="__nav_5_1_4" >
+      
+      
+      
+        <label class="md-nav__link" for="__nav_5_1_4" tabindex="0" aria-expanded="false">
+          Derivations
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="Derivations" data-md-level="3">
+        <label class="md-nav__title" for="__nav_5_1_4">
+          <span class="md-nav__icon md-icon"></span>
+          Derivations
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../development/physics/derivations/impulse-derivation/" class="md-nav__link">
+        Impulse
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../development/physics/derivations/effective-mass-derivation/" class="md-nav__link">
+        Effective Mass
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " data-md-toggle="__nav_5_2" type="checkbox" id="__nav_5_2" >
+      
+      
+      
+        <label class="md-nav__link" for="__nav_5_2" tabindex="0" aria-expanded="false">
+          Math
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="Math" data-md-level="2">
+        <label class="md-nav__title" for="__nav_5_2">
+          <span class="md-nav__icon md-icon"></span>
+          Math
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../development/math/vectors/" class="md-nav__link">
+        Vectors
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../development/math/derivatives/" class="md-nav__link">
+        Derivatives
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#comments" class="md-nav__link">
+    Comments
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#literals" class="md-nav__link">
+    Literals
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#operators" class="md-nav__link">
+    Operators
+  </a>
+  
+    <nav class="md-nav" aria-label="Operators">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#assignment-operators" class="md-nav__link">
+    Assignment Operators
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#unary-operators" class="md-nav__link">
+    Unary Operators
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#binary-operators" class="md-nav__link">
+    Binary Operators
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#types" class="md-nav__link">
+    Types
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#textures" class="md-nav__link">
+    Textures
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#uniforms" class="md-nav__link">
+    Uniforms
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#varying" class="md-nav__link">
+    Varying
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#structs" class="md-nav__link">
+    Structs
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#functions" class="md-nav__link">
+    Functions
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#predefined-variables" class="md-nav__link">
+    Predefined Variables
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+  
+  
+
+
+
+<h1 id="shader">Shader</h1>
+<p>The Lacking game engine uses a custom shading language called LSL. This language is then transpiled to the respective GPU API shader language (e.g. GLSL, WGSL).
+The syntax of the language is very similar to the Go syntax, though there are some notable differences. Using Go-like syntax allows one to write in a consistent way game code and shader code. Furthemore, the Go syntax is designed to be easily and unambiguously parsable.</p>
+<h2 id="comments">Comments</h2>
+<p>Comments can be added with <code>//</code> anywhere in the file, where the remainder of the line is considered a comment and is ignored.</p>
+<div class="highlight"><pre><span></span><code>// An example comment.
+</code></pre></div>
+<p>The LSL does not have support for multi-line comments.</p>
+<h2 id="literals">Literals</h2>
+<p>Literals are a mechanism to provide constant in-place values to a shader.</p>
+<table>
+<thead>
+<tr>
+<th>Type</th>
+<th>Example</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>bool</td>
+<td><code>true</code>, <code>false</code></td>
+<td>Specifies a boolean value.</td>
+</tr>
+<tr>
+<td>int</td>
+<td><code>13</code>, <code>-24</code></td>
+<td>Specifies a 32bit signed integer value.</td>
+</tr>
+<tr>
+<td>float</td>
+<td><code>-5.3</code>, <code>2.4</code></td>
+<td>Specifies a 32bit floating point value.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="operators">Operators</h2>
+<p>There are a number of operators supported by the LSL language.</p>
+<h3 id="assignment-operators">Assignment Operators</h3>
+<p>Following is a list of assignment operators that can be used to assign a value to a variable.</p>
+<table>
+<thead>
+<tr>
+<th>Operator</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>=</code></td>
+<td>Assigns the value to the variable. Both sides need to have the same type.</td>
+</tr>
+<tr>
+<td><code>:=</code></td>
+<td>Defines a new variable and initializes it with the contents and type of the value.</td>
+</tr>
+<tr>
+<td><code>+=</code></td>
+<td>Adds the value to the variable.</td>
+</tr>
+<tr>
+<td><code>-=</code></td>
+<td>Subtracts the value from the variable.</td>
+</tr>
+<tr>
+<td><code>*=</code></td>
+<td>Multiplies the variable by the value.</td>
+</tr>
+<tr>
+<td><code>/=</code></td>
+<td>Divides the variable by the value.</td>
+</tr>
+<tr>
+<td><code>%=</code></td>
+<td>Assigns the modulo of the variable and the value.</td>
+</tr>
+<tr>
+<td><code>&lt;&lt;=</code></td>
+<td>Shifts the variable to the left by the value number of bits.</td>
+</tr>
+<tr>
+<td><code>&gt;&gt;=</code></td>
+<td>Shifts the variable to the right by the value number of bits.</td>
+</tr>
+<tr>
+<td><code>&amp;=</code></td>
+<td>Assigns the bitwise AND operation on the variable and the value to the variable.</td>
+</tr>
+<tr>
+<td><code>&#124;=</code></td>
+<td>Assigns the bitwise OR operation on the variable and the value to the variable.</td>
+</tr>
+<tr>
+<td><code>^=</code></td>
+<td>Assigns the bitwise XOR operation on the variable and the value to the variable.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="unary-operators">Unary Operators</h3>
+<p>The following unary operators can be used inside expressions to transform a single sub-expression.</p>
+<table>
+<thead>
+<tr>
+<th>Operator</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>!</code></td>
+<td>Inverts the value of the expression. It needs to be a boolean expression or a boolean vector expression.</td>
+</tr>
+<tr>
+<td><code>-</code></td>
+<td>Negates the value of the expression. It needs to be a numeric expression or a numeric vector expression.</td>
+</tr>
+<tr>
+<td><code>+</code></td>
+<td>A no-op change to the value of the expression. it needs to be a numeric expression vector expression.</td>
+</tr>
+<tr>
+<td><code>^</code></td>
+<td>Performs a bitwise NOT operation on the value of the expression. It needs to be a numeric expression or a numeric vector expression.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="binary-operators">Binary Operators</h3>
+<p>The following binary operators can be used inside expressions to combine two sub-expressions.</p>
+<table>
+<thead>
+<tr>
+<th>Operator</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>+</code></td>
+<td>Returns the sum of the two expressions. Both sides need to be numeric expressions of the same type.</td>
+</tr>
+<tr>
+<td><code>-</code></td>
+<td>Returns the difference between the two expressions. Both sides need to be numeric expressions of the same type.</td>
+</tr>
+<tr>
+<td><code>*</code></td>
+<td>Returns the multiplication of the two expressions. Both sides need to be numeric expressions of the same type.</td>
+</tr>
+<tr>
+<td><code>/</code></td>
+<td>Returns the division of the two expressions. Both sides need to be numeric expressions of the same type.</td>
+</tr>
+<tr>
+<td><code>%</code></td>
+<td>Returns the modulo of the two expressions. Both sides need to be integer expressions of the same type.</td>
+</tr>
+<tr>
+<td><code>&lt;&lt;</code></td>
+<td>Returns the bitwise left-shift of the left expression by the right expression. Both sides need to be integer expressions.</td>
+</tr>
+<tr>
+<td><code>&gt;&gt;</code></td>
+<td>Returns the bitwise right-shift of the left expression by the right expression. Both sides need to be integer expressions.</td>
+</tr>
+<tr>
+<td><code>==</code></td>
+<td>Returns a boolean value indicating whether the two expressions are equal. Both sides need to be expressions of the same type and comparable.</td>
+</tr>
+<tr>
+<td><code>!=</code></td>
+<td>Returns a boolean value indicating whether the two expressions are different. Both sides need to be expressions of the same type and comparable.</td>
+</tr>
+<tr>
+<td><code>&lt;</code></td>
+<td>Returns a boolean value indicating whether the first expression is smaller than the second expression. Both sides need to be expressions of the same type and be ordered.</td>
+</tr>
+<tr>
+<td><code>&gt;</code></td>
+<td>Returns a boolean value indicating whether the second expression is smaller than the first expression. Both sides need to be expressions of the same type and be ordered.</td>
+</tr>
+<tr>
+<td><code>&lt;=</code></td>
+<td>Returns a boolean value indicating whether the first expression is smaller than or equal to the second expression. Both sides need to be expressions of the same type and be ordered.</td>
+</tr>
+<tr>
+<td><code>&gt;=</code></td>
+<td>Returns a boolean value indicating whether the second expression is smaller than or equal to the first expression. Both sides need to be expressions of the same type and be ordered.</td>
+</tr>
+<tr>
+<td><code>&amp;</code></td>
+<td>Returns the result of a bitwise AND operation on the two expressions. Both sides need to be integer expressions of the same type.</td>
+</tr>
+<tr>
+<td><code>&#124;</code></td>
+<td>Returns the result of a bitwise OR operation on the two expressions. Both sides need to be integer expressions of the same type.</td>
+</tr>
+<tr>
+<td><code>^</code></td>
+<td>Returns the result of a bitwise XOR operation on the two expressions. Both sides need to be integer expressions of the same type.</td>
+</tr>
+<tr>
+<td><code>&amp;&amp;</code></td>
+<td>Returns the result of a logical AND operation on the two expressions. Both sides need to be boolean expressions of the same type.</td>
+</tr>
+<tr>
+<td><code>&#124;&#124;</code></td>
+<td>Returns the result of a logical OR operation on the two expressions. Both sides need to be boolean expressions of the same type.</td>
+</tr>
+</tbody>
+</table>
+<p>The operator precedence is similar to the official Go one and is described in the following table (higher is applied first).</p>
+<table>
+<thead>
+<tr>
+<th>Precedence</th>
+<th>Operator</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>5</td>
+<td><code>*</code>, <code>/</code>, <code>%</code>, <code>&lt;&lt;</code>, <code>&gt;&gt;</code>, <code>&amp;</code></td>
+</tr>
+<tr>
+<td>4</td>
+<td><code>+</code>, <code>-</code>, <code>&#124;</code>, <code>^</code></td>
+</tr>
+<tr>
+<td>3</td>
+<td><code>==</code>, <code>!=</code>, <code>&lt;</code>, <code>&lt;=</code>, <code>&gt;</code>, <code>&gt;=</code></td>
+</tr>
+<tr>
+<td>2</td>
+<td><code>&amp;&amp;</code></td>
+</tr>
+<tr>
+<td>1</td>
+<td><code>&#124;&#124;</code></td>
+</tr>
+</tbody>
+</table>
+<p>Operators with the same precedence associate from left to right (i.e. the operators are applied from left to right).</p>
+<h2 id="types">Types</h2>
+<p>The following table lists the supported built-in types.</p>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>bool</code></td>
+<td>Boolean type</td>
+</tr>
+<tr>
+<td><code>int</code></td>
+<td>32 bit signed integer type</td>
+</tr>
+<tr>
+<td><code>uint</code></td>
+<td>32 bit unsigned integer type</td>
+</tr>
+<tr>
+<td><code>float</code></td>
+<td>32 bit floating point type</td>
+</tr>
+<tr>
+<td><code>vec2</code></td>
+<td>2D vector type with two 32 bit floating point components</td>
+</tr>
+<tr>
+<td><code>vec3</code></td>
+<td>3D vector type with three 32 bit floating point components</td>
+</tr>
+<tr>
+<td><code>vec4</code></td>
+<td>4D vector type with four 32 bit floating point components</td>
+</tr>
+<tr>
+<td><code>bvec2</code></td>
+<td>2D vector type with two boolean components</td>
+</tr>
+<tr>
+<td><code>bvec3</code></td>
+<td>3D vector type with three boolean components</td>
+</tr>
+<tr>
+<td><code>bvec4</code></td>
+<td>4D vector type with four boolean components</td>
+</tr>
+<tr>
+<td><code>ivec2</code></td>
+<td>2D vector type with two 32 bit signed integer components</td>
+</tr>
+<tr>
+<td><code>ivec3</code></td>
+<td>3D vector type with three 32 bit signed integer components</td>
+</tr>
+<tr>
+<td><code>ivec4</code></td>
+<td>4D vector type with four 32 bit signed integer components</td>
+</tr>
+<tr>
+<td><code>uvec2</code></td>
+<td>2D vector type with two 32 bit unsigned integer components</td>
+</tr>
+<tr>
+<td><code>uvec3</code></td>
+<td>3D vector type with three 32 bit unsigned integer components</td>
+</tr>
+<tr>
+<td><code>uvec4</code></td>
+<td>4D vector type with four 32 bit unsigned integer components</td>
+</tr>
+<tr>
+<td><code>mat2</code></td>
+<td>2x2 matrix type with four 32 bit floating point components</td>
+</tr>
+<tr>
+<td><code>mat3</code></td>
+<td>3x3 matrix type with nine 32 bit floating point components</td>
+</tr>
+<tr>
+<td><code>mat4</code></td>
+<td>4x4 matrix type with sixteen 32 bit floating point components</td>
+</tr>
+<tr>
+<td><code>sampler2D</code></td>
+<td>sampler to a 2D texture</td>
+</tr>
+<tr>
+<td><code>samplerCube</code></td>
+<td>sampler to a Cube texture</td>
+</tr>
+</tbody>
+</table>
+<h2 id="textures">Textures</h2>
+<p>Shaders often require textures to read texels off of. Such dependencies to external resources are declared through the <code>texture</code> keyword. It works in a similar way to the Go's <code>var</code> keyword, except that an initial value cannot be specified.</p>
+<div class="highlight"><pre><span></span><code>texture color sampler2D
+texture env samplerCube
+</code></pre></div>
+<p>or</p>
+<div class="highlight"><pre><span></span><code>texture (
+  color sampler2D
+  env samplerCube
+)
+</code></pre></div>
+<p>Texture fields are globally visible within the shader and are read-only.</p>
+<h2 id="uniforms">Uniforms</h2>
+<p>Shaders often require external data so that they can be reused. This is done through the <code>uniform</code> keyword. It works in a similar way to the Go's <code>var</code> keyword, except that an initial value cannot be specified.</p>
+<div class="highlight"><pre><span></span><code>uniform color vec4
+uniform intensity float
+</code></pre></div>
+<p>or</p>
+<div class="highlight"><pre><span></span><code>uniform (
+  color vec4
+  intensity float
+)
+</code></pre></div>
+<p>Uniform fields are globally visible within the shader and are read-only.</p>
+<h2 id="varying">Varying</h2>
+<p>Shader code is used in both vertex and fragment stages. Sometimes data needs to be passed from one stage onto the next. This is achieved via the <code>varying</code> keyword. It works in a similar way to the Go's <code>var</code> keyword, except that an initial value cannot be specified.</p>
+<div class="highlight"><pre><span></span><code>varying normal vec3
+</code></pre></div>
+<p>or</p>
+<div class="highlight"><pre><span></span><code>varying (
+  normal vec3
+)
+</code></pre></div>
+<p>Varying fields are globally visible within the shader and are read-only in the fragment shader stage.</p>
+<h2 id="structs">Structs</h2>
+<p>It is possible to define custom struct types.</p>
+<div class="highlight"><pre><span></span><code>type Vertex struct {
+  position vec3
+  uv vec2
+}
+</code></pre></div>
+<h2 id="functions">Functions</h2>
+<p>The following table lists constructor built-in functions.</p>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Scope</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>bool(v int) bool</code></td>
+<td>unbounded</td>
+<td>Converts an integer into a boolean.</td>
+</tr>
+<tr>
+<td><code>bool(v uint) bool</code></td>
+<td>unbounded</td>
+<td>Converts an unsigned integer into a boolean.</td>
+</tr>
+<tr>
+<td><code>bool(v float) bool</code></td>
+<td>unbounded</td>
+<td>Converts a float into a boolean.</td>
+</tr>
+<tr>
+<td><code>int(v bool) int</code></td>
+<td>unbounded</td>
+<td>Converts a boolean into an integer.</td>
+</tr>
+<tr>
+<td><code>int(v uint) int</code></td>
+<td>unbounded</td>
+<td>Converts an unsigned integer into an integer.</td>
+</tr>
+<tr>
+<td><code>int(v float) int</code></td>
+<td>unbounded</td>
+<td>Converts a float into an integer.</td>
+</tr>
+<tr>
+<td><code>uint(v bool) uint</code></td>
+<td>unbounded</td>
+<td>Converts a boolean into an unsigned integer.</td>
+</tr>
+<tr>
+<td><code>uint(v int) uint</code></td>
+<td>unbounded</td>
+<td>Converts an integer into an unsigned integer.</td>
+</tr>
+<tr>
+<td><code>uint(v float) uint</code></td>
+<td>unbounded</td>
+<td>Converts a float into an unsigned integer.</td>
+</tr>
+<tr>
+<td><code>float(v bool) float</code></td>
+<td>unbounded</td>
+<td>Converts a boolean into a float.</td>
+</tr>
+<tr>
+<td><code>float(v int) float</code></td>
+<td>unbounded</td>
+<td>Converts an integer into a float.</td>
+</tr>
+<tr>
+<td><code>float(v uint) float</code></td>
+<td>unbounded</td>
+<td>Converts an unsigned integer into a float.</td>
+</tr>
+<tr>
+<td><code>vec2(v float) vec2</code></td>
+<td>unbounded</td>
+<td>Returns a <code>vec2</code> with all components equal to the value <code>v</code>.</td>
+</tr>
+<tr>
+<td><code>vec2(x, y float) vec2</code></td>
+<td>unbounded</td>
+<td>Returns a <code>vec2</code> with the components set to <code>x</code> and <code>y</code> respectively.</td>
+</tr>
+<tr>
+<td><code>vec3(v float) vec3</code></td>
+<td>unbounded</td>
+<td>Returns a <code>vec3</code> with all components equal to the value <code>v</code>.</td>
+</tr>
+<tr>
+<td><code>vec3(x, y, z float) vec3</code></td>
+<td>unbounded</td>
+<td>Returns a <code>vec3</code> with the components set to <code>x</code>, <code>y</code>, and <code>z</code> respectively.</td>
+</tr>
+<tr>
+<td><code>vec3(a vec2, z float) vec3</code></td>
+<td>unbounded</td>
+<td>Returns a <code>vec3</code> with the components set to <code>a.x</code>, <code>a.y</code>, and <code>z</code> respectively.</td>
+</tr>
+<tr>
+<td><code>vec3(x float, a vec2) vec3</code></td>
+<td>unbounded</td>
+<td>Returns a <code>vec3</code> with the components set to <code>x</code>, <code>a.x</code>, and <code>a.y</code> respectively.</td>
+</tr>
+<tr>
+<td><code>vec4(v float) vec4</code></td>
+<td>unbounded</td>
+<td>Returns a <code>vec4</code> with all components equal to the value <code>v</code>.</td>
+</tr>
+<tr>
+<td><code>vec4(x, y, z, w float) vec4</code></td>
+<td>unbounded</td>
+<td>Returns a <code>vec4</code> with the components set to <code>x</code>, <code>y</code>, <code>z</code>, and <code>w</code> respectively.</td>
+</tr>
+<tr>
+<td><code>vec4(a vec2, z, w float) vec4</code></td>
+<td>unbounded</td>
+<td>Returns a <code>vec4</code> with the components set to <code>a.x</code>, <code>a.y</code>, <code>z</code>, and <code>w</code> respectively.</td>
+</tr>
+<tr>
+<td><code>vec4(x float, a vec2, w float) vec4</code></td>
+<td>unbounded</td>
+<td>Returns a <code>vec4</code> with the components set to <code>x</code>, <code>a.x</code>, <code>a.y</code>, and <code>w</code> respectively.</td>
+</tr>
+<tr>
+<td><code>vec4(x, y float, a vec2) vec4</code></td>
+<td>unbounded</td>
+<td>Returns a <code>vec4</code> with the components set to <code>x</code>, <code>y</code>, <code>a.x</code>, and <code>a.y</code> respectively.</td>
+</tr>
+<tr>
+<td><code>vec4(a vec3, w float) vec4</code></td>
+<td>unbounded</td>
+<td>Returns a <code>vec4</code> with the components set to <code>a.x</code>, <code>a.y</code>, <code>a.z</code>, and <code>w</code> respectively.</td>
+</tr>
+<tr>
+<td><code>vec4(x float, a vec3) vec4</code></td>
+<td>unbounded</td>
+<td>Returns a <code>vec4</code> with the components set to <code>x</code>, <code>a.x</code>, <code>a.y</code>, and <code>a.z</code> respectively.</td>
+</tr>
+<tr>
+<td><code>bvec2(v bool) bvec2</code></td>
+<td>unbounded</td>
+<td>Returns a <code>bvec2</code> with all components equal to the value <code>v</code>.</td>
+</tr>
+<tr>
+<td><code>bvec2(x, y bool) bvec2</code></td>
+<td>unbounded</td>
+<td>Returns a <code>bvec2</code> with the components set to <code>x</code> and <code>y</code> respectively.</td>
+</tr>
+<tr>
+<td><code>bvec3(v bool) bvec3</code></td>
+<td>unbounded</td>
+<td>Returns a <code>bvec3</code> with all components equal to the value <code>v</code>.</td>
+</tr>
+<tr>
+<td><code>bvec3(x, y, z bool) bvec3</code></td>
+<td>unbounded</td>
+<td>Returns a <code>bvec3</code> with the components set to <code>x</code>, <code>y</code>, and <code>z</code> respectively.</td>
+</tr>
+<tr>
+<td><code>bvec3(a bvec2, z bool) bvec3</code></td>
+<td>unbounded</td>
+<td>Returns a <code>bvec3</code> with the components set to <code>a.x</code>, <code>a.y</code>, and <code>z</code> respectively.</td>
+</tr>
+<tr>
+<td><code>bvec3(x bool, a bvec2) bvec3</code></td>
+<td>unbounded</td>
+<td>Returns a <code>bvec3</code> with the components set to <code>x</code>, <code>a.x</code>, and <code>a.y</code> respectively.</td>
+</tr>
+<tr>
+<td><code>bvec4(v bool) bvec4</code></td>
+<td>unbounded</td>
+<td>Returns a <code>bvec4</code> with all components equal to the value <code>v</code>.</td>
+</tr>
+<tr>
+<td><code>bvec4(x, y, z, w bool) bvec4</code></td>
+<td>unbounded</td>
+<td>Returns a <code>bvec4</code> with the components set to <code>x</code>, <code>y</code>, <code>z</code>, and <code>w</code> respectively.</td>
+</tr>
+<tr>
+<td><code>bvec4(a bvec2, z, w bool) bvec4</code></td>
+<td>unbounded</td>
+<td>Returns a <code>bvec4</code> with the components set to <code>a.x</code>, <code>a.y</code>, <code>z</code>, and <code>w</code> respectively.</td>
+</tr>
+<tr>
+<td><code>bvec4(x bool, a bvec2, w bool) bvec4</code></td>
+<td>unbounded</td>
+<td>Returns a <code>bvec4</code> with the components set to <code>x</code>, <code>a.x</code>, <code>a.y</code>, and <code>w</code> respectively.</td>
+</tr>
+<tr>
+<td><code>bvec4(x, y bool, a bvec2) bvec4</code></td>
+<td>unbounded</td>
+<td>Returns a <code>bvec4</code> with the components set to <code>x</code>, <code>y</code>, <code>a.x</code>, and <code>a.y</code> respectively.</td>
+</tr>
+<tr>
+<td><code>bvec4(a bvec3, w bool) bvec4</code></td>
+<td>unbounded</td>
+<td>Returns a <code>bvec4</code> with the components set to <code>a.x</code>, <code>a.y</code>, <code>a.z</code>, and <code>w</code> respectively.</td>
+</tr>
+<tr>
+<td><code>bvec4(x bool, a bvec3) bvec4</code></td>
+<td>unbounded</td>
+<td>Returns a <code>bvec4</code> with the components set to <code>x</code>, <code>a.x</code>, <code>a.y</code>, and <code>a.z</code> respectively.</td>
+</tr>
+<tr>
+<td><code>ivec2(v int) ivec2</code></td>
+<td>unbounded</td>
+<td>Returns a <code>ivec2</code> with all components equal to the value <code>v</code>.</td>
+</tr>
+<tr>
+<td><code>ivec2(x, y int) ivec2</code></td>
+<td>unbounded</td>
+<td>Returns a <code>ivec2</code> with the components set to <code>x</code> and <code>y</code> respectively.</td>
+</tr>
+<tr>
+<td><code>ivec3(v int) ivec3</code></td>
+<td>unbounded</td>
+<td>Returns a <code>ivec3</code> with all components equal to the value <code>v</code>.</td>
+</tr>
+<tr>
+<td><code>ivec3(x, y, z int) ivec3</code></td>
+<td>unbounded</td>
+<td>Returns a <code>ivec3</code> with the components set to <code>x</code>, <code>y</code>, and <code>z</code> respectively.</td>
+</tr>
+<tr>
+<td><code>ivec3(a ivec2, z int) ivec3</code></td>
+<td>unbounded</td>
+<td>Returns a <code>ivec3</code> with the components set to <code>a.x</code>, <code>a.y</code>, and <code>z</code> respectively.</td>
+</tr>
+<tr>
+<td><code>ivec3(x int, a ivec2) ivec3</code></td>
+<td>unbounded</td>
+<td>Returns a <code>ivec3</code> with the components set to <code>x</code>, <code>a.x</code>, and <code>a.y</code> respectively.</td>
+</tr>
+<tr>
+<td><code>ivec4(v int) ivec4</code></td>
+<td>unbounded</td>
+<td>Returns a <code>ivec4</code> with all components equal to the value <code>v</code>.</td>
+</tr>
+<tr>
+<td><code>ivec4(x, y, z, w int) ivec4</code></td>
+<td>unbounded</td>
+<td>Returns a <code>ivec4</code> with the components set to <code>x</code>, <code>y</code>, <code>z</code>, and <code>w</code> respectively.</td>
+</tr>
+<tr>
+<td><code>ivec4(a ivec2, z, w int) ivec4</code></td>
+<td>unbounded</td>
+<td>Returns a <code>ivec4</code> with the components set to <code>a.x</code>, <code>a.y</code>, <code>z</code>, and <code>w</code> respectively.</td>
+</tr>
+<tr>
+<td><code>ivec4(x int, a ivec2, w int) ivec4</code></td>
+<td>unbounded</td>
+<td>Returns a <code>ivec4</code> with the components set to <code>x</code>, <code>a.x</code>, <code>a.y</code>, and <code>w</code> respectively.</td>
+</tr>
+<tr>
+<td><code>ivec4(x, y int, a ivec2) ivec4</code></td>
+<td>unbounded</td>
+<td>Returns a <code>ivec4</code> with the components set to <code>x</code>, <code>y</code>, <code>a.x</code>, and <code>a.y</code> respectively.</td>
+</tr>
+<tr>
+<td><code>ivec4(a ivec3, w int) ivec4</code></td>
+<td>unbounded</td>
+<td>Returns a <code>ivec4</code> with the components set to <code>a.x</code>, <code>a.y</code>, <code>a.z</code>, and <code>w</code> respectively.</td>
+</tr>
+<tr>
+<td><code>ivec4(x int, a ivec3) ivec4</code></td>
+<td>unbounded</td>
+<td>Returns a <code>ivec4</code> with the components set to <code>x</code>, <code>a.x</code>, <code>a.y</code>, and <code>a.z</code> respectively.</td>
+</tr>
+<tr>
+<td><code>uvec2(v uint) uvec2</code></td>
+<td>unbounded</td>
+<td>Returns a <code>uvec2</code> with all components equal to the value <code>v</code>.</td>
+</tr>
+<tr>
+<td><code>uvec2(x, y uint) uvec2</code></td>
+<td>unbounded</td>
+<td>Returns a <code>uvec2</code> with the components set to <code>x</code> and <code>y</code> respectively.</td>
+</tr>
+<tr>
+<td><code>uvec3(v uint) uvec3</code></td>
+<td>unbounded</td>
+<td>Returns a <code>uvec3</code> with all components equal to the value <code>v</code>.</td>
+</tr>
+<tr>
+<td><code>uvec3(x, y, z uint) uvec3</code></td>
+<td>unbounded</td>
+<td>Returns a <code>uvec3</code> with the components set to <code>x</code>, <code>y</code>, and <code>z</code> respectively.</td>
+</tr>
+<tr>
+<td><code>uvec3(a uvec2, z uint) uvec3</code></td>
+<td>unbounded</td>
+<td>Returns a <code>uvec3</code> with the components set to <code>a.x</code>, <code>a.y</code>, and <code>z</code> respectively.</td>
+</tr>
+<tr>
+<td><code>uvec3(x uint, a uvec2) uvec3</code></td>
+<td>unbounded</td>
+<td>Returns a <code>uvec3</code> with the components set to <code>x</code>, <code>a.x</code>, and <code>a.y</code> respectively.</td>
+</tr>
+<tr>
+<td><code>uvec4(v uint) uvec4</code></td>
+<td>unbounded</td>
+<td>Returns a <code>uvec4</code> with all components equal to the value <code>v</code>.</td>
+</tr>
+<tr>
+<td><code>uvec4(x, y, z, w uint) uvec4</code></td>
+<td>unbounded</td>
+<td>Returns a <code>uvec4</code> with the components set to <code>x</code>, <code>y</code>, <code>z</code>, and <code>w</code> respectively.</td>
+</tr>
+<tr>
+<td><code>uvec4(a uvec2, z, w uint) uvec4</code></td>
+<td>unbounded</td>
+<td>Returns a <code>uvec4</code> with the components set to <code>a.x</code>, <code>a.y</code>, <code>z</code>, and <code>w</code> respectively.</td>
+</tr>
+<tr>
+<td><code>uvec4(x uint, a uvec2, w uint) uvec4</code></td>
+<td>unbounded</td>
+<td>Returns a <code>uvec4</code> with the components set to <code>x</code>, <code>a.x</code>, <code>a.y</code>, and <code>w</code> respectively.</td>
+</tr>
+<tr>
+<td><code>uvec4(x, y uint, a uvec2) uvec4</code></td>
+<td>unbounded</td>
+<td>Returns a <code>uvec4</code> with the components set to <code>x</code>, <code>y</code>, <code>a.x</code>, and <code>a.y</code> respectively.</td>
+</tr>
+<tr>
+<td><code>uvec4(a uvec3, w uint) uvec4</code></td>
+<td>unbounded</td>
+<td>Returns a <code>uvec4</code> with the components set to <code>a.x</code>, <code>a.y</code>, <code>a.z</code>, and <code>w</code> respectively.</td>
+</tr>
+<tr>
+<td><code>uvec4(x uint, a uvec3) uvec4</code></td>
+<td>unbounded</td>
+<td>Returns a <code>uvec4</code> with the components set to <code>x</code>, <code>a.x</code>, <code>a.y</code>, and <code>a.z</code> respectively.</td>
+</tr>
+<tr>
+<td><code>mat2(x, y vec2) mat2</code></td>
+<td>unbounded</td>
+<td>Returns a <code>mat2</code> with columns <code>x</code> and <code>y</code> in order.</td>
+</tr>
+<tr>
+<td><code>mat2(m mat3) mat2</code></td>
+<td>unbounded</td>
+<td>Returns a <code>mat2</code> using the upper left portion of the provided matrix.</td>
+</tr>
+<tr>
+<td><code>mat3(x, y, z vec3) mat3</code></td>
+<td>unbounded</td>
+<td>Returns a <code>mat3</code> with columns <code>x</code>, <code>y</code> and <code>z</code> in order.</td>
+</tr>
+<tr>
+<td><code>mat3(m mat4) mat3</code></td>
+<td>unbounded</td>
+<td>Returns a <code>mat3</code> using the upper left portion of the provided matrix.</td>
+</tr>
+<tr>
+<td><code>mat4(x, y, z, w vec4) mat4</code></td>
+<td>unbounded</td>
+<td>Returns a <code>mat4</code> with columns <code>x</code>, <code>y</code>, <code>z</code> and <code>w</code> in order.</td>
+</tr>
+</tbody>
+</table>
+<p>The following table lists general math built-in functions.</p>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Scope</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>abs(v T) T</code></td>
+<td>unbounded</td>
+<td>Returns the absolute value of the parameter.</td>
+</tr>
+<tr>
+<td><code>sign(v T) T</code></td>
+<td>unbounded</td>
+<td>Returns <code>1</code> when positive, <code>0</code> when zero, and <code>-1</code> when negative.</td>
+</tr>
+<tr>
+<td><code>floor(v T) T</code></td>
+<td>unbounded</td>
+<td>Returns the nearest whole number less than or equal to the parameter.</td>
+</tr>
+<tr>
+<td><code>trunc(v T) T</code></td>
+<td>unbounded</td>
+<td>Returns the nearest whole number for which the absolute value is less or equal to the absolute value of the parameter.</td>
+</tr>
+<tr>
+<td><code>round(v T) T</code></td>
+<td>unbounded</td>
+<td>Rounds the value to the nearest whole number.</td>
+</tr>
+<tr>
+<td><code>ceil(v T) T</code></td>
+<td>unbounded</td>
+<td>Returns the nearest whole number greater than or equal to the parameter.</td>
+</tr>
+<tr>
+<td><code>fract(v T) T</code></td>
+<td>unbounded</td>
+<td>In essence, returns <code>x - floor(x)</code>.</td>
+</tr>
+<tr>
+<td><code>min(a, b T) T</code></td>
+<td>unbounded</td>
+<td>Returns the minimum of the two values.</td>
+</tr>
+<tr>
+<td><code>max(a, b T) T</code></td>
+<td>unbounded</td>
+<td>Returns the maximum of the two values.</td>
+</tr>
+<tr>
+<td><code>clamp(v, lower, upper T) T</code></td>
+<td>unbounded</td>
+<td>In essence, returns <code>max(lower, min(v, upper))</code>.</td>
+</tr>
+<tr>
+<td><code>mix(a, b, z T) T</code></td>
+<td>unbounded</td>
+<td>Returns the linear interpolation between <code>a</code> and <code>b</code>. In essence, it calculates <code>a * (1-z) + b * z</code>.</td>
+</tr>
+<tr>
+<td><code>smoothstep(a, b, z T) T</code></td>
+<td>unbounded</td>
+<td>Returns the Hermite interpolation between <code>a</code> and <code>b</code>.</td>
+</tr>
+<tr>
+<td><code>length(v T) S</code></td>
+<td>unbounded</td>
+<td>Returns the length of the vector.</td>
+</tr>
+<tr>
+<td><code>distance(a, b T) S</code></td>
+<td>unbounded</td>
+<td>Returns the distance between two vectors. In essence, it returns <code>length(b - a)</code>.</td>
+</tr>
+<tr>
+<td><code>dot(a, b T) S</code></td>
+<td>unbounded</td>
+<td>Returns the dot product of two vectors.</td>
+</tr>
+<tr>
+<td><code>cross(a, b T) T</code></td>
+<td>unbounded</td>
+<td>Returns the cross product of two vectors.</td>
+</tr>
+<tr>
+<td><code>normalize(v T) T</code></td>
+<td>unbounded</td>
+<td>Resizes a vector to the unit length.</td>
+</tr>
+<tr>
+<td><code>faceforward(v, i, n T)</code></td>
+<td>unbounded</td>
+<td>Returns the vector <code>v</code> oriented to point away from the surface as dictated by in normal vector <code>n</code> and the incident vector <code>i</code> (which visually "points" towards the surface).</td>
+</tr>
+<tr>
+<td><code>reflect(i, n T) T</code></td>
+<td>unbounded</td>
+<td>Reflects the incident vector <code>i</code> (which visually "points" towards the surface) according to the normal vector <code>n</code>.</td>
+</tr>
+<tr>
+<td><code>refract(i, n T, e S) T</code></td>
+<td>unbounded</td>
+<td>Refracts the incident vector <code>i</code> (which visually "points" towards the surface) according to the normal vector <code>n</code> and the ratio of refraction <code>e</code>.</td>
+</tr>
+<tr>
+<td><code>transpose(m T) T</code></td>
+<td>unbounded</td>
+<td>Returns the transpose of the matrix <code>m</code>. As only square matrices are supported right now, the returned type is always the same.</td>
+</tr>
+<tr>
+<td><code>determinant(m T) K</code></td>
+<td>unbounded</td>
+<td>Returns the determinant of the matrix <code>m</code>.</td>
+</tr>
+<tr>
+<td><code>any(v T) bool</code></td>
+<td>unbounded</td>
+<td>Returns <code>true</code> if any of the components of <code>v</code> are <code>true</code>.</td>
+</tr>
+<tr>
+<td><code>all(v T) bool</code></td>
+<td>unbounded</td>
+<td>Returns <code>true</code> if all of the components of <code>v</code> are <code>true</code>.</td>
+</tr>
+<tr>
+<td><code>atan2(y, x T) T</code></td>
+<td>unbounded</td>
+<td>Returns the atan2 of the parameters <code>y</code> over <code>x</code>.</td>
+</tr>
+<tr>
+<td><code>cos(v T) T</code></td>
+<td>unbounded</td>
+<td>Returns the cosine of the parameter <code>v</code>.</td>
+</tr>
+<tr>
+<td><code>sin(v T) T</code></td>
+<td>unbounded</td>
+<td>Returns the sine of the parameter <code>v</code>.</td>
+</tr>
+</tbody>
+</table>
+<p>The following table lists general texture built-in functions.</p>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Scope</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>sample(s sampler2D, uv vec2) vec4</code></td>
+<td>unbounded</td>
+<td>Samples the specified 2D sampler and returns the value at position <code>uv</code>.</td>
+</tr>
+<tr>
+<td><code>sample(s samplerCube, uv vec3) vec4</code></td>
+<td>unbounded</td>
+<td>Samples the specified Cube sampler and returns the value at position <code>uv</code>.</td>
+</tr>
+</tbody>
+</table>
+<p>The following table lists LSL helper functions.</p>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Scope</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>extractRotation(matrix mat4) mat3</code></td>
+<td>unbounded</td>
+<td>Extracts the rotation matrix from a general 3D transformation matrix.</td>
+</tr>
+<tr>
+<td><code>normalFromTexel(texel vec3, scale float) vec3</code></td>
+<td>unbounded</td>
+<td>Converts a texel value from a texture into a normal, scaled as specified.</td>
+</tr>
+<tr>
+<td><code>vectorToSurface(vector, normal, tangent vec3) vec3</code></td>
+<td>unbounded</td>
+<td>Transforms the specified <code>vector</code> according to the coordinate space defined by <code>normal</code> and <code>tangent</code>. This is usually used in normal mapping to transform a normal from local space into face orientation space.</td>
+</tr>
+<tr>
+<td><code>billboard(model, camera mat4) mat4</code></td>
+<td>unbounded</td>
+<td>Takes a model and camera matrices and calculates and returns a new model matrix that will transform the model so that it is always aligned towards the camera.</td>
+</tr>
+<tr>
+<td><code>billboardX(model, camera mat4) mat4</code></td>
+<td>unbounded</td>
+<td>Takes a model and camera matrices and calculates and returns a new model matrix that will transform the model so that its X axis matches the world X axis and the remaining axes are aligned with the camera's.</td>
+</tr>
+<tr>
+<td><code>billboardY(model, camera mat4) mat4</code></td>
+<td>unbounded</td>
+<td>Takes a model and camera matrices and calculates and returns a new model matrix that will transform the model so that its Y axis matches the world Y axis and the remaining axes are aligned with the camera's.</td>
+</tr>
+<tr>
+<td><code>billboardZ(model, camera mat4) mat4</code></td>
+<td>unbounded</td>
+<td>Takes a model and camera matrices and calculates and returns a new model matrix that will transform the model so that its Z axis matches the world Z axis and the remaining axes are aligned with the camera's.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="predefined-variables">Predefined Variables</h2>
+<p>Following are variables that are pre-defined for some of the render stages.</p>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+<th>Mode</th>
+<th>Scope</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>#time</code></td>
+<td><code>float32</code></td>
+<td>ReadOnly</td>
+<td><code>#vertex</code>, <code>#fragment</code> (shadow, geometry, forward, sky)</td>
+<td>The time in seconds since the scene was created.</td>
+</tr>
+<tr>
+<td><code>#spawnTime</code></td>
+<td><code>float32</code></td>
+<td>ReadOnly</td>
+<td><code>#vertex</code>, <code>#fragment</code> (shadow, geometry, forward)</td>
+<td>The time in seconds since the mesh was created.</td>
+</tr>
+<tr>
+<td><code>#vertexCoord</code></td>
+<td><code>vec4</code></td>
+<td>ReadOnly</td>
+<td><code>#vertex</code> (shadow, geometry, forward)</td>
+<td>Contains the position of the vertex in local space. Value is <code>vec4(0.0, 0.0, 0.0, 1.0)</code> if the mesh does not contain vertex coords.</td>
+</tr>
+<tr>
+<td><code>#vertexNormal</code></td>
+<td><code>vec3</code></td>
+<td>ReadOnly</td>
+<td><code>#vertex</code> (shadow, geometry, forward)</td>
+<td>Contains the normal of the vertex in local space. Value is <code>vec3(0.0, 0.0, 1.0)</code> if the mesh does not contain vertex normals.</td>
+</tr>
+<tr>
+<td><code>#vertexTangent</code></td>
+<td><code>vec3</code></td>
+<td>ReadOnly</td>
+<td><code>#vertex</code> (shadow, geometry, forward)</td>
+<td>Contains the tangent of the vertex in local space. Value is <code>vec3(1.0, 0.0, 0.0)</code> if the mesh does not contain vertex tangents.</td>
+</tr>
+<tr>
+<td><code>#vertexUV</code></td>
+<td><code>vec2</code></td>
+<td>ReadOnly</td>
+<td><code>#vertex</code> (shadow, geometry, forward)</td>
+<td>Contains the texture coordinates of the vertex. Value is <code>vec2(0.0, 0.0)</code> if the mesh does not contain vertex texture coords.</td>
+</tr>
+<tr>
+<td><code>#vertexColor</code></td>
+<td><code>vec4</code></td>
+<td>ReadOnly</td>
+<td><code>#vertex</code> (shadow, geometry, forward)</td>
+<td>Contains the color of the vertex. Value is <code>vec4(1.0, 1.0, 1.0, 1.0)</code> if the mesh does not contain vertex coloring.</td>
+</tr>
+<tr>
+<td><code>#modelMatrix</code></td>
+<td><code>mat4</code></td>
+<td>ReadOnly</td>
+<td><code>#vertex</code> (shadow, geometry, forward)</td>
+<td>Contains the model transformation matrix for the rendered object.</td>
+</tr>
+<tr>
+<td><code>#cameraMatrix</code></td>
+<td><code>mat4</code></td>
+<td>ReadOnly</td>
+<td><code>#vertex</code>, <code>#fragment</code> (shadow, geometry, forward, sky)</td>
+<td>Contains the camera transformation matrix. NOTE: Not to be confused with <code>#viewMatrix</code>, which is often the desired one.</td>
+</tr>
+<tr>
+<td><code>#viewMatrix</code></td>
+<td><code>mat4</code></td>
+<td>ReadOnly</td>
+<td><code>#vertex</code>, <code>#fragment</code> (shadow, geometry, forward, sky)</td>
+<td>Contains the view transformation matrix. It is equal to the inverse of the <code>#cameraMatrix</code> but is already pre-calculated.</td>
+</tr>
+<tr>
+<td><code>#projectionMatrix</code></td>
+<td><code>mat4</code></td>
+<td>ReadOnly</td>
+<td><code>#vertex</code>, <code>#fragment</code> (shadow, geometry, forward, sky)</td>
+<td>Contains the projection matrix.</td>
+</tr>
+<tr>
+<td><code>#viewport</code></td>
+<td><code>vec4</code></td>
+<td>ReadOnly</td>
+<td><code>#vertex</code>, <code>#fragment</code> (shadow, geometry, forward, sky)</td>
+<td>The <code>x</code> and <code>y</code> fields contain the positioning of the viewport and <code>z</code> and <code>w</code> contain the size of the viewport.</td>
+</tr>
+<tr>
+<td><code>#position</code></td>
+<td><code>vec4</code></td>
+<td>ReadWrite</td>
+<td><code>#vertex</code> (shadow, geometry, forward)</td>
+<td>Contains the output position of the vertex from a vertex shader.</td>
+</tr>
+<tr>
+<td><code>#color</code></td>
+<td><code>vec4</code></td>
+<td>ReadWrite</td>
+<td><code>#fragment</code> (geometry, forward, sky)</td>
+<td>Specifies the color to be placed on the screen. Default value is <code>vec4(0.0, 0.0, 0.0, 1.0)</code>.</td>
+</tr>
+<tr>
+<td><code>#normal</code></td>
+<td><code>vec3</code></td>
+<td>ReadWrite</td>
+<td><code>#fragment</code> (geometry)</td>
+<td>Contains the output normal of a texel from a geometry fragment shader.</td>
+</tr>
+<tr>
+<td><code>#metallic</code></td>
+<td><code>float</code></td>
+<td>ReadWrite</td>
+<td><code>#fragment</code> (geometry)</td>
+<td>Contains the output metallic value of a texel from a geometry fragment shader.</td>
+</tr>
+<tr>
+<td><code>#roughness</code></td>
+<td><code>float</code></td>
+<td>ReadWrite</td>
+<td><code>#fragment</code> (geometry)</td>
+<td>Contains the output roughness value of a texel from a geometry fragment shader.</td>
+</tr>
+<tr>
+<td><code>#varyingNormal</code></td>
+<td><code>vec3</code></td>
+<td>ReadWrite</td>
+<td><code>#vertex</code>, <code>#fragment</code> (geometry)</td>
+<td>A varying variable used to transfer a normal value between shader stages in a geometry shader. If a <code>#vertex</code> function is not specified, this value is automatically filled. <strong>NOTE:</strong> Make sure to normalize before usage due to interpolation.</td>
+</tr>
+<tr>
+<td><code>#varyingTangent</code></td>
+<td><code>vec3</code></td>
+<td>ReadWrite</td>
+<td><code>#vertex</code>, <code>#fragment</code> (geometry)</td>
+<td>A varying variable used to transfer a tangent value between shader stages in a geometry shader. If a <code>#vertex</code> function is not specified, this value is automatically filled. <strong>NOTE:</strong> Make sure to normalize before usage due to interpolation.</td>
+</tr>
+<tr>
+<td><code>#varyingUV</code></td>
+<td><code>vec2</code></td>
+<td>ReadWrite</td>
+<td><code>#vertex</code>, <code>#fragment</code> (geometry)</td>
+<td>A varying variable used to transfer a texture coordinate value between shader stages in a geometry shader. If a <code>#vertex</code> function is not specified, this value is automatically filled.</td>
+</tr>
+<tr>
+<td><code>#varyingColor</code></td>
+<td><code>vec4</code></td>
+<td>ReadWrite</td>
+<td><code>#vertex</code>, <code>#fragment</code> (geometry)</td>
+<td>A varying variable used to transfer a color value between shader stages in a geometry shader. If a <code>#vertex</code> function is not specified, this value is automatically filled.</td>
+</tr>
+<tr>
+<td><code>#direction</code></td>
+<td><code>vec3</code></td>
+<td>ReadOnly</td>
+<td><code>#fragment</code> (sky)</td>
+<td>Contains the world space direction of the ray that is being rendered.</td>
+</tr>
+</tbody>
+</table>
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    <script id="__config" type="application/json">{"base": "../../..", "features": [], "search": "../../../assets/javascripts/workers/search.e5c33ebb.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.51d95adb.min.js"></script>
+      
+        <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+      
+    
+  </body>
+</html>

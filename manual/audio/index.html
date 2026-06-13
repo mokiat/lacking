@@ -1,0 +1,1460 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+        <link rel="canonical" href="http://mokiat.com/lacking/manual/audio/">
+      
+      
+        <link rel="prev" href="../application/">
+      
+      
+        <link rel="next" href="../ecs/">
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.4.2, mkdocs-material-9.0.6">
+    
+    
+      
+        <title>Overview - Lacking</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.558e4712.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.2505c338.min.css">
+      
+      
+
+    
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce((e,_)=>(e<<5)-e+_.charCodeAt(0),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="" data-md-color-accent="">
+  
+    
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#audio" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Lacking" class="md-header__button md-logo" aria-label="Lacking" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3V6m0 5h18v2H3v-2m0 5h18v2H3v-2Z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Lacking
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Overview
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+    
+      <label class="md-header__button md-icon" for="__search">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5Z"/></svg>
+      </label>
+      <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5Z"/></svg>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12Z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41Z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/mokiat/lacking/" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81z"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Lacking" class="md-nav__button md-logo" aria-label="Lacking" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
+
+    </a>
+    Lacking
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/mokiat/lacking/" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81z"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+      
+
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        Home
+      </a>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../examples/" class="md-nav__link">
+        Examples
+      </a>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/" class="md-nav__link">
+        Getting Started
+      </a>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+    
+  
+  
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " data-md-toggle="__nav_4" type="checkbox" id="__nav_4" checked>
+      
+      
+      
+        <label class="md-nav__link" for="__nav_4" tabindex="0" aria-expanded="true">
+          User's Guide
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="User's Guide" data-md-level="1">
+        <label class="md-nav__title" for="__nav_4">
+          <span class="md-nav__icon md-icon"></span>
+          User's Guide
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../application/" class="md-nav__link">
+        Application
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+    
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" data-md-toggle="toc" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          Audio
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        Audio
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#core-concepts" class="md-nav__link">
+    Core Concepts
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#media" class="md-nav__link">
+    Media
+  </a>
+  
+    <nav class="md-nav" aria-label="Media">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#frames-and-sample-rate" class="md-nav__link">
+    Frames and Sample Rate
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#decoding-audio-files" class="md-nav__link">
+    Decoding Audio Files
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#master-bus" class="md-nav__link">
+    Master Bus
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#buses" class="md-nav__link">
+    Buses
+  </a>
+  
+    <nav class="md-nav" aria-label="Buses">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#bus-controls" class="md-nav__link">
+    Bus Controls
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#reverb" class="md-nav__link">
+    Reverb
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#compression" class="md-nav__link">
+    Compression
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#playback" class="md-nav__link">
+    Playback
+  </a>
+  
+    <nav class="md-nav" aria-label="Playback">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#loop-control" class="md-nav__link">
+    Loop Control
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#per-playback-controls" class="md-nav__link">
+    Per-Playback Controls
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#completion-callback" class="md-nav__link">
+    Completion Callback
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#per-playback-filters" class="md-nav__link">
+    Per-Playback Filters
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#spatial-audio" class="md-nav__link">
+    Spatial Audio
+  </a>
+  
+    <nav class="md-nav" aria-label="Spatial Audio">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#directional-emission-cone" class="md-nav__link">
+    Directional Emission (Cone)
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#no-op-implementation" class="md-nav__link">
+    No-op Implementation
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ecs/" class="md-nav__link">
+        ECS
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../game/" class="md-nav__link">
+        Game
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " data-md-toggle="__nav_4_5" type="checkbox" id="__nav_4_5" >
+      
+      
+      
+        <label class="md-nav__link" for="__nav_4_5" tabindex="0" aria-expanded="false">
+          Graphics
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="Graphics" data-md-level="2">
+        <label class="md-nav__title" for="__nav_4_5">
+          <span class="md-nav__icon md-icon"></span>
+          Graphics
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../graphics/shader/" class="md-nav__link">
+        Shader
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../rendering/" class="md-nav__link">
+        Rendering
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../user-interface/" class="md-nav__link">
+        User Interface
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " data-md-toggle="__nav_5" type="checkbox" id="__nav_5" >
+      
+      
+      
+        <label class="md-nav__link" for="__nav_5" tabindex="0" aria-expanded="false">
+          Internals
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="Internals" data-md-level="1">
+        <label class="md-nav__title" for="__nav_5">
+          <span class="md-nav__icon md-icon"></span>
+          Internals
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " data-md-toggle="__nav_5_1" type="checkbox" id="__nav_5_1" >
+      
+      
+      
+        <label class="md-nav__link" for="__nav_5_1" tabindex="0" aria-expanded="false">
+          Physics
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="Physics" data-md-level="2">
+        <label class="md-nav__title" for="__nav_5_1">
+          <span class="md-nav__icon md-icon"></span>
+          Physics
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../development/physics/" class="md-nav__link">
+        Overview
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../development/physics/references/" class="md-nav__link">
+        References
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " data-md-toggle="__nav_5_1_3" type="checkbox" id="__nav_5_1_3" >
+      
+      
+      
+        <label class="md-nav__link" for="__nav_5_1_3" tabindex="0" aria-expanded="false">
+          Theory
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="Theory" data-md-level="3">
+        <label class="md-nav__title" for="__nav_5_1_3">
+          <span class="md-nav__icon md-icon"></span>
+          Theory
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../development/physics/theory/principles/" class="md-nav__link">
+        Principles
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../development/physics/theory/terminology/" class="md-nav__link">
+        Terminology
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../development/physics/theory/equations/" class="md-nav__link">
+        Equations
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../development/physics/theory/effective-mass/" class="md-nav__link">
+        Effective Mass
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../development/physics/theory/moment-of-inertia/" class="md-nav__link">
+        Moment of Inertia
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " data-md-toggle="__nav_5_1_4" type="checkbox" id="__nav_5_1_4" >
+      
+      
+      
+        <label class="md-nav__link" for="__nav_5_1_4" tabindex="0" aria-expanded="false">
+          Derivations
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="Derivations" data-md-level="3">
+        <label class="md-nav__title" for="__nav_5_1_4">
+          <span class="md-nav__icon md-icon"></span>
+          Derivations
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../development/physics/derivations/impulse-derivation/" class="md-nav__link">
+        Impulse
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../development/physics/derivations/effective-mass-derivation/" class="md-nav__link">
+        Effective Mass
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " data-md-toggle="__nav_5_2" type="checkbox" id="__nav_5_2" >
+      
+      
+      
+        <label class="md-nav__link" for="__nav_5_2" tabindex="0" aria-expanded="false">
+          Math
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="Math" data-md-level="2">
+        <label class="md-nav__title" for="__nav_5_2">
+          <span class="md-nav__icon md-icon"></span>
+          Math
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../development/math/vectors/" class="md-nav__link">
+        Vectors
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../development/math/derivatives/" class="md-nav__link">
+        Derivatives
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#core-concepts" class="md-nav__link">
+    Core Concepts
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#media" class="md-nav__link">
+    Media
+  </a>
+  
+    <nav class="md-nav" aria-label="Media">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#frames-and-sample-rate" class="md-nav__link">
+    Frames and Sample Rate
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#decoding-audio-files" class="md-nav__link">
+    Decoding Audio Files
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#master-bus" class="md-nav__link">
+    Master Bus
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#buses" class="md-nav__link">
+    Buses
+  </a>
+  
+    <nav class="md-nav" aria-label="Buses">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#bus-controls" class="md-nav__link">
+    Bus Controls
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#reverb" class="md-nav__link">
+    Reverb
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#compression" class="md-nav__link">
+    Compression
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#playback" class="md-nav__link">
+    Playback
+  </a>
+  
+    <nav class="md-nav" aria-label="Playback">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#loop-control" class="md-nav__link">
+    Loop Control
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#per-playback-controls" class="md-nav__link">
+    Per-Playback Controls
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#completion-callback" class="md-nav__link">
+    Completion Callback
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#per-playback-filters" class="md-nav__link">
+    Per-Playback Filters
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#spatial-audio" class="md-nav__link">
+    Spatial Audio
+  </a>
+  
+    <nav class="md-nav" aria-label="Spatial Audio">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#directional-emission-cone" class="md-nav__link">
+    Directional Emission (Cone)
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#no-op-implementation" class="md-nav__link">
+    No-op Implementation
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+  
+  
+
+
+
+<h1 id="audio">Audio</h1>
+<p>The <code>core/audio</code> package defines a mid-level, bus-based audio API. It is the audio equivalent of the <code>render</code> package: an abstract interface implemented separately for each platform (native desktop, web). Game code is not expected to use this API directly — a higher-level audio API is provided for that purpose — but there are cases where working directly with these primitives is necessary.</p>
+<p>The API is obtained from the application window:</p>
+<div class="highlight"><pre><span></span><code><span class="nx">api</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">window</span><span class="p">.</span><span class="nx">AudioAPI</span><span class="p">()</span>
+</code></pre></div>
+<h2 id="core-concepts">Core Concepts</h2>
+<table>
+<thead>
+<tr>
+<th>Concept</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>API</strong></td>
+<td>Entry point. Creates media, buses, and playback instances. Exposes the master bus and spatial listener.</td>
+</tr>
+<tr>
+<td><strong>MediaData</strong></td>
+<td>Raw decoded audio frames together with the sample rate.</td>
+</tr>
+<tr>
+<td><strong>Media</strong></td>
+<td>A decoded audio clip loaded into the audio system. Acts as a data source for playback instances.</td>
+</tr>
+<tr>
+<td><strong>Frame</strong></td>
+<td>A single stereo audio frame consisting of left and right channel values.</td>
+</tr>
+<tr>
+<td><strong>MasterBus</strong></td>
+<td>The overall output sink. Controls master gain and compression.</td>
+</tr>
+<tr>
+<td><strong>Bus</strong></td>
+<td>A named group of sound sources with collective gain, reverb, compression, and pause/resume control.</td>
+</tr>
+<tr>
+<td><strong>Playback</strong></td>
+<td>A single playing instance of a <code>Media</code> on a <code>Bus</code>. Controls start/stop/pause and per-playback properties.</td>
+</tr>
+<tr>
+<td><strong>SpatialPlayback</strong></td>
+<td>A <code>Playback</code> that is also positioned and oriented in 3D space.</td>
+</tr>
+<tr>
+<td><strong>SpatialListener</strong></td>
+<td>The listener's position and orientation in 3D space for spatial audio.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="media">Media</h2>
+<p><code>Media</code> represents a decoded audio clip held in the audio system. It is created from a <code>MediaData</code> value, which holds raw PCM frames and a sample rate:</p>
+<div class="highlight"><pre><span></span><code><span class="c1">// Decode from an encoded file (WAV, MP3, or any registered format).</span>
+<span class="nx">data</span><span class="p">,</span><span class="w"> </span><span class="nx">_</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">audio</span><span class="p">.</span><span class="nx">Decode</span><span class="p">(</span><span class="nx">r</span><span class="p">)</span>
+<span class="k">if</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="kc">nil</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="c1">// handle error</span>
+<span class="p">}</span>
+
+<span class="c1">// Resample if necessary (e.g. if the audio system requires a specific rate).</span>
+<span class="c1">// data.Frames = audio.Resample(data.Frames, data.SampleRate, targetRate)</span>
+
+<span class="nx">media</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">api</span><span class="p">.</span><span class="nx">CreateMedia</span><span class="p">(</span><span class="nx">data</span><span class="p">)</span>
+
+<span class="c1">// Release when no longer needed.</span>
+<span class="k">defer</span><span class="w"> </span><span class="nx">media</span><span class="p">.</span><span class="nx">Release</span><span class="p">()</span>
+</code></pre></div>
+<p>It is safe to release a <code>Media</code> after using it to create playback instances — existing playback is not affected.</p>
+<p><code>media.Length()</code> returns the duration of the clip in seconds.</p>
+<h3 id="frames-and-sample-rate">Frames and Sample Rate</h3>
+<p>Audio data is represented as a slice of <code>Frame</code> values, each holding a left and right channel sample:</p>
+<div class="highlight"><pre><span></span><code><span class="kd">type</span><span class="w"> </span><span class="nx">Frame</span><span class="w"> </span><span class="kd">struct</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">Left</span><span class="w">  </span><span class="kt">float32</span>
+<span class="w">    </span><span class="nx">Right</span><span class="w"> </span><span class="kt">float32</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>The <code>Resample</code> utility converts frames between sample rates:</p>
+<div class="highlight"><pre><span></span><code><span class="nx">resampled</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">audio</span><span class="p">.</span><span class="nx">Resample</span><span class="p">(</span><span class="nx">frames</span><span class="p">,</span><span class="w"> </span><span class="nx">originalRate</span><span class="p">,</span><span class="w"> </span><span class="nx">targetRate</span><span class="p">)</span>
+</code></pre></div>
+<p><code>SampleCount</code> and <code>Seconds</code> convert between frame counts and durations:</p>
+<div class="highlight"><pre><span></span><code><span class="nx">count</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">audio</span><span class="p">.</span><span class="nx">SampleCount</span><span class="p">(</span><span class="mf">2.5</span><span class="p">,</span><span class="w"> </span><span class="nx">sampleRate</span><span class="p">)</span><span class="w"> </span><span class="c1">// frames for 2.5 seconds</span>
+<span class="nx">dur</span><span class="w">   </span><span class="o">:=</span><span class="w"> </span><span class="nx">audio</span><span class="p">.</span><span class="nx">Seconds</span><span class="p">(</span><span class="nx">count</span><span class="p">,</span><span class="w"> </span><span class="nx">sampleRate</span><span class="p">)</span><span class="w">   </span><span class="c1">// back to seconds</span>
+</code></pre></div>
+<h3 id="decoding-audio-files">Decoding Audio Files</h3>
+<p><code>audio.Decode</code> auto-detects the format by magic-byte prefix and decodes the data:</p>
+<div class="highlight"><pre><span></span><code><span class="nx">data</span><span class="p">,</span><span class="w"> </span><span class="nx">format</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">audio</span><span class="p">.</span><span class="nx">Decode</span><span class="p">(</span><span class="nx">r</span><span class="p">)</span><span class="w"> </span><span class="c1">// format is e.g. &quot;mp3&quot; or &quot;wav&quot;</span>
+</code></pre></div>
+<p>Format decoders self-register via package <code>init</code>. Import the sub-packages to enable them:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="p">(</span>
+<span class="w">    </span><span class="nx">_</span><span class="w"> </span><span class="s">&quot;github.com/mokiat/lacking/core/audio/mp3&quot;</span>
+<span class="w">    </span><span class="nx">_</span><span class="w"> </span><span class="s">&quot;github.com/mokiat/lacking/core/audio/wav&quot;</span>
+<span class="p">)</span>
+</code></pre></div>
+<p>Custom decoders can be added with <code>audio.RegisterDecoder</code>.</p>
+<h2 id="master-bus">Master Bus</h2>
+<p><code>MasterBus</code> is the global output sink. It controls the overall gain and provides access to global compression:</p>
+<div class="highlight"><pre><span></span><code><span class="nx">master</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">api</span><span class="p">.</span><span class="nx">MasterBus</span><span class="p">()</span>
+<span class="nx">master</span><span class="p">.</span><span class="nx">SetGain</span><span class="p">(</span><span class="mf">0.8</span><span class="p">)</span>
+
+<span class="nx">comp</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">master</span><span class="p">.</span><span class="nx">Compression</span><span class="p">()</span>
+<span class="nx">comp</span><span class="p">.</span><span class="nx">SetThreshold</span><span class="p">(</span><span class="o">-</span><span class="mf">18.0</span><span class="p">)</span>
+<span class="nx">comp</span><span class="p">.</span><span class="nx">SetRatio</span><span class="p">(</span><span class="mf">4.0</span><span class="p">)</span>
+</code></pre></div>
+<h2 id="buses">Buses</h2>
+<p>A <code>Bus</code> groups a set of sound sources for collective control. Create one with <code>CreateBus</code>, optionally enabling reverb and/or compression:</p>
+<div class="highlight"><pre><span></span><code><span class="nx">musicBus</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">api</span><span class="p">.</span><span class="nx">CreateBus</span><span class="p">(</span><span class="nx">audio</span><span class="p">.</span><span class="nx">BusSettings</span><span class="p">{})</span>
+<span class="nx">sfxBus</span><span class="w">   </span><span class="o">:=</span><span class="w"> </span><span class="nx">api</span><span class="p">.</span><span class="nx">CreateBus</span><span class="p">(</span><span class="nx">audio</span><span class="p">.</span><span class="nx">BusSettings</span><span class="p">{</span><span class="nx">UseCompression</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">})</span>
+<span class="nx">envBus</span><span class="w">   </span><span class="o">:=</span><span class="w"> </span><span class="nx">api</span><span class="p">.</span><span class="nx">CreateBus</span><span class="p">(</span><span class="nx">audio</span><span class="p">.</span><span class="nx">BusSettings</span><span class="p">{</span><span class="nx">UseReverb</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span><span class="w"> </span><span class="nx">UseCompression</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">})</span>
+<span class="k">defer</span><span class="w"> </span><span class="nx">musicBus</span><span class="p">.</span><span class="nx">Release</span><span class="p">()</span>
+<span class="k">defer</span><span class="w"> </span><span class="nx">sfxBus</span><span class="p">.</span><span class="nx">Release</span><span class="p">()</span>
+<span class="k">defer</span><span class="w"> </span><span class="nx">envBus</span><span class="p">.</span><span class="nx">Release</span><span class="p">()</span>
+</code></pre></div>
+<p>Releasing a bus stops all playback attached to it.</p>
+<h3 id="bus-controls">Bus Controls</h3>
+<div class="highlight"><pre><span></span><code><span class="nx">bus</span><span class="p">.</span><span class="nx">SetGain</span><span class="p">(</span><span class="mf">0.5</span><span class="p">)</span><span class="w">  </span><span class="c1">// half volume for everything on this bus</span>
+
+<span class="c1">// Pause/resume all sources on the bus at once.</span>
+<span class="nx">bus</span><span class="p">.</span><span class="nx">Pause</span><span class="p">()</span>
+<span class="nx">bus</span><span class="p">.</span><span class="nx">Resume</span><span class="p">()</span>
+</code></pre></div>
+<p><code>bus.Compression()</code> and <code>bus.Reverb()</code> return <code>nil</code> if the bus was not created with those effects enabled.</p>
+<h3 id="reverb">Reverb</h3>
+<p>Configure room characteristics on buses created with <code>UseReverb: true</code>:</p>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Default</th>
+<th>Range</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>RoomSize</code></td>
+<td>0.3</td>
+<td>[0.0, 1.0]</td>
+<td>Size of the virtual room.</td>
+</tr>
+<tr>
+<td><code>Damping</code></td>
+<td>0.5</td>
+<td>[0.0, 1.0]</td>
+<td>High-frequency absorption. Higher values simulate softer surfaces.</td>
+</tr>
+<tr>
+<td><code>Dry</code></td>
+<td>1.0</td>
+<td>[0.0, 1.0]</td>
+<td>Level of the unprocessed signal.</td>
+</tr>
+<tr>
+<td><code>Wet</code></td>
+<td>0.5</td>
+<td>[0.0, 1.0]</td>
+<td>Level of the reverberated signal.</td>
+</tr>
+</tbody>
+</table>
+<div class="highlight"><pre><span></span><code><span class="nx">reverb</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">bus</span><span class="p">.</span><span class="nx">Reverb</span><span class="p">()</span>
+<span class="nx">reverb</span><span class="p">.</span><span class="nx">SetRoomSize</span><span class="p">(</span><span class="mf">0.8</span><span class="p">)</span>
+<span class="nx">reverb</span><span class="p">.</span><span class="nx">SetDamping</span><span class="p">(</span><span class="mf">0.3</span><span class="p">)</span>
+<span class="nx">reverb</span><span class="p">.</span><span class="nx">SetWet</span><span class="p">(</span><span class="mf">0.4</span><span class="p">)</span>
+</code></pre></div>
+<h3 id="compression">Compression</h3>
+<p>Available on both <code>Bus</code> (when <code>UseCompression: true</code>) and <code>MasterBus</code>:</p>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Default</th>
+<th>Range</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Threshold</code></td>
+<td>-24.0 dB</td>
+<td>[-100.0, 0.0]</td>
+<td>Level above which compression is applied.</td>
+</tr>
+<tr>
+<td><code>Ratio</code></td>
+<td>12.0</td>
+<td>[1.0, 20.0]</td>
+<td>Compression ratio (input dB : output dB above threshold).</td>
+</tr>
+<tr>
+<td><code>Knee</code></td>
+<td>30.0 dB</td>
+<td>[0.0, 40.0]</td>
+<td>Width of the soft-knee transition around the threshold.</td>
+</tr>
+<tr>
+<td><code>Attack</code></td>
+<td>0.003 s</td>
+<td>[0.0, 1.0]</td>
+<td>Time for compression to engage.</td>
+</tr>
+<tr>
+<td><code>Release</code></td>
+<td>0.25 s</td>
+<td>[0.0, 1.0]</td>
+<td>Time for compression to disengage.</td>
+</tr>
+</tbody>
+</table>
+<div class="highlight"><pre><span></span><code><span class="nx">comp</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">bus</span><span class="p">.</span><span class="nx">Compression</span><span class="p">()</span>
+<span class="nx">comp</span><span class="p">.</span><span class="nx">SetThreshold</span><span class="p">(</span><span class="o">-</span><span class="mf">18.0</span><span class="p">)</span>
+<span class="nx">comp</span><span class="p">.</span><span class="nx">SetRatio</span><span class="p">(</span><span class="mf">4.0</span><span class="p">)</span>
+</code></pre></div>
+<h2 id="playback">Playback</h2>
+<p>A <code>Playback</code> is a single instance of a <code>Media</code> playing on a <code>Bus</code>. Create one with <code>CreatePlayback</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="nx">playback</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">api</span><span class="p">.</span><span class="nx">CreatePlayback</span><span class="p">(</span><span class="nx">bus</span><span class="p">,</span><span class="w"> </span><span class="nx">media</span><span class="p">,</span><span class="w"> </span><span class="nx">audio</span><span class="p">.</span><span class="nx">PlaybackSettings</span><span class="p">{})</span>
+<span class="k">defer</span><span class="w"> </span><span class="nx">playback</span><span class="p">.</span><span class="nx">Release</span><span class="p">()</span>
+
+<span class="nx">playback</span><span class="p">.</span><span class="nx">Start</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="w">    </span><span class="c1">// start from the beginning</span>
+<span class="nx">playback</span><span class="p">.</span><span class="nx">Pause</span><span class="p">()</span><span class="w">     </span><span class="c1">// pause; position is preserved</span>
+<span class="nx">playback</span><span class="p">.</span><span class="nx">Resume</span><span class="p">()</span><span class="w">    </span><span class="c1">// resume from paused position</span>
+<span class="nx">playback</span><span class="p">.</span><span class="nx">Stop</span><span class="p">()</span><span class="w">      </span><span class="c1">// stop and reset position</span>
+</code></pre></div>
+<p><code>playback.Playing()</code> reports whether the playback is currently active.</p>
+<h3 id="loop-control">Loop Control</h3>
+<div class="highlight"><pre><span></span><code><span class="nx">playback</span><span class="p">.</span><span class="nx">SetLooping</span><span class="p">(</span><span class="kc">true</span><span class="p">)</span>
+<span class="nx">playback</span><span class="p">.</span><span class="nx">SetLoopStart</span><span class="p">(</span><span class="mf">1.0</span><span class="p">)</span><span class="w"> </span><span class="c1">// loop from 1.0 s</span>
+<span class="nx">playback</span><span class="p">.</span><span class="nx">SetLoopEnd</span><span class="p">(</span><span class="mf">4.5</span><span class="p">)</span><span class="w">   </span><span class="c1">// to 4.5 s</span>
+</code></pre></div>
+<h3 id="per-playback-controls">Per-Playback Controls</h3>
+<div class="highlight"><pre><span></span><code><span class="nx">playback</span><span class="p">.</span><span class="nx">SetGain</span><span class="p">(</span><span class="mf">0.7</span><span class="p">)</span><span class="w">          </span><span class="c1">// individual volume</span>
+<span class="nx">playback</span><span class="p">.</span><span class="nx">SetPlaybackRate</span><span class="p">(</span><span class="mf">1.5</span><span class="p">)</span><span class="w">  </span><span class="c1">// 1.5× speed; pitch shifts accordingly</span>
+</code></pre></div>
+<p><code>DBToGain</code> and <code>GainToDB</code> convert between decibels and linear gain:</p>
+<div class="highlight"><pre><span></span><code><span class="nx">playback</span><span class="p">.</span><span class="nx">SetGain</span><span class="p">(</span><span class="nx">audio</span><span class="p">.</span><span class="nx">DBToGain</span><span class="p">(</span><span class="o">-</span><span class="mf">6.0</span><span class="p">))</span><span class="w"> </span><span class="c1">// -6 dB</span>
+</code></pre></div>
+<h3 id="completion-callback">Completion Callback</h3>
+<div class="highlight"><pre><span></span><code><span class="nx">playback</span><span class="p">.</span><span class="nx">SetOnFinished</span><span class="p">(</span><span class="kd">func</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="c1">// called when the media plays through naturally (not on Stop or Pause,</span>
+<span class="w">    </span><span class="c1">// and not on each loop iteration)</span>
+<span class="p">})</span>
+</code></pre></div>
+<h3 id="per-playback-filters">Per-Playback Filters</h3>
+<p>Low-pass and high-pass filters can be enabled at creation time:</p>
+<div class="highlight"><pre><span></span><code><span class="nx">playback</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">api</span><span class="p">.</span><span class="nx">CreatePlayback</span><span class="p">(</span><span class="nx">bus</span><span class="p">,</span><span class="w"> </span><span class="nx">media</span><span class="p">,</span><span class="w"> </span><span class="nx">audio</span><span class="p">.</span><span class="nx">PlaybackSettings</span><span class="p">{</span>
+<span class="w">    </span><span class="nx">UseLowPassFilter</span><span class="p">:</span><span class="w">  </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">    </span><span class="nx">UseHighPassFilter</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="p">})</span>
+
+<span class="nx">playback</span><span class="p">.</span><span class="nx">LowPassFilter</span><span class="p">().</span><span class="nx">SetFrequency</span><span class="p">(</span><span class="mf">8000.0</span><span class="p">)</span><span class="w">  </span><span class="c1">// remove hiss above 8 kHz</span>
+<span class="nx">playback</span><span class="p">.</span><span class="nx">HighPassFilter</span><span class="p">().</span><span class="nx">SetFrequency</span><span class="p">(</span><span class="mf">80.0</span><span class="p">)</span><span class="w">   </span><span class="c1">// remove rumble below 80 Hz</span>
+</code></pre></div>
+<p><code>LowPassFilter()</code> and <code>HighPassFilter()</code> return <code>nil</code> if the respective filter was not enabled at creation.</p>
+<h2 id="spatial-audio">Spatial Audio</h2>
+<p><code>CreateSpatialPlayback</code> returns a <code>SpatialPlayback</code>, which combines <code>Playback</code> with <code>SpatialEmitter</code>. The sound source is positioned in 3D space and attenuated relative to the <code>SpatialListener</code>.</p>
+<div class="highlight"><pre><span></span><code><span class="c1">// Update the listener each frame to match the camera.</span>
+<span class="nx">listener</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">api</span><span class="p">.</span><span class="nx">SpatialListener</span><span class="p">()</span>
+<span class="nx">listener</span><span class="p">.</span><span class="nx">SetPosition</span><span class="p">(</span><span class="nx">cameraPosition</span><span class="p">)</span>
+<span class="nx">listener</span><span class="p">.</span><span class="nx">SetRotation</span><span class="p">(</span><span class="nx">cameraRotation</span><span class="p">)</span>
+
+<span class="c1">// Create a positioned sound source.</span>
+<span class="nx">spatial</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">api</span><span class="p">.</span><span class="nx">CreateSpatialPlayback</span><span class="p">(</span><span class="nx">bus</span><span class="p">,</span><span class="w"> </span><span class="nx">media</span><span class="p">,</span><span class="w"> </span><span class="nx">audio</span><span class="p">.</span><span class="nx">PlaybackSettings</span><span class="p">{})</span>
+<span class="k">defer</span><span class="w"> </span><span class="nx">spatial</span><span class="p">.</span><span class="nx">Release</span><span class="p">()</span>
+
+<span class="nx">spatial</span><span class="p">.</span><span class="nx">SetPosition</span><span class="p">(</span><span class="nx">sprec</span><span class="p">.</span><span class="nx">Vec3</span><span class="p">{</span><span class="nx">X</span><span class="p">:</span><span class="w"> </span><span class="mi">10</span><span class="p">,</span><span class="w"> </span><span class="nx">Y</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="nx">Z</span><span class="p">:</span><span class="w"> </span><span class="o">-</span><span class="mi">5</span><span class="p">})</span>
+<span class="nx">spatial</span><span class="p">.</span><span class="nx">Start</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+</code></pre></div>
+<h3 id="directional-emission-cone">Directional Emission (Cone)</h3>
+<p>By default a spatial source emits equally in all directions (<code>OuterConeAngle</code> = 360°). Narrowing the cone makes the source directional:</p>
+<div class="highlight"><pre><span></span><code><span class="nx">spatial</span><span class="p">.</span><span class="nx">SetInnerConeAngle</span><span class="p">(</span><span class="nx">sprec</span><span class="p">.</span><span class="nx">Degrees</span><span class="p">(</span><span class="mi">30</span><span class="p">))</span><span class="w"> </span><span class="c1">// full gain within 30°</span>
+<span class="nx">spatial</span><span class="p">.</span><span class="nx">SetOuterConeAngle</span><span class="p">(</span><span class="nx">sprec</span><span class="p">.</span><span class="nx">Degrees</span><span class="p">(</span><span class="mi">90</span><span class="p">))</span><span class="w"> </span><span class="c1">// fade to outer gain by 90°</span>
+<span class="nx">spatial</span><span class="p">.</span><span class="nx">SetOuterConeGain</span><span class="p">(</span><span class="mf">0.0</span><span class="p">)</span><span class="w">                </span><span class="c1">// silent outside the outer cone</span>
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>InnerConeAngle</code></td>
+<td>—</td>
+<td>Within this angle the emitter plays at full gain.</td>
+</tr>
+<tr>
+<td><code>OuterConeAngle</code></td>
+<td>360°</td>
+<td>Beyond this angle the gain is <code>OuterConeGain</code>. Between inner and outer the gain is linearly interpolated.</td>
+</tr>
+<tr>
+<td><code>OuterConeGain</code></td>
+<td>0.0</td>
+<td>Gain applied when the listener is outside the outer cone.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="no-op-implementation">No-op Implementation</h2>
+<p><code>NewNopAPI</code> returns a fully functional but silent implementation. All methods work correctly and return valid objects; no audio is produced. Useful for headless environments and tests:</p>
+<div class="highlight"><pre><span></span><code><span class="nx">api</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">audio</span><span class="p">.</span><span class="nx">NewNopAPI</span><span class="p">()</span>
+</code></pre></div>
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    <script id="__config" type="application/json">{"base": "../..", "features": [], "search": "../../assets/javascripts/workers/search.e5c33ebb.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.51d95adb.min.js"></script>
+      
+        <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+      
+    
+  </body>
+</html>
