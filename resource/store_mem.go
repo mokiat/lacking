@@ -35,7 +35,8 @@ func (s *memStore) Open(path string) (io.ReadCloser, error) {
 	if !ok {
 		return nil, ErrNotFound
 	}
-	return io.NopCloser(buffer), nil
+	data := slices.Clone(buffer.Bytes())
+	return io.NopCloser(bytes.NewReader(data)), nil
 }
 
 func (s *memStore) List() ([]string, error) {
