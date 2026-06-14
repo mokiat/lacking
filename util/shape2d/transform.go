@@ -79,6 +79,15 @@ type BasisTransform struct {
 	Rotation    BasisRotation
 }
 
+// TRBasisTransform returns a new BasisTransform that represents both a translation
+// and a rotation.
+func TRBasisTransform(translation dprec.Vec2, angle dprec.Angle) BasisTransform {
+	return BasisTransform{
+		Translation: translation,
+		Rotation:    AngleBasisRotation(angle),
+	}
+}
+
 // Apply returns the transformation of the specified vector.
 func (t BasisTransform) Apply(v dprec.Vec2) dprec.Vec2 {
 	return dprec.Vec2Sum(t.Translation, t.Rotation.Apply(v))
@@ -103,6 +112,11 @@ type BasisRotation struct {
 
 	// BasisY holds the Y basis vector of the rotation.
 	BasisY dprec.Vec2
+}
+
+// Angle returns the angle of the rotation.
+func (r BasisRotation) Angle() dprec.Angle {
+	return dprec.Atan2(r.BasisX.Y, r.BasisX.X)
 }
 
 // Apply returns the rotation of the specified vector.
