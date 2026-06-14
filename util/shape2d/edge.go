@@ -2,6 +2,16 @@ package shape2d
 
 import "github.com/mokiat/gomath/dprec"
 
+// Edge represents an edge in 2D space.
+type Edge struct {
+
+	// A is the starting point of the edge.
+	A dprec.Vec2
+
+	// B is the ending point of the edge.
+	B dprec.Vec2
+}
+
 // NewEdge creates a new Edge from points a to b.
 func NewEdge(a, b dprec.Vec2) Edge {
 	return Edge{
@@ -13,20 +23,17 @@ func NewEdge(a, b dprec.Vec2) Edge {
 // TransformedEdge returns a new Edge that is the result of applying the given
 // transform to the provided edge.
 func TransformedEdge(edge Edge, transform Transform) Edge {
+	basisTransform := transform.Basis()
+	return BasisTransformedEdge(edge, basisTransform)
+}
+
+// BasisTransformedEdge returns a new Edge that is the result of applying the
+// given basis transform to the provided edge.
+func BasisTransformedEdge(edge Edge, transform BasisTransform) Edge {
 	return Edge{
 		A: transform.Apply(edge.A),
 		B: transform.Apply(edge.B),
 	}
-}
-
-// Edge represents an edge in 2D space.
-type Edge struct {
-
-	// A is the starting point of the edge.
-	A dprec.Vec2
-
-	// B is the ending point of the edge.
-	B dprec.Vec2
 }
 
 // Length computes and returns the length of the edge.
