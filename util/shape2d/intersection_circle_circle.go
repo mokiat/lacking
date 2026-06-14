@@ -29,7 +29,13 @@ func CheckCircleCircleIntersection(source, target Circle, yield IntersectionYiel
 		return
 	}
 
-	targetNormal := dprec.Vec2Quot(deltaPosition, -distance) // unit vector
+	var targetNormal dprec.Vec2
+	if distance < 0.0001 {
+		targetNormal = dprec.NewVec2(-1.0, 0.0)
+	} else {
+		targetNormal = dprec.Vec2Quot(deltaPosition, -distance) // unit vector
+	}
+
 	yield(Intersection{
 		TargetContact: dprec.Vec2Sum(
 			targetPosition,

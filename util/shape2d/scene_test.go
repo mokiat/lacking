@@ -58,7 +58,6 @@ var _ = Describe("Scene", func() {
 				dprec.NewVec2(4.0, 2.0),
 			),
 		})
-		_ = secondShapeID
 	})
 
 	It("detects segment-circle intersection", func() {
