@@ -2,15 +2,6 @@ package shape2d
 
 import "github.com/mokiat/gomath/dprec"
 
-// NewTriangle creates a new Triangle instance given three vertices a, b, and c.
-func NewTriangle(a, b, c dprec.Vec2) Triangle {
-	return Triangle{
-		A: a,
-		B: b,
-		C: c,
-	}
-}
-
 // Triangle represents a triangle in 2D space defined by three vertices.
 //
 // The ordering of the vertices is significant and should follow a
@@ -25,6 +16,32 @@ type Triangle struct {
 
 	// C is the third vertex of the triangle.
 	C dprec.Vec2
+}
+
+// NewTriangle creates a new Triangle instance given three vertices a, b, and c.
+func NewTriangle(a, b, c dprec.Vec2) Triangle {
+	return Triangle{
+		A: a,
+		B: b,
+		C: c,
+	}
+}
+
+// TransformedTriangle creates a new triangle from the specified source triangle by
+// applying the specified transformation.
+func TransformedTriangle(source Triangle, transform Transform) Triangle {
+	basisTransform := transform.Basis()
+	return BasisTransformedTriangle(source, basisTransform)
+}
+
+// BasisTransformedTriangle creates a new triangle from the specified source
+// triangle by applying the specified basis transformation.
+func BasisTransformedTriangle(source Triangle, transform BasisTransform) Triangle {
+	return Triangle{
+		A: transform.Apply(source.A),
+		B: transform.Apply(source.B),
+		C: transform.Apply(source.C),
+	}
 }
 
 // Centroid computes and returns the centroid of the triangle.
@@ -75,7 +92,7 @@ func (t Triangle) ContainsPoint(p dprec.Vec2) bool {
 	vecAC := dprec.Vec2Diff(t.C, t.A)
 
 	det := dprec.Vec2Cross(vecAB, vecAC)
-	if det < 0.00001 {
+	if det < 0.0 {
 		return false
 	}
 

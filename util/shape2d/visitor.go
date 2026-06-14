@@ -1,7 +1,14 @@
 package shape2d
 
+import "iter"
+
 // VisitorFunc is a mechanism to receive items from a query.
 type VisitorFunc[T any] func(item T) bool
+
+// VisitorBucket can be used to store items returned from a query.
+type VisitorBucket[T any] struct {
+	items []T
+}
 
 // NewVisitorBucket creates a new VisitorBucket instance with the specified
 // initial capacity, which is only used to preallocate memory (it is allowed to
@@ -10,11 +17,6 @@ func NewVisitorBucket[T any](initCapacity int) *VisitorBucket[T] {
 	return &VisitorBucket[T]{
 		items: make([]T, 0, initCapacity),
 	}
-}
-
-// VisitorBucket can be used to store items returned from a query.
-type VisitorBucket[T any] struct {
-	items []T
 }
 
 // Reset clears any stored items.
@@ -44,6 +46,11 @@ func (r *VisitorBucket[T]) Each(yield func(item T) bool) {
 			return
 		}
 	}
+}
+
+// Iter returns an iterator that can be used to iterate over the stored items.
+func (r *VisitorBucket[T]) Iter() iter.Seq[T] {
+	return r.Each
 }
 
 // Items returns the underlying slice of stored items. The returned slice is
