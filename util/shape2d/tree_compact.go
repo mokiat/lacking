@@ -512,54 +512,60 @@ func (t *CompactTree[T]) updateAABB(nodeIndex int32) bool {
 	return true
 }
 
-func (t *CompactTree[T]) visitNodeInAABB(nodeIndex int32, box *CompactQueryAABB, yield VisitorFunc[T]) {
+func (t *CompactTree[T]) visitNodeInAABB(nodeIndex int32, box *CompactQueryAABB, yield VisitorFunc[T]) bool {
 	node := &t.nodes[nodeIndex]
 	if node.box.intersectsAABB(box) {
 		t.nodeCountAccepted++
 		for itemIndex := node.itemStart; itemIndex < node.itemEnd; itemIndex++ {
 			item := &t.items[itemIndex]
 			if item.box.intersectsAABB(box) {
-				if !yield(item.value) {
-					return
-				}
 				t.itemCountAccepted++
+				if !yield(item.value) {
+					return false
+				}
 			} else {
 				t.itemCountRejected++
 			}
 		}
 		for _, childNodeIndex := range node.children {
 			if childNodeIndex != unspecifiedIndex {
-				t.visitNodeInAABB(childNodeIndex, box, yield)
+				if !t.visitNodeInAABB(childNodeIndex, box, yield) {
+					return false
+				}
 			}
 		}
 	} else {
 		t.nodeCountRejected++
 	}
+	return true
 }
 
-func (t *CompactTree[T]) visitNodeInSegment(nodeIndex int32, segment *CompactQuerySegment, yield VisitorFunc[T]) {
+func (t *CompactTree[T]) visitNodeInSegment(nodeIndex int32, segment *CompactQuerySegment, yield VisitorFunc[T]) bool {
 	node := &t.nodes[nodeIndex]
 	if node.box.intersectsSegment(segment) {
 		t.nodeCountAccepted++
 		for itemIndex := node.itemStart; itemIndex < node.itemEnd; itemIndex++ {
 			item := &t.items[itemIndex]
 			if item.box.intersectsSegment(segment) {
-				if !yield(item.value) {
-					return
-				}
 				t.itemCountAccepted++
+				if !yield(item.value) {
+					return false
+				}
 			} else {
 				t.itemCountRejected++
 			}
 		}
 		for _, childNodeIndex := range node.children {
 			if childNodeIndex != unspecifiedIndex {
-				t.visitNodeInSegment(childNodeIndex, segment, yield)
+				if !t.visitNodeInSegment(childNodeIndex, segment, yield) {
+					return false
+				}
 			}
 		}
 	} else {
 		t.nodeCountRejected++
 	}
+	return true
 }
 
 // NewCompactQuerySegment creates a new CompactQuerySegment instance from the

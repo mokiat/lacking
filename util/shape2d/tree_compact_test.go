@@ -82,6 +82,18 @@ var _ = Describe("CompactTree", func() {
 			Expect(found).To(ConsistOf("First", "Second"))
 		})
 
+		It("stops QuerySegment after the visitor returns false", func() {
+			from := dprec.NewVec2(1.0, 1.0)
+			to := dprec.NewVec2(127.0, 127.0)
+			segment := shape2d.NewCompactQuerySegment(from, to)
+			count := 0
+			tree.QuerySegment(segment, func(item string) bool {
+				count++
+				return false // stop after first item
+			})
+			Expect(count).To(Equal(1))
+		})
+
 		It("is possible to area-search for items", func() {
 			circle := shape2d.NewCircle(dprec.NewVec2(64.0, 64.0), 63.0)
 			area := shape2d.NewCompactQueryAABBFromCircle(circle)
@@ -91,6 +103,17 @@ var _ = Describe("CompactTree", func() {
 				return true
 			})
 			Expect(found).To(ConsistOf("First", "Second"))
+		})
+
+		It("stops QueryAABB after the visitor returns false", func() {
+			circle := shape2d.NewCircle(dprec.NewVec2(64.0, 64.0), 63.0)
+			area := shape2d.NewCompactQueryAABBFromCircle(circle)
+			count := 0
+			tree.QueryAABB(area, func(item string) bool {
+				count++
+				return false // stop after first item
+			})
+			Expect(count).To(Equal(1))
 		})
 
 		When("items are searched", func() {
@@ -158,6 +181,10 @@ var _ = Describe("CompactTree", func() {
 		When("an item is removed", func() {
 			BeforeEach(func() {
 				tree.Remove(secondItemID)
+			})
+
+			It("panics when the same item is removed again", func() {
+				Expect(func() { tree.Remove(secondItemID) }).To(Panic())
 			})
 
 			It("has the correct state", func() {
