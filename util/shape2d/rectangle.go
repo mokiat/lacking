@@ -48,7 +48,7 @@ type Rectangle struct {
 }
 
 // BoundingCircle returns the bounding circle of the rectangle.
-func (r *Rectangle) BoundingCircle() Circle {
+func (r Rectangle) BoundingCircle() Circle {
 	return Circle{
 		Position: r.Position,
 		Radius:   dprec.Sqrt(r.HalfWidth*r.HalfWidth + r.HalfHeight*r.HalfHeight),
@@ -57,7 +57,7 @@ func (r *Rectangle) BoundingCircle() Circle {
 
 // Vertices returns the four vertices of the rectangle in counter-clockwise
 // order starting from the top-left vertex.
-func (r *Rectangle) Vertices() [4]dprec.Vec2 {
+func (r Rectangle) Vertices() [4]dprec.Vec2 {
 	topLeft := dprec.NewVec2(-r.HalfWidth, r.HalfHeight)
 	bottomLeft := dprec.NewVec2(-r.HalfWidth, -r.HalfHeight)
 	bottomRight := dprec.NewVec2(r.HalfWidth, -r.HalfHeight)

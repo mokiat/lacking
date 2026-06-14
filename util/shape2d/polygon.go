@@ -37,7 +37,7 @@ type Polygon struct {
 }
 
 // BoundingCircle returns a Circle that encompases this polygon.
-func (p *Polygon) BoundingCircle() Circle {
+func (p Polygon) BoundingCircle() Circle {
 	if len(p.Edges) == 0 {
 		return Circle{}
 	}
