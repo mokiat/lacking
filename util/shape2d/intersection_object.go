@@ -10,7 +10,7 @@ type ObjectIntersectionCollection interface {
 	AddIntersection(intersection ObjectIntersection)
 }
 
-// ObjectIntersection represents the intersectio of two objects.
+// ObjectIntersection represents the intersection of two objects.
 type ObjectIntersection struct {
 
 	// SourceObjectID contains the ID of the first involved object.
@@ -76,7 +76,7 @@ func (i *SmallestObjectIntersection) AddIntersection(intersection ObjectIntersec
 	}
 }
 
-// Intersection returns the worst observed intersection and a flag whether
+// Intersection returns the smallest observed intersection and a flag whether
 // there was actually any intersection observed.
 func (i *SmallestObjectIntersection) Intersection() (ObjectIntersection, bool) {
 	return i.intersection.Value, i.intersection.Specified
@@ -105,7 +105,7 @@ func (i *LargestObjectIntersection) AddIntersection(intersection ObjectIntersect
 	}
 }
 
-// Intersection returns the worst observed intersection and a flag whether
+// Intersection returns the largest observed intersection and a flag whether
 // there was actually any intersection observed.
 func (i *LargestObjectIntersection) Intersection() (ObjectIntersection, bool) {
 	return i.intersection.Value, i.intersection.Specified

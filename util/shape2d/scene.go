@@ -458,8 +458,8 @@ func (s *Scene[O, S]) CollectIntersections(collection ObjectIntersectionCollecti
 	s.collectIntersections(collection)
 }
 
-// CheckSegmentIntersection returns the first intersection of the segment
-// with the scene.
+// CheckSegmentIntersection returns the largest intersection (likely first to
+// have occurred) of the segment with the scene.
 func (s *Scene[O, S]) CheckSegmentIntersection(segment Segment, filter Filter) (ObjectIntersection, bool) {
 	var collection LargestObjectIntersection
 	s.CollectSegmentIntersections(segment, filter, &collection)
@@ -494,8 +494,8 @@ func (s *Scene[O, S]) CollectSegmentIntersections(segment Segment, filter Filter
 	s.collectIntersections(collection)
 }
 
-// CheckCircleIntersection returns the first intersection of the circle
-// with the scene.
+// CheckCircleIntersection returns the largest intersection (likely first to
+// have occurred) of the circle with the scene.
 func (s *Scene[O, S]) CheckCircleIntersection(circle Circle, filter Filter) (ObjectIntersection, bool) {
 	var collection LargestObjectIntersection
 	s.CollectCircleIntersections(circle, filter, &collection)
@@ -530,8 +530,8 @@ func (s *Scene[O, S]) CollectCircleIntersections(circle Circle, filter Filter, c
 	s.collectIntersections(collection)
 }
 
-// CheckRectangleIntersection returns the first intersection of the rectangle
-// with the scene.
+// CheckRectangleIntersection returns the largest intersection (likely first to
+// have occurred) of the rectangle with the scene.
 func (s *Scene[O, S]) CheckRectangleIntersection(rectangle Rectangle, filter Filter) (ObjectIntersection, bool) {
 	var collection LargestObjectIntersection
 	s.CollectRectangleIntersections(rectangle, filter, &collection)
@@ -566,8 +566,8 @@ func (s *Scene[O, S]) CollectRectangleIntersections(rectangle Rectangle, filter 
 	s.collectIntersections(collection)
 }
 
-// CheckPolygonIntersection returns the first intersection of the polygon
-// with the scene.
+// CheckPolygonIntersection returns the largest intersection (likely first to
+// have occurred) of the polygon with the scene.
 func (s *Scene[O, S]) CheckPolygonIntersection(polygon Polygon, filter Filter) (ObjectIntersection, bool) {
 	var collection LargestObjectIntersection
 	s.CollectPolygonIntersections(polygon, filter, &collection)

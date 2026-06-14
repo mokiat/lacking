@@ -31,7 +31,7 @@ func TransformedRectangle(source Rectangle, transform Transform) Rectangle {
 	}
 }
 
-// Rectnagle represents a 2D rectangle.
+// Rectangle represents a 2D rectangle.
 type Rectangle struct {
 
 	// Position holds the position of the rectangle.
