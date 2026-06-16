@@ -16,7 +16,7 @@ import (
 const InvalidTreeItemID = TreeItemID(0xFFFFFFFF)
 
 // TreeItemID is an identifier used to control the placement of an item
-// into a compact tree.
+// into a tree.
 type TreeItemID uint32
 
 // TreeStats represents the current state of a Tree.
@@ -180,7 +180,7 @@ func (t *Tree[T]) VisitStats() TreeVisitStats {
 	}
 }
 
-// Insert adds an item, which occupies the specified quad area, to this
+// Insert adds an item, which occupies the specified area, to this
 // tree.
 func (t *Tree[T]) Insert(area Area, value T) TreeItemID {
 	node := t.pickNodeForItem(area)
