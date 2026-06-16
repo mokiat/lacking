@@ -28,3 +28,28 @@ func AABBFromCircle(x, y, r float32) AABB {
 		maxY: y + r,
 	}
 }
+
+// AABBFromRectangle creates an AABB that fully contains a rectangle with the
+// given center and dimensions.
+func AABBFromRectangle(x, y, width, height float32) AABB {
+	halfWidth := width * 0.5
+	halfHeight := height * 0.5
+	return AABB{
+		minX: x - halfWidth,
+		minY: y - halfHeight,
+		maxX: x + halfWidth,
+		maxY: y + halfHeight,
+	}
+}
+
+// AABBFromSquare creates an AABB that fully contains a square with the given
+// center and size.
+func AABBFromSquare(x, y, size float32) AABB {
+	halfSize := size * 0.5
+	return AABB{
+		minX: x - halfSize,
+		minY: y - halfSize,
+		maxX: x + halfSize,
+		maxY: y + halfSize,
+	}
+}

@@ -25,3 +25,15 @@ func SquareArea(x, y, size float32) Area {
 		r: size * 0.5,
 	}
 }
+
+// RectangularArea creates an area from the given center coordinates and size,
+// where the size is the width and height of the rectangular area.
+func RectangularArea(x, y, width, height float32) Area {
+	halfWidth := width * 0.5
+	halfHeight := height * 0.5
+	return Area{
+		x: x,
+		y: y,
+		r: max(halfWidth, halfHeight),
+	}
+}
