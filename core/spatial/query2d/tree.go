@@ -157,7 +157,7 @@ func NewTree[T any](settings TreeSettings) *Tree[T] {
 func (t *Tree[T]) Stats() TreeStats {
 	t.refresh() // this is necessary
 	itemCountPerDepth := make([]uint32, t.maxDepth)
-	for i := range uint32(t.maxDepth) {
+	for i := range t.maxDepth {
 		itemCountPerDepth[i] = t.itemsAtDepth(0, 1, i+1)
 	}
 	return TreeStats{

@@ -16,9 +16,9 @@ func CircularArea(x, y, r float32) Area {
 	}
 }
 
-// QuadraticArea creates an area from the given center coordinates and size,
+// SquareArea creates an area from the given center coordinates and size,
 // where the size is the length of the sides of the square area.
-func QadraticArea(x, y, size float32) Area {
+func SquareArea(x, y, size float32) Area {
 	return Area{
 		x: x,
 		y: y,
