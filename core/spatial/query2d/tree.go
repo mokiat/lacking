@@ -215,6 +215,9 @@ func (t *Tree[T]) Insert(area Area, value T) TreeItemID {
 func (t *Tree[T]) Update(id TreeItemID, area Area) {
 	itemIndex := t.idMappings[id]
 	item := &t.items[itemIndex]
+	if item.node == unspecifiedIndex {
+		panic("cannot update removed item")
+	}
 	item.box = newTreeAABBFromArea(area)
 	t.markNodeDirty(item.node) // previous node
 	item.node = t.pickNodeForItem(area)
@@ -605,7 +608,6 @@ type treeAABB struct {
 }
 
 func emptyTreeAABB() treeAABB {
-	// TODO: Verify if usage of MaxFloat32 and -MaxFloat32 is correct here.
 	return treeAABB{
 		minX: math.MaxFloat32,
 		minY: math.MaxFloat32,
@@ -632,31 +634,57 @@ func mergeTreeAABBs(first, second treeAABB) treeAABB {
 	}
 }
 
-func (box *treeAABB) intersectsSegment(segment *Segment) bool {
+func (aabb *treeAABB) isEmpty() bool {
+	return (aabb.minX > aabb.maxX) || (aabb.minY > aabb.maxY)
+}
+
+func (aabb *treeAABB) intersectsSegment(segment *Segment) bool {
+	if aabb.isEmpty() {
+		return false
+	}
+
 	delta := sprec.Vec2Diff(segment.b, segment.a)
 
-	// TODO: Check if deletion here is at all necessary.
+	var tCloseX, tFarX float32
+	if delta.X == 0.0 {
+		if (segment.a.X < aabb.minX) || (segment.a.X > aabb.maxX) {
+			return false // // both points are outside the box on the left or right
+		}
+		tCloseX = 0.0
+		tFarX = 1.0
+	} else {
+		tLowX := (aabb.minX - segment.a.X) / delta.X
+		tHighX := (aabb.maxX - segment.a.X) / delta.X
+		tCloseX = min(tLowX, tHighX)
+		tFarX = max(tLowX, tHighX)
+	}
 
-	tLowX := (box.minX - segment.a.X) / delta.X
-	tLowY := (box.minY - segment.a.Y) / delta.Y
+	var tCloseY, tFarY float32
+	if delta.Y == 0.0 {
+		if (segment.a.Y < aabb.minY) || (segment.a.Y > aabb.maxY) {
+			return false // both points are outside the box on the top or bottom
+		}
+		tCloseY = 0.0
+		tFarY = 1.0
+	} else {
+		tLowY := (aabb.minY - segment.a.Y) / delta.Y
+		tHighY := (aabb.maxY - segment.a.Y) / delta.Y
+		tCloseY = min(tLowY, tHighY)
+		tFarY = max(tLowY, tHighY)
+	}
 
-	tHighX := (box.maxX - segment.a.X) / delta.X
-	tHighY := (box.maxY - segment.a.Y) / delta.Y
-
-	tCloseX := min(tLowX, tHighX)
-	tCloseY := min(tLowY, tHighY)
 	tClose := max(tCloseX, tCloseY)
-
-	tFarX := max(tLowX, tHighX)
-	tFarY := max(tLowY, tHighY)
 	tFar := min(tFarX, tFarY)
 
 	return tClose <= tFar && tClose <= 1.0 && tFar >= 0.0
 }
 
-func (box *treeAABB) intersectsAABB(other *AABB) bool {
-	return (box.minX <= other.maxX) &&
-		(box.minY <= other.maxY) &&
-		(box.maxX >= other.minX) &&
-		(box.maxY >= other.minY)
+func (aabb *treeAABB) intersectsAABB(other *AABB) bool {
+	if aabb.isEmpty() {
+		return false
+	}
+	return (aabb.minX <= other.maxX) &&
+		(aabb.minY <= other.maxY) &&
+		(aabb.maxX >= other.minX) &&
+		(aabb.maxY >= other.minY)
 }
