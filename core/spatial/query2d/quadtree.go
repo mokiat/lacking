@@ -1,7 +1,6 @@
 package query2d
 
 import (
-	"log/slog"
 	"math"
 
 	"github.com/mokiat/gog/ds"
@@ -146,9 +145,6 @@ func (t *Quadtree[T]) Insert(area Area, value T) QuadtreeItemID {
 	t.markNodeDirty(node)
 
 	if t.freeItemIDs.IsEmpty() {
-		if len(t.items) == cap(t.items) {
-			logger.Warn("Growing item capacity for tree.", slog.Int("current", len(t.items)))
-		}
 		id := QuadtreeItemID(len(t.items))
 		t.idMappings = append(t.idMappings, int32(id))
 		t.items = append(t.items, quadtreeItem[T]{
@@ -311,9 +307,6 @@ func (t *Quadtree[T]) pickChildNode(parentNodeIndex int32, area Area) int32 {
 		r: childLooseRadius,
 	}
 	if t.freeNodeIndices.IsEmpty() {
-		if len(t.nodes) == cap(t.nodes) {
-			logger.Warn("Growing node capacity for tree.", slog.Int("current", len(t.nodes)))
-		}
 		childNodeIndex := int32(len(t.nodes)) // predict next node index
 		parentNode.children[childIndex] = childNodeIndex
 		// Do NOT use "parentNode" after this append as the ref might be towards
@@ -561,8 +554,8 @@ type quadtreeQuad struct {
 
 type quadtreeAABB struct {
 	minX float32
-	maxX float32
 	minY float32
+	maxX float32
 	maxY float32
 }
 

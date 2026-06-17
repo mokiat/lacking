@@ -1,8 +1,6 @@
 package query2d
 
-import (
-	"github.com/mokiat/gomath/sprec"
-)
+import "github.com/mokiat/gomath/sprec"
 
 // Segment represents a line segment in 2D space that can be used for spatial
 // queries.
