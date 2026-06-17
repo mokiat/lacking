@@ -17,7 +17,7 @@ type SceneSettings struct {
 
 	// Size specifies the dimension (from side to side) of the scene.
 	// Inserting an item outside these bounds has undefined behavior.
-	Size opt.T[float64]
+	Size opt.T[float32]
 
 	// MaxDepth controls the maximum depth that the underlying octree can reach.
 	MaxDepth opt.T[uint32]
@@ -35,7 +35,7 @@ type SceneSettings struct {
 
 // NewScene creates a new scene.
 func NewScene[O, S any](settings SceneSettings) *Scene[O, S] {
-	cubeOctreeSettings := query3d.OctreeSettings{
+	treeSettings := query3d.OctreeSettings{
 		Size: opt.V(float32(settings.Size.ValueOrDefault(16384.0))),
 	}
 
@@ -50,8 +50,8 @@ func NewScene[O, S any](settings SceneSettings) *Scene[O, S] {
 		boxes:   make([]sceneBoxShape[S], 0, 128),
 		meshes:  make([]sceneMeshShape[S], 0, 128),
 
-		staticTree:  query3d.NewOctree[shapeRef](cubeOctreeSettings),
-		dynamicTree: query3d.NewOctree[shapeRef](cubeOctreeSettings),
+		staticTree:  query3d.NewOctree[shapeRef](treeSettings),
+		dynamicTree: query3d.NewOctree[shapeRef](treeSettings),
 
 		checks: make([]shapeRefPair, 0, 1024),
 	}
@@ -194,7 +194,7 @@ func (s *Scene[O, S]) AttachSphere(objID ObjectID, info SphereInfo[S]) ShapeID {
 	solver.update(object.transform)
 
 	bs := solver.boundingSphere()
-	var spatialID query3d.OctreeItemID
+	var spatialID query3d.TreeItemID
 	if object.isStatic() {
 		spatialID = s.staticTree.Insert(queryAreaFromSphere(bs), ref)
 	} else {
@@ -237,7 +237,7 @@ func (s *Scene[O, S]) AttachBox(objID ObjectID, info BoxInfo[S]) ShapeID {
 	solver.update(object.transform)
 
 	bs := solver.boundingSphere()
-	var spatialID query3d.OctreeItemID
+	var spatialID query3d.TreeItemID
 	if object.isStatic() {
 		spatialID = s.staticTree.Insert(queryAreaFromSphere(bs), ref)
 	} else {
@@ -280,7 +280,7 @@ func (s *Scene[O, S]) AttachMesh(objID ObjectID, info MeshInfo[S]) ShapeID {
 	solver.update(object.transform)
 
 	bs := solver.boundingSphere()
-	var spatialID query3d.OctreeItemID
+	var spatialID query3d.TreeItemID
 	if object.isStatic() {
 		spatialID = s.staticTree.Insert(queryAreaFromSphere(bs), ref)
 	} else {
@@ -633,7 +633,7 @@ func (s *Scene[O, S]) freeShape(ref shapeRef) {
 		} else {
 			s.dynamicTree.Remove(sphere.spatialID)
 		}
-		sphere.spatialID = query3d.InvalidOctreeItemID
+		sphere.spatialID = query3d.InvalidTreeItemID
 		sphere.userData = gog.Zero[S]() // in case of pointer
 		sphere.nextShape = invalidShapeRef
 		sphere.sphereSolver = newSphereSolver(Sphere{})
@@ -645,7 +645,7 @@ func (s *Scene[O, S]) freeShape(ref shapeRef) {
 		} else {
 			s.dynamicTree.Remove(box.spatialID)
 		}
-		box.spatialID = query3d.InvalidOctreeItemID
+		box.spatialID = query3d.InvalidTreeItemID
 		box.userData = gog.Zero[S]() // in case of pointer
 		box.nextShape = invalidShapeRef
 		box.boxSolver = newBoxSolver(Box{})
@@ -657,7 +657,7 @@ func (s *Scene[O, S]) freeShape(ref shapeRef) {
 		} else {
 			s.dynamicTree.Remove(mesh.spatialID)
 		}
-		mesh.spatialID = query3d.InvalidOctreeItemID
+		mesh.spatialID = query3d.InvalidTreeItemID
 		mesh.userData = gog.Zero[S]() // in case of pointer
 		mesh.nextShape = invalidShapeRef
 		mesh.meshSolver = newMeshSolver(Mesh{})
@@ -670,7 +670,7 @@ func (s *Scene[O, S]) freeShape(ref shapeRef) {
 func (s *Scene[O, S]) eachDynamicSphere(cb func(uint32, *sceneSphereShape[S])) {
 	for index := range uint32(len(s.spheres)) {
 		shape := &s.spheres[index]
-		if shape.static || (shape.spatialID == query3d.InvalidOctreeItemID) {
+		if shape.static || (shape.spatialID == query3d.InvalidTreeItemID) {
 			continue
 		}
 		cb(index, shape)
@@ -680,7 +680,7 @@ func (s *Scene[O, S]) eachDynamicSphere(cb func(uint32, *sceneSphereShape[S])) {
 func (s *Scene[O, S]) eachDynamicBox(cb func(uint32, *sceneBoxShape[S])) {
 	for index := range uint32(len(s.boxes)) {
 		shape := &s.boxes[index]
-		if shape.static || (shape.spatialID == query3d.InvalidOctreeItemID) {
+		if shape.static || (shape.spatialID == query3d.InvalidTreeItemID) {
 			continue
 		}
 		cb(index, shape)
@@ -690,7 +690,7 @@ func (s *Scene[O, S]) eachDynamicBox(cb func(uint32, *sceneBoxShape[S])) {
 func (s *Scene[O, S]) eachDynamicMesh(cb func(uint32, *sceneMeshShape[S])) {
 	for index := range uint32(len(s.meshes)) {
 		shape := &s.meshes[index]
-		if shape.static || (shape.spatialID == query3d.InvalidOctreeItemID) {
+		if shape.static || (shape.spatialID == query3d.InvalidTreeItemID) {
 			continue
 		}
 		cb(index, shape)

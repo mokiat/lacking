@@ -34,7 +34,7 @@ type sceneShape[S any] struct {
 	objectIndex uint32
 	nextShape   shapeRef
 
-	spatialID query3d.OctreeItemID
+	spatialID query3d.TreeItemID
 	static    bool
 
 	rejectGroup uint32

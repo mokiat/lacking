@@ -19,7 +19,7 @@ func newScene(engine *Engine) *Scene {
 		engine: engine,
 
 		shapeScene: shape3d.NewScene[internalRef, struct{}](shape3d.SceneSettings{
-			Size:                opt.V(16384.0),
+			Size:                opt.V(float32(16384.0)),
 			MaxDepth:            opt.V[uint32](12),
 			InitialNodeCapacity: opt.V[uint32](1024),
 			InitialItemCapacity: opt.V[uint32](1024),
