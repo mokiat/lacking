@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/mokiat/gog/opt"
+	"github.com/mokiat/lacking/core/spatial/query2d"
 )
 
 // InvalidShapeID indicates a shape that can never be part of the scene.
@@ -33,7 +34,7 @@ type sceneShape[S any] struct {
 	objectIndex uint32
 	nextShape   shapeRef
 
-	spatialID CompactTreeItemID
+	spatialID query2d.TreeItemID
 	static    bool
 
 	rejectGroup uint32

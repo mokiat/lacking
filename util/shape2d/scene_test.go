@@ -22,7 +22,7 @@ var _ = Describe("Scene", func() {
 
 	BeforeEach(func() {
 		scene = shape2d.NewScene[string, string](shape2d.SceneSettings{
-			Size:     opt.V(128.0),
+			Size:     opt.V(float32(128.0)),
 			MaxDepth: opt.V[uint32](3),
 		})
 

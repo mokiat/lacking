@@ -9,13 +9,35 @@ import (
 	"github.com/mokiat/lacking/util/shape2d"
 )
 
+////////////////// QUERY2D PACKAGE (QUADTREE)
+
+// goos: linux
+// goarch: amd64
+// pkg: github.com/mokiat/lacking/util/shape2d
+// cpu: AMD Ryzen 7 3700X 8-Core Processor
+// BenchmarkSceneInsert-16     	     652	   1892388 ns/op	10293445 B/op	      37 allocs/op
+// BenchmarkSceneSegment-16    	     195	   6067209 ns/op	       0 B/op	       0 allocs/op
+// PASS
+// ok  	github.com/mokiat/lacking/util/shape2d	2.432s
+
+////////////////// QUERY2D PACKAGE (BVH TREE)
+
+// goos: linux
+// goarch: amd64
+// pkg: github.com/mokiat/lacking/util/shape2d
+// cpu: AMD Ryzen 7 3700X 8-Core Processor
+// BenchmarkSceneInsert-16     	     578	   2176115 ns/op	 1348202 B/op	      37 allocs/op
+// BenchmarkSceneSegment-16    	     160	   7427997 ns/op	       0 B/op	       0 allocs/op
+// PASS
+// ok  	github.com/mokiat/lacking/util/shape2d	2.457s
+
 func BenchmarkSceneInsert(b *testing.B) {
 	random := rand.New(rand.NewPCG(127, 63))
 
 	const itemCount = 1024
 	for b.Loop() {
 		scene := shape2d.NewScene[struct{}, struct{}](shape2d.SceneSettings{
-			Size:                opt.V(1024.0),
+			Size:                opt.V(float32(1024.0)),
 			MaxDepth:            opt.V[uint32](8),
 			InitialNodeCapacity: opt.V[uint32](1024 * 64),
 			InitialItemCapacity: opt.V[uint32](1024 * 16),
@@ -63,7 +85,7 @@ func BenchmarkSceneSegment(b *testing.B) {
 	random := rand.New(rand.NewPCG(127, 63))
 
 	scene := shape2d.NewScene[struct{}, struct{}](shape2d.SceneSettings{
-		Size:                opt.V(1024.0),
+		Size:                opt.V(float32(1024.0)),
 		MaxDepth:            opt.V[uint32](8),
 		InitialNodeCapacity: opt.V[uint32](1024 * 64),
 		InitialItemCapacity: opt.V[uint32](1024 * 16),

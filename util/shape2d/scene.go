@@ -8,6 +8,8 @@ import (
 	"github.com/mokiat/gog/ds"
 	"github.com/mokiat/gog/opt"
 	"github.com/mokiat/gomath/dprec"
+	"github.com/mokiat/gomath/dtos"
+	"github.com/mokiat/lacking/core/spatial/query2d"
 )
 
 // SceneSettings contains information needed to create an optimal scene.
@@ -17,7 +19,7 @@ type SceneSettings struct {
 	// Inserting an object outside these bounds has undefined behavior.
 	//
 	// If not specified, a default size of 4096 units is used.
-	Size opt.T[float64]
+	Size opt.T[float32]
 
 	// MaxDepth specifies the maximum depth of the internal spatial
 	// partitioning structure.
@@ -42,7 +44,7 @@ type SceneSettings struct {
 
 // NewScene creates a new scene.
 func NewScene[O, S any](settings SceneSettings) *Scene[O, S] {
-	cubeOctreeSettings := CompactTreeSettings(settings)
+	treeSettings := query2d.QuadtreeSettings(settings)
 
 	return &Scene[O, S]{
 		freeObjectIndices:    ds.NewStack[uint32](256), // ~ 1 KiB
@@ -55,8 +57,8 @@ func NewScene[O, S any](settings SceneSettings) *Scene[O, S] {
 		rectangles: make([]sceneRectangleShape[S], 0, 128),
 		polygons:   make([]scenePolygonShape[S], 0, 128),
 
-		staticTree:  NewCompactTree[shapeRef](cubeOctreeSettings),
-		dynamicTree: NewCompactTree[shapeRef](cubeOctreeSettings),
+		staticTree:  query2d.NewQuadtree[shapeRef](treeSettings),
+		dynamicTree: query2d.NewQuadtree[shapeRef](treeSettings),
 
 		checks: make([]shapeRefPair, 0, 1024),
 	}
@@ -74,8 +76,8 @@ type Scene[T, S any] struct {
 	rectangles []sceneRectangleShape[S]
 	polygons   []scenePolygonShape[S]
 
-	staticTree  *CompactTree[shapeRef]
-	dynamicTree *CompactTree[shapeRef]
+	staticTree  *query2d.Quadtree[shapeRef]
+	dynamicTree *query2d.Quadtree[shapeRef]
 
 	tempShape     sceneShape[S]
 	tempSegment   Segment
@@ -152,7 +154,7 @@ func (s *Scene[O, S]) SetObjectTransform(objID ObjectID, transform Transform) {
 	s.eachObjectShape(object, shapeKindCircle, func(index uint32) {
 		circle := &s.circles[index]
 		circle.update(transform)
-		bc := NewCompactQuadFromCircle(circle.boundingCircle())
+		bc := queryAreaFromCircle(circle.boundingCircle())
 		if circle.static {
 			s.staticTree.Update(circle.spatialID, bc)
 		} else {
@@ -162,7 +164,7 @@ func (s *Scene[O, S]) SetObjectTransform(objID ObjectID, transform Transform) {
 	s.eachObjectShape(object, shapeKindRectangle, func(index uint32) {
 		rectangle := &s.rectangles[index]
 		rectangle.update(transform)
-		bc := NewCompactQuadFromCircle(rectangle.boundingCircle())
+		bc := queryAreaFromCircle(rectangle.boundingCircle())
 		if rectangle.static {
 			s.staticTree.Update(rectangle.spatialID, bc)
 		} else {
@@ -172,7 +174,7 @@ func (s *Scene[O, S]) SetObjectTransform(objID ObjectID, transform Transform) {
 	s.eachObjectShape(object, shapeKindPolygon, func(index uint32) {
 		polygon := &s.polygons[index]
 		polygon.update(transform)
-		bc := NewCompactQuadFromCircle(polygon.boundingCircle())
+		bc := queryAreaFromCircle(polygon.boundingCircle())
 		if polygon.static {
 			s.staticTree.Update(polygon.spatialID, bc)
 		} else {
@@ -199,11 +201,11 @@ func (s *Scene[O, S]) AttachCircle(objID ObjectID, info CircleInfo[S]) ShapeID {
 	solver.update(object.transform)
 
 	bc := solver.boundingCircle()
-	var spatialID CompactTreeItemID
+	var spatialID query2d.TreeItemID
 	if object.isStatic() {
-		spatialID = s.staticTree.Insert(NewCompactQuadFromCircle(bc), ref)
+		spatialID = s.staticTree.Insert(queryAreaFromCircle(bc), ref)
 	} else {
-		spatialID = s.dynamicTree.Insert(NewCompactQuadFromCircle(bc), ref)
+		spatialID = s.dynamicTree.Insert(queryAreaFromCircle(bc), ref)
 	}
 
 	s.circles[index] = sceneCircleShape[S]{
@@ -242,11 +244,11 @@ func (s *Scene[O, S]) AttachRectangle(objID ObjectID, info RectangleInfo[S]) Sha
 	solver.update(object.transform)
 
 	bc := solver.boundingCircle()
-	var spatialID CompactTreeItemID
+	var spatialID query2d.TreeItemID
 	if object.isStatic() {
-		spatialID = s.staticTree.Insert(NewCompactQuadFromCircle(bc), ref)
+		spatialID = s.staticTree.Insert(queryAreaFromCircle(bc), ref)
 	} else {
-		spatialID = s.dynamicTree.Insert(NewCompactQuadFromCircle(bc), ref)
+		spatialID = s.dynamicTree.Insert(queryAreaFromCircle(bc), ref)
 	}
 
 	s.rectangles[index] = sceneRectangleShape[S]{
@@ -285,11 +287,11 @@ func (s *Scene[O, S]) AttachPolygon(objID ObjectID, info PolygonInfo[S]) ShapeID
 	solver.update(object.transform)
 
 	bc := solver.boundingCircle()
-	var spatialID CompactTreeItemID
+	var spatialID query2d.TreeItemID
 	if object.isStatic() {
-		spatialID = s.staticTree.Insert(NewCompactQuadFromCircle(bc), ref)
+		spatialID = s.staticTree.Insert(queryAreaFromCircle(bc), ref)
 	} else {
-		spatialID = s.dynamicTree.Insert(NewCompactQuadFromCircle(bc), ref)
+		spatialID = s.dynamicTree.Insert(queryAreaFromCircle(bc), ref)
 	}
 
 	s.polygons[index] = scenePolygonShape[S]{
@@ -418,7 +420,7 @@ func (s *Scene[O, S]) CollectIntersections(collection ObjectIntersectionCollecti
 
 	s.eachDynamicCircle(func(srcIndex uint32, srcCircle *sceneCircleShape[S]) {
 		srcRef := newShapeRef(shapeKindCircle, srcIndex)
-		queryAABB := NewCompactQueryAABBFromCircle(srcCircle.boundingCircle())
+		queryAABB := queryAABBFromCircle(srcCircle.boundingCircle())
 		s.dynamicTree.QueryAABB(queryAABB, func(tgtRef shapeRef) bool {
 			s.checks = append(s.checks, newShapeRefPair(srcRef, tgtRef))
 			return true
@@ -431,7 +433,7 @@ func (s *Scene[O, S]) CollectIntersections(collection ObjectIntersectionCollecti
 
 	s.eachDynamicRectangle(func(srcIndex uint32, srcRectangle *sceneRectangleShape[S]) {
 		srcRef := newShapeRef(shapeKindRectangle, srcIndex)
-		queryAABB := NewCompactQueryAABBFromCircle(srcRectangle.boundingCircle())
+		queryAABB := queryAABBFromCircle(srcRectangle.boundingCircle())
 		s.dynamicTree.QueryAABB(queryAABB, func(tgtRef shapeRef) bool {
 			s.checks = append(s.checks, newShapeRefPair(srcRef, tgtRef))
 			return true
@@ -444,7 +446,7 @@ func (s *Scene[O, S]) CollectIntersections(collection ObjectIntersectionCollecti
 
 	s.eachDynamicPolygon(func(srcIndex uint32, srcPolygon *scenePolygonShape[S]) {
 		srcRef := newShapeRef(shapeKindPolygon, srcIndex)
-		queryAABB := NewCompactQueryAABBFromCircle(srcPolygon.boundingCircle())
+		queryAABB := queryAABBFromCircle(srcPolygon.boundingCircle())
 		s.dynamicTree.QueryAABB(queryAABB, func(tgtRef shapeRef) bool {
 			s.checks = append(s.checks, newShapeRefPair(srcRef, tgtRef))
 			return true
@@ -478,7 +480,7 @@ func (s *Scene[O, S]) CollectSegmentIntersections(segment Segment, filter Filter
 	srcRef := newTempShapeRef(shapeKindSegment)
 
 	s.checks = s.checks[:0]
-	querySegment := NewCompactQuerySegment(segment.A, segment.B)
+	querySegment := query2d.NewSegment(dtos.Vec2(segment.A), dtos.Vec2(segment.B))
 	if !filter.SkipDynamic {
 		s.dynamicTree.QuerySegment(querySegment, func(tgtRef shapeRef) bool {
 			s.checks = append(s.checks, newShapeRefPair(srcRef, tgtRef))
@@ -514,7 +516,7 @@ func (s *Scene[O, S]) CollectCircleIntersections(circle Circle, filter Filter, c
 	srcRef := newTempShapeRef(shapeKindCircle)
 
 	s.checks = s.checks[:0]
-	queryAABB := NewCompactQueryAABBFromCircle(circle)
+	queryAABB := queryAABBFromCircle(circle)
 	if !filter.SkipDynamic {
 		s.dynamicTree.QueryAABB(queryAABB, func(tgtRef shapeRef) bool {
 			s.checks = append(s.checks, newShapeRefPair(srcRef, tgtRef))
@@ -550,7 +552,7 @@ func (s *Scene[O, S]) CollectRectangleIntersections(rectangle Rectangle, filter 
 	srcRef := newTempShapeRef(shapeKindRectangle)
 
 	s.checks = s.checks[:0]
-	queryAABB := NewCompactQueryAABBFromCircle(rectangle.BoundingCircle())
+	queryAABB := queryAABBFromCircle(rectangle.BoundingCircle())
 	if !filter.SkipDynamic {
 		s.dynamicTree.QueryAABB(queryAABB, func(tgtRef shapeRef) bool {
 			s.checks = append(s.checks, newShapeRefPair(srcRef, tgtRef))
@@ -586,7 +588,7 @@ func (s *Scene[O, S]) CollectPolygonIntersections(polygon Polygon, filter Filter
 	srcRef := newTempShapeRef(shapeKindPolygon)
 
 	s.checks = s.checks[:0]
-	queryAABB := NewCompactQueryAABBFromCircle(polygon.BoundingCircle())
+	queryAABB := queryAABBFromCircle(polygon.BoundingCircle())
 	if !filter.SkipDynamic {
 		s.dynamicTree.QueryAABB(queryAABB, func(tgtRef shapeRef) bool {
 			s.checks = append(s.checks, newShapeRefPair(srcRef, tgtRef))
@@ -638,7 +640,7 @@ func (s *Scene[O, S]) freeShape(ref shapeRef) {
 		} else {
 			s.dynamicTree.Remove(circle.spatialID)
 		}
-		circle.spatialID = InvalidCompactTreeItemID
+		circle.spatialID = query2d.InvalidTreeItemID
 		circle.userData = gog.Zero[S]() // in case of pointer
 		circle.nextShape = invalidShapeRef
 		circle.circleSolver = newCircleSolver(Circle{})
@@ -650,7 +652,7 @@ func (s *Scene[O, S]) freeShape(ref shapeRef) {
 		} else {
 			s.dynamicTree.Remove(rectangle.spatialID)
 		}
-		rectangle.spatialID = InvalidCompactTreeItemID
+		rectangle.spatialID = query2d.InvalidTreeItemID
 		rectangle.userData = gog.Zero[S]() // in case of pointer
 		rectangle.nextShape = invalidShapeRef
 		rectangle.rectangleSolver = newRectangleSolver(Rectangle{})
@@ -662,7 +664,7 @@ func (s *Scene[O, S]) freeShape(ref shapeRef) {
 		} else {
 			s.dynamicTree.Remove(polygon.spatialID)
 		}
-		polygon.spatialID = InvalidCompactTreeItemID
+		polygon.spatialID = query2d.InvalidTreeItemID
 		polygon.userData = gog.Zero[S]() // in case of pointer
 		polygon.nextShape = invalidShapeRef
 		polygon.polygonSolver = newPolygonSolver(Polygon{})
@@ -675,7 +677,7 @@ func (s *Scene[O, S]) freeShape(ref shapeRef) {
 func (s *Scene[O, S]) eachDynamicCircle(cb func(uint32, *sceneCircleShape[S])) {
 	for index := range uint32(len(s.circles)) {
 		shape := &s.circles[index]
-		if shape.static || (shape.spatialID == InvalidCompactTreeItemID) {
+		if shape.static || (shape.spatialID == query2d.InvalidTreeItemID) {
 			continue
 		}
 		cb(index, shape)
@@ -685,7 +687,7 @@ func (s *Scene[O, S]) eachDynamicCircle(cb func(uint32, *sceneCircleShape[S])) {
 func (s *Scene[O, S]) eachDynamicRectangle(cb func(uint32, *sceneRectangleShape[S])) {
 	for index := range uint32(len(s.rectangles)) {
 		shape := &s.rectangles[index]
-		if shape.static || (shape.spatialID == InvalidCompactTreeItemID) {
+		if shape.static || (shape.spatialID == query2d.InvalidTreeItemID) {
 			continue
 		}
 		cb(index, shape)
@@ -695,7 +697,7 @@ func (s *Scene[O, S]) eachDynamicRectangle(cb func(uint32, *sceneRectangleShape[
 func (s *Scene[O, S]) eachDynamicPolygon(cb func(uint32, *scenePolygonShape[S])) {
 	for index := range uint32(len(s.polygons)) {
 		shape := &s.polygons[index]
-		if shape.static || (shape.spatialID == InvalidCompactTreeItemID) {
+		if shape.static || (shape.spatialID == query2d.InvalidTreeItemID) {
 			continue
 		}
 		cb(index, shape)
@@ -1052,4 +1054,20 @@ func wrapShapeID[S any](ref shapeRef) ShapeID {
 		return InvalidShapeID
 	}
 	return ShapeID(ref)
+}
+
+func queryAreaFromCircle(circle Circle) query2d.Area {
+	return query2d.AreaFromCircle(
+		float32(circle.Position.X),
+		float32(circle.Position.Y),
+		float32(circle.Radius),
+	)
+}
+
+func queryAABBFromCircle(circle Circle) query2d.AABB {
+	return query2d.AABBFromCircle(
+		float32(circle.Position.X),
+		float32(circle.Position.Y),
+		float32(circle.Radius),
+	)
 }
