@@ -36,15 +36,15 @@ var _ = Describe("Quadtree", func() {
 
 		BeforeEach(func() {
 			firstItemID = tree.Insert(
-				query2d.CircularArea(16.0, 16.0, 2.0),
+				query2d.AreaFromCircle(16.0, 16.0, 2.0),
 				"First",
 			)
 			secondItemID = tree.Insert(
-				query2d.CircularArea(48.0, 48.0, 2.0),
+				query2d.AreaFromCircle(48.0, 48.0, 2.0),
 				"Second",
 			)
 			thirdItemID = tree.Insert(
-				query2d.CircularArea(-16.0, -48.0, 32.0),
+				query2d.AreaFromCircle(-16.0, -48.0, 32.0),
 				"Third",
 			)
 		})
@@ -130,7 +130,7 @@ var _ = Describe("Quadtree", func() {
 		When("an item is updated", func() {
 			BeforeEach(func() {
 				tree.Update(secondItemID,
-					query2d.CircularArea(-48.0, 48.0, 2.0),
+					query2d.AreaFromCircle(-48.0, 48.0, 2.0),
 				)
 			})
 
@@ -187,7 +187,7 @@ var _ = Describe("Quadtree", func() {
 			It("does not return an active item id on new insert", func() {
 				tree.GC() // forces internal reordering of items (white box testing)
 				secondItemID = tree.Insert(
-					query2d.CircularArea(48.0, 48.0, 2.0),
+					query2d.AreaFromCircle(48.0, 48.0, 2.0),
 					"Second",
 				)
 				Expect(secondItemID).ToNot(Equal(firstItemID))
