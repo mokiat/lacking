@@ -29,9 +29,9 @@ var _ = Describe("Quadtree", func() {
 
 	When("items are inserted", func() {
 		var (
-			firstItemID  query2d.QuadtreeItemID
-			secondItemID query2d.QuadtreeItemID
-			thirdItemID  query2d.QuadtreeItemID
+			firstItemID  query2d.TreeItemID
+			secondItemID query2d.TreeItemID
+			thirdItemID  query2d.TreeItemID
 		)
 
 		BeforeEach(func() {

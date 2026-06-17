@@ -8,16 +8,6 @@ import (
 	"github.com/mokiat/gomath/sprec"
 )
 
-// InvalidQuadtreeItemID is an identifier that can be used by user
-// code to mark an identifier as invalid. Such an identifier will
-// never be returned by the library but must also never be passed to the
-// library.
-const InvalidQuadtreeItemID = QuadtreeItemID(0xFFFFFFFF)
-
-// QuadtreeItemID is an identifier used to control the placement of an item
-// into a tree.
-type QuadtreeItemID uint32
-
 // QuadtreeSettings contains the settings for a Quadtree.
 type QuadtreeSettings struct {
 
@@ -54,7 +44,7 @@ type Quadtree[T any] struct {
 	nodes           []quadtreeNode
 	items           []quadtreeItem[T]
 	freeNodeIndices *ds.Stack[int32]
-	freeItemIDs     *ds.Stack[QuadtreeItemID]
+	freeItemIDs     *ds.Stack[TreeItemID]
 	idMappings      []int32
 	maxDepth        uint32
 
@@ -97,7 +87,7 @@ func NewQuadtree[T any](settings QuadtreeSettings) *Quadtree[T] {
 		nodes:           nodes,
 		items:           make([]quadtreeItem[T], 0, initialItemCapacity),
 		freeNodeIndices: ds.EmptyStack[int32](),
-		freeItemIDs:     ds.EmptyStack[QuadtreeItemID](),
+		freeItemIDs:     ds.EmptyStack[TreeItemID](),
 		idMappings:      make([]int32, 0, initialItemCapacity),
 		maxDepth:        maxDepth,
 
@@ -139,13 +129,13 @@ func (t *Quadtree[T]) VisitStats() TreeVisitStats {
 
 // Insert adds an item, which occupies the specified area, to this
 // tree.
-func (t *Quadtree[T]) Insert(area Area, value T) QuadtreeItemID {
+func (t *Quadtree[T]) Insert(area Area, value T) TreeItemID {
 	node := t.pickNodeForItem(area)
 	box := newQuadtreeAABBFromArea(area)
 	t.markNodeDirty(node)
 
 	if t.freeItemIDs.IsEmpty() {
-		id := QuadtreeItemID(len(t.items))
+		id := TreeItemID(len(t.items))
 		t.idMappings = append(t.idMappings, int32(id))
 		t.items = append(t.items, quadtreeItem[T]{
 			id:    id,
@@ -166,7 +156,7 @@ func (t *Quadtree[T]) Insert(area Area, value T) QuadtreeItemID {
 }
 
 // Update repositions the item with the specified id to the new area.
-func (t *Quadtree[T]) Update(id QuadtreeItemID, area Area) {
+func (t *Quadtree[T]) Update(id TreeItemID, area Area) {
 	itemIndex := t.idMappings[id]
 	item := &t.items[itemIndex]
 	if item.node == nullQuadtreeIndex {
@@ -179,7 +169,7 @@ func (t *Quadtree[T]) Update(id QuadtreeItemID, area Area) {
 }
 
 // Remove removes the item with the specified id from this tree.
-func (t *Quadtree[T]) Remove(id QuadtreeItemID) {
+func (t *Quadtree[T]) Remove(id TreeItemID) {
 	itemIndex := t.idMappings[id]
 	item := &t.items[itemIndex]
 	if item.node == nullQuadtreeIndex {
@@ -540,7 +530,7 @@ func (n *quadtreeNode) isEmpty() bool {
 }
 
 type quadtreeItem[T any] struct {
-	id    QuadtreeItemID
+	id    TreeItemID
 	node  int32
 	box   quadtreeAABB
 	value T

@@ -29,9 +29,9 @@ var _ = Describe("Octree", func() {
 
 	When("items are inserted", func() {
 		var (
-			firstItemID  query3d.OctreeItemID
-			secondItemID query3d.OctreeItemID
-			thirdItemID  query3d.OctreeItemID
+			firstItemID  query3d.TreeItemID
+			secondItemID query3d.TreeItemID
+			thirdItemID  query3d.TreeItemID
 		)
 
 		BeforeEach(func() {

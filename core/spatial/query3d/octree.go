@@ -8,16 +8,6 @@ import (
 	"github.com/mokiat/gomath/sprec"
 )
 
-// InvalidOctreeItemID is an identifier that can be used by user
-// code to mark an identifier as invalid. Such an identifier will
-// never be returned by the library but must also never be passed to the
-// library.
-const InvalidOctreeItemID = OctreeItemID(0xFFFFFFFF)
-
-// OctreeItemID is an identifier used to control the placement of an item
-// into a tree.
-type OctreeItemID uint32
-
 // OctreeSettings contains the settings for a Octree.
 type OctreeSettings struct {
 
@@ -54,7 +44,7 @@ type Octree[T any] struct {
 	nodes           []octreeNode
 	items           []octreeItem[T]
 	freeNodeIndices *ds.Stack[int32]
-	freeItemIDs     *ds.Stack[OctreeItemID]
+	freeItemIDs     *ds.Stack[TreeItemID]
 	idMappings      []int32
 	maxDepth        uint32
 
@@ -98,7 +88,7 @@ func NewOctree[T any](settings OctreeSettings) *Octree[T] {
 		nodes:           nodes,
 		items:           make([]octreeItem[T], 0, initialItemCapacity),
 		freeNodeIndices: ds.EmptyStack[int32](),
-		freeItemIDs:     ds.EmptyStack[OctreeItemID](),
+		freeItemIDs:     ds.EmptyStack[TreeItemID](),
 		idMappings:      make([]int32, 0, initialItemCapacity),
 		maxDepth:        maxDepth,
 
@@ -140,13 +130,13 @@ func (t *Octree[T]) VisitStats() TreeVisitStats {
 
 // Insert adds an item, which occupies the specified area, to this
 // tree.
-func (t *Octree[T]) Insert(area Area, value T) OctreeItemID {
+func (t *Octree[T]) Insert(area Area, value T) TreeItemID {
 	node := t.pickNodeForItem(area)
 	box := newOctreeAABBFromArea(area)
 	t.markNodeDirty(node)
 
 	if t.freeItemIDs.IsEmpty() {
-		id := OctreeItemID(len(t.items))
+		id := TreeItemID(len(t.items))
 		t.idMappings = append(t.idMappings, int32(id))
 		t.items = append(t.items, octreeItem[T]{
 			id:    id,
@@ -167,7 +157,7 @@ func (t *Octree[T]) Insert(area Area, value T) OctreeItemID {
 }
 
 // Update repositions the item with the specified id to the new area.
-func (t *Octree[T]) Update(id OctreeItemID, area Area) {
+func (t *Octree[T]) Update(id TreeItemID, area Area) {
 	itemIndex := t.idMappings[id]
 	item := &t.items[itemIndex]
 	if item.node == nullOctreeIndex {
@@ -180,7 +170,7 @@ func (t *Octree[T]) Update(id OctreeItemID, area Area) {
 }
 
 // Remove removes the item with the specified id from this tree.
-func (t *Octree[T]) Remove(id OctreeItemID) {
+func (t *Octree[T]) Remove(id TreeItemID) {
 	itemIndex := t.idMappings[id]
 	item := &t.items[itemIndex]
 	if item.node == nullOctreeIndex {
@@ -552,7 +542,7 @@ func (n *octreeNode) isEmpty() bool {
 }
 
 type octreeItem[T any] struct {
-	id    OctreeItemID
+	id    TreeItemID
 	node  int32
 	box   octreeAABB
 	value T
