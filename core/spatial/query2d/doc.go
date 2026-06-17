@@ -1,6 +1,6 @@
 // Package query2d provides a 2D spatial query interface.
 //
-// The package is built around a Tree, a loose quadtree that indexes items by
+// The package is built around a Quadtree, a loose quadtree that indexes items by
 // their spatial Area and allows them to be searched through QueryAABB and
 // QuerySegment.
 //

@@ -9,13 +9,13 @@ import (
 	"github.com/mokiat/lacking/core/spatial/query2d"
 )
 
-var _ = Describe("Tree", func() {
+var _ = Describe("Quadtree", func() {
 	var (
-		tree *query2d.Tree[string]
+		tree *query2d.Quadtree[string]
 	)
 
 	BeforeEach(func() {
-		tree = query2d.NewTree[string](query2d.TreeSettings{
+		tree = query2d.NewQuadtree[string](query2d.QuadtreeSettings{
 			Size:     opt.V(float32(128.0)),
 			MaxDepth: opt.V[uint32](3),
 		})
@@ -29,9 +29,9 @@ var _ = Describe("Tree", func() {
 
 	When("items are inserted", func() {
 		var (
-			firstItemID  query2d.TreeItemID
-			secondItemID query2d.TreeItemID
-			thirdItemID  query2d.TreeItemID
+			firstItemID  query2d.QuadtreeItemID
+			secondItemID query2d.QuadtreeItemID
+			thirdItemID  query2d.QuadtreeItemID
 		)
 
 		BeforeEach(func() {
