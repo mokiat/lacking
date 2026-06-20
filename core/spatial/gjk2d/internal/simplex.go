@@ -155,11 +155,30 @@ func (s *Simplex) appendToEdge(point, lastDir sprec.Vec2) {
 		// Set the search direction to be perpendicular to the edge, towards the origin.
 		s.searchDirection = normCB
 
-	default: // origin is past both edges
-		// The closest point on the triangle is the new point C. But we already
-		// checked that it is not close enough to the origin.
-		s.terminate(false)
-		return
+	default: // origin is past both edge lines (the vertex C wedge)
+		// In case of very shallow angles, the origin may be within skin-radius
+		// distance of one of the edges or a point past the edges.
+		projectsAC := originProjectsToEdge(s.points[0], point)
+		if projectsAC && (dotAC*dotAC <= normAC.SqrLength()*s.sqrSkinRadius) {
+			s.terminate(true)
+			return
+		}
+		projectsCB := originProjectsToEdge(point, s.points[1])
+		if projectsCB && (dotCB*dotCB <= normCB.SqrLength()*s.sqrSkinRadius) {
+			s.terminate(true)
+			return
+		}
+		switch {
+		case projectsAC: // keep edge AC and keep searching towards the origin
+			s.points[1] = point
+			s.searchDirection = normAC
+		case projectsCB: // keep edge CB and keep searching towards the origin
+			s.points[0] = point
+			s.searchDirection = normCB
+		default: // the closest feature really is vertex C, already rejected above
+			s.terminate(false)
+			return
+		}
 	}
 }
 
