@@ -14,8 +14,9 @@ var _ = Describe("Square", func() {
 
 	BeforeEach(func() {
 		square = shape2d.Square{
-			Center: sprec.NewVec2(3.0, 4.0),
-			Size:   2.0,
+			Center:   sprec.NewVec2(3.0, 4.0),
+			Rotation: shape2d.IdentityRotation(),
+			Size:     2.0,
 		}
 	})
 
@@ -46,11 +47,40 @@ var _ = Describe("Square", func() {
 
 		It("returns true only for the center when size is zero", func() {
 			dot := shape2d.Square{
-				Center: sprec.NewVec2(1.0, 2.0),
-				Size:   0.0,
+				Center:   sprec.NewVec2(1.0, 2.0),
+				Rotation: shape2d.IdentityRotation(),
+				Size:     0.0,
 			}
 			Expect(dot.ContainsPoint(sprec.NewVec2(1.0, 2.0))).To(BeTrue())
 			Expect(dot.ContainsPoint(sprec.NewVec2(1.1, 2.0))).To(BeFalse())
+		})
+
+		Context("with 45-degree CCW rotation", func() {
+			var rotated shape2d.Square
+
+			BeforeEach(func() {
+				rotated = shape2d.Square{
+					Center:   sprec.NewVec2(3.0, 4.0),
+					Rotation: shape2d.RotationFromAngle(sprec.Degrees(45)),
+					Size:     2.0,
+				}
+			})
+
+			It("contains the center", func() {
+				Expect(rotated.ContainsPoint(sprec.NewVec2(3.0, 4.0))).To(BeTrue())
+			})
+
+			It("contains a point along the world axes within halfSize", func() {
+				Expect(rotated.ContainsPoint(sprec.NewVec2(3.7, 4.0))).To(BeTrue())
+			})
+
+			It("contains a point strictly inside the diamond", func() {
+				Expect(rotated.ContainsPoint(sprec.NewVec2(3.6, 4.6))).To(BeTrue())
+			})
+
+			It("rejects a point on the diagonal that lies inside the axis-aligned square", func() {
+				Expect(rotated.ContainsPoint(sprec.NewVec2(3.8, 4.8))).To(BeFalse())
+			})
 		})
 	})
 
