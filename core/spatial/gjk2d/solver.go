@@ -21,37 +21,43 @@ func (s *Solver) Intersect(shapeA, shapeB Shape) bool {
 		shapeA.SkinRadius+shapeB.SkinRadius,
 	)
 
-	dir := s.pickInitialDirection(&shapeA, &shapeB)
-	support := s.minkowskiSupport(&shapeA, &shapeB, dir)
+	offset := sprec.Vec2Diff(shapeB.Position, shapeA.Position)
+	polyA := internal.Polygon{
+		Rotation:    shapeA.Rotation,
+		InvRotation: shapeA.Rotation.Inverse(),
+		Points:      shapeA.Points,
+	}
+	polyB := internal.Polygon{
+		Rotation:    shapeB.Rotation,
+		InvRotation: shapeB.Rotation.Inverse(),
+		Points:      shapeB.Points,
+	}
+
+	dir := s.pickInitialDirection(&polyA, &polyB, offset)
+	support := s.minkowskiSupport(&polyA, &polyB, offset, dir)
 	simplex.Append(support, dir)
 
 	for simplex.CanProgress() {
 		dir = simplex.SearchDirection()
-		support = s.minkowskiSupport(&shapeA, &shapeB, dir)
+		support = s.minkowskiSupport(&polyA, &polyB, offset, dir)
 		simplex.Append(support, dir)
 	}
 
 	return simplex.TouchesOrigin()
 }
 
-func (s *Solver) pickInitialDirection(shapeA, shapeB *Shape) sprec.Vec2 {
-	return sprec.Vec2Diff(shapeB.Points[0], shapeA.Points[0])
-}
-
-func (s *Solver) minkowskiSupport(shapeA, shapeB *Shape, dir sprec.Vec2) sprec.Vec2 {
-	supportA := s.shapeSupport(shapeA, sprec.InverseVec2(dir))
-	supportB := s.shapeSupport(shapeB, dir)
-	return sprec.Vec2Diff(supportB, supportA)
-}
-
-func (s *Solver) shapeSupport(shape *Shape, dir sprec.Vec2) sprec.Vec2 {
-	best := shape.Points[0]
-	bestDot := sprec.Vec2Dot(best, dir)
-	for _, v := range shape.Points[1:] {
-		if dot := sprec.Vec2Dot(v, dir); dot > bestDot {
-			bestDot = dot
-			best = v
-		}
+func (s *Solver) pickInitialDirection(polyA, polyB *internal.Polygon, offset sprec.Vec2) sprec.Vec2 {
+	pointA := polyA.InitialPoint()
+	pointB := polyB.InitialPoint()
+	result := sprec.Vec2Sum(offset, sprec.Vec2Diff(pointB, pointA))
+	if result.SqrLength() < 0.001 {
+		return sprec.BasisXVec2()
 	}
-	return best
+	return result
+}
+
+func (s *Solver) minkowskiSupport(polyA, polyB *internal.Polygon, offset, dir sprec.Vec2) sprec.Vec2 {
+	supportA := polyA.Support(sprec.InverseVec2(dir))
+	supportB := polyB.Support(dir)
+	return sprec.Vec2Sum(offset, sprec.Vec2Diff(supportB, supportA))
 }
