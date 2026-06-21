@@ -1,4 +1,3 @@
-// Package internal holds types used exclusively by the gjk2d solver.
 package internal
 
 import (
