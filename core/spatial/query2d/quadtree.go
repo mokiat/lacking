@@ -390,6 +390,7 @@ func (t *Quadtree[T]) gcNode(nodeIndex int32) {
 	}
 	parentNodeIndex := node.parent
 	parentNode := &t.nodes[parentNodeIndex]
+	parentNode.isDirty = true // ensure it updates its AABB
 	for i, childNodeIndex := range parentNode.children {
 		if childNodeIndex == nodeIndex {
 			parentNode.children[i] = nullQuadtreeIndex

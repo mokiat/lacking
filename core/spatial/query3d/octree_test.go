@@ -267,6 +267,59 @@ var _ = Describe("Octree", func() {
 		})
 	})
 
+	When("a surviving item shares a branch with a removed item", func() {
+		var farItemID query3d.TreeItemID
+
+		BeforeEach(func() {
+			// Both items descend into the same branch but into different
+			// leaves. Removing the far item must collapse its leaf and shrink
+			// the cached bounding boxes of the surviving ancestors.
+			tree.Insert(
+				query3d.AreaFromSphere(16.0, 16.0, 16.0, 2.0),
+				"Near",
+			)
+			farItemID = tree.Insert(
+				query3d.AreaFromSphere(60.0, 60.0, 60.0, 1.0),
+				"Far",
+			)
+			// Settle the tree so every cached box is clean. Only the collapse
+			// triggered by the removal below may dirty the surviving ancestors.
+			tree.Stats()
+			tree.Remove(farItemID)
+		})
+
+		It("collapses the cached bounding boxes towards the surviving item", func() {
+			// The query targets the location the removed item used to occupy.
+			// If the ancestor boxes were left stale, traversal would be accepted
+			// into them; with the boxes collapsed, it is rejected at the root.
+			var found []string
+			tree.QueryAABB(
+				query3d.AABBFromSphere(60.0, 60.0, 60.0, 1.0),
+				func(item string) bool {
+					found = append(found, item)
+					return true
+				},
+			)
+			Expect(found).To(BeEmpty())
+
+			stats := tree.VisitStats()
+			Expect(stats.NodeCountAccepted).To(Equal(uint32(0)))
+			Expect(stats.NodeCountRejected).To(Equal(uint32(1)))
+		})
+
+		It("still finds the surviving item", func() {
+			var found []string
+			tree.QueryAABB(
+				query3d.AABBFromSphere(16.0, 16.0, 16.0, 2.0),
+				func(item string) bool {
+					found = append(found, item)
+					return true
+				},
+			)
+			Expect(found).To(ConsistOf("Near"))
+		})
+	})
+
 	When("the tree undergoes heavy churn", func() {
 		It("keeps queries and stats consistent", func() {
 			const count = 200
