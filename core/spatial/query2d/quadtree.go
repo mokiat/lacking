@@ -71,10 +71,11 @@ func NewQuadtree[T any](settings QuadtreeSettings) *Quadtree[T] {
 
 	nodes := make([]quadtreeNode, 0, initialNodeCapacity)
 	nodes = append(nodes, quadtreeNode{
-		parent:    nullQuadtreeIndex,
-		children:  emptyQuadtreeNodeChildren,
-		itemStart: 0,
-		itemEnd:   0,
+		parent:      nullQuadtreeIndex,
+		children:    emptyQuadtreeNodeChildren,
+		itemCount:   0,
+		itemOffset:  0,
+		placeOffset: 0,
 		looseArea: quadtreeQuad{
 			x: 0.0,
 			y: 0.0,
@@ -130,16 +131,16 @@ func (t *Quadtree[T]) VisitStats() TreeVisitStats {
 // Insert adds an item, which occupies the specified area, to this
 // tree.
 func (t *Quadtree[T]) Insert(area Area, value T) TreeItemID {
-	node := t.pickNodeForItem(area)
+	nodeIndex := t.pickNodeForItem(area)
 	box := newQuadtreeAABBFromArea(area)
-	t.markNodeDirty(node)
+	t.increaseNodeItems(nodeIndex)
 
 	if t.freeItemIDs.IsEmpty() {
 		id := TreeItemID(len(t.items))
 		t.idMappings = append(t.idMappings, int32(id))
 		t.items = append(t.items, quadtreeItem[T]{
 			id:    id,
-			node:  node,
+			node:  nodeIndex,
 			box:   box,
 			value: value,
 		})
@@ -150,7 +151,7 @@ func (t *Quadtree[T]) Insert(area Area, value T) TreeItemID {
 		item := &t.items[itemIndex]
 		item.box = box
 		item.value = value
-		item.node = node
+		item.node = nodeIndex
 		return item.id
 	}
 }
@@ -163,9 +164,9 @@ func (t *Quadtree[T]) Update(id TreeItemID, area Area) {
 		panic("cannot update removed item")
 	}
 	item.box = newQuadtreeAABBFromArea(area)
-	t.markNodeDirty(item.node) // previous node
+	t.decreaseNodeItems(item.node) // previous node
 	item.node = t.pickNodeForItem(area)
-	t.markNodeDirty(item.node) // new node
+	t.increaseNodeItems(item.node) // new node
 }
 
 // Remove removes the item with the specified id from this tree.
@@ -175,7 +176,7 @@ func (t *Quadtree[T]) Remove(id TreeItemID) {
 	if item.node == nullQuadtreeIndex {
 		panic("cannot remove item twice")
 	}
-	t.markNodeDirty(item.node)
+	t.decreaseNodeItems(item.node)
 	item.node = nullQuadtreeIndex
 	t.freeItemIDs.Push(id)
 }
@@ -220,10 +221,18 @@ func (t *Quadtree[T]) activeItemCount() uint32 {
 	return uint32(len(t.items) - t.freeItemIDs.Size())
 }
 
-func (t *Quadtree[T]) markNodeDirty(nodeIndex int32) {
-	t.isDirty = true
+func (t *Quadtree[T]) increaseNodeItems(nodeIndex int32) {
 	node := &t.nodes[nodeIndex]
+	node.itemCount++
 	node.isDirty = true
+	t.isDirty = true
+}
+
+func (t *Quadtree[T]) decreaseNodeItems(nodeIndex int32) {
+	node := &t.nodes[nodeIndex]
+	node.itemCount--
+	node.isDirty = true
+	t.isDirty = true
 }
 
 func (t *Quadtree[T]) itemsAtDepth(nodeIndex int32, currentDepth, depth uint32) uint32 {
@@ -232,7 +241,7 @@ func (t *Quadtree[T]) itemsAtDepth(nodeIndex int32, currentDepth, depth uint32) 
 	}
 	node := &t.nodes[nodeIndex]
 	if currentDepth == depth {
-		return node.itemEnd - node.itemStart
+		return node.itemCount
 	}
 	var result uint32
 	for _, childNodeIndex := range node.children {
@@ -302,11 +311,12 @@ func (t *Quadtree[T]) pickChildNode(parentNodeIndex int32, area Area) int32 {
 		// Do NOT use "parentNode" after this append as the ref might be towards
 		// an old slice!
 		t.nodes = append(t.nodes, quadtreeNode{
-			parent:    parentNodeIndex,
-			children:  emptyQuadtreeNodeChildren,
-			looseArea: childLooseArea,
-			itemStart: 0,
-			itemEnd:   0,
+			parent:      parentNodeIndex,
+			children:    emptyQuadtreeNodeChildren,
+			looseArea:   childLooseArea,
+			itemCount:   0,
+			itemOffset:  0,
+			placeOffset: 0,
 		})
 		return childNodeIndex
 	} else {
@@ -316,8 +326,9 @@ func (t *Quadtree[T]) pickChildNode(parentNodeIndex int32, area Area) int32 {
 		childNode.parent = parentNodeIndex
 		childNode.children = emptyQuadtreeNodeChildren
 		childNode.looseArea = childLooseArea
-		childNode.itemStart = 0
-		childNode.itemEnd = 0
+		childNode.itemCount = 0
+		childNode.itemOffset = 0
+		childNode.placeOffset = 0
 		return childNodeIndex
 	}
 }
@@ -333,42 +344,30 @@ func (t *Quadtree[T]) refresh() {
 }
 
 func (t *Quadtree[T]) groupItems() {
-	for i := range t.nodes {
-		node := &t.nodes[i]
-		node.itemStart = 0
-		node.itemEnd = 0
-		node.sortEnd = 0
-	}
-	for i := range t.items {
-		item := &t.items[i]
-		if item.node != nullQuadtreeIndex {
-			node := &t.nodes[item.node]
-			node.itemEnd++ // use as counter for now
-		}
-	}
 	offset := uint32(0)
 	for i := range t.nodes {
 		node := &t.nodes[i]
-		node.itemStart += offset
-		node.itemEnd += offset
-		node.sortEnd = node.itemStart
-		offset = node.itemEnd
+		node.itemOffset = offset
+		node.placeOffset = offset
+		offset += node.itemCount
 	}
 	countActiveItems := uint32(offset)
+
+	nullOffset := countActiveItems
 	for i := uint32(0); i < countActiveItems; {
 		item := &t.items[i]
 		if item.node == nullQuadtreeIndex {
-			t.swapItems(i, offset)
-			offset++
+			t.swapItems(i, nullOffset)
+			nullOffset++
 			continue
 		}
 		node := &t.nodes[item.node]
-		if i >= node.itemStart && i < node.sortEnd {
+		if i >= node.itemOffset && i < node.placeOffset {
 			i++ // item is in the right place
 			continue
 		}
-		t.swapItems(i, node.sortEnd)
-		node.sortEnd++
+		t.swapItems(i, node.placeOffset)
+		node.placeOffset++
 	}
 }
 
@@ -441,9 +440,11 @@ func (t *Quadtree[T]) updateAABB(nodeIndex int32) bool {
 			result = mergeQuadtreeAABBs(result, child.box)
 		}
 	}
-	for itemIndex := node.itemStart; itemIndex < node.itemEnd; itemIndex++ {
+	itemIndex := node.itemOffset
+	for range node.itemCount {
 		item := &t.items[itemIndex]
 		result = mergeQuadtreeAABBs(result, item.box)
+		itemIndex++
 	}
 	node.box = result
 	node.isDirty = false
@@ -455,7 +456,8 @@ func (t *Quadtree[T]) visitNodeInSegment(nodeIndex int32, querySegment *Segment,
 	node := &t.nodes[nodeIndex]
 	if node.box.intersectsSegment(querySegment) {
 		t.nodeCountAccepted++
-		for itemIndex := node.itemStart; itemIndex < node.itemEnd; itemIndex++ {
+		itemIndex := node.itemOffset
+		for range node.itemCount {
 			item := &t.items[itemIndex]
 			if item.box.intersectsSegment(querySegment) {
 				t.itemCountAccepted++
@@ -465,6 +467,7 @@ func (t *Quadtree[T]) visitNodeInSegment(nodeIndex int32, querySegment *Segment,
 			} else {
 				t.itemCountRejected++
 			}
+			itemIndex++
 		}
 		for _, childNodeIndex := range node.children {
 			if childNodeIndex != nullQuadtreeIndex {
@@ -483,7 +486,8 @@ func (t *Quadtree[T]) visitNodeInAABB(nodeIndex int32, queryAABB *AABB, yield Vi
 	node := &t.nodes[nodeIndex]
 	if node.box.intersectsAABB(queryAABB) {
 		t.nodeCountAccepted++
-		for itemIndex := node.itemStart; itemIndex < node.itemEnd; itemIndex++ {
+		itemIndex := node.itemOffset
+		for range node.itemCount {
 			item := &t.items[itemIndex]
 			if item.box.intersectsAABB(queryAABB) {
 				t.itemCountAccepted++
@@ -493,6 +497,7 @@ func (t *Quadtree[T]) visitNodeInAABB(nodeIndex int32, queryAABB *AABB, yield Vi
 			} else {
 				t.itemCountRejected++
 			}
+			itemIndex++
 		}
 		for _, childNodeIndex := range node.children {
 			if childNodeIndex != nullQuadtreeIndex {
@@ -515,18 +520,18 @@ var emptyQuadtreeNodeChildren = [4]int32{
 }
 
 type quadtreeNode struct {
-	parent    int32
-	children  [4]int32
-	looseArea quadtreeQuad
-	box       quadtreeAABB
-	itemStart uint32
-	itemEnd   uint32
-	sortEnd   uint32
-	isDirty   bool
+	parent      int32
+	children    [4]int32
+	looseArea   quadtreeQuad
+	box         quadtreeAABB
+	itemCount   uint32
+	itemOffset  uint32
+	placeOffset uint32
+	isDirty     bool
 }
 
 func (n *quadtreeNode) isEmpty() bool {
-	return (n.children == emptyQuadtreeNodeChildren) && (n.itemStart >= n.itemEnd)
+	return (n.children == emptyQuadtreeNodeChildren) && (n.itemCount == 0)
 }
 
 type quadtreeItem[T any] struct {
