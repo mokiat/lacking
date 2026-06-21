@@ -8,7 +8,6 @@ import (
 	"github.com/mokiat/gog/ds"
 	"github.com/mokiat/gog/opt"
 	"github.com/mokiat/gomath/dprec"
-	"github.com/mokiat/gomath/dtos"
 	"github.com/mokiat/lacking/core/spatial/query2d"
 )
 
@@ -19,7 +18,7 @@ type SceneSettings struct {
 	// Inserting an object outside these bounds has undefined behavior.
 	//
 	// If not specified, a default size of 4096 units is used.
-	Size opt.T[float32]
+	Size opt.T[float64]
 
 	// MaxDepth specifies the maximum depth of the internal spatial
 	// partitioning structure.
@@ -480,7 +479,7 @@ func (s *Scene[O, S]) CollectSegmentIntersections(segment Segment, filter Filter
 	srcRef := newTempShapeRef(shapeKindSegment)
 
 	s.checks = s.checks[:0]
-	querySegment := query2d.NewSegment(dtos.Vec2(segment.A), dtos.Vec2(segment.B))
+	querySegment := query2d.NewSegment(segment.A, segment.B)
 	if !filter.SkipDynamic {
 		s.dynamicTree.QuerySegment(querySegment, func(tgtRef shapeRef) bool {
 			s.checks = append(s.checks, newShapeRefPair(srcRef, tgtRef))
@@ -1058,16 +1057,16 @@ func wrapShapeID[S any](ref shapeRef) ShapeID {
 
 func queryAreaFromCircle(circle Circle) query2d.Area {
 	return query2d.AreaFromCircle(
-		float32(circle.Position.X),
-		float32(circle.Position.Y),
-		float32(circle.Radius),
+		circle.Position.X,
+		circle.Position.Y,
+		circle.Radius,
 	)
 }
 
 func queryAABBFromCircle(circle Circle) query2d.AABB {
 	return query2d.AABBFromCircle(
-		float32(circle.Position.X),
-		float32(circle.Position.Y),
-		float32(circle.Radius),
+		circle.Position.X,
+		circle.Position.Y,
+		circle.Radius,
 	)
 }
