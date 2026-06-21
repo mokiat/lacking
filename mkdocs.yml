@@ -32,6 +32,8 @@ nav:
     - Math:
       - Vectors: development/math/vectors.md
       - Derivatives: development/math/derivatives.md
+    - Notes:
+      - Precision: development/notes/precision.md
 markdown_extensions:
   - pymdownx.arithmatex:
       generic: true
