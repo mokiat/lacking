@@ -164,9 +164,11 @@ func (t *Quadtree[T]) Update(id TreeItemID, area Area) {
 		panic("cannot update removed item")
 	}
 	item.box = newQuadtreeAABBFromArea(area)
+	oldNodeIndex := item.node
 	t.decreaseNodeItems(item.node) // previous node
 	item.node = t.pickNodeForItem(area)
 	t.increaseNodeItems(item.node) // new node
+	t.gcNode(oldNodeIndex)
 }
 
 // Remove removes the item with the specified id from this tree.
@@ -176,9 +178,11 @@ func (t *Quadtree[T]) Remove(id TreeItemID) {
 	if item.node == nullQuadtreeIndex {
 		panic("cannot remove item twice")
 	}
+	oldNodeIndex := item.node
 	t.decreaseNodeItems(item.node)
 	item.node = nullQuadtreeIndex
 	t.freeItemIDs.Push(id)
+	t.gcNode(oldNodeIndex)
 }
 
 // QuerySegment finds all items that intersect the specified segment. Each
@@ -198,12 +202,6 @@ func (t *Quadtree[T]) QueryAABB(aabb AABB, yield VisitorFunc[T]) {
 	t.resetVisitStats()
 	t.refresh()
 	t.visitNodeInAABB(0, &aabb, yield)
-}
-
-// GC runs cleanup and optimization logic. You should call this at least once
-// per frame.
-func (t *Quadtree[T]) GC() {
-	t.refresh()
 }
 
 func (t *Quadtree[T]) resetVisitStats() {
@@ -337,7 +335,6 @@ func (t *Quadtree[T]) refresh() {
 	if t.isDirty {
 		t.groupItems()
 		t.updateIDMappings()
-		t.gcNodes()
 		t.updateAABB(0)
 		t.isDirty = false
 	}
@@ -380,12 +377,6 @@ func (t *Quadtree[T]) swapItems(i, j uint32) {
 func (t *Quadtree[T]) updateIDMappings() {
 	for i, item := range t.items {
 		t.idMappings[item.id] = int32(i)
-	}
-}
-
-func (t *Quadtree[T]) gcNodes() {
-	for i := range t.nodes {
-		t.gcNode(int32(i))
 	}
 }
 

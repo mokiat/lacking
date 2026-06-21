@@ -603,13 +603,6 @@ func (s *Scene[O, S]) CollectPolygonIntersections(polygon Polygon, filter Filter
 	s.collectIntersections(collection)
 }
 
-// GC cleans up internal data and allows for memory reuse. This should be
-// called once per frame.
-func (s *Scene[O, S]) GC() {
-	s.staticTree.GC()
-	s.dynamicTree.GC()
-}
-
 func (s *Scene[O, S]) getShape(ref shapeRef) *sceneShape[S] {
 	if ref.isTemporary() {
 		return &s.tempShape
