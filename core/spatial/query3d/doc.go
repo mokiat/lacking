@@ -12,6 +12,4 @@
 // Every item is reduced to a center and a half-extent (an axis-aligned
 // bounding box). As a result, non-cubic shapes are indexed by their bounding
 // cube, which is a deliberate trade-off in favor of speed and simplicity.
-//
-// All coordinates use single precision (float32).
 package query3d

@@ -5,7 +5,7 @@ import (
 	. "github.com/onsi/gomega"
 
 	"github.com/mokiat/gog/opt"
-	"github.com/mokiat/gomath/sprec"
+	"github.com/mokiat/gomath/dprec"
 	"github.com/mokiat/lacking/core/spatial/query3d"
 )
 
@@ -16,7 +16,7 @@ var _ = Describe("Octree", func() {
 
 	BeforeEach(func() {
 		tree = query3d.NewOctree[string](query3d.OctreeSettings{
-			Size:     opt.V(float32(128.0)),
+			Size:     opt.V(128.0),
 			MaxDepth: opt.V[uint32](3),
 		})
 	})
@@ -65,8 +65,8 @@ var _ = Describe("Octree", func() {
 		})
 
 		It("is possible to segment-search for items", func() {
-			from := sprec.NewVec3(1.0, 1.0, 1.0)
-			to := sprec.NewVec3(127.0, 127.0, 127.0)
+			from := dprec.NewVec3(1.0, 1.0, 1.0)
+			to := dprec.NewVec3(127.0, 127.0, 127.0)
 			segment := query3d.NewSegment(from, to)
 			var found []string
 			tree.QuerySegment(segment, func(item string) bool {
@@ -77,8 +77,8 @@ var _ = Describe("Octree", func() {
 		})
 
 		It("stops QuerySegment after the visitor returns false", func() {
-			from := sprec.NewVec3(1.0, 1.0, 1.0)
-			to := sprec.NewVec3(127.0, 127.0, 127.0)
+			from := dprec.NewVec3(1.0, 1.0, 1.0)
+			to := dprec.NewVec3(127.0, 127.0, 127.0)
 			segment := query3d.NewSegment(from, to)
 			count := 0
 			tree.QuerySegment(segment, func(item string) bool {
@@ -144,8 +144,8 @@ var _ = Describe("Octree", func() {
 			})
 
 			It("is reflected in segment-search for items", func() {
-				from := sprec.NewVec3(1.0, 1.0, 1.0)
-				to := sprec.NewVec3(127.0, 127.0, 127.0)
+				from := dprec.NewVec3(1.0, 1.0, 1.0)
+				to := dprec.NewVec3(127.0, 127.0, 127.0)
 				segment := query3d.NewSegment(from, to)
 				var found []string
 				tree.QuerySegment(segment, func(item string) bool {
@@ -195,8 +195,8 @@ var _ = Describe("Octree", func() {
 			})
 
 			It("is reflected in segment-search for items", func() {
-				from := sprec.NewVec3(1.0, 1.0, 1.0)
-				to := sprec.NewVec3(127.0, 127.0, 127.0)
+				from := dprec.NewVec3(1.0, 1.0, 1.0)
+				to := dprec.NewVec3(127.0, 127.0, 127.0)
 				segment := query3d.NewSegment(from, to)
 				var found []string
 				tree.QuerySegment(segment, func(item string) bool {

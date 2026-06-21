@@ -8,7 +8,6 @@ import (
 	"github.com/mokiat/gog/ds"
 	"github.com/mokiat/gog/opt"
 	"github.com/mokiat/gomath/dprec"
-	"github.com/mokiat/gomath/dtos"
 	"github.com/mokiat/lacking/core/spatial/query3d"
 )
 
@@ -17,7 +16,7 @@ type SceneSettings struct {
 
 	// Size specifies the dimension (from side to side) of the scene.
 	// Inserting an item outside these bounds has undefined behavior.
-	Size opt.T[float32]
+	Size opt.T[float64]
 
 	// MaxDepth controls the maximum depth that the underlying octree can reach.
 	MaxDepth opt.T[uint32]
@@ -35,9 +34,7 @@ type SceneSettings struct {
 
 // NewScene creates a new scene.
 func NewScene[O, S any](settings SceneSettings) *Scene[O, S] {
-	treeSettings := query3d.OctreeSettings{
-		Size: opt.V(float32(settings.Size.ValueOrDefault(16384.0))),
-	}
+	treeSettings := query3d.OctreeSettings(settings)
 
 	return &Scene[O, S]{
 		freeObjectIndices: ds.NewStack[uint32](256), // ~ 1 KiB
@@ -473,7 +470,7 @@ func (s *Scene[O, S]) CollectSegmentIntersections(segment Segment, filter Filter
 	srcRef := newTempShapeRef(shapeKindSegment)
 
 	s.checks = s.checks[:0]
-	querySegment := query3d.NewSegment(dtos.Vec3(segment.A), dtos.Vec3(segment.B))
+	querySegment := query3d.NewSegment(segment.A, segment.B)
 	if !filter.SkipDynamic {
 		s.dynamicTree.QuerySegment(querySegment, func(tgtRef shapeRef) bool {
 			s.checks = append(s.checks, newShapeRefPair(srcRef, tgtRef))
@@ -1051,18 +1048,18 @@ func wrapShapeID[S any](ref shapeRef) ShapeID {
 
 func queryAreaFromSphere(sphere Sphere) query3d.Area {
 	return query3d.AreaFromSphere(
-		float32(sphere.Position.X),
-		float32(sphere.Position.Y),
-		float32(sphere.Position.Z),
-		float32(sphere.Radius),
+		sphere.Position.X,
+		sphere.Position.Y,
+		sphere.Position.Z,
+		sphere.Radius,
 	)
 }
 
 func queryAABBFromSphere(sphere Sphere) query3d.AABB {
 	return query3d.AABBFromSphere(
-		float32(sphere.Position.X),
-		float32(sphere.Position.Y),
-		float32(sphere.Position.Z),
-		float32(sphere.Radius),
+		sphere.Position.X,
+		sphere.Position.Y,
+		sphere.Position.Z,
+		sphere.Radius,
 	)
 }

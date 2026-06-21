@@ -37,7 +37,7 @@ func BenchmarkSceneInsert(b *testing.B) {
 	const itemCount = 1024
 	for b.Loop() {
 		scene := shape3d.NewScene[struct{}, struct{}](shape3d.SceneSettings{
-			Size:                opt.V(float32(1024.0)),
+			Size:                opt.V(1024.0),
 			MaxDepth:            opt.V[uint32](8),
 			InitialNodeCapacity: opt.V[uint32](1024 * 64),
 			InitialItemCapacity: opt.V[uint32](1024 * 16),
@@ -95,7 +95,7 @@ func BenchmarkSceneSegment(b *testing.B) {
 	random := rand.New(rand.NewPCG(127, 63))
 
 	scene := shape3d.NewScene[struct{}, struct{}](shape3d.SceneSettings{
-		Size:                opt.V(float32(1024.0)),
+		Size:                opt.V(1024.0),
 		MaxDepth:            opt.V[uint32](8),
 		InitialNodeCapacity: opt.V[uint32](1024 * 64),
 		InitialItemCapacity: opt.V[uint32](1024 * 16),

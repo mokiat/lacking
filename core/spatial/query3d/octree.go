@@ -5,7 +5,7 @@ import (
 
 	"github.com/mokiat/gog/ds"
 	"github.com/mokiat/gog/opt"
-	"github.com/mokiat/gomath/sprec"
+	"github.com/mokiat/gomath/dprec"
 )
 
 // OctreeSettings contains the settings for a Octree.
@@ -16,7 +16,7 @@ type OctreeSettings struct {
 	// If not specified, a default size of 4096 is used.
 	//
 	// Inserting an item outside these bounds has undefined behavior.
-	Size opt.T[float32]
+	Size opt.T[float64]
 
 	// MaxDepth controls the maximum depth that the tree can reach.
 	//
@@ -79,7 +79,7 @@ func NewOctree[T any](settings OctreeSettings) *Octree[T] {
 			x: 0.0,
 			y: 0.0,
 			z: 0.0,
-			r: float32(size), // using size here since a loose area has twice the size
+			r: size, // using size here since a loose area has twice the size
 		},
 		box: emptyOctreeAABB(),
 	})
@@ -549,19 +549,19 @@ type octreeItem[T any] struct {
 }
 
 type octreeCube struct {
-	x float32
-	y float32
-	z float32
-	r float32
+	x float64
+	y float64
+	z float64
+	r float64
 }
 
 type octreeAABB struct {
-	minX float32
-	minY float32
-	minZ float32
-	maxX float32
-	maxY float32
-	maxZ float32
+	minX float64
+	minY float64
+	minZ float64
+	maxX float64
+	maxY float64
+	maxZ float64
 }
 
 func emptyOctreeAABB() octreeAABB {
@@ -606,9 +606,9 @@ func (aabb *octreeAABB) intersectsSegment(segment *Segment) bool {
 		return false
 	}
 
-	delta := sprec.Vec3Diff(segment.b, segment.a)
+	delta := dprec.Vec3Diff(segment.b, segment.a)
 
-	var tCloseX, tFarX float32
+	var tCloseX, tFarX float64
 	if delta.X == 0.0 {
 		if (segment.a.X < aabb.minX) || (segment.a.X > aabb.maxX) {
 			return false // // both points are outside the box on the left or right
@@ -622,7 +622,7 @@ func (aabb *octreeAABB) intersectsSegment(segment *Segment) bool {
 		tFarX = max(tLowX, tHighX)
 	}
 
-	var tCloseY, tFarY float32
+	var tCloseY, tFarY float64
 	if delta.Y == 0.0 {
 		if (segment.a.Y < aabb.minY) || (segment.a.Y > aabb.maxY) {
 			return false // both points are outside the box on the top or bottom
@@ -636,7 +636,7 @@ func (aabb *octreeAABB) intersectsSegment(segment *Segment) bool {
 		tFarY = max(tLowY, tHighY)
 	}
 
-	var tCloseZ, tFarZ float32
+	var tCloseZ, tFarZ float64
 	if delta.Z == 0.0 {
 		if (segment.a.Z < aabb.minZ) || (segment.a.Z > aabb.maxZ) {
 			return false // both points are outside the box on the front or back
