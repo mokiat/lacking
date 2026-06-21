@@ -1,16 +1,16 @@
 package shape2d
 
-import "github.com/mokiat/gomath/sprec"
+import "github.com/mokiat/gomath/dprec"
 
 // Capsule represents a two-dimensional capsule shape, defined as the set of
 // points within a given radius of a line segment.
 type Capsule struct {
 	// A is the start of the capsule's spine.
-	A sprec.Vec2
+	A dprec.Vec2
 	// B is the end of the capsule's spine.
-	B sprec.Vec2
+	B dprec.Vec2
 	// Radius specifies the radius around the spine.
-	Radius float32
+	Radius float64
 }
 
 // Spine returns the line segment that forms the spine of the capsule.
@@ -19,19 +19,19 @@ func (c Capsule) Spine() Segment {
 }
 
 // ContainsPoint returns whether the specified point lies within the capsule.
-func (c Capsule) ContainsPoint(point sprec.Vec2) bool {
-	ab := sprec.Vec2Diff(c.B, c.A)
+func (c Capsule) ContainsPoint(point dprec.Vec2) bool {
+	ab := dprec.Vec2Diff(c.B, c.A)
 	sqrLength := ab.SqrLength()
 
-	var closest sprec.Vec2
+	var closest dprec.Vec2
 	if sqrLength == 0.0 {
 		closest = c.A
 	} else {
-		t := sprec.Clamp(sprec.Vec2Dot(sprec.Vec2Diff(point, c.A), ab)/sqrLength, 0.0, 1.0)
-		closest = sprec.Vec2Sum(c.A, sprec.Vec2Prod(ab, t))
+		t := dprec.Clamp(dprec.Vec2Dot(dprec.Vec2Diff(point, c.A), ab)/sqrLength, 0.0, 1.0)
+		closest = dprec.Vec2Sum(c.A, dprec.Vec2Prod(ab, t))
 	}
 
-	delta := sprec.Vec2Diff(point, closest)
+	delta := dprec.Vec2Diff(point, closest)
 	return delta.SqrLength() <= c.Radius*c.Radius
 }
 

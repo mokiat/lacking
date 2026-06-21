@@ -1,22 +1,22 @@
 package shape2d
 
-import "github.com/mokiat/gomath/sprec"
+import "github.com/mokiat/gomath/dprec"
 
 // Rectangle represents a two-dimensional rectangle shape.
 type Rectangle struct {
 	// Center specifies the center point of the rectangle.
-	Center sprec.Vec2
+	Center dprec.Vec2
 	// Rotation specifies the rotation of the rectangle.
 	Rotation Rotation
 	// Width specifies the length of the rectangle's horizontal sides.
-	Width float32
+	Width float64
 	// Height specifies the length of the rectangle's vertical sides.
-	Height float32
+	Height float64
 }
 
 // ContainsPoint returns whether the specified point lies within the rectangle.
-func (r Rectangle) ContainsPoint(point sprec.Vec2) bool {
-	offset := sprec.Vec2Diff(point, r.Center)
+func (r Rectangle) ContainsPoint(point dprec.Vec2) bool {
+	offset := dprec.Vec2Diff(point, r.Center)
 	localPoint := r.Rotation.Inverse().Apply(offset)
 	halfWidth := r.Width * 0.5
 	halfHeight := r.Height * 0.5
@@ -32,6 +32,6 @@ func (r Rectangle) BoundingCircle() Circle {
 	halfHeight := r.Height * 0.5
 	return Circle{
 		Center: r.Center,
-		Radius: sprec.Sqrt(halfWidth*halfWidth + halfHeight*halfHeight),
+		Radius: dprec.Sqrt(halfWidth*halfWidth + halfHeight*halfHeight),
 	}
 }

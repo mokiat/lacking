@@ -4,8 +4,8 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
-	"github.com/mokiat/gomath/sprec"
-	"github.com/mokiat/gomath/testing/sprectest"
+	"github.com/mokiat/gomath/dprec"
+	"github.com/mokiat/gomath/testing/dprectest"
 	"github.com/mokiat/lacking/core/spatial/shape2d"
 )
 
@@ -14,8 +14,8 @@ var _ = Describe("Segment", func() {
 
 	BeforeEach(func() {
 		seg = shape2d.Segment{
-			A: sprec.NewVec2(0.0, 0.0),
-			B: sprec.NewVec2(3.0, 4.0),
+			A: dprec.NewVec2(0.0, 0.0),
+			B: dprec.NewVec2(3.0, 4.0),
 		}
 	})
 
@@ -26,8 +26,8 @@ var _ = Describe("Segment", func() {
 
 		It("returns zero for a zero-length segment", func() {
 			dot := shape2d.Segment{
-				A: sprec.NewVec2(1.0, 2.0),
-				B: sprec.NewVec2(1.0, 2.0),
+				A: dprec.NewVec2(1.0, 2.0),
+				B: dprec.NewVec2(1.0, 2.0),
 			}
 			Expect(dot.Length()).To(BeNumerically("~", 0.0, 1e-6))
 		})
@@ -35,14 +35,14 @@ var _ = Describe("Segment", func() {
 
 	Describe("Midpoint", func() {
 		It("returns the midpoint of the segment", func() {
-			Expect(seg.Midpoint()).To(sprectest.HaveVec2Coords(1.5, 2.0))
+			Expect(seg.Midpoint()).To(dprectest.HaveVec2Coords(1.5, 2.0))
 		})
 	})
 
 	Describe("BoundingCircle", func() {
 		It("is centered at the midpoint of the segment", func() {
 			bc := seg.BoundingCircle()
-			Expect(bc.Center).To(sprectest.HaveVec2Coords(1.5, 2.0))
+			Expect(bc.Center).To(dprectest.HaveVec2Coords(1.5, 2.0))
 		})
 
 		It("has radius equal to half the segment length", func() {
