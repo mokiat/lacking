@@ -5,6 +5,8 @@ import (
 	"github.com/mokiat/lacking/core/spatial/gjk2d/internal"
 )
 
+// Intersect reports whether shapeA and shapeB overlap, accounting for their
+// skin radii. It returns false immediately if either shape has no points.
 func Intersect(shapeA, shapeB Shape) bool {
 	if len(shapeA.Points) == 0 || len(shapeB.Points) == 0 {
 		return false
@@ -37,7 +39,7 @@ func Intersect(shapeA, shapeB Shape) bool {
 		simplex.Append(support, dir)
 	}
 
-	return simplex.TouchesOrigin()
+	return simplex.OverlapsOrigin()
 }
 
 // TODO: Add a Resolve function that runs EPA.

@@ -2,6 +2,9 @@ package internal
 
 import "github.com/mokiat/gomath/dprec"
 
+// Simplex tracks the evolving GJK simplex (a point or an edge in 2D) and
+// drives the iteration toward determining whether the Minkowski difference
+// contains the origin within the combined skin radius.
 type Simplex struct {
 	remainingiterations uint32
 	sqrSkinRadius       float64
@@ -14,6 +17,8 @@ type Simplex struct {
 	touchesOrigin bool
 }
 
+// NewSimplex creates a Simplex with the given iteration budget and combined
+// skin radius of the two shapes being tested.
 func NewSimplex(maxIterations int, skinRadius float64) Simplex {
 	return Simplex{
 		remainingiterations: uint32(maxIterations),
@@ -28,10 +33,17 @@ func NewSimplex(maxIterations int, skinRadius float64) Simplex {
 	}
 }
 
+// CanProgress reports whether the GJK iteration should continue. When it
+// returns false, the result can be read from OverlapsOrigin.
 func (s *Simplex) CanProgress() bool {
 	return s.canProgress
 }
 
+// Append adds a new Minkowski-difference support point to the simplex and
+// updates the next search direction. dir is the search direction that was used
+// to obtain point. The call may terminate the iteration early if the origin is
+// found to be within skin-radius distance of the simplex, or if the new point
+// cannot advance the simplex toward the origin.
 func (s *Simplex) Append(point, dir dprec.Vec2) {
 	if s.remainingiterations == 0 {
 		s.terminate(false)
@@ -182,10 +194,15 @@ func (s *Simplex) appendToEdge(point, lastDir dprec.Vec2) {
 	}
 }
 
-func (s *Simplex) TouchesOrigin() bool {
+// OverlapsOrigin reports whether the simplex contains or touches the origin
+// within the skin radius. The result is only meaningful after CanProgress
+// returns false.
+func (s *Simplex) OverlapsOrigin() bool {
 	return s.touchesOrigin
 }
 
+// SearchDirection returns the direction in which the next Minkowski-difference
+// support point should be sought.
 func (s *Simplex) SearchDirection() dprec.Vec2 {
 	return s.searchDirection
 }

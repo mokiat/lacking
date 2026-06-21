@@ -1,3 +1,4 @@
+// Package internal holds types used exclusively by the gjk2d solver.
 package internal
 
 import (
@@ -5,16 +6,27 @@ import (
 	"github.com/mokiat/lacking/core/spatial/shape2d"
 )
 
+// Polygon is a convex polygon in local space together with its world-space
+// rotation, used by the GJK solver to compute support points.
 type Polygon struct {
-	Rotation    shape2d.Rotation
+	// Rotation is the orientation of the polygon in world space.
+	Rotation shape2d.Rotation
+	// InvRotation is the inverse of Rotation, cached to avoid recomputing it
+	// on every support query.
 	InvRotation shape2d.Rotation
-	Points      []dprec.Vec2
+	// Points holds the local-space vertices of the convex polygon core.
+	Points []dprec.Vec2
 }
 
+// InitialPoint returns the first vertex of the polygon transformed into world
+// space. It is used to seed the initial GJK search direction.
 func (p *Polygon) InitialPoint() dprec.Vec2 {
 	return p.Rotation.Apply(p.Points[0])
 }
 
+// Support returns the vertex of the polygon that is furthest along dir in
+// world space. dir is expected to be in world space and does not need to be
+// normalized.
 func (p *Polygon) Support(dir dprec.Vec2) dprec.Vec2 {
 	dir = p.InvRotation.Apply(dir)
 	best := p.Points[0]
