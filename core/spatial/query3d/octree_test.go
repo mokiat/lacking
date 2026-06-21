@@ -1,6 +1,8 @@
 package query3d_test
 
 import (
+	"fmt"
+
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
@@ -185,7 +187,7 @@ var _ = Describe("Octree", func() {
 			})
 
 			It("does not return an active item id on new insert", func() {
-				tree.GC() // forces internal reordering of items (white box testing)
+				tree.Stats() // forces internal reordering of items (white box testing)
 				secondItemID = tree.Insert(
 					query3d.AreaFromSphere(48.0, 48.0, 48.0, 2.0),
 					"Second",
@@ -215,6 +217,107 @@ var _ = Describe("Octree", func() {
 				})
 				Expect(found).To(ConsistOf("First"))
 			})
+		})
+	})
+
+	When("an item creates a deeply nested branch", func() {
+		var deepItemID query3d.TreeItemID
+
+		BeforeEach(func() {
+			// A tiny item placed off-center descends to the deepest allowed
+			// node, allocating one node per depth level along the way.
+			deepItemID = tree.Insert(
+				query3d.AreaFromSphere(60.0, 60.0, 60.0, 1.0),
+				"Deep",
+			)
+		})
+
+		It("allocates a node for each depth level", func() {
+			state := tree.Stats()
+			Expect(state.NodeCount).To(Equal(uint32(3))) // root + child + grandchild
+			Expect(state.ItemCount).To(Equal(uint32(1)))
+		})
+
+		When("the item is removed", func() {
+			BeforeEach(func() {
+				tree.Remove(deepItemID)
+			})
+
+			It("collapses the whole branch back to the root", func() {
+				state := tree.Stats()
+				Expect(state.NodeCount).To(Equal(uint32(1)))
+				Expect(state.ItemCount).To(Equal(uint32(0)))
+			})
+		})
+
+		When("the item is moved out of the branch", func() {
+			BeforeEach(func() {
+				// A large item can no longer fit in any child, so it lands on
+				// the root and the vacated branch must collapse.
+				tree.Update(deepItemID,
+					query3d.AreaFromSphere(0.0, 0.0, 0.0, 60.0),
+				)
+			})
+
+			It("collapses the vacated branch back to the root", func() {
+				state := tree.Stats()
+				Expect(state.NodeCount).To(Equal(uint32(1)))
+				Expect(state.ItemCount).To(Equal(uint32(1)))
+			})
+		})
+	})
+
+	When("the tree undergoes heavy churn", func() {
+		It("keeps queries and stats consistent", func() {
+			const count = 200
+			ids := make([]query3d.TreeItemID, count)
+			expected := make(map[query3d.TreeItemID]string, count)
+
+			positionFor := func(i int) query3d.Area {
+				x := float64(-60 + (i*7)%120)
+				y := float64(-60 + (i*13)%120)
+				z := float64(-60 + (i*5)%120)
+				return query3d.AreaFromSphere(x, y, z, 1.0)
+			}
+
+			// Populate the tree.
+			for i := range count {
+				value := fmt.Sprintf("item-%d", i)
+				ids[i] = tree.Insert(positionFor(i), value)
+				expected[ids[i]] = value
+			}
+
+			// Churn: drop every third item and relocate half of the rest.
+			for i := range count {
+				switch {
+				case i%3 == 0:
+					tree.Remove(ids[i])
+					delete(expected, ids[i])
+				case i%2 == 0:
+					tree.Update(ids[i], positionFor(i+1))
+				}
+			}
+
+			// Re-insert into the freed slots to exercise item/node reuse.
+			for i := 0; i < count; i += 3 {
+				value := fmt.Sprintf("reinsert-%d", i)
+				id := tree.Insert(positionFor(i), value)
+				expected[id] = value
+			}
+
+			// A query covering the whole tree must return exactly the items
+			// we expect to still be present.
+			found := make(map[string]struct{})
+			tree.QueryAABB(query3d.AABBFromSphere(0.0, 0.0, 0.0, 1000.0), func(item string) bool {
+				found[item] = struct{}{}
+				return true
+			})
+
+			Expect(found).To(HaveLen(len(expected)))
+			for _, value := range expected {
+				Expect(found).To(HaveKey(value))
+			}
+			Expect(tree.Stats().ItemCount).To(Equal(uint32(len(expected))))
 		})
 	})
 })

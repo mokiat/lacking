@@ -309,7 +309,6 @@ func (s *Scene) Update(elapsedTime time.Duration) {
 	s.runSimulation(elapsedSeconds * s.timeSpeed)
 	s.notifySingleBodyCollisions()
 	s.notifyDoubleBodyCollisions()
-	s.shapeScene.GC()
 }
 
 func (s *Scene) Each(cb func(b Body)) {

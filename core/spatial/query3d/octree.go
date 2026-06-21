@@ -165,9 +165,11 @@ func (t *Octree[T]) Update(id TreeItemID, area Area) {
 		panic("cannot update removed item")
 	}
 	item.box = newOctreeAABBFromArea(area)
+	oldNodeIndex := item.node
 	t.decreaseNodeItems(item.node) // previous node
 	item.node = t.pickNodeForItem(area)
 	t.increaseNodeItems(item.node) // new node
+	t.gcNode(oldNodeIndex)
 }
 
 // Remove removes the item with the specified id from this tree.
@@ -177,9 +179,11 @@ func (t *Octree[T]) Remove(id TreeItemID) {
 	if item.node == nullOctreeIndex {
 		panic("cannot remove item twice")
 	}
+	oldNodeIndex := item.node
 	t.decreaseNodeItems(item.node)
 	item.node = nullOctreeIndex
 	t.freeItemIDs.Push(id)
+	t.gcNode(oldNodeIndex)
 }
 
 // QuerySegment finds all items that intersect the specified segment. Each
@@ -199,12 +203,6 @@ func (t *Octree[T]) QueryAABB(aabb AABB, yield VisitorFunc[T]) {
 	t.resetVisitStats()
 	t.refresh()
 	t.visitNodeInAABB(0, &aabb, yield)
-}
-
-// GC runs cleanup and optimization logic. You should call this at least once
-// per frame.
-func (t *Octree[T]) GC() {
-	t.refresh()
 }
 
 func (t *Octree[T]) resetVisitStats() {
@@ -346,7 +344,6 @@ func (t *Octree[T]) refresh() {
 	if t.isDirty {
 		t.groupItems()
 		t.updateIDMappings()
-		t.gcNodes()
 		t.updateAABB(0)
 		t.isDirty = false
 	}
@@ -389,12 +386,6 @@ func (t *Octree[T]) swapItems(i, j uint32) {
 func (t *Octree[T]) updateIDMappings() {
 	for i, item := range t.items {
 		t.idMappings[item.id] = int32(i)
-	}
-}
-
-func (t *Octree[T]) gcNodes() {
-	for i := range t.nodes {
-		t.gcNode(int32(i))
 	}
 }
 
