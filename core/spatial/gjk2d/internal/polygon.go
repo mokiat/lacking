@@ -18,12 +18,6 @@ type Polygon struct {
 	Points []dprec.Vec2
 }
 
-// InitialPoint returns the first vertex of the polygon transformed into world
-// space. It is used to seed the initial GJK search direction.
-func (p *Polygon) InitialPoint() dprec.Vec2 {
-	return p.Rotation.Apply(p.Points[0])
-}
-
 // Support returns the vertex of the polygon that is furthest along dir in
 // world space. dir is expected to be in world space and does not need to be
 // normalized.

@@ -29,7 +29,7 @@ func Intersect(shapeA, shapeB Shape) bool {
 		Points:      shapeB.Points,
 	}
 
-	dir := pickInitialDirection(&polyA, &polyB, offset)
+	dir := dprec.BasisXVec2()
 	support := minkowskiSupport(&polyA, &polyB, offset, dir)
 	simplex.Append(support, dir)
 
@@ -43,16 +43,6 @@ func Intersect(shapeA, shapeB Shape) bool {
 }
 
 // TODO: Add a Resolve function that runs EPA.
-
-func pickInitialDirection(polyA, polyB *internal.Polygon, offset dprec.Vec2) dprec.Vec2 {
-	pointA := polyA.InitialPoint()
-	pointB := polyB.InitialPoint()
-	result := dprec.Vec2Sum(offset, dprec.Vec2Diff(pointB, pointA))
-	if result.SqrLength() < 0.001 {
-		return dprec.BasisXVec2()
-	}
-	return result
-}
 
 func minkowskiSupport(polyA, polyB *internal.Polygon, offset, dir dprec.Vec2) dprec.Vec2 {
 	supportA := polyA.Support(dprec.InverseVec2(dir))
