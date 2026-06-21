@@ -556,10 +556,10 @@ type quadtreeAABB struct {
 
 func emptyQuadtreeAABB() quadtreeAABB {
 	return quadtreeAABB{
-		minX: math.MaxFloat32,
-		minY: math.MaxFloat32,
-		maxX: -math.MaxFloat32,
-		maxY: -math.MaxFloat32,
+		minX: math.MaxFloat64,
+		minY: math.MaxFloat64,
+		maxX: -math.MaxFloat64,
+		maxY: -math.MaxFloat64,
 	}
 }
 

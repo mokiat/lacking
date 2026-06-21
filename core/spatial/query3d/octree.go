@@ -566,12 +566,12 @@ type octreeAABB struct {
 
 func emptyOctreeAABB() octreeAABB {
 	return octreeAABB{
-		minX: math.MaxFloat32,
-		minY: math.MaxFloat32,
-		minZ: math.MaxFloat32,
-		maxX: -math.MaxFloat32,
-		maxY: -math.MaxFloat32,
-		maxZ: -math.MaxFloat32,
+		minX: math.MaxFloat64,
+		minY: math.MaxFloat64,
+		minZ: math.MaxFloat64,
+		maxX: -math.MaxFloat64,
+		maxY: -math.MaxFloat64,
+		maxZ: -math.MaxFloat64,
 	}
 }
 
