@@ -5,7 +5,7 @@ import (
 
 	"github.com/mokiat/gog/ds"
 	"github.com/mokiat/gog/opt"
-	"github.com/mokiat/gomath/sprec"
+	"github.com/mokiat/gomath/dprec"
 )
 
 // QuadtreeSettings contains the settings for a Quadtree.
@@ -16,7 +16,7 @@ type QuadtreeSettings struct {
 	// If not specified, a default size of 4096 is used.
 	//
 	// Inserting an item outside these bounds has undefined behavior.
-	Size opt.T[float32]
+	Size opt.T[float64]
 
 	// MaxDepth controls the maximum depth that the tree can reach.
 	//
@@ -78,7 +78,7 @@ func NewQuadtree[T any](settings QuadtreeSettings) *Quadtree[T] {
 		looseArea: quadtreeQuad{
 			x: 0.0,
 			y: 0.0,
-			r: float32(size), // using size here since a loose area has twice the size
+			r: size, // using size here since a loose area has twice the size
 		},
 		box: emptyQuadtreeAABB(),
 	})
@@ -537,16 +537,16 @@ type quadtreeItem[T any] struct {
 }
 
 type quadtreeQuad struct {
-	x float32
-	y float32
-	r float32
+	x float64
+	y float64
+	r float64
 }
 
 type quadtreeAABB struct {
-	minX float32
-	minY float32
-	maxX float32
-	maxY float32
+	minX float64
+	minY float64
+	maxX float64
+	maxY float64
 }
 
 func emptyQuadtreeAABB() quadtreeAABB {
@@ -585,9 +585,9 @@ func (aabb *quadtreeAABB) intersectsSegment(segment *Segment) bool {
 		return false
 	}
 
-	delta := sprec.Vec2Diff(segment.b, segment.a)
+	delta := dprec.Vec2Diff(segment.b, segment.a)
 
-	var tCloseX, tFarX float32
+	var tCloseX, tFarX float64
 	if delta.X == 0.0 {
 		if (segment.a.X < aabb.minX) || (segment.a.X > aabb.maxX) {
 			return false // // both points are outside the box on the left or right
@@ -601,7 +601,7 @@ func (aabb *quadtreeAABB) intersectsSegment(segment *Segment) bool {
 		tFarX = max(tLowX, tHighX)
 	}
 
-	var tCloseY, tFarY float32
+	var tCloseY, tFarY float64
 	if delta.Y == 0.0 {
 		if (segment.a.Y < aabb.minY) || (segment.a.Y > aabb.maxY) {
 			return false // both points are outside the box on the top or bottom

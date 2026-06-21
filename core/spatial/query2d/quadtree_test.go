@@ -5,7 +5,7 @@ import (
 	. "github.com/onsi/gomega"
 
 	"github.com/mokiat/gog/opt"
-	"github.com/mokiat/gomath/sprec"
+	"github.com/mokiat/gomath/dprec"
 	"github.com/mokiat/lacking/core/spatial/query2d"
 )
 
@@ -16,7 +16,7 @@ var _ = Describe("Quadtree", func() {
 
 	BeforeEach(func() {
 		tree = query2d.NewQuadtree[string](query2d.QuadtreeSettings{
-			Size:     opt.V(float32(128.0)),
+			Size:     opt.V(128.0),
 			MaxDepth: opt.V[uint32](3),
 		})
 	})
@@ -65,8 +65,8 @@ var _ = Describe("Quadtree", func() {
 		})
 
 		It("is possible to segment-search for items", func() {
-			from := sprec.NewVec2(1.0, 1.0)
-			to := sprec.NewVec2(127.0, 127.0)
+			from := dprec.NewVec2(1.0, 1.0)
+			to := dprec.NewVec2(127.0, 127.0)
 			segment := query2d.NewSegment(from, to)
 			var found []string
 			tree.QuerySegment(segment, func(item string) bool {
@@ -77,8 +77,8 @@ var _ = Describe("Quadtree", func() {
 		})
 
 		It("stops QuerySegment after the visitor returns false", func() {
-			from := sprec.NewVec2(1.0, 1.0)
-			to := sprec.NewVec2(127.0, 127.0)
+			from := dprec.NewVec2(1.0, 1.0)
+			to := dprec.NewVec2(127.0, 127.0)
 			segment := query2d.NewSegment(from, to)
 			count := 0
 			tree.QuerySegment(segment, func(item string) bool {
@@ -144,8 +144,8 @@ var _ = Describe("Quadtree", func() {
 			})
 
 			It("is reflected in segment-search for items", func() {
-				from := sprec.NewVec2(1.0, 1.0)
-				to := sprec.NewVec2(127.0, 127.0)
+				from := dprec.NewVec2(1.0, 1.0)
+				to := dprec.NewVec2(127.0, 127.0)
 				segment := query2d.NewSegment(from, to)
 				var found []string
 				tree.QuerySegment(segment, func(item string) bool {
@@ -195,8 +195,8 @@ var _ = Describe("Quadtree", func() {
 			})
 
 			It("is reflected in segment-search for items", func() {
-				from := sprec.NewVec2(1.0, 1.0)
-				to := sprec.NewVec2(127.0, 127.0)
+				from := dprec.NewVec2(1.0, 1.0)
+				to := dprec.NewVec2(127.0, 127.0)
 				segment := query2d.NewSegment(from, to)
 				var found []string
 				tree.QuerySegment(segment, func(item string) bool {
