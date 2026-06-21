@@ -71,10 +71,11 @@ func NewOctree[T any](settings OctreeSettings) *Octree[T] {
 
 	nodes := make([]octreeNode, 0, initialNodeCapacity)
 	nodes = append(nodes, octreeNode{
-		parent:    nullOctreeIndex,
-		children:  emptyOctreeNodeChildren,
-		itemStart: 0,
-		itemEnd:   0,
+		parent:      nullOctreeIndex,
+		children:    emptyOctreeNodeChildren,
+		itemCount:   0,
+		itemOffset:  0,
+		placeOffset: 0,
 		looseArea: octreeCube{
 			x: 0.0,
 			y: 0.0,
@@ -131,16 +132,16 @@ func (t *Octree[T]) VisitStats() TreeVisitStats {
 // Insert adds an item, which occupies the specified area, to this
 // tree.
 func (t *Octree[T]) Insert(area Area, value T) TreeItemID {
-	node := t.pickNodeForItem(area)
+	nodeIndex := t.pickNodeForItem(area)
 	box := newOctreeAABBFromArea(area)
-	t.markNodeDirty(node)
+	t.increaseNodeItems(nodeIndex)
 
 	if t.freeItemIDs.IsEmpty() {
 		id := TreeItemID(len(t.items))
 		t.idMappings = append(t.idMappings, int32(id))
 		t.items = append(t.items, octreeItem[T]{
 			id:    id,
-			node:  node,
+			node:  nodeIndex,
 			box:   box,
 			value: value,
 		})
@@ -151,7 +152,7 @@ func (t *Octree[T]) Insert(area Area, value T) TreeItemID {
 		item := &t.items[itemIndex]
 		item.box = box
 		item.value = value
-		item.node = node
+		item.node = nodeIndex
 		return item.id
 	}
 }
@@ -164,9 +165,9 @@ func (t *Octree[T]) Update(id TreeItemID, area Area) {
 		panic("cannot update removed item")
 	}
 	item.box = newOctreeAABBFromArea(area)
-	t.markNodeDirty(item.node) // previous node
+	t.decreaseNodeItems(item.node) // previous node
 	item.node = t.pickNodeForItem(area)
-	t.markNodeDirty(item.node) // new node
+	t.increaseNodeItems(item.node) // new node
 }
 
 // Remove removes the item with the specified id from this tree.
@@ -176,7 +177,7 @@ func (t *Octree[T]) Remove(id TreeItemID) {
 	if item.node == nullOctreeIndex {
 		panic("cannot remove item twice")
 	}
-	t.markNodeDirty(item.node)
+	t.decreaseNodeItems(item.node)
 	item.node = nullOctreeIndex
 	t.freeItemIDs.Push(id)
 }
@@ -221,10 +222,18 @@ func (t *Octree[T]) activeItemCount() uint32 {
 	return uint32(len(t.items) - t.freeItemIDs.Size())
 }
 
-func (t *Octree[T]) markNodeDirty(nodeIndex int32) {
-	t.isDirty = true
+func (t *Octree[T]) increaseNodeItems(nodeIndex int32) {
 	node := &t.nodes[nodeIndex]
+	node.itemCount++
 	node.isDirty = true
+	t.isDirty = true
+}
+
+func (t *Octree[T]) decreaseNodeItems(nodeIndex int32) {
+	node := &t.nodes[nodeIndex]
+	node.itemCount--
+	node.isDirty = true
+	t.isDirty = true
 }
 
 func (t *Octree[T]) itemsAtDepth(nodeIndex int32, currentDepth, depth uint32) uint32 {
@@ -233,7 +242,7 @@ func (t *Octree[T]) itemsAtDepth(nodeIndex int32, currentDepth, depth uint32) ui
 	}
 	node := &t.nodes[nodeIndex]
 	if currentDepth == depth {
-		return node.itemEnd - node.itemStart
+		return node.itemCount
 	}
 	var result uint32
 	for _, childNodeIndex := range node.children {
@@ -311,11 +320,12 @@ func (t *Octree[T]) pickChildNode(parentNodeIndex int32, area Area) int32 {
 		// Do NOT use "parentNode" after this append as the ref might be towards
 		// an old slice!
 		t.nodes = append(t.nodes, octreeNode{
-			parent:    parentNodeIndex,
-			children:  emptyOctreeNodeChildren,
-			looseArea: childLooseArea,
-			itemStart: 0,
-			itemEnd:   0,
+			parent:      parentNodeIndex,
+			children:    emptyOctreeNodeChildren,
+			looseArea:   childLooseArea,
+			itemCount:   0,
+			itemOffset:  0,
+			placeOffset: 0,
 		})
 		return childNodeIndex
 	} else {
@@ -325,8 +335,9 @@ func (t *Octree[T]) pickChildNode(parentNodeIndex int32, area Area) int32 {
 		childNode.parent = parentNodeIndex
 		childNode.children = emptyOctreeNodeChildren
 		childNode.looseArea = childLooseArea
-		childNode.itemStart = 0
-		childNode.itemEnd = 0
+		childNode.itemCount = 0
+		childNode.itemOffset = 0
+		childNode.placeOffset = 0
 		return childNodeIndex
 	}
 }
@@ -342,42 +353,30 @@ func (t *Octree[T]) refresh() {
 }
 
 func (t *Octree[T]) groupItems() {
-	for i := range t.nodes {
-		node := &t.nodes[i]
-		node.itemStart = 0
-		node.itemEnd = 0
-		node.sortEnd = 0
-	}
-	for i := range t.items {
-		item := &t.items[i]
-		if item.node != nullOctreeIndex {
-			node := &t.nodes[item.node]
-			node.itemEnd++ // use as counter for now
-		}
-	}
 	offset := uint32(0)
 	for i := range t.nodes {
 		node := &t.nodes[i]
-		node.itemStart += offset
-		node.itemEnd += offset
-		node.sortEnd = node.itemStart
-		offset = node.itemEnd
+		node.itemOffset = offset
+		node.placeOffset = offset
+		offset += node.itemCount
 	}
 	countActiveItems := uint32(offset)
+
+	nullOffset := countActiveItems
 	for i := uint32(0); i < countActiveItems; {
 		item := &t.items[i]
 		if item.node == nullOctreeIndex {
-			t.swapItems(i, offset)
-			offset++
+			t.swapItems(i, nullOffset)
+			nullOffset++
 			continue
 		}
 		node := &t.nodes[item.node]
-		if i >= node.itemStart && i < node.sortEnd {
+		if i >= node.itemOffset && i < node.placeOffset {
 			i++ // item is in the right place
 			continue
 		}
-		t.swapItems(i, node.sortEnd)
-		node.sortEnd++
+		t.swapItems(i, node.placeOffset)
+		node.placeOffset++
 	}
 }
 
@@ -450,9 +449,11 @@ func (t *Octree[T]) updateAABB(nodeIndex int32) bool {
 			result = mergeOctreeAABBs(result, child.box)
 		}
 	}
-	for itemIndex := node.itemStart; itemIndex < node.itemEnd; itemIndex++ {
+	itemIndex := node.itemOffset
+	for range node.itemCount {
 		item := &t.items[itemIndex]
 		result = mergeOctreeAABBs(result, item.box)
+		itemIndex++
 	}
 	node.box = result
 	node.isDirty = false
@@ -464,7 +465,8 @@ func (t *Octree[T]) visitNodeInSegment(nodeIndex int32, querySegment *Segment, y
 	node := &t.nodes[nodeIndex]
 	if node.box.intersectsSegment(querySegment) {
 		t.nodeCountAccepted++
-		for itemIndex := node.itemStart; itemIndex < node.itemEnd; itemIndex++ {
+		itemIndex := node.itemOffset
+		for range node.itemCount {
 			item := &t.items[itemIndex]
 			if item.box.intersectsSegment(querySegment) {
 				t.itemCountAccepted++
@@ -474,6 +476,7 @@ func (t *Octree[T]) visitNodeInSegment(nodeIndex int32, querySegment *Segment, y
 			} else {
 				t.itemCountRejected++
 			}
+			itemIndex++
 		}
 		for _, childNodeIndex := range node.children {
 			if childNodeIndex != nullOctreeIndex {
@@ -492,7 +495,8 @@ func (t *Octree[T]) visitNodeInAABB(nodeIndex int32, queryAABB *AABB, yield Visi
 	node := &t.nodes[nodeIndex]
 	if node.box.intersectsAABB(queryAABB) {
 		t.nodeCountAccepted++
-		for itemIndex := node.itemStart; itemIndex < node.itemEnd; itemIndex++ {
+		itemIndex := node.itemOffset
+		for range node.itemCount {
 			item := &t.items[itemIndex]
 			if item.box.intersectsAABB(queryAABB) {
 				t.itemCountAccepted++
@@ -502,6 +506,7 @@ func (t *Octree[T]) visitNodeInAABB(nodeIndex int32, queryAABB *AABB, yield Visi
 			} else {
 				t.itemCountRejected++
 			}
+			itemIndex++
 		}
 		for _, childNodeIndex := range node.children {
 			if childNodeIndex != nullOctreeIndex {
@@ -527,18 +532,18 @@ var emptyOctreeNodeChildren = [8]int32{
 }
 
 type octreeNode struct {
-	parent    int32
-	children  [8]int32
-	looseArea octreeCube
-	box       octreeAABB
-	itemStart uint32
-	itemEnd   uint32
-	sortEnd   uint32
-	isDirty   bool
+	parent      int32
+	children    [8]int32
+	looseArea   octreeCube
+	box         octreeAABB
+	itemCount   uint32
+	itemOffset  uint32
+	placeOffset uint32
+	isDirty     bool
 }
 
 func (n *octreeNode) isEmpty() bool {
-	return (n.children == emptyOctreeNodeChildren) && (n.itemStart >= n.itemEnd)
+	return (n.children == emptyOctreeNodeChildren) && (n.itemCount == 0)
 }
 
 type octreeItem[T any] struct {
