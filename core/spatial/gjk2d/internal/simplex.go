@@ -1,27 +1,27 @@
 package internal
 
-import "github.com/mokiat/gomath/sprec"
+import "github.com/mokiat/gomath/dprec"
 
 type Simplex struct {
 	remainingiterations uint32
-	sqrSkinRadius       float32
+	sqrSkinRadius       float64
 
-	points          [2]sprec.Vec2
+	points          [2]dprec.Vec2
 	pointCount      uint32
-	searchDirection sprec.Vec2
+	searchDirection dprec.Vec2
 
 	canProgress   bool
 	touchesOrigin bool
 }
 
-func NewSimplex(maxIterations int, skinRadius float32) Simplex {
+func NewSimplex(maxIterations int, skinRadius float64) Simplex {
 	return Simplex{
 		remainingiterations: uint32(maxIterations),
 		sqrSkinRadius:       skinRadius * skinRadius,
 
-		points:          [2]sprec.Vec2{},
+		points:          [2]dprec.Vec2{},
 		pointCount:      0,
-		searchDirection: sprec.BasisXVec2(),
+		searchDirection: dprec.BasisXVec2(),
 
 		canProgress:   true,
 		touchesOrigin: false,
@@ -32,7 +32,7 @@ func (s *Simplex) CanProgress() bool {
 	return s.canProgress
 }
 
-func (s *Simplex) Append(point, dir sprec.Vec2) {
+func (s *Simplex) Append(point, dir dprec.Vec2) {
 	if s.remainingiterations == 0 {
 		s.terminate(false)
 		return
@@ -49,7 +49,7 @@ func (s *Simplex) Append(point, dir sprec.Vec2) {
 	}
 }
 
-func (s *Simplex) appendToEmpty(point sprec.Vec2) {
+func (s *Simplex) appendToEmpty(point dprec.Vec2) {
 	// If the first point is already within skin-radius distance of the origin,
 	// then we can immediately conclude that the simplex touches the origin.
 	if point.SqrLength() <= s.sqrSkinRadius {
@@ -60,10 +60,10 @@ func (s *Simplex) appendToEmpty(point sprec.Vec2) {
 	// Append the first point and set the search direction towards the origin.
 	s.points[0] = point
 	s.pointCount++
-	s.searchDirection = sprec.InverseVec2(point)
+	s.searchDirection = dprec.InverseVec2(point)
 }
 
-func (s *Simplex) appendToPoint(point, lastDir sprec.Vec2) {
+func (s *Simplex) appendToPoint(point, lastDir dprec.Vec2) {
 	// Check if the new point is at all applicable.
 	if !s.crossedSupportPlane(point, lastDir) {
 		s.terminate(false)
@@ -82,16 +82,16 @@ func (s *Simplex) appendToPoint(point, lastDir sprec.Vec2) {
 	s.pointCount++
 
 	// Ensure that the edge is oriented towards the origin. Follow CCW winding convention.
-	norm := transposeVec2(sprec.Vec2Diff(s.points[1], s.points[0]))
-	if dot := sprec.Vec2Dot(norm, point); dot > 0 { // edge normal points away from the origin
+	norm := transposeVec2(dprec.Vec2Diff(s.points[1], s.points[0]))
+	if dot := dprec.Vec2Dot(norm, point); dot > 0 { // edge normal points away from the origin
 		s.points[0], s.points[1] = s.points[1], s.points[0]
-		norm = sprec.InverseVec2(norm)
+		norm = dprec.InverseVec2(norm)
 	}
 
 	// Check that the origin is not already within skin-radius distance of the edge, which
 	// would mean that the simplex touches the origin.
 	if originProjectsToEdge(s.points[0], s.points[1]) {
-		if dot := sprec.Vec2Dot(norm, point); dot*dot <= norm.SqrLength()*s.sqrSkinRadius {
+		if dot := dprec.Vec2Dot(norm, point); dot*dot <= norm.SqrLength()*s.sqrSkinRadius {
 			s.terminate(true)
 			return
 		}
@@ -101,7 +101,7 @@ func (s *Simplex) appendToPoint(point, lastDir sprec.Vec2) {
 	s.searchDirection = norm
 }
 
-func (s *Simplex) appendToEdge(point, lastDir sprec.Vec2) {
+func (s *Simplex) appendToEdge(point, lastDir dprec.Vec2) {
 	// Check if the new point is at all applicable.
 	if !s.crossedSupportPlane(point, lastDir) {
 		s.terminate(false)
@@ -116,11 +116,11 @@ func (s *Simplex) appendToEdge(point, lastDir sprec.Vec2) {
 	}
 
 	// Figure out which edge to keep and the new search direction. Follow CCW winding convention.
-	normAC := transposeVec2(sprec.Vec2Diff(point, s.points[0]))
-	normCB := transposeVec2(sprec.Vec2Diff(s.points[1], point))
+	normAC := transposeVec2(dprec.Vec2Diff(point, s.points[0]))
+	normCB := transposeVec2(dprec.Vec2Diff(s.points[1], point))
 
-	dotAC := -sprec.Vec2Dot(normAC, point)
-	dotCB := -sprec.Vec2Dot(normCB, point)
+	dotAC := -dprec.Vec2Dot(normAC, point)
+	dotCB := -dprec.Vec2Dot(normCB, point)
 
 	switch {
 	case dotAC <= 0.0 && dotCB <= 0.0: // origin is within the triangle
@@ -186,7 +186,7 @@ func (s *Simplex) TouchesOrigin() bool {
 	return s.touchesOrigin
 }
 
-func (s *Simplex) SearchDirection() sprec.Vec2 {
+func (s *Simplex) SearchDirection() dprec.Vec2 {
 	return s.searchDirection
 }
 
@@ -196,8 +196,8 @@ func (s *Simplex) SearchDirection() sprec.Vec2 {
 // If the furthers point along the last search direction never even reached
 // anywhere past the plane skin-radius distance away from the origin, then the
 // origin can never be touched by the simplex.
-func (s *Simplex) crossedSupportPlane(point, lastDir sprec.Vec2) bool {
-	dot := sprec.Vec2Dot(point, lastDir)
+func (s *Simplex) crossedSupportPlane(point, lastDir dprec.Vec2) bool {
+	dot := dprec.Vec2Dot(point, lastDir)
 	if dot >= 0 {
 		return true // The point is past the plane at the origin so we are good.
 	}
@@ -209,12 +209,12 @@ func (s *Simplex) terminate(success bool) {
 	s.canProgress = false
 }
 
-func originProjectsToEdge(start, end sprec.Vec2) bool {
-	edge := sprec.Vec2Diff(end, start)
-	dot := -sprec.Vec2Dot(edge, start)
+func originProjectsToEdge(start, end dprec.Vec2) bool {
+	edge := dprec.Vec2Diff(end, start)
+	dot := -dprec.Vec2Dot(edge, start)
 	return dot >= 0.0 && dot <= edge.SqrLength()
 }
 
-func transposeVec2(v sprec.Vec2) sprec.Vec2 {
-	return sprec.NewVec2(v.Y, -v.X)
+func transposeVec2(v dprec.Vec2) dprec.Vec2 {
+	return dprec.NewVec2(v.Y, -v.X)
 }

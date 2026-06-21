@@ -1,7 +1,7 @@
 package gjk2d
 
 import (
-	"github.com/mokiat/gomath/sprec"
+	"github.com/mokiat/gomath/dprec"
 	"github.com/mokiat/lacking/core/spatial/gjk2d/internal"
 )
 
@@ -21,7 +21,7 @@ func (s *Solver) Intersect(shapeA, shapeB Shape) bool {
 		shapeA.SkinRadius+shapeB.SkinRadius,
 	)
 
-	offset := sprec.Vec2Diff(shapeB.Position, shapeA.Position)
+	offset := dprec.Vec2Diff(shapeB.Position, shapeA.Position)
 	polyA := internal.Polygon{
 		Rotation:    shapeA.Rotation,
 		InvRotation: shapeA.Rotation.Inverse(),
@@ -46,18 +46,18 @@ func (s *Solver) Intersect(shapeA, shapeB Shape) bool {
 	return simplex.TouchesOrigin()
 }
 
-func (s *Solver) pickInitialDirection(polyA, polyB *internal.Polygon, offset sprec.Vec2) sprec.Vec2 {
+func (s *Solver) pickInitialDirection(polyA, polyB *internal.Polygon, offset dprec.Vec2) dprec.Vec2 {
 	pointA := polyA.InitialPoint()
 	pointB := polyB.InitialPoint()
-	result := sprec.Vec2Sum(offset, sprec.Vec2Diff(pointB, pointA))
+	result := dprec.Vec2Sum(offset, dprec.Vec2Diff(pointB, pointA))
 	if result.SqrLength() < 0.001 {
-		return sprec.BasisXVec2()
+		return dprec.BasisXVec2()
 	}
 	return result
 }
 
-func (s *Solver) minkowskiSupport(polyA, polyB *internal.Polygon, offset, dir sprec.Vec2) sprec.Vec2 {
-	supportA := polyA.Support(sprec.InverseVec2(dir))
+func (s *Solver) minkowskiSupport(polyA, polyB *internal.Polygon, offset, dir dprec.Vec2) dprec.Vec2 {
+	supportA := polyA.Support(dprec.InverseVec2(dir))
 	supportB := polyB.Support(dir)
-	return sprec.Vec2Sum(offset, sprec.Vec2Diff(supportB, supportA))
+	return dprec.Vec2Sum(offset, dprec.Vec2Diff(supportB, supportA))
 }
