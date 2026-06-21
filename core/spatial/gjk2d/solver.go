@@ -5,13 +5,7 @@ import (
 	"github.com/mokiat/lacking/core/spatial/gjk2d/internal"
 )
 
-type Solver struct{}
-
-func NewSolver() *Solver {
-	return &Solver{}
-}
-
-func (s *Solver) Intersect(shapeA, shapeB Shape) bool {
+func Intersect(shapeA, shapeB Shape) bool {
 	if len(shapeA.Points) == 0 || len(shapeB.Points) == 0 {
 		return false
 	}
@@ -33,20 +27,22 @@ func (s *Solver) Intersect(shapeA, shapeB Shape) bool {
 		Points:      shapeB.Points,
 	}
 
-	dir := s.pickInitialDirection(&polyA, &polyB, offset)
-	support := s.minkowskiSupport(&polyA, &polyB, offset, dir)
+	dir := pickInitialDirection(&polyA, &polyB, offset)
+	support := minkowskiSupport(&polyA, &polyB, offset, dir)
 	simplex.Append(support, dir)
 
 	for simplex.CanProgress() {
 		dir = simplex.SearchDirection()
-		support = s.minkowskiSupport(&polyA, &polyB, offset, dir)
+		support = minkowskiSupport(&polyA, &polyB, offset, dir)
 		simplex.Append(support, dir)
 	}
 
 	return simplex.TouchesOrigin()
 }
 
-func (s *Solver) pickInitialDirection(polyA, polyB *internal.Polygon, offset dprec.Vec2) dprec.Vec2 {
+// TODO: Add a Resolve function that runs EPA.
+
+func pickInitialDirection(polyA, polyB *internal.Polygon, offset dprec.Vec2) dprec.Vec2 {
 	pointA := polyA.InitialPoint()
 	pointB := polyB.InitialPoint()
 	result := dprec.Vec2Sum(offset, dprec.Vec2Diff(pointB, pointA))
@@ -56,7 +52,7 @@ func (s *Solver) pickInitialDirection(polyA, polyB *internal.Polygon, offset dpr
 	return result
 }
 
-func (s *Solver) minkowskiSupport(polyA, polyB *internal.Polygon, offset, dir dprec.Vec2) dprec.Vec2 {
+func minkowskiSupport(polyA, polyB *internal.Polygon, offset, dir dprec.Vec2) dprec.Vec2 {
 	supportA := polyA.Support(dprec.InverseVec2(dir))
 	supportB := polyB.Support(dir)
 	return dprec.Vec2Sum(offset, dprec.Vec2Diff(supportB, supportA))
