@@ -53,3 +53,174 @@ var _ = Describe("Contact", func() {
 		})
 	})
 })
+
+func newContact(depth float64) shape2d.Contact {
+	return shape2d.Contact{
+		TargetPoint:  dprec.NewVec2(depth, 0.0),
+		TargetNormal: dprec.NewVec2(1.0, 0.0),
+		Depth:        depth,
+	}
+}
+
+var _ = Describe("LastContact", func() {
+	var sink shape2d.LastContact
+
+	BeforeEach(func() {
+		sink = shape2d.LastContact{}
+	})
+
+	It("reports no contact when none were added", func() {
+		_, ok := sink.Contact()
+		Expect(ok).To(BeFalse())
+	})
+
+	It("retains the most recently added contact", func() {
+		sink.AddContact(newContact(1.0))
+		sink.AddContact(newContact(3.0))
+		sink.AddContact(newContact(2.0))
+
+		contact, ok := sink.Contact()
+		Expect(ok).To(BeTrue())
+		Expect(contact.Depth).To(BeNumerically("~", 2.0, 1e-6))
+	})
+
+	It("forgets contacts after Reset", func() {
+		sink.AddContact(newContact(1.0))
+		sink.Reset()
+
+		_, ok := sink.Contact()
+		Expect(ok).To(BeFalse())
+	})
+})
+
+var _ = Describe("ContactList", func() {
+	var sink shape2d.ContactList
+
+	BeforeEach(func() {
+		sink = shape2d.ContactList{}
+	})
+
+	It("is empty when no contacts were added", func() {
+		Expect(sink.Contacts()).To(BeEmpty())
+	})
+
+	It("retains every contact in the order it was added", func() {
+		sink.AddContact(newContact(1.0))
+		sink.AddContact(newContact(3.0))
+		sink.AddContact(newContact(2.0))
+
+		contacts := sink.Contacts()
+		Expect(contacts).To(HaveLen(3))
+		Expect(contacts[0].Depth).To(BeNumerically("~", 1.0, 1e-6))
+		Expect(contacts[1].Depth).To(BeNumerically("~", 3.0, 1e-6))
+		Expect(contacts[2].Depth).To(BeNumerically("~", 2.0, 1e-6))
+	})
+
+	It("preserves duplicate contacts", func() {
+		sink.AddContact(newContact(1.0))
+		sink.AddContact(newContact(1.0))
+
+		Expect(sink.Contacts()).To(HaveLen(2))
+	})
+
+	It("clears the contacts after Reset", func() {
+		sink.AddContact(newContact(1.0))
+		sink.Reset()
+
+		Expect(sink.Contacts()).To(BeEmpty())
+	})
+
+	It("reuses its capacity across Reset", func() {
+		sink.AddContact(newContact(1.0))
+		sink.AddContact(newContact(2.0))
+		capBefore := cap(sink.Contacts())
+
+		sink.Reset()
+		sink.AddContact(newContact(3.0))
+
+		Expect(cap(sink.Contacts())).To(Equal(capBefore))
+	})
+
+	It("can be ranged over directly as a slice", func() {
+		sink.AddContact(newContact(1.0))
+		sink.AddContact(newContact(2.0))
+
+		var total float64
+		for _, contact := range sink {
+			total += contact.Depth
+		}
+		Expect(total).To(BeNumerically("~", 3.0, 1e-6))
+	})
+
+	It("does not grow its backing array when pre-sized with make", func() {
+		list := make(shape2d.ContactList, 0, 4)
+		capBefore := cap(list)
+		for i := range 4 {
+			list.AddContact(newContact(float64(i)))
+		}
+		Expect(cap(list)).To(Equal(capBefore))
+		Expect(list).To(HaveLen(4))
+	})
+})
+
+var _ = Describe("DeepestContact", func() {
+	var sink shape2d.DeepestContact
+
+	BeforeEach(func() {
+		sink = shape2d.DeepestContact{}
+	})
+
+	It("reports no contact when none were added", func() {
+		_, ok := sink.Contact()
+		Expect(ok).To(BeFalse())
+	})
+
+	It("retains the contact with the greatest depth", func() {
+		sink.AddContact(newContact(1.0))
+		sink.AddContact(newContact(3.0))
+		sink.AddContact(newContact(2.0))
+
+		contact, ok := sink.Contact()
+		Expect(ok).To(BeTrue())
+		Expect(contact.Depth).To(BeNumerically("~", 3.0, 1e-6))
+	})
+
+	It("forgets contacts after Reset", func() {
+		sink.AddContact(newContact(3.0))
+		sink.Reset()
+
+		_, ok := sink.Contact()
+		Expect(ok).To(BeFalse())
+	})
+})
+
+var _ = Describe("ShallowestContact", func() {
+	var sink shape2d.ShallowestContact
+
+	BeforeEach(func() {
+		sink = shape2d.ShallowestContact{}
+	})
+
+	It("reports no contact when none were added", func() {
+		_, ok := sink.Contact()
+		Expect(ok).To(BeFalse())
+	})
+
+	It("retains the contact with the smallest depth", func() {
+		sink.AddContact(newContact(3.0))
+		sink.AddContact(newContact(1.0))
+		sink.AddContact(newContact(2.0))
+
+		contact, ok := sink.Contact()
+		Expect(ok).To(BeTrue())
+		Expect(contact.Depth).To(BeNumerically("~", 1.0, 1e-6))
+	})
+
+	It("forgets contacts after Reset", func() {
+		sink.AddContact(newContact(1.0))
+		sink.Reset()
+
+		_, ok := sink.Contact()
+		Expect(ok).To(BeFalse())
+	})
+})
