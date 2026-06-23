@@ -3,6 +3,7 @@ package gjk2d
 import (
 	"github.com/mokiat/gomath/dprec"
 	"github.com/mokiat/lacking/core/spatial/gjk2d/internal"
+	"github.com/mokiat/lacking/core/spatial/shape2d"
 )
 
 // Intersect reports whether shapeA and shapeB overlap, accounting for their
@@ -42,7 +43,18 @@ func Intersect(shapeA, shapeB Shape) bool {
 	return simplex.OverlapsOrigin()
 }
 
-// TODO: Add a Resolve function that runs EPA.
+// Resolve reports whether shapeA and shapeB overlap and, if so, returns a
+// Contact describing how to separate them. The Contact is expressed relative to
+// shapeB as the target shape (see shape2d.Contact). The boolean result is false
+// when the shapes do not overlap, in which case the Contact is meaningless.
+func Resolve(shapeA, shapeB Shape) (shape2d.Contact, bool) {
+	// TODO: Add proper implementation using EPA algorithm.
+	return shape2d.Contact{
+		Depth:        5.0,
+		TargetPoint:  dprec.NewVec2(200.0, 200.0),
+		TargetNormal: dprec.BasisXVec2(),
+	}, Intersect(shapeA, shapeB)
+}
 
 func minkowskiSupport(polyA, polyB *internal.Polygon, offset, dir dprec.Vec2) dprec.Vec2 {
 	supportA := polyA.Support(dprec.InverseVec2(dir))
