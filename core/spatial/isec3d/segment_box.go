@@ -47,6 +47,50 @@ func CheckSegmentBox(segment shape3d.Segment, box shape3d.Box) bool {
 	return tClose <= tFar && tClose >= 0.0 && tClose <= 1.0
 }
 
+// CheckSegmentBoxOverlap reports whether the segment and the box overlap in any
+// way.
+//
+// Unlike [CheckSegmentBox], this test is neither oriented nor face-culled: it
+// returns true whenever any part of the segment lies within the box, including
+// when the segment lies entirely inside it or starts inside it and exits. The
+// result does not depend on the order of the segment's endpoints.
+//
+// Use it when only the fact of an overlap matters; use [CheckSegmentBox] or
+// [ResolveSegmentBox] when the directed entry point is needed.
+func CheckSegmentBoxOverlap(segment shape3d.Segment, box shape3d.Box) bool {
+	delta := dprec.Vec3Diff(segment.B, segment.A)
+	relativeStart := dprec.Vec3Diff(segment.A, box.Center)
+
+	boxAxisX := box.Rotation.BasisX
+	boxAxisY := box.Rotation.BasisY
+	boxAxisZ := box.Rotation.BasisZ
+
+	startX := dprec.Vec3Dot(relativeStart, boxAxisX)
+	startY := dprec.Vec3Dot(relativeStart, boxAxisY)
+	startZ := dprec.Vec3Dot(relativeStart, boxAxisZ)
+
+	deltaX := dprec.Vec3Dot(delta, boxAxisX)
+	deltaY := dprec.Vec3Dot(delta, boxAxisY)
+	deltaZ := dprec.Vec3Dot(delta, boxAxisZ)
+
+	tCloseX, tFarX, ok := slabRange(startX, deltaX, box.HalfWidth)
+	if !ok {
+		return false
+	}
+	tCloseY, tFarY, ok := slabRange(startY, deltaY, box.HalfHeight)
+	if !ok {
+		return false
+	}
+	tCloseZ, tFarZ, ok := slabRange(startZ, deltaZ, box.HalfLength)
+	if !ok {
+		return false
+	}
+
+	tClose := max(tCloseX, tCloseY, tCloseZ)
+	tFar := min(tFarX, tFarY, tFarZ)
+	return tClose <= tFar && tFar >= 0.0 && tClose <= 1.0
+}
+
 // ResolveSegmentBox yields the contact at which the directed segment enters the
 // box, if it enters one at all.
 //

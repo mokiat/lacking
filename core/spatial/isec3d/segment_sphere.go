@@ -70,7 +70,7 @@ func CheckSegmentSphereOverlap(segment shape3d.Segment, sphere shape3d.Sphere) b
 	fraction := 1.0 / (2.0 * a)
 	t1 := (-b - sqrtDiscriminant) * fraction
 	t2 := (-b + sqrtDiscriminant) * fraction
-	return t1 < 1.0 && t2 > 0.0
+	return t1 <= 1.0 && t2 >= 0.0
 }
 
 // ResolveSegmentSphere yields the contact at which the directed segment enters

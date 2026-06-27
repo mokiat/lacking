@@ -227,6 +227,21 @@ var _ = Describe("SegmentSphere", func() {
 			Expect(isec3d.CheckSegmentSphereOverlap(onSurface, sphere)).To(BeTrue())
 			Expect(isec3d.CheckSegmentSphereOverlap(outside, sphere)).To(BeFalse())
 		})
+
+		It("returns true when the segment touches the sphere only at an endpoint", func() {
+			// The boundary is inclusive: a single point of contact at either
+			// endpoint, with the rest of the segment outside, still overlaps.
+			startOnSurface := shape3d.Segment{
+				A: dprec.NewVec3(1.0, 0.0, 0.0),
+				B: dprec.NewVec3(3.0, 0.0, 0.0),
+			}
+			endOnSurface := shape3d.Segment{
+				A: dprec.NewVec3(3.0, 0.0, 0.0),
+				B: dprec.NewVec3(1.0, 0.0, 0.0),
+			}
+			Expect(isec3d.CheckSegmentSphereOverlap(startOnSurface, sphere)).To(BeTrue())
+			Expect(isec3d.CheckSegmentSphereOverlap(endOnSurface, sphere)).To(BeTrue())
+		})
 	})
 
 	Describe("ResolveSegmentSphere", func() {
