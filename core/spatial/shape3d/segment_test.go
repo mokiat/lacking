@@ -39,6 +39,20 @@ var _ = Describe("Segment", func() {
 		})
 	})
 
+	Describe("Flipped", func() {
+		It("swaps the start and end points", func() {
+			flipped := seg.Flipped()
+			Expect(flipped.A).To(dprectest.HaveVec3Coords(2.0, 3.0, 6.0))
+			Expect(flipped.B).To(dprectest.HaveVec3Coords(0.0, 0.0, 0.0))
+		})
+
+		It("does not modify the original segment", func() {
+			seg.Flipped()
+			Expect(seg.A).To(dprectest.HaveVec3Coords(0.0, 0.0, 0.0))
+			Expect(seg.B).To(dprectest.HaveVec3Coords(2.0, 3.0, 6.0))
+		})
+	})
+
 	Describe("BoundingSphere", func() {
 		It("is centered at the midpoint of the segment", func() {
 			bs := seg.BoundingSphere()

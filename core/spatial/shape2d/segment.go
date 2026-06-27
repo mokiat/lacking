@@ -20,6 +20,14 @@ func (s Segment) Midpoint() dprec.Vec2 {
 	return dprec.Vec2Prod(dprec.Vec2Sum(s.A, s.B), 0.5)
 }
 
+// Flipped returns a new Segment with the start and end points swapped.
+func (s Segment) Flipped() Segment {
+	return Segment{
+		A: s.B,
+		B: s.A,
+	}
+}
+
 // BoundingCircle returns the smallest Circle that fully encompasses the segment.
 func (s Segment) BoundingCircle() Circle {
 	return Circle{
