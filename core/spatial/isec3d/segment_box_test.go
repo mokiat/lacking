@@ -25,7 +25,7 @@ var _ = Describe("SegmentBox", func() {
 	})
 
 	Describe("CheckSegmentBox", func() {
-		It("returns true for a segment passing through the box", func() {
+		It("returns true for a segment entering the box", func() {
 			seg := shape3d.Segment{
 				A: dprec.NewVec3(-3.0, 0.0, 0.0),
 				B: dprec.NewVec3(3.0, 0.0, 0.0),
@@ -33,7 +33,7 @@ var _ = Describe("SegmentBox", func() {
 			Expect(isec3d.CheckSegmentBox(seg, box)).To(BeTrue())
 		})
 
-		It("returns true regardless of endpoint order", func() {
+		It("returns true entering from the opposite direction", func() {
 			seg := shape3d.Segment{
 				A: dprec.NewVec3(3.0, 0.0, 0.0),
 				B: dprec.NewVec3(-3.0, 0.0, 0.0),
@@ -41,12 +41,23 @@ var _ = Describe("SegmentBox", func() {
 			Expect(isec3d.CheckSegmentBox(seg, box)).To(BeTrue())
 		})
 
-		It("returns true for a segment lying entirely inside the box", func() {
+		It("returns false for a segment lying entirely inside the box", func() {
+			// Face-culled: there is no crossing into a front face from outside.
 			seg := shape3d.Segment{
 				A: dprec.NewVec3(-0.5, 0.0, 0.0),
 				B: dprec.NewVec3(0.5, 0.0, 0.0),
 			}
-			Expect(isec3d.CheckSegmentBox(seg, box)).To(BeTrue())
+			Expect(isec3d.CheckSegmentBox(seg, box)).To(BeFalse())
+		})
+
+		It("returns false for a segment that starts inside the box", func() {
+			// The start is inside, so the only crossing is an exit through a
+			// back-facing face, which is culled.
+			seg := shape3d.Segment{
+				A: dprec.NewVec3(0.0, 0.0, 0.0),
+				B: dprec.NewVec3(3.0, 0.0, 0.0),
+			}
+			Expect(isec3d.CheckSegmentBox(seg, box)).To(BeFalse())
 		})
 
 		It("returns false for a segment that misses the box", func() {
@@ -66,8 +77,7 @@ var _ = Describe("SegmentBox", func() {
 		})
 
 		It("returns false for a diagonal segment that slips past a corner", func() {
-			// The line x+y=2.1 passes just outside the (1,1) corner; only the
-			// edge cross-product axes can separate this case.
+			// The line x+y=2.1 passes just outside the (1,1) corner.
 			seg := shape3d.Segment{
 				A: dprec.NewVec3(2.1, 0.0, 0.0),
 				B: dprec.NewVec3(0.0, 2.1, 0.0),
@@ -118,8 +128,8 @@ var _ = Describe("SegmentBox", func() {
 	})
 
 	Describe("ResolveSegmentBox", func() {
-		It("yields a minimum-translation contact for a shallow penetration", func() {
-			// Dips into the top (+Y) face: B is 0.5 below the surface.
+		It("yields a contact at the entry face", func() {
+			// Enters the top (+Y) face at (0, 1, 0); B sits 0.5 below the surface.
 			seg := shape3d.Segment{
 				A: dprec.NewVec3(0.0, 2.0, 0.0),
 				B: dprec.NewVec3(0.0, 0.5, 0.0),
@@ -131,26 +141,38 @@ var _ = Describe("SegmentBox", func() {
 			Expect(ok).To(BeTrue())
 			Expect(contact.TargetNormal).To(dprectest.HaveVec3Coords(0.0, 1.0, 0.0))
 			Expect(contact.TargetPoint).To(dprectest.HaveVec3Coords(0.0, 1.0, 0.0))
+			// B at y=0.5 lies 0.5 below the entry plane y=1.
 			Expect(contact.Depth).To(BeNumerically("~", 0.5, 1e-6))
 		})
 
-		It("produces the same contact regardless of endpoint order", func() {
-			forward := shape3d.Segment{
-				A: dprec.NewVec3(0.0, 2.0, 0.0),
-				B: dprec.NewVec3(0.0, 0.5, 0.0),
+		It("places the contact point where the segment crosses the surface", func() {
+			// A diagonal segment that enters the top (+Y) face at (0, 1, 0).
+			seg := shape3d.Segment{
+				A: dprec.NewVec3(-2.0, 2.0, 0.0),
+				B: dprec.NewVec3(2.0, 0.0, 0.0),
 			}
-			reversed := forward.Flipped()
+			var sink shape3d.LastContact
+			isec3d.ResolveSegmentBox(seg, box, sink.AddContact)
 
-			var sinkForward, sinkReversed shape3d.LastContact
-			isec3d.ResolveSegmentBox(forward, box, sinkForward.AddContact)
-			isec3d.ResolveSegmentBox(reversed, box, sinkReversed.AddContact)
+			contact, ok := sink.Contact()
+			Expect(ok).To(BeTrue())
+			Expect(contact.TargetNormal).To(dprectest.HaveVec3Coords(0.0, 1.0, 0.0))
+			Expect(contact.TargetPoint).To(dprectest.HaveVec3Coords(0.0, 1.0, 0.0))
+		})
 
-			cf, okF := sinkForward.Contact()
-			cr, okR := sinkReversed.Contact()
-			Expect(okF).To(BeTrue())
-			Expect(okR).To(BeTrue())
-			Expect(cr.TargetNormal).To(dprectest.HaveVec3Coords(cf.TargetNormal.X, cf.TargetNormal.Y, cf.TargetNormal.Z))
-			Expect(cr.Depth).To(BeNumerically("~", cf.Depth, 1e-6))
+		It("reports the entry face for the side the segment comes from", func() {
+			// Reversing the direction makes the segment enter the +X face instead.
+			seg := shape3d.Segment{
+				A: dprec.NewVec3(3.0, 0.0, 0.0),
+				B: dprec.NewVec3(-3.0, 0.0, 0.0),
+			}
+			var sink shape3d.LastContact
+			isec3d.ResolveSegmentBox(seg, box, sink.AddContact)
+
+			contact, ok := sink.Contact()
+			Expect(ok).To(BeTrue())
+			Expect(contact.TargetNormal).To(dprectest.HaveVec3Coords(1.0, 0.0, 0.0))
+			Expect(contact.TargetPoint).To(dprectest.HaveVec3Coords(1.0, 0.0, 0.0))
 		})
 
 		It("does not yield a contact when the segment misses the box", func() {
@@ -165,10 +187,19 @@ var _ = Describe("SegmentBox", func() {
 			Expect(ok).To(BeFalse())
 		})
 
-		It("places the contact point at the segment midpoint projected onto the contact face", func() {
-			// Segment midpoint is at (0.3, 1.25, 0.2); the top (+Y) face is at y=1.
-			// The contact point must reflect the x and z position of the entry, not
-			// just the center of the face.
+		It("does not yield a contact when the segment starts inside the box", func() {
+			seg := shape3d.Segment{
+				A: dprec.NewVec3(0.0, 0.0, 0.0),
+				B: dprec.NewVec3(0.0, 3.0, 0.0),
+			}
+			var sink shape3d.LastContact
+			isec3d.ResolveSegmentBox(seg, box, sink.AddContact)
+
+			_, ok := sink.Contact()
+			Expect(ok).To(BeFalse())
+		})
+
+		It("reports a contact point on the box surface with a unit normal", func() {
 			seg := shape3d.Segment{
 				A: dprec.NewVec3(0.3, 2.0, 0.2),
 				B: dprec.NewVec3(0.3, 0.5, 0.2),
@@ -178,11 +209,12 @@ var _ = Describe("SegmentBox", func() {
 			contact, ok := sink.Contact()
 
 			Expect(ok).To(BeTrue())
+			// Enters the top face: the entry keeps the segment's x and z.
 			Expect(contact.TargetPoint).To(dprectest.HaveVec3Coords(0.3, 1.0, 0.2))
 			Expect(contact.TargetNormal.Length()).To(BeNumerically("~", 1.0, 1e-6))
 		})
 
-		It("no longer penetrates after the segment is moved by the contact", func() {
+		It("brings the far endpoint onto the entry face when moved by Depth", func() {
 			seg := shape3d.Segment{
 				A: dprec.NewVec3(0.0, 2.0, 0.0),
 				B: dprec.NewVec3(0.0, 0.5, 0.0),
@@ -191,17 +223,9 @@ var _ = Describe("SegmentBox", func() {
 			isec3d.ResolveSegmentBox(seg, box, sink.AddContact)
 			contact, _ := sink.Contact()
 
-			lift := dprec.Vec3Prod(contact.TargetNormal, contact.Depth)
-			moved := shape3d.Segment{
-				A: dprec.Vec3Sum(seg.A, lift),
-				B: dprec.Vec3Sum(seg.B, lift),
-			}
-			// Re-resolving yields at most a touching (zero-depth) contact.
-			var resink shape3d.LastContact
-			isec3d.ResolveSegmentBox(moved, box, resink.AddContact)
-			if reContact, ok := resink.Contact(); ok {
-				Expect(reContact.Depth).To(BeNumerically("~", 0.0, 1e-6))
-			}
+			// Moving B along the normal by Depth lands it on the entry plane.
+			movedB := dprec.Vec3Sum(seg.B, dprec.Vec3Prod(contact.TargetNormal, contact.Depth))
+			Expect(movedB.Y).To(BeNumerically("~", box.HalfHeight, 1e-6))
 		})
 
 		It("resolves against a rotated box in world space", func() {
@@ -214,7 +238,7 @@ var _ = Describe("SegmentBox", func() {
 				HalfHeight: 1.0,
 				HalfLength: 1.0,
 			}
-			// Dips into the world +X face: B is 0.5 inside (world x extent is 1).
+			// Enters the world +X face at (1, 0, 0); B sits 0.5 inside.
 			seg := shape3d.Segment{
 				A: dprec.NewVec3(3.0, 0.0, 0.0),
 				B: dprec.NewVec3(0.5, 0.0, 0.0),

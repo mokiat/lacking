@@ -5,133 +5,112 @@ import (
 	"github.com/mokiat/lacking/core/spatial/shape3d"
 )
 
-// CheckSegmentBox returns whether segment intersects box.
+// CheckSegmentBox reports whether the directed segment enters the box.
+//
+// Like all segment checks in this package, the test is oriented and
+// face-culled: the segment is treated as a directed probe from A to B and only
+// a crossing into a front-facing face (one whose outward normal opposes the
+// segment direction) within the segment's extent counts as an intersection. A
+// segment that lies entirely inside the box, or that reaches it only through a
+// back-facing face, is not considered to intersect it.
 func CheckSegmentBox(segment shape3d.Segment, box shape3d.Box) bool {
-	relativeStart := dprec.Vec3Diff(segment.A, box.Center)
 	delta := dprec.Vec3Diff(segment.B, segment.A)
+	relativeStart := dprec.Vec3Diff(segment.A, box.Center)
 
-	startX := dprec.Vec3Dot(relativeStart, box.Rotation.BasisX)
-	startY := dprec.Vec3Dot(relativeStart, box.Rotation.BasisY)
-	startZ := dprec.Vec3Dot(relativeStart, box.Rotation.BasisZ)
-	deltaX := dprec.Vec3Dot(delta, box.Rotation.BasisX)
-	deltaY := dprec.Vec3Dot(delta, box.Rotation.BasisY)
-	deltaZ := dprec.Vec3Dot(delta, box.Rotation.BasisZ)
+	boxAxisX := box.Rotation.BasisX
+	boxAxisY := box.Rotation.BasisY
+	boxAxisZ := box.Rotation.BasisZ
 
-	tCloseX, tFarX, okX := slabInterval(startX, deltaX, box.HalfWidth)
-	if !okX {
+	startX := dprec.Vec3Dot(relativeStart, boxAxisX)
+	startY := dprec.Vec3Dot(relativeStart, boxAxisY)
+	startZ := dprec.Vec3Dot(relativeStart, boxAxisZ)
+
+	deltaX := dprec.Vec3Dot(delta, boxAxisX)
+	deltaY := dprec.Vec3Dot(delta, boxAxisY)
+	deltaZ := dprec.Vec3Dot(delta, boxAxisZ)
+
+	tCloseX, tFarX, ok := slabRange(startX, deltaX, box.HalfWidth)
+	if !ok {
 		return false
 	}
-	tCloseY, tFarY, okY := slabInterval(startY, deltaY, box.HalfHeight)
-	if !okY {
+	tCloseY, tFarY, ok := slabRange(startY, deltaY, box.HalfHeight)
+	if !ok {
 		return false
 	}
-	tCloseZ, tFarZ, okZ := slabInterval(startZ, deltaZ, box.HalfLength)
-	if !okZ {
+	tCloseZ, tFarZ, ok := slabRange(startZ, deltaZ, box.HalfLength)
+	if !ok {
 		return false
 	}
 
 	tClose := max(tCloseX, tCloseY, tCloseZ)
 	tFar := min(tFarX, tFarY, tFarZ)
-	return tClose <= tFar && tClose <= 1.0 && tFar >= 0.0
+	return tClose <= tFar && tClose >= 0.0 && tClose <= 1.0
 }
 
-// ResolveSegmentBox calls yield for each contact point where segment
-// penetrates box. The contact normal points outward from the box surface.
+// ResolveSegmentBox yields the contact at which the directed segment enters the
+// box, if it enters one at all.
+//
+// The contact follows the entry-point convention shared by the segment Resolve
+// routines in this package:
+//
+//   - TargetPoint is the point where the segment first crosses into the box.
+//   - TargetNormal is the outward normal of the entered face.
+//   - Depth is how far the far endpoint B has travelled past that face along
+//     the normal, so moving the segment by Depth along TargetNormal brings B
+//     back onto the entry face.
 func ResolveSegmentBox(segment shape3d.Segment, box shape3d.Box, yield shape3d.ContactCallback) {
-	relativeStart := dprec.Vec3Diff(segment.A, box.Center)
 	delta := dprec.Vec3Diff(segment.B, segment.A)
+	relativeStart := dprec.Vec3Diff(segment.A, box.Center)
 
-	startX := dprec.Vec3Dot(relativeStart, box.Rotation.BasisX)
-	startY := dprec.Vec3Dot(relativeStart, box.Rotation.BasisY)
-	startZ := dprec.Vec3Dot(relativeStart, box.Rotation.BasisZ)
-	deltaX := dprec.Vec3Dot(delta, box.Rotation.BasisX)
-	deltaY := dprec.Vec3Dot(delta, box.Rotation.BasisY)
-	deltaZ := dprec.Vec3Dot(delta, box.Rotation.BasisZ)
+	boxAxisX := box.Rotation.BasisX
+	boxAxisY := box.Rotation.BasisY
+	boxAxisZ := box.Rotation.BasisZ
 
-	tCloseX, tFarX, okX := slabInterval(startX, deltaX, box.HalfWidth)
-	if !okX {
+	startX := dprec.Vec3Dot(relativeStart, boxAxisX)
+	startY := dprec.Vec3Dot(relativeStart, boxAxisY)
+	startZ := dprec.Vec3Dot(relativeStart, boxAxisZ)
+
+	deltaX := dprec.Vec3Dot(delta, boxAxisX)
+	deltaY := dprec.Vec3Dot(delta, boxAxisY)
+	deltaZ := dprec.Vec3Dot(delta, boxAxisZ)
+
+	tCloseX, tFarX, ok := slabRange(startX, deltaX, box.HalfWidth)
+	if !ok {
 		return
 	}
-	tCloseY, tFarY, okY := slabInterval(startY, deltaY, box.HalfHeight)
-	if !okY {
+	tCloseY, tFarY, ok := slabRange(startY, deltaY, box.HalfHeight)
+	if !ok {
 		return
 	}
-	tCloseZ, tFarZ, okZ := slabInterval(startZ, deltaZ, box.HalfLength)
-	if !okZ {
+	tCloseZ, tFarZ, ok := slabRange(startZ, deltaZ, box.HalfLength)
+	if !ok {
 		return
 	}
 	tClose := max(tCloseX, tCloseY, tCloseZ)
 	tFar := min(tFarX, tFarY, tFarZ)
-	if tClose > tFar || tClose > 1.0 || tFar < 0.0 {
+
+	if (tClose > tFar) || (tClose < 0.0) || (tClose > 1.0) {
 		return
 	}
 
-	midX := startX + deltaX*0.5
-	midY := startY + deltaY*0.5
-	midZ := startZ + deltaZ*0.5
-	halfX := dprec.Abs(deltaX * 0.5)
-	halfY := dprec.Abs(deltaY * 0.5)
-	halfZ := dprec.Abs(deltaZ * 0.5)
-
-	depth := box.HalfWidth + halfX - dprec.Abs(midX)
-	localNormal := dprec.NewVec3(dprec.Sign(midX), 0.0, 0.0)
-	if overlapY := box.HalfHeight + halfY - dprec.Abs(midY); overlapY < depth {
-		depth = overlapY
-		localNormal = dprec.NewVec3(0.0, dprec.Sign(midY), 0.0)
-	}
-	if overlapZ := box.HalfLength + halfZ - dprec.Abs(midZ); overlapZ < depth {
-		depth = overlapZ
-		localNormal = dprec.NewVec3(0.0, 0.0, dprec.Sign(midZ))
+	var normal dprec.Vec3
+	switch tClose {
+	case tCloseX:
+		normal = dprec.Vec3Prod(boxAxisX, -dprec.Sign(deltaX))
+	case tCloseY:
+		normal = dprec.Vec3Prod(boxAxisY, -dprec.Sign(deltaY))
+	case tCloseZ:
+		normal = dprec.Vec3Prod(boxAxisZ, -dprec.Sign(deltaZ))
+	default:
+		normal = dprec.BasisXVec3() // should not happen, but just in case
 	}
 
-	localPoint := dprec.NewVec3(
-		faceCoord(localNormal.X, midX, box.HalfWidth),
-		faceCoord(localNormal.Y, midY, box.HalfHeight),
-		faceCoord(localNormal.Z, midZ, box.HalfLength),
-	)
+	contactPoint := dprec.Vec3Lerp(segment.A, segment.B, tClose)
+	depth := dprec.Vec3Dot(dprec.Vec3Diff(contactPoint, segment.B), normal)
+
 	yield(shape3d.Contact{
-		TargetPoint:  dprec.Vec3Sum(box.Center, box.Rotation.Apply(localPoint)),
-		TargetNormal: box.Rotation.Apply(localNormal),
+		TargetPoint:  contactPoint,
+		TargetNormal: normal,
 		Depth:        depth,
 	})
-}
-
-// faceCoord returns the local contact coordinate along one axis of a box face.
-// On the normal axis (component != 0) it pins to the face surface; on tangent
-// axes (component == 0) it projects the segment midpoint, clamped to the face.
-func faceCoord(component, mid, halfExtent float64) float64 {
-	if component != 0.0 {
-		return signedExtent(component, halfExtent)
-	}
-	return dprec.Clamp(mid, -halfExtent, halfExtent)
-}
-
-// slabInterval returns the parametric range [tClose, tFar] during which a ray,
-// starting at start with the given delta, lies within the slab [-halfExtent,
-// halfExtent]. When the ray is parallel to the slab (delta is zero) it reports
-// the full [0, 1] range if the start is inside the slab, or ok=false otherwise.
-func slabInterval(start, delta, halfExtent float64) (tClose, tFar float64, ok bool) {
-	if delta == 0.0 {
-		if start < -halfExtent || start > halfExtent {
-			return 0.0, 0.0, false
-		}
-		return 0.0, 1.0, true
-	}
-	tLow := (-halfExtent - start) / delta
-	tHigh := (halfExtent - start) / delta
-	return min(tLow, tHigh), max(tLow, tHigh), true
-}
-
-// signedExtent returns the box half-extent with the sign of the given component,
-// or zero when the component is zero. It selects the box's support coordinate
-// along a single axis.
-func signedExtent(component, halfExtent float64) float64 {
-	switch {
-	case component > 0.0:
-		return halfExtent
-	case component < 0.0:
-		return -halfExtent
-	default:
-		return 0.0
-	}
 }
