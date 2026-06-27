@@ -10,6 +10,17 @@ type Sphere struct {
 	Radius float64
 }
 
+// TransformedSphere returns a new Sphere that is the result of applying the
+// specified transform to the given sphere. The center is moved by the transform
+// while the radius is left unchanged, since a rigid-body transform preserves
+// distances.
+func TransformedSphere(sphere Sphere, transform Transform) Sphere {
+	return Sphere{
+		Center: transform.Apply(sphere.Center),
+		Radius: sphere.Radius,
+	}
+}
+
 // ContainsPoint returns whether the specified point lies within the sphere.
 func (s Sphere) ContainsPoint(point dprec.Vec3) bool {
 	delta := dprec.Vec3Diff(point, s.Center)

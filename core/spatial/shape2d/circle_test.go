@@ -5,10 +5,45 @@ import (
 	. "github.com/onsi/gomega"
 
 	"github.com/mokiat/gomath/dprec"
+	"github.com/mokiat/gomath/testing/dprectest"
 	"github.com/mokiat/lacking/core/spatial/shape2d"
 )
 
 var _ = Describe("Circle", func() {
+
+	Describe("TransformedCircle", func() {
+		var circle shape2d.Circle
+
+		BeforeEach(func() {
+			circle = shape2d.Circle{
+				Center: dprec.NewVec2(3.0, 4.0),
+				Radius: 2.0,
+			}
+		})
+
+		It("moves the center and keeps the radius", func() {
+			transform := shape2d.TRTransform(
+				dprec.NewVec2(10.0, 20.0),
+				shape2d.RotationFromAngle(dprec.Degrees(90.0)),
+			)
+			result := shape2d.TransformedCircle(circle, transform)
+			// Center (3,4) rotated by 90deg becomes (-4,3), then translated to (6,23).
+			Expect(result.Center).To(dprectest.HaveVec2Coords(6.0, 23.0))
+			Expect(result.Radius).To(BeNumerically("~", 2.0, 1e-6))
+		})
+
+		It("leaves the circle unchanged for the identity transform", func() {
+			result := shape2d.TransformedCircle(circle, shape2d.IdentityTransform())
+			Expect(result.Center).To(dprectest.HaveVec2Coords(3.0, 4.0))
+			Expect(result.Radius).To(BeNumerically("~", 2.0, 1e-6))
+		})
+
+		It("does not modify the original circle", func() {
+			shape2d.TransformedCircle(circle, shape2d.TranslationTransform(dprec.NewVec2(5.0, 5.0)))
+			Expect(circle.Center).To(dprectest.HaveVec2Coords(3.0, 4.0))
+			Expect(circle.Radius).To(BeNumerically("~", 2.0, 1e-6))
+		})
+	})
 
 	Describe("ContainsPoint", func() {
 		var circle shape2d.Circle
