@@ -10,6 +10,15 @@ type Segment struct {
 	B dprec.Vec2
 }
 
+// TransformedSegment returns a new Segment that is the result of applying the
+// specified transform to both endpoints of the given segment.
+func TransformedSegment(segment Segment, transform Transform) Segment {
+	return Segment{
+		A: transform.Apply(segment.A),
+		B: transform.Apply(segment.B),
+	}
+}
+
 // Length returns the length of the segment.
 func (s Segment) Length() float64 {
 	return dprec.Vec2Diff(s.B, s.A).Length()
