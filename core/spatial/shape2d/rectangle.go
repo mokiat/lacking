@@ -21,13 +21,10 @@ type Rectangle struct {
 // transform preserves distances.
 func TransformedRectangle(rectangle Rectangle, transform Transform) Rectangle {
 	return Rectangle{
-		Center: transform.Apply(rectangle.Center),
-		Rotation: Rotation{
-			BasisX: transform.Rotation.Apply(rectangle.Rotation.BasisX),
-			BasisY: transform.Rotation.Apply(rectangle.Rotation.BasisY),
-		},
-		Width:  rectangle.Width,
-		Height: rectangle.Height,
+		Center:   transform.Apply(rectangle.Center),
+		Rotation: ChainedRotation(transform.Rotation, rectangle.Rotation),
+		Width:    rectangle.Width,
+		Height:   rectangle.Height,
 	}
 }
 

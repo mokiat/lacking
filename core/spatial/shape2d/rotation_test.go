@@ -74,6 +74,36 @@ var _ = Describe("Rotation", func() {
 		})
 	})
 
+	Describe("ChainedRotation", func() {
+		It("returns the child rotation when the parent is the identity", func() {
+			result := shape2d.ChainedRotation(identity, rot90)
+			Expect(result.BasisX).To(dprectest.HaveVec2Coords(0.0, 1.0))
+			Expect(result.BasisY).To(dprectest.HaveVec2Coords(-1.0, 0.0))
+		})
+
+		It("returns the parent rotation when the child is the identity", func() {
+			result := shape2d.ChainedRotation(rot90, identity)
+			Expect(result.BasisX).To(dprectest.HaveVec2Coords(0.0, 1.0))
+			Expect(result.BasisY).To(dprectest.HaveVec2Coords(-1.0, 0.0))
+		})
+
+		It("adds the rotation angles", func() {
+			parent := shape2d.RotationFromAngle(dprec.Degrees(60))
+			child := shape2d.RotationFromAngle(dprec.Degrees(30))
+			result := shape2d.ChainedRotation(parent, child)
+			Expect(result.Angle()).To(BeNumerically("~", dprec.Degrees(90), 1e-6))
+		})
+
+		It("applies the child first and the parent second", func() {
+			parent := shape2d.RotationFromAngle(dprec.Degrees(60))
+			child := shape2d.RotationFromAngle(dprec.Degrees(30))
+			point := dprec.NewVec2(3.0, 4.0)
+			Expect(shape2d.ChainedRotation(parent, child).Apply(point)).To(
+				dprectest.HaveVec2Coords(parent.Apply(child.Apply(point)).X, parent.Apply(child.Apply(point)).Y),
+			)
+		})
+	})
+
 	Describe("Angle", func() {
 		It("returns zero for the identity rotation", func() {
 			Expect(identity.Angle()).To(BeNumerically("~", dprec.Degrees(0), 1e-6))

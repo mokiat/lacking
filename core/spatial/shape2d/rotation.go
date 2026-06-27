@@ -39,6 +39,16 @@ func RotationFromCosSin(cos, sin float64) Rotation {
 	}
 }
 
+// ChainedRotation returns the composition of a parent rotation and a child
+// rotation. The child is applied first and the parent second, so that
+// ChainedRotation(parent, child).Apply(p) equals parent.Apply(child.Apply(p)).
+func ChainedRotation(parent, child Rotation) Rotation {
+	return Rotation{
+		BasisX: parent.Apply(child.BasisX),
+		BasisY: parent.Apply(child.BasisY),
+	}
+}
+
 // Angle returns the rotation angle in the range [-Pi, Pi].
 func (r Rotation) Angle() dprec.Angle {
 	return dprec.Atan2(r.BasisX.Y, r.BasisX.X)

@@ -33,6 +33,17 @@ func RotationFromQuat(quat dprec.Quat) Rotation {
 	}
 }
 
+// ChainedRotation returns the composition of a parent rotation and a child
+// rotation. The child is applied first and the parent second, so that
+// ChainedRotation(parent, child).Apply(p) equals parent.Apply(child.Apply(p)).
+func ChainedRotation(parent, child Rotation) Rotation {
+	return Rotation{
+		BasisX: parent.Apply(child.BasisX),
+		BasisY: parent.Apply(child.BasisY),
+		BasisZ: parent.Apply(child.BasisZ),
+	}
+}
+
 // Quat returns the quaternion that represents this rotation.
 func (r Rotation) Quat() dprec.Quat {
 	mat := dprec.OrientationMat4(r.BasisX, r.BasisY, r.BasisZ)

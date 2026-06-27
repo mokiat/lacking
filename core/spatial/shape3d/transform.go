@@ -54,11 +54,7 @@ func TRTransform(translation dprec.Vec3, rotation Rotation) Transform {
 func ChainedTransform(parent, child Transform) Transform {
 	return Transform{
 		Translation: parent.Apply(child.Translation),
-		Rotation: Rotation{
-			BasisX: parent.Rotation.Apply(child.Rotation.BasisX),
-			BasisY: parent.Rotation.Apply(child.Rotation.BasisY),
-			BasisZ: parent.Rotation.Apply(child.Rotation.BasisZ),
-		},
+		Rotation:    ChainedRotation(parent.Rotation, child.Rotation),
 	}
 }
 

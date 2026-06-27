@@ -59,6 +59,39 @@ var _ = Describe("Rotation", func() {
 		})
 	})
 
+	Describe("ChainedRotation", func() {
+		It("returns the child rotation when the parent is the identity", func() {
+			result := shape3d.ChainedRotation(identity, rotZ90)
+			Expect(result.BasisX).To(dprectest.HaveVec3Coords(0.0, 1.0, 0.0))
+			Expect(result.BasisY).To(dprectest.HaveVec3Coords(-1.0, 0.0, 0.0))
+			Expect(result.BasisZ).To(dprectest.HaveVec3Coords(0.0, 0.0, 1.0))
+		})
+
+		It("returns the parent rotation when the child is the identity", func() {
+			result := shape3d.ChainedRotation(rotZ90, identity)
+			Expect(result.BasisX).To(dprectest.HaveVec3Coords(0.0, 1.0, 0.0))
+			Expect(result.BasisY).To(dprectest.HaveVec3Coords(-1.0, 0.0, 0.0))
+			Expect(result.BasisZ).To(dprectest.HaveVec3Coords(0.0, 0.0, 1.0))
+		})
+
+		It("composes two 90-degree Z rotations into a 180-degree rotation", func() {
+			result := shape3d.ChainedRotation(rotZ90, rotZ90)
+			Expect(result.BasisX).To(dprectest.HaveVec3Coords(-1.0, 0.0, 0.0))
+			Expect(result.BasisY).To(dprectest.HaveVec3Coords(0.0, -1.0, 0.0))
+			Expect(result.BasisZ).To(dprectest.HaveVec3Coords(0.0, 0.0, 1.0))
+		})
+
+		It("applies the child first and the parent second", func() {
+			parent := shape3d.RotationFromQuat(dprec.RotationQuat(dprec.Degrees(60), dprec.BasisYVec3()))
+			child := shape3d.RotationFromQuat(dprec.RotationQuat(dprec.Degrees(90), dprec.BasisZVec3()))
+			point := dprec.NewVec3(3.0, 4.0, 5.0)
+			expected := parent.Apply(child.Apply(point))
+			Expect(shape3d.ChainedRotation(parent, child).Apply(point)).To(
+				dprectest.HaveVec3Coords(expected.X, expected.Y, expected.Z),
+			)
+		})
+	})
+
 	Describe("Quat", func() {
 		It("returns the identity quaternion for the identity rotation", func() {
 			Expect(identity.Quat()).To(dprectest.HaveQuatCoords(1.0, 0.0, 0.0, 0.0))
