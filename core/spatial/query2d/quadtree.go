@@ -587,10 +587,10 @@ func (aabb *quadtreeAABB) intersectsSegment(segment *Segment) bool {
 	var tCloseX, tFarX float64
 	if delta.X == 0.0 {
 		if (segment.a.X < aabb.minX) || (segment.a.X > aabb.maxX) {
-			return false // // both points are outside the box on the left or right
+			return false // both points are outside the box on the left or right
 		}
-		tCloseX = 0.0
-		tFarX = 1.0
+		tCloseX = -math.MaxFloat64
+		tFarX = math.MaxFloat64
 	} else {
 		tLowX := (aabb.minX - segment.a.X) / delta.X
 		tHighX := (aabb.maxX - segment.a.X) / delta.X
@@ -603,8 +603,8 @@ func (aabb *quadtreeAABB) intersectsSegment(segment *Segment) bool {
 		if (segment.a.Y < aabb.minY) || (segment.a.Y > aabb.maxY) {
 			return false // both points are outside the box on the top or bottom
 		}
-		tCloseY = 0.0
-		tFarY = 1.0
+		tCloseY = -math.MaxFloat64
+		tFarY = math.MaxFloat64
 	} else {
 		tLowY := (aabb.minY - segment.a.Y) / delta.Y
 		tHighY := (aabb.maxY - segment.a.Y) / delta.Y
