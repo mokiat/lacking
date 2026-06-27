@@ -60,9 +60,9 @@ func ResolveSegmentBox(segment shape3d.Segment, box shape3d.Box, yield shape3d.C
 	if !okZ {
 		return
 	}
-	if max(tCloseX, tCloseY, tCloseZ) > min(tFarX, tFarY, tFarZ) ||
-		max(tCloseX, tCloseY, tCloseZ) > 1.0 ||
-		min(tFarX, tFarY, tFarZ) < 0.0 {
+	tClose := max(tCloseX, tCloseY, tCloseZ)
+	tFar := min(tFarX, tFarY, tFarZ)
+	if tClose > tFar || tClose > 1.0 || tFar < 0.0 {
 		return
 	}
 
@@ -85,15 +85,25 @@ func ResolveSegmentBox(segment shape3d.Segment, box shape3d.Box, yield shape3d.C
 	}
 
 	localPoint := dprec.NewVec3(
-		signedExtent(localNormal.X, box.HalfWidth),
-		signedExtent(localNormal.Y, box.HalfHeight),
-		signedExtent(localNormal.Z, box.HalfLength),
+		faceCoord(localNormal.X, midX, box.HalfWidth),
+		faceCoord(localNormal.Y, midY, box.HalfHeight),
+		faceCoord(localNormal.Z, midZ, box.HalfLength),
 	)
 	yield(shape3d.Contact{
 		TargetPoint:  dprec.Vec3Sum(box.Center, box.Rotation.Apply(localPoint)),
 		TargetNormal: box.Rotation.Apply(localNormal),
 		Depth:        depth,
 	})
+}
+
+// faceCoord returns the local contact coordinate along one axis of a box face.
+// On the normal axis (component != 0) it pins to the face surface; on tangent
+// axes (component == 0) it projects the segment midpoint, clamped to the face.
+func faceCoord(component, mid, halfExtent float64) float64 {
+	if component != 0.0 {
+		return signedExtent(component, halfExtent)
+	}
+	return dprec.Clamp(mid, -halfExtent, halfExtent)
 }
 
 // slabInterval returns the parametric range [tClose, tFar] during which a ray,

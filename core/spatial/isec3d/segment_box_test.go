@@ -165,7 +165,10 @@ var _ = Describe("SegmentBox", func() {
 			Expect(ok).To(BeFalse())
 		})
 
-		It("reports the contact point on the box surface", func() {
+		It("places the contact point at the segment midpoint projected onto the contact face", func() {
+			// Segment midpoint is at (0.3, 1.25, 0.2); the top (+Y) face is at y=1.
+			// The contact point must reflect the x and z position of the entry, not
+			// just the center of the face.
 			seg := shape3d.Segment{
 				A: dprec.NewVec3(0.3, 2.0, 0.2),
 				B: dprec.NewVec3(0.3, 0.5, 0.2),
@@ -175,8 +178,7 @@ var _ = Describe("SegmentBox", func() {
 			contact, ok := sink.Contact()
 
 			Expect(ok).To(BeTrue())
-			// On the top face: y is at the half-height and the normal is unit.
-			Expect(contact.TargetPoint.Y).To(BeNumerically("~", box.HalfHeight, 1e-6))
+			Expect(contact.TargetPoint).To(dprectest.HaveVec3Coords(0.3, 1.0, 0.2))
 			Expect(contact.TargetNormal.Length()).To(BeNumerically("~", 1.0, 1e-6))
 		})
 
