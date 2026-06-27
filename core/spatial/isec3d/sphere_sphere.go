@@ -12,7 +12,8 @@ import (
 func CheckSphereSphere(first, second shape3d.Sphere) bool {
 	// Compare squared distances to avoid the square root.
 	radiusSum := first.Radius + second.Radius
-	return dprec.Vec3Diff(first.Center, second.Center).SqrLength() <= dprec.Sqr(radiusSum)
+	delta := dprec.Vec3Diff(first.Center, second.Center)
+	return delta.SqrLength() <= radiusSum*radiusSum
 }
 
 // ResolveSphereSphere yields a Contact for the overlap of the two spheres, if
@@ -27,23 +28,21 @@ func ResolveSphereSphere(first, second shape3d.Sphere, yield shape3d.ContactCall
 	delta := dprec.Vec3Diff(first.Center, second.Center)
 	distance := delta.Length()
 
-	radiusSum := first.Radius + second.Radius
-	if distance > radiusSum {
-		return // the spheres do not reach each other
+	overlap := (first.Radius + second.Radius) - distance
+	if overlap < 0.0 {
+		return
 	}
 
 	var normal dprec.Vec3
-	if distance > 0 {
-		normal = dprec.Vec3Quot(delta, distance)
-	} else {
-		// The centers coincide; the separation normal is not unique, so pick a
-		// deterministic one.
+	if distance == 0 {
 		normal = dprec.BasisXVec3()
+	} else {
+		normal = dprec.Vec3Quot(delta, distance)
 	}
 
 	yield(shape3d.Contact{
 		TargetPoint:  dprec.Vec3Sum(second.Center, dprec.Vec3Prod(normal, second.Radius)),
 		TargetNormal: normal,
-		Depth:        radiusSum - distance,
+		Depth:        overlap,
 	})
 }
