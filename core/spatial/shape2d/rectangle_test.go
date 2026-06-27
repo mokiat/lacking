@@ -21,6 +21,46 @@ var _ = Describe("Rectangle", func() {
 		}
 	})
 
+	Describe("TransformedRectangle", func() {
+		It("moves the center, composes the rotation and keeps the size", func() {
+			transform := shape2d.TRTransform(
+				dprec.NewVec2(10.0, 20.0),
+				shape2d.RotationFromAngle(dprec.Degrees(90.0)),
+			)
+			result := shape2d.TransformedRectangle(rectangle, transform)
+			// Center (3,4) rotated by 90deg becomes (-4,3), then translated to (6,23).
+			Expect(result.Center).To(dprectest.HaveVec2Coords(6.0, 23.0))
+			// Identity rotation composed with a 90deg rotation yields a 90deg rotation.
+			Expect(result.Rotation.BasisX).To(dprectest.HaveVec2Coords(0.0, 1.0))
+			Expect(result.Rotation.BasisY).To(dprectest.HaveVec2Coords(-1.0, 0.0))
+			Expect(result.Width).To(BeNumerically("~", 6.0, 1e-6))
+			Expect(result.Height).To(BeNumerically("~", 8.0, 1e-6))
+		})
+
+		It("composes with an already rotated rectangle", func() {
+			rectangle.Rotation = shape2d.RotationFromAngle(dprec.Degrees(30.0))
+			transform := shape2d.RotationTransform(shape2d.RotationFromAngle(dprec.Degrees(60.0)))
+			result := shape2d.TransformedRectangle(rectangle, transform)
+			Expect(result.Rotation.Angle().Degrees()).To(BeNumerically("~", 90.0, 1e-6))
+		})
+
+		It("leaves the rectangle unchanged for the identity transform", func() {
+			result := shape2d.TransformedRectangle(rectangle, shape2d.IdentityTransform())
+			Expect(result.Center).To(dprectest.HaveVec2Coords(3.0, 4.0))
+			Expect(result.Rotation.BasisX).To(dprectest.HaveVec2Coords(1.0, 0.0))
+			Expect(result.Rotation.BasisY).To(dprectest.HaveVec2Coords(0.0, 1.0))
+			Expect(result.Width).To(BeNumerically("~", 6.0, 1e-6))
+			Expect(result.Height).To(BeNumerically("~", 8.0, 1e-6))
+		})
+
+		It("does not modify the original rectangle", func() {
+			shape2d.TransformedRectangle(rectangle, shape2d.TranslationTransform(dprec.NewVec2(5.0, 5.0)))
+			Expect(rectangle.Center).To(dprectest.HaveVec2Coords(3.0, 4.0))
+			Expect(rectangle.Width).To(BeNumerically("~", 6.0, 1e-6))
+			Expect(rectangle.Height).To(BeNumerically("~", 8.0, 1e-6))
+		})
+	})
+
 	Describe("ContainsPoint", func() {
 		It("returns true for the center", func() {
 			Expect(rectangle.ContainsPoint(dprec.NewVec2(3.0, 4.0))).To(BeTrue())

@@ -14,6 +14,23 @@ type Rectangle struct {
 	Height float64
 }
 
+// TransformedRectangle returns a new Rectangle that is the result of applying
+// the specified transform to the given rectangle. The center is moved by the
+// transform and the rectangle's orientation is composed with the transform's
+// rotation, while the width and height are left unchanged, since a rigid-body
+// transform preserves distances.
+func TransformedRectangle(rectangle Rectangle, transform Transform) Rectangle {
+	return Rectangle{
+		Center: transform.Apply(rectangle.Center),
+		Rotation: Rotation{
+			BasisX: transform.Rotation.Apply(rectangle.Rotation.BasisX),
+			BasisY: transform.Rotation.Apply(rectangle.Rotation.BasisY),
+		},
+		Width:  rectangle.Width,
+		Height: rectangle.Height,
+	}
+}
+
 // ContainsPoint returns whether the specified point lies within the rectangle.
 func (r Rectangle) ContainsPoint(point dprec.Vec2) bool {
 	offset := dprec.Vec2Diff(point, r.Center)
