@@ -64,49 +64,49 @@ var _ = Describe("Intersect", func() {
 	Describe("rectangle vs rectangle", func() {
 		It("returns false when rectangles are clearly separated", func() {
 			a := gjk2d.ShapeFromRectangle(shape2d.Rectangle{
-				Center:   dprec.NewVec2(0.0, 0.0),
-				Rotation: shape2d.IdentityRotation(),
-				Width:    2.0,
-				Height:   2.0,
+				Center:     dprec.NewVec2(0.0, 0.0),
+				Rotation:   shape2d.IdentityRotation(),
+				HalfWidth:  1.0,
+				HalfHeight: 1.0,
 			})
 			b := gjk2d.ShapeFromRectangle(shape2d.Rectangle{
-				Center:   dprec.NewVec2(4.0, 0.0),
-				Rotation: shape2d.IdentityRotation(),
-				Width:    2.0,
-				Height:   2.0,
+				Center:     dprec.NewVec2(4.0, 0.0),
+				Rotation:   shape2d.IdentityRotation(),
+				HalfWidth:  1.0,
+				HalfHeight: 1.0,
 			})
 			Expect(gjk2d.Intersect(a, b)).To(BeFalse())
 		})
 
 		It("returns true when rectangles clearly overlap", func() {
 			a := gjk2d.ShapeFromRectangle(shape2d.Rectangle{
-				Center:   dprec.NewVec2(0.0, 0.0),
-				Rotation: shape2d.IdentityRotation(),
-				Width:    2.0,
-				Height:   2.0,
+				Center:     dprec.NewVec2(0.0, 0.0),
+				Rotation:   shape2d.IdentityRotation(),
+				HalfWidth:  1.0,
+				HalfHeight: 1.0,
 			})
 			b := gjk2d.ShapeFromRectangle(shape2d.Rectangle{
-				Center:   dprec.NewVec2(1.0, 0.0),
-				Rotation: shape2d.IdentityRotation(),
-				Width:    2.0,
-				Height:   2.0,
+				Center:     dprec.NewVec2(1.0, 0.0),
+				Rotation:   shape2d.IdentityRotation(),
+				HalfWidth:  1.0,
+				HalfHeight: 1.0,
 			})
 			Expect(gjk2d.Intersect(a, b)).To(BeTrue())
 		})
 
 		It("returns true when a corner of one rectangle touches the edge of another", func() {
 			a := gjk2d.ShapeFromRectangle(shape2d.Rectangle{
-				Center:   dprec.NewVec2(0.0, 0.0),
-				Rotation: shape2d.IdentityRotation(),
-				Width:    2.0,
-				Height:   2.0,
+				Center:     dprec.NewVec2(0.0, 0.0),
+				Rotation:   shape2d.IdentityRotation(),
+				HalfWidth:  1.0,
+				HalfHeight: 1.0,
 			})
 			// Place b so its left edge sits exactly at x=1 (right edge of a).
 			b := gjk2d.ShapeFromRectangle(shape2d.Rectangle{
-				Center:   dprec.NewVec2(2.0, 0.0),
-				Rotation: shape2d.IdentityRotation(),
-				Width:    2.0,
-				Height:   2.0,
+				Center:     dprec.NewVec2(2.0, 0.0),
+				Rotation:   shape2d.IdentityRotation(),
+				HalfWidth:  1.0,
+				HalfHeight: 1.0,
 			})
 			Expect(gjk2d.Intersect(a, b)).To(BeTrue())
 		})
@@ -114,16 +114,16 @@ var _ = Describe("Intersect", func() {
 		It("returns false when rotated rectangles pass by each other diagonally", func() {
 			rot45 := shape2d.RotationFromAngle(dprec.Degrees(45.0))
 			a := gjk2d.ShapeFromRectangle(shape2d.Rectangle{
-				Center:   dprec.NewVec2(0.0, 0.0),
-				Rotation: shape2d.IdentityRotation(),
-				Width:    1.0,
-				Height:   1.0,
+				Center:     dprec.NewVec2(0.0, 0.0),
+				Rotation:   shape2d.IdentityRotation(),
+				HalfWidth:  0.5,
+				HalfHeight: 0.5,
 			})
 			b := gjk2d.ShapeFromRectangle(shape2d.Rectangle{
-				Center:   dprec.NewVec2(2.0, 0.0),
-				Rotation: rot45,
-				Width:    1.0,
-				Height:   1.0,
+				Center:     dprec.NewVec2(2.0, 0.0),
+				Rotation:   rot45,
+				HalfWidth:  0.5,
+				HalfHeight: 0.5,
 			})
 			Expect(gjk2d.Intersect(a, b)).To(BeFalse())
 		})
@@ -136,10 +136,10 @@ var _ = Describe("Intersect", func() {
 				Radius: 1.0,
 			})
 			b := gjk2d.ShapeFromRectangle(shape2d.Rectangle{
-				Center:   dprec.NewVec2(4.0, 0.0),
-				Rotation: shape2d.IdentityRotation(),
-				Width:    2.0,
-				Height:   2.0,
+				Center:     dprec.NewVec2(4.0, 0.0),
+				Rotation:   shape2d.IdentityRotation(),
+				HalfWidth:  1.0,
+				HalfHeight: 1.0,
 			})
 			Expect(gjk2d.Intersect(a, b)).To(BeFalse())
 		})
@@ -150,10 +150,10 @@ var _ = Describe("Intersect", func() {
 				Radius: 1.5,
 			})
 			b := gjk2d.ShapeFromRectangle(shape2d.Rectangle{
-				Center:   dprec.NewVec2(2.0, 0.0),
-				Rotation: shape2d.IdentityRotation(),
-				Width:    2.0,
-				Height:   2.0,
+				Center:     dprec.NewVec2(2.0, 0.0),
+				Rotation:   shape2d.IdentityRotation(),
+				HalfWidth:  1.0,
+				HalfHeight: 1.0,
 			})
 			Expect(gjk2d.Intersect(a, b)).To(BeTrue())
 		})
@@ -164,10 +164,10 @@ var _ = Describe("Intersect", func() {
 				Radius: 0.3,
 			})
 			b := gjk2d.ShapeFromRectangle(shape2d.Rectangle{
-				Center:   dprec.NewVec2(0.0, 0.0),
-				Rotation: shape2d.IdentityRotation(),
-				Width:    2.0,
-				Height:   2.0,
+				Center:     dprec.NewVec2(0.0, 0.0),
+				Rotation:   shape2d.IdentityRotation(),
+				HalfWidth:  1.0,
+				HalfHeight: 1.0,
 			})
 			Expect(gjk2d.Intersect(a, b)).To(BeTrue())
 		})

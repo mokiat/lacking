@@ -14,11 +14,11 @@ var _ = Describe("Box", func() {
 
 	BeforeEach(func() {
 		box = shape3d.Box{
-			Center:   dprec.NewVec3(3.0, 4.0, 5.0),
-			Rotation: shape3d.IdentityRotation(),
-			Width:    6.0,
-			Height:   8.0,
-			Length:   4.0,
+			Center:     dprec.NewVec3(3.0, 4.0, 5.0),
+			Rotation:   shape3d.IdentityRotation(),
+			HalfWidth:  3.0,
+			HalfHeight: 4.0,
+			HalfLength: 2.0,
 		}
 	})
 
@@ -35,9 +35,9 @@ var _ = Describe("Box", func() {
 			Expect(result.Rotation.BasisX).To(dprectest.HaveVec3Coords(0.0, 1.0, 0.0))
 			Expect(result.Rotation.BasisY).To(dprectest.HaveVec3Coords(-1.0, 0.0, 0.0))
 			Expect(result.Rotation.BasisZ).To(dprectest.HaveVec3Coords(0.0, 0.0, 1.0))
-			Expect(result.Width).To(BeNumerically("~", 6.0, 1e-6))
-			Expect(result.Height).To(BeNumerically("~", 8.0, 1e-6))
-			Expect(result.Length).To(BeNumerically("~", 4.0, 1e-6))
+			Expect(result.HalfWidth).To(BeNumerically("~", 3.0, 1e-6))
+			Expect(result.HalfHeight).To(BeNumerically("~", 4.0, 1e-6))
+			Expect(result.HalfLength).To(BeNumerically("~", 2.0, 1e-6))
 		})
 
 		It("leaves the box unchanged for the identity transform", func() {
@@ -46,17 +46,17 @@ var _ = Describe("Box", func() {
 			Expect(result.Rotation.BasisX).To(dprectest.HaveVec3Coords(1.0, 0.0, 0.0))
 			Expect(result.Rotation.BasisY).To(dprectest.HaveVec3Coords(0.0, 1.0, 0.0))
 			Expect(result.Rotation.BasisZ).To(dprectest.HaveVec3Coords(0.0, 0.0, 1.0))
-			Expect(result.Width).To(BeNumerically("~", 6.0, 1e-6))
-			Expect(result.Height).To(BeNumerically("~", 8.0, 1e-6))
-			Expect(result.Length).To(BeNumerically("~", 4.0, 1e-6))
+			Expect(result.HalfWidth).To(BeNumerically("~", 3.0, 1e-6))
+			Expect(result.HalfHeight).To(BeNumerically("~", 4.0, 1e-6))
+			Expect(result.HalfLength).To(BeNumerically("~", 2.0, 1e-6))
 		})
 
 		It("does not modify the original box", func() {
 			shape3d.TransformedBox(box, shape3d.TranslationTransform(dprec.NewVec3(5.0, 5.0, 5.0)))
 			Expect(box.Center).To(dprectest.HaveVec3Coords(3.0, 4.0, 5.0))
-			Expect(box.Width).To(BeNumerically("~", 6.0, 1e-6))
-			Expect(box.Height).To(BeNumerically("~", 8.0, 1e-6))
-			Expect(box.Length).To(BeNumerically("~", 4.0, 1e-6))
+			Expect(box.HalfWidth).To(BeNumerically("~", 3.0, 1e-6))
+			Expect(box.HalfHeight).To(BeNumerically("~", 4.0, 1e-6))
+			Expect(box.HalfLength).To(BeNumerically("~", 2.0, 1e-6))
 		})
 	})
 
@@ -91,11 +91,11 @@ var _ = Describe("Box", func() {
 
 		It("returns true only for the center when all dimensions are zero", func() {
 			dot := shape3d.Box{
-				Center:   dprec.NewVec3(1.0, 2.0, 3.0),
-				Rotation: shape3d.IdentityRotation(),
-				Width:    0.0,
-				Height:   0.0,
-				Length:   0.0,
+				Center:     dprec.NewVec3(1.0, 2.0, 3.0),
+				Rotation:   shape3d.IdentityRotation(),
+				HalfWidth:  0.0,
+				HalfHeight: 0.0,
+				HalfLength: 0.0,
 			}
 			Expect(dot.ContainsPoint(dprec.NewVec3(1.0, 2.0, 3.0))).To(BeTrue())
 			Expect(dot.ContainsPoint(dprec.NewVec3(1.1, 2.0, 3.0))).To(BeFalse())
@@ -106,11 +106,11 @@ var _ = Describe("Box", func() {
 
 			BeforeEach(func() {
 				rotated = shape3d.Box{
-					Center:   dprec.NewVec3(3.0, 4.0, 5.0),
-					Rotation: shape3d.RotationFromQuat(dprec.RotationQuat(dprec.Degrees(90.0), dprec.BasisZVec3())),
-					Width:    6.0,
-					Height:   8.0,
-					Length:   4.0,
+					Center:     dprec.NewVec3(3.0, 4.0, 5.0),
+					Rotation:   shape3d.RotationFromQuat(dprec.RotationQuat(dprec.Degrees(90.0), dprec.BasisZVec3())),
+					HalfWidth:  3.0,
+					HalfHeight: 4.0,
+					HalfLength: 2.0,
 				}
 			})
 

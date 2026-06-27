@@ -88,8 +88,8 @@ func ShapeFromSquareRound(square shape2d.Square, radius float64) Shape {
 
 // ShapeFromRectangle constructs a Shape from a Rectangle with no skin radius.
 func ShapeFromRectangle(rectangle shape2d.Rectangle) Shape {
-	halfWidth := rectangle.Width / 2.0
-	halfHeight := rectangle.Height / 2.0
+	halfWidth := rectangle.HalfWidth
+	halfHeight := rectangle.HalfHeight
 	return Shape{
 		Position: rectangle.Center,
 		Rotation: rectangle.Rotation,
@@ -106,8 +106,8 @@ func ShapeFromRectangle(rectangle shape2d.Rectangle) Shape {
 // ShapeFromRectangleRound constructs a Shape from a Rectangle with the given
 // skin radius, producing a rounded rectangle.
 func ShapeFromRectangleRound(rectangle shape2d.Rectangle, radius float64) Shape {
-	halfWidth := rectangle.Width / 2.0
-	halfHeight := rectangle.Height / 2.0
+	halfWidth := rectangle.HalfWidth
+	halfHeight := rectangle.HalfHeight
 	return Shape{
 		Position: rectangle.Center,
 		Rotation: rectangle.Rotation,
