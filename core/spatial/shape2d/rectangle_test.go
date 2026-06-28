@@ -13,12 +13,11 @@ var _ = Describe("Rectangle", func() {
 	var rectangle shape2d.Rectangle
 
 	BeforeEach(func() {
-		rectangle = shape2d.Rectangle{
-			Center:     dprec.NewVec2(3.0, 4.0),
-			Rotation:   shape2d.IdentityRotation(),
-			HalfWidth:  3.0,
-			HalfHeight: 4.0,
-		}
+		rectangle = shape2d.NewRectangle(
+			dprec.NewVec2(3.0, 4.0),
+			shape2d.IdentityRotation(),
+			dprec.NewVec2(3.0, 4.0),
+		)
 	})
 
 	Describe("TransformedRectangle", func() {
@@ -87,12 +86,11 @@ var _ = Describe("Rectangle", func() {
 		})
 
 		It("returns true only for the center when half-width and half-height are zero", func() {
-			dot := shape2d.Rectangle{
-				Center:     dprec.NewVec2(1.0, 2.0),
-				Rotation:   shape2d.IdentityRotation(),
-				HalfWidth:  0.0,
-				HalfHeight: 0.0,
-			}
+			dot := shape2d.NewRectangle(
+				dprec.NewVec2(1.0, 2.0),
+				shape2d.IdentityRotation(),
+				dprec.NewVec2(0.0, 0.0),
+			)
 			Expect(dot.ContainsPoint(dprec.NewVec2(1.0, 2.0))).To(BeTrue())
 			Expect(dot.ContainsPoint(dprec.NewVec2(1.1, 2.0))).To(BeFalse())
 		})
@@ -101,12 +99,11 @@ var _ = Describe("Rectangle", func() {
 			var rotated shape2d.Rectangle
 
 			BeforeEach(func() {
-				rotated = shape2d.Rectangle{
-					Center:     dprec.NewVec2(3.0, 4.0),
-					Rotation:   shape2d.RotationFromCosSin(0.0, 1.0),
-					HalfWidth:  3.0,
-					HalfHeight: 4.0,
-				}
+				rotated = shape2d.NewRectangle(
+					dprec.NewVec2(3.0, 4.0),
+					shape2d.RotationFromCosSin(0.0, 1.0),
+					dprec.NewVec2(3.0, 4.0),
+				)
 			})
 
 			It("contains a point that lies outside the axis-aligned rectangle", func() {

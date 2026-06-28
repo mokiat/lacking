@@ -10,6 +10,14 @@ type Segment struct {
 	B dprec.Vec2
 }
 
+// NewSegment creates a [Segment] with the given start and end points.
+func NewSegment(a, b dprec.Vec2) Segment {
+	return Segment{
+		A: a,
+		B: b,
+	}
+}
+
 // TransformedSegment returns a new [Segment] that is the result of applying the
 // specified transform to both endpoints of the given segment.
 func TransformedSegment(segment Segment, transform Transform) Segment {

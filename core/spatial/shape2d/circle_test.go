@@ -15,10 +15,7 @@ var _ = Describe("Circle", func() {
 		var circle shape2d.Circle
 
 		BeforeEach(func() {
-			circle = shape2d.Circle{
-				Center: dprec.NewVec2(3.0, 4.0),
-				Radius: 2.0,
-			}
+			circle = shape2d.NewCircle(dprec.NewVec2(3.0, 4.0), 2.0)
 		})
 
 		It("moves the center and keeps the radius", func() {
@@ -49,10 +46,7 @@ var _ = Describe("Circle", func() {
 		var circle shape2d.Circle
 
 		BeforeEach(func() {
-			circle = shape2d.Circle{
-				Center: dprec.NewVec2(3.0, 4.0),
-				Radius: 2.0,
-			}
+			circle = shape2d.NewCircle(dprec.NewVec2(3.0, 4.0), 2.0)
 		})
 
 		It("returns true for the center", func() {
@@ -72,10 +66,7 @@ var _ = Describe("Circle", func() {
 		})
 
 		It("returns true only for the center when radius is zero", func() {
-			dot := shape2d.Circle{
-				Center: dprec.NewVec2(1.0, 2.0),
-				Radius: 0.0,
-			}
+			dot := shape2d.NewCircle(dprec.NewVec2(1.0, 2.0), 0.0)
 			Expect(dot.ContainsPoint(dprec.NewVec2(1.0, 2.0))).To(BeTrue())
 			Expect(dot.ContainsPoint(dprec.NewVec2(1.1, 2.0))).To(BeFalse())
 		})

@@ -13,11 +13,11 @@ var _ = Describe("Capsule", func() {
 	var capsule shape2d.Capsule
 
 	BeforeEach(func() {
-		capsule = shape2d.Capsule{
-			A:      dprec.NewVec2(0.0, 0.0),
-			B:      dprec.NewVec2(4.0, 0.0),
-			Radius: 1.0,
-		}
+		capsule = shape2d.NewCapsule(
+			dprec.NewVec2(0.0, 0.0),
+			dprec.NewVec2(4.0, 0.0),
+			1.0,
+		)
 	})
 
 	Describe("Spine", func() {
@@ -63,11 +63,11 @@ var _ = Describe("Capsule", func() {
 		})
 
 		It("behaves like a circle for a zero-length spine", func() {
-			dot := shape2d.Capsule{
-				A:      dprec.NewVec2(1.0, 2.0),
-				B:      dprec.NewVec2(1.0, 2.0),
-				Radius: 2.0,
-			}
+			dot := shape2d.NewCapsule(
+				dprec.NewVec2(1.0, 2.0),
+				dprec.NewVec2(1.0, 2.0),
+				2.0,
+			)
 			Expect(dot.ContainsPoint(dprec.NewVec2(1.0, 2.0))).To(BeTrue())
 			Expect(dot.ContainsPoint(dprec.NewVec2(3.0, 2.0))).To(BeTrue())
 			Expect(dot.ContainsPoint(dprec.NewVec2(3.1, 2.0))).To(BeFalse())

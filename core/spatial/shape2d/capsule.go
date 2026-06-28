@@ -13,6 +13,27 @@ type Capsule struct {
 	Radius float64
 }
 
+// NewCapsule creates a [Capsule] with the given spine endpoints and radius.
+func NewCapsule(a, b dprec.Vec2, radius float64) Capsule {
+	return Capsule{
+		A:      a,
+		B:      b,
+		Radius: radius,
+	}
+}
+
+// TransformedCapsule returns a new [Capsule] that is the result of applying the
+// specified transform to the given capsule. The spine endpoints are moved by the
+// transform while the radius is left unchanged, since a rigid-body transform
+// preserves distances.
+func TransformedCapsule(capsule Capsule, transform Transform) Capsule {
+	return Capsule{
+		A:      transform.Apply(capsule.A),
+		B:      transform.Apply(capsule.B),
+		Radius: capsule.Radius,
+	}
+}
+
 // Spine returns the line segment that forms the spine of the capsule.
 func (c Capsule) Spine() Segment {
 	return Segment{A: c.A, B: c.B}

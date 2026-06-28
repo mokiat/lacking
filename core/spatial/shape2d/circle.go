@@ -10,6 +10,14 @@ type Circle struct {
 	Radius float64
 }
 
+// NewCircle creates a [Circle] with the given center and radius.
+func NewCircle(center dprec.Vec2, radius float64) Circle {
+	return Circle{
+		Center: center,
+		Radius: radius,
+	}
+}
+
 // TransformedCircle returns a new [Circle] that is the result of applying the
 // specified transform to the given circle. The center is moved by the transform
 // while the radius is left unchanged, since a rigid-body transform preserves

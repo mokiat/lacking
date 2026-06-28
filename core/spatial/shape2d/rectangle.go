@@ -14,6 +14,19 @@ type Rectangle struct {
 	HalfHeight float64
 }
 
+// NewRectangle creates a [Rectangle] with the given center, orientation and
+// half-extents. The X and Y components of halfSize become the rectangle's
+// half-width and half-height, measured along its local X and Y axes
+// respectively.
+func NewRectangle(center dprec.Vec2, rotation Rotation, halfSize dprec.Vec2) Rectangle {
+	return Rectangle{
+		Center:     center,
+		Rotation:   rotation,
+		HalfWidth:  halfSize.X,
+		HalfHeight: halfSize.Y,
+	}
+}
+
 // TransformedRectangle returns a new [Rectangle] that is the result of applying
 // the specified transform to the given rectangle. The center is moved by the
 // transform and the rectangle's orientation is composed with the transform's
