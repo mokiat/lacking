@@ -17,7 +17,7 @@ type Simplex struct {
 	touchesOrigin bool
 }
 
-// NewSimplex creates a Simplex with the given iteration budget and combined
+// NewSimplex creates a [Simplex] with the given iteration budget and combined
 // skin radius of the two shapes being tested.
 func NewSimplex(maxIterations int, skinRadius float64) Simplex {
 	return Simplex{
