@@ -44,13 +44,13 @@ type SceneSettings struct {
 }
 
 // Scene represents a 2D scene where objects made of shapes can be added.
-type Scene[T, S any] struct {
+type Scene[O, S any] struct {
 	freeObjectIndices    *ds.Stack[uint32]
 	freeCircleIndices    *ds.Stack[uint32]
 	freeRectangleIndices *ds.Stack[uint32]
 	freeMeshIndices      *ds.Stack[uint32]
 
-	objects    []sceneObject[T]
+	objects    []sceneObject[O]
 	circles    []sceneCircleShape[S]
 	rectangles []sceneRectangleShape[S]
 	meshes     []sceneMeshShape[S]
@@ -415,6 +415,14 @@ func (s *Scene[O, S]) EachMesh(filter Filter, yield func(shape2d.Mesh) bool) {
 		if !yield(shape.meshSolver.wsMesh) {
 			return
 		}
+	}
+}
+
+// MeshIter returns an iterator over all mesh shapes in the scene that match the
+// given filter.
+func (s *Scene[O, S]) MeshIter(filter Filter) iter.Seq[shape2d.Mesh] {
+	return func(yield func(shape2d.Mesh) bool) {
+		s.EachMesh(filter, yield)
 	}
 }
 
