@@ -10,7 +10,7 @@ type AABB struct {
 	maxZ float64
 }
 
-// NewAABB creates a new AABB with the given minimum and maximum coordinates.
+// NewAABB creates a new [AABB] with the given minimum and maximum coordinates.
 func NewAABB(minX, minY, minZ, maxX, maxY, maxZ float64) AABB {
 	return AABB{
 		minX: minX,
@@ -22,7 +22,7 @@ func NewAABB(minX, minY, minZ, maxX, maxY, maxZ float64) AABB {
 	}
 }
 
-// AABBFromSphere creates an AABB that fully contains a sphere with the given
+// AABBFromSphere creates an [AABB] that fully contains a sphere with the given
 // center and radius.
 func AABBFromSphere(x, y, z, r float64) AABB {
 	return AABB{
@@ -35,7 +35,7 @@ func AABBFromSphere(x, y, z, r float64) AABB {
 	}
 }
 
-// AABBFromBox creates an AABB that fully contains a box with the given
+// AABBFromBox creates an [AABB] that fully contains a box with the given
 // center and dimensions.
 func AABBFromBox(x, y, z, width, height, depth float64) AABB {
 	halfWidth := width * 0.5
@@ -51,7 +51,7 @@ func AABBFromBox(x, y, z, width, height, depth float64) AABB {
 	}
 }
 
-// AABBFromCube creates an AABB that fully contains a cube with the given
+// AABBFromCube creates an [AABB] that fully contains a cube with the given
 // center and size.
 func AABBFromCube(x, y, z, size float64) AABB {
 	halfSize := size * 0.5

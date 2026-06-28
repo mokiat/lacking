@@ -9,7 +9,7 @@ type Segment struct {
 	b dprec.Vec3
 }
 
-// NewSegment creates a new Segment with the given endpoints.
+// NewSegment creates a new [Segment] with the given endpoints.
 func NewSegment(a, b dprec.Vec3) Segment {
 	return Segment{
 		a: a,

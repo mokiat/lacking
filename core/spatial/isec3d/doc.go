@@ -13,8 +13,9 @@
 //     and a depth equal to the fraction of the segment lying beyond that entry
 //     point: 1 when the segment enters right at A and 0 when it enters at B.
 //     Expressing the depth as a fraction of the segment keeps it comparable
-//     across shapes, so that DeepestContact selects the earliest entry along
-//     the segment and ShallowestContact the latest. The matching segment checks
+//     across shapes, so that [shape3d.DeepestContact] selects the earliest
+//     entry along the segment and [shape3d.ShallowestContact] the latest. The
+//     matching segment checks
 //     are oriented the same way, so a segment that starts inside the shape or
 //     that reaches it only through a back-facing surface is not considered to
 //     intersect it.

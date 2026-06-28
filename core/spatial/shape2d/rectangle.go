@@ -14,7 +14,7 @@ type Rectangle struct {
 	HalfHeight float64
 }
 
-// TransformedRectangle returns a new Rectangle that is the result of applying
+// TransformedRectangle returns a new [Rectangle] that is the result of applying
 // the specified transform to the given rectangle. The center is moved by the
 // transform and the rectangle's orientation is composed with the transform's
 // rotation, while the half-width and half-height are left unchanged, since a
@@ -38,7 +38,7 @@ func (r Rectangle) ContainsPoint(point dprec.Vec2) bool {
 		localPoint.Y <= r.HalfHeight
 }
 
-// BoundingCircle returns the smallest Circle that fully encompasses the rectangle.
+// BoundingCircle returns the smallest [Circle] that fully encompasses the rectangle.
 func (r Rectangle) BoundingCircle() Circle {
 	return Circle{
 		Center: r.Center,

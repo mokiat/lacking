@@ -10,7 +10,7 @@ type Sphere struct {
 	Radius float64
 }
 
-// TransformedSphere returns a new Sphere that is the result of applying the
+// TransformedSphere returns a new [Sphere] that is the result of applying the
 // specified transform to the given sphere. The center is moved by the transform
 // while the radius is left unchanged, since a rigid-body transform preserves
 // distances.

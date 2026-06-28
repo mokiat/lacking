@@ -29,8 +29,8 @@ func CheckSegmentSurface(segment shape3d.Segment, surface shape3d.Surface) bool 
 //   - TargetNormal is the surface normal.
 //   - Depth is the fraction of the segment lying beyond the entry point, in the
 //     range [0, 1] (1 when the segment enters at A, 0 when it enters at B). It
-//     is comparable across shapes, so DeepestContact selects the earliest entry
-//     along the segment.
+//     is comparable across shapes, so [shape3d.DeepestContact] selects the
+//     earliest entry along the segment.
 func ResolveSegmentSurface(segment shape3d.Segment, surface shape3d.Surface, yield shape3d.ContactCallback) {
 	distA := surface.SignedDistance(segment.A)
 	distB := surface.SignedDistance(segment.B)

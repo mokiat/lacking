@@ -9,7 +9,7 @@ type Mesh struct {
 	Triangles []Triangle
 }
 
-// TransformedMesh returns a new Mesh whose triangles are the result of applying
+// TransformedMesh returns a new [Mesh] whose triangles are the result of applying
 // the specified transform to each triangle of the given mesh. The original mesh
 // is left unmodified.
 func TransformedMesh(mesh Mesh, transform Transform) Mesh {
@@ -22,7 +22,7 @@ func TransformedMesh(mesh Mesh, transform Transform) Mesh {
 	}
 }
 
-// BoundingSphere returns a Sphere that fully encompasses the mesh.
+// BoundingSphere returns a [Sphere] that fully encompasses the mesh.
 //
 // The sphere is centered at the average of all triangle vertices and its radius
 // is the distance from that center to the farthest vertex. The result is
@@ -30,7 +30,7 @@ func TransformedMesh(mesh Mesh, transform Transform) Mesh {
 // possible bounding sphere; because each triangle contributes its own vertices,
 // the center is pulled towards regions that are more finely tessellated.
 //
-// An empty mesh yields the zero Sphere, which is a point of zero radius at the
+// An empty mesh yields the zero [Sphere], which is a point of zero radius at the
 // origin.
 func (m Mesh) BoundingSphere() Sphere {
 	if len(m.Triangles) == 0 {

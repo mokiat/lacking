@@ -23,7 +23,7 @@ func (s Square) ContainsPoint(point dprec.Vec2) bool {
 		localPoint.Y <= halfSize
 }
 
-// BoundingCircle returns the smallest Circle that fully encompasses the square.
+// BoundingCircle returns the smallest [Circle] that fully encompasses the square.
 func (s Square) BoundingCircle() Circle {
 	halfSize := s.Size * 0.5
 	return Circle{

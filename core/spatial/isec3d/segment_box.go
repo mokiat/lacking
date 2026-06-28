@@ -101,8 +101,8 @@ func CheckSegmentBoxOverlap(segment shape3d.Segment, box shape3d.Box) bool {
 //   - TargetNormal is the outward normal of the entered face.
 //   - Depth is the fraction of the segment lying beyond the entry point, in the
 //     range [0, 1] (1 when the segment enters at A, 0 when it enters at B). It
-//     is comparable across shapes, so DeepestContact selects the earliest entry
-//     along the segment.
+//     is comparable across shapes, so [shape3d.DeepestContact] selects the
+//     earliest entry along the segment.
 func ResolveSegmentBox(segment shape3d.Segment, box shape3d.Box, yield shape3d.ContactCallback) {
 	delta := dprec.Vec3Diff(segment.B, segment.A)
 	relativeStart := dprec.Vec3Diff(segment.A, box.Center)

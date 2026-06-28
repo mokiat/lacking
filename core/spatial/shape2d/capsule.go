@@ -35,7 +35,7 @@ func (c Capsule) ContainsPoint(point dprec.Vec2) bool {
 	return delta.SqrLength() <= c.Radius*c.Radius
 }
 
-// BoundingCircle returns the smallest Circle that fully encompasses the capsule.
+// BoundingCircle returns the smallest [Circle] that fully encompasses the capsule.
 func (c Capsule) BoundingCircle() Circle {
 	bounding := c.Spine().BoundingCircle()
 	bounding.Radius += c.Radius

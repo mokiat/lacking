@@ -5,7 +5,8 @@ import "github.com/mokiat/gomath/dprec"
 // Contact describes the intersection of a source shape with a target shape.
 //
 // Its fields are expressed relative to the target shape. The equivalent values
-// for the source shape can be derived via EvalSourcePoint and EvalSourceNormal.
+// for the source shape can be derived via [Contact.EvalSourcePoint] and
+// [Contact.EvalSourceNormal].
 type Contact struct {
 
 	// TargetPoint is the contact point on the surface of the target shape.
@@ -39,7 +40,7 @@ func (c Contact) EvalSourceNormal() dprec.Vec2 {
 	return dprec.InverseVec2(c.TargetNormal)
 }
 
-// Flipped returns a Contact with the source and target shapes swapped.
+// Flipped returns a [Contact] with the source and target shapes swapped.
 //
 // The resulting contact describes the same intersection from the perspective of
 // the opposite shape.
@@ -51,13 +52,13 @@ func (c Contact) Flipped() Contact {
 	}
 }
 
-// ContactCallback is invoked for each Contact discovered while testing shapes
+// ContactCallback is invoked for each [Contact] discovered while testing shapes
 // for intersection.
 type ContactCallback func(contact Contact)
 
-// LastContact is a contact sink that retains the most recently added Contact.
+// LastContact is a contact sink that retains the most recently added [Contact].
 //
-// Its AddContact method satisfies ContactCallback and can be passed directly to
+// Its AddContact method satisfies [ContactCallback] and can be passed directly to
 // intersection routines.
 type LastContact struct {
 	contact    Contact
@@ -81,10 +82,10 @@ func (c *LastContact) Contact() (Contact, bool) {
 	return c.contact, c.hasContact
 }
 
-// DeepestContact is a contact sink that retains the added Contact with the
+// DeepestContact is a contact sink that retains the added [Contact] with the
 // greatest Depth.
 //
-// Its AddContact method satisfies ContactCallback and can be passed directly to
+// Its AddContact method satisfies [ContactCallback] and can be passed directly to
 // intersection routines.
 type DeepestContact struct {
 	contact    Contact
@@ -111,10 +112,10 @@ func (c *DeepestContact) Contact() (Contact, bool) {
 	return c.contact, c.hasContact
 }
 
-// ShallowestContact is a contact sink that retains the added Contact with the
+// ShallowestContact is a contact sink that retains the added [Contact] with the
 // smallest Depth.
 //
-// Its AddContact method satisfies ContactCallback and can be passed directly to
+// Its AddContact method satisfies [ContactCallback] and can be passed directly to
 // intersection routines.
 type ShallowestContact struct {
 	contact    Contact
@@ -141,10 +142,10 @@ func (c *ShallowestContact) Contact() (Contact, bool) {
 	return c.contact, c.hasContact
 }
 
-// ContactList is a contact sink that retains every added Contact in the order
+// ContactList is a contact sink that retains every added [Contact] in the order
 // it was added.
 //
-// Its AddContact method satisfies ContactCallback and can be passed directly to
+// Its AddContact method satisfies [ContactCallback] and can be passed directly to
 // intersection routines. As it is itself a slice, the retained contacts can be
 // ranged over directly.
 //

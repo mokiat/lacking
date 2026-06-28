@@ -175,8 +175,8 @@ func CheckSphereBox(sphere shape3d.Sphere, box shape3d.Box) bool {
 	}
 }
 
-// ResolveSphereBox yields a Contact for the overlap of the sphere with the box,
-// if there is one.
+// ResolveSphereBox yields a [shape3d.Contact] for the overlap of the sphere
+// with the box, if there is one.
 //
 // The contact is reported with the sphere as the source and the box as the
 // target: TargetPoint is the point of the box closest to the sphere center

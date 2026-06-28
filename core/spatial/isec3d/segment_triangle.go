@@ -49,18 +49,18 @@ func CheckSegmentTriangle(segment shape3d.Segment, triangle shape3d.Triangle) bo
 }
 
 // ResolveSegmentTriangle checks whether the given segment intersects the given
-// triangle and, if it does, invokes yield with the resulting Contact.
+// triangle and, if it does, invokes yield with the resulting [shape3d.Contact].
 //
 // The segment (source) is treated as a directed, front-face-culled probe from A
 // to B against the triangle (target), following the same convention as
-// CheckSegmentTriangle. When a front-facing crossing is found within the segment
+// [CheckSegmentTriangle]. When a front-facing crossing is found within the segment
 // span, the reported contact has its TargetPoint at the point where the segment
 // crosses the triangle's plane and its TargetNormal equal to the triangle's
 // outward (front-facing) normal. Its Depth is the fraction of the segment lying
 // beyond that crossing, in the range [0, 1] (1 when the segment crosses at A, 0
 // when it crosses at B); being a fraction, it is comparable across shapes, so
-// DeepestContact selects the earliest crossing along the segment. No contact is
-// yielded otherwise.
+// [shape3d.DeepestContact] selects the earliest crossing along the segment. No
+// contact is yielded otherwise.
 func ResolveSegmentTriangle(segment shape3d.Segment, triangle shape3d.Triangle, yield shape3d.ContactCallback) {
 	// Using the Moller-Trumbore intersection algorithm.
 	vecAB := dprec.Vec3Diff(triangle.B, triangle.A)

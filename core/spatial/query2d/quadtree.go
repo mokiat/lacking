@@ -8,7 +8,7 @@ import (
 	"github.com/mokiat/gomath/dprec"
 )
 
-// QuadtreeSettings contains the settings for a Quadtree.
+// QuadtreeSettings contains the settings for a [Quadtree].
 type QuadtreeSettings struct {
 
 	// Size specifies the dimension (side to side) of the tree node.
@@ -56,7 +56,7 @@ type Quadtree[T any] struct {
 	isDirty bool
 }
 
-// NewQuadtree creates a new Quadtree using the provided settings.
+// NewQuadtree creates a new [Quadtree] using the provided settings.
 func NewQuadtree[T any](settings QuadtreeSettings) *Quadtree[T] {
 	size := settings.Size.ValueOrDefault(4096.0)
 	if size < 1.0 {

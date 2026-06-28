@@ -83,8 +83,8 @@ func CheckSegmentSphereOverlap(segment shape3d.Segment, sphere shape3d.Sphere) b
 //   - TargetNormal is the outward surface normal of the sphere there.
 //   - Depth is the fraction of the segment lying beyond the entry point, in the
 //     range [0, 1] (1 when the segment enters at A, 0 when it enters at B). It
-//     is comparable across shapes, so DeepestContact selects the earliest entry
-//     along the segment.
+//     is comparable across shapes, so [shape3d.DeepestContact] selects the
+//     earliest entry along the segment.
 func ResolveSegmentSphere(segment shape3d.Segment, sphere shape3d.Sphere, yield shape3d.ContactCallback) {
 	// Solving using parametrization of the segment, resulting in a quadratic
 	// equation.

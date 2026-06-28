@@ -8,7 +8,7 @@ import (
 	"github.com/mokiat/gomath/dprec"
 )
 
-// OctreeSettings contains the settings for a Octree.
+// OctreeSettings contains the settings for an [Octree].
 type OctreeSettings struct {
 
 	// Size specifies the dimension (side to side) of the tree node.
@@ -56,7 +56,7 @@ type Octree[T any] struct {
 	isDirty bool
 }
 
-// NewOctree creates a new Octree using the provided settings.
+// NewOctree creates a new [Octree] using the provided settings.
 func NewOctree[T any](settings OctreeSettings) *Octree[T] {
 	size := settings.Size.ValueOrDefault(4096.0)
 	if size < 1.0 {

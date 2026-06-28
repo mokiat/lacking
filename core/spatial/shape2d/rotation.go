@@ -22,7 +22,7 @@ func IdentityRotation() Rotation {
 	}
 }
 
-// RotationFromAngle creates a Rotation corresponding to the given angle.
+// RotationFromAngle creates a [Rotation] corresponding to the given angle.
 // Positive angles rotate counter-clockwise.
 func RotationFromAngle(angle dprec.Angle) Rotation {
 	cos := dprec.Cos(angle)
@@ -30,7 +30,7 @@ func RotationFromAngle(angle dprec.Angle) Rotation {
 	return RotationFromCosSin(cos, sin)
 }
 
-// RotationFromCosSin creates a Rotation from precomputed cosine and sine
+// RotationFromCosSin creates a [Rotation] from precomputed cosine and sine
 // values of the rotation angle.
 func RotationFromCosSin(cos, sin float64) Rotation {
 	return Rotation{

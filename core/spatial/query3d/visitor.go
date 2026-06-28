@@ -10,7 +10,7 @@ type VisitorBucket[T any] struct {
 	items []T
 }
 
-// NewVisitorBucket creates a new VisitorBucket instance with the specified
+// NewVisitorBucket creates a new [VisitorBucket] instance with the specified
 // initial capacity, which is only used to preallocate memory (it is allowed to
 // exceed the initial capacity).
 func NewVisitorBucket[T any](initCapacity int) *VisitorBucket[T] {

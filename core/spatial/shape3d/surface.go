@@ -13,7 +13,7 @@ type Surface struct {
 	Distance float64
 }
 
-// BasisXSurface returns a Surface that passes through the origin and faces
+// BasisXSurface returns a [Surface] that passes through the origin and faces
 // along the X axis.
 func BasisXSurface() Surface {
 	return Surface{
@@ -22,7 +22,7 @@ func BasisXSurface() Surface {
 	}
 }
 
-// BasisYSurface returns a Surface that passes through the origin and faces
+// BasisYSurface returns a [Surface] that passes through the origin and faces
 // along the Y axis.
 func BasisYSurface() Surface {
 	return Surface{
@@ -31,7 +31,7 @@ func BasisYSurface() Surface {
 	}
 }
 
-// BasisZSurface returns a Surface that passes through the origin and faces
+// BasisZSurface returns a [Surface] that passes through the origin and faces
 // along the Z axis.
 func BasisZSurface() Surface {
 	return Surface{

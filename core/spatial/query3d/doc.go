@@ -1,8 +1,8 @@
 // Package query3d provides a 3D spatial query interface.
 //
-// The package is built around an Octree, a loose octree that indexes items by
-// their spatial Area and allows them to be searched through QueryAABB and
-// QuerySegment.
+// The package is built around an [Octree], a loose octree that indexes items by
+// their spatial [Area] and allows them to be searched through [Octree.QueryAABB]
+// and [Octree.QuerySegment].
 //
 // It is intended as a broad-phase (high-level) pass: queries are conservative
 // and may yield false positives, so callers are expected to run their own

@@ -10,7 +10,7 @@ type Segment struct {
 	B dprec.Vec3
 }
 
-// TransformedSegment returns a new Segment that is the result of applying the
+// TransformedSegment returns a new [Segment] that is the result of applying the
 // specified transform to both endpoints of the given segment.
 func TransformedSegment(segment Segment, transform Transform) Segment {
 	return Segment{
@@ -29,7 +29,7 @@ func (s Segment) Midpoint() dprec.Vec3 {
 	return dprec.Vec3Prod(dprec.Vec3Sum(s.A, s.B), 0.5)
 }
 
-// Flipped returns a new Segment with the start and end points swapped.
+// Flipped returns a new [Segment] with the start and end points swapped.
 func (s Segment) Flipped() Segment {
 	return Segment{
 		A: s.B,
@@ -37,7 +37,7 @@ func (s Segment) Flipped() Segment {
 	}
 }
 
-// BoundingSphere returns the smallest Sphere that fully encompasses the segment.
+// BoundingSphere returns the smallest [Sphere] that fully encompasses the segment.
 func (s Segment) BoundingSphere() Sphere {
 	return Sphere{
 		Center: s.Midpoint(),

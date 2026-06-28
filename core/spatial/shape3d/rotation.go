@@ -24,7 +24,7 @@ func IdentityRotation() Rotation {
 	}
 }
 
-// RotationFromQuat creates a Rotation corresponding to the given quaternion.
+// RotationFromQuat creates a [Rotation] corresponding to the given quaternion.
 func RotationFromQuat(quat dprec.Quat) Rotation {
 	return Rotation{
 		BasisX: quat.OrientationX(),

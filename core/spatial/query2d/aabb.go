@@ -8,7 +8,7 @@ type AABB struct {
 	maxY float64
 }
 
-// NewAABB creates a new AABB with the given minimum and maximum coordinates.
+// NewAABB creates a new [AABB] with the given minimum and maximum coordinates.
 func NewAABB(minX, minY, maxX, maxY float64) AABB {
 	return AABB{
 		minX: minX,
@@ -18,7 +18,7 @@ func NewAABB(minX, minY, maxX, maxY float64) AABB {
 	}
 }
 
-// AABBFromCircle creates an AABB that fully contains a circle with the given
+// AABBFromCircle creates an [AABB] that fully contains a circle with the given
 // center and radius.
 func AABBFromCircle(x, y, r float64) AABB {
 	return AABB{
@@ -29,7 +29,7 @@ func AABBFromCircle(x, y, r float64) AABB {
 	}
 }
 
-// AABBFromRectangle creates an AABB that fully contains a rectangle with the
+// AABBFromRectangle creates an [AABB] that fully contains a rectangle with the
 // given center and dimensions.
 func AABBFromRectangle(x, y, width, height float64) AABB {
 	halfWidth := width * 0.5
@@ -42,7 +42,7 @@ func AABBFromRectangle(x, y, width, height float64) AABB {
 	}
 }
 
-// AABBFromSquare creates an AABB that fully contains a square with the given
+// AABBFromSquare creates an [AABB] that fully contains a square with the given
 // center and size.
 func AABBFromSquare(x, y, size float64) AABB {
 	halfSize := size * 0.5

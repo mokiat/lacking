@@ -14,8 +14,8 @@ type Triangle struct {
 	C dprec.Vec3
 }
 
-// TransformedTriangle returns a new Triangle that is the result of applying the
-// specified transform to each of the vertices of the given triangle.
+// TransformedTriangle returns a new [Triangle] that is the result of applying
+// the specified transform to each of the vertices of the given triangle.
 func TransformedTriangle(triangle Triangle, transform Transform) Triangle {
 	return Triangle{
 		A: transform.Apply(triangle.A),
@@ -57,8 +57,8 @@ func (t Triangle) FacesTowards(direction dprec.Vec3) bool {
 	return dprec.Vec3Dot(t.Normal(), direction) > 0.0
 }
 
-// BoundingSphere returns the smallest Sphere that is centered at the triangle's
-// centroid and fully encompasses the triangle.
+// BoundingSphere returns the smallest [Sphere] that is centered at the
+// triangle's centroid and fully encompasses the triangle.
 func (t Triangle) BoundingSphere() Sphere {
 	center := t.Centroid()
 	radius := max(

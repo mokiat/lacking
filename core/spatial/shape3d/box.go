@@ -16,7 +16,7 @@ type Box struct {
 	HalfLength float64
 }
 
-// TransformedBox returns a new Box that is the result of applying the specified
+// TransformedBox returns a new [Box] that is the result of applying the specified
 // transform to the given box. The center is moved by the transform and the box's
 // orientation is composed with the transform's rotation, while the half-width,
 // half-height and half-length are left unchanged, since a rigid-body transform
@@ -43,7 +43,7 @@ func (b Box) ContainsPoint(point dprec.Vec3) bool {
 		localPoint.Z <= b.HalfLength
 }
 
-// BoundingSphere returns the smallest Sphere that fully encompasses the box.
+// BoundingSphere returns the smallest [Sphere] that fully encompasses the box.
 func (b Box) BoundingSphere() Sphere {
 	return Sphere{
 		Center: b.Center,

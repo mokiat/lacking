@@ -16,8 +16,8 @@ func CheckSphereSphere(first, second shape3d.Sphere) bool {
 	return delta.SqrLength() <= radiusSum*radiusSum
 }
 
-// ResolveSphereSphere yields a Contact for the overlap of the two spheres, if
-// there is one.
+// ResolveSphereSphere yields a [shape3d.Contact] for the overlap of the two
+// spheres, if there is one.
 //
 // The contact is reported with the first sphere as the source and the second as
 // the target: TargetPoint is the point on the second sphere's surface closest to
