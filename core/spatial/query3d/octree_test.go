@@ -9,7 +9,32 @@ import (
 	"github.com/mokiat/gog/opt"
 	"github.com/mokiat/gomath/dprec"
 	"github.com/mokiat/lacking/core/spatial/query3d"
+	"github.com/mokiat/lacking/core/spatial/shape3d"
 )
+
+// areaFromSphere builds an Area from sphere center coordinates and radius.
+func areaFromSphere(x, y, z, radius float64) query3d.Area {
+	return query3d.AreaFromSphere(shape3d.Sphere{
+		Center: dprec.NewVec3(x, y, z),
+		Radius: radius,
+	})
+}
+
+// aabbFromSphere builds an AABB enclosing a sphere with the given center
+// coordinates and radius.
+func aabbFromSphere(x, y, z, radius float64) query3d.AABB {
+	return query3d.AABBFromSphere(shape3d.Sphere{
+		Center: dprec.NewVec3(x, y, z),
+		Radius: radius,
+	})
+}
+
+// aabbFromCube builds an AABB for a cube centered at the given coordinates with
+// the given side length.
+func aabbFromCube(x, y, z, size float64) query3d.AABB {
+	half := size * 0.5
+	return query3d.NewAABB(x-half, y-half, z-half, x+half, y+half, z+half)
+}
 
 var _ = Describe("Octree", func() {
 	var (
@@ -38,15 +63,15 @@ var _ = Describe("Octree", func() {
 
 		BeforeEach(func() {
 			firstItemID = tree.Insert(
-				query3d.AreaFromSphere(16.0, 16.0, 16.0, 2.0),
+				areaFromSphere(16.0, 16.0, 16.0, 2.0),
 				"First",
 			)
 			secondItemID = tree.Insert(
-				query3d.AreaFromSphere(48.0, 48.0, 48.0, 2.0),
+				areaFromSphere(48.0, 48.0, 48.0, 2.0),
 				"Second",
 			)
 			thirdItemID = tree.Insert(
-				query3d.AreaFromSphere(-16.0, -48.0, -16.0, 32.0),
+				areaFromSphere(-16.0, -48.0, -16.0, 32.0),
 				"Third",
 			)
 		})
@@ -91,7 +116,7 @@ var _ = Describe("Octree", func() {
 		})
 
 		It("is possible to area-search for items", func() {
-			aabb := query3d.AABBFromSphere(64.0, 64.0, 64.0, 63.0)
+			aabb := aabbFromSphere(64.0, 64.0, 64.0, 63.0)
 			var found []string
 			tree.QueryAABB(aabb, func(item string) bool {
 				found = append(found, item)
@@ -101,7 +126,7 @@ var _ = Describe("Octree", func() {
 		})
 
 		It("stops QueryAABB after the visitor returns false", func() {
-			aabb := query3d.AABBFromSphere(64.0, 64.0, 64.0, 63.0)
+			aabb := aabbFromSphere(64.0, 64.0, 64.0, 63.0)
 			count := 0
 			tree.QueryAABB(aabb, func(item string) bool {
 				count++
@@ -112,7 +137,7 @@ var _ = Describe("Octree", func() {
 
 		When("items are searched", func() {
 			BeforeEach(func() {
-				aabb := query3d.AABBFromSphere(64.0, 64.0, 64.0, 63.0)
+				aabb := aabbFromSphere(64.0, 64.0, 64.0, 63.0)
 				tree.QueryAABB(aabb, func(item string) bool {
 					return true
 				})
@@ -132,7 +157,7 @@ var _ = Describe("Octree", func() {
 		When("an item is updated", func() {
 			BeforeEach(func() {
 				tree.Update(secondItemID,
-					query3d.AreaFromSphere(-48.0, 48.0, -48.0, 2.0),
+					areaFromSphere(-48.0, 48.0, -48.0, 2.0),
 				)
 			})
 
@@ -158,7 +183,7 @@ var _ = Describe("Octree", func() {
 			})
 
 			It("is reflected in area-search for items", func() {
-				aabb := query3d.AABBFromSphere(64.0, 64.0, 64.0, 63.0)
+				aabb := aabbFromSphere(64.0, 64.0, 64.0, 63.0)
 				var found []string
 				tree.QueryAABB(aabb, func(item string) bool {
 					found = append(found, item)
@@ -189,7 +214,7 @@ var _ = Describe("Octree", func() {
 			It("does not return an active item id on new insert", func() {
 				tree.Stats() // forces internal reordering of items (white box testing)
 				secondItemID = tree.Insert(
-					query3d.AreaFromSphere(48.0, 48.0, 48.0, 2.0),
+					areaFromSphere(48.0, 48.0, 48.0, 2.0),
 					"Second",
 				)
 				Expect(secondItemID).ToNot(Equal(firstItemID))
@@ -209,7 +234,7 @@ var _ = Describe("Octree", func() {
 			})
 
 			It("is reflected in area-search for items", func() {
-				aabb := query3d.AABBFromSphere(64.0, 64.0, 64.0, 63.0)
+				aabb := aabbFromSphere(64.0, 64.0, 64.0, 63.0)
 				var found []string
 				tree.QueryAABB(aabb, func(item string) bool {
 					found = append(found, item)
@@ -227,7 +252,7 @@ var _ = Describe("Octree", func() {
 			// A tiny item placed off-center descends to the deepest allowed
 			// node, allocating one node per depth level along the way.
 			deepItemID = tree.Insert(
-				query3d.AreaFromSphere(60.0, 60.0, 60.0, 1.0),
+				areaFromSphere(60.0, 60.0, 60.0, 1.0),
 				"Deep",
 			)
 		})
@@ -255,7 +280,7 @@ var _ = Describe("Octree", func() {
 				// A large item can no longer fit in any child, so it lands on
 				// the root and the vacated branch must collapse.
 				tree.Update(deepItemID,
-					query3d.AreaFromSphere(0.0, 0.0, 0.0, 60.0),
+					areaFromSphere(0.0, 0.0, 0.0, 60.0),
 				)
 			})
 
@@ -275,11 +300,11 @@ var _ = Describe("Octree", func() {
 			// leaves. Removing the far item must collapse its leaf and shrink
 			// the cached bounding boxes of the surviving ancestors.
 			tree.Insert(
-				query3d.AreaFromSphere(16.0, 16.0, 16.0, 2.0),
+				areaFromSphere(16.0, 16.0, 16.0, 2.0),
 				"Near",
 			)
 			farItemID = tree.Insert(
-				query3d.AreaFromSphere(60.0, 60.0, 60.0, 1.0),
+				areaFromSphere(60.0, 60.0, 60.0, 1.0),
 				"Far",
 			)
 			// Settle the tree so every cached box is clean. Only the collapse
@@ -294,7 +319,7 @@ var _ = Describe("Octree", func() {
 			// into them; with the boxes collapsed, it is rejected at the root.
 			var found []string
 			tree.QueryAABB(
-				query3d.AABBFromSphere(60.0, 60.0, 60.0, 1.0),
+				aabbFromSphere(60.0, 60.0, 60.0, 1.0),
 				func(item string) bool {
 					found = append(found, item)
 					return true
@@ -310,7 +335,7 @@ var _ = Describe("Octree", func() {
 		It("still finds the surviving item", func() {
 			var found []string
 			tree.QueryAABB(
-				query3d.AABBFromSphere(16.0, 16.0, 16.0, 2.0),
+				aabbFromSphere(16.0, 16.0, 16.0, 2.0),
 				func(item string) bool {
 					found = append(found, item)
 					return true
@@ -330,7 +355,7 @@ var _ = Describe("Octree", func() {
 				x := float64(-60 + (i*7)%120)
 				y := float64(-60 + (i*13)%120)
 				z := float64(-60 + (i*5)%120)
-				return query3d.AreaFromSphere(x, y, z, 1.0)
+				return areaFromSphere(x, y, z, 1.0)
 			}
 
 			// Populate the tree.
@@ -361,7 +386,7 @@ var _ = Describe("Octree", func() {
 			// A query covering the whole tree must return exactly the items
 			// we expect to still be present.
 			found := make(map[string]struct{})
-			tree.QueryAABB(query3d.AABBFromSphere(0.0, 0.0, 0.0, 1000.0), func(item string) bool {
+			tree.QueryAABB(aabbFromSphere(0.0, 0.0, 0.0, 1000.0), func(item string) bool {
 				found[item] = struct{}{}
 				return true
 			})

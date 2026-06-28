@@ -9,7 +9,24 @@ import (
 	"github.com/mokiat/gog/opt"
 	"github.com/mokiat/gomath/dprec"
 	"github.com/mokiat/lacking/core/spatial/query2d"
+	"github.com/mokiat/lacking/core/spatial/shape2d"
 )
+
+// aabbFromCircle builds an AABB enclosing a circle with the given center
+// coordinates and radius.
+func aabbFromCircle(x, y, radius float64) query2d.AABB {
+	return query2d.AABBFromCircle(shape2d.Circle{
+		Center: dprec.NewVec2(x, y),
+		Radius: radius,
+	})
+}
+
+// aabbFromSquare builds an AABB for a square centered at the given coordinates
+// with the given side length.
+func aabbFromSquare(x, y, size float64) query2d.AABB {
+	half := size * 0.5
+	return query2d.NewAABB(x-half, y-half, x+half, y+half)
+}
 
 var _ = Describe("Quadtree", func() {
 	var (
@@ -91,7 +108,7 @@ var _ = Describe("Quadtree", func() {
 		})
 
 		It("is possible to area-search for items", func() {
-			aabb := query2d.AABBFromCircle(64.0, 64.0, 63.0)
+			aabb := aabbFromCircle(64.0, 64.0, 63.0)
 			var found []string
 			tree.QueryAABB(aabb, func(item string) bool {
 				found = append(found, item)
@@ -101,7 +118,7 @@ var _ = Describe("Quadtree", func() {
 		})
 
 		It("stops QueryAABB after the visitor returns false", func() {
-			aabb := query2d.AABBFromCircle(64.0, 64.0, 63.0)
+			aabb := aabbFromCircle(64.0, 64.0, 63.0)
 			count := 0
 			tree.QueryAABB(aabb, func(item string) bool {
 				count++
@@ -112,7 +129,7 @@ var _ = Describe("Quadtree", func() {
 
 		When("items are searched", func() {
 			BeforeEach(func() {
-				aabb := query2d.AABBFromCircle(64.0, 64.0, 63.0)
+				aabb := aabbFromCircle(64.0, 64.0, 63.0)
 				tree.QueryAABB(aabb, func(item string) bool {
 					return true
 				})
@@ -158,7 +175,7 @@ var _ = Describe("Quadtree", func() {
 			})
 
 			It("is reflected in area-search for items", func() {
-				aabb := query2d.AABBFromCircle(64.0, 64.0, 63.0)
+				aabb := aabbFromCircle(64.0, 64.0, 63.0)
 				var found []string
 				tree.QueryAABB(aabb, func(item string) bool {
 					found = append(found, item)
@@ -209,7 +226,7 @@ var _ = Describe("Quadtree", func() {
 			})
 
 			It("is reflected in area-search for items", func() {
-				aabb := query2d.AABBFromCircle(64.0, 64.0, 63.0)
+				aabb := aabbFromCircle(64.0, 64.0, 63.0)
 				var found []string
 				tree.QueryAABB(aabb, func(item string) bool {
 					found = append(found, item)
@@ -294,7 +311,7 @@ var _ = Describe("Quadtree", func() {
 			// into them; with the boxes collapsed, it is rejected at the root.
 			var found []string
 			tree.QueryAABB(
-				query2d.AABBFromCircle(60.0, 60.0, 1.0),
+				aabbFromCircle(60.0, 60.0, 1.0),
 				func(item string) bool {
 					found = append(found, item)
 					return true
@@ -310,7 +327,7 @@ var _ = Describe("Quadtree", func() {
 		It("still finds the surviving item", func() {
 			var found []string
 			tree.QueryAABB(
-				query2d.AABBFromCircle(16.0, 16.0, 2.0),
+				aabbFromCircle(16.0, 16.0, 2.0),
 				func(item string) bool {
 					found = append(found, item)
 					return true
@@ -360,7 +377,7 @@ var _ = Describe("Quadtree", func() {
 			// A query covering the whole tree must return exactly the items
 			// we expect to still be present.
 			found := make(map[string]struct{})
-			tree.QueryAABB(query2d.AABBFromCircle(0.0, 0.0, 1000.0), func(item string) bool {
+			tree.QueryAABB(aabbFromCircle(0.0, 0.0, 1000.0), func(item string) bool {
 				found[item] = struct{}{}
 				return true
 			})

@@ -1,5 +1,7 @@
 package query3d
 
+import "github.com/mokiat/lacking/core/spatial/shape3d"
+
 // AABB is an axis-aligned bounding box that can be used for spatial queries.
 type AABB struct {
 	minX float64
@@ -22,45 +24,28 @@ func NewAABB(minX, minY, minZ, maxX, maxY, maxZ float64) AABB {
 	}
 }
 
-// AABBFromSphere creates an [AABB] that fully contains a sphere with the given
-// center and radius.
-func AABBFromSphere(x, y, z, r float64) AABB {
+// AABBFromSphere creates an [AABB] that fully contains the given sphere.
+func AABBFromSphere(sphere shape3d.Sphere) AABB {
 	return AABB{
-		minX: x - r,
-		minY: y - r,
-		minZ: z - r,
-		maxX: x + r,
-		maxY: y + r,
-		maxZ: z + r,
+		minX: sphere.Center.X - sphere.Radius,
+		minY: sphere.Center.Y - sphere.Radius,
+		minZ: sphere.Center.Z - sphere.Radius,
+		maxX: sphere.Center.X + sphere.Radius,
+		maxY: sphere.Center.Y + sphere.Radius,
+		maxZ: sphere.Center.Z + sphere.Radius,
 	}
 }
 
-// AABBFromBox creates an [AABB] that fully contains a box with the given
-// center and dimensions.
-func AABBFromBox(x, y, z, width, height, depth float64) AABB {
-	halfWidth := width * 0.5
-	halfHeight := height * 0.5
-	halfDepth := depth * 0.5
+// AABBFromBox creates an [AABB] from the given box's center and half-extents.
+// The box orientation is ignored, so the result encloses the box only when it
+// is axis-aligned.
+func AABBFromBox(box shape3d.Box) AABB {
 	return AABB{
-		minX: x - halfWidth,
-		minY: y - halfHeight,
-		minZ: z - halfDepth,
-		maxX: x + halfWidth,
-		maxY: y + halfHeight,
-		maxZ: z + halfDepth,
-	}
-}
-
-// AABBFromCube creates an [AABB] that fully contains a cube with the given
-// center and size.
-func AABBFromCube(x, y, z, size float64) AABB {
-	halfSize := size * 0.5
-	return AABB{
-		minX: x - halfSize,
-		minY: y - halfSize,
-		minZ: z - halfSize,
-		maxX: x + halfSize,
-		maxY: y + halfSize,
-		maxZ: z + halfSize,
+		minX: box.Center.X - box.HalfWidth,
+		minY: box.Center.Y - box.HalfHeight,
+		minZ: box.Center.Z - box.HalfLength,
+		maxX: box.Center.X + box.HalfWidth,
+		maxY: box.Center.Y + box.HalfHeight,
+		maxZ: box.Center.Z + box.HalfLength,
 	}
 }
