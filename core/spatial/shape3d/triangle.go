@@ -14,6 +14,17 @@ type Triangle struct {
 	C dprec.Vec3
 }
 
+// NewTriangle creates a [Triangle] from the given vertices, which are expected
+// to be specified in counter-clockwise order when viewed from the side the
+// normal should face.
+func NewTriangle(a, b, c dprec.Vec3) Triangle {
+	return Triangle{
+		A: a,
+		B: b,
+		C: c,
+	}
+}
+
 // TransformedTriangle returns a new [Triangle] that is the result of applying
 // the specified transform to each of the vertices of the given triangle.
 func TransformedTriangle(triangle Triangle, transform Transform) Triangle {

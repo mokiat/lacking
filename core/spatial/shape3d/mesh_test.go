@@ -13,20 +13,18 @@ var _ = Describe("Mesh", func() {
 	var mesh shape3d.Mesh
 
 	BeforeEach(func() {
-		mesh = shape3d.Mesh{
-			Triangles: []shape3d.Triangle{
-				{
-					A: dprec.NewVec3(0.0, 0.0, 0.0),
-					B: dprec.NewVec3(6.0, 0.0, 0.0),
-					C: dprec.NewVec3(0.0, 6.0, 0.0),
-				},
-				{
-					A: dprec.NewVec3(0.0, 0.0, 0.0),
-					B: dprec.NewVec3(0.0, 0.0, 6.0),
-					C: dprec.NewVec3(6.0, 0.0, 0.0),
-				},
-			},
-		}
+		mesh = shape3d.NewMesh([]shape3d.Triangle{
+			shape3d.NewTriangle(
+				dprec.NewVec3(0.0, 0.0, 0.0),
+				dprec.NewVec3(6.0, 0.0, 0.0),
+				dprec.NewVec3(0.0, 6.0, 0.0),
+			),
+			shape3d.NewTriangle(
+				dprec.NewVec3(0.0, 0.0, 0.0),
+				dprec.NewVec3(0.0, 0.0, 6.0),
+				dprec.NewVec3(6.0, 0.0, 0.0),
+			),
+		})
 	})
 
 	Describe("TransformedMesh", func() {

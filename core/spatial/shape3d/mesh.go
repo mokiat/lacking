@@ -9,6 +9,14 @@ type Mesh struct {
 	Triangles []Triangle
 }
 
+// NewMesh creates a [Mesh] from the given triangles. The slice is retained
+// rather than copied, so it should not be modified after the call.
+func NewMesh(triangles []Triangle) Mesh {
+	return Mesh{
+		Triangles: triangles,
+	}
+}
+
 // TransformedMesh returns a new [Mesh] whose triangles are the result of applying
 // the specified transform to each triangle of the given mesh. The original mesh
 // is left unmodified.

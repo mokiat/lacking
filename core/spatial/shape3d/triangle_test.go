@@ -15,11 +15,11 @@ var _ = Describe("Triangle", func() {
 	BeforeEach(func() {
 		// A triangle lying in the XY plane, wound counter-clockwise so that its
 		// normal points along the positive Z axis.
-		triangle = shape3d.Triangle{
-			A: dprec.NewVec3(0.0, 0.0, 0.0),
-			B: dprec.NewVec3(4.0, 0.0, 0.0),
-			C: dprec.NewVec3(0.0, 3.0, 0.0),
-		}
+		triangle = shape3d.NewTriangle(
+			dprec.NewVec3(0.0, 0.0, 0.0),
+			dprec.NewVec3(4.0, 0.0, 0.0),
+			dprec.NewVec3(0.0, 3.0, 0.0),
+		)
 	})
 
 	Describe("TransformedTriangle", func() {
@@ -64,11 +64,7 @@ var _ = Describe("Triangle", func() {
 		})
 
 		It("flips direction when the winding is reversed", func() {
-			reversed := shape3d.Triangle{
-				A: triangle.A,
-				B: triangle.C,
-				C: triangle.B,
-			}
+			reversed := shape3d.NewTriangle(triangle.A, triangle.C, triangle.B)
 			Expect(reversed.Normal()).To(dprectest.HaveVec3Coords(0.0, 0.0, -1.0))
 		})
 	})

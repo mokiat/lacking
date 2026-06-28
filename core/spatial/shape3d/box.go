@@ -16,6 +16,20 @@ type Box struct {
 	HalfLength float64
 }
 
+// NewBox creates a [Box] with the given center, orientation and half-extents.
+// The X, Y and Z components of halfSize become the box's half-width,
+// half-height and half-length, measured along its local X, Y and Z axes
+// respectively.
+func NewBox(center dprec.Vec3, rotation Rotation, halfSize dprec.Vec3) Box {
+	return Box{
+		Center:     center,
+		Rotation:   rotation,
+		HalfWidth:  halfSize.X,
+		HalfHeight: halfSize.Y,
+		HalfLength: halfSize.Z,
+	}
+}
+
 // TransformedBox returns a new [Box] that is the result of applying the specified
 // transform to the given box. The center is moved by the transform and the box's
 // orientation is composed with the transform's rotation, while the half-width,

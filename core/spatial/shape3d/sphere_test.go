@@ -15,10 +15,7 @@ var _ = Describe("Sphere", func() {
 		var sphere shape3d.Sphere
 
 		BeforeEach(func() {
-			sphere = shape3d.Sphere{
-				Center: dprec.NewVec3(3.0, 4.0, 5.0),
-				Radius: 2.0,
-			}
+			sphere = shape3d.NewSphere(dprec.NewVec3(3.0, 4.0, 5.0), 2.0)
 		})
 
 		It("moves the center and keeps the radius", func() {
@@ -49,10 +46,7 @@ var _ = Describe("Sphere", func() {
 		var sphere shape3d.Sphere
 
 		BeforeEach(func() {
-			sphere = shape3d.Sphere{
-				Center: dprec.NewVec3(3.0, 4.0, 5.0),
-				Radius: 2.0,
-			}
+			sphere = shape3d.NewSphere(dprec.NewVec3(3.0, 4.0, 5.0), 2.0)
 		})
 
 		It("returns true for the center", func() {
@@ -72,10 +66,7 @@ var _ = Describe("Sphere", func() {
 		})
 
 		It("returns true only for the center when radius is zero", func() {
-			dot := shape3d.Sphere{
-				Center: dprec.NewVec3(1.0, 2.0, 3.0),
-				Radius: 0.0,
-			}
+			dot := shape3d.NewSphere(dprec.NewVec3(1.0, 2.0, 3.0), 0.0)
 			Expect(dot.ContainsPoint(dprec.NewVec3(1.0, 2.0, 3.0))).To(BeTrue())
 			Expect(dot.ContainsPoint(dprec.NewVec3(1.1, 2.0, 3.0))).To(BeFalse())
 		})

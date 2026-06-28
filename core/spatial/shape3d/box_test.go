@@ -13,13 +13,30 @@ var _ = Describe("Box", func() {
 	var box shape3d.Box
 
 	BeforeEach(func() {
-		box = shape3d.Box{
-			Center:     dprec.NewVec3(3.0, 4.0, 5.0),
-			Rotation:   shape3d.IdentityRotation(),
-			HalfWidth:  3.0,
-			HalfHeight: 4.0,
-			HalfLength: 2.0,
-		}
+		box = shape3d.NewBox(
+			dprec.NewVec3(3.0, 4.0, 5.0),
+			shape3d.IdentityRotation(),
+			dprec.NewVec3(3.0, 4.0, 2.0),
+		)
+	})
+
+	Describe("NewBox", func() {
+		It("maps the half-size components to the matching half extents", func() {
+			// Distinct half-size components catch any mix-up between the width,
+			// height and length axes.
+			b := shape3d.NewBox(
+				dprec.NewVec3(1.0, 2.0, 3.0),
+				shape3d.IdentityRotation(),
+				dprec.NewVec3(4.0, 5.0, 6.0),
+			)
+			Expect(b.Center).To(dprectest.HaveVec3Coords(1.0, 2.0, 3.0))
+			Expect(b.Rotation.BasisX).To(dprectest.HaveVec3Coords(1.0, 0.0, 0.0))
+			Expect(b.Rotation.BasisY).To(dprectest.HaveVec3Coords(0.0, 1.0, 0.0))
+			Expect(b.Rotation.BasisZ).To(dprectest.HaveVec3Coords(0.0, 0.0, 1.0))
+			Expect(b.HalfWidth).To(BeNumerically("~", 4.0, 1e-6))
+			Expect(b.HalfHeight).To(BeNumerically("~", 5.0, 1e-6))
+			Expect(b.HalfLength).To(BeNumerically("~", 6.0, 1e-6))
+		})
 	})
 
 	Describe("TransformedBox", func() {
@@ -90,13 +107,11 @@ var _ = Describe("Box", func() {
 		})
 
 		It("returns true only for the center when all dimensions are zero", func() {
-			dot := shape3d.Box{
-				Center:     dprec.NewVec3(1.0, 2.0, 3.0),
-				Rotation:   shape3d.IdentityRotation(),
-				HalfWidth:  0.0,
-				HalfHeight: 0.0,
-				HalfLength: 0.0,
-			}
+			dot := shape3d.NewBox(
+				dprec.NewVec3(1.0, 2.0, 3.0),
+				shape3d.IdentityRotation(),
+				dprec.NewVec3(0.0, 0.0, 0.0),
+			)
 			Expect(dot.ContainsPoint(dprec.NewVec3(1.0, 2.0, 3.0))).To(BeTrue())
 			Expect(dot.ContainsPoint(dprec.NewVec3(1.1, 2.0, 3.0))).To(BeFalse())
 		})
@@ -105,13 +120,11 @@ var _ = Describe("Box", func() {
 			var rotated shape3d.Box
 
 			BeforeEach(func() {
-				rotated = shape3d.Box{
-					Center:     dprec.NewVec3(3.0, 4.0, 5.0),
-					Rotation:   shape3d.RotationFromQuat(dprec.RotationQuat(dprec.Degrees(90.0), dprec.BasisZVec3())),
-					HalfWidth:  3.0,
-					HalfHeight: 4.0,
-					HalfLength: 2.0,
-				}
+				rotated = shape3d.NewBox(
+					dprec.NewVec3(3.0, 4.0, 5.0),
+					shape3d.RotationFromQuat(dprec.RotationQuat(dprec.Degrees(90.0), dprec.BasisZVec3())),
+					dprec.NewVec3(3.0, 4.0, 2.0),
+				)
 			})
 
 			It("contains a point that lies outside the axis-aligned box", func() {

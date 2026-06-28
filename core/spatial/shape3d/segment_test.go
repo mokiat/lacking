@@ -13,10 +13,10 @@ var _ = Describe("Segment", func() {
 	var seg shape3d.Segment
 
 	BeforeEach(func() {
-		seg = shape3d.Segment{
-			A: dprec.NewVec3(0.0, 0.0, 0.0),
-			B: dprec.NewVec3(2.0, 3.0, 6.0),
-		}
+		seg = shape3d.NewSegment(
+			dprec.NewVec3(0.0, 0.0, 0.0),
+			dprec.NewVec3(2.0, 3.0, 6.0),
+		)
 	})
 
 	Describe("TransformedSegment", func() {
@@ -51,10 +51,10 @@ var _ = Describe("Segment", func() {
 		})
 
 		It("returns zero for a zero-length segment", func() {
-			dot := shape3d.Segment{
-				A: dprec.NewVec3(1.0, 2.0, 3.0),
-				B: dprec.NewVec3(1.0, 2.0, 3.0),
-			}
+			dot := shape3d.NewSegment(
+				dprec.NewVec3(1.0, 2.0, 3.0),
+				dprec.NewVec3(1.0, 2.0, 3.0),
+			)
 			Expect(dot.Length()).To(BeNumerically("~", 0.0, 1e-6))
 		})
 	})

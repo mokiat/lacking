@@ -10,6 +10,14 @@ type Sphere struct {
 	Radius float64
 }
 
+// NewSphere creates a [Sphere] with the given center and radius.
+func NewSphere(center dprec.Vec3, radius float64) Sphere {
+	return Sphere{
+		Center: center,
+		Radius: radius,
+	}
+}
+
 // TransformedSphere returns a new [Sphere] that is the result of applying the
 // specified transform to the given sphere. The center is moved by the transform
 // while the radius is left unchanged, since a rigid-body transform preserves
