@@ -35,13 +35,13 @@ type SceneSettings struct {
 }
 
 // Scene represents a 3D scene where objects made of shapes can be added.
-type Scene[T, S any] struct {
+type Scene[O, S any] struct {
 	freeObjectIndices *ds.Stack[uint32]
 	freeSphereIndices *ds.Stack[uint32]
 	freeBoxIndices    *ds.Stack[uint32]
 	freeMeshIndices   *ds.Stack[uint32]
 
-	objects []sceneObject[T]
+	objects []sceneObject[O]
 	spheres []sceneSphereShape[S]
 	boxes   []sceneBoxShape[S]
 	meshes  []sceneMeshShape[S]
@@ -463,7 +463,7 @@ func (s *Scene[O, S]) CollectIntersections(yield ContactCallback) {
 	s.collectIntersections(yield)
 }
 
-// CheckSegmentIntersection returns the first intersection of the segment
+// CheckSegmentIntersection returns the deepest intersection of the segment
 // with the scene.
 func (s *Scene[O, S]) CheckSegmentIntersection(segment shape3d.Segment, filter Filter) (Contact, bool) {
 	var collection DeepestContact
@@ -499,7 +499,7 @@ func (s *Scene[O, S]) CollectSegmentIntersections(segment shape3d.Segment, filte
 	s.collectIntersections(yield)
 }
 
-// CheckSphereIntersection returns the first intersection of the sphere
+// CheckSphereIntersection returns the deepest intersection of the sphere
 // with the scene.
 func (s *Scene[O, S]) CheckSphereIntersection(sphere shape3d.Sphere, filter Filter) (Contact, bool) {
 	var collection DeepestContact
@@ -507,8 +507,8 @@ func (s *Scene[O, S]) CheckSphereIntersection(sphere shape3d.Sphere, filter Filt
 	return collection.Contact()
 }
 
-// CheckSphereIntersection returns the first intersection of the sphere
-// with the scene.
+// CollectSphereIntersections collects all intersections of the sphere
+// with objects in the scene.
 func (s *Scene[O, S]) CollectSphereIntersections(sphere shape3d.Sphere, filter Filter, yield ContactCallback) {
 	s.tempShape = sceneShape[S]{
 		objectIndex: invalidObjectIndex,
@@ -535,7 +535,7 @@ func (s *Scene[O, S]) CollectSphereIntersections(sphere shape3d.Sphere, filter F
 	s.collectIntersections(yield)
 }
 
-// CheckBoxIntersection returns the first intersection of the box
+// CheckBoxIntersection returns the deepest intersection of the box
 // with the scene.
 func (s *Scene[O, S]) CheckBoxIntersection(box shape3d.Box, filter Filter) (Contact, bool) {
 	var collection DeepestContact
@@ -571,7 +571,7 @@ func (s *Scene[O, S]) CollectBoxIntersections(box shape3d.Box, filter Filter, yi
 	s.collectIntersections(yield)
 }
 
-// CheckMeshIntersection returns the first intersection of the mesh
+// CheckMeshIntersection returns the deepest intersection of the mesh
 // with the scene.
 func (s *Scene[O, S]) CheckMeshIntersection(mesh shape3d.Mesh, filter Filter) (Contact, bool) {
 	var collection DeepestContact
