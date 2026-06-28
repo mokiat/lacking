@@ -95,22 +95,26 @@ var _ = Describe("SegmentTriangle", func() {
 			Expect(contact.TargetPoint).To(dprectest.HaveVec3Coords(0.5, 0.5, 0.0))
 			// Normal is the triangle's front-facing normal.
 			Expect(contact.TargetNormal).To(dprectest.HaveVec3Coords(0.0, 0.0, 1.0))
-			// Depth is how far endpoint B has travelled past the plane: 0 - (-1).
-			Expect(contact.Depth).To(BeNumerically("~", 1.0, 1e-6))
+			// The crossing is halfway along the segment, so half of it lies
+			// beyond the contact: Depth = 1 - 0.5.
+			Expect(contact.Depth).To(BeNumerically("~", 0.5, 1e-6))
 		})
 
 		It("computes the crossing point for an angled segment", func() {
 			contact, ok := resolve(newSegment(0.0, 0.0, 1.0, 1.0, 1.0, -1.0), triangle)
 			Expect(ok).To(BeTrue())
 			Expect(contact.TargetPoint).To(dprectest.HaveVec3Coords(0.5, 0.5, 0.0))
-			Expect(contact.Depth).To(BeNumerically("~", 1.0, 1e-6))
+			// Crossing is halfway along the segment.
+			Expect(contact.Depth).To(BeNumerically("~", 0.5, 1e-6))
 		})
 
-		It("scales the depth with how far B reaches past the plane", func() {
+		It("reports the depth as the fraction of the segment beyond the crossing", func() {
+			// The segment spans z from 2 to -3 and crosses z=0 at fraction 0.4
+			// from A, leaving 0.6 of the segment beyond the crossing.
 			contact, ok := resolve(newSegment(0.3, 0.4, 2.0, 0.3, 0.4, -3.0), triangle)
 			Expect(ok).To(BeTrue())
 			Expect(contact.TargetPoint).To(dprectest.HaveVec3Coords(0.3, 0.4, 0.0))
-			Expect(contact.Depth).To(BeNumerically("~", 3.0, 1e-6))
+			Expect(contact.Depth).To(BeNumerically("~", 0.6, 1e-6))
 		})
 
 		It("reports a unit, front-facing normal", func() {
@@ -141,14 +145,15 @@ var _ = Describe("SegmentTriangle", func() {
 			Expect(ok).To(BeFalse())
 		})
 
-		It("brings B onto the surface when it is moved out by Depth along the normal", func() {
-			segment := newSegment(0.5, 0.5, 1.0, 0.5, 0.5, -1.0)
+		It("reports a depth whose share of the segment ends at the contact point", func() {
+			// Depth is the fraction of the segment beyond the contact, so the
+			// portion from the contact to B spans Depth of the segment's length.
+			segment := newSegment(0.3, 0.4, 2.0, 0.3, 0.4, -3.0)
 			contact, ok := resolve(segment, triangle)
 			Expect(ok).To(BeTrue())
 
-			movedB := dprec.Vec3Sum(segment.B, dprec.Vec3Prod(contact.TargetNormal, contact.Depth))
-			// After the move B sits on the triangle's plane (z=0).
-			Expect(movedB.Z).To(BeNumerically("~", 0.0, 1e-6))
+			beyond := dprec.Vec3Diff(segment.B, contact.TargetPoint).Length()
+			Expect(beyond).To(BeNumerically("~", contact.Depth*segment.Length(), 1e-6))
 		})
 	})
 })

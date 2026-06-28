@@ -10,8 +10,12 @@
 //   - Segment resolves treat the segment as a directed, face-culled probe
 //     from A to B. They report the point at which the segment first enters the
 //     shape through a front-facing surface, the outward surface normal there,
-//     and a depth equal to how far the far endpoint B has travelled past that
-//     surface. The matching segment checks are oriented the same way, so a
-//     segment that starts inside the shape or that reaches it only through a
-//     back-facing surface is not considered to intersect it.
+//     and a depth equal to the fraction of the segment lying beyond that entry
+//     point: 1 when the segment enters right at A and 0 when it enters at B.
+//     Expressing the depth as a fraction of the segment keeps it comparable
+//     across shapes, so that DeepestContact selects the earliest entry along
+//     the segment and ShallowestContact the latest. The matching segment checks
+//     are oriented the same way, so a segment that starts inside the shape or
+//     that reaches it only through a back-facing surface is not considered to
+//     intersect it.
 package isec3d

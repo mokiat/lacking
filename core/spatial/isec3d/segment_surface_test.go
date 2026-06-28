@@ -100,8 +100,8 @@ var _ = Describe("SegmentSurface", func() {
 			// Crosses y=0 three quarters of the way from A (y=3) to B (y=-1).
 			Expect(contact.TargetPoint).To(dprectest.HaveVec3Coords(1.0, 0.0, 2.0))
 			Expect(contact.TargetNormal).To(dprectest.HaveVec3Coords(0.0, 1.0, 0.0))
-			// The far endpoint B lies 1 unit behind the surface along the normal.
-			Expect(contact.Depth).To(BeNumerically("~", 1.0, 1e-6))
+			// The crossing is at fraction 0.75, leaving 0.25 of the segment beyond it.
+			Expect(contact.Depth).To(BeNumerically("~", 0.25, 1e-6))
 		})
 
 		It("does not yield a contact for a back-to-front crossing", func() {
@@ -141,7 +141,7 @@ var _ = Describe("SegmentSurface", func() {
 			Expect(contact.Depth).To(BeNumerically("~", 0.0, 1e-6))
 		})
 
-		It("brings the far endpoint onto the surface when moved by Depth", func() {
+		It("reports a depth equal to the fraction of the segment beyond the crossing", func() {
 			seg := shape3d.Segment{
 				A: dprec.NewVec3(0.0, 2.0, 0.0),
 				B: dprec.NewVec3(0.0, -3.0, 0.0),
@@ -150,8 +150,9 @@ var _ = Describe("SegmentSurface", func() {
 			isec3d.ResolveSegmentSurface(seg, surface, sink.AddContact)
 			contact, _ := sink.Contact()
 
-			movedB := dprec.Vec3Sum(seg.B, dprec.Vec3Prod(contact.TargetNormal, contact.Depth))
-			Expect(surface.SignedDistance(movedB)).To(BeNumerically("~", 0.0, 1e-6))
+			// The stretch from the crossing to B spans Depth of the segment.
+			beyond := dprec.Vec3Diff(seg.B, contact.TargetPoint).Length()
+			Expect(beyond).To(BeNumerically("~", contact.Depth*seg.Length(), 1e-6))
 		})
 	})
 })

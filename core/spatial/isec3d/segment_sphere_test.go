@@ -246,7 +246,8 @@ var _ = Describe("SegmentSphere", func() {
 
 	Describe("ResolveSegmentSphere", func() {
 		It("yields a contact where the segment enters the surface", func() {
-			// Enters the -X side at (-1, 0, 0); B sits at the center, 1 past it.
+			// Enters the -X side at (-1, 0, 0), halfway along the segment, so
+			// half of it lies beyond the entry point.
 			seg := shape3d.Segment{
 				A: dprec.NewVec3(-2.0, 0.0, 0.0),
 				B: dprec.NewVec3(0.0, 0.0, 0.0),
@@ -258,7 +259,22 @@ var _ = Describe("SegmentSphere", func() {
 			Expect(ok).To(BeTrue())
 			Expect(contact.TargetPoint).To(dprectest.HaveVec3Coords(-1.0, 0.0, 0.0))
 			Expect(contact.TargetNormal).To(dprectest.HaveVec3Coords(-1.0, 0.0, 0.0))
-			Expect(contact.Depth).To(BeNumerically("~", 1.0, 1e-6))
+			Expect(contact.Depth).To(BeNumerically("~", 0.5, 1e-6))
+		})
+
+		It("yields a zero-depth contact when the far endpoint rests on the surface", func() {
+			// B lies exactly on the surface, so none of the segment is beyond it.
+			seg := shape3d.Segment{
+				A: dprec.NewVec3(-2.0, 0.0, 0.0),
+				B: dprec.NewVec3(-1.0, 0.0, 0.0),
+			}
+			var sink shape3d.LastContact
+			isec3d.ResolveSegmentSphere(seg, sphere, sink.AddContact)
+
+			contact, ok := sink.Contact()
+			Expect(ok).To(BeTrue())
+			Expect(contact.TargetPoint).To(dprectest.HaveVec3Coords(-1.0, 0.0, 0.0))
+			Expect(contact.Depth).To(BeNumerically("~", 0.0, 1e-6))
 		})
 
 		It("does not yield a contact when the segment misses the sphere", func() {
@@ -285,7 +301,9 @@ var _ = Describe("SegmentSphere", func() {
 			Expect(ok).To(BeFalse())
 		})
 
-		It("yields a zero-depth contact for a tangent segment", func() {
+		It("yields a contact at the tangent point", func() {
+			// The segment grazes the top of the sphere at (0, 1, 0), halfway
+			// along, so half of it lies beyond that point.
 			seg := shape3d.Segment{
 				A: dprec.NewVec3(-2.0, 1.0, 0.0),
 				B: dprec.NewVec3(2.0, 1.0, 0.0),
@@ -296,7 +314,7 @@ var _ = Describe("SegmentSphere", func() {
 			contact, ok := sink.Contact()
 			Expect(ok).To(BeTrue())
 			Expect(contact.TargetPoint).To(dprectest.HaveVec3Coords(0.0, 1.0, 0.0))
-			Expect(contact.Depth).To(BeNumerically("~", 0.0, 1e-6))
+			Expect(contact.Depth).To(BeNumerically("~", 0.5, 1e-6))
 		})
 
 		It("reports the entry point on the surface with a unit normal", func() {
@@ -317,7 +335,7 @@ var _ = Describe("SegmentSphere", func() {
 			Expect(contact.TargetNormal.Length()).To(BeNumerically("~", 1.0, 1e-6))
 		})
 
-		It("brings the far endpoint onto the surface when moved by Depth", func() {
+		It("reports a depth equal to the fraction of the segment beyond the entry point", func() {
 			seg := shape3d.Segment{
 				A: dprec.NewVec3(-2.0, 0.0, 0.0),
 				B: dprec.NewVec3(0.0, 0.0, 0.0),
@@ -326,8 +344,9 @@ var _ = Describe("SegmentSphere", func() {
 			isec3d.ResolveSegmentSphere(seg, sphere, sink.AddContact)
 			contact, _ := sink.Contact()
 
-			movedB := dprec.Vec3Sum(seg.B, dprec.Vec3Prod(contact.TargetNormal, contact.Depth))
-			Expect(dprec.Vec3Diff(movedB, sphere.Center).Length()).To(BeNumerically("~", sphere.Radius, 1e-6))
+			// The stretch from the entry point to B spans Depth of the segment.
+			beyond := dprec.Vec3Diff(seg.B, contact.TargetPoint).Length()
+			Expect(beyond).To(BeNumerically("~", contact.Depth*seg.Length(), 1e-6))
 		})
 
 		It("does not yield a contact for a degenerate point segment inside the sphere", func() {

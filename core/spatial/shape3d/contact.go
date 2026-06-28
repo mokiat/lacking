@@ -19,13 +19,22 @@ type Contact struct {
 
 	// Depth is the penetration distance between the two shapes measured along
 	// TargetNormal. It is always non-negative.
+	//
+	// Some producers report Depth in a different unit when a distance is not the
+	// most useful measure. The segment resolves in the isec3d package, for
+	// example, report it as the fraction of the segment lying beyond the contact
+	// point (a unitless value in the range [0, 1]) so that contacts against
+	// different shapes can be compared. For such contacts the distance-based
+	// helpers EvalSourcePoint and Flipped are not meaningful; see their docs.
 	Depth float64
 }
 
 // EvalSourcePoint returns the contact point on the surface of the source shape.
 //
 // It lies a distance of Depth from TargetPoint along the inverse of
-// TargetNormal.
+// TargetNormal. This is only meaningful when Depth is a distance along
+// TargetNormal; it does not apply to contacts whose Depth carries a different
+// unit, such as those produced by the segment resolves in the isec3d package.
 func (c Contact) EvalSourcePoint() dprec.Vec3 {
 	return dprec.Vec3Diff(c.TargetPoint, dprec.Vec3Prod(c.TargetNormal, c.Depth))
 }
@@ -42,7 +51,10 @@ func (c Contact) EvalSourceNormal() dprec.Vec3 {
 // Flipped returns a Contact with the source and target shapes swapped.
 //
 // The resulting contact describes the same intersection from the perspective of
-// the opposite shape.
+// the opposite shape. As it relies on EvalSourcePoint, it is only meaningful
+// when Depth is a distance along TargetNormal, and not for contacts whose Depth
+// carries a different unit, such as those produced by the segment resolves in
+// the isec3d package.
 func (c Contact) Flipped() Contact {
 	return Contact{
 		TargetPoint:  c.EvalSourcePoint(),

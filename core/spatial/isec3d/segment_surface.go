@@ -27,9 +27,10 @@ func CheckSegmentSurface(segment shape3d.Segment, surface shape3d.Surface) bool 
 //
 //   - TargetPoint is the point where the segment crosses the surface.
 //   - TargetNormal is the surface normal.
-//   - Depth is how far the far endpoint B has travelled past the surface along
-//     the normal, so moving the segment by Depth along TargetNormal brings B
-//     back onto the surface.
+//   - Depth is the fraction of the segment lying beyond the entry point, in the
+//     range [0, 1] (1 when the segment enters at A, 0 when it enters at B). It
+//     is comparable across shapes, so DeepestContact selects the earliest entry
+//     along the segment.
 func ResolveSegmentSurface(segment shape3d.Segment, surface shape3d.Surface, yield shape3d.ContactCallback) {
 	distA := surface.SignedDistance(segment.A)
 	distB := surface.SignedDistance(segment.B)
@@ -47,10 +48,10 @@ func ResolveSegmentSurface(segment shape3d.Segment, surface shape3d.Surface, yie
 	}
 
 	contactPoint := dprec.Vec3Lerp(segment.A, segment.B, tContact)
-	depth := dprec.Vec3Dot(dprec.Vec3Diff(contactPoint, segment.B), surface.Normal)
+
 	yield(shape3d.Contact{
 		TargetPoint:  contactPoint,
 		TargetNormal: surface.Normal,
-		Depth:        depth,
+		Depth:        1.0 - tContact,
 	})
 }

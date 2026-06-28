@@ -99,9 +99,10 @@ func CheckSegmentBoxOverlap(segment shape3d.Segment, box shape3d.Box) bool {
 //
 //   - TargetPoint is the point where the segment first crosses into the box.
 //   - TargetNormal is the outward normal of the entered face.
-//   - Depth is how far the far endpoint B has travelled past that face along
-//     the normal, so moving the segment by Depth along TargetNormal brings B
-//     back onto the entry face.
+//   - Depth is the fraction of the segment lying beyond the entry point, in the
+//     range [0, 1] (1 when the segment enters at A, 0 when it enters at B). It
+//     is comparable across shapes, so DeepestContact selects the earliest entry
+//     along the segment.
 func ResolveSegmentBox(segment shape3d.Segment, box shape3d.Box, yield shape3d.ContactCallback) {
 	delta := dprec.Vec3Diff(segment.B, segment.A)
 	relativeStart := dprec.Vec3Diff(segment.A, box.Center)
@@ -137,6 +138,8 @@ func ResolveSegmentBox(segment shape3d.Segment, box shape3d.Box, yield shape3d.C
 		return
 	}
 
+	contactPoint := dprec.Vec3Lerp(segment.A, segment.B, tClose)
+
 	var normal dprec.Vec3
 	switch tClose {
 	case tCloseX:
@@ -149,12 +152,9 @@ func ResolveSegmentBox(segment shape3d.Segment, box shape3d.Box, yield shape3d.C
 		normal = dprec.BasisXVec3() // should not happen, but just in case
 	}
 
-	contactPoint := dprec.Vec3Lerp(segment.A, segment.B, tClose)
-	depth := dprec.Vec3Dot(dprec.Vec3Diff(contactPoint, segment.B), normal)
-
 	yield(shape3d.Contact{
 		TargetPoint:  contactPoint,
 		TargetNormal: normal,
-		Depth:        depth,
+		Depth:        1.0 - tClose,
 	})
 }

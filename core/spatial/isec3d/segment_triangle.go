@@ -55,9 +55,12 @@ func CheckSegmentTriangle(segment shape3d.Segment, triangle shape3d.Triangle) bo
 // to B against the triangle (target), following the same convention as
 // CheckSegmentTriangle. When a front-facing crossing is found within the segment
 // span, the reported contact has its TargetPoint at the point where the segment
-// crosses the triangle's plane, its TargetNormal equal to the triangle's
-// outward (front-facing) normal, and its Depth equal to how far the far
-// endpoint B has travelled past that plane. No contact is yielded otherwise.
+// crosses the triangle's plane and its TargetNormal equal to the triangle's
+// outward (front-facing) normal. Its Depth is the fraction of the segment lying
+// beyond that crossing, in the range [0, 1] (1 when the segment crosses at A, 0
+// when it crosses at B); being a fraction, it is comparable across shapes, so
+// DeepestContact selects the earliest crossing along the segment. No contact is
+// yielded otherwise.
 func ResolveSegmentTriangle(segment shape3d.Segment, triangle shape3d.Triangle, yield shape3d.ContactCallback) {
 	// Using the Moller-Trumbore intersection algorithm.
 	vecAB := dprec.Vec3Diff(triangle.B, triangle.A)
@@ -89,16 +92,14 @@ func ResolveSegmentTriangle(segment shape3d.Segment, triangle shape3d.Triangle, 
 	if t < 0.0 || t > det {
 		return
 	}
+	tNormalized := t / det
 
-	contactPoint := dprec.Vec3Sum(segment.A, dprec.Vec3Prod(dir, t/det))
+	contactPoint := dprec.Vec3Sum(segment.A, dprec.Vec3Prod(dir, tNormalized))
 	normal := dprec.ResizedVec3(dprec.Vec3Cross(vecAB, vecAC), 1.0)
 
 	yield(shape3d.Contact{
 		TargetPoint:  contactPoint,
 		TargetNormal: normal,
-		Depth: dprec.Vec3Dot(
-			dprec.Vec3Diff(contactPoint, segment.B),
-			normal,
-		),
+		Depth:        1.0 - tNormalized,
 	})
 }

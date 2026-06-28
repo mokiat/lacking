@@ -265,7 +265,8 @@ var _ = Describe("SegmentBox", func() {
 
 	Describe("ResolveSegmentBox", func() {
 		It("yields a contact at the entry face", func() {
-			// Enters the top (+Y) face at (0, 1, 0); B sits 0.5 below the surface.
+			// Enters the top (+Y) face at (0, 1, 0). The segment spans y from
+			// 2 to 0.5 and crosses at fraction 2/3, leaving 1/3 beyond it.
 			seg := shape3d.Segment{
 				A: dprec.NewVec3(0.0, 2.0, 0.0),
 				B: dprec.NewVec3(0.0, 0.5, 0.0),
@@ -277,8 +278,7 @@ var _ = Describe("SegmentBox", func() {
 			Expect(ok).To(BeTrue())
 			Expect(contact.TargetNormal).To(dprectest.HaveVec3Coords(0.0, 1.0, 0.0))
 			Expect(contact.TargetPoint).To(dprectest.HaveVec3Coords(0.0, 1.0, 0.0))
-			// B at y=0.5 lies 0.5 below the entry plane y=1.
-			Expect(contact.Depth).To(BeNumerically("~", 0.5, 1e-6))
+			Expect(contact.Depth).To(BeNumerically("~", 1.0/3.0, 1e-6))
 		})
 
 		It("places the contact point where the segment crosses the surface", func() {
@@ -350,7 +350,7 @@ var _ = Describe("SegmentBox", func() {
 			Expect(contact.TargetNormal.Length()).To(BeNumerically("~", 1.0, 1e-6))
 		})
 
-		It("brings the far endpoint onto the entry face when moved by Depth", func() {
+		It("reports a depth equal to the fraction of the segment beyond the entry point", func() {
 			seg := shape3d.Segment{
 				A: dprec.NewVec3(0.0, 2.0, 0.0),
 				B: dprec.NewVec3(0.0, 0.5, 0.0),
@@ -359,9 +359,9 @@ var _ = Describe("SegmentBox", func() {
 			isec3d.ResolveSegmentBox(seg, box, sink.AddContact)
 			contact, _ := sink.Contact()
 
-			// Moving B along the normal by Depth lands it on the entry plane.
-			movedB := dprec.Vec3Sum(seg.B, dprec.Vec3Prod(contact.TargetNormal, contact.Depth))
-			Expect(movedB.Y).To(BeNumerically("~", box.HalfHeight, 1e-6))
+			// The stretch from the entry point to B spans Depth of the segment.
+			beyond := dprec.Vec3Diff(seg.B, contact.TargetPoint).Length()
+			Expect(beyond).To(BeNumerically("~", contact.Depth*seg.Length(), 1e-6))
 		})
 
 		It("resolves against a rotated box in world space", func() {
@@ -374,7 +374,8 @@ var _ = Describe("SegmentBox", func() {
 				HalfHeight: 1.0,
 				HalfLength: 1.0,
 			}
-			// Enters the world +X face at (1, 0, 0); B sits 0.5 inside.
+			// Enters the world +X face at (1, 0, 0). The segment spans x from
+			// 3 to 0.5 and crosses at fraction 0.8, leaving 0.2 beyond it.
 			seg := shape3d.Segment{
 				A: dprec.NewVec3(3.0, 0.0, 0.0),
 				B: dprec.NewVec3(0.5, 0.0, 0.0),
@@ -386,7 +387,7 @@ var _ = Describe("SegmentBox", func() {
 			Expect(ok).To(BeTrue())
 			Expect(contact.TargetNormal).To(dprectest.HaveVec3Coords(1.0, 0.0, 0.0))
 			Expect(contact.TargetPoint).To(dprectest.HaveVec3Coords(1.0, 0.0, 0.0))
-			Expect(contact.Depth).To(BeNumerically("~", 0.5, 1e-6))
+			Expect(contact.Depth).To(BeNumerically("~", 0.2, 1e-6))
 		})
 	})
 })
