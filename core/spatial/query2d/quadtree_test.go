@@ -28,6 +28,12 @@ func aabbFromSquare(x, y, size float64) query2d.AABB {
 	return query2d.NewAABB(x-half, y-half, x+half, y+half)
 }
 
+// areaFromCircle builds an Area covering a circle with the given center
+// coordinates and radius.
+func areaFromCircle(x, y, radius float64) query2d.Area {
+	return query2d.AreaFromCircle(shape2d.NewCircle(dprec.NewVec2(x, y), radius))
+}
+
 var _ = Describe("Quadtree", func() {
 	var (
 		tree *query2d.Quadtree[string]
@@ -55,15 +61,15 @@ var _ = Describe("Quadtree", func() {
 
 		BeforeEach(func() {
 			firstItemID = tree.Insert(
-				query2d.AreaFromCircle(16.0, 16.0, 2.0),
+				areaFromCircle(16.0, 16.0, 2.0),
 				"First",
 			)
 			secondItemID = tree.Insert(
-				query2d.AreaFromCircle(48.0, 48.0, 2.0),
+				areaFromCircle(48.0, 48.0, 2.0),
 				"Second",
 			)
 			thirdItemID = tree.Insert(
-				query2d.AreaFromCircle(-16.0, -48.0, 32.0),
+				areaFromCircle(-16.0, -48.0, 32.0),
 				"Third",
 			)
 		})
@@ -149,7 +155,7 @@ var _ = Describe("Quadtree", func() {
 		When("an item is updated", func() {
 			BeforeEach(func() {
 				tree.Update(secondItemID,
-					query2d.AreaFromCircle(-48.0, 48.0, 2.0),
+					areaFromCircle(-48.0, 48.0, 2.0),
 				)
 			})
 
@@ -206,7 +212,7 @@ var _ = Describe("Quadtree", func() {
 			It("does not return an active item id on new insert", func() {
 				tree.Stats() // forces internal reordering of items (white box testing)
 				secondItemID = tree.Insert(
-					query2d.AreaFromCircle(48.0, 48.0, 2.0),
+					areaFromCircle(48.0, 48.0, 2.0),
 					"Second",
 				)
 				Expect(secondItemID).ToNot(Equal(firstItemID))
@@ -244,7 +250,7 @@ var _ = Describe("Quadtree", func() {
 			// A tiny item placed off-center descends to the deepest allowed
 			// node, allocating one node per depth level along the way.
 			deepItemID = tree.Insert(
-				query2d.AreaFromCircle(60.0, 60.0, 1.0),
+				areaFromCircle(60.0, 60.0, 1.0),
 				"Deep",
 			)
 		})
@@ -272,7 +278,7 @@ var _ = Describe("Quadtree", func() {
 				// A large item can no longer fit in any child, so it lands on
 				// the root and the vacated branch must collapse.
 				tree.Update(deepItemID,
-					query2d.AreaFromCircle(0.0, 0.0, 60.0),
+					areaFromCircle(0.0, 0.0, 60.0),
 				)
 			})
 
@@ -292,11 +298,11 @@ var _ = Describe("Quadtree", func() {
 			// leaves. Removing the far item must collapse its leaf and shrink
 			// the cached bounding boxes of the surviving ancestors.
 			tree.Insert(
-				query2d.AreaFromCircle(16.0, 16.0, 2.0),
+				areaFromCircle(16.0, 16.0, 2.0),
 				"Near",
 			)
 			farItemID = tree.Insert(
-				query2d.AreaFromCircle(60.0, 60.0, 1.0),
+				areaFromCircle(60.0, 60.0, 1.0),
 				"Far",
 			)
 			// Settle the tree so every cached box is clean. Only the collapse
@@ -346,7 +352,7 @@ var _ = Describe("Quadtree", func() {
 			positionFor := func(i int) query2d.Area {
 				x := float64(-60 + (i*7)%120)
 				y := float64(-60 + (i*13)%120)
-				return query2d.AreaFromCircle(x, y, 1.0)
+				return areaFromCircle(x, y, 1.0)
 			}
 
 			// Populate the tree.

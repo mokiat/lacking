@@ -1,5 +1,7 @@
 package query2d
 
+import "github.com/mokiat/lacking/core/spatial/shape2d"
+
 // Area represents the spatial area of an object in the 2D space.
 type Area struct {
 	x float64
@@ -7,23 +9,25 @@ type Area struct {
 	r float64
 }
 
-// AreaFromCircle creates an area from the given center coordinates and radius.
-func AreaFromCircle(x, y, r float64) Area {
+// AreaFromCircle creates an [Area] that covers the given circle.
+func AreaFromCircle(circle shape2d.Circle) Area {
 	return Area{
-		x: x,
-		y: y,
-		r: r,
+		x: circle.Center.X,
+		y: circle.Center.Y,
+		r: circle.Radius,
 	}
 }
 
-// AreaFromRectangle creates an area from the given center coordinates and size,
-// where the size is the width and height of the rectangular area.
-func AreaFromRectangle(x, y, width, height float64) Area {
-	halfWidth := width * 0.5
-	halfHeight := height * 0.5
+// AreaFromRectangle creates an [Area] that covers the given rectangle.
+//
+// The area is a circle centered on the rectangle, with a radius equal to the
+// larger of the rectangle's half-width and half-height. This covers the
+// rectangle along its shorter axis but not necessarily its corners; it is a
+// conservative bound for broad-phase queries rather than an exact fit.
+func AreaFromRectangle(rect shape2d.Rectangle) Area {
 	return Area{
-		x: x,
-		y: y,
-		r: max(halfWidth, halfHeight),
+		x: rect.Center.X,
+		y: rect.Center.Y,
+		r: max(rect.HalfWidth, rect.HalfHeight),
 	}
 }
