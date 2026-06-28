@@ -45,6 +45,21 @@ func (t Triangle) Centroid() dprec.Vec3 {
 	}
 }
 
+// LengthAB returns the length of the edge from vertex A to vertex B.
+func (t Triangle) LengthAB() float64 {
+	return dprec.Vec3Diff(t.B, t.A).Length()
+}
+
+// LengthBC returns the length of the edge from vertex B to vertex C.
+func (t Triangle) LengthBC() float64 {
+	return dprec.Vec3Diff(t.C, t.B).Length()
+}
+
+// LengthCA returns the length of the edge from vertex C to vertex A.
+func (t Triangle) LengthCA() float64 {
+	return dprec.Vec3Diff(t.A, t.C).Length()
+}
+
 // Normal returns the unit vector that is perpendicular to the triangle's
 // surface. It points to the side from which the vertices appear in
 // counter-clockwise order.
@@ -72,11 +87,11 @@ func (t Triangle) FacesTowards(direction dprec.Vec3) bool {
 // triangle's centroid and fully encompasses the triangle.
 func (t Triangle) BoundingSphere() Sphere {
 	center := t.Centroid()
-	radius := max(
-		dprec.Vec3Diff(t.A, center).Length(),
-		dprec.Vec3Diff(t.B, center).Length(),
-		dprec.Vec3Diff(t.C, center).Length(),
-	)
+	radius := dprec.Sqrt(max(
+		dprec.Vec3Diff(t.A, center).SqrLength(),
+		dprec.Vec3Diff(t.B, center).SqrLength(),
+		dprec.Vec3Diff(t.C, center).SqrLength(),
+	))
 	return Sphere{
 		Center: center,
 		Radius: radius,

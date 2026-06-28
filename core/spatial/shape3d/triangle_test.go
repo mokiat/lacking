@@ -58,6 +58,16 @@ var _ = Describe("Triangle", func() {
 		})
 	})
 
+	Describe("edge lengths", func() {
+		It("returns the length of each edge", func() {
+			// A 3-4-5 triangle: AB along X is 4, the hypotenuse BC is 5, and CA
+			// along Y is 3.
+			Expect(triangle.LengthAB()).To(BeNumerically("~", 4.0, 1e-6))
+			Expect(triangle.LengthBC()).To(BeNumerically("~", 5.0, 1e-6))
+			Expect(triangle.LengthCA()).To(BeNumerically("~", 3.0, 1e-6))
+		})
+	})
+
 	Describe("Normal", func() {
 		It("returns a unit vector facing the side with counter-clockwise winding", func() {
 			Expect(triangle.Normal()).To(dprectest.HaveVec3Coords(0.0, 0.0, 1.0))
