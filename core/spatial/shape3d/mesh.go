@@ -56,9 +56,11 @@ func (m Mesh) BoundingSphere() Sphere {
 	var radius float64
 	for _, triangle := range m.Triangles {
 		radius = max(radius,
-			dprec.Vec3Diff(triangle.A, center).Length(),
-			dprec.Vec3Diff(triangle.B, center).Length(),
-			dprec.Vec3Diff(triangle.C, center).Length(),
+			dprec.Sqrt(max(
+				dprec.Vec3Diff(triangle.A, center).SqrLength(),
+				dprec.Vec3Diff(triangle.B, center).SqrLength(),
+				dprec.Vec3Diff(triangle.C, center).SqrLength(),
+			)),
 		)
 	}
 
