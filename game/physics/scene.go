@@ -657,7 +657,6 @@ func (s *Scene) detectCollisions() {
 
 			solver := s.allocateGroundCollisionSolver()
 			solver.Init(constraint.CollisionState{
-				// TODO: Figure out why source and target are flipped here...
 				BodyNormal:                 intersection.TargetNormal,
 				BodyPoint:                  intersection.EvalSourcePoint(),
 				BodyFrictionCoefficient:    primary.frictionCoefficient,
@@ -686,7 +685,6 @@ func (s *Scene) detectCollisions() {
 
 			solver := s.allocateDualCollisionSolver()
 			solver.Init(constraint.PairCollisionState{
-				// TODO: Figure out why source and target are flipped here...
 				PrimaryNormal:                 intersection.TargetNormal,
 				PrimaryPoint:                  intersection.EvalSourcePoint(),
 				PrimaryFrictionCoefficient:    primary.frictionCoefficient,
