@@ -1,237 +1,40 @@
 package internal
 
-import "github.com/mokiat/gomath/dprec"
-
-// Simplex tracks the evolving GJK simplex (a point or an edge in 2D) and
-// drives the iteration toward determining whether the Minkowski difference
-// contains the origin within the combined skin radius.
 type Simplex struct {
-	remainingiterations uint32
-	sqrSkinRadius       float64
-
-	points          [2]dprec.Vec2
-	pointCount      uint32
-	searchDirection dprec.Vec2
-
-	canProgress   bool
-	touchesOrigin bool
+	Vertices    [3]MinkowskiVertex
+	VertexCount uint32
 }
 
-// NewSimplex creates a [Simplex] with the given iteration budget and combined
-// skin radius of the two shapes being tested.
-func NewSimplex(maxIterations int, skinRadius float64) Simplex {
+func EmptySimplex() Simplex {
+	return Simplex{}
+}
+
+func PointSimplex(point MinkowskiVertex) Simplex {
 	return Simplex{
-		remainingiterations: uint32(maxIterations),
-		sqrSkinRadius:       skinRadius * skinRadius,
-
-		points:          [2]dprec.Vec2{},
-		pointCount:      0,
-		searchDirection: dprec.BasisXVec2(),
-
-		canProgress:   true,
-		touchesOrigin: false,
+		Vertices:    [3]MinkowskiVertex{point},
+		VertexCount: 1,
 	}
 }
 
-// CanProgress reports whether the GJK iteration should continue. When it
-// returns false, the result can be read from OverlapsOrigin.
-func (s *Simplex) CanProgress() bool {
-	return s.canProgress
-}
-
-// Append adds a new Minkowski-difference support point to the simplex and
-// updates the next search direction. dir is the search direction that was used
-// to obtain point. The call may terminate the iteration early if the origin is
-// found to be within skin-radius distance of the simplex, or if the new point
-// cannot advance the simplex toward the origin.
-func (s *Simplex) Append(point, dir dprec.Vec2) {
-	if s.remainingiterations == 0 {
-		s.terminate(false)
-		return
-	}
-	s.remainingiterations--
-
-	switch s.pointCount {
-	case 0:
-		s.appendToEmpty(point)
-	case 1:
-		s.appendToPoint(point, dir)
-	case 2:
-		s.appendToEdge(point, dir)
+func EdgeSimplex(a, b MinkowskiVertex) Simplex {
+	return Simplex{
+		Vertices:    [3]MinkowskiVertex{a, b},
+		VertexCount: 2,
 	}
 }
 
-func (s *Simplex) appendToEmpty(point dprec.Vec2) {
-	// If the first point is already within skin-radius distance of the origin,
-	// then we can immediately conclude that the simplex touches the origin.
-	if point.SqrLength() <= s.sqrSkinRadius {
-		s.terminate(true)
-		return
+func TriangleSimplex(a, b, c MinkowskiVertex) Simplex {
+	return Simplex{
+		Vertices:    [3]MinkowskiVertex{a, b, c},
+		VertexCount: 3,
 	}
-
-	// Append the first point and set the search direction towards the origin.
-	s.points[0] = point
-	s.pointCount++
-	s.searchDirection = dprec.InverseVec2(point)
 }
 
-func (s *Simplex) appendToPoint(point, lastDir dprec.Vec2) {
-	// Check if the new point is at all applicable.
-	if !s.crossedSupportPlane(point, lastDir) {
-		s.terminate(false)
-		return
-	}
-
-	// Check if the new point is within skin-radius distance of the origin, which
-	// would mean that the simplex touches the origin.
-	if point.SqrLength() <= s.sqrSkinRadius {
-		s.terminate(true)
-		return
-	}
-
-	// Append the new point, making an edge.
-	s.points[1] = point
-	s.pointCount++
-
-	// Ensure that the edge is oriented towards the origin. Follow CCW winding convention.
-	norm := transposeVec2(dprec.Vec2Diff(s.points[1], s.points[0]))
-	if dot := dprec.Vec2Dot(norm, point); dot > 0 { // edge normal points away from the origin
-		s.points[0], s.points[1] = s.points[1], s.points[0]
-		norm = dprec.InverseVec2(norm)
-	}
-
-	// Check that the origin is not already within skin-radius distance of the edge, which
-	// would mean that the simplex touches the origin.
-	if originProjectsToEdge(s.points[0], s.points[1]) {
-		if dot := dprec.Vec2Dot(norm, point); dot*dot <= norm.SqrLength()*s.sqrSkinRadius {
-			s.terminate(true)
-			return
+func (s *Simplex) HasVertex(vertex MinkowskiVertex) bool {
+	for i := range s.VertexCount {
+		if vertex.Refs == s.Vertices[i].Refs {
+			return true
 		}
 	}
-
-	// Set the search direction to be perpendicular to the edge, towards the origin.
-	s.searchDirection = norm
-}
-
-func (s *Simplex) appendToEdge(point, lastDir dprec.Vec2) {
-	// Check if the new point is at all applicable.
-	if !s.crossedSupportPlane(point, lastDir) {
-		s.terminate(false)
-		return
-	}
-
-	// Check if the new point is within skin-radius distance of the origin, which
-	// would mean that the simplex touches the origin.
-	if point.SqrLength() <= s.sqrSkinRadius {
-		s.terminate(true)
-		return
-	}
-
-	// Figure out which edge to keep and the new search direction. Follow CCW winding convention.
-	normAC := transposeVec2(dprec.Vec2Diff(point, s.points[0]))
-	normCB := transposeVec2(dprec.Vec2Diff(s.points[1], point))
-
-	dotAC := -dprec.Vec2Dot(normAC, point)
-	dotCB := -dprec.Vec2Dot(normCB, point)
-
-	switch {
-	case dotAC <= 0.0 && dotCB <= 0.0: // origin is within the triangle
-		s.terminate(true)
-		return
-
-	case dotAC > 0.0 && dotCB <= 0.0: // origin is past edge AC
-		// Check if the edge AC is within skin-radius distance of the origin,
-		// which would mean that the simplex touches the origin.
-		if originProjectsToEdge(s.points[0], point) {
-			if dotAC*dotAC <= normAC.SqrLength()*s.sqrSkinRadius {
-				s.terminate(true)
-				return
-			}
-		}
-		// Keep edge AC.
-		s.points[1] = point
-		// Set the search direction to be perpendicular to the edge, towards the origin.
-		s.searchDirection = normAC
-
-	case dotAC <= 0.0 && dotCB > 0.0: // origin is past edge CB
-		// Check if the edge CB is within skin-radius distance of the origin,
-		// which would mean that the simplex touches the origin.
-		if originProjectsToEdge(point, s.points[1]) {
-			if dotCB*dotCB <= normCB.SqrLength()*s.sqrSkinRadius {
-				s.terminate(true)
-				return
-			}
-		}
-		// Keep edge CB.
-		s.points[0] = point
-		// Set the search direction to be perpendicular to the edge, towards the origin.
-		s.searchDirection = normCB
-
-	default: // origin is past both edge lines (the vertex C wedge)
-		// In case of very shallow angles, the origin may be within skin-radius
-		// distance of one of the edges or a point past the edges.
-		projectsAC := originProjectsToEdge(s.points[0], point)
-		if projectsAC && (dotAC*dotAC <= normAC.SqrLength()*s.sqrSkinRadius) {
-			s.terminate(true)
-			return
-		}
-		projectsCB := originProjectsToEdge(point, s.points[1])
-		if projectsCB && (dotCB*dotCB <= normCB.SqrLength()*s.sqrSkinRadius) {
-			s.terminate(true)
-			return
-		}
-		switch {
-		case projectsAC: // keep edge AC and keep searching towards the origin
-			s.points[1] = point
-			s.searchDirection = normAC
-		case projectsCB: // keep edge CB and keep searching towards the origin
-			s.points[0] = point
-			s.searchDirection = normCB
-		default: // the closest feature really is vertex C, already rejected above
-			s.terminate(false)
-			return
-		}
-	}
-}
-
-// OverlapsOrigin reports whether the simplex contains or touches the origin
-// within the skin radius. The result is only meaningful after CanProgress
-// returns false.
-func (s *Simplex) OverlapsOrigin() bool {
-	return s.touchesOrigin
-}
-
-// SearchDirection returns the direction in which the next Minkowski-difference
-// support point should be sought.
-func (s *Simplex) SearchDirection() dprec.Vec2 {
-	return s.searchDirection
-}
-
-// crossedSupportPlane checks if the point is past the plane defined by the
-// origin and the skin radius along the inverse of the last search direction.
-//
-// If the furthers point along the last search direction never even reached
-// anywhere past the plane skin-radius distance away from the origin, then the
-// origin can never be touched by the simplex.
-func (s *Simplex) crossedSupportPlane(point, lastDir dprec.Vec2) bool {
-	dot := dprec.Vec2Dot(point, lastDir)
-	if dot >= 0 {
-		return true // The point is past the plane at the origin so we are good.
-	}
-	return dot*dot <= lastDir.SqrLength()*s.sqrSkinRadius
-}
-
-func (s *Simplex) terminate(success bool) {
-	s.touchesOrigin = success
-	s.canProgress = false
-}
-
-func originProjectsToEdge(start, end dprec.Vec2) bool {
-	edge := dprec.Vec2Diff(end, start)
-	dot := -dprec.Vec2Dot(edge, start)
-	return dot >= 0.0 && dot <= edge.SqrLength()
-}
-
-func transposeVec2(v dprec.Vec2) dprec.Vec2 {
-	return dprec.NewVec2(v.Y, -v.X)
+	return false
 }

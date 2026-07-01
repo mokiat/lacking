@@ -11,6 +11,12 @@ import (
 
 var _ = Describe("Intersect", func() {
 
+	var solver *gjk2d.Solver
+
+	BeforeEach(func() {
+		solver = gjk2d.NewSolver()
+	})
+
 	Describe("circle vs circle", func() {
 		It("returns false when circles are clearly separated", func() {
 			a := gjk2d.ShapeFromCircle(shape2d.Circle{
@@ -21,7 +27,7 @@ var _ = Describe("Intersect", func() {
 				Center: dprec.NewVec2(3.0, 0.0),
 				Radius: 1.0,
 			})
-			Expect(gjk2d.Intersect(a, b)).To(BeFalse())
+			Expect(solver.Intersect(a, b)).To(BeFalse())
 		})
 
 		It("returns true when circles clearly overlap", func() {
@@ -33,7 +39,7 @@ var _ = Describe("Intersect", func() {
 				Center: dprec.NewVec2(1.5, 0.0),
 				Radius: 1.0,
 			})
-			Expect(gjk2d.Intersect(a, b)).To(BeTrue())
+			Expect(solver.Intersect(a, b)).To(BeTrue())
 		})
 
 		It("returns true when one circle contains the other", func() {
@@ -45,7 +51,7 @@ var _ = Describe("Intersect", func() {
 				Center: dprec.NewVec2(0.5, 0.0),
 				Radius: 1.0,
 			})
-			Expect(gjk2d.Intersect(a, b)).To(BeTrue())
+			Expect(solver.Intersect(a, b)).To(BeTrue())
 		})
 
 		It("returns true when circles touch exactly at skin radius boundary", func() {
@@ -57,7 +63,7 @@ var _ = Describe("Intersect", func() {
 				Center: dprec.NewVec2(2.0, 0.0),
 				Radius: 1.0,
 			})
-			Expect(gjk2d.Intersect(a, b)).To(BeTrue())
+			Expect(solver.Intersect(a, b)).To(BeTrue())
 		})
 	})
 
@@ -75,7 +81,7 @@ var _ = Describe("Intersect", func() {
 				HalfWidth:  1.0,
 				HalfHeight: 1.0,
 			})
-			Expect(gjk2d.Intersect(a, b)).To(BeFalse())
+			Expect(solver.Intersect(a, b)).To(BeFalse())
 		})
 
 		It("returns true when rectangles clearly overlap", func() {
@@ -91,7 +97,7 @@ var _ = Describe("Intersect", func() {
 				HalfWidth:  1.0,
 				HalfHeight: 1.0,
 			})
-			Expect(gjk2d.Intersect(a, b)).To(BeTrue())
+			Expect(solver.Intersect(a, b)).To(BeTrue())
 		})
 
 		It("returns true when a corner of one rectangle touches the edge of another", func() {
@@ -108,7 +114,7 @@ var _ = Describe("Intersect", func() {
 				HalfWidth:  1.0,
 				HalfHeight: 1.0,
 			})
-			Expect(gjk2d.Intersect(a, b)).To(BeTrue())
+			Expect(solver.Intersect(a, b)).To(BeTrue())
 		})
 
 		It("returns false when rotated rectangles pass by each other diagonally", func() {
@@ -125,7 +131,7 @@ var _ = Describe("Intersect", func() {
 				HalfWidth:  0.5,
 				HalfHeight: 0.5,
 			})
-			Expect(gjk2d.Intersect(a, b)).To(BeFalse())
+			Expect(solver.Intersect(a, b)).To(BeFalse())
 		})
 	})
 
@@ -141,7 +147,7 @@ var _ = Describe("Intersect", func() {
 				HalfWidth:  1.0,
 				HalfHeight: 1.0,
 			})
-			Expect(gjk2d.Intersect(a, b)).To(BeFalse())
+			Expect(solver.Intersect(a, b)).To(BeFalse())
 		})
 
 		It("returns true when the circle overlaps the rectangle", func() {
@@ -155,7 +161,7 @@ var _ = Describe("Intersect", func() {
 				HalfWidth:  1.0,
 				HalfHeight: 1.0,
 			})
-			Expect(gjk2d.Intersect(a, b)).To(BeTrue())
+			Expect(solver.Intersect(a, b)).To(BeTrue())
 		})
 
 		It("returns true when the circle is fully inside the rectangle", func() {
@@ -169,7 +175,7 @@ var _ = Describe("Intersect", func() {
 				HalfWidth:  1.0,
 				HalfHeight: 1.0,
 			})
-			Expect(gjk2d.Intersect(a, b)).To(BeTrue())
+			Expect(solver.Intersect(a, b)).To(BeTrue())
 		})
 	})
 
@@ -185,7 +191,7 @@ var _ = Describe("Intersect", func() {
 				B:      dprec.NewVec2(1.0, 3.0),
 				Radius: 0.5,
 			})
-			Expect(gjk2d.Intersect(a, b)).To(BeFalse())
+			Expect(solver.Intersect(a, b)).To(BeFalse())
 		})
 
 		It("returns true when capsule end-caps overlap", func() {
@@ -199,7 +205,7 @@ var _ = Describe("Intersect", func() {
 				B:      dprec.NewVec2(1.5, 0.0),
 				Radius: 0.5,
 			})
-			Expect(gjk2d.Intersect(a, b)).To(BeTrue())
+			Expect(solver.Intersect(a, b)).To(BeTrue())
 		})
 
 		It("returns true when perpendicular capsules cross", func() {
@@ -213,7 +219,7 @@ var _ = Describe("Intersect", func() {
 				B:      dprec.NewVec2(0.0, 1.0),
 				Radius: 0.1,
 			})
-			Expect(gjk2d.Intersect(a, b)).To(BeTrue())
+			Expect(solver.Intersect(a, b)).To(BeTrue())
 		})
 	})
 
@@ -224,7 +230,7 @@ var _ = Describe("Intersect", func() {
 				Center: dprec.NewVec2(0.0, 0.0),
 				Radius: 1.0,
 			})
-			Expect(gjk2d.Intersect(a, b)).To(BeFalse())
+			Expect(solver.Intersect(a, b)).To(BeFalse())
 		})
 
 		It("returns false when shape B has no points", func() {

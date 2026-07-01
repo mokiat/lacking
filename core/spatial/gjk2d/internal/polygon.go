@@ -20,15 +20,15 @@ type Polygon struct {
 // Support returns the vertex of the polygon that is furthest along dir in
 // world space. dir is expected to be in world space and does not need to be
 // normalized.
-func (p *Polygon) Support(dir dprec.Vec2) dprec.Vec2 {
+func (p *Polygon) Support(dir dprec.Vec2) (dprec.Vec2, int) {
 	dir = p.InvRotation.Apply(dir)
-	best := p.Points[0]
-	bestDot := dprec.Vec2Dot(best, dir)
-	for _, v := range p.Points[1:] {
+	bestIndex := 0
+	bestDot := dprec.Vec2Dot(p.Points[bestIndex], dir)
+	for i, v := range p.Points[1:] {
 		if dot := dprec.Vec2Dot(v, dir); dot > bestDot {
 			bestDot = dot
-			best = v
+			bestIndex = i + 1
 		}
 	}
-	return p.Rotation.Apply(best)
+	return p.Rotation.Apply(p.Points[bestIndex]), bestIndex
 }
