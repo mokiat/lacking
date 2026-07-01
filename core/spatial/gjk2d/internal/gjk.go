@@ -2,6 +2,14 @@ package internal
 
 import "github.com/mokiat/gomath/dprec"
 
+// GJKSolver implements the GJK algorithm over a [MinkowskiShape]. It answers
+// whether the origin lies inside the shape (containment) and whether the
+// origin lies within the shape's skin radius (overlap).
+//
+// Usage: call [GJKSolver.Reset] with the shape, then call [GJKSolver.Next]
+// repeatedly until it returns false, then inspect [GJKSolver.OverlapsOrigin]
+// and [GJKSolver.ContainsOrigin]. Callers interested only in overlap may
+// stop iterating as soon as OverlapsOrigin returns true.
 type GJKSolver struct {
 	simplex             Simplex
 	searchDirection     dprec.Vec2
@@ -15,6 +23,7 @@ func NewGJKSolver() *GJKSolver {
 	return &GJKSolver{}
 }
 
+// Reset prepares the solver for a new query against the given shape.
 func (s *GJKSolver) Reset(shape *MinkowskiShape) {
 	s.simplex = EmptySimplex()
 	s.searchDirection = dprec.BasisXVec2()
@@ -24,6 +33,9 @@ func (s *GJKSolver) Reset(shape *MinkowskiShape) {
 	s.overlapsOrigin = false
 }
 
+// Next runs a single GJK iteration. It returns false once the algorithm has
+// converged (or the iteration budget is exhausted) and further calls would
+// make no progress.
 func (s *GJKSolver) Next(shape *MinkowskiShape) bool {
 	if s.remainingIterations == 0 {
 		return false
@@ -46,23 +58,24 @@ func (s *GJKSolver) Next(shape *MinkowskiShape) bool {
 	}
 }
 
+// Simplex returns the current simplex. The solver maintains the invariant
+// that the origin lies on the left side of the directed edge from
+// Vertices[0] to Vertices[1], which corresponds to a counter-clockwise
+// winding around the origin.
 func (s *GJKSolver) Simplex() Simplex {
-	// The simplex is always stored in CW order internally, which eases
-	// contruction. Flip it to CCW order for external consumption.
-	return Simplex{
-		Vertices: [3]MinkowskiVertex{
-			s.simplex.Vertices[1],
-			s.simplex.Vertices[0],
-			s.simplex.Vertices[2],
-		},
-		VertexCount: s.simplex.VertexCount,
-	}
+	return s.simplex
 }
 
+// ContainsOrigin reports whether the origin is inside the Minkowski
+// difference core (ignoring the skin radius). The result is only reliable
+// once [GJKSolver.Next] has been iterated until it returned false.
 func (s *GJKSolver) ContainsOrigin() bool {
 	return s.containsOrigin
 }
 
+// OverlapsOrigin reports whether the origin is within skin-radius distance
+// of the Minkowski difference (which includes containment). Once true, it
+// stays true and iteration may be stopped early.
 func (s *GJKSolver) OverlapsOrigin() bool {
 	return s.overlapsOrigin
 }
@@ -113,11 +126,11 @@ func (s *GJKSolver) appendToPoint(vertex MinkowskiVertex) bool {
 	isFacingOrigin := edgeDot < 0
 	if isFacingOrigin {
 		// Configure next iteration.
-		s.simplex = EdgeSimplex(vertB, vertA) // pointing away from origin
+		s.simplex = EdgeSimplex(vertB, vertA) // origin on the left of B->A
 		s.searchDirection = edgeNorm
 	} else {
 		// Configure next iteration.
-		s.simplex = EdgeSimplex(vertA, vertB) // pointing away from origin
+		s.simplex = EdgeSimplex(vertA, vertB) // origin on the left of A->B
 		s.searchDirection = dprec.InverseVec2(edgeNorm)
 	}
 
@@ -166,7 +179,7 @@ func (s *GJKSolver) appendToEdge(vertex MinkowskiVertex) bool {
 		}
 
 		// Configure next iteration.
-		s.simplex = EdgeSimplex(vertC, vertB) // pointing away from origin
+		s.simplex = EdgeSimplex(vertC, vertB) // origin on the left of C->B
 		s.searchDirection = normBC
 		return true
 
@@ -179,7 +192,7 @@ func (s *GJKSolver) appendToEdge(vertex MinkowskiVertex) bool {
 		}
 
 		// Configure next iteration.
-		s.simplex = EdgeSimplex(vertA, vertC) // pointing away from origin
+		s.simplex = EdgeSimplex(vertA, vertC) // origin on the left of A->C
 		s.searchDirection = normCA
 		return true
 
@@ -192,7 +205,7 @@ func (s *GJKSolver) appendToEdge(vertex MinkowskiVertex) bool {
 			}
 
 			// Configure next iteration.
-			s.simplex = EdgeSimplex(vertC, vertB) // pointing away from origin
+			s.simplex = EdgeSimplex(vertC, vertB) // origin on the left of C->B
 			s.searchDirection = normBC
 			return true
 		}
@@ -205,7 +218,7 @@ func (s *GJKSolver) appendToEdge(vertex MinkowskiVertex) bool {
 			}
 
 			// Configure next iteration.
-			s.simplex = EdgeSimplex(vertA, vertC) // pointing away from origin
+			s.simplex = EdgeSimplex(vertA, vertC) // origin on the left of A->C
 			s.searchDirection = normCA
 			return true
 		}
@@ -227,12 +240,13 @@ func (s *GJKSolver) appendToEdge(vertex MinkowskiVertex) bool {
 	}
 }
 
-// crossedSkinPlane checks if the point is past the plane defined by the
-// origin and the skin radius along the inverse of the last search direction.
+// crossedSkinPlane checks if the point is past the plane that lies
+// skin-radius distance behind the origin, opposite the search direction.
 //
-// If the furthers point along the last search direction never even reached
-// anywhere past the plane skin-radius distance away from the origin, then the
-// origin can never be touched by the simplex.
+// The point is the furthest point of the Minkowski difference along the
+// search direction. If even it does not reach that plane, then the whole
+// Minkowski difference is more than skin-radius away from the origin and
+// the query can be answered negatively right away.
 func (s *GJKSolver) crossedSkinPlane(point dprec.Vec2) bool {
 	dot := dprec.Vec2Dot(point, s.searchDirection)
 	if dot >= 0 {
