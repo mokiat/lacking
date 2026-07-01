@@ -165,6 +165,7 @@ func (s *GJKSolver) appendToEdge(vertex MinkowskiVertex) bool {
 
 	switch {
 	case !isBCFacingOrigin && !isCAFacingOrigin:
+		s.simplex = TriangleSimplex(vertA, vertB, vertC)
 		s.containsOrigin = true
 		s.overlapsOrigin = true
 		s.remainingIterations = 0 // ensure we can't be asked to iterate further
