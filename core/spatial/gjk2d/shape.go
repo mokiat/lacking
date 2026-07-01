@@ -25,6 +25,20 @@ type Shape struct {
 	SkinRadius float64
 }
 
+// ShapeFromSegment constructs a [Shape] from a [shape2d.Segment]. The segment is
+// represented as a two-point polygon with no skin radius.
+func ShapeFromSegment(segment shape2d.Segment) Shape {
+	return Shape{
+		Position: dprec.ZeroVec2(),
+		Rotation: shape2d.IdentityRotation(),
+		Points: []dprec.Vec2{
+			segment.A,
+			segment.B,
+		},
+		SkinRadius: 0.0,
+	}
+}
+
 // ShapeFromCircle constructs a [Shape] from a [shape2d.Circle]. The circle is represented
 // as a single central point with a skin radius equal to the circle's radius.
 func ShapeFromCircle(circle shape2d.Circle) Shape {
