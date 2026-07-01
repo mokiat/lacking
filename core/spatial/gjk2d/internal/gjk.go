@@ -61,7 +61,9 @@ func (s *GJKSolver) Next(shape *MinkowskiShape) bool {
 // Simplex returns the current simplex. The solver maintains the invariant
 // that the origin lies on the left side of the directed edge from
 // Vertices[0] to Vertices[1], which corresponds to a counter-clockwise
-// winding around the origin.
+// winding around the origin. In particular, the triangle simplex produced
+// when the origin is contained is wound counter-clockwise and encloses
+// the origin.
 func (s *GJKSolver) Simplex() Simplex {
 	return s.simplex
 }
