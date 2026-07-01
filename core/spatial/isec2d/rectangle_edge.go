@@ -68,6 +68,13 @@ func CheckRectangleEdge(rectangle shape2d.Rectangle, edge shape2d.Edge) bool {
 // and endpoint cases of [ResolveCircleEdge]: TargetNormal is the edge's outward
 // normal when the rectangle overlaps the edge's span, or one of the rectangle's
 // own axes when the rectangle meets the edge near an endpoint.
+//
+// TargetPoint is the spot on the edge that the penetrating feature (a
+// rectangle corner, an edge endpoint, or a face span) touches once the
+// rectangle is moved out by Depth: the center of the region where the edge
+// meets the rectangle at its just-touching position. It is consistent with
+// TargetNormal and Depth, so [shape2d.Contact.EvalSourcePoint] evaluates to
+// the matching point on the rectangle.
 func ResolveRectangleEdge(rectangle shape2d.Rectangle, edge shape2d.Edge, yield shape2d.ContactCallback) {
 	delta := dprec.Vec2Diff(edge.B, edge.A)
 	sqrLength := delta.SqrLength()
@@ -100,12 +107,16 @@ func ResolveRectangleEdge(rectangle shape2d.Rectangle, edge shape2d.Edge, yield 
 	relA := dprec.Vec2Diff(edge.A, rectangle.Center)
 	relB := dprec.Vec2Diff(edge.B, rectangle.Center)
 
-	edgeMinX, edgeMaxX := minMax(dprec.Vec2Dot(axisX, relA), dprec.Vec2Dot(axisX, relB))
+	projAX := dprec.Vec2Dot(axisX, relA)
+	projBX := dprec.Vec2Dot(axisX, relB)
+	edgeMinX, edgeMaxX := minMax(projAX, projBX)
 	penetrationX, signX, ok := axisOverlap(rectangle.HalfWidth, edgeMinX, edgeMaxX)
 	if !ok {
 		return
 	}
-	edgeMinY, edgeMaxY := minMax(dprec.Vec2Dot(axisY, relA), dprec.Vec2Dot(axisY, relB))
+	projAY := dprec.Vec2Dot(axisY, relA)
+	projBY := dprec.Vec2Dot(axisY, relB)
+	edgeMinY, edgeMaxY := minMax(projAY, projBY)
 	penetrationY, signY, ok := axisOverlap(rectangle.HalfHeight, edgeMinY, edgeMaxY)
 	if !ok {
 		return
@@ -124,18 +135,65 @@ func ResolveRectangleEdge(rectangle shape2d.Rectangle, edge shape2d.Edge, yield 
 		contactNormal = dprec.Vec2Prod(axisY, signY)
 	}
 
-	// The contact point is the rectangle center projected onto the edge, clamped
-	// to its span. On the span this is the foot of the perpendicular; near an
-	// endpoint the clamp pins it to that endpoint.
-	span := dprec.Vec2Dot(dprec.Vec2Diff(rectangle.Center, edge.A), tangent)
-	span = min(max(span, 0.0), length)
-	contactPoint := dprec.Vec2Sum(edge.A, dprec.Vec2Prod(tangent, span))
+	// The contact point is the center of the touch region: moving the rectangle
+	// by depth along the normal brings the two shapes to a just-touching
+	// position, and the edge is clipped against the rectangle at that position
+	// (inflated slightly for robustness). Because the point lies on the
+	// translated rectangle, stepping back by Depth along the normal, as
+	// [shape2d.Contact.EvalSourcePoint] does, lands on the original rectangle.
+	touchOffsetX := depth * dprec.Vec2Dot(contactNormal, axisX)
+	touchOffsetY := depth * dprec.Vec2Dot(contactNormal, axisY)
+	inflation := 1e-7 * (1.0 + rectangle.HalfWidth + rectangle.HalfHeight)
+
+	overlapStart, overlapEnd := 0.0, 1.0
+	hasOverlap := true
+	if low, high, ok := slabRange(projAX-touchOffsetX, projBX-projAX, rectangle.HalfWidth+inflation); ok {
+		overlapStart, overlapEnd = max(overlapStart, low), min(overlapEnd, high)
+	} else {
+		hasOverlap = false
+	}
+	if low, high, ok := slabRange(projAY-touchOffsetY, projBY-projAY, rectangle.HalfHeight+inflation); ok {
+		overlapStart, overlapEnd = max(overlapStart, low), min(overlapEnd, high)
+	} else {
+		hasOverlap = false
+	}
+	hasOverlap = hasOverlap && (overlapStart <= overlapEnd)
+
+	var contactPoint dprec.Vec2
+	if hasOverlap {
+		contactPoint = dprec.Vec2Lerp(edge.A, edge.B, (overlapStart+overlapEnd)/2.0)
+	} else {
+		// The clip came up empty (a grazing touch lost to floating point): fall
+		// back to the deepest point of the rectangle, projected onto the edge.
+		support := rectangle.Center
+		support = dprec.Vec2Diff(support, dprec.Vec2Prod(axisX, rectangle.HalfWidth*supportSign(dprec.Vec2Dot(contactNormal, axisX))))
+		support = dprec.Vec2Diff(support, dprec.Vec2Prod(axisY, rectangle.HalfHeight*supportSign(dprec.Vec2Dot(contactNormal, axisY))))
+		projected := dprec.Vec2Sum(support, dprec.Vec2Prod(contactNormal, depth))
+		span := dprec.Vec2Dot(dprec.Vec2Diff(projected, edge.A), tangent)
+		span = min(max(span, 0.0), length)
+		contactPoint = dprec.Vec2Sum(edge.A, dprec.Vec2Prod(tangent, span))
+	}
 
 	yield(shape2d.Contact{
 		TargetPoint:  contactPoint,
 		TargetNormal: contactNormal,
 		Depth:        depth,
 	})
+}
+
+// supportSign returns the sign of the given axis projection, treating
+// near-perpendicular projections as zero so that flat support features (faces)
+// resolve to their midpoint rather than an arbitrary corner.
+func supportSign(projection float64) float64 {
+	const epsilon = 1e-9
+	switch {
+	case projection > epsilon:
+		return 1.0
+	case projection < -epsilon:
+		return -1.0
+	default:
+		return 0.0
+	}
 }
 
 // minMax returns its two arguments ordered as the smaller and the larger.

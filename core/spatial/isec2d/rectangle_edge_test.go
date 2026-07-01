@@ -3,12 +3,23 @@ package isec2d_test
 import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"github.com/onsi/gomega/types"
 
 	"github.com/mokiat/gomath/dprec"
 	"github.com/mokiat/gomath/testing/dprectest"
 	"github.com/mokiat/lacking/core/spatial/isec2d"
 	"github.com/mokiat/lacking/core/spatial/shape2d"
 )
+
+// haveApproxVec2Coords matches a vector against the given coordinates with a
+// tolerance suited to contact points, which are exact only up to the small
+// robustness inflation used when deriving the touch region.
+func haveApproxVec2Coords(x, y float64) types.GomegaMatcher {
+	return SatisfyAll(
+		WithTransform(func(v dprec.Vec2) float64 { return v.X }, BeNumerically("~", x, 1e-6)),
+		WithTransform(func(v dprec.Vec2) float64 { return v.Y }, BeNumerically("~", y, 1e-6)),
+	)
+}
 
 var _ = Describe("RectangleEdge", func() {
 	// An edge running from (0,0) up to (0,4). Its normal is the right-hand
@@ -84,7 +95,7 @@ var _ = Describe("RectangleEdge", func() {
 		It("yields a contact along a rectangle axis near an endpoint", func() {
 			contact, ok := resolve(newRectangle(0.3, 4.4, 0.5, 0.5))
 			Expect(ok).To(BeTrue())
-			Expect(contact.TargetPoint).To(dprectest.HaveVec2Coords(0.0, 4.0))
+			Expect(contact.TargetPoint).To(haveApproxVec2Coords(0.0, 4.0))
 			// Least penetration is along the rectangle's Y axis, sliding it off the
 			// endpoint rather than out along the edge normal.
 			Expect(contact.TargetNormal).To(dprectest.HaveVec2Coords(0.0, 1.0))
@@ -106,6 +117,28 @@ var _ = Describe("RectangleEdge", func() {
 			// The half-diagonal extent along the normal is 0.5*sqrt(2); the center
 			// sits 0.3 in front.
 			Expect(contact.Depth).To(BeNumerically("~", 0.5*dprec.Sqrt(2.0)-0.3, 1e-6))
+		})
+
+		It("places the contact point under a tilted rectangle's penetrating corner", func() {
+			// At 30 degrees the deepest corner is no longer level with the center:
+			// it sits at y = 2 + 0.5*(cos(30)-sin(30)) ~= 2.183. The contact must
+			// land at that corner's projection onto the edge, not below the center.
+			rectangle := shape2d.NewRectangle(
+				dprec.NewVec2(0.3, 2.0),
+				shape2d.RotationFromAngle(dprec.Degrees(30.0)),
+				dprec.NewVec2(0.5, 0.5),
+			)
+			var sink shape2d.LastContact
+			isec2d.ResolveRectangleEdge(rectangle, edge, sink.AddContact)
+			contact, ok := sink.Contact()
+			Expect(ok).To(BeTrue())
+			Expect(contact.TargetNormal).To(dprectest.HaveVec2Coords(1.0, 0.0))
+
+			sin, cos := dprec.Sin(dprec.Degrees(30.0)), dprec.Cos(dprec.Degrees(30.0))
+			Expect(contact.Depth).To(BeNumerically("~", 0.5*(cos+sin)-0.3, 1e-6))
+			Expect(contact.TargetPoint).To(haveApproxVec2Coords(0.0, 2.0+0.5*(cos-sin)))
+			// The source point is the penetrating corner itself.
+			Expect(contact.EvalSourcePoint()).To(haveApproxVec2Coords(0.3-0.5*(cos+sin), 2.0+0.5*(cos-sin)))
 		})
 
 		It("yields a unit normal", func() {
