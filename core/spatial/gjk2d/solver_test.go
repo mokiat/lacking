@@ -10,7 +10,6 @@ import (
 )
 
 var _ = Describe("Intersect", func() {
-
 	var solver *gjk2d.Solver
 
 	BeforeEach(func() {
@@ -239,7 +238,7 @@ var _ = Describe("Intersect", func() {
 				Radius: 1.0,
 			})
 			b := gjk2d.Shape{}
-			Expect(gjk2d.Intersect(a, b)).To(BeFalse())
+			Expect(solver.Intersect(a, b)).To(BeFalse())
 		})
 	})
 
