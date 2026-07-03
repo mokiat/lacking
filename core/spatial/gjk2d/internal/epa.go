@@ -18,6 +18,7 @@ type EPASolver struct {
 	solution            EPASolution
 	skinRadius          float64
 	remainingIterations uint32
+	containsOrigin      bool
 }
 
 // NewEPASolver creates a new [EPASolver] instance.
@@ -39,6 +40,7 @@ func (s *EPASolver) Reset(shape *MinkowskiShape, simplex Simplex, containsOrigin
 	clear(s.polytope)
 	s.skinRadius = shape.SkinRadius
 	s.remainingIterations = uint32(shape.MaxIterations())
+	s.containsOrigin = containsOrigin
 
 	if !containsOrigin {
 		switch simplex.VertexCount {
@@ -117,6 +119,12 @@ func (s *EPASolver) terminatePoint(vertex MinkowskiVertex) {
 // terminateEdge completes the solve with an edge as the closest feature of
 // the Minkowski difference to the origin, falling back to one of its
 // vertices when the origin does not project onto the edge.
+//
+// Both call sites guarantee that the origin lies on the left side of the
+// directed edge from vertexA to vertexB (the [GJKSolver.Simplex] invariant
+// for the non-contained case and the counter-clockwise polytope winding for
+// the contained case), so the right-hand normal of the edge points from the
+// origin toward the edge.
 func (s *EPASolver) terminateEdge(vertexA, vertexB MinkowskiVertex) {
 	s.remainingIterations = 0 // ensure we can't be asked to iterate further
 
@@ -131,33 +139,50 @@ func (s *EPASolver) terminateEdge(vertexA, vertexB MinkowskiVertex) {
 		s.terminatePoint(vertexB)
 	default:
 		// Note: The previous cases will handle a zero length edge.
-		lerp := dot / sqrLength
-		edgePoint := dprec.Vec2Lerp(vertexA.Position, vertexB.Position, lerp)
+		//
+		// Deriving the normal from the edge rather than from the closest
+		// point keeps it stable when the origin lies very close to the edge.
+		normal := dprec.UnitVec2(transposeVec2(edge))
+		distance := dprec.Vec2Dot(normal, vertexA.Position)
+		if !s.containsOrigin {
+			normal = dprec.InverseVec2(normal)
+			distance = -distance
+		}
 		s.solution = EPASolution{
 			VertexA: vertexA,
 			VertexB: vertexB,
-			Normal:  s.pointNormal(edgePoint),
-			Lerp:    lerp,
-			Depth:   s.pointDepth(edgePoint),
+			Normal:  normal,
+			Lerp:    dot / sqrLength,
+			Depth:   s.skinRadius + distance,
 		}
 	}
 }
 
-// pointNormal returns the unit direction from the point toward the origin.
-// An arbitrary fixed direction is returned when the point coincides with
-// the origin.
+// pointNormal returns the separation direction for the given closest point.
+// When the origin is outside the Minkowski difference core, that is the
+// unit direction from the point toward the origin; when the origin is
+// contained, it is the opposite (outward) direction. An arbitrary fixed
+// direction is returned when the point coincides with the origin.
 func (s *EPASolver) pointNormal(point dprec.Vec2) dprec.Vec2 {
 	length := point.Length()
 	if length == 0.0 {
 		return dprec.BasisXVec2()
 	}
+	if s.containsOrigin {
+		return dprec.Vec2Quot(point, length)
+	}
 	return dprec.Vec2Quot(point, -length)
 }
 
-// pointDepth returns the penetration depth for the given closest point,
-// which is the amount by which the combined skin radius exceeds the
-// point's distance to the origin.
+// pointDepth returns the penetration depth for the given closest point.
+// When the origin is outside the Minkowski difference core, that is the
+// amount by which the combined skin radius exceeds the point's distance to
+// the origin; when the origin is contained, the core penetration adds to
+// the skin radius instead.
 func (s *EPASolver) pointDepth(point dprec.Vec2) float64 {
+	if s.containsOrigin {
+		return s.skinRadius + point.Length()
+	}
 	return s.skinRadius - point.Length()
 }
 
@@ -206,9 +231,12 @@ type EPASolution struct {
 	// vertex.
 	VertexA MinkowskiVertex
 	VertexB MinkowskiVertex
-	// Normal is the unit direction from the closest feature of the
-	// Minkowski difference toward the origin. In world space it points from
-	// the target shape toward the source shape.
+	// Normal is the unit direction along which the source shape must be
+	// moved by Depth to separate the shapes. In world space it points from
+	// the target shape toward the source shape. When the origin is outside
+	// the Minkowski difference core it points from the closest feature
+	// toward the origin; when the origin is contained it is the outward
+	// normal of the closest boundary feature.
 	Normal dprec.Vec2
 	// Lerp is the interpolation factor between VertexA and VertexB at which
 	// the closest point to the origin lies.
