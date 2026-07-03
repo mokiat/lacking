@@ -2,6 +2,19 @@ package internal
 
 import "github.com/mokiat/gomath/dprec"
 
+// Implementation note:
+//
+// We are following the standard GJK algorithm by exploring Voronoi regions
+// towards the origin.
+//
+// The only difference is that if we determine that the origin cannot be
+// contained within the Minkowski difference, we continue searching for
+// the closest feature until we find one or we determine that even that
+// is more than skin-radius away from the origin.
+// While searching for such a feature, it is possible to downgrade from
+// an edge simplex to a point simplex, which is not part of the standard GJK
+// algorithm.
+
 // GJKSolver implements the GJK algorithm over a [MinkowskiShape]. It answers
 // whether the origin lies inside the shape (containment) and whether the
 // origin lies within the shape's skin radius (overlap).
@@ -47,7 +60,7 @@ func (s *GJKSolver) Next(shape *MinkowskiShape) bool {
 		return false // the simplex is not growing anymore
 	}
 
-	// NOTE: If we had a triangle simplex, we would have already completed.
+	// Note: If we had a triangle simplex, we would have already completed.
 	switch s.simplex.VertexCount {
 	case 0: // currently empty
 		return s.appendToEmpty(point)
@@ -83,8 +96,9 @@ func (s *GJKSolver) OverlapsOrigin() bool {
 }
 
 func (s *GJKSolver) appendToEmpty(vertex MinkowskiVertex) bool {
-	// Check if the new vertex is within skin-radius distance of the origin.
-	if vertex.Position.SqrLength() <= s.sqrSkinRadius {
+	if s.isWithinSkinRadius(vertex.Position) {
+		// The new point is within skin-radius distance of the origin, which means
+		// that at minimum the two shapes touch at their skin radius.
 		s.overlapsOrigin = true
 	}
 
@@ -96,14 +110,19 @@ func (s *GJKSolver) appendToEmpty(vertex MinkowskiVertex) bool {
 }
 
 func (s *GJKSolver) appendToPoint(vertex MinkowskiVertex) bool {
-	// Check if the new vertex is at all applicable.
 	if !s.crossedSkinPlane(vertex.Position) {
-		s.remainingIterations = 0 // ensure we can't be asked to iterate further
+		// The new vertex is not past the plane that lies skin-radius distance
+		// behind the origin, opposite the search direction.
+		// Not only are we not able to construct a triangle simplex that contains
+		// the origin, but we also won't be able to find a closest feature that is
+		// within skin-radius distance of the origin.
+		s.terminate(false)
 		return false
 	}
 
-	// Check if the new vertex is within skin-radius distance of the origin.
-	if vertex.Position.SqrLength() <= s.sqrSkinRadius {
+	if s.isWithinSkinRadius(vertex.Position) {
+		// The new point is within skin-radius distance of the origin, which means
+		// that at minimum the two shapes touch at their skin radius.
 		s.overlapsOrigin = true
 	}
 
@@ -111,28 +130,38 @@ func (s *GJKSolver) appendToPoint(vertex MinkowskiVertex) bool {
 	vertA := s.simplex.Vertices[0]
 	vertB := vertex
 
-	edgeDir := dprec.Vec2Diff(
-		vertB.Position,
-		vertA.Position,
-	)
+	edgeDir := dprec.Vec2Diff(vertB.Position, vertA.Position)
+
+	isPastOrigin := dprec.Vec2Dot(edgeDir, vertB.Position) > 0
+	if !isPastOrigin {
+		// At this point we know that we cannot construct a triangle simplex that
+		// contains the origin. Additionally, the origin does not project onto the
+		// edge, hence AB is not the closest feature. However, it could be vertex B
+		// or some other edge. We downgrade to a point simplex at B and continue
+		// searching for the closest feature.
+		s.simplex = PointSimplex(vertB)
+		s.searchDirection = dprec.InverseVec2(vertB.Position)
+		return true
+	}
+
 	edgeNorm := transposeVec2(edgeDir)
 	edgeDot := dprec.Vec2Dot(edgeNorm, vertA.Position)
 
-	// Check if the edge is within skin-radius distance of the origin.
-	if originProjectsToEdge(vertA.Position, vertB.Position) {
-		if edgeDot*edgeDot <= edgeNorm.SqrLength()*s.sqrSkinRadius {
-			s.overlapsOrigin = true
-		}
+	isEdgeWithinSkinRadius := edgeDot*edgeDot <= edgeNorm.SqrLength()*s.sqrSkinRadius
+	if isEdgeWithinSkinRadius {
+		// The edge is within skin-radius distance of the origin, which means that at
+		// minimum the two shapes touch at their skin radius.
+		s.overlapsOrigin = true
 	}
 
 	isFacingOrigin := edgeDot < 0
 	if isFacingOrigin {
 		// Configure next iteration.
-		s.simplex = EdgeSimplex(vertB, vertA) // origin on the left of B->A
+		s.simplex = EdgeSimplex(vertB, vertA) // flip the edge so that the origin is behind
 		s.searchDirection = edgeNorm
 	} else {
 		// Configure next iteration.
-		s.simplex = EdgeSimplex(vertA, vertB) // origin on the left of A->B
+		s.simplex = EdgeSimplex(vertA, vertB) // preserve the edge so that the origin is behind
 		s.searchDirection = dprec.InverseVec2(edgeNorm)
 	}
 
@@ -140,14 +169,20 @@ func (s *GJKSolver) appendToPoint(vertex MinkowskiVertex) bool {
 }
 
 func (s *GJKSolver) appendToEdge(vertex MinkowskiVertex) bool {
-	// Check if the new vertex is at all applicable.
 	if !s.crossedSkinPlane(vertex.Position) {
-		s.remainingIterations = 0 // ensure we can't be asked to iterate further
+		// The new vertex is not past the plane that lies skin-radius distance
+		// behind the origin, opposite the search direction.
+		// Not only are we not able to construct a triangle simplex that contains
+		// the origin, but we also won't be able to find a closest feature that is
+		// within skin-radius distance of the origin.
+		s.terminate(false)
 		return false
 	}
 
 	// Check if the new vertex is within skin-radius distance of the origin.
-	if vertex.Position.SqrLength() <= s.sqrSkinRadius {
+	if s.isWithinSkinRadius(vertex.Position) {
+		// The new point is within skin-radius distance of the origin, which means
+		// that at minimum the two shapes touch at their skin radius.
 		s.overlapsOrigin = true
 	}
 
@@ -156,8 +191,26 @@ func (s *GJKSolver) appendToEdge(vertex MinkowskiVertex) bool {
 	vertB := s.simplex.Vertices[1]
 	vertC := vertex
 
-	normBC := transposeVec2(dprec.Vec2Diff(vertC.Position, vertB.Position))
-	normCA := transposeVec2(dprec.Vec2Diff(vertA.Position, vertC.Position))
+	edgeAC := dprec.Vec2Diff(vertC.Position, vertA.Position)
+	edgeBC := dprec.Vec2Diff(vertC.Position, vertB.Position)
+
+	projectsToAC := dprec.Vec2Dot(edgeAC, vertC.Position) > 0
+	projectsToBC := dprec.Vec2Dot(edgeBC, vertC.Position) > 0
+
+	if !projectsToAC && !projectsToBC {
+		// We are in the Voronoi region of C, which means that the origin cannot
+		// be contained by the simplex. Nevertheless, we may still be able to find a
+		// closest feature that is within skin-radius distance of the origin.
+		// However, we can be sure that neither edge BC nor edge AC is the closest.
+		// At best it is vertex C or some other edge. We downgrade to a point
+		// simplex at C and continue searching for the closest feature.
+		s.simplex = PointSimplex(vertC)
+		s.searchDirection = dprec.InverseVec2(vertC.Position)
+		return true
+	}
+
+	normCA := transposeVec2(dprec.InverseVec2(edgeAC))
+	normBC := transposeVec2(edgeBC)
 
 	dotBC := dprec.Vec2Dot(normBC, vertC.Position)
 	dotCA := dprec.Vec2Dot(normCA, vertC.Position)
@@ -166,81 +219,55 @@ func (s *GJKSolver) appendToEdge(vertex MinkowskiVertex) bool {
 	isCAFacingOrigin := dotCA < 0
 
 	switch {
-	case !isBCFacingOrigin && !isCAFacingOrigin:
-		s.simplex = TriangleSimplex(vertA, vertB, vertC)
-		s.containsOrigin = true
-		s.overlapsOrigin = true
-		s.remainingIterations = 0 // ensure we can't be asked to iterate further
-		return false
-
-	case isBCFacingOrigin && !isCAFacingOrigin:
-		// Check if the BC edge is within skin-radius distance of the origin.
-		if originProjectsToEdge(vertB.Position, vertC.Position) {
-			if dotBC*dotBC <= normBC.SqrLength()*s.sqrSkinRadius {
-				s.overlapsOrigin = true
-			}
+	case isBCFacingOrigin && projectsToBC:
+		isEdgeWithinSkinRadius := dotBC*dotBC <= normBC.SqrLength()*s.sqrSkinRadius
+		if isEdgeWithinSkinRadius {
+			// The edge is within skin-radius distance of the origin, which means that at
+			// minimum the two shapes touch at their skin radius.
+			s.overlapsOrigin = true
 		}
 
 		// Configure next iteration.
-		s.simplex = EdgeSimplex(vertC, vertB) // origin on the left of C->B
+		s.simplex = EdgeSimplex(vertC, vertB) // flip the edge so that the origin is behind
 		s.searchDirection = normBC
 		return true
 
-	case isCAFacingOrigin && !isBCFacingOrigin:
-		// Check if the CA edge is within skin-radius distance of the origin.
-		if originProjectsToEdge(vertC.Position, vertA.Position) {
-			if dotCA*dotCA <= normCA.SqrLength()*s.sqrSkinRadius {
-				s.overlapsOrigin = true
-			}
+	case isCAFacingOrigin && projectsToAC:
+		isEdgeWithinSkinRadius := dotCA*dotCA <= normCA.SqrLength()*s.sqrSkinRadius
+		if isEdgeWithinSkinRadius {
+			// The edge is within skin-radius distance of the origin, which means that at
+			// minimum the two shapes touch at their skin radius.
+			s.overlapsOrigin = true
 		}
 
 		// Configure next iteration.
-		s.simplex = EdgeSimplex(vertA, vertC) // origin on the left of A->C
+		s.simplex = EdgeSimplex(vertA, vertC) // preserve the edge so that the origin is behind
 		s.searchDirection = normCA
 		return true
 
+	case !isBCFacingOrigin && !isCAFacingOrigin:
+		s.simplex = TriangleSimplex(vertA, vertB, vertC)
+		s.terminate(true)
+		return false
+
 	default:
-		// Check if the origin is within skin-radius distance of the BC edge.
-		// This can happen if the C angle is larger than 90 degrees.
-		if originProjectsToEdge(vertB.Position, vertC.Position) {
-			if dotBC*dotBC <= normBC.SqrLength()*s.sqrSkinRadius {
-				s.overlapsOrigin = true
-			}
-
-			// Configure next iteration.
-			s.simplex = EdgeSimplex(vertC, vertB) // origin on the left of C->B
-			s.searchDirection = normBC
-			return true
-		}
-
-		// Check if the origin is within skin-radius distance of the CA edge.
-		// This can happen if the C angle is larger than 90 degrees.
-		if originProjectsToEdge(vertC.Position, vertA.Position) {
-			if dotCA*dotCA <= normCA.SqrLength()*s.sqrSkinRadius {
-				s.overlapsOrigin = true
-			}
-
-			// Configure next iteration.
-			s.simplex = EdgeSimplex(vertA, vertC) // origin on the left of A->C
-			s.searchDirection = normCA
-			return true
-		}
-
-		// At this point there is no way that the origin can be contained
-		// by the Minkowski difference. If we know that the origin is within
-		// skin-radius distance of the Minkowski difference, we can stop here.
-		if s.overlapsOrigin {
-			s.remainingIterations = 0 // ensure we can't be asked to iterate further
-			return false
-		}
-
-		// Otherwise we need to continue searching for the closest feature to
-		// the origin. But since we can't construct a triangle simplex, we might
-		// as well make our life easy by continuing from the a point-simplex at C.
+		// Handle precision issues by downgrading to a point simplex at C.
 		s.simplex = PointSimplex(vertC)
 		s.searchDirection = dprec.InverseVec2(vertC.Position)
 		return true
 	}
+}
+
+func (s *GJKSolver) terminate(containsOrigin bool) {
+	s.remainingIterations = 0 // ensure we can't be asked to iterate further
+	if containsOrigin {
+		s.containsOrigin = true
+		s.overlapsOrigin = true
+	}
+}
+
+func (s *GJKSolver) isWithinSkinRadius(point dprec.Vec2) bool {
+	return point.SqrLength() <= s.sqrSkinRadius
 }
 
 // crossedSkinPlane checks if the point is past the plane that lies
