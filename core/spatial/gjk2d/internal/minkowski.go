@@ -17,13 +17,16 @@ type MinkowskiShape struct {
 	SkinRadius float64
 }
 
+// MaxIterations returns an iteration budget that is sufficient for the GJK
+// solver to converge on this shape.
+//
+// The Minkowski difference of two convex polygons has at most m+n distinct
+// support results, so an iteration budget of m+n would suffice if every
+// iteration discovered a new vertex. However, when the solver downgrades
+// the simplex back to a single point, a previously discarded vertex may be
+// revisited, costing an extra iteration. Doubling the budget covers such
+// revisits.
 func (s *MinkowskiShape) MaxIterations() int {
-	// The Minkowski difference of two convex polygons has at most m+n
-	// distinct support results, so an iteration budget of m+n would suffice
-	// if every iteration discovered a new vertex. However, when the solver
-	// collapses the simplex back to a single point (see the vertex-region
-	// case in appendToEdge), a previously discarded vertex may be revisited,
-	// costing an extra iteration. Doubling the budget covers such revisits.
 	return 2 * (len(s.Source.Points) + len(s.Target.Points))
 }
 
@@ -44,8 +47,11 @@ func (s *MinkowskiShape) Support(dir dprec.Vec2) MinkowskiVertex {
 // MinkowskiVertex is a point on the boundary of the Minkowski difference,
 // together with the source and target vertices that produced it.
 type MinkowskiVertex struct {
+	// Position is the location of the vertex within the Minkowski difference.
 	Position dprec.Vec2
-	Refs     RefPair
+	// Refs identifies the source and target polygon vertices that produced
+	// this vertex.
+	Refs RefPair
 }
 
 // RefPair identifies the pair of polygon vertices that produced a Minkowski

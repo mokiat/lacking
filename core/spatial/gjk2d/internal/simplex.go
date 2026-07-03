@@ -1,17 +1,21 @@
 package internal
 
 // Simplex is a simplex (point, edge or triangle) made of vertices of the
-// Minkowski difference. Only the first VertexCount entries of Vertices are
-// meaningful.
+// Minkowski difference.
 type Simplex struct {
-	Vertices    [3]MinkowskiVertex
+	// Vertices holds the simplex vertices. Only the first VertexCount
+	// entries are meaningful.
+	Vertices [3]MinkowskiVertex
+	// VertexCount indicates how many of the entries in Vertices are in use.
 	VertexCount uint32
 }
 
+// EmptySimplex returns a [Simplex] with no vertices.
 func EmptySimplex() Simplex {
 	return Simplex{}
 }
 
+// PointSimplex returns a [Simplex] made of the single specified vertex.
 func PointSimplex(point MinkowskiVertex) Simplex {
 	return Simplex{
 		Vertices:    [3]MinkowskiVertex{point},
@@ -19,6 +23,7 @@ func PointSimplex(point MinkowskiVertex) Simplex {
 	}
 }
 
+// EdgeSimplex returns a [Simplex] made of the two specified vertices.
 func EdgeSimplex(a, b MinkowskiVertex) Simplex {
 	return Simplex{
 		Vertices:    [3]MinkowskiVertex{a, b},
@@ -26,6 +31,7 @@ func EdgeSimplex(a, b MinkowskiVertex) Simplex {
 	}
 }
 
+// TriangleSimplex returns a [Simplex] made of the three specified vertices.
 func TriangleSimplex(a, b, c MinkowskiVertex) Simplex {
 	return Simplex{
 		Vertices:    [3]MinkowskiVertex{a, b, c},

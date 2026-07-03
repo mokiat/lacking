@@ -5,7 +5,7 @@ import (
 	"github.com/mokiat/lacking/core/spatial/shape2d"
 )
 
-// Rotation is an alias for the 2D rotation type from the shape2d package.
+// Rotation is an alias for the 2D rotation type [shape2d.Rotation].
 type Rotation = shape2d.Rotation
 
 // Shape represents a convex polygon with an optional skin radius, used as
@@ -100,4 +100,10 @@ func ShapeFromRectangleRound(rectangle shape2d.Rectangle, radius float64) Shape 
 		},
 		SkinRadius: radius,
 	}
+}
+
+// WSPosition returns the world-space position of the polygon vertex at
+// localIndex, taking the shape's position and rotation into account.
+func (s *Shape) WSPosition(localIndex int) dprec.Vec2 {
+	return dprec.Vec2Sum(s.Position, s.Rotation.Apply(s.Points[localIndex]))
 }

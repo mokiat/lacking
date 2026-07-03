@@ -32,6 +32,7 @@ type GJKSolver struct {
 	overlapsOrigin      bool
 }
 
+// NewGJKSolver creates a new [GJKSolver] instance.
 func NewGJKSolver() *GJKSolver {
 	return &GJKSolver{}
 }
@@ -71,12 +72,12 @@ func (s *GJKSolver) Next(shape *MinkowskiShape) bool {
 	}
 }
 
-// Simplex returns the current simplex. The solver maintains the invariant
-// that the origin lies on the left side of the directed edge from
-// Vertices[0] to Vertices[1], which corresponds to a counter-clockwise
-// winding around the origin. In particular, the triangle simplex produced
-// when the origin is contained is wound counter-clockwise and encloses
-// the origin.
+// Simplex returns the current simplex. For simplexes with at least two
+// vertices, the solver maintains the invariant that the origin lies on the
+// left side of the directed edge from Vertices[0] to Vertices[1], which
+// corresponds to a counter-clockwise winding around the origin. In
+// particular, the triangle simplex produced when the origin is contained
+// is wound counter-clockwise and encloses the origin.
 func (s *GJKSolver) Simplex() Simplex {
 	return s.simplex
 }
@@ -90,11 +91,13 @@ func (s *GJKSolver) ContainsOrigin() bool {
 
 // OverlapsOrigin reports whether the origin is within skin-radius distance
 // of the Minkowski difference (which includes containment). Once true, it
-// stays true and iteration may be stopped early.
+// stays true and iteration may be stopped early. A false result is only
+// reliable once [GJKSolver.Next] has been iterated until it returned false.
 func (s *GJKSolver) OverlapsOrigin() bool {
 	return s.overlapsOrigin
 }
 
+// appendToEmpty seeds the empty simplex with the first support vertex.
 func (s *GJKSolver) appendToEmpty(vertex MinkowskiVertex) bool {
 	if s.isWithinSkinRadius(vertex.Position) {
 		// The new point is within skin-radius distance of the origin, which means
@@ -109,6 +112,9 @@ func (s *GJKSolver) appendToEmpty(vertex MinkowskiVertex) bool {
 	return true
 }
 
+// appendToPoint grows the point simplex into an edge simplex, or replaces
+// it with a point simplex at the new vertex when the origin lies in that
+// vertex's Voronoi region.
 func (s *GJKSolver) appendToPoint(vertex MinkowskiVertex) bool {
 	if !s.crossedSkinPlane(vertex.Position) {
 		// The new vertex is not past the plane that lies skin-radius distance
@@ -168,6 +174,10 @@ func (s *GJKSolver) appendToPoint(vertex MinkowskiVertex) bool {
 	return true
 }
 
+// appendToEdge completes the edge simplex into a triangle simplex when the
+// origin is contained. Otherwise it advances the simplex toward the origin,
+// keeping the edge closest to it, or downgrading to a point simplex at the
+// new vertex when the origin lies in that vertex's Voronoi region.
 func (s *GJKSolver) appendToEdge(vertex MinkowskiVertex) bool {
 	if !s.crossedSkinPlane(vertex.Position) {
 		// The new vertex is not past the plane that lies skin-radius distance
@@ -258,6 +268,8 @@ func (s *GJKSolver) appendToEdge(vertex MinkowskiVertex) bool {
 	}
 }
 
+// terminate prevents any further iteration and records whether the origin
+// was determined to be contained in the Minkowski difference.
 func (s *GJKSolver) terminate(containsOrigin bool) {
 	s.remainingIterations = 0 // ensure we can't be asked to iterate further
 	if containsOrigin {
@@ -266,6 +278,8 @@ func (s *GJKSolver) terminate(containsOrigin bool) {
 	}
 }
 
+// isWithinSkinRadius reports whether the point is within skin-radius
+// distance of the origin.
 func (s *GJKSolver) isWithinSkinRadius(point dprec.Vec2) bool {
 	return point.SqrLength() <= s.sqrSkinRadius
 }

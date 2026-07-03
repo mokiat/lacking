@@ -17,9 +17,9 @@ type Polygon struct {
 	Points []dprec.Vec2
 }
 
-// Support returns the vertex of the polygon that is furthest along dir in
-// world space. dir is expected to be in world space and does not need to be
-// normalized.
+// Support returns the world-space position and the index of the polygon
+// vertex that is furthest along dir. The direction is expected to be in
+// world space and does not need to be normalized.
 func (p *Polygon) Support(dir dprec.Vec2) (dprec.Vec2, int) {
 	dir = p.InvRotation.Apply(dir)
 	bestIndex := 0
