@@ -1,6 +1,8 @@
 package internal
 
 import (
+	"math"
+
 	"github.com/mokiat/gomath/dprec"
 )
 
@@ -55,45 +57,57 @@ func (s *MinkowskiShape) Vertex(refs RefPair) MinkowskiVertex {
 	}
 }
 
-func (s *MinkowskiShape) VertexNormal(vertex MinkowskiVertex) (dprec.Vec2, bool) {
-	otherVertex, ok := s.FindOtherVertex(vertex)
-	if !ok {
-		return dprec.Vec2{}, false
-	}
-
-	for range s.MaxIterations() {
-		dir := transposeVec2(dprec.Vec2Diff(otherVertex.Position, vertex.Position))
-		support := s.Support(dir)
-		if support.Refs == vertex.Refs || support.Refs == otherVertex.Refs {
-			otherVertex = support
-			break
-		}
-		otherVertex = support
-	}
-
-	edge := dprec.Vec2Diff(otherVertex.Position, vertex.Position)
-	return dprec.NormalVec2(edge), true
-}
-
-func (s *MinkowskiShape) FindOtherVertex(vertex MinkowskiVertex) (MinkowskiVertex, bool) {
+// VertexNormal returns an outward unit normal of the Minkowski difference at
+// the given boundary vertex. It is used when the origin coincides with the
+// vertex, where the plain origin-to-vertex direction is undefined.
+//
+// The vertex lies on the boundary of the convex difference, so an outward
+// normal n is any direction along which the vertex is a supporting point,
+// that is dot(n, p - vertex) <= 0 for every other difference vertex p. Such a
+// normal is perpendicular to one of the hull edges incident to the vertex, so
+// we take the right-hand normal of the edge toward each other vertex and keep
+// the one under which the difference protrudes the least. For a genuine hull
+// edge nothing protrudes past it, so that protrusion is (near) zero, which
+// makes the search robust even when several vertices coincide with the origin
+// or lie collinear along the same edge. It returns false only when every
+// other vertex coincides with the given one (a fully degenerate difference).
+func (s *MinkowskiShape) VertexNormal(vertex MinkowskiVertex) dprec.Vec2 {
+	var (
+		bestNormal   = dprec.BasisXVec2()
+		bestProtrude = math.MaxFloat64
+	)
 	for i := range s.Source.Points {
 		for j := range s.Target.Points {
-			refs := RefPair{
-				SourceIndex: i,
-				TargetIndex: j,
-			}
+			refs := RefPair{SourceIndex: i, TargetIndex: j}
 			if refs == vertex.Refs {
 				continue
 			}
-			other := s.Vertex(refs)
-			delta := dprec.Vec2Diff(other.Position, vertex.Position)
-			if delta.SqrLength() < 1e-12 {
-				continue
+			edge := dprec.Vec2Diff(s.Vertex(refs).Position, vertex.Position)
+			if edge.SqrLength() < 1e-12 {
+				continue // coincident vertex yields no usable edge
 			}
-			return s.Vertex(refs), true
+			normal := dprec.UnitVec2(transposeVec2(edge))
+			if protrude := s.maxProtrusion(vertex, normal); protrude < bestProtrude {
+				bestProtrude = protrude
+				bestNormal = normal
+			}
 		}
 	}
-	return MinkowskiVertex{}, false
+	return bestNormal
+}
+
+// maxProtrusion returns the greatest signed distance by which any vertex of
+// the difference extends past the supporting line through vertex along normal.
+// A value at or near zero means normal is an outward normal at vertex.
+func (s *MinkowskiShape) maxProtrusion(vertex MinkowskiVertex, normal dprec.Vec2) float64 {
+	protrusion := 0.0 // the vertex itself lies on the line
+	for i := range s.Source.Points {
+		for j := range s.Target.Points {
+			point := s.Vertex(RefPair{SourceIndex: i, TargetIndex: j}).Position
+			protrusion = max(protrusion, dprec.Vec2Dot(normal, dprec.Vec2Diff(point, vertex.Position)))
+		}
+	}
+	return protrusion
 }
 
 // MinkowskiVertex is a point on the boundary of the Minkowski difference,

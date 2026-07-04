@@ -147,11 +147,7 @@ func (s *EPASolver) terminatePoint(shape *MinkowskiShape, vertex MinkowskiVertex
 	// Handle degenerate cases.
 	var normal dprec.Vec2
 	if vertex.Position.SqrLength() < 1e-12 {
-		var ok bool
-		normal, ok = shape.VertexNormal(vertex)
-		if !ok {
-			normal = dprec.BasisXVec2()
-		}
+		normal = shape.VertexNormal(vertex)
 	} else {
 		normal = dprec.InverseVec2(dprec.UnitVec2(vertex.Position))
 	}
