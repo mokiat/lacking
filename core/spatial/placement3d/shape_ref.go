@@ -14,7 +14,7 @@ func newShapeRef(index int32, isMesh bool) shapeRef {
 	if isMesh {
 		result |= 1
 	}
-	return shapeRef(index)
+	return shapeRef(result)
 }
 
 func (r shapeRef) isMesh() bool {

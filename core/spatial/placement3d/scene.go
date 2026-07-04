@@ -254,21 +254,21 @@ func (s *Scene[O, S]) SetShapeUserData(shapeID ShapeID, userData S) {
 // EachSphere iterates over all sphere shapes in the scene that match the
 // filter and yields them to the provided callback.
 func (s *Scene[O, S]) EachSphere(filter Filter, yield func(shape3d.Sphere) bool) {
-	// TODO: Reconstruct the spheres from the representation. It will need
-	// to keep track of the type of shape it was based on.
-
-	// for index := range uint32(len(s.spheres)) {
-	// 	shape := &s.spheres[index]
-	// 	if shape.spatialID == query3d.InvalidTreeItemID {
-	// 		continue
-	// 	}
-	// 	if !shape.matchesFilter(filter) {
-	// 		continue
-	// 	}
-	// 	if !yield(shape.sphereSolver.wsSphere) {
-	// 		return
-	// 	}
-	// }
+	for index := range s.convexShapes {
+		shape := &s.convexShapes[index]
+		if shape.spatialID == query3d.InvalidTreeItemID {
+			continue
+		}
+		if shape.kind != convexKindSphere {
+			continue
+		}
+		if !shape.matchesFilter(filter) {
+			continue
+		}
+		if !yield(shape.toSphere()) {
+			return
+		}
+	}
 }
 
 // SphereIter returns an iterator over all sphere shapes in the scene that match
@@ -282,21 +282,21 @@ func (s *Scene[O, S]) SphereIter(filter Filter) iter.Seq[shape3d.Sphere] {
 // EachBox iterates over all box shapes in the scene that match the
 // filter and yields them to the provided callback.
 func (s *Scene[O, S]) EachBox(filter Filter, yield func(shape3d.Box) bool) {
-	// TODO: Reconstruct the boxes from the representation. It will need
-	// to keep track of the type of shape it was based on.
-
-	// for index := range uint32(len(s.boxes)) {
-	// 	shape := &s.boxes[index]
-	// 	if shape.spatialID == query3d.InvalidTreeItemID {
-	// 		continue
-	// 	}
-	// 	if !shape.matchesFilter(filter) {
-	// 		continue
-	// 	}
-	// 	if !yield(shape.boxSolver.wsBox) {
-	// 		return
-	// 	}
-	// }
+	for index := range s.convexShapes {
+		shape := &s.convexShapes[index]
+		if shape.spatialID == query3d.InvalidTreeItemID {
+			continue
+		}
+		if shape.kind != convexKindBox {
+			continue
+		}
+		if !shape.matchesFilter(filter) {
+			continue
+		}
+		if !yield(shape.toBox()) {
+			return
+		}
+	}
 }
 
 // BoxIter returns an iterator over all box shapes in the scene that match
@@ -310,21 +310,18 @@ func (s *Scene[O, S]) BoxIter(filter Filter) iter.Seq[shape3d.Box] {
 // EachMesh iterates over all mesh shapes in the scene that match the
 // filter and yields them to the provided callback.
 func (s *Scene[O, S]) EachMesh(filter Filter, yield func(shape3d.Mesh) bool) {
-	// TODO: Reconstruct the meshes from the representation. It will need
-	// to keep track of the type of shape it was based on.
-
-	// for index := range uint32(len(s.meshes)) {
-	// 	shape := &s.meshes[index]
-	// 	if shape.spatialID == query3d.InvalidTreeItemID {
-	// 		continue
-	// 	}
-	// 	if !shape.matchesFilter(filter) {
-	// 		continue
-	// 	}
-	// 	if !yield(shape.meshSolver.wsMesh) {
-	// 		return
-	// 	}
-	// }
+	for index := range s.meshShapes {
+		shape := &s.meshShapes[index]
+		if shape.spatialID == query3d.InvalidTreeItemID {
+			continue
+		}
+		if !shape.matchesFilter(filter) {
+			continue
+		}
+		if !yield(shape3d.NewMesh(shape.wsTriangles)) {
+			return
+		}
+	}
 }
 
 // MeshIter returns an iterator over all mesh shapes in the scene that match
