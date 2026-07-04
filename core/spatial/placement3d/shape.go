@@ -1,14 +1,9 @@
 package placement3d
 
 import (
-	"fmt"
-
 	"github.com/mokiat/gog/opt"
-	"github.com/mokiat/lacking/core/spatial/query3d"
+	"github.com/mokiat/lacking/core/spatial/shape3d"
 )
-
-// InvalidShapeID indicates a shape that can never be part of the scene.
-const InvalidShapeID = ShapeID(invalidShapeRef)
 
 // ShapeID is a reference to a shape in the scene.
 type ShapeID shapeRef
@@ -30,122 +25,32 @@ type ShapeInfo[S any] struct {
 	UserData S
 }
 
-type sceneShape[S any] struct {
-	objectIndex uint32
-	nextShape   shapeRef
+// SphereInfo contains the information needed to create a sphere shape.
+type SphereInfo[S any] struct {
 
-	spatialID query3d.TreeItemID
-	static    bool
+	// ShapeInfo contains general shape information.
+	ShapeInfo[S]
 
-	rejectGroup uint32
-	sourceMask  uint32
-	targetMask  uint32
-
-	userData S
+	// Sphere contains the sphere information.
+	Sphere shape3d.Sphere
 }
 
-func (s *sceneShape[S]) matchesFilter(filter Filter) bool {
-	if s.static && filter.SkipStatic {
-		return false
-	}
-	if !s.static && filter.SkipDynamic {
-		return false
-	}
-	if mask, ok := filter.Mask.Unwrap(); ok {
-		if (s.sourceMask & mask) == 0 {
-			return false
-		}
-	}
-	return true
+// BoxInfo contains the information needed to create a box shape.
+type BoxInfo[S any] struct {
+
+	// ShapeInfo contains general shape information.
+	ShapeInfo[S]
+
+	// Box contains the box information.
+	Box shape3d.Box
 }
 
-func shapesCanIntersect[S any](a, b *sceneShape[S]) bool {
-	if a.objectIndex == b.objectIndex {
-		return false
-	}
-	if !a.static && !b.static && a.objectIndex >= b.objectIndex {
-		return false // prevent double checks for dynamic shapes
-	}
-	if a.rejectGroup != 0 && (a.rejectGroup == b.rejectGroup) {
-		return false
-	}
-	if ((a.sourceMask & b.targetMask) == 0) && ((a.targetMask & b.sourceMask) == 0) {
-		return false
-	}
-	return true
-}
+// MeshInfo contains the information needed to create a mesh shape.
+type MeshInfo[S any] struct {
 
-const (
-	shapeKindNone shapeKind = iota
-	shapeKindSegment
-	shapeKindSphere
-	shapeKindBox
-	shapeKindMesh
-)
+	// ShapeInfo contains general shape information.
+	ShapeInfo[S]
 
-type shapeKind uint8
-
-func (k shapeKind) String() string {
-	switch k {
-	case shapeKindNone:
-		return "None"
-	case shapeKindSegment:
-		return "Segment"
-	case shapeKindSphere:
-		return "Sphere"
-	case shapeKindBox:
-		return "Box"
-	case shapeKindMesh:
-		return "Mesh"
-	default:
-		return "Unknown"
-	}
-}
-
-const invalidShapeRef = shapeRef(0) // has none shape kind
-
-const tempShapeIndex = uint32(0xFFFFFFE) // reserved index for temporary shapes
-
-func newShapeRef(kind shapeKind, index uint32) shapeRef {
-	return shapeRef((index << 4) | (uint32(kind) & 0b1111))
-}
-
-func newTempShapeRef(kind shapeKind) shapeRef {
-	return newShapeRef(kind, tempShapeIndex)
-}
-
-type shapeRef uint32
-
-func (r shapeRef) String() string {
-	return fmt.Sprintf("%s:%d", r.kind(), r.index())
-}
-
-func (r shapeRef) index() uint32 {
-	return uint32(r) >> 4
-}
-
-func (r shapeRef) kind() shapeKind {
-	return shapeKind(r & 0b1111)
-}
-
-func (r shapeRef) isTemporary() bool {
-	return r.index() == tempShapeIndex
-}
-
-func newShapeRefPair(source, target shapeRef) shapeRefPair {
-	return shapeRefPair(uint64(source)<<32 | uint64(target))
-}
-
-type shapeRefPair uint64
-
-func (p shapeRefPair) flipped() shapeRefPair {
-	return newShapeRefPair(p.target(), p.source())
-}
-
-func (p shapeRefPair) source() shapeRef {
-	return shapeRef(uint32(p >> 32))
-}
-
-func (p shapeRefPair) target() shapeRef {
-	return shapeRef(uint32(p & 0xFFFFFFFF))
+	// Mesh contains the mesh information.
+	Mesh shape3d.Mesh
 }

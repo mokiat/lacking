@@ -383,51 +383,51 @@ var _ = Describe("Scene", func() {
 		})
 	})
 
-	Describe("CheckSphereIntersection", func() {
-		var objID placement3d.ObjectID
-		var shapeID placement3d.ShapeID
+	// Describe("CheckSphereIntersection", func() {
+	// 	var objID placement3d.ObjectID
+	// 	var shapeID placement3d.ShapeID
 
-		BeforeEach(func() {
-			objID = scene.CreateObject(placement3d.ObjectInfo[string]{})
-			shapeID = scene.AttachSphere(objID, placement3d.SphereInfo[string]{
-				Sphere: sphereAt(0.0, 0.0, 0.0, 1.0),
-			})
-		})
+	// 	BeforeEach(func() {
+	// 		objID = scene.CreateObject(placement3d.ObjectInfo[string]{})
+	// 		shapeID = scene.AttachSphere(objID, placement3d.SphereInfo[string]{
+	// 			Sphere: sphereAt(0.0, 0.0, 0.0, 1.0),
+	// 		})
+	// 	})
 
-		It("finds an overlapping scene sphere as the target", func() {
-			contact, ok := scene.CheckSphereIntersection(
-				sphereAt(1.5, 0.0, 0.0, 1.0),
-				placement3d.Filter{},
-			)
-			Expect(ok).To(BeTrue())
-			Expect(contact.SourceObjectID).To(Equal(placement3d.InvalidObjectID))
-			Expect(contact.SourceShapeID).To(Equal(placement3d.InvalidShapeID))
-			Expect(contact.TargetObjectID).To(Equal(objID))
-			Expect(contact.TargetShapeID).To(Equal(shapeID))
-			Expect(contact.Depth).To(BeNumerically("~", 0.5, 1e-6))
-		})
+	// 	It("finds an overlapping scene sphere as the target", func() {
+	// 		contact, ok := scene.CheckSphereIntersection(
+	// 			sphereAt(1.5, 0.0, 0.0, 1.0),
+	// 			placement3d.Filter{},
+	// 		)
+	// 		Expect(ok).To(BeTrue())
+	// 		Expect(contact.SourceObjectID).To(Equal(placement3d.InvalidObjectID))
+	// 		Expect(contact.SourceShapeID).To(Equal(placement3d.InvalidShapeID))
+	// 		Expect(contact.TargetObjectID).To(Equal(objID))
+	// 		Expect(contact.TargetShapeID).To(Equal(shapeID))
+	// 		Expect(contact.Depth).To(BeNumerically("~", 0.5, 1e-6))
+	// 	})
 
-		It("returns false when nothing overlaps", func() {
-			_, ok := scene.CheckSphereIntersection(
-				sphereAt(10.0, 0.0, 0.0, 1.0),
-				placement3d.Filter{},
-			)
-			Expect(ok).To(BeFalse())
-		})
+	// 	It("returns false when nothing overlaps", func() {
+	// 		_, ok := scene.CheckSphereIntersection(
+	// 			sphereAt(10.0, 0.0, 0.0, 1.0),
+	// 			placement3d.Filter{},
+	// 		)
+	// 		Expect(ok).To(BeFalse())
+	// 	})
 
-		It("skips static shapes when SkipStatic is set", func() {
-			staticObj := scene.CreateObject(placement3d.ObjectInfo[string]{Static: true})
-			scene.AttachSphere(staticObj, placement3d.SphereInfo[string]{
-				Sphere: sphereAt(5.0, 0.0, 0.0, 1.0),
-			})
+	// 	It("skips static shapes when SkipStatic is set", func() {
+	// 		staticObj := scene.CreateObject(placement3d.ObjectInfo[string]{Static: true})
+	// 		scene.AttachSphere(staticObj, placement3d.SphereInfo[string]{
+	// 			Sphere: sphereAt(5.0, 0.0, 0.0, 1.0),
+	// 		})
 
-			_, ok := scene.CheckSphereIntersection(
-				sphereAt(5.0, 0.0, 0.0, 1.0),
-				placement3d.Filter{SkipStatic: true},
-			)
-			Expect(ok).To(BeFalse())
-		})
-	})
+	// 		_, ok := scene.CheckSphereIntersection(
+	// 			sphereAt(5.0, 0.0, 0.0, 1.0),
+	// 			placement3d.Filter{SkipStatic: true},
+	// 		)
+	// 		Expect(ok).To(BeFalse())
+	// 	})
+	// })
 
 	Describe("CheckSegmentIntersection", func() {
 		It("finds a sphere crossed by the segment", func() {

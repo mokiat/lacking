@@ -10,7 +10,7 @@ import (
 const InvalidObjectID = ObjectID(invalidObjectIndex)
 
 // ObjectID is a reference to an object in the scene.
-type ObjectID uint32
+type ObjectID int32
 
 // ObjectInfo contains the information needed to create an object in a scene.
 type ObjectInfo[O any] struct {
@@ -34,22 +34,13 @@ type ObjectInfo[O any] struct {
 	UserData O
 }
 
-const invalidObjectIndex = uint32(0xFFFFFFFF)
+const invalidObjectIndex = int32(-1)
 
 type sceneObject[O any] struct {
-	transform  shape3d.Transform
-	firstShape shapeRef
-	flags      objectFlags
-	userData   O
+	transform        shape3d.Transform
+	firstConvexShape int32
+	firstMeshShape   int32
+	static           bool
+
+	userData O
 }
-
-func (o *sceneObject[T]) isStatic() bool {
-	return o.flags&objectFlagsStatic != 0
-}
-
-const (
-	objectFlagsNone   objectFlags = 0
-	objectFlagsStatic objectFlags = 1 << iota
-)
-
-type objectFlags uint32
