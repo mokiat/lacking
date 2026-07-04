@@ -204,6 +204,19 @@ func (s *GJKSolver) appendToEdge(vertex MinkowskiVertex) bool {
 	edgeAC := dprec.Vec2Diff(vertC.Position, vertA.Position)
 	edgeBC := dprec.Vec2Diff(vertC.Position, vertB.Position)
 
+	cross := dprec.Vec2Cross(edgeAC, edgeBC)
+	if cross*cross <= dprec.Epsilon*edgeAC.SqrLength()*edgeBC.SqrLength() {
+		// The three vertices are (near) collinear, so the Minkowski difference is
+		// flat here and the support toward the origin did not advance past edge
+		// AB. The origin therefore cannot be strictly contained by the simplex,
+		// and since no progress was made we stop iterating, keeping edge AB as
+		// the closest feature. The comparison is inclusive so that it also
+		// catches a support vertex C that coincides with A or B: the zeroed edge
+		// length makes both sides zero, which a strict comparison would miss.
+		s.terminate(false)
+		return false
+	}
+
 	projectsToAC := dprec.Vec2Dot(edgeAC, vertC.Position) > 0
 	projectsToBC := dprec.Vec2Dot(edgeBC, vertC.Position) > 0
 

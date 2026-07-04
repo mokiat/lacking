@@ -478,10 +478,11 @@ var _ = Describe("GJK", func() {
 
 		// Two parallel, equal-length spines make the Minkowski difference
 		// collapse to a flat horizontal segment (x in [-2,2], y = 0.8). The
-		// origin's closest point is that segment's midpoint (0, 0.8), which is
-		// itself a support vertex of the difference, so the solver correctly
-		// settles on a point simplex rather than an edge, while still
-		// reporting the exact 0.8 distance and the skin overlap.
+		// origin's closest point is that segment's midpoint (0, 0.8), at
+		// distance 0.8, within the combined radius. The collinearity guard
+		// keeps the solver on the flat edge instead of folding it into a
+		// degenerate triangle, so the closest feature is reported as the whole
+		// edge rather than a single point.
 		Specify("parallel capsules overlapping only through their skins", func() {
 			source := fromCapsule(shape2d.Capsule{
 				A:      dprec.NewVec2(-1.0, 0.0),
@@ -498,10 +499,14 @@ var _ = Describe("GJK", func() {
 			// The spines are 0.8 apart, less than the combined radius of 1.0.
 			Expect(solver.ContainsOrigin()).To(BeFalse())
 			Expect(solver.OverlapsOrigin()).To(BeTrue())
-			Expect(solver.Simplex()).To(Equal(internal.PointSimplex(
+			Expect(solver.Simplex()).To(Equal(internal.EdgeSimplex(
 				internal.MinkowskiVertex{
-					Position: dprec.NewVec2(0.0, 0.8),
-					Refs:     internal.RefPair{SourceIndex: 0, TargetIndex: 0},
+					Position: dprec.NewVec2(2.0, 0.8),
+					Refs:     internal.RefPair{SourceIndex: 0, TargetIndex: 1},
+				},
+				internal.MinkowskiVertex{
+					Position: dprec.NewVec2(-2.0, 0.8),
+					Refs:     internal.RefPair{SourceIndex: 1, TargetIndex: 0},
 				},
 			)))
 		})
@@ -556,11 +561,13 @@ var _ = Describe("GJK", func() {
 
 		// A capsule sitting collinear and overlapping another produces a
 		// degenerate, zero-area Minkowski difference: a flat segment through
-		// the origin (x in [-0.5,3.5], y = 0). The solver deliberately treats
-		// the origin as contained so that the downstream EPA can still recover
-		// a separation axis. This pins that behavior; the resulting triangle
-		// simplex is degenerate (all three vertices lie on the x axis).
-		Specify("collinear overlapping capsules are treated as containment", func() {
+		// the origin (x in [-0.5,3.5], y = 0). The collinearity guard detects
+		// that the difference is flat and stops before forming a degenerate
+		// triangle, so the origin is not reported as strictly contained.
+		// Instead the flat segment itself is returned as the closest edge
+		// feature, still through the skin overlap, which lets the downstream
+		// EPA recover a perpendicular separation axis from a well-formed edge.
+		Specify("collinear overlapping capsules resolve to a flat edge feature", func() {
 			source := fromCapsule(shape2d.Capsule{
 				A:      dprec.NewVec2(-1.0, 0.0),
 				B:      dprec.NewVec2(1.0, 0.0),
@@ -573,9 +580,9 @@ var _ = Describe("GJK", func() {
 			})
 			runSolver(source, target)
 
-			Expect(solver.ContainsOrigin()).To(BeTrue())
+			Expect(solver.ContainsOrigin()).To(BeFalse())
 			Expect(solver.OverlapsOrigin()).To(BeTrue())
-			Expect(solver.Simplex()).To(Equal(internal.TriangleSimplex(
+			Expect(solver.Simplex()).To(Equal(internal.EdgeSimplex(
 				internal.MinkowskiVertex{
 					Position: dprec.NewVec2(3.5, 0.0),
 					Refs:     internal.RefPair{SourceIndex: 0, TargetIndex: 1},
@@ -583,10 +590,6 @@ var _ = Describe("GJK", func() {
 				internal.MinkowskiVertex{
 					Position: dprec.NewVec2(-0.5, 0.0),
 					Refs:     internal.RefPair{SourceIndex: 1, TargetIndex: 0},
-				},
-				internal.MinkowskiVertex{
-					Position: dprec.NewVec2(1.5, 0.0),
-					Refs:     internal.RefPair{SourceIndex: 0, TargetIndex: 0},
 				},
 			)))
 		})
