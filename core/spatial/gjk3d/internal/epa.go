@@ -464,10 +464,16 @@ type PolytopeTriangleID [3]RefPair
 // outward (away from the enclosed origin) and Distance is the perpendicular
 // distance from the origin to the face plane.
 type PolytopeTriangle struct {
-	VertexA  MinkowskiVertex
-	VertexB  MinkowskiVertex
-	VertexC  MinkowskiVertex
-	Normal   dprec.Vec3
+	// VertexA is the first vertex of the face, in outward winding order.
+	VertexA MinkowskiVertex
+	// VertexB is the second vertex of the face, in outward winding order.
+	VertexB MinkowskiVertex
+	// VertexC is the third vertex of the face, in outward winding order.
+	VertexC MinkowskiVertex
+	// Normal is the outward unit normal of the face, pointing away from the
+	// enclosed origin.
+	Normal dprec.Vec3
+	// Distance is the perpendicular distance from the origin to the face plane.
 	Distance float64
 }
 
@@ -478,6 +484,8 @@ type polytopeEdgeID [2]RefPair
 // polytopeEdge is a directed edge used while computing the horizon of the
 // polytope region that is visible from a support point.
 type polytopeEdge struct {
+	// VertexA is the origin endpoint of the directed edge.
 	VertexA MinkowskiVertex
+	// VertexB is the destination endpoint of the directed edge.
 	VertexB MinkowskiVertex
 }

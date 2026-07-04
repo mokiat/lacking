@@ -162,6 +162,9 @@ func (s *EPASolver) terminatePoint(shape *MinkowskiShape, vertex MinkowskiVertex
 	}
 }
 
+// addPolytopeEdge inserts the edge between vertexA and vertexB into the
+// polytope, precomputing its distance to the origin. Degenerate edges whose
+// endpoints (near) coincide are ignored.
 func (s *EPASolver) addPolytopeEdge(vertexA, vertexB MinkowskiVertex) {
 	pointA := vertexA.Position
 	pointB := vertexB.Position
@@ -192,6 +195,9 @@ func (s *EPASolver) addPolytopeEdge(vertexA, vertexB MinkowskiVertex) {
 	}
 }
 
+// polytopeContainsVertex reports whether any edge of the polytope already has
+// an endpoint identified by the given refs, indicating that the support point
+// has been seen before and the polytope can no longer expand.
 func (s *EPASolver) polytopeContainsVertex(refs RefPair) bool {
 	for _, edge := range s.polytope {
 		if edge.VertexA.Refs == refs || edge.VertexB.Refs == refs {
@@ -203,9 +209,11 @@ func (s *EPASolver) polytopeContainsVertex(refs RefPair) bool {
 
 // EPASolution describes how two overlapping shapes can be separated.
 type EPASolution struct {
-	// TODO: godoc
+	// VertexA is the first endpoint of the closest feature of the Minkowski
+	// difference to the origin. For a point feature it equals VertexB.
 	VertexA MinkowskiVertex
-	// TODO: godoc
+	// VertexB is the second endpoint of the closest feature of the Minkowski
+	// difference to the origin. For a point feature it equals VertexA.
 	VertexB MinkowskiVertex
 	// Normal is the unit direction along which the source shape must be
 	// moved by Depth to separate the shapes. In world space it points from
@@ -222,10 +230,19 @@ type EPASolution struct {
 	Depth float64
 }
 
+// PolytopeEdgeID uniquely identifies a polytope edge by the ref pairs of its
+// two endpoints, allowing edges to be stored and looked up in a map without
+// float-based comparisons.
 type PolytopeEdgeID [2]RefPair
 
+// PolytopeEdge is an edge of the expanding polytope maintained by the EPA
+// solver, cached together with its distance to the origin.
 type PolytopeEdge struct {
-	VertexA  MinkowskiVertex
-	VertexB  MinkowskiVertex
+	// VertexA is the first endpoint of the edge.
+	VertexA MinkowskiVertex
+	// VertexB is the second endpoint of the edge.
+	VertexB MinkowskiVertex
+	// Distance is the distance from the origin to the closest point on the
+	// edge.
 	Distance float64
 }

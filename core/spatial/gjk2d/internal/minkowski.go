@@ -48,6 +48,8 @@ func (s *MinkowskiShape) Support(dir dprec.Vec2) MinkowskiVertex {
 	}
 }
 
+// Vertex returns the Minkowski difference vertex produced by the source and
+// target polygon vertices identified by refs.
 func (s *MinkowskiShape) Vertex(refs RefPair) MinkowskiVertex {
 	sourcePosition := s.Source.WSPosition(refs.SourceIndex)
 	targetPosition := s.Target.WSPosition(refs.TargetIndex)
@@ -69,8 +71,9 @@ func (s *MinkowskiShape) Vertex(refs RefPair) MinkowskiVertex {
 // the one under which the difference protrudes the least. For a genuine hull
 // edge nothing protrudes past it, so that protrusion is (near) zero, which
 // makes the search robust even when several vertices coincide with the origin
-// or lie collinear along the same edge. It returns false only when every
-// other vertex coincides with the given one (a fully degenerate difference).
+// or lie collinear along the same edge. It falls back to the X basis vector
+// only when every other vertex coincides with the given one (a fully
+// degenerate difference).
 func (s *MinkowskiShape) VertexNormal(vertex MinkowskiVertex) dprec.Vec2 {
 	var (
 		bestNormal   = dprec.BasisXVec2()

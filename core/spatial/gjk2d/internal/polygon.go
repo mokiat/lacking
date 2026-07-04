@@ -33,6 +33,9 @@ func (p *Polygon) Support(dir dprec.Vec2) (dprec.Vec2, int) {
 	return p.Rotation.Apply(p.Points[bestIndex]), bestIndex
 }
 
+// WSPosition returns the world-space position of the polygon vertex at index,
+// applying the polygon's rotation. No translation is added, since the
+// polygon's position is folded into the [MinkowskiShape] offset instead.
 func (p *Polygon) WSPosition(index int) dprec.Vec2 {
 	return p.Rotation.Apply(p.Points[index])
 }
