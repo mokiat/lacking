@@ -1,3 +1,3 @@
-// Package internal contains the GJK solver implementation that backs the
-// public gjk3d API.
+// Package internal contains the GJK and EPA solver implementations that back
+// the public gjk3d API.
 package internal

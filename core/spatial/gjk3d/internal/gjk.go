@@ -1,6 +1,10 @@
 package internal
 
-import "github.com/mokiat/gomath/dprec"
+import (
+	"math"
+
+	"github.com/mokiat/gomath/dprec"
+)
 
 // Implementation note:
 //
@@ -30,6 +34,17 @@ type GJKSolver struct {
 	remainingIterations uint32
 	containsOrigin      bool
 	overlapsOrigin      bool
+
+	// closestSimplex tracks the simplex whose closest point to the origin is
+	// nearest, across all iterations. The custom closest-feature search can
+	// oscillate between features without the current simplex settling on the
+	// closest one, so the nearest simplex seen is retained and reported for the
+	// non-contained case (see [GJKSolver.Simplex]). This makes the reported
+	// feature robust; in rare grazing configurations the oscillation may never
+	// visit the exact closest feature, in which case the retained simplex is a
+	// very close approximation.
+	closestSimplex     Simplex
+	closestSqrDistance float64
 }
 
 // NewGJKSolver creates a new [GJKSolver] instance.
@@ -45,12 +60,15 @@ func (s *GJKSolver) Reset(shape *MinkowskiShape) {
 	s.remainingIterations = uint32(shape.MaxIterations())
 	s.containsOrigin = false
 	s.overlapsOrigin = false
+	s.closestSimplex = EmptySimplex()
+	s.closestSqrDistance = math.MaxFloat64
 }
 
 // Next runs a single GJK iteration. It returns false once the algorithm has
 // converged (or the iteration budget is exhausted) and further calls would
 // make no progress.
 func (s *GJKSolver) Next(shape *MinkowskiShape) bool {
+	s.recordClosest()
 	if s.remainingIterations == 0 {
 		return false
 	}
@@ -74,14 +92,39 @@ func (s *GJKSolver) Next(shape *MinkowskiShape) bool {
 	}
 }
 
-// Simplex returns the current simplex. For triangle simplexes, the solver
-// maintains the invariant that the normal implied by the vertex order
-// (the cross product of the Vertices[0] to Vertices[1] and Vertices[0] to
-// Vertices[2] edges) points towards the origin. The tetrahedron simplex
-// produced when the origin is contained preserves that order for its first
-// three vertices, with the fourth vertex on the same side as the origin.
+// Simplex returns the terminal simplex of the query. When the origin is
+// contained, this is the tetrahedron (or, when the origin lies exactly on an
+// intermediate triangle, the triangle) that witnesses the containment. When
+// the origin is not contained, it is the point, edge or triangle feature of
+// the Minkowski difference closest to the origin.
+//
+// For triangle simplexes, the solver maintains the invariant that the normal
+// implied by the vertex order (the cross product of the Vertices[0] to
+// Vertices[1] and Vertices[0] to Vertices[2] edges) points towards the origin.
+// The tetrahedron simplex produced when the origin is contained preserves that
+// order for its first three vertices, with the fourth vertex on the same side
+// as the origin.
 func (s *GJKSolver) Simplex() Simplex {
-	return s.simplex
+	if s.containsOrigin {
+		return s.simplex
+	}
+	// The closest-feature search may not leave the current simplex on the
+	// closest feature, so return the nearest simplex seen, including the
+	// current one.
+	if simplexSqrDistance(s.simplex) < s.closestSqrDistance {
+		return s.simplex
+	}
+	return s.closestSimplex
+}
+
+// recordClosest updates the nearest simplex seen so far with the current
+// simplex, so that the non-contained case can report the closest feature even
+// when the closest-feature search oscillates.
+func (s *GJKSolver) recordClosest() {
+	if distance := simplexSqrDistance(s.simplex); distance < s.closestSqrDistance {
+		s.closestSqrDistance = distance
+		s.closestSimplex = s.simplex
+	}
 }
 
 // ContainsOrigin reports whether the origin is inside the Minkowski
@@ -238,6 +281,20 @@ func (s *GJKSolver) appendToTriangle(vertex MinkowskiVertex) bool {
 	edgeBD := dprec.Vec3Diff(vertD.Position, vertB.Position)
 	edgeCD := dprec.Vec3Diff(vertD.Position, vertC.Position)
 
+	volume := dprec.Vec3Dot(edgeAD, dprec.Vec3Cross(edgeBD, edgeCD))
+	if volume*volume <= dprec.Epsilon*edgeAD.SqrLength()*edgeBD.SqrLength()*edgeCD.SqrLength() {
+		// The four vertices are (near) coplanar, so the Minkowski difference is
+		// flat here and the support toward the origin did not advance past the
+		// ABC plane. The origin therefore cannot be strictly contained by the
+		// simplex, and since no progress was made we stop iterating, keeping
+		// triangle ABC as the closest feature. The comparison is inclusive so
+		// that it also catches a support vertex D that coincides with A, B or C:
+		// the zeroed edge length makes both sides zero, which a strict
+		// comparison would miss.
+		s.terminate(false)
+		return false
+	}
+
 	projectsToAD := dprec.Vec3Dot(edgeAD, vertD.Position) > 0
 	projectsToBD := dprec.Vec3Dot(edgeBD, vertD.Position) > 0
 	projectsToCD := dprec.Vec3Dot(edgeCD, vertD.Position) > 0
@@ -301,10 +358,13 @@ func (s *GJKSolver) resolveTriangle(vertP, vertQ, vertN MinkowskiVertex, project
 	edgeQN := dprec.Vec3Diff(vertN.Position, vertQ.Position)
 
 	faceNorm := dprec.Vec3Cross(edgePN, edgeQN)
-	if faceNorm.SqrLength() == 0 {
-		// The triangle is degenerate (its vertices are collinear), so its
+	if faceNorm.SqrLength() <= dprec.Epsilon*edgePN.SqrLength()*edgeQN.SqrLength() {
+		// The triangle is (near) degenerate (its vertices are collinear), so its
 		// Voronoi regions cannot be evaluated. Handle this by downgrading to a
-		// point simplex at N and continuing the search.
+		// point simplex at N and continuing the search. The comparison is
+		// inclusive so that it also catches a vertex N that coincides with P or
+		// Q: the zeroed edge length makes both sides zero, which a strict
+		// comparison would miss.
 		s.simplex = PointSimplex(vertN)
 		s.searchDirection = dprec.InverseVec3(vertN.Position)
 		return true
@@ -430,4 +490,32 @@ func (s *GJKSolver) crossedSkinPlane(point dprec.Vec3) bool {
 		return true // the point is past the plane at the origin so we are good
 	}
 	return dot*dot <= s.searchDirection.SqrLength()*s.sqrSkinRadius
+}
+
+// simplexSqrDistance returns the squared distance from the origin to the point
+// of the simplex that is closest to it. An empty simplex is treated as
+// infinitely far.
+func simplexSqrDistance(simplex Simplex) float64 {
+	switch simplex.VertexCount {
+	case 1:
+		return simplex.Vertices[0].Position.SqrLength()
+	case 2:
+		pointA := simplex.Vertices[0].Position
+		pointB := simplex.Vertices[1].Position
+		edge := dprec.Vec3Diff(pointB, pointA)
+		sqrLength := edge.SqrLength()
+		if sqrLength < 1e-12 {
+			return pointA.SqrLength()
+		}
+		lerp := max(0.0, min(-dprec.Vec3Dot(edge, pointA)/sqrLength, 1.0))
+		return dprec.Vec3Lerp(pointA, pointB, lerp).SqrLength()
+	case 3:
+		pointA := simplex.Vertices[0].Position
+		pointB := simplex.Vertices[1].Position
+		pointC := simplex.Vertices[2].Position
+		baryA, baryB, baryC := barycentricClosestToOrigin(pointA, pointB, pointC)
+		return closestPoint(pointA, pointB, pointC, baryA, baryB, baryC).SqrLength()
+	default:
+		return math.MaxFloat64
+	}
 }

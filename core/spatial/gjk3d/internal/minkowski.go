@@ -1,6 +1,10 @@
 package internal
 
-import "github.com/mokiat/gomath/dprec"
+import (
+	"math"
+
+	"github.com/mokiat/gomath/dprec"
+)
 
 // MinkowskiShape represents the Minkowski difference (Target - Source) of
 // two convex hulls. The two shapes overlap exactly when the difference
@@ -42,6 +46,90 @@ func (s *MinkowskiShape) Support(dir dprec.Vec3) MinkowskiVertex {
 			TargetIndex: targetIndex,
 		},
 	}
+}
+
+// Vertex rebuilds the Minkowski difference vertex identified by the given ref
+// pair.
+func (s *MinkowskiShape) Vertex(refs RefPair) MinkowskiVertex {
+	sourcePosition := s.Source.WSPosition(refs.SourceIndex)
+	targetPosition := s.Target.WSPosition(refs.TargetIndex)
+	return MinkowskiVertex{
+		Position: dprec.Vec3Sum(s.Offset, dprec.Vec3Diff(targetPosition, sourcePosition)),
+		Refs:     refs,
+	}
+}
+
+// VertexNormal returns an outward unit normal of the Minkowski difference at
+// the given boundary vertex. It is used when the origin coincides with the
+// vertex, where the plain origin-to-vertex direction is undefined.
+//
+// The vertex lies on the boundary of the convex difference, so an outward
+// normal n is any direction along which the vertex is a supporting point,
+// that is dot(n, p - vertex) <= 0 for every other difference vertex p. Such a
+// normal is perpendicular to a pair of hull edges incident to the vertex, so
+// we take the normal of every pair of edges toward two other vertices (in both
+// orientations) and keep the one under which the difference protrudes the
+// least. For a genuine hull normal nothing protrudes past it, so that
+// protrusion is (near) zero, which makes the search robust even when several
+// vertices coincide with the origin or lie collinear along the same edge.
+func (s *MinkowskiShape) VertexNormal(vertex MinkowskiVertex) dprec.Vec3 {
+	var (
+		bestNormal   = dprec.BasisXVec3()
+		bestProtrude = math.MaxFloat64
+	)
+	consider := func(normal dprec.Vec3) {
+		if protrude := s.maxProtrusion(vertex, normal); protrude < bestProtrude {
+			bestProtrude = protrude
+			bestNormal = normal
+		}
+	}
+	edges := s.incidentEdges(vertex)
+	for i := range edges {
+		for j := i + 1; j < len(edges); j++ {
+			cross := dprec.Vec3Cross(edges[i], edges[j])
+			if cross.SqrLength() < 1e-12 {
+				continue // parallel edges yield no usable normal
+			}
+			normal := dprec.UnitVec3(cross)
+			consider(normal)
+			consider(dprec.InverseVec3(normal))
+		}
+	}
+	return bestNormal
+}
+
+// incidentEdges returns the direction vectors from the given vertex to every
+// other distinct vertex of the difference.
+func (s *MinkowskiShape) incidentEdges(vertex MinkowskiVertex) []dprec.Vec3 {
+	var edges []dprec.Vec3
+	for i := range s.Source.Points {
+		for j := range s.Target.Points {
+			refs := RefPair{SourceIndex: i, TargetIndex: j}
+			if refs == vertex.Refs {
+				continue
+			}
+			edge := dprec.Vec3Diff(s.Vertex(refs).Position, vertex.Position)
+			if edge.SqrLength() < 1e-12 {
+				continue // coincident vertex yields no usable edge
+			}
+			edges = append(edges, edge)
+		}
+	}
+	return edges
+}
+
+// maxProtrusion returns the greatest signed distance by which any vertex of
+// the difference extends past the supporting plane through vertex along normal.
+// A value at or near zero means normal is an outward normal at vertex.
+func (s *MinkowskiShape) maxProtrusion(vertex MinkowskiVertex, normal dprec.Vec3) float64 {
+	protrusion := 0.0 // the vertex itself lies on the plane
+	for i := range s.Source.Points {
+		for j := range s.Target.Points {
+			point := s.Vertex(RefPair{SourceIndex: i, TargetIndex: j}).Position
+			protrusion = max(protrusion, dprec.Vec3Dot(normal, dprec.Vec3Diff(point, vertex.Position)))
+		}
+	}
+	return protrusion
 }
 
 // MinkowskiVertex is a point on the boundary of the Minkowski difference,

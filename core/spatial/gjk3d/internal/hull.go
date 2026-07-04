@@ -32,3 +32,9 @@ func (h *Hull) Support(dir dprec.Vec3) (dprec.Vec3, int) {
 	}
 	return h.Rotation.Apply(h.Points[bestIndex]), bestIndex
 }
+
+// WSPosition returns the world-space position of the hull vertex at the given
+// index, taking the hull's rotation into account.
+func (h *Hull) WSPosition(index int) dprec.Vec3 {
+	return h.Rotation.Apply(h.Points[index])
+}
