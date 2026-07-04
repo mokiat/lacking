@@ -18,7 +18,6 @@ type EPASolver struct {
 	solution            EPASolution
 	skinRadius          float64
 	remainingIterations uint32
-	containsOrigin      bool
 }
 
 // NewEPASolver creates a new [EPASolver] instance.
@@ -40,14 +39,15 @@ func (s *EPASolver) Reset(shape *MinkowskiShape, simplex Simplex, containsOrigin
 	clear(s.polytope)
 	s.skinRadius = shape.SkinRadius
 	s.remainingIterations = uint32(shape.MaxIterations())
-	s.containsOrigin = containsOrigin
 
 	if !containsOrigin {
 		switch simplex.VertexCount {
 		case 1:
-			s.terminatePoint(simplex.Vertices[0])
+			s.terminatePoint(shape, simplex.Vertices[0])
 		case 2:
-			s.terminateEdge(simplex.Vertices[0], simplex.Vertices[1])
+			// Pass a flipped edge as we want all terminal edges to point towards
+			// separation direction.
+			s.terminateEdge(shape, simplex.Vertices[1], simplex.Vertices[0])
 		default:
 			panic("unexpected simplex vertex count")
 		}
@@ -86,7 +86,7 @@ func (s *EPASolver) Next(shape *MinkowskiShape) bool {
 	support := shape.Support(edgeNorm)
 
 	if s.polytopeContainsVertex(support.Refs) {
-		s.terminateEdge(minEdge.VertexA, minEdge.VertexB)
+		s.terminateEdge(shape, minEdge.VertexA, minEdge.VertexB)
 		return false
 	}
 
@@ -103,19 +103,6 @@ func (s *EPASolver) Solution() EPASolution {
 	return s.solution
 }
 
-// terminatePoint completes the solve with a single vertex as the closest
-// feature of the Minkowski difference to the origin.
-func (s *EPASolver) terminatePoint(vertex MinkowskiVertex) {
-	s.remainingIterations = 0 // ensure we can't be asked to iterate further
-	s.solution = EPASolution{
-		VertexA: vertex,
-		VertexB: vertex,
-		Normal:  s.pointNormal(vertex.Position),
-		Lerp:    0.0,
-		Depth:   s.pointDepth(vertex.Position),
-	}
-}
-
 // terminateEdge completes the solve with an edge as the closest feature of
 // the Minkowski difference to the origin, falling back to one of its
 // vertices when the origin does not project onto the edge.
@@ -125,65 +112,49 @@ func (s *EPASolver) terminatePoint(vertex MinkowskiVertex) {
 // for the non-contained case and the counter-clockwise polytope winding for
 // the contained case), so the right-hand normal of the edge points from the
 // origin toward the edge.
-func (s *EPASolver) terminateEdge(vertexA, vertexB MinkowskiVertex) {
-	s.remainingIterations = 0 // ensure we can't be asked to iterate further
-
+func (s *EPASolver) terminateEdge(shape *MinkowskiShape, vertexA, vertexB MinkowskiVertex) {
 	edge := dprec.Vec2Diff(vertexB.Position, vertexA.Position)
-	dot := -dprec.Vec2Dot(edge, vertexA.Position)
 	sqrLength := edge.SqrLength()
+	if sqrLength < 1e-12 {
+		s.terminatePoint(shape, vertexA) // treat degenerate edges as points
+		return
+	}
 
-	switch {
-	case dot <= 0.0:
-		s.terminatePoint(vertexA)
-	case dot >= sqrLength:
-		s.terminatePoint(vertexB)
-	default:
-		// Note: The previous cases will handle a zero length edge.
-		//
-		// Deriving the normal from the edge rather than from the closest
-		// point keeps it stable when the origin lies very close to the edge.
-		normal := dprec.UnitVec2(transposeVec2(edge))
-		distance := dprec.Vec2Dot(normal, vertexA.Position)
-		if !s.containsOrigin {
-			normal = dprec.InverseVec2(normal)
-			distance = -distance
-		}
-		s.solution = EPASolution{
-			VertexA: vertexA,
-			VertexB: vertexB,
-			Normal:  normal,
-			Lerp:    dot / sqrLength,
-			Depth:   s.skinRadius + distance,
-		}
+	dot := -dprec.Vec2Dot(edge, vertexA.Position)
+	normal := dprec.NormalVec2(edge)
+	distance := dprec.Vec2Dot(normal, vertexA.Position)
+
+	s.remainingIterations = 0 // ensure we can't be asked to iterate further
+	s.solution = EPASolution{
+		VertexA: vertexA,
+		VertexB: vertexB,
+		Normal:  normal,
+		Lerp:    max(0.0, min(dot/sqrLength, 1.0)),
+		Depth:   s.skinRadius + distance,
 	}
 }
 
-// pointNormal returns the separation direction for the given closest point.
-// When the origin is outside the Minkowski difference core, that is the
-// unit direction from the point toward the origin; when the origin is
-// contained, it is the opposite (outward) direction. An arbitrary fixed
-// direction is returned when the point coincides with the origin.
-func (s *EPASolver) pointNormal(point dprec.Vec2) dprec.Vec2 {
-	length := point.Length()
-	if length == 0.0 {
-		return dprec.BasisXVec2()
+// terminatePoint completes the solve with a single vertex as the closest
+// feature of the Minkowski difference to the origin.
+func (s *EPASolver) terminatePoint(shape *MinkowskiShape, vertex MinkowskiVertex) {
+	// Handle degenerate cases.
+	refPoint := vertex.Position
+	if refPoint.SqrLength() < 1e-12 {
+		refPoint = shape.FurthestVertex().Position
 	}
-	if s.containsOrigin {
-		return dprec.Vec2Quot(point, length)
+	if refPoint.SqrLength() < 1e-12 {
+		refPoint = dprec.BasisXVec2()
 	}
-	return dprec.Vec2Quot(point, -length)
-}
+	normal := dprec.InverseVec2(dprec.UnitVec2(refPoint))
 
-// pointDepth returns the penetration depth for the given closest point.
-// When the origin is outside the Minkowski difference core, that is the
-// amount by which the combined skin radius exceeds the point's distance to
-// the origin; when the origin is contained, the core penetration adds to
-// the skin radius instead.
-func (s *EPASolver) pointDepth(point dprec.Vec2) float64 {
-	if s.containsOrigin {
-		return s.skinRadius + point.Length()
+	s.remainingIterations = 0 // ensure we can't be asked to iterate further
+	s.solution = EPASolution{
+		VertexA: vertex,
+		VertexB: vertex,
+		Normal:  normal,
+		Lerp:    0.0,
+		Depth:   s.skinRadius + dprec.Vec2Dot(normal, vertex.Position),
 	}
-	return s.skinRadius - point.Length()
 }
 
 func (s *EPASolver) addPolytopeEdge(vertexA, vertexB MinkowskiVertex) {
@@ -192,19 +163,20 @@ func (s *EPASolver) addPolytopeEdge(vertexA, vertexB MinkowskiVertex) {
 
 	edge := dprec.Vec2Diff(pointB, pointA)
 	sqrLength := edge.SqrLength()
+	if sqrLength < 1e-12 {
+		return // ignore degenerate edges
+	}
+	lerp := -dprec.Vec2Dot(edge, pointA) / sqrLength
+
 	var distance float64
-	if sqrLength == 0.0 {
+	switch {
+	case lerp <= 0.0:
 		distance = pointA.Length()
-	} else {
-		t := -dprec.Vec2Dot(edge, pointA) / sqrLength
-		if t <= 0.0 {
-			distance = pointA.Length()
-		} else if t >= 1.0 {
-			distance = pointB.Length()
-		} else {
-			projection := dprec.Vec2Lerp(pointA, pointB, t)
-			distance = projection.Length()
-		}
+	case lerp >= 1.0:
+		distance = pointB.Length()
+	default:
+		projection := dprec.Vec2Lerp(pointA, pointB, lerp)
+		distance = projection.Length()
 	}
 
 	id := PolytopeEdgeID{vertexA.Refs, vertexB.Refs}
@@ -226,10 +198,9 @@ func (s *EPASolver) polytopeContainsVertex(refs RefPair) bool {
 
 // EPASolution describes how two overlapping shapes can be separated.
 type EPASolution struct {
-	// VertexA and VertexB are the Minkowski difference vertices that bound
-	// the closest feature. They are equal when the feature is a single
-	// vertex.
+	// TODO: godoc
 	VertexA MinkowskiVertex
+	// TODO: godoc
 	VertexB MinkowskiVertex
 	// Normal is the unit direction along which the source shape must be
 	// moved by Depth to separate the shapes. In world space it points from

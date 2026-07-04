@@ -1,6 +1,10 @@
 package internal
 
-import "github.com/mokiat/gomath/dprec"
+import (
+	"math"
+
+	"github.com/mokiat/gomath/dprec"
+)
 
 // MinkowskiShape represents the Minkowski difference (Target - Source) of
 // two convex polygons. The two shapes overlap exactly when the difference
@@ -42,6 +46,38 @@ func (s *MinkowskiShape) Support(dir dprec.Vec2) MinkowskiVertex {
 			TargetIndex: targetIndex,
 		},
 	}
+}
+
+func (s *MinkowskiShape) Vertex(refs RefPair) MinkowskiVertex {
+	sourcePosition := s.Source.Points[refs.SourceIndex]
+	targetPosition := s.Target.Points[refs.TargetIndex]
+	return MinkowskiVertex{
+		Position: dprec.Vec2Sum(s.Offset, dprec.Vec2Diff(targetPosition, sourcePosition)),
+		Refs:     refs,
+	}
+}
+
+func (s *MinkowskiShape) FurthestVertex() MinkowskiVertex {
+	maxDistance := -math.MaxFloat64
+	var furthestVertex MinkowskiVertex
+	for i := range s.Source.Points {
+		for j := range s.Target.Points {
+			vertex := s.Vertex(RefPair{
+				SourceIndex: i,
+				TargetIndex: j,
+			})
+			distance := vertex.Position.SqrLength()
+			if distance > maxDistance {
+				maxDistance = distance
+				furthestVertex = vertex
+			}
+		}
+	}
+	return furthestVertex
+}
+
+func (s *MinkowskiShape) VertexCount() int {
+	return len(s.Source.Points) * len(s.Target.Points)
 }
 
 // MinkowskiVertex is a point on the boundary of the Minkowski difference,
