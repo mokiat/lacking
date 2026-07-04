@@ -1,8 +1,6 @@
 package internal
 
 import (
-	"math"
-
 	"github.com/mokiat/gomath/dprec"
 )
 
@@ -49,35 +47,53 @@ func (s *MinkowskiShape) Support(dir dprec.Vec2) MinkowskiVertex {
 }
 
 func (s *MinkowskiShape) Vertex(refs RefPair) MinkowskiVertex {
-	sourcePosition := s.Source.Points[refs.SourceIndex]
-	targetPosition := s.Target.Points[refs.TargetIndex]
+	sourcePosition := s.Source.WSPosition(refs.SourceIndex)
+	targetPosition := s.Target.WSPosition(refs.TargetIndex)
 	return MinkowskiVertex{
 		Position: dprec.Vec2Sum(s.Offset, dprec.Vec2Diff(targetPosition, sourcePosition)),
 		Refs:     refs,
 	}
 }
 
-func (s *MinkowskiShape) FurthestVertex() MinkowskiVertex {
-	maxDistance := -math.MaxFloat64
-	var furthestVertex MinkowskiVertex
-	for i := range s.Source.Points {
-		for j := range s.Target.Points {
-			vertex := s.Vertex(RefPair{
-				SourceIndex: i,
-				TargetIndex: j,
-			})
-			distance := vertex.Position.SqrLength()
-			if distance > maxDistance {
-				maxDistance = distance
-				furthestVertex = vertex
-			}
-		}
+func (s *MinkowskiShape) VertexNormal(vertex MinkowskiVertex) (dprec.Vec2, bool) {
+	otherVertex, ok := s.FindOtherVertex(vertex)
+	if !ok {
+		return dprec.Vec2{}, false
 	}
-	return furthestVertex
+
+	for range s.MaxIterations() {
+		dir := transposeVec2(dprec.Vec2Diff(otherVertex.Position, vertex.Position))
+		support := s.Support(dir)
+		if support.Refs == vertex.Refs || support.Refs == otherVertex.Refs {
+			otherVertex = support
+			break
+		}
+		otherVertex = support
+	}
+
+	edge := dprec.Vec2Diff(otherVertex.Position, vertex.Position)
+	return dprec.NormalVec2(edge), true
 }
 
-func (s *MinkowskiShape) VertexCount() int {
-	return len(s.Source.Points) * len(s.Target.Points)
+func (s *MinkowskiShape) FindOtherVertex(vertex MinkowskiVertex) (MinkowskiVertex, bool) {
+	for i := range s.Source.Points {
+		for j := range s.Target.Points {
+			refs := RefPair{
+				SourceIndex: i,
+				TargetIndex: j,
+			}
+			if refs == vertex.Refs {
+				continue
+			}
+			other := s.Vertex(refs)
+			delta := dprec.Vec2Diff(other.Position, vertex.Position)
+			if delta.SqrLength() < 1e-12 {
+				continue
+			}
+			return s.Vertex(refs), true
+		}
+	}
+	return MinkowskiVertex{}, false
 }
 
 // MinkowskiVertex is a point on the boundary of the Minkowski difference,

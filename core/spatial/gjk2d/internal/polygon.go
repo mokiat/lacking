@@ -32,3 +32,7 @@ func (p *Polygon) Support(dir dprec.Vec2) (dprec.Vec2, int) {
 	}
 	return p.Rotation.Apply(p.Points[bestIndex]), bestIndex
 }
+
+func (p *Polygon) WSPosition(index int) dprec.Vec2 {
+	return p.Rotation.Apply(p.Points[index])
+}

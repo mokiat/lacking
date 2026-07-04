@@ -37,6 +37,13 @@ func NewEPASolver() *EPASolver {
 // the solution is computed immediately, requiring no iteration.
 func (s *EPASolver) Reset(shape *MinkowskiShape, simplex Simplex, containsOrigin bool) {
 	clear(s.polytope)
+	s.solution = EPASolution{
+		VertexA: simplex.Vertices[0],
+		VertexB: simplex.Vertices[0],
+		Normal:  dprec.BasisXVec2(),
+		Lerp:    0.0,
+		Depth:   0.0,
+	}
 	s.skinRadius = shape.SkinRadius
 	s.remainingIterations = uint32(shape.MaxIterations())
 
@@ -138,14 +145,16 @@ func (s *EPASolver) terminateEdge(shape *MinkowskiShape, vertexA, vertexB Minkow
 // feature of the Minkowski difference to the origin.
 func (s *EPASolver) terminatePoint(shape *MinkowskiShape, vertex MinkowskiVertex) {
 	// Handle degenerate cases.
-	refPoint := vertex.Position
-	if refPoint.SqrLength() < 1e-12 {
-		refPoint = shape.FurthestVertex().Position
+	var normal dprec.Vec2
+	if vertex.Position.SqrLength() < 1e-12 {
+		var ok bool
+		normal, ok = shape.VertexNormal(vertex)
+		if !ok {
+			normal = dprec.BasisXVec2()
+		}
+	} else {
+		normal = dprec.InverseVec2(dprec.UnitVec2(vertex.Position))
 	}
-	if refPoint.SqrLength() < 1e-12 {
-		refPoint = dprec.BasisXVec2()
-	}
-	normal := dprec.InverseVec2(dprec.UnitVec2(refPoint))
 
 	s.remainingIterations = 0 // ensure we can't be asked to iterate further
 	s.solution = EPASolution{
