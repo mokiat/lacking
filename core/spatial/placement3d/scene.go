@@ -841,7 +841,10 @@ func (s *Scene[O, S]) resolveConvexMesh(srcIndex, tgtIndex int32, yield ContactC
 
 	srcGJKShape := srcShape.gjkShape()
 	for i := range tgtShape.gjkShapeCount() {
-		// TODO: Run bounding sphere check first!
+		tgtBSphere := tgtShape.wsTriangles[i].BoundingSphere()
+		if !isec3d.CheckSphereSphere(srcShape.wsBSphere, tgtBSphere) {
+			continue
+		}
 		tgtGJKShape := tgtShape.gjkShape(i)
 		if contact, ok := s.solver.Resolve(srcGJKShape, tgtGJKShape); ok {
 			deepestContact.AddContact(contact)
