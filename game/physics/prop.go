@@ -3,7 +3,8 @@ package physics
 import (
 	"github.com/mokiat/gog/opt"
 	"github.com/mokiat/gomath/dprec"
-	"github.com/mokiat/lacking/util/shape3d"
+	"github.com/mokiat/lacking/core/spatial/placement3d"
+	"github.com/mokiat/lacking/core/spatial/shape3d"
 )
 
 type PropInfo struct {
@@ -25,6 +26,6 @@ func (p Prop) Name() string {
 
 type propState struct {
 	reference indexReference
-	objectID  shape3d.ObjectID
+	objectID  placement3d.ObjectID
 	name      string
 }

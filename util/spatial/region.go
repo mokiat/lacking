@@ -36,10 +36,3 @@ func CuboidRegion(position, size dprec.Vec3) HexahedronRegion {
 		Plane(dprec.NewVec4(0, 0, -1, (position.Z + halfSize.Z))),
 	}
 }
-
-// SphericalRegion represents a region in space that is defined by a position
-// and a radius around that position.
-type SphericalRegion struct {
-	Position dprec.Vec3
-	Radius   float64
-}

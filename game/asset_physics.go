@@ -4,11 +4,10 @@ import (
 	"fmt"
 
 	"github.com/mokiat/gog/opt"
-	"github.com/mokiat/gomath/dprec"
+	"github.com/mokiat/lacking/core/spatial/shape3d"
 	"github.com/mokiat/lacking/game/asset/dto"
 	"github.com/mokiat/lacking/game/hierarchy"
 	"github.com/mokiat/lacking/game/physics"
-	"github.com/mokiat/lacking/util/shape3d"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -156,10 +155,10 @@ func UnloadPhysicsBodyDefinitions(loader *AssetLoader, idBodyDefinitions Identif
 func resolveCollisionSpheres(bodyDef dto.BodyDefinition) []shape3d.Sphere {
 	result := make([]shape3d.Sphere, len(bodyDef.CollisionSpheres))
 	for i, collisionSphereAsset := range bodyDef.CollisionSpheres {
-		result[i] = shape3d.NewSphere(
-			collisionSphereAsset.Translation,
-			collisionSphereAsset.Radius,
-		)
+		result[i] = shape3d.Sphere{
+			Center: collisionSphereAsset.Translation,
+			Radius: collisionSphereAsset.Radius,
+		}
 	}
 	return result
 }
@@ -167,11 +166,13 @@ func resolveCollisionSpheres(bodyDef dto.BodyDefinition) []shape3d.Sphere {
 func resolveCollisionBoxes(bodyDef dto.BodyDefinition) []shape3d.Box {
 	result := make([]shape3d.Box, len(bodyDef.CollisionBoxes))
 	for i, collisionBoxAsset := range bodyDef.CollisionBoxes {
-		result[i] = shape3d.NewBox(
-			collisionBoxAsset.Translation,
-			collisionBoxAsset.Rotation,
-			dprec.NewVec3(collisionBoxAsset.Width, collisionBoxAsset.Height, collisionBoxAsset.Length),
-		)
+		result[i] = shape3d.Box{
+			Center:     collisionBoxAsset.Translation,
+			Rotation:   shape3d.RotationFromQuat(collisionBoxAsset.Rotation),
+			HalfWidth:  collisionBoxAsset.Width / 2.0,
+			HalfHeight: collisionBoxAsset.Height / 2.0,
+			HalfLength: collisionBoxAsset.Length / 2.0,
+		}
 	}
 	return result
 }
@@ -179,16 +180,21 @@ func resolveCollisionBoxes(bodyDef dto.BodyDefinition) []shape3d.Box {
 func resolveCollisionMeshes(bodyDef dto.BodyDefinition) []shape3d.Mesh {
 	result := make([]shape3d.Mesh, len(bodyDef.CollisionMeshes))
 	for i, collisionMeshAsset := range bodyDef.CollisionMeshes {
-		transform := shape3d.TRTransform(collisionMeshAsset.Translation, collisionMeshAsset.Rotation)
+		transform := shape3d.TRTransform(
+			collisionMeshAsset.Translation,
+			shape3d.RotationFromQuat(collisionMeshAsset.Rotation),
+		)
 		triangles := make([]shape3d.Triangle, len(collisionMeshAsset.Triangles))
 		for j, triangleAsset := range collisionMeshAsset.Triangles {
-			triangles[j] = shape3d.NewTriangle(
-				transform.Apply(triangleAsset.A),
-				transform.Apply(triangleAsset.B),
-				transform.Apply(triangleAsset.C),
-			)
+			triangles[j] = shape3d.Triangle{
+				A: transform.Apply(triangleAsset.A),
+				B: transform.Apply(triangleAsset.B),
+				C: transform.Apply(triangleAsset.C),
+			}
 		}
-		result[i] = shape3d.NewMesh(triangles)
+		result[i] = shape3d.Mesh{
+			Triangles: triangles,
+		}
 	}
 	return result
 }

@@ -7,18 +7,19 @@ import (
 	"github.com/mokiat/gog/ds"
 	"github.com/mokiat/gog/opt"
 	"github.com/mokiat/gomath/dprec"
+	"github.com/mokiat/lacking/core/spatial/placement3d"
+	"github.com/mokiat/lacking/core/spatial/shape3d"
 	"github.com/mokiat/lacking/debug/metric"
 	"github.com/mokiat/lacking/game/physics/constraint"
 	"github.com/mokiat/lacking/game/physics/medium"
 	"github.com/mokiat/lacking/game/physics/solver"
-	"github.com/mokiat/lacking/util/shape3d"
 )
 
 func newScene(engine *Engine) *Scene {
 	return &Scene{
 		engine: engine,
 
-		shapeScene: shape3d.NewScene[internalRef, struct{}](shape3d.SceneSettings{
+		shapeScene: placement3d.NewScene[internalRef, struct{}](placement3d.SceneSettings{
 			Size:                opt.V(16384.0),
 			MaxDepth:            opt.V[uint32](12),
 			InitialNodeCapacity: opt.V[uint32](1024),
@@ -58,7 +59,7 @@ func newScene(engine *Engine) *Scene {
 		freeSBConstraintIndices: ds.NewStack[uint32](16),
 		freeDBConstraintIndices: ds.NewStack[uint32](16),
 
-		collisionSet: shape3d.NewIntersectionBucket(128),
+		collisionSet: make(placement3d.ContactList, 0, 128),
 
 		oldSBCollisions: make(map[sbCollisionPair]struct{}, 32),
 		newSBCollisions: make(map[sbCollisionPair]struct{}, 32),
@@ -74,7 +75,7 @@ func newScene(engine *Engine) *Scene {
 type Scene struct {
 	engine *Engine
 
-	shapeScene *shape3d.Scene[internalRef, struct{}]
+	shapeScene *placement3d.Scene[internalRef, struct{}]
 
 	sbCollisionSubscriptions *SingleBodyCollisionSubscriptionSet
 	dbCollisionSubscriptions *DoubleBodyCollisionSubscriptionSet
@@ -116,7 +117,7 @@ type Scene struct {
 	dbCollisionConstraints []DBConstraint
 	dbCollisionSolvers     []constraint.PairCollision
 
-	collisionSet *shape3d.ObjectIntersectionBucket
+	collisionSet placement3d.ContactList
 
 	oldSBCollisions map[sbCollisionPair]struct{}
 	newSBCollisions map[sbCollisionPair]struct{}
@@ -242,7 +243,7 @@ func (s *Scene) CreateProp(info PropInfo) {
 
 	propIndex := uint32(len(s.props))
 
-	objectID := s.shapeScene.CreateObject(shape3d.ObjectInfo[internalRef]{
+	objectID := s.shapeScene.CreateObject(placement3d.ObjectInfo[internalRef]{
 		Position: info.Position,
 		Rotation: info.Rotation,
 		Static:   true,
@@ -252,20 +253,20 @@ func (s *Scene) CreateProp(info PropInfo) {
 		},
 	})
 	for _, sphere := range info.CollisionSpheres {
-		s.shapeScene.AttachSphere(objectID, shape3d.SphereInfo[struct{}]{
-			ShapeInfo: shape3d.ShapeInfo[struct{}]{},
+		s.shapeScene.AttachSphere(objectID, placement3d.SphereInfo[struct{}]{
+			ShapeInfo: placement3d.ShapeInfo[struct{}]{},
 			Sphere:    sphere,
 		})
 	}
 	for _, box := range info.CollisionBoxes {
-		s.shapeScene.AttachBox(objectID, shape3d.BoxInfo[struct{}]{
-			ShapeInfo: shape3d.ShapeInfo[struct{}]{},
+		s.shapeScene.AttachBox(objectID, placement3d.BoxInfo[struct{}]{
+			ShapeInfo: placement3d.ShapeInfo[struct{}]{},
 			Box:       box,
 		})
 	}
 	for _, mesh := range info.CollisionMeshes {
-		s.shapeScene.AttachMesh(objectID, shape3d.MeshInfo[struct{}]{
-			ShapeInfo: shape3d.ShapeInfo[struct{}]{},
+		s.shapeScene.AttachMesh(objectID, placement3d.MeshInfo[struct{}]{
+			ShapeInfo: placement3d.ShapeInfo[struct{}]{},
 			Mesh:      mesh,
 		})
 	}
@@ -309,7 +310,6 @@ func (s *Scene) Update(elapsedTime time.Duration) {
 	s.runSimulation(elapsedSeconds * s.timeSpeed)
 	s.notifySingleBodyCollisions()
 	s.notifyDoubleBodyCollisions()
-	s.shapeScene.GC()
 }
 
 func (s *Scene) Each(cb func(b Body)) {
@@ -322,7 +322,7 @@ func (s *Scene) Each(cb func(b Body)) {
 }
 
 func (s *Scene) CheckSegmentIntersection(segment shape3d.Segment, mask uint32) (Body, bool) {
-	intersection, ok := s.shapeScene.CheckSegmentIntersection(segment, shape3d.Filter{
+	intersection, ok := s.shapeScene.CheckSegmentIntersection(segment, placement3d.Filter{
 		Mask: opt.V(mask),
 	})
 	if !ok {
@@ -564,7 +564,7 @@ func (s *Scene) applyMotion(elapsedSeconds float64) {
 
 		s.shapeScene.SetObjectTransform(body.objectID, shape3d.Transform{
 			Translation: body.position,
-			Rotation:    body.rotation,
+			Rotation:    shape3d.RotationFromQuat(body.rotation),
 		})
 	})
 }
@@ -639,8 +639,8 @@ func (s *Scene) detectCollisions() {
 	s.dbCollisionSolvers = s.dbCollisionSolvers[:0]
 
 	s.collisionSet.Reset()
-	s.shapeScene.CollectIntersections(s.collisionSet)
-	for _, intersection := range s.collisionSet.Intersections() {
+	s.shapeScene.CollectIntersections(s.collisionSet.AddContact)
+	for _, intersection := range s.collisionSet.Contacts() {
 		primaryRef := s.shapeScene.GetObjectUserData(intersection.SourceObjectID)
 		secondaryRef := s.shapeScene.GetObjectUserData(intersection.TargetObjectID)
 		if primaryRef.isProp && secondaryRef.isProp {
@@ -657,9 +657,8 @@ func (s *Scene) detectCollisions() {
 
 			solver := s.allocateGroundCollisionSolver()
 			solver.Init(constraint.CollisionState{
-				// TODO: Figure out why source and target are flipped here...
 				BodyNormal:                 intersection.TargetNormal,
-				BodyPoint:                  intersection.EvalSourceContact(),
+				BodyPoint:                  intersection.EvalSourcePoint(),
 				BodyFrictionCoefficient:    primary.frictionCoefficient,
 				BodyRestitutionCoefficient: primary.restitutionCoefficient,
 
@@ -686,14 +685,13 @@ func (s *Scene) detectCollisions() {
 
 			solver := s.allocateDualCollisionSolver()
 			solver.Init(constraint.PairCollisionState{
-				// TODO: Figure out why source and target are flipped here...
 				PrimaryNormal:                 intersection.TargetNormal,
-				PrimaryPoint:                  intersection.EvalSourceContact(),
+				PrimaryPoint:                  intersection.EvalSourcePoint(),
 				PrimaryFrictionCoefficient:    primary.frictionCoefficient,
 				PrimaryRestitutionCoefficient: primary.restitutionCoefficient,
 
 				SecondaryNormal:                 intersection.EvalSourceNormal(),
-				SecondaryPoint:                  intersection.TargetContact,
+				SecondaryPoint:                  intersection.TargetPoint,
 				SecondaryFrictionCoefficient:    secondary.frictionCoefficient,
 				SecondaryRestitutionCoefficient: secondary.restitutionCoefficient,
 
@@ -931,7 +929,7 @@ func (s *Scene) deinitPlaceholder(placeholder *solver.Placeholder, body *bodySta
 
 	s.shapeScene.SetObjectTransform(body.objectID, shape3d.Transform{
 		Translation: body.position,
-		Rotation:    body.rotation,
+		Rotation:    shape3d.RotationFromQuat(body.rotation),
 	})
 }
 

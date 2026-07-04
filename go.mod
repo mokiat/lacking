@@ -10,7 +10,7 @@ require (
 	github.com/mokiat/gblob v0.6.0
 	github.com/mokiat/goexr v0.1.0
 	github.com/mokiat/gog v0.22.0
-	github.com/mokiat/gomath v0.16.1
+	github.com/mokiat/gomath v0.17.0
 	github.com/onsi/ginkgo/v2 v2.29.0
 	github.com/onsi/gomega v1.41.0
 	github.com/qmuntal/gltf v0.28.0

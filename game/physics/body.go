@@ -3,8 +3,9 @@ package physics
 import (
 	"github.com/mokiat/gog/opt"
 	"github.com/mokiat/gomath/dprec"
+	"github.com/mokiat/lacking/core/spatial/placement3d"
+	"github.com/mokiat/lacking/core/spatial/shape3d"
 	"github.com/mokiat/lacking/game/physics/solver"
-	"github.com/mokiat/lacking/util/shape3d"
 )
 
 var invalidBodyState = &bodyState{}
@@ -298,7 +299,7 @@ func (b Body) state() *bodyState {
 type bodyState struct {
 	reference indexReference
 
-	objectID shape3d.ObjectID
+	objectID placement3d.ObjectID
 
 	name       string
 	definition *BodyDefinition
@@ -380,7 +381,7 @@ func createBody(scene *Scene, info BodyInfo) Body {
 		freeIndex = scene.freeBodyIndices.Pop()
 	}
 
-	objectID := scene.shapeScene.CreateObject(shape3d.ObjectInfo[internalRef]{
+	objectID := scene.shapeScene.CreateObject(placement3d.ObjectInfo[internalRef]{
 		Position: opt.V(info.Position),
 		Rotation: opt.V(info.Rotation),
 		Static:   false,
@@ -390,24 +391,24 @@ func createBody(scene *Scene, info BodyInfo) Body {
 		},
 	})
 	for _, sphere := range info.Definition.collisionSpheres {
-		scene.shapeScene.AttachSphere(objectID, shape3d.SphereInfo[struct{}]{
-			ShapeInfo: shape3d.ShapeInfo[struct{}]{
+		scene.shapeScene.AttachSphere(objectID, placement3d.SphereInfo[struct{}]{
+			ShapeInfo: placement3d.ShapeInfo[struct{}]{
 				RejectGroup: uint32(info.Definition.collisionGroup),
 			},
 			Sphere: sphere,
 		})
 	}
 	for _, box := range info.Definition.collisionBoxes {
-		scene.shapeScene.AttachBox(objectID, shape3d.BoxInfo[struct{}]{
-			ShapeInfo: shape3d.ShapeInfo[struct{}]{
+		scene.shapeScene.AttachBox(objectID, placement3d.BoxInfo[struct{}]{
+			ShapeInfo: placement3d.ShapeInfo[struct{}]{
 				RejectGroup: uint32(info.Definition.collisionGroup),
 			},
 			Box: box,
 		})
 	}
 	for _, mesh := range info.Definition.collisionMeshes {
-		scene.shapeScene.AttachMesh(objectID, shape3d.MeshInfo[struct{}]{
-			ShapeInfo: shape3d.ShapeInfo[struct{}]{
+		scene.shapeScene.AttachMesh(objectID, placement3d.MeshInfo[struct{}]{
+			ShapeInfo: placement3d.ShapeInfo[struct{}]{
 				RejectGroup: uint32(info.Definition.collisionGroup),
 			},
 			Mesh: mesh,
