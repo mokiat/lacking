@@ -29,13 +29,6 @@ func aabbFromSphere(x, y, z, radius float64) query3d.AABB {
 	})
 }
 
-// aabbFromCube builds an AABB for a cube centered at the given coordinates with
-// the given side length.
-func aabbFromCube(x, y, z, size float64) query3d.AABB {
-	half := size * 0.5
-	return query3d.NewAABB(x-half, y-half, z-half, x+half, y+half, z+half)
-}
-
 var _ = Describe("Octree", func() {
 	var (
 		tree *query3d.Octree[string]

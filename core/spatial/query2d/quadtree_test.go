@@ -21,13 +21,6 @@ func aabbFromCircle(x, y, radius float64) query2d.AABB {
 	})
 }
 
-// aabbFromSquare builds an AABB for a square centered at the given coordinates
-// with the given side length.
-func aabbFromSquare(x, y, size float64) query2d.AABB {
-	half := size * 0.5
-	return query2d.NewAABB(x-half, y-half, x+half, y+half)
-}
-
 // areaFromCircle builds an Area covering a circle with the given center
 // coordinates and radius.
 func areaFromCircle(x, y, radius float64) query2d.Area {
