@@ -19,11 +19,35 @@ func sphereAt(x, y, z, radius float64) shape3d.Sphere {
 	}
 }
 
+// boxAt builds an axis-aligned box centered at the given coordinates with the
+// given half-extent along every axis.
+func boxAt(x, y, z, half float64) shape3d.Box {
+	return shape3d.NewBox(
+		dprec.NewVec3(x, y, z),
+		shape3d.IdentityRotation(),
+		dprec.NewVec3(half, half, half),
+	)
+}
+
+// planeMesh builds a mesh made of two triangles forming a quad in the XZ plane
+// (at y == 0), centered at the given point and spanning halfSize in each of
+// the X and Z directions.
+func planeMesh(x, y, z, halfSize float64) shape3d.Mesh {
+	a := dprec.NewVec3(x-halfSize, y, z-halfSize)
+	b := dprec.NewVec3(x+halfSize, y, z-halfSize)
+	c := dprec.NewVec3(x+halfSize, y, z+halfSize)
+	d := dprec.NewVec3(x-halfSize, y, z+halfSize)
+	return shape3d.NewMesh([]shape3d.Triangle{
+		shape3d.NewTriangle(a, b, c),
+		shape3d.NewTriangle(a, c, d),
+	})
+}
+
 var _ = Describe("Scene", func() {
-	var scene *placement3d.Scene[string, string]
+	var scene *placement3d.Scene[string, string, string]
 
 	BeforeEach(func() {
-		scene = placement3d.NewScene[string, string](placement3d.SceneSettings{
+		scene = placement3d.NewScene[string, string, string](placement3d.SceneSettings{
 			Size:     opt.V(128.0),
 			MaxDepth: opt.V[uint32](3),
 		})
@@ -115,25 +139,6 @@ var _ = Describe("Scene", func() {
 			Expect(count).To(Equal(1))
 		})
 
-		It("yields attached meshes", func() {
-			scene.AttachMesh(objID, placement3d.MeshInfo[string]{
-				Mesh: shape3d.NewMesh([]shape3d.Triangle{
-					shape3d.NewTriangle(
-						dprec.NewVec3(0.0, 0.0, 0.0),
-						dprec.NewVec3(1.0, 0.0, 0.0),
-						dprec.NewVec3(0.0, 1.0, 0.0),
-					),
-				}),
-			})
-
-			count := 0
-			scene.EachMesh(placement3d.Filter{}, func(shape3d.Mesh) bool {
-				count++
-				return true
-			})
-			Expect(count).To(Equal(1))
-		})
-
 		It("exposes a sphere iterator", func() {
 			scene.AttachSphere(objID, placement3d.SphereInfo[string]{
 				Sphere: sphereAt(0.0, 0.0, 0.0, 1.0),
@@ -148,13 +153,20 @@ var _ = Describe("Scene", func() {
 
 		It("stores and updates shape user data", func() {
 			shapeID := scene.AttachSphere(objID, placement3d.SphereInfo[string]{
-				ShapeInfo: placement3d.ShapeInfo[string]{UserData: "a"},
-				Sphere:    sphereAt(0.0, 0.0, 0.0, 1.0),
+				Sphere:   sphereAt(0.0, 0.0, 0.0, 1.0),
+				UserData: "a",
 			})
 			Expect(scene.GetShapeUserData(shapeID)).To(Equal("a"))
 
 			scene.SetShapeUserData(shapeID, "b")
 			Expect(scene.GetShapeUserData(shapeID)).To(Equal("b"))
+		})
+
+		It("maps a shape back to its owning object", func() {
+			shapeID := scene.AttachSphere(objID, placement3d.SphereInfo[string]{
+				Sphere: sphereAt(0.0, 0.0, 0.0, 1.0),
+			})
+			Expect(scene.GetShapeObject(shapeID)).To(Equal(objID))
 		})
 
 		It("removes a deleted shape from iteration", func() {
@@ -186,49 +198,35 @@ var _ = Describe("Scene", func() {
 			})
 			Expect(count).To(Equal(1))
 		})
+
+		It("moves every shape of an object with multiple shapes", func() {
+			scene.AttachSphere(objID, placement3d.SphereInfo[string]{
+				Sphere: sphereAt(0.0, 0.0, 0.0, 1.0),
+			})
+			scene.AttachSphere(objID, placement3d.SphereInfo[string]{
+				Sphere: sphereAt(2.0, 0.0, 0.0, 1.0),
+			})
+			scene.SetObjectTransform(objID, shape3d.TranslationTransform(
+				dprec.NewVec3(0.0, 10.0, 0.0),
+			))
+
+			var centers []dprec.Vec3
+			scene.EachSphere(placement3d.Filter{}, func(s shape3d.Sphere) bool {
+				centers = append(centers, s.Center)
+				return true
+			})
+			Expect(centers).To(HaveLen(2))
+			for _, center := range centers {
+				Expect(center.Y).To(BeNumerically("~", 10.0, 1e-6))
+			}
+		})
 	})
 
 	Describe("shape iteration filters", func() {
-		It("excludes static shapes when SkipStatic is set", func() {
-			staticObj := scene.CreateObject(placement3d.ObjectInfo[string]{Static: true})
-			dynamicObj := scene.CreateObject(placement3d.ObjectInfo[string]{})
-			scene.AttachSphere(staticObj, placement3d.SphereInfo[string]{
-				Sphere: sphereAt(0.0, 0.0, 0.0, 1.0),
-			})
-			scene.AttachSphere(dynamicObj, placement3d.SphereInfo[string]{
-				Sphere: sphereAt(5.0, 0.0, 0.0, 1.0),
-			})
-
-			count := 0
-			scene.EachSphere(placement3d.Filter{SkipStatic: true}, func(shape3d.Sphere) bool {
-				count++
-				return true
-			})
-			Expect(count).To(Equal(1))
-		})
-
-		It("excludes dynamic shapes when SkipDynamic is set", func() {
-			staticObj := scene.CreateObject(placement3d.ObjectInfo[string]{Static: true})
-			dynamicObj := scene.CreateObject(placement3d.ObjectInfo[string]{})
-			scene.AttachSphere(staticObj, placement3d.SphereInfo[string]{
-				Sphere: sphereAt(0.0, 0.0, 0.0, 1.0),
-			})
-			scene.AttachSphere(dynamicObj, placement3d.SphereInfo[string]{
-				Sphere: sphereAt(5.0, 0.0, 0.0, 1.0),
-			})
-
-			count := 0
-			scene.EachSphere(placement3d.Filter{SkipDynamic: true}, func(shape3d.Sphere) bool {
-				count++
-				return true
-			})
-			Expect(count).To(Equal(1))
-		})
-
 		It("filters by layer mask", func() {
 			objID := scene.CreateObject(placement3d.ObjectInfo[string]{})
 			scene.AttachSphere(objID, placement3d.SphereInfo[string]{
-				ShapeInfo: placement3d.ShapeInfo[string]{
+				Filtering: placement3d.FilterInfo{
 					SourceMask: opt.V(uint32(0b01)),
 				},
 				Sphere: sphereAt(0.0, 0.0, 0.0, 1.0),
@@ -253,14 +251,12 @@ var _ = Describe("Scene", func() {
 	Describe("CollectIntersections", func() {
 		// attachOverlappingSpheres places two unit spheres 1.5 apart (so they
 		// overlap) on freshly created objects and returns the object IDs.
-		attachOverlappingSpheres := func(firstStatic, secondStatic bool) (placement3d.ObjectID, placement3d.ObjectID) {
+		attachOverlappingSpheres := func() (placement3d.ObjectID, placement3d.ObjectID) {
 			first := scene.CreateObject(placement3d.ObjectInfo[string]{
 				Position: opt.V(dprec.NewVec3(0.0, 0.0, 0.0)),
-				Static:   firstStatic,
 			})
 			second := scene.CreateObject(placement3d.ObjectInfo[string]{
 				Position: opt.V(dprec.NewVec3(1.5, 0.0, 0.0)),
-				Static:   secondStatic,
 			})
 			scene.AttachSphere(first, placement3d.SphereInfo[string]{
 				Sphere: sphereAt(0.0, 0.0, 0.0, 1.0),
@@ -277,24 +273,14 @@ var _ = Describe("Scene", func() {
 			return contacts
 		}
 
-		It("reports a single contact between two overlapping dynamic shapes", func() {
-			first, second := attachOverlappingSpheres(false, false)
+		It("reports a single contact between two overlapping shapes", func() {
+			first, second := attachOverlappingSpheres()
 			contacts := collect()
 			Expect(contacts).To(HaveLen(1))
 			Expect([]placement3d.ObjectID{
-				contacts[0].SourceObjectID,
-				contacts[0].TargetObjectID,
+				scene.GetShapeObject(contacts[0].SourceShapeID),
+				scene.GetShapeObject(contacts[0].TargetShapeID),
 			}).To(ConsistOf(first, second))
-		})
-
-		It("does not report contacts between two static shapes", func() {
-			attachOverlappingSpheres(true, true)
-			Expect(collect()).To(BeEmpty())
-		})
-
-		It("reports a contact between a dynamic and a static shape", func() {
-			attachOverlappingSpheres(false, true)
-			Expect(collect()).To(HaveLen(1))
 		})
 
 		It("does not report contacts between shapes of the same object", func() {
@@ -324,11 +310,11 @@ var _ = Describe("Scene", func() {
 			first := scene.CreateObject(placement3d.ObjectInfo[string]{})
 			second := scene.CreateObject(placement3d.ObjectInfo[string]{})
 			scene.AttachSphere(first, placement3d.SphereInfo[string]{
-				ShapeInfo: placement3d.ShapeInfo[string]{RejectGroup: 7},
+				Filtering: placement3d.FilterInfo{RejectGroup: 7},
 				Sphere:    sphereAt(0.0, 0.0, 0.0, 1.0),
 			})
 			scene.AttachSphere(second, placement3d.SphereInfo[string]{
-				ShapeInfo: placement3d.ShapeInfo[string]{RejectGroup: 7},
+				Filtering: placement3d.FilterInfo{RejectGroup: 7},
 				Sphere:    sphereAt(1.0, 0.0, 0.0, 1.0),
 			})
 			Expect(collect()).To(BeEmpty())
@@ -338,14 +324,14 @@ var _ = Describe("Scene", func() {
 			first := scene.CreateObject(placement3d.ObjectInfo[string]{})
 			second := scene.CreateObject(placement3d.ObjectInfo[string]{})
 			scene.AttachSphere(first, placement3d.SphereInfo[string]{
-				ShapeInfo: placement3d.ShapeInfo[string]{
+				Filtering: placement3d.FilterInfo{
 					SourceMask: opt.V(uint32(0b01)),
 					TargetMask: opt.V(uint32(0b01)),
 				},
 				Sphere: sphereAt(0.0, 0.0, 0.0, 1.0),
 			})
 			scene.AttachSphere(second, placement3d.SphereInfo[string]{
-				ShapeInfo: placement3d.ShapeInfo[string]{
+				Filtering: placement3d.FilterInfo{
 					SourceMask: opt.V(uint32(0b10)),
 					TargetMask: opt.V(uint32(0b10)),
 				},
@@ -355,7 +341,7 @@ var _ = Describe("Scene", func() {
 		})
 
 		It("stops reporting once a deleted object's shapes are gone", func() {
-			first, _ := attachOverlappingSpheres(false, false)
+			first, _ := attachOverlappingSpheres()
 			Expect(collect()).To(HaveLen(1))
 
 			scene.DeleteObject(first)
@@ -381,33 +367,127 @@ var _ = Describe("Scene", func() {
 			))
 			Expect(collect()).To(HaveLen(1))
 		})
+
+		It("reports a contact between a shape and an overlapping mesh", func() {
+			objID := scene.CreateObject(placement3d.ObjectInfo[string]{})
+			// The plane's triangles face -Y, so the sphere is placed just below
+			// the plane (on the front side) where it overlaps and is pushed out.
+			shapeID := scene.AttachSphere(objID, placement3d.SphereInfo[string]{
+				Sphere: sphereAt(0.0, -0.5, 0.0, 1.0),
+			})
+			meshID := scene.CreateMesh(placement3d.MeshInfo[string]{
+				Mesh: planeMesh(0.0, 0.0, 0.0, 5.0),
+			})
+
+			contacts := collect()
+			Expect(contacts).To(HaveLen(1))
+			Expect(contacts[0].SourceShapeID).To(Equal(shapeID))
+			Expect(contacts[0].TargetShapeID).To(Equal(placement3d.InvalidShapeID))
+			Expect(contacts[0].TargetMeshID).To(Equal(meshID))
+
+			contact := contacts[0].Contact
+			// The contact normal must push the sphere out the front (-Y) side,
+			// never inward into the mesh.
+			Expect(contact.TargetNormal.Y).To(BeNumerically("<", 0.0))
+		})
+
+		It("does not report a shape overlapping a mesh from behind", func() {
+			// A sphere on the +Y (back) side of the -Y-facing plane would have
+			// to be pushed further inward to separate, which the mesh logic
+			// prevents.
+			objID := scene.CreateObject(placement3d.ObjectInfo[string]{})
+			scene.AttachSphere(objID, placement3d.SphereInfo[string]{
+				Sphere: sphereAt(0.0, 0.5, 0.0, 1.0),
+			})
+			scene.CreateMesh(placement3d.MeshInfo[string]{
+				Mesh: planeMesh(0.0, 0.0, 0.0, 5.0),
+			})
+			Expect(collect()).To(BeEmpty())
+		})
+
+		It("does not report a shape disjoint from a mesh", func() {
+			objID := scene.CreateObject(placement3d.ObjectInfo[string]{})
+			scene.AttachSphere(objID, placement3d.SphereInfo[string]{
+				Sphere: sphereAt(0.0, 10.0, 0.0, 1.0),
+			})
+			scene.CreateMesh(placement3d.MeshInfo[string]{
+				Mesh: planeMesh(0.0, 0.0, 0.0, 5.0),
+			})
+			Expect(collect()).To(BeEmpty())
+		})
+	})
+
+	Describe("shape-vs-shape with boxes", func() {
+		It("reports a contact between two overlapping boxes", func() {
+			first := scene.CreateObject(placement3d.ObjectInfo[string]{})
+			second := scene.CreateObject(placement3d.ObjectInfo[string]{
+				Position: opt.V(dprec.NewVec3(1.5, 0.0, 0.0)),
+			})
+			scene.AttachBox(first, placement3d.BoxInfo[string]{
+				Box: shape3d.NewBox(
+					dprec.ZeroVec3(),
+					shape3d.IdentityRotation(),
+					dprec.NewVec3(2.0, 2.0, 2.0),
+				),
+			})
+			scene.AttachBox(second, placement3d.BoxInfo[string]{
+				Box: shape3d.NewBox(
+					dprec.ZeroVec3(),
+					shape3d.IdentityRotation(),
+					dprec.NewVec3(2.0, 2.0, 2.0),
+				),
+			})
+
+			var contacts placement3d.ContactList
+			scene.CollectIntersections(contacts.AddContact)
+			Expect(contacts).To(HaveLen(1))
+		})
+
+		It("reports a contact between an overlapping sphere and box", func() {
+			first := scene.CreateObject(placement3d.ObjectInfo[string]{})
+			second := scene.CreateObject(placement3d.ObjectInfo[string]{
+				Position: opt.V(dprec.NewVec3(1.0, 0.0, 0.0)),
+			})
+			scene.AttachSphere(first, placement3d.SphereInfo[string]{
+				Sphere: sphereAt(0.0, 0.0, 0.0, 1.0),
+			})
+			scene.AttachBox(second, placement3d.BoxInfo[string]{
+				Box: shape3d.NewBox(
+					dprec.ZeroVec3(),
+					shape3d.IdentityRotation(),
+					dprec.NewVec3(1.0, 1.0, 1.0),
+				),
+			})
+
+			var contacts placement3d.ContactList
+			scene.CollectIntersections(contacts.AddContact)
+			Expect(contacts).To(HaveLen(1))
+		})
 	})
 
 	Describe("CheckSphereIntersection", func() {
-		var objID placement3d.ObjectID
-		var shapeID placement3d.ShapeID
-
-		BeforeEach(func() {
-			objID = scene.CreateObject(placement3d.ObjectInfo[string]{})
-			shapeID = scene.AttachSphere(objID, placement3d.SphereInfo[string]{
+		It("reports a sphere overlapping a scene shape", func() {
+			objID := scene.CreateObject(placement3d.ObjectInfo[string]{})
+			scene.AttachSphere(objID, placement3d.SphereInfo[string]{
 				Sphere: sphereAt(0.0, 0.0, 0.0, 1.0),
 			})
-		})
 
-		It("finds an overlapping scene sphere as the target", func() {
 			contact, ok := scene.CheckSphereIntersection(
 				sphereAt(1.5, 0.0, 0.0, 1.0),
 				placement3d.Filter{},
 			)
 			Expect(ok).To(BeTrue())
-			Expect(contact.SourceObjectID).To(Equal(placement3d.InvalidObjectID))
 			Expect(contact.SourceShapeID).To(Equal(placement3d.InvalidShapeID))
-			Expect(contact.TargetObjectID).To(Equal(objID))
-			Expect(contact.TargetShapeID).To(Equal(shapeID))
-			Expect(contact.Depth).To(BeNumerically("~", 0.5, 1e-6))
+			Expect(scene.GetShapeObject(contact.TargetShapeID)).To(Equal(objID))
+			Expect(contact.TargetMeshID).To(Equal(placement3d.InvalidMeshID))
 		})
 
-		It("returns false when nothing overlaps", func() {
+		It("returns false for a sphere disjoint from every shape", func() {
+			objID := scene.CreateObject(placement3d.ObjectInfo[string]{})
+			scene.AttachSphere(objID, placement3d.SphereInfo[string]{
+				Sphere: sphereAt(0.0, 0.0, 0.0, 1.0),
+			})
+
 			_, ok := scene.CheckSphereIntersection(
 				sphereAt(10.0, 0.0, 0.0, 1.0),
 				placement3d.Filter{},
@@ -415,17 +495,165 @@ var _ = Describe("Scene", func() {
 			Expect(ok).To(BeFalse())
 		})
 
-		It("skips static shapes when SkipStatic is set", func() {
-			staticObj := scene.CreateObject(placement3d.ObjectInfo[string]{Static: true})
-			scene.AttachSphere(staticObj, placement3d.SphereInfo[string]{
-				Sphere: sphereAt(5.0, 0.0, 0.0, 1.0),
+		It("reports a sphere overlapping a mesh from the front", func() {
+			meshID := scene.CreateMesh(placement3d.MeshInfo[string]{
+				Mesh: planeMesh(0.0, 0.0, 0.0, 5.0),
+			})
+
+			// The plane faces -Y, so approach it from below (the front side).
+			contact, ok := scene.CheckSphereIntersection(
+				sphereAt(0.0, -0.5, 0.0, 1.0),
+				placement3d.Filter{},
+			)
+			Expect(ok).To(BeTrue())
+			Expect(contact.TargetShapeID).To(Equal(placement3d.InvalidShapeID))
+			Expect(contact.TargetMeshID).To(Equal(meshID))
+			Expect(contact.TargetNormal.Y).To(BeNumerically("<", 0.0))
+		})
+
+		It("does not report a sphere overlapping a mesh from behind", func() {
+			scene.CreateMesh(placement3d.MeshInfo[string]{
+				Mesh: planeMesh(0.0, 0.0, 0.0, 5.0),
 			})
 
 			_, ok := scene.CheckSphereIntersection(
-				sphereAt(5.0, 0.0, 0.0, 1.0),
+				sphereAt(0.0, 0.5, 0.0, 1.0),
+				placement3d.Filter{},
+			)
+			Expect(ok).To(BeFalse())
+		})
+
+		It("skips dynamic shapes when SkipDynamic is set", func() {
+			objID := scene.CreateObject(placement3d.ObjectInfo[string]{})
+			scene.AttachSphere(objID, placement3d.SphereInfo[string]{
+				Sphere: sphereAt(0.0, 0.0, 0.0, 1.0),
+			})
+
+			_, ok := scene.CheckSphereIntersection(
+				sphereAt(1.5, 0.0, 0.0, 1.0),
+				placement3d.Filter{SkipDynamic: true},
+			)
+			Expect(ok).To(BeFalse())
+		})
+
+		It("skips static meshes when SkipStatic is set", func() {
+			scene.CreateMesh(placement3d.MeshInfo[string]{
+				Mesh: planeMesh(0.0, 0.0, 0.0, 5.0),
+			})
+
+			_, ok := scene.CheckSphereIntersection(
+				sphereAt(0.0, -0.5, 0.0, 1.0),
 				placement3d.Filter{SkipStatic: true},
 			)
 			Expect(ok).To(BeFalse())
+		})
+	})
+
+	Describe("CheckBoxIntersection", func() {
+		It("reports a box overlapping a scene shape", func() {
+			objID := scene.CreateObject(placement3d.ObjectInfo[string]{})
+			scene.AttachSphere(objID, placement3d.SphereInfo[string]{
+				Sphere: sphereAt(0.0, 0.0, 0.0, 1.0),
+			})
+
+			contact, ok := scene.CheckBoxIntersection(
+				boxAt(1.5, 0.0, 0.0, 1.0),
+				placement3d.Filter{},
+			)
+			Expect(ok).To(BeTrue())
+			Expect(contact.SourceShapeID).To(Equal(placement3d.InvalidShapeID))
+			Expect(scene.GetShapeObject(contact.TargetShapeID)).To(Equal(objID))
+			Expect(contact.TargetMeshID).To(Equal(placement3d.InvalidMeshID))
+		})
+
+		It("returns false for a box disjoint from every shape", func() {
+			objID := scene.CreateObject(placement3d.ObjectInfo[string]{})
+			scene.AttachSphere(objID, placement3d.SphereInfo[string]{
+				Sphere: sphereAt(0.0, 0.0, 0.0, 1.0),
+			})
+
+			_, ok := scene.CheckBoxIntersection(
+				boxAt(10.0, 0.0, 0.0, 1.0),
+				placement3d.Filter{},
+			)
+			Expect(ok).To(BeFalse())
+		})
+
+		It("reports a box overlapping a mesh from the front", func() {
+			meshID := scene.CreateMesh(placement3d.MeshInfo[string]{
+				Mesh: planeMesh(0.0, 0.0, 0.0, 5.0),
+			})
+
+			// The plane faces -Y, so approach it from below (the front side).
+			contact, ok := scene.CheckBoxIntersection(
+				boxAt(0.0, -0.5, 0.0, 1.0),
+				placement3d.Filter{},
+			)
+			Expect(ok).To(BeTrue())
+			Expect(contact.TargetShapeID).To(Equal(placement3d.InvalidShapeID))
+			Expect(contact.TargetMeshID).To(Equal(meshID))
+			Expect(contact.TargetNormal.Y).To(BeNumerically("<", 0.0))
+		})
+
+		It("does not report a box overlapping a mesh from behind", func() {
+			scene.CreateMesh(placement3d.MeshInfo[string]{
+				Mesh: planeMesh(0.0, 0.0, 0.0, 5.0),
+			})
+
+			_, ok := scene.CheckBoxIntersection(
+				boxAt(0.0, 0.5, 0.0, 1.0),
+				placement3d.Filter{},
+			)
+			Expect(ok).To(BeFalse())
+		})
+
+		It("skips dynamic shapes when SkipDynamic is set", func() {
+			objID := scene.CreateObject(placement3d.ObjectInfo[string]{})
+			scene.AttachSphere(objID, placement3d.SphereInfo[string]{
+				Sphere: sphereAt(0.0, 0.0, 0.0, 1.0),
+			})
+
+			_, ok := scene.CheckBoxIntersection(
+				boxAt(1.5, 0.0, 0.0, 1.0),
+				placement3d.Filter{SkipDynamic: true},
+			)
+			Expect(ok).To(BeFalse())
+		})
+
+		It("skips static meshes when SkipStatic is set", func() {
+			scene.CreateMesh(placement3d.MeshInfo[string]{
+				Mesh: planeMesh(0.0, 0.0, 0.0, 5.0),
+			})
+
+			_, ok := scene.CheckBoxIntersection(
+				boxAt(0.0, -0.5, 0.0, 1.0),
+				placement3d.Filter{SkipStatic: true},
+			)
+			Expect(ok).To(BeFalse())
+		})
+	})
+
+	Describe("CollectSegmentIntersections", func() {
+		It("collects every shape a segment passes through", func() {
+			near := scene.CreateObject(placement3d.ObjectInfo[string]{})
+			far := scene.CreateObject(placement3d.ObjectInfo[string]{})
+			scene.AttachSphere(near, placement3d.SphereInfo[string]{
+				Sphere: sphereAt(0.0, 0.0, 0.0, 1.0),
+			})
+			scene.AttachSphere(far, placement3d.SphereInfo[string]{
+				Sphere: sphereAt(4.0, 0.0, 0.0, 1.0),
+			})
+
+			var contacts placement3d.ContactList
+			scene.CollectSegmentIntersections(
+				shape3d.NewSegment(
+					dprec.NewVec3(-5.0, 0.0, 0.0),
+					dprec.NewVec3(9.0, 0.0, 0.0),
+				),
+				placement3d.Filter{},
+				contacts.AddContact,
+			)
+			Expect(contacts).To(HaveLen(2))
 		})
 	})
 
@@ -444,8 +672,25 @@ var _ = Describe("Scene", func() {
 				placement3d.Filter{},
 			)
 			Expect(ok).To(BeTrue())
-			Expect(contact.SourceObjectID).To(Equal(placement3d.InvalidObjectID))
-			Expect(contact.TargetObjectID).To(Equal(objID))
+			Expect(contact.SourceShapeID).To(Equal(placement3d.InvalidShapeID))
+			Expect(scene.GetShapeObject(contact.TargetShapeID)).To(Equal(objID))
+		})
+
+		It("finds a mesh crossed by the segment", func() {
+			meshID := scene.CreateMesh(placement3d.MeshInfo[string]{
+				Mesh: planeMesh(0.0, 0.0, 0.0, 5.0),
+			})
+
+			contact, ok := scene.CheckSegmentIntersection(
+				shape3d.NewSegment(
+					dprec.NewVec3(2.0, -5.0, 0.0),
+					dprec.NewVec3(2.0, 5.0, 0.0),
+				),
+				placement3d.Filter{},
+			)
+			Expect(ok).To(BeTrue())
+			Expect(contact.TargetShapeID).To(Equal(placement3d.InvalidShapeID))
+			Expect(contact.TargetMeshID).To(Equal(meshID))
 		})
 
 		It("returns false when the segment misses everything", func() {
@@ -460,6 +705,37 @@ var _ = Describe("Scene", func() {
 					dprec.NewVec3(5.0, 5.0, 0.0),
 				),
 				placement3d.Filter{},
+			)
+			Expect(ok).To(BeFalse())
+		})
+
+		It("skips dynamic shapes when SkipDynamic is set", func() {
+			objID := scene.CreateObject(placement3d.ObjectInfo[string]{})
+			scene.AttachSphere(objID, placement3d.SphereInfo[string]{
+				Sphere: sphereAt(0.0, 0.0, 0.0, 1.0),
+			})
+
+			_, ok := scene.CheckSegmentIntersection(
+				shape3d.NewSegment(
+					dprec.NewVec3(-5.0, 0.0, 0.0),
+					dprec.NewVec3(5.0, 0.0, 0.0),
+				),
+				placement3d.Filter{SkipDynamic: true},
+			)
+			Expect(ok).To(BeFalse())
+		})
+
+		It("skips static meshes when SkipStatic is set", func() {
+			scene.CreateMesh(placement3d.MeshInfo[string]{
+				Mesh: planeMesh(0.0, 0.0, 0.0, 5.0),
+			})
+
+			_, ok := scene.CheckSegmentIntersection(
+				shape3d.NewSegment(
+					dprec.NewVec3(0.0, 5.0, 0.0),
+					dprec.NewVec3(0.0, -5.0, 0.0),
+				),
+				placement3d.Filter{SkipStatic: true},
 			)
 			Expect(ok).To(BeFalse())
 		})

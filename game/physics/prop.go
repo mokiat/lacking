@@ -26,6 +26,6 @@ func (p Prop) Name() string {
 
 type propState struct {
 	reference indexReference
-	objectID  placement3d.ObjectID
+	meshID    placement3d.MeshID
 	name      string
 }

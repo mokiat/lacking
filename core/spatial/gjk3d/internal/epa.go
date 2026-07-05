@@ -14,7 +14,15 @@ import (
 // then call [EPASolver.Next] repeatedly until it returns false, then obtain
 // the result through [EPASolver.Solution].
 type EPASolver struct {
-	polytope            map[PolytopeTriangleID]PolytopeTriangle
+	// polytope holds the faces of the expanding polytope. It is a reused slice
+	// rather than a map value so that the large [PolytopeTriangle] (which
+	// exceeds Go's 128-byte map element inline threshold) is not heap-allocated
+	// on every insertion.
+	polytope []PolytopeTriangle
+	// polytopeIndex maps a face identity to its position within polytope,
+	// providing the dedup-on-insert that the former map value type gave for
+	// free. Its value is a small int, so it stays inline and allocation-free.
+	polytopeIndex       map[PolytopeTriangleID]int32
 	horizon             map[polytopeEdgeID]polytopeEdge
 	solution            EPASolution
 	skinRadius          float64
@@ -24,8 +32,9 @@ type EPASolver struct {
 // NewEPASolver creates a new [EPASolver] instance.
 func NewEPASolver() *EPASolver {
 	return &EPASolver{
-		polytope: make(map[PolytopeTriangleID]PolytopeTriangle),
-		horizon:  make(map[polytopeEdgeID]polytopeEdge),
+		polytope:      make([]PolytopeTriangle, 0, 32),
+		polytopeIndex: make(map[PolytopeTriangleID]int32, 32),
+		horizon:       make(map[polytopeEdgeID]polytopeEdge, 32),
 	}
 }
 
@@ -38,7 +47,8 @@ func NewEPASolver() *EPASolver {
 // triangle feature of the Minkowski difference that is closest to the origin,
 // and the solution is computed immediately, requiring no iteration.
 func (s *EPASolver) Reset(shape *MinkowskiShape, simplex Simplex, containsOrigin bool) {
-	clear(s.polytope)
+	s.polytope = s.polytope[:0]
+	clear(s.polytopeIndex)
 	s.solution = EPASolution{
 		VertexA: simplex.Vertices[0],
 		VertexB: simplex.Vertices[0],
@@ -105,18 +115,26 @@ func (s *EPASolver) Next(shape *MinkowskiShape) bool {
 	}
 
 	// Expand the polytope: remove every face visible from the support point and
-	// re-triangulate the resulting horizon loop toward the support.
+	// re-triangulate the resulting horizon loop toward the support. The visible
+	// faces are dropped by compacting the survivors to the front of the slice
+	// in place, rebuilding polytopeIndex for them as we go.
 	clear(s.horizon)
-	for id, triangle := range s.polytope {
+	clear(s.polytopeIndex)
+	kept := s.polytope[:0]
+	for i := range s.polytope {
+		triangle := s.polytope[i]
 		visible := dprec.Vec3Dot(triangle.Normal, dprec.Vec3Diff(support.Position, triangle.VertexA.Position))
-		if visible <= 0 {
+		if visible > 0 {
+			addHorizonEdge(s.horizon, triangle.VertexA, triangle.VertexB)
+			addHorizonEdge(s.horizon, triangle.VertexB, triangle.VertexC)
+			addHorizonEdge(s.horizon, triangle.VertexC, triangle.VertexA)
 			continue
 		}
-		addHorizonEdge(s.horizon, triangle.VertexA, triangle.VertexB)
-		addHorizonEdge(s.horizon, triangle.VertexB, triangle.VertexC)
-		addHorizonEdge(s.horizon, triangle.VertexC, triangle.VertexA)
-		delete(s.polytope, id)
+		id := PolytopeTriangleID{triangle.VertexA.Refs, triangle.VertexB.Refs, triangle.VertexC.Refs}
+		s.polytopeIndex[id] = int32(len(kept))
+		kept = append(kept, triangle)
 	}
+	s.polytope = kept
 	for _, edge := range s.horizon {
 		s.addPolytopeTriangle(edge.VertexA, edge.VertexB, support)
 	}
@@ -327,12 +345,18 @@ func (s *EPASolver) addPolytopeTriangle(vertexA, vertexB, vertexC MinkowskiVerte
 
 	normal := dprec.UnitVec3(cross)
 	id := PolytopeTriangleID{vertexA.Refs, vertexB.Refs, vertexC.Refs}
-	s.polytope[id] = PolytopeTriangle{
+	triangle := PolytopeTriangle{
 		VertexA:  vertexA,
 		VertexB:  vertexB,
 		VertexC:  vertexC,
 		Normal:   normal,
 		Distance: dprec.Vec3Dot(normal, vertexA.Position),
+	}
+	if index, ok := s.polytopeIndex[id]; ok {
+		s.polytope[index] = triangle // replace an existing face with the same winding
+	} else {
+		s.polytopeIndex[id] = int32(len(s.polytope))
+		s.polytope = append(s.polytope, triangle)
 	}
 }
 

@@ -1,55 +1,69 @@
 package placement2d
 
 import (
-	"slices"
-
+	"github.com/mokiat/gog/opt"
+	"github.com/mokiat/gomath/dprec"
+	"github.com/mokiat/lacking/core/spatial/query2d"
 	"github.com/mokiat/lacking/core/spatial/shape2d"
 )
 
-// MeshInfo contains the information needed to create a mesh shape.
-type MeshInfo[S any] struct {
+// InvalidMeshID indicates a mesh that can never be part of the scene.
+const InvalidMeshID = MeshID(nilIndex)
 
-	// ShapeInfo contains general shape information.
-	ShapeInfo[S]
+// MeshID is a reference to a mesh in the scene.
+type MeshID int32
+
+// MeshInfo contains the information needed to create a mesh shape.
+type MeshInfo[M any] struct {
+
+	// Position optionally specifies a position where the mesh should be placed.
+	//
+	// Defaults to the origin.
+	Position opt.T[dprec.Vec2]
+
+	// Rotation optionally specifies a rotation of the mesh.
+	//
+	// Defaults to the identity rotation.
+	Rotation opt.T[dprec.Angle]
+
+	// Filtering holds the collision-filtering metadata for the mesh.
+	Filtering FilterInfo
+
+	// UserData allows one to attach custom user data to the mesh.
+	UserData M
 
 	// Mesh contains the mesh information.
 	Mesh shape2d.Mesh
 }
 
-type sceneMeshShape[S any] struct {
-	sceneShape[S]
-	meshSolver
+type meshShape[M any] struct {
+	spatialID query2d.TreeItemID
+	filterRepresentation
+	meshRepresentation
+	userData M
 }
 
-func newMeshSolver(template shape2d.Mesh) meshSolver {
-	bc := template.BoundingCircle()
-	return meshSolver{
-		lsMesh:           template,
-		lsBoundingCircle: bc,
+func shapeMeshCanIntersect[S, M any](shape *shape[S], mesh *meshShape[M]) bool {
+	return shape.canInteractWith(&mesh.filterRepresentation)
+}
 
-		wsMesh:           shape2d.NewMesh(slices.Clone(template.Edges)),
-		wsBoundingCircle: bc,
+type meshRepresentation struct {
+	wsBCircle shape2d.Circle
+
+	// TODO: Consider using a different storage mechanism. For example a
+	// Quadtree or BVH structure.
+	// Alternatively experiment with placing each mesh edge in the existing
+	// mesh tree, through this will likely destroy the mesh tree performance.
+	wsEdges []shape2d.Edge
+}
+
+func newMeshRepresentation(mesh shape2d.Mesh) meshRepresentation {
+	return meshRepresentation{
+		wsBCircle: mesh.BoundingCircle(),
+		wsEdges:   mesh.Edges,
 	}
 }
 
-type meshSolver struct {
-	lsMesh           shape2d.Mesh
-	lsBoundingCircle shape2d.Circle
-
-	wsMesh           shape2d.Mesh
-	wsBoundingCircle shape2d.Circle
-}
-
-func (s *meshSolver) update(transform shape2d.Transform) {
-	for i := range s.wsMesh.Edges {
-		s.wsMesh.Edges[i] = shape2d.TransformedEdge(
-			s.lsMesh.Edges[i],
-			transform,
-		)
-	}
-	s.wsBoundingCircle = shape2d.TransformedCircle(s.lsBoundingCircle, transform)
-}
-
-func (s *meshSolver) boundingCircle() shape2d.Circle {
-	return s.wsBoundingCircle
+func (s *meshRepresentation) boundingCircle() shape2d.Circle {
+	return s.wsBCircle
 }

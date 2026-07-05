@@ -14,16 +14,29 @@ import (
 // then call [EPASolver.Next] repeatedly until it returns false, then obtain
 // the result through [EPASolver.Solution].
 type EPASolver struct {
-	polytope            map[PolytopeEdgeID]PolytopeEdge
+	// polytope holds the edges of the expanding polytope. It is a reused slice
+	// so that no per-insertion allocation is incurred (mirroring the 3D solver);
+	// see the note in NewEPASolver on why this is not strictly necessary here.
+	polytope []PolytopeEdge
+	// polytopeIndex maps an edge identity to its position within polytope,
+	// providing the dedup-on-insert and delete-by-identity that the former map
+	// keying gave for free. Its value is a small int, so it stays inline.
+	polytopeIndex       map[PolytopeEdgeID]int32
 	solution            EPASolution
 	skinRadius          float64
 	remainingIterations uint32
 }
 
 // NewEPASolver creates a new [EPASolver] instance.
+//
+// Unlike the 3D solver, the 2D PolytopeEdge value is smaller than Go's 128-byte
+// map element inline threshold, so the original map-based polytope already
+// stored its edges inline and did not allocate per insertion. The slice-backed
+// representation is kept only for parity with the 3D solver.
 func NewEPASolver() *EPASolver {
 	return &EPASolver{
-		polytope: make(map[PolytopeEdgeID]PolytopeEdge),
+		polytope:      make([]PolytopeEdge, 0, 16),
+		polytopeIndex: make(map[PolytopeEdgeID]int32, 16),
 	}
 }
 
@@ -36,7 +49,8 @@ func NewEPASolver() *EPASolver {
 // feature of the Minkowski difference that is closest to the origin, and
 // the solution is computed immediately, requiring no iteration.
 func (s *EPASolver) Reset(shape *MinkowskiShape, simplex Simplex, containsOrigin bool) {
-	clear(s.polytope)
+	s.polytope = s.polytope[:0]
+	clear(s.polytopeIndex)
 	s.solution = EPASolution{
 		VertexA: simplex.Vertices[0],
 		VertexB: simplex.Vertices[0],
@@ -74,17 +88,15 @@ func (s *EPASolver) Next(shape *MinkowskiShape) bool {
 	}
 	s.remainingIterations--
 
-	var (
-		minEdgeID   PolytopeEdgeID
-		minDistance = math.MaxFloat64
-	)
-	for edgeID, edge := range s.polytope {
-		if edge.Distance < minDistance {
-			minEdgeID = edgeID
-			minDistance = edge.Distance
+	minIndex := -1
+	minDistance := math.MaxFloat64
+	for i := range s.polytope {
+		if s.polytope[i].Distance < minDistance {
+			minIndex = i
+			minDistance = s.polytope[i].Distance
 		}
 	}
-	minEdge := s.polytope[minEdgeID]
+	minEdge := s.polytope[minIndex]
 
 	pointA := minEdge.VertexA.Position
 	pointB := minEdge.VertexB.Position
@@ -97,7 +109,7 @@ func (s *EPASolver) Next(shape *MinkowskiShape) bool {
 		return false
 	}
 
-	delete(s.polytope, minEdgeID)
+	s.removePolytopeEdge(minIndex)
 	s.addPolytopeEdge(minEdge.VertexA, support)
 	s.addPolytopeEdge(support, minEdge.VertexB)
 
@@ -188,11 +200,35 @@ func (s *EPASolver) addPolytopeEdge(vertexA, vertexB MinkowskiVertex) {
 	}
 
 	id := PolytopeEdgeID{vertexA.Refs, vertexB.Refs}
-	s.polytope[id] = PolytopeEdge{
+	polyEdge := PolytopeEdge{
 		VertexA:  vertexA,
 		VertexB:  vertexB,
 		Distance: distance,
 	}
+	if index, ok := s.polytopeIndex[id]; ok {
+		s.polytope[index] = polyEdge // replace an existing edge with the same identity
+	} else {
+		s.polytopeIndex[id] = int32(len(s.polytope))
+		s.polytope = append(s.polytope, polyEdge)
+	}
+}
+
+// removePolytopeEdge removes the edge at the given index by swapping the last
+// edge into its slot and truncating, keeping polytopeIndex consistent for the
+// moved edge.
+func (s *EPASolver) removePolytopeEdge(index int) {
+	removed := s.polytope[index]
+	removedID := PolytopeEdgeID{removed.VertexA.Refs, removed.VertexB.Refs}
+
+	last := len(s.polytope) - 1
+	if index != last {
+		moved := s.polytope[last]
+		s.polytope[index] = moved
+		movedID := PolytopeEdgeID{moved.VertexA.Refs, moved.VertexB.Refs}
+		s.polytopeIndex[movedID] = int32(index)
+	}
+	s.polytope = s.polytope[:last]
+	delete(s.polytopeIndex, removedID)
 }
 
 // polytopeContainsVertex reports whether any edge of the polytope already has
