@@ -381,13 +381,11 @@ func createBody(scene *Scene, info BodyInfo) Body {
 		freeIndex = scene.freeBodyIndices.Pop()
 	}
 
-	objectID := scene.shapeScene.CreateObject(placement3d.ObjectInfo[internalRef]{
+	objectID := scene.shapeScene.CreateObject(placement3d.ObjectInfo[bodyRef]{
 		Position: opt.V(info.Position),
 		Rotation: opt.V(info.Rotation),
-		Static:   false,
-		UserData: internalRef{
-			index:  freeIndex,
-			isProp: false,
+		UserData: bodyRef{
+			index: freeIndex,
 		},
 	})
 	for _, sphere := range info.Definition.collisionSpheres {
@@ -406,14 +404,14 @@ func createBody(scene *Scene, info BodyInfo) Body {
 			Box: box,
 		})
 	}
-	for _, mesh := range info.Definition.collisionMeshes {
-		scene.shapeScene.AttachMesh(objectID, placement3d.MeshInfo[struct{}]{
-			ShapeInfo: placement3d.ShapeInfo[struct{}]{
-				RejectGroup: uint32(info.Definition.collisionGroup),
-			},
-			Mesh: mesh,
-		})
-	}
+	// for _, mesh := range info.Definition.collisionMeshes {
+	// 	scene.shapeScene.CreateMesh(placement3d.MeshInfo[struct{}]{
+	// 		ShapeInfo: placement3d.ShapeInfo[struct{}]{
+	// 			RejectGroup: uint32(info.Definition.collisionGroup),
+	// 		},
+	// 		Mesh: mesh,
+	// 	})
+	// }
 
 	reference := newIndexReference(freeIndex, scene.nextRevision())
 	body := bodyState{

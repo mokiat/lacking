@@ -19,7 +19,7 @@ func newScene(engine *Engine) *Scene {
 	return &Scene{
 		engine: engine,
 
-		shapeScene: placement3d.NewScene[internalRef, struct{}](placement3d.SceneSettings{
+		shapeScene: placement3d.NewScene[bodyRef, struct{}, propRef](placement3d.SceneSettings{
 			Size:                opt.V(16384.0),
 			MaxDepth:            opt.V[uint32](12),
 			InitialNodeCapacity: opt.V[uint32](1024),
@@ -75,7 +75,7 @@ func newScene(engine *Engine) *Scene {
 type Scene struct {
 	engine *Engine
 
-	shapeScene *placement3d.Scene[internalRef, struct{}]
+	shapeScene *placement3d.Scene[bodyRef, struct{}, propRef]
 
 	sbCollisionSubscriptions *SingleBodyCollisionSubscriptionSet
 	dbCollisionSubscriptions *DoubleBodyCollisionSubscriptionSet
@@ -241,41 +241,46 @@ func (s *Scene) CreateGlobalAccelerator(logic solver.Acceleration) GlobalAcceler
 func (s *Scene) CreateProp(info PropInfo) {
 	// TODO: createProp(s, info)
 
-	propIndex := uint32(len(s.props))
-
-	objectID := s.shapeScene.CreateObject(placement3d.ObjectInfo[internalRef]{
-		Position: info.Position,
-		Rotation: info.Rotation,
-		Static:   true,
-		UserData: internalRef{
-			index:  propIndex,
-			isProp: true,
-		},
-	})
-	for _, sphere := range info.CollisionSpheres {
-		s.shapeScene.AttachSphere(objectID, placement3d.SphereInfo[struct{}]{
-			ShapeInfo: placement3d.ShapeInfo[struct{}]{},
-			Sphere:    sphere,
-		})
-	}
-	for _, box := range info.CollisionBoxes {
-		s.shapeScene.AttachBox(objectID, placement3d.BoxInfo[struct{}]{
-			ShapeInfo: placement3d.ShapeInfo[struct{}]{},
-			Box:       box,
-		})
-	}
+	// objectID := s.shapeScene.CreateObject(placement3d.ObjectInfo[internalRef]{
+	// 	Position: info.Position,
+	// 	Rotation: info.Rotation,
+	// 	UserData: internalRef{
+	// 		index:  propIndex,
+	// 		isProp: true,
+	// 	},
+	// })
+	// for _, sphere := range info.CollisionSpheres {
+	// 	s.shapeScene.AttachSphere(objectID, placement3d.SphereInfo[struct{}]{
+	// 		ShapeInfo: placement3d.ShapeInfo[struct{}]{},
+	// 		Sphere:    sphere,
+	// 	})
+	// }
+	// for _, box := range info.CollisionBoxes {
+	// 	s.shapeScene.AttachBox(objectID, placement3d.BoxInfo[struct{}]{
+	// 		ShapeInfo: placement3d.ShapeInfo[struct{}]{},
+	// 		Box:       box,
+	// 	})
+	// }
 	for _, mesh := range info.CollisionMeshes {
-		s.shapeScene.AttachMesh(objectID, placement3d.MeshInfo[struct{}]{
-			ShapeInfo: placement3d.ShapeInfo[struct{}]{},
-			Mesh:      mesh,
+		propIndex := uint32(len(s.props))
+
+		meshID := s.shapeScene.CreateMesh(placement3d.MeshInfo[propRef]{
+			Position: info.Position,
+			Rotation: info.Rotation,
+			ShapeInfo: placement3d.ShapeInfo[propRef]{
+				UserData: propRef{
+					index: propIndex,
+				},
+			},
+			Mesh: mesh,
+		})
+
+		s.props = append(s.props, propState{
+			reference: newIndexReference(propIndex, s.nextRevision()),
+			meshID:    meshID,
+			name:      info.Name,
 		})
 	}
-
-	s.props = append(s.props, propState{
-		reference: newIndexReference(propIndex, s.nextRevision()),
-		objectID:  objectID,
-		name:      info.Name,
-	})
 }
 
 // CreateBody creates a new physics body and places
@@ -328,10 +333,12 @@ func (s *Scene) CheckSegmentIntersection(segment shape3d.Segment, mask uint32) (
 	if !ok {
 		return Body{}, false
 	}
-	ref := s.shapeScene.GetObjectUserData(intersection.TargetObjectID)
-	if ref.isProp {
+	if intersection.TargetShapeID == placement3d.InvalidShapeID {
+		// A prop.
 		return Body{}, false // FIXME: This should handle props as well.
 	}
+	objectID := s.shapeScene.GetShapeObject(intersection.TargetShapeID)
+	ref := s.shapeScene.GetObjectUserData(objectID)
 	return Body{
 		scene:     s,
 		reference: s.bodies[ref.index].reference,
@@ -641,80 +648,84 @@ func (s *Scene) detectCollisions() {
 	s.collisionSet.Reset()
 	s.shapeScene.CollectIntersections(s.collisionSet.AddContact)
 	for _, intersection := range s.collisionSet.Contacts() {
-		primaryRef := s.shapeScene.GetObjectUserData(intersection.SourceObjectID)
-		secondaryRef := s.shapeScene.GetObjectUserData(intersection.TargetObjectID)
-		if primaryRef.isProp && secondaryRef.isProp {
-			continue
-		}
-		if primaryRef.isProp && !secondaryRef.isProp {
-			primaryRef, secondaryRef = secondaryRef, primaryRef
-			intersection = intersection.Flipped()
-		}
+		srcBodyObject := s.shapeScene.GetShapeObject(intersection.SourceShapeID)
+		srcBodyRef := s.shapeScene.GetObjectUserData(srcBodyObject)
 
-		if secondaryRef.isProp {
-			primary := s.bodies[primaryRef.index]
-			secondary := s.props[secondaryRef.index]
-
-			solver := s.allocateGroundCollisionSolver()
-			solver.Init(constraint.CollisionState{
-				BodyNormal:                 intersection.TargetNormal,
-				BodyPoint:                  intersection.EvalSourcePoint(),
-				BodyFrictionCoefficient:    primary.frictionCoefficient,
-				BodyRestitutionCoefficient: primary.restitutionCoefficient,
-
-				PropFrictionCoefficient:    1.0, // TODO: Take from prop or shape material
-				PropRestitutionCoefficient: 0.5, // TODO: Take from prop or shape material
-
-				Depth: intersection.Depth,
-			})
-
-			pair := sbCollisionPair{
-				BodyRef: primary.reference,
-				PropRef: secondary.reference,
-			}
-			s.newSBCollisions[pair] = struct{}{}
-
-			primaryBody := Body{
-				scene:     s,
-				reference: primary.reference,
-			}
-			s.sbCollisionConstraints = append(s.sbCollisionConstraints, s.CreateSingleBodyConstraint(primaryBody, solver))
+		if intersection.TargetMeshID == placement3d.InvalidMeshID {
+			tgtBodyObject := s.shapeScene.GetShapeObject(intersection.TargetShapeID)
+			tgtBodyRef := s.shapeScene.GetObjectUserData(tgtBodyObject)
+			s.detectBodyBodyCollision(srcBodyRef.index, tgtBodyRef.index, intersection)
 		} else {
-			primary := s.bodies[primaryRef.index]
-			secondary := s.bodies[secondaryRef.index]
-
-			solver := s.allocateDualCollisionSolver()
-			solver.Init(constraint.PairCollisionState{
-				PrimaryNormal:                 intersection.TargetNormal,
-				PrimaryPoint:                  intersection.EvalSourcePoint(),
-				PrimaryFrictionCoefficient:    primary.frictionCoefficient,
-				PrimaryRestitutionCoefficient: primary.restitutionCoefficient,
-
-				SecondaryNormal:                 intersection.EvalSourceNormal(),
-				SecondaryPoint:                  intersection.TargetPoint,
-				SecondaryFrictionCoefficient:    secondary.frictionCoefficient,
-				SecondaryRestitutionCoefficient: secondary.restitutionCoefficient,
-
-				Depth: intersection.Depth,
-			})
-
-			pair := dbCollisionPair{
-				PrimaryRef:   primary.reference,
-				SecondaryRef: secondary.reference,
-			}
-			s.newDBCollisions[pair] = struct{}{}
-
-			primaryBody := Body{
-				scene:     s,
-				reference: primary.reference,
-			}
-			secondaryBody := Body{
-				scene:     s,
-				reference: secondary.reference,
-			}
-			s.dbCollisionConstraints = append(s.dbCollisionConstraints, s.CreateDoubleBodyConstraint(primaryBody, secondaryBody, solver))
+			tgtPropMesh := s.shapeScene.GetMeshUserData(intersection.TargetMeshID)
+			s.detectBodyPropCollision(srcBodyRef.index, tgtPropMesh.index, intersection)
 		}
 	}
+}
+
+func (s *Scene) detectBodyBodyCollision(primaryIndex, secondaryIndex uint32, intersection placement3d.Contact) {
+	primary := &s.bodies[primaryIndex]
+	secondary := &s.bodies[secondaryIndex]
+
+	solver := s.allocateDualCollisionSolver()
+	solver.Init(constraint.PairCollisionState{
+		PrimaryNormal:                 intersection.TargetNormal,
+		PrimaryPoint:                  intersection.EvalSourcePoint(),
+		PrimaryFrictionCoefficient:    primary.frictionCoefficient,
+		PrimaryRestitutionCoefficient: primary.restitutionCoefficient,
+
+		SecondaryNormal:                 intersection.EvalSourceNormal(),
+		SecondaryPoint:                  intersection.TargetPoint,
+		SecondaryFrictionCoefficient:    secondary.frictionCoefficient,
+		SecondaryRestitutionCoefficient: secondary.restitutionCoefficient,
+
+		Depth: intersection.Depth,
+	})
+
+	pair := dbCollisionPair{
+		PrimaryRef:   primary.reference,
+		SecondaryRef: secondary.reference,
+	}
+	s.newDBCollisions[pair] = struct{}{}
+
+	primaryBody := Body{
+		scene:     s,
+		reference: primary.reference,
+	}
+	secondaryBody := Body{
+		scene:     s,
+		reference: secondary.reference,
+	}
+	s.dbCollisionConstraints = append(s.dbCollisionConstraints, s.CreateDoubleBodyConstraint(primaryBody, secondaryBody, solver))
+}
+
+func (s *Scene) detectBodyPropCollision(bodyIndex, propIndex uint32, intersection placement3d.Contact) {
+	primary := &s.bodies[bodyIndex]
+	secondary := &s.props[propIndex]
+
+	solver := s.allocateGroundCollisionSolver()
+	solver.Init(constraint.CollisionState{
+		BodyNormal:                 intersection.TargetNormal,
+		BodyPoint:                  intersection.EvalSourcePoint(),
+		BodyFrictionCoefficient:    primary.frictionCoefficient,
+		BodyRestitutionCoefficient: primary.restitutionCoefficient,
+
+		PropFrictionCoefficient:    1.0, // TODO: Take from prop or shape material
+		PropRestitutionCoefficient: 0.5, // TODO: Take from prop or shape material
+
+		Depth: intersection.Depth,
+	})
+
+	pair := sbCollisionPair{
+		BodyRef: primary.reference,
+		PropRef: secondary.reference,
+	}
+	s.newSBCollisions[pair] = struct{}{}
+
+	primaryBody := Body{
+		scene:     s,
+		reference: primary.reference,
+	}
+	s.sbCollisionConstraints = append(s.sbCollisionConstraints, s.CreateSingleBodyConstraint(primaryBody, solver))
 }
 
 func (s *Scene) allocateGroundCollisionSolver() *constraint.Collision {
@@ -933,8 +944,10 @@ func (s *Scene) deinitPlaceholder(placeholder *solver.Placeholder, body *bodySta
 	})
 }
 
-// TODO: Fixme!
-type internalRef struct {
-	index  uint32
-	isProp bool
+type bodyRef struct {
+	index uint32
+}
+
+type propRef struct {
+	index uint32
 }

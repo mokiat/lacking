@@ -7,7 +7,7 @@ import (
 )
 
 // InvalidObjectID indicates an object that can never be part of the scene.
-const InvalidObjectID = ObjectID(invalidObjectIndex)
+const InvalidObjectID = ObjectID(nilIndex)
 
 // ObjectID is a reference to an object in the scene.
 type ObjectID int32
@@ -26,21 +26,13 @@ type ObjectInfo[O any] struct {
 	// Defaults to the identity rotation.
 	Rotation opt.T[dprec.Quat]
 
-	// Static marks the object as static. Static objects are not checked for
-	// intersections with other static objects.
-	Static bool
-
 	// UserData allows one to attach custom user data to an object.
 	UserData O
 }
 
-const invalidObjectIndex = int32(-1)
-
 type sceneObject[O any] struct {
-	transform        shape3d.Transform
-	firstConvexShape int32
-	firstMeshShape   int32
-	static           bool
-
-	userData O
+	transform  shape3d.Transform
+	firstShape int32
+	lastShape  int32
+	userData   O
 }

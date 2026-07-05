@@ -1,8 +1,6 @@
 package placement3d
 
-import (
-	"github.com/mokiat/lacking/core/spatial/shape3d"
-)
+import "github.com/mokiat/lacking/core/spatial/shape3d"
 
 // Contact describes the intersection of a source shape with a target shape.
 //
@@ -11,46 +9,26 @@ import (
 // [shape3d.Contact.EvalSourceNormal].
 type Contact struct {
 
-	// SourceObjectID contains the ID of the first involved object.
-	//
-	// This ID is equal to [InvalidObjectID] if the check was not performed with
-	// a scene object.
-	SourceObjectID ObjectID
-
 	// SourceShapeID contains the ID of the shape from the first involved object.
 	//
 	// This ID is equal to [InvalidShapeID] if the check was not performed with
 	// a scene object.
 	SourceShapeID ShapeID
 
-	// TargetObjectID contains the ID of the second involved object.
-	//
-	// This ID is equal to [InvalidObjectID] if the check was not performed with
-	// a scene object.
-	TargetObjectID ObjectID
-
 	// TargetShapeID contains the ID of the shape from the second involved object.
 	//
-	// This ID is equal to [InvalidShapeID] if the check was not performed with
-	// a scene object.
+	// This ID is equal to [InvalidShapeID] when the target of the intersection
+	// was a mesh, in which case [Contact.TargetMeshID] identifies it instead.
 	TargetShapeID ShapeID
+
+	// TargetMeshID contains the ID of the mesh that was intersected.
+	//
+	// This ID is equal to [InvalidMeshID] when the target of the intersection
+	// was a shape rather than a mesh.
+	TargetMeshID MeshID
 
 	// Contact holds the underlying raw shape intersection.
 	shape3d.Contact
-}
-
-// Flipped returns a [Contact] with the source and target shapes swapped.
-//
-// The resulting contact describes the same intersection from the perspective of
-// the opposite shape.
-func (i Contact) Flipped() Contact {
-	return Contact{
-		SourceObjectID: i.TargetObjectID,
-		SourceShapeID:  i.TargetShapeID,
-		TargetObjectID: i.SourceObjectID,
-		TargetShapeID:  i.SourceShapeID,
-		Contact:        i.Contact.Flipped(),
-	}
 }
 
 // ContactCallback is invoked for each [Contact] discovered while testing shapes

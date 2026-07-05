@@ -16,3 +16,28 @@ type Filter struct {
 	// results.
 	SkipStatic bool
 }
+
+type filterRepresentation struct {
+	rejectGroup uint32
+	sourceMask  uint32
+	targetMask  uint32
+}
+
+func (s *filterRepresentation) matchesFilter(filter Filter) bool {
+	if mask, ok := filter.Mask.Unwrap(); ok {
+		if (s.sourceMask & mask) == 0 {
+			return false
+		}
+	}
+	return true
+}
+
+func (s *filterRepresentation) canInteractWith(other *filterRepresentation) bool {
+	if s.rejectGroup != 0 && (s.rejectGroup == other.rejectGroup) {
+		return false
+	}
+	if ((s.sourceMask & other.targetMask) == 0) && ((s.targetMask & other.sourceMask) == 0) {
+		return false
+	}
+	return true
+}
