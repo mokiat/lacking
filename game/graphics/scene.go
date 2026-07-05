@@ -30,27 +30,27 @@ func newScene(engine *Engine, renderer *sceneRenderer) *Scene {
 			InitialItemCapacity: opt.V(int32(1024 * 1024)),
 		}),
 
-		dynamicMeshPool: ds.NewPool[Mesh](),
+		dynamicMeshPool: ds.EmptyPool[Mesh](),
 		dynamicMeshSet: spatial.NewDynamicSet[*Mesh](spatial.DynamicSetSettings{
 			InitialItemCapacity: opt.V(int32(1024)),
 		}),
 
-		ambientLightPool: ds.NewPool[AmbientLight](),
+		ambientLightPool: ds.EmptyPool[AmbientLight](),
 		ambientLightSet: spatial.NewDynamicSet[*AmbientLight](spatial.DynamicSetSettings{
 			InitialItemCapacity: opt.V(int32(4)),
 		}),
 
-		pointLightPool: ds.NewPool[PointLight](),
+		pointLightPool: ds.EmptyPool[PointLight](),
 		pointLightSet: spatial.NewDynamicSet[*PointLight](spatial.DynamicSetSettings{
 			InitialItemCapacity: opt.V(int32(128)),
 		}),
 
-		spotLightPool: ds.NewPool[SpotLight](),
+		spotLightPool: ds.EmptyPool[SpotLight](),
 		spotLightSet: spatial.NewDynamicSet[*SpotLight](spatial.DynamicSetSettings{
 			InitialItemCapacity: opt.V(int32(128)),
 		}),
 
-		directionalLightPool: ds.NewPool[DirectionalLight](),
+		directionalLightPool: ds.EmptyPool[DirectionalLight](),
 		directionalLightSet: spatial.NewDynamicSet[*DirectionalLight](spatial.DynamicSetSettings{
 			InitialItemCapacity: opt.V(int32(16)),
 		}),
