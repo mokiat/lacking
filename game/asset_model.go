@@ -262,7 +262,7 @@ func (m *Model) FindRecording(name string) *animation.Recording {
 }
 
 func (m *Model) AnimatedNodes() []hierarchy.NodeID {
-	result := ds.NewSet[hierarchy.NodeID](0)
+	result := ds.EmptySet[hierarchy.NodeID]()
 	for _, animation := range m.recordings {
 		for nodeName := range animation.BoundNodesIter() {
 			if nodeID := m.FindNode(nodeName); !nodeID.IsNil() {
