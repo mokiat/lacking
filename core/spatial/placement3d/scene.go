@@ -51,6 +51,9 @@ type Scene[O, S, M any] struct {
 
 	shapeCandidates []int32
 	meshCandidates  []int32
+
+	tempGJKSource gjk3d.Shape
+	tempGJKTarget gjk3d.Shape
 }
 
 // NewScene creates a new scene.
@@ -73,6 +76,13 @@ func NewScene[O, S, M any](settings SceneSettings) *Scene[O, S, M] {
 
 		shapeCandidates: make([]int32, 0),
 		meshCandidates:  make([]int32, 0),
+
+		tempGJKSource: gjk3d.Shape{
+			Points: make([]dprec.Vec3, 0, 8),
+		},
+		tempGJKTarget: gjk3d.Shape{
+			Points: make([]dprec.Vec3, 0, 8),
+		},
 	}
 }
 
@@ -87,10 +97,10 @@ func (s *Scene[O, S, M]) CreateObject(info ObjectInfo[O]) ObjectID {
 
 	index := s.allocateObject()
 	s.objects[index] = sceneObject[O]{
-		transform:  transform,
-		firstShape: nilIndex,
-		lastShape:  nilIndex,
-		userData:   info.UserData,
+		transform:       transform,
+		firstShapeIndex: nilIndex,
+		lastShapeIndex:  nilIndex,
+		userData:        info.UserData,
 	}
 	return ObjectID(index)
 }
@@ -340,7 +350,7 @@ func (s *Scene[O, S, M]) CollectSegmentIntersections(segment shape3d.Segment, fi
 			s.shapeCandidates = append(s.shapeCandidates, index)
 			return true
 		})
-		s.resolveSegmentShape(segment, filter, yield)
+		s.collectSegmentShape(segment, filter, yield)
 	}
 
 	if !filter.SkipStatic {
@@ -349,7 +359,7 @@ func (s *Scene[O, S, M]) CollectSegmentIntersections(segment shape3d.Segment, fi
 			s.meshCandidates = append(s.meshCandidates, index)
 			return true
 		})
-		s.resolveSegmentMesh(segment, filter, yield)
+		s.collectSegmentMesh(segment, filter, yield)
 	}
 }
 
@@ -358,6 +368,38 @@ func (s *Scene[O, S, M]) CollectSegmentIntersections(segment shape3d.Segment, fi
 func (s *Scene[O, S, M]) CheckSegmentIntersection(segment shape3d.Segment, filter Filter) (Contact, bool) {
 	var collection DeepestContact
 	s.CollectSegmentIntersections(segment, filter, collection.AddContact)
+	return collection.Contact()
+}
+
+// CollectSphereIntersections collects all intersections of the sphere
+// with objects in the scene.
+func (s *Scene[O, S, M]) CollectSphereIntersections(sphere shape3d.Sphere, filter Filter, yield ContactCallback) {
+	queryAABB := query3d.AABBFromSphere(sphere)
+
+	if !filter.SkipDynamic {
+		s.shapeCandidates = s.shapeCandidates[:0]
+		s.shapeTree.QueryAABB(queryAABB, func(index int32) bool {
+			s.shapeCandidates = append(s.shapeCandidates, index)
+			return true
+		})
+		s.collectSphereShape(sphere, filter, yield)
+	}
+
+	if !filter.SkipStatic {
+		s.meshCandidates = s.meshCandidates[:0]
+		s.meshTree.QueryAABB(queryAABB, func(index int32) bool {
+			s.meshCandidates = append(s.meshCandidates, index)
+			return true
+		})
+		s.collectSphereMesh(sphere, filter, yield)
+	}
+}
+
+// CheckSphereIntersection returns the deepest intersection of the sphere
+// with the scene.
+func (s *Scene[O, S, M]) CheckSphereIntersection(sphere shape3d.Sphere, filter Filter) (Contact, bool) {
+	var collection DeepestContact
+	s.CollectSphereIntersections(sphere, filter, collection.AddContact)
 	return collection.Contact()
 }
 
@@ -387,42 +429,6 @@ func (s *Scene[O, S, M]) CollectIntersections(yield ContactCallback) {
 		s.resolveShapeMesh(srcIndex, srcShape, yield)
 	}
 }
-
-// // CheckSphereIntersection returns the deepest intersection of the sphere
-// // with the scene.
-// func (s *Scene[O, S,M]) CheckSphereIntersection(sphere shape3d.Sphere, filter Filter) (Contact, bool) {
-// 	var collection DeepestContact
-// 	s.CollectSphereIntersections(sphere, filter, collection.AddContact)
-// 	return collection.Contact()
-// }
-
-// // CollectSphereIntersections collects all intersections of the sphere
-// // with objects in the scene.
-// func (s *Scene[O, S,M]) CollectSphereIntersections(sphere shape3d.Sphere, filter Filter, yield ContactCallback) {
-// 	s.tempShape = sceneShape[S]{
-// 		objectIndex: invalidObjectIndex,
-// 		targetMask:  filter.Mask.ValueOrDefault(0xFFFFFFFF),
-// 		static:      true, // important, otherwise double-check prevention will kick in
-// 	}
-// 	s.tempSphere = newSphereSolver(sphere)
-// 	srcRef := newTempShapeRef(shapeKindSphere)
-
-// 	s.pairCandidates = s.pairCandidates[:0]
-// 	queryAABB := query3d.AABBFromSphere(sphere)
-// 	if !filter.SkipDynamic {
-// 		s.dynamicTree.QueryAABB(queryAABB, func(tgtRef shapeRef) bool {
-// 			s.pairCandidates = append(s.pairCandidates, newShapeRefPair(srcRef, tgtRef))
-// 			return true
-// 		})
-// 	}
-// 	if !filter.SkipStatic {
-// 		s.staticTree.QueryAABB(queryAABB, func(tgtRef shapeRef) bool {
-// 			s.pairCandidates = append(s.pairCandidates, newShapeRefPair(srcRef, tgtRef))
-// 			return true
-// 		})
-// 	}
-// 	s.collectIntersections(yield)
-// }
 
 // // CheckBoxIntersection returns the deepest intersection of the box
 // // with the scene.
@@ -485,10 +491,10 @@ func (s *Scene[O, S, M]) releaseObject(index int32) {
 }
 
 func (s *Scene[O, S, M]) eachObjectShape(object *sceneObject[O], cb func(int32, *shape[S])) {
-	index := object.firstShape
+	index := object.firstShapeIndex
 	for index >= 0 {
 		shape := &s.shapes[index]
-		nextIndex := shape.nextShape
+		nextIndex := shape.nextShapeIndex
 		cb(index, shape)
 		index = nextIndex
 	}
@@ -517,10 +523,10 @@ func (s *Scene[O, S, M]) attachShape(objectIndex int32, info ShapeInfo[S], repre
 	area := query3d.AreaFromSphere(representation.boundingSphere())
 
 	s.shapes[index] = shape[S]{
-		objectIndex: objectIndex,
-		nextShape:   nilIndex,
-		prevShape:   object.lastShape,
-		spatialID:   s.shapeTree.Insert(area, index),
+		objectIndex:    objectIndex,
+		nextShapeIndex: nilIndex,
+		prevShapeIndex: object.lastShapeIndex,
+		spatialID:      s.shapeTree.Insert(area, index),
 		filterRepresentation: filterRepresentation{
 			rejectGroup: info.RejectGroup,
 			sourceMask:  info.SourceMask.ValueOrDefault(0b1),
@@ -529,12 +535,12 @@ func (s *Scene[O, S, M]) attachShape(objectIndex int32, info ShapeInfo[S], repre
 		shapeRepresentation: representation,
 		userData:            info.UserData,
 	}
-	if object.firstShape == nilIndex {
-		object.firstShape = index
+	if object.firstShapeIndex == nilIndex {
+		object.firstShapeIndex = index
 	} else {
-		s.shapes[object.lastShape].nextShape = index
+		s.shapes[object.lastShapeIndex].nextShapeIndex = index
 	}
-	object.lastShape = index
+	object.lastShapeIndex = index
 
 	return ShapeID(index)
 }
@@ -546,19 +552,19 @@ func (s *Scene[O, S, M]) detachShape(index int32) {
 	shape.spatialID = query3d.InvalidTreeItemID
 
 	object := &s.objects[shape.objectIndex]
-	if object.firstShape == index {
-		object.firstShape = shape.nextShape
+	if object.firstShapeIndex == index {
+		object.firstShapeIndex = shape.nextShapeIndex
 	}
-	if object.lastShape == index {
-		object.lastShape = shape.prevShape
+	if object.lastShapeIndex == index {
+		object.lastShapeIndex = shape.prevShapeIndex
 	}
-	if shape.prevShape != nilIndex {
-		prevShape := &s.shapes[shape.prevShape]
-		prevShape.nextShape = shape.nextShape
+	if shape.prevShapeIndex != nilIndex {
+		prevShape := &s.shapes[shape.prevShapeIndex]
+		prevShape.nextShapeIndex = shape.nextShapeIndex
 	}
-	if shape.nextShape != nilIndex {
-		nextShape := &s.shapes[shape.nextShape]
-		nextShape.prevShape = shape.prevShape
+	if shape.nextShapeIndex != nilIndex {
+		nextShape := &s.shapes[shape.nextShapeIndex]
+		nextShape.prevShapeIndex = shape.prevShapeIndex
 	}
 	shape.objectIndex = -1
 	shape.userData = gog.Zero[S]() // in case of pointer
@@ -580,7 +586,7 @@ func (s *Scene[O, S, M]) releaseMesh(index int32) {
 	s.freeMeshIndices.Push(index)
 }
 
-func (s *Scene[O, S, M]) resolveSegmentShape(segment shape3d.Segment, filter Filter, yield ContactCallback) {
+func (s *Scene[O, S, M]) collectSegmentShape(segment shape3d.Segment, filter Filter, yield ContactCallback) {
 	for _, index := range s.shapeCandidates {
 		shape := &s.shapes[index]
 		if !shape.matchesFilter(filter) {
@@ -608,7 +614,7 @@ func (s *Scene[O, S, M]) resolveSegmentShape(segment shape3d.Segment, filter Fil
 	}
 }
 
-func (s *Scene[O, S, M]) resolveSegmentMesh(segment shape3d.Segment, filter Filter, yield ContactCallback) {
+func (s *Scene[O, S, M]) collectSegmentMesh(segment shape3d.Segment, filter Filter, yield ContactCallback) {
 	for _, index := range s.meshCandidates {
 		mesh := &s.meshes[index]
 		if !mesh.matchesFilter(filter) {
@@ -632,7 +638,72 @@ func (s *Scene[O, S, M]) resolveSegmentMesh(segment shape3d.Segment, filter Filt
 	}
 }
 
+func (s *Scene[O, S, M]) collectSphereShape(sphere shape3d.Sphere, filter Filter, yield ContactCallback) {
+	initGJKShapeForSphere(sphere, &s.tempGJKSource)
+
+	for _, index := range s.shapeCandidates {
+		shape := &s.shapes[index]
+		if !shape.matchesFilter(filter) {
+			continue
+		}
+		if !isec3d.CheckSphereSphere(sphere, shape.wsBSphere) {
+			continue
+		}
+		tgtGJKShape := shape.gjkShape()
+		if contact, ok := s.solver.Resolve(s.tempGJKSource, tgtGJKShape); ok {
+			yield(Contact{
+				SourceShapeID: InvalidShapeID,
+				TargetShapeID: ShapeID(index),
+				TargetMeshID:  InvalidMeshID,
+				Contact:       contact,
+			})
+		}
+	}
+}
+
+func (s *Scene[O, S, M]) collectSphereMesh(sphere shape3d.Sphere, filter Filter, yield ContactCallback) {
+	initGJKShapeForSphere(sphere, &s.tempGJKSource)
+
+	for _, tgtIndex := range s.meshCandidates {
+		tgtMesh := &s.meshes[tgtIndex]
+		if !tgtMesh.matchesFilter(filter) {
+			continue
+		}
+		if !isec3d.CheckSphereSphere(sphere, tgtMesh.wsBSphere) {
+			continue
+		}
+
+		points := initGJKShapeForMesh(&s.tempGJKTarget)
+
+		var deepestContact shape3d.DeepestContact
+		for _, triangle := range tgtMesh.wsTriangles {
+			tgtBSphere := triangle.BoundingSphere()
+			if !isec3d.CheckSphereSphere(sphere, tgtBSphere) {
+				continue
+			}
+			points[0] = triangle.A
+			points[1] = triangle.B
+			points[2] = triangle.C
+			if contact, ok := s.solver.Resolve(s.tempGJKSource, s.tempGJKTarget); ok {
+				// Prevent contacts that try to push the source shape into the triangle.
+				if dprec.Vec3Dot(contact.TargetNormal, triangle.Normal()) > 0 {
+					deepestContact.AddContact(contact)
+				}
+			}
+		}
+		if contact, ok := deepestContact.Contact(); ok {
+			yield(Contact{
+				SourceShapeID: InvalidShapeID,
+				TargetShapeID: InvalidShapeID,
+				TargetMeshID:  MeshID(tgtIndex),
+				Contact:       contact,
+			})
+		}
+	}
+}
+
 func (s *Scene[O, S, M]) resolveShapeShape(srcIndex int32, srcShape *shape[S], yield ContactCallback) {
+	srcGJKShape := srcShape.gjkShape()
 	for _, tgtIndex := range s.shapeCandidates {
 		tgtShape := &s.shapes[tgtIndex]
 		if !shapesCanIntersect(srcShape, tgtShape) {
@@ -641,7 +712,6 @@ func (s *Scene[O, S, M]) resolveShapeShape(srcIndex int32, srcShape *shape[S], y
 		if !isec3d.CheckSphereSphere(srcShape.wsBSphere, tgtShape.wsBSphere) {
 			continue
 		}
-		srcGJKShape := srcShape.gjkShape()
 		tgtGJKShape := tgtShape.gjkShape()
 		if contact, ok := s.solver.Resolve(srcGJKShape, tgtGJKShape); ok {
 			yield(Contact{
@@ -655,6 +725,7 @@ func (s *Scene[O, S, M]) resolveShapeShape(srcIndex int32, srcShape *shape[S], y
 }
 
 func (s *Scene[O, S, M]) resolveShapeMesh(srcIndex int32, srcShape *shape[S], yield ContactCallback) {
+	srcGJKShape := srcShape.gjkShape()
 	for _, tgtIndex := range s.meshCandidates {
 		tgtMesh := &s.meshes[tgtIndex]
 		if !shapeMeshCanIntersect(srcShape, tgtMesh) {
@@ -663,16 +734,23 @@ func (s *Scene[O, S, M]) resolveShapeMesh(srcIndex int32, srcShape *shape[S], yi
 		if !isec3d.CheckSphereSphere(srcShape.wsBSphere, tgtMesh.wsBSphere) {
 			continue
 		}
+
+		points := initGJKShapeForMesh(&s.tempGJKTarget)
+
 		var deepestContact shape3d.DeepestContact
-		srcGJKShape := srcShape.gjkShape()
-		for i := range tgtMesh.gjkShapeCount() {
-			tgtBSphere := tgtMesh.wsTriangles[i].BoundingSphere()
+		for _, triangle := range tgtMesh.wsTriangles {
+			tgtBSphere := triangle.BoundingSphere()
 			if !isec3d.CheckSphereSphere(srcShape.wsBSphere, tgtBSphere) {
 				continue
 			}
-			tgtGJKShape := tgtMesh.gjkShape(i)
-			if contact, ok := s.solver.Resolve(srcGJKShape, tgtGJKShape); ok {
-				deepestContact.AddContact(contact)
+			points[0] = triangle.A
+			points[1] = triangle.B
+			points[2] = triangle.C
+			if contact, ok := s.solver.Resolve(srcGJKShape, s.tempGJKTarget); ok {
+				// Prevent contacts that try to push the source shape into the triangle.
+				if dprec.Vec3Dot(contact.TargetNormal, triangle.Normal()) > 0 {
+					deepestContact.AddContact(contact)
+				}
 			}
 		}
 		if contact, ok := deepestContact.Contact(); ok {
@@ -684,4 +762,20 @@ func (s *Scene[O, S, M]) resolveShapeMesh(srcIndex int32, srcShape *shape[S], yi
 			})
 		}
 	}
+}
+
+func initGJKShapeForSphere(sphere shape3d.Sphere, out *gjk3d.Shape) {
+	out.Position = sphere.Center
+	out.Rotation = shape3d.IdentityRotation()
+	out.Points = out.Points[:1]
+	out.Points[0] = dprec.ZeroVec3()
+	out.SkinRadius = sphere.Radius
+}
+
+func initGJKShapeForMesh(out *gjk3d.Shape) []dprec.Vec3 {
+	out.Position = dprec.ZeroVec3()
+	out.Rotation = shape3d.IdentityRotation()
+	out.Points = out.Points[:3]
+	out.SkinRadius = 0.0
+	return out.Points
 }

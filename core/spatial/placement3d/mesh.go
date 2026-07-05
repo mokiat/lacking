@@ -3,7 +3,6 @@ package placement3d
 import (
 	"github.com/mokiat/gog/opt"
 	"github.com/mokiat/gomath/dprec"
-	"github.com/mokiat/lacking/core/spatial/gjk3d"
 	"github.com/mokiat/lacking/core/spatial/query3d"
 	"github.com/mokiat/lacking/core/spatial/shape3d"
 )
@@ -49,39 +48,22 @@ func shapeMeshCanIntersect[S, M any](shape *shape[S], mesh *meshShape[M]) bool {
 }
 
 type meshRepresentation struct {
-	wsBSphere   shape3d.Sphere
-	wsTriangles []shape3d.Triangle
+	wsBSphere shape3d.Sphere
 
-	// TODO: Move this into scene!
-	points [3]dprec.Vec3
+	// TODO: Consider using a different storage mechanism. For example an
+	// Octree or BVH structure.
+	// Alternatively experiment with placing each mesh triangle in the existing
+	// mesh tree, through this will likely destroy the mesh tree performance.
+	wsTriangles []shape3d.Triangle
 }
 
 func newMeshRepresentation(mesh shape3d.Mesh) meshRepresentation {
 	return meshRepresentation{
 		wsBSphere:   mesh.BoundingSphere(),
 		wsTriangles: mesh.Triangles,
-		points:      [3]dprec.Vec3{}, // just used for GJK to avoid allocations
 	}
 }
 
 func (s *meshRepresentation) boundingSphere() shape3d.Sphere {
 	return s.wsBSphere
-}
-
-func (s *meshRepresentation) gjkShapeCount() int {
-	return len(s.wsTriangles)
-}
-
-func (s *meshRepresentation) gjkShape(index int) gjk3d.Shape {
-	triangle := &s.wsTriangles[index]
-	points := s.points[:]
-	points[0] = triangle.A
-	points[1] = triangle.B
-	points[2] = triangle.C
-	return gjk3d.Shape{
-		Position:   dprec.ZeroVec3(),
-		Rotation:   shape3d.IdentityRotation(),
-		Points:     points,
-		SkinRadius: 0.0,
-	}
 }

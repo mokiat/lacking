@@ -52,10 +52,10 @@ type BoxInfo[S any] struct {
 }
 
 type shape[S any] struct {
-	objectIndex int32
-	nextShape   int32
-	prevShape   int32
-	spatialID   query3d.TreeItemID
+	objectIndex    int32
+	nextShapeIndex int32
+	prevShapeIndex int32
+	spatialID      query3d.TreeItemID
 	filterRepresentation
 	shapeRepresentation
 	userData S
@@ -63,10 +63,10 @@ type shape[S any] struct {
 
 func shapesCanIntersect[S any](a, b *shape[S]) bool {
 	if a.objectIndex == b.objectIndex {
-		return false
+		return false // prevent self-intersection checks
 	}
 	if a.objectIndex >= b.objectIndex {
-		return false // prevent double checks for dynamic shapes
+		return false // prevent repeated checks
 	}
 	return a.filterRepresentation.canInteractWith(&b.filterRepresentation)
 }

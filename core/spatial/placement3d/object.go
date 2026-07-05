@@ -31,8 +31,8 @@ type ObjectInfo[O any] struct {
 }
 
 type sceneObject[O any] struct {
-	transform  shape3d.Transform
-	firstShape int32
-	lastShape  int32
-	userData   O
+	transform       shape3d.Transform
+	firstShapeIndex int32
+	lastShapeIndex  int32
+	userData        O
 }
