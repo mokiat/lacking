@@ -9,7 +9,7 @@ var PropertyChange = NewChange("property")
 func NewProperty[T any](value T) *Property[T] {
 	return &Property[T]{
 		value:         value,
-		subscriptions: ds.NewList[*propertySubscription[T]](0),
+		subscriptions: ds.EmptyList[*propertySubscription[T]](),
 	}
 }
 

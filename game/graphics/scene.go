@@ -20,7 +20,7 @@ func newScene(engine *Engine, renderer *sceneRenderer) *Scene {
 		engine:   engine,
 		renderer: renderer,
 
-		skies: ds.NewList[*Sky](1),
+		skies: ds.PreallocatedList[*Sky](1),
 
 		staticMeshOctree: spatial.NewStaticOctree[uint32](spatial.StaticOctreeSettings{
 			Size:                opt.V(maxSceneSize),
