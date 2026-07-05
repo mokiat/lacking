@@ -47,7 +47,7 @@ var _ = Describe("Edge", func() {
 		})
 
 		It("does not modify the original edge", func() {
-			shape2d.TransformedEdge(edge, shape2d.TranslationTransform(dprec.NewVec2(5.0, 5.0)))
+			_ = shape2d.TransformedEdge(edge, shape2d.TranslationTransform(dprec.NewVec2(5.0, 5.0)))
 			Expect(edge.A).To(dprectest.HaveVec2Coords(0.0, 0.0))
 			Expect(edge.B).To(dprectest.HaveVec2Coords(3.0, 4.0))
 		})

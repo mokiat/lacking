@@ -110,7 +110,7 @@ func newScene(engine *Engine, info SceneInfo) *Scene {
 
 		timeSegmenter: timestep.NewSegmenter(fixedTimestep),
 
-		animationTrees: ds.NewList[*animation.Player](0),
+		animationTrees: ds.EmptyList[*animation.Player](),
 
 		stepUpdateSubscriptions:    timestep.NewStepSubscriptionSet(),
 		fixedUpdateSubscriptions:   timestep.NewUpdateSubscriptionSet(),

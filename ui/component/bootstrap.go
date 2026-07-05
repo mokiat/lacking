@@ -30,7 +30,7 @@ type applicationComponent struct {
 }
 
 func (c *applicationComponent) OnCreate() {
-	c.overlays = ds.NewList[*overlayHandle](2)
+	c.overlays = ds.PreallocatedList[*overlayHandle](2)
 }
 
 func (c *applicationComponent) Render() Instance {

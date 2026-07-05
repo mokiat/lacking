@@ -52,7 +52,7 @@ var _ = Describe("Triangle", func() {
 		})
 
 		It("does not modify the original triangle", func() {
-			shape2d.TransformedTriangle(triangle, shape2d.TranslationTransform(dprec.NewVec2(5.0, 5.0)))
+			_ = shape2d.TransformedTriangle(triangle, shape2d.TranslationTransform(dprec.NewVec2(5.0, 5.0)))
 			Expect(triangle.A).To(dprectest.HaveVec2Coords(0.0, 0.0))
 			Expect(triangle.B).To(dprectest.HaveVec2Coords(4.0, 0.0))
 			Expect(triangle.C).To(dprectest.HaveVec2Coords(0.0, 3.0))

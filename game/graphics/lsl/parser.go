@@ -237,8 +237,8 @@ func (p *Parser) ParseTypeDeclaration() (Declaration, error) {
 //
 //	1 + 2 * 3
 func (p *Parser) ParseExpression() (Expression, error) {
-	valStack := ds.NewStack[Expression](2)
-	opStack := ds.NewStack[string](1)
+	valStack := ds.PreallocatedStack[Expression](2)
+	opStack := ds.PreallocatedStack[string](1)
 
 	firstExpressionToken := p.peekToken()
 

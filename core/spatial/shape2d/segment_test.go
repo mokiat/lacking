@@ -39,7 +39,7 @@ var _ = Describe("Segment", func() {
 		})
 
 		It("does not modify the original segment", func() {
-			shape2d.TransformedSegment(seg, shape2d.TranslationTransform(dprec.NewVec2(5.0, 5.0)))
+			_ = shape2d.TransformedSegment(seg, shape2d.TranslationTransform(dprec.NewVec2(5.0, 5.0)))
 			Expect(seg.A).To(dprectest.HaveVec2Coords(0.0, 0.0))
 			Expect(seg.B).To(dprectest.HaveVec2Coords(3.0, 4.0))
 		})
@@ -73,7 +73,7 @@ var _ = Describe("Segment", func() {
 		})
 
 		It("does not modify the original segment", func() {
-			seg.Flipped()
+			_ = seg.Flipped()
 			Expect(seg.A).To(dprectest.HaveVec2Coords(0.0, 0.0))
 			Expect(seg.B).To(dprectest.HaveVec2Coords(3.0, 4.0))
 		})

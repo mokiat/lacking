@@ -36,7 +36,7 @@ var _ = Describe("Circle", func() {
 		})
 
 		It("does not modify the original circle", func() {
-			shape2d.TransformedCircle(circle, shape2d.TranslationTransform(dprec.NewVec2(5.0, 5.0)))
+			_ = shape2d.TransformedCircle(circle, shape2d.TranslationTransform(dprec.NewVec2(5.0, 5.0)))
 			Expect(circle.Center).To(dprectest.HaveVec2Coords(3.0, 4.0))
 			Expect(circle.Radius).To(BeNumerically("~", 2.0, 1e-6))
 		})

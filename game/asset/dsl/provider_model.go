@@ -554,7 +554,7 @@ func BuildModelResource(gltfDoc *gltf.Document, forceCollision, onlyAnimations b
 	}
 
 	// ensure unique node names
-	nodeNames := ds.NewSet[string](0)
+	nodeNames := ds.EmptySet[string]()
 	for i, gltfNode := range gltfDoc.Nodes {
 		if nodeNames.Contains(gltfNode.Name) {
 			gltfNode.Name = fmt.Sprintf("%s_%d", gltfNode.Name, i)

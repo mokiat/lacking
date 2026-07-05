@@ -140,7 +140,7 @@ func (t *Translator) buildMainProperties(ctx *translationContext, shader *lsl.Sh
 	if !ok {
 		return MainProperties{}
 	}
-	dst := ds.NewList[string](1)
+	dst := ds.PreallocatedList[string](1)
 	for _, statement := range fn.Body {
 		t.translateStatement(ctx, dst, statement)
 	}

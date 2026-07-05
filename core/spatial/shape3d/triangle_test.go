@@ -45,7 +45,7 @@ var _ = Describe("Triangle", func() {
 		})
 
 		It("does not modify the original triangle", func() {
-			shape3d.TransformedTriangle(triangle, shape3d.TranslationTransform(dprec.NewVec3(5.0, 5.0, 5.0)))
+			_ = shape3d.TransformedTriangle(triangle, shape3d.TranslationTransform(dprec.NewVec3(5.0, 5.0, 5.0)))
 			Expect(triangle.A).To(dprectest.HaveVec3Coords(0.0, 0.0, 0.0))
 			Expect(triangle.B).To(dprectest.HaveVec3Coords(4.0, 0.0, 0.0))
 			Expect(triangle.C).To(dprectest.HaveVec3Coords(0.0, 3.0, 0.0))

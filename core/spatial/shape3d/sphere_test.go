@@ -36,7 +36,7 @@ var _ = Describe("Sphere", func() {
 		})
 
 		It("does not modify the original sphere", func() {
-			shape3d.TransformedSphere(sphere, shape3d.TranslationTransform(dprec.NewVec3(5.0, 5.0, 5.0)))
+			_ = shape3d.TransformedSphere(sphere, shape3d.TranslationTransform(dprec.NewVec3(5.0, 5.0, 5.0)))
 			Expect(sphere.Center).To(dprectest.HaveVec3Coords(3.0, 4.0, 5.0))
 			Expect(sphere.Radius).To(BeNumerically("~", 2.0, 1e-6))
 		})

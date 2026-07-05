@@ -74,7 +74,7 @@ func processAsset(store resource.Store, path string, provider Provider[any]) err
 		return fmt.Errorf("provider failed to produce asset: %w", err)
 	}
 
-	chunkList := ds.NewList[chunked.Chunk](1)
+	chunkList := ds.PreallocatedList[chunked.Chunk](1)
 	for _, converter := range registeredConverters {
 		if err := converter.Convert(chunkList, resource); err != nil {
 			return fmt.Errorf("converter %T failed to convert resource: %w", converter, err)
