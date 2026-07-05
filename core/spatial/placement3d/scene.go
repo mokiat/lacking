@@ -575,11 +575,7 @@ func (s *Scene[O, S, M]) releaseMesh(index int32) {
 }
 
 func (s *Scene[O, S, M]) collectSegmentShape(segment shape3d.Segment, filter Filter, yield ContactCallback) {
-	for _, index := range s.shapeCandidates {
-		shape := &s.shapes[index]
-		if !shape.matchesFilter(filter) {
-			continue
-		}
+	for index, shape := range s.iterCandidateShape(filter) {
 		if !isec3d.CheckSegmentSphereOverlap(segment, shape.wsBSphere) {
 			continue
 		}
@@ -603,11 +599,7 @@ func (s *Scene[O, S, M]) collectSegmentShape(segment shape3d.Segment, filter Fil
 }
 
 func (s *Scene[O, S, M]) collectSegmentMesh(segment shape3d.Segment, filter Filter, yield ContactCallback) {
-	for _, index := range s.meshCandidates {
-		mesh := &s.meshes[index]
-		if !mesh.matchesFilter(filter) {
-			continue
-		}
+	for index, mesh := range s.iterCandidateMesh(filter) {
 		if !isec3d.CheckSegmentSphereOverlap(segment, mesh.wsBSphere) {
 			continue
 		}
@@ -628,17 +620,11 @@ func (s *Scene[O, S, M]) collectSegmentMesh(segment shape3d.Segment, filter Filt
 
 func (s *Scene[O, S, M]) collectSphereShape(sphere shape3d.Sphere, filter Filter, yield ContactCallback) {
 	initGJKShapeForSphere(sphere, &s.tempGJKSource)
-
-	for _, index := range s.shapeCandidates {
-		shape := &s.shapes[index]
-		if !shape.matchesFilter(filter) {
-			continue
-		}
+	for index, shape := range s.iterCandidateShape(filter) {
 		if !isec3d.CheckSphereSphere(sphere, shape.wsBSphere) {
 			continue
 		}
-		tgtGJKShape := shape.gjkShape()
-		if contact, ok := s.solver.Resolve(s.tempGJKSource, tgtGJKShape); ok {
+		if contact, ok := s.solver.Resolve(s.tempGJKSource, shape.gjkShape()); ok {
 			yield(Contact{
 				SourceShapeID: InvalidShapeID,
 				TargetShapeID: ShapeID(index),
@@ -651,58 +637,25 @@ func (s *Scene[O, S, M]) collectSphereShape(sphere shape3d.Sphere, filter Filter
 
 func (s *Scene[O, S, M]) collectSphereMesh(sphere shape3d.Sphere, filter Filter, yield ContactCallback) {
 	initGJKShapeForSphere(sphere, &s.tempGJKSource)
-
-	for _, tgtIndex := range s.meshCandidates {
-		tgtMesh := &s.meshes[tgtIndex]
-		if !tgtMesh.matchesFilter(filter) {
-			continue
-		}
-		if !isec3d.CheckSphereSphere(sphere, tgtMesh.wsBSphere) {
-			continue
-		}
-
-		points := initGJKShapeForMesh(&s.tempGJKTarget)
-
-		var deepestContact shape3d.DeepestContact
-		for _, triangle := range tgtMesh.wsTriangles {
-			tgtBSphere := triangle.BoundingSphere()
-			if !isec3d.CheckSphereSphere(sphere, tgtBSphere) {
-				continue
-			}
-			points[0] = triangle.A
-			points[1] = triangle.B
-			points[2] = triangle.C
-			if contact, ok := s.solver.Resolve(s.tempGJKSource, s.tempGJKTarget); ok {
-				// Prevent contacts that try to push the source shape into the triangle.
-				if dprec.Vec3Dot(contact.TargetNormal, triangle.Normal()) > 0 {
-					deepestContact.AddContact(contact)
-				}
-			}
-		}
-		if contact, ok := deepestContact.Contact(); ok {
+	for tgtIndex, tgtMesh := range s.iterCandidateMesh(filter) {
+		s.resolveGJKMesh(s.tempGJKSource, sphere, tgtMesh, func(contact shape3d.Contact) {
 			yield(Contact{
 				SourceShapeID: InvalidShapeID,
 				TargetShapeID: InvalidShapeID,
 				TargetMeshID:  MeshID(tgtIndex),
 				Contact:       contact,
 			})
-		}
+		})
 	}
 }
 
 func (s *Scene[O, S, M]) collectBoxShape(box shape3d.Box, filter Filter, yield ContactCallback) {
 	initGJKShapeForBox(box, &s.tempGJKSource)
-
-	for _, index := range s.shapeCandidates {
-		shape := &s.shapes[index]
-		if !shape.matchesFilter(filter) {
-			continue
-		}
+	for index, shape := range s.iterCandidateShape(filter) {
 		if !isec3d.CheckSphereSphere(box.BoundingSphere(), shape.wsBSphere) {
 			continue
 		}
-		tgtGJKShape := shape.gjkShape()
-		if contact, ok := s.solver.Resolve(s.tempGJKSource, tgtGJKShape); ok {
+		if contact, ok := s.solver.Resolve(s.tempGJKSource, shape.gjkShape()); ok {
 			yield(Contact{
 				SourceShapeID: InvalidShapeID,
 				TargetShapeID: ShapeID(index),
@@ -715,42 +668,15 @@ func (s *Scene[O, S, M]) collectBoxShape(box shape3d.Box, filter Filter, yield C
 
 func (s *Scene[O, S, M]) collectBoxMesh(box shape3d.Box, filter Filter, yield ContactCallback) {
 	initGJKShapeForBox(box, &s.tempGJKSource)
-
-	for _, tgtIndex := range s.meshCandidates {
-		tgtMesh := &s.meshes[tgtIndex]
-		if !tgtMesh.matchesFilter(filter) {
-			continue
-		}
-		if !isec3d.CheckSphereSphere(box.BoundingSphere(), tgtMesh.wsBSphere) {
-			continue
-		}
-
-		points := initGJKShapeForMesh(&s.tempGJKTarget)
-
-		var deepestContact shape3d.DeepestContact
-		for _, triangle := range tgtMesh.wsTriangles {
-			tgtBSphere := triangle.BoundingSphere()
-			if !isec3d.CheckSphereSphere(box.BoundingSphere(), tgtBSphere) {
-				continue
-			}
-			points[0] = triangle.A
-			points[1] = triangle.B
-			points[2] = triangle.C
-			if contact, ok := s.solver.Resolve(s.tempGJKSource, s.tempGJKTarget); ok {
-				// Prevent contacts that try to push the source shape into the triangle.
-				if dprec.Vec3Dot(contact.TargetNormal, triangle.Normal()) > 0 {
-					deepestContact.AddContact(contact)
-				}
-			}
-		}
-		if contact, ok := deepestContact.Contact(); ok {
+	for tgtIndex, tgtMesh := range s.iterCandidateMesh(filter) {
+		s.resolveGJKMesh(s.tempGJKSource, box.BoundingSphere(), tgtMesh, func(contact shape3d.Contact) {
 			yield(Contact{
 				SourceShapeID: InvalidShapeID,
 				TargetShapeID: InvalidShapeID,
 				TargetMeshID:  MeshID(tgtIndex),
 				Contact:       contact,
 			})
-		}
+		})
 	}
 }
 
@@ -764,8 +690,7 @@ func (s *Scene[O, S, M]) collectShapeShape(srcIndex int32, srcShape *shape[S], y
 		if !isec3d.CheckSphereSphere(srcShape.wsBSphere, tgtShape.wsBSphere) {
 			continue
 		}
-		tgtGJKShape := tgtShape.gjkShape()
-		if contact, ok := s.solver.Resolve(srcGJKShape, tgtGJKShape); ok {
+		if contact, ok := s.solver.Resolve(srcGJKShape, tgtShape.gjkShape()); ok {
 			yield(Contact{
 				SourceShapeID: ShapeID(srcIndex),
 				TargetShapeID: ShapeID(tgtIndex),
@@ -783,36 +708,76 @@ func (s *Scene[O, S, M]) collectShapeMesh(srcIndex int32, srcShape *shape[S], yi
 		if !shapeMeshCanIntersect(srcShape, tgtMesh) {
 			continue
 		}
-		if !isec3d.CheckSphereSphere(srcShape.wsBSphere, tgtMesh.wsBSphere) {
-			continue
-		}
-
-		points := initGJKShapeForMesh(&s.tempGJKTarget)
-
-		var deepestContact shape3d.DeepestContact
-		for _, triangle := range tgtMesh.wsTriangles {
-			tgtBSphere := triangle.BoundingSphere()
-			if !isec3d.CheckSphereSphere(srcShape.wsBSphere, tgtBSphere) {
-				continue
-			}
-			points[0] = triangle.A
-			points[1] = triangle.B
-			points[2] = triangle.C
-			if contact, ok := s.solver.Resolve(srcGJKShape, s.tempGJKTarget); ok {
-				// Prevent contacts that try to push the source shape into the triangle.
-				if dprec.Vec3Dot(contact.TargetNormal, triangle.Normal()) > 0 {
-					deepestContact.AddContact(contact)
-				}
-			}
-		}
-		if contact, ok := deepestContact.Contact(); ok {
+		s.resolveGJKMesh(srcGJKShape, srcShape.wsBSphere, tgtMesh, func(contact shape3d.Contact) {
 			yield(Contact{
 				SourceShapeID: ShapeID(srcIndex),
 				TargetShapeID: InvalidShapeID,
 				TargetMeshID:  MeshID(tgtIndex),
 				Contact:       contact,
 			})
+		})
+	}
+}
+
+func (s *Scene[O, S, M]) resolveGJKMesh(srcGJK gjk3d.Shape, srcBS shape3d.Sphere, tgtMesh *meshShape[M], yield shape3d.ContactCallback) {
+	if !isec3d.CheckSphereSphere(srcBS, tgtMesh.wsBSphere) {
+		return
+	}
+	points := initGJKShapeForMesh(&s.tempGJKTarget)
+	var deepestContact shape3d.DeepestContact
+	for _, triangle := range tgtMesh.wsTriangles {
+		tgtBSphere := triangle.BoundingSphere()
+		if !isec3d.CheckSphereSphere(srcBS, tgtBSphere) {
+			continue
 		}
+		points[0] = triangle.A
+		points[1] = triangle.B
+		points[2] = triangle.C
+		if contact, ok := s.solver.Resolve(srcGJK, s.tempGJKTarget); ok {
+			// Prevent contacts that try to push the source shape into the triangle.
+			if dprec.Vec3Dot(contact.TargetNormal, triangle.Normal()) > 0 {
+				deepestContact.AddContact(contact)
+			}
+		}
+	}
+	if contact, ok := deepestContact.Contact(); ok {
+		yield(contact)
+	}
+}
+
+func (s *Scene[O, S, M]) eachCandidateShape(filter Filter, cb func(int32, *shape[S]) bool) {
+	for _, index := range s.shapeCandidates {
+		shape := &s.shapes[index]
+		if !shape.matchesFilter(filter) {
+			continue
+		}
+		if !cb(index, shape) {
+			return
+		}
+	}
+}
+
+func (s *Scene[O, S, M]) iterCandidateShape(filter Filter) iter.Seq2[int32, *shape[S]] {
+	return func(yield func(int32, *shape[S]) bool) {
+		s.eachCandidateShape(filter, yield)
+	}
+}
+
+func (s *Scene[O, S, M]) eachCandidateMesh(filter Filter, cb func(int32, *meshShape[M]) bool) {
+	for _, index := range s.meshCandidates {
+		mesh := &s.meshes[index]
+		if !mesh.matchesFilter(filter) {
+			continue
+		}
+		if !cb(index, mesh) {
+			return
+		}
+	}
+}
+
+func (s *Scene[O, S, M]) iterCandidateMesh(filter Filter) iter.Seq2[int32, *meshShape[M]] {
+	return func(yield func(int32, *meshShape[M]) bool) {
+		s.eachCandidateMesh(filter, yield)
 	}
 }
 
