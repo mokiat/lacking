@@ -26,11 +26,11 @@ type MeshInfo[M any] struct {
 	// Defaults to the identity rotation.
 	Rotation opt.T[dprec.Quat]
 
-	// ShapeInfo contains general shape information.
-	//
-	// TODO: Rename ShapeInfo to something more meaningful for both
-	// shapes and meshes.
-	ShapeInfo[M]
+	// Filtering holds the collision-filtering metadata for the mesh.
+	Filtering FilterInfo
+
+	// UserData allows one to attach custom user data to the mesh.
+	UserData M
 
 	// Mesh contains the mesh information.
 	Mesh shape3d.Mesh

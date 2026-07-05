@@ -34,7 +34,11 @@ type SceneSettings struct {
 	InitialItemCapacity opt.T[uint32]
 }
 
-// Scene represents a 3D scene where objects made of shapes can be added.
+// Scene represents a 3D scene into which dynamic objects (built from convex
+// shapes) and static meshes can be placed and tested for intersection.
+//
+// The type parameters specify the user data attached to each kind of entity:
+// O for objects, S for shapes, and M for meshes.
 type Scene[O, S, M any] struct {
 	shapeTree *query3d.Octree[int32]
 	meshTree  *query3d.Octree[int32]
@@ -163,7 +167,7 @@ func (s *Scene[O, S, M]) AttachSphere(objID ObjectID, info SphereInfo[S]) ShapeI
 		Rotation:    shape3d.IdentityRotation(),
 	}
 
-	return s.attachShape(int32(objID), info.ShapeInfo, shapeRepresentation{
+	return s.attachShape(int32(objID), info.Filtering, shapeRepresentation{
 		lsBSphere:   sphere,
 		wsBSphere:   sphere,
 		lsTransform: transform,
@@ -173,7 +177,7 @@ func (s *Scene[O, S, M]) AttachSphere(objID ObjectID, info SphereInfo[S]) ShapeI
 			dprec.ZeroVec3(),
 		},
 		skinRadius: sphere.Radius,
-	})
+	}, info.UserData)
 }
 
 // AttachBox creates a box shape and attaches it to the object to be used for
@@ -189,7 +193,7 @@ func (s *Scene[O, S, M]) AttachBox(objID ObjectID, info BoxInfo[S]) ShapeID {
 	halfHeight := box.HalfHeight
 	halfLength := box.HalfLength
 
-	return s.attachShape(int32(objID), info.ShapeInfo, shapeRepresentation{
+	return s.attachShape(int32(objID), info.Filtering, shapeRepresentation{
 		lsBSphere:   bSphere,
 		wsBSphere:   bSphere,
 		lsTransform: transform,
@@ -206,7 +210,7 @@ func (s *Scene[O, S, M]) AttachBox(objID ObjectID, info BoxInfo[S]) ShapeID {
 			dprec.NewVec3(-halfWidth, halfHeight, halfLength),
 		},
 		skinRadius: 0.0,
-	})
+	}, info.UserData)
 }
 
 // DeleteShape deletes a shape from an object. The object is not
@@ -233,6 +237,9 @@ func (s *Scene[O, S, M]) SetShapeUserData(shapeID ShapeID, userData S) {
 // EachSphere iterates over all sphere shapes in the scene that match the
 // filter and yields them to the provided callback.
 func (s *Scene[O, S, M]) EachSphere(filter Filter, yield func(shape3d.Sphere) bool) {
+	if filter.SkipDynamic {
+		return
+	}
 	for index := range s.shapes {
 		shape := &s.shapes[index]
 		if shape.spatialID == query3d.InvalidTreeItemID {
@@ -261,6 +268,9 @@ func (s *Scene[O, S, M]) SphereIter(filter Filter) iter.Seq[shape3d.Sphere] {
 // EachBox iterates over all box shapes in the scene that match the
 // filter and yields them to the provided callback.
 func (s *Scene[O, S, M]) EachBox(filter Filter, yield func(shape3d.Box) bool) {
+	if filter.SkipDynamic {
+		return
+	}
 	for index := range s.shapes {
 		shape := &s.shapes[index]
 		if shape.spatialID == query3d.InvalidTreeItemID {
@@ -304,14 +314,10 @@ func (s *Scene[O, S, M]) CreateMesh(info MeshInfo[M]) MeshID {
 
 	index := s.allocateMesh()
 	s.meshes[index] = meshShape[M]{
-		spatialID: s.meshTree.Insert(area, index),
-		filterRepresentation: filterRepresentation{
-			rejectGroup: info.RejectGroup,
-			sourceMask:  info.SourceMask.ValueOrDefault(0b1),
-			targetMask:  info.TargetMask.ValueOrDefault(0b1),
-		},
-		meshRepresentation: representation,
-		userData:           info.UserData,
+		spatialID:            s.meshTree.Insert(area, index),
+		filterRepresentation: newFilterRepresentation(info.Filtering),
+		meshRepresentation:   representation,
+		userData:             info.UserData,
 	}
 
 	return MeshID(index)
@@ -502,26 +508,27 @@ func (s *Scene[O, S, M]) releaseShape(index int32) {
 	s.freeShapeIndices.Push(index)
 }
 
-func (s *Scene[O, S, M]) attachShape(objectIndex int32, info ShapeInfo[S], representation shapeRepresentation) ShapeID {
-	object := &s.objects[objectIndex]
+func (s *Scene[O, S, M]) attachShape(
+	objectIndex int32,
+	filterInfo FilterInfo,
+	representation shapeRepresentation,
+	userData S,
+) ShapeID {
 
+	object := &s.objects[objectIndex]
 	index := s.allocateShape()
 
 	representation.update(object.transform)
 	area := query3d.AreaFromSphere(representation.boundingSphere())
 
 	s.shapes[index] = shape[S]{
-		objectIndex:    objectIndex,
-		nextShapeIndex: nilIndex,
-		prevShapeIndex: object.lastShapeIndex,
-		spatialID:      s.shapeTree.Insert(area, index),
-		filterRepresentation: filterRepresentation{
-			rejectGroup: info.RejectGroup,
-			sourceMask:  info.SourceMask.ValueOrDefault(0b1),
-			targetMask:  info.TargetMask.ValueOrDefault(0b1),
-		},
-		shapeRepresentation: representation,
-		userData:            info.UserData,
+		objectIndex:          objectIndex,
+		nextShapeIndex:       nilIndex,
+		prevShapeIndex:       object.lastShapeIndex,
+		spatialID:            s.shapeTree.Insert(area, index),
+		filterRepresentation: newFilterRepresentation(filterInfo),
+		shapeRepresentation:  representation,
+		userData:             userData,
 	}
 	if object.firstShapeIndex == nilIndex {
 		object.firstShapeIndex = index

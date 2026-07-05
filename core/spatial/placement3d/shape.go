@@ -1,7 +1,6 @@
 package placement3d
 
 import (
-	"github.com/mokiat/gog/opt"
 	"github.com/mokiat/gomath/dprec"
 	"github.com/mokiat/lacking/core/spatial/gjk3d"
 	"github.com/mokiat/lacking/core/spatial/query3d"
@@ -14,28 +13,14 @@ const InvalidShapeID = ShapeID(nilIndex)
 // ShapeID is a reference to a shape in the scene.
 type ShapeID int32
 
-// ShapeInfo contains information needed to create a new shape in the scene.
-type ShapeInfo[S any] struct {
-
-	// RejectGroup becomes active if a value larger than zero is specified.
-	// Shapes that share the same reject group are not checked for intersection.
-	RejectGroup uint32
-
-	// SourceMask specifies the layers in which this shape is positioned.
-	SourceMask opt.T[uint32]
-
-	// TargetMask specifies the layers with which this shape can intersect.
-	TargetMask opt.T[uint32]
-
-	// UserData allows one to attach custom user data to a shape.
-	UserData S
-}
-
 // SphereInfo contains the information needed to create a sphere shape.
 type SphereInfo[S any] struct {
 
-	// ShapeInfo contains general shape information.
-	ShapeInfo[S]
+	// Filtering holds the collision-filtering metadata for the shape.
+	Filtering FilterInfo
+
+	// UserData allows one to attach custom user data to the shape.
+	UserData S
 
 	// Sphere contains the sphere information.
 	Sphere shape3d.Sphere
@@ -44,8 +29,11 @@ type SphereInfo[S any] struct {
 // BoxInfo contains the information needed to create a box shape.
 type BoxInfo[S any] struct {
 
-	// ShapeInfo contains general shape information.
-	ShapeInfo[S]
+	// Filtering holds the collision-filtering metadata for the shape.
+	Filtering FilterInfo
+
+	// UserData allows one to attach custom user data to the shape.
+	UserData S
 
 	// Box contains the box information.
 	Box shape3d.Box
@@ -62,11 +50,8 @@ type shape[S any] struct {
 }
 
 func shapesCanIntersect[S any](a, b *shape[S]) bool {
-	if a.objectIndex == b.objectIndex {
-		return false // prevent self-intersection checks
-	}
 	if a.objectIndex >= b.objectIndex {
-		return false // prevent repeated checks
+		return false // prevent self-intersection and repeated checks
 	}
 	return a.filterRepresentation.canInteractWith(&b.filterRepresentation)
 }

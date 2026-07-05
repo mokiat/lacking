@@ -267,12 +267,10 @@ func (s *Scene) CreateProp(info PropInfo) {
 		meshID := s.shapeScene.CreateMesh(placement3d.MeshInfo[propRef]{
 			Position: info.Position,
 			Rotation: info.Rotation,
-			ShapeInfo: placement3d.ShapeInfo[propRef]{
-				UserData: propRef{
-					index: propIndex,
-				},
+			Mesh:     mesh,
+			UserData: propRef{
+				index: propIndex,
 			},
-			Mesh: mesh,
 		})
 
 		s.props = append(s.props, propState{

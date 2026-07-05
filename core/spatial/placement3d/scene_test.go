@@ -153,8 +153,8 @@ var _ = Describe("Scene", func() {
 
 		It("stores and updates shape user data", func() {
 			shapeID := scene.AttachSphere(objID, placement3d.SphereInfo[string]{
-				ShapeInfo: placement3d.ShapeInfo[string]{UserData: "a"},
-				Sphere:    sphereAt(0.0, 0.0, 0.0, 1.0),
+				Sphere:   sphereAt(0.0, 0.0, 0.0, 1.0),
+				UserData: "a",
 			})
 			Expect(scene.GetShapeUserData(shapeID)).To(Equal("a"))
 
@@ -226,7 +226,7 @@ var _ = Describe("Scene", func() {
 		It("filters by layer mask", func() {
 			objID := scene.CreateObject(placement3d.ObjectInfo[string]{})
 			scene.AttachSphere(objID, placement3d.SphereInfo[string]{
-				ShapeInfo: placement3d.ShapeInfo[string]{
+				Filtering: placement3d.FilterInfo{
 					SourceMask: opt.V(uint32(0b01)),
 				},
 				Sphere: sphereAt(0.0, 0.0, 0.0, 1.0),
@@ -310,11 +310,11 @@ var _ = Describe("Scene", func() {
 			first := scene.CreateObject(placement3d.ObjectInfo[string]{})
 			second := scene.CreateObject(placement3d.ObjectInfo[string]{})
 			scene.AttachSphere(first, placement3d.SphereInfo[string]{
-				ShapeInfo: placement3d.ShapeInfo[string]{RejectGroup: 7},
+				Filtering: placement3d.FilterInfo{RejectGroup: 7},
 				Sphere:    sphereAt(0.0, 0.0, 0.0, 1.0),
 			})
 			scene.AttachSphere(second, placement3d.SphereInfo[string]{
-				ShapeInfo: placement3d.ShapeInfo[string]{RejectGroup: 7},
+				Filtering: placement3d.FilterInfo{RejectGroup: 7},
 				Sphere:    sphereAt(1.0, 0.0, 0.0, 1.0),
 			})
 			Expect(collect()).To(BeEmpty())
@@ -324,14 +324,14 @@ var _ = Describe("Scene", func() {
 			first := scene.CreateObject(placement3d.ObjectInfo[string]{})
 			second := scene.CreateObject(placement3d.ObjectInfo[string]{})
 			scene.AttachSphere(first, placement3d.SphereInfo[string]{
-				ShapeInfo: placement3d.ShapeInfo[string]{
+				Filtering: placement3d.FilterInfo{
 					SourceMask: opt.V(uint32(0b01)),
 					TargetMask: opt.V(uint32(0b01)),
 				},
 				Sphere: sphereAt(0.0, 0.0, 0.0, 1.0),
 			})
 			scene.AttachSphere(second, placement3d.SphereInfo[string]{
-				ShapeInfo: placement3d.ShapeInfo[string]{
+				Filtering: placement3d.FilterInfo{
 					SourceMask: opt.V(uint32(0b10)),
 					TargetMask: opt.V(uint32(0b10)),
 				},
