@@ -19,6 +19,16 @@ func sphereAt(x, y, z, radius float64) shape3d.Sphere {
 	}
 }
 
+// boxAt builds an axis-aligned box centered at the given coordinates with the
+// given half-extent along every axis.
+func boxAt(x, y, z, half float64) shape3d.Box {
+	return shape3d.NewBox(
+		dprec.NewVec3(x, y, z),
+		shape3d.IdentityRotation(),
+		dprec.NewVec3(half, half, half),
+	)
+}
+
 // planeMesh builds a mesh made of two triangles forming a quad in the XZ plane
 // (at y == 0), centered at the given point and spanning halfSize in each of
 // the X and Z directions.
@@ -533,6 +543,90 @@ var _ = Describe("Scene", func() {
 
 			_, ok := scene.CheckSphereIntersection(
 				sphereAt(0.0, -0.5, 0.0, 1.0),
+				placement3d.Filter{SkipStatic: true},
+			)
+			Expect(ok).To(BeFalse())
+		})
+	})
+
+	Describe("CheckBoxIntersection", func() {
+		It("reports a box overlapping a scene shape", func() {
+			objID := scene.CreateObject(placement3d.ObjectInfo[string]{})
+			scene.AttachSphere(objID, placement3d.SphereInfo[string]{
+				Sphere: sphereAt(0.0, 0.0, 0.0, 1.0),
+			})
+
+			contact, ok := scene.CheckBoxIntersection(
+				boxAt(1.5, 0.0, 0.0, 1.0),
+				placement3d.Filter{},
+			)
+			Expect(ok).To(BeTrue())
+			Expect(contact.SourceShapeID).To(Equal(placement3d.InvalidShapeID))
+			Expect(scene.GetShapeObject(contact.TargetShapeID)).To(Equal(objID))
+			Expect(contact.TargetMeshID).To(Equal(placement3d.InvalidMeshID))
+		})
+
+		It("returns false for a box disjoint from every shape", func() {
+			objID := scene.CreateObject(placement3d.ObjectInfo[string]{})
+			scene.AttachSphere(objID, placement3d.SphereInfo[string]{
+				Sphere: sphereAt(0.0, 0.0, 0.0, 1.0),
+			})
+
+			_, ok := scene.CheckBoxIntersection(
+				boxAt(10.0, 0.0, 0.0, 1.0),
+				placement3d.Filter{},
+			)
+			Expect(ok).To(BeFalse())
+		})
+
+		It("reports a box overlapping a mesh from the front", func() {
+			meshID := scene.CreateMesh(placement3d.MeshInfo[string]{
+				Mesh: planeMesh(0.0, 0.0, 0.0, 5.0),
+			})
+
+			// The plane faces -Y, so approach it from below (the front side).
+			contact, ok := scene.CheckBoxIntersection(
+				boxAt(0.0, -0.5, 0.0, 1.0),
+				placement3d.Filter{},
+			)
+			Expect(ok).To(BeTrue())
+			Expect(contact.TargetShapeID).To(Equal(placement3d.InvalidShapeID))
+			Expect(contact.TargetMeshID).To(Equal(meshID))
+			Expect(contact.TargetNormal.Y).To(BeNumerically("<", 0.0))
+		})
+
+		It("does not report a box overlapping a mesh from behind", func() {
+			scene.CreateMesh(placement3d.MeshInfo[string]{
+				Mesh: planeMesh(0.0, 0.0, 0.0, 5.0),
+			})
+
+			_, ok := scene.CheckBoxIntersection(
+				boxAt(0.0, 0.5, 0.0, 1.0),
+				placement3d.Filter{},
+			)
+			Expect(ok).To(BeFalse())
+		})
+
+		It("skips dynamic shapes when SkipDynamic is set", func() {
+			objID := scene.CreateObject(placement3d.ObjectInfo[string]{})
+			scene.AttachSphere(objID, placement3d.SphereInfo[string]{
+				Sphere: sphereAt(0.0, 0.0, 0.0, 1.0),
+			})
+
+			_, ok := scene.CheckBoxIntersection(
+				boxAt(1.5, 0.0, 0.0, 1.0),
+				placement3d.Filter{SkipDynamic: true},
+			)
+			Expect(ok).To(BeFalse())
+		})
+
+		It("skips static meshes when SkipStatic is set", func() {
+			scene.CreateMesh(placement3d.MeshInfo[string]{
+				Mesh: planeMesh(0.0, 0.0, 0.0, 5.0),
+			})
+
+			_, ok := scene.CheckBoxIntersection(
+				boxAt(0.0, -0.5, 0.0, 1.0),
 				placement3d.Filter{SkipStatic: true},
 			)
 			Expect(ok).To(BeFalse())
