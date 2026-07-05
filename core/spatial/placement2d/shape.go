@@ -1,151 +1,121 @@
 package placement2d
 
 import (
-	"fmt"
-
-	"github.com/mokiat/gog/opt"
+	"github.com/mokiat/gomath/dprec"
+	"github.com/mokiat/lacking/core/spatial/gjk2d"
 	"github.com/mokiat/lacking/core/spatial/query2d"
+	"github.com/mokiat/lacking/core/spatial/shape2d"
 )
 
 // InvalidShapeID indicates a shape that can never be part of the scene.
-const InvalidShapeID = ShapeID(invalidShapeRef)
+const InvalidShapeID = ShapeID(nilIndex)
 
 // ShapeID is a reference to a shape in the scene.
-type ShapeID shapeRef
+type ShapeID int32
 
-// ShapeInfo contains information needed to create a new shape in the scene.
-type ShapeInfo[S any] struct {
+// CircleInfo contains the information needed to create a circle shape.
+type CircleInfo[S any] struct {
 
-	// RejectGroup becomes active if a value larger than zero is specified.
-	// Shapes that share the same reject group are not checked for intersection.
-	RejectGroup uint32
+	// Filtering holds the collision-filtering metadata for the shape.
+	Filtering FilterInfo
 
-	// SourceMask specifies the layers in which this shape is positioned.
-	SourceMask opt.T[uint32]
-
-	// TargetMask specifies the layers with which this shape can intersect.
-	TargetMask opt.T[uint32]
-
-	// UserData allows one to attach custom user data to a shape.
+	// UserData allows one to attach custom user data to the shape.
 	UserData S
+
+	// Circle contains the circle information.
+	Circle shape2d.Circle
 }
 
-type sceneShape[S any] struct {
-	objectIndex uint32
-	nextShape   shapeRef
+// RectangleInfo contains the information needed to create a rectangle shape.
+type RectangleInfo[S any] struct {
 
-	spatialID query2d.TreeItemID
-	static    bool
+	// Filtering holds the collision-filtering metadata for the shape.
+	Filtering FilterInfo
 
-	rejectGroup uint32
-	sourceMask  uint32
-	targetMask  uint32
+	// UserData allows one to attach custom user data to the shape.
+	UserData S
 
+	// Rectangle contains the rectangle information.
+	Rectangle shape2d.Rectangle
+}
+
+type shape[S any] struct {
+	objectIndex    int32
+	nextShapeIndex int32
+	prevShapeIndex int32
+	spatialID      query2d.TreeItemID
+	filterRepresentation
+	shapeRepresentation
 	userData S
 }
 
-func (s *sceneShape[S]) matchesFilter(filter Filter) bool {
-	if s.static && filter.SkipStatic {
-		return false
+func shapesCanIntersect[S any](a, b *shape[S]) bool {
+	if a.objectIndex >= b.objectIndex {
+		return false // prevent self-intersection and repeated checks
 	}
-	if !s.static && filter.SkipDynamic {
-		return false
-	}
-	if mask, ok := filter.Mask.Unwrap(); ok {
-		if (s.sourceMask & mask) == 0 {
-			return false
-		}
-	}
-	return true
+	return a.filterRepresentation.canInteractWith(&b.filterRepresentation)
 }
 
-func shapesCanIntersect[S any](a, b *sceneShape[S]) bool {
-	if a.objectIndex == b.objectIndex {
-		return false
-	}
-	if !a.static && !b.static && a.objectIndex >= b.objectIndex {
-		return false // prevent double checks for dynamic shapes
-	}
-	if a.rejectGroup != 0 && (a.rejectGroup == b.rejectGroup) {
-		return false
-	}
-	if ((a.sourceMask & b.targetMask) == 0) && ((a.targetMask & b.sourceMask) == 0) {
-		return false
-	}
-	return true
+type shapeRepresentation struct {
+	lsBCircle shape2d.Circle
+	wsBCircle shape2d.Circle
+
+	lsTransform shape2d.Transform
+	wsTransform shape2d.Transform
+
+	kind       shapeKind
+	points     []dprec.Vec2
+	skinRadius float64
 }
+
+func (s *shapeRepresentation) update(parentTransform shape2d.Transform) {
+	s.wsBCircle = shape2d.TransformedCircle(s.lsBCircle, parentTransform)
+
+	s.wsTransform = shape2d.ChainedTransform(
+		parentTransform,
+		s.lsTransform,
+	)
+}
+
+func (s *shapeRepresentation) boundingCircle() shape2d.Circle {
+	return s.wsBCircle
+}
+
+func (s *shapeRepresentation) gjkShape() gjk2d.Shape {
+	return gjk2d.Shape{
+		Position:   s.wsTransform.Translation,
+		Rotation:   s.wsTransform.Rotation,
+		Points:     s.points,
+		SkinRadius: s.skinRadius,
+	}
+}
+
+func (s *shapeRepresentation) toCircle() shape2d.Circle {
+	return shape2d.Circle{
+		Center: s.wsTransform.Translation,
+		Radius: s.skinRadius,
+	}
+}
+
+func (s *shapeRepresentation) toRectangle() shape2d.Rectangle {
+	var halfWidth, halfHeight float64
+	for _, point := range s.points {
+		halfWidth = max(halfWidth, point.X)
+		halfHeight = max(halfHeight, point.Y)
+	}
+	return shape2d.Rectangle{
+		Center:     s.wsTransform.Translation,
+		Rotation:   s.wsTransform.Rotation,
+		HalfWidth:  halfWidth,
+		HalfHeight: halfHeight,
+	}
+}
+
+type shapeKind uint32
 
 const (
-	shapeKindNone shapeKind = iota
-	shapeKindSegment
-	shapeKindCircle
+	shapeKindCircle shapeKind = iota
 	shapeKindRectangle
-	shapeKindMesh
+	shapeKindCapsule
+	shapeKindConvexHull
 )
-
-type shapeKind uint8
-
-func (k shapeKind) String() string {
-	switch k {
-	case shapeKindNone:
-		return "None"
-	case shapeKindSegment:
-		return "Segment"
-	case shapeKindCircle:
-		return "Circle"
-	case shapeKindRectangle:
-		return "Rectangle"
-	case shapeKindMesh:
-		return "Mesh"
-	default:
-		return "Unknown"
-	}
-}
-
-const invalidShapeRef = shapeRef(0) // has none shape kind
-
-const tempShapeIndex = uint32(0xFFFFFFE) // reserved index for temporary shapes
-
-func newShapeRef(kind shapeKind, index uint32) shapeRef {
-	return shapeRef((index << 4) | (uint32(kind) & 0b1111))
-}
-
-func newTempShapeRef(kind shapeKind) shapeRef {
-	return newShapeRef(kind, tempShapeIndex)
-}
-
-type shapeRef uint32
-
-func (r shapeRef) String() string {
-	return fmt.Sprintf("%s:%d", r.kind(), r.index())
-}
-
-func (r shapeRef) index() uint32 {
-	return uint32(r) >> 4
-}
-
-func (r shapeRef) kind() shapeKind {
-	return shapeKind(r & 0b1111)
-}
-
-func (r shapeRef) isTemporary() bool {
-	return r.index() == tempShapeIndex
-}
-
-func newShapeRefPair(source, target shapeRef) shapeRefPair {
-	return shapeRefPair(uint64(source)<<32 | uint64(target))
-}
-
-type shapeRefPair uint64
-
-func (p shapeRefPair) flipped() shapeRefPair {
-	return newShapeRefPair(p.target(), p.source())
-}
-
-func (p shapeRefPair) source() shapeRef {
-	return shapeRef(uint32(p >> 32))
-}
-
-func (p shapeRefPair) target() shapeRef {
-	return shapeRef(uint32(p & 0xFFFFFFFF))
-}
