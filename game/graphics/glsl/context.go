@@ -7,7 +7,7 @@ import (
 )
 
 func newTranslationContext() *translationContext {
-	stack := ds.NewStack[[]string](0)
+	stack := ds.EmptyStack[[]string]()
 	stack.Push([]string{})
 	return &translationContext{
 		names: make(map[string]string),

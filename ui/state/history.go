@@ -10,7 +10,7 @@ import (
 func NewHistory(capacity int) *History {
 	return &History{
 		undoStack: algo.NewClampStack[Change](capacity),
-		redoStack: ds.NewStack[Change](capacity),
+		redoStack: ds.PreallocatedStack[Change](capacity),
 	}
 }
 

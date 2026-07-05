@@ -40,7 +40,7 @@ func newScene(engine *Engine) *Scene {
 
 		props: make([]propState, 0, 1024),
 
-		freeBodyIndices:            ds.NewStack[uint32](16),
+		freeBodyIndices:            ds.PreallocatedStack[uint32](16),
 		bodies:                     make([]bodyState, 0, 64),
 		bodyAccelerationTargets:    make([]solver.AccelerationTarget, 0, 64),
 		bodyConstraintPlaceholders: make([]solver.Placeholder, 0, 64),
@@ -49,15 +49,15 @@ func newScene(engine *Engine) *Scene {
 		// areaAccelerators   []any // TODO
 		globalAccelerators: make([]globalAcceleratorState, 0, 64),
 
-		freeBodyAcceleratorIndices:   ds.NewStack[uint32](16),
-		freeAreaAcceleratorIndices:   ds.NewStack[uint32](16),
-		freeGlobalAcceleratorIndices: ds.NewStack[uint32](16),
+		freeBodyAcceleratorIndices:   ds.PreallocatedStack[uint32](16),
+		freeAreaAcceleratorIndices:   ds.PreallocatedStack[uint32](16),
+		freeGlobalAcceleratorIndices: ds.PreallocatedStack[uint32](16),
 
 		sbConstraints: make([]sbConstraintState, 0, 64),
 		dbConstraints: make([]dbConstraintState, 0, 64),
 
-		freeSBConstraintIndices: ds.NewStack[uint32](16),
-		freeDBConstraintIndices: ds.NewStack[uint32](16),
+		freeSBConstraintIndices: ds.PreallocatedStack[uint32](16),
+		freeDBConstraintIndices: ds.PreallocatedStack[uint32](16),
 
 		collisionSet: make(placement3d.ContactList, 0, 128),
 

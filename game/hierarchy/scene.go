@@ -16,7 +16,7 @@ func NewScene(initialCapacity int) *Scene {
 		deleteSubscriptions:        NewDeleteSubscriptionSet(),
 
 		nodes:           make([]node, 0, initialCapacity),
-		freeNodeIndices: ds.NewStack[int32](initialCapacity),
+		freeNodeIndices: ds.PreallocatedStack[int32](initialCapacity),
 		freeRevision:    1,
 		freeTimestamp:   1,
 	}
