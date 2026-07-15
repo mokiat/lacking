@@ -37,8 +37,7 @@ type Controller struct {
 	gfxOptions []graphics.Option
 	gfxEngine  *graphics.Engine
 
-	physicsOptions []physics.Option
-	physicsEngine  *physics.Engine
+	physicsEngine *physics.Engine
 
 	window   app.Window
 	ioWorker *async.Worker
@@ -59,13 +58,6 @@ func (c *Controller) UseGraphicsOptions(opts ...graphics.Option) {
 	c.gfxOptions = opts
 }
 
-// UsePhysicsOptions allows to specify options that will be used
-// when initializing the physics engine. This method should be
-// called before the controller is initialized by the app framework.
-func (c *Controller) UsePhysicsOptions(opts ...physics.Option) {
-	c.physicsOptions = opts
-}
-
 // Engine returns the game engine that is managed by the controller.
 //
 // This method should only be called after the controller has been
@@ -77,7 +69,7 @@ func (c *Controller) Engine() *Engine {
 func (c *Controller) OnCreate(window app.Window) {
 	c.window = window
 	c.gfxEngine = graphics.NewEngine(window.RenderAPI(), c.shaders, c.shaderBuilder, c.gfxOptions...)
-	c.physicsEngine = physics.NewEngine(c.physicsOptions...)
+	c.physicsEngine = physics.NewEngine()
 
 	c.ioWorker = async.NewWorker(4)
 	go c.ioWorker.ProcessAll()

@@ -1,11 +1,7 @@
 package physics
 
 // NewEngine creates a new physics engine.
-func NewEngine(opts ...Option) *Engine {
-	cfg := config{}
-	for _, opt := range opts {
-		opt(&cfg)
-	}
+func NewEngine() *Engine {
 	return &Engine{}
 }
 
