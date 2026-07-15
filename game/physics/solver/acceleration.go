@@ -111,5 +111,3 @@ func (t *AccelerationTarget) ApplyOffsetForce(offset, force dprec.Vec3) {
 	t.ApplyForce(force)
 	t.ApplyTorque(dprec.Vec3Cross(offset, force))
 }
-
-// TODO: Apply offset force
