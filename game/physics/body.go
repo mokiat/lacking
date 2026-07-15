@@ -64,7 +64,7 @@ type Body struct {
 	reference indexReference
 }
 
-// // Name returns the name of this body.
+// Name returns the name of this body.
 func (b Body) Name() string {
 	state := b.state()
 	return state.name

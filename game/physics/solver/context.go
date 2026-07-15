@@ -18,9 +18,9 @@ func (c Context) JacobianImpulseLambda(jacobian Jacobian, drift, restitution flo
 		return 0.0
 	}
 	effVelocity := jacobian.EffectiveVelocity(c.Target)
-	resitutionClamp := RestitutionClamp(effVelocity)
+	restitutionClamp := RestitutionClamp(effVelocity)
 	baumgarte := c.ImpulseBeta * drift / c.DeltaTime
-	return -((1+restitution*resitutionClamp)*effVelocity + baumgarte) / effMass
+	return -((1+restitution*restitutionClamp)*effVelocity + baumgarte) / effMass
 }
 
 // JacobianNudgeLambda returns the nudge lambda for the specified
@@ -66,9 +66,9 @@ func (c PairContext) JacobianImpulseLambda(jacobian PairJacobian, drift, restitu
 		return 0.0
 	}
 	effVelocity := jacobian.EffectiveVelocity(c.Target, c.Source)
-	resitutionClamp := RestitutionClamp(effVelocity)
+	restitutionClamp := RestitutionClamp(effVelocity)
 	baumgarte := c.ImpulseBeta * drift / c.DeltaTime
-	return -((1+restitution*resitutionClamp)*effVelocity + baumgarte) / effMass
+	return -((1+restitution*restitutionClamp)*effVelocity + baumgarte) / effMass
 }
 
 // JacobianNudgeLambda returns the nudge lambda for the specified
