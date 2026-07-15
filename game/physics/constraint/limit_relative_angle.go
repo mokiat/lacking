@@ -73,6 +73,8 @@ func (c *LimitRelativeAngle) Reset(ctx solver.PairContext) {
 	secondaryDirectionWS := dprec.QuatVec3Rotation(ctx.Source.Rotation(), c.secondaryDirection)
 
 	if dprec.Abs(dprec.Vec3Dot(axisWS, secondaryDirectionWS)) > 0.99 {
+		c.jacobian = solver.PairJacobian{}
+		c.drift = 0.0
 		return // secondary direction is parallel to axis
 	}
 	angle := dprec.Vec3ProjectionAngle(primaryDirectionWS, secondaryDirectionWS, axisWS)
