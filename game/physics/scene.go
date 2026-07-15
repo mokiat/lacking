@@ -364,7 +364,6 @@ func (s *Scene) CheckSegmentIntersection(segment shape3d.Segment, mask uint32) (
 // }
 
 func (s *Scene) runSimulation(elapsedSeconds float64) {
-	s.resetOldPositions()
 	if elapsedSeconds > 0.0001 {
 		s.applyAcceleration(elapsedSeconds)
 		s.applyImpulses(elapsedSeconds)
@@ -372,13 +371,6 @@ func (s *Scene) runSimulation(elapsedSeconds float64) {
 		s.applyNudges(elapsedSeconds)
 		s.detectCollisions()
 	}
-}
-
-func (s *Scene) resetOldPositions() {
-	s.eachBodyState(func(_ int, body *bodyState) {
-		body.oldPosition = body.position
-		body.oldRotation = body.rotation
-	})
 }
 
 func (s *Scene) applyAcceleration(elapsedSeconds float64) {

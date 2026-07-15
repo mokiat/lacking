@@ -147,12 +147,6 @@ func (b Body) SetMomentOfInertia(inertia dprec.Mat3) {
 // 	b.angularDragFactor = factor
 // }
 
-// PreviousPosition returns the body's old position in world space.
-func (b Body) PreviousPosition() dprec.Vec3 {
-	state := b.state()
-	return state.oldPosition
-}
-
 // Position returns the body's position in world space.
 func (b Body) Position() dprec.Vec3 {
 	state := b.state()
@@ -163,15 +157,8 @@ func (b Body) Position() dprec.Vec3 {
 func (b Body) SetPosition(position dprec.Vec3) {
 	state := b.state()
 	state.position = position
-	state.oldPosition = position
 
 	// FIXME: Invalidate shape placement!
-}
-
-// PreviousRotation returns the old quaternion rotation of this body.
-func (b Body) PreviousRotation() dprec.Quat {
-	state := b.state()
-	return state.oldRotation
 }
 
 // Rotation returns the quaternion rotation of this body.
@@ -184,7 +171,6 @@ func (b Body) Rotation() dprec.Quat {
 func (b Body) SetRotation(rotation dprec.Quat) {
 	state := b.state()
 	state.rotation = rotation
-	state.oldRotation = rotation
 
 	// FIXME: Invalidate shape placement!
 }
@@ -318,9 +304,6 @@ type bodyState struct {
 
 	dragFactor        float64
 	angularDragFactor float64
-
-	oldPosition dprec.Vec3
-	oldRotation dprec.Quat
 
 	position dprec.Vec3
 	rotation dprec.Quat
