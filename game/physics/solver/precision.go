@@ -13,12 +13,12 @@ const Epsilon = float64(0.00001)
 func RestitutionClamp(effectiveVelocity float64) float64 {
 	absEffectiveVelocity := dprec.Abs(effectiveVelocity)
 	switch {
-	case absEffectiveVelocity < 2.0:
-		return 0.1
-	case absEffectiveVelocity < 1.0:
-		return 0.05
 	case absEffectiveVelocity < 0.5:
 		return 0.0
+	case absEffectiveVelocity < 1.0:
+		return 0.05
+	case absEffectiveVelocity < 2.0:
+		return 0.1
 	default:
 		return 1.0
 	}
