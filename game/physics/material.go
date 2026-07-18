@@ -12,6 +12,15 @@ type Material struct {
 	restitutionCoefficient float64
 }
 
+// NewMaterial creates a new Material that can be used to describe an
+// object's behavior.
+func NewMaterial(info MaterialInfo) *Material {
+	return &Material{
+		frictionCoefficient:    info.FrictionCoefficient,
+		restitutionCoefficient: info.RestitutionCoefficient,
+	}
+}
+
 // FrictionCoefficient returns the friction coefficient of this material.
 func (m *Material) FrictionCoefficient() float64 {
 	return m.frictionCoefficient

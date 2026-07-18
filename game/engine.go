@@ -5,7 +5,6 @@ import (
 
 	"github.com/mokiat/lacking/core/resource"
 	"github.com/mokiat/lacking/game/graphics"
-	"github.com/mokiat/lacking/game/physics"
 	"github.com/mokiat/lacking/render"
 	"github.com/mokiat/lacking/util/async"
 )
@@ -30,12 +29,6 @@ func WithGFXWorker(worker Worker) EngineOption {
 	}
 }
 
-func WithPhysics(physicsEngine *physics.Engine) EngineOption {
-	return func(e *Engine) {
-		e.physicsEngine = physicsEngine
-	}
-}
-
 func WithGraphics(gfxEngine *graphics.Engine) EngineOption {
 	return func(e *Engine) {
 		e.gfxEngine = gfxEngine
@@ -55,11 +48,10 @@ func NewEngine(opts ...EngineOption) *Engine {
 }
 
 type Engine struct {
-	store         resource.Store
-	ioWorker      Worker
-	gfxWorker     Worker
-	physicsEngine *physics.Engine
-	gfxEngine     *graphics.Engine
+	store     resource.Store
+	ioWorker  Worker
+	gfxWorker Worker
+	gfxEngine *graphics.Engine
 
 	registry *resourceRegistry
 
@@ -87,10 +79,6 @@ func (e *Engine) IOWorker() Worker {
 
 func (e *Engine) GFXWorker() Worker {
 	return e.gfxWorker
-}
-
-func (e *Engine) Physics() *physics.Engine {
-	return e.physicsEngine
 }
 
 func (e *Engine) Graphics() *graphics.Engine {

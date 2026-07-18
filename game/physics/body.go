@@ -38,6 +38,24 @@ type BodyDefinition struct {
 	aerodynamicShapes      []AerodynamicShape
 }
 
+// NewBodyDefinition creates a new BodyDefinition that can be used
+// to create Body instances.
+func NewBodyDefinition(info BodyDefinitionInfo) *BodyDefinition {
+	return &BodyDefinition{
+		mass:                   info.Mass,
+		momentOfInertia:        info.MomentOfInertia,
+		frictionCoefficient:    info.FrictionCoefficient,
+		restitutionCoefficient: info.RestitutionCoefficient,
+		dragFactor:             info.DragFactor,
+		angularDragFactor:      info.AngularDragFactor,
+		collisionRejectGroup:   info.CollisionRejectGroup,
+		collisionSpheres:       info.CollisionSpheres,
+		collisionBoxes:         info.CollisionBoxes,
+		collisionMeshes:        info.CollisionMeshes,
+		aerodynamicShapes:      info.AerodynamicShapes,
+	}
+}
+
 func (d *BodyDefinition) CollisionSpheres() []shape3d.Sphere {
 	return d.collisionSpheres
 }

@@ -15,10 +15,8 @@ import (
 	"github.com/mokiat/lacking/game/physics/solver"
 )
 
-func newScene(engine *Engine) *Scene {
+func NewScene() *Scene {
 	return &Scene{
-		engine: engine,
-
 		shapeScene: placement3d.NewScene[bodyRef, struct{}, propRef](placement3d.SceneSettings{
 			Size:                opt.V(16384.0),
 			MaxDepth:            opt.V[uint32](12),
@@ -73,8 +71,6 @@ func newScene(engine *Engine) *Scene {
 // a number of bodies that are independent on any
 // bodies managed by other scene objects.
 type Scene struct {
-	engine *Engine
-
 	shapeScene *placement3d.Scene[bodyRef, struct{}, propRef]
 
 	sbCollisionSubscriptions *SingleBodyCollisionSubscriptionSet
@@ -132,8 +128,6 @@ type Scene struct {
 // Delete releases resources allocated by this scene. Users should not call
 // any further methods on this object.
 func (s *Scene) Delete() {
-	s.engine = nil
-
 	s.props = nil
 
 	s.freeBodyIndices = nil
@@ -165,11 +159,6 @@ func (s *Scene) Delete() {
 
 	s.oldDBCollisions = nil
 	s.newDBCollisions = nil
-}
-
-// Engine returns the physics Engine that owns this Scene.
-func (s *Scene) Engine() *Engine {
-	return s.engine
 }
 
 // SubscribeSingleBodyCollision registers a callback that is invoked when a body

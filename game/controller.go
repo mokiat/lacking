@@ -5,7 +5,6 @@ import (
 	"github.com/mokiat/lacking/core/resource"
 	"github.com/mokiat/lacking/debug/metric"
 	"github.com/mokiat/lacking/game/graphics"
-	"github.com/mokiat/lacking/game/physics"
 	"github.com/mokiat/lacking/util/async"
 )
 
@@ -37,8 +36,6 @@ type Controller struct {
 	gfxOptions []graphics.Option
 	gfxEngine  *graphics.Engine
 
-	physicsEngine *physics.Engine
-
 	window   app.Window
 	ioWorker *async.Worker
 	engine   *Engine
@@ -69,7 +66,6 @@ func (c *Controller) Engine() *Engine {
 func (c *Controller) OnCreate(window app.Window) {
 	c.window = window
 	c.gfxEngine = graphics.NewEngine(window.RenderAPI(), c.shaders, c.shaderBuilder, c.gfxOptions...)
-	c.physicsEngine = physics.NewEngine()
 
 	c.ioWorker = async.NewWorker(4)
 	go c.ioWorker.ProcessAll()
@@ -79,7 +75,6 @@ func (c *Controller) OnCreate(window app.Window) {
 		WithIOWorker(c.ioWorker),
 		WithStore(c.store),
 		WithGraphics(c.gfxEngine),
-		WithPhysics(c.physicsEngine),
 	)
 	c.engine.Create()
 
