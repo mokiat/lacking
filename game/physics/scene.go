@@ -11,7 +11,6 @@ import (
 	"github.com/mokiat/lacking/core/spatial/shape3d"
 	"github.com/mokiat/lacking/debug/metric"
 	"github.com/mokiat/lacking/game/physics/constraint"
-	"github.com/mokiat/lacking/game/physics/medium"
 	"github.com/mokiat/lacking/game/physics/solver"
 )
 
@@ -34,7 +33,7 @@ func NewScene() *Scene {
 		maxLinearVelocity:      2000.0,
 		maxAngularVelocity:     2000.0,
 
-		mediumSolver: medium.NewStaticAirMedium(),
+		mediumSolver: NewStaticAirSolver(),
 
 		props: make([]propState, 0, 1024),
 
@@ -83,7 +82,7 @@ type Scene struct {
 	maxLinearVelocity      float64
 	maxAngularVelocity     float64
 
-	mediumSolver solver.Medium
+	mediumSolver MediumSolver
 
 	props []propState
 
@@ -210,14 +209,24 @@ func (s *Scene) SetMaxAngularAcceleration(acceleration float64) {
 
 // MediumSolver returns the solver that is used to calculate the medium
 // properties of the scene.
-func (s *Scene) MediumSolver() solver.Medium {
+//
+// The returned solver is never nil. A scene starts off with a default
+// [StaticAirSolver].
+func (s *Scene) MediumSolver() MediumSolver {
 	return s.mediumSolver
 }
 
 // SetMediumSolver changes the solver that is used to calculate the medium
 // properties of the scene.
-func (s *Scene) SetMediumSolver(solver solver.Medium) {
-	s.mediumSolver = solver
+//
+// Passing nil is not an error and resets the scene to a default
+// [StaticAirSolver], since the scene always needs a medium to sample.
+func (s *Scene) SetMediumSolver(solver MediumSolver) {
+	if solver != nil {
+		s.mediumSolver = solver
+	} else {
+		s.mediumSolver = NewStaticAirSolver()
+	}
 }
 
 // NextCollisionRejectGroup returns a collision reject group that is unique
@@ -413,15 +422,16 @@ func (s *Scene) applyAreaAccelerators() {
 }
 
 func (s *Scene) applyGlobalAccelerators() {
-	s.eachBodyState(func(index int, body *bodyState) {
+	s.eachBodyState(func(index int, _ *bodyState) {
 		target := &s.bodyAccelerationTargets[index]
+		position := target.Position()
 		for _, accelerator := range s.globalAccelerators {
 			if !accelerator.reference.IsValid() || !accelerator.enabled {
 				continue
 			}
 			ctx := AccelerationContext{
-				MediumVelocity: dprec.ZeroVec3(), // FIXME: Fetch from medium
-				MediumDensity:  0.0,              // FIXME: Fetch from medium
+				MediumVelocity: s.mediumSolver.Velocity(position),
+				MediumDensity:  s.mediumSolver.Density(position),
 			}
 			accelerator.logic.ApplyAcceleration(ctx, target)
 		}
