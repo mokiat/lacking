@@ -2,6 +2,7 @@ package acceleration
 
 import (
 	"github.com/mokiat/gomath/dprec"
+	"github.com/mokiat/lacking/game/physics"
 	"github.com/mokiat/lacking/game/physics/solver"
 )
 
@@ -14,7 +15,7 @@ func NewGravityDirection() *GravityDirection {
 	}
 }
 
-var _ solver.Acceleration = (*GravityDirection)(nil)
+var _ physics.AccelerationSolver = (*GravityDirection)(nil)
 
 // GravityDirection represents the solution for an acceleration that
 // applies a constant force in a specific direction.
@@ -45,8 +46,8 @@ func (d *GravityDirection) SetAcceleration(acceleration float64) *GravityDirecti
 	return d
 }
 
-func (d *GravityDirection) ApplyAcceleration(ctx solver.AccelerationContext) {
-	ctx.Target.AddLinearAcceleration(
+func (d *GravityDirection) ApplyAcceleration(ctx physics.AccelerationContext, target *physics.AccelerationTarget) {
+	target.AddLinearAcceleration(
 		dprec.Vec3Prod(d.direction, d.acceleration),
 	)
 }
@@ -59,7 +60,7 @@ func NewGravityPosition() *GravityPosition {
 	}
 }
 
-var _ solver.Acceleration = (*GravityPosition)(nil)
+var _ physics.AccelerationSolver = (*GravityPosition)(nil)
 
 // GravityPosition represents the solution for an acceleration that
 // applies a constant force towards a specific position.
@@ -92,10 +93,10 @@ func (d *GravityPosition) SetAcceleration(acceleration float64) *GravityPosition
 	return d
 }
 
-func (d *GravityPosition) ApplyAcceleration(ctx solver.AccelerationContext) {
-	delta := dprec.Vec3Diff(d.position, ctx.Target.Position())
+func (d *GravityPosition) ApplyAcceleration(ctx physics.AccelerationContext, target *physics.AccelerationTarget) {
+	delta := dprec.Vec3Diff(d.position, target.Position())
 	if distance := delta.Length(); distance > solver.Epsilon {
-		ctx.Target.AddLinearAcceleration(
+		target.AddLinearAcceleration(
 			dprec.ResizedVec3(delta, d.acceleration),
 		)
 	}

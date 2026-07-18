@@ -376,7 +376,7 @@ func createBody(scene *Scene, info BodyInfo) Body {
 	if scene.freeBodyIndices.IsEmpty() {
 		freeIndex = uint32(len(scene.bodies))
 		scene.bodies = append(scene.bodies, bodyState{})
-		scene.bodyAccelerationTargets = append(scene.bodyAccelerationTargets, solver.AccelerationTarget{})
+		scene.bodyAccelerationTargets = append(scene.bodyAccelerationTargets, AccelerationTarget{})
 		scene.bodyConstraintPlaceholders = append(scene.bodyConstraintPlaceholders, solver.Placeholder{})
 	} else {
 		freeIndex = scene.freeBodyIndices.Pop()

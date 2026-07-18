@@ -40,7 +40,7 @@ func NewScene() *Scene {
 
 		freeBodyIndices:            ds.PreallocatedStack[uint32](16),
 		bodies:                     make([]bodyState, 0, 64),
-		bodyAccelerationTargets:    make([]solver.AccelerationTarget, 0, 64),
+		bodyAccelerationTargets:    make([]AccelerationTarget, 0, 64),
 		bodyConstraintPlaceholders: make([]solver.Placeholder, 0, 64),
 
 		// bodyAccelerators   []any // TOOD
@@ -88,7 +88,7 @@ type Scene struct {
 	props []propState
 
 	bodies                     []bodyState
-	bodyAccelerationTargets    []solver.AccelerationTarget
+	bodyAccelerationTargets    []AccelerationTarget
 	bodyConstraintPlaceholders []solver.Placeholder
 	freeBodyIndices            *ds.Stack[uint32]
 
@@ -238,7 +238,7 @@ func (s *Scene) NextCollisionRejectGroup() uint32 {
 
 // CreateGlobalAccelerator creates a new accelerator that affects the whole
 // scene.
-func (s *Scene) CreateGlobalAccelerator(logic solver.Acceleration) GlobalAccelerator {
+func (s *Scene) CreateGlobalAccelerator(logic AccelerationSolver) GlobalAccelerator {
 	return createGlobalAccelerator(s, logic)
 }
 
@@ -391,9 +391,11 @@ func (s *Scene) applyAcceleration(elapsedSeconds float64) {
 
 func (s *Scene) prepareAccelerationTargets() {
 	s.eachBodyState(func(index int, body *bodyState) {
-		s.bodyAccelerationTargets[index] = solver.NewAccelerationTarget(
-			body.mass,
-			body.momentOfInertia,
+		s.bodyAccelerationTargets[index] = newAccelerationTarget(
+			1.0/body.mass,
+			dprec.InverseMat3(
+				RotatedMomentOfInertia(body.momentOfInertia, body.rotation),
+			),
 			body.position,
 			body.rotation,
 			body.velocity,
@@ -417,9 +419,11 @@ func (s *Scene) applyGlobalAccelerators() {
 			if !accelerator.reference.IsValid() || !accelerator.enabled {
 				continue
 			}
-			accelerator.logic.ApplyAcceleration(solver.AccelerationContext{
-				Target: target,
-			})
+			ctx := AccelerationContext{
+				MediumVelocity: dprec.ZeroVec3(), // FIXME: Fetch from medium
+				MediumDensity:  0.0,              // FIXME: Fetch from medium
+			}
+			accelerator.logic.ApplyAcceleration(ctx, target)
 		}
 	})
 }
@@ -465,13 +469,13 @@ func (s *Scene) applyAccelerationTargets(elapsedSeconds float64) {
 	s.eachBodyState(func(index int, body *bodyState) {
 		target := s.bodyAccelerationTargets[index]
 
-		linearAcceleration := target.AccumulatedLinearAcceleration()
+		linearAcceleration := target.LinearAcceleration()
 		if linearAcceleration.Length() > s.maxLinearAcceleration {
 			linearAcceleration = dprec.ResizedVec3(linearAcceleration, s.maxLinearAcceleration)
 		}
 		body.AddVelocity(dprec.Vec3Prod(linearAcceleration, elapsedSeconds))
 
-		angularAcceleration := target.AccumulatedAngularAcceleration()
+		angularAcceleration := target.AngularAcceleration()
 		if angularAcceleration.Length() > s.maxAngularAcceleration {
 			angularAcceleration = dprec.ResizedVec3(angularAcceleration, s.maxAngularAcceleration)
 		}
