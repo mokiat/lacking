@@ -45,3 +45,32 @@ func SolidBoxMomentOfInertia(mass, width, height, length float64) dprec.Mat3 {
 		factor*(width*width+height*height),
 	)
 }
+
+// HollowBoxMomentOfInertia returns the moment of inertia of a hollow box
+// (rectangular cuboid shell) with the specified mass and dimensions. The
+// width, height, and length are the full sizes of the box along its local
+// X, Y, and Z axes respectively.
+func HollowBoxMomentOfInertia(mass, width, height, length float64) dprec.Mat3 {
+	area := 2.0 * (width*height + height*length + length*width)
+	fraction := mass / area
+
+	return DiagonalMomentOfInertia(
+		fraction*hollowBoxAxisMoment(width, height, length),
+		fraction*hollowBoxAxisMoment(height, length, width),
+		fraction*hollowBoxAxisMoment(length, width, height),
+	)
+}
+
+// hollowBoxAxisMoment returns the moment of inertia of a unit-density
+// hollow box around the axis with size a, where n1 and n2 are the sizes
+// along the two remaining axes.
+func hollowBoxAxisMoment(a, n1, n2 float64) float64 {
+	n1Sqr := n1 * n1
+	n2Sqr := n2 * n2
+	oneSixth := 1.0 / 6.0
+	oneHalf := 1.0 / 2.0
+
+	return n1*n2*(n1Sqr+n2Sqr)*oneSixth + // orhtogonal faces (n1 x n2 plane)
+		a*n1*(n1Sqr*oneSixth+n2Sqr*oneHalf) + // parallel faces (a x n1 plane)
+		a*n2*(n1Sqr*oneHalf+n2Sqr*oneSixth) // parallel faces (a x n2 plane)
+}
