@@ -28,7 +28,7 @@ func (e *Engine) CreateBodyDefinition(info BodyDefinitionInfo) *BodyDefinition {
 		restitutionCoefficient: info.RestitutionCoefficient,
 		dragFactor:             info.DragFactor,
 		angularDragFactor:      info.AngularDragFactor,
-		collisionGroup:         info.CollisionGroup,
+		collisionRejectGroup:   info.CollisionRejectGroup,
 		collisionSpheres:       info.CollisionSpheres,
 		collisionBoxes:         info.CollisionBoxes,
 		collisionMeshes:        info.CollisionMeshes,

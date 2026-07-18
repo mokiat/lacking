@@ -17,7 +17,7 @@ type BodyDefinitionInfo struct {
 	RestitutionCoefficient float64
 	DragFactor             float64
 	AngularDragFactor      float64
-	CollisionGroup         int
+	CollisionRejectGroup   uint32
 	CollisionSpheres       []shape3d.Sphere
 	CollisionBoxes         []shape3d.Box
 	CollisionMeshes        []shape3d.Mesh
@@ -31,7 +31,7 @@ type BodyDefinition struct {
 	restitutionCoefficient float64
 	dragFactor             float64
 	angularDragFactor      float64
-	collisionGroup         int
+	collisionRejectGroup   uint32
 	collisionSpheres       []shape3d.Sphere
 	collisionBoxes         []shape3d.Box
 	collisionMeshes        []shape3d.Mesh
@@ -374,7 +374,7 @@ func createBody(scene *Scene, info BodyInfo) Body {
 	for _, sphere := range info.Definition.collisionSpheres {
 		scene.shapeScene.AttachSphere(objectID, placement3d.SphereInfo[struct{}]{
 			Filtering: placement3d.FilterInfo{
-				RejectGroup: uint32(info.Definition.collisionGroup),
+				RejectGroup: info.Definition.collisionRejectGroup,
 			},
 			Sphere: sphere,
 		})
@@ -382,7 +382,7 @@ func createBody(scene *Scene, info BodyInfo) Body {
 	for _, box := range info.Definition.collisionBoxes {
 		scene.shapeScene.AttachBox(objectID, placement3d.BoxInfo[struct{}]{
 			Filtering: placement3d.FilterInfo{
-				RejectGroup: uint32(info.Definition.collisionGroup),
+				RejectGroup: info.Definition.collisionRejectGroup,
 			},
 			Box: box,
 		})

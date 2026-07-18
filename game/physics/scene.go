@@ -125,7 +125,8 @@ type Scene struct {
 	oldDBCollisions map[dbCollisionPair]struct{}
 	newDBCollisions map[dbCollisionPair]struct{}
 
-	freeRevision uint32
+	freeCollisionRejectGroup uint32
+	freeRevision             uint32
 }
 
 // Delete releases resources allocated by this scene. Users should not call
@@ -228,6 +229,22 @@ func (s *Scene) MediumSolver() solver.Medium {
 // properties of the scene.
 func (s *Scene) SetMediumSolver(solver solver.Medium) {
 	s.mediumSolver = solver
+}
+
+// NextCollisionRejectGroup returns a collision reject group that is unique
+// within this Scene. Bodies that are assigned the same reject group do not
+// collide with each other, which is useful for objects that are meant to
+// overlap, such as the chassis and the wheels of a vehicle.
+//
+// The returned value is always larger than zero, since zero indicates that a
+// body does not belong to any reject group and hence can collide with
+// everything.
+//
+// Reject groups are never recycled. Each call returns a new value, even if all
+// bodies that used a previously returned group have been deleted.
+func (s *Scene) NextCollisionRejectGroup() uint32 {
+	s.freeCollisionRejectGroup++
+	return s.freeCollisionRejectGroup
 }
 
 // CreateGlobalAccelerator creates a new accelerator that affects the whole
@@ -940,4 +957,14 @@ type bodyRef struct {
 
 type propRef struct {
 	index uint32
+}
+
+type sbCollisionPair struct {
+	BodyRef indexReference
+	PropRef indexReference
+}
+
+type dbCollisionPair struct {
+	PrimaryRef   indexReference
+	SecondaryRef indexReference
 }
