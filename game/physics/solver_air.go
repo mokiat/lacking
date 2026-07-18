@@ -24,42 +24,42 @@ func NewStaticAirSolver() *StaticAirSolver {
 }
 
 // AirDensity returns the density of the air, in kg/m^3.
-func (m *StaticAirSolver) AirDensity() float64 {
-	return m.airDensity
+func (s *StaticAirSolver) AirDensity() float64 {
+	return s.airDensity
 }
 
 // SetAirDensity changes the density of the air, in kg/m^3.
 //
 // It returns the solver itself, so that calls can be chained.
-func (m *StaticAirSolver) SetAirDensity(density float64) *StaticAirSolver {
-	m.airDensity = density
-	return m
+func (s *StaticAirSolver) SetAirDensity(density float64) *StaticAirSolver {
+	s.airDensity = density
+	return s
 }
 
 // AirVelocity returns the velocity of the air in world space, in m/s. This
 // is essentially the wind that is applied to the whole scene.
-func (m *StaticAirSolver) AirVelocity() dprec.Vec3 {
-	return m.airVelocity
+func (s *StaticAirSolver) AirVelocity() dprec.Vec3 {
+	return s.airVelocity
 }
 
 // SetAirVelocity changes the velocity of the air in world space, in m/s.
 //
 // It returns the solver itself, so that calls can be chained.
-func (m *StaticAirSolver) SetAirVelocity(velocity dprec.Vec3) *StaticAirSolver {
-	m.airVelocity = velocity
-	return m
+func (s *StaticAirSolver) SetAirVelocity(velocity dprec.Vec3) *StaticAirSolver {
+	s.airVelocity = velocity
+	return s
 }
 
 // Density returns the density of the air at the specified world position.
 //
 // The position is ignored, since the density is uniform.
-func (m *StaticAirSolver) Density(position dprec.Vec3) float64 {
-	return m.airDensity
+func (s *StaticAirSolver) Density(position dprec.Vec3) float64 {
+	return s.airDensity
 }
 
 // Velocity returns the velocity of the air at the specified world position.
 //
 // The position is ignored, since the velocity is uniform.
-func (m *StaticAirSolver) Velocity(position dprec.Vec3) dprec.Vec3 {
-	return m.airVelocity
+func (s *StaticAirSolver) Velocity(position dprec.Vec3) dprec.Vec3 {
+	return s.airVelocity
 }
