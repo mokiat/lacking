@@ -379,6 +379,8 @@ func (s *Scene) CheckSegmentIntersection(segment shape3d.Segment, mask uint32) (
 // }
 
 func (s *Scene) runSimulation(elapsedSeconds float64) {
+	// TODO: body -> acceleration targets -> impulse targets -> positioning targets -> body -> check for collisions (maybe reposition  to first)
+
 	if elapsedSeconds > 0.0001 {
 		s.applyAcceleration(elapsedSeconds)
 		s.applyImpulses(elapsedSeconds)
@@ -439,9 +441,6 @@ func (s *Scene) applyGlobalAccelerators() {
 }
 
 func (s *Scene) applyAerodynamicAccelerations() {
-	if s.mediumSolver == nil {
-		return
-	}
 	s.eachBodyState(func(index int, body *bodyState) {
 		if len(body.aerodynamicShapes) == 0 {
 			return
