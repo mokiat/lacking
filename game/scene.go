@@ -64,8 +64,8 @@ func newScene(engine *Engine, info SceneInfo) *Scene {
 	}
 
 	var physicsScene *physics.Scene
-	if physicsEngine := engine.Physics(); physicsEngine != nil && includePhysics {
-		physicsScene = physicsEngine.CreateScene()
+	if includePhysics {
+		physicsScene = physics.NewScene()
 	}
 
 	var gfxScene *graphics.Scene

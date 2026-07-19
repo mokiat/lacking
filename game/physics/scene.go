@@ -11,14 +11,11 @@ import (
 	"github.com/mokiat/lacking/core/spatial/shape3d"
 	"github.com/mokiat/lacking/debug/metric"
 	"github.com/mokiat/lacking/game/physics/constraint"
-	"github.com/mokiat/lacking/game/physics/medium"
 	"github.com/mokiat/lacking/game/physics/solver"
 )
 
-func newScene(engine *Engine) *Scene {
+func NewScene() *Scene {
 	return &Scene{
-		engine: engine,
-
 		shapeScene: placement3d.NewScene[bodyRef, struct{}, propRef](placement3d.SceneSettings{
 			Size:                opt.V(16384.0),
 			MaxDepth:            opt.V[uint32](12),
@@ -36,13 +33,13 @@ func newScene(engine *Engine) *Scene {
 		maxLinearVelocity:      2000.0,
 		maxAngularVelocity:     2000.0,
 
-		mediumSolver: medium.NewStaticAirMedium(),
+		mediumSolver: NewStaticAirSolver(),
 
 		props: make([]propState, 0, 1024),
 
 		freeBodyIndices:            ds.PreallocatedStack[uint32](16),
 		bodies:                     make([]bodyState, 0, 64),
-		bodyAccelerationTargets:    make([]solver.AccelerationTarget, 0, 64),
+		bodyAccelerationTargets:    make([]AccelerationTarget, 0, 64),
 		bodyConstraintPlaceholders: make([]solver.Placeholder, 0, 64),
 
 		// bodyAccelerators   []any // TOOD
@@ -73,8 +70,6 @@ func newScene(engine *Engine) *Scene {
 // a number of bodies that are independent on any
 // bodies managed by other scene objects.
 type Scene struct {
-	engine *Engine
-
 	shapeScene *placement3d.Scene[bodyRef, struct{}, propRef]
 
 	sbCollisionSubscriptions *SingleBodyCollisionSubscriptionSet
@@ -87,12 +82,12 @@ type Scene struct {
 	maxLinearVelocity      float64
 	maxAngularVelocity     float64
 
-	mediumSolver solver.Medium
+	mediumSolver MediumSolver
 
 	props []propState
 
 	bodies                     []bodyState
-	bodyAccelerationTargets    []solver.AccelerationTarget
+	bodyAccelerationTargets    []AccelerationTarget
 	bodyConstraintPlaceholders []solver.Placeholder
 	freeBodyIndices            *ds.Stack[uint32]
 
@@ -125,14 +120,13 @@ type Scene struct {
 	oldDBCollisions map[dbCollisionPair]struct{}
 	newDBCollisions map[dbCollisionPair]struct{}
 
-	freeRevision uint32
+	freeCollisionRejectGroup uint32
+	freeRevision             uint32
 }
 
 // Delete releases resources allocated by this scene. Users should not call
 // any further methods on this object.
 func (s *Scene) Delete() {
-	s.engine = nil
-
 	s.props = nil
 
 	s.freeBodyIndices = nil
@@ -164,11 +158,6 @@ func (s *Scene) Delete() {
 
 	s.oldDBCollisions = nil
 	s.newDBCollisions = nil
-}
-
-// Engine returns the physics Engine that owns this Scene.
-func (s *Scene) Engine() *Engine {
-	return s.engine
 }
 
 // SubscribeSingleBodyCollision registers a callback that is invoked when a body
@@ -220,19 +209,45 @@ func (s *Scene) SetMaxAngularAcceleration(acceleration float64) {
 
 // MediumSolver returns the solver that is used to calculate the medium
 // properties of the scene.
-func (s *Scene) MediumSolver() solver.Medium {
+//
+// The returned solver is never nil. A scene starts off with a default
+// [StaticAirSolver].
+func (s *Scene) MediumSolver() MediumSolver {
 	return s.mediumSolver
 }
 
 // SetMediumSolver changes the solver that is used to calculate the medium
 // properties of the scene.
-func (s *Scene) SetMediumSolver(solver solver.Medium) {
-	s.mediumSolver = solver
+//
+// Passing nil is not an error and resets the scene to a default
+// [StaticAirSolver], since the scene always needs a medium to sample.
+func (s *Scene) SetMediumSolver(solver MediumSolver) {
+	if solver != nil {
+		s.mediumSolver = solver
+	} else {
+		s.mediumSolver = NewStaticAirSolver()
+	}
+}
+
+// NextCollisionRejectGroup returns a collision reject group that is unique
+// within this Scene. Bodies that are assigned the same reject group do not
+// collide with each other, which is useful for objects that are meant to
+// overlap, such as the chassis and the wheels of a vehicle.
+//
+// The returned value is always larger than zero, since zero indicates that a
+// body does not belong to any reject group and hence can collide with
+// everything.
+//
+// Reject groups are never recycled. Each call returns a new value, even if all
+// bodies that used a previously returned group have been deleted.
+func (s *Scene) NextCollisionRejectGroup() uint32 {
+	s.freeCollisionRejectGroup++
+	return s.freeCollisionRejectGroup
 }
 
 // CreateGlobalAccelerator creates a new accelerator that affects the whole
 // scene.
-func (s *Scene) CreateGlobalAccelerator(logic solver.Acceleration) GlobalAccelerator {
+func (s *Scene) CreateGlobalAccelerator(logic AccelerationSolver) GlobalAccelerator {
 	return createGlobalAccelerator(s, logic)
 }
 
@@ -364,7 +379,8 @@ func (s *Scene) CheckSegmentIntersection(segment shape3d.Segment, mask uint32) (
 // }
 
 func (s *Scene) runSimulation(elapsedSeconds float64) {
-	s.resetOldPositions()
+	// TODO: body -> acceleration targets -> impulse targets -> positioning targets -> body -> check for collisions (maybe reposition  to first)
+
 	if elapsedSeconds > 0.0001 {
 		s.applyAcceleration(elapsedSeconds)
 		s.applyImpulses(elapsedSeconds)
@@ -372,13 +388,6 @@ func (s *Scene) runSimulation(elapsedSeconds float64) {
 		s.applyNudges(elapsedSeconds)
 		s.detectCollisions()
 	}
-}
-
-func (s *Scene) resetOldPositions() {
-	s.eachBodyState(func(_ int, body *bodyState) {
-		body.oldPosition = body.position
-		body.oldRotation = body.rotation
-	})
 }
 
 func (s *Scene) applyAcceleration(elapsedSeconds float64) {
@@ -393,9 +402,11 @@ func (s *Scene) applyAcceleration(elapsedSeconds float64) {
 
 func (s *Scene) prepareAccelerationTargets() {
 	s.eachBodyState(func(index int, body *bodyState) {
-		s.bodyAccelerationTargets[index] = solver.NewAccelerationTarget(
-			body.mass,
-			body.momentOfInertia,
+		s.bodyAccelerationTargets[index] = newAccelerationTarget(
+			1.0/body.mass,
+			dprec.InverseMat3(
+				RotatedMomentOfInertia(body.momentOfInertia, body.rotation),
+			),
 			body.position,
 			body.rotation,
 			body.velocity,
@@ -413,23 +424,23 @@ func (s *Scene) applyAreaAccelerators() {
 }
 
 func (s *Scene) applyGlobalAccelerators() {
-	s.eachBodyState(func(index int, body *bodyState) {
+	s.eachBodyState(func(index int, _ *bodyState) {
 		target := &s.bodyAccelerationTargets[index]
+		position := target.Position()
 		for _, accelerator := range s.globalAccelerators {
 			if !accelerator.reference.IsValid() || !accelerator.enabled {
 				continue
 			}
-			accelerator.logic.ApplyAcceleration(solver.AccelerationContext{
-				Target: target,
-			})
+			ctx := AccelerationContext{
+				MediumVelocity: s.mediumSolver.Velocity(position),
+				MediumDensity:  s.mediumSolver.Density(position),
+			}
+			accelerator.logic.ApplyAcceleration(ctx, target)
 		}
 	})
 }
 
 func (s *Scene) applyAerodynamicAccelerations() {
-	if s.mediumSolver == nil {
-		return
-	}
 	s.eachBodyState(func(index int, body *bodyState) {
 		if len(body.aerodynamicShapes) == 0 {
 			return
@@ -467,13 +478,13 @@ func (s *Scene) applyAccelerationTargets(elapsedSeconds float64) {
 	s.eachBodyState(func(index int, body *bodyState) {
 		target := s.bodyAccelerationTargets[index]
 
-		linearAcceleration := target.AccumulatedLinearAcceleration()
+		linearAcceleration := target.LinearAcceleration()
 		if linearAcceleration.Length() > s.maxLinearAcceleration {
 			linearAcceleration = dprec.ResizedVec3(linearAcceleration, s.maxLinearAcceleration)
 		}
 		body.AddVelocity(dprec.Vec3Prod(linearAcceleration, elapsedSeconds))
 
-		angularAcceleration := target.AccumulatedAngularAcceleration()
+		angularAcceleration := target.AngularAcceleration()
 		if angularAcceleration.Length() > s.maxAngularAcceleration {
 			angularAcceleration = dprec.ResizedVec3(angularAcceleration, s.maxAngularAcceleration)
 		}
@@ -948,4 +959,14 @@ type bodyRef struct {
 
 type propRef struct {
 	index uint32
+}
+
+type sbCollisionPair struct {
+	BodyRef indexReference
+	PropRef indexReference
+}
+
+type dbCollisionPair struct {
+	PrimaryRef   indexReference
+	SecondaryRef indexReference
 }

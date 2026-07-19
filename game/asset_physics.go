@@ -22,8 +22,7 @@ func LoadPhysicsMaterial(loader *AssetLoader, assetMaterial dto.BodyMaterial) (I
 
 	var material *physics.Material
 	allocateMaterial := func() error {
-		physicsEngine := loader.Engine().Physics()
-		material = physicsEngine.CreateMaterial(materialInfo)
+		material = physics.NewMaterial(materialInfo)
 		return nil
 	}
 	if err := loader.ScheduleMain(allocateMaterial).Wait(); err != nil {
@@ -99,8 +98,7 @@ func LoadPhysicsBodyDefinition(loader *AssetLoader, assetBodyDefinition dto.Body
 
 	var bodyDefinition *physics.BodyDefinition
 	allocateDefinition := func() error {
-		physicsEngine := loader.Engine().Physics()
-		bodyDefinition = physicsEngine.CreateBodyDefinition(bodyDefinitionInfo)
+		bodyDefinition = physics.NewBodyDefinition(bodyDefinitionInfo)
 		return nil
 	}
 	if err := loader.ScheduleMain(allocateDefinition).Wait(); err != nil {

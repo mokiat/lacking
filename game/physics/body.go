@@ -17,7 +17,7 @@ type BodyDefinitionInfo struct {
 	RestitutionCoefficient float64
 	DragFactor             float64
 	AngularDragFactor      float64
-	CollisionGroup         int
+	CollisionRejectGroup   uint32
 	CollisionSpheres       []shape3d.Sphere
 	CollisionBoxes         []shape3d.Box
 	CollisionMeshes        []shape3d.Mesh
@@ -31,11 +31,29 @@ type BodyDefinition struct {
 	restitutionCoefficient float64
 	dragFactor             float64
 	angularDragFactor      float64
-	collisionGroup         int
+	collisionRejectGroup   uint32
 	collisionSpheres       []shape3d.Sphere
 	collisionBoxes         []shape3d.Box
 	collisionMeshes        []shape3d.Mesh
 	aerodynamicShapes      []AerodynamicShape
+}
+
+// NewBodyDefinition creates a new BodyDefinition that can be used
+// to create Body instances.
+func NewBodyDefinition(info BodyDefinitionInfo) *BodyDefinition {
+	return &BodyDefinition{
+		mass:                   info.Mass,
+		momentOfInertia:        info.MomentOfInertia,
+		frictionCoefficient:    info.FrictionCoefficient,
+		restitutionCoefficient: info.RestitutionCoefficient,
+		dragFactor:             info.DragFactor,
+		angularDragFactor:      info.AngularDragFactor,
+		collisionRejectGroup:   info.CollisionRejectGroup,
+		collisionSpheres:       info.CollisionSpheres,
+		collisionBoxes:         info.CollisionBoxes,
+		collisionMeshes:        info.CollisionMeshes,
+		aerodynamicShapes:      info.AerodynamicShapes,
+	}
 }
 
 func (d *BodyDefinition) CollisionSpheres() []shape3d.Sphere {
@@ -64,7 +82,7 @@ type Body struct {
 	reference indexReference
 }
 
-// // Name returns the name of this body.
+// Name returns the name of this body.
 func (b Body) Name() string {
 	state := b.state()
 	return state.name
@@ -147,12 +165,6 @@ func (b Body) SetMomentOfInertia(inertia dprec.Mat3) {
 // 	b.angularDragFactor = factor
 // }
 
-// PreviousPosition returns the body's old position in world space.
-func (b Body) PreviousPosition() dprec.Vec3 {
-	state := b.state()
-	return state.oldPosition
-}
-
 // Position returns the body's position in world space.
 func (b Body) Position() dprec.Vec3 {
 	state := b.state()
@@ -163,15 +175,8 @@ func (b Body) Position() dprec.Vec3 {
 func (b Body) SetPosition(position dprec.Vec3) {
 	state := b.state()
 	state.position = position
-	state.oldPosition = position
 
 	// FIXME: Invalidate shape placement!
-}
-
-// PreviousRotation returns the old quaternion rotation of this body.
-func (b Body) PreviousRotation() dprec.Quat {
-	state := b.state()
-	return state.oldRotation
 }
 
 // Rotation returns the quaternion rotation of this body.
@@ -184,7 +189,6 @@ func (b Body) Rotation() dprec.Quat {
 func (b Body) SetRotation(rotation dprec.Quat) {
 	state := b.state()
 	state.rotation = rotation
-	state.oldRotation = rotation
 
 	// FIXME: Invalidate shape placement!
 }
@@ -319,9 +323,6 @@ type bodyState struct {
 	dragFactor        float64
 	angularDragFactor float64
 
-	oldPosition dprec.Vec3
-	oldRotation dprec.Quat
-
 	position dprec.Vec3
 	rotation dprec.Quat
 
@@ -375,7 +376,7 @@ func createBody(scene *Scene, info BodyInfo) Body {
 	if scene.freeBodyIndices.IsEmpty() {
 		freeIndex = uint32(len(scene.bodies))
 		scene.bodies = append(scene.bodies, bodyState{})
-		scene.bodyAccelerationTargets = append(scene.bodyAccelerationTargets, solver.AccelerationTarget{})
+		scene.bodyAccelerationTargets = append(scene.bodyAccelerationTargets, AccelerationTarget{})
 		scene.bodyConstraintPlaceholders = append(scene.bodyConstraintPlaceholders, solver.Placeholder{})
 	} else {
 		freeIndex = scene.freeBodyIndices.Pop()
@@ -391,7 +392,7 @@ func createBody(scene *Scene, info BodyInfo) Body {
 	for _, sphere := range info.Definition.collisionSpheres {
 		scene.shapeScene.AttachSphere(objectID, placement3d.SphereInfo[struct{}]{
 			Filtering: placement3d.FilterInfo{
-				RejectGroup: uint32(info.Definition.collisionGroup),
+				RejectGroup: info.Definition.collisionRejectGroup,
 			},
 			Sphere: sphere,
 		})
@@ -399,7 +400,7 @@ func createBody(scene *Scene, info BodyInfo) Body {
 	for _, box := range info.Definition.collisionBoxes {
 		scene.shapeScene.AttachBox(objectID, placement3d.BoxInfo[struct{}]{
 			Filtering: placement3d.FilterInfo{
-				RejectGroup: uint32(info.Definition.collisionGroup),
+				RejectGroup: info.Definition.collisionRejectGroup,
 			},
 			Box: box,
 		})

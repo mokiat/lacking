@@ -1,7 +1,5 @@
 package physics
 
-import "github.com/mokiat/lacking/game/physics/solver"
-
 var invalidGlobalAcceleratorState = &globalAcceleratorState{}
 
 // GlobalAccelerator represents a force that is applied to all
@@ -13,7 +11,9 @@ type GlobalAccelerator struct {
 
 // Logic returns the acceleration solver that will be used to
 // apply this global accelerator.
-func (a GlobalAccelerator) Logic() solver.Acceleration {
+//
+// TODO: Rename to Solver.
+func (a GlobalAccelerator) Logic() AccelerationSolver {
 	state := a.state()
 	return state.logic
 }
@@ -46,11 +46,11 @@ func (a GlobalAccelerator) state() *globalAcceleratorState {
 
 type globalAcceleratorState struct {
 	reference indexReference
-	logic     solver.Acceleration
+	logic     AccelerationSolver
 	enabled   bool
 }
 
-func createGlobalAccelerator(scene *Scene, logic solver.Acceleration) GlobalAccelerator {
+func createGlobalAccelerator(scene *Scene, logic AccelerationSolver) GlobalAccelerator {
 	var freeIndex uint32
 	if scene.freeGlobalAcceleratorIndices.IsEmpty() {
 		freeIndex = uint32(len(scene.globalAccelerators))
