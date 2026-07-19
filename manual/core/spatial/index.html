@@ -1,0 +1,1402 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+        <link rel="canonical" href="http://mokiat.com/lacking/manual/core/spatial/">
+      
+      
+        <link rel="prev" href="../audio/">
+      
+      
+        <link rel="next" href="../../ecs/">
+      
+      <link rel="icon" href="../../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.4.2, mkdocs-material-9.0.6">
+    
+    
+      
+        <title>Overview - Lacking</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../../assets/stylesheets/main.558e4712.min.css">
+      
+        
+        <link rel="stylesheet" href="../../../assets/stylesheets/palette.2505c338.min.css">
+      
+      
+
+    
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../../..",location),__md_hash=e=>[...e].reduce((e,_)=>(e<<5)-e+_.charCodeAt(0),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="" data-md-color-accent="">
+  
+    
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#spatial" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../../.." title="Lacking" class="md-header__button md-logo" aria-label="Lacking" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3V6m0 5h18v2H3v-2m0 5h18v2H3v-2Z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Lacking
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Overview
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+    
+      <label class="md-header__button md-icon" for="__search">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5Z"/></svg>
+      </label>
+      <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5Z"/></svg>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12Z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41Z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/mokiat/lacking/" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81z"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../.." title="Lacking" class="md-nav__button md-logo" aria-label="Lacking" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
+
+    </a>
+    Lacking
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/mokiat/lacking/" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81z"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+      
+
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../.." class="md-nav__link">
+        Home
+      </a>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../examples/" class="md-nav__link">
+        Examples
+      </a>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../getting-started/" class="md-nav__link">
+        Getting Started
+      </a>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+    
+  
+  
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " data-md-toggle="__nav_4" type="checkbox" id="__nav_4" checked>
+      
+      
+      
+        <label class="md-nav__link" for="__nav_4" tabindex="0" aria-expanded="true">
+          User's Guide
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="User's Guide" data-md-level="1">
+        <label class="md-nav__title" for="__nav_4">
+          <span class="md-nav__icon md-icon"></span>
+          User's Guide
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../application/" class="md-nav__link">
+        Application
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+    
+  
+  
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " data-md-toggle="__nav_4_2" type="checkbox" id="__nav_4_2" checked>
+      
+      
+      
+        <label class="md-nav__link" for="__nav_4_2" tabindex="0" aria-expanded="true">
+          Core
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="Core" data-md-level="2">
+        <label class="md-nav__title" for="__nav_4_2">
+          <span class="md-nav__icon md-icon"></span>
+          Core
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../audio/" class="md-nav__link">
+        Audio
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+    
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" data-md-toggle="toc" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          Spatial
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        Spatial
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#shapes" class="md-nav__link">
+    Shapes
+  </a>
+  
+    <nav class="md-nav" aria-label="Shapes">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#contacts" class="md-nav__link">
+    Contacts
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#convex-solver-gjk" class="md-nav__link">
+    Convex Solver (GJK)
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#intersections" class="md-nav__link">
+    Intersections
+  </a>
+  
+    <nav class="md-nav" aria-label="Intersections">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#contact-conventions" class="md-nav__link">
+    Contact conventions
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#broad-phase-spatial-queries" class="md-nav__link">
+    Broad Phase (Spatial Queries)
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#scenes" class="md-nav__link">
+    Scenes
+  </a>
+  
+    <nav class="md-nav" aria-label="Scenes">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#filtering" class="md-nav__link">
+    Filtering
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ecs/" class="md-nav__link">
+        ECS
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../game/" class="md-nav__link">
+        Game
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " data-md-toggle="__nav_4_5" type="checkbox" id="__nav_4_5" >
+      
+      
+      
+        <label class="md-nav__link" for="__nav_4_5" tabindex="0" aria-expanded="false">
+          Graphics
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="Graphics" data-md-level="2">
+        <label class="md-nav__title" for="__nav_4_5">
+          <span class="md-nav__icon md-icon"></span>
+          Graphics
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../graphics/shader/" class="md-nav__link">
+        Shader
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../rendering/" class="md-nav__link">
+        Rendering
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user-interface/" class="md-nav__link">
+        User Interface
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " data-md-toggle="__nav_5" type="checkbox" id="__nav_5" >
+      
+      
+      
+        <label class="md-nav__link" for="__nav_5" tabindex="0" aria-expanded="false">
+          Internals
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="Internals" data-md-level="1">
+        <label class="md-nav__title" for="__nav_5">
+          <span class="md-nav__icon md-icon"></span>
+          Internals
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " data-md-toggle="__nav_5_1" type="checkbox" id="__nav_5_1" >
+      
+      
+      
+        <label class="md-nav__link" for="__nav_5_1" tabindex="0" aria-expanded="false">
+          Physics
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="Physics" data-md-level="2">
+        <label class="md-nav__title" for="__nav_5_1">
+          <span class="md-nav__icon md-icon"></span>
+          Physics
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../development/physics/" class="md-nav__link">
+        Overview
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../development/physics/references/" class="md-nav__link">
+        References
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " data-md-toggle="__nav_5_1_3" type="checkbox" id="__nav_5_1_3" >
+      
+      
+      
+        <label class="md-nav__link" for="__nav_5_1_3" tabindex="0" aria-expanded="false">
+          Theory
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="Theory" data-md-level="3">
+        <label class="md-nav__title" for="__nav_5_1_3">
+          <span class="md-nav__icon md-icon"></span>
+          Theory
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../development/physics/theory/principles/" class="md-nav__link">
+        Principles
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../development/physics/theory/terminology/" class="md-nav__link">
+        Terminology
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../development/physics/theory/equations/" class="md-nav__link">
+        Equations
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../development/physics/theory/effective-mass/" class="md-nav__link">
+        Effective Mass
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../development/physics/theory/moment-of-inertia/" class="md-nav__link">
+        Moment of Inertia
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " data-md-toggle="__nav_5_1_4" type="checkbox" id="__nav_5_1_4" >
+      
+      
+      
+        <label class="md-nav__link" for="__nav_5_1_4" tabindex="0" aria-expanded="false">
+          Derivations
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="Derivations" data-md-level="3">
+        <label class="md-nav__title" for="__nav_5_1_4">
+          <span class="md-nav__icon md-icon"></span>
+          Derivations
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../development/physics/derivations/impulse-derivation/" class="md-nav__link">
+        Impulse
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../development/physics/derivations/effective-mass-derivation/" class="md-nav__link">
+        Effective Mass
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " data-md-toggle="__nav_5_2" type="checkbox" id="__nav_5_2" >
+      
+      
+      
+        <label class="md-nav__link" for="__nav_5_2" tabindex="0" aria-expanded="false">
+          Math
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="Math" data-md-level="2">
+        <label class="md-nav__title" for="__nav_5_2">
+          <span class="md-nav__icon md-icon"></span>
+          Math
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../development/math/vectors/" class="md-nav__link">
+        Vectors
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../development/math/derivatives/" class="md-nav__link">
+        Derivatives
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " data-md-toggle="__nav_5_3" type="checkbox" id="__nav_5_3" >
+      
+      
+      
+        <label class="md-nav__link" for="__nav_5_3" tabindex="0" aria-expanded="false">
+          Notes
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="Notes" data-md-level="2">
+        <label class="md-nav__title" for="__nav_5_3">
+          <span class="md-nav__icon md-icon"></span>
+          Notes
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../development/notes/precision/" class="md-nav__link">
+        Precision
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#shapes" class="md-nav__link">
+    Shapes
+  </a>
+  
+    <nav class="md-nav" aria-label="Shapes">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#contacts" class="md-nav__link">
+    Contacts
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#convex-solver-gjk" class="md-nav__link">
+    Convex Solver (GJK)
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#intersections" class="md-nav__link">
+    Intersections
+  </a>
+  
+    <nav class="md-nav" aria-label="Intersections">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#contact-conventions" class="md-nav__link">
+    Contact conventions
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#broad-phase-spatial-queries" class="md-nav__link">
+    Broad Phase (Spatial Queries)
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#scenes" class="md-nav__link">
+    Scenes
+  </a>
+  
+    <nav class="md-nav" aria-label="Scenes">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#filtering" class="md-nav__link">
+    Filtering
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+  
+  
+
+
+
+<h1 id="spatial">Spatial</h1>
+<p>The <code>core/spatial</code> package is the engine's geometry and collision stack. It
+provides the primitive shapes, the algorithms that test them for overlap, the
+broad-phase indexes that make those tests scale, and the scene abstraction that
+ties everything together. The physics engine is built directly on top of it,
+but the package is self-contained and can be used on its own for picking,
+line-of-sight tests, trigger volumes, and similar spatial problems.</p>
+<p>Everything comes in a 2D and a 3D flavour, split into parallel sub-packages that
+mirror one another almost exactly. Pick the dimensionality you need and the same
+concepts apply:</p>
+<table>
+<thead>
+<tr>
+<th>Layer</th>
+<th>2D</th>
+<th>3D</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Shapes</strong></td>
+<td><code>shape2d</code></td>
+<td><code>shape3d</code></td>
+<td>Primitive geometric shapes and contact types.</td>
+</tr>
+<tr>
+<td><strong>Convex solver</strong></td>
+<td><code>gjk2d</code></td>
+<td><code>gjk3d</code></td>
+<td>GJK/EPA overlap and contact resolution for convex shapes.</td>
+</tr>
+<tr>
+<td><strong>Intersections</strong></td>
+<td><code>isec2d</code></td>
+<td><code>isec3d</code></td>
+<td>Direct intersection tests and contacts between specific primitives.</td>
+</tr>
+<tr>
+<td><strong>Broad phase</strong></td>
+<td><code>query2d</code></td>
+<td><code>query3d</code></td>
+<td>Loose quad/octree spatial index for fast candidate lookup.</td>
+</tr>
+<tr>
+<td><strong>Scenes</strong></td>
+<td><code>placement2d</code></td>
+<td><code>placement3d</code></td>
+<td>Full scenes of placed objects and meshes, combining all of the above.</td>
+</tr>
+</tbody>
+</table>
+<p>The layers stack: shapes are the vocabulary; <code>gjk*</code> and <code>isec*</code> are two
+different narrow-phase strategies for testing pairs of shapes; <code>query*</code> is the
+broad phase that avoids testing every pair; and <code>placement*</code> is the high-level
+scene that wires the broad phase and narrow phase together so you rarely have to
+touch the lower layers directly.</p>
+<p><strong>Note:</strong>
+Both the 2D and 3D packages work in double precision, using the <code>dprec</code>
+vectors, rotations and transforms from the <code>gomath</code> math library.</p>
+<h2 id="shapes">Shapes</h2>
+<p><code>shape2d</code> and <code>shape3d</code> define the primitive shapes and the shared <code>Contact</code>
+type used throughout the stack.</p>
+<ul>
+<li><strong>2D</strong>: <code>Circle</code>, <code>Rectangle</code>, <code>Capsule</code>, <code>Triangle</code>, <code>Edge</code>, <code>Segment</code>, and
+  <code>Mesh</code> (a collection of edges).</li>
+<li><strong>3D</strong>: <code>Sphere</code>, <code>Box</code>, <code>Triangle</code>, <code>Surface</code>, <code>Segment</code>, and <code>Mesh</code> (a
+  collection of triangles).</li>
+</ul>
+<p>Shapes are plain value types constructed with <code>New...</code> helpers and carry no
+behaviour beyond simple queries such as <code>ContainsPoint</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="nx">sphere</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">shape3d</span><span class="p">.</span><span class="nx">NewSphere</span><span class="p">(</span><span class="nx">dprec</span><span class="p">.</span><span class="nx">NewVec3</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">),</span><span class="w"> </span><span class="mf">0.5</span><span class="p">)</span>
+<span class="nx">box</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">shape3d</span><span class="p">.</span><span class="nx">NewBox</span><span class="p">(</span>
+<span class="w">    </span><span class="nx">dprec</span><span class="p">.</span><span class="nx">ZeroVec3</span><span class="p">(),</span><span class="w">            </span><span class="c1">// center</span>
+<span class="w">    </span><span class="nx">shape3d</span><span class="p">.</span><span class="nx">IdentityRotation</span><span class="p">(),</span><span class="w">  </span><span class="c1">// orientation</span>
+<span class="w">    </span><span class="nx">dprec</span><span class="p">.</span><span class="nx">NewVec3</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span><span class="w"> </span><span class="mi">1</span><span class="p">),</span><span class="w">      </span><span class="c1">// half-extents (half-width, -height, -length)</span>
+<span class="p">)</span>
+
+<span class="k">if</span><span class="w"> </span><span class="nx">sphere</span><span class="p">.</span><span class="nx">ContainsPoint</span><span class="p">(</span><span class="nx">dprec</span><span class="p">.</span><span class="nx">NewVec3</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="mf">1.2</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">))</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="c1">// ...</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>Each shape has a <code>Transformed...</code> helper that applies a rigid-body <code>Transform</code>
+(translation plus rotation), which is how shapes are moved into world space.</p>
+<h3 id="contacts">Contacts</h3>
+<p>A <code>Contact</code> describes an intersection of a <em>source</em> shape with a <em>target</em>
+shape. Its fields are expressed relative to the target:</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>TargetPoint</code></td>
+<td>The contact point on the target's surface.</td>
+</tr>
+<tr>
+<td><code>TargetNormal</code></td>
+<td>The outward surface normal at that point, pointing toward the source. It is the direction the source must move to separate.</td>
+</tr>
+<tr>
+<td><code>Depth</code></td>
+<td>How far the shapes overlap along the normal (always non-negative).</td>
+</tr>
+</tbody>
+</table>
+<p>Intersection routines do not return contacts directly; they push them to a
+<code>ContactCallback</code>. The packages ship ready-made sinks that satisfy this callback
+and accumulate contacts in common ways:</p>
+<table>
+<thead>
+<tr>
+<th>Sink</th>
+<th>Behaviour</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>LastContact</code></td>
+<td>Keeps the most recent contact.</td>
+</tr>
+<tr>
+<td><code>DeepestContact</code></td>
+<td>Keeps the contact with the greatest depth.</td>
+</tr>
+<tr>
+<td><code>ShallowestContact</code></td>
+<td>Keeps the contact with the least depth.</td>
+</tr>
+<tr>
+<td><code>ContactList</code></td>
+<td>Collects every contact into a slice.</td>
+</tr>
+</tbody>
+</table>
+<div class="highlight"><pre><span></span><code><span class="kd">var</span><span class="w"> </span><span class="nx">deepest</span><span class="w"> </span><span class="nx">shape3d</span><span class="p">.</span><span class="nx">DeepestContact</span>
+<span class="nx">isec3d</span><span class="p">.</span><span class="nx">ResolveSphereSphere</span><span class="p">(</span><span class="nx">first</span><span class="p">,</span><span class="w"> </span><span class="nx">second</span><span class="p">,</span><span class="w"> </span><span class="nx">deepest</span><span class="p">.</span><span class="nx">AddContact</span><span class="p">)</span>
+<span class="k">if</span><span class="w"> </span><span class="nx">contact</span><span class="p">,</span><span class="w"> </span><span class="nx">ok</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">deepest</span><span class="p">.</span><span class="nx">Contact</span><span class="p">();</span><span class="w"> </span><span class="nx">ok</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="c1">// move `first` out of `second` along contact.TargetNormal by contact.Depth</span>
+<span class="p">}</span>
+</code></pre></div>
+<h2 id="convex-solver-gjk">Convex Solver (GJK)</h2>
+<p><code>gjk2d</code> and <code>gjk3d</code> implement the Gilbert-Johnson-Keerthi algorithm (with EPA
+for penetration depth) for arbitrary <em>convex</em> shapes. This is the general-purpose
+narrow phase: it works on any convex shape without a hand-written test for that
+specific pair.</p>
+<p>A <code>gjk.Shape</code> is a convex point cloud (a polygon in 2D, a polyhedron in 3D) with
+an optional <strong>skin radius</strong> that inflates it outward. The skin radius lets a
+single representation capture rounded shapes exactly: a sphere is one point with
+a radius, a capsule is a segment with a radius, and a rounded box is a box whose
+corners are inflated. Convenience constructors build these:</p>
+<div class="highlight"><pre><span></span><code><span class="nx">shapeA</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">gjk3d</span><span class="p">.</span><span class="nx">ShapeFromSphere</span><span class="p">(</span><span class="nx">sphere</span><span class="p">)</span>
+<span class="nx">shapeB</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">gjk3d</span><span class="p">.</span><span class="nx">ShapeFromCapsule</span><span class="p">(</span><span class="nx">segment</span><span class="p">,</span><span class="w"> </span><span class="mf">0.25</span><span class="p">)</span>
+
+<span class="nx">solver</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">gjk3d</span><span class="p">.</span><span class="nx">NewSolver</span><span class="p">()</span>
+
+<span class="k">if</span><span class="w"> </span><span class="nx">solver</span><span class="p">.</span><span class="nx">Intersect</span><span class="p">(</span><span class="nx">shapeA</span><span class="p">,</span><span class="w"> </span><span class="nx">shapeB</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="c1">// boolean overlap test only</span>
+<span class="p">}</span>
+
+<span class="k">if</span><span class="w"> </span><span class="nx">contact</span><span class="p">,</span><span class="w"> </span><span class="nx">ok</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">solver</span><span class="p">.</span><span class="nx">Resolve</span><span class="p">(</span><span class="nx">shapeA</span><span class="p">,</span><span class="w"> </span><span class="nx">shapeB</span><span class="p">);</span><span class="w"> </span><span class="nx">ok</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="c1">// full contact with normal and penetration depth</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>Reuse a <code>Solver</code> across calls; it holds scratch buffers to avoid per-call
+allocations.</p>
+<h2 id="intersections">Intersections</h2>
+<p><code>isec2d</code> and <code>isec3d</code> provide direct, specialised intersection tests between
+specific pairs of primitives. Where GJK is general, these are hand-written for
+each shape combination and are typically faster for the cases
+they cover (for example sphere-versus-triangle or segment-versus-box).</p>
+<p>Functions come in two forms:</p>
+<ul>
+<li><code>Check...</code> returns a boolean overlap answer.</li>
+<li><code>Resolve...</code> reports full <code>Contact</code> values through a <code>ContactCallback</code>.</li>
+</ul>
+<div class="highlight"><pre><span></span><code><span class="k">if</span><span class="w"> </span><span class="nx">isec3d</span><span class="p">.</span><span class="nx">CheckSphereBox</span><span class="p">(</span><span class="nx">sphere</span><span class="p">,</span><span class="w"> </span><span class="nx">box</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="c1">// fast boolean test</span>
+<span class="p">}</span>
+
+<span class="kd">var</span><span class="w"> </span><span class="nx">contacts</span><span class="w"> </span><span class="nx">shape3d</span><span class="p">.</span><span class="nx">ContactList</span>
+<span class="nx">isec3d</span><span class="p">.</span><span class="nx">ResolveSphereMesh</span><span class="p">(</span><span class="nx">sphere</span><span class="p">,</span><span class="w"> </span><span class="nx">mesh</span><span class="p">,</span><span class="w"> </span><span class="nx">contacts</span><span class="p">.</span><span class="nx">AddContact</span><span class="p">)</span>
+<span class="k">for</span><span class="w"> </span><span class="nx">_</span><span class="p">,</span><span class="w"> </span><span class="nx">c</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="k">range</span><span class="w"> </span><span class="nx">contacts</span><span class="p">.</span><span class="nx">Contacts</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="c1">// ...</span>
+<span class="p">}</span>
+</code></pre></div>
+<h3 id="contact-conventions">Contact conventions</h3>
+<p>Two contact conventions are used depending on the shapes involved:</p>
+<ul>
+<li>
+<p><strong>Volume-versus-volume</strong> resolves (such as <code>ResolveSphereSphere</code>) report a
+  mutual-penetration contact: the normal is the axis of least penetration and
+  <code>Depth</code> is the overlap distance along it.</p>
+</li>
+<li>
+<p><strong>Segment</strong> resolves (such as <code>ResolveSegmentBox</code>) treat the segment as a
+  directed probe from A to B. They report where the segment first enters the
+  shape, the outward surface normal there, and a <code>Depth</code> equal to the <em>fraction</em>
+  of the segment lying beyond the entry point (1 at A, 0 at B). Expressing depth
+  as a fraction keeps it comparable across shapes, so <code>DeepestContact</code> selects
+  the earliest entry along the ray. Segment tests are face-culled and directional:
+  a segment that starts inside the shape is not treated as an intersection.</p>
+</li>
+</ul>
+<h2 id="broad-phase-spatial-queries">Broad Phase (Spatial Queries)</h2>
+<p><code>query2d</code> and <code>query3d</code> provide the broad phase: a loose <strong>quadtree</strong> /
+<strong>octree</strong> that indexes items by a spatial <code>Area</code> and answers region queries
+quickly.</p>
+<p>These queries are deliberately <em>conservative</em>. Every item is reduced to a center
+and a half-extent (its bounding square/cube), so a query may return false
+positives, but it will <strong>never omit</strong> an item that truly matches. Callers are
+expected to run a precise narrow-phase test (via <code>isec*</code> or <code>gjk*</code>) on the
+returned candidates.</p>
+<div class="highlight"><pre><span></span><code><span class="nx">tree</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">query3d</span><span class="p">.</span><span class="nx">NewOctree</span><span class="p">[</span><span class="nx">Entity</span><span class="p">](</span><span class="nx">query3d</span><span class="p">.</span><span class="nx">OctreeSettings</span><span class="p">{})</span>
+
+<span class="c1">// Insert returns an ID used for later Update / Remove.</span>
+<span class="nx">id</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">tree</span><span class="p">.</span><span class="nx">Insert</span><span class="p">(</span><span class="nx">query3d</span><span class="p">.</span><span class="nx">AreaFromSphere</span><span class="p">(</span><span class="nx">bounds</span><span class="p">),</span><span class="w"> </span><span class="nx">entity</span><span class="p">)</span>
+
+<span class="c1">// Query a region; the visitor returns false to stop early.</span>
+<span class="nx">tree</span><span class="p">.</span><span class="nx">QueryAABB</span><span class="p">(</span><span class="nx">query3d</span><span class="p">.</span><span class="nx">NewAABB</span><span class="p">(</span><span class="o">-</span><span class="mi">10</span><span class="p">,</span><span class="w"> </span><span class="o">-</span><span class="mi">10</span><span class="p">,</span><span class="w"> </span><span class="o">-</span><span class="mi">10</span><span class="p">,</span><span class="w"> </span><span class="mi">10</span><span class="p">,</span><span class="w"> </span><span class="mi">10</span><span class="p">,</span><span class="w"> </span><span class="mi">10</span><span class="p">),</span><span class="w"> </span><span class="kd">func</span><span class="p">(</span><span class="nx">e</span><span class="w"> </span><span class="nx">Entity</span><span class="p">)</span><span class="w"> </span><span class="kt">bool</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="c1">// narrow-phase test against e here</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="kc">true</span>
+<span class="p">})</span>
+
+<span class="c1">// Query along a ray.</span>
+<span class="nx">tree</span><span class="p">.</span><span class="nx">QuerySegment</span><span class="p">(</span><span class="nx">query3d</span><span class="p">.</span><span class="nx">NewSegment</span><span class="p">(</span><span class="nx">from</span><span class="p">,</span><span class="w"> </span><span class="nx">to</span><span class="p">),</span><span class="w"> </span><span class="kd">func</span><span class="p">(</span><span class="nx">e</span><span class="w"> </span><span class="nx">Entity</span><span class="p">)</span><span class="w"> </span><span class="kt">bool</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="kc">true</span>
+<span class="p">})</span>
+</code></pre></div>
+<p>A <code>VisitorBucket</code> is a convenient visitor that collects matches into a reusable
+slice when you would rather iterate results after the query returns.</p>
+<h2 id="scenes">Scenes</h2>
+<p><code>placement2d</code> and <code>placement3d</code> are the top of the stack. A <code>Scene</code> holds a
+collection of placed <strong>objects</strong> and <strong>meshes</strong> and handles both the broad phase
+and the narrow phase for you, so most applications interact only with this layer.</p>
+<ul>
+<li><strong>Objects</strong> are dynamic entities. Each owns one or more convex shapes
+  (circles/rectangles in 2D, spheres/boxes in 3D) and can be moved by updating
+  its transform.</li>
+<li><strong>Meshes</strong> are static entities made of edges (2D) or triangles (3D), suited to
+  level geometry.</li>
+</ul>
+<p>Both are indexed in their own broad-phase tree, and narrow-phase overlap is
+resolved with GJK/EPA internally. Intersections are reported as <code>Contact</code> values
+through the same <code>ContactCallback</code> sinks as the lower layers.</p>
+<p>The <code>Scene</code> is generic over three user-data types, one for each kind of entity
+(<code>O</code> for objects, <code>S</code> for shapes, <code>M</code> for meshes), letting you attach your own
+identifiers to whatever a query returns:</p>
+<div class="highlight"><pre><span></span><code><span class="nx">scene</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">placement3d</span><span class="p">.</span><span class="nx">NewScene</span><span class="p">[</span><span class="o">*</span><span class="nx">Body</span><span class="p">,</span><span class="w"> </span><span class="o">*</span><span class="nx">Collider</span><span class="p">,</span><span class="w"> </span><span class="o">*</span><span class="nx">Level</span><span class="p">](</span><span class="nx">placement3d</span><span class="p">.</span><span class="nx">SceneSettings</span><span class="p">{})</span>
+
+<span class="c1">// A dynamic object with a single sphere collider.</span>
+<span class="nx">objID</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">scene</span><span class="p">.</span><span class="nx">CreateObject</span><span class="p">(</span><span class="nx">placement3d</span><span class="p">.</span><span class="nx">ObjectInfo</span><span class="p">[</span><span class="o">*</span><span class="nx">Body</span><span class="p">]{</span>
+<span class="w">    </span><span class="nx">Position</span><span class="p">:</span><span class="w"> </span><span class="nx">opt</span><span class="p">.</span><span class="nx">V</span><span class="p">(</span><span class="nx">dprec</span><span class="p">.</span><span class="nx">NewVec3</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="mi">5</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">)),</span>
+<span class="w">    </span><span class="nx">UserData</span><span class="p">:</span><span class="w"> </span><span class="nx">body</span><span class="p">,</span>
+<span class="p">})</span>
+<span class="nx">scene</span><span class="p">.</span><span class="nx">AttachSphere</span><span class="p">(</span><span class="nx">objID</span><span class="p">,</span><span class="w"> </span><span class="nx">placement3d</span><span class="p">.</span><span class="nx">SphereInfo</span><span class="p">[</span><span class="o">*</span><span class="nx">Collider</span><span class="p">]{</span>
+<span class="w">    </span><span class="nx">Sphere</span><span class="p">:</span><span class="w">   </span><span class="nx">shape3d</span><span class="p">.</span><span class="nx">NewSphere</span><span class="p">(</span><span class="nx">dprec</span><span class="p">.</span><span class="nx">ZeroVec3</span><span class="p">(),</span><span class="w"> </span><span class="mf">0.5</span><span class="p">),</span>
+<span class="w">    </span><span class="nx">UserData</span><span class="p">:</span><span class="w"> </span><span class="nx">collider</span><span class="p">,</span>
+<span class="p">})</span>
+
+<span class="c1">// Move it around over time.</span>
+<span class="nx">scene</span><span class="p">.</span><span class="nx">SetObjectTransform</span><span class="p">(</span><span class="nx">objID</span><span class="p">,</span><span class="w"> </span><span class="nx">newTransform</span><span class="p">)</span>
+
+<span class="c1">// Cast a ray through the scene.</span>
+<span class="nx">segment</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">shape3d</span><span class="p">.</span><span class="nx">NewSegment</span><span class="p">(</span><span class="nx">eye</span><span class="p">,</span><span class="w"> </span><span class="nx">target</span><span class="p">)</span>
+<span class="k">if</span><span class="w"> </span><span class="nx">contact</span><span class="p">,</span><span class="w"> </span><span class="nx">ok</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">scene</span><span class="p">.</span><span class="nx">CheckSegmentIntersection</span><span class="p">(</span><span class="nx">segment</span><span class="p">,</span><span class="w"> </span><span class="nx">placement3d</span><span class="p">.</span><span class="nx">Filter</span><span class="p">{});</span><span class="w"> </span><span class="nx">ok</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="c1">// ...</span>
+<span class="p">}</span>
+</code></pre></div>
+<h3 id="filtering">Filtering</h3>
+<p>Every shape and mesh carries <code>FilterInfo</code> describing which layers it lives in
+(<code>SourceMask</code> / <code>TargetMask</code>) and an optional <code>RejectGroup</code> that prevents
+entities in the same group from colliding (useful, for example, so the parts of
+one articulated body ignore one another). Queries then take a <code>Filter</code> that can
+restrict the search by layer mask and skip dynamic or static entities:</p>
+<div class="highlight"><pre><span></span><code><span class="nx">scene</span><span class="p">.</span><span class="nx">CollectSphereIntersections</span><span class="p">(</span><span class="nx">probe</span><span class="p">,</span><span class="w"> </span><span class="nx">placement3d</span><span class="p">.</span><span class="nx">Filter</span><span class="p">{</span>
+<span class="w">    </span><span class="nx">Mask</span><span class="p">:</span><span class="w">        </span><span class="nx">opt</span><span class="p">.</span><span class="nx">V</span><span class="p">(</span><span class="nb">uint32</span><span class="p">(</span><span class="nx">LayerEnemies</span><span class="p">)),</span>
+<span class="w">    </span><span class="nx">SkipStatic</span><span class="p">:</span><span class="w">  </span><span class="kc">true</span><span class="p">,</span>
+<span class="p">},</span><span class="w"> </span><span class="kd">func</span><span class="p">(</span><span class="nx">contact</span><span class="w"> </span><span class="nx">placement3d</span><span class="p">.</span><span class="nx">Contact</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="c1">// handle each overlap with a dynamic enemy</span>
+<span class="p">})</span>
+</code></pre></div>
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    <script id="__config" type="application/json">{"base": "../../..", "features": [], "search": "../../../assets/javascripts/workers/search.e5c33ebb.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.51d95adb.min.js"></script>
+      
+        <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+      
+    
+  </body>
+</html>
