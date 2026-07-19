@@ -32,7 +32,7 @@ require (
 	github.com/rogpeppe/go-internal v1.15.0 // indirect
 	github.com/stretchr/testify v1.11.1 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
-	golang.org/x/exp/typeparams v0.0.0-20260709172345-9ea1abe57597 // indirect
+	golang.org/x/exp/typeparams v0.0.0-20260718201538-764159d718ef // indirect
 	golang.org/x/mod v0.38.0 // indirect
 	golang.org/x/net v0.57.0 // indirect
 	golang.org/x/sys v0.47.0 // indirect
