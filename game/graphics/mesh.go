@@ -26,6 +26,9 @@ func newMesh(scene *Scene, info MeshInfo) *Mesh {
 	mesh.maxCascade = definition.geometry.maxCascade
 	mesh.armature = info.Armature
 	mesh.active = true
+	mesh.SetCustom0Value(0.0)
+	mesh.SetCustom1Value(0.0)
+	mesh.SetCustom2Value(0.0)
 	mesh.setSpawnTime(scene.gameTime)
 	return mesh
 }
@@ -59,6 +62,21 @@ func (m *Mesh) SetMatrix(matrix dprec.Mat4) {
 	position := matrix.Translation()
 	radius := m.definition.geometry.boundingSphereRadius
 	m.scene.dynamicMeshSet.Update(m.itemID, position, radius)
+}
+
+func (m *Mesh) SetCustom0Value(value float32) {
+	block := gblob.LittleEndianBlock(m.instanceData[:])
+	block.SetFloat32(1*4, value)
+}
+
+func (m *Mesh) SetCustom1Value(value float32) {
+	block := gblob.LittleEndianBlock(m.instanceData[:])
+	block.SetFloat32(2*4, value)
+}
+
+func (m *Mesh) SetCustom2Value(value float32) {
+	block := gblob.LittleEndianBlock(m.instanceData[:])
+	block.SetFloat32(3*4, value)
 }
 
 func (m *Mesh) setSpawnTime(spawnTime time.Duration) {
@@ -102,6 +120,9 @@ func createStaticMesh(scene *Scene, info StaticMeshInfo) {
 	staticMesh.matrixData = make([]byte, 16*4)
 	staticMesh.armature = info.Armature
 	staticMesh.active = true
+	staticMesh.SetCustom0Value(0.0)
+	staticMesh.SetCustom1Value(0.0)
+	staticMesh.SetCustom2Value(0.0)
 	staticMesh.setSpawnTime(scene.gameTime)
 
 	matrix := dtos.Mat4(info.Matrix)
@@ -131,6 +152,21 @@ func (m *StaticMesh) SetActive(active bool) {
 		m.setSpawnTime(m.scene.gameTime)
 		m.active = active
 	}
+}
+
+func (m *StaticMesh) SetCustom0Value(value float32) {
+	block := gblob.LittleEndianBlock(m.instanceData[:])
+	block.SetFloat32(1*4, value)
+}
+
+func (m *StaticMesh) SetCustom1Value(value float32) {
+	block := gblob.LittleEndianBlock(m.instanceData[:])
+	block.SetFloat32(2*4, value)
+}
+
+func (m *StaticMesh) SetCustom2Value(value float32) {
+	block := gblob.LittleEndianBlock(m.instanceData[:])
+	block.SetFloat32(3*4, value)
 }
 
 func (m *StaticMesh) setSpawnTime(spawnTime time.Duration) {
