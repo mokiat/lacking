@@ -15,6 +15,9 @@ func (t *Translator) translateForwardVertexCode(shader *lsl.Shader, constraints 
 		// time
 		ctx.RegisterIdentifier("#time", "timeIn")
 		ctx.RegisterIdentifier("#spawnTime", "spawnTimeInOut")
+		ctx.RegisterIdentifier("#custom0", "custom0InOut")
+		ctx.RegisterIdentifier("#custom1", "custom1InOut")
+		ctx.RegisterIdentifier("#custom2", "custom2InOut")
 		// mesh
 		ctx.RegisterIdentifier("#vertexCoord", "coord_ls")
 		ctx.RegisterIdentifier("#vertexNormal", "normal_ls")
@@ -47,6 +50,9 @@ func (t *Translator) translateForwardFragmentCode(shader *lsl.Shader, constraint
 		// time
 		ctx.RegisterIdentifier("#time", "timeIn")
 		ctx.RegisterIdentifier("#spawnTime", "spawnTimeInOut")
+		ctx.RegisterIdentifier("#custom0", "custom0InOut")
+		ctx.RegisterIdentifier("#custom1", "custom1InOut")
+		ctx.RegisterIdentifier("#custom2", "custom2InOut")
 		// camera
 		ctx.RegisterIdentifier("#cameraMatrix", "cameraMatrixIn")
 		ctx.RegisterIdentifier("#viewMatrix", "viewMatrixIn")

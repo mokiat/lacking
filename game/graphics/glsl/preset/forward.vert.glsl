@@ -11,10 +11,17 @@
 /* template "public.vert.glsl" . */
 
 smooth out float spawnTimeInOut;
+smooth out float custom0InOut;
+smooth out float custom1InOut;
+smooth out float custom2InOut;
 
 void main()
 {
-  spawnTimeInOut = timeIn - timingIn[gl_InstanceID].x;
+  vec4 timing = timingIn[gl_InstanceID];
+  spawnTimeInOut = timeIn - timing.x;
+  custom0InOut = timing.y;
+  custom1InOut = timing.z;
+  custom2InOut = timing.w;
   /*- if .HasAttributeCoord */
   vec4 coord_ls = attrCoord;
   /*- else */

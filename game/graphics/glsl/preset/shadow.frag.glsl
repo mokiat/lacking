@@ -10,6 +10,9 @@
 /* template "public.frag.glsl" . */
 
 smooth in float spawnTimeInOut;
+smooth in float custom0InOut;
+smooth in float custom1InOut;
+smooth in float custom2InOut;
 
 void main()
 {
