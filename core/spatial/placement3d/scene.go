@@ -40,8 +40,8 @@ type SceneSettings struct {
 // The type parameters specify the user data attached to each kind of entity:
 // O for objects, S for shapes, and M for meshes.
 type Scene[O, S, M any] struct {
-	shapeTree *query3d.Octree[int32]
-	meshTree  *query3d.Octree[int32]
+	shapeTree *query3d.BVHTree[int32]
+	meshTree  *query3d.BVHTree[int32]
 
 	solver *gjk3d.Solver
 
@@ -62,11 +62,15 @@ type Scene[O, S, M any] struct {
 
 // NewScene creates a new scene.
 func NewScene[O, S, M any](settings SceneSettings) *Scene[O, S, M] {
-	treeSettings := query3d.OctreeSettings(settings)
+	treeSettings := query3d.BVHTreeSettings{
+		AABBMargin:          opt.V(1.0),
+		InitialNodeCapacity: settings.InitialNodeCapacity,
+		InitialItemCapacity: settings.InitialItemCapacity,
+	}
 
 	return &Scene[O, S, M]{
-		shapeTree: query3d.NewOctree[int32](treeSettings),
-		meshTree:  query3d.NewOctree[int32](treeSettings),
+		shapeTree: query3d.NewBVHTree[int32](treeSettings),
+		meshTree:  query3d.NewBVHTree[int32](treeSettings),
 
 		solver: gjk3d.NewSolver(),
 

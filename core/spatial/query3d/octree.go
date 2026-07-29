@@ -1,11 +1,8 @@
 package query3d
 
 import (
-	"math"
-
 	"github.com/mokiat/gog/ds"
 	"github.com/mokiat/gog/opt"
-	"github.com/mokiat/gomath/dprec"
 )
 
 // OctreeSettings contains the settings for an [Octree].
@@ -82,7 +79,7 @@ func NewOctree[T any](settings OctreeSettings) *Octree[T] {
 			z: 0.0,
 			r: size, // using size here since a loose area has twice the size
 		},
-		box: emptyOctreeAABB(),
+		box: emptyTreeAABB(),
 	})
 
 	return &Octree[T]{
@@ -133,7 +130,7 @@ func (t *Octree[T]) VisitStats() TreeVisitStats {
 // tree.
 func (t *Octree[T]) Insert(area Area, value T) TreeItemID {
 	nodeIndex := t.pickNodeForItem(area)
-	box := newOctreeAABBFromArea(area)
+	box := newTreeAABBFromArea(area)
 	t.increaseNodeItems(nodeIndex)
 
 	if t.freeItemIDs.IsEmpty() {
@@ -164,7 +161,7 @@ func (t *Octree[T]) Update(id TreeItemID, area Area) {
 	if item.node == nullOctreeIndex {
 		panic("cannot update removed item")
 	}
-	item.box = newOctreeAABBFromArea(area)
+	item.box = newTreeAABBFromArea(area)
 	oldNodeIndex := item.node
 	t.decreaseNodeItems(item.node) // previous node
 	item.node = t.pickNodeForItem(area)
@@ -434,17 +431,17 @@ func (t *Octree[T]) updateAABB(nodeIndex int32) bool {
 	// cached items boxes. This would avoid recomputing the items boxes every
 	// time.
 
-	result := emptyOctreeAABB()
+	result := emptyTreeAABB()
 	for _, childIndex := range node.children {
 		if childIndex != nullOctreeIndex {
 			child := &t.nodes[childIndex]
-			result = mergeOctreeAABBs(result, child.box)
+			result = mergeTreeAABBs(result, child.box)
 		}
 	}
 	itemIndex := node.itemOffset
 	for range node.itemCount {
 		item := &t.items[itemIndex]
-		result = mergeOctreeAABBs(result, item.box)
+		result = mergeTreeAABBs(result, item.box)
 		itemIndex++
 	}
 	node.box = result
@@ -527,7 +524,7 @@ type octreeNode struct {
 	parent      int32
 	children    [8]int32
 	looseArea   octreeCube
-	box         octreeAABB
+	box         treeAABB
 	itemCount   uint32
 	itemOffset  uint32
 	placeOffset uint32
@@ -541,7 +538,7 @@ func (n *octreeNode) isEmpty() bool {
 type octreeItem[T any] struct {
 	id    TreeItemID
 	node  int32
-	box   octreeAABB
+	box   treeAABB
 	value T
 }
 
@@ -550,117 +547,4 @@ type octreeCube struct {
 	y float64
 	z float64
 	r float64
-}
-
-type octreeAABB struct {
-	minX float64
-	minY float64
-	minZ float64
-	maxX float64
-	maxY float64
-	maxZ float64
-}
-
-func emptyOctreeAABB() octreeAABB {
-	return octreeAABB{
-		minX: math.MaxFloat64,
-		minY: math.MaxFloat64,
-		minZ: math.MaxFloat64,
-		maxX: -math.MaxFloat64,
-		maxY: -math.MaxFloat64,
-		maxZ: -math.MaxFloat64,
-	}
-}
-
-func newOctreeAABBFromArea(area Area) octreeAABB {
-	return octreeAABB{
-		minX: area.x - area.r,
-		minY: area.y - area.r,
-		minZ: area.z - area.r,
-		maxX: area.x + area.r,
-		maxY: area.y + area.r,
-		maxZ: area.z + area.r,
-	}
-}
-
-func mergeOctreeAABBs(first, second octreeAABB) octreeAABB {
-	return octreeAABB{
-		minX: min(first.minX, second.minX),
-		minY: min(first.minY, second.minY),
-		minZ: min(first.minZ, second.minZ),
-		maxX: max(first.maxX, second.maxX),
-		maxY: max(first.maxY, second.maxY),
-		maxZ: max(first.maxZ, second.maxZ),
-	}
-}
-
-func (aabb *octreeAABB) isEmpty() bool {
-	return (aabb.minX > aabb.maxX) || (aabb.minY > aabb.maxY) || (aabb.minZ > aabb.maxZ)
-}
-
-func (aabb *octreeAABB) intersectsSegment(segment *Segment) bool {
-	if aabb.isEmpty() {
-		return false
-	}
-
-	delta := dprec.Vec3Diff(segment.b, segment.a)
-
-	var tCloseX, tFarX float64
-	if delta.X == 0.0 {
-		if (segment.a.X < aabb.minX) || (segment.a.X > aabb.maxX) {
-			return false // both points are outside the box on the left or right
-		}
-		tCloseX = -math.MaxFloat64
-		tFarX = math.MaxFloat64
-	} else {
-		tLowX := (aabb.minX - segment.a.X) / delta.X
-		tHighX := (aabb.maxX - segment.a.X) / delta.X
-		tCloseX = min(tLowX, tHighX)
-		tFarX = max(tLowX, tHighX)
-	}
-
-	var tCloseY, tFarY float64
-	if delta.Y == 0.0 {
-		if (segment.a.Y < aabb.minY) || (segment.a.Y > aabb.maxY) {
-			return false // both points are outside the box on the top or bottom
-		}
-		tCloseY = -math.MaxFloat64
-		tFarY = math.MaxFloat64
-	} else {
-		tLowY := (aabb.minY - segment.a.Y) / delta.Y
-		tHighY := (aabb.maxY - segment.a.Y) / delta.Y
-		tCloseY = min(tLowY, tHighY)
-		tFarY = max(tLowY, tHighY)
-	}
-
-	var tCloseZ, tFarZ float64
-	if delta.Z == 0.0 {
-		if (segment.a.Z < aabb.minZ) || (segment.a.Z > aabb.maxZ) {
-			return false // both points are outside the box on the front or back
-		}
-		tCloseZ = -math.MaxFloat64
-		tFarZ = math.MaxFloat64
-	} else {
-		tLowZ := (aabb.minZ - segment.a.Z) / delta.Z
-		tHighZ := (aabb.maxZ - segment.a.Z) / delta.Z
-		tCloseZ = min(tLowZ, tHighZ)
-		tFarZ = max(tLowZ, tHighZ)
-	}
-
-	tClose := max(tCloseX, tCloseY, tCloseZ)
-	tFar := min(tFarX, tFarY, tFarZ)
-
-	return tClose <= tFar && tClose <= 1.0 && tFar >= 0.0
-}
-
-func (aabb *octreeAABB) intersectsAABB(other *AABB) bool {
-	if aabb.isEmpty() {
-		return false
-	}
-	return (aabb.minX <= other.maxX) &&
-		(aabb.minY <= other.maxY) &&
-		(aabb.maxX >= other.minX) &&
-		(aabb.maxY >= other.minY) &&
-		(aabb.minZ <= other.maxZ) &&
-		(aabb.maxZ >= other.minZ)
 }
