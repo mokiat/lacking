@@ -949,6 +949,8 @@ func (s *Scene) deinitPlaceholder(placeholder *solver.Placeholder, body *bodySta
 	})
 }
 
+// GlobalAccelerators returns a [GlobalAcceleratorView] through which the
+// global accelerators of this scene can be created and managed.
 func (s *Scene) GlobalAccelerators() GlobalAcceleratorView {
 	return GlobalAcceleratorView{
 		scene: s,
