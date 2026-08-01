@@ -8,6 +8,13 @@ import (
 	"github.com/mokiat/lacking/game/physics/solver"
 )
 
+var NilBodyID = BodyID{}
+
+type BodyID struct {
+	index    int32
+	revision int32
+}
+
 var invalidBodyState = &bodyState{}
 
 type BodyDefinitionInfo struct {
@@ -80,6 +87,13 @@ type BodyInfo struct {
 type Body struct {
 	scene     *Scene
 	reference indexReference
+}
+
+func (b Body) ID() BodyID {
+	return BodyID{
+		index:    int32(b.reference.Index),
+		revision: int32(b.reference.Revision),
+	}
 }
 
 // Name returns the name of this body.
@@ -302,6 +316,8 @@ func (b Body) state() *bodyState {
 
 type bodyState struct {
 	reference indexReference
+
+	firstBodyAcceleratorIndex int32
 
 	objectID placement3d.ObjectID
 

@@ -91,7 +91,7 @@ type Scene struct {
 	bodyConstraintPlaceholders []solver.Placeholder
 	freeBodyIndices            *ds.Stack[uint32]
 
-	// bodyAccelerators   []any // TOOD
+	bodyAccelerators           []bodyAccelerator
 	freeBodyAcceleratorIndices *ds.Stack[uint32]
 
 	// areaAccelerators   []any // TODO
@@ -953,6 +953,35 @@ func (s *Scene) deinitPlaceholder(placeholder *solver.Placeholder, body *bodySta
 	})
 }
 
+// TODO
+// func (s *Scene) GlobalAccelerators() *GlobalAcceleratorView {
+// 	return GlobalAcceleratorView{
+//    	scene: s,
+//  }
+// }
+
+func (s *Scene) BodyAccelerators() BodyAcceleratorView {
+	return BodyAcceleratorView{
+		scene: s,
+	}
+}
+
+func (s *Scene) allocateBodyAccelerator() int32 {
+	panic("TODO")
+}
+
+func (s *Scene) releaseBodyAccelerator(index int32) {
+	panic("TODO")
+}
+
+func (s *Scene) attachBodyAccelerator(bodyIndex, index int32) {
+	panic("TODO")
+}
+
+func (s *Scene) detachBodyAccelerator(bodyIndex, index int32) {
+	panic("TODO")
+}
+
 type bodyRef struct {
 	index uint32
 }
@@ -970,3 +999,5 @@ type dbCollisionPair struct {
 	PrimaryRef   indexReference
 	SecondaryRef indexReference
 }
+
+var nilIndex int32 = -1
