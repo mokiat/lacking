@@ -42,13 +42,14 @@ func NewScene() *Scene {
 		bodyAccelerationTargets:    make([]AccelerationTarget, 0, 64),
 		bodyConstraintPlaceholders: make([]solver.Placeholder, 0, 64),
 
-		// bodyAccelerators   []any // TOOD
-		// areaAccelerators   []any // TODO
-		globalAccelerators: make([]globalAcceleratorState, 0, 64),
+		globalAccelerators:           make([]globalAccelerator, 1),
+		freeGlobalAcceleratorIndices: ds.EmptyStack[int32](),
 
-		freeBodyAcceleratorIndices:   ds.PreallocatedStack[uint32](16),
-		freeAreaAcceleratorIndices:   ds.PreallocatedStack[uint32](16),
-		freeGlobalAcceleratorIndices: ds.PreallocatedStack[uint32](16),
+		// bodyAccelerators   []any // TOOD
+		freeBodyAcceleratorIndices: ds.PreallocatedStack[uint32](16),
+
+		// areaAccelerators   []any // TODO
+		freeAreaAcceleratorIndices: ds.PreallocatedStack[uint32](16),
 
 		sbConstraints: make([]sbConstraintState, 0, 64),
 		dbConstraints: make([]dbConstraintState, 0, 64),
@@ -97,8 +98,8 @@ type Scene struct {
 	// areaAccelerators   []any // TODO
 	freeAreaAcceleratorIndices *ds.Stack[uint32]
 
-	globalAccelerators           []globalAcceleratorState
-	freeGlobalAcceleratorIndices *ds.Stack[uint32]
+	globalAccelerators           []globalAccelerator
+	freeGlobalAcceleratorIndices *ds.Stack[int32]
 
 	sbConstraints           []sbConstraintState
 	freeSBConstraintIndices *ds.Stack[uint32]
@@ -243,12 +244,6 @@ func (s *Scene) SetMediumSolver(solver MediumSolver) {
 func (s *Scene) NextCollisionRejectGroup() uint32 {
 	s.freeCollisionRejectGroup++
 	return s.freeCollisionRejectGroup
-}
-
-// CreateGlobalAccelerator creates a new accelerator that affects the whole
-// scene.
-func (s *Scene) CreateGlobalAccelerator(logic AccelerationSolver) GlobalAccelerator {
-	return createGlobalAccelerator(s, logic)
 }
 
 // CreateProp creates a new static Prop. A prop is an object
@@ -426,17 +421,16 @@ func (s *Scene) applyAreaAccelerators() {
 func (s *Scene) applyGlobalAccelerators() {
 	s.eachBodyState(func(index int, _ *bodyState) {
 		target := &s.bodyAccelerationTargets[index]
-		position := target.Position()
-		for _, accelerator := range s.globalAccelerators {
-			if !accelerator.reference.IsValid() || !accelerator.enabled {
-				continue
-			}
+		s.eachGlobalAccelerator(func(_ int, accelerator *globalAccelerator) {
+			// TODO: Consider caching the following calculation, especially
+			// if the medium solver is expensive to compute.
+			position := target.Position()
 			ctx := AccelerationContext{
 				MediumVelocity: s.mediumSolver.Velocity(position),
 				MediumDensity:  s.mediumSolver.Density(position),
 			}
-			accelerator.logic.ApplyAcceleration(ctx, target)
-		}
+			accelerator.solver.ApplyAcceleration(ctx, target)
+		})
 	})
 }
 
@@ -953,16 +947,37 @@ func (s *Scene) deinitPlaceholder(placeholder *solver.Placeholder, body *bodySta
 	})
 }
 
-// TODO
-// func (s *Scene) GlobalAccelerators() *GlobalAcceleratorView {
-// 	return GlobalAcceleratorView{
-//    	scene: s,
-//  }
-// }
+func (s *Scene) GlobalAccelerators() GlobalAcceleratorView {
+	return GlobalAcceleratorView{
+		scene: s,
+	}
+}
 
 func (s *Scene) BodyAccelerators() BodyAcceleratorView {
 	return BodyAcceleratorView{
 		scene: s,
+	}
+}
+
+func (s *Scene) allocateGlobalAccelerator() int32 {
+	if !s.freeGlobalAcceleratorIndices.IsEmpty() {
+		return s.freeGlobalAcceleratorIndices.Pop()
+	}
+	index := int32(len(s.globalAccelerators))
+	s.globalAccelerators = append(s.globalAccelerators, globalAccelerator{})
+	return index
+}
+
+func (s *Scene) releaseGlobalAccelerator(index int32) {
+	s.freeGlobalAcceleratorIndices.Push(index)
+}
+
+func (s *Scene) eachGlobalAccelerator(cb func(index int, accelerator *globalAccelerator)) {
+	for i := range s.globalAccelerators {
+		accelerator := &s.globalAccelerators[i]
+		if accelerator.isValid() {
+			cb(i, accelerator)
+		}
 	}
 }
 

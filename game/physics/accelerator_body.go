@@ -11,18 +11,18 @@ type BodyAcceleratorView struct {
 	scene *Scene
 }
 
-func (s BodyAcceleratorView) Create(bodyID BodyID, solver AccelerationSolver) BodyAcceleratorID {
+func (v BodyAcceleratorView) Create(bodyID BodyID, solver AccelerationSolver) BodyAcceleratorID {
 	// TODO: Verify that the body exists!
 	bodyIndex := bodyID.index
 
-	index := s.scene.allocateBodyAccelerator()
+	index := v.scene.allocateBodyAccelerator()
 
-	accelerator := &s.scene.bodyAccelerators[index]
+	accelerator := &v.scene.bodyAccelerators[index]
 	accelerator.solver = solver
-	accelerator.revision++ // progress ID to valid (odd) state
+	accelerator.revision++ // progress revision to valid (odd) value
 	accelerator.isEnabled = true
 
-	s.scene.attachBodyAccelerator(bodyIndex, index)
+	v.scene.attachBodyAccelerator(bodyIndex, index)
 
 	return BodyAcceleratorID{
 		index:    index,
@@ -30,66 +30,66 @@ func (s BodyAcceleratorView) Create(bodyID BodyID, solver AccelerationSolver) Bo
 	}
 }
 
-func (s BodyAcceleratorView) Delete(id BodyAcceleratorID) {
+func (v BodyAcceleratorView) Delete(id BodyAcceleratorID) {
 	// TODO: Should I allow the deletion of an invalid ID (noop)?
-	accelerator := s.resolve(id, true)
+	accelerator := v.resolve(id, true)
 	accelerator.solver = nil // allow the solver to be garbage collected
-	accelerator.revision++   // progress ID to invalid (event) state
+	accelerator.revision++   // progress revision to invalid (even) value
 
-	s.scene.detachBodyAccelerator(accelerator.bodyIndex, id.index)
-	s.scene.releaseBodyAccelerator(id.index)
+	v.scene.detachBodyAccelerator(accelerator.bodyIndex, id.index)
+	v.scene.releaseBodyAccelerator(id.index)
 }
 
-func (s BodyAcceleratorView) Handle(id BodyAcceleratorID) BodyAcceleratorHandle {
+func (v BodyAcceleratorView) Handle(id BodyAcceleratorID) BodyAcceleratorHandle {
 	return BodyAcceleratorHandle{
-		view: s,
+		view: v,
 		id:   id,
 	}
 }
 
-func (s BodyAcceleratorView) IsValid(id BodyAcceleratorID) bool {
-	accelerator := s.resolve(id, false)
+func (v BodyAcceleratorView) IsValid(id BodyAcceleratorID) bool {
+	accelerator := v.resolve(id, false)
 	return accelerator != nil
 }
 
-func (s BodyAcceleratorView) BodyID(id BodyAcceleratorID) BodyID {
-	accelerator := s.resolve(id, true)
+func (v BodyAcceleratorView) BodyID(id BodyAcceleratorID) BodyID {
+	accelerator := v.resolve(id, true)
 	bodyIndex := accelerator.bodyIndex
-	bodyRevision := s.scene.bodies[bodyIndex].reference.Revision
+	bodyRevision := v.scene.bodies[bodyIndex].reference.Revision
 	return BodyID{
 		index:    bodyIndex,
 		revision: int32(bodyRevision),
 	}
 }
 
-func (s BodyAcceleratorView) Solver(id BodyAcceleratorID) AccelerationSolver {
-	accelerator := s.resolve(id, true)
+func (v BodyAcceleratorView) Solver(id BodyAcceleratorID) AccelerationSolver {
+	accelerator := v.resolve(id, true)
 	return accelerator.solver
 }
 
-func (s BodyAcceleratorView) SetSolver(id BodyAcceleratorID, solver AccelerationSolver) {
-	accelerator := s.resolve(id, true)
+func (v BodyAcceleratorView) SetSolver(id BodyAcceleratorID, solver AccelerationSolver) {
+	accelerator := v.resolve(id, true)
 	accelerator.solver = solver
 }
 
-func (s BodyAcceleratorView) Enabled(id BodyAcceleratorID) bool {
-	accelerator := s.resolve(id, true)
+func (v BodyAcceleratorView) Enabled(id BodyAcceleratorID) bool {
+	accelerator := v.resolve(id, true)
 	return accelerator.isEnabled
 }
 
-func (s BodyAcceleratorView) SetEnabled(id BodyAcceleratorID, enabled bool) {
-	accelerator := s.resolve(id, true)
+func (v BodyAcceleratorView) SetEnabled(id BodyAcceleratorID, enabled bool) {
+	accelerator := v.resolve(id, true)
 	accelerator.isEnabled = enabled
 }
 
-func (s BodyAcceleratorView) resolve(id BodyAcceleratorID, required bool) *bodyAccelerator {
+func (v BodyAcceleratorView) resolve(id BodyAcceleratorID, required bool) *bodyAccelerator {
 	if id.revision == 0 {
 		if required {
 			panic("invalid body accelerator ID")
 		}
 		return nil
 	}
-	accelerator := &s.scene.bodyAccelerators[id.index]
+	accelerator := &v.scene.bodyAccelerators[id.index]
 	if accelerator.revision != id.revision {
 		if required {
 			panic("invalid body accelerator ID")
