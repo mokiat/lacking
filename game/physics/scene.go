@@ -422,14 +422,16 @@ func (s *Scene) applyGlobalAccelerators() {
 	s.eachBodyState(func(index int, _ *bodyState) {
 		target := &s.bodyAccelerationTargets[index]
 		s.eachGlobalAccelerator(func(_ int, accelerator *globalAccelerator) {
-			// TODO: Consider caching the following calculation, especially
-			// if the medium solver is expensive to compute.
-			position := target.Position()
-			ctx := AccelerationContext{
-				MediumVelocity: s.mediumSolver.Velocity(position),
-				MediumDensity:  s.mediumSolver.Density(position),
+			if accelerator.enabled {
+				// TODO: Consider caching the following calculation, especially
+				// if the medium solver is expensive to compute.
+				position := target.Position()
+				ctx := AccelerationContext{
+					MediumVelocity: s.mediumSolver.Velocity(position),
+					MediumDensity:  s.mediumSolver.Density(position),
+				}
+				accelerator.solver.ApplyAcceleration(ctx, target)
 			}
-			accelerator.solver.ApplyAcceleration(ctx, target)
 		})
 	})
 }
