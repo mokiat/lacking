@@ -31,7 +31,6 @@ func (v BodyAcceleratorView) Create(bodyID BodyID, solver AccelerationSolver) Bo
 }
 
 func (v BodyAcceleratorView) Delete(id BodyAcceleratorID) {
-	// TODO: Should I allow the deletion of an invalid ID (noop)?
 	accelerator := v.resolve(id, true)
 	accelerator.solver = nil // allow the solver to be garbage collected
 	accelerator.revision++   // progress revision to invalid (even) value
@@ -55,10 +54,10 @@ func (v BodyAcceleratorView) IsValid(id BodyAcceleratorID) bool {
 func (v BodyAcceleratorView) BodyID(id BodyAcceleratorID) BodyID {
 	accelerator := v.resolve(id, true)
 	bodyIndex := accelerator.bodyIndex
-	bodyRevision := v.scene.bodies[bodyIndex].reference.Revision
+	body := &v.scene.bodies[bodyIndex]
 	return BodyID{
 		index:    bodyIndex,
-		revision: int32(bodyRevision),
+		revision: body.revision,
 	}
 }
 

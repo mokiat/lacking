@@ -18,7 +18,7 @@ import (
 // a number of bodies that are independent on any
 // bodies managed by other scene objects.
 type Scene struct {
-	shapeScene *placement3d.Scene[bodyRef, struct{}, propRef]
+	collisionScene *placement3d.Scene[bodyData, shapeData, propRef]
 
 	sbCollisionSubscriptions *SingleBodyCollisionSubscriptionSet
 	dbCollisionSubscriptions *DoubleBodyCollisionSubscriptionSet
@@ -35,7 +35,6 @@ type Scene struct {
 	bodies                     []bodyState
 	bodyAccelerationTargets    []AccelerationTarget
 	bodyConstraintPlaceholders []solver.Placeholder
-	freeBodyIndices            *ds.Stack[uint32]
 
 	sbConstraints           []sbConstraintState
 	freeSBConstraintIndices *ds.Stack[uint32]
@@ -58,7 +57,6 @@ type Scene struct {
 	newDBCollisions map[dbCollisionPair]struct{}
 
 	freeCollisionRejectGroup uint32
-	freeRevision             uint32
 
 	// ---------- NEW BELOW---------- (TODO: REMOVE COMMENT)
 	mediumSolver MediumSolver
@@ -67,6 +65,7 @@ type Scene struct {
 	freeAreaAcceleratorIndices   *ds.Stack[int32]
 	freeBodyAcceleratorIndices   *ds.Stack[int32]
 	freeSoloConstraintIndices    *ds.Stack[int32]
+	freeBodyIndices              *ds.Stack[int32]
 
 	globalAccelerators []globalAccelerator
 	bodyAccelerators   []bodyAccelerator
@@ -75,7 +74,7 @@ type Scene struct {
 
 func NewScene() *Scene {
 	return &Scene{
-		shapeScene: placement3d.NewScene[bodyRef, struct{}, propRef](placement3d.SceneSettings{
+		collisionScene: placement3d.NewScene[bodyData, shapeData, propRef](placement3d.SceneSettings{
 			Size:                opt.V(16384.0),
 			MaxDepth:            opt.V[uint32](12),
 			InitialNodeCapacity: opt.V[uint32](1024),
@@ -94,7 +93,6 @@ func NewScene() *Scene {
 
 		props: make([]propState, 0, 1024),
 
-		freeBodyIndices:            ds.PreallocatedStack[uint32](16),
 		bodies:                     make([]bodyState, 0, 64),
 		bodyAccelerationTargets:    make([]AccelerationTarget, 0, 64),
 		bodyConstraintPlaceholders: make([]solver.Placeholder, 0, 64),
@@ -123,6 +121,7 @@ func NewScene() *Scene {
 		freeAreaAcceleratorIndices:   ds.EmptyStack[int32](),
 		freeBodyAcceleratorIndices:   ds.EmptyStack[int32](),
 		freeSoloConstraintIndices:    ds.EmptyStack[int32](),
+		freeBodyIndices:              ds.EmptyStack[int32](),
 
 		globalAccelerators: make([]globalAccelerator, 0),
 		bodyAccelerators:   make([]bodyAccelerator, 0),
@@ -279,7 +278,7 @@ func (s *Scene) CreateProp(info PropInfo) {
 	for _, mesh := range info.CollisionMeshes {
 		propIndex := uint32(len(s.props))
 
-		meshID := s.shapeScene.CreateMesh(placement3d.MeshInfo[propRef]{
+		meshID := s.collisionScene.CreateMesh(placement3d.MeshInfo[propRef]{
 			Position: info.Position,
 			Rotation: info.Rotation,
 			Mesh:     mesh,
@@ -294,12 +293,6 @@ func (s *Scene) CreateProp(info PropInfo) {
 			name:      info.Name,
 		})
 	}
-}
-
-// CreateBody creates a new physics body and places
-// it within this scene.
-func (s *Scene) CreateBody(info BodyInfo) Body {
-	return createBody(s, info)
 }
 
 // CreateSingleBodyConstraint creates a new physics constraint that acts on
@@ -332,22 +325,23 @@ func (s *Scene) Each(cb func(b Body)) {
 	})
 }
 
-func (s *Scene) CheckSegmentIntersection(segment shape3d.Segment, mask uint32) (Body, bool) {
-	intersection, ok := s.shapeScene.CheckSegmentIntersection(segment, placement3d.Filter{
+func (s *Scene) CheckSegmentIntersection(segment shape3d.Segment, mask uint32) (BodyID, bool) {
+	intersection, ok := s.collisionScene.CheckSegmentIntersection(segment, placement3d.Filter{
 		Mask: opt.V(mask),
 	})
 	if !ok {
-		return Body{}, false
+		return NilBodyID, false
 	}
 	if intersection.TargetShapeID == placement3d.InvalidShapeID {
 		// A prop.
-		return Body{}, false // FIXME: This should handle props as well.
+		return NilBodyID, false // FIXME: This should handle props as well.
 	}
-	objectID := s.shapeScene.GetShapeObject(intersection.TargetShapeID)
-	ref := s.shapeScene.GetObjectUserData(objectID)
-	return Body{
-		scene:     s,
-		reference: s.bodies[ref.index].reference,
+	objectID := s.collisionScene.GetShapeObject(intersection.TargetShapeID)
+	bData := s.collisionScene.GetObjectUserData(objectID)
+	body := &s.bodies[bData.index]
+	return BodyID{
+		index:    bData.index,
+		revision: body.revision,
 	}, true
 }
 
@@ -389,20 +383,18 @@ func (s *Scene) applyAcceleration(elapsedSeconds float64) {
 	s.applyBodyAccelerators()
 	s.applyAreaAccelerators()
 	s.applyGlobalAccelerators()
-	s.applyAerodynamicAccelerations()
+	// s.applyAerodynamicAccelerations()
 	s.applyAccelerationTargets(elapsedSeconds)
 }
 
 func (s *Scene) prepareAccelerationTargets() {
 	s.eachBodyState(func(index int, body *bodyState) {
 		s.bodyAccelerationTargets[index] = newAccelerationTarget(
-			1.0/body.mass,
-			dprec.InverseMat3(
-				RotatedMomentOfInertia(body.momentOfInertia, body.rotation),
-			),
+			body.invMass,
+			RotatedMomentOfInertia(body.invInertia, body.rotation),
 			body.position,
 			body.rotation,
-			body.velocity,
+			body.linearVelocity,
 			body.angularVelocity,
 		)
 	})
@@ -434,39 +426,39 @@ func (s *Scene) applyGlobalAccelerators() {
 	})
 }
 
-func (s *Scene) applyAerodynamicAccelerations() {
-	s.eachBodyState(func(index int, body *bodyState) {
-		if len(body.aerodynamicShapes) == 0 {
-			return
-		}
-		target := &s.bodyAccelerationTargets[index]
-		mediumDensity := s.mediumSolver.Density(body.position)
-		mediumVelocity := s.mediumSolver.Velocity(body.position)
+// func (s *Scene) applyAerodynamicAccelerations() {
+// 	s.eachBodyState(func(index int, body *bodyState) {
+// 		if len(body.aerodynamicShapes) == 0 {
+// 			return
+// 		}
+// 		target := &s.bodyAccelerationTargets[index]
+// 		mediumDensity := s.mediumSolver.Density(body.position)
+// 		mediumVelocity := s.mediumSolver.Velocity(body.position)
 
-		deltaVelocity := dprec.Vec3Diff(mediumVelocity, body.velocity)
-		dragForce := dprec.Vec3Prod(deltaVelocity, deltaVelocity.Length()*mediumDensity*body.dragFactor)
-		target.ApplyForce(dragForce)
+// 		deltaVelocity := dprec.Vec3Diff(mediumVelocity, body.velocity)
+// 		dragForce := dprec.Vec3Prod(deltaVelocity, deltaVelocity.Length()*mediumDensity*body.dragFactor)
+// 		target.ApplyForce(dragForce)
 
-		angularDragForce := dprec.Vec3Prod(body.angularVelocity, -body.angularVelocity.Length()*mediumDensity*body.angularDragFactor)
-		target.ApplyTorque(angularDragForce)
+// 		angularDragForce := dprec.Vec3Prod(body.angularVelocity, -body.angularVelocity.Length()*mediumDensity*body.angularDragFactor)
+// 		target.ApplyTorque(angularDragForce)
 
-		bodyTransform := NewTransform(body.position, body.rotation)
-		for _, aerodynamicShape := range body.aerodynamicShapes {
-			// TODO: Take shape velocity into account. This also means that wings should be
-			// split into two, to benefit from that.
+// 		bodyTransform := NewTransform(body.position, body.rotation)
+// 		for _, aerodynamicShape := range body.aerodynamicShapes {
+// 			// TODO: Take shape velocity into account. This also means that wings should be
+// 			// split into two, to benefit from that.
 
-			aerodynamicShape = aerodynamicShape.Transformed(bodyTransform)
-			relativeSpeed := dprec.QuatVec3Rotation(dprec.InverseQuat(aerodynamicShape.Rotation()), deltaVelocity)
+// 			aerodynamicShape = aerodynamicShape.Transformed(bodyTransform)
+// 			relativeSpeed := dprec.QuatVec3Rotation(dprec.InverseQuat(aerodynamicShape.Rotation()), deltaVelocity)
 
-			force := aerodynamicShape.solver.Force(relativeSpeed, mediumDensity)
-			absoluteForce := dprec.QuatVec3Rotation(aerodynamicShape.Rotation(), force)
+// 			force := aerodynamicShape.solver.Force(relativeSpeed, mediumDensity)
+// 			absoluteForce := dprec.QuatVec3Rotation(aerodynamicShape.Rotation(), force)
 
-			offset := dprec.Vec3Diff(aerodynamicShape.Position(), bodyTransform.Position())
-			target.ApplyOffsetForce(offset, absoluteForce)
-			// target.ApplyOffsetForce(absoluteForce, aerodynamicShape.Position())
-		}
-	})
-}
+// 			offset := dprec.Vec3Diff(aerodynamicShape.Position(), bodyTransform.Position())
+// 			target.ApplyOffsetForce(offset, absoluteForce)
+// 			// target.ApplyOffsetForce(absoluteForce, aerodynamicShape.Position())
+// 		}
+// 	})
+// }
 
 func (s *Scene) applyAccelerationTargets(elapsedSeconds float64) {
 	s.eachBodyState(func(index int, body *bodyState) {
@@ -567,12 +559,12 @@ func (s *Scene) applyMotion(elapsedSeconds float64) {
 		body.ClampVelocity(s.maxLinearVelocity)
 		body.ClampAngularVelocity(s.maxAngularVelocity)
 
-		deltaPosition := dprec.Vec3Prod(body.velocity, elapsedSeconds)
+		deltaPosition := dprec.Vec3Prod(body.linearVelocity, elapsedSeconds)
 		body.Translate(deltaPosition)
 		deltaRotation := dprec.Vec3Prod(body.angularVelocity, elapsedSeconds)
 		body.VectorRotate(deltaRotation)
 
-		s.shapeScene.SetObjectTransform(body.objectID, shape3d.Transform{
+		s.collisionScene.SetObjectTransform(body.objectID, shape3d.Transform{
 			Translation: body.position,
 			Rotation:    shape3d.RotationFromQuat(body.rotation),
 		})
@@ -649,23 +641,23 @@ func (s *Scene) detectCollisions() {
 	s.dbCollisionSolvers = s.dbCollisionSolvers[:0]
 
 	s.collisionSet.Reset()
-	s.shapeScene.CollectIntersections(s.collisionSet.AddContact)
+	s.collisionScene.CollectIntersections(s.collisionSet.AddContact)
 	for _, intersection := range s.collisionSet.Contacts() {
-		srcBodyObject := s.shapeScene.GetShapeObject(intersection.SourceShapeID)
-		srcBodyRef := s.shapeScene.GetObjectUserData(srcBodyObject)
+		srcBodyObject := s.collisionScene.GetShapeObject(intersection.SourceShapeID)
+		srcBodyRef := s.collisionScene.GetObjectUserData(srcBodyObject)
 
 		if intersection.TargetMeshID == placement3d.InvalidMeshID {
-			tgtBodyObject := s.shapeScene.GetShapeObject(intersection.TargetShapeID)
-			tgtBodyRef := s.shapeScene.GetObjectUserData(tgtBodyObject)
+			tgtBodyObject := s.collisionScene.GetShapeObject(intersection.TargetShapeID)
+			tgtBodyRef := s.collisionScene.GetObjectUserData(tgtBodyObject)
 			s.detectBodyBodyCollision(srcBodyRef.index, tgtBodyRef.index, intersection)
 		} else {
-			tgtPropMesh := s.shapeScene.GetMeshUserData(intersection.TargetMeshID)
+			tgtPropMesh := s.collisionScene.GetMeshUserData(intersection.TargetMeshID)
 			s.detectBodyPropCollision(srcBodyRef.index, tgtPropMesh.index, intersection)
 		}
 	}
 }
 
-func (s *Scene) detectBodyBodyCollision(primaryIndex, secondaryIndex uint32, intersection placement3d.Contact) {
+func (s *Scene) detectBodyBodyCollision(primaryIndex, secondaryIndex int32, intersection placement3d.Contact) {
 	primary := &s.bodies[primaryIndex]
 	secondary := &s.bodies[secondaryIndex]
 
@@ -701,7 +693,7 @@ func (s *Scene) detectBodyBodyCollision(primaryIndex, secondaryIndex uint32, int
 	s.dbCollisionConstraints = append(s.dbCollisionConstraints, s.CreateDoubleBodyConstraint(primaryBody, secondaryBody, solver))
 }
 
-func (s *Scene) detectBodyPropCollision(bodyIndex, propIndex uint32, intersection placement3d.Contact) {
+func (s *Scene) detectBodyPropCollision(bodyIndex, propIndex int32, intersection placement3d.Contact) {
 	primary := &s.bodies[bodyIndex]
 	secondary := &s.props[propIndex]
 
@@ -817,11 +809,6 @@ func (s *Scene) allocateDualCollisionSolver() *constraint.PairCollision {
 // 	}
 // }
 
-func (s *Scene) nextRevision() uint32 {
-	s.freeRevision++
-	return s.freeRevision
-}
-
 func (s *Scene) notifySingleBodyCollisions() {
 	for newCollision := range s.newSBCollisions {
 		if _, ok := s.oldSBCollisions[newCollision]; !ok {
@@ -928,7 +915,7 @@ func (s *Scene) initPlaceholder(placeholder *solver.Placeholder, body *bodyState
 	placeholder.Init(solver.PlaceholderState{
 		Mass:            body.mass,
 		MomentOfInertia: body.momentOfInertia,
-		LinearVelocity:  body.velocity,
+		LinearVelocity:  body.linearVelocity,
 		AngularVelocity: body.angularVelocity,
 		Position:        body.position,
 		Rotation:        body.rotation,
@@ -936,12 +923,12 @@ func (s *Scene) initPlaceholder(placeholder *solver.Placeholder, body *bodyState
 }
 
 func (s *Scene) deinitPlaceholder(placeholder *solver.Placeholder, body *bodyState) {
-	body.velocity = placeholder.LinearVelocity()
+	body.linearVelocity = placeholder.LinearVelocity()
 	body.angularVelocity = placeholder.AngularVelocity()
 	body.position = placeholder.Position()
 	body.rotation = placeholder.Rotation()
 
-	s.shapeScene.SetObjectTransform(body.objectID, shape3d.Transform{
+	s.collisionScene.SetObjectTransform(body.objectID, shape3d.Transform{
 		Translation: body.position,
 		Rotation:    shape3d.RotationFromQuat(body.rotation),
 	})
@@ -967,6 +954,12 @@ func (s *Scene) BodyAccelerators() BodyAcceleratorView {
 
 func (s *Scene) SoloConstraints() SoloConstraintView {
 	return SoloConstraintView{
+		scene: s,
+	}
+}
+
+func (s *Scene) Bodies() BodyView {
+	return BodyView{
 		scene: s,
 	}
 }
@@ -1022,8 +1015,19 @@ func (s *Scene) releaseSoloConstraint(index int32) {
 	s.freeSoloConstraintIndices.Push(index)
 }
 
-type bodyRef struct {
-	index uint32
+func (s *Scene) allocateBody() int32 {
+	if !s.freeBodyIndices.IsEmpty() {
+		return s.freeBodyIndices.Pop()
+	}
+	index := int32(len(s.bodies))
+	s.bodies = append(s.bodies, bodyState{})
+	s.bodyAccelerationTargets = append(s.bodyAccelerationTargets, AccelerationTarget{})
+	s.bodyConstraintPlaceholders = append(s.bodyConstraintPlaceholders, solver.Placeholder{})
+	return index
+}
+
+func (s *Scene) releaseBody(index int32) {
+	s.freeBodyIndices.Push(index)
 }
 
 type propRef struct {

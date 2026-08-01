@@ -79,10 +79,11 @@ func (v SoloConstraintView) IsValid(id SoloConstraintID) bool {
 
 func (v SoloConstraintView) BodyID(id SoloConstraintID) BodyID {
 	constraint := v.resolve(id, true)
-	body := &v.scene.bodies[constraint.bodyIndex]
+	bodyIndex := constraint.bodyIndex
+	body := &v.scene.bodies[bodyIndex]
 	return BodyID{
-		index:    constraint.bodyIndex,
-		revision: int32(body.reference.Revision),
+		index:    bodyIndex,
+		revision: body.revision,
 	}
 }
 
