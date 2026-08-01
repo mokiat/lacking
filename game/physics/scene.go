@@ -14,59 +14,6 @@ import (
 	"github.com/mokiat/lacking/game/physics/solver"
 )
 
-func NewScene() *Scene {
-	return &Scene{
-		shapeScene: placement3d.NewScene[bodyRef, struct{}, propRef](placement3d.SceneSettings{
-			Size:                opt.V(16384.0),
-			MaxDepth:            opt.V[uint32](12),
-			InitialNodeCapacity: opt.V[uint32](1024),
-			InitialItemCapacity: opt.V[uint32](1024),
-		}),
-
-		sbCollisionSubscriptions: NewSingleBodyCollisionSubscriptionSet(),
-		dbCollisionSubscriptions: NewDoubleBodyCollisionSubscriptionSet(),
-
-		timeSpeed: 1.0,
-
-		maxLinearAcceleration:  200.0,
-		maxAngularAcceleration: 200.0,
-		maxLinearVelocity:      2000.0,
-		maxAngularVelocity:     2000.0,
-
-		mediumSolver: NewStaticAirSolver(),
-
-		props: make([]propState, 0, 1024),
-
-		freeBodyIndices:            ds.PreallocatedStack[uint32](16),
-		bodies:                     make([]bodyState, 0, 64),
-		bodyAccelerationTargets:    make([]AccelerationTarget, 0, 64),
-		bodyConstraintPlaceholders: make([]solver.Placeholder, 0, 64),
-
-		globalAccelerators:           make([]globalAccelerator, 1),
-		freeGlobalAcceleratorIndices: ds.EmptyStack[int32](),
-
-		// bodyAccelerators   []any // TOOD
-		freeBodyAcceleratorIndices: ds.PreallocatedStack[uint32](16),
-
-		// areaAccelerators   []any // TODO
-		freeAreaAcceleratorIndices: ds.PreallocatedStack[uint32](16),
-
-		sbConstraints: make([]sbConstraintState, 0, 64),
-		dbConstraints: make([]dbConstraintState, 0, 64),
-
-		freeSBConstraintIndices: ds.PreallocatedStack[uint32](16),
-		freeDBConstraintIndices: ds.PreallocatedStack[uint32](16),
-
-		collisionSet: make(placement3d.ContactList, 0, 128),
-
-		oldSBCollisions: make(map[sbCollisionPair]struct{}, 32),
-		newSBCollisions: make(map[sbCollisionPair]struct{}, 32),
-
-		oldDBCollisions: make(map[dbCollisionPair]struct{}, 32),
-		newDBCollisions: make(map[dbCollisionPair]struct{}, 32),
-	}
-}
-
 // Scene represents a physics scene that contains
 // a number of bodies that are independent on any
 // bodies managed by other scene objects.
@@ -83,23 +30,12 @@ type Scene struct {
 	maxLinearVelocity      float64
 	maxAngularVelocity     float64
 
-	mediumSolver MediumSolver
-
 	props []propState
 
 	bodies                     []bodyState
 	bodyAccelerationTargets    []AccelerationTarget
 	bodyConstraintPlaceholders []solver.Placeholder
 	freeBodyIndices            *ds.Stack[uint32]
-
-	bodyAccelerators           []bodyAccelerator
-	freeBodyAcceleratorIndices *ds.Stack[uint32]
-
-	// areaAccelerators   []any // TODO
-	freeAreaAcceleratorIndices *ds.Stack[uint32]
-
-	globalAccelerators           []globalAccelerator
-	freeGlobalAcceleratorIndices *ds.Stack[int32]
 
 	sbConstraints           []sbConstraintState
 	freeSBConstraintIndices *ds.Stack[uint32]
@@ -123,6 +59,75 @@ type Scene struct {
 
 	freeCollisionRejectGroup uint32
 	freeRevision             uint32
+
+	// ---------- NEW BELOW---------- (TODO: REMOVE COMMENT)
+	mediumSolver MediumSolver
+
+	freeGlobalAcceleratorIndices *ds.Stack[int32]
+	freeAreaAcceleratorIndices   *ds.Stack[int32]
+	freeBodyAcceleratorIndices   *ds.Stack[int32]
+	freeSoloConstraintIndices    *ds.Stack[int32]
+
+	globalAccelerators []globalAccelerator
+	bodyAccelerators   []bodyAccelerator
+	soloConstraints    []soloConstraint
+}
+
+func NewScene() *Scene {
+	return &Scene{
+		shapeScene: placement3d.NewScene[bodyRef, struct{}, propRef](placement3d.SceneSettings{
+			Size:                opt.V(16384.0),
+			MaxDepth:            opt.V[uint32](12),
+			InitialNodeCapacity: opt.V[uint32](1024),
+			InitialItemCapacity: opt.V[uint32](1024),
+		}),
+
+		sbCollisionSubscriptions: NewSingleBodyCollisionSubscriptionSet(),
+		dbCollisionSubscriptions: NewDoubleBodyCollisionSubscriptionSet(),
+
+		timeSpeed: 1.0,
+
+		maxLinearAcceleration:  200.0,
+		maxAngularAcceleration: 200.0,
+		maxLinearVelocity:      2000.0,
+		maxAngularVelocity:     2000.0,
+
+		props: make([]propState, 0, 1024),
+
+		freeBodyIndices:            ds.PreallocatedStack[uint32](16),
+		bodies:                     make([]bodyState, 0, 64),
+		bodyAccelerationTargets:    make([]AccelerationTarget, 0, 64),
+		bodyConstraintPlaceholders: make([]solver.Placeholder, 0, 64),
+
+		// bodyAccelerators   []any // TOOD
+		// areaAccelerators   []any // TODO
+
+		sbConstraints: make([]sbConstraintState, 0, 64),
+		dbConstraints: make([]dbConstraintState, 0, 64),
+
+		freeSBConstraintIndices: ds.PreallocatedStack[uint32](16),
+		freeDBConstraintIndices: ds.PreallocatedStack[uint32](16),
+
+		collisionSet: make(placement3d.ContactList, 0, 128),
+
+		oldSBCollisions: make(map[sbCollisionPair]struct{}, 32),
+		newSBCollisions: make(map[sbCollisionPair]struct{}, 32),
+
+		oldDBCollisions: make(map[dbCollisionPair]struct{}, 32),
+		newDBCollisions: make(map[dbCollisionPair]struct{}, 32),
+
+		// ---------- NEW BELOW---------- (TODO: REMOVE COMMENT)
+		mediumSolver: NewStaticAirSolver(),
+
+		freeGlobalAcceleratorIndices: ds.EmptyStack[int32](),
+		freeAreaAcceleratorIndices:   ds.EmptyStack[int32](),
+		freeBodyAcceleratorIndices:   ds.EmptyStack[int32](),
+		freeSoloConstraintIndices:    ds.EmptyStack[int32](),
+
+		globalAccelerators: make([]globalAccelerator, 0),
+		bodyAccelerators:   make([]bodyAccelerator, 0),
+		soloConstraints:    make([]soloConstraint, 0),
+	}
 }
 
 // Delete releases resources allocated by this scene. Users should not call
@@ -950,8 +955,18 @@ func (s *Scene) GlobalAccelerators() GlobalAcceleratorView {
 	}
 }
 
+// func (s *Scene) AreaAccelerators() AreaAcceleratorView {
+// 	panic("TODO")
+// }
+
 func (s *Scene) BodyAccelerators() BodyAcceleratorView {
 	return BodyAcceleratorView{
+		scene: s,
+	}
+}
+
+func (s *Scene) SoloConstraints() SoloConstraintView {
+	return SoloConstraintView{
 		scene: s,
 	}
 }
@@ -992,6 +1007,19 @@ func (s *Scene) attachBodyAccelerator(bodyIndex, index int32) {
 
 func (s *Scene) detachBodyAccelerator(bodyIndex, index int32) {
 	panic("TODO")
+}
+
+func (s *Scene) allocateSoloConstraint() int32 {
+	if !s.freeSoloConstraintIndices.IsEmpty() {
+		return s.freeSoloConstraintIndices.Pop()
+	}
+	index := int32(len(s.soloConstraints))
+	s.soloConstraints = append(s.soloConstraints, soloConstraint{})
+	return index
+}
+
+func (s *Scene) releaseSoloConstraint(index int32) {
+	s.freeSoloConstraintIndices.Push(index)
 }
 
 type bodyRef struct {
