@@ -115,6 +115,9 @@ func (v GlobalAcceleratorView) SetEnabled(id GlobalAcceleratorID, enabled bool) 
 	accelerator.isEnabled = enabled
 }
 
+// resolve looks up the globalAcceleratorState referenced by id. If id is
+// stale or otherwise invalid, resolve panics when required is true, or
+// returns nil otherwise.
 func (v GlobalAcceleratorView) resolve(id GlobalAcceleratorID, required bool) *globalAcceleratorState {
 	if id.revision == 0 {
 		if required {
@@ -193,12 +196,16 @@ func (h GlobalAcceleratorHandle) SetEnabled(enabled bool) {
 	h.view.SetEnabled(h.id, enabled)
 }
 
+// globalAcceleratorState holds the internal state of a single global
+// accelerator, as tracked by a [Scene].
 type globalAcceleratorState struct {
 	solver    AccelerationSolver
 	revision  int32
 	isEnabled bool
 }
 
+// isValid returns whether this state is currently backing a live global
+// accelerator, as opposed to a freed slot awaiting reuse.
 func (s *globalAcceleratorState) isValid() bool {
 	return s.revision%2 == 1 // only odd revisions are valid
 }
