@@ -47,9 +47,19 @@ func (v BodyView) Create(position dprec.Vec3, rotation dprec.Quat) BodyID {
 
 func (v BodyView) Delete(id BodyID) {
 	body := v.resolve(id, true)
+
+	bodyAcceleratorView := v.scene.BodyAccelerators()
+	for body.firstBodyAcceleratorIndex != nilIndex {
+		bodyAcceleratorView.Delete(bodyAcceleratorView.idFromIndex(body.firstBodyAcceleratorIndex))
+	}
+	soloConstraintView := v.scene.SoloConstraints()
+	for body.firstSoloConstraintIndex != nilIndex {
+		soloConstraintView.Delete(soloConstraintView.idFromIndex(body.firstSoloConstraintIndex))
+	}
+	// TODO: delete pair constraints as well.
+
 	v.scene.collisionScene.DeleteObject(body.objectID)
 	body.objectID = placement3d.InvalidObjectID
-	// TODO: delete all accelerators and constraints that reference this body
 	body.revision++ // progress revision to invalid (even) value
 	v.scene.releaseBody(id.index)
 }
@@ -173,6 +183,14 @@ func (v BodyView) refreshPlacement(id BodyID, body *bodyState) {
 		Rotation:    shape3d.RotationFromQuat(body.rotation),
 	})
 }
+
+// func (v BodyView) idFromIndex(index int32) BodyID {
+// 	body := &v.scene.bodies[index]
+// 	return BodyID{
+// 		index:    index,
+// 		revision: body.revision,
+// 	}
+// }
 
 func (v BodyView) resolve(id BodyID, required bool) *bodyState {
 	if id.revision == 0 {

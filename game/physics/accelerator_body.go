@@ -12,17 +12,18 @@ type BodyAcceleratorView struct {
 }
 
 func (v BodyAcceleratorView) Create(bodyID BodyID, solver AccelerationSolver) BodyAcceleratorID {
-	// TODO: Verify that the body exists!
-	bodyIndex := bodyID.index
+	bodyView := v.scene.Bodies()
+	body := bodyView.resolve(bodyID, true)
 
-	index := v.scene.allocateBodyAccelerator()
-
-	accelerator := &v.scene.bodyAccelerators[index]
-	accelerator.solver = solver
-	accelerator.revision++ // progress revision to valid (odd) value
-	accelerator.isEnabled = true
-
-	v.scene.attachBodyAccelerator(bodyIndex, index)
+	index, accelerator := v.scene.allocateBodyAccelerator()
+	*accelerator = bodyAccelerator{
+		solver:    solver,
+		revision:  accelerator.revision + 1, // progress revision to valid (odd) value
+		bodyIndex: bodyID.index,
+		nextIndex: body.firstBodyAcceleratorIndex,
+		isEnabled: true,
+	}
+	body.firstBodyAcceleratorIndex = index
 
 	return BodyAcceleratorID{
 		index:    index,
@@ -32,10 +33,30 @@ func (v BodyAcceleratorView) Create(bodyID BodyID, solver AccelerationSolver) Bo
 
 func (v BodyAcceleratorView) Delete(id BodyAcceleratorID) {
 	accelerator := v.resolve(id, true)
-	accelerator.solver = nil // allow the solver to be garbage collected
-	accelerator.revision++   // progress revision to invalid (even) value
 
-	v.scene.detachBodyAccelerator(accelerator.bodyIndex, id.index)
+	body := &v.scene.bodies[accelerator.bodyIndex]
+	if body.firstBodyAcceleratorIndex == id.index {
+		body.firstBodyAcceleratorIndex = accelerator.nextIndex
+	} else {
+		prevIndex := body.firstBodyAcceleratorIndex
+		for prevIndex != nilIndex {
+			prev := &v.scene.bodyAccelerators[prevIndex]
+			if prev.nextIndex == id.index {
+				prev.nextIndex = accelerator.nextIndex
+				break
+			}
+			prevIndex = prev.nextIndex
+		}
+	}
+
+	*accelerator = bodyAccelerator{
+		solver:    nil,                      // allow the solver to be garbage collected
+		revision:  accelerator.revision + 1, // progress revision to invalid (even) value
+		bodyIndex: nilIndex,
+		nextIndex: nilIndex,
+		isEnabled: false,
+	}
+
 	v.scene.releaseBodyAccelerator(id.index)
 }
 
@@ -79,6 +100,14 @@ func (v BodyAcceleratorView) Enabled(id BodyAcceleratorID) bool {
 func (v BodyAcceleratorView) SetEnabled(id BodyAcceleratorID, enabled bool) {
 	accelerator := v.resolve(id, true)
 	accelerator.isEnabled = enabled
+}
+
+func (v BodyAcceleratorView) idFromIndex(index int32) BodyAcceleratorID {
+	accelerator := &v.scene.bodyAccelerators[index]
+	return BodyAcceleratorID{
+		index:    index,
+		revision: accelerator.revision,
+	}
 }
 
 func (v BodyAcceleratorView) resolve(id BodyAcceleratorID, required bool) *bodyAccelerator {

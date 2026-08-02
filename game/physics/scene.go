@@ -986,33 +986,44 @@ func (s *Scene) eachGlobalAccelerator(cb func(index int, accelerator *globalAcce
 	}
 }
 
-func (s *Scene) allocateBodyAccelerator() int32 {
-	panic("TODO")
+func (s *Scene) allocateBodyAccelerator() (int32, *bodyAccelerator) {
+	var index int32
+	if s.freeBodyAcceleratorIndices.IsEmpty() {
+		index = int32(len(s.bodyAccelerators))
+		s.bodyAccelerators = append(s.bodyAccelerators, bodyAccelerator{})
+	} else {
+		index = s.freeBodyAcceleratorIndices.Pop()
+	}
+	return index, &s.bodyAccelerators[index]
 }
 
 func (s *Scene) releaseBodyAccelerator(index int32) {
 	panic("TODO")
 }
 
-func (s *Scene) attachBodyAccelerator(bodyIndex, index int32) {
-	panic("TODO")
-}
-
-func (s *Scene) detachBodyAccelerator(bodyIndex, index int32) {
-	panic("TODO")
-}
-
-func (s *Scene) allocateSoloConstraint() int32 {
-	if !s.freeSoloConstraintIndices.IsEmpty() {
-		return s.freeSoloConstraintIndices.Pop()
+func (s *Scene) allocateSoloConstraint() (int32, *soloConstraint) {
+	var index int32
+	if s.freeSoloConstraintIndices.IsEmpty() {
+		index = int32(len(s.soloConstraints))
+		s.soloConstraints = append(s.soloConstraints, soloConstraint{})
+	} else {
+		index = s.freeSoloConstraintIndices.Pop()
 	}
-	index := int32(len(s.soloConstraints))
-	s.soloConstraints = append(s.soloConstraints, soloConstraint{})
-	return index
+	return index, &s.soloConstraints[index]
 }
 
 func (s *Scene) releaseSoloConstraint(index int32) {
 	s.freeSoloConstraintIndices.Push(index)
+}
+
+func (s *Scene) verifySoloConstraintID(id SoloConstraintID) {
+	if id.revision == 0 {
+		panic("invalid solo constraint ID")
+	}
+	constraint := &s.soloConstraints[id.index]
+	if constraint.revision != id.revision {
+		panic("invalid solo constraint ID")
+	}
 }
 
 func (s *Scene) allocateBody() int32 {
