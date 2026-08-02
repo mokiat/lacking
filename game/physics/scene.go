@@ -59,14 +59,13 @@ type Scene struct {
 	mediumSolver MediumSolver
 
 	freeGlobalAcceleratorIndices *ds.Stack[int32]
-	freeAreaAcceleratorIndices   *ds.Stack[int32]
 	freeBodyAcceleratorIndices   *ds.Stack[int32]
 	freeSoloConstraintIndices    *ds.Stack[int32]
 	freeBodyIndices              *ds.Stack[int32]
 
-	globalAccelerators []globalAccelerator
+	globalAccelerators []globalAcceleratorState
 	bodyAccelerators   []bodyAccelerator
-	soloConstraints    []soloConstraint
+	soloConstraints    []soloConstraintState
 }
 
 func NewScene() *Scene {
@@ -110,14 +109,13 @@ func NewScene() *Scene {
 		mediumSolver: NewStaticAirSolver(),
 
 		freeGlobalAcceleratorIndices: ds.EmptyStack[int32](),
-		freeAreaAcceleratorIndices:   ds.EmptyStack[int32](),
 		freeBodyAcceleratorIndices:   ds.EmptyStack[int32](),
 		freeSoloConstraintIndices:    ds.EmptyStack[int32](),
 		freeBodyIndices:              ds.EmptyStack[int32](),
 
-		globalAccelerators: make([]globalAccelerator, 0),
+		globalAccelerators: make([]globalAcceleratorState, 0),
 		bodyAccelerators:   make([]bodyAccelerator, 0),
-		soloConstraints:    make([]soloConstraint, 0),
+		soloConstraints:    make([]soloConstraintState, 0),
 	}
 }
 
@@ -173,6 +171,12 @@ func (s *Scene) SetMediumSolver(solver MediumSolver) {
 // global accelerators of this scene can be created and managed.
 func (s *Scene) GlobalAccelerators() GlobalAcceleratorView {
 	return GlobalAcceleratorView{
+		scene: s,
+	}
+}
+
+func (s *Scene) BodyAccelerators() BodyAcceleratorView {
+	return BodyAcceleratorView{
 		scene: s,
 	}
 }
@@ -397,8 +401,8 @@ func (s *Scene) applyAreaAccelerators() {
 func (s *Scene) applyGlobalAccelerators() {
 	s.eachBodyState(func(index int, _ *bodyState) {
 		target := &s.bodyAccelerationTargets[index]
-		s.eachGlobalAccelerator(func(_ int, accelerator *globalAccelerator) {
-			if accelerator.enabled {
+		s.eachGlobalAccelerator(func(_ int, accelerator *globalAcceleratorState) {
+			if accelerator.isEnabled {
 				// TODO: Consider caching the following calculation, especially
 				// if the medium solver is expensive to compute.
 				position := target.Position()
@@ -906,16 +910,6 @@ func (s *Scene) deinitPlaceholder(placeholder *solver.Placeholder, body *bodySta
 	})
 }
 
-// func (s *Scene) AreaAccelerators() AreaAcceleratorView {
-// 	panic("TODO")
-// }
-
-func (s *Scene) BodyAccelerators() BodyAcceleratorView {
-	return BodyAcceleratorView{
-		scene: s,
-	}
-}
-
 func (s *Scene) SoloConstraints() SoloConstraintView {
 	return SoloConstraintView{
 		scene: s,
@@ -928,20 +922,22 @@ func (s *Scene) Bodies() BodyView {
 	}
 }
 
-func (s *Scene) allocateGlobalAccelerator() int32 {
-	if !s.freeGlobalAcceleratorIndices.IsEmpty() {
-		return s.freeGlobalAcceleratorIndices.Pop()
+func (s *Scene) allocateGlobalAccelerator() (int32, *globalAcceleratorState) {
+	var index int32
+	if s.freeGlobalAcceleratorIndices.IsEmpty() {
+		index = int32(len(s.globalAccelerators))
+		s.globalAccelerators = append(s.globalAccelerators, globalAcceleratorState{})
+	} else {
+		index = s.freeGlobalAcceleratorIndices.Pop()
 	}
-	index := int32(len(s.globalAccelerators))
-	s.globalAccelerators = append(s.globalAccelerators, globalAccelerator{})
-	return index
+	return index, &s.globalAccelerators[index]
 }
 
 func (s *Scene) releaseGlobalAccelerator(index int32) {
 	s.freeGlobalAcceleratorIndices.Push(index)
 }
 
-func (s *Scene) eachGlobalAccelerator(cb func(index int, accelerator *globalAccelerator)) {
+func (s *Scene) eachGlobalAccelerator(cb func(index int, accelerator *globalAcceleratorState)) {
 	for i := range s.globalAccelerators {
 		accelerator := &s.globalAccelerators[i]
 		if accelerator.isValid() {
@@ -965,11 +961,11 @@ func (s *Scene) releaseBodyAccelerator(index int32) {
 	panic("TODO")
 }
 
-func (s *Scene) allocateSoloConstraint() (int32, *soloConstraint) {
+func (s *Scene) allocateSoloConstraint() (int32, *soloConstraintState) {
 	var index int32
 	if s.freeSoloConstraintIndices.IsEmpty() {
 		index = int32(len(s.soloConstraints))
-		s.soloConstraints = append(s.soloConstraints, soloConstraint{})
+		s.soloConstraints = append(s.soloConstraints, soloConstraintState{})
 	} else {
 		index = s.freeSoloConstraintIndices.Pop()
 	}

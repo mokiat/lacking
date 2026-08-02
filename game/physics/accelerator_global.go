@@ -30,12 +30,13 @@ type GlobalAcceleratorView struct {
 //
 // The accelerator is enabled by default.
 func (v GlobalAcceleratorView) Create(solver AccelerationSolver) GlobalAcceleratorID {
-	index := v.scene.allocateGlobalAccelerator()
+	index, accelerator := v.scene.allocateGlobalAccelerator()
 
-	accelerator := &v.scene.globalAccelerators[index]
-	accelerator.solver = solver
-	accelerator.revision++ // progress revision to valid (odd) value
-	accelerator.enabled = true
+	*accelerator = globalAcceleratorState{
+		solver:    solver,
+		revision:  accelerator.revision + 1, // progress revision to valid (odd) value
+		isEnabled: true,
+	}
 
 	return GlobalAcceleratorID{
 		index:    index,
@@ -51,8 +52,12 @@ func (v GlobalAcceleratorView) Create(solver AccelerationSolver) GlobalAccelerat
 // validity is not otherwise guaranteed.
 func (v GlobalAcceleratorView) Delete(id GlobalAcceleratorID) {
 	accelerator := v.resolve(id, true)
-	accelerator.solver = nil // allow the solver to be garbage collected
-	accelerator.revision++   // progress revision to invalid (even) value
+
+	*accelerator = globalAcceleratorState{
+		solver:    nil,                      // allow the solver to be garbage collected
+		revision:  accelerator.revision + 1, // progress revision to invalid (even) value
+		isEnabled: false,
+	}
 
 	v.scene.releaseGlobalAccelerator(id.index)
 }
@@ -98,7 +103,7 @@ func (v GlobalAcceleratorView) SetSolver(id GlobalAcceleratorID, solver Accelera
 // It panics if the ID does not reference a valid global accelerator.
 func (v GlobalAcceleratorView) Enabled(id GlobalAcceleratorID) bool {
 	accelerator := v.resolve(id, true)
-	return accelerator.enabled
+	return accelerator.isEnabled
 }
 
 // SetEnabled changes whether the specified global accelerator is evaluated
@@ -107,10 +112,10 @@ func (v GlobalAcceleratorView) Enabled(id GlobalAcceleratorID) bool {
 // It panics if the ID does not reference a valid global accelerator.
 func (v GlobalAcceleratorView) SetEnabled(id GlobalAcceleratorID, enabled bool) {
 	accelerator := v.resolve(id, true)
-	accelerator.enabled = enabled
+	accelerator.isEnabled = enabled
 }
 
-func (v GlobalAcceleratorView) resolve(id GlobalAcceleratorID, required bool) *globalAccelerator {
+func (v GlobalAcceleratorView) resolve(id GlobalAcceleratorID, required bool) *globalAcceleratorState {
 	if id.revision == 0 {
 		if required {
 			panic("invalid global accelerator ID")
@@ -188,12 +193,12 @@ func (h GlobalAcceleratorHandle) SetEnabled(enabled bool) {
 	h.view.SetEnabled(h.id, enabled)
 }
 
-type globalAccelerator struct {
-	solver   AccelerationSolver
-	revision int32
-	enabled  bool
+type globalAcceleratorState struct {
+	solver    AccelerationSolver
+	revision  int32
+	isEnabled bool
 }
 
-func (s *globalAccelerator) isValid() bool {
+func (s *globalAcceleratorState) isValid() bool {
 	return s.revision%2 == 1 // only odd revisions are valid
 }

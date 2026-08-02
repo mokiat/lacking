@@ -92,7 +92,7 @@ func (v SoloConstraintView) Create(bodyID BodyID, solver SoloConstraintSolver) S
 	body := bodyView.resolve(bodyID, true)
 
 	index, constraint := v.scene.allocateSoloConstraint()
-	*constraint = soloConstraint{
+	*constraint = soloConstraintState{
 		solver:    solver,
 		revision:  constraint.revision + 1, // progress revision to valid (odd) value
 		bodyIndex: bodyID.index,
@@ -131,7 +131,7 @@ func (v SoloConstraintView) Delete(id SoloConstraintID) {
 		}
 	}
 
-	*constraint = soloConstraint{
+	*constraint = soloConstraintState{
 		solver:    nil,                     // allow the solver to be garbage collected
 		revision:  constraint.revision + 1, // progress revision to invalid (even) value
 		bodyIndex: nilIndex,
@@ -222,7 +222,7 @@ func (v SoloConstraintView) idFromIndex(index int32) SoloConstraintID {
 // resolve looks up the soloConstraint referenced by id. If id is stale or
 // otherwise invalid, resolve panics when required is true, or returns nil
 // otherwise.
-func (v SoloConstraintView) resolve(id SoloConstraintID, required bool) *soloConstraint {
+func (v SoloConstraintView) resolve(id SoloConstraintID, required bool) *soloConstraintState {
 	if id.revision == 0 {
 		if required {
 			panic("invalid solo constraint ID")
@@ -297,14 +297,14 @@ func (h SoloConstraintHandle) SetEnabled(enabled bool) {
 	h.view.SetEnabled(h.id, enabled)
 }
 
-// soloConstraint holds the internal state of a single solo constraint, as
+// soloConstraintState holds the internal state of a single solo constraint, as
 // tracked by a [Scene].
 //
 // Instances form a singly-linked list (through nextIndex) per body, rooted
 // at the owning body's firstSoloConstraintIndex, so that all the solo
 // constraints acting on a given body can be enumerated or deleted
 // together.
-type soloConstraint struct {
+type soloConstraintState struct {
 	solver    SoloConstraintSolver
 	revision  int32
 	bodyIndex int32
