@@ -12,6 +12,7 @@ import (
 	"github.com/mokiat/lacking/debug/metric"
 	"github.com/mokiat/lacking/game/physics/constraint"
 	"github.com/mokiat/lacking/game/physics/solver"
+	"github.com/mokiat/lacking/util/observer"
 )
 
 // Scene represents a physics scene that contains
@@ -20,8 +21,8 @@ import (
 type Scene struct {
 	collisionScene *placement3d.Scene[bodyData, shapeData, propRef]
 
-	sbCollisionSubscriptions *SingleBodyCollisionSubscriptionSet
-	dbCollisionSubscriptions *DoubleBodyCollisionSubscriptionSet
+	sbCollisionSubscriptions *observer.SubscriptionSet[SoloBodyCollisionCallback]
+	dbCollisionSubscriptions *observer.SubscriptionSet[PairBodyCollisionCallback]
 
 	timeSpeed float64
 
@@ -81,8 +82,8 @@ func NewScene() *Scene {
 			InitialItemCapacity: opt.V[uint32](1024),
 		}),
 
-		sbCollisionSubscriptions: NewSingleBodyCollisionSubscriptionSet(),
-		dbCollisionSubscriptions: NewDoubleBodyCollisionSubscriptionSet(),
+		sbCollisionSubscriptions: observer.NewSubscriptionSet[SoloBodyCollisionCallback](),
+		dbCollisionSubscriptions: observer.NewSubscriptionSet[PairBodyCollisionCallback](),
 
 		timeSpeed: 1.0,
 
@@ -167,13 +168,13 @@ func (s *Scene) Delete() {
 
 // SubscribeSingleBodyCollision registers a callback that is invoked when a body
 // collides with a static object.
-func (s *Scene) SubscribeSingleBodyCollision(callback SingleBodyCollisionCallback) *SingleBodyCollisionSubscription {
+func (s *Scene) SubscribeSingleBodyCollision(callback SoloBodyCollisionCallback) *SoloBodyCollisionSubscription {
 	return s.sbCollisionSubscriptions.Subscribe(callback)
 }
 
 // SubscribeDoubleBodyCollision registers a callback that is invoked when two
 // bodies collide.
-func (s *Scene) SubscribeDoubleBodyCollision(callback DoubleBodyCollisionCallback) *DoubleBodyCollisionSubscription {
+func (s *Scene) SubscribeDoubleBodyCollision(callback PairBodyCollisionCallback) *PairBodyCollisionSubscription {
 	return s.dbCollisionSubscriptions.Subscribe(callback)
 }
 
@@ -819,7 +820,7 @@ func (s *Scene) notifySingleBodyCollisions() {
 			prop := Prop{
 				name: s.props[newCollision.PropRef.Index].name,
 			}
-			s.sbCollisionSubscriptions.Each(func(callback SingleBodyCollisionCallback) {
+			s.sbCollisionSubscriptions.Each(func(callback SoloBodyCollisionCallback) {
 				callback(primary, prop, true)
 			})
 		}
@@ -833,7 +834,7 @@ func (s *Scene) notifySingleBodyCollisions() {
 			prop := Prop{
 				name: s.props[oldCollision.PropRef.Index].name,
 			}
-			s.sbCollisionSubscriptions.Each(func(callback SingleBodyCollisionCallback) {
+			s.sbCollisionSubscriptions.Each(func(callback SoloBodyCollisionCallback) {
 				callback(primary, prop, false)
 			})
 		}
@@ -854,7 +855,7 @@ func (s *Scene) notifyDoubleBodyCollisions() {
 				scene:     s,
 				reference: newCollision.SecondaryRef,
 			}
-			s.dbCollisionSubscriptions.Each(func(callback DoubleBodyCollisionCallback) {
+			s.dbCollisionSubscriptions.Each(func(callback PairBodyCollisionCallback) {
 				callback(primary, secondary, true)
 			})
 		}
@@ -869,7 +870,7 @@ func (s *Scene) notifyDoubleBodyCollisions() {
 				scene:     s,
 				reference: oldCollision.SecondaryRef,
 			}
-			s.dbCollisionSubscriptions.Each(func(callback DoubleBodyCollisionCallback) {
+			s.dbCollisionSubscriptions.Each(func(callback PairBodyCollisionCallback) {
 				callback(primary, secondary, false)
 			})
 		}

@@ -7,6 +7,13 @@ import (
 	"github.com/mokiat/lacking/core/spatial/shape3d"
 )
 
+type PropID struct {
+	index    int32
+	revision int32
+}
+
+var NilPropID = PropID{}
+
 type PropInfo struct {
 	Name             string
 	Position         opt.T[dprec.Vec3]
