@@ -12,7 +12,6 @@ import (
 	"github.com/mokiat/lacking/core/spatial/shape3d"
 	"github.com/mokiat/lacking/debug/metric"
 	"github.com/mokiat/lacking/game/physics/constraint"
-	"github.com/mokiat/lacking/game/physics/solver"
 	"github.com/mokiat/lacking/util/observer"
 )
 
@@ -366,6 +365,7 @@ func (s *Scene) Update(elapsedTime time.Duration) {
 	s.notifyDoubleBodyCollisions()
 }
 
+// TODO: Move to BodyView
 func (s *Scene) Each(cb func(b Body)) {
 	s.eachBody(func(_ int, b *bodyState) {
 		cb(Body{
@@ -497,47 +497,68 @@ func (s *Scene) applyAcceleration(elapsedSeconds float64) {
 func (s *Scene) applyImpulses(elapsedSeconds float64) {
 	defer metric.BeginRegion("impulses").End()
 
-	s.eachDBConstraintState(func(_ int, constraint *dbConstraintState) {
-		target := &s.bodyConstraintPlaceholders[constraint.primary.reference.Index]
-		source := &s.bodyConstraintPlaceholders[constraint.secondary.reference.Index]
-		constraint.logic.Reset(solver.PairContext{
-			Target:      target,
-			Source:      source,
-			DeltaTime:   elapsedSeconds,
-			ImpulseBeta: ImpulseDriftAdjustmentRatio,
-			NudgeBeta:   NudgeDriftAdjustmentRatio,
-		})
-	})
-	s.eachSBConstraintState(func(_ int, constraint *sbConstraintState) {
-		target := &s.bodyConstraintPlaceholders[constraint.body.reference.Index]
-		constraint.logic.Reset(solver.Context{
-			Target:      target,
-			DeltaTime:   elapsedSeconds,
-			ImpulseBeta: ImpulseDriftAdjustmentRatio,
-			NudgeBeta:   NudgeDriftAdjustmentRatio,
-		})
+	// TODO: If it is decided that the Reset should only be called once per
+	// iteration, then extract the reset logic into a separate method.
+
+	// Reset constraints.
+	s.eachEnabledPairConstraint(func(_ int, constraint *pairConstraintState) {
+		primaryBody := &s.bodies[constraint.primaryBodyIndex]
+		secondaryBody := &s.bodies[constraint.secondaryBodyIndex]
+
+		ctx := PairConstraintContext{
+			DeltaSeconds:    elapsedSeconds,
+			ImpulseBeta:     s.impulseDriftAdjustmentRatio,
+			NudgeBeta:       s.nudgeDriftAdjustmentRatio,
+			PrimaryTarget:   newConstraintTarget(primaryBody),
+			SecondaryTarget: newConstraintTarget(secondaryBody),
+		}
+
+		constraint.solver.Reset(ctx)
 	})
 
-	for range ImpulseIterationCount {
-		s.eachDBConstraintState(func(_ int, constraint *dbConstraintState) {
-			target := &s.bodyConstraintPlaceholders[constraint.primary.reference.Index]
-			source := &s.bodyConstraintPlaceholders[constraint.secondary.reference.Index]
-			constraint.logic.ApplyImpulses(solver.PairContext{
-				Target:      target,
-				Source:      source,
-				DeltaTime:   elapsedSeconds,
-				ImpulseBeta: ImpulseDriftAdjustmentRatio,
-				NudgeBeta:   NudgeDriftAdjustmentRatio,
-			})
+	s.eachEnabledSoloConstraint(func(index int, constraint *soloConstraintState) {
+		body := &s.bodies[constraint.bodyIndex]
+
+		ctx := SoloConstraintContext{
+			DeltaSeconds: elapsedSeconds,
+			ImpulseBeta:  s.impulseDriftAdjustmentRatio,
+			NudgeBeta:    s.nudgeDriftAdjustmentRatio,
+			Target:       newConstraintTarget(body),
+		}
+
+		constraint.solver.Reset(ctx)
+	})
+
+	for range s.impulseIterationCount {
+		// Apply pair constraints first on purpose. We want since solo constraints
+		// to have the last word.
+
+		s.eachEnabledPairConstraint(func(index int, constraint *pairConstraintState) {
+			primaryBody := &s.bodies[constraint.primaryBodyIndex]
+			secondaryBody := &s.bodies[constraint.secondaryBodyIndex]
+
+			ctx := PairConstraintContext{
+				DeltaSeconds:    elapsedSeconds,
+				ImpulseBeta:     s.impulseDriftAdjustmentRatio,
+				NudgeBeta:       s.nudgeDriftAdjustmentRatio,
+				PrimaryTarget:   newConstraintTarget(primaryBody),
+				SecondaryTarget: newConstraintTarget(secondaryBody),
+			}
+
+			constraint.solver.ApplyImpulses(ctx)
 		})
-		s.eachSBConstraintState(func(_ int, constraint *sbConstraintState) {
-			target := &s.bodyConstraintPlaceholders[constraint.body.reference.Index]
-			constraint.logic.ApplyImpulses(solver.Context{
-				Target:      target,
-				DeltaTime:   elapsedSeconds,
-				ImpulseBeta: ImpulseDriftAdjustmentRatio,
-				NudgeBeta:   NudgeDriftAdjustmentRatio,
-			})
+
+		s.eachEnabledSoloConstraint(func(index int, constraint *soloConstraintState) {
+			body := &s.bodies[constraint.bodyIndex]
+
+			ctx := SoloConstraintContext{
+				DeltaSeconds: elapsedSeconds,
+				ImpulseBeta:  s.impulseDriftAdjustmentRatio,
+				NudgeBeta:    s.nudgeDriftAdjustmentRatio,
+				Target:       newConstraintTarget(body),
+			}
+
+			constraint.solver.ApplyImpulses(ctx)
 		})
 	}
 }
@@ -559,37 +580,44 @@ func (s *Scene) applyMotion(elapsedSeconds float64) {
 func (s *Scene) applyNudges(elapsedSeconds float64) {
 	defer metric.BeginRegion("nudges").End()
 
+	// TODO: Figure out if the Reset calls below are really necessary.
+	// On one side, it is true that each Nudge repositions the bodies and
+	// a Reset allows for a more correct Jacobian. On the other hand it
+	// might be wasteful to do so and contradicts the godoc for the method.
+
 	for range s.nudgeIterationCount {
-		for _, constraint := range s.dbConstraints {
-			if !constraint.IsActive() {
-				continue
+		// Apply pair constraints first on purpose. We want since solo constraints
+		// to have the last word.
+
+		s.eachEnabledPairConstraint(func(index int, constraint *pairConstraintState) {
+			primaryBody := &s.bodies[constraint.primaryBodyIndex]
+			secondaryBody := &s.bodies[constraint.secondaryBodyIndex]
+
+			ctx := PairConstraintContext{
+				DeltaSeconds:    elapsedSeconds,
+				ImpulseBeta:     s.impulseDriftAdjustmentRatio,
+				NudgeBeta:       s.nudgeDriftAdjustmentRatio,
+				PrimaryTarget:   newConstraintTarget(primaryBody),
+				SecondaryTarget: newConstraintTarget(secondaryBody),
 			}
-			target := &s.bodyConstraintPlaceholders[constraint.primary.reference.Index]
-			source := &s.bodyConstraintPlaceholders[constraint.secondary.reference.Index]
-			ctx := solver.PairContext{
-				Target:      target,
-				Source:      source,
-				DeltaTime:   elapsedSeconds,
-				ImpulseBeta: s.impulseDriftAdjustmentRatio,
-				NudgeBeta:   s.nudgeDriftAdjustmentRatio,
+
+			constraint.solver.Reset(ctx)
+			constraint.solver.ApplyNudges(ctx)
+		})
+
+		s.eachEnabledSoloConstraint(func(index int, constraint *soloConstraintState) {
+			body := &s.bodies[constraint.bodyIndex]
+
+			ctx := SoloConstraintContext{
+				DeltaSeconds: elapsedSeconds,
+				ImpulseBeta:  s.impulseDriftAdjustmentRatio,
+				NudgeBeta:    s.nudgeDriftAdjustmentRatio,
+				Target:       newConstraintTarget(body),
 			}
-			constraint.logic.Reset(ctx)
-			constraint.logic.ApplyNudges(ctx)
-		}
-		for _, constraint := range s.sbConstraints {
-			if !constraint.IsActive() {
-				continue
-			}
-			target := &s.bodyConstraintPlaceholders[constraint.body.reference.Index]
-			ctx := solver.Context{
-				Target:      target,
-				DeltaTime:   elapsedSeconds,
-				ImpulseBeta: s.impulseDriftAdjustmentRatio,
-				NudgeBeta:   s.nudgeDriftAdjustmentRatio,
-			}
-			constraint.logic.Reset(ctx)
-			constraint.logic.ApplyNudges(ctx)
-		}
+
+			constraint.solver.Reset(ctx)
+			constraint.solver.ApplyNudges(ctx)
+		})
 	}
 }
 
@@ -859,22 +887,6 @@ func (s *Scene) notifyDoubleBodyCollisions() {
 	clear(s.newDBCollisions)
 }
 
-func (s *Scene) eachDBConstraintState(cb func(index int, constraint *dbConstraintState)) {
-	for i := range s.dbConstraints {
-		if constraint := &s.dbConstraints[i]; constraint.IsActive() {
-			cb(i, constraint)
-		}
-	}
-}
-
-func (s *Scene) resolveBodyState(reference indexReference) *bodyState {
-	state := &s.bodies[reference.Index]
-	if !state.IsActive() || state.reference.Revision != reference.Revision {
-		return nil
-	}
-	return state
-}
-
 func (s *Scene) allocateGlobalAccelerator() (int32, *globalAcceleratorState) {
 	var index int32
 	if s.freeGlobalAcceleratorIndices.IsEmpty() {
@@ -938,6 +950,15 @@ func (s *Scene) releaseSoloConstraint(index int32) {
 	s.freeSoloConstraintIndices.Push(index)
 }
 
+func (s *Scene) eachEnabledSoloConstraint(cb func(index int, constraint *soloConstraintState)) {
+	for i := range s.soloConstraints {
+		constraint := &s.soloConstraints[i]
+		if constraint.isValid() && constraint.isEnabled {
+			cb(i, constraint)
+		}
+	}
+}
+
 func (s *Scene) allocatePairConstraint() (int32, *pairConstraintState) {
 	var index int32
 	if s.freePairConstraintIndices.IsEmpty() {
@@ -951,6 +972,15 @@ func (s *Scene) allocatePairConstraint() (int32, *pairConstraintState) {
 
 func (s *Scene) releasePairConstraint(index int32) {
 	s.freePairConstraintIndices.Push(index)
+}
+
+func (s *Scene) eachEnabledPairConstraint(cb func(index int, constraint *pairConstraintState)) {
+	for i := range s.pairConstraints {
+		constraint := &s.pairConstraints[i]
+		if constraint.isValid() && constraint.isEnabled {
+			cb(i, constraint)
+		}
+	}
 }
 
 func (s *Scene) allocateBody() (int32, *bodyState) {
