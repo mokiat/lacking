@@ -129,34 +129,62 @@ func (v PairConstraintView) Delete(id PairConstraintID) {
 	constraint := v.resolve(id, true)
 
 	// Unlink the constraint from the primary body.
-	primaryBody := &v.scene.bodies[constraint.primaryBodyIndex]
+	primaryBodyIndex := constraint.primaryBodyIndex
+	primaryBody := &v.scene.bodies[primaryBodyIndex]
 	if primaryBody.firstPairConstraintIndex == id.index {
-		primaryBody.firstPairConstraintIndex = constraint.primaryNextIndex
+		primaryBody.firstPairConstraintIndex = constraint.nextIndexForBody(primaryBodyIndex)
 	} else {
 		prevIndex := primaryBody.firstPairConstraintIndex
 		for prevIndex != nilIndex {
 			prevConstraint := &v.scene.pairConstraints[prevIndex]
-			if prevConstraint.primaryNextIndex == id.index {
-				prevConstraint.primaryNextIndex = constraint.primaryNextIndex
-				break
+			switch {
+			case prevConstraint.primaryBodyIndex == primaryBodyIndex: // body follows primary chain
+				if prevConstraint.primaryNextIndex == id.index {
+					prevConstraint.primaryNextIndex = constraint.nextIndexForBody(primaryBodyIndex)
+					prevIndex = nilIndex // break the loop
+				} else {
+					prevIndex = prevConstraint.primaryNextIndex
+				}
+			case prevConstraint.secondaryBodyIndex == primaryBodyIndex: // body follows secondary chain
+				if prevConstraint.secondaryNextIndex == id.index {
+					prevConstraint.secondaryNextIndex = constraint.nextIndexForBody(primaryBodyIndex)
+					prevIndex = nilIndex // break the loop
+				} else {
+					prevIndex = prevConstraint.secondaryNextIndex
+				}
+			default:
+				panic("body index does not match either primary or secondary body")
 			}
-			prevIndex = prevConstraint.primaryNextIndex
 		}
 	}
 
 	// Unlink the constraint from the secondary body.
-	secondaryBody := &v.scene.bodies[constraint.secondaryBodyIndex]
+	secondaryBodyIndex := constraint.secondaryBodyIndex
+	secondaryBody := &v.scene.bodies[secondaryBodyIndex]
 	if secondaryBody.firstPairConstraintIndex == id.index {
-		secondaryBody.firstPairConstraintIndex = constraint.secondaryNextIndex
+		secondaryBody.firstPairConstraintIndex = constraint.nextIndexForBody(secondaryBodyIndex)
 	} else {
 		prevIndex := secondaryBody.firstPairConstraintIndex
 		for prevIndex != nilIndex {
 			prevConstraint := &v.scene.pairConstraints[prevIndex]
-			if prevConstraint.secondaryNextIndex == id.index {
-				prevConstraint.secondaryNextIndex = constraint.secondaryNextIndex
-				break
+			switch {
+			case prevConstraint.primaryBodyIndex == secondaryBodyIndex: // body follows primary chain
+				if prevConstraint.primaryNextIndex == id.index {
+					prevConstraint.primaryNextIndex = constraint.nextIndexForBody(secondaryBodyIndex)
+					prevIndex = nilIndex // break the loop
+				} else {
+					prevIndex = prevConstraint.primaryNextIndex
+				}
+			case prevConstraint.secondaryBodyIndex == secondaryBodyIndex: // body follows secondary chain
+				if prevConstraint.secondaryNextIndex == id.index {
+					prevConstraint.secondaryNextIndex = constraint.nextIndexForBody(secondaryBodyIndex)
+					prevIndex = nilIndex // break the loop
+				} else {
+					prevIndex = prevConstraint.secondaryNextIndex
+				}
+			default:
+				panic("body index does not match either primary or secondary body")
 			}
-			prevIndex = prevConstraint.secondaryNextIndex
 		}
 	}
 
@@ -367,6 +395,24 @@ type pairConstraintState struct {
 	primaryNextIndex   int32
 	secondaryNextIndex int32
 	isEnabled          bool
+}
+
+// nextIndexForBody returns the index of the next entry in bodyIndex's
+// singly-linked list of pair constraints, following primaryNextIndex or
+// secondaryNextIndex depending on whether bodyIndex is this state's
+// primary or secondary body.
+//
+// nextIndexForBody panics if bodyIndex is neither the primary nor the
+// secondary body of this state.
+func (s *pairConstraintState) nextIndexForBody(bodyIndex int32) int32 {
+	switch bodyIndex {
+	case s.primaryBodyIndex:
+		return s.primaryNextIndex
+	case s.secondaryBodyIndex:
+		return s.secondaryNextIndex
+	default:
+		panic("body index does not match either primary or secondary body")
+	}
 }
 
 // isValid returns whether this state is currently backing a live pair
