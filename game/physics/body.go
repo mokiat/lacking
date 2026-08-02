@@ -30,14 +30,19 @@ func (v BodyView) Create(position dprec.Vec3, rotation dprec.Quat) BodyID {
 	})
 
 	body := &v.scene.bodies[index]
-	body.objectID = objectID
-	body.revision++ // progress revision to valid (odd) value
-	body.invMass = 1.0
-	body.invInertia = dprec.IdentityMat3()
-	body.linearVelocity = dprec.ZeroVec3()
-	body.angularVelocity = dprec.ZeroVec3()
-	body.position = position
-	body.rotation = rotation
+	*body = bodyState{
+		objectID:                  objectID,
+		revision:                  body.revision + 1, // progress revision to valid (odd) value
+		firstBodyAcceleratorIndex: nilIndex,
+		firstSoloConstraintIndex:  nilIndex,
+		firstPairConstraintIndex:  nilIndex,
+		invMass:                   1.0,
+		invInertia:                dprec.IdentityMat3(),
+		linearVelocity:            dprec.ZeroVec3(),
+		angularVelocity:           dprec.ZeroVec3(),
+		position:                  position,
+		rotation:                  rotation,
+	}
 
 	return BodyID{
 		index:    index,
@@ -47,6 +52,8 @@ func (v BodyView) Create(position dprec.Vec3, rotation dprec.Quat) BodyID {
 
 func (v BodyView) Delete(id BodyID) {
 	body := v.resolve(id, true)
+
+	v.scene.collisionScene.DeleteObject(body.objectID)
 
 	bodyAcceleratorView := v.scene.BodyAccelerators()
 	for body.firstBodyAcceleratorIndex != nilIndex {
@@ -58,9 +65,20 @@ func (v BodyView) Delete(id BodyID) {
 	}
 	// TODO: delete pair constraints as well.
 
-	v.scene.collisionScene.DeleteObject(body.objectID)
-	body.objectID = placement3d.InvalidObjectID
-	body.revision++ // progress revision to invalid (even) value
+	*body = bodyState{
+		objectID:                  placement3d.InvalidObjectID,
+		revision:                  body.revision + 1, // progress revision to invalid (even) value
+		firstBodyAcceleratorIndex: nilIndex,
+		firstSoloConstraintIndex:  nilIndex,
+		firstPairConstraintIndex:  nilIndex,
+		invMass:                   1.0,
+		invInertia:                dprec.IdentityMat3(),
+		linearVelocity:            dprec.ZeroVec3(),
+		angularVelocity:           dprec.ZeroVec3(),
+		position:                  dprec.ZeroVec3(),
+		rotation:                  dprec.IdentityQuat(),
+	}
+
 	v.scene.releaseBody(id.index)
 }
 
@@ -184,25 +202,17 @@ func (v BodyView) refreshPlacement(id BodyID, body *bodyState) {
 	})
 }
 
-// func (v BodyView) idFromIndex(index int32) BodyID {
-// 	body := &v.scene.bodies[index]
-// 	return BodyID{
-// 		index:    index,
-// 		revision: body.revision,
-// 	}
-// }
-
 func (v BodyView) resolve(id BodyID, required bool) *bodyState {
 	if id.revision == 0 {
 		if required {
-			panic("invalid global accelerator ID")
+			panic("invalid body ID")
 		}
 		return nil
 	}
 	body := &v.scene.bodies[id.index]
 	if body.revision != id.revision {
 		if required {
-			panic("invalid global accelerator ID")
+			panic("invalid body ID")
 		}
 		return nil
 	}
@@ -317,6 +327,7 @@ type bodyState struct {
 	revision                  int32
 	firstBodyAcceleratorIndex int32
 	firstSoloConstraintIndex  int32
+	firstPairConstraintIndex  int32
 
 	invMass    float64
 	invInertia dprec.Mat3

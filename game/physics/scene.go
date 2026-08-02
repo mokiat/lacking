@@ -98,7 +98,6 @@ func NewScene() *Scene {
 		bodyAccelerationTargets:    make([]AccelerationTarget, 0, 64),
 		bodyConstraintPlaceholders: make([]solver.Placeholder, 0, 64),
 
-		// bodyAccelerators   []any // TOOD
 		// areaAccelerators   []any // TODO
 
 		sbConstraints: make([]sbConstraintState, 0, 64),
