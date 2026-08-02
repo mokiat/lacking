@@ -94,8 +94,13 @@ type PairConstraintView struct {
 // deleted whenever either of its two target bodies is deleted.
 //
 // Create panics if primaryID or secondaryID does not reference a valid
-// body.
+// body, or if they both reference the same body, since a pair constraint
+// cannot act on a single body twice.
 func (v PairConstraintView) Create(primaryID, secondaryID BodyID, solver PairConstraintSolver) PairConstraintID {
+	if primaryID == secondaryID {
+		panic("pair constraint cannot be created between a body and itself")
+	}
+
 	bodyView := v.scene.Bodies()
 	primaryBody := bodyView.resolve(primaryID, true)
 	secondaryBody := bodyView.resolve(secondaryID, true)
