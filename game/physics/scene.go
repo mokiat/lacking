@@ -33,8 +33,6 @@ type Scene struct {
 
 	props []propState
 
-	dbConstraints []dbConstraintState
-
 	sbCollisionConstraints []SBConstraint
 	sbCollisionSolvers     []constraint.Collision
 
@@ -57,11 +55,13 @@ type Scene struct {
 	freeGlobalAcceleratorIndices *ds.Stack[int32]
 	freeBodyAcceleratorIndices   *ds.Stack[int32]
 	freeSoloConstraintIndices    *ds.Stack[int32]
+	freePairConstraintIndices    *ds.Stack[int32]
 	freeBodyIndices              *ds.Stack[int32]
 
 	globalAccelerators []globalAcceleratorState
 	bodyAccelerators   []bodyAcceleratorState
 	soloConstraints    []soloConstraintState
+	pairConstraints    []pairConstraintState
 	bodies             []bodyState
 }
 
@@ -86,8 +86,6 @@ func NewScene() *Scene {
 
 		props: make([]propState, 0, 1024),
 
-		dbConstraints: make([]dbConstraintState, 0, 64),
-
 		collisionSet: make(placement3d.ContactList, 0, 128),
 
 		oldSBCollisions: make(map[sbCollisionPair]struct{}, 32),
@@ -102,11 +100,13 @@ func NewScene() *Scene {
 		freeGlobalAcceleratorIndices: ds.EmptyStack[int32](),
 		freeBodyAcceleratorIndices:   ds.EmptyStack[int32](),
 		freeSoloConstraintIndices:    ds.EmptyStack[int32](),
+		freePairConstraintIndices:    ds.EmptyStack[int32](),
 		freeBodyIndices:              ds.EmptyStack[int32](),
 
 		globalAccelerators: make([]globalAcceleratorState, 0),
 		bodyAccelerators:   make([]bodyAcceleratorState, 0),
 		soloConstraints:    make([]soloConstraintState, 0),
+		pairConstraints:    make([]pairConstraintState, 0),
 		bodies:             make([]bodyState, 0),
 	}
 }
@@ -153,6 +153,12 @@ func (s *Scene) BodyAccelerators() BodyAcceleratorView {
 // constraints of this scene can be created and managed.
 func (s *Scene) SoloConstraints() SoloConstraintView {
 	return SoloConstraintView{
+		scene: s,
+	}
+}
+
+func (s *Scene) PairConstraints() PairConstraintView {
+	return PairConstraintView{
 		scene: s,
 	}
 }
@@ -257,12 +263,6 @@ func (s *Scene) CreateProp(info PropInfo) {
 			name:      info.Name,
 		})
 	}
-}
-
-// CreateDoubleBodyConstraint creates a new physics constraint that acts on
-// two bodies and enables it for this scene.
-func (s *Scene) CreateDoubleBodyConstraint(primary, secondary Body, logic solver.PairConstraint) DBConstraint {
-	return createDBConstraint(s, logic, primary, secondary)
 }
 
 // Update runs a single physics iteration. This method should be called with
@@ -460,7 +460,7 @@ func (s *Scene) applyMotion(elapsedSeconds float64) {
 
 		// Apply the velocity to the body's position and rotation.
 		body.translate(dprec.Vec3Prod(body.linearVelocity, elapsedSeconds))
-		body.rotateVector(dprec.Vec3Prod(body.angularVelocity, elapsedSeconds))
+		body.rotate(QuatFromVector(dprec.Vec3Prod(body.angularVelocity, elapsedSeconds)))
 	})
 }
 
@@ -854,25 +854,30 @@ func (s *Scene) releaseSoloConstraint(index int32) {
 	s.freeSoloConstraintIndices.Push(index)
 }
 
-func (s *Scene) verifySoloConstraintID(id SoloConstraintID) {
-	if id.revision == 0 {
-		panic("invalid solo constraint ID")
+func (s *Scene) allocatePairConstraint() (int32, *pairConstraintState) {
+	var index int32
+	if s.freePairConstraintIndices.IsEmpty() {
+		index = int32(len(s.pairConstraints))
+		s.pairConstraints = append(s.pairConstraints, pairConstraintState{})
+	} else {
+		index = s.freePairConstraintIndices.Pop()
 	}
-	constraint := &s.soloConstraints[id.index]
-	if constraint.revision != id.revision {
-		panic("invalid solo constraint ID")
-	}
+	return index, &s.pairConstraints[index]
 }
 
-func (s *Scene) allocateBody() int32 {
-	if !s.freeBodyIndices.IsEmpty() {
-		return s.freeBodyIndices.Pop()
+func (s *Scene) releasePairConstraint(index int32) {
+	s.freePairConstraintIndices.Push(index)
+}
+
+func (s *Scene) allocateBody() (int32, *bodyState) {
+	var index int32
+	if s.freeBodyIndices.IsEmpty() {
+		index = int32(len(s.bodies))
+		s.bodies = append(s.bodies, bodyState{})
+	} else {
+		index = s.freeBodyIndices.Pop()
 	}
-	index := int32(len(s.bodies))
-	s.bodies = append(s.bodies, bodyState{})
-	s.bodyAccelerationTargets = append(s.bodyAccelerationTargets, AccelerationTarget{})
-	s.bodyConstraintPlaceholders = append(s.bodyConstraintPlaceholders, solver.Placeholder{})
-	return index
+	return index, &s.bodies[index]
 }
 
 func (s *Scene) releaseBody(index int32) {

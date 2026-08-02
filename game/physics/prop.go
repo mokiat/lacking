@@ -32,7 +32,6 @@ func (p Prop) Name() string {
 }
 
 type propState struct {
-	reference indexReference
-	meshID    placement3d.MeshID
-	name      string
+	meshID   placement3d.MeshID
+	revision int32
 }

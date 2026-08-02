@@ -19,7 +19,7 @@ type BodyView struct {
 }
 
 func (v BodyView) Create(position dprec.Vec3, rotation dprec.Quat) BodyID {
-	index := v.scene.allocateBody()
+	index, body := v.scene.allocateBody()
 
 	objectID := v.scene.collisionScene.CreateObject(placement3d.ObjectInfo[bodyData]{
 		Position: opt.V(position),
@@ -29,7 +29,6 @@ func (v BodyView) Create(position dprec.Vec3, rotation dprec.Quat) BodyID {
 		},
 	})
 
-	body := &v.scene.bodies[index]
 	*body = bodyState{
 		objectID:                  objectID,
 		revision:                  body.revision + 1, // progress revision to valid (odd) value
@@ -63,7 +62,10 @@ func (v BodyView) Delete(id BodyID) {
 	for body.firstSoloConstraintIndex != nilIndex {
 		soloConstraintView.Delete(soloConstraintView.idFromIndex(body.firstSoloConstraintIndex))
 	}
-	// TODO: delete pair constraints as well.
+	pairConstraintView := v.scene.PairConstraints()
+	for body.firstPairConstraintIndex != nilIndex {
+		pairConstraintView.Delete(pairConstraintView.idFromIndex(body.firstPairConstraintIndex))
+	}
 
 	*body = bodyState{
 		objectID:                  placement3d.InvalidObjectID,
@@ -296,6 +298,8 @@ func (h BodyHandle) DetachCollisionShape(shapeID CollisionShapeID) {
 	h.view.DetachCollisionShape(h.id, shapeID)
 }
 
+// TODO: Relocate collision-related code to separate file.
+
 type CollisionShapeID struct {
 	bodyID  BodyID
 	shapeID placement3d.ShapeID
@@ -413,11 +417,4 @@ func (b *bodyState) translate(offset dprec.Vec3) {
 
 func (b *bodyState) rotate(quat dprec.Quat) {
 	b.rotation = dprec.UnitQuat(dprec.QuatProd(quat, b.rotation))
-}
-
-func (b *bodyState) rotateVector(vector dprec.Vec3) {
-	const angularEpsilon = float64(0.00001)
-	if radians := vector.Length(); dprec.Abs(radians) > angularEpsilon {
-		b.rotate(dprec.RotationQuat(dprec.Radians(radians), vector))
-	}
 }

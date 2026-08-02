@@ -1,7 +1,5 @@
 package physics
 
-import "github.com/mokiat/lacking/game/physics/solver"
-
 // SoloConstraintContext contains the information that a [SoloConstraintSolver]
 // needs in order to process the single body it acts upon during a physics
 // simulation step.
@@ -21,7 +19,7 @@ type SoloConstraintContext struct {
 
 	// Target is the placeholder representation of the body that is
 	// constrained.
-	Target *solver.Placeholder // TODO: use package-local ImpulseTarget instead of Placeholder
+	Target ConstraintTarget
 }
 
 // SoloConstraintSolver implements the mathematical logic that enforces a
