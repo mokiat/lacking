@@ -37,11 +37,7 @@ type Scene struct {
 	bodyAccelerationTargets    []AccelerationTarget
 	bodyConstraintPlaceholders []solver.Placeholder
 
-	sbConstraints           []sbConstraintState
-	freeSBConstraintIndices *ds.Stack[uint32]
-
-	dbConstraints           []dbConstraintState
-	freeDBConstraintIndices *ds.Stack[uint32]
+	dbConstraints []dbConstraintState
 
 	sbCollisionConstraints []SBConstraint
 	sbCollisionSolvers     []constraint.Collision
@@ -100,11 +96,7 @@ func NewScene() *Scene {
 
 		// areaAccelerators   []any // TODO
 
-		sbConstraints: make([]sbConstraintState, 0, 64),
 		dbConstraints: make([]dbConstraintState, 0, 64),
-
-		freeSBConstraintIndices: ds.PreallocatedStack[uint32](16),
-		freeDBConstraintIndices: ds.PreallocatedStack[uint32](16),
 
 		collisionSet: make(placement3d.ContactList, 0, 128),
 
@@ -134,21 +126,11 @@ func NewScene() *Scene {
 func (s *Scene) Delete() {
 	s.props = nil
 
-	s.freeBodyIndices = nil
 	s.bodies = nil
 	s.bodyAccelerationTargets = nil
 	s.bodyConstraintPlaceholders = nil
 
-	s.globalAccelerators = nil
-	s.freeBodyAcceleratorIndices = nil
-	s.freeAreaAcceleratorIndices = nil
-	s.freeGlobalAcceleratorIndices = nil
-
-	s.sbConstraints = nil
-	s.freeSBConstraintIndices = nil
-
 	s.dbConstraints = nil
-	s.freeDBConstraintIndices = nil
 
 	s.sbCollisionConstraints = nil
 	s.sbCollisionSolvers = nil
@@ -164,6 +146,38 @@ func (s *Scene) Delete() {
 	s.oldDBCollisions = nil
 	s.newDBCollisions = nil
 }
+
+// MediumSolver returns the solver that is used to calculate the medium
+// properties of the scene.
+//
+// The returned solver is never nil. A scene starts off with a default
+// [StaticAirSolver].
+func (s *Scene) MediumSolver() MediumSolver {
+	return s.mediumSolver
+}
+
+// SetMediumSolver changes the solver that is used to calculate the medium
+// properties of the scene.
+//
+// Passing nil is not an error and resets the scene to a default
+// [StaticAirSolver], since the scene always needs a medium to sample.
+func (s *Scene) SetMediumSolver(solver MediumSolver) {
+	if solver != nil {
+		s.mediumSolver = solver
+	} else {
+		s.mediumSolver = NewStaticAirSolver()
+	}
+}
+
+// GlobalAccelerators returns a [GlobalAcceleratorView] through which the
+// global accelerators of this scene can be created and managed.
+func (s *Scene) GlobalAccelerators() GlobalAcceleratorView {
+	return GlobalAcceleratorView{
+		scene: s,
+	}
+}
+
+/////// OLD BELOW ------------ (TODO: DELETE COMMENT)
 
 // SubscribeSingleBodyCollision registers a callback that is invoked when a body
 // collides with a static object.
@@ -210,28 +224,6 @@ func (s *Scene) MaxAngularAcceleration() float64 {
 // body can have.
 func (s *Scene) SetMaxAngularAcceleration(acceleration float64) {
 	s.maxAngularAcceleration = acceleration
-}
-
-// MediumSolver returns the solver that is used to calculate the medium
-// properties of the scene.
-//
-// The returned solver is never nil. A scene starts off with a default
-// [StaticAirSolver].
-func (s *Scene) MediumSolver() MediumSolver {
-	return s.mediumSolver
-}
-
-// SetMediumSolver changes the solver that is used to calculate the medium
-// properties of the scene.
-//
-// Passing nil is not an error and resets the scene to a default
-// [StaticAirSolver], since the scene always needs a medium to sample.
-func (s *Scene) SetMediumSolver(solver MediumSolver) {
-	if solver != nil {
-		s.mediumSolver = solver
-	} else {
-		s.mediumSolver = NewStaticAirSolver()
-	}
 }
 
 // NextCollisionRejectGroup returns a collision reject group that is unique
@@ -293,12 +285,6 @@ func (s *Scene) CreateProp(info PropInfo) {
 			name:      info.Name,
 		})
 	}
-}
-
-// CreateSingleBodyConstraint creates a new physics constraint that acts on
-// a single body and enables it for this scene.
-func (s *Scene) CreateSingleBodyConstraint(body Body, logic solver.Constraint) SBConstraint {
-	return createSBConstraint(s, logic, body)
 }
 
 // CreateDoubleBodyConstraint creates a new physics constraint that acts on
@@ -486,12 +472,6 @@ func (s *Scene) applyImpulses(elapsedSeconds float64) {
 		s.initPlaceholder(placeholder, body)
 	})
 
-	s.eachSBConstraintState(func(_ int, constraint *sbConstraintState) {
-		if s.resolveBodyState(constraint.body.reference) == nil {
-			deleteSBConstraint(s, constraint.reference)
-			return
-		}
-	})
 	s.eachDBConstraintState(func(_ int, constraint *dbConstraintState) {
 		if s.resolveBodyState(constraint.primary.reference) == nil {
 			deleteDBConstraint(s, constraint.reference)
@@ -887,14 +867,6 @@ func (s *Scene) eachBodyState(cb func(index int, b *bodyState)) {
 	}
 }
 
-func (s *Scene) eachSBConstraintState(cb func(index int, constraint *sbConstraintState)) {
-	for i := range s.sbConstraints {
-		if constraint := &s.sbConstraints[i]; constraint.IsActive() {
-			cb(i, constraint)
-		}
-	}
-}
-
 func (s *Scene) eachDBConstraintState(cb func(index int, constraint *dbConstraintState)) {
 	for i := range s.dbConstraints {
 		if constraint := &s.dbConstraints[i]; constraint.IsActive() {
@@ -932,14 +904,6 @@ func (s *Scene) deinitPlaceholder(placeholder *solver.Placeholder, body *bodySta
 		Translation: body.position,
 		Rotation:    shape3d.RotationFromQuat(body.rotation),
 	})
-}
-
-// GlobalAccelerators returns a [GlobalAcceleratorView] through which the
-// global accelerators of this scene can be created and managed.
-func (s *Scene) GlobalAccelerators() GlobalAcceleratorView {
-	return GlobalAcceleratorView{
-		scene: s,
-	}
 }
 
 // func (s *Scene) AreaAccelerators() AreaAcceleratorView {
