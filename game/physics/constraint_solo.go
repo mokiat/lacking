@@ -17,8 +17,9 @@ type SoloConstraintContext struct {
 	// correcting positional drift through nudges.
 	NudgeBeta float64
 
-	// Target is the placeholder representation of the body that is
-	// constrained.
+	// Target is the [ConstraintTarget] for the body that is constrained,
+	// through which the solver reads its motion state and applies
+	// corrective impulses and nudges to it.
 	Target ConstraintTarget
 }
 
@@ -34,7 +35,8 @@ type SoloConstraintSolver interface {
 	// preparation for a new physics simulation step.
 	//
 	// This is called once at the start of every step, before
-	// ApplyImpulses or ApplyNudges are invoked.
+	// [SoloConstraintSolver.ApplyImpulses] or [SoloConstraintSolver.ApplyNudges]
+	// are invoked.
 	Reset(ctx SoloConstraintContext)
 
 	// ApplyImpulses is called by the physics engine to instruct the solver
@@ -69,7 +71,8 @@ type SoloConstraintID struct {
 var NilSoloConstraintID = SoloConstraintID{}
 
 // SoloConstraintView provides access to the solo constraints (i.e.
-// constraints that act on a single body) that belong to a [Scene].
+// constraints that act on a single body) that belong to a [Scene], as
+// opposed to a pair constraint, which acts on two bodies simultaneously.
 //
 // A SoloConstraintView is a lightweight accessor around a [Scene] and can
 // be obtained through [Scene.SoloConstraints].
@@ -218,9 +221,9 @@ func (v SoloConstraintView) idFromIndex(index int32) SoloConstraintID {
 	}
 }
 
-// resolve looks up the soloConstraint referenced by id. If id is stale or
-// otherwise invalid, resolve panics when required is true, or returns nil
-// otherwise.
+// resolve looks up the soloConstraintState referenced by id. If id is
+// stale or otherwise invalid, resolve panics when required is true, or
+// returns nil otherwise.
 func (v SoloConstraintView) resolve(id SoloConstraintID, required bool) *soloConstraintState {
 	if id.revision == 0 {
 		if required {
@@ -311,6 +314,8 @@ type soloConstraintState struct {
 	isEnabled bool
 }
 
+// isValid returns whether this state is currently backing a live solo
+// constraint, as opposed to a freed slot awaiting reuse.
 func (s *soloConstraintState) isValid() bool {
 	return s.revision%2 == 1 // only odd revisions are valid
 }

@@ -158,46 +158,78 @@ func (s *Scene) SoloConstraints() SoloConstraintView {
 	}
 }
 
+// PairConstraints returns a [PairConstraintView] through which the pair
+// constraints of this scene can be created and managed.
 func (s *Scene) PairConstraints() PairConstraintView {
 	return PairConstraintView{
 		scene: s,
 	}
 }
 
+// Bodies returns a [BodyView] through which the bodies of this scene can be
+// created and managed.
 func (s *Scene) Bodies() BodyView {
 	return BodyView{
 		scene: s,
 	}
 }
 
+// MaxLinearAcceleration returns the maximum magnitude that the linear
+// acceleration of a body can reach. Accelerations that exceed it are
+// clamped on every simulation step.
+//
+// Defaults to math.MaxFloat64, which is effectively unbounded.
 func (s *Scene) MaxLinearAcceleration() float64 {
 	return s.maxLinearAcceleration
 }
 
+// SetMaxLinearAcceleration changes the maximum magnitude that the linear
+// acceleration of a body can reach.
 func (s *Scene) SetMaxLinearAcceleration(acceleration float64) {
 	s.maxLinearAcceleration = acceleration
 }
 
+// MaxAngularAcceleration returns the maximum magnitude that the angular
+// acceleration of a body can reach. Accelerations that exceed it are
+// clamped on every simulation step.
+//
+// Defaults to math.MaxFloat64, which is effectively unbounded.
 func (s *Scene) MaxAngularAcceleration() float64 {
 	return s.maxAngularAcceleration
 }
 
+// SetMaxAngularAcceleration changes the maximum magnitude that the angular
+// acceleration of a body can reach.
 func (s *Scene) SetMaxAngularAcceleration(acceleration float64) {
 	s.maxAngularAcceleration = acceleration
 }
 
+// MaxLinearVelocity returns the maximum magnitude that the linear velocity
+// of a body can reach. Velocities that exceed it are clamped on every
+// simulation step.
+//
+// Defaults to math.MaxFloat64, which is effectively unbounded.
 func (s *Scene) MaxLinearVelocity() float64 {
 	return s.maxLinearVelocity
 }
 
+// SetMaxLinearVelocity changes the maximum magnitude that the linear
+// velocity of a body can reach.
 func (s *Scene) SetMaxLinearVelocity(velocity float64) {
 	s.maxLinearVelocity = velocity
 }
 
+// MaxAngularVelocity returns the maximum magnitude that the angular
+// velocity of a body can reach. Velocities that exceed it are clamped on
+// every simulation step.
+//
+// Defaults to math.MaxFloat64, which is effectively unbounded.
 func (s *Scene) MaxAngularVelocity() float64 {
 	return s.maxAngularVelocity
 }
 
+// SetMaxAngularVelocity changes the maximum magnitude that the angular
+// velocity of a body can reach.
 func (s *Scene) SetMaxAngularVelocity(velocity float64) {
 	s.maxAngularVelocity = velocity
 }
