@@ -62,6 +62,8 @@ func (v GlobalAcceleratorView) Delete(id GlobalAcceleratorID) {
 	v.scene.releaseGlobalAccelerator(id.index)
 }
 
+// Each calls cb once for every global accelerator that is currently alive
+// within this Scene, in unspecified order.
 func (v GlobalAcceleratorView) Each(cb func(id GlobalAcceleratorID)) {
 	v.scene.eachGlobalAccelerator(func(index int, accelerator *globalAcceleratorState) {
 		cb(GlobalAcceleratorID{

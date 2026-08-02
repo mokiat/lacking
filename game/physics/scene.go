@@ -447,7 +447,7 @@ func (s *Scene) eachBodyAccelerator(cb func(index int, accelerator *bodyAccelera
 
 func (s *Scene) eachEnabledBodyAccelerator(body *bodyState, cb func(index int, accelerator *bodyAcceleratorState)) {
 	index := body.firstBodyAcceleratorIndex
-	if index != nilIndex {
+	for index != nilIndex {
 		accelerator := &s.bodyAccelerators[index]
 		if accelerator.isValid() && accelerator.isEnabled {
 			cb(int(index), accelerator)

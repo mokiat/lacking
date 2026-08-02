@@ -213,6 +213,8 @@ func (v PairConstraintView) Delete(id PairConstraintID) {
 	v.scene.releasePairConstraint(id.index)
 }
 
+// Each calls cb once for every pair constraint that is currently alive
+// within this Scene, in unspecified order.
 func (v PairConstraintView) Each(cb func(id PairConstraintID)) {
 	v.scene.eachPairConstraint(func(index int, constraint *pairConstraintState) {
 		cb(PairConstraintID{

@@ -151,6 +151,8 @@ func (v SoloConstraintView) Delete(id SoloConstraintID) {
 	v.scene.releaseSoloConstraint(id.index)
 }
 
+// Each calls cb once for every solo constraint that is currently alive
+// within this Scene, in unspecified order.
 func (v SoloConstraintView) Each(cb func(id SoloConstraintID)) {
 	v.scene.eachSoloConstraint(func(index int, constraint *soloConstraintState) {
 		cb(SoloConstraintID{

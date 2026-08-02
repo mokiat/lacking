@@ -84,6 +84,8 @@ func (v BodyView) Delete(id BodyID) {
 	v.scene.releaseBody(id.index)
 }
 
+// Each calls cb once for every body that is currently alive within this
+// Scene, in unspecified order.
 func (v BodyView) Each(cb func(BodyID)) {
 	v.scene.eachBody(func(index int, body *bodyState) {
 		cb(BodyID{

@@ -62,6 +62,8 @@ func (v TerrainView) Delete(id TerrainID) {
 	v.scene.releaseTerrain(id.index)
 }
 
+// Each calls cb once for every terrain that is currently alive within
+// this Scene, in unspecified order.
 func (v TerrainView) Each(cb func(id TerrainID)) {
 	v.scene.eachTerrain(func(index int, terrain *terrainState) {
 		cb(TerrainID{

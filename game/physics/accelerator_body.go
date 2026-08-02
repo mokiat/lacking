@@ -91,6 +91,8 @@ func (v BodyAcceleratorView) Delete(id BodyAcceleratorID) {
 	v.scene.releaseBodyAccelerator(id.index)
 }
 
+// Each calls cb once for every body accelerator that is currently alive
+// within this Scene, in unspecified order.
 func (v BodyAcceleratorView) Each(cb func(id BodyAcceleratorID)) {
 	v.scene.eachBodyAccelerator(func(index int, accelerator *bodyAcceleratorState) {
 		cb(BodyAcceleratorID{
