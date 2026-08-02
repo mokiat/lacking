@@ -19,8 +19,6 @@ import (
 // a number of bodies that are independent on any
 // bodies managed by other scene objects.
 type Scene struct {
-	timeSpeed float64
-
 	sbCollisionConstraints []SBConstraint
 	sbCollisionSolvers     []constraint.Collision
 
@@ -68,12 +66,12 @@ type Scene struct {
 	impulseDriftAdjustmentRatio float64
 	nudgeIterationCount         int
 	nudgeDriftAdjustmentRatio   float64
+
+	timeScale float64
 }
 
 func NewScene() *Scene {
 	return &Scene{
-		timeSpeed: 1.0,
-
 		collisionSet: make(placement3d.ContactList, 0, 128),
 
 		oldSBCollisions: make(map[sbCollisionPair]struct{}, 32),
@@ -120,6 +118,8 @@ func NewScene() *Scene {
 		impulseDriftAdjustmentRatio: 0.2,
 		nudgeIterationCount:         8,
 		nudgeDriftAdjustmentRatio:   0.2,
+
+		timeScale: 1.0,
 	}
 }
 
@@ -351,27 +351,44 @@ func (s *Scene) SetNudgeDriftAdjustmentRatio(ratio float64) {
 	s.nudgeDriftAdjustmentRatio = ratio
 }
 
-/////// OLD BELOW ------------ (TODO: DELETE COMMENT)
-
-// TimeSpeed returns the speed at which time runs, where 1.0 is the default
-// and 0.0 is stopped.
-func (s *Scene) TimeSpeed() float64 {
-	return s.timeSpeed
+// TimeScale returns the multiplier applied to elapsed real time before it
+// is fed into the physics simulation through [Scene.Update], where 1.0 is
+// the default (real-time) rate and 0.0 pauses the simulation.
+//
+// The returned value is never negative.
+func (s *Scene) TimeScale() float64 {
+	return s.timeScale
 }
 
-// SetTimeSpeed changes the rate at which time runs.
-func (s *Scene) SetTimeSpeed(timeSpeed float64) {
-	s.timeSpeed = timeSpeed
+// SetTimeScale changes the multiplier applied to elapsed real time before
+// it is fed into the physics simulation through [Scene.Update].
+//
+// Negative values are clamped to 0, since the simulation does not support
+// running time backwards.
+func (s *Scene) SetTimeScale(scale float64) {
+	s.timeScale = max(0.0, scale)
 }
 
-// Update runs a single physics iteration. This method should be called with
-// fixed elapsed times, otherwise the physics may break.
+// Update advances the physics simulation by elapsedTime, scaled by
+// [Scene.TimeScale], and notifies any collision subscribers registered
+// through [Scene.SubscribeSoloCollision] and [Scene.SubscribePairCollision]
+// of collisions that started or stopped as a result.
+//
+// elapsedTime must be a fixed, consistent duration across calls (e.g. the
+// ticks produced by a fixed-interval segmenter), since the impulse and
+// nudge resolution assume a stable step size; a varying elapsedTime will
+// make the simulation inaccurate or unstable.
+//
+// A [Scene.TimeScale] of 0 effectively pauses the simulation: Update can
+// still be called on a fixed schedule, but no motion is integrated.
 func (s *Scene) Update(elapsedTime time.Duration) {
 	elapsedSeconds := elapsedTime.Seconds()
-	s.runSimulation(elapsedSeconds * s.timeSpeed)
+	s.runSimulation(elapsedSeconds * s.timeScale)
 	s.notifySingleBodyCollisions()
 	s.notifyDoubleBodyCollisions()
 }
+
+/////// OLD BELOW ------------ (TODO: DELETE COMMENT)
 
 // TODO: Move to BodyView
 func (s *Scene) Each(cb func(b Body)) {
@@ -402,26 +419,6 @@ func (s *Scene) CheckSegmentIntersection(segment shape3d.Segment, mask uint32) (
 		revision: body.revision,
 	}, true
 }
-
-// func (s *Scene) Nearby(body Body, distance float64, cb func(b Body)) {
-// 	state := s.resolveBodyState(body.reference)
-// 	if state == nil {
-// 		return
-// 	}
-// 	region := spatial.CuboidRegion(
-// 		state.position,
-// 		dprec.NewVec3(distance, distance, distance),
-// 	)
-// 	s.bodyOctree.VisitHexahedronRegion(&region, spatial.VisitorFunc[uint32](func(candidate uint32) {
-// 		candidateState := &s.bodies[candidate]
-// 		if candidateState != state {
-// 			cb(Body{
-// 				scene:     s,
-// 				reference: candidateState.reference,
-// 			})
-// 		}
-// 	}))
-// }
 
 func (s *Scene) runSimulation(elapsedSeconds float64) {
 	if elapsedSeconds > 0.0001 {
