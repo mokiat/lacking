@@ -298,33 +298,6 @@ func (h BodyHandle) DetachCollisionShape(shapeID CollisionShapeID) {
 	h.view.DetachCollisionShape(h.id, shapeID)
 }
 
-// TODO: Relocate collision-related code to separate file.
-
-type CollisionShapeID struct {
-	bodyID  BodyID
-	shapeID placement3d.ShapeID
-}
-
-type CollisionShape[T any] struct {
-	Shape                  T
-	FrictionCoefficient    float64
-	RestitutionCoefficient float64
-	Filtering              placement3d.FilterInfo
-}
-
-type CollisionSphere CollisionShape[shape3d.Sphere]
-
-type CollisionBox CollisionShape[shape3d.Box]
-
-type bodyData struct {
-	index int32
-}
-
-type shapeData struct {
-	frictionCoefficient    float64
-	restitutionCoefficient float64
-}
-
 type bodyState struct {
 	objectID placement3d.ObjectID
 

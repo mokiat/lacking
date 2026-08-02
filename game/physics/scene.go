@@ -20,14 +20,12 @@ import (
 // a number of bodies that are independent on any
 // bodies managed by other scene objects.
 type Scene struct {
-	collisionScene *placement3d.Scene[bodyData, shapeData, propRef]
+	collisionScene *placement3d.Scene[bodyData, shapeData, terrainData]
 
 	sbCollisionSubscriptions *observer.SubscriptionSet[SoloBodyCollisionCallback]
 	dbCollisionSubscriptions *observer.SubscriptionSet[PairBodyCollisionCallback]
 
 	timeSpeed float64
-
-	props []propState
 
 	sbCollisionConstraints []SBConstraint
 	sbCollisionSolvers     []constraint.Collision
@@ -53,12 +51,14 @@ type Scene struct {
 	freeSoloConstraintIndices    *ds.Stack[int32]
 	freePairConstraintIndices    *ds.Stack[int32]
 	freeBodyIndices              *ds.Stack[int32]
+	freeTerrainIndices           *ds.Stack[int32]
 
 	globalAccelerators []globalAcceleratorState
 	bodyAccelerators   []bodyAcceleratorState
 	soloConstraints    []soloConstraintState
 	pairConstraints    []pairConstraintState
 	bodies             []bodyState
+	terrains           []terrainState
 
 	maxLinearAcceleration  float64
 	maxAngularAcceleration float64
@@ -73,7 +73,7 @@ type Scene struct {
 
 func NewScene() *Scene {
 	return &Scene{
-		collisionScene: placement3d.NewScene[bodyData, shapeData, propRef](placement3d.SceneSettings{
+		collisionScene: placement3d.NewScene[bodyData, shapeData, terrainData](placement3d.SceneSettings{
 			Size:                opt.V(16384.0),
 			MaxDepth:            opt.V[uint32](12),
 			InitialNodeCapacity: opt.V[uint32](1024),
@@ -84,8 +84,6 @@ func NewScene() *Scene {
 		dbCollisionSubscriptions: observer.NewSubscriptionSet[PairBodyCollisionCallback](),
 
 		timeSpeed: 1.0,
-
-		props: make([]propState, 0, 1024),
 
 		collisionSet: make(placement3d.ContactList, 0, 128),
 
@@ -103,12 +101,14 @@ func NewScene() *Scene {
 		freeSoloConstraintIndices:    ds.EmptyStack[int32](),
 		freePairConstraintIndices:    ds.EmptyStack[int32](),
 		freeBodyIndices:              ds.EmptyStack[int32](),
+		freeTerrainIndices:           ds.EmptyStack[int32](),
 
 		globalAccelerators: make([]globalAcceleratorState, 0),
 		bodyAccelerators:   make([]bodyAcceleratorState, 0),
 		soloConstraints:    make([]soloConstraintState, 0),
 		pairConstraints:    make([]pairConstraintState, 0),
 		bodies:             make([]bodyState, 0),
+		terrains:           make([]terrainState, 0),
 
 		maxLinearAcceleration:  math.MaxFloat64,
 		maxAngularAcceleration: math.MaxFloat64,
@@ -180,6 +180,14 @@ func (s *Scene) PairConstraints() PairConstraintView {
 // created and managed.
 func (s *Scene) Bodies() BodyView {
 	return BodyView{
+		scene: s,
+	}
+}
+
+// Terrains returns a [TerrainView] through which the terrains of this
+// scene can be created and managed.
+func (s *Scene) Terrains() TerrainView {
+	return TerrainView{
 		scene: s,
 	}
 }
@@ -347,37 +355,6 @@ func (s *Scene) SetTimeSpeed(timeSpeed float64) {
 func (s *Scene) NextCollisionRejectGroup() uint32 {
 	s.freeCollisionRejectGroup++
 	return s.freeCollisionRejectGroup
-}
-
-// CreateProp creates a new static Prop. A prop is an object
-// that is static and rarely removed.
-func (s *Scene) CreateProp(info PropInfo) {
-	// objectID := s.shapeScene.CreateObject(placement3d.ObjectInfo[internalRef]{
-	// 	Position: info.Position,
-	// 	Rotation: info.Rotation,
-	// 	UserData: internalRef{
-	// 		index:  propIndex,
-	// 		isProp: true,
-	// 	},
-	// })
-	for _, mesh := range info.CollisionMeshes {
-		propIndex := uint32(len(s.props))
-
-		meshID := s.collisionScene.CreateMesh(placement3d.MeshInfo[propRef]{
-			Position: info.Position,
-			Rotation: info.Rotation,
-			Mesh:     mesh,
-			UserData: propRef{
-				index: propIndex,
-			},
-		})
-
-		s.props = append(s.props, propState{
-			reference: newIndexReference(propIndex, s.nextRevision()),
-			meshID:    meshID,
-			name:      info.Name,
-		})
-	}
 }
 
 // Update runs a single physics iteration. This method should be called with
@@ -582,7 +559,7 @@ func (s *Scene) applyMotion(elapsedSeconds float64) {
 func (s *Scene) applyNudges(elapsedSeconds float64) {
 	defer metric.BeginRegion("nudges").End()
 
-	for range NudgeIterationCount {
+	for range s.nudgeIterationCount {
 		for _, constraint := range s.dbConstraints {
 			if !constraint.IsActive() {
 				continue
@@ -593,8 +570,8 @@ func (s *Scene) applyNudges(elapsedSeconds float64) {
 				Target:      target,
 				Source:      source,
 				DeltaTime:   elapsedSeconds,
-				ImpulseBeta: ImpulseDriftAdjustmentRatio,
-				NudgeBeta:   NudgeDriftAdjustmentRatio,
+				ImpulseBeta: s.impulseDriftAdjustmentRatio,
+				NudgeBeta:   s.nudgeDriftAdjustmentRatio,
 			}
 			constraint.logic.Reset(ctx)
 			constraint.logic.ApplyNudges(ctx)
@@ -607,8 +584,8 @@ func (s *Scene) applyNudges(elapsedSeconds float64) {
 			ctx := solver.Context{
 				Target:      target,
 				DeltaTime:   elapsedSeconds,
-				ImpulseBeta: ImpulseDriftAdjustmentRatio,
-				NudgeBeta:   NudgeDriftAdjustmentRatio,
+				ImpulseBeta: s.impulseDriftAdjustmentRatio,
+				NudgeBeta:   s.nudgeDriftAdjustmentRatio,
 			}
 			constraint.logic.Reset(ctx)
 			constraint.logic.ApplyNudges(ctx)
@@ -943,7 +920,7 @@ func (s *Scene) allocateBodyAccelerator() (int32, *bodyAcceleratorState) {
 }
 
 func (s *Scene) releaseBodyAccelerator(index int32) {
-	panic("TODO")
+	s.freeBodyAcceleratorIndices.Push(index)
 }
 
 func (s *Scene) allocateSoloConstraint() (int32, *soloConstraintState) {
@@ -999,8 +976,19 @@ func (s *Scene) eachBody(cb func(index int, b *bodyState)) {
 	}
 }
 
-type propRef struct {
-	index uint32
+func (s *Scene) allocateTerrain() (int32, *terrainState) {
+	var index int32
+	if s.freeTerrainIndices.IsEmpty() {
+		index = int32(len(s.terrains))
+		s.terrains = append(s.terrains, terrainState{})
+	} else {
+		index = s.freeTerrainIndices.Pop()
+	}
+	return index, &s.terrains[index]
+}
+
+func (s *Scene) releaseTerrain(index int32) {
+	s.freeTerrainIndices.Push(index)
 }
 
 type sbCollisionPair struct {
@@ -1014,3 +1002,18 @@ type dbCollisionPair struct {
 }
 
 var nilIndex int32 = -1
+
+type bodyData struct {
+	index int32
+}
+
+type shapeData struct {
+	frictionCoefficient    float64
+	restitutionCoefficient float64
+}
+
+type terrainData struct {
+	index                  int32
+	frictionCoefficient    float64
+	restitutionCoefficient float64
+}
