@@ -16,16 +16,8 @@ type AccelerationTarget struct {
 	body *bodyState
 }
 
-// newAccelerationTarget creates a new [AccelerationTarget] with the specified
-// state.
-//
-// The invMass and invInertia parameters are the reciprocals of the mass and
-// of the moment of inertia tensor respectively. A value of zero (or a zero
-// matrix) represents an immovable object of infinite mass or inertia.
-//
-// The inverse moment of inertia has to be expressed in world space. Use
-// [RotatedMomentOfInertia] with the object's rotation to bring a tensor that
-// is expressed in local space into world space before inverting it.
+// newAccelerationTarget creates a new [AccelerationTarget] backed by the
+// specified body state.
 func newAccelerationTarget(body *bodyState) AccelerationTarget {
 	return AccelerationTarget{
 		body: body,

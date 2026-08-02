@@ -382,7 +382,7 @@ func (b *bodyState) applyTorque(torque dprec.Vec3) {
 	b.addAngularAcceleration(dprec.Mat3Vec3Prod(b.invInertia, torque))
 }
 
-func (b *bodyState) applyOffsetForce(force dprec.Vec3, offset dprec.Vec3) {
+func (b *bodyState) applyOffsetForce(offset, force dprec.Vec3) {
 	b.applyForce(force)
 	b.applyTorque(dprec.Vec3Cross(offset, force))
 }
