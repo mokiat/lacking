@@ -388,17 +388,189 @@ func (s *Scene) Update(elapsedTime time.Duration) {
 	s.notifyDoubleBodyCollisions()
 }
 
-/////// OLD BELOW ------------ (TODO: DELETE COMMENT)
-
-// TODO: Move to BodyView
-func (s *Scene) Each(cb func(b Body)) {
-	s.eachBody(func(_ int, b *bodyState) {
-		cb(Body{
-			scene:     s,
-			reference: b.reference,
-		})
-	})
+func (s *Scene) allocateGlobalAccelerator() (int32, *globalAcceleratorState) {
+	var index int32
+	if s.freeGlobalAcceleratorIndices.IsEmpty() {
+		index = int32(len(s.globalAccelerators))
+		s.globalAccelerators = append(s.globalAccelerators, globalAcceleratorState{})
+	} else {
+		index = s.freeGlobalAcceleratorIndices.Pop()
+	}
+	return index, &s.globalAccelerators[index]
 }
+
+func (s *Scene) releaseGlobalAccelerator(index int32) {
+	s.freeGlobalAcceleratorIndices.Push(index)
+}
+
+func (s *Scene) eachGlobalAccelerator(cb func(index int, accelerator *globalAcceleratorState)) {
+	for i := range s.globalAccelerators {
+		accelerator := &s.globalAccelerators[i]
+		if accelerator.isValid() {
+			cb(i, accelerator)
+		}
+	}
+}
+
+func (s *Scene) eachEnabledGlobalAccelerator(cb func(index int, accelerator *globalAcceleratorState)) {
+	for i := range s.globalAccelerators {
+		accelerator := &s.globalAccelerators[i]
+		if accelerator.isValid() && accelerator.isEnabled {
+			cb(i, accelerator)
+		}
+	}
+}
+
+func (s *Scene) allocateBodyAccelerator() (int32, *bodyAcceleratorState) {
+	var index int32
+	if s.freeBodyAcceleratorIndices.IsEmpty() {
+		index = int32(len(s.bodyAccelerators))
+		s.bodyAccelerators = append(s.bodyAccelerators, bodyAcceleratorState{})
+	} else {
+		index = s.freeBodyAcceleratorIndices.Pop()
+	}
+	return index, &s.bodyAccelerators[index]
+}
+
+func (s *Scene) releaseBodyAccelerator(index int32) {
+	s.freeBodyAcceleratorIndices.Push(index)
+}
+
+func (s *Scene) eachBodyAccelerator(cb func(index int, accelerator *bodyAcceleratorState)) {
+	for i := range s.bodyAccelerators {
+		accelerator := &s.bodyAccelerators[i]
+		if accelerator.isValid() {
+			cb(i, accelerator)
+		}
+	}
+}
+
+func (s *Scene) eachEnabledBodyAccelerator(body *bodyState, cb func(index int, accelerator *bodyAcceleratorState)) {
+	index := body.firstBodyAcceleratorIndex
+	if index != nilIndex {
+		accelerator := &s.bodyAccelerators[index]
+		if accelerator.isValid() && accelerator.isEnabled {
+			cb(int(index), accelerator)
+		}
+		index = accelerator.nextIndex
+	}
+}
+
+func (s *Scene) allocateSoloConstraint() (int32, *soloConstraintState) {
+	var index int32
+	if s.freeSoloConstraintIndices.IsEmpty() {
+		index = int32(len(s.soloConstraints))
+		s.soloConstraints = append(s.soloConstraints, soloConstraintState{})
+	} else {
+		index = s.freeSoloConstraintIndices.Pop()
+	}
+	return index, &s.soloConstraints[index]
+}
+
+func (s *Scene) releaseSoloConstraint(index int32) {
+	s.freeSoloConstraintIndices.Push(index)
+}
+
+func (s *Scene) eachSoloConstraint(cb func(index int, constraint *soloConstraintState)) {
+	for i := range s.soloConstraints {
+		constraint := &s.soloConstraints[i]
+		if constraint.isValid() {
+			cb(i, constraint)
+		}
+	}
+}
+
+func (s *Scene) eachEnabledSoloConstraint(cb func(index int, constraint *soloConstraintState)) {
+	for i := range s.soloConstraints {
+		constraint := &s.soloConstraints[i]
+		if constraint.isValid() && constraint.isEnabled {
+			cb(i, constraint)
+		}
+	}
+}
+
+func (s *Scene) allocatePairConstraint() (int32, *pairConstraintState) {
+	var index int32
+	if s.freePairConstraintIndices.IsEmpty() {
+		index = int32(len(s.pairConstraints))
+		s.pairConstraints = append(s.pairConstraints, pairConstraintState{})
+	} else {
+		index = s.freePairConstraintIndices.Pop()
+	}
+	return index, &s.pairConstraints[index]
+}
+
+func (s *Scene) releasePairConstraint(index int32) {
+	s.freePairConstraintIndices.Push(index)
+}
+
+func (s *Scene) eachPairConstraint(cb func(index int, constraint *pairConstraintState)) {
+	for i := range s.pairConstraints {
+		constraint := &s.pairConstraints[i]
+		if constraint.isValid() {
+			cb(i, constraint)
+		}
+	}
+}
+
+func (s *Scene) eachEnabledPairConstraint(cb func(index int, constraint *pairConstraintState)) {
+	for i := range s.pairConstraints {
+		constraint := &s.pairConstraints[i]
+		if constraint.isValid() && constraint.isEnabled {
+			cb(i, constraint)
+		}
+	}
+}
+
+func (s *Scene) allocateBody() (int32, *bodyState) {
+	var index int32
+	if s.freeBodyIndices.IsEmpty() {
+		index = int32(len(s.bodies))
+		s.bodies = append(s.bodies, bodyState{})
+	} else {
+		index = s.freeBodyIndices.Pop()
+	}
+	return index, &s.bodies[index]
+}
+
+func (s *Scene) releaseBody(index int32) {
+	s.freeBodyIndices.Push(index)
+}
+
+func (s *Scene) eachBody(cb func(index int, b *bodyState)) {
+	for i := range s.bodies {
+		body := &s.bodies[i]
+		if body.isValid() {
+			cb(i, body)
+		}
+	}
+}
+
+func (s *Scene) allocateTerrain() (int32, *terrainState) {
+	var index int32
+	if s.freeTerrainIndices.IsEmpty() {
+		index = int32(len(s.terrains))
+		s.terrains = append(s.terrains, terrainState{})
+	} else {
+		index = s.freeTerrainIndices.Pop()
+	}
+	return index, &s.terrains[index]
+}
+
+func (s *Scene) releaseTerrain(index int32) {
+	s.freeTerrainIndices.Push(index)
+}
+
+func (s *Scene) eachTerrain(cb func(index int, t *terrainState)) {
+	for i := range s.terrains {
+		terrain := &s.terrains[i]
+		if terrain.isValid() {
+			cb(i, terrain)
+		}
+	}
+}
+
+/////// OLD BELOW ------------ (TODO: DELETE COMMENT)
 
 func (s *Scene) CheckSegmentIntersection(segment shape3d.Segment, mask uint32) (BodyID, bool) {
 	intersection, ok := s.collisionScene.CheckSegmentIntersection(segment, placement3d.Filter{
@@ -879,151 +1051,6 @@ func (s *Scene) notifyDoubleBodyCollisions() {
 	clear(s.oldDBCollisions)
 	maps.Copy(s.oldDBCollisions, s.newDBCollisions)
 	clear(s.newDBCollisions)
-}
-
-func (s *Scene) allocateGlobalAccelerator() (int32, *globalAcceleratorState) {
-	var index int32
-	if s.freeGlobalAcceleratorIndices.IsEmpty() {
-		index = int32(len(s.globalAccelerators))
-		s.globalAccelerators = append(s.globalAccelerators, globalAcceleratorState{})
-	} else {
-		index = s.freeGlobalAcceleratorIndices.Pop()
-	}
-	return index, &s.globalAccelerators[index]
-}
-
-func (s *Scene) releaseGlobalAccelerator(index int32) {
-	s.freeGlobalAcceleratorIndices.Push(index)
-}
-
-func (s *Scene) eachGlobalAccelerator(cb func(index int, accelerator *globalAcceleratorState)) {
-	for i := range s.globalAccelerators {
-		accelerator := &s.globalAccelerators[i]
-		if accelerator.isValid() {
-			cb(i, accelerator)
-		}
-	}
-}
-
-func (s *Scene) eachEnabledGlobalAccelerator(cb func(index int, accelerator *globalAcceleratorState)) {
-	for i := range s.globalAccelerators {
-		accelerator := &s.globalAccelerators[i]
-		if accelerator.isValid() && accelerator.isEnabled {
-			cb(i, accelerator)
-		}
-	}
-}
-
-func (s *Scene) allocateBodyAccelerator() (int32, *bodyAcceleratorState) {
-	var index int32
-	if s.freeBodyAcceleratorIndices.IsEmpty() {
-		index = int32(len(s.bodyAccelerators))
-		s.bodyAccelerators = append(s.bodyAccelerators, bodyAcceleratorState{})
-	} else {
-		index = s.freeBodyAcceleratorIndices.Pop()
-	}
-	return index, &s.bodyAccelerators[index]
-}
-
-func (s *Scene) releaseBodyAccelerator(index int32) {
-	s.freeBodyAcceleratorIndices.Push(index)
-}
-
-func (s *Scene) eachEnabledBodyAccelerator(body *bodyState, cb func(index int, accelerator *bodyAcceleratorState)) {
-	index := body.firstBodyAcceleratorIndex
-	if index != nilIndex {
-		accelerator := &s.bodyAccelerators[index]
-		if accelerator.isValid() && accelerator.isEnabled {
-			cb(int(index), accelerator)
-		}
-		index = accelerator.nextIndex
-	}
-}
-
-func (s *Scene) allocateSoloConstraint() (int32, *soloConstraintState) {
-	var index int32
-	if s.freeSoloConstraintIndices.IsEmpty() {
-		index = int32(len(s.soloConstraints))
-		s.soloConstraints = append(s.soloConstraints, soloConstraintState{})
-	} else {
-		index = s.freeSoloConstraintIndices.Pop()
-	}
-	return index, &s.soloConstraints[index]
-}
-
-func (s *Scene) releaseSoloConstraint(index int32) {
-	s.freeSoloConstraintIndices.Push(index)
-}
-
-func (s *Scene) eachEnabledSoloConstraint(cb func(index int, constraint *soloConstraintState)) {
-	for i := range s.soloConstraints {
-		constraint := &s.soloConstraints[i]
-		if constraint.isValid() && constraint.isEnabled {
-			cb(i, constraint)
-		}
-	}
-}
-
-func (s *Scene) allocatePairConstraint() (int32, *pairConstraintState) {
-	var index int32
-	if s.freePairConstraintIndices.IsEmpty() {
-		index = int32(len(s.pairConstraints))
-		s.pairConstraints = append(s.pairConstraints, pairConstraintState{})
-	} else {
-		index = s.freePairConstraintIndices.Pop()
-	}
-	return index, &s.pairConstraints[index]
-}
-
-func (s *Scene) releasePairConstraint(index int32) {
-	s.freePairConstraintIndices.Push(index)
-}
-
-func (s *Scene) eachEnabledPairConstraint(cb func(index int, constraint *pairConstraintState)) {
-	for i := range s.pairConstraints {
-		constraint := &s.pairConstraints[i]
-		if constraint.isValid() && constraint.isEnabled {
-			cb(i, constraint)
-		}
-	}
-}
-
-func (s *Scene) allocateBody() (int32, *bodyState) {
-	var index int32
-	if s.freeBodyIndices.IsEmpty() {
-		index = int32(len(s.bodies))
-		s.bodies = append(s.bodies, bodyState{})
-	} else {
-		index = s.freeBodyIndices.Pop()
-	}
-	return index, &s.bodies[index]
-}
-
-func (s *Scene) releaseBody(index int32) {
-	s.freeBodyIndices.Push(index)
-}
-
-func (s *Scene) eachBody(cb func(index int, b *bodyState)) {
-	for i := range s.bodies {
-		if body := &s.bodies[i]; body.isValid() {
-			cb(i, body)
-		}
-	}
-}
-
-func (s *Scene) allocateTerrain() (int32, *terrainState) {
-	var index int32
-	if s.freeTerrainIndices.IsEmpty() {
-		index = int32(len(s.terrains))
-		s.terrains = append(s.terrains, terrainState{})
-	} else {
-		index = s.freeTerrainIndices.Pop()
-	}
-	return index, &s.terrains[index]
-}
-
-func (s *Scene) releaseTerrain(index int32) {
-	s.freeTerrainIndices.Push(index)
 }
 
 type sbCollisionPair struct {

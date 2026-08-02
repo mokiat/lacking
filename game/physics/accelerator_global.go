@@ -62,6 +62,15 @@ func (v GlobalAcceleratorView) Delete(id GlobalAcceleratorID) {
 	v.scene.releaseGlobalAccelerator(id.index)
 }
 
+func (v GlobalAcceleratorView) Each(cb func(id GlobalAcceleratorID)) {
+	v.scene.eachGlobalAccelerator(func(index int, accelerator *globalAcceleratorState) {
+		cb(GlobalAcceleratorID{
+			index:    int32(index),
+			revision: accelerator.revision,
+		})
+	})
+}
+
 // Handle returns a [GlobalAcceleratorHandle] that wraps the specified ID,
 // as a more convenient means of repeatedly accessing the same global
 // accelerator without having to pass its ID to this view on every call.

@@ -91,6 +91,15 @@ func (v BodyAcceleratorView) Delete(id BodyAcceleratorID) {
 	v.scene.releaseBodyAccelerator(id.index)
 }
 
+func (v BodyAcceleratorView) Each(cb func(id BodyAcceleratorID)) {
+	v.scene.eachBodyAccelerator(func(index int, accelerator *bodyAcceleratorState) {
+		cb(BodyAcceleratorID{
+			index:    int32(index),
+			revision: accelerator.revision,
+		})
+	})
+}
+
 // Handle returns a [BodyAcceleratorHandle] that wraps the specified ID, as
 // a more convenient means of repeatedly accessing the same body accelerator
 // without having to pass its ID to this view on every call.

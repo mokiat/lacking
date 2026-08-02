@@ -213,6 +213,15 @@ func (v PairConstraintView) Delete(id PairConstraintID) {
 	v.scene.releasePairConstraint(id.index)
 }
 
+func (v PairConstraintView) Each(cb func(id PairConstraintID)) {
+	v.scene.eachPairConstraint(func(index int, constraint *pairConstraintState) {
+		cb(PairConstraintID{
+			index:    int32(index),
+			revision: constraint.revision,
+		})
+	})
+}
+
 // Handle returns a [PairConstraintHandle] that wraps id, offering a more
 // convenient, object-oriented way to interact with the referenced pair
 // constraint.

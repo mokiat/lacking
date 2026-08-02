@@ -84,6 +84,15 @@ func (v BodyView) Delete(id BodyID) {
 	v.scene.releaseBody(id.index)
 }
 
+func (v BodyView) Each(cb func(BodyID)) {
+	v.scene.eachBody(func(index int, body *bodyState) {
+		cb(BodyID{
+			index:    int32(index),
+			revision: body.revision,
+		})
+	})
+}
+
 func (v BodyView) Handle(id BodyID) BodyHandle {
 	return BodyHandle{
 		view: v,

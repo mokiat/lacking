@@ -62,6 +62,15 @@ func (v TerrainView) Delete(id TerrainID) {
 	v.scene.releaseTerrain(id.index)
 }
 
+func (v TerrainView) Each(cb func(id TerrainID)) {
+	v.scene.eachTerrain(func(index int, terrain *terrainState) {
+		cb(TerrainID{
+			index:    int32(index),
+			revision: terrain.revision,
+		})
+	})
+}
+
 func (v TerrainView) Handle(id TerrainID) TerrainHandle {
 	return TerrainHandle{
 		view: v,
@@ -99,4 +108,8 @@ type TerrainHandle struct {
 type terrainState struct {
 	meshID   placement3d.MeshID
 	revision int32
+}
+
+func (s *terrainState) isValid() bool {
+	return s.revision%2 == 1 // only odd revisions are valid
 }

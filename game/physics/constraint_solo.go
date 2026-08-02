@@ -151,6 +151,15 @@ func (v SoloConstraintView) Delete(id SoloConstraintID) {
 	v.scene.releaseSoloConstraint(id.index)
 }
 
+func (v SoloConstraintView) Each(cb func(id SoloConstraintID)) {
+	v.scene.eachSoloConstraint(func(index int, constraint *soloConstraintState) {
+		cb(SoloConstraintID{
+			index:    int32(index),
+			revision: constraint.revision,
+		})
+	})
+}
+
 // Handle returns a [SoloConstraintHandle] that wraps id, offering a more
 // convenient, object-oriented way to interact with the referenced solo
 // constraint.
