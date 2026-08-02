@@ -64,6 +64,11 @@ type Scene struct {
 	maxAngularAcceleration float64
 	maxLinearVelocity      float64
 	maxAngularVelocity     float64
+
+	impulseIterationCount       int
+	impulseDriftAdjustmentRatio float64
+	nudgeIterationCount         int
+	nudgeDriftAdjustmentRatio   float64
 }
 
 func NewScene() *Scene {
@@ -109,6 +114,11 @@ func NewScene() *Scene {
 		maxAngularAcceleration: math.MaxFloat64,
 		maxLinearVelocity:      math.MaxFloat64,
 		maxAngularVelocity:     math.MaxFloat64,
+
+		impulseIterationCount:       8,
+		impulseDriftAdjustmentRatio: 0.2,
+		nudgeIterationCount:         8,
+		nudgeDriftAdjustmentRatio:   0.2,
 	}
 }
 
@@ -232,6 +242,70 @@ func (s *Scene) MaxAngularVelocity() float64 {
 // velocity of a body can reach.
 func (s *Scene) SetMaxAngularVelocity(velocity float64) {
 	s.maxAngularVelocity = velocity
+}
+
+// ImpulseIterationCount returns the number of impulse resolution
+// iterations performed per physics simulation step. A higher iteration
+// count improves the accuracy with which constraints are jointly
+// satisfied, at the cost of extra computation.
+//
+// Defaults to 8.
+func (s *Scene) ImpulseIterationCount() int {
+	return s.impulseIterationCount
+}
+
+// SetImpulseIterationCount changes the number of impulse resolution
+// iterations performed per physics simulation step.
+func (s *Scene) SetImpulseIterationCount(count int) {
+	s.impulseIterationCount = count
+}
+
+// ImpulseDriftAdjustmentRatio returns the Baumgarte stabilization factor
+// used to correct positional drift through impulses, i.e. the value
+// passed as [SoloConstraintContext.ImpulseBeta] and
+// [PairConstraintContext.ImpulseBeta] to constraint solvers.
+//
+// Defaults to 0.2.
+func (s *Scene) ImpulseDriftAdjustmentRatio() float64 {
+	return s.impulseDriftAdjustmentRatio
+}
+
+// SetImpulseDriftAdjustmentRatio changes the Baumgarte stabilization
+// factor used to correct positional drift through impulses.
+func (s *Scene) SetImpulseDriftAdjustmentRatio(ratio float64) {
+	s.impulseDriftAdjustmentRatio = ratio
+}
+
+// NudgeIterationCount returns the number of nudge resolution iterations
+// performed per physics simulation step. A higher iteration count
+// improves the accuracy with which constraints are jointly satisfied, at
+// the cost of extra computation.
+//
+// Defaults to 8.
+func (s *Scene) NudgeIterationCount() int {
+	return s.nudgeIterationCount
+}
+
+// SetNudgeIterationCount changes the number of nudge resolution
+// iterations performed per physics simulation step.
+func (s *Scene) SetNudgeIterationCount(count int) {
+	s.nudgeIterationCount = count
+}
+
+// NudgeDriftAdjustmentRatio returns the Baumgarte stabilization factor
+// used to correct positional drift through nudges, i.e. the value passed
+// as [SoloConstraintContext.NudgeBeta] and [PairConstraintContext.NudgeBeta]
+// to constraint solvers.
+//
+// Defaults to 0.2.
+func (s *Scene) NudgeDriftAdjustmentRatio() float64 {
+	return s.nudgeDriftAdjustmentRatio
+}
+
+// SetNudgeDriftAdjustmentRatio changes the Baumgarte stabilization factor
+// used to correct positional drift through nudges.
+func (s *Scene) SetNudgeDriftAdjustmentRatio(ratio float64) {
+	s.nudgeDriftAdjustmentRatio = ratio
 }
 
 /////// OLD BELOW ------------ (TODO: DELETE COMMENT)
