@@ -33,10 +33,6 @@ type Scene struct {
 
 	props []propState
 
-	bodies                     []bodyState
-	bodyAccelerationTargets    []AccelerationTarget
-	bodyConstraintPlaceholders []solver.Placeholder
-
 	dbConstraints []dbConstraintState
 
 	sbCollisionConstraints []SBConstraint
@@ -66,6 +62,7 @@ type Scene struct {
 	globalAccelerators []globalAcceleratorState
 	bodyAccelerators   []bodyAcceleratorState
 	soloConstraints    []soloConstraintState
+	bodies             []bodyState
 }
 
 func NewScene() *Scene {
@@ -89,10 +86,6 @@ func NewScene() *Scene {
 
 		props: make([]propState, 0, 1024),
 
-		bodies:                     make([]bodyState, 0, 64),
-		bodyAccelerationTargets:    make([]AccelerationTarget, 0, 64),
-		bodyConstraintPlaceholders: make([]solver.Placeholder, 0, 64),
-
 		dbConstraints: make([]dbConstraintState, 0, 64),
 
 		collisionSet: make(placement3d.ContactList, 0, 128),
@@ -114,33 +107,8 @@ func NewScene() *Scene {
 		globalAccelerators: make([]globalAcceleratorState, 0),
 		bodyAccelerators:   make([]bodyAcceleratorState, 0),
 		soloConstraints:    make([]soloConstraintState, 0),
+		bodies:             make([]bodyState, 0),
 	}
-}
-
-// Delete releases resources allocated by this scene. Users should not call
-// any further methods on this object.
-func (s *Scene) Delete() {
-	s.props = nil
-
-	s.bodies = nil
-	s.bodyAccelerationTargets = nil
-	s.bodyConstraintPlaceholders = nil
-
-	s.dbConstraints = nil
-
-	s.sbCollisionConstraints = nil
-	s.sbCollisionSolvers = nil
-
-	s.dbCollisionConstraints = nil
-	s.dbCollisionSolvers = nil
-
-	s.collisionSet = nil
-
-	s.oldSBCollisions = nil
-	s.newSBCollisions = nil
-
-	s.oldDBCollisions = nil
-	s.newDBCollisions = nil
 }
 
 // MediumSolver returns the solver that is used to calculate the medium
@@ -364,8 +332,6 @@ func (s *Scene) CheckSegmentIntersection(segment shape3d.Segment, mask uint32) (
 // }
 
 func (s *Scene) runSimulation(elapsedSeconds float64) {
-	// TODO: body -> acceleration targets -> impulse targets -> positioning targets -> body -> check for collisions (maybe reposition  to first)
-
 	if elapsedSeconds > 0.0001 {
 		s.applyAcceleration(elapsedSeconds)
 		s.applyImpulses(elapsedSeconds)
@@ -377,50 +343,35 @@ func (s *Scene) runSimulation(elapsedSeconds float64) {
 
 func (s *Scene) applyAcceleration(elapsedSeconds float64) {
 	defer metric.BeginRegion("acceleration").End()
-	s.prepareAccelerationTargets()
-	s.applyBodyAccelerators()
-	s.applyAreaAccelerators()
-	s.applyGlobalAccelerators()
-	// s.applyAerodynamicAccelerations()
-	s.applyAccelerationTargets(elapsedSeconds)
-}
 
-func (s *Scene) prepareAccelerationTargets() {
 	s.eachBodyState(func(index int, body *bodyState) {
-		s.bodyAccelerationTargets[index] = newAccelerationTarget(
-			body.invMass,
-			RotatedMomentOfInertia(body.invInertia, body.rotation),
-			body.position,
-			body.rotation,
-			body.linearVelocity,
-			body.angularVelocity,
-		)
-	})
-}
+		// Create acceleration context.
+		ctx := AccelerationContext{
+			DeltaSeconds:   elapsedSeconds,
+			MediumVelocity: s.mediumSolver.Velocity(body.position),
+			MediumDensity:  s.mediumSolver.Density(body.position),
+		}
+		target := newAccelerationTarget(body)
 
-func (s *Scene) applyBodyAccelerators() {
-	// TODO
-}
+		// Reset accumulated accelerations.
+		body.linearAcceleration = dprec.ZeroVec3()
+		body.angularAcceleration = dprec.ZeroVec3()
 
-func (s *Scene) applyAreaAccelerators() {
-	// TODO
-}
-
-func (s *Scene) applyGlobalAccelerators() {
-	s.eachBodyState(func(index int, _ *bodyState) {
-		target := &s.bodyAccelerationTargets[index]
-		s.eachGlobalAccelerator(func(_ int, accelerator *globalAcceleratorState) {
-			if accelerator.isEnabled {
-				// TODO: Consider caching the following calculation, especially
-				// if the medium solver is expensive to compute.
-				position := target.Position()
-				ctx := AccelerationContext{
-					MediumVelocity: s.mediumSolver.Velocity(position),
-					MediumDensity:  s.mediumSolver.Density(position),
-				}
-				accelerator.solver.ApplyAcceleration(ctx, target)
-			}
+		// Apply global accelerators.
+		s.eachEnabledGlobalAccelerator(func(_ int, accelerator *globalAcceleratorState) {
+			accelerator.solver.ApplyAcceleration(ctx, target)
 		})
+
+		// Apply body accelerators.
+		// TODO: Implement body accelerators.
+
+		// Constrain the accumulated accelerations to the maximum allowed values.
+		body.clampLinearAcceleration(s.maxLinearAcceleration)
+		body.clampAngularAcceleration(s.maxAngularAcceleration)
+
+		// Update the body's velocity based on the accumulated accelerations.
+		body.addLinearVelocity(dprec.Vec3Prod(body.linearAcceleration, elapsedSeconds))
+		body.addAngularVelocity(dprec.Vec3Prod(body.angularAcceleration, elapsedSeconds))
 	})
 }
 
@@ -457,24 +408,6 @@ func (s *Scene) applyGlobalAccelerators() {
 // 		}
 // 	})
 // }
-
-func (s *Scene) applyAccelerationTargets(elapsedSeconds float64) {
-	s.eachBodyState(func(index int, body *bodyState) {
-		target := s.bodyAccelerationTargets[index]
-
-		linearAcceleration := target.LinearAcceleration()
-		if linearAcceleration.Length() > s.maxLinearAcceleration {
-			linearAcceleration = dprec.ResizedVec3(linearAcceleration, s.maxLinearAcceleration)
-		}
-		body.AddVelocity(dprec.Vec3Prod(linearAcceleration, elapsedSeconds))
-
-		angularAcceleration := target.AngularAcceleration()
-		if angularAcceleration.Length() > s.maxAngularAcceleration {
-			angularAcceleration = dprec.ResizedVec3(angularAcceleration, s.maxAngularAcceleration)
-		}
-		body.AddAngularVelocity(dprec.Vec3Prod(angularAcceleration, elapsedSeconds))
-	})
-}
 
 func (s *Scene) applyImpulses(elapsedSeconds float64) {
 	defer metric.BeginRegion("impulses").End()
@@ -943,6 +876,15 @@ func (s *Scene) eachGlobalAccelerator(cb func(index int, accelerator *globalAcce
 	for i := range s.globalAccelerators {
 		accelerator := &s.globalAccelerators[i]
 		if accelerator.isValid() {
+			cb(i, accelerator)
+		}
+	}
+}
+
+func (s *Scene) eachEnabledGlobalAccelerator(cb func(index int, accelerator *globalAcceleratorState)) {
+	for i := range s.globalAccelerators {
+		accelerator := &s.globalAccelerators[i]
+		if accelerator.isValid() && accelerator.isEnabled {
 			cb(i, accelerator)
 		}
 	}

@@ -332,6 +332,9 @@ type bodyState struct {
 	invMass    float64
 	invInertia dprec.Mat3
 
+	linearAcceleration  dprec.Vec3
+	angularAcceleration dprec.Vec3
+
 	linearVelocity  dprec.Vec3
 	angularVelocity dprec.Vec3
 
@@ -339,15 +342,56 @@ type bodyState struct {
 	rotation dprec.Quat
 }
 
-func (s bodyState) IsActive() bool {
+func (s bodyState) isValid() bool {
 	return s.revision%2 == 1 // only odd revisions are valid
 }
 
-func (b *bodyState) AddVelocity(amount dprec.Vec3) {
+func (s *bodyState) mass() float64 {
+	return 1.0 / s.invMass
+}
+
+func (s *bodyState) inertia() dprec.Mat3 {
+	return dprec.InverseMat3(s.invInertia)
+}
+
+func (b *bodyState) addLinearAcceleration(amount dprec.Vec3) {
+	b.linearAcceleration = dprec.Vec3Sum(b.linearAcceleration, amount)
+}
+
+func (b *bodyState) addAngularAcceleration(amount dprec.Vec3) {
+	b.angularAcceleration = dprec.Vec3Sum(b.angularAcceleration, amount)
+}
+
+func (b *bodyState) clampLinearAcceleration(max float64) {
+	if b.linearAcceleration.SqrLength() > max*max {
+		b.linearAcceleration = dprec.ResizedVec3(b.linearAcceleration, max)
+	}
+}
+
+func (b *bodyState) clampAngularAcceleration(max float64) {
+	if b.angularAcceleration.SqrLength() > max*max {
+		b.angularAcceleration = dprec.ResizedVec3(b.angularAcceleration, max)
+	}
+}
+
+func (b *bodyState) applyForce(force dprec.Vec3) {
+	b.addLinearAcceleration(dprec.Vec3Prod(force, b.invMass))
+}
+
+func (b *bodyState) applyTorque(torque dprec.Vec3) {
+	b.addAngularAcceleration(dprec.Mat3Vec3Prod(b.invInertia, torque))
+}
+
+func (b *bodyState) applyOffsetForce(force dprec.Vec3, offset dprec.Vec3) {
+	b.applyForce(force)
+	b.applyTorque(dprec.Vec3Cross(offset, force))
+}
+
+func (b *bodyState) addLinearVelocity(amount dprec.Vec3) {
 	b.linearVelocity = dprec.Vec3Sum(b.linearVelocity, amount)
 }
 
-func (b *bodyState) AddAngularVelocity(amount dprec.Vec3) {
+func (b *bodyState) addAngularVelocity(amount dprec.Vec3) {
 	b.angularVelocity = dprec.Vec3Sum(b.angularVelocity, amount)
 }
 
