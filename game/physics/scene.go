@@ -157,6 +157,12 @@ func (s *Scene) SoloConstraints() SoloConstraintView {
 	}
 }
 
+func (s *Scene) Bodies() BodyView {
+	return BodyView{
+		scene: s,
+	}
+}
+
 /////// OLD BELOW ------------ (TODO: DELETE COMMENT)
 
 // SubscribeSingleBodyCollision registers a callback that is invoked when a body
@@ -225,8 +231,6 @@ func (s *Scene) NextCollisionRejectGroup() uint32 {
 // CreateProp creates a new static Prop. A prop is an object
 // that is static and rarely removed.
 func (s *Scene) CreateProp(info PropInfo) {
-	// TODO: createProp(s, info)
-
 	// objectID := s.shapeScene.CreateObject(placement3d.ObjectInfo[internalRef]{
 	// 	Position: info.Position,
 	// 	Rotation: info.Rotation,
@@ -235,18 +239,6 @@ func (s *Scene) CreateProp(info PropInfo) {
 	// 		isProp: true,
 	// 	},
 	// })
-	// for _, sphere := range info.CollisionSpheres {
-	// 	s.shapeScene.AttachSphere(objectID, placement3d.SphereInfo[struct{}]{
-	// 		ShapeInfo: placement3d.ShapeInfo[struct{}]{},
-	// 		Sphere:    sphere,
-	// 	})
-	// }
-	// for _, box := range info.CollisionBoxes {
-	// 	s.shapeScene.AttachBox(objectID, placement3d.BoxInfo[struct{}]{
-	// 		ShapeInfo: placement3d.ShapeInfo[struct{}]{},
-	// 		Box:       box,
-	// 	})
-	// }
 	for _, mesh := range info.CollisionMeshes {
 		propIndex := uint32(len(s.props))
 
@@ -337,6 +329,7 @@ func (s *Scene) runSimulation(elapsedSeconds float64) {
 		s.applyImpulses(elapsedSeconds)
 		s.applyMotion(elapsedSeconds)
 		s.applyNudges(elapsedSeconds)
+		s.applyPlacement()
 		s.detectCollisions()
 	}
 }
@@ -412,22 +405,6 @@ func (s *Scene) applyAcceleration(elapsedSeconds float64) {
 func (s *Scene) applyImpulses(elapsedSeconds float64) {
 	defer metric.BeginRegion("impulses").End()
 
-	s.eachBodyState(func(i int, body *bodyState) {
-		placeholder := &s.bodyConstraintPlaceholders[i]
-		s.initPlaceholder(placeholder, body)
-	})
-
-	s.eachDBConstraintState(func(_ int, constraint *dbConstraintState) {
-		if s.resolveBodyState(constraint.primary.reference) == nil {
-			deleteDBConstraint(s, constraint.reference)
-			return
-		}
-		if s.resolveBodyState(constraint.secondary.reference) == nil {
-			deleteDBConstraint(s, constraint.reference)
-			return
-		}
-	})
-
 	s.eachDBConstraintState(func(_ int, constraint *dbConstraintState) {
 		target := &s.bodyConstraintPlaceholders[constraint.primary.reference.Index]
 		source := &s.bodyConstraintPlaceholders[constraint.secondary.reference.Index]
@@ -449,7 +426,7 @@ func (s *Scene) applyImpulses(elapsedSeconds float64) {
 		})
 	})
 
-	for i := 0; i < ImpulseIterationCount; i++ {
+	for range ImpulseIterationCount {
 		s.eachDBConstraintState(func(_ int, constraint *dbConstraintState) {
 			target := &s.bodyConstraintPlaceholders[constraint.primary.reference.Index]
 			source := &s.bodyConstraintPlaceholders[constraint.secondary.reference.Index]
@@ -471,45 +448,26 @@ func (s *Scene) applyImpulses(elapsedSeconds float64) {
 			})
 		})
 	}
-
-	s.eachBodyState(func(i int, body *bodyState) {
-		placeholder := &s.bodyConstraintPlaceholders[i]
-		s.deinitPlaceholder(placeholder, body)
-	})
 }
 
 func (s *Scene) applyMotion(elapsedSeconds float64) {
 	defer metric.BeginRegion("motion").End()
+
 	s.eachBodyState(func(_ int, body *bodyState) {
-		body.ClampVelocity(s.maxLinearVelocity)
-		body.ClampAngularVelocity(s.maxAngularVelocity)
+		// Clamp the velocity to the maximum allowed values.
+		body.clampLinearVelocity(s.maxLinearVelocity)
+		body.clampAngularVelocity(s.maxAngularVelocity)
 
-		deltaPosition := dprec.Vec3Prod(body.linearVelocity, elapsedSeconds)
-		body.Translate(deltaPosition)
-		deltaRotation := dprec.Vec3Prod(body.angularVelocity, elapsedSeconds)
-		body.VectorRotate(deltaRotation)
-
-		s.collisionScene.SetObjectTransform(body.objectID, shape3d.Transform{
-			Translation: body.position,
-			Rotation:    shape3d.RotationFromQuat(body.rotation),
-		})
+		// Apply the velocity to the body's position and rotation.
+		body.translate(dprec.Vec3Prod(body.linearVelocity, elapsedSeconds))
+		body.rotateVector(dprec.Vec3Prod(body.angularVelocity, elapsedSeconds))
 	})
 }
 
 func (s *Scene) applyNudges(elapsedSeconds float64) {
 	defer metric.BeginRegion("nudges").End()
 
-	// TODO: Use Grow instead
-	s.bodyConstraintPlaceholders = s.bodyConstraintPlaceholders[:0]
-	for i := range s.bodies {
-		placeholder := solver.Placeholder{}
-		if body := &s.bodies[i]; body.IsActive() {
-			s.initPlaceholder(&placeholder, body)
-		}
-		s.bodyConstraintPlaceholders = append(s.bodyConstraintPlaceholders, placeholder)
-	}
-
-	for i := 0; i < NudgeIterationCount; i++ {
+	for range NudgeIterationCount {
 		for _, constraint := range s.dbConstraints {
 			if !constraint.IsActive() {
 				continue
@@ -541,13 +499,18 @@ func (s *Scene) applyNudges(elapsedSeconds float64) {
 			constraint.logic.ApplyNudges(ctx)
 		}
 	}
+}
 
-	for i := range s.bodies {
-		placeholder := s.bodyConstraintPlaceholders[i]
-		if body := &s.bodies[i]; body.IsActive() {
-			s.deinitPlaceholder(&placeholder, body)
-		}
-	}
+func (s *Scene) applyPlacement() {
+	defer metric.BeginRegion("placement").End()
+
+	s.eachBodyState(func(_ int, body *bodyState) {
+		// Update the collision scene with the new position and rotation of the body.
+		s.collisionScene.SetObjectTransform(body.objectID, shape3d.Transform{
+			Translation: body.position,
+			Rotation:    shape3d.RotationFromQuat(body.rotation),
+		})
+	})
 }
 
 func (s *Scene) detectCollisions() {
@@ -826,35 +789,6 @@ func (s *Scene) resolveBodyState(reference indexReference) *bodyState {
 		return nil
 	}
 	return state
-}
-
-func (s *Scene) initPlaceholder(placeholder *solver.Placeholder, body *bodyState) {
-	placeholder.Init(solver.PlaceholderState{
-		Mass:            body.mass,
-		MomentOfInertia: body.momentOfInertia,
-		LinearVelocity:  body.linearVelocity,
-		AngularVelocity: body.angularVelocity,
-		Position:        body.position,
-		Rotation:        body.rotation,
-	})
-}
-
-func (s *Scene) deinitPlaceholder(placeholder *solver.Placeholder, body *bodyState) {
-	body.linearVelocity = placeholder.LinearVelocity()
-	body.angularVelocity = placeholder.AngularVelocity()
-	body.position = placeholder.Position()
-	body.rotation = placeholder.Rotation()
-
-	s.collisionScene.SetObjectTransform(body.objectID, shape3d.Transform{
-		Translation: body.position,
-		Rotation:    shape3d.RotationFromQuat(body.rotation),
-	})
-}
-
-func (s *Scene) Bodies() BodyView {
-	return BodyView{
-		scene: s,
-	}
 }
 
 func (s *Scene) allocateGlobalAccelerator() (int32, *globalAcceleratorState) {

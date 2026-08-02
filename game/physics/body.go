@@ -395,29 +395,29 @@ func (b *bodyState) addAngularVelocity(amount dprec.Vec3) {
 	b.angularVelocity = dprec.Vec3Sum(b.angularVelocity, amount)
 }
 
-func (b *bodyState) ClampVelocity(max float64) {
+func (b *bodyState) clampLinearVelocity(max float64) {
 	if b.linearVelocity.SqrLength() > max*max {
 		b.linearVelocity = dprec.ResizedVec3(b.linearVelocity, max)
 	}
 }
 
-func (b *bodyState) ClampAngularVelocity(max float64) {
+func (b *bodyState) clampAngularVelocity(max float64) {
 	if b.angularVelocity.SqrLength() > max*max {
 		b.angularVelocity = dprec.ResizedVec3(b.angularVelocity, max)
 	}
 }
 
-func (b *bodyState) Translate(offset dprec.Vec3) {
+func (b *bodyState) translate(offset dprec.Vec3) {
 	b.position = dprec.Vec3Sum(b.position, offset)
 }
 
-func (b *bodyState) VectorRotate(vector dprec.Vec3) {
-	const angularEpsilon = float64(0.00001)
-	if radians := vector.Length(); dprec.Abs(radians) > angularEpsilon {
-		b.Rotate(dprec.RotationQuat(dprec.Radians(radians), vector))
-	}
+func (b *bodyState) rotate(quat dprec.Quat) {
+	b.rotation = dprec.UnitQuat(dprec.QuatProd(quat, b.rotation))
 }
 
-func (b *bodyState) Rotate(quat dprec.Quat) {
-	b.rotation = dprec.UnitQuat(dprec.QuatProd(quat, b.rotation))
+func (b *bodyState) rotateVector(vector dprec.Vec3) {
+	const angularEpsilon = float64(0.00001)
+	if radians := vector.Length(); dprec.Abs(radians) > angularEpsilon {
+		b.rotate(dprec.RotationQuat(dprec.Radians(radians), vector))
+	}
 }
