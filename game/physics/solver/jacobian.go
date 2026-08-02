@@ -2,47 +2,6 @@ package solver
 
 import "github.com/mokiat/gomath/dprec"
 
-// Jacobian represents the 1x6 Jacobian matrix of a single-object velocity
-// constraint.
-type Jacobian struct {
-	LinearSlope  dprec.Vec3
-	AngularSlope dprec.Vec3
-}
-
-// EffectiveVelocity returns the amount of velocity in the wrong direction
-// of the target.
-func (j Jacobian) EffectiveVelocity(target *Placeholder) float64 {
-	linear := dprec.Vec3Dot(j.LinearSlope, target.linearVelocity)
-	angular := dprec.Vec3Dot(j.AngularSlope, target.angularVelocity)
-	return linear + angular
-}
-
-// InverseEffectiveMass returns the inverse of the effective mass with which
-// the target affects the constraint.
-func (j Jacobian) InverseEffectiveMass(target *Placeholder) float64 {
-	linear := dprec.Vec3Dot(j.LinearSlope, j.LinearSlope) * target.inverseMass
-	angular := dprec.Vec3Dot(dprec.Mat3Vec3Prod(target.inverseMomentOfInertia, j.AngularSlope), j.AngularSlope)
-	return linear + angular
-}
-
-// Impulse returns an Impulse solution based on the lambda impulse
-// amount applied according to this Jacobian.
-func (j Jacobian) Impulse(lambda float64) Impulse {
-	return Impulse{
-		Linear:  dprec.Vec3Prod(j.LinearSlope, lambda),
-		Angular: dprec.Vec3Prod(j.AngularSlope, lambda),
-	}
-}
-
-// Nudge returns a nudge solution based on the lambda nudge amount
-// applied according to this Jacobian.
-func (j Jacobian) Nudge(lambda float64) Nudge {
-	return Nudge{
-		Linear:  dprec.Vec3Prod(j.LinearSlope, lambda),
-		Angular: dprec.Vec3Prod(j.AngularSlope, lambda),
-	}
-}
-
 // PairJacobian represents the 1x12 Jacobian matrix of a double-object velocity
 // constraint.
 type PairJacobian struct {

@@ -19,11 +19,6 @@ import (
 // a number of bodies that are independent on any
 // bodies managed by other scene objects.
 type Scene struct {
-	collisionScene *placement3d.Scene[bodyData, shapeData, terrainData]
-
-	sbCollisionSubscriptions *observer.SubscriptionSet[SoloBodyCollisionCallback]
-	dbCollisionSubscriptions *observer.SubscriptionSet[PairBodyCollisionCallback]
-
 	timeSpeed float64
 
 	sbCollisionConstraints []SBConstraint
@@ -40,9 +35,14 @@ type Scene struct {
 	oldDBCollisions map[dbCollisionPair]struct{}
 	newDBCollisions map[dbCollisionPair]struct{}
 
+	// ---------- NEW BELOW---------- (TODO: REMOVE COMMENT)
+	collisionScene *placement3d.Scene[bodyData, shapeData, terrainData]
+
+	soloCollisionSubscriptions *observer.SubscriptionSet[SoloCollisionCallback]
+	pairCollisionSubscriptions *observer.SubscriptionSet[PairCollisionCallback]
+
 	freeCollisionRejectGroup uint32
 
-	// ---------- NEW BELOW---------- (TODO: REMOVE COMMENT)
 	mediumSolver MediumSolver
 
 	freeGlobalAcceleratorIndices *ds.Stack[int32]
@@ -72,16 +72,6 @@ type Scene struct {
 
 func NewScene() *Scene {
 	return &Scene{
-		collisionScene: placement3d.NewScene[bodyData, shapeData, terrainData](placement3d.SceneSettings{
-			Size:                opt.V(16384.0),
-			MaxDepth:            opt.V[uint32](12),
-			InitialNodeCapacity: opt.V[uint32](1024),
-			InitialItemCapacity: opt.V[uint32](1024),
-		}),
-
-		sbCollisionSubscriptions: observer.NewSubscriptionSet[SoloBodyCollisionCallback](),
-		dbCollisionSubscriptions: observer.NewSubscriptionSet[PairBodyCollisionCallback](),
-
 		timeSpeed: 1.0,
 
 		collisionSet: make(placement3d.ContactList, 0, 128),
@@ -93,6 +83,18 @@ func NewScene() *Scene {
 		newDBCollisions: make(map[dbCollisionPair]struct{}, 32),
 
 		// ---------- NEW BELOW---------- (TODO: REMOVE COMMENT)
+		collisionScene: placement3d.NewScene[bodyData, shapeData, terrainData](placement3d.SceneSettings{
+			Size:                opt.V(16384.0),
+			MaxDepth:            opt.V[uint32](12),
+			InitialNodeCapacity: opt.V[uint32](1024),
+			InitialItemCapacity: opt.V[uint32](1024),
+		}),
+
+		soloCollisionSubscriptions: observer.NewSubscriptionSet[SoloCollisionCallback](),
+		pairCollisionSubscriptions: observer.NewSubscriptionSet[PairCollisionCallback](),
+
+		freeCollisionRejectGroup: 0,
+
 		mediumSolver: NewStaticAirSolver(),
 
 		freeGlobalAcceleratorIndices: ds.EmptyStack[int32](),
@@ -119,6 +121,40 @@ func NewScene() *Scene {
 		nudgeIterationCount:         8,
 		nudgeDriftAdjustmentRatio:   0.2,
 	}
+}
+
+// SubscribeSoloCollision registers a callback that is invoked whenever
+// a body starts or stops colliding with a terrain in the scene.
+//
+// Call [SoloCollisionSubscription.Delete] on the returned subscription
+// to stop receiving notifications.
+func (s *Scene) SubscribeSoloCollision(callback SoloCollisionCallback) *SoloCollisionSubscription {
+	return s.soloCollisionSubscriptions.Subscribe(callback)
+}
+
+// SubscribePairCollision registers a callback that is invoked whenever
+// two bodies start or stop colliding with each other.
+//
+// Call [PairCollisionSubscription.Delete] on the returned subscription
+// to stop receiving notifications.
+func (s *Scene) SubscribePairCollision(callback PairCollisionCallback) *PairCollisionSubscription {
+	return s.pairCollisionSubscriptions.Subscribe(callback)
+}
+
+// NextCollisionRejectGroup returns a collision reject group that is unique
+// within this Scene. Bodies that are assigned the same reject group do not
+// collide with each other, which is useful for objects that are meant to
+// overlap, such as the chassis and the wheels of a vehicle.
+//
+// The returned value is always larger than zero, since zero indicates that a
+// body does not belong to any reject group and hence can collide with
+// everything.
+//
+// Reject groups are never recycled. Each call returns a new value, even if all
+// bodies that used a previously returned group have been deleted.
+func (s *Scene) NextCollisionRejectGroup() uint32 {
+	s.freeCollisionRejectGroup++
+	return s.freeCollisionRejectGroup
 }
 
 // MediumSolver returns the solver that is used to calculate the medium
@@ -317,18 +353,6 @@ func (s *Scene) SetNudgeDriftAdjustmentRatio(ratio float64) {
 
 /////// OLD BELOW ------------ (TODO: DELETE COMMENT)
 
-// SubscribeSingleBodyCollision registers a callback that is invoked when a body
-// collides with a static object.
-func (s *Scene) SubscribeSingleBodyCollision(callback SoloBodyCollisionCallback) *SoloBodyCollisionSubscription {
-	return s.sbCollisionSubscriptions.Subscribe(callback)
-}
-
-// SubscribeDoubleBodyCollision registers a callback that is invoked when two
-// bodies collide.
-func (s *Scene) SubscribeDoubleBodyCollision(callback PairBodyCollisionCallback) *PairBodyCollisionSubscription {
-	return s.dbCollisionSubscriptions.Subscribe(callback)
-}
-
 // TimeSpeed returns the speed at which time runs, where 1.0 is the default
 // and 0.0 is stopped.
 func (s *Scene) TimeSpeed() float64 {
@@ -338,22 +362,6 @@ func (s *Scene) TimeSpeed() float64 {
 // SetTimeSpeed changes the rate at which time runs.
 func (s *Scene) SetTimeSpeed(timeSpeed float64) {
 	s.timeSpeed = timeSpeed
-}
-
-// NextCollisionRejectGroup returns a collision reject group that is unique
-// within this Scene. Bodies that are assigned the same reject group do not
-// collide with each other, which is useful for objects that are meant to
-// overlap, such as the chassis and the wheels of a vehicle.
-//
-// The returned value is always larger than zero, since zero indicates that a
-// body does not belong to any reject group and hence can collide with
-// everything.
-//
-// Reject groups are never recycled. Each call returns a new value, even if all
-// bodies that used a previously returned group have been deleted.
-func (s *Scene) NextCollisionRejectGroup() uint32 {
-	s.freeCollisionRejectGroup++
-	return s.freeCollisionRejectGroup
 }
 
 // Update runs a single physics iteration. This method should be called with
@@ -448,7 +456,9 @@ func (s *Scene) applyAcceleration(elapsedSeconds float64) {
 		})
 
 		// Apply body accelerators.
-		// TODO: Implement body accelerators.
+		s.eachEnabledBodyAccelerator(body, func(_ int, accelerator *bodyAcceleratorState) {
+			accelerator.solver.ApplyAcceleration(ctx, target)
+		})
 
 		// Constrain the accumulated accelerations to the maximum allowed values.
 		body.clampLinearAcceleration(s.maxLinearAcceleration)
@@ -814,7 +824,7 @@ func (s *Scene) notifySingleBodyCollisions() {
 			prop := Prop{
 				name: s.props[newCollision.PropRef.Index].name,
 			}
-			s.sbCollisionSubscriptions.Each(func(callback SoloBodyCollisionCallback) {
+			s.soloCollisionSubscriptions.Each(func(callback SoloCollisionCallback) {
 				callback(primary, prop, true)
 			})
 		}
@@ -828,7 +838,7 @@ func (s *Scene) notifySingleBodyCollisions() {
 			prop := Prop{
 				name: s.props[oldCollision.PropRef.Index].name,
 			}
-			s.sbCollisionSubscriptions.Each(func(callback SoloBodyCollisionCallback) {
+			s.soloCollisionSubscriptions.Each(func(callback SoloCollisionCallback) {
 				callback(primary, prop, false)
 			})
 		}
@@ -849,7 +859,7 @@ func (s *Scene) notifyDoubleBodyCollisions() {
 				scene:     s,
 				reference: newCollision.SecondaryRef,
 			}
-			s.dbCollisionSubscriptions.Each(func(callback PairBodyCollisionCallback) {
+			s.pairCollisionSubscriptions.Each(func(callback PairCollisionCallback) {
 				callback(primary, secondary, true)
 			})
 		}
@@ -864,7 +874,7 @@ func (s *Scene) notifyDoubleBodyCollisions() {
 				scene:     s,
 				reference: oldCollision.SecondaryRef,
 			}
-			s.dbCollisionSubscriptions.Each(func(callback PairBodyCollisionCallback) {
+			s.pairCollisionSubscriptions.Each(func(callback PairCollisionCallback) {
 				callback(primary, secondary, false)
 			})
 		}
@@ -920,6 +930,17 @@ func (s *Scene) allocateBodyAccelerator() (int32, *bodyAcceleratorState) {
 
 func (s *Scene) releaseBodyAccelerator(index int32) {
 	s.freeBodyAcceleratorIndices.Push(index)
+}
+
+func (s *Scene) eachEnabledBodyAccelerator(body *bodyState, cb func(index int, accelerator *bodyAcceleratorState)) {
+	index := body.firstBodyAcceleratorIndex
+	if index != nilIndex {
+		accelerator := &s.bodyAccelerators[index]
+		if accelerator.isValid() && accelerator.isEnabled {
+			cb(int(index), accelerator)
+		}
+		index = accelerator.nextIndex
+	}
 }
 
 func (s *Scene) allocateSoloConstraint() (int32, *soloConstraintState) {
