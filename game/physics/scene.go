@@ -93,8 +93,6 @@ func NewScene() *Scene {
 		bodyAccelerationTargets:    make([]AccelerationTarget, 0, 64),
 		bodyConstraintPlaceholders: make([]solver.Placeholder, 0, 64),
 
-		// areaAccelerators   []any // TODO
-
 		dbConstraints: make([]dbConstraintState, 0, 64),
 
 		collisionSet: make(placement3d.ContactList, 0, 128),
@@ -179,6 +177,14 @@ func (s *Scene) GlobalAccelerators() GlobalAcceleratorView {
 // accelerators of this scene can be created and managed.
 func (s *Scene) BodyAccelerators() BodyAcceleratorView {
 	return BodyAcceleratorView{
+		scene: s,
+	}
+}
+
+// SoloConstraints returns a [SoloConstraintView] through which the solo
+// constraints of this scene can be created and managed.
+func (s *Scene) SoloConstraints() SoloConstraintView {
+	return SoloConstraintView{
 		scene: s,
 	}
 }
@@ -910,12 +916,6 @@ func (s *Scene) deinitPlaceholder(placeholder *solver.Placeholder, body *bodySta
 		Translation: body.position,
 		Rotation:    shape3d.RotationFromQuat(body.rotation),
 	})
-}
-
-func (s *Scene) SoloConstraints() SoloConstraintView {
-	return SoloConstraintView{
-		scene: s,
-	}
 }
 
 func (s *Scene) Bodies() BodyView {
