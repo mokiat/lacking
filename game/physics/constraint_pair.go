@@ -36,12 +36,19 @@ type PairConstraintContext struct {
 // below during each simulation step.
 type PairConstraintSolver interface {
 
-	// Reset clears any internal cache state held by the solver, in
-	// preparation for a new physics simulation step.
+	// Reset clears any internal cache state held by the solver and
+	// recomputes any data (e.g. Jacobians) that is derived from the
+	// current position and orientation of the target bodies.
 	//
-	// This is called once at the start of every step, before
-	// [PairConstraintSolver.ApplyImpulses] or [PairConstraintSolver.ApplyNudges]
-	// are invoked.
+	// This is called once before the first
+	// [PairConstraintSolver.ApplyImpulses] iteration of a step, since the
+	// target bodies' positions and orientations remain unchanged
+	// throughout that loop.
+	//
+	// This is also called before every single
+	// [PairConstraintSolver.ApplyNudges] invocation, since nudges
+	// reposition the target bodies and would otherwise leave the solver's
+	// cached, position-derived data stale for subsequent iterations.
 	Reset(ctx PairConstraintContext)
 
 	// ApplyImpulses is called by the physics engine to instruct the

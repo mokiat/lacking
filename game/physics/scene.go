@@ -497,10 +497,7 @@ func (s *Scene) applyAcceleration(elapsedSeconds float64) {
 func (s *Scene) applyImpulses(elapsedSeconds float64) {
 	defer metric.BeginRegion("impulses").End()
 
-	// TODO: If it is decided that the Reset should only be called once per
-	// iteration, then extract the reset logic into a separate method.
-
-	// Reset constraints.
+	// Reset constraint solvers.
 	s.eachEnabledPairConstraint(func(_ int, constraint *pairConstraintState) {
 		primaryBody := &s.bodies[constraint.primaryBodyIndex]
 		secondaryBody := &s.bodies[constraint.secondaryBodyIndex]
@@ -529,10 +526,8 @@ func (s *Scene) applyImpulses(elapsedSeconds float64) {
 		constraint.solver.Reset(ctx)
 	})
 
+	// Apply impulses multiple times in a row.
 	for range s.impulseIterationCount {
-		// Apply pair constraints first on purpose. We want since solo constraints
-		// to have the last word.
-
 		s.eachEnabledPairConstraint(func(index int, constraint *pairConstraintState) {
 			primaryBody := &s.bodies[constraint.primaryBodyIndex]
 			secondaryBody := &s.bodies[constraint.secondaryBodyIndex]
@@ -580,15 +575,7 @@ func (s *Scene) applyMotion(elapsedSeconds float64) {
 func (s *Scene) applyNudges(elapsedSeconds float64) {
 	defer metric.BeginRegion("nudges").End()
 
-	// TODO: Figure out if the Reset calls below are really necessary.
-	// On one side, it is true that each Nudge repositions the bodies and
-	// a Reset allows for a more correct Jacobian. On the other hand it
-	// might be wasteful to do so and contradicts the godoc for the method.
-
 	for range s.nudgeIterationCount {
-		// Apply pair constraints first on purpose. We want since solo constraints
-		// to have the last word.
-
 		s.eachEnabledPairConstraint(func(index int, constraint *pairConstraintState) {
 			primaryBody := &s.bodies[constraint.primaryBodyIndex]
 			secondaryBody := &s.bodies[constraint.secondaryBodyIndex]

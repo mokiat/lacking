@@ -31,12 +31,19 @@ type SoloConstraintContext struct {
 // below during each simulation step.
 type SoloConstraintSolver interface {
 
-	// Reset clears any internal cache state held by the solver, in
-	// preparation for a new physics simulation step.
+	// Reset clears any internal cache state held by the solver and
+	// recomputes any data (e.g. Jacobians) that is derived from the
+	// current position and orientation of the target body.
 	//
-	// This is called once at the start of every step, before
-	// [SoloConstraintSolver.ApplyImpulses] or [SoloConstraintSolver.ApplyNudges]
-	// are invoked.
+	// This is called once before the first
+	// [SoloConstraintSolver.ApplyImpulses] iteration of a step, since the
+	// target body's position and orientation remain unchanged throughout
+	// that loop.
+	//
+	// This is also called before every single
+	// [SoloConstraintSolver.ApplyNudges] invocation, since nudges
+	// reposition the target body and would otherwise leave the solver's
+	// cached, position-derived data stale for subsequent iterations.
 	Reset(ctx SoloConstraintContext)
 
 	// ApplyImpulses is called by the physics engine to instruct the solver
