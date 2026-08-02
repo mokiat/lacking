@@ -2,6 +2,7 @@ package physics
 
 import (
 	"maps"
+	"math"
 	"time"
 
 	"github.com/mokiat/gog/ds"
@@ -25,11 +26,6 @@ type Scene struct {
 	dbCollisionSubscriptions *observer.SubscriptionSet[PairBodyCollisionCallback]
 
 	timeSpeed float64
-
-	maxLinearAcceleration  float64
-	maxAngularAcceleration float64
-	maxLinearVelocity      float64
-	maxAngularVelocity     float64
 
 	props []propState
 
@@ -63,6 +59,11 @@ type Scene struct {
 	soloConstraints    []soloConstraintState
 	pairConstraints    []pairConstraintState
 	bodies             []bodyState
+
+	maxLinearAcceleration  float64
+	maxAngularAcceleration float64
+	maxLinearVelocity      float64
+	maxAngularVelocity     float64
 }
 
 func NewScene() *Scene {
@@ -78,11 +79,6 @@ func NewScene() *Scene {
 		dbCollisionSubscriptions: observer.NewSubscriptionSet[PairBodyCollisionCallback](),
 
 		timeSpeed: 1.0,
-
-		maxLinearAcceleration:  200.0,
-		maxAngularAcceleration: 200.0,
-		maxLinearVelocity:      2000.0,
-		maxAngularVelocity:     2000.0,
 
 		props: make([]propState, 0, 1024),
 
@@ -108,6 +104,11 @@ func NewScene() *Scene {
 		soloConstraints:    make([]soloConstraintState, 0),
 		pairConstraints:    make([]pairConstraintState, 0),
 		bodies:             make([]bodyState, 0),
+
+		maxLinearAcceleration:  math.MaxFloat64,
+		maxAngularAcceleration: math.MaxFloat64,
+		maxLinearVelocity:      math.MaxFloat64,
+		maxAngularVelocity:     math.MaxFloat64,
 	}
 }
 
@@ -169,6 +170,38 @@ func (s *Scene) Bodies() BodyView {
 	}
 }
 
+func (s *Scene) MaxLinearAcceleration() float64 {
+	return s.maxLinearAcceleration
+}
+
+func (s *Scene) SetMaxLinearAcceleration(acceleration float64) {
+	s.maxLinearAcceleration = acceleration
+}
+
+func (s *Scene) MaxAngularAcceleration() float64 {
+	return s.maxAngularAcceleration
+}
+
+func (s *Scene) SetMaxAngularAcceleration(acceleration float64) {
+	s.maxAngularAcceleration = acceleration
+}
+
+func (s *Scene) MaxLinearVelocity() float64 {
+	return s.maxLinearVelocity
+}
+
+func (s *Scene) SetMaxLinearVelocity(velocity float64) {
+	s.maxLinearVelocity = velocity
+}
+
+func (s *Scene) MaxAngularVelocity() float64 {
+	return s.maxAngularVelocity
+}
+
+func (s *Scene) SetMaxAngularVelocity(velocity float64) {
+	s.maxAngularVelocity = velocity
+}
+
 /////// OLD BELOW ------------ (TODO: DELETE COMMENT)
 
 // SubscribeSingleBodyCollision registers a callback that is invoked when a body
@@ -192,30 +225,6 @@ func (s *Scene) TimeSpeed() float64 {
 // SetTimeSpeed changes the rate at which time runs.
 func (s *Scene) SetTimeSpeed(timeSpeed float64) {
 	s.timeSpeed = timeSpeed
-}
-
-// MaxLinearAcceleration returns the maximum linear acceleration that a body
-// can have.
-func (s *Scene) MaxLinearAcceleration() float64 {
-	return s.maxLinearAcceleration
-}
-
-// SetMaxLinearAcceleration changes the maximum linear acceleration that a body
-// can have.
-func (s *Scene) SetMaxLinearAcceleration(acceleration float64) {
-	s.maxLinearAcceleration = acceleration
-}
-
-// MaxAngularAcceleration returns the maximum angular acceleration that a body
-// can have.
-func (s *Scene) MaxAngularAcceleration() float64 {
-	return s.maxAngularAcceleration
-}
-
-// SetMaxAngularAcceleration changes the maximum angular acceleration that a
-// body can have.
-func (s *Scene) SetMaxAngularAcceleration(acceleration float64) {
-	s.maxAngularAcceleration = acceleration
 }
 
 // NextCollisionRejectGroup returns a collision reject group that is unique
@@ -275,7 +284,7 @@ func (s *Scene) Update(elapsedTime time.Duration) {
 }
 
 func (s *Scene) Each(cb func(b Body)) {
-	s.eachBodyState(func(_ int, b *bodyState) {
+	s.eachBody(func(_ int, b *bodyState) {
 		cb(Body{
 			scene:     s,
 			reference: b.reference,
@@ -337,7 +346,7 @@ func (s *Scene) runSimulation(elapsedSeconds float64) {
 func (s *Scene) applyAcceleration(elapsedSeconds float64) {
 	defer metric.BeginRegion("acceleration").End()
 
-	s.eachBodyState(func(index int, body *bodyState) {
+	s.eachBody(func(index int, body *bodyState) {
 		// Create acceleration context.
 		ctx := AccelerationContext{
 			DeltaSeconds:   elapsedSeconds,
@@ -369,7 +378,7 @@ func (s *Scene) applyAcceleration(elapsedSeconds float64) {
 }
 
 // func (s *Scene) applyAerodynamicAccelerations() {
-// 	s.eachBodyState(func(index int, body *bodyState) {
+// 	s.eachBody(func(index int, body *bodyState) {
 // 		if len(body.aerodynamicShapes) == 0 {
 // 			return
 // 		}
@@ -453,7 +462,7 @@ func (s *Scene) applyImpulses(elapsedSeconds float64) {
 func (s *Scene) applyMotion(elapsedSeconds float64) {
 	defer metric.BeginRegion("motion").End()
 
-	s.eachBodyState(func(_ int, body *bodyState) {
+	s.eachBody(func(_ int, body *bodyState) {
 		// Clamp the velocity to the maximum allowed values.
 		body.clampLinearVelocity(s.maxLinearVelocity)
 		body.clampAngularVelocity(s.maxAngularVelocity)
@@ -504,7 +513,7 @@ func (s *Scene) applyNudges(elapsedSeconds float64) {
 func (s *Scene) applyPlacement() {
 	defer metric.BeginRegion("placement").End()
 
-	s.eachBodyState(func(_ int, body *bodyState) {
+	s.eachBody(func(_ int, body *bodyState) {
 		// Update the collision scene with the new position and rotation of the body.
 		s.collisionScene.SetObjectTransform(body.objectID, shape3d.Transform{
 			Translation: body.position,
@@ -767,14 +776,6 @@ func (s *Scene) notifyDoubleBodyCollisions() {
 	clear(s.newDBCollisions)
 }
 
-func (s *Scene) eachBodyState(cb func(index int, b *bodyState)) {
-	for i := range s.bodies {
-		if body := &s.bodies[i]; body.IsActive() {
-			cb(i, body)
-		}
-	}
-}
-
 func (s *Scene) eachDBConstraintState(cb func(index int, constraint *dbConstraintState)) {
 	for i := range s.dbConstraints {
 		if constraint := &s.dbConstraints[i]; constraint.IsActive() {
@@ -882,6 +883,14 @@ func (s *Scene) allocateBody() (int32, *bodyState) {
 
 func (s *Scene) releaseBody(index int32) {
 	s.freeBodyIndices.Push(index)
+}
+
+func (s *Scene) eachBody(cb func(index int, b *bodyState)) {
+	for i := range s.bodies {
+		if body := &s.bodies[i]; body.isValid() {
+			cb(i, body)
+		}
+	}
 }
 
 type propRef struct {

@@ -90,6 +90,7 @@ func (v SoloConstraintView) Create(bodyID BodyID, solver SoloConstraintSolver) S
 	body := bodyView.resolve(bodyID, true)
 
 	index, constraint := v.scene.allocateSoloConstraint()
+
 	*constraint = soloConstraintState{
 		solver:    solver,
 		revision:  constraint.revision + 1, // progress revision to valid (odd) value
@@ -308,4 +309,8 @@ type soloConstraintState struct {
 	bodyIndex int32
 	nextIndex int32
 	isEnabled bool
+}
+
+func (s *soloConstraintState) isValid() bool {
+	return s.revision%2 == 1 // only odd revisions are valid
 }
