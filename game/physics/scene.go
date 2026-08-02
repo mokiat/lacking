@@ -64,7 +64,7 @@ type Scene struct {
 	freeBodyIndices              *ds.Stack[int32]
 
 	globalAccelerators []globalAcceleratorState
-	bodyAccelerators   []bodyAccelerator
+	bodyAccelerators   []bodyAcceleratorState
 	soloConstraints    []soloConstraintState
 }
 
@@ -114,7 +114,7 @@ func NewScene() *Scene {
 		freeBodyIndices:              ds.EmptyStack[int32](),
 
 		globalAccelerators: make([]globalAcceleratorState, 0),
-		bodyAccelerators:   make([]bodyAccelerator, 0),
+		bodyAccelerators:   make([]bodyAcceleratorState, 0),
 		soloConstraints:    make([]soloConstraintState, 0),
 	}
 }
@@ -175,6 +175,8 @@ func (s *Scene) GlobalAccelerators() GlobalAcceleratorView {
 	}
 }
 
+// BodyAccelerators returns a [BodyAcceleratorView] through which the body
+// accelerators of this scene can be created and managed.
 func (s *Scene) BodyAccelerators() BodyAcceleratorView {
 	return BodyAcceleratorView{
 		scene: s,
@@ -946,11 +948,11 @@ func (s *Scene) eachGlobalAccelerator(cb func(index int, accelerator *globalAcce
 	}
 }
 
-func (s *Scene) allocateBodyAccelerator() (int32, *bodyAccelerator) {
+func (s *Scene) allocateBodyAccelerator() (int32, *bodyAcceleratorState) {
 	var index int32
 	if s.freeBodyAcceleratorIndices.IsEmpty() {
 		index = int32(len(s.bodyAccelerators))
-		s.bodyAccelerators = append(s.bodyAccelerators, bodyAccelerator{})
+		s.bodyAccelerators = append(s.bodyAccelerators, bodyAcceleratorState{})
 	} else {
 		index = s.freeBodyAcceleratorIndices.Pop()
 	}
