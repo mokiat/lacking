@@ -13,7 +13,7 @@ type PairCollisionSolverConfig struct {
 	SecondaryContactNormal          dprec.Vec3
 	SecondaryContactPoint           dprec.Vec3
 
-	Depth float64
+	ContactDepth float64
 }
 
 type PairCollisionSolver struct{}
@@ -25,11 +25,13 @@ func (s *PairCollisionSolver) Init(config PairCollisionSolverConfig) {
 }
 
 func (s *PairCollisionSolver) Reset(ctx PairConstraintContext) {
-
+	// TODO
 }
+
 func (s *PairCollisionSolver) ApplyImpulses(ctx PairConstraintContext) {
-
+	// TODO
 }
-func (s *PairCollisionSolver) ApplyNudges(ctx PairConstraintContext) {
 
+func (s *PairCollisionSolver) ApplyNudges(ctx PairConstraintContext) {
+	// TODO
 }

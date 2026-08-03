@@ -119,7 +119,7 @@ func NewScene() *Scene {
 
 		impulseIterationCount:       8,
 		impulseDriftAdjustmentRatio: 0.2,
-		nudgeIterationCount:         8,
+		nudgeIterationCount:         4,
 		nudgeDriftAdjustmentRatio:   0.2,
 
 		timeScale: 1.0,
@@ -827,7 +827,7 @@ func (s *Scene) handlePairCollision(primaryData, secondaryData bodyCollisionData
 		SecondaryContactNormal:          contact.TargetNormal,
 		SecondaryContactPoint:           contact.TargetPoint,
 
-		Depth: contact.Depth,
+		ContactDepth: contact.Depth,
 	})
 
 	primaryID := s.Bodies().idFromIndex(primaryData.index)
@@ -854,7 +854,7 @@ func (s *Scene) handleSoloCollision(bodyData bodyCollisionData, terrainData terr
 		BodyRestitutionCoefficient: bodyData.restitutionCoefficient,
 		BodyContactPoint:           contact.EvalSourcePoint(),
 
-		Depth: contact.Depth,
+		ContactDepth: contact.Depth,
 	})
 
 	bodyID := s.Bodies().idFromIndex(bodyData.index)

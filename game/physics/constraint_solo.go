@@ -23,6 +23,46 @@ type SoloConstraintContext struct {
 	Target ConstraintTarget
 }
 
+func (c SoloConstraintContext) ImpulseLambda(jacobian Jacobian, drift, restitutionCoef float64) float64 {
+	effMass := jacobian.InverseEffectiveMass(c.Target)
+	if effMass < Epsilon {
+		return 0.0
+	}
+	effVelocity := jacobian.EffectiveVelocity(c.Target)
+	restitution := 1 + restitutionCoef*RestitutionClamp(effVelocity)
+	baumgarte := c.ImpulseBeta * drift / c.DeltaSeconds
+	return -(restitution*effVelocity - baumgarte) / effMass
+}
+
+func (c SoloConstraintContext) ImpulseLambdaSplit(jacobian Jacobian, drift, restitutionCoef float64) (float64, float64) {
+	effMass := jacobian.InverseEffectiveMass(c.Target)
+	if effMass < Epsilon {
+		return 0.0, 0.0
+	}
+	effVelocity := jacobian.EffectiveVelocity(c.Target)
+	restitution := 1 + restitutionCoef*RestitutionClamp(effVelocity)
+	baumgarte := c.ImpulseBeta * drift / c.DeltaSeconds
+	return -restitution * effVelocity / effMass, baumgarte / effMass
+}
+
+func (c SoloConstraintContext) ImpulseSolution(jacobian Jacobian, drift, restitutionCoef float64) Impulse {
+	lambda := c.ImpulseLambda(jacobian, drift, restitutionCoef)
+	return jacobian.Impulse(lambda)
+}
+
+func (c SoloConstraintContext) NudgeLambda(jacobian Jacobian, drift float64) float64 {
+	effMass := jacobian.InverseEffectiveMass(c.Target)
+	if effMass < Epsilon {
+		return 0.0
+	}
+	return c.NudgeBeta * drift / effMass
+}
+
+func (c SoloConstraintContext) NudgeSolution(jacobian Jacobian, drift float64) Nudge {
+	lambda := c.NudgeLambda(jacobian, drift)
+	return jacobian.Nudge(lambda)
+}
+
 // SoloConstraintSolver implements the mathematical logic that enforces a
 // constraint acting on a single body.
 //
