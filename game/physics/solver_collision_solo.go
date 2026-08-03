@@ -2,8 +2,6 @@ package physics
 
 import "github.com/mokiat/gomath/dprec"
 
-var _ SoloConstraintSolver = (*SoloCollisionSolver)(nil)
-
 type SoloCollisionSolverConfig struct {
 	TerrainFrictionCoefficient    float64
 	TerrainRestitutionCoefficient float64
@@ -18,6 +16,8 @@ type SoloCollisionSolverConfig struct {
 
 type SoloCollisionSolver struct {
 }
+
+var _ SoloConstraintSolver = (*SoloCollisionSolver)(nil)
 
 func (s *SoloCollisionSolver) Init(config SoloCollisionSolverConfig) {
 

@@ -573,28 +573,6 @@ func (s *Scene) eachTerrain(cb func(index int, t *terrainState)) {
 	}
 }
 
-/////// OLD BELOW ------------ (TODO: DELETE COMMENT)
-
-func (s *Scene) CheckSegmentIntersection(segment shape3d.Segment, mask uint32) (BodyID, bool) {
-	intersection, ok := s.collisionScene.CheckSegmentIntersection(segment, placement3d.Filter{
-		Mask: opt.V(mask),
-	})
-	if !ok {
-		return NilBodyID, false
-	}
-	if intersection.TargetShapeID == placement3d.InvalidShapeID {
-		// A prop.
-		return NilBodyID, false // FIXME: This should handle props as well.
-	}
-	objectID := s.collisionScene.GetShapeObject(intersection.TargetShapeID)
-	bData := s.collisionScene.GetObjectUserData(objectID)
-	body := &s.bodies[bData.index]
-	return BodyID{
-		index:    bData.index,
-		revision: body.revision,
-	}, true
-}
-
 func (s *Scene) runSimulation(elapsedSeconds float64) {
 	if elapsedSeconds > 0.0001 {
 		s.applyAcceleration(elapsedSeconds)
@@ -641,40 +619,6 @@ func (s *Scene) applyAcceleration(elapsedSeconds float64) {
 		body.addAngularVelocity(dprec.Vec3Prod(body.angularAcceleration, elapsedSeconds))
 	})
 }
-
-// func (s *Scene) applyAerodynamicAccelerations() {
-// 	s.eachBody(func(index int, body *bodyState) {
-// 		if len(body.aerodynamicShapes) == 0 {
-// 			return
-// 		}
-// 		target := &s.bodyAccelerationTargets[index]
-// 		mediumDensity := s.mediumSolver.Density(body.position)
-// 		mediumVelocity := s.mediumSolver.Velocity(body.position)
-
-// 		deltaVelocity := dprec.Vec3Diff(mediumVelocity, body.velocity)
-// 		dragForce := dprec.Vec3Prod(deltaVelocity, deltaVelocity.Length()*mediumDensity*body.dragFactor)
-// 		target.ApplyForce(dragForce)
-
-// 		angularDragForce := dprec.Vec3Prod(body.angularVelocity, -body.angularVelocity.Length()*mediumDensity*body.angularDragFactor)
-// 		target.ApplyTorque(angularDragForce)
-
-// 		bodyTransform := NewTransform(body.position, body.rotation)
-// 		for _, aerodynamicShape := range body.aerodynamicShapes {
-// 			// TODO: Take shape velocity into account. This also means that wings should be
-// 			// split into two, to benefit from that.
-
-// 			aerodynamicShape = aerodynamicShape.Transformed(bodyTransform)
-// 			relativeSpeed := dprec.QuatVec3Rotation(dprec.InverseQuat(aerodynamicShape.Rotation()), deltaVelocity)
-
-// 			force := aerodynamicShape.solver.Force(relativeSpeed, mediumDensity)
-// 			absoluteForce := dprec.QuatVec3Rotation(aerodynamicShape.Rotation(), force)
-
-// 			offset := dprec.Vec3Diff(aerodynamicShape.Position(), bodyTransform.Position())
-// 			target.ApplyOffsetForce(offset, absoluteForce)
-// 			// target.ApplyOffsetForce(absoluteForce, aerodynamicShape.Position())
-// 		}
-// 	})
-// }
 
 func (s *Scene) applyImpulses(elapsedSeconds float64) {
 	defer metric.BeginRegion("impulses").End()
@@ -868,42 +812,33 @@ func (s *Scene) detectCollisions() {
 	}
 }
 
-func (s *Scene) handlePairCollision(primaryBodyData, secondaryBodyData bodyCollisionData, contact placement3d.Contact) {
-	// 	primary := &s.bodies[primaryIndex]
-	// 	secondary := &s.bodies[secondaryIndex]
+func (s *Scene) handlePairCollision(primaryData, secondaryData bodyCollisionData, contact placement3d.Contact) {
+	solver := s.allocatePairCollisionSolver()
+	solver.Init(PairCollisionSolverConfig{
+		PrimaryFrictionCoefficient:    primaryData.frictionCoefficient,
+		PrimaryRestitutionCoefficient: primaryData.restitutionCoefficient,
+		PrimaryContactNormal:          contact.EvalSourceNormal(),
+		PrimaryContactPoint:           contact.EvalSourcePoint(),
 
-	// 	solver := s.allocateDualCollisionSolver()
-	// 	solver.Init(constraint.PairCollisionState{
-	// 		PrimaryNormal:                 intersection.TargetNormal,
-	// 		PrimaryPoint:                  intersection.EvalSourcePoint(),
-	// 		PrimaryFrictionCoefficient:    primary.frictionCoefficient,
-	// 		PrimaryRestitutionCoefficient: primary.restitutionCoefficient,
+		SecondaryFrictionCoefficient:    secondaryData.frictionCoefficient,
+		SecondaryRestitutionCoefficient: secondaryData.restitutionCoefficient,
+		SecondaryContactNormal:          contact.TargetNormal,
+		SecondaryContactPoint:           contact.TargetPoint,
 
-	// 		SecondaryNormal:                 intersection.EvalSourceNormal(),
-	// 		SecondaryPoint:                  intersection.TargetPoint,
-	// 		SecondaryFrictionCoefficient:    secondary.frictionCoefficient,
-	// 		SecondaryRestitutionCoefficient: secondary.restitutionCoefficient,
+		Depth: contact.Depth,
+	})
 
-	// 		Depth: intersection.Depth,
-	// 	})
+	primaryID := s.Bodies().idFromIndex(primaryData.index)
+	secondaryID := s.Bodies().idFromIndex(secondaryData.index)
 
-	// 	pair := dbCollisionPair{
-	// 		PrimaryRef:   primary.reference,
-	// 		SecondaryRef: secondary.reference,
-	// 	}
-	// 	s.newDBCollisions[pair] = struct{}{}
+	constraintID := s.PairConstraints().Create(primaryID, secondaryID, solver)
+	s.pairCollisionConstraintIDs = append(s.pairCollisionConstraintIDs, constraintID)
 
-	//	primaryBody := Body{
-	//		scene:     s,
-	//		reference: primary.reference,
-	//	}
-	//
-	//	secondaryBody := Body{
-	//		scene:     s,
-	//		reference: secondary.reference,
-	//	}
-	//
-	// s.dbCollisionConstraints = append(s.dbCollisionConstraints, s.CreateDoubleBodyConstraint(primaryBody, secondaryBody, solver))
+	ref := pairCollisionRef{
+		primaryBodyID:   primaryID,
+		secondaryBodyID: secondaryID,
+	}
+	s.newPairCollisionRefs[ref] = struct{}{}
 }
 
 func (s *Scene) handleSoloCollision(bodyData bodyCollisionData, terrainData terrainCollisionData, contact placement3d.Contact) {
@@ -1022,4 +957,60 @@ type soloCollisionRef struct {
 type pairCollisionRef struct {
 	primaryBodyID   BodyID
 	secondaryBodyID BodyID
+}
+
+/////// OLD BELOW ------------ (TODO: DELETE COMMENT)
+
+// func (s *Scene) applyAerodynamicAccelerations() {
+// 	s.eachBody(func(index int, body *bodyState) {
+// 		if len(body.aerodynamicShapes) == 0 {
+// 			return
+// 		}
+// 		target := &s.bodyAccelerationTargets[index]
+// 		mediumDensity := s.mediumSolver.Density(body.position)
+// 		mediumVelocity := s.mediumSolver.Velocity(body.position)
+
+// 		deltaVelocity := dprec.Vec3Diff(mediumVelocity, body.velocity)
+// 		dragForce := dprec.Vec3Prod(deltaVelocity, deltaVelocity.Length()*mediumDensity*body.dragFactor)
+// 		target.ApplyForce(dragForce)
+
+// 		angularDragForce := dprec.Vec3Prod(body.angularVelocity, -body.angularVelocity.Length()*mediumDensity*body.angularDragFactor)
+// 		target.ApplyTorque(angularDragForce)
+
+// 		bodyTransform := NewTransform(body.position, body.rotation)
+// 		for _, aerodynamicShape := range body.aerodynamicShapes {
+// 			// TODO: Take shape velocity into account. This also means that wings should be
+// 			// split into two, to benefit from that.
+
+// 			aerodynamicShape = aerodynamicShape.Transformed(bodyTransform)
+// 			relativeSpeed := dprec.QuatVec3Rotation(dprec.InverseQuat(aerodynamicShape.Rotation()), deltaVelocity)
+
+// 			force := aerodynamicShape.solver.Force(relativeSpeed, mediumDensity)
+// 			absoluteForce := dprec.QuatVec3Rotation(aerodynamicShape.Rotation(), force)
+
+// 			offset := dprec.Vec3Diff(aerodynamicShape.Position(), bodyTransform.Position())
+// 			target.ApplyOffsetForce(offset, absoluteForce)
+// 			// target.ApplyOffsetForce(absoluteForce, aerodynamicShape.Position())
+// 		}
+// 	})
+// }
+
+func (s *Scene) CheckSegmentIntersection(segment shape3d.Segment, mask uint32) (BodyID, bool) {
+	intersection, ok := s.collisionScene.CheckSegmentIntersection(segment, placement3d.Filter{
+		Mask: opt.V(mask),
+	})
+	if !ok {
+		return NilBodyID, false
+	}
+	if intersection.TargetShapeID == placement3d.InvalidShapeID {
+		// A prop.
+		return NilBodyID, false // FIXME: This should handle props as well.
+	}
+	objectID := s.collisionScene.GetShapeObject(intersection.TargetShapeID)
+	bData := s.collisionScene.GetObjectUserData(objectID)
+	body := &s.bodies[bData.index]
+	return BodyID{
+		index:    bData.index,
+		revision: body.revision,
+	}, true
 }
