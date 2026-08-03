@@ -159,7 +159,7 @@ func (v BodyView) Position(id BodyID) dprec.Vec3 {
 func (v BodyView) SetPosition(id BodyID, position dprec.Vec3) {
 	body := v.resolve(id, true)
 	body.position = position
-	v.refreshPlacement(id, body)
+	v.refreshPlacement(body)
 }
 
 func (v BodyView) Rotation(id BodyID) dprec.Quat {
@@ -170,7 +170,7 @@ func (v BodyView) Rotation(id BodyID) dprec.Quat {
 func (v BodyView) SetRotation(id BodyID, rotation dprec.Quat) {
 	body := v.resolve(id, true)
 	body.rotation = rotation
-	v.refreshPlacement(id, body)
+	v.refreshPlacement(body)
 }
 
 func (v BodyView) AttachCollisionSphere(id BodyID, col CollisionSphere) CollisionShapeID {
@@ -212,7 +212,7 @@ func (v BodyView) DetachCollisionShape(id BodyID, shapeID CollisionShapeID) {
 	v.scene.collisionScene.DeleteShape(shapeID.shapeID)
 }
 
-func (v BodyView) refreshPlacement(id BodyID, body *bodyState) {
+func (v BodyView) refreshPlacement(body *bodyState) {
 	v.scene.collisionScene.SetObjectTransform(body.objectID, shape3d.Transform{
 		Translation: body.position,
 		Rotation:    shape3d.RotationFromQuat(body.rotation),

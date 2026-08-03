@@ -737,12 +737,9 @@ func (s *Scene) applyNudges(elapsedSeconds float64) {
 func (s *Scene) applyPlacement() {
 	defer metric.BeginRegion("placement").End()
 
+	bodies := s.Bodies()
 	s.eachBody(func(_ int, body *bodyState) {
-		// Update the collision scene with the new position and rotation of the body.
-		s.collisionScene.SetObjectTransform(body.objectID, shape3d.Transform{
-			Translation: body.position,
-			Rotation:    shape3d.RotationFromQuat(body.rotation),
-		})
+		bodies.refreshPlacement(body)
 	})
 }
 
