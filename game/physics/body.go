@@ -49,6 +49,10 @@ func (v BodyView) Create(position dprec.Vec3, rotation dprec.Quat) BodyID {
 	}
 }
 
+func (v BodyView) CreateHandle(position dprec.Vec3, rotation dprec.Quat) BodyHandle {
+	return v.Handle(v.Create(position, rotation))
+}
+
 func (v BodyView) Delete(id BodyID) {
 	body := v.resolve(id, true)
 
@@ -213,6 +217,14 @@ func (v BodyView) refreshPlacement(id BodyID, body *bodyState) {
 		Translation: body.position,
 		Rotation:    shape3d.RotationFromQuat(body.rotation),
 	})
+}
+
+func (v BodyView) idFromIndex(index int32) BodyID {
+	body := &v.scene.bodies[index]
+	return BodyID{
+		index:    index,
+		revision: body.revision,
+	}
 }
 
 func (v BodyView) resolve(id BodyID, required bool) *bodyState {

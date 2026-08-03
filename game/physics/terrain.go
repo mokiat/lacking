@@ -85,6 +85,14 @@ func (v TerrainView) IsValid(id TerrainID) bool {
 	return terrain != nil
 }
 
+func (v TerrainView) idFromIndex(index int32) TerrainID {
+	terrain := &v.scene.terrains[index]
+	return TerrainID{
+		index:    index,
+		revision: terrain.revision,
+	}
+}
+
 func (v TerrainView) resolve(id TerrainID, required bool) *terrainState {
 	if id.revision == 0 {
 		if required {

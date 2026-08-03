@@ -45,13 +45,19 @@ func (b *animationBinding) OnStaleBinding(scene *hierarchy.Scene, player *animat
 }
 
 // NewBodyBinding creates a new binding for physics bodies.
-func NewBodyBinding() hierarchy.SourceBinding[physics.Body] {
-	return &bodyBinding{}
+func NewBodyBinding(physicsScene *physics.Scene) hierarchy.SourceBinding[physics.BodyID] {
+	return &bodyBinding{
+		physicsScene: physicsScene,
+	}
 }
 
-type bodyBinding struct{}
+type bodyBinding struct {
+	physicsScene *physics.Scene
+}
 
-func (b *bodyBinding) OnSourceToNode(scene *hierarchy.Scene, body physics.Body, id hierarchy.NodeID) {
+func (b *bodyBinding) OnSourceToNode(scene *hierarchy.Scene, bodyID physics.BodyID, id hierarchy.NodeID) {
+	body := b.physicsScene.Bodies().Handle(bodyID)
+
 	currentTranslation := body.Position()
 	currentRotation := body.Rotation()
 
@@ -62,8 +68,8 @@ func (b *bodyBinding) OnSourceToNode(scene *hierarchy.Scene, body physics.Body, 
 	))
 }
 
-func (b *bodyBinding) OnStaleBinding(scene *hierarchy.Scene, body physics.Body) {
-	body.Delete()
+func (b *bodyBinding) OnStaleBinding(scene *hierarchy.Scene, bodyID physics.BodyID) {
+	b.physicsScene.Bodies().Delete(bodyID)
 }
 
 // NewSkyBinding creates a new binding for skies.

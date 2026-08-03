@@ -11,24 +11,23 @@ import (
 	"github.com/mokiat/lacking/game/asset/dto"
 	"github.com/mokiat/lacking/game/graphics"
 	"github.com/mokiat/lacking/game/hierarchy"
-	"github.com/mokiat/lacking/game/physics"
 	"github.com/mokiat/lacking/render"
 )
 
 // ModelTemplate represents a template for a model that can be instantiated
 // in a Scene.
 type ModelTemplate struct {
-	Recordings      IdentifiableList[*animation.Recording]
-	Shaders         IdentifiableList[*graphics.Shader]
-	Textures        IdentifiableList[render.Texture]
-	Materials       IdentifiableList[*graphics.Material]
-	BodyMaterials   IdentifiableList[*physics.Material]
-	BodyDefinitions IdentifiableList[*physics.BodyDefinition]
+	Recordings IdentifiableList[*animation.Recording]
+	Shaders    IdentifiableList[*graphics.Shader]
+	Textures   IdentifiableList[render.Texture]
+	Materials  IdentifiableList[*graphics.Material]
+	// BodyMaterials   IdentifiableList[*physics.Material]
+	// BodyDefinitions IdentifiableList[*physics.BodyDefinition]
 	MeshGeometries  IdentifiableList[*graphics.MeshGeometry]
 	MeshDefinitions IdentifiableList[*graphics.MeshDefinition]
 
-	Nodes             IdentifiableList[NodeTemplate]
-	Bodies            IdentifiableList[BodyTemplate]
+	Nodes IdentifiableList[NodeTemplate]
+	// Bodies            IdentifiableList[BodyTemplate]
 	Armatures         IdentifiableList[ArmatureTemplate]
 	Meshes            IdentifiableList[MeshTemplate]
 	AmbientLights     IdentifiableList[AmbientLightTemplate]
@@ -71,15 +70,15 @@ func LoadModelTemplate(loader *AssetLoader, assetModel dto.Model) (*ModelTemplat
 		return nil, fmt.Errorf("failed to resolve materials: %w", err)
 	}
 
-	bodyMaterials, err := LoadPhysicsMaterials(loader, assetModel.PhysicsChunk.BodyMaterials)
-	if err != nil {
-		return nil, fmt.Errorf("failed to resolve body materials: %w", err)
-	}
+	// bodyMaterials, err := LoadPhysicsMaterials(loader, assetModel.PhysicsChunk.BodyMaterials)
+	// if err != nil {
+	// 	return nil, fmt.Errorf("failed to resolve body materials: %w", err)
+	// }
 
-	bodyDefinitions, err := LoadPhysicsBodyDefinitions(loader, assetModel.PhysicsChunk.BodyDefinitions, bodyMaterials)
-	if err != nil {
-		return nil, fmt.Errorf("failed to resolve body definitions: %w", err)
-	}
+	// bodyDefinitions, err := LoadPhysicsBodyDefinitions(loader, assetModel.PhysicsChunk.BodyDefinitions, bodyMaterials)
+	// if err != nil {
+	// 	return nil, fmt.Errorf("failed to resolve body definitions: %w", err)
+	// }
 
 	meshGeometries, err := LoadMeshGeometries(loader, assetModel.MeshChunk.Geometries)
 	if err != nil {
@@ -96,10 +95,10 @@ func LoadModelTemplate(loader *AssetLoader, assetModel dto.Model) (*ModelTemplat
 		return nil, fmt.Errorf("failed to resolve node templates: %w", err)
 	}
 
-	bodies, err := LoadPhysicsBodyTemplates(loader, assetModel.PhysicsChunk.Bodies, bodyDefinitions)
-	if err != nil {
-		return nil, fmt.Errorf("failed to resolve physics body templates: %w", err)
-	}
+	// bodies, err := LoadPhysicsBodyTemplates(loader, assetModel.PhysicsChunk.Bodies, bodyDefinitions)
+	// if err != nil {
+	// 	return nil, fmt.Errorf("failed to resolve physics body templates: %w", err)
+	// }
 
 	armatures, err := LoadArmatureTemplates(loader, assetModel.MeshChunk.Armatures)
 	if err != nil {
@@ -139,17 +138,17 @@ func LoadModelTemplate(loader *AssetLoader, assetModel dto.Model) (*ModelTemplat
 	}
 
 	return &ModelTemplate{
-		Recordings:      recordings,
-		Shaders:         shaders,
-		Textures:        textures,
-		Materials:       materials,
-		BodyMaterials:   bodyMaterials,
-		BodyDefinitions: bodyDefinitions,
+		Recordings: recordings,
+		Shaders:    shaders,
+		Textures:   textures,
+		Materials:  materials,
+		// BodyMaterials:   bodyMaterials,
+		// BodyDefinitions: bodyDefinitions,
 		MeshGeometries:  meshGeometries,
 		MeshDefinitions: meshDefinitions,
 
-		Nodes:             nodes,
-		Bodies:            bodies,
+		Nodes: nodes,
+		// Bodies:            bodies,
 		Armatures:         armatures,
 		Meshes:            meshes,
 		AmbientLights:     ambientLights,
@@ -169,13 +168,13 @@ func UnloadModelTemplate(loader *AssetLoader, template *ModelTemplate) error {
 		UnloadShaders(loader, template.Shaders),
 		UnloadTextures(loader, template.Textures),
 		UnloadMaterials(loader, template.Materials),
-		UnloadPhysicsMaterials(loader, template.BodyMaterials),
-		UnloadPhysicsBodyDefinitions(loader, template.BodyDefinitions),
+		// UnloadPhysicsMaterials(loader, template.BodyMaterials),
+		// UnloadPhysicsBodyDefinitions(loader, template.BodyDefinitions),
 		UnloadMeshGeometries(loader, template.MeshGeometries),
 		UnloadMeshDefinitions(loader, template.MeshDefinitions),
 
 		UnloadNodeTemplates(loader, template.Nodes),
-		UnloadPhysicsBodyTemplates(loader, template.Bodies),
+		// UnloadPhysicsBodyTemplates(loader, template.Bodies),
 		UnloadArmatureTemplates(loader, template.Armatures),
 		UnloadMeshTemplates(loader, template.Meshes),
 		UnloadAmbientLightTemplates(loader, template.AmbientLights),
@@ -316,15 +315,15 @@ func InstantiateModel(scene *Scene, info ModelInfo) *Model {
 	recordings := definition.Recordings
 	meshDefinitions := definition.MeshDefinitions
 
-	for template := range definition.Bodies.Values() {
-		if nodes.HasID(template.NodeID) {
-			if info.IsDynamic {
-				InstantiatePhysicsBodyTemplateDynamic(scene, template, nodes)
-			} else {
-				InstantiatePhysicsBodyTemplateStatic(scene, template, nodes)
-			}
-		}
-	}
+	// for template := range definition.Bodies.Values() {
+	// 	if nodes.HasID(template.NodeID) {
+	// 		if info.IsDynamic {
+	// 			InstantiatePhysicsBodyTemplateDynamic(scene, template, nodes)
+	// 		} else {
+	// 			InstantiatePhysicsBodyTemplateStatic(scene, template, nodes)
+	// 		}
+	// 	}
+	// }
 
 	armatures := make(IdentifiableList[*graphics.Armature], 0, len(definition.Armatures))
 	for id, template := range definition.Armatures.Iter() {
