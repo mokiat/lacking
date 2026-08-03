@@ -35,8 +35,9 @@ func (v BodyView) Create(position dprec.Vec3, rotation dprec.Quat) BodyID {
 		firstBodyAcceleratorIndex: nilIndex,
 		firstSoloConstraintIndex:  nilIndex,
 		firstPairConstraintIndex:  nilIndex,
-		invMass:                   1.0,
+		invInertiaLocal:           dprec.IdentityMat3(),
 		invInertia:                dprec.IdentityMat3(),
+		invMass:                   1.0,
 		linearVelocity:            dprec.ZeroVec3(),
 		angularVelocity:           dprec.ZeroVec3(),
 		position:                  position,
@@ -123,12 +124,13 @@ func (v BodyView) SetMass(id BodyID, mass float64) {
 
 func (v BodyView) MomentOfInertia(id BodyID) dprec.Mat3 {
 	body := v.resolve(id, true)
-	return dprec.InverseMat3(body.invInertia)
+	return dprec.InverseMat3(body.invInertiaLocal)
 }
 
 func (v BodyView) SetMomentOfInertia(id BodyID, inertia dprec.Mat3) {
 	body := v.resolve(id, true)
-	body.invInertia = dprec.InverseMat3(inertia)
+	body.invInertiaLocal = dprec.InverseMat3(inertia)
+	body.recalculateInertia()
 }
 
 func (v BodyView) Velocity(id BodyID) dprec.Vec3 {
@@ -170,6 +172,7 @@ func (v BodyView) Rotation(id BodyID) dprec.Quat {
 func (v BodyView) SetRotation(id BodyID, rotation dprec.Quat) {
 	body := v.resolve(id, true)
 	body.rotation = rotation
+	body.recalculateInertia()
 	v.refreshPlacement(body)
 }
 
@@ -329,8 +332,9 @@ type bodyState struct {
 	firstSoloConstraintIndex  int32
 	firstPairConstraintIndex  int32
 
-	invMass    float64
-	invInertia dprec.Mat3
+	invInertiaLocal dprec.Mat3
+	invInertia      dprec.Mat3
+	invMass         float64
 
 	linearAcceleration  dprec.Vec3
 	angularAcceleration dprec.Vec3
@@ -352,6 +356,10 @@ func (s *bodyState) mass() float64 {
 
 func (s *bodyState) inertia() dprec.Mat3 {
 	return dprec.InverseMat3(s.invInertia)
+}
+
+func (b *bodyState) recalculateInertia() {
+	b.invInertia = RotatedMomentOfInertia(b.invInertiaLocal, b.rotation)
 }
 
 func (b *bodyState) addLinearAcceleration(amount dprec.Vec3) {

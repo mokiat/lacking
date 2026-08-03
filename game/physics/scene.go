@@ -695,6 +695,7 @@ func (s *Scene) applyMotion(elapsedSeconds float64) {
 		// Apply the velocity to the body's position and rotation.
 		body.translate(dprec.Vec3Prod(body.linearVelocity, elapsedSeconds))
 		body.rotate(QuatFromVector(dprec.Vec3Prod(body.angularVelocity, elapsedSeconds)))
+		body.recalculateInertia()
 	})
 }
 
@@ -730,6 +731,10 @@ func (s *Scene) applyNudges(elapsedSeconds float64) {
 
 			constraint.solver.Reset(ctx)
 			constraint.solver.ApplyNudges(ctx)
+		})
+
+		s.eachBody(func(_ int, body *bodyState) {
+			body.recalculateInertia()
 		})
 	}
 }
