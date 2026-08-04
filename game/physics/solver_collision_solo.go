@@ -49,7 +49,7 @@ func (s *SoloCollisionSolver) Reset(ctx SoloConstraintContext) {
 
 func (s *SoloCollisionSolver) ApplyImpulses(ctx SoloConstraintContext) {
 	// Bounce solution
-	bounceLambda, baumgarteLambda := ctx.ImpulseLambdaSplit(s.jacobian, s.drift, s.restitutionCoefficient)
+	bounceLambda, baumgarteLambda := ctx.ImpulseLambdaComponents(s.jacobian, s.drift, s.restitutionCoefficient)
 	if bounceLambda < 0.0 {
 		return // moving away
 	}

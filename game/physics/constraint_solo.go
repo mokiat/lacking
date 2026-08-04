@@ -23,41 +23,77 @@ type SoloConstraintContext struct {
 	Target ConstraintTarget
 }
 
+// ImpulseLambda returns the impulse magnitude (lambda) that needs to be
+// applied along jacobian in order to correct its velocity error, taking
+// into account both restitution and Baumgarte positional-drift
+// stabilization.
+//
+// drift is the current positional error of the constraint (e.g. a
+// penetration depth), and restitutionCoef is the coefficient of
+// restitution to apply, in the [0.0, 1.0] range.
+//
+// The result is intended to be passed to [Jacobian.Impulse].
 func (c SoloConstraintContext) ImpulseLambda(jacobian Jacobian, drift, restitutionCoef float64) float64 {
-	effMass := jacobian.InverseEffectiveMass(c.Target)
-	if effMass < Epsilon {
+	invEffMass := jacobian.InverseEffectiveMass(c.Target)
+	if invEffMass < Epsilon {
 		return 0.0
 	}
 	effVelocity := jacobian.EffectiveVelocity(c.Target)
 	restitution := 1 + restitutionCoef*RestitutionClamp(effVelocity)
 	baumgarte := c.ImpulseBeta * drift / c.DeltaSeconds
-	return -(restitution*effVelocity - baumgarte) / effMass
+	return -(restitution*effVelocity - baumgarte) / invEffMass
 }
 
-func (c SoloConstraintContext) ImpulseLambdaSplit(jacobian Jacobian, drift, restitutionCoef float64) (float64, float64) {
-	effMass := jacobian.InverseEffectiveMass(c.Target)
-	if effMass < Epsilon {
+// ImpulseLambdaComponents behaves like [SoloConstraintContext.ImpulseLambda]
+// but returns its two additive components separately instead of their sum:
+// bounce is the restitution-only component, derived purely from the
+// jacobian's current velocity error, while baumgarte is the
+// positional-drift-correction component, derived from drift.
+//
+// bounce + baumgarte is equal to the value that
+// [SoloConstraintContext.ImpulseLambda] would return for the same
+// arguments. Callers that need to reason about the velocity-only portion
+// in isolation - for example to detect separating contacts, or to derive
+// a friction bound from it - should use this method instead.
+func (c SoloConstraintContext) ImpulseLambdaComponents(jacobian Jacobian, drift, restitutionCoef float64) (bounce, baumgarte float64) {
+	invEffMass := jacobian.InverseEffectiveMass(c.Target)
+	if invEffMass < Epsilon {
 		return 0.0, 0.0
 	}
 	effVelocity := jacobian.EffectiveVelocity(c.Target)
 	restitution := 1 + restitutionCoef*RestitutionClamp(effVelocity)
-	baumgarte := c.ImpulseBeta * drift / c.DeltaSeconds
-	return -restitution * effVelocity / effMass, baumgarte / effMass
+	driftBias := c.ImpulseBeta * drift / c.DeltaSeconds
+	return -restitution * effVelocity / invEffMass, driftBias / invEffMass
 }
 
+// ImpulseSolution returns the [Impulse] that needs to be applied to
+// correct the velocity error of jacobian, combining restitution and
+// Baumgarte positional-drift stabilization.
+//
+// See [SoloConstraintContext.ImpulseLambda] for details on drift and
+// restitutionCoef.
 func (c SoloConstraintContext) ImpulseSolution(jacobian Jacobian, drift, restitutionCoef float64) Impulse {
 	lambda := c.ImpulseLambda(jacobian, drift, restitutionCoef)
 	return jacobian.Impulse(lambda)
 }
 
+// NudgeLambda returns the nudge magnitude (lambda) that needs to be
+// applied along jacobian in order to correct drift, the current
+// positional error of the constraint (e.g. a penetration depth), through
+// Baumgarte positional-drift stabilization.
+//
+// The result is intended to be passed to [Jacobian.Nudge].
 func (c SoloConstraintContext) NudgeLambda(jacobian Jacobian, drift float64) float64 {
-	effMass := jacobian.InverseEffectiveMass(c.Target)
-	if effMass < Epsilon {
+	invEffMass := jacobian.InverseEffectiveMass(c.Target)
+	if invEffMass < Epsilon {
 		return 0.0
 	}
-	return c.NudgeBeta * drift / effMass
+	return c.NudgeBeta * drift / invEffMass
 }
 
+// NudgeSolution returns the [Nudge] that needs to be applied to correct
+// drift, the current positional error of the constraint (e.g. a
+// penetration depth).
 func (c SoloConstraintContext) NudgeSolution(jacobian Jacobian, drift float64) Nudge {
 	lambda := c.NudgeLambda(jacobian, drift)
 	return jacobian.Nudge(lambda)
