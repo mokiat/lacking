@@ -28,6 +28,26 @@ type PairConstraintContext struct {
 	SecondaryTarget ConstraintTarget
 }
 
+// ImpulseLambda returns the impulse magnitude (lambda) that needs to be
+// applied along primaryJacobian to [PairConstraintContext.PrimaryTarget]
+// and along secondaryJacobian to
+// [PairConstraintContext.SecondaryTarget], in order to correct their
+// combined velocity error, taking into account both restitution and
+// Baumgarte positional-drift stabilization.
+//
+// primaryJacobian and secondaryJacobian must describe the same scalar
+// constraint from each body's own point of view - typically with
+// secondaryJacobian's slopes being the negation of primaryJacobian's -
+// so that applying the same lambda to both targets, as
+// [PairConstraintContext.ImpulseSolution] does, is consistent with
+// Newton's third law.
+//
+// drift is the current positional error of the constraint (e.g. a
+// penetration depth), and restitutionCoef is the coefficient of
+// restitution to apply, in the [0.0, 1.0] range.
+//
+// The result is intended to be passed to [Jacobian.Impulse] for each of
+// primaryJacobian and secondaryJacobian.
 func (c PairConstraintContext) ImpulseLambda(primaryJacobian, secondaryJacobian Jacobian, drift, restitutionCoef float64) float64 {
 	invEffMass := primaryJacobian.InverseEffectiveMass(c.PrimaryTarget) + secondaryJacobian.InverseEffectiveMass(c.SecondaryTarget)
 	if invEffMass < Epsilon {
@@ -39,6 +59,18 @@ func (c PairConstraintContext) ImpulseLambda(primaryJacobian, secondaryJacobian 
 	return -(restitution*effVelocity - driftBias) / invEffMass
 }
 
+// ImpulseLambdaComponents behaves like
+// [PairConstraintContext.ImpulseLambda] but returns its two additive
+// components separately instead of their sum: bounce is the
+// restitution-only component, derived purely from the two jacobians'
+// current combined velocity error, while baumgarte is the
+// positional-drift-correction component, derived from drift.
+//
+// bounce + baumgarte is equal to the value that
+// [PairConstraintContext.ImpulseLambda] would return for the same
+// arguments. Callers that need to reason about the velocity-only portion
+// in isolation - for example to detect separating contacts, or to derive
+// a friction bound from it - should use this method instead.
 func (c PairConstraintContext) ImpulseLambdaComponents(primaryJacobian, secondaryJacobian Jacobian, drift, restitutionCoef float64) (bounce, baumgarte float64) {
 	invEffMass := primaryJacobian.InverseEffectiveMass(c.PrimaryTarget) + secondaryJacobian.InverseEffectiveMass(c.SecondaryTarget)
 	if invEffMass < Epsilon {
@@ -50,11 +82,32 @@ func (c PairConstraintContext) ImpulseLambdaComponents(primaryJacobian, secondar
 	return -restitution * effVelocity / invEffMass, driftBias / invEffMass
 }
 
+// ImpulseSolution returns the [Impulse] that needs to be applied to
+// [PairConstraintContext.PrimaryTarget] along primaryJacobian, and the
+// [Impulse] that needs to be applied to
+// [PairConstraintContext.SecondaryTarget] along secondaryJacobian, in
+// order to correct their combined velocity error, combining restitution
+// and Baumgarte positional-drift stabilization.
+//
+// See [PairConstraintContext.ImpulseLambda] for details on
+// primaryJacobian, secondaryJacobian, drift and restitutionCoef.
 func (c PairConstraintContext) ImpulseSolution(primaryJacobian, secondaryJacobian Jacobian, drift, restitutionCoef float64) (Impulse, Impulse) {
 	lambda := c.ImpulseLambda(primaryJacobian, secondaryJacobian, drift, restitutionCoef)
 	return primaryJacobian.Impulse(lambda), secondaryJacobian.Impulse(lambda)
 }
 
+// NudgeLambda returns the nudge magnitude (lambda) that needs to be
+// applied along primaryJacobian to [PairConstraintContext.PrimaryTarget]
+// and along secondaryJacobian to [PairConstraintContext.SecondaryTarget],
+// in order to correct drift, the current combined positional error of
+// the constraint (e.g. a penetration depth), through Baumgarte
+// positional-drift stabilization.
+//
+// See [PairConstraintContext.ImpulseLambda] for the expected relationship
+// between primaryJacobian and secondaryJacobian.
+//
+// The result is intended to be passed to [Jacobian.Nudge] for each of
+// primaryJacobian and secondaryJacobian.
 func (c PairConstraintContext) NudgeLambda(primaryJacobian, secondaryJacobian Jacobian, drift float64) float64 {
 	invEffMass := primaryJacobian.InverseEffectiveMass(c.PrimaryTarget) + secondaryJacobian.InverseEffectiveMass(c.SecondaryTarget)
 	if invEffMass < Epsilon {
@@ -63,6 +116,12 @@ func (c PairConstraintContext) NudgeLambda(primaryJacobian, secondaryJacobian Ja
 	return c.NudgeBeta * drift / invEffMass
 }
 
+// NudgeSolution returns the [Nudge] that needs to be applied to
+// [PairConstraintContext.PrimaryTarget] along primaryJacobian, and the
+// [Nudge] that needs to be applied to
+// [PairConstraintContext.SecondaryTarget] along secondaryJacobian, in
+// order to correct drift, the current combined positional error of the
+// constraint (e.g. a penetration depth).
 func (c PairConstraintContext) NudgeSolution(primaryJacobian, secondaryJacobian Jacobian, drift float64) (Nudge, Nudge) {
 	lambda := c.NudgeLambda(primaryJacobian, secondaryJacobian, drift)
 	return primaryJacobian.Nudge(lambda), secondaryJacobian.Nudge(lambda)
