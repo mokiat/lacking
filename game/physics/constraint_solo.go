@@ -40,8 +40,8 @@ func (c SoloConstraintContext) ImpulseLambda(jacobian Jacobian, drift, restituti
 	}
 	effVelocity := jacobian.EffectiveVelocity(c.Target)
 	restitution := 1 + restitutionCoef*RestitutionClamp(effVelocity)
-	baumgarte := c.ImpulseBeta * drift / c.DeltaSeconds
-	return -(restitution*effVelocity - baumgarte) / invEffMass
+	driftBias := c.ImpulseBeta * drift / c.DeltaSeconds
+	return -(restitution*effVelocity - driftBias) / invEffMass
 }
 
 // ImpulseLambdaComponents behaves like [SoloConstraintContext.ImpulseLambda]

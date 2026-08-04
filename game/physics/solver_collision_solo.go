@@ -95,10 +95,12 @@ func (s *SoloCollisionSolver) Init(config SoloCollisionSolverConfig) {
 // is derived from, based on the target's current position.
 func (s *SoloCollisionSolver) Reset(ctx SoloConstraintContext) {
 	s.pointOffsetWS = dprec.Vec3Diff(s.bodyContactPoint, ctx.Target.Position())
+
 	s.jacobian = Jacobian{
 		LinearSlope:  s.terrainContactNormal,
 		AngularSlope: dprec.Vec3Cross(s.pointOffsetWS, s.terrainContactNormal),
 	}
+
 	s.drift = s.contactDepth
 }
 
@@ -123,23 +125,23 @@ func (s *SoloCollisionSolver) ApplyImpulses(ctx SoloConstraintContext) {
 	// Friction solution
 	pointVelocity := dprec.Vec3Sum(ctx.Target.LinearVelocity(), dprec.Vec3Cross(ctx.Target.AngularVelocity(), s.pointOffsetWS))
 	pointLateralVelocity := dprec.Vec3Projection(pointVelocity, s.terrainContactNormal)
-	var frictionSolution Impulse
+	var frictionImpulse Impulse
 	if lng := pointLateralVelocity.Length(); lng > Epsilon {
-		pointLateralDirection := dprec.UnitVec3(pointLateralVelocity)
+		velocityLateralDirection := dprec.UnitVec3(pointLateralVelocity)
 		frictionJacobian := Jacobian{
-			LinearSlope:  dprec.InverseVec3(pointLateralDirection),
-			AngularSlope: dprec.Vec3Cross(pointLateralDirection, s.pointOffsetWS),
+			LinearSlope:  dprec.InverseVec3(velocityLateralDirection),
+			AngularSlope: dprec.Vec3Cross(velocityLateralDirection, s.pointOffsetWS),
 		}
 		frictionLambda := ctx.ImpulseLambda(frictionJacobian, 0.0, 0.0)
 		maxFrictionLambda := bounceLambda * s.frictionCoefficient
 		frictionLambda = min(frictionLambda, maxFrictionLambda)
-		frictionSolution = frictionJacobian.Impulse(frictionLambda)
+		frictionImpulse = frictionJacobian.Impulse(frictionLambda)
 	}
 
 	// Note: Make sure to apply these as late as possible, otherwise you are
 	// introducing noise that is picked up by friction calculations.
 	ctx.Target.ApplyImpulse(bounceImpulse)
-	ctx.Target.ApplyImpulse(frictionSolution)
+	ctx.Target.ApplyImpulse(frictionImpulse)
 }
 
 // ApplyNudges implements [SoloConstraintSolver.ApplyNudges].

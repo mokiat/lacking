@@ -28,6 +28,46 @@ type PairConstraintContext struct {
 	SecondaryTarget ConstraintTarget
 }
 
+func (c PairConstraintContext) ImpulseLambda(primaryJacobian, secondaryJacobian Jacobian, drift, restitutionCoef float64) float64 {
+	invEffMass := primaryJacobian.InverseEffectiveMass(c.PrimaryTarget) + secondaryJacobian.InverseEffectiveMass(c.SecondaryTarget)
+	if invEffMass < Epsilon {
+		return 0.0
+	}
+	effVelocity := primaryJacobian.EffectiveVelocity(c.PrimaryTarget) + secondaryJacobian.EffectiveVelocity(c.SecondaryTarget)
+	restitution := 1 + restitutionCoef*RestitutionClamp(effVelocity)
+	driftBias := c.ImpulseBeta * drift / c.DeltaSeconds
+	return -(restitution*effVelocity - driftBias) / invEffMass
+}
+
+func (c PairConstraintContext) ImpulseLambdaComponents(primaryJacobian, secondaryJacobian Jacobian, drift, restitutionCoef float64) (bounce, baumgarte float64) {
+	invEffMass := primaryJacobian.InverseEffectiveMass(c.PrimaryTarget) + secondaryJacobian.InverseEffectiveMass(c.SecondaryTarget)
+	if invEffMass < Epsilon {
+		return 0.0, 0.0
+	}
+	effVelocity := primaryJacobian.EffectiveVelocity(c.PrimaryTarget) + secondaryJacobian.EffectiveVelocity(c.SecondaryTarget)
+	restitution := 1 + restitutionCoef*RestitutionClamp(effVelocity)
+	driftBias := c.ImpulseBeta * drift / c.DeltaSeconds
+	return -restitution * effVelocity / invEffMass, driftBias / invEffMass
+}
+
+func (c PairConstraintContext) ImpulseSolution(primaryJacobian, secondaryJacobian Jacobian, drift, restitutionCoef float64) (Impulse, Impulse) {
+	lambda := c.ImpulseLambda(primaryJacobian, secondaryJacobian, drift, restitutionCoef)
+	return primaryJacobian.Impulse(lambda), secondaryJacobian.Impulse(lambda)
+}
+
+func (c PairConstraintContext) NudgeLambda(primaryJacobian, secondaryJacobian Jacobian, drift float64) float64 {
+	invEffMass := primaryJacobian.InverseEffectiveMass(c.PrimaryTarget) + secondaryJacobian.InverseEffectiveMass(c.SecondaryTarget)
+	if invEffMass < Epsilon {
+		return 0.0
+	}
+	return c.NudgeBeta * drift / invEffMass
+}
+
+func (c PairConstraintContext) NudgeSolution(primaryJacobian, secondaryJacobian Jacobian, drift float64) (Nudge, Nudge) {
+	lambda := c.NudgeLambda(primaryJacobian, secondaryJacobian, drift)
+	return primaryJacobian.Nudge(lambda), secondaryJacobian.Nudge(lambda)
+}
+
 // PairConstraintSolver implements the mathematical logic that enforces a
 // constraint acting on two bodies simultaneously.
 //
