@@ -13,7 +13,8 @@ package physics
 // the primary target's position with the secondary target's, on every
 // step. The secondary target itself is never modified. Only linear
 // motion is copied - the primary target's rotation and angular velocity
-// are left to evolve on their own.
+// are left to evolve on their own; see [CopyRotationSolver] for the
+// rotational counterpart.
 //
 // CopyPositionSolver holds no configurable state, so unlike most other
 // solvers in this package, it has no Config type or Configure method;
