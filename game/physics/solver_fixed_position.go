@@ -21,7 +21,7 @@ type FixedPositionSolverConfig struct {
 // unconditionally zeroes the target's linear velocity through
 // [FixedPositionSolver.ApplyImpulses] and snaps it to Position through
 // [FixedPositionSolver.ApplyNudges] on every step. It does not affect
-// angular velocity or orientation.
+// angular velocity or rotation - see [FixedRotationSolver] for that.
 //
 // A FixedPositionSolver must be configured, either through
 // [NewFixedPositionSolver] or [FixedPositionSolver.Configure], before
