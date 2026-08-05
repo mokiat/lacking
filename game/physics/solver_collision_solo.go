@@ -3,7 +3,8 @@ package physics
 import "github.com/mokiat/gomath/dprec"
 
 // SoloCollisionSolverConfig holds the parameters with which a
-// [SoloCollisionSolver] is configured through [SoloCollisionSolver.Init].
+// [SoloCollisionSolver] is configured, either through
+// [NewSoloCollisionSolver] or [SoloCollisionSolver.Configure].
 //
 // It describes a single contact between a body and static terrain -
 // the contact geometry (normals, point, penetration depth) as well as
@@ -53,9 +54,9 @@ type SoloCollisionSolverConfig struct {
 // that normal impulse. Through [SoloCollisionSolver.ApplyNudges] it
 // separately corrects any remaining penetration at the position level.
 //
-// A SoloCollisionSolver must be configured through
-// [SoloCollisionSolver.Init] before being registered with a [Scene]
-// through [SoloConstraintView.Create].
+// A SoloCollisionSolver must be configured, either through
+// [NewSoloCollisionSolver] or [SoloCollisionSolver.Configure], before
+// being registered with a [Scene] through [SoloConstraintView.Create].
 type SoloCollisionSolver struct {
 	terrainContactNormal dprec.Vec3
 	bodyContactPoint     dprec.Vec3
@@ -71,15 +72,26 @@ type SoloCollisionSolver struct {
 
 var _ SoloConstraintSolver = (*SoloCollisionSolver)(nil)
 
-// Init configures this solver according to config.
+// NewSoloCollisionSolver creates a new [SoloCollisionSolver] configured
+// according to config. See [SoloCollisionSolver.Configure] for details.
+func NewSoloCollisionSolver(config SoloCollisionSolverConfig) *SoloCollisionSolver {
+	result := &SoloCollisionSolver{}
+	result.Configure(config)
+	return result
+}
+
+// Configure configures this solver according to config.
 //
 // The body's and terrain's friction coefficients are combined into a
 // single coefficient through their geometric mean, and their restitution
 // coefficients through their maximum.
 //
-// Init must be called once, before this solver is registered with a
-// [Scene] through [SoloConstraintView.Create].
-func (s *SoloCollisionSolver) Init(config SoloCollisionSolverConfig) {
+// Configure must be called before this solver is registered with a
+// [Scene] through [SoloConstraintView.Create]. Unlike
+// [NewSoloCollisionSolver], it can be called on an already-allocated
+// solver, which allows solvers to be cached (e.g. in a slice) and
+// configured on demand as new contacts are detected.
+func (s *SoloCollisionSolver) Configure(config SoloCollisionSolverConfig) {
 	s.terrainContactNormal = config.TerrainContactNormal
 	s.bodyContactPoint = config.BodyContactPoint
 	s.contactDepth = config.ContactDepth

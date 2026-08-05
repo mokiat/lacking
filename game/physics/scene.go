@@ -816,7 +816,7 @@ func (s *Scene) detectCollisions() {
 
 func (s *Scene) handlePairCollision(primaryData, secondaryData bodyCollisionData, contact placement3d.Contact) {
 	solver := s.allocatePairCollisionSolver()
-	solver.Init(PairCollisionSolverConfig{
+	solver.Configure(PairCollisionSolverConfig{
 		PrimaryFrictionCoefficient:    primaryData.frictionCoefficient,
 		PrimaryRestitutionCoefficient: primaryData.restitutionCoefficient,
 		PrimaryContactNormal:          contact.EvalSourceNormal(),
@@ -845,7 +845,7 @@ func (s *Scene) handlePairCollision(primaryData, secondaryData bodyCollisionData
 
 func (s *Scene) handleSoloCollision(bodyData bodyCollisionData, terrainData terrainCollisionData, contact placement3d.Contact) {
 	solver := s.allocateSoloCollisionSolver()
-	solver.Init(SoloCollisionSolverConfig{
+	solver.Configure(SoloCollisionSolverConfig{
 		TerrainFrictionCoefficient:    terrainData.frictionCoefficient,
 		TerrainRestitutionCoefficient: terrainData.restitutionCoefficient,
 		TerrainContactNormal:          contact.TargetNormal,

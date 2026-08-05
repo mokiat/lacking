@@ -3,7 +3,8 @@ package physics
 import "github.com/mokiat/gomath/dprec"
 
 // PairCollisionSolverConfig holds the parameters with which a
-// [PairCollisionSolver] is configured through [PairCollisionSolver.Init].
+// [PairCollisionSolver] is configured, either through
+// [NewPairCollisionSolver] or [PairCollisionSolver.Configure].
 //
 // It describes a single contact between two dynamic bodies - the contact
 // geometry (normals, points, penetration depth), each as seen from its
@@ -68,9 +69,9 @@ type PairCollisionSolverConfig struct {
 // [PairCollisionSolver.ApplyNudges] it separately corrects any
 // remaining penetration at the position level.
 //
-// A PairCollisionSolver must be configured through
-// [PairCollisionSolver.Init] before being registered with a [Scene]
-// through [PairConstraintView.Create].
+// A PairCollisionSolver must be configured, either through
+// [NewPairCollisionSolver] or [PairCollisionSolver.Configure], before
+// being registered with a [Scene] through [PairConstraintView.Create].
 type PairCollisionSolver struct {
 	primaryContactNormal   dprec.Vec3
 	primaryContactPoint    dprec.Vec3
@@ -90,15 +91,26 @@ type PairCollisionSolver struct {
 
 var _ PairConstraintSolver = (*PairCollisionSolver)(nil)
 
-// Init configures this solver according to config.
+// NewPairCollisionSolver creates a new [PairCollisionSolver] configured
+// according to config. See [PairCollisionSolver.Configure] for details.
+func NewPairCollisionSolver(config PairCollisionSolverConfig) *PairCollisionSolver {
+	result := &PairCollisionSolver{}
+	result.Configure(config)
+	return result
+}
+
+// Configure configures this solver according to config.
 //
 // The two bodies' friction coefficients are combined into a single
 // coefficient through their geometric mean, and their restitution
 // coefficients through their maximum.
 //
-// Init must be called once, before this solver is registered with a
-// [Scene] through [PairConstraintView.Create].
-func (s *PairCollisionSolver) Init(config PairCollisionSolverConfig) {
+// Configure must be called before this solver is registered with a
+// [Scene] through [PairConstraintView.Create]. Unlike
+// [NewPairCollisionSolver], it can be called on an already-allocated
+// solver, which allows solvers to be cached (e.g. in a slice) and
+// configured on demand as new contacts are detected.
+func (s *PairCollisionSolver) Configure(config PairCollisionSolverConfig) {
 	s.primaryContactNormal = config.PrimaryContactNormal
 	s.primaryContactPoint = config.PrimaryContactPoint
 	s.secondaryContactNormal = config.SecondaryContactNormal
