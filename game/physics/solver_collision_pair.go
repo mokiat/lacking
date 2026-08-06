@@ -123,32 +123,10 @@ func (s *PairCollisionSolver) Configure(config PairCollisionSolverConfig) {
 
 // Reset implements [PairConstraintSolver.Reset].
 //
-// It recomputes the contact's primary and secondary [Jacobian]s, along
-// with the world-space offsets from each target's center of mass to its
-// respective contact point that they are derived from, based on the
-// targets' current positions.
-//
-// Each jacobian's linear slope is built from the other body's contact
-// normal (e.g. the primary jacobian uses SecondaryContactNormal, not
-// PrimaryContactNormal) rather than from an explicit negation, relying
-// on the two normals being approximately antiparallel. This is what
-// allows a single lambda, as computed by [PairConstraintContext], to be
-// applied to both targets - see
-// [PairConstraintContext.ImpulseLambda] for that requirement.
+// It recomputes the contact's primary and secondary [Jacobian]s, the
+// same way [PairCollisionSolver.recompute] does.
 func (s *PairCollisionSolver) Reset(ctx PairConstraintContext) {
-	s.primaryPointOffsetWS = dprec.Vec3Diff(s.primaryContactPoint, ctx.PrimaryTarget.Position())
-	s.secondaryPointOffsetWS = dprec.Vec3Diff(s.secondaryContactPoint, ctx.SecondaryTarget.Position())
-
-	s.primaryJacobian = Jacobian{
-		LinearSlope:  s.secondaryContactNormal,
-		AngularSlope: dprec.Vec3Cross(s.primaryPointOffsetWS, s.secondaryContactNormal),
-	}
-	s.secondaryJacobian = Jacobian{
-		LinearSlope:  s.primaryContactNormal,
-		AngularSlope: dprec.Vec3Cross(s.secondaryPointOffsetWS, s.primaryContactNormal),
-	}
-
-	s.drift = s.contactDepth
+	s.recompute(ctx)
 }
 
 // ApplyImpulses implements [PairConstraintSolver.ApplyImpulses].
@@ -203,12 +181,46 @@ func (s *PairCollisionSolver) ApplyImpulses(ctx PairConstraintContext) {
 
 // ApplyNudges implements [PairConstraintSolver.ApplyNudges].
 //
-// If the contact is still penetrating, it nudges the two targets apart
+// It first recomputes the contact's primary and secondary [Jacobian]s,
+// the same way [PairCollisionSolver.recompute] does, since a preceding
+// nudge - by this solver's own previous iteration, or by another
+// constraint acting on either target - may have moved a target since
+// [PairCollisionSolver.Reset] or the last call to this method. If the
+// contact is still penetrating, it then nudges the two targets apart
 // along their contact normals to reduce the penetration.
 func (s *PairCollisionSolver) ApplyNudges(ctx PairConstraintContext) {
+	s.recompute(ctx)
 	if s.drift > 0.0 {
 		primaryNudge, secondaryNudge := ctx.NudgeSolution(s.primaryJacobian, s.secondaryJacobian, s.drift)
 		ctx.PrimaryTarget.ApplyNudge(primaryNudge)
 		ctx.SecondaryTarget.ApplyNudge(secondaryNudge)
 	}
+}
+
+// recompute recalculates the contact's primary and secondary
+// [Jacobian]s, along with the world-space offsets from each target's
+// center of mass to its respective contact point that they are derived
+// from, based on the targets' current positions.
+//
+// Each jacobian's linear slope is built from the other body's contact
+// normal (e.g. the primary jacobian uses SecondaryContactNormal, not
+// PrimaryContactNormal) rather than from an explicit negation, relying
+// on the two normals being approximately antiparallel. This is what
+// allows a single lambda, as computed by [PairConstraintContext], to be
+// applied to both targets - see [PairConstraintContext.ImpulseLambda]
+// for that requirement.
+func (s *PairCollisionSolver) recompute(ctx PairConstraintContext) {
+	s.primaryPointOffsetWS = dprec.Vec3Diff(s.primaryContactPoint, ctx.PrimaryTarget.Position())
+	s.secondaryPointOffsetWS = dprec.Vec3Diff(s.secondaryContactPoint, ctx.SecondaryTarget.Position())
+
+	s.primaryJacobian = Jacobian{
+		LinearSlope:  s.secondaryContactNormal,
+		AngularSlope: dprec.Vec3Cross(s.primaryPointOffsetWS, s.secondaryContactNormal),
+	}
+	s.secondaryJacobian = Jacobian{
+		LinearSlope:  s.primaryContactNormal,
+		AngularSlope: dprec.Vec3Cross(s.secondaryPointOffsetWS, s.primaryContactNormal),
+	}
+
+	s.drift = s.contactDepth
 }

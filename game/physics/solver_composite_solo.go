@@ -61,17 +61,14 @@ func (s *CompositeSoloConstraintSolver) ApplyImpulses(ctx SoloConstraintContext)
 
 // ApplyNudges implements [SoloConstraintSolver.ApplyNudges].
 //
-// It calls [SoloConstraintSolver.Reset] followed by
-// [SoloConstraintSolver.ApplyNudges] on each combined solver in turn,
-// rather than calling ApplyNudges on all of them in a single pass. This
-// preserves the guarantee, documented on [SoloConstraintSolver.Reset],
-// that Reset always immediately precedes ApplyNudges for a given solver
-// - since a combined solver earlier in the list may reposition the
-// target, which would otherwise leave a later solver's cached,
-// position-derived state stale for the remainder of this call.
+// It calls [SoloConstraintSolver.ApplyNudges] on each combined solver, in
+// order. A combined solver earlier in the list may reposition the
+// target, but this requires no special handling here - per
+// [SoloConstraintSolver.ApplyNudges], each combined solver is already
+// responsible for recomputing any position-derived state it needs at the
+// start of its own call.
 func (s *CompositeSoloConstraintSolver) ApplyNudges(ctx SoloConstraintContext) {
 	for _, solver := range s.solvers {
-		solver.Reset(ctx) // preserve engine reset behavior
 		solver.ApplyNudges(ctx)
 	}
 }

@@ -715,7 +715,6 @@ func (s *Scene) applyNudges(elapsedSeconds float64) {
 				SecondaryTarget: newConstraintTarget(secondaryBody),
 			}
 
-			constraint.solver.Reset(ctx)
 			constraint.solver.ApplyNudges(ctx)
 		})
 
@@ -729,7 +728,6 @@ func (s *Scene) applyNudges(elapsedSeconds float64) {
 				Target:       newConstraintTarget(body),
 			}
 
-			constraint.solver.Reset(ctx)
 			constraint.solver.ApplyNudges(ctx)
 		})
 

@@ -102,18 +102,10 @@ func (s *SoloCollisionSolver) Configure(config SoloCollisionSolverConfig) {
 
 // Reset implements [SoloConstraintSolver.Reset].
 //
-// It recomputes the contact's [Jacobian], along with the world-space
-// offset from the target's center of mass to the contact point that it
-// is derived from, based on the target's current position.
+// It recomputes the contact's [Jacobian], the same way
+// [SoloCollisionSolver.recompute] does.
 func (s *SoloCollisionSolver) Reset(ctx SoloConstraintContext) {
-	s.pointOffsetWS = dprec.Vec3Diff(s.bodyContactPoint, ctx.Target.Position())
-
-	s.jacobian = Jacobian{
-		LinearSlope:  s.terrainContactNormal,
-		AngularSlope: dprec.Vec3Cross(s.pointOffsetWS, s.terrainContactNormal),
-	}
-
-	s.drift = s.contactDepth
+	s.recompute(ctx)
 }
 
 // ApplyImpulses implements [SoloConstraintSolver.ApplyImpulses].
@@ -158,11 +150,32 @@ func (s *SoloCollisionSolver) ApplyImpulses(ctx SoloConstraintContext) {
 
 // ApplyNudges implements [SoloConstraintSolver.ApplyNudges].
 //
-// If the contact is still penetrating, it nudges the target along the
+// It first recomputes the contact's [Jacobian], the same way
+// [SoloCollisionSolver.recompute] does, since a preceding nudge - by
+// this solver's own previous iteration, or by another constraint acting
+// on the same target - may have moved the target since
+// [SoloCollisionSolver.Reset] or the last call to this method. If the
+// contact is still penetrating, it then nudges the target along the
 // terrain's contact normal to reduce the penetration.
 func (s *SoloCollisionSolver) ApplyNudges(ctx SoloConstraintContext) {
+	s.recompute(ctx)
 	if s.drift > 0.0 {
 		nudge := ctx.NudgeSolution(s.jacobian, s.drift)
 		ctx.Target.ApplyNudge(nudge)
 	}
+}
+
+// recompute recalculates the contact's [Jacobian], along with the
+// world-space offset from the target's center of mass to the contact
+// point that it is derived from, based on the target's current
+// position.
+func (s *SoloCollisionSolver) recompute(ctx SoloConstraintContext) {
+	s.pointOffsetWS = dprec.Vec3Diff(s.bodyContactPoint, ctx.Target.Position())
+
+	s.jacobian = Jacobian{
+		LinearSlope:  s.terrainContactNormal,
+		AngularSlope: dprec.Vec3Cross(s.pointOffsetWS, s.terrainContactNormal),
+	}
+
+	s.drift = s.contactDepth
 }

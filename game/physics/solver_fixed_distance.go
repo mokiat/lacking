@@ -110,31 +110,10 @@ func (s *FixedDistanceSolver) SetDistance(distance float64) *FixedDistanceSolver
 
 // Reset implements [SoloConstraintSolver.Reset].
 //
-// It recomputes the constraint's [Jacobian], along with the world-space
-// offset from the target's center of mass to its anchor point (derived
-// from BodyAnchorOffset and the target's current rotation), and the
-// current distance error (drift) between that anchor point and
-// FixedPoint, based on the target's current position and rotation.
-//
-// If the anchor point currently coincides with FixedPoint, the
-// constraint direction is undefined; an arbitrary axis is used as a
-// fallback in that degenerate case.
+// It recomputes the constraint's [Jacobian] and current distance error
+// (drift), the same way [FixedDistanceSolver.recompute] does.
 func (s *FixedDistanceSolver) Reset(ctx SoloConstraintContext) {
-	anchorOffsetWS := dprec.QuatVec3Rotation(ctx.Target.Rotation(), s.bodyAnchorOffset)
-	anchorWS := dprec.Vec3Sum(ctx.Target.Position(), anchorOffsetWS)
-	delta := dprec.Vec3Diff(anchorWS, s.fixedPoint)
-
-	normal := dprec.BasisXVec3()
-	actualDistance := delta.Length()
-	if actualDistance > Epsilon {
-		normal = dprec.UnitVec3(delta)
-	}
-
-	s.jacobian = Jacobian{
-		LinearSlope:  normal,
-		AngularSlope: dprec.Vec3Cross(anchorOffsetWS, normal),
-	}
-	s.drift = s.distance - actualDistance
+	s.recompute(ctx)
 }
 
 // ApplyImpulses implements [SoloConstraintSolver.ApplyImpulses].
@@ -151,9 +130,43 @@ func (s *FixedDistanceSolver) ApplyImpulses(ctx SoloConstraintContext) {
 
 // ApplyNudges implements [SoloConstraintSolver.ApplyNudges].
 //
-// It nudges the target's position and rotation to reduce any remaining
-// distance error (drift) between its anchor point and FixedPoint.
+// It first recomputes the constraint's [Jacobian] and current distance
+// error (drift), the same way [FixedDistanceSolver.recompute] does,
+// since a preceding nudge - by this solver's own previous iteration, or
+// by another constraint acting on the same target - may have moved the
+// target since [FixedDistanceSolver.Reset] or the last call to this
+// method. It then nudges the target's position and rotation to reduce
+// any remaining distance error between its anchor point and FixedPoint.
 func (s *FixedDistanceSolver) ApplyNudges(ctx SoloConstraintContext) {
+	s.recompute(ctx)
 	nudge := ctx.NudgeSolution(s.jacobian, s.drift)
 	ctx.Target.ApplyNudge(nudge)
+}
+
+// recompute recalculates the constraint's [Jacobian], along with the
+// world-space offset from the target's center of mass to its anchor
+// point (derived from BodyAnchorOffset and the target's current
+// rotation), and the current distance error (drift) between that anchor
+// point and FixedPoint, based on the target's current position and
+// rotation.
+//
+// If the anchor point currently coincides with FixedPoint, the
+// constraint direction is undefined; an arbitrary axis is used as a
+// fallback in that degenerate case.
+func (s *FixedDistanceSolver) recompute(ctx SoloConstraintContext) {
+	anchorOffsetWS := dprec.QuatVec3Rotation(ctx.Target.Rotation(), s.bodyAnchorOffset)
+	anchorWS := dprec.Vec3Sum(ctx.Target.Position(), anchorOffsetWS)
+	delta := dprec.Vec3Diff(anchorWS, s.fixedPoint)
+
+	normal := dprec.BasisXVec3()
+	actualDistance := delta.Length()
+	if actualDistance > Epsilon {
+		normal = dprec.UnitVec3(delta)
+	}
+
+	s.jacobian = Jacobian{
+		LinearSlope:  normal,
+		AngularSlope: dprec.Vec3Cross(anchorOffsetWS, normal),
+	}
+	s.drift = s.distance - actualDistance
 }

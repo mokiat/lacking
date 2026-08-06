@@ -61,17 +61,14 @@ func (s *CompositePairConstraintSolver) ApplyImpulses(ctx PairConstraintContext)
 
 // ApplyNudges implements [PairConstraintSolver.ApplyNudges].
 //
-// It calls [PairConstraintSolver.Reset] followed by
-// [PairConstraintSolver.ApplyNudges] on each combined solver in turn,
-// rather than calling ApplyNudges on all of them in a single pass. This
-// preserves the guarantee, documented on [PairConstraintSolver.Reset],
-// that Reset always immediately precedes ApplyNudges for a given solver
-// - since a combined solver earlier in the list may reposition either
-// target, which would otherwise leave a later solver's cached,
-// position-derived state stale for the remainder of this call.
+// It calls [PairConstraintSolver.ApplyNudges] on each combined solver, in
+// order. A combined solver earlier in the list may reposition either
+// target, but this requires no special handling here - per
+// [PairConstraintSolver.ApplyNudges], each combined solver is already
+// responsible for recomputing any position-derived state it needs at the
+// start of its own call.
 func (s *CompositePairConstraintSolver) ApplyNudges(ctx PairConstraintContext) {
 	for _, solver := range s.solvers {
-		solver.Reset(ctx) // preserve engine reset behavior
 		solver.ApplyNudges(ctx)
 	}
 }

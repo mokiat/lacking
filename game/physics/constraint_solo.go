@@ -114,12 +114,12 @@ type SoloConstraintSolver interface {
 	// This is called once before the first
 	// [SoloConstraintSolver.ApplyImpulses] iteration of a step, since the
 	// target body's position and orientation remain unchanged throughout
-	// that loop.
+	// that loop. This amortizes that recomputation across every
+	// iteration of the loop, rather than repeating it on each one.
 	//
-	// This is also called before every single
-	// [SoloConstraintSolver.ApplyNudges] invocation, since nudges
-	// reposition the target body and would otherwise leave the solver's
-	// cached, position-derived data stale for subsequent iterations.
+	// Reset is not called again before [SoloConstraintSolver.ApplyNudges]
+	// - see that method for how position-derived state is kept fresh once
+	// nudges start repositioning the target body.
 	Reset(ctx SoloConstraintContext)
 
 	// ApplyImpulses is called by the physics engine to instruct the solver
@@ -127,7 +127,10 @@ type SoloConstraintSolver interface {
 	// correct its velocity so that the constraint is satisfied.
 	//
 	// This is called multiple times per step, once for each impulse
-	// resolution iteration.
+	// resolution iteration, always preceded by exactly one call to
+	// [SoloConstraintSolver.Reset] for the step. Since impulses only
+	// change velocity, not position, any position-derived state Reset
+	// computed remains valid for every iteration.
 	ApplyImpulses(ctx SoloConstraintContext)
 
 	// ApplyNudges is called by the physics engine to instruct the solver
@@ -135,7 +138,15 @@ type SoloConstraintSolver interface {
 	// correct its position so that the constraint is satisfied.
 	//
 	// This is called multiple times per step, once for each nudge
-	// resolution iteration.
+	// resolution iteration, with no preceding call to
+	// [SoloConstraintSolver.Reset]. Unlike
+	// [SoloConstraintSolver.ApplyImpulses], each call may follow a change
+	// in the target body's position or orientation - caused by this
+	// solver's own previous iteration, or by another constraint acting on
+	// the same target - so an implementation that caches position-derived
+	// state (e.g. Jacobians) is responsible for recomputing it itself at
+	// the start of every call, rather than relying on stale state left
+	// over from Reset.
 	ApplyNudges(ctx SoloConstraintContext)
 }
 

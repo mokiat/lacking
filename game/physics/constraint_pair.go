@@ -142,12 +142,12 @@ type PairConstraintSolver interface {
 	// This is called once before the first
 	// [PairConstraintSolver.ApplyImpulses] iteration of a step, since the
 	// target bodies' positions and orientations remain unchanged
-	// throughout that loop.
+	// throughout that loop. This amortizes that recomputation across
+	// every iteration of the loop, rather than repeating it on each one.
 	//
-	// This is also called before every single
-	// [PairConstraintSolver.ApplyNudges] invocation, since nudges
-	// reposition the target bodies and would otherwise leave the solver's
-	// cached, position-derived data stale for subsequent iterations.
+	// Reset is not called again before [PairConstraintSolver.ApplyNudges]
+	// - see that method for how position-derived state is kept fresh once
+	// nudges start repositioning the target bodies.
 	Reset(ctx PairConstraintContext)
 
 	// ApplyImpulses is called by the physics engine to instruct the
@@ -156,7 +156,10 @@ type PairConstraintSolver interface {
 	// satisfied.
 	//
 	// This is called multiple times per step, once for each impulse
-	// resolution iteration.
+	// resolution iteration, always preceded by exactly one call to
+	// [PairConstraintSolver.Reset] for the step. Since impulses only
+	// change velocity, not position, any position-derived state Reset
+	// computed remains valid for every iteration.
 	ApplyImpulses(ctx PairConstraintContext)
 
 	// ApplyNudges is called by the physics engine to instruct the solver
@@ -164,7 +167,15 @@ type PairConstraintSolver interface {
 	// correct their positions so that the constraint is satisfied.
 	//
 	// This is called multiple times per step, once for each nudge
-	// resolution iteration.
+	// resolution iteration, with no preceding call to
+	// [PairConstraintSolver.Reset]. Unlike
+	// [PairConstraintSolver.ApplyImpulses], each call may follow a change
+	// in either target body's position or orientation - caused by this
+	// solver's own previous iteration, or by another constraint acting on
+	// either target - so an implementation that caches position-derived
+	// state (e.g. Jacobians) is responsible for recomputing it itself at
+	// the start of every call, rather than relying on stale state left
+	// over from Reset.
 	ApplyNudges(ctx PairConstraintContext)
 }
 
