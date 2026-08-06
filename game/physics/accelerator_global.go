@@ -160,6 +160,14 @@ func (v GlobalAcceleratorView) resolve(id GlobalAcceleratorID, required bool) *g
 // do not have to keep passing its ID around.
 //
 // It is created through [GlobalAcceleratorView.Handle].
+//
+// Wrapping an ID this way needs no allocation of its own, but unlike a
+// plain [GlobalAcceleratorID] (which holds no pointers), a Handle keeps an
+// internal reference to the owning [Scene]. This keeps that Scene
+// reachable for as long as the handle is retained, and adds a pointer
+// that the garbage collector must trace wherever the handle is stored.
+// Prefer storing IDs over handles in long-lived collections unless the
+// convenience is worth that cost.
 type GlobalAcceleratorHandle struct {
 	view GlobalAcceleratorView
 	id   GlobalAcceleratorID
