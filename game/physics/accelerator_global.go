@@ -44,6 +44,14 @@ func (v GlobalAcceleratorView) Create(solver AccelerationSolver) GlobalAccelerat
 	}
 }
 
+// CreateHandle behaves like [GlobalAcceleratorView.Create] but wraps the
+// resulting ID in a [GlobalAcceleratorHandle], as returned by
+// [GlobalAcceleratorView.Handle], for callers that want to keep acting on
+// the new global accelerator without holding onto its ID separately.
+func (v GlobalAcceleratorView) CreateHandle(solver AccelerationSolver) GlobalAcceleratorHandle {
+	return v.Handle(v.Create(solver))
+}
+
 // Delete removes the global accelerator with the specified ID.
 //
 // It panics if the ID does not reference a valid global accelerator, be it

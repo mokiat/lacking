@@ -53,6 +53,16 @@ func (v BodyAcceleratorView) Create(bodyID BodyID, solver AccelerationSolver) Bo
 	}
 }
 
+// CreateHandle behaves like [BodyAcceleratorView.Create] but wraps the
+// resulting ID in a [BodyAcceleratorHandle], as returned by
+// [BodyAcceleratorView.Handle], for callers that want to keep acting on
+// the new body accelerator without holding onto its ID separately.
+//
+// CreateHandle panics if bodyID does not reference a valid body.
+func (v BodyAcceleratorView) CreateHandle(bodyID BodyID, solver AccelerationSolver) BodyAcceleratorHandle {
+	return v.Handle(v.Create(bodyID, solver))
+}
+
 // Delete removes the body accelerator with the specified ID, unlinking it
 // from its target body and releasing the underlying storage for reuse.
 //

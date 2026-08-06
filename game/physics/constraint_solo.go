@@ -192,6 +192,16 @@ func (v SoloConstraintView) Create(bodyID BodyID, solver SoloConstraintSolver) S
 	}
 }
 
+// CreateHandle behaves like [SoloConstraintView.Create] but wraps the
+// resulting ID in a [SoloConstraintHandle], as returned by
+// [SoloConstraintView.Handle], for callers that want to keep acting on
+// the new solo constraint without holding onto its ID separately.
+//
+// CreateHandle panics if bodyID does not reference a valid body.
+func (v SoloConstraintView) CreateHandle(bodyID BodyID, solver SoloConstraintSolver) SoloConstraintHandle {
+	return v.Handle(v.Create(bodyID, solver))
+}
+
 // Delete removes the solo constraint identified by id, unlinking it from
 // its target body and releasing the underlying storage for reuse.
 //

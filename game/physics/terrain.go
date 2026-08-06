@@ -49,6 +49,14 @@ func (v TerrainView) Create(position dprec.Vec3, rotation dprec.Quat, mesh Colli
 	}
 }
 
+// CreateHandle behaves like [TerrainView.Create] but wraps the resulting
+// ID in a [TerrainHandle], as returned by [TerrainView.Handle], for
+// callers that want to keep acting on the new terrain without holding
+// onto its ID separately.
+func (v TerrainView) CreateHandle(position dprec.Vec3, rotation dprec.Quat, mesh CollisionMesh) TerrainHandle {
+	return v.Handle(v.Create(position, rotation, mesh))
+}
+
 func (v TerrainView) Delete(id TerrainID) {
 	terrain := v.resolve(id, true)
 

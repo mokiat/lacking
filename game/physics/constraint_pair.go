@@ -231,6 +231,18 @@ func (v PairConstraintView) Create(primaryID, secondaryID BodyID, solver PairCon
 	}
 }
 
+// CreateHandle behaves like [PairConstraintView.Create] but wraps the
+// resulting ID in a [PairConstraintHandle], as returned by
+// [PairConstraintView.Handle], for callers that want to keep acting on
+// the new pair constraint without holding onto its ID separately.
+//
+// CreateHandle panics if primaryID or secondaryID does not reference a
+// valid body, or if they both reference the same body, since a pair
+// constraint cannot act on a single body twice.
+func (v PairConstraintView) CreateHandle(primaryID, secondaryID BodyID, solver PairConstraintSolver) PairConstraintHandle {
+	return v.Handle(v.Create(primaryID, secondaryID, solver))
+}
+
 // Delete removes the pair constraint identified by id, unlinking it from
 // both of its target bodies and releasing the underlying storage for
 // reuse.
