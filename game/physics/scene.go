@@ -2,6 +2,7 @@ package physics
 
 import (
 	"maps"
+	"math"
 	"time"
 
 	"github.com/mokiat/gog/ds"
@@ -10,201 +11,153 @@ import (
 	"github.com/mokiat/lacking/core/spatial/placement3d"
 	"github.com/mokiat/lacking/core/spatial/shape3d"
 	"github.com/mokiat/lacking/debug/metric"
-	"github.com/mokiat/lacking/game/physics/constraint"
-	"github.com/mokiat/lacking/game/physics/solver"
+	"github.com/mokiat/lacking/util/observer"
 )
-
-func NewScene() *Scene {
-	return &Scene{
-		shapeScene: placement3d.NewScene[bodyRef, struct{}, propRef](placement3d.SceneSettings{
-			Size:                opt.V(16384.0),
-			MaxDepth:            opt.V[uint32](12),
-			InitialNodeCapacity: opt.V[uint32](1024),
-			InitialItemCapacity: opt.V[uint32](1024),
-		}),
-
-		sbCollisionSubscriptions: NewSingleBodyCollisionSubscriptionSet(),
-		dbCollisionSubscriptions: NewDoubleBodyCollisionSubscriptionSet(),
-
-		timeSpeed: 1.0,
-
-		maxLinearAcceleration:  200.0,
-		maxAngularAcceleration: 200.0,
-		maxLinearVelocity:      2000.0,
-		maxAngularVelocity:     2000.0,
-
-		mediumSolver: NewStaticAirSolver(),
-
-		props: make([]propState, 0, 1024),
-
-		freeBodyIndices:            ds.PreallocatedStack[uint32](16),
-		bodies:                     make([]bodyState, 0, 64),
-		bodyAccelerationTargets:    make([]AccelerationTarget, 0, 64),
-		bodyConstraintPlaceholders: make([]solver.Placeholder, 0, 64),
-
-		// bodyAccelerators   []any // TOOD
-		// areaAccelerators   []any // TODO
-		globalAccelerators: make([]globalAcceleratorState, 0, 64),
-
-		freeBodyAcceleratorIndices:   ds.PreallocatedStack[uint32](16),
-		freeAreaAcceleratorIndices:   ds.PreallocatedStack[uint32](16),
-		freeGlobalAcceleratorIndices: ds.PreallocatedStack[uint32](16),
-
-		sbConstraints: make([]sbConstraintState, 0, 64),
-		dbConstraints: make([]dbConstraintState, 0, 64),
-
-		freeSBConstraintIndices: ds.PreallocatedStack[uint32](16),
-		freeDBConstraintIndices: ds.PreallocatedStack[uint32](16),
-
-		collisionSet: make(placement3d.ContactList, 0, 128),
-
-		oldSBCollisions: make(map[sbCollisionPair]struct{}, 32),
-		newSBCollisions: make(map[sbCollisionPair]struct{}, 32),
-
-		oldDBCollisions: make(map[dbCollisionPair]struct{}, 32),
-		newDBCollisions: make(map[dbCollisionPair]struct{}, 32),
-	}
-}
 
 // Scene represents a physics scene that contains
 // a number of bodies that are independent on any
 // bodies managed by other scene objects.
 type Scene struct {
-	shapeScene *placement3d.Scene[bodyRef, struct{}, propRef]
+	collisionScene *placement3d.Scene[bodyData, shapeData, terrainData]
 
-	sbCollisionSubscriptions *SingleBodyCollisionSubscriptionSet
-	dbCollisionSubscriptions *DoubleBodyCollisionSubscriptionSet
+	soloCollisionSubscriptions *observer.SubscriptionSet[SoloCollisionCallback]
+	pairCollisionSubscriptions *observer.SubscriptionSet[PairCollisionCallback]
 
-	timeSpeed float64
+	soloCollisionConstraintIDs []SoloConstraintID
+	pairCollisionConstraintIDs []PairConstraintID
+
+	soloCollisionSolvers []SoloCollisionSolver
+	pairCollisionSolvers []PairCollisionSolver
+
+	oldSoloCollisionRefs map[soloCollisionRef]struct{}
+	oldPairCollisionRefs map[pairCollisionRef]struct{}
+
+	newSoloCollisionRefs map[soloCollisionRef]struct{}
+	newPairCollisionRefs map[pairCollisionRef]struct{}
+
+	collisionContacts placement3d.ContactList
+
+	freeCollisionRejectGroup uint32
+
+	mediumSolver MediumSolver
+
+	freeGlobalAcceleratorIndices *ds.Stack[int32]
+	freeBodyAcceleratorIndices   *ds.Stack[int32]
+	freeSoloConstraintIndices    *ds.Stack[int32]
+	freePairConstraintIndices    *ds.Stack[int32]
+	freeBodyIndices              *ds.Stack[int32]
+	freeTerrainIndices           *ds.Stack[int32]
+
+	globalAccelerators []globalAcceleratorState
+	bodyAccelerators   []bodyAcceleratorState
+	soloConstraints    []soloConstraintState
+	pairConstraints    []pairConstraintState
+	bodies             []bodyState
+	terrains           []terrainState
 
 	maxLinearAcceleration  float64
 	maxAngularAcceleration float64
 	maxLinearVelocity      float64
 	maxAngularVelocity     float64
 
-	mediumSolver MediumSolver
+	impulseIterationCount       int
+	impulseDriftAdjustmentRatio float64
+	nudgeIterationCount         int
+	nudgeDriftAdjustmentRatio   float64
 
-	props []propState
-
-	bodies                     []bodyState
-	bodyAccelerationTargets    []AccelerationTarget
-	bodyConstraintPlaceholders []solver.Placeholder
-	freeBodyIndices            *ds.Stack[uint32]
-
-	// bodyAccelerators   []any // TOOD
-	freeBodyAcceleratorIndices *ds.Stack[uint32]
-
-	// areaAccelerators   []any // TODO
-	freeAreaAcceleratorIndices *ds.Stack[uint32]
-
-	globalAccelerators           []globalAcceleratorState
-	freeGlobalAcceleratorIndices *ds.Stack[uint32]
-
-	sbConstraints           []sbConstraintState
-	freeSBConstraintIndices *ds.Stack[uint32]
-
-	dbConstraints           []dbConstraintState
-	freeDBConstraintIndices *ds.Stack[uint32]
-
-	sbCollisionConstraints []SBConstraint
-	sbCollisionSolvers     []constraint.Collision
-
-	dbCollisionConstraints []DBConstraint
-	dbCollisionSolvers     []constraint.PairCollision
-
-	collisionSet placement3d.ContactList
-
-	oldSBCollisions map[sbCollisionPair]struct{}
-	newSBCollisions map[sbCollisionPair]struct{}
-
-	oldDBCollisions map[dbCollisionPair]struct{}
-	newDBCollisions map[dbCollisionPair]struct{}
-
-	freeCollisionRejectGroup uint32
-	freeRevision             uint32
+	timeScale float64
 }
 
-// Delete releases resources allocated by this scene. Users should not call
-// any further methods on this object.
-func (s *Scene) Delete() {
-	s.props = nil
+func NewScene() *Scene {
+	return &Scene{
+		collisionScene: placement3d.NewScene[bodyData, shapeData, terrainData](placement3d.SceneSettings{
+			Size:                opt.V(16384.0),
+			MaxDepth:            opt.V[uint32](12),
+			InitialNodeCapacity: opt.V[uint32](1024),
+			InitialItemCapacity: opt.V[uint32](1024),
+		}),
 
-	s.freeBodyIndices = nil
-	s.bodies = nil
-	s.bodyAccelerationTargets = nil
-	s.bodyConstraintPlaceholders = nil
+		soloCollisionSubscriptions: observer.NewSubscriptionSet[SoloCollisionCallback](),
+		pairCollisionSubscriptions: observer.NewSubscriptionSet[PairCollisionCallback](),
 
-	s.globalAccelerators = nil
-	s.freeBodyAcceleratorIndices = nil
-	s.freeAreaAcceleratorIndices = nil
-	s.freeGlobalAcceleratorIndices = nil
+		soloCollisionConstraintIDs: make([]SoloConstraintID, 0),
+		pairCollisionConstraintIDs: make([]PairConstraintID, 0),
 
-	s.sbConstraints = nil
-	s.freeSBConstraintIndices = nil
+		soloCollisionSolvers: make([]SoloCollisionSolver, 0),
+		pairCollisionSolvers: make([]PairCollisionSolver, 0),
 
-	s.dbConstraints = nil
-	s.freeDBConstraintIndices = nil
+		oldSoloCollisionRefs: make(map[soloCollisionRef]struct{}),
+		oldPairCollisionRefs: make(map[pairCollisionRef]struct{}),
 
-	s.sbCollisionConstraints = nil
-	s.sbCollisionSolvers = nil
+		newSoloCollisionRefs: make(map[soloCollisionRef]struct{}),
+		newPairCollisionRefs: make(map[pairCollisionRef]struct{}),
 
-	s.dbCollisionConstraints = nil
-	s.dbCollisionSolvers = nil
+		collisionContacts: make(placement3d.ContactList, 0),
 
-	s.collisionSet = nil
+		freeCollisionRejectGroup: 0,
 
-	s.oldSBCollisions = nil
-	s.newSBCollisions = nil
+		mediumSolver: NewStaticAirSolver(),
 
-	s.oldDBCollisions = nil
-	s.newDBCollisions = nil
+		freeGlobalAcceleratorIndices: ds.EmptyStack[int32](),
+		freeBodyAcceleratorIndices:   ds.EmptyStack[int32](),
+		freeSoloConstraintIndices:    ds.EmptyStack[int32](),
+		freePairConstraintIndices:    ds.EmptyStack[int32](),
+		freeBodyIndices:              ds.EmptyStack[int32](),
+		freeTerrainIndices:           ds.EmptyStack[int32](),
+
+		globalAccelerators: make([]globalAcceleratorState, 0),
+		bodyAccelerators:   make([]bodyAcceleratorState, 0),
+		soloConstraints:    make([]soloConstraintState, 0),
+		pairConstraints:    make([]pairConstraintState, 0),
+		bodies:             make([]bodyState, 0),
+		terrains:           make([]terrainState, 0),
+
+		maxLinearAcceleration:  math.MaxFloat64,
+		maxAngularAcceleration: math.MaxFloat64,
+		maxLinearVelocity:      math.MaxFloat64,
+		maxAngularVelocity:     math.MaxFloat64,
+
+		impulseIterationCount:       8,
+		impulseDriftAdjustmentRatio: 0.2,
+		nudgeIterationCount:         4,
+		nudgeDriftAdjustmentRatio:   0.2,
+
+		timeScale: 1.0,
+	}
 }
 
-// SubscribeSingleBodyCollision registers a callback that is invoked when a body
-// collides with a static object.
-func (s *Scene) SubscribeSingleBodyCollision(callback SingleBodyCollisionCallback) *SingleBodyCollisionSubscription {
-	return s.sbCollisionSubscriptions.Subscribe(callback)
+// SubscribeSoloCollision registers a callback that is invoked whenever
+// a body starts or stops colliding with a terrain in the scene.
+//
+// Call [SoloCollisionSubscription.Delete] on the returned subscription
+// to stop receiving notifications.
+func (s *Scene) SubscribeSoloCollision(callback SoloCollisionCallback) *SoloCollisionSubscription {
+	return s.soloCollisionSubscriptions.Subscribe(callback)
 }
 
-// SubscribeDoubleBodyCollision registers a callback that is invoked when two
-// bodies collide.
-func (s *Scene) SubscribeDoubleBodyCollision(callback DoubleBodyCollisionCallback) *DoubleBodyCollisionSubscription {
-	return s.dbCollisionSubscriptions.Subscribe(callback)
+// SubscribePairCollision registers a callback that is invoked whenever
+// two bodies start or stop colliding with each other.
+//
+// Call [PairCollisionSubscription.Delete] on the returned subscription
+// to stop receiving notifications.
+func (s *Scene) SubscribePairCollision(callback PairCollisionCallback) *PairCollisionSubscription {
+	return s.pairCollisionSubscriptions.Subscribe(callback)
 }
 
-// TimeSpeed returns the speed at which time runs, where 1.0 is the default
-// and 0.0 is stopped.
-func (s *Scene) TimeSpeed() float64 {
-	return s.timeSpeed
-}
-
-// SetTimeSpeed changes the rate at which time runs.
-func (s *Scene) SetTimeSpeed(timeSpeed float64) {
-	s.timeSpeed = timeSpeed
-}
-
-// MaxLinearAcceleration returns the maximum linear acceleration that a body
-// can have.
-func (s *Scene) MaxLinearAcceleration() float64 {
-	return s.maxLinearAcceleration
-}
-
-// SetMaxLinearAcceleration changes the maximum linear acceleration that a body
-// can have.
-func (s *Scene) SetMaxLinearAcceleration(acceleration float64) {
-	s.maxLinearAcceleration = acceleration
-}
-
-// MaxAngularAcceleration returns the maximum angular acceleration that a body
-// can have.
-func (s *Scene) MaxAngularAcceleration() float64 {
-	return s.maxAngularAcceleration
-}
-
-// SetMaxAngularAcceleration changes the maximum angular acceleration that a
-// body can have.
-func (s *Scene) SetMaxAngularAcceleration(acceleration float64) {
-	s.maxAngularAcceleration = acceleration
+// NextCollisionRejectGroup returns a collision reject group that is unique
+// within this Scene. Bodies that are assigned the same reject group do not
+// collide with each other, which is useful for objects that are meant to
+// overlap, such as the chassis and the wheels of a vehicle.
+//
+// The returned value is always larger than zero, since zero indicates that a
+// body does not belong to any reject group and hence can collide with
+// everything.
+//
+// Reject groups are never recycled. Each call returns a new value, even if all
+// bodies that used a previously returned group have been deleted.
+func (s *Scene) NextCollisionRejectGroup() uint32 {
+	s.freeCollisionRejectGroup++
+	return s.freeCollisionRejectGroup
 }
 
 // MediumSolver returns the solver that is used to calculate the medium
@@ -229,744 +182,835 @@ func (s *Scene) SetMediumSolver(solver MediumSolver) {
 	}
 }
 
-// NextCollisionRejectGroup returns a collision reject group that is unique
-// within this Scene. Bodies that are assigned the same reject group do not
-// collide with each other, which is useful for objects that are meant to
-// overlap, such as the chassis and the wheels of a vehicle.
-//
-// The returned value is always larger than zero, since zero indicates that a
-// body does not belong to any reject group and hence can collide with
-// everything.
-//
-// Reject groups are never recycled. Each call returns a new value, even if all
-// bodies that used a previously returned group have been deleted.
-func (s *Scene) NextCollisionRejectGroup() uint32 {
-	s.freeCollisionRejectGroup++
-	return s.freeCollisionRejectGroup
-}
-
-// CreateGlobalAccelerator creates a new accelerator that affects the whole
-// scene.
-func (s *Scene) CreateGlobalAccelerator(logic AccelerationSolver) GlobalAccelerator {
-	return createGlobalAccelerator(s, logic)
-}
-
-// CreateProp creates a new static Prop. A prop is an object
-// that is static and rarely removed.
-func (s *Scene) CreateProp(info PropInfo) {
-	// TODO: createProp(s, info)
-
-	// objectID := s.shapeScene.CreateObject(placement3d.ObjectInfo[internalRef]{
-	// 	Position: info.Position,
-	// 	Rotation: info.Rotation,
-	// 	UserData: internalRef{
-	// 		index:  propIndex,
-	// 		isProp: true,
-	// 	},
-	// })
-	// for _, sphere := range info.CollisionSpheres {
-	// 	s.shapeScene.AttachSphere(objectID, placement3d.SphereInfo[struct{}]{
-	// 		ShapeInfo: placement3d.ShapeInfo[struct{}]{},
-	// 		Sphere:    sphere,
-	// 	})
-	// }
-	// for _, box := range info.CollisionBoxes {
-	// 	s.shapeScene.AttachBox(objectID, placement3d.BoxInfo[struct{}]{
-	// 		ShapeInfo: placement3d.ShapeInfo[struct{}]{},
-	// 		Box:       box,
-	// 	})
-	// }
-	for _, mesh := range info.CollisionMeshes {
-		propIndex := uint32(len(s.props))
-
-		meshID := s.shapeScene.CreateMesh(placement3d.MeshInfo[propRef]{
-			Position: info.Position,
-			Rotation: info.Rotation,
-			Mesh:     mesh,
-			UserData: propRef{
-				index: propIndex,
-			},
-		})
-
-		s.props = append(s.props, propState{
-			reference: newIndexReference(propIndex, s.nextRevision()),
-			meshID:    meshID,
-			name:      info.Name,
-		})
-	}
-}
-
-// CreateBody creates a new physics body and places
-// it within this scene.
-func (s *Scene) CreateBody(info BodyInfo) Body {
-	return createBody(s, info)
-}
-
-// CreateConstraintSet creates a new ConstraintSet.
-func (s *Scene) CreateConstraintSet() *ConstraintSet {
-	return &ConstraintSet{
+// GlobalAccelerators returns a [GlobalAcceleratorView] through which the
+// global accelerators of this scene can be created and managed.
+func (s *Scene) GlobalAccelerators() GlobalAcceleratorView {
+	return GlobalAcceleratorView{
 		scene: s,
 	}
 }
 
-// CreateSingleBodyConstraint creates a new physics constraint that acts on
-// a single body and enables it for this scene.
-func (s *Scene) CreateSingleBodyConstraint(body Body, logic solver.Constraint) SBConstraint {
-	return createSBConstraint(s, logic, body)
+// BodyAccelerators returns a [BodyAcceleratorView] through which the body
+// accelerators of this scene can be created and managed.
+func (s *Scene) BodyAccelerators() BodyAcceleratorView {
+	return BodyAcceleratorView{
+		scene: s,
+	}
 }
 
-// CreateDoubleBodyConstraint creates a new physics constraint that acts on
-// two bodies and enables it for this scene.
-func (s *Scene) CreateDoubleBodyConstraint(primary, secondary Body, logic solver.PairConstraint) DBConstraint {
-	return createDBConstraint(s, logic, primary, secondary)
+// SoloConstraints returns a [SoloConstraintView] through which the solo
+// constraints of this scene can be created and managed.
+func (s *Scene) SoloConstraints() SoloConstraintView {
+	return SoloConstraintView{
+		scene: s,
+	}
 }
 
-// Update runs a single physics iteration. This method should be called with
-// fixed elapsed times, otherwise the physics may break.
+// PairConstraints returns a [PairConstraintView] through which the pair
+// constraints of this scene can be created and managed.
+func (s *Scene) PairConstraints() PairConstraintView {
+	return PairConstraintView{
+		scene: s,
+	}
+}
+
+// Bodies returns a [BodyView] through which the bodies of this scene can be
+// created and managed.
+func (s *Scene) Bodies() BodyView {
+	return BodyView{
+		scene: s,
+	}
+}
+
+// Terrains returns a [TerrainView] through which the terrains of this
+// scene can be created and managed.
+func (s *Scene) Terrains() TerrainView {
+	return TerrainView{
+		scene: s,
+	}
+}
+
+// MaxLinearAcceleration returns the maximum magnitude that the linear
+// acceleration of a body can reach. Accelerations that exceed it are
+// clamped on every simulation step.
+//
+// Defaults to math.MaxFloat64, which is effectively unbounded.
+func (s *Scene) MaxLinearAcceleration() float64 {
+	return s.maxLinearAcceleration
+}
+
+// SetMaxLinearAcceleration changes the maximum magnitude that the linear
+// acceleration of a body can reach.
+func (s *Scene) SetMaxLinearAcceleration(acceleration float64) {
+	s.maxLinearAcceleration = acceleration
+}
+
+// MaxAngularAcceleration returns the maximum magnitude that the angular
+// acceleration of a body can reach. Accelerations that exceed it are
+// clamped on every simulation step.
+//
+// Defaults to math.MaxFloat64, which is effectively unbounded.
+func (s *Scene) MaxAngularAcceleration() float64 {
+	return s.maxAngularAcceleration
+}
+
+// SetMaxAngularAcceleration changes the maximum magnitude that the angular
+// acceleration of a body can reach.
+func (s *Scene) SetMaxAngularAcceleration(acceleration float64) {
+	s.maxAngularAcceleration = acceleration
+}
+
+// MaxLinearVelocity returns the maximum magnitude that the linear velocity
+// of a body can reach. Velocities that exceed it are clamped on every
+// simulation step.
+//
+// Defaults to math.MaxFloat64, which is effectively unbounded.
+func (s *Scene) MaxLinearVelocity() float64 {
+	return s.maxLinearVelocity
+}
+
+// SetMaxLinearVelocity changes the maximum magnitude that the linear
+// velocity of a body can reach.
+func (s *Scene) SetMaxLinearVelocity(velocity float64) {
+	s.maxLinearVelocity = velocity
+}
+
+// MaxAngularVelocity returns the maximum magnitude that the angular
+// velocity of a body can reach. Velocities that exceed it are clamped on
+// every simulation step.
+//
+// Defaults to math.MaxFloat64, which is effectively unbounded.
+func (s *Scene) MaxAngularVelocity() float64 {
+	return s.maxAngularVelocity
+}
+
+// SetMaxAngularVelocity changes the maximum magnitude that the angular
+// velocity of a body can reach.
+func (s *Scene) SetMaxAngularVelocity(velocity float64) {
+	s.maxAngularVelocity = velocity
+}
+
+// ImpulseIterationCount returns the number of impulse resolution
+// iterations performed per physics simulation step. A higher iteration
+// count improves the accuracy with which constraints are jointly
+// satisfied, at the cost of extra computation.
+//
+// Defaults to 8.
+func (s *Scene) ImpulseIterationCount() int {
+	return s.impulseIterationCount
+}
+
+// SetImpulseIterationCount changes the number of impulse resolution
+// iterations performed per physics simulation step.
+func (s *Scene) SetImpulseIterationCount(count int) {
+	s.impulseIterationCount = count
+}
+
+// ImpulseDriftAdjustmentRatio returns the Baumgarte stabilization factor
+// used to correct positional drift through impulses, i.e. the value
+// passed as [SoloConstraintContext.ImpulseBeta] and
+// [PairConstraintContext.ImpulseBeta] to constraint solvers.
+//
+// Defaults to 0.2.
+func (s *Scene) ImpulseDriftAdjustmentRatio() float64 {
+	return s.impulseDriftAdjustmentRatio
+}
+
+// SetImpulseDriftAdjustmentRatio changes the Baumgarte stabilization
+// factor used to correct positional drift through impulses.
+func (s *Scene) SetImpulseDriftAdjustmentRatio(ratio float64) {
+	s.impulseDriftAdjustmentRatio = ratio
+}
+
+// NudgeIterationCount returns the number of nudge resolution iterations
+// performed per physics simulation step. A higher iteration count
+// improves the accuracy with which constraints are jointly satisfied, at
+// the cost of extra computation.
+//
+// Defaults to 8.
+func (s *Scene) NudgeIterationCount() int {
+	return s.nudgeIterationCount
+}
+
+// SetNudgeIterationCount changes the number of nudge resolution
+// iterations performed per physics simulation step.
+func (s *Scene) SetNudgeIterationCount(count int) {
+	s.nudgeIterationCount = count
+}
+
+// NudgeDriftAdjustmentRatio returns the Baumgarte stabilization factor
+// used to correct positional drift through nudges, i.e. the value passed
+// as [SoloConstraintContext.NudgeBeta] and [PairConstraintContext.NudgeBeta]
+// to constraint solvers.
+//
+// Defaults to 0.2.
+func (s *Scene) NudgeDriftAdjustmentRatio() float64 {
+	return s.nudgeDriftAdjustmentRatio
+}
+
+// SetNudgeDriftAdjustmentRatio changes the Baumgarte stabilization factor
+// used to correct positional drift through nudges.
+func (s *Scene) SetNudgeDriftAdjustmentRatio(ratio float64) {
+	s.nudgeDriftAdjustmentRatio = ratio
+}
+
+// TimeScale returns the multiplier applied to elapsed real time before it
+// is fed into the physics simulation through [Scene.Update], where 1.0 is
+// the default (real-time) rate and 0.0 pauses the simulation.
+//
+// The returned value is never negative.
+func (s *Scene) TimeScale() float64 {
+	return s.timeScale
+}
+
+// SetTimeScale changes the multiplier applied to elapsed real time before
+// it is fed into the physics simulation through [Scene.Update].
+//
+// Negative values are clamped to 0, since the simulation does not support
+// running time backwards.
+func (s *Scene) SetTimeScale(scale float64) {
+	s.timeScale = max(0.0, scale)
+}
+
+// Update advances the physics simulation by elapsedTime, scaled by
+// [Scene.TimeScale], and notifies any collision subscribers registered
+// through [Scene.SubscribeSoloCollision] and [Scene.SubscribePairCollision]
+// of collisions that started or stopped as a result.
+//
+// elapsedTime must be a fixed, consistent duration across calls (e.g. the
+// ticks produced by a fixed-interval segmenter), since the impulse and
+// nudge resolution assume a stable step size; a varying elapsedTime will
+// make the simulation inaccurate or unstable.
+//
+// A [Scene.TimeScale] of 0 effectively pauses the simulation: Update can
+// still be called on a fixed schedule, but no motion is integrated.
 func (s *Scene) Update(elapsedTime time.Duration) {
 	elapsedSeconds := elapsedTime.Seconds()
-	s.runSimulation(elapsedSeconds * s.timeSpeed)
-	s.notifySingleBodyCollisions()
-	s.notifyDoubleBodyCollisions()
+	s.runSimulation(elapsedSeconds * s.timeScale)
+	s.notifySoloCollisions()
+	s.notifyPairCollisions()
 }
 
-func (s *Scene) Each(cb func(b Body)) {
-	s.eachBodyState(func(_ int, b *bodyState) {
-		cb(Body{
-			scene:     s,
-			reference: b.reference,
-		})
-	})
-}
-
-func (s *Scene) CheckSegmentIntersection(segment shape3d.Segment, mask uint32) (Body, bool) {
-	intersection, ok := s.shapeScene.CheckSegmentIntersection(segment, placement3d.Filter{
-		Mask: opt.V(mask),
-	})
-	if !ok {
-		return Body{}, false
+func (s *Scene) allocateGlobalAccelerator() (int32, *globalAcceleratorState) {
+	var index int32
+	if s.freeGlobalAcceleratorIndices.IsEmpty() {
+		index = int32(len(s.globalAccelerators))
+		s.globalAccelerators = append(s.globalAccelerators, globalAcceleratorState{})
+	} else {
+		index = s.freeGlobalAcceleratorIndices.Pop()
 	}
-	if intersection.TargetShapeID == placement3d.InvalidShapeID {
-		// A prop.
-		return Body{}, false // FIXME: This should handle props as well.
-	}
-	objectID := s.shapeScene.GetShapeObject(intersection.TargetShapeID)
-	ref := s.shapeScene.GetObjectUserData(objectID)
-	return Body{
-		scene:     s,
-		reference: s.bodies[ref.index].reference,
-	}, true
+	return index, &s.globalAccelerators[index]
 }
 
-// func (s *Scene) Nearby(body Body, distance float64, cb func(b Body)) {
-// 	state := s.resolveBodyState(body.reference)
-// 	if state == nil {
-// 		return
-// 	}
-// 	region := spatial.CuboidRegion(
-// 		state.position,
-// 		dprec.NewVec3(distance, distance, distance),
-// 	)
-// 	s.bodyOctree.VisitHexahedronRegion(&region, spatial.VisitorFunc[uint32](func(candidate uint32) {
-// 		candidateState := &s.bodies[candidate]
-// 		if candidateState != state {
-// 			cb(Body{
-// 				scene:     s,
-// 				reference: candidateState.reference,
-// 			})
-// 		}
-// 	}))
-// }
+func (s *Scene) releaseGlobalAccelerator(index int32) {
+	s.freeGlobalAcceleratorIndices.Push(index)
+}
+
+func (s *Scene) eachGlobalAccelerator(cb func(index int, accelerator *globalAcceleratorState)) {
+	for i := range s.globalAccelerators {
+		accelerator := &s.globalAccelerators[i]
+		if accelerator.isValid() {
+			cb(i, accelerator)
+		}
+	}
+}
+
+func (s *Scene) eachEnabledGlobalAccelerator(cb func(index int, accelerator *globalAcceleratorState)) {
+	for i := range s.globalAccelerators {
+		accelerator := &s.globalAccelerators[i]
+		if accelerator.isValid() && accelerator.isEnabled {
+			cb(i, accelerator)
+		}
+	}
+}
+
+func (s *Scene) allocateBodyAccelerator() (int32, *bodyAcceleratorState) {
+	var index int32
+	if s.freeBodyAcceleratorIndices.IsEmpty() {
+		index = int32(len(s.bodyAccelerators))
+		s.bodyAccelerators = append(s.bodyAccelerators, bodyAcceleratorState{})
+	} else {
+		index = s.freeBodyAcceleratorIndices.Pop()
+	}
+	return index, &s.bodyAccelerators[index]
+}
+
+func (s *Scene) releaseBodyAccelerator(index int32) {
+	s.freeBodyAcceleratorIndices.Push(index)
+}
+
+func (s *Scene) eachBodyAccelerator(cb func(index int, accelerator *bodyAcceleratorState)) {
+	for i := range s.bodyAccelerators {
+		accelerator := &s.bodyAccelerators[i]
+		if accelerator.isValid() {
+			cb(i, accelerator)
+		}
+	}
+}
+
+func (s *Scene) eachEnabledBodyAccelerator(body *bodyState, cb func(index int, accelerator *bodyAcceleratorState)) {
+	index := body.firstBodyAcceleratorIndex
+	for index != nilIndex {
+		accelerator := &s.bodyAccelerators[index]
+		if accelerator.isValid() && accelerator.isEnabled {
+			cb(int(index), accelerator)
+		}
+		index = accelerator.nextIndex
+	}
+}
+
+func (s *Scene) allocateSoloConstraint() (int32, *soloConstraintState) {
+	var index int32
+	if s.freeSoloConstraintIndices.IsEmpty() {
+		index = int32(len(s.soloConstraints))
+		s.soloConstraints = append(s.soloConstraints, soloConstraintState{})
+	} else {
+		index = s.freeSoloConstraintIndices.Pop()
+	}
+	return index, &s.soloConstraints[index]
+}
+
+func (s *Scene) releaseSoloConstraint(index int32) {
+	s.freeSoloConstraintIndices.Push(index)
+}
+
+func (s *Scene) eachSoloConstraint(cb func(index int, constraint *soloConstraintState)) {
+	for i := range s.soloConstraints {
+		constraint := &s.soloConstraints[i]
+		if constraint.isValid() {
+			cb(i, constraint)
+		}
+	}
+}
+
+func (s *Scene) eachEnabledSoloConstraint(cb func(index int, constraint *soloConstraintState)) {
+	for i := range s.soloConstraints {
+		constraint := &s.soloConstraints[i]
+		if constraint.isValid() && constraint.isEnabled {
+			cb(i, constraint)
+		}
+	}
+}
+
+func (s *Scene) allocatePairConstraint() (int32, *pairConstraintState) {
+	var index int32
+	if s.freePairConstraintIndices.IsEmpty() {
+		index = int32(len(s.pairConstraints))
+		s.pairConstraints = append(s.pairConstraints, pairConstraintState{})
+	} else {
+		index = s.freePairConstraintIndices.Pop()
+	}
+	return index, &s.pairConstraints[index]
+}
+
+func (s *Scene) releasePairConstraint(index int32) {
+	s.freePairConstraintIndices.Push(index)
+}
+
+func (s *Scene) eachPairConstraint(cb func(index int, constraint *pairConstraintState)) {
+	for i := range s.pairConstraints {
+		constraint := &s.pairConstraints[i]
+		if constraint.isValid() {
+			cb(i, constraint)
+		}
+	}
+}
+
+func (s *Scene) eachEnabledPairConstraint(cb func(index int, constraint *pairConstraintState)) {
+	for i := range s.pairConstraints {
+		constraint := &s.pairConstraints[i]
+		if constraint.isValid() && constraint.isEnabled {
+			cb(i, constraint)
+		}
+	}
+}
+
+func (s *Scene) allocateBody() (int32, *bodyState) {
+	var index int32
+	if s.freeBodyIndices.IsEmpty() {
+		index = int32(len(s.bodies))
+		s.bodies = append(s.bodies, bodyState{})
+	} else {
+		index = s.freeBodyIndices.Pop()
+	}
+	return index, &s.bodies[index]
+}
+
+func (s *Scene) releaseBody(index int32) {
+	s.freeBodyIndices.Push(index)
+}
+
+func (s *Scene) eachBody(cb func(index int, b *bodyState)) {
+	for i := range s.bodies {
+		body := &s.bodies[i]
+		if body.isValid() {
+			cb(i, body)
+		}
+	}
+}
+
+func (s *Scene) allocateTerrain() (int32, *terrainState) {
+	var index int32
+	if s.freeTerrainIndices.IsEmpty() {
+		index = int32(len(s.terrains))
+		s.terrains = append(s.terrains, terrainState{})
+	} else {
+		index = s.freeTerrainIndices.Pop()
+	}
+	return index, &s.terrains[index]
+}
+
+func (s *Scene) releaseTerrain(index int32) {
+	s.freeTerrainIndices.Push(index)
+}
+
+func (s *Scene) eachTerrain(cb func(index int, t *terrainState)) {
+	for i := range s.terrains {
+		terrain := &s.terrains[i]
+		if terrain.isValid() {
+			cb(i, terrain)
+		}
+	}
+}
 
 func (s *Scene) runSimulation(elapsedSeconds float64) {
-	// TODO: body -> acceleration targets -> impulse targets -> positioning targets -> body -> check for collisions (maybe reposition  to first)
-
 	if elapsedSeconds > 0.0001 {
 		s.applyAcceleration(elapsedSeconds)
 		s.applyImpulses(elapsedSeconds)
 		s.applyMotion(elapsedSeconds)
 		s.applyNudges(elapsedSeconds)
+		s.applyPlacement()
 		s.detectCollisions()
 	}
 }
 
 func (s *Scene) applyAcceleration(elapsedSeconds float64) {
 	defer metric.BeginRegion("acceleration").End()
-	s.prepareAccelerationTargets()
-	s.applyBodyAccelerators()
-	s.applyAreaAccelerators()
-	s.applyGlobalAccelerators()
-	s.applyAerodynamicAccelerations()
-	s.applyAccelerationTargets(elapsedSeconds)
-}
 
-func (s *Scene) prepareAccelerationTargets() {
-	s.eachBodyState(func(index int, body *bodyState) {
-		s.bodyAccelerationTargets[index] = newAccelerationTarget(
-			1.0/body.mass,
-			dprec.InverseMat3(
-				RotatedMomentOfInertia(body.momentOfInertia, body.rotation),
-			),
-			body.position,
-			body.rotation,
-			body.velocity,
-			body.angularVelocity,
-		)
-	})
-}
-
-func (s *Scene) applyBodyAccelerators() {
-	// TODO
-}
-
-func (s *Scene) applyAreaAccelerators() {
-	// TODO
-}
-
-func (s *Scene) applyGlobalAccelerators() {
-	s.eachBodyState(func(index int, _ *bodyState) {
-		target := &s.bodyAccelerationTargets[index]
-		position := target.Position()
-		for _, accelerator := range s.globalAccelerators {
-			if !accelerator.reference.IsValid() || !accelerator.enabled {
-				continue
-			}
-			ctx := AccelerationContext{
-				MediumVelocity: s.mediumSolver.Velocity(position),
-				MediumDensity:  s.mediumSolver.Density(position),
-			}
-			accelerator.logic.ApplyAcceleration(ctx, target)
+	s.eachBody(func(index int, body *bodyState) {
+		// Create acceleration context.
+		ctx := AccelerationContext{
+			DeltaSeconds:   elapsedSeconds,
+			MediumVelocity: s.mediumSolver.Velocity(body.position),
+			MediumDensity:  s.mediumSolver.Density(body.position),
+			Target:         newAccelerationTarget(body),
 		}
-	})
-}
 
-func (s *Scene) applyAerodynamicAccelerations() {
-	s.eachBodyState(func(index int, body *bodyState) {
-		if len(body.aerodynamicShapes) == 0 {
-			return
-		}
-		target := &s.bodyAccelerationTargets[index]
-		mediumDensity := s.mediumSolver.Density(body.position)
-		mediumVelocity := s.mediumSolver.Velocity(body.position)
+		// Reset accumulated accelerations.
+		body.linearAcceleration = dprec.ZeroVec3()
+		body.angularAcceleration = dprec.ZeroVec3()
 
-		deltaVelocity := dprec.Vec3Diff(mediumVelocity, body.velocity)
-		dragForce := dprec.Vec3Prod(deltaVelocity, deltaVelocity.Length()*mediumDensity*body.dragFactor)
-		target.ApplyForce(dragForce)
+		// Apply global accelerators.
+		s.eachEnabledGlobalAccelerator(func(_ int, accelerator *globalAcceleratorState) {
+			accelerator.solver.ApplyAcceleration(ctx)
+		})
 
-		angularDragForce := dprec.Vec3Prod(body.angularVelocity, -body.angularVelocity.Length()*mediumDensity*body.angularDragFactor)
-		target.ApplyTorque(angularDragForce)
+		// Apply body accelerators.
+		s.eachEnabledBodyAccelerator(body, func(_ int, accelerator *bodyAcceleratorState) {
+			accelerator.solver.ApplyAcceleration(ctx)
+		})
 
-		bodyTransform := NewTransform(body.position, body.rotation)
-		for _, aerodynamicShape := range body.aerodynamicShapes {
-			// TODO: Take shape velocity into account. This also means that wings should be
-			// split into two, to benefit from that.
+		// Constrain the accumulated accelerations to the maximum allowed values.
+		body.clampLinearAcceleration(s.maxLinearAcceleration)
+		body.clampAngularAcceleration(s.maxAngularAcceleration)
 
-			aerodynamicShape = aerodynamicShape.Transformed(bodyTransform)
-			relativeSpeed := dprec.QuatVec3Rotation(dprec.InverseQuat(aerodynamicShape.Rotation()), deltaVelocity)
-
-			force := aerodynamicShape.solver.Force(relativeSpeed, mediumDensity)
-			absoluteForce := dprec.QuatVec3Rotation(aerodynamicShape.Rotation(), force)
-
-			offset := dprec.Vec3Diff(aerodynamicShape.Position(), bodyTransform.Position())
-			target.ApplyOffsetForce(offset, absoluteForce)
-			// target.ApplyOffsetForce(absoluteForce, aerodynamicShape.Position())
-		}
-	})
-}
-
-func (s *Scene) applyAccelerationTargets(elapsedSeconds float64) {
-	s.eachBodyState(func(index int, body *bodyState) {
-		target := s.bodyAccelerationTargets[index]
-
-		linearAcceleration := target.LinearAcceleration()
-		if linearAcceleration.Length() > s.maxLinearAcceleration {
-			linearAcceleration = dprec.ResizedVec3(linearAcceleration, s.maxLinearAcceleration)
-		}
-		body.AddVelocity(dprec.Vec3Prod(linearAcceleration, elapsedSeconds))
-
-		angularAcceleration := target.AngularAcceleration()
-		if angularAcceleration.Length() > s.maxAngularAcceleration {
-			angularAcceleration = dprec.ResizedVec3(angularAcceleration, s.maxAngularAcceleration)
-		}
-		body.AddAngularVelocity(dprec.Vec3Prod(angularAcceleration, elapsedSeconds))
+		// Update the body's velocity based on the accumulated accelerations.
+		body.addLinearVelocity(dprec.Vec3Prod(body.linearAcceleration, elapsedSeconds))
+		body.addAngularVelocity(dprec.Vec3Prod(body.angularAcceleration, elapsedSeconds))
 	})
 }
 
 func (s *Scene) applyImpulses(elapsedSeconds float64) {
 	defer metric.BeginRegion("impulses").End()
 
-	s.eachBodyState(func(i int, body *bodyState) {
-		placeholder := &s.bodyConstraintPlaceholders[i]
-		s.initPlaceholder(placeholder, body)
+	// Reset constraint solvers.
+	s.eachEnabledPairConstraint(func(_ int, constraint *pairConstraintState) {
+		primaryBody := &s.bodies[constraint.primaryBodyIndex]
+		secondaryBody := &s.bodies[constraint.secondaryBodyIndex]
+
+		ctx := PairConstraintContext{
+			DeltaSeconds:    elapsedSeconds,
+			ImpulseBeta:     s.impulseDriftAdjustmentRatio,
+			NudgeBeta:       s.nudgeDriftAdjustmentRatio,
+			PrimaryTarget:   newConstraintTarget(primaryBody),
+			SecondaryTarget: newConstraintTarget(secondaryBody),
+		}
+
+		constraint.solver.Reset(ctx)
 	})
 
-	s.eachSBConstraintState(func(_ int, constraint *sbConstraintState) {
-		if s.resolveBodyState(constraint.body.reference) == nil {
-			deleteSBConstraint(s, constraint.reference)
-			return
+	s.eachEnabledSoloConstraint(func(index int, constraint *soloConstraintState) {
+		body := &s.bodies[constraint.bodyIndex]
+
+		ctx := SoloConstraintContext{
+			DeltaSeconds: elapsedSeconds,
+			ImpulseBeta:  s.impulseDriftAdjustmentRatio,
+			NudgeBeta:    s.nudgeDriftAdjustmentRatio,
+			Target:       newConstraintTarget(body),
 		}
-	})
-	s.eachDBConstraintState(func(_ int, constraint *dbConstraintState) {
-		if s.resolveBodyState(constraint.primary.reference) == nil {
-			deleteDBConstraint(s, constraint.reference)
-			return
-		}
-		if s.resolveBodyState(constraint.secondary.reference) == nil {
-			deleteDBConstraint(s, constraint.reference)
-			return
-		}
+
+		constraint.solver.Reset(ctx)
 	})
 
-	s.eachDBConstraintState(func(_ int, constraint *dbConstraintState) {
-		target := &s.bodyConstraintPlaceholders[constraint.primary.reference.Index]
-		source := &s.bodyConstraintPlaceholders[constraint.secondary.reference.Index]
-		constraint.logic.Reset(solver.PairContext{
-			Target:      target,
-			Source:      source,
-			DeltaTime:   elapsedSeconds,
-			ImpulseBeta: ImpulseDriftAdjustmentRatio,
-			NudgeBeta:   NudgeDriftAdjustmentRatio,
-		})
-	})
-	s.eachSBConstraintState(func(_ int, constraint *sbConstraintState) {
-		target := &s.bodyConstraintPlaceholders[constraint.body.reference.Index]
-		constraint.logic.Reset(solver.Context{
-			Target:      target,
-			DeltaTime:   elapsedSeconds,
-			ImpulseBeta: ImpulseDriftAdjustmentRatio,
-			NudgeBeta:   NudgeDriftAdjustmentRatio,
-		})
-	})
+	// Apply impulses multiple times in a row.
+	for range s.impulseIterationCount {
+		s.eachEnabledPairConstraint(func(index int, constraint *pairConstraintState) {
+			primaryBody := &s.bodies[constraint.primaryBodyIndex]
+			secondaryBody := &s.bodies[constraint.secondaryBodyIndex]
 
-	for i := 0; i < ImpulseIterationCount; i++ {
-		s.eachDBConstraintState(func(_ int, constraint *dbConstraintState) {
-			target := &s.bodyConstraintPlaceholders[constraint.primary.reference.Index]
-			source := &s.bodyConstraintPlaceholders[constraint.secondary.reference.Index]
-			constraint.logic.ApplyImpulses(solver.PairContext{
-				Target:      target,
-				Source:      source,
-				DeltaTime:   elapsedSeconds,
-				ImpulseBeta: ImpulseDriftAdjustmentRatio,
-				NudgeBeta:   NudgeDriftAdjustmentRatio,
-			})
+			ctx := PairConstraintContext{
+				DeltaSeconds:    elapsedSeconds,
+				ImpulseBeta:     s.impulseDriftAdjustmentRatio,
+				NudgeBeta:       s.nudgeDriftAdjustmentRatio,
+				PrimaryTarget:   newConstraintTarget(primaryBody),
+				SecondaryTarget: newConstraintTarget(secondaryBody),
+			}
+
+			constraint.solver.ApplyImpulses(ctx)
 		})
-		s.eachSBConstraintState(func(_ int, constraint *sbConstraintState) {
-			target := &s.bodyConstraintPlaceholders[constraint.body.reference.Index]
-			constraint.logic.ApplyImpulses(solver.Context{
-				Target:      target,
-				DeltaTime:   elapsedSeconds,
-				ImpulseBeta: ImpulseDriftAdjustmentRatio,
-				NudgeBeta:   NudgeDriftAdjustmentRatio,
-			})
+
+		s.eachEnabledSoloConstraint(func(index int, constraint *soloConstraintState) {
+			body := &s.bodies[constraint.bodyIndex]
+
+			ctx := SoloConstraintContext{
+				DeltaSeconds: elapsedSeconds,
+				ImpulseBeta:  s.impulseDriftAdjustmentRatio,
+				NudgeBeta:    s.nudgeDriftAdjustmentRatio,
+				Target:       newConstraintTarget(body),
+			}
+
+			constraint.solver.ApplyImpulses(ctx)
 		})
 	}
-
-	s.eachBodyState(func(i int, body *bodyState) {
-		placeholder := &s.bodyConstraintPlaceholders[i]
-		s.deinitPlaceholder(placeholder, body)
-	})
 }
 
 func (s *Scene) applyMotion(elapsedSeconds float64) {
 	defer metric.BeginRegion("motion").End()
-	s.eachBodyState(func(_ int, body *bodyState) {
-		body.ClampVelocity(s.maxLinearVelocity)
-		body.ClampAngularVelocity(s.maxAngularVelocity)
 
-		deltaPosition := dprec.Vec3Prod(body.velocity, elapsedSeconds)
-		body.Translate(deltaPosition)
-		deltaRotation := dprec.Vec3Prod(body.angularVelocity, elapsedSeconds)
-		body.VectorRotate(deltaRotation)
+	s.eachBody(func(_ int, body *bodyState) {
+		// Clamp the velocity to the maximum allowed values.
+		body.clampLinearVelocity(s.maxLinearVelocity)
+		body.clampAngularVelocity(s.maxAngularVelocity)
 
-		s.shapeScene.SetObjectTransform(body.objectID, shape3d.Transform{
-			Translation: body.position,
-			Rotation:    shape3d.RotationFromQuat(body.rotation),
-		})
+		// Apply the velocity to the body's position and rotation.
+		body.translate(dprec.Vec3Prod(body.linearVelocity, elapsedSeconds))
+		body.rotate(QuatFromVector(dprec.Vec3Prod(body.angularVelocity, elapsedSeconds)))
+		body.recalculateInertia()
 	})
 }
 
 func (s *Scene) applyNudges(elapsedSeconds float64) {
 	defer metric.BeginRegion("nudges").End()
 
-	// TODO: Use Grow instead
-	s.bodyConstraintPlaceholders = s.bodyConstraintPlaceholders[:0]
-	for i := range s.bodies {
-		placeholder := solver.Placeholder{}
-		if body := &s.bodies[i]; body.IsActive() {
-			s.initPlaceholder(&placeholder, body)
-		}
-		s.bodyConstraintPlaceholders = append(s.bodyConstraintPlaceholders, placeholder)
-	}
+	for range s.nudgeIterationCount {
+		s.eachEnabledPairConstraint(func(index int, constraint *pairConstraintState) {
+			primaryBody := &s.bodies[constraint.primaryBodyIndex]
+			secondaryBody := &s.bodies[constraint.secondaryBodyIndex]
 
-	for i := 0; i < NudgeIterationCount; i++ {
-		for _, constraint := range s.dbConstraints {
-			if !constraint.IsActive() {
-				continue
+			ctx := PairConstraintContext{
+				DeltaSeconds:    elapsedSeconds,
+				ImpulseBeta:     s.impulseDriftAdjustmentRatio,
+				NudgeBeta:       s.nudgeDriftAdjustmentRatio,
+				PrimaryTarget:   newConstraintTarget(primaryBody),
+				SecondaryTarget: newConstraintTarget(secondaryBody),
 			}
-			target := &s.bodyConstraintPlaceholders[constraint.primary.reference.Index]
-			source := &s.bodyConstraintPlaceholders[constraint.secondary.reference.Index]
-			ctx := solver.PairContext{
-				Target:      target,
-				Source:      source,
-				DeltaTime:   elapsedSeconds,
-				ImpulseBeta: ImpulseDriftAdjustmentRatio,
-				NudgeBeta:   NudgeDriftAdjustmentRatio,
-			}
-			constraint.logic.Reset(ctx)
-			constraint.logic.ApplyNudges(ctx)
-		}
-		for _, constraint := range s.sbConstraints {
-			if !constraint.IsActive() {
-				continue
-			}
-			target := &s.bodyConstraintPlaceholders[constraint.body.reference.Index]
-			ctx := solver.Context{
-				Target:      target,
-				DeltaTime:   elapsedSeconds,
-				ImpulseBeta: ImpulseDriftAdjustmentRatio,
-				NudgeBeta:   NudgeDriftAdjustmentRatio,
-			}
-			constraint.logic.Reset(ctx)
-			constraint.logic.ApplyNudges(ctx)
-		}
-	}
 
-	for i := range s.bodies {
-		placeholder := s.bodyConstraintPlaceholders[i]
-		if body := &s.bodies[i]; body.IsActive() {
-			s.deinitPlaceholder(&placeholder, body)
-		}
+			constraint.solver.ApplyNudges(ctx)
+		})
+
+		s.eachEnabledSoloConstraint(func(index int, constraint *soloConstraintState) {
+			body := &s.bodies[constraint.bodyIndex]
+
+			ctx := SoloConstraintContext{
+				DeltaSeconds: elapsedSeconds,
+				ImpulseBeta:  s.impulseDriftAdjustmentRatio,
+				NudgeBeta:    s.nudgeDriftAdjustmentRatio,
+				Target:       newConstraintTarget(body),
+			}
+
+			constraint.solver.ApplyNudges(ctx)
+		})
+
+		s.eachBody(func(_ int, body *bodyState) {
+			body.recalculateInertia()
+		})
 	}
+}
+
+func (s *Scene) applyPlacement() {
+	defer metric.BeginRegion("placement").End()
+
+	bodies := s.Bodies()
+	s.eachBody(func(_ int, body *bodyState) {
+		bodies.refreshPlacement(body)
+	})
 }
 
 func (s *Scene) detectCollisions() {
 	defer metric.BeginRegion("collision").End()
 
-	for _, constraint := range s.sbCollisionConstraints {
-		constraint.Delete()
+	// Purge old collision constraints and solvers.
+	soloConstraints := s.SoloConstraints()
+	for _, constraintID := range s.soloCollisionConstraintIDs {
+		soloConstraints.Delete(constraintID)
 	}
-	s.sbCollisionConstraints = s.sbCollisionConstraints[:0]
-	s.sbCollisionSolvers = s.sbCollisionSolvers[:0]
 
-	for _, constraint := range s.dbCollisionConstraints {
-		constraint.Delete()
+	pairConstraints := s.PairConstraints()
+	for _, constraintID := range s.pairCollisionConstraintIDs {
+		pairConstraints.Delete(constraintID)
 	}
-	s.dbCollisionConstraints = s.dbCollisionConstraints[:0]
-	s.dbCollisionSolvers = s.dbCollisionSolvers[:0]
 
-	s.collisionSet.Reset()
-	s.shapeScene.CollectIntersections(s.collisionSet.AddContact)
-	for _, intersection := range s.collisionSet.Contacts() {
-		srcBodyObject := s.shapeScene.GetShapeObject(intersection.SourceShapeID)
-		srcBodyRef := s.shapeScene.GetObjectUserData(srcBodyObject)
+	s.soloCollisionConstraintIDs = s.soloCollisionConstraintIDs[:0]
+	s.pairCollisionConstraintIDs = s.pairCollisionConstraintIDs[:0]
 
-		if intersection.TargetMeshID == placement3d.InvalidMeshID {
-			tgtBodyObject := s.shapeScene.GetShapeObject(intersection.TargetShapeID)
-			tgtBodyRef := s.shapeScene.GetObjectUserData(tgtBodyObject)
-			s.detectBodyBodyCollision(srcBodyRef.index, tgtBodyRef.index, intersection)
+	s.soloCollisionSolvers = s.soloCollisionSolvers[:0]
+	s.pairCollisionSolvers = s.pairCollisionSolvers[:0]
+
+	// Collect new contacts.
+	s.collisionContacts.Reset()
+	s.collisionScene.CollectIntersections(s.collisionContacts.AddContact)
+
+	// Handle contacts.
+	for _, contact := range s.collisionContacts.Contacts() {
+		srcBodyObject := s.collisionScene.GetShapeObject(contact.SourceShapeID)
+		srcShapeData := s.collisionScene.GetShapeUserData(contact.SourceShapeID)
+		srcBodyData := s.collisionScene.GetObjectUserData(srcBodyObject)
+
+		if contact.TargetMeshID == placement3d.InvalidMeshID {
+			tgtBodyObject := s.collisionScene.GetShapeObject(contact.TargetShapeID)
+			tgtShapeData := s.collisionScene.GetShapeUserData(contact.TargetShapeID)
+			tgtBodyData := s.collisionScene.GetObjectUserData(tgtBodyObject)
+			s.handlePairCollision(
+				bodyCollisionData{
+					srcBodyData.index,
+					srcShapeData.frictionCoefficient,
+					srcShapeData.restitutionCoefficient,
+				},
+				bodyCollisionData{
+					tgtBodyData.index,
+					tgtShapeData.frictionCoefficient,
+					tgtShapeData.restitutionCoefficient,
+				},
+				contact,
+			)
 		} else {
-			tgtPropMesh := s.shapeScene.GetMeshUserData(intersection.TargetMeshID)
-			s.detectBodyPropCollision(srcBodyRef.index, tgtPropMesh.index, intersection)
+			tgtTerrainData := s.collisionScene.GetMeshUserData(contact.TargetMeshID)
+			s.handleSoloCollision(
+				bodyCollisionData{
+					srcBodyData.index,
+					srcShapeData.frictionCoefficient,
+					srcShapeData.restitutionCoefficient,
+				},
+				terrainCollisionData{
+					tgtTerrainData.index,
+					tgtTerrainData.frictionCoefficient,
+					tgtTerrainData.restitutionCoefficient,
+				},
+				contact,
+			)
 		}
 	}
 }
 
-func (s *Scene) detectBodyBodyCollision(primaryIndex, secondaryIndex uint32, intersection placement3d.Contact) {
-	primary := &s.bodies[primaryIndex]
-	secondary := &s.bodies[secondaryIndex]
+func (s *Scene) handlePairCollision(primaryData, secondaryData bodyCollisionData, contact placement3d.Contact) {
+	solver := s.allocatePairCollisionSolver()
+	solver.Configure(PairCollisionSolverConfig{
+		PrimaryFrictionCoefficient:    primaryData.frictionCoefficient,
+		PrimaryRestitutionCoefficient: primaryData.restitutionCoefficient,
+		PrimaryContactNormal:          contact.EvalSourceNormal(),
+		PrimaryContactPoint:           contact.EvalSourcePoint(),
 
-	solver := s.allocateDualCollisionSolver()
-	solver.Init(constraint.PairCollisionState{
-		PrimaryNormal:                 intersection.TargetNormal,
-		PrimaryPoint:                  intersection.EvalSourcePoint(),
-		PrimaryFrictionCoefficient:    primary.frictionCoefficient,
-		PrimaryRestitutionCoefficient: primary.restitutionCoefficient,
+		SecondaryFrictionCoefficient:    secondaryData.frictionCoefficient,
+		SecondaryRestitutionCoefficient: secondaryData.restitutionCoefficient,
+		SecondaryContactNormal:          contact.TargetNormal,
+		SecondaryContactPoint:           contact.TargetPoint,
 
-		SecondaryNormal:                 intersection.EvalSourceNormal(),
-		SecondaryPoint:                  intersection.TargetPoint,
-		SecondaryFrictionCoefficient:    secondary.frictionCoefficient,
-		SecondaryRestitutionCoefficient: secondary.restitutionCoefficient,
-
-		Depth: intersection.Depth,
+		ContactDepth: contact.Depth,
 	})
 
-	pair := dbCollisionPair{
-		PrimaryRef:   primary.reference,
-		SecondaryRef: secondary.reference,
-	}
-	s.newDBCollisions[pair] = struct{}{}
+	primaryID := s.Bodies().idFromIndex(primaryData.index)
+	secondaryID := s.Bodies().idFromIndex(secondaryData.index)
 
-	primaryBody := Body{
-		scene:     s,
-		reference: primary.reference,
+	constraintID := s.PairConstraints().Create(primaryID, secondaryID, solver)
+	s.pairCollisionConstraintIDs = append(s.pairCollisionConstraintIDs, constraintID)
+
+	ref := pairCollisionRef{
+		primaryBodyID:   primaryID,
+		secondaryBodyID: secondaryID,
 	}
-	secondaryBody := Body{
-		scene:     s,
-		reference: secondary.reference,
-	}
-	s.dbCollisionConstraints = append(s.dbCollisionConstraints, s.CreateDoubleBodyConstraint(primaryBody, secondaryBody, solver))
+	s.newPairCollisionRefs[ref] = struct{}{}
 }
 
-func (s *Scene) detectBodyPropCollision(bodyIndex, propIndex uint32, intersection placement3d.Contact) {
-	primary := &s.bodies[bodyIndex]
-	secondary := &s.props[propIndex]
+func (s *Scene) handleSoloCollision(bodyData bodyCollisionData, terrainData terrainCollisionData, contact placement3d.Contact) {
+	solver := s.allocateSoloCollisionSolver()
+	solver.Configure(SoloCollisionSolverConfig{
+		TerrainFrictionCoefficient:    terrainData.frictionCoefficient,
+		TerrainRestitutionCoefficient: terrainData.restitutionCoefficient,
+		TerrainContactNormal:          contact.TargetNormal,
 
-	solver := s.allocateGroundCollisionSolver()
-	solver.Init(constraint.CollisionState{
-		BodyNormal:                 intersection.TargetNormal,
-		BodyPoint:                  intersection.EvalSourcePoint(),
-		BodyFrictionCoefficient:    primary.frictionCoefficient,
-		BodyRestitutionCoefficient: primary.restitutionCoefficient,
+		BodyFrictionCoefficient:    bodyData.frictionCoefficient,
+		BodyRestitutionCoefficient: bodyData.restitutionCoefficient,
+		BodyContactPoint:           contact.EvalSourcePoint(),
 
-		PropFrictionCoefficient:    1.0, // TODO: Take from prop or shape material
-		PropRestitutionCoefficient: 0.5, // TODO: Take from prop or shape material
-
-		Depth: intersection.Depth,
+		ContactDepth: contact.Depth,
 	})
 
-	pair := sbCollisionPair{
-		BodyRef: primary.reference,
-		PropRef: secondary.reference,
-	}
-	s.newSBCollisions[pair] = struct{}{}
+	bodyID := s.Bodies().idFromIndex(bodyData.index)
+	terrainID := s.Terrains().idFromIndex(terrainData.index)
 
-	primaryBody := Body{
-		scene:     s,
-		reference: primary.reference,
+	constraintID := s.SoloConstraints().Create(bodyID, solver)
+	s.soloCollisionConstraintIDs = append(s.soloCollisionConstraintIDs, constraintID)
+
+	ref := soloCollisionRef{
+		bodyID:    bodyID,
+		terrainID: terrainID,
 	}
-	s.sbCollisionConstraints = append(s.sbCollisionConstraints, s.CreateSingleBodyConstraint(primaryBody, solver))
+	s.newSoloCollisionRefs[ref] = struct{}{}
 }
 
-func (s *Scene) allocateGroundCollisionSolver() *constraint.Collision {
-	if len(s.sbCollisionSolvers) < cap(s.sbCollisionSolvers) {
-		s.sbCollisionSolvers = s.sbCollisionSolvers[:len(s.sbCollisionSolvers)+1]
-	} else {
-		s.sbCollisionSolvers = append(s.sbCollisionSolvers, constraint.Collision{})
-	}
-	return &s.sbCollisionSolvers[len(s.sbCollisionSolvers)-1]
+func (s *Scene) allocatePairCollisionSolver() *PairCollisionSolver {
+	index := len(s.pairCollisionSolvers)
+	s.pairCollisionSolvers = append(s.pairCollisionSolvers, PairCollisionSolver{})
+	return &s.pairCollisionSolvers[index]
 }
 
-func (s *Scene) allocateDualCollisionSolver() *constraint.PairCollision {
-	if len(s.dbCollisionSolvers) < cap(s.dbCollisionSolvers) {
-		s.dbCollisionSolvers = s.dbCollisionSolvers[:len(s.dbCollisionSolvers)+1]
-	} else {
-		s.dbCollisionSolvers = append(s.dbCollisionSolvers, constraint.PairCollision{})
-	}
-	return &s.dbCollisionSolvers[len(s.dbCollisionSolvers)-1]
+func (s *Scene) allocateSoloCollisionSolver() *SoloCollisionSolver {
+	index := len(s.soloCollisionSolvers)
+	s.soloCollisionSolvers = append(s.soloCollisionSolvers, SoloCollisionSolver{})
+	return &s.soloCollisionSolvers[index]
 }
 
-// func (s *Scene) checkCollisionBodyWithProp(primary *bodyState, prop *propState) {
-// 	s.collisionSet.Reset()
-// 	collision.CheckIntersectionSetWithSet(primary.collisionSet, prop.collisionSet, s.collisionSet)
-// 	for _, intersection := range s.collisionSet.Intersections() {
-// 		solver := s.allocateGroundCollisionSolver()
-// 		solver.Init(constraint.CollisionState{
-// 			BodyNormal:                 intersection.FirstDisplaceNormal,
-// 			BodyPoint:                  intersection.FirstContact,
-// 			BodyFrictionCoefficient:    primary.frictionCoefficient,
-// 			BodyRestitutionCoefficient: primary.restitutionCoefficient,
+func (s *Scene) notifySoloCollisions() {
+	for newRef := range s.newSoloCollisionRefs {
+		if _, ok := s.oldSoloCollisionRefs[newRef]; !ok {
+			s.soloCollisionSubscriptions.Each(func(callback SoloCollisionCallback) {
+				callback(newRef.bodyID, newRef.terrainID, true)
+			})
+		}
+	}
+	for oldRef := range s.oldSoloCollisionRefs {
+		if _, ok := s.newSoloCollisionRefs[oldRef]; !ok {
+			s.soloCollisionSubscriptions.Each(func(callback SoloCollisionCallback) {
+				callback(oldRef.bodyID, oldRef.terrainID, false)
+			})
+		}
+	}
+	clear(s.oldSoloCollisionRefs)
+	maps.Copy(s.oldSoloCollisionRefs, s.newSoloCollisionRefs)
+	clear(s.newSoloCollisionRefs)
+}
 
-// 			PropFrictionCoefficient:    1.0, // TODO: Take from prop or shape material
-// 			PropRestitutionCoefficient: 0.5, // TODO: Take from prop or shape material
+func (s *Scene) notifyPairCollisions() {
+	for newRef := range s.newPairCollisionRefs {
+		if _, ok := s.oldPairCollisionRefs[newRef]; !ok {
+			s.pairCollisionSubscriptions.Each(func(callback PairCollisionCallback) {
+				callback(newRef.primaryBodyID, newRef.secondaryBodyID, true)
+			})
+		}
+	}
+	for oldRef := range s.oldPairCollisionRefs {
+		if _, ok := s.newPairCollisionRefs[oldRef]; !ok {
+			s.pairCollisionSubscriptions.Each(func(callback PairCollisionCallback) {
+				callback(oldRef.primaryBodyID, oldRef.secondaryBodyID, false)
+			})
+		}
+	}
+	clear(s.oldPairCollisionRefs)
+	maps.Copy(s.oldPairCollisionRefs, s.newPairCollisionRefs)
+	clear(s.newPairCollisionRefs)
+}
 
-// 			Depth: intersection.Depth,
-// 		})
+var nilIndex int32 = -1
 
-// 		pair := sbCollisionPair{
-// 			BodyRef: primary.reference,
-// 			PropRef: prop.reference,
+type bodyData struct {
+	index int32
+}
+
+type shapeData struct {
+	frictionCoefficient    float64
+	restitutionCoefficient float64
+}
+
+type terrainData struct {
+	index                  int32
+	frictionCoefficient    float64
+	restitutionCoefficient float64
+}
+
+type bodyCollisionData struct {
+	index                  int32
+	frictionCoefficient    float64
+	restitutionCoefficient float64
+}
+
+type terrainCollisionData struct {
+	index                  int32
+	frictionCoefficient    float64
+	restitutionCoefficient float64
+}
+
+type soloCollisionRef struct {
+	bodyID    BodyID
+	terrainID TerrainID
+}
+
+type pairCollisionRef struct {
+	primaryBodyID   BodyID
+	secondaryBodyID BodyID
+}
+
+/////// OLD BELOW ------------ (TODO: DELETE COMMENT)
+
+// func (s *Scene) applyAerodynamicAccelerations() {
+// 	s.eachBody(func(index int, body *bodyState) {
+// 		if len(body.aerodynamicShapes) == 0 {
+// 			return
 // 		}
-// 		s.newSBCollisions[pair] = struct{}{}
+// 		target := &s.bodyAccelerationTargets[index]
+// 		mediumDensity := s.mediumSolver.Density(body.position)
+// 		mediumVelocity := s.mediumSolver.Velocity(body.position)
 
-// 		primaryBody := Body{
-// 			scene:     s,
-// 			reference: primary.reference,
+// 		deltaVelocity := dprec.Vec3Diff(mediumVelocity, body.velocity)
+// 		dragForce := dprec.Vec3Prod(deltaVelocity, deltaVelocity.Length()*mediumDensity*body.dragFactor)
+// 		target.ApplyForce(dragForce)
+
+// 		angularDragForce := dprec.Vec3Prod(body.angularVelocity, -body.angularVelocity.Length()*mediumDensity*body.angularDragFactor)
+// 		target.ApplyTorque(angularDragForce)
+
+// 		bodyTransform := NewTransform(body.position, body.rotation)
+// 		for _, aerodynamicShape := range body.aerodynamicShapes {
+// 			// TODO: Take shape velocity into account. This also means that wings should be
+// 			// split into two, to benefit from that.
+
+// 			aerodynamicShape = aerodynamicShape.Transformed(bodyTransform)
+// 			relativeSpeed := dprec.QuatVec3Rotation(dprec.InverseQuat(aerodynamicShape.Rotation()), deltaVelocity)
+
+// 			force := aerodynamicShape.solver.Force(relativeSpeed, mediumDensity)
+// 			absoluteForce := dprec.QuatVec3Rotation(aerodynamicShape.Rotation(), force)
+
+// 			offset := dprec.Vec3Diff(aerodynamicShape.Position(), bodyTransform.Position())
+// 			target.ApplyOffsetForce(offset, absoluteForce)
+// 			// target.ApplyOffsetForce(absoluteForce, aerodynamicShape.Position())
 // 		}
-// 		s.sbCollisionConstraints = append(s.sbCollisionConstraints, s.CreateSingleBodyConstraint(primaryBody, solver))
-// 	}
+// 	})
 // }
 
-// func (s *Scene) checkCollisionTwoBodies(primary, secondary *bodyState) {
-// 	s.collisionSet.Reset()
-// 	collision.CheckIntersectionSetWithSet(primary.collisionSet, secondary.collisionSet, s.collisionSet)
-// 	for _, intersection := range s.collisionSet.Intersections() {
-// 		solver := s.allocateDualCollisionSolver()
-// 		solver.Init(constraint.PairCollisionState{
-// 			PrimaryNormal:                 intersection.FirstDisplaceNormal,
-// 			PrimaryPoint:                  intersection.FirstContact,
-// 			PrimaryFrictionCoefficient:    primary.frictionCoefficient,
-// 			PrimaryRestitutionCoefficient: primary.restitutionCoefficient,
-
-// 			SecondaryNormal:                 intersection.SecondDisplaceNormal,
-// 			SecondaryPoint:                  intersection.SecondContact,
-// 			SecondaryFrictionCoefficient:    secondary.frictionCoefficient,
-// 			SecondaryRestitutionCoefficient: secondary.restitutionCoefficient,
-
-// 			Depth: intersection.Depth,
-// 		})
-
-// 		pair := dbCollisionPair{
-// 			PrimaryRef:   primary.reference,
-// 			SecondaryRef: secondary.reference,
-// 		}
-// 		s.newDBCollisions[pair] = struct{}{}
-
-// 		primaryBody := Body{
-// 			scene:     s,
-// 			reference: primary.reference,
-// 		}
-// 		secondaryBody := Body{
-// 			scene:     s,
-// 			reference: secondary.reference,
-// 		}
-// 		s.dbCollisionConstraints = append(s.dbCollisionConstraints, s.CreateDoubleBodyConstraint(primaryBody, secondaryBody, solver))
-// 	}
-// }
-
-func (s *Scene) nextRevision() uint32 {
-	s.freeRevision++
-	return s.freeRevision
-}
-
-func (s *Scene) notifySingleBodyCollisions() {
-	for newCollision := range s.newSBCollisions {
-		if _, ok := s.oldSBCollisions[newCollision]; !ok {
-			primary := Body{
-				scene:     s,
-				reference: newCollision.BodyRef,
-			}
-			prop := Prop{
-				name: s.props[newCollision.PropRef.Index].name,
-			}
-			s.sbCollisionSubscriptions.Each(func(callback SingleBodyCollisionCallback) {
-				callback(primary, prop, true)
-			})
-		}
-	}
-	for oldCollision := range s.oldSBCollisions {
-		if _, ok := s.newSBCollisions[oldCollision]; !ok {
-			primary := Body{
-				scene:     s,
-				reference: oldCollision.BodyRef,
-			}
-			prop := Prop{
-				name: s.props[oldCollision.PropRef.Index].name,
-			}
-			s.sbCollisionSubscriptions.Each(func(callback SingleBodyCollisionCallback) {
-				callback(primary, prop, false)
-			})
-		}
-	}
-	clear(s.oldSBCollisions)
-	maps.Copy(s.oldSBCollisions, s.newSBCollisions)
-	clear(s.newSBCollisions)
-}
-
-func (s *Scene) notifyDoubleBodyCollisions() {
-	for newCollision := range s.newDBCollisions {
-		if _, ok := s.oldDBCollisions[newCollision]; !ok {
-			primary := Body{
-				scene:     s,
-				reference: newCollision.PrimaryRef,
-			}
-			secondary := Body{
-				scene:     s,
-				reference: newCollision.SecondaryRef,
-			}
-			s.dbCollisionSubscriptions.Each(func(callback DoubleBodyCollisionCallback) {
-				callback(primary, secondary, true)
-			})
-		}
-	}
-	for oldCollision := range s.oldDBCollisions {
-		if _, ok := s.newDBCollisions[oldCollision]; !ok {
-			primary := Body{
-				scene:     s,
-				reference: oldCollision.PrimaryRef,
-			}
-			secondary := Body{
-				scene:     s,
-				reference: oldCollision.SecondaryRef,
-			}
-			s.dbCollisionSubscriptions.Each(func(callback DoubleBodyCollisionCallback) {
-				callback(primary, secondary, false)
-			})
-		}
-	}
-	clear(s.oldDBCollisions)
-	maps.Copy(s.oldDBCollisions, s.newDBCollisions)
-	clear(s.newDBCollisions)
-}
-
-func (s *Scene) eachBodyState(cb func(index int, b *bodyState)) {
-	for i := range s.bodies {
-		if body := &s.bodies[i]; body.IsActive() {
-			cb(i, body)
-		}
-	}
-}
-
-func (s *Scene) eachSBConstraintState(cb func(index int, constraint *sbConstraintState)) {
-	for i := range s.sbConstraints {
-		if constraint := &s.sbConstraints[i]; constraint.IsActive() {
-			cb(i, constraint)
-		}
-	}
-}
-
-func (s *Scene) eachDBConstraintState(cb func(index int, constraint *dbConstraintState)) {
-	for i := range s.dbConstraints {
-		if constraint := &s.dbConstraints[i]; constraint.IsActive() {
-			cb(i, constraint)
-		}
-	}
-}
-
-func (s *Scene) resolveBodyState(reference indexReference) *bodyState {
-	state := &s.bodies[reference.Index]
-	if !state.IsActive() || state.reference.Revision != reference.Revision {
-		return nil
-	}
-	return state
-}
-
-func (s *Scene) initPlaceholder(placeholder *solver.Placeholder, body *bodyState) {
-	placeholder.Init(solver.PlaceholderState{
-		Mass:            body.mass,
-		MomentOfInertia: body.momentOfInertia,
-		LinearVelocity:  body.velocity,
-		AngularVelocity: body.angularVelocity,
-		Position:        body.position,
-		Rotation:        body.rotation,
+func (s *Scene) CheckSegmentIntersection(segment shape3d.Segment, mask uint32) (BodyID, bool) {
+	intersection, ok := s.collisionScene.CheckSegmentIntersection(segment, placement3d.Filter{
+		Mask: opt.V(mask),
 	})
-}
-
-func (s *Scene) deinitPlaceholder(placeholder *solver.Placeholder, body *bodyState) {
-	body.velocity = placeholder.LinearVelocity()
-	body.angularVelocity = placeholder.AngularVelocity()
-	body.position = placeholder.Position()
-	body.rotation = placeholder.Rotation()
-
-	s.shapeScene.SetObjectTransform(body.objectID, shape3d.Transform{
-		Translation: body.position,
-		Rotation:    shape3d.RotationFromQuat(body.rotation),
-	})
-}
-
-type bodyRef struct {
-	index uint32
-}
-
-type propRef struct {
-	index uint32
-}
-
-type sbCollisionPair struct {
-	BodyRef indexReference
-	PropRef indexReference
-}
-
-type dbCollisionPair struct {
-	PrimaryRef   indexReference
-	SecondaryRef indexReference
+	if !ok {
+		return NilBodyID, false
+	}
+	if intersection.TargetShapeID == placement3d.InvalidShapeID {
+		// A prop.
+		return NilBodyID, false // FIXME: This should handle props as well.
+	}
+	objectID := s.collisionScene.GetShapeObject(intersection.TargetShapeID)
+	bData := s.collisionScene.GetObjectUserData(objectID)
+	body := &s.bodies[bData.index]
+	return BodyID{
+		index:    bData.index,
+		revision: body.revision,
+	}, true
 }

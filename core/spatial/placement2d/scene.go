@@ -146,7 +146,7 @@ func (s *Scene[O, S, M]) SetObjectTransform(objID ObjectID, transform shape2d.Tr
 	s.eachObjectShape(object, func(_ int32, shape *shape[S]) {
 		shape.update(transform)
 		bc := shape.boundingCircle()
-		s.shapeTree.Update(shape.spatialID, query2d.AreaFromCircle(bc))
+		s.shapeTree.Update(shape.spatialID, shape2d.AABBFromCircle(bc))
 	})
 }
 
@@ -305,7 +305,7 @@ func (s *Scene[O, S, M]) CreateMesh(info MeshInfo[M]) MeshID {
 		),
 	}
 	representation := newMeshRepresentation(shape2d.TransformedMesh(info.Mesh, transform))
-	area := query2d.AreaFromCircle(representation.boundingCircle())
+	area := shape2d.AABBFromCircle(representation.boundingCircle())
 
 	index := s.allocateMesh()
 	s.meshes[index] = meshShape[M]{
@@ -343,11 +343,9 @@ func (s *Scene[O, S, M]) SetMeshUserData(meshID MeshID, userData M) {
 // CollectSegmentIntersections collects all intersections of the segment
 // with objects in the scene.
 func (s *Scene[O, S, M]) CollectSegmentIntersections(segment shape2d.Segment, filter Filter, yield ContactCallback) {
-	querySegment := query2d.NewSegment(segment.A, segment.B)
-
 	if !filter.SkipDynamic {
 		s.shapeCandidates = s.shapeCandidates[:0]
-		s.shapeTree.QuerySegment(querySegment, func(index int32) bool {
+		s.shapeTree.QuerySegment(segment, func(index int32) bool {
 			s.shapeCandidates = append(s.shapeCandidates, index)
 			return true
 		})
@@ -356,7 +354,7 @@ func (s *Scene[O, S, M]) CollectSegmentIntersections(segment shape2d.Segment, fi
 
 	if !filter.SkipStatic {
 		s.meshCandidates = s.meshCandidates[:0]
-		s.meshTree.QuerySegment(querySegment, func(index int32) bool {
+		s.meshTree.QuerySegment(segment, func(index int32) bool {
 			s.meshCandidates = append(s.meshCandidates, index)
 			return true
 		})
@@ -375,7 +373,7 @@ func (s *Scene[O, S, M]) CheckSegmentIntersection(segment shape2d.Segment, filte
 // CollectCircleIntersections collects all intersections of the circle
 // with objects in the scene.
 func (s *Scene[O, S, M]) CollectCircleIntersections(circle shape2d.Circle, filter Filter, yield ContactCallback) {
-	queryAABB := query2d.AABBFromCircle(circle)
+	queryAABB := shape2d.AABBFromCircle(circle)
 
 	if !filter.SkipDynamic {
 		s.shapeCandidates = s.shapeCandidates[:0]
@@ -407,7 +405,7 @@ func (s *Scene[O, S, M]) CheckCircleIntersection(circle shape2d.Circle, filter F
 // CollectRectangleIntersections collects all intersections of the rectangle
 // with objects in the scene.
 func (s *Scene[O, S, M]) CollectRectangleIntersections(rectangle shape2d.Rectangle, filter Filter, yield ContactCallback) {
-	queryAABB := query2d.AABBFromRectangle(rectangle)
+	queryAABB := shape2d.AABBFromRectangle(rectangle)
 
 	if !filter.SkipDynamic {
 		s.shapeCandidates = s.shapeCandidates[:0]
@@ -445,7 +443,7 @@ func (s *Scene[O, S, M]) CollectIntersections(yield ContactCallback) {
 			continue
 		}
 
-		queryAABB := query2d.AABBFromCircle(srcShape.boundingCircle())
+		queryAABB := shape2d.AABBFromCircle(srcShape.boundingCircle())
 
 		s.shapeCandidates = s.shapeCandidates[:0]
 		s.shapeTree.QueryAABB(queryAABB, func(tgtIndex int32) bool {
@@ -514,7 +512,7 @@ func (s *Scene[O, S, M]) attachShape(
 	index := s.allocateShape()
 
 	representation.update(object.transform)
-	area := query2d.AreaFromCircle(representation.boundingCircle())
+	area := shape2d.AABBFromCircle(representation.boundingCircle())
 
 	s.shapes[index] = shape[S]{
 		objectIndex:          objectIndex,

@@ -77,7 +77,7 @@ func newScene(engine *Engine, info SceneInfo) *Scene {
 
 	// source binding sets
 	armatureBindingSet := hierarchy.NewSourceBindingSet(hierarchyScene, NewAnimationBinding())
-	bodyBindingSet := hierarchy.NewSourceBindingSet(hierarchyScene, NewBodyBinding())
+	bodyBindingSet := hierarchy.NewSourceBindingSet(hierarchyScene, NewBodyBinding(physicsScene))
 	// target binding sets
 	skyBindingSet := hierarchy.NewInterpolationBindingSet(hierarchyScene, NewSkyBinding())
 	ambientLightBindingSet := hierarchy.NewInterpolationBindingSet(hierarchyScene, NewAmbientLightBinding())
@@ -132,7 +132,7 @@ type Scene struct {
 
 	// source binding sets
 	armatureBindingSet *hierarchy.SourceBindingSet[*animation.Player]
-	bodyBindingSet     *hierarchy.SourceBindingSet[physics.Body]
+	bodyBindingSet     *hierarchy.SourceBindingSet[physics.BodyID]
 	// target binding sets
 	skyBindingSet              *hierarchy.InterpolationBindingSet[*graphics.Sky]
 	ambientLightBindingSet     *hierarchy.InterpolationBindingSet[*graphics.AmbientLight]
@@ -160,9 +160,7 @@ func (s *Scene) Delete() {
 	if s.ecsScene != nil {
 		defer s.ecsScene.Delete()
 	}
-	if s.physicsScene != nil {
-		defer s.physicsScene.Delete()
-	}
+	s.physicsScene = nil
 	if s.gfxScene != nil {
 		defer s.gfxScene.Delete()
 	}
@@ -231,7 +229,7 @@ func (s *Scene) ArmatureBindingSet() *hierarchy.SourceBindingSet[*animation.Play
 }
 
 // BodyBindingSet returns the binding set that binds physics bodies.
-func (s *Scene) BodyBindingSet() *hierarchy.SourceBindingSet[physics.Body] {
+func (s *Scene) BodyBindingSet() *hierarchy.SourceBindingSet[physics.BodyID] {
 	return s.bodyBindingSet
 }
 

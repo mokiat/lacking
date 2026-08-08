@@ -6,6 +6,7 @@ import (
 	"github.com/mokiat/gog/ds"
 	"github.com/mokiat/gog/opt"
 	"github.com/mokiat/gomath/dprec"
+	"github.com/mokiat/lacking/core/spatial/shape2d"
 )
 
 // QuadtreeSettings contains the settings for a [Quadtree].
@@ -15,7 +16,9 @@ type QuadtreeSettings struct {
 	//
 	// If not specified, a default size of 4096 is used.
 	//
-	// Inserting an item outside these bounds has undefined behavior.
+	// Items that lie outside these bounds are still found by queries, but they
+	// settle in nodes close to the root and therefore degrade query
+	// performance.
 	Size opt.T[float64]
 
 	// MaxDepth controls the maximum depth that the tree can reach.
@@ -77,11 +80,11 @@ func NewQuadtree[T any](settings QuadtreeSettings) *Quadtree[T] {
 		itemOffset:  0,
 		placeOffset: 0,
 		looseArea: quadtreeQuad{
-			x: 0.0,
-			y: 0.0,
-			r: size, // using size here since a loose area has twice the size
+			x:        0.0,
+			y:        0.0,
+			halfSize: size, // using size here since a loose area has twice the size
 		},
-		box: emptyQuadtreeAABB(),
+		tightArea: emptyQuadtreeAABB(),
 	})
 
 	return &Quadtree[T]{
@@ -128,45 +131,64 @@ func (t *Quadtree[T]) VisitStats() TreeVisitStats {
 	}
 }
 
-// Insert adds an item, which occupies the specified area, to this
-// tree.
-func (t *Quadtree[T]) Insert(area Area, value T) TreeItemID {
-	nodeIndex := t.pickNodeForItem(area)
-	box := newQuadtreeAABBFromArea(area)
+// Insert adds an item, which occupies the specified axis-aligned bounding
+// box, to this tree.
+//
+// The item is placed in the deepest node that can fully contain the box, so
+// the smaller and the better centered the box is, the less work queries have
+// to do. The box must not be empty (as per [shape2d.AABB.IsEmpty]), otherwise
+// this function panics.
+func (t *Quadtree[T]) Insert(aabb shape2d.AABB, value T) TreeItemID {
+	if aabb.IsEmpty() {
+		panic("cannot insert item with empty area")
+	}
+
+	tightArea := newQuadtreeAABBFromAABB(aabb)
+	nodeIndex := t.pickNodeForItem(tightArea)
 	t.increaseNodeItems(nodeIndex)
 
 	if t.freeItemIDs.IsEmpty() {
 		id := TreeItemID(len(t.items))
 		t.idMappings = append(t.idMappings, int32(id))
 		t.items = append(t.items, quadtreeItem[T]{
-			id:    id,
-			node:  nodeIndex,
-			box:   box,
-			value: value,
+			id:        id,
+			node:      nodeIndex,
+			tightArea: tightArea,
+			value:     value,
 		})
 		return id
 	} else {
 		id := t.freeItemIDs.Pop()
 		itemIndex := t.idMappings[id]
 		item := &t.items[itemIndex]
-		item.box = box
+		item.tightArea = tightArea
 		item.value = value
 		item.node = nodeIndex
 		return item.id
 	}
 }
 
-// Update repositions the item with the specified id to the new area.
-func (t *Quadtree[T]) Update(id TreeItemID, area Area) {
+// Update repositions and resizes the item with the specified id to the new
+// axis-aligned bounding box.
+//
+// As with [Quadtree.Insert], the box must not be empty, otherwise this
+// function panics. Updating an item that has already been removed panics as
+// well.
+func (t *Quadtree[T]) Update(id TreeItemID, aabb shape2d.AABB) {
+	if aabb.IsEmpty() {
+		panic("cannot update item to empty area")
+	}
+
 	itemIndex := t.idMappings[id]
 	item := &t.items[itemIndex]
 	if item.node == nullQuadtreeIndex {
 		panic("cannot update removed item")
 	}
-	item.box = newQuadtreeAABBFromArea(area)
+	tightArea := newQuadtreeAABBFromAABB(aabb)
+	item.tightArea = tightArea
 	oldNodeIndex := item.node
 	t.decreaseNodeItems(item.node) // previous node
-	item.node = t.pickNodeForItem(area)
+	item.node = t.pickNodeForItem(tightArea)
 	t.increaseNodeItems(item.node) // new node
 	t.gcNode(oldNodeIndex)
 }
@@ -188,7 +210,7 @@ func (t *Quadtree[T]) Remove(id TreeItemID) {
 // QuerySegment finds all items that intersect the specified segment. Each
 // found item is passed to the specified yield function. The order in which
 // items are passed is undefined and might change between invocations.
-func (t *Quadtree[T]) QuerySegment(segment Segment, yield VisitorFunc[T]) {
+func (t *Quadtree[T]) QuerySegment(segment shape2d.Segment, yield VisitorFunc[T]) {
 	t.resetVisitStats()
 	t.refresh()
 	t.visitNodeInSegment(0, &segment, yield)
@@ -198,7 +220,7 @@ func (t *Quadtree[T]) QuerySegment(segment Segment, yield VisitorFunc[T]) {
 // axis-aligned bounding box. Each found item is passed to the specified yield
 // function. The order in which items are passed is undefined and might change
 // between invocations.
-func (t *Quadtree[T]) QueryAABB(aabb AABB, yield VisitorFunc[T]) {
+func (t *Quadtree[T]) QueryAABB(aabb shape2d.AABB, yield VisitorFunc[T]) {
 	t.resetVisitStats()
 	t.refresh()
 	t.visitNodeInAABB(0, &aabb, yield)
@@ -248,7 +270,9 @@ func (t *Quadtree[T]) itemsAtDepth(nodeIndex int32, currentDepth, depth uint32) 
 	return result
 }
 
-func (t *Quadtree[T]) pickNodeForItem(area Area) int32 {
+// pickNodeForItem returns the deepest node whose loose area still fully
+// contains the specified area.
+func (t *Quadtree[T]) pickNodeForItem(area quadtreeAABB) int32 {
 	bestNodeIndex := nullQuadtreeIndex
 	currentNodeIndex := int32(0)
 	var depth uint32
@@ -263,35 +287,45 @@ func (t *Quadtree[T]) pickNodeForItem(area Area) int32 {
 	return bestNodeIndex
 }
 
-func (t *Quadtree[T]) pickChildNode(parentNodeIndex int32, area Area) int32 {
+// pickChildNode returns the child of the specified node whose loose area fully
+// contains the specified area, allocating that child if it does not exist yet.
+// It returns nullQuadtreeIndex if the area does not fit in any child.
+func (t *Quadtree[T]) pickChildNode(parentNodeIndex int32, area quadtreeAABB) int32 {
 	parentNode := &t.nodes[parentNodeIndex]
 	parentLooseArea := parentNode.looseArea
 
-	// Make sure that it can fit inside a child. The requirement is that
-	// the radius must be smaller than the loose margin of the child.
-	childLooseRadius := parentLooseArea.r / 2.0
-	if area.r > (childLooseRadius / 2.0) { // div by 2 to convert to margin
-		return nullQuadtreeIndex
-	}
-
-	// It has to be inside one of the four children.
+	// The candidate child is the one whose own (tight) quadrant holds the
+	// center of the area.
+	const half = 1.0 / 2.0
 	var (
 		childIndex = 0
 		childX     = parentLooseArea.x
 		childY     = parentLooseArea.y
 	)
-	childOffset := parentLooseArea.r / 4.0
-	if area.x < parentLooseArea.x {
+	childOffset := parentLooseArea.halfSize / 4.0
+	if (area.minX+area.maxX)*half < parentLooseArea.x {
 		childX -= childOffset
 	} else {
 		childIndex += 1
 		childX += childOffset
 	}
-	if area.y < parentLooseArea.y {
+	if (area.minY+area.maxY)*half < parentLooseArea.y {
 		childY -= childOffset
 	} else {
 		childIndex += 2
 		childY += childOffset
+	}
+
+	// The area has to fit within the loose area of that child. Each axis is
+	// checked against its own extent, so an elongated or a well-centered item
+	// is no longer held back by its largest dimension and can descend deeper
+	// than a bounding-square test would allow.
+	childLooseHalfSize := parentLooseArea.halfSize * half
+	if (area.minX < childX-childLooseHalfSize) || (area.maxX > childX+childLooseHalfSize) {
+		return nullQuadtreeIndex
+	}
+	if (area.minY < childY-childLooseHalfSize) || (area.maxY > childY+childLooseHalfSize) {
+		return nullQuadtreeIndex
 	}
 
 	if parentNode.children[childIndex] != nullQuadtreeIndex {
@@ -299,9 +333,9 @@ func (t *Quadtree[T]) pickChildNode(parentNodeIndex int32, area Area) int32 {
 	}
 
 	childLooseArea := quadtreeQuad{
-		x: childX,
-		y: childY,
-		r: childLooseRadius,
+		x:        childX,
+		y:        childY,
+		halfSize: childLooseHalfSize,
 	}
 	if t.freeNodeIndices.IsEmpty() {
 		childNodeIndex := int32(len(t.nodes)) // predict next node index
@@ -429,29 +463,29 @@ func (t *Quadtree[T]) updateAABB(nodeIndex int32) bool {
 	for _, childIndex := range node.children {
 		if childIndex != nullQuadtreeIndex {
 			child := &t.nodes[childIndex]
-			result = mergeQuadtreeAABBs(result, child.box)
+			result = mergeQuadtreeAABBs(result, child.tightArea)
 		}
 	}
 	itemIndex := node.itemOffset
 	for range node.itemCount {
 		item := &t.items[itemIndex]
-		result = mergeQuadtreeAABBs(result, item.box)
+		result = mergeQuadtreeAABBs(result, item.tightArea)
 		itemIndex++
 	}
-	node.box = result
+	node.tightArea = result
 	node.isDirty = false
 
 	return true
 }
 
-func (t *Quadtree[T]) visitNodeInSegment(nodeIndex int32, querySegment *Segment, yield VisitorFunc[T]) bool {
+func (t *Quadtree[T]) visitNodeInSegment(nodeIndex int32, querySegment *shape2d.Segment, yield VisitorFunc[T]) bool {
 	node := &t.nodes[nodeIndex]
-	if node.box.intersectsSegment(querySegment) {
+	if node.tightArea.intersectsSegment(querySegment) {
 		t.nodeCountAccepted++
 		itemIndex := node.itemOffset
 		for range node.itemCount {
 			item := &t.items[itemIndex]
-			if item.box.intersectsSegment(querySegment) {
+			if item.tightArea.intersectsSegment(querySegment) {
 				t.itemCountAccepted++
 				if !yield(item.value) {
 					return false
@@ -474,14 +508,14 @@ func (t *Quadtree[T]) visitNodeInSegment(nodeIndex int32, querySegment *Segment,
 	return true
 }
 
-func (t *Quadtree[T]) visitNodeInAABB(nodeIndex int32, queryAABB *AABB, yield VisitorFunc[T]) bool {
+func (t *Quadtree[T]) visitNodeInAABB(nodeIndex int32, queryAABB *shape2d.AABB, yield VisitorFunc[T]) bool {
 	node := &t.nodes[nodeIndex]
-	if node.box.intersectsAABB(queryAABB) {
+	if node.tightArea.intersectsAABB(queryAABB) {
 		t.nodeCountAccepted++
 		itemIndex := node.itemOffset
 		for range node.itemCount {
 			item := &t.items[itemIndex]
-			if item.box.intersectsAABB(queryAABB) {
+			if item.tightArea.intersectsAABB(queryAABB) {
 				t.itemCountAccepted++
 				if !yield(item.value) {
 					return false
@@ -512,10 +546,17 @@ var emptyQuadtreeNodeChildren = [4]int32{
 }
 
 type quadtreeNode struct {
-	parent      int32
-	children    [4]int32
-	looseArea   quadtreeQuad
-	box         quadtreeAABB
+	parent   int32
+	children [4]int32
+
+	// looseArea is the fixed square that determines which items can be placed
+	// in this node. It is twice the size of the node's share of the tree.
+	looseArea quadtreeQuad
+
+	// tightArea is the cached bounding box of everything actually stored in
+	// this node and its descendants. It is what queries are tested against.
+	tightArea quadtreeAABB
+
 	itemCount   uint32
 	itemOffset  uint32
 	placeOffset uint32
@@ -527,16 +568,19 @@ func (n *quadtreeNode) isEmpty() bool {
 }
 
 type quadtreeItem[T any] struct {
-	id    TreeItemID
-	node  int32
-	box   quadtreeAABB
-	value T
+	id        TreeItemID
+	node      int32
+	tightArea quadtreeAABB
+	value     T
 }
 
+// quadtreeQuad is a square, described through its center and half-size. It
+// describes the loose area of a node, which is what an item has to fit into in
+// order to be placed there.
 type quadtreeQuad struct {
-	x float64
-	y float64
-	r float64
+	x        float64
+	y        float64
+	halfSize float64
 }
 
 type quadtreeAABB struct {
@@ -555,12 +599,12 @@ func emptyQuadtreeAABB() quadtreeAABB {
 	}
 }
 
-func newQuadtreeAABBFromArea(area Area) quadtreeAABB {
+func newQuadtreeAABBFromAABB(aabb shape2d.AABB) quadtreeAABB {
 	return quadtreeAABB{
-		minX: area.x - area.r,
-		minY: area.y - area.r,
-		maxX: area.x + area.r,
-		maxY: area.y + area.r,
+		minX: aabb.MinX,
+		minY: aabb.MinY,
+		maxX: aabb.MaxX,
+		maxY: aabb.MaxY,
 	}
 }
 
@@ -577,37 +621,37 @@ func (aabb *quadtreeAABB) isEmpty() bool {
 	return (aabb.minX > aabb.maxX) || (aabb.minY > aabb.maxY)
 }
 
-func (aabb *quadtreeAABB) intersectsSegment(segment *Segment) bool {
+func (aabb *quadtreeAABB) intersectsSegment(segment *shape2d.Segment) bool {
 	if aabb.isEmpty() {
 		return false
 	}
 
-	delta := dprec.Vec2Diff(segment.b, segment.a)
+	delta := dprec.Vec2Diff(segment.B, segment.A)
 
 	var tCloseX, tFarX float64
 	if delta.X == 0.0 {
-		if (segment.a.X < aabb.minX) || (segment.a.X > aabb.maxX) {
+		if (segment.A.X < aabb.minX) || (segment.A.X > aabb.maxX) {
 			return false // both points are outside the box on the left or right
 		}
 		tCloseX = -math.MaxFloat64
 		tFarX = math.MaxFloat64
 	} else {
-		tLowX := (aabb.minX - segment.a.X) / delta.X
-		tHighX := (aabb.maxX - segment.a.X) / delta.X
+		tLowX := (aabb.minX - segment.A.X) / delta.X
+		tHighX := (aabb.maxX - segment.A.X) / delta.X
 		tCloseX = min(tLowX, tHighX)
 		tFarX = max(tLowX, tHighX)
 	}
 
 	var tCloseY, tFarY float64
 	if delta.Y == 0.0 {
-		if (segment.a.Y < aabb.minY) || (segment.a.Y > aabb.maxY) {
+		if (segment.A.Y < aabb.minY) || (segment.A.Y > aabb.maxY) {
 			return false // both points are outside the box on the top or bottom
 		}
 		tCloseY = -math.MaxFloat64
 		tFarY = math.MaxFloat64
 	} else {
-		tLowY := (aabb.minY - segment.a.Y) / delta.Y
-		tHighY := (aabb.maxY - segment.a.Y) / delta.Y
+		tLowY := (aabb.minY - segment.A.Y) / delta.Y
+		tHighY := (aabb.maxY - segment.A.Y) / delta.Y
 		tCloseY = min(tLowY, tHighY)
 		tFarY = max(tLowY, tHighY)
 	}
@@ -618,12 +662,12 @@ func (aabb *quadtreeAABB) intersectsSegment(segment *Segment) bool {
 	return tClose <= tFar && tClose <= 1.0 && tFar >= 0.0
 }
 
-func (aabb *quadtreeAABB) intersectsAABB(other *AABB) bool {
+func (aabb *quadtreeAABB) intersectsAABB(other *shape2d.AABB) bool {
 	if aabb.isEmpty() {
 		return false
 	}
-	return (aabb.minX <= other.maxX) &&
-		(aabb.minY <= other.maxY) &&
-		(aabb.maxX >= other.minX) &&
-		(aabb.maxY >= other.minY)
+	return (aabb.minX <= other.MaxX) &&
+		(aabb.minY <= other.MaxY) &&
+		(aabb.maxX >= other.MinX) &&
+		(aabb.maxY >= other.MinY)
 }
