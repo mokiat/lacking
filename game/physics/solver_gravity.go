@@ -62,8 +62,8 @@ func (s *GravitySolver) SetMagnitude(magnitude float64) *GravitySolver {
 // ApplyAcceleration accumulates the gravitational acceleration on the
 // target. The medium of the context is not taken into account, meaning that
 // buoyancy is not modeled.
-func (s *GravitySolver) ApplyAcceleration(ctx AccelerationContext, target AccelerationTarget) {
-	target.AddLinearAcceleration(s.acceleration)
+func (s *GravitySolver) ApplyAcceleration(ctx AccelerationContext) {
+	ctx.Target.AddLinearAcceleration(s.acceleration)
 }
 
 func (s *GravitySolver) refreshAcceleration() {

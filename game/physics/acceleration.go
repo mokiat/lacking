@@ -132,12 +132,13 @@ func (t AccelerationTarget) ApplyOffsetForce(offset, force dprec.Vec3) {
 	t.body.applyOffsetForce(offset, force)
 }
 
-// AccelerationContext describes the surrounding medium at the location of
-// the target that is being accelerated.
+// AccelerationContext carries everything an [AccelerationSolver] needs in
+// order to accelerate a single target during a physics simulation step.
 //
-// It carries the parts of the environment that are shared by all
-// contributors, so that each of them does not have to sample the medium on
-// its own.
+// Alongside the target itself, it carries the parts of the surrounding
+// medium at the target's location that are shared by every contributor
+// evaluated against that target this step, so that each of them does not
+// have to sample the medium on its own.
 type AccelerationContext struct {
 
 	// DeltaSeconds is the time step of the simulation, in seconds. Use this
@@ -149,6 +150,11 @@ type AccelerationContext struct {
 
 	// MediumDensity is the density of the medium in kg/m^3.
 	MediumDensity float64
+
+	// Target is the [AccelerationTarget] being accelerated, through which
+	// the solver reads its motion state and accumulates the acceleration
+	// it contributes.
+	Target AccelerationTarget
 }
 
 // AccelerationSolver applies an acceleration effect to a target.
@@ -157,11 +163,11 @@ type AccelerationContext struct {
 // and are evaluated once per body per simulation step.
 type AccelerationSolver interface {
 
-	// ApplyAcceleration accumulates on the target the acceleration that this
-	// effect produces on it under the specified context.
+	// ApplyAcceleration accumulates on ctx.Target the acceleration that this
+	// effect produces on it, under the rest of ctx.
 	//
-	// Implementations must not retain the target, since it is only valid for
-	// the duration of the call, and must not mutate any state that other
-	// contributors observe, since the evaluation order is unspecified.
-	ApplyAcceleration(ctx AccelerationContext, target AccelerationTarget)
+	// Implementations must not retain ctx or ctx.Target, since both are only
+	// valid for the duration of the call, and must not mutate any state that
+	// other contributors observe, since the evaluation order is unspecified.
+	ApplyAcceleration(ctx AccelerationContext)
 }

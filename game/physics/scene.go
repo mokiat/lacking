@@ -593,8 +593,8 @@ func (s *Scene) applyAcceleration(elapsedSeconds float64) {
 			DeltaSeconds:   elapsedSeconds,
 			MediumVelocity: s.mediumSolver.Velocity(body.position),
 			MediumDensity:  s.mediumSolver.Density(body.position),
+			Target:         newAccelerationTarget(body),
 		}
-		target := newAccelerationTarget(body)
 
 		// Reset accumulated accelerations.
 		body.linearAcceleration = dprec.ZeroVec3()
@@ -602,12 +602,12 @@ func (s *Scene) applyAcceleration(elapsedSeconds float64) {
 
 		// Apply global accelerators.
 		s.eachEnabledGlobalAccelerator(func(_ int, accelerator *globalAcceleratorState) {
-			accelerator.solver.ApplyAcceleration(ctx, target)
+			accelerator.solver.ApplyAcceleration(ctx)
 		})
 
 		// Apply body accelerators.
 		s.eachEnabledBodyAccelerator(body, func(_ int, accelerator *bodyAcceleratorState) {
-			accelerator.solver.ApplyAcceleration(ctx, target)
+			accelerator.solver.ApplyAcceleration(ctx)
 		})
 
 		// Constrain the accumulated accelerations to the maximum allowed values.
