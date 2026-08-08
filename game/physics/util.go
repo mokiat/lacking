@@ -26,6 +26,29 @@ func QuatFromVector(vector dprec.Vec3) dprec.Quat {
 	return dprec.RotationQuat(dprec.Radians(radians), vector)
 }
 
+// CombinedFrictionCoefficient returns the friction coefficient to use for a
+// contact between two materials whose individual friction coefficients are
+// first and second, combining them as their geometric mean.
+//
+// This is independent of which kind of solver the contact belongs to; it
+// applies equally to a body-body contact (e.g. [PairCollisionSolver]) and
+// a body-terrain contact (e.g. [SoloCollisionSolver]).
+func CombinedFrictionCoefficient(first, second float64) float64 {
+	return dprec.Sqrt(first * second)
+}
+
+// CombinedRestitutionCoefficient returns the restitution coefficient to use
+// for a contact between two materials whose individual restitution
+// coefficients are first and second, combining them by taking the larger
+// of the two.
+//
+// This is independent of which kind of solver the contact belongs to; it
+// applies equally to a body-body contact (e.g. [PairCollisionSolver]) and
+// a body-terrain contact (e.g. [SoloCollisionSolver]).
+func CombinedRestitutionCoefficient(first, second float64) float64 {
+	return max(first, second)
+}
+
 // RestitutionClamp specifies a ratio that describes how much the restitution
 // coefficient should be allowed to apply.
 //

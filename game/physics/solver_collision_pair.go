@@ -117,8 +117,14 @@ func (s *PairCollisionSolver) Configure(config PairCollisionSolverConfig) {
 	s.secondaryContactPoint = config.SecondaryContactPoint
 	s.contactDepth = config.ContactDepth
 
-	s.frictionCoefficient = dprec.Sqrt(config.PrimaryFrictionCoefficient * config.SecondaryFrictionCoefficient)
-	s.restitutionCoefficient = max(config.PrimaryRestitutionCoefficient, config.SecondaryRestitutionCoefficient)
+	s.frictionCoefficient = CombinedFrictionCoefficient(
+		config.PrimaryFrictionCoefficient,
+		config.SecondaryFrictionCoefficient,
+	)
+	s.restitutionCoefficient = CombinedRestitutionCoefficient(
+		config.PrimaryRestitutionCoefficient,
+		config.SecondaryRestitutionCoefficient,
+	)
 }
 
 // Reset implements [PairConstraintSolver.Reset].

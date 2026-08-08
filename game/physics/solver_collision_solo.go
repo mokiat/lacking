@@ -96,8 +96,14 @@ func (s *SoloCollisionSolver) Configure(config SoloCollisionSolverConfig) {
 	s.bodyContactPoint = config.BodyContactPoint
 	s.contactDepth = config.ContactDepth
 
-	s.frictionCoefficient = dprec.Sqrt(config.BodyFrictionCoefficient * config.TerrainFrictionCoefficient)
-	s.restitutionCoefficient = max(config.BodyRestitutionCoefficient, config.TerrainRestitutionCoefficient)
+	s.frictionCoefficient = CombinedFrictionCoefficient(
+		config.BodyFrictionCoefficient,
+		config.TerrainFrictionCoefficient,
+	)
+	s.restitutionCoefficient = CombinedRestitutionCoefficient(
+		config.BodyRestitutionCoefficient,
+		config.TerrainRestitutionCoefficient,
+	)
 }
 
 // Reset implements [SoloConstraintSolver.Reset].
