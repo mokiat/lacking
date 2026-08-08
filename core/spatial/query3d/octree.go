@@ -6,6 +6,7 @@ import (
 	"github.com/mokiat/gog/ds"
 	"github.com/mokiat/gog/opt"
 	"github.com/mokiat/gomath/dprec"
+	"github.com/mokiat/lacking/core/spatial/shape3d"
 )
 
 // OctreeSettings contains the settings for an [Octree].
@@ -77,12 +78,12 @@ func NewOctree[T any](settings OctreeSettings) *Octree[T] {
 		itemOffset:  0,
 		placeOffset: 0,
 		looseArea: octreeCube{
-			x: 0.0,
-			y: 0.0,
-			z: 0.0,
-			r: size, // using size here since a loose area has twice the size
+			x:        0.0,
+			y:        0.0,
+			z:        0.0,
+			halfSize: size, // using size here since a loose area has twice the size
 		},
-		box: emptyOctreeAABB(),
+		tightArea: emptyOctreeAABB(),
 	})
 
 	return &Octree[T]{
@@ -129,45 +130,62 @@ func (t *Octree[T]) VisitStats() TreeVisitStats {
 	}
 }
 
-// Insert adds an item, which occupies the specified area, to this
-// tree.
-func (t *Octree[T]) Insert(area Area, value T) TreeItemID {
-	nodeIndex := t.pickNodeForItem(area)
-	box := newOctreeAABBFromArea(area)
+// Insert adds an item, which occupies the specified axis-aligned bounding
+// box, to this tree.
+//
+// The box must not be empty (as per [shape3d.AABB.IsEmpty]), otherwise this
+// function panics. The box should be contained within the bounds of the tree,
+// otherwise the placement of the item is undefined.
+func (t *Octree[T]) Insert(aabb shape3d.AABB, value T) TreeItemID {
+	if aabb.IsEmpty() {
+		panic("cannot insert item with empty area")
+	}
+
+	looseArea := newOctreeCubeFromAABB(aabb)
+	nodeIndex := t.pickNodeForItem(looseArea)
+	tightArea := newOctreeAABBFromAABB(aabb)
 	t.increaseNodeItems(nodeIndex)
 
 	if t.freeItemIDs.IsEmpty() {
 		id := TreeItemID(len(t.items))
 		t.idMappings = append(t.idMappings, int32(id))
 		t.items = append(t.items, octreeItem[T]{
-			id:    id,
-			node:  nodeIndex,
-			box:   box,
-			value: value,
+			id:        id,
+			node:      nodeIndex,
+			tightArea: tightArea,
+			value:     value,
 		})
 		return id
 	} else {
 		id := t.freeItemIDs.Pop()
 		itemIndex := t.idMappings[id]
 		item := &t.items[itemIndex]
-		item.box = box
+		item.tightArea = tightArea
 		item.value = value
 		item.node = nodeIndex
 		return item.id
 	}
 }
 
-// Update repositions the item with the specified id to the new area.
-func (t *Octree[T]) Update(id TreeItemID, area Area) {
+// Update repositions and resizes the item with the specified id to the new
+// axis-aligned bounding box.
+//
+// As with [Octree.Insert], the box must not be empty, otherwise this function
+// panics. Updating an item that has already been removed panics as well.
+func (t *Octree[T]) Update(id TreeItemID, aabb shape3d.AABB) {
+	if aabb.IsEmpty() {
+		panic("cannot update item to empty area")
+	}
+
 	itemIndex := t.idMappings[id]
 	item := &t.items[itemIndex]
 	if item.node == nullOctreeIndex {
 		panic("cannot update removed item")
 	}
-	item.box = newOctreeAABBFromArea(area)
+	item.tightArea = newOctreeAABBFromAABB(aabb)
 	oldNodeIndex := item.node
 	t.decreaseNodeItems(item.node) // previous node
-	item.node = t.pickNodeForItem(area)
+	item.node = t.pickNodeForItem(newOctreeCubeFromAABB(aabb))
 	t.increaseNodeItems(item.node) // new node
 	t.gcNode(oldNodeIndex)
 }
@@ -189,7 +207,7 @@ func (t *Octree[T]) Remove(id TreeItemID) {
 // QuerySegment finds all items that intersect the specified segment. Each
 // found item is passed to the specified yield function. The order in which
 // items are passed is undefined and might change between invocations.
-func (t *Octree[T]) QuerySegment(segment Segment, yield VisitorFunc[T]) {
+func (t *Octree[T]) QuerySegment(segment shape3d.Segment, yield VisitorFunc[T]) {
 	t.resetVisitStats()
 	t.refresh()
 	t.visitNodeInSegment(0, &segment, yield)
@@ -199,7 +217,7 @@ func (t *Octree[T]) QuerySegment(segment Segment, yield VisitorFunc[T]) {
 // axis-aligned bounding box. Each found item is passed to the specified yield
 // function. The order in which items are passed is undefined and might change
 // between invocations.
-func (t *Octree[T]) QueryAABB(aabb AABB, yield VisitorFunc[T]) {
+func (t *Octree[T]) QueryAABB(aabb shape3d.AABB, yield VisitorFunc[T]) {
 	t.resetVisitStats()
 	t.refresh()
 	t.visitNodeInAABB(0, &aabb, yield)
@@ -249,7 +267,7 @@ func (t *Octree[T]) itemsAtDepth(nodeIndex int32, currentDepth, depth uint32) ui
 	return result
 }
 
-func (t *Octree[T]) pickNodeForItem(area Area) int32 {
+func (t *Octree[T]) pickNodeForItem(area octreeCube) int32 {
 	bestNodeIndex := nullOctreeIndex
 	currentNodeIndex := int32(0)
 	var depth uint32
@@ -264,25 +282,25 @@ func (t *Octree[T]) pickNodeForItem(area Area) int32 {
 	return bestNodeIndex
 }
 
-func (t *Octree[T]) pickChildNode(parentNodeIndex int32, area Area) int32 {
+func (t *Octree[T]) pickChildNode(parentNodeIndex int32, area octreeCube) int32 {
 	parentNode := &t.nodes[parentNodeIndex]
 	parentLooseArea := parentNode.looseArea
 
 	// Make sure that it can fit inside a child. The requirement is that
-	// the radius must be smaller than the loose margin of the child.
-	childLooseRadius := parentLooseArea.r / 2.0
-	if area.r > (childLooseRadius / 2.0) { // div by 2 to convert to margin
+	// the half-size must be smaller than the loose margin of the child.
+	childLooseHalfSize := parentLooseArea.halfSize / 2.0
+	if area.halfSize > (childLooseHalfSize / 2.0) { // div by 2 to convert to margin
 		return nullOctreeIndex
 	}
 
-	// It has to be inside one of the four children.
+	// It has to be inside one of the eight children.
 	var (
 		childIndex = 0
 		childX     = parentLooseArea.x
 		childY     = parentLooseArea.y
 		childZ     = parentLooseArea.z
 	)
-	childOffset := parentLooseArea.r / 4.0
+	childOffset := parentLooseArea.halfSize / 4.0
 	if area.x < parentLooseArea.x {
 		childX -= childOffset
 	} else {
@@ -307,10 +325,10 @@ func (t *Octree[T]) pickChildNode(parentNodeIndex int32, area Area) int32 {
 	}
 
 	childLooseArea := octreeCube{
-		x: childX,
-		y: childY,
-		z: childZ,
-		r: childLooseRadius,
+		x:        childX,
+		y:        childY,
+		z:        childZ,
+		halfSize: childLooseHalfSize,
 	}
 	if t.freeNodeIndices.IsEmpty() {
 		childNodeIndex := int32(len(t.nodes)) // predict next node index
@@ -438,29 +456,29 @@ func (t *Octree[T]) updateAABB(nodeIndex int32) bool {
 	for _, childIndex := range node.children {
 		if childIndex != nullOctreeIndex {
 			child := &t.nodes[childIndex]
-			result = mergeOctreeAABBs(result, child.box)
+			result = mergeOctreeAABBs(result, child.tightArea)
 		}
 	}
 	itemIndex := node.itemOffset
 	for range node.itemCount {
 		item := &t.items[itemIndex]
-		result = mergeOctreeAABBs(result, item.box)
+		result = mergeOctreeAABBs(result, item.tightArea)
 		itemIndex++
 	}
-	node.box = result
+	node.tightArea = result
 	node.isDirty = false
 
 	return true
 }
 
-func (t *Octree[T]) visitNodeInSegment(nodeIndex int32, querySegment *Segment, yield VisitorFunc[T]) bool {
+func (t *Octree[T]) visitNodeInSegment(nodeIndex int32, querySegment *shape3d.Segment, yield VisitorFunc[T]) bool {
 	node := &t.nodes[nodeIndex]
-	if node.box.intersectsSegment(querySegment) {
+	if node.tightArea.intersectsSegment(querySegment) {
 		t.nodeCountAccepted++
 		itemIndex := node.itemOffset
 		for range node.itemCount {
 			item := &t.items[itemIndex]
-			if item.box.intersectsSegment(querySegment) {
+			if item.tightArea.intersectsSegment(querySegment) {
 				t.itemCountAccepted++
 				if !yield(item.value) {
 					return false
@@ -483,14 +501,14 @@ func (t *Octree[T]) visitNodeInSegment(nodeIndex int32, querySegment *Segment, y
 	return true
 }
 
-func (t *Octree[T]) visitNodeInAABB(nodeIndex int32, queryAABB *AABB, yield VisitorFunc[T]) bool {
+func (t *Octree[T]) visitNodeInAABB(nodeIndex int32, queryAABB *shape3d.AABB, yield VisitorFunc[T]) bool {
 	node := &t.nodes[nodeIndex]
-	if node.box.intersectsAABB(queryAABB) {
+	if node.tightArea.intersectsAABB(queryAABB) {
 		t.nodeCountAccepted++
 		itemIndex := node.itemOffset
 		for range node.itemCount {
 			item := &t.items[itemIndex]
-			if item.box.intersectsAABB(queryAABB) {
+			if item.tightArea.intersectsAABB(queryAABB) {
 				t.itemCountAccepted++
 				if !yield(item.value) {
 					return false
@@ -524,10 +542,17 @@ var emptyOctreeNodeChildren = [8]int32{
 }
 
 type octreeNode struct {
-	parent      int32
-	children    [8]int32
-	looseArea   octreeCube
-	box         octreeAABB
+	parent   int32
+	children [8]int32
+
+	// looseArea is the fixed cube that determines which items can be placed
+	// in this node. It is twice the size of the node's share of the tree.
+	looseArea octreeCube
+
+	// tightArea is the cached bounding box of everything actually stored in
+	// this node and its descendants. It is what queries are tested against.
+	tightArea octreeAABB
+
 	itemCount   uint32
 	itemOffset  uint32
 	placeOffset uint32
@@ -539,17 +564,37 @@ func (n *octreeNode) isEmpty() bool {
 }
 
 type octreeItem[T any] struct {
-	id    TreeItemID
-	node  int32
-	box   octreeAABB
-	value T
+	id        TreeItemID
+	node      int32
+	tightArea octreeAABB
+	value     T
 }
 
+// octreeCube is a cube, described through its center and half-size, that is
+// used to determine the node in which an item should be placed.
 type octreeCube struct {
-	x float64
-	y float64
-	z float64
-	r float64
+	x        float64
+	y        float64
+	z        float64
+	halfSize float64
+}
+
+// newOctreeCubeFromAABB returns the smallest cube, centered at the center of
+// the given box, that fully contains it. As node placement is based on cubes,
+// an elongated box is placed as though it were as large along every axis as it
+// is along its longest one.
+func newOctreeCubeFromAABB(aabb shape3d.AABB) octreeCube {
+	const half = 1.0 / 2.0
+	return octreeCube{
+		x: (aabb.MinX + aabb.MaxX) * half,
+		y: (aabb.MinY + aabb.MaxY) * half,
+		z: (aabb.MinZ + aabb.MaxZ) * half,
+		halfSize: max(
+			(aabb.MaxX-aabb.MinX),
+			(aabb.MaxY-aabb.MinY),
+			(aabb.MaxZ-aabb.MinZ),
+		) * half,
+	}
 }
 
 type octreeAABB struct {
@@ -572,14 +617,14 @@ func emptyOctreeAABB() octreeAABB {
 	}
 }
 
-func newOctreeAABBFromArea(area Area) octreeAABB {
+func newOctreeAABBFromAABB(aabb shape3d.AABB) octreeAABB {
 	return octreeAABB{
-		minX: area.x - area.r,
-		minY: area.y - area.r,
-		minZ: area.z - area.r,
-		maxX: area.x + area.r,
-		maxY: area.y + area.r,
-		maxZ: area.z + area.r,
+		minX: aabb.MinX,
+		minY: aabb.MinY,
+		minZ: aabb.MinZ,
+		maxX: aabb.MaxX,
+		maxY: aabb.MaxY,
+		maxZ: aabb.MaxZ,
 	}
 }
 
@@ -598,51 +643,51 @@ func (aabb *octreeAABB) isEmpty() bool {
 	return (aabb.minX > aabb.maxX) || (aabb.minY > aabb.maxY) || (aabb.minZ > aabb.maxZ)
 }
 
-func (aabb *octreeAABB) intersectsSegment(segment *Segment) bool {
+func (aabb *octreeAABB) intersectsSegment(segment *shape3d.Segment) bool {
 	if aabb.isEmpty() {
 		return false
 	}
 
-	delta := dprec.Vec3Diff(segment.b, segment.a)
+	delta := dprec.Vec3Diff(segment.B, segment.A)
 
 	var tCloseX, tFarX float64
 	if delta.X == 0.0 {
-		if (segment.a.X < aabb.minX) || (segment.a.X > aabb.maxX) {
+		if (segment.A.X < aabb.minX) || (segment.A.X > aabb.maxX) {
 			return false // both points are outside the box on the left or right
 		}
 		tCloseX = -math.MaxFloat64
 		tFarX = math.MaxFloat64
 	} else {
-		tLowX := (aabb.minX - segment.a.X) / delta.X
-		tHighX := (aabb.maxX - segment.a.X) / delta.X
+		tLowX := (aabb.minX - segment.A.X) / delta.X
+		tHighX := (aabb.maxX - segment.A.X) / delta.X
 		tCloseX = min(tLowX, tHighX)
 		tFarX = max(tLowX, tHighX)
 	}
 
 	var tCloseY, tFarY float64
 	if delta.Y == 0.0 {
-		if (segment.a.Y < aabb.minY) || (segment.a.Y > aabb.maxY) {
+		if (segment.A.Y < aabb.minY) || (segment.A.Y > aabb.maxY) {
 			return false // both points are outside the box on the top or bottom
 		}
 		tCloseY = -math.MaxFloat64
 		tFarY = math.MaxFloat64
 	} else {
-		tLowY := (aabb.minY - segment.a.Y) / delta.Y
-		tHighY := (aabb.maxY - segment.a.Y) / delta.Y
+		tLowY := (aabb.minY - segment.A.Y) / delta.Y
+		tHighY := (aabb.maxY - segment.A.Y) / delta.Y
 		tCloseY = min(tLowY, tHighY)
 		tFarY = max(tLowY, tHighY)
 	}
 
 	var tCloseZ, tFarZ float64
 	if delta.Z == 0.0 {
-		if (segment.a.Z < aabb.minZ) || (segment.a.Z > aabb.maxZ) {
+		if (segment.A.Z < aabb.minZ) || (segment.A.Z > aabb.maxZ) {
 			return false // both points are outside the box on the front or back
 		}
 		tCloseZ = -math.MaxFloat64
 		tFarZ = math.MaxFloat64
 	} else {
-		tLowZ := (aabb.minZ - segment.a.Z) / delta.Z
-		tHighZ := (aabb.maxZ - segment.a.Z) / delta.Z
+		tLowZ := (aabb.minZ - segment.A.Z) / delta.Z
+		tHighZ := (aabb.maxZ - segment.A.Z) / delta.Z
 		tCloseZ = min(tLowZ, tHighZ)
 		tFarZ = max(tLowZ, tHighZ)
 	}
@@ -653,14 +698,14 @@ func (aabb *octreeAABB) intersectsSegment(segment *Segment) bool {
 	return tClose <= tFar && tClose <= 1.0 && tFar >= 0.0
 }
 
-func (aabb *octreeAABB) intersectsAABB(other *AABB) bool {
+func (aabb *octreeAABB) intersectsAABB(other *shape3d.AABB) bool {
 	if aabb.isEmpty() {
 		return false
 	}
-	return (aabb.minX <= other.maxX) &&
-		(aabb.minY <= other.maxY) &&
-		(aabb.maxX >= other.minX) &&
-		(aabb.maxY >= other.minY) &&
-		(aabb.minZ <= other.maxZ) &&
-		(aabb.maxZ >= other.minZ)
+	return (aabb.minX <= other.MaxX) &&
+		(aabb.minY <= other.MaxY) &&
+		(aabb.maxX >= other.MinX) &&
+		(aabb.maxY >= other.MinY) &&
+		(aabb.minZ <= other.MaxZ) &&
+		(aabb.maxZ >= other.MinZ)
 }

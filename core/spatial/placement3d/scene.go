@@ -146,7 +146,7 @@ func (s *Scene[O, S, M]) SetObjectTransform(objID ObjectID, transform shape3d.Tr
 	s.eachObjectShape(object, func(_ int32, shape *shape[S]) {
 		shape.update(transform)
 		bs := shape.boundingSphere()
-		s.shapeTree.Update(shape.spatialID, query3d.AreaFromSphere(bs))
+		s.shapeTree.Update(shape.spatialID, shape3d.AABBFromSphere(bs))
 	})
 }
 
@@ -310,7 +310,7 @@ func (s *Scene[O, S, M]) CreateMesh(info MeshInfo[M]) MeshID {
 		),
 	}
 	representation := newMeshRepresentation(shape3d.TransformedMesh(info.Mesh, transform))
-	area := query3d.AreaFromSphere(representation.boundingSphere())
+	area := shape3d.AABBFromSphere(representation.boundingSphere())
 
 	index := s.allocateMesh()
 	s.meshes[index] = meshShape[M]{
@@ -348,11 +348,9 @@ func (s *Scene[O, S, M]) SetMeshUserData(meshID MeshID, userData M) {
 // CollectSegmentIntersections collects all intersections of the segment
 // with objects in the scene.
 func (s *Scene[O, S, M]) CollectSegmentIntersections(segment shape3d.Segment, filter Filter, yield ContactCallback) {
-	querySegment := query3d.NewSegment(segment.A, segment.B)
-
 	if !filter.SkipDynamic {
 		s.shapeCandidates = s.shapeCandidates[:0]
-		s.shapeTree.QuerySegment(querySegment, func(index int32) bool {
+		s.shapeTree.QuerySegment(segment, func(index int32) bool {
 			s.shapeCandidates = append(s.shapeCandidates, index)
 			return true
 		})
@@ -361,7 +359,7 @@ func (s *Scene[O, S, M]) CollectSegmentIntersections(segment shape3d.Segment, fi
 
 	if !filter.SkipStatic {
 		s.meshCandidates = s.meshCandidates[:0]
-		s.meshTree.QuerySegment(querySegment, func(index int32) bool {
+		s.meshTree.QuerySegment(segment, func(index int32) bool {
 			s.meshCandidates = append(s.meshCandidates, index)
 			return true
 		})
@@ -380,7 +378,7 @@ func (s *Scene[O, S, M]) CheckSegmentIntersection(segment shape3d.Segment, filte
 // CollectSphereIntersections collects all intersections of the sphere
 // with objects in the scene.
 func (s *Scene[O, S, M]) CollectSphereIntersections(sphere shape3d.Sphere, filter Filter, yield ContactCallback) {
-	queryAABB := query3d.AABBFromSphere(sphere)
+	queryAABB := shape3d.AABBFromSphere(sphere)
 
 	if !filter.SkipDynamic {
 		s.shapeCandidates = s.shapeCandidates[:0]
@@ -412,7 +410,7 @@ func (s *Scene[O, S, M]) CheckSphereIntersection(sphere shape3d.Sphere, filter F
 // CollectBoxIntersections collects all intersections of the box
 // with objects in the scene.
 func (s *Scene[O, S, M]) CollectBoxIntersections(box shape3d.Box, filter Filter, yield ContactCallback) {
-	queryAABB := query3d.AABBFromBox(box)
+	queryAABB := shape3d.AABBFromBox(box)
 
 	if !filter.SkipDynamic {
 		s.shapeCandidates = s.shapeCandidates[:0]
@@ -450,7 +448,7 @@ func (s *Scene[O, S, M]) CollectIntersections(yield ContactCallback) {
 			continue
 		}
 
-		queryAABB := query3d.AABBFromSphere(srcShape.boundingSphere())
+		queryAABB := shape3d.AABBFromSphere(srcShape.boundingSphere())
 
 		s.shapeCandidates = s.shapeCandidates[:0]
 		s.shapeTree.QueryAABB(queryAABB, func(tgtIndex int32) bool {
@@ -519,7 +517,7 @@ func (s *Scene[O, S, M]) attachShape(
 	index := s.allocateShape()
 
 	representation.update(object.transform)
-	area := query3d.AreaFromSphere(representation.boundingSphere())
+	area := shape3d.AABBFromSphere(representation.boundingSphere())
 
 	s.shapes[index] = shape[S]{
 		objectIndex:          objectIndex,
