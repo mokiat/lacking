@@ -214,7 +214,7 @@ func (s *CoiloverSolver) Reset(ctx PairConstraintContext) {
 		LinearSlope:  normal,
 		AngularSlope: dprec.Vec3Cross(secondaryAnchorOffsetWS, normal),
 	}
-	s.drift = actualDistance - s.relaxedLength
+	s.drift = s.relaxedLength - actualDistance
 }
 
 // ApplyImpulses implements [PairConstraintSolver.ApplyImpulses].
@@ -253,7 +253,7 @@ func (s *CoiloverSolver) ApplyImpulses(ctx PairConstraintContext) {
 	}
 
 	effVelocity := s.primaryJacobian.EffectiveVelocity(ctx.PrimaryTarget) + s.secondaryJacobian.EffectiveVelocity(ctx.SecondaryTarget)
-	lambda := -(effVelocity + beta*s.drift + gamma*s.appliedLambda) / (invEffectiveMass + gamma)
+	lambda := -(effVelocity - beta*s.drift + gamma*s.appliedLambda) / (invEffectiveMass + gamma)
 	s.appliedLambda += lambda
 
 	primaryImpulse := s.primaryJacobian.Impulse(lambda)
