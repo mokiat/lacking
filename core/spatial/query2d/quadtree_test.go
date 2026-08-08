@@ -14,17 +14,11 @@ import (
 
 // aabbFromCircle builds an AABB enclosing a circle with the given center
 // coordinates and radius.
-func aabbFromCircle(x, y, radius float64) query2d.AABB {
-	return query2d.AABBFromCircle(shape2d.Circle{
+func aabbFromCircle(x, y, radius float64) shape2d.AABB {
+	return shape2d.AABBFromCircle(shape2d.Circle{
 		Center: dprec.NewVec2(x, y),
 		Radius: radius,
 	})
-}
-
-// areaFromCircle builds an Area covering a circle with the given center
-// coordinates and radius.
-func areaFromCircle(x, y, radius float64) query2d.Area {
-	return query2d.AreaFromCircle(shape2d.NewCircle(dprec.NewVec2(x, y), radius))
 }
 
 var _ = Describe("Quadtree", func() {
@@ -45,6 +39,60 @@ var _ = Describe("Quadtree", func() {
 		Expect(state.ItemCount).To(Equal(uint32(0)))
 	})
 
+	It("panics when an item with an empty box is inserted", func() {
+		emptyAABB := shape2d.NewAABB(1.0, 1.0, -1.0, -1.0)
+		Expect(func() { tree.Insert(emptyAABB, "Empty") }).To(Panic())
+	})
+
+	It("panics when an item is updated to an empty box", func() {
+		itemID := tree.Insert(aabbFromCircle(0.0, 0.0, 1.0), "Item")
+		emptyAABB := shape2d.NewAABB(1.0, 1.0, -1.0, -1.0)
+		Expect(func() { tree.Update(itemID, emptyAABB) }).To(Panic())
+	})
+
+	When("an item has a non-square box", func() {
+		BeforeEach(func() {
+			// A bar stretching along the X axis. Its bounding square would span
+			// 40 units in every direction, whereas the box itself is only two
+			// units thick along Y.
+			tree.Insert(
+				shape2d.NewAABB(-40.0, -2.0, 40.0, 2.0),
+				"Bar",
+			)
+		})
+
+		It("is found through a query that overlaps the box", func() {
+			var found []string
+			tree.QueryAABB(aabbFromCircle(30.0, 0.0, 2.0), func(item string) bool {
+				found = append(found, item)
+				return true
+			})
+			Expect(found).To(ConsistOf("Bar"))
+		})
+
+		It("is not found through a query that only overlaps its bounding square", func() {
+			var found []string
+			tree.QueryAABB(aabbFromCircle(30.0, 20.0, 2.0), func(item string) bool {
+				found = append(found, item)
+				return true
+			})
+			Expect(found).To(BeEmpty())
+		})
+
+		It("is not found through a segment that only crosses its bounding square", func() {
+			segment := shape2d.NewSegment(
+				dprec.NewVec2(-30.0, 10.0),
+				dprec.NewVec2(30.0, 10.0),
+			)
+			var found []string
+			tree.QuerySegment(segment, func(item string) bool {
+				found = append(found, item)
+				return true
+			})
+			Expect(found).To(BeEmpty())
+		})
+	})
+
 	When("items are inserted", func() {
 		var (
 			firstItemID  query2d.TreeItemID
@@ -54,15 +102,15 @@ var _ = Describe("Quadtree", func() {
 
 		BeforeEach(func() {
 			firstItemID = tree.Insert(
-				areaFromCircle(16.0, 16.0, 2.0),
+				aabbFromCircle(16.0, 16.0, 2.0),
 				"First",
 			)
 			secondItemID = tree.Insert(
-				areaFromCircle(48.0, 48.0, 2.0),
+				aabbFromCircle(48.0, 48.0, 2.0),
 				"Second",
 			)
 			thirdItemID = tree.Insert(
-				areaFromCircle(-16.0, -48.0, 32.0),
+				aabbFromCircle(-16.0, -48.0, 32.0),
 				"Third",
 			)
 		})
@@ -85,7 +133,7 @@ var _ = Describe("Quadtree", func() {
 		It("is possible to segment-search for items", func() {
 			from := dprec.NewVec2(1.0, 1.0)
 			to := dprec.NewVec2(127.0, 127.0)
-			segment := query2d.NewSegment(from, to)
+			segment := shape2d.NewSegment(from, to)
 			var found []string
 			tree.QuerySegment(segment, func(item string) bool {
 				found = append(found, item)
@@ -97,7 +145,7 @@ var _ = Describe("Quadtree", func() {
 		It("stops QuerySegment after the visitor returns false", func() {
 			from := dprec.NewVec2(1.0, 1.0)
 			to := dprec.NewVec2(127.0, 127.0)
-			segment := query2d.NewSegment(from, to)
+			segment := shape2d.NewSegment(from, to)
 			count := 0
 			tree.QuerySegment(segment, func(item string) bool {
 				count++
@@ -148,7 +196,7 @@ var _ = Describe("Quadtree", func() {
 		When("an item is updated", func() {
 			BeforeEach(func() {
 				tree.Update(secondItemID,
-					areaFromCircle(-48.0, 48.0, 2.0),
+					aabbFromCircle(-48.0, 48.0, 2.0),
 				)
 			})
 
@@ -164,7 +212,7 @@ var _ = Describe("Quadtree", func() {
 			It("is reflected in segment-search for items", func() {
 				from := dprec.NewVec2(1.0, 1.0)
 				to := dprec.NewVec2(127.0, 127.0)
-				segment := query2d.NewSegment(from, to)
+				segment := shape2d.NewSegment(from, to)
 				var found []string
 				tree.QuerySegment(segment, func(item string) bool {
 					found = append(found, item)
@@ -205,7 +253,7 @@ var _ = Describe("Quadtree", func() {
 			It("does not return an active item id on new insert", func() {
 				tree.Stats() // forces internal reordering of items (white box testing)
 				secondItemID = tree.Insert(
-					areaFromCircle(48.0, 48.0, 2.0),
+					aabbFromCircle(48.0, 48.0, 2.0),
 					"Second",
 				)
 				Expect(secondItemID).ToNot(Equal(firstItemID))
@@ -215,7 +263,7 @@ var _ = Describe("Quadtree", func() {
 			It("is reflected in segment-search for items", func() {
 				from := dprec.NewVec2(1.0, 1.0)
 				to := dprec.NewVec2(127.0, 127.0)
-				segment := query2d.NewSegment(from, to)
+				segment := shape2d.NewSegment(from, to)
 				var found []string
 				tree.QuerySegment(segment, func(item string) bool {
 					found = append(found, item)
@@ -243,7 +291,7 @@ var _ = Describe("Quadtree", func() {
 			// A tiny item placed off-center descends to the deepest allowed
 			// node, allocating one node per depth level along the way.
 			deepItemID = tree.Insert(
-				areaFromCircle(60.0, 60.0, 1.0),
+				aabbFromCircle(60.0, 60.0, 1.0),
 				"Deep",
 			)
 		})
@@ -271,7 +319,7 @@ var _ = Describe("Quadtree", func() {
 				// A large item can no longer fit in any child, so it lands on
 				// the root and the vacated branch must collapse.
 				tree.Update(deepItemID,
-					areaFromCircle(0.0, 0.0, 60.0),
+					aabbFromCircle(0.0, 0.0, 60.0),
 				)
 			})
 
@@ -291,11 +339,11 @@ var _ = Describe("Quadtree", func() {
 			// leaves. Removing the far item must collapse its leaf and shrink
 			// the cached bounding boxes of the surviving ancestors.
 			tree.Insert(
-				areaFromCircle(16.0, 16.0, 2.0),
+				aabbFromCircle(16.0, 16.0, 2.0),
 				"Near",
 			)
 			farItemID = tree.Insert(
-				areaFromCircle(60.0, 60.0, 1.0),
+				aabbFromCircle(60.0, 60.0, 1.0),
 				"Far",
 			)
 			// Settle the tree so every cached box is clean. Only the collapse
@@ -342,10 +390,10 @@ var _ = Describe("Quadtree", func() {
 			ids := make([]query2d.TreeItemID, count)
 			expected := make(map[query2d.TreeItemID]string, count)
 
-			positionFor := func(i int) query2d.Area {
+			positionFor := func(i int) shape2d.AABB {
 				x := float64(-60 + (i*7)%120)
 				y := float64(-60 + (i*13)%120)
-				return areaFromCircle(x, y, 1.0)
+				return aabbFromCircle(x, y, 1.0)
 			}
 
 			// Populate the tree.
