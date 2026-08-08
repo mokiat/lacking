@@ -123,10 +123,13 @@ var _ = Describe("Quadtree", func() {
 
 		It("has the correct state", func() {
 			state := tree.Stats()
-			Expect(state.NodeCount).To(Equal(uint32(5)))
+			Expect(state.NodeCount).To(Equal(uint32(6)))
 			Expect(state.ItemCount).To(Equal(uint32(3)))
+			// The third item is as wide as a whole child node, but it is
+			// positioned so that it still fits within the loose area of a
+			// grandchild along both axes.
 			Expect(state.ItemCountPerDepth).To(Equal([]uint32{
-				0, 1, 2,
+				0, 0, 3,
 			}))
 		})
 
@@ -202,10 +205,10 @@ var _ = Describe("Quadtree", func() {
 
 			It("has the correct state", func() {
 				state := tree.Stats()
-				Expect(state.NodeCount).To(Equal(uint32(6)))
+				Expect(state.NodeCount).To(Equal(uint32(7)))
 				Expect(state.ItemCount).To(Equal(uint32(3)))
 				Expect(state.ItemCountPerDepth).To(Equal([]uint32{
-					0, 1, 2,
+					0, 0, 3,
 				}))
 			})
 
@@ -243,10 +246,10 @@ var _ = Describe("Quadtree", func() {
 
 			It("has the correct state", func() {
 				state := tree.Stats()
-				Expect(state.NodeCount).To(Equal(uint32(4)))
+				Expect(state.NodeCount).To(Equal(uint32(5)))
 				Expect(state.ItemCount).To(Equal(uint32(2)))
 				Expect(state.ItemCountPerDepth).To(Equal([]uint32{
-					0, 1, 1,
+					0, 0, 2,
 				}))
 			})
 
@@ -281,6 +284,48 @@ var _ = Describe("Quadtree", func() {
 				})
 				Expect(found).To(ConsistOf("First"))
 			})
+		})
+	})
+
+	When("an item is thin along one axis", func() {
+		// Both boxes have the same center and the same largest extent, and
+		// both descend into the same child node. They differ only along Y,
+		// where the node they would descend into next has its center 15 units
+		// away. The slab is thin enough along Y to still fit; the block, being
+		// as tall as it is wide, is not.
+		var (
+			slabAABB  = shape2d.NewAABB(-14.0, 32.0, 46.0, 34.0)
+			blockAABB = shape2d.NewAABB(-14.0, 3.0, 46.0, 63.0)
+		)
+
+		It("descends deeper than a square item of the same largest extent", func() {
+			tree.Insert(slabAABB, "Slab")
+			state := tree.Stats()
+			Expect(state.NodeCount).To(Equal(uint32(3))) // root + child + grandchild
+			Expect(state.ItemCountPerDepth).To(Equal([]uint32{
+				0, 0, 1,
+			}))
+		})
+
+		It("keeps a square item at the depth its largest extent allows", func() {
+			tree.Insert(blockAABB, "Block")
+			state := tree.Stats()
+			Expect(state.NodeCount).To(Equal(uint32(2))) // root + child
+			Expect(state.ItemCountPerDepth).To(Equal([]uint32{
+				0, 1, 0,
+			}))
+		})
+
+		It("finds both items regardless of the depth they settle at", func() {
+			tree.Insert(slabAABB, "Slab")
+			tree.Insert(blockAABB, "Block")
+			var found []string
+			tree.QueryAABB(shape2d.NewAABB(15.0, 33.0, 17.0, 33.0),
+				func(item string) bool {
+					found = append(found, item)
+					return true
+				})
+			Expect(found).To(ConsistOf("Slab", "Block"))
 		})
 	})
 

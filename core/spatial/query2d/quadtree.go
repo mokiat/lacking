@@ -16,7 +16,9 @@ type QuadtreeSettings struct {
 	//
 	// If not specified, a default size of 4096 is used.
 	//
-	// Inserting an item outside these bounds has undefined behavior.
+	// Items that lie outside these bounds are still found by queries, but they
+	// settle in nodes close to the root and therefore degrade query
+	// performance.
 	Size opt.T[float64]
 
 	// MaxDepth controls the maximum depth that the tree can reach.
@@ -132,17 +134,17 @@ func (t *Quadtree[T]) VisitStats() TreeVisitStats {
 // Insert adds an item, which occupies the specified axis-aligned bounding
 // box, to this tree.
 //
-// The box must not be empty (as per [shape2d.AABB.IsEmpty]), otherwise this
-// function panics. The box should be contained within the bounds of the tree,
-// otherwise the placement of the item is undefined.
+// The item is placed in the deepest node that can fully contain the box, so
+// the smaller and the better centered the box is, the less work queries have
+// to do. The box must not be empty (as per [shape2d.AABB.IsEmpty]), otherwise
+// this function panics.
 func (t *Quadtree[T]) Insert(aabb shape2d.AABB, value T) TreeItemID {
 	if aabb.IsEmpty() {
 		panic("cannot insert item with empty area")
 	}
 
-	looseArea := newQuadtreeQuadFromAABB(aabb)
-	nodeIndex := t.pickNodeForItem(looseArea)
 	tightArea := newQuadtreeAABBFromAABB(aabb)
+	nodeIndex := t.pickNodeForItem(tightArea)
 	t.increaseNodeItems(nodeIndex)
 
 	if t.freeItemIDs.IsEmpty() {
@@ -182,10 +184,11 @@ func (t *Quadtree[T]) Update(id TreeItemID, aabb shape2d.AABB) {
 	if item.node == nullQuadtreeIndex {
 		panic("cannot update removed item")
 	}
-	item.tightArea = newQuadtreeAABBFromAABB(aabb)
+	tightArea := newQuadtreeAABBFromAABB(aabb)
+	item.tightArea = tightArea
 	oldNodeIndex := item.node
 	t.decreaseNodeItems(item.node) // previous node
-	item.node = t.pickNodeForItem(newQuadtreeQuadFromAABB(aabb))
+	item.node = t.pickNodeForItem(tightArea)
 	t.increaseNodeItems(item.node) // new node
 	t.gcNode(oldNodeIndex)
 }
@@ -267,7 +270,9 @@ func (t *Quadtree[T]) itemsAtDepth(nodeIndex int32, currentDepth, depth uint32) 
 	return result
 }
 
-func (t *Quadtree[T]) pickNodeForItem(area quadtreeQuad) int32 {
+// pickNodeForItem returns the deepest node whose loose area still fully
+// contains the specified area.
+func (t *Quadtree[T]) pickNodeForItem(area quadtreeAABB) int32 {
 	bestNodeIndex := nullQuadtreeIndex
 	currentNodeIndex := int32(0)
 	var depth uint32
@@ -282,35 +287,45 @@ func (t *Quadtree[T]) pickNodeForItem(area quadtreeQuad) int32 {
 	return bestNodeIndex
 }
 
-func (t *Quadtree[T]) pickChildNode(parentNodeIndex int32, area quadtreeQuad) int32 {
+// pickChildNode returns the child of the specified node whose loose area fully
+// contains the specified area, allocating that child if it does not exist yet.
+// It returns nullQuadtreeIndex if the area does not fit in any child.
+func (t *Quadtree[T]) pickChildNode(parentNodeIndex int32, area quadtreeAABB) int32 {
 	parentNode := &t.nodes[parentNodeIndex]
 	parentLooseArea := parentNode.looseArea
 
-	// Make sure that it can fit inside a child. The requirement is that
-	// the half-size must be smaller than the loose margin of the child.
-	childLooseHalfSize := parentLooseArea.halfSize / 2.0
-	if area.halfSize > (childLooseHalfSize / 2.0) { // div by 2 to convert to margin
-		return nullQuadtreeIndex
-	}
-
-	// It has to be inside one of the four children.
+	// The candidate child is the one whose own (tight) quadrant holds the
+	// center of the area.
+	const half = 1.0 / 2.0
 	var (
 		childIndex = 0
 		childX     = parentLooseArea.x
 		childY     = parentLooseArea.y
 	)
 	childOffset := parentLooseArea.halfSize / 4.0
-	if area.x < parentLooseArea.x {
+	if (area.minX+area.maxX)*half < parentLooseArea.x {
 		childX -= childOffset
 	} else {
 		childIndex += 1
 		childX += childOffset
 	}
-	if area.y < parentLooseArea.y {
+	if (area.minY+area.maxY)*half < parentLooseArea.y {
 		childY -= childOffset
 	} else {
 		childIndex += 2
 		childY += childOffset
+	}
+
+	// The area has to fit within the loose area of that child. Each axis is
+	// checked against its own extent, so an elongated or a well-centered item
+	// is no longer held back by its largest dimension and can descend deeper
+	// than a bounding-square test would allow.
+	childLooseHalfSize := parentLooseArea.halfSize * half
+	if (area.minX < childX-childLooseHalfSize) || (area.maxX > childX+childLooseHalfSize) {
+		return nullQuadtreeIndex
+	}
+	if (area.minY < childY-childLooseHalfSize) || (area.maxY > childY+childLooseHalfSize) {
+		return nullQuadtreeIndex
 	}
 
 	if parentNode.children[childIndex] != nullQuadtreeIndex {
@@ -559,28 +574,13 @@ type quadtreeItem[T any] struct {
 	value     T
 }
 
-// quadtreeQuad is a square, described through its center and half-size, that
-// is used to determine the node in which an item should be placed.
+// quadtreeQuad is a square, described through its center and half-size. It
+// describes the loose area of a node, which is what an item has to fit into in
+// order to be placed there.
 type quadtreeQuad struct {
 	x        float64
 	y        float64
 	halfSize float64
-}
-
-// newQuadtreeQuadFromAABB returns the smallest square, centered at the center
-// of the given box, that fully contains it. As node placement is based on
-// squares, an elongated box is placed as though it were as large along both
-// axes as it is along its longest one.
-func newQuadtreeQuadFromAABB(aabb shape2d.AABB) quadtreeQuad {
-	const half = 1.0 / 2.0
-	return quadtreeQuad{
-		x: (aabb.MinX + aabb.MaxX) * half,
-		y: (aabb.MinY + aabb.MaxY) * half,
-		halfSize: max(
-			(aabb.MaxX-aabb.MinX),
-			(aabb.MaxY-aabb.MinY),
-		) * half,
-	}
 }
 
 type quadtreeAABB struct {

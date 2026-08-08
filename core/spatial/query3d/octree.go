@@ -16,7 +16,9 @@ type OctreeSettings struct {
 	//
 	// If not specified, a default size of 4096 is used.
 	//
-	// Inserting an item outside these bounds has undefined behavior.
+	// Items that lie outside these bounds are still found by queries, but they
+	// settle in nodes close to the root and therefore degrade query
+	// performance.
 	Size opt.T[float64]
 
 	// MaxDepth controls the maximum depth that the tree can reach.
@@ -133,17 +135,17 @@ func (t *Octree[T]) VisitStats() TreeVisitStats {
 // Insert adds an item, which occupies the specified axis-aligned bounding
 // box, to this tree.
 //
-// The box must not be empty (as per [shape3d.AABB.IsEmpty]), otherwise this
-// function panics. The box should be contained within the bounds of the tree,
-// otherwise the placement of the item is undefined.
+// The item is placed in the deepest node that can fully contain the box, so
+// the smaller and the better centered the box is, the less work queries have
+// to do. The box must not be empty (as per [shape3d.AABB.IsEmpty]), otherwise
+// this function panics.
 func (t *Octree[T]) Insert(aabb shape3d.AABB, value T) TreeItemID {
 	if aabb.IsEmpty() {
 		panic("cannot insert item with empty area")
 	}
 
-	looseArea := newOctreeCubeFromAABB(aabb)
-	nodeIndex := t.pickNodeForItem(looseArea)
 	tightArea := newOctreeAABBFromAABB(aabb)
+	nodeIndex := t.pickNodeForItem(tightArea)
 	t.increaseNodeItems(nodeIndex)
 
 	if t.freeItemIDs.IsEmpty() {
@@ -182,10 +184,11 @@ func (t *Octree[T]) Update(id TreeItemID, aabb shape3d.AABB) {
 	if item.node == nullOctreeIndex {
 		panic("cannot update removed item")
 	}
-	item.tightArea = newOctreeAABBFromAABB(aabb)
+	tightArea := newOctreeAABBFromAABB(aabb)
+	item.tightArea = tightArea
 	oldNodeIndex := item.node
 	t.decreaseNodeItems(item.node) // previous node
-	item.node = t.pickNodeForItem(newOctreeCubeFromAABB(aabb))
+	item.node = t.pickNodeForItem(tightArea)
 	t.increaseNodeItems(item.node) // new node
 	t.gcNode(oldNodeIndex)
 }
@@ -267,7 +270,9 @@ func (t *Octree[T]) itemsAtDepth(nodeIndex int32, currentDepth, depth uint32) ui
 	return result
 }
 
-func (t *Octree[T]) pickNodeForItem(area octreeCube) int32 {
+// pickNodeForItem returns the deepest node whose loose area still fully
+// contains the specified area.
+func (t *Octree[T]) pickNodeForItem(area octreeAABB) int32 {
 	bestNodeIndex := nullOctreeIndex
 	currentNodeIndex := int32(0)
 	var depth uint32
@@ -282,18 +287,16 @@ func (t *Octree[T]) pickNodeForItem(area octreeCube) int32 {
 	return bestNodeIndex
 }
 
-func (t *Octree[T]) pickChildNode(parentNodeIndex int32, area octreeCube) int32 {
+// pickChildNode returns the child of the specified node whose loose area fully
+// contains the specified area, allocating that child if it does not exist yet.
+// It returns nullOctreeIndex if the area does not fit in any child.
+func (t *Octree[T]) pickChildNode(parentNodeIndex int32, area octreeAABB) int32 {
 	parentNode := &t.nodes[parentNodeIndex]
 	parentLooseArea := parentNode.looseArea
 
-	// Make sure that it can fit inside a child. The requirement is that
-	// the half-size must be smaller than the loose margin of the child.
-	childLooseHalfSize := parentLooseArea.halfSize / 2.0
-	if area.halfSize > (childLooseHalfSize / 2.0) { // div by 2 to convert to margin
-		return nullOctreeIndex
-	}
-
-	// It has to be inside one of the eight children.
+	// The candidate child is the one whose own (tight) octant holds the center
+	// of the area.
+	const half = 1.0 / 2.0
 	var (
 		childIndex = 0
 		childX     = parentLooseArea.x
@@ -301,23 +304,38 @@ func (t *Octree[T]) pickChildNode(parentNodeIndex int32, area octreeCube) int32 
 		childZ     = parentLooseArea.z
 	)
 	childOffset := parentLooseArea.halfSize / 4.0
-	if area.x < parentLooseArea.x {
+	if (area.minX+area.maxX)*half < parentLooseArea.x {
 		childX -= childOffset
 	} else {
 		childIndex += 1
 		childX += childOffset
 	}
-	if area.z < parentLooseArea.z {
+	if (area.minZ+area.maxZ)*half < parentLooseArea.z {
 		childZ -= childOffset
 	} else {
 		childIndex += 2
 		childZ += childOffset
 	}
-	if area.y < parentLooseArea.y {
+	if (area.minY+area.maxY)*half < parentLooseArea.y {
 		childY -= childOffset
 	} else {
 		childIndex += 4
 		childY += childOffset
+	}
+
+	// The area has to fit within the loose area of that child. Each axis is
+	// checked against its own extent, so an elongated or a well-centered item
+	// is no longer held back by its largest dimension and can descend deeper
+	// than a bounding-cube test would allow.
+	childLooseHalfSize := parentLooseArea.halfSize * half
+	if (area.minX < childX-childLooseHalfSize) || (area.maxX > childX+childLooseHalfSize) {
+		return nullOctreeIndex
+	}
+	if (area.minY < childY-childLooseHalfSize) || (area.maxY > childY+childLooseHalfSize) {
+		return nullOctreeIndex
+	}
+	if (area.minZ < childZ-childLooseHalfSize) || (area.maxZ > childZ+childLooseHalfSize) {
+		return nullOctreeIndex
 	}
 
 	if parentNode.children[childIndex] != nullOctreeIndex {
@@ -570,31 +588,14 @@ type octreeItem[T any] struct {
 	value     T
 }
 
-// octreeCube is a cube, described through its center and half-size, that is
-// used to determine the node in which an item should be placed.
+// octreeCube is a cube, described through its center and half-size. It
+// describes the loose area of a node, which is what an item has to fit into in
+// order to be placed there.
 type octreeCube struct {
 	x        float64
 	y        float64
 	z        float64
 	halfSize float64
-}
-
-// newOctreeCubeFromAABB returns the smallest cube, centered at the center of
-// the given box, that fully contains it. As node placement is based on cubes,
-// an elongated box is placed as though it were as large along every axis as it
-// is along its longest one.
-func newOctreeCubeFromAABB(aabb shape3d.AABB) octreeCube {
-	const half = 1.0 / 2.0
-	return octreeCube{
-		x: (aabb.MinX + aabb.MaxX) * half,
-		y: (aabb.MinY + aabb.MaxY) * half,
-		z: (aabb.MinZ + aabb.MaxZ) * half,
-		halfSize: max(
-			(aabb.MaxX-aabb.MinX),
-			(aabb.MaxY-aabb.MinY),
-			(aabb.MaxZ-aabb.MinZ),
-		) * half,
-	}
 }
 
 type octreeAABB struct {
