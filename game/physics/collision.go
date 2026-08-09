@@ -5,9 +5,18 @@ import (
 	"github.com/mokiat/lacking/core/spatial/shape3d"
 )
 
-type CollisionShapeID struct {
+type Mask = placement3d.Mask
+
+const FullMask = placement3d.FullMask
+
+type BodyCollisionShapeID struct {
 	bodyID  BodyID
-	shapeID placement3d.ShapeID
+	shapeID placement3d.ObjectShapeID
+}
+
+type TerrainCollisionShapeID struct {
+	terrainID TerrainID
+	shapeID   placement3d.TerrainShapeID
 }
 
 type CollisionShape[T any] struct {

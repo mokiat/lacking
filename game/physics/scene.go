@@ -18,7 +18,7 @@ import (
 // a number of bodies that are independent on any
 // bodies managed by other scene objects.
 type Scene struct {
-	collisionScene *placement3d.Scene[bodyData, shapeData, terrainData]
+	collisionScene *placement3d.Scene[bodyData, terrainData, shapeData]
 
 	soloCollisionSubscriptions *observer.SubscriptionSet[SoloCollisionCallback]
 	pairCollisionSubscriptions *observer.SubscriptionSet[PairCollisionCallback]
@@ -35,7 +35,8 @@ type Scene struct {
 	newSoloCollisionRefs map[soloCollisionRef]struct{}
 	newPairCollisionRefs map[pairCollisionRef]struct{}
 
-	collisionContacts placement3d.ContactList
+	objectContacts  placement3d.ObjectContactList
+	terrainContacts placement3d.TerrainContactList
 
 	freeCollisionRejectGroup uint32
 
@@ -70,7 +71,7 @@ type Scene struct {
 
 func NewScene() *Scene {
 	return &Scene{
-		collisionScene: placement3d.NewScene[bodyData, shapeData, terrainData](placement3d.SceneSettings{
+		collisionScene: placement3d.NewScene[bodyData, terrainData, shapeData](placement3d.SceneSettings{
 			Size:                opt.V(16384.0),
 			MaxDepth:            opt.V[uint32](12),
 			InitialNodeCapacity: opt.V[uint32](1024),
@@ -92,7 +93,8 @@ func NewScene() *Scene {
 		newSoloCollisionRefs: make(map[soloCollisionRef]struct{}),
 		newPairCollisionRefs: make(map[pairCollisionRef]struct{}),
 
-		collisionContacts: make(placement3d.ContactList, 0),
+		objectContacts:  make(placement3d.ObjectContactList, 0),
+		terrainContacts: make(placement3d.TerrainContactList, 0),
 
 		freeCollisionRejectGroup: 0,
 
@@ -389,6 +391,44 @@ func (s *Scene) Update(elapsedTime time.Duration) {
 	s.runSimulation(elapsedSeconds * s.timeScale)
 	s.notifySoloCollisions()
 	s.notifyPairCollisions()
+}
+
+func (s *Scene) CollectSegmentBodyIntersections(segment shape3d.Segment, mask Mask, yield BodyContactCallback) {
+	bodyView := s.Bodies()
+
+	s.collisionScene.CollectSegmentObjectIntersections(segment, mask, func(contact placement3d.ObjectContact) {
+		tgtBodyData := s.collisionScene.GetObjectUserData(contact.TargetObjectID)
+
+		yield(BodyContact{
+			TargetBodyID: bodyView.idFromIndex(tgtBodyData.index),
+			Contact:      contact.Contact,
+		})
+	})
+}
+
+func (s *Scene) CheckSegmentBodyIntersection(segment shape3d.Segment, mask Mask) (BodyContact, bool) {
+	var collection DeepestBodyContact
+	s.CollectSegmentBodyIntersections(segment, mask, collection.AddContact)
+	return collection.Contact()
+}
+
+func (s *Scene) CollectSegmentTerrainIntersections(segment shape3d.Segment, mask Mask, yield TerrainContactCallback) {
+	terrainView := s.Terrains()
+
+	s.collisionScene.CollectSegmentTerrainIntersections(segment, mask, func(contact placement3d.TerrainContact) {
+		tgtTerrainData := s.collisionScene.GetTerrainUserData(contact.TargetTerrainID)
+
+		yield(TerrainContact{
+			TargetTerrainID: terrainView.idFromIndex(tgtTerrainData.index),
+			Contact:         contact.Contact,
+		})
+	})
+}
+
+func (s *Scene) CheckSegmentTerrainIntersection(segment shape3d.Segment, mask Mask) (TerrainContact, bool) {
+	var collection DeepestTerrainContact
+	s.CollectSegmentTerrainIntersections(segment, mask, collection.AddContact)
+	return collection.Contact()
 }
 
 func (s *Scene) allocateGlobalAccelerator() (int32, *globalAcceleratorState) {
@@ -767,52 +807,59 @@ func (s *Scene) detectCollisions() {
 	s.pairCollisionSolvers = s.pairCollisionSolvers[:0]
 
 	// Collect new contacts.
-	s.collisionContacts.Reset()
-	s.collisionScene.CollectIntersections(s.collisionContacts.AddContact)
+	s.objectContacts.Reset()
+	s.collisionScene.CollectObjectIntersections(s.objectContacts.AddContact)
+
+	s.terrainContacts.Reset()
+	s.collisionScene.CollectTerrainIntersections(s.terrainContacts.AddContact)
 
 	// Handle contacts.
-	for _, contact := range s.collisionContacts.Contacts() {
-		srcBodyObject := s.collisionScene.GetShapeObject(contact.SourceShapeID)
-		srcShapeData := s.collisionScene.GetShapeUserData(contact.SourceShapeID)
-		srcBodyData := s.collisionScene.GetObjectUserData(srcBodyObject)
+	for _, contact := range s.objectContacts.Contacts() {
+		srcBodyData := s.collisionScene.GetObjectUserData(contact.SourceObjectID)
+		srcShapeData := s.collisionScene.GetObjectShapeUserData(contact.SourceShapeID)
 
-		if contact.TargetMeshID == placement3d.InvalidMeshID {
-			tgtBodyObject := s.collisionScene.GetShapeObject(contact.TargetShapeID)
-			tgtShapeData := s.collisionScene.GetShapeUserData(contact.TargetShapeID)
-			tgtBodyData := s.collisionScene.GetObjectUserData(tgtBodyObject)
-			s.handlePairCollision(
-				bodyCollisionData{
-					srcBodyData.index,
-					srcShapeData.frictionCoefficient,
-					srcShapeData.restitutionCoefficient,
-				},
-				bodyCollisionData{
-					tgtBodyData.index,
-					tgtShapeData.frictionCoefficient,
-					tgtShapeData.restitutionCoefficient,
-				},
-				contact,
-			)
-		} else {
-			tgtTerrainData := s.collisionScene.GetMeshUserData(contact.TargetMeshID)
-			s.handleSoloCollision(
-				bodyCollisionData{
-					srcBodyData.index,
-					srcShapeData.frictionCoefficient,
-					srcShapeData.restitutionCoefficient,
-				},
-				terrainCollisionData{
-					tgtTerrainData.index,
-					tgtTerrainData.frictionCoefficient,
-					tgtTerrainData.restitutionCoefficient,
-				},
-				contact,
-			)
-		}
+		tgtBodyData := s.collisionScene.GetObjectUserData(contact.TargetObjectID)
+		tgtShapeData := s.collisionScene.GetObjectShapeUserData(contact.TargetShapeID)
+
+		s.handlePairCollision(
+			bodyCollisionData{
+				srcBodyData.index,
+				srcShapeData.frictionCoefficient,
+				srcShapeData.restitutionCoefficient,
+			},
+			bodyCollisionData{
+				tgtBodyData.index,
+				tgtShapeData.frictionCoefficient,
+				tgtShapeData.restitutionCoefficient,
+			},
+			contact,
+		)
+	}
+
+	for _, contact := range s.terrainContacts.Contacts() {
+		srcBodyData := s.collisionScene.GetObjectUserData(contact.SourceObjectID)
+		srcShapeData := s.collisionScene.GetObjectShapeUserData(contact.SourceShapeID)
+
+		tgtTerrainData := s.collisionScene.GetTerrainUserData(contact.TargetTerrainID)
+		tgtShapeData := s.collisionScene.GetTerrainShapeUserData(contact.TargetShapeID)
+
+		s.handleSoloCollision(
+			bodyCollisionData{
+				srcBodyData.index,
+				srcShapeData.frictionCoefficient,
+				srcShapeData.restitutionCoefficient,
+			},
+			terrainCollisionData{
+				tgtTerrainData.index,
+				tgtShapeData.frictionCoefficient,
+				tgtShapeData.restitutionCoefficient,
+			},
+			contact,
+		)
 	}
 }
 
-func (s *Scene) handlePairCollision(primaryData, secondaryData bodyCollisionData, contact placement3d.Contact) {
+func (s *Scene) handlePairCollision(primaryData, secondaryData bodyCollisionData, contact placement3d.ObjectContact) {
 	solver := s.allocatePairCollisionSolver()
 	solver.Configure(PairCollisionSolverConfig{
 		PrimaryFrictionCoefficient:    primaryData.frictionCoefficient,
@@ -841,7 +888,7 @@ func (s *Scene) handlePairCollision(primaryData, secondaryData bodyCollisionData
 	s.newPairCollisionRefs[ref] = struct{}{}
 }
 
-func (s *Scene) handleSoloCollision(bodyData bodyCollisionData, terrainData terrainCollisionData, contact placement3d.Contact) {
+func (s *Scene) handleSoloCollision(bodyData bodyCollisionData, terrainData terrainCollisionData, contact placement3d.TerrainContact) {
 	solver := s.allocateSoloCollisionSolver()
 	solver.Configure(SoloCollisionSolverConfig{
 		TerrainFrictionCoefficient:    terrainData.frictionCoefficient,
@@ -932,9 +979,7 @@ type shapeData struct {
 }
 
 type terrainData struct {
-	index                  int32
-	frictionCoefficient    float64
-	restitutionCoefficient float64
+	index int32
 }
 
 type bodyCollisionData struct {
@@ -949,11 +994,13 @@ type terrainCollisionData struct {
 	restitutionCoefficient float64
 }
 
+// TODO: Consider tracking the shapeID as well.
 type soloCollisionRef struct {
 	bodyID    BodyID
 	terrainID TerrainID
 }
 
+// TODO: Consider tracking the shapeID as well.
 type pairCollisionRef struct {
 	primaryBodyID   BodyID
 	secondaryBodyID BodyID
@@ -994,23 +1041,3 @@ type pairCollisionRef struct {
 // 		}
 // 	})
 // }
-
-func (s *Scene) CheckSegmentIntersection(segment shape3d.Segment, mask uint32) (BodyID, bool) {
-	intersection, ok := s.collisionScene.CheckSegmentIntersection(segment, placement3d.Filter{
-		Mask: opt.V(mask),
-	})
-	if !ok {
-		return NilBodyID, false
-	}
-	if intersection.TargetShapeID == placement3d.InvalidShapeID {
-		// A prop.
-		return NilBodyID, false // FIXME: This should handle props as well.
-	}
-	objectID := s.collisionScene.GetShapeObject(intersection.TargetShapeID)
-	bData := s.collisionScene.GetObjectUserData(objectID)
-	body := &s.bodies[bData.index]
-	return BodyID{
-		index:    bData.index,
-		revision: body.revision,
-	}, true
-}

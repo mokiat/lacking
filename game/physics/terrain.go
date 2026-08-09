@@ -1,8 +1,6 @@
 package physics
 
 import (
-	"github.com/mokiat/gog/opt"
-	"github.com/mokiat/gomath/dprec"
 	"github.com/mokiat/lacking/core/spatial/placement3d"
 )
 
@@ -23,24 +21,18 @@ type TerrainView struct {
 //
 // However, this requires rework of placement3d API.
 
-func (v TerrainView) Create(position dprec.Vec3, rotation dprec.Quat, mesh CollisionMesh) TerrainID {
+func (v TerrainView) Create() TerrainID {
 	index, terrain := v.scene.allocateTerrain()
 
-	meshID := v.scene.collisionScene.CreateMesh(placement3d.MeshInfo[terrainData]{
-		Position:  opt.V(position),
-		Rotation:  opt.V(rotation),
-		Mesh:      mesh.Shape,
-		Filtering: mesh.Filtering,
+	terrainID := v.scene.collisionScene.CreateTerrain(placement3d.TerrainInfo[terrainData]{
 		UserData: terrainData{
-			index:                  index,
-			frictionCoefficient:    mesh.FrictionCoefficient,
-			restitutionCoefficient: mesh.RestitutionCoefficient,
+			index: index,
 		},
 	})
 
 	*terrain = terrainState{
-		meshID:   meshID,
-		revision: terrain.revision + 1, // progress revision to valid (odd) value
+		terrainID: terrainID,
+		revision:  terrain.revision + 1, // progress revision to valid (odd) value
 	}
 
 	return TerrainID{
@@ -53,18 +45,18 @@ func (v TerrainView) Create(position dprec.Vec3, rotation dprec.Quat, mesh Colli
 // ID in a [TerrainHandle], as returned by [TerrainView.Handle], for
 // callers that want to keep acting on the new terrain without holding
 // onto its ID separately.
-func (v TerrainView) CreateHandle(position dprec.Vec3, rotation dprec.Quat, mesh CollisionMesh) TerrainHandle {
-	return v.Handle(v.Create(position, rotation, mesh))
+func (v TerrainView) CreateHandle() TerrainHandle {
+	return v.Handle(v.Create())
 }
 
 func (v TerrainView) Delete(id TerrainID) {
 	terrain := v.resolve(id, true)
 
-	v.scene.collisionScene.DeleteMesh(terrain.meshID)
+	v.scene.collisionScene.DeleteTerrain(terrain.terrainID)
 
 	*terrain = terrainState{
-		meshID:   placement3d.InvalidMeshID,
-		revision: terrain.revision + 1, // progress revision to invalid (even) value
+		terrainID: placement3d.NilTerrainID,
+		revision:  terrain.revision + 1, // progress revision to invalid (even) value
 	}
 
 	v.scene.releaseTerrain(id.index)
@@ -91,6 +83,29 @@ func (v TerrainView) Handle(id TerrainID) TerrainHandle {
 func (v TerrainView) IsValid(id TerrainID) bool {
 	terrain := v.resolve(id, false)
 	return terrain != nil
+}
+
+func (v TerrainView) AttachCollisionMesh(id TerrainID, col CollisionMesh) TerrainCollisionShapeID {
+	terrain := v.resolve(id, true)
+	shapeID := v.scene.collisionScene.AttachMesh(terrain.terrainID, placement3d.MeshInfo[shapeData]{
+		Mesh:      col.Shape,
+		Filtering: col.Filtering,
+		UserData: shapeData{
+			frictionCoefficient:    col.FrictionCoefficient,
+			restitutionCoefficient: col.RestitutionCoefficient,
+		},
+	})
+	return TerrainCollisionShapeID{
+		terrainID: id,
+		shapeID:   shapeID,
+	}
+}
+
+func (v TerrainView) DetachCollisionShape(id TerrainID, shapeID TerrainCollisionShapeID) {
+	if id != shapeID.terrainID {
+		panic("invalid shape ID for terrain")
+	}
+	v.scene.collisionScene.DeleteTerrainShape(shapeID.shapeID)
 }
 
 func (v TerrainView) idFromIndex(index int32) TerrainID {
@@ -135,9 +150,29 @@ type TerrainHandle struct {
 	id   TerrainID
 }
 
+func (v TerrainHandle) ID() TerrainID {
+	return v.id
+}
+
+func (v TerrainHandle) Delete() {
+	v.view.Delete(v.id)
+}
+
+func (v TerrainHandle) IsValid() bool {
+	return v.view.IsValid(v.id)
+}
+
+func (v TerrainHandle) AttachCollisionMesh(col CollisionMesh) TerrainCollisionShapeID {
+	return v.view.AttachCollisionMesh(v.id, col)
+}
+
+func (v TerrainHandle) DetachCollisionShape(shapeID TerrainCollisionShapeID) {
+	v.view.DetachCollisionShape(v.id, shapeID)
+}
+
 type terrainState struct {
-	meshID   placement3d.MeshID
-	revision int32
+	terrainID placement3d.TerrainID
+	revision  int32
 }
 
 func (s *terrainState) isValid() bool {

@@ -73,7 +73,7 @@ func (v BodyView) Delete(id BodyID) {
 	}
 
 	*body = bodyState{
-		objectID:                  placement3d.InvalidObjectID,
+		objectID:                  placement3d.NilObjectID,
 		revision:                  body.revision + 1, // progress revision to invalid (even) value
 		firstBodyAcceleratorIndex: nilIndex,
 		firstSoloConstraintIndex:  nilIndex,
@@ -176,7 +176,7 @@ func (v BodyView) SetRotation(id BodyID, rotation dprec.Quat) {
 	v.refreshPlacement(body)
 }
 
-func (v BodyView) AttachCollisionSphere(id BodyID, col CollisionSphere) CollisionShapeID {
+func (v BodyView) AttachCollisionSphere(id BodyID, col CollisionSphere) BodyCollisionShapeID {
 	body := v.resolve(id, true)
 	shapeID := v.scene.collisionScene.AttachSphere(body.objectID, placement3d.SphereInfo[shapeData]{
 		Sphere:    col.Shape,
@@ -186,13 +186,13 @@ func (v BodyView) AttachCollisionSphere(id BodyID, col CollisionSphere) Collisio
 			restitutionCoefficient: col.RestitutionCoefficient,
 		},
 	})
-	return CollisionShapeID{
+	return BodyCollisionShapeID{
 		bodyID:  id,
 		shapeID: shapeID,
 	}
 }
 
-func (v BodyView) AttachCollisionBox(id BodyID, col CollisionBox) CollisionShapeID {
+func (v BodyView) AttachCollisionBox(id BodyID, col CollisionBox) BodyCollisionShapeID {
 	body := v.resolve(id, true)
 	shapeID := v.scene.collisionScene.AttachBox(body.objectID, placement3d.BoxInfo[shapeData]{
 		Box:       col.Shape,
@@ -202,17 +202,17 @@ func (v BodyView) AttachCollisionBox(id BodyID, col CollisionBox) CollisionShape
 			restitutionCoefficient: col.RestitutionCoefficient,
 		},
 	})
-	return CollisionShapeID{
+	return BodyCollisionShapeID{
 		bodyID:  id,
 		shapeID: shapeID,
 	}
 }
 
-func (v BodyView) DetachCollisionShape(id BodyID, shapeID CollisionShapeID) {
+func (v BodyView) DetachCollisionShape(id BodyID, shapeID BodyCollisionShapeID) {
 	if id != shapeID.bodyID {
 		panic("invalid shape ID for body")
 	}
-	v.scene.collisionScene.DeleteShape(shapeID.shapeID)
+	v.scene.collisionScene.DeleteObjectShape(shapeID.shapeID)
 }
 
 func (v BodyView) refreshPlacement(body *bodyState) {
@@ -324,15 +324,15 @@ func (h BodyHandle) SetRotation(rotation dprec.Quat) {
 	h.view.SetRotation(h.id, rotation)
 }
 
-func (h BodyHandle) AttachCollisionSphere(shape CollisionSphere) CollisionShapeID {
+func (h BodyHandle) AttachCollisionSphere(shape CollisionSphere) BodyCollisionShapeID {
 	return h.view.AttachCollisionSphere(h.id, shape)
 }
 
-func (h BodyHandle) AttachCollisionBox(shape CollisionBox) CollisionShapeID {
+func (h BodyHandle) AttachCollisionBox(shape CollisionBox) BodyCollisionShapeID {
 	return h.view.AttachCollisionBox(h.id, shape)
 }
 
-func (h BodyHandle) DetachCollisionShape(shapeID CollisionShapeID) {
+func (h BodyHandle) DetachCollisionShape(shapeID BodyCollisionShapeID) {
 	h.view.DetachCollisionShape(h.id, shapeID)
 }
 
