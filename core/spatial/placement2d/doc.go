@@ -20,7 +20,10 @@
 // an [ObjectContactCallback], whereas an intersection with a terrain shape is
 // reported as a [TerrainContact] through a [TerrainContactCallback]. A number
 // of contact sinks (for example [DeepestObjectContact] and
-// [TerrainContactList]) are provided for common accumulation strategies.
+// [TerrainContactList]) are provided for common accumulation strategies. The
+// [DeepestContact] and [ShallowestContact] sinks accept both flavors at once,
+// for when the extreme intersection is needed regardless of the kind of the
+// target.
 //
 // Since terrains cannot move, terrain shapes are never tested against one
 // another. The source of a [TerrainContact] is always either an object shape
