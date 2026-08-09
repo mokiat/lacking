@@ -33,6 +33,9 @@ type MeshInfo[M any] struct {
 	UserData M
 
 	// Mesh contains the mesh information.
+	//
+	// The mesh must have at least one triangle. An empty mesh has no area to
+	// be placed in the scene and is considered invalid.
 	Mesh shape3d.Mesh
 }
 
@@ -47,23 +50,21 @@ func shapeMeshCanIntersect[S, M any](shape *shape[S], mesh *meshShape[M]) bool {
 	return shape.canInteractWith(&mesh.filterRepresentation)
 }
 
-type meshRepresentation struct {
-	wsBSphere shape3d.Sphere
+// TODO: Consider using a different storage mechanism. For example an
+// Octree or BVH structure.
+// Alternatively experiment with placing each mesh triangle in the existing
+// mesh tree, through this will likely destroy the mesh tree performance.
 
-	// TODO: Consider using a different storage mechanism. For example an
-	// Octree or BVH structure.
-	// Alternatively experiment with placing each mesh triangle in the existing
-	// mesh tree, through this will likely destroy the mesh tree performance.
+type meshRepresentation struct {
+	wsBSphere   shape3d.Sphere
+	wsAABB      shape3d.AABB
 	wsTriangles []shape3d.Triangle
 }
 
 func newMeshRepresentation(mesh shape3d.Mesh) meshRepresentation {
 	return meshRepresentation{
 		wsBSphere:   mesh.BoundingSphere(),
+		wsAABB:      mesh.BoundingAABB(),
 		wsTriangles: mesh.Triangles,
 	}
-}
-
-func (s *meshRepresentation) boundingSphere() shape3d.Sphere {
-	return s.wsBSphere
 }

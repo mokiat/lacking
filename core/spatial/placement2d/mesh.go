@@ -33,6 +33,9 @@ type MeshInfo[M any] struct {
 	UserData M
 
 	// Mesh contains the mesh information.
+	//
+	// The mesh must have at least one edge. An empty mesh has no area to be
+	// placed in the scene and is considered invalid.
 	Mesh shape2d.Mesh
 }
 
@@ -47,23 +50,21 @@ func shapeMeshCanIntersect[S, M any](shape *shape[S], mesh *meshShape[M]) bool {
 	return shape.canInteractWith(&mesh.filterRepresentation)
 }
 
+// TODO: Consider using a different storage mechanism. For example a
+// Quadtree or BVH structure.
+// Alternatively experiment with placing each mesh edge in the existing
+// mesh tree, through this will likely destroy the mesh tree performance.
+
 type meshRepresentation struct {
 	wsBCircle shape2d.Circle
-
-	// TODO: Consider using a different storage mechanism. For example a
-	// Quadtree or BVH structure.
-	// Alternatively experiment with placing each mesh edge in the existing
-	// mesh tree, through this will likely destroy the mesh tree performance.
-	wsEdges []shape2d.Edge
+	wsAABB    shape2d.AABB
+	wsEdges   []shape2d.Edge
 }
 
 func newMeshRepresentation(mesh shape2d.Mesh) meshRepresentation {
 	return meshRepresentation{
 		wsBCircle: mesh.BoundingCircle(),
+		wsAABB:    mesh.BoundingAABB(),
 		wsEdges:   mesh.Edges,
 	}
-}
-
-func (s *meshRepresentation) boundingCircle() shape2d.Circle {
-	return s.wsBCircle
 }

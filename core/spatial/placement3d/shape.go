@@ -77,10 +77,6 @@ func (s *shapeRepresentation) update(parentTransform shape3d.Transform) {
 	)
 }
 
-func (s *shapeRepresentation) boundingSphere() shape3d.Sphere {
-	return s.wsBSphere
-}
-
 func (s *shapeRepresentation) gjkShape() gjk3d.Shape {
 	return gjk3d.Shape{
 		Position:   s.wsTransform.Translation,

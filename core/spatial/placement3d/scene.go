@@ -145,8 +145,8 @@ func (s *Scene[O, S, M]) SetObjectTransform(objID ObjectID, transform shape3d.Tr
 
 	s.eachObjectShape(object, func(_ int32, shape *shape[S]) {
 		shape.update(transform)
-		bs := shape.boundingSphere()
-		s.shapeTree.Update(shape.spatialID, shape3d.AABBFromSphere(bs))
+		area := shape3d.AABBFromSphere(shape.wsBSphere)
+		s.shapeTree.Update(shape.spatialID, area)
 	})
 }
 
@@ -302,6 +302,9 @@ func (s *Scene[O, S, M]) BoxIter(filter Filter) iter.Seq[shape3d.Box] {
 // directly through the [MeshInfo.Position] and [MeshInfo.Rotation] fields and
 // is intended for static geometry that participates in intersection tests as a
 // collection of triangles.
+//
+// The mesh specified through [MeshInfo.Mesh] must not be empty, otherwise this
+// function panics.
 func (s *Scene[O, S, M]) CreateMesh(info MeshInfo[M]) MeshID {
 	transform := shape3d.Transform{
 		Translation: info.Position.ValueOrDefault(dprec.ZeroVec3()),
@@ -310,7 +313,7 @@ func (s *Scene[O, S, M]) CreateMesh(info MeshInfo[M]) MeshID {
 		),
 	}
 	representation := newMeshRepresentation(shape3d.TransformedMesh(info.Mesh, transform))
-	area := shape3d.AABBFromSphere(representation.boundingSphere())
+	area := representation.wsAABB
 
 	index := s.allocateMesh()
 	s.meshes[index] = meshShape[M]{
@@ -448,7 +451,7 @@ func (s *Scene[O, S, M]) CollectIntersections(yield ContactCallback) {
 			continue
 		}
 
-		queryAABB := shape3d.AABBFromSphere(srcShape.boundingSphere())
+		queryAABB := shape3d.AABBFromSphere(srcShape.wsBSphere)
 
 		s.shapeCandidates = s.shapeCandidates[:0]
 		s.shapeTree.QueryAABB(queryAABB, func(tgtIndex int32) bool {
@@ -517,7 +520,7 @@ func (s *Scene[O, S, M]) attachShape(
 	index := s.allocateShape()
 
 	representation.update(object.transform)
-	area := shape3d.AABBFromSphere(representation.boundingSphere())
+	area := shape3d.AABBFromSphere(representation.wsBSphere)
 
 	s.shapes[index] = shape[S]{
 		objectIndex:          objectIndex,

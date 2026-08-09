@@ -77,10 +77,6 @@ func (s *shapeRepresentation) update(parentTransform shape2d.Transform) {
 	)
 }
 
-func (s *shapeRepresentation) boundingCircle() shape2d.Circle {
-	return s.wsBCircle
-}
-
 func (s *shapeRepresentation) gjkShape() gjk2d.Shape {
 	return gjk2d.Shape{
 		Position:   s.wsTransform.Translation,
