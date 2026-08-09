@@ -7,11 +7,16 @@ import (
 	"github.com/mokiat/lacking/core/spatial/shape3d"
 )
 
-// InvalidShapeID indicates a shape that can never be part of the scene.
-const InvalidShapeID = ShapeID(nilIndex)
+// NilObjectShapeID indicates an object shape that can never be part of the
+// scene.
+//
+// It is also used to denote the absence of a source shape in contacts that
+// were produced by a query primitive rather than by a scene shape.
+const NilObjectShapeID = ObjectShapeID(nilIndex)
 
-// ShapeID is a reference to a shape in the scene.
-type ShapeID int32
+// ObjectShapeID is a reference to a convex shape that is attached to an object
+// in the scene.
+type ObjectShapeID int32
 
 // SphereInfo contains the information needed to create a sphere shape.
 type SphereInfo[S any] struct {
@@ -23,6 +28,9 @@ type SphereInfo[S any] struct {
 	UserData S
 
 	// Sphere contains the sphere information.
+	//
+	// It is specified in the local space of the object that the shape is
+	// attached to.
 	Sphere shape3d.Sphere
 }
 
@@ -36,39 +44,42 @@ type BoxInfo[S any] struct {
 	UserData S
 
 	// Box contains the box information.
+	//
+	// It is specified in the local space of the object that the shape is
+	// attached to.
 	Box shape3d.Box
 }
 
-type shape[S any] struct {
+type objectShapeState[S any] struct {
 	objectIndex    int32
 	nextShapeIndex int32
 	prevShapeIndex int32
 	spatialID      query3d.TreeItemID
 	filterRepresentation
-	shapeRepresentation
+	objectShapeRepresentation
 	userData S
 }
 
-func shapesCanIntersect[S any](a, b *shape[S]) bool {
+func objectShapesCanIntersect[S any](a, b *objectShapeState[S]) bool {
 	if a.objectIndex >= b.objectIndex {
 		return false // prevent self-intersection and repeated checks
 	}
 	return a.filterRepresentation.canInteractWith(&b.filterRepresentation)
 }
 
-type shapeRepresentation struct {
+type objectShapeRepresentation struct {
 	lsBSphere shape3d.Sphere
 	wsBSphere shape3d.Sphere
 
 	lsTransform shape3d.Transform
 	wsTransform shape3d.Transform
 
-	kind       shapeKind
+	kind       objectShapeKind
 	points     []dprec.Vec3
 	skinRadius float64
 }
 
-func (s *shapeRepresentation) update(parentTransform shape3d.Transform) {
+func (s *objectShapeRepresentation) update(parentTransform shape3d.Transform) {
 	s.wsBSphere = shape3d.TransformedSphere(s.lsBSphere, parentTransform)
 
 	s.wsTransform = shape3d.ChainedTransform(
@@ -77,7 +88,7 @@ func (s *shapeRepresentation) update(parentTransform shape3d.Transform) {
 	)
 }
 
-func (s *shapeRepresentation) gjkShape() gjk3d.Shape {
+func (s *objectShapeRepresentation) gjkShape() gjk3d.Shape {
 	return gjk3d.Shape{
 		Position:   s.wsTransform.Translation,
 		Rotation:   s.wsTransform.Rotation,
@@ -86,14 +97,14 @@ func (s *shapeRepresentation) gjkShape() gjk3d.Shape {
 	}
 }
 
-func (s *shapeRepresentation) toSphere() shape3d.Sphere {
+func (s *objectShapeRepresentation) toSphere() shape3d.Sphere {
 	return shape3d.Sphere{
 		Center: s.wsTransform.Translation,
 		Radius: s.skinRadius,
 	}
 }
 
-func (s *shapeRepresentation) toBox() shape3d.Box {
+func (s *objectShapeRepresentation) toBox() shape3d.Box {
 	var halfWidth, halfHeight, halfLength float64
 	for _, point := range s.points {
 		halfWidth = max(halfWidth, point.X)
@@ -109,11 +120,11 @@ func (s *shapeRepresentation) toBox() shape3d.Box {
 	}
 }
 
-type shapeKind uint32
+type objectShapeKind uint32
 
 const (
-	shapeKindSphere shapeKind = iota
-	shapeKindBox
-	shapeKindCapsule
-	shapeKindConvexHull
+	objectShapeKindSphere objectShapeKind = iota
+	objectShapeKindBox
+	objectShapeKindCapsule
+	objectShapeKindConvexHull
 )
