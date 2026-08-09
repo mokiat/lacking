@@ -22,6 +22,31 @@ var _ = Describe("AABB", func() {
 		})
 	})
 
+	Describe("EmptyAABB", func() {
+		It("is empty", func() {
+			Expect(shape3d.EmptyAABB().IsEmpty()).To(BeTrue())
+		})
+
+		It("expands to exactly enclose a single point when grown with min/max", func() {
+			aabb := shape3d.EmptyAABB()
+			point := dprec.NewVec3(3.0, -2.0, 5.0)
+			aabb.MinX = min(aabb.MinX, point.X)
+			aabb.MinY = min(aabb.MinY, point.Y)
+			aabb.MinZ = min(aabb.MinZ, point.Z)
+			aabb.MaxX = max(aabb.MaxX, point.X)
+			aabb.MaxY = max(aabb.MaxY, point.Y)
+			aabb.MaxZ = max(aabb.MaxZ, point.Z)
+
+			Expect(aabb.MinX).To(BeNumerically("~", 3.0, 1e-6))
+			Expect(aabb.MinY).To(BeNumerically("~", -2.0, 1e-6))
+			Expect(aabb.MinZ).To(BeNumerically("~", 5.0, 1e-6))
+			Expect(aabb.MaxX).To(BeNumerically("~", 3.0, 1e-6))
+			Expect(aabb.MaxY).To(BeNumerically("~", -2.0, 1e-6))
+			Expect(aabb.MaxZ).To(BeNumerically("~", 5.0, 1e-6))
+			Expect(aabb.IsEmpty()).To(BeFalse())
+		})
+	})
+
 	Describe("AABBFromSphere", func() {
 		It("encloses the sphere tightly", func() {
 			sphere := shape3d.NewSphere(dprec.NewVec3(3.0, 4.0, 5.0), 2.0)

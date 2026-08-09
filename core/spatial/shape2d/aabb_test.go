@@ -20,6 +20,27 @@ var _ = Describe("AABB", func() {
 		})
 	})
 
+	Describe("EmptyAABB", func() {
+		It("is empty", func() {
+			Expect(shape2d.EmptyAABB().IsEmpty()).To(BeTrue())
+		})
+
+		It("expands to exactly enclose a single point when grown with min/max", func() {
+			aabb := shape2d.EmptyAABB()
+			point := dprec.NewVec2(3.0, -2.0)
+			aabb.MinX = min(aabb.MinX, point.X)
+			aabb.MinY = min(aabb.MinY, point.Y)
+			aabb.MaxX = max(aabb.MaxX, point.X)
+			aabb.MaxY = max(aabb.MaxY, point.Y)
+
+			Expect(aabb.MinX).To(BeNumerically("~", 3.0, 1e-6))
+			Expect(aabb.MinY).To(BeNumerically("~", -2.0, 1e-6))
+			Expect(aabb.MaxX).To(BeNumerically("~", 3.0, 1e-6))
+			Expect(aabb.MaxY).To(BeNumerically("~", -2.0, 1e-6))
+			Expect(aabb.IsEmpty()).To(BeFalse())
+		})
+	})
+
 	Describe("AABBFromCircle", func() {
 		It("encloses the circle tightly", func() {
 			circle := shape2d.NewCircle(dprec.NewVec2(3.0, 4.0), 2.0)

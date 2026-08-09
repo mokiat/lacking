@@ -1,6 +1,10 @@
 package shape2d
 
-import "github.com/mokiat/gomath/dprec"
+import (
+	"math"
+
+	"github.com/mokiat/gomath/dprec"
+)
 
 // AABB represents an axis-aligned bounding box in 2D space.
 type AABB struct {
@@ -21,6 +25,18 @@ func NewAABB(minX, minY, maxX, maxY float64) AABB {
 		MinY: minY,
 		MaxX: maxX,
 		MaxY: maxY,
+	}
+}
+
+// EmptyAABB returns an [AABB] that represents an empty area, suitable as the
+// starting point for incrementally growing a bounding box (e.g. via repeated
+// min/max updates as points are encountered).
+func EmptyAABB() AABB {
+	return AABB{
+		MinX: math.MaxFloat64,
+		MinY: math.MaxFloat64,
+		MaxX: -math.MaxFloat64,
+		MaxY: -math.MaxFloat64,
 	}
 }
 

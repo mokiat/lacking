@@ -67,3 +67,26 @@ func (m Mesh) BoundingCircle() Circle {
 		Radius: radius,
 	}
 }
+
+// BoundingAABB returns the smallest [AABB] that fully encompasses the mesh.
+//
+// An empty mesh yields an empty [AABB] (see [EmptyAABB]).
+func (m Mesh) BoundingAABB() AABB {
+	result := EmptyAABB()
+
+	for _, edge := range m.Edges {
+		result.MinX = min(result.MinX, edge.A.X)
+		result.MinX = min(result.MinX, edge.B.X)
+
+		result.MinY = min(result.MinY, edge.A.Y)
+		result.MinY = min(result.MinY, edge.B.Y)
+
+		result.MaxX = max(result.MaxX, edge.A.X)
+		result.MaxX = max(result.MaxX, edge.B.X)
+
+		result.MaxY = max(result.MaxY, edge.A.Y)
+		result.MaxY = max(result.MaxY, edge.B.Y)
+	}
+
+	return result
+}
