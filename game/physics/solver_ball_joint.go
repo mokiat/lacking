@@ -28,12 +28,6 @@ type BallJointSolverConfig struct {
 // closer together or farther apart, BallJointSolver fully constrains
 // their relative position, leaving only rotation free.
 //
-// Internally, it is implemented as three [AxisDisplacementSolver]s, one
-// for each of the primary body's local X, Y and Z axes, each configured
-// with a zero [AxisDisplacementSolver.Displacement]. Together, since
-// those axes span the primary body's entire local frame, they pin the
-// anchor points coincident.
-//
 // A BallJointSolver must be configured, either through
 // [NewBallJointSolver] or [BallJointSolver.Configure], before being
 // registered with a [Scene] through [PairConstraintView.Create].
@@ -121,10 +115,9 @@ func (s *BallJointSolver) SetSecondaryBodyAnchorOffset(offset dprec.Vec3) *BallJ
 
 // Reset implements [PairConstraintSolver.Reset].
 //
-// It calls [AxisDisplacementSolver.Reset] on each of the three per-axis
-// sub-solvers, in X, Y, Z order, so that each recomputes its own
-// Jacobians and drift from the targets' current positions and
-// rotations.
+// It recomputes the constraint's internal state - the Jacobians and
+// drift needed to correct any remaining separation between the anchor
+// points - from the targets' current positions and rotations.
 func (s *BallJointSolver) Reset(ctx PairConstraintContext) {
 	s.solverX.Reset(ctx)
 	s.solverY.Reset(ctx)
@@ -133,10 +126,9 @@ func (s *BallJointSolver) Reset(ctx PairConstraintContext) {
 
 // ApplyImpulses implements [PairConstraintSolver.ApplyImpulses].
 //
-// It calls [AxisDisplacementSolver.ApplyImpulses] on each of the three
-// per-axis sub-solvers, in X, Y, Z order, so that their combined
-// impulses drive the anchor points' relative velocity toward zero along
-// all three of the primary body's local axes.
+// It resolves impulses, without restitution, that drive the anchor
+// points' relative velocity toward closing any remaining separation
+// between them, based on the state [BallJointSolver.Reset] computed.
 func (s *BallJointSolver) ApplyImpulses(ctx PairConstraintContext) {
 	s.solverX.ApplyImpulses(ctx)
 	s.solverY.ApplyImpulses(ctx)
@@ -145,11 +137,13 @@ func (s *BallJointSolver) ApplyImpulses(ctx PairConstraintContext) {
 
 // ApplyNudges implements [PairConstraintSolver.ApplyNudges].
 //
-// It calls [AxisDisplacementSolver.ApplyNudges] on each of the three
-// per-axis sub-solvers, in X, Y, Z order. Each sub-solver recomputes its
-// own Jacobians and drift before nudging, as required by
-// [AxisDisplacementSolver.ApplyNudges], so a nudge applied by an earlier
-// sub-solver in this call is correctly observed by the ones that follow.
+// It first recomputes the constraint's internal state, the same way
+// [BallJointSolver.Reset] does, since a preceding nudge - by this
+// solver's own previous iteration, or by another constraint acting on
+// either target - may have moved either target since
+// [BallJointSolver.Reset] or the last call to this method. It then
+// nudges both targets' positions and rotations to reduce any remaining
+// separation between the anchor points.
 func (s *BallJointSolver) ApplyNudges(ctx PairConstraintContext) {
 	s.solverX.ApplyNudges(ctx)
 	s.solverY.ApplyNudges(ctx)
