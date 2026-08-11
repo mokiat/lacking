@@ -163,7 +163,7 @@ var _ = Describe("Scene", func() {
 			})
 
 			var found []shape2d.Circle
-			scene.EachCircle(placement2d.FullMask, func(c shape2d.Circle) bool {
+			scene.EachCircle(placement2d.Filter{}, func(c shape2d.Circle) bool {
 				found = append(found, c)
 				return true
 			})
@@ -178,7 +178,7 @@ var _ = Describe("Scene", func() {
 			})
 
 			count := 0
-			scene.EachRectangle(placement2d.FullMask, func(shape2d.Rectangle) bool {
+			scene.EachRectangle(placement2d.Filter{}, func(shape2d.Rectangle) bool {
 				count++
 				return true
 			})
@@ -191,7 +191,7 @@ var _ = Describe("Scene", func() {
 			})
 
 			count := 0
-			for range scene.CircleIter(placement2d.FullMask) {
+			for range scene.CircleIter(placement2d.Filter{}) {
 				count++
 			}
 			Expect(count).To(Equal(1))
@@ -203,7 +203,7 @@ var _ = Describe("Scene", func() {
 			})
 
 			count := 0
-			for range scene.RectangleIter(placement2d.FullMask) {
+			for range scene.RectangleIter(placement2d.Filter{}) {
 				count++
 			}
 			Expect(count).To(Equal(1))
@@ -234,7 +234,7 @@ var _ = Describe("Scene", func() {
 			scene.DeleteObjectShape(shapeID)
 
 			count := 0
-			scene.EachCircle(placement2d.FullMask, func(shape2d.Circle) bool {
+			scene.EachCircle(placement2d.Filter{}, func(shape2d.Circle) bool {
 				count++
 				return true
 			})
@@ -250,7 +250,7 @@ var _ = Describe("Scene", func() {
 			})
 
 			count := 0
-			scene.EachCircle(placement2d.FullMask, func(shape2d.Circle) bool {
+			scene.EachCircle(placement2d.Filter{}, func(shape2d.Circle) bool {
 				count++
 				return false
 			})
@@ -269,7 +269,7 @@ var _ = Describe("Scene", func() {
 			))
 
 			var centers []dprec.Vec2
-			scene.EachCircle(placement2d.FullMask, func(c shape2d.Circle) bool {
+			scene.EachCircle(placement2d.Filter{}, func(c shape2d.Circle) bool {
 				centers = append(centers, c.Center)
 				return true
 			})
@@ -280,20 +280,21 @@ var _ = Describe("Scene", func() {
 		})
 	})
 
-	Describe("shape iteration masks", func() {
+	Describe("shape iteration filters", func() {
 		BeforeEach(func() {
 			objID := scene.CreateObject(placement2d.ObjectInfo[string]{})
 			scene.AttachCircle(objID, placement2d.CircleInfo[string]{
 				Filtering: placement2d.FilterInfo{
-					SourceMask: opt.V(uint32(0b01)),
+					RejectGroup: 7,
+					SourceMask:  opt.V(uint32(0b01)),
 				},
 				Circle: circleAt(0.0, 0.0, 1.0),
 			})
 		})
 
-		countCircles := func(mask placement2d.Mask) int {
+		countCircles := func(filter placement2d.Filter) int {
 			count := 0
-			scene.EachCircle(mask, func(shape2d.Circle) bool {
+			scene.EachCircle(filter, func(shape2d.Circle) bool {
 				count++
 				return true
 			})
@@ -301,15 +302,33 @@ var _ = Describe("Scene", func() {
 		}
 
 		It("yields shapes that occupy a layer of the mask", func() {
-			Expect(countCircles(0b01)).To(Equal(1))
+			Expect(countCircles(placement2d.Filter{Mask: 0b01})).To(Equal(1))
 		})
 
 		It("skips shapes that occupy no layer of the mask", func() {
-			Expect(countCircles(0b10)).To(BeZero())
+			Expect(countCircles(placement2d.Filter{Mask: 0b10})).To(BeZero())
 		})
 
-		It("yields nothing for the zero mask", func() {
-			Expect(countCircles(0)).To(BeZero())
+		It("yields everything for the zero mask", func() {
+			Expect(countCircles(placement2d.Filter{Mask: 0})).To(Equal(1))
+		})
+
+		It("yields everything for the full mask", func() {
+			Expect(countCircles(placement2d.Filter{
+				Mask: placement2d.FullMask,
+			})).To(Equal(1))
+		})
+
+		It("skips shapes that share the reject group", func() {
+			Expect(countCircles(placement2d.Filter{RejectGroup: 7})).To(BeZero())
+		})
+
+		It("yields shapes that have a different reject group", func() {
+			Expect(countCircles(placement2d.Filter{RejectGroup: 8})).To(Equal(1))
+		})
+
+		It("yields everything for the zero filter", func() {
+			Expect(countCircles(placement2d.Filter{})).To(Equal(1))
 		})
 	})
 
@@ -751,7 +770,7 @@ var _ = Describe("Scene", func() {
 
 			contact, ok := scene.CheckCircleObjectIntersection(
 				circleAt(1.5, 0.0, 1.0),
-				placement2d.FullMask,
+				placement2d.Filter{},
 			)
 			Expect(ok).To(BeTrue())
 			Expect(contact.SourceObjectID).To(Equal(placement2d.NilObjectID))
@@ -768,7 +787,7 @@ var _ = Describe("Scene", func() {
 
 			_, ok := scene.CheckCircleObjectIntersection(
 				circleAt(10.0, 0.0, 1.0),
-				placement2d.FullMask,
+				placement2d.Filter{},
 			)
 			Expect(ok).To(BeFalse())
 		})
@@ -784,7 +803,23 @@ var _ = Describe("Scene", func() {
 
 			_, ok := scene.CheckCircleObjectIntersection(
 				circleAt(1.5, 0.0, 1.0),
-				0b10,
+				placement2d.Filter{Mask: 0b10},
+			)
+			Expect(ok).To(BeFalse())
+		})
+
+		It("honors the query reject group", func() {
+			objID := scene.CreateObject(placement2d.ObjectInfo[string]{})
+			scene.AttachCircle(objID, placement2d.CircleInfo[string]{
+				Filtering: placement2d.FilterInfo{
+					RejectGroup: 7,
+				},
+				Circle: circleAt(0.0, 0.0, 1.0),
+			})
+
+			_, ok := scene.CheckCircleObjectIntersection(
+				circleAt(1.5, 0.0, 1.0),
+				placement2d.Filter{RejectGroup: 7},
 			)
 			Expect(ok).To(BeFalse())
 		})
@@ -798,7 +833,7 @@ var _ = Describe("Scene", func() {
 			// The line faces -Y, so approach it from below (the front side).
 			contact, ok := scene.CheckCircleTerrainIntersection(
 				circleAt(0.0, -0.5, 1.0),
-				placement2d.FullMask,
+				placement2d.Filter{},
 			)
 			Expect(ok).To(BeTrue())
 			Expect(contact.SourceShapeID).To(Equal(placement2d.NilObjectShapeID))
@@ -815,7 +850,7 @@ var _ = Describe("Scene", func() {
 
 			_, ok := scene.CheckCircleTerrainIntersection(
 				circleAt(0.0, 0.5, 1.0),
-				placement2d.FullMask,
+				placement2d.Filter{},
 			)
 			Expect(ok).To(BeFalse())
 		})
@@ -828,7 +863,7 @@ var _ = Describe("Scene", func() {
 
 			_, ok := scene.CheckCircleTerrainIntersection(
 				circleAt(0.5, 0.0, 1.0),
-				placement2d.FullMask,
+				placement2d.Filter{},
 			)
 			Expect(ok).To(BeFalse())
 		})
@@ -843,7 +878,7 @@ var _ = Describe("Scene", func() {
 
 			contact, ok := scene.CheckRectangleObjectIntersection(
 				rectangleAt(1.5, 0.0, 1.0),
-				placement2d.FullMask,
+				placement2d.Filter{},
 			)
 			Expect(ok).To(BeTrue())
 			Expect(contact.SourceShapeID).To(Equal(placement2d.NilObjectShapeID))
@@ -859,7 +894,7 @@ var _ = Describe("Scene", func() {
 
 			_, ok := scene.CheckRectangleObjectIntersection(
 				rectangleAt(10.0, 0.0, 1.0),
-				placement2d.FullMask,
+				placement2d.Filter{},
 			)
 			Expect(ok).To(BeFalse())
 		})
@@ -873,7 +908,7 @@ var _ = Describe("Scene", func() {
 			// The line faces -Y, so approach it from below (the front side).
 			contact, ok := scene.CheckRectangleTerrainIntersection(
 				rectangleAt(0.0, -0.5, 1.0),
-				placement2d.FullMask,
+				placement2d.Filter{},
 			)
 			Expect(ok).To(BeTrue())
 			Expect(contact.TargetTerrainID).To(Equal(terrainID))
@@ -889,7 +924,7 @@ var _ = Describe("Scene", func() {
 
 			_, ok := scene.CheckRectangleTerrainIntersection(
 				rectangleAt(0.0, 0.5, 1.0),
-				placement2d.FullMask,
+				placement2d.Filter{},
 			)
 			Expect(ok).To(BeFalse())
 		})
@@ -912,7 +947,7 @@ var _ = Describe("Scene", func() {
 					dprec.NewVec2(-5.0, 0.0),
 					dprec.NewVec2(9.0, 0.0),
 				),
-				placement2d.FullMask,
+				placement2d.Filter{},
 				contacts.AddContact,
 			)
 			Expect(contacts).To(HaveLen(2))
@@ -929,7 +964,7 @@ var _ = Describe("Scene", func() {
 					dprec.NewVec2(-5.0, 0.0),
 					dprec.NewVec2(5.0, 0.0),
 				),
-				placement2d.FullMask,
+				placement2d.Filter{},
 			)
 			Expect(ok).To(BeTrue())
 			Expect(contact.SourceShapeID).To(Equal(placement2d.NilObjectShapeID))
@@ -952,7 +987,7 @@ var _ = Describe("Scene", func() {
 					dprec.NewVec2(-5.0, 0.0),
 					dprec.NewVec2(9.0, 0.0),
 				),
-				placement2d.FullMask,
+				placement2d.Filter{},
 			)
 			Expect(ok).To(BeTrue())
 			Expect(contact.TargetShapeID).To(Equal(nearShapeID))
@@ -969,7 +1004,7 @@ var _ = Describe("Scene", func() {
 					dprec.NewVec2(2.0, -5.0),
 					dprec.NewVec2(2.0, 5.0),
 				),
-				placement2d.FullMask,
+				placement2d.Filter{},
 			)
 			Expect(ok).To(BeTrue())
 			Expect(contact.SourceShapeID).To(Equal(placement2d.NilObjectShapeID))
@@ -988,7 +1023,7 @@ var _ = Describe("Scene", func() {
 					dprec.NewVec2(-5.0, 5.0),
 					dprec.NewVec2(5.0, 5.0),
 				),
-				placement2d.FullMask,
+				placement2d.Filter{},
 			)
 			Expect(ok).To(BeFalse())
 		})
@@ -1004,7 +1039,7 @@ var _ = Describe("Scene", func() {
 					dprec.NewVec2(0.0, 5.0),
 					dprec.NewVec2(0.0, -5.0),
 				),
-				placement2d.FullMask,
+				placement2d.Filter{},
 			)
 			Expect(ok).To(BeFalse())
 		})

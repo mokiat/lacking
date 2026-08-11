@@ -253,13 +253,12 @@ func (s *Scene[O, T, S]) SetObjectShapeUserData(shapeID ObjectShapeID, userData 
 	shape.userData = userData
 }
 
-// EachCircle iterates over all circle shapes in the scene that match the mask
-// and yields them, in world space, to the provided callback. Iteration stops
-// early if the callback returns false.
+// EachCircle iterates over all circle shapes in the scene that match the
+// filter and yields them, in world space, to the provided callback. Iteration
+// stops early if the callback returns false.
 //
-// Note that a zero mask matches no shape at all. Use [FullMask] to iterate
-// over every circle in the scene.
-func (s *Scene[O, T, S]) EachCircle(mask Mask, yield func(shape2d.Circle) bool) {
+// Note that the zero value of [Filter] matches every circle in the scene.
+func (s *Scene[O, T, S]) EachCircle(filter Filter, yield func(shape2d.Circle) bool) {
 	for index := range s.objectShapes {
 		shape := &s.objectShapes[index]
 		if shape.spatialID == query2d.InvalidTreeItemID {
@@ -268,7 +267,7 @@ func (s *Scene[O, T, S]) EachCircle(mask Mask, yield func(shape2d.Circle) bool) 
 		if shape.kind != objectShapeKindCircle {
 			continue
 		}
-		if !shape.satisfiesMask(mask) {
+		if !shape.satisfiesFilter(filter) {
 			continue
 		}
 		if !yield(shape.toCircle()) {
@@ -278,20 +277,19 @@ func (s *Scene[O, T, S]) EachCircle(mask Mask, yield func(shape2d.Circle) bool) 
 }
 
 // CircleIter returns an iterator over all circle shapes in the scene that
-// match the mask, as described by [Scene.EachCircle].
-func (s *Scene[O, T, S]) CircleIter(mask Mask) iter.Seq[shape2d.Circle] {
+// match the filter, as described by [Scene.EachCircle].
+func (s *Scene[O, T, S]) CircleIter(filter Filter) iter.Seq[shape2d.Circle] {
 	return func(yield func(shape2d.Circle) bool) {
-		s.EachCircle(mask, yield)
+		s.EachCircle(filter, yield)
 	}
 }
 
 // EachRectangle iterates over all rectangle shapes in the scene that match the
-// mask and yields them, in world space, to the provided callback. Iteration
+// filter and yields them, in world space, to the provided callback. Iteration
 // stops early if the callback returns false.
 //
-// Note that a zero mask matches no shape at all. Use [FullMask] to iterate
-// over every rectangle in the scene.
-func (s *Scene[O, T, S]) EachRectangle(mask Mask, yield func(shape2d.Rectangle) bool) {
+// Note that the zero value of [Filter] matches every rectangle in the scene.
+func (s *Scene[O, T, S]) EachRectangle(filter Filter, yield func(shape2d.Rectangle) bool) {
 	for index := range s.objectShapes {
 		shape := &s.objectShapes[index]
 		if shape.spatialID == query2d.InvalidTreeItemID {
@@ -300,7 +298,7 @@ func (s *Scene[O, T, S]) EachRectangle(mask Mask, yield func(shape2d.Rectangle) 
 		if shape.kind != objectShapeKindRectangle {
 			continue
 		}
-		if !shape.satisfiesMask(mask) {
+		if !shape.satisfiesFilter(filter) {
 			continue
 		}
 		if !yield(shape.toRectangle()) {
@@ -310,10 +308,10 @@ func (s *Scene[O, T, S]) EachRectangle(mask Mask, yield func(shape2d.Rectangle) 
 }
 
 // RectangleIter returns an iterator over all rectangle shapes in the scene
-// that match the mask, as described by [Scene.EachRectangle].
-func (s *Scene[O, T, S]) RectangleIter(mask Mask) iter.Seq[shape2d.Rectangle] {
+// that match the filter, as described by [Scene.EachRectangle].
+func (s *Scene[O, T, S]) RectangleIter(filter Filter) iter.Seq[shape2d.Rectangle] {
 	return func(yield func(shape2d.Rectangle) bool) {
-		s.EachRectangle(mask, yield)
+		s.EachRectangle(filter, yield)
 	}
 }
 
@@ -411,58 +409,60 @@ func (s *Scene[O, T, S]) SetTerrainShapeUserData(shapeID TerrainShapeID, userDat
 }
 
 // CollectSegmentObjectIntersections collects all intersections of the segment
-// with the object shapes in the scene that match the mask.
+// with the object shapes in the scene that match the filter.
 //
 // The reported contacts have no source, since the segment is not part of the
 // scene. Their Depth is the fraction of the segment that lies beyond the
 // contact point, as described by [shape2d.Contact].
-func (s *Scene[O, T, S]) CollectSegmentObjectIntersections(segment shape2d.Segment, mask Mask, yield ObjectContactCallback) {
+func (s *Scene[O, T, S]) CollectSegmentObjectIntersections(segment shape2d.Segment, filter Filter, yield ObjectContactCallback) {
 	s.objectShapeCandidates = s.objectShapeCandidates[:0]
 	s.objectShapeTree.QuerySegment(segment, func(index int32) bool {
 		s.objectShapeCandidates = append(s.objectShapeCandidates, index)
 		return true
 	})
-	s.collectSegmentObject(segment, mask, yield)
+	s.collectSegmentObject(segment, filter, yield)
 }
 
 // CheckSegmentObjectIntersection returns the intersection of the segment with
-// the object shape that it enters first, if any.
-func (s *Scene[O, T, S]) CheckSegmentObjectIntersection(segment shape2d.Segment, mask Mask) (ObjectContact, bool) {
+// the object shape that it enters first, if any. Only object shapes that match
+// the filter are considered.
+func (s *Scene[O, T, S]) CheckSegmentObjectIntersection(segment shape2d.Segment, filter Filter) (ObjectContact, bool) {
 	var collection DeepestObjectContact
-	s.CollectSegmentObjectIntersections(segment, mask, collection.AddContact)
+	s.CollectSegmentObjectIntersections(segment, filter, collection.AddContact)
 	return collection.Contact()
 }
 
 // CollectSegmentTerrainIntersections collects all intersections of the segment
-// with the terrain shapes in the scene that match the mask. At most one
+// with the terrain shapes in the scene that match the filter. At most one
 // contact is reported per terrain shape.
 //
 // The reported contacts have no source, since the segment is not part of the
 // scene. Their Depth is the fraction of the segment that lies beyond the
 // contact point, as described by [shape2d.Contact].
-func (s *Scene[O, T, S]) CollectSegmentTerrainIntersections(segment shape2d.Segment, mask Mask, yield TerrainContactCallback) {
+func (s *Scene[O, T, S]) CollectSegmentTerrainIntersections(segment shape2d.Segment, filter Filter, yield TerrainContactCallback) {
 	s.terrainShapeCandidates = s.terrainShapeCandidates[:0]
 	s.terrainShapeTree.QuerySegment(segment, func(index int32) bool {
 		s.terrainShapeCandidates = append(s.terrainShapeCandidates, index)
 		return true
 	})
-	s.collectSegmentTerrain(segment, mask, yield)
+	s.collectSegmentTerrain(segment, filter, yield)
 }
 
 // CheckSegmentTerrainIntersection returns the intersection of the segment with
-// the terrain shape that it enters first, if any.
-func (s *Scene[O, T, S]) CheckSegmentTerrainIntersection(segment shape2d.Segment, mask Mask) (TerrainContact, bool) {
+// the terrain shape that it enters first, if any. Only terrain shapes that
+// match the filter are considered.
+func (s *Scene[O, T, S]) CheckSegmentTerrainIntersection(segment shape2d.Segment, filter Filter) (TerrainContact, bool) {
 	var collection DeepestTerrainContact
-	s.CollectSegmentTerrainIntersections(segment, mask, collection.AddContact)
+	s.CollectSegmentTerrainIntersections(segment, filter, collection.AddContact)
 	return collection.Contact()
 }
 
 // CollectCircleObjectIntersections collects all intersections of the circle
-// with the object shapes in the scene that match the mask.
+// with the object shapes in the scene that match the filter.
 //
 // The reported contacts have no source, since the circle is not part of the
 // scene.
-func (s *Scene[O, T, S]) CollectCircleObjectIntersections(circle shape2d.Circle, mask Mask, yield ObjectContactCallback) {
+func (s *Scene[O, T, S]) CollectCircleObjectIntersections(circle shape2d.Circle, filter Filter, yield ObjectContactCallback) {
 	queryAABB := shape2d.AABBFromCircle(circle)
 
 	s.objectShapeCandidates = s.objectShapeCandidates[:0]
@@ -470,24 +470,25 @@ func (s *Scene[O, T, S]) CollectCircleObjectIntersections(circle shape2d.Circle,
 		s.objectShapeCandidates = append(s.objectShapeCandidates, index)
 		return true
 	})
-	s.collectCircleObject(circle, mask, yield)
+	s.collectCircleObject(circle, filter, yield)
 }
 
 // CheckCircleObjectIntersection returns the deepest intersection of the circle
-// with an object shape in the scene, if any.
-func (s *Scene[O, T, S]) CheckCircleObjectIntersection(circle shape2d.Circle, mask Mask) (ObjectContact, bool) {
+// with an object shape in the scene, if any. Only object shapes that match the
+// filter are considered.
+func (s *Scene[O, T, S]) CheckCircleObjectIntersection(circle shape2d.Circle, filter Filter) (ObjectContact, bool) {
 	var collection DeepestObjectContact
-	s.CollectCircleObjectIntersections(circle, mask, collection.AddContact)
+	s.CollectCircleObjectIntersections(circle, filter, collection.AddContact)
 	return collection.Contact()
 }
 
 // CollectCircleTerrainIntersections collects all intersections of the circle
-// with the terrain shapes in the scene that match the mask. At most one
+// with the terrain shapes in the scene that match the filter. At most one
 // contact is reported per terrain shape.
 //
 // The reported contacts have no source, since the circle is not part of the
 // scene.
-func (s *Scene[O, T, S]) CollectCircleTerrainIntersections(circle shape2d.Circle, mask Mask, yield TerrainContactCallback) {
+func (s *Scene[O, T, S]) CollectCircleTerrainIntersections(circle shape2d.Circle, filter Filter, yield TerrainContactCallback) {
 	queryAABB := shape2d.AABBFromCircle(circle)
 
 	s.terrainShapeCandidates = s.terrainShapeCandidates[:0]
@@ -495,23 +496,24 @@ func (s *Scene[O, T, S]) CollectCircleTerrainIntersections(circle shape2d.Circle
 		s.terrainShapeCandidates = append(s.terrainShapeCandidates, index)
 		return true
 	})
-	s.collectCircleTerrain(circle, mask, yield)
+	s.collectCircleTerrain(circle, filter, yield)
 }
 
 // CheckCircleTerrainIntersection returns the deepest intersection of the
-// circle with a terrain shape in the scene, if any.
-func (s *Scene[O, T, S]) CheckCircleTerrainIntersection(circle shape2d.Circle, mask Mask) (TerrainContact, bool) {
+// circle with a terrain shape in the scene, if any. Only terrain shapes that
+// match the filter are considered.
+func (s *Scene[O, T, S]) CheckCircleTerrainIntersection(circle shape2d.Circle, filter Filter) (TerrainContact, bool) {
 	var collection DeepestTerrainContact
-	s.CollectCircleTerrainIntersections(circle, mask, collection.AddContact)
+	s.CollectCircleTerrainIntersections(circle, filter, collection.AddContact)
 	return collection.Contact()
 }
 
 // CollectRectangleObjectIntersections collects all intersections of the
-// rectangle with the object shapes in the scene that match the mask.
+// rectangle with the object shapes in the scene that match the filter.
 //
 // The reported contacts have no source, since the rectangle is not part of the
 // scene.
-func (s *Scene[O, T, S]) CollectRectangleObjectIntersections(rectangle shape2d.Rectangle, mask Mask, yield ObjectContactCallback) {
+func (s *Scene[O, T, S]) CollectRectangleObjectIntersections(rectangle shape2d.Rectangle, filter Filter, yield ObjectContactCallback) {
 	queryAABB := shape2d.AABBFromRectangle(rectangle)
 
 	s.objectShapeCandidates = s.objectShapeCandidates[:0]
@@ -519,24 +521,25 @@ func (s *Scene[O, T, S]) CollectRectangleObjectIntersections(rectangle shape2d.R
 		s.objectShapeCandidates = append(s.objectShapeCandidates, index)
 		return true
 	})
-	s.collectRectangleObject(rectangle, mask, yield)
+	s.collectRectangleObject(rectangle, filter, yield)
 }
 
 // CheckRectangleObjectIntersection returns the deepest intersection of the
-// rectangle with an object shape in the scene, if any.
-func (s *Scene[O, T, S]) CheckRectangleObjectIntersection(rectangle shape2d.Rectangle, mask Mask) (ObjectContact, bool) {
+// rectangle with an object shape in the scene, if any. Only object shapes that
+// match the filter are considered.
+func (s *Scene[O, T, S]) CheckRectangleObjectIntersection(rectangle shape2d.Rectangle, filter Filter) (ObjectContact, bool) {
 	var collection DeepestObjectContact
-	s.CollectRectangleObjectIntersections(rectangle, mask, collection.AddContact)
+	s.CollectRectangleObjectIntersections(rectangle, filter, collection.AddContact)
 	return collection.Contact()
 }
 
 // CollectRectangleTerrainIntersections collects all intersections of the
-// rectangle with the terrain shapes in the scene that match the mask. At most
-// one contact is reported per terrain shape.
+// rectangle with the terrain shapes in the scene that match the filter. At
+// most one contact is reported per terrain shape.
 //
 // The reported contacts have no source, since the rectangle is not part of the
 // scene.
-func (s *Scene[O, T, S]) CollectRectangleTerrainIntersections(rectangle shape2d.Rectangle, mask Mask, yield TerrainContactCallback) {
+func (s *Scene[O, T, S]) CollectRectangleTerrainIntersections(rectangle shape2d.Rectangle, filter Filter, yield TerrainContactCallback) {
 	queryAABB := shape2d.AABBFromRectangle(rectangle)
 
 	s.terrainShapeCandidates = s.terrainShapeCandidates[:0]
@@ -544,14 +547,15 @@ func (s *Scene[O, T, S]) CollectRectangleTerrainIntersections(rectangle shape2d.
 		s.terrainShapeCandidates = append(s.terrainShapeCandidates, index)
 		return true
 	})
-	s.collectRectangleTerrain(rectangle, mask, yield)
+	s.collectRectangleTerrain(rectangle, filter, yield)
 }
 
 // CheckRectangleTerrainIntersection returns the deepest intersection of the
-// rectangle with a terrain shape in the scene, if any.
-func (s *Scene[O, T, S]) CheckRectangleTerrainIntersection(rectangle shape2d.Rectangle, mask Mask) (TerrainContact, bool) {
+// rectangle with a terrain shape in the scene, if any. Only terrain shapes
+// that match the filter are considered.
+func (s *Scene[O, T, S]) CheckRectangleTerrainIntersection(rectangle shape2d.Rectangle, filter Filter) (TerrainContact, bool) {
 	var collection DeepestTerrainContact
-	s.CollectRectangleTerrainIntersections(rectangle, mask, collection.AddContact)
+	s.CollectRectangleTerrainIntersections(rectangle, filter, collection.AddContact)
 	return collection.Contact()
 }
 
@@ -801,8 +805,8 @@ func (s *Scene[O, T, S]) detachTerrainShape(index int32) {
 	s.releaseTerrainShape(index)
 }
 
-func (s *Scene[O, T, S]) collectSegmentObject(segment shape2d.Segment, mask Mask, yield ObjectContactCallback) {
-	for index, shape := range s.iterCandidateObjectShapes(mask) {
+func (s *Scene[O, T, S]) collectSegmentObject(segment shape2d.Segment, filter Filter, yield ObjectContactCallback) {
+	for index, shape := range s.iterCandidateObjectShapes(filter) {
 		if !isec2d.CheckSegmentCircleOverlap(segment, shape.wsBCircle) {
 			continue
 		}
@@ -826,8 +830,8 @@ func (s *Scene[O, T, S]) collectSegmentObject(segment shape2d.Segment, mask Mask
 	}
 }
 
-func (s *Scene[O, T, S]) collectSegmentTerrain(segment shape2d.Segment, mask Mask, yield TerrainContactCallback) {
-	for index, shape := range s.iterCandidateTerrainShapes(mask) {
+func (s *Scene[O, T, S]) collectSegmentTerrain(segment shape2d.Segment, filter Filter, yield TerrainContactCallback) {
+	for index, shape := range s.iterCandidateTerrainShapes(filter) {
 		if !isec2d.CheckSegmentCircleOverlap(segment, shape.wsBCircle) {
 			continue
 		}
@@ -847,9 +851,9 @@ func (s *Scene[O, T, S]) collectSegmentTerrain(segment shape2d.Segment, mask Mas
 	}
 }
 
-func (s *Scene[O, T, S]) collectCircleObject(circle shape2d.Circle, mask Mask, yield ObjectContactCallback) {
+func (s *Scene[O, T, S]) collectCircleObject(circle shape2d.Circle, filter Filter, yield ObjectContactCallback) {
 	initGJKShapeForCircle(circle, &s.tempGJKSource)
-	for index, shape := range s.iterCandidateObjectShapes(mask) {
+	for index, shape := range s.iterCandidateObjectShapes(filter) {
 		if !isec2d.CheckCircleCircle(circle, shape.wsBCircle) {
 			continue
 		}
@@ -865,9 +869,9 @@ func (s *Scene[O, T, S]) collectCircleObject(circle shape2d.Circle, mask Mask, y
 	}
 }
 
-func (s *Scene[O, T, S]) collectCircleTerrain(circle shape2d.Circle, mask Mask, yield TerrainContactCallback) {
+func (s *Scene[O, T, S]) collectCircleTerrain(circle shape2d.Circle, filter Filter, yield TerrainContactCallback) {
 	initGJKShapeForCircle(circle, &s.tempGJKSource)
-	for index, shape := range s.iterCandidateTerrainShapes(mask) {
+	for index, shape := range s.iterCandidateTerrainShapes(filter) {
 		s.resolveTerrainShape(s.tempGJKSource, circle, shape, func(contact shape2d.Contact) {
 			yield(TerrainContact{
 				SourceObjectID:  NilObjectID,
@@ -880,9 +884,9 @@ func (s *Scene[O, T, S]) collectCircleTerrain(circle shape2d.Circle, mask Mask, 
 	}
 }
 
-func (s *Scene[O, T, S]) collectRectangleObject(rectangle shape2d.Rectangle, mask Mask, yield ObjectContactCallback) {
+func (s *Scene[O, T, S]) collectRectangleObject(rectangle shape2d.Rectangle, filter Filter, yield ObjectContactCallback) {
 	initGJKShapeForRectangle(rectangle, &s.tempGJKSource)
-	for index, shape := range s.iterCandidateObjectShapes(mask) {
+	for index, shape := range s.iterCandidateObjectShapes(filter) {
 		if !isec2d.CheckCircleCircle(rectangle.BoundingCircle(), shape.wsBCircle) {
 			continue
 		}
@@ -898,9 +902,9 @@ func (s *Scene[O, T, S]) collectRectangleObject(rectangle shape2d.Rectangle, mas
 	}
 }
 
-func (s *Scene[O, T, S]) collectRectangleTerrain(rectangle shape2d.Rectangle, mask Mask, yield TerrainContactCallback) {
+func (s *Scene[O, T, S]) collectRectangleTerrain(rectangle shape2d.Rectangle, filter Filter, yield TerrainContactCallback) {
 	initGJKShapeForRectangle(rectangle, &s.tempGJKSource)
-	for index, shape := range s.iterCandidateTerrainShapes(mask) {
+	for index, shape := range s.iterCandidateTerrainShapes(filter) {
 		s.resolveTerrainShape(s.tempGJKSource, rectangle.BoundingCircle(), shape, func(contact shape2d.Contact) {
 			yield(TerrainContact{
 				SourceObjectID:  NilObjectID,
@@ -986,10 +990,10 @@ func (s *Scene[O, T, S]) resolveTerrainShape(srcGJK gjk2d.Shape, srcBC shape2d.C
 	}
 }
 
-func (s *Scene[O, T, S]) eachCandidateObjectShape(mask Mask, cb func(int32, *objectShapeState[S]) bool) {
+func (s *Scene[O, T, S]) eachCandidateObjectShape(filter Filter, cb func(int32, *objectShapeState[S]) bool) {
 	for _, index := range s.objectShapeCandidates {
 		shape := &s.objectShapes[index]
-		if !shape.satisfiesMask(mask) {
+		if !shape.satisfiesFilter(filter) {
 			continue
 		}
 		if !cb(index, shape) {
@@ -998,16 +1002,16 @@ func (s *Scene[O, T, S]) eachCandidateObjectShape(mask Mask, cb func(int32, *obj
 	}
 }
 
-func (s *Scene[O, T, S]) iterCandidateObjectShapes(mask Mask) iter.Seq2[int32, *objectShapeState[S]] {
+func (s *Scene[O, T, S]) iterCandidateObjectShapes(filter Filter) iter.Seq2[int32, *objectShapeState[S]] {
 	return func(yield func(int32, *objectShapeState[S]) bool) {
-		s.eachCandidateObjectShape(mask, yield)
+		s.eachCandidateObjectShape(filter, yield)
 	}
 }
 
-func (s *Scene[O, T, S]) eachCandidateTerrainShape(mask Mask, cb func(int32, *terrainShapeState[S]) bool) {
+func (s *Scene[O, T, S]) eachCandidateTerrainShape(filter Filter, cb func(int32, *terrainShapeState[S]) bool) {
 	for _, index := range s.terrainShapeCandidates {
 		shape := &s.terrainShapes[index]
-		if !shape.satisfiesMask(mask) {
+		if !shape.satisfiesFilter(filter) {
 			continue
 		}
 		if !cb(index, shape) {
@@ -1016,9 +1020,9 @@ func (s *Scene[O, T, S]) eachCandidateTerrainShape(mask Mask, cb func(int32, *te
 	}
 }
 
-func (s *Scene[O, T, S]) iterCandidateTerrainShapes(mask Mask) iter.Seq2[int32, *terrainShapeState[S]] {
+func (s *Scene[O, T, S]) iterCandidateTerrainShapes(filter Filter) iter.Seq2[int32, *terrainShapeState[S]] {
 	return func(yield func(int32, *terrainShapeState[S]) bool) {
-		s.eachCandidateTerrainShape(mask, yield)
+		s.eachCandidateTerrainShape(filter, yield)
 	}
 }
 
