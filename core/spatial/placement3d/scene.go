@@ -258,13 +258,12 @@ func (s *Scene[O, T, S]) SetObjectShapeUserData(shapeID ObjectShapeID, userData 
 	shape.userData = userData
 }
 
-// EachSphere iterates over all sphere shapes in the scene that match the mask
-// and yields them, in world space, to the provided callback. Iteration stops
-// early if the callback returns false.
+// EachSphere iterates over all sphere shapes in the scene that match the
+// filter and yields them, in world space, to the provided callback. Iteration
+// stops early if the callback returns false.
 //
-// Note that a zero mask matches no shape at all. Use [FullMask] to iterate
-// over every sphere in the scene.
-func (s *Scene[O, T, S]) EachSphere(mask Mask, yield func(shape3d.Sphere) bool) {
+// Note that the zero value of [Filter] matches every sphere in the scene.
+func (s *Scene[O, T, S]) EachSphere(filter Filter, yield func(shape3d.Sphere) bool) {
 	for index := range s.objectShapes {
 		shape := &s.objectShapes[index]
 		if shape.spatialID == query3d.InvalidTreeItemID {
@@ -273,7 +272,7 @@ func (s *Scene[O, T, S]) EachSphere(mask Mask, yield func(shape3d.Sphere) bool) 
 		if shape.kind != objectShapeKindSphere {
 			continue
 		}
-		if !shape.satisfiesMask(mask) {
+		if !shape.satisfiesFilter(filter) {
 			continue
 		}
 		if !yield(shape.toSphere()) {
@@ -283,20 +282,19 @@ func (s *Scene[O, T, S]) EachSphere(mask Mask, yield func(shape3d.Sphere) bool) 
 }
 
 // SphereIter returns an iterator over all sphere shapes in the scene that
-// match the mask, as described by [Scene.EachSphere].
-func (s *Scene[O, T, S]) SphereIter(mask Mask) iter.Seq[shape3d.Sphere] {
+// match the filter, as described by [Scene.EachSphere].
+func (s *Scene[O, T, S]) SphereIter(filter Filter) iter.Seq[shape3d.Sphere] {
 	return func(yield func(shape3d.Sphere) bool) {
-		s.EachSphere(mask, yield)
+		s.EachSphere(filter, yield)
 	}
 }
 
-// EachBox iterates over all box shapes in the scene that match the mask and
+// EachBox iterates over all box shapes in the scene that match the filter and
 // yields them, in world space, to the provided callback. Iteration stops early
 // if the callback returns false.
 //
-// Note that a zero mask matches no shape at all. Use [FullMask] to iterate
-// over every box in the scene.
-func (s *Scene[O, T, S]) EachBox(mask Mask, yield func(shape3d.Box) bool) {
+// Note that the zero value of [Filter] matches every box in the scene.
+func (s *Scene[O, T, S]) EachBox(filter Filter, yield func(shape3d.Box) bool) {
 	for index := range s.objectShapes {
 		shape := &s.objectShapes[index]
 		if shape.spatialID == query3d.InvalidTreeItemID {
@@ -305,7 +303,7 @@ func (s *Scene[O, T, S]) EachBox(mask Mask, yield func(shape3d.Box) bool) {
 		if shape.kind != objectShapeKindBox {
 			continue
 		}
-		if !shape.satisfiesMask(mask) {
+		if !shape.satisfiesFilter(filter) {
 			continue
 		}
 		if !yield(shape.toBox()) {
@@ -315,10 +313,10 @@ func (s *Scene[O, T, S]) EachBox(mask Mask, yield func(shape3d.Box) bool) {
 }
 
 // BoxIter returns an iterator over all box shapes in the scene that match the
-// mask, as described by [Scene.EachBox].
-func (s *Scene[O, T, S]) BoxIter(mask Mask) iter.Seq[shape3d.Box] {
+// filter, as described by [Scene.EachBox].
+func (s *Scene[O, T, S]) BoxIter(filter Filter) iter.Seq[shape3d.Box] {
 	return func(yield func(shape3d.Box) bool) {
-		s.EachBox(mask, yield)
+		s.EachBox(filter, yield)
 	}
 }
 
@@ -416,58 +414,60 @@ func (s *Scene[O, T, S]) SetTerrainShapeUserData(shapeID TerrainShapeID, userDat
 }
 
 // CollectSegmentObjectIntersections collects all intersections of the segment
-// with the object shapes in the scene that match the mask.
+// with the object shapes in the scene that match the filter.
 //
 // The reported contacts have no source, since the segment is not part of the
 // scene. Their Depth is the fraction of the segment that lies beyond the
 // contact point, as described by [shape3d.Contact].
-func (s *Scene[O, T, S]) CollectSegmentObjectIntersections(segment shape3d.Segment, mask Mask, yield ObjectContactCallback) {
+func (s *Scene[O, T, S]) CollectSegmentObjectIntersections(segment shape3d.Segment, filter Filter, yield ObjectContactCallback) {
 	s.objectShapeCandidates = s.objectShapeCandidates[:0]
 	s.objectShapeTree.QuerySegment(segment, func(index int32) bool {
 		s.objectShapeCandidates = append(s.objectShapeCandidates, index)
 		return true
 	})
-	s.collectSegmentObject(segment, mask, yield)
+	s.collectSegmentObject(segment, filter, yield)
 }
 
 // CheckSegmentObjectIntersection returns the intersection of the segment with
-// the object shape that it enters first, if any.
-func (s *Scene[O, T, S]) CheckSegmentObjectIntersection(segment shape3d.Segment, mask Mask) (ObjectContact, bool) {
+// the object shape that it enters first, if any. Only object shapes that match
+// the filter are considered.
+func (s *Scene[O, T, S]) CheckSegmentObjectIntersection(segment shape3d.Segment, filter Filter) (ObjectContact, bool) {
 	var collection DeepestObjectContact
-	s.CollectSegmentObjectIntersections(segment, mask, collection.AddContact)
+	s.CollectSegmentObjectIntersections(segment, filter, collection.AddContact)
 	return collection.Contact()
 }
 
 // CollectSegmentTerrainIntersections collects all intersections of the segment
-// with the terrain shapes in the scene that match the mask. At most one
+// with the terrain shapes in the scene that match the filter. At most one
 // contact is reported per terrain shape.
 //
 // The reported contacts have no source, since the segment is not part of the
 // scene. Their Depth is the fraction of the segment that lies beyond the
 // contact point, as described by [shape3d.Contact].
-func (s *Scene[O, T, S]) CollectSegmentTerrainIntersections(segment shape3d.Segment, mask Mask, yield TerrainContactCallback) {
+func (s *Scene[O, T, S]) CollectSegmentTerrainIntersections(segment shape3d.Segment, filter Filter, yield TerrainContactCallback) {
 	s.terrainShapeCandidates = s.terrainShapeCandidates[:0]
 	s.terrainShapeTree.QuerySegment(segment, func(index int32) bool {
 		s.terrainShapeCandidates = append(s.terrainShapeCandidates, index)
 		return true
 	})
-	s.collectSegmentTerrain(segment, mask, yield)
+	s.collectSegmentTerrain(segment, filter, yield)
 }
 
 // CheckSegmentTerrainIntersection returns the intersection of the segment with
-// the terrain shape that it enters first, if any.
-func (s *Scene[O, T, S]) CheckSegmentTerrainIntersection(segment shape3d.Segment, mask Mask) (TerrainContact, bool) {
+// the terrain shape that it enters first, if any. Only terrain shapes that
+// match the filter are considered.
+func (s *Scene[O, T, S]) CheckSegmentTerrainIntersection(segment shape3d.Segment, filter Filter) (TerrainContact, bool) {
 	var collection DeepestTerrainContact
-	s.CollectSegmentTerrainIntersections(segment, mask, collection.AddContact)
+	s.CollectSegmentTerrainIntersections(segment, filter, collection.AddContact)
 	return collection.Contact()
 }
 
 // CollectSphereObjectIntersections collects all intersections of the sphere
-// with the object shapes in the scene that match the mask.
+// with the object shapes in the scene that match the filter.
 //
 // The reported contacts have no source, since the sphere is not part of the
 // scene.
-func (s *Scene[O, T, S]) CollectSphereObjectIntersections(sphere shape3d.Sphere, mask Mask, yield ObjectContactCallback) {
+func (s *Scene[O, T, S]) CollectSphereObjectIntersections(sphere shape3d.Sphere, filter Filter, yield ObjectContactCallback) {
 	queryAABB := shape3d.AABBFromSphere(sphere)
 
 	s.objectShapeCandidates = s.objectShapeCandidates[:0]
@@ -475,24 +475,25 @@ func (s *Scene[O, T, S]) CollectSphereObjectIntersections(sphere shape3d.Sphere,
 		s.objectShapeCandidates = append(s.objectShapeCandidates, index)
 		return true
 	})
-	s.collectSphereObject(sphere, mask, yield)
+	s.collectSphereObject(sphere, filter, yield)
 }
 
 // CheckSphereObjectIntersection returns the deepest intersection of the sphere
-// with an object shape in the scene, if any.
-func (s *Scene[O, T, S]) CheckSphereObjectIntersection(sphere shape3d.Sphere, mask Mask) (ObjectContact, bool) {
+// with an object shape in the scene, if any. Only object shapes that match the
+// filter are considered.
+func (s *Scene[O, T, S]) CheckSphereObjectIntersection(sphere shape3d.Sphere, filter Filter) (ObjectContact, bool) {
 	var collection DeepestObjectContact
-	s.CollectSphereObjectIntersections(sphere, mask, collection.AddContact)
+	s.CollectSphereObjectIntersections(sphere, filter, collection.AddContact)
 	return collection.Contact()
 }
 
 // CollectSphereTerrainIntersections collects all intersections of the sphere
-// with the terrain shapes in the scene that match the mask. At most one
+// with the terrain shapes in the scene that match the filter. At most one
 // contact is reported per terrain shape.
 //
 // The reported contacts have no source, since the sphere is not part of the
 // scene.
-func (s *Scene[O, T, S]) CollectSphereTerrainIntersections(sphere shape3d.Sphere, mask Mask, yield TerrainContactCallback) {
+func (s *Scene[O, T, S]) CollectSphereTerrainIntersections(sphere shape3d.Sphere, filter Filter, yield TerrainContactCallback) {
 	queryAABB := shape3d.AABBFromSphere(sphere)
 
 	s.terrainShapeCandidates = s.terrainShapeCandidates[:0]
@@ -500,23 +501,24 @@ func (s *Scene[O, T, S]) CollectSphereTerrainIntersections(sphere shape3d.Sphere
 		s.terrainShapeCandidates = append(s.terrainShapeCandidates, index)
 		return true
 	})
-	s.collectSphereTerrain(sphere, mask, yield)
+	s.collectSphereTerrain(sphere, filter, yield)
 }
 
 // CheckSphereTerrainIntersection returns the deepest intersection of the
-// sphere with a terrain shape in the scene, if any.
-func (s *Scene[O, T, S]) CheckSphereTerrainIntersection(sphere shape3d.Sphere, mask Mask) (TerrainContact, bool) {
+// sphere with a terrain shape in the scene, if any. Only terrain shapes that
+// match the filter are considered.
+func (s *Scene[O, T, S]) CheckSphereTerrainIntersection(sphere shape3d.Sphere, filter Filter) (TerrainContact, bool) {
 	var collection DeepestTerrainContact
-	s.CollectSphereTerrainIntersections(sphere, mask, collection.AddContact)
+	s.CollectSphereTerrainIntersections(sphere, filter, collection.AddContact)
 	return collection.Contact()
 }
 
 // CollectBoxObjectIntersections collects all intersections of the box with the
-// object shapes in the scene that match the mask.
+// object shapes in the scene that match the filter.
 //
 // The reported contacts have no source, since the box is not part of the
 // scene.
-func (s *Scene[O, T, S]) CollectBoxObjectIntersections(box shape3d.Box, mask Mask, yield ObjectContactCallback) {
+func (s *Scene[O, T, S]) CollectBoxObjectIntersections(box shape3d.Box, filter Filter, yield ObjectContactCallback) {
 	queryAABB := shape3d.AABBFromBox(box)
 
 	s.objectShapeCandidates = s.objectShapeCandidates[:0]
@@ -524,24 +526,25 @@ func (s *Scene[O, T, S]) CollectBoxObjectIntersections(box shape3d.Box, mask Mas
 		s.objectShapeCandidates = append(s.objectShapeCandidates, index)
 		return true
 	})
-	s.collectBoxObject(box, mask, yield)
+	s.collectBoxObject(box, filter, yield)
 }
 
 // CheckBoxObjectIntersection returns the deepest intersection of the box with
-// an object shape in the scene, if any.
-func (s *Scene[O, T, S]) CheckBoxObjectIntersection(box shape3d.Box, mask Mask) (ObjectContact, bool) {
+// an object shape in the scene, if any. Only object shapes that match the
+// filter are considered.
+func (s *Scene[O, T, S]) CheckBoxObjectIntersection(box shape3d.Box, filter Filter) (ObjectContact, bool) {
 	var collection DeepestObjectContact
-	s.CollectBoxObjectIntersections(box, mask, collection.AddContact)
+	s.CollectBoxObjectIntersections(box, filter, collection.AddContact)
 	return collection.Contact()
 }
 
 // CollectBoxTerrainIntersections collects all intersections of the box with
-// the terrain shapes in the scene that match the mask. At most one contact is
-// reported per terrain shape.
+// the terrain shapes in the scene that match the filter. At most one contact
+// is reported per terrain shape.
 //
 // The reported contacts have no source, since the box is not part of the
 // scene.
-func (s *Scene[O, T, S]) CollectBoxTerrainIntersections(box shape3d.Box, mask Mask, yield TerrainContactCallback) {
+func (s *Scene[O, T, S]) CollectBoxTerrainIntersections(box shape3d.Box, filter Filter, yield TerrainContactCallback) {
 	queryAABB := shape3d.AABBFromBox(box)
 
 	s.terrainShapeCandidates = s.terrainShapeCandidates[:0]
@@ -549,14 +552,15 @@ func (s *Scene[O, T, S]) CollectBoxTerrainIntersections(box shape3d.Box, mask Ma
 		s.terrainShapeCandidates = append(s.terrainShapeCandidates, index)
 		return true
 	})
-	s.collectBoxTerrain(box, mask, yield)
+	s.collectBoxTerrain(box, filter, yield)
 }
 
 // CheckBoxTerrainIntersection returns the deepest intersection of the box with
-// a terrain shape in the scene, if any.
-func (s *Scene[O, T, S]) CheckBoxTerrainIntersection(box shape3d.Box, mask Mask) (TerrainContact, bool) {
+// a terrain shape in the scene, if any. Only terrain shapes that match the
+// filter are considered.
+func (s *Scene[O, T, S]) CheckBoxTerrainIntersection(box shape3d.Box, filter Filter) (TerrainContact, bool) {
 	var collection DeepestTerrainContact
-	s.CollectBoxTerrainIntersections(box, mask, collection.AddContact)
+	s.CollectBoxTerrainIntersections(box, filter, collection.AddContact)
 	return collection.Contact()
 }
 
@@ -806,8 +810,8 @@ func (s *Scene[O, T, S]) detachTerrainShape(index int32) {
 	s.releaseTerrainShape(index)
 }
 
-func (s *Scene[O, T, S]) collectSegmentObject(segment shape3d.Segment, mask Mask, yield ObjectContactCallback) {
-	for index, shape := range s.iterCandidateObjectShapes(mask) {
+func (s *Scene[O, T, S]) collectSegmentObject(segment shape3d.Segment, filter Filter, yield ObjectContactCallback) {
+	for index, shape := range s.iterCandidateObjectShapes(filter) {
 		if !isec3d.CheckSegmentSphereOverlap(segment, shape.wsBSphere) {
 			continue
 		}
@@ -831,8 +835,8 @@ func (s *Scene[O, T, S]) collectSegmentObject(segment shape3d.Segment, mask Mask
 	}
 }
 
-func (s *Scene[O, T, S]) collectSegmentTerrain(segment shape3d.Segment, mask Mask, yield TerrainContactCallback) {
-	for index, shape := range s.iterCandidateTerrainShapes(mask) {
+func (s *Scene[O, T, S]) collectSegmentTerrain(segment shape3d.Segment, filter Filter, yield TerrainContactCallback) {
+	for index, shape := range s.iterCandidateTerrainShapes(filter) {
 		if !isec3d.CheckSegmentSphereOverlap(segment, shape.wsBSphere) {
 			continue
 		}
@@ -852,9 +856,9 @@ func (s *Scene[O, T, S]) collectSegmentTerrain(segment shape3d.Segment, mask Mas
 	}
 }
 
-func (s *Scene[O, T, S]) collectSphereObject(sphere shape3d.Sphere, mask Mask, yield ObjectContactCallback) {
+func (s *Scene[O, T, S]) collectSphereObject(sphere shape3d.Sphere, filter Filter, yield ObjectContactCallback) {
 	initGJKShapeForSphere(sphere, &s.tempGJKSource)
-	for index, shape := range s.iterCandidateObjectShapes(mask) {
+	for index, shape := range s.iterCandidateObjectShapes(filter) {
 		if !isec3d.CheckSphereSphere(sphere, shape.wsBSphere) {
 			continue
 		}
@@ -870,9 +874,9 @@ func (s *Scene[O, T, S]) collectSphereObject(sphere shape3d.Sphere, mask Mask, y
 	}
 }
 
-func (s *Scene[O, T, S]) collectSphereTerrain(sphere shape3d.Sphere, mask Mask, yield TerrainContactCallback) {
+func (s *Scene[O, T, S]) collectSphereTerrain(sphere shape3d.Sphere, filter Filter, yield TerrainContactCallback) {
 	initGJKShapeForSphere(sphere, &s.tempGJKSource)
-	for index, shape := range s.iterCandidateTerrainShapes(mask) {
+	for index, shape := range s.iterCandidateTerrainShapes(filter) {
 		s.resolveTerrainShape(s.tempGJKSource, sphere, shape, func(contact shape3d.Contact) {
 			yield(TerrainContact{
 				SourceObjectID:  NilObjectID,
@@ -885,9 +889,9 @@ func (s *Scene[O, T, S]) collectSphereTerrain(sphere shape3d.Sphere, mask Mask, 
 	}
 }
 
-func (s *Scene[O, T, S]) collectBoxObject(box shape3d.Box, mask Mask, yield ObjectContactCallback) {
+func (s *Scene[O, T, S]) collectBoxObject(box shape3d.Box, filter Filter, yield ObjectContactCallback) {
 	initGJKShapeForBox(box, &s.tempGJKSource)
-	for index, shape := range s.iterCandidateObjectShapes(mask) {
+	for index, shape := range s.iterCandidateObjectShapes(filter) {
 		if !isec3d.CheckSphereSphere(box.BoundingSphere(), shape.wsBSphere) {
 			continue
 		}
@@ -903,9 +907,9 @@ func (s *Scene[O, T, S]) collectBoxObject(box shape3d.Box, mask Mask, yield Obje
 	}
 }
 
-func (s *Scene[O, T, S]) collectBoxTerrain(box shape3d.Box, mask Mask, yield TerrainContactCallback) {
+func (s *Scene[O, T, S]) collectBoxTerrain(box shape3d.Box, filter Filter, yield TerrainContactCallback) {
 	initGJKShapeForBox(box, &s.tempGJKSource)
-	for index, shape := range s.iterCandidateTerrainShapes(mask) {
+	for index, shape := range s.iterCandidateTerrainShapes(filter) {
 		s.resolveTerrainShape(s.tempGJKSource, box.BoundingSphere(), shape, func(contact shape3d.Contact) {
 			yield(TerrainContact{
 				SourceObjectID:  NilObjectID,
@@ -992,10 +996,10 @@ func (s *Scene[O, T, S]) resolveTerrainShape(srcGJK gjk3d.Shape, srcBS shape3d.S
 	}
 }
 
-func (s *Scene[O, T, S]) eachCandidateObjectShape(mask Mask, cb func(int32, *objectShapeState[S]) bool) {
+func (s *Scene[O, T, S]) eachCandidateObjectShape(filter Filter, cb func(int32, *objectShapeState[S]) bool) {
 	for _, index := range s.objectShapeCandidates {
 		shape := &s.objectShapes[index]
-		if !shape.satisfiesMask(mask) {
+		if !shape.satisfiesFilter(filter) {
 			continue
 		}
 		if !cb(index, shape) {
@@ -1004,16 +1008,16 @@ func (s *Scene[O, T, S]) eachCandidateObjectShape(mask Mask, cb func(int32, *obj
 	}
 }
 
-func (s *Scene[O, T, S]) iterCandidateObjectShapes(mask Mask) iter.Seq2[int32, *objectShapeState[S]] {
+func (s *Scene[O, T, S]) iterCandidateObjectShapes(filter Filter) iter.Seq2[int32, *objectShapeState[S]] {
 	return func(yield func(int32, *objectShapeState[S]) bool) {
-		s.eachCandidateObjectShape(mask, yield)
+		s.eachCandidateObjectShape(filter, yield)
 	}
 }
 
-func (s *Scene[O, T, S]) eachCandidateTerrainShape(mask Mask, cb func(int32, *terrainShapeState[S]) bool) {
+func (s *Scene[O, T, S]) eachCandidateTerrainShape(filter Filter, cb func(int32, *terrainShapeState[S]) bool) {
 	for _, index := range s.terrainShapeCandidates {
 		shape := &s.terrainShapes[index]
-		if !shape.satisfiesMask(mask) {
+		if !shape.satisfiesFilter(filter) {
 			continue
 		}
 		if !cb(index, shape) {
@@ -1022,9 +1026,9 @@ func (s *Scene[O, T, S]) eachCandidateTerrainShape(mask Mask, cb func(int32, *te
 	}
 }
 
-func (s *Scene[O, T, S]) iterCandidateTerrainShapes(mask Mask) iter.Seq2[int32, *terrainShapeState[S]] {
+func (s *Scene[O, T, S]) iterCandidateTerrainShapes(filter Filter) iter.Seq2[int32, *terrainShapeState[S]] {
 	return func(yield func(int32, *terrainShapeState[S]) bool) {
-		s.eachCandidateTerrainShape(mask, yield)
+		s.eachCandidateTerrainShape(filter, yield)
 	}
 }
 

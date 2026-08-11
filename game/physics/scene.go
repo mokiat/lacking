@@ -393,10 +393,10 @@ func (s *Scene) Update(elapsedTime time.Duration) {
 	s.notifyPairCollisions()
 }
 
-func (s *Scene) CollectSegmentBodyIntersections(segment shape3d.Segment, mask Mask, yield BodyContactCallback) {
+func (s *Scene) CollectSegmentBodyIntersections(segment shape3d.Segment, filter Filter, yield BodyContactCallback) {
 	bodyView := s.Bodies()
 
-	s.collisionScene.CollectSegmentObjectIntersections(segment, mask, func(contact placement3d.ObjectContact) {
+	s.collisionScene.CollectSegmentObjectIntersections(segment, filter, func(contact placement3d.ObjectContact) {
 		tgtBodyData := s.collisionScene.GetObjectUserData(contact.TargetObjectID)
 
 		yield(BodyContact{
@@ -406,16 +406,16 @@ func (s *Scene) CollectSegmentBodyIntersections(segment shape3d.Segment, mask Ma
 	})
 }
 
-func (s *Scene) CheckSegmentBodyIntersection(segment shape3d.Segment, mask Mask) (BodyContact, bool) {
+func (s *Scene) CheckSegmentBodyIntersection(segment shape3d.Segment, filter Filter) (BodyContact, bool) {
 	var collection DeepestBodyContact
-	s.CollectSegmentBodyIntersections(segment, mask, collection.AddContact)
+	s.CollectSegmentBodyIntersections(segment, filter, collection.AddContact)
 	return collection.Contact()
 }
 
-func (s *Scene) CollectSegmentTerrainIntersections(segment shape3d.Segment, mask Mask, yield TerrainContactCallback) {
+func (s *Scene) CollectSegmentTerrainIntersections(segment shape3d.Segment, filter Filter, yield TerrainContactCallback) {
 	terrainView := s.Terrains()
 
-	s.collisionScene.CollectSegmentTerrainIntersections(segment, mask, func(contact placement3d.TerrainContact) {
+	s.collisionScene.CollectSegmentTerrainIntersections(segment, filter, func(contact placement3d.TerrainContact) {
 		tgtTerrainData := s.collisionScene.GetTerrainUserData(contact.TargetTerrainID)
 
 		yield(TerrainContact{
@@ -425,9 +425,9 @@ func (s *Scene) CollectSegmentTerrainIntersections(segment shape3d.Segment, mask
 	})
 }
 
-func (s *Scene) CheckSegmentTerrainIntersection(segment shape3d.Segment, mask Mask) (TerrainContact, bool) {
+func (s *Scene) CheckSegmentTerrainIntersection(segment shape3d.Segment, filter Filter) (TerrainContact, bool) {
 	var collection DeepestTerrainContact
-	s.CollectSegmentTerrainIntersections(segment, mask, collection.AddContact)
+	s.CollectSegmentTerrainIntersections(segment, filter, collection.AddContact)
 	return collection.Contact()
 }
 

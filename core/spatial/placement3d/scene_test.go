@@ -166,7 +166,7 @@ var _ = Describe("Scene", func() {
 			})
 
 			var found []shape3d.Sphere
-			scene.EachSphere(placement3d.FullMask, func(s shape3d.Sphere) bool {
+			scene.EachSphere(placement3d.Filter{}, func(s shape3d.Sphere) bool {
 				found = append(found, s)
 				return true
 			})
@@ -185,7 +185,7 @@ var _ = Describe("Scene", func() {
 			})
 
 			count := 0
-			scene.EachBox(placement3d.FullMask, func(shape3d.Box) bool {
+			scene.EachBox(placement3d.Filter{}, func(shape3d.Box) bool {
 				count++
 				return true
 			})
@@ -198,7 +198,7 @@ var _ = Describe("Scene", func() {
 			})
 
 			count := 0
-			for range scene.SphereIter(placement3d.FullMask) {
+			for range scene.SphereIter(placement3d.Filter{}) {
 				count++
 			}
 			Expect(count).To(Equal(1))
@@ -210,7 +210,7 @@ var _ = Describe("Scene", func() {
 			})
 
 			count := 0
-			for range scene.BoxIter(placement3d.FullMask) {
+			for range scene.BoxIter(placement3d.Filter{}) {
 				count++
 			}
 			Expect(count).To(Equal(1))
@@ -241,7 +241,7 @@ var _ = Describe("Scene", func() {
 			scene.DeleteObjectShape(shapeID)
 
 			count := 0
-			scene.EachSphere(placement3d.FullMask, func(shape3d.Sphere) bool {
+			scene.EachSphere(placement3d.Filter{}, func(shape3d.Sphere) bool {
 				count++
 				return true
 			})
@@ -257,7 +257,7 @@ var _ = Describe("Scene", func() {
 			})
 
 			count := 0
-			scene.EachSphere(placement3d.FullMask, func(shape3d.Sphere) bool {
+			scene.EachSphere(placement3d.Filter{}, func(shape3d.Sphere) bool {
 				count++
 				return false
 			})
@@ -276,7 +276,7 @@ var _ = Describe("Scene", func() {
 			))
 
 			var centers []dprec.Vec3
-			scene.EachSphere(placement3d.FullMask, func(s shape3d.Sphere) bool {
+			scene.EachSphere(placement3d.Filter{}, func(s shape3d.Sphere) bool {
 				centers = append(centers, s.Center)
 				return true
 			})
@@ -287,22 +287,23 @@ var _ = Describe("Scene", func() {
 		})
 	})
 
-	Describe("shape iteration masks", func() {
+	Describe("shape iteration filters", func() {
 		var objID placement3d.ObjectID
 
 		BeforeEach(func() {
 			objID = scene.CreateObject(placement3d.ObjectInfo[string]{})
 			scene.AttachSphere(objID, placement3d.SphereInfo[string]{
 				Filtering: placement3d.FilterInfo{
-					SourceMask: opt.V(uint32(0b01)),
+					RejectGroup: 7,
+					SourceMask:  opt.V(uint32(0b01)),
 				},
 				Sphere: sphereAt(0.0, 0.0, 0.0, 1.0),
 			})
 		})
 
-		countSpheres := func(mask placement3d.Mask) int {
+		countSpheres := func(filter placement3d.Filter) int {
 			count := 0
-			scene.EachSphere(mask, func(shape3d.Sphere) bool {
+			scene.EachSphere(filter, func(shape3d.Sphere) bool {
 				count++
 				return true
 			})
@@ -310,15 +311,33 @@ var _ = Describe("Scene", func() {
 		}
 
 		It("yields shapes that occupy a layer of the mask", func() {
-			Expect(countSpheres(0b01)).To(Equal(1))
+			Expect(countSpheres(placement3d.Filter{Mask: 0b01})).To(Equal(1))
 		})
 
 		It("skips shapes that occupy no layer of the mask", func() {
-			Expect(countSpheres(0b10)).To(BeZero())
+			Expect(countSpheres(placement3d.Filter{Mask: 0b10})).To(BeZero())
 		})
 
-		It("yields nothing for the zero mask", func() {
-			Expect(countSpheres(0)).To(BeZero())
+		It("yields everything for the zero mask", func() {
+			Expect(countSpheres(placement3d.Filter{Mask: 0})).To(Equal(1))
+		})
+
+		It("yields everything for the full mask", func() {
+			Expect(countSpheres(placement3d.Filter{
+				Mask: placement3d.FullMask,
+			})).To(Equal(1))
+		})
+
+		It("skips shapes that share the reject group", func() {
+			Expect(countSpheres(placement3d.Filter{RejectGroup: 7})).To(BeZero())
+		})
+
+		It("yields shapes that have a different reject group", func() {
+			Expect(countSpheres(placement3d.Filter{RejectGroup: 8})).To(Equal(1))
+		})
+
+		It("yields everything for the zero filter", func() {
+			Expect(countSpheres(placement3d.Filter{})).To(Equal(1))
 		})
 	})
 
@@ -757,7 +776,7 @@ var _ = Describe("Scene", func() {
 
 			contact, ok := scene.CheckSphereObjectIntersection(
 				sphereAt(1.5, 0.0, 0.0, 1.0),
-				placement3d.FullMask,
+				placement3d.Filter{},
 			)
 			Expect(ok).To(BeTrue())
 			Expect(contact.SourceObjectID).To(Equal(placement3d.NilObjectID))
@@ -774,7 +793,7 @@ var _ = Describe("Scene", func() {
 
 			_, ok := scene.CheckSphereObjectIntersection(
 				sphereAt(10.0, 0.0, 0.0, 1.0),
-				placement3d.FullMask,
+				placement3d.Filter{},
 			)
 			Expect(ok).To(BeFalse())
 		})
@@ -790,7 +809,23 @@ var _ = Describe("Scene", func() {
 
 			_, ok := scene.CheckSphereObjectIntersection(
 				sphereAt(1.5, 0.0, 0.0, 1.0),
-				0b10,
+				placement3d.Filter{Mask: 0b10},
+			)
+			Expect(ok).To(BeFalse())
+		})
+
+		It("honors the query reject group", func() {
+			objID := scene.CreateObject(placement3d.ObjectInfo[string]{})
+			scene.AttachSphere(objID, placement3d.SphereInfo[string]{
+				Filtering: placement3d.FilterInfo{
+					RejectGroup: 7,
+				},
+				Sphere: sphereAt(0.0, 0.0, 0.0, 1.0),
+			})
+
+			_, ok := scene.CheckSphereObjectIntersection(
+				sphereAt(1.5, 0.0, 0.0, 1.0),
+				placement3d.Filter{RejectGroup: 7},
 			)
 			Expect(ok).To(BeFalse())
 		})
@@ -804,7 +839,7 @@ var _ = Describe("Scene", func() {
 			// The plane faces -Y, so approach it from below (the front side).
 			contact, ok := scene.CheckSphereTerrainIntersection(
 				sphereAt(0.0, -0.5, 0.0, 1.0),
-				placement3d.FullMask,
+				placement3d.Filter{},
 			)
 			Expect(ok).To(BeTrue())
 			Expect(contact.SourceShapeID).To(Equal(placement3d.NilObjectShapeID))
@@ -821,7 +856,7 @@ var _ = Describe("Scene", func() {
 
 			_, ok := scene.CheckSphereTerrainIntersection(
 				sphereAt(0.0, 0.5, 0.0, 1.0),
-				placement3d.FullMask,
+				placement3d.Filter{},
 			)
 			Expect(ok).To(BeFalse())
 		})
@@ -834,7 +869,7 @@ var _ = Describe("Scene", func() {
 
 			_, ok := scene.CheckSphereTerrainIntersection(
 				sphereAt(0.5, 0.0, 0.0, 1.0),
-				placement3d.FullMask,
+				placement3d.Filter{},
 			)
 			Expect(ok).To(BeFalse())
 		})
@@ -849,7 +884,7 @@ var _ = Describe("Scene", func() {
 
 			contact, ok := scene.CheckBoxObjectIntersection(
 				boxAt(1.5, 0.0, 0.0, 1.0),
-				placement3d.FullMask,
+				placement3d.Filter{},
 			)
 			Expect(ok).To(BeTrue())
 			Expect(contact.SourceShapeID).To(Equal(placement3d.NilObjectShapeID))
@@ -865,7 +900,7 @@ var _ = Describe("Scene", func() {
 
 			_, ok := scene.CheckBoxObjectIntersection(
 				boxAt(10.0, 0.0, 0.0, 1.0),
-				placement3d.FullMask,
+				placement3d.Filter{},
 			)
 			Expect(ok).To(BeFalse())
 		})
@@ -879,7 +914,7 @@ var _ = Describe("Scene", func() {
 			// The plane faces -Y, so approach it from below (the front side).
 			contact, ok := scene.CheckBoxTerrainIntersection(
 				boxAt(0.0, -0.5, 0.0, 1.0),
-				placement3d.FullMask,
+				placement3d.Filter{},
 			)
 			Expect(ok).To(BeTrue())
 			Expect(contact.TargetTerrainID).To(Equal(terrainID))
@@ -895,7 +930,7 @@ var _ = Describe("Scene", func() {
 
 			_, ok := scene.CheckBoxTerrainIntersection(
 				boxAt(0.0, 0.5, 0.0, 1.0),
-				placement3d.FullMask,
+				placement3d.Filter{},
 			)
 			Expect(ok).To(BeFalse())
 		})
@@ -918,7 +953,7 @@ var _ = Describe("Scene", func() {
 					dprec.NewVec3(-5.0, 0.0, 0.0),
 					dprec.NewVec3(9.0, 0.0, 0.0),
 				),
-				placement3d.FullMask,
+				placement3d.Filter{},
 				contacts.AddContact,
 			)
 			Expect(contacts).To(HaveLen(2))
@@ -935,7 +970,7 @@ var _ = Describe("Scene", func() {
 					dprec.NewVec3(-5.0, 0.0, 0.0),
 					dprec.NewVec3(5.0, 0.0, 0.0),
 				),
-				placement3d.FullMask,
+				placement3d.Filter{},
 			)
 			Expect(ok).To(BeTrue())
 			Expect(contact.SourceShapeID).To(Equal(placement3d.NilObjectShapeID))
@@ -958,7 +993,7 @@ var _ = Describe("Scene", func() {
 					dprec.NewVec3(-5.0, 0.0, 0.0),
 					dprec.NewVec3(9.0, 0.0, 0.0),
 				),
-				placement3d.FullMask,
+				placement3d.Filter{},
 			)
 			Expect(ok).To(BeTrue())
 			Expect(contact.TargetShapeID).To(Equal(nearShapeID))
@@ -975,7 +1010,7 @@ var _ = Describe("Scene", func() {
 					dprec.NewVec3(2.0, -5.0, 0.0),
 					dprec.NewVec3(2.0, 5.0, 0.0),
 				),
-				placement3d.FullMask,
+				placement3d.Filter{},
 			)
 			Expect(ok).To(BeTrue())
 			Expect(contact.SourceShapeID).To(Equal(placement3d.NilObjectShapeID))
@@ -994,7 +1029,7 @@ var _ = Describe("Scene", func() {
 					dprec.NewVec3(-5.0, 5.0, 0.0),
 					dprec.NewVec3(5.0, 5.0, 0.0),
 				),
-				placement3d.FullMask,
+				placement3d.Filter{},
 			)
 			Expect(ok).To(BeFalse())
 		})
@@ -1010,7 +1045,7 @@ var _ = Describe("Scene", func() {
 					dprec.NewVec3(0.0, 5.0, 0.0),
 					dprec.NewVec3(0.0, -5.0, 0.0),
 				),
-				placement3d.FullMask,
+				placement3d.Filter{},
 			)
 			Expect(ok).To(BeFalse())
 		})

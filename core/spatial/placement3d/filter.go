@@ -6,14 +6,35 @@ import "github.com/mokiat/gog/opt"
 // narrow down the shapes that they consider.
 //
 // A shape is considered by a query when at least one bit is set in both the
-// mask of the query and the [FilterInfo.SourceMask] of the shape. Note that
-// this means that the zero value matches no shape at all. Use [FullMask] to
-// consider every shape in the scene.
+// mask of the query and the [FilterInfo.SourceMask] of the shape. As a special
+// case, a query mask of zero is treated as covering all layers, so a query
+// that uses it considers every shape in the scene.
 type Mask = uint32
 
 // FullMask is a [Mask] with all layer bits set. A query that uses it considers
-// every shape in the scene, regardless of the layers that the shape occupies.
+// every shape in the scene, regardless of the layers that the shape occupies,
+// which is the same behavior as that of the zero mask.
 const FullMask Mask = 0xFFFFFFFF
+
+// Filter narrows down the shapes that a query considers.
+//
+// Its zero value considers every shape in the scene.
+type Filter struct {
+
+	// Mask specifies the layers that the query covers. A shape is considered
+	// only if it occupies at least one of those layers, as described by
+	// [Mask].
+	//
+	// Defaults to all layers.
+	Mask Mask
+
+	// RejectGroup becomes active if a value larger than zero is specified.
+	// Shapes whose [FilterInfo.RejectGroup] is the same are not considered by
+	// the query.
+	//
+	// Defaults to no rejection.
+	RejectGroup uint32
+}
 
 // FilterInfo holds the collision-filtering metadata common to every shape that
 // can be placed in a scene, whether an object shape (see [SphereInfo] and
@@ -53,10 +74,16 @@ func newFilterRepresentation(info FilterInfo) filterRepresentation {
 	}
 }
 
-// satisfiesMask reports whether this shape occupies at least one of the layers
-// covered by the specified query mask.
-func (s *filterRepresentation) satisfiesMask(mask Mask) bool {
-	return (s.sourceMask & mask) != 0
+// satisfiesFilter reports whether this shape is considered by a query that
+// uses the specified filter.
+func (s *filterRepresentation) satisfiesFilter(filter Filter) bool {
+	if (filter.RejectGroup != 0) && (filter.RejectGroup == s.rejectGroup) {
+		return false
+	}
+	if (filter.Mask != 0) && ((s.sourceMask & filter.Mask) == 0) {
+		return false
+	}
+	return true
 }
 
 // canInteractWith reports whether this shape and the specified one are allowed
