@@ -126,7 +126,7 @@ func (t ConstraintTarget) Rotation() dprec.Quat {
 
 // SetRotation changes the target's rotation.
 func (t ConstraintTarget) SetRotation(rotation dprec.Quat) {
-	t.body.rotation = rotation
+	t.body.rotation = dprec.UnitQuat(rotation)
 }
 
 // Rotate applies rotation on top of the target's current rotation.
