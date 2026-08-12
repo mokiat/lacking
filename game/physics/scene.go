@@ -1005,39 +1005,3 @@ type pairCollisionRef struct {
 	primaryBodyID   BodyID
 	secondaryBodyID BodyID
 }
-
-/////// OLD BELOW ------------ (TODO: DELETE COMMENT)
-
-// func (s *Scene) applyAerodynamicAccelerations() {
-// 	s.eachBody(func(index int, body *bodyState) {
-// 		if len(body.aerodynamicShapes) == 0 {
-// 			return
-// 		}
-// 		target := &s.bodyAccelerationTargets[index]
-// 		mediumDensity := s.mediumSolver.Density(body.position)
-// 		mediumVelocity := s.mediumSolver.Velocity(body.position)
-
-// 		deltaVelocity := dprec.Vec3Diff(mediumVelocity, body.velocity)
-// 		dragForce := dprec.Vec3Prod(deltaVelocity, deltaVelocity.Length()*mediumDensity*body.dragFactor)
-// 		target.ApplyForce(dragForce)
-
-// 		angularDragForce := dprec.Vec3Prod(body.angularVelocity, -body.angularVelocity.Length()*mediumDensity*body.angularDragFactor)
-// 		target.ApplyTorque(angularDragForce)
-
-// 		bodyTransform := NewTransform(body.position, body.rotation)
-// 		for _, aerodynamicShape := range body.aerodynamicShapes {
-// 			// TODO: Take shape velocity into account. This also means that wings should be
-// 			// split into two, to benefit from that.
-
-// 			aerodynamicShape = aerodynamicShape.Transformed(bodyTransform)
-// 			relativeSpeed := dprec.QuatVec3Rotation(dprec.InverseQuat(aerodynamicShape.Rotation()), deltaVelocity)
-
-// 			force := aerodynamicShape.solver.Force(relativeSpeed, mediumDensity)
-// 			absoluteForce := dprec.QuatVec3Rotation(aerodynamicShape.Rotation(), force)
-
-// 			offset := dprec.Vec3Diff(aerodynamicShape.Position(), bodyTransform.Position())
-// 			target.ApplyOffsetForce(offset, absoluteForce)
-// 			// target.ApplyOffsetForce(absoluteForce, aerodynamicShape.Position())
-// 		}
-// 	})
-// }
