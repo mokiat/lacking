@@ -304,12 +304,9 @@ func BuildModelResource(gltfDoc *gltf.Document, forceCollision, onlyAnimations b
 
 	// build mesh definitions
 	meshDefinitionFromIndex := make(map[int]*mdl.MeshDefinition)
-	bodyDefinitionFromIndex := make(map[int]*mdl.BodyDefinition)
+	terrainMeshesFromIndex := make(map[int][]*mdl.CollisionMesh)
 	if !onlyAnimations {
 		for i, gltfMesh := range gltfDoc.Meshes {
-			bodyMaterial := mdl.NewBodyMaterial()
-			bodyDefinition := mdl.NewBodyDefinition(bodyMaterial)
-
 			metadata := mdl.Metadata(gltfutil.Properties(gltfMesh.Extras))
 
 			geometry := mdl.NewGeometry()
@@ -458,17 +455,13 @@ func BuildModelResource(gltfDoc *gltf.Document, forceCollision, onlyAnimations b
 				geometry.AddFragment(fragment)
 
 				if (geometry.Metadata().HasCollision() || forceCollision) && !fragment.Metadata().HasSkipCollision() {
-					bodyDefinition.AddCollisionMeshes(createCollisionMeshes(geometry, fragment))
+					terrainMeshesFromIndex[i] = append(terrainMeshesFromIndex[i], createCollisionMeshes(geometry, fragment)...)
 				}
 			}
 
 			meshDefinition.SetName(gltfMesh.Name)
 			meshDefinition.SetGeometry(geometry)
 			meshDefinitionFromIndex[i] = meshDefinition
-
-			if (geometry.Metadata().HasCollision() || forceCollision) && len(bodyDefinition.CollisionMeshes()) > 0 {
-				bodyDefinitionFromIndex[i] = bodyDefinition
-			}
 		}
 	}
 
@@ -545,12 +538,14 @@ func BuildModelResource(gltfDoc *gltf.Document, forceCollision, onlyAnimations b
 		return mesh
 	}
 
-	createBody := func(gltfNode *gltf.Node) *mdl.Body {
-		bodyDefinition, ok := bodyDefinitionFromIndex[*gltfNode.Mesh]
+	createTerrain := func(gltfNode *gltf.Node) *mdl.PhysicsTerrain {
+		collisionMeshes, ok := terrainMeshesFromIndex[*gltfNode.Mesh]
 		if !ok {
-			return nil // no collision mesh
+			return nil // no collision meshes
 		}
-		return mdl.NewBody(bodyDefinition)
+		terrain := mdl.NewPhysicsTerrain()
+		terrain.SetCollisionMeshes(collisionMeshes)
+		return terrain
 	}
 
 	// ensure unique node names
@@ -574,8 +569,8 @@ func BuildModelResource(gltfDoc *gltf.Document, forceCollision, onlyAnimations b
 		switch {
 		case gltfNodeHasMesh(gltfNode):
 			node.AddAttachment(createMesh(gltfNode))
-			if body := createBody(gltfNode); body != nil {
-				node.AddAttachment(body)
+			if terrain := createTerrain(gltfNode); terrain != nil {
+				node.AddAttachment(terrain)
 			}
 		case gltfNodeHasLight(gltfNode):
 			node.AddAttachment(createLight(gltfNode))
@@ -891,6 +886,8 @@ func createCollisionMeshes(geometry *mdl.Geometry, fragment *mdl.Fragment) []*md
 		mesh := mdl.NewCollisionMesh()
 		mesh.SetTranslation(center)
 		mesh.SetRotation(dprec.IdentityQuat())
+		mesh.SetFrictionCoefficient(1.0)
+		mesh.SetRestitutionCoefficient(0.3)
 		mesh.SetTriangles(triangles)
 		return mesh
 	})

@@ -202,30 +202,24 @@ func (s *Model) AllMeshPlacements() []Placed[*Mesh] {
 	return result
 }
 
-func (s *Model) AllPhysicsBodyMaterials() []*BodyMaterial {
-	var result []*BodyMaterial
-	for _, definition := range s.AllPhysicsBodyDefinitions() {
-		material := definition.Material()
-		result = append(result, material)
-	}
-	return gog.Dedupe(result)
-}
-
-func (s *Model) AllPhysicsBodyDefinitions() []*BodyDefinition {
-	var result []*BodyDefinition
-	for _, placement := range s.AllPhysicsBodyPlacements() {
-		body := placement.Value
-		definition := body.Definition()
-		result = append(result, definition)
-	}
-	return gog.Dedupe(result)
-}
-
-func (s *Model) AllPhysicsBodyPlacements() []Placed[*Body] {
-	var result []Placed[*Body]
+func (s *Model) AllPhysicsBodyPlacements() []Placed[*PhysicsBody] {
+	var result []Placed[*PhysicsBody]
 	for _, node := range s.NodesIter() {
-		for body := range NodeAttachmentsOfType[*Body](node) {
-			result = append(result, Placed[*Body]{
+		for body := range NodeAttachmentsOfType[*PhysicsBody](node) {
+			result = append(result, Placed[*PhysicsBody]{
+				Node:  node,
+				Value: body,
+			})
+		}
+	}
+	return result
+}
+
+func (s *Model) AllPhysicsTerrainPlacements() []Placed[*PhysicsTerrain] {
+	var result []Placed[*PhysicsTerrain]
+	for _, node := range s.NodesIter() {
+		for body := range NodeAttachmentsOfType[*PhysicsTerrain](node) {
+			result = append(result, Placed[*PhysicsTerrain]{
 				Node:  node,
 				Value: body,
 			})

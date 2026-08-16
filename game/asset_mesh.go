@@ -6,9 +6,11 @@ import (
 	"github.com/mokiat/gog"
 	"github.com/mokiat/gog/opt"
 	"github.com/mokiat/gomath/sprec"
+	"github.com/mokiat/lacking/core/spatial/shape3d"
 	"github.com/mokiat/lacking/game/asset/dto"
 	"github.com/mokiat/lacking/game/graphics"
 	"github.com/mokiat/lacking/game/hierarchy"
+	"github.com/mokiat/lacking/game/physics"
 	"github.com/mokiat/lacking/render"
 	"golang.org/x/sync/errgroup"
 )
@@ -89,6 +91,25 @@ func UnloadArmatureTemplates(loader *AssetLoader, idTemplates IdentifiableList[A
 		}
 	}
 	return nil
+}
+
+func InstantiatePhysicsTerrainTemplate(scene *Scene, template TerrainTemplate, nodes IdentifiableList[hierarchy.NodeID]) {
+	nodeID := nodes.GetByID(template.NodeID)
+	absoluteMatrix := scene.Hierarchy().NodeAbsoluteMatrix(nodeID)
+
+	terrain := scene.Physics().Terrains().CreateHandle()
+	for _, colMesh := range template.CollisionMeshes {
+		transform := shape3d.Transform{
+			Translation: absoluteMatrix.Translation(),
+			Rotation:    shape3d.RotationFromQuat(absoluteMatrix.Rotation()),
+		}
+		terrain.AttachCollisionMesh(physics.CollisionMesh{
+			Shape:                  shape3d.TransformedMesh(colMesh.Shape, transform),
+			FrictionCoefficient:    colMesh.FrictionCoefficient,
+			RestitutionCoefficient: colMesh.RestitutionCoefficient,
+			Filtering:              colMesh.Filtering,
+		})
+	}
 }
 
 // InstantiateArmatureTemplate creates an armature in the given scene from the

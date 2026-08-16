@@ -1,6 +1,8 @@
 package dto
 
-import "github.com/mokiat/gomath/dprec"
+import (
+	"github.com/mokiat/gomath/dprec"
+)
 
 const PhysicsChunkID = "lacking:physics"
 
@@ -9,41 +11,17 @@ type PhysicsChunkHolder struct {
 }
 
 type PhysicsChunk struct {
+	Bodies []PhysicsBody
 
-	// BodyMaterials is the collection of body materials that are part of the
-	// scene.
-	BodyMaterials []BodyMaterial
-
-	// BodyDefinitions is the collection of body definitions that are part of
-	// the scene.
-	BodyDefinitions []BodyDefinition
-
-	// Bodies is the collection of body instances that are part of the scene.
-	Bodies []Body
+	Terrains []PhysicsTerrain
 }
 
-// Body represents a physical body.
-type Body struct {
-
+type PhysicsBody struct {
 	// ID is the unique identifier of the body within the file.
 	ID uint32
 
 	// NodeID is the ID of the node that this body is attached to.
 	NodeID uint32
-
-	// BodyDefinitionID is the ID of the body definition that this
-	// body uses.
-	BodyDefinitionID uint32
-}
-
-// BodyDefinition represents the physical properties of a body.
-type BodyDefinition struct {
-
-	// ID is the unique identifier of the body definition within the file.
-	ID uint32
-
-	// MaterialID is the ID of the physics material that this body uses.
-	MaterialID uint32
 
 	// Mass is the mass of the body.
 	Mass float64
@@ -52,31 +30,21 @@ type BodyDefinition struct {
 	// as 3x3 tensor.
 	MomentOfInertia dprec.Mat3
 
-	// DragFactor is the linear drag factor of the body.
-	DragFactor float64
-
-	// AngularDragFactor is the angular drag factor of the body.
-	AngularDragFactor float64
-
-	// CollisionBoxes is a list of collision boxes that define the
-	// collision shape of the body.
-	CollisionBoxes []CollisionBox
-
-	// CollisionSpheres is a list of collision spheres that define the
-	// collision shape of the body.
 	CollisionSpheres []CollisionSphere
 
-	// CollisionMeshes is a list of collision meshes that define the
-	// collision shape of the body.
+	CollisionBoxes []CollisionBox
+}
+
+type PhysicsTerrain struct {
+	// ID is the unique identifier of the body within the file.
+	ID uint32
+
+	NodeID uint32
+
 	CollisionMeshes []CollisionMesh
 }
 
-// BodyMaterial represents a physical material.
-type BodyMaterial struct {
-
-	// ID is the unique identifier of the body material within the file.
-	ID uint32
-
+type CollisionShape struct {
 	// FrictionCoefficient is the coefficient of friction of this material.
 	// Lower values mean more slippery surfaces.
 	FrictionCoefficient float64
@@ -86,8 +54,20 @@ type BodyMaterial struct {
 	RestitutionCoefficient float64
 }
 
+// CollisionSphere represents a sphere-shaped collision volume.
+type CollisionSphere struct {
+	CollisionShape
+
+	// Translation is the position of the sphere.
+	Translation dprec.Vec3
+
+	// Radius is the radius of the sphere.
+	Radius float64
+}
+
 // CollisionBox represents a box-shaped collision volume.
 type CollisionBox struct {
+	CollisionShape
 
 	// Translation is the position of the box.
 	Translation dprec.Vec3
@@ -105,18 +85,9 @@ type CollisionBox struct {
 	Length float64
 }
 
-// CollisionSphere represents a sphere-shaped collision volume.
-type CollisionSphere struct {
-
-	// Translation is the position of the sphere.
-	Translation dprec.Vec3
-
-	// Radius is the radius of the sphere.
-	Radius float64
-}
-
 // CollisionMesh represents a mesh-shaped collision volume.
 type CollisionMesh struct {
+	CollisionShape
 
 	// Translation is the position of the mesh.
 	Translation dprec.Vec3
@@ -141,4 +112,7 @@ type CollisionTriangle struct {
 
 	// C is the third vertex of the triangle.
 	C dprec.Vec3
+
+	// TODO: Add clipping normals so that junctures between triangles can be handled.
+	// Or maybe edge fold angles through which clipping normals can be derived.
 }

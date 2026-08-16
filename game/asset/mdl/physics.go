@@ -2,121 +2,140 @@ package mdl
 
 import "github.com/mokiat/gomath/dprec"
 
-func NewBodyMaterial() *BodyMaterial {
-	return &BodyMaterial{
-		Object:                 NewObject(),
-		frictionCoefficient:    1.0,
-		restitutionCoefficient: 0.5,
+type PhysicsBody struct {
+	*Object
+	mass             float64
+	momentOfInertia  dprec.Mat3
+	collisionSpheres []*CollisionSphere
+	collisionBoxes   []*CollisionBox
+}
+
+func NewPhysicsBody() *PhysicsBody {
+	return &PhysicsBody{
+		Object:           NewObject(),
+		mass:             1.0,
+		momentOfInertia:  dprec.IdentityMat3(),
+		collisionSpheres: []*CollisionSphere{},
+		collisionBoxes:   []*CollisionBox{},
 	}
 }
 
-type BodyMaterial struct {
+func (b *PhysicsBody) Mass() float64 {
+	return b.mass
+}
+
+func (b *PhysicsBody) SetMass(value float64) {
+	b.mass = value
+}
+
+func (b *PhysicsBody) MomentOfInertia() dprec.Mat3 {
+	return b.momentOfInertia
+}
+
+func (b *PhysicsBody) SetMomentOfInertia(value dprec.Mat3) {
+	b.momentOfInertia = value
+}
+
+func (b *PhysicsBody) CollisionSpheres() []*CollisionSphere {
+	return b.collisionSpheres
+}
+
+func (b *PhysicsBody) AddCollisionSphere(value *CollisionSphere) {
+	b.collisionSpheres = append(b.collisionSpheres, value)
+}
+
+func (b *PhysicsBody) CollisionBoxes() []*CollisionBox {
+	return b.collisionBoxes
+}
+
+func (b *PhysicsBody) AddCollisionBox(value *CollisionBox) {
+	b.collisionBoxes = append(b.collisionBoxes, value)
+}
+
+type PhysicsTerrain struct {
 	*Object
+	collisionMeshes []*CollisionMesh
+}
+
+func NewPhysicsTerrain() *PhysicsTerrain {
+	return &PhysicsTerrain{
+		Object:          NewObject(),
+		collisionMeshes: []*CollisionMesh{},
+	}
+}
+
+func (t *PhysicsTerrain) CollisionMeshes() []*CollisionMesh {
+	return t.collisionMeshes
+}
+
+func (t *PhysicsTerrain) SetCollisionMeshes(collisionMeshes []*CollisionMesh) {
+	t.collisionMeshes = collisionMeshes
+}
+
+func (t *PhysicsTerrain) AddCollisionMesh(value *CollisionMesh) {
+	t.collisionMeshes = append(t.collisionMeshes, value)
+}
+
+func (t *PhysicsTerrain) AddCollisionMeshes(collisionMeshes []*CollisionMesh) {
+	t.collisionMeshes = append(t.collisionMeshes, collisionMeshes...)
+}
+
+type CollisionShape struct {
 	frictionCoefficient    float64
 	restitutionCoefficient float64
 }
 
-func (m *BodyMaterial) FrictionCoefficient() float64 {
-	return m.frictionCoefficient
+func (s *CollisionShape) FrictionCoefficient() float64 {
+	return s.frictionCoefficient
 }
 
-func (m *BodyMaterial) SetFrictionCoefficient(value float64) {
-	m.frictionCoefficient = value
+func (s *CollisionShape) SetFrictionCoefficient(value float64) {
+	s.frictionCoefficient = value
 }
 
-func (m *BodyMaterial) RestitutionCoefficient() float64 {
-	return m.restitutionCoefficient
+func (s *CollisionShape) RestitutionCoefficient() float64 {
+	return s.restitutionCoefficient
 }
 
-func (m *BodyMaterial) SetRestitutionCoefficient(value float64) {
-	m.restitutionCoefficient = value
+func (s *CollisionShape) SetRestitutionCoefficient(value float64) {
+	s.restitutionCoefficient = value
 }
 
-func NewBodyDefinition(material *BodyMaterial) *BodyDefinition {
-	return &BodyDefinition{
-		Object:   NewObject(),
-		material: material,
+type CollisionSphere struct {
+	CollisionShape
+	translation dprec.Vec3
+	radius      float64
+}
+
+func NewCollisionSphere() *CollisionSphere {
+	return &CollisionSphere{
+		translation: dprec.ZeroVec3(),
 	}
 }
 
-type BodyDefinition struct {
-	*Object
-	material          *BodyMaterial
-	mass              float64
-	momentOfInertia   dprec.Mat3
-	dragFactor        float64
-	angularDragFactor float64
-	collisionBoxes    []*CollisionBox
-	collisionSpheres  []*CollisionSphere
-	collisionMeshes   []*CollisionMesh
+func (s *CollisionSphere) Translation() dprec.Vec3 {
+	return s.translation
 }
 
-func (d *BodyDefinition) Material() *BodyMaterial {
-	return d.material
+func (s *CollisionSphere) SetTranslation(value dprec.Vec3) {
+	s.translation = value
 }
 
-func (d *BodyDefinition) Mass() float64 {
-	return d.mass
+func (s *CollisionSphere) Radius() float64 {
+	return s.radius
 }
 
-func (d *BodyDefinition) SetMass(value float64) {
-	d.mass = value
+func (s *CollisionSphere) SetRadius(value float64) {
+	s.radius = value
 }
 
-func (d *BodyDefinition) MomentOfInertia() dprec.Mat3 {
-	return d.momentOfInertia
-}
-
-func (d *BodyDefinition) SetMomentOfInertia(value dprec.Mat3) {
-	d.momentOfInertia = value
-}
-
-func (d *BodyDefinition) DragFactor() float64 {
-	return d.dragFactor
-}
-
-func (d *BodyDefinition) SetDragFactor(value float64) {
-	d.dragFactor = value
-}
-
-func (d *BodyDefinition) AngularDragFactor() float64 {
-	return d.angularDragFactor
-}
-
-func (d *BodyDefinition) SetAngularDragFactor(value float64) {
-	d.angularDragFactor = value
-}
-
-func (d *BodyDefinition) CollisionBoxes() []*CollisionBox {
-	return d.collisionBoxes
-}
-
-func (d *BodyDefinition) AddCollisionBox(value *CollisionBox) {
-	d.collisionBoxes = append(d.collisionBoxes, value)
-}
-
-func (d *BodyDefinition) CollisionSpheres() []*CollisionSphere {
-	return d.collisionSpheres
-}
-
-func (d *BodyDefinition) AddCollisionSphere(value *CollisionSphere) {
-	d.collisionSpheres = append(d.collisionSpheres, value)
-}
-
-func (d *BodyDefinition) CollisionMeshes() []*CollisionMesh {
-	return d.collisionMeshes
-}
-
-func (d *BodyDefinition) SetCollisionMeshes(collisionMeshes []*CollisionMesh) {
-	d.collisionMeshes = collisionMeshes
-}
-
-func (d *BodyDefinition) AddCollisionMesh(value *CollisionMesh) {
-	d.collisionMeshes = append(d.collisionMeshes, value)
-}
-
-func (d *BodyDefinition) AddCollisionMeshes(collisionMeshes []*CollisionMesh) {
-	d.collisionMeshes = append(d.collisionMeshes, collisionMeshes...)
+type CollisionBox struct {
+	CollisionShape
+	translation dprec.Vec3
+	rotation    dprec.Quat
+	width       float64
+	height      float64
+	length      float64
 }
 
 func NewCollisionBox() *CollisionBox {
@@ -124,14 +143,6 @@ func NewCollisionBox() *CollisionBox {
 		translation: dprec.ZeroVec3(),
 		rotation:    dprec.IdentityQuat(),
 	}
-}
-
-type CollisionBox struct {
-	translation dprec.Vec3
-	rotation    dprec.Quat
-	width       float64
-	height      float64
-	length      float64
 }
 
 func (b *CollisionBox) Translation() dprec.Vec3 {
@@ -174,31 +185,11 @@ func (b *CollisionBox) SetLength(value float64) {
 	b.length = value
 }
 
-func NewCollisionSphere() *CollisionSphere {
-	return &CollisionSphere{
-		translation: dprec.ZeroVec3(),
-	}
-}
-
-type CollisionSphere struct {
+type CollisionMesh struct {
+	CollisionShape
 	translation dprec.Vec3
-	radius      float64
-}
-
-func (s *CollisionSphere) Translation() dprec.Vec3 {
-	return s.translation
-}
-
-func (s *CollisionSphere) SetTranslation(value dprec.Vec3) {
-	s.translation = value
-}
-
-func (s *CollisionSphere) Radius() float64 {
-	return s.radius
-}
-
-func (s *CollisionSphere) SetRadius(value float64) {
-	s.radius = value
+	rotation    dprec.Quat
+	triangles   []CollisionTriangle
 }
 
 func NewCollisionMesh() *CollisionMesh {
@@ -206,12 +197,6 @@ func NewCollisionMesh() *CollisionMesh {
 		translation: dprec.ZeroVec3(),
 		rotation:    dprec.IdentityQuat(),
 	}
-}
-
-type CollisionMesh struct {
-	translation dprec.Vec3
-	rotation    dprec.Quat
-	triangles   []CollisionTriangle
 }
 
 func (m *CollisionMesh) Translation() dprec.Vec3 {
@@ -248,22 +233,7 @@ type CollisionTriangle struct {
 	C dprec.Vec3
 }
 
-func NewBody(definition *BodyDefinition) *Body {
-	return &Body{
-		Object:     NewObject(),
-		definition: definition,
-	}
-}
-
-type Body struct {
-	*Object
-	definition *BodyDefinition
-}
-
-func (b *Body) Definition() *BodyDefinition {
-	return b.definition
-}
-
+// TODO: Move somewhere else.
 type Placed[T any] struct {
 	Node  *Node
 	Value T

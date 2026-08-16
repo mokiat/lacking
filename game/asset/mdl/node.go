@@ -117,6 +117,20 @@ func (n *Node) RemoveNode(node *Node) {
 	})
 }
 
+func (n *Node) Matrix() dprec.Mat4 {
+	return dprec.TRSMat4(n.translation, n.rotation, n.scale)
+}
+
+func (n *Node) AbsoluteMatrix() dprec.Mat4 {
+	if n.parent == nil {
+		return n.Matrix()
+	}
+	return dprec.Mat4Prod(
+		n.parent.AbsoluteMatrix(),
+		n.Matrix(),
+	)
+}
+
 func NodeAttachmentsOfType[T any](node *Node) iter.Seq[T] {
 	return func(yield func(T) bool) {
 		for _, attachment := range node.attachments {
