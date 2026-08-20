@@ -34,52 +34,61 @@ type SceneSettings struct {
 	InitialItemCapacity opt.T[uint32]
 }
 
-// Scene represents a 2D scene into which dynamic objects (built from convex
-// shapes) and static meshes can be placed and tested for intersection.
+// Scene represents a 2D scene into which movable objects (built from convex
+// shapes) and immovable terrains (built from concave shapes) can be placed and
+// tested for intersection.
 //
 // The type parameters specify the user data attached to each kind of entity:
-// O for objects, S for shapes, and M for meshes.
-type Scene[O, S, M any] struct {
-	shapeTree *query2d.Quadtree[int32]
-	meshTree  *query2d.Quadtree[int32]
-
+// O for objects, T for terrains, and S for the shapes of both.
+//
+// A scene is not safe for concurrent use. Furthermore, the intersection
+// queries share internal scratch buffers, so a query must not be started from
+// within the callback of another query.
+type Scene[O, T, S any] struct {
 	solver *gjk2d.Solver
 
-	freeObjectIndices *ds.Stack[int32]
-	freeShapeIndices  *ds.Stack[int32]
-	freeMeshIndices   *ds.Stack[int32]
+	objectShapeTree  *query2d.Quadtree[int32]
+	terrainShapeTree *query2d.Quadtree[int32]
 
-	objects []sceneObject[O]
-	shapes  []shape[S]
-	meshes  []meshShape[M]
+	freeObjectIndices       *ds.Stack[int32]
+	freeObjectShapeIndices  *ds.Stack[int32]
+	freeTerrainIndices      *ds.Stack[int32]
+	freeTerrainShapeIndices *ds.Stack[int32]
 
-	shapeCandidates []int32
-	meshCandidates  []int32
+	objects       []objectState[O]
+	objectShapes  []objectShapeState[S]
+	terrains      []terrainState[T]
+	terrainShapes []terrainShapeState[S]
+
+	objectShapeCandidates  []int32
+	terrainShapeCandidates []int32
 
 	tempGJKSource gjk2d.Shape
 	tempGJKTarget gjk2d.Shape
 }
 
 // NewScene creates a new scene.
-func NewScene[O, S, M any](settings SceneSettings) *Scene[O, S, M] {
+func NewScene[O, T, S any](settings SceneSettings) *Scene[O, T, S] {
 	treeSettings := query2d.QuadtreeSettings(settings)
 
-	return &Scene[O, S, M]{
-		shapeTree: query2d.NewQuadtree[int32](treeSettings),
-		meshTree:  query2d.NewQuadtree[int32](treeSettings),
-
+	return &Scene[O, T, S]{
 		solver: gjk2d.NewSolver(),
 
-		freeObjectIndices: ds.EmptyStack[int32](),
-		freeShapeIndices:  ds.EmptyStack[int32](),
-		freeMeshIndices:   ds.EmptyStack[int32](),
+		objectShapeTree:  query2d.NewQuadtree[int32](treeSettings),
+		terrainShapeTree: query2d.NewQuadtree[int32](treeSettings),
 
-		objects: make([]sceneObject[O], 0),
-		shapes:  make([]shape[S], 0),
-		meshes:  make([]meshShape[M], 0),
+		freeObjectIndices:       ds.EmptyStack[int32](),
+		freeObjectShapeIndices:  ds.EmptyStack[int32](),
+		freeTerrainIndices:      ds.EmptyStack[int32](),
+		freeTerrainShapeIndices: ds.EmptyStack[int32](),
 
-		shapeCandidates: make([]int32, 0),
-		meshCandidates:  make([]int32, 0),
+		objects:       make([]objectState[O], 0),
+		objectShapes:  make([]objectShapeState[S], 0),
+		terrains:      make([]terrainState[T], 0),
+		terrainShapes: make([]terrainShapeState[S], 0),
+
+		objectShapeCandidates:  make([]int32, 0),
+		terrainShapeCandidates: make([]int32, 0),
 
 		tempGJKSource: gjk2d.Shape{
 			Points: make([]dprec.Vec2, 0, 4),
@@ -91,7 +100,7 @@ func NewScene[O, S, M any](settings SceneSettings) *Scene[O, S, M] {
 }
 
 // CreateObject creates a new object.
-func (s *Scene[O, S, M]) CreateObject(info ObjectInfo[O]) ObjectID {
+func (s *Scene[O, T, S]) CreateObject(info ObjectInfo[O]) ObjectID {
 	transform := shape2d.Transform{
 		Translation: info.Position.ValueOrDefault(dprec.ZeroVec2()),
 		Rotation: shape2d.RotationFromAngle(
@@ -100,7 +109,7 @@ func (s *Scene[O, S, M]) CreateObject(info ObjectInfo[O]) ObjectID {
 	}
 
 	index := s.allocateObject()
-	s.objects[index] = sceneObject[O]{
+	s.objects[index] = objectState[O]{
 		transform:       transform,
 		firstShapeIndex: nilIndex,
 		lastShapeIndex:  nilIndex,
@@ -110,69 +119,78 @@ func (s *Scene[O, S, M]) CreateObject(info ObjectInfo[O]) ObjectID {
 }
 
 // DeleteObject deletes an object.
-func (s *Scene[O, S, M]) DeleteObject(objID ObjectID) {
+func (s *Scene[O, T, S]) DeleteObject(objID ObjectID) {
 	index := int32(objID)
 	object := &s.objects[index]
 	object.userData = gog.Zero[O]() // in case of pointer
-	s.eachObjectShape(object, func(shapeIndex int32, _ *shape[S]) {
-		s.detachShape(shapeIndex)
+	s.eachObjectShape(object, func(shapeIndex int32, _ *objectShapeState[S]) {
+		s.detachObjectShape(shapeIndex)
 	})
 	s.releaseObject(index)
 }
 
 // GetObjectUserData returns the user data associated with the given object.
-func (s *Scene[O, S, M]) GetObjectUserData(objID ObjectID) O {
-	object := &s.objects[objID]
+func (s *Scene[O, T, S]) GetObjectUserData(objID ObjectID) O {
+	index := int32(objID)
+	object := &s.objects[index]
 	return object.userData
 }
 
 // SetObjectUserData assigns the specified user data to the object.
-func (s *Scene[O, S, M]) SetObjectUserData(objID ObjectID, userData O) {
-	object := &s.objects[objID]
+func (s *Scene[O, T, S]) SetObjectUserData(objID ObjectID, userData O) {
+	index := int32(objID)
+	object := &s.objects[index]
 	object.userData = userData
 }
 
 // GetObjectTransform returns the given object's transform.
-func (s *Scene[O, S, M]) GetObjectTransform(objID ObjectID) shape2d.Transform {
-	object := &s.objects[objID]
+func (s *Scene[O, T, S]) GetObjectTransform(objID ObjectID) shape2d.Transform {
+	index := int32(objID)
+	object := &s.objects[index]
 	return object.transform
 }
 
 // SetObjectTransform relocates the given object.
-func (s *Scene[O, S, M]) SetObjectTransform(objID ObjectID, transform shape2d.Transform) {
-	object := &s.objects[objID]
+func (s *Scene[O, T, S]) SetObjectTransform(objID ObjectID, transform shape2d.Transform) {
+	index := int32(objID)
+	object := &s.objects[index]
 	object.transform = transform
 
-	s.eachObjectShape(object, func(_ int32, shape *shape[S]) {
+	s.eachObjectShape(object, func(_ int32, shape *objectShapeState[S]) {
 		shape.update(transform)
-		bc := shape.boundingCircle()
-		s.shapeTree.Update(shape.spatialID, query2d.AreaFromCircle(bc))
+		area := shape2d.AABBFromCircle(shape.wsBCircle)
+		s.objectShapeTree.Update(shape.spatialID, area)
 	})
 }
 
-// GetShapeObject returns the ID of the object that the given shape is
+// GetObjectForShape returns the ID of the object that the given shape is
 // attached to.
-func (s *Scene[O, S, M]) GetShapeObject(shapeID ShapeID) ObjectID {
+func (s *Scene[O, T, S]) GetObjectForShape(shapeID ObjectShapeID) ObjectID {
 	index := int32(shapeID)
-	shape := &s.shapes[index]
+	shape := &s.objectShapes[index]
 	return ObjectID(shape.objectIndex)
 }
 
 // AttachCircle creates a circle shape and attaches it to the object to be
 // used for intersection tests.
-func (s *Scene[O, S, M]) AttachCircle(objID ObjectID, info CircleInfo[S]) ShapeID {
+//
+// The circle is specified in the local space of the object and moves along
+// with it.
+func (s *Scene[O, T, S]) AttachCircle(objID ObjectID, info CircleInfo[S]) ObjectShapeID {
+	index := int32(objID)
+
 	circle := info.Circle
 	transform := shape2d.Transform{
 		Translation: circle.Center,
 		Rotation:    shape2d.IdentityRotation(),
 	}
 
-	return s.attachShape(int32(objID), info.Filtering, shapeRepresentation{
+	return s.attachObjectShape(index, info.Filtering, objectShapeRepresentation{
 		lsBCircle:   circle,
 		wsBCircle:   circle,
 		lsTransform: transform,
 		wsTransform: transform,
-		kind:        shapeKindCircle,
+		kind:        objectShapeKindCircle,
 		points: []dprec.Vec2{ // TODO: Consider reusing from a buffer.
 			dprec.ZeroVec2(),
 		},
@@ -180,9 +198,14 @@ func (s *Scene[O, S, M]) AttachCircle(objID ObjectID, info CircleInfo[S]) ShapeI
 	}, info.UserData)
 }
 
-// AttachRectangle creates a rectangle shape and attaches it to the object to be
-// used for intersection tests.
-func (s *Scene[O, S, M]) AttachRectangle(objID ObjectID, info RectangleInfo[S]) ShapeID {
+// AttachRectangle creates a rectangle shape and attaches it to the object to
+// be used for intersection tests.
+//
+// The rectangle is specified in the local space of the object and moves along
+// with it.
+func (s *Scene[O, T, S]) AttachRectangle(objID ObjectID, info RectangleInfo[S]) ObjectShapeID {
+	index := int32(objID)
+
 	rectangle := info.Rectangle
 	transform := shape2d.Transform{
 		Translation: rectangle.Center,
@@ -192,12 +215,12 @@ func (s *Scene[O, S, M]) AttachRectangle(objID ObjectID, info RectangleInfo[S]) 
 	halfWidth := rectangle.HalfWidth
 	halfHeight := rectangle.HalfHeight
 
-	return s.attachShape(int32(objID), info.Filtering, shapeRepresentation{
+	return s.attachObjectShape(index, info.Filtering, objectShapeRepresentation{
 		lsBCircle:   bCircle,
 		wsBCircle:   bCircle,
 		lsTransform: transform,
 		wsTransform: transform,
-		kind:        shapeKindRectangle,
+		kind:        objectShapeKindRectangle,
 		points: []dprec.Vec2{ // TODO: Consider reusing from a buffer.
 			dprec.NewVec2(-halfWidth, -halfHeight),
 			dprec.NewVec2(halfWidth, -halfHeight),
@@ -208,42 +231,43 @@ func (s *Scene[O, S, M]) AttachRectangle(objID ObjectID, info RectangleInfo[S]) 
 	}, info.UserData)
 }
 
-// DeleteShape deletes a shape from an object. The object is not
+// DeleteObjectShape deletes a shape from an object. The object is not
 // deleted and continues to exist in the scene.
-func (s *Scene[O, S, M]) DeleteShape(shapeID ShapeID) {
+func (s *Scene[O, T, S]) DeleteObjectShape(shapeID ObjectShapeID) {
 	index := int32(shapeID)
-	s.detachShape(index)
+	s.detachObjectShape(index)
 }
 
-// GetShapeUserData returns the user data associated with the given shape.
-func (s *Scene[O, S, M]) GetShapeUserData(shapeID ShapeID) S {
+// GetObjectShapeUserData returns the user data associated with the given
+// object shape.
+func (s *Scene[O, T, S]) GetObjectShapeUserData(shapeID ObjectShapeID) S {
 	index := int32(shapeID)
-	shape := &s.shapes[index]
+	shape := &s.objectShapes[index]
 	return shape.userData
 }
 
-// SetShapeUserData assigns the specified user data to the shape.
-func (s *Scene[O, S, M]) SetShapeUserData(shapeID ShapeID, userData S) {
+// SetObjectShapeUserData assigns the specified user data to the object shape.
+func (s *Scene[O, T, S]) SetObjectShapeUserData(shapeID ObjectShapeID, userData S) {
 	index := int32(shapeID)
-	shape := &s.shapes[index]
+	shape := &s.objectShapes[index]
 	shape.userData = userData
 }
 
 // EachCircle iterates over all circle shapes in the scene that match the
-// filter and yields them to the provided callback.
-func (s *Scene[O, S, M]) EachCircle(filter Filter, yield func(shape2d.Circle) bool) {
-	if filter.SkipDynamic {
-		return
-	}
-	for index := range s.shapes {
-		shape := &s.shapes[index]
+// filter and yields them, in world space, to the provided callback. Iteration
+// stops early if the callback returns false.
+//
+// Note that the zero value of [Filter] matches every circle in the scene.
+func (s *Scene[O, T, S]) EachCircle(filter Filter, yield func(shape2d.Circle) bool) {
+	for index := range s.objectShapes {
+		shape := &s.objectShapes[index]
 		if shape.spatialID == query2d.InvalidTreeItemID {
 			continue
 		}
-		if shape.kind != shapeKindCircle {
+		if shape.kind != objectShapeKindCircle {
 			continue
 		}
-		if !shape.matchesFilter(filter) {
+		if !shape.satisfiesFilter(filter) {
 			continue
 		}
 		if !yield(shape.toCircle()) {
@@ -252,29 +276,29 @@ func (s *Scene[O, S, M]) EachCircle(filter Filter, yield func(shape2d.Circle) bo
 	}
 }
 
-// CircleIter returns an iterator over all circle shapes in the scene that match
-// the filter.
-func (s *Scene[O, S, M]) CircleIter(filter Filter) iter.Seq[shape2d.Circle] {
+// CircleIter returns an iterator over all circle shapes in the scene that
+// match the filter, as described by [Scene.EachCircle].
+func (s *Scene[O, T, S]) CircleIter(filter Filter) iter.Seq[shape2d.Circle] {
 	return func(yield func(shape2d.Circle) bool) {
 		s.EachCircle(filter, yield)
 	}
 }
 
 // EachRectangle iterates over all rectangle shapes in the scene that match the
-// filter and yields them to the provided callback.
-func (s *Scene[O, S, M]) EachRectangle(filter Filter, yield func(shape2d.Rectangle) bool) {
-	if filter.SkipDynamic {
-		return
-	}
-	for index := range s.shapes {
-		shape := &s.shapes[index]
+// filter and yields them, in world space, to the provided callback. Iteration
+// stops early if the callback returns false.
+//
+// Note that the zero value of [Filter] matches every rectangle in the scene.
+func (s *Scene[O, T, S]) EachRectangle(filter Filter, yield func(shape2d.Rectangle) bool) {
+	for index := range s.objectShapes {
+		shape := &s.objectShapes[index]
 		if shape.spatialID == query2d.InvalidTreeItemID {
 			continue
 		}
-		if shape.kind != shapeKindRectangle {
+		if shape.kind != objectShapeKindRectangle {
 			continue
 		}
-		if !shape.matchesFilter(filter) {
+		if !shape.satisfiesFilter(filter) {
 			continue
 		}
 		if !yield(shape.toRectangle()) {
@@ -283,262 +307,385 @@ func (s *Scene[O, S, M]) EachRectangle(filter Filter, yield func(shape2d.Rectang
 	}
 }
 
-// RectangleIter returns an iterator over all rectangle shapes in the scene that
-// match the filter.
-func (s *Scene[O, S, M]) RectangleIter(filter Filter) iter.Seq[shape2d.Rectangle] {
+// RectangleIter returns an iterator over all rectangle shapes in the scene
+// that match the filter, as described by [Scene.EachRectangle].
+func (s *Scene[O, T, S]) RectangleIter(filter Filter) iter.Seq[shape2d.Rectangle] {
 	return func(yield func(shape2d.Rectangle) bool) {
 		s.EachRectangle(filter, yield)
 	}
 }
 
-// CreateMesh creates a new static mesh in the scene.
+// CreateTerrain creates a new terrain.
 //
-// Unlike shapes, a mesh is not attached to an object. It is positioned
-// directly through the [MeshInfo.Position] and [MeshInfo.Rotation] fields and
-// is intended for static geometry that participates in intersection tests as a
-// collection of edges.
-func (s *Scene[O, S, M]) CreateMesh(info MeshInfo[M]) MeshID {
-	transform := shape2d.Transform{
-		Translation: info.Position.ValueOrDefault(dprec.ZeroVec2()),
-		Rotation: shape2d.RotationFromAngle(
-			info.Rotation.ValueOrDefault(dprec.Radians(0.0)),
-		),
+// A terrain has no transform of its own. It merely groups the concave shapes
+// that are attached to it, which are specified in world space.
+func (s *Scene[O, T, S]) CreateTerrain(info TerrainInfo[T]) TerrainID {
+	index := s.allocateTerrain()
+	s.terrains[index] = terrainState[T]{
+		firstShapeIndex: nilIndex,
+		lastShapeIndex:  nilIndex,
+		userData:        info.UserData,
 	}
-	representation := newMeshRepresentation(shape2d.TransformedMesh(info.Mesh, transform))
-	area := query2d.AreaFromCircle(representation.boundingCircle())
-
-	index := s.allocateMesh()
-	s.meshes[index] = meshShape[M]{
-		spatialID:            s.meshTree.Insert(area, index),
-		filterRepresentation: newFilterRepresentation(info.Filtering),
-		meshRepresentation:   representation,
-		userData:             info.UserData,
-	}
-
-	return MeshID(index)
+	return TerrainID(index)
 }
 
-// DeleteMesh removes the given mesh from the scene.
-func (s *Scene[O, S, M]) DeleteMesh(meshID MeshID) {
-	index := int32(meshID)
-	mesh := &s.meshes[index]
-	s.meshTree.Remove(mesh.spatialID)
-	mesh.spatialID = query2d.InvalidTreeItemID
-	mesh.userData = gog.Zero[M]() // in case of pointer
-	s.releaseMesh(index)
+// DeleteTerrain deletes a terrain, along with all of the shapes that are
+// attached to it.
+func (s *Scene[O, T, S]) DeleteTerrain(terrainID TerrainID) {
+	index := int32(terrainID)
+	terrain := &s.terrains[index]
+	terrain.userData = gog.Zero[T]() // in case of pointer
+	s.eachTerrainShape(terrain, func(shapeIndex int32, _ *terrainShapeState[S]) {
+		s.detachTerrainShape(shapeIndex)
+	})
+	s.releaseTerrain(index)
 }
 
-// GetMeshUserData returns the user data associated with the given mesh.
-func (s *Scene[O, S, M]) GetMeshUserData(meshID MeshID) M {
-	mesh := &s.meshes[meshID]
-	return mesh.userData
+// GetTerrainUserData returns the user data associated with the given terrain.
+func (s *Scene[O, T, S]) GetTerrainUserData(terrainID TerrainID) T {
+	index := int32(terrainID)
+	terrain := &s.terrains[index]
+	return terrain.userData
 }
 
-// SetMeshUserData assigns the specified user data to the mesh.
-func (s *Scene[O, S, M]) SetMeshUserData(meshID MeshID, userData M) {
-	mesh := &s.meshes[meshID]
-	mesh.userData = userData
+// SetTerrainUserData assigns the specified user data to the terrain.
+func (s *Scene[O, T, S]) SetTerrainUserData(terrainID TerrainID, userData T) {
+	index := int32(terrainID)
+	terrain := &s.terrains[index]
+	terrain.userData = userData
 }
 
-// CollectSegmentIntersections collects all intersections of the segment
-// with objects in the scene.
-func (s *Scene[O, S, M]) CollectSegmentIntersections(segment shape2d.Segment, filter Filter, yield ContactCallback) {
-	querySegment := query2d.NewSegment(segment.A, segment.B)
-
-	if !filter.SkipDynamic {
-		s.shapeCandidates = s.shapeCandidates[:0]
-		s.shapeTree.QuerySegment(querySegment, func(index int32) bool {
-			s.shapeCandidates = append(s.shapeCandidates, index)
-			return true
-		})
-		s.collectSegmentShape(segment, filter, yield)
-	}
-
-	if !filter.SkipStatic {
-		s.meshCandidates = s.meshCandidates[:0]
-		s.meshTree.QuerySegment(querySegment, func(index int32) bool {
-			s.meshCandidates = append(s.meshCandidates, index)
-			return true
-		})
-		s.collectSegmentMesh(segment, filter, yield)
-	}
+// GetTerrainForShape returns the ID of the terrain that the given shape is
+// attached to.
+func (s *Scene[O, T, S]) GetTerrainForShape(shapeID TerrainShapeID) TerrainID {
+	index := int32(shapeID)
+	shape := &s.terrainShapes[index]
+	return TerrainID(shape.terrainIndex)
 }
 
-// CheckSegmentIntersection returns the deepest intersection of the segment
-// with the scene.
-func (s *Scene[O, S, M]) CheckSegmentIntersection(segment shape2d.Segment, filter Filter) (Contact, bool) {
-	var collection DeepestContact
-	s.CollectSegmentIntersections(segment, filter, collection.AddContact)
+// AttachMesh creates a mesh shape and attaches it to the terrain to be used
+// for intersection tests.
+//
+// The mesh is specified in world space, as terrains have no transform of their
+// own, and cannot be relocated afterwards.
+//
+// The mesh specified through [MeshInfo.Mesh] must not be empty, otherwise this
+// function panics.
+func (s *Scene[O, T, S]) AttachMesh(terrainID TerrainID, info MeshInfo[S]) TerrainShapeID {
+	index := int32(terrainID)
+
+	mesh := info.Mesh
+	bCircle := mesh.BoundingCircle()
+	aabb := mesh.BoundingAABB()
+
+	return s.attachTerrainShape(index, info.Filtering, terrainShapeRepresentation{
+		wsBCircle: bCircle,
+		wsAABB:    aabb,
+		wsEdges:   mesh.Edges,
+	}, info.UserData)
+}
+
+// DeleteTerrainShape deletes a shape from a terrain. The terrain is not
+// deleted and continues to exist in the scene.
+func (s *Scene[O, T, S]) DeleteTerrainShape(shapeID TerrainShapeID) {
+	index := int32(shapeID)
+	s.detachTerrainShape(index)
+}
+
+// GetTerrainShapeUserData returns the user data associated with the given
+// terrain shape.
+func (s *Scene[O, T, S]) GetTerrainShapeUserData(shapeID TerrainShapeID) S {
+	index := int32(shapeID)
+	shape := &s.terrainShapes[index]
+	return shape.userData
+}
+
+// SetTerrainShapeUserData assigns the specified user data to the terrain
+// shape.
+func (s *Scene[O, T, S]) SetTerrainShapeUserData(shapeID TerrainShapeID, userData S) {
+	index := int32(shapeID)
+	shape := &s.terrainShapes[index]
+	shape.userData = userData
+}
+
+// CollectSegmentObjectIntersections collects all intersections of the segment
+// with the object shapes in the scene that match the filter.
+//
+// The reported contacts have no source, since the segment is not part of the
+// scene. Their Depth is the fraction of the segment that lies beyond the
+// contact point, as described by [shape2d.Contact].
+func (s *Scene[O, T, S]) CollectSegmentObjectIntersections(segment shape2d.Segment, filter Filter, yield ObjectContactCallback) {
+	s.objectShapeCandidates = s.objectShapeCandidates[:0]
+	s.objectShapeTree.QuerySegment(segment, func(index int32) bool {
+		s.objectShapeCandidates = append(s.objectShapeCandidates, index)
+		return true
+	})
+	s.collectSegmentObject(segment, filter, yield)
+}
+
+// CheckSegmentObjectIntersection returns the intersection of the segment with
+// the object shape that it enters first, if any. Only object shapes that match
+// the filter are considered.
+func (s *Scene[O, T, S]) CheckSegmentObjectIntersection(segment shape2d.Segment, filter Filter) (ObjectContact, bool) {
+	var collection DeepestObjectContact
+	s.CollectSegmentObjectIntersections(segment, filter, collection.AddContact)
 	return collection.Contact()
 }
 
-// CollectCircleIntersections collects all intersections of the circle
-// with objects in the scene.
-func (s *Scene[O, S, M]) CollectCircleIntersections(circle shape2d.Circle, filter Filter, yield ContactCallback) {
-	queryAABB := query2d.AABBFromCircle(circle)
-
-	if !filter.SkipDynamic {
-		s.shapeCandidates = s.shapeCandidates[:0]
-		s.shapeTree.QueryAABB(queryAABB, func(index int32) bool {
-			s.shapeCandidates = append(s.shapeCandidates, index)
-			return true
-		})
-		s.collectCircleShape(circle, filter, yield)
-	}
-
-	if !filter.SkipStatic {
-		s.meshCandidates = s.meshCandidates[:0]
-		s.meshTree.QueryAABB(queryAABB, func(index int32) bool {
-			s.meshCandidates = append(s.meshCandidates, index)
-			return true
-		})
-		s.collectCircleMesh(circle, filter, yield)
-	}
+// CollectSegmentTerrainIntersections collects all intersections of the segment
+// with the terrain shapes in the scene that match the filter. At most one
+// contact is reported per terrain shape.
+//
+// The reported contacts have no source, since the segment is not part of the
+// scene. Their Depth is the fraction of the segment that lies beyond the
+// contact point, as described by [shape2d.Contact].
+func (s *Scene[O, T, S]) CollectSegmentTerrainIntersections(segment shape2d.Segment, filter Filter, yield TerrainContactCallback) {
+	s.terrainShapeCandidates = s.terrainShapeCandidates[:0]
+	s.terrainShapeTree.QuerySegment(segment, func(index int32) bool {
+		s.terrainShapeCandidates = append(s.terrainShapeCandidates, index)
+		return true
+	})
+	s.collectSegmentTerrain(segment, filter, yield)
 }
 
-// CheckCircleIntersection returns the deepest intersection of the circle
-// with the scene.
-func (s *Scene[O, S, M]) CheckCircleIntersection(circle shape2d.Circle, filter Filter) (Contact, bool) {
-	var collection DeepestContact
-	s.CollectCircleIntersections(circle, filter, collection.AddContact)
+// CheckSegmentTerrainIntersection returns the intersection of the segment with
+// the terrain shape that it enters first, if any. Only terrain shapes that
+// match the filter are considered.
+func (s *Scene[O, T, S]) CheckSegmentTerrainIntersection(segment shape2d.Segment, filter Filter) (TerrainContact, bool) {
+	var collection DeepestTerrainContact
+	s.CollectSegmentTerrainIntersections(segment, filter, collection.AddContact)
 	return collection.Contact()
 }
 
-// CollectRectangleIntersections collects all intersections of the rectangle
-// with objects in the scene.
-func (s *Scene[O, S, M]) CollectRectangleIntersections(rectangle shape2d.Rectangle, filter Filter, yield ContactCallback) {
-	queryAABB := query2d.AABBFromRectangle(rectangle)
+// CollectCircleObjectIntersections collects all intersections of the circle
+// with the object shapes in the scene that match the filter.
+//
+// The reported contacts have no source, since the circle is not part of the
+// scene.
+func (s *Scene[O, T, S]) CollectCircleObjectIntersections(circle shape2d.Circle, filter Filter, yield ObjectContactCallback) {
+	queryAABB := shape2d.AABBFromCircle(circle)
 
-	if !filter.SkipDynamic {
-		s.shapeCandidates = s.shapeCandidates[:0]
-		s.shapeTree.QueryAABB(queryAABB, func(index int32) bool {
-			s.shapeCandidates = append(s.shapeCandidates, index)
-			return true
-		})
-		s.collectRectangleShape(rectangle, filter, yield)
-	}
-
-	if !filter.SkipStatic {
-		s.meshCandidates = s.meshCandidates[:0]
-		s.meshTree.QueryAABB(queryAABB, func(index int32) bool {
-			s.meshCandidates = append(s.meshCandidates, index)
-			return true
-		})
-		s.collectRectangleMesh(rectangle, filter, yield)
-	}
+	s.objectShapeCandidates = s.objectShapeCandidates[:0]
+	s.objectShapeTree.QueryAABB(queryAABB, func(index int32) bool {
+		s.objectShapeCandidates = append(s.objectShapeCandidates, index)
+		return true
+	})
+	s.collectCircleObject(circle, filter, yield)
 }
 
-// CheckRectangleIntersection returns the deepest intersection of the rectangle
-// with the scene.
-func (s *Scene[O, S, M]) CheckRectangleIntersection(rectangle shape2d.Rectangle, filter Filter) (Contact, bool) {
-	var collection DeepestContact
-	s.CollectRectangleIntersections(rectangle, filter, collection.AddContact)
+// CheckCircleObjectIntersection returns the deepest intersection of the circle
+// with an object shape in the scene, if any. Only object shapes that match the
+// filter are considered.
+func (s *Scene[O, T, S]) CheckCircleObjectIntersection(circle shape2d.Circle, filter Filter) (ObjectContact, bool) {
+	var collection DeepestObjectContact
+	s.CollectCircleObjectIntersections(circle, filter, collection.AddContact)
 	return collection.Contact()
 }
 
-// CollectIntersections yields intersections found in this scene.
-func (s *Scene[O, S, M]) CollectIntersections(yield ContactCallback) {
-	for i := range s.shapes {
+// CollectCircleTerrainIntersections collects all intersections of the circle
+// with the terrain shapes in the scene that match the filter. At most one
+// contact is reported per terrain shape.
+//
+// The reported contacts have no source, since the circle is not part of the
+// scene.
+func (s *Scene[O, T, S]) CollectCircleTerrainIntersections(circle shape2d.Circle, filter Filter, yield TerrainContactCallback) {
+	queryAABB := shape2d.AABBFromCircle(circle)
+
+	s.terrainShapeCandidates = s.terrainShapeCandidates[:0]
+	s.terrainShapeTree.QueryAABB(queryAABB, func(index int32) bool {
+		s.terrainShapeCandidates = append(s.terrainShapeCandidates, index)
+		return true
+	})
+	s.collectCircleTerrain(circle, filter, yield)
+}
+
+// CheckCircleTerrainIntersection returns the deepest intersection of the
+// circle with a terrain shape in the scene, if any. Only terrain shapes that
+// match the filter are considered.
+func (s *Scene[O, T, S]) CheckCircleTerrainIntersection(circle shape2d.Circle, filter Filter) (TerrainContact, bool) {
+	var collection DeepestTerrainContact
+	s.CollectCircleTerrainIntersections(circle, filter, collection.AddContact)
+	return collection.Contact()
+}
+
+// CollectRectangleObjectIntersections collects all intersections of the
+// rectangle with the object shapes in the scene that match the filter.
+//
+// The reported contacts have no source, since the rectangle is not part of the
+// scene.
+func (s *Scene[O, T, S]) CollectRectangleObjectIntersections(rectangle shape2d.Rectangle, filter Filter, yield ObjectContactCallback) {
+	queryAABB := shape2d.AABBFromRectangle(rectangle)
+
+	s.objectShapeCandidates = s.objectShapeCandidates[:0]
+	s.objectShapeTree.QueryAABB(queryAABB, func(index int32) bool {
+		s.objectShapeCandidates = append(s.objectShapeCandidates, index)
+		return true
+	})
+	s.collectRectangleObject(rectangle, filter, yield)
+}
+
+// CheckRectangleObjectIntersection returns the deepest intersection of the
+// rectangle with an object shape in the scene, if any. Only object shapes that
+// match the filter are considered.
+func (s *Scene[O, T, S]) CheckRectangleObjectIntersection(rectangle shape2d.Rectangle, filter Filter) (ObjectContact, bool) {
+	var collection DeepestObjectContact
+	s.CollectRectangleObjectIntersections(rectangle, filter, collection.AddContact)
+	return collection.Contact()
+}
+
+// CollectRectangleTerrainIntersections collects all intersections of the
+// rectangle with the terrain shapes in the scene that match the filter. At
+// most one contact is reported per terrain shape.
+//
+// The reported contacts have no source, since the rectangle is not part of the
+// scene.
+func (s *Scene[O, T, S]) CollectRectangleTerrainIntersections(rectangle shape2d.Rectangle, filter Filter, yield TerrainContactCallback) {
+	queryAABB := shape2d.AABBFromRectangle(rectangle)
+
+	s.terrainShapeCandidates = s.terrainShapeCandidates[:0]
+	s.terrainShapeTree.QueryAABB(queryAABB, func(index int32) bool {
+		s.terrainShapeCandidates = append(s.terrainShapeCandidates, index)
+		return true
+	})
+	s.collectRectangleTerrain(rectangle, filter, yield)
+}
+
+// CheckRectangleTerrainIntersection returns the deepest intersection of the
+// rectangle with a terrain shape in the scene, if any. Only terrain shapes
+// that match the filter are considered.
+func (s *Scene[O, T, S]) CheckRectangleTerrainIntersection(rectangle shape2d.Rectangle, filter Filter) (TerrainContact, bool) {
+	var collection DeepestTerrainContact
+	s.CollectRectangleTerrainIntersections(rectangle, filter, collection.AddContact)
+	return collection.Contact()
+}
+
+// CollectObjectIntersections yields the intersections between the object
+// shapes in this scene.
+//
+// Each intersecting pair is reported exactly once, and shapes that belong to
+// the same object are never tested against one another. Both the source and
+// the target of the reported contacts are object shapes.
+func (s *Scene[O, T, S]) CollectObjectIntersections(yield ObjectContactCallback) {
+	for i := range s.objectShapes {
 		srcIndex := int32(i)
-		srcShape := &s.shapes[srcIndex]
+		srcShape := &s.objectShapes[srcIndex]
 		if srcShape.spatialID == query2d.InvalidTreeItemID {
 			continue
 		}
 
-		queryAABB := query2d.AABBFromCircle(srcShape.boundingCircle())
+		queryAABB := shape2d.AABBFromCircle(srcShape.wsBCircle)
 
-		s.shapeCandidates = s.shapeCandidates[:0]
-		s.shapeTree.QueryAABB(queryAABB, func(tgtIndex int32) bool {
-			s.shapeCandidates = append(s.shapeCandidates, tgtIndex)
+		s.objectShapeCandidates = s.objectShapeCandidates[:0]
+		s.objectShapeTree.QueryAABB(queryAABB, func(tgtIndex int32) bool {
+			s.objectShapeCandidates = append(s.objectShapeCandidates, tgtIndex)
 			return true
 		})
-		s.collectShapeShape(srcIndex, srcShape, yield)
+		s.collectObjectObject(srcIndex, srcShape, yield)
+	}
+}
 
-		s.meshCandidates = s.meshCandidates[:0]
-		s.meshTree.QueryAABB(queryAABB, func(tgtIndex int32) bool {
-			s.meshCandidates = append(s.meshCandidates, tgtIndex)
+// CollectTerrainIntersections yields the intersections between the object
+// shapes and the terrain shapes in this scene. At most one contact is reported
+// per object shape and terrain shape pair.
+//
+// Terrain shapes are never tested against one another, since terrains cannot
+// move. The source of the reported contacts is therefore always an object
+// shape.
+func (s *Scene[O, T, S]) CollectTerrainIntersections(yield TerrainContactCallback) {
+	for i := range s.objectShapes {
+		srcIndex := int32(i)
+		srcShape := &s.objectShapes[srcIndex]
+		if srcShape.spatialID == query2d.InvalidTreeItemID {
+			continue
+		}
+
+		queryAABB := shape2d.AABBFromCircle(srcShape.wsBCircle)
+
+		s.terrainShapeCandidates = s.terrainShapeCandidates[:0]
+		s.terrainShapeTree.QueryAABB(queryAABB, func(tgtIndex int32) bool {
+			s.terrainShapeCandidates = append(s.terrainShapeCandidates, tgtIndex)
 			return true
 		})
-		s.collectShapeMesh(srcIndex, srcShape, yield)
+		s.collectObjectTerrain(srcIndex, srcShape, yield)
 	}
 }
 
 const nilIndex = -1
 
-func (s *Scene[O, S, M]) allocateObject() int32 {
+func (s *Scene[O, T, S]) allocateObject() int32 {
 	if s.freeObjectIndices.IsEmpty() {
 		index := len(s.objects)
-		s.objects = append(s.objects, sceneObject[O]{})
+		s.objects = append(s.objects, objectState[O]{})
 		return int32(index)
 	} else {
 		return s.freeObjectIndices.Pop()
 	}
 }
 
-func (s *Scene[O, S, M]) releaseObject(index int32) {
+func (s *Scene[O, T, S]) releaseObject(index int32) {
 	s.freeObjectIndices.Push(index)
 }
 
-func (s *Scene[O, S, M]) eachObjectShape(object *sceneObject[O], cb func(int32, *shape[S])) {
+func (s *Scene[O, T, S]) eachObjectShape(object *objectState[O], cb func(int32, *objectShapeState[S])) {
 	index := object.firstShapeIndex
 	for index >= 0 {
-		shape := &s.shapes[index]
+		shape := &s.objectShapes[index]
 		nextIndex := shape.nextShapeIndex
 		cb(index, shape)
 		index = nextIndex
 	}
 }
 
-func (s *Scene[O, S, M]) allocateShape() int32 {
-	if s.freeShapeIndices.IsEmpty() {
-		index := len(s.shapes)
-		s.shapes = append(s.shapes, shape[S]{})
+func (s *Scene[O, T, S]) allocateObjectShape() int32 {
+	if s.freeObjectShapeIndices.IsEmpty() {
+		index := len(s.objectShapes)
+		s.objectShapes = append(s.objectShapes, objectShapeState[S]{})
 		return int32(index)
 	} else {
-		return s.freeShapeIndices.Pop()
+		return s.freeObjectShapeIndices.Pop()
 	}
 }
 
-func (s *Scene[O, S, M]) releaseShape(index int32) {
-	s.freeShapeIndices.Push(index)
+func (s *Scene[O, T, S]) releaseObjectShape(index int32) {
+	s.freeObjectShapeIndices.Push(index)
 }
 
-func (s *Scene[O, S, M]) attachShape(
+func (s *Scene[O, T, S]) attachObjectShape(
 	objectIndex int32,
 	filterInfo FilterInfo,
-	representation shapeRepresentation,
+	representation objectShapeRepresentation,
 	userData S,
-) ShapeID {
+) ObjectShapeID {
 
 	object := &s.objects[objectIndex]
-	index := s.allocateShape()
+	index := s.allocateObjectShape()
 
 	representation.update(object.transform)
-	area := query2d.AreaFromCircle(representation.boundingCircle())
+	area := shape2d.AABBFromCircle(representation.wsBCircle)
 
-	s.shapes[index] = shape[S]{
-		objectIndex:          objectIndex,
-		nextShapeIndex:       nilIndex,
-		prevShapeIndex:       object.lastShapeIndex,
-		spatialID:            s.shapeTree.Insert(area, index),
-		filterRepresentation: newFilterRepresentation(filterInfo),
-		shapeRepresentation:  representation,
-		userData:             userData,
+	s.objectShapes[index] = objectShapeState[S]{
+		objectIndex:               objectIndex,
+		nextShapeIndex:            nilIndex,
+		prevShapeIndex:            object.lastShapeIndex,
+		spatialID:                 s.objectShapeTree.Insert(area, index),
+		filterRepresentation:      newFilterRepresentation(filterInfo),
+		objectShapeRepresentation: representation,
+		userData:                  userData,
 	}
 	if object.firstShapeIndex == nilIndex {
 		object.firstShapeIndex = index
 	} else {
-		s.shapes[object.lastShapeIndex].nextShapeIndex = index
+		s.objectShapes[object.lastShapeIndex].nextShapeIndex = index
 	}
 	object.lastShapeIndex = index
 
-	return ShapeID(index)
+	return ObjectShapeID(index)
 }
 
-func (s *Scene[O, S, M]) detachShape(index int32) {
-	shape := &s.shapes[index]
+func (s *Scene[O, T, S]) detachObjectShape(index int32) {
+	shape := &s.objectShapes[index]
 
-	s.shapeTree.Remove(shape.spatialID)
+	s.objectShapeTree.Remove(shape.spatialID)
 	shape.spatialID = query2d.InvalidTreeItemID
 
 	object := &s.objects[shape.objectIndex]
@@ -549,185 +696,282 @@ func (s *Scene[O, S, M]) detachShape(index int32) {
 		object.lastShapeIndex = shape.prevShapeIndex
 	}
 	if shape.prevShapeIndex != nilIndex {
-		prevShape := &s.shapes[shape.prevShapeIndex]
+		prevShape := &s.objectShapes[shape.prevShapeIndex]
 		prevShape.nextShapeIndex = shape.nextShapeIndex
 	}
 	if shape.nextShapeIndex != nilIndex {
-		nextShape := &s.shapes[shape.nextShapeIndex]
+		nextShape := &s.objectShapes[shape.nextShapeIndex]
 		nextShape.prevShapeIndex = shape.prevShapeIndex
 	}
 	shape.objectIndex = -1
 	shape.userData = gog.Zero[S]() // in case of pointer
 
-	s.releaseShape(index)
+	s.releaseObjectShape(index)
 }
 
-func (s *Scene[O, S, M]) allocateMesh() int32 {
-	if s.freeMeshIndices.IsEmpty() {
-		index := len(s.meshes)
-		s.meshes = append(s.meshes, meshShape[M]{})
+func (s *Scene[O, T, S]) allocateTerrain() int32 {
+	if s.freeTerrainIndices.IsEmpty() {
+		index := len(s.terrains)
+		s.terrains = append(s.terrains, terrainState[T]{})
 		return int32(index)
 	} else {
-		return s.freeMeshIndices.Pop()
+		return s.freeTerrainIndices.Pop()
 	}
 }
 
-func (s *Scene[O, S, M]) releaseMesh(index int32) {
-	s.freeMeshIndices.Push(index)
+func (s *Scene[O, T, S]) releaseTerrain(index int32) {
+	s.freeTerrainIndices.Push(index)
 }
 
-func (s *Scene[O, S, M]) collectSegmentShape(segment shape2d.Segment, filter Filter, yield ContactCallback) {
-	for index, shape := range s.iterCandidateShape(filter) {
+func (s *Scene[O, T, S]) eachTerrainShape(terrain *terrainState[T], cb func(int32, *terrainShapeState[S])) {
+	index := terrain.firstShapeIndex
+	for index >= 0 {
+		shape := &s.terrainShapes[index]
+		nextIndex := shape.nextShapeIndex
+		cb(index, shape)
+		index = nextIndex
+	}
+}
+
+func (s *Scene[O, T, S]) allocateTerrainShape() int32 {
+	if s.freeTerrainShapeIndices.IsEmpty() {
+		index := len(s.terrainShapes)
+		s.terrainShapes = append(s.terrainShapes, terrainShapeState[S]{})
+		return int32(index)
+	} else {
+		return s.freeTerrainShapeIndices.Pop()
+	}
+}
+
+func (s *Scene[O, T, S]) releaseTerrainShape(index int32) {
+	s.freeTerrainShapeIndices.Push(index)
+}
+
+func (s *Scene[O, T, S]) attachTerrainShape(
+	terrainIndex int32,
+	filterInfo FilterInfo,
+	representation terrainShapeRepresentation,
+	userData S,
+) TerrainShapeID {
+
+	terrain := &s.terrains[terrainIndex]
+	index := s.allocateTerrainShape()
+
+	area := representation.wsAABB
+
+	s.terrainShapes[index] = terrainShapeState[S]{
+		terrainIndex:               terrainIndex,
+		nextShapeIndex:             nilIndex,
+		prevShapeIndex:             terrain.lastShapeIndex,
+		spatialID:                  s.terrainShapeTree.Insert(area, index),
+		filterRepresentation:       newFilterRepresentation(filterInfo),
+		terrainShapeRepresentation: representation,
+		userData:                   userData,
+	}
+	if terrain.firstShapeIndex == nilIndex {
+		terrain.firstShapeIndex = index
+	} else {
+		s.terrainShapes[terrain.lastShapeIndex].nextShapeIndex = index
+	}
+	terrain.lastShapeIndex = index
+
+	return TerrainShapeID(index)
+}
+
+func (s *Scene[O, T, S]) detachTerrainShape(index int32) {
+	shape := &s.terrainShapes[index]
+
+	s.terrainShapeTree.Remove(shape.spatialID)
+	shape.spatialID = query2d.InvalidTreeItemID
+
+	terrain := &s.terrains[shape.terrainIndex]
+	if terrain.firstShapeIndex == index {
+		terrain.firstShapeIndex = shape.nextShapeIndex
+	}
+	if terrain.lastShapeIndex == index {
+		terrain.lastShapeIndex = shape.prevShapeIndex
+	}
+	if shape.prevShapeIndex != nilIndex {
+		prevShape := &s.terrainShapes[shape.prevShapeIndex]
+		prevShape.nextShapeIndex = shape.nextShapeIndex
+	}
+	if shape.nextShapeIndex != nilIndex {
+		nextShape := &s.terrainShapes[shape.nextShapeIndex]
+		nextShape.prevShapeIndex = shape.prevShapeIndex
+	}
+	shape.terrainIndex = -1
+	shape.userData = gog.Zero[S]() // in case of pointer
+
+	s.releaseTerrainShape(index)
+}
+
+func (s *Scene[O, T, S]) collectSegmentObject(segment shape2d.Segment, filter Filter, yield ObjectContactCallback) {
+	for index, shape := range s.iterCandidateObjectShapes(filter) {
 		if !isec2d.CheckSegmentCircleOverlap(segment, shape.wsBCircle) {
 			continue
 		}
 		onContact := func(contact shape2d.Contact) {
-			yield(Contact{
-				SourceShapeID: InvalidShapeID,
-				TargetShapeID: ShapeID(index),
-				TargetMeshID:  InvalidMeshID,
-				Contact:       contact,
+			yield(ObjectContact{
+				SourceObjectID: NilObjectID,
+				SourceShapeID:  NilObjectShapeID,
+				TargetObjectID: ObjectID(shape.objectIndex),
+				TargetShapeID:  ObjectShapeID(index),
+				Contact:        contact,
 			})
 		}
 		switch shape.kind {
-		case shapeKindCircle:
+		case objectShapeKindCircle:
 			circle := shape.toCircle()
 			isec2d.ResolveSegmentCircle(segment, circle, onContact)
-		case shapeKindRectangle:
+		case objectShapeKindRectangle:
 			rectangle := shape.toRectangle()
 			isec2d.ResolveSegmentRectangle(segment, rectangle, onContact)
 		}
 	}
 }
 
-func (s *Scene[O, S, M]) collectSegmentMesh(segment shape2d.Segment, filter Filter, yield ContactCallback) {
-	for index, mesh := range s.iterCandidateMesh(filter) {
-		if !isec2d.CheckSegmentCircleOverlap(segment, mesh.wsBCircle) {
+func (s *Scene[O, T, S]) collectSegmentTerrain(segment shape2d.Segment, filter Filter, yield TerrainContactCallback) {
+	for index, shape := range s.iterCandidateTerrainShapes(filter) {
+		if !isec2d.CheckSegmentCircleOverlap(segment, shape.wsBCircle) {
 			continue
 		}
 		var deepestContact shape2d.DeepestContact
-		for _, edge := range mesh.wsEdges {
+		for _, edge := range shape.wsEdges {
 			isec2d.ResolveSegmentEdge(segment, edge, deepestContact.AddContact)
 		}
 		if contact, ok := deepestContact.Contact(); ok {
-			yield(Contact{
-				SourceShapeID: InvalidShapeID,
-				TargetShapeID: InvalidShapeID,
-				TargetMeshID:  MeshID(index),
-				Contact:       contact,
+			yield(TerrainContact{
+				SourceObjectID:  NilObjectID,
+				SourceShapeID:   NilObjectShapeID,
+				TargetTerrainID: TerrainID(shape.terrainIndex),
+				TargetShapeID:   TerrainShapeID(index),
+				Contact:         contact,
 			})
 		}
 	}
 }
 
-func (s *Scene[O, S, M]) collectCircleShape(circle shape2d.Circle, filter Filter, yield ContactCallback) {
+func (s *Scene[O, T, S]) collectCircleObject(circle shape2d.Circle, filter Filter, yield ObjectContactCallback) {
 	initGJKShapeForCircle(circle, &s.tempGJKSource)
-	for index, shape := range s.iterCandidateShape(filter) {
+	for index, shape := range s.iterCandidateObjectShapes(filter) {
 		if !isec2d.CheckCircleCircle(circle, shape.wsBCircle) {
 			continue
 		}
 		if contact, ok := s.solver.Resolve(s.tempGJKSource, shape.gjkShape()); ok {
-			yield(Contact{
-				SourceShapeID: InvalidShapeID,
-				TargetShapeID: ShapeID(index),
-				TargetMeshID:  InvalidMeshID,
-				Contact:       contact,
+			yield(ObjectContact{
+				SourceObjectID: NilObjectID,
+				SourceShapeID:  NilObjectShapeID,
+				TargetObjectID: ObjectID(shape.objectIndex),
+				TargetShapeID:  ObjectShapeID(index),
+				Contact:        contact,
 			})
 		}
 	}
 }
 
-func (s *Scene[O, S, M]) collectCircleMesh(circle shape2d.Circle, filter Filter, yield ContactCallback) {
+func (s *Scene[O, T, S]) collectCircleTerrain(circle shape2d.Circle, filter Filter, yield TerrainContactCallback) {
 	initGJKShapeForCircle(circle, &s.tempGJKSource)
-	for tgtIndex, tgtMesh := range s.iterCandidateMesh(filter) {
-		s.resolveGJKMesh(s.tempGJKSource, circle, tgtMesh, func(contact shape2d.Contact) {
-			yield(Contact{
-				SourceShapeID: InvalidShapeID,
-				TargetShapeID: InvalidShapeID,
-				TargetMeshID:  MeshID(tgtIndex),
-				Contact:       contact,
+	for index, shape := range s.iterCandidateTerrainShapes(filter) {
+		s.resolveTerrainShape(s.tempGJKSource, circle, shape, func(contact shape2d.Contact) {
+			yield(TerrainContact{
+				SourceObjectID:  NilObjectID,
+				SourceShapeID:   NilObjectShapeID,
+				TargetTerrainID: TerrainID(shape.terrainIndex),
+				TargetShapeID:   TerrainShapeID(index),
+				Contact:         contact,
 			})
 		})
 	}
 }
 
-func (s *Scene[O, S, M]) collectRectangleShape(rectangle shape2d.Rectangle, filter Filter, yield ContactCallback) {
+func (s *Scene[O, T, S]) collectRectangleObject(rectangle shape2d.Rectangle, filter Filter, yield ObjectContactCallback) {
 	initGJKShapeForRectangle(rectangle, &s.tempGJKSource)
-	for index, shape := range s.iterCandidateShape(filter) {
+	for index, shape := range s.iterCandidateObjectShapes(filter) {
 		if !isec2d.CheckCircleCircle(rectangle.BoundingCircle(), shape.wsBCircle) {
 			continue
 		}
 		if contact, ok := s.solver.Resolve(s.tempGJKSource, shape.gjkShape()); ok {
-			yield(Contact{
-				SourceShapeID: InvalidShapeID,
-				TargetShapeID: ShapeID(index),
-				TargetMeshID:  InvalidMeshID,
-				Contact:       contact,
+			yield(ObjectContact{
+				SourceObjectID: NilObjectID,
+				SourceShapeID:  NilObjectShapeID,
+				TargetObjectID: ObjectID(shape.objectIndex),
+				TargetShapeID:  ObjectShapeID(index),
+				Contact:        contact,
 			})
 		}
 	}
 }
 
-func (s *Scene[O, S, M]) collectRectangleMesh(rectangle shape2d.Rectangle, filter Filter, yield ContactCallback) {
+func (s *Scene[O, T, S]) collectRectangleTerrain(rectangle shape2d.Rectangle, filter Filter, yield TerrainContactCallback) {
 	initGJKShapeForRectangle(rectangle, &s.tempGJKSource)
-	for tgtIndex, tgtMesh := range s.iterCandidateMesh(filter) {
-		s.resolveGJKMesh(s.tempGJKSource, rectangle.BoundingCircle(), tgtMesh, func(contact shape2d.Contact) {
-			yield(Contact{
-				SourceShapeID: InvalidShapeID,
-				TargetShapeID: InvalidShapeID,
-				TargetMeshID:  MeshID(tgtIndex),
-				Contact:       contact,
+	for index, shape := range s.iterCandidateTerrainShapes(filter) {
+		s.resolveTerrainShape(s.tempGJKSource, rectangle.BoundingCircle(), shape, func(contact shape2d.Contact) {
+			yield(TerrainContact{
+				SourceObjectID:  NilObjectID,
+				SourceShapeID:   NilObjectShapeID,
+				TargetTerrainID: TerrainID(shape.terrainIndex),
+				TargetShapeID:   TerrainShapeID(index),
+				Contact:         contact,
 			})
 		})
 	}
 }
 
-func (s *Scene[O, S, M]) collectShapeShape(srcIndex int32, srcShape *shape[S], yield ContactCallback) {
+func (s *Scene[O, T, S]) collectObjectObject(srcIndex int32, srcShape *objectShapeState[S], yield ObjectContactCallback) {
 	srcGJKShape := srcShape.gjkShape()
-	for _, tgtIndex := range s.shapeCandidates {
-		tgtShape := &s.shapes[tgtIndex]
-		if !shapesCanIntersect(srcShape, tgtShape) {
+	for _, tgtIndex := range s.objectShapeCandidates {
+		tgtShape := &s.objectShapes[tgtIndex]
+		if !objectShapesCanIntersect(srcShape, tgtShape) {
 			continue
 		}
 		if !isec2d.CheckCircleCircle(srcShape.wsBCircle, tgtShape.wsBCircle) {
 			continue
 		}
 		if contact, ok := s.solver.Resolve(srcGJKShape, tgtShape.gjkShape()); ok {
-			yield(Contact{
-				SourceShapeID: ShapeID(srcIndex),
-				TargetShapeID: ShapeID(tgtIndex),
-				TargetMeshID:  InvalidMeshID,
-				Contact:       contact,
+			yield(ObjectContact{
+				SourceObjectID: ObjectID(srcShape.objectIndex),
+				SourceShapeID:  ObjectShapeID(srcIndex),
+				TargetObjectID: ObjectID(tgtShape.objectIndex),
+				TargetShapeID:  ObjectShapeID(tgtIndex),
+				Contact:        contact,
 			})
 		}
 	}
 }
 
-func (s *Scene[O, S, M]) collectShapeMesh(srcIndex int32, srcShape *shape[S], yield ContactCallback) {
+func (s *Scene[O, T, S]) collectObjectTerrain(srcIndex int32, srcShape *objectShapeState[S], yield TerrainContactCallback) {
 	srcGJKShape := srcShape.gjkShape()
-	for _, tgtIndex := range s.meshCandidates {
-		tgtMesh := &s.meshes[tgtIndex]
-		if !shapeMeshCanIntersect(srcShape, tgtMesh) {
+	for _, tgtIndex := range s.terrainShapeCandidates {
+		tgtShape := &s.terrainShapes[tgtIndex]
+		if !objectTerrainShapesCanIntersect(srcShape, tgtShape) {
 			continue
 		}
-		s.resolveGJKMesh(srcGJKShape, srcShape.wsBCircle, tgtMesh, func(contact shape2d.Contact) {
-			yield(Contact{
-				SourceShapeID: ShapeID(srcIndex),
-				TargetShapeID: InvalidShapeID,
-				TargetMeshID:  MeshID(tgtIndex),
-				Contact:       contact,
+		s.resolveTerrainShape(srcGJKShape, srcShape.wsBCircle, tgtShape, func(contact shape2d.Contact) {
+			yield(TerrainContact{
+				SourceObjectID:  ObjectID(srcShape.objectIndex),
+				SourceShapeID:   ObjectShapeID(srcIndex),
+				TargetTerrainID: TerrainID(tgtShape.terrainIndex),
+				TargetShapeID:   TerrainShapeID(tgtIndex),
+				Contact:         contact,
 			})
 		})
 	}
 }
 
-func (s *Scene[O, S, M]) resolveGJKMesh(srcGJK gjk2d.Shape, srcBC shape2d.Circle, tgtMesh *meshShape[M], yield shape2d.ContactCallback) {
-	if !isec2d.CheckCircleCircle(srcBC, tgtMesh.wsBCircle) {
+// resolveTerrainShape resolves the intersection of the specified convex source
+// shape with a terrain shape, by testing it against each of the edges that
+// make up the terrain shape.
+//
+// Only the deepest contact is yielded, and at most once, so that a source
+// shape that overlaps many edges of the same terrain shape does not produce a
+// pile of nearly identical contacts.
+func (s *Scene[O, T, S]) resolveTerrainShape(srcGJK gjk2d.Shape, srcBC shape2d.Circle, tgtShape *terrainShapeState[S], yield shape2d.ContactCallback) {
+	if !isec2d.CheckCircleCircle(srcBC, tgtShape.wsBCircle) {
 		return
 	}
 	points := initGJKShapeForMesh(&s.tempGJKTarget)
 	var deepestContact shape2d.DeepestContact
-	for _, edge := range tgtMesh.wsEdges {
+	for _, edge := range tgtShape.wsEdges {
 		tgtBCircle := edge.BoundingCircle()
 		if !isec2d.CheckCircleCircle(srcBC, tgtBCircle) {
 			continue
@@ -746,10 +990,10 @@ func (s *Scene[O, S, M]) resolveGJKMesh(srcGJK gjk2d.Shape, srcBC shape2d.Circle
 	}
 }
 
-func (s *Scene[O, S, M]) eachCandidateShape(filter Filter, cb func(int32, *shape[S]) bool) {
-	for _, index := range s.shapeCandidates {
-		shape := &s.shapes[index]
-		if !shape.matchesFilter(filter) {
+func (s *Scene[O, T, S]) eachCandidateObjectShape(filter Filter, cb func(int32, *objectShapeState[S]) bool) {
+	for _, index := range s.objectShapeCandidates {
+		shape := &s.objectShapes[index]
+		if !shape.satisfiesFilter(filter) {
 			continue
 		}
 		if !cb(index, shape) {
@@ -758,27 +1002,27 @@ func (s *Scene[O, S, M]) eachCandidateShape(filter Filter, cb func(int32, *shape
 	}
 }
 
-func (s *Scene[O, S, M]) iterCandidateShape(filter Filter) iter.Seq2[int32, *shape[S]] {
-	return func(yield func(int32, *shape[S]) bool) {
-		s.eachCandidateShape(filter, yield)
+func (s *Scene[O, T, S]) iterCandidateObjectShapes(filter Filter) iter.Seq2[int32, *objectShapeState[S]] {
+	return func(yield func(int32, *objectShapeState[S]) bool) {
+		s.eachCandidateObjectShape(filter, yield)
 	}
 }
 
-func (s *Scene[O, S, M]) eachCandidateMesh(filter Filter, cb func(int32, *meshShape[M]) bool) {
-	for _, index := range s.meshCandidates {
-		mesh := &s.meshes[index]
-		if !mesh.matchesFilter(filter) {
+func (s *Scene[O, T, S]) eachCandidateTerrainShape(filter Filter, cb func(int32, *terrainShapeState[S]) bool) {
+	for _, index := range s.terrainShapeCandidates {
+		shape := &s.terrainShapes[index]
+		if !shape.satisfiesFilter(filter) {
 			continue
 		}
-		if !cb(index, mesh) {
+		if !cb(index, shape) {
 			return
 		}
 	}
 }
 
-func (s *Scene[O, S, M]) iterCandidateMesh(filter Filter) iter.Seq2[int32, *meshShape[M]] {
-	return func(yield func(int32, *meshShape[M]) bool) {
-		s.eachCandidateMesh(filter, yield)
+func (s *Scene[O, T, S]) iterCandidateTerrainShapes(filter Filter) iter.Seq2[int32, *terrainShapeState[S]] {
+	return func(yield func(int32, *terrainShapeState[S]) bool) {
+		s.eachCandidateTerrainShape(filter, yield)
 	}
 }
 

@@ -9,9 +9,8 @@ import (
 )
 
 type PhysicsSource interface {
-	AllPhysicsBodyMaterials() []*mdl.BodyMaterial
-	AllPhysicsBodyDefinitions() []*mdl.BodyDefinition
-	AllPhysicsBodyPlacements() []mdl.Placed[*mdl.Body]
+	AllPhysicsBodyPlacements() []mdl.Placed[*mdl.PhysicsBody]
+	AllPhysicsTerrainPlacements() []mdl.Placed[*mdl.PhysicsTerrain]
 }
 
 func NewPhysicsConverter() *PhysicsConverter {
@@ -34,65 +33,61 @@ func (c *PhysicsConverter) Convert(target *ds.List[chunked.Chunk], asset any) er
 }
 
 func (c *PhysicsConverter) CreatePhysicsChunk(src PhysicsSource) (*dto.PhysicsChunk, error) {
-	allMaterials := src.AllPhysicsBodyMaterials()
-	dtoBodyMaterials := make([]dto.BodyMaterial, len(allMaterials))
-	for i, material := range allMaterials {
-		dtoBodyMaterials[i] = c.convertBodyMaterial(material)
-	}
-
-	allDefinitions := src.AllPhysicsBodyDefinitions()
-	dtoBodyDefinitions := make([]dto.BodyDefinition, len(allDefinitions))
-	for i, definition := range allDefinitions {
-		dtoBodyDefinitions[i] = c.convertBodyDefinition(definition)
-	}
-
 	allBodyPlacements := src.AllPhysicsBodyPlacements()
-	dtoBodies := make([]dto.Body, len(allBodyPlacements))
+
+	dtoBodies := make([]dto.PhysicsBody, len(allBodyPlacements))
 	for i, placement := range allBodyPlacements {
 		body := placement.Value
-		dtoBodies[i] = c.convertBody(placement.Node, body)
-	}
 
-	return &dto.PhysicsChunk{
-		BodyMaterials:   dtoBodyMaterials,
-		BodyDefinitions: dtoBodyDefinitions,
-		Bodies:          dtoBodies,
-	}, nil
-}
+		var dtoCollisionSpheres []dto.CollisionSphere
+		for _, sphere := range body.CollisionSpheres() {
+			dtoCollisionSpheres = append(dtoCollisionSpheres, dto.CollisionSphere{
+				CollisionShape: dto.CollisionShape{
+					FrictionCoefficient:    sphere.FrictionCoefficient(),
+					RestitutionCoefficient: sphere.RestitutionCoefficient(),
+				},
+				Translation: sphere.Translation(),
+				Radius:      sphere.Radius(),
+			})
+		}
 
-func (c *PhysicsConverter) convertBodyMaterial(material *mdl.BodyMaterial) dto.BodyMaterial {
-	return dto.BodyMaterial{
-		ID:                     material.ID(),
-		FrictionCoefficient:    material.FrictionCoefficient(),
-		RestitutionCoefficient: material.RestitutionCoefficient(),
-	}
-}
-
-func (c *PhysicsConverter) convertBodyDefinition(definition *mdl.BodyDefinition) dto.BodyDefinition {
-	return dto.BodyDefinition{
-		ID:                definition.ID(),
-		MaterialID:        definition.Material().ID(),
-		Mass:              definition.Mass(),
-		MomentOfInertia:   definition.MomentOfInertia(),
-		DragFactor:        definition.DragFactor(),
-		AngularDragFactor: definition.AngularDragFactor(),
-		CollisionBoxes: gog.Map(definition.CollisionBoxes(), func(box *mdl.CollisionBox) dto.CollisionBox {
-			return dto.CollisionBox{
+		var dtoCollisionBoxes []dto.CollisionBox
+		for _, box := range body.CollisionBoxes() {
+			dtoCollisionBoxes = append(dtoCollisionBoxes, dto.CollisionBox{
+				CollisionShape: dto.CollisionShape{
+					FrictionCoefficient:    box.FrictionCoefficient(),
+					RestitutionCoefficient: box.RestitutionCoefficient(),
+				},
 				Translation: box.Translation(),
 				Rotation:    box.Rotation(),
 				Width:       box.Width(),
 				Height:      box.Height(),
 				Length:      box.Length(),
-			}
-		}),
-		CollisionSpheres: gog.Map(definition.CollisionSpheres(), func(sphere *mdl.CollisionSphere) dto.CollisionSphere {
-			return dto.CollisionSphere{
-				Translation: sphere.Translation(),
-				Radius:      sphere.Radius(),
-			}
-		}),
-		CollisionMeshes: gog.Map(definition.CollisionMeshes(), func(mesh *mdl.CollisionMesh) dto.CollisionMesh {
-			return dto.CollisionMesh{
+			})
+		}
+
+		dtoBodies[i] = dto.PhysicsBody{
+			ID:               body.ID(),
+			NodeID:           placement.Node.ID(),
+			Mass:             body.Mass(),
+			MomentOfInertia:  body.MomentOfInertia(),
+			CollisionSpheres: dtoCollisionSpheres,
+			CollisionBoxes:   dtoCollisionBoxes,
+		}
+	}
+
+	allTerrainPlacements := src.AllPhysicsTerrainPlacements()
+	dtoTerrains := make([]dto.PhysicsTerrain, len(allTerrainPlacements))
+	for i, placement := range allTerrainPlacements {
+		terrain := placement.Value
+
+		var dtoCollisionMeshes []dto.CollisionMesh
+		for _, mesh := range terrain.CollisionMeshes() {
+			dtoCollisionMeshes = append(dtoCollisionMeshes, dto.CollisionMesh{
+				CollisionShape: dto.CollisionShape{
+					FrictionCoefficient:    mesh.FrictionCoefficient(),
+					RestitutionCoefficient: mesh.RestitutionCoefficient(),
+				},
 				Translation: mesh.Translation(),
 				Rotation:    mesh.Rotation(),
 				Triangles: gog.Map(mesh.Triangles(), func(triangle mdl.CollisionTriangle) dto.CollisionTriangle {
@@ -102,15 +97,18 @@ func (c *PhysicsConverter) convertBodyDefinition(definition *mdl.BodyDefinition)
 						C: triangle.C,
 					}
 				}),
-			}
-		}),
-	}
-}
+			})
+		}
 
-func (c *PhysicsConverter) convertBody(node *mdl.Node, body *mdl.Body) dto.Body {
-	return dto.Body{
-		ID:               body.ID(),
-		NodeID:           node.ID(),
-		BodyDefinitionID: body.Definition().ID(),
+		dtoTerrains[i] = dto.PhysicsTerrain{
+			ID:              terrain.ID(),
+			NodeID:          placement.Node.ID(),
+			CollisionMeshes: dtoCollisionMeshes,
+		}
 	}
+
+	return &dto.PhysicsChunk{
+		Bodies:   dtoBodies,
+		Terrains: dtoTerrains,
+	}, nil
 }

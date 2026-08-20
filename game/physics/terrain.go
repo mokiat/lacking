@@ -1,0 +1,180 @@
+package physics
+
+import (
+	"github.com/mokiat/lacking/core/spatial/placement3d"
+)
+
+type TerrainID struct {
+	index    int32
+	revision int32
+}
+
+var NilTerrainID = TerrainID{}
+
+type TerrainView struct {
+	scene *Scene
+}
+
+// TODO: Rework the Terrain such that the Mesh is attached similar to how
+// collision shapes are attached to bodies. This should open the door for
+// other types of terrain, such as heightmaps, etc.
+//
+// However, this requires rework of placement3d API.
+
+func (v TerrainView) Create() TerrainID {
+	index, terrain := v.scene.allocateTerrain()
+
+	terrainID := v.scene.collisionScene.CreateTerrain(placement3d.TerrainInfo[terrainData]{
+		UserData: terrainData{
+			index: index,
+		},
+	})
+
+	*terrain = terrainState{
+		terrainID: terrainID,
+		revision:  terrain.revision + 1, // progress revision to valid (odd) value
+	}
+
+	return TerrainID{
+		index:    index,
+		revision: terrain.revision,
+	}
+}
+
+// CreateHandle behaves like [TerrainView.Create] but wraps the resulting
+// ID in a [TerrainHandle], as returned by [TerrainView.Handle], for
+// callers that want to keep acting on the new terrain without holding
+// onto its ID separately.
+func (v TerrainView) CreateHandle() TerrainHandle {
+	return v.Handle(v.Create())
+}
+
+func (v TerrainView) Delete(id TerrainID) {
+	terrain := v.resolve(id, true)
+
+	v.scene.collisionScene.DeleteTerrain(terrain.terrainID)
+
+	*terrain = terrainState{
+		terrainID: placement3d.NilTerrainID,
+		revision:  terrain.revision + 1, // progress revision to invalid (even) value
+	}
+
+	v.scene.releaseTerrain(id.index)
+}
+
+// Each calls cb once for every terrain that is currently alive within
+// this Scene, in unspecified order.
+func (v TerrainView) Each(cb func(id TerrainID)) {
+	v.scene.eachTerrain(func(index int, terrain *terrainState) {
+		cb(TerrainID{
+			index:    int32(index),
+			revision: terrain.revision,
+		})
+	})
+}
+
+func (v TerrainView) Handle(id TerrainID) TerrainHandle {
+	return TerrainHandle{
+		view: v,
+		id:   id,
+	}
+}
+
+func (v TerrainView) IsValid(id TerrainID) bool {
+	terrain := v.resolve(id, false)
+	return terrain != nil
+}
+
+func (v TerrainView) AttachCollisionMesh(id TerrainID, col CollisionMesh) TerrainCollisionShapeID {
+	terrain := v.resolve(id, true)
+	shapeID := v.scene.collisionScene.AttachMesh(terrain.terrainID, placement3d.MeshInfo[shapeData]{
+		Mesh:      col.Shape,
+		Filtering: col.Filtering,
+		UserData: shapeData{
+			frictionCoefficient:    col.FrictionCoefficient,
+			restitutionCoefficient: col.RestitutionCoefficient,
+		},
+	})
+	return TerrainCollisionShapeID{
+		terrainID: id,
+		shapeID:   shapeID,
+	}
+}
+
+func (v TerrainView) DetachCollisionShape(id TerrainID, shapeID TerrainCollisionShapeID) {
+	if id != shapeID.terrainID {
+		panic("invalid shape ID for terrain")
+	}
+	v.scene.collisionScene.DeleteTerrainShape(shapeID.shapeID)
+}
+
+func (v TerrainView) idFromIndex(index int32) TerrainID {
+	terrain := &v.scene.terrains[index]
+	return TerrainID{
+		index:    index,
+		revision: terrain.revision,
+	}
+}
+
+func (v TerrainView) resolve(id TerrainID, required bool) *terrainState {
+	if id.revision == 0 {
+		if required {
+			panic("invalid terrain ID")
+		}
+		return nil
+	}
+	terrain := &v.scene.terrains[id.index]
+	if terrain.revision != id.revision {
+		if required {
+			panic("invalid terrain ID")
+		}
+		return nil
+	}
+	return terrain
+}
+
+// TerrainHandle is an object-oriented alternative to [TerrainView] that
+// is bound to a specific [TerrainID].
+//
+// It is obtained through [TerrainView.Handle].
+//
+// Wrapping an ID this way needs no allocation of its own, but unlike a
+// plain [TerrainID] (which holds no pointers), a Handle keeps an internal
+// reference to the owning [Scene]. This keeps that Scene reachable for as
+// long as the handle is retained, and adds a pointer that the garbage
+// collector must trace wherever the handle is stored. Prefer storing IDs
+// over handles in long-lived collections unless the convenience is worth
+// that cost.
+type TerrainHandle struct {
+	view TerrainView
+	id   TerrainID
+}
+
+func (v TerrainHandle) ID() TerrainID {
+	return v.id
+}
+
+func (v TerrainHandle) Delete() {
+	v.view.Delete(v.id)
+}
+
+func (v TerrainHandle) IsValid() bool {
+	return v.view.IsValid(v.id)
+}
+
+func (v TerrainHandle) AttachCollisionMesh(col CollisionMesh) TerrainCollisionShapeID {
+	return v.view.AttachCollisionMesh(v.id, col)
+}
+
+func (v TerrainHandle) DetachCollisionShape(shapeID TerrainCollisionShapeID) {
+	v.view.DetachCollisionShape(v.id, shapeID)
+}
+
+type terrainState struct {
+	terrainID placement3d.TerrainID
+	revision  int32
+}
+
+func (s *terrainState) isValid() bool {
+	return s.revision%2 == 1 // only odd revisions are valid
+}

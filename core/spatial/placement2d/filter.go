@@ -2,38 +2,61 @@ package placement2d
 
 import "github.com/mokiat/gog/opt"
 
-// Filter represents a set of criteria to filter 2D shapes in a scene.
+// Mask is a bitmask over the layers that a shape can occupy. Queries use it to
+// narrow down the shapes that they consider.
+//
+// A shape is considered by a query when at least one bit is set in both the
+// mask of the query and the [FilterInfo.SourceMask] of the shape. As a special
+// case, a query mask of zero is treated as covering all layers, so a query
+// that uses it considers every shape in the scene.
+type Mask = uint32
+
+// FullMask is a [Mask] with all layer bits set. A query that uses it considers
+// every shape in the scene, regardless of the layers that the shape occupies,
+// which is the same behavior as that of the zero mask.
+const FullMask Mask = 0xFFFFFFFF
+
+// Filter narrows down the shapes that a query considers.
+//
+// Its zero value considers every shape in the scene.
 type Filter struct {
 
-	// Mask is a bitmask used to filter shapes based on their assigned layers.
-	Mask opt.T[uint32]
+	// Mask specifies the layers that the query covers. A shape is considered
+	// only if it occupies at least one of those layers, as described by
+	// [Mask].
+	//
+	// Defaults to all layers.
+	Mask Mask
 
-	// SkipDynamic indicates whether dynamic shapes should be excluded from the
-	// results.
-	SkipDynamic bool
-
-	// SkipStatic indicates whether static shapes should be excluded from the
-	// results.
-	SkipStatic bool
+	// RejectGroup becomes active if a value larger than zero is specified.
+	// Shapes whose [FilterInfo.RejectGroup] is the same are not considered by
+	// the query.
+	//
+	// Defaults to no rejection.
+	RejectGroup uint32
 }
 
-// FilterInfo holds the collision-filtering metadata common to every entity
-// that can be placed in a scene, whether a shape (see [CircleInfo] and
-// [RectangleInfo]) or a mesh (see [MeshInfo]).
+// FilterInfo holds the collision-filtering metadata common to every shape that
+// can be placed in a scene, whether an object shape (see [CircleInfo] and
+// [RectangleInfo]) or a terrain shape (see [MeshInfo]).
 //
-// Its fields determine which entities are tested against one another during
+// Its fields determine which shapes are tested against one another during
 // intersection queries.
 type FilterInfo struct {
 
 	// RejectGroup becomes active if a value larger than zero is specified.
-	// Entities that share the same reject group are not checked for
+	// Shapes that share the same reject group are not checked for
 	// intersection.
 	RejectGroup uint32
 
-	// SourceMask specifies the layers in which this entity is positioned.
+	// SourceMask specifies the layers in which this shape is positioned.
+	//
+	// Defaults to the first layer only.
 	SourceMask opt.T[uint32]
 
-	// TargetMask specifies the layers with which this entity can intersect.
+	// TargetMask specifies the layers with which this shape can intersect.
+	//
+	// Defaults to the first layer only.
 	TargetMask opt.T[uint32]
 }
 
@@ -51,15 +74,20 @@ func newFilterRepresentation(info FilterInfo) filterRepresentation {
 	}
 }
 
-func (s *filterRepresentation) matchesFilter(filter Filter) bool {
-	if mask, ok := filter.Mask.Unwrap(); ok {
-		if (s.sourceMask & mask) == 0 {
-			return false
-		}
+// satisfiesFilter reports whether this shape is considered by a query that
+// uses the specified filter.
+func (s *filterRepresentation) satisfiesFilter(filter Filter) bool {
+	if (filter.RejectGroup != 0) && (filter.RejectGroup == s.rejectGroup) {
+		return false
+	}
+	if (filter.Mask != 0) && ((s.sourceMask & filter.Mask) == 0) {
+		return false
 	}
 	return true
 }
 
+// canInteractWith reports whether this shape and the specified one are allowed
+// to be checked for intersection.
 func (s *filterRepresentation) canInteractWith(other *filterRepresentation) bool {
 	if s.rejectGroup != 0 && (s.rejectGroup == other.rejectGroup) {
 		return false

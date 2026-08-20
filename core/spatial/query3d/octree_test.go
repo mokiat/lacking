@@ -12,18 +12,10 @@ import (
 	"github.com/mokiat/lacking/core/spatial/shape3d"
 )
 
-// areaFromSphere builds an Area from sphere center coordinates and radius.
-func areaFromSphere(x, y, z, radius float64) query3d.Area {
-	return query3d.AreaFromSphere(shape3d.Sphere{
-		Center: dprec.NewVec3(x, y, z),
-		Radius: radius,
-	})
-}
-
 // aabbFromSphere builds an AABB enclosing a sphere with the given center
 // coordinates and radius.
-func aabbFromSphere(x, y, z, radius float64) query3d.AABB {
-	return query3d.AABBFromSphere(shape3d.Sphere{
+func aabbFromSphere(x, y, z, radius float64) shape3d.AABB {
+	return shape3d.AABBFromSphere(shape3d.Sphere{
 		Center: dprec.NewVec3(x, y, z),
 		Radius: radius,
 	})
@@ -47,6 +39,60 @@ var _ = Describe("Octree", func() {
 		Expect(state.ItemCount).To(Equal(uint32(0)))
 	})
 
+	It("panics when an item with an empty box is inserted", func() {
+		emptyAABB := shape3d.NewAABB(1.0, 1.0, 1.0, -1.0, -1.0, -1.0)
+		Expect(func() { tree.Insert(emptyAABB, "Empty") }).To(Panic())
+	})
+
+	It("panics when an item is updated to an empty box", func() {
+		itemID := tree.Insert(aabbFromSphere(0.0, 0.0, 0.0, 1.0), "Item")
+		emptyAABB := shape3d.NewAABB(1.0, 1.0, 1.0, -1.0, -1.0, -1.0)
+		Expect(func() { tree.Update(itemID, emptyAABB) }).To(Panic())
+	})
+
+	When("an item has a non-cubic box", func() {
+		BeforeEach(func() {
+			// A rod stretching along the X axis. Its bounding cube would span
+			// 40 units in every direction, whereas the box itself is only two
+			// units thick along Y and Z.
+			tree.Insert(
+				shape3d.NewAABB(-40.0, -2.0, -2.0, 40.0, 2.0, 2.0),
+				"Rod",
+			)
+		})
+
+		It("is found through a query that overlaps the box", func() {
+			var found []string
+			tree.QueryAABB(aabbFromSphere(30.0, 0.0, 0.0, 2.0), func(item string) bool {
+				found = append(found, item)
+				return true
+			})
+			Expect(found).To(ConsistOf("Rod"))
+		})
+
+		It("is not found through a query that only overlaps its bounding cube", func() {
+			var found []string
+			tree.QueryAABB(aabbFromSphere(30.0, 20.0, 0.0, 2.0), func(item string) bool {
+				found = append(found, item)
+				return true
+			})
+			Expect(found).To(BeEmpty())
+		})
+
+		It("is not found through a segment that only crosses its bounding cube", func() {
+			segment := shape3d.NewSegment(
+				dprec.NewVec3(20.0, 10.0, -30.0),
+				dprec.NewVec3(20.0, 10.0, 30.0),
+			)
+			var found []string
+			tree.QuerySegment(segment, func(item string) bool {
+				found = append(found, item)
+				return true
+			})
+			Expect(found).To(BeEmpty())
+		})
+	})
+
 	When("items are inserted", func() {
 		var (
 			firstItemID  query3d.TreeItemID
@@ -56,15 +102,15 @@ var _ = Describe("Octree", func() {
 
 		BeforeEach(func() {
 			firstItemID = tree.Insert(
-				areaFromSphere(16.0, 16.0, 16.0, 2.0),
+				aabbFromSphere(16.0, 16.0, 16.0, 2.0),
 				"First",
 			)
 			secondItemID = tree.Insert(
-				areaFromSphere(48.0, 48.0, 48.0, 2.0),
+				aabbFromSphere(48.0, 48.0, 48.0, 2.0),
 				"Second",
 			)
 			thirdItemID = tree.Insert(
-				areaFromSphere(-16.0, -48.0, -16.0, 32.0),
+				aabbFromSphere(-16.0, -48.0, -16.0, 32.0),
 				"Third",
 			)
 		})
@@ -77,17 +123,20 @@ var _ = Describe("Octree", func() {
 
 		It("has the correct state", func() {
 			state := tree.Stats()
-			Expect(state.NodeCount).To(Equal(uint32(5)))
+			Expect(state.NodeCount).To(Equal(uint32(6)))
 			Expect(state.ItemCount).To(Equal(uint32(3)))
+			// The third item is as wide as a whole child node, but it is
+			// positioned so that it still fits within the loose area of a
+			// grandchild along every axis.
 			Expect(state.ItemCountPerDepth).To(Equal([]uint32{
-				0, 1, 2,
+				0, 0, 3,
 			}))
 		})
 
 		It("is possible to segment-search for items", func() {
 			from := dprec.NewVec3(1.0, 1.0, 1.0)
 			to := dprec.NewVec3(127.0, 127.0, 127.0)
-			segment := query3d.NewSegment(from, to)
+			segment := shape3d.NewSegment(from, to)
 			var found []string
 			tree.QuerySegment(segment, func(item string) bool {
 				found = append(found, item)
@@ -99,7 +148,7 @@ var _ = Describe("Octree", func() {
 		It("stops QuerySegment after the visitor returns false", func() {
 			from := dprec.NewVec3(1.0, 1.0, 1.0)
 			to := dprec.NewVec3(127.0, 127.0, 127.0)
-			segment := query3d.NewSegment(from, to)
+			segment := shape3d.NewSegment(from, to)
 			count := 0
 			tree.QuerySegment(segment, func(item string) bool {
 				count++
@@ -150,23 +199,23 @@ var _ = Describe("Octree", func() {
 		When("an item is updated", func() {
 			BeforeEach(func() {
 				tree.Update(secondItemID,
-					areaFromSphere(-48.0, 48.0, -48.0, 2.0),
+					aabbFromSphere(-48.0, 48.0, -48.0, 2.0),
 				)
 			})
 
 			It("has the correct state", func() {
 				state := tree.Stats()
-				Expect(state.NodeCount).To(Equal(uint32(6)))
+				Expect(state.NodeCount).To(Equal(uint32(7)))
 				Expect(state.ItemCount).To(Equal(uint32(3)))
 				Expect(state.ItemCountPerDepth).To(Equal([]uint32{
-					0, 1, 2,
+					0, 0, 3,
 				}))
 			})
 
 			It("is reflected in segment-search for items", func() {
 				from := dprec.NewVec3(1.0, 1.0, 1.0)
 				to := dprec.NewVec3(127.0, 127.0, 127.0)
-				segment := query3d.NewSegment(from, to)
+				segment := shape3d.NewSegment(from, to)
 				var found []string
 				tree.QuerySegment(segment, func(item string) bool {
 					found = append(found, item)
@@ -197,17 +246,17 @@ var _ = Describe("Octree", func() {
 
 			It("has the correct state", func() {
 				state := tree.Stats()
-				Expect(state.NodeCount).To(Equal(uint32(4)))
+				Expect(state.NodeCount).To(Equal(uint32(5)))
 				Expect(state.ItemCount).To(Equal(uint32(2)))
 				Expect(state.ItemCountPerDepth).To(Equal([]uint32{
-					0, 1, 1,
+					0, 0, 2,
 				}))
 			})
 
 			It("does not return an active item id on new insert", func() {
 				tree.Stats() // forces internal reordering of items (white box testing)
 				secondItemID = tree.Insert(
-					areaFromSphere(48.0, 48.0, 48.0, 2.0),
+					aabbFromSphere(48.0, 48.0, 48.0, 2.0),
 					"Second",
 				)
 				Expect(secondItemID).ToNot(Equal(firstItemID))
@@ -217,7 +266,7 @@ var _ = Describe("Octree", func() {
 			It("is reflected in segment-search for items", func() {
 				from := dprec.NewVec3(1.0, 1.0, 1.0)
 				to := dprec.NewVec3(127.0, 127.0, 127.0)
-				segment := query3d.NewSegment(from, to)
+				segment := shape3d.NewSegment(from, to)
 				var found []string
 				tree.QuerySegment(segment, func(item string) bool {
 					found = append(found, item)
@@ -238,6 +287,48 @@ var _ = Describe("Octree", func() {
 		})
 	})
 
+	When("an item is thin along one axis", func() {
+		// Both boxes have the same center and the same largest extent, and
+		// both descend into the same child node. They differ only along Y,
+		// where the node they would descend into next has its center 15 units
+		// away. The slab is thin enough along Y to still fit; the block, being
+		// as tall as it is wide, is not.
+		var (
+			slabAABB  = shape3d.NewAABB(-14.0, 32.0, 15.0, 46.0, 34.0, 17.0)
+			blockAABB = shape3d.NewAABB(-14.0, 3.0, -14.0, 46.0, 63.0, 46.0)
+		)
+
+		It("descends deeper than a cubic item of the same largest extent", func() {
+			tree.Insert(slabAABB, "Slab")
+			state := tree.Stats()
+			Expect(state.NodeCount).To(Equal(uint32(3))) // root + child + grandchild
+			Expect(state.ItemCountPerDepth).To(Equal([]uint32{
+				0, 0, 1,
+			}))
+		})
+
+		It("keeps a cubic item at the depth its largest extent allows", func() {
+			tree.Insert(blockAABB, "Block")
+			state := tree.Stats()
+			Expect(state.NodeCount).To(Equal(uint32(2))) // root + child
+			Expect(state.ItemCountPerDepth).To(Equal([]uint32{
+				0, 1, 0,
+			}))
+		})
+
+		It("finds both items regardless of the depth they settle at", func() {
+			tree.Insert(slabAABB, "Slab")
+			tree.Insert(blockAABB, "Block")
+			var found []string
+			tree.QueryAABB(shape3d.NewAABB(15.0, 33.0, 16.0, 17.0, 33.0, 16.0),
+				func(item string) bool {
+					found = append(found, item)
+					return true
+				})
+			Expect(found).To(ConsistOf("Slab", "Block"))
+		})
+	})
+
 	When("an item creates a deeply nested branch", func() {
 		var deepItemID query3d.TreeItemID
 
@@ -245,7 +336,7 @@ var _ = Describe("Octree", func() {
 			// A tiny item placed off-center descends to the deepest allowed
 			// node, allocating one node per depth level along the way.
 			deepItemID = tree.Insert(
-				areaFromSphere(60.0, 60.0, 60.0, 1.0),
+				aabbFromSphere(60.0, 60.0, 60.0, 1.0),
 				"Deep",
 			)
 		})
@@ -273,7 +364,7 @@ var _ = Describe("Octree", func() {
 				// A large item can no longer fit in any child, so it lands on
 				// the root and the vacated branch must collapse.
 				tree.Update(deepItemID,
-					areaFromSphere(0.0, 0.0, 0.0, 60.0),
+					aabbFromSphere(0.0, 0.0, 0.0, 60.0),
 				)
 			})
 
@@ -293,11 +384,11 @@ var _ = Describe("Octree", func() {
 			// leaves. Removing the far item must collapse its leaf and shrink
 			// the cached bounding boxes of the surviving ancestors.
 			tree.Insert(
-				areaFromSphere(16.0, 16.0, 16.0, 2.0),
+				aabbFromSphere(16.0, 16.0, 16.0, 2.0),
 				"Near",
 			)
 			farItemID = tree.Insert(
-				areaFromSphere(60.0, 60.0, 60.0, 1.0),
+				aabbFromSphere(60.0, 60.0, 60.0, 1.0),
 				"Far",
 			)
 			// Settle the tree so every cached box is clean. Only the collapse
@@ -344,11 +435,11 @@ var _ = Describe("Octree", func() {
 			ids := make([]query3d.TreeItemID, count)
 			expected := make(map[query3d.TreeItemID]string, count)
 
-			positionFor := func(i int) query3d.Area {
+			positionFor := func(i int) shape3d.AABB {
 				x := float64(-60 + (i*7)%120)
 				y := float64(-60 + (i*13)%120)
 				z := float64(-60 + (i*5)%120)
-				return areaFromSphere(x, y, z, 1.0)
+				return aabbFromSphere(x, y, z, 1.0)
 			}
 
 			// Populate the tree.

@@ -99,4 +99,46 @@ var _ = Describe("Mesh", func() {
 			Expect(bc.Radius).To(Equal(0.0))
 		})
 	})
+
+	Describe("BoundingAABB", func() {
+		It("encloses all edge endpoints tightly", func() {
+			aabb := mesh.BoundingAABB()
+			Expect(aabb.MinX).To(BeNumerically("~", 0.0, 1e-6))
+			Expect(aabb.MinY).To(BeNumerically("~", 0.0, 1e-6))
+			Expect(aabb.MaxX).To(BeNumerically("~", 2.0, 1e-6))
+			Expect(aabb.MaxY).To(BeNumerically("~", 2.0, 1e-6))
+		})
+
+		It("contains every endpoint of every edge", func() {
+			aabb := mesh.BoundingAABB()
+			for _, edge := range mesh.Edges {
+				Expect(aabb.MinX).To(BeNumerically("<=", edge.A.X))
+				Expect(aabb.MinX).To(BeNumerically("<=", edge.B.X))
+				Expect(aabb.MinY).To(BeNumerically("<=", edge.A.Y))
+				Expect(aabb.MinY).To(BeNumerically("<=", edge.B.Y))
+				Expect(aabb.MaxX).To(BeNumerically(">=", edge.A.X))
+				Expect(aabb.MaxX).To(BeNumerically(">=", edge.B.X))
+				Expect(aabb.MaxY).To(BeNumerically(">=", edge.A.Y))
+				Expect(aabb.MaxY).To(BeNumerically(">=", edge.B.Y))
+			}
+		})
+
+		It("keeps the Y axis independent of X", func() {
+			// Regression check: an edge whose endpoints vary along Y but are
+			// constant along X must still report a tight Y bound instead of
+			// collapsing to the X extent.
+			single := shape2d.NewMesh([]shape2d.Edge{
+				shape2d.NewEdge(dprec.NewVec2(5.0, -2.0), dprec.NewVec2(5.0, 4.0)),
+			})
+			aabb := single.BoundingAABB()
+			Expect(aabb.MinX).To(BeNumerically("~", 5.0, 1e-6))
+			Expect(aabb.MaxX).To(BeNumerically("~", 5.0, 1e-6))
+			Expect(aabb.MinY).To(BeNumerically("~", -2.0, 1e-6))
+			Expect(aabb.MaxY).To(BeNumerically("~", 4.0, 1e-6))
+		})
+
+		It("returns an empty AABB for an empty mesh", func() {
+			Expect(shape2d.Mesh{}.BoundingAABB().IsEmpty()).To(BeTrue())
+		})
+	})
 })

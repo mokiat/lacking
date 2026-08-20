@@ -69,3 +69,38 @@ func (m Mesh) BoundingSphere() Sphere {
 		Radius: radius,
 	}
 }
+
+// BoundingAABB returns the smallest [AABB] that fully encompasses the mesh.
+//
+// An empty mesh yields an empty [AABB] (see [EmptyAABB]).
+func (m Mesh) BoundingAABB() AABB {
+	result := EmptyAABB()
+
+	for _, triangle := range m.Triangles {
+		result.MinX = min(result.MinX, triangle.A.X)
+		result.MinX = min(result.MinX, triangle.B.X)
+		result.MinX = min(result.MinX, triangle.C.X)
+
+		result.MinY = min(result.MinY, triangle.A.Y)
+		result.MinY = min(result.MinY, triangle.B.Y)
+		result.MinY = min(result.MinY, triangle.C.Y)
+
+		result.MinZ = min(result.MinZ, triangle.A.Z)
+		result.MinZ = min(result.MinZ, triangle.B.Z)
+		result.MinZ = min(result.MinZ, triangle.C.Z)
+
+		result.MaxX = max(result.MaxX, triangle.A.X)
+		result.MaxX = max(result.MaxX, triangle.B.X)
+		result.MaxX = max(result.MaxX, triangle.C.X)
+
+		result.MaxY = max(result.MaxY, triangle.A.Y)
+		result.MaxY = max(result.MaxY, triangle.B.Y)
+		result.MaxY = max(result.MaxY, triangle.C.Y)
+
+		result.MaxZ = max(result.MaxZ, triangle.A.Z)
+		result.MaxZ = max(result.MaxZ, triangle.B.Z)
+		result.MaxZ = max(result.MaxZ, triangle.C.Z)
+	}
+
+	return result
+}

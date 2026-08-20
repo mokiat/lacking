@@ -5,454 +5,432 @@ import (
 	"github.com/mokiat/gomath/dprec"
 	"github.com/mokiat/lacking/core/spatial/placement3d"
 	"github.com/mokiat/lacking/core/spatial/shape3d"
-	"github.com/mokiat/lacking/game/physics/solver"
 )
 
-var invalidBodyState = &bodyState{}
-
-type BodyDefinitionInfo struct {
-	Mass                   float64
-	MomentOfInertia        dprec.Mat3
-	FrictionCoefficient    float64
-	RestitutionCoefficient float64
-	DragFactor             float64
-	AngularDragFactor      float64
-	CollisionRejectGroup   uint32
-	CollisionSpheres       []shape3d.Sphere
-	CollisionBoxes         []shape3d.Box
-	CollisionMeshes        []shape3d.Mesh
-	AerodynamicShapes      []AerodynamicShape
+type BodyID struct {
+	index    int32
+	revision int32
 }
 
-type BodyDefinition struct {
-	mass                   float64
-	momentOfInertia        dprec.Mat3
-	frictionCoefficient    float64
-	restitutionCoefficient float64
-	dragFactor             float64
-	angularDragFactor      float64
-	collisionRejectGroup   uint32
-	collisionSpheres       []shape3d.Sphere
-	collisionBoxes         []shape3d.Box
-	collisionMeshes        []shape3d.Mesh
-	aerodynamicShapes      []AerodynamicShape
+var NilBodyID = BodyID{}
+
+type BodyView struct {
+	scene *Scene
 }
 
-// NewBodyDefinition creates a new BodyDefinition that can be used
-// to create Body instances.
-func NewBodyDefinition(info BodyDefinitionInfo) *BodyDefinition {
-	return &BodyDefinition{
-		mass:                   info.Mass,
-		momentOfInertia:        info.MomentOfInertia,
-		frictionCoefficient:    info.FrictionCoefficient,
-		restitutionCoefficient: info.RestitutionCoefficient,
-		dragFactor:             info.DragFactor,
-		angularDragFactor:      info.AngularDragFactor,
-		collisionRejectGroup:   info.CollisionRejectGroup,
-		collisionSpheres:       info.CollisionSpheres,
-		collisionBoxes:         info.CollisionBoxes,
-		collisionMeshes:        info.CollisionMeshes,
-		aerodynamicShapes:      info.AerodynamicShapes,
+func (v BodyView) Create(position dprec.Vec3, rotation dprec.Quat) BodyID {
+	index, body := v.scene.allocateBody()
+
+	objectID := v.scene.collisionScene.CreateObject(placement3d.ObjectInfo[bodyData]{
+		Position: opt.V(position),
+		Rotation: opt.V(rotation),
+		UserData: bodyData{
+			index: index,
+		},
+	})
+
+	*body = bodyState{
+		objectID:                  objectID,
+		revision:                  body.revision + 1, // progress revision to valid (odd) value
+		firstBodyAcceleratorIndex: nilIndex,
+		firstSoloConstraintIndex:  nilIndex,
+		firstPairConstraintIndex:  nilIndex,
+		invInertiaLocal:           dprec.IdentityMat3(),
+		invInertia:                dprec.IdentityMat3(),
+		invMass:                   1.0,
+		linearVelocity:            dprec.ZeroVec3(),
+		angularVelocity:           dprec.ZeroVec3(),
+		position:                  position,
+		rotation:                  rotation,
+	}
+
+	return BodyID{
+		index:    index,
+		revision: body.revision,
 	}
 }
 
-func (d *BodyDefinition) CollisionSpheres() []shape3d.Sphere {
-	return d.collisionSpheres
+func (v BodyView) CreateHandle(position dprec.Vec3, rotation dprec.Quat) BodyHandle {
+	return v.Handle(v.Create(position, rotation))
 }
 
-func (d *BodyDefinition) CollisionBoxes() []shape3d.Box {
-	return d.collisionBoxes
-}
+func (v BodyView) Delete(id BodyID) {
+	body := v.resolve(id, true)
 
-func (d *BodyDefinition) CollisionMeshes() []shape3d.Mesh {
-	return d.collisionMeshes
-}
+	v.scene.collisionScene.DeleteObject(body.objectID)
 
-type BodyInfo struct {
-	Name       string
-	Definition *BodyDefinition
-	Position   dprec.Vec3
-	Rotation   dprec.Quat
-}
-
-// Body represents a physical body that has physics
-// act upon it.
-type Body struct {
-	scene     *Scene
-	reference indexReference
-}
-
-// Name returns the name of this body.
-func (b Body) Name() string {
-	state := b.state()
-	return state.name
-}
-
-// SetName sets a new name for this body.
-func (b Body) SetName(name string) {
-	state := b.state()
-	state.name = name
-}
-
-// Mass returns the mass of this body in kg.
-func (b Body) Mass() float64 {
-	state := b.state()
-	return state.mass
-}
-
-// SetMass changes the mass of this body.
-func (b Body) SetMass(mass float64) {
-	state := b.state()
-	state.mass = mass
-}
-
-// MomentOfInertia returns the moment of inertia, or
-// rotational inertia of this body.
-func (b Body) MomentOfInertia() dprec.Mat3 {
-	state := b.state()
-	return state.momentOfInertia
-}
-
-// SetMomentOfInertia changes the moment of inertia
-// of this body.
-func (b Body) SetMomentOfInertia(inertia dprec.Mat3) {
-	state := b.state()
-	state.momentOfInertia = inertia
-}
-
-// // RestitutionCoefficient returns the restitution
-// // coefficient of this body. Valid values are in
-// // the range [0.0 - 1.0], where 0.0 means that the
-// // body does not bounce and 1.0 means that it bounds
-// // back with the same velocity. In reality the amount
-// // that the body will bounce depends on the restitution
-// // coefficients of both bodies colliding. Furthermore,
-// // due to computational errors, the bounce will eventually
-// // stop.
-// func (b *Body) RestitutionCoefficient() float64 {
-// 	return b.restitutionCoefficient
-// }
-
-// // SetRestitutionCoefficient changes the restitution
-// // coefficient for this body.
-// func (b *Body) SetRestitutionCoefficient(coefficient float64) {
-// 	b.restitutionCoefficient = coefficient
-// }
-
-// // DragCoefficient returns the drag factor of this body.
-// func (b *Body) DragFactor() float64 {
-// 	return b.dragFactor
-// }
-
-// // SetDragFactor sets the drag factor for this body.
-// // The drag factor is the drag coefficient multiplied
-// // by the area and divided in half.
-// func (b *Body) SetDragFactor(factor float64) {
-// 	b.dragFactor = factor
-// }
-
-// // AngularDragFactor returns the angular drag factor
-// // for this body.
-// func (b *Body) AngularDragFactor() float64 {
-// 	return b.angularDragFactor
-// }
-
-// // SetAngularDragFactor sets the angular factor for this body.
-// // The angular factor is similar to the drag factor, except
-// // that it deals with the drag induced by the rotation of
-// // the body.
-// func (b *Body) SetAngularDragFactor(factor float64) {
-// 	b.angularDragFactor = factor
-// }
-
-// Position returns the body's position in world space.
-func (b Body) Position() dprec.Vec3 {
-	state := b.state()
-	return state.position
-}
-
-// SetPosition changes the position of this body.
-func (b Body) SetPosition(position dprec.Vec3) {
-	state := b.state()
-	state.position = position
-
-	// FIXME: Invalidate shape placement!
-}
-
-// Rotation returns the quaternion rotation of this body.
-func (b Body) Rotation() dprec.Quat {
-	state := b.state()
-	return state.rotation
-}
-
-// SetRotation changes the quaterntion rotation of this body.
-func (b Body) SetRotation(rotation dprec.Quat) {
-	state := b.state()
-	state.rotation = rotation
-
-	// FIXME: Invalidate shape placement!
-}
-
-// Velocity returns the velocity of this body.
-func (b Body) Velocity() dprec.Vec3 {
-	state := b.state()
-	return state.velocity
-}
-
-// SetVelocity changes the velocity of this body.
-func (b Body) SetVelocity(velocity dprec.Vec3) {
-	state := b.state()
-	state.velocity = velocity
-}
-
-// AngularVelocity returns the angular velocity
-// of this body.
-func (b Body) AngularVelocity() dprec.Vec3 {
-	state := b.state()
-	return state.angularVelocity
-}
-
-// SetAngularVelocity changes the angular velocity
-// of this body.
-func (b Body) SetAngularVelocity(angularVelocity dprec.Vec3) {
-	state := b.state()
-	state.angularVelocity = angularVelocity
-}
-
-// // CollisionGroup returns the collision group for this body. Two bodies
-// // with the same collision group are not checked for collisions.
-// func (b Body) CollisionGroup() int {
-// 	state := b.state()
-// 	return state.collisionGroup
-// }
-
-// // SetCollisionGroup changes the collision group for this body.
-// //
-// // A value of 0 disables the collision group.
-// func (b Body) SetCollisionGroup(group int) {
-// 	state := b.state()
-// 	state.collisionGroup = group
-// }
-
-// // CollisionSet contains the collision shapes for this body.
-// func (b Body) CollisionSet() collision.Set {
-// 	state := b.state()
-// 	return state.collisionSet
-// }
-
-// // AerodynamicShapes returns a slice of shapes that
-// // dictate how this body is affected by relative air
-// // motion.
-// func (b *Body) AerodynamicShapes() []AerodynamicShape {
-// 	return b.aerodynamicShapes
-// }
-
-// // SetAerodynamicShapes sets the aerodynamics shapes
-// // to be used when calculating wind drag and lift.
-// func (b *Body) SetAerodynamicShapes(shapes []AerodynamicShape) {
-// 	b.aerodynamicShapes = shapes
-// }
-
-// Delete removes this physical body.
-func (b Body) Delete() {
-	deleteBody(b.scene, b.reference)
-}
-
-func (b Body) state() *bodyState {
-	index := b.reference.Index
-	state := &b.scene.bodies[index]
-	if state.reference != b.reference {
-		return invalidBodyState
+	bodyAcceleratorView := v.scene.BodyAccelerators()
+	for body.firstBodyAcceleratorIndex != nilIndex {
+		bodyAcceleratorView.Delete(bodyAcceleratorView.idFromIndex(body.firstBodyAcceleratorIndex))
 	}
-	return state
+	soloConstraintView := v.scene.SoloConstraints()
+	for body.firstSoloConstraintIndex != nilIndex {
+		soloConstraintView.Delete(soloConstraintView.idFromIndex(body.firstSoloConstraintIndex))
+	}
+	pairConstraintView := v.scene.PairConstraints()
+	for body.firstPairConstraintIndex != nilIndex {
+		pairConstraintView.Delete(pairConstraintView.idFromIndex(body.firstPairConstraintIndex))
+	}
+
+	*body = bodyState{
+		objectID:                  placement3d.NilObjectID,
+		revision:                  body.revision + 1, // progress revision to invalid (even) value
+		firstBodyAcceleratorIndex: nilIndex,
+		firstSoloConstraintIndex:  nilIndex,
+		firstPairConstraintIndex:  nilIndex,
+		invMass:                   1.0,
+		invInertia:                dprec.IdentityMat3(),
+		linearVelocity:            dprec.ZeroVec3(),
+		angularVelocity:           dprec.ZeroVec3(),
+		position:                  dprec.ZeroVec3(),
+		rotation:                  dprec.IdentityQuat(),
+	}
+
+	v.scene.releaseBody(id.index)
 }
 
-// func (b *Body) applyOffsetForce(offset, force dprec.Vec3) {
-// 	b.applyForce(force)
-// 	b.applyTorque(dprec.Vec3Cross(offset, force))
-// }
+// Each calls cb once for every body that is currently alive within this
+// Scene, in unspecified order.
+func (v BodyView) Each(cb func(BodyID)) {
+	v.scene.eachBody(func(index int, body *bodyState) {
+		cb(BodyID{
+			index:    int32(index),
+			revision: body.revision,
+		})
+	})
+}
 
-// func (b *Body) applyImpulse(impulse dprec.Vec3) {
-// 	b.addVelocity(dprec.Vec3Quot(impulse, b.mass))
-// }
+func (v BodyView) Handle(id BodyID) BodyHandle {
+	return BodyHandle{
+		view: v,
+		id:   id,
+	}
+}
 
-// func (b *Body) applyAngularImpulse(impulse dprec.Vec3) {
-// 	// FIXME: the moment of intertia is in local space, whereas the impulse is in world space
-// 	b.addAngularVelocity(dprec.Mat3Vec3Prod(dprec.InverseMat3(b.momentOfInertia), impulse))
-// }
+func (v BodyView) IsValid(id BodyID) bool {
+	body := v.resolve(id, false)
+	return body != nil
+}
 
-// func (b *Body) applyOffsetImpulse(offset, impulse dprec.Vec3) {
-// 	b.applyImpulse(impulse)
-// 	b.applyAngularImpulse(dprec.Vec3Cross(offset, impulse))
-// }
+func (v BodyView) Mass(id BodyID) float64 {
+	body := v.resolve(id, true)
+	return 1.0 / body.invMass
+}
 
-// func (b *Body) applyNudge(nudge dprec.Vec3) {
-// 	b.translate(dprec.Vec3Quot(nudge, b.mass))
-// }
+func (v BodyView) SetMass(id BodyID, mass float64) {
+	body := v.resolve(id, true)
+	body.invMass = 1.0 / mass
+}
 
-// func (b *Body) applyAngularNudge(nudge dprec.Vec3) {
-// 	// FIXME: the moment of intertia is in local space, whereas the torque is in world space
-// 	b.vectorRotate(dprec.Mat3Vec3Prod(dprec.InverseMat3(b.momentOfInertia), nudge))
-// }
+func (v BodyView) MomentOfInertia(id BodyID) dprec.Mat3 {
+	body := v.resolve(id, true)
+	return dprec.InverseMat3(body.invInertiaLocal)
+}
 
-// func (b *Body) applyOffsetNudge(offset, nudge dprec.Vec3) {
-// 	b.applyNudge(nudge)
-// 	b.applyAngularNudge(dprec.Vec3Cross(offset, nudge))
-// }
+func (v BodyView) SetMomentOfInertia(id BodyID, inertia dprec.Mat3) {
+	body := v.resolve(id, true)
+	body.invInertiaLocal = dprec.InverseMat3(inertia)
+	body.recalculateInertia()
+}
+
+func (v BodyView) Velocity(id BodyID) dprec.Vec3 {
+	body := v.resolve(id, true)
+	return body.linearVelocity
+}
+
+func (v BodyView) SetVelocity(id BodyID, velocity dprec.Vec3) {
+	body := v.resolve(id, true)
+	body.linearVelocity = velocity
+}
+
+func (v BodyView) AngularVelocity(id BodyID) dprec.Vec3 {
+	body := v.resolve(id, true)
+	return body.angularVelocity
+}
+
+func (v BodyView) SetAngularVelocity(id BodyID, angularVelocity dprec.Vec3) {
+	body := v.resolve(id, true)
+	body.angularVelocity = angularVelocity
+}
+
+func (v BodyView) Position(id BodyID) dprec.Vec3 {
+	body := v.resolve(id, true)
+	return body.position
+}
+
+func (v BodyView) SetPosition(id BodyID, position dprec.Vec3) {
+	body := v.resolve(id, true)
+	body.position = position
+	v.refreshPlacement(body)
+}
+
+func (v BodyView) Rotation(id BodyID) dprec.Quat {
+	body := v.resolve(id, true)
+	return body.rotation
+}
+
+func (v BodyView) SetRotation(id BodyID, rotation dprec.Quat) {
+	body := v.resolve(id, true)
+	body.rotation = rotation
+	body.recalculateInertia()
+	v.refreshPlacement(body)
+}
+
+func (v BodyView) AttachCollisionSphere(id BodyID, col CollisionSphere) BodyCollisionShapeID {
+	body := v.resolve(id, true)
+	shapeID := v.scene.collisionScene.AttachSphere(body.objectID, placement3d.SphereInfo[shapeData]{
+		Sphere:    col.Shape,
+		Filtering: col.Filtering,
+		UserData: shapeData{
+			frictionCoefficient:    col.FrictionCoefficient,
+			restitutionCoefficient: col.RestitutionCoefficient,
+		},
+	})
+	return BodyCollisionShapeID{
+		bodyID:  id,
+		shapeID: shapeID,
+	}
+}
+
+func (v BodyView) AttachCollisionBox(id BodyID, col CollisionBox) BodyCollisionShapeID {
+	body := v.resolve(id, true)
+	shapeID := v.scene.collisionScene.AttachBox(body.objectID, placement3d.BoxInfo[shapeData]{
+		Box:       col.Shape,
+		Filtering: col.Filtering,
+		UserData: shapeData{
+			frictionCoefficient:    col.FrictionCoefficient,
+			restitutionCoefficient: col.RestitutionCoefficient,
+		},
+	})
+	return BodyCollisionShapeID{
+		bodyID:  id,
+		shapeID: shapeID,
+	}
+}
+
+func (v BodyView) DetachCollisionShape(id BodyID, shapeID BodyCollisionShapeID) {
+	if id != shapeID.bodyID {
+		panic("invalid shape ID for body")
+	}
+	v.scene.collisionScene.DeleteObjectShape(shapeID.shapeID)
+}
+
+func (v BodyView) refreshPlacement(body *bodyState) {
+	v.scene.collisionScene.SetObjectTransform(body.objectID, shape3d.Transform{
+		Translation: body.position,
+		Rotation:    shape3d.RotationFromQuat(body.rotation),
+	})
+}
+
+func (v BodyView) idFromIndex(index int32) BodyID {
+	body := &v.scene.bodies[index]
+	return BodyID{
+		index:    index,
+		revision: body.revision,
+	}
+}
+
+func (v BodyView) resolve(id BodyID, required bool) *bodyState {
+	if id.revision == 0 {
+		if required {
+			panic("invalid body ID")
+		}
+		return nil
+	}
+	body := &v.scene.bodies[id.index]
+	if body.revision != id.revision {
+		if required {
+			panic("invalid body ID")
+		}
+		return nil
+	}
+	return body
+}
+
+// BodyHandle is an object-oriented alternative to [BodyView] that is
+// bound to a specific [BodyID].
+//
+// It is obtained through [BodyView.Handle].
+//
+// Wrapping an ID this way needs no allocation of its own, but unlike a
+// plain [BodyID] (which holds no pointers), a Handle keeps an internal
+// reference to the owning [Scene]. This keeps that Scene reachable for as
+// long as the handle is retained, and adds a pointer that the garbage
+// collector must trace wherever the handle is stored. Prefer storing IDs
+// over handles in long-lived collections unless the convenience is worth
+// that cost.
+type BodyHandle struct {
+	view BodyView
+	id   BodyID
+}
+
+func (h BodyHandle) ID() BodyID {
+	return h.id
+}
+
+func (h BodyHandle) Delete() {
+	h.view.Delete(h.id)
+}
+
+func (h BodyHandle) IsValid() bool {
+	return h.view.IsValid(h.id)
+}
+
+func (h BodyHandle) Mass() float64 {
+	return h.view.Mass(h.id)
+}
+
+func (h BodyHandle) SetMass(mass float64) {
+	h.view.SetMass(h.id, mass)
+}
+
+func (h BodyHandle) MomentOfInertia() dprec.Mat3 {
+	return h.view.MomentOfInertia(h.id)
+}
+
+func (h BodyHandle) SetMomentOfInertia(inertia dprec.Mat3) {
+	h.view.SetMomentOfInertia(h.id, inertia)
+}
+
+func (h BodyHandle) Velocity() dprec.Vec3 {
+	return h.view.Velocity(h.id)
+}
+
+func (h BodyHandle) SetVelocity(velocity dprec.Vec3) {
+	h.view.SetVelocity(h.id, velocity)
+}
+
+func (h BodyHandle) AngularVelocity() dprec.Vec3 {
+	return h.view.AngularVelocity(h.id)
+}
+
+func (h BodyHandle) SetAngularVelocity(angularVelocity dprec.Vec3) {
+	h.view.SetAngularVelocity(h.id, angularVelocity)
+}
+
+func (h BodyHandle) Position() dprec.Vec3 {
+	return h.view.Position(h.id)
+}
+
+func (h BodyHandle) SetPosition(position dprec.Vec3) {
+	h.view.SetPosition(h.id, position)
+}
+
+func (h BodyHandle) Rotation() dprec.Quat {
+	return h.view.Rotation(h.id)
+}
+
+func (h BodyHandle) SetRotation(rotation dprec.Quat) {
+	h.view.SetRotation(h.id, rotation)
+}
+
+func (h BodyHandle) AttachCollisionSphere(shape CollisionSphere) BodyCollisionShapeID {
+	return h.view.AttachCollisionSphere(h.id, shape)
+}
+
+func (h BodyHandle) AttachCollisionBox(shape CollisionBox) BodyCollisionShapeID {
+	return h.view.AttachCollisionBox(h.id, shape)
+}
+
+func (h BodyHandle) DetachCollisionShape(shapeID BodyCollisionShapeID) {
+	h.view.DetachCollisionShape(h.id, shapeID)
+}
 
 type bodyState struct {
-	reference indexReference
-
 	objectID placement3d.ObjectID
 
-	name       string
-	definition *BodyDefinition
+	revision                  int32
+	firstBodyAcceleratorIndex int32
+	firstSoloConstraintIndex  int32
+	firstPairConstraintIndex  int32
 
-	mass            float64
-	momentOfInertia dprec.Mat3
+	invInertiaLocal dprec.Mat3
+	invInertia      dprec.Mat3
+	invMass         float64
 
-	// TODO: Move friction and restitution to the collision Set through
-	// a material.
+	linearAcceleration  dprec.Vec3
+	angularAcceleration dprec.Vec3
 
-	frictionCoefficient    float64
-	restitutionCoefficient float64
-
-	// TODO: dragFactor and angularDragFactor should be moved to the
-	// aerodynamic shapes.
-
-	dragFactor        float64
-	angularDragFactor float64
+	linearVelocity  dprec.Vec3
+	angularVelocity dprec.Vec3
 
 	position dprec.Vec3
 	rotation dprec.Quat
-
-	velocity        dprec.Vec3
-	angularVelocity dprec.Vec3
-
-	aerodynamicShapes []AerodynamicShape
 }
 
-func (s bodyState) IsActive() bool {
-	return s.reference.IsValid()
+func (s bodyState) isValid() bool {
+	return s.revision%2 == 1 // only odd revisions are valid
 }
 
-func (b *bodyState) AddVelocity(amount dprec.Vec3) {
-	b.velocity = dprec.Vec3Sum(b.velocity, amount)
+func (s *bodyState) mass() float64 {
+	return 1.0 / s.invMass
 }
 
-func (b *bodyState) AddAngularVelocity(amount dprec.Vec3) {
-	b.angularVelocity = dprec.Vec3Sum(b.angularVelocity, amount)
+func (s *bodyState) inertia() dprec.Mat3 {
+	return dprec.InverseMat3(s.invInertia)
 }
 
-func (b *bodyState) ClampVelocity(max float64) {
-	if b.velocity.SqrLength() > max*max {
-		b.velocity = dprec.ResizedVec3(b.velocity, max)
+func (b *bodyState) recalculateInertia() {
+	b.invInertia = RotatedMomentOfInertia(b.invInertiaLocal, b.rotation)
+}
+
+func (b *bodyState) addLinearAcceleration(amount dprec.Vec3) {
+	b.linearAcceleration = dprec.Vec3Sum(b.linearAcceleration, amount)
+}
+
+func (b *bodyState) addAngularAcceleration(amount dprec.Vec3) {
+	b.angularAcceleration = dprec.Vec3Sum(b.angularAcceleration, amount)
+}
+
+func (b *bodyState) clampLinearAcceleration(max float64) {
+	if b.linearAcceleration.SqrLength() > max*max {
+		b.linearAcceleration = dprec.ResizedVec3(b.linearAcceleration, max)
 	}
 }
 
-func (b *bodyState) ClampAngularVelocity(max float64) {
+func (b *bodyState) clampAngularAcceleration(max float64) {
+	if b.angularAcceleration.SqrLength() > max*max {
+		b.angularAcceleration = dprec.ResizedVec3(b.angularAcceleration, max)
+	}
+}
+
+func (b *bodyState) applyForce(force dprec.Vec3) {
+	b.addLinearAcceleration(dprec.Vec3Prod(force, b.invMass))
+}
+
+func (b *bodyState) applyTorque(torque dprec.Vec3) {
+	b.addAngularAcceleration(dprec.Mat3Vec3Prod(b.invInertia, torque))
+}
+
+func (b *bodyState) applyOffsetForce(offset, force dprec.Vec3) {
+	b.applyForce(force)
+	b.applyTorque(dprec.Vec3Cross(offset, force))
+}
+
+func (b *bodyState) addLinearVelocity(amount dprec.Vec3) {
+	b.linearVelocity = dprec.Vec3Sum(b.linearVelocity, amount)
+}
+
+func (b *bodyState) addAngularVelocity(amount dprec.Vec3) {
+	b.angularVelocity = dprec.Vec3Sum(b.angularVelocity, amount)
+}
+
+func (b *bodyState) clampLinearVelocity(max float64) {
+	if b.linearVelocity.SqrLength() > max*max {
+		b.linearVelocity = dprec.ResizedVec3(b.linearVelocity, max)
+	}
+}
+
+func (b *bodyState) clampAngularVelocity(max float64) {
 	if b.angularVelocity.SqrLength() > max*max {
 		b.angularVelocity = dprec.ResizedVec3(b.angularVelocity, max)
 	}
 }
 
-func (b *bodyState) Translate(offset dprec.Vec3) {
+func (b *bodyState) translate(offset dprec.Vec3) {
 	b.position = dprec.Vec3Sum(b.position, offset)
 }
 
-func (b *bodyState) VectorRotate(vector dprec.Vec3) {
-	const angularEpsilon = float64(0.00001)
-	if radians := vector.Length(); dprec.Abs(radians) > angularEpsilon {
-		b.Rotate(dprec.RotationQuat(dprec.Radians(radians), vector))
-	}
-}
-
-func (b *bodyState) Rotate(quat dprec.Quat) {
+func (b *bodyState) rotate(quat dprec.Quat) {
 	b.rotation = dprec.UnitQuat(dprec.QuatProd(quat, b.rotation))
-}
-
-func createBody(scene *Scene, info BodyInfo) Body {
-	var freeIndex uint32
-	if scene.freeBodyIndices.IsEmpty() {
-		freeIndex = uint32(len(scene.bodies))
-		scene.bodies = append(scene.bodies, bodyState{})
-		scene.bodyAccelerationTargets = append(scene.bodyAccelerationTargets, AccelerationTarget{})
-		scene.bodyConstraintPlaceholders = append(scene.bodyConstraintPlaceholders, solver.Placeholder{})
-	} else {
-		freeIndex = scene.freeBodyIndices.Pop()
-	}
-
-	objectID := scene.shapeScene.CreateObject(placement3d.ObjectInfo[bodyRef]{
-		Position: opt.V(info.Position),
-		Rotation: opt.V(info.Rotation),
-		UserData: bodyRef{
-			index: freeIndex,
-		},
-	})
-	for _, sphere := range info.Definition.collisionSpheres {
-		scene.shapeScene.AttachSphere(objectID, placement3d.SphereInfo[struct{}]{
-			Filtering: placement3d.FilterInfo{
-				RejectGroup: info.Definition.collisionRejectGroup,
-			},
-			Sphere: sphere,
-		})
-	}
-	for _, box := range info.Definition.collisionBoxes {
-		scene.shapeScene.AttachBox(objectID, placement3d.BoxInfo[struct{}]{
-			Filtering: placement3d.FilterInfo{
-				RejectGroup: info.Definition.collisionRejectGroup,
-			},
-			Box: box,
-		})
-	}
-	// for _, mesh := range info.Definition.collisionMeshes {
-	// 	scene.shapeScene.CreateMesh(placement3d.MeshInfo[struct{}]{
-	// 		ShapeInfo: placement3d.ShapeInfo[struct{}]{
-	// 			RejectGroup: uint32(info.Definition.collisionGroup),
-	// 		},
-	// 		Mesh: mesh,
-	// 	})
-	// }
-
-	reference := newIndexReference(freeIndex, scene.nextRevision())
-	body := bodyState{
-		reference: reference,
-
-		objectID: objectID,
-
-		name:       info.Name,
-		definition: info.Definition,
-
-		mass:            info.Definition.mass,
-		momentOfInertia: info.Definition.momentOfInertia,
-
-		frictionCoefficient:    info.Definition.frictionCoefficient,
-		restitutionCoefficient: info.Definition.restitutionCoefficient,
-
-		dragFactor:        info.Definition.dragFactor,
-		angularDragFactor: info.Definition.angularDragFactor,
-
-		position: info.Position,
-		rotation: info.Rotation,
-
-		aerodynamicShapes: info.Definition.aerodynamicShapes,
-	}
-	scene.bodies[freeIndex] = body
-
-	return Body{
-		scene:     scene,
-		reference: reference,
-	}
-}
-
-func deleteBody(scene *Scene, reference indexReference) {
-	index := reference.Index
-	state := &scene.bodies[index]
-	if state.reference == reference {
-		scene.shapeScene.DeleteObject(state.objectID)
-		state.reference = newIndexReference(index, 0)
-		state.definition = nil
-		state.aerodynamicShapes = nil
-		scene.freeBodyIndices.Push(index)
-	}
 }

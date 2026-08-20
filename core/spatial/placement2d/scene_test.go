@@ -30,8 +30,8 @@ func rectangleAt(x, y, half float64) shape2d.Rectangle {
 }
 
 // lineMesh builds a mesh made of a single edge forming a horizontal line (at
-// y == 0 by default), centered at the given point and spanning halfSize in the
-// X direction. The edge is wound so that its normal faces -Y.
+// the given y), centered at the given point and spanning halfSize in the X
+// direction. The edge is wound so that its normal faces -Y.
 func lineMesh(x, y, halfSize float64) shape2d.Mesh {
 	a := dprec.NewVec2(x-halfSize, y)
 	b := dprec.NewVec2(x+halfSize, y)
@@ -53,7 +53,7 @@ var _ = Describe("Scene", func() {
 	Describe("object management", func() {
 		It("creates objects placed at the origin by default", func() {
 			objID := scene.CreateObject(placement2d.ObjectInfo[string]{})
-			Expect(objID).NotTo(Equal(placement2d.InvalidObjectID))
+			Expect(objID).NotTo(Equal(placement2d.NilObjectID))
 
 			transform := scene.GetObjectTransform(objID)
 			Expect(transform.Translation).To(dprectest.HaveVec2Coords(0.0, 0.0))
@@ -94,6 +94,59 @@ var _ = Describe("Scene", func() {
 		})
 	})
 
+	Describe("terrain management", func() {
+		It("creates terrains", func() {
+			terrainID := scene.CreateTerrain(placement2d.TerrainInfo[string]{})
+			Expect(terrainID).NotTo(Equal(placement2d.NilTerrainID))
+		})
+
+		It("stores and updates user data", func() {
+			terrainID := scene.CreateTerrain(placement2d.TerrainInfo[string]{
+				UserData: "first",
+			})
+			Expect(scene.GetTerrainUserData(terrainID)).To(Equal("first"))
+
+			scene.SetTerrainUserData(terrainID, "second")
+			Expect(scene.GetTerrainUserData(terrainID)).To(Equal("second"))
+		})
+
+		It("stores and updates terrain shape user data", func() {
+			terrainID := scene.CreateTerrain(placement2d.TerrainInfo[string]{})
+			shapeID := scene.AttachMesh(terrainID, placement2d.MeshInfo[string]{
+				Mesh:     lineMesh(0.0, 0.0, 5.0),
+				UserData: "a",
+			})
+			Expect(scene.GetTerrainShapeUserData(shapeID)).To(Equal("a"))
+
+			scene.SetTerrainShapeUserData(shapeID, "b")
+			Expect(scene.GetTerrainShapeUserData(shapeID)).To(Equal("b"))
+		})
+
+		It("maps a terrain shape back to its owning terrain", func() {
+			terrainID := scene.CreateTerrain(placement2d.TerrainInfo[string]{})
+			shapeID := scene.AttachMesh(terrainID, placement2d.MeshInfo[string]{
+				Mesh: lineMesh(0.0, 0.0, 5.0),
+			})
+			Expect(scene.GetTerrainForShape(shapeID)).To(Equal(terrainID))
+		})
+
+		It("reuses the indices of deleted terrains", func() {
+			first := scene.CreateTerrain(placement2d.TerrainInfo[string]{})
+			scene.DeleteTerrain(first)
+			second := scene.CreateTerrain(placement2d.TerrainInfo[string]{})
+			Expect(second).To(Equal(first))
+		})
+
+		It("panics when attaching an empty mesh", func() {
+			terrainID := scene.CreateTerrain(placement2d.TerrainInfo[string]{})
+			Expect(func() {
+				scene.AttachMesh(terrainID, placement2d.MeshInfo[string]{
+					Mesh: shape2d.NewMesh(nil),
+				})
+			}).To(Panic())
+		})
+	})
+
 	Describe("shape iteration", func() {
 		var objID placement2d.ObjectID
 
@@ -121,11 +174,7 @@ var _ = Describe("Scene", func() {
 
 		It("yields attached rectangles", func() {
 			scene.AttachRectangle(objID, placement2d.RectangleInfo[string]{
-				Rectangle: shape2d.NewRectangle(
-					dprec.ZeroVec2(),
-					shape2d.IdentityRotation(),
-					dprec.NewVec2(1.0, 1.0),
-				),
+				Rectangle: rectangleAt(0.0, 0.0, 1.0),
 			})
 
 			count := 0
@@ -148,29 +197,41 @@ var _ = Describe("Scene", func() {
 			Expect(count).To(Equal(1))
 		})
 
+		It("exposes a rectangle iterator", func() {
+			scene.AttachRectangle(objID, placement2d.RectangleInfo[string]{
+				Rectangle: rectangleAt(0.0, 0.0, 1.0),
+			})
+
+			count := 0
+			for range scene.RectangleIter(placement2d.Filter{}) {
+				count++
+			}
+			Expect(count).To(Equal(1))
+		})
+
 		It("stores and updates shape user data", func() {
 			shapeID := scene.AttachCircle(objID, placement2d.CircleInfo[string]{
 				Circle:   circleAt(0.0, 0.0, 1.0),
 				UserData: "a",
 			})
-			Expect(scene.GetShapeUserData(shapeID)).To(Equal("a"))
+			Expect(scene.GetObjectShapeUserData(shapeID)).To(Equal("a"))
 
-			scene.SetShapeUserData(shapeID, "b")
-			Expect(scene.GetShapeUserData(shapeID)).To(Equal("b"))
+			scene.SetObjectShapeUserData(shapeID, "b")
+			Expect(scene.GetObjectShapeUserData(shapeID)).To(Equal("b"))
 		})
 
 		It("maps a shape back to its owning object", func() {
 			shapeID := scene.AttachCircle(objID, placement2d.CircleInfo[string]{
 				Circle: circleAt(0.0, 0.0, 1.0),
 			})
-			Expect(scene.GetShapeObject(shapeID)).To(Equal(objID))
+			Expect(scene.GetObjectForShape(shapeID)).To(Equal(objID))
 		})
 
 		It("removes a deleted shape from iteration", func() {
 			shapeID := scene.AttachCircle(objID, placement2d.CircleInfo[string]{
 				Circle: circleAt(0.0, 0.0, 1.0),
 			})
-			scene.DeleteShape(shapeID)
+			scene.DeleteObjectShape(shapeID)
 
 			count := 0
 			scene.EachCircle(placement2d.Filter{}, func(shape2d.Circle) bool {
@@ -220,32 +281,58 @@ var _ = Describe("Scene", func() {
 	})
 
 	Describe("shape iteration filters", func() {
-		It("filters by layer mask", func() {
+		BeforeEach(func() {
 			objID := scene.CreateObject(placement2d.ObjectInfo[string]{})
 			scene.AttachCircle(objID, placement2d.CircleInfo[string]{
 				Filtering: placement2d.FilterInfo{
-					SourceMask: opt.V(uint32(0b01)),
+					RejectGroup: 7,
+					SourceMask:  opt.V(uint32(0b01)),
 				},
 				Circle: circleAt(0.0, 0.0, 1.0),
 			})
+		})
 
-			matching := 0
-			scene.EachCircle(placement2d.Filter{Mask: opt.V(uint32(0b01))}, func(shape2d.Circle) bool {
-				matching++
+		countCircles := func(filter placement2d.Filter) int {
+			count := 0
+			scene.EachCircle(filter, func(shape2d.Circle) bool {
+				count++
 				return true
 			})
-			Expect(matching).To(Equal(1))
+			return count
+		}
 
-			nonMatching := 0
-			scene.EachCircle(placement2d.Filter{Mask: opt.V(uint32(0b10))}, func(shape2d.Circle) bool {
-				nonMatching++
-				return true
-			})
-			Expect(nonMatching).To(BeZero())
+		It("yields shapes that occupy a layer of the mask", func() {
+			Expect(countCircles(placement2d.Filter{Mask: 0b01})).To(Equal(1))
+		})
+
+		It("skips shapes that occupy no layer of the mask", func() {
+			Expect(countCircles(placement2d.Filter{Mask: 0b10})).To(BeZero())
+		})
+
+		It("yields everything for the zero mask", func() {
+			Expect(countCircles(placement2d.Filter{Mask: 0})).To(Equal(1))
+		})
+
+		It("yields everything for the full mask", func() {
+			Expect(countCircles(placement2d.Filter{
+				Mask: placement2d.FullMask,
+			})).To(Equal(1))
+		})
+
+		It("skips shapes that share the reject group", func() {
+			Expect(countCircles(placement2d.Filter{RejectGroup: 7})).To(BeZero())
+		})
+
+		It("yields shapes that have a different reject group", func() {
+			Expect(countCircles(placement2d.Filter{RejectGroup: 8})).To(Equal(1))
+		})
+
+		It("yields everything for the zero filter", func() {
+			Expect(countCircles(placement2d.Filter{})).To(Equal(1))
 		})
 	})
 
-	Describe("CollectIntersections", func() {
+	Describe("CollectObjectIntersections", func() {
 		// attachOverlappingCircles places two unit circles 1.5 apart (so they
 		// overlap) on freshly created objects and returns the object IDs.
 		attachOverlappingCircles := func() (placement2d.ObjectID, placement2d.ObjectID) {
@@ -264,9 +351,9 @@ var _ = Describe("Scene", func() {
 			return first, second
 		}
 
-		collect := func() placement2d.ContactList {
-			var contacts placement2d.ContactList
-			scene.CollectIntersections(contacts.AddContact)
+		collect := func() placement2d.ObjectContactList {
+			var contacts placement2d.ObjectContactList
+			scene.CollectObjectIntersections(contacts.AddContact)
 			return contacts
 		}
 
@@ -275,9 +362,23 @@ var _ = Describe("Scene", func() {
 			contacts := collect()
 			Expect(contacts).To(HaveLen(1))
 			Expect([]placement2d.ObjectID{
-				scene.GetShapeObject(contacts[0].SourceShapeID),
-				scene.GetShapeObject(contacts[0].TargetShapeID),
+				contacts[0].SourceObjectID,
+				contacts[0].TargetObjectID,
 			}).To(ConsistOf(first, second))
+		})
+
+		It("reports object IDs that agree with the shape IDs", func() {
+			attachOverlappingCircles()
+			contacts := collect()
+			Expect(contacts).To(HaveLen(1))
+
+			contact := contacts[0]
+			Expect(contact.SourceObjectID).To(Equal(
+				scene.GetObjectForShape(contact.SourceShapeID),
+			))
+			Expect(contact.TargetObjectID).To(Equal(
+				scene.GetObjectForShape(contact.TargetShapeID),
+			))
 		})
 
 		It("does not report contacts between shapes of the same object", func() {
@@ -365,79 +466,18 @@ var _ = Describe("Scene", func() {
 			Expect(collect()).To(HaveLen(1))
 		})
 
-		It("reports a contact between a shape and an overlapping mesh", func() {
-			objID := scene.CreateObject(placement2d.ObjectInfo[string]{})
-			// The line's edge faces -Y, so the circle is placed just below the
-			// line (on the front side) where it overlaps and is pushed out.
-			shapeID := scene.AttachCircle(objID, placement2d.CircleInfo[string]{
-				Circle: circleAt(0.0, -0.5, 1.0),
-			})
-			meshID := scene.CreateMesh(placement2d.MeshInfo[string]{
-				Mesh: lineMesh(0.0, 0.0, 5.0),
-			})
-
-			contacts := collect()
-			Expect(contacts).To(HaveLen(1))
-			Expect(contacts[0].SourceShapeID).To(Equal(shapeID))
-			Expect(contacts[0].TargetShapeID).To(Equal(placement2d.InvalidShapeID))
-			Expect(contacts[0].TargetMeshID).To(Equal(meshID))
-
-			contact := contacts[0].Contact
-			// The contact normal must push the circle out the front (-Y) side,
-			// never inward into the mesh.
-			Expect(contact.TargetNormal.Y).To(BeNumerically("<", 0.0))
-		})
-
-		It("does not report a shape overlapping a mesh from behind", func() {
-			// A circle on the +Y (back) side of the -Y-facing line would have to
-			// be pushed further inward to separate, which the mesh logic
-			// prevents.
-			objID := scene.CreateObject(placement2d.ObjectInfo[string]{})
-			scene.AttachCircle(objID, placement2d.CircleInfo[string]{
-				Circle: circleAt(0.0, 0.5, 1.0),
-			})
-			scene.CreateMesh(placement2d.MeshInfo[string]{
-				Mesh: lineMesh(0.0, 0.0, 5.0),
-			})
-			Expect(collect()).To(BeEmpty())
-		})
-
-		It("does not report a shape disjoint from a mesh", func() {
-			objID := scene.CreateObject(placement2d.ObjectInfo[string]{})
-			scene.AttachCircle(objID, placement2d.CircleInfo[string]{
-				Circle: circleAt(0.0, 10.0, 1.0),
-			})
-			scene.CreateMesh(placement2d.MeshInfo[string]{
-				Mesh: lineMesh(0.0, 0.0, 5.0),
-			})
-			Expect(collect()).To(BeEmpty())
-		})
-	})
-
-	Describe("shape-vs-shape with rectangles", func() {
 		It("reports a contact between two overlapping rectangles", func() {
 			first := scene.CreateObject(placement2d.ObjectInfo[string]{})
 			second := scene.CreateObject(placement2d.ObjectInfo[string]{
 				Position: opt.V(dprec.NewVec2(1.5, 0.0)),
 			})
 			scene.AttachRectangle(first, placement2d.RectangleInfo[string]{
-				Rectangle: shape2d.NewRectangle(
-					dprec.ZeroVec2(),
-					shape2d.IdentityRotation(),
-					dprec.NewVec2(2.0, 2.0),
-				),
+				Rectangle: rectangleAt(0.0, 0.0, 2.0),
 			})
 			scene.AttachRectangle(second, placement2d.RectangleInfo[string]{
-				Rectangle: shape2d.NewRectangle(
-					dprec.ZeroVec2(),
-					shape2d.IdentityRotation(),
-					dprec.NewVec2(2.0, 2.0),
-				),
+				Rectangle: rectangleAt(0.0, 0.0, 2.0),
 			})
-
-			var contacts placement2d.ContactList
-			scene.CollectIntersections(contacts.AddContact)
-			Expect(contacts).To(HaveLen(1))
+			Expect(collect()).To(HaveLen(1))
 		})
 
 		It("reports a contact between an overlapping circle and rectangle", func() {
@@ -449,189 +489,449 @@ var _ = Describe("Scene", func() {
 				Circle: circleAt(0.0, 0.0, 1.0),
 			})
 			scene.AttachRectangle(second, placement2d.RectangleInfo[string]{
-				Rectangle: shape2d.NewRectangle(
-					dprec.ZeroVec2(),
-					shape2d.IdentityRotation(),
-					dprec.NewVec2(1.0, 1.0),
-				),
+				Rectangle: rectangleAt(0.0, 0.0, 1.0),
 			})
+			Expect(collect()).To(HaveLen(1))
+		})
 
-			var contacts placement2d.ContactList
-			scene.CollectIntersections(contacts.AddContact)
-			Expect(contacts).To(HaveLen(1))
+		It("does not report contacts with terrain shapes", func() {
+			objID := scene.CreateObject(placement2d.ObjectInfo[string]{})
+			scene.AttachCircle(objID, placement2d.CircleInfo[string]{
+				Circle: circleAt(0.0, -0.5, 1.0),
+			})
+			terrainID := scene.CreateTerrain(placement2d.TerrainInfo[string]{})
+			scene.AttachMesh(terrainID, placement2d.MeshInfo[string]{
+				Mesh: lineMesh(0.0, 0.0, 5.0),
+			})
+			Expect(collect()).To(BeEmpty())
+		})
+
+		It("reports every overlapping pair of two multi-shape objects", func() {
+			first := scene.CreateObject(placement2d.ObjectInfo[string]{})
+			second := scene.CreateObject(placement2d.ObjectInfo[string]{})
+			scene.AttachCircle(first, placement2d.CircleInfo[string]{
+				Circle: circleAt(0.0, 0.0, 1.0),
+			})
+			scene.AttachCircle(first, placement2d.CircleInfo[string]{
+				Circle: circleAt(0.5, 0.0, 1.0),
+			})
+			scene.AttachCircle(second, placement2d.CircleInfo[string]{
+				Circle: circleAt(0.25, 0.0, 1.0),
+			})
+			// Both shapes of the first object overlap the single shape of the
+			// second one, while the two shapes of the first object are not
+			// tested against each other.
+			Expect(collect()).To(HaveLen(2))
+		})
+
+		It("does not produce phantom contacts after index reuse", func() {
+			first, second := attachOverlappingCircles()
+			Expect(collect()).To(HaveLen(1))
+
+			scene.DeleteObject(first)
+			scene.DeleteObject(second)
+			Expect(collect()).To(BeEmpty())
+
+			// Recreate, reusing both the object and the shape indices.
+			third := scene.CreateObject(placement2d.ObjectInfo[string]{})
+			scene.AttachCircle(third, placement2d.CircleInfo[string]{
+				Circle: circleAt(0.0, 0.0, 1.0),
+			})
+			Expect(collect()).To(BeEmpty())
 		})
 	})
 
-	Describe("CheckCircleIntersection", func() {
-		It("reports a circle overlapping a scene shape", func() {
-			objID := scene.CreateObject(placement2d.ObjectInfo[string]{})
+	Describe("CollectTerrainIntersections", func() {
+		var objID placement2d.ObjectID
+		var terrainID placement2d.TerrainID
+
+		BeforeEach(func() {
+			objID = scene.CreateObject(placement2d.ObjectInfo[string]{})
+			terrainID = scene.CreateTerrain(placement2d.TerrainInfo[string]{})
+		})
+
+		collect := func() placement2d.TerrainContactList {
+			var contacts placement2d.TerrainContactList
+			scene.CollectTerrainIntersections(contacts.AddContact)
+			return contacts
+		}
+
+		It("reports a contact between a shape and an overlapping mesh", func() {
+			// The line's normal faces -Y, so the circle is placed just below
+			// the line (on the front side) where it overlaps and is pushed out.
+			shapeID := scene.AttachCircle(objID, placement2d.CircleInfo[string]{
+				Circle: circleAt(0.0, -0.5, 1.0),
+			})
+			meshID := scene.AttachMesh(terrainID, placement2d.MeshInfo[string]{
+				Mesh: lineMesh(0.0, 0.0, 5.0),
+			})
+
+			contacts := collect()
+			Expect(contacts).To(HaveLen(1))
+			Expect(contacts[0].SourceObjectID).To(Equal(objID))
+			Expect(contacts[0].SourceShapeID).To(Equal(shapeID))
+			Expect(contacts[0].TargetTerrainID).To(Equal(terrainID))
+			Expect(contacts[0].TargetShapeID).To(Equal(meshID))
+
+			// The contact normal must push the circle out the front (-Y) side,
+			// never inward into the mesh.
+			Expect(contacts[0].TargetNormal.Y).To(BeNumerically("<", 0.0))
+		})
+
+		It("does not report a shape overlapping a mesh from behind", func() {
+			// A circle on the +Y (back) side of the -Y-facing line would have
+			// to be pushed further inward to separate, which the mesh logic
+			// prevents.
 			scene.AttachCircle(objID, placement2d.CircleInfo[string]{
+				Circle: circleAt(0.0, 0.5, 1.0),
+			})
+			scene.AttachMesh(terrainID, placement2d.MeshInfo[string]{
+				Mesh: lineMesh(0.0, 0.0, 5.0),
+			})
+			Expect(collect()).To(BeEmpty())
+		})
+
+		It("does not report a shape disjoint from a mesh", func() {
+			scene.AttachCircle(objID, placement2d.CircleInfo[string]{
+				Circle: circleAt(0.0, 10.0, 1.0),
+			})
+			scene.AttachMesh(terrainID, placement2d.MeshInfo[string]{
+				Mesh: lineMesh(0.0, 0.0, 5.0),
+			})
+			Expect(collect()).To(BeEmpty())
+		})
+
+		It("reports a single contact even when many edges overlap", func() {
+			// A large rectangle overlaps both edges of the mesh, yet only the
+			// deepest contact is reported.
+			scene.AttachRectangle(objID, placement2d.RectangleInfo[string]{
+				Rectangle: rectangleAt(0.0, -0.5, 2.0),
+			})
+			scene.AttachMesh(terrainID, placement2d.MeshInfo[string]{
+				Mesh: shape2d.NewMesh([]shape2d.Edge{
+					shape2d.NewEdge(dprec.NewVec2(-5.0, 0.0), dprec.NewVec2(0.0, 0.0)),
+					shape2d.NewEdge(dprec.NewVec2(0.0, 0.0), dprec.NewVec2(5.0, 0.0)),
+				}),
+			})
+			Expect(collect()).To(HaveLen(1))
+		})
+
+		It("reports a contact per terrain shape", func() {
+			scene.AttachCircle(objID, placement2d.CircleInfo[string]{
+				Circle: circleAt(0.0, -0.5, 1.0),
+			})
+			scene.AttachMesh(terrainID, placement2d.MeshInfo[string]{
+				Mesh: lineMesh(0.0, 0.0, 5.0),
+			})
+			scene.AttachMesh(terrainID, placement2d.MeshInfo[string]{
+				Mesh: lineMesh(0.0, -0.1, 5.0),
+			})
+			Expect(collect()).To(HaveLen(2))
+		})
+
+		It("reports a contact per object shape", func() {
+			scene.AttachCircle(objID, placement2d.CircleInfo[string]{
+				Circle: circleAt(-1.0, -0.5, 1.0),
+			})
+			scene.AttachCircle(objID, placement2d.CircleInfo[string]{
+				Circle: circleAt(1.0, -0.5, 1.0),
+			})
+			scene.AttachMesh(terrainID, placement2d.MeshInfo[string]{
+				Mesh: lineMesh(0.0, 0.0, 5.0),
+			})
+			Expect(collect()).To(HaveLen(2))
+		})
+
+		It("does not report shapes that share a reject group", func() {
+			scene.AttachCircle(objID, placement2d.CircleInfo[string]{
+				Filtering: placement2d.FilterInfo{RejectGroup: 7},
+				Circle:    circleAt(0.0, -0.5, 1.0),
+			})
+			scene.AttachMesh(terrainID, placement2d.MeshInfo[string]{
+				Filtering: placement2d.FilterInfo{RejectGroup: 7},
+				Mesh:      lineMesh(0.0, 0.0, 5.0),
+			})
+			Expect(collect()).To(BeEmpty())
+		})
+
+		It("does not report shapes whose masks do not overlap", func() {
+			scene.AttachCircle(objID, placement2d.CircleInfo[string]{
+				Filtering: placement2d.FilterInfo{
+					SourceMask: opt.V(uint32(0b01)),
+					TargetMask: opt.V(uint32(0b01)),
+				},
+				Circle: circleAt(0.0, -0.5, 1.0),
+			})
+			scene.AttachMesh(terrainID, placement2d.MeshInfo[string]{
+				Filtering: placement2d.FilterInfo{
+					SourceMask: opt.V(uint32(0b10)),
+					TargetMask: opt.V(uint32(0b10)),
+				},
+				Mesh: lineMesh(0.0, 0.0, 5.0),
+			})
+			Expect(collect()).To(BeEmpty())
+		})
+
+		It("stops reporting once the terrain is deleted", func() {
+			scene.AttachCircle(objID, placement2d.CircleInfo[string]{
+				Circle: circleAt(0.0, -0.5, 1.0),
+			})
+			scene.AttachMesh(terrainID, placement2d.MeshInfo[string]{
+				Mesh: lineMesh(0.0, 0.0, 5.0),
+			})
+			Expect(collect()).To(HaveLen(1))
+
+			scene.DeleteTerrain(terrainID)
+			Expect(collect()).To(BeEmpty())
+		})
+
+		It("stops reporting once the terrain shape is deleted", func() {
+			scene.AttachCircle(objID, placement2d.CircleInfo[string]{
+				Circle: circleAt(0.0, -0.5, 1.0),
+			})
+			meshID := scene.AttachMesh(terrainID, placement2d.MeshInfo[string]{
+				Mesh: lineMesh(0.0, 0.0, 5.0),
+			})
+			Expect(collect()).To(HaveLen(1))
+
+			scene.DeleteTerrainShape(meshID)
+			Expect(collect()).To(BeEmpty())
+		})
+
+		It("reattaches correctly after terrain shape index reuse", func() {
+			scene.AttachCircle(objID, placement2d.CircleInfo[string]{
+				Circle: circleAt(0.0, -0.5, 1.0),
+			})
+			meshID := scene.AttachMesh(terrainID, placement2d.MeshInfo[string]{
+				Mesh: lineMesh(0.0, 0.0, 5.0),
+			})
+			scene.DeleteTerrainShape(meshID)
+
+			other := scene.CreateTerrain(placement2d.TerrainInfo[string]{})
+			reusedID := scene.AttachMesh(other, placement2d.MeshInfo[string]{
+				Mesh: lineMesh(0.0, 0.0, 5.0),
+			})
+
+			contacts := collect()
+			Expect(contacts).To(HaveLen(1))
+			Expect(contacts[0].TargetTerrainID).To(Equal(other))
+			Expect(contacts[0].TargetShapeID).To(Equal(reusedID))
+			Expect(scene.GetTerrainForShape(reusedID)).To(Equal(other))
+		})
+
+		It("tracks object movement into and out of terrain contact", func() {
+			scene.AttachCircle(objID, placement2d.CircleInfo[string]{
+				Circle: circleAt(0.0, -0.5, 1.0),
+			})
+			scene.AttachMesh(terrainID, placement2d.MeshInfo[string]{
+				Mesh: lineMesh(0.0, 0.0, 5.0),
+			})
+			Expect(collect()).To(HaveLen(1))
+
+			scene.SetObjectTransform(objID, shape2d.TranslationTransform(
+				dprec.NewVec2(0.0, -20.0),
+			))
+			Expect(collect()).To(BeEmpty())
+
+			scene.SetObjectTransform(objID, shape2d.TranslationTransform(
+				dprec.NewVec2(0.0, 0.0),
+			))
+			Expect(collect()).To(HaveLen(1))
+		})
+	})
+
+	Describe("shape id spaces", func() {
+		It("keeps object and terrain shape ids independent", func() {
+			objID := scene.CreateObject(placement2d.ObjectInfo[string]{})
+			shapeID := scene.AttachCircle(objID, placement2d.CircleInfo[string]{
+				Circle:   circleAt(0.0, 0.0, 1.0),
+				UserData: "object-shape",
+			})
+			terrainID := scene.CreateTerrain(placement2d.TerrainInfo[string]{})
+			meshID := scene.AttachMesh(terrainID, placement2d.MeshInfo[string]{
+				Mesh:     lineMesh(0.0, 0.0, 5.0),
+				UserData: "terrain-shape",
+			})
+
+			// Both are the first shape of their kind, hence they share the raw
+			// index while remaining distinct references.
+			Expect(int32(shapeID)).To(Equal(int32(meshID)))
+			Expect(scene.GetObjectShapeUserData(shapeID)).To(Equal("object-shape"))
+			Expect(scene.GetTerrainShapeUserData(meshID)).To(Equal("terrain-shape"))
+		})
+	})
+
+	Describe("circle queries", func() {
+		It("reports a circle overlapping an object shape", func() {
+			objID := scene.CreateObject(placement2d.ObjectInfo[string]{})
+			shapeID := scene.AttachCircle(objID, placement2d.CircleInfo[string]{
 				Circle: circleAt(0.0, 0.0, 1.0),
 			})
 
-			contact, ok := scene.CheckCircleIntersection(
+			contact, ok := scene.CheckCircleObjectIntersection(
 				circleAt(1.5, 0.0, 1.0),
 				placement2d.Filter{},
 			)
 			Expect(ok).To(BeTrue())
-			Expect(contact.SourceShapeID).To(Equal(placement2d.InvalidShapeID))
-			Expect(scene.GetShapeObject(contact.TargetShapeID)).To(Equal(objID))
-			Expect(contact.TargetMeshID).To(Equal(placement2d.InvalidMeshID))
+			Expect(contact.SourceObjectID).To(Equal(placement2d.NilObjectID))
+			Expect(contact.SourceShapeID).To(Equal(placement2d.NilObjectShapeID))
+			Expect(contact.TargetObjectID).To(Equal(objID))
+			Expect(contact.TargetShapeID).To(Equal(shapeID))
 		})
 
-		It("returns false for a circle disjoint from every shape", func() {
+		It("returns false for a circle disjoint from every object shape", func() {
 			objID := scene.CreateObject(placement2d.ObjectInfo[string]{})
 			scene.AttachCircle(objID, placement2d.CircleInfo[string]{
 				Circle: circleAt(0.0, 0.0, 1.0),
 			})
 
-			_, ok := scene.CheckCircleIntersection(
+			_, ok := scene.CheckCircleObjectIntersection(
 				circleAt(10.0, 0.0, 1.0),
 				placement2d.Filter{},
 			)
 			Expect(ok).To(BeFalse())
 		})
 
-		It("reports a circle overlapping a mesh from the front", func() {
-			meshID := scene.CreateMesh(placement2d.MeshInfo[string]{
+		It("honors the query mask", func() {
+			objID := scene.CreateObject(placement2d.ObjectInfo[string]{})
+			scene.AttachCircle(objID, placement2d.CircleInfo[string]{
+				Filtering: placement2d.FilterInfo{
+					SourceMask: opt.V(uint32(0b01)),
+				},
+				Circle: circleAt(0.0, 0.0, 1.0),
+			})
+
+			_, ok := scene.CheckCircleObjectIntersection(
+				circleAt(1.5, 0.0, 1.0),
+				placement2d.Filter{Mask: 0b10},
+			)
+			Expect(ok).To(BeFalse())
+		})
+
+		It("honors the query reject group", func() {
+			objID := scene.CreateObject(placement2d.ObjectInfo[string]{})
+			scene.AttachCircle(objID, placement2d.CircleInfo[string]{
+				Filtering: placement2d.FilterInfo{
+					RejectGroup: 7,
+				},
+				Circle: circleAt(0.0, 0.0, 1.0),
+			})
+
+			_, ok := scene.CheckCircleObjectIntersection(
+				circleAt(1.5, 0.0, 1.0),
+				placement2d.Filter{RejectGroup: 7},
+			)
+			Expect(ok).To(BeFalse())
+		})
+
+		It("reports a circle overlapping a terrain shape from the front", func() {
+			terrainID := scene.CreateTerrain(placement2d.TerrainInfo[string]{})
+			meshID := scene.AttachMesh(terrainID, placement2d.MeshInfo[string]{
 				Mesh: lineMesh(0.0, 0.0, 5.0),
 			})
 
 			// The line faces -Y, so approach it from below (the front side).
-			contact, ok := scene.CheckCircleIntersection(
+			contact, ok := scene.CheckCircleTerrainIntersection(
 				circleAt(0.0, -0.5, 1.0),
 				placement2d.Filter{},
 			)
 			Expect(ok).To(BeTrue())
-			Expect(contact.TargetShapeID).To(Equal(placement2d.InvalidShapeID))
-			Expect(contact.TargetMeshID).To(Equal(meshID))
+			Expect(contact.SourceShapeID).To(Equal(placement2d.NilObjectShapeID))
+			Expect(contact.TargetTerrainID).To(Equal(terrainID))
+			Expect(contact.TargetShapeID).To(Equal(meshID))
 			Expect(contact.TargetNormal.Y).To(BeNumerically("<", 0.0))
 		})
 
-		It("does not report a circle overlapping a mesh from behind", func() {
-			scene.CreateMesh(placement2d.MeshInfo[string]{
+		It("does not report a circle overlapping a terrain shape from behind", func() {
+			terrainID := scene.CreateTerrain(placement2d.TerrainInfo[string]{})
+			scene.AttachMesh(terrainID, placement2d.MeshInfo[string]{
 				Mesh: lineMesh(0.0, 0.0, 5.0),
 			})
 
-			_, ok := scene.CheckCircleIntersection(
+			_, ok := scene.CheckCircleTerrainIntersection(
 				circleAt(0.0, 0.5, 1.0),
 				placement2d.Filter{},
 			)
 			Expect(ok).To(BeFalse())
 		})
 
-		It("skips dynamic shapes when SkipDynamic is set", func() {
+		It("keeps object and terrain queries separate", func() {
 			objID := scene.CreateObject(placement2d.ObjectInfo[string]{})
 			scene.AttachCircle(objID, placement2d.CircleInfo[string]{
 				Circle: circleAt(0.0, 0.0, 1.0),
 			})
 
-			_, ok := scene.CheckCircleIntersection(
-				circleAt(1.5, 0.0, 1.0),
-				placement2d.Filter{SkipDynamic: true},
-			)
-			Expect(ok).To(BeFalse())
-		})
-
-		It("skips static meshes when SkipStatic is set", func() {
-			scene.CreateMesh(placement2d.MeshInfo[string]{
-				Mesh: lineMesh(0.0, 0.0, 5.0),
-			})
-
-			_, ok := scene.CheckCircleIntersection(
-				circleAt(0.0, -0.5, 1.0),
-				placement2d.Filter{SkipStatic: true},
+			_, ok := scene.CheckCircleTerrainIntersection(
+				circleAt(0.5, 0.0, 1.0),
+				placement2d.Filter{},
 			)
 			Expect(ok).To(BeFalse())
 		})
 	})
 
-	Describe("CheckRectangleIntersection", func() {
-		It("reports a rectangle overlapping a scene shape", func() {
+	Describe("rectangle queries", func() {
+		It("reports a rectangle overlapping an object shape", func() {
 			objID := scene.CreateObject(placement2d.ObjectInfo[string]{})
-			scene.AttachCircle(objID, placement2d.CircleInfo[string]{
+			shapeID := scene.AttachCircle(objID, placement2d.CircleInfo[string]{
 				Circle: circleAt(0.0, 0.0, 1.0),
 			})
 
-			contact, ok := scene.CheckRectangleIntersection(
+			contact, ok := scene.CheckRectangleObjectIntersection(
 				rectangleAt(1.5, 0.0, 1.0),
 				placement2d.Filter{},
 			)
 			Expect(ok).To(BeTrue())
-			Expect(contact.SourceShapeID).To(Equal(placement2d.InvalidShapeID))
-			Expect(scene.GetShapeObject(contact.TargetShapeID)).To(Equal(objID))
-			Expect(contact.TargetMeshID).To(Equal(placement2d.InvalidMeshID))
+			Expect(contact.SourceShapeID).To(Equal(placement2d.NilObjectShapeID))
+			Expect(contact.TargetObjectID).To(Equal(objID))
+			Expect(contact.TargetShapeID).To(Equal(shapeID))
 		})
 
-		It("returns false for a rectangle disjoint from every shape", func() {
+		It("returns false for a rectangle disjoint from every object shape", func() {
 			objID := scene.CreateObject(placement2d.ObjectInfo[string]{})
 			scene.AttachCircle(objID, placement2d.CircleInfo[string]{
 				Circle: circleAt(0.0, 0.0, 1.0),
 			})
 
-			_, ok := scene.CheckRectangleIntersection(
+			_, ok := scene.CheckRectangleObjectIntersection(
 				rectangleAt(10.0, 0.0, 1.0),
 				placement2d.Filter{},
 			)
 			Expect(ok).To(BeFalse())
 		})
 
-		It("reports a rectangle overlapping a mesh from the front", func() {
-			meshID := scene.CreateMesh(placement2d.MeshInfo[string]{
+		It("reports a rectangle overlapping a terrain shape from the front", func() {
+			terrainID := scene.CreateTerrain(placement2d.TerrainInfo[string]{})
+			meshID := scene.AttachMesh(terrainID, placement2d.MeshInfo[string]{
 				Mesh: lineMesh(0.0, 0.0, 5.0),
 			})
 
 			// The line faces -Y, so approach it from below (the front side).
-			contact, ok := scene.CheckRectangleIntersection(
+			contact, ok := scene.CheckRectangleTerrainIntersection(
 				rectangleAt(0.0, -0.5, 1.0),
 				placement2d.Filter{},
 			)
 			Expect(ok).To(BeTrue())
-			Expect(contact.TargetShapeID).To(Equal(placement2d.InvalidShapeID))
-			Expect(contact.TargetMeshID).To(Equal(meshID))
+			Expect(contact.TargetTerrainID).To(Equal(terrainID))
+			Expect(contact.TargetShapeID).To(Equal(meshID))
 			Expect(contact.TargetNormal.Y).To(BeNumerically("<", 0.0))
 		})
 
-		It("does not report a rectangle overlapping a mesh from behind", func() {
-			scene.CreateMesh(placement2d.MeshInfo[string]{
+		It("does not report a rectangle overlapping a terrain shape from behind", func() {
+			terrainID := scene.CreateTerrain(placement2d.TerrainInfo[string]{})
+			scene.AttachMesh(terrainID, placement2d.MeshInfo[string]{
 				Mesh: lineMesh(0.0, 0.0, 5.0),
 			})
 
-			_, ok := scene.CheckRectangleIntersection(
+			_, ok := scene.CheckRectangleTerrainIntersection(
 				rectangleAt(0.0, 0.5, 1.0),
 				placement2d.Filter{},
 			)
 			Expect(ok).To(BeFalse())
 		})
-
-		It("skips dynamic shapes when SkipDynamic is set", func() {
-			objID := scene.CreateObject(placement2d.ObjectInfo[string]{})
-			scene.AttachCircle(objID, placement2d.CircleInfo[string]{
-				Circle: circleAt(0.0, 0.0, 1.0),
-			})
-
-			_, ok := scene.CheckRectangleIntersection(
-				rectangleAt(1.5, 0.0, 1.0),
-				placement2d.Filter{SkipDynamic: true},
-			)
-			Expect(ok).To(BeFalse())
-		})
-
-		It("skips static meshes when SkipStatic is set", func() {
-			scene.CreateMesh(placement2d.MeshInfo[string]{
-				Mesh: lineMesh(0.0, 0.0, 5.0),
-			})
-
-			_, ok := scene.CheckRectangleIntersection(
-				rectangleAt(0.0, -0.5, 1.0),
-				placement2d.Filter{SkipStatic: true},
-			)
-			Expect(ok).To(BeFalse())
-		})
 	})
 
-	Describe("CollectSegmentIntersections", func() {
-		It("collects every shape a segment passes through", func() {
+	Describe("segment queries", func() {
+		It("collects every object shape a segment passes through", func() {
 			near := scene.CreateObject(placement2d.ObjectInfo[string]{})
 			far := scene.CreateObject(placement2d.ObjectInfo[string]{})
 			scene.AttachCircle(near, placement2d.CircleInfo[string]{
@@ -641,8 +941,8 @@ var _ = Describe("Scene", func() {
 				Circle: circleAt(4.0, 0.0, 1.0),
 			})
 
-			var contacts placement2d.ContactList
-			scene.CollectSegmentIntersections(
+			var contacts placement2d.ObjectContactList
+			scene.CollectSegmentObjectIntersections(
 				shape2d.NewSegment(
 					dprec.NewVec2(-5.0, 0.0),
 					dprec.NewVec2(9.0, 0.0),
@@ -652,16 +952,14 @@ var _ = Describe("Scene", func() {
 			)
 			Expect(contacts).To(HaveLen(2))
 		})
-	})
 
-	Describe("CheckSegmentIntersection", func() {
-		It("finds a circle crossed by the segment", func() {
+		It("finds an object shape crossed by the segment", func() {
 			objID := scene.CreateObject(placement2d.ObjectInfo[string]{})
-			scene.AttachCircle(objID, placement2d.CircleInfo[string]{
+			shapeID := scene.AttachCircle(objID, placement2d.CircleInfo[string]{
 				Circle: circleAt(0.0, 0.0, 1.0),
 			})
 
-			contact, ok := scene.CheckSegmentIntersection(
+			contact, ok := scene.CheckSegmentObjectIntersection(
 				shape2d.NewSegment(
 					dprec.NewVec2(-5.0, 0.0),
 					dprec.NewVec2(5.0, 0.0),
@@ -669,16 +967,39 @@ var _ = Describe("Scene", func() {
 				placement2d.Filter{},
 			)
 			Expect(ok).To(BeTrue())
-			Expect(contact.SourceShapeID).To(Equal(placement2d.InvalidShapeID))
-			Expect(scene.GetShapeObject(contact.TargetShapeID)).To(Equal(objID))
+			Expect(contact.SourceShapeID).To(Equal(placement2d.NilObjectShapeID))
+			Expect(contact.TargetObjectID).To(Equal(objID))
+			Expect(contact.TargetShapeID).To(Equal(shapeID))
 		})
 
-		It("finds a mesh crossed by the segment", func() {
-			meshID := scene.CreateMesh(placement2d.MeshInfo[string]{
+		It("finds the nearest of two object shapes crossed by the segment", func() {
+			near := scene.CreateObject(placement2d.ObjectInfo[string]{})
+			far := scene.CreateObject(placement2d.ObjectInfo[string]{})
+			nearShapeID := scene.AttachCircle(near, placement2d.CircleInfo[string]{
+				Circle: circleAt(0.0, 0.0, 1.0),
+			})
+			scene.AttachCircle(far, placement2d.CircleInfo[string]{
+				Circle: circleAt(4.0, 0.0, 1.0),
+			})
+
+			contact, ok := scene.CheckSegmentObjectIntersection(
+				shape2d.NewSegment(
+					dprec.NewVec2(-5.0, 0.0),
+					dprec.NewVec2(9.0, 0.0),
+				),
+				placement2d.Filter{},
+			)
+			Expect(ok).To(BeTrue())
+			Expect(contact.TargetShapeID).To(Equal(nearShapeID))
+		})
+
+		It("finds a terrain shape crossed by the segment", func() {
+			terrainID := scene.CreateTerrain(placement2d.TerrainInfo[string]{})
+			meshID := scene.AttachMesh(terrainID, placement2d.MeshInfo[string]{
 				Mesh: lineMesh(0.0, 0.0, 5.0),
 			})
 
-			contact, ok := scene.CheckSegmentIntersection(
+			contact, ok := scene.CheckSegmentTerrainIntersection(
 				shape2d.NewSegment(
 					dprec.NewVec2(2.0, -5.0),
 					dprec.NewVec2(2.0, 5.0),
@@ -686,8 +1007,9 @@ var _ = Describe("Scene", func() {
 				placement2d.Filter{},
 			)
 			Expect(ok).To(BeTrue())
-			Expect(contact.TargetShapeID).To(Equal(placement2d.InvalidShapeID))
-			Expect(contact.TargetMeshID).To(Equal(meshID))
+			Expect(contact.SourceShapeID).To(Equal(placement2d.NilObjectShapeID))
+			Expect(contact.TargetTerrainID).To(Equal(terrainID))
+			Expect(contact.TargetShapeID).To(Equal(meshID))
 		})
 
 		It("returns false when the segment misses everything", func() {
@@ -696,7 +1018,7 @@ var _ = Describe("Scene", func() {
 				Circle: circleAt(0.0, 0.0, 1.0),
 			})
 
-			_, ok := scene.CheckSegmentIntersection(
+			_, ok := scene.CheckSegmentObjectIntersection(
 				shape2d.NewSegment(
 					dprec.NewVec2(-5.0, 5.0),
 					dprec.NewVec2(5.0, 5.0),
@@ -706,33 +1028,18 @@ var _ = Describe("Scene", func() {
 			Expect(ok).To(BeFalse())
 		})
 
-		It("skips dynamic shapes when SkipDynamic is set", func() {
-			objID := scene.CreateObject(placement2d.ObjectInfo[string]{})
-			scene.AttachCircle(objID, placement2d.CircleInfo[string]{
-				Circle: circleAt(0.0, 0.0, 1.0),
-			})
-
-			_, ok := scene.CheckSegmentIntersection(
-				shape2d.NewSegment(
-					dprec.NewVec2(-5.0, 0.0),
-					dprec.NewVec2(5.0, 0.0),
-				),
-				placement2d.Filter{SkipDynamic: true},
-			)
-			Expect(ok).To(BeFalse())
-		})
-
-		It("skips static meshes when SkipStatic is set", func() {
-			scene.CreateMesh(placement2d.MeshInfo[string]{
+		It("keeps object and terrain queries separate", func() {
+			terrainID := scene.CreateTerrain(placement2d.TerrainInfo[string]{})
+			scene.AttachMesh(terrainID, placement2d.MeshInfo[string]{
 				Mesh: lineMesh(0.0, 0.0, 5.0),
 			})
 
-			_, ok := scene.CheckSegmentIntersection(
+			_, ok := scene.CheckSegmentObjectIntersection(
 				shape2d.NewSegment(
 					dprec.NewVec2(0.0, 5.0),
 					dprec.NewVec2(0.0, -5.0),
 				),
-				placement2d.Filter{SkipStatic: true},
+				placement2d.Filter{},
 			)
 			Expect(ok).To(BeFalse())
 		})

@@ -101,4 +101,66 @@ var _ = Describe("Mesh", func() {
 			Expect(bs.Radius).To(Equal(0.0))
 		})
 	})
+
+	Describe("BoundingAABB", func() {
+		It("encloses all triangle vertices tightly", func() {
+			aabb := mesh.BoundingAABB()
+			Expect(aabb.MinX).To(BeNumerically("~", 0.0, 1e-6))
+			Expect(aabb.MinY).To(BeNumerically("~", 0.0, 1e-6))
+			Expect(aabb.MinZ).To(BeNumerically("~", 0.0, 1e-6))
+			Expect(aabb.MaxX).To(BeNumerically("~", 6.0, 1e-6))
+			Expect(aabb.MaxY).To(BeNumerically("~", 6.0, 1e-6))
+			Expect(aabb.MaxZ).To(BeNumerically("~", 6.0, 1e-6))
+		})
+
+		It("contains every vertex of every triangle", func() {
+			aabb := mesh.BoundingAABB()
+			for _, triangle := range mesh.Triangles {
+				Expect(aabb.MinX).To(BeNumerically("<=", triangle.A.X))
+				Expect(aabb.MinX).To(BeNumerically("<=", triangle.B.X))
+				Expect(aabb.MinX).To(BeNumerically("<=", triangle.C.X))
+				Expect(aabb.MinY).To(BeNumerically("<=", triangle.A.Y))
+				Expect(aabb.MinY).To(BeNumerically("<=", triangle.B.Y))
+				Expect(aabb.MinY).To(BeNumerically("<=", triangle.C.Y))
+				Expect(aabb.MinZ).To(BeNumerically("<=", triangle.A.Z))
+				Expect(aabb.MinZ).To(BeNumerically("<=", triangle.B.Z))
+				Expect(aabb.MinZ).To(BeNumerically("<=", triangle.C.Z))
+				Expect(aabb.MaxX).To(BeNumerically(">=", triangle.A.X))
+				Expect(aabb.MaxX).To(BeNumerically(">=", triangle.B.X))
+				Expect(aabb.MaxX).To(BeNumerically(">=", triangle.C.X))
+				Expect(aabb.MaxY).To(BeNumerically(">=", triangle.A.Y))
+				Expect(aabb.MaxY).To(BeNumerically(">=", triangle.B.Y))
+				Expect(aabb.MaxY).To(BeNumerically(">=", triangle.C.Y))
+				Expect(aabb.MaxZ).To(BeNumerically(">=", triangle.A.Z))
+				Expect(aabb.MaxZ).To(BeNumerically(">=", triangle.B.Z))
+				Expect(aabb.MaxZ).To(BeNumerically(">=", triangle.C.Z))
+			}
+		})
+
+		It("keeps the Y and Z axes independent of X", func() {
+			// Regression check: a mesh whose vertices vary along Y and Z but
+			// are constant along X must still report tight Y/Z bounds instead
+			// of collapsing to the X extent.
+			single := shape3d.Mesh{
+				Triangles: []shape3d.Triangle{
+					{
+						A: dprec.NewVec3(5.0, -2.0, -3.0),
+						B: dprec.NewVec3(5.0, 4.0, 1.0),
+						C: dprec.NewVec3(5.0, 0.0, 7.0),
+					},
+				},
+			}
+			aabb := single.BoundingAABB()
+			Expect(aabb.MinX).To(BeNumerically("~", 5.0, 1e-6))
+			Expect(aabb.MaxX).To(BeNumerically("~", 5.0, 1e-6))
+			Expect(aabb.MinY).To(BeNumerically("~", -2.0, 1e-6))
+			Expect(aabb.MaxY).To(BeNumerically("~", 4.0, 1e-6))
+			Expect(aabb.MinZ).To(BeNumerically("~", -3.0, 1e-6))
+			Expect(aabb.MaxZ).To(BeNumerically("~", 7.0, 1e-6))
+		})
+
+		It("returns an empty AABB for an empty mesh", func() {
+			Expect(shape3d.Mesh{}.BoundingAABB().IsEmpty()).To(BeTrue())
+		})
+	})
 })

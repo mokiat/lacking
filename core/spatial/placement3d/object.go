@@ -6,8 +6,11 @@ import (
 	"github.com/mokiat/lacking/core/spatial/shape3d"
 )
 
-// InvalidObjectID indicates an object that can never be part of the scene.
-const InvalidObjectID = ObjectID(nilIndex)
+// NilObjectID indicates an object that can never be part of the scene.
+//
+// It is also used to denote the absence of a source object in contacts that
+// were produced by a query primitive rather than by a scene shape.
+const NilObjectID = ObjectID(nilIndex)
 
 // ObjectID is a reference to an object in the scene.
 type ObjectID int32
@@ -30,7 +33,7 @@ type ObjectInfo[O any] struct {
 	UserData O
 }
 
-type sceneObject[O any] struct {
+type objectState[O any] struct {
 	transform       shape3d.Transform
 	firstShapeIndex int32
 	lastShapeIndex  int32

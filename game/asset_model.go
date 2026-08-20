@@ -11,7 +11,6 @@ import (
 	"github.com/mokiat/lacking/game/asset/dto"
 	"github.com/mokiat/lacking/game/graphics"
 	"github.com/mokiat/lacking/game/hierarchy"
-	"github.com/mokiat/lacking/game/physics"
 	"github.com/mokiat/lacking/render"
 )
 
@@ -22,13 +21,11 @@ type ModelTemplate struct {
 	Shaders         IdentifiableList[*graphics.Shader]
 	Textures        IdentifiableList[render.Texture]
 	Materials       IdentifiableList[*graphics.Material]
-	BodyMaterials   IdentifiableList[*physics.Material]
-	BodyDefinitions IdentifiableList[*physics.BodyDefinition]
 	MeshGeometries  IdentifiableList[*graphics.MeshGeometry]
 	MeshDefinitions IdentifiableList[*graphics.MeshDefinition]
 
 	Nodes             IdentifiableList[NodeTemplate]
-	Bodies            IdentifiableList[BodyTemplate]
+	Terrains          IdentifiableList[TerrainTemplate]
 	Armatures         IdentifiableList[ArmatureTemplate]
 	Meshes            IdentifiableList[MeshTemplate]
 	AmbientLights     IdentifiableList[AmbientLightTemplate]
@@ -71,16 +68,6 @@ func LoadModelTemplate(loader *AssetLoader, assetModel dto.Model) (*ModelTemplat
 		return nil, fmt.Errorf("failed to resolve materials: %w", err)
 	}
 
-	bodyMaterials, err := LoadPhysicsMaterials(loader, assetModel.PhysicsChunk.BodyMaterials)
-	if err != nil {
-		return nil, fmt.Errorf("failed to resolve body materials: %w", err)
-	}
-
-	bodyDefinitions, err := LoadPhysicsBodyDefinitions(loader, assetModel.PhysicsChunk.BodyDefinitions, bodyMaterials)
-	if err != nil {
-		return nil, fmt.Errorf("failed to resolve body definitions: %w", err)
-	}
-
 	meshGeometries, err := LoadMeshGeometries(loader, assetModel.MeshChunk.Geometries)
 	if err != nil {
 		return nil, fmt.Errorf("failed to resolve mesh geometries: %w", err)
@@ -96,9 +83,9 @@ func LoadModelTemplate(loader *AssetLoader, assetModel dto.Model) (*ModelTemplat
 		return nil, fmt.Errorf("failed to resolve node templates: %w", err)
 	}
 
-	bodies, err := LoadPhysicsBodyTemplates(loader, assetModel.PhysicsChunk.Bodies, bodyDefinitions)
+	terrains, err := LoadPhysicsTerrainTemplates(loader, assetModel.PhysicsChunk.Terrains)
 	if err != nil {
-		return nil, fmt.Errorf("failed to resolve physics body templates: %w", err)
+		return nil, fmt.Errorf("failed to resolve physics terrain templates: %w", err)
 	}
 
 	armatures, err := LoadArmatureTemplates(loader, assetModel.MeshChunk.Armatures)
@@ -143,13 +130,11 @@ func LoadModelTemplate(loader *AssetLoader, assetModel dto.Model) (*ModelTemplat
 		Shaders:         shaders,
 		Textures:        textures,
 		Materials:       materials,
-		BodyMaterials:   bodyMaterials,
-		BodyDefinitions: bodyDefinitions,
 		MeshGeometries:  meshGeometries,
 		MeshDefinitions: meshDefinitions,
 
 		Nodes:             nodes,
-		Bodies:            bodies,
+		Terrains:          terrains,
 		Armatures:         armatures,
 		Meshes:            meshes,
 		AmbientLights:     ambientLights,
@@ -169,13 +154,10 @@ func UnloadModelTemplate(loader *AssetLoader, template *ModelTemplate) error {
 		UnloadShaders(loader, template.Shaders),
 		UnloadTextures(loader, template.Textures),
 		UnloadMaterials(loader, template.Materials),
-		UnloadPhysicsMaterials(loader, template.BodyMaterials),
-		UnloadPhysicsBodyDefinitions(loader, template.BodyDefinitions),
 		UnloadMeshGeometries(loader, template.MeshGeometries),
 		UnloadMeshDefinitions(loader, template.MeshDefinitions),
 
 		UnloadNodeTemplates(loader, template.Nodes),
-		UnloadPhysicsBodyTemplates(loader, template.Bodies),
 		UnloadArmatureTemplates(loader, template.Armatures),
 		UnloadMeshTemplates(loader, template.Meshes),
 		UnloadAmbientLightTemplates(loader, template.AmbientLights),
@@ -316,13 +298,9 @@ func InstantiateModel(scene *Scene, info ModelInfo) *Model {
 	recordings := definition.Recordings
 	meshDefinitions := definition.MeshDefinitions
 
-	for template := range definition.Bodies.Values() {
+	for template := range definition.Terrains.Values() {
 		if nodes.HasID(template.NodeID) {
-			if info.IsDynamic {
-				InstantiatePhysicsBodyTemplateDynamic(scene, template, nodes)
-			} else {
-				InstantiatePhysicsBodyTemplateStatic(scene, template, nodes)
-			}
+			InstantiatePhysicsTerrainTemplate(scene, template, nodes)
 		}
 	}
 
