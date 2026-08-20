@@ -1,0 +1,1649 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+        <link rel="canonical" href="http://mokiat.com/lacking/manual/ecs/">
+      
+      
+        <link rel="prev" href="../core/spatial/">
+      
+      
+        <link rel="next" href="../game/">
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.4.2, mkdocs-material-9.0.6">
+    
+    
+      
+        <title>Overview - Lacking</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.558e4712.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.2505c338.min.css">
+      
+      
+
+    
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce((e,_)=>(e<<5)-e+_.charCodeAt(0),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="" data-md-color-accent="">
+  
+    
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#ecs" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Lacking" class="md-header__button md-logo" aria-label="Lacking" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3V6m0 5h18v2H3v-2m0 5h18v2H3v-2Z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Lacking
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Overview
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+    
+      <label class="md-header__button md-icon" for="__search">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5Z"/></svg>
+      </label>
+      <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5Z"/></svg>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12Z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41Z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/mokiat/lacking/" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81z"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Lacking" class="md-nav__button md-logo" aria-label="Lacking" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
+
+    </a>
+    Lacking
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/mokiat/lacking/" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81z"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+      
+
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        Home
+      </a>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../examples/" class="md-nav__link">
+        Examples
+      </a>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/" class="md-nav__link">
+        Getting Started
+      </a>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+    
+  
+  
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " data-md-toggle="__nav_4" type="checkbox" id="__nav_4" checked>
+      
+      
+      
+        <label class="md-nav__link" for="__nav_4" tabindex="0" aria-expanded="true">
+          User's Guide
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="User's Guide" data-md-level="1">
+        <label class="md-nav__title" for="__nav_4">
+          <span class="md-nav__icon md-icon"></span>
+          User's Guide
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../application/" class="md-nav__link">
+        Application
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " data-md-toggle="__nav_4_2" type="checkbox" id="__nav_4_2" >
+      
+      
+      
+        <label class="md-nav__link" for="__nav_4_2" tabindex="0" aria-expanded="false">
+          Core
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="Core" data-md-level="2">
+        <label class="md-nav__title" for="__nav_4_2">
+          <span class="md-nav__icon md-icon"></span>
+          Core
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../core/audio/" class="md-nav__link">
+        Audio
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../core/spatial/" class="md-nav__link">
+        Spatial
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+    
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" data-md-toggle="toc" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          ECS
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        ECS
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#core-concepts" class="md-nav__link">
+    Core Concepts
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#setup" class="md-nav__link">
+    Setup
+  </a>
+  
+    <nav class="md-nav" aria-label="Setup">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#registering-component-types" class="md-nav__link">
+    Registering Component Types
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#creating-a-scene" class="md-nav__link">
+    Creating a Scene
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#entities" class="md-nav__link">
+    Entities
+  </a>
+  
+    <nav class="md-nav" aria-label="Entities">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#creating-entities" class="md-nav__link">
+    Creating Entities
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deleting-entities" class="md-nav__link">
+    Deleting Entities
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#checking-existence-and-component-membership" class="md-nav__link">
+    Checking Existence and Component Membership
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#reading-component-data" class="md-nav__link">
+    Reading Component Data
+  </a>
+  
+    <nav class="md-nav" aria-label="Reading Component Data">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#reading-a-single-entity" class="md-nav__link">
+    Reading a Single Entity
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#querying-multiple-entities" class="md-nav__link">
+    Querying Multiple Entities
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#editing-component-data" class="md-nav__link">
+    Editing Component Data
+  </a>
+  
+    <nav class="md-nav" aria-label="Editing Component Data">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#editing-a-single-entity" class="md-nav__link">
+    Editing a Single Entity
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#conditions" class="md-nav__link">
+    Conditions
+  </a>
+  
+    <nav class="md-nav" aria-label="Conditions">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#exclusive-conditions" class="md-nav__link">
+    Exclusive Conditions
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#subscriptions" class="md-nav__link">
+    Subscriptions
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#deferred-mutations-during-queries" class="md-nav__link">
+    Deferred Mutations During Queries
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#retaining-component-pointers-with-freeze-and-unfreeze" class="md-nav__link">
+    Retaining Component Pointers with Freeze and Unfreeze
+  </a>
+  
+    <nav class="md-nav" aria-label="Retaining Component Pointers with Freeze and Unfreeze">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#creating-entities-while-frozen" class="md-nav__link">
+    Creating Entities While Frozen
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#subscription-dispatch-while-frozen" class="md-nav__link">
+    Subscription Dispatch While Frozen
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#systems" class="md-nav__link">
+    Systems
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#limitations" class="md-nav__link">
+    Limitations
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../game/" class="md-nav__link">
+        Game
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " data-md-toggle="__nav_4_5" type="checkbox" id="__nav_4_5" >
+      
+      
+      
+        <label class="md-nav__link" for="__nav_4_5" tabindex="0" aria-expanded="false">
+          Graphics
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="Graphics" data-md-level="2">
+        <label class="md-nav__title" for="__nav_4_5">
+          <span class="md-nav__icon md-icon"></span>
+          Graphics
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../graphics/shader/" class="md-nav__link">
+        Shader
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../rendering/" class="md-nav__link">
+        Rendering
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../user-interface/" class="md-nav__link">
+        User Interface
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " data-md-toggle="__nav_5" type="checkbox" id="__nav_5" >
+      
+      
+      
+        <label class="md-nav__link" for="__nav_5" tabindex="0" aria-expanded="false">
+          Internals
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="Internals" data-md-level="1">
+        <label class="md-nav__title" for="__nav_5">
+          <span class="md-nav__icon md-icon"></span>
+          Internals
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " data-md-toggle="__nav_5_1" type="checkbox" id="__nav_5_1" >
+      
+      
+      
+        <label class="md-nav__link" for="__nav_5_1" tabindex="0" aria-expanded="false">
+          Physics
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="Physics" data-md-level="2">
+        <label class="md-nav__title" for="__nav_5_1">
+          <span class="md-nav__icon md-icon"></span>
+          Physics
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../development/physics/" class="md-nav__link">
+        Overview
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../development/physics/references/" class="md-nav__link">
+        References
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " data-md-toggle="__nav_5_1_3" type="checkbox" id="__nav_5_1_3" >
+      
+      
+      
+        <label class="md-nav__link" for="__nav_5_1_3" tabindex="0" aria-expanded="false">
+          Theory
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="Theory" data-md-level="3">
+        <label class="md-nav__title" for="__nav_5_1_3">
+          <span class="md-nav__icon md-icon"></span>
+          Theory
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../development/physics/theory/principles/" class="md-nav__link">
+        Principles
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../development/physics/theory/terminology/" class="md-nav__link">
+        Terminology
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../development/physics/theory/equations/" class="md-nav__link">
+        Equations
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../development/physics/theory/effective-mass/" class="md-nav__link">
+        Effective Mass
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../development/physics/theory/moment-of-inertia/" class="md-nav__link">
+        Moment of Inertia
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " data-md-toggle="__nav_5_1_4" type="checkbox" id="__nav_5_1_4" >
+      
+      
+      
+        <label class="md-nav__link" for="__nav_5_1_4" tabindex="0" aria-expanded="false">
+          Derivations
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="Derivations" data-md-level="3">
+        <label class="md-nav__title" for="__nav_5_1_4">
+          <span class="md-nav__icon md-icon"></span>
+          Derivations
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../development/physics/derivations/impulse-derivation/" class="md-nav__link">
+        Impulse
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../development/physics/derivations/effective-mass-derivation/" class="md-nav__link">
+        Effective Mass
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " data-md-toggle="__nav_5_2" type="checkbox" id="__nav_5_2" >
+      
+      
+      
+        <label class="md-nav__link" for="__nav_5_2" tabindex="0" aria-expanded="false">
+          Math
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="Math" data-md-level="2">
+        <label class="md-nav__title" for="__nav_5_2">
+          <span class="md-nav__icon md-icon"></span>
+          Math
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../development/math/vectors/" class="md-nav__link">
+        Vectors
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../development/math/derivatives/" class="md-nav__link">
+        Derivatives
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " data-md-toggle="__nav_5_3" type="checkbox" id="__nav_5_3" >
+      
+      
+      
+        <label class="md-nav__link" for="__nav_5_3" tabindex="0" aria-expanded="false">
+          Notes
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="Notes" data-md-level="2">
+        <label class="md-nav__title" for="__nav_5_3">
+          <span class="md-nav__icon md-icon"></span>
+          Notes
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../development/notes/precision/" class="md-nav__link">
+        Precision
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#core-concepts" class="md-nav__link">
+    Core Concepts
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#setup" class="md-nav__link">
+    Setup
+  </a>
+  
+    <nav class="md-nav" aria-label="Setup">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#registering-component-types" class="md-nav__link">
+    Registering Component Types
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#creating-a-scene" class="md-nav__link">
+    Creating a Scene
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#entities" class="md-nav__link">
+    Entities
+  </a>
+  
+    <nav class="md-nav" aria-label="Entities">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#creating-entities" class="md-nav__link">
+    Creating Entities
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deleting-entities" class="md-nav__link">
+    Deleting Entities
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#checking-existence-and-component-membership" class="md-nav__link">
+    Checking Existence and Component Membership
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#reading-component-data" class="md-nav__link">
+    Reading Component Data
+  </a>
+  
+    <nav class="md-nav" aria-label="Reading Component Data">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#reading-a-single-entity" class="md-nav__link">
+    Reading a Single Entity
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#querying-multiple-entities" class="md-nav__link">
+    Querying Multiple Entities
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#editing-component-data" class="md-nav__link">
+    Editing Component Data
+  </a>
+  
+    <nav class="md-nav" aria-label="Editing Component Data">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#editing-a-single-entity" class="md-nav__link">
+    Editing a Single Entity
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#conditions" class="md-nav__link">
+    Conditions
+  </a>
+  
+    <nav class="md-nav" aria-label="Conditions">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#exclusive-conditions" class="md-nav__link">
+    Exclusive Conditions
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#subscriptions" class="md-nav__link">
+    Subscriptions
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#deferred-mutations-during-queries" class="md-nav__link">
+    Deferred Mutations During Queries
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#retaining-component-pointers-with-freeze-and-unfreeze" class="md-nav__link">
+    Retaining Component Pointers with Freeze and Unfreeze
+  </a>
+  
+    <nav class="md-nav" aria-label="Retaining Component Pointers with Freeze and Unfreeze">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#creating-entities-while-frozen" class="md-nav__link">
+    Creating Entities While Frozen
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#subscription-dispatch-while-frozen" class="md-nav__link">
+    Subscription Dispatch While Frozen
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#systems" class="md-nav__link">
+    Systems
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#limitations" class="md-nav__link">
+    Limitations
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+  
+  
+
+
+
+<h1 id="ecs">ECS</h1>
+<p>The <code>game/ecs</code> package provides an Entity-Component System (ECS) framework for managing game-world objects and their data. It is archetype-based, meaning entities that share the same set of component types are stored together for efficient iteration.</p>
+<h2 id="core-concepts">Core Concepts</h2>
+<table>
+<thead>
+<tr>
+<th>Concept</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Scope</strong></td>
+<td>Registry of component types. Shared across scenes that use the same component vocabulary.</td>
+</tr>
+<tr>
+<td><strong>Scene</strong></td>
+<td>Central container for entities and their components.</td>
+</tr>
+<tr>
+<td><strong>ID</strong></td>
+<td>Versioned handle to a live entity. Becomes stale automatically when the entity is deleted.</td>
+</tr>
+<tr>
+<td><strong>Component</strong></td>
+<td>Plain Go struct value attached to an entity.</td>
+</tr>
+<tr>
+<td><strong>ComponentType</strong></td>
+<td>Typed descriptor for a component, obtained at registration time.</td>
+</tr>
+<tr>
+<td><strong>Condition</strong></td>
+<td>Predicate over an entity's component set, used for queries and subscriptions.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="setup">Setup</h2>
+<h3 id="registering-component-types">Registering Component Types</h3>
+<p>Component types are registered in a <code>Scope</code> before any <code>Scene</code> is created from it. Registration is typically done with package-level variables so that <code>ComponentType</code> descriptors are accessible throughout the codebase.</p>
+<div class="highlight"><pre><span></span><code><span class="kd">var</span><span class="w"> </span><span class="nx">scope</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="nx">ecs</span><span class="p">.</span><span class="nx">NewScope</span><span class="p">()</span>
+
+<span class="kd">var</span><span class="w"> </span><span class="p">(</span>
+<span class="w">    </span><span class="nx">PositionType</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="nx">ecs</span><span class="p">.</span><span class="nx">Type</span><span class="p">[</span><span class="nx">Position</span><span class="p">](</span><span class="nx">scope</span><span class="p">)</span>
+<span class="w">    </span><span class="nx">VelocityType</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="nx">ecs</span><span class="p">.</span><span class="nx">Type</span><span class="p">[</span><span class="nx">Velocity</span><span class="p">](</span><span class="nx">scope</span><span class="p">)</span>
+<span class="w">    </span><span class="nx">HealthType</span><span class="w">   </span><span class="p">=</span><span class="w"> </span><span class="nx">ecs</span><span class="p">.</span><span class="nx">Type</span><span class="p">[</span><span class="nx">Health</span><span class="p">](</span><span class="nx">scope</span><span class="p">)</span>
+<span class="p">)</span>
+
+<span class="kd">type</span><span class="w"> </span><span class="nx">Position</span><span class="w"> </span><span class="kd">struct</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">X</span><span class="p">,</span><span class="w"> </span><span class="nx">Y</span><span class="p">,</span><span class="w"> </span><span class="nx">Z</span><span class="w"> </span><span class="kt">float32</span>
+<span class="p">}</span>
+
+<span class="kd">type</span><span class="w"> </span><span class="nx">Velocity</span><span class="w"> </span><span class="kd">struct</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">X</span><span class="p">,</span><span class="w"> </span><span class="nx">Y</span><span class="p">,</span><span class="w"> </span><span class="nx">Z</span><span class="w"> </span><span class="kt">float32</span>
+<span class="p">}</span>
+
+<span class="kd">type</span><span class="w"> </span><span class="nx">Health</span><span class="w"> </span><span class="kd">struct</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">Current</span><span class="p">,</span><span class="w"> </span><span class="nx">Max</span><span class="w"> </span><span class="kt">int</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>A scope is locked once it is passed to <code>NewScene</code>. Attempting to register additional types after that point panics. A single scope can back multiple scenes, but each scene maintains its own independent entity table.</p>
+<blockquote>
+<p><strong>Limit:</strong> A scope supports at most 256 component types.</p>
+</blockquote>
+<h3 id="creating-a-scene">Creating a Scene</h3>
+<div class="highlight"><pre><span></span><code><span class="nx">scene</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">ecs</span><span class="p">.</span><span class="nx">NewScene</span><span class="p">(</span><span class="nx">scope</span><span class="p">)</span>
+<span class="k">defer</span><span class="w"> </span><span class="nx">scene</span><span class="p">.</span><span class="nx">Delete</span><span class="p">()</span>
+</code></pre></div>
+<p>Call <code>scene.Delete()</code> when the scene is no longer needed to release all resources.</p>
+<h2 id="entities">Entities</h2>
+<h3 id="creating-entities">Creating Entities</h3>
+<p><code>CreateEntity</code> allocates a new entity and returns its <code>ID</code>. Pass a callback to add initial components atomically:</p>
+<div class="highlight"><pre><span></span><code><span class="nx">id</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">scene</span><span class="p">.</span><span class="nx">CreateEntity</span><span class="p">(</span><span class="kd">func</span><span class="p">(</span><span class="nx">op</span><span class="w"> </span><span class="o">*</span><span class="nx">ecs</span><span class="p">.</span><span class="nx">EditOperation</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">ecs</span><span class="p">.</span><span class="nx">SetComponent</span><span class="p">(</span><span class="nx">op</span><span class="p">,</span><span class="w"> </span><span class="nx">PositionType</span><span class="p">,</span><span class="w"> </span><span class="nx">Position</span><span class="p">{</span><span class="nx">X</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span><span class="w"> </span><span class="nx">Y</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="nx">Z</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">})</span>
+<span class="w">    </span><span class="nx">ecs</span><span class="p">.</span><span class="nx">SetComponent</span><span class="p">(</span><span class="nx">op</span><span class="p">,</span><span class="w"> </span><span class="nx">VelocityType</span><span class="p">,</span><span class="w"> </span><span class="nx">Velocity</span><span class="p">{</span><span class="nx">X</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="nx">Y</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="nx">Z</span><span class="p">:</span><span class="w"> </span><span class="mi">5</span><span class="p">})</span>
+<span class="p">})</span>
+</code></pre></div>
+<p>Pass <code>nil</code> to create an entity with no components:</p>
+<div class="highlight"><pre><span></span><code><span class="nx">id</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">scene</span><span class="p">.</span><span class="nx">CreateEntity</span><span class="p">(</span><span class="kc">nil</span><span class="p">)</span>
+</code></pre></div>
+<h3 id="deleting-entities">Deleting Entities</h3>
+<div class="highlight"><pre><span></span><code><span class="nx">scene</span><span class="p">.</span><span class="nx">DeleteEntity</span><span class="p">(</span><span class="nx">id</span><span class="p">)</span>
+</code></pre></div>
+<p>After deletion the <code>ID</code> becomes stale and should not be used. Few methods in the library (e.g. <code>HasEntity</code>) accept a stale ID and won't panic.</p>
+<h3 id="checking-existence-and-component-membership">Checking Existence and Component Membership</h3>
+<div class="highlight"><pre><span></span><code><span class="nx">alive</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">scene</span><span class="p">.</span><span class="nx">HasEntity</span><span class="p">(</span><span class="nx">id</span><span class="p">)</span>
+
+<span class="nx">isPhysical</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">scene</span><span class="p">.</span><span class="nx">CheckEntity</span><span class="p">(</span><span class="nx">id</span><span class="p">,</span><span class="w"> </span><span class="nx">ecs</span><span class="p">.</span><span class="nx">Conditions</span><span class="p">(</span>
+<span class="w">    </span><span class="nx">ecs</span><span class="p">.</span><span class="nx">HasComponent</span><span class="p">(</span><span class="nx">PositionType</span><span class="p">),</span>
+<span class="w">    </span><span class="nx">ecs</span><span class="p">.</span><span class="nx">HasComponent</span><span class="p">(</span><span class="nx">VelocityType</span><span class="p">),</span>
+<span class="p">))</span>
+</code></pre></div>
+<h2 id="reading-component-data">Reading Component Data</h2>
+<h3 id="reading-a-single-entity">Reading a Single Entity</h3>
+<p><code>ReadEntity</code> calls the provided function with a <code>ReadOperation</code> scoped to that entity. The operation is valid only for the duration of the call.</p>
+<div class="highlight"><pre><span></span><code><span class="nx">scene</span><span class="p">.</span><span class="nx">ReadEntity</span><span class="p">(</span><span class="nx">id</span><span class="p">,</span><span class="w"> </span><span class="kd">func</span><span class="p">(</span><span class="nx">op</span><span class="w"> </span><span class="o">*</span><span class="nx">ecs</span><span class="p">.</span><span class="nx">ReadOperation</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">pos</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">ecs</span><span class="p">.</span><span class="nx">GetComponent</span><span class="p">(</span><span class="nx">op</span><span class="p">,</span><span class="w"> </span><span class="nx">PositionType</span><span class="p">)</span><span class="w"> </span><span class="c1">// returns *Position or nil</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="nx">pos</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="kc">nil</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">pos</span><span class="p">.</span><span class="nx">X</span><span class="p">,</span><span class="w"> </span><span class="nx">pos</span><span class="p">.</span><span class="nx">Y</span><span class="p">,</span><span class="w"> </span><span class="nx">pos</span><span class="p">.</span><span class="nx">Z</span><span class="p">)</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">})</span>
+</code></pre></div>
+<p><code>GetComponent</code> returns a pointer to the component value, or <code>nil</code> if the entity does not have that component. <code>InjectComponent</code> is a convenience wrapper that writes the pointer into a variable:</p>
+<div class="highlight"><pre><span></span><code><span class="nx">scene</span><span class="p">.</span><span class="nx">ReadEntity</span><span class="p">(</span><span class="nx">id</span><span class="p">,</span><span class="w"> </span><span class="kd">func</span><span class="p">(</span><span class="nx">op</span><span class="w"> </span><span class="o">*</span><span class="nx">ecs</span><span class="p">.</span><span class="nx">ReadOperation</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="kd">var</span><span class="w"> </span><span class="nx">pos</span><span class="w"> </span><span class="o">*</span><span class="nx">Position</span>
+<span class="w">    </span><span class="nx">ecs</span><span class="p">.</span><span class="nx">InjectComponent</span><span class="p">(</span><span class="nx">op</span><span class="p">,</span><span class="w"> </span><span class="nx">PositionType</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="nx">pos</span><span class="p">)</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="nx">pos</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="kc">nil</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="c1">// use pos</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">})</span>
+</code></pre></div>
+<h3 id="querying-multiple-entities">Querying Multiple Entities</h3>
+<p><code>QueryEntities</code> iterates every entity that satisfies a condition. Return <code>false</code> from the callback to stop early.</p>
+<div class="highlight"><pre><span></span><code><span class="nx">movingEntities</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">ecs</span><span class="p">.</span><span class="nx">Conditions</span><span class="p">(</span>
+<span class="w">    </span><span class="nx">ecs</span><span class="p">.</span><span class="nx">HasComponent</span><span class="p">(</span><span class="nx">PositionType</span><span class="p">),</span>
+<span class="w">    </span><span class="nx">ecs</span><span class="p">.</span><span class="nx">HasComponent</span><span class="p">(</span><span class="nx">VelocityType</span><span class="p">),</span>
+<span class="p">)</span>
+
+<span class="nx">scene</span><span class="p">.</span><span class="nx">QueryEntities</span><span class="p">(</span><span class="nx">movingEntities</span><span class="p">,</span><span class="w"> </span><span class="kd">func</span><span class="p">(</span><span class="nx">id</span><span class="w"> </span><span class="nx">ecs</span><span class="p">.</span><span class="nx">ID</span><span class="p">,</span><span class="w"> </span><span class="nx">op</span><span class="w"> </span><span class="o">*</span><span class="nx">ecs</span><span class="p">.</span><span class="nx">ReadOperation</span><span class="p">)</span><span class="w"> </span><span class="kt">bool</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">pos</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">ecs</span><span class="p">.</span><span class="nx">GetComponent</span><span class="p">(</span><span class="nx">op</span><span class="p">,</span><span class="w"> </span><span class="nx">PositionType</span><span class="p">)</span>
+<span class="w">    </span><span class="nx">vel</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">ecs</span><span class="p">.</span><span class="nx">GetComponent</span><span class="p">(</span><span class="nx">op</span><span class="p">,</span><span class="w"> </span><span class="nx">VelocityType</span><span class="p">)</span>
+<span class="w">    </span><span class="nx">fmt</span><span class="p">.</span><span class="nx">Printf</span><span class="p">(</span><span class="s">&quot;%v: pos=%v vel=%v\n&quot;</span><span class="p">,</span><span class="w"> </span><span class="nx">id</span><span class="p">,</span><span class="w"> </span><span class="nx">pos</span><span class="p">,</span><span class="w"> </span><span class="nx">vel</span><span class="p">)</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="kc">true</span><span class="w"> </span><span class="c1">// continue</span>
+<span class="p">})</span>
+</code></pre></div>
+<p><code>QueryEntitiesIter</code> provides the same traversal as a Go range iterator:</p>
+<div class="highlight"><pre><span></span><code><span class="k">for</span><span class="w"> </span><span class="nx">id</span><span class="p">,</span><span class="w"> </span><span class="nx">op</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="k">range</span><span class="w"> </span><span class="nx">scene</span><span class="p">.</span><span class="nx">QueryEntitiesIter</span><span class="p">(</span><span class="nx">movingEntities</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">pos</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">ecs</span><span class="p">.</span><span class="nx">GetComponent</span><span class="p">(</span><span class="nx">op</span><span class="p">,</span><span class="w"> </span><span class="nx">PositionType</span><span class="p">)</span>
+<span class="w">    </span><span class="nx">_</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="nx">pos</span>
+<span class="p">}</span>
+</code></pre></div>
+<h2 id="editing-component-data">Editing Component Data</h2>
+<h3 id="editing-a-single-entity">Editing a Single Entity</h3>
+<p><code>EditEntity</code> calls the provided function with an <code>EditOperation</code> for the entity. Two operations are available:</p>
+<table>
+<thead>
+<tr>
+<th>Function</th>
+<th>Effect</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>SetComponent</code></td>
+<td>Adds the component if the entity does not yet have one of that type, or replaces its value if it does.</td>
+</tr>
+<tr>
+<td><code>UnsetComponent</code></td>
+<td>Removes the component. No-op if the entity does not have one of that type.</td>
+</tr>
+</tbody>
+</table>
+<div class="highlight"><pre><span></span><code><span class="nx">scene</span><span class="p">.</span><span class="nx">EditEntity</span><span class="p">(</span><span class="nx">id</span><span class="p">,</span><span class="w"> </span><span class="kd">func</span><span class="p">(</span><span class="nx">op</span><span class="w"> </span><span class="o">*</span><span class="nx">ecs</span><span class="p">.</span><span class="nx">EditOperation</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">ecs</span><span class="p">.</span><span class="nx">SetComponent</span><span class="p">(</span><span class="nx">op</span><span class="p">,</span><span class="w"> </span><span class="nx">HealthType</span><span class="p">,</span><span class="w"> </span><span class="nx">Health</span><span class="p">{</span><span class="nx">Current</span><span class="p">:</span><span class="w"> </span><span class="mi">100</span><span class="p">,</span><span class="w"> </span><span class="nx">Max</span><span class="p">:</span><span class="w"> </span><span class="mi">100</span><span class="p">})</span>
+<span class="p">})</span>
+
+<span class="nx">scene</span><span class="p">.</span><span class="nx">EditEntity</span><span class="p">(</span><span class="nx">id</span><span class="p">,</span><span class="w"> </span><span class="kd">func</span><span class="p">(</span><span class="nx">op</span><span class="w"> </span><span class="o">*</span><span class="nx">ecs</span><span class="p">.</span><span class="nx">EditOperation</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">ecs</span><span class="p">.</span><span class="nx">SetComponent</span><span class="p">(</span><span class="nx">op</span><span class="p">,</span><span class="w"> </span><span class="nx">VelocityType</span><span class="p">,</span><span class="w"> </span><span class="nx">Velocity</span><span class="p">{</span><span class="nx">X</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="nx">Y</span><span class="p">:</span><span class="w"> </span><span class="mi">10</span><span class="p">,</span><span class="w"> </span><span class="nx">Z</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">})</span>
+<span class="p">})</span>
+
+<span class="nx">scene</span><span class="p">.</span><span class="nx">EditEntity</span><span class="p">(</span><span class="nx">id</span><span class="p">,</span><span class="w"> </span><span class="kd">func</span><span class="p">(</span><span class="nx">op</span><span class="w"> </span><span class="o">*</span><span class="nx">ecs</span><span class="p">.</span><span class="nx">EditOperation</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">ecs</span><span class="p">.</span><span class="nx">UnsetComponent</span><span class="p">(</span><span class="nx">op</span><span class="p">,</span><span class="w"> </span><span class="nx">VelocityType</span><span class="p">)</span>
+<span class="p">})</span>
+</code></pre></div>
+<p>Multiple operations can be staged in a single <code>EditEntity</code> call:</p>
+<div class="highlight"><pre><span></span><code><span class="nx">scene</span><span class="p">.</span><span class="nx">EditEntity</span><span class="p">(</span><span class="nx">id</span><span class="p">,</span><span class="w"> </span><span class="kd">func</span><span class="p">(</span><span class="nx">op</span><span class="w"> </span><span class="o">*</span><span class="nx">ecs</span><span class="p">.</span><span class="nx">EditOperation</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">ecs</span><span class="p">.</span><span class="nx">UnsetComponent</span><span class="p">(</span><span class="nx">op</span><span class="p">,</span><span class="w"> </span><span class="nx">VelocityType</span><span class="p">)</span>
+<span class="w">    </span><span class="nx">ecs</span><span class="p">.</span><span class="nx">SetComponent</span><span class="p">(</span><span class="nx">op</span><span class="p">,</span><span class="w"> </span><span class="nx">HealthType</span><span class="p">,</span><span class="w"> </span><span class="nx">Health</span><span class="p">{</span><span class="nx">Current</span><span class="p">:</span><span class="w"> </span><span class="mi">50</span><span class="p">,</span><span class="w"> </span><span class="nx">Max</span><span class="p">:</span><span class="w"> </span><span class="mi">100</span><span class="p">})</span>
+<span class="p">})</span>
+</code></pre></div>
+<blockquote>
+<p>When multiple <code>SetComponent</code> or <code>UnsetComponent</code> calls target the same component type within one <code>EditEntity</code>, only the last one takes effect. Calling <code>SetComponent</code> on a component the entity already has is an in-place value update that does not move the entity to a different archetype.</p>
+</blockquote>
+<h2 id="conditions">Conditions</h2>
+<p>Conditions are predicates over an entity's component set. They are used for queries, subscriptions, and <code>CheckEntity</code>.</p>
+<div class="highlight"><pre><span></span><code><span class="c1">// Entity must have Position.</span>
+<span class="nx">ecs</span><span class="p">.</span><span class="nx">HasComponent</span><span class="p">(</span><span class="nx">PositionType</span><span class="p">)</span>
+
+<span class="c1">// Entity must not have Velocity.</span>
+<span class="nx">ecs</span><span class="p">.</span><span class="nx">LacksComponent</span><span class="p">(</span><span class="nx">VelocityType</span><span class="p">)</span>
+
+<span class="c1">// Entity must have Position and Health, but not Velocity.</span>
+<span class="nx">ecs</span><span class="p">.</span><span class="nx">Conditions</span><span class="p">(</span>
+<span class="w">    </span><span class="nx">ecs</span><span class="p">.</span><span class="nx">HasComponent</span><span class="p">(</span><span class="nx">PositionType</span><span class="p">),</span>
+<span class="w">    </span><span class="nx">ecs</span><span class="p">.</span><span class="nx">HasComponent</span><span class="p">(</span><span class="nx">HealthType</span><span class="p">),</span>
+<span class="w">    </span><span class="nx">ecs</span><span class="p">.</span><span class="nx">LacksComponent</span><span class="p">(</span><span class="nx">VelocityType</span><span class="p">),</span>
+<span class="p">)</span>
+</code></pre></div>
+<p><code>Conditions</code> panics if the combined condition is contradictory (e.g., <code>HasComponent</code> and <code>LacksComponent</code> for the same type).</p>
+<h3 id="exclusive-conditions">Exclusive Conditions</h3>
+<p><code>Exclusive()</code> derives a condition that additionally requires the entity to have <em>no other components</em> beyond those already required. It is useful for targeting a very specific archetype:</p>
+<div class="highlight"><pre><span></span><code><span class="c1">// Entity must have exactly Position and Velocity, and nothing else.</span>
+<span class="nx">exact</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">ecs</span><span class="p">.</span><span class="nx">Conditions</span><span class="p">(</span>
+<span class="w">    </span><span class="nx">ecs</span><span class="p">.</span><span class="nx">HasComponent</span><span class="p">(</span><span class="nx">PositionType</span><span class="p">),</span>
+<span class="w">    </span><span class="nx">ecs</span><span class="p">.</span><span class="nx">HasComponent</span><span class="p">(</span><span class="nx">VelocityType</span><span class="p">),</span>
+<span class="p">).</span><span class="nx">Exclusive</span><span class="p">()</span>
+</code></pre></div>
+<h2 id="subscriptions">Subscriptions</h2>
+<p>Subscriptions fire a callback whenever an entity transitions into or out of satisfying a condition. This is useful for initialising or tearing down subsystem resources (e.g., physics bodies, render objects) in response to component changes.</p>
+<div class="highlight"><pre><span></span><code><span class="c1">// Called when an entity gains both Position and Velocity.</span>
+<span class="nx">sub</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">scene</span><span class="p">.</span><span class="nx">SubscribeEnter</span><span class="p">(</span>
+<span class="w">    </span><span class="nx">ecs</span><span class="p">.</span><span class="nx">Conditions</span><span class="p">(</span>
+<span class="w">        </span><span class="nx">ecs</span><span class="p">.</span><span class="nx">HasComponent</span><span class="p">(</span><span class="nx">PositionType</span><span class="p">),</span>
+<span class="w">        </span><span class="nx">ecs</span><span class="p">.</span><span class="nx">HasComponent</span><span class="p">(</span><span class="nx">VelocityType</span><span class="p">),</span>
+<span class="w">    </span><span class="p">),</span>
+<span class="w">    </span><span class="kd">func</span><span class="p">(</span><span class="nx">id</span><span class="w"> </span><span class="nx">ecs</span><span class="p">.</span><span class="nx">ID</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="s">&quot;entity became dynamic:&quot;</span><span class="p">,</span><span class="w"> </span><span class="nx">id</span><span class="p">)</span>
+<span class="w">    </span><span class="p">},</span>
+<span class="p">)</span>
+
+<span class="c1">// Called when an entity no longer satisfies the condition.</span>
+<span class="nx">scene</span><span class="p">.</span><span class="nx">SubscribeExit</span><span class="p">(</span>
+<span class="w">    </span><span class="nx">ecs</span><span class="p">.</span><span class="nx">Conditions</span><span class="p">(</span>
+<span class="w">        </span><span class="nx">ecs</span><span class="p">.</span><span class="nx">HasComponent</span><span class="p">(</span><span class="nx">PositionType</span><span class="p">),</span>
+<span class="w">        </span><span class="nx">ecs</span><span class="p">.</span><span class="nx">HasComponent</span><span class="p">(</span><span class="nx">VelocityType</span><span class="p">),</span>
+<span class="w">    </span><span class="p">),</span>
+<span class="w">    </span><span class="kd">func</span><span class="p">(</span><span class="nx">id</span><span class="w"> </span><span class="nx">ecs</span><span class="p">.</span><span class="nx">ID</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="s">&quot;entity left dynamic group:&quot;</span><span class="p">,</span><span class="w"> </span><span class="nx">id</span><span class="p">)</span>
+<span class="w">    </span><span class="p">},</span>
+<span class="p">)</span>
+
+<span class="c1">// Cancel a subscription when it is no longer needed.</span>
+<span class="nx">sub</span><span class="p">.</span><span class="nx">Delete</span><span class="p">()</span>
+</code></pre></div>
+<p>Callbacks are dispatched after structural changes are committed, not inline during the mutation. They fire in the order the subscriptions were registered; there is no priority mechanism.</p>
+<h2 id="deferred-mutations-during-queries">Deferred Mutations During Queries</h2>
+<p>Structural changes — <code>CreateEntity</code>, <code>DeleteEntity</code>, and <code>EditEntity</code> calls that add or remove components — are safe to make during a query. They are buffered and applied once iteration completes.</p>
+<div class="highlight"><pre><span></span><code><span class="nx">toDelete</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nb">make</span><span class="p">([]</span><span class="nx">ecs</span><span class="p">.</span><span class="nx">ID</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span>
+
+<span class="nx">scene</span><span class="p">.</span><span class="nx">QueryEntities</span><span class="p">(</span><span class="nx">ecs</span><span class="p">.</span><span class="nx">HasComponent</span><span class="p">(</span><span class="nx">HealthType</span><span class="p">),</span><span class="w"> </span><span class="kd">func</span><span class="p">(</span><span class="nx">id</span><span class="w"> </span><span class="nx">ecs</span><span class="p">.</span><span class="nx">ID</span><span class="p">,</span><span class="w"> </span><span class="nx">op</span><span class="w"> </span><span class="o">*</span><span class="nx">ecs</span><span class="p">.</span><span class="nx">ReadOperation</span><span class="p">)</span><span class="w"> </span><span class="kt">bool</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">h</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">ecs</span><span class="p">.</span><span class="nx">GetComponent</span><span class="p">(</span><span class="nx">op</span><span class="p">,</span><span class="w"> </span><span class="nx">HealthType</span><span class="p">)</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="nx">h</span><span class="p">.</span><span class="nx">Current</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="mi">0</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nx">toDelete</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="nb">append</span><span class="p">(</span><span class="nx">toDelete</span><span class="p">,</span><span class="w"> </span><span class="nx">id</span><span class="p">)</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="kc">true</span>
+<span class="p">})</span>
+
+<span class="k">for</span><span class="w"> </span><span class="nx">_</span><span class="p">,</span><span class="w"> </span><span class="nx">id</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="k">range</span><span class="w"> </span><span class="nx">toDelete</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">scene</span><span class="p">.</span><span class="nx">DeleteEntity</span><span class="p">(</span><span class="nx">id</span><span class="p">)</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>Alternatively, <code>DeleteEntity</code> (and <code>EditEntity</code>) may be called directly inside the query callback — the deletion will be buffered and executed after the query finishes:</p>
+<div class="highlight"><pre><span></span><code><span class="nx">scene</span><span class="p">.</span><span class="nx">QueryEntities</span><span class="p">(</span><span class="nx">ecs</span><span class="p">.</span><span class="nx">HasComponent</span><span class="p">(</span><span class="nx">HealthType</span><span class="p">),</span><span class="w"> </span><span class="kd">func</span><span class="p">(</span><span class="nx">id</span><span class="w"> </span><span class="nx">ecs</span><span class="p">.</span><span class="nx">ID</span><span class="p">,</span><span class="w"> </span><span class="nx">op</span><span class="w"> </span><span class="o">*</span><span class="nx">ecs</span><span class="p">.</span><span class="nx">ReadOperation</span><span class="p">)</span><span class="w"> </span><span class="kt">bool</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">h</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">ecs</span><span class="p">.</span><span class="nx">GetComponent</span><span class="p">(</span><span class="nx">op</span><span class="p">,</span><span class="w"> </span><span class="nx">HealthType</span><span class="p">)</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="nx">h</span><span class="p">.</span><span class="nx">Current</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="mi">0</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nx">scene</span><span class="p">.</span><span class="nx">DeleteEntity</span><span class="p">(</span><span class="nx">id</span><span class="p">)</span><span class="w"> </span><span class="c1">// safe; deferred until query completes</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="kc">true</span>
+<span class="p">})</span>
+</code></pre></div>
+<h2 id="retaining-component-pointers-with-freeze-and-unfreeze">Retaining Component Pointers with Freeze and Unfreeze</h2>
+<p><code>GetComponent</code> returns a pointer directly into the scene's component storage. Within a <code>ReadEntity</code> or <code>QueryEntities</code> callback the pointer is always valid, but retaining it past the callback is only safe while no structural mutations (add or remove component, delete entity) are committed, since those operations may move the entity to a different archetype and invalidate the pointer.</p>
+<p><code>Freeze</code> and <code>Unfreeze</code> provide a bracket for exactly this use case. While the scene is frozen, all structural mutations are accepted and buffered but not applied. When <code>Unfreeze</code> is called the buffer is flushed. Any pointers retained during the freeze must be released before calling <code>Unfreeze</code>.</p>
+<div class="highlight"><pre><span></span><code><span class="nx">scene</span><span class="p">.</span><span class="nx">Freeze</span><span class="p">()</span>
+
+<span class="kd">var</span><span class="w"> </span><span class="nx">pos</span><span class="w"> </span><span class="o">*</span><span class="nx">Position</span>
+<span class="nx">scene</span><span class="p">.</span><span class="nx">ReadEntity</span><span class="p">(</span><span class="nx">id</span><span class="p">,</span><span class="w"> </span><span class="kd">func</span><span class="p">(</span><span class="nx">op</span><span class="w"> </span><span class="o">*</span><span class="nx">ecs</span><span class="p">.</span><span class="nx">ReadOperation</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">pos</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="nx">ecs</span><span class="p">.</span><span class="nx">GetComponent</span><span class="p">(</span><span class="nx">op</span><span class="p">,</span><span class="w"> </span><span class="nx">positionType</span><span class="p">)</span>
+<span class="p">})</span>
+
+<span class="c1">// pos is safe to use here; any mutations are deferred.</span>
+<span class="nx">doSomethingWith</span><span class="p">(</span><span class="nx">pos</span><span class="p">)</span>
+
+<span class="nx">scene</span><span class="p">.</span><span class="nx">Unfreeze</span><span class="p">()</span><span class="w"> </span><span class="c1">// buffered mutations are committed; do not use pos after this</span>
+</code></pre></div>
+<p><code>Freeze</code> calls may be nested. Each call increments an internal depth counter; mutations are committed only when the depth returns to zero. Every <code>Freeze</code> must be paired with exactly one <code>Unfreeze</code> — an unbalanced <code>Unfreeze</code> panics.</p>
+<div class="highlight"><pre><span></span><code><span class="nx">scene</span><span class="p">.</span><span class="nx">Freeze</span><span class="p">()</span><span class="w"> </span><span class="c1">// depth → 1</span>
+<span class="nx">scene</span><span class="p">.</span><span class="nx">Freeze</span><span class="p">()</span><span class="w"> </span><span class="c1">// depth → 2</span>
+
+<span class="c1">// ... retain pointers, do work ...</span>
+
+<span class="nx">scene</span><span class="p">.</span><span class="nx">Unfreeze</span><span class="p">()</span><span class="w"> </span><span class="c1">// depth → 1, mutations still deferred</span>
+<span class="nx">scene</span><span class="p">.</span><span class="nx">Unfreeze</span><span class="p">()</span><span class="w"> </span><span class="c1">// depth → 0, mutations committed</span>
+</code></pre></div>
+<h3 id="creating-entities-while-frozen">Creating Entities While Frozen</h3>
+<p><code>CreateEntity</code>, <code>DeleteEntity</code>, and <code>EditEntity</code> can all be called while the scene is frozen — their effects are simply deferred. However, entities created while frozen are not yet committed to any archetype. Their IDs are valid for <code>HasEntity</code>, <code>DeleteEntity</code>, and <code>EditEntity</code>, but calling <code>ReadEntity</code> or <code>CheckEntity</code> on them before <code>Unfreeze</code> panics.</p>
+<div class="highlight"><pre><span></span><code><span class="nx">scene</span><span class="p">.</span><span class="nx">Freeze</span><span class="p">()</span>
+<span class="nx">id</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">scene</span><span class="p">.</span><span class="nx">CreateEntity</span><span class="p">(</span><span class="kd">func</span><span class="p">(</span><span class="nx">op</span><span class="w"> </span><span class="o">*</span><span class="nx">ecs</span><span class="p">.</span><span class="nx">EditOperation</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">ecs</span><span class="p">.</span><span class="nx">SetComponent</span><span class="p">(</span><span class="nx">op</span><span class="p">,</span><span class="w"> </span><span class="nx">positionType</span><span class="p">,</span><span class="w"> </span><span class="nx">Position</span><span class="p">{</span><span class="nx">X</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span><span class="w"> </span><span class="nx">Y</span><span class="p">:</span><span class="w"> </span><span class="mi">2</span><span class="p">})</span>
+<span class="p">})</span>
+
+<span class="nx">scene</span><span class="p">.</span><span class="nx">HasEntity</span><span class="p">(</span><span class="nx">id</span><span class="p">)</span><span class="w">   </span><span class="c1">// true</span>
+<span class="nx">scene</span><span class="p">.</span><span class="nx">CheckEntity</span><span class="p">(</span><span class="nx">id</span><span class="p">,</span><span class="w"> </span><span class="nx">ecs</span><span class="p">.</span><span class="nx">HasComponent</span><span class="p">(</span><span class="nx">positionType</span><span class="p">))</span><span class="w"> </span><span class="c1">// panics — not yet committed</span>
+<span class="nx">scene</span><span class="p">.</span><span class="nx">ReadEntity</span><span class="p">(</span><span class="nx">id</span><span class="p">,</span><span class="w"> </span><span class="o">...</span><span class="p">)</span><span class="w">                             </span><span class="c1">// panics — not yet committed</span>
+
+<span class="nx">scene</span><span class="p">.</span><span class="nx">Unfreeze</span><span class="p">()</span>
+
+<span class="nx">scene</span><span class="p">.</span><span class="nx">CheckEntity</span><span class="p">(</span><span class="nx">id</span><span class="p">,</span><span class="w"> </span><span class="nx">ecs</span><span class="p">.</span><span class="nx">HasComponent</span><span class="p">(</span><span class="nx">positionType</span><span class="p">))</span><span class="w"> </span><span class="c1">// true — now committed</span>
+</code></pre></div>
+<h3 id="subscription-dispatch-while-frozen">Subscription Dispatch While Frozen</h3>
+<p>Enter and exit subscription callbacks are part of the commit process. They are not fired during a buffered mutation — they fire when <code>Unfreeze</code> (or the end of a query) triggers the flush.</p>
+<h2 id="systems">Systems</h2>
+<p>This package does not define a system interface or a scheduler. System ordering, execution, and lifecycle management are the responsibility of the consuming application.</p>
+<h2 id="limitations">Limitations</h2>
+<p>The following features are not currently provided by this ECS implementation:</p>
+<ul>
+<li><strong>No change detection.</strong> There is no built-in mechanism to query only entities whose component data changed since the last frame. Systems must iterate all matching entities unconditionally.</li>
+<li><strong>No parallel queries.</strong> The scene is not thread-safe. All operations on a scene must occur from a single goroutine. <code>Freeze</code>/<code>Unfreeze</code> do not change this — they defer commits, not concurrent access.</li>
+<li><strong>No system scheduler.</strong> Ordering and parallelism are entirely up to the application.</li>
+<li><strong>No entity relations.</strong> Modelling parent–child or other entity-to-entity relationships requires external bookkeeping (the <code>game/hierarchy</code> package may be used for scene-node hierarchies).</li>
+<li><strong>No prefabs or entity templates.</strong> There is no built-in way to stamp out entities from a template; construction helpers must be written by the application.</li>
+</ul>
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    <script id="__config" type="application/json">{"base": "../..", "features": [], "search": "../../assets/javascripts/workers/search.e5c33ebb.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.51d95adb.min.js"></script>
+      
+        <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+      
+    
+  </body>
+</html>

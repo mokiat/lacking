@@ -1,0 +1,1227 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+        <link rel="canonical" href="http://mokiat.com/lacking/manual/user-interface/">
+      
+      
+        <link rel="prev" href="../rendering/">
+      
+      
+        <link rel="next" href="../../development/physics/">
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.4.2, mkdocs-material-9.0.6">
+    
+    
+      
+        <title>Overview - Lacking</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.558e4712.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.2505c338.min.css">
+      
+      
+
+    
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce((e,_)=>(e<<5)-e+_.charCodeAt(0),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="" data-md-color-accent="">
+  
+    
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#user-interface" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Lacking" class="md-header__button md-logo" aria-label="Lacking" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3V6m0 5h18v2H3v-2m0 5h18v2H3v-2Z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Lacking
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Overview
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+    
+      <label class="md-header__button md-icon" for="__search">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5Z"/></svg>
+      </label>
+      <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5Z"/></svg>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12Z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41Z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/mokiat/lacking/" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81z"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Lacking" class="md-nav__button md-logo" aria-label="Lacking" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
+
+    </a>
+    Lacking
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/mokiat/lacking/" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81z"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+      
+
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        Home
+      </a>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../examples/" class="md-nav__link">
+        Examples
+      </a>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/" class="md-nav__link">
+        Getting Started
+      </a>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+    
+  
+  
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " data-md-toggle="__nav_4" type="checkbox" id="__nav_4" checked>
+      
+      
+      
+        <label class="md-nav__link" for="__nav_4" tabindex="0" aria-expanded="true">
+          User's Guide
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="User's Guide" data-md-level="1">
+        <label class="md-nav__title" for="__nav_4">
+          <span class="md-nav__icon md-icon"></span>
+          User's Guide
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../application/" class="md-nav__link">
+        Application
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " data-md-toggle="__nav_4_2" type="checkbox" id="__nav_4_2" >
+      
+      
+      
+        <label class="md-nav__link" for="__nav_4_2" tabindex="0" aria-expanded="false">
+          Core
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="Core" data-md-level="2">
+        <label class="md-nav__title" for="__nav_4_2">
+          <span class="md-nav__icon md-icon"></span>
+          Core
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../core/audio/" class="md-nav__link">
+        Audio
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../core/spatial/" class="md-nav__link">
+        Spatial
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ecs/" class="md-nav__link">
+        ECS
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../game/" class="md-nav__link">
+        Game
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " data-md-toggle="__nav_4_5" type="checkbox" id="__nav_4_5" >
+      
+      
+      
+        <label class="md-nav__link" for="__nav_4_5" tabindex="0" aria-expanded="false">
+          Graphics
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="Graphics" data-md-level="2">
+        <label class="md-nav__title" for="__nav_4_5">
+          <span class="md-nav__icon md-icon"></span>
+          Graphics
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../graphics/shader/" class="md-nav__link">
+        Shader
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../rendering/" class="md-nav__link">
+        Rendering
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+    
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" data-md-toggle="toc" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          User Interface
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        User Interface
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#element-api" class="md-nav__link">
+    Element API
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#component-api" class="md-nav__link">
+    Component API
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " data-md-toggle="__nav_5" type="checkbox" id="__nav_5" >
+      
+      
+      
+        <label class="md-nav__link" for="__nav_5" tabindex="0" aria-expanded="false">
+          Internals
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="Internals" data-md-level="1">
+        <label class="md-nav__title" for="__nav_5">
+          <span class="md-nav__icon md-icon"></span>
+          Internals
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " data-md-toggle="__nav_5_1" type="checkbox" id="__nav_5_1" >
+      
+      
+      
+        <label class="md-nav__link" for="__nav_5_1" tabindex="0" aria-expanded="false">
+          Physics
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="Physics" data-md-level="2">
+        <label class="md-nav__title" for="__nav_5_1">
+          <span class="md-nav__icon md-icon"></span>
+          Physics
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../development/physics/" class="md-nav__link">
+        Overview
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../development/physics/references/" class="md-nav__link">
+        References
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " data-md-toggle="__nav_5_1_3" type="checkbox" id="__nav_5_1_3" >
+      
+      
+      
+        <label class="md-nav__link" for="__nav_5_1_3" tabindex="0" aria-expanded="false">
+          Theory
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="Theory" data-md-level="3">
+        <label class="md-nav__title" for="__nav_5_1_3">
+          <span class="md-nav__icon md-icon"></span>
+          Theory
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../development/physics/theory/principles/" class="md-nav__link">
+        Principles
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../development/physics/theory/terminology/" class="md-nav__link">
+        Terminology
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../development/physics/theory/equations/" class="md-nav__link">
+        Equations
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../development/physics/theory/effective-mass/" class="md-nav__link">
+        Effective Mass
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../development/physics/theory/moment-of-inertia/" class="md-nav__link">
+        Moment of Inertia
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " data-md-toggle="__nav_5_1_4" type="checkbox" id="__nav_5_1_4" >
+      
+      
+      
+        <label class="md-nav__link" for="__nav_5_1_4" tabindex="0" aria-expanded="false">
+          Derivations
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="Derivations" data-md-level="3">
+        <label class="md-nav__title" for="__nav_5_1_4">
+          <span class="md-nav__icon md-icon"></span>
+          Derivations
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../development/physics/derivations/impulse-derivation/" class="md-nav__link">
+        Impulse
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../development/physics/derivations/effective-mass-derivation/" class="md-nav__link">
+        Effective Mass
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " data-md-toggle="__nav_5_2" type="checkbox" id="__nav_5_2" >
+      
+      
+      
+        <label class="md-nav__link" for="__nav_5_2" tabindex="0" aria-expanded="false">
+          Math
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="Math" data-md-level="2">
+        <label class="md-nav__title" for="__nav_5_2">
+          <span class="md-nav__icon md-icon"></span>
+          Math
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../development/math/vectors/" class="md-nav__link">
+        Vectors
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../development/math/derivatives/" class="md-nav__link">
+        Derivatives
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " data-md-toggle="__nav_5_3" type="checkbox" id="__nav_5_3" >
+      
+      
+      
+        <label class="md-nav__link" for="__nav_5_3" tabindex="0" aria-expanded="false">
+          Notes
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="Notes" data-md-level="2">
+        <label class="md-nav__title" for="__nav_5_3">
+          <span class="md-nav__icon md-icon"></span>
+          Notes
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../development/notes/precision/" class="md-nav__link">
+        Precision
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#element-api" class="md-nav__link">
+    Element API
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#component-api" class="md-nav__link">
+    Component API
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+  
+  
+
+
+
+<h1 id="user-interface">User Interface</h1>
+<p>The user interface API of Lacking comprises multiple layers more commonly seen in standard desktop or web UI than in game engines. This makes it suitable for app and tool development, not just games.</p>
+<h2 id="element-api">Element API</h2>
+<p>The core layer of the API represents the user interface in a similar way to web pages. A window is comprised of a number of nested Elements that each can have custom rendering behavior and input event handling.</p>
+<p>Element creation is imperative, which can be more efficient and reduce memory usage, but requires more boilerplate and manual coordination — especially when elements need to be dynamically added or removed.</p>
+<p>The following shows how this might be used.</p>
+<div class="highlight"><pre><span></span><code><span class="c1">// initUI function can be passed to the UI controller bootstrap function.</span>
+<span class="kd">func</span><span class="w"> </span><span class="nx">initUI</span><span class="p">(</span><span class="nx">window</span><span class="w"> </span><span class="o">*</span><span class="nx">ui</span><span class="p">.</span><span class="nx">Window</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">container</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">NewContainer</span><span class="p">(</span><span class="nx">window</span><span class="p">.</span><span class="nx">Root</span><span class="p">())</span>
+<span class="w">    </span><span class="nx">container</span><span class="p">.</span><span class="nx">SetLayout</span><span class="p">(</span><span class="nx">layout</span><span class="p">.</span><span class="nx">Anchor</span><span class="p">())</span><span class="w"> </span><span class="c1">// use anchor layout</span>
+<span class="w">    </span><span class="nx">container</span><span class="p">.</span><span class="nx">SetBackgroundColor</span><span class="p">(</span><span class="nx">ui</span><span class="p">.</span><span class="nx">Navy</span><span class="p">())</span>
+
+<span class="w">    </span><span class="nx">label</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">NewLabel</span><span class="p">(</span><span class="nx">container</span><span class="p">.</span><span class="nx">Element</span><span class="p">())</span>
+<span class="w">    </span><span class="nx">label</span><span class="p">.</span><span class="nx">SetText</span><span class="p">(</span><span class="s">&quot;Hello World&quot;</span><span class="p">)</span>
+<span class="w">    </span><span class="nx">label</span><span class="p">.</span><span class="nx">SetLayoutConfig</span><span class="p">(</span><span class="nx">layout</span><span class="p">.</span><span class="nx">Data</span><span class="p">{</span><span class="w"> </span><span class="c1">// position in the center of the container</span>
+<span class="w">        </span><span class="nx">HorizontalCenter</span><span class="p">:</span><span class="w"> </span><span class="nx">opt</span><span class="p">.</span><span class="nx">V</span><span class="p">(</span><span class="mi">0</span><span class="p">),</span>
+<span class="w">        </span><span class="nx">VerticalCenter</span><span class="p">:</span><span class="w">   </span><span class="nx">opt</span><span class="p">.</span><span class="nx">V</span><span class="p">(</span><span class="mi">0</span><span class="p">),</span>
+<span class="w">    </span><span class="p">})</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>A container component can be implemented as follows.</p>
+<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="p">(</span>
+<span class="w">    </span><span class="s">&quot;github.com/mokiat/gomath/sprec&quot;</span>
+<span class="w">    </span><span class="s">&quot;github.com/mokiat/lacking/ui&quot;</span>
+<span class="w">    </span><span class="s">&quot;github.com/mokiat/lacking/ui/layout&quot;</span>
+<span class="p">)</span>
+
+<span class="kd">func</span><span class="w"> </span><span class="nx">NewContainer</span><span class="p">(</span><span class="nx">parentElement</span><span class="w"> </span><span class="o">*</span><span class="nx">ui</span><span class="p">.</span><span class="nx">Element</span><span class="p">)</span><span class="w"> </span><span class="o">*</span><span class="nx">Container</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">element</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">parentElement</span><span class="p">.</span><span class="nx">Window</span><span class="p">().</span><span class="nx">CreateElement</span><span class="p">()</span>
+<span class="w">    </span><span class="nx">result</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="o">&amp;</span><span class="nx">Container</span><span class="p">{</span>
+<span class="w">        </span><span class="nx">element</span><span class="p">:</span><span class="w">         </span><span class="nx">element</span><span class="p">,</span>
+<span class="w">        </span><span class="nx">backgroundColor</span><span class="p">:</span><span class="w"> </span><span class="nx">ui</span><span class="p">.</span><span class="nx">Black</span><span class="p">(),</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="nx">element</span><span class="p">.</span><span class="nx">SetEssence</span><span class="p">(</span><span class="nx">result</span><span class="p">)</span>
+<span class="w">    </span><span class="nx">parentElement</span><span class="p">.</span><span class="nx">AppendChild</span><span class="p">(</span><span class="nx">element</span><span class="p">)</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="nx">result</span>
+<span class="p">}</span>
+
+<span class="kd">type</span><span class="w"> </span><span class="nx">Container</span><span class="w"> </span><span class="kd">struct</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">element</span><span class="w">         </span><span class="o">*</span><span class="nx">ui</span><span class="p">.</span><span class="nx">Element</span>
+<span class="w">    </span><span class="nx">backgroundColor</span><span class="w"> </span><span class="nx">ui</span><span class="p">.</span><span class="nx">Color</span>
+<span class="p">}</span>
+
+<span class="kd">var</span><span class="w"> </span><span class="nx">_</span><span class="w"> </span><span class="nx">ui</span><span class="p">.</span><span class="nx">ElementRenderHandler</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="p">(</span><span class="o">*</span><span class="nx">Container</span><span class="p">)(</span><span class="kc">nil</span><span class="p">)</span>
+
+<span class="kd">func</span><span class="w"> </span><span class="p">(</span><span class="nx">c</span><span class="w"> </span><span class="o">*</span><span class="nx">Container</span><span class="p">)</span><span class="w"> </span><span class="nx">Element</span><span class="p">()</span><span class="w"> </span><span class="o">*</span><span class="nx">ui</span><span class="p">.</span><span class="nx">Element</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="nx">c</span><span class="p">.</span><span class="nx">element</span>
+<span class="p">}</span>
+
+<span class="kd">func</span><span class="w"> </span><span class="p">(</span><span class="nx">c</span><span class="w"> </span><span class="o">*</span><span class="nx">Container</span><span class="p">)</span><span class="w"> </span><span class="nx">SetLayout</span><span class="p">(</span><span class="nx">layout</span><span class="w"> </span><span class="nx">ui</span><span class="p">.</span><span class="nx">Layout</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">c</span><span class="p">.</span><span class="nx">element</span><span class="p">.</span><span class="nx">SetLayout</span><span class="p">(</span><span class="nx">layout</span><span class="p">)</span>
+<span class="w">    </span><span class="nx">c</span><span class="p">.</span><span class="nx">element</span><span class="p">.</span><span class="nx">Invalidate</span><span class="p">()</span>
+<span class="p">}</span>
+
+<span class="kd">func</span><span class="w"> </span><span class="p">(</span><span class="nx">c</span><span class="w"> </span><span class="o">*</span><span class="nx">Container</span><span class="p">)</span><span class="w"> </span><span class="nx">SetLayoutConfig</span><span class="p">(</span><span class="nx">config</span><span class="w"> </span><span class="nx">layout</span><span class="p">.</span><span class="nx">Data</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">c</span><span class="p">.</span><span class="nx">element</span><span class="p">.</span><span class="nx">SetLayoutConfig</span><span class="p">(</span><span class="nx">config</span><span class="p">)</span>
+<span class="w">    </span><span class="nx">c</span><span class="p">.</span><span class="nx">element</span><span class="p">.</span><span class="nx">Invalidate</span><span class="p">()</span>
+<span class="p">}</span>
+
+<span class="kd">func</span><span class="w"> </span><span class="p">(</span><span class="nx">c</span><span class="w"> </span><span class="o">*</span><span class="nx">Container</span><span class="p">)</span><span class="w"> </span><span class="nx">SetBackgroundColor</span><span class="p">(</span><span class="nx">color</span><span class="w"> </span><span class="nx">ui</span><span class="p">.</span><span class="nx">Color</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">c</span><span class="p">.</span><span class="nx">backgroundColor</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="nx">color</span>
+<span class="w">    </span><span class="nx">c</span><span class="p">.</span><span class="nx">element</span><span class="p">.</span><span class="nx">Invalidate</span><span class="p">()</span>
+<span class="p">}</span>
+
+<span class="kd">func</span><span class="w"> </span><span class="p">(</span><span class="nx">c</span><span class="w"> </span><span class="o">*</span><span class="nx">Container</span><span class="p">)</span><span class="w"> </span><span class="nx">OnRender</span><span class="p">(</span><span class="nx">element</span><span class="w"> </span><span class="o">*</span><span class="nx">ui</span><span class="p">.</span><span class="nx">Element</span><span class="p">,</span><span class="w"> </span><span class="nx">canvas</span><span class="w"> </span><span class="o">*</span><span class="nx">ui</span><span class="p">.</span><span class="nx">Canvas</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">bounds</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">canvas</span><span class="p">.</span><span class="nx">DrawBounds</span><span class="p">(</span><span class="nx">element</span><span class="p">,</span><span class="w"> </span><span class="kc">false</span><span class="p">)</span>
+<span class="w">    </span><span class="nx">canvas</span><span class="p">.</span><span class="nx">Push</span><span class="p">()</span>
+<span class="w">    </span><span class="nx">canvas</span><span class="p">.</span><span class="nx">Translate</span><span class="p">(</span><span class="nx">bounds</span><span class="p">.</span><span class="nx">Position</span><span class="p">)</span>
+<span class="w">    </span><span class="nx">canvas</span><span class="p">.</span><span class="nx">Reset</span><span class="p">()</span><span class="w"> </span><span class="c1">// prepare for new shape</span>
+<span class="w">    </span><span class="nx">canvas</span><span class="p">.</span><span class="nx">Rectangle</span><span class="p">(</span><span class="nx">sprec</span><span class="p">.</span><span class="nx">ZeroVec2</span><span class="p">(),</span><span class="w"> </span><span class="nx">bounds</span><span class="p">.</span><span class="nx">Size</span><span class="p">)</span>
+<span class="w">    </span><span class="nx">canvas</span><span class="p">.</span><span class="nx">Fill</span><span class="p">(</span><span class="nx">ui</span><span class="p">.</span><span class="nx">Fill</span><span class="p">{</span>
+<span class="w">        </span><span class="nx">Color</span><span class="p">:</span><span class="w"> </span><span class="nx">c</span><span class="p">.</span><span class="nx">backgroundColor</span><span class="p">,</span>
+<span class="w">    </span><span class="p">})</span>
+<span class="w">    </span><span class="nx">canvas</span><span class="p">.</span><span class="nx">Pop</span><span class="p">()</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>A label can be implemented as follows.</p>
+<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="p">(</span>
+<span class="w">    </span><span class="s">&quot;github.com/mokiat/gomath/sprec&quot;</span>
+<span class="w">    </span><span class="s">&quot;github.com/mokiat/lacking/ui&quot;</span>
+<span class="w">    </span><span class="s">&quot;github.com/mokiat/lacking/ui/layout&quot;</span>
+<span class="p">)</span>
+
+<span class="kd">func</span><span class="w"> </span><span class="nx">NewLabel</span><span class="p">(</span><span class="nx">parentElement</span><span class="w"> </span><span class="o">*</span><span class="nx">ui</span><span class="p">.</span><span class="nx">Element</span><span class="p">)</span><span class="w"> </span><span class="o">*</span><span class="nx">Label</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">element</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">parentElement</span><span class="p">.</span><span class="nx">Window</span><span class="p">().</span><span class="nx">CreateElement</span><span class="p">()</span>
+<span class="w">    </span><span class="nx">font</span><span class="p">,</span><span class="w"> </span><span class="nx">_</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">parentElement</span><span class="p">.</span><span class="nx">Window</span><span class="p">().</span><span class="nx">Context</span><span class="p">().</span><span class="nx">OpenFont</span><span class="p">(</span><span class="s">&quot;ui:///roboto-bold.ttf&quot;</span><span class="p">)</span>
+<span class="w">    </span><span class="nx">result</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="o">&amp;</span><span class="nx">Label</span><span class="p">{</span>
+<span class="w">        </span><span class="nx">element</span><span class="p">:</span><span class="w">  </span><span class="nx">element</span><span class="p">,</span>
+<span class="w">        </span><span class="nx">font</span><span class="p">:</span><span class="w">     </span><span class="nx">font</span><span class="p">,</span>
+<span class="w">        </span><span class="nx">fontSize</span><span class="p">:</span><span class="w"> </span><span class="nb">float32</span><span class="p">(</span><span class="mf">24.0</span><span class="p">),</span>
+<span class="w">        </span><span class="nx">text</span><span class="p">:</span><span class="w">     </span><span class="p">[]</span><span class="nb">rune</span><span class="p">(</span><span class="s">&quot;Label&quot;</span><span class="p">),</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="nx">result</span><span class="p">.</span><span class="nx">updateIdealSize</span><span class="p">()</span>
+<span class="w">    </span><span class="nx">element</span><span class="p">.</span><span class="nx">SetEssence</span><span class="p">(</span><span class="nx">result</span><span class="p">)</span>
+<span class="w">    </span><span class="nx">parentElement</span><span class="p">.</span><span class="nx">AppendChild</span><span class="p">(</span><span class="nx">element</span><span class="p">)</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="nx">result</span>
+<span class="p">}</span>
+
+<span class="kd">type</span><span class="w"> </span><span class="nx">Label</span><span class="w"> </span><span class="kd">struct</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">element</span><span class="w">  </span><span class="o">*</span><span class="nx">ui</span><span class="p">.</span><span class="nx">Element</span>
+<span class="w">    </span><span class="nx">font</span><span class="w">     </span><span class="o">*</span><span class="nx">ui</span><span class="p">.</span><span class="nx">Font</span>
+<span class="w">    </span><span class="nx">fontSize</span><span class="w"> </span><span class="kt">float32</span>
+<span class="w">    </span><span class="nx">text</span><span class="w">     </span><span class="p">[]</span><span class="kt">rune</span>
+<span class="p">}</span>
+
+<span class="kd">var</span><span class="w"> </span><span class="nx">_</span><span class="w"> </span><span class="nx">ui</span><span class="p">.</span><span class="nx">ElementRenderHandler</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="p">(</span><span class="o">*</span><span class="nx">Label</span><span class="p">)(</span><span class="kc">nil</span><span class="p">)</span>
+
+<span class="kd">func</span><span class="w"> </span><span class="p">(</span><span class="nx">l</span><span class="w"> </span><span class="o">*</span><span class="nx">Label</span><span class="p">)</span><span class="w"> </span><span class="nx">Element</span><span class="p">()</span><span class="w"> </span><span class="o">*</span><span class="nx">ui</span><span class="p">.</span><span class="nx">Element</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="nx">l</span><span class="p">.</span><span class="nx">element</span>
+<span class="p">}</span>
+
+<span class="kd">func</span><span class="w"> </span><span class="p">(</span><span class="nx">l</span><span class="w"> </span><span class="o">*</span><span class="nx">Label</span><span class="p">)</span><span class="w"> </span><span class="nx">SetText</span><span class="p">(</span><span class="nx">text</span><span class="w"> </span><span class="kt">string</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">l</span><span class="p">.</span><span class="nx">text</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="p">[]</span><span class="nb">rune</span><span class="p">(</span><span class="nx">text</span><span class="p">)</span>
+<span class="w">    </span><span class="nx">l</span><span class="p">.</span><span class="nx">updateIdealSize</span><span class="p">()</span>
+<span class="p">}</span>
+
+<span class="kd">func</span><span class="w"> </span><span class="p">(</span><span class="nx">l</span><span class="w"> </span><span class="o">*</span><span class="nx">Label</span><span class="p">)</span><span class="w"> </span><span class="nx">SetLayoutConfig</span><span class="p">(</span><span class="nx">config</span><span class="w"> </span><span class="nx">layout</span><span class="p">.</span><span class="nx">Data</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">l</span><span class="p">.</span><span class="nx">element</span><span class="p">.</span><span class="nx">SetLayoutConfig</span><span class="p">(</span><span class="nx">config</span><span class="p">)</span>
+<span class="w">    </span><span class="nx">l</span><span class="p">.</span><span class="nx">element</span><span class="p">.</span><span class="nx">Invalidate</span><span class="p">()</span>
+<span class="p">}</span>
+
+<span class="kd">func</span><span class="w"> </span><span class="p">(</span><span class="nx">l</span><span class="w"> </span><span class="o">*</span><span class="nx">Label</span><span class="p">)</span><span class="w"> </span><span class="nx">OnRender</span><span class="p">(</span><span class="nx">element</span><span class="w"> </span><span class="o">*</span><span class="nx">ui</span><span class="p">.</span><span class="nx">Element</span><span class="p">,</span><span class="w"> </span><span class="nx">canvas</span><span class="w"> </span><span class="o">*</span><span class="nx">ui</span><span class="p">.</span><span class="nx">Canvas</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">bounds</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">canvas</span><span class="p">.</span><span class="nx">DrawBounds</span><span class="p">(</span><span class="nx">element</span><span class="p">,</span><span class="w"> </span><span class="kc">false</span><span class="p">)</span>
+<span class="w">    </span><span class="nx">canvas</span><span class="p">.</span><span class="nx">Push</span><span class="p">()</span>
+<span class="w">    </span><span class="nx">canvas</span><span class="p">.</span><span class="nx">Translate</span><span class="p">(</span><span class="nx">bounds</span><span class="p">.</span><span class="nx">Position</span><span class="p">)</span>
+<span class="w">    </span><span class="nx">textWidth</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">l</span><span class="p">.</span><span class="nx">font</span><span class="p">.</span><span class="nx">LineWidth</span><span class="p">(</span><span class="nx">l</span><span class="p">.</span><span class="nx">text</span><span class="p">,</span><span class="w"> </span><span class="nx">l</span><span class="p">.</span><span class="nx">fontSize</span><span class="p">)</span>
+<span class="w">    </span><span class="nx">textHeight</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">l</span><span class="p">.</span><span class="nx">font</span><span class="p">.</span><span class="nx">LineHeight</span><span class="p">(</span><span class="nx">l</span><span class="p">.</span><span class="nx">fontSize</span><span class="p">)</span>
+<span class="w">    </span><span class="nx">textPosition</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">sprec</span><span class="p">.</span><span class="nx">Vec2</span><span class="p">{</span>
+<span class="w">        </span><span class="nx">X</span><span class="p">:</span><span class="w"> </span><span class="p">(</span><span class="nx">bounds</span><span class="p">.</span><span class="nx">Size</span><span class="p">.</span><span class="nx">X</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="nx">textWidth</span><span class="p">)</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="mf">2.0</span><span class="p">,</span>
+<span class="w">        </span><span class="nx">Y</span><span class="p">:</span><span class="w"> </span><span class="p">(</span><span class="nx">bounds</span><span class="p">.</span><span class="nx">Size</span><span class="p">.</span><span class="nx">Y</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="nx">textHeight</span><span class="p">)</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="mf">2.0</span><span class="p">,</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="nx">canvas</span><span class="p">.</span><span class="nx">FillTextLine</span><span class="p">(</span><span class="nx">l</span><span class="p">.</span><span class="nx">text</span><span class="p">,</span><span class="w"> </span><span class="nx">textPosition</span><span class="p">,</span><span class="w"> </span><span class="nx">ui</span><span class="p">.</span><span class="nx">Typography</span><span class="p">{</span>
+<span class="w">        </span><span class="nx">Font</span><span class="p">:</span><span class="w">  </span><span class="nx">l</span><span class="p">.</span><span class="nx">font</span><span class="p">,</span>
+<span class="w">        </span><span class="nx">Size</span><span class="p">:</span><span class="w">  </span><span class="nx">l</span><span class="p">.</span><span class="nx">fontSize</span><span class="p">,</span>
+<span class="w">        </span><span class="nx">Color</span><span class="p">:</span><span class="w"> </span><span class="nx">ui</span><span class="p">.</span><span class="nx">White</span><span class="p">(),</span>
+<span class="w">    </span><span class="p">})</span>
+<span class="w">    </span><span class="nx">canvas</span><span class="p">.</span><span class="nx">Pop</span><span class="p">()</span>
+<span class="p">}</span>
+
+<span class="kd">func</span><span class="w"> </span><span class="p">(</span><span class="nx">l</span><span class="w"> </span><span class="o">*</span><span class="nx">Label</span><span class="p">)</span><span class="w"> </span><span class="nx">updateIdealSize</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">textWidth</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">l</span><span class="p">.</span><span class="nx">font</span><span class="p">.</span><span class="nx">LineWidth</span><span class="p">(</span><span class="nx">l</span><span class="p">.</span><span class="nx">text</span><span class="p">,</span><span class="w"> </span><span class="nx">l</span><span class="p">.</span><span class="nx">fontSize</span><span class="p">)</span>
+<span class="w">    </span><span class="nx">textHeight</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">l</span><span class="p">.</span><span class="nx">font</span><span class="p">.</span><span class="nx">LineHeight</span><span class="p">(</span><span class="nx">l</span><span class="p">.</span><span class="nx">fontSize</span><span class="p">)</span>
+<span class="w">    </span><span class="nx">l</span><span class="p">.</span><span class="nx">element</span><span class="p">.</span><span class="nx">SetIdealSize</span><span class="p">(</span><span class="nx">ui</span><span class="p">.</span><span class="nx">Size</span><span class="p">{</span>
+<span class="w">        </span><span class="nx">Width</span><span class="p">:</span><span class="w">  </span><span class="nb">int</span><span class="p">(</span><span class="nx">sprec</span><span class="p">.</span><span class="nx">Ceil</span><span class="p">(</span><span class="nx">textWidth</span><span class="p">)),</span>
+<span class="w">        </span><span class="nx">Height</span><span class="p">:</span><span class="w"> </span><span class="nb">int</span><span class="p">(</span><span class="nx">sprec</span><span class="p">.</span><span class="nx">Ceil</span><span class="p">(</span><span class="nx">textHeight</span><span class="p">)),</span>
+<span class="w">    </span><span class="p">})</span>
+<span class="p">}</span>
+</code></pre></div>
+<h2 id="component-api">Component API</h2>
+<p>While the Element API is sufficient for building a complete UI, it has downsides — particularly when elements need to be dynamically added or removed.</p>
+<p>As such, the Lacking framework includes a higher-level API that is declarative in nature. It is heavily inspired by frameworks like React, Vue, Svelte, and similar frameworks.</p>
+<p>Rewriting the example above using the Component API would look as follows.</p>
+<div class="highlight"><pre><span></span><code><span class="c1">// initUI function can be passed to the UI controller bootstrap function.</span>
+<span class="kd">func</span><span class="w"> </span><span class="nx">initUI</span><span class="p">(</span><span class="nx">window</span><span class="w"> </span><span class="o">*</span><span class="nx">ui</span><span class="p">.</span><span class="nx">Window</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">scope</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">co</span><span class="p">.</span><span class="nx">RootScope</span><span class="p">(</span><span class="nx">window</span><span class="p">)</span>
+<span class="w">    </span><span class="nx">co</span><span class="p">.</span><span class="nx">Initialize</span><span class="p">(</span><span class="nx">scope</span><span class="p">,</span><span class="w"> </span><span class="nx">co</span><span class="p">.</span><span class="nx">New</span><span class="p">(</span><span class="nx">App</span><span class="p">,</span><span class="w"> </span><span class="kc">nil</span><span class="p">))</span>
+<span class="p">}</span>
+
+<span class="kd">var</span><span class="w"> </span><span class="nx">App</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="nx">co</span><span class="p">.</span><span class="nx">Define</span><span class="p">[</span><span class="o">*</span><span class="nx">appComponent</span><span class="p">]()</span>
+
+<span class="kd">type</span><span class="w"> </span><span class="nx">appComponent</span><span class="w"> </span><span class="kd">struct</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">co</span><span class="p">.</span><span class="nx">BaseComponent</span>
+<span class="p">}</span>
+
+<span class="kd">func</span><span class="w"> </span><span class="p">(</span><span class="nx">c</span><span class="w"> </span><span class="o">*</span><span class="nx">appComponent</span><span class="p">)</span><span class="w"> </span><span class="nx">Render</span><span class="p">()</span><span class="w"> </span><span class="nx">co</span><span class="p">.</span><span class="nx">Instance</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="nx">co</span><span class="p">.</span><span class="nx">New</span><span class="p">(</span><span class="nx">Container</span><span class="p">,</span><span class="w"> </span><span class="kd">func</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nx">co</span><span class="p">.</span><span class="nx">WithData</span><span class="p">(</span><span class="nx">ContainerData</span><span class="p">{</span>
+<span class="w">            </span><span class="nx">BackgroundColor</span><span class="p">:</span><span class="w"> </span><span class="nx">opt</span><span class="p">.</span><span class="nx">V</span><span class="p">(</span><span class="nx">ui</span><span class="p">.</span><span class="nx">Navy</span><span class="p">()),</span>
+<span class="w">            </span><span class="nx">Layout</span><span class="p">:</span><span class="w">          </span><span class="nx">layout</span><span class="p">.</span><span class="nx">Anchor</span><span class="p">(),</span>
+<span class="w">        </span><span class="p">})</span>
+
+<span class="w">        </span><span class="nx">co</span><span class="p">.</span><span class="nx">WithChild</span><span class="p">(</span><span class="s">&quot;label&quot;</span><span class="p">,</span><span class="w"> </span><span class="nx">co</span><span class="p">.</span><span class="nx">New</span><span class="p">(</span><span class="nx">Label</span><span class="p">,</span><span class="w"> </span><span class="kd">func</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">            </span><span class="nx">co</span><span class="p">.</span><span class="nx">WithLayoutData</span><span class="p">(</span><span class="nx">layout</span><span class="p">.</span><span class="nx">Data</span><span class="p">{</span>
+<span class="w">                </span><span class="nx">HorizontalCenter</span><span class="p">:</span><span class="w"> </span><span class="nx">opt</span><span class="p">.</span><span class="nx">V</span><span class="p">(</span><span class="mi">0</span><span class="p">),</span>
+<span class="w">                </span><span class="nx">VerticalCenter</span><span class="p">:</span><span class="w">   </span><span class="nx">opt</span><span class="p">.</span><span class="nx">V</span><span class="p">(</span><span class="mi">0</span><span class="p">),</span>
+<span class="w">            </span><span class="p">})</span>
+<span class="w">            </span><span class="nx">co</span><span class="p">.</span><span class="nx">WithData</span><span class="p">(</span><span class="nx">LabelData</span><span class="p">{</span>
+<span class="w">                </span><span class="nx">Font</span><span class="p">:</span><span class="w">      </span><span class="nx">co</span><span class="p">.</span><span class="nx">OpenFont</span><span class="p">(</span><span class="nx">c</span><span class="p">.</span><span class="nx">Scope</span><span class="p">(),</span><span class="w"> </span><span class="s">&quot;ui:///roboto-bold.ttf&quot;</span><span class="p">),</span>
+<span class="w">                </span><span class="nx">FontSize</span><span class="p">:</span><span class="w">  </span><span class="nx">opt</span><span class="p">.</span><span class="nx">V</span><span class="p">(</span><span class="nb">float32</span><span class="p">(</span><span class="mf">24.0</span><span class="p">)),</span>
+<span class="w">                </span><span class="nx">FontColor</span><span class="p">:</span><span class="w"> </span><span class="nx">opt</span><span class="p">.</span><span class="nx">V</span><span class="p">(</span><span class="nx">ui</span><span class="p">.</span><span class="nx">White</span><span class="p">()),</span>
+<span class="w">                </span><span class="nx">Text</span><span class="p">:</span><span class="w">      </span><span class="s">&quot;Hello World&quot;</span><span class="p">,</span>
+<span class="w">            </span><span class="p">})</span>
+<span class="w">        </span><span class="p">}))</span>
+<span class="w">    </span><span class="p">})</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>A container component can be implemented as follows.</p>
+<div class="highlight"><pre><span></span><code><span class="kd">var</span><span class="w"> </span><span class="nx">Container</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="nx">co</span><span class="p">.</span><span class="nx">Define</span><span class="p">[</span><span class="o">*</span><span class="nx">containerComponent</span><span class="p">]()</span>
+
+<span class="kd">type</span><span class="w"> </span><span class="nx">ContainerData</span><span class="w"> </span><span class="kd">struct</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">BackgroundColor</span><span class="w"> </span><span class="nx">opt</span><span class="p">.</span><span class="nx">T</span><span class="p">[</span><span class="nx">ui</span><span class="p">.</span><span class="nx">Color</span><span class="p">]</span>
+<span class="p">}</span>
+
+<span class="kd">type</span><span class="w"> </span><span class="nx">containerComponent</span><span class="w"> </span><span class="kd">struct</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">co</span><span class="p">.</span><span class="nx">BaseComponent</span>
+<span class="w">    </span><span class="nx">layout</span><span class="w">          </span><span class="nx">ui</span><span class="p">.</span><span class="nx">Layout</span>
+<span class="w">    </span><span class="nx">backgroundColor</span><span class="w"> </span><span class="nx">ui</span><span class="p">.</span><span class="nx">Color</span>
+<span class="p">}</span>
+
+<span class="kd">func</span><span class="w"> </span><span class="p">(</span><span class="nx">c</span><span class="w"> </span><span class="o">*</span><span class="nx">containerComponent</span><span class="p">)</span><span class="w"> </span><span class="nx">OnUpsert</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">data</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">co</span><span class="p">.</span><span class="nx">GetData</span><span class="p">[</span><span class="nx">ContainerData</span><span class="p">](</span><span class="nx">c</span><span class="p">.</span><span class="nx">Properties</span><span class="p">())</span>
+<span class="w">    </span><span class="nx">c</span><span class="p">.</span><span class="nx">layout</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="nx">data</span><span class="p">.</span><span class="nx">Layout</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="nx">data</span><span class="p">.</span><span class="nx">BackgroundColor</span><span class="p">.</span><span class="nx">Specified</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nx">c</span><span class="p">.</span><span class="nx">backgroundColor</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="nx">data</span><span class="p">.</span><span class="nx">BackgroundColor</span><span class="p">.</span><span class="nx">Value</span>
+<span class="w">    </span><span class="p">}</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nx">c</span><span class="p">.</span><span class="nx">backgroundColor</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="nx">ui</span><span class="p">.</span><span class="nx">Black</span><span class="p">()</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">}</span>
+
+<span class="kd">func</span><span class="w"> </span><span class="p">(</span><span class="nx">c</span><span class="w"> </span><span class="o">*</span><span class="nx">containerComponent</span><span class="p">)</span><span class="w"> </span><span class="nx">Render</span><span class="p">()</span><span class="w"> </span><span class="nx">co</span><span class="p">.</span><span class="nx">Instance</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="nx">co</span><span class="p">.</span><span class="nx">New</span><span class="p">(</span><span class="nx">co</span><span class="p">.</span><span class="nx">Element</span><span class="p">,</span><span class="w"> </span><span class="kd">func</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nx">co</span><span class="p">.</span><span class="nx">WithLayoutData</span><span class="p">(</span><span class="nx">c</span><span class="p">.</span><span class="nx">Properties</span><span class="p">().</span><span class="nx">LayoutData</span><span class="p">())</span>
+<span class="w">        </span><span class="nx">co</span><span class="p">.</span><span class="nx">WithData</span><span class="p">(</span><span class="nx">co</span><span class="p">.</span><span class="nx">ElementData</span><span class="p">{</span>
+<span class="w">            </span><span class="nx">Essence</span><span class="p">:</span><span class="w"> </span><span class="nx">c</span><span class="p">,</span>
+<span class="w">            </span><span class="nx">Layout</span><span class="p">:</span><span class="w">  </span><span class="nx">c</span><span class="p">.</span><span class="nx">layout</span><span class="p">,</span>
+<span class="w">        </span><span class="p">})</span>
+<span class="w">        </span><span class="nx">co</span><span class="p">.</span><span class="nx">WithChildren</span><span class="p">(</span><span class="nx">c</span><span class="p">.</span><span class="nx">Properties</span><span class="p">().</span><span class="nx">Children</span><span class="p">())</span>
+<span class="w">    </span><span class="p">})</span>
+<span class="p">}</span>
+
+<span class="kd">func</span><span class="w"> </span><span class="p">(</span><span class="nx">c</span><span class="w"> </span><span class="o">*</span><span class="nx">containerComponent</span><span class="p">)</span><span class="w"> </span><span class="nx">OnRender</span><span class="p">(</span><span class="nx">element</span><span class="w"> </span><span class="o">*</span><span class="nx">ui</span><span class="p">.</span><span class="nx">Element</span><span class="p">,</span><span class="w"> </span><span class="nx">canvas</span><span class="w"> </span><span class="o">*</span><span class="nx">ui</span><span class="p">.</span><span class="nx">Canvas</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">drawBounds</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">canvas</span><span class="p">.</span><span class="nx">DrawBounds</span><span class="p">(</span><span class="nx">element</span><span class="p">,</span><span class="w"> </span><span class="kc">false</span><span class="p">)</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">!</span><span class="nx">c</span><span class="p">.</span><span class="nx">backgroundColor</span><span class="p">.</span><span class="nx">Transparent</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nx">canvas</span><span class="p">.</span><span class="nx">Reset</span><span class="p">()</span>
+<span class="w">        </span><span class="nx">canvas</span><span class="p">.</span><span class="nx">Rectangle</span><span class="p">(</span><span class="nx">drawBounds</span><span class="p">.</span><span class="nx">Position</span><span class="p">,</span><span class="w"> </span><span class="nx">drawBounds</span><span class="p">.</span><span class="nx">Size</span><span class="p">)</span>
+<span class="w">        </span><span class="nx">canvas</span><span class="p">.</span><span class="nx">Fill</span><span class="p">(</span><span class="nx">ui</span><span class="p">.</span><span class="nx">Fill</span><span class="p">{</span>
+<span class="w">            </span><span class="nx">Color</span><span class="p">:</span><span class="w"> </span><span class="nx">c</span><span class="p">.</span><span class="nx">backgroundColor</span><span class="p">,</span>
+<span class="w">        </span><span class="p">})</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>The Lacking framework includes a package <a href="https://pkg.go.dev/github.com/mokiat/lacking/ui/std">std</a> (short for standard) that includes some basic component implementations. While not too pretty and unlikely to be used in a game, they can be useful when creating a tool or getting started with the component API.</p>
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    <script id="__config" type="application/json">{"base": "../..", "features": [], "search": "../../assets/javascripts/workers/search.e5c33ebb.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.51d95adb.min.js"></script>
+      
+        <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+      
+    
+  </body>
+</html>
