@@ -967,7 +967,7 @@ func (s *Scene) notifyPairCollisions() {
 	clear(s.newPairCollisionRefs)
 }
 
-var nilIndex int32 = -1
+const nilIndex int32 = -1
 
 type bodyData struct {
 	index int32

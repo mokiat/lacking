@@ -93,16 +93,14 @@ type Hierarchy struct {
 func InstantiateHierarchy(scene *Scene, info HierarchyInfo) *Hierarchy {
 	nodes := make(map[uint32]hierarchy.NodeID, len(info.NodeTemplates))
 	for nodeID, nodeTemplate := range info.NodeTemplates.Iter() {
-		node := scene.Hierarchy().CreateNode()
-		scene.Hierarchy().SetNodeName(node, nodeTemplate.Name)
-		scene.Hierarchy().SetNodePosition(node, nodeTemplate.Position)
-		scene.Hierarchy().SetNodeRotation(node, nodeTemplate.Rotation)
-		scene.Hierarchy().SetNodeScale(node, nodeTemplate.Scale)
-		scene.Hierarchy().ResetNodeDelta(node, false)
-		nodes[nodeID] = node
+		node := scene.Hierarchy().Nodes().CreateHandle()
+		node.SetName(nodeTemplate.Name)
+		node.SetTRS(nodeTemplate.Position, nodeTemplate.Rotation, nodeTemplate.Scale)
+		node.Snap()
+		nodes[nodeID] = node.ID()
 	}
 
-	rootNode := scene.Hierarchy().CreateNode()
+	rootNode := scene.Hierarchy().Nodes().Create()
 	for nodeID, nodeTemplate := range info.NodeTemplates.Iter() {
 		var parent hierarchy.NodeID
 		if nodeTemplate.ParentID != UnspecifiedID {
@@ -110,19 +108,19 @@ func InstantiateHierarchy(scene *Scene, info HierarchyInfo) *Hierarchy {
 		} else {
 			parent = rootNode
 		}
-		scene.Hierarchy().AppendNodeChild(parent, nodes[nodeID], false)
+		scene.Hierarchy().Nodes().AttachChild(parent, nodes[nodeID], false)
 	}
 
 	if info.SubTreeNode.Specified {
-		subTreeNode := scene.Hierarchy().FindSubtreeNode(rootNode, info.SubTreeNode.Value)
-		if subTreeNode.IsNil() {
+		subTreeNode := scene.Hierarchy().Nodes().FindNodeInSubtree(rootNode, info.SubTreeNode.Value)
+		if subTreeNode == hierarchy.NilNodeID {
 			logger.Error("Root node not found", slog.String("name", info.SubTreeNode.Value))
-			subTreeNode = scene.Hierarchy().CreateNode()
+			subTreeNode = scene.Hierarchy().Nodes().Create()
 		}
-		scene.Hierarchy().DetachNode(subTreeNode, false)
+		scene.Hierarchy().Nodes().Detach(subTreeNode, false)
 		for id, node := range nodes {
-			if !scene.Hierarchy().IsNodeChain(subTreeNode, node) {
-				scene.Hierarchy().DeleteNode(node)
+			if !scene.Hierarchy().Nodes().SubtreeContains(subTreeNode, node) {
+				scene.Hierarchy().Nodes().Delete(node)
 				delete(nodes, id)
 			}
 		}
@@ -130,18 +128,18 @@ func InstantiateHierarchy(scene *Scene, info HierarchyInfo) *Hierarchy {
 	}
 
 	if info.Name.Specified {
-		scene.Hierarchy().SetNodeName(rootNode, info.Name.Value)
+		scene.Hierarchy().Nodes().SetName(rootNode, info.Name.Value)
 	}
 	if info.Position.Specified {
-		scene.Hierarchy().SetNodePosition(rootNode, info.Position.Value)
+		scene.Hierarchy().Nodes().SetPosition(rootNode, info.Position.Value)
 	}
 	if info.Rotation.Specified {
-		scene.Hierarchy().SetNodeRotation(rootNode, info.Rotation.Value)
+		scene.Hierarchy().Nodes().SetRotation(rootNode, info.Rotation.Value)
 	}
 	if info.Scale.Specified {
-		scene.Hierarchy().SetNodeScale(rootNode, info.Scale.Value)
+		scene.Hierarchy().Nodes().SetScale(rootNode, info.Scale.Value)
 	}
-	scene.Hierarchy().ResetNodeDelta(rootNode, true)
+	scene.Hierarchy().Nodes().Snap(rootNode)
 
 	nodeList := make(IdentifiableList[hierarchy.NodeID], 0, len(nodes))
 	for id, node := range nodes {

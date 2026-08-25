@@ -21,7 +21,7 @@ type AmbientLightInfo struct {
 // CreateAmbientLight creates a new ambient light and appends it to the root of
 // the scene.
 func (s *Scene) CreateAmbientLight(info AmbientLightInfo) hierarchy.NodeID {
-	nodeID := s.Hierarchy().CreateNode()
+	nodeID := s.Hierarchy().Nodes().Create()
 	s.PlaceAmbientLight(nodeID, info)
 	return nodeID
 }
@@ -50,7 +50,7 @@ type PointLightInfo struct {
 // CreatePointLight creates a new point light and appends it to the root of the
 // scene.
 func (s *Scene) CreatePointLight(info PointLightInfo) hierarchy.NodeID {
-	nodeID := s.Hierarchy().CreateNode()
+	nodeID := s.Hierarchy().Nodes().Create()
 	s.PlacePointLight(nodeID, info)
 	return nodeID
 }
@@ -79,7 +79,7 @@ type SpotLightInfo struct {
 // CreateSpotLight creates a new spot light and appends it to the root of the
 // scene.
 func (s *Scene) CreateSpotLight(info SpotLightInfo) hierarchy.NodeID {
-	nodeID := s.Hierarchy().CreateNode()
+	nodeID := s.Hierarchy().Nodes().Create()
 	s.PlaceSpotLight(nodeID, info)
 	return nodeID
 }
@@ -109,7 +109,7 @@ type DirectionalLightInfo struct {
 // CreateDirectionalLight creates a new directional light and appends it to the
 // root of the scene.
 func (s *Scene) CreateDirectionalLight(info DirectionalLightInfo) hierarchy.NodeID {
-	nodeID := s.Hierarchy().CreateNode()
+	nodeID := s.Hierarchy().Nodes().Create()
 	s.PlaceDirectionalLight(nodeID, info)
 	return nodeID
 }

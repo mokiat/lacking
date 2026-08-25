@@ -1,66 +1,167 @@
 package hierarchy
 
-import "github.com/mokiat/gog"
+type BindingSolver[T any] interface{}
 
-const (
-	initialBindingCapacity = 64
-)
-
-// BindingObject represents a type that can be bound to a node.
-type BindingObject interface {
-	comparable
+type LifecycleBindingSolver[T any] interface {
+	OnDelete(*Scene, NodeID, T)
 }
 
-// Binding represents a relationship between an object and a node.
-type Binding[T BindingObject] interface {
-
-	// OnStaleBinding is called when the node is deleted and the binding
-	// is determined to no longer be valid.
-	OnStaleBinding(*Scene, T)
+type SourceBindingSolver[T any] interface {
+	OnSourceToNode(*Scene, NodeID, T)
 }
 
-// NewManualBindingSet creates a binding set that only tracks deletions.
-func NewBindingSet[T BindingObject](scene *Scene, binding Binding[T]) *BindingSet[T] {
-	result := &BindingSet[T]{
-		scene:     scene,
-		binding:   binding,
-		relations: make(map[NodeID]T, initialBindingCapacity),
+type TargetBindingSolver[T any] interface {
+	OnTargetFromNode(*Scene, NodeID, T)
+}
+
+type InterpolationBindingSolver[T any] interface {
+	OnInterpolationFromNode(*Scene, NodeID, T, float64)
+}
+
+type Binding[T any] struct {
+	scene               *Scene
+	lifecycleSolver     LifecycleBindingSolver[T]
+	sourceSolver        SourceBindingSolver[T]
+	targetSolver        TargetBindingSolver[T]
+	interpolationSolver InterpolationBindingSolver[T]
+	bindings            map[NodeID]T
+	priority            int
+}
+
+var _ internalBinding = (*Binding[any])(nil)
+
+func NewBinding[T any](scene *Scene, solver BindingSolver[T]) *Binding[T] {
+	lifecycleSolver, _ := solver.(LifecycleBindingSolver[T])
+	sourceSolver, _ := solver.(SourceBindingSolver[T])
+	targetSolver, _ := solver.(TargetBindingSolver[T])
+	interpolationSolver, _ := solver.(InterpolationBindingSolver[T])
+
+	result := &Binding[T]{
+		scene:               scene,
+		lifecycleSolver:     lifecycleSolver,
+		sourceSolver:        sourceSolver,
+		targetSolver:        targetSolver,
+		interpolationSolver: interpolationSolver,
+		bindings:            make(map[NodeID]T),
+		priority:            0,
 	}
-	scene.SubscribeNodeDelete(func(s *Scene, id NodeID) {
-		result.Unbind(id, true)
-	})
+	scene.addBindingSet(result)
 	return result
 }
 
-// BindingSet represents a set of bindings for a specific object type.
-type BindingSet[T BindingObject] struct {
-	scene     *Scene
-	binding   Binding[T]
-	relations map[NodeID]T
+func (b *Binding[T]) Delete() {
+	b.scene.removeBindingSet(b)
 }
 
-// Bind binds the object to the node with the given ID.
-func (s *BindingSet[T]) Bind(id NodeID, obj T) {
-	if s.scene.IsValidNode(id) {
-		s.relations[id] = obj
+func (b *Binding[T]) Priority() int {
+	return b.priority
+}
+
+func (b *Binding[T]) SetPriority(priority int) {
+	b.priority = priority
+	b.scene.sortBindingSets()
+}
+
+func (b *Binding[T]) Bind(id NodeID, value T) {
+	if !b.scene.Nodes().IsValid(id) {
+		panic("cannot bind to an invalid node")
+	}
+
+	b.bindings[id] = value
+}
+
+func (b *Binding[T]) Unbind(id NodeID, notify bool) {
+	if !b.scene.Nodes().IsValid(id) {
+		panic("cannot unbind from an invalid node")
+	}
+
+	delete(b.bindings, id)
+}
+
+func (b *Binding[T]) Get(id NodeID) T {
+	if !b.scene.Nodes().IsValid(id) {
+		panic("cannot get from an invalid node")
+	}
+
+	return b.bindings[id]
+}
+
+func (b *Binding[T]) Has(id NodeID) bool {
+	_, exists := b.bindings[id]
+	return exists
+}
+
+func (b *Binding[T]) ApplySourcesToNodes() {
+	if b.sourceSolver == nil {
+		return
+	}
+	for id, value := range b.bindings {
+		b.sourceSolver.OnSourceToNode(b.scene, id, value)
 	}
 }
 
-// Unbind unbinds the object from its node.
-func (s *BindingSet[T]) Unbind(id NodeID, notify bool) (T, bool) {
-	target, exists := s.relations[id]
-	if !exists {
-		return gog.Zero[T](), false
+func (b *Binding[T]) ApplySourceToNode(id NodeID) {
+	if b.sourceSolver == nil {
+		return
 	}
-	delete(s.relations, id)
-	if notify {
-		s.binding.OnStaleBinding(s.scene, target)
+	if value, exists := b.bindings[id]; exists {
+		b.sourceSolver.OnSourceToNode(b.scene, id, value)
 	}
-	return target, true
 }
 
-// Get returns the object bound to the node with the given ID. If one is
-// not found, the zero value is returned.
-func (s *BindingSet[T]) Get(id NodeID) T {
-	return s.relations[id]
+func (b *Binding[T]) ApplyTargetsFromNodes() {
+	if b.targetSolver == nil {
+		return
+	}
+	for id, value := range b.bindings {
+		b.targetSolver.OnTargetFromNode(b.scene, id, value)
+	}
+}
+
+func (b *Binding[T]) ApplyTargetFromNode(id NodeID) {
+	if b.targetSolver == nil {
+		return
+	}
+	if value, exists := b.bindings[id]; exists {
+		b.targetSolver.OnTargetFromNode(b.scene, id, value)
+	}
+}
+
+func (b *Binding[T]) ApplyInterpolationsFromNodes(fraction float64) {
+	if b.interpolationSolver == nil {
+		return
+	}
+	for id, value := range b.bindings {
+		b.interpolationSolver.OnInterpolationFromNode(b.scene, id, value, fraction)
+	}
+}
+
+func (b *Binding[T]) ApplyInterpolationFromNode(id NodeID, fraction float64) {
+	if b.interpolationSolver == nil {
+		return
+	}
+	if value, exists := b.bindings[id]; exists {
+		b.interpolationSolver.OnInterpolationFromNode(b.scene, id, value, fraction)
+	}
+}
+
+func (b *Binding[T]) handleNodeDelete(id NodeID) {
+	if b.lifecycleSolver == nil {
+		return
+	}
+	if value, exists := b.bindings[id]; exists {
+		delete(b.bindings, id)
+		b.lifecycleSolver.OnDelete(b.scene, id, value)
+	}
+}
+
+type internalBinding interface {
+	Priority() int
+	ApplySourcesToNodes()
+	ApplySourceToNode(id NodeID)
+	ApplyTargetsFromNodes()
+	ApplyTargetFromNode(id NodeID)
+	ApplyInterpolationsFromNodes(fraction float64)
+	ApplyInterpolationFromNode(id NodeID, fraction float64)
+	handleNodeDelete(id NodeID)
 }

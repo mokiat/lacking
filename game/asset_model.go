@@ -227,7 +227,7 @@ func (m *Model) Nodes() IdentifiableList[hierarchy.NodeID] {
 // FindNode is a convenience method that searches for a node
 // by its name in the model hierarchy.
 func (m *Model) FindNode(name string) hierarchy.NodeID {
-	return m.scene.Hierarchy().FindSubtreeNode(m.root, name)
+	return m.scene.Hierarchy().Nodes().FindNodeInSubtree(m.root, name)
 }
 
 func (m *Model) Recordings() []*animation.Recording {
@@ -247,7 +247,7 @@ func (m *Model) AnimatedNodes() []hierarchy.NodeID {
 	result := ds.EmptySet[hierarchy.NodeID]()
 	for _, animation := range m.recordings {
 		for nodeName := range animation.BoundNodesIter() {
-			if nodeID := m.FindNode(nodeName); !nodeID.IsNil() {
+			if nodeID := m.FindNode(nodeName); nodeID != hierarchy.NilNodeID {
 				result.Add(nodeID)
 			}
 		}
@@ -263,7 +263,7 @@ func (m *Model) BindAnimation(root animation.Node) *animation.Player {
 func (m *Model) BindAnimationSubtree(root animation.Node, nodeName string) *animation.Player {
 	subtreeNodeID := m.FindNode(nodeName)
 	var animatedNodeIDs []hierarchy.NodeID
-	for nodeID := range m.scene.Hierarchy().SubtreeIter(subtreeNodeID) {
+	for nodeID := range m.scene.Hierarchy().Nodes().WalkSubtreeIter(subtreeNodeID) {
 		animatedNodeIDs = append(animatedNodeIDs, nodeID)
 	}
 	return m.bindAnimationNodes(root, animatedNodeIDs)
@@ -349,10 +349,10 @@ func InstantiateModel(scene *Scene, info ModelInfo) *Model {
 		}
 	}
 
-	scene.Hierarchy().ResetNodeDelta(modelNode, true)
-	scene.Hierarchy().ApplySourceToTarget(modelNode, true)
-	scene.Hierarchy().ApplyNodeToTarget(modelNode, true)
-	scene.Hierarchy().ApplyNodeToInterpolation(modelNode, 1.0, true)
+	scene.Hierarchy().Nodes().Snap(modelNode)
+	scene.Hierarchy().ApplySourceToNode(modelNode, true)
+	scene.Hierarchy().ApplyTargetFromNode(modelNode, true)
+	scene.Hierarchy().ApplyInterpolationFromNode(modelNode, 1.0, true)
 
 	if !info.IsDynamic && info.DiscardHierarchy {
 		for node := range nodes.Values() {
@@ -362,7 +362,7 @@ func InstantiateModel(scene *Scene, info ModelInfo) *Model {
 			scene.DirectionalLightBindingSet().Unbind(node, false)
 			scene.SkyBindingSet().Unbind(node, false)
 		}
-		scene.Hierarchy().DeleteNode(modelNode)
+		scene.Hierarchy().Nodes().Delete(modelNode)
 	}
 
 	return &Model{

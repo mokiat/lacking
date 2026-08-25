@@ -55,7 +55,7 @@ func newScene(engine *Engine, info SceneInfo) *Scene {
 
 	var hierarchyScene *hierarchy.Scene
 	if includeHierarchy {
-		hierarchyScene = hierarchy.NewScene(1024)
+		hierarchyScene = hierarchy.NewScene()
 	}
 
 	var ecsScene *ecs.Scene
@@ -75,18 +75,16 @@ func newScene(engine *Engine, info SceneInfo) *Scene {
 
 	fixedTimestep := info.FixedTimestep.ValueOrDefault(16 * time.Millisecond)
 
-	// source binding sets
-	armatureBindingSet := hierarchy.NewSourceBindingSet(hierarchyScene, NewAnimationBinding())
-	bodyBindingSet := hierarchy.NewSourceBindingSet(hierarchyScene, NewBodyBinding(physicsScene))
-	// target binding sets
-	skyBindingSet := hierarchy.NewInterpolationBindingSet(hierarchyScene, NewSkyBinding())
-	ambientLightBindingSet := hierarchy.NewInterpolationBindingSet(hierarchyScene, NewAmbientLightBinding())
-	pointLightBindingSet := hierarchy.NewInterpolationBindingSet(hierarchyScene, NewPointLightBinding())
-	spotLightBindingSet := hierarchy.NewInterpolationBindingSet(hierarchyScene, NewSpotLightBinding())
-	directionalLightBindingSet := hierarchy.NewInterpolationBindingSet(hierarchyScene, NewDirectionalLightBinding())
-	meshBindingSet := hierarchy.NewInterpolationBindingSet(hierarchyScene, NewMeshBinding())
-	boneBindingSet := hierarchy.NewInterpolationBindingSet(hierarchyScene, NewBoneBinding())
-	cameraBindingSet := hierarchy.NewInterpolationBindingSet(hierarchyScene, NewCameraBinding())
+	armatureBindingSet := hierarchy.NewBinding[*animation.Player](hierarchyScene, NewAnimationBindingSolver())
+	bodyBindingSet := hierarchy.NewBinding[physics.BodyID](hierarchyScene, NewBodyBindingSolver(physicsScene))
+	skyBindingSet := hierarchy.NewBinding[*graphics.Sky](hierarchyScene, NewSkyBindingSolver())
+	ambientLightBindingSet := hierarchy.NewBinding[*graphics.AmbientLight](hierarchyScene, NewAmbientLightBindingSolver())
+	pointLightBindingSet := hierarchy.NewBinding[*graphics.PointLight](hierarchyScene, NewPointLightBindingSolver())
+	spotLightBindingSet := hierarchy.NewBinding[*graphics.SpotLight](hierarchyScene, NewSpotLightBindingSolver())
+	directionalLightBindingSet := hierarchy.NewBinding[*graphics.DirectionalLight](hierarchyScene, NewDirectionalLightBindingSolver())
+	meshBindingSet := hierarchy.NewBinding[*graphics.Mesh](hierarchyScene, NewMeshBindingSolver())
+	boneBindingSet := hierarchy.NewBinding[BoneTarget](hierarchyScene, NewBoneBindingSolver())
+	cameraBindingSet := hierarchy.NewBinding[*graphics.Camera](hierarchyScene, NewCameraBindingSolver())
 
 	return &Scene{
 		engine: engine,
@@ -96,9 +94,8 @@ func newScene(engine *Engine, info SceneInfo) *Scene {
 		physicsScene:   physicsScene,
 		gfxScene:       gfxScene,
 
-		armatureBindingSet: armatureBindingSet,
-		bodyBindingSet:     bodyBindingSet,
-
+		armatureBindingSet:         armatureBindingSet,
+		bodyBindingSet:             bodyBindingSet,
 		skyBindingSet:              skyBindingSet,
 		ambientLightBindingSet:     ambientLightBindingSet,
 		pointLightBindingSet:       pointLightBindingSet,
@@ -130,18 +127,16 @@ type Scene struct {
 	physicsScene   *physics.Scene
 	gfxScene       *graphics.Scene
 
-	// source binding sets
-	armatureBindingSet *hierarchy.SourceBindingSet[*animation.Player]
-	bodyBindingSet     *hierarchy.SourceBindingSet[physics.BodyID]
-	// target binding sets
-	skyBindingSet              *hierarchy.InterpolationBindingSet[*graphics.Sky]
-	ambientLightBindingSet     *hierarchy.InterpolationBindingSet[*graphics.AmbientLight]
-	pointLightBindingSet       *hierarchy.InterpolationBindingSet[*graphics.PointLight]
-	spotLightBindingSet        *hierarchy.InterpolationBindingSet[*graphics.SpotLight]
-	directionalLightBindingSet *hierarchy.InterpolationBindingSet[*graphics.DirectionalLight]
-	meshBindingSet             *hierarchy.InterpolationBindingSet[*graphics.Mesh]
-	boneBindingSet             *hierarchy.InterpolationBindingSet[BoneTarget]
-	cameraBindingSet           *hierarchy.InterpolationBindingSet[*graphics.Camera]
+	armatureBindingSet         *hierarchy.Binding[*animation.Player]
+	bodyBindingSet             *hierarchy.Binding[physics.BodyID]
+	skyBindingSet              *hierarchy.Binding[*graphics.Sky]
+	ambientLightBindingSet     *hierarchy.Binding[*graphics.AmbientLight]
+	pointLightBindingSet       *hierarchy.Binding[*graphics.PointLight]
+	spotLightBindingSet        *hierarchy.Binding[*graphics.SpotLight]
+	directionalLightBindingSet *hierarchy.Binding[*graphics.DirectionalLight]
+	meshBindingSet             *hierarchy.Binding[*graphics.Mesh]
+	boneBindingSet             *hierarchy.Binding[BoneTarget]
+	cameraBindingSet           *hierarchy.Binding[*graphics.Camera]
 
 	timeSegmenter *timestep.Segmenter
 
@@ -224,53 +219,53 @@ func (s *Scene) SubscribeUpdate(callback timestep.UpdateCallback) *timestep.Upda
 
 // ArmatureBindingSet returns the binding set that binds animation players
 // to armatures.
-func (s *Scene) ArmatureBindingSet() *hierarchy.SourceBindingSet[*animation.Player] {
+func (s *Scene) ArmatureBindingSet() *hierarchy.Binding[*animation.Player] {
 	return s.armatureBindingSet
 }
 
 // BodyBindingSet returns the binding set that binds physics bodies.
-func (s *Scene) BodyBindingSet() *hierarchy.SourceBindingSet[physics.BodyID] {
+func (s *Scene) BodyBindingSet() *hierarchy.Binding[physics.BodyID] {
 	return s.bodyBindingSet
 }
 
 // SkyBindingSet returns the binding set that binds sky objects.
-func (s *Scene) SkyBindingSet() *hierarchy.InterpolationBindingSet[*graphics.Sky] {
+func (s *Scene) SkyBindingSet() *hierarchy.Binding[*graphics.Sky] {
 	return s.skyBindingSet
 }
 
 // AmbientLightBindingSet returns the binding set that binds ambient light objects.
-func (s *Scene) AmbientLightBindingSet() *hierarchy.InterpolationBindingSet[*graphics.AmbientLight] {
+func (s *Scene) AmbientLightBindingSet() *hierarchy.Binding[*graphics.AmbientLight] {
 	return s.ambientLightBindingSet
 }
 
 // PointLightBindingSet returns the binding set that binds point light objects.
-func (s *Scene) PointLightBindingSet() *hierarchy.InterpolationBindingSet[*graphics.PointLight] {
+func (s *Scene) PointLightBindingSet() *hierarchy.Binding[*graphics.PointLight] {
 	return s.pointLightBindingSet
 }
 
 // SpotLightBindingSet returns the binding set that binds spot light objects.
-func (s *Scene) SpotLightBindingSet() *hierarchy.InterpolationBindingSet[*graphics.SpotLight] {
+func (s *Scene) SpotLightBindingSet() *hierarchy.Binding[*graphics.SpotLight] {
 	return s.spotLightBindingSet
 }
 
 // DirectionalLightBindingSet returns the binding set that binds directional
 // light objects.
-func (s *Scene) DirectionalLightBindingSet() *hierarchy.InterpolationBindingSet[*graphics.DirectionalLight] {
+func (s *Scene) DirectionalLightBindingSet() *hierarchy.Binding[*graphics.DirectionalLight] {
 	return s.directionalLightBindingSet
 }
 
 // MeshBindingSet returns the binding set that binds mesh objects.
-func (s *Scene) MeshBindingSet() *hierarchy.InterpolationBindingSet[*graphics.Mesh] {
+func (s *Scene) MeshBindingSet() *hierarchy.Binding[*graphics.Mesh] {
 	return s.meshBindingSet
 }
 
 // BoneBindingSet returns the binding set that binds bone target objects.
-func (s *Scene) BoneBindingSet() *hierarchy.InterpolationBindingSet[BoneTarget] {
+func (s *Scene) BoneBindingSet() *hierarchy.Binding[BoneTarget] {
 	return s.boneBindingSet
 }
 
 // CameraBindingSet returns the binding set that binds camera objects.
-func (s *Scene) CameraBindingSet() *hierarchy.InterpolationBindingSet[*graphics.Camera] {
+func (s *Scene) CameraBindingSet() *hierarchy.Binding[*graphics.Camera] {
 	return s.cameraBindingSet
 }
 
@@ -330,7 +325,7 @@ func (s *Scene) doStepUpdate(steps float64) {
 
 func (s *Scene) doFixedUpdate(elapsedTime time.Duration) {
 	resetSpan := metric.BeginRegion("node-fixed")
-	s.hierarchyScene.ResetDelta()
+	s.hierarchyScene.AdvanceStep()
 	resetSpan.End()
 
 	physicsSpan := metric.BeginRegion("physics")
@@ -354,13 +349,13 @@ func (s *Scene) doFixedUpdate(elapsedTime time.Duration) {
 	animationSpan.End()
 
 	nodeSpan = metric.BeginRegion("node-target")
-	s.hierarchyScene.ApplyNodesToTargets()
+	s.hierarchyScene.ApplyTargetsFromNodes()
 	nodeSpan.End()
 }
 
 func (s *Scene) doInterpolationUpdate(fraction float64) {
 	nodeSpan := metric.BeginRegion("node-interp")
-	s.hierarchyScene.ApplyNodesToInterpolations(fraction)
+	s.hierarchyScene.ApplyInterpolationsFromNodes(fraction)
 	nodeSpan.End()
 
 	callbackSpan := metric.BeginRegion("interp-cb")
