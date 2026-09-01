@@ -356,11 +356,11 @@ func InstantiateModel(scene *Scene, info ModelInfo) *Model {
 
 	if !info.IsDynamic && info.DiscardHierarchy {
 		for node := range nodes.Values() {
-			scene.AmbientLightBindingSet().Unbind(node, false)
-			scene.PointLightBindingSet().Unbind(node, false)
-			scene.SpotLightBindingSet().Unbind(node, false)
-			scene.DirectionalLightBindingSet().Unbind(node, false)
-			scene.SkyBindingSet().Unbind(node, false)
+			scene.AmbientLightBindingSet().Unbind(node)
+			scene.PointLightBindingSet().Unbind(node)
+			scene.SpotLightBindingSet().Unbind(node)
+			scene.DirectionalLightBindingSet().Unbind(node)
+			scene.SkyBindingSet().Unbind(node)
 		}
 		scene.Hierarchy().Nodes().Delete(modelNode)
 	}

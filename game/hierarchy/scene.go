@@ -55,12 +55,24 @@ func (s *Scene) AdvanceStep() {
 	}
 }
 
+// ApplySourcesToNodes runs the source transfer across every binding in the
+// scene, updating each bound node from its bound value.
+//
+// For every binding that has a [SourceBindingSolver], its
+// [SourceBindingSolver.OnSourceToNode] is invoked for each node bound in it.
+// Bindings are processed in ascending [Binding.Priority] order.
 func (s *Scene) ApplySourcesToNodes() {
 	for _, binding := range s.bindings {
 		binding.ApplySourcesToNodes()
 	}
 }
 
+// ApplySourceToNode runs the source transfer for a single node across every
+// binding in the scene, updating the node from its bound values.
+//
+// If recursive is true, the transfer is applied to the node and all of its
+// descendants; otherwise only to the node itself. Bindings are processed in
+// ascending [Binding.Priority] order.
 func (s *Scene) ApplySourceToNode(id NodeID, recursive bool) {
 	if recursive {
 		s.Nodes().WalkSubtree(id, func(nodeID NodeID) bool {
@@ -75,12 +87,24 @@ func (s *Scene) ApplySourceToNode(id NodeID, recursive bool) {
 	}
 }
 
+// ApplyTargetsFromNodes runs the target transfer across every binding in the
+// scene, updating each bound value from its node.
+//
+// For every binding that has a [TargetBindingSolver], its
+// [TargetBindingSolver.OnTargetFromNode] is invoked for each node bound in it.
+// Bindings are processed in ascending [Binding.Priority] order.
 func (s *Scene) ApplyTargetsFromNodes() {
 	for _, binding := range s.bindings {
 		binding.ApplyTargetsFromNodes()
 	}
 }
 
+// ApplyTargetFromNode runs the target transfer for a single node across every
+// binding in the scene, updating the node's bound values from the node.
+//
+// If recursive is true, the transfer is applied to the node and all of its
+// descendants; otherwise only to the node itself. Bindings are processed in
+// ascending [Binding.Priority] order.
 func (s *Scene) ApplyTargetFromNode(id NodeID, recursive bool) {
 	if recursive {
 		s.Nodes().WalkSubtree(id, func(nodeID NodeID) bool {
@@ -95,12 +119,26 @@ func (s *Scene) ApplyTargetFromNode(id NodeID, recursive bool) {
 	}
 }
 
+// ApplyInterpolationsFromNodes runs the interpolation transfer across every
+// binding in the scene, updating each bound value from its node's pose
+// interpolated by the specified fraction.
+//
+// For every binding that has an [InterpolationBindingSolver], its
+// [InterpolationBindingSolver.OnInterpolationFromNode] is invoked for each node
+// bound in it. Bindings are processed in ascending [Binding.Priority] order.
 func (s *Scene) ApplyInterpolationsFromNodes(fraction float64) {
 	for _, binding := range s.bindings {
 		binding.ApplyInterpolationsFromNodes(fraction)
 	}
 }
 
+// ApplyInterpolationFromNode runs the interpolation transfer for a single node
+// across every binding in the scene, updating the node's bound values from the
+// node's pose interpolated by the specified fraction.
+//
+// If recursive is true, the transfer is applied to the node and all of its
+// descendants; otherwise only to the node itself. Bindings are processed in
+// ascending [Binding.Priority] order.
 func (s *Scene) ApplyInterpolationFromNode(id NodeID, fraction float64, recursive bool) {
 	if recursive {
 		s.Nodes().WalkSubtree(id, func(nodeID NodeID) bool {
@@ -130,18 +168,18 @@ func (s *Scene) releaseNode(index int32) {
 	s.freeNodeIndices.Push(index)
 }
 
-func (s *Scene) addBindingSet(binding internalBinding) {
+func (s *Scene) addBinding(binding internalBinding) {
 	s.bindings = append(s.bindings, binding)
-	s.sortBindingSets()
+	s.sortBindings()
 }
 
-func (s *Scene) removeBindingSet(binding internalBinding) {
+func (s *Scene) removeBinding(binding internalBinding) {
 	s.bindings = slices.DeleteFunc(s.bindings, func(b internalBinding) bool {
 		return b == binding
 	})
 }
 
-func (s *Scene) sortBindingSets() {
+func (s *Scene) sortBindings() {
 	slices.SortStableFunc(s.bindings, func(a, b internalBinding) int {
 		return cmp.Compare(a.Priority(), b.Priority())
 	})
