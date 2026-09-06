@@ -69,7 +69,7 @@ func (v NodeView) CreateHandle() NodeHandle {
 // All descendants of the node are deleted as well. Any [NodeID] referring to a
 // deleted node becomes invalid.
 func (v NodeView) Delete(id NodeID) {
-	index, node := v.resolve(id, true)
+	index, _ := v.resolve(id, true)
 
 	for _, binding := range v.scene.bindings {
 		binding.handleNodeDelete(id)
@@ -77,6 +77,8 @@ func (v NodeView) Delete(id NodeID) {
 
 	v.Detach(id, false)
 
+	// refetch the node after detaching it from its parent and siblings
+	node := &v.scene.nodes[index]
 	for node.firstChildIndex != nilIndex {
 		v.Delete(v.idFromIndex(node.firstChildIndex))
 	}
@@ -214,15 +216,18 @@ func (v NodeView) SubtreeContains(rootID, findID NodeID) bool {
 	if !v.IsValid(rootID) || !v.IsValid(findID) {
 		return false
 	}
-	found := false
-	v.WalkSubtree(rootID, func(id NodeID) bool {
-		if id == findID {
-			found = true
-			return false
+
+	rootIndex := rootID.index
+	findIndex := findID.index
+
+	for findIndex != nilIndex {
+		if findIndex == rootIndex {
+			return true
 		}
-		return true
-	})
-	return found
+		findIndex = v.scene.nodes[findIndex].parentIndex
+	}
+
+	return false
 }
 
 // FindNode returns the ID of a node with the specified name, or [NilNodeID] if
