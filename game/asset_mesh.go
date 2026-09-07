@@ -95,7 +95,7 @@ func UnloadArmatureTemplates(loader *AssetLoader, idTemplates IdentifiableList[A
 
 func InstantiatePhysicsTerrainTemplate(scene *Scene, template TerrainTemplate, nodes IdentifiableList[hierarchy.NodeID]) {
 	nodeID := nodes.GetByID(template.NodeID)
-	absoluteMatrix := scene.Hierarchy().NodeAbsoluteMatrix(nodeID)
+	absoluteMatrix := scene.Hierarchy().Nodes().AbsoluteMatrix(nodeID)
 
 	terrain := scene.Physics().Terrains().CreateHandle()
 	for _, colMesh := range template.CollisionMeshes {
@@ -372,7 +372,7 @@ func InstantiateMeshTemplateStatic(scene *Scene, template MeshTemplate, nodes Id
 	if template.ArmatureID != UnspecifiedID {
 		armature = armatures.GetByID(template.ArmatureID)
 	}
-	absoluteMatrix := scene.Hierarchy().NodeAbsoluteMatrix(node)
+	absoluteMatrix := scene.Hierarchy().Nodes().AbsoluteMatrix(node)
 	scene.Graphics().CreateStaticMesh(graphics.StaticMeshInfo{
 		Definition: meshDefinition,
 		Armature:   armature,
@@ -395,7 +395,7 @@ func InstantiateMeshTemplateDynamic(scene *Scene, template MeshTemplate, nodes I
 		Definition: meshDefinition,
 		Armature:   armature,
 	})
-	absoluteMatrix := scene.Hierarchy().NodeAbsoluteMatrix(node)
+	absoluteMatrix := scene.Hierarchy().Nodes().AbsoluteMatrix(node)
 	mesh.SetMatrix(absoluteMatrix)
 	scene.meshBindingSet.Bind(node, mesh)
 	return mesh
