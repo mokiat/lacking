@@ -2,8 +2,8 @@ package chunked_test
 
 import (
 	"testing"
+	"uuid"
 
-	"github.com/google/uuid"
 	"github.com/mokiat/gog"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"

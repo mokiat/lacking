@@ -713,7 +713,7 @@ func BuildModelResource(gltfDoc *gltf.Document, forceCollision, onlyAnimations b
 
 			default:
 				logger.Warn("Channel has unsupported path",
-					slog.String("path", gltfChannel.Target.Path.String()),
+					slog.String("path", string(gltfChannel.Target.Path)),
 				)
 			}
 		}
