@@ -7,6 +7,7 @@ import (
 	"github.com/mokiat/gblob"
 	"github.com/mokiat/gomath/dprec"
 	"github.com/mokiat/gomath/dtos"
+	"github.com/mokiat/lacking/core/spatial/shape3d"
 	"github.com/mokiat/lacking/util/blob"
 	"github.com/mokiat/lacking/util/spatial"
 )
@@ -108,7 +109,8 @@ func createStaticMesh(scene *Scene, info StaticMeshInfo) {
 
 	meshIndex := uint32(len(scene.staticMeshes))
 	scene.staticMeshes = append(scene.staticMeshes, StaticMesh{})
-	scene.staticMeshOctree.Insert(position, radius, meshIndex)
+	boundingBox := shape3d.AABBFromSphere(shape3d.NewSphere(position, radius))
+	scene.staticMeshOctree.Insert(boundingBox, meshIndex)
 
 	staticMesh := &scene.staticMeshes[meshIndex]
 	staticMesh.scene = scene

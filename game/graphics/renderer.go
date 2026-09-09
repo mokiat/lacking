@@ -9,6 +9,8 @@ import (
 	"github.com/mokiat/gomath/dprec"
 	"github.com/mokiat/gomath/sprec"
 	"github.com/mokiat/gomath/stod"
+	"github.com/mokiat/lacking/core/spatial/query3d"
+	"github.com/mokiat/lacking/core/spatial/shape3d"
 	"github.com/mokiat/lacking/debug/metric"
 	"github.com/mokiat/lacking/game/graphics/internal"
 	"github.com/mokiat/lacking/render"
@@ -34,7 +36,7 @@ func newRenderer(api render.API, stageData *commonStageData, stages []Stage) *sc
 		visibleSpotLights:        spatial.NewVisitorBucket[*SpotLight](8),
 		visibleDirectionalLights: spatial.NewVisitorBucket[*DirectionalLight](2),
 
-		visibleStaticMeshes: spatial.NewVisitorBucket[uint32](65536),
+		visibleStaticMeshes: query3d.NewVisitorBucket[uint32](65536),
 		visibleMeshes:       spatial.NewVisitorBucket[*Mesh](1024),
 	}
 }
@@ -51,7 +53,7 @@ type sceneRenderer struct {
 	visibleSpotLights        *spatial.VisitorBucket[*SpotLight]
 	visibleDirectionalLights *spatial.VisitorBucket[*DirectionalLight]
 
-	visibleStaticMeshes *spatial.VisitorBucket[uint32]
+	visibleStaticMeshes *query3d.VisitorBucket[uint32]
 	visibleMeshes       *spatial.VisitorBucket[*Mesh]
 }
 
@@ -140,6 +142,7 @@ func (r *sceneRenderer) Render(framebuffer render.Framebuffer, viewport Viewport
 	viewMatrix := sprec.InverseMat4(cameraMatrix)
 	projectionViewMatrix := sprec.Mat4Prod(projectionMatrix, viewMatrix)
 	frustum := spatial.ProjectionRegion(stod.Mat4(projectionViewMatrix))
+	frustumShape := shape3d.FrustumFromProjection(stod.Mat4(projectionViewMatrix))
 
 	cameraPlacement := ubo.WriteUniform(uniformBuffer, internal.CameraUniform{
 		ProjectionMatrix: projectionMatrix,
@@ -170,7 +173,7 @@ func (r *sceneRenderer) Render(framebuffer render.Framebuffer, viewport Viewport
 	scene.dynamicMeshSet.VisitHexahedronRegion(&frustum, r.visibleMeshes)
 
 	r.visibleStaticMeshes.Reset()
-	scene.staticMeshOctree.VisitHexahedronRegion(&frustum, r.visibleStaticMeshes)
+	scene.staticMeshOctree.QueryFrustum(frustumShape, r.visibleStaticMeshes.VisitorFunc())
 
 	stageCtx := StageContext{
 		Scene:                    scene,

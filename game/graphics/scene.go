@@ -7,6 +7,7 @@ import (
 	"github.com/mokiat/gog/ds"
 	"github.com/mokiat/gog/opt"
 	"github.com/mokiat/gomath/dprec"
+	"github.com/mokiat/lacking/core/spatial/query3d"
 	"github.com/mokiat/lacking/render"
 	"github.com/mokiat/lacking/util/spatial"
 )
@@ -22,12 +23,11 @@ func newScene(engine *Engine, renderer *sceneRenderer) *Scene {
 
 		skies: ds.PreallocatedList[*Sky](1),
 
-		staticMeshOctree: spatial.NewStaticOctree[uint32](spatial.StaticOctreeSettings{
+		staticMeshOctree: query3d.NewOctree[uint32](query3d.OctreeSettings{
 			Size:                opt.V(maxSceneSize),
-			MaxDepth:            opt.V(int32(15)),
-			BiasRatio:           opt.V(4.0),
-			InitialNodeCapacity: opt.V(int32(128 * 1024)),
-			InitialItemCapacity: opt.V(int32(1024 * 1024)),
+			MaxDepth:            opt.V(uint32(10)),
+			InitialNodeCapacity: opt.V(uint32(128 * 1024)),
+			InitialItemCapacity: opt.V(uint32(1024 * 1024)),
 		}),
 
 		dynamicMeshPool: ds.EmptyPool[Mesh](),
@@ -68,7 +68,7 @@ type Scene struct {
 	skies *ds.List[*Sky]
 
 	staticMeshes     []StaticMesh
-	staticMeshOctree *spatial.StaticOctree[uint32]
+	staticMeshOctree *query3d.Octree[uint32]
 
 	dynamicMeshPool *ds.Pool[Mesh]
 	dynamicMeshSet  *spatial.DynamicSet[*Mesh]
