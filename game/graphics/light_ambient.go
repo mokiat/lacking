@@ -2,8 +2,9 @@ package graphics
 
 import (
 	"github.com/mokiat/gomath/dprec"
+	"github.com/mokiat/lacking/core/spatial/query3d"
+	"github.com/mokiat/lacking/core/spatial/shape3d"
 	"github.com/mokiat/lacking/render"
-	"github.com/mokiat/lacking/util/spatial"
 )
 
 // TODO: Use a Box shape for ambient light size
@@ -23,7 +24,7 @@ func newAmbientLight(scene *Scene, info AmbientLightInfo) *AmbientLight {
 	light := scene.ambientLightPool.Fetch()
 	light.scene = scene
 	light.itemID = scene.ambientLightSet.Insert(
-		info.Position, info.OuterRadius, light,
+		shape3d.AABBFromSphere(shape3d.NewSphere(info.Position, info.OuterRadius)), light,
 	)
 	light.innerRadius = info.InnerRadius
 	light.outerRadius = info.OuterRadius
@@ -35,7 +36,7 @@ func newAmbientLight(scene *Scene, info AmbientLightInfo) *AmbientLight {
 
 type AmbientLight struct {
 	scene  *Scene
-	itemID spatial.DynamicSetItemID
+	itemID query3d.BagItemID
 
 	position          dprec.Vec3
 	innerRadius       float64
@@ -56,7 +57,7 @@ func (l *AmbientLight) SetActive(active bool) {
 
 func (l *AmbientLight) SetPosition(position dprec.Vec3) {
 	l.position = position
-	l.scene.ambientLightSet.Update(l.itemID, position, l.outerRadius)
+	l.scene.ambientLightSet.Update(l.itemID, shape3d.AABBFromSphere(shape3d.NewSphere(position, l.outerRadius)))
 }
 
 func (l *AmbientLight) Position() dprec.Vec3 {

@@ -1,11 +1,8 @@
 package query2d
 
 import (
-	"math"
-
 	"github.com/mokiat/gog/ds"
 	"github.com/mokiat/gog/opt"
-	"github.com/mokiat/gomath/dprec"
 	"github.com/mokiat/lacking/core/spatial/shape2d"
 )
 
@@ -84,7 +81,7 @@ func NewQuadtree[T any](settings QuadtreeSettings) *Quadtree[T] {
 			y:        0.0,
 			halfSize: size, // using size here since a loose area has twice the size
 		},
-		tightArea: emptyQuadtreeAABB(),
+		tightArea: emptyBoundingBox(),
 	})
 
 	return &Quadtree[T]{
@@ -143,7 +140,7 @@ func (t *Quadtree[T]) Insert(aabb shape2d.AABB, value T) TreeItemID {
 		panic("cannot insert item with empty area")
 	}
 
-	tightArea := newQuadtreeAABBFromAABB(aabb)
+	tightArea := newBoundingBoxFromAABB(aabb)
 	nodeIndex := t.pickNodeForItem(tightArea)
 	t.increaseNodeItems(nodeIndex)
 
@@ -184,7 +181,7 @@ func (t *Quadtree[T]) Update(id TreeItemID, aabb shape2d.AABB) {
 	if item.node == nullQuadtreeIndex {
 		panic("cannot update removed item")
 	}
-	tightArea := newQuadtreeAABBFromAABB(aabb)
+	tightArea := newBoundingBoxFromAABB(aabb)
 	item.tightArea = tightArea
 	oldNodeIndex := item.node
 	t.decreaseNodeItems(item.node) // previous node
@@ -224,6 +221,20 @@ func (t *Quadtree[T]) QueryAABB(aabb shape2d.AABB, yield VisitorFunc[T]) {
 	t.resetVisitStats()
 	t.refresh()
 	t.visitNodeInAABB(0, &aabb, yield)
+}
+
+// QueryFrustum finds all items that are inside or intersect the specified
+// frustum. Each found item is passed to the specified yield function. The
+// order in which items are passed is undefined and might change between
+// invocations.
+//
+// The test is conservative: an item is passed when its bounding box is not
+// fully behind any of the four surfaces, so a box near an edge or a corner of
+// the frustum may be passed even though it does not truly overlap it.
+func (t *Quadtree[T]) QueryFrustum(frustum shape2d.Frustum, yield VisitorFunc[T]) {
+	t.resetVisitStats()
+	t.refresh()
+	t.visitNodeInFrustum(0, &frustum, allFrustumSurfaces, yield)
 }
 
 func (t *Quadtree[T]) resetVisitStats() {
@@ -272,7 +283,7 @@ func (t *Quadtree[T]) itemsAtDepth(nodeIndex int32, currentDepth, depth uint32) 
 
 // pickNodeForItem returns the deepest node whose loose area still fully
 // contains the specified area.
-func (t *Quadtree[T]) pickNodeForItem(area quadtreeAABB) int32 {
+func (t *Quadtree[T]) pickNodeForItem(area boundingBox) int32 {
 	bestNodeIndex := nullQuadtreeIndex
 	currentNodeIndex := int32(0)
 	var depth uint32
@@ -290,7 +301,7 @@ func (t *Quadtree[T]) pickNodeForItem(area quadtreeAABB) int32 {
 // pickChildNode returns the child of the specified node whose loose area fully
 // contains the specified area, allocating that child if it does not exist yet.
 // It returns nullQuadtreeIndex if the area does not fit in any child.
-func (t *Quadtree[T]) pickChildNode(parentNodeIndex int32, area quadtreeAABB) int32 {
+func (t *Quadtree[T]) pickChildNode(parentNodeIndex int32, area boundingBox) int32 {
 	parentNode := &t.nodes[parentNodeIndex]
 	parentLooseArea := parentNode.looseArea
 
@@ -459,17 +470,17 @@ func (t *Quadtree[T]) updateAABB(nodeIndex int32) bool {
 	// cached items boxes. This would avoid recomputing the items boxes every
 	// time.
 
-	result := emptyQuadtreeAABB()
+	result := emptyBoundingBox()
 	for _, childIndex := range node.children {
 		if childIndex != nullQuadtreeIndex {
 			child := &t.nodes[childIndex]
-			result = mergeQuadtreeAABBs(result, child.tightArea)
+			result = mergeBoundingBoxes(result, child.tightArea)
 		}
 	}
 	itemIndex := node.itemOffset
 	for range node.itemCount {
 		item := &t.items[itemIndex]
-		result = mergeQuadtreeAABBs(result, item.tightArea)
+		result = mergeBoundingBoxes(result, item.tightArea)
 		itemIndex++
 	}
 	node.tightArea = result
@@ -538,6 +549,37 @@ func (t *Quadtree[T]) visitNodeInAABB(nodeIndex int32, queryAABB *shape2d.AABB, 
 	return true
 }
 
+func (t *Quadtree[T]) visitNodeInFrustum(nodeIndex int32, queryFrustum *shape2d.Frustum, mask uint8, yield VisitorFunc[T]) bool {
+	node := &t.nodes[nodeIndex]
+	remainingMask, intersects := node.tightArea.classifyFrustum(queryFrustum, mask)
+	if !intersects {
+		t.nodeCountRejected++
+		return true
+	}
+	t.nodeCountAccepted++
+	itemIndex := node.itemOffset
+	for range node.itemCount {
+		item := &t.items[itemIndex]
+		if item.tightArea.intersectsFrustum(queryFrustum, remainingMask) {
+			t.itemCountAccepted++
+			if !yield(item.value) {
+				return false
+			}
+		} else {
+			t.itemCountRejected++
+		}
+		itemIndex++
+	}
+	for _, childNodeIndex := range node.children {
+		if childNodeIndex != nullQuadtreeIndex {
+			if !t.visitNodeInFrustum(childNodeIndex, queryFrustum, remainingMask, yield) {
+				return false
+			}
+		}
+	}
+	return true
+}
+
 const nullQuadtreeIndex = int32(-1)
 
 var emptyQuadtreeNodeChildren = [4]int32{
@@ -555,7 +597,7 @@ type quadtreeNode struct {
 
 	// tightArea is the cached bounding box of everything actually stored in
 	// this node and its descendants. It is what queries are tested against.
-	tightArea quadtreeAABB
+	tightArea boundingBox
 
 	itemCount   uint32
 	itemOffset  uint32
@@ -570,7 +612,7 @@ func (n *quadtreeNode) isEmpty() bool {
 type quadtreeItem[T any] struct {
 	id        TreeItemID
 	node      int32
-	tightArea quadtreeAABB
+	tightArea boundingBox
 	value     T
 }
 
@@ -581,93 +623,4 @@ type quadtreeQuad struct {
 	x        float64
 	y        float64
 	halfSize float64
-}
-
-type quadtreeAABB struct {
-	minX float64
-	minY float64
-	maxX float64
-	maxY float64
-}
-
-func emptyQuadtreeAABB() quadtreeAABB {
-	return quadtreeAABB{
-		minX: math.MaxFloat64,
-		minY: math.MaxFloat64,
-		maxX: -math.MaxFloat64,
-		maxY: -math.MaxFloat64,
-	}
-}
-
-func newQuadtreeAABBFromAABB(aabb shape2d.AABB) quadtreeAABB {
-	return quadtreeAABB{
-		minX: aabb.MinX,
-		minY: aabb.MinY,
-		maxX: aabb.MaxX,
-		maxY: aabb.MaxY,
-	}
-}
-
-func mergeQuadtreeAABBs(first, second quadtreeAABB) quadtreeAABB {
-	return quadtreeAABB{
-		minX: min(first.minX, second.minX),
-		minY: min(first.minY, second.minY),
-		maxX: max(first.maxX, second.maxX),
-		maxY: max(first.maxY, second.maxY),
-	}
-}
-
-func (aabb *quadtreeAABB) isEmpty() bool {
-	return (aabb.minX > aabb.maxX) || (aabb.minY > aabb.maxY)
-}
-
-func (aabb *quadtreeAABB) intersectsSegment(segment *shape2d.Segment) bool {
-	if aabb.isEmpty() {
-		return false
-	}
-
-	delta := dprec.Vec2Diff(segment.B, segment.A)
-
-	var tCloseX, tFarX float64
-	if delta.X == 0.0 {
-		if (segment.A.X < aabb.minX) || (segment.A.X > aabb.maxX) {
-			return false // both points are outside the box on the left or right
-		}
-		tCloseX = -math.MaxFloat64
-		tFarX = math.MaxFloat64
-	} else {
-		tLowX := (aabb.minX - segment.A.X) / delta.X
-		tHighX := (aabb.maxX - segment.A.X) / delta.X
-		tCloseX = min(tLowX, tHighX)
-		tFarX = max(tLowX, tHighX)
-	}
-
-	var tCloseY, tFarY float64
-	if delta.Y == 0.0 {
-		if (segment.A.Y < aabb.minY) || (segment.A.Y > aabb.maxY) {
-			return false // both points are outside the box on the top or bottom
-		}
-		tCloseY = -math.MaxFloat64
-		tFarY = math.MaxFloat64
-	} else {
-		tLowY := (aabb.minY - segment.A.Y) / delta.Y
-		tHighY := (aabb.maxY - segment.A.Y) / delta.Y
-		tCloseY = min(tLowY, tHighY)
-		tFarY = max(tLowY, tHighY)
-	}
-
-	tClose := max(tCloseX, tCloseY)
-	tFar := min(tFarX, tFarY)
-
-	return tClose <= tFar && tClose <= 1.0 && tFar >= 0.0
-}
-
-func (aabb *quadtreeAABB) intersectsAABB(other *shape2d.AABB) bool {
-	if aabb.isEmpty() {
-		return false
-	}
-	return (aabb.minX <= other.MaxX) &&
-		(aabb.minY <= other.MaxY) &&
-		(aabb.maxX >= other.MinX) &&
-		(aabb.maxY >= other.MinY)
 }

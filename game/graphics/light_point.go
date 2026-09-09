@@ -3,7 +3,8 @@ package graphics
 import (
 	"github.com/mokiat/gomath/dprec"
 	"github.com/mokiat/gomath/sprec"
-	"github.com/mokiat/lacking/util/spatial"
+	"github.com/mokiat/lacking/core/spatial/query3d"
+	"github.com/mokiat/lacking/core/spatial/shape3d"
 )
 
 // PointLightInfo contains the information needed to create a PointLight.
@@ -19,7 +20,7 @@ func newPointLight(scene *Scene, info PointLightInfo) *PointLight {
 
 	light.scene = scene
 	light.itemID = scene.pointLightSet.Insert(
-		info.Position, info.EmitRange, light,
+		shape3d.AABBFromSphere(shape3d.NewSphere(info.Position, info.EmitRange)), light,
 	)
 
 	light.active = true
@@ -36,7 +37,7 @@ func newPointLight(scene *Scene, info PointLightInfo) *PointLight {
 // space and emits light evenly in all directions up to a range.
 type PointLight struct {
 	scene  *Scene
-	itemID spatial.DynamicSetItemID
+	itemID query3d.BagItemID
 
 	active    bool
 	position  dprec.Vec3
@@ -67,7 +68,7 @@ func (l *PointLight) SetPosition(position dprec.Vec3) {
 	if position != l.position {
 		l.position = position
 		l.scene.pointLightSet.Update(
-			l.itemID, l.position, l.emitRange,
+			l.itemID, shape3d.AABBFromSphere(shape3d.NewSphere(l.position, l.emitRange)),
 		)
 		l.matrixDirty = true
 	}
@@ -83,7 +84,7 @@ func (l *PointLight) SetEmitRange(emitRange float64) {
 	if emitRange != l.emitRange {
 		l.emitRange = max(0.0, emitRange)
 		l.scene.pointLightSet.Update(
-			l.itemID, l.position, l.emitRange,
+			l.itemID, shape3d.AABBFromSphere(shape3d.NewSphere(l.position, l.emitRange)),
 		)
 		l.matrixDirty = true
 	}
