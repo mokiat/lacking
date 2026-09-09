@@ -2,6 +2,7 @@ package query2d_test
 
 import (
 	"fmt"
+	"math/rand/v2"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -479,6 +480,144 @@ var _ = Describe("Quadtree", func() {
 				Expect(found).To(HaveKey(value))
 			}
 			Expect(tree.Stats().ItemCount).To(Equal(uint32(len(expected))))
+		})
+	})
+
+	Describe("QueryFrustum", func() {
+		// lookingFrustum returns a frustum that covers exactly the rectangular
+		// region between the given minimum and maximum coordinates.
+		lookingFrustum := func(minX, minY, maxX, maxY float64) shape2d.Frustum {
+			projection := dprec.OrthoMat3(minX, maxX, maxY, minY)
+			return shape2d.FrustumFromProjection(projection)
+		}
+
+		collect := func(frustum shape2d.Frustum) []string {
+			var found []string
+			tree.QueryFrustum(frustum, func(item string) bool {
+				found = append(found, item)
+				return true
+			})
+			return found
+		}
+
+		When("the tree is empty", func() {
+			It("finds nothing and rejects the root", func() {
+				Expect(collect(lookingFrustum(-64.0, -64.0, 64.0, 64.0))).To(BeEmpty())
+
+				stats := tree.VisitStats()
+				Expect(stats.NodeCountVisited).To(Equal(uint32(1)))
+				Expect(stats.NodeCountAccepted).To(Equal(uint32(0)))
+				Expect(stats.NodeCountRejected).To(Equal(uint32(1)))
+				Expect(stats.ItemCountVisited).To(Equal(uint32(0)))
+			})
+		})
+
+		When("items are inserted", func() {
+			BeforeEach(func() {
+				tree.Insert(aabbFromCircle(0.0, 0.0, 2.0), "Center")
+				tree.Insert(aabbFromCircle(50.0, 0.0, 2.0), "Right")
+				tree.Insert(aabbFromCircle(-50.0, 0.0, 2.0), "Left")
+				tree.Insert(aabbFromCircle(0.0, 50.0, 2.0), "Up")
+				tree.Insert(aabbFromCircle(0.0, -50.0, 2.0), "Down")
+			})
+
+			It("finds only the items within the region", func() {
+				Expect(collect(lookingFrustum(-40.0, -40.0, 40.0, 40.0))).To(ConsistOf("Center"))
+			})
+
+			It("respects the left and right lines", func() {
+				// A tall, narrow region keeps the vertically placed items but
+				// drops the ones off to the sides.
+				Expect(collect(lookingFrustum(-10.0, -55.0, 10.0, 55.0))).To(ConsistOf("Center", "Up", "Down"))
+			})
+
+			It("respects the top and bottom lines", func() {
+				// A wide, short region keeps the horizontally placed items but
+				// drops the ones above and below.
+				Expect(collect(lookingFrustum(-55.0, -10.0, 55.0, 10.0))).To(ConsistOf("Center", "Left", "Right"))
+			})
+
+			It("stops after the visitor returns false", func() {
+				count := 0
+				tree.QueryFrustum(lookingFrustum(-64.0, -64.0, 64.0, 64.0), func(item string) bool {
+					count++
+					return false
+				})
+				Expect(count).To(Equal(1))
+			})
+
+			It("reports consistent visit stats", func() {
+				collect(lookingFrustum(-55.0, -10.0, 55.0, 10.0))
+				stats := tree.VisitStats()
+				Expect(stats.NodeCountVisited).To(Equal(stats.NodeCountAccepted + stats.NodeCountRejected))
+				Expect(stats.ItemCountVisited).To(Equal(stats.ItemCountAccepted + stats.ItemCountRejected))
+				Expect(stats.ItemCountAccepted).To(Equal(uint32(3)))
+				Expect(stats.NodeCountAccepted).To(BeNumerically(">", 0))
+			})
+
+			It("matches an AABB query when built from the same box", func() {
+				box := shape2d.NewAABB(-10.0, -10.0, 55.0, 10.0)
+
+				var fromAABB []string
+				tree.QueryAABB(box, func(item string) bool {
+					fromAABB = append(fromAABB, item)
+					return true
+				})
+				Expect(fromAABB).To(ConsistOf("Center", "Right"))
+
+				Expect(collect(shape2d.FrustumFromAABB(box))).To(ConsistOf(fromAABB))
+			})
+		})
+
+		When("many random items are inserted", func() {
+			var (
+				frustum  shape2d.Frustum
+				expected []string
+			)
+
+			// boxIntersectsFrustum is the reference item-level test: a box is
+			// accepted unless it lies fully behind one of the four surfaces.
+			boxIntersectsFrustum := func(box shape2d.AABB, frustum shape2d.Frustum) bool {
+				for _, surface := range frustum.Surfaces {
+					corner := dprec.NewVec2(box.MinX, box.MinY)
+					if surface.Normal.X >= 0.0 {
+						corner.X = box.MaxX
+					}
+					if surface.Normal.Y >= 0.0 {
+						corner.Y = box.MaxY
+					}
+					if surface.SignedDistance(corner) < 0.0 {
+						return false
+					}
+				}
+				return true
+			}
+
+			BeforeEach(func() {
+				random := rand.New(rand.NewPCG(7, 13))
+				boxes := make([]shape2d.AABB, 300)
+				for i := range boxes {
+					x := random.Float64()*120.0 - 60.0
+					y := random.Float64()*120.0 - 60.0
+					radius := 0.5 + random.Float64()*8.0
+					boxes[i] = aabbFromCircle(x, y, radius)
+					tree.Insert(boxes[i], fmt.Sprintf("item-%d", i))
+				}
+
+				frustum = lookingFrustum(-20.0, -30.0, 40.0, 25.0)
+				expected = nil
+				for i, box := range boxes {
+					if boxIntersectsFrustum(box, frustum) {
+						expected = append(expected, fmt.Sprintf("item-%d", i))
+					}
+				}
+			})
+
+			It("finds exactly the items that the item-level test accepts", func() {
+				Expect(expected).ToNot(BeEmpty())
+				Expect(len(expected)).To(BeNumerically("<", 300))
+				Expect(collect(frustum)).To(ConsistOf(expected))
+			})
 		})
 	})
 })

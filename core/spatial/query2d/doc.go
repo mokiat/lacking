@@ -2,7 +2,8 @@
 //
 // The package is built around a [Quadtree], a loose quadtree that indexes
 // items by their axis-aligned bounding box ([shape2d.AABB]) and allows them to
-// be searched through [Quadtree.QueryAABB] and [Quadtree.QuerySegment].
+// be searched through [Quadtree.QueryAABB], [Quadtree.QuerySegment] and
+// [Quadtree.QueryFrustum].
 //
 // It is intended as a broad-phase (high-level) pass: queries are conservative
 // and may yield false positives, so callers are expected to run their own
