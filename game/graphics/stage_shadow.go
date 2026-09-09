@@ -15,7 +15,6 @@ import (
 	"github.com/mokiat/lacking/game/graphics/internal"
 	"github.com/mokiat/lacking/render"
 	"github.com/mokiat/lacking/render/ubo"
-	"github.com/mokiat/lacking/util/spatial"
 )
 
 func newShadowStage(data *commonStageData, meshRenderer *meshRenderer) *ShadowStage {
@@ -24,7 +23,7 @@ func newShadowStage(data *commonStageData, meshRenderer *meshRenderer) *ShadowSt
 		meshRenderer: meshRenderer,
 
 		litStaticMeshes: query3d.NewVisitorBucket[uint32](65536),
-		litMeshes:       spatial.NewVisitorBucket[*Mesh](1024),
+		litMeshes:       query3d.NewVisitorBucket[*Mesh](1024),
 	}
 }
 
@@ -36,7 +35,7 @@ type ShadowStage struct {
 	meshRenderer *meshRenderer
 
 	litStaticMeshes *query3d.VisitorBucket[uint32]
-	litMeshes       *spatial.VisitorBucket[*Mesh]
+	litMeshes       *query3d.VisitorBucket[*Mesh]
 }
 
 func (s *ShadowStage) Allocate() {
@@ -192,14 +191,13 @@ func (s *ShadowStage) renderDirectionalLightShadowMaps(ctx StageContext, light *
 
 	cascadeCount := min(len(ctx.Camera.cascadeDistances), len(shadowMap.Cascades))
 	for i, cascade := range shadowMap.Cascades[:cascadeCount] {
-		frustum := spatial.ProjectionRegion(stod.Mat4(cascade.ProjectionMatrix))
-		frustumShape := shape3d.FrustumFromProjection(stod.Mat4(cascade.ProjectionMatrix))
+		frustum := shape3d.FrustumFromProjection(stod.Mat4(cascade.ProjectionMatrix))
 
 		s.litStaticMeshes.Reset()
-		ctx.Scene.staticMeshOctree.QueryFrustum(frustumShape, s.litStaticMeshes.VisitorFunc())
+		ctx.Scene.staticMeshOctree.QueryFrustum(frustum, s.litStaticMeshes.VisitorFunc())
 
 		s.litMeshes.Reset()
-		ctx.Scene.dynamicMeshSet.VisitHexahedronRegion(&frustum, s.litMeshes)
+		ctx.Scene.dynamicMeshSet.QueryFrustum(frustum, s.litMeshes.VisitorFunc())
 
 		ctx.Cascade = uint8(i + 1)
 

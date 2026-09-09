@@ -483,169 +483,157 @@ var _ = Describe("Octree", func() {
 			Expect(tree.Stats().ItemCount).To(Equal(uint32(len(expected))))
 		})
 	})
-})
-
-var _ = Describe("Octree QueryFrustum", func() {
-	var (
-		tree *query3d.Octree[string]
-	)
-
-	// lookingFrustum returns a frustum positioned at the specified point,
-	// looking down the negative Z axis, with a 90 degree field of view.
-	lookingFrustum := func(position dprec.Vec3, near, far float64) shape3d.Frustum {
-		projection := dprec.PerspectiveMat4(-near, near, -near, near, near, far)
-		view := dprec.InverseMat4(dprec.TranslationMat4(position.X, position.Y, position.Z))
-		return shape3d.FrustumFromProjection(dprec.Mat4Prod(projection, view))
-	}
-
-	collect := func(frustum shape3d.Frustum) []string {
-		var found []string
-		tree.QueryFrustum(frustum, func(item string) bool {
-			found = append(found, item)
-			return true
-		})
-		return found
-	}
-
-	BeforeEach(func() {
-		tree = query3d.NewOctree[string](query3d.OctreeSettings{
-			Size:     opt.V(128.0),
-			MaxDepth: opt.V[uint32](3),
-		})
-	})
-
-	When("the tree is empty", func() {
-		It("finds nothing and rejects the root", func() {
-			found := collect(lookingFrustum(dprec.NewVec3(0.0, 0.0, 64.0), 1.0, 200.0))
-			Expect(found).To(BeEmpty())
-
-			stats := tree.VisitStats()
-			Expect(stats.NodeCountVisited).To(Equal(uint32(1)))
-			Expect(stats.NodeCountAccepted).To(Equal(uint32(0)))
-			Expect(stats.NodeCountRejected).To(Equal(uint32(1)))
-			Expect(stats.ItemCountVisited).To(Equal(uint32(0)))
-		})
-	})
-
-	When("items are inserted", func() {
-		BeforeEach(func() {
-			tree.Insert(aabbFromSphere(0.0, 0.0, 0.0, 2.0), "Front")
-			tree.Insert(aabbFromSphere(0.0, 0.0, 100.0, 2.0), "Behind")
-			tree.Insert(aabbFromSphere(0.0, 0.0, -100.0, 2.0), "Far")
-			tree.Insert(aabbFromSphere(50.0, 0.0, 0.0, 2.0), "Side")
-			tree.Insert(aabbFromSphere(60.0, 0.0, 0.0, 2.0), "Edge")
-		})
-
-		It("finds only the items within the frustum", func() {
-			// From 64 units back, at a distance of 64 the frustum is 64 units
-			// wide in each direction, so the item at X=60 is within it and the
-			// item at X=50 is even more so. The far plane at 120 leaves out
-			// the item at Z=-100 (164 units away) and the item behind the
-			// camera is not visible at all.
-			found := collect(lookingFrustum(dprec.NewVec3(0.0, 0.0, 64.0), 1.0, 120.0))
-			Expect(found).To(ConsistOf("Front", "Side", "Edge"))
-		})
-
-		It("respects the far plane", func() {
-			found := collect(lookingFrustum(dprec.NewVec3(0.0, 0.0, 64.0), 1.0, 200.0))
-			Expect(found).To(ConsistOf("Front", "Side", "Edge", "Far"))
-		})
-
-		It("respects the side planes", func() {
-			// From 8 units back the frustum is only 8 units wide at the origin,
-			// which is enough for the item at the origin but not for the ones
-			// off to the side.
-			found := collect(lookingFrustum(dprec.NewVec3(0.0, 0.0, 8.0), 1.0, 200.0))
-			Expect(found).To(ConsistOf("Front", "Far"))
-		})
-
-		It("stops after the visitor returns false", func() {
-			count := 0
-			tree.QueryFrustum(lookingFrustum(dprec.NewVec3(0.0, 0.0, 64.0), 1.0, 200.0), func(item string) bool {
-				count++
-				return false
-			})
-			Expect(count).To(Equal(1))
-		})
-
-		It("reports consistent visit stats", func() {
-			collect(lookingFrustum(dprec.NewVec3(0.0, 0.0, 64.0), 1.0, 120.0))
-			stats := tree.VisitStats()
-			Expect(stats.NodeCountVisited).To(Equal(stats.NodeCountAccepted + stats.NodeCountRejected))
-			Expect(stats.ItemCountVisited).To(Equal(stats.ItemCountAccepted + stats.ItemCountRejected))
-			Expect(stats.ItemCountAccepted).To(Equal(uint32(3)))
-			Expect(stats.ItemCountRejected).To(Equal(uint32(2)))
-			Expect(stats.NodeCountAccepted).To(BeNumerically(">", 0))
-		})
-
-		It("matches an AABB query when built from the same box", func() {
-			box := shape3d.NewAABB(-10.0, -10.0, -10.0, 55.0, 10.0, 10.0)
-
-			var fromAABB []string
-			tree.QueryAABB(box, func(item string) bool {
-				fromAABB = append(fromAABB, item)
-				return true
-			})
-			Expect(fromAABB).To(ConsistOf("Front", "Side"))
-
-			fromFrustum := collect(shape3d.FrustumFromAABB(box))
-			Expect(fromFrustum).To(ConsistOf(fromAABB))
-		})
-	})
-
-	When("many random items are inserted", func() {
-		var (
-			boxes    []shape3d.AABB
-			frustum  shape3d.Frustum
-			expected []string
-		)
-
-		// boxIntersectsFrustum is the reference item-level test: a box is
-		// accepted unless it lies fully behind one of the six surfaces.
-		boxIntersectsFrustum := func(box shape3d.AABB, frustum shape3d.Frustum) bool {
-			for _, surface := range frustum.Surfaces {
-				corner := dprec.NewVec3(box.MinX, box.MinY, box.MinZ)
-				if surface.Normal.X >= 0.0 {
-					corner.X = box.MaxX
-				}
-				if surface.Normal.Y >= 0.0 {
-					corner.Y = box.MaxY
-				}
-				if surface.Normal.Z >= 0.0 {
-					corner.Z = box.MaxZ
-				}
-				if surface.SignedDistance(corner) < 0.0 {
-					return false
-				}
-			}
-			return true
+	Describe("QueryFrustum", func() {
+		// lookingFrustum returns a frustum positioned at the specified point,
+		// looking down the negative Z axis, with a 90 degree field of view.
+		lookingFrustum := func(position dprec.Vec3, near, far float64) shape3d.Frustum {
+			projection := dprec.PerspectiveMat4(-near, near, -near, near, near, far)
+			view := dprec.InverseMat4(dprec.TranslationMat4(position.X, position.Y, position.Z))
+			return shape3d.FrustumFromProjection(dprec.Mat4Prod(projection, view))
 		}
 
-		BeforeEach(func() {
-			random := rand.New(rand.NewPCG(7, 13))
-			boxes = make([]shape3d.AABB, 300)
-			for i := range boxes {
-				x := random.Float64()*120.0 - 60.0
-				y := random.Float64()*120.0 - 60.0
-				z := random.Float64()*120.0 - 60.0
-				radius := 0.5 + random.Float64()*8.0
-				boxes[i] = aabbFromSphere(x, y, z, radius)
-				tree.Insert(boxes[i], fmt.Sprintf("item-%d", i))
-			}
+		collect := func(frustum shape3d.Frustum) []string {
+			var found []string
+			tree.QueryFrustum(frustum, func(item string) bool {
+				found = append(found, item)
+				return true
+			})
+			return found
+		}
 
-			frustum = lookingFrustum(dprec.NewVec3(10.0, -5.0, 40.0), 0.5, 90.0)
-			expected = nil
-			for i, box := range boxes {
-				if boxIntersectsFrustum(box, frustum) {
-					expected = append(expected, fmt.Sprintf("item-%d", i))
-				}
-			}
+		When("the tree is empty", func() {
+			It("finds nothing and rejects the root", func() {
+				found := collect(lookingFrustum(dprec.NewVec3(0.0, 0.0, 64.0), 1.0, 200.0))
+				Expect(found).To(BeEmpty())
+
+				stats := tree.VisitStats()
+				Expect(stats.NodeCountVisited).To(Equal(uint32(1)))
+				Expect(stats.NodeCountAccepted).To(Equal(uint32(0)))
+				Expect(stats.NodeCountRejected).To(Equal(uint32(1)))
+				Expect(stats.ItemCountVisited).To(Equal(uint32(0)))
+			})
 		})
 
-		It("finds exactly the items that the item-level test accepts", func() {
-			Expect(expected).ToNot(BeEmpty())
-			Expect(len(expected)).To(BeNumerically("<", len(boxes)))
-			Expect(collect(frustum)).To(ConsistOf(expected))
+		When("items are inserted", func() {
+			BeforeEach(func() {
+				tree.Insert(aabbFromSphere(0.0, 0.0, 0.0, 2.0), "Front")
+				tree.Insert(aabbFromSphere(0.0, 0.0, 100.0, 2.0), "Behind")
+				tree.Insert(aabbFromSphere(0.0, 0.0, -100.0, 2.0), "Far")
+				tree.Insert(aabbFromSphere(50.0, 0.0, 0.0, 2.0), "Side")
+				tree.Insert(aabbFromSphere(60.0, 0.0, 0.0, 2.0), "Edge")
+			})
+
+			It("finds only the items within the frustum", func() {
+				// From 64 units back, at a distance of 64 the frustum is 64 units
+				// wide in each direction, so the item at X=60 is within it and the
+				// item at X=50 is even more so. The far plane at 120 leaves out
+				// the item at Z=-100 (164 units away) and the item behind the
+				// camera is not visible at all.
+				found := collect(lookingFrustum(dprec.NewVec3(0.0, 0.0, 64.0), 1.0, 120.0))
+				Expect(found).To(ConsistOf("Front", "Side", "Edge"))
+			})
+
+			It("respects the far plane", func() {
+				found := collect(lookingFrustum(dprec.NewVec3(0.0, 0.0, 64.0), 1.0, 200.0))
+				Expect(found).To(ConsistOf("Front", "Side", "Edge", "Far"))
+			})
+
+			It("respects the side planes", func() {
+				// From 8 units back the frustum is only 8 units wide at the origin,
+				// which is enough for the item at the origin but not for the ones
+				// off to the side.
+				found := collect(lookingFrustum(dprec.NewVec3(0.0, 0.0, 8.0), 1.0, 200.0))
+				Expect(found).To(ConsistOf("Front", "Far"))
+			})
+
+			It("stops after the visitor returns false", func() {
+				count := 0
+				tree.QueryFrustum(lookingFrustum(dprec.NewVec3(0.0, 0.0, 64.0), 1.0, 200.0), func(item string) bool {
+					count++
+					return false
+				})
+				Expect(count).To(Equal(1))
+			})
+
+			It("reports consistent visit stats", func() {
+				collect(lookingFrustum(dprec.NewVec3(0.0, 0.0, 64.0), 1.0, 120.0))
+				stats := tree.VisitStats()
+				Expect(stats.NodeCountVisited).To(Equal(stats.NodeCountAccepted + stats.NodeCountRejected))
+				Expect(stats.ItemCountVisited).To(Equal(stats.ItemCountAccepted + stats.ItemCountRejected))
+				Expect(stats.ItemCountAccepted).To(Equal(uint32(3)))
+				Expect(stats.ItemCountRejected).To(Equal(uint32(2)))
+				Expect(stats.NodeCountAccepted).To(BeNumerically(">", 0))
+			})
+
+			It("matches an AABB query when built from the same box", func() {
+				box := shape3d.NewAABB(-10.0, -10.0, -10.0, 55.0, 10.0, 10.0)
+
+				var fromAABB []string
+				tree.QueryAABB(box, func(item string) bool {
+					fromAABB = append(fromAABB, item)
+					return true
+				})
+				Expect(fromAABB).To(ConsistOf("Front", "Side"))
+
+				fromFrustum := collect(shape3d.FrustumFromAABB(box))
+				Expect(fromFrustum).To(ConsistOf(fromAABB))
+			})
+		})
+
+		When("many random items are inserted", func() {
+			var (
+				boxes    []shape3d.AABB
+				frustum  shape3d.Frustum
+				expected []string
+			)
+
+			// boxIntersectsFrustum is the reference item-level test: a box is
+			// accepted unless it lies fully behind one of the six surfaces.
+			boxIntersectsFrustum := func(box shape3d.AABB, frustum shape3d.Frustum) bool {
+				for _, surface := range frustum.Surfaces {
+					corner := dprec.NewVec3(box.MinX, box.MinY, box.MinZ)
+					if surface.Normal.X >= 0.0 {
+						corner.X = box.MaxX
+					}
+					if surface.Normal.Y >= 0.0 {
+						corner.Y = box.MaxY
+					}
+					if surface.Normal.Z >= 0.0 {
+						corner.Z = box.MaxZ
+					}
+					if surface.SignedDistance(corner) < 0.0 {
+						return false
+					}
+				}
+				return true
+			}
+
+			BeforeEach(func() {
+				random := rand.New(rand.NewPCG(7, 13))
+				boxes = make([]shape3d.AABB, 300)
+				for i := range boxes {
+					x := random.Float64()*120.0 - 60.0
+					y := random.Float64()*120.0 - 60.0
+					z := random.Float64()*120.0 - 60.0
+					radius := 0.5 + random.Float64()*8.0
+					boxes[i] = aabbFromSphere(x, y, z, radius)
+					tree.Insert(boxes[i], fmt.Sprintf("item-%d", i))
+				}
+
+				frustum = lookingFrustum(dprec.NewVec3(10.0, -5.0, 40.0), 0.5, 90.0)
+				expected = nil
+				for i, box := range boxes {
+					if boxIntersectsFrustum(box, frustum) {
+						expected = append(expected, fmt.Sprintf("item-%d", i))
+					}
+				}
+			})
+
+			It("finds exactly the items that the item-level test accepts", func() {
+				Expect(expected).ToNot(BeEmpty())
+				Expect(len(expected)).To(BeNumerically("<", len(boxes)))
+				Expect(collect(frustum)).To(ConsistOf(expected))
+			})
 		})
 	})
 })

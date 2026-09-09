@@ -7,9 +7,9 @@ import (
 	"github.com/mokiat/gblob"
 	"github.com/mokiat/gomath/dprec"
 	"github.com/mokiat/gomath/dtos"
+	"github.com/mokiat/lacking/core/spatial/query3d"
 	"github.com/mokiat/lacking/core/spatial/shape3d"
 	"github.com/mokiat/lacking/util/blob"
-	"github.com/mokiat/lacking/util/spatial"
 )
 
 type MeshInfo struct {
@@ -22,7 +22,9 @@ func newMesh(scene *Scene, info MeshInfo) *Mesh {
 	mesh := scene.dynamicMeshPool.Fetch()
 	mesh.Node = newNode()
 	mesh.scene = scene
-	mesh.itemID = scene.dynamicMeshSet.Insert(dprec.ZeroVec3(), definition.geometry.boundingSphereRadius, mesh)
+	mesh.itemID = scene.dynamicMeshSet.Insert(
+		shape3d.AABBFromSphere(shape3d.NewSphere(dprec.ZeroVec3(), definition.geometry.boundingSphereRadius)), mesh,
+	)
 	mesh.definition = definition
 	mesh.maxCascade = definition.geometry.maxCascade
 	mesh.armature = info.Armature
@@ -39,7 +41,7 @@ type Mesh struct {
 	Node
 
 	scene        *Scene
-	itemID       spatial.DynamicSetItemID
+	itemID       query3d.BagItemID
 	definition   *MeshDefinition
 	armature     *Armature
 	maxCascade   uint8
@@ -62,7 +64,7 @@ func (m *Mesh) SetMatrix(matrix dprec.Mat4) {
 	m.Node.SetMatrix(matrix)
 	position := matrix.Translation()
 	radius := m.definition.geometry.boundingSphereRadius
-	m.scene.dynamicMeshSet.Update(m.itemID, position, radius)
+	m.scene.dynamicMeshSet.Update(m.itemID, shape3d.AABBFromSphere(shape3d.NewSphere(position, radius)))
 }
 
 func (m *Mesh) SetCustom0Value(value float32) {

@@ -15,7 +15,6 @@ import (
 	"github.com/mokiat/lacking/game/graphics/internal"
 	"github.com/mokiat/lacking/render"
 	"github.com/mokiat/lacking/render/ubo"
-	"github.com/mokiat/lacking/util/spatial"
 )
 
 const (
@@ -31,13 +30,13 @@ func newRenderer(api render.API, stageData *commonStageData, stages []Stage) *sc
 
 		debugLines: make([]DebugLine, debugMaxLineCount),
 
-		visibleAmbientLights:     spatial.NewVisitorBucket[*AmbientLight](1),
-		visiblePointLights:       spatial.NewVisitorBucket[*PointLight](32),
-		visibleSpotLights:        spatial.NewVisitorBucket[*SpotLight](8),
-		visibleDirectionalLights: spatial.NewVisitorBucket[*DirectionalLight](2),
+		visibleAmbientLights:     query3d.NewVisitorBucket[*AmbientLight](1),
+		visiblePointLights:       query3d.NewVisitorBucket[*PointLight](32),
+		visibleSpotLights:        query3d.NewVisitorBucket[*SpotLight](8),
+		visibleDirectionalLights: query3d.NewVisitorBucket[*DirectionalLight](2),
 
 		visibleStaticMeshes: query3d.NewVisitorBucket[uint32](65536),
-		visibleMeshes:       spatial.NewVisitorBucket[*Mesh](1024),
+		visibleMeshes:       query3d.NewVisitorBucket[*Mesh](1024),
 	}
 }
 
@@ -48,13 +47,13 @@ type sceneRenderer struct {
 
 	debugLines []DebugLine
 
-	visibleAmbientLights     *spatial.VisitorBucket[*AmbientLight]
-	visiblePointLights       *spatial.VisitorBucket[*PointLight]
-	visibleSpotLights        *spatial.VisitorBucket[*SpotLight]
-	visibleDirectionalLights *spatial.VisitorBucket[*DirectionalLight]
+	visibleAmbientLights     *query3d.VisitorBucket[*AmbientLight]
+	visiblePointLights       *query3d.VisitorBucket[*PointLight]
+	visibleSpotLights        *query3d.VisitorBucket[*SpotLight]
+	visibleDirectionalLights *query3d.VisitorBucket[*DirectionalLight]
 
 	visibleStaticMeshes *query3d.VisitorBucket[uint32]
-	visibleMeshes       *spatial.VisitorBucket[*Mesh]
+	visibleMeshes       *query3d.VisitorBucket[*Mesh]
 }
 
 func (r *sceneRenderer) Allocate() {
@@ -141,8 +140,7 @@ func (r *sceneRenderer) Render(framebuffer render.Framebuffer, viewport Viewport
 	cameraMatrix := camera.gfxMatrix()
 	viewMatrix := sprec.InverseMat4(cameraMatrix)
 	projectionViewMatrix := sprec.Mat4Prod(projectionMatrix, viewMatrix)
-	frustum := spatial.ProjectionRegion(stod.Mat4(projectionViewMatrix))
-	frustumShape := shape3d.FrustumFromProjection(stod.Mat4(projectionViewMatrix))
+	frustum := shape3d.FrustumFromProjection(stod.Mat4(projectionViewMatrix))
 
 	cameraPlacement := ubo.WriteUniform(uniformBuffer, internal.CameraUniform{
 		ProjectionMatrix: projectionMatrix,
@@ -158,22 +156,22 @@ func (r *sceneRenderer) Render(framebuffer render.Framebuffer, viewport Viewport
 	})
 
 	r.visibleAmbientLights.Reset()
-	scene.ambientLightSet.VisitHexahedronRegion(&frustum, r.visibleAmbientLights)
+	scene.ambientLightSet.QueryFrustum(frustum, r.visibleAmbientLights.VisitorFunc())
 
 	r.visiblePointLights.Reset()
-	scene.pointLightSet.VisitHexahedronRegion(&frustum, r.visiblePointLights)
+	scene.pointLightSet.QueryFrustum(frustum, r.visiblePointLights.VisitorFunc())
 
 	r.visibleSpotLights.Reset()
-	scene.spotLightSet.VisitHexahedronRegion(&frustum, r.visibleSpotLights)
+	scene.spotLightSet.QueryFrustum(frustum, r.visibleSpotLights.VisitorFunc())
 
 	r.visibleDirectionalLights.Reset()
-	scene.directionalLightSet.VisitHexahedronRegion(&frustum, r.visibleDirectionalLights)
+	scene.directionalLightSet.QueryFrustum(frustum, r.visibleDirectionalLights.VisitorFunc())
 
 	r.visibleMeshes.Reset()
-	scene.dynamicMeshSet.VisitHexahedronRegion(&frustum, r.visibleMeshes)
+	scene.dynamicMeshSet.QueryFrustum(frustum, r.visibleMeshes.VisitorFunc())
 
 	r.visibleStaticMeshes.Reset()
-	scene.staticMeshOctree.QueryFrustum(frustumShape, r.visibleStaticMeshes.VisitorFunc())
+	scene.staticMeshOctree.QueryFrustum(frustum, r.visibleStaticMeshes.VisitorFunc())
 
 	stageCtx := StageContext{
 		Scene:                    scene,

@@ -4,7 +4,8 @@ import (
 	"github.com/mokiat/gomath/dprec"
 	"github.com/mokiat/gomath/dtos"
 	"github.com/mokiat/gomath/sprec"
-	"github.com/mokiat/lacking/util/spatial"
+	"github.com/mokiat/lacking/core/spatial/query3d"
+	"github.com/mokiat/lacking/core/spatial/shape3d"
 )
 
 // SpotLightInfo contains the information needed to create a SpotLight.
@@ -23,7 +24,7 @@ func newSpotLight(scene *Scene, info SpotLightInfo) *SpotLight {
 
 	light.scene = scene
 	light.itemID = scene.spotLightSet.Insert(
-		info.Position, info.EmitRange, light,
+		shape3d.AABBFromSphere(shape3d.NewSphere(info.Position, info.EmitRange)), light,
 	)
 
 	light.active = true
@@ -43,7 +44,7 @@ func newSpotLight(scene *Scene, info SpotLightInfo) *SpotLight {
 // space and emits a light cone in down the -Z axis up to a range.
 type SpotLight struct {
 	scene  *Scene
-	itemID spatial.DynamicSetItemID
+	itemID query3d.BagItemID
 
 	active             bool
 	position           dprec.Vec3
@@ -77,7 +78,7 @@ func (l *SpotLight) SetPosition(position dprec.Vec3) {
 	if position != l.position {
 		l.position = position
 		l.scene.spotLightSet.Update(
-			l.itemID, l.position, l.emitRange,
+			l.itemID, shape3d.AABBFromSphere(shape3d.NewSphere(l.position, l.emitRange)),
 		)
 		l.matrixDirty = true
 	}
@@ -106,7 +107,7 @@ func (l *SpotLight) SetEmitRange(emitRange float64) {
 	if emitRange != l.emitRange {
 		l.emitRange = max(0.0, emitRange)
 		l.scene.spotLightSet.Update(
-			l.itemID, l.position, l.emitRange,
+			l.itemID, shape3d.AABBFromSphere(shape3d.NewSphere(l.position, l.emitRange)),
 		)
 		l.matrixDirty = true
 	}

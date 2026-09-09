@@ -4,7 +4,8 @@ import (
 	"github.com/mokiat/gomath/dprec"
 	"github.com/mokiat/gomath/dtos"
 	"github.com/mokiat/gomath/sprec"
-	"github.com/mokiat/lacking/util/spatial"
+	"github.com/mokiat/lacking/core/spatial/query3d"
+	"github.com/mokiat/lacking/core/spatial/shape3d"
 )
 
 const dirLightRadius = 16000.0
@@ -21,7 +22,7 @@ func newDirectionalLight(scene *Scene, info DirectionalLightInfo) *DirectionalLi
 
 	light.scene = scene
 	light.itemID = scene.directionalLightSet.Insert(
-		info.Position, dirLightRadius, light,
+		shape3d.AABBFromSphere(shape3d.NewSphere(info.Position, dirLightRadius)), light,
 	)
 
 	light.active = true
@@ -37,7 +38,7 @@ func newDirectionalLight(scene *Scene, info DirectionalLightInfo) *DirectionalLi
 
 type DirectionalLight struct {
 	scene  *Scene
-	itemID spatial.DynamicSetItemID
+	itemID query3d.BagItemID
 
 	active     bool
 	position   dprec.Vec3
@@ -69,7 +70,7 @@ func (l *DirectionalLight) SetPosition(position dprec.Vec3) {
 	if position != l.position {
 		l.position = position
 		l.scene.directionalLightSet.Update(
-			l.itemID, l.position, dirLightRadius,
+			l.itemID, shape3d.AABBFromSphere(shape3d.NewSphere(l.position, dirLightRadius)),
 		)
 		l.matrixDirty = true
 	}

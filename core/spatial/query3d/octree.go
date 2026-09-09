@@ -1,11 +1,8 @@
 package query3d
 
 import (
-	"math"
-
 	"github.com/mokiat/gog/ds"
 	"github.com/mokiat/gog/opt"
-	"github.com/mokiat/gomath/dprec"
 	"github.com/mokiat/lacking/core/spatial/shape3d"
 )
 
@@ -85,7 +82,7 @@ func NewOctree[T any](settings OctreeSettings) *Octree[T] {
 			z:        0.0,
 			halfSize: size, // using size here since a loose area has twice the size
 		},
-		tightArea: emptyOctreeAABB(),
+		tightArea: emptyBoundingBox(),
 	})
 
 	return &Octree[T]{
@@ -144,7 +141,7 @@ func (t *Octree[T]) Insert(aabb shape3d.AABB, value T) TreeItemID {
 		panic("cannot insert item with empty area")
 	}
 
-	tightArea := newOctreeAABBFromAABB(aabb)
+	tightArea := newBoundingBoxFromAABB(aabb)
 	nodeIndex := t.pickNodeForItem(tightArea)
 	t.increaseNodeItems(nodeIndex)
 
@@ -184,7 +181,7 @@ func (t *Octree[T]) Update(id TreeItemID, aabb shape3d.AABB) {
 	if item.node == nullOctreeIndex {
 		panic("cannot update removed item")
 	}
-	tightArea := newOctreeAABBFromAABB(aabb)
+	tightArea := newBoundingBoxFromAABB(aabb)
 	item.tightArea = tightArea
 	oldNodeIndex := item.node
 	t.decreaseNodeItems(item.node) // previous node
@@ -286,7 +283,7 @@ func (t *Octree[T]) itemsAtDepth(nodeIndex int32, currentDepth, depth uint32) ui
 
 // pickNodeForItem returns the deepest node whose loose area still fully
 // contains the specified area.
-func (t *Octree[T]) pickNodeForItem(area octreeAABB) int32 {
+func (t *Octree[T]) pickNodeForItem(area boundingBox) int32 {
 	bestNodeIndex := nullOctreeIndex
 	currentNodeIndex := int32(0)
 	var depth uint32
@@ -304,7 +301,7 @@ func (t *Octree[T]) pickNodeForItem(area octreeAABB) int32 {
 // pickChildNode returns the child of the specified node whose loose area fully
 // contains the specified area, allocating that child if it does not exist yet.
 // It returns nullOctreeIndex if the area does not fit in any child.
-func (t *Octree[T]) pickChildNode(parentNodeIndex int32, area octreeAABB) int32 {
+func (t *Octree[T]) pickChildNode(parentNodeIndex int32, area boundingBox) int32 {
 	parentNode := &t.nodes[parentNodeIndex]
 	parentLooseArea := parentNode.looseArea
 
@@ -484,17 +481,17 @@ func (t *Octree[T]) updateAABB(nodeIndex int32) bool {
 	// cached items boxes. This would avoid recomputing the items boxes every
 	// time.
 
-	result := emptyOctreeAABB()
+	result := emptyBoundingBox()
 	for _, childIndex := range node.children {
 		if childIndex != nullOctreeIndex {
 			child := &t.nodes[childIndex]
-			result = mergeOctreeAABBs(result, child.tightArea)
+			result = mergeBoundingBoxes(result, child.tightArea)
 		}
 	}
 	itemIndex := node.itemOffset
 	for range node.itemCount {
 		item := &t.items[itemIndex]
-		result = mergeOctreeAABBs(result, item.tightArea)
+		result = mergeBoundingBoxes(result, item.tightArea)
 		itemIndex++
 	}
 	node.tightArea = result
@@ -614,7 +611,7 @@ type octreeNode struct {
 
 	// tightArea is the cached bounding box of everything actually stored in
 	// this node and its descendants. It is what queries are tested against.
-	tightArea octreeAABB
+	tightArea boundingBox
 
 	itemCount   uint32
 	itemOffset  uint32
@@ -629,7 +626,7 @@ func (n *octreeNode) isEmpty() bool {
 type octreeItem[T any] struct {
 	id        TreeItemID
 	node      int32
-	tightArea octreeAABB
+	tightArea boundingBox
 	value     T
 }
 
@@ -641,184 +638,4 @@ type octreeCube struct {
 	y        float64
 	z        float64
 	halfSize float64
-}
-
-type octreeAABB struct {
-	minX float64
-	minY float64
-	minZ float64
-	maxX float64
-	maxY float64
-	maxZ float64
-}
-
-func emptyOctreeAABB() octreeAABB {
-	return octreeAABB{
-		minX: math.MaxFloat64,
-		minY: math.MaxFloat64,
-		minZ: math.MaxFloat64,
-		maxX: -math.MaxFloat64,
-		maxY: -math.MaxFloat64,
-		maxZ: -math.MaxFloat64,
-	}
-}
-
-func newOctreeAABBFromAABB(aabb shape3d.AABB) octreeAABB {
-	return octreeAABB{
-		minX: aabb.MinX,
-		minY: aabb.MinY,
-		minZ: aabb.MinZ,
-		maxX: aabb.MaxX,
-		maxY: aabb.MaxY,
-		maxZ: aabb.MaxZ,
-	}
-}
-
-func mergeOctreeAABBs(first, second octreeAABB) octreeAABB {
-	return octreeAABB{
-		minX: min(first.minX, second.minX),
-		minY: min(first.minY, second.minY),
-		minZ: min(first.minZ, second.minZ),
-		maxX: max(first.maxX, second.maxX),
-		maxY: max(first.maxY, second.maxY),
-		maxZ: max(first.maxZ, second.maxZ),
-	}
-}
-
-func (aabb *octreeAABB) isEmpty() bool {
-	return (aabb.minX > aabb.maxX) || (aabb.minY > aabb.maxY) || (aabb.minZ > aabb.maxZ)
-}
-
-func (aabb *octreeAABB) intersectsSegment(segment *shape3d.Segment) bool {
-	if aabb.isEmpty() {
-		return false
-	}
-
-	delta := dprec.Vec3Diff(segment.B, segment.A)
-
-	var tCloseX, tFarX float64
-	if delta.X == 0.0 {
-		if (segment.A.X < aabb.minX) || (segment.A.X > aabb.maxX) {
-			return false // both points are outside the box on the left or right
-		}
-		tCloseX = -math.MaxFloat64
-		tFarX = math.MaxFloat64
-	} else {
-		tLowX := (aabb.minX - segment.A.X) / delta.X
-		tHighX := (aabb.maxX - segment.A.X) / delta.X
-		tCloseX = min(tLowX, tHighX)
-		tFarX = max(tLowX, tHighX)
-	}
-
-	var tCloseY, tFarY float64
-	if delta.Y == 0.0 {
-		if (segment.A.Y < aabb.minY) || (segment.A.Y > aabb.maxY) {
-			return false // both points are outside the box on the top or bottom
-		}
-		tCloseY = -math.MaxFloat64
-		tFarY = math.MaxFloat64
-	} else {
-		tLowY := (aabb.minY - segment.A.Y) / delta.Y
-		tHighY := (aabb.maxY - segment.A.Y) / delta.Y
-		tCloseY = min(tLowY, tHighY)
-		tFarY = max(tLowY, tHighY)
-	}
-
-	var tCloseZ, tFarZ float64
-	if delta.Z == 0.0 {
-		if (segment.A.Z < aabb.minZ) || (segment.A.Z > aabb.maxZ) {
-			return false // both points are outside the box on the front or back
-		}
-		tCloseZ = -math.MaxFloat64
-		tFarZ = math.MaxFloat64
-	} else {
-		tLowZ := (aabb.minZ - segment.A.Z) / delta.Z
-		tHighZ := (aabb.maxZ - segment.A.Z) / delta.Z
-		tCloseZ = min(tLowZ, tHighZ)
-		tFarZ = max(tLowZ, tHighZ)
-	}
-
-	tClose := max(tCloseX, tCloseY, tCloseZ)
-	tFar := min(tFarX, tFarY, tFarZ)
-
-	return tClose <= tFar && tClose <= 1.0 && tFar >= 0.0
-}
-
-func (aabb *octreeAABB) intersectsAABB(other *shape3d.AABB) bool {
-	if aabb.isEmpty() {
-		return false
-	}
-	return (aabb.minX <= other.MaxX) &&
-		(aabb.minY <= other.MaxY) &&
-		(aabb.maxX >= other.MinX) &&
-		(aabb.maxY >= other.MinY) &&
-		(aabb.minZ <= other.MaxZ) &&
-		(aabb.maxZ >= other.MinZ)
-}
-
-// allFrustumSurfaces is the surface mask with all six surfaces selected.
-const allFrustumSurfaces = uint8(0b111111)
-
-// intersectsFrustum reports whether the box is not fully behind any of the
-// surfaces of the frustum that are selected by the mask. For each surface,
-// only the box corner that lies farthest along the surface normal is tested:
-// if even that corner is behind the surface, the whole box is.
-func (aabb *octreeAABB) intersectsFrustum(frustum *shape3d.Frustum, mask uint8) bool {
-	if aabb.isEmpty() {
-		return false
-	}
-	for i := range frustum.Surfaces {
-		if mask&(1<<i) == 0 {
-			continue
-		}
-		surface := &frustum.Surfaces[i]
-		farPoint := dprec.NewVec3(aabb.maxX, aabb.maxY, aabb.maxZ)
-		if surface.Normal.X < 0.0 {
-			farPoint.X = aabb.minX
-		}
-		if surface.Normal.Y < 0.0 {
-			farPoint.Y = aabb.minY
-		}
-		if surface.Normal.Z < 0.0 {
-			farPoint.Z = aabb.minZ
-		}
-		if dprec.Vec3Dot(surface.Normal, farPoint) < surface.Distance {
-			return false
-		}
-	}
-	return true
-}
-
-// classifyFrustum is like intersectsFrustum but additionally returns
-// the subset of the mask for which the box is not fully in front of the
-// surface. Surfaces that the box is fully in front of need not be tested for
-// anything contained within the box.
-func (aabb *octreeAABB) classifyFrustum(frustum *shape3d.Frustum, mask uint8) (uint8, bool) {
-	if aabb.isEmpty() {
-		return mask, false
-	}
-	for i := range frustum.Surfaces {
-		if mask&(1<<i) == 0 {
-			continue
-		}
-		surface := &frustum.Surfaces[i]
-		nearPoint := dprec.NewVec3(aabb.minX, aabb.minY, aabb.minZ)
-		farPoint := dprec.NewVec3(aabb.maxX, aabb.maxY, aabb.maxZ)
-		if surface.Normal.X < 0.0 {
-			nearPoint.X, farPoint.X = farPoint.X, nearPoint.X
-		}
-		if surface.Normal.Y < 0.0 {
-			nearPoint.Y, farPoint.Y = farPoint.Y, nearPoint.Y
-		}
-		if surface.Normal.Z < 0.0 {
-			nearPoint.Z, farPoint.Z = farPoint.Z, nearPoint.Z
-		}
-		if dprec.Vec3Dot(surface.Normal, farPoint) < surface.Distance {
-			return mask, false // fully behind the surface
-		}
-		if dprec.Vec3Dot(surface.Normal, nearPoint) >= surface.Distance {
-			mask &^= 1 << i // fully in front of the surface
-		}
-	}
-	return mask, true
 }

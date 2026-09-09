@@ -9,7 +9,6 @@ import (
 	"github.com/mokiat/gomath/dprec"
 	"github.com/mokiat/lacking/core/spatial/query3d"
 	"github.com/mokiat/lacking/render"
-	"github.com/mokiat/lacking/util/spatial"
 )
 
 const (
@@ -31,28 +30,28 @@ func newScene(engine *Engine, renderer *sceneRenderer) *Scene {
 		}),
 
 		dynamicMeshPool: ds.EmptyPool[Mesh](),
-		dynamicMeshSet: spatial.NewDynamicSet[*Mesh](spatial.DynamicSetSettings{
-			InitialItemCapacity: opt.V(int32(1024)),
+		dynamicMeshSet: query3d.NewBag[*Mesh](query3d.BagSettings{
+			InitialItemCapacity: opt.V(uint32(1024)),
 		}),
 
 		ambientLightPool: ds.EmptyPool[AmbientLight](),
-		ambientLightSet: spatial.NewDynamicSet[*AmbientLight](spatial.DynamicSetSettings{
-			InitialItemCapacity: opt.V(int32(4)),
+		ambientLightSet: query3d.NewBag[*AmbientLight](query3d.BagSettings{
+			InitialItemCapacity: opt.V(uint32(4)),
 		}),
 
 		pointLightPool: ds.EmptyPool[PointLight](),
-		pointLightSet: spatial.NewDynamicSet[*PointLight](spatial.DynamicSetSettings{
-			InitialItemCapacity: opt.V(int32(128)),
+		pointLightSet: query3d.NewBag[*PointLight](query3d.BagSettings{
+			InitialItemCapacity: opt.V(uint32(128)),
 		}),
 
 		spotLightPool: ds.EmptyPool[SpotLight](),
-		spotLightSet: spatial.NewDynamicSet[*SpotLight](spatial.DynamicSetSettings{
-			InitialItemCapacity: opt.V(int32(128)),
+		spotLightSet: query3d.NewBag[*SpotLight](query3d.BagSettings{
+			InitialItemCapacity: opt.V(uint32(128)),
 		}),
 
 		directionalLightPool: ds.EmptyPool[DirectionalLight](),
-		directionalLightSet: spatial.NewDynamicSet[*DirectionalLight](spatial.DynamicSetSettings{
-			InitialItemCapacity: opt.V(int32(16)),
+		directionalLightSet: query3d.NewBag[*DirectionalLight](query3d.BagSettings{
+			InitialItemCapacity: opt.V(uint32(16)),
 		}),
 	}
 }
@@ -71,19 +70,19 @@ type Scene struct {
 	staticMeshOctree *query3d.Octree[uint32]
 
 	dynamicMeshPool *ds.Pool[Mesh]
-	dynamicMeshSet  *spatial.DynamicSet[*Mesh]
+	dynamicMeshSet  *query3d.Bag[*Mesh]
 
 	ambientLightPool *ds.Pool[AmbientLight]
-	ambientLightSet  *spatial.DynamicSet[*AmbientLight]
+	ambientLightSet  *query3d.Bag[*AmbientLight]
 
 	pointLightPool *ds.Pool[PointLight]
-	pointLightSet  *spatial.DynamicSet[*PointLight]
+	pointLightSet  *query3d.Bag[*PointLight]
 
 	spotLightPool *ds.Pool[SpotLight]
-	spotLightSet  *spatial.DynamicSet[*SpotLight]
+	spotLightSet  *query3d.Bag[*SpotLight]
 
 	directionalLightPool *ds.Pool[DirectionalLight]
-	directionalLightSet  *spatial.DynamicSet[*DirectionalLight]
+	directionalLightSet  *query3d.Bag[*DirectionalLight]
 
 	activeCamera *Camera
 }
