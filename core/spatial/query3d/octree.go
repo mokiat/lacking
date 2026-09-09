@@ -226,6 +226,20 @@ func (t *Octree[T]) QueryAABB(aabb shape3d.AABB, yield VisitorFunc[T]) {
 	t.visitNodeInAABB(0, &aabb, yield)
 }
 
+// QueryFrustum finds all items that are inside or intersect the specified
+// frustum. Each found item is passed to the specified yield function. The
+// order in which items are passed is undefined and might change between
+// invocations.
+//
+// The test is conservative: an item is passed when its bounding box is not
+// fully behind any of the six surfaces, so a box near an edge or a corner of
+// the frustum may be passed even though it does not truly overlap it.
+func (t *Octree[T]) QueryFrustum(frustum shape3d.Frustum, yield VisitorFunc[T]) {
+	t.resetVisitStats()
+	t.refresh()
+	t.visitNodeInFrustum(0, &frustum, allFrustumSurfaces, yield)
+}
+
 func (t *Octree[T]) resetVisitStats() {
 	t.nodeCountAccepted = 0
 	t.nodeCountRejected = 0
@@ -549,6 +563,37 @@ func (t *Octree[T]) visitNodeInAABB(nodeIndex int32, queryAABB *shape3d.AABB, yi
 	return true
 }
 
+func (t *Octree[T]) visitNodeInFrustum(nodeIndex int32, queryFrustum *shape3d.Frustum, mask uint8, yield VisitorFunc[T]) bool {
+	node := &t.nodes[nodeIndex]
+	remainingMask, intersects := node.tightArea.classifyFrustum(queryFrustum, mask)
+	if !intersects {
+		t.nodeCountRejected++
+		return true
+	}
+	t.nodeCountAccepted++
+	itemIndex := node.itemOffset
+	for range node.itemCount {
+		item := &t.items[itemIndex]
+		if item.tightArea.intersectsFrustum(queryFrustum, remainingMask) {
+			t.itemCountAccepted++
+			if !yield(item.value) {
+				return false
+			}
+		} else {
+			t.itemCountRejected++
+		}
+		itemIndex++
+	}
+	for _, childNodeIndex := range node.children {
+		if childNodeIndex != nullOctreeIndex {
+			if !t.visitNodeInFrustum(childNodeIndex, queryFrustum, remainingMask, yield) {
+				return false
+			}
+		}
+	}
+	return true
+}
+
 const nullOctreeIndex = int32(-1)
 
 var emptyOctreeNodeChildren = [8]int32{
@@ -709,4 +754,71 @@ func (aabb *octreeAABB) intersectsAABB(other *shape3d.AABB) bool {
 		(aabb.maxY >= other.MinY) &&
 		(aabb.minZ <= other.MaxZ) &&
 		(aabb.maxZ >= other.MinZ)
+}
+
+// allFrustumSurfaces is the surface mask with all six surfaces selected.
+const allFrustumSurfaces = uint8(0b111111)
+
+// intersectsFrustum reports whether the box is not fully behind any of the
+// surfaces of the frustum that are selected by the mask. For each surface,
+// only the box corner that lies farthest along the surface normal is tested:
+// if even that corner is behind the surface, the whole box is.
+func (aabb *octreeAABB) intersectsFrustum(frustum *shape3d.Frustum, mask uint8) bool {
+	if aabb.isEmpty() {
+		return false
+	}
+	for i := range frustum.Surfaces {
+		if mask&(1<<i) == 0 {
+			continue
+		}
+		surface := &frustum.Surfaces[i]
+		farPoint := dprec.NewVec3(aabb.maxX, aabb.maxY, aabb.maxZ)
+		if surface.Normal.X < 0.0 {
+			farPoint.X = aabb.minX
+		}
+		if surface.Normal.Y < 0.0 {
+			farPoint.Y = aabb.minY
+		}
+		if surface.Normal.Z < 0.0 {
+			farPoint.Z = aabb.minZ
+		}
+		if dprec.Vec3Dot(surface.Normal, farPoint) < surface.Distance {
+			return false
+		}
+	}
+	return true
+}
+
+// classifyFrustum is like intersectsFrustum but additionally returns
+// the subset of the mask for which the box is not fully in front of the
+// surface. Surfaces that the box is fully in front of need not be tested for
+// anything contained within the box.
+func (aabb *octreeAABB) classifyFrustum(frustum *shape3d.Frustum, mask uint8) (uint8, bool) {
+	if aabb.isEmpty() {
+		return mask, false
+	}
+	for i := range frustum.Surfaces {
+		if mask&(1<<i) == 0 {
+			continue
+		}
+		surface := &frustum.Surfaces[i]
+		nearPoint := dprec.NewVec3(aabb.minX, aabb.minY, aabb.minZ)
+		farPoint := dprec.NewVec3(aabb.maxX, aabb.maxY, aabb.maxZ)
+		if surface.Normal.X < 0.0 {
+			nearPoint.X, farPoint.X = farPoint.X, nearPoint.X
+		}
+		if surface.Normal.Y < 0.0 {
+			nearPoint.Y, farPoint.Y = farPoint.Y, nearPoint.Y
+		}
+		if surface.Normal.Z < 0.0 {
+			nearPoint.Z, farPoint.Z = farPoint.Z, nearPoint.Z
+		}
+		if dprec.Vec3Dot(surface.Normal, farPoint) < surface.Distance {
+			return mask, false // fully behind the surface
+		}
+		if dprec.Vec3Dot(surface.Normal, nearPoint) >= surface.Distance {
+			mask &^= 1 << i // fully in front of the surface
+		}
+	}
+	return mask, true
 }

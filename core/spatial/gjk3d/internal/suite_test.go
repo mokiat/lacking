@@ -92,4 +92,3 @@ func fromTriangle(triangle shape3d.Triangle) testShape {
 		SkinRadius: 0.0,
 	}
 }
-
