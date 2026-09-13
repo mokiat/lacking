@@ -1,0 +1,1763 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+        <link rel="canonical" href="http://mokiat.com/lacking/manual/game/hierarchy/">
+      
+      
+        <link rel="prev" href="../ecs/">
+      
+      
+        <link rel="next" href="../../graphics/shader/">
+      
+      <link rel="icon" href="../../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.4.2, mkdocs-material-9.0.6">
+    
+    
+      
+        <title>Overview - Lacking</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../../assets/stylesheets/main.558e4712.min.css">
+      
+        
+        <link rel="stylesheet" href="../../../assets/stylesheets/palette.2505c338.min.css">
+      
+      
+
+    
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../../..",location),__md_hash=e=>[...e].reduce((e,_)=>(e<<5)-e+_.charCodeAt(0),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="" data-md-color-accent="">
+  
+    
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#hierarchy" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../../.." title="Lacking" class="md-header__button md-logo" aria-label="Lacking" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3V6m0 5h18v2H3v-2m0 5h18v2H3v-2Z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Lacking
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Overview
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+    
+      <label class="md-header__button md-icon" for="__search">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5Z"/></svg>
+      </label>
+      <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5Z"/></svg>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12Z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41Z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/mokiat/lacking/" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81z"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../.." title="Lacking" class="md-nav__button md-logo" aria-label="Lacking" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
+
+    </a>
+    Lacking
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/mokiat/lacking/" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81z"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+      
+
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../.." class="md-nav__link">
+        Home
+      </a>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../examples/" class="md-nav__link">
+        Examples
+      </a>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../getting-started/" class="md-nav__link">
+        Getting Started
+      </a>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+    
+  
+  
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " data-md-toggle="__nav_4" type="checkbox" id="__nav_4" checked>
+      
+      
+      
+        <label class="md-nav__link" for="__nav_4" tabindex="0" aria-expanded="true">
+          User's Guide
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="User's Guide" data-md-level="1">
+        <label class="md-nav__title" for="__nav_4">
+          <span class="md-nav__icon md-icon"></span>
+          User's Guide
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../application/" class="md-nav__link">
+        Application
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " data-md-toggle="__nav_4_2" type="checkbox" id="__nav_4_2" >
+      
+      
+      
+        <label class="md-nav__link" for="__nav_4_2" tabindex="0" aria-expanded="false">
+          Core
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="Core" data-md-level="2">
+        <label class="md-nav__title" for="__nav_4_2">
+          <span class="md-nav__icon md-icon"></span>
+          Core
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../core/audio/" class="md-nav__link">
+        Audio
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../core/spatial/" class="md-nav__link">
+        Spatial
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+    
+  
+  
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " data-md-toggle="__nav_4_3" type="checkbox" id="__nav_4_3" checked>
+      
+      
+      
+        <label class="md-nav__link" for="__nav_4_3" tabindex="0" aria-expanded="true">
+          Game
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="Game" data-md-level="2">
+        <label class="md-nav__title" for="__nav_4_3">
+          <span class="md-nav__icon md-icon"></span>
+          Game
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ecs/" class="md-nav__link">
+        ECS
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+    
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" data-md-toggle="toc" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          Hierarchy
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        Hierarchy
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#core-concepts" class="md-nav__link">
+    Core Concepts
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#setup" class="md-nav__link">
+    Setup
+  </a>
+  
+    <nav class="md-nav" aria-label="Setup">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#creating-a-scene" class="md-nav__link">
+    Creating a Scene
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#nodes" class="md-nav__link">
+    Nodes
+  </a>
+  
+    <nav class="md-nav" aria-label="Nodes">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#creating-nodes" class="md-nav__link">
+    Creating Nodes
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deleting-nodes" class="md-nav__link">
+    Deleting Nodes
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#validity" class="md-nav__link">
+    Validity
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#structure-and-traversal" class="md-nav__link">
+    Structure and Traversal
+  </a>
+  
+    <nav class="md-nav" aria-label="Structure and Traversal">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#parent-child-relationships" class="md-nav__link">
+    Parent-Child Relationships
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#querying-structure" class="md-nav__link">
+    Querying Structure
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#traversal" class="md-nav__link">
+    Traversal
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#finding-nodes-by-name" class="md-nav__link">
+    Finding Nodes by Name
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#transformations" class="md-nav__link">
+    Transformations
+  </a>
+  
+    <nav class="md-nav" aria-label="Transformations">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#absolute-world-transformation" class="md-nav__link">
+    Absolute (World) Transformation
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#independent-nodes" class="md-nav__link">
+    Independent Nodes
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#visibility" class="md-nav__link">
+    Visibility
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#interpolation" class="md-nav__link">
+    Interpolation
+  </a>
+  
+    <nav class="md-nav" aria-label="Interpolation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#teleporting-with-snap" class="md-nav__link">
+    Teleporting with Snap
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#node-handles" class="md-nav__link">
+    Node Handles
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#bindings" class="md-nav__link">
+    Bindings
+  </a>
+  
+    <nav class="md-nav" aria-label="Bindings">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#defining-a-solver" class="md-nav__link">
+    Defining a Solver
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#creating-and-populating-a-binding" class="md-nav__link">
+    Creating and Populating a Binding
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#applying-transfers" class="md-nav__link">
+    Applying Transfers
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#priority" class="md-nav__link">
+    Priority
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#limitations" class="md-nav__link">
+    Limitations
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " data-md-toggle="__nav_4_4" type="checkbox" id="__nav_4_4" >
+      
+      
+      
+        <label class="md-nav__link" for="__nav_4_4" tabindex="0" aria-expanded="false">
+          Graphics
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="Graphics" data-md-level="2">
+        <label class="md-nav__title" for="__nav_4_4">
+          <span class="md-nav__icon md-icon"></span>
+          Graphics
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../graphics/shader/" class="md-nav__link">
+        Shader
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../rendering/" class="md-nav__link">
+        Rendering
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user-interface/" class="md-nav__link">
+        User Interface
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " data-md-toggle="__nav_5" type="checkbox" id="__nav_5" >
+      
+      
+      
+        <label class="md-nav__link" for="__nav_5" tabindex="0" aria-expanded="false">
+          Internals
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="Internals" data-md-level="1">
+        <label class="md-nav__title" for="__nav_5">
+          <span class="md-nav__icon md-icon"></span>
+          Internals
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " data-md-toggle="__nav_5_1" type="checkbox" id="__nav_5_1" >
+      
+      
+      
+        <label class="md-nav__link" for="__nav_5_1" tabindex="0" aria-expanded="false">
+          Physics
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="Physics" data-md-level="2">
+        <label class="md-nav__title" for="__nav_5_1">
+          <span class="md-nav__icon md-icon"></span>
+          Physics
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../development/physics/" class="md-nav__link">
+        Overview
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../development/physics/references/" class="md-nav__link">
+        References
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " data-md-toggle="__nav_5_1_3" type="checkbox" id="__nav_5_1_3" >
+      
+      
+      
+        <label class="md-nav__link" for="__nav_5_1_3" tabindex="0" aria-expanded="false">
+          Theory
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="Theory" data-md-level="3">
+        <label class="md-nav__title" for="__nav_5_1_3">
+          <span class="md-nav__icon md-icon"></span>
+          Theory
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../development/physics/theory/principles/" class="md-nav__link">
+        Principles
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../development/physics/theory/terminology/" class="md-nav__link">
+        Terminology
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../development/physics/theory/equations/" class="md-nav__link">
+        Equations
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../development/physics/theory/effective-mass/" class="md-nav__link">
+        Effective Mass
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../development/physics/theory/moment-of-inertia/" class="md-nav__link">
+        Moment of Inertia
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " data-md-toggle="__nav_5_1_4" type="checkbox" id="__nav_5_1_4" >
+      
+      
+      
+        <label class="md-nav__link" for="__nav_5_1_4" tabindex="0" aria-expanded="false">
+          Derivations
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="Derivations" data-md-level="3">
+        <label class="md-nav__title" for="__nav_5_1_4">
+          <span class="md-nav__icon md-icon"></span>
+          Derivations
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../development/physics/derivations/impulse-derivation/" class="md-nav__link">
+        Impulse
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../development/physics/derivations/effective-mass-derivation/" class="md-nav__link">
+        Effective Mass
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " data-md-toggle="__nav_5_2" type="checkbox" id="__nav_5_2" >
+      
+      
+      
+        <label class="md-nav__link" for="__nav_5_2" tabindex="0" aria-expanded="false">
+          Math
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="Math" data-md-level="2">
+        <label class="md-nav__title" for="__nav_5_2">
+          <span class="md-nav__icon md-icon"></span>
+          Math
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../development/math/vectors/" class="md-nav__link">
+        Vectors
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../development/math/derivatives/" class="md-nav__link">
+        Derivatives
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " data-md-toggle="__nav_5_3" type="checkbox" id="__nav_5_3" >
+      
+      
+      
+        <label class="md-nav__link" for="__nav_5_3" tabindex="0" aria-expanded="false">
+          Notes
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="Notes" data-md-level="2">
+        <label class="md-nav__title" for="__nav_5_3">
+          <span class="md-nav__icon md-icon"></span>
+          Notes
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../development/notes/precision/" class="md-nav__link">
+        Precision
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#core-concepts" class="md-nav__link">
+    Core Concepts
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#setup" class="md-nav__link">
+    Setup
+  </a>
+  
+    <nav class="md-nav" aria-label="Setup">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#creating-a-scene" class="md-nav__link">
+    Creating a Scene
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#nodes" class="md-nav__link">
+    Nodes
+  </a>
+  
+    <nav class="md-nav" aria-label="Nodes">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#creating-nodes" class="md-nav__link">
+    Creating Nodes
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deleting-nodes" class="md-nav__link">
+    Deleting Nodes
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#validity" class="md-nav__link">
+    Validity
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#structure-and-traversal" class="md-nav__link">
+    Structure and Traversal
+  </a>
+  
+    <nav class="md-nav" aria-label="Structure and Traversal">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#parent-child-relationships" class="md-nav__link">
+    Parent-Child Relationships
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#querying-structure" class="md-nav__link">
+    Querying Structure
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#traversal" class="md-nav__link">
+    Traversal
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#finding-nodes-by-name" class="md-nav__link">
+    Finding Nodes by Name
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#transformations" class="md-nav__link">
+    Transformations
+  </a>
+  
+    <nav class="md-nav" aria-label="Transformations">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#absolute-world-transformation" class="md-nav__link">
+    Absolute (World) Transformation
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#independent-nodes" class="md-nav__link">
+    Independent Nodes
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#visibility" class="md-nav__link">
+    Visibility
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#interpolation" class="md-nav__link">
+    Interpolation
+  </a>
+  
+    <nav class="md-nav" aria-label="Interpolation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#teleporting-with-snap" class="md-nav__link">
+    Teleporting with Snap
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#node-handles" class="md-nav__link">
+    Node Handles
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#bindings" class="md-nav__link">
+    Bindings
+  </a>
+  
+    <nav class="md-nav" aria-label="Bindings">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#defining-a-solver" class="md-nav__link">
+    Defining a Solver
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#creating-and-populating-a-binding" class="md-nav__link">
+    Creating and Populating a Binding
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#applying-transfers" class="md-nav__link">
+    Applying Transfers
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#priority" class="md-nav__link">
+    Priority
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#limitations" class="md-nav__link">
+    Limitations
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+  
+  
+
+
+
+<h1 id="hierarchy">Hierarchy</h1>
+<p>The <code>game/hierarchy</code> package provides a scene graph of 3D nodes arranged in parent-child relationships. Each node carries a local transformation (translation, rotation, and scale) relative to its parent, from which its absolute (world) transformation is composed. The package is designed for smooth rendering between fixed-rate updates and for connecting nodes to external systems (graphics, physics, animation) through bindings.</p>
+<h2 id="core-concepts">Core Concepts</h2>
+<table>
+<thead>
+<tr>
+<th>Concept</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Scene</strong></td>
+<td>Central container that owns all nodes and their storage, and the set of bindings registered against them.</td>
+</tr>
+<tr>
+<td><strong>NodeView</strong></td>
+<td>Lightweight, freely-copyable handle to a scene through which nodes are created, deleted, traversed, and transformed.</td>
+</tr>
+<tr>
+<td><strong>NodeID</strong></td>
+<td>Stable, versioned identifier for a single node. Becomes invalid once the node is deleted, even if its storage slot is reused.</td>
+</tr>
+<tr>
+<td><strong>NodeHandle</strong></td>
+<td>Convenience wrapper binding a <code>NodeID</code> to its <code>NodeView</code>, so a node can be operated on without passing the two separately.</td>
+</tr>
+<tr>
+<td><strong>Binding</strong></td>
+<td>Association of arbitrary values of some type <code>T</code> with nodes, driven by a solver that transfers data between the node and the value.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="setup">Setup</h2>
+<h3 id="creating-a-scene">Creating a Scene</h3>
+<p>A scene requires no configuration and is created empty:</p>
+<div class="highlight"><pre><span></span><code><span class="nx">scene</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">hierarchy</span><span class="p">.</span><span class="nx">NewScene</span><span class="p">()</span>
+</code></pre></div>
+<p>Nodes are never manipulated directly. Instead, <code>scene.Nodes()</code> returns a <code>NodeView</code>, the entry point for all node operations:</p>
+<div class="highlight"><pre><span></span><code><span class="nx">nodes</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">scene</span><span class="p">.</span><span class="nx">Nodes</span><span class="p">()</span>
+</code></pre></div>
+<p>A <code>NodeView</code> is a small value that can be freely copied and passed around; every view obtained from the same scene observes the same underlying state.</p>
+<h2 id="nodes">Nodes</h2>
+<h3 id="creating-nodes">Creating Nodes</h3>
+<p><code>Create</code> allocates a new node and returns its <code>NodeID</code>. The node starts as a root (no parent), with no children, an empty name, and an identity transformation.</p>
+<div class="highlight"><pre><span></span><code><span class="nx">id</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">nodes</span><span class="p">.</span><span class="nx">Create</span><span class="p">()</span>
+</code></pre></div>
+<p><code>CreateHandle</code> is a convenience that returns a <code>NodeHandle</code> instead:</p>
+<div class="highlight"><pre><span></span><code><span class="nx">handle</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">nodes</span><span class="p">.</span><span class="nx">CreateHandle</span><span class="p">()</span>
+</code></pre></div>
+<h3 id="deleting-nodes">Deleting Nodes</h3>
+<div class="highlight"><pre><span></span><code><span class="nx">nodes</span><span class="p">.</span><span class="nx">Delete</span><span class="p">(</span><span class="nx">id</span><span class="p">)</span>
+</code></pre></div>
+<p>Deleting a node also deletes all of its descendants. Any <code>NodeID</code> referring to a deleted node becomes invalid. Deletion notifies every binding so that bound values can be released (see <a href="#bindings">Bindings</a>).</p>
+<h3 id="validity">Validity</h3>
+<p>A <code>NodeID</code> is stable for the lifetime of its node but is invalidated on deletion, even if the storage slot is later reused by a different node. <code>NilNodeID</code> (the zero value) is never valid.</p>
+<div class="highlight"><pre><span></span><code><span class="k">if</span><span class="w"> </span><span class="nx">nodes</span><span class="p">.</span><span class="nx">IsValid</span><span class="p">(</span><span class="nx">id</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="c1">// safe to operate on id</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>Passing an invalid ID to most operations panics. <code>IsValid</code> is the safe way to test an ID.</p>
+<h2 id="structure-and-traversal">Structure and Traversal</h2>
+<h3 id="parent-child-relationships">Parent-Child Relationships</h3>
+<p>New nodes are roots. Use <code>AttachChild</code> and <code>Detach</code> to build and rearrange the hierarchy:</p>
+<div class="highlight"><pre><span></span><code><span class="nx">parent</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">nodes</span><span class="p">.</span><span class="nx">Create</span><span class="p">()</span>
+<span class="nx">child</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">nodes</span><span class="p">.</span><span class="nx">Create</span><span class="p">()</span>
+
+<span class="c1">// Make child a child of parent.</span>
+<span class="nx">nodes</span><span class="p">.</span><span class="nx">AttachChild</span><span class="p">(</span><span class="nx">parent</span><span class="p">,</span><span class="w"> </span><span class="nx">child</span><span class="p">,</span><span class="w"> </span><span class="kc">false</span><span class="p">)</span>
+
+<span class="c1">// Turn child back into a root.</span>
+<span class="nx">nodes</span><span class="p">.</span><span class="nx">Detach</span><span class="p">(</span><span class="nx">child</span><span class="p">,</span><span class="w"> </span><span class="kc">false</span><span class="p">)</span>
+</code></pre></div>
+<p>If the child already has a parent, <code>AttachChild</code> first detaches it. Attaching a child to its current parent is a no-op.</p>
+<p>The <code>preserveWorldTransform</code> argument controls what happens to the node's world-space placement. When <code>true</code>, the node's local transformation is adjusted so its absolute (world) position, rotation, and scale are unchanged by the reparenting; when <code>false</code>, the local transformation is kept and the node moves along with its new parent.</p>
+<h3 id="querying-structure">Querying Structure</h3>
+<div class="highlight"><pre><span></span><code><span class="nx">nodes</span><span class="p">.</span><span class="nx">IsRoot</span><span class="p">(</span><span class="nx">id</span><span class="p">)</span><span class="w">          </span><span class="c1">// true if the node has no parent</span>
+<span class="nx">nodes</span><span class="p">.</span><span class="nx">Parent</span><span class="p">(</span><span class="nx">id</span><span class="p">)</span><span class="w">          </span><span class="c1">// parent ID, or NilNodeID for a root</span>
+<span class="nx">nodes</span><span class="p">.</span><span class="nx">FirstChild</span><span class="p">(</span><span class="nx">id</span><span class="p">)</span><span class="w">      </span><span class="c1">// first child ID, or NilNodeID</span>
+<span class="nx">nodes</span><span class="p">.</span><span class="nx">NextSibling</span><span class="p">(</span><span class="nx">id</span><span class="p">)</span><span class="w">     </span><span class="c1">// next sibling ID, or NilNodeID</span>
+</code></pre></div>
+<p>The children of a node are visited by starting at <code>FirstChild</code> and following <code>NextSibling</code> until <code>NilNodeID</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="k">for</span><span class="w"> </span><span class="nx">child</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">nodes</span><span class="p">.</span><span class="nx">FirstChild</span><span class="p">(</span><span class="nx">id</span><span class="p">);</span><span class="w"> </span><span class="nx">child</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="nx">hierarchy</span><span class="p">.</span><span class="nx">NilNodeID</span><span class="p">;</span><span class="w"> </span><span class="nx">child</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="nx">nodes</span><span class="p">.</span><span class="nx">NextSibling</span><span class="p">(</span><span class="nx">child</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="c1">// visit child</span>
+<span class="p">}</span>
+</code></pre></div>
+<p><code>SubtreeContains</code> reports whether one node lies within the subtree rooted at another (a node contains itself):</p>
+<div class="highlight"><pre><span></span><code><span class="k">if</span><span class="w"> </span><span class="nx">nodes</span><span class="p">.</span><span class="nx">SubtreeContains</span><span class="p">(</span><span class="nx">root</span><span class="p">,</span><span class="w"> </span><span class="nx">candidate</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="c1">// candidate is root or a descendant of root</span>
+<span class="p">}</span>
+</code></pre></div>
+<h3 id="traversal">Traversal</h3>
+<p>Several traversal helpers are provided. Each callback returns <code>true</code> to continue or <code>false</code> to stop early. Each method has an iterator counterpart (suffixed <code>Iter</code>) for use with range-over-func.</p>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Visits</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Each</code></td>
+<td>Every valid node, in unspecified order.</td>
+</tr>
+<tr>
+<td><code>EachRoot</code></td>
+<td>Every valid root node, in unspecified order.</td>
+</tr>
+<tr>
+<td><code>Walk</code></td>
+<td>Every node, depth-first and pre-order (each node before its children).</td>
+</tr>
+<tr>
+<td><code>WalkSubtree</code></td>
+<td>The subtree rooted at a given node, depth-first and pre-order.</td>
+</tr>
+</tbody>
+</table>
+<div class="highlight"><pre><span></span><code><span class="c1">// Callback form.</span>
+<span class="nx">nodes</span><span class="p">.</span><span class="nx">Walk</span><span class="p">(</span><span class="kd">func</span><span class="p">(</span><span class="nx">id</span><span class="w"> </span><span class="nx">hierarchy</span><span class="p">.</span><span class="nx">NodeID</span><span class="p">)</span><span class="w"> </span><span class="kt">bool</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">nodes</span><span class="p">.</span><span class="nx">Name</span><span class="p">(</span><span class="nx">id</span><span class="p">))</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="kc">true</span>
+<span class="p">})</span>
+
+<span class="c1">// Iterator form.</span>
+<span class="k">for</span><span class="w"> </span><span class="nx">id</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="k">range</span><span class="w"> </span><span class="nx">nodes</span><span class="p">.</span><span class="nx">WalkIter</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">nodes</span><span class="p">.</span><span class="nx">Name</span><span class="p">(</span><span class="nx">id</span><span class="p">))</span>
+<span class="p">}</span>
+
+<span class="c1">// Restrict to one subtree.</span>
+<span class="nx">nodes</span><span class="p">.</span><span class="nx">WalkSubtree</span><span class="p">(</span><span class="nx">root</span><span class="p">,</span><span class="w"> </span><span class="kd">func</span><span class="p">(</span><span class="nx">id</span><span class="w"> </span><span class="nx">hierarchy</span><span class="p">.</span><span class="nx">NodeID</span><span class="p">)</span><span class="w"> </span><span class="kt">bool</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="kc">true</span>
+<span class="p">})</span>
+</code></pre></div>
+<p>Depth-first traversal visits each node before its children; the relative order of separate root subtrees is unspecified.</p>
+<h3 id="finding-nodes-by-name">Finding Nodes by Name</h3>
+<p>Nodes carry a name (not required to be unique) set via <code>SetName</code>. <code>FindNode</code> searches the whole scene; <code>FindNodeInSubtree</code> restricts the search to one subtree (passing <code>NilNodeID</code> as the root searches the whole scene). Names are matched exactly, and if several nodes share a name, which one is returned is unspecified.</p>
+<div class="highlight"><pre><span></span><code><span class="nx">nodes</span><span class="p">.</span><span class="nx">SetName</span><span class="p">(</span><span class="nx">id</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;player&quot;</span><span class="p">)</span>
+<span class="nx">found</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">nodes</span><span class="p">.</span><span class="nx">FindNode</span><span class="p">(</span><span class="s">&quot;player&quot;</span><span class="p">)</span>
+
+<span class="nx">inSubtree</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">nodes</span><span class="p">.</span><span class="nx">FindNodeInSubtree</span><span class="p">(</span><span class="nx">root</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;weapon&quot;</span><span class="p">)</span>
+</code></pre></div>
+<h2 id="transformations">Transformations</h2>
+<p>Every node has a local translation, rotation, and scale, expressed relative to its parent. The individual components can be read and written separately or together:</p>
+<div class="highlight"><pre><span></span><code><span class="nx">nodes</span><span class="p">.</span><span class="nx">SetPosition</span><span class="p">(</span><span class="nx">id</span><span class="p">,</span><span class="w"> </span><span class="nx">dprec</span><span class="p">.</span><span class="nx">NewVec3</span><span class="p">(</span><span class="mf">1.0</span><span class="p">,</span><span class="w"> </span><span class="mf">0.0</span><span class="p">,</span><span class="w"> </span><span class="mf">0.0</span><span class="p">))</span>
+<span class="nx">nodes</span><span class="p">.</span><span class="nx">SetRotation</span><span class="p">(</span><span class="nx">id</span><span class="p">,</span><span class="w"> </span><span class="nx">dprec</span><span class="p">.</span><span class="nx">RotationQuat</span><span class="p">(</span><span class="nx">dprec</span><span class="p">.</span><span class="nx">Degrees</span><span class="p">(</span><span class="mi">90</span><span class="p">),</span><span class="w"> </span><span class="nx">dprec</span><span class="p">.</span><span class="nx">BasisYVec3</span><span class="p">()))</span>
+<span class="nx">nodes</span><span class="p">.</span><span class="nx">SetScale</span><span class="p">(</span><span class="nx">id</span><span class="p">,</span><span class="w"> </span><span class="nx">dprec</span><span class="p">.</span><span class="nx">NewVec3</span><span class="p">(</span><span class="mf">2.0</span><span class="p">,</span><span class="w"> </span><span class="mf">2.0</span><span class="p">,</span><span class="w"> </span><span class="mf">2.0</span><span class="p">))</span>
+
+<span class="nx">pos</span><span class="p">,</span><span class="w"> </span><span class="nx">rot</span><span class="p">,</span><span class="w"> </span><span class="nx">scale</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">nodes</span><span class="p">.</span><span class="nx">TRS</span><span class="p">(</span><span class="nx">id</span><span class="p">)</span>
+<span class="nx">nodes</span><span class="p">.</span><span class="nx">SetTRS</span><span class="p">(</span><span class="nx">id</span><span class="p">,</span><span class="w"> </span><span class="nx">pos</span><span class="p">,</span><span class="w"> </span><span class="nx">rot</span><span class="p">,</span><span class="w"> </span><span class="nx">scale</span><span class="p">)</span>
+</code></pre></div>
+<p>The local transformation is also available as a matrix, which is composed from (and decomposed back into) the position, rotation, and scale:</p>
+<div class="highlight"><pre><span></span><code><span class="nx">local</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">nodes</span><span class="p">.</span><span class="nx">Matrix</span><span class="p">(</span><span class="nx">id</span><span class="p">)</span>
+<span class="nx">nodes</span><span class="p">.</span><span class="nx">SetMatrix</span><span class="p">(</span><span class="nx">id</span><span class="p">,</span><span class="w"> </span><span class="nx">local</span><span class="p">)</span>
+</code></pre></div>
+<h3 id="absolute-world-transformation">Absolute (World) Transformation</h3>
+<p>A node's absolute transformation is its local transformation composed with those of all its ancestors. It is exposed as a matrix and computed lazily and cached, so reading it is cheap when nothing has changed.</p>
+<div class="highlight"><pre><span></span><code><span class="nx">world</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">nodes</span><span class="p">.</span><span class="nx">AbsoluteMatrix</span><span class="p">(</span><span class="nx">id</span><span class="p">)</span>
+</code></pre></div>
+<p><code>SetAbsoluteMatrix</code> sets the local transformation so that the node's world matrix equals the given matrix; the local transformation is derived relative to the parent, so moving an ancestor afterwards still moves the node with it. Descendants are updated to account for the change.</p>
+<div class="highlight"><pre><span></span><code><span class="nx">nodes</span><span class="p">.</span><span class="nx">SetAbsoluteMatrix</span><span class="p">(</span><span class="nx">id</span><span class="p">,</span><span class="w"> </span><span class="nx">worldMatrix</span><span class="p">)</span>
+</code></pre></div>
+<p><code>ReferenceMatrix</code> returns the frame the local transformation is relative to: the parent's absolute matrix for a parented node, or the identity matrix for a root or independent node. By definition, absolute matrix = reference matrix * local matrix.</p>
+<h3 id="independent-nodes">Independent Nodes</h3>
+<p>A node can be made independent via <code>SetIndependent</code>. An independent node keeps its place in the hierarchy - it still has a parent, participates in traversal, and inherits hidden state - but its local transformation is used directly as its absolute transformation, ignoring its ancestors, as if it were a root. A root node is always effectively independent.</p>
+<div class="highlight"><pre><span></span><code><span class="nx">nodes</span><span class="p">.</span><span class="nx">SetIndependent</span><span class="p">(</span><span class="nx">id</span><span class="p">,</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span><span class="w"> </span><span class="kc">false</span><span class="p">)</span>
+</code></pre></div>
+<p>As with attachment, the final <code>preserveWorldTransform</code> argument, when <code>true</code>, adjusts the local transformation so the node's world transformation is unchanged by the switch.</p>
+<h2 id="visibility">Visibility</h2>
+<p>Each node has its own hidden flag, and an effective ("absolute") visibility that also accounts for ancestors.</p>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>SetHidden</code> / <code>SetVisible</code></td>
+<td>Set the node's own hidden flag.</td>
+</tr>
+<tr>
+<td><code>IsHidden</code> / <code>IsVisible</code></td>
+<td>Read only the node's own hidden flag.</td>
+</tr>
+<tr>
+<td><code>IsAbsoluteHidden</code> / <code>IsAbsoluteVisible</code></td>
+<td>Effective visibility, considering ancestors.</td>
+</tr>
+</tbody>
+</table>
+<p>Hiding a node makes it and all of its descendants absolutely hidden. A descendant remains absolutely hidden until every ancestor that hides it, as well as the descendant itself, is no longer hidden.</p>
+<div class="highlight"><pre><span></span><code><span class="nx">nodes</span><span class="p">.</span><span class="nx">SetHidden</span><span class="p">(</span><span class="nx">parent</span><span class="p">,</span><span class="w"> </span><span class="kc">true</span><span class="p">)</span>
+<span class="nx">nodes</span><span class="p">.</span><span class="nx">IsHidden</span><span class="p">(</span><span class="nx">child</span><span class="p">)</span><span class="w">         </span><span class="c1">// false - the child itself is not hidden</span>
+<span class="nx">nodes</span><span class="p">.</span><span class="nx">IsAbsoluteHidden</span><span class="p">(</span><span class="nx">child</span><span class="p">)</span><span class="w"> </span><span class="c1">// true  - an ancestor is hidden</span>
+</code></pre></div>
+<h2 id="interpolation">Interpolation</h2>
+<p>To support smooth rendering between fixed-rate updates, each node also retains its previous absolute transformation.</p>
+<p><code>Scene.AdvanceStep</code> records the current absolute transformations of all nodes as their previous ones. Call it once per fixed-rate step, before applying that step's new transformations:</p>
+<div class="highlight"><pre><span></span><code><span class="nx">scene</span><span class="p">.</span><span class="nx">AdvanceStep</span><span class="p">()</span>
+<span class="c1">// ... apply this step&#39;s movement to the nodes ...</span>
+</code></pre></div>
+<p>During rendering, <code>InterpolatedAbsoluteMatrix</code> blends between the previous and current pose by a fraction in the range <code>[0, 1]</code>, where <code>0</code> yields the previous matrix and <code>1</code> the current one. Translation and scale are interpolated linearly and rotation spherically.</p>
+<div class="highlight"><pre><span></span><code><span class="nx">world</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">nodes</span><span class="p">.</span><span class="nx">InterpolatedAbsoluteMatrix</span><span class="p">(</span><span class="nx">id</span><span class="p">,</span><span class="w"> </span><span class="nx">fraction</span><span class="p">)</span>
+</code></pre></div>
+<h3 id="teleporting-with-snap">Teleporting with Snap</h3>
+<p>Moving a node by a discontinuous amount would otherwise make it appear to slide from its old position to the new one, because interpolation blends across the gap. <code>Snap</code> records the current pose of a node and all of its descendants as their previous pose, collapsing that interpolation so the node renders at its new position immediately. Snap after applying the new transformation.</p>
+<div class="highlight"><pre><span></span><code><span class="nx">nodes</span><span class="p">.</span><span class="nx">SetAbsoluteMatrix</span><span class="p">(</span><span class="nx">id</span><span class="p">,</span><span class="w"> </span><span class="nx">teleportTarget</span><span class="p">)</span>
+<span class="nx">nodes</span><span class="p">.</span><span class="nx">Snap</span><span class="p">(</span><span class="nx">id</span><span class="p">)</span>
+</code></pre></div>
+<p><code>Snap</code> acts on a single node's subtree; <code>Scene.AdvanceStep</code> performs the equivalent step for the whole scene.</p>
+<h2 id="node-handles">Node Handles</h2>
+<p>A <code>NodeHandle</code> bundles a <code>NodeID</code> with the <code>NodeView</code> it belongs to, so a node can be operated on without passing both around. Every <code>NodeView</code> operation has an equivalent method on <code>NodeHandle</code>.</p>
+<div class="highlight"><pre><span></span><code><span class="nx">handle</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">nodes</span><span class="p">.</span><span class="nx">CreateHandle</span><span class="p">()</span>
+<span class="nx">handle</span><span class="p">.</span><span class="nx">SetName</span><span class="p">(</span><span class="s">&quot;root&quot;</span><span class="p">)</span>
+<span class="nx">handle</span><span class="p">.</span><span class="nx">SetPosition</span><span class="p">(</span><span class="nx">dprec</span><span class="p">.</span><span class="nx">NewVec3</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span><span class="w"> </span><span class="mf">1.0</span><span class="p">,</span><span class="w"> </span><span class="mf">0.0</span><span class="p">))</span>
+
+<span class="nx">child</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">nodes</span><span class="p">.</span><span class="nx">CreateHandle</span><span class="p">()</span>
+<span class="nx">handle</span><span class="p">.</span><span class="nx">AttachChild</span><span class="p">(</span><span class="nx">child</span><span class="p">,</span><span class="w"> </span><span class="kc">false</span><span class="p">)</span>
+
+<span class="k">for</span><span class="w"> </span><span class="nx">descendant</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="k">range</span><span class="w"> </span><span class="nx">handle</span><span class="p">.</span><span class="nx">WalkIter</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">descendant</span><span class="p">.</span><span class="nx">Name</span><span class="p">())</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>Navigation methods return handles too, so traversal chains naturally:</p>
+<div class="highlight"><pre><span></span><code><span class="nx">firstGrandchild</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">handle</span><span class="p">.</span><span class="nx">FirstChild</span><span class="p">().</span><span class="nx">FirstChild</span><span class="p">()</span>
+<span class="k">if</span><span class="w"> </span><span class="nx">firstGrandchild</span><span class="p">.</span><span class="nx">IsValid</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="c1">// ...</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>A handle to <code>NilNodeID</code> or to a deleted node is not valid; test it with <code>handle.IsValid()</code>.</p>
+<h2 id="bindings">Bindings</h2>
+<p>Bindings connect nodes to external data and systems. A <code>Binding[T]</code> associates values of type <code>T</code> with nodes and transfers data between the node and its value according to a solver.</p>
+<h3 id="defining-a-solver">Defining a Solver</h3>
+<p>A solver is any value that implements one or more of the following interfaces; the binding detects which it implements and drives only those. A solver implementing none of them yields an inert binding that stores values but transfers nothing.</p>
+<table>
+<thead>
+<tr>
+<th>Interface</th>
+<th>Method</th>
+<th>Direction</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>SourceBindingSolver[T]</code></td>
+<td><code>OnSourceToNode</code></td>
+<td>Value -&gt; node (value is the source).</td>
+</tr>
+<tr>
+<td><code>TargetBindingSolver[T]</code></td>
+<td><code>OnTargetFromNode</code></td>
+<td>Node -&gt; value (node is the source).</td>
+</tr>
+<tr>
+<td><code>InterpolationBindingSolver[T]</code></td>
+<td><code>OnInterpolationFromNode</code></td>
+<td>Node's interpolated pose -&gt; value.</td>
+</tr>
+<tr>
+<td><code>LifecycleBindingSolver[T]</code></td>
+<td><code>OnDelete</code></td>
+<td>Invoked when a bound node is deleted, to release the value.</td>
+</tr>
+</tbody>
+</table>
+<p>For example, a solver that copies a node's interpolated world matrix into a render mesh:</p>
+<div class="highlight"><pre><span></span><code><span class="kd">type</span><span class="w"> </span><span class="nx">meshSolver</span><span class="w"> </span><span class="kd">struct</span><span class="p">{}</span>
+
+<span class="kd">func</span><span class="w"> </span><span class="p">(</span><span class="nx">meshSolver</span><span class="p">)</span><span class="w"> </span><span class="nx">OnInterpolationFromNode</span><span class="p">(</span><span class="nx">scene</span><span class="w"> </span><span class="o">*</span><span class="nx">hierarchy</span><span class="p">.</span><span class="nx">Scene</span><span class="p">,</span><span class="w"> </span><span class="nx">id</span><span class="w"> </span><span class="nx">hierarchy</span><span class="p">.</span><span class="nx">NodeID</span><span class="p">,</span><span class="w"> </span><span class="nx">mesh</span><span class="w"> </span><span class="o">*</span><span class="nx">RenderMesh</span><span class="p">,</span><span class="w"> </span><span class="nx">fraction</span><span class="w"> </span><span class="kt">float64</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">mesh</span><span class="p">.</span><span class="nx">SetMatrix</span><span class="p">(</span><span class="nx">scene</span><span class="p">.</span><span class="nx">Nodes</span><span class="p">().</span><span class="nx">InterpolatedAbsoluteMatrix</span><span class="p">(</span><span class="nx">id</span><span class="p">,</span><span class="w"> </span><span class="nx">fraction</span><span class="p">))</span>
+<span class="p">}</span>
+
+<span class="kd">func</span><span class="w"> </span><span class="p">(</span><span class="nx">meshSolver</span><span class="p">)</span><span class="w"> </span><span class="nx">OnDelete</span><span class="p">(</span><span class="nx">scene</span><span class="w"> </span><span class="o">*</span><span class="nx">hierarchy</span><span class="p">.</span><span class="nx">Scene</span><span class="p">,</span><span class="w"> </span><span class="nx">id</span><span class="w"> </span><span class="nx">hierarchy</span><span class="p">.</span><span class="nx">NodeID</span><span class="p">,</span><span class="w"> </span><span class="nx">mesh</span><span class="w"> </span><span class="o">*</span><span class="nx">RenderMesh</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">mesh</span><span class="p">.</span><span class="nx">Release</span><span class="p">()</span>
+<span class="p">}</span>
+</code></pre></div>
+<h3 id="creating-and-populating-a-binding">Creating and Populating a Binding</h3>
+<p>Because the value type cannot be inferred from the solver, it must be given explicitly. A new binding registers itself with the scene and starts with a priority of <code>0</code>.</p>
+<div class="highlight"><pre><span></span><code><span class="nx">binding</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">hierarchy</span><span class="p">.</span><span class="nx">NewBinding</span><span class="p">[</span><span class="o">*</span><span class="nx">RenderMesh</span><span class="p">](</span><span class="nx">scene</span><span class="p">,</span><span class="w"> </span><span class="nx">meshSolver</span><span class="p">{})</span>
+
+<span class="nx">binding</span><span class="p">.</span><span class="nx">Bind</span><span class="p">(</span><span class="nx">id</span><span class="p">,</span><span class="w"> </span><span class="nx">mesh</span><span class="p">)</span><span class="w">   </span><span class="c1">// associate a value with a node</span>
+<span class="nx">binding</span><span class="p">.</span><span class="nx">Has</span><span class="p">(</span><span class="nx">id</span><span class="p">)</span><span class="w">          </span><span class="c1">// whether the node has a bound value</span>
+<span class="nx">binding</span><span class="p">.</span><span class="nx">Get</span><span class="p">(</span><span class="nx">id</span><span class="p">)</span><span class="w">          </span><span class="c1">// the bound value, or the zero value of T</span>
+<span class="nx">binding</span><span class="p">.</span><span class="nx">Unbind</span><span class="p">(</span><span class="nx">id</span><span class="p">)</span><span class="w">       </span><span class="c1">// remove the association silently</span>
+</code></pre></div>
+<p><code>Unbind</code> removes an association without notifying the solver; <code>OnDelete</code> is reserved for actual node deletion. <code>Delete</code> removes the whole binding from the scene:</p>
+<div class="highlight"><pre><span></span><code><span class="nx">binding</span><span class="p">.</span><span class="nx">Delete</span><span class="p">()</span>
+</code></pre></div>
+<h3 id="applying-transfers">Applying Transfers</h3>
+<p>The transfers are driven from the scene, which invokes the appropriate solver method for each bound node. Each has a whole-scene form and a single-node form:</p>
+<table>
+<thead>
+<tr>
+<th>Scene method</th>
+<th>Solver method driven</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ApplySourcesToNodes</code></td>
+<td><code>OnSourceToNode</code></td>
+</tr>
+<tr>
+<td><code>ApplyTargetsFromNodes</code></td>
+<td><code>OnTargetFromNode</code></td>
+</tr>
+<tr>
+<td><code>ApplyInterpolationsFromNodes(fraction)</code></td>
+<td><code>OnInterpolationFromNode</code></td>
+</tr>
+</tbody>
+</table>
+<div class="highlight"><pre><span></span><code><span class="c1">// Push external state onto nodes (e.g. physics -&gt; hierarchy).</span>
+<span class="nx">scene</span><span class="p">.</span><span class="nx">ApplyTargetsFromNodes</span><span class="p">()</span>
+
+<span class="c1">// During rendering, pull interpolated poses into render objects.</span>
+<span class="nx">scene</span><span class="p">.</span><span class="nx">ApplyInterpolationsFromNodes</span><span class="p">(</span><span class="nx">fraction</span><span class="p">)</span>
+</code></pre></div>
+<p>The single-node variants take a node ID and a <code>recursive</code> flag; when recursive, the transfer is applied to the node and all of its descendants:</p>
+<div class="highlight"><pre><span></span><code><span class="nx">scene</span><span class="p">.</span><span class="nx">ApplySourceToNode</span><span class="p">(</span><span class="nx">id</span><span class="p">,</span><span class="w"> </span><span class="kc">true</span><span class="p">)</span>
+<span class="nx">scene</span><span class="p">.</span><span class="nx">ApplyTargetFromNode</span><span class="p">(</span><span class="nx">id</span><span class="p">,</span><span class="w"> </span><span class="kc">false</span><span class="p">)</span>
+<span class="nx">scene</span><span class="p">.</span><span class="nx">ApplyInterpolationFromNode</span><span class="p">(</span><span class="nx">id</span><span class="p">,</span><span class="w"> </span><span class="nx">fraction</span><span class="p">,</span><span class="w"> </span><span class="kc">true</span><span class="p">)</span>
+</code></pre></div>
+<h3 id="priority">Priority</h3>
+<p>A scene can host multiple bindings. They are always processed in ascending priority order, which lets dependent transfers run after the ones they rely on.</p>
+<div class="highlight"><pre><span></span><code><span class="nx">binding</span><span class="p">.</span><span class="nx">SetPriority</span><span class="p">(</span><span class="mi">10</span><span class="p">)</span>
+</code></pre></div>
+<h2 id="limitations">Limitations</h2>
+<ul>
+<li><strong>Not thread-safe.</strong> A scene and its nodes must be accessed from a single goroutine.</li>
+<li><strong>No structural change detection.</strong> There is no built-in way to query only the nodes whose transformation changed since the last step; absolute matrices are cached and recomputed lazily, but traversal visits all matching nodes.</li>
+<li><strong>No built-in systems.</strong> The package supplies the scene graph and the binding mechanism; scheduling of transfers, per-frame update order, and integration with concrete graphics/physics/animation systems are the responsibility of the consuming application.
+</content>
+</invoke></li>
+</ul>
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    <script id="__config" type="application/json">{"base": "../../..", "features": [], "search": "../../../assets/javascripts/workers/search.e5c33ebb.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.51d95adb.min.js"></script>
+      
+        <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+      
+    
+  </body>
+</html>
