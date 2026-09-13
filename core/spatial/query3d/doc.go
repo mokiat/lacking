@@ -2,7 +2,8 @@
 //
 // The package is built around an [Octree], a loose octree that indexes items
 // by their axis-aligned bounding box ([shape3d.AABB]) and allows them to be
-// searched through [Octree.QueryAABB] and [Octree.QuerySegment].
+// searched through [Octree.QueryAABB], [Octree.QuerySegment] and
+// [Octree.QueryFrustum].
 //
 // It is intended as a broad-phase (high-level) pass: queries are conservative
 // and may yield false positives, so callers are expected to run their own

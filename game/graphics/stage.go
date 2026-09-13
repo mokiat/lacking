@@ -2,9 +2,9 @@ package graphics
 
 import (
 	"github.com/mokiat/gomath/dprec"
+	"github.com/mokiat/lacking/core/spatial/shape3d"
 	"github.com/mokiat/lacking/render"
 	"github.com/mokiat/lacking/render/ubo"
-	"github.com/mokiat/lacking/util/spatial"
 )
 
 // Stage represents a render stage (e.g. geometry, lighting, post-processing).
@@ -45,7 +45,7 @@ type StageContext struct {
 	CameraPlacement ubo.UniformPlacement
 
 	// CameraFrustum is the frustum of the camera in world space.
-	CameraFrustum spatial.HexahedronRegion
+	CameraFrustum shape3d.Frustum
 
 	// VisibleAmbientLights is a list of ambient lights that are visible in the
 	// scene.
