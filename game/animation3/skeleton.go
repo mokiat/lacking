@@ -50,3 +50,8 @@ func (s *Skeleton) BoneIndex(name string) (int, bool) {
 	index, ok := s.indices[name]
 	return index, ok
 }
+
+func (s *Skeleton) BoneRestTransform(bone int) Transform {
+	// TODO: Replace with actual rest transform retrieval.
+	panic("TODO")
+}
