@@ -8,7 +8,8 @@ type Keyframe[T any] struct {
 	Value     T
 }
 
-// KeyframeList is a list of keyframes ordered by ascending timestamp.
+// KeyframeList is a list of keyframes ordered by strictly ascending timestamp.
+// No two keyframes in a list may share a timestamp.
 type KeyframeList[T any] []Keyframe[T]
 
 // Sample returns the two keyframes that surround the specified timestamp and

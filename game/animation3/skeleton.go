@@ -1,47 +1,55 @@
 package animation3
 
+// SkeletonBone describes a single bone that is used to construct a
+// [Skeleton].
+type SkeletonBone struct {
+
+	// Name is the name of the bone, which identifies it within the skeleton.
+	Name string
+
+	// RestTransform is the local transformation of the bone, relative to its
+	// parent, when the bone is not animated.
+	RestTransform Transform
+}
+
 // Skeleton assigns a stable index to each bone name of an animated model, so
 // that per-frame work can use bone indices instead of names.
 //
 // A Skeleton is immutable once created and can be shared by any number of
 // consumers.
 type Skeleton struct {
-	names   []string
-	indices map[string]int
+	indices        map[string]int
+	names          []string
+	restTransforms []Transform
 }
 
-// NewSkeleton creates a new [Skeleton] from the specified bone names. Bones
-// are assigned consecutive indices starting from 0, in the order of their
-// first occurrence in the list; later duplicates of a name are ignored and do
-// not consume an index. The skeleton does not retain the specified slice.
-func NewSkeleton(boneNames []string) *Skeleton {
-	names := make([]string, 0, len(boneNames))
-	indices := make(map[string]int, len(boneNames))
-	for _, name := range boneNames {
-		if _, ok := indices[name]; ok {
+// NewSkeleton creates a new [Skeleton] from the specified bones. Bones are
+// assigned consecutive indices starting from 0, in the order of their first
+// occurrence in the list; later bones with a duplicate name are ignored, along
+// with their rest transforms, and do not consume an index. The skeleton does
+// not retain the specified slice.
+func NewSkeleton(bones []SkeletonBone) *Skeleton {
+	indices := make(map[string]int, len(bones))
+	names := make([]string, 0, len(bones))
+	restTransforms := make([]Transform, 0, len(bones))
+	for _, bone := range bones {
+		if _, ok := indices[bone.Name]; ok {
 			continue
 		}
-		indices[name] = len(names)
-		names = append(names, name)
+		indices[bone.Name] = len(names)
+		names = append(names, bone.Name)
+		restTransforms = append(restTransforms, bone.RestTransform)
 	}
 	return &Skeleton{
-		names:   names,
-		indices: indices,
+		indices:        indices,
+		names:          names,
+		restTransforms: restTransforms,
 	}
 }
 
 // BoneCount returns the number of bones in the skeleton.
 func (s *Skeleton) BoneCount() int {
 	return len(s.names)
-}
-
-// BoneName returns the name of the bone at the specified index. An index
-// outside the valid range returns an empty string.
-func (s *Skeleton) BoneName(index int) string {
-	if index < 0 || index >= len(s.names) {
-		return ""
-	}
-	return s.names[index]
 }
 
 // BoneIndex returns the index of the bone with the specified name and
@@ -51,7 +59,14 @@ func (s *Skeleton) BoneIndex(name string) (int, bool) {
 	return index, ok
 }
 
+// BoneName returns the name of the bone at the specified index. The index
+// must be in the range [0..BoneCount).
+func (s *Skeleton) BoneName(index int) string {
+	return s.names[index]
+}
+
+// BoneRestTransform returns the rest transformation of the bone at the
+// specified index. The index must be in the range [0..BoneCount).
 func (s *Skeleton) BoneRestTransform(bone int) Transform {
-	// TODO: Replace with actual rest transform retrieval.
-	panic("TODO")
+	return s.restTransforms[bone]
 }

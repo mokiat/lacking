@@ -1,5 +1,11 @@
 package animation3
 
+import (
+	"math"
+
+	"github.com/mokiat/gomath/dprec"
+)
+
 // Node represents a single node in an animation tree. A node keeps track of
 // its own playback position and produces the [Transform] of each bone at that
 // position. Nodes can be combined into trees, where parent nodes derive their
@@ -64,4 +70,54 @@ type Node interface {
 func Synchronized[T Node](node T) T {
 	node.SetSynchronized(true)
 	return node
+}
+
+// synchronizationAspect is meant to be embedded in [Node] implementations to
+// provide the [Node.IsSynchronized] and [Node.SetSynchronized] methods. Nodes
+// start out as not synchronized.
+type synchronizationAspect struct {
+	synchronized bool
+}
+
+// IsSynchronized returns whether the node should be kept in phase with its
+// parent.
+func (s *synchronizationAspect) IsSynchronized() bool {
+	return s.synchronized
+}
+
+// SetSynchronized configures whether the node should be kept in phase with
+// its parent.
+func (s *synchronizationAspect) SetSynchronized(synchronized bool) {
+	s.synchronized = synchronized
+}
+
+// clampFraction clamps a fraction into the range [0.0..1.0].
+func clampFraction(fraction float64) float64 {
+	return dprec.Clamp(fraction, 0.0, 1.0)
+}
+
+// wrapFraction wraps a fraction into the range [0.0..1.0).
+func wrapFraction(fraction float64) float64 {
+	_, fraction = math.Modf(fraction)
+	if fraction < 0.0 {
+		fraction += 1.0
+		// A tiny negative fraction can round up to exactly 1.0.
+		if fraction >= 1.0 {
+			fraction = 0.0
+		}
+	}
+	return fraction
+}
+
+// wrapTime wraps a time value into the range [0.0..length).
+func wrapTime(t, length float64) float64 {
+	t = math.Mod(t, length)
+	if t < 0.0 {
+		t += length
+		// A tiny negative time can round up to exactly length.
+		if t >= length {
+			t = 0.0
+		}
+	}
+	return t
 }
