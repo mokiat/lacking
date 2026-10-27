@@ -85,7 +85,7 @@ func (n *ClipNode) Advance(seconds float64) {
 	if n.loop {
 		n.timestamp = wrapTime(n.timestamp, n.length)
 	} else {
-		n.timestamp = dprec.Clamp(n.timestamp, 0.0, n.length)
+		n.timestamp = clampTime(n.timestamp, n.length)
 	}
 }
 
@@ -130,15 +130,12 @@ func (n *ClipNode) DeltaTransform(bone int, delta float64) Transform {
 		return IdentityTransform()
 	}
 
-	if !n.loop {
-		from := n.timestamp
-		to := from + delta
-		return Mat4Transform(n.segmentDelta(bone, from, to))
-	}
-
-	from := wrapTime(n.timestamp, n.length)
+	from := n.timestamp
 	to := from + delta
 
+	if !n.loop {
+		return Mat4Transform(n.segmentDelta(bone, from, to))
+	}
 	if delta >= 0.0 {
 		return Mat4Transform(n.forwardDelta(bone, from, to))
 	} else {
