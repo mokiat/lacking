@@ -238,7 +238,7 @@ func evaluateProjectionMatrix(camera *Camera, width, height uint32) sprec.Mat4 {
 		halfWidth := fWidth / 2.0
 		halfHeight := fHeight / 2.0
 		return sprec.OrthoMat4(
-			-halfWidth, halfWidth, halfHeight, -halfHeight, near, far,
+			-halfWidth, halfWidth, -halfHeight, halfHeight, near, far,
 		)
 
 	default:

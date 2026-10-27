@@ -137,7 +137,7 @@ func diffLinear(first, second opt.T[dprec.Vec3]) opt.T[dprec.Vec3] {
 func diffSpherical(first, second opt.T[dprec.Quat]) opt.T[dprec.Quat] {
 	switch {
 	case first.Specified && second.Specified:
-		return opt.V(dprec.QuatDiff(first.Value, second.Value, true))
+		return opt.V(dprec.QuatDiff(first.Value, second.Value))
 	default:
 		return opt.Unspecified[dprec.Quat]()
 	}
