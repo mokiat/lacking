@@ -285,6 +285,168 @@ var _ = Describe("ClipNode", func() {
 		})
 	})
 
+	Describe("DeltaTransform", func() {
+
+		const (
+			rootBone = 0
+			headBone = 1
+		)
+
+		var (
+			rootSkeleton *animation3.Skeleton
+			walkClip     *animation3.Clip
+		)
+
+		// expectDelta checks the delta against a translation and a rotation
+		// around the Y axis. All deltas in these specs have a unit scale.
+		expectDelta := func(delta animation3.Transform, translation dprec.Vec3, degrees float64) {
+			GinkgoHelper()
+			expectVec3(delta.Translation, translation)
+			expectRotation(delta.Rotation, yRotation(degrees))
+			expectVec3(delta.Scale, dprec.NewVec3(1.0, 1.0, 1.0))
+		}
+
+		BeforeEach(func() {
+			rootSkeleton = animation3.NewSkeleton([]animation3.SkeletonBone{
+				{Name: "root", RestTransform: animation3.IdentityTransform()},
+				{Name: "head", RestTransform: animation3.Transform{
+					Translation: dprec.NewVec3(0.0, 2.0, 0.0),
+					Rotation:    yRotation(20.0),
+					Scale:       dprec.NewVec3(1.0, 1.0, 1.0),
+				}},
+			})
+			// The clip covers the keyframe range [1.0..2.0], so fractions map to
+			// keyframe timestamps with an offset of 1.0. Using the notation
+			// T(x, y, z) for a translation and R(a) for a rotation of a degrees
+			// around the Y axis, the root pose B at each fraction is:
+			//
+			//   B(0.0) = identity
+			//   B(0.4) = T(0, 0, 1)
+			//   B(0.6) = T(0, 0, 1) * R(90)
+			//   B(1.0) = T(0, 0, 2) * R(90)
+			//
+			// The root steps forward, turns in place between 0.4 and 0.6 and
+			// steps forward again. Each repetition of the loop moves the root by
+			// B(1.0) * B(0.0)^-1 = T(0, 0, 2) * R(90). Since R(90) maps +Z onto
+			// +X, consecutive loops head in different directions, so the order
+			// in which motions are combined is observable.
+			walkClip = animation3.NewClip("walk", 1.0, 2.0, map[string]animation3.ClipChannel{
+				"root": {
+					TranslationKeyframes: animation3.KeyframeList[dprec.Vec3]{
+						{Timestamp: 1.0, Value: dprec.NewVec3(0.0, 0.0, 0.0)},
+						{Timestamp: 1.4, Value: dprec.NewVec3(0.0, 0.0, 1.0)},
+						{Timestamp: 1.6, Value: dprec.NewVec3(0.0, 0.0, 1.0)},
+						{Timestamp: 2.0, Value: dprec.NewVec3(0.0, 0.0, 2.0)},
+					},
+					RotationKeyframes: animation3.KeyframeList[dprec.Quat]{
+						{Timestamp: 1.0, Value: yRotation(0.0)},
+						{Timestamp: 1.4, Value: yRotation(0.0)},
+						{Timestamp: 1.6, Value: yRotation(90.0)},
+						{Timestamp: 2.0, Value: yRotation(90.0)},
+					},
+				},
+			})
+		})
+
+		It("returns the identity transform for a zero delta", func() {
+			node := animation3.NewClipNode(rootSkeleton, walkClip, true)
+			node.SetFraction(0.6)
+			Expect(node.DeltaTransform(rootBone, 0.0)).To(Equal(animation3.IdentityTransform()))
+		})
+
+		It("returns the identity transform for a clip with zero length", func() {
+			node := animation3.NewClipNode(rootSkeleton, walkClip.Crop("empty", 1.5, 1.5), true)
+			Expect(node.DeltaTransform(rootBone, 1.0)).To(Equal(animation3.IdentityTransform()))
+		})
+
+		It("returns no motion for a bone without a channel", func() {
+			node := animation3.NewClipNode(rootSkeleton, walkClip, true)
+			node.SetFraction(0.6)
+			expectDelta(node.DeltaTransform(headBone, 1.8), dprec.ZeroVec3(), 0.0)
+		})
+
+		It("does not change the playback position", func() {
+			node := animation3.NewClipNode(rootSkeleton, walkClip, true)
+			node.SetFraction(0.6)
+			node.DeltaTransform(rootBone, 1.8)
+			Expect(node.Fraction()).To(BeNumerically("~", 0.6, 1e-9))
+		})
+
+		It("satisfies D * A = B for the poses at both positions", func() {
+			node := animation3.NewClipNode(rootSkeleton, walkClip, false)
+			node.SetFraction(0.2)
+			before := node.Transform(rootBone).Matrix()
+			delta := node.DeltaTransform(rootBone, 0.6).Matrix()
+			node.Advance(0.6)
+			after := node.Transform(rootBone).Matrix()
+
+			combined := dprec.Mat4Prod(delta, before)
+			expectVec3(combined.Translation(), after.Translation())
+			expectRotation(combined.Rotation(), after.Rotation())
+		})
+
+		DescribeTable("non-looping node stops measuring at the ends",
+			func(fraction, delta float64, translation dprec.Vec3, degrees float64) {
+				node := animation3.NewClipNode(rootSkeleton, walkClip, false)
+				node.SetFraction(fraction)
+				expectDelta(node.DeltaTransform(rootBone, delta), translation, degrees)
+			},
+			// B(0.4) * B(0.0)^-1 = T(0, 0, 1)
+			Entry("forward within range", 0.0, 0.4,
+				dprec.NewVec3(0.0, 0.0, 1.0), 0.0),
+			// B(0.4) * B(0.6)^-1 = T(0, 0, 1) * R(-90) * T(0, 0, -1) = T(1, 0, 1) * R(-90)
+			Entry("backward within range", 0.6, -0.2,
+				dprec.NewVec3(1.0, 0.0, 1.0), -90.0),
+			// B(1.0) * B(0.6)^-1 = T(0, 0, 2) * T(0, 0, -1) = T(0, 0, 1)
+			Entry("forward past the end", 0.6, 5.0,
+				dprec.NewVec3(0.0, 0.0, 1.0), 0.0),
+			// B(0.0) * B(0.6)^-1 = R(-90) * T(0, 0, -1) = T(1, 0, 0) * R(-90)
+			Entry("backward past the start", 0.6, -5.0,
+				dprec.NewVec3(1.0, 0.0, 0.0), -90.0),
+		)
+
+		DescribeTable("looping node continues each repetition from where the previous one ended",
+			func(fraction, delta float64, translation dprec.Vec3, degrees float64) {
+				node := animation3.NewClipNode(rootSkeleton, walkClip, true)
+				node.SetFraction(fraction)
+				expectDelta(node.DeltaTransform(rootBone, delta), translation, degrees)
+			},
+			// B(0.4) * B(0.0)^-1 = T(0, 0, 1)
+			Entry("forward within range", 0.0, 0.4,
+				dprec.NewVec3(0.0, 0.0, 1.0), 0.0),
+			// B(1.0) * B(0.6)^-1 = T(0, 0, 1)
+			Entry("forward exactly to the end", 0.6, 0.4,
+				dprec.NewVec3(0.0, 0.0, 1.0), 0.0),
+			// B(1.0) * B(0.4) * B(0.6)^-1 = T(1, 0, 2) * R(90) * R(-90) * T(0, 0, -1) = T(1, 0, 1)
+			Entry("forward across one wrap", 0.6, 0.8,
+				dprec.NewVec3(1.0, 0.0, 1.0), 0.0),
+			// From fraction 0.6 to fraction 2.4. The root ends at
+			// B(1.0) * B(1.0) * B(0.4) = T(2, 0, 2) * R(180) * T(0, 0, 1) = T(2, 0, 1) * R(180),
+			// so the delta is T(2, 0, 1) * R(180) * B(0.6)^-1 = T(1, 0, 1) * R(90).
+			// Combining the final segment before the loops instead would give
+			// T(-1, 0, 3) * R(90).
+			Entry("forward across two wraps", 0.6, 1.8,
+				dprec.NewVec3(1.0, 0.0, 1.0), 90.0),
+			// B(0.4) * B(0.6)^-1 = T(1, 0, 1) * R(-90)
+			Entry("backward within range", 0.6, -0.2,
+				dprec.NewVec3(1.0, 0.0, 1.0), -90.0),
+			// Each repetition backwards moves the root by
+			// B(0.0) * B(1.0)^-1 = T(2, 0, 0) * R(-90), and
+			// B(0.6) * B(0.4)^-1 = T(-1, 0, 1) * R(90), so
+			// T(2, 0, 0) * R(-90) * T(-1, 0, 1) * R(90) = T(1, 0, -1).
+			Entry("backward across one wrap", 0.4, -0.8,
+				dprec.NewVec3(1.0, 0.0, -1.0), 0.0),
+			// From fraction 0.4 to fraction -1.4, the backward counterpart of the
+			// forward case across two wraps:
+			// (T(2, 0, 0) * R(-90))^2 * T(-1, 0, 1) * R(90)
+			//   = T(2, 0, 2) * R(180) * T(-1, 0, 1) * R(90) = T(3, 0, 1) * R(-90).
+			// This is not the inverse of the forward delta, since each delta is
+			// relative to the pose that it starts from.
+			Entry("backward across two wraps", 0.4, -1.8,
+				dprec.NewVec3(3.0, 0.0, 1.0), -90.0),
+		)
+	})
+
 	Describe("SetSynchronized", func() {
 
 		It("configures the synchronization", func() {

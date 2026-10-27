@@ -147,29 +147,31 @@ func (n *ClipNode) DeltaTransform(bone int, delta float64) Transform {
 }
 
 func (n *ClipNode) forwardDelta(bone int, from, to float64) dprec.Mat4 {
-	result := dprec.IdentityMat4()
-
-	for to > n.length {
-		result = dprec.Mat4Prod(n.segmentDelta(bone, from, n.length), result)
-		to -= n.length
-		from = 0.0
+	var loopDelta dprec.Mat4
+	if to > n.length {
+		loopDelta = n.segmentDelta(bone, 0.0, n.length)
 	}
-	result = dprec.Mat4Prod(n.segmentDelta(bone, from, to), result)
 
-	return result
+	result := dprec.IdentityMat4()
+	for to > n.length {
+		result = dprec.Mat4Prod(result, loopDelta)
+		to -= n.length
+	}
+	return dprec.Mat4Prod(result, n.segmentDelta(bone, from, to))
 }
 
 func (n *ClipNode) reverseDelta(bone int, from, to float64) dprec.Mat4 {
-	result := dprec.IdentityMat4()
-
-	for to < 0.0 {
-		result = dprec.Mat4Prod(n.segmentDelta(bone, from, 0.0), result)
-		to += n.length
-		from = n.length
+	var loopDelta dprec.Mat4
+	if to < 0.0 {
+		loopDelta = n.segmentDelta(bone, n.length, 0.0)
 	}
-	result = dprec.Mat4Prod(n.segmentDelta(bone, from, to), result)
 
-	return result
+	result := dprec.IdentityMat4()
+	for to < 0.0 {
+		result = dprec.Mat4Prod(result, loopDelta)
+		to += n.length
+	}
+	return dprec.Mat4Prod(result, n.segmentDelta(bone, from, to))
 }
 
 func (n *ClipNode) transformAt(bone int, timestamp float64) Transform {
