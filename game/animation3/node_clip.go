@@ -92,8 +92,11 @@ func (n *ClipNode) Advance(seconds float64) {
 // Transform returns the local transformation of the specified bone at the
 // current playback position. Each component is interpolated between the two
 // keyframes that surround the position: translation and scale linearly and
-// rotation spherically. A position before the first or after the last
-// keyframe of a component holds the value of that keyframe.
+// rotation through normalized linear interpolation along the shorter arc.
+// The latter does not keep a constant angular velocity between keyframes,
+// which is only noticeable when keyframes are far apart in rotation. A
+// position before the first or after the last keyframe of a component holds
+// the value of that keyframe.
 //
 // Components that the clip does not animate for the bone are taken from the
 // bone's [Skeleton.BoneRestTransform], so a bone that has no channel in the
@@ -190,7 +193,7 @@ func (c *clipNodeChannel) Rotation(timestamp float64) dprec.Quat {
 	left := c.rotations[leftIndex]
 	right := c.rotations[rightIndex]
 	a := (timestamp - left.Timestamp) / (right.Timestamp - left.Timestamp)
-	return dprec.QuatSlerp(left.Value, right.Value, dprec.Clamp(a, 0.0, 1.0))
+	return dprec.QuatNLerp(left.Value, right.Value, dprec.Clamp(a, 0.0, 1.0))
 }
 
 // Scale returns the scale at the specified keyframe timestamp.

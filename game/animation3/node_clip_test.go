@@ -148,6 +148,12 @@ var _ = Describe("ClipNode", func() {
 
 	Describe("Transform", func() {
 
+		// quarterDegrees is the rotation angle that normalized linear
+		// interpolation produces a quarter of the way between 0 and 90 degrees:
+		// 2 * atan2(sin(45) / 4, 3 / 4 + cos(45) / 4). Constant angular velocity
+		// would give 22.5 degrees instead.
+		const quarterDegrees = 21.59816098369244
+
 		const (
 			hipBone   = 0
 			spineBone = 1
@@ -224,7 +230,7 @@ var _ = Describe("ClipNode", func() {
 			Entry("at the start", 0.0,
 				dprec.NewVec3(1.0, 0.0, 0.0), 0.0, dprec.NewVec3(1.0, 1.0, 1.0)),
 			Entry("at a quarter", 0.25,
-				dprec.NewVec3(1.5, 0.0, 0.0), 22.5, dprec.NewVec3(1.5, 1.5, 1.5)),
+				dprec.NewVec3(1.5, 0.0, 0.0), quarterDegrees, dprec.NewVec3(1.5, 1.5, 1.5)),
 			Entry("on a keyframe", 0.5,
 				dprec.NewVec3(2.0, 0.0, 0.0), 45.0, dprec.NewVec3(2.0, 2.0, 2.0)),
 			Entry("at the end", 1.0,
@@ -236,7 +242,7 @@ var _ = Describe("ClipNode", func() {
 			node.Advance(2.5) // wraps around to 0.5 seconds into the clip
 			result := node.Transform(hipBone)
 			expectVec3(result.Translation, dprec.NewVec3(1.5, 0.0, 0.0))
-			expectRotation(result.Rotation, yRotation(22.5))
+			expectRotation(result.Rotation, yRotation(quarterDegrees))
 			expectVec3(result.Scale, dprec.NewVec3(1.5, 1.5, 1.5))
 		})
 
