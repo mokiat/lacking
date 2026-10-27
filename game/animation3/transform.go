@@ -30,6 +30,21 @@ func IdentityTransform() Transform {
 	}
 }
 
+// Mat4Transform decomposes the specified matrix into a [Transform]. It is the
+// inverse of [Transform.Matrix].
+//
+// The matrix is expected to be composed only of translation, rotation and
+// scale, with a non-zero scale along each axis. A matrix that mirrors space
+// is decomposed with a negative scale along the X axis.
+func Mat4Transform(mat dprec.Mat4) Transform {
+	t, r, s := mat.TRS()
+	return Transform{
+		Translation: t,
+		Rotation:    r,
+		Scale:       s,
+	}
+}
+
 // BlendTransforms blends two transforms using the specified factor. A factor
 // of 0.0 returns the first transform and a factor of 1.0 returns the second
 // one. The factor is not clamped and values outside that range extrapolate.

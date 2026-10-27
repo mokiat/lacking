@@ -9,12 +9,12 @@ import (
 // end time at fraction 1.0. A looping node wraps around when it reaches
 // either end, whereas a non-looping node stops there.
 type ClipNode struct {
-	skeleton *Skeleton
-	clip     *Clip
-	channels []clipNodeChannel
-	offset   float64
-	length   float64
-	position float64
+	skeleton  *Skeleton
+	clip      *Clip
+	channels  []clipNodeChannel
+	offset    float64
+	length    float64
+	timestamp float64
 	synchronizationAspect
 	loop bool
 }
@@ -28,13 +28,13 @@ var _ Node = (*ClipNode)(nil)
 // transformation. The node starts at fraction 0.0 and is not synchronized.
 func NewClipNode(skeleton *Skeleton, clip *Clip, loop bool) *ClipNode {
 	return &ClipNode{
-		skeleton: skeleton,
-		clip:     clip,
-		channels: extractChannels(skeleton, clip),
-		offset:   clip.StartTime(),
-		length:   clip.Length(),
-		position: 0.0,
-		loop:     loop,
+		skeleton:  skeleton,
+		clip:      clip,
+		channels:  extractChannels(skeleton, clip),
+		offset:    clip.StartTime(),
+		length:    clip.Length(),
+		timestamp: 0.0,
+		loop:      loop,
 	}
 }
 
@@ -58,7 +58,7 @@ func (n *ClipNode) Fraction() float64 {
 	if n.length <= 0.0 {
 		return 0.0
 	}
-	return n.position / n.length
+	return n.timestamp / n.length
 }
 
 // SetFraction relocates playback to the specified fraction of the clip's
@@ -70,7 +70,7 @@ func (n *ClipNode) SetFraction(fraction float64) {
 	} else {
 		fraction = clampFraction(fraction)
 	}
-	n.position = fraction * n.length
+	n.timestamp = fraction * n.length
 }
 
 // Advance moves playback by the specified delta seconds, where one second
@@ -81,11 +81,11 @@ func (n *ClipNode) Advance(seconds float64) {
 	if n.length <= 0.0 {
 		return
 	}
-	n.position += seconds
+	n.timestamp += seconds
 	if n.loop {
-		n.position = wrapTime(n.position, n.length)
+		n.timestamp = wrapTime(n.timestamp, n.length)
 	} else {
-		n.position = dprec.Clamp(n.position, 0.0, n.length)
+		n.timestamp = dprec.Clamp(n.timestamp, 0.0, n.length)
 	}
 }
 
@@ -104,6 +104,75 @@ func (n *ClipNode) Advance(seconds float64) {
 //
 // The bone must be a valid index in the skeleton of the node.
 func (n *ClipNode) Transform(bone int) Transform {
+	return n.transformAt(bone, n.timestamp)
+}
+
+// DeltaTransform returns the motion that the specified bone experiences
+// between the current playback position and the position delta seconds
+// later, without changing the playback position. A negative delta measures
+// the motion backwards in time. The returned transformation D is expressed in
+// the space of the bone's parent and satisfies D * A = B, where A and B are
+// the [Transform.Matrix] of the bone at the two positions.
+//
+// A looping node measures the motion across any number of wrap arounds as if
+// each repetition of the clip continued from where the previous one ended. A
+// non-looping node stops measuring at the end of the clip that it reaches. A
+// clip with zero length, as well as a zero delta, produces the
+// [IdentityTransform].
+//
+// The result is decomposed from a matrix and is approximate when the motion
+// contains shear, which can happen when the bone's scale is non-uniform and
+// changes between the two positions.
+//
+// The bone must be a valid index in the skeleton of the node.
+func (n *ClipNode) DeltaTransform(bone int, delta float64) Transform {
+	if delta == 0.0 || n.length <= 0.0 {
+		return IdentityTransform()
+	}
+
+	if !n.loop {
+		from := n.timestamp
+		to := from + delta
+		return Mat4Transform(n.segmentDelta(bone, from, to))
+	}
+
+	from := wrapTime(n.timestamp, n.length)
+	to := from + delta
+
+	if delta >= 0.0 {
+		return Mat4Transform(n.forwardDelta(bone, from, to))
+	} else {
+		return Mat4Transform(n.reverseDelta(bone, from, to))
+	}
+}
+
+func (n *ClipNode) forwardDelta(bone int, from, to float64) dprec.Mat4 {
+	result := dprec.IdentityMat4()
+
+	for to > n.length {
+		result = dprec.Mat4Prod(n.segmentDelta(bone, from, n.length), result)
+		to -= n.length
+		from = 0.0
+	}
+	result = dprec.Mat4Prod(n.segmentDelta(bone, from, to), result)
+
+	return result
+}
+
+func (n *ClipNode) reverseDelta(bone int, from, to float64) dprec.Mat4 {
+	result := dprec.IdentityMat4()
+
+	for to < 0.0 {
+		result = dprec.Mat4Prod(n.segmentDelta(bone, from, 0.0), result)
+		to += n.length
+		from = n.length
+	}
+	result = dprec.Mat4Prod(n.segmentDelta(bone, from, to), result)
+
+	return result
+}
+
+func (n *ClipNode) transformAt(bone int, timestamp float64) Transform {
 	channel := &n.channels[bone]
 
 	hasTranslations := channel.HasTranslations()
@@ -115,19 +184,25 @@ func (n *ClipNode) Transform(bone int) Transform {
 		result = n.skeleton.BoneRestTransform(bone)
 	}
 	if hasTranslations {
-		result.Translation = channel.Translation(n.offset + n.position)
+		result.Translation = channel.Translation(n.offset + timestamp)
 	}
 	if hasRotations {
-		result.Rotation = channel.Rotation(n.offset + n.position)
+		result.Rotation = channel.Rotation(n.offset + timestamp)
 	}
 	if hasScales {
-		result.Scale = channel.Scale(n.offset + n.position)
+		result.Scale = channel.Scale(n.offset + timestamp)
 	}
 	return result
 }
 
-func (n *ClipNode) DeltaTransform(bone int, delta float64) Transform {
-	panic("TODO")
+func (n *ClipNode) segmentDelta(bone int, from, to float64) dprec.Mat4 {
+	from = clampTime(from, n.length)
+	to = clampTime(to, n.length)
+
+	fromMatrix := n.transformAt(bone, from).Matrix()
+	toMatrix := n.transformAt(bone, to).Matrix()
+
+	return dprec.Mat4Prod(toMatrix, dprec.InverseMat4(fromMatrix))
 }
 
 // clipNodeChannel holds the keyframes that animate a single skeleton bone.

@@ -80,6 +80,27 @@ var _ = Describe("Transform", func() {
 	})
 })
 
+var _ = Describe("Mat4Transform", func() {
+	It("decomposes the identity matrix into the identity transform", func() {
+		result := animation3.Mat4Transform(dprec.IdentityMat4())
+		expectVec3(result.Translation, dprec.ZeroVec3())
+		expectRotation(result.Rotation, dprec.IdentityQuat())
+		expectVec3(result.Scale, dprec.NewVec3(1.0, 1.0, 1.0))
+	})
+
+	It("is the inverse of Matrix", func() {
+		transform := animation3.Transform{
+			Translation: dprec.NewVec3(1.0, -2.0, 3.0),
+			Rotation:    rotationAround(30.0, dprec.UnitVec3(dprec.NewVec3(1.0, 2.0, 3.0))),
+			Scale:       dprec.NewVec3(2.0, 0.5, 4.0),
+		}
+		result := animation3.Mat4Transform(transform.Matrix())
+		expectVec3(result.Translation, transform.Translation)
+		expectRotation(result.Rotation, transform.Rotation)
+		expectVec3(result.Scale, transform.Scale)
+	})
+})
+
 var _ = Describe("BlendTransforms", func() {
 	var first, second animation3.Transform
 

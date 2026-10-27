@@ -109,6 +109,11 @@ func wrapFraction(fraction float64) float64 {
 	return fraction
 }
 
+// clampTime clamps a time into the range [0..length].
+func clampTime(t, length float64) float64 {
+	return dprec.Clamp(t, 0.0, length)
+}
+
 // wrapTime wraps a time value into the range [0.0..length).
 func wrapTime(t, length float64) float64 {
 	t = math.Mod(t, length)
