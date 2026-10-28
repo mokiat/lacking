@@ -912,7 +912,7 @@ func (c *canvasRenderer) updateCameraUniformBuffer(size Size) {
 	c.cameraUniformPlacement = ubo.WriteUniform(c.uniforms, cameraUniform{
 		Projection: sprec.OrthoMat4(
 			0.0, float32(size.Width),
-			0.0, float32(size.Height),
+			float32(size.Height), 0.0,
 			0.0, 1.0,
 		),
 	})
