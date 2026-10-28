@@ -17,7 +17,16 @@ type Clip struct {
 	name      string
 	startTime float64
 	endTime   float64
-	channels  map[string]ClipChannel
+
+	// TODO: Change this to a map[string]KeyframeList[Transform], disallowing
+	// transforms that are composed of multiple keyframe sets.
+	//
+	// Furthermore, consider ditching KeyframeList altogether and using a fixed
+	// animation rate keyframe set (i.e. []Transform + keyframe rate, start time
+	// and end time). Ideally, maybe keyframing could be abstracted through an
+	// interface. This would allow for various keyframe approaches, as well as
+	// compaction, to be implemented at the cost of interface calls.
+	channels map[string]ClipChannel
 }
 
 // NewClip creates a new [Clip] with the specified name, time range and
