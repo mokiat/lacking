@@ -148,12 +148,6 @@ var _ = Describe("ClipNode", func() {
 
 	Describe("Transform", func() {
 
-		// quarterDegrees is the rotation angle that normalized linear
-		// interpolation produces a quarter of the way between 0 and 90 degrees:
-		// 2 * atan2(sin(45) / 4, 3 / 4 + cos(45) / 4). Constant angular velocity
-		// would give 22.5 degrees instead.
-		const quarterDegrees = 21.59816098369244
-
 		const (
 			hipBone   = 0
 			spineBone = 1

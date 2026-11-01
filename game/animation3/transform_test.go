@@ -10,6 +10,18 @@ import (
 
 const transformEpsilon = 1e-9
 
+// quarterDegrees is the rotation angle that normalized linear interpolation
+// produces a quarter of the way between 0 and 90 degrees:
+// 2 * atan2(sin(45) / 4, 3 / 4 + cos(45) / 4). Constant angular velocity
+// would give 22.5 degrees instead.
+const quarterDegrees = 21.59816098369244
+
+// doubleDegrees is the rotation angle that normalized linear interpolation
+// produces when extrapolating to twice the way between 0 and 90 degrees:
+// 2 * atan2(2 * sin(45), 2 * cos(45) - 1). Constant angular velocity would
+// give 180 degrees instead.
+const doubleDegrees = 147.35010012620953
+
 func expectVec3(actual, expected dprec.Vec3) {
 	GinkgoHelper()
 	Expect(actual.X).To(BeNumerically("~", expected.X, transformEpsilon))
@@ -137,18 +149,22 @@ var _ = Describe("BlendTransforms", func() {
 		expectVec3(result.Scale, dprec.NewVec3(1.5, 1.25, 0.875))
 	})
 
-	It("blends rotation with a constant angular velocity", func() {
+	It("blends rotation with normalized linear interpolation", func() {
 		result := animation3.BlendTransforms(first, second, 0.25)
-		expectRotation(result.Rotation, yRotation(22.5))
+		expectRotation(result.Rotation, yRotation(quarterDegrees))
+	})
 
-		result = animation3.BlendTransforms(first, second, 0.5)
+	It("blends rotation halfway at the midpoint", func() {
+		// Normalized linear interpolation matches spherical interpolation
+		// at the midpoint.
+		result := animation3.BlendTransforms(first, second, 0.5)
 		expectRotation(result.Rotation, yRotation(45.0))
 	})
 
 	It("extrapolates for a factor outside the range", func() {
 		result := animation3.BlendTransforms(first, second, 2.0)
 		expectVec3(result.Translation, dprec.NewVec3(9.0, -6.0, 3.0))
-		expectRotation(result.Rotation, yRotation(180.0))
+		expectRotation(result.Rotation, yRotation(doubleDegrees))
 		expectVec3(result.Scale, dprec.NewVec3(5.0, 3.0, 0.0))
 	})
 

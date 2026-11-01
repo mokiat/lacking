@@ -50,13 +50,16 @@ func Mat4Transform(mat dprec.Mat4) Transform {
 // one. The factor is not clamped and values outside that range extrapolate.
 //
 // Translation and scale are blended linearly per axis. Rotation is blended
-// through spherical linear interpolation along the shorter arc, which produces
-// a constant angular velocity as the factor changes. Rotations are expected to
-// be unit quaternions.
+// through normalized linear interpolation along the shorter arc, which does
+// not keep a constant angular velocity as the factor changes and is only
+// noticeably different from spherical interpolation when the two rotations
+// are far apart. When extrapolating, the rotation continues along the same
+// arc but approaches a limit instead of turning indefinitely. Rotations are
+// expected to be unit quaternions.
 func BlendTransforms(first, second Transform, factor float64) Transform {
 	return Transform{
 		Translation: dprec.Vec3Lerp(first.Translation, second.Translation, factor),
-		Rotation:    dprec.QuatSlerp(first.Rotation, second.Rotation, factor),
+		Rotation:    dprec.QuatNLerp(first.Rotation, second.Rotation, factor),
 		Scale:       dprec.Vec3Lerp(first.Scale, second.Scale, factor),
 	}
 }
