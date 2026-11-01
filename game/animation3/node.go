@@ -23,7 +23,9 @@ type Node interface {
 	Rate() float64
 
 	// Fraction returns the amount of animation that has elapsed, in the
-	// range [0.0..1.0]. Looping nodes wrap around and stay below 1.0.
+	// range [0.0..1.0]. For a looping node, 0.0 and 1.0 denote the same
+	// position, so a fraction of 1.0 does not mean that playback has
+	// finished.
 	Fraction() float64
 
 	// SetFraction relocates the animation to the specified fractional
