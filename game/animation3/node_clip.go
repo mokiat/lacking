@@ -9,12 +9,12 @@ import (
 // end time at fraction 1.0. A looping node wraps around when it reaches
 // either end, whereas a non-looping node stops there.
 type ClipNode struct {
-	skeleton  *Skeleton
-	clip      *Clip
-	channels  []clipNodeChannel
-	offset    float64
-	length    float64
-	timestamp float64
+	skeleton         *Skeleton
+	clip             *Clip
+	channels         []Channel
+	length           float64
+	startTimestamp   float64
+	currentTimestamp float64
 	synchronizationAspect
 	loop bool
 }
@@ -28,13 +28,13 @@ var _ Node = (*ClipNode)(nil)
 // transformation. The node starts at fraction 0.0 and is not synchronized.
 func NewClipNode(skeleton *Skeleton, clip *Clip, loop bool) *ClipNode {
 	return &ClipNode{
-		skeleton:  skeleton,
-		clip:      clip,
-		channels:  extractChannels(skeleton, clip),
-		offset:    clip.StartTime(),
-		length:    clip.Length(),
-		timestamp: 0.0,
-		loop:      loop,
+		skeleton:         skeleton,
+		clip:             clip,
+		channels:         extractChannels(skeleton, clip),
+		length:           clip.Length(),
+		startTimestamp:   clip.StartTime(),
+		currentTimestamp: 0.0,
+		loop:             loop,
 	}
 }
 
@@ -58,7 +58,7 @@ func (n *ClipNode) Fraction() float64 {
 	if n.length <= 0.0 {
 		return 0.0
 	}
-	return n.timestamp / n.length
+	return n.currentTimestamp / n.length
 }
 
 // SetFraction relocates playback to the specified fraction of the clip's
@@ -70,7 +70,7 @@ func (n *ClipNode) SetFraction(fraction float64) {
 	} else {
 		fraction = clampFraction(fraction)
 	}
-	n.timestamp = fraction * n.length
+	n.currentTimestamp = fraction * n.length
 }
 
 // Advance moves playback by the specified delta seconds, where one second
@@ -81,30 +81,22 @@ func (n *ClipNode) Advance(seconds float64) {
 	if n.length <= 0.0 {
 		return
 	}
-	n.timestamp += seconds
+	n.currentTimestamp += seconds
 	if n.loop {
-		n.timestamp = wrapTime(n.timestamp, n.length)
+		n.currentTimestamp = wrapTime(n.currentTimestamp, n.length)
 	} else {
-		n.timestamp = clampTime(n.timestamp, n.length)
+		n.currentTimestamp = clampTime(n.currentTimestamp, n.length)
 	}
 }
 
 // Transform returns the local transformation of the specified bone at the
-// current playback position. Each component is interpolated between the two
-// keyframes that surround the position: translation and scale linearly and
-// rotation through normalized linear interpolation along the shorter arc.
-// The latter does not keep a constant angular velocity between keyframes,
-// which is only noticeable when keyframes are far apart in rotation. A
-// position before the first or after the last keyframe of a component holds
-// the value of that keyframe.
-//
-// Components that the clip does not animate for the bone are taken from the
-// bone's [Skeleton.BoneRestTransform], so a bone that has no channel in the
-// clip returns its rest transformation.
+// current playback position, as produced by the bone's [Channel] in the clip
+// at the matching keyframe timestamp. A bone that has no channel in the clip
+// returns its [Skeleton.BoneRestTransform].
 //
 // The bone must be a valid index in the skeleton of the node.
 func (n *ClipNode) Transform(bone int) Transform {
-	return n.transformAt(bone, n.timestamp)
+	return n.transformAt(bone, n.currentTimestamp)
 }
 
 // DeltaTransform returns the motion that the specified bone experiences
@@ -130,7 +122,7 @@ func (n *ClipNode) DeltaTransform(bone int, delta float64) Transform {
 		return IdentityTransform()
 	}
 
-	from := n.timestamp
+	from := n.currentTimestamp
 	to := from + delta
 
 	if !n.loop {
@@ -172,26 +164,13 @@ func (n *ClipNode) reverseDelta(bone int, from, to float64) dprec.Mat4 {
 }
 
 func (n *ClipNode) transformAt(bone int, timestamp float64) Transform {
-	channel := &n.channels[bone]
+	channel := n.channels[bone]
 
-	hasTranslations := channel.HasTranslations()
-	hasRotations := channel.HasRotations()
-	hasScales := channel.HasScales()
+	if channel == nil {
+		return n.skeleton.BoneRestTransform(bone)
+	}
 
-	var result Transform
-	if !hasTranslations || !hasRotations || !hasScales {
-		result = n.skeleton.BoneRestTransform(bone)
-	}
-	if hasTranslations {
-		result.Translation = channel.Translation(n.offset + timestamp)
-	}
-	if hasRotations {
-		result.Rotation = channel.Rotation(n.offset + timestamp)
-	}
-	if hasScales {
-		result.Scale = channel.Scale(n.offset + timestamp)
-	}
-	return result
+	return channel.Transform(n.startTimestamp + timestamp)
 }
 
 func (n *ClipNode) segmentDelta(bone int, from, to float64) dprec.Mat4 {
@@ -204,81 +183,15 @@ func (n *ClipNode) segmentDelta(bone int, from, to float64) dprec.Mat4 {
 	return dprec.Mat4Prod(toMatrix, dprec.InverseMat4(fromMatrix))
 }
 
-// clipNodeChannel holds the keyframes that animate a single skeleton bone.
-// A component with no keyframes is not animated.
-type clipNodeChannel struct {
-	translations KeyframeList[dprec.Vec3]
-	rotations    KeyframeList[dprec.Quat]
-	scales       KeyframeList[dprec.Vec3]
-}
-
 // extractChannels returns the channels of the clip indexed by skeleton bone.
-// Bones that have no channel in the clip get an empty channel and channels
-// for bones that are not in the skeleton are dropped.
-func extractChannels(skeleton *Skeleton, clip *Clip) []clipNodeChannel {
-	channels := make([]clipNodeChannel, skeleton.BoneCount())
+// Bones that have no channel in the clip get a nil channel and channels for
+// bones that are not in the skeleton are dropped.
+func extractChannels(skeleton *Skeleton, clip *Clip) []Channel {
+	channels := make([]Channel, skeleton.BoneCount())
 	for i := range channels {
 		if channel, ok := clip.Channel(skeleton.BoneName(i)); ok {
-			channels[i] = clipNodeChannel{
-				translations: channel.TranslationKeyframes,
-				rotations:    channel.RotationKeyframes,
-				scales:       channel.ScaleKeyframes,
-			}
+			channels[i] = channel
 		}
 	}
 	return channels
-}
-
-// HasTranslations returns whether the channel animates the translation.
-func (c *clipNodeChannel) HasTranslations() bool {
-	return len(c.translations) > 0
-}
-
-// HasRotations returns whether the channel animates the rotation.
-func (c *clipNodeChannel) HasRotations() bool {
-	return len(c.rotations) > 0
-}
-
-// HasScales returns whether the channel animates the scale.
-func (c *clipNodeChannel) HasScales() bool {
-	return len(c.scales) > 0
-}
-
-// Translation returns the translation at the specified keyframe timestamp.
-// The channel must have translation keyframes.
-func (c *clipNodeChannel) Translation(timestamp float64) dprec.Vec3 {
-	leftIndex, rightIndex := c.translations.binarySearch(timestamp)
-	if leftIndex == rightIndex {
-		return c.translations[leftIndex].Value
-	}
-	left := c.translations[leftIndex]
-	right := c.translations[rightIndex]
-	a := (timestamp - left.Timestamp) / (right.Timestamp - left.Timestamp)
-	return dprec.Vec3Lerp(left.Value, right.Value, dprec.Clamp(a, 0.0, 1.0))
-}
-
-// Rotation returns the rotation at the specified keyframe timestamp.
-// The channel must have rotation keyframes.
-func (c *clipNodeChannel) Rotation(timestamp float64) dprec.Quat {
-	leftIndex, rightIndex := c.rotations.binarySearch(timestamp)
-	if leftIndex == rightIndex {
-		return c.rotations[leftIndex].Value
-	}
-	left := c.rotations[leftIndex]
-	right := c.rotations[rightIndex]
-	a := (timestamp - left.Timestamp) / (right.Timestamp - left.Timestamp)
-	return dprec.QuatNLerp(left.Value, right.Value, dprec.Clamp(a, 0.0, 1.0))
-}
-
-// Scale returns the scale at the specified keyframe timestamp.
-// The channel must have scale keyframes.
-func (c *clipNodeChannel) Scale(timestamp float64) dprec.Vec3 {
-	leftIndex, rightIndex := c.scales.binarySearch(timestamp)
-	if leftIndex == rightIndex {
-		return c.scales[leftIndex].Value
-	}
-	left := c.scales[leftIndex]
-	right := c.scales[rightIndex]
-	a := (timestamp - left.Timestamp) / (right.Timestamp - left.Timestamp)
-	return dprec.Vec3Lerp(left.Value, right.Value, dprec.Clamp(a, 0.0, 1.0))
 }

@@ -156,12 +156,18 @@ var _ = Describe("ClipNode", func() {
 
 		var (
 			spineRest    animation3.Transform
+			spinePose    animation3.Transform
 			headRest     animation3.Transform
 			animClip     *animation3.Clip
 			animSkeleton *animation3.Skeleton
 		)
 
 		BeforeEach(func() {
+			spinePose = animation3.Transform{
+				Translation: dprec.NewVec3(7.0, 0.0, 0.0),
+				Rotation:    yRotation(60.0),
+				Scale:       dprec.NewVec3(0.5, 0.5, 0.5),
+			}
 			spineRest = animation3.Transform{
 				Translation: dprec.NewVec3(0.0, 1.0, 0.0),
 				Rotation:    yRotation(10.0),
@@ -183,32 +189,36 @@ var _ = Describe("ClipNode", func() {
 			})
 			// The clip covers the keyframe range [1.0..3.0]. The hip translation
 			// keyframes extend beyond that range on both sides.
-			animClip = animation3.NewClip("walk", 1.0, 3.0, map[string]animation3.ClipChannel{
-				"hip": {
-					TranslationKeyframes: animation3.KeyframeList[dprec.Vec3]{
+			animClip = animation3.NewClip("walk", 1.0, 3.0, map[string]animation3.Channel{
+				"hip": animation3.NewComponentKeyframeChannel(
+					animation3.KeyframeList[dprec.Vec3]{
 						{Timestamp: 0.0, Value: dprec.NewVec3(0.0, 0.0, 0.0)},
 						{Timestamp: 2.0, Value: dprec.NewVec3(2.0, 0.0, 0.0)},
 						{Timestamp: 4.0, Value: dprec.NewVec3(4.0, 4.0, 0.0)},
 					},
-					RotationKeyframes: animation3.KeyframeList[dprec.Quat]{
+					animation3.KeyframeList[dprec.Quat]{
 						{Timestamp: 1.0, Value: yRotation(0.0)},
 						{Timestamp: 3.0, Value: yRotation(90.0)},
 					},
-					ScaleKeyframes: animation3.KeyframeList[dprec.Vec3]{
+					animation3.KeyframeList[dprec.Vec3]{
 						{Timestamp: 1.0, Value: dprec.NewVec3(1.0, 1.0, 1.0)},
 						{Timestamp: 3.0, Value: dprec.NewVec3(3.0, 3.0, 3.0)},
 					},
-				},
-				"spine": {
-					TranslationKeyframes: animation3.KeyframeList[dprec.Vec3]{
-						{Timestamp: 1.0, Value: dprec.NewVec3(7.0, 0.0, 0.0)},
+				),
+				"spine": animation3.NewTransformKeyframeChannel(
+					animation3.KeyframeList[animation3.Transform]{
+						{Timestamp: 1.0, Value: spinePose},
 					},
-				},
-				"tail": {
-					TranslationKeyframes: animation3.KeyframeList[dprec.Vec3]{
-						{Timestamp: 1.0, Value: dprec.NewVec3(9.0, 9.0, 9.0)},
+				),
+				"tail": animation3.NewTransformKeyframeChannel(
+					animation3.KeyframeList[animation3.Transform]{
+						{Timestamp: 1.0, Value: animation3.Transform{
+							Translation: dprec.NewVec3(9.0, 9.0, 9.0),
+							Rotation:    dprec.IdentityQuat(),
+							Scale:       dprec.NewVec3(1.0, 1.0, 1.0),
+						}},
 					},
-				},
+				),
 			})
 		})
 
@@ -255,21 +265,34 @@ var _ = Describe("ClipNode", func() {
 			expectVec3(result.Scale, dprec.NewVec3(3.0, 3.0, 3.0))
 		})
 
-		It("holds the value of a single keyframe", func() {
+		It("holds the value of a single keyframe instead of the rest transform", func() {
 			node := animation3.NewClipNode(animSkeleton, animClip, false)
 			for _, fraction := range []float64{0.0, 0.5, 1.0} {
 				node.SetFraction(fraction)
-				expectVec3(node.Transform(spineBone).Translation, dprec.NewVec3(7.0, 0.0, 0.0))
+				result := node.Transform(spineBone)
+				expectVec3(result.Translation, spinePose.Translation)
+				expectRotation(result.Rotation, spinePose.Rotation)
+				expectVec3(result.Scale, spinePose.Scale)
 			}
 		})
 
-		It("takes components that are not animated from the rest transform", func() {
-			node := animation3.NewClipNode(animSkeleton, animClip, false)
-			node.SetFraction(0.5)
+		It("samples any channel implementation relative to the clip start", func() {
+			// The frames are located at keyframe timestamps 1.0, 2.0 and 3.0, so
+			// fraction 0.25 maps to timestamp 1.5, halfway between the first two.
+			fixedRateClip := animation3.NewClip("fixed", 1.0, 3.0, map[string]animation3.Channel{
+				"spine": animation3.NewFixedRateKeyframeChannel(1.0, 1.0, []animation3.Transform{
+					animation3.IdentityTransform(),
+					spinePose,
+					spineRest,
+				}),
+			})
+			node := animation3.NewClipNode(animSkeleton, fixedRateClip, false)
+			node.SetFraction(0.25)
+			expected := animation3.BlendTransforms(animation3.IdentityTransform(), spinePose, 0.5)
 			result := node.Transform(spineBone)
-			expectVec3(result.Translation, dprec.NewVec3(7.0, 0.0, 0.0))
-			expectRotation(result.Rotation, spineRest.Rotation)
-			expectVec3(result.Scale, spineRest.Scale)
+			expectVec3(result.Translation, expected.Translation)
+			expectRotation(result.Rotation, expected.Rotation)
+			expectVec3(result.Scale, expected.Scale)
 		})
 
 		It("returns the rest transform for a bone without a channel", func() {
@@ -324,21 +347,24 @@ var _ = Describe("ClipNode", func() {
 			// B(1.0) * B(0.0)^-1 = T(0, 0, 2) * R(90). Since R(90) maps +Z onto
 			// +X, consecutive loops head in different directions, so the order
 			// in which motions are combined is observable.
-			walkClip = animation3.NewClip("walk", 1.0, 2.0, map[string]animation3.ClipChannel{
-				"root": {
-					TranslationKeyframes: animation3.KeyframeList[dprec.Vec3]{
+			walkClip = animation3.NewClip("walk", 1.0, 2.0, map[string]animation3.Channel{
+				"root": animation3.NewComponentKeyframeChannel(
+					animation3.KeyframeList[dprec.Vec3]{
 						{Timestamp: 1.0, Value: dprec.NewVec3(0.0, 0.0, 0.0)},
 						{Timestamp: 1.4, Value: dprec.NewVec3(0.0, 0.0, 1.0)},
 						{Timestamp: 1.6, Value: dprec.NewVec3(0.0, 0.0, 1.0)},
 						{Timestamp: 2.0, Value: dprec.NewVec3(0.0, 0.0, 2.0)},
 					},
-					RotationKeyframes: animation3.KeyframeList[dprec.Quat]{
+					animation3.KeyframeList[dprec.Quat]{
 						{Timestamp: 1.0, Value: yRotation(0.0)},
 						{Timestamp: 1.4, Value: yRotation(0.0)},
 						{Timestamp: 1.6, Value: yRotation(90.0)},
 						{Timestamp: 2.0, Value: yRotation(90.0)},
 					},
-				},
+					animation3.KeyframeList[dprec.Vec3]{
+						{Timestamp: 1.0, Value: dprec.NewVec3(1.0, 1.0, 1.0)},
+					},
+				),
 			})
 		})
 

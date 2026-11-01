@@ -13,28 +13,35 @@ import (
 var _ = Describe("Clip", func() {
 
 	var (
-		hipChannel  animation3.ClipChannel
-		headChannel animation3.ClipChannel
+		hipChannel  animation3.Channel
+		headChannel animation3.Channel
 		clip        *animation3.Clip
 	)
 
 	BeforeEach(func() {
-		hipChannel = animation3.ClipChannel{
-			TranslationKeyframes: animation3.KeyframeList[dprec.Vec3]{
+		hipChannel = animation3.NewComponentKeyframeChannel(
+			animation3.KeyframeList[dprec.Vec3]{
 				{Timestamp: 0.0, Value: dprec.NewVec3(0.0, 1.0, 0.0)},
 				{Timestamp: 4.0, Value: dprec.NewVec3(2.0, 1.0, 0.0)},
 			},
-			RotationKeyframes: animation3.KeyframeList[dprec.Quat]{
+			animation3.KeyframeList[dprec.Quat]{
 				{Timestamp: 1.0, Value: dprec.IdentityQuat()},
 			},
-		}
-		headChannel = animation3.ClipChannel{
-			ScaleKeyframes: animation3.KeyframeList[dprec.Vec3]{
-				{Timestamp: 0.5, Value: dprec.NewVec3(1.0, 1.0, 1.0)},
-				{Timestamp: 3.5, Value: dprec.NewVec3(2.0, 2.0, 2.0)},
+			animation3.KeyframeList[dprec.Vec3]{
+				{Timestamp: 1.0, Value: dprec.NewVec3(1.0, 1.0, 1.0)},
 			},
-		}
-		clip = animation3.NewClip("walk", 1.0, 3.0, map[string]animation3.ClipChannel{
+		)
+		headChannel = animation3.NewTransformKeyframeChannel(
+			animation3.KeyframeList[animation3.Transform]{
+				{Timestamp: 0.5, Value: animation3.IdentityTransform()},
+				{Timestamp: 3.5, Value: animation3.Transform{
+					Translation: dprec.ZeroVec3(),
+					Rotation:    dprec.IdentityQuat(),
+					Scale:       dprec.NewVec3(2.0, 2.0, 2.0),
+				}},
+			},
+		)
+		clip = animation3.NewClip("walk", 1.0, 3.0, map[string]animation3.Channel{
 			"hip":  hipChannel,
 			"head": headChannel,
 		})
@@ -80,17 +87,17 @@ var _ = Describe("Clip", func() {
 		It("returns an existing channel", func() {
 			channel, ok := clip.Channel("hip")
 			Expect(ok).To(BeTrue())
-			Expect(channel).To(Equal(hipChannel))
+			Expect(channel).To(BeIdenticalTo(hipChannel))
 
 			channel, ok = clip.Channel("head")
 			Expect(ok).To(BeTrue())
-			Expect(channel).To(Equal(headChannel))
+			Expect(channel).To(BeIdenticalTo(headChannel))
 		})
 
 		It("reports a missing channel", func() {
 			channel, ok := clip.Channel("tail")
 			Expect(ok).To(BeFalse())
-			Expect(channel).To(Equal(animation3.ClipChannel{}))
+			Expect(channel).To(BeNil())
 		})
 	})
 
@@ -145,15 +152,14 @@ var _ = Describe("Clip", func() {
 			)
 			channel, ok := cropped.Channel("hip")
 			Expect(ok).To(BeTrue())
-			Expect(channel).To(Equal(hipChannel))
+			Expect(channel).To(BeIdenticalTo(hipChannel))
 		})
 
-		It("does not trim keyframes outside the new range", func() {
+		It("keeps animation data outside the new range", func() {
 			channel, ok := cropped.Channel("head")
 			Expect(ok).To(BeTrue())
-			Expect(channel.ScaleKeyframes).To(HaveLen(2))
-			Expect(channel.ScaleKeyframes[0].Timestamp).To(Equal(0.5))
-			Expect(channel.ScaleKeyframes[1].Timestamp).To(Equal(3.5))
+			expectVec3(channel.Transform(0.5).Scale, dprec.NewVec3(1.0, 1.0, 1.0))
+			expectVec3(channel.Transform(3.5).Scale, dprec.NewVec3(2.0, 2.0, 2.0))
 		})
 
 		It("leaves the original clip unchanged", func() {
