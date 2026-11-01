@@ -14,6 +14,11 @@ package animation3
 // are those of the base node. The additive node is advanced in real time
 // alongside the base node and, if it is synchronized, it is kept at the same
 // fraction as the base node.
+//
+// The synchronization setting of the base node has no effect, since the base
+// node defines the fraction of the AddNode. Whether the base node is kept in
+// phase with the parent of the AddNode is decided by the synchronization
+// setting of the AddNode itself.
 type AddNode struct {
 	synchronizationAspect
 	base     Node

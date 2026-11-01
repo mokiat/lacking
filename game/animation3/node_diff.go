@@ -14,6 +14,11 @@ package animation3
 // are those of the source node. The reference node is advanced in real time
 // alongside the source node and, if it is synchronized, it is kept at the
 // same fraction as the source node.
+//
+// The synchronization setting of the source node has no effect, since the
+// source node defines the fraction of the DiffNode. Whether the source node
+// is kept in phase with the parent of the DiffNode is decided by the
+// synchronization setting of the DiffNode itself.
 type DiffNode struct {
 	synchronizationAspect
 	source    Node
