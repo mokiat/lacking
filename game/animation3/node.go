@@ -93,6 +93,33 @@ func (s *synchronizationAspect) SetSynchronized(synchronized bool) {
 	s.synchronized = synchronized
 }
 
+// blendRates returns the rate of a blend of the two nodes at the specified
+// weight, where a weight of 0.0 corresponds to the first node and a weight
+// of 1.0 to the second one. Only synchronized nodes with a rate greater than
+// 0.0 take part. If both take part, the cycle lengths of the nodes, rather
+// than their rates, are blended linearly. If only one takes part, its rate
+// is returned unchanged. If none takes part, the blend has no meaningful
+// length and the result is 0.0.
+func blendRates(first, second Node, weight float64) float64 {
+	firstRate := first.Rate()
+	firstOK := first.IsSynchronized() && firstRate > 0.0
+	secondRate := second.Rate()
+	secondOK := second.IsSynchronized() && secondRate > 0.0
+	switch {
+	case firstOK && secondOK:
+		// The rates are swapped in the Mix on purpose. Blending the lengths
+		// 1/firstRate and 1/secondRate linearly and taking the reciprocal
+		// yields this expression.
+		return firstRate * secondRate / dprec.Mix(secondRate, firstRate, weight)
+	case firstOK:
+		return firstRate
+	case secondOK:
+		return secondRate
+	default:
+		return 0.0
+	}
+}
+
 // clampFraction clamps a fraction into the range [0.0..1.0].
 func clampFraction(fraction float64) float64 {
 	return dprec.Clamp(fraction, 0.0, 1.0)
