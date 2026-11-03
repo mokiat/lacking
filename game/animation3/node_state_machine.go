@@ -109,6 +109,33 @@ func (n *StateMachineNode[T]) CurrentState() T {
 	return n.currentState
 }
 
+// SourceState returns the state that is being faded out by the transition
+// in progress. While no transition is in progress, this is the current
+// state.
+func (n *StateMachineNode[T]) SourceState() T {
+	if n.sourceNode == nil {
+		return n.currentState
+	}
+	return n.sourceState
+}
+
+// IsTransitioning returns whether a transition is in progress.
+func (n *StateMachineNode[T]) IsTransitioning() bool {
+	return n.sourceNode != nil
+}
+
+// TransitionProgress returns the progress of the transition in progress, in
+// the range [0.0..1.0], where 0.0 shows only the
+// [StateMachineNode.SourceState] and 1.0 shows only the
+// [StateMachineNode.CurrentState]. While no transition is in progress, the
+// progress is 1.0.
+func (n *StateMachineNode[T]) TransitionProgress() float64 {
+	if n.sourceNode == nil {
+		return 1.0
+	}
+	return n.progress
+}
+
 // JumpTo switches to the specified state immediately, canceling any
 // transition in progress. Jumping to the current state completes a
 // transition in progress immediately and otherwise has no effect.

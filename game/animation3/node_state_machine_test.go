@@ -260,6 +260,32 @@ var _ = Describe("StateMachineNode", func() {
 			expectX(machine, 1.0)
 		})
 
+		It("reports a stable state while no transition is in progress", func() {
+			Expect(machine.IsTransitioning()).To(BeFalse())
+			Expect(machine.SourceState()).To(Equal(idleState))
+			Expect(machine.TransitionProgress()).To(Equal(1.0))
+		})
+
+		It("reports the progress of the transition", func() {
+			machine.TransitionTo(walkState)
+			Expect(machine.IsTransitioning()).To(BeTrue())
+			Expect(machine.SourceState()).To(Equal(idleState))
+			Expect(machine.TransitionProgress()).To(Equal(0.0))
+			machine.Advance(0.25)
+			Expect(machine.TransitionProgress()).To(BeNumerically("~", 0.25, 1e-9))
+			machine.Advance(0.75)
+			Expect(machine.IsTransitioning()).To(BeFalse())
+			Expect(machine.SourceState()).To(Equal(walkState))
+			Expect(machine.TransitionProgress()).To(Equal(1.0))
+		})
+
+		It("reports a stable state after a jump", func() {
+			machine.TransitionTo(runState)
+			Expect(machine.IsTransitioning()).To(BeFalse())
+			Expect(machine.SourceState()).To(Equal(runState))
+			Expect(machine.TransitionProgress()).To(Equal(1.0))
+		})
+
 		It("cross-fades to the state over the duration of the transition", func() {
 			machine.TransitionTo(walkState)
 			machine.Advance(0.25)
@@ -308,6 +334,8 @@ var _ = Describe("StateMachineNode", func() {
 			expectX(machine, 1.5)
 			machine.TransitionTo(runState)
 			Expect(machine.CurrentState()).To(Equal(runState))
+			Expect(machine.SourceState()).To(Equal(walkState))
+			Expect(machine.TransitionProgress()).To(Equal(0.0))
 			expectX(machine, 2.0)
 			machine.Advance(0.5)
 			expectX(machine, 3.0)
@@ -331,6 +359,8 @@ var _ = Describe("StateMachineNode", func() {
 			expectX(machine, 1.25)
 			machine.TransitionTo(idleState)
 			Expect(machine.CurrentState()).To(Equal(idleState))
+			Expect(machine.SourceState()).To(Equal(walkState))
+			Expect(machine.TransitionProgress()).To(BeNumerically("~", 0.75, 1e-9))
 			expectX(machine, 1.25)
 			machine.Advance(0.25) // half of the remaining 0.5 seconds of the reverse transition
 			expectX(machine, 1.125)
@@ -352,6 +382,7 @@ var _ = Describe("StateMachineNode", func() {
 			machine.TransitionTo(walkState)
 			machine.Advance(0.5)
 			machine.JumpTo(jumpState)
+			Expect(machine.IsTransitioning()).To(BeFalse())
 			expectX(machine, 8.0)
 			machine.Advance(0.5)
 			expectX(machine, 8.0)
@@ -362,6 +393,7 @@ var _ = Describe("StateMachineNode", func() {
 			machine.Advance(0.5)
 			machine.JumpTo(walkState)
 			Expect(machine.CurrentState()).To(Equal(walkState))
+			Expect(machine.IsTransitioning()).To(BeFalse())
 			expectX(machine, 2.0)
 		})
 	})
