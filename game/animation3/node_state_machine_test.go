@@ -75,7 +75,7 @@ var _ = Describe("StateMachineNode", func() {
 		node = animation3.NewStateMachineNode(walkState, map[state]animation3.Node{
 			idleState: idle,
 			walkState: walk,
-		}, nil)
+		}, animation3.StateMachineTransitionSettings{}, nil)
 	})
 
 	Describe("NewStateMachineNode", func() {
@@ -92,13 +92,13 @@ var _ = Describe("StateMachineNode", func() {
 			Expect(func() {
 				animation3.NewStateMachineNode(unknownState, map[state]animation3.Node{
 					idleState: idle,
-				}, nil)
+				}, animation3.StateMachineTransitionSettings{}, nil)
 			}).To(Panic())
 		})
 
 		It("panics without states", func() {
 			Expect(func() {
-				animation3.NewStateMachineNode(idleState, nil, nil)
+				animation3.NewStateMachineNode(idleState, nil, animation3.StateMachineTransitionSettings{}, nil)
 			}).To(Panic())
 		})
 
@@ -106,7 +106,7 @@ var _ = Describe("StateMachineNode", func() {
 			states := map[state]animation3.Node{
 				idleState: idle,
 			}
-			node := animation3.NewStateMachineNode(idleState, states, nil)
+			node := animation3.NewStateMachineNode(idleState, states, animation3.StateMachineTransitionSettings{}, nil)
 			states[idleState] = walk
 			node.Advance(1.0)
 			Expect(idle.Fraction()).To(BeNumerically("~", 0.25, 1e-9))
@@ -120,7 +120,7 @@ var _ = Describe("StateMachineNode", func() {
 			node := animation3.NewStateMachineNode(walkState, map[state]animation3.Node{
 				idleState: idle,
 				walkState: walk,
-			}, transitions)
+			}, animation3.StateMachineTransitionSettings{}, transitions)
 			transitions[0].Duration = 0.0
 			node.TransitionTo(idleState)
 			node.Advance(0.5)
@@ -133,7 +133,7 @@ var _ = Describe("StateMachineNode", func() {
 					animation3.NewStateMachineNode(walkState, map[state]animation3.Node{
 						idleState: idle,
 						walkState: walk,
-					}, []animation3.StateMachineTransition[state]{transition})
+					}, animation3.StateMachineTransitionSettings{}, []animation3.StateMachineTransition[state]{transition})
 				}).To(Panic())
 			},
 			Entry("from an unknown state", animation3.StateMachineTransition[state]{From: unknownState, To: idleState, Duration: 1.0}),
@@ -147,7 +147,7 @@ var _ = Describe("StateMachineNode", func() {
 				animation3.NewStateMachineNode(walkState, map[state]animation3.Node{
 					idleState: idle,
 					walkState: walk,
-				}, []animation3.StateMachineTransition[state]{
+				}, animation3.StateMachineTransitionSettings{}, []animation3.StateMachineTransition[state]{
 					{From: walkState, To: idleState, Duration: 1.0},
 					{From: walkState, To: idleState, Duration: 2.0},
 				})
@@ -246,7 +246,7 @@ var _ = Describe("StateMachineNode", func() {
 				walkState: positionNode(2.0),
 				runState:  positionNode(4.0),
 				jumpState: positionNode(8.0),
-			}, []animation3.StateMachineTransition[state]{
+			}, animation3.StateMachineTransitionSettings{}, []animation3.StateMachineTransition[state]{
 				{From: idleState, To: walkState, Duration: 1.0},
 				{From: walkState, To: idleState, Duration: 2.0},
 				{From: walkState, To: runState, Duration: 1.0},
@@ -398,6 +398,72 @@ var _ = Describe("StateMachineNode", func() {
 		})
 	})
 
+	Describe("default transition", func() {
+
+		It("panics for a negative duration", func() {
+			Expect(func() {
+				animation3.NewStateMachineNode(idleState, map[state]animation3.Node{
+					idleState: idle,
+				}, animation3.StateMachineTransitionSettings{Duration: -1.0}, nil)
+			}).To(Panic())
+		})
+
+		Context("with a duration", func() {
+
+			var machine *animation3.StateMachineNode[state]
+
+			BeforeEach(func() {
+				machine = animation3.NewStateMachineNode(idleState, map[state]animation3.Node{
+					idleState: positionNode(1.0),
+					walkState: positionNode(2.0),
+					runState:  positionNode(4.0),
+				}, animation3.StateMachineTransitionSettings{Duration: 1.0}, []animation3.StateMachineTransition[state]{
+					{From: idleState, To: runState, Duration: 0.5},
+				})
+			})
+
+			It("cross-fades between states without a transition of their own", func() {
+				machine.TransitionTo(walkState)
+				Expect(machine.IsTransitioning()).To(BeTrue())
+				machine.Advance(0.5)
+				expectX(machine, 1.5)
+				machine.Advance(0.5)
+				expectX(machine, 2.0)
+			})
+
+			It("is not used between states with a transition of their own", func() {
+				machine.TransitionTo(runState)
+				machine.Advance(0.25)
+				expectX(machine, 2.5)
+			})
+
+			It("reverses a transition in progress", func() {
+				machine.TransitionTo(walkState)
+				machine.Advance(0.25)
+				machine.TransitionTo(idleState)
+				Expect(machine.IsTransitioning()).To(BeTrue())
+				expectX(machine, 1.25)
+				machine.Advance(0.25)
+				expectX(machine, 1.0)
+			})
+		})
+
+		It("can rewind the states that are switched to", func() {
+			machine := animation3.NewStateMachineNode(walkState, map[state]animation3.Node{
+				idleState: idle,
+				walkState: walk,
+			}, animation3.StateMachineTransitionSettings{Rewind: true}, nil)
+			machine.Advance(1.0) // walk at 0.5
+			machine.TransitionTo(idleState)
+			machine.Advance(1.0) // idle at 0.25
+			machine.TransitionTo(walkState)
+			Expect(machine.IsTransitioning()).To(BeFalse())
+			Expect(walk.Fraction()).To(Equal(0.0))
+			machine.TransitionTo(idleState)
+			Expect(idle.Fraction()).To(Equal(0.0))
+		})
+	})
+
 	Describe("transition playback", func() {
 
 		var machine *animation3.StateMachineNode[state]
@@ -406,7 +472,7 @@ var _ = Describe("StateMachineNode", func() {
 			machine = animation3.NewStateMachineNode(walkState, map[state]animation3.Node{
 				idleState: idle,
 				walkState: walk,
-			}, []animation3.StateMachineTransition[state]{
+			}, animation3.StateMachineTransitionSettings{}, []animation3.StateMachineTransition[state]{
 				{From: walkState, To: idleState, Duration: 1.0},
 			})
 		})
@@ -422,6 +488,71 @@ var _ = Describe("StateMachineNode", func() {
 			machine.Advance(1.0)
 			Expect(walk.Fraction()).To(BeNumerically("~", 0.5, 1e-9))
 			Expect(idle.Fraction()).To(BeNumerically("~", 0.5, 1e-9))
+		})
+
+		Context("with a rewinding transition", func() {
+
+			BeforeEach(func() {
+				machine = animation3.NewStateMachineNode(walkState, map[state]animation3.Node{
+					idleState: idle,
+					walkState: walk,
+				}, animation3.StateMachineTransitionSettings{}, []animation3.StateMachineTransition[state]{
+					{From: walkState, To: idleState, Duration: 1.0, Rewind: true},
+					{From: idleState, To: walkState, Duration: 1.0, Rewind: true},
+				})
+				machine.JumpTo(idleState)
+				machine.Advance(1.0) // idle at 0.25
+				machine.JumpTo(walkState)
+				machine.Advance(1.0) // walk at 0.5
+			})
+
+			It("starts the state from its beginning", func() {
+				machine.TransitionTo(idleState)
+				Expect(idle.Fraction()).To(Equal(0.0))
+			})
+
+			It("does not relocate the state that is being faded out", func() {
+				machine.TransitionTo(idleState)
+				Expect(walk.Fraction()).To(BeNumerically("~", 0.5, 1e-9))
+				machine.Advance(0.5)
+				Expect(walk.Fraction()).To(BeNumerically("~", 0.75, 1e-9))
+				Expect(idle.Fraction()).To(BeNumerically("~", 0.125, 1e-9))
+			})
+
+			It("starts the state from its beginning when jumping with zero duration", func() {
+				machine := animation3.NewStateMachineNode(walkState, map[state]animation3.Node{
+					idleState: idle,
+					walkState: walk,
+				}, animation3.StateMachineTransitionSettings{}, []animation3.StateMachineTransition[state]{
+					{From: walkState, To: idleState, Duration: 0.0, Rewind: true},
+				})
+				machine.TransitionTo(idleState)
+				Expect(machine.IsTransitioning()).To(BeFalse())
+				Expect(machine.CurrentState()).To(Equal(idleState))
+				Expect(idle.Fraction()).To(Equal(0.0))
+			})
+
+			It("keeps a synchronized state in phase instead", func() {
+				idle.SetSynchronized(true)
+				machine.TransitionTo(idleState)
+				Expect(idle.Fraction()).To(BeNumerically("~", 0.5, 1e-9))
+			})
+
+			It("does not rewind when reversing a transition in progress", func() {
+				machine.TransitionTo(idleState)
+				machine.Advance(0.5) // walk at 0.75, idle at 0.125
+				machine.TransitionTo(walkState)
+				Expect(machine.IsTransitioning()).To(BeTrue())
+				Expect(walk.Fraction()).To(BeNumerically("~", 0.75, 1e-9))
+			})
+		})
+
+		It("does not rewind without a rewinding transition", func() {
+			machine.JumpTo(idleState)
+			machine.Advance(1.0) // idle at 0.25
+			machine.JumpTo(walkState)
+			machine.TransitionTo(idleState)
+			Expect(idle.Fraction()).To(BeNumerically("~", 0.25, 1e-9))
 		})
 
 		It("moves a synchronized state to the fraction of the node when the transition starts", func() {

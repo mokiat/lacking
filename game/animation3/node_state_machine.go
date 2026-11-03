@@ -5,20 +5,37 @@ import (
 	"maps"
 )
 
-// StateMachineTransition specifies a cross-fade between two states of a
-// [StateMachineNode].
+// StateMachineTransitionSettings specifies how a [StateMachineNode]
+// transitions from one state to another.
+//
+// The zero value switches between the states immediately and lets the state
+// that is transitioned to resume from its own playback position.
+type StateMachineTransitionSettings struct {
+
+	// Duration is the time in seconds that it takes for the transition to
+	// fade from one state to the other. A duration of 0.0 switches between
+	// the states immediately.
+	Duration float64
+
+	// Rewind specifies whether the state that is transitioned to should start
+	// from its beginning when the transition starts, instead of resuming
+	// from its own playback position. It has no effect on a synchronized
+	// state, which always starts at the fraction of the [StateMachineNode] in
+	// order to stay in phase, nor when the transition reverses a transition
+	// in progress.
+	Rewind bool
+}
+
+// StateMachineTransition specifies the transition between two particular
+// states of a [StateMachineNode].
 type StateMachineTransition[T comparable] struct {
+	StateMachineTransitionSettings
 
 	// From is the state that the transition starts from.
 	From T
 
 	// To is the state that the transition leads to.
 	To T
-
-	// Duration is the time in seconds that it takes for the transition to
-	// fade from the From state to the To state. A duration of 0.0 switches
-	// between the states immediately.
-	Duration float64
 }
 
 // StateMachineNode is a [Node] that plays one of a set of states, identified
@@ -41,8 +58,9 @@ type StateMachineTransition[T comparable] struct {
 // node.
 type StateMachineNode[T comparable] struct {
 	synchronizationAspect
-	states      map[T]Node
-	transitions map[stateMachineEdge[T]]float64
+	states            map[T]Node
+	transitions       map[stateMachineEdge[T]]StateMachineTransitionSettings
+	defaultTransition StateMachineTransitionSettings
 
 	currentState T
 	currentNode  Node
@@ -60,22 +78,26 @@ var _ Node = (*StateMachineNode[struct{}])(nil)
 
 // NewStateMachineNode creates a new [StateMachineNode] with the specified
 // states, keyed by state, and the specified transitions between them. The
-// node starts out in the specified initial state. The StateMachineNode takes
-// control of the playback of all state nodes, which should not be advanced
-// or relocated through other means afterwards. The node does not retain the
-// specified map or slice and is not synchronized.
+// default transition is used between any two states that have no transition
+// of their own. The node starts out in the specified initial state. The
+// StateMachineNode takes control of the playback of all state nodes, which
+// should not be advanced or relocated through other means afterwards. The
+// node does not retain the specified map or slice and is not synchronized.
 //
 // The initial state, as well as the From and To states of every transition,
 // must be among the specified states. A transition must lead to a state
-// other than the one it starts from, must have a non-negative duration and
-// must be the only one between its two states in that direction. Otherwise,
-// the function panics.
-func NewStateMachineNode[T comparable](initial T, states map[T]Node, transitions []StateMachineTransition[T]) *StateMachineNode[T] {
+// other than the one it starts from and must be the only one between its two
+// states in that direction. The default transition and every transition must
+// have a non-negative duration. Otherwise, the function panics.
+func NewStateMachineNode[T comparable](initial T, states map[T]Node, defaultTransition StateMachineTransitionSettings, transitions []StateMachineTransition[T]) *StateMachineNode[T] {
 	initialNode, ok := states[initial]
 	if !ok {
 		panic(fmt.Errorf("initial state %v is not among the specified states", initial))
 	}
-	edges := make(map[stateMachineEdge[T]]float64, len(transitions))
+	if defaultTransition.Duration < 0.0 {
+		panic(fmt.Errorf("default transition has a negative duration"))
+	}
+	edges := make(map[stateMachineEdge[T]]StateMachineTransitionSettings, len(transitions))
 	for _, transition := range transitions {
 		if _, ok := states[transition.From]; !ok {
 			panic(fmt.Errorf("transition from unknown state %v", transition.From))
@@ -93,13 +115,14 @@ func NewStateMachineNode[T comparable](initial T, states map[T]Node, transitions
 		if _, ok := edges[edge]; ok {
 			panic(fmt.Errorf("duplicate transition from %v to %v", transition.From, transition.To))
 		}
-		edges[edge] = transition.Duration
+		edges[edge] = transition.StateMachineTransitionSettings
 	}
 	return &StateMachineNode[T]{
-		states:       maps.Clone(states),
-		transitions:  edges,
-		currentState: initial,
-		currentNode:  initialNode,
+		states:            maps.Clone(states),
+		transitions:       edges,
+		defaultTransition: defaultTransition,
+		currentState:      initial,
+		currentNode:       initialNode,
 	}
 }
 
@@ -161,14 +184,17 @@ func (n *StateMachineNode[T]) JumpTo(state T) {
 
 // TransitionTo starts a transition from the current state to the specified
 // state, using the transition between the two that was specified at
-// construction. If there is no such transition, or if its duration is 0.0,
-// this is the same as [StateMachineNode.JumpTo]. Transitioning to the
-// current state has no effect.
+// construction, or the default transition if there is no such transition. If
+// the duration of the transition is 0.0, the node switches to the state
+// immediately, as by [StateMachineNode.JumpTo]. Transitioning to the current
+// state has no effect.
 //
 // If the specified state is synchronized, it is moved to the fraction of the
 // node when the transition starts, so that it is in phase with the state
-// that it replaces while it fades in. Otherwise, it resumes from its own playback
-// position.
+// that it replaces while it fades in. Otherwise, it starts from its
+// beginning if the transition specifies
+// [StateMachineTransitionSettings.Rewind] and resumes from its own playback
+// position if not.
 //
 // If a transition is already in progress, the state that it leads to becomes
 // the state that is faded out, without a fade, and the new transition starts
@@ -186,16 +212,22 @@ func (n *StateMachineNode[T]) TransitionTo(state T) {
 	if !ok {
 		panic(fmt.Errorf("state %v is not among the states of the node", state))
 	}
-	duration, ok := n.transitions[stateMachineEdge[T]{from: n.currentState, to: state}]
-	if !ok || duration == 0.0 {
-		n.jump(state, node)
-		return
+	transition, ok := n.transitions[stateMachineEdge[T]{from: n.currentState, to: state}]
+	if !ok {
+		transition = n.defaultTransition
 	}
-	if n.sourceNode != nil && state == n.sourceState {
+	if transition.Duration > 0.0 && n.sourceNode != nil && state == n.sourceState {
 		n.sourceState, n.currentState = n.currentState, n.sourceState
 		n.sourceNode, n.currentNode = n.currentNode, n.sourceNode
-		n.duration = duration
+		n.duration = transition.Duration
 		n.progress = 1.0 - n.progress
+		return
+	}
+	if transition.Rewind && !node.IsSynchronized() {
+		node.SetFraction(0.0)
+	}
+	if transition.Duration == 0.0 {
+		n.jump(state, node)
 		return
 	}
 	n.fraction = n.Fraction()
@@ -204,7 +236,7 @@ func (n *StateMachineNode[T]) TransitionTo(state T) {
 	}
 	n.sourceState, n.sourceNode = n.currentState, n.currentNode
 	n.currentState, n.currentNode = state, node
-	n.duration = duration
+	n.duration = transition.Duration
 	n.progress = 0.0
 }
 
