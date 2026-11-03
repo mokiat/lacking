@@ -31,9 +31,9 @@ func NewRootMotion(skeleton *Skeleton, node Node, boneName string) *RootMotion {
 // advanced by the same delta. The result is expressed in the space of the
 // bone's parent. If the bone was not found in the skeleton, the
 // [IdentityTransform] is returned.
-func (m *RootMotion) DeltaTransform(delta float64) Transform {
+func (m *RootMotion) DeltaTransform(deltaSeconds float64) Transform {
 	if m.bone == -1 {
 		return IdentityTransform()
 	}
-	return m.rootNode.DeltaTransform(m.bone, delta)
+	return m.rootNode.DeltaTransform(m.bone, deltaSeconds)
 }

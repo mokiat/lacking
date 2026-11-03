@@ -53,8 +53,8 @@ func (n *ReverseNode) SetFraction(fraction float64) {
 // Advance moves playback forward by the specified delta seconds, which moves
 // the delegate node backwards by the same amount. A negative delta moves the
 // delegate forward.
-func (n *ReverseNode) Advance(seconds float64) {
-	n.delegate.Advance(-seconds)
+func (n *ReverseNode) Advance(deltaSeconds float64) {
+	n.delegate.Advance(-deltaSeconds)
 }
 
 // IsSynchronized returns whether the delegate node is synchronized.
@@ -77,6 +77,6 @@ func (n *ReverseNode) Transform(bone int) Transform {
 // throughout the next delta seconds of reverse playback, which is the motion
 // that the delegate node produces when measured delta seconds backwards in
 // time.
-func (n *ReverseNode) DeltaTransform(bone int, delta float64) Transform {
-	return n.delegate.DeltaTransform(bone, -delta)
+func (n *ReverseNode) DeltaTransform(bone int, deltaSeconds float64) Transform {
+	return n.delegate.DeltaTransform(bone, -deltaSeconds)
 }

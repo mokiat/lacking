@@ -38,7 +38,7 @@ type Node interface {
 	// A parent node advances its children in real time: a synchronized
 	// child additionally has its fraction snapped to the parent's fraction
 	// afterwards.
-	Advance(seconds float64)
+	Advance(deltaSeconds float64)
 
 	// IsSynchronized returns whether the node should be kept in phase with
 	// its parent.
@@ -64,7 +64,7 @@ type Node interface {
 	// experiences throughout the next delta seconds. This is used for root
 	// motion extraction. Bones that the node does not animate experience no
 	// motion and return the [IdentityTransform].
-	DeltaTransform(bone int, delta float64) Transform
+	DeltaTransform(bone int, deltaSeconds float64) Transform
 }
 
 // Synchronized is a helper function that configures a node to be

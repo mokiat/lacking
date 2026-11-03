@@ -93,9 +93,9 @@ func (n *MaskedBlendNode) SetFraction(fraction float64) {
 // Advance moves both the base and the layer node by the specified delta
 // seconds. A synchronized layer node is then snapped to the fraction of the
 // base node.
-func (n *MaskedBlendNode) Advance(seconds float64) {
-	n.base.Advance(seconds)
-	n.layer.Advance(seconds)
+func (n *MaskedBlendNode) Advance(deltaSeconds float64) {
+	n.base.Advance(deltaSeconds)
+	n.layer.Advance(deltaSeconds)
 	if n.layer.IsSynchronized() {
 		n.layer.SetFraction(n.base.Fraction())
 	}
@@ -131,14 +131,14 @@ func (n *MaskedBlendNode) Transform(bone int) Transform {
 // kept in phase with a base node of a different rate.
 //
 // The bone must be a valid index in the skeleton of the node.
-func (n *MaskedBlendNode) DeltaTransform(bone int, delta float64) Transform {
+func (n *MaskedBlendNode) DeltaTransform(bone int, deltaSeconds float64) Transform {
 	switch weight := n.boneWeight(bone); weight {
 	case 0.0:
-		return n.base.DeltaTransform(bone, delta)
+		return n.base.DeltaTransform(bone, deltaSeconds)
 	case 1.0:
-		return n.layer.DeltaTransform(bone, delta)
+		return n.layer.DeltaTransform(bone, deltaSeconds)
 	default:
-		return BlendTransforms(n.base.DeltaTransform(bone, delta), n.layer.DeltaTransform(bone, delta), weight)
+		return BlendTransforms(n.base.DeltaTransform(bone, deltaSeconds), n.layer.DeltaTransform(bone, deltaSeconds), weight)
 	}
 }
 

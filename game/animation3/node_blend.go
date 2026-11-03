@@ -90,13 +90,13 @@ func (n *BlendNode) SetFraction(fraction float64) {
 // wrapping around at either end. If the rate is 0.0, the fraction of the node
 // does not change. Both children are advanced by the same delta seconds and
 // synchronized children are then snapped to the fraction of the node.
-func (n *BlendNode) Advance(seconds float64) {
-	n.fraction = wrapFraction(n.fraction + n.Rate()*seconds)
-	n.first.Advance(seconds)
+func (n *BlendNode) Advance(deltaSeconds float64) {
+	n.fraction = wrapFraction(n.fraction + n.Rate()*deltaSeconds)
+	n.first.Advance(deltaSeconds)
 	if n.first.IsSynchronized() {
 		n.first.SetFraction(n.fraction)
 	}
-	n.second.Advance(seconds)
+	n.second.Advance(deltaSeconds)
 	if n.second.IsSynchronized() {
 		n.second.SetFraction(n.fraction)
 	}
@@ -128,13 +128,13 @@ func (n *BlendNode) Transform(bone int) Transform {
 // that of the node.
 //
 // The bone must be a valid index in the skeleton of the child nodes.
-func (n *BlendNode) DeltaTransform(bone int, delta float64) Transform {
+func (n *BlendNode) DeltaTransform(bone int, deltaSeconds float64) Transform {
 	switch n.weight {
 	case 0.0:
-		return n.first.DeltaTransform(bone, delta)
+		return n.first.DeltaTransform(bone, deltaSeconds)
 	case 1.0:
-		return n.second.DeltaTransform(bone, delta)
+		return n.second.DeltaTransform(bone, deltaSeconds)
 	default:
-		return BlendTransforms(n.first.DeltaTransform(bone, delta), n.second.DeltaTransform(bone, delta), n.weight)
+		return BlendTransforms(n.first.DeltaTransform(bone, deltaSeconds), n.second.DeltaTransform(bone, deltaSeconds), n.weight)
 	}
 }

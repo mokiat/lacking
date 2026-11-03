@@ -77,11 +77,11 @@ func (n *ClipNode) SetFraction(fraction float64) {
 // corresponds to one unit of keyframe time. A looping node wraps around past
 // either end of the clip, whereas a non-looping node stops at the end it
 // reaches. Advancing a clip with zero length has no effect.
-func (n *ClipNode) Advance(seconds float64) {
+func (n *ClipNode) Advance(deltaSeconds float64) {
 	if n.length <= 0.0 {
 		return
 	}
-	n.currentTimestamp += seconds
+	n.currentTimestamp += deltaSeconds
 	if n.loop {
 		n.currentTimestamp = wrapTime(n.currentTimestamp, n.length)
 	} else {
@@ -117,18 +117,18 @@ func (n *ClipNode) Transform(bone int) Transform {
 // changes between the two positions.
 //
 // The bone must be a valid index in the skeleton of the node.
-func (n *ClipNode) DeltaTransform(bone int, delta float64) Transform {
-	if delta == 0.0 || n.length <= 0.0 {
+func (n *ClipNode) DeltaTransform(bone int, deltaSeconds float64) Transform {
+	if deltaSeconds == 0.0 || n.length <= 0.0 {
 		return IdentityTransform()
 	}
 
 	from := n.currentTimestamp
-	to := from + delta
+	to := from + deltaSeconds
 
 	if !n.loop {
 		return Mat4Transform(n.segmentDelta(bone, from, to))
 	}
-	if delta >= 0.0 {
+	if deltaSeconds >= 0.0 {
 		return Mat4Transform(n.forwardDelta(bone, from, to))
 	} else {
 		return Mat4Transform(n.reverseDelta(bone, from, to))

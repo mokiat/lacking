@@ -84,9 +84,9 @@ func (n *AddNode) SetFraction(fraction float64) {
 // Advance moves both the base and the additive node by the specified delta
 // seconds. A synchronized additive node is then snapped to the fraction of
 // the base node.
-func (n *AddNode) Advance(seconds float64) {
-	n.base.Advance(seconds)
-	n.additive.Advance(seconds)
+func (n *AddNode) Advance(deltaSeconds float64) {
+	n.base.Advance(deltaSeconds)
+	n.additive.Advance(deltaSeconds)
 	if n.additive.IsSynchronized() {
 		n.additive.SetFraction(n.base.Fraction())
 	}
@@ -115,6 +115,6 @@ func (n *AddNode) Transform(bone int) Transform {
 // not contribute to root motion.
 //
 // The bone must be a valid index in the skeleton of the child nodes.
-func (n *AddNode) DeltaTransform(bone int, delta float64) Transform {
-	return n.base.DeltaTransform(bone, delta)
+func (n *AddNode) DeltaTransform(bone int, deltaSeconds float64) Transform {
+	return n.base.DeltaTransform(bone, deltaSeconds)
 }

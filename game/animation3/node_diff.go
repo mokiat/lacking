@@ -68,9 +68,9 @@ func (n *DiffNode) SetFraction(fraction float64) {
 // Advance moves both the source and the reference node by the specified
 // delta seconds. A synchronized reference node is then snapped to the
 // fraction of the source node.
-func (n *DiffNode) Advance(seconds float64) {
-	n.source.Advance(seconds)
-	n.reference.Advance(seconds)
+func (n *DiffNode) Advance(deltaSeconds float64) {
+	n.source.Advance(deltaSeconds)
+	n.reference.Advance(deltaSeconds)
 	if n.reference.IsSynchronized() {
 		n.reference.SetFraction(n.source.Fraction())
 	}
@@ -89,6 +89,6 @@ func (n *DiffNode) Transform(bone int) Transform {
 
 // DeltaTransform returns the [IdentityTransform], since an additive
 // difference does not contribute to root motion.
-func (n *DiffNode) DeltaTransform(bone int, delta float64) Transform {
+func (n *DiffNode) DeltaTransform(bone int, deltaSeconds float64) Transform {
 	return IdentityTransform()
 }

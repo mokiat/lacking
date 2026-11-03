@@ -73,7 +73,7 @@ func (n *ClipPoseNode) SetFraction(fraction float64) {
 }
 
 // Advance has no effect, since a static pose does not move.
-func (n *ClipPoseNode) Advance(seconds float64) {
+func (n *ClipPoseNode) Advance(deltaSeconds float64) {
 	// can't advance this node
 }
 
@@ -94,6 +94,6 @@ func (n *ClipPoseNode) Transform(bone int) Transform {
 
 // DeltaTransform returns the [IdentityTransform], since a static pose
 // experiences no motion.
-func (n *ClipPoseNode) DeltaTransform(bone int, delta float64) Transform {
+func (n *ClipPoseNode) DeltaTransform(bone int, deltaSeconds float64) Transform {
 	return IdentityTransform()
 }

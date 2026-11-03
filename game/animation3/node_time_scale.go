@@ -72,8 +72,8 @@ func (n *TimeScaleNode) SetFraction(fraction float64) {
 
 // Advance moves the delegate node by the specified delta seconds multiplied
 // by the time scale.
-func (n *TimeScaleNode) Advance(seconds float64) {
-	n.delegate.Advance(seconds * n.timeScale)
+func (n *TimeScaleNode) Advance(deltaSeconds float64) {
+	n.delegate.Advance(deltaSeconds * n.timeScale)
 }
 
 // IsSynchronized returns whether the delegate node is synchronized.
@@ -96,6 +96,6 @@ func (n *TimeScaleNode) Transform(bone int) Transform {
 // throughout the next delta seconds of scaled playback, which is the motion
 // that the delegate node produces throughout delta seconds multiplied by the
 // time scale.
-func (n *TimeScaleNode) DeltaTransform(bone int, delta float64) Transform {
-	return n.delegate.DeltaTransform(bone, delta*n.timeScale)
+func (n *TimeScaleNode) DeltaTransform(bone int, deltaSeconds float64) Transform {
+	return n.delegate.DeltaTransform(bone, deltaSeconds*n.timeScale)
 }
