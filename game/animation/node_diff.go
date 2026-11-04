@@ -1,100 +1,94 @@
 package animation
 
-// NewDiffNode creates a node that returns the difference between two nodes.
-func NewDiffNode(primary, overlay Node) *DiffNode {
-	return &DiffNode{
-		primary: primary,
-		overlay: overlay,
-	}
-}
-
-// DiffNode returns the difference between two animations.
+// DiffNode is a [Node] that produces the difference of a source animation
+// relative to a reference animation. Both nodes are expected to be absolute
+// (see [Node.Transform]) and the result is additive, meant to be applied on
+// top of another animation through an [AddNode]. Applying the result on top
+// of the reference reproduces the source.
+//
+// The reference is commonly a static pose, such as the first frame of the
+// source animation produced by a [ClipPoseNode], so that the result holds
+// only the motion of the source animation.
+//
+// The source node drives the playback of the DiffNode: its rate and fraction
+// are those of the source node. The reference node is advanced in real time
+// alongside the source node and, if it is synchronized, it is kept at the
+// same fraction as the source node.
+//
+// The synchronization setting of the source node has no effect, since the
+// source node defines the fraction of the DiffNode. Whether the source node
+// is kept in phase with the parent of the DiffNode is decided by the
+// synchronization setting of the DiffNode itself.
 type DiffNode struct {
-	primary Node
-	overlay Node
-
-	synchronized bool
+	synchronizationAspect
+	source    Node
+	reference Node
 }
 
 var _ Node = (*DiffNode)(nil)
 
-// Rate returns the fraction of the animation length that advances each
-// second.
+// NewDiffNode creates a new [DiffNode] that produces the difference of the
+// specified source node relative to the specified reference node. The
+// DiffNode takes control of the playback of both nodes, which should not be
+// advanced or relocated through other means afterwards. The node is not
+// synchronized.
+func NewDiffNode(source, reference Node) *DiffNode {
+	return &DiffNode{
+		source:    source,
+		reference: reference,
+	}
+}
+
+// Diff is a shorthand for [NewDiffNode], which is useful during node tree
+// construction.
+func Diff(source, reference Node) *DiffNode {
+	return NewDiffNode(source, reference)
+}
+
+// Rate returns the rate of the source node.
 func (n *DiffNode) Rate() float64 {
-	return n.primary.Rate()
+	return n.source.Rate()
 }
 
-// Fraction returns the amount of animation that has elapsed. In case of
-// looping, the value will wrap around.
-//
-// The returned value is in the range [0.0..1.0).
+// Fraction returns the fraction of the source node.
 func (n *DiffNode) Fraction() float64 {
-	return n.primary.Fraction()
+	return n.source.Fraction()
 }
 
-// SetFraction relocates the animation to the specified fractional position.
-//
-// NOTE: This resets the animation and accumulated delta is lost.
+// SetFraction relocates the source node to the specified fraction. A
+// synchronized reference node is relocated to the resulting fraction of the
+// source node, whereas a non-synchronized one keeps its playback position.
 func (n *DiffNode) SetFraction(fraction float64) {
-	n.primary.SetFraction(fraction)
-	if n.overlay.IsSynchronized() {
-		n.overlay.SetFraction(fraction)
+	n.source.SetFraction(fraction)
+	if n.reference.IsSynchronized() {
+		n.reference.SetFraction(n.source.Fraction())
 	}
 }
 
-// Advance moves the animation forward by the specified delta seconds.
+// Advance moves both the source and the reference node by the specified
+// delta seconds. A synchronized reference node is then snapped to the
+// fraction of the source node.
+func (n *DiffNode) Advance(deltaSeconds float64) {
+	n.source.Advance(deltaSeconds)
+	n.reference.Advance(deltaSeconds)
+	if n.reference.IsSynchronized() {
+		n.reference.SetFraction(n.source.Fraction())
+	}
+}
+
+// Transform returns the difference, as produced by [DiffTransforms], of the
+// transformation of the specified bone in the source node relative to that
+// in the reference node. A bone that is in the same transformation in both
+// nodes, such as one that neither of them animates, returns the
+// [IdentityTransform].
 //
-// The synchronizationRate determines the amount of scaling on the seconds
-// that should be applied in order to be correctly synchronized with sibling
-// and parent nodes in case of synchronization.
-func (n *DiffNode) Advance(seconds, synchronizationRate float64) {
-	if n.primary.IsSynchronized() {
-		n.primary.Advance(seconds, synchronizationRate)
-	} else {
-		n.primary.Advance(seconds, 1.0)
-	}
-	if n.overlay.IsSynchronized() {
-		adjustedRate := n.primary.Rate() / n.overlay.Rate()
-		n.overlay.Advance(seconds, synchronizationRate*adjustedRate)
-	} else {
-		n.overlay.Advance(seconds, 1.0)
-	}
+// The bone must be a valid index in the skeleton of the child nodes.
+func (n *DiffNode) Transform(bone int) Transform {
+	return DiffTransforms(n.source.Transform(bone), n.reference.Transform(bone))
 }
 
-// IsSynchronized returns whether the node should be synchronized.
-func (n *DiffNode) IsSynchronized() bool {
-	return n.synchronized
-}
-
-// SetSynchronized configures whether the node should be synchronized.
-func (n *DiffNode) SetSynchronized(synchronized bool) {
-	n.synchronized = synchronized
-}
-
-// Synchronize is called each frame to allow a node to synchronized its
-// children (depending on their setting).
-//
-// This will be called (and should be called on children) regardless if
-// the current or any child node is synchronized or not.
-func (n *DiffNode) Synchronize() {
-	n.primary.Synchronize()
-	n.overlay.Synchronize()
-}
-
-// BoneTransform returns the transformation of the specified bone. Keep in
-// mind that this is after a fixed interval update has been applied. If
-// this is called from within a dynamic update handler, the
-// BoneTransformInterpolation method should be used instead.
-func (n *DiffNode) BoneTransform(bone string) NodeTransform {
-	firstTransform := n.primary.BoneTransform(bone)
-	secondTransform := n.primary.BoneTransform(bone)
-	return DiffNodeTransforms(firstTransform, secondTransform)
-}
-
-// BoneDeltaTransform returns the transformation that the bone will experience
-// throughout the next delta interval. This is used for root motion.
-func (n *DiffNode) BoneDeltaTransform(bone string, delta float64) NodeTransform {
-	firstTransform := n.primary.BoneDeltaTransform(bone, delta)
-	secondTransform := n.primary.BoneDeltaTransform(bone, delta)
-	return DiffNodeTransforms(firstTransform, secondTransform)
+// DeltaTransform returns the [IdentityTransform], since an additive
+// difference does not contribute to root motion.
+func (n *DiffNode) DeltaTransform(bone int, deltaSeconds float64) Transform {
+	return IdentityTransform()
 }

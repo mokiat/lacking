@@ -146,7 +146,7 @@ func (s *ShadowStage) distributeCascadeShadowMaps(ctx StageContext) {
 			shadowBottom := frustumOffsetY - frustumRadius
 			shadowTop := frustumOffsetY + frustumRadius
 
-			shadowOrtho := sprec.OrthoMat4(shadowLeft, shadowRight, shadowTop, shadowBottom, shadowNear, shadowFar)
+			shadowOrtho := sprec.OrthoMat4(shadowLeft, shadowRight, shadowBottom, shadowTop, shadowNear, shadowFar)
 			shadowMatrix := sprec.Mat4Prod(shadowOrtho, shadowView)
 
 			// NOTE: If this ever has precision problems, consider moving the
@@ -173,7 +173,7 @@ func (s *ShadowStage) distributeCascadeShadowMaps(ctx StageContext) {
 			shadowBottom += errorY
 			shadowTop += errorY
 
-			shadowOrtho = sprec.OrthoMat4(shadowLeft, shadowRight, shadowTop, shadowBottom, shadowNear, shadowFar)
+			shadowOrtho = sprec.OrthoMat4(shadowLeft, shadowRight, shadowBottom, shadowTop, shadowNear, shadowFar)
 			shadowMatrix = sprec.Mat4Prod(shadowOrtho, shadowView)
 
 			cascade.Near = cascadeNear

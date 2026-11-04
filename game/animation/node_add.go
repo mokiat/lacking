@@ -1,100 +1,120 @@
 package animation
 
-// NewAddNode creates a new node that returns the sum of two animations.
-func NewAddNode(primary, overlay Node) *AddNode {
-	return &AddNode{
-		primary: primary,
-		overlay: overlay,
-	}
-}
-
-// AddNode returns the sum of two animations.
+// AddNode is a [Node] that applies an additive layer on top of a base
+// animation. The base node is expected to be absolute and the additive node
+// is expected to be additive (see [Node.Transform]), for example the output
+// of a node that computes the difference between two animations. The result
+// is absolute.
+//
+// The strength of the additive layer is controlled through a weight. A
+// weight of 1.0 applies the layer in full and a weight of 0.0 leaves the
+// base animation unchanged.
+//
+// The base node drives the playback of the AddNode: its rate and fraction
+// are those of the base node. The additive node is advanced in real time
+// alongside the base node and, if it is synchronized, it is kept at the same
+// fraction as the base node.
+//
+// The synchronization setting of the base node has no effect, since the base
+// node defines the fraction of the AddNode. Whether the base node is kept in
+// phase with the parent of the AddNode is decided by the synchronization
+// setting of the AddNode itself.
 type AddNode struct {
-	primary Node
-	overlay Node
-
-	synchronized bool
+	synchronizationAspect
+	base     Node
+	additive Node
+	weight   float64
 }
 
 var _ Node = (*AddNode)(nil)
 
-// Rate returns the fraction of the animation length that advances each
-// second.
+// NewAddNode creates a new [AddNode] that applies the specified additive node
+// on top of the specified base node with a weight of 1.0. The AddNode takes
+// control of the playback of both nodes, which should not be advanced or
+// relocated through other means afterwards. The node is not synchronized.
+func NewAddNode(base, additive Node) *AddNode {
+	return &AddNode{
+		base:     base,
+		additive: additive,
+		weight:   1.0,
+	}
+}
+
+// Add is a shorthand for [NewAddNode], which is useful during node tree
+// construction.
+func Add(base, additive Node) *AddNode {
+	return NewAddNode(base, additive)
+}
+
+// Weight returns the strength with which the additive layer is applied.
+func (n *AddNode) Weight() float64 {
+	return n.weight
+}
+
+// SetWeight changes the strength with which the additive layer is applied.
+// A weight of 1.0 applies the layer in full and a weight of 0.0 leaves the
+// base animation unchanged. Values in between apply a proportional amount of
+// the layer, as produced by [BlendTransforms] between the
+// [IdentityTransform] and the additive transformation. The weight is not
+// clamped and values outside the range [0.0..1.0] extrapolate.
+func (n *AddNode) SetWeight(weight float64) {
+	n.weight = weight
+}
+
+// Rate returns the rate of the base node.
 func (n *AddNode) Rate() float64 {
-	return n.primary.Rate()
+	return n.base.Rate()
 }
 
-// Fraction returns the amount of animation that has elapsed. In case of
-// looping, the value will wrap around.
-//
-// The returned value is in the range [0.0..1.0).
+// Fraction returns the fraction of the base node.
 func (n *AddNode) Fraction() float64 {
-	return n.primary.Fraction()
+	return n.base.Fraction()
 }
 
-// SetFraction relocates the animation to the specified fractional position.
-//
-// NOTE: This resets the animation and accumulated delta is lost.
+// SetFraction relocates the base node to the specified fraction. A
+// synchronized additive node is relocated to the resulting fraction of the
+// base node, whereas a non-synchronized one keeps its playback position.
 func (n *AddNode) SetFraction(fraction float64) {
-	n.primary.SetFraction(fraction)
-	if n.overlay.IsSynchronized() {
-		n.overlay.SetFraction(fraction)
+	n.base.SetFraction(fraction)
+	if n.additive.IsSynchronized() {
+		n.additive.SetFraction(n.base.Fraction())
 	}
 }
 
-// Advance moves the animation forward by the specified delta seconds.
+// Advance moves both the base and the additive node by the specified delta
+// seconds. A synchronized additive node is then snapped to the fraction of
+// the base node.
+func (n *AddNode) Advance(deltaSeconds float64) {
+	n.base.Advance(deltaSeconds)
+	n.additive.Advance(deltaSeconds)
+	if n.additive.IsSynchronized() {
+		n.additive.SetFraction(n.base.Fraction())
+	}
+}
+
+// Transform returns the transformation of the specified bone produced by the
+// base node, with that of the additive node applied on top of it through
+// [AddTransforms] according to the weight.
 //
-// The synchronizationRate determines the amount of scaling on the seconds
-// that should be applied in order to be correctly synchronized with sibling
-// and parent nodes in case of synchronization.
-func (n *AddNode) Advance(seconds, synchronizationRate float64) {
-	if n.primary.IsSynchronized() {
-		n.primary.Advance(seconds, synchronizationRate)
-	} else {
-		n.primary.Advance(seconds, 1.0)
-	}
-	if n.overlay.IsSynchronized() {
-		adjustedRate := n.primary.Rate() / n.overlay.Rate()
-		n.overlay.Advance(seconds, synchronizationRate*adjustedRate)
-	} else {
-		n.overlay.Advance(seconds, 1.0)
+// The bone must be a valid index in the skeleton of the child nodes.
+func (n *AddNode) Transform(bone int) Transform {
+	baseTransform := n.base.Transform(bone)
+	switch n.weight {
+	case 0.0:
+		return baseTransform
+	case 1.0:
+		return AddTransforms(baseTransform, n.additive.Transform(bone))
+	default:
+		additiveTransform := BlendTransforms(IdentityTransform(), n.additive.Transform(bone), n.weight)
+		return AddTransforms(baseTransform, additiveTransform)
 	}
 }
 
-// IsSynchronized returns whether the node should be synchronized.
-func (n *AddNode) IsSynchronized() bool {
-	return n.synchronized
-}
-
-// SetSynchronized configures whether the node should be synchronized.
-func (n *AddNode) SetSynchronized(synchronized bool) {
-	n.synchronized = synchronized
-}
-
-// Synchronize is called each frame to allow a node to synchronized its
-// children (depending on their setting).
+// DeltaTransform returns the motion that the specified bone experiences in
+// the base node throughout the next delta seconds. The additive layer does
+// not contribute to root motion.
 //
-// This will be called (and should be called on children) regardless if
-// the current or any child node is synchronized or not.
-func (n *AddNode) Synchronize() {
-	n.primary.Synchronize()
-	n.overlay.Synchronize()
-}
-
-// BoneTransform returns the transformation of the specified bone. Keep in
-// mind that this is after a fixed interval update has been applied. If
-// this is called from within a dynamic update handler, the
-// BoneTransformInterpolation method should be used instead.
-func (n *AddNode) BoneTransform(bone string) NodeTransform {
-	firstTransform := n.primary.BoneTransform(bone)
-	secondTransform := n.overlay.BoneTransform(bone)
-	return AddNodeTransforms(firstTransform, secondTransform)
-}
-
-// BoneDeltaTransform returns the transformation that the bone will experience
-// throughout the next delta interval. This is used for root motion.
-func (n *AddNode) BoneDeltaTransform(bone string, delta float64) NodeTransform {
-	firstTransform := n.primary.BoneDeltaTransform(bone, delta)
-	secondTransform := n.overlay.BoneDeltaTransform(bone, delta)
-	return AddNodeTransforms(firstTransform, secondTransform)
+// The bone must be a valid index in the skeleton of the child nodes.
+func (n *AddNode) DeltaTransform(bone int, deltaSeconds float64) Transform {
+	return n.base.DeltaTransform(bone, deltaSeconds)
 }

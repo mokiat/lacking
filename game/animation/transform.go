@@ -1,166 +1,125 @@
 package animation
 
 import (
-	"github.com/mokiat/gog/opt"
 	"github.com/mokiat/gomath/dprec"
 )
 
-// NodeTransform represents the transformation of a node.
-type NodeTransform struct {
+// Transform represents the local transformation of a single bone, relative
+// to its parent.
+type Transform struct {
 
-	// Translation, if specified, indicates the translation of the node.
-	Translation opt.T[dprec.Vec3]
+	// Translation indicates the translation of the bone.
+	Translation dprec.Vec3
 
-	// Rotation, if specified, indicates the rotation of the node.
-	Rotation opt.T[dprec.Quat]
+	// Rotation indicates the rotation of the bone.
+	Rotation dprec.Quat
 
-	// Scale, if specified, indicates the scale of the node.
-	Scale opt.T[dprec.Vec3]
+	// Scale indicates the per-axis scale of the bone.
+	Scale dprec.Vec3
 }
 
-// InverseNodeTransform returns the inverse of a node transform.
-func InverseNodeTransform(transform NodeTransform) NodeTransform {
-	var result NodeTransform
-	if transform.Translation.Specified {
-		result.Translation = opt.V(dprec.InverseVec3(transform.Translation.Value))
-	}
-	if transform.Rotation.Specified {
-		result.Rotation = opt.V(dprec.InverseQuat(transform.Rotation.Value))
-	}
-	if transform.Scale.Specified {
-		scale := transform.Scale.Value
-		result.Scale = opt.V(dprec.NewVec3(1.0/scale.X, 1.0/scale.Y, 1.0/scale.Z))
-	}
-	return result
-}
-
-// BlendNodeTransforms blends two node transformations using the specified
-// factor. A factor of 0.0 means that the first transformation is used, a
-// factor of 1.0 means that the second transformation is used.
-func BlendNodeTransforms(first, second NodeTransform, factor float64) NodeTransform {
-	return NodeTransform{
-		Translation: combineLinear(first.Translation, second.Translation, factor),
-		Rotation:    combineSpherical(first.Rotation, second.Rotation, factor),
-		Scale:       combineLinear(first.Scale, second.Scale, factor),
+// IdentityTransform returns a [Transform] with a zero translation, an identity
+// rotation and a unit scale. It leaves points unchanged and is the additive
+// neutral: adding it through [AddTransforms] leaves the other transform
+// unchanged.
+func IdentityTransform() Transform {
+	return Transform{
+		Translation: dprec.ZeroVec3(),
+		Rotation:    dprec.IdentityQuat(),
+		Scale:       dprec.NewVec3(1.0, 1.0, 1.0),
 	}
 }
 
-// AddNodeTransforms combines two transforms into a single one.
-func AddNodeTransforms(first, second NodeTransform) NodeTransform {
-	return NodeTransform{
-		Translation: addLinear(first.Translation, second.Translation),
-		Rotation:    addSpherical(first.Rotation, second.Rotation),
-		Scale:       addLinear(first.Scale, second.Scale),
+// Mat4Transform decomposes the specified matrix into a [Transform]. It is the
+// inverse of [Transform.Matrix].
+//
+// The matrix is expected to be composed only of translation, rotation and
+// scale, with a non-zero scale along each axis. A matrix that mirrors space
+// is decomposed with a negative scale along the X axis.
+func Mat4Transform(mat dprec.Mat4) Transform {
+	t, r, s := mat.TRS()
+	return Transform{
+		Translation: t,
+		Rotation:    r,
+		Scale:       s,
 	}
 }
 
-// DiffNodeTransforms combines two transforms into a single one.
-func DiffNodeTransforms(first, second NodeTransform) NodeTransform {
-	return NodeTransform{
-		Translation: diffLinear(first.Translation, second.Translation),
-		Rotation:    diffSpherical(first.Rotation, second.Rotation),
-		Scale:       diffLinear(first.Scale, second.Scale),
+// BlendTransforms blends two transforms using the specified factor. A factor
+// of 0.0 returns the first transform and a factor of 1.0 returns the second
+// one. The factor is not clamped and values outside that range extrapolate.
+//
+// Translation and scale are blended linearly per axis. Rotation is blended
+// through normalized linear interpolation along the shorter arc, which does
+// not keep a constant angular velocity as the factor changes and is only
+// noticeably different from spherical interpolation when the two rotations
+// are far apart. When extrapolating, the rotation continues along the same
+// arc but approaches a limit instead of turning indefinitely. Rotations are
+// expected to be unit quaternions.
+func BlendTransforms(first, second Transform, factor float64) Transform {
+	return Transform{
+		Translation: dprec.Vec3Lerp(first.Translation, second.Translation, factor),
+		Rotation:    dprec.QuatNLerp(first.Rotation, second.Rotation, factor),
+		Scale:       dprec.Vec3Lerp(first.Scale, second.Scale, factor),
 	}
 }
 
-// FirstNodeTransform combines two transforms into a single one
-// by using the first transform that has a value.
-func FirstNodeTransform(first, second NodeTransform) NodeTransform {
-	return NodeTransform{
-		Translation: firstLinear(first.Translation, second.Translation),
-		Rotation:    firstSpherical(first.Rotation, second.Rotation),
-		Scale:       firstLinear(first.Scale, second.Scale),
+// AddTransforms combines two transforms by applying the second one as an
+// additive layer on top of the first one.
+//
+// Translation is added per axis and scale is multiplied per axis. Rotation is
+// composed by applying the rotation of the second transform on top of the
+// rotation of the first. Because rotation composition is not commutative, the
+// order of the arguments matters. Rotations are expected to be unit
+// quaternions.
+//
+// Adding the [IdentityTransform] on either side leaves the other transform
+// unchanged.
+func AddTransforms(first, second Transform) Transform {
+	return Transform{
+		Translation: dprec.Vec3Sum(first.Translation, second.Translation),
+		Rotation:    dprec.QuatProd(second.Rotation, first.Rotation),
+		Scale: dprec.NewVec3(
+			first.Scale.X*second.Scale.X,
+			first.Scale.Y*second.Scale.Y,
+			first.Scale.Z*second.Scale.Z,
+		),
 	}
 }
 
-func combineLinear(first, second opt.T[dprec.Vec3], amount float64) opt.T[dprec.Vec3] {
-	switch {
-	case first.Specified && second.Specified:
-		return opt.V(dprec.Vec3Lerp(first.Value, second.Value, amount))
-	case first.Specified:
-		return first
-	case second.Specified:
-		return second
-	default:
-		return opt.Unspecified[dprec.Vec3]()
+// DiffTransforms returns the additive difference of the first transform
+// relative to the second one. It is the inverse of [AddTransforms], in the
+// sense that adding the result on top of the second transform reproduces
+// the first one:
+//
+//	AddTransforms(second, DiffTransforms(first, second)) == first
+//
+// Translation is subtracted per axis and scale is divided per axis. Rotation
+// is the rotation that needs to be applied on top of the rotation of the
+// second transform in order to reach the rotation of the first. Rotations are
+// expected to be unit quaternions. Scale components of the second transform
+// should not be zero, otherwise the resulting scale is not finite.
+//
+// Diffing a transform against itself yields the [IdentityTransform].
+func DiffTransforms(first, second Transform) Transform {
+	return Transform{
+		Translation: dprec.Vec3Diff(first.Translation, second.Translation),
+		Rotation:    dprec.QuatProd(first.Rotation, dprec.InverseQuat(second.Rotation)),
+		Scale: dprec.NewVec3(
+			first.Scale.X/second.Scale.X,
+			first.Scale.Y/second.Scale.Y,
+			first.Scale.Z/second.Scale.Z,
+		),
 	}
 }
 
-func combineSpherical(first, second opt.T[dprec.Quat], amount float64) opt.T[dprec.Quat] {
-	switch {
-	case first.Specified && second.Specified:
-		return opt.V(dprec.QuatSlerp(first.Value, second.Value, amount))
-	case first.Specified:
-		return first
-	case second.Specified:
-		return second
-	default:
-		return opt.Unspecified[dprec.Quat]()
-	}
-}
-
-func addLinear(first, second opt.T[dprec.Vec3]) opt.T[dprec.Vec3] {
-	switch {
-	case first.Specified && second.Specified:
-		return opt.V(dprec.Vec3Sum(first.Value, second.Value))
-	case first.Specified:
-		return opt.V(first.Value)
-	case second.Specified:
-		return opt.V(second.Value)
-	default:
-		return opt.Unspecified[dprec.Vec3]()
-	}
-}
-
-func addSpherical(first, second opt.T[dprec.Quat]) opt.T[dprec.Quat] {
-	switch {
-	case first.Specified && second.Specified:
-		return opt.V(dprec.QuatProd(second.Value, first.Value))
-	case first.Specified:
-		return opt.V(first.Value)
-	case second.Specified:
-		return opt.V(second.Value)
-	default:
-		return opt.Unspecified[dprec.Quat]()
-	}
-}
-
-func diffLinear(first, second opt.T[dprec.Vec3]) opt.T[dprec.Vec3] {
-	switch {
-	case first.Specified && second.Specified:
-		return opt.V(dprec.Vec3Diff(first.Value, second.Value))
-	default:
-		return opt.Unspecified[dprec.Vec3]()
-	}
-}
-
-func diffSpherical(first, second opt.T[dprec.Quat]) opt.T[dprec.Quat] {
-	switch {
-	case first.Specified && second.Specified:
-		return opt.V(dprec.QuatDiff(first.Value, second.Value, true))
-	default:
-		return opt.Unspecified[dprec.Quat]()
-	}
-}
-
-func firstLinear(first, second opt.T[dprec.Vec3]) opt.T[dprec.Vec3] {
-	switch {
-	case first.Specified:
-		return opt.V(first.Value)
-	case second.Specified:
-		return opt.V(second.Value)
-	default:
-		return opt.Unspecified[dprec.Vec3]()
-	}
-}
-
-func firstSpherical(first, second opt.T[dprec.Quat]) opt.T[dprec.Quat] {
-	switch {
-	case first.Specified:
-		return opt.V(first.Value)
-	case second.Specified:
-		return opt.V(second.Value)
-	default:
-		return opt.Unspecified[dprec.Quat]()
-	}
+// Matrix returns the affine transformation matrix that corresponds to this
+// [Transform]. When applied to a point, the matrix first scales it, then
+// rotates it and finally translates it.
+func (t Transform) Matrix() dprec.Mat4 {
+	return dprec.TRSMat4(
+		t.Translation,
+		t.Rotation,
+		t.Scale,
+	)
 }

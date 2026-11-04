@@ -1,30 +1,39 @@
 package animation
 
-import "github.com/mokiat/gomath/dprec"
+// RootMotion extracts the motion of a single bone, typically the root bone
+// of a character, from an animation tree. The extracted motion is meant to
+// move the character itself, for example through a character controller, so
+// that its movement in the world matches its animation.
+type RootMotion struct {
+	rootNode Node
+	bone     int
+}
 
-// NewRootMotion creates a new RootMotion instance that is controlled by the
-// specified root bone.
-func NewRootMotion(node Node, bone string) *RootMotion {
+// NewRootMotion creates a new [RootMotion] that extracts the motion of the
+// bone with the specified name from the specified node, which is usually the
+// root of an animation tree. The bone name is resolved against the specified
+// skeleton once. If the skeleton has no bone with that name, the RootMotion
+// extracts no motion.
+func NewRootMotion(skeleton *Skeleton, node Node, boneName string) *RootMotion {
+	bone, ok := skeleton.BoneIndex(boneName)
+	if !ok {
+		bone = -1
+	}
 	return &RootMotion{
-		node: node,
-		bone: bone,
+		rootNode: node,
+		bone:     bone,
 	}
 }
 
-// RootMotion allows for the extraction of relative animation transformations
-// from a root bone in order to move a character.
-type RootMotion struct {
-	node Node
-	bone string
-}
-
-// DeltaTransform returns the transformation that occurred during the last
-// animation tick for the root bone.
-func (m *RootMotion) DeltaTransform(delta float64) dprec.Mat4 {
-	deltaTransform := m.node.BoneDeltaTransform(m.bone, delta)
-	return dprec.TRSMat4(
-		deltaTransform.Translation.ValueOrDefault(dprec.ZeroVec3()),
-		deltaTransform.Rotation.ValueOrDefault(dprec.IdentityQuat()),
-		deltaTransform.Scale.ValueOrDefault(dprec.NewVec3(1.0, 1.0, 1.0)),
-	)
+// DeltaTransform returns the motion that the bone experiences throughout the
+// next delta seconds of playback, as reported by [Node.DeltaTransform], without
+// changing the playback position. It is meant to be called before the node is
+// advanced by the same delta. The result is expressed in the space of the
+// bone's parent. If the bone was not found in the skeleton, the
+// [IdentityTransform] is returned.
+func (m *RootMotion) DeltaTransform(deltaSeconds float64) Transform {
+	if m.bone == -1 {
+		return IdentityTransform()
+	}
+	return m.rootNode.DeltaTransform(m.bone, deltaSeconds)
 }
