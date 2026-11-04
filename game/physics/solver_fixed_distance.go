@@ -111,7 +111,7 @@ func (s *FixedDistanceSolver) SetDistance(distance float64) *FixedDistanceSolver
 // Reset implements [SoloConstraintSolver.Reset].
 //
 // It recomputes the constraint's [Jacobian] and current distance error
-// (drift), the same way [FixedDistanceSolver.recompute] does.
+// (drift) from the target's current position and rotation.
 func (s *FixedDistanceSolver) Reset(ctx SoloConstraintContext) {
 	s.recompute(ctx)
 }
@@ -131,8 +131,8 @@ func (s *FixedDistanceSolver) ApplyImpulses(ctx SoloConstraintContext) {
 // ApplyNudges implements [SoloConstraintSolver.ApplyNudges].
 //
 // It first recomputes the constraint's [Jacobian] and current distance
-// error (drift), the same way [FixedDistanceSolver.recompute] does,
-// since a preceding nudge - by this solver's own previous iteration, or
+// error (drift) from the target's current position and rotation, since a
+// preceding nudge - by this solver's own previous iteration, or
 // by another constraint acting on the same target - may have moved the
 // target since [FixedDistanceSolver.Reset] or the last call to this
 // method. It then nudges the target's position and rotation to reduce

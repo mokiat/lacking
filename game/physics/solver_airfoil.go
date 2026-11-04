@@ -198,8 +198,9 @@ func (s *AirfoilSolver) SetLiftCoefficient(coefficient float64) *AirfoilSolver {
 // and the component that flows along the span, each of which contributes
 // its own force. The chordwise component is the one that behaves like a
 // wing, in that it stalls; the spanwise component only ever produces the
-// flat-plate force described on [AirfoilSolver.localLiftCoefficient],
-// since an airfoil is not shaped to exploit air flowing along its span.
+// flat-plate force that any inclined surface does, which grows with the
+// sine of the angle of attack, since an airfoil is not shaped to exploit
+// air flowing along its span.
 //
 // If the airfoil is at rest relative to the medium, it does nothing. Wind
 // that flows purely along the Y axis, having no chordwise or spanwise

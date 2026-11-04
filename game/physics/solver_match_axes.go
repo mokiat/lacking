@@ -111,8 +111,7 @@ func (s *MatchAxesSolver) SetSecondaryBodyAxis(axis dprec.Vec3) *MatchAxesSolver
 // Reset implements [PairConstraintSolver.Reset].
 //
 // It recomputes the constraint's Jacobians and current alignment error
-// (drift) between the two axes, the same way
-// [MatchAxesSolver.recompute] does.
+// (drift) between the two axes from the targets' current rotations.
 func (s *MatchAxesSolver) Reset(ctx PairConstraintContext) {
 	s.recompute(ctx)
 }
@@ -153,8 +152,8 @@ func (s *MatchAxesSolver) ApplyImpulses(ctx PairConstraintContext) {
 // ApplyNudges implements [PairConstraintSolver.ApplyNudges].
 //
 // It first recomputes the constraint's Jacobians and current alignment
-// error (drift), the same way [MatchAxesSolver.recompute] does, since a
-// preceding nudge - by this solver's own previous iteration, or by
+// error (drift) from the targets' current rotations, since a preceding
+// nudge - by this solver's own previous iteration, or by
 // another constraint acting on either target - may have rotated either
 // target since [MatchAxesSolver.Reset] or the last call to this method.
 // It then nudges both targets' rotations to reduce any remaining

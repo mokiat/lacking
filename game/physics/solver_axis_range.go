@@ -202,8 +202,8 @@ func (s *AxisRangeSolver) SetMaxDisplacement(max float64) *AxisRangeSolver {
 // Reset implements [PairConstraintSolver.Reset].
 //
 // It recomputes the constraint's primary and secondary [Jacobian]s and
-// current range violation (drift), the same way
-// [AxisRangeSolver.recompute] does.
+// current range violation (drift) from the targets' current positions and
+// rotations.
 func (s *AxisRangeSolver) Reset(ctx PairConstraintContext) {
 	s.recompute(ctx)
 }
@@ -242,8 +242,8 @@ func (s *AxisRangeSolver) ApplyImpulses(ctx PairConstraintContext) {
 // ApplyNudges implements [PairConstraintSolver.ApplyNudges].
 //
 // It first recomputes the constraint's primary and secondary [Jacobian]s
-// and current range violation (drift), the same way
-// [AxisRangeSolver.recompute] does, since a preceding nudge - by this
+// and current range violation (drift) from the targets' current positions
+// and rotations, since a preceding nudge - by this
 // solver's own previous iteration, or by another constraint acting on
 // either target - may have moved either target since
 // [AxisRangeSolver.Reset] or the last call to this method. If the

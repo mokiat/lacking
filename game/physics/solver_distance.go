@@ -119,8 +119,8 @@ func (s *DistanceSolver) SetDistance(distance float64) *DistanceSolver {
 // Reset implements [PairConstraintSolver.Reset].
 //
 // It recomputes the constraint's primary and secondary [Jacobian]s and
-// current distance error (drift), the same way
-// [DistanceSolver.recompute] does.
+// current distance error (drift) from the targets' current positions and
+// rotations.
 func (s *DistanceSolver) Reset(ctx PairConstraintContext) {
 	s.recompute(ctx)
 }
@@ -143,8 +143,8 @@ func (s *DistanceSolver) ApplyImpulses(ctx PairConstraintContext) {
 // ApplyNudges implements [PairConstraintSolver.ApplyNudges].
 //
 // It first recomputes the constraint's primary and secondary [Jacobian]s
-// and current distance error (drift), the same way
-// [DistanceSolver.recompute] does, since a preceding nudge - by this
+// and current distance error (drift) from the targets' current positions
+// and rotations, since a preceding nudge - by this
 // solver's own previous iteration, or by another constraint acting on
 // either target - may have moved either target since
 // [DistanceSolver.Reset] or the last call to this method. It then nudges

@@ -114,8 +114,9 @@ func (s *AxisForceSolver) SetMagnitude(magnitude float64) *AxisForceSolver {
 
 // ApplyAcceleration accumulates on ctx.Target the linear and angular
 // acceleration that result from a force of Magnitude, acting along Axis,
-// applied at BodyAnchorOffset - all three rotated from the target's local
-// space into world space using its current orientation.
+// applied at BodyAnchorOffset - with both Axis and BodyAnchorOffset rotated
+// from the target's local space into world space using its current
+// orientation.
 func (s *AxisForceSolver) ApplyAcceleration(ctx AccelerationContext) {
 	anchorOffsetWS := dprec.QuatVec3Rotation(ctx.Target.Rotation(), s.bodyAnchorOffset)
 

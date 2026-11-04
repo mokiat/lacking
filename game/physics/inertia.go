@@ -14,9 +14,9 @@ func DiagonalMomentOfInertia(xx, yy, zz float64) dprec.Mat3 {
 	)
 }
 
-// SymmetricMomentOfInertia returns a moment of inertia
-// tensor that represents a symmetric object across all
-// axis.
+// SymmetricMomentOfInertia returns a moment of inertia tensor that
+// represents an object that is symmetric across all axes, having the
+// specified principal moment along each of them.
 func SymmetricMomentOfInertia(value float64) dprec.Mat3 {
 	return DiagonalMomentOfInertia(value, value, value)
 }

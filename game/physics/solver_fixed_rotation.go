@@ -69,7 +69,7 @@ func (s *FixedRotationSolver) SetRotation(rotation dprec.Quat) *FixedRotationSol
 // Reset implements [SoloConstraintSolver.Reset].
 //
 // It is a no-op, since this solver holds no per-step state that needs to
-// be derived from the target's current position or velocity.
+// be derived from the target's current rotation or angular velocity.
 func (s *FixedRotationSolver) Reset(ctx SoloConstraintContext) {}
 
 // ApplyImpulses implements [SoloConstraintSolver.ApplyImpulses].
