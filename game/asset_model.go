@@ -17,7 +17,7 @@ import (
 // ModelTemplate represents a template for a model that can be instantiated
 // in a Scene.
 type ModelTemplate struct {
-	Recordings      IdentifiableList[*animation.Recording]
+	Recordings      IdentifiableList[*animation.Clip]
 	Shaders         IdentifiableList[*graphics.Shader]
 	Textures        IdentifiableList[render.Texture]
 	Materials       IdentifiableList[*graphics.Material]
@@ -35,7 +35,7 @@ type ModelTemplate struct {
 	SkyTemplates      IdentifiableList[SkyTemplate]
 }
 
-func (t *ModelTemplate) FindRecording(name string) *animation.Recording {
+func (t *ModelTemplate) FindRecording(name string) *animation.Clip {
 	for _, recording := range t.Recordings.Iter() {
 		if recording.Name() == name {
 			return recording
@@ -48,7 +48,8 @@ func (t *ModelTemplate) FindRecording(name string) *animation.Recording {
 //
 // This is a blocking operation and should be called from a worker thread.
 func LoadModelTemplate(loader *AssetLoader, assetModel dto.Model) (*ModelTemplate, error) {
-	recordings, err := LoadAnimationRecordings(loader, assetModel.AnimationChunk.Animations)
+	restTransforms := restTransformsOf(assetModel.HierarchyChunk.Nodes)
+	recordings, err := LoadAnimationRecordings(loader, assetModel.AnimationChunk.Animations, restTransforms)
 	if err != nil {
 		return nil, fmt.Errorf("failed to resolve animation recordings: %w", err)
 	}
@@ -212,7 +213,15 @@ type Model struct {
 	scene      *Scene
 	root       hierarchy.NodeID
 	nodes      IdentifiableList[hierarchy.NodeID]
-	recordings []*animation.Recording
+	recordings []*animation.Clip
+	skeleton   *animation.Skeleton
+}
+
+// Skeleton returns the skeleton that resolves this model's node names to bone
+// indices and holds their rest transforms. It is used when constructing
+// animation node trees for this model.
+func (m *Model) Skeleton() *animation.Skeleton {
+	return m.skeleton
 }
 
 // Root returns the root node of the model hierarchy.
@@ -230,14 +239,14 @@ func (m *Model) FindNode(name string) hierarchy.NodeID {
 	return m.scene.Hierarchy().Nodes().FindNodeInSubtree(m.root, name)
 }
 
-func (m *Model) Recordings() []*animation.Recording {
+func (m *Model) Recordings() []*animation.Clip {
 	return m.recordings
 }
 
-func (m *Model) FindRecording(name string) *animation.Recording {
-	for _, animation := range m.recordings {
-		if animation.Name() == name {
-			return animation
+func (m *Model) FindRecording(name string) *animation.Clip {
+	for _, clip := range m.recordings {
+		if clip.Name() == name {
+			return clip
 		}
 	}
 	return nil
@@ -245,8 +254,8 @@ func (m *Model) FindRecording(name string) *animation.Recording {
 
 func (m *Model) AnimatedNodes() []hierarchy.NodeID {
 	result := ds.EmptySet[hierarchy.NodeID]()
-	for _, animation := range m.recordings {
-		for nodeName := range animation.BoundNodesIter() {
+	for _, clip := range m.recordings {
+		for nodeName := range clip.ChannelNamesIter() {
 			if nodeID := m.FindNode(nodeName); nodeID != hierarchy.NilNodeID {
 				result.Add(nodeID)
 			}
@@ -255,26 +264,39 @@ func (m *Model) AnimatedNodes() []hierarchy.NodeID {
 	return result.Items()
 }
 
-func (m *Model) BindAnimation(root animation.Node) *animation.Player {
-	animatedNodes := m.AnimatedNodes()
-	return m.bindAnimationNodes(root, animatedNodes)
+// BindAnimation binds the animated nodes of the model (see
+// [Model.AnimatedNodes]) to the bones of the specified animation node tree
+// through the [Scene.ArmatureBindingSet]. The tree is not advanced by this;
+// use [Scene.PlayAnimation] for that.
+func (m *Model) BindAnimation(root animation.Node) {
+	m.bindAnimationNodes(root, m.AnimatedNodes())
 }
 
-func (m *Model) BindAnimationSubtree(root animation.Node, nodeName string) *animation.Player {
+// BindAnimationSubtree binds all nodes in the subtree of the node with the
+// specified name to the bones of the specified animation node tree through
+// the [Scene.ArmatureBindingSet]. The tree is not advanced by this; use
+// [Scene.PlayAnimation] for that.
+func (m *Model) BindAnimationSubtree(root animation.Node, nodeName string) {
 	subtreeNodeID := m.FindNode(nodeName)
 	var animatedNodeIDs []hierarchy.NodeID
 	for nodeID := range m.scene.Hierarchy().Nodes().WalkSubtreeIter(subtreeNodeID) {
 		animatedNodeIDs = append(animatedNodeIDs, nodeID)
 	}
-	return m.bindAnimationNodes(root, animatedNodeIDs)
+	m.bindAnimationNodes(root, animatedNodeIDs)
 }
 
-func (m *Model) bindAnimationNodes(root animation.Node, nodeIDs []hierarchy.NodeID) *animation.Player {
-	player := animation.NewPlayer(root)
+func (m *Model) bindAnimationNodes(root animation.Node, nodeIDs []hierarchy.NodeID) {
+	nodes := m.scene.Hierarchy().Nodes()
 	for _, nodeID := range nodeIDs {
-		m.scene.armatureBindingSet.Bind(nodeID, player)
+		bone, ok := m.skeleton.BoneIndex(nodes.Handle(nodeID).Name())
+		if !ok {
+			continue
+		}
+		m.scene.armatureBindingSet.Bind(nodeID, AnimationSource{
+			Node: root,
+			Bone: bone,
+		})
 	}
-	return player
 }
 
 // InstantiateModel instantiates a model in the given scene based on the
@@ -354,6 +376,24 @@ func InstantiateModel(scene *Scene, info ModelInfo) *Model {
 	scene.Hierarchy().ApplyTargetFromNode(modelNode, true)
 	scene.Hierarchy().ApplyInterpolationFromNode(modelNode, 1.0, true)
 
+	// Build the animation skeleton from the model's nodes, so that animation
+	// node trees can resolve bone names to indices and fall back to the rest
+	// transforms of the nodes. This must happen before any hierarchy discard
+	// below.
+	bones := make([]animation.SkeletonBone, 0, len(nodes))
+	for nodeID := range nodes.Values() {
+		node := scene.Hierarchy().Nodes().Handle(nodeID)
+		bones = append(bones, animation.SkeletonBone{
+			Name: node.Name(),
+			RestTransform: animation.Transform{
+				Translation: node.Position(),
+				Rotation:    node.Rotation(),
+				Scale:       node.Scale(),
+			},
+		})
+	}
+	skeleton := animation.NewSkeleton(bones)
+
 	if !info.IsDynamic && info.DiscardHierarchy {
 		for node := range nodes.Values() {
 			scene.AmbientLightBindingSet().Unbind(node)
@@ -370,6 +410,7 @@ func InstantiateModel(scene *Scene, info ModelInfo) *Model {
 		root:       modelNode,
 		nodes:      nodes,
 		recordings: recordings.ValuesList(),
+		skeleton:   skeleton,
 	}
 }
 

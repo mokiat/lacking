@@ -75,7 +75,7 @@ func newScene(engine *Engine, info SceneInfo) *Scene {
 
 	fixedTimestep := info.FixedTimestep.ValueOrDefault(16 * time.Millisecond)
 
-	armatureBindingSet := hierarchy.NewBinding[*animation.Player](hierarchyScene, NewAnimationBindingSolver())
+	armatureBindingSet := hierarchy.NewBinding[AnimationSource](hierarchyScene, NewAnimationBindingSolver())
 	bodyBindingSet := hierarchy.NewBinding[physics.BodyID](hierarchyScene, NewBodyBindingSolver(physicsScene))
 	skyBindingSet := hierarchy.NewBinding[*graphics.Sky](hierarchyScene, NewSkyBindingSolver())
 	ambientLightBindingSet := hierarchy.NewBinding[*graphics.AmbientLight](hierarchyScene, NewAmbientLightBindingSolver())
@@ -107,7 +107,7 @@ func newScene(engine *Engine, info SceneInfo) *Scene {
 
 		timeSegmenter: timestep.NewSegmenter(fixedTimestep),
 
-		animationTrees: ds.EmptyList[*animation.Player](),
+		animationTrees: ds.EmptyList[animation.Node](),
 
 		stepUpdateSubscriptions:    timestep.NewStepSubscriptionSet(),
 		fixedUpdateSubscriptions:   timestep.NewUpdateSubscriptionSet(),
@@ -127,7 +127,7 @@ type Scene struct {
 	physicsScene   *physics.Scene
 	gfxScene       *graphics.Scene
 
-	armatureBindingSet         *hierarchy.Binding[*animation.Player]
+	armatureBindingSet         *hierarchy.Binding[AnimationSource]
 	bodyBindingSet             *hierarchy.Binding[physics.BodyID]
 	skyBindingSet              *hierarchy.Binding[*graphics.Sky]
 	ambientLightBindingSet     *hierarchy.Binding[*graphics.AmbientLight]
@@ -140,7 +140,7 @@ type Scene struct {
 
 	timeSegmenter *timestep.Segmenter
 
-	animationTrees *ds.List[*animation.Player]
+	animationTrees *ds.List[animation.Node]
 
 	stepUpdateSubscriptions    *timestep.StepSubscriptionSet
 	fixedUpdateSubscriptions   *timestep.UpdateSubscriptionSet
@@ -217,9 +217,9 @@ func (s *Scene) SubscribeUpdate(callback timestep.UpdateCallback) *timestep.Upda
 	return s.updateSubscriptions.Subscribe(callback)
 }
 
-// ArmatureBindingSet returns the binding set that binds animation players
-// to armatures.
-func (s *Scene) ArmatureBindingSet() *hierarchy.Binding[*animation.Player] {
+// ArmatureBindingSet returns the binding set that drives hierarchy nodes
+// from the bones of animation node trees.
+func (s *Scene) ArmatureBindingSet() *hierarchy.Binding[AnimationSource] {
 	return s.armatureBindingSet
 }
 
@@ -285,14 +285,17 @@ func (s *Scene) Unfreeze() {
 	s.frozen = false
 }
 
-// PlayAnimation adds the provided animation player to the scene.
-func (s *Scene) PlayAnimation(player *animation.Player) {
-	s.animationTrees.Add(player)
+// PlayAnimation adds the provided animation node tree to the scene, which
+// advances it on each update. The node must be comparable, which is the case
+// for pointer types.
+func (s *Scene) PlayAnimation(node animation.Node) {
+	s.animationTrees.Add(node)
 }
 
-// StopAnimationTree removes the provided animation player from the scene.
-func (s *Scene) StopAnimation(player *animation.Player) {
-	s.animationTrees.Remove(player)
+// StopAnimation removes the provided animation node tree from the scene, so
+// that it is no longer advanced.
+func (s *Scene) StopAnimation(node animation.Node) {
+	s.animationTrees.Remove(node)
 }
 
 // Update advances the scene by the provided time.
@@ -378,7 +381,7 @@ func (s *Scene) doUpdate(elapsedTime time.Duration) {
 }
 
 func (s *Scene) updateAnimationTrees(elapsedTime time.Duration) {
-	for _, player := range s.animationTrees.Unbox() {
-		player.Update(elapsedTime)
+	for _, node := range s.animationTrees.Unbox() {
+		node.Advance(elapsedTime.Seconds())
 	}
 }
