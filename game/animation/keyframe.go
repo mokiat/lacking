@@ -4,8 +4,12 @@ import "github.com/mokiat/gomath/dprec"
 
 // Keyframe represents a single keyframe in an animation.
 type Keyframe[T any] struct {
+
+	// Timestamp is the keyframe time at which the keyframe is located.
 	Timestamp float64
-	Value     T
+
+	// Value is the value that the animated property has at the timestamp.
+	Value T
 }
 
 // KeyframeList is a list of keyframes ordered by strictly ascending timestamp.

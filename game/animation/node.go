@@ -35,9 +35,10 @@ type Node interface {
 	// Advance moves the animation forward by the specified delta seconds.
 	// A negative delta moves the animation backwards.
 	//
-	// A parent node advances its children in real time: a synchronized
-	// child additionally has its fraction snapped to the parent's fraction
-	// afterwards.
+	// A parent node is responsible for advancing its children. How and
+	// whether each child is advanced, and whether a synchronized child is
+	// kept at the fraction of the parent, depends on the kind of parent
+	// node.
 	Advance(deltaSeconds float64)
 
 	// IsSynchronized returns whether the node should be kept in phase with
