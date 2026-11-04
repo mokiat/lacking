@@ -13,6 +13,7 @@ nav:
       - Audio: manual/core/audio/index.md
       - Spatial: manual/core/spatial/index.md
     - Game:
+      - Animation: manual/game/animation/index.md
       - ECS: manual/game/ecs/index.md
       - Hierarchy: manual/game/hierarchy/index.md
     - Graphics:
