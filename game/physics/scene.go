@@ -391,10 +391,15 @@ func (s *Scene) SetTimeScale(scale float64) {
 // make the simulation inaccurate or unstable.
 //
 // A [Scene.TimeScale] of 0 effectively pauses the simulation: Update can
-// still be called on a fixed schedule, but no motion is integrated.
+// still be called on a fixed schedule, but no motion is integrated and no
+// collision notifications are sent. The same applies to any scaled step
+// that is too small to be simulated.
 func (s *Scene) Update(elapsedTime time.Duration) {
-	elapsedSeconds := elapsedTime.Seconds()
-	s.runSimulation(elapsedSeconds * s.timeScale)
+	elapsedSeconds := elapsedTime.Seconds() * s.timeScale
+	if elapsedSeconds <= minSimulationSeconds {
+		return // paused or negligible step; collision state is unchanged
+	}
+	s.runSimulation(elapsedSeconds)
 	s.notifySoloCollisions()
 	s.notifyPairCollisions()
 }
@@ -647,14 +652,12 @@ func (s *Scene) eachTerrain(cb func(index int, t *terrainState)) {
 }
 
 func (s *Scene) runSimulation(elapsedSeconds float64) {
-	if elapsedSeconds > 0.0001 {
-		s.applyAcceleration(elapsedSeconds)
-		s.applyImpulses(elapsedSeconds)
-		s.applyMotion(elapsedSeconds)
-		s.applyNudges(elapsedSeconds)
-		s.applyPlacement()
-		s.detectCollisions()
-	}
+	s.applyAcceleration(elapsedSeconds)
+	s.applyImpulses(elapsedSeconds)
+	s.applyMotion(elapsedSeconds)
+	s.applyNudges(elapsedSeconds)
+	s.applyPlacement()
+	s.detectCollisions()
 }
 
 func (s *Scene) applyAcceleration(elapsedSeconds float64) {
@@ -1001,6 +1004,10 @@ func (s *Scene) notifyPairCollisions() {
 }
 
 const nilIndex int32 = -1
+
+// minSimulationSeconds is the scaled step duration at or below which
+// Update does not simulate at all.
+const minSimulationSeconds = 0.0001
 
 type bodyData struct {
 	index int32
