@@ -108,8 +108,8 @@ func (s *SoloCollisionSolver) Configure(config SoloCollisionSolverConfig) {
 
 // Reset implements [SoloConstraintSolver.Reset].
 //
-// It recomputes the contact's [Jacobian], the same way
-// [SoloCollisionSolver.recompute] does.
+// It recomputes the contact's [Jacobian] from the target's current
+// position.
 func (s *SoloCollisionSolver) Reset(ctx SoloConstraintContext) {
 	s.recompute(ctx)
 }
@@ -156,8 +156,8 @@ func (s *SoloCollisionSolver) ApplyImpulses(ctx SoloConstraintContext) {
 
 // ApplyNudges implements [SoloConstraintSolver.ApplyNudges].
 //
-// It first recomputes the contact's [Jacobian], the same way
-// [SoloCollisionSolver.recompute] does, since a preceding nudge - by
+// It first recomputes the contact's [Jacobian] from the target's current
+// position, since a preceding nudge - by
 // this solver's own previous iteration, or by another constraint acting
 // on the same target - may have moved the target since
 // [SoloCollisionSolver.Reset] or the last call to this method. If the

@@ -129,8 +129,8 @@ func (s *PairCollisionSolver) Configure(config PairCollisionSolverConfig) {
 
 // Reset implements [PairConstraintSolver.Reset].
 //
-// It recomputes the contact's primary and secondary [Jacobian]s, the
-// same way [PairCollisionSolver.recompute] does.
+// It recomputes the contact's primary and secondary [Jacobian]s from the
+// targets' current positions.
 func (s *PairCollisionSolver) Reset(ctx PairConstraintContext) {
 	s.recompute(ctx)
 }
@@ -187,8 +187,8 @@ func (s *PairCollisionSolver) ApplyImpulses(ctx PairConstraintContext) {
 
 // ApplyNudges implements [PairConstraintSolver.ApplyNudges].
 //
-// It first recomputes the contact's primary and secondary [Jacobian]s,
-// the same way [PairCollisionSolver.recompute] does, since a preceding
+// It first recomputes the contact's primary and secondary [Jacobian]s
+// from the targets' current positions, since a preceding
 // nudge - by this solver's own previous iteration, or by another
 // constraint acting on either target - may have moved a target since
 // [PairCollisionSolver.Reset] or the last call to this method. If the

@@ -4,13 +4,26 @@ import (
 	"github.com/mokiat/lacking/core/spatial/placement3d"
 )
 
+// TerrainID uniquely identifies a terrain that was created through
+// [TerrainView.Create].
+//
+// The zero value, also available as [NilTerrainID], does not reference a
+// valid terrain.
 type TerrainID struct {
 	index    int32
 	revision int32
 }
 
+// NilTerrainID is a [TerrainID] that never references a valid terrain.
 var NilTerrainID = TerrainID{}
 
+// TerrainView provides access to the terrains that belong to a [Scene].
+//
+// A terrain is static, immovable geometry that bodies collide with. Unlike
+// a body, it has no mass, velocity or transform of its own.
+//
+// A TerrainView is a lightweight accessor around a [Scene] and can be
+// obtained through [Scene.Terrains].
 type TerrainView struct {
 	scene *Scene
 }
@@ -21,6 +34,8 @@ type TerrainView struct {
 //
 // However, this requires rework of placement3d API.
 
+// Create allocates a new terrain, initially without any collision shapes,
+// and returns its ID.
 func (v TerrainView) Create() TerrainID {
 	index, terrain := v.scene.allocateTerrain()
 
@@ -49,6 +64,12 @@ func (v TerrainView) CreateHandle() TerrainHandle {
 	return v.Handle(v.Create())
 }
 
+// Delete removes the terrain with the specified ID, together with its
+// collision shapes.
+//
+// It panics if the ID does not reference a valid terrain. Use
+// [TerrainView.IsValid] first if the ID's validity is not otherwise
+// guaranteed.
 func (v TerrainView) Delete(id TerrainID) {
 	terrain := v.resolve(id, true)
 
@@ -73,6 +94,9 @@ func (v TerrainView) Each(cb func(id TerrainID)) {
 	})
 }
 
+// Handle returns a [TerrainHandle] that wraps the specified ID, as a more
+// convenient means of repeatedly accessing the same terrain without
+// having to pass its ID to this view on every call.
 func (v TerrainView) Handle(id TerrainID) TerrainHandle {
 	return TerrainHandle{
 		view: v,
@@ -80,11 +104,20 @@ func (v TerrainView) Handle(id TerrainID) TerrainHandle {
 	}
 }
 
+// IsValid returns whether the specified ID references a terrain that has
+// not been deleted.
 func (v TerrainView) IsValid(id TerrainID) bool {
 	terrain := v.resolve(id, false)
 	return terrain != nil
 }
 
+// AttachCollisionMesh attaches a mesh collision shape to the specified
+// terrain and returns an ID through which it can later be detached. The
+// mesh is specified in world space, since a terrain has no transform of
+// its own.
+//
+// It panics if the ID does not reference a valid terrain, or if the mesh
+// is empty.
 func (v TerrainView) AttachCollisionMesh(id TerrainID, col CollisionMesh) TerrainCollisionShapeID {
 	terrain := v.resolve(id, true)
 	shapeID := v.scene.collisionScene.AttachMesh(terrain.terrainID, placement3d.MeshInfo[shapeData]{
@@ -101,6 +134,11 @@ func (v TerrainView) AttachCollisionMesh(id TerrainID, col CollisionMesh) Terrai
 	}
 }
 
+// DetachCollisionShape removes a collision shape that was previously
+// attached to the specified terrain through
+// [TerrainView.AttachCollisionMesh].
+//
+// It panics if shapeID was not obtained for this same terrain.
 func (v TerrainView) DetachCollisionShape(id TerrainID, shapeID TerrainCollisionShapeID) {
 	if id != shapeID.terrainID {
 		panic("invalid shape ID for terrain")
@@ -150,22 +188,34 @@ type TerrainHandle struct {
 	id   TerrainID
 }
 
+// ID returns the [TerrainID] wrapped by this handle.
 func (v TerrainHandle) ID() TerrainID {
 	return v.id
 }
 
+// Delete removes the wrapped terrain.
+//
+// See [TerrainView.Delete] for further details.
 func (v TerrainHandle) Delete() {
 	v.view.Delete(v.id)
 }
 
+// IsValid returns whether the wrapped terrain has not been deleted.
 func (v TerrainHandle) IsValid() bool {
 	return v.view.IsValid(v.id)
 }
 
+// AttachCollisionMesh attaches a mesh collision shape to the wrapped
+// terrain.
+//
+// See [TerrainView.AttachCollisionMesh] for further details.
 func (v TerrainHandle) AttachCollisionMesh(col CollisionMesh) TerrainCollisionShapeID {
 	return v.view.AttachCollisionMesh(v.id, col)
 }
 
+// DetachCollisionShape removes a collision shape from the wrapped terrain.
+//
+// See [TerrainView.DetachCollisionShape] for further details.
 func (v TerrainHandle) DetachCollisionShape(shapeID TerrainCollisionShapeID) {
 	v.view.DetachCollisionShape(v.id, shapeID)
 }

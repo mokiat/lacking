@@ -7,17 +7,36 @@ import (
 	"github.com/mokiat/lacking/core/spatial/shape3d"
 )
 
+// BodyID uniquely identifies a body that was created through
+// [BodyView.Create].
+//
+// The zero value, also available as [NilBodyID], does not reference a
+// valid body.
 type BodyID struct {
 	index    int32
 	revision int32
 }
 
+// NilBodyID is a [BodyID] that never references a valid body.
 var NilBodyID = BodyID{}
 
+// BodyView provides access to the bodies that belong to a [Scene].
+//
+// A body is a rigid object that moves under the influence of accelerators
+// and constraints, and collides with other bodies and with terrains
+// through the collision shapes attached to it.
+//
+// A BodyView is a lightweight accessor around a [Scene] and can be
+// obtained through [Scene.Bodies].
 type BodyView struct {
 	scene *Scene
 }
 
+// Create allocates a new body at the specified world position and
+// rotation, and returns its ID. The rotation must be a unit quaternion.
+//
+// The new body has a mass of 1, an identity moment of inertia, zero linear
+// and angular velocity and no collision shapes.
 func (v BodyView) Create(position dprec.Vec3, rotation dprec.Quat) BodyID {
 	index, body := v.scene.allocateBody()
 
@@ -50,10 +69,21 @@ func (v BodyView) Create(position dprec.Vec3, rotation dprec.Quat) BodyID {
 	}
 }
 
+// CreateHandle behaves like [BodyView.Create] but wraps the resulting ID
+// in a [BodyHandle], as returned by [BodyView.Handle], for callers that
+// want to keep acting on the new body without holding onto its ID
+// separately.
 func (v BodyView) CreateHandle(position dprec.Vec3, rotation dprec.Quat) BodyHandle {
 	return v.Handle(v.Create(position, rotation))
 }
 
+// Delete removes the body with the specified ID, together with its
+// collision shapes, the body accelerators that act on it and the solo and
+// pair constraints that reference it.
+//
+// It panics if the ID does not reference a valid body. Use
+// [BodyView.IsValid] first if the ID's validity is not otherwise
+// guaranteed.
 func (v BodyView) Delete(id BodyID) {
 	body := v.resolve(id, true)
 
@@ -100,6 +130,9 @@ func (v BodyView) Each(cb func(BodyID)) {
 	})
 }
 
+// Handle returns a [BodyHandle] that wraps the specified ID, as a more
+// convenient means of repeatedly accessing the same body without having
+// to pass its ID to this view on every call.
 func (v BodyView) Handle(id BodyID) BodyHandle {
 	return BodyHandle{
 		view: v,
@@ -107,68 +140,122 @@ func (v BodyView) Handle(id BodyID) BodyHandle {
 	}
 }
 
+// IsValid returns whether the specified ID references a body that has not
+// been deleted.
 func (v BodyView) IsValid(id BodyID) bool {
 	body := v.resolve(id, false)
 	return body != nil
 }
 
+// Mass returns the mass of the specified body, in kg.
+//
+// It panics if the ID does not reference a valid body.
 func (v BodyView) Mass(id BodyID) float64 {
 	body := v.resolve(id, true)
 	return 1.0 / body.invMass
 }
 
+// SetMass changes the mass of the specified body, in kg. The mass must be
+// positive; a mass of positive infinity makes the body immovable by
+// forces and impulses.
+//
+// It panics if the ID does not reference a valid body.
 func (v BodyView) SetMass(id BodyID, mass float64) {
 	body := v.resolve(id, true)
 	body.invMass = 1.0 / mass
 }
 
+// MomentOfInertia returns the moment of inertia tensor of the specified
+// body, in kg*m^2, expressed in the body's local space.
+//
+// It panics if the ID does not reference a valid body.
 func (v BodyView) MomentOfInertia(id BodyID) dprec.Mat3 {
 	body := v.resolve(id, true)
 	return dprec.InverseMat3(body.invInertiaLocal)
 }
 
+// SetMomentOfInertia changes the moment of inertia tensor of the specified
+// body, in kg*m^2, expressed in the body's local space. The tensor must be
+// invertible. Helpers such as [SolidBoxMomentOfInertia] can be used to
+// compute it.
+//
+// It panics if the ID does not reference a valid body.
 func (v BodyView) SetMomentOfInertia(id BodyID, inertia dprec.Mat3) {
 	body := v.resolve(id, true)
 	body.invInertiaLocal = dprec.InverseMat3(inertia)
 	body.recalculateInertia()
 }
 
+// Velocity returns the world-space linear velocity of the center of mass
+// of the specified body, in m/s.
+//
+// It panics if the ID does not reference a valid body.
 func (v BodyView) Velocity(id BodyID) dprec.Vec3 {
 	body := v.resolve(id, true)
 	return body.linearVelocity
 }
 
+// SetVelocity changes the world-space linear velocity of the center of
+// mass of the specified body, in m/s.
+//
+// It panics if the ID does not reference a valid body.
 func (v BodyView) SetVelocity(id BodyID, velocity dprec.Vec3) {
 	body := v.resolve(id, true)
 	body.linearVelocity = velocity
 }
 
+// AngularVelocity returns the world-space angular velocity of the
+// specified body, in radians per second around each axis.
+//
+// It panics if the ID does not reference a valid body.
 func (v BodyView) AngularVelocity(id BodyID) dprec.Vec3 {
 	body := v.resolve(id, true)
 	return body.angularVelocity
 }
 
+// SetAngularVelocity changes the world-space angular velocity of the
+// specified body, in radians per second around each axis.
+//
+// It panics if the ID does not reference a valid body.
 func (v BodyView) SetAngularVelocity(id BodyID, angularVelocity dprec.Vec3) {
 	body := v.resolve(id, true)
 	body.angularVelocity = angularVelocity
 }
 
+// Position returns the world-space position of the center of mass of the
+// specified body.
+//
+// It panics if the ID does not reference a valid body.
 func (v BodyView) Position(id BodyID) dprec.Vec3 {
 	body := v.resolve(id, true)
 	return body.position
 }
 
+// SetPosition changes the world-space position of the center of mass of
+// the specified body. The body's collision shapes are moved along
+// immediately, so segment queries observe the new position right away.
+//
+// It panics if the ID does not reference a valid body.
 func (v BodyView) SetPosition(id BodyID, position dprec.Vec3) {
 	body := v.resolve(id, true)
 	body.position = position
 	v.refreshPlacement(body)
 }
 
+// Rotation returns the world-space orientation of the specified body.
+//
+// It panics if the ID does not reference a valid body.
 func (v BodyView) Rotation(id BodyID) dprec.Quat {
 	body := v.resolve(id, true)
 	return body.rotation
 }
 
+// SetRotation changes the world-space orientation of the specified body.
+// The rotation must be a unit quaternion. The body's collision shapes are
+// rotated along immediately, so segment queries observe the new
+// orientation right away.
+//
+// It panics if the ID does not reference a valid body.
 func (v BodyView) SetRotation(id BodyID, rotation dprec.Quat) {
 	body := v.resolve(id, true)
 	body.rotation = rotation
@@ -176,6 +263,12 @@ func (v BodyView) SetRotation(id BodyID, rotation dprec.Quat) {
 	v.refreshPlacement(body)
 }
 
+// AttachCollisionSphere attaches a sphere collision shape to the specified
+// body and returns an ID through which it can later be detached. The
+// sphere is specified in the body's local space and moves along with the
+// body.
+//
+// It panics if the ID does not reference a valid body.
 func (v BodyView) AttachCollisionSphere(id BodyID, col CollisionSphere) BodyCollisionShapeID {
 	body := v.resolve(id, true)
 	shapeID := v.scene.collisionScene.AttachSphere(body.objectID, placement3d.SphereInfo[shapeData]{
@@ -192,6 +285,11 @@ func (v BodyView) AttachCollisionSphere(id BodyID, col CollisionSphere) BodyColl
 	}
 }
 
+// AttachCollisionBox attaches a box collision shape to the specified body
+// and returns an ID through which it can later be detached. The box is
+// specified in the body's local space and moves along with the body.
+//
+// It panics if the ID does not reference a valid body.
 func (v BodyView) AttachCollisionBox(id BodyID, col CollisionBox) BodyCollisionShapeID {
 	body := v.resolve(id, true)
 	shapeID := v.scene.collisionScene.AttachBox(body.objectID, placement3d.BoxInfo[shapeData]{
@@ -208,6 +306,11 @@ func (v BodyView) AttachCollisionBox(id BodyID, col CollisionBox) BodyCollisionS
 	}
 }
 
+// DetachCollisionShape removes a collision shape that was previously
+// attached to the specified body through [BodyView.AttachCollisionSphere]
+// or [BodyView.AttachCollisionBox].
+//
+// It panics if shapeID was not obtained for this same body.
 func (v BodyView) DetachCollisionShape(id BodyID, shapeID BodyCollisionShapeID) {
 	if id != shapeID.bodyID {
 		panic("invalid shape ID for body")
@@ -264,74 +367,129 @@ type BodyHandle struct {
 	id   BodyID
 }
 
+// ID returns the [BodyID] wrapped by this handle.
 func (h BodyHandle) ID() BodyID {
 	return h.id
 }
 
+// Delete removes the wrapped body.
+//
+// See [BodyView.Delete] for further details.
 func (h BodyHandle) Delete() {
 	h.view.Delete(h.id)
 }
 
+// IsValid returns whether the wrapped body has not been deleted.
 func (h BodyHandle) IsValid() bool {
 	return h.view.IsValid(h.id)
 }
 
+// Mass returns the mass of the wrapped body, in kg.
+//
+// See [BodyView.Mass] for further details.
 func (h BodyHandle) Mass() float64 {
 	return h.view.Mass(h.id)
 }
 
+// SetMass changes the mass of the wrapped body, in kg.
+//
+// See [BodyView.SetMass] for further details.
 func (h BodyHandle) SetMass(mass float64) {
 	h.view.SetMass(h.id, mass)
 }
 
+// MomentOfInertia returns the local-space moment of inertia tensor of the
+// wrapped body.
+//
+// See [BodyView.MomentOfInertia] for further details.
 func (h BodyHandle) MomentOfInertia() dprec.Mat3 {
 	return h.view.MomentOfInertia(h.id)
 }
 
+// SetMomentOfInertia changes the local-space moment of inertia tensor of
+// the wrapped body.
+//
+// See [BodyView.SetMomentOfInertia] for further details.
 func (h BodyHandle) SetMomentOfInertia(inertia dprec.Mat3) {
 	h.view.SetMomentOfInertia(h.id, inertia)
 }
 
+// Velocity returns the world-space linear velocity of the wrapped body.
+//
+// See [BodyView.Velocity] for further details.
 func (h BodyHandle) Velocity() dprec.Vec3 {
 	return h.view.Velocity(h.id)
 }
 
+// SetVelocity changes the world-space linear velocity of the wrapped body.
+//
+// See [BodyView.SetVelocity] for further details.
 func (h BodyHandle) SetVelocity(velocity dprec.Vec3) {
 	h.view.SetVelocity(h.id, velocity)
 }
 
+// AngularVelocity returns the world-space angular velocity of the wrapped
+// body.
+//
+// See [BodyView.AngularVelocity] for further details.
 func (h BodyHandle) AngularVelocity() dprec.Vec3 {
 	return h.view.AngularVelocity(h.id)
 }
 
+// SetAngularVelocity changes the world-space angular velocity of the
+// wrapped body.
+//
+// See [BodyView.SetAngularVelocity] for further details.
 func (h BodyHandle) SetAngularVelocity(angularVelocity dprec.Vec3) {
 	h.view.SetAngularVelocity(h.id, angularVelocity)
 }
 
+// Position returns the world-space position of the wrapped body.
+//
+// See [BodyView.Position] for further details.
 func (h BodyHandle) Position() dprec.Vec3 {
 	return h.view.Position(h.id)
 }
 
+// SetPosition changes the world-space position of the wrapped body.
+//
+// See [BodyView.SetPosition] for further details.
 func (h BodyHandle) SetPosition(position dprec.Vec3) {
 	h.view.SetPosition(h.id, position)
 }
 
+// Rotation returns the world-space orientation of the wrapped body.
+//
+// See [BodyView.Rotation] for further details.
 func (h BodyHandle) Rotation() dprec.Quat {
 	return h.view.Rotation(h.id)
 }
 
+// SetRotation changes the world-space orientation of the wrapped body.
+//
+// See [BodyView.SetRotation] for further details.
 func (h BodyHandle) SetRotation(rotation dprec.Quat) {
 	h.view.SetRotation(h.id, rotation)
 }
 
+// AttachCollisionSphere attaches a sphere collision shape to the wrapped
+// body.
+//
+// See [BodyView.AttachCollisionSphere] for further details.
 func (h BodyHandle) AttachCollisionSphere(shape CollisionSphere) BodyCollisionShapeID {
 	return h.view.AttachCollisionSphere(h.id, shape)
 }
 
+// AttachCollisionBox attaches a box collision shape to the wrapped body.
+//
+// See [BodyView.AttachCollisionBox] for further details.
 func (h BodyHandle) AttachCollisionBox(shape CollisionBox) BodyCollisionShapeID {
 	return h.view.AttachCollisionBox(h.id, shape)
 }
 
+// DetachCollisionShape removes a collision shape from the wrapped body.
+//
+// See [BodyView.DetachCollisionShape] for further details.
 func (h BodyHandle) DetachCollisionShape(shapeID BodyCollisionShapeID) {
 	h.view.DetachCollisionShape(h.id, shapeID)
 }

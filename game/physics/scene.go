@@ -14,9 +14,11 @@ import (
 	"github.com/mokiat/lacking/util/observer"
 )
 
-// Scene represents a physics scene that contains
-// a number of bodies that are independent on any
-// bodies managed by other scene objects.
+// Scene represents a self-contained physics simulation that holds bodies,
+// terrains, accelerators and constraints. Its contents never interact with
+// those of any other Scene.
+//
+// A Scene is not safe for concurrent use.
 type Scene struct {
 	collisionScene *placement3d.Scene[bodyData, terrainData, shapeData]
 
@@ -69,6 +71,9 @@ type Scene struct {
 	timeScale float64
 }
 
+// NewScene creates a new, empty [Scene] with default settings and a
+// [StaticAirSolver] as its medium. See the individual setters for the
+// default values.
 func NewScene() *Scene {
 	return &Scene{
 		collisionScene: placement3d.NewScene[bodyData, terrainData, shapeData](placement3d.SceneSettings{
@@ -147,16 +152,17 @@ func (s *Scene) SubscribePairCollision(callback PairCollisionCallback) *PairColl
 }
 
 // NextCollisionRejectGroup returns a collision reject group that is unique
-// within this Scene. Bodies that are assigned the same reject group do not
-// collide with each other, which is useful for objects that are meant to
-// overlap, such as the chassis and the wheels of a vehicle.
+// within this Scene. Collision shapes that are assigned the same reject group
+// (through [CollisionShape.Filtering]) do not collide with each other, which
+// is useful for objects that are meant to overlap, such as the chassis and
+// the wheels of a vehicle.
 //
 // The returned value is always larger than zero, since zero indicates that a
-// body does not belong to any reject group and hence can collide with
-// everything.
+// shape does not belong to any reject group and hence is not excluded from
+// colliding with any other shape.
 //
 // Reject groups are never recycled. Each call returns a new value, even if all
-// bodies that used a previously returned group have been deleted.
+// shapes that used a previously returned group have been removed.
 func (s *Scene) NextCollisionRejectGroup() uint32 {
 	s.freeCollisionRejectGroup++
 	return s.freeCollisionRejectGroup
@@ -329,7 +335,7 @@ func (s *Scene) SetImpulseDriftAdjustmentRatio(ratio float64) {
 // improves the accuracy with which constraints are jointly satisfied, at
 // the cost of extra computation.
 //
-// Defaults to 8.
+// Defaults to 4.
 func (s *Scene) NudgeIterationCount() int {
 	return s.nudgeIterationCount
 }
@@ -385,14 +391,25 @@ func (s *Scene) SetTimeScale(scale float64) {
 // make the simulation inaccurate or unstable.
 //
 // A [Scene.TimeScale] of 0 effectively pauses the simulation: Update can
-// still be called on a fixed schedule, but no motion is integrated.
+// still be called on a fixed schedule, but no motion is integrated and no
+// collision notifications are sent. The same applies to any scaled step
+// that is too small to be simulated.
 func (s *Scene) Update(elapsedTime time.Duration) {
-	elapsedSeconds := elapsedTime.Seconds()
-	s.runSimulation(elapsedSeconds * s.timeScale)
+	elapsedSeconds := elapsedTime.Seconds() * s.timeScale
+	if elapsedSeconds <= minSimulationSeconds {
+		return // paused or negligible step; collision state is unchanged
+	}
+	s.runSimulation(elapsedSeconds)
 	s.notifySoloCollisions()
 	s.notifyPairCollisions()
 }
 
+// CollectSegmentBodyIntersections calls yield once for every intersection
+// of the specified world-space segment with the collision shapes of the
+// bodies in this Scene that satisfy filter, in unspecified order.
+//
+// The Depth of each reported contact is the fraction of the segment that
+// lies beyond the contact point, as described by [shape3d.Contact].
 func (s *Scene) CollectSegmentBodyIntersections(segment shape3d.Segment, filter Filter, yield BodyContactCallback) {
 	bodyView := s.Bodies()
 
@@ -406,12 +423,26 @@ func (s *Scene) CollectSegmentBodyIntersections(segment shape3d.Segment, filter 
 	})
 }
 
+// CheckSegmentBodyIntersection returns the intersection of the specified
+// world-space segment with the collision shapes of the bodies in this
+// Scene that satisfy filter which lies closest to the start of the
+// segment, and whether there was any intersection at all.
+//
+// See [Scene.CollectSegmentBodyIntersections] for a variant that reports
+// every intersection.
 func (s *Scene) CheckSegmentBodyIntersection(segment shape3d.Segment, filter Filter) (BodyContact, bool) {
 	var collection DeepestBodyContact
 	s.CollectSegmentBodyIntersections(segment, filter, collection.AddContact)
 	return collection.Contact()
 }
 
+// CollectSegmentTerrainIntersections calls yield for the intersections of
+// the specified world-space segment with the collision shapes of the
+// terrains in this Scene that satisfy filter, in unspecified order. At
+// most one intersection is reported per collision shape.
+//
+// The Depth of each reported contact is the fraction of the segment that
+// lies beyond the contact point, as described by [shape3d.Contact].
 func (s *Scene) CollectSegmentTerrainIntersections(segment shape3d.Segment, filter Filter, yield TerrainContactCallback) {
 	terrainView := s.Terrains()
 
@@ -425,6 +456,13 @@ func (s *Scene) CollectSegmentTerrainIntersections(segment shape3d.Segment, filt
 	})
 }
 
+// CheckSegmentTerrainIntersection returns the intersection of the
+// specified world-space segment with the collision shapes of the terrains
+// in this Scene that satisfy filter which lies closest to the start of the
+// segment, and whether there was any intersection at all.
+//
+// See [Scene.CollectSegmentTerrainIntersections] for a variant that
+// reports every intersection.
 func (s *Scene) CheckSegmentTerrainIntersection(segment shape3d.Segment, filter Filter) (TerrainContact, bool) {
 	var collection DeepestTerrainContact
 	s.CollectSegmentTerrainIntersections(segment, filter, collection.AddContact)
@@ -614,14 +652,12 @@ func (s *Scene) eachTerrain(cb func(index int, t *terrainState)) {
 }
 
 func (s *Scene) runSimulation(elapsedSeconds float64) {
-	if elapsedSeconds > 0.0001 {
-		s.applyAcceleration(elapsedSeconds)
-		s.applyImpulses(elapsedSeconds)
-		s.applyMotion(elapsedSeconds)
-		s.applyNudges(elapsedSeconds)
-		s.applyPlacement()
-		s.detectCollisions()
-	}
+	s.applyAcceleration(elapsedSeconds)
+	s.applyImpulses(elapsedSeconds)
+	s.applyMotion(elapsedSeconds)
+	s.applyNudges(elapsedSeconds)
+	s.applyPlacement()
+	s.detectCollisions()
 }
 
 func (s *Scene) applyAcceleration(elapsedSeconds float64) {
@@ -968,6 +1004,10 @@ func (s *Scene) notifyPairCollisions() {
 }
 
 const nilIndex int32 = -1
+
+// minSimulationSeconds is the scaled step duration at or below which
+// Update does not simulate at all.
+const minSimulationSeconds = 0.0001
 
 type bodyData struct {
 	index int32

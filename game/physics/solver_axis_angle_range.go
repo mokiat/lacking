@@ -232,8 +232,7 @@ func (s *AxisAngleRangeSolver) SetRestitutionCoefficient(coefficient float64) *A
 // Reset implements [PairConstraintSolver.Reset].
 //
 // It recomputes the constraint's primary and secondary [Jacobian]s and
-// current range violation (drift), the same way
-// [AxisAngleRangeSolver.recompute] does.
+// current range violation (drift) from the targets' current rotations.
 func (s *AxisAngleRangeSolver) Reset(ctx PairConstraintContext) {
 	s.recompute(ctx)
 }
@@ -271,8 +270,8 @@ func (s *AxisAngleRangeSolver) ApplyImpulses(ctx PairConstraintContext) {
 // ApplyNudges implements [PairConstraintSolver.ApplyNudges].
 //
 // It first recomputes the constraint's primary and secondary [Jacobian]s
-// and current range violation (drift), the same way
-// [AxisAngleRangeSolver.recompute] does, since a preceding nudge - by
+// and current range violation (drift) from the targets' current
+// rotations, since a preceding nudge - by
 // this solver's own previous iteration, or by another constraint acting
 // on either target - may have rotated either target since
 // [AxisAngleRangeSolver.Reset] or the last call to this method. If the

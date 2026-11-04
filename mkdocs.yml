@@ -16,6 +16,7 @@ nav:
       - Animation: manual/game/animation/index.md
       - ECS: manual/game/ecs/index.md
       - Hierarchy: manual/game/hierarchy/index.md
+      - Physics: manual/game/physics/index.md
     - Graphics:
       - Shader: manual/graphics/shader.md
     - Rendering: manual/rendering/index.md

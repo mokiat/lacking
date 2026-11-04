@@ -160,8 +160,8 @@ func (s *AxisDisplacementSolver) SetDisplacement(displacement float64) *AxisDisp
 // Reset implements [PairConstraintSolver.Reset].
 //
 // It recomputes the constraint's primary and secondary [Jacobian]s and
-// current displacement error (drift), the same way
-// [AxisDisplacementSolver.recompute] does.
+// current displacement error (drift) from the targets' current positions
+// and rotations.
 func (s *AxisDisplacementSolver) Reset(ctx PairConstraintContext) {
 	s.recompute(ctx)
 }
@@ -185,8 +185,8 @@ func (s *AxisDisplacementSolver) ApplyImpulses(ctx PairConstraintContext) {
 // ApplyNudges implements [PairConstraintSolver.ApplyNudges].
 //
 // It first recomputes the constraint's primary and secondary [Jacobian]s
-// and current axis-aligned displacement error (drift), the same way
-// [AxisDisplacementSolver.recompute] does, since a preceding nudge - by
+// and current axis-aligned displacement error (drift) from the targets'
+// current positions and rotations, since a preceding nudge - by
 // this solver's own previous iteration, or by another constraint acting
 // on either target - may have moved either target since
 // [AxisDisplacementSolver.Reset] or the last call to this method. It
