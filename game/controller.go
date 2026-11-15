@@ -75,6 +75,7 @@ func (c *Controller) OnCreate(window app.Window) {
 		WithIOWorker(c.ioWorker),
 		WithStore(c.store),
 		WithGraphics(c.gfxEngine),
+		WithAudio(window.AudioAPI()),
 	)
 	c.engine.Create()
 
