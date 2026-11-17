@@ -11,6 +11,7 @@ import (
 	"github.com/mokiat/lacking/game/graphics"
 	"github.com/mokiat/lacking/game/hierarchy"
 	"github.com/mokiat/lacking/game/physics"
+	"github.com/mokiat/lacking/game/sound"
 	"github.com/mokiat/lacking/game/timestep"
 	"github.com/mokiat/lacking/render"
 )
@@ -36,6 +37,11 @@ type SceneInfo struct {
 	// Defaults to `true`.
 	IncludeGraphics opt.T[bool]
 
+	// IncludeSound indicates whether a Sound sub-scene would be required.
+	//
+	// Defaults to `true`.
+	IncludeSound opt.T[bool]
+
 	// ECSScope specifies the scope to be used for the ECS sub-scene of the scene.
 	//
 	// Defaults to the global `ECSScope`.
@@ -51,6 +57,7 @@ func newScene(engine *Engine, info SceneInfo) *Scene {
 		includeECS       = info.IncludeECS.ValueOrDefault(true)
 		includePhysics   = info.IncludePhysics.ValueOrDefault(true)
 		includeGraphics  = info.IncludeGraphics.ValueOrDefault(true)
+		includeSound     = info.IncludeSound.ValueOrDefault(true)
 	)
 
 	var hierarchyScene *hierarchy.Scene
@@ -73,6 +80,11 @@ func newScene(engine *Engine, info SceneInfo) *Scene {
 		gfxScene = gfxEngine.CreateScene()
 	}
 
+	var soundScene *sound.Scene
+	if audioAPI := engine.Audio(); audioAPI != nil && includeSound {
+		soundScene = sound.NewScene(audioAPI)
+	}
+
 	fixedTimestep := info.FixedTimestep.ValueOrDefault(16 * time.Millisecond)
 
 	armatureBindingSet := hierarchy.NewBinding[AnimationSource](hierarchyScene, NewAnimationBindingSolver())
@@ -85,14 +97,17 @@ func newScene(engine *Engine, info SceneInfo) *Scene {
 	meshBindingSet := hierarchy.NewBinding[*graphics.Mesh](hierarchyScene, NewMeshBindingSolver())
 	boneBindingSet := hierarchy.NewBinding[BoneTarget](hierarchyScene, NewBoneBindingSolver())
 	cameraBindingSet := hierarchy.NewBinding[*graphics.Camera](hierarchyScene, NewCameraBindingSolver())
+	emitterBindingSet := hierarchy.NewBinding[sound.EmitterID](hierarchyScene, NewEmitterBindingSolver(soundScene, fixedTimestep))
+	listenerBindingSet := hierarchy.NewBinding[sound.ListenerID](hierarchyScene, NewListenerBindingSolver(soundScene, fixedTimestep))
 
-	return &Scene{
+	result := &Scene{
 		engine: engine,
 
 		hierarchyScene: hierarchyScene,
 		ecsScene:       ecsScene,
 		physicsScene:   physicsScene,
 		gfxScene:       gfxScene,
+		soundScene:     soundScene,
 
 		armatureBindingSet:         armatureBindingSet,
 		bodyBindingSet:             bodyBindingSet,
@@ -104,6 +119,8 @@ func newScene(engine *Engine, info SceneInfo) *Scene {
 		meshBindingSet:             meshBindingSet,
 		boneBindingSet:             boneBindingSet,
 		cameraBindingSet:           cameraBindingSet,
+		emitterBindingSet:          emitterBindingSet,
+		listenerBindingSet:         listenerBindingSet,
 
 		timeSegmenter: timestep.NewSegmenter(fixedTimestep),
 
@@ -116,6 +133,12 @@ func newScene(engine *Engine, info SceneInfo) *Scene {
 
 		frozen: false,
 	}
+
+	result.timeSegmenter.SetStepCallback(result.doStepUpdate)
+	result.timeSegmenter.SetFixedCallback(result.doFixedUpdate)
+	result.timeSegmenter.SetInterpCallback(result.doInterpolationUpdate)
+
+	return result
 }
 
 // Scene is the main container for all game objects and systems.
@@ -126,6 +149,7 @@ type Scene struct {
 	ecsScene       *ecs.Scene
 	physicsScene   *physics.Scene
 	gfxScene       *graphics.Scene
+	soundScene     *sound.Scene
 
 	armatureBindingSet         *hierarchy.Binding[AnimationSource]
 	bodyBindingSet             *hierarchy.Binding[physics.BodyID]
@@ -137,6 +161,8 @@ type Scene struct {
 	meshBindingSet             *hierarchy.Binding[*graphics.Mesh]
 	boneBindingSet             *hierarchy.Binding[BoneTarget]
 	cameraBindingSet           *hierarchy.Binding[*graphics.Camera]
+	emitterBindingSet          *hierarchy.Binding[sound.EmitterID]
+	listenerBindingSet         *hierarchy.Binding[sound.ListenerID]
 
 	timeSegmenter *timestep.Segmenter
 
@@ -158,6 +184,9 @@ func (s *Scene) Delete() {
 	s.physicsScene = nil
 	if s.gfxScene != nil {
 		defer s.gfxScene.Delete()
+	}
+	if s.soundScene != nil {
+		defer s.soundScene.Delete()
 	}
 	s.engine.SetActiveScene(nil)
 	s.engine = nil
@@ -192,6 +221,14 @@ func (s *Scene) Physics() *physics.Scene {
 // Returns `nil` if this scene does not have Graphics enabled.
 func (s *Scene) Graphics() *graphics.Scene {
 	return s.gfxScene
+}
+
+// Sound returns the Sound sub-scene associated with the scene.
+//
+// Returns `nil` if this scene does not have Sound enabled or if the engine
+// has no audio API.
+func (s *Scene) Sound() *sound.Scene {
+	return s.soundScene
 }
 
 // SubscribeStepUpdate adds a callback to be executed before fixed time updates
@@ -269,6 +306,16 @@ func (s *Scene) CameraBindingSet() *hierarchy.Binding[*graphics.Camera] {
 	return s.cameraBindingSet
 }
 
+// EmitterBindingSet returns the binding set that binds sound emitters.
+func (s *Scene) EmitterBindingSet() *hierarchy.Binding[sound.EmitterID] {
+	return s.emitterBindingSet
+}
+
+// ListenerBindingSet returns the binding set that binds sound listeners.
+func (s *Scene) ListenerBindingSet() *hierarchy.Binding[sound.ListenerID] {
+	return s.listenerBindingSet
+}
+
 // IsFrozen returns whether the scene is currently frozen. A frozen scene
 // will not update any of its systems.
 func (s *Scene) IsFrozen() bool {
@@ -300,13 +347,8 @@ func (s *Scene) StopAnimation(node animation.Node) {
 
 // Update advances the scene by the provided time.
 func (s *Scene) Update(elapsedTime time.Duration) {
-	if !s.frozen {
-		s.timeSegmenter.SetStepCallback(s.doStepUpdate)
-		s.timeSegmenter.SetFixedCallback(s.doFixedUpdate)
-		s.timeSegmenter.SetInterpCallback(s.doInterpolationUpdate)
-		s.timeSegmenter.Update(elapsedTime)
-		s.doUpdate(elapsedTime)
-	}
+	s.timeSegmenter.Update(elapsedTime)
+	s.doUpdate(elapsedTime)
 }
 
 // Render draws the scene to the provided viewport.
@@ -319,6 +361,10 @@ func (s *Scene) Render(framebuffer render.Framebuffer, viewport graphics.Viewpor
 }
 
 func (s *Scene) doStepUpdate(steps float64) {
+	if s.frozen {
+		return
+	}
+
 	callbackSpan := metric.BeginRegion("step-cb")
 	s.stepUpdateSubscriptions.Each(func(callback timestep.StepCallback) {
 		callback(steps)
@@ -327,6 +373,10 @@ func (s *Scene) doStepUpdate(steps float64) {
 }
 
 func (s *Scene) doFixedUpdate(elapsedTime time.Duration) {
+	if s.frozen {
+		return
+	}
+
 	resetSpan := metric.BeginRegion("node-fixed")
 	s.hierarchyScene.AdvanceStep()
 	resetSpan.End()
@@ -357,6 +407,10 @@ func (s *Scene) doFixedUpdate(elapsedTime time.Duration) {
 }
 
 func (s *Scene) doInterpolationUpdate(fraction float64) {
+	if s.frozen {
+		return
+	}
+
 	nodeSpan := metric.BeginRegion("node-interp")
 	s.hierarchyScene.ApplyInterpolationsFromNodes(fraction)
 	nodeSpan.End()
@@ -369,6 +423,17 @@ func (s *Scene) doInterpolationUpdate(fraction float64) {
 }
 
 func (s *Scene) doUpdate(elapsedTime time.Duration) {
+	// always run sound update, even when frozen
+	if s.soundScene != nil {
+		soundSpan := metric.BeginRegion("sound")
+		s.soundScene.Update(elapsedTime)
+		soundSpan.End()
+	}
+
+	if s.frozen {
+		return
+	}
+
 	callbackSpan := metric.BeginRegion("update-cb")
 	s.updateSubscriptions.Each(func(callback timestep.UpdateCallback) {
 		callback(elapsedTime)

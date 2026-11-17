@@ -3,6 +3,7 @@ package game
 import (
 	"time"
 
+	"github.com/mokiat/lacking/core/audio"
 	"github.com/mokiat/lacking/core/resource"
 	"github.com/mokiat/lacking/game/graphics"
 	"github.com/mokiat/lacking/render"
@@ -35,6 +36,15 @@ func WithGraphics(gfxEngine *graphics.Engine) EngineOption {
 	}
 }
 
+// WithAudio configures the engine to use the specified audio API for the
+// Sound sub-scenes of the scenes that it creates. Without it, or if the
+// API is nil, scenes are created without sound.
+func WithAudio(audioAPI audio.API) EngineOption {
+	return func(e *Engine) {
+		e.audioAPI = audioAPI
+	}
+}
+
 func NewEngine(opts ...EngineOption) *Engine {
 	result := &Engine{
 		lastTick: time.Now(),
@@ -52,6 +62,7 @@ type Engine struct {
 	ioWorker  Worker
 	gfxWorker Worker
 	gfxEngine *graphics.Engine
+	audioAPI  audio.API
 
 	registry *resourceRegistry
 
@@ -83,6 +94,12 @@ func (e *Engine) GFXWorker() Worker {
 
 func (e *Engine) Graphics() *graphics.Engine {
 	return e.gfxEngine
+}
+
+// Audio returns the audio API that is used by the engine, or nil if the
+// engine was created without one.
+func (e *Engine) Audio() audio.API {
+	return e.audioAPI
 }
 
 func (e *Engine) ActiveScene() *Scene {
