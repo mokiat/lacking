@@ -54,6 +54,7 @@ func NewEngine(opts ...EngineOption) *Engine {
 	}
 	result.registry = newResourceRegistry(result, result.store)
 	result.registry.RegisterResourceLoader(newModelResourceLoader())
+	result.registry.RegisterResourceLoader(newSoundResourceLoader())
 	return result
 }
 

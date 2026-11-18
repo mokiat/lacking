@@ -2,16 +2,19 @@ package conv
 
 import (
 	"github.com/mokiat/gog/ds"
+	"github.com/mokiat/lacking/game/asset/dsl"
 	"github.com/mokiat/lacking/storage/chunked"
 )
 
-type Converter interface {
-	Convert(target *ds.List[chunked.Chunk], asset any) error
+type ModelConverter struct {
+	converters []dsl.Converter
 }
+
+var _ dsl.Converter = (*ModelConverter)(nil)
 
 func NewModelConverter() *ModelConverter {
 	return &ModelConverter{
-		converters: []Converter{
+		converters: []dsl.Converter{
 			NewAnimationConverter(),
 			NewBackgroundConverter(),
 			NewHierarchyConverter(),
@@ -21,10 +24,6 @@ func NewModelConverter() *ModelConverter {
 			NewShadingConverter(),
 		},
 	}
-}
-
-type ModelConverter struct {
-	converters []Converter
 }
 
 func (c *ModelConverter) Convert(target *ds.List[chunked.Chunk], asset any) error {

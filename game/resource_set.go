@@ -39,6 +39,12 @@ func (s *ResourceSet) Engine() *Engine {
 // be tracked by this ResourceSet. Once the ResourceSet is deleted, all
 // tracked resources will be scheduled for deletion.
 //
+// The target must be a non-nil pointer to a type that has a registered
+// [ResourceLoader]. Out of the box, an [Engine] supports *[ModelTemplate]
+// for model assets and [github.com/mokiat/lacking/core/audio.Media] for
+// sound assets. Loading a sound fails if the engine was created without
+// [WithAudio].
+//
 // This method can be called from any thread.
 func (s *ResourceSet) FetchResource(path string, target any) async.Operation {
 	s.trackedResourcesMU.Lock()
