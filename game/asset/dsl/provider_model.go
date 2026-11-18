@@ -72,7 +72,7 @@ func OpenGLTFModel(path string, opts ...Operation) Provider[*mdl.Model] {
 			if err != nil {
 				return nil, fmt.Errorf("failed to stat file %q: %w", path, err)
 			}
-			return CreateDigest("opengl-gltf-model", path, info.ModTime(), opts)
+			return CreateDigest("open-gltf-model", path, info.ModTime(), opts)
 		},
 	)
 }
