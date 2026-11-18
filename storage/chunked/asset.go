@@ -1,6 +1,7 @@
 package chunked
 
 import (
+	"bufio"
 	"fmt"
 
 	"github.com/mokiat/gblob"
@@ -32,7 +33,7 @@ func (a *Asset) Read(target any) error {
 	defer in.Close()
 
 	dec := decoder{
-		in: gblob.NewLittleEndianPackedDecoder(in),
+		in: gblob.NewLittleEndianPackedDecoder(bufio.NewReader(in)),
 	}
 	if err := dec.Decode(target); err != nil {
 		return fmt.Errorf("error decoding asset: %w", err)
@@ -48,11 +49,15 @@ func (a *Asset) Write(source any) error {
 	}
 	defer out.Close()
 
+	buffer := bufio.NewWriter(out)
 	enc := encoder{
-		out: gblob.NewLittleEndianPackedEncoder(out),
+		out: gblob.NewLittleEndianPackedEncoder(buffer),
 	}
 	if err := enc.Encode(source); err != nil {
 		return fmt.Errorf("error encoding asset: %w", err)
+	}
+	if err := buffer.Flush(); err != nil {
+		return fmt.Errorf("error flushing asset: %w", err)
 	}
 
 	return nil
