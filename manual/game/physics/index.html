@@ -1,0 +1,2182 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+        <link rel="canonical" href="http://mokiat.com/lacking/manual/game/physics/">
+      
+      
+        <link rel="prev" href="../hierarchy/">
+      
+      
+        <link rel="next" href="../../graphics/shader/">
+      
+      <link rel="icon" href="../../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.4.2, mkdocs-material-9.0.6">
+    
+    
+      
+        <title>Overview - Lacking</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../../assets/stylesheets/main.558e4712.min.css">
+      
+        
+        <link rel="stylesheet" href="../../../assets/stylesheets/palette.2505c338.min.css">
+      
+      
+
+    
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../../..",location),__md_hash=e=>[...e].reduce((e,_)=>(e<<5)-e+_.charCodeAt(0),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="" data-md-color-accent="">
+  
+    
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#physics" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../../.." title="Lacking" class="md-header__button md-logo" aria-label="Lacking" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3V6m0 5h18v2H3v-2m0 5h18v2H3v-2Z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Lacking
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Overview
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+    
+      <label class="md-header__button md-icon" for="__search">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5Z"/></svg>
+      </label>
+      <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5Z"/></svg>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12Z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41Z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/mokiat/lacking/" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81z"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../.." title="Lacking" class="md-nav__button md-logo" aria-label="Lacking" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
+
+    </a>
+    Lacking
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/mokiat/lacking/" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81z"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+      
+
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../.." class="md-nav__link">
+        Home
+      </a>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../examples/" class="md-nav__link">
+        Examples
+      </a>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../getting-started/" class="md-nav__link">
+        Getting Started
+      </a>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+    
+  
+  
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " data-md-toggle="__nav_4" type="checkbox" id="__nav_4" checked>
+      
+      
+      
+        <label class="md-nav__link" for="__nav_4" tabindex="0" aria-expanded="true">
+          User's Guide
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="User's Guide" data-md-level="1">
+        <label class="md-nav__title" for="__nav_4">
+          <span class="md-nav__icon md-icon"></span>
+          User's Guide
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../application/" class="md-nav__link">
+        Application
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " data-md-toggle="__nav_4_2" type="checkbox" id="__nav_4_2" >
+      
+      
+      
+        <label class="md-nav__link" for="__nav_4_2" tabindex="0" aria-expanded="false">
+          Core
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="Core" data-md-level="2">
+        <label class="md-nav__title" for="__nav_4_2">
+          <span class="md-nav__icon md-icon"></span>
+          Core
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../core/audio/" class="md-nav__link">
+        Audio
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../core/spatial/" class="md-nav__link">
+        Spatial
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+    
+  
+  
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " data-md-toggle="__nav_4_3" type="checkbox" id="__nav_4_3" checked>
+      
+      
+      
+        <label class="md-nav__link" for="__nav_4_3" tabindex="0" aria-expanded="true">
+          Game
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="Game" data-md-level="2">
+        <label class="md-nav__title" for="__nav_4_3">
+          <span class="md-nav__icon md-icon"></span>
+          Game
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../animation/" class="md-nav__link">
+        Animation
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ecs/" class="md-nav__link">
+        ECS
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../hierarchy/" class="md-nav__link">
+        Hierarchy
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+    
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" data-md-toggle="toc" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          Physics
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        Physics
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#core-concepts" class="md-nav__link">
+    Core Concepts
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#setup" class="md-nav__link">
+    Setup
+  </a>
+  
+    <nav class="md-nav" aria-label="Setup">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#creating-a-scene" class="md-nav__link">
+    Creating a Scene
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#advancing-the-simulation" class="md-nav__link">
+    Advancing the Simulation
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#scene-settings" class="md-nav__link">
+    Scene Settings
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ids-views-and-handles" class="md-nav__link">
+    IDs, Views, and Handles
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#bodies" class="md-nav__link">
+    Bodies
+  </a>
+  
+    <nav class="md-nav" aria-label="Bodies">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#creating-bodies" class="md-nav__link">
+    Creating Bodies
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#mass-and-moment-of-inertia" class="md-nav__link">
+    Mass and Moment of Inertia
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#motion-state" class="md-nav__link">
+    Motion State
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#collision-shapes" class="md-nav__link">
+    Collision Shapes
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deleting-bodies" class="md-nav__link">
+    Deleting Bodies
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#terrains" class="md-nav__link">
+    Terrains
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#accelerators" class="md-nav__link">
+    Accelerators
+  </a>
+  
+    <nav class="md-nav" aria-label="Accelerators">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#built-in-acceleration-solvers" class="md-nav__link">
+    Built-in Acceleration Solvers
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-medium" class="md-nav__link">
+    The Medium
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#custom-acceleration-solvers" class="md-nav__link">
+    Custom Acceleration Solvers
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#constraints" class="md-nav__link">
+    Constraints
+  </a>
+  
+    <nav class="md-nav" aria-label="Constraints">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#built-in-constraint-solvers" class="md-nav__link">
+    Built-in Constraint Solvers
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#combining-constraints" class="md-nav__link">
+    Combining Constraints
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#custom-constraint-solvers" class="md-nav__link">
+    Custom Constraint Solvers
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#collisions" class="md-nav__link">
+    Collisions
+  </a>
+  
+    <nav class="md-nav" aria-label="Collisions">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#friction-and-restitution" class="md-nav__link">
+    Friction and Restitution
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#filtering" class="md-nav__link">
+    Filtering
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#collision-notifications" class="md-nav__link">
+    Collision Notifications
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#segment-queries" class="md-nav__link">
+    Segment Queries
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#integration-with-the-game-scene" class="md-nav__link">
+    Integration with the Game Scene
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#limitations" class="md-nav__link">
+    Limitations
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " data-md-toggle="__nav_4_4" type="checkbox" id="__nav_4_4" >
+      
+      
+      
+        <label class="md-nav__link" for="__nav_4_4" tabindex="0" aria-expanded="false">
+          Graphics
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="Graphics" data-md-level="2">
+        <label class="md-nav__title" for="__nav_4_4">
+          <span class="md-nav__icon md-icon"></span>
+          Graphics
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../graphics/shader/" class="md-nav__link">
+        Shader
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../rendering/" class="md-nav__link">
+        Rendering
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user-interface/" class="md-nav__link">
+        User Interface
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " data-md-toggle="__nav_5" type="checkbox" id="__nav_5" >
+      
+      
+      
+        <label class="md-nav__link" for="__nav_5" tabindex="0" aria-expanded="false">
+          Internals
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="Internals" data-md-level="1">
+        <label class="md-nav__title" for="__nav_5">
+          <span class="md-nav__icon md-icon"></span>
+          Internals
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " data-md-toggle="__nav_5_1" type="checkbox" id="__nav_5_1" >
+      
+      
+      
+        <label class="md-nav__link" for="__nav_5_1" tabindex="0" aria-expanded="false">
+          Physics
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="Physics" data-md-level="2">
+        <label class="md-nav__title" for="__nav_5_1">
+          <span class="md-nav__icon md-icon"></span>
+          Physics
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../development/physics/" class="md-nav__link">
+        Overview
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../development/physics/references/" class="md-nav__link">
+        References
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " data-md-toggle="__nav_5_1_3" type="checkbox" id="__nav_5_1_3" >
+      
+      
+      
+        <label class="md-nav__link" for="__nav_5_1_3" tabindex="0" aria-expanded="false">
+          Theory
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="Theory" data-md-level="3">
+        <label class="md-nav__title" for="__nav_5_1_3">
+          <span class="md-nav__icon md-icon"></span>
+          Theory
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../development/physics/theory/principles/" class="md-nav__link">
+        Principles
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../development/physics/theory/terminology/" class="md-nav__link">
+        Terminology
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../development/physics/theory/equations/" class="md-nav__link">
+        Equations
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../development/physics/theory/effective-mass/" class="md-nav__link">
+        Effective Mass
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../development/physics/theory/moment-of-inertia/" class="md-nav__link">
+        Moment of Inertia
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " data-md-toggle="__nav_5_1_4" type="checkbox" id="__nav_5_1_4" >
+      
+      
+      
+        <label class="md-nav__link" for="__nav_5_1_4" tabindex="0" aria-expanded="false">
+          Derivations
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="Derivations" data-md-level="3">
+        <label class="md-nav__title" for="__nav_5_1_4">
+          <span class="md-nav__icon md-icon"></span>
+          Derivations
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../development/physics/derivations/impulse-derivation/" class="md-nav__link">
+        Impulse
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../development/physics/derivations/effective-mass-derivation/" class="md-nav__link">
+        Effective Mass
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " data-md-toggle="__nav_5_2" type="checkbox" id="__nav_5_2" >
+      
+      
+      
+        <label class="md-nav__link" for="__nav_5_2" tabindex="0" aria-expanded="false">
+          Math
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="Math" data-md-level="2">
+        <label class="md-nav__title" for="__nav_5_2">
+          <span class="md-nav__icon md-icon"></span>
+          Math
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../development/math/vectors/" class="md-nav__link">
+        Vectors
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../development/math/derivatives/" class="md-nav__link">
+        Derivatives
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " data-md-toggle="__nav_5_3" type="checkbox" id="__nav_5_3" >
+      
+      
+      
+        <label class="md-nav__link" for="__nav_5_3" tabindex="0" aria-expanded="false">
+          Notes
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="Notes" data-md-level="2">
+        <label class="md-nav__title" for="__nav_5_3">
+          <span class="md-nav__icon md-icon"></span>
+          Notes
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../development/notes/precision/" class="md-nav__link">
+        Precision
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#core-concepts" class="md-nav__link">
+    Core Concepts
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#setup" class="md-nav__link">
+    Setup
+  </a>
+  
+    <nav class="md-nav" aria-label="Setup">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#creating-a-scene" class="md-nav__link">
+    Creating a Scene
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#advancing-the-simulation" class="md-nav__link">
+    Advancing the Simulation
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#scene-settings" class="md-nav__link">
+    Scene Settings
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ids-views-and-handles" class="md-nav__link">
+    IDs, Views, and Handles
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#bodies" class="md-nav__link">
+    Bodies
+  </a>
+  
+    <nav class="md-nav" aria-label="Bodies">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#creating-bodies" class="md-nav__link">
+    Creating Bodies
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#mass-and-moment-of-inertia" class="md-nav__link">
+    Mass and Moment of Inertia
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#motion-state" class="md-nav__link">
+    Motion State
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#collision-shapes" class="md-nav__link">
+    Collision Shapes
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deleting-bodies" class="md-nav__link">
+    Deleting Bodies
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#terrains" class="md-nav__link">
+    Terrains
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#accelerators" class="md-nav__link">
+    Accelerators
+  </a>
+  
+    <nav class="md-nav" aria-label="Accelerators">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#built-in-acceleration-solvers" class="md-nav__link">
+    Built-in Acceleration Solvers
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-medium" class="md-nav__link">
+    The Medium
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#custom-acceleration-solvers" class="md-nav__link">
+    Custom Acceleration Solvers
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#constraints" class="md-nav__link">
+    Constraints
+  </a>
+  
+    <nav class="md-nav" aria-label="Constraints">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#built-in-constraint-solvers" class="md-nav__link">
+    Built-in Constraint Solvers
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#combining-constraints" class="md-nav__link">
+    Combining Constraints
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#custom-constraint-solvers" class="md-nav__link">
+    Custom Constraint Solvers
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#collisions" class="md-nav__link">
+    Collisions
+  </a>
+  
+    <nav class="md-nav" aria-label="Collisions">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#friction-and-restitution" class="md-nav__link">
+    Friction and Restitution
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#filtering" class="md-nav__link">
+    Filtering
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#collision-notifications" class="md-nav__link">
+    Collision Notifications
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#segment-queries" class="md-nav__link">
+    Segment Queries
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#integration-with-the-game-scene" class="md-nav__link">
+    Integration with the Game Scene
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#limitations" class="md-nav__link">
+    Limitations
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+  
+  
+
+
+
+<h1 id="physics">Physics</h1>
+<p>The <code>game/physics</code> package provides an impulse-based rigid-body simulation. Dynamic bodies move under the influence of accelerators (gravity, thrust, drag, lift), are restricted by constraints (joints, limits, springs), and collide with one another and with static terrain. The simulation is advanced in fixed time steps, and each step corrects velocities through impulses and positions through nudges.</p>
+<p>This page covers how to use the package. For the theory behind the solver, see the <a href="../../../development/physics/">Physics internals</a>.</p>
+<h2 id="core-concepts">Core Concepts</h2>
+<table>
+<thead>
+<tr>
+<th>Concept</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Scene</strong></td>
+<td>A self-contained simulation. Holds bodies, terrains, accelerators, and constraints, none of which interact with those of another scene.</td>
+</tr>
+<tr>
+<td><strong>Body</strong></td>
+<td>A dynamic rigid object with mass, moment of inertia, position, rotation, and velocity. Collision shapes can be attached to it.</td>
+</tr>
+<tr>
+<td><strong>Terrain</strong></td>
+<td>Static, immovable geometry made of triangle meshes, which bodies collide with.</td>
+</tr>
+<tr>
+<td><strong>Accelerator</strong></td>
+<td>A continuous effect, such as gravity or thrust, that accumulates acceleration on bodies. Either global (all bodies) or per-body.</td>
+</tr>
+<tr>
+<td><strong>Constraint</strong></td>
+<td>A restriction on the motion of one body (solo) or two bodies (pair), enforced through impulses and nudges.</td>
+</tr>
+<tr>
+<td><strong>Solver</strong></td>
+<td>The object that implements an accelerator or a constraint. The package ships many; custom ones implement a small interface.</td>
+</tr>
+<tr>
+<td><strong>Medium</strong></td>
+<td>The fluid (air, by default) surrounding the bodies. Aerodynamic solvers sample its velocity and density.</td>
+</tr>
+</tbody>
+</table>
+<p>All quantities use SI units: meters, kilograms, seconds, and radians.</p>
+<h2 id="setup">Setup</h2>
+<h3 id="creating-a-scene">Creating a Scene</h3>
+<p>A scene is created empty, with default settings:</p>
+<div class="highlight"><pre><span></span><code><span class="nx">scene</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">physics</span><span class="p">.</span><span class="nx">NewScene</span><span class="p">()</span>
+</code></pre></div>
+<p>When working with the <code>game</code> package, every <code>game.Scene</code> includes a physics scene by default, available through <code>Physics()</code>. It is advanced automatically on each fixed update (see <a href="#integration-with-the-game-scene">Integration with the Game Scene</a>).</p>
+<div class="highlight"><pre><span></span><code><span class="nx">physicsScene</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">gameScene</span><span class="p">.</span><span class="nx">Physics</span><span class="p">()</span><span class="w"> </span><span class="c1">// nil if created with IncludePhysics: opt.V(false)</span>
+</code></pre></div>
+<p>A new scene has <strong>no gravity</strong>. Gravity is an accelerator like any other and has to be added explicitly (see <a href="#accelerators">Accelerators</a>).</p>
+<h3 id="advancing-the-simulation">Advancing the Simulation</h3>
+<p><code>Update</code> advances the simulation by the given duration:</p>
+<div class="highlight"><pre><span></span><code><span class="nx">scene</span><span class="p">.</span><span class="nx">Update</span><span class="p">(</span><span class="mi">16</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="nx">time</span><span class="p">.</span><span class="nx">Millisecond</span><span class="p">)</span>
+</code></pre></div>
+<p>The impulse and nudge resolution assume a stable step size, so <code>Update</code> should always be called with the same, fixed duration. The <code>game/timestep</code> package provides a <code>Segmenter</code> that turns variable frame times into fixed ticks; <code>game.Scene</code> already uses one.</p>
+<p>Each step performs the following, in order:</p>
+<ol>
+<li>Evaluates all enabled accelerators and turns the accumulated acceleration into velocity.</li>
+<li>Resets all enabled constraints and applies their impulses, over several iterations.</li>
+<li>Moves all bodies according to their velocities.</li>
+<li>Applies the nudges of all enabled constraints, over several iterations.</li>
+<li>Detects collisions, to be resolved during the next step.</li>
+<li>Notifies collision subscribers of collisions that started or stopped.</li>
+</ol>
+<h3 id="scene-settings">Scene Settings</h3>
+<table>
+<thead>
+<tr>
+<th>Setting</th>
+<th>Default</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>SetTimeScale</code></td>
+<td><code>1.0</code></td>
+<td>Multiplier applied to the duration passed to <code>Update</code>. <code>0.0</code> pauses the simulation; negative values are clamped to <code>0.0</code>.</td>
+</tr>
+<tr>
+<td><code>SetImpulseIterationCount</code></td>
+<td><code>8</code></td>
+<td>Number of impulse iterations per step. More iterations satisfy multiple interacting constraints more accurately.</td>
+</tr>
+<tr>
+<td><code>SetNudgeIterationCount</code></td>
+<td><code>4</code></td>
+<td>Number of nudge iterations per step.</td>
+</tr>
+<tr>
+<td><code>SetImpulseDriftAdjustmentRatio</code></td>
+<td><code>0.2</code></td>
+<td>Baumgarte factor that controls how aggressively impulses correct positional drift.</td>
+</tr>
+<tr>
+<td><code>SetNudgeDriftAdjustmentRatio</code></td>
+<td><code>0.2</code></td>
+<td>Baumgarte factor that controls how aggressively nudges correct positional drift.</td>
+</tr>
+<tr>
+<td><code>SetMaxLinearVelocity</code></td>
+<td>unbounded</td>
+<td>Velocities above this magnitude are clamped every step. Also available for angular velocity and for linear and angular acceleration.</td>
+</tr>
+</tbody>
+</table>
+<p>While paused, <code>Update</code> can still be called on its regular schedule. No motion is integrated and no collision notifications are sent.</p>
+<h2 id="ids-views-and-handles">IDs, Views, and Handles</h2>
+<p>Every entity in a scene is referred to by a small, comparable ID, such as <code>BodyID</code> or <code>TerrainID</code>. IDs hold no pointers, so they are cheap to store, for example in ECS components.</p>
+<p>IDs are resolved through a <strong>view</strong> of the scene, which exposes all operations for one kind of entity:</p>
+<div class="highlight"><pre><span></span><code><span class="nx">bodies</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">scene</span><span class="p">.</span><span class="nx">Bodies</span><span class="p">()</span>
+
+<span class="nx">id</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">bodies</span><span class="p">.</span><span class="nx">Create</span><span class="p">(</span><span class="nx">dprec</span><span class="p">.</span><span class="nx">NewVec3</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span><span class="w"> </span><span class="mf">5.0</span><span class="p">,</span><span class="w"> </span><span class="mf">0.0</span><span class="p">),</span><span class="w"> </span><span class="nx">dprec</span><span class="p">.</span><span class="nx">IdentityQuat</span><span class="p">())</span>
+<span class="nx">bodies</span><span class="p">.</span><span class="nx">SetMass</span><span class="p">(</span><span class="nx">id</span><span class="p">,</span><span class="w"> </span><span class="mf">10.0</span><span class="p">)</span>
+<span class="nx">position</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">bodies</span><span class="p">.</span><span class="nx">Position</span><span class="p">(</span><span class="nx">id</span><span class="p">)</span>
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th>View</th>
+<th>Obtained through</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>BodyView</code></td>
+<td><code>scene.Bodies()</code></td>
+</tr>
+<tr>
+<td><code>TerrainView</code></td>
+<td><code>scene.Terrains()</code></td>
+</tr>
+<tr>
+<td><code>GlobalAcceleratorView</code></td>
+<td><code>scene.GlobalAccelerators()</code></td>
+</tr>
+<tr>
+<td><code>BodyAcceleratorView</code></td>
+<td><code>scene.BodyAccelerators()</code></td>
+</tr>
+<tr>
+<td><code>SoloConstraintView</code></td>
+<td><code>scene.SoloConstraints()</code></td>
+</tr>
+<tr>
+<td><code>PairConstraintView</code></td>
+<td><code>scene.PairConstraints()</code></td>
+</tr>
+</tbody>
+</table>
+<p>An ID becomes invalid once its entity is deleted, even if the underlying storage is later reused for a new entity. Most view methods panic when given an invalid ID; use <code>IsValid</code> when an ID might be stale. The zero value of every ID type, also available as a <code>Nil...</code> variable (such as <code>physics.NilBodyID</code>), is never valid.</p>
+<p>A <strong>handle</strong> binds an ID together with its view, for an object-oriented style:</p>
+<div class="highlight"><pre><span></span><code><span class="nx">body</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">scene</span><span class="p">.</span><span class="nx">Bodies</span><span class="p">().</span><span class="nx">CreateHandle</span><span class="p">(</span><span class="nx">dprec</span><span class="p">.</span><span class="nx">NewVec3</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span><span class="w"> </span><span class="mf">5.0</span><span class="p">,</span><span class="w"> </span><span class="mf">0.0</span><span class="p">),</span><span class="w"> </span><span class="nx">dprec</span><span class="p">.</span><span class="nx">IdentityQuat</span><span class="p">())</span>
+<span class="nx">body</span><span class="p">.</span><span class="nx">SetMass</span><span class="p">(</span><span class="mf">10.0</span><span class="p">)</span>
+<span class="nx">body</span><span class="p">.</span><span class="nx">SetVelocity</span><span class="p">(</span><span class="nx">dprec</span><span class="p">.</span><span class="nx">NewVec3</span><span class="p">(</span><span class="mf">1.0</span><span class="p">,</span><span class="w"> </span><span class="mf">0.0</span><span class="p">,</span><span class="w"> </span><span class="mf">0.0</span><span class="p">))</span>
+</code></pre></div>
+<p>Handles need no allocation, but they hold a reference to the scene, which keeps it alive. Prefer storing IDs in long-lived data and creating handles on demand with <code>view.Handle(id)</code>.</p>
+<p>Every view also provides <code>Each</code>, which visits all live entities of its kind in unspecified order.</p>
+<h2 id="bodies">Bodies</h2>
+<h3 id="creating-bodies">Creating Bodies</h3>
+<p>A body is created at a world position and rotation. It starts with a mass of <code>1.0</code>, an identity moment of inertia, zero velocity, and no collision shapes:</p>
+<div class="highlight"><pre><span></span><code><span class="nx">body</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">scene</span><span class="p">.</span><span class="nx">Bodies</span><span class="p">().</span><span class="nx">CreateHandle</span><span class="p">(</span>
+<span class="w">    </span><span class="nx">dprec</span><span class="p">.</span><span class="nx">NewVec3</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span><span class="w"> </span><span class="mf">2.0</span><span class="p">,</span><span class="w"> </span><span class="mf">0.0</span><span class="p">),</span>
+<span class="w">    </span><span class="nx">dprec</span><span class="p">.</span><span class="nx">IdentityQuat</span><span class="p">(),</span>
+<span class="p">)</span>
+</code></pre></div>
+<h3 id="mass-and-moment-of-inertia">Mass and Moment of Inertia</h3>
+<div class="highlight"><pre><span></span><code><span class="kd">const</span><span class="w"> </span><span class="nx">mass</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="mf">20.0</span>
+
+<span class="nx">body</span><span class="p">.</span><span class="nx">SetMass</span><span class="p">(</span><span class="nx">mass</span><span class="p">)</span>
+<span class="nx">body</span><span class="p">.</span><span class="nx">SetMomentOfInertia</span><span class="p">(</span><span class="nx">physics</span><span class="p">.</span><span class="nx">SolidBoxMomentOfInertia</span><span class="p">(</span><span class="nx">mass</span><span class="p">,</span><span class="w"> </span><span class="mf">1.0</span><span class="p">,</span><span class="w"> </span><span class="mf">0.5</span><span class="p">,</span><span class="w"> </span><span class="mf">2.0</span><span class="p">))</span>
+</code></pre></div>
+<p>The mass must be positive. A mass of <code>math.Inf(1)</code> makes a body immovable by forces and impulses, though it still moves at whatever velocity it is given. The moment of inertia is expressed in the body's local space and must be invertible.</p>
+<p>The package provides helpers for common shapes and for combining parts:</p>
+<table>
+<thead>
+<tr>
+<th>Function</th>
+<th>Result</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>SolidSphereMomentOfInertia(mass, radius)</code></td>
+<td>Solid sphere.</td>
+</tr>
+<tr>
+<td><code>HollowSphereMomentOfInertia(mass, radius)</code></td>
+<td>Thin spherical shell.</td>
+</tr>
+<tr>
+<td><code>SolidBoxMomentOfInertia(mass, width, height, length)</code></td>
+<td>Solid box; sizes are full extents along X, Y, and Z.</td>
+</tr>
+<tr>
+<td><code>HollowBoxMomentOfInertia(mass, width, height, length)</code></td>
+<td>Thin box shell.</td>
+</tr>
+<tr>
+<td><code>DiagonalMomentOfInertia(xx, yy, zz)</code></td>
+<td>Given principal moments along the local axes.</td>
+</tr>
+<tr>
+<td><code>SymmetricMomentOfInertia(value)</code></td>
+<td>The same principal moment along every axis.</td>
+</tr>
+<tr>
+<td><code>RotatedMomentOfInertia(tensor, rotation)</code></td>
+<td>A tensor as observed from a rotated frame, for parts mounted at an angle.</td>
+</tr>
+<tr>
+<td><code>OffsetMomentOfInertia(tensor, mass, offset)</code></td>
+<td>A tensor around a point away from the center of mass (parallel axis theorem).</td>
+</tr>
+<tr>
+<td><code>MomentOfInertiaSum(a, b)</code> / <code>MomentOfInertiaMultiSum(...)</code></td>
+<td>The sum of tensors expressed in the same frame.</td>
+</tr>
+</tbody>
+</table>
+<p>For example, the inertia of an airplane can be built from a fuselage and two offset engines:</p>
+<div class="highlight"><pre><span></span><code><span class="nx">inertia</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">physics</span><span class="p">.</span><span class="nx">MomentOfInertiaMultiSum</span><span class="p">(</span>
+<span class="w">    </span><span class="nx">physics</span><span class="p">.</span><span class="nx">SolidBoxMomentOfInertia</span><span class="p">(</span><span class="nx">fuselageMass</span><span class="p">,</span><span class="w"> </span><span class="mf">1.5</span><span class="p">,</span><span class="w"> </span><span class="mf">1.5</span><span class="p">,</span><span class="w"> </span><span class="mf">10.0</span><span class="p">),</span>
+<span class="w">    </span><span class="nx">physics</span><span class="p">.</span><span class="nx">OffsetMomentOfInertia</span><span class="p">(</span><span class="nx">physics</span><span class="p">.</span><span class="nx">SolidSphereMomentOfInertia</span><span class="p">(</span><span class="nx">engineMass</span><span class="p">,</span><span class="w"> </span><span class="mf">0.5</span><span class="p">),</span><span class="w"> </span><span class="nx">engineMass</span><span class="p">,</span><span class="w"> </span><span class="nx">dprec</span><span class="p">.</span><span class="nx">NewVec3</span><span class="p">(</span><span class="o">-</span><span class="mf">3.0</span><span class="p">,</span><span class="w"> </span><span class="mf">0.0</span><span class="p">,</span><span class="w"> </span><span class="mf">0.0</span><span class="p">)),</span>
+<span class="w">    </span><span class="nx">physics</span><span class="p">.</span><span class="nx">OffsetMomentOfInertia</span><span class="p">(</span><span class="nx">physics</span><span class="p">.</span><span class="nx">SolidSphereMomentOfInertia</span><span class="p">(</span><span class="nx">engineMass</span><span class="p">,</span><span class="w"> </span><span class="mf">0.5</span><span class="p">),</span><span class="w"> </span><span class="nx">engineMass</span><span class="p">,</span><span class="w"> </span><span class="nx">dprec</span><span class="p">.</span><span class="nx">NewVec3</span><span class="p">(</span><span class="mf">3.0</span><span class="p">,</span><span class="w"> </span><span class="mf">0.0</span><span class="p">,</span><span class="w"> </span><span class="mf">0.0</span><span class="p">)),</span>
+<span class="p">)</span>
+</code></pre></div>
+<h3 id="motion-state">Motion State</h3>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Position</code> / <code>SetPosition</code></td>
+<td>World position of the center of mass.</td>
+</tr>
+<tr>
+<td><code>Rotation</code> / <code>SetRotation</code></td>
+<td>World orientation, as a unit quaternion.</td>
+</tr>
+<tr>
+<td><code>Velocity</code> / <code>SetVelocity</code></td>
+<td>World linear velocity of the center of mass, in m/s.</td>
+</tr>
+<tr>
+<td><code>AngularVelocity</code> / <code>SetAngularVelocity</code></td>
+<td>World angular velocity, in radians per second around each axis.</td>
+</tr>
+</tbody>
+</table>
+<p>Setting the position or rotation teleports the body. Its collision shapes move along immediately, so segment queries observe the change right away.</p>
+<h3 id="collision-shapes">Collision Shapes</h3>
+<p>Spheres and boxes can be attached to a body. They are specified in the body's local space and move along with it:</p>
+<div class="highlight"><pre><span></span><code><span class="nx">body</span><span class="p">.</span><span class="nx">AttachCollisionSphere</span><span class="p">(</span><span class="nx">physics</span><span class="p">.</span><span class="nx">CollisionSphere</span><span class="p">{</span>
+<span class="w">    </span><span class="nx">Shape</span><span class="p">:</span><span class="w">                  </span><span class="nx">shape3d</span><span class="p">.</span><span class="nx">NewSphere</span><span class="p">(</span><span class="nx">dprec</span><span class="p">.</span><span class="nx">NewVec3</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span><span class="w"> </span><span class="mf">0.5</span><span class="p">,</span><span class="w"> </span><span class="mf">0.0</span><span class="p">),</span><span class="w"> </span><span class="mf">0.5</span><span class="p">),</span>
+<span class="w">    </span><span class="nx">FrictionCoefficient</span><span class="p">:</span><span class="w">    </span><span class="mf">0.8</span><span class="p">,</span>
+<span class="w">    </span><span class="nx">RestitutionCoefficient</span><span class="p">:</span><span class="w"> </span><span class="mf">0.2</span><span class="p">,</span>
+<span class="p">})</span>
+
+<span class="nx">shapeID</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">body</span><span class="p">.</span><span class="nx">AttachCollisionBox</span><span class="p">(</span><span class="nx">physics</span><span class="p">.</span><span class="nx">CollisionBox</span><span class="p">{</span>
+<span class="w">    </span><span class="nx">Shape</span><span class="p">:</span><span class="w">               </span><span class="nx">shape3d</span><span class="p">.</span><span class="nx">NewBox</span><span class="p">(</span><span class="nx">dprec</span><span class="p">.</span><span class="nx">ZeroVec3</span><span class="p">(),</span><span class="w"> </span><span class="nx">shape3d</span><span class="p">.</span><span class="nx">IdentityRotation</span><span class="p">(),</span><span class="w"> </span><span class="nx">dprec</span><span class="p">.</span><span class="nx">NewVec3</span><span class="p">(</span><span class="mf">1.0</span><span class="p">,</span><span class="w"> </span><span class="mf">0.25</span><span class="p">,</span><span class="w"> </span><span class="mf">2.0</span><span class="p">)),</span>
+<span class="w">    </span><span class="nx">FrictionCoefficient</span><span class="p">:</span><span class="w"> </span><span class="mf">0.5</span><span class="p">,</span>
+<span class="p">})</span>
+
+<span class="nx">body</span><span class="p">.</span><span class="nx">DetachCollisionShape</span><span class="p">(</span><span class="nx">shapeID</span><span class="p">)</span>
+</code></pre></div>
+<p>The box is given by its half-extents. A body may have any number of shapes; a body without shapes is still simulated but never collides. See <a href="../../core/spatial/">Spatial</a> for the shapes themselves.</p>
+<h3 id="deleting-bodies">Deleting Bodies</h3>
+<div class="highlight"><pre><span></span><code><span class="nx">body</span><span class="p">.</span><span class="nx">Delete</span><span class="p">()</span>
+</code></pre></div>
+<p>Deleting a body also deletes its collision shapes, the body accelerators that act on it, and every solo and pair constraint that references it.</p>
+<h2 id="terrains">Terrains</h2>
+<p>A terrain is static geometry made of triangle meshes. Unlike body shapes, its meshes are specified in world space, since a terrain has no transform of its own:</p>
+<div class="highlight"><pre><span></span><code><span class="nx">terrain</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">scene</span><span class="p">.</span><span class="nx">Terrains</span><span class="p">().</span><span class="nx">CreateHandle</span><span class="p">()</span>
+<span class="nx">terrain</span><span class="p">.</span><span class="nx">AttachCollisionMesh</span><span class="p">(</span><span class="nx">physics</span><span class="p">.</span><span class="nx">CollisionMesh</span><span class="p">{</span>
+<span class="w">    </span><span class="nx">Shape</span><span class="p">:</span><span class="w"> </span><span class="nx">shape3d</span><span class="p">.</span><span class="nx">NewMesh</span><span class="p">([]</span><span class="nx">shape3d</span><span class="p">.</span><span class="nx">Triangle</span><span class="p">{</span>
+<span class="w">        </span><span class="nx">shape3d</span><span class="p">.</span><span class="nx">NewTriangle</span><span class="p">(</span>
+<span class="w">            </span><span class="nx">dprec</span><span class="p">.</span><span class="nx">NewVec3</span><span class="p">(</span><span class="o">-</span><span class="mf">50.0</span><span class="p">,</span><span class="w"> </span><span class="mf">0.0</span><span class="p">,</span><span class="w"> </span><span class="mf">50.0</span><span class="p">),</span>
+<span class="w">            </span><span class="nx">dprec</span><span class="p">.</span><span class="nx">NewVec3</span><span class="p">(</span><span class="mf">50.0</span><span class="p">,</span><span class="w"> </span><span class="mf">0.0</span><span class="p">,</span><span class="w"> </span><span class="mf">50.0</span><span class="p">),</span>
+<span class="w">            </span><span class="nx">dprec</span><span class="p">.</span><span class="nx">NewVec3</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span><span class="w"> </span><span class="mf">0.0</span><span class="p">,</span><span class="w"> </span><span class="o">-</span><span class="mf">50.0</span><span class="p">),</span>
+<span class="w">        </span><span class="p">),</span>
+<span class="w">    </span><span class="p">}),</span>
+<span class="w">    </span><span class="nx">FrictionCoefficient</span><span class="p">:</span><span class="w"> </span><span class="mf">0.9</span><span class="p">,</span>
+<span class="p">})</span>
+</code></pre></div>
+<p><code>AttachCollisionMesh</code> panics if the mesh is empty. When working with the <code>game</code> package, the terrains defined in a model asset are created automatically when the model is instantiated.</p>
+<h2 id="accelerators">Accelerators</h2>
+<p>An accelerator evaluates an <code>AccelerationSolver</code> on every step. A <strong>global</strong> accelerator acts on every body in the scene, while a <strong>body</strong> accelerator acts on a single body:</p>
+<div class="highlight"><pre><span></span><code><span class="c1">// Gravity for every body.</span>
+<span class="nx">scene</span><span class="p">.</span><span class="nx">GlobalAccelerators</span><span class="p">().</span><span class="nx">Create</span><span class="p">(</span><span class="nx">physics</span><span class="p">.</span><span class="nx">NewGravitySolver</span><span class="p">())</span>
+
+<span class="c1">// A thruster mounted at the back of one body.</span>
+<span class="nx">thruster</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">physics</span><span class="p">.</span><span class="nx">NewAxisForceSolver</span><span class="p">(</span><span class="nx">physics</span><span class="p">.</span><span class="nx">AxisForceSolverConfig</span><span class="p">{</span>
+<span class="w">    </span><span class="nx">BodyAnchorOffset</span><span class="p">:</span><span class="w"> </span><span class="nx">dprec</span><span class="p">.</span><span class="nx">NewVec3</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span><span class="w"> </span><span class="mf">0.0</span><span class="p">,</span><span class="w"> </span><span class="o">-</span><span class="mf">2.0</span><span class="p">),</span>
+<span class="w">    </span><span class="nx">Axis</span><span class="p">:</span><span class="w">             </span><span class="nx">dprec</span><span class="p">.</span><span class="nx">BasisZVec3</span><span class="p">(),</span>
+<span class="w">    </span><span class="nx">Magnitude</span><span class="p">:</span><span class="w">        </span><span class="mf">500.0</span><span class="p">,</span>
+<span class="p">})</span>
+<span class="nx">accelerator</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">scene</span><span class="p">.</span><span class="nx">BodyAccelerators</span><span class="p">().</span><span class="nx">CreateHandle</span><span class="p">(</span><span class="nx">body</span><span class="p">.</span><span class="nx">ID</span><span class="p">(),</span><span class="w"> </span><span class="nx">thruster</span><span class="p">)</span>
+</code></pre></div>
+<p>Accelerators are enabled when created and can be toggled with <code>SetEnabled</code>. Solvers are ordinary objects, so their settings can be changed at any time:</p>
+<div class="highlight"><pre><span></span><code><span class="nx">thruster</span><span class="p">.</span><span class="nx">SetMagnitude</span><span class="p">(</span><span class="nx">throttle</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mf">500.0</span><span class="p">)</span>
+<span class="nx">accelerator</span><span class="p">.</span><span class="nx">SetEnabled</span><span class="p">(</span><span class="nx">throttle</span><span class="w"> </span><span class="p">&gt;</span><span class="w"> </span><span class="mf">0.0</span><span class="p">)</span>
+</code></pre></div>
+<h3 id="built-in-acceleration-solvers">Built-in Acceleration Solvers</h3>
+<table>
+<thead>
+<tr>
+<th>Solver</th>
+<th>Effect</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>GravitySolver</code></td>
+<td>Constant acceleration along a world direction, independent of mass. Defaults to 9.8 m/s^2 along negative Y.</td>
+</tr>
+<tr>
+<td><code>AxisForceSolver</code></td>
+<td>Constant force along a body-local axis, applied at a body-local offset. Rotates with the body, like a thruster.</td>
+</tr>
+<tr>
+<td><code>DirectionForceSolver</code></td>
+<td>Constant force along a world direction, applied at a body-local offset. Does not rotate with the body, like an external jet.</td>
+</tr>
+<tr>
+<td><code>DragSolver</code></td>
+<td>Aerodynamic pressure drag of a box-shaped volume, resisting both translation and rotation, with a separate drag coefficient per axis.</td>
+</tr>
+<tr>
+<td><code>AirfoilSolver</code></td>
+<td>Lift (and the drag induced by it) of a wing-like surface, including stall past a configurable angle of attack.</td>
+</tr>
+</tbody>
+</table>
+<p>Solvers that take a <code>Config</code> struct can be created with their <code>New...</code> constructor or allocated once and reconfigured through <code>Configure</code>, which allows them to be cached and reused.</p>
+<h3 id="the-medium">The Medium</h3>
+<p><code>DragSolver</code> and <code>AirfoilSolver</code> act relative to the medium that surrounds the bodies. The scene samples the medium once per body per step, through a <code>MediumSolver</code>. The default is a <code>StaticAirSolver</code>, with sea-level air density (1.2 kg/m^3) and no wind:</p>
+<div class="highlight"><pre><span></span><code><span class="nx">air</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">physics</span><span class="p">.</span><span class="nx">NewStaticAirSolver</span><span class="p">().</span>
+<span class="w">    </span><span class="nx">SetAirDensity</span><span class="p">(</span><span class="mf">1.0</span><span class="p">).</span>
+<span class="w">    </span><span class="nx">SetAirVelocity</span><span class="p">(</span><span class="nx">dprec</span><span class="p">.</span><span class="nx">NewVec3</span><span class="p">(</span><span class="mf">5.0</span><span class="p">,</span><span class="w"> </span><span class="mf">0.0</span><span class="p">,</span><span class="w"> </span><span class="mf">0.0</span><span class="p">))</span><span class="w"> </span><span class="c1">// constant wind</span>
+
+<span class="nx">scene</span><span class="p">.</span><span class="nx">SetMediumSolver</span><span class="p">(</span><span class="nx">air</span><span class="p">)</span>
+</code></pre></div>
+<p>Altitude-dependent air, water, or localized wind can be modeled with a custom <code>MediumSolver</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="kd">type</span><span class="w"> </span><span class="nx">AtmosphereSolver</span><span class="w"> </span><span class="kd">struct</span><span class="p">{}</span>
+
+<span class="kd">func</span><span class="w"> </span><span class="p">(</span><span class="nx">AtmosphereSolver</span><span class="p">)</span><span class="w"> </span><span class="nx">Density</span><span class="p">(</span><span class="nx">position</span><span class="w"> </span><span class="nx">dprec</span><span class="p">.</span><span class="nx">Vec3</span><span class="p">)</span><span class="w"> </span><span class="kt">float64</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="mf">1.2</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="nx">math</span><span class="p">.</span><span class="nx">Exp</span><span class="p">(</span><span class="o">-</span><span class="nx">position</span><span class="p">.</span><span class="nx">Y</span><span class="o">/</span><span class="mf">8500.0</span><span class="p">)</span>
+<span class="p">}</span>
+
+<span class="kd">func</span><span class="w"> </span><span class="p">(</span><span class="nx">AtmosphereSolver</span><span class="p">)</span><span class="w"> </span><span class="nx">Velocity</span><span class="p">(</span><span class="nx">position</span><span class="w"> </span><span class="nx">dprec</span><span class="p">.</span><span class="nx">Vec3</span><span class="p">)</span><span class="w"> </span><span class="nx">dprec</span><span class="p">.</span><span class="nx">Vec3</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="nx">dprec</span><span class="p">.</span><span class="nx">ZeroVec3</span><span class="p">()</span>
+<span class="p">}</span>
+</code></pre></div>
+<h3 id="custom-acceleration-solvers">Custom Acceleration Solvers</h3>
+<p>An <code>AccelerationSolver</code> receives an <code>AccelerationContext</code> with the time step, the medium at the body's location, and an <code>AccelerationTarget</code>. The target exposes the body's mass and motion state, and accumulates the acceleration the solver contributes:</p>
+<div class="highlight"><pre><span></span><code><span class="c1">// SpringSolver pulls a body toward a fixed anchor.</span>
+<span class="kd">type</span><span class="w"> </span><span class="nx">SpringSolver</span><span class="w"> </span><span class="kd">struct</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">Anchor</span><span class="w">    </span><span class="nx">dprec</span><span class="p">.</span><span class="nx">Vec3</span>
+<span class="w">    </span><span class="nx">Stiffness</span><span class="w"> </span><span class="kt">float64</span>
+<span class="p">}</span>
+
+<span class="kd">func</span><span class="w"> </span><span class="p">(</span><span class="nx">s</span><span class="w"> </span><span class="o">*</span><span class="nx">SpringSolver</span><span class="p">)</span><span class="w"> </span><span class="nx">ApplyAcceleration</span><span class="p">(</span><span class="nx">ctx</span><span class="w"> </span><span class="nx">physics</span><span class="p">.</span><span class="nx">AccelerationContext</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">delta</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">dprec</span><span class="p">.</span><span class="nx">Vec3Diff</span><span class="p">(</span><span class="nx">s</span><span class="p">.</span><span class="nx">Anchor</span><span class="p">,</span><span class="w"> </span><span class="nx">ctx</span><span class="p">.</span><span class="nx">Target</span><span class="p">.</span><span class="nx">Position</span><span class="p">())</span>
+<span class="w">    </span><span class="nx">ctx</span><span class="p">.</span><span class="nx">Target</span><span class="p">.</span><span class="nx">ApplyForce</span><span class="p">(</span><span class="nx">dprec</span><span class="p">.</span><span class="nx">Vec3Prod</span><span class="p">(</span><span class="nx">delta</span><span class="p">,</span><span class="w"> </span><span class="nx">s</span><span class="p">.</span><span class="nx">Stiffness</span><span class="p">))</span>
+<span class="p">}</span>
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th>Target method</th>
+<th>Effect</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>AddLinearAcceleration</code> / <code>AddAngularAcceleration</code></td>
+<td>Adds acceleration directly, independent of mass.</td>
+</tr>
+<tr>
+<td><code>ApplyForce</code></td>
+<td>Applies a force at the center of mass.</td>
+</tr>
+<tr>
+<td><code>ApplyTorque</code></td>
+<td>Applies a torque.</td>
+</tr>
+<tr>
+<td><code>ApplyOffsetForce</code></td>
+<td>Applies a force at a world-space offset from the center of mass, inducing torque.</td>
+</tr>
+</tbody>
+</table>
+<p>All vectors are in world space. The accumulated acceleration does not change the state observed through the target, so the order in which solvers are evaluated does not matter. A solver must not retain the context or the target beyond the call.</p>
+<h2 id="constraints">Constraints</h2>
+<p>A constraint restricts the motion of bodies. A <strong>solo</strong> constraint acts on a single body and is backed by a <code>SoloConstraintSolver</code>; a <strong>pair</strong> constraint acts on two bodies (a primary and a secondary) and is backed by a <code>PairConstraintSolver</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="c1">// Pin a body to a fixed point in the world.</span>
+<span class="nx">scene</span><span class="p">.</span><span class="nx">SoloConstraints</span><span class="p">().</span><span class="nx">Create</span><span class="p">(</span><span class="nx">lamp</span><span class="p">.</span><span class="nx">ID</span><span class="p">(),</span><span class="w"> </span><span class="nx">physics</span><span class="p">.</span><span class="nx">NewFixedPositionSolver</span><span class="p">(</span><span class="nx">physics</span><span class="p">.</span><span class="nx">FixedPositionSolverConfig</span><span class="p">{</span>
+<span class="w">    </span><span class="nx">Position</span><span class="p">:</span><span class="w"> </span><span class="nx">dprec</span><span class="p">.</span><span class="nx">NewVec3</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span><span class="w"> </span><span class="mf">10.0</span><span class="p">,</span><span class="w"> </span><span class="mf">0.0</span><span class="p">),</span>
+<span class="p">}))</span>
+
+<span class="c1">// Connect two bodies with a ball-and-socket joint.</span>
+<span class="nx">joint</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">scene</span><span class="p">.</span><span class="nx">PairConstraints</span><span class="p">().</span><span class="nx">CreateHandle</span><span class="p">(</span><span class="nx">upperArm</span><span class="p">.</span><span class="nx">ID</span><span class="p">(),</span><span class="w"> </span><span class="nx">lowerArm</span><span class="p">.</span><span class="nx">ID</span><span class="p">(),</span><span class="w"> </span><span class="nx">physics</span><span class="p">.</span><span class="nx">NewBallJointSolver</span><span class="p">(</span><span class="nx">physics</span><span class="p">.</span><span class="nx">BallJointSolverConfig</span><span class="p">{</span>
+<span class="w">    </span><span class="nx">PrimaryBodyAnchorOffset</span><span class="p">:</span><span class="w">   </span><span class="nx">dprec</span><span class="p">.</span><span class="nx">NewVec3</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span><span class="w"> </span><span class="o">-</span><span class="mf">0.5</span><span class="p">,</span><span class="w"> </span><span class="mf">0.0</span><span class="p">),</span>
+<span class="w">    </span><span class="nx">SecondaryBodyAnchorOffset</span><span class="p">:</span><span class="w"> </span><span class="nx">dprec</span><span class="p">.</span><span class="nx">NewVec3</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span><span class="w"> </span><span class="mf">0.5</span><span class="p">,</span><span class="w"> </span><span class="mf">0.0</span><span class="p">),</span>
+<span class="p">}))</span>
+</code></pre></div>
+<p>Constraints are enabled when created and can be toggled with <code>SetEnabled</code>. A pair constraint cannot connect a body to itself; <code>Create</code> panics in that case.</p>
+<p>Offsets ("anchors") and axes in solver configurations are expressed in the local space of the body they belong to, relative to its center of mass.</p>
+<h3 id="built-in-constraint-solvers">Built-in Constraint Solvers</h3>
+<p>Solo constraints:</p>
+<table>
+<thead>
+<tr>
+<th>Solver</th>
+<th>Effect</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>FixedPositionSolver</code></td>
+<td>Pins the body to a world position. Kinematic: overrides the body's linear motion completely.</td>
+</tr>
+<tr>
+<td><code>FixedRotationSolver</code></td>
+<td>Pins the body to a world rotation. Kinematic: overrides the body's angular motion completely.</td>
+</tr>
+<tr>
+<td><code>FixedDistanceSolver</code></td>
+<td>Keeps an anchor point at a fixed distance from a world point, like a rigid rod to a fixed pivot.</td>
+</tr>
+</tbody>
+</table>
+<p>Pair constraints:</p>
+<table>
+<thead>
+<tr>
+<th>Solver</th>
+<th>Effect</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>BallJointSolver</code></td>
+<td>Keeps an anchor on each body coincident, leaving rotation free.</td>
+</tr>
+<tr>
+<td><code>DistanceSolver</code></td>
+<td>Keeps an anchor on each body at a fixed distance apart, like a rigid rod.</td>
+</tr>
+<tr>
+<td><code>AxisDisplacementSolver</code></td>
+<td>Keeps the anchors at a fixed signed distance along an axis of the primary body.</td>
+</tr>
+<tr>
+<td><code>AxisRangeSolver</code></td>
+<td>Keeps that signed distance within a range, acting only at the limits.</td>
+</tr>
+<tr>
+<td><code>AxisAngleRangeSolver</code></td>
+<td>Keeps the angle between two axes, measured about a rotation axis, within a range. Adds end stops to a hinge.</td>
+</tr>
+<tr>
+<td><code>MatchAxesSolver</code></td>
+<td>Makes an axis of each body parallel. Combined with a <code>BallJointSolver</code>, it forms a hinge.</td>
+</tr>
+<tr>
+<td><code>MatchRotationsSolver</code></td>
+<td>Drives both bodies toward the same orientation, in proportion to their inertia.</td>
+</tr>
+<tr>
+<td><code>CoiloverSolver</code></td>
+<td>A soft spring-damper between two anchors, tuned by frequency and damping ratio. Suited to vehicle suspension.</td>
+</tr>
+<tr>
+<td><code>CopyPositionSolver</code></td>
+<td>Makes the primary body follow the secondary body's position. Kinematic.</td>
+</tr>
+<tr>
+<td><code>CopyRotationSolver</code></td>
+<td>Makes the primary body follow the secondary body's rotation. Kinematic.</td>
+</tr>
+<tr>
+<td><code>CopyAxisSolver</code></td>
+<td>Makes an axis of the primary body point in the same direction as an axis of the secondary body. Kinematic.</td>
+</tr>
+</tbody>
+</table>
+<p>Kinematic solvers overwrite the motion of the affected body outright and ignore its mass, so forces and other constraints have no effect on the motion they control. The remaining solvers apply corrections in proportion to the mass and inertia of each body, so both bodies react to one another.</p>
+<h3 id="combining-constraints">Combining Constraints</h3>
+<p><code>CompositeSoloConstraintSolver</code> and <code>CompositePairConstraintSolver</code> group several solvers into a single constraint, so they share one ID and one enable toggle. For example, a hinge with end stops:</p>
+<div class="highlight"><pre><span></span><code><span class="nx">hinge</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">physics</span><span class="p">.</span><span class="nx">NewCompositePairConstraintSolver</span><span class="p">(</span>
+<span class="w">    </span><span class="nx">physics</span><span class="p">.</span><span class="nx">NewBallJointSolver</span><span class="p">(</span><span class="nx">physics</span><span class="p">.</span><span class="nx">BallJointSolverConfig</span><span class="p">{</span>
+<span class="w">        </span><span class="nx">PrimaryBodyAnchorOffset</span><span class="p">:</span><span class="w">   </span><span class="nx">dprec</span><span class="p">.</span><span class="nx">NewVec3</span><span class="p">(</span><span class="mf">0.5</span><span class="p">,</span><span class="w"> </span><span class="mf">0.0</span><span class="p">,</span><span class="w"> </span><span class="mf">0.0</span><span class="p">),</span>
+<span class="w">        </span><span class="nx">SecondaryBodyAnchorOffset</span><span class="p">:</span><span class="w"> </span><span class="nx">dprec</span><span class="p">.</span><span class="nx">NewVec3</span><span class="p">(</span><span class="o">-</span><span class="mf">0.5</span><span class="p">,</span><span class="w"> </span><span class="mf">0.0</span><span class="p">,</span><span class="w"> </span><span class="mf">0.0</span><span class="p">),</span>
+<span class="w">    </span><span class="p">}),</span>
+<span class="w">    </span><span class="nx">physics</span><span class="p">.</span><span class="nx">NewMatchAxesSolver</span><span class="p">(</span><span class="nx">physics</span><span class="p">.</span><span class="nx">MatchAxesSolverConfig</span><span class="p">{</span>
+<span class="w">        </span><span class="nx">PrimaryBodyAxis</span><span class="p">:</span><span class="w">   </span><span class="nx">dprec</span><span class="p">.</span><span class="nx">BasisYVec3</span><span class="p">(),</span>
+<span class="w">        </span><span class="nx">SecondaryBodyAxis</span><span class="p">:</span><span class="w"> </span><span class="nx">dprec</span><span class="p">.</span><span class="nx">BasisYVec3</span><span class="p">(),</span>
+<span class="w">    </span><span class="p">}),</span>
+<span class="w">    </span><span class="nx">physics</span><span class="p">.</span><span class="nx">NewAxisAngleRangeSolver</span><span class="p">(</span><span class="nx">physics</span><span class="p">.</span><span class="nx">AxisAngleRangeSolverConfig</span><span class="p">{</span>
+<span class="w">        </span><span class="nx">PrimaryBodyAxis</span><span class="p">:</span><span class="w">   </span><span class="nx">dprec</span><span class="p">.</span><span class="nx">BasisXVec3</span><span class="p">(),</span>
+<span class="w">        </span><span class="nx">SecondaryBodyAxis</span><span class="p">:</span><span class="w"> </span><span class="nx">dprec</span><span class="p">.</span><span class="nx">BasisXVec3</span><span class="p">(),</span>
+<span class="w">        </span><span class="nx">RotationAxis</span><span class="p">:</span><span class="w">      </span><span class="nx">dprec</span><span class="p">.</span><span class="nx">BasisYVec3</span><span class="p">(),</span>
+<span class="w">        </span><span class="nx">MinAngle</span><span class="p">:</span><span class="w">          </span><span class="nx">dprec</span><span class="p">.</span><span class="nx">Degrees</span><span class="p">(</span><span class="o">-</span><span class="mf">90.0</span><span class="p">),</span>
+<span class="w">        </span><span class="nx">MaxAngle</span><span class="p">:</span><span class="w">          </span><span class="nx">dprec</span><span class="p">.</span><span class="nx">Degrees</span><span class="p">(</span><span class="mf">0.0</span><span class="p">),</span>
+<span class="w">    </span><span class="p">}),</span>
+<span class="p">)</span>
+<span class="nx">door</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">scene</span><span class="p">.</span><span class="nx">PairConstraints</span><span class="p">().</span><span class="nx">CreateHandle</span><span class="p">(</span><span class="nx">frame</span><span class="p">.</span><span class="nx">ID</span><span class="p">(),</span><span class="w"> </span><span class="nx">panel</span><span class="p">.</span><span class="nx">ID</span><span class="p">(),</span><span class="w"> </span><span class="nx">hinge</span><span class="p">)</span>
+</code></pre></div>
+<p>The combined solvers are driven in the order they are given.</p>
+<h3 id="custom-constraint-solvers">Custom Constraint Solvers</h3>
+<p>A constraint solver has three methods, which the scene calls on every step:</p>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>When</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Reset</code></td>
+<td>Once, before the impulse iterations.</td>
+<td>Compute anything that depends on the bodies' positions and rotations, such as Jacobians.</td>
+</tr>
+<tr>
+<td><code>ApplyImpulses</code></td>
+<td>Once per impulse iteration.</td>
+<td>Correct velocities. Positions do not change between iterations, so the state computed in <code>Reset</code> stays valid.</td>
+</tr>
+<tr>
+<td><code>ApplyNudges</code></td>
+<td>Once per nudge iteration.</td>
+<td>Correct positions. Positions may have changed since the previous call, so position-dependent state must be recomputed at the start of each call.</td>
+</tr>
+</tbody>
+</table>
+<p>Most constraints are expressed through a <code>Jacobian</code>, which describes how a body's linear and angular velocity affect a scalar constraint. The <code>SoloConstraintContext</code> and <code>PairConstraintContext</code> passed to the solver compute the corrective impulses and nudges for a Jacobian and a positional error (drift). The following solver keeps a body above a horizontal floor:</p>
+<div class="highlight"><pre><span></span><code><span class="kd">type</span><span class="w"> </span><span class="nx">FloorSolver</span><span class="w"> </span><span class="kd">struct</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">Height</span><span class="w"> </span><span class="kt">float64</span>
+
+<span class="w">    </span><span class="nx">jacobian</span><span class="w"> </span><span class="nx">physics</span><span class="p">.</span><span class="nx">Jacobian</span>
+<span class="w">    </span><span class="nx">drift</span><span class="w">    </span><span class="kt">float64</span>
+<span class="p">}</span>
+
+<span class="kd">func</span><span class="w"> </span><span class="p">(</span><span class="nx">s</span><span class="w"> </span><span class="o">*</span><span class="nx">FloorSolver</span><span class="p">)</span><span class="w"> </span><span class="nx">Reset</span><span class="p">(</span><span class="nx">ctx</span><span class="w"> </span><span class="nx">physics</span><span class="p">.</span><span class="nx">SoloConstraintContext</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">s</span><span class="p">.</span><span class="nx">recompute</span><span class="p">(</span><span class="nx">ctx</span><span class="p">)</span>
+<span class="p">}</span>
+
+<span class="kd">func</span><span class="w"> </span><span class="p">(</span><span class="nx">s</span><span class="w"> </span><span class="o">*</span><span class="nx">FloorSolver</span><span class="p">)</span><span class="w"> </span><span class="nx">ApplyImpulses</span><span class="p">(</span><span class="nx">ctx</span><span class="w"> </span><span class="nx">physics</span><span class="p">.</span><span class="nx">SoloConstraintContext</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="nx">s</span><span class="p">.</span><span class="nx">drift</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="mf">0.0</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="c1">// above the floor</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="nx">bounce</span><span class="p">,</span><span class="w"> </span><span class="nx">baumgarte</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">ctx</span><span class="p">.</span><span class="nx">ImpulseLambdaComponents</span><span class="p">(</span><span class="nx">s</span><span class="p">.</span><span class="nx">jacobian</span><span class="p">,</span><span class="w"> </span><span class="nx">s</span><span class="p">.</span><span class="nx">drift</span><span class="p">,</span><span class="w"> </span><span class="mf">0.0</span><span class="p">)</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="nx">bounce</span><span class="w"> </span><span class="p">&lt;</span><span class="w"> </span><span class="mf">0.0</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="c1">// already moving away from the floor</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="nx">ctx</span><span class="p">.</span><span class="nx">Target</span><span class="p">.</span><span class="nx">ApplyImpulse</span><span class="p">(</span><span class="nx">s</span><span class="p">.</span><span class="nx">jacobian</span><span class="p">.</span><span class="nx">Impulse</span><span class="p">(</span><span class="nx">bounce</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="nx">baumgarte</span><span class="p">))</span>
+<span class="p">}</span>
+
+<span class="kd">func</span><span class="w"> </span><span class="p">(</span><span class="nx">s</span><span class="w"> </span><span class="o">*</span><span class="nx">FloorSolver</span><span class="p">)</span><span class="w"> </span><span class="nx">ApplyNudges</span><span class="p">(</span><span class="nx">ctx</span><span class="w"> </span><span class="nx">physics</span><span class="p">.</span><span class="nx">SoloConstraintContext</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">s</span><span class="p">.</span><span class="nx">recompute</span><span class="p">(</span><span class="nx">ctx</span><span class="p">)</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="nx">s</span><span class="p">.</span><span class="nx">drift</span><span class="w"> </span><span class="p">&gt;</span><span class="w"> </span><span class="mf">0.0</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nx">ctx</span><span class="p">.</span><span class="nx">Target</span><span class="p">.</span><span class="nx">ApplyNudge</span><span class="p">(</span><span class="nx">ctx</span><span class="p">.</span><span class="nx">NudgeSolution</span><span class="p">(</span><span class="nx">s</span><span class="p">.</span><span class="nx">jacobian</span><span class="p">,</span><span class="w"> </span><span class="nx">s</span><span class="p">.</span><span class="nx">drift</span><span class="p">))</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">}</span>
+
+<span class="kd">func</span><span class="w"> </span><span class="p">(</span><span class="nx">s</span><span class="w"> </span><span class="o">*</span><span class="nx">FloorSolver</span><span class="p">)</span><span class="w"> </span><span class="nx">recompute</span><span class="p">(</span><span class="nx">ctx</span><span class="w"> </span><span class="nx">physics</span><span class="p">.</span><span class="nx">SoloConstraintContext</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">s</span><span class="p">.</span><span class="nx">jacobian</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="nx">physics</span><span class="p">.</span><span class="nx">Jacobian</span><span class="p">{</span><span class="nx">LinearSlope</span><span class="p">:</span><span class="w"> </span><span class="nx">dprec</span><span class="p">.</span><span class="nx">BasisYVec3</span><span class="p">()}</span>
+<span class="w">    </span><span class="nx">s</span><span class="p">.</span><span class="nx">drift</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="nx">s</span><span class="p">.</span><span class="nx">Height</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="nx">ctx</span><span class="p">.</span><span class="nx">Target</span><span class="p">.</span><span class="nx">Position</span><span class="p">().</span><span class="nx">Y</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>For a pair solver, the two Jacobians must describe the same scalar constraint from each body's point of view (typically with negated slopes), since the same correction magnitude is applied to both bodies. The <a href="../../../development/physics/theory/effective-mass/">effective mass</a> and <a href="../../../development/physics/derivations/impulse-derivation/">impulse derivation</a> pages describe the underlying math.</p>
+<h2 id="collisions">Collisions</h2>
+<p>Collisions between bodies, and between bodies and terrains, are detected by the scene and resolved through constraints that it manages internally. Contacts detected at the end of one step are resolved during the next one.</p>
+<h3 id="friction-and-restitution">Friction and Restitution</h3>
+<p>When two shapes touch, their friction coefficients are combined through their geometric mean (<code>CombinedFrictionCoefficient</code>) and their restitution coefficients by taking the larger of the two (<code>CombinedRestitutionCoefficient</code>). Restitution is suppressed at low impact speeds, so resting objects do not jitter.</p>
+<h3 id="filtering">Filtering</h3>
+<p>Which shapes may collide is controlled through the <code>Filtering</code> field of each collision shape:</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>SourceMask</code></td>
+<td>The layers the shape occupies. Defaults to the first layer only.</td>
+</tr>
+<tr>
+<td><code>TargetMask</code></td>
+<td>The layers the shape can collide with. Defaults to the first layer only.</td>
+</tr>
+<tr>
+<td><code>RejectGroup</code></td>
+<td>Shapes that share a non-zero reject group never collide with each other.</td>
+</tr>
+</tbody>
+</table>
+<p>Two shapes are tested against each other if either one's target mask overlaps the other's source mask, and they are not in the same reject group.</p>
+<p>Reject groups are useful for objects whose parts are meant to overlap, such as the chassis and wheels of a vehicle. <code>NextCollisionRejectGroup</code> returns a group that is unique within the scene:</p>
+<div class="highlight"><pre><span></span><code><span class="nx">group</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">scene</span><span class="p">.</span><span class="nx">NextCollisionRejectGroup</span><span class="p">()</span>
+
+<span class="nx">filtering</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">placement3d</span><span class="p">.</span><span class="nx">FilterInfo</span><span class="p">{</span><span class="nx">RejectGroup</span><span class="p">:</span><span class="w"> </span><span class="nx">group</span><span class="p">}</span>
+<span class="nx">chassis</span><span class="p">.</span><span class="nx">AttachCollisionBox</span><span class="p">(</span><span class="nx">physics</span><span class="p">.</span><span class="nx">CollisionBox</span><span class="p">{</span><span class="nx">Shape</span><span class="p">:</span><span class="w"> </span><span class="nx">chassisBox</span><span class="p">,</span><span class="w"> </span><span class="nx">Filtering</span><span class="p">:</span><span class="w"> </span><span class="nx">filtering</span><span class="p">})</span>
+<span class="nx">wheel</span><span class="p">.</span><span class="nx">AttachCollisionSphere</span><span class="p">(</span><span class="nx">physics</span><span class="p">.</span><span class="nx">CollisionSphere</span><span class="p">{</span><span class="nx">Shape</span><span class="p">:</span><span class="w"> </span><span class="nx">wheelSphere</span><span class="p">,</span><span class="w"> </span><span class="nx">Filtering</span><span class="p">:</span><span class="w"> </span><span class="nx">filtering</span><span class="p">})</span>
+</code></pre></div>
+<h3 id="collision-notifications">Collision Notifications</h3>
+<p>Subscribers are notified when a collision starts and when it stops:</p>
+<div class="highlight"><pre><span></span><code><span class="nx">pairSubscription</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">scene</span><span class="p">.</span><span class="nx">SubscribePairCollision</span><span class="p">(</span><span class="kd">func</span><span class="p">(</span><span class="nx">first</span><span class="p">,</span><span class="w"> </span><span class="nx">second</span><span class="w"> </span><span class="nx">physics</span><span class="p">.</span><span class="nx">BodyID</span><span class="p">,</span><span class="w"> </span><span class="nx">active</span><span class="w"> </span><span class="kt">bool</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="nx">active</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nx">playImpactSound</span><span class="p">(</span><span class="nx">first</span><span class="p">,</span><span class="w"> </span><span class="nx">second</span><span class="p">)</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">})</span>
+
+<span class="nx">soloSubscription</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">scene</span><span class="p">.</span><span class="nx">SubscribeSoloCollision</span><span class="p">(</span><span class="kd">func</span><span class="p">(</span><span class="nx">body</span><span class="w"> </span><span class="nx">physics</span><span class="p">.</span><span class="nx">BodyID</span><span class="p">,</span><span class="w"> </span><span class="nx">terrain</span><span class="w"> </span><span class="nx">physics</span><span class="p">.</span><span class="nx">TerrainID</span><span class="p">,</span><span class="w"> </span><span class="nx">active</span><span class="w"> </span><span class="kt">bool</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="c1">// A body started (active) or stopped touching a terrain.</span>
+<span class="p">})</span>
+
+<span class="c1">// Later.</span>
+<span class="nx">pairSubscription</span><span class="p">.</span><span class="nx">Delete</span><span class="p">()</span>
+<span class="nx">soloSubscription</span><span class="p">.</span><span class="nx">Delete</span><span class="p">()</span>
+</code></pre></div>
+<p>Notifications are sent from within <code>Update</code>, after collision detection. A collision is tracked per pair of bodies (or per body and terrain), not per shape, so a body touching another one with several shapes produces a single notification.</p>
+<h3 id="segment-queries">Segment Queries</h3>
+<p>The scene can be queried for intersections with a line segment, for example for line-of-sight checks, picking, or wheel raycasts:</p>
+<div class="highlight"><pre><span></span><code><span class="nx">segment</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">shape3d</span><span class="p">.</span><span class="nx">NewSegment</span><span class="p">(</span>
+<span class="w">    </span><span class="nx">dprec</span><span class="p">.</span><span class="nx">NewVec3</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span><span class="w"> </span><span class="mf">10.0</span><span class="p">,</span><span class="w"> </span><span class="mf">0.0</span><span class="p">),</span>
+<span class="w">    </span><span class="nx">dprec</span><span class="p">.</span><span class="nx">NewVec3</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span><span class="w"> </span><span class="o">-</span><span class="mf">10.0</span><span class="p">,</span><span class="w"> </span><span class="mf">0.0</span><span class="p">),</span>
+<span class="p">)</span>
+
+<span class="k">if</span><span class="w"> </span><span class="nx">contact</span><span class="p">,</span><span class="w"> </span><span class="nx">ok</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">scene</span><span class="p">.</span><span class="nx">CheckSegmentTerrainIntersection</span><span class="p">(</span><span class="nx">segment</span><span class="p">,</span><span class="w"> </span><span class="nx">physics</span><span class="p">.</span><span class="nx">Filter</span><span class="p">{});</span><span class="w"> </span><span class="nx">ok</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">groundPoint</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">contact</span><span class="p">.</span><span class="nx">TargetPoint</span>
+<span class="w">    </span><span class="nx">groundNormal</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">contact</span><span class="p">.</span><span class="nx">TargetNormal</span>
+<span class="p">}</span>
+</code></pre></div>
+<p><code>CheckSegmentBodyIntersection</code> and <code>CheckSegmentTerrainIntersection</code> return the hit closest to the start of the segment. Their <code>Collect...</code> counterparts report every hit to a callback, which can be one of the provided collectors:</p>
+<table>
+<thead>
+<tr>
+<th>Collector</th>
+<th>Retains</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>DeepestBodyContact</code> / <code>DeepestTerrainContact</code></td>
+<td>The hit closest to the start of the segment.</td>
+</tr>
+<tr>
+<td><code>ShallowestBodyContact</code> / <code>ShallowestTerrainContact</code></td>
+<td>The hit farthest from the start of the segment.</td>
+</tr>
+<tr>
+<td><code>LastBodyContact</code> / <code>LastTerrainContact</code></td>
+<td>The hit reported last.</td>
+</tr>
+<tr>
+<td><code>BodyContactList</code> / <code>TerrainContactList</code></td>
+<td>All hits, in the order reported.</td>
+</tr>
+</tbody>
+</table>
+<div class="highlight"><pre><span></span><code><span class="kd">var</span><span class="w"> </span><span class="nx">hits</span><span class="w"> </span><span class="nx">physics</span><span class="p">.</span><span class="nx">BodyContactList</span>
+<span class="nx">scene</span><span class="p">.</span><span class="nx">CollectSegmentBodyIntersections</span><span class="p">(</span><span class="nx">segment</span><span class="p">,</span><span class="w"> </span><span class="nx">physics</span><span class="p">.</span><span class="nx">Filter</span><span class="p">{},</span><span class="w"> </span><span class="nx">hits</span><span class="p">.</span><span class="nx">AddContact</span><span class="p">)</span>
+<span class="k">for</span><span class="w"> </span><span class="nx">_</span><span class="p">,</span><span class="w"> </span><span class="nx">hit</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="k">range</span><span class="w"> </span><span class="nx">hits</span><span class="p">.</span><span class="nx">Contacts</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">hit</span><span class="p">.</span><span class="nx">TargetBodyID</span><span class="p">,</span><span class="w"> </span><span class="nx">hit</span><span class="p">.</span><span class="nx">TargetPoint</span><span class="p">)</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>For segment queries, the <code>Depth</code> of a contact is the fraction of the segment that lies beyond the hit, rather than a distance. The <code>Filter</code> restricts the query to shapes in particular layers (<code>Mask</code>) or excludes a reject group (<code>RejectGroup</code>), so that, for example, a vehicle's own shapes can be ignored. The zero <code>Filter</code> considers every shape.</p>
+<h2 id="integration-with-the-game-scene">Integration with the Game Scene</h2>
+<p>A <code>game.Scene</code> advances its physics scene once per fixed update, before the fixed-update callbacks run. To make a hierarchy node follow a body, bind the body to the node through the scene's body binding set:</p>
+<div class="highlight"><pre><span></span><code><span class="nx">body</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">gameScene</span><span class="p">.</span><span class="nx">Physics</span><span class="p">().</span><span class="nx">Bodies</span><span class="p">().</span><span class="nx">CreateHandle</span><span class="p">(</span><span class="nx">position</span><span class="p">,</span><span class="w"> </span><span class="nx">rotation</span><span class="p">)</span>
+<span class="nx">body</span><span class="p">.</span><span class="nx">AttachCollisionSphere</span><span class="p">(</span><span class="nx">physics</span><span class="p">.</span><span class="nx">CollisionSphere</span><span class="p">{</span>
+<span class="w">    </span><span class="nx">Shape</span><span class="p">:</span><span class="w"> </span><span class="nx">shape3d</span><span class="p">.</span><span class="nx">NewSphere</span><span class="p">(</span><span class="nx">dprec</span><span class="p">.</span><span class="nx">ZeroVec3</span><span class="p">(),</span><span class="w"> </span><span class="mf">0.5</span><span class="p">),</span>
+<span class="p">})</span>
+
+<span class="nx">node</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">gameScene</span><span class="p">.</span><span class="nx">Hierarchy</span><span class="p">().</span><span class="nx">Nodes</span><span class="p">().</span><span class="nx">CreateHandle</span><span class="p">()</span>
+<span class="nx">gameScene</span><span class="p">.</span><span class="nx">BodyBindingSet</span><span class="p">().</span><span class="nx">Bind</span><span class="p">(</span><span class="nx">node</span><span class="p">.</span><span class="nx">ID</span><span class="p">(),</span><span class="w"> </span><span class="nx">body</span><span class="p">.</span><span class="nx">ID</span><span class="p">())</span>
+</code></pre></div>
+<p>On each fixed update, after the physics step and the fixed-update callbacks, the bound node's absolute transformation is set from the body's position and rotation, and the node's interpolation takes care of smooth rendering between fixed steps (see <a href="../hierarchy/#bindings">Hierarchy - Bindings</a>). Deleting the node also deletes the bound body.</p>
+<p>Model assets can define terrains, which are created in the physics scene when the model is instantiated.</p>
+<h2 id="limitations">Limitations</h2>
+<ul>
+<li><strong>No continuous collision detection.</strong> Collisions are detected at discrete steps, so small, fast-moving bodies can pass through thin geometry.</li>
+<li><strong>Limited body shapes.</strong> Bodies support spheres and boxes; meshes are available only for terrains.</li>
+<li><strong>Static terrains.</strong> Terrain meshes are fixed in world space and cannot be moved after they are attached.</li>
+<li><strong>No sleeping.</strong> Every body is simulated on every step, even when at rest.</li>
+</ul>
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    <script id="__config" type="application/json">{"base": "../../..", "features": [], "search": "../../../assets/javascripts/workers/search.e5c33ebb.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.51d95adb.min.js"></script>
+      
+        <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+      
+    
+  </body>
+</html>

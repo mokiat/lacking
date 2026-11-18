@@ -1,0 +1,2046 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+        <link rel="canonical" href="http://mokiat.com/lacking/manual/game/animation/">
+      
+      
+        <link rel="prev" href="../../core/spatial/">
+      
+      
+        <link rel="next" href="../ecs/">
+      
+      <link rel="icon" href="../../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.4.2, mkdocs-material-9.0.6">
+    
+    
+      
+        <title>Overview - Lacking</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../../assets/stylesheets/main.558e4712.min.css">
+      
+        
+        <link rel="stylesheet" href="../../../assets/stylesheets/palette.2505c338.min.css">
+      
+      
+
+    
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../../..",location),__md_hash=e=>[...e].reduce((e,_)=>(e<<5)-e+_.charCodeAt(0),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="" data-md-color-accent="">
+  
+    
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#animation" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../../.." title="Lacking" class="md-header__button md-logo" aria-label="Lacking" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3V6m0 5h18v2H3v-2m0 5h18v2H3v-2Z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Lacking
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Overview
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+    
+      <label class="md-header__button md-icon" for="__search">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5Z"/></svg>
+      </label>
+      <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5Z"/></svg>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12Z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41Z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/mokiat/lacking/" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81z"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../.." title="Lacking" class="md-nav__button md-logo" aria-label="Lacking" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
+
+    </a>
+    Lacking
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/mokiat/lacking/" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81z"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+      
+
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../.." class="md-nav__link">
+        Home
+      </a>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../examples/" class="md-nav__link">
+        Examples
+      </a>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../getting-started/" class="md-nav__link">
+        Getting Started
+      </a>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+    
+  
+  
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " data-md-toggle="__nav_4" type="checkbox" id="__nav_4" checked>
+      
+      
+      
+        <label class="md-nav__link" for="__nav_4" tabindex="0" aria-expanded="true">
+          User's Guide
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="User's Guide" data-md-level="1">
+        <label class="md-nav__title" for="__nav_4">
+          <span class="md-nav__icon md-icon"></span>
+          User's Guide
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../application/" class="md-nav__link">
+        Application
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " data-md-toggle="__nav_4_2" type="checkbox" id="__nav_4_2" >
+      
+      
+      
+        <label class="md-nav__link" for="__nav_4_2" tabindex="0" aria-expanded="false">
+          Core
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="Core" data-md-level="2">
+        <label class="md-nav__title" for="__nav_4_2">
+          <span class="md-nav__icon md-icon"></span>
+          Core
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../core/audio/" class="md-nav__link">
+        Audio
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../core/spatial/" class="md-nav__link">
+        Spatial
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+    
+  
+  
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " data-md-toggle="__nav_4_3" type="checkbox" id="__nav_4_3" checked>
+      
+      
+      
+        <label class="md-nav__link" for="__nav_4_3" tabindex="0" aria-expanded="true">
+          Game
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="Game" data-md-level="2">
+        <label class="md-nav__title" for="__nav_4_3">
+          <span class="md-nav__icon md-icon"></span>
+          Game
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+    
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" data-md-toggle="toc" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          Animation
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        Animation
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#core-concepts" class="md-nav__link">
+    Core Concepts
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#transforms" class="md-nav__link">
+    Transforms
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#animation-data" class="md-nav__link">
+    Animation Data
+  </a>
+  
+    <nav class="md-nav" aria-label="Animation Data">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#skeletons" class="md-nav__link">
+    Skeletons
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#keyframes-and-channels" class="md-nav__link">
+    Keyframes and Channels
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#clips" class="md-nav__link">
+    Clips
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#node-trees" class="md-nav__link">
+    Node Trees
+  </a>
+  
+    <nav class="md-nav" aria-label="Node Trees">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#the-node-interface" class="md-nav__link">
+    The Node Interface
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#absolute-and-additive-nodes" class="md-nav__link">
+    Absolute and Additive Nodes
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#construction-shorthands" class="md-nav__link">
+    Construction Shorthands
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#leaf-nodes" class="md-nav__link">
+    Leaf Nodes
+  </a>
+  
+    <nav class="md-nav" aria-label="Leaf Nodes">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#clip-playback" class="md-nav__link">
+    Clip Playback
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#static-poses" class="md-nav__link">
+    Static Poses
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#blending-nodes" class="md-nav__link">
+    Blending Nodes
+  </a>
+  
+    <nav class="md-nav" aria-label="Blending Nodes">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#two-way-blend" class="md-nav__link">
+    Two-Way Blend
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#one-dimensional-blend-space" class="md-nav__link">
+    One-Dimensional Blend Space
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#masked-blend" class="md-nav__link">
+    Masked Blend
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#layering-nodes" class="md-nav__link">
+    Layering Nodes
+  </a>
+  
+    <nav class="md-nav" aria-label="Layering Nodes">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#additive-layers" class="md-nav__link">
+    Additive Layers
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#one-shot-overlays" class="md-nav__link">
+    One-Shot Overlays
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#state-machines" class="md-nav__link">
+    State Machines
+  </a>
+  
+    <nav class="md-nav" aria-label="State Machines">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#changing-state" class="md-nav__link">
+    Changing State
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#playback-modifiers" class="md-nav__link">
+    Playback Modifiers
+  </a>
+  
+    <nav class="md-nav" aria-label="Playback Modifiers">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#time-scale" class="md-nav__link">
+    Time Scale
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#reverse" class="md-nav__link">
+    Reverse
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#synchronization" class="md-nav__link">
+    Synchronization
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#root-motion" class="md-nav__link">
+    Root Motion
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#integration-with-the-game-scene" class="md-nav__link">
+    Integration with the Game Scene
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#limitations" class="md-nav__link">
+    Limitations
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ecs/" class="md-nav__link">
+        ECS
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../hierarchy/" class="md-nav__link">
+        Hierarchy
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../physics/" class="md-nav__link">
+        Physics
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " data-md-toggle="__nav_4_4" type="checkbox" id="__nav_4_4" >
+      
+      
+      
+        <label class="md-nav__link" for="__nav_4_4" tabindex="0" aria-expanded="false">
+          Graphics
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="Graphics" data-md-level="2">
+        <label class="md-nav__title" for="__nav_4_4">
+          <span class="md-nav__icon md-icon"></span>
+          Graphics
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../graphics/shader/" class="md-nav__link">
+        Shader
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../rendering/" class="md-nav__link">
+        Rendering
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user-interface/" class="md-nav__link">
+        User Interface
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " data-md-toggle="__nav_5" type="checkbox" id="__nav_5" >
+      
+      
+      
+        <label class="md-nav__link" for="__nav_5" tabindex="0" aria-expanded="false">
+          Internals
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="Internals" data-md-level="1">
+        <label class="md-nav__title" for="__nav_5">
+          <span class="md-nav__icon md-icon"></span>
+          Internals
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " data-md-toggle="__nav_5_1" type="checkbox" id="__nav_5_1" >
+      
+      
+      
+        <label class="md-nav__link" for="__nav_5_1" tabindex="0" aria-expanded="false">
+          Physics
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="Physics" data-md-level="2">
+        <label class="md-nav__title" for="__nav_5_1">
+          <span class="md-nav__icon md-icon"></span>
+          Physics
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../development/physics/" class="md-nav__link">
+        Overview
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../development/physics/references/" class="md-nav__link">
+        References
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " data-md-toggle="__nav_5_1_3" type="checkbox" id="__nav_5_1_3" >
+      
+      
+      
+        <label class="md-nav__link" for="__nav_5_1_3" tabindex="0" aria-expanded="false">
+          Theory
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="Theory" data-md-level="3">
+        <label class="md-nav__title" for="__nav_5_1_3">
+          <span class="md-nav__icon md-icon"></span>
+          Theory
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../development/physics/theory/principles/" class="md-nav__link">
+        Principles
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../development/physics/theory/terminology/" class="md-nav__link">
+        Terminology
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../development/physics/theory/equations/" class="md-nav__link">
+        Equations
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../development/physics/theory/effective-mass/" class="md-nav__link">
+        Effective Mass
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../development/physics/theory/moment-of-inertia/" class="md-nav__link">
+        Moment of Inertia
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " data-md-toggle="__nav_5_1_4" type="checkbox" id="__nav_5_1_4" >
+      
+      
+      
+        <label class="md-nav__link" for="__nav_5_1_4" tabindex="0" aria-expanded="false">
+          Derivations
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="Derivations" data-md-level="3">
+        <label class="md-nav__title" for="__nav_5_1_4">
+          <span class="md-nav__icon md-icon"></span>
+          Derivations
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../development/physics/derivations/impulse-derivation/" class="md-nav__link">
+        Impulse
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../development/physics/derivations/effective-mass-derivation/" class="md-nav__link">
+        Effective Mass
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " data-md-toggle="__nav_5_2" type="checkbox" id="__nav_5_2" >
+      
+      
+      
+        <label class="md-nav__link" for="__nav_5_2" tabindex="0" aria-expanded="false">
+          Math
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="Math" data-md-level="2">
+        <label class="md-nav__title" for="__nav_5_2">
+          <span class="md-nav__icon md-icon"></span>
+          Math
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../development/math/vectors/" class="md-nav__link">
+        Vectors
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../development/math/derivatives/" class="md-nav__link">
+        Derivatives
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+      
+      
+      <input class="md-nav__toggle md-toggle " data-md-toggle="__nav_5_3" type="checkbox" id="__nav_5_3" >
+      
+      
+      
+        <label class="md-nav__link" for="__nav_5_3" tabindex="0" aria-expanded="false">
+          Notes
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="Notes" data-md-level="2">
+        <label class="md-nav__title" for="__nav_5_3">
+          <span class="md-nav__icon md-icon"></span>
+          Notes
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../development/notes/precision/" class="md-nav__link">
+        Precision
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#core-concepts" class="md-nav__link">
+    Core Concepts
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#transforms" class="md-nav__link">
+    Transforms
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#animation-data" class="md-nav__link">
+    Animation Data
+  </a>
+  
+    <nav class="md-nav" aria-label="Animation Data">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#skeletons" class="md-nav__link">
+    Skeletons
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#keyframes-and-channels" class="md-nav__link">
+    Keyframes and Channels
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#clips" class="md-nav__link">
+    Clips
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#node-trees" class="md-nav__link">
+    Node Trees
+  </a>
+  
+    <nav class="md-nav" aria-label="Node Trees">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#the-node-interface" class="md-nav__link">
+    The Node Interface
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#absolute-and-additive-nodes" class="md-nav__link">
+    Absolute and Additive Nodes
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#construction-shorthands" class="md-nav__link">
+    Construction Shorthands
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#leaf-nodes" class="md-nav__link">
+    Leaf Nodes
+  </a>
+  
+    <nav class="md-nav" aria-label="Leaf Nodes">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#clip-playback" class="md-nav__link">
+    Clip Playback
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#static-poses" class="md-nav__link">
+    Static Poses
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#blending-nodes" class="md-nav__link">
+    Blending Nodes
+  </a>
+  
+    <nav class="md-nav" aria-label="Blending Nodes">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#two-way-blend" class="md-nav__link">
+    Two-Way Blend
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#one-dimensional-blend-space" class="md-nav__link">
+    One-Dimensional Blend Space
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#masked-blend" class="md-nav__link">
+    Masked Blend
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#layering-nodes" class="md-nav__link">
+    Layering Nodes
+  </a>
+  
+    <nav class="md-nav" aria-label="Layering Nodes">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#additive-layers" class="md-nav__link">
+    Additive Layers
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#one-shot-overlays" class="md-nav__link">
+    One-Shot Overlays
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#state-machines" class="md-nav__link">
+    State Machines
+  </a>
+  
+    <nav class="md-nav" aria-label="State Machines">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#changing-state" class="md-nav__link">
+    Changing State
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#playback-modifiers" class="md-nav__link">
+    Playback Modifiers
+  </a>
+  
+    <nav class="md-nav" aria-label="Playback Modifiers">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#time-scale" class="md-nav__link">
+    Time Scale
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#reverse" class="md-nav__link">
+    Reverse
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#synchronization" class="md-nav__link">
+    Synchronization
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#root-motion" class="md-nav__link">
+    Root Motion
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#integration-with-the-game-scene" class="md-nav__link">
+    Integration with the Game Scene
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#limitations" class="md-nav__link">
+    Limitations
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+  
+  
+
+
+
+<h1 id="animation">Animation</h1>
+<p>The <code>game/animation</code> package provides skeletal animation playback through trees of composable animation nodes. Pre-recorded animation data (clips) is played back by leaf nodes, and inner nodes combine the output of their children by blending, layering, switching between, or retiming them. The root of the tree is advanced once per update and produces the local transformation of every bone of an animated model.</p>
+<h2 id="core-concepts">Core Concepts</h2>
+<table>
+<thead>
+<tr>
+<th>Concept</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Transform</strong></td>
+<td>Local translation, rotation, and scale of a single bone, relative to its parent.</td>
+</tr>
+<tr>
+<td><strong>Skeleton</strong></td>
+<td>Assigns a stable index and a rest transformation to each bone name, so per-frame work uses indices instead of names.</td>
+</tr>
+<tr>
+<td><strong>Clip</strong></td>
+<td>Pre-recorded animation: one channel per animated bone, covering a time range.</td>
+</tr>
+<tr>
+<td><strong>Channel</strong></td>
+<td>Animation data of a single bone in a clip; produces the bone's <code>Transform</code> at any keyframe timestamp.</td>
+</tr>
+<tr>
+<td><strong>Node</strong></td>
+<td>Element of an animation tree. Keeps track of its playback position and produces the <code>Transform</code> of each bone at that position.</td>
+</tr>
+<tr>
+<td><strong>RootMotion</strong></td>
+<td>Extracts the motion of a single bone from a tree, so a character can be moved in the world in agreement with its animation.</td>
+</tr>
+</tbody>
+</table>
+<p>Skeletons, clips, and channels are immutable once created and can be shared freely. Nodes hold playback state and belong to a single tree.</p>
+<h2 id="transforms">Transforms</h2>
+<p>A <code>Transform</code> holds a translation, a rotation (unit quaternion), and a per-axis scale:</p>
+<div class="highlight"><pre><span></span><code><span class="nx">t</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">animation</span><span class="p">.</span><span class="nx">Transform</span><span class="p">{</span>
+<span class="w">    </span><span class="nx">Translation</span><span class="p">:</span><span class="w"> </span><span class="nx">dprec</span><span class="p">.</span><span class="nx">NewVec3</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span><span class="w"> </span><span class="mf">1.0</span><span class="p">,</span><span class="w"> </span><span class="mf">0.0</span><span class="p">),</span>
+<span class="w">    </span><span class="nx">Rotation</span><span class="p">:</span><span class="w">    </span><span class="nx">dprec</span><span class="p">.</span><span class="nx">RotationQuat</span><span class="p">(</span><span class="nx">dprec</span><span class="p">.</span><span class="nx">Degrees</span><span class="p">(</span><span class="mi">45</span><span class="p">),</span><span class="w"> </span><span class="nx">dprec</span><span class="p">.</span><span class="nx">BasisYVec3</span><span class="p">()),</span>
+<span class="w">    </span><span class="nx">Scale</span><span class="p">:</span><span class="w">       </span><span class="nx">dprec</span><span class="p">.</span><span class="nx">NewVec3</span><span class="p">(</span><span class="mf">1.0</span><span class="p">,</span><span class="w"> </span><span class="mf">1.0</span><span class="p">,</span><span class="w"> </span><span class="mf">1.0</span><span class="p">),</span>
+<span class="p">}</span>
+
+<span class="nx">matrix</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">t</span><span class="p">.</span><span class="nx">Matrix</span><span class="p">()</span><span class="w">                     </span><span class="c1">// scale, then rotate, then translate</span>
+<span class="nx">back</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">animation</span><span class="p">.</span><span class="nx">Mat4Transform</span><span class="p">(</span><span class="nx">matrix</span><span class="p">)</span><span class="w"> </span><span class="c1">// inverse of Matrix</span>
+</code></pre></div>
+<p>The package provides three ways of combining transforms:</p>
+<table>
+<thead>
+<tr>
+<th>Function</th>
+<th>Effect</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>BlendTransforms(a, b, factor)</code></td>
+<td>Interpolates from <code>a</code> (factor <code>0.0</code>) to <code>b</code> (factor <code>1.0</code>). Translation and scale are linear, rotation is a normalized linear interpolation along the shorter arc. The factor is not clamped.</td>
+</tr>
+<tr>
+<td><code>AddTransforms(base, delta)</code></td>
+<td>Applies <code>delta</code> as an additive layer on top of <code>base</code>. Translations are added, scales multiplied, and rotations composed. The order matters.</td>
+</tr>
+<tr>
+<td><code>DiffTransforms(a, b)</code></td>
+<td>The additive difference of <code>a</code> relative to <code>b</code>, so that <code>AddTransforms(b, DiffTransforms(a, b)) == a</code>.</td>
+</tr>
+</tbody>
+</table>
+<p><code>IdentityTransform()</code> returns a zero translation, an identity rotation, and a unit scale. It is the neutral element of <code>AddTransforms</code>.</p>
+<h2 id="animation-data">Animation Data</h2>
+<h3 id="skeletons">Skeletons</h3>
+<p>A <code>Skeleton</code> is created from a list of bones. Bones receive consecutive indices in the order of their first occurrence; later duplicates are ignored.</p>
+<div class="highlight"><pre><span></span><code><span class="nx">skeleton</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">animation</span><span class="p">.</span><span class="nx">NewSkeleton</span><span class="p">([]</span><span class="nx">animation</span><span class="p">.</span><span class="nx">SkeletonBone</span><span class="p">{</span>
+<span class="w">    </span><span class="p">{</span><span class="nx">Name</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;root&quot;</span><span class="p">,</span><span class="w"> </span><span class="nx">RestTransform</span><span class="p">:</span><span class="w"> </span><span class="nx">animation</span><span class="p">.</span><span class="nx">IdentityTransform</span><span class="p">()},</span>
+<span class="w">    </span><span class="p">{</span><span class="nx">Name</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;spine&quot;</span><span class="p">,</span><span class="w"> </span><span class="nx">RestTransform</span><span class="p">:</span><span class="w"> </span><span class="nx">spineRest</span><span class="p">},</span>
+<span class="w">    </span><span class="p">{</span><span class="nx">Name</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;head&quot;</span><span class="p">,</span><span class="w"> </span><span class="nx">RestTransform</span><span class="p">:</span><span class="w"> </span><span class="nx">headRest</span><span class="p">},</span>
+<span class="p">})</span>
+
+<span class="nx">skeleton</span><span class="p">.</span><span class="nx">BoneCount</span><span class="p">()</span><span class="w">           </span><span class="c1">// 3</span>
+<span class="nx">bone</span><span class="p">,</span><span class="w"> </span><span class="nx">ok</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">skeleton</span><span class="p">.</span><span class="nx">BoneIndex</span><span class="p">(</span><span class="s">&quot;spine&quot;</span><span class="p">)</span><span class="w"> </span><span class="c1">// 1, true</span>
+<span class="nx">skeleton</span><span class="p">.</span><span class="nx">BoneName</span><span class="p">(</span><span class="nx">bone</span><span class="p">)</span><span class="w">        </span><span class="c1">// &quot;spine&quot;</span>
+<span class="nx">skeleton</span><span class="p">.</span><span class="nx">BoneRestTransform</span><span class="p">(</span><span class="nx">bone</span><span class="p">)</span>
+</code></pre></div>
+<p>The rest transformation is what a bone shows when an absolute node does not animate it.</p>
+<p>When working with the <code>game</code> package, a loaded <code>Model</code> already exposes a skeleton built from its node hierarchy through <code>model.Skeleton()</code>.</p>
+<h3 id="keyframes-and-channels">Keyframes and Channels</h3>
+<p>A <code>KeyframeList[T]</code> is a list of <code>Keyframe[T]</code> values ordered by strictly ascending timestamp. <code>Sample</code> returns the two keyframes surrounding a timestamp together with the interpolation factor between them, clamping to the nearest keyframe outside the covered range.</p>
+<p>A <code>Channel</code> produces the complete local transformation of its bone at a keyframe timestamp. A timestamp outside the range of the data holds the value at the nearest end. Three implementations are provided, differing in how they store keyframes:</p>
+<table>
+<thead>
+<tr>
+<th>Channel</th>
+<th>Storage</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>TransformKeyframeChannel</code></td>
+<td>A single keyframe list of complete transforms; all components share timestamps.</td>
+</tr>
+<tr>
+<td><code>ComponentKeyframeChannel</code></td>
+<td>Separate keyframe lists for translation, rotation, and scale, each keyed at its own timestamps.</td>
+</tr>
+<tr>
+<td><code>FixedRateKeyframeChannel</code></td>
+<td>Complete transforms sampled at a fixed rate from a start timestamp; no per-frame timestamps and no search on lookup.</td>
+</tr>
+</tbody>
+</table>
+<div class="highlight"><pre><span></span><code><span class="nx">channel</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">animation</span><span class="p">.</span><span class="nx">NewComponentKeyframeChannel</span><span class="p">(</span>
+<span class="w">    </span><span class="nx">animation</span><span class="p">.</span><span class="nx">KeyframeList</span><span class="p">[</span><span class="nx">dprec</span><span class="p">.</span><span class="nx">Vec3</span><span class="p">]{</span>
+<span class="w">        </span><span class="p">{</span><span class="nx">Timestamp</span><span class="p">:</span><span class="w"> </span><span class="mf">0.0</span><span class="p">,</span><span class="w"> </span><span class="nx">Value</span><span class="p">:</span><span class="w"> </span><span class="nx">dprec</span><span class="p">.</span><span class="nx">NewVec3</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span><span class="w"> </span><span class="mf">0.0</span><span class="p">,</span><span class="w"> </span><span class="mf">0.0</span><span class="p">)},</span>
+<span class="w">        </span><span class="p">{</span><span class="nx">Timestamp</span><span class="p">:</span><span class="w"> </span><span class="mf">1.0</span><span class="p">,</span><span class="w"> </span><span class="nx">Value</span><span class="p">:</span><span class="w"> </span><span class="nx">dprec</span><span class="p">.</span><span class="nx">NewVec3</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span><span class="w"> </span><span class="mf">1.0</span><span class="p">,</span><span class="w"> </span><span class="mf">0.0</span><span class="p">)},</span>
+<span class="w">    </span><span class="p">},</span>
+<span class="w">    </span><span class="nx">animation</span><span class="p">.</span><span class="nx">KeyframeList</span><span class="p">[</span><span class="nx">dprec</span><span class="p">.</span><span class="nx">Quat</span><span class="p">]{</span>
+<span class="w">        </span><span class="p">{</span><span class="nx">Timestamp</span><span class="p">:</span><span class="w"> </span><span class="mf">0.0</span><span class="p">,</span><span class="w"> </span><span class="nx">Value</span><span class="p">:</span><span class="w"> </span><span class="nx">dprec</span><span class="p">.</span><span class="nx">IdentityQuat</span><span class="p">()},</span>
+<span class="w">    </span><span class="p">},</span>
+<span class="w">    </span><span class="nx">animation</span><span class="p">.</span><span class="nx">KeyframeList</span><span class="p">[</span><span class="nx">dprec</span><span class="p">.</span><span class="nx">Vec3</span><span class="p">]{</span>
+<span class="w">        </span><span class="p">{</span><span class="nx">Timestamp</span><span class="p">:</span><span class="w"> </span><span class="mf">0.0</span><span class="p">,</span><span class="w"> </span><span class="nx">Value</span><span class="p">:</span><span class="w"> </span><span class="nx">dprec</span><span class="p">.</span><span class="nx">NewVec3</span><span class="p">(</span><span class="mf">1.0</span><span class="p">,</span><span class="w"> </span><span class="mf">1.0</span><span class="p">,</span><span class="w"> </span><span class="mf">1.0</span><span class="p">)},</span>
+<span class="w">    </span><span class="p">},</span>
+<span class="p">)</span>
+
+<span class="nx">fixed</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">animation</span><span class="p">.</span><span class="nx">NewFixedRateKeyframeChannel</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span><span class="w"> </span><span class="mf">30.0</span><span class="p">,</span><span class="w"> </span><span class="nx">frames</span><span class="p">)</span><span class="w"> </span><span class="c1">// 30 frames per second</span>
+</code></pre></div>
+<p>Every list must contain at least one keyframe (the constructors panic otherwise). A component that is not animated needs a single keyframe holding its constant value, typically the rest value of the bone. Channels take ownership of the slices they are given.</p>
+<h3 id="clips">Clips</h3>
+<p>A <code>Clip</code> groups channels, keyed by bone name, with a name and a time range:</p>
+<div class="highlight"><pre><span></span><code><span class="nx">clip</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">animation</span><span class="p">.</span><span class="nx">NewClip</span><span class="p">(</span><span class="s">&quot;walk&quot;</span><span class="p">,</span><span class="w"> </span><span class="mf">0.0</span><span class="p">,</span><span class="w"> </span><span class="mf">1.2</span><span class="p">,</span><span class="w"> </span><span class="kd">map</span><span class="p">[</span><span class="kt">string</span><span class="p">]</span><span class="nx">animation</span><span class="p">.</span><span class="nx">Channel</span><span class="p">{</span>
+<span class="w">    </span><span class="s">&quot;root&quot;</span><span class="p">:</span><span class="w">  </span><span class="nx">rootChannel</span><span class="p">,</span>
+<span class="w">    </span><span class="s">&quot;spine&quot;</span><span class="p">:</span><span class="w"> </span><span class="nx">spineChannel</span><span class="p">,</span>
+<span class="p">})</span>
+
+<span class="nx">clip</span><span class="p">.</span><span class="nx">Length</span><span class="p">()</span><span class="w">            </span><span class="c1">// 1.2</span>
+<span class="nx">clip</span><span class="p">.</span><span class="nx">HasChannel</span><span class="p">(</span><span class="s">&quot;head&quot;</span><span class="p">)</span><span class="w">  </span><span class="c1">// false</span>
+<span class="k">for</span><span class="w"> </span><span class="nx">name</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="k">range</span><span class="w"> </span><span class="nx">clip</span><span class="p">.</span><span class="nx">ChannelNamesIter</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">fmt</span><span class="p">.</span><span class="nx">Println</span><span class="p">(</span><span class="nx">name</span><span class="p">)</span>
+<span class="p">}</span>
+</code></pre></div>
+<p><code>Crop</code> derives a new clip with a different time range over the same channels, which is useful when several animations are stored back-to-back in a single recording. The times passed to <code>Crop</code> are keyframe timestamps, not offsets relative to the original start.</p>
+<div class="highlight"><pre><span></span><code><span class="nx">idle</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">recording</span><span class="p">.</span><span class="nx">Crop</span><span class="p">(</span><span class="s">&quot;idle&quot;</span><span class="p">,</span><span class="w"> </span><span class="mf">0.0</span><span class="p">,</span><span class="w"> </span><span class="mf">2.0</span><span class="p">)</span>
+<span class="nx">wave</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">recording</span><span class="p">.</span><span class="nx">Crop</span><span class="p">(</span><span class="s">&quot;wave&quot;</span><span class="p">,</span><span class="w"> </span><span class="mf">2.0</span><span class="p">,</span><span class="w"> </span><span class="mf">3.5</span><span class="p">)</span>
+</code></pre></div>
+<p>When working with the <code>game</code> package, the clips of a loaded model are available through <code>model.Recordings()</code> and <code>model.FindRecording(name)</code>.</p>
+<h2 id="node-trees">Node Trees</h2>
+<p>Playback is performed by a tree of <code>Node</code> values. Leaf nodes produce animation data, either by playing back a clip or by holding a static pose. Inner nodes derive their output from that of their children.</p>
+<div class="highlight"><pre><span></span><code><span class="nx">walk</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">animation</span><span class="p">.</span><span class="nx">NewClipNode</span><span class="p">(</span><span class="nx">skeleton</span><span class="p">,</span><span class="w"> </span><span class="nx">model</span><span class="p">.</span><span class="nx">FindRecording</span><span class="p">(</span><span class="s">&quot;walk&quot;</span><span class="p">),</span><span class="w"> </span><span class="kc">true</span><span class="p">)</span>
+<span class="nx">run</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">animation</span><span class="p">.</span><span class="nx">NewClipNode</span><span class="p">(</span><span class="nx">skeleton</span><span class="p">,</span><span class="w"> </span><span class="nx">model</span><span class="p">.</span><span class="nx">FindRecording</span><span class="p">(</span><span class="s">&quot;run&quot;</span><span class="p">),</span><span class="w"> </span><span class="kc">true</span><span class="p">)</span>
+
+<span class="nx">locomotion</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">animation</span><span class="p">.</span><span class="nx">Blend</span><span class="p">(</span>
+<span class="w">    </span><span class="nx">animation</span><span class="p">.</span><span class="nx">Synchronized</span><span class="p">(</span><span class="nx">walk</span><span class="p">),</span>
+<span class="w">    </span><span class="nx">animation</span><span class="p">.</span><span class="nx">Synchronized</span><span class="p">(</span><span class="nx">run</span><span class="p">),</span>
+<span class="p">)</span>
+<span class="nx">locomotion</span><span class="p">.</span><span class="nx">SetWeight</span><span class="p">(</span><span class="mf">0.3</span><span class="p">)</span>
+</code></pre></div>
+<p>Each frame, the root of the tree is advanced and the resulting pose is read bone by bone:</p>
+<div class="highlight"><pre><span></span><code><span class="nx">locomotion</span><span class="p">.</span><span class="nx">Advance</span><span class="p">(</span><span class="nx">deltaSeconds</span><span class="p">)</span>
+
+<span class="k">for</span><span class="w"> </span><span class="nx">bone</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="k">range</span><span class="w"> </span><span class="nx">skeleton</span><span class="p">.</span><span class="nx">BoneCount</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">t</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">locomotion</span><span class="p">.</span><span class="nx">Transform</span><span class="p">(</span><span class="nx">bone</span><span class="p">)</span>
+<span class="w">    </span><span class="c1">// apply t to the scene node of this bone</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>A parent node takes control of the playback of its children. Once a node is part of a tree, it should not be advanced or relocated by any other means.</p>
+<h3 id="the-node-interface">The Node Interface</h3>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Rate</code></td>
+<td>Fraction of the animation length that elapses per second. Equals <code>1.0 / length</code> at normal speed, or <code>0.0</code> for nodes with no meaningful length (such as static poses).</td>
+</tr>
+<tr>
+<td><code>Fraction</code> / <code>SetFraction</code></td>
+<td>Playback position as a fraction of the animation length, in the range <code>[0.0..1.0]</code>.</td>
+</tr>
+<tr>
+<td><code>Advance</code></td>
+<td>Moves playback by a number of seconds. A negative delta moves backwards.</td>
+</tr>
+<tr>
+<td><code>IsSynchronized</code> / <code>SetSynchronized</code></td>
+<td>Whether the node should be kept in phase with its parent (see <a href="#synchronization">Synchronization</a>).</td>
+</tr>
+<tr>
+<td><code>Transform</code></td>
+<td>Transformation of a bone at the current position.</td>
+</tr>
+<tr>
+<td><code>DeltaTransform</code></td>
+<td>Motion a bone experiences over the next delta seconds, without changing the playback position (see <a href="#root-motion">Root Motion</a>).</td>
+</tr>
+</tbody>
+</table>
+<p>Bones are passed as indices in the skeleton that the leaf nodes were created with. All nodes in a tree are expected to share the same skeleton.</p>
+<h3 id="absolute-and-additive-nodes">Absolute and Additive Nodes</h3>
+<p>Nodes come in two kinds:</p>
+<ul>
+<li>An <strong>absolute</strong> node produces the local transformation of each bone, relative to its parent. Bones it does not animate return their rest transformation.</li>
+<li>An <strong>additive</strong> node produces a difference that is meant to be applied on top of an absolute transformation through <code>AddTransforms</code>. Bones it does not animate return the <code>IdentityTransform</code>.</li>
+</ul>
+<p>A <code>DiffNode</code> turns absolute animations into an additive one and an <code>AddNode</code> applies an additive animation on top of an absolute one. Blending nodes expect all of their children to be of the same kind, which is also the kind of their result.</p>
+<h3 id="construction-shorthands">Construction Shorthands</h3>
+<p>Several nodes have a shorthand function that makes it convenient to build a tree in a single expression:</p>
+<table>
+<thead>
+<tr>
+<th>Shorthand</th>
+<th>Equivalent</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Blend(first, second)</code></td>
+<td><code>NewBlendNode(first, second)</code></td>
+</tr>
+<tr>
+<td><code>Add(base, additive)</code></td>
+<td><code>NewAddNode(base, additive)</code></td>
+</tr>
+<tr>
+<td><code>Diff(source, reference)</code></td>
+<td><code>NewDiffNode(source, reference)</code></td>
+</tr>
+<tr>
+<td><code>Reverse(node)</code></td>
+<td><code>NewReverseNode(node)</code></td>
+</tr>
+<tr>
+<td><code>ScaleTime(node, scale)</code></td>
+<td><code>NewTimeScaleNode(node)</code> followed by <code>SetTimeScale(scale)</code></td>
+</tr>
+<tr>
+<td><code>Synchronized(node)</code></td>
+<td>Calls <code>SetSynchronized(true)</code> on the node and returns it.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="leaf-nodes">Leaf Nodes</h2>
+<h3 id="clip-playback">Clip Playback</h3>
+<p><code>ClipNode</code> plays back a single clip. The clip's start time maps to fraction <code>0.0</code> and its end time to fraction <code>1.0</code>. One second of <code>Advance</code> corresponds to one unit of keyframe time.</p>
+<div class="highlight"><pre><span></span><code><span class="nx">node</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">animation</span><span class="p">.</span><span class="nx">NewClipNode</span><span class="p">(</span><span class="nx">skeleton</span><span class="p">,</span><span class="w"> </span><span class="nx">clip</span><span class="p">,</span><span class="w"> </span><span class="kc">true</span><span class="p">)</span><span class="w"> </span><span class="c1">// looping</span>
+<span class="nx">node</span><span class="p">.</span><span class="nx">SetFraction</span><span class="p">(</span><span class="mf">0.5</span><span class="p">)</span><span class="w">                                </span><span class="c1">// jump to the middle</span>
+</code></pre></div>
+<p>A looping node wraps around at either end, whereas a non-looping node stops at the end it reaches. Clip channels are matched to skeleton bones by name: channels for unknown bones are ignored, and bones without a channel hold their rest transformation.</p>
+<h3 id="static-poses">Static Poses</h3>
+<p>Static pose nodes have no playback of their own. Their rate and fraction are always <code>0.0</code>, and advancing or relocating them has no effect.</p>
+<table>
+<thead>
+<tr>
+<th>Node</th>
+<th>Kind</th>
+<th>Pose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ClipPoseNode</code></td>
+<td>Absolute</td>
+<td>The pose a clip has at a timestamp (relative to the clip start). The timestamp can be changed with <code>SetTimestamp</code>.</td>
+</tr>
+<tr>
+<td><code>FixedPoseNode</code></td>
+<td>Absolute</td>
+<td>Bone transformations given at construction, keyed by bone name. Unlisted bones hold their rest transformation.</td>
+</tr>
+<tr>
+<td><code>AdditivePoseNode</code></td>
+<td>Additive</td>
+<td>Bone differences given at construction, keyed by bone name. Unlisted bones hold the <code>IdentityTransform</code>.</td>
+</tr>
+</tbody>
+</table>
+<div class="highlight"><pre><span></span><code><span class="c1">// The first frame of the aim animation, used as a reference pose.</span>
+<span class="nx">aimRest</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">animation</span><span class="p">.</span><span class="nx">NewClipPoseNode</span><span class="p">(</span><span class="nx">skeleton</span><span class="p">,</span><span class="w"> </span><span class="nx">aimClip</span><span class="p">,</span><span class="w"> </span><span class="mf">0.0</span><span class="p">)</span>
+
+<span class="c1">// A fixed offset that bends the spine forward.</span>
+<span class="nx">lean</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">animation</span><span class="p">.</span><span class="nx">NewAdditivePoseNode</span><span class="p">(</span><span class="nx">skeleton</span><span class="p">,</span><span class="w"> </span><span class="kd">map</span><span class="p">[</span><span class="kt">string</span><span class="p">]</span><span class="nx">animation</span><span class="p">.</span><span class="nx">Transform</span><span class="p">{</span>
+<span class="w">    </span><span class="s">&quot;spine&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nx">Translation</span><span class="p">:</span><span class="w"> </span><span class="nx">dprec</span><span class="p">.</span><span class="nx">ZeroVec3</span><span class="p">(),</span>
+<span class="w">        </span><span class="nx">Rotation</span><span class="p">:</span><span class="w">    </span><span class="nx">dprec</span><span class="p">.</span><span class="nx">RotationQuat</span><span class="p">(</span><span class="nx">dprec</span><span class="p">.</span><span class="nx">Degrees</span><span class="p">(</span><span class="mi">15</span><span class="p">),</span><span class="w"> </span><span class="nx">dprec</span><span class="p">.</span><span class="nx">BasisXVec3</span><span class="p">()),</span>
+<span class="w">        </span><span class="nx">Scale</span><span class="p">:</span><span class="w">       </span><span class="nx">dprec</span><span class="p">.</span><span class="nx">NewVec3</span><span class="p">(</span><span class="mf">1.0</span><span class="p">,</span><span class="w"> </span><span class="mf">1.0</span><span class="p">,</span><span class="w"> </span><span class="mf">1.0</span><span class="p">),</span>
+<span class="w">    </span><span class="p">},</span>
+<span class="p">})</span>
+</code></pre></div>
+<h2 id="blending-nodes">Blending Nodes</h2>
+<h3 id="two-way-blend">Two-Way Blend</h3>
+<p><code>BlendNode</code> blends two animations by a weight, clamped to <code>[0.0..1.0]</code>. A weight of <code>0.0</code> shows the first animation and <code>1.0</code> the second.</p>
+<div class="highlight"><pre><span></span><code><span class="nx">locomotion</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">animation</span><span class="p">.</span><span class="nx">Blend</span><span class="p">(</span>
+<span class="w">    </span><span class="nx">animation</span><span class="p">.</span><span class="nx">Synchronized</span><span class="p">(</span><span class="nx">walk</span><span class="p">),</span>
+<span class="w">    </span><span class="nx">animation</span><span class="p">.</span><span class="nx">Synchronized</span><span class="p">(</span><span class="nx">run</span><span class="p">),</span>
+<span class="p">)</span>
+<span class="nx">locomotion</span><span class="p">.</span><span class="nx">SetWeight</span><span class="p">(</span><span class="nx">speedFactor</span><span class="p">)</span>
+</code></pre></div>
+<p>A <code>BlendNode</code> keeps a playback position of its own and advances at a rate blended from the rates of its synchronized children, so that, for example, the feet of a walk and a run cycle stay aligned while the length of the blended cycle changes smoothly with the weight. Its fraction wraps around, so it is meant for cyclic animations.</p>
+<h3 id="one-dimensional-blend-space">One-Dimensional Blend Space</h3>
+<p><code>Blend1DNode</code> generalizes <code>BlendNode</code> to any number of animations placed at coordinates along a line. Setting the blend coordinate to a gameplay value, such as the current speed, shows a blend of the two entries surrounding it. A coordinate beyond either end shows the closest entry alone.</p>
+<div class="highlight"><pre><span></span><code><span class="nx">locomotion</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">animation</span><span class="p">.</span><span class="nx">NewBlend1DNode</span><span class="p">(</span>
+<span class="w">    </span><span class="nx">animation</span><span class="p">.</span><span class="nx">Blend1DEntry</span><span class="p">{</span><span class="nx">Coord</span><span class="p">:</span><span class="w"> </span><span class="mf">0.0</span><span class="p">,</span><span class="w"> </span><span class="nx">Node</span><span class="p">:</span><span class="w"> </span><span class="nx">animation</span><span class="p">.</span><span class="nx">Synchronized</span><span class="p">(</span><span class="nx">idle</span><span class="p">)},</span>
+<span class="w">    </span><span class="nx">animation</span><span class="p">.</span><span class="nx">Blend1DEntry</span><span class="p">{</span><span class="nx">Coord</span><span class="p">:</span><span class="w"> </span><span class="mf">1.5</span><span class="p">,</span><span class="w"> </span><span class="nx">Node</span><span class="p">:</span><span class="w"> </span><span class="nx">animation</span><span class="p">.</span><span class="nx">Synchronized</span><span class="p">(</span><span class="nx">walk</span><span class="p">)},</span>
+<span class="w">    </span><span class="nx">animation</span><span class="p">.</span><span class="nx">Blend1DEntry</span><span class="p">{</span><span class="nx">Coord</span><span class="p">:</span><span class="w"> </span><span class="mf">4.0</span><span class="p">,</span><span class="w"> </span><span class="nx">Node</span><span class="p">:</span><span class="w"> </span><span class="nx">animation</span><span class="p">.</span><span class="nx">Synchronized</span><span class="p">(</span><span class="nx">jog</span><span class="p">)},</span>
+<span class="w">    </span><span class="nx">animation</span><span class="p">.</span><span class="nx">Blend1DEntry</span><span class="p">{</span><span class="nx">Coord</span><span class="p">:</span><span class="w"> </span><span class="mf">7.0</span><span class="p">,</span><span class="w"> </span><span class="nx">Node</span><span class="p">:</span><span class="w"> </span><span class="nx">animation</span><span class="p">.</span><span class="nx">Synchronized</span><span class="p">(</span><span class="nx">run</span><span class="p">)},</span>
+<span class="p">)</span>
+<span class="nx">locomotion</span><span class="p">.</span><span class="nx">SetBlendCoord</span><span class="p">(</span><span class="nx">currentSpeed</span><span class="p">)</span>
+</code></pre></div>
+<p>Entries need not be sorted. Entries that share a coordinate produce an abrupt switch at that coordinate. At least one entry is required.</p>
+<h3 id="masked-blend">Masked Blend</h3>
+<p><code>MaskedBlendNode</code> blends a layer animation over a base animation bone by bone, according to a mask of per-bone weights. This makes it possible, for example, to play a different animation on the upper body while the legs keep playing the base animation.</p>
+<div class="highlight"><pre><span></span><code><span class="nx">body</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">animation</span><span class="p">.</span><span class="nx">NewMaskedBlendNode</span><span class="p">(</span><span class="nx">skeleton</span><span class="p">,</span><span class="w"> </span><span class="nx">locomotion</span><span class="p">,</span><span class="w"> </span><span class="nx">aim</span><span class="p">,</span><span class="w"> </span><span class="kd">map</span><span class="p">[</span><span class="kt">string</span><span class="p">]</span><span class="kt">float64</span><span class="p">{</span>
+<span class="w">    </span><span class="s">&quot;spine&quot;</span><span class="p">:</span><span class="w">     </span><span class="mf">0.5</span><span class="p">,</span>
+<span class="w">    </span><span class="s">&quot;chest&quot;</span><span class="p">:</span><span class="w">     </span><span class="mf">1.0</span><span class="p">,</span>
+<span class="w">    </span><span class="s">&quot;upper_arm&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">1.0</span><span class="p">,</span>
+<span class="w">    </span><span class="s">&quot;forearm&quot;</span><span class="p">:</span><span class="w">   </span><span class="mf">1.0</span><span class="p">,</span>
+<span class="p">})</span>
+<span class="nx">body</span><span class="p">.</span><span class="nx">SetWeight</span><span class="p">(</span><span class="mf">1.0</span><span class="p">)</span><span class="w"> </span><span class="c1">// overall weight; scales all mask weights</span>
+</code></pre></div>
+<p>Bones without an entry in the mask have a weight of <code>0.0</code> and show the base animation. The overall weight allows the layer to be faded in and out as a whole. The base node drives the playback of the <code>MaskedBlendNode</code>.</p>
+<h2 id="layering-nodes">Layering Nodes</h2>
+<h3 id="additive-layers">Additive Layers</h3>
+<p><code>DiffNode</code> produces the difference of a source animation relative to a reference animation. Both children are absolute and the result is additive. The reference is commonly a static pose, such as the first frame of the source, so that the result holds only the motion of the source.</p>
+<p><code>AddNode</code> applies an additive animation on top of an absolute base. Its weight controls the strength of the layer: <code>1.0</code> applies it in full, <code>0.0</code> leaves the base unchanged. The weight is not clamped and values outside <code>[0.0..1.0]</code> extrapolate.</p>
+<div class="highlight"><pre><span></span><code><span class="nx">breathingClip</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">model</span><span class="p">.</span><span class="nx">FindRecording</span><span class="p">(</span><span class="s">&quot;breathing&quot;</span><span class="p">)</span>
+<span class="nx">breathing</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">animation</span><span class="p">.</span><span class="nx">Diff</span><span class="p">(</span>
+<span class="w">    </span><span class="nx">animation</span><span class="p">.</span><span class="nx">NewClipNode</span><span class="p">(</span><span class="nx">skeleton</span><span class="p">,</span><span class="w"> </span><span class="nx">breathingClip</span><span class="p">,</span><span class="w"> </span><span class="kc">true</span><span class="p">),</span>
+<span class="w">    </span><span class="nx">animation</span><span class="p">.</span><span class="nx">NewClipPoseNode</span><span class="p">(</span><span class="nx">skeleton</span><span class="p">,</span><span class="w"> </span><span class="nx">breathingClip</span><span class="p">,</span><span class="w"> </span><span class="mf">0.0</span><span class="p">),</span>
+<span class="p">)</span>
+
+<span class="nx">layered</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">animation</span><span class="p">.</span><span class="nx">Add</span><span class="p">(</span><span class="nx">locomotion</span><span class="p">,</span><span class="w"> </span><span class="nx">breathing</span><span class="p">)</span>
+<span class="nx">layered</span><span class="p">.</span><span class="nx">SetWeight</span><span class="p">(</span><span class="mf">0.8</span><span class="p">)</span>
+</code></pre></div>
+<p>In both nodes, the first child (the source or the base) drives the playback.</p>
+<h3 id="one-shot-overlays">One-Shot Overlays</h3>
+<p><code>OneShotNode</code> plays a base animation and, each time it is triggered, plays an overlay animation over it exactly once, such as a recoil or a wave on top of locomotion. The overlay is blended over the base according to a per-bone mask, in the same way as by a <code>MaskedBlendNode</code>. Passing a <code>nil</code> mask applies the overlay to all bones.</p>
+<div class="highlight"><pre><span></span><code><span class="nx">upperBody</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="kd">map</span><span class="p">[</span><span class="kt">string</span><span class="p">]</span><span class="kt">float64</span><span class="p">{</span>
+<span class="w">    </span><span class="s">&quot;spine&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.5</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;chest&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">1.0</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;upper_arm&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">1.0</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;forearm&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">1.0</span><span class="p">,</span>
+<span class="p">}</span>
+
+<span class="nx">action</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">animation</span><span class="p">.</span><span class="nx">NewOneShotNode</span><span class="p">(</span><span class="nx">skeleton</span><span class="p">,</span><span class="w"> </span><span class="nx">locomotion</span><span class="p">,</span><span class="w"> </span><span class="nx">waveNode</span><span class="p">,</span><span class="w"> </span><span class="nx">upperBody</span><span class="p">)</span>
+<span class="nx">action</span><span class="p">.</span><span class="nx">SetFadeInDuration</span><span class="p">(</span><span class="mf">0.2</span><span class="p">)</span>
+<span class="nx">action</span><span class="p">.</span><span class="nx">SetFadeOutDuration</span><span class="p">(</span><span class="mf">0.3</span><span class="p">)</span>
+
+<span class="c1">// Later, in response to a gameplay event.</span>
+<span class="nx">action</span><span class="p">.</span><span class="nx">Trigger</span><span class="p">()</span>
+
+<span class="c1">// Optionally cut it short, fading out from the current weight.</span>
+<span class="nx">action</span><span class="p">.</span><span class="nx">Stop</span><span class="p">()</span>
+
+<span class="nx">action</span><span class="p">.</span><span class="nx">IsPlaying</span><span class="p">()</span><span class="w"> </span><span class="c1">// true while the overlay plays, including its fades</span>
+</code></pre></div>
+<p>The overlay is advanced only while it plays and starts from its beginning each time it is triggered. It plays until one cycle has elapsed (as determined by its rate) or until it is stopped. Triggering has no effect while the overlay is playing, unless it was stopped and is fading out, in which case it starts over and fades back in from its current weight. The overlay must have a rate greater than <code>0.0</code>, otherwise <code>Trigger</code> panics.</p>
+<p>If the overlay is shorter than the fade-in and fade-out durations combined, the two fades meet and the overlay does not reach full weight.</p>
+<h2 id="state-machines">State Machines</h2>
+<p><code>StateMachineNode</code> plays one of a set of states, each represented by a node of its own, and cross-fades between them. States are identified by keys of any comparable type.</p>
+<div class="highlight"><pre><span></span><code><span class="kd">type</span><span class="w"> </span><span class="nx">State</span><span class="w"> </span><span class="kt">int</span>
+
+<span class="kd">const</span><span class="w"> </span><span class="p">(</span>
+<span class="w">    </span><span class="nx">StateIdle</span><span class="w"> </span><span class="nx">State</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="kc">iota</span>
+<span class="w">    </span><span class="nx">StateWalk</span>
+<span class="w">    </span><span class="nx">StateJump</span>
+<span class="p">)</span>
+
+<span class="nx">machine</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">animation</span><span class="p">.</span><span class="nx">NewStateMachineNode</span><span class="p">(</span>
+<span class="w">    </span><span class="nx">StateIdle</span><span class="p">,</span>
+<span class="w">    </span><span class="kd">map</span><span class="p">[</span><span class="nx">State</span><span class="p">]</span><span class="nx">animation</span><span class="p">.</span><span class="nx">Node</span><span class="p">{</span>
+<span class="w">        </span><span class="nx">StateIdle</span><span class="p">:</span><span class="w"> </span><span class="nx">idle</span><span class="p">,</span>
+<span class="w">        </span><span class="nx">StateWalk</span><span class="p">:</span><span class="w"> </span><span class="nx">walk</span><span class="p">,</span>
+<span class="w">        </span><span class="nx">StateJump</span><span class="p">:</span><span class="w"> </span><span class="nx">jump</span><span class="p">,</span>
+<span class="w">    </span><span class="p">},</span>
+<span class="w">    </span><span class="nx">animation</span><span class="p">.</span><span class="nx">StateMachineTransitionSettings</span><span class="p">{</span><span class="nx">Duration</span><span class="p">:</span><span class="w"> </span><span class="mf">0.25</span><span class="p">},</span><span class="w"> </span><span class="c1">// default transition</span>
+<span class="w">    </span><span class="p">[]</span><span class="nx">animation</span><span class="p">.</span><span class="nx">StateMachineTransition</span><span class="p">[</span><span class="nx">State</span><span class="p">]{</span>
+<span class="w">        </span><span class="p">{</span>
+<span class="w">            </span><span class="nx">From</span><span class="p">:</span><span class="w"> </span><span class="nx">StateWalk</span><span class="p">,</span>
+<span class="w">            </span><span class="nx">To</span><span class="p">:</span><span class="w">   </span><span class="nx">StateJump</span><span class="p">,</span>
+<span class="w">            </span><span class="nx">StateMachineTransitionSettings</span><span class="p">:</span><span class="w"> </span><span class="nx">animation</span><span class="p">.</span><span class="nx">StateMachineTransitionSettings</span><span class="p">{</span>
+<span class="w">                </span><span class="nx">Duration</span><span class="p">:</span><span class="w"> </span><span class="mf">0.1</span><span class="p">,</span>
+<span class="w">                </span><span class="nx">Rewind</span><span class="p">:</span><span class="w">   </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">            </span><span class="p">},</span>
+<span class="w">        </span><span class="p">},</span>
+<span class="w">    </span><span class="p">},</span>
+<span class="p">)</span>
+</code></pre></div>
+<p>The default transition is used between any two states that have no transition of their own. A transition specifies:</p>
+<table>
+<thead>
+<tr>
+<th>Setting</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Duration</code></td>
+<td>Time in seconds of the cross-fade. <code>0.0</code> switches immediately.</td>
+</tr>
+<tr>
+<td><code>Rewind</code></td>
+<td>Whether the state transitioned to starts from its beginning instead of resuming from its own playback position. Has no effect on synchronized states.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="changing-state">Changing State</h3>
+<div class="highlight"><pre><span></span><code><span class="nx">machine</span><span class="p">.</span><span class="nx">TransitionTo</span><span class="p">(</span><span class="nx">StateWalk</span><span class="p">)</span><span class="w"> </span><span class="c1">// cross-fade using the configured transition</span>
+<span class="nx">machine</span><span class="p">.</span><span class="nx">JumpTo</span><span class="p">(</span><span class="nx">StateIdle</span><span class="p">)</span><span class="w">       </span><span class="c1">// switch immediately, canceling any transition</span>
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>CurrentState</code></td>
+<td>The state the node is in. During a transition, the state it leads to.</td>
+</tr>
+<tr>
+<td><code>SourceState</code></td>
+<td>The state being faded out. Equal to <code>CurrentState</code> when not transitioning.</td>
+</tr>
+<tr>
+<td><code>IsTransitioning</code></td>
+<td>Whether a transition is in progress.</td>
+</tr>
+<tr>
+<td><code>TransitionProgress</code></td>
+<td>Progress of the transition, from <code>0.0</code> (only the source) to <code>1.0</code> (only the current state).</td>
+</tr>
+</tbody>
+</table>
+<p>Transitioning to the current state has no effect. If a transition is already in progress, the state it leads to becomes the source of the new transition, without a fade. As an exception, transitioning back to the state that is being faded out reverses the transition in progress from where it is.</p>
+<p>A synchronized state that is entered is moved to the fraction of the node, so that it continues in phase with the state it replaces. A non-synchronized state resumes from its own playback position (or from its beginning, if the transition rewinds). To start a state from a particular position after <code>JumpTo</code>, call <code>SetFraction</code> afterwards.</p>
+<p>Only the current state and the state being faded out are advanced. The remaining states keep their playback position until they are entered again.</p>
+<p><code>NewStateMachineNode</code> panics if the initial state or any transition endpoint is not among the states, if a transition leads to the state it starts from, if two transitions share the same direction between the same states, or if any duration is negative. <code>JumpTo</code> and <code>TransitionTo</code> panic on an unknown state.</p>
+<h2 id="playback-modifiers">Playback Modifiers</h2>
+<h3 id="time-scale">Time Scale</h3>
+<p><code>TimeScaleNode</code> plays back another node with its time multiplied by a scale. A scale of <code>2.0</code> plays twice as fast, <code>0.5</code> at half speed, <code>0.0</code> freezes playback, and a negative scale plays backwards.</p>
+<div class="highlight"><pre><span></span><code><span class="nx">slowMotion</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">animation</span><span class="p">.</span><span class="nx">ScaleTime</span><span class="p">(</span><span class="nx">walk</span><span class="p">,</span><span class="w"> </span><span class="mf">0.5</span><span class="p">)</span>
+<span class="nx">slowMotion</span><span class="p">.</span><span class="nx">SetTimeScale</span><span class="p">(</span><span class="mf">0.25</span><span class="p">)</span>
+</code></pre></div>
+<h3 id="reverse">Reverse</h3>
+<p><code>ReverseNode</code> plays back another node in reverse. Fraction <code>0.0</code> of a <code>ReverseNode</code> shows the end of the delegate, and advancing it moves the delegate backwards in time.</p>
+<div class="highlight"><pre><span></span><code><span class="nx">walkBackwards</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">animation</span><span class="p">.</span><span class="nx">Reverse</span><span class="p">(</span><span class="nx">walk</span><span class="p">)</span>
+</code></pre></div>
+<p>Both modifiers are transparent wrappers: they hold no playback position of their own, their synchronization setting is that of the delegate, and whether playback wraps or stops at either end is decided by the delegate.</p>
+<h2 id="synchronization">Synchronization</h2>
+<p>Playback progress is expressed as a fraction of the animation length, which allows animations of different lengths to be kept in phase. A node marked as synchronized is kept at the fraction of its parent; a node that is not synchronized plays at its own pace. Nodes start out as not synchronized.</p>
+<div class="highlight"><pre><span></span><code><span class="nx">locomotion</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">animation</span><span class="p">.</span><span class="nx">Blend</span><span class="p">(</span>
+<span class="w">    </span><span class="nx">animation</span><span class="p">.</span><span class="nx">Synchronized</span><span class="p">(</span><span class="nx">walk</span><span class="p">),</span><span class="w"> </span><span class="c1">// 1.2s cycle</span>
+<span class="w">    </span><span class="nx">animation</span><span class="p">.</span><span class="nx">Synchronized</span><span class="p">(</span><span class="nx">run</span><span class="p">),</span><span class="w">  </span><span class="c1">// 0.8s cycle</span>
+<span class="p">)</span>
+</code></pre></div>
+<p>How a parent treats its children falls into two groups:</p>
+<table>
+<thead>
+<tr>
+<th>Parent</th>
+<th>Fraction</th>
+<th>Synchronized children</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>BlendNode</code>, <code>Blend1DNode</code>, <code>StateMachineNode</code> (during a transition)</td>
+<td>Own playback position, advancing at a rate blended from the synchronized children. Wraps around.</td>
+<td>Kept at the parent's fraction.</td>
+</tr>
+<tr>
+<td><code>AddNode</code>, <code>DiffNode</code>, <code>MaskedBlendNode</code>, <code>OneShotNode</code></td>
+<td>That of the first child (base or source).</td>
+<td>The second child is kept at the first child's fraction if synchronized.</td>
+</tr>
+</tbody>
+</table>
+<p>For the second group, the synchronization setting of the first child has no effect, since that child defines the fraction of the parent. Whether it is kept in phase with the grandparent is decided by the synchronization setting of the parent itself. In a <code>OneShotNode</code>, the synchronization setting of the overlay has no effect either, since the overlay always starts from its beginning when triggered.</p>
+<p>All children are advanced in real time, whether synchronized or not; synchronized children are then snapped to the appropriate fraction. A synchronized child that does not loop is moved back to its start when the fraction of a wrapping parent wraps around.</p>
+<p>The blended rate is computed so that the length of the cycle, rather than the rate itself, changes linearly with the weight. Only synchronized children with a rate greater than <code>0.0</code> take part; if none do, the parent's rate is <code>0.0</code> and its fraction does not advance.</p>
+<h2 id="root-motion">Root Motion</h2>
+<p>Root motion extracts the motion of a single bone, typically the root of a character, from an animation tree, so that the character itself can be moved in the world (for example through a character controller) in agreement with its animation.</p>
+<p><code>RootMotion</code> resolves a bone name against a skeleton once and reports the motion of that bone through <code>Node.DeltaTransform</code>. Call it before advancing the tree by the same delta:</p>
+<div class="highlight"><pre><span></span><code><span class="nx">rootMotion</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">animation</span><span class="p">.</span><span class="nx">NewRootMotion</span><span class="p">(</span><span class="nx">skeleton</span><span class="p">,</span><span class="w"> </span><span class="nx">tree</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;root&quot;</span><span class="p">)</span>
+
+<span class="c1">// Each update.</span>
+<span class="nx">delta</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">rootMotion</span><span class="p">.</span><span class="nx">DeltaTransform</span><span class="p">(</span><span class="nx">deltaSeconds</span><span class="p">)</span>
+<span class="nx">tree</span><span class="p">.</span><span class="nx">Advance</span><span class="p">(</span><span class="nx">deltaSeconds</span><span class="p">)</span>
+
+<span class="c1">// Move the character by delta (expressed in the space of the bone&#39;s parent).</span>
+</code></pre></div>
+<p>The returned transformation <code>D</code> satisfies <code>D * A = B</code>, where <code>A</code> and <code>B</code> are the matrices of the bone at the current position and <code>deltaSeconds</code> later. If the bone is not in the skeleton, the <code>IdentityTransform</code> is returned.</p>
+<p>How nodes report motion:</p>
+<ul>
+<li>A looping <code>ClipNode</code> measures motion across any number of wrap-arounds as if each repetition continued from where the previous one ended. A non-looping one stops measuring at the end it reaches.</li>
+<li>Static poses, <code>DiffNode</code>, and the additive layer of an <code>AddNode</code> contribute no motion.</li>
+<li>Blending nodes blend the motion of their children. A bone with an effective mask weight of <code>0.0</code> moves as in the base, so a mask that excludes the root bone leaves root motion entirely to the base animation.</li>
+<li>Blended motion is an approximation of the motion of the blended transformation, especially when synchronized children play at a rate different from that of their parent.</li>
+</ul>
+<h2 id="integration-with-the-game-scene">Integration with the Game Scene</h2>
+<p>The <code>game</code> package connects animation trees to model hierarchies:</p>
+<div class="highlight"><pre><span></span><code><span class="nx">model</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">scene</span><span class="p">.</span><span class="nx">InstantiateModel</span><span class="p">(</span><span class="nx">modelInfo</span><span class="p">)</span>
+<span class="nx">skeleton</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">model</span><span class="p">.</span><span class="nx">Skeleton</span><span class="p">()</span>
+
+<span class="nx">tree</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">animation</span><span class="p">.</span><span class="nx">NewClipNode</span><span class="p">(</span><span class="nx">skeleton</span><span class="p">,</span><span class="w"> </span><span class="nx">model</span><span class="p">.</span><span class="nx">FindRecording</span><span class="p">(</span><span class="s">&quot;idle&quot;</span><span class="p">),</span><span class="w"> </span><span class="kc">true</span><span class="p">)</span>
+
+<span class="nx">model</span><span class="p">.</span><span class="nx">BindAnimation</span><span class="p">(</span><span class="nx">tree</span><span class="p">)</span><span class="w"> </span><span class="c1">// drive the model&#39;s animated nodes from the tree</span>
+<span class="nx">scene</span><span class="p">.</span><span class="nx">PlayAnimation</span><span class="p">(</span><span class="nx">tree</span><span class="p">)</span><span class="w"> </span><span class="c1">// advance the tree on each scene update</span>
+
+<span class="c1">// Later.</span>
+<span class="nx">scene</span><span class="p">.</span><span class="nx">StopAnimation</span><span class="p">(</span><span class="nx">tree</span><span class="p">)</span>
+</code></pre></div>
+<p><code>BindAnimation</code> binds the model's animated hierarchy nodes to the bones of the tree with matching names, and <code>BindAnimationSubtree</code> does the same for every node in the subtree of a named node. The bound nodes receive the local transformation of their bone through a hierarchy binding (see <a href="../hierarchy/#bindings">Hierarchy - Bindings</a>). <code>PlayAnimation</code> registers the root of the tree with the scene, which advances it at the fixed update rate. Only the root should be registered, since parents advance their children.</p>
+<h2 id="limitations">Limitations</h2>
+<ul>
+<li><strong>Single skeleton per tree.</strong> Bones are addressed by index, so all nodes in a tree must be built from the same skeleton. Retargeting between skeletons is not provided.</li>
+<li><strong>No inverse kinematics.</strong> The package produces forward-kinematic poses only. Procedural adjustments can be approximated with <code>AdditivePoseNode</code> and <code>AddNode</code>.</li>
+<li><strong>No animation events.</strong> There is no mechanism to fire callbacks at specific timestamps (such as footsteps); applications can poll <code>Fraction</code> instead.</li>
+</ul>
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    <script id="__config" type="application/json">{"base": "../../..", "features": [], "search": "../../../assets/javascripts/workers/search.e5c33ebb.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.51d95adb.min.js"></script>
+      
+        <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+      
+    
+  </body>
+</html>
