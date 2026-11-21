@@ -40,6 +40,9 @@ type Scene struct {
 	objectContacts  placement3d.ObjectContactList
 	terrainContacts placement3d.TerrainContactList
 
+	soloManifolds *manifoldCache[soloManifoldKey]
+	pairManifolds *manifoldCache[pairManifoldKey]
+
 	freeCollisionRejectGroup uint32
 
 	mediumSolver MediumSolver
@@ -100,6 +103,9 @@ func NewScene() *Scene {
 
 		objectContacts:  make(placement3d.ObjectContactList, 0),
 		terrainContacts: make(placement3d.TerrainContactList, 0),
+
+		soloManifolds: newManifoldCache[soloManifoldKey](),
+		pairManifolds: newManifoldCache[pairManifoldKey](),
 
 		freeCollisionRejectGroup: 0,
 
@@ -849,13 +855,44 @@ func (s *Scene) detectCollisions() {
 	s.terrainContacts.Reset()
 	s.collisionScene.CollectTerrainIntersections(s.terrainContacts.AddContact)
 
-	// Handle contacts.
+	// Merge the new contacts into the contact points that are still valid
+	// from previous steps, since a single contact per pair of shapes is not
+	// sufficient to keep a shape at rest on a face of another.
 	for _, contact := range s.objectContacts.Contacts() {
-		srcBodyData := s.collisionScene.GetObjectUserData(contact.SourceObjectID)
-		srcShapeData := s.collisionScene.GetObjectShapeUserData(contact.SourceShapeID)
+		s.pairManifolds.Track(
+			pairManifoldKey{
+				sourceObjectID: contact.SourceObjectID,
+				sourceShapeID:  contact.SourceShapeID,
+				targetObjectID: contact.TargetObjectID,
+				targetShapeID:  contact.TargetShapeID,
+			},
+			s.objectManifoldFrame(contact.SourceObjectID),
+			s.objectManifoldFrame(contact.TargetObjectID),
+			contact.Contact,
+		)
+	}
 
-		tgtBodyData := s.collisionScene.GetObjectUserData(contact.TargetObjectID)
-		tgtShapeData := s.collisionScene.GetObjectShapeUserData(contact.TargetShapeID)
+	for _, contact := range s.terrainContacts.Contacts() {
+		s.soloManifolds.Track(
+			soloManifoldKey{
+				sourceObjectID:  contact.SourceObjectID,
+				sourceShapeID:   contact.SourceShapeID,
+				targetTerrainID: contact.TargetTerrainID,
+				targetShapeID:   contact.TargetShapeID,
+			},
+			s.objectManifoldFrame(contact.SourceObjectID),
+			staticManifoldFrame(),
+			contact.Contact,
+		)
+	}
+
+	// Handle contacts.
+	s.pairManifolds.Commit(func(key pairManifoldKey, contact shape3d.Contact) {
+		srcBodyData := s.collisionScene.GetObjectUserData(key.sourceObjectID)
+		srcShapeData := s.collisionScene.GetObjectShapeUserData(key.sourceShapeID)
+
+		tgtBodyData := s.collisionScene.GetObjectUserData(key.targetObjectID)
+		tgtShapeData := s.collisionScene.GetObjectShapeUserData(key.targetShapeID)
 
 		s.handlePairCollision(
 			bodyCollisionData{
@@ -870,14 +907,14 @@ func (s *Scene) detectCollisions() {
 			},
 			contact,
 		)
-	}
+	})
 
-	for _, contact := range s.terrainContacts.Contacts() {
-		srcBodyData := s.collisionScene.GetObjectUserData(contact.SourceObjectID)
-		srcShapeData := s.collisionScene.GetObjectShapeUserData(contact.SourceShapeID)
+	s.soloManifolds.Commit(func(key soloManifoldKey, contact shape3d.Contact) {
+		srcBodyData := s.collisionScene.GetObjectUserData(key.sourceObjectID)
+		srcShapeData := s.collisionScene.GetObjectShapeUserData(key.sourceShapeID)
 
-		tgtTerrainData := s.collisionScene.GetTerrainUserData(contact.TargetTerrainID)
-		tgtShapeData := s.collisionScene.GetTerrainShapeUserData(contact.TargetShapeID)
+		tgtTerrainData := s.collisionScene.GetTerrainUserData(key.targetTerrainID)
+		tgtShapeData := s.collisionScene.GetTerrainShapeUserData(key.targetShapeID)
 
 		s.handleSoloCollision(
 			bodyCollisionData{
@@ -892,10 +929,20 @@ func (s *Scene) detectCollisions() {
 			},
 			contact,
 		)
+	})
+}
+
+// objectManifoldFrame returns the frame, relative to which the contact
+// points of the body behind the specified collision object are tracked.
+func (s *Scene) objectManifoldFrame(objectID placement3d.ObjectID) manifoldFrame {
+	body := &s.bodies[s.collisionScene.GetObjectUserData(objectID).index]
+	return manifoldFrame{
+		position: body.position,
+		rotation: body.rotation,
 	}
 }
 
-func (s *Scene) handlePairCollision(primaryData, secondaryData bodyCollisionData, contact placement3d.ObjectContact) {
+func (s *Scene) handlePairCollision(primaryData, secondaryData bodyCollisionData, contact shape3d.Contact) {
 	solver := s.allocatePairCollisionSolver()
 	solver.Configure(PairCollisionSolverConfig{
 		PrimaryFrictionCoefficient:    primaryData.frictionCoefficient,
@@ -908,7 +955,7 @@ func (s *Scene) handlePairCollision(primaryData, secondaryData bodyCollisionData
 		SecondaryContactNormal:          contact.TargetNormal,
 		SecondaryContactPoint:           contact.TargetPoint,
 
-		ContactDepth: contact.Depth,
+		ContactDepth: correctableContactDepth(contact.Depth),
 	})
 
 	primaryID := s.Bodies().idFromIndex(primaryData.index)
@@ -924,7 +971,7 @@ func (s *Scene) handlePairCollision(primaryData, secondaryData bodyCollisionData
 	s.newPairCollisionRefs[ref] = struct{}{}
 }
 
-func (s *Scene) handleSoloCollision(bodyData bodyCollisionData, terrainData terrainCollisionData, contact placement3d.TerrainContact) {
+func (s *Scene) handleSoloCollision(bodyData bodyCollisionData, terrainData terrainCollisionData, contact shape3d.Contact) {
 	solver := s.allocateSoloCollisionSolver()
 	solver.Configure(SoloCollisionSolverConfig{
 		TerrainFrictionCoefficient:    terrainData.frictionCoefficient,
@@ -935,7 +982,7 @@ func (s *Scene) handleSoloCollision(bodyData bodyCollisionData, terrainData terr
 		BodyRestitutionCoefficient: bodyData.restitutionCoefficient,
 		BodyContactPoint:           contact.EvalSourcePoint(),
 
-		ContactDepth: contact.Depth,
+		ContactDepth: correctableContactDepth(contact.Depth),
 	})
 
 	bodyID := s.Bodies().idFromIndex(bodyData.index)
@@ -1032,6 +1079,24 @@ type terrainCollisionData struct {
 	index                  int32
 	frictionCoefficient    float64
 	restitutionCoefficient float64
+}
+
+// soloManifoldKey identifies the body shape and the terrain shape whose
+// contact points are tracked together.
+type soloManifoldKey struct {
+	sourceObjectID  placement3d.ObjectID
+	sourceShapeID   placement3d.ObjectShapeID
+	targetTerrainID placement3d.TerrainID
+	targetShapeID   placement3d.TerrainShapeID
+}
+
+// pairManifoldKey identifies the two body shapes whose contact points are
+// tracked together.
+type pairManifoldKey struct {
+	sourceObjectID placement3d.ObjectID
+	sourceShapeID  placement3d.ObjectShapeID
+	targetObjectID placement3d.ObjectID
+	targetShapeID  placement3d.ObjectShapeID
 }
 
 // TODO: Consider tracking the shapeID as well.

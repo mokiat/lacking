@@ -120,4 +120,166 @@ var _ = Describe("Scene", func() {
 			})
 		})
 	})
+
+	Describe("contact resolution", func() {
+		const (
+			// groundLevel is the height of the surface that bodies land on.
+			groundLevel = 0.0
+
+			settleSteps  = 300
+			observeSteps = 120
+		)
+
+		// boxSize describes a thin slab. Collision detection reports a
+		// single contact point per step for such a shape lying on its face,
+		// which on its own makes the slab endlessly pivot around that point.
+		boxSize := dprec.NewVec3(0.1, 0.04, 0.25)
+
+		createGroundTerrain := func(restitution float64) {
+			terrain := scene.Terrains().CreateHandle()
+			terrain.AttachCollisionMesh(physics.CollisionMesh{
+				Shape: shape3d.NewMesh([]shape3d.Triangle{
+					shape3d.NewTriangle(
+						dprec.NewVec3(-10.0, groundLevel, 10.0),
+						dprec.NewVec3(10.0, groundLevel, 10.0),
+						dprec.NewVec3(0.0, groundLevel, -10.0),
+					),
+				}),
+				FrictionCoefficient:    1.0,
+				RestitutionCoefficient: restitution,
+			})
+		}
+
+		// createGroundBody creates a body that is held in place and has a
+		// wide and long box collision shape, the top of which is at ground
+		// level.
+		createGroundBody := func() physics.BodyHandle {
+			const mass = 10.0
+			size := dprec.NewVec3(1.2, 0.2, 5.0)
+			position := dprec.NewVec3(0.0, groundLevel-size.Y/2.0, 0.0)
+
+			body := scene.Bodies().CreateHandle(position, dprec.IdentityQuat())
+			body.SetMass(mass)
+			body.SetMomentOfInertia(physics.SolidBoxMomentOfInertia(mass, size.X, size.Y, size.Z))
+			body.AttachCollisionBox(physics.CollisionBox{
+				Shape:                  shape3d.NewBox(dprec.ZeroVec3(), shape3d.IdentityRotation(), dprec.Vec3Quot(size, 2.0)),
+				FrictionCoefficient:    1.0,
+				RestitutionCoefficient: 0.1,
+			})
+			scene.SoloConstraints().Create(body.ID(), physics.NewFixedPositionSolver(physics.FixedPositionSolverConfig{
+				Position: position,
+			}))
+			scene.SoloConstraints().Create(body.ID(), physics.NewFixedRotationSolver(physics.FixedRotationSolverConfig{
+				Rotation: dprec.IdentityQuat(),
+			}))
+			return body
+		}
+
+		// createBox creates a slab-shaped body that lies flat, its center
+		// being at the specified position.
+		createBox := func(position dprec.Vec3) physics.BodyHandle {
+			const mass = 1.0
+			body := scene.Bodies().CreateHandle(position, dprec.IdentityQuat())
+			body.SetMass(mass)
+			body.SetMomentOfInertia(physics.SolidBoxMomentOfInertia(mass, boxSize.X, boxSize.Y, boxSize.Z))
+			body.AttachCollisionBox(physics.CollisionBox{
+				Shape:                  shape3d.NewBox(dprec.ZeroVec3(), shape3d.IdentityRotation(), dprec.Vec3Quot(boxSize, 2.0)),
+				FrictionCoefficient:    0.8,
+				RestitutionCoefficient: 0.4,
+			})
+			return body
+		}
+
+		// tilt returns the angle, in degrees, between the up direction of
+		// the body and the up direction of the world.
+		tilt := func(body physics.BodyHandle) float64 {
+			up := dprec.QuatVec3Rotation(body.Rotation(), dprec.BasisYVec3())
+			return dprec.Vec3Angle(up, dprec.BasisYVec3()).Degrees()
+		}
+
+		// expectAtRest lets the body settle and then asserts that it lies
+		// still and flat, its center being at the specified height.
+		expectAtRest := func(body physics.BodyHandle, height float64) {
+			for range settleSteps {
+				scene.Update(step)
+			}
+			for range observeSteps {
+				scene.Update(step)
+				Expect(body.AngularVelocity().Length()).To(BeNumerically("<", 0.5))
+				Expect(body.Velocity().Length()).To(BeNumerically("<", 0.05))
+				Expect(tilt(body)).To(BeNumerically("<", 2.0))
+				Expect(body.Position().Y).To(BeNumerically("~", height, 0.005))
+			}
+		}
+
+		BeforeEach(func() {
+			scene.GlobalAccelerators().Create(physics.NewGravitySolver())
+		})
+
+		It("brings a box that is dropped flat onto a terrain to rest", func() {
+			createGroundTerrain(0.1)
+			box := createBox(dprec.NewVec3(0.1, groundLevel+boxSize.Y/2.0+0.05, 0.2))
+
+			expectAtRest(box, groundLevel+boxSize.Y/2.0)
+		})
+
+		It("brings a box that is dropped flat onto another body to rest", func() {
+			createGroundBody()
+			box := createBox(dprec.NewVec3(0.1, groundLevel+boxSize.Y/2.0+0.05, 0.2))
+
+			expectAtRest(box, groundLevel+boxSize.Y/2.0)
+		})
+
+		It("keeps a box that is dropped flat onto another box on top of it", func() {
+			createGroundBody()
+			lower := createBox(dprec.NewVec3(0.0, groundLevel+boxSize.Y/2.0+0.05, 0.0))
+			upper := createBox(dprec.NewVec3(0.01, groundLevel+boxSize.Y*1.5+0.06, 0.02))
+
+			for range settleSteps {
+				scene.Update(step)
+			}
+			for range observeSteps {
+				scene.Update(step)
+				Expect(tilt(lower)).To(BeNumerically("<", 5.0))
+				Expect(tilt(upper)).To(BeNumerically("<", 5.0))
+				Expect(lower.Position().Y).To(BeNumerically("~", groundLevel+boxSize.Y/2.0, 0.005))
+				Expect(upper.Position().Y).To(BeNumerically("~", groundLevel+boxSize.Y*1.5, 0.005))
+			}
+		})
+
+		It("bounces a ball off of a terrain according to restitution", func() {
+			const (
+				radius      = 0.25
+				dropHeight  = 2.0
+				restitution = 0.5
+			)
+			createGroundTerrain(restitution)
+			ball := scene.Bodies().CreateHandle(dprec.NewVec3(0.0, groundLevel+radius+dropHeight, 0.0), dprec.IdentityQuat())
+			ball.SetMass(1.0)
+			ball.SetMomentOfInertia(physics.SolidSphereMomentOfInertia(1.0, radius))
+			ball.AttachCollisionSphere(physics.CollisionSphere{
+				Shape:                  shape3d.NewSphere(dprec.ZeroVec3(), radius),
+				FrictionCoefficient:    0.5,
+				RestitutionCoefficient: restitution,
+			})
+
+			// Simulate past the first bounce and up to the peak that follows.
+			hasBounced := false
+			reboundHeight := 0.0
+			for range 250 {
+				scene.Update(step)
+				if ball.Velocity().Y > 0.0 {
+					hasBounced = true
+				}
+				if hasBounced {
+					reboundHeight = max(reboundHeight, ball.Position().Y-radius-groundLevel)
+				}
+			}
+
+			// A ball that leaves the surface at a fraction of the speed it
+			// arrived with reaches that fraction squared of its drop height.
+			Expect(hasBounced).To(BeTrue())
+			Expect(reboundHeight).To(BeNumerically("~", restitution*restitution*dropHeight, 0.1))
+		})
+	})
 })

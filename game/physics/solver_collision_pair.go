@@ -82,11 +82,17 @@ type PairCollisionSolver struct {
 	frictionCoefficient    float64
 	restitutionCoefficient float64
 
+	primaryPointOffsetLS   dprec.Vec3
+	secondaryPointOffsetLS dprec.Vec3
 	primaryPointOffsetWS   dprec.Vec3
 	secondaryPointOffsetWS dprec.Vec3
 	primaryJacobian        Jacobian
 	secondaryJacobian      Jacobian
 	drift                  float64
+
+	targetVelocity float64
+	bounceLambda   float64
+	frictionLambda float64
 }
 
 var _ PairConstraintSolver = (*PairCollisionSolver)(nil)
@@ -130,29 +136,62 @@ func (s *PairCollisionSolver) Configure(config PairCollisionSolverConfig) {
 // Reset implements [PairConstraintSolver.Reset].
 //
 // It recomputes the contact's primary and secondary [Jacobian]s from the
-// targets' current positions.
+// targets' current positions and determines, from the velocity at which
+// the targets approach each other, the velocity that the contact is to be
+// resolved to, combining restitution with Baumgarte positional-drift
+// stabilization.
 func (s *PairCollisionSolver) Reset(ctx PairConstraintContext) {
+	// The contact points are attached to their targets, so that they can
+	// be followed as the targets get moved over the course of the step.
+	s.primaryPointOffsetLS = dprec.QuatVec3Rotation(
+		dprec.ConjugateQuat(ctx.PrimaryTarget.Rotation()),
+		dprec.Vec3Diff(s.primaryContactPoint, ctx.PrimaryTarget.Position()),
+	)
+	s.secondaryPointOffsetLS = dprec.QuatVec3Rotation(
+		dprec.ConjugateQuat(ctx.SecondaryTarget.Rotation()),
+		dprec.Vec3Diff(s.secondaryContactPoint, ctx.SecondaryTarget.Position()),
+	)
 	s.recompute(ctx)
+
+	// The velocity that the contact should end up with is determined once,
+	// from the velocity that the targets approach each other with, so that
+	// the individual iterations converge towards it instead of each
+	// bouncing off of the outcome of the previous one.
+	approachVelocity := min(0.0, s.effectiveVelocity(ctx))
+	bounceVelocity := -s.restitutionCoefficient * RestitutionClamp(approachVelocity) * approachVelocity
+	driftVelocity := ctx.ImpulseBeta * s.drift / ctx.DeltaSeconds
+	s.targetVelocity = max(bounceVelocity, driftVelocity)
+
+	s.bounceLambda = 0.0
+	s.frictionLambda = 0.0
 }
 
 // ApplyImpulses implements [PairConstraintSolver.ApplyImpulses].
 //
-// It first resolves the contact's normal impulse pair, combining
-// restitution with Baumgarte positional-drift stabilization. If the two
-// targets are already moving apart, it returns without applying
-// anything, leaving any remaining penetration to
-// [PairCollisionSolver.ApplyNudges]. Otherwise, it additionally resolves
-// a Coulomb friction impulse pair that opposes the targets' relative
-// lateral (tangential) velocity at the contact, clamped to a fraction of
-// the normal impulse's restitution-only component.
+// It first resolves the contact's normal impulse pair, which drives the
+// contact towards the velocity that was determined by
+// [PairCollisionSolver.Reset]. The impulse pair only ever pushes the
+// targets apart when summed up across the iterations of a step, though an
+// individual iteration may take back part of what previous ones have
+// applied. It additionally resolves a Coulomb friction impulse pair that
+// opposes the targets' relative lateral (tangential) velocity at the
+// contact, which is bounded, across the iterations of a step, by a
+// fraction of the normal impulse.
 func (s *PairCollisionSolver) ApplyImpulses(ctx PairConstraintContext) {
 	// Bounce solution
-	bounceLambda, baumgarteLambda := ctx.ImpulseLambdaComponents(s.primaryJacobian, s.secondaryJacobian, s.drift, s.restitutionCoefficient)
-	if bounceLambda < 0.0 {
-		return // moving away
+	invEffectiveMass := s.primaryJacobian.InverseEffectiveMass(ctx.PrimaryTarget) + s.secondaryJacobian.InverseEffectiveMass(ctx.SecondaryTarget)
+	if invEffectiveMass < Epsilon {
+		return
 	}
-	primaryBounceImpulse := s.primaryJacobian.Impulse(bounceLambda + baumgarteLambda)
-	secondaryBounceImpulse := s.secondaryJacobian.Impulse(bounceLambda + baumgarteLambda)
+	// The impulse that has been applied so far, across all iterations, is
+	// what must never pull the targets together. An individual iteration is
+	// free to take back part of it, in case other constraints have pushed
+	// the targets apart further than necessary in the meantime.
+	bounceLambda := max(0.0, s.bounceLambda+(s.targetVelocity-s.effectiveVelocity(ctx))/invEffectiveMass)
+	deltaBounceLambda := bounceLambda - s.bounceLambda
+	s.bounceLambda = bounceLambda
+	primaryBounceImpulse := s.primaryJacobian.Impulse(deltaBounceLambda)
+	secondaryBounceImpulse := s.secondaryJacobian.Impulse(deltaBounceLambda)
 
 	// Friction solution
 	primaryPointVelocity := dprec.Vec3Sum(ctx.PrimaryTarget.LinearVelocity(), dprec.Vec3Cross(ctx.PrimaryTarget.AngularVelocity(), s.primaryPointOffsetWS))
@@ -171,8 +210,9 @@ func (s *PairCollisionSolver) ApplyImpulses(ctx PairConstraintContext) {
 			AngularSlope: dprec.Vec3Cross(s.secondaryPointOffsetWS, velocityLateralDirection),
 		}
 		frictionLambda := ctx.ImpulseLambda(primaryFrictionJacobian, secondaryFrictionJacobian, 0.0, 0.0)
-		maxFrictionLambda := bounceLambda * s.frictionCoefficient
+		maxFrictionLambda := max(0.0, s.bounceLambda*s.frictionCoefficient-s.frictionLambda)
 		frictionLambda = min(frictionLambda, maxFrictionLambda)
+		s.frictionLambda += frictionLambda
 		primaryFrictionImpulse = primaryFrictionJacobian.Impulse(frictionLambda)
 		secondaryFrictionImpulse = secondaryFrictionJacobian.Impulse(frictionLambda)
 	}
@@ -188,9 +228,10 @@ func (s *PairCollisionSolver) ApplyImpulses(ctx PairConstraintContext) {
 // ApplyNudges implements [PairConstraintSolver.ApplyNudges].
 //
 // It first recomputes the contact's primary and secondary [Jacobian]s
-// from the targets' current positions, since a preceding
-// nudge - by this solver's own previous iteration, or by another
-// constraint acting on either target - may have moved a target since
+// and remaining penetration from the targets' current positions, since
+// the targets' motion or a preceding nudge - by this solver's own
+// previous iteration, or by another constraint acting on either
+// target - may have moved a target since
 // [PairCollisionSolver.Reset] or the last call to this method. If the
 // contact is still penetrating, it then nudges the two targets apart
 // along their contact normals to reduce the penetration.
@@ -204,9 +245,10 @@ func (s *PairCollisionSolver) ApplyNudges(ctx PairConstraintContext) {
 }
 
 // recompute recalculates the contact's primary and secondary
-// [Jacobian]s, along with the world-space offsets from each target's
-// center of mass to its respective contact point that they are derived
-// from, based on the targets' current positions.
+// [Jacobian]s and remaining penetration, along with the world-space
+// offsets from each target's center of mass to its respective contact
+// point that they are derived from, based on the targets' current
+// positions and orientations.
 //
 // Each jacobian's linear slope is built from the other body's contact
 // normal (e.g. the primary jacobian uses SecondaryContactNormal, not
@@ -216,8 +258,8 @@ func (s *PairCollisionSolver) ApplyNudges(ctx PairConstraintContext) {
 // applied to both targets - see [PairConstraintContext.ImpulseLambda]
 // for that requirement.
 func (s *PairCollisionSolver) recompute(ctx PairConstraintContext) {
-	s.primaryPointOffsetWS = dprec.Vec3Diff(s.primaryContactPoint, ctx.PrimaryTarget.Position())
-	s.secondaryPointOffsetWS = dprec.Vec3Diff(s.secondaryContactPoint, ctx.SecondaryTarget.Position())
+	s.primaryPointOffsetWS = dprec.QuatVec3Rotation(ctx.PrimaryTarget.Rotation(), s.primaryPointOffsetLS)
+	s.secondaryPointOffsetWS = dprec.QuatVec3Rotation(ctx.SecondaryTarget.Rotation(), s.secondaryPointOffsetLS)
 
 	s.primaryJacobian = Jacobian{
 		LinearSlope:  s.secondaryContactNormal,
@@ -228,5 +270,20 @@ func (s *PairCollisionSolver) recompute(ctx PairConstraintContext) {
 		AngularSlope: dprec.Vec3Cross(s.secondaryPointOffsetWS, s.primaryContactNormal),
 	}
 
-	s.drift = s.contactDepth
+	// The penetration that remains is the one that was detected, reduced
+	// by however much the two contact points have moved apart since.
+	primaryPoint := dprec.Vec3Sum(ctx.PrimaryTarget.Position(), s.primaryPointOffsetWS)
+	secondaryPoint := dprec.Vec3Sum(ctx.SecondaryTarget.Position(), s.secondaryPointOffsetWS)
+	separation := dprec.Vec3Diff(
+		dprec.Vec3Diff(primaryPoint, secondaryPoint),
+		dprec.Vec3Diff(s.primaryContactPoint, s.secondaryContactPoint),
+	)
+	s.drift = s.contactDepth - dprec.Vec3Dot(separation, s.secondaryContactNormal)
+}
+
+// effectiveVelocity returns the velocity at which the two targets are
+// moving apart at the contact, which is negative while they approach each
+// other.
+func (s *PairCollisionSolver) effectiveVelocity(ctx PairConstraintContext) float64 {
+	return s.primaryJacobian.EffectiveVelocity(ctx.PrimaryTarget) + s.secondaryJacobian.EffectiveVelocity(ctx.SecondaryTarget)
 }
