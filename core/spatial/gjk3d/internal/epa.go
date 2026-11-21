@@ -6,6 +6,11 @@ import (
 	"github.com/mokiat/gomath/dprec"
 )
 
+// coplanarEpsilon is the largest difference in plane distance to the origin
+// for which two polytope faces are considered equally close, and hence
+// candidates for holding the projection of the origin.
+const coplanarEpsilon = 1e-9
+
 // EPASolver computes contact information (separation normal, penetration
 // depth and closest feature) for two overlapping shapes, based on the final
 // simplex produced by a [GJKSolver] run over the same [MinkowskiShape].
@@ -149,20 +154,41 @@ func (s *EPASolver) Solution() EPASolution {
 }
 
 // closestTriangle returns the polytope face that is nearest to the origin.
+//
+// Faces are ranked by the distance of their plane to the origin. A flat face
+// of the Minkowski difference is however covered by several coplanar polytope
+// triangles, which all share that plane distance, yet only one of them holds
+// the projection of the origin. Such ties are resolved through the distance
+// from the origin to the triangle itself, since picking a triangle that does
+// not hold the projection would clamp the closest point to its boundary and
+// yield a closest feature that is displaced along the face.
 func (s *EPASolver) closestTriangle() (PolytopeTriangle, bool) {
+	if len(s.polytope) == 0 {
+		return PolytopeTriangle{}, false
+	}
+
+	planeDistance := math.MaxFloat64
+	for i := range s.polytope {
+		planeDistance = min(planeDistance, s.polytope[i].Distance)
+	}
+
 	var (
-		result   PolytopeTriangle
-		distance = math.MaxFloat64
-		found    bool
+		result      PolytopeTriangle
+		sqrDistance = math.MaxFloat64
 	)
-	for _, triangle := range s.polytope {
-		if triangle.Distance < distance {
-			distance = triangle.Distance
-			result = triangle
-			found = true
+	for i := range s.polytope {
+		triangle := &s.polytope[i]
+		if triangle.Distance-planeDistance > coplanarEpsilon {
+			continue
+		}
+		baryA, baryB, baryC := barycentricClosestToOrigin(triangle.VertexA.Position, triangle.VertexB.Position, triangle.VertexC.Position)
+		closest := closestPoint(triangle.VertexA.Position, triangle.VertexB.Position, triangle.VertexC.Position, baryA, baryB, baryC)
+		if candidate := closest.SqrLength(); candidate < sqrDistance {
+			sqrDistance = candidate
+			result = *triangle
 		}
 	}
-	return result, found
+	return result, true
 }
 
 // solvePolytopeTriangle records the solution implied by a polytope face, whose
