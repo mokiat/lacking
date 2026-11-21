@@ -453,6 +453,68 @@ var _ = Describe("Solver", func() {
 				_, ok := solver.Resolve(a, b)
 				Expect(ok).To(BeFalse())
 			})
+
+			// A small box resting on a much larger plate. The face of the
+			// Minkowski difference that is closest to the origin is far larger
+			// than the small box and is covered by several coplanar polytope
+			// triangles, only one of which holds the projection of the origin.
+			// Regardless of which one the expansion happens to visit, the contact
+			// has to be located where the two boxes actually touch.
+			It("places the contact within the overlap of a small box resting on a large plate", func() {
+				const (
+					plateTop    = 0.1
+					penetration = 0.005
+					tolerance   = 1e-6
+				)
+				plate := gjk3d.ShapeFromBox(shape3d.NewBox(
+					dprec.NewVec3(0.0, 0.0, 0.0),
+					shape3d.IdentityRotation(),
+					dprec.NewVec3(0.6, plateTop, 2.5),
+				))
+				halfSize := dprec.NewVec3(0.05, 0.02, 0.125)
+
+				for tiltStep := -8; tiltStep <= 8; tiltStep++ {
+					for offsetStep := -4; offsetStep <= 4; offsetStep++ {
+						for yawStep := 0; yawStep < 4; yawStep++ {
+							tilt := dprec.Degrees(float64(tiltStep) * 0.7)
+							yaw := dprec.Degrees(float64(yawStep) * 25.0)
+							rotationQuat := dprec.QuatProd(
+								dprec.RotationQuat(tilt, dprec.BasisZVec3()),
+								dprec.RotationQuat(yaw, dprec.BasisYVec3()),
+							)
+							rotation := shape3d.RotationFromQuat(rotationQuat)
+
+							// Position the box so that its lowest corner is sunk into
+							// the top face of the plate by the penetration amount.
+							lowest := 0.0
+							for _, signX := range []float64{-1.0, 1.0} {
+								for _, signY := range []float64{-1.0, 1.0} {
+									for _, signZ := range []float64{-1.0, 1.0} {
+										corner := rotation.Apply(dprec.NewVec3(signX*halfSize.X, signY*halfSize.Y, signZ*halfSize.Z))
+										lowest = min(lowest, corner.Y)
+									}
+								}
+							}
+							center := dprec.NewVec3(float64(offsetStep)*0.07, plateTop-lowest-penetration, 0.0)
+							box := gjk3d.ShapeFromBox(shape3d.NewBox(center, rotation, halfSize))
+
+							contact, ok := solver.Resolve(box, plate)
+							Expect(ok).To(BeTrue())
+							Expect(contact.Depth).To(BeNumerically("~", penetration, tolerance))
+							expectVec3(contact.TargetNormal, dprec.NewVec3(0.0, 1.0, 0.0))
+
+							// The target point lies on the top face of the plate.
+							Expect(contact.TargetPoint.Y).To(BeNumerically("~", plateTop, tolerance))
+
+							// The source point lies on the small box.
+							sourcePoint := rotation.Inverse().Apply(dprec.Vec3Diff(contact.EvalSourcePoint(), center))
+							Expect(dprec.Abs(sourcePoint.X)).To(BeNumerically("<=", halfSize.X+tolerance))
+							Expect(dprec.Abs(sourcePoint.Y)).To(BeNumerically("<=", halfSize.Y+tolerance))
+							Expect(dprec.Abs(sourcePoint.Z)).To(BeNumerically("<=", halfSize.Z+tolerance))
+						}
+					}
+				}
+			})
 		})
 
 		Describe("capsule vs capsule", func() {
