@@ -65,9 +65,14 @@ type SoloCollisionSolver struct {
 	frictionCoefficient    float64
 	restitutionCoefficient float64
 
+	pointOffsetLS dprec.Vec3
 	pointOffsetWS dprec.Vec3
 	jacobian      Jacobian
 	drift         float64
+
+	targetVelocity float64
+	bounceLambda   float64
+	frictionLambda float64
 }
 
 var _ SoloConstraintSolver = (*SoloCollisionSolver)(nil)
@@ -109,28 +114,57 @@ func (s *SoloCollisionSolver) Configure(config SoloCollisionSolverConfig) {
 // Reset implements [SoloConstraintSolver.Reset].
 //
 // It recomputes the contact's [Jacobian] from the target's current
-// position.
+// position and determines, from the velocity at which the target
+// approaches the terrain, the velocity that the contact is to be resolved
+// to, combining restitution with Baumgarte positional-drift
+// stabilization.
 func (s *SoloCollisionSolver) Reset(ctx SoloConstraintContext) {
+	// The contact point is attached to the target, so that it can be
+	// followed as the target gets moved over the course of the step.
+	s.pointOffsetLS = dprec.QuatVec3Rotation(
+		dprec.ConjugateQuat(ctx.Target.Rotation()),
+		dprec.Vec3Diff(s.bodyContactPoint, ctx.Target.Position()),
+	)
 	s.recompute(ctx)
+
+	// The velocity that the contact should end up with is determined once,
+	// from the velocity that the target approaches the terrain with, so
+	// that the individual iterations converge towards it instead of each
+	// bouncing off of the outcome of the previous one.
+	approachVelocity := min(0.0, s.jacobian.EffectiveVelocity(ctx.Target))
+	bounceVelocity := -s.restitutionCoefficient * RestitutionClamp(approachVelocity) * approachVelocity
+	driftVelocity := ctx.ImpulseBeta * s.drift / ctx.DeltaSeconds
+	s.targetVelocity = max(bounceVelocity, driftVelocity)
+
+	s.bounceLambda = 0.0
+	s.frictionLambda = 0.0
 }
 
 // ApplyImpulses implements [SoloConstraintSolver.ApplyImpulses].
 //
-// It first resolves the contact's normal impulse, combining restitution
-// with Baumgarte positional-drift stabilization. If the target is
-// already moving away from the terrain, it returns without applying
-// anything, leaving any remaining penetration to
-// [SoloCollisionSolver.ApplyNudges]. Otherwise, it additionally resolves
-// a Coulomb friction impulse that opposes the target's lateral
-// (tangential) velocity at the contact point, clamped to a fraction of
-// the normal impulse's restitution-only component.
+// It first resolves the contact's normal impulse, which drives the
+// contact towards the velocity that was determined by
+// [SoloCollisionSolver.Reset]. The impulse only ever pushes the target
+// away from the terrain when summed up across the iterations of a step,
+// though an individual iteration may take back part of what previous
+// ones have applied. It additionally resolves a Coulomb friction impulse
+// that opposes the target's lateral (tangential) velocity at the contact
+// point, which is bounded, across the iterations of a step, by a fraction
+// of the normal impulse.
 func (s *SoloCollisionSolver) ApplyImpulses(ctx SoloConstraintContext) {
 	// Bounce solution
-	bounceLambda, baumgarteLambda := ctx.ImpulseLambdaComponents(s.jacobian, s.drift, s.restitutionCoefficient)
-	if bounceLambda < 0.0 {
-		return // moving away
+	invEffectiveMass := s.jacobian.InverseEffectiveMass(ctx.Target)
+	if invEffectiveMass < Epsilon {
+		return
 	}
-	bounceImpulse := s.jacobian.Impulse(bounceLambda + baumgarteLambda)
+	// The impulse that has been applied so far, across all iterations, is
+	// what must never pull the target into the terrain. An individual
+	// iteration is free to take back part of it, in case other constraints
+	// have pushed the target away further than necessary in the meantime.
+	bounceLambda := max(0.0, s.bounceLambda+(s.targetVelocity-s.jacobian.EffectiveVelocity(ctx.Target))/invEffectiveMass)
+	deltaBounceLambda := bounceLambda - s.bounceLambda
+	s.bounceLambda = bounceLambda
+	bounceImpulse := s.jacobian.Impulse(deltaBounceLambda)
 
 	// Friction solution
 	pointVelocity := dprec.Vec3Sum(ctx.Target.LinearVelocity(), dprec.Vec3Cross(ctx.Target.AngularVelocity(), s.pointOffsetWS))
@@ -143,8 +177,9 @@ func (s *SoloCollisionSolver) ApplyImpulses(ctx SoloConstraintContext) {
 			AngularSlope: dprec.Vec3Cross(velocityLateralDirection, s.pointOffsetWS),
 		}
 		frictionLambda := ctx.ImpulseLambda(frictionJacobian, 0.0, 0.0)
-		maxFrictionLambda := bounceLambda * s.frictionCoefficient
+		maxFrictionLambda := max(0.0, s.bounceLambda*s.frictionCoefficient-s.frictionLambda)
 		frictionLambda = min(frictionLambda, maxFrictionLambda)
+		s.frictionLambda += frictionLambda
 		frictionImpulse = frictionJacobian.Impulse(frictionLambda)
 	}
 
@@ -156,13 +191,13 @@ func (s *SoloCollisionSolver) ApplyImpulses(ctx SoloConstraintContext) {
 
 // ApplyNudges implements [SoloConstraintSolver.ApplyNudges].
 //
-// It first recomputes the contact's [Jacobian] from the target's current
-// position, since a preceding nudge - by
-// this solver's own previous iteration, or by another constraint acting
-// on the same target - may have moved the target since
-// [SoloCollisionSolver.Reset] or the last call to this method. If the
-// contact is still penetrating, it then nudges the target along the
-// terrain's contact normal to reduce the penetration.
+// It first recomputes the contact's [Jacobian] and remaining penetration
+// from the target's current position, since the target's motion or a
+// preceding nudge - by this solver's own previous iteration, or by
+// another constraint acting on the same target - may have moved the
+// target since [SoloCollisionSolver.Reset] or the last call to this
+// method. If the contact is still penetrating, it then nudges the target
+// along the terrain's contact normal to reduce the penetration.
 func (s *SoloCollisionSolver) ApplyNudges(ctx SoloConstraintContext) {
 	s.recompute(ctx)
 	if s.drift > 0.0 {
@@ -171,17 +206,22 @@ func (s *SoloCollisionSolver) ApplyNudges(ctx SoloConstraintContext) {
 	}
 }
 
-// recompute recalculates the contact's [Jacobian], along with the
-// world-space offset from the target's center of mass to the contact
-// point that it is derived from, based on the target's current
-// position.
+// recompute recalculates the contact's [Jacobian] and remaining
+// penetration, along with the world-space offset from the target's
+// center of mass to the contact point that they are derived from, based
+// on the target's current position and orientation.
 func (s *SoloCollisionSolver) recompute(ctx SoloConstraintContext) {
-	s.pointOffsetWS = dprec.Vec3Diff(s.bodyContactPoint, ctx.Target.Position())
+	s.pointOffsetWS = dprec.QuatVec3Rotation(ctx.Target.Rotation(), s.pointOffsetLS)
 
 	s.jacobian = Jacobian{
 		LinearSlope:  s.terrainContactNormal,
 		AngularSlope: dprec.Vec3Cross(s.pointOffsetWS, s.terrainContactNormal),
 	}
 
-	s.drift = s.contactDepth
+	// The penetration that remains is the one that was detected, reduced
+	// by however much the contact point has moved away from the terrain
+	// since.
+	point := dprec.Vec3Sum(ctx.Target.Position(), s.pointOffsetWS)
+	separation := dprec.Vec3Diff(point, s.bodyContactPoint)
+	s.drift = s.contactDepth - dprec.Vec3Dot(separation, s.terrainContactNormal)
 }
