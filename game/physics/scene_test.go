@@ -59,14 +59,22 @@ var _ = Describe("Scene", func() {
 		}
 
 		When("two bodies are colliding", func() {
+			var secondBody physics.BodyHandle
+
 			BeforeEach(func() {
 				bodies := scene.Bodies()
 				attachSphere(bodies.CreateHandle(dprec.NewVec3(0.0, 0.0, 0.0), dprec.IdentityQuat()))
-				attachSphere(bodies.CreateHandle(dprec.NewVec3(0.5, 0.0, 0.0), dprec.IdentityQuat()))
+				secondBody = bodies.CreateHandle(dprec.NewVec3(0.5, 0.0, 0.0), dprec.IdentityQuat())
+				attachSphere(secondBody)
 
 				scene.Update(step)
 				Expect(pairEvents).To(HaveLen(1))
 				Expect(pairEvents[0].active).To(BeTrue())
+			})
+
+			It("can continue simulating after one of the bodies is deleted", func() {
+				scene.Bodies().Delete(secondBody.ID())
+				Expect(func() { scene.Update(step) }).ToNot(Panic())
 			})
 
 			It("does not report the collision as ended when paused", func() {
@@ -86,6 +94,8 @@ var _ = Describe("Scene", func() {
 		})
 
 		When("a body is colliding with a terrain", func() {
+			var body physics.BodyHandle
+
 			BeforeEach(func() {
 				terrain := scene.Terrains().CreateHandle()
 				terrain.AttachCollisionMesh(physics.CollisionMesh{
@@ -97,11 +107,17 @@ var _ = Describe("Scene", func() {
 						),
 					}),
 				})
-				attachSphere(scene.Bodies().CreateHandle(dprec.NewVec3(0.0, 0.5, 0.0), dprec.IdentityQuat()))
+				body = scene.Bodies().CreateHandle(dprec.NewVec3(0.0, 0.5, 0.0), dprec.IdentityQuat())
+				attachSphere(body)
 
 				scene.Update(step)
 				Expect(soloEvents).To(HaveLen(1))
 				Expect(soloEvents[0].active).To(BeTrue())
+			})
+
+			It("can continue simulating after the body is deleted", func() {
+				scene.Bodies().Delete(body.ID())
+				Expect(func() { scene.Update(step) }).ToNot(Panic())
 			})
 
 			It("does not report the collision as ended when paused", func() {

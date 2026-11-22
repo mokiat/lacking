@@ -831,15 +831,21 @@ func (s *Scene) applyPlacement() {
 func (s *Scene) detectCollisions() {
 	defer metric.BeginRegion("collision").End()
 
-	// Purge old collision constraints and solvers.
+	// Purge old collision constraints and solvers. Some of the constraints
+	// may have already been deleted, together with the body they were
+	// attached to, if it was deleted since the last step.
 	soloConstraints := s.SoloConstraints()
 	for _, constraintID := range s.soloCollisionConstraintIDs {
-		soloConstraints.Delete(constraintID)
+		if soloConstraints.IsValid(constraintID) {
+			soloConstraints.Delete(constraintID)
+		}
 	}
 
 	pairConstraints := s.PairConstraints()
 	for _, constraintID := range s.pairCollisionConstraintIDs {
-		pairConstraints.Delete(constraintID)
+		if pairConstraints.IsValid(constraintID) {
+			pairConstraints.Delete(constraintID)
+		}
 	}
 
 	s.soloCollisionConstraintIDs = s.soloCollisionConstraintIDs[:0]
