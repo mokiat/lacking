@@ -143,10 +143,14 @@ func (s *LightingStage) allocatePipelines() {
 	sphereShape := s.data.SphereShape()
 	coneShape := s.data.ConeShape()
 
-	s.noShadowTexture = s.api.CreateDepthTexture2D(render.DepthTexture2DInfo{
+	// NOTE: This must be an array texture, since the directional light shader
+	// samples it through a sampler2DArrayShadow. Binding a non-array texture
+	// leaves the array target of the unit empty, which is undefined behavior.
+	s.noShadowTexture = s.api.CreateDepthTexture2DArray(render.DepthTexture2DArrayInfo{
 		Label:      "No Shadow Texture",
 		Width:      1,
 		Height:     1,
+		Layers:     1,
 		Comparable: true,
 		// TODO: Initialize to furthest possible depth value
 	})
