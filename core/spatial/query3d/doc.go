@@ -1,9 +1,11 @@
 // Package query3d provides a 3D spatial query interface.
 //
-// The package is built around an [Octree], a loose octree that indexes items
-// by their axis-aligned bounding box ([shape3d.AABB]) and allows them to be
-// searched through [Octree.QueryAABB], [Octree.QuerySegment] and
-// [Octree.QueryFrustum].
+// The package provides two interchangeable structures that index items by
+// their axis-aligned bounding box ([shape3d.AABB]): a [BVHTree], which is a
+// dynamic bounding volume hierarchy without fixed bounds, and an [Octree],
+// which is a loose octree of a fixed size. Both allow items to be searched by
+// box, by segment and by frustum (for example [BVHTree.QueryAABB],
+// [BVHTree.QuerySegment] and [BVHTree.QueryFrustum]).
 //
 // It is intended as a broad-phase (high-level) pass: queries are conservative
 // and may yield false positives, so callers are expected to run their own

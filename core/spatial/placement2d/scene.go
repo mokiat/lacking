@@ -16,20 +16,22 @@ import (
 // SceneSettings contains information needed to create an optimal scene.
 type SceneSettings struct {
 
-	// Size specifies the dimension (from side to side) of the scene.
-	// Inserting an item outside these bounds has undefined behavior.
-	Size opt.T[float64]
-
-	// MaxDepth controls the maximum depth that the underlying quadtree can reach.
-	MaxDepth opt.T[uint32]
+	// AABBMargin is the distance by which the bounding box of a shape is grown
+	// when it is indexed for the broad phase. A shape that moves within its
+	// grown box is cheaper to relocate. A good value is roughly the distance
+	// that a typical object travels between two updates.
+	//
+	// If not specified, a default margin of 0.1 is used.
+	AABBMargin opt.T[float64]
 
 	// InitialNodeCapacity is a hint as to the number of nodes that will be
-	// needed to place all items. Usually one would find that number empirically.
-	// This allows the quadtree to preallocate memory and avoid dynamic allocations.
+	// needed to index all shapes, which is roughly twice the number of shapes.
+	// This allows the scene to preallocate memory and avoid dynamic
+	// allocations.
 	InitialNodeCapacity opt.T[uint32]
 
-	// InitialItemCapacity is a hint as to the likely upper bound of items that
-	// will be inserted into the quadtree. This allows the quadtree to preallocate
+	// InitialItemCapacity is a hint as to the likely upper bound of shapes
+	// that will be placed in the scene. This allows the scene to preallocate
 	// memory and avoid dynamic allocations during insertion.
 	InitialItemCapacity opt.T[uint32]
 }
@@ -47,8 +49,8 @@ type SceneSettings struct {
 type Scene[O, T, S any] struct {
 	solver *gjk2d.Solver
 
-	objectShapeTree  *query2d.Quadtree[int32]
-	terrainShapeTree *query2d.Quadtree[int32]
+	objectShapeTree  *query2d.BVHTree[int32]
+	terrainShapeTree *query2d.BVHTree[int32]
 
 	freeObjectIndices       *ds.Stack[int32]
 	freeObjectShapeIndices  *ds.Stack[int32]
@@ -69,13 +71,13 @@ type Scene[O, T, S any] struct {
 
 // NewScene creates a new scene.
 func NewScene[O, T, S any](settings SceneSettings) *Scene[O, T, S] {
-	treeSettings := query2d.QuadtreeSettings(settings)
+	treeSettings := query2d.BVHTreeSettings(settings)
 
 	return &Scene[O, T, S]{
 		solver: gjk2d.NewSolver(),
 
-		objectShapeTree:  query2d.NewQuadtree[int32](treeSettings),
-		terrainShapeTree: query2d.NewQuadtree[int32](treeSettings),
+		objectShapeTree:  query2d.NewBVHTree[int32](treeSettings),
+		terrainShapeTree: query2d.NewBVHTree[int32](treeSettings),
 
 		freeObjectIndices:       ds.EmptyStack[int32](),
 		freeObjectShapeIndices:  ds.EmptyStack[int32](),

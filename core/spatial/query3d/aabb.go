@@ -12,7 +12,8 @@ const allFrustumSurfaces = uint8(0b111111)
 
 // boundingBox is an axis-aligned bounding box, stored through its minimum and
 // maximum corner, together with the intersection tests that the query
-// structures in this package need. It is shared by [Octree] and [Bag].
+// structures in this package need. It is shared by [BVHTree], [Octree] and
+// [Bag].
 type boundingBox struct {
 	minX float64
 	minY float64

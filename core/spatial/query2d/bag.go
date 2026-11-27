@@ -29,11 +29,11 @@ type BagSettings struct {
 // Bag is a spatial structure that keeps its items in a flat list and answers
 // queries by testing every item in turn.
 //
-// Unlike [Quadtree], a Bag performs no spatial subdivision, so the cost of a
+// Unlike [BVHTree], a Bag performs no spatial subdivision, so the cost of a
 // query grows linearly with the number of items. This makes it a good fit for
 // small item counts, or for items that move so frequently that maintaining a
 // hierarchy would not pay off. A Bag exposes the same insertion and query API
-// as [Quadtree], so the two can be swapped with minimal changes to calling
+// as [BVHTree], so the two can be swapped with minimal changes to calling
 // code.
 type Bag[T any] struct {
 	items       []bagItem[T]

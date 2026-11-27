@@ -1,9 +1,10 @@
 // Package query2d provides a 2D spatial query interface.
 //
-// The package is built around a [Quadtree], a loose quadtree that indexes
-// items by their axis-aligned bounding box ([shape2d.AABB]) and allows them to
-// be searched through [Quadtree.QueryAABB], [Quadtree.QuerySegment] and
-// [Quadtree.QueryFrustum].
+// The package is built around a [BVHTree], a dynamic bounding volume hierarchy
+// that indexes items by their axis-aligned bounding box ([shape2d.AABB]) and
+// allows them to be searched through [BVHTree.QueryAABB],
+// [BVHTree.QuerySegment] and [BVHTree.QueryFrustum]. A [Bag] offers the same
+// queries over a flat list, for a small number of items.
 //
 // It is intended as a broad-phase (high-level) pass: queries are conservative
 // and may yield false positives, so callers are expected to run their own

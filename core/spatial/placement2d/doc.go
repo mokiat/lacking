@@ -9,8 +9,8 @@
 // [Scene.AttachMesh]). Terrain shapes are specified directly in world space and
 // cannot be relocated once attached.
 //
-// Object shapes and terrain shapes are indexed in separate quadtrees for
-// efficient broad-phase queries. Narrow-phase intersection is resolved via
+// Object shapes and terrain shapes are indexed in separate bounding volume
+// hierarchies for efficient broad-phase queries. Narrow-phase intersection is resolved via
 // GJK/EPA (see [github.com/mokiat/lacking/core/spatial/gjk2d]), with concave
 // shapes being decomposed into convex pieces beforehand.
 //

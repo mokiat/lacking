@@ -12,21 +12,12 @@ const allFrustumSurfaces = uint8(0b1111)
 
 // boundingBox is an axis-aligned bounding box, stored through its minimum and
 // maximum corner, together with the intersection tests that the query
-// structures in this package need. It is shared by [Quadtree] and [Bag].
+// structures in this package need. It is shared by [BVHTree] and [Bag].
 type boundingBox struct {
 	minX float64
 	minY float64
 	maxX float64
 	maxY float64
-}
-
-func emptyBoundingBox() boundingBox {
-	return boundingBox{
-		minX: math.MaxFloat64,
-		minY: math.MaxFloat64,
-		maxX: -math.MaxFloat64,
-		maxY: -math.MaxFloat64,
-	}
 }
 
 func newBoundingBoxFromAABB(aabb shape2d.AABB) boundingBox {
