@@ -20,7 +20,7 @@ concepts apply:
 | **Shapes** | `shape2d` | `shape3d` | Primitive geometric shapes and contact types. |
 | **Convex solver** | `gjk2d` | `gjk3d` | GJK/EPA overlap and contact resolution for convex shapes. |
 | **Intersections** | `isec2d` | `isec3d` | Direct intersection tests and contacts between specific primitives. |
-| **Broad phase** | `query2d` | `query3d` | Loose quad/octree spatial index for fast candidate lookup. |
+| **Broad phase** | `query2d` | `query3d` | Spatial index (a bounding volume hierarchy; in 3D also an octree) for fast candidate lookup. |
 | **Scenes** | `placement2d` | `placement3d` | Full scenes of placed objects and meshes, combining all of the above. |
 
 The layers stack: shapes are the vocabulary; `gjk*` and `isec*` are two
@@ -165,30 +165,43 @@ Two contact conventions are used depending on the shapes involved:
 
 ## Broad Phase (Spatial Queries)
 
-`query2d` and `query3d` provide the broad phase: a loose **quadtree** /
-**octree** that indexes items by a spatial `Area` and answers region queries
-quickly.
+`query2d` and `query3d` provide the broad phase: structures that index items by
+their axis-aligned bounding box and answer region queries quickly.
 
-These queries are deliberately *conservative*. Every item is reduced to a center
-and a half-extent (its bounding square/cube), so a query may return false
-positives, but it will **never omit** an item that truly matches. Callers are
-expected to run a precise narrow-phase test (via `isec*` or `gjk*`) on the
-returned candidates.
+| Structure | Package | Best suited for |
+|-----------|---------|-----------------|
+| `BVHTree` | both | The default choice. A dynamic bounding volume hierarchy with no fixed bounds, so it works equally well for large, sparse or endless worlds. Changes are applied right away, so updates and queries can be freely mixed, and an item that moves only a little is very cheap to update. |
+| `Octree` | `query3d` | A loose octree of a fixed size. Items outside its bounds are still found, but they slow queries down. Changes are gathered and applied on the next query, which favors making many changes first and querying afterwards. |
+| `Bag` | both | A flat list with no subdivision, for a small number of items. |
+
+The structures of a package share the same methods, so one can be swapped for
+another with minimal changes to the calling code. `placement2d` and
+`placement3d` both use a `BVHTree`.
+
+These queries are deliberately *conservative*. Every item is reduced to its
+bounding box, so a query may return false positives, but it will **never omit**
+an item that truly matches. Callers are expected to run a precise narrow-phase
+test (via `isec*` or `gjk*`) on the returned candidates.
 
 ```go
-tree := query3d.NewOctree[Entity](query3d.OctreeSettings{})
+tree := query3d.NewBVHTree[Entity](query3d.BVHTreeSettings{})
 
 // Insert returns an ID used for later Update / Remove.
-id := tree.Insert(query3d.AreaFromSphere(bounds), entity)
+id := tree.Insert(shape3d.AABBFromSphere(bounds), entity)
 
 // Query a region; the visitor returns false to stop early.
-tree.QueryAABB(query3d.NewAABB(-10, -10, -10, 10, 10, 10), func(e Entity) bool {
+tree.QueryAABB(shape3d.NewAABB(-10, -10, -10, 10, 10, 10), func(e Entity) bool {
     // narrow-phase test against e here
     return true
 })
 
 // Query along a ray.
-tree.QuerySegment(query3d.NewSegment(from, to), func(e Entity) bool {
+tree.QuerySegment(shape3d.NewSegment(from, to), func(e Entity) bool {
+    return true
+})
+
+// Query what a camera can see.
+tree.QueryFrustum(frustum, func(e Entity) bool {
     return true
 })
 ```

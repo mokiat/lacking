@@ -47,10 +47,7 @@ var _ = Describe("Scene", func() {
 	var scene *placement3d.Scene[string, string, string]
 
 	BeforeEach(func() {
-		scene = placement3d.NewScene[string, string, string](placement3d.SceneSettings{
-			Size:     opt.V(128.0),
-			MaxDepth: opt.V[uint32](3),
-		})
+		scene = placement3d.NewScene[string, string, string](placement3d.SceneSettings{})
 	})
 
 	Describe("object management", func() {

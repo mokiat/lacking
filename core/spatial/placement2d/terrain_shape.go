@@ -53,7 +53,7 @@ func objectTerrainShapesCanIntersect[S any](objectShape *objectShapeState[S], te
 }
 
 // TODO: Consider using a different storage mechanism. For example a
-// Quadtree or BVH structure.
+// BVH structure.
 //
 // TODO: Consider abstracting the edges through a resolver that can find
 // candidate edges for bounding circles, allowing for heightline or other

@@ -44,10 +44,7 @@ var _ = Describe("Scene", func() {
 	var scene *placement2d.Scene[string, string, string]
 
 	BeforeEach(func() {
-		scene = placement2d.NewScene[string, string, string](placement2d.SceneSettings{
-			Size:     opt.V(128.0),
-			MaxDepth: opt.V[uint32](3),
-		})
+		scene = placement2d.NewScene[string, string, string](placement2d.SceneSettings{})
 	})
 
 	Describe("object management", func() {
